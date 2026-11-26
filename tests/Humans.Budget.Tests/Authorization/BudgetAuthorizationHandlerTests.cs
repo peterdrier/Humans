@@ -21,7 +21,7 @@ public sealed class BudgetAuthorizationHandlerTests
     private readonly IPermissionService _permissions = Substitute.For<IPermissionService>();
     private readonly BudgetAuthorizationHandler _handler;
 
-    private static readonly Guid CoordinatorTeamId = Guid.NewGuid();
+    private static readonly Guid EditorTeamId = Guid.NewGuid();
     private static readonly Guid OtherTeamId = Guid.NewGuid();
     private static readonly Guid UserId = Guid.NewGuid();
 
@@ -29,7 +29,7 @@ public sealed class BudgetAuthorizationHandlerTests
     {
         _users.GetUserInfoAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
             .Returns(call => UserInfo.Create(new User { Id = call.Arg<Guid>() }, [], [], null));
-        _handler = new BudgetAuthorizationHandler(_permissions, _users, new Microsoft.AspNetCore.Http.HttpContextAccessor());
+        _handler = new BudgetAuthorizationHandler(_permissions, _users, new HttpContextAccessor());
         Holds(UserId);
     }
 
@@ -49,7 +49,7 @@ public sealed class BudgetAuthorizationHandlerTests
             ? UserInfo.Create(new User { Id = survivorId }, [], [], null)
             : null);
 
-        var allowed = await EvaluateAsync(CreateUserWithId(cookieId), CreateCategory("coordinator"),
+        var allowed = await EvaluateAsync(CreateUserWithId(cookieId), CreateCategory("editor"),
             viewing ? BudgetOperationRequirement.View : BudgetOperationRequirement.Edit);
 
         allowed.Should().Be(accountExists && survivorAuthorized);
@@ -87,11 +87,11 @@ public sealed class BudgetAuthorizationHandlerTests
             .Returns(call => Permission(call.Arg<CancellationToken>()));
         _permissions.GetOwnersAsync(UserId, BudgetPermissions.Edit, Arg.Any<CancellationToken>())
             .Returns(call => Permission(call.Arg<CancellationToken>())
-                ? (IReadOnlyList<Owner>)[new Owner(TeamOwner.Kind, CoordinatorTeamId)]
+                ? [new Owner(TeamOwner.Kind, EditorTeamId)]
                 : []);
         var handler = new BudgetAuthorizationHandler(_permissions, _users, http);
         var requirement = viewing ? BudgetOperationRequirement.View : BudgetOperationRequirement.Edit;
-        var context = new AuthorizationHandlerContext([requirement], CreateUser("coordinator"), CreateCategory("coordinator"));
+        var context = new AuthorizationHandlerContext([requirement], CreateUser("editor"), CreateCategory("editor"));
         Func<Task> authorize = () => handler.HandleAsync(context);
         await authorize.Should().ThrowAsync<OperationCanceledException>();
         observed.Should().Be(request.Token);
@@ -107,16 +107,16 @@ public sealed class BudgetAuthorizationHandlerTests
         { "finance-admin", "other", true, false, false, true, true },
         { "finance-admin", "other", false, false, true, true, true },
         { "finance-admin", "none", false, false, false, true, true },
-        { "coordinator", "coordinator", false, false, false, true, true },
-        { "coordinator", "other", false, false, false, true, false },
-        { "coordinator", "coordinator", true, false, false, true, false },
-        { "coordinator", "coordinator", false, true, false, true, false },
-        { "coordinator", "coordinator", false, false, true, true, false },
-        { "coordinator", "none", false, false, false, true, false },
-        { "regular", "coordinator", false, false, false, true, false },
-        { "anonymous", "coordinator", false, false, false, true, false },
-        { "invalid-id", "coordinator", false, false, false, true, false },
-        { "coordinator", "coordinator", false, false, false, false, true },
+        { "editor", "editor", false, false, false, true, true },
+        { "editor", "other", false, false, false, true, false },
+        { "editor", "editor", true, false, false, true, false },
+        { "editor", "editor", false, true, false, true, false },
+        { "editor", "editor", false, false, true, true, false },
+        { "editor", "none", false, false, false, true, false },
+        { "regular", "editor", false, false, false, true, false },
+        { "anonymous", "editor", false, false, false, true, false },
+        { "invalid-id", "editor", false, false, false, true, false },
+        { "editor", "editor", false, false, false, false, true },
     };
 
     [HumansTheory]
@@ -141,16 +141,16 @@ public sealed class BudgetAuthorizationHandlerTests
     [HumansTheory]
     [InlineData("finance-admin", "none", true, true, true, true)]
     [InlineData("admin", "none", true, true, true, true)]
-    [InlineData("coordinator", "coordinator", false, false, false, true)]
-    [InlineData("coordinator", "other", false, false, false, true)]
-    [InlineData("coordinator", "none", false, false, false, true)]
-    [InlineData("coordinator", "other", false, true, false, true)]
-    [InlineData("coordinator", "coordinator", true, false, false, false)]
-    [InlineData("coordinator", "coordinator", false, false, true, false)]
-    [InlineData("regular", "coordinator", false, false, false, false)]
-    [InlineData("anonymous", "coordinator", false, false, false, false)]
-    [InlineData("invalid-id", "coordinator", false, false, false, false)]
-    public async Task View_PreservesCoordinatorReadScope_WithoutGrantingEditAccess(
+    [InlineData("editor", "editor", false, false, false, true)]
+    [InlineData("editor", "other", false, false, false, true)]
+    [InlineData("editor", "none", false, false, false, true)]
+    [InlineData("editor", "other", false, true, false, true)]
+    [InlineData("editor", "editor", true, false, false, false)]
+    [InlineData("editor", "editor", false, false, true, false)]
+    [InlineData("regular", "editor", false, false, false, false)]
+    [InlineData("anonymous", "editor", false, false, false, false)]
+    [InlineData("invalid-id", "editor", false, false, false, false)]
+    public async Task View_KeepsEditorReadScope_WithoutEditAccess(
         string userKind, string teamKind, bool restricted, bool deleted, bool ticketing, bool expected)
     {
         var allowed = await EvaluateAsync(CreateUser(userKind),
@@ -161,10 +161,10 @@ public sealed class BudgetAuthorizationHandlerTests
 
     private void Holds(Guid userId)
     {
-        _permissions.HasAsync(userId, BudgetPermissions.Edit, new Owner(TeamOwner.Kind, CoordinatorTeamId), Arg.Any<CancellationToken>())
+        _permissions.HasAsync(userId, BudgetPermissions.Edit, new Owner(TeamOwner.Kind, EditorTeamId), Arg.Any<CancellationToken>())
             .Returns(true);
         _permissions.GetOwnersAsync(userId, BudgetPermissions.Edit, Arg.Any<CancellationToken>())
-            .Returns([new Owner(TeamOwner.Kind, CoordinatorTeamId)]);
+            .Returns([new Owner(TeamOwner.Kind, EditorTeamId)]);
     }
 
     private async Task<bool> EvaluateAsync(ClaimsPrincipal user, BudgetCategorySnapshot resource, BudgetOperationRequirement? requirement = null)
@@ -185,7 +185,7 @@ public sealed class BudgetAuthorizationHandlerTests
     {
         Guid? teamId = teamKind switch
         {
-            "coordinator" => CoordinatorTeamId,
+            "editor" => EditorTeamId,
             "other" => OtherTeamId,
             "none" => null,
             _ => throw new ArgumentOutOfRangeException(nameof(teamKind), teamKind, null)
@@ -218,7 +218,7 @@ public sealed class BudgetAuthorizationHandlerTests
         {
             "admin" => CreateUserWithRoles(RoleNames.Admin),
             "finance-admin" => CreateUserWithRoles(FinanceRoles.FinanceAdmin),
-            "coordinator" => CreateUserWithId(UserId),
+            "editor" => CreateUserWithId(UserId),
             "regular" => CreateUserWithId(Guid.NewGuid()),
             "anonymous" => new ClaimsPrincipal(new ClaimsIdentity()),
             "invalid-id" => new ClaimsPrincipal(new ClaimsIdentity(
@@ -248,7 +248,7 @@ public sealed class BudgetAuthorizationHandlerTests
         var claims = new List<Claim>
         {
             new(ClaimTypes.NameIdentifier, userId.ToString()),
-            new(ClaimTypes.Name, "coordinator@example.com")
+            new(ClaimTypes.Name, "editor@example.com")
         };
         return new ClaimsPrincipal(new ClaimsIdentity(claims, "TestAuth"));
     }

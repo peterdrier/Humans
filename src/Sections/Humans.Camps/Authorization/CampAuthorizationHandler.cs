@@ -1,9 +1,6 @@
 using Humans.Users.Contracts;
-using Humans.Camps.Contracts;
-using Humans.Base.Authorization;
 using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Http;
 
 namespace Humans.Camps.Authorization;
 

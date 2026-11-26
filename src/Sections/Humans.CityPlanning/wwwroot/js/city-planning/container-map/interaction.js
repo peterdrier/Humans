@@ -35,7 +35,7 @@ export function initInteraction(map, onSave, onSelect) {
     map.on('move', repositionHandle);
     map.on('zoom', repositionHandle);
 
-    // Rotation handle events (document-level to capture outside map bounds)
+    // Document release also finishes drags that leave the map canvas.
     rotationHandle.addEventListener('mousedown', onHandleMouseDown);
     document.addEventListener('mousemove', onDocumentMouseMove);
     document.addEventListener('mouseup', onDocumentMouseUp);
@@ -76,6 +76,10 @@ export function selectPlacedContainer(container) {
     _map.easeTo({ center: [_currentCenter.lng, _currentCenter.lat], zoom: Math.max				(_map.getZoom(), 19), duration: 300 });
 }
 
+export function getActiveContainerId() {
+    return _activeContainer?.id ?? null;
+}
+
 export function deactivate() {
     resetGesture();
     _activeContainer = null;
@@ -85,7 +89,7 @@ export function deactivate() {
 }
 
 function onContainerMouseDown(e) {
-    if (!_activeContainer) return;
+    if (!_activeContainer || e.originalEvent.button !== 0) return;
     const featureId = e.features?.[0]?.properties?.id;
     if (featureId && featureId !== _activeContainer.id) return;
 
@@ -165,7 +169,7 @@ async function onMapMouseUp() {
 }
 
 function onHandleMouseDown(e) {
-    if (!_activeContainer) return;
+    if (!_activeContainer || e.button !== 0) return;
     _isRotating = true;
     e.preventDefault();
     e.stopPropagation();
@@ -186,6 +190,7 @@ function onDocumentMouseMove(e) {
 }
 
 async function onDocumentMouseUp() {
+    if (_isDragging) return onMapMouseUp();
     if (!_isRotating) return;
     _isRotating = false;
     renderPending();

@@ -13,12 +13,10 @@ using Humans.Finance.Domain;
 using Humans.Finance.Models;
 using Humans.Users.Contracts;
 using System.Globalization;
-using System.Text.Json;
 using Microsoft.Extensions.Options;
 using NodaTime;
 using static Humans.Finance.Services.SepaText;
 using Humans.Base.Interfaces;
-using Humans.Base.Constants;
 using System.Text.RegularExpressions;
 using System.Security.Cryptography;
 using System.Text;
@@ -81,7 +79,7 @@ internal sealed class Service(
                 Account: contacts.GetValueOrDefault(b.HoldedContactId)?.SupplierAccountNum))
             .Where(x => IsMemberCreditorAccount(x.Account))
             .GroupBy(x => x.UserId)
-            .ToDictionary(g => g.Key, g => g.OrderByDescending(x => x.Own == g.Key).First().Account!.Value);
+            .ToDictionary(g => g.Key, g => g.MaxBy(x => x.Own == g.Key).Account!.Value);
 
         var ledger = new Dictionary<int, IReadOnlyList<HoldedLedgerLineInfo>>();
         foreach (var account in balances.Keys
@@ -1017,7 +1015,7 @@ internal sealed class Service(
         var pendingFileByAccount = (await repo.GetSepaPayoutTransferRowsAsync(ct))
             .Where(r => !r.IsBooked && !r.IsWithdrawn && !IsStale(r))
             .GroupBy(r => r.SupplierAccountNum)
-            .ToDictionary(g => g.Key, g => g.OrderByDescending(r => r.GeneratedAt).First().FileName);
+            .ToDictionary(g => g.Key, g => g.MaxBy(r => r.GeneratedAt)!.FileName);
 
         // Plus bound accounts with no lines yet and every Holded creditor contact: a first-time submitter's account
         // exists before any activity. The mirror spans the whole chart, so balances are range-filtered here.
@@ -2105,7 +2103,7 @@ internal sealed class Service(
 
         return new SepaBookingResult(true,
             $"Withdrew the {Euros(transfer.Amount)} transfer to {transfer.IbanMasked} from {row.FileName}; "
-            + "the member has been told and the account is payable again.");
+            + "the account is payable again.");
     }
 
     /// <summary>For a file the bank rejected whole: withdraws every transfer still live in it, in one save, so it is
@@ -2483,7 +2481,6 @@ internal sealed class Service(
                     entry = await holdedWrite.PostJournalEntryAsync(
                         movement.Date, transfer.SupplierAccountNum, sepa.Value.TreasuryLedgerAccount!.Value,
                         remaining, tag, ct);
-                    remaining -= entryAmount;
                 }
                 catch (Exception ex) when (ex is HoldedTransientException or HoldedPermanentException)
                 {
@@ -3115,10 +3112,10 @@ internal sealed class Service(
         {
             infos.TryGetValue(t.UserId, out var member);
             var recipient = member?.Email;
-            if (member is null || string.IsNullOrWhiteSpace(recipient))
+            if (member is null || member.IsTombstone || string.IsNullOrWhiteSpace(recipient))
             {
                 logger.LogWarning(
-                    "Skipping SEPA payout email for transfer {TransferId}: member {UserId} has no notification email",
+                    "Skipping SEPA payout email for transfer {TransferId}: member {UserId} is unavailable or has no notification email",
                     t.Id, t.UserId);
                 continue;
             }
@@ -3148,10 +3145,10 @@ internal sealed class Service(
             var infos = await users.GetUserInfosAsync([t.UserId], ct);
             infos.TryGetValue(t.UserId, out var member);
             var recipient = member?.Email;
-            if (member is null || string.IsNullOrWhiteSpace(recipient))
+            if (member is null || member.IsTombstone || string.IsNullOrWhiteSpace(recipient))
             {
                 logger.LogWarning(
-                    "Skipping SEPA withdrawal email for transfer {TransferId}: member {UserId} has no notification email",
+                    "Skipping SEPA withdrawal email for transfer {TransferId}: member {UserId} is unavailable or has no notification email",
                     t.Id, t.UserId);
                 return;
             }

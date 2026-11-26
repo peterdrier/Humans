@@ -5,7 +5,6 @@ using System.Text;
 using AwesomeAssertions;
 using Humans.BoxOffice.Controllers;
 using Humans.BoxOffice.Services;
-using Humans.Testing;
 using Humans.Tickets.Contracts;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
@@ -21,14 +20,42 @@ namespace Humans.BoxOffice.Tests;
 
 public sealed class BoxOfficePlatformTests
 {
+    [HumansTheory]
+    [InlineData("")]
+    [InlineData(" \t")]
+    [InlineData("rk_test_bad suffix")]
+    [InlineData("rk_test_secret\r\nhidden")]
+    public async Task Platform_UnusableKey_RefusesBeforeSdk(string key)
+    {
+        using var assertions = new AwesomeAssertions.Execution.AssertionScope();
+        var platform = Platform(secretKey: key);
+        var ct = TestContext.Current.CancellationToken;
+        platform.IsConfigured.Should().BeFalse();
+        var findings = await platform.CheckAsync(null, ct);
+        findings.Should().ContainSingle().Which.Ok.Should().BeFalse();
+        findings.Should().OnlyContain(f => !f.Text.Contains("rk_test_secret", StringComparison.Ordinal));
+        Func<Task>[] operations =
+        [
+            () => platform.CreateOrderAsync(Order(Now + Duration.FromHours(1), new PlatformOrderLine(OrderLineKind.Ticket, "Entry", 1000, 0.21m, "Ana")), ct),
+            () => platform.GetStatusAsync("cs_test_config", ct),
+            () => platform.ListOrdersAsync(null, Now - Duration.FromDays(1), Now, ct),
+            () => platform.RefundAsync(new RefundRequest(Guid.NewGuid(), "cs_test_config", 1000, "Resold"), ct),
+            () => platform.CancelAsync("cs_test_config", ct),
+            () => platform.GetPaymentLedgerAsync(Now - Duration.FromDays(1), Now, ct),
+        ];
+        foreach (var operation in operations)
+            await operation.Should().ThrowAsync<TicketingPlatformException>().WithMessage("*not configured*");
+        _http.ReceivedCalls().Should().BeEmpty();
+    }
+
     private static readonly Instant Now = Instant.FromUtc(2027, 1, 10, 12, 0);
     private readonly IHttpClient _http = Substitute.For<IHttpClient>();
     private readonly List<StripeRequest> _requests = [];
 
     private const string WebhookSecret = "whsec_test_boxoffice";
 
-    private BoxOfficePlatform Platform(string webhookSecret = "") =>
-        new(Options.Create(new BoxOfficeSettings { SecretKey = "sk_test_boxoffice", WebhookSecret = webhookSecret }),
+    private BoxOfficePlatform Platform(string webhookSecret = "", string secretKey = "sk_test_boxoffice") =>
+        new(Options.Create(new BoxOfficeSettings { SecretKey = secretKey, WebhookSecret = webhookSecret }),
             new FakeClock(Now), NullLogger<BoxOfficePlatform>.Instance, _http);
 
     private static PlatformOrderRequest Order(Instant expiresAt, params PlatformOrderLine[] lines) => new(
@@ -125,6 +152,24 @@ public sealed class BoxOfficePlatformTests
         findings.Should().Contain(f => f.Ok && f.Text.Contains("Balance transactions"));
     }
 
+    [HumansTheory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public async Task Check_propagates_caller_cancellation_but_reports_timeouts(bool cancelCaller)
+    {
+        using var caller = new CancellationTokenSource();
+        if (cancelCaller) await caller.CancelAsync();
+        _http.MakeRequestAsync(Arg.Any<StripeRequest>(), Arg.Any<CancellationToken>())
+            .Returns<StripeResponse>(_ => throw new TaskCanceledException("probe cancelled", null, caller.Token));
+
+        var check = () => Platform().CheckAsync(null, caller.Token);
+
+        if (cancelCaller)
+            await check.Should().ThrowAsync<OperationCanceledException>();
+        else
+            (await check()).Should().Contain(f => !f.Ok && f.Text.Contains("could not be reached"));
+    }
+
     [HumansFact]
     public async Task Check_reports_an_unreachable_Stripe_instead_of_throwing()
     {
@@ -215,12 +260,12 @@ public sealed class BoxOfficePlatformTests
     }
 
     [HumansTheory]
-    [Xunit.InlineData("open", "unpaid", "requires_payment_method", PlatformOrderState.Pending)]
-    [Xunit.InlineData("expired", "unpaid", "canceled", PlatformOrderState.Expired)]
-    [Xunit.InlineData("complete", "unpaid", "processing", PlatformOrderState.Processing)]
-    [Xunit.InlineData("complete", "unpaid", "requires_action", PlatformOrderState.Processing)]
-    [Xunit.InlineData("complete", "unpaid", "requires_payment_method", PlatformOrderState.Failed)]
-    [Xunit.InlineData("complete", "unpaid", "canceled", PlatformOrderState.Failed)]
+    [InlineData("open", "unpaid", "requires_payment_method", PlatformOrderState.Pending)]
+    [InlineData("expired", "unpaid", "canceled", PlatformOrderState.Expired)]
+    [InlineData("complete", "unpaid", "processing", PlatformOrderState.Processing)]
+    [InlineData("complete", "unpaid", "requires_action", PlatformOrderState.Processing)]
+    [InlineData("complete", "unpaid", "requires_payment_method", PlatformOrderState.Failed)]
+    [InlineData("complete", "unpaid", "canceled", PlatformOrderState.Failed)]
     public async Task Status_maps_open_expired_settling_and_failed_debits(
         string status, string paymentStatus, string intent, PlatformOrderState expected)
     {
@@ -358,13 +403,13 @@ public sealed class BoxOfficePlatformTests
         var ledger = await Platform().GetPaymentLedgerAsync(Now - Duration.FromDays(1), Now, TestContext.Current.CancellationToken);
 
         ledger!.Entries.Select(e => (e.Id, e.Kind, e.AmountMinor, e.FeeMinor, e.HumansOrderId)).Should().Equal(
-            ("txn_c", PaymentLedgerEntryKind.Charge, 30000L, 450L, (Guid?)paidHere),
-            ("txn_r", PaymentLedgerEntryKind.Refund, -5000L, 0L, (Guid?)refundedLater),
-            ("txn_f", PaymentLedgerEntryKind.Fee, -200L, 0L, (Guid?)null),
-            ("txn_p", PaymentLedgerEntryKind.Payout, -24350L, 0L, (Guid?)null));
+            ("txn_c", PaymentLedgerEntryKind.Charge, 30000L, 450L, paidHere),
+            ("txn_r", PaymentLedgerEntryKind.Refund, -5000L, 0L, refundedLater),
+            ("txn_f", PaymentLedgerEntryKind.Fee, -200L, 0L, null),
+            ("txn_p", PaymentLedgerEntryKind.Payout, -24350L, 0L, null));
         ledger.Payouts.Select(p => (p.Id, p.AmountMinor, p.Status, p.ContentsNetMinor, p.ContentsCount)).Should().Equal(
-            ("po_1", 24350L, "paid", (long?)24350, 3), ("po_2", 1000L, "pending", (long?)null, 0),
-            ("po_3", 700L, "paid", (long?)null, 0));
+            ("po_1", 24350L, "paid", 24350, 3), ("po_2", 1000L, "pending", null, 0),
+            ("po_3", 700L, "paid", null, 0));
         _requests.Should().HaveCount(5).And.OnlyContain(r => r.Method == HttpMethod.Get);
     }
 
@@ -383,8 +428,8 @@ public sealed class BoxOfficePlatformTests
     }
 
     [HumansTheory]
-    [Xunit.InlineData(5, 31)]
-    [Xunit.InlineData(72 * 60, 23 * 60)]
+    [InlineData(5, 31)]
+    [InlineData(72 * 60, 23 * 60)]
     public async Task Checkout_leaves_free_lines_out_and_keeps_the_session_inside_Stripes_lifetime(int askedMinutes, int sentMinutes)
     {
         Respond(Session("open", "unpaid"));
@@ -479,9 +524,9 @@ public sealed class BoxOfficePlatformTests
     }
 
     [HumansTheory]
-    [Xunit.InlineData("charge.refunded", """{"id":"ch_1","object":"charge","payment_intent":"pi_1"}""")]
-    [Xunit.InlineData("refund.failed", """{"id":"re_1","object":"refund","payment_intent":"pi_1"}""")]
-    [Xunit.InlineData("charge.dispute.created", """{"id":"dp_1","object":"dispute","payment_intent":"pi_1"}""")]
+    [InlineData("charge.refunded", """{"id":"ch_1","object":"charge","payment_intent":"pi_1"}""")]
+    [InlineData("refund.failed", """{"id":"re_1","object":"refund","payment_intent":"pi_1"}""")]
+    [InlineData("charge.dispute.created", """{"id":"dp_1","object":"dispute","payment_intent":"pi_1"}""")]
     public async Task A_verified_money_event_names_the_sessions_of_its_payment(string type, string dataObject)
     {
         Respond("""{"object":"list","url":"/v1/checkout/sessions","has_more":false,"data":[{"id":"cs_1","object":"checkout.session"}]}""");
@@ -522,7 +567,7 @@ public sealed class BoxOfficePlatformTests
 
         var unset = await Webhook(Platform(), events, body, Sign(body)).Receive(ct);
         var forged = await Webhook(Platform(WebhookSecret), events, body, "t=1,v1=bad").Receive(ct);
-        await events.DidNotReceiveWithAnyArgs().PlatformOrderChangedAsync(default!, default!, default);
+        await events.DidNotReceiveWithAnyArgs().PlatformOrderChangedAsync(default!, default!);
         var verified = await Webhook(Platform(WebhookSecret), events, body, Sign(body)).Receive(ct);
 
         unset.Should().BeOfType<StatusCodeResult>().Which.StatusCode.Should().Be(StatusCodes.Status503ServiceUnavailable);

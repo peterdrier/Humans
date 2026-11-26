@@ -58,7 +58,9 @@ after the retention window.
   holder or entry user). Email never matches. Accent- and case-blind, at least 2 letters, the
   first 20 matches. The list shows only the ticket's own name and type, never the name it matched
   on; picking one runs the normal scan, so the photo ID check still decides. The panel clears
-  itself after 60s idle so names don't linger on the shared kiosk.
+  itself after 60s idle so names don't linger on the shared kiosk. Each name edit immediately clears
+  the previous choices and invalidates pending responses and errors before the next debounced lookup
+  starts.
 - **Undo an admit** (G6) — at the kiosk, "Undo — admitted by mistake" sits behind the shared
   supervisor PIN (same throttle as overrides); `/Gate/Report` offers it to `TicketsPolicies.Manage`
   with a required reason. Undo nulls `AdmitDedupeKey`, stamps `UndoneAt`/`UndoneByUserId`/`UndoReason`

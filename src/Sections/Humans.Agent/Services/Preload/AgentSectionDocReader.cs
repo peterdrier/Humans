@@ -44,7 +44,7 @@ internal sealed class AgentSectionDocReader(
             // Whitelisted but missing: a miss, so the tool degrades cleanly. Logged at Warning, which the prod log
             // viewer shows.
             logger.LogWarning(
-                "Section guide {Section} not found on GitHub in {Folder}",
+                "Section doc {Section} not found on GitHub in {Folder}",
                 canonicalKey, SectionProjectFolder(canonicalKey));
             return null;
         }
@@ -52,7 +52,7 @@ internal sealed class AgentSectionDocReader(
         {
             var expected = ex is ApiException or HttpRequestException or IOException or TimeoutException or OperationCanceledException;
             logger.Log(expected ? LogLevel.Warning : LogLevel.Error, expected ? null : ex,
-                "Failed to fetch agent section guide {Section} from GitHub; returning null: {Reason}", canonicalKey, ex.Message);
+                "Failed to fetch agent section doc {Section} from GitHub; returning null: {Reason}", canonicalKey, ex.Message);
             return null;
         }
     }

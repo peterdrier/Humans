@@ -3,7 +3,6 @@ using Humans.AuditLog.Contracts;
 using Humans.Auth.Contracts;
 using Humans.Base.Data;
 using Humans.Settings.Contracts;
-using Humans.Shifts.Contracts;
 using Humans.Shifts.Data;
 using Humans.Shifts.Domain;
 using Humans.Shifts.Services;

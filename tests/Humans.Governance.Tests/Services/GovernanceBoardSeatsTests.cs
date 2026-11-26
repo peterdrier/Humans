@@ -2,7 +2,6 @@ using System.Security.Claims;
 using AwesomeAssertions;
 using Humans.AuditLog.Contracts;
 using Humans.Auth.Contracts;
-using Humans.Governance;
 using Humans.Governance.Data;
 using Humans.Google.Contracts;
 using Humans.Governance.Domain;
@@ -11,7 +10,6 @@ using Humans.Base.Authorization;
 using Humans.Base.Constants;
 using Humans.Governance.Controllers;
 using Humans.Governance.Services;
-using Humans.Testing;
 using Humans.Users.Contracts;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
@@ -110,6 +108,22 @@ public sealed class GovernanceBoardSeatsTests
 
         (await _repo.GetBoardPositionsAsync()).Select(p => (p.Position, p.UserId))
             .Should().BeEquivalentTo([(BoardPosition.Secretary, to)]);
+    }
+
+    [HumansFact]
+    public async Task Add_UnavailableRoleTarget_RefusesSeat()
+    {
+        var userId = Guid.NewGuid();
+        _users.GetUserInfoAsync(userId, Arg.Any<CancellationToken>()).Returns(
+            UserInfo.Create(new User { Id = userId }, [], [], null) with { State = UserState.Active });
+        _write.AssignRoleAsync(userId, RoleNames.Board, Arg.Any<Guid>(), null, Arg.Any<CancellationToken>())
+            .Returns(new RoleAssignmentResult(false, "UserUnavailable"));
+
+        var result = await Seats().AddAsync(userId, Guid.NewGuid(), Xunit.TestContext.Current.CancellationToken);
+
+        result.ErrorKey.Should().Be(GovernanceBoardSeats.InactiveAccount);
+        _groupSync.ReceivedCalls().Should().BeEmpty();
+        _audit.ReceivedCalls().Should().BeEmpty();
     }
 
     [HumansFact]

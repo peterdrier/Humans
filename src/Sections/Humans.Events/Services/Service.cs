@@ -12,8 +12,6 @@ using NodaTime;
 using Humans.Events.Contracts;
 using Humans.Events.Data;
 using Humans.Users.Contracts;
-using Humans.Base.Constants;
-using Humans.Base.Interfaces;
 using static Humans.Events.Helpers.EventsTimeHelpers;
 using System.Globalization;
 using Humans.Base.Csv;
@@ -219,10 +217,10 @@ internal sealed class EventService(
         try
         {
             var submitter = await userService.GetUserInfoAsync(guideEvent.SubmitterUserId, CancellationToken.None);
-            if (string.IsNullOrWhiteSpace(submitter?.Email))
+            if (submitter is null || submitter.IsTombstone || string.IsNullOrWhiteSpace(submitter.Email))
             {
                 logger.LogWarning(
-                    "Skipping lifecycle email for event {EventId}: submitter {SubmitterId} has no notification email",
+                    "Skipping lifecycle email for event {EventId}: submitter {SubmitterId} is unavailable or has no notification email",
                     guideEvent.Id, guideEvent.SubmitterUserId);
                 return;
             }

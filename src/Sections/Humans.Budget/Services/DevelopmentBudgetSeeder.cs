@@ -155,12 +155,12 @@ internal sealed class DevelopmentBudgetSeeder(
         if (budgetYearSummary is null)
         {
             var createdBudgetYear = await budgetService.CreateYearAsync(budgetYearCode, budgetYearName, actorUserId);
-            budgetYearId = createdBudgetYear.Id;
+            budgetYearId = (createdBudgetYear.Value ?? throw new InvalidOperationException(createdBudgetYear.Refusal)).Id;
         }
         else
         {
             budgetYearId = budgetYearSummary.Id;
-            if (budgetYearSummary.IsDeleted)
+            if (budgetYearSummary.IsArchived)
             {
                 // An archived demo year is a deliberate operator state: don't resurrect it.
                 return $"Budget demo year '{budgetYearSummary.Name}' is archived; skipped budget seeding.";
@@ -193,8 +193,9 @@ internal sealed class DevelopmentBudgetSeeder(
         if (sharedServicesGroup is null)
         {
             var createdGroup = await budgetService.CreateGroupAsync(budgetYearId, "Shared Services", false, actorUserId);
-            sharedServicesGroupId = createdGroup.Id;
-            sharedServicesGroupRestricted = createdGroup.IsRestricted;
+            var savedGroup = createdGroup.Value ?? throw new InvalidOperationException(createdGroup.Refusal);
+            sharedServicesGroupId = savedGroup.Id;
+            sharedServicesGroupRestricted = savedGroup.IsRestricted;
         }
         else
         {
@@ -281,7 +282,7 @@ internal sealed class DevelopmentBudgetSeeder(
             vatRate: 10,
             stripeFeePercent: 1.50m,
             stripeFeeFixed: 0.25m,
-            ticketTailorFeePercent: 3.00m,
+            platformFeePercent: 3.00m,
             actorUserId);
         if (projection.Refusal is not null)
             throw new InvalidOperationException(projection.Refusal);

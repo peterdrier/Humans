@@ -11,7 +11,6 @@ using Humans.Rideshare.Services.Routing;
 using Humans.Settings.Contracts;
 using Humans.Users.Contracts;
 using NodaTime;
-using Humans.Base.Interfaces;
 using System.Resources;
 
 namespace Humans.Rideshare.Services;

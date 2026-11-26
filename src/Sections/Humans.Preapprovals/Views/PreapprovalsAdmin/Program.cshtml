@@ -1,3 +1,4 @@
+@using System.Globalization
 @model AdminProgramViewModel
 @{
     var p = Model.Program;
@@ -13,7 +14,8 @@
             <form method="post" asp-action="Approve" asp-route-programId="@p.Id" asp-route-grantId="@item.Id" class="d-inline-flex gap-1 align-items-center">
                 @if (!fixedKind)
                 {
-                    <input type="number" name="amount" step="0.01" min="0.01" class="form-control form-control-sm" style="width: 120px;" value="@item.RequestedAmount" />
+                    <input type="hidden" name="__Invariant" value="amount" />
+                    <input type="number" name="amount" step="0.01" min="0.01" class="form-control form-control-sm" style="width: 120px;" value="@item.RequestedAmount?.ToString(CultureInfo.InvariantCulture)" />
                 }
                 <button type="submit" class="btn btn-sm btn-success">Approve</button>
             </form>
@@ -52,7 +54,8 @@
         @if (Model.CanManage && (item.Status is GrantStatus.Open or GrantStatus.Claimed))
         {
             <form method="post" asp-action="Amount" asp-route-programId="@p.Id" asp-route-grantId="@item.Id" class="d-inline-flex gap-1 align-items-center">
-                <input type="number" name="amount" step="0.01" min="0.01" class="form-control form-control-sm" style="width: 110px;" value="@item.MaxAmount" required />
+                <input type="hidden" name="__Invariant" value="amount" />
+                <input type="number" name="amount" step="0.01" min="0.01" class="form-control form-control-sm" style="width: 110px;" value="@item.MaxAmount.ToString(CultureInfo.InvariantCulture)" required />
                 <button type="submit" class="btn btn-sm btn-outline-secondary">Set amount</button>
             </form>
             <form method="post" asp-action="Revoke" asp-route-programId="@p.Id" asp-route-grantId="@item.Id" class="d-inline-flex gap-1 align-items-center ms-1"
@@ -116,9 +119,9 @@
                 {
                     userId = p.ManagerUserIds[i],
                 });
-                using var writer = new System.IO.StringWriter();
+                using var writer = new StringWriter();
                 manager.WriteTo(writer, System.Text.Encodings.Web.HtmlEncoder.Default);
-                Write(new Microsoft.AspNetCore.Html.HtmlString(writer.ToString().Trim()));
+                Write(new HtmlString(writer.ToString().Trim()));
             }
         }
     </dd>
@@ -145,6 +148,7 @@
                         @if (!fixedKind)
                         {
                             <div class="mb-2 input-group mw-240">
+                                <input type="hidden" name="__Invariant" value="amount" />
                                 <input type="number" name="amount" step="0.01" min="0.01" class="form-control" placeholder="Amount" required />
                                 <span class="input-group-text">€</span>
                             </div>

@@ -14,6 +14,7 @@ internal static class SepaText
     private static readonly Dictionary<char, string> NonDecomposing = new()
     {
         ['ß'] = "ss",
+        ['ẞ'] = "SS",
         ['Ø'] = "O",
         ['ø'] = "o",
         ['Æ'] = "AE",

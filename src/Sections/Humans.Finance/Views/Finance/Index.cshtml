@@ -44,7 +44,7 @@
         .Build();
 
     Func<FinanceSepaTransferVm, IHtmlContent> sepaAmountCell = @<text>@item.Amount.ToEuro()</text>;
-    var sepaTable = TableModel.For(Model.SepaInProgress)
+    var sepaTable = TableModel.For(Model.SepaInProgress.OrderBy(transfer => transfer.GeneratedAt).ToList())
         .Human("Member", t => t.UserId)
         .Column("Sent", t => t.GeneratedAt, o => o.Date().Css("text-nowrap"))
         .Link("File", t => t.FileName, _ => Url.Action("Sepa"))

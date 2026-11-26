@@ -8,7 +8,7 @@ no cross-section surface to publish. The one Base type that keeps
 the "Guide" name — `IGuideContentSource` / `GitHubGuideContentSource` / `GuideSettings` — is
 not the section's: it is a GitHub-markdown fetcher whose signatures name only `string`, with
 consumers outside Guide (the Agent section's preload readers and its
-`AgentDocsHealthCheck`, and Base's `GitHubCommunityKbContentSource`), so it lives in
+`AgentDocsHealthCheck`, and Base's `GitHubCommunityFaqContentSource`), so it lives in
 `Humans.Base` and the section consumes it inward like any other Base abstraction.
 
 Links into the section are by *route* (`asp-controller="Guide"` in `Humans.Web`'s

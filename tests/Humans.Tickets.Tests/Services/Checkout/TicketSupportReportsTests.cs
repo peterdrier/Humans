@@ -117,7 +117,7 @@ public sealed class TicketSupportReportsTests
     }
 
     [HumansFact]
-    public void Refund_list_filters_by_state_newest_first_and_drops_refunds_of_other_events()
+    public void Refund_list_filters_by_state_and_drops_refunds_of_other_events()
     {
         var order = Order(lines: Line());
         var failed = Refund(order.Id, 22500, RefundState.Failed, minute: 1);
@@ -125,13 +125,13 @@ public sealed class TicketSupportReportsTests
         var elsewhere = Refund(Guid.NewGuid(), 100, RefundState.Failed);
 
         TicketSupportReports.RefundList([order], [failed, manual, elsewhere], null)
-            .Select(r => r.Refund).Should().Equal(manual, failed);
+            .Select(r => r.Refund).Should().BeEquivalentTo([manual, failed]);
         TicketSupportReports.RefundList([order], [failed, manual, elsewhere], RefundState.Failed)
             .Should().ContainSingle().Which.Order.Should().BeSameAs(order);
     }
 
     [HumansFact]
-    public void Resale_queue_lists_waiting_offers_oldest_first_and_an_invited_offer_keeps_its_place()
+    public void Resale_queue_assigns_waiting_positions_and_an_invited_offer_keeps_its_place()
     {
         var order = Order(lines: Line());
         var (first, second, invited, sold) = (Ticket(order), Ticket(order), Ticket(order), Ticket(order));
@@ -145,10 +145,10 @@ public sealed class TicketSupportReportsTests
 
         var rows = TicketSupportReports.ResaleQueue([newer, done, older, directed], [first, second, invited, sold], [refund]);
 
-        rows.Select(r => (r.Offer, r.Position, r.DirectedLive)).Should().Equal(
-            (directed, (int?)1, true), (older, 2, false), (newer, 3, false), (done, null, false));
-        rows[1].Ticket.Should().BeSameAs(first);
-        rows[3].Refund.Should().BeSameAs(refund);
+        rows.Select(r => (r.Offer, r.Position, r.DirectedLive)).Should().BeEquivalentTo([
+            (directed, (int?)1, true), (older, 2, false), (newer, 3, false), (done, null, false)]);
+        rows.Single(r => r.Offer == older).Ticket.Should().BeSameAs(first);
+        rows.Single(r => r.Offer == done).Refund.Should().BeSameAs(refund);
     }
 
     [HumansFact]
@@ -202,11 +202,11 @@ public sealed class TicketSupportReportsTests
             [Refund(order.Id, 22500, RefundState.Failed), Refund(order.Id, 22500, RefundState.Succeeded)],
             [Offer(ticket, 1, TicketResaleOfferState.Sold), Offer(ticket, 2)], Madrid);
 
-        report.RefundsByState.Should().Equal(
+        report.RefundsByState.Should().BeEquivalentTo([
             new RefundStateRow(RefundState.Succeeded, 1, 22500),
-            new RefundStateRow(RefundState.Failed, 1, 22500));
-        report.ResaleByState.Should().Equal(
+            new RefundStateRow(RefundState.Failed, 1, 22500)]);
+        report.ResaleByState.Should().BeEquivalentTo([
             new ResaleStateRow(TicketResaleOfferState.Open, 1, 22500),
-            new ResaleStateRow(TicketResaleOfferState.Sold, 1, 22500));
+            new ResaleStateRow(TicketResaleOfferState.Sold, 1, 22500)]);
     }
 }

@@ -1,3 +1,4 @@
+using Humans.Users.Contracts;
 using Humans.Email.Contracts;
 using Humans.Notifications.Data;
 using Humans.Notifications.Domain;
@@ -10,6 +11,7 @@ namespace Humans.Notifications.Services;
 internal sealed class NotificationEmitter(
     INotificationRepository repo,
     ICommunicationPreferenceService preferenceService,
+    IUserService users,
     IClock clock,
     ILogger<NotificationEmitter> logger) : INotificationEmitter
 {
@@ -62,6 +64,14 @@ internal sealed class NotificationEmitter(
         }
 
         recipientUserIds = recipientUserIds.Distinct().ToArray();
+        var people = await users.GetUserInfosAsync(recipientUserIds, cancellationToken);
+        var available = people.Values.Where(person => !person.IsTombstone).ToArray();
+        if (available.Length < recipientUserIds.Count)
+            logger.LogWarning("Skipping {Count} unavailable notification recipient(s) for source {Source}",
+                recipientUserIds.Count - available.Length, source.Name);
+        recipientUserIds = available.Select(person => person.Id).Distinct().ToArray();
+        if (recipientUserIds.Count == 0) return;
+
         var now = clock.GetCurrentInstant();
         var category = source.Category;
 

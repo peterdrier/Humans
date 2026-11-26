@@ -22,7 +22,7 @@ internal static class WorkspaceIdentityFakes
         fake.GetWorkspaceIdentitiesAsync(default!)
             .ReturnsForAnyArgs(ci => real.GetWorkspaceIdentitiesAsync(
                 ci.Arg<IReadOnlyCollection<Guid>>(), ci.Arg<CancellationToken>()));
-        fake.GetDriveEmailsAsync(default)
+        fake.GetDriveEmailsAsync()
             .ReturnsForAnyArgs(ci => real.GetDriveEmailsAsync(ci.Arg<CancellationToken>()));
         return fake;
     }

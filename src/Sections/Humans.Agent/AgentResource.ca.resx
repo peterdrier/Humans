@@ -59,31 +59,31 @@
     <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a2c561934e089</value>
   </resheader>
   <data name="Agent_ConversationBackToHistory" xml:space="preserve">
-    <value>Tornar a l'historial</value>
+    <value>Tornar a les meves converses</value>
   </data>
   <data name="Agent_ConversationEmpty" xml:space="preserve">
     <value>No hi ha missatges en aquesta conversa.</value>
   </data>
-  <data name="Agent_ConversationRefusedLabel" xml:space="preserve">
-    <value>L'assistent ha declinat respondre aquest torn.</value>
+  <data name="Agent_ConversationUnansweredLabel" xml:space="preserve">
+    <value>L'Assistent no va respondre aquesta pregunta.</value>
   </data>
   <data name="Agent_ConversationTitle" xml:space="preserve">
-    <value>Conversa de l'assistent</value>
+    <value>Conversa amb l'Assistent</value>
   </data>
   <data name="Agent_ConversationToolCallsSummary" xml:space="preserve">
     <value>{0} crida(es) a eines</value>
   </data>
   <data name="Agent_ConversationTranscript" xml:space="preserve">
-    <value>Transcripció</value>
+    <value>Missatges</value>
   </data>
   <data name="Agent_ContextCardCaveat" xml:space="preserve">
-    <value>Aquest és el teu context actual. Si els teus rols o equips han canviat des d'aquesta conversa, l'assistent va veure una versió diferent en aquell moment.</value>
+    <value>Això és el que l'Assistent sap de tu ara. Si els teus rols o equips han canviat des d'aquesta conversa, en aquell moment en sabia una altra cosa.</value>
   </data>
   <data name="Agent_ContextCardEmpty" xml:space="preserve">
-    <value>Actualment no s'envia cap context personal a l'assistent.</value>
+    <value>Ara mateix l'Assistent no sap res de tu.</value>
   </data>
   <data name="Agent_ContextCardSummary" xml:space="preserve">
-    <value>El teu context (tal com l'assistent et veu ara)</value>
+    <value>El que l'Assistent sap de tu</value>
   </data>
   <data name="Agent_DetailId" xml:space="preserve">
     <value>ID</value>
@@ -91,8 +91,8 @@
   <data name="Agent_DetailLocale" xml:space="preserve">
     <value>Idioma</value>
   </data>
-  <data name="Agent_DetailRefusal" xml:space="preserve">
-    <value>Rebuig: {0}</value>
+  <data name="Agent_DetailOutcome" xml:space="preserve">
+    <value>Resultat: {0}</value>
   </data>
   <data name="Agent_HistoryEmpty" xml:space="preserve">
     <value>Encara no hi ha converses.</value>
@@ -107,7 +107,7 @@
     <value>Inici</value>
   </data>
   <data name="Agent_HistoryTitle" xml:space="preserve">
-    <value>Assistent — Les meves converses</value>
+    <value>Les meves converses</value>
   </data>
   <data name="Agent_InputPlaceholder" xml:space="preserve">
     <value>Pregunta com funciona el sistema…</value>
@@ -122,7 +122,7 @@
     <value>Envia</value>
   </data>
   <data name="Agent_ViewHistory" xml:space="preserve">
-    <value>Historial</value>
+    <value>Les meves converses</value>
   </data>
   <data name="Agent_Help_WidgetButton" xml:space="preserve">
     <value>Ajuda</value>
@@ -133,11 +133,11 @@
   <data name="Agent_Help_Menu_CreateIssue" xml:space="preserve">
     <value>Crear incidència</value>
   </data>
-  <data name="Agent_IssueProposed" xml:space="preserve">
+  <data name="Agent_HandoffDrafted" xml:space="preserve">
     <value>No puc respondre això jo mateix. He redactat una incidència per a l'equip — revisa-la i envia-la, si us plau.</value>
   </data>
   <data name="Agent_SilentTurnFallback" xml:space="preserve"><value>No he pogut preparar una resposta per a això. Podries reformular la pregunta o tornar-ho a intentar?</value></data>
-  <data name="Agent_AbuseRefusal" xml:space="preserve"><value>No et puc ajudar amb això. Si estàs en una situació d’angoixa, contacta amb una persona coordinadora o amb els serveis d’emergència.</value></data>
+  <data name="Agent_DistressReply" xml:space="preserve"><value>No et puc ajudar amb això. Si estàs en una situació d’angoixa, contacta amb una persona coordinadora o amb els serveis d’emergència.</value></data>
   <data name="Agent_HttpError" xml:space="preserve"><value>Error: {0}</value></data>
   <data name="Agent_NetworkError" xml:space="preserve"><value>Error de xarxa.</value></data>
   <data name="Agent_DisabledReply" xml:space="preserve"><value>(L’assistent està desactivat actualment.)</value></data>

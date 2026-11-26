@@ -31,7 +31,6 @@ using Microsoft.Extensions.Logging.Abstractions;
 using NodaTime;
 using NSubstitute;
 using Humans.Base.Interfaces;
-using Humans.Base.Interfaces.Caching;
 using Humans.Base.Constants;
 using Humans.Governance.Services;
 using Humans.Base.Enums;
@@ -42,12 +41,32 @@ using Humans.Users.Contracts;
 using Humans.Governance.Tests.Infrastructure;
 using Humans.Governance.Data;
 
-using Humans.Teams.Contracts;
 
 namespace Humans.Governance.Tests.Services;
 
 public sealed class ApplicationDecisionServiceTests : IDisposable
 {
+
+    [HumansTheory]
+    [InlineData(ApplicationMutation.Approve, UserState.Deleted)]
+    [InlineData(ApplicationMutation.Approve, UserState.Merged)]
+    [InlineData(ApplicationMutation.Reject, UserState.Deleted)]
+    [InlineData(ApplicationMutation.Reject, UserState.Merged)]
+    public async Task DecisionEmail_TombstoneApplicant_SkipsDelivery(ApplicationMutation decision, UserState state)
+    {
+        var userId = Guid.NewGuid();
+        _userService.GetUserInfoAsync(userId, Arg.Any<CancellationToken>()).Returns(UserInfo.Create(
+            new User { Id = userId, BurnerName = "Archived", Email = "archived@example.org", State = state },
+            [], [], null));
+        var application = new MemberApplication { Id = Guid.NewGuid(), UserId = userId, MembershipTier = MembershipTier.Colaborador };
+
+        if (decision == ApplicationMutation.Approve)
+            await _service.SendApprovalAsync(application, TestContext.Current.CancellationToken);
+        else
+            await _service.SendRejectionAsync(application, "Reason", TestContext.Current.CancellationToken);
+
+        _emailService.ReceivedCalls().Should().BeEmpty();
+    }
 
     [HumansTheory]
     [InlineData(ApplicationMutation.Approve)]
@@ -380,9 +399,9 @@ public sealed class ApplicationDecisionServiceTests : IDisposable
     }
 
     [HumansTheory]
-    [Xunit.InlineData(AccountScenario.Merged)]
-    [Xunit.InlineData(AccountScenario.Missing)]
-    [Xunit.InlineData(AccountScenario.Cancelled)]
+    [InlineData(AccountScenario.Merged)]
+    [InlineData(AccountScenario.Missing)]
+    [InlineData(AccountScenario.Cancelled)]
     public async Task TermExpiryCorrection_ResolvesItsAuditActorBeforeChangingRows(AccountScenario account)
     {
         using var request = new CancellationTokenSource();

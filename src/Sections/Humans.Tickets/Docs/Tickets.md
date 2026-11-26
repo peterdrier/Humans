@@ -31,6 +31,33 @@ Dashboard statistics, break-even budget and vendor-capacity reads honor request 
 
 Bulk cache warmups publish through the shared mutation guard. A refresh, deletion, eviction or clear overlapping the load discards the partial attempt and reloads the full snapshot and derived indexes before a read can treat the cache as warmed.
 
+Configured ticket rules must be available before checkout. Successful GitHub reads are cached for ten minutes;
+a failed refresh replaces the cached rules with an unavailable result for one minute. Buy pages and checkout
+report `Tickets_Buy_TermsUnavailable` rather than accepting an older rules version.
+
+Support-page ordering belongs to `TicketsSupportAdminController`: newest refunds first, waiting resale offers by queue
+position followed by newest closed offers, and report tables by count/label, purpose or state. The report calculator
+retains queue-position calculation and paid-day chronology for running totals.
+
+Raw checkout order, holder-ticket, event-ticket, offer and refund reads return repository rows without presentation
+ordering. The admin order list sorts newest first; lookup tickets and dependent-ticket panels sort by issue time.
+Order-detail and delivery-card presentation ordering belongs to their rendering callers.
+
+Operator controllers order companion requests pending-first/newest-first, cancellation refund groups by state,
+and backend lists by key. Backend status pages order orders and stuck orders newest-first and refunds oldest-first;
+the reconciliation start date is the minimum order timestamp in the organisation's zone, independent of row order.
+Cancellation processing still uses oldest-paid-first work order.
+
+Buy-page read models carry the event's gate-opening date. `TicketBuyController` orders public and signed-in sales
+by that date and each normal or directed buy page's order history newest-first; service reads do not choose those
+presentation orders.
+
+Ticket families on “My tickets” are ordered in the controller by the holder ticket's issue time within each event,
+with dependents beside that holder. Order pages and profile child lists choose their own kind/issue-time ordering;
+admin refund rows are oldest-first. Email rendering keeps the recipient card first and orders dependent cards by
+kind and issue time. Checkout reads supply rows without these presentation sorts; audit streams and FIFO
+allocation, settlement and cancellation processing retain their domain ordering.
+
 ## Concepts
 
 - **Ticket Orders** and **Ticket Attendees** are records synced from an external ticket vendor (Ticket Tailor in production, an in-process stub in dev). They are not manually created in the system.
@@ -54,7 +81,7 @@ Bulk cache warmups publish through the shared mutation guard. A refresh, deletio
 
 ### TicketingSettings
 
-**Table:** `ticket_sales_events` — one per Settings event (`EventSettingsId` unique). `Waves`, `PriceRules` and `ChildTypes` (name, under age, price) are jsonb; `VipTotalsMinor` is `bigint[]` and `DonationPurposes` is `text[]`. `Switches` (jsonb, nullable; null reads as the defaults) holds the event's ticketing switches: resale scheme (`Off`, `Queue`, `QueueAndDirected`), tickets for others (`PartnerTickets`), donations, mailing list opt-in, companion tickets (`CompanionTickets`, null reads as on) (see checkout.md). Amounts are minor units (cents) throughout 2027 ticketing.
+**Table:** `ticket_sales_events` — one per Settings event (`EventSettingsId` unique). `Waves`, `PriceRules` and `ChildTypes` (name, under age, price) are jsonb; `VipTotalsMinor` is `bigint[]` and `DonationPurposes` is `text[]`. `Switches` (jsonb, nullable; null reads as the defaults) holds the event's ticketing switches: resale scheme (`Off`, `Queue`, `QueueAndDirected`), tickets for others (`PartnerTickets`), donations, mailing list opt-in, companion tickets (`CompanionTickets`, null reads as on) (see checkout.md). Amounts are minor units (cents) throughout 2027 ticketing. The ticketing settings editor reads prices and VAT in invariant HTML-number format, accepting exponent notation and rejecting grouping separators. It rounds euro inputs to cents away from zero and refuses values outside the signed 64-bit minor-unit range with the existing field error.
 
 ### TicketCheckoutOrder
 
@@ -78,7 +105,7 @@ Bulk cache warmups publish through the shared mutation guard. A refresh, deletio
 
 ### TicketCheckoutOrderEvent
 
-**Table:** `ticket_checkout_order_events` — the order's timeline, append-only (the repository has no update or delete): created, checkout opened, platform refused, state changed, refunded total changed, refund requested and settled, cancelled. `ActorUserId` is the person, null for automation. `Detail` holds amounts, states and platform refs, never names or emails, so erasure leaves it; merge reassigns `ActorUserId`.
+**Table:** `ticket_checkout_order_events` — the order's timeline, append-only (the repository has no update or delete): created, checkout opened, platform refused, state changed, refunded total changed, refund requested and settled, cancelled. `ActorUserId` is the person, null for automation. `Detail` holds amounts, states and platform refs, never names or emails, so erasure leaves it; merge reassigns `ActorUserId`. Checkout timeline details and bounded reasons truncate without splitting a Unicode surrogate pair.
 
 ### TicketOrder
 
@@ -152,6 +179,15 @@ Lifecycle: `Attended` is permanent (only a missing `CheckedInAt` may be filled);
 
 ## Invariants
 
+- Ticketing settings require explicit event, platform, sales mode, capacity, VAT, resale scheme, checkout switches and each posted price-rule kind. Binding errors return 400 with a Warning after actor resolution and before conversion or saving; missing values never apply form defaults. Explicit zero/false values, optional text, wholly blank spare rows and disabled wave-pin amounts retain their existing meanings.
+- Admin refund and ticket-void forms reuse the bounded invariant-culture euro parser used for ticket prices. The parser accepts invariant dot decimals and exponent notation, rejecting grouping separators rather than treating a comma decimal as a larger refund. Amounts round to cents away from zero before range checking and conversion, so malformed, nonpositive or unrepresentable refunds never reach checkout. Binding failures return 400 with a Warning; semantic amount refusals warn and show operator feedback. Refund requires an amount and voiding requires an explicit refund/no-refund choice. Explicit no-refund voids ignore the unused amount. The service still enforces the order's refundable cap.
+- Resale open/pause and companion decisions require an explicit true/false command. These actions and the scheduled-sync setting return 400 with a Warning before mutation when binding fails. A missing scheduled-sync checkbox still means off; missing resale or companion commands never become an implicit pause or decline.
+- Buyer checkout rejects binding errors before creating an order. Donations use the HTML number field's invariant dot-decimal format (including exponent notation) in every request culture, without grouping separators; invalid or unrepresentable amounts refuse checkout instead of becoming zero. Blank or missing donations remain zero, nonpositive amounts retain their zero behavior, the existing donation cap applies before conversion, and cents round away from zero. Optional checkboxes, friend addresses and paired child fields retain their form semantics.
+
+- Checkout refunds observe cancellation before an attempt starts, then finish the platform mutation, saved outcome, timeline and order refresh independently of request or job cancellation. Initial status reads retain the caller token. Settlement replays use the same protected mutation boundary and stop before the next refund when cancellation is requested.
+
+- Single-row selection uses the newest approved transfer decision per attendee, the oldest backend order when none is recorded, and the cheapest eligible class price. Direct extrema selectors retain the first source row on equal keys.
+
 - Section-owned resource keys use the `Tickets_` prefix in all supported cultures.
 - The gate credential page links to the Gate admissions terminal and explains that the shared account can record admissions. The kiosk is restricted to Gate and its sign-in/sign-out pages; it cannot browse Scanner or ticket administration.
 
@@ -159,7 +195,7 @@ Lifecycle: `Attended` is permanent (only a missing `CheckedInAt` may be filled);
 - Orders, Attendees and Who Hasn’t Bought GETs retain request cancellation through ticket queries, ticket-type filters and member/team/settings enrichment. Code tracking, sales aggregates and the accountant CSV retain it through reporting queries and campaign enrichment.
 - The Codes controller orders campaign summaries newest first. Sales campaign rows retain unattributed-last, discount-descending and title ordering, with campaign creation time descending as the final tie-breaker. Campaigns supplies creation metadata; report services do not impose these display orders.
 - Ticket vendor health probes propagate requested timeout/abort cancellation without logging a vendor timeout. A vendor timeout while the caller token remains active still returns Degraded.
-- The member dashboard's ticket card (`MemberTicketStatusViewComponent`) renders nothing while the active event is off season (the admin switch on the active event settings) and no event is on sale. When the member's holdings fail to load it shows a "ticket status unavailable" note — never "no ticket" with the buy/declare actions. While any event's sales mode is not Closed it offers the Humans buy page (`/Tickets/Buy`) instead of the ticket vendor's shop link, whether or not the ticket vendor sync is configured. Its ticket count adds the member's Valid or Offered Humans-issued tickets, for the active event and any open sale, to the vendor sync's, so a Humans buyer sees their ticket and a link to `/Tickets/Buy/Mine`.
+- The member dashboard's ticket card (`MemberTicketStatusViewComponent`) renders nothing while the active event is off season (the admin switch on the active event settings) and no event is on sale. When the member's holdings fail to load it shows a "ticket status unavailable" note — never "no ticket" with the buy/declare actions. While any event's sales mode is not Closed it offers the Humans buy page (`/Tickets/Buy`) instead of the ticket vendor's shop link, whether or not the ticket vendor sync is configured. Checkout owns its Humans-issued ticket count: held tickets for the active event and any unclosed sale, or every event when none is active. `TicketCheckoutTicket.IsHeld` means Valid or Offered and is shared by buy eligibility, stock, the holder list, delivery, support reports, cancellation, erasure and deletion holds; gate admission keeps its separate resale guard. The card adds that count to the vendor sync's, so a Humans buyer sees their ticket and a link to `/Tickets/Buy/Mine`.
 - `OnsiteChipViewComponent` ("Onsite since {time}", nobodies-collective/Humans#736) is contributed to Users' `UserPartSlots.Profile` slot. It renders for the member on their own profile (`ProfileCardViewMode.Self`, inside their ticket holdings card rather than as its own part) or a viewer passing `TicketsPolicies.Read`, and only when the active event year's participation is `Attended` with a check-in. Nothing for anyone else.
 - Participation reads return the section's rows without year ordering. Year-specific lookups, sets and counts do not depend on list order; the GDPR export projection owns ascending year order.
 - `TicketHoldingsViewComponent` is contributed (`Humans.Tickets/Section.cs`, `IUserPart`) to Users' `user-profile-sidebar` and `user-admin-detail-sidebar` slots. It renders nothing for `ProfileCardViewMode.Public` — its only visibility check — and shows an empty-holdings card only for `Admin`.
@@ -234,7 +270,7 @@ Lifecycle: `Attended` is permanent (only a missing `CheckedInAt` may be filled);
 | `/Tickets/Export/AccountantReport` | GET | `TicketsPolicies.Manage` | CSV of monthly ticket income for the accountant: gross split into taxable ticket income, 10% VAT, VIP + standalone donations, fees, and refunded gross by purchase month |
 | `/Tickets/Export/Donations` | GET | `AdminOnly` | CSV donor list for the accountant: one row per donation on a paid order (type `VIP ticket` = amount above the threshold over live seats, `Separate donation` = TicketTailor donation line, or `Donation: <purpose>` = a donation line on a paid Humans order) — purchase date in Europe/Madrid (same bucketing as the monthly report), order id, buyer name, email, type, amount, plus a total row. Every download writes a `TicketDonationsExported` audit entry (actor, donation row count, total). Spec: `Docs/features/accountant-donor-list.md` |
 | `/Tickets/Buy` | GET + POST | `[Authorize]` | One section per selling event; the POST names its `settingsId`: own ticket at the member's price, optional other people already in Humans (by verified email) at the public price, a VIP ticket, donation; POST redirects to the platform's payment page |
-| `/Tickets/Buy/Order/{id}` | GET | `[Authorize]` | Order status, refreshed from the platform; the buyer sees the whole order, a holder only their own line; anyone else 404 |
+| `/Tickets/Buy/Order/{id}` | GET | `[Authorize]` | The checkout service checks buyer/holder access before refreshing the platform; its buyer-page read returns all lines and tickets to the buyer, only the holder's own lines and tickets otherwise, with totals and payment URL withheld; anyone else 404 |
 | `/Tickets/Buy/Order/{id}/Cancel` | POST | `[Authorize]` | The buyer abandons an unpaid order |
 | `/Tickets/Buy/Public` | GET + POST | Anonymous | Signed-out way in: events on sale at today's public price, and an email form that sends the Auth sign-in or sign-up link returning to `/Tickets/Buy`; the POST never says whether the address has an account. A signed-out `/Tickets/Buy` redirects here |
 | `/Tickets/Buy/Mine` | GET | `[Authorize]` | The member's live Humans-issued tickets with their QR codes, resale queue position and actions |
@@ -274,6 +310,7 @@ Lifecycle: `Attended` is permanent (only a missing `CheckedInAt` may be filled);
 
 ## Triggers
 
+- Delayed volunteer invitations require a resolved, non-tombstoned holder account. A stored ticket address cannot make a missing or tombstoned account eligible; a live merge uses the survivor’s email identity so preferences apply to that human.
 - When a paid order's tickets are issued, checkout calls `ITicketDelivery.TicketsIssuedAsync`, which enqueues a Hangfire job (retried on failure) that sends a `ticket_issued` email per valid or offered ticket with an email, to its holder, carrying any child ticket without an email that rides on it (holder's language once signed in, else the order's; System category), a `ticket_order_receipt` to the buyer (order's language; System), both with a delivery id derived from the ticket or order so a repeated call reuses the outbox row; one `TicketDeliverySent` audit row counting the mails handed to Email and any ticket skipped for lack of an address; and a Hangfire job per non-child ticket two days later that sends `ticket_join_invitation` (VolunteerUpdates category, so the opt-out applies and is never locked) only if the ticket is still `Valid`, audited `TicketJoinInvitationSent`.
 
 - `TicketSyncJob` stays internal to the section; registration and scheduling use its runtime type through `ISectionJobs`.

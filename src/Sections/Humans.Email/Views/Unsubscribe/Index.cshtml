@@ -8,13 +8,13 @@
 
 @if (ViewData["UserId"] is Guid userId)
 {
-    var human = await Component.InvokeAsync(typeof(Humans.Base.ViewComponents.HumanViewComponent), new
+    var human = await Component.InvokeAsync(typeof(HumanViewComponent), new
     {
         userId,
     });
-    using var humanWriter = new System.IO.StringWriter();
+    using var humanWriter = new StringWriter();
     human.WriteTo(humanWriter, System.Text.Encodings.Web.HtmlEncoder.Default);
-    var humanHtml = new Microsoft.AspNetCore.Html.HtmlString($"<strong>{humanWriter.ToString().Trim()}</strong>");
+    var humanHtml = new HtmlString($"<strong>{humanWriter.ToString().Trim()}</strong>");
     <p>@HtmlLocalizer["Email_Unsubscribe_Greeting", humanHtml]</p>
 }
 

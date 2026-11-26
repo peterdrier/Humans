@@ -164,6 +164,64 @@ public sealed class ProfileServiceTests : ServiceTestHarness
         stored.Format.Should().Be(MagickFormat.Jpeg);
     }
 
+    [HumansTheory]
+    [Xunit.InlineData("missing")]
+    [Xunit.InlineData("deleted")]
+    [Xunit.InlineData("local")]
+    public async Task SaveProfile_UnavailableAccount_RefusesCompleteEdit(string kind)
+    {
+        var ct = Xunit.TestContext.Current.CancellationToken;
+        _contactFields.SaveContactFieldsAsync(Arg.Any<Guid>(), Arg.Any<IReadOnlyList<ContactFieldEditDto>>(), ct, null)
+            .Returns(new ProfileEditResult(true));
+        var userId = Guid.NewGuid();
+        if (!string.Equals(kind, "missing", StringComparison.Ordinal))
+        {
+            await SeedUserAsync(userId);
+            var person = (await _userService.GetUserInfoAsync(userId, ct))!;
+            person = string.Equals(kind, "deleted", StringComparison.Ordinal)
+                ? person with { State = UserState.Deleted }
+                : person with { IdentityEmailColumn = "erased@gdpr.local" };
+            _userService.GetUserInfoAsync(userId, Arg.Any<CancellationToken>()).Returns(person);
+        }
+
+        var result = await _editor.SaveProfileAsync(userId, MakeRequest(), ct,
+            [new(null, ContactFieldType.Signal, null, "@human", ContactFieldVisibility.MyTeams, 0)],
+            [new(Guid.NewGuid(), "es", LanguageProficiency.Native)]);
+
+        result.Succeeded.Should().BeFalse();
+        (await Db.Profiles.AsNoTracking().AnyAsync(ct)).Should().BeFalse();
+        await _userService.DidNotReceiveWithAnyArgs().SaveProfileAsync(default, default!);
+        await _contactFields.DidNotReceiveWithAnyArgs().SaveContactFieldsAsync(default, default!);
+        await _userService.DidNotReceiveWithAnyArgs().SaveProfileLanguagesAsync(default, default!);
+    }
+
+    [HumansFact]
+    public async Task SaveProfile_ArchivedId_UsesSurvivorForEveryWrite()
+    {
+        var ct = Xunit.TestContext.Current.CancellationToken;
+        _contactFields.SaveContactFieldsAsync(Arg.Any<Guid>(), Arg.Any<IReadOnlyList<ContactFieldEditDto>>(), ct, null)
+            .Returns(new ProfileEditResult(true));
+        var archivedId = Guid.NewGuid();
+        var survivorId = Guid.NewGuid();
+        await SeedUserAsync(archivedId);
+        await SeedUserAsync(survivorId);
+        var survivor = (await _userService.GetUserInfoAsync(survivorId, ct))!;
+        _userService.GetUserInfoAsync(archivedId, Arg.Any<CancellationToken>())
+            .Returns(survivor);
+        var contacts = new List<ContactFieldEditDto>
+        {
+            new(null, ContactFieldType.Signal, null, "@human", ContactFieldVisibility.MyTeams, 0),
+        };
+        var languages = new List<ProfileLanguageInfo> { new(Guid.NewGuid(), "es", LanguageProficiency.Native) };
+
+        var result = await _editor.SaveProfileAsync(archivedId, MakeRequest(), ct, contacts, languages);
+
+        result.Succeeded.Should().BeTrue();
+        (await Db.Profiles.AsNoTracking().SingleAsync(ct)).UserId.Should().Be(survivorId);
+        await _contactFields.Received(1).SaveContactFieldsAsync(survivorId, contacts, ct, null);
+        await _userService.Received(1).SaveProfileLanguagesAsync(survivorId, languages, ct);
+    }
+
     [HumansFact(Timeout = 10000)]
     public async Task SaveProfileAsync_NewProfile_CreatesProfile()
     {
@@ -452,7 +510,7 @@ public sealed class ProfileServiceTests : ServiceTestHarness
         var existing = await Db.Profiles.AsNoTracking().FirstAsync(p => p.Id == profileId, Xunit.TestContext.Current.CancellationToken);
         var failingRepo = Substitute.For<IUserRepository>();
         failingRepo.GetByUserIdAsync(userId, Arg.Any<CancellationToken>()).Returns(existing);
-        failingRepo.GetProfilePictureLocationAsync(profileId, Arg.Any<CancellationToken>()).Returns(("image/png", (string?)null));
+        failingRepo.GetProfilePictureLocationAsync(profileId, Arg.Any<CancellationToken>()).Returns(("image/png", null));
         failingRepo.UpdateAsync(
                 Arg.Any<Profile>(), Arg.Any<CancellationToken>(), Arg.Any<IReadOnlyList<CVEntry>?>(), Arg.Any<UserNames?>())
             .ThrowsAsync(new InvalidOperationException("Database unavailable"));

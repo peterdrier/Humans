@@ -134,7 +134,7 @@ public sealed class CampaignServiceTests
         repository.GetCampaignIdForGrantAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>()).Returns(call =>
         {
             Read(call.Arg<CancellationToken>());
-            return (Guid?)Guid.NewGuid();
+            return Guid.NewGuid();
         });
         repository.GetByIdAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>()).Returns(call =>
         {
@@ -1238,6 +1238,161 @@ public sealed class CampaignServiceTests
         ClearAllTrackers();
         (await _campaignsDb.CampaignGrants.FindAsync(grant.Id, Xunit.TestContext.Current.CancellationToken))
             .Should().NotBeNull();
+    }
+
+    [HumansFact]
+    public async Task SendWaveAsync_UndeliverableMembers_UsesDeliverableCount()
+    {
+        var ct = Xunit.TestContext.Current.CancellationToken;
+        var campaign = await SeedActiveCampaignWithCodesAsync(["GRANTED", "AVAILABLE"]);
+        var recipient = SeedUser(displayName: "Recipient");
+        var noEmail = SeedUser(displayName: "No email");
+        _people[noEmail.Id] = noEmail with { IdentityEmailColumn = null };
+        var granted = SeedUser(displayName: "Already granted");
+        var team = SeedTeam("Mixed recipients");
+        SeedTeamMember(team.Id, Guid.NewGuid());
+        SeedTeamMember(team.Id, noEmail.Id);
+        SeedTeamMember(team.Id, recipient.Id);
+        SeedTeamMember(team.Id, granted.Id);
+        var assigned = await _campaignsDb.CampaignCodes.SingleAsync(c => c.Code == "GRANTED", ct);
+        _campaignsDb.CampaignGrants.Add(new CampaignGrant
+        {
+            Id = Guid.NewGuid(),
+            CampaignId = campaign.Id,
+            CampaignCodeId = assigned.Id,
+            UserId = granted.Id,
+            AssignedAt = _clock.GetCurrentInstant()
+        });
+        await SaveAllAsync(ct);
+
+        var preview = await _service.PreviewWaveSendAsync(campaign.Id, team.Id, ct);
+        preview.EligibleCount.Should().Be(1);
+        preview.AlreadyGrantedExcluded.Should().Be(1);
+        preview.CodesAvailable.Should().Be(1);
+        preview.CodesRemainingAfterSend.Should().Be(0);
+
+        var result = await _service.SendWaveAsync(_actorId, campaign.Id, team.Id, ct);
+
+        result.Success.Should().BeTrue();
+        result.SentCount.Should().Be(1);
+        (await _campaignsDb.CampaignGrants.CountAsync(ct)).Should().Be(2);
+        await _emailService.Received(1).SendAsync(Arg.Is<EmailMessage>(message =>
+            message.UserId == recipient.Id && message.HtmlBody.Contains("AVAILABLE")), Arg.Any<CancellationToken>());
+        ((IReadOnlyList<Guid>)_notifications.ReceivedCalls().Should().ContainSingle().Subject.GetArguments()[4]!)
+            .Should().Equal(recipient.Id);
+    }
+
+    [HumansTheory]
+    [Xunit.InlineData(UserState.Deleted, false)]
+    [Xunit.InlineData(UserState.Merged, false)]
+    [Xunit.InlineData(UserState.Active, true)]
+    public async Task SendWaveAsync_TombstoneMember_SkipsAllocation(UserState state, bool legacy)
+    {
+        var ct = Xunit.TestContext.Current.CancellationToken;
+        var campaign = await SeedActiveCampaignWithCodesAsync(["AVAILABLE"]);
+        var user = SeedUser();
+        _people[user.Id] = user with { State = state, IdentityEmailColumn = legacy ? "archived@deleted.local" : user.Email };
+        var team = SeedTeam("Unavailable recipient");
+        SeedTeamMember(team.Id, user.Id);
+
+        var preview = await _service.PreviewWaveSendAsync(campaign.Id, team.Id, ct);
+        preview.EligibleCount.Should().Be(0);
+        preview.CodesRemainingAfterSend.Should().Be(1);
+        var result = await _service.SendWaveAsync(_actorId, campaign.Id, team.Id, ct);
+
+        result.Success.Should().BeTrue();
+        result.SentCount.Should().Be(0);
+        (await _campaignsDb.CampaignGrants.CountAsync(ct)).Should().Be(0);
+        _emailService.ReceivedCalls().Should().BeEmpty();
+        _notifications.ReceivedCalls().Should().BeEmpty();
+    }
+
+    [HumansTheory]
+    [Xunit.InlineData(false)]
+    [Xunit.InlineData(true)]
+    public async Task SendWaveAsync_MergedAliases_AllocatesOnce(bool includeSurvivor)
+    {
+        var ct = Xunit.TestContext.Current.CancellationToken;
+        var campaign = await SeedActiveCampaignWithCodesAsync(["ONLY-CODE"]);
+        var user = SeedUser();
+        var archivedId = Guid.NewGuid();
+        _people[user.Id] = user with { MergedUserIds = [archivedId] };
+        _people[archivedId] = _people[user.Id];
+        var team = SeedTeam("Merged recipient");
+        SeedTeamMember(team.Id, archivedId);
+        if (includeSurvivor) SeedTeamMember(team.Id, user.Id);
+
+        var preview = await _service.PreviewWaveSendAsync(campaign.Id, team.Id, ct);
+        preview.EligibleCount.Should().Be(1);
+        preview.CodesRemainingAfterSend.Should().Be(0);
+        var result = await _service.SendWaveAsync(_actorId, campaign.Id, team.Id, ct);
+
+        result.Success.Should().BeTrue();
+        result.SentCount.Should().Be(1);
+        (await _campaignsDb.CampaignGrants.SingleAsync(ct)).UserId.Should().Be(user.Id);
+        await _emailService.Received(1).SendAsync(Arg.Is<EmailMessage>(m => m.UserId == user.Id), ct);
+        await _audit.Received(1).LogAsync(CampaignsAuditActions.CampaignWaveSent, "Campaign", campaign.Id,
+            Arg.Any<string>(), _actorId, user.Id, "User");
+        ((IReadOnlyList<Guid>)_notifications.ReceivedCalls().Should().ContainSingle().Subject.GetArguments()[4]!)
+            .Should().Equal(user.Id);
+    }
+
+    [HumansTheory]
+    [Xunit.InlineData(false)]
+    [Xunit.InlineData(true)]
+    public async Task SendWaveAsync_MergedGrant_ExcludesHuman(bool grantOnArchivedId)
+    {
+        var ct = Xunit.TestContext.Current.CancellationToken;
+        var campaign = await SeedActiveCampaignWithCodesAsync(["GRANTED", "AVAILABLE"]);
+        var user = SeedUser();
+        var archivedId = Guid.NewGuid();
+        _people[user.Id] = user with { MergedUserIds = [archivedId] };
+        _people[archivedId] = _people[user.Id];
+        var team = SeedTeam("Previously granted recipient");
+        SeedTeamMember(team.Id, archivedId);
+        SeedTeamMember(team.Id, user.Id);
+        var code = await _campaignsDb.CampaignCodes.SingleAsync(c => c.Code == "GRANTED", ct);
+        _campaignsDb.CampaignGrants.Add(new CampaignGrant
+        {
+            Id = Guid.NewGuid(),
+            CampaignId = campaign.Id,
+            CampaignCodeId = code.Id,
+            UserId = grantOnArchivedId ? archivedId : user.Id,
+            AssignedAt = _clock.GetCurrentInstant()
+        });
+        await SaveAllAsync(ct);
+
+        var preview = await _service.PreviewWaveSendAsync(campaign.Id, team.Id, ct);
+        preview.EligibleCount.Should().Be(0);
+        preview.AlreadyGrantedExcluded.Should().Be(1);
+        var result = await _service.SendWaveAsync(_actorId, campaign.Id, team.Id, ct);
+
+        result.SentCount.Should().Be(0);
+        (await _campaignsDb.CampaignGrants.CountAsync(ct)).Should().Be(1);
+        _emailService.ReceivedCalls().Should().BeEmpty();
+    }
+
+    [HumansTheory]
+    [Xunit.InlineData(UserState.Deleted, false)]
+    [Xunit.InlineData(UserState.Merged, false)]
+    [Xunit.InlineData(UserState.Active, true)]
+    public async Task ResendToGrantAsync_TombstoneRecipient_RefusesEnqueue(UserState state, bool legacy)
+    {
+        var ct = Xunit.TestContext.Current.CancellationToken;
+        var campaign = await SeedActiveCampaignWithCodesAsync(["GRANTED"]);
+        var user = SeedUser();
+        var team = SeedTeam("Resend recipient");
+        SeedTeamMember(team.Id, user.Id);
+        await _service.SendWaveAsync(_actorId, campaign.Id, team.Id, ct);
+        var grant = await _campaignsDb.CampaignGrants.SingleAsync(ct);
+        _emailService.ClearReceivedCalls();
+        _people[user.Id] = user with { State = state, IdentityEmailColumn = legacy ? "archived@deleted.local" : user.Email };
+
+        var act = () => _service.ResendToGrantAsync(_actorId, grant.Id, ct);
+
+        await act.Should().ThrowAsync<InvalidOperationException>();
+        _emailService.ReceivedCalls().Should().BeEmpty();
+        (await _campaignsDb.CampaignGrants.CountAsync(ct)).Should().Be(1);
     }
 
     [HumansFact]

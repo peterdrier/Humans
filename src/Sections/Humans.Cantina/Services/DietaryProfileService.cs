@@ -43,6 +43,10 @@ internal sealed class DietaryProfileService(
 
     public async Task<string?> SaveAsync(Guid userId, DietaryProfileInfo answers, CancellationToken ct = default)
     {
+        var person = await users.GetUserInfoAsync(userId, ct);
+        if (person is null || person.IsTombstone)
+            return "Cantina_Dietary_SaveFailed";
+
         // The controller checks first, field-targeted; this is the backstop for other callers.
         if (answers.Allergies.Contains(DietaryOptions.OtherOption, StringComparer.Ordinal)
             && string.IsNullOrWhiteSpace(answers.AllergyOtherText))
@@ -63,7 +67,7 @@ internal sealed class DietaryProfileService(
 
         await repo.UpsertAsync(new DietaryProfile
         {
-            UserId = userId,
+            UserId = person.Id,
             // Unknown preferences remain valid within the column bound; only the radio group constrains the UI.
             DietaryPreference = preference,
             Allergies = allergies,
@@ -76,13 +80,20 @@ internal sealed class DietaryProfileService(
         return null;
     }
 
-    public Task DeclineAsync(Guid userId, CancellationToken ct = default) =>
-        repo.UpsertAsync(new DietaryProfile
+    public async Task<string?> DeclineAsync(Guid userId, CancellationToken ct = default)
+    {
+        var person = await users.GetUserInfoAsync(userId, ct);
+        if (person is null || person.IsTombstone)
+            return "Cantina_Dietary_SaveFailed";
+
+        await repo.UpsertAsync(new DietaryProfile
         {
-            UserId = userId,
+            UserId = person.Id,
             DeclinedToAnswer = true,
             UpdatedAt = clock.GetCurrentInstant(),
         }, ct);
+        return null;
+    }
 
     private static DietaryProfileInfo ToInfo(DietaryProfile row) => new(
         row.UserId, row.DietaryPreference, row.Allergies, row.AllergyOtherText, row.Intolerances, row.IntoleranceOtherText,

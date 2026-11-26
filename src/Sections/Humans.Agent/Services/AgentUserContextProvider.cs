@@ -1,0 +1,116 @@
+using Humans.Auth.Contracts;
+using Humans.Base.Extensions;
+using Humans.Consent.Contracts;
+using Humans.Governance.Contracts;
+using Humans.Settings.Contracts;
+using Humans.Shifts.Contracts;
+using Humans.Teams.Contracts;
+using Humans.Tickets.Contracts;
+using NodaTime;
+using Humans.Agent.Models;
+using Humans.Users.Contracts;
+
+namespace Humans.Agent.Services;
+
+internal sealed class AgentUserContextProvider(
+    IUserService users,
+    IRoleAssignmentService roles,
+    ITeamService teams,
+    IGovernanceService governance,
+    IConsentService consents,
+    ITicketService tickets,
+    IShiftView shiftView,
+    ISettingsService settingsService,
+    IClock clock) : IAgentUserContextProvider
+{
+    public async Task<AgentUserContext> LoadAsync(Guid userId, CancellationToken cancellationToken)
+    {
+        var user = await users.GetUserInfoAsync(userId, cancellationToken);
+        if (user is not null)
+            userId = user.Id; // roles, teams, consents and tickets are keyed by the live id
+        var activeRoles = await roles.GetActiveForUserAsync(userId, cancellationToken);
+        var teamMemberships = (await teams.GetUserTeamMembershipsAsync(userId, cancellationToken))
+            .Where(m => m.IsProfileMembership)
+            .Select(m => new TeamMembership(m.TeamName, m.Role) { IsHidden = m.IsHidden })
+            .ToList();
+        var pendingDocs = await consents.GetPendingDocumentNamesAsync(userId, cancellationToken);
+        var ticketHoldings = await tickets.GetUserTicketHoldingsAsync(userId, cancellationToken);
+        var openTickets = ticketHoldings.OpenTicketOrderIds;
+        var upcomingShifts = await LoadUpcomingShiftsAsync(userId, cancellationToken);
+        var tier = await governance.GetMembershipTierAsync(userId, cancellationToken);
+
+        var roleAssignments = activeRoles
+            .Select(r => (r.RoleName, r.ValidTo?.ToIso8601() ?? "—"))
+            .ToList();
+
+        return new AgentUserContext(
+            DisplayName: user?.BurnerName ?? string.Empty,
+            PreferredLocale: user?.PreferredLanguage ?? "es",
+            Tier: tier.ToString(),
+            AccountState: user?.State,
+            RoleAssignments: roleAssignments,
+            Teams: teamMemberships,
+            PendingConsentDocs: pendingDocs,
+            OpenTicketIds: openTickets,
+            UpcomingShifts: upcomingShifts);
+    }
+
+    private async Task<IReadOnlyList<UpcomingShiftEntry>> LoadUpcomingShiftsAsync(
+        Guid userId, CancellationToken cancellationToken)
+    {
+        var activeEvent = settingsService.GetActiveEventSettings();
+        if (activeEvent is null)
+            return [];
+
+        var userView = await shiftView.GetUserAsync(userId, cancellationToken);
+        var signups = userView.Signups;
+        if (signups.Count == 0)
+            return [];
+
+        var now = clock.GetCurrentInstant();
+        var upcoming = signups
+            .Where(s => s.AbsoluteEnd > now
+                && s.Status is SignupStatus.Pending or SignupStatus.Confirmed)
+            .ToList();
+        if (upcoming.Count == 0)
+            return [];
+
+        var entries = new List<UpcomingShiftEntry>();
+
+        foreach (var signup in upcoming.Where(s => s.SignupBlockId is null))
+        {
+            var date = signup.Date;
+            entries.Add(new UpcomingShiftEntry(
+                Key: signup.Id,
+                Label: RotaLabel(signup),
+                StartDate: date,
+                EndDate: date,
+                DayCount: 1,
+                Status: signup.Status));
+        }
+
+        foreach (var group in upcoming
+            .Where(s => s.SignupBlockId is not null)
+            .GroupBy(s => s.SignupBlockId!.Value))
+        {
+            var label = RotaLabel(group.First());
+            // Block signups are created in one transaction so they share a status;
+            // pick the earliest so a partially-bailed range still surfaces
+            // something meaningful.
+            var earliest = group.MinBy(s => s.Date)!;
+            entries.Add(new UpcomingShiftEntry(
+                Key: group.Key,
+                Label: label,
+                StartDate: earliest.Date,
+                EndDate: group.Max(s => s.Date),
+                DayCount: group.Select(s => s.Date).Distinct().Count(),
+                Status: earliest.Status));
+        }
+
+        // Unsorted: AgentPromptAssembler sorts at render time.
+        return entries;
+    }
+
+    private static string RotaLabel(ShiftSignupSummary signup) =>
+        string.IsNullOrWhiteSpace(signup.RotaName) ? "(unnamed rota)" : signup.RotaName;
+}

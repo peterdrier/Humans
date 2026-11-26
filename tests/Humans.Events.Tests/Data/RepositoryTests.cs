@@ -1,5 +1,4 @@
 using AwesomeAssertions;
-using Humans.Events.Contracts;
 using Humans.Events.Data;
 using Humans.Events.Domain;
 using Humans.Events.Services;

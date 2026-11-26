@@ -106,6 +106,13 @@ internal sealed class RoleAssignmentService(
             return new RoleAssignmentResult(false, "NotesTooLong");
         }
 
+        var assignee = await userService.GetRawUserInfoAsync(userId, ct);
+        if (assignee is null || assignee.IsTombstone)
+        {
+            logger.LogWarning("Role {RoleName} assignment refused for unavailable user {UserId}", roleName, userId);
+            return new RoleAssignmentResult(false, "UserUnavailable");
+        }
+
         var now = clock.GetCurrentInstant();
 
         var hasOverlap = await repository.HasOverlappingAssignmentAsync(
@@ -279,7 +286,6 @@ internal sealed class RoleAssignmentService(
         return all
             .Where(ra => ra.IsActive(now))
             .Select(ra => new RoleAssignmentSnapshot(catalog.Canonical(ra.RoleName), ra.ValidTo))
-            .OrderBy(ra => ra.RoleName, StringComparer.Ordinal)
             .ToList();
     }
 

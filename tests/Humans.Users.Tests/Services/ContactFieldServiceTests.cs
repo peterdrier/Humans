@@ -103,7 +103,7 @@ public sealed class ContactFieldServiceTests : ServiceTestHarness
                 await read.ContactFields.AsNoTracking().ToListAsync(token), [], []);
         }
         _userService.GetAllUserInfosAsync(Arg.Any<CancellationToken>())
-            .Returns(async call => (IReadOnlyCollection<UserInfo>)[(await ReadInfoAsync(call.Arg<CancellationToken>()))!]);
+            .Returns(async call => [(await ReadInfoAsync(call.Arg<CancellationToken>()))!]);
         _userService.GetUserInfoAsync(userId, Arg.Any<CancellationToken>())
             .Returns(call => new ValueTask<UserInfo?>(ReadInfoAsync(call.Arg<CancellationToken>())));
         var services = new ServiceCollection();
@@ -585,7 +585,7 @@ public sealed class ContactFieldServiceTests : ServiceTestHarness
         StubUserInfo(userId, profile);
         var info = await _userService.GetUserInfoAsync(userId);
 
-        var model = Humans.Users.Models.ProfileEditViewModelBuilder.Build(info!, false);
+        var model = Models.ProfileEditViewModelBuilder.Build(info!, false);
 
         model.EditableContactFields.Should().ContainSingle().Which.Id.Should().Be(signalId);
         model.ContactFields.Should().ContainSingle().Which.Id.Should().Be(legacyId);

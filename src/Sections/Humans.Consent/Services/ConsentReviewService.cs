@@ -1,4 +1,3 @@
-using System.Text;
 using Humans.AuditLog.Contracts;
 using Humans.Base.Extensions;
 using Humans.Consent.Contracts;

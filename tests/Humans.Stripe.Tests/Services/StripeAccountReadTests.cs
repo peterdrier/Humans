@@ -15,6 +15,30 @@ namespace Humans.Stripe.Tests.Services;
 /// <summary>Live reads of a ticketing platform's own Stripe account: its ledger, a payment's fee, and the key check.</summary>
 public sealed class StripeAccountReadTests
 {
+    [HumansTheory]
+    [InlineData("")]
+    [InlineData(" \t")]
+    [InlineData("rk_test_bad suffix")]
+    [InlineData("rk_test_secret\r\nhidden")]
+    public async Task Account_UnusableKey_RefusesBeforeSdk(string key)
+    {
+        using var assertions = new AwesomeAssertions.Execution.AssertionScope();
+        var account = OwnKey(key);
+        var store = OwnKey(key);
+        store.Name = "Store";
+        var service = Service(account, store);
+        account.IsConfigured.Should().BeFalse();
+        (await service.GetAccountLedgerAsync("HiEvents", Now - Duration.FromDays(1), Now, Ct)).Should().BeNull();
+        (await service.GetAccountPaymentFeeAsync("HiEvents", "pi_1", Ct)).Should().BeNull();
+        (await service.FindAccountPaymentFeeAsync("HiEvents", Order42, Now, Ct)).Should().BeNull();
+        (await service.ListStoreRefundsAsync("pi_1", Ct)).Should().BeNull();
+        (await service.GetStoreChargeAsync("pi_1", Ct)).Should().BeNull();
+        var findings = await service.CheckAccountAsync("HiEvents", Ct);
+        findings.Should().ContainSingle().Which.Ok.Should().BeFalse();
+        findings.Should().OnlyContain(f => !f.Text.Contains("rk_test_secret", StringComparison.Ordinal));
+        _requests.Should().BeEmpty();
+    }
+
     private static readonly CancellationToken Ct = TestContext.Current.CancellationToken;
     private static readonly Instant Now = Instant.FromUtc(2027, 1, 2, 10, 0);
 
@@ -98,10 +122,10 @@ public sealed class StripeAccountReadTests
             .Should().Equal(
                 ("txn_c", "charge", 22500L, 340L, "pi_new", "42"),
                 ("txn_r", "refund", -5000L, 0L, "pi_old", "41"),
-                ("txn_p", "payout", -17160L, 0L, (string?)null, (string?)null));
+                ("txn_p", "payout", -17160L, 0L, null, null));
         ledger.Lines[0].Payment!.Description.Should().Be("D-42");
         ledger.Payouts.Select(p => (p.Id, p.ContentsNetMinor, p.ContentsCount)).Should().Equal(
-            ("po_1", (long?)17160, 2), ("po_2", (long?)null, 0));
+            ("po_1", 17160, 2), ("po_2", null, 0));
         _requests.Should().OnlyContain(r => r.Method == HttpMethod.Get);
     }
 

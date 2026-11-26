@@ -1,9 +1,7 @@
 using Humans.Shifts.Services;
-using Humans.Settings.Contracts;
 using AwesomeAssertions;
 using Xunit;
 
-using Humans.Shifts.Contracts;
 namespace Humans.Shifts.Tests.Domain;
 
 public class BuildSubPeriodClassifierTests

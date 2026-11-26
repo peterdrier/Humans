@@ -125,6 +125,21 @@ public sealed class RoleAssignmentsControllerTests
     }
 
     [HumansFact]
+    public async Task AddRole_UnavailableTarget_ReturnsNotFound()
+    {
+        GivenKnownUsers();
+        GivenAuthorization(TeamsRoles.TeamsAdmin, succeeds: true);
+        _write.AssignRoleAsync(TargetId, TeamsRoles.TeamsAdmin, ActorId, null, Arg.Any<CancellationToken>())
+            .Returns(new RoleAssignmentResult(false, "UserUnavailable"));
+        var controller = BuildController();
+
+        var result = await controller.AddRole(TargetId, new CreateRoleAssignmentViewModel { RoleName = TeamsRoles.TeamsAdmin });
+
+        result.Should().BeOfType<NotFoundResult>();
+        controller.TempData.Should().BeEmpty();
+    }
+
+    [HumansFact]
     public async Task AddRolePost_AssignsAsTheSignedInActor_ThenRedirectsToTheMemberDetail()
     {
         GivenKnownUsers();
@@ -157,7 +172,7 @@ public sealed class RoleAssignmentsControllerTests
         (await BuildController().EndRole(TargetId, seatId, null)).Should().BeOfType<RedirectToActionResult>();
 
         await _write.DidNotReceiveWithAnyArgs().AssignRoleAsync(default, default!, default, default);
-        await _write.DidNotReceiveWithAnyArgs().EndRoleAsync(default, default, default, default);
+        await _write.DidNotReceiveWithAnyArgs().EndRoleAsync(default, default, default);
     }
 
     [HumansFact]

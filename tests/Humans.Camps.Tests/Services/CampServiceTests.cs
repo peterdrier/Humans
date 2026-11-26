@@ -1,13 +1,9 @@
 using Humans.Base.Helpers;
-using Humans.Base.Caching;
-using Microsoft.Extensions.Caching.Memory;
 using Humans.Base.Interfaces;
 using Xunit;
 using System.Text.Json;
 using Humans.Notifications.Contracts;
 using AwesomeAssertions;
-using Humans.Base.Interfaces.Caching;
-using Humans.EarlyEntry.Contracts;
 using Humans.Settings.Contracts;
 using Humans.Teams.Contracts;
 using Humans.Base.Enums;
@@ -1107,9 +1103,11 @@ public sealed class CampServiceTests : CampsTestHarness
         await _service.CloseSeasonAsync(e2026.Id, Guid.NewGuid(), ct);
 
         (await _service.GetSettingsAsync(ct)).OpenSeasons.Should().Equal(2027);
-        (await _service.GetRegistrationByEventAsync(ct)).Should().Equal(
-            new CampEventRegistration(e2027.Id, e2027.EventName, 2027, true),
-            new CampEventRegistration(e2026.Id, e2026.EventName, 2026, false));
+        (await _service.GetRegistrationByEventAsync(ct)).Should().BeEquivalentTo(new[]
+        {
+            new CampEventRegistration(e2027.Id, e2027.EventName, 2027, true) { GateOpeningDate = e2027.GateOpeningDate },
+            new CampEventRegistration(e2026.Id, e2026.EventName, 2026, false) { GateOpeningDate = e2026.GateOpeningDate }
+        });
     }
 
     [HumansFact]
@@ -2409,7 +2407,7 @@ public sealed class CampServiceTests : CampsTestHarness
         await SaveAllAsync(ct);
         var actor = string.Equals(operation, "Remove", StringComparison.Ordinal) ? TestActorId : member.UserId;
         AuditLog.When(a => a.LogAsync(CampsAuditActions.CampRoleUnassigned, nameof(CampMember), member.Id,
-            Arg.Any<string>(), actor, null, null)).Do(_ =>
+            Arg.Any<string>(), actor)).Do(_ =>
             {
                 using var saved = CampsDbFactory.CreateDbContext();
                 saved.CampMembers.Single(m => m.Id == member.Id).Status.Should().Be(CampMemberStatus.Removed);
@@ -2428,7 +2426,7 @@ public sealed class CampServiceTests : CampsTestHarness
         (await CampsDb.CampRoleAssignments.Select(a => a.CampMemberId).ToListAsync(ct)).Should().Equal(otherMember.Id);
         (await CampsDb.CampMembers.SingleAsync(m => m.Id == member.Id, ct)).Status.Should().Be(CampMemberStatus.Removed);
         await AuditLog.Received(1).LogAsync(CampsAuditActions.CampRoleUnassigned, nameof(CampMember), member.Id,
-            "Cascade-removed 2 role assignment(s) for camp member.", actor, null, null);
+            "Cascade-removed 2 role assignment(s) for camp member.", actor);
     }
 
     [HumansTheory]
@@ -3263,7 +3261,7 @@ public sealed class CampServiceTests : CampsTestHarness
         info.Season.Should().NotBeNull();
         info.Season!.CampId.Should().Be(camp.Id);
         info.Season.Year.Should().Be(2026);
-        info.Roles.Should().ContainSingle().Which.Should().Be(regularDef.Name);
+        info.Roles.Should().ContainSingle().Which.Should().Be((regularDef.Name, regularDef.SortOrder));
     }
 
     [HumansFact]
@@ -3288,7 +3286,7 @@ public sealed class CampServiceTests : CampsTestHarness
 
         info.Season.Should().NotBeNull();
         info.Season!.Year.Should().Be(2026);
-        info.Roles.Should().Equal("Camp Lead", "Greeter");
+        info.Roles.Should().Equal(("Camp Lead", 0), ("Greeter", 1));
     }
 
     [HumansFact]
@@ -3451,7 +3449,7 @@ public sealed class CampServiceTests : CampsTestHarness
                 new CampSeasonMemberInfo(
                     Guid.NewGuid(), userId, status, requestedAt, HasEarlyEntry: false)
                 {
-                    Roles = roles
+                    Roles = roles.Select((name, index) => (name, index)).ToList()
                 }
             ]
         };

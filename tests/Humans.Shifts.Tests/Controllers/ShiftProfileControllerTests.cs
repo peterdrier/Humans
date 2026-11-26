@@ -4,7 +4,6 @@ using AwesomeAssertions;
 using Humans.Base;
 using Humans.Base.Extensions;
 using Humans.Shifts.Controllers;
-using Humans.Shifts.Domain;
 using Humans.Shifts.Models;
 using Humans.Shifts.Services;
 using Humans.Users.Contracts;

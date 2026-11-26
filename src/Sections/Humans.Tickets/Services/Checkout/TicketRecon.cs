@@ -163,7 +163,7 @@ internal static class TicketReconBuilder
             // The one Humans recorded leads; with none recorded, the platform's oldest. A recorded one the platform no
             // longer lists is missing, and whatever it does list for the order was never recorded.
             var primary = order.PlatformOrderId is null
-                ? mine.OrderBy(b => b.CreatedAt).FirstOrDefault()
+                ? mine.MinBy(b => b.CreatedAt)
                 : mine.FirstOrDefault(b => string.Equals(b.PlatformOrderId, order.PlatformOrderId, StringComparison.Ordinal));
             int? ticketsIssued = order.State == TicketCheckoutOrderState.Paid ? issued.GetValueOrDefault(order.Id) : null;
             if (primary is null && order.PlatformOrderId is null

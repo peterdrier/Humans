@@ -307,4 +307,5 @@
   <data name="Expenses_Flash_DraftOutcomeUnknown" xml:space="preserve"><value>No s’ha pogut confirmar si l’esborrany s’ha desat. Revisa els informes existents abans de crear un altre esborrany.</value></data>
   <data name="Expenses_Permission_Endorse_Title" xml:space="preserve"><value>Avalar despeses</value></data>
   <data name="Expenses_Permission_Endorse_Blurb" xml:space="preserve"><value>Avalar, rebutjar i denegar línies de les sol·licituds de despeses amb càrrec al pressupost de l’equip.</value></data>
+  <data name="Expenses_Validation_SubmitterUnavailable" xml:space="preserve"><value>La persona sol·licitant ja no està disponible.</value></data>
 </root>

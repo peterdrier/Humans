@@ -1,4 +1,3 @@
-using Humans.Campaigns.Contracts;
 using Humans.Campaigns.Domain;
 using NodaTime;
 

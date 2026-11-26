@@ -8,12 +8,10 @@ using Humans.CityPlanning.Contracts;
 using Humans.Consent.Contracts;
 using Humans.Development.Controllers;
 using Humans.Development.Services;
-using Humans.Governance.Contracts;
 using Humans.Teams.Contracts;
 using Humans.Users.Contracts;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
-using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -62,7 +60,7 @@ public class DevLoginControllerTests
         var result = await BuildSut().SignIn("admin");
 
         result.Should().BeOfType<NotFoundResult>();
-        _ = _users.DidNotReceiveWithAnyArgs().GetUserInfoAsync(default, default);
+        _ = _users.DidNotReceiveWithAnyArgs().GetUserInfoAsync(default);
         await _signIn.DidNotReceiveWithAnyArgs().SignInAsync(default);
     }
 

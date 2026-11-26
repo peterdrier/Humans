@@ -66,7 +66,7 @@ public sealed class Section : ISection, ISectionAdminNav, ISectionChrome, ISecti
         [new(ChromeSlots.AdminDashboard, typeof(UserSetMembershipCardViewComponent), Weight: 5)];
 
     void ISectionEndpoints.MapEndpoints(IEndpointRouteBuilder endpoints) =>
-        endpoints.MapGet("/api/data-migrations", (RequestDelegate)WriteStatusAsync).AllowAnonymous();
+        endpoints.MapGet("/api/data-migrations", WriteStatusAsync).AllowAnonymous();
 
     internal static async Task WriteStatusAsync(HttpContext http)
     {

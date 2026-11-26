@@ -21,7 +21,6 @@ using Humans.Store.Services;
 using Humans.Stripe.Contracts;
 using Humans.Teams.Contracts;
 using Microsoft.Extensions.Logging.Abstractions;
-using Microsoft.Extensions.Options;
 using NodaTime;
 using NodaTime.Testing;
 using NSubstitute;
@@ -268,11 +267,21 @@ public class ServiceIssueInvoiceTests
         {
             Id = Guid.NewGuid(),
             OrderId = order.Id,
-            AmountEur = 20m,
+            AmountEur = 15m,
             Method = PaymentMethod.DepositReturn,
             Status = PaymentStatus.Paid,
             ProductId = _productId,
             ReceivedAt = Instant.FromUtc(2026, 8, 20, 0, 0),
+        });
+        order.Payments.Add(new Payment
+        {
+            Id = Guid.NewGuid(),
+            OrderId = order.Id,
+            AmountEur = 5m,
+            Method = PaymentMethod.DepositReturn,
+            Status = PaymentStatus.Paid,
+            ProductId = _productId,
+            ReceivedAt = Instant.FromUtc(2026, 8, 19, 0, 0),
         });
         order.Payments.Add(new Payment
         {
@@ -293,7 +302,8 @@ public class ServiceIssueInvoiceTests
         kept.Taxes.Should().Equal("s_iva_21");
         kept.Units.Should().Be(1m);
         kept.Price.Should().Be(33.06m);
-        input.Notes.Should().Contain("Deposit returned: EUR 20.00 on 2026-08-20 (Ice)");
+        input.Notes.Should().Contain("Deposit returned: EUR 5.00 on 2026-08-19 (Ice)\n"
+            + "Deposit returned: EUR 15.00 on 2026-08-20 (Ice)");
     }
 
     [HumansFact]

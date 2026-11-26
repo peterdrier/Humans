@@ -3,7 +3,6 @@ using Humans.Auth.Contracts;
 using Humans.Auth.Data;
 using Humans.Auth.Services;
 using Humans.Auth.ViewComponents;
-using Humans.Base.Authorization;
 using Humans.Base.Constants;
 using Humans.Base.Extensions;
 using Humans.Base.Hosting;

@@ -1,4 +1,3 @@
-using Humans.Shifts.Contracts;
 using Humans.Shifts.Models;
 using Humans.Shifts.Services;
 using Microsoft.AspNetCore.Mvc;

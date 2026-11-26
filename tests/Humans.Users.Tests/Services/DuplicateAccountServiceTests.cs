@@ -1,4 +1,3 @@
-using Humans.Users.Tests.Infrastructure;
 using Humans.Governance.Contracts;
 using Humans.AuditLog.Contracts;
 using Humans.Auth.Contracts;

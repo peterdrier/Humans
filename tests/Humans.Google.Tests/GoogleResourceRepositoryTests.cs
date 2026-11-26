@@ -111,7 +111,7 @@ public sealed class GoogleResourceRepositoryTests : IDisposable
 
         var matched = await FindAsync();
         matched.Should().NotBeNull();
-        matched!.Id.Should().Be(exact.Id);
+        matched.Id.Should().Be(exact.Id);
     }
 
     [HumansFact]
@@ -126,7 +126,7 @@ public sealed class GoogleResourceRepositoryTests : IDisposable
             teamId, "12345", "renamed@nobodies.team", ct: TestContext.Current.CancellationToken);
 
         result.Should().NotBeNull();
-        result!.Id.Should().Be(exact.Id);
+        result.Id.Should().Be(exact.Id);
     }
 
     [HumansFact]

@@ -76,10 +76,12 @@ Source: [nobodies-collective/Humans#732](https://github.com/nobodies-collective/
 
 The recipient set is computed once per dispatch:
 
-1. Load the rota with its shifts, `EventSettings`, and signups in one read (`IShiftManagementRepository.GetRotaAsync(rotaId, RotaReadShape.View, ct)`).
-2. Filter the loaded signups to the active set (`Pending` or `Confirmed`) in memory (`RotaCoordinatorMessageService.GetActiveSignups(rota)`).
-3. Group signups by `UserId` (one email per distinct user, even if they have multiple shifts on the rota).
-4. Skip users with no user record or no email address; record skipped count for the audit row.
+1. Load the rota's shifts and signups through `IShiftRotaRows`, with its calendar resolved from Settings.
+2. Filter the loaded signups to `Pending` or `Confirmed` in memory.
+3. Resolve recipient accounts through `IUserService.GetUserInfosAsync`; skip missing accounts, tombstones and unavailable notification addresses, recording skipped counts for the audit.
+4. Group signups by the resolved survivor ID. Each human receives one email combining their matching shifts across merged aliases, with each shift listed once.
+
+Both compose previews reuse the dispatch's availability filter and show each resolved human once.
 
 ## Email Template (per recipient)
 
@@ -110,8 +112,8 @@ Thank you,
 - `SenderName`, `SenderEmail` — signature + Reply-To attribution.
 - `RotaName` — subject + body context.
 - `MessageText` — coordinator's Markdown body, sanitized on render.
-- `ShiftLines` — pre-formatted, chronologically sorted, recipient-scoped shift labels.
-- `IncludeShifts` — false drops the whole shift section. Distinct from an empty `ShiftLines`, which still prints the "no shifts yet" note.
+- `Shifts` — recipient-scoped shifts (zoned start plus all-day flag); `ShiftsEmails` orders and formats them.
+- `IncludeShifts` — false drops the whole shift section. Distinct from an empty `Shifts`, which still prints the "no shifts yet" note.
 - `Culture` — recipient's preferred language for template rendering.
 
 ## Authorization
@@ -126,7 +128,7 @@ The compose + submit endpoints (`GET/POST /Teams/{slug}/Shifts/Rotas/{rotaId}/Em
 
 No new entities or migrations. The feature is pure orchestration over existing types:
 
-- `IShiftManagementRepository.GetRotaAsync(rotaId, RotaReadShape.View, ct)` — loads the rota with shifts, `EventSettings`, and signups in one read; active signups are filtered in memory for grouping.
+- `IShiftRotaRows.GetRotaRowsAsync` — reads the section's cached rota, shift and signup snapshots; active signups are filtered in memory for grouping.
 - `IUserService.GetUserInfosAsync(userIds, ct)` — recipient name/email/culture lookup.
 - `IEmailService.SendAsync(ShiftsEmails.CoordinatorRotaMessage(request), ct)` — outbox enqueue.
 - `ShiftsEmails` — the section's own builder for the template (copy in `ShiftsResource*.resx`).
@@ -147,8 +149,8 @@ Coordinator submits (POST)
     → Validate ModelState (Message required, ≤4000 chars)
     → IRotaCoordinatorMessageService.SendRotaMessageAsync(rotaId, senderUserId, message, includeShifts)
         → Load rota + EventSettings
-        → Load active signups → group by user
-        → Load sender + recipient infos
+        → Load active signups
+        → Load sender + recipient infos → filter available accounts → group by survivor
         → For each recipient: build chronological shift lines → enqueue email
         → Single audit row: CoordinatorRotaMessageSent (requested/skipped counts)
         → RotaMessageDispatchResult.Success(count, rotaName)

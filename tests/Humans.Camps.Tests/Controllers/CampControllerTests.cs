@@ -50,6 +50,56 @@ public class CampControllerTests
     public enum ContactViewer { Other, Lead, CampsAdmin, Admin }
 
     [HumansTheory]
+    [InlineData(null)]
+    [InlineData("bad")]
+    [InlineData("true")]
+    [InlineData("false")]
+    public async Task Contact_ExplicitSharingChoice_ControlsDelivery(string? choice)
+    {
+        var registrations = new ServiceCollection().AddLogging();
+        registrations.AddControllers();
+        using var services = registrations.BuildServiceProvider();
+        var senderId = Guid.NewGuid();
+        var camp = MakeCamp("alpha", "Alpha Camp", CampSeasonStatus.Active, Guid.NewGuid());
+        _camps.GetCampBySlugAsync(camp.Slug, Arg.Any<CancellationToken>()).Returns(camp);
+        _camps.GetSettingsAsync(Arg.Any<CancellationToken>()).Returns(Settings2026());
+        _users.GetUserInfoAsync(senderId, Arg.Any<CancellationToken>()).Returns(UserInfo.Create(
+            new User { Id = senderId, Email = "sender@example.com", BurnerName = "Sender" }, [], [], null));
+        _campsLocalizer[Arg.Any<string>()].Returns(call => new LocalizedString(call.Arg<string>(), call.Arg<string>()));
+        _contacts.SendFacilitatedMessageAsync(Arg.Any<Guid>(), Arg.Any<string>(), Arg.Any<string>(),
+            Arg.Any<Guid>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<bool>(),
+            Arg.Any<IReadOnlyList<Guid>>(), Arg.Any<string>()).Returns(new CampContactResult(true, false));
+        var controller = BuildController(senderId);
+        controller.HttpContext.RequestServices = services;
+        var fields = new Dictionary<string, StringValues>(StringComparer.Ordinal) { ["Message"] = "Hello" };
+        if (choice is not null) fields["IncludeContactInfo"] = choice;
+        var metadata = services.GetRequiredService<IModelMetadataProvider>().GetMetadataForType(typeof(CampContactViewModel));
+        var binder = services.GetRequiredService<IModelBinderFactory>().CreateBinder(new ModelBinderFactoryContext { Metadata = metadata });
+        var binding = DefaultModelBindingContext.CreateBindingContext(controller.ControllerContext,
+            new FormValueProvider(BindingSource.Form, new FormCollection(fields), CultureInfo.InvariantCulture),
+            metadata, bindingInfo: null, modelName: "");
+        await binder.BindModelAsync(binding);
+        var model = (CampContactViewModel)binding.Result.Model!;
+        services.GetRequiredService<IObjectModelValidator>().Validate(controller.ControllerContext, null, "", model);
+
+        var result = await controller.Contact(camp.Slug, model);
+
+        if (bool.TryParse(choice, out var includeContactInfo))
+        {
+            result.Should().BeOfType<RedirectToActionResult>();
+            await _contacts.Received(1).SendFacilitatedMessageAsync(camp.Id, camp.ContactEmail, "Alpha Camp",
+                senderId, "Sender", "sender@example.com", "Hello", includeContactInfo,
+                Arg.Any<IReadOnlyList<Guid>>(), $"/Barrios/{camp.Slug}");
+        }
+        else
+        {
+            result.Should().BeOfType<ViewResult>().Which.Model.Should().BeSameAs(model);
+            controller.ModelState["IncludeContactInfo"]!.Errors.Should().HaveCount(choice is null ? 1 : 2);
+            _contacts.ReceivedCalls().Should().BeEmpty();
+        }
+    }
+
+    [HumansTheory]
     [InlineData(ContactSurface.Form)]
     [InlineData(ContactSurface.Redisplay)]
     [InlineData(ContactSurface.Send)]
@@ -181,6 +231,11 @@ public class CampControllerTests
     }
 
     [HumansTheory]
+    [InlineData(false, "IsSwissCamp")]
+    [InlineData(true, "IsSwissCamp")]
+    [InlineData(false, "TimesAtNowhere")]
+    [InlineData(true, "TimesAtNowhere")]
+    [InlineData(true, "HideHistoricalNames")]
     [InlineData(false, "AcceptingMembers")]
     [InlineData(false, "KidsWelcome")]
     [InlineData(false, "KidsVisiting")]
@@ -238,6 +293,7 @@ public class CampControllerTests
             ["Languages"] = "en",
             ["SeasonId"] = camp.Seasons[0].Id.ToString(),
             ["MemberCount"] = memberCount,
+            ["IsSwissCamp"] = "false",
             ["TimesAtNowhere"] = timesAtNowhere.ToString(CultureInfo.InvariantCulture),
             ["AcceptingMembers"] = "0",
             ["KidsWelcome"] = "0",
@@ -248,6 +304,7 @@ public class CampControllerTests
             ["SoundZone"] = "",
             ["ElectricalGrid"] = ""
         };
+        if (edit) fields["HideHistoricalNames"] = "false";
         if (omitted.Length > 0) fields.Remove(omitted);
         var type = edit ? typeof(CampEditViewModel) : typeof(CampRegisterViewModel);
         var metadata = services.GetRequiredService<IModelMetadataProvider>().GetMetadataForType(type);
@@ -278,12 +335,14 @@ public class CampControllerTests
             controller.ModelState.IsValid.Should().BeTrue();
             var arguments = writes.Should().ContainSingle().Which.GetArguments();
             (edit ? ((CampUpdateInput)arguments[0]!).TimesAtNowhere : (int)arguments[7]!).Should().Be(timesAtNowhere);
+            (edit ? ((CampUpdateInput)arguments[0]!).IsSwissCamp : (bool)arguments[6]!).Should().BeFalse();
+            if (edit) ((CampUpdateInput)arguments[0]!).HideHistoricalNames.Should().BeFalse();
             var data = edit ? ((CampUpdateInput)arguments[0]!).SeasonData : (CampSeasonData)arguments[8]!;
             data.AcceptingMembers.Should().Be(YesNoMaybe.Yes);
             data.KidsWelcome.Should().Be(YesNoMaybe.Yes);
-            data.KidsVisiting.Should().Be((KidsVisitingPolicy)0);
-            data.HasPerformanceSpace.Should().Be((PerformanceSpaceStatus)0);
-            data.AdultPlayspace.Should().Be((AdultPlayspacePolicy)0);
+            data.KidsVisiting.Should().Be(default(KidsVisitingPolicy));
+            data.HasPerformanceSpace.Should().Be(default(PerformanceSpaceStatus));
+            data.AdultPlayspace.Should().Be(default(AdultPlayspacePolicy));
             data.SpaceRequirement.Should().BeNull();
             data.SoundZone.Should().BeNull();
             data.ElectricalGrid.Should().BeNull();
@@ -1785,6 +1844,30 @@ public class CampControllerTests
         {
             CollectLeaves(property.GetValue(obj), $"{path}.{property.Name}", leaves, seen);
         }
+    }
+
+    [HumansFact]
+    public async Task Register_get_and_post_choose_latest_gate_among_open_events()
+    {
+        var actor = Guid.NewGuid();
+        var older = Event2026 with { GateOpeningDate = new LocalDate(2026, 7, 1) };
+        var newer = Event2027 with { Year = 2026, RegistrationOpen = true, GateOpeningDate = new LocalDate(2026, 10, 1), RegistrationInfo = "Autumn" };
+        _camps.GetSettingsAsync(Arg.Any<CancellationToken>()).Returns(new CampSettingsInfo(2026, [2026])
+        {
+            Events = [older, newer, Event2029 with { GateOpeningDate = new LocalDate(2029, 7, 1) }]
+        });
+        _users.GetUserInfoAsync(actor, Arg.Any<CancellationToken>()).Returns(MakeUserInfo(actor));
+        _camps.CreateCampAsync(default, default!, default!, default!, null, null, false, 0, default!, null, Guid.Empty)
+            .ReturnsForAnyArgs(new CampWriteResult<Camp>(null, "Camps_Flash_SeasonNotOpen"));
+        _campsLocalizer["Camps_Flash_SeasonNotOpen", Arg.Any<object[]>()]
+            .Returns(new LocalizedString("Camps_Flash_SeasonNotOpen", "Registration closed"));
+        var controller = BuildController(actor);
+
+        (await controller.Register()).Should().BeOfType<ViewResult>().Which.ViewData["RegistrationInfo"].Should().Be("Autumn");
+        await controller.Register(new CampRegisterViewModel { Name = "Camp" });
+
+        var creation = _camps.ReceivedCalls().Should().ContainSingle(c => c.GetMethodInfo().Name == nameof(ICampManagement.CreateCampAsync)).Which;
+        creation.GetArguments()[10].Should().Be(newer.EventSettingsId);
     }
 
     private void StubCampReadModel(IReadOnlyList<CampInfo> camps)

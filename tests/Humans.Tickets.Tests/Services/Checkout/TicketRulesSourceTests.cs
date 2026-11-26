@@ -1,6 +1,5 @@
 using AwesomeAssertions;
 using Humans.Base.Configuration;
-using Humans.Testing;
 using Humans.Tickets.Services.Checkout;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -26,23 +25,34 @@ public class TicketRulesSourceTests
     }
 
     [HumansFact]
-    public async Task A_github_failure_keeps_the_last_good_rules_and_an_invalid_folder_drops_them()
+    public async Task A_github_failure_replaces_cached_rules_with_unavailable_until_a_successful_read()
     {
         var source = new ScriptedSource();
         var good = new TicketRules("R", "abc123", new Dictionary<string, string>(StringComparer.Ordinal) { ["es"] = "es", ["en"] = "en" });
 
+        foreach (var failure in new Exception[]
+                 {
+                     new HttpRequestException("down"),
+                     new TaskCanceledException("timeout"),
+                     new Octokit.ApiException("unavailable", System.Net.HttpStatusCode.ServiceUnavailable)
+                 })
+        {
+            source.Next = () => Task.FromResult<TicketRules?>(good);
+            (await source.GetAsync("R", refresh: true)).Should().BeSameAs(good);
+
+            source.Next = () => throw failure;
+            (await source.GetAsync("R", refresh: true)).Should().BeNull();
+            source.Next = () => throw new InvalidOperationException("The unavailable result should be cached.");
+            (await source.GetAsync("R")).Should().BeNull();
+        }
+
         source.Next = () => Task.FromResult<TicketRules?>(good);
         (await source.GetAsync("R", refresh: true)).Should().BeSameAs(good);
-
-        source.Next = () => throw new HttpRequestException("down");
-        (await source.GetAsync("R", refresh: true)).Should().BeSameAs(good);
-        source.Next = () => throw new TaskCanceledException("timeout");
-        (await source.GetAsync("R", refresh: true)).Should().BeSameAs(good);
+        (await source.GetAsync("R")).Should().BeSameAs(good);
 
         source.Next = () => Task.FromResult<TicketRules?>(null);
         (await source.GetAsync("R", refresh: true)).Should().BeNull();
-        source.Next = () => throw new HttpRequestException("down");
-        (await source.GetAsync("R", refresh: true)).Should().BeNull();
+        (await source.GetAsync("R")).Should().BeNull();
     }
 
     [HumansFact]

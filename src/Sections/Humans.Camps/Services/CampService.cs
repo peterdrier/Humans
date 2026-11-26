@@ -1,6 +1,5 @@
 using System.Globalization;
 using Humans.AuditLog.Contracts;
-using Humans.Base.Interfaces.Caching;
 using Humans.EarlyEntry.Contracts;
 using Humans.Gdpr.Contracts;
 using Humans.Notifications.Contracts;
@@ -11,8 +10,6 @@ using Humans.Tickets.Contracts;
 using Humans.Users.Contracts;
 
 using Humans.Teams.Contracts;
-using Humans.Base.Extensions;
-using Humans.Base.Interfaces;
 using System.Transactions;
 using System.Resources;
 
@@ -816,11 +813,11 @@ internal sealed class CampService : ICampManagement, ICampLeadDirectory, IUserMe
     /// </summary>
     internal sealed record CampRoleProjection(
         IReadOnlyDictionary<(Guid CampSeasonId, CampSpecialRole Role), IReadOnlyList<Guid>> SpecialRoleUserIds,
-        IReadOnlyDictionary<Guid, IReadOnlyList<string>> MemberRoleNames)
+        IReadOnlyDictionary<Guid, IReadOnlyList<(string Name, int SortOrder)>> MemberRoles)
     {
         public static readonly CampRoleProjection Empty = new(
             new Dictionary<(Guid, CampSpecialRole), IReadOnlyList<Guid>>(),
-            new Dictionary<Guid, IReadOnlyList<string>>());
+            new Dictionary<Guid, IReadOnlyList<(string Name, int SortOrder)>>());
     }
 
     internal async Task<CampRoleProjection> GetRoleProjectionForYearsAsync(
@@ -840,17 +837,15 @@ internal sealed class CampService : ICampManagement, ICampLeadDirectory, IUserMe
                     .Distinct()
                     .ToList());
 
-        var memberRoleNames = assignments
+        var memberRoles = assignments
             .GroupBy(a => a.CampMemberId)
             .ToDictionary(
                 group => group.Key,
-                group => (IReadOnlyList<string>)group
-                    .OrderBy(a => a.Definition.SortOrder)
-                    .ThenBy(a => a.Definition.Name, StringComparer.OrdinalIgnoreCase)
-                    .Select(a => a.Definition.Name)
+                group => (IReadOnlyList<(string Name, int SortOrder)>)group
+                    .Select(a => (a.Definition.Name, a.Definition.SortOrder))
                     .ToList());
 
-        return new CampRoleProjection(specialRoleUserIds, memberRoleNames);
+        return new CampRoleProjection(specialRoleUserIds, memberRoles);
     }
 
     internal static CampInfo CreateCampInfo(
@@ -926,8 +921,8 @@ internal sealed class CampService : ICampManagement, ICampLeadDirectory, IUserMe
                     m.RequestedAt,
                     m.HasEarlyEntry)
                 {
-                    Roles = roles?.MemberRoleNames.TryGetValue(m.Id, out var names) == true
-                        ? names
+                    Roles = roles?.MemberRoles.TryGetValue(m.Id, out var memberRoles) == true
+                        ? memberRoles
                         : []
                 })
                 .ToList(),
@@ -1469,12 +1464,12 @@ internal sealed class CampService : ICampManagement, ICampLeadDirectory, IUserMe
         var rows = (await _repo.GetEventSettingsAsync(cancellationToken)).ToDictionary(r => r.EventSettingsId);
         return [.. (await _settingsService.GetAllEventSettingsAsync(cancellationToken))
             .Where(e => e.Status != EventSettingsStatus.Deleted)
-            .OrderByDescending(e => e.GateOpeningDate)
             .Select(e =>
             {
                 var row = rows.GetValueOrDefault(e.Id);
                 return new CampEventRegistration(e.Id, e.EventName, e.Year, row?.RegistrationOpen == true)
                 {
+                    GateOpeningDate = e.GateOpeningDate,
                     RegistrationInfo = row?.RegistrationInfo,
                 };
             })];

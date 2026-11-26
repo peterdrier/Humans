@@ -46,7 +46,7 @@ public class TicketCheckoutRepositoryTests(HumansTestDatabase database) : Integr
         await repo.SaveTicketingSettingsAsync(loadedSettings, ct);
         var switches = (await repo.GetTicketingSettingsAsync(ticketing.Id, ct))!.Switches;
         switches.Should().BeEquivalentTo(new TicketingSwitches { Resale = ResaleScheme.Queue, Donations = false });
-        switches!.CompanionTicketsOn.Should().BeTrue("a switch saved before companion tickets had one means on");
+        switches.CompanionTicketsOn.Should().BeTrue("a switch saved before companion tickets had one means on");
 
         // Ticketing settings saved before child types existed have no child_types JSON at all.
         var contexts = scope.ServiceProvider.GetRequiredService<IDbContextFactory<TicketsDbContext>>();

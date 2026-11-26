@@ -60,7 +60,7 @@ None — the section owns no tables.
 
 ## Invariants
 
-- `IsConfigured` is true only with an API URL and an API key.
+- `IsConfigured` requires absolute HTTP(S) API/app URLs and a nonblank API key that can form an HTTP authorization header.
 - Create order: `PlatformEventRef` must be the numeric Hi.Events event id, else `TicketingPlatformException`. The Humans order id
   (`N` format) is the `external_reference`, so a retried create returns the same Hi.Events order. The event's products are read
   first: ticket lines go to its one `TICKET` product with the line's holder name, donation lines to its one `GENERAL`
@@ -105,11 +105,14 @@ None — the section owns no tables.
   `AWAITING_OFFLINE_PAYMENT` reads as `Pending` and Hi.Events never expires it, so Tickets cancels it at Hi.Events
   when its hold lapses, like any unpaid order.
 - A reserved order whose `reserved_until` does not parse is an error, not `Pending`.
-- A malformed `HiEvents:ApiUrl` only makes this platform unconfigured; it never throws while Tickets resolves platforms.
-- Buyer names go in 50 characters of first name and 50 of last name, split at a space; each ticket line carries the holder's full
-  legal name (Hi.Events allows 255 on this endpoint).
+- Malformed URLs or an API key containing line breaks only make this platform unconfigured; they never throw while Tickets resolves platforms. Order creation, status, refund, cancellation, erasure and listing refuse unconfigured settings before any request. The setup check reports the configuration error without exposing the key; ledger reads retain their null result while unconfigured.
+- Buyer names go in 50 Unicode scalar characters of first name and 50 of last name, split at a space without cutting
+  surrogate pairs; each ticket line carries the holder's full legal name (Hi.Events allows 255 on this endpoint).
 - `Setup` shows the URLs and only set or missing for the key and secret; an API host on `hi.events` reads as Hi.Events Cloud, unsupported because it lacks the fork's checkout endpoint, and never passes the check. `CheckAsync` reads `users/me` (a body without a user, such as the web app's HTML, fails), the event's status and products, then posts an empty body to the checkout endpoint: the fork answers 422 before creating anything, stock Hi.Events 404 or 405.
+- Platform setup checks propagate caller cancellation instead of reporting a vendor failure; independent transport timeouts remain diagnostic findings.
 - `ListOrdersAsync` pages through an event's orders by `created_at` (100 a page, to `meta.last_page`), reading the Humans order id from `external_reference` and counting each Hi.Events attendee record as a ticket. It throws when the distinct orders read differ from `meta.total`, since ties in a second can move across pages. The list leaves out `RESERVED` and `ABANDONED` orders. It needs the key's user to see financials, as refunds already do. `EventRefOf` reads the event id from the order id. `GetPaymentLedgerAsync` reads the `HiEvents` Stripe account through `IStripeService` (null while not configured; a Stripe refusal is a `TicketingPlatformException`): its balance transactions and payouts created in the period, each movement tied to the `external_reference` of the Hi.Events order its PaymentIntent's `event_id`/`order_id` names. An order the API key's user cannot see (403/404), or one Humans did not open, names no Humans order. A payout's contents are listed as for Box Office.
+
+- Checkout creation and setup checks read every product page before validating carrier counts and visibility. Product pages require data and valid paging metadata. Product and order traversals stop at 500 pages and fail instead of returning a partial result.
 
 ## Personal data and erasure
 

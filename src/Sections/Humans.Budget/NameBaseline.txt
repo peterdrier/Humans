@@ -1,0 +1,2 @@
+Humans.Budget.Data.IBudgetRepository.GetAuditLogEntriesForUserIdsAsync
+Humans.Budget.Services.TicketingBudgetService.UpdateProjectionAndRefreshAsync

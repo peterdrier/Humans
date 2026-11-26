@@ -1,4 +1,3 @@
-using Humans.Teams;
 using Microsoft.Extensions.Localization;
 using Humans.Roles.Contracts;
 using System.Globalization;
@@ -10,8 +9,6 @@ using Humans.Base.Extensions;
 // User.DisplayName is Obsolete; the seeders still set it.
 #pragma warning disable CS0618
 using AwesomeAssertions;
-using Humans.Base.Caching;
-using Humans.Base.Interfaces.Caching;
 using Humans.AuditLog.Contracts;
 using Humans.Auth.Contracts;
 using Humans.Auth.Data;
@@ -19,14 +16,11 @@ using Humans.Auth.Services;
 using Humans.Base.Constants;
 using Humans.Base.Enums;
 using Humans.Email.Contracts;
-using Humans.EarlyEntry.Contracts;
 using Humans.Notifications.Contracts;
 using Humans.Google.Contracts;
 using Humans.Google.Data;
 using Humans.Google.Services;
-using Humans.Settings.Contracts;
 using Humans.Teams.Contracts;
-using Humans.Teams.Models;
 using Humans.Teams.Data;
 using Humans.Teams.Domain;
 using Humans.Teams.Services;
@@ -34,7 +28,6 @@ using Humans.Teams.Tests.Infrastructure;
 using Humans.Users.Contracts;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Diagnostics;
-using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Logging.Abstractions;
 using NodaTime;
 using Microsoft.Extensions.DependencyInjection;
@@ -89,6 +82,31 @@ public sealed class TeamServiceTests : TeamsTestHarness
         var recipients = Notifier.ReceivedCalls().SelectMany(call => (IReadOnlyList<Guid>)call.GetArguments()[4]!).ToList();
         recipients.Should().BeEquivalentTo(notice is CanonicalNotice.JoinRequest or CanonicalNotice.MemberJoined
             ? new[] { live, other } : [live]);
+    }
+
+    [HumansTheory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task SendAddedToTeamEmail_Tombstone_SkipsWelcome(bool legacy)
+    {
+        var id = Guid.NewGuid();
+        var user = UserInfo.Create(new User { Id = id, Email = legacy ? "erased@deleted.local" : "member@example.org" },
+            [new UserEmail { UserId = id, Email = "member@example.org", IsVerified = true, IsPrimary = true }], [], null);
+        if (!legacy) user = user with { State = UserState.Deleted };
+        var users = Substitute.For<IUserService>();
+        users.GetUserInfosAsync(Arg.Any<IEnumerable<Guid>>(), Arg.Any<CancellationToken>())
+            .Returns(new Dictionary<Guid, UserInfo> { [id] = user });
+        var provider = new ServiceLocatorBuilder().With(users).With<ITeamResourceService>(_teamResourceService)
+            .With(_emailService).With(TestTeamsEmails.Create()).Build();
+        var service = new TeamService(Substitute.For<ITeamRepository>(), AuditLog, Notifier,
+            AdminAuthorization, provider, Clock, NullLogger<TeamService>.Instance);
+        var team = new Team { Id = Guid.NewGuid(), Name = "Team", Slug = "team" };
+
+        await service.SendAddedToTeamEmailAsync(id, team, TestContext.Current.CancellationToken);
+
+        _emailService.ReceivedCalls().Should().BeEmpty();
+        Notifier.ReceivedCalls().Should().BeEmpty();
+        await _teamResourceService.DidNotReceiveWithAnyArgs().GetTeamResourcesAsync(default);
     }
 
     private readonly TeamService _service;
@@ -3363,7 +3381,7 @@ public sealed class TeamServiceTests : TeamsTestHarness
 
         result.Succeeded.Should().BeTrue();
         result.WasCoordinator.Should().BeTrue();
-        (await _service.GetUserCoordinatedTeamIdsAsync(user.Id, Xunit.TestContext.Current.CancellationToken))
+        (await _service.GetUserCoordinatedTeamIdsAsync(user.Id, TestContext.Current.CancellationToken))
             .Should().NotContain(team.Id);
     }
 

@@ -48,6 +48,7 @@ internal sealed class SearchController(
             Query = query,
             Filter = results.Filter,
             Buckets = results.Buckets
+                .OrderBy(b => b.Weight).ThenBy(b => b.Key, StringComparer.Ordinal)
                 .Select(b => b with
                 {
                     Hits = b.Hits

@@ -11,7 +11,6 @@ using Humans.Stripe.Contracts;
 using Humans.Base.Enums;
 using Humans.Holded.Contracts;
 using Microsoft.Extensions.Logging.Abstractions;
-using Microsoft.Extensions.Options;
 using NodaTime;
 using NodaTime.Testing;
 using NSubstitute;
@@ -421,18 +420,18 @@ public class SummaryAggregateTests
         var result = await _service.GetStoreSummaryAsync(2026, Xunit.TestContext.Current.CancellationToken);
 
         const long expected = 2L * int.MaxValue;
-        result.ByItem.Sum(item => (long)item.TotalQty).Should().Be(expected);
-        result.CrossTab.Products.Sum(column => (long)column.TotalQty).Should().Be(expected);
+        result.ByItem.Sum(item => item.TotalQty).Should().Be(expected);
+        result.CrossTab.Products.Sum(column => column.TotalQty).Should().Be(expected);
         var row = result.CrossTab.Counterparties.Should().ContainSingle().Subject;
-        ((long)row.TotalQty).Should().Be(expected);
+        row.TotalQty.Should().Be(expected);
         foreach (var product in products)
         {
             var quantity = sameProduct ? expected : int.MaxValue;
-            ((long)result.ByItem.Single(item => item.ProductId == product.Id).TotalQty).Should().Be(quantity);
-            ((long)result.CrossTab.Products.Single(column => column.ProductId == product.Id).TotalQty).Should().Be(quantity);
-            ((long)row.QtyByProduct[product.Id]).Should().Be(quantity);
+            result.ByItem.Single(item => item.ProductId == product.Id).TotalQty.Should().Be(quantity);
+            result.CrossTab.Products.Single(column => column.ProductId == product.Id).TotalQty.Should().Be(quantity);
+            row.QtyByProduct[product.Id].Should().Be(quantity);
         }
-        result.ByCounterparty.Should().ContainSingle().Which.TotalDueEur.Should().Be((decimal)expected);
+        result.ByCounterparty.Should().ContainSingle().Which.TotalDueEur.Should().Be(expected);
     }
 
     private static CampInfo MakeCampInfo(Guid seasonId, string name, string slug)

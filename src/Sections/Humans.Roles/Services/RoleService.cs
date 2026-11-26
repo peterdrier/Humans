@@ -1,3 +1,4 @@
+using System.Text;
 using Humans.AuditLog.Contracts;
 using Humans.Auth.Contracts;
 using Humans.Base.Authorization;
@@ -10,6 +11,8 @@ using Humans.Permissions.Contracts;
 using Humans.Roles.Contracts;
 using Humans.Roles.Data;
 using Humans.Roles.Domain;
+using Humans.Users.Contracts;
+using Humans.Teams.Contracts;
 using Microsoft.Extensions.Localization;
 using NodaTime;
 
@@ -27,6 +30,7 @@ internal sealed class RoleService(
     IEnumerable<ISectionPermissions> sectionPermissions,
     IEnumerable<IEntityNameContributor> names,
     IRoleAssignmentService systemRoles,
+    IUserService users,
     IAuditLogService audit,
     IClock clock,
     IStringLocalizer<RolesResource> localizer,
@@ -110,7 +114,6 @@ internal sealed class RoleService(
             .SelectMany(s => s.Permissions)
             .Where(p => p.OwnerKinds.Contains(owner.Kind, StringComparer.Ordinal) && (topLevel || !p.TopLevelOnly))
             .Select(p => p with { Title = Title(p), Blurb = localizers.Create(p.Resource)[p.Blurb].Value })
-            .OrderBy(p => p.Title, StringComparer.CurrentCultureIgnoreCase)
             .ToList();
     }
 
@@ -231,6 +234,10 @@ internal sealed class RoleService(
         var owner = OwnerOf(role);
         if (!await CanTouchAsync(owner, role.IsCoordinator, actorUserId, ct))
             return Refuse(T("Roles_Refusal_NotAllowed"));
+        var person = await users.GetUserInfoAsync(userId, ct);
+        if (person is null || person.IsTombstone)
+            return Refuse(T("Roles_Refusal_NoPerson"));
+        userId = person.Id;
         if (role.Assignments.Any(a => a.UserId == userId))
             return Refuse(T("Roles_Refusal_AlreadyHolds"));
 
@@ -350,7 +357,7 @@ internal sealed class RoleService(
 
         if (string.IsNullOrWhiteSpace(input.Name))
             return T("Roles_Refusal_NoName");
-        if (input.Name.Trim().Length > 100)
+        if (input.Name.Trim().EnumerateRunes().Count() > 100)
             return T("Roles_Refusal_NameTooLong");
         if (others.Any(r => string.Equals(r.Name, input.Name.Trim(), StringComparison.OrdinalIgnoreCase)))
             return T("Roles_Refusal_NameTaken");
@@ -361,14 +368,29 @@ internal sealed class RoleService(
             return T("Roles_Refusal_NameNoLetters");
         if (customSlug is { Length: 0 })
             return T("Roles_Refusal_LinkNoLetters");
+        if (customSlug is { Length: > 100 })
+            return T("Roles_Refusal_LinkTooLong");
+        if (!string.IsNullOrWhiteSpace(input.Description) && input.Description.EnumerateRunes().Count() > 2000)
+            return T("Roles_Refusal_DescriptionTooLong");
         var taken = others.SelectMany(r => new[] { r.Slug, r.CustomSlug }).OfType<string>().ToHashSet(StringComparer.Ordinal);
         if (taken.Contains(slug) || (customSlug is not null && (taken.Contains(customSlug) || string.Equals(customSlug, slug, StringComparison.Ordinal))))
             return T("Roles_Refusal_LinkTaken");
 
         if (input.SlotCount < 1)
             return T("Roles_Refusal_NoSlots");
-        if (input.Priorities.Count != input.SlotCount || input.Priorities.Any(p => !Enum.IsDefined(p)))
-            return T("Roles_Refusal_Priorities");
+        // Count separators and default priorities before allocating from the submitted slot count.
+        var prioritiesLength = (long)input.SlotCount - 1
+            + (long)Math.Max(input.SlotCount - input.Priorities.Count, 0) * nameof(SlotPriority.None).Length;
+        if (prioritiesLength > 500)
+            return T("Roles_Refusal_PrioritiesTooLong");
+        foreach (var priority in input.Priorities.Take(input.SlotCount))
+        {
+            if (!Enum.IsDefined(priority))
+                return T("Roles_Refusal_Priorities");
+            prioritiesLength += priority.ToString().Length;
+            if (prioritiesLength > 500)
+                return T("Roles_Refusal_PrioritiesTooLong");
+        }
         if (input.EstimatedHours is < 0)
             return T("Roles_Refusal_NegativeHours");
         if (!Enum.IsDefined(input.Period))
@@ -400,7 +422,8 @@ internal sealed class RoleService(
         role.CustomSlug = string.IsNullOrWhiteSpace(input.CustomSlug) ? null : SlugHelper.GenerateSlug(input.CustomSlug);
         role.Description = string.IsNullOrWhiteSpace(input.Description) ? null : input.Description;
         role.SlotCount = input.SlotCount;
-        role.Priorities = [.. input.Priorities];
+        role.Priorities = [.. Enumerable.Range(0, input.SlotCount)
+            .Select(i => i < input.Priorities.Count ? input.Priorities[i] : SlotPriority.None)];
         role.SortOrder = input.SortOrder;
         role.Period = input.Period;
         role.EstimatedHours = input.EstimatedHours;

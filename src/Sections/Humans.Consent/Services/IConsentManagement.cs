@@ -1,4 +1,3 @@
-using Humans.Base.Interfaces;
 using Humans.Consent.Contracts;
 using NodaTime;
 
@@ -29,7 +28,7 @@ internal sealed record ConsentDashboardHistoryItem(
     Instant ConsentedAt);
 
 /// <summary>Adds the consent dashboard, whose records the section's view renders directly.</summary>
-internal interface IConsentManagement : IConsentService, IConsentSubmission, IApplicationService
+internal interface IConsentManagement : IConsentService, IConsentSubmission
 {
     /// <summary>Every input user id appears, with an empty set when it has no consents.</summary>
     Task<IReadOnlyDictionary<Guid, IReadOnlySet<Guid>>> GetConsentMapForUsersAsync(

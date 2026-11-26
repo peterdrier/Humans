@@ -14,7 +14,14 @@
                         <strong>@SharedLocalizer["Dashboard_TermExpired"]</strong>
                         <br /><small class="text-muted">@SharedLocalizer["Dashboard_MembershipTier"]: @Model.MembershipTier</small>
                     </div>
-                    <a asp-controller="GovernanceApplications" asp-action="Create" class="btn btn-sm btn-primary ms-3">@SharedLocalizer["Dashboard_RenewNow"]</a>
+                    @if (Model.HasPendingApplication)
+                    {
+                        <span class="small text-muted ms-3">@SharedLocalizer["Dashboard_TierApplicationPending"]</span>
+                    }
+                    else
+                    {
+                        <a asp-controller="GovernanceApplications" asp-action="Create" class="btn btn-sm btn-primary ms-3">@SharedLocalizer["Dashboard_RenewNow"]</a>
+                    }
                 </div>
             </div>
         }
@@ -29,7 +36,14 @@
                         @Html.Raw(string.Format(SharedLocalizer["Dashboard_TermExpiresSoon"].Value, Model.TermExpiresAt?.ToDate()))
                         <br /><small class="text-muted">@SharedLocalizer["Dashboard_MembershipTier"]: @Model.MembershipTier</small>
                     </div>
-                    <a asp-controller="GovernanceApplications" asp-action="Create" class="btn btn-sm btn-warning ms-3">@SharedLocalizer["Dashboard_RenewNow"]</a>
+                    @if (Model.HasPendingApplication)
+                    {
+                        <span class="small text-muted ms-3">@SharedLocalizer["Dashboard_TierApplicationPending"]</span>
+                    }
+                    else
+                    {
+                        <a asp-controller="GovernanceApplications" asp-action="Create" class="btn btn-sm btn-warning ms-3">@SharedLocalizer["Dashboard_RenewNow"]</a>
+                    }
                 </div>
             </div>
         }

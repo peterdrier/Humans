@@ -3,7 +3,6 @@ using System.Resources;
 using System.Net;
 using System.Text.RegularExpressions;
 using Humans.Email.Contracts;
-using Humans.Users.Tests.Infrastructure;
 using AwesomeAssertions;
 using System.Security.Claims;
 using System.Text.Encodings.Web;

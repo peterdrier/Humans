@@ -2,7 +2,6 @@ using Humans.Base.Caching;
 using Humans.Base.Interfaces.Caching;
 using Humans.Gdpr.Contracts;
 using Humans.Tickets.Contracts;
-using Humans.Tickets.Domain;
 using Humans.Users.Contracts;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
@@ -204,7 +203,7 @@ internal sealed class CachingTicketQueryService
     {
         try
         {
-            return await WithInnerAsync<TInner, TResult>(work);
+            return await WithInnerAsync(work);
         }
         finally
         {

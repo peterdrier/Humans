@@ -1086,8 +1086,8 @@ public class ExpenseReportServiceHoldedOutboxTests
 
         await _backgroundProcessor.DrainHoldedOutboxAsync(BatchSize, ct);
 
-        await _repo.DidNotReceiveWithAnyArgs().IncrementOutboxRetryAsync(default, null!, default, default);
-        await _repo.DidNotReceiveWithAnyArgs().MarkOutboxFailedPermanentlyAsync(default, null!, default, default);
+        await _repo.DidNotReceiveWithAnyArgs().IncrementOutboxRetryAsync(default, null!, default);
+        await _repo.DidNotReceiveWithAnyArgs().MarkOutboxFailedPermanentlyAsync(default, null!, default);
         await _auditLog.DidNotReceive().LogAsync(ExpensesAuditActions.ExpenseHoldedFailed,
             Arg.Any<string>(), report.Id, Arg.Any<string>(), Arg.Any<string>());
     }
@@ -1221,8 +1221,8 @@ public class ExpenseReportServiceHoldedOutboxTests
         var action = () => _backgroundProcessor.DrainHoldedOutboxAsync(BatchSize, cancellation.Token);
 
         await action.Should().ThrowAsync<OperationCanceledException>();
-        await _repo.DidNotReceiveWithAnyArgs().IncrementOutboxRetryAsync(default, null!, default, default);
-        await _repo.DidNotReceiveWithAnyArgs().MarkOutboxFailedPermanentlyAsync(default, null!, default, default);
+        await _repo.DidNotReceiveWithAnyArgs().IncrementOutboxRetryAsync(default, null!, default);
+        await _repo.DidNotReceiveWithAnyArgs().MarkOutboxFailedPermanentlyAsync(default, null!, default);
     }
 
     [HumansFact]

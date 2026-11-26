@@ -196,15 +196,18 @@ public class SepaPaymentFileBuilderTests
             "40000007 - NCA - Bo Jansen");
     }
 
-    [HumansFact]
-    public void Build_NamesAreFoldedIntoTheSepaSubset()
+    [HumansTheory]
+    [Xunit.InlineData("Iñaki Peña-Çelik & Søren <Bø>", "Inaki Pena-Celik Soren Bo")]
+    [Xunit.InlineData("Straße", "Strasse")]
+    [Xunit.InlineData("STRAẞE", "STRASSE")]
+    public void Build_NamesAreFoldedIntoTheSepaSubset(string raw, string expected)
     {
-        var request = Request(Ana(name: "Iñaki Peña-Çelik & Søren <Bø>"));
+        var request = Request(Ana(name: raw)) with { Debtor = Org() with { Name = raw } };
 
-        var name = Parse(SepaPaymentFileBuilder.Build(request))
-            .Descendants(Ns + "Cdtr").Single().Element(Ns + "Nm")!.Value;
-
-        name.Should().Be("Inaki Pena-Celik Soren Bo");
+        var doc = Parse(SepaPaymentFileBuilder.Build(request));
+        doc.Descendants(Ns + "Cdtr").Single().Element(Ns + "Nm")!.Value.Should().Be(expected);
+        doc.Descendants(Ns + "Dbtr").Single().Element(Ns + "Nm")!.Value.Should().Be(expected);
+        doc.Descendants(Ns + "Ustrd").Single().Value.Should().Be("40000004 - NCA - " + expected);
     }
 
     [HumansFact]

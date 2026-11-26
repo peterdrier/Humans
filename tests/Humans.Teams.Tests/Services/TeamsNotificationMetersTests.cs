@@ -48,7 +48,7 @@ public sealed class TeamsNotificationMetersTests : IDisposable
         var meters = await _sut.GetMetersAsync(Viewer(RoleNames.Board), Guid.NewGuid(), TestContext.Current.CancellationToken);
 
         meters.Should().BeEmpty();
-        await _teams.DidNotReceiveWithAnyArgs().GetTeamsAsync(default);
+        await _teams.DidNotReceiveWithAnyArgs().GetTeamsAsync();
     }
 
     private static ClaimsPrincipal Viewer(string role) =>

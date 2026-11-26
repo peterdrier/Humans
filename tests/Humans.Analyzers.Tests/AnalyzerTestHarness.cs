@@ -30,12 +30,14 @@ internal static class AnalyzerTestHarness
     /// under test.
     /// </param>
     /// <param name="sourcePath">Optional declaring path for folder-scoped rules.</param>
+    /// <param name="additionalFile">Optional additional file handed to the analyzer, as MSBuild <c>AdditionalFiles</c> does.</param>
     public static async Task<ImmutableArray<Diagnostic>> RunAsync(
         DiagnosticAnalyzer analyzer,
         string assemblyName,
         string source,
         string? referencedSource = null,
-        string sourcePath = "")
+        string sourcePath = "",
+        (string Path, string Text)? additionalFile = null)
     {
         var references = BaseReferences;
         if (referencedSource is not null)
@@ -70,7 +72,10 @@ internal static class AnalyzerTestHarness
                 string.Join("; ", compileDiagnostics.Select(d => d.ToString())));
         }
 
-        var withAnalyzers = compilation.WithAnalyzers([analyzer]);
+        var options = additionalFile is { } file
+            ? new AnalyzerOptions([new InMemoryAdditionalText(file.Path, file.Text)])
+            : null;
+        var withAnalyzers = compilation.WithAnalyzers([analyzer], options);
         return await withAnalyzers.GetAnalyzerDiagnosticsAsync(Xunit.TestContext.Current.CancellationToken).ConfigureAwait(false);
     }
 
@@ -97,5 +102,13 @@ internal static class AnalyzerTestHarness
             builder.Add(MetadataReference.CreateFromFile(path));
         }
         return builder.ToImmutable();
+    }
+
+    private sealed class InMemoryAdditionalText(string path, string text) : AdditionalText
+    {
+        public override string Path => path;
+
+        public override Microsoft.CodeAnalysis.Text.SourceText GetText(CancellationToken cancellationToken = default) =>
+            Microsoft.CodeAnalysis.Text.SourceText.From(text);
     }
 }

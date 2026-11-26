@@ -1,5 +1,4 @@
 using AwesomeAssertions;
-using Humans.Events.Contracts;
 using Humans.Events.Domain;
 using NodaTime;
 using NodaTime.Testing;

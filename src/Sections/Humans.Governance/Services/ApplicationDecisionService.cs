@@ -8,17 +8,14 @@ using NodaTime;
 using Humans.Governance.Services.Dtos;
 using Humans.Base.Extensions;
 using Humans.Base.Interfaces;
-using Humans.Base.Interfaces.Caching;
 using Humans.Governance.Contracts;
 using Humans.Base.Constants;
-using Humans.Base.Enums;
 using MemberApplication = Humans.Governance.Domain.Application;
 using Humans.AuditLog.Contracts;
 using Humans.Email.Contracts;
 using Humans.Notifications.Contracts;
 using Humans.Users.Contracts;
 
-using Humans.Teams.Contracts;
 using System.Globalization;
 using System.Resources;
 
@@ -496,8 +493,12 @@ internal sealed class ApplicationDecisionService(
         try
         {
             var user = await userService.GetUserInfoAsync(application.UserId, cancellationToken);
-            if (user is null)
+            if (user is null || user.IsTombstone)
+            {
+                logger.LogWarning("Skipping {DecisionName} email for application {ApplicationId}: user {UserId} is unavailable",
+                    decisionName, application.Id, application.UserId);
                 return (recipientId, culture);
+            }
 
             recipientId = user.Id;
             culture = CultureInfo.GetCultureInfo(user.PreferredLanguage.IsSupportedCultureCode() ? user.PreferredLanguage : "en");

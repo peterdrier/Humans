@@ -2,7 +2,6 @@ using System.Security.Claims;
 using AwesomeAssertions;
 using Humans.AuditLog.Contracts;
 using Humans.Users.Models;
-using Humans.Users.Tests.Infrastructure;
 using Humans.Users.Controllers;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
@@ -111,8 +110,8 @@ public class UsersAdminAccountMergesControllerTests
         (row.AccountA.UserId, row.AccountB.UserId).Should().Be((pickedA, pickedB));
         // Newest first; a merge done by one of the two accounts is self-service (no "by").
         model.Recent.Select(r => (r.KeptUserId, r.MergedAwayUserId, r.By, r.Failed)).Should().Equal(
-            (kept, mergedAway, (Guid?)_adminUserId, true),
-            (kept, mergedAway, (Guid?)null, false));
+            (kept, mergedAway, _adminUserId, true),
+            (kept, mergedAway, null, false));
     }
 
     [HumansFact]

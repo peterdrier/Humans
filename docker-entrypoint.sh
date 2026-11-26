@@ -13,7 +13,9 @@ if [ -z "$PR_ID" ] && [ -n "$COOLIFY_FQDN" ]; then
 fi
 
 if [ -n "$PR_ID" ] && [ -n "$DB_PASSWORD" ]; then
-  export ConnectionStrings__DefaultConnection="Host=humans-db;Database=humans_pr_${PR_ID};Username=humans;Password=${DB_PASSWORD}"
+  # Every preview shares one Postgres server. Cap each pool (EF and Hangfire each get one) so
+  # more previews fit; a busy preview queues for a connection instead of starving the rest.
+  export ConnectionStrings__DefaultConnection="Host=humans-db;Database=humans_pr_${PR_ID};Username=humans;Password=${DB_PASSWORD};Maximum Pool Size=10"
 
   # Preview deploys get the Admin dev-login persona; QA (same Staging environment name, real
   # integration credentials) does not. Tied to the switch above, not to PR_ID: without the

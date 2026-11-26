@@ -61,7 +61,6 @@ public sealed class AdminAgentControllerTests
     [HumansTheory]
     [Xunit.InlineData("Enabled", false)]
     [Xunit.InlineData("Model", false)]
-    [Xunit.InlineData("PreloadConfig", false)]
     [Xunit.InlineData("DailyMessageCap", false)]
     [Xunit.InlineData("HourlyMessageCap", false)]
     [Xunit.InlineData("DailyTokenCap", false)]
@@ -95,7 +94,6 @@ public sealed class AdminAgentControllerTests
         {
             ["Enabled"] = zeroChoices ? "false" : "true",
             ["Model"] = "selected-model",
-            ["PreloadConfig"] = zeroChoices ? "0" : "1",
             ["DailyMessageCap"] = zeroChoices ? "0" : "40",
             ["HourlyMessageCap"] = zeroChoices ? "0" : "20",
             ["DailyTokenCap"] = zeroChoices ? "0" : "60000",
@@ -130,7 +128,6 @@ public sealed class AdminAgentControllerTests
             await settings.Received(1).UpdateAsync(Arg.Any<Action<AgentSettings>>(), actor, ct);
             saved.Enabled.Should().Be(!zeroChoices);
             saved.Model.Should().Be("selected-model");
-            saved.PreloadConfig.Should().Be(zeroChoices ? AgentPreloadConfig.Tier1 : AgentPreloadConfig.Tier2);
             saved.DailyMessageCap.Should().Be(zeroChoices ? 0 : 40);
             saved.HourlyMessageCap.Should().Be(zeroChoices ? 0 : 20);
             saved.DailyTokenCap.Should().Be(zeroChoices ? 0 : 60000);
@@ -155,7 +152,7 @@ public sealed class AdminAgentControllerTests
             TempData = new TempDataDictionary(context, Substitute.For<ITempDataProvider>())
         };
 
-        var result = await controller.ReloadKnowledgeBase(cancellationToken);
+        var result = await controller.ReloadCommunityFaq(cancellationToken);
 
         result.Should().BeOfType<RedirectToActionResult>().Which.ActionName.Should().Be(nameof(AdminAgentController.Status));
         controller.TempData.Should().ContainKey(succeeded ? TempDataKeys.SuccessMessage : TempDataKeys.ErrorMessage);

@@ -1,6 +1,5 @@
 using AwesomeAssertions;
 using Humans.Auth.Contracts;
-using Humans.Governance;
 using Humans.Governance.Contracts;
 using Microsoft.Extensions.Localization;
 using Humans.Governance.ViewComponents;

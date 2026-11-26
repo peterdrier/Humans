@@ -1,4 +1,3 @@
-using AwesomeAssertions;
 using Humans.Base.Enums;
 using System.Globalization;
 using Humans.Base.ViewComponents;
@@ -327,7 +326,7 @@ public class TicketDashboardViewTests
         var services = scope.ServiceProvider;
         var engine = services.GetRequiredService<IRazorViewEngine>();
         var result = engine.GetView(null, viewPath ?? $"/Views/Ticket/{page}.cshtml", isMainPage: false);
-        Assert.True(result.Success, string.Join(", ", result.SearchedLocations ?? []));
+        Assert.True(result.Success, string.Join(", ", result.SearchedLocations));
         var http = new DefaultHttpContext { RequestServices = services };
         http.Request.Path = $"/Tickets/{page}";
         var route = new RouteData();

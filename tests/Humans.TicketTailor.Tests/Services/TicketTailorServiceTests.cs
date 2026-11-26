@@ -13,6 +13,34 @@ public class TicketTailorServiceTests
     [Xunit.InlineData("GetOrdersAsync")]
     [Xunit.InlineData("GetIssuedTicketsAsync")]
     [Xunit.InlineData("GetCheckInsAsync")]
+    public async Task PaginatedRead_StopsAtTheSafetyCapWithoutReturningAPartialList(string operation)
+    {
+        var handler = new RecordingHttpHandler();
+        for (var page = 1; page <= 501; page++)
+            handler.EnqueueResponse(HttpStatusCode.OK, new
+            {
+                data = new[] { new { id = $"row_{page}", issued_ticket_id = $"ticket_{page}", quantity = 1,
+                    total = 100, currency = new { code = "eur" }, status = "completed", created_at = 1716811200L } },
+                links = new { next = page == 501 ? null : "more" },
+            });
+        var service = TicketTailorTestHost.CreateService(handler);
+        var ct = Xunit.TestContext.Current.CancellationToken;
+        Func<Task> read = operation switch
+        {
+            "GetOrdersAsync" => () => service.GetOrdersAsync(null, "ev_test", ct),
+            "GetIssuedTicketsAsync" => () => service.GetIssuedTicketsAsync(null, "ev_test", ct),
+            "GetCheckInsAsync" => () => service.GetCheckInsAsync(null, "ev_test", ct),
+            _ => throw new ArgumentOutOfRangeException(nameof(operation)),
+        };
+
+        (await read.Should().ThrowAsync<HttpRequestException>()).WithMessage("*500-page*");
+        handler.RequestCount.Should().Be(500);
+    }
+
+    [HumansTheory]
+    [Xunit.InlineData("GetOrdersAsync")]
+    [Xunit.InlineData("GetIssuedTicketsAsync")]
+    [Xunit.InlineData("GetCheckInsAsync")]
     public async Task PaginatedRead_TimesEachPageSeparately_NotTheWholeLoop(string operation)
     {
         // HttpClient.Timeout and the timing extension's Error

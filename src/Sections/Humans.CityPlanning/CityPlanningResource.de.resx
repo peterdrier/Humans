@@ -388,4 +388,7 @@
   <data name="CityPlanning_GenericCamp" xml:space="preserve">
     <value>Zeltlager</value>
   </data>
+  <data name="CityPlanning_MapRefreshFailed" xml:space="preserve">
+    <value>Die Platzierungen auf der Karte konnten nicht aktualisiert werden. Lade die Seite neu, um die neuesten Änderungen zu sehen.</value>
+  </data>
 </root>

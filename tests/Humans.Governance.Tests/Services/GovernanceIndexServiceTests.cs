@@ -1,6 +1,5 @@
 using System.Security.Claims;
 using Humans.Governance.Controllers;
-using Humans.Governance.Tests.Infrastructure;
 using Microsoft.AspNetCore.Authorization;
 using Humans.Base.Authorization;
 using Humans.Governance.Models;
@@ -279,14 +278,14 @@ public sealed class GovernanceIndexServiceTests
     private GovernanceBodyLinksService BodyLinks() =>
         new(_bodies, Substitute.For<ITeamService>(), Substitute.For<ITeamResourceService>(), Substitute.For<IAuditLogService>(),
             new GovernanceBodySync(_bodies, Substitute.For<IGoogleGroupSync>(), Substitute.For<IGoogleSyncWrite>()),
-            NodaTime.SystemClock.Instance);
+            SystemClock.Instance);
 
     private GovernanceController CreateController(Guid userId, IAuthorizationService authorization, CancellationToken ct = default) =>
         new(_users, CreateService(),
             new GovernanceBoardSeats(_roles, Substitute.For<IRoleAssignmentWrite>(), _users, _bodies,
                 Substitute.For<IAuditLogService>(),
                 new GovernanceBodySync(_bodies, Substitute.For<IGoogleGroupSync>(), Substitute.For<IGoogleSyncWrite>()),
-                NodaTime.SystemClock.Instance),
+                SystemClock.Instance),
             BodyLinks(),
             authorization,
             Substitute.For<Microsoft.Extensions.Localization.IStringLocalizer<GovernanceResource>>())

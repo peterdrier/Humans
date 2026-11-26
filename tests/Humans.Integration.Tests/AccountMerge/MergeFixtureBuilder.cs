@@ -29,9 +29,7 @@ using MemberApplication = Humans.Governance.Domain.Application;
 using Humans.Users.Contracts;
 using Humans.Users.Data;
 using Humans.Users.Domain;
-using Humans.Teams.Contracts;
 using Humans.Shifts.Contracts;
-using Humans.AuditLog.Contracts;
 
 namespace Humans.Integration.Tests.AccountMerge;
 
@@ -203,7 +201,7 @@ public sealed class MergeFixtureBuilder
 
     private MergeFixtureBuilder AddCommPref(Guid userId, MessageCategory category, bool optedOut, Instant? updatedAt)
     {
-        _pendingEmail.Add(db => db.CommunicationPreferences.Add(new Humans.Email.Domain.CommunicationPreference
+        _pendingEmail.Add(db => db.CommunicationPreferences.Add(new Email.Domain.CommunicationPreference
         {
             Id = Guid.NewGuid(),
             UserId = userId,
@@ -242,7 +240,7 @@ public sealed class MergeFixtureBuilder
 
     private MergeFixtureBuilder AddEventParticipation(Guid userId, int year, ParticipationStatus status)
     {
-        _pendingTickets.Add(db => db.EventParticipations.Add(new Humans.Tickets.Domain.EventParticipation
+        _pendingTickets.Add(db => db.EventParticipations.Add(new Tickets.Domain.EventParticipation
         {
             Id = Guid.NewGuid(),
             UserId = userId,

@@ -60,7 +60,7 @@ public sealed class WorkgroupServiceLifecycleTests : WorkgroupsTestHarness
 
         result.Refusal.Should().BeNull();
         var messages = Email.ReceivedCalls().Select(call => call.GetArguments()[0])
-            .Cast<Humans.Email.Contracts.EmailMessage>().ToList();
+            .Cast<Email.Contracts.EmailMessage>().ToList();
         messages.Select(message => message.UserId).Should().BeEquivalentTo(
             audience == NoticeAudience.Coordinators ? new Guid?[] { survivorId } : [survivorId, otherId]);
         var liveMessage = messages.Should().ContainSingle(message => message.UserId == survivorId).Subject;
@@ -68,6 +68,40 @@ public sealed class WorkgroupServiceLifecycleTests : WorkgroupsTestHarness
         liveMessage.RecipientName.Should().Be("Live recipient");
         liveMessage.Culture.Should().Be("es");
         liveMessage.Subject.Should().EndWith("#es");
+    }
+
+    [HumansTheory]
+    [InlineData(NoticeAudience.Coordinators, UserState.Deleted)]
+    [InlineData(NoticeAudience.Coordinators, UserState.Merged)]
+    [InlineData(NoticeAudience.Board, UserState.Deleted)]
+    [InlineData(NoticeAudience.Board, UserState.Merged)]
+    public async Task LifecycleEmails_TombstoneRecipient_ContinuesLiveDelivery(NoticeAudience audience, UserState state)
+    {
+        var unavailable = SeedUser("Unavailable");
+        var live = SeedUser("Live recipient");
+        var snapshot = Xunit.Assert.IsType<UserInfo>(await Users.GetUserInfoAsync(unavailable, Ct));
+        var liveInfo = Xunit.Assert.IsType<UserInfo>(await Users.GetUserInfoAsync(live, Ct));
+        var people = new Dictionary<Guid, UserInfo> { [unavailable] = snapshot with { State = state }, [live] = liveInfo };
+        Users.GetUserInfosAsync(Arg.Any<IEnumerable<Guid>>(), Arg.Any<CancellationToken>())
+            .Returns(call => call.Arg<IEnumerable<Guid>>().Where(people.ContainsKey).ToDictionary(id => id, id => people[id]));
+        var group = await SeedWorkgroupAsync(
+            status: audience == NoticeAudience.Coordinators ? WorkgroupStatus.Dormant : WorkgroupStatus.Applied,
+            coordinatorUserId: live);
+        if (audience == NoticeAudience.Coordinators)
+            await AddMemberAsync(group.Id, unavailable, WorkgroupMemberRole.Coordinator);
+        else
+            Roles.GetActiveUserIdsInRoleAsync(Arg.Any<string>(), Arg.Any<CancellationToken>()).Returns([unavailable, live]);
+
+        var result = audience == NoticeAudience.Coordinators
+            ? await NewService().ReactivateAsync(group.Id, live, Ct)
+            : await NewService().ReferAsync(group.Id, live, "Review", Ct);
+
+        result.Refusal.Should().BeNull();
+        await using var db = OpenContext();
+        (await db.Workgroups.SingleAsync(w => w.Id == group.Id, Ct)).Status.Should().Be(
+            audience == NoticeAudience.Coordinators ? WorkgroupStatus.Active : WorkgroupStatus.Referred);
+        var messages = Email.ReceivedCalls().Select(call => call.GetArguments()[0]).Cast<Email.Contracts.EmailMessage>();
+        messages.Should().ContainSingle().Which.UserId.Should().Be(live);
     }
 
     [HumansTheory]
@@ -404,7 +438,7 @@ public sealed class WorkgroupServiceLifecycleTests : WorkgroupsTestHarness
     public async Task Refuse_FromAppliedOrReferred_WithReasons_Succeeds(
         string fromName, string? language, string expectedLanguage)
     {
-        using var culture = new Humans.Base.Extensions.CultureScope("fr");
+        using var culture = new Base.Extensions.CultureScope("fr");
         var from = Enum.Parse<WorkgroupStatus>(fromName);
         var coordinator = SeedUser("Coordinator", language: language!);
         var workgroup = await SeedWorkgroupAsync(status: from, coordinatorUserId: coordinator);
@@ -416,7 +450,7 @@ public sealed class WorkgroupServiceLifecycleTests : WorkgroupsTestHarness
         reloaded.Status.Should().Be(WorkgroupStatus.Refused);
         reloaded.Reasons.Should().Be("Duplicates an existing group");
         var message = Email.ReceivedCalls().Should().ContainSingle().Which.GetArguments()[0]
-            .Should().BeOfType<Humans.Email.Contracts.EmailMessage>().Subject;
+            .Should().BeOfType<Email.Contracts.EmailMessage>().Subject;
         message.Subject.Should().EndWith($"#{expectedLanguage}");
         message.RecipientName.Should().Be("Coordinator");
         System.Globalization.CultureInfo.CurrentUICulture.Name.Should().Be("fr");

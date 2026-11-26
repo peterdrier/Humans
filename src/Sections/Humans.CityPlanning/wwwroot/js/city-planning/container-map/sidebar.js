@@ -28,12 +28,8 @@ export function setContainers(containers) {
     render();
 }
 
-export function markPlaced(_id) {
-    _activeId = null;
-    render();
-}
-
-export function markUnplaced(_id) {
+export function markPlaced(id) {
+    if (_activeId === id) _activeId = null;
     render();
 }
 

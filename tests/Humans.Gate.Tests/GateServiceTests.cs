@@ -704,7 +704,7 @@ public class GateServiceTests
     }
 
     [HumansFact]
-    public async Task Merge_RepointsScannerOverrideAndUndo_AndCarriesThePinToAPinlessSurvivor()
+    public async Task Merge_RepointsUserLinksToPinlessSurvivor()
     {
         StubTicket(matchedUserId: GuestId);
         await RecordAsync(idConfirmed: true, overrideEarly: true, pin: SupervisorPin);
@@ -819,7 +819,7 @@ public class GateServiceTests
             {
                 await aborted.CancelAsync();
                 call.Arg<CancellationToken>().ThrowIfCancellationRequested();
-                return (IReadOnlyList<UrgentShiftInfo>)[];
+                return [];
             });
 
         var act = () => _svc.GetShiftRosterAsync(Guid.NewGuid(), aborted.Token);
@@ -1002,7 +1002,7 @@ public class GateServiceTests
             await act.Should().ThrowAsync<OperationCanceledException>();
         else
             await act.Should().NotThrowAsync();
-        await vendor.DidNotReceiveWithAnyArgs().CreateCheckInAsync(default!, default, default);
+        await vendor.DidNotReceiveWithAnyArgs().CreateCheckInAsync(default!, default);
     }
 
     [HumansFact]
@@ -1064,7 +1064,7 @@ public class GateServiceTests
         _config["Gate:VendorMirrorEnabled"] = "false";
         _tickets.ClearReceivedCalls();
 
-        foreach (var id in new string?[] { "vt-A", null })
+        foreach (var id in new[] { "vt-A", null })
         {
             var result = await _svc.EnqueueVendorCheckInBackfillAsync(id);
             result.MirrorEnabled.Should().BeFalse();
@@ -1360,7 +1360,7 @@ public class GateServiceTests
     [HumansTheory]
     [Xunit.InlineData(30, false)]
     [Xunit.InlineData(31, true)]
-    public async Task Undo_KeepsArrival_WhenAnotherAdmitOfTheGuestStandsWithin30Days(int daysEarlier, bool reverts)
+    public async Task Undo_KeepsArrival_WhenGuestHasAdmitWithin30Days(int daysEarlier, bool reverts)
     {
         StubIssued(holder: GuestId);
         await RecordIssuedAsync();

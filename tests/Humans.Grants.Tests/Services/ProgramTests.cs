@@ -1,5 +1,4 @@
 using AwesomeAssertions;
-using Humans.Base.Enums;
 using Humans.Users.Contracts;
 using Humans.AuditLog.Contracts;
 using Humans.Grants.Data;
@@ -7,7 +6,6 @@ using Humans.Grants.Domain;
 using Humans.Grants.Services;
 using Humans.Grants.Tests.Infrastructure;
 using Humans.Settings.Contracts;
-using Humans.Testing;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Diagnostics;
 using Microsoft.EntityFrameworkCore.Infrastructure;

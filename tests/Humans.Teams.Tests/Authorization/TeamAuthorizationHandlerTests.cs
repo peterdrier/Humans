@@ -30,7 +30,7 @@ public sealed class TeamAuthorizationHandlerTests
     {
         _users.GetUserInfoAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
             .Returns(call => new ValueTask<UserInfo?>(UserInfo.Create(new User { Id = call.Arg<Guid>() }, [], [], profile: null)));
-        _handler = new TeamAuthorizationHandler(_teamService, _users, new Microsoft.AspNetCore.Http.HttpContextAccessor());
+        _handler = new TeamAuthorizationHandler(_teamService, _users, new HttpContextAccessor());
         _teamService.GetTeamsAsync(Arg.Any<CancellationToken>()).Returns(CreateTeamMap());
     }
 

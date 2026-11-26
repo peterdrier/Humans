@@ -520,7 +520,7 @@ Before presenting anything, research ALL issues in parallel. For each:
 
 Steps 5–8 are judgment — see Model tiers. Group related issues (same controller/page/root cause) so they can be promoted to a single GH issue. Also watch for double-fired agent handoffs — two reports seconds apart with identical content are the same issue; one becomes the canonical, the other gets resolved as duplicate.
 
-**Watch for agent KB gaps.** If a description contains phrases like "the [section] guide could not be loaded" or "I couldn't find documentation," that's a signal the agent's `fetch_section_guide` tool is missing content for that section — flag it for Phase 5 (Agent phase) FAQ proposals, even if the user-facing issue itself can be answered directly.
+**Watch for agent KB gaps.** If a description contains phrases like "the [section] guide could not be loaded" or "I couldn't find documentation," that's a signal the agent's `fetch_section_doc` tool is missing content for that section — flag it for Phase 5 (Agent phase) FAQ proposals, even if the user-facing issue itself can be answered directly.
 
 ## Step 4.4: Present and triage (rapid-fire, inline)
 
@@ -709,9 +709,9 @@ Issues phase complete: {total} in-app issues ({environment})
 
 Skip if any of `logs`/`close`/`open`/`issues` is specified without `agent`.
 
-The agent (chat assistant) is preloaded with `SectionHelpContent.Faq` plus each section's help glossary (`Docs/help/<Key>.glossary.md`), and fetches a section's invariants doc (`docs/sections/<key>.md`, or `src/Sections/Humans.<key>/Docs/<key>.md`) on demand via the `fetch_section_guide` tool. Note the help *guides* (`Docs/help/<Key>.guide.md`) feed the in-app help modal only — the agent never sees them. When the user's question isn't covered, the agent refuses, hands off to the issues queue, or answers from weaker sources (e.g. the unofficial community FAQ, with a "not official" disclaimer). All of these point at gaps in the hardcoded KB. **The goal of this phase is to propose new FAQ entries to plug those gaps, not to "process" individual conversations.** The KB is small and hand-edited for now; an editing UI may come later.
+The agent (chat assistant) is preloaded with `SectionHelpContent.Faq` plus each section's help glossary (`Docs/help/<Key>.glossary.md`), and fetches a section's invariants doc (`docs/sections/<key>.md`, or `src/Sections/Humans.<key>/Docs/<key>.md`) on demand via the `fetch_section_doc` tool. Note the help *guides* (`Docs/help/<Key>.guide.md`) feed the in-app help modal only — the agent never sees them. When the user's question isn't covered, the agent refuses, hands off to the issues queue, or answers from weaker sources (e.g. the unofficial community FAQ, with a "not official" disclaimer). All of these point at gaps in the hardcoded KB. **The goal of this phase is to propose new FAQ entries to plug those gaps, not to "process" individual conversations.** The KB is small and hand-edited for now; an editing UI may come later.
 
-Review the **full conversation list**, not a refusal filter — see the dead-counters note in Step 5.1.
+Review the **full conversation list**, not an unanswered filter — see the dead-counters note in Step 5.1.
 
 ## Step 5.0: Determine target environment
 
@@ -724,7 +724,7 @@ Always note the environment in output (e.g., "Agent phase from **QA**").
 
 ## Step 5.1: Fetch the full conversation list
 
-> **Dead counters (verified 2026-07-13, prod):** `refusalCount` and `handoffCount` are 0 on every conversation — the flags are never populated at save time, so `refusalsOnly=true` always returns an empty list and `handoffsOnly=true` only matches legacy feedback handoffs (`HandedOffToFeedbackId != null`, which `route_to_issue` never sets). Tracked in nobodies-collective/Humans#931. Until that ships, **do not use either filter** — pull everything and cluster from the question stream. Issue handoffs still surface through Phase 4 (in-app Issues with KB-gap flags).
+> **Dead counters (verified 2026-07-13, prod):** `unansweredCount` (was `refusalCount`) and `handoffCount` are 0 on every conversation — the flags are never populated at save time, so `unansweredOnly=true` always returns an empty list and `handoffsOnly=true` only matches legacy feedback handoffs (`HandedOffToFeedbackId != null`, which `handoff` never sets). Tracked in nobodies-collective/Humans#931. Until that ships, **do not use either filter** — pull everything and cluster from the question stream. Issue handoffs still surface through Phase 4 (in-app Issues with KB-gap flags).
 
 ```bash
 curl -sf -H "X-Api-Key: $API_KEY" "$BASE_URL/api/backdoor/agent/conversations?take=200"
@@ -759,7 +759,7 @@ For each conversation, `lastUserMessagePreview` (200 chars) is the question to c
 - Answered wrong or told the user a capability doesn't exist when it does → gap, and flag the misinformation in the cluster block (these are the highest-value fixes).
 - Refused / punted to the issues queue → gap.
 
-Cross-reference with Phase 4 KB-gap flags (issues whose descriptions mention "guide could not be loaded") — those are the same problem from the issues side and should fold into the cluster. `route_to_issue` handoffs surface via Phase 4, not via this list's counters.
+Cross-reference with Phase 4 KB-gap flags (issues whose descriptions mention "guide could not be loaded") — those are the same problem from the issues side and should fold into the cluster. Handoffs surface via Phase 4, not via this list's counters.
 
 Clustering and sampling are mechanical; judging the sampled replies is judgment — see Model tiers.
 
@@ -842,7 +842,7 @@ Agent phase complete: {conversation_count} conversations reviewed
 - {count} promoted to GitHub | {count} resolved | {count} won't-fix | {count} duplicates | {count} awaiting owner
 - {kb_gap_count} flagged as agent KB gaps
 
-### Agent refusals & handoffs
+### Agent unanswered turns & handoffs
 - {conversation_count} conversations → {cluster_count} clusters → {faq_count} FAQ proposals drafted at {draft_file}
 - {capability_issue_count} missing-capability GH issues opened
 ```

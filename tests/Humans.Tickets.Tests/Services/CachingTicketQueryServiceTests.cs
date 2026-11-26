@@ -9,7 +9,6 @@ using NodaTime.Testing;
 using NSubstitute;
 using Humans.Tickets.Services;
 using Humans.Tickets.Services.Dtos;
-using Humans.Tickets.Domain;
 
 namespace Humans.Tickets.Tests.Services;
 

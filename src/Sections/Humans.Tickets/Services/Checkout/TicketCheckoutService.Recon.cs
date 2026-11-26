@@ -109,8 +109,7 @@ internal sealed partial class TicketCheckoutService
 
         var now = clock.GetCurrentInstant();
         var orders = (await AllOrdersAsync(await repository.ListTicketingSettingsAsync(ct), ct))
-            .Where(o => string.Equals(o.PlatformKey, platformKey, StringComparison.Ordinal))
-            .OrderByDescending(o => o.CreatedAt).ToList();
+            .Where(o => string.Equals(o.PlatformKey, platformKey, StringComparison.Ordinal)).ToList();
         var refunds = new List<TicketCheckoutRefund>();
         foreach (var settingsId in orders.Select(o => o.TicketingSettingsId).Distinct())
             refunds.AddRange(await repository.GetRefundsForSettingsAsync(settingsId, ct));
@@ -124,12 +123,12 @@ internal sealed partial class TicketCheckoutService
             .Where(o => o.State == TicketCheckoutOrderState.Paid && !(o.TotalMinor == 0 && o.PlatformOrderId is null))
             .ToList();
         var mine = refunds.Where(r => orderIds.Contains(r.OrderId)).ToList();
-        var unsettled = mine.Where(r => r.State is RefundState.Pending or RefundState.ManualRequired).OrderBy(r => r.CreatedAt).ToList();
+        var unsettled = mine.Where(r => r.State is RefundState.Pending or RefundState.ManualRequired).ToList();
         // A failed refund is terminal and a retry is a new row, so it matters only until a later attempt on the order goes through.
         var failed = mine
             .Where(r => r.State == RefundState.Failed
                 && !mine.Any(later => later.OrderId == r.OrderId && later.CreatedAt > r.CreatedAt && later.State != RefundState.Failed))
-            .OrderBy(r => r.CreatedAt).ToList();
+            .ToList();
         return new PlatformLedger(info, orders, paid, stuck, unsettled, failed);
     }
 

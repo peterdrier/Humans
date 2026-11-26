@@ -67,10 +67,11 @@ public sealed class TicketDeliveryServiceTests
         Options.Create(new EmailSettings { BaseUrl = TestTicketsEmails.BaseUrl }), NullLogger<TicketDeliveryService>.Instance);
 
     private TicketCheckoutTicket Ticket(Guid? holderId, string name, string? email, TicketCheckoutTicketState state = TicketCheckoutTicketState.Valid,
-        TicketHolderKind kind = TicketHolderKind.Adult, Guid? parent = null) => new()
+        TicketHolderKind kind = TicketHolderKind.Adult, Guid? parent = null, Instant? issuedAt = null) => new()
         {
             Id = Guid.NewGuid(),
             ParentTicketId = parent,
+            IssuedAt = issuedAt ?? Instant.MinValue,
             OrderId = _order.Id,
             TicketingSettingsId = _ticketing.Id,
             HolderUserId = holderId,
@@ -83,6 +84,22 @@ public sealed class TicketDeliveryServiceTests
 
     private void Tickets(params TicketCheckoutTicket[] tickets) =>
         _checkout.GetOrderDetailAsync(_order.Id, Arg.Any<CancellationToken>()).Returns(_ => new OrderDetail(_order, [], [], tickets));
+
+    [HumansFact]
+    public async Task Deliver_RendersTheHolderFirstAndDependentsByIssueTime()
+    {
+        var now = Instant.FromUtc(2027, 1, 1, 12, 0);
+        var adult = Ticket(BuyerId, "Ana Buyer", "ana@example.com", issuedAt: now + Duration.FromDays(2));
+        var older = Ticket(null, "Older child", null, kind: TicketHolderKind.Child, parent: adult.Id, issuedAt: now);
+        var newer = Ticket(null, "Newer child", null, kind: TicketHolderKind.Child, parent: adult.Id, issuedAt: now + Duration.FromDays(1));
+        Tickets(newer, adult, older);
+
+        await Create().DeliverAsync(_order.Id);
+
+        var html = _sent.Single(mail => string.Equals(mail.TemplateName, "ticket_issued", StringComparison.Ordinal)).HtmlBody;
+        html.IndexOf(adult.Barcode, StringComparison.Ordinal).Should().BeLessThan(html.IndexOf(older.Barcode, StringComparison.Ordinal));
+        html.IndexOf(older.Barcode, StringComparison.Ordinal).Should().BeLessThan(html.IndexOf(newer.Barcode, StringComparison.Ordinal));
+    }
 
     [HumansFact]
     public async Task Deliver_SendsOneTicketPerHolder_AndOneReceiptToTheBuyer()
@@ -244,6 +261,45 @@ public sealed class TicketDeliveryServiceTests
         msg.TemplateName.Should().Be("ticket_join_invitation");
         msg.UserId.Should().Be(PartnerId);
         msg.Category.Should().Be(MessageCategory.VolunteerUpdates, "Ticketing is locked on for ticket holders");
+    }
+
+    [HumansTheory]
+    [Xunit.InlineData(null)]
+    [Xunit.InlineData(UserState.Deleted)]
+    [Xunit.InlineData(UserState.Merged)]
+    public async Task JoinInvitation_UnavailableHolder_SkipsStoredAddress(UserState? state)
+    {
+        var ticket = Ticket(PartnerId, "Ben Partner", "snapshot@example.com");
+        Tickets(ticket);
+        var holder = Xunit.Assert.IsType<UserInfo>(await _users.GetUserInfoAsync(PartnerId));
+        _users.GetUserInfoAsync(PartnerId, Arg.Any<CancellationToken>())
+            .Returns(state is { } value ? holder with { State = value } : null);
+
+        await Create().SendJoinInvitationAsync(_order.Id, ticket.Id);
+
+        _sent.Should().BeEmpty();
+        _audit.ReceivedCalls().Should().BeEmpty();
+    }
+
+    [HumansFact]
+    public async Task JoinInvitation_MergedHolder_UsesSurvivorIdentity()
+    {
+        var ticket = Ticket(PartnerId, "Ben Partner", "snapshot@example.com");
+        Tickets(ticket);
+        var holder = Xunit.Assert.IsType<UserInfo>(await _users.GetUserInfoAsync(PartnerId));
+        var survivorId = Guid.NewGuid();
+        _users.GetUserInfoAsync(PartnerId, Arg.Any<CancellationToken>())
+            .Returns(holder with { Id = survivorId, MergedUserIds = [PartnerId] });
+
+        await Create().SendJoinInvitationAsync(_order.Id, ticket.Id);
+
+        var message = _sent.Should().ContainSingle().Subject;
+        message.UserId.Should().Be(survivorId);
+        message.RecipientEmail.Should().Be(holder.Email);
+        message.Category.Should().Be(MessageCategory.VolunteerUpdates);
+        message.DeliveryId.Should().Be(TicketDeliveryService.DeliveryIdFor("ticket_join_invitation", ticket.Id));
+        await _audit.Received(1).LogAsync(TicketsAuditActions.TicketJoinInvitationSent, Arg.Any<string>(), _order.Id,
+            Arg.Any<string>(), Arg.Any<string>(), ticket.Id, "TicketCheckoutTicket");
     }
 
     [HumansTheory]

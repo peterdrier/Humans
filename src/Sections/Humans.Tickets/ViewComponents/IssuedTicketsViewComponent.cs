@@ -25,7 +25,8 @@ public sealed class IssuedTicketsViewComponent(ISettingsService settings) : View
         var tickets = held.ToList();
         foreach (var orderId in held.Select(t => t.OrderId).Distinct())
             tickets.AddRange((await checkout.GetTicketsForOrderAsync(orderId, ct))
-                .Where(c => c.HolderUserId is null && held.Any(a => a.Id == c.ParentTicketId)));
+                .Where(c => c.HolderUserId is null && held.Any(a => a.Id == c.ParentTicketId))
+                .OrderBy(ticket => ticket.Kind).ThenBy(ticket => ticket.IssuedAt));
         if (tickets.Count == 0)
             return Content(string.Empty);
 

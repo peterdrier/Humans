@@ -51,7 +51,7 @@ When a new durable rule surfaces, capture it as a `memory/<bucket>/<name>.md` at
 
 ## A small glossary
 
-Terminology matters here — the full ubiquitous language lives in [`CONTEXT.md`](CONTEXT.md), and where other prose disagrees with it, the prose is wrong.
+Terminology matters here — the full ubiquitous language lives in [`CONTEXT.md`](CONTEXT.md) and the section glossaries it lists, and where other prose disagrees with it, the prose is wrong.
 
 - **you** means the agent reading this file and changing Humans.
 - **Peter / maintainer** means who you are talking to now.
@@ -149,6 +149,7 @@ Recurring maintenance (doc-freshness sweeps, tech-debt burndown) is skill-driven
 - Surgical changes. Every changed line traces to the request. Don't improve adjacent code; mention dead code, don't delete it.
 - Define success criteria, loop until verified. "Fix the bug" means "write a test that reproduces it, then make it pass" — strong criteria let you work independently; weak ones ("make it work") mean constant clarification.
 - Prefer in-memory data over clever queries. The whole dataset fits in RAM; act like it.
+- Names are short and say one thing: a method is a verb in at most 6 words with no "And"; a test is `Method_Condition_Result` naming the one rule it proves ([`names-short-no-and`](memory/code/names-short-no-and.md), [`test-names-one-rule`](memory/code/test-names-one-rule.md)).
 - A comment says what the code can't: why, a warning, or a contract. Never what the code does or how it got here ([`comments-earn-their-place`](memory/code/comments-earn-their-place.md)).
 - Brevity in everything you write — replies, commits, PR bodies, comments, docs. Never use 15 words where 5 will do. Lead with the answer, and write it short the first time.
 

@@ -2,6 +2,7 @@ using System.Globalization;
 using System.Net;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
+using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using Humans.Base.Extensions;
@@ -66,7 +67,7 @@ internal sealed class HiEventsPlatform : ITicketingPlatform
             _http.BaseAddress = baseUri;
         }
 
-        if (!string.IsNullOrEmpty(_settings.ApiKey))
+        if (_settings.IsConfigured)
         {
             _http.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", _settings.ApiKey);
         }
@@ -78,8 +79,15 @@ internal sealed class HiEventsPlatform : ITicketingPlatform
 
     public bool IsConfigured => _settings.IsConfigured;
 
+    private void EnsureConfigured()
+    {
+        if (!IsConfigured)
+            throw new TicketingPlatformException("Hi.Events is not configured.");
+    }
+
     public async Task<PlatformOrderSession> CreateOrderAsync(PlatformOrderRequest request, CancellationToken ct = default)
     {
+        EnsureConfigured();
         if (!int.TryParse(request.PlatformEventRef, NumberStyles.None, CultureInfo.InvariantCulture, out var eventId))
             throw new TicketingPlatformException($"Hi.Events needs a numeric event id, got '{request.PlatformEventRef}'.");
 
@@ -133,6 +141,7 @@ internal sealed class HiEventsPlatform : ITicketingPlatform
 
     public async Task<PlatformOrderStatus> GetStatusAsync(string platformOrderId, CancellationToken ct = default)
     {
+        EnsureConfigured();
         var (eventId, orderId) = ParsePlatformOrderId(platformOrderId);
         var order = await GetOrderAsync(eventId, orderId, ct);
         var state = ToState(order);
@@ -161,6 +170,7 @@ internal sealed class HiEventsPlatform : ITicketingPlatform
 
     public async Task<RefundResult> RefundAsync(RefundRequest request, CancellationToken ct = default)
     {
+        EnsureConfigured();
         var (eventId, orderId) = ParsePlatformOrderId(request.PlatformOrderId);
 
         var body = new RefundBody(
@@ -195,6 +205,7 @@ internal sealed class HiEventsPlatform : ITicketingPlatform
 
     public async Task CancelAsync(string platformOrderId, CancellationToken ct = default)
     {
+        EnsureConfigured();
         var (eventId, orderId) = ParsePlatformOrderId(platformOrderId);
         var order = await GetOrderAsync(eventId, orderId, ct);
 
@@ -224,6 +235,7 @@ internal sealed class HiEventsPlatform : ITicketingPlatform
     /// </summary>
     public async Task ErasePersonalDataAsync(string platformOrderId, string email, CancellationToken ct = default)
     {
+        EnsureConfigured();
         var (eventId, orderId) = ParsePlatformOrderId(platformOrderId);
         using var response = await _http.PostAsync($"events/{eventId}/orders/{orderId}/anonymize", content: null, ct);
         await ReadOrderAsync(response, ct);
@@ -265,7 +277,7 @@ internal sealed class HiEventsPlatform : ITicketingPlatform
     public async Task<IReadOnlyList<PlatformFinding>> CheckAsync(string? platformEventRef, CancellationToken ct = default)
     {
         if (!IsConfigured)
-            return [new(false, "HiEvents:ApiUrl and HIEVENTS_API_KEY must be set, and HiEvents:ApiUrl and HiEvents:AppUrl (when set) must be absolute http(s) addresses.")];
+            return [new(false, "HIEVENTS_API_KEY must be a nonblank valid HTTP authorization value, and HiEvents:ApiUrl and HiEvents:AppUrl (when set) must be absolute http(s) addresses.")];
 
         var findings = new List<PlatformFinding>
         {
@@ -332,6 +344,10 @@ internal sealed class HiEventsPlatform : ITicketingPlatform
                     new(false, "This instance has no checkout endpoint: it is not the Humans fork."),
                 _ => new(false, $"The checkout endpoint answered {(int)probe.StatusCode}."),
             });
+        }
+        catch (OperationCanceledException) when (ct.IsCancellationRequested)
+        {
+            throw;
         }
         catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException or JsonException)
         {
@@ -412,20 +428,21 @@ internal sealed class HiEventsPlatform : ITicketingPlatform
     public async Task<IReadOnlyList<PlatformOrderSummary>> ListOrdersAsync(
         string? platformEventRef, Instant from, Instant to, CancellationToken ct = default)
     {
-        if (!IsConfigured)
-            throw new TicketingPlatformException("Hi.Events is not configured.");
+        EnsureConfigured();
         if (!int.TryParse(platformEventRef, NumberStyles.None, CultureInfo.InvariantCulture, out var eventId))
             throw new TicketingPlatformException($"Hi.Events needs a numeric event id, got '{platformEventRef}'.");
 
         var range = string.Create(CultureInfo.InvariantCulture,
             $"filter_fields[created_at][gte]={Uri.EscapeDataString(from.ToInvariantTimestamp())}&filter_fields[created_at][lt]={Uri.EscapeDataString(to.ToInvariantTimestamp())}");
         var orders = new Dictionary<int, PlatformOrderSummary>();
-        for (var page = 1; ; page++)
+        for (var page = 1; page <= PageSafetyCap; page++)
         {
             using var response = await _http.GetAsync(string.Create(CultureInfo.InvariantCulture,
                 $"events/{eventId}/orders?per_page={ListPageSize}&page={page}&sort_by=created_at&sort_direction=asc&{range}"), ct);
             var read = await ReadAsync<OrderPage>(response, ct);
             var meta = read.Meta ?? throw new HttpRequestException("Hi.Events answered an order page without its paging.");
+            if (meta.LastPage < 1)
+                throw new HttpRequestException("Hi.Events answered an order page with invalid paging.");
             foreach (var order in read.Data ?? [])
                 orders[order.Id] = new PlatformOrderSummary(
                 ToPlatformOrderId(eventId, order.Id),
@@ -444,9 +461,11 @@ internal sealed class HiEventsPlatform : ITicketingPlatform
                 throw new HttpRequestException($"Hi.Events listed {orders.Count} distinct orders of the {meta.Total} it counts; read again.");
             return orders.Values.ToList();
         }
+        throw new HttpRequestException($"Hi.Events orders hit the {PageSafetyCap}-page safety cap.");
     }
 
     private const int ListPageSize = 100;
+    private const int PageSafetyCap = 500;
 
     /// <summary>Laravel serialises timestamp columns as ISO 8601 in UTC; a raw column reads as plain UTC text.</summary>
     private static Instant? ParseCreatedAt(string? value) =>
@@ -489,8 +508,20 @@ internal sealed class HiEventsPlatform : ITicketingPlatform
 
     private async Task<IReadOnlyList<HiEventsProduct>> GetProductsAsync(int eventId, CancellationToken ct)
     {
-        using var response = await _http.GetAsync($"events/{eventId}/products?per_page=100", ct);
-        return (await ReadAsync<ProductPage>(response, ct)).Data ?? [];
+        var products = new List<HiEventsProduct>();
+        for (var page = 1; page <= PageSafetyCap; page++)
+        {
+            using var response = await _http.GetAsync(string.Create(CultureInfo.InvariantCulture,
+                $"events/{eventId}/products?per_page={ListPageSize}&page={page}"), ct);
+            var read = await ReadAsync<ProductPage>(response, ct);
+            var meta = read.Meta ?? throw new HttpRequestException("Hi.Events answered a product page without its paging.");
+            if (meta.LastPage < 1)
+                throw new HttpRequestException("Hi.Events answered a product page with invalid paging.");
+            products.AddRange(read.Data ?? throw new HttpRequestException("Hi.Events answered a product page without data."));
+            if (page >= meta.LastPage)
+                return products;
+        }
+        throw new HttpRequestException($"Hi.Events products hit the {PageSafetyCap}-page safety cap.");
     }
 
     /// <summary>
@@ -563,15 +594,17 @@ internal sealed class HiEventsPlatform : ITicketingPlatform
     internal static (string FirstName, string? LastName) SplitBuyerName(string name)
     {
         name = name.Trim();
-        if (name.Length <= BuyerNamePartLength)
+        var firstLength = name.EnumerateRunes().Take(BuyerNamePartLength).Sum(rune => rune.Utf16SequenceLength);
+        if (name.Length == firstLength)
             return (name, null);
 
-        var split = name.LastIndexOf(' ', BuyerNamePartLength);
+        var split = name.LastIndexOf(' ', firstLength);
         if (split <= 0)
-            split = BuyerNamePartLength;
+            split = firstLength;
 
         var last = name[split..].Trim();
-        return (name[..split].Trim(), last.Length <= BuyerNamePartLength ? last : last[..BuyerNamePartLength].TrimEnd());
+        var lastLength = last.EnumerateRunes().Take(BuyerNamePartLength).Sum(rune => rune.Utf16SequenceLength);
+        return (name[..split].Trim(), last[..lastLength].TrimEnd());
     }
 
     private const int BuyerNamePartLength = 50;
@@ -621,7 +654,7 @@ internal sealed class HiEventsPlatform : ITicketingPlatform
 
     private sealed record EventStatus(string? Status);
 
-    private sealed record ProductPage(List<HiEventsProduct>? Data);
+    private sealed record ProductPage(List<HiEventsProduct>? Data, PageMeta? Meta);
 
     private sealed record OrderPage(List<HiEventsOrder>? Data, PageMeta? Meta);
 

@@ -1,10 +1,8 @@
 using Humans.Users.Contracts;
-using Humans.Camps.Contracts;
 using System.Security.Claims;
 using Humans.Base.Constants;
 using Humans.Shifts.Contracts;
 using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Http;
 
 namespace Humans.Camps.Authorization;
 

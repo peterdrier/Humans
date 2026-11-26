@@ -7,7 +7,7 @@ using Xunit;
 namespace Humans.Search.Tests.Services;
 
 /// <summary>
-/// The orchestration only: the length gate, trimming, the filter, enablement and order. What each category searches
+/// The orchestration only: the length gate, trimming, the filter, enablement and category metadata. What each category searches
 /// (field masks, visibility, the unbounded cap) is pinned beside its contributor in the owning section's tests.
 /// </summary>
 public sealed class SearchServiceTests
@@ -26,7 +26,7 @@ public sealed class SearchServiceTests
         var results = await Build().SearchAsync(query, ct: TestContext.Current.CancellationToken);
 
         results.Query.Should().Be(query.Trim());
-        results.Buckets.Select(b => b.Key).Should().Equal("Human", "Team", "Event");
+        results.Buckets.Select(b => b.Key).Should().BeEquivalentTo(["Human", "Team", "Event"]);
         results.Buckets.Should().AllSatisfy(b => b.Hits.Should().BeEmpty());
         AllCalls().Should().BeEmpty();
     }
@@ -78,17 +78,17 @@ public sealed class SearchServiceTests
         var results = await Build().SearchAsync("Kitchen", "Event", TestContext.Current.CancellationToken);
 
         results.Filter.Should().BeNull();
-        results.Buckets.Select(b => b.Key).Should().Equal("Human", "Team");
+        results.Buckets.Select(b => b.Key).Should().BeEquivalentTo(["Human", "Team"]);
         _events.Calls.Should().BeEmpty();
     }
 
     [HumansFact]
-    public async Task SearchAsync_OrdersCategoriesByWeight_NotRegistrationOrder()
+    public async Task SearchAsync_CarriesCategoryWeightsWithoutChoosingDisplayOrder()
     {
         var results = await new SearchService([new FakeContributor(_events, _teams, _humans)], Services())
             .SearchAsync("Kitchen", ct: TestContext.Current.CancellationToken);
 
-        results.Buckets.Select(b => b.Key).Should().Equal("Human", "Team", "Event");
+        results.Buckets.Select(b => (b.Key, b.Weight)).Should().BeEquivalentTo([("Human", 0), ("Team", 10), ("Event", 40)]);
     }
 
     [HumansFact]
