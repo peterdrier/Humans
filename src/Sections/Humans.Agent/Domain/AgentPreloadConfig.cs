@@ -1,8 +1,6 @@
 namespace Humans.Agent.Domain;
 
-/// <summary>
-/// Tier1 fits Anthropic's Tier-1 ITPM limit; Tier2 adds the full section-invariants corpus once the org is promoted.
-/// </summary>
+/// <summary>Type of the retired <see cref="AgentSettings.PreloadConfig"/> column; goes with its drop.</summary>
 internal enum AgentPreloadConfig
 {
     Tier1 = 0,

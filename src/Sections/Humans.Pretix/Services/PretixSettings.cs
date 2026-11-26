@@ -1,3 +1,5 @@
+using System.Net.Http.Headers;
+
 namespace Humans.Pretix.Services;
 
 /// <summary>
@@ -20,7 +22,9 @@ internal sealed class PretixSettings
     public string WebhookSecret { get; set; } = string.Empty;
 
     public bool IsConfigured =>
-        Uri.TryCreate(BaseUrl, UriKind.Absolute, out _)
+        Uri.TryCreate(BaseUrl, UriKind.Absolute, out var root)
+        && root.Scheme is "http" or "https"
         && !string.IsNullOrWhiteSpace(Organizer)
-        && !string.IsNullOrWhiteSpace(ApiToken);
+        && !string.IsNullOrWhiteSpace(ApiToken)
+        && AuthenticationHeaderValue.TryParse($"Token {ApiToken}", out _);
 }

@@ -37,6 +37,8 @@ namespace Humans.Governance.Tests.Services;
 /// </summary>
 public sealed class AssemblyVoteServiceTests : IDisposable
 {
+    public enum AssemblyEmailPhase { Opened, Reminder, Cancelled }
+
     public enum AdminOperation
     {
         Create,
@@ -2515,6 +2517,36 @@ public sealed class AssemblyVoteServiceTests : IDisposable
             .SingleAsync(r => r.Id == row.Id, ct);
         if (reminder) stored.ReminderSentAt.Should().NotBeNull();
         else if (!cancelled) stored.NotifiedAt.Should().NotBeNull();
+    }
+
+    [HumansTheory]
+    [InlineData(AssemblyEmailPhase.Opened)]
+    [InlineData(AssemblyEmailPhase.Reminder)]
+    [InlineData(AssemblyEmailPhase.Cancelled)]
+    public async Task AssemblyEmails_TombstoneRecipient_SkipsDelivery(AssemblyEmailPhase phase)
+    {
+        var ct = TestContext.Current.CancellationToken;
+        var member = Guid.NewGuid();
+        _fx.StubActiveUsers(member);
+        var info = (await _fx.Users.GetUserInfosAsync([member], ct))[member] with { State = UserState.Deleted };
+        var vote = await _fx.AddVoteAsync(closesAt: _fx.Clock.GetCurrentInstant()
+            + Duration.FromHours(phase == AssemblyEmailPhase.Reminder ? 12 : 120));
+        var row = await _fx.AddRosterRowAsync(vote.Id, member, isOfficial: true,
+            notified: phase != AssemblyEmailPhase.Opened);
+        _fx.Users.GetUserInfosAsync(Arg.Any<IEnumerable<Guid>>(), Arg.Any<CancellationToken>())
+            .Returns(new Dictionary<Guid, UserInfo> { [member] = info });
+
+        if (phase == AssemblyEmailPhase.Cancelled)
+            (await _fx.Service.CancelAsync(vote.Id, "Cancelled by admin", Guid.NewGuid(), ct))
+                .Should().Be(AssemblyVoteActionResult.Ok);
+        else
+            await _fx.Service.RunLapseAndReminderSweepAsync(ct);
+
+        _fx.Email.ReceivedCalls().Should().BeEmpty();
+        var stored = await _fx.Db.AssemblyVoteRosterEntries.AsNoTracking().SingleAsync(r => r.Id == row.Id, ct);
+        stored.UserId.Should().Be(member);
+        stored.NotifiedAt.Should().Be(row.NotifiedAt);
+        stored.ReminderSentAt.Should().BeNull();
     }
 
     [HumansFact]

@@ -179,15 +179,23 @@ internal sealed class RotaCoordinatorMessageService(
         if (recipientIds.Count == 0)
             return new TeamRotasRecipientPreview(groups.Count, []);
 
-        var infos = await userService.GetUserInfosAsync(recipientIds, ct);
-        var names = recipientIds
-            .Select(id => infos.TryGetValue(id, out var u) ? u.BurnerName : null)
+        var infos = GetAvailableRecipients(recipientIds, await userService.GetUserInfosAsync(recipientIds, ct));
+        var names = infos.Values
+            .DistinctBy(user => user.Id)
+            .Select(user => user.BurnerName)
             .Where(n => !string.IsNullOrWhiteSpace(n))
             .Select(n => n!)
             .ToList();
 
         return new TeamRotasRecipientPreview(groups.Count, names);
     }
+
+    internal static IReadOnlyDictionary<Guid, UserInfo> GetAvailableRecipients(
+        IEnumerable<Guid> userIds, IReadOnlyDictionary<Guid, UserInfo> infos) =>
+        userIds.Distinct()
+            .Where(id => infos.TryGetValue(id, out var user) && !user.IsTombstone
+                && !string.IsNullOrWhiteSpace(user.Email))
+            .ToDictionary(id => id, id => infos[id]);
 
     /// <summary>
     /// Under the default upcoming filter a rota counts while any of its shifts has not ended, so events mid-flight
@@ -234,7 +242,7 @@ internal sealed class RotaCoordinatorMessageService(
             .ToList();
 
     /// <summary>
-    /// Shared by the per-rota and team paths: dedupes signups by user across rotas, resolves starts in each rota's own
+    /// Shared by the per-rota and team paths: dedupes signups by live user across rotas, resolves starts in each rota's own
     /// timezone, and isolates per-recipient failures.
     /// </summary>
     private async Task<DispatchSummary> DispatchToRecipientsAsync<TRequest>(
@@ -260,36 +268,47 @@ internal sealed class RotaCoordinatorMessageService(
         }
 
         if (byUser.Count == 0)
-            return new DispatchSummary(0, 0, 0, 0);
+            return new DispatchSummary(0, 0, 0, 0, 0);
 
         var recipientIds = byUser.Keys;
-        var recipientInfos = await userService.GetUserInfosAsync(recipientIds, ct);
+        var infos = await userService.GetUserInfosAsync(recipientIds, ct);
+        var recipientInfos = GetAvailableRecipients(recipientIds, infos);
 
         var requested = 0;
         var notFound = 0;
+        var deleted = 0;
         var noEmail = 0;
         var failed = 0;
-
-        foreach (var (userId, entries) in byUser)
+        foreach (var userId in recipientIds.Where(id => !recipientInfos.ContainsKey(id)))
         {
-            if (!recipientInfos.TryGetValue(userId, out var recipient))
+            string reason;
+            if (!infos.TryGetValue(userId, out var user))
             {
-                logger.LogWarning(
-                    "Skipping coordinator-message recipient {UserId} on {ScopeType} {ScopeId}: user not found",
-                    userId, logScope.Type, logScope.Id);
+                reason = "user not found";
                 notFound++;
-                continue;
+            }
+            else if (user.IsTombstone)
+            {
+                reason = "user deleted";
+                deleted++;
+            }
+            else
+            {
+                reason = "no email address";
+                noEmail++;
             }
 
-            var email = recipient.Email;
-            if (string.IsNullOrWhiteSpace(email))
-            {
-                logger.LogWarning(
-                    "Skipping coordinator-message recipient {UserId} on {ScopeType} {ScopeId}: no email address",
-                    userId, logScope.Type, logScope.Id);
-                noEmail++;
-                continue;
-            }
+            logger.LogWarning(
+                "Skipping coordinator-message recipient {UserId} on {ScopeType} {ScopeId}: {Reason}",
+                userId, logScope.Type, logScope.Id, reason);
+        }
+
+        foreach (var recipientEntries in byUser.Where(entry => recipientInfos.ContainsKey(entry.Key))
+            .GroupBy(entry => recipientInfos[entry.Key].Id))
+        {
+            var userId = recipientEntries.Key;
+            var recipient = recipientInfos[recipientEntries.First().Key];
+            var entries = recipientEntries.SelectMany(entry => entry.Value);
 
             // The template drops the whole section rather than print a lead-in over an empty list.
             IReadOnlyList<CoordinatorRotaShiftGroup> shiftGroups = includeShifts
@@ -298,7 +317,7 @@ internal sealed class RotaCoordinatorMessageService(
                     .Select(g =>
                     {
                         var group = g.First().Group;
-                        var shifts = g.Select(e => (
+                        var shifts = g.DistinctBy(e => e.Signup.Shift.Id).Select(e => (
                             Start: e.Signup.Shift.GetAbsoluteStart(group.EventSettings).InZone(group.EventSettings.TimeZone),
                             e.Signup.Shift.IsAllDay)).ToList();
                         return new CoordinatorRotaShiftGroup(group.RotaName, shifts);
@@ -327,7 +346,7 @@ internal sealed class RotaCoordinatorMessageService(
             }
         }
 
-        return new DispatchSummary(requested, notFound, noEmail, failed);
+        return new DispatchSummary(requested, notFound, deleted, noEmail, failed);
     }
 
     private static string Truncate(string text, int max)
@@ -350,11 +369,13 @@ internal sealed class RotaCoordinatorMessageService(
     private sealed record DispatchSummary(
         int Requested,
         int UserNotFound,
+        int UserDeleted,
         int NoEmail,
         int Failed)
     {
         public string AuditSuffix =>
             (UserNotFound > 0 ? $" ({UserNotFound} skipped: user not found)" : string.Empty)
+            + (UserDeleted > 0 ? $" ({UserDeleted} skipped: user deleted)" : string.Empty)
             + (NoEmail > 0 ? $" ({NoEmail} skipped: no email address)" : string.Empty)
             + (Failed > 0 ? $" ({Failed} failed: enqueue error)" : string.Empty);
 

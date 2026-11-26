@@ -4,9 +4,15 @@ const { readFileSync } = require('node:fs');
 const { resolve } = require('node:path');
 const vm = require('node:vm');
 
+function loadView(view) {
+    const viewsRoot = resolve(__dirname, '../../../src/Sections/Humans.Events/Views');
+    const source = readFileSync(resolve(viewsRoot, `${view}.cshtml`), 'utf8');
+    return source.replace(/<partial name="(_EventFormScripts)"\s*\/>/g,
+        (_, name) => readFileSync(resolve(viewsRoot, 'Shared', `${name}.cshtml`), 'utf8'));
+}
+
 for (const view of ['Events/IndividualEventForm', 'EventsModeration/AdminEventForm']) {
-    const source = readFileSync(resolve(__dirname,
-        `../../../src/Sections/Humans.Events/Views/${view}.cshtml`), 'utf8');
+    const source = loadView(view);
     const script = source.match(/<script>([\s\S]*?)<\/script>/)[1];
     for (const initiallyAllDay of [false, true]) {
         test(`${view} preserves a valid duration through all-day toggles (initially ${initiallyAllDay})`, () => {
@@ -48,10 +54,7 @@ for (const view of ['Events/IndividualEventForm', 'EventsModeration/AdminEventFo
 
 for (const view of ['Events/IndividualEventForm', 'Events/BarrioEventForm', 'EventsModeration/AdminEventForm']) {
     test(`${view} updates remaining title and description counts while typing`, () => {
-        const viewsRoot = resolve(__dirname, '../../../src/Sections/Humans.Events/Views');
-        let source = readFileSync(resolve(viewsRoot, `${view}.cshtml`), 'utf8');
-        source = source.replace(/<partial name="(_EventCharacterCounters)"\s*\/>/g,
-            (_, name) => readFileSync(resolve(viewsRoot, 'Shared', `${name}.cshtml`), 'utf8'));
+        const source = loadView(view);
         const elements = {};
         const fields = {};
         for (const [prefix, field, limit] of [['title', 'Title', 80], ['description', 'Description', 450]]) {
@@ -80,5 +83,35 @@ for (const view of ['Events/IndividualEventForm', 'Events/BarrioEventForm', 'Eve
             input.input?.();
             assert.equal(Number(counter.textContent), limit);
         }
+    });
+}
+
+for (const view of ['Events/IndividualEventForm', 'Events/BarrioEventForm', 'EventsModeration/AdminEventForm']) {
+    test(`${view} synchronizes recurrence controls through submission`, () => {
+        const source = loadView(view);
+        const recurring = { checked: true, addEventListener(event, handler) { this[event] = handler; } };
+        const section = { style: {} }, hidden = { value: 'stale' };
+        const days = ['Mon', 'Tue', 'Wed'].map((value, index) => ({ value, checked: index !== 1,
+            addEventListener(event, handler) { this[event] = handler; } }));
+        const form = { addEventListener(event, handler) { this[event] = handler; } };
+        const elements = { IsRecurring: recurring, 'recurrence-days-section': section, RecurrenceDaysHidden: hidden };
+        const context = { document: {
+            getElementById: id => elements[id] ?? null,
+            querySelectorAll: () => days, querySelector: () => form,
+        } };
+        for (const match of source.matchAll(/<script>([\s\S]*?)<\/script>/g)) {
+            vm.runInNewContext(match[1], context);
+        }
+        assert.equal(section.style.display, 'block');
+        assert.equal(hidden.value, 'Mon,Wed');
+        days[1].checked = true; days[1].change();
+        assert.equal(hidden.value, 'Mon,Tue,Wed');
+        recurring.checked = false; recurring.change();
+        assert.equal(section.style.display, 'none');
+        assert.equal(hidden.value, 'Mon,Tue,Wed');
+        recurring.checked = true; recurring.change();
+        days[0].checked = false; hidden.value = 'outdated'; form.submit();
+        assert.equal(section.style.display, 'block');
+        assert.equal(hidden.value, 'Tue,Wed');
     });
 }

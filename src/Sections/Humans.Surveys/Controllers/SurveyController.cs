@@ -165,8 +165,7 @@ internal sealed class SurveyController(
     [HttpGet("{slug}")]
     public async Task<IActionResult> Public(string slug, CancellationToken ct)
     {
-        // Reserved words can never be a public slug; let the literal-segment actions own them.
-        if (IsReservedSlug(slug)) return NotFound();
+        if (IsInvalidSlug(slug)) return NotFound();
 
         var (ctx, accessFailure) = await ResolvePublicAccessAsync(slug, ct);
         if (accessFailure is not null) return accessFailure;
@@ -202,7 +201,7 @@ internal sealed class SurveyController(
         ResponseAnonymity? anonymity,
         CancellationToken ct)
     {
-        if (IsReservedSlug(slug)) return NotFound();
+        if (IsInvalidSlug(slug)) return NotFound();
 
         var (ctx, accessFailure) = await ResolvePublicAccessAsync(slug, ct);
         if (accessFailure is not null) return accessFailure;
@@ -265,7 +264,7 @@ internal sealed class SurveyController(
     [HttpGet("{slug}/Page")]
     public async Task<IActionResult> PublicPage(string slug, CancellationToken ct)
     {
-        if (IsReservedSlug(slug)) return NotFound();
+        if (IsInvalidSlug(slug)) return NotFound();
 
         var state = SurveyWizardSession.LoadBySlug(HttpContext.Session, slug);
         if (state is null) return RedirectToAction("Public", new { slug });
@@ -294,7 +293,7 @@ internal sealed class SurveyController(
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> PublicSubmitPage(string slug, SurveyPageInputModel model, CancellationToken ct)
     {
-        if (IsReservedSlug(slug)) return NotFound();
+        if (IsInvalidSlug(slug)) return NotFound();
 
         var state = SurveyWizardSession.LoadBySlug(HttpContext.Session, slug);
         if (state is null) return RedirectToAction("Public", new { slug });
@@ -322,7 +321,7 @@ internal sealed class SurveyController(
     [HttpGet("{slug}/ThankYou")]
     public async Task<IActionResult> PublicThankYou(string slug, CancellationToken ct)
     {
-        if (IsReservedSlug(slug)) return NotFound();
+        if (IsInvalidSlug(slug)) return NotFound();
 
         if (SurveyWizardSession.LoadCompletedBySlug(HttpContext.Session, slug) is { } done)
         {
@@ -396,9 +395,11 @@ internal sealed class SurveyController(
         }
     }
 
-    private static bool IsReservedSlug(string slug)
-        => string.Equals(slug, "admin", StringComparison.OrdinalIgnoreCase)
-           || string.Equals(slug, "answer", StringComparison.OrdinalIgnoreCase);
+    private static bool IsInvalidSlug(string slug)
+    {
+        var (normalized, error) = SurveyDefinitionValidation.PreparePublicSlugForWrite(slug);
+        return normalized is null || error is not null;
+    }
 
     private async Task<(SurveyPublicContext? Context, IActionResult? Failure)> ResolvePublicAccessAsync(
         string slug,

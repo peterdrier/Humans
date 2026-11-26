@@ -677,7 +677,7 @@ internal sealed class IssuesService(
             var reporter = await users.GetUserInfoAsync(issue.ReporterUserId, ct);
             var to = reporter?.Email;
 
-            if (reporter is not null &&
+            if (reporter is not null && !reporter.IsTombstone &&
                 !string.IsNullOrWhiteSpace(to))
             {
                 var language = reporter.PreferredLanguage;
@@ -694,7 +694,7 @@ internal sealed class IssuesService(
             else
             {
                 logger.LogWarning(
-                    "Skipping issue comment email for issue {IssueId} — reporter {UserId} has no effective email",
+                    "Skipping issue comment email for issue {IssueId} — reporter {UserId} is unavailable or has no effective email",
                     issue.Id, issue.ReporterUserId);
             }
         }

@@ -95,7 +95,7 @@ internal sealed class AgentController(
 
     [HttpGet("Conversations")]
     public async Task<IActionResult> Conversations(
-        bool refusalsOnly = false, Guid? userId = null,
+        bool unansweredOnly = false, Guid? userId = null,
         int page = 0, CancellationToken cancellationToken = default)
     {
         var (missing, currentUser) = await RequireCurrentUserAsync(cancellationToken);
@@ -103,7 +103,7 @@ internal sealed class AgentController(
 
         var isAdmin = RoleChecks.IsAdminOrBoard(User);
         var (rows, hasNext) = await LoadConversationsAsync(
-            isAdmin, currentUser.Id, refusalsOnly, userId, page, cancellationToken);
+            isAdmin, currentUser.Id, unansweredOnly, userId, page, cancellationToken);
         return View(new AgentConversationsViewModel(
             rows, IsAdminView: isAdmin, Page: page < 0 ? 0 : page, HasNext: hasNext));
     }
@@ -136,7 +136,7 @@ internal sealed class AgentController(
 
     private async Task<(IReadOnlyList<AgentConversationListSnapshot> Rows, bool HasNext)> LoadConversationsAsync(
         bool isAdmin, Guid currentUserId,
-        bool refusalsOnly, Guid? userId, int page,
+        bool unansweredOnly, Guid? userId, int page,
         CancellationToken ct)
     {
         const int adminPageSize = 25;
@@ -150,7 +150,7 @@ internal sealed class AgentController(
         var skip = (int)Math.Min((long)safePage * adminPageSize, int.MaxValue);
         // Fetch one extra row so the view knows whether an older page exists.
         var rows = await agent.ListAllConversationsForAdminAsync(
-            refusalsOnly, userId, adminPageSize + 1, skip, ct);
+            unansweredOnly, userId, adminPageSize + 1, skip, ct);
         return rows.Count > adminPageSize
             ? (rows.Take(adminPageSize).ToList(), true)
             : (rows, false);
@@ -169,7 +169,7 @@ internal sealed class AgentController(
     {
         string eventName = token.TextDelta is not null ? "text"
                          : token.ToolCall is not null ? "tool"
-                         : token.IssueProposal is not null ? "propose"
+                         : token.Handoff is not null ? "handoff"
                          : "final";
         var payload = JsonSerializer.Serialize(token, JsonOpts);
         await Response.WriteAsync(

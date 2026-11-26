@@ -313,4 +313,5 @@
   <data name="Expenses_Flash_DraftOutcomeUnknown" xml:space="preserve"><value>No se pudo confirmar si el borrador se guardó. Revisa los informes existentes antes de crear otro borrador.</value></data>
   <data name="Expenses_Permission_Endorse_Title" xml:space="preserve"><value>Avalar gastos</value></data>
   <data name="Expenses_Permission_Endorse_Blurb" xml:space="preserve"><value>Avalar, rechazar y denegar líneas de las solicitudes de gastos con cargo al presupuesto del equipo.</value></data>
+  <data name="Expenses_Validation_SubmitterUnavailable" xml:space="preserve"><value>La persona solicitante ya no está disponible.</value></data>
 </root>

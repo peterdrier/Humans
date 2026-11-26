@@ -6,6 +6,6 @@ namespace Humans.Agent.Services;
 internal interface IAgentPromptAssembler
 {
     string BuildSystemPrompt(string preloadCorpus);
-    string BuildUserContextTail(AgentUserSnapshot snapshot);
+    string BuildUserContextTail(AgentUserContext snapshot);
     IReadOnlyList<AnthropicToolDefinition> BuildToolDefinitions();
 }

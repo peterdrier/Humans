@@ -119,7 +119,7 @@ public sealed class MagicLinkUrlBuilderTests
     }
 
     [HumansFact]
-    public void An_unreadable_token_says_which_of_its_checks_failed()
+    public void UnprotectToken_Unreadable_NamesFailedCheck()
     {
         using var services = KeyRingServices();
         var builder = KeyRingBuilder(services);

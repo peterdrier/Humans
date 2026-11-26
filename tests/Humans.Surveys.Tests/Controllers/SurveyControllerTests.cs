@@ -653,6 +653,30 @@ public sealed class SurveyControllerTests
             .Should().BeNull("nothing was submitted, so nothing may mark the respondent as done");
     }
 
+    [HumansTheory]
+    [Xunit.InlineData("admin", 0)]
+    [Xunit.InlineData(" ANSWER ", 0)]
+    [Xunit.InlineData("", 0)]
+    [Xunit.InlineData("   ", 0)]
+    [Xunit.InlineData("a", 81)]
+    [Xunit.InlineData("😀", 81)]
+    public async Task Public_InvalidSlug_ReturnsNotFound(string text, int repeat)
+    {
+        var slug = repeat == 0 ? text : string.Concat(Enumerable.Repeat(text, repeat));
+        var surveys = Substitute.For<ISurveyService>();
+        var responses = Substitute.For<ISurveyResponses>();
+        var sut = CreateController(surveys, responses, out _);
+        var ct = Xunit.TestContext.Current.CancellationToken;
+
+        (await sut.Public(slug, ct)).Should().BeOfType<NotFoundResult>();
+        (await sut.PublicStart(slug, "en", ResponseAnonymity.Anonymous, ct)).Should().BeOfType<NotFoundResult>();
+        (await sut.PublicPage(slug, ct)).Should().BeOfType<NotFoundResult>();
+        (await sut.PublicSubmitPage(slug, new SurveyPageInputModel(), ct)).Should().BeOfType<NotFoundResult>();
+        (await sut.PublicThankYou(slug, ct)).Should().BeOfType<NotFoundResult>();
+        surveys.ReceivedCalls().Should().BeEmpty();
+        responses.ReceivedCalls().Should().BeEmpty();
+    }
+
     private static SurveyController CreateController(
         ISurveyService surveys,
         ISurveyResponses responses,

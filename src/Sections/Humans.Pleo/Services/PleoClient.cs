@@ -33,10 +33,15 @@ internal sealed class PleoClient : IPleoClient
     {
         _http = http;
         _options = options.Value;
-        _http.BaseAddress ??= new Uri(_options.BaseUrl);
+        // Endpoint mistakes must not stop DI; operations fail at the send boundary.
+        if (_http.BaseAddress is null && Uri.TryCreate(_options.BaseUrl, UriKind.Absolute, out var baseAddress)
+            && baseAddress.Scheme is "http" or "https")
+            _http.BaseAddress = baseAddress;
     }
 
-    public bool IsConfigured => MissingSettings is null;
+    public bool IsConfigured => HasBaseAddress && MissingSettings is null;
+
+    private bool HasBaseAddress => _http.BaseAddress is { Scheme: "http" or "https" };
 
     public string? MissingSettings =>
         (string.IsNullOrWhiteSpace(_options.ApiKey), string.IsNullOrWhiteSpace(_options.CompanyId)) switch
@@ -194,6 +199,9 @@ internal sealed class PleoClient : IPleoClient
 
     private async Task<JsonElement> SendAsync(string endpoint, Func<HttpRequestMessage> make, CancellationToken ct)
     {
+        if (MissingSettings is { } missing)
+            throw new PleoPermanentException($"{missing} not set.");
+
         using var req = make();
         req.Headers.Authorization = new AuthenticationHeaderValue("Basic",
             Convert.ToBase64String(Encoding.UTF8.GetBytes(_options.ApiKey + ":")));
@@ -215,6 +223,10 @@ internal sealed class PleoClient : IPleoClient
     /// <summary>Returns only a success; the caller disposes it.</summary>
     private async Task<HttpResponseMessage> SendRawAsync(string endpoint, HttpRequestMessage req, CancellationToken ct)
     {
+        var destination = req.RequestUri is { IsAbsoluteUri: true } ? req.RequestUri : _http.BaseAddress;
+        if (destination is null || destination.Scheme is not ("http" or "https"))
+            throw new PleoPermanentException("Pleo:BaseUrl must be an absolute HTTP(S) URL.");
+
         HttpResponseMessage resp;
         try
         {

@@ -28,7 +28,7 @@ internal sealed class AgentMessage
     /// <summary>Tool targets fetched during this turn. Stored as JSON string[].</summary>
     public string[] FetchedDocs { get; set; } = [];
 
-    public string? RefusalReason { get; set; }
+    public string? Outcome { get; set; }
 
     public Guid? HandedOffToFeedbackId { get; set; }
 }

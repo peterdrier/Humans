@@ -326,4 +326,5 @@
   <data name="Expenses_Flash_DraftOutcomeUnknown" xml:space="preserve"><value>We could not confirm whether the draft was saved. Check existing reports before creating another draft.</value></data>
   <data name="Expenses_Permission_Endorse_Title" xml:space="preserve"><value>Endorse expense claims</value></data>
   <data name="Expenses_Permission_Endorse_Blurb" xml:space="preserve"><value>Endorse, reject and decline lines on expense claims against the team's budget.</value></data>
+  <data name="Expenses_Validation_SubmitterUnavailable" xml:space="preserve"><value>The submitter is no longer available.</value></data>
 </root>

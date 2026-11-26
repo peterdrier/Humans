@@ -2110,7 +2110,7 @@ internal sealed class Service(
 
         return new SepaBookingResult(true,
             $"Withdrew the {Euros(transfer.Amount)} transfer to {transfer.IbanMasked} from {row.FileName}; "
-            + "the member has been told and the account is payable again.");
+            + "the account is payable again.");
     }
 
     /// <summary>For a file the bank rejected whole: withdraws every transfer still live in it, in one save, so it is
@@ -3119,10 +3119,10 @@ internal sealed class Service(
         {
             infos.TryGetValue(t.UserId, out var member);
             var recipient = member?.Email;
-            if (member is null || string.IsNullOrWhiteSpace(recipient))
+            if (member is null || member.IsTombstone || string.IsNullOrWhiteSpace(recipient))
             {
                 logger.LogWarning(
-                    "Skipping SEPA payout email for transfer {TransferId}: member {UserId} has no notification email",
+                    "Skipping SEPA payout email for transfer {TransferId}: member {UserId} is unavailable or has no notification email",
                     t.Id, t.UserId);
                 continue;
             }
@@ -3152,10 +3152,10 @@ internal sealed class Service(
             var infos = await users.GetUserInfosAsync([t.UserId], ct);
             infos.TryGetValue(t.UserId, out var member);
             var recipient = member?.Email;
-            if (member is null || string.IsNullOrWhiteSpace(recipient))
+            if (member is null || member.IsTombstone || string.IsNullOrWhiteSpace(recipient))
             {
                 logger.LogWarning(
-                    "Skipping SEPA withdrawal email for transfer {TransferId}: member {UserId} has no notification email",
+                    "Skipping SEPA withdrawal email for transfer {TransferId}: member {UserId} is unavailable or has no notification email",
                     t.Id, t.UserId);
                 return;
             }

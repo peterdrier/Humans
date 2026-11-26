@@ -60,6 +60,15 @@ internal sealed class ProfileEditorService(
                 ErrorArgumentKey: "Users_Profile_EmergencyContactPhone"));
         if (ContactFieldService.ValidateContactFields(contactFields) is { } refusal)
             return Refuse(refusal);
+
+        var person = await userService.GetUserInfoAsync(userId, ct);
+        if (person is null || person.IsTombstone)
+        {
+            logger.LogWarning("Profile save refused for unavailable user {UserId}", userId);
+            return new(false);
+        }
+        userId = person.Id;
+
         var picture = PreparePicture(request);
         if (picture.ErrorKey is { } pictureError)
             return Refuse(new(false, ErrorKey: pictureError, ErrorField: nameof(request.ProfilePictureData)));

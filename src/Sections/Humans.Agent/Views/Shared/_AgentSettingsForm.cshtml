@@ -32,15 +32,6 @@
             <a href="https://platform.claude.com/" target="_blank" rel="noopener">Open the Claude Console</a>
         </div>
     </div>
-    <div class="mb-3">
-        <label asp-for="PreloadConfig" class="form-label">Preloaded knowledge</label>
-        <select asp-for="PreloadConfig" asp-items="Html.GetEnumSelectList<AgentPreloadConfig>()" class="form-select"></select>
-        <div class="form-text">
-            Which sections the agent is told about up front, one line each; it fetches a section's full docs only when a
-            question needs them. Tier1: the 8 core sections. Tier2: all 23, for a small amount of extra input per message.
-            Tier1 only matters on Anthropic's lowest rate-limit tier.
-        </div>
-    </div>
     <div class="row g-3 mb-3">
         <div class="col-md-3"><label asp-for="DailyMessageCap" class="form-label"></label><input asp-for="DailyMessageCap" class="form-control" /></div>
         <div class="col-md-3"><label asp-for="HourlyMessageCap" class="form-label"></label><input asp-for="HourlyMessageCap" class="form-control" /></div>

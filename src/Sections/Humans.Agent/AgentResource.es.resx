@@ -64,7 +64,7 @@
   <data name="Agent_ConversationEmpty" xml:space="preserve">
     <value>No hay mensajes en esta conversación.</value>
   </data>
-  <data name="Agent_ConversationRefusedLabel" xml:space="preserve">
+  <data name="Agent_ConversationUnansweredLabel" xml:space="preserve">
     <value>El Asistente no respondió a esta pregunta.</value>
   </data>
   <data name="Agent_ConversationTitle" xml:space="preserve">
@@ -91,8 +91,8 @@
   <data name="Agent_DetailLocale" xml:space="preserve">
     <value>Idioma</value>
   </data>
-  <data name="Agent_DetailRefusal" xml:space="preserve">
-    <value>Rechazo: {0}</value>
+  <data name="Agent_DetailOutcome" xml:space="preserve">
+    <value>Resultado: {0}</value>
   </data>
   <data name="Agent_HistoryEmpty" xml:space="preserve">
     <value>Aún no tienes conversaciones.</value>
@@ -133,11 +133,11 @@
   <data name="Agent_Help_Menu_CreateIssue" xml:space="preserve">
     <value>Crear incidencia</value>
   </data>
-  <data name="Agent_IssueProposed" xml:space="preserve">
+  <data name="Agent_HandoffDrafted" xml:space="preserve">
     <value>No puedo responder a esto por mí mismo. He redactado una incidencia para el equipo — revísala y envíala, por favor.</value>
   </data>
   <data name="Agent_SilentTurnFallback" xml:space="preserve"><value>No he podido preparar una respuesta para eso. ¿Podrías reformular la pregunta o intentarlo de nuevo?</value></data>
-  <data name="Agent_AbuseRefusal" xml:space="preserve"><value>No puedo ayudarte con esto. Si estás en una situación de angustia, contacta con un coordinador o con los servicios de emergencia.</value></data>
+  <data name="Agent_DistressReply" xml:space="preserve"><value>No puedo ayudarte con esto. Si estás en una situación de angustia, contacta con un coordinador o con los servicios de emergencia.</value></data>
   <data name="Agent_HttpError" xml:space="preserve"><value>Error: {0}</value></data>
   <data name="Agent_NetworkError" xml:space="preserve"><value>Error de red.</value></data>
   <data name="Agent_DisabledReply" xml:space="preserve"><value>(El asistente está desactivado actualmente.)</value></data>

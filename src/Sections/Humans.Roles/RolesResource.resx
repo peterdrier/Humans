@@ -109,4 +109,5 @@
   <data name="Roles_Refusal_LinkTooLong" xml:space="preserve"><value>A custom link can't be longer than 100 characters.</value></data>
   <data name="Roles_Refusal_DescriptionTooLong" xml:space="preserve"><value>A role description can't be longer than 2000 characters.</value></data>
   <data name="Roles_Refusal_PrioritiesTooLong" xml:space="preserve"><value>There are too many slots with these priorities. Reduce the number of slots.</value></data>
+  <data name="Roles_Refusal_NoPerson" xml:space="preserve"><value>Pick a person from the list.</value></data>
 </root>

@@ -19,7 +19,7 @@ public class SurveyInviteTokenTests
     }
 
     [HumansFact]
-    public void Resolve_reports_an_expired_token_as_expired()
+    public void Resolve_ExpiredToken_ReturnsExpired()
     {
         var dataProtection = DataProtectionProvider.Create("survey-tests");
         var expired = dataProtection.CreateProtector("SurveyInvite").ToTimeLimitedDataProtector()

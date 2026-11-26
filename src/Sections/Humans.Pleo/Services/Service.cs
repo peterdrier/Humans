@@ -368,7 +368,10 @@ internal sealed class Service(
     {
         if (!client.IsConfigured)
         {
-            logger.LogInformation("{Missing} not set; skipping Pleo sync", client.MissingSettings);
+            if (client.MissingSettings is { } missing)
+                logger.LogInformation("{Missing} not set; skipping Pleo sync", missing);
+            else
+                logger.LogInformation("Pleo:BaseUrl is not an absolute HTTP(S) URL; skipping Pleo sync");
             return PleoSyncOutcome.NotConfigured;
         }
         if (!await SyncGate.WaitAsync(0, ct)) return PleoSyncOutcome.Busy;

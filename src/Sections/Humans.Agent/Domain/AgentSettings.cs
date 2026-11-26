@@ -9,6 +9,7 @@ internal sealed class AgentSettings
 
     public bool Enabled { get; set; }
     public string Model { get; set; } = "claude-sonnet-4-6";
+    [Obsolete("Unread since the preload became one size. Kept only until its column drop is approved.")]
     public AgentPreloadConfig PreloadConfig { get; set; } = AgentPreloadConfig.Tier1;
 
     public int DailyMessageCap { get; set; } = 30;

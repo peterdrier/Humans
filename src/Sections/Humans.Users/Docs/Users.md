@@ -22,7 +22,7 @@ aggregate and **Profiles**. They share a project because they share the `UsersDb
 because `CachingUserService` stitches User-owned columns into the unified `UserInfo` read model; the invariants below
 are stated separately, because they are separate invariants.
 
-The agent's `fetch_section_guide` tool reaches this file under the canonical key `Users`, with
+The agent's `fetch_section_doc` tool reaches this file under the canonical key `Users`, with
 `Profiles` and `Profile` as aliases (`AgentSectionKeys`).
 
 ---
@@ -683,6 +683,7 @@ Email Problems remediation buttons use the shared `data-confirm` handler: each c
 - Public-mode profile cards resolve the authenticated viewer before Board, contact-field and email-visibility checks. These permissions use the surviving viewer id, never a merged-away cookie id. Missing or malformed viewer identities render no card and never fall back to the target's self-access. Self/admin cards retain their host-authorized visibility; anonymous coordinator popovers use their separate public summary.
 - Audience segmentation includes orders with either a matched buyer or a matched attendee in both ticket counts and available purchase years. Wholly unmatched orders do not add filter years; year filtering uses UTC purchase dates and counts each matched account once.
 - Profile directory reads share `UserInfo.IsProfileBrowsable` (a stored profile and no suspension) across the full profile page, birthday calendar and map; authenticated popovers and search retain their separate visibility. The profile editor's GET projection and POST redisplay use `UserInfo.NeedsProfileSetup` (no profile or Bare state), with preview remaining a GET-only override. Admin detail and profileless summaries use the existing canonical `UserInfo.Email` selection rather than rebuilding its primary/verified/legacy fallback.
+- Complete profile edits refuse missing or tombstoned accounts before preparing a picture or writing profile, contact or language rows. Archived IDs resolve to the survivor before selecting the edit lock and every mutation target; refusals return a failed `ProfileEditResult` and log the unavailable account.
 - Popover and inline-summary memberships consume Teams' `GetUserTeamMembershipsAsync` read and its `IsProfileMembership` predicate. Active teams other than Volunteers remain eligible, including other system teams; hidden flags are preserved for the existing public/admin rendering split.
 - Profile cards order visible email addresses alphabetically (ordinal, case-insensitive); the email service owns verification and visibility filtering, while each consumer owns its display order or address selection.
 - Profile cards, summaries/popovers, admin details and the profile editor order spoken languages by proficiency descending, then language code using ordinal case-insensitive comparison. Their presentation projections own the order; the profile snapshot preserves the supplied language rows without sorting.

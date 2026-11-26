@@ -15,7 +15,7 @@ internal sealed class PleoTransientException : PleoApiException
     public PleoTransientException(string message, Exception inner) : base(message, inner) { }
 }
 
-/// <summary>4xx or an unreadable body: never retry. A 403 is Pleo's limit on the key, not a config problem.</summary>
+/// <summary>Invalid endpoint, 4xx or an unreadable body: never retry. A 403 is Pleo's limit on the key, not a config problem.</summary>
 internal sealed class PleoPermanentException : PleoApiException
 {
     public int? StatusCode { get; }

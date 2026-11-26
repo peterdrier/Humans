@@ -1,0 +1,5 @@
+Humans.Shifts.Contracts.IShiftService.GetOnSiteUserIdsForDayAsync
+Humans.Shifts.Data.IShiftManagementRepository.GetVolunteerEventProfilesByUserIdsAsync
+Humans.Shifts.Data.IShiftManagementRepository.ReassignProfilesAndTagPrefsToUserAsync
+Humans.Shifts.Models.VolunteerTrackingXlsxBuilder.WriteGroupsAndHumans
+Humans.Shifts.Services.ShiftSignupService.CheckAndNotifyCoverageGapAsync

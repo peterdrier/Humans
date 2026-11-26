@@ -75,7 +75,6 @@ public class AgentRateLimitHandlerTests
         svc.Current.Returns(new AgentSettingsDto(
             s.Enabled,
             s.Model,
-            s.PreloadConfig,
             s.DailyMessageCap,
             s.HourlyMessageCap,
             s.DailyTokenCap,

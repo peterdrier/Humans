@@ -25,7 +25,6 @@ internal sealed record AgentModelOption(string Id, string DisplayName, AgentPric
 internal sealed record AgentSettingsDto(
     bool Enabled,
     string Model,
-    AgentPreloadConfig PreloadConfig,
     int DailyMessageCap,
     int HourlyMessageCap,
     int DailyTokenCap,

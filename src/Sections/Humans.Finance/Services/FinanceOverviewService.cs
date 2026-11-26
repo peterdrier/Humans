@@ -160,11 +160,13 @@ internal sealed class FinanceOverviewService(
         var (ledger, stripeAccounts, current) = await GetStripeLinkSettingsAsync(ct);
         var kept = links.Where(l => !string.IsNullOrWhiteSpace(l.Value))
             .ToDictionary(l => l.Key, l => l.Value!.Trim());
-        if (links.Keys.FirstOrDefault(n => ledger.All(a => a.Number != n)) is var badNum and not 0)
-            return $"Ledger account {badNum} is not a Stripe ledger account on /Finance.";
-        if (kept.FirstOrDefault(l => !stripeAccounts.Contains(l.Value, StringComparer.Ordinal)
-                && !string.Equals(current.GetValueOrDefault(l.Key), l.Value, StringComparison.Ordinal)) is { Key: not 0 } badLink)
-            return $"The Stripe mirror holds no account {badLink.Value}.";
+        foreach (var number in links.Keys)
+            if (ledger.All(account => account.Number != number))
+                return $"Ledger account {number} is not a Stripe ledger account on /Finance.";
+        foreach (var (number, account) in kept)
+            if (!stripeAccounts.Contains(account, StringComparer.Ordinal)
+                && !string.Equals(current.GetValueOrDefault(number), account, StringComparison.Ordinal))
+                return $"The Stripe mirror holds no account {account}.";
 
         await repo.ReplaceStripeLedgerLinksAsync(kept, ct);
         await audit.LogAsync(FinanceAuditActions.FinanceStripeLedgerLinksUpdated, "FinanceStripeLedgerLinks", Guid.Empty,

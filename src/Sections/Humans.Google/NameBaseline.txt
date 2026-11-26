@@ -1,0 +1,4 @@
+Humans.Google.Services.GoogleDriveAccessSyncService.ApplyMissingAndChangedAsync
+Humans.Google.Services.GoogleDriveAccessSyncService.DeleteAndLogAsync
+Humans.Google.Services.GoogleDriveAccessSyncService.UpdateAndLogAsync
+Humans.Google.Services.IGoogleAdminService.ResetPasswordAndGenerate2FaAsync

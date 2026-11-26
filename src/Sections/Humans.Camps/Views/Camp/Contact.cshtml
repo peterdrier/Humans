@@ -19,7 +19,7 @@
             <input type="hidden" asp-for="CampSlug" />
             <input type="hidden" asp-for="CampName" />
 
-            <div asp-validation-summary="ModelOnly" class="alert alert-danger"></div>
+            <div asp-validation-summary="All" class="alert alert-danger"></div>
 
             @await Html.PartialAsync("_EmailComposer", new EmailComposerViewModel
             {

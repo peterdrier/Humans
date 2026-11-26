@@ -60,7 +60,7 @@ None — the section owns no tables.
 
 ## Invariants
 
-- `IsConfigured` is true only with an API URL and an API key.
+- `IsConfigured` requires absolute HTTP(S) API/app URLs and a nonblank API key that can form an HTTP authorization header.
 - Create order: `PlatformEventRef` must be the numeric Hi.Events event id, else `TicketingPlatformException`. The Humans order id
   (`N` format) is the `external_reference`, so a retried create returns the same Hi.Events order. The event's products are read
   first: ticket lines go to its one `TICKET` product with the line's holder name, donation lines to its one `GENERAL`
@@ -105,7 +105,7 @@ None — the section owns no tables.
   `AWAITING_OFFLINE_PAYMENT` reads as `Pending` and Hi.Events never expires it, so Tickets cancels it at Hi.Events
   when its hold lapses, like any unpaid order.
 - A reserved order whose `reserved_until` does not parse is an error, not `Pending`.
-- A malformed `HiEvents:ApiUrl` only makes this platform unconfigured; it never throws while Tickets resolves platforms.
+- Malformed URLs or an API key containing line breaks only make this platform unconfigured; they never throw while Tickets resolves platforms. Order creation, status, refund, cancellation, erasure and listing refuse unconfigured settings before any request. The setup check reports the configuration error without exposing the key; ledger reads retain their null result while unconfigured.
 - Buyer names go in 50 Unicode scalar characters of first name and 50 of last name, split at a space without cutting
   surrogate pairs; each ticket line carries the holder's full legal name (Hi.Events allows 255 on this endpoint).
 - `Setup` shows the URLs and only set or missing for the key and secret; an API host on `hi.events` reads as Hi.Events Cloud, unsupported because it lacks the fork's checkout endpoint, and never passes the check. `CheckAsync` reads `users/me` (a body without a user, such as the web app's HTML, fails), the event's status and products, then posts an empty body to the checkout endpoint: the fork answers 422 before creating anything, stock Hi.Events 404 or 405.

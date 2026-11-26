@@ -17,7 +17,7 @@ public class TicketRulesSourceTests
     }
 
     [HumansFact]
-    public void Each_unusable_folder_names_its_own_problem()
+    public void RulesFiles_UnusableFolder_NamesItsProblem()
     {
         GitHubTicketRulesSource.RulesFiles(["R/README.md", "R/NORMAS.md", "R/NORMAS-en.md"]).Problem
             .Should().Be("It has more than one .md without a language suffix: R/README.md, R/NORMAS.md.");
