@@ -58,7 +58,7 @@
                                         <div class="p-3 bg-light border-top">
                                             @if (msg.HtmlBody is null)
                                             {
-                                                <span class="text-muted">@string.Format(Localizer["Email_Outbox_BodyHidden"].Value, msg.RecipientEmail)</span>
+                                                <span class="text-muted">@Localizer["Email_Outbox_BodyHidden", msg.RecipientEmail]</span>
                                             }
                                             else
                                             {

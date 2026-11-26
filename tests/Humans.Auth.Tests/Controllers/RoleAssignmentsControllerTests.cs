@@ -1,3 +1,4 @@
+using Humans.Testing;
 using System.Reflection;
 using System.Security.Claims;
 using AwesomeAssertions;
@@ -45,7 +46,7 @@ public sealed class RoleAssignmentsControllerTests
     public RoleAssignmentsControllerTests()
     {
         _clock.GetCurrentInstant().Returns(Now);
-        var localizer = Substitute.For<IStringLocalizer<SharedResource>>();
+        var localizer = Substitute.For<IStringLocalizer<SharedResource>>().AddFormatting();
         localizer[Arg.Any<string>()].Returns(c => new LocalizedString(c.Arg<string>(), c.Arg<string>() + " {0}"));
         _localizer = localizer;
         GivenAuthorization(RoleNames.Board, succeeds: true);
@@ -122,6 +123,21 @@ public sealed class RoleAssignmentsControllerTests
     public async Task AddRoleGet_IsNotFound_ForAnUnknownMember()
     {
         (await BuildController().AddRole(Guid.NewGuid())).Should().BeOfType<NotFoundResult>();
+    }
+
+    [HumansFact]
+    public async Task AddRole_UnavailableTarget_ReturnsNotFound()
+    {
+        GivenKnownUsers();
+        GivenAuthorization(TeamsRoles.TeamsAdmin, succeeds: true);
+        _write.AssignRoleAsync(TargetId, TeamsRoles.TeamsAdmin, ActorId, null, Arg.Any<CancellationToken>())
+            .Returns(new RoleAssignmentResult(false, "UserUnavailable"));
+        var controller = BuildController();
+
+        var result = await controller.AddRole(TargetId, new CreateRoleAssignmentViewModel { RoleName = TeamsRoles.TeamsAdmin });
+
+        result.Should().BeOfType<NotFoundResult>();
+        controller.TempData.Should().BeEmpty();
     }
 
     [HumansFact]

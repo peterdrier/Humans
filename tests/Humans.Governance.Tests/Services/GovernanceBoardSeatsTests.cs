@@ -1,3 +1,4 @@
+using Humans.Testing;
 using System.Security.Claims;
 using AwesomeAssertions;
 using Humans.AuditLog.Contracts;
@@ -111,6 +112,22 @@ public sealed class GovernanceBoardSeatsTests
     }
 
     [HumansFact]
+    public async Task Add_UnavailableRoleTarget_RefusesSeat()
+    {
+        var userId = Guid.NewGuid();
+        _users.GetUserInfoAsync(userId, Arg.Any<CancellationToken>()).Returns(
+            UserInfo.Create(new User { Id = userId }, [], [], null) with { State = UserState.Active });
+        _write.AssignRoleAsync(userId, RoleNames.Board, Arg.Any<Guid>(), null, Arg.Any<CancellationToken>())
+            .Returns(new RoleAssignmentResult(false, "UserUnavailable"));
+
+        var result = await Seats().AddAsync(userId, Guid.NewGuid(), Xunit.TestContext.Current.CancellationToken);
+
+        result.ErrorKey.Should().Be(GovernanceBoardSeats.InactiveAccount);
+        _groupSync.ReceivedCalls().Should().BeEmpty();
+        _audit.ReceivedCalls().Should().BeEmpty();
+    }
+
+    [HumansFact]
     public async Task Add_refuses_an_unknown_account()
     {
         (await Seats().AddAsync(Guid.NewGuid(), Guid.NewGuid())).ErrorKey.Should().Be(GovernanceBoardSeats.InactiveAccount);
@@ -163,7 +180,7 @@ public sealed class GovernanceBoardSeatsTests
             new GovernanceBodyLinksService(_repo, Substitute.For<Humans.Teams.Contracts.ITeamService>(), Substitute.For<ITeamResourceService>(),
                 _audit, new GovernanceBodySync(_repo, _groupSync, Substitute.For<IGoogleSyncWrite>()), new FakeClock(Now)),
             authorization,
-            Substitute.For<IStringLocalizer<GovernanceResource>>())
+            Substitute.For<IStringLocalizer<GovernanceResource>>().AddFormatting())
         {
             ControllerContext = new ControllerContext
             {

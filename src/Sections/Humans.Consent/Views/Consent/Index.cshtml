@@ -84,7 +84,7 @@
             @if (totalPending > 0)
             {
                 <div class="alert alert-warning">
-                    @string.Format(Localizer["Consent_PendingCount"].Value, totalPending)
+                    @Localizer["Consent_PendingCount", totalPending]
                 </div>
             }
             else

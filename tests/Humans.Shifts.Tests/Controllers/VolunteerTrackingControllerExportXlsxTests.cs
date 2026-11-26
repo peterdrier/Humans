@@ -1,3 +1,4 @@
+using Humans.Testing;
 using System.Security.Claims;
 using AwesomeAssertions;
 using Humans.Shifts.Services.Dtos;
@@ -145,7 +146,7 @@ public sealed class VolunteerTrackingControllerExportXlsxTests
         var service = Substitute.For<IVolunteerTrackingManagement>();
         var shiftMgmt = Substitute.For<IShiftManagement>();
         var userService = Substitute.For<IUserService>();
-        var localizer = Substitute.For<IStringLocalizer<ShiftsResource>>();
+        var localizer = Substitute.For<IStringLocalizer<ShiftsResource>>().AddFormatting();
         localizer[Arg.Any<string>()].Returns(ci => new LocalizedString(ci.Arg<string>(), ci.Arg<string>()));
 
         var xlsxBuilder = new VolunteerTrackingXlsxBuilder();

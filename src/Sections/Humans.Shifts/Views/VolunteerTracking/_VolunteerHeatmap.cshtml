@@ -108,7 +108,7 @@
         else
         {
             <strong><i class="fa-solid fa-table-cells me-2"></i>@Localizer["Shifts_VolTrack_Main_Title"]</strong>
-            <span class="text-muted small ms-2">@string.Format(Localizer["Shifts_VolTrack_Main_Subtitle"].Value, Model.Rows.Count)</span>
+            <span class="text-muted small ms-2">@Localizer["Shifts_VolTrack_Main_Subtitle", Model.Rows.Count]</span>
         }
         <div class="btn-group btn-group-sm ms-auto" role="group" aria-label="Heatmap horizontal scroll" data-vt-scroll-group hidden>
             <button type="button" class="btn btn-outline-secondary" data-vt-scroll="left" aria-label="@Localizer["Shifts_VolTrack_Scroll_Left"]"><i class="fa-solid fa-chevron-left"></i></button>
@@ -150,12 +150,12 @@
                             <div class="small">
                                 @if (row.GapCount > 0)
                                 {
-                                    <span class="badge bg-danger me-1">@string.Format(Localizer["Shifts_VolTrack_GapBadge"].Value, row.GapCount)</span>
+                                    <span class="badge bg-danger me-1">@Localizer["Shifts_VolTrack_GapBadge", row.GapCount]</span>
                                 }
                                 @if (row.DayOffs.Count > 0)
                                 {
                                     <span class="badge bg-secondary-subtle border text-dark me-1" title="@dayOffTooltip">
-                                        <i class="fa-solid fa-calendar-xmark me-1"></i>@string.Format(Localizer["Shifts_VolTrack_DayOffBadge"].Value, row.DayOffs.Count)
+                                        <i class="fa-solid fa-calendar-xmark me-1"></i>@Localizer["Shifts_VolTrack_DayOffBadge", row.DayOffs.Count]
                                     </span>
                                 }
                                 @if (row.BarrioSetupStartDate.HasValue)

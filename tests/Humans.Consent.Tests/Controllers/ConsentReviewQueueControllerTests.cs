@@ -1,3 +1,4 @@
+using Humans.Testing;
 using System.Reflection;
 using System.Security.Claims;
 using AwesomeAssertions;
@@ -32,9 +33,9 @@ public class ConsentReviewQueueControllerTests
     private readonly IOnboardingIntake _onboarding = Substitute.For<IOnboardingIntake>();
     private readonly IUserService _userService = Substitute.For<IUserService>();
     private readonly IStringLocalizer<ConsentResource> _localizer =
-        Substitute.For<IStringLocalizer<ConsentResource>>();
+        Substitute.For<IStringLocalizer<ConsentResource>>().AddFormatting();
     private readonly IStringLocalizer<SharedResource> _sharedLocalizer =
-        Substitute.For<IStringLocalizer<SharedResource>>();
+        Substitute.For<IStringLocalizer<SharedResource>>().AddFormatting();
 
     private readonly Guid _reviewerId = Guid.NewGuid();
     private readonly Guid _subjectId = Guid.NewGuid();

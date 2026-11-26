@@ -1,5 +1,6 @@
 using System.Security.Claims;
 using AwesomeAssertions;
+using Humans.Base.Constants;
 using Humans.Cantina.Contracts;
 using Humans.Cantina.Controllers;
 using Humans.Cantina.Models;
@@ -179,6 +180,18 @@ public class CantinaProfileControllerTests
         await _dietary.Received(1).DeclineAsync(_userId, Arg.Any<CancellationToken>());
         await _dietary.DidNotReceiveWithAnyArgs().SaveAsync(default, default!, Arg.Any<CancellationToken>());
         AssertRedirect(result, "Index", controller);
+    }
+
+    [HumansFact]
+    public async Task Post_DeclineRefused_ReportsFailure()
+    {
+        _dietary.DeclineAsync(_userId, Arg.Any<CancellationToken>()).Returns("Cantina_Dietary_SaveFailed");
+
+        var result = await _controller.Dietary(new DietaryViewModel { DeclineToAnswer = true, ReturnAction = "shifts" });
+
+        AssertRedirect(result, "Index", "Shifts");
+        _controller.TempData[TempDataKeys.ErrorMessage].Should().Be("Cantina_Dietary_SaveFailed");
+        _controller.TempData.Should().NotContainKey(TempDataKeys.SuccessMessage);
     }
 
     [HumansTheory]

@@ -60,10 +60,8 @@
     <li><strong>@Localizer["Privacy_Rights_Objection"]</strong></li>
 </ul>
 <p>
-    @Html.Raw(string.Format(
-        Localizer["Privacy_YourRightsExercise"].Value,
-        "<a href=\"" + Html.Encode(Url.Action("Privacy", "Profile")) + "\">" + Localizer["Privacy_PrivacyAndData"].Value + "</a>",
-        "<a href=\"mailto:" + Html.Encode(ViewData["DpoEmail"]) + "\">" + Html.Encode(ViewData["DpoEmail"]) + "</a>"))
+    @Html.Raw(Localizer["Privacy_YourRightsExercise", "<a href=\"" + Html.Encode(Url.Action("Privacy", "Profile")) + "\">" + Localizer["Privacy_PrivacyAndData"].Value + "</a>",
+        "<a href=\"mailto:" + Html.Encode(ViewData["DpoEmail"]) + "\">" + Html.Encode(ViewData["DpoEmail"]) + "</a>"])
 </p>
 
 <h2>@Localizer["Privacy_CookiesTitle"]</h2>
@@ -104,10 +102,8 @@
 
 <h2>@Localizer["Privacy_ContactTitle"]</h2>
 <p>
-    @Html.Raw(string.Format(Localizer["Privacy_ContactBody"].Value,
-        "<a href=\"mailto:" + Html.Encode(ViewData["DpoEmail"]) + "\">" + Html.Encode(ViewData["DpoEmail"]) + "</a>"))
+    @Html.Raw(Localizer["Privacy_ContactBody", "<a href=\"mailto:" + Html.Encode(ViewData["DpoEmail"]) + "\">" + Html.Encode(ViewData["DpoEmail"]) + "</a>"])
 </p>
 <p>
-    @Html.Raw(string.Format(Localizer["Privacy_ComplaintBody"].Value,
-        "<a href=\"https://www.aepd.es\" target=\"_blank\" rel=\"noopener noreferrer\">www.aepd.es</a>"))
+    @Html.Raw(Localizer["Privacy_ComplaintBody", "<a href=\"https://www.aepd.es\" target=\"_blank\" rel=\"noopener noreferrer\">www.aepd.es</a>"])
 </p>

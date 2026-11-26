@@ -1,3 +1,4 @@
+using Humans.Testing;
 using System.Globalization;
 using Humans.Auth.Services;
 using Microsoft.Extensions.Localization;
@@ -23,7 +24,7 @@ internal static class TestAuthEmails
 
     public static AuthEmails Create()
     {
-        var localizer = Substitute.For<IStringLocalizer<AuthResource>>();
+        var localizer = Substitute.For<IStringLocalizer<AuthResource>>().AddFormatting();
         localizer[Arg.Any<string>()].Returns(call =>
         {
             var key = call.Arg<string>();

@@ -1,3 +1,4 @@
+using Humans.Testing;
 using System.Security.Claims;
 using Humans.Consent.Contracts;
 using Humans.Onboarding.Services;
@@ -33,7 +34,7 @@ public class OnboardingWidgetControllerConsentsTests
     private readonly IUserService _userService = Substitute.For<IUserService>();
 
     private readonly IStringLocalizer<OnboardingResource> _localizer =
-        Substitute.For<IStringLocalizer<OnboardingResource>>();
+        Substitute.For<IStringLocalizer<OnboardingResource>>().AddFormatting();
     private readonly DefaultHttpContext _http = new();
 
     public OnboardingWidgetControllerConsentsTests()

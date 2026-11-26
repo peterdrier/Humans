@@ -20,6 +20,7 @@ using Microsoft.AspNetCore.Mvc.Routing;
 using Microsoft.AspNetCore.Mvc.ViewFeatures;
 using Microsoft.AspNetCore.Routing;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Primitives;
 using NodaTime;
 using NSubstitute;
 
@@ -203,6 +204,80 @@ public class ExpenseReportViewTests
         html.Contains("Frozen legal name", StringComparison.Ordinal).Should().Be(canSeeNames);
         if (!canSeeNames)
             await users.DidNotReceive().GetUserInfoAsync(report.SubmitterUserId, Arg.Any<CancellationToken>());
+    }
+
+    [HumansTheory]
+    [Xunit.MemberData(nameof(SupportedCultures.All), MemberType = typeof(SupportedCultures))]
+    public async Task AmountForms_PostedValues_PreserveAmounts(string language)
+    {
+        using var culture = new CultureScope(language);
+        using var assertions = new AwesomeAssertions.Execution.AssertionScope();
+        var line = new ExpenseLineDto
+        {
+            Id = Guid.NewGuid(),
+            Description = "Receipt",
+            Amount = 12.34m,
+            LineType = ExpenseLineType.Receipt,
+            SortOrder = 0,
+        };
+        var report = Report(ExpenseReportStatus.Draft) with { Total = 12.34m, MaxAmount = 12.34m, Lines = [line] };
+        var pages = new (string Page, object Model)[]
+        {
+            ("NewLine", new ExpenseLineNewViewModel { ReportId = report.Id, IsInvoice = false }),
+            ("LineEdit", new ExpenseLineEditViewModel { Report = report, Line = line, CanEditLines = true }),
+            ("LineProofs", new ExpenseLineProofsViewModel
+            {
+                Report = report, InvoiceLine = line with { LineType = ExpenseLineType.Invoice }, Proofs = [], CanEditLines = true,
+            }),
+            ("Detail", new ExpenseDetailViewModel
+            {
+                Report = report, BookingLabel = "Budget", CanEndorse = true, CanApprove = true,
+            }),
+        };
+        var registrations = new ServiceCollection().AddLogging();
+        registrations.AddControllers();
+        using var services = registrations.BuildServiceProvider();
+        var tested = 0;
+        foreach (var (page, model) in pages)
+        {
+            var html = await RenderAsync(page, model);
+            foreach (Match form in Regex.Matches(html, "<form\\b[^>]*>.*?</form>", RegexOptions.Singleline | RegexOptions.NonBacktracking))
+            {
+                var inputs = Regex.Matches(form.Value, "<input\\b[^>]*>", RegexOptions.NonBacktracking)
+                    .Cast<Match>().Select(input => Regex.Matches(input.Value, "(?<name>[\\w-]+)=\"(?<value>[^\"]*)\"", RegexOptions.NonBacktracking)
+                        .Cast<Match>().ToDictionary(a => a.Groups["name"].Value, a => WebUtility.HtmlDecode(a.Groups["value"].Value), StringComparer.Ordinal))
+                    .ToList();
+                var fields = new Dictionary<string, StringValues>(StringComparer.Ordinal);
+                foreach (var input in inputs.Where(i => i.ContainsKey("name")))
+                {
+                    var name = input["name"];
+                    fields[name] = StringValues.Concat(fields.GetValueOrDefault(name), input.GetValueOrDefault("value", ""));
+                }
+                foreach (var input in inputs.Where(i => i.GetValueOrDefault("name") is "Amount" or "MaxAmount"))
+                {
+                    var name = input["name"];
+                    var value = input.GetValueOrDefault("value", "");
+                    if (value.Length > 0)
+                        value.Should().Be("12.34", $"{page}/{name} must render an HTML number in {language}");
+                    foreach (var posted in name is "MaxAmount" ? new[] { "12.34", "" } : new[] { "12.34" })
+                    {
+                        fields[name] = posted;
+                        var metadata = services.GetRequiredService<IModelMetadataProvider>().GetMetadataForType(typeof(decimal?));
+                        var binder = services.GetRequiredService<IModelBinderFactory>().CreateBinder(new ModelBinderFactoryContext { Metadata = metadata });
+                        var action = new ActionContext { HttpContext = new DefaultHttpContext { RequestServices = services } };
+                        var binding = DefaultModelBindingContext.CreateBindingContext(action,
+                            new FormValueProvider(BindingSource.Form, new FormCollection(fields), CultureInfo.CurrentCulture),
+                            metadata, bindingInfo: null, modelName: name);
+                        await binder.BindModelAsync(binding);
+                        binding.Result.IsModelSet.Should().BeTrue();
+                        binding.Result.Model.Should().Be(posted.Length == 0 ? null : 12.34m,
+                            $"{page}/{name} must preserve the posted amount in {language}");
+                    }
+                    tested++;
+                }
+            }
+        }
+        tested.Should().Be(5);
     }
 
     private static ExpenseReportDto Report(ExpenseReportStatus status, string? note = null) => new()

@@ -1,3 +1,4 @@
+using Humans.Testing;
 using AwesomeAssertions;
 using Humans.Base.Interfaces;
 using Humans.Shifts.Contracts;
@@ -17,7 +18,7 @@ public sealed class SearchContributorTests
         var id = Guid.NewGuid();
         var service = Substitute.For<IShiftService>();
         service.SearchAsync("Kitchen", int.MaxValue, Arg.Any<CancellationToken>()).Returns(Task.FromResult<IReadOnlyList<RotaSearchHit>>([new RotaSearchHit(id, "Kitchen", 80)]));
-        var localizer = Substitute.For<IStringLocalizer<ShiftsResource>>();
+        var localizer = Substitute.For<IStringLocalizer<ShiftsResource>>().AddFormatting();
         localizer["Shifts_Search_Category"].Returns(new LocalizedString("Shifts_Search_Category", "Shifts"));
         var services = new ServiceCollection().AddSingleton(service).AddSingleton(localizer).BuildServiceProvider();
 

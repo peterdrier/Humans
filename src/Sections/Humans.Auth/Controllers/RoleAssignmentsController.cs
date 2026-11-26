@@ -120,12 +120,15 @@ internal sealed class RoleAssignmentsController(
         var result = await roleAssignmentManagement.AssignRoleAsync(
             id, model.RoleName, currentUser.Id, model.Notes);
 
+        if (string.Equals(result.ErrorKey, "UserUnavailable", StringComparison.Ordinal))
+            return NotFound();
+
         if (result.Success)
-            SetSuccess(string.Format(localizer["Admin_RoleAssigned"].Value, model.RoleName));
+            SetSuccess(localizer["Admin_RoleAssigned", model.RoleName]);
         else if (string.Equals(result.ErrorKey, "NotesTooLong", StringComparison.Ordinal))
             SetError(NotesTooLongMessage);
         else
-            SetError(string.Format(localizer["Admin_RoleAlreadyActive"].Value, model.RoleName));
+            SetError(localizer["Admin_RoleAlreadyActive", model.RoleName]);
 
         return RedirectToAction("AdminDetail", "UsersAdmin", new { id });
     }
@@ -172,10 +175,8 @@ internal sealed class RoleAssignmentsController(
             roleId, currentUser.Id, notes);
 
         if (result.Success)
-            SetSuccess(string.Format(
-                localizer["Admin_RoleEnded"].Value,
-                roleAssignment.RoleName,
-                roleAssignment.UserDisplayName));
+            SetSuccess(localizer["Admin_RoleEnded", roleAssignment.RoleName,
+                roleAssignment.UserDisplayName]);
         else if (string.Equals(result.ErrorKey, "NotesTooLong", StringComparison.Ordinal))
             SetError(NotesTooLongMessage);
         else

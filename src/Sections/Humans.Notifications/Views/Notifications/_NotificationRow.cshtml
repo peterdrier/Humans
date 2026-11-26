@@ -66,7 +66,7 @@
     {
         // Role sends store the role name; a group without a label shows as stored.
         var audience = Localizer[$"Notifications_Audience_{Model.TargetGroupName}"];
-        <div class="notification-audience">@string.Format(Localizer["Notifications_SentTo"].Value, audience.ResourceNotFound ? Model.TargetGroupName : audience.Value)</div>
+        <div class="notification-audience">@Localizer["Notifications_SentTo", audience.ResourceNotFound ? Model.TargetGroupName : audience.Value]</div>
     }
 </div>
 
@@ -77,9 +77,9 @@
         var then = NodaTime.Instant.FromDateTimeUtc(DateTime.SpecifyKind(utcTime, DateTimeKind.Utc));
         var span = (now - then).ToTimeSpan();
         if (span.TotalMinutes < 1) return localizer["Notifications_TimeAgo_JustNow"].Value;
-        if (span.TotalMinutes < 60) return string.Format(localizer["Notifications_TimeAgo_Minutes"].Value, (int)span.TotalMinutes);
-        if (span.TotalHours < 24) return string.Format(localizer["Notifications_TimeAgo_Hours"].Value, (int)span.TotalHours);
-        if (span.TotalDays < 7) return string.Format(localizer["Notifications_TimeAgo_Days"].Value, (int)span.TotalDays);
+        if (span.TotalMinutes < 60) return localizer["Notifications_TimeAgo_Minutes", (int)span.TotalMinutes];
+        if (span.TotalHours < 24) return localizer["Notifications_TimeAgo_Hours", (int)span.TotalHours];
+        if (span.TotalDays < 7) return localizer["Notifications_TimeAgo_Days", (int)span.TotalDays];
         return utcTime.ToWeekdayDayMonth();
     }
 }
