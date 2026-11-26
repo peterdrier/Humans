@@ -35,6 +35,7 @@ RUN sed -i 's|archive\.ubuntu\.com|nl.archive.ubuntu.com|g; s|security\.ubuntu\.
     && apt-get update && apt-get install -y --no-install-recommends \
         libfontconfig1 \
         curl \
+        tini \
         ca-certificates \
         gnupg \
     && curl -fsSL https://www.postgresql.org/media/keys/ACCC4CF8.asc \
@@ -71,5 +72,6 @@ HEALTHCHECK --interval=30s --timeout=5s --start-period=15s --retries=3 \
 # Copy entrypoint wrapper (handles preview environment DB selection)
 COPY --chown=appuser:appuser docker-entrypoint.sh /app/docker-entrypoint.sh
 
-# Entry point
-ENTRYPOINT ["/app/docker-entrypoint.sh"]
+# tini as PID 1: the kernel ignores a default-action SIGABRT sent to PID 1, so a dotnet crash running as PID 1
+# ends in a glibc general protection fault (exit 139 plus a core dump) instead of a plain abort.
+ENTRYPOINT ["/usr/bin/tini", "--", "/app/docker-entrypoint.sh"]

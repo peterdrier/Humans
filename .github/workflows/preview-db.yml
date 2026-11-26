@@ -1,7 +1,7 @@
 name: Preview Database
 on:
   pull_request:
-    types: [opened, reopened, closed]
+    types: [opened, reopened, synchronize, closed]
     branches: [main]
   # Manual path for fork PRs a maintainer deploys by hand (CONTRIBUTING.md).
   workflow_dispatch:
@@ -15,7 +15,7 @@ jobs:
   # manual dispatch. Fork PRs get no preview (AGENTS.md). Cleanup stays
   # unguarded: it runs no PR code and must still drop clones made before this guard.
   clone-db:
-    if: github.event_name == 'workflow_dispatch' || (github.event.pull_request.head.repo.full_name == github.repository && (github.event.action == 'opened' || github.event.action == 'reopened'))
+    if: github.event_name == 'workflow_dispatch' || (github.event.pull_request.head.repo.full_name == github.repository && github.event.action != 'closed')
     runs-on: [self-hosted, nuc]
     steps:
       - name: Check the PR is open
@@ -26,7 +26,43 @@ jobs:
           STATE=$(gh pr view "${{ github.event.inputs.pr_number }}" --repo "${{ github.repository }}" --json state --jq .state)
           [ "$STATE" = "OPEN" ] || { echo "PR ${{ github.event.inputs.pr_number }} is $STATE, not OPEN"; exit 1; }
 
+      # A push re-clones only when the preview database is missing (a lost `opened` run) or when the push
+      # removed a migration file: a regenerated migration (/ef-regen) gets a new id, so a database that
+      # already applied the old one would run the same schema change twice and fail.
+      - name: Decide whether this push needs a fresh clone
+        id: decide
+        if: github.event.action == 'synchronize'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          BEFORE: ${{ github.event.before }}
+          AFTER: ${{ github.event.pull_request.head.sha }}
+        run: |
+          set -o pipefail
+          DB_NAME="humans_pr_${{ github.event.pull_request.number }}"
+          if [ -z "$(docker exec humans-db psql -U humans -tAc "SELECT 1 FROM pg_database WHERE datname = '${DB_NAME}';")" ]; then
+            echo "${DB_NAME} does not exist"
+            echo "clone=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          migrations() {
+            gh api "repos/${{ github.repository }}/git/trees/$1?recursive=1" \
+              --jq '.tree[].path | select(test("/Data/Migrations/[0-9]{14}_[^/]+\\.cs$")) | select(endswith(".Designer.cs") | not)' \
+              | sort
+          }
+          BEFORE_LIST=$(migrations "$BEFORE") || { echo "Cannot read ${BEFORE}; re-cloning"; echo "clone=true" >> "$GITHUB_OUTPUT"; exit 0; }
+          AFTER_LIST=$(migrations "$AFTER")
+          REMOVED=$(comm -23 <(echo "$BEFORE_LIST") <(echo "$AFTER_LIST"))
+          if [ -n "$REMOVED" ]; then
+            echo "Migrations removed by this push:"
+            echo "$REMOVED"
+            echo "clone=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "No migration removed; keeping ${DB_NAME}"
+          fi
+
       - name: Create preview database (clone from QA)
+        if: github.event.action != 'synchronize' || steps.decide.outputs.clone == 'true'
         run: |
           PR_ID=${{ github.event.inputs.pr_number || github.event.pull_request.number }}
           DB_NAME="humans_pr_${PR_ID}"

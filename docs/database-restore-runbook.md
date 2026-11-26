@@ -324,8 +324,8 @@ and it will take a fresh pre-migration snapshot before doing so.
 ## 4. A migration broke production
 
 This is the situation the pre-migration snapshot exists for. The single instance runs with
-`restart: unless-stopped`, and migrations are applied during startup and rethrow on failure, so
-a bad migration means the container crash-loops.
+`restart: unless-stopped`, and migrations are applied during startup and a failure exits with
+code 1, so a bad migration means the container crash-loops.
 
 1. **Read the logs before doing anything.** `docker logs $APP | tail -100`. The line
    `Applying pending migration: <name>` immediately before the exception names the culprit.
