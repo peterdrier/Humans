@@ -109,6 +109,7 @@ public sealed class Section :
     ];
 
     internal const string RoleRenamesKey = "auth.role-renames";
+    internal const string EndRetiredRolesKey = "auth.end-retired-roles";
 
     IEnumerable<DataMigration> ISectionDataMigrations.Migrations() =>
     [
@@ -116,6 +117,10 @@ public sealed class Section :
             "Rewrite system roles stored under a former role name (HumanAdmin, CampAdmin, TicketAdmin, VolunteerCoordinator, EETeamAdmin, ConsentCoordinator) to the current name",
             "RoleDefinition.FormerNames on each renamed role and the former-name reads in SystemRoleService",
             StatusAsync, ApplyAsync),
+        new(EndRetiredRolesKey, "Auth",
+            "End active system roles stored under a name no section declares any more (ShiftsNoInfo, NoInfoAdmin), auditing each as revoked",
+            "SystemRoleService.EndRetiredRolesAsync and GetActiveRowsUnderRetiredNamesAsync",
+            RetiredStatusAsync, RetiredApplyAsync),
     ];
 
     private static async Task<DataMigrationStatus> StatusAsync(IServiceProvider sp, CancellationToken ct) =>
@@ -128,6 +133,14 @@ public sealed class Section :
 
     private static Task<int> ApplyAsync(IServiceProvider sp, Guid actorUserId, CancellationToken ct) =>
         sp.GetRequiredService<SystemRoleService>().RewriteFormerNamesAsync(ct);
+
+    private static async Task<DataMigrationStatus> RetiredStatusAsync(IServiceProvider sp, CancellationToken ct) =>
+        new(["User", "Stored role", "Valid from"],
+            [.. (await sp.GetRequiredService<SystemRoleService>().GetActiveRowsUnderRetiredNamesAsync(ct))
+                .Select(r => (IReadOnlyList<string>)[r.UserId.ToString(), r.RoleName, r.ValidFrom.ToIso8601()])]);
+
+    private static Task<int> RetiredApplyAsync(IServiceProvider sp, Guid actorUserId, CancellationToken ct) =>
+        sp.GetRequiredService<SystemRoleService>().EndRetiredRolesAsync(actorUserId, ct);
 
     IReadOnlyList<RoleDefinition> ISectionRoles.Roles { get; } =
     [

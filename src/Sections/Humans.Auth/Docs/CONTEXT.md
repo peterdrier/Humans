@@ -28,4 +28,4 @@ _Avoid_: end, remove, unassign
 
 ## Retiring
 
-ShiftsNoInfo was retired on 2026-11-26 with no replacement yet; its rows stay as history and grant nothing. ConsentCoordinator was renamed ConsentAdmin, the Consent section's admin.
+ShiftsNoInfo was retired on 2026-11-26 with no replacement yet; its rows grant nothing, and the `auth.end-retired-roles` data migration ends the active ones with an audit entry each. ConsentCoordinator was renamed ConsentAdmin, the Consent section's admin.
