@@ -829,10 +829,7 @@ try
 catch (Exception ex)
 {
     LogStartupFailure(ex, builder.Configuration, app.Logger);
-
-    // Not rethrown: an unhandled exception ends in abort(), and as a container's PID 1 the kernel ignores the
-    // SIGABRT, so glibc falls through to a faulting instruction and the process dies with SIGSEGV and a core dump.
-    Environment.ExitCode = 1;
+    throw;
 }
 
 // One clear FATAL line for a startup crash, naming the database for Postgres connectivity failures.

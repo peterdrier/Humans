@@ -72,6 +72,6 @@ HEALTHCHECK --interval=30s --timeout=5s --start-period=15s --retries=3 \
 # Copy entrypoint wrapper (handles preview environment DB selection)
 COPY --chown=appuser:appuser docker-entrypoint.sh /app/docker-entrypoint.sh
 
-# tini as PID 1: the kernel ignores a default-action SIGABRT sent to PID 1, so a dotnet crash running as PID 1
-# ends in a glibc general protection fault (exit 139 plus a core dump) instead of a plain abort.
+# tini as PID 1: the kernel ignores a default-action SIGABRT sent to PID 1, so a dotnet crash (a startup failure
+# rethrown from Program.cs included) ends in a glibc general protection fault, exit 139, instead of abort, exit 134.
 ENTRYPOINT ["/usr/bin/tini", "--", "/app/docker-entrypoint.sh"]
