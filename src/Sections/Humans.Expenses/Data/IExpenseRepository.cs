@@ -11,7 +11,7 @@ internal interface IExpenseRepository : IRepository
     Task<ExpenseReportDto?> GetByIdAsync(Guid id, CancellationToken ct = default);
     Task<IReadOnlyList<ExpenseReportDto>> GetForSubmitterAsync(
         Guid submitterUserId, CancellationToken ct = default);
-    Task<IReadOnlyList<ExpenseReportDto>> GetByCategoryIdsAndStatusAsync(
+    Task<IReadOnlyList<ExpenseReportDto>> GetByCategoriesAsync(
         IReadOnlyCollection<Guid> categoryIds,
         ExpenseReportStatus status,
         CancellationToken ct = default);
