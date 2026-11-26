@@ -17,7 +17,7 @@ public class SectionAccessMatrixTests
         matrix.Key.Should().Be("ConsentReview");
         matrix.SectionName.Should().Be("Consent Review");
         matrix.Order.Should().Be(50);
-        matrix.Roles.Should().Equal("ConsentCoordinator", "Board");
+        matrix.Roles.Should().Equal("ConsentAdmin", "Board");
     }
 
     /// <summary>
@@ -30,10 +30,10 @@ public class SectionAccessMatrixTests
         Matrix().Features
             .Select(f => $"{f.Name}: {string.Join(", ", f.RoleAccess.Select(kv => $"{kv.Key}={kv.Value}"))}")
             .Should().Equal(
-                "View review queue: ConsentCoordinator=Allowed, Board=Allowed",
-                "Clear consent checks: ConsentCoordinator=Allowed, Board=Allowed",
-                "Flag / reject signup: ConsentCoordinator=Allowed, Board=Allowed",
-                "Board voting: ConsentCoordinator=Denied, Board=Allowed");
+                "View review queue: ConsentAdmin=Allowed, Board=Allowed",
+                "Clear consent checks: ConsentAdmin=Allowed, Board=Allowed",
+                "Flag / reject signup: ConsentAdmin=Allowed, Board=Allowed",
+                "Board voting: ConsentAdmin=Denied, Board=Allowed");
     }
 
     [HumansFact]

@@ -243,6 +243,6 @@ Admin finalizes decision
 
 - [Membership Tiers](membership-tiers.md) — Tier definitions and term lifecycle
 - [Onboarding Pipeline](../../../Humans.Onboarding/Docs/features/onboarding-pipeline.md) — Where Board voting fits in the pipeline
-- [Coordinator Roles](../../../Humans.Shifts/Docs/features/coordinator-roles.md) — Consent Coordinator review (audit annotation, separate from Board voting)
+- [Coordinator Roles](../../../Humans.Shifts/Docs/features/coordinator-roles.md) — Consent Admin review (audit annotation, separate from Board voting)
 - [Tier Applications](asociado-applications.md) — Application entity and state machine
 - [Administration](../../../../../docs/features/global/administration.md) — Admin role and access
