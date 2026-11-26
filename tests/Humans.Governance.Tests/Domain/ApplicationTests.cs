@@ -39,7 +39,8 @@ public class ApplicationTests
         application.Approve(reviewerId, "Welcome!", _clock);
 
         application.Status.Should().Be(ApplicationStatus.Approved);
-        application.ReviewNotes.Should().Be("Welcome!");
+        application.DecisionNote.Should().Be("Welcome!");
+        application.ReviewNotes.Should().BeNull();
         application.ResolvedAt.Should().NotBeNull();
     }
 
@@ -52,7 +53,7 @@ public class ApplicationTests
         application.Reject(reviewerId, "Does not meet criteria", _clock);
 
         application.Status.Should().Be(ApplicationStatus.Rejected);
-        application.ReviewNotes.Should().Be("Does not meet criteria");
+        application.DecisionNote.Should().Be("Does not meet criteria");
         application.ResolvedAt.Should().NotBeNull();
     }
 

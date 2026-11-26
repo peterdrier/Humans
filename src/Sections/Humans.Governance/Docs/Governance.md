@@ -66,10 +66,10 @@ Tier application entity with state machine workflow. Used for Colaborador and As
 | UpdatedAt | Instant | Last update |
 | ResolvedAt | Instant? | When resolved (approved/rejected/withdrawn) |
 | ReviewedByUserId | Guid? | Reviewer ID — **FK only**, no nav |
-| ReviewNotes | string? (4000) | Reviewer notes / rejection reason |
+| ReviewNotes | string? (4000) | Retired: no longer written, still erased; `DecisionNote` holds the decision text. Dropped later (peterdrier/Humans#2417). |
 | TermExpiresAt | LocalDate? | Term expiry (Dec 31 of the current cycle's odd year), set on approval |
 | BoardMeetingDate | LocalDate? | Date of Board meeting where decision was made. Always set on finalize: `ApproveAsync`/`RejectAsync` require an explicit `LocalDate`; the finalize form refuses missing or invalid dates. |
-| DecisionNote | string? (4000) | Board's collective decision note (only record after vote deletion) |
+| DecisionNote | string? (4000) | Board's collective decision note (only record after vote deletion); set by `Approve`/`Reject` and shown on the member and admin detail pages |
 | RenewalReminderSentAt | Instant? | When renewal reminder was last sent |
 
 **Aggregate-local navs:** `Application.StateHistory`, `Application.BoardVotes`.

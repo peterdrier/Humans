@@ -124,7 +124,7 @@ Application
 ├── ResolvedAt: Instant?
 ├── RenewalReminderSentAt: Instant?
 ├── ReviewedByUserId: Guid?
-├── ReviewNotes: string? (4000)
+├── ReviewNotes: string? (4000) [retired, no longer written; dropped by peterdrier/Humans#2417]
 ├── TermExpiresAt: LocalDate? [set on approval: Dec 31 of odd year]
 ├── BoardMeetingDate: LocalDate? [date Board finalized decision]
 ├── DecisionNote: string? (4000) [Board's collective decision note]
