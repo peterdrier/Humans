@@ -24,7 +24,7 @@ namespace Humans.Governance.Services;
 internal sealed class ApplicationDecisionService(
     IApplicationRepository repository,
     IUserService userService,
-    IRoleAssignmentService roleAssignmentService,
+    ISystemRoleService systemRoleService,
     IAuditLogService auditLogService,
     IEmailService emailService,
     GovernanceEmails emailMessages,
@@ -346,7 +346,7 @@ internal sealed class ApplicationDecisionService(
         });
 
     private Task<IReadOnlyList<Guid>> GetBoardMemberIdsAsync(CancellationToken ct) =>
-        roleAssignmentService.GetActiveUserIdsInRoleAsync(RoleNames.Board, ct);
+        systemRoleService.GetActiveUserIdsInRoleAsync(RoleNames.Board, ct);
 
     private void InvalidateVotingBadges(IReadOnlyList<Guid> boardMemberIds)
     {
@@ -493,8 +493,12 @@ internal sealed class ApplicationDecisionService(
         try
         {
             var user = await userService.GetUserInfoAsync(application.UserId, cancellationToken);
-            if (user is null)
+            if (user is null || user.IsTombstone)
+            {
+                logger.LogWarning("Skipping {DecisionName} email for application {ApplicationId}: user {UserId} is unavailable",
+                    decisionName, application.Id, application.UserId);
                 return (recipientId, culture);
+            }
 
             recipientId = user.Id;
             culture = CultureInfo.GetCultureInfo(user.PreferredLanguage.IsSupportedCultureCode() ? user.PreferredLanguage : "en");
@@ -688,7 +692,7 @@ internal sealed class ApplicationDecisionService(
             SubmittedAt: a.SubmittedAt,
             Votes: ProjectBoardVotes(a))).ToList();
 
-        var boardMemberIds = await roleAssignmentService.GetActiveUserIdsInRoleAsync(
+        var boardMemberIds = await systemRoleService.GetActiveUserIdsInRoleAsync(
             RoleNames.Board, ct);
         var boardUsersById = await userService.GetUserInfosAsync(boardMemberIds, ct);
         var boardMembers = boardUsersById.Values

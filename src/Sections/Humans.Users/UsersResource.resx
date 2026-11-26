@@ -140,7 +140,7 @@
   <data name="Users_ProfileCard_PendingBadge" xml:space="preserve"><value>Pending</value></data>
   <data name="Users_ProfileCard_Teams" xml:space="preserve"><value>Teams:</value></data>
   <data name="Users_ProfileCard_Joined" xml:space="preserve"><value>Joined {0}</value><comment>{0} = date</comment></data>
-  <data name="Users_ProfileCard_LastLogin" xml:space="preserve"><value>Last login {0}</value><comment>{0} = date</comment></data>
+  <data name="Users_ProfileCard_LastSignIn" xml:space="preserve"><value>Last sign-in {0}</value><comment>{0} = date</comment></data>
 
   <!-- ======================== -->
   <!-- Privacy / My Data        -->
@@ -195,8 +195,8 @@
   <data name="Users_EmailGrid_Actions" xml:space="preserve"><value>Actions</value></data>
   <data name="Users_EmailGrid_StatusVerified" xml:space="preserve"><value>Verified</value></data>
   <data name="Users_EmailGrid_StatusPending" xml:space="preserve"><value>Pending</value></data>
-  <data name="Users_EmailGrid_LinkGoogleAccount" xml:space="preserve"><value>Link Google account</value></data>
-  <data name="Users_EmailGrid_LinkGoogleHelp" xml:space="preserve"><value>Sign in with Google to attach an additional Google account to your profile.</value></data>
+  <data name="Users_EmailGrid_LinkProviderAccount" xml:space="preserve"><value>Link {0} account</value></data>
+  <data name="Users_EmailGrid_LinkProviderHelp" xml:space="preserve"><value>Sign in with {0} to attach an additional {0} account to your profile.</value></data>
   <data name="Users_EmailGrid_BackToAdminDetail" xml:space="preserve"><value>Back to user detail</value></data>
   <data name="Users_EmailGrid_Unlink" xml:space="preserve"><value>Unlink</value></data>
   <data name="Users_EmailGrid_ConfirmUnlink" xml:space="preserve"><value>Unlink this Google account?</value></data>

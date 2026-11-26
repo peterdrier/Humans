@@ -9,7 +9,6 @@ using Humans.Pleo.Jobs;
 using Humans.Pleo.Services;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Options;
 
 [assembly: Humans.Base.Demo.NoDemoStory("Vendor mirror: its data arrives through the Pleo sync, never from demo stories.")]
 
@@ -30,9 +29,8 @@ public sealed class Section : ISection, ISectionAdminNav, ISectionConfiguration,
             opts.BaseUrl = configuration["Pleo:BaseUrl"] ?? "https://external.pleo.io";
         });
 
-        services.AddHttpClient<IPleoClient, PleoClient>((sp, client) =>
+        services.AddHttpClient<IPleoClient, PleoClient>(client =>
         {
-            client.BaseAddress = new Uri(sp.GetRequiredService<IOptions<PleoClientOptions>>().Value.BaseUrl);
             client.Timeout = TimeSpan.FromSeconds(30);
         });
 

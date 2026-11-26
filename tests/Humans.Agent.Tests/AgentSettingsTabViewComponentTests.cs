@@ -1,5 +1,4 @@
 using AwesomeAssertions;
-using Humans.Agent.Domain;
 using Humans.Agent.Models;
 using Humans.Agent.Services;
 using Humans.Agent.ViewComponents;
@@ -21,7 +20,6 @@ public sealed class AgentSettingsTabViewComponentTests
         settings.Current.Returns(new AgentSettingsDto(
             Enabled: true,
             Model: "claude-sonnet-4-6",
-            PreloadConfig: AgentPreloadConfig.Tier2,
             DailyMessageCap: 30,
             HourlyMessageCap: 10,
             DailyTokenCap: 50000,
@@ -40,7 +38,6 @@ public sealed class AgentSettingsTabViewComponentTests
 
         model.Enabled.Should().BeTrue();
         model.Model.Should().Be("claude-sonnet-4-6");
-        model.PreloadConfig.Should().Be(AgentPreloadConfig.Tier2);
         model.DailyMessageCap.Should().Be(30);
         model.HourlyMessageCap.Should().Be(10);
         model.DailyTokenCap.Should().Be(50000);

@@ -23,9 +23,8 @@ reference symbol S in scope A") and would fire on **every compile**, in-editor
 under the squiggle. Cost is ~50 lines of analyzer + ~30 lines of tests once
 the `Humans.Analyzers` project exists (see the worked example in
 `code-analysis.md` §"Writing a new analyzer"). A test is the right tool when
-the rule is **baseline-ratcheted** (accumulated existing violations, new ones
-forbidden), **marker / existence** (a symbol must exist, an interface must be
-implemented), or **filesystem-aware** (rule depends on which directory a file
+the rule is **marker / existence** (a symbol must exist, an interface must be
+implemented) or **filesystem-aware** (rule depends on which directory a file
 lives in).
 
 The ratchet rules under `tests/Humans.Web.Tests/Architecture/Rules/` (they

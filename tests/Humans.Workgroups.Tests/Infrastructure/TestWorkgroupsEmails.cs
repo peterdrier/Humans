@@ -1,3 +1,4 @@
+using Humans.Testing;
 using System.Globalization;
 using Humans.Base.Configuration;
 using Humans.Workgroups.Services;
@@ -27,7 +28,7 @@ internal static class TestWorkgroupsEmails
 
     public static WorkgroupsEmails Create()
     {
-        var localizer = Substitute.For<IStringLocalizer<WorkgroupsResource>>();
+        var localizer = Substitute.For<IStringLocalizer<WorkgroupsResource>>().AddFormatting();
         localizer[Arg.Any<string>()].Returns(call =>
         {
             var key = call.Arg<string>();

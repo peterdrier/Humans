@@ -1,3 +1,4 @@
+using Humans.Testing;
 using System.ComponentModel.DataAnnotations;
 using Microsoft.Extensions.Logging;
 using Xunit;
@@ -35,7 +36,7 @@ public class ProfileEmailsControllerGridTests
     private readonly UserManager<User> _userManager;
     private readonly SignInManager<User> _signInManager;
     private readonly ProfileEmailsController _controller;
-    private readonly IStringLocalizer<SharedResource> _sharedLocalizer = Substitute.For<IStringLocalizer<SharedResource>>();
+    private readonly IStringLocalizer<SharedResource> _sharedLocalizer = Substitute.For<IStringLocalizer<SharedResource>>().AddFormatting();
     private readonly Guid _userId = Guid.NewGuid();
 
     public ProfileEmailsControllerGridTests()
@@ -57,8 +58,10 @@ public class ProfileEmailsControllerGridTests
         _signInManager = Substitute.For<SignInManager<User>>(
             _userManager, contextAccessor, claimsFactory, identityOptions,
             NullLogger<SignInManager<User>>.Instance, schemeProvider, userConfirmation);
+        _signInManager.GetExternalAuthenticationSchemesAsync()
+            .Returns([new AuthenticationScheme("Google", "Google", typeof(IAuthenticationHandler))]);
 
-        var localizer = Substitute.For<IStringLocalizer<UsersResource>>();
+        var localizer = Substitute.For<IStringLocalizer<UsersResource>>().AddFormatting();
         localizer[Arg.Any<string>()].Returns(ci => new LocalizedString(ci.Arg<string>(), ci.Arg<string>()));
 
         localizer["Validation_EmailAddress"].Returns(new LocalizedString("Validation_EmailAddress", "Validation_EmailAddress", resourceNotFound: true));
@@ -377,6 +380,16 @@ public class ProfileEmailsControllerGridTests
         // Going straight to /Profile/Me/Emails would skip that branch.
         capturedProps.Should().NotBeNull();
         capturedProps!.RedirectUri.Should().Contain("ExternalLoginCallback");
+    }
+
+    [HumansFact]
+    public async Task Link_ProviderNotConfigured_ReturnsNotFound()
+    {
+        _signInManager.GetExternalAuthenticationSchemesAsync().Returns([]);
+
+        var result = await _controller.Link("Google", returnUrl: null);
+
+        result.Should().BeOfType<NotFoundResult>();
     }
 
     [HumansFact]

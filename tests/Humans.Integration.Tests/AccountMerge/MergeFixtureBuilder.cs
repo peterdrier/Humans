@@ -326,18 +326,18 @@ public sealed class MergeFixtureBuilder
         return this;
     }
 
-    public MergeFixtureBuilder WithSourceRoleAssignment(
+    public MergeFixtureBuilder WithSourceSystemRole(
         string roleName, Instant? validFrom = null, Instant? validTo = null)
-        => AddRoleAssignment(SourceUserId, roleName, validFrom, validTo);
+        => AddSystemRole(SourceUserId, roleName, validFrom, validTo);
 
-    public MergeFixtureBuilder WithTargetRoleAssignment(
+    public MergeFixtureBuilder WithTargetSystemRole(
         string roleName, Instant? validFrom = null, Instant? validTo = null)
-        => AddRoleAssignment(TargetUserId, roleName, validFrom, validTo);
+        => AddSystemRole(TargetUserId, roleName, validFrom, validTo);
 
-    private MergeFixtureBuilder AddRoleAssignment(
+    private MergeFixtureBuilder AddSystemRole(
         Guid userId, string roleName, Instant? validFrom, Instant? validTo)
     {
-        _pendingAuth.Add(db => db.RoleAssignments.Add(new RoleAssignment
+        _pendingAuth.Add(db => db.SystemRoles.Add(new SystemRole
         {
             Id = Guid.NewGuid(),
             UserId = userId,

@@ -53,23 +53,23 @@ public sealed class UserRepositoryTests : IDisposable
     }
 
     [HumansFact]
-    public async Task SetLastLoginAsync_StampsLastLoginAt_AndReturnsTrue()
+    public async Task SetLastSignInAsync_StampsLastSignInAt()
     {
         var user = await SeedUserAsync();
         var at = _clock.GetCurrentInstant();
 
-        var result = await _repo.SetLastLoginAsync(user.Id, at, TestContext.Current.CancellationToken);
+        var result = await _repo.SetLastSignInAsync(user.Id, at, TestContext.Current.CancellationToken);
 
         result.Should().BeTrue();
         _dbContext.ChangeTracker.Clear();
         var reloaded = await _dbContext.Users.SingleAsync(u => u.Id == user.Id, TestContext.Current.CancellationToken);
-        reloaded.LastLoginAt.Should().Be(at);
+        reloaded.LastSignInAt.Should().Be(at);
     }
 
     [HumansFact]
-    public async Task SetLastLoginAsync_ReturnsFalse_WhenUserDoesNotExist()
+    public async Task SetLastSignInAsync_UnknownUser_ReturnsFalse()
     {
-        var result = await _repo.SetLastLoginAsync(
+        var result = await _repo.SetLastSignInAsync(
             Guid.NewGuid(), _clock.GetCurrentInstant(), TestContext.Current.CancellationToken);
 
         result.Should().BeFalse();

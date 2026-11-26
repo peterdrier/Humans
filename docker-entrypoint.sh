@@ -25,6 +25,9 @@ if [ -n "$PR_ID" ] && [ -n "$DB_PASSWORD" ]; then
   if [ -z "$DevAuth__AllowAdmin" ]; then
     export DevAuth__AllowAdmin=true
   fi
+
+  # A preview crash must not write a core dump to the shared host (the host's apport honours the limit).
+  ulimit -c 0
 fi
 
 exec dotnet Humans.Web.dll

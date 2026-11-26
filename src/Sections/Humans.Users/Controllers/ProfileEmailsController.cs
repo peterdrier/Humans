@@ -76,7 +76,7 @@ internal sealed class ProfileEmailsController(
 
         logger.LogInformation("Sent email confirmation to {Email} for user {UserId}", model.NewEmail.Trim(), user.Id);
         // The same words whether or not another account has the address: only its mailbox learns that.
-        SetSuccess(string.Format(CultureInfo.CurrentCulture, localizer["Users_Profile_VerificationSent"].Value, model.NewEmail.Trim()));
+        SetSuccess(localizer["Users_Profile_VerificationSent", model.NewEmail.Trim()]);
 
         return RedirectToAction(nameof(Emails));
     }
@@ -203,6 +203,10 @@ internal sealed class ProfileEmailsController(
         var authz = await authorizationService.AuthorizeAsync(User, user.Id, UserEmailOperations.Edit);
         if (!authz.Succeeded)
             return Forbid();
+
+        var providers = await signInManager.GetExternalAuthenticationSchemesAsync();
+        if (!providers.Any(p => string.Equals(p.Name, provider, StringComparison.Ordinal)))
+            return NotFound();
 
         // Round-trip through ExternalLoginCallback so its link-while-signed-in branch runs.
         var resolvedReturnUrl = returnUrl ?? Url.Action(nameof(Emails)) ?? "/Profile/Me/Emails";

@@ -10,9 +10,9 @@ namespace Humans.Auth.Tests.Architecture;
 public class AuthArchitectureTests
 {
     [HumansFact]
-    public void IRoleAssignmentManagement_IRoleAssignmentService_And_IRoleAssignmentWrite_ResolveToSameSingleton()
+    public void Interfaces_ResolveToSameSingleton()
     {
-        // The real section registration: the same CachingRoleAssignmentService
+        // The real section registration: the same CachingSystemRoleService
         // singleton must back every interface key, or a write through one face
         // misses the cache the other face reads.
         var services = new ServiceCollection();
@@ -22,10 +22,10 @@ public class AuthArchitectureTests
 
         using var provider = services.BuildServiceProvider();
 
-        var fromManagement = provider.GetRequiredService<IRoleAssignmentManagement>();
-        var fromRead = provider.GetRequiredService<IRoleAssignmentService>();
-        var fromWrite = provider.GetRequiredService<IRoleAssignmentWrite>();
-        var concrete = provider.GetRequiredService<CachingRoleAssignmentService>();
+        var fromManagement = provider.GetRequiredService<ISystemRoleManagement>();
+        var fromRead = provider.GetRequiredService<ISystemRoleService>();
+        var fromWrite = provider.GetRequiredService<ISystemRoleWrite>();
+        var concrete = provider.GetRequiredService<CachingSystemRoleService>();
 
         ReferenceEquals(fromManagement, concrete).Should().BeTrue();
         ReferenceEquals(fromRead, concrete).Should().BeTrue();

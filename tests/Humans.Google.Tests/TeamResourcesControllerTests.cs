@@ -1,3 +1,4 @@
+using Humans.Testing;
 using System.Globalization;
 using System.Security.Claims;
 using AwesomeAssertions;
@@ -331,7 +332,7 @@ public class TeamResourcesControllerTests
 
     private TeamResourcesController BuildSut(string? role = null)
     {
-        var localizer = Substitute.For<IStringLocalizer<GoogleResource>>();
+        var localizer = Substitute.For<IStringLocalizer<GoogleResource>>().AddFormatting();
         localizer[Arg.Any<string>()].Returns(call => new LocalizedString(call.Arg<string>(), call.Arg<string>()));
         var claims = new List<Claim> { new(ClaimTypes.NameIdentifier, _userId.ToString()) };
         if (role is not null) claims.Add(new Claim(ClaimTypes.Role, role));

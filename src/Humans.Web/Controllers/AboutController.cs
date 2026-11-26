@@ -12,7 +12,7 @@ namespace Humans.Web.Controllers;
 [Route("[controller]")]
 public class AboutController(
     IUserService userService,
-    IRoleAssignmentService roleAssignmentService,
+    ISystemRoleService systemRoleService,
     RoleCatalog catalog,
     IClock clock,
     ILogger<AboutController> logger) : HumansControllerBase(userService)
@@ -58,7 +58,7 @@ public class AboutController(
             var now = clock.GetCurrentInstant();
 
             // Load all active role assignments with user data — small user base, fits in memory
-            var (assignments, _) = await roleAssignmentService.GetFilteredAsync(
+            var (assignments, _) = await systemRoleService.GetFilteredAsync(
                 roleFilter: null, activeOnly: true, page: 1, pageSize: 500, now, ct);
 
             var assigneeInfos = await _userService.GetUserInfosAsync(

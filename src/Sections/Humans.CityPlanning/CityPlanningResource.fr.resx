@@ -388,4 +388,7 @@
   <data name="CityPlanning_GenericCamp" xml:space="preserve">
     <value>Campement</value>
   </data>
+  <data name="CityPlanning_MapRefreshFailed" xml:space="preserve">
+    <value>Impossible d’actualiser les emplacements sur la carte. Rechargez la page pour voir les dernières modifications.</value>
+  </data>
 </root>

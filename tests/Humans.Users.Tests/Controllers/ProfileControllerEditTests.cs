@@ -1,3 +1,4 @@
+using Humans.Testing;
 using Humans.Consent.Contracts;
 using System.Globalization;
 using Microsoft.AspNetCore.Mvc.ModelBinding;
@@ -53,12 +54,12 @@ public class ProfileControllerEditTests
         var userManager = Substitute.For<UserManager<User>>(
             userStore, null, null, null, null, null, null, null, null);
 
-        var localizer = Substitute.For<IStringLocalizer<UsersResource>>();
+        var localizer = Substitute.For<IStringLocalizer<UsersResource>>().AddFormatting();
         localizer[Arg.Any<string>()].Returns(ci => new LocalizedString(ci.Arg<string>(), ci.Arg<string>()));
         localizer[Arg.Any<string>(), Arg.Any<object[]>()]
             .Returns(ci => new LocalizedString(ci.Arg<string>(), ci.Arg<string>()));
 
-        var sharedLocalizer = Substitute.For<IStringLocalizer<SharedResource>>();
+        var sharedLocalizer = Substitute.For<IStringLocalizer<SharedResource>>().AddFormatting();
         sharedLocalizer[Arg.Any<string>()].Returns(ci => new LocalizedString(ci.Arg<string>(), ci.Arg<string>()));
         sharedLocalizer[Arg.Any<string>(), Arg.Any<object[]>()]
             .Returns(ci => new LocalizedString(ci.Arg<string>(), ci.Arg<string>()));

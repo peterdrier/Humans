@@ -31,6 +31,7 @@ internal sealed class CampController(
     private readonly ICampManagement _campService = campService;
     private readonly IUserService _userService = userService;
     private readonly IClock _clock = clock;
+    private readonly IAuthorizationService _authorizationService = authorizationService;
 
     [AllowAnonymous]
     [HttpGet("")]
@@ -41,6 +42,13 @@ internal sealed class CampController(
         if (!ModelState.IsValid)
         {
             ModelState.Clear();
+        }
+
+        // Lead-position coverage is a Barrios-admin check on which barrios still have open slots.
+        if (filters is { ShowLeadPositions: true }
+            && !(await _authorizationService.AuthorizeAsync(User, CampsPolicies.Read)).Succeeded)
+        {
+            filters.ShowLeadPositions = false;
         }
 
         var user = await GetCurrentUserInfoAsync(ct);
@@ -187,6 +195,7 @@ internal sealed class CampController(
         var campDisplayName = season.Name;
         if (!ModelState.IsValid)
         {
+            logger.LogWarning("Rejected malformed camp contact form for camp {CampId} by user {UserId}", camp.Id, currentUser.Id);
             model.CampSlug = slug;
             model.CampName = campDisplayName;
             return View(model);
@@ -215,7 +224,7 @@ internal sealed class CampController(
                 SetError(campsLocalizer["Camps_Contact_RateLimited"].Value);
                 return RedirectToAction(nameof(Details), new { slug });
             }
-            SetSuccess(string.Format(campsLocalizer["Camps_Contact_Success"].Value, campDisplayName));
+            SetSuccess(campsLocalizer["Camps_Contact_Success", campDisplayName]);
             return RedirectToAction(nameof(Details), new { slug });
         }
         catch (Exception ex)
@@ -263,6 +272,7 @@ internal sealed class CampController(
 
         if (!ModelState.IsValid)
         {
+            logger.LogWarning("Rejected malformed camp registration");
             await PopulateRegisterSeasonAsync(ct);
             return View(model);
         }
@@ -487,6 +497,7 @@ internal sealed class CampController(
 
         if (!ModelState.IsValid)
         {
+            logger.LogWarning("Rejected malformed camp update for camp {CampId} by user {UserId}", camp.Id, user.Id);
             await PopulateEditReadOnlyFieldsAsync(model, camp, HttpContext.RequestAborted);
             return View(model);
         }

@@ -38,7 +38,8 @@
   <data name="Enum_AuditAction_MemberUnsuspended" xml:space="preserve"><value>Membre réactivé</value></data>
   <data name="Enum_AuditAction_AccountAnonymized" xml:space="preserve"><value>Compte anonymisé</value></data>
   <data name="Enum_AuditAction_RoleAssigned" xml:space="preserve"><value>Rôle attribué</value></data>
-  <data name="Enum_AuditAction_RoleEnded" xml:space="preserve"><value>Rôle terminé</value></data>
+  <data name="Enum_AuditAction_RoleEnded" xml:space="preserve"><value>Rôle révoqué</value></data>
+  <data name="Enum_AuditAction_RoleRevoked" xml:space="preserve"><value>Rôle révoqué</value></data>
   <data name="Enum_AuditAction_VolunteerApproved" xml:space="preserve"><value>Bénévole approuvé</value></data>
   <data name="Enum_AuditAction_GoogleResourceAccessGranted" xml:space="preserve"><value>Accès aux ressources Google accordé</value></data>
   <data name="Enum_AuditAction_GoogleResourceAccessRevoked" xml:space="preserve"><value>Accès aux ressources Google révoqué</value></data>
@@ -239,6 +240,7 @@
   <data name="Enum_AuditAction_HoldedExpenseAccountCreated" xml:space="preserve"><value>Compte de dépenses Holded créé</value></data>
   <data name="Enum_AuditAction_HoldedExpenseAccountLinked" xml:space="preserve"><value>Compte de dépenses Holded associé</value></data>
   <data name="Enum_AuditAction_HoldedExpenseAccountActiveChanged" xml:space="preserve"><value>État actif du compte de dépenses Holded modifié</value></data>
+  <data name="Enum_AuditAction_BackdoorApiKeyCreated" xml:space="preserve"><value>Clé API interne créée</value></data>
   <data name="Enum_AuditAction_BackdoorApiKeyIssued" xml:space="preserve"><value>Clé API interne émise</value></data>
   <data name="Enum_AuditAction_BackdoorApiKeyRevoked" xml:space="preserve"><value>Clé API interne révoquée</value></data>
   <data name="Enum_AuditAction_FeedbackGitHubLinked" xml:space="preserve"><value>Commentaires liés à GitHub</value></data>
@@ -337,8 +339,10 @@
   <data name="AuditLog_NoSubjectVerb_VolunteerApproved" xml:space="preserve"><value>a approuvé</value></data>
   <data name="AuditLog_Verb_RoleAssigned" xml:space="preserve"><value>a attribué un rôle à</value></data>
   <data name="AuditLog_NoSubjectVerb_RoleAssigned" xml:space="preserve"><value>a attribué un rôle</value></data>
-  <data name="AuditLog_Verb_RoleEnded" xml:space="preserve"><value>a mis fin au rôle de</value></data>
-  <data name="AuditLog_NoSubjectVerb_RoleEnded" xml:space="preserve"><value>a mis fin à un rôle</value></data>
+  <data name="AuditLog_Verb_RoleEnded" xml:space="preserve"><value>a révoqué le rôle de</value></data>
+  <data name="AuditLog_Verb_RoleRevoked" xml:space="preserve"><value>a révoqué le rôle de</value></data>
+  <data name="AuditLog_NoSubjectVerb_RoleEnded" xml:space="preserve"><value>a révoqué un rôle</value></data>
+  <data name="AuditLog_NoSubjectVerb_RoleRevoked" xml:space="preserve"><value>a révoqué un rôle</value></data>
   <data name="AuditLog_Verb_WorkspaceAccountPasswordReset" xml:space="preserve"><value>a réinitialisé le mot de passe Workspace de</value></data>
   <data name="AuditLog_NoSubjectVerb_WorkspaceAccountPasswordReset" xml:space="preserve"><value>a réinitialisé le mot de passe Workspace</value></data>
   <data name="AuditLog_Verb_WorkspaceAccountBackupCodesGenerated" xml:space="preserve"><value>a généré les codes de secours Workspace de</value></data>

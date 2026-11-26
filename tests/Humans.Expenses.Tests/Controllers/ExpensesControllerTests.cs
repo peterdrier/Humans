@@ -1,3 +1,4 @@
+using Humans.Testing;
 using Humans.Base.Authorization;
 using Humans.Permissions.Contracts;
 using System.Security.Claims;
@@ -79,7 +80,7 @@ public sealed class ExpensesControllerTests
         };
         var controller = new ExpensesController(_permissions, users, reports, review, Substitute.For<IBudgetService>(),
             Substitute.For<IFinanceService>(), Substitute.For<IPreapprovalService>(), authorization,
-            TestClock, FixedOrgTimeZone.Madrid, NullLogger<ExpensesController>.Instance, Substitute.For<IStringLocalizer<ExpensesResource>>())
+            TestClock, FixedOrgTimeZone.Madrid, NullLogger<ExpensesController>.Instance, Substitute.For<IStringLocalizer<ExpensesResource>>().AddFormatting())
         {
             ControllerContext = new ControllerContext { HttpContext = http },
             TempData = new TempDataDictionary(http, Substitute.For<ITempDataProvider>())
@@ -139,7 +140,7 @@ public sealed class ExpensesControllerTests
         var controller = new ExpensesController(_permissions, users, reports, review,
             Substitute.For<IBudgetService>(), Substitute.For<IFinanceService>(),
             Substitute.For<IPreapprovalService>(), authorization, TestClock, FixedOrgTimeZone.Madrid,
-            NullLogger<ExpensesController>.Instance, Substitute.For<IStringLocalizer<ExpensesResource>>())
+            NullLogger<ExpensesController>.Instance, Substitute.For<IStringLocalizer<ExpensesResource>>().AddFormatting())
         {
             ControllerContext = new ControllerContext
             {
@@ -225,7 +226,7 @@ public sealed class ExpensesControllerTests
         var reports = Substitute.For<IExpenseReportManagement>();
         var review = Substitute.For<IExpenseReview>();
         reports.GetAsync(reportId).Returns(report);
-        reports.WithdrawWithResultAsync(reportId, actorId).Returns(ExpenseMutationResult.Success);
+        reports.WithdrawAsync(reportId, actorId).Returns(ExpenseMutationResult.Success);
         var handler = new ExpenseReportAuthorizationHandler(
             Substitute.For<IBudgetService>(), Substitute.For<IPermissionService>(), users,
             Substitute.For<IPreapprovalService>(), new HttpContextAccessor());
@@ -245,7 +246,7 @@ public sealed class ExpensesControllerTests
                 new Claim(ClaimTypes.NameIdentifier, actorId.ToString()),
                 new Claim(ClaimTypes.Role, FinanceRoles.FinanceAdmin)], "test"))
         };
-        var localizer = Substitute.For<IStringLocalizer<ExpensesResource>>();
+        var localizer = Substitute.For<IStringLocalizer<ExpensesResource>>().AddFormatting();
         localizer[Arg.Any<string>()].Returns(call => new LocalizedString(call.Arg<string>(), call.Arg<string>()));
         var controller = new ExpensesController(_permissions, users, reports, review, Substitute.For<IBudgetService>(),
             Substitute.For<IFinanceService>(), Substitute.For<IPreapprovalService>(), authorization,
@@ -260,12 +261,12 @@ public sealed class ExpensesControllerTests
         if (allowed)
         {
             result.Should().BeOfType<RedirectToActionResult>();
-            await reports.Received(1).WithdrawWithResultAsync(reportId, actorId);
+            await reports.Received(1).WithdrawAsync(reportId, actorId);
         }
         else
         {
             result.Should().BeOfType<ForbidResult>();
-            await reports.DidNotReceive().WithdrawWithResultAsync(reportId, actorId);
+            await reports.DidNotReceive().WithdrawAsync(reportId, actorId);
         }
     }
 
@@ -298,9 +299,9 @@ public sealed class ExpensesControllerTests
             UpdatedAt = default,
             Lines = []
         });
-        reports.SaveSubmitterIbanWithResultAsync(reportId, actorId, Arg.Any<string?>())
+        reports.SaveSubmitterIbanAsync(reportId, actorId, Arg.Any<string?>())
             .Returns(new ExpenseIbanSaveResult(succeeded, validationError, messageKey));
-        var localizer = Substitute.For<IStringLocalizer<ExpensesResource>>();
+        var localizer = Substitute.For<IStringLocalizer<ExpensesResource>>().AddFormatting();
         localizer[messageKey].Returns(new LocalizedString(messageKey, translated));
         var context = new DefaultHttpContext
         {
@@ -363,9 +364,9 @@ public sealed class ExpensesControllerTests
             Lines = [],
         });
         const string messageKey = "Expenses_Iban_InvalidFormat";
-        reports.SaveSubmitterIbanWithResultAsync(reportId, actorId, Arg.Any<string?>())
+        reports.SaveSubmitterIbanAsync(reportId, actorId, Arg.Any<string?>())
             .Returns(new ExpenseIbanSaveResult(false, true, messageKey));
-        var localizer = Substitute.For<IStringLocalizer<ExpensesResource>>();
+        var localizer = Substitute.For<IStringLocalizer<ExpensesResource>>().AddFormatting();
         localizer[messageKey].Returns(new LocalizedString(messageKey, "Invalid IBAN"));
         var authorization = Substitute.For<IAuthorizationService>();
         authorization.AuthorizeAsync(Arg.Any<ClaimsPrincipal>(), Arg.Any<object?>(), Arg.Any<IEnumerable<IAuthorizationRequirement>>())
@@ -426,7 +427,7 @@ public sealed class ExpensesControllerTests
         var controller = new ExpensesController(_permissions, users, reports, review, budget,
             Substitute.For<IFinanceService>(), Substitute.For<IPreapprovalService>(),
             Substitute.For<IAuthorizationService>(), TestClock, FixedOrgTimeZone.Madrid,
-            NullLogger<ExpensesController>.Instance, Substitute.For<IStringLocalizer<ExpensesResource>>())
+            NullLogger<ExpensesController>.Instance, Substitute.For<IStringLocalizer<ExpensesResource>>().AddFormatting())
         {
             ControllerContext = new ControllerContext { HttpContext = context },
             TempData = new TempDataDictionary(context, Substitute.For<ITempDataProvider>())
@@ -476,7 +477,7 @@ public sealed class ExpensesControllerTests
             [new BudgetGroupDetail(groupId, yearId, "Old group", 0, false, false, false, null,
                 [new BudgetCategoryDetail(categoryId, "Old category", 0, ExpenditureType.OpEx, null, 0, [])])]));
         _permissions.GetOwnersAsync(actorId, ExpensesPermissions.Endorse, Arg.Any<CancellationToken>()).Returns([]);
-        var localizer = Substitute.For<IStringLocalizer<ExpensesResource>>();
+        var localizer = Substitute.For<IStringLocalizer<ExpensesResource>>().AddFormatting();
         localizer[Arg.Any<string>()].Returns(call => new LocalizedString(call.Arg<string>(), call.Arg<string>()));
         using var request = new CancellationTokenSource();
         var context = new DefaultHttpContext

@@ -110,7 +110,7 @@ public class CommunityFaqReaderTests
     public async Task ListTopicsAsync_reads_the_explicit_keywords_section()
     {
         // The Overview alone hides terms like "urinals"/"VIPee" the router needs. Coverage is made
-        // legible via an explicit `## Keywords` line the KB generator emits — the app does not
+        // legible via an explicit `## Keywords` line the FAQ generator emits — the app does not
         // derive keywords from prose. Multi-line sections collapse to one space-joined string.
         const string body =
             "# Leave No Trace\nLast updated: 2026-06-14\n\n## Overview\nKeeping the site clean.\n\n" +

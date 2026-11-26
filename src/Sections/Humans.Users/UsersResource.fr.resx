@@ -301,7 +301,7 @@
     <value>Inscrit(e) en {0}</value>
     <comment>{0} = date</comment>
   </data>
-  <data name="Users_ProfileCard_LastLogin" xml:space="preserve">
+  <data name="Users_ProfileCard_LastSignIn" xml:space="preserve">
     <value>Dernière connexion {0}</value>
     <comment>{0} = date</comment>
   </data>
@@ -436,11 +436,11 @@
   <data name="Users_EmailGrid_StatusPending" xml:space="preserve">
     <value>En attente</value>
   </data>
-  <data name="Users_EmailGrid_LinkGoogleAccount" xml:space="preserve">
-    <value>Associer un compte Google</value>
+  <data name="Users_EmailGrid_LinkProviderAccount" xml:space="preserve">
+    <value>Associer un compte {0}</value>
   </data>
-  <data name="Users_EmailGrid_LinkGoogleHelp" xml:space="preserve">
-    <value>Connectez-vous avec Google pour associer un compte Google supplémentaire à votre profil.</value>
+  <data name="Users_EmailGrid_LinkProviderHelp" xml:space="preserve">
+    <value>Connectez-vous avec {0} pour associer un compte {0} supplémentaire à votre profil.</value>
   </data>
   <data name="Users_EmailGrid_BackToAdminDetail" xml:space="preserve">
     <value>Retour au détail de l'utilisateur</value>

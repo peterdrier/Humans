@@ -39,14 +39,14 @@ themes:
       Burned down to 0 (2026-10-20/21, one owner per PR): each cache owner
       evicts on its own writes or reads live, so no section flushes another's
       cache. Absorbed: IssuesBadge, NavBadge (with
-      IRoleAssignmentWrite.InvalidateNavBadgeCache) and VotingBadge
+      ISystemRoleWrite.InvalidateNavBadgeCache) and VotingBadge
       (2026-10-20); Ticket, TicketVendor, EarlyEntry (decorator dropped,
       reads live) and UserInfo (now the section-internal
       IUserInfoSliceRefresher; it never carried the IInvalidator marker,
       CENTRAL-59) in peterdrier/Humans#2087; RoleAssignment,
       RoleAssignmentClaims (claims cache dropped), ShiftView,
       ShiftAuthorization (cache dropped) and ActiveTeams, plus
-      IRoleAssignmentWrite.InvalidateRoleAssignmentCache /
+      ISystemRoleWrite.InvalidateRoleAssignmentCache /
       InvalidateClaimsCacheForUser and ITeamWrite.RemoveMemberFromAllTeamsCache,
       in peterdrier/Humans#2095; CampInfo, CampLeadJoinRequestsBadge,
       Consent, LegalDocument and NotificationMeter (TTL only) in
@@ -97,10 +97,10 @@ themes:
     remaining: 0
     notes: >-
       Drained 2026-10-21: all 13 baseline locator lines fixed (Teams, Events,
-      Shifts, IMagicLinkService), plus the three hidden
+      Shifts, ISignInLinkService), plus the three hidden
       IAccountProvisioningService rows (unscanned since G5 lane 3b dropped its
       IApplicationService marker; its results now carry the user id, not User)
-      and IMagicLinkService.VerifyLoginTokenAsync (returns `bool` now). The
+      and ISignInLinkService.VerifyLoginTokenAsync (returns `bool` now). The
       marker cannot return (Base -> Users.Contracts cycle), so that interface
       stays review-guarded.
       Convert to DTO/Info returns (read-model pattern, design-rules.md, *Section caching pattern*).
@@ -167,9 +167,5 @@ inbox:
     review: standard
   - added: 2026-11-22
     id: CENTRAL-113
-    what: "src/Sections/Humans.BoxOffice reads its Stripe account with its own Stripe.net client (GetPaymentLedgerAsync, fees, the checkout probe), against memory/architecture/vendor-connectors-own-sections.md. Hi.Events and pretix read theirs through IStripeService's account reads (GetAccountLedgerAsync and siblings); fold Box Office's reads into them too, and the Stripe reporting-category mapping each adapter repeats into one place."
+    what: "src/Sections/Humans.BoxOffice reads its Stripe account with its own Stripe.net client (GetPaymentLedgerAsync, fees, the checkout probe), against memory/architecture/vendor-connectors-own-sections.md. Hi.Events and pretix read theirs through IStripeService's account reads (GetAccountLedgerAsync and siblings); fold Box Office's reads into them too, and the Stripe reporting-category mapping each adapter repeats into one place. Peter decided (2026-11-26) that every ticketing provider, Box Office included, charges into the existing Tickets Stripe account (STRIPE_TICKETS_KEY), so Box Office needs no key of its own."
     review: standard
-  - added: 2026-11-22
-    id: CENTRAL-112
-    what: "tests/Humans.Web.Tests/Authorization/EndpointAuthorizationTests.cs, AnonymousControllers_AreExplicitlyAllowlisted: the HashSet initializer lists HiEventsWebhookController twice; drop the second line. Found by the HiEvents section-doctor Tests thread; left for a run that owns the Shell test file, since sibling ticketing runs edit the neighbouring lines."
-    review: light

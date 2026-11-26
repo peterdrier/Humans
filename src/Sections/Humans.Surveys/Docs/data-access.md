@@ -65,7 +65,7 @@ Implements
 `IUserMerge`: authorship follows the surviving account. No `IMemoryCache`.
 
 A `LoggedInSince` audience type (`surveys.AudienceLoggedInSince` cutoff
-column) resolves from the cached `UserInfo.LastLoginAt` via the existing
+column) resolves from the cached `UserInfo.LastSignInAt` via the existing
 `IUserService` fan-out.
 
 ### SurveyAudience (Scoped)

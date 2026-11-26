@@ -285,7 +285,7 @@ public class HoldedFinanceServiceTests
             Year: "2026",
             Name: "Camp 2026",
             Status: BudgetYearStatus.Active,
-            IsDeleted: false,
+            IsArchived: false,
             Groups:
             [
                 new BudgetGroupDetail(
@@ -344,7 +344,7 @@ public class HoldedFinanceServiceTests
             Year: "2026",
             Name: "Camp 2026",
             Status: BudgetYearStatus.Active,
-            IsDeleted: false,
+            IsArchived: false,
             Groups:
             [
                 new BudgetGroupDetail(
@@ -1645,7 +1645,7 @@ public class HoldedFinanceServiceTests
         var mappedCat = Guid.NewGuid();
         _budget.GetActiveYearAsync(Arg.Any<CancellationToken>()).Returns(new BudgetYearDetail(
             Id: Guid.NewGuid(), Year: "2026", Name: "Camp 2026",
-            Status: BudgetYearStatus.Active, IsDeleted: false,
+            Status: BudgetYearStatus.Active, IsArchived: false,
             Groups:
             [
                 new BudgetGroupDetail(
@@ -1815,7 +1815,7 @@ public class HoldedFinanceServiceTests
         var catB = Guid.NewGuid();
         _budget.GetActiveYearAsync(Arg.Any<CancellationToken>()).Returns(new BudgetYearDetail(
             Id: Guid.NewGuid(), Year: "2026", Name: "Camp 2026",
-            Status: BudgetYearStatus.Active, IsDeleted: false,
+            Status: BudgetYearStatus.Active, IsArchived: false,
             Groups:
             [
                 new BudgetGroupDetail(
@@ -2218,7 +2218,7 @@ public class HoldedFinanceServiceTests
             Year: "2026",
             Name: "Camp 2026",
             Status: BudgetYearStatus.Active,
-            IsDeleted: false,
+            IsArchived: false,
             Groups:
             [
                 new BudgetGroupDetail(
@@ -2514,6 +2514,54 @@ public class HoldedFinanceServiceTests
         result.Succeeded.Should().BeTrue();
         await _emailService.Received(1).SendAsync(
             Arg.Is<EmailMessage>(m => m.RecipientEmail == "dani@example.com"), Arg.Any<CancellationToken>());
+    }
+
+    [HumansTheory]
+    [InlineData(UserState.Deleted)]
+    [InlineData(UserState.Merged)]
+    public async Task GenerateSepaPayout_TombstoneRecipient_ContinuesDelivery(UserState state)
+    {
+        ConfigureSepa();
+        var unavailableId = SeedPayableCreditor();
+        var liveId = Guid.NewGuid();
+        var actor = Guid.NewGuid();
+        _holded.GetAccountBalancesAsync(Arg.Any<CancellationToken>())
+            .Returns(new Dictionary<int, decimal> { [40000004] = -30m, [40000005] = -30m });
+        _repo.GetCreditorContactsAsync(Arg.Any<CancellationToken>()).Returns(new List<HoldedCreditorContact>
+        {
+            new() { UserId = unavailableId, HoldedContactId = "c1", SupplierAccountNum = 40000004 },
+            new() { UserId = liveId, HoldedContactId = "c2", SupplierAccountNum = 40000005 },
+        });
+        _holded.GetContactsAsync(Arg.Any<CancellationToken>()).Returns(TestContacts.Synced(new List<HoldedContactDto>
+        {
+            new() { Id = "c1", Name = "Ana Ruiz", SupplierAccountNum = 40000004, Iban = AnaIban },
+            new() { Id = "c2", Name = "Dani", SupplierAccountNum = 40000005, Iban = "NL91ABNA0417164300" },
+        }));
+        _users.GetUserInfosAsync(Arg.Any<IEnumerable<Guid>>(), Arg.Any<CancellationToken>())
+            .Returns(new Dictionary<Guid, UserInfo>
+            {
+                [unavailableId] = UserInfo.Create(new User
+                { Id = unavailableId, BurnerName = "Ana", Email = "ana@example.com", State = state }, [], [], null),
+                [liveId] = UserInfo.Create(new User
+                { Id = liveId, BurnerName = "Dani", Email = "dani@example.com" }, [], [], null),
+            });
+
+        var result = await MakeService().GenerateSepaPayoutAsync(
+            [new SepaPayoutSelection(40000004, 10m), new SepaPayoutSelection(40000005, 10m)],
+            50m, actor, TestContext.Current.CancellationToken);
+
+        result.Succeeded.Should().BeTrue();
+        await _repo.Received(1).AddSepaPayoutAsync(
+            Arg.Is<SepaPayoutFile>(file => file.Xml == result.Xml && file.FileName == result.FileName),
+            Arg.Is<IReadOnlyList<SepaPayoutTransfer>>(rows => rows.Count == 2
+                && rows.Any(row => row.UserId == unavailableId && row.Amount == 10m)
+                && rows.Any(row => row.UserId == liveId && row.Amount == 10m)), Arg.Any<CancellationToken>());
+        await _audit.Received(2).LogAsync(FinanceAuditActions.SepaPayoutTransfer,
+            Arg.Any<string>(), Arg.Any<Guid>(), Arg.Any<string>(), actor, Arg.Any<Guid?>(), Arg.Any<string?>());
+        var message = _emailService.ReceivedCalls().Select(call => call.GetArguments()[0]).Cast<EmailMessage>()
+            .Should().ContainSingle().Subject;
+        message.UserId.Should().Be(liveId);
+        message.RecipientEmail.Should().Be("dani@example.com");
     }
 
     [HumansFact]

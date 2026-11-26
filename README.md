@@ -67,6 +67,7 @@ This starts:
 
 ## Documentation
 
+- Running Humans for another burn: [docs/adopting-humans.md](docs/adopting-humans.md)
 - Full documentation index: [docs/README.md](docs/README.md)
 - Historical repo stats: [docs/development-stats.md](docs/development-stats.md)
 
@@ -98,13 +99,12 @@ Defaults live in `src/Humans.Web/appsettings.json`; override them with user secr
 | Setting | Description |
 |---------|-------------|
 | `ConnectionStrings__DefaultConnection` | PostgreSQL connection string |
-| `Authentication__Google__ClientId` | Google OAuth client ID |
-| `Authentication__Google__ClientSecret` | Google OAuth client secret |
 
 ### Optional
 
 | Setting | Description |
 |---------|-------------|
+| `Authentication__Google__ClientId` / `__ClientSecret` | Google OAuth client. Without both, "Sign in with Google" is off and members sign in by email magic link. Other providers: "Adding a sign-in provider" in `src/Sections/Humans.Auth/Docs/Auth.md` |
 | `Email__Username` / `Email__Password` | SMTP credentials for outbound mail (host and sender are in `appsettings.json`) |
 | `GoogleMaps__ApiKey` | Maps and Places for profile locations and maps |
 | `GoogleWorkspace__ServiceAccountKeyJson` or `__ServiceAccountKeyPath` | Service account for Workspace provisioning and Drive/Groups sync |

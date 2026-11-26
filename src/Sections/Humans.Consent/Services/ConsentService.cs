@@ -23,7 +23,7 @@ internal sealed class ConsentService(
     IHumanLifecycleService humanLifecycleService,
     IUserService userService,
     ITeamService teamService,
-    IRoleAssignmentService roleAssignments,
+    ISystemRoleService roleAssignments,
     IServiceProvider serviceProvider,
     IHumansMetrics metrics,
     IClock clock,

@@ -1,3 +1,4 @@
+using Humans.Backdoor.Authentication;
 using System.ComponentModel.DataAnnotations;
 using System.Text.Json;
 using AwesomeAssertions;
@@ -17,7 +18,7 @@ using Xunit;
 namespace Humans.Backdoor.Tests.Controllers;
 
 /// <summary>
-/// Unit tests for <see cref="BackdoorIssuesController"/> — the machine surface at
+/// Unit tests for <see cref="BackdoorIssuesController"/> — the Backdoor API at
 /// <c>/api/backdoor/issues</c>. Mocks <see cref="IIssueTriage"/> and drives the controller
 /// directly (no HTTP roundtrip). The auth filter is covered by
 /// <see cref="BackdoorApiKeyAuthFilterTests"/>.
@@ -105,7 +106,7 @@ public class BackdoorIssuesControllerTests
                 {
                     User = new ClaimsPrincipal(new ClaimsIdentity(
                         [new Claim(ClaimTypes.NameIdentifier, KeyOwnerId.ToString())],
-                        BackdoorApiKeyAuthFilter.AuthenticationScheme)),
+                        BackdoorApiKeyHandler.SchemeName)),
                 },
             },
         };
@@ -646,7 +647,7 @@ public class BackdoorIssuesControllerTests
                 new Claim(ClaimTypes.NameIdentifier, KeyOwnerId.ToString()),
                 .. roleNames.Select(r => new Claim(ClaimTypes.Role, r))
             ],
-            BackdoorApiKeyAuthFilter.AuthenticationScheme));
+            BackdoorApiKeyHandler.SchemeName));
 
     /// <summary>
     /// The raw query value reaches a SQL <c>LIMIT</c> through <see cref="IssueListFilter"/>,

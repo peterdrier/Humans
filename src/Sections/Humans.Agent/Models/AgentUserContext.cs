@@ -1,0 +1,15 @@
+using Humans.Teams.Contracts;
+using Humans.Users.Contracts;
+
+namespace Humans.Agent.Models;
+
+internal sealed record AgentUserContext(
+    string DisplayName,
+    string PreferredLocale,
+    string Tier,
+    UserState? AccountState,
+    IReadOnlyList<(string RoleName, string ExpiresIsoDate)> SystemRoles,
+    IReadOnlyList<TeamMembership> Teams,
+    IReadOnlyList<string> PendingConsentDocs,
+    IReadOnlyList<Guid> OpenTicketIds,
+    IReadOnlyList<UpcomingShiftEntry> UpcomingShifts);

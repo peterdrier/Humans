@@ -388,4 +388,7 @@
   <data name="CityPlanning_GenericCamp" xml:space="preserve">
     <value>Campamento</value>
   </data>
+  <data name="CityPlanning_MapRefreshFailed" xml:space="preserve">
+    <value>No se pudieron actualizar las ubicaciones del mapa. Recarga la página para ver los últimos cambios.</value>
+  </data>
 </root>

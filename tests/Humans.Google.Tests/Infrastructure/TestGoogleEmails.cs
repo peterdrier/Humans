@@ -1,3 +1,4 @@
+using Humans.Testing;
 using System.Globalization;
 using Humans.Google.Services;
 using Microsoft.Extensions.Localization;
@@ -26,7 +27,7 @@ internal static class TestGoogleEmails
     public static GoogleEmails Create(IReadOnlyDictionary<string, string>? formats = null)
     {
         formats ??= Formats;
-        var localizer = Substitute.For<IStringLocalizer<GoogleResource>>();
+        var localizer = Substitute.For<IStringLocalizer<GoogleResource>>().AddFormatting();
         localizer[Arg.Any<string>()].Returns(call =>
         {
             var key = call.Arg<string>();

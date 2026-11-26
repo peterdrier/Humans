@@ -47,7 +47,7 @@ Nobodies Collective requires a secure, streamlined authentication system that in
 - Preferred language defaults to English
 - CreatedAt timestamp is recorded
 
-### US-1.3: Role Assignment Tracking
+### US-1.3: System Role Tracking
 **As an** administrator
 **I want to** assign roles with validity periods
 **So that** I can track historical role memberships (e.g., annual board terms)
@@ -67,7 +67,7 @@ User (extends IdentityUser<Guid>)
 ├── PreferredLanguage: string (10) [default: "en"]
 ├── ProfilePictureUrl: string? (2048)
 ├── CreatedAt: Instant
-├── LastLoginAt: Instant?
+├── LastSignInAt: Instant?
 └── Navigation: UserEmails (internal to Base/Users; required for the Email override)
 ```
 
@@ -113,7 +113,7 @@ neither id carries a database FK and neither has a navigation property to
                       │
                ┌──────▼──────┐
                │  Update     │
-               │ LastLoginAt │
+               │ LastSignInAt │
                └──────┬──────┘
                       │
                ┌──────▼──────┐
@@ -123,7 +123,7 @@ neither id carries a database FK and neither has a navigation property to
 
 ## Authorization Roles
 
-All roles are stored as temporal `RoleAssignment` records. Role claims are added to the user's identity via `RoleAssignmentClaimsTransformation` on each request.
+All roles are stored as temporal `RoleAssignment` records. Role claims are added to the user's identity via `SystemRoleClaimsTransformation` on each request.
 
 ### Governance Roles (manage the platform)
 
@@ -159,7 +159,7 @@ All roles are stored as temporal `RoleAssignment` records. Role claims are added
 
 ### UserState Access Claim
 
-In addition to governance roles, `RoleAssignmentClaimsTransformation` stamps the user's stored `UserState` as a claim. `UserState == Active` — the user has entered their legal name — is the single source of truth for app access. It does **not** derive from Volunteers-team membership.
+In addition to governance roles, `SystemRoleClaimsTransformation` stamps the user's stored `UserState` as a claim. `UserState == Active` — the user has entered their legal name — is the single source of truth for app access. It does **not** derive from Volunteers-team membership.
 
 - **Granted when**: `UserState == Active` (legal name entered)
 - **Checked by**: `MembershipRequiredFilter` (global action filter, routes non-Active users by state) and the `AppAccess` policy used for `_Layout.cshtml` nav visibility
@@ -172,14 +172,14 @@ The app registers named authorization policies (`PolicyNames` constants in `Huma
 
 ### Onboarding Name Gate
 
-A second global action filter, `NameRequiredFilter`, runs strictly after authentication. Any authenticated user whose profile has no real `BurnerName` (a Stub profile, or an Active profile with blank required names) is redirected to the burner + legal-name form at `OnboardingWidget/Names` before they can reach the rest of the app. It is the single gate covering OAuth/Google first sign-in, imported contacts hitting the magic-link `ExistingUser` branch, and legacy blank-`BurnerName` accounts. It only ever redirects — it **never blocks sign-in** — and keys on the cache-backed `UserInfo.HasRequiredNameFields`, so the gate opens on the next request once names are saved. The `Account` and `Language` controllers, plus `OnboardingWidget/Names`, `Home/Error`, and `Home/Privacy`, are exempt — as is a Backdoor-API-key-authenticated request, which has no name form for a machine to fill in.
+A second global action filter, `NameRequiredFilter`, runs strictly after authentication. Any authenticated user whose profile has no real `BurnerName` (a Stub profile, or an Active profile with blank required names) is redirected to the burner + legal-name form at `OnboardingWidget/Names` before they can reach the rest of the app. It is the single gate covering OAuth/Google first sign-in, imported contacts hitting the sign-in-link `ExistingUser` branch, and legacy blank-`BurnerName` accounts. It only ever redirects — it **never blocks sign-in** — and keys on the cache-backed `UserInfo.HasRequiredNameFields`, so the gate opens on the next request once names are saved. The `Account` and `Language` controllers, plus `OnboardingWidget/Names`, `Home/Error`, and `Home/Privacy`, are exempt — as is a Backdoor-API-key-authenticated request, which has no name form for a machine to fill in.
 
 See [Volunteer Status](../../../Humans.Onboarding/Docs/features/volunteer-status.md) for the full onboarding pipeline and gating details.
 
 ## Security Considerations
 
 1. **OAuth Security**: No passwords stored; relies on Google's security
-2. **Session Management**: Every sign-in path (Google OAuth, magic link, gate terminal, dev login) signs in with `isPersistent: true`; the Identity application cookie carries a 14-day sliding lifetime (`ExpireTimeSpan` + `SlidingExpiration` in `Program.cs`) — any visit inside the window extends it, 14 days away requires re-login
+2. **Session Management**: Every sign-in path (Google OAuth, sign-in link, gate terminal, dev login) signs in with `isPersistent: true`; the Identity application cookie carries a 14-day sliding lifetime (`ExpireTimeSpan` + `SlidingExpiration` in `Program.cs`) — any visit inside the window extends it, 14 days away requires re-login
 3. **Role Validation**: Temporal roles checked against current timestamp
 4. **Access Gating**: Global action filter routes non-Active users by `UserState`
 5. **Audit Trail**: RoleAssignment tracks who assigned roles and when

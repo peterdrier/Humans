@@ -18,7 +18,7 @@ namespace Humans.Budget.Data.Migrations
         {
 #pragma warning disable 612, 618
             modelBuilder
-                .HasAnnotation("ProductVersion", "10.0.13")
+                .HasAnnotation("ProductVersion", "10.0.15")
                 .HasAnnotation("Relational:MaxIdentifierLength", 63);
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
@@ -219,17 +219,21 @@ namespace Humans.Budget.Data.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
 
+                    b.Property<Instant?>("ArchivedAt")
+                        .HasColumnType("timestamp with time zone");
+
                     b.Property<Instant>("CreatedAt")
                         .HasColumnType("timestamp with time zone");
 
-                    b.Property<Instant?>("DeletedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<bool>("IsDeleted")
+                    b.Property<bool>("IsArchived")
                         .HasColumnType("boolean");
 
                     b.Property<string>("Name")
                         .IsRequired()
+                        .HasMaxLength(256)
+                        .HasColumnType("character varying(256)");
+
+                    b.Property<string>("PlatformEventId")
                         .HasMaxLength(256)
                         .HasColumnType("character varying(256)");
 
@@ -240,10 +244,6 @@ namespace Humans.Budget.Data.Migrations
 
                     b.Property<Instant>("UpdatedAt")
                         .HasColumnType("timestamp with time zone");
-
-                    b.Property<string>("VendorEventId")
-                        .HasMaxLength(256)
-                        .HasColumnType("character varying(256)");
 
                     b.Property<string>("Year")
                         .IsRequired()
@@ -286,6 +286,10 @@ namespace Humans.Budget.Data.Migrations
                     b.Property<int>("InitialSalesCount")
                         .HasColumnType("integer");
 
+                    b.Property<decimal>("PlatformFeePercent")
+                        .HasPrecision(18, 4)
+                        .HasColumnType("numeric(18,4)");
+
                     b.Property<LocalDate?>("StartDate")
                         .HasColumnType("date");
 
@@ -294,10 +298,6 @@ namespace Humans.Budget.Data.Migrations
                         .HasColumnType("numeric(18,2)");
 
                     b.Property<decimal>("StripeFeePercent")
-                        .HasPrecision(18, 4)
-                        .HasColumnType("numeric(18,4)");
-
-                    b.Property<decimal>("TicketTailorFeePercent")
                         .HasPrecision(18, 4)
                         .HasColumnType("numeric(18,4)");
 

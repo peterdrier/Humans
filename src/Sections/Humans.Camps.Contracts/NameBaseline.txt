@@ -1,0 +1,1 @@
+Humans.Camps.Contracts.ICampSeeding.AddMemberAndAssignRoleInActiveSeasonAsync

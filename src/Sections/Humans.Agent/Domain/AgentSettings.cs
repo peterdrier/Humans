@@ -9,8 +9,6 @@ internal sealed class AgentSettings
 
     public bool Enabled { get; set; }
     public string Model { get; set; } = "claude-sonnet-4-6";
-    public AgentPreloadConfig PreloadConfig { get; set; } = AgentPreloadConfig.Tier1;
-
     public int DailyMessageCap { get; set; } = 30;
     public int HourlyMessageCap { get; set; } = 10;
     public int DailyTokenCap { get; set; } = 50000;

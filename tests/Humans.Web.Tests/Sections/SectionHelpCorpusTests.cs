@@ -64,7 +64,7 @@ public class SectionHelpCorpusTests
     }
 
     /// <summary>
-    /// The model takes glossary headings literally as <c>fetch_section_guide</c> arguments ("## Profile Glossary"
+    /// The model takes glossary headings literally as <c>fetch_section_doc</c> arguments ("## Profile Glossary"
     /// produced dead-end lookups for section="Profile"), so every key must resolve.
     /// </summary>
     [HumansFact]
@@ -73,7 +73,7 @@ public class SectionHelpCorpusTests
         foreach (var entry in Entries())
         {
             AgentSectionKeys.TryResolve(entry.Key, out _).Should().BeTrue(
-                $"help key '{entry.Key}' must be a fetch_section_guide key");
+                $"help key '{entry.Key}' must be a fetch_section_doc key");
         }
     }
 

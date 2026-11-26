@@ -1,3 +1,4 @@
+using Humans.Testing;
 using Humans.Permissions.Contracts;
 using System.Globalization;
 using System.Resources;
@@ -31,11 +32,11 @@ public sealed class ShiftSignupServiceEarlyEntryTests : ShiftsTestHarness
         : base(TestNow)
     {
         var teamService = Substitute.For<ITeamService>();
-        var roleAssignmentService = Substitute.For<IRoleAssignmentService>();
+        var systemRoleService = Substitute.For<ISystemRoleService>();
         var serviceProvider = new ServiceLocatorBuilder()
             .With(teamService)
             .With(teamService)
-            .With(roleAssignmentService)
+            .With(systemRoleService)
             .With<IPermissionService>()
             .Build();
 
@@ -53,7 +54,7 @@ public sealed class ShiftSignupServiceEarlyEntryTests : ShiftsTestHarness
         var users = Substitute.For<IUserService>();
         users.GetUserInfoAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
             .Returns(call => UserFixtures.MakeUserInfo(call.Arg<Guid>()) with { State = UserState.Active });
-        var localizer = Substitute.For<IStringLocalizer<ShiftsResource>>();
+        var localizer = Substitute.For<IStringLocalizer<ShiftsResource>>().AddFormatting();
         const string warningKey = "Shifts_Signup_RangeEarlyEntryCapacityDays";
         localizer[warningKey, Arg.Any<object[]>()].Returns(call => new LocalizedString(warningKey,
             string.Format(CultureInfo.InvariantCulture,

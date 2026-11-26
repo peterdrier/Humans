@@ -1,4 +1,5 @@
 @inject IAuthorizationService AuthService
+@inject Microsoft.AspNetCore.Identity.SignInManager<User> SignInManager
 @inject Microsoft.AspNetCore.Mvc.Localization.IHtmlLocalizer<UsersResource> HtmlLocalizer
 @model Humans.Users.Models.EmailsViewModel
 @{
@@ -12,6 +13,7 @@
     // Board reads another member's emails but changes nothing.
     var canEdit = !Model.IsAdminContext
         || (await AuthService.AuthorizeAsync(User, UsersPolicies.Manage)).Succeeded;
+    var providers = await SignInManager.GetExternalAuthenticationSchemesAsync();
 }
 
 @section Crumbs {
@@ -529,7 +531,7 @@
                         @if (!Model.IsAdminContext && !Model.CanAddEmail)
                         {
                             <small class="text-muted ms-2">
-                                @string.Format(Localizer["Users_Emails_ResendCooldown"].Value, Model.MinutesUntilResend)
+                                @Localizer["Users_Emails_ResendCooldown", Model.MinutesUntilResend]
                             </small>
                         }
                     </form>
@@ -632,22 +634,27 @@
                 </div>
             </div>
 
-            <div class="card mb-4">
-                <div class="card-header">
-                    <h5 class="mb-0"><i class="fa-brands fa-google me-2"></i>@Localizer["Users_EmailGrid_LinkGoogleAccount"]</h5>
+            @foreach (var provider in providers)
+            {
+                var providerName = provider.DisplayName ?? provider.Name;
+                var providerIcon = provider.Name == "Google" ? "fa-brands fa-google" : "fa-solid fa-key";
+                <div class="card mb-4">
+                    <div class="card-header">
+                        <h5 class="mb-0"><i class="@providerIcon me-2"></i>@Localizer["Users_EmailGrid_LinkProviderAccount", providerName]</h5>
+                    </div>
+                    <div class="card-body">
+                        <p class="text-muted small mb-3">
+                            @Localizer["Users_EmailGrid_LinkProviderHelp", providerName]
+                        </p>
+                        <form asp-action="Link" asp-route-provider="@provider.Name" method="post">
+                            @Html.AntiForgeryToken()
+                            <button type="submit" class="btn btn-outline-primary">
+                                <i class="@providerIcon me-1"></i>@Localizer["Users_EmailGrid_LinkProviderAccount", providerName]
+                            </button>
+                        </form>
+                    </div>
                 </div>
-                <div class="card-body">
-                    <p class="text-muted small mb-3">
-                        @Localizer["Users_EmailGrid_LinkGoogleHelp"]
-                    </p>
-                    <form asp-action="Link" asp-route-provider="Google" method="post">
-                        @Html.AntiForgeryToken()
-                        <button type="submit" class="btn btn-outline-primary">
-                            <i class="fa-brands fa-google me-1"></i>@Localizer["Users_EmailGrid_LinkGoogleAccount"]
-                        </button>
-                    </form>
-                </div>
-            </div>
+            }
         }
 
         <div class="mt-4">

@@ -272,7 +272,9 @@ one verdict, oldest `added:` first:
 
 **Evidence bar — the whole phase rests on it.** A row is closed or narrowed only on a specific
 `file:line` or a named test that decides it, cited in the log. A row saying "no test pins X" closes
-only by naming the test that now pins X; "unlocalized in every culture" closes only by naming the
+only by citing the test that now pins X as `Class.Method` — the test's name need not spell X out,
+and a test gaining an assert keeps its name
+([`test-names-one-rule`](../../../memory/code/test-names-one-rule.md)); "unlocalized in every culture" closes only by naming the
 keys and the cultures now carrying them; "duplicated in A and B" closes only by reading both sites.
 An absence the run will act on is re-grepped on main, never taken from a thread's `unverified`
 verdict. Anything short of that is *cannot tell*, which is a normal outcome and costs nothing — an

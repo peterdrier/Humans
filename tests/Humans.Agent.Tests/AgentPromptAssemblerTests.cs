@@ -13,12 +13,12 @@ public class AgentPromptAssemblerTests
     [HumansFact]
     public void BuildUserContextTail_includes_display_name_and_locale_header()
     {
-        var snapshot = new AgentUserSnapshot(
+        var snapshot = new AgentUserContext(
             DisplayName: "Felipe García",
             PreferredLocale: "es",
             Tier: "Volunteer",
             AccountState: UserState.Active,
-            RoleAssignments: [("TeamsAdmin", "2027-12-31"), ("Board", "2027-06-30")],
+            SystemRoles: [("TeamsAdmin", "2027-12-31"), ("Board", "2027-06-30")],
             Teams:
             [
                 new TeamMembership("Volunteers", TeamMemberRole.Member),
@@ -41,12 +41,12 @@ public class AgentPromptAssemblerTests
     [HumansFact]
     public void BuildUserContextTail_renders_team_with_role_per_team()
     {
-        var snapshot = new AgentUserSnapshot(
+        var snapshot = new AgentUserContext(
             DisplayName: "Volunteer",
             PreferredLocale: "es",
             Tier: "Volunteer",
             AccountState: UserState.Active,
-            RoleAssignments: [],
+            SystemRoles: [],
             Teams:
             [
                 new TeamMembership("Build", TeamMemberRole.Coordinator),
@@ -130,12 +130,12 @@ public class AgentPromptAssemblerTests
     [HumansFact]
     public void BuildUserContextTail_sorts_teams_alphabetically_at_render_time()
     {
-        var snapshot = new AgentUserSnapshot(
+        var snapshot = new AgentUserContext(
             DisplayName: "Test",
             PreferredLocale: "es",
             Tier: "Volunteer",
             AccountState: UserState.Active,
-            RoleAssignments: [],
+            SystemRoles: [],
             Teams:
             [
                 new TeamMembership("Zebra", TeamMemberRole.Member),
@@ -189,13 +189,13 @@ public class AgentPromptAssemblerTests
         tail.Should().Contain("+2 more");
     }
 
-    private static AgentUserSnapshot MakeSnapshot(params UpcomingShiftEntry[] upcoming) =>
+    private static AgentUserContext MakeSnapshot(params UpcomingShiftEntry[] upcoming) =>
         new(
             DisplayName: "Test",
             PreferredLocale: "es",
             Tier: "Volunteer",
             AccountState: UserState.Active,
-            RoleAssignments: [],
+            SystemRoles: [],
             Teams: [],
             PendingConsentDocs: [],
             OpenTicketIds: [],

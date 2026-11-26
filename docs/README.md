@@ -1,5 +1,7 @@
 # Nobodies Humans — Documentation
 
+Running Humans for another burn? Start with [Running Humans for your burn](adopting-humans.md).
+
 ## Feature Specifications
 
 Business requirements, user stories, data model, and workflows for each feature area.
@@ -102,7 +104,7 @@ Terse, authoritative invariant docs for each major section: concepts, data model
 | [Agent](../src/Sections/Humans.Agent/Docs/Agent.md) | Conversational helper backed by Anthropic Claude, available to authenticated consented users when `AgentSettings.Enabled = true` |
 | [Audit Log](../src/Sections/Humans.AuditLog/Docs/AuditLog.md) | Append-only system audit trail capturing actor, action, entity, and timestamp; enforced append-only per design-rules.md, *Append-only entities* |
 | [Auth](../src/Sections/Humans.Auth/Docs/Auth.md) | Temporal role assignments, magic-link login/signup, and claims transformation |
-| [Backdoor](../src/Sections/Humans.Backdoor/Docs/Backdoor.md) | The machine surface — every key-authed API an agent talks to, under `/api/backdoor/*`, gated by one personal key per human |
+| [Backdoor](../src/Sections/Humans.Backdoor/Docs/Backdoor.md) | The Backdoor API — every key-authed API an agent talks to, under `/api/backdoor/*`, gated by one personal key per human |
 | [Budget](../src/Sections/Humans.Budget/Docs/Budget.md) | Fiscal-year budgets (Draft/Active/Closed) with groups, categories, line items, and an append-only audit log |
 | [Calendar](../src/Sections/Humans.Calendar/Docs/Calendar.md) | Per-team community calendar with one-off and recurring events plus per-occurrence overrides and cancellations |
 | [Campaigns](../src/Sections/Humans.Campaigns/Docs/Campaigns.md) | Bulk code-distribution campaigns: codes imported or generated, assigned to humans, delivered via email waves |
