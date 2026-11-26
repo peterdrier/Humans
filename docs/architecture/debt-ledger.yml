@@ -167,5 +167,5 @@ inbox:
     review: standard
   - added: 2026-11-22
     id: CENTRAL-113
-    what: "src/Sections/Humans.BoxOffice reads its Stripe account with its own Stripe.net client (GetPaymentLedgerAsync, fees, the checkout probe), against memory/architecture/vendor-connectors-own-sections.md. Hi.Events and pretix read theirs through IStripeService's account reads (GetAccountLedgerAsync and siblings); fold Box Office's reads into them too, and the Stripe reporting-category mapping each adapter repeats into one place."
+    what: "src/Sections/Humans.BoxOffice reads its Stripe account with its own Stripe.net client (GetPaymentLedgerAsync, fees, the checkout probe), against memory/architecture/vendor-connectors-own-sections.md. Hi.Events and pretix read theirs through IStripeService's account reads (GetAccountLedgerAsync and siblings); fold Box Office's reads into them too, and the Stripe reporting-category mapping each adapter repeats into one place. Peter decided (2026-11-26) that every ticketing provider, Box Office included, charges into the existing Tickets Stripe account (STRIPE_TICKETS_KEY), so Box Office needs no key of its own."
     review: standard
