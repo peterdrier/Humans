@@ -46,6 +46,8 @@ internal sealed class Repository(IDbContextFactory<HoldedDbContext> factory)
             {
                 r.LastSyncedAt = now;
                 ctx.HoldedLedgerLines.Add(r);
+                // Paged fetches can repeat a line across a page boundary; the repeat must update, not re-insert.
+                existing[(r.EntryNumber, r.Line)] = r;
             }
         }
 
