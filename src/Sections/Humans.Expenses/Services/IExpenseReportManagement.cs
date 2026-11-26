@@ -25,16 +25,11 @@ internal interface IExpenseReportManagement : IExpenseReportService
         Guid? preapprovalGrantId = null,
         CancellationToken ct = default);
 
-    /// <summary>Updates a Draft after caller authorization; a pre-approval may be kept, swapped or dropped.</summary>
-    Task<ExpenseMutationResult> UpdateDraftWithResultAsync(
-        Guid reportId, Guid actorUserId,
-        int holdedAccountNumber, string? note,
-        Guid? preapprovalGrantId = null,
-        CancellationToken ct = default);
-
-    /// <summary>Updates a Draft, Submitted or CoordinatorEndorsed report after caller authorization.
-    /// Past Draft, a pre-approval and its account remain locked; other accounts stay in their booked year.</summary>
-    Task<ExpenseMutationResult> UpdateHeaderForFinanceCorrectionWithResultAsync(
+    /// <summary>Updates a Draft after caller authorization; a pre-approval may be kept, swapped or dropped.
+    /// Like every header, line and attachment edit here, an Admin or Finance Admin actor may also edit a Submitted or
+    /// CoordinatorEndorsed report. Past Draft, a pre-approval and its account remain locked; other accounts stay in
+    /// their booked year.</summary>
+    Task<ExpenseMutationResult> UpdateHeaderAsync(
         Guid reportId, Guid actorUserId,
         int holdedAccountNumber, string? note,
         Guid? preapprovalGrantId = null,
@@ -45,7 +40,7 @@ internal interface IExpenseReportManagement : IExpenseReportService
     /// created, so a bad upload leaves nothing half-made. A non-null <paramref name="parentLineId"/> adds a proof row
     /// backing that Invoice line.
     /// </summary>
-    Task<ExpenseAddLineResult> AddLineWithResultAsync(
+    Task<ExpenseAddLineResult> AddLineAsync(
         Guid reportId, Guid actorUserId,
         string description, decimal amount,
         ExpenseLineType lineType = ExpenseLineType.Receipt,
@@ -53,42 +48,16 @@ internal interface IExpenseReportManagement : IExpenseReportService
         ExpenseFileUpload? file = null,
         CancellationToken ct = default);
 
-    /// <summary>Corrects a Draft, Submitted or CoordinatorEndorsed report after caller authorization.</summary>
-    Task<ExpenseAddLineResult> AddLineForFinanceCorrectionWithResultAsync(
-        Guid reportId, Guid actorUserId,
-        string description, decimal amount,
-        ExpenseLineType lineType = ExpenseLineType.Receipt,
-        Guid? parentLineId = null,
-        ExpenseFileUpload? file = null,
-        CancellationToken ct = default);
-
-    Task<ExpenseMutationResult> UpdateLineWithResultAsync(
+    Task<ExpenseMutationResult> UpdateLineAsync(
         Guid reportId, Guid actorUserId,
         Guid lineId, string description, decimal amount,
         CancellationToken ct = default);
 
-    /// <summary>Corrects a Draft, Submitted or CoordinatorEndorsed report after caller authorization.</summary>
-    Task<ExpenseMutationResult> UpdateLineForFinanceCorrectionWithResultAsync(
-        Guid reportId, Guid actorUserId,
-        Guid lineId, string description, decimal amount,
-        CancellationToken ct = default);
-
-    Task<ExpenseMutationResult> RemoveLineWithResultAsync(
+    Task<ExpenseMutationResult> RemoveLineAsync(
         Guid reportId, Guid actorUserId, Guid lineId,
         CancellationToken ct = default);
 
-    /// <summary>Corrects a Draft, Submitted or CoordinatorEndorsed report after caller authorization.</summary>
-    Task<ExpenseMutationResult> RemoveLineForFinanceCorrectionWithResultAsync(
-        Guid reportId, Guid actorUserId, Guid lineId,
-        CancellationToken ct = default);
-
-    Task<ExpenseMutationResult> AttachFileToLineWithResultAsync(
-        Guid reportId, Guid actorUserId,
-        Guid lineId, string originalFileName, string contentType,
-        Stream content, CancellationToken ct = default);
-
-    /// <summary>Corrects a Draft, Submitted or CoordinatorEndorsed report after caller authorization.</summary>
-    Task<ExpenseMutationResult> AttachFileToLineForFinanceCorrectionWithResultAsync(
+    Task<ExpenseMutationResult> AttachFileToLineAsync(
         Guid reportId, Guid actorUserId,
         Guid lineId, string originalFileName, string contentType,
         Stream content, CancellationToken ct = default);
@@ -98,35 +67,30 @@ internal interface IExpenseReportManagement : IExpenseReportService
         Guid reportId, Guid actorUserId,
         Guid lineId, CancellationToken ct = default);
 
-    /// <summary>Corrects a Draft, Submitted or CoordinatorEndorsed report after caller authorization.</summary>
-    Task<ExpenseMutationResult> RemoveAttachmentFromLineForFinanceCorrectionAsync(
-        Guid reportId, Guid actorUserId,
-        Guid lineId, CancellationToken ct = default);
-
     /// <summary>The caller authorizes submission; the service requires a Draft. The payee snapshot comes from the
     /// submitter's profile, never the actor's. A pre-approved report claims
     /// its grant in the same transaction and is restamped with the grant's account and cap; a first submit past the
     /// claim deadline is refused, a resubmit of the report holding the grant is not.</summary>
-    Task<ExpenseMutationResult> SubmitWithResultAsync(
+    Task<ExpenseMutationResult> SubmitAsync(
         Guid reportId, Guid actorUserId, CancellationToken ct = default);
 
     /// <summary>The submitter's own decision; there is no on-behalf path. A pre-approved report releases its grant.
     /// Approved reports are refused: approval has already queued the Holded push.</summary>
-    Task<ExpenseMutationResult> WithdrawWithResultAsync(
+    Task<ExpenseMutationResult> WithdrawAsync(
         Guid reportId, Guid submitterUserId, CancellationToken ct = default);
 
     /// <summary>Sets the submitter's profile IBAN and, while the report is pending approval, its payee snapshot too.
     /// Removal is refused on those statuses. An actor other than the submitter gets audit entries naming both, with
     /// the raw IBAN.</summary>
-    Task<ExpenseIbanSaveResult> SaveSubmitterIbanWithResultAsync(
+    Task<ExpenseIbanSaveResult> SaveSubmitterIbanAsync(
         Guid reportId, Guid actorUserId, string? iban, CancellationToken ct = default);
 
-    Task<ExpenseMutationResult> AddMileageLineWithResultAsync(
+    Task<ExpenseMutationResult> AddMileageLineAsync(
         Guid reportId, Guid submitterUserId,
         string origin, string destination, decimal km,
         CancellationToken ct = default);
 
-    Task<ExpenseMutationResult> AddPerDiemLineWithResultAsync(
+    Task<ExpenseMutationResult> AddPerDiemLineAsync(
         Guid reportId, Guid submitterUserId,
         PerDiemKind kind, int days, string? note,
         CancellationToken ct = default);
@@ -147,54 +111,45 @@ internal interface IExpenseReview : IApplicationService
 
     /// <summary>A null cap uses the grant ceiling on pre-approved reports and leaves other reports uncapped. The caller authorizes the reviewer.</summary>
     /// <remarks><paramref name="auditReviewerLabel"/> records review context in audit text only.</remarks>
-    Task<ExpenseMutationResult> CoordinatorEndorseWithResultAsync(
+    Task<ExpenseMutationResult> CoordinatorEndorseAsync(
         Guid reportId, Guid coordinatorUserId, decimal? maxAmount,
         CancellationToken ct = default, string? auditReviewerLabel = null);
 
     /// <summary>The caller authorizes the reviewer; the repository enforces Submitted status.</summary>
     /// <remarks><paramref name="auditReviewerLabel"/> records review context in audit text only.</remarks>
-    Task<ExpenseMutationResult> CoordinatorRejectWithResultAsync(
+    Task<ExpenseMutationResult> CoordinatorRejectAsync(
         Guid reportId, Guid coordinatorUserId, string reason,
         CancellationToken ct = default, string? auditReviewerLabel = null);
 
     /// <summary>
-    /// First-review command for Submitted reports. The caller authorizes the reviewer. Declined lines leave
+    /// For Submitted reports, and CoordinatorEndorsed ones when the actor is Admin or Finance Admin. The caller
+    /// authorizes the reviewer. Declined lines leave
     /// Total and Payable but stay on the report; proof rows cannot be declined and the cap is untouched.
     /// </summary>
-    Task<ExpenseMutationResult> DeclineLineWithResultAsync(
+    Task<ExpenseMutationResult> DeclineLineAsync(
         Guid reportId, Guid actorUserId, Guid lineId, string reason,
         CancellationToken ct = default);
 
-    /// <summary>The Finance-review command accepts Submitted or CoordinatorEndorsed reports after caller authorization.</summary>
-    Task<ExpenseMutationResult> DeclineLineForFinanceReviewWithResultAsync(
-        Guid reportId, Guid actorUserId, Guid lineId, string reason,
-        CancellationToken ct = default);
-
-    /// <summary>Undoes a first-review decline on a Submitted report after caller authorization.</summary>
-    Task<ExpenseMutationResult> UndoDeclineLineWithResultAsync(
-        Guid reportId, Guid actorUserId, Guid lineId,
-        CancellationToken ct = default);
-
-    /// <summary>The Finance-review command accepts Submitted or CoordinatorEndorsed reports after caller authorization.</summary>
-    Task<ExpenseMutationResult> UndoDeclineLineForFinanceReviewWithResultAsync(
+    /// <summary>Undoes a decline after caller authorization, in the same status window as declining.</summary>
+    Task<ExpenseMutationResult> UndoDeclineLineAsync(
         Guid reportId, Guid actorUserId, Guid lineId,
         CancellationToken ct = default);
 
     /// <summary>A non-null <paramref name="maxAmount"/> overrides the coordinator's cap; a non-null
     /// <paramref name="overrideAccountNumber"/> rebooks. On a pre-approved report the account is locked, a blank cap
     /// keeps the grant's amount, and a higher cap is refused; approval consumes the grant in the same transaction.</summary>
-    Task<ExpenseMutationResult> ApproveWithResultAsync(
+    Task<ExpenseMutationResult> ApproveAsync(
         Guid reportId, Guid actorUserId, int? overrideAccountNumber, decimal? maxAmount,
         CancellationToken ct = default);
 
-    Task<ExpenseMutationResult> FinanceRejectWithResultAsync(
+    Task<ExpenseMutationResult> FinanceRejectAsync(
         Guid reportId, Guid actorUserId, string reason,
         CancellationToken ct = default);
 
     /// <summary>
     /// Re-queues a written-off or backing-off push and resets the retry budget. Fails when the report has neither.
     /// </summary>
-    Task<ExpenseMutationResult> RequeueHoldedPushWithResultAsync(
+    Task<ExpenseMutationResult> RequeueHoldedPushAsync(
         Guid reportId, Guid actorUserId, CancellationToken ct = default);
 
     /// <summary>
