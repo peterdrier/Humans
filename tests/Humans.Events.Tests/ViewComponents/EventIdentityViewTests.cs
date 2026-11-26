@@ -70,6 +70,59 @@ public class EventIdentityViewTests
         await users.DidNotReceive().GetUserInfoAsync(unusedId, Arg.Any<CancellationToken>());
     }
 
+    public enum EventForm { Individual, Barrio, ModeratorIndividual, ModeratorCamp }
+
+    [HumansTheory]
+    [Xunit.InlineData(EventForm.Individual, 16, false)]
+    [Xunit.InlineData(EventForm.Barrio, 16, false)]
+    [Xunit.InlineData(EventForm.ModeratorIndividual, 16, false)]
+    [Xunit.InlineData(EventForm.ModeratorCamp, 16, false)]
+    [Xunit.InlineData(EventForm.Individual, 600, false)]
+    [Xunit.InlineData(EventForm.ModeratorIndividual, 600, false)]
+    [Xunit.InlineData(EventForm.ModeratorCamp, 600, false)]
+    [Xunit.InlineData(EventForm.Individual, 60, false)]
+    [Xunit.InlineData(EventForm.Barrio, 60, false)]
+    [Xunit.InlineData(EventForm.ModeratorIndividual, 60, false)]
+    [Xunit.InlineData(EventForm.ModeratorCamp, 60, false)]
+    [Xunit.InlineData(EventForm.Individual, 1440, true)]
+    [Xunit.InlineData(EventForm.ModeratorIndividual, 1440, true)]
+    public async Task DurationSelect_StoredDuration_RemainsSelected(EventForm form, int minutes, bool allDay)
+    {
+        using var culture = new CultureScope("es");
+        var id = Guid.NewGuid();
+        object model = form switch
+        {
+            EventForm.Individual => new IndividualEventFormViewModel { Id = id, DurationMinutes = minutes, IsAllDay = allDay },
+            EventForm.Barrio => new CampEventFormViewModel { Id = id, CampName = "Camp", CampSlug = "camp", DurationMinutes = minutes },
+            _ => new AdminEventFormViewModel
+            {
+                Id = id,
+                DurationMinutes = minutes,
+                IsAllDay = allDay,
+                IsCampEvent = form == EventForm.ModeratorCamp
+            }
+        };
+        var path = form switch
+        {
+            EventForm.Individual => "/Views/Events/IndividualEventForm.cshtml",
+            EventForm.Barrio => "/Views/Events/BarrioEventForm.cshtml",
+            _ => "/Views/EventsModeration/AdminEventForm.cshtml"
+        };
+
+        var html = await RenderAsync(path, model, Substitute.For<IUserService>());
+
+        var select = Regex.Match(html, "<select[^>]*name=\"DurationMinutes\"[^>]*>(?<options>.*?)</select>",
+            RegexOptions.Singleline | RegexOptions.ExplicitCapture | RegexOptions.NonBacktracking, TimeSpan.FromSeconds(1));
+        select.Success.Should().BeTrue();
+        var selected = Regex.Matches(select.Groups["options"].Value, "<option(?<attributes>[^>]*)>.*?</option>",
+                RegexOptions.Singleline | RegexOptions.ExplicitCapture | RegexOptions.NonBacktracking, TimeSpan.FromSeconds(1))
+            .Where(option => option.Groups["attributes"].Value.Contains("selected", StringComparison.Ordinal))
+            .Should().ContainSingle().Subject;
+        var value = Regex.Match(selected.Groups["attributes"].Value, "value=\"(?<value>[0-9]+)\"",
+            RegexOptions.ExplicitCapture | RegexOptions.NonBacktracking, TimeSpan.FromSeconds(1)).Groups["value"].Value;
+        value.Should().Be((allDay ? 60 : minutes).ToString(CultureInfo.InvariantCulture));
+    }
+
     private static async Task<string> RenderAsync(string path, object model, IUserService users)
     {
         var builder = WebApplication.CreateBuilder(new WebApplicationOptions

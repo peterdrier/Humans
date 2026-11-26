@@ -639,7 +639,7 @@ public sealed class BudgetServiceTests
     [InlineData("missingGroup")]
     [InlineData("valid")]
     [InlineData("invalidVat")]
-    public async Task Projection_update_validates_group_year_first(string scenario)
+    public async Task UpdateProjection_GroupYear_ValidatesBeforeWriting(string scenario)
     {
         var seeded = await SeedTicketingYearAsync();
         var other = await SeedCategoryAsync(isTicketingGroup: true);
@@ -1328,7 +1328,7 @@ public sealed class BudgetServiceTests
     [InlineData(ProjectionDecimalField.StripeFeePercent, "100000000000000")]
     [InlineData(ProjectionDecimalField.PlatformFeePercent, "-0.00001")]
     [InlineData(ProjectionDecimalField.PlatformFeePercent, "-100000000000000")]
-    public async Task ProjectionDecimal_RefusesRoundingAndOverflow(
+    public async Task UpdateProjection_InvalidDecimal_RefusesBeforeWriting(
         ProjectionDecimalField field, string rawValue)
     {
         var seeded = await SeedTicketingYearAsync();
@@ -1696,7 +1696,7 @@ public sealed class BudgetServiceTests
     }
 
     [HumansFact]
-    public async Task ArchiveYearAsync_refuses_when_year_is_active()
+    public async Task ArchiveYearAsync_ActiveYear_Refuses()
     {
         await using (var ctx = await _budgetDbFactory.CreateDbContextAsync(TestContext.Current.CancellationToken))
         {
@@ -1719,7 +1719,7 @@ public sealed class BudgetServiceTests
     }
 
     [HumansFact]
-    public async Task ArchiveYearAsync_soft_deletes_when_draft()
+    public async Task ArchiveYearAsync_DraftYear_SoftDeletes()
     {
         await using (var ctx = await _budgetDbFactory.CreateDbContextAsync(TestContext.Current.CancellationToken))
         {
@@ -2185,7 +2185,7 @@ public sealed class BudgetServiceTests
     }
 
     [HumansFact]
-    public async Task Inverted_sales_period_has_no_projection_rows()
+    public async Task Projection_InvertedSalesPeriod_HasNoRows()
     {
         _clock.Reset(Instant.FromUtc(2026, 3, 17, 12, 0));
         var (groupId, _, _, _) = await SeedTicketingYearAsync();
@@ -2486,7 +2486,7 @@ public sealed class BudgetServiceTests
     }
 
     [HumansFact]
-    public void ComputeBudgetSummaryWithAvailable_localizes_generated_labels()
+    public void ComputeBudgetSummaryWithAvailable_LocalizesGeneratedLabels()
     {
         using var scope = new CultureScope("en");
         var groupId = Guid.NewGuid();
@@ -2512,7 +2512,7 @@ public sealed class BudgetServiceTests
     }
 
     [HumansFact]
-    public void ComputeBudgetSummaryWithAvailable_totals_line_items_excluding_cashflow_only()
+    public void ComputeBudgetSummaryWithAvailable_ExcludesCashflowOnlyLines()
     {
         var groupId = Guid.NewGuid();
         var cat = new BudgetCategoryDetail(Guid.NewGuid(), "Ops", 0m, ExpenditureType.OpEx, null, 0,

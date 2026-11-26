@@ -591,7 +591,7 @@ public class AgentServiceTests
     }
 
     [HumansFact]
-    public async Task Failed_handoff_dispatch_does_not_count_as_a_handoff()
+    public async Task Ask_FailedDispatch_DoesNotCountHandoff()
     {
         var userId = Guid.NewGuid();
         var dispatcher = Substitute.For<IAgentToolDispatcher>();
@@ -696,7 +696,7 @@ public class AgentServiceTests
     [Xunit.InlineData(false, "x", "x", "-1", "Question")]
     [Xunit.InlineData(false, "x", "x", "unknown", "Question")]
     [Xunit.InlineData(false, "x", "x", "question", "Question")]
-    public async Task Ask_stores_a_one_liner_when_handoff_produces_no_preamble_text(
+    public async Task Ask_HandoffWithoutPreamble_StoresSummary(
         bool oversized, string boundary, string expectedBoundary, string category, string expectedCategory)
     {
         // handoff's proposal frame is the terminal

@@ -10,10 +10,10 @@ internal interface ICommunicationPreferenceManagement
         Guid userId, CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// Idempotent. Audits the actor when given, else the service. Returns false and writes nothing when an
-    /// <see cref="ICommunicationPreferenceLock"/> locks the category for the human.
+    /// Idempotent. Audits the actor when given, else the service. Refuses unavailable accounts and categories
+    /// locked by <see cref="ICommunicationPreferenceLock"/> without writing.
     /// </summary>
-    Task<bool> UpdatePreferenceAsync(
+    Task<PreferenceUpdateOutcome> UpdatePreferenceAsync(
         Guid userId, MessageCategory category, bool optedOut, bool inboxEnabled, string source,
         Guid? actorUserId = null, CancellationToken cancellationToken = default);
 
@@ -23,4 +23,11 @@ internal interface ICommunicationPreferenceManagement
     Dictionary<string, string> GenerateUnsubscribeHeaders(Guid userId, MessageCategory category);
 
     string GenerateBrowserUnsubscribeUrl(Guid userId, MessageCategory category);
+}
+
+internal enum PreferenceUpdateOutcome
+{
+    UserUnavailable,
+    Success,
+    Locked
 }

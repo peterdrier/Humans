@@ -178,6 +178,7 @@ internal sealed class EditTeamViewModel : TeamFormViewModelBase
     [RegularExpression(@"^[a-z0-9]([a-z0-9-]*[a-z0-9])?$", ErrorMessage = "Only lowercase letters, numbers, and hyphens allowed")]
     public string? CustomSlug { get; set; }
 
+    [BindRequired]
     public bool IsActive { get; set; }
     public bool IsSystemTeam { get; set; }
     public bool HasBudget { get; set; }
@@ -185,6 +186,7 @@ internal sealed class EditTeamViewModel : TeamFormViewModelBase
     public bool IsPromotedToDirectory { get; set; }
 
     [Display(Name = "Enable Early Entry")]
+    [BindRequired]
     public bool EarlyEntryEnabled { get; set; }
 }
 
@@ -193,7 +195,9 @@ internal sealed class EditTeamPageViewModel
     public Guid TeamId { get; set; }
     public string Slug { get; set; } = string.Empty;
     public string TeamName { get; set; } = string.Empty;
+    [BindRequired]
     public bool IsPublicPage { get; set; }
+    [BindRequired]
     public bool ShowCoordinatorsOnPublicPage { get; set; } = true;
     public bool CanBePublic { get; set; }
 
@@ -376,7 +380,9 @@ internal sealed class CreateRoleDefinitionModel
     public List<string> Priorities { get; set; } = ["None"];
     [BindRequired]
     public int SortOrder { get; set; }
+    [BindRequired]
     public bool IsPublic { get; set; } = true;
+    [BindRequired]
     public RolePeriod Period { get; set; } = RolePeriod.YearRound;
 }
 
@@ -392,8 +398,10 @@ internal sealed class EditRoleDefinitionModel
     public List<string> Priorities { get; set; } = [];
     [BindRequired]
     public int SortOrder { get; set; }
+    [BindRequired]
     public bool IsPublic { get; set; } = true;
     public bool IsManagement { get; set; }
+    [BindRequired]
     public RolePeriod Period { get; set; } = RolePeriod.YearRound;
 }
 

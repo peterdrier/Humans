@@ -49,13 +49,13 @@ internal sealed class ICalFeedService(
         return items;
     }
 
-    /// <summary>Null when the user is missing or merged or the token is wrong: one 404 for all, so no oracle.</summary>
+    /// <summary>Null for an unavailable or redirected user, or a wrong token: one 404 for all, so no oracle.</summary>
     public async Task<string?> GetFeedIcsAsync(Guid userId, Guid token, CancellationToken ct = default)
     {
         // The read resolves merges forward; comparing ids keeps a merged user's feed a 404, so an old URL
         // reveals nothing about who absorbed the account.
         var user = await users.GetUserInfoAsync(userId, ct);
-        if (user is null || user.Id != userId)
+        if (user is null || user.IsTombstone || user.Id != userId)
         {
             return null;
         }

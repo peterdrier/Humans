@@ -4,6 +4,9 @@ using AwesomeAssertions;
 using Humans.MailerLite.Services.MailerLite;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
+using Humans.MailerLite.Services;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace Humans.MailerLite.Tests.Services;
 
@@ -11,6 +14,68 @@ public class MailerLiteClientRetryTests
 {
     private const string HumansGroupPage =
         """{"data":[{"id":"42","name":"Humans - Test","created_at":"2026-01-01 00:00:00","active_count":0,"unsubscribed_count":0,"unconfirmed_count":0,"bounced_count":0,"junk_count":0}],"meta":{"current_page":1,"last_page":1}}""";
+
+    [HumansTheory]
+    [Xunit.InlineData("not a URI", false)]
+    [Xunit.InlineData("", false)]
+    [Xunit.InlineData("/relative", false)]
+    [Xunit.InlineData("ftp://mailerlite.example", false)]
+    [Xunit.InlineData("https://mailerlite.example", true)]
+    [Xunit.InlineData("http://mailerlite.example", true)]
+    [Xunit.InlineData("https://mailerlite.example", false, "ApiKey", "key\r\nnext")]
+    [Xunit.InlineData("https://mailerlite.example", false, "ApiKey", "key\nnext")]
+    [Xunit.InlineData("https://mailerlite.example", false, "ApiKey", "key\rnext")]
+    [Xunit.InlineData("https://mailerlite.example", false, "ApiVersion", "2038-01-01\r\nnext")]
+    [Xunit.InlineData("https://mailerlite.example", false, "ApiVersion", "2038-01-01\nnext")]
+    [Xunit.InlineData("https://mailerlite.example", false, "ApiVersion", "2038-01-01\rnext")]
+    public async Task Register_Configuration_ReportsApiFailure(string baseUrl, bool valid, string? field = null, string? value = null)
+    {
+        var services = new ServiceCollection();
+        new Section().Register(services, new ConfigurationBuilder().AddInMemoryCollection(
+            new Dictionary<string, string?>(StringComparer.Ordinal) { ["MailerLite:BaseUrl"] = baseUrl }).Build());
+        services.Configure<MailerLiteOptions>(o =>
+        {
+            o.ApiKey = string.Equals(field, "ApiKey", StringComparison.Ordinal) ? value! : "test-key";
+            if (string.Equals(field, "ApiVersion", StringComparison.Ordinal)) o.ApiVersion = value!;
+        });
+        services.AddSingleton<NodaTime.IClock>(NodaTime.SystemClock.Instance);
+        var handler = new ScriptedHandler();
+        handler.EnqueueJson(HttpStatusCode.OK, """{"data":[],"meta":{"next_cursor":null}}""");
+        handler.EnqueueJson(HttpStatusCode.OK, HumansGroupPage);
+        handler.EnqueueJson(HttpStatusCode.OK,
+            """{"data":{"id":"43","name":"Humans - Added","created_at":"2026-01-01 00:00:00","active_count":0,"unsubscribed_count":0,"unconfirmed_count":0,"bounced_count":0,"junk_count":0}}""");
+        services.AddHttpClient(MailerLiteClient.HttpClientName).ConfigurePrimaryHttpMessageHandler(() => handler);
+        using var provider = services.BuildServiceProvider();
+
+        var client = provider.GetRequiredService<IMailerLiteService>();
+        var read = () => client.ListGroupsAsync(Xunit.TestContext.Current.CancellationToken);
+        var write = () => client.CreateGroupAsync("Humans - Added", Xunit.TestContext.Current.CancellationToken);
+
+        client.LastFetchedAt.Should().BeNull();
+        if (valid)
+        {
+            using var http = provider.GetRequiredService<IHttpClientFactory>().CreateClient(MailerLiteClient.HttpClientName);
+            http.DefaultRequestHeaders.Authorization.Should().Be(new AuthenticationHeaderValue("Bearer", "test-key"));
+            (await read()).Should().ContainSingle().Which.Id.Should().Be("42");
+            (await write()).Id.Should().Be("43");
+            client.LastFetchedAt.Should().NotBeNull();
+        }
+        else
+        {
+            var message = field is null ? "*absolute HTTP(S)*" : "*HTTP header*";
+            var readFailure = await read.Should().ThrowAsync<HttpRequestException>().WithMessage(message);
+            var writeFailure = await write.Should().ThrowAsync<HttpRequestException>().WithMessage(message);
+            if (value is not null)
+            {
+                readFailure.Which.ToString().Should().NotContain(value);
+                writeFailure.Which.ToString().Should().NotContain(value);
+                readFailure.Which.InnerException.Should().BeNull();
+                writeFailure.Which.InnerException.Should().BeNull();
+            }
+            client.LastFetchedAt.Should().BeNull();
+        }
+        handler.Calls.Should().Be(valid ? 3 : 0);
+    }
 
     [HumansTheory]
     [Xunit.InlineData(false, false)]

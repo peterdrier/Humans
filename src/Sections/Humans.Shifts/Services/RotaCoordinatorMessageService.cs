@@ -179,15 +179,23 @@ internal sealed class RotaCoordinatorMessageService(
         if (recipientIds.Count == 0)
             return new TeamRotasRecipientPreview(groups.Count, []);
 
-        var infos = await userService.GetUserInfosAsync(recipientIds, ct);
-        var names = recipientIds
-            .Select(id => infos.TryGetValue(id, out var u) ? u.BurnerName : null)
+        var infos = GetAvailableRecipients(recipientIds, await userService.GetUserInfosAsync(recipientIds, ct));
+        var names = infos.Values
+            .DistinctBy(user => user.Id)
+            .Select(user => user.BurnerName)
             .Where(n => !string.IsNullOrWhiteSpace(n))
             .Select(n => n!)
             .ToList();
 
         return new TeamRotasRecipientPreview(groups.Count, names);
     }
+
+    internal static IReadOnlyDictionary<Guid, UserInfo> GetAvailableRecipients(
+        IEnumerable<Guid> userIds, IReadOnlyDictionary<Guid, UserInfo> infos) =>
+        userIds.Distinct()
+            .Where(id => infos.TryGetValue(id, out var user) && !user.IsTombstone
+                && !string.IsNullOrWhiteSpace(user.Email))
+            .ToDictionary(id => id, id => infos[id]);
 
     /// <summary>
     /// Under the default upcoming filter a rota counts while any of its shifts has not ended, so events mid-flight
@@ -234,7 +242,7 @@ internal sealed class RotaCoordinatorMessageService(
             .ToList();
 
     /// <summary>
-    /// Shared by the per-rota and team paths: dedupes signups by user across rotas, resolves starts in each rota's own
+    /// Shared by the per-rota and team paths: dedupes signups by live user across rotas, resolves starts in each rota's own
     /// timezone, and isolates per-recipient failures.
     /// </summary>
     private async Task<DispatchSummary> DispatchToRecipientsAsync<TRequest>(
@@ -263,32 +271,22 @@ internal sealed class RotaCoordinatorMessageService(
             return new DispatchSummary(0, 0, 0);
 
         var recipientIds = byUser.Keys;
-        var recipientInfos = await userService.GetUserInfosAsync(recipientIds, ct);
+        var recipientInfos = GetAvailableRecipients(recipientIds, await userService.GetUserInfosAsync(recipientIds, ct));
 
         var requested = 0;
-        var skipped = 0;
+        var skipped = byUser.Count - recipientInfos.Count;
         var failed = 0;
+        if (skipped > 0)
+            logger.LogWarning(
+                "Skipping {SkippedCount} coordinator-message recipients on {ScopeType} {ScopeId}: unavailable user or no email address",
+                skipped, logScope.Type, logScope.Id);
 
-        foreach (var (userId, entries) in byUser)
+        foreach (var recipientEntries in byUser.Where(entry => recipientInfos.ContainsKey(entry.Key))
+            .GroupBy(entry => recipientInfos[entry.Key].Id))
         {
-            if (!recipientInfos.TryGetValue(userId, out var recipient))
-            {
-                logger.LogWarning(
-                    "Skipping coordinator-message recipient {UserId} on {ScopeType} {ScopeId}: user not found",
-                    userId, logScope.Type, logScope.Id);
-                skipped++;
-                continue;
-            }
-
-            var email = recipient.Email;
-            if (string.IsNullOrWhiteSpace(email))
-            {
-                logger.LogWarning(
-                    "Skipping coordinator-message recipient {UserId} on {ScopeType} {ScopeId}: no email address",
-                    userId, logScope.Type, logScope.Id);
-                skipped++;
-                continue;
-            }
+            var userId = recipientEntries.Key;
+            var recipient = recipientInfos[recipientEntries.First().Key];
+            var entries = recipientEntries.SelectMany(entry => entry.Value);
 
             // The template drops the whole section rather than print a lead-in over an empty list.
             IReadOnlyList<CoordinatorRotaShiftGroup> shiftGroups = includeShifts
@@ -297,7 +295,7 @@ internal sealed class RotaCoordinatorMessageService(
                     .Select(g =>
                     {
                         var group = g.First().Group;
-                        var shifts = g.Select(e => (
+                        var shifts = g.DistinctBy(e => e.Signup.Shift.Id).Select(e => (
                             Start: e.Signup.Shift.GetAbsoluteStart(group.EventSettings).InZone(group.EventSettings.TimeZone),
                             e.Signup.Shift.IsAllDay)).ToList();
                         return new CoordinatorRotaShiftGroup(group.RotaName, shifts);
@@ -352,7 +350,7 @@ internal sealed class RotaCoordinatorMessageService(
         int Failed)
     {
         public string AuditSuffix =>
-            (Skipped > 0 ? $" ({Skipped} skipped: no email or missing user)" : string.Empty)
+            (Skipped > 0 ? $" ({Skipped} skipped: unavailable user or no email)" : string.Empty)
             + (Failed > 0 ? $" ({Failed} failed: enqueue error)" : string.Empty);
 
         // A partial dispatch succeeded; only an all-failed dispatch must suppress the success toast.

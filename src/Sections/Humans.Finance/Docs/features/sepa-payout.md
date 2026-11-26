@@ -41,7 +41,7 @@ page says payout is unavailable and names the missing keys — nothing is ever i
 The per-transfer cap itself is **not** config-only: `/Finance/Creditors` shows it as an editable
 field next to the Generate button, prefilled from `Sepa:MaxPayoutPerTransfer`, and the value posted
 with the batch is what `GenerateSepaPayoutAsync` enforces — changing the cap for a one-off batch no
-longer needs a redeploy.
+longer needs a redeploy. Caps and selected amounts accept invariant HTML numeric syntax, including exponent notation; grouping separators remain invalid and the existing payout checks still apply.
 
 ## Flow
 

@@ -23,7 +23,8 @@ internal static class FacilitatedMessageRequestBuilder
         ArgumentNullException.ThrowIfNull(recipient);
         ArgumentNullException.ThrowIfNull(model);
 
-        if (string.IsNullOrWhiteSpace(recipient.Email) || string.IsNullOrWhiteSpace(sender.Email))
+        if (sender.IsTombstone || recipient.IsTombstone
+            || string.IsNullOrWhiteSpace(recipient.Email) || string.IsNullOrWhiteSpace(sender.Email))
             return null;
 
         return new FacilitatedMessageRequest(

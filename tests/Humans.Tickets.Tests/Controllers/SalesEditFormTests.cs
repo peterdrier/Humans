@@ -71,6 +71,62 @@ public sealed class SalesEditFormTests
         save.PriceRules.Single().AmountMinor.Should().Be(5000);
     }
 
+    public enum NumericField { Vat, Wave, Vip, Rule, Child }
+
+    [HumansTheory]
+    [InlineData(NumericField.Vat, "1,23", false)]
+    [InlineData(NumericField.Vat, "1,000.25", false)]
+    [InlineData(NumericField.Vat, "1.23e1", true)]
+    [InlineData(NumericField.Wave, "1,23", false)]
+    [InlineData(NumericField.Wave, "1,000.25", false)]
+    [InlineData(NumericField.Wave, "1.23e1", true)]
+    [InlineData(NumericField.Vip, "1,23", false)]
+    [InlineData(NumericField.Vip, "1,000.25", false)]
+    [InlineData(NumericField.Vip, "1.23e1", true)]
+    [InlineData(NumericField.Rule, "1,23", false)]
+    [InlineData(NumericField.Rule, "1,000.25", false)]
+    [InlineData(NumericField.Rule, "1.23e1", true)]
+    [InlineData(NumericField.Child, "1,23", false)]
+    [InlineData(NumericField.Child, "1,000.25", false)]
+    [InlineData(NumericField.Child, "1.23e1", true)]
+    public void ToSave_HtmlNumber_ValidatesGrammar(NumericField field, string text, bool valid)
+    {
+        var form = new SalesEditForm();
+        switch (field)
+        {
+            case NumericField.Vat: form.TicketVatPercent = text; break;
+            case NumericField.Wave: form.Waves = [new() { Name = "Wave", EndsOn = "2027-01-31", Price = text }]; break;
+            case NumericField.Vip: form.VipLevels = [new() { Total = text }]; break;
+            case NumericField.Rule:
+                form.PriceRules = [new() { GrantProgramId = LowIncome, Kind = TicketPriceRuleKind.ClassPrice, Label = "Class", Amount = text }];
+                break;
+            case NumericField.Child: form.ChildTypes = [new() { Name = "Child", UnderAge = 12, Price = text }]; break;
+        }
+
+        var (save, error) = form.ToSave(null, Madrid);
+
+        if (!valid)
+        {
+            save.Should().BeNull();
+            error.Should().NotBeNullOrEmpty();
+            return;
+        }
+        error.Should().BeNull();
+        save.Should().NotBeNull();
+        if (field == NumericField.Vat) save!.TicketVatRate.Should().Be(0.123m);
+        else
+        {
+            var minor = field switch
+            {
+                NumericField.Wave => save!.Waves.Single().PriceMinor,
+                NumericField.Vip => save!.VipTotalsMinor.Single(),
+                NumericField.Rule => save!.PriceRules.Single().AmountMinor,
+                _ => save!.ChildTypes.Single().PriceMinor
+            };
+            minor.Should().Be(1230L);
+        }
+    }
+
     [HumansFact]
     public void A_half_filled_row_is_refused_by_name()
     {

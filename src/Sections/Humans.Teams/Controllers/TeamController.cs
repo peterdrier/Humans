@@ -589,6 +589,7 @@ internal sealed class TeamController(
 
         if (!ModelState.IsValid)
         {
+            logger.LogWarning("Rejected malformed team update for team {TeamId}", id);
             await PopulateEligibleParentsAsync(model, id, HttpContext.RequestAborted);
             return View(model);
         }
