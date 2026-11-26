@@ -164,7 +164,10 @@ internal sealed class BackdoorApiKeyService(
         return owner;
     }
 
-    public async Task<bool> AdmitsAsync(BackdoorKeyOwner owner, BackdoorScope scope, CancellationToken ct = default) =>
+    public async Task<bool> AdmitsAsync(Guid userId, BackdoorScope scope, CancellationToken ct = default) =>
+        await AdmitsAsync(new BackdoorKeyOwner(userId, await roles.GetActiveForUserAsync(userId, ct)), scope, ct);
+
+    private async Task<bool> AdmitsAsync(BackdoorKeyOwner owner, BackdoorScope scope, CancellationToken ct) =>
         scope switch
         {
             BackdoorScope.AdminAndBoard => owner.Roles.Any(a => a.RoleName is RoleNames.Admin or RoleNames.Board),

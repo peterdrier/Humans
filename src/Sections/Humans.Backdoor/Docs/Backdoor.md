@@ -74,9 +74,10 @@ The Backdoor API. Every key-authed API an agent talks to lives here, under `/api
 | `/api/backdoor/finance/holded-sync` | read | Holded's purchase-document sync state (`IHoldedService.GetPurchaseDocumentsAsync`) plus the docs Finance could not attribute (`IFinanceService.GetUnmatchedAsync`); no creditor-binding count |
 | `/api/backdoor/tasks/bulk` | write | `POST`: loads a whole set of tasks, or checks it with `dryRun`, via `ITaskWrite.BulkLoadAsync`. The key owner needs `Tasks.Manage` on every team the payload names (403 otherwise, nothing loaded; a team that does not exist gets the same 403). Every problem in the payload comes back at once as 422; nothing is created unless there are none. An unknown JSON field is a 400, so a misspelt `dryRun` never loads for real. Loading a payload twice creates the tasks twice. Shape and rules: Tasks' `Docs/Tasks.md` |
 | `/api/backdoor/notifications` | read | The key owner's unread notifications, newest first, and the live meters their roles unlock, via `INotificationInboxRead`. Polling marks nothing read |
+| `/api/backdoor/mcp` | MCP | The MCP endpoint (stateless HTTP), signed in with an API key. Lists and runs only the tools whose scope admits the caller; see [`features/mcp.md`](features/mcp.md). Tools: `hello` (Admin and Board), which returns the caller's id, name, roles and how they signed in |
 | `/Backdoor` | Key page | Anyone a scope admits makes, rotates and revokes their own keys; Admin and Board see every key, and Admin creates, rotates and revokes anyone's. Linked only from the admin nav |
 
-Authentication is the `X-Api-Key` header on every `/api/backdoor/*` request. There is no cookie path in and no anonymous endpoint.
+Authentication is the `X-Api-Key` header on every `/api/backdoor/*` request, checked by the `BackdoorApiKey` authentication scheme (`BackdoorApiKeyHandler`). It is never a default scheme, so a key signs nobody in to the browser pages, and the browser cookie is never accepted under `/api/backdoor/*`. There is no anonymous endpoint.
 
 ## Actors & Roles
 
@@ -122,14 +123,16 @@ Authentication is the `X-Api-Key` header on every `/api/backdoor/*` request. The
 - Only the owner or a full Admin creates, rotates or revokes a key. `BackdoorController` enforces it through the `AdminOnly` policy on each POST, not only by hiding buttons; someone else's key reads as missing.
 - Create and revoke both write an audit entry naming the key and its owner (`BackdoorApiKeyCreated` / `BackdoorApiKeyRevoked`); a rotation is recorded as a revoke followed by a create. Entries written before the rename carry `BackdoorApiKeyIssued`, still declared so they resolve.
 - Every controller here is an orchestrator: it calls another section's contracts interface and formats the result. None of them touch a repository or a `DbContext` other than through `IBackdoorApiKeyRepository`.
-- A key-authed principal carries the `BackdoorApiKey` authentication scheme (`BackdoorApiKeyAuthFilter.AuthenticationScheme`). It never passes through the Shell's claims transformation, so its role claims come from the same snapshot the key service used for eligibility and it carries no state claims — and the Shell's onboarding gates (`NameRequiredFilter`, `MembershipRequiredFilter`) skip it — every key-authed controller is `[AllowAnonymous]` — rather than redirecting a JSON client to an HTML page.
+- A key-authed principal carries the `BackdoorApiKey` authentication scheme (`BackdoorApiKeyHandler.SchemeName`) and only the owner's id from the handler. The Shell's claims transformation adds roles and account state, as for any sign-in, so a key and a browser session for the same person look the same to every later check. The Shell's onboarding gates (`NameRequiredFilter`, `MembershipRequiredFilter`) skip REST key requests because every key-authed controller is `[AllowAnonymous]`, rather than redirecting a JSON client to an HTML page; the MCP endpoint is not MVC, so the gates never see it.
+- The MCP endpoint's policy names only the `BackdoorApiKey` scheme and requires that some scope admits the caller, read fresh on every request. A tool is listed and callable only when it declares `[BackdoorScope]` and that scope admits the caller (`McpToolScopeGate`); the SDK's own default, which allows any tool without a rule, never applies. Stateless transport: nothing is held between calls.
 - Every `PATCH /api/backdoor/issues/{id}/*` answers the same way whichever field moved: `{success:true}`, 404 for a missing item, 422 carrying the service's reason for a rejected change.
 
 - Issues mutations map owner-section results to 404 for missing/inaccessible issues, 422 for rule refusals, and 500 for dependency failures. Comment posting uses an explicit missing result. Exceptions and their diagnostic text never select 404/422 or enter the response body.
 
 ## Negative Access Rules
 
-- A caller with no `X-Api-Key` header **cannot** reach any endpoint — 401.
+- A caller with no `X-Api-Key` header **cannot** reach any endpoint — 401. A signed-in browser session without a key gets the same 401 at the MCP endpoint.
+- A key owner **cannot** see or run an MCP tool whose scope does not admit them, nor any tool that declares no scope: it is left out of `tools/list` and `tools/call` refuses it.
 - A key whose owner lacks `Tasks.Manage` on any one team in a bulk-load payload **cannot** load any of it — 403 naming those teams, and a reference that matches no team is named the same way, so the answer never tells an unknown team from an unmanaged one; the payload is not checked further and nothing is created.
 - A caller with an unknown or revoked key **cannot** reach any endpoint — 401, deliberately indistinguishable from the above. There is no "server not configured" status: keys are rows, not environment variables.
 - An admin **cannot** recover a key's plaintext after creation, their own included.

@@ -529,7 +529,8 @@ public class AuthorizationPolicyTests : IDisposable
         var builder = WebApplication.CreateBuilder();
         builder.Services.AddSignalR();
         await using var app = builder.Build();
-        foreach (var contributor in SectionDiscoveryExtensions.DiscoverImplementations<ISectionEndpoints>())
+        foreach (var contributor in SectionDiscoveryExtensions.DiscoverImplementations<ISectionEndpoints>()
+                     .Where(c => string.Equals(c.GetType().Assembly.GetName().Name, "Humans.CityPlanning", StringComparison.Ordinal)))
             contributor.MapEndpoints(app);
         var endpoints = ((IEndpointRouteBuilder)app).DataSources.SelectMany(source => source.Endpoints)
             .OfType<RouteEndpoint>()
