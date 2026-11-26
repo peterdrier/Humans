@@ -208,8 +208,10 @@ internal sealed partial class TaskService(
         var snapshot = await LoadAsync(ct);
         if (!snapshot.Tasks.TryGetValue(taskId, out var task))
             return Refuse("Tasks_Refusal_NoTask", actorUserId, taskId);
-        if (await users.GetUserInfoAsync(userId, ct) is null)
+        var person = await users.GetUserInfoAsync(userId, ct);
+        if (person is null || person.IsTombstone)
             return Refuse("Tasks_Refusal_NoPerson", actorUserId, taskId);
+        userId = person.Id;
         if (task.Assignments.Any(a => a.UserId == userId))
             return Refuse("Tasks_Refusal_AlreadyOn", actorUserId, taskId);
 

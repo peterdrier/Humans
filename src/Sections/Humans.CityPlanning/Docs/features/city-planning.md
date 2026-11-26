@@ -35,25 +35,25 @@ City Planning organizes the physical layout of the event site across these phase
 ## User Stories
 
 ### Main map
-- **US-38.1: Read-only overview** — Any authenticated user sees official zones and barrio polygons always visible. Containers and barrio zones (limit zone) can be toggled on/off. Measure tool available.
+- **US-38.1: Read-only overview** — Any authenticated user sees official zones and barrio polygons always visible. Containers and barrio zones (limit zone) can be toggled on/off once loaded. The ruler works independently of state/container requests; a failed container load preserves the loaded map and limit toggle.
 - **US-38.2: Navigation shortcuts** — Map admins always see links to the barrio placement map and container placement map. Barrio leads see the barrio placement link while barrio placement is Open or Changeable, and the container placement link when `IsContainerPlacementOpen`.
 
 ### Barrio placement map
 - **US-38.3: View the Barrio Map** — Barrio leads and map admins see all placed barrios on a full-screen aerial map, color-coded by sound zone, with name labels and warning indicators
 - **US-38.4: Place My Barrio** — Camp leads draw their polygon while barrio placement is Open; area and edge lengths shown in real time
-- **US-38.5: Adjust an Existing Barrio** — Camp leads (own polygon, while Open or Changeable) and map admins (any polygon, always) can edit vertices, reposition, and reshape
-- **US-38.6: Out-of-Bounds and Overlap Warnings** — Red crosshatch when outside the limit zone; orange stripes when overlapping another barrio; ⚠️ prepended to labels
+- **US-38.5: Adjust an Existing Barrio** — Camp leads (own polygon, while Open or Changeable) and map admins (any polygon, always) can edit vertices, reposition, and reshape Polygon or MultiPolygon placements. Area warnings cover the full shape; edge-length labels cover every part and hole. Delete/Backspace removes map vertices only outside form controls and editable content; a deletion cannot collapse any outer ring below three vertices
+- **US-38.6: Out-of-Bounds and Overlap Warnings** — Red crosshatch when outside the limit zone; orange stripes when overlapping another barrio; ⚠️ prepended to labels. Sound-zone mismatch warnings recognize both current `SoundZone` and legacy `sound_zone` overlay properties. Unusable property types retain an unassigned boundary instead of breaking the map. Spatial warnings use only nonempty area geometry, including nested collection parts; original overlay data remains unchanged
 - **US-38.7: View Polygon History** — Full version history per polygon; map admins can restore any past version
-- **US-38.8: Real-Time Collaborative View** — Remote cursors visible live; polygon saves broadcast to all connected clients via SignalR
+- **US-38.8: Real-Time Collaborative View** — Remote cursors visible live; polygon saves broadcast to all connected clients via SignalR. Initial connection and reconnection reload placements to recover missed updates without replacing an active draft; broadcasts received during refresh win over the snapshot. Refresh failures show localized reload guidance
 - **US-38.9: Placement Phase Card** — Shows the Open / Adjustments only / Closed badge and a help modal with the schedule's calendar dates (opening day, last day to place, last day to adjust), also on the Camp Details page
 - **US-38.10: Admin — Override the Placement Window** — From `/Settings#city-planning`, Force open / Force closed override the schedule; Follow schedule clears the override. Each is audited and timestamped
 - **US-38.11: Admin — Set the Placement Schedule** — From `/Settings#city-planning`, set day offsets from the active event's gate opening (opens, closes, changeable until); the tab shows each one's calendar date and the current effective state. The schedule drives placement automatically — no button press needed
 - **US-38.12: Admin — Upload/Delete Limit Zone** — GeoJSON boundary for allowed placement area; rendered as dashed colored outline (color-coded by sound zone); download/delete supported
 - **US-38.13: Admin — Upload/Delete Official Zones** — Read-only named overlay (dark gray, labeled); each Feature requires a `name` property; download/delete supported
 - **US-38.14: Admin — Export All Placements** — Download all polygons as a GeoJSON FeatureCollection
-- **US-38.15: Admin — Add Polygon on Behalf of a Camp** — Place a polygon for any unmapped camp season via admin dropdown
-- **US-38.16: Distance Measuring Tool** — Any authenticated user can toggle a two-point ruler. First click drops a point and starts a live rubber-band line with a distance label; second click completes the measurement and exits measure mode (click the button again to measure again). Distance shows as `NNN m` under 1 km and `N.NN km` at or above. Escape exits without completing a pending measurement. Completed measurements stay on the map; in measure mode, right-clicking one removes it, and the clear-all button removes them all.
-- **US-38.24: Admin — Bulk Import Polygons from GeoJSON** — Map admins upload a GeoJSON FeatureCollection (10 MB cap) on the admin panel; features are matched to camp seasons by name, previewed, then saved one polygon at a time through the existing polygon `PUT`. Entirely client-side (`barrio-map/admin-import.js`) — no dedicated import endpoint.
+- **US-38.15: Admin — Add Polygon on Behalf of a Camp** — Place a polygon for any unmapped camp season via admin dropdown. Loaded state and live placement broadcasts remove mapped camps from that dropdown; empty add controls hide without interrupting an active edit
+- **US-38.16: Distance Measuring Tool** — Any authenticated user can toggle a two-point ruler. First click drops a point and starts a live rubber-band line with a distance label; second click completes the measurement and exits measure mode (click the button again to measure again). Distance shows as `NNN m` under 1 km and `N.NN km` at or above. Escape exits without completing a pending measurement on the overview, barrio map and container map. Completed measurements stay on the map; in measure mode, right-clicking one removes it, and the clear-all button removes them all plus any pending first point or preview. If measure mode is active, the next click starts a fresh measurement.
+- **US-38.24: Admin — Bulk Import Polygons from GeoJSON** — Map admins upload a GeoJSON FeatureCollection (10 MB cap) on the admin panel; features are matched to camp seasons by case-insensitive name or slug, previewed, then saved one polygon at a time. Names and slugs have separate indexes; when both identify existing camps they must resolve to one common season. Ambiguous or conflicting identifiers remain unrecognized instead of selecting the last-loaded camp. Confirmed matches are saved through the existing polygon `PUT`. Entirely client-side (`barrio-map/admin-import.js`) — no dedicated import endpoint.
 
 ### Containers
 - **US-38.17: Manage Containers (admin)** — Map admins create, edit, and delete containers for the whole event year via `/CityPlanning/BarrioMap/Admin/Containers/{year}`. Each container has a name, description, and optional photos.
@@ -61,7 +61,7 @@ City Planning organizes the physical layout of the event site across these phase
 - **US-38.19: Container Photos** — Each container has a photo gallery — images can be uploaded, added to, and deleted. Stored on the filesystem.
 - **US-38.20: Placed Badge** — Container list views show a "Placed" badge next to containers that have a location set.
 - **US-38.21: Export Containers as GeoJSON** — Map admins can download all placed containers for the year as a GeoJSON FeatureCollection. Barrio leads download containers from every camp they lead in the requested year, independently of the placement phase. The City Planning service selects the permitted placements and builds the export through Containers’ public read contract.
-- **US-38.22: Place Containers on Map** — During the container placement phase, barrio leads (own containers) and map admins (all containers) place containers on the map by dragging from the sidebar. Containers are represented as rotatable rectangles with configurable dimensions.
+- **US-38.22: Place Containers on Map** — During the container placement phase, barrio leads (own containers) and map admins (all containers) place containers on the map by dragging from the sidebar. Containers are represented as rotatable rectangles with configurable dimensions. Dragging and rotation start only with the primary mouse button. Save and clear completions retain a newer container selection; clearing the selected container makes its unplaced card selectable again. Releasing a drag outside the map saves its latest map position and ends the gesture.
 - **US-38.23: Admin — Manage Container Placement Phase** — Toggle container placement open/closed independently of barrio placement. Stays manual: the barrio schedule does not drive it.
 - **US-38.25: Placement Notes and Sketch** — Whoever may place a container can also attach free-text placement notes and one sketch image to that year's placement (replaceable and removable). Stored on `ContainerPlacement`, separate from the container's own photo.
 
@@ -177,16 +177,16 @@ Minimal read-only map. Fetches `/api/city-planning/state` and renders layers. No
 | `edit.js` | Edit mode lifecycle, draw event handlers, popup, history offcanvas |
 | `signalr.js` | SignalR connection, cursor broadcast, polygon update handler |
 | `config.js` | Server-rendered config values read from DOM data attributes |
-| `marquee-direct-select.js` | Custom MapboxDraw `direct_select` mode adding marquee (drag-box) vertex selection |
+| `marquee-direct-select.js` | Custom MapboxDraw `direct_select` mode adding marquee (drag-box) vertex selection across all rings and polygon parts; Shift extends the selection |
 | `admin-import.js` | Admin-page bulk GeoJSON import: parse, name-match camps, preview, then `PUT` each polygon |
 
 The distance measuring tool lives in the shared module (`/js/city-planning/shared/measure.js`) and is imported directly by both maps.
 
 **State flow:**
 1. Page loads → `GET /api/city-planning/state` fetches settings + all polygons
-2. Map renders via `renderMap()` using fetched data
+2. Map readers wrap bare Polygon/MultiPolygon geometry as Features before rendering, editing, previewing or checking overlaps; existing Feature metadata is retained
 3. Edit actions call `PUT /api/city-planning/camp-polygons/{id}`
-4. Server broadcasts `CampPolygonUpdated` via SignalR → all clients re-render that polygon
+4. Server broadcasts `CampPolygonUpdated` via SignalR → all clients re-render that polygon, retaining loaded season metadata for first placements so camp links and size warnings remain available
 
 **Visual encoding (sound zones — barrio map):**
 

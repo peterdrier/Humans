@@ -21,7 +21,7 @@ public class AgentUserContextProviderTests
     [Xunit.InlineData(UserState.Active)]
     [Xunit.InlineData(UserState.Suspended)]
     [Xunit.InlineData(UserState.AdminSuspended)]
-    public async Task LoadAsync_context_reports_account_state_independently_of_consent_review(UserState state)
+    public async Task Load_ConsentReview_DoesNotAffectAccountState(UserState state)
     {
         var userId = Guid.NewGuid();
         var provider = MakeProvider(userId, null, [], state: state);
@@ -34,7 +34,7 @@ public class AgentUserContextProviderTests
     }
 
     [HumansFact]
-    public async Task LoadAsync_collapses_block_signups_into_one_entry_with_date_range_and_day_count()
+    public async Task Load_BlockSignups_CollapsesToDateRange()
     {
         var userId = Guid.NewGuid();
         var blockId = Guid.NewGuid();
@@ -61,7 +61,7 @@ public class AgentUserContextProviderTests
     }
 
     [HumansFact]
-    public async Task LoadAsync_singletons_pass_through_with_start_equal_end()
+    public async Task Load_SingleSignup_HasSingleDayRange()
     {
         var userId = Guid.NewGuid();
         var ev = MakeEventSettings();
@@ -82,7 +82,7 @@ public class AgentUserContextProviderTests
     }
 
     [HumansFact]
-    public async Task LoadAsync_filters_out_past_shifts()
+    public async Task Load_ExcludesPastShifts()
     {
         var userId = Guid.NewGuid();
         var ev = MakeEventSettings();
@@ -98,7 +98,7 @@ public class AgentUserContextProviderTests
     }
 
     [HumansFact]
-    public async Task LoadAsync_excludes_inactive_signup_states()
+    public async Task Load_ExcludesInactiveSignups()
     {
         // Pending and Confirmed are surfaced; Refused, Bailed, Cancelled are not.
         var userId = Guid.NewGuid();
@@ -119,7 +119,7 @@ public class AgentUserContextProviderTests
     }
 
     [HumansFact]
-    public async Task LoadAsync_returns_empty_when_no_active_event()
+    public async Task Load_NoActiveEvent_ReturnsNoShifts()
     {
         var userId = Guid.NewGuid();
         var provider = MakeProvider(userId, activeEvent: null, signups: []);
@@ -128,7 +128,7 @@ public class AgentUserContextProviderTests
     }
 
     [HumansFact]
-    public async Task LoadAsync_populates_OpenTicketIds_from_ticket_service()
+    public async Task Load_PopulatesOpenTicketIds()
     {
         var userId = Guid.NewGuid();
         var ev = MakeEventSettings();
@@ -141,7 +141,7 @@ public class AgentUserContextProviderTests
     }
 
     [HumansFact]
-    public async Task LoadAsync_populates_team_memberships_with_role()
+    public async Task Load_PreservesTeamMembershipRoles()
     {
         var userId = Guid.NewGuid();
         var ev = MakeEventSettings();
@@ -180,7 +180,7 @@ public class AgentUserContextProviderTests
                         LastName = "Member"
                     },
                     [], [], profile: state == UserState.Bare ? null : UserFixtures.Profile())));
-        var roles = Substitute.For<IRoleAssignmentService>();
+        var roles = Substitute.For<ISystemRoleService>();
         roles.GetActiveForUserAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
             .Returns([]);
 

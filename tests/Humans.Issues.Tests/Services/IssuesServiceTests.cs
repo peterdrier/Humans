@@ -72,7 +72,7 @@ public sealed class IssuesServiceTests
     private readonly IssuesEmails _emailMessages;
     private readonly List<string> _renderedEmailCultures = [];
     private readonly IUserService _userService;
-    private readonly IRoleAssignmentService _roleService;
+    private readonly ISystemRoleService _roleService;
     private readonly INotificationEmitter _notificationService;
     private readonly INotificationAutoResolve _notificationInbox;
     private readonly IIssuesRepository _repository;
@@ -101,7 +101,7 @@ public sealed class IssuesServiceTests
 
         _userService = NewRegistryBackedUserService();
 
-        _roleService = Substitute.For<IRoleAssignmentService>();
+        _roleService = Substitute.For<ISystemRoleService>();
         _roleService
             .GetActiveUserIdsInRoleAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
             .Returns(Task.FromResult<IReadOnlyList<Guid>>([]));
@@ -1024,6 +1024,27 @@ public sealed class IssuesServiceTests
         await _emailService.DidNotReceive().SendAsync(
             Arg.Is<EmailMessage>(m => m.TemplateName == "issue_comment"),
             Arg.Any<CancellationToken>());
+    }
+
+    [HumansTheory]
+    [InlineData(UserState.Deleted)]
+    [InlineData(UserState.Merged)]
+    public async Task PostCommentAsync_TombstoneReporter_KeepsReplyWithoutEmail(UserState state)
+    {
+        var ct = TestContext.Current.CancellationToken;
+        var reporterId = Guid.NewGuid();
+        SeedUser(reporterId, "Reporter").Email = "reporter@example.org";
+        var issueId = await SeedIssueRowAsync(reporterId, IssueStatus.Open, "Needs a reply");
+        _userService.GetUserInfoAsync(reporterId, Arg.Any<CancellationToken>()).Returns(UserInfo.Create(
+            new User { Id = reporterId, BurnerName = "Reporter", Email = "reporter@example.org", State = state },
+            [], [], null));
+
+        var result = await _service.PostCommentAsync(issueId, Admin, Admin.UserId, "Fixed this", true, ct);
+
+        result.Comment.Should().NotBeNull();
+        (await _issuesDb.Issues.AsNoTracking().SingleAsync(i => i.Id == issueId, ct)).Status.Should().Be(IssueStatus.Resolved);
+        (await _issuesDb.IssueComments.AsNoTracking().SingleAsync(c => c.IssueId == issueId, ct)).Content.Should().Be("Fixed this");
+        _emailService.ReceivedCalls().Should().BeEmpty();
     }
 
     [HumansFact]

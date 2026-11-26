@@ -178,6 +178,9 @@ public class SurveyAdminControllerTests(HumansTestDatabase database) : Integrati
             ("Questions[grid].Id", questionId.ToString()),
             ("Questions[grid].PageNumber", "1"),
             ("Questions[grid].Type", nameof(SurveyQuestionType.Grid)),
+            ("Questions[grid].RankedAllowEqualRanks", "true"),
+            ("Questions[grid].RankedAllowReject", "false"),
+            ("Questions[grid].ShowIfCombine", "All"),
             ("Questions[grid].Prompt[en]", "When can you attend?"),
             ("Questions[grid].IsRequired", "true"),
             ("Questions[grid].GridSelectionMode", nameof(GridSelectionMode.Multiple)),
@@ -246,11 +249,17 @@ public class SurveyAdminControllerTests(HumansTestDatabase database) : Integrati
             ("Questions[first].Id", firstId.ToString()),
             ("Questions[first].PageNumber", "1"),
             ("Questions[first].Type", nameof(SurveyQuestionType.ShortText)),
+            ("Questions[first].RankedAllowEqualRanks", "true"),
+            ("Questions[first].RankedAllowReject", "false"),
+            ("Questions[first].ShowIfCombine", "All"),
             ("Questions[first].Prompt[en]", "First"),
             ("Questions.Index", "second"),
             ("Questions[second].Id", secondId.ToString()),
             ("Questions[second].PageNumber", "1"),
             ("Questions[second].Type", nameof(SurveyQuestionType.ShortText)),
+            ("Questions[second].RankedAllowEqualRanks", "true"),
+            ("Questions[second].RankedAllowReject", "false"),
+            ("Questions[second].ShowIfCombine", "All"),
             ("Questions[second].Prompt[en]", "Second")), ct);
         var surveyId = ExtractSurveyId(createResp);
 
@@ -264,11 +273,17 @@ public class SurveyAdminControllerTests(HumansTestDatabase database) : Integrati
             ("Questions[second].Id", secondId.ToString()),
             ("Questions[second].PageNumber", "1"),
             ("Questions[second].Type", nameof(SurveyQuestionType.ShortText)),
+            ("Questions[second].RankedAllowEqualRanks", "true"),
+            ("Questions[second].RankedAllowReject", "false"),
+            ("Questions[second].ShowIfCombine", "All"),
             ("Questions[second].Prompt[en]", "Second"),
             ("Questions.Index", "first"),
             ("Questions[first].Id", firstId.ToString()),
             ("Questions[first].PageNumber", "1"),
             ("Questions[first].Type", nameof(SurveyQuestionType.ShortText)),
+            ("Questions[first].RankedAllowEqualRanks", "true"),
+            ("Questions[first].RankedAllowReject", "false"),
+            ("Questions[first].ShowIfCombine", "All"),
             ("Questions[first].Prompt[en]", "First")), ct);
 
         ((int)reorderResp.StatusCode).Should().BeOneOf(
@@ -302,6 +317,9 @@ public class SurveyAdminControllerTests(HumansTestDatabase database) : Integrati
         AddField("Questions[information].Id", questionId.ToString());
         AddField("Questions[information].PageNumber", "1");
         AddField("Questions[information].Type", nameof(SurveyQuestionType.Information));
+        AddField("Questions[information].RankedAllowEqualRanks", "true");
+        AddField("Questions[information].RankedAllowReject", "false");
+        AddField("Questions[information].ShowIfCombine", "All");
         AddField("Questions[information].Prompt[en]", "Conditions");
         AddField("Questions[information].HelpText[en]", "**Read this before choosing.**");
         AddField("Questions[information].InformationImages.Index", "fire");
@@ -320,6 +338,9 @@ public class SurveyAdminControllerTests(HumansTestDatabase database) : Integrati
         AddField("Questions[answer].Id", answerQuestionId.ToString());
         AddField("Questions[answer].PageNumber", "1");
         AddField("Questions[answer].Type", nameof(SurveyQuestionType.ShortText));
+        AddField("Questions[answer].RankedAllowEqualRanks", "true");
+        AddField("Questions[answer].RankedAllowReject", "false");
+        AddField("Questions[answer].ShowIfCombine", "All");
         AddField("Questions[answer].Prompt[en]", "Which date works?");
         AddField("Questions[answer].IsRequired", "true");
 
@@ -388,6 +409,9 @@ public class SurveyAdminControllerTests(HumansTestDatabase database) : Integrati
             ("Questions[grid].Id", Guid.NewGuid().ToString()),
             ("Questions[grid].PageNumber", "1"),
             ("Questions[grid].Type", nameof(SurveyQuestionType.Grid)),
+            ("Questions[grid].RankedAllowEqualRanks", "true"),
+            ("Questions[grid].RankedAllowReject", "false"),
+            ("Questions[grid].ShowIfCombine", "All"),
             ("Questions[grid].Prompt[en]", "When can you attend?"),
             ("Questions[grid].Options.Index", "column"),
             ("Questions[grid].Options[column].Value", "column-1"),
@@ -427,6 +451,9 @@ public class SurveyAdminControllerTests(HumansTestDatabase database) : Integrati
             ("Questions[grid].Id", questionId.ToString()),
             ("Questions[grid].PageNumber", "1"),
             ("Questions[grid].Type", nameof(SurveyQuestionType.Grid)),
+            ("Questions[grid].RankedAllowEqualRanks", "true"),
+            ("Questions[grid].RankedAllowReject", "false"),
+            ("Questions[grid].ShowIfCombine", "All"),
             ("Questions[grid].Prompt[en]", "When can you attend?"),
             ("Questions[grid].GridSelectionMode", nameof(GridSelectionMode.Single)),
             ("Questions[grid].Options.Index", "column"),
@@ -463,6 +490,9 @@ public class SurveyAdminControllerTests(HumansTestDatabase database) : Integrati
             ("Questions[grid].Id", questionId.ToString()),
             ("Questions[grid].PageNumber", "1"),
             ("Questions[grid].Type", nameof(SurveyQuestionType.Grid)),
+            ("Questions[grid].RankedAllowEqualRanks", "true"),
+            ("Questions[grid].RankedAllowReject", "false"),
+            ("Questions[grid].ShowIfCombine", "All"),
             ("Questions[grid].Prompt[en]", "When can you attend?"),
             ("Questions[grid].GridSelectionMode", nameof(GridSelectionMode.Single)),
             ("Questions[grid].Options.Index", "first-column"),
@@ -507,6 +537,9 @@ public class SurveyAdminControllerTests(HumansTestDatabase database) : Integrati
             ("Questions[question].Id", Guid.NewGuid().ToString()),
             ("Questions[question].PageNumber", "1"),
             ("Questions[question].Type", nameof(SurveyQuestionType.ShortText)),
+            ("Questions[question].RankedAllowEqualRanks", "true"),
+            ("Questions[question].RankedAllowReject", "false"),
+            ("Questions[question].ShowIfCombine", "All"),
             ("Questions[question].Prompt[en]", "Preview question")), ct);
         var surveyId = ExtractSurveyId(saveResp);
 
@@ -561,6 +594,9 @@ public class SurveyAdminControllerTests(HumansTestDatabase database) : Integrati
             ("Questions[choices].Id", Guid.NewGuid().ToString()),
             ("Questions[choices].PageNumber", "1"),
             ("Questions[choices].Type", nameof(SurveyQuestionType.MultiChoice)),
+            ("Questions[choices].RankedAllowEqualRanks", "true"),
+            ("Questions[choices].RankedAllowReject", "false"),
+            ("Questions[choices].ShowIfCombine", "All"),
             ("Questions[choices].Prompt[en]", "Choose days"),
             ("Questions[choices].Options.Index", "friday"),
             ("Questions[choices].Options[friday].Value", "friday"),
@@ -569,6 +605,9 @@ public class SurveyAdminControllerTests(HumansTestDatabase database) : Integrati
             ("Questions[grid].Id", Guid.NewGuid().ToString()),
             ("Questions[grid].PageNumber", "1"),
             ("Questions[grid].Type", nameof(SurveyQuestionType.Grid)),
+            ("Questions[grid].RankedAllowEqualRanks", "true"),
+            ("Questions[grid].RankedAllowReject", "false"),
+            ("Questions[grid].ShowIfCombine", "All"),
             ("Questions[grid].Prompt[en]", "Choose times"),
             ("Questions[grid].GridSelectionMode", nameof(GridSelectionMode.Multiple)),
             ("Questions[grid].Options.Index", "morning"),

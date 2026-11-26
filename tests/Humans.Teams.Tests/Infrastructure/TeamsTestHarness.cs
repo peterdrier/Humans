@@ -212,13 +212,13 @@ public abstract class TeamsTestHarness : IDisposable
         return member;
     }
 
-    private protected RoleAssignment SeedRoleAssignment(
+    private protected SystemRole SeedSystemRole(
         Guid userId,
         string roleName,
         Instant validFrom,
         Instant? validTo = null)
     {
-        var ra = new RoleAssignment
+        var ra = new SystemRole
         {
             Id = Guid.NewGuid(),
             UserId = userId,
@@ -230,7 +230,7 @@ public abstract class TeamsTestHarness : IDisposable
         };
         // Unlike the Db seeders above, this one saves: auth_role_assignments sits in its own
         // context, so a caller's Db.SaveChangesAsync() would never reach it.
-        AuthDb.RoleAssignments.Add(ra);
+        AuthDb.SystemRoles.Add(ra);
         AuthDb.SaveChanges();
         return ra;
     }

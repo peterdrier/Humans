@@ -441,10 +441,10 @@ internal sealed class ExpenseReviewService(
 
         var submitter = await userService.GetUserInfoAsync(approved.SubmitterUserId, ct);
         var recipient = submitter?.Email;
-        if (submitter is null || string.IsNullOrWhiteSpace(recipient))
+        if (submitter is null || submitter.IsTombstone || string.IsNullOrWhiteSpace(recipient))
         {
             logger.LogWarning(
-                "Skipping expense-approved email for report {ReportId}: submitter {UserId} has no notification email",
+                "Skipping expense-approved email for report {ReportId}: submitter {UserId} is unavailable or has no notification email",
                 reportId, approved.SubmitterUserId);
             return;
         }

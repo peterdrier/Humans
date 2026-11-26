@@ -6,3 +6,10 @@ export const SOUND_ZONE_LINE_EXPR = ['match', ['get', 'soundZone'],
 
 // 5 ("surprise") matches any zone, so it never produces a mismatch.
 export const SOUND_ZONE_NAMES = { 0: 'blue', 1: 'green', 2: 'yellow', 3: 'orange', 4: 'red' };
+
+export function getOverlaySoundZone(feature) {
+    for (const value of [feature.properties?.SoundZone, feature.properties?.sound_zone]) {
+        if (typeof value === 'string' && value.length > 0) return value;
+    }
+    return null;
+}

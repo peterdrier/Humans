@@ -307,7 +307,7 @@ internal sealed partial class PretixPlatform(
     public async Task<IReadOnlyList<PlatformFinding>> CheckAsync(string? platformEventRef, CancellationToken ct = default)
     {
         if (!IsConfigured)
-            return [new(false, "Pretix:BaseUrl, Pretix:Organizer and PRETIX_API_TOKEN must all be set.")];
+            return [new(false, "pretix needs an absolute HTTP(S) Pretix:BaseUrl, Pretix:Organizer and a PRETIX_API_TOKEN valid in an HTTP header.")];
 
         var findings = new List<PlatformFinding>
         {

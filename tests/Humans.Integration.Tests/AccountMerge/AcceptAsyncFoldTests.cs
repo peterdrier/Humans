@@ -54,7 +54,7 @@ public class AcceptAsyncFoldTests(HumansTestDatabase database) : IntegrationTest
                 + string.Join("; ", result.Errors.Select(e => e.Description)));
         }
 
-        authDb.RoleAssignments.Add(new RoleAssignment
+        authDb.SystemRoles.Add(new SystemRole
         {
             Id = Guid.NewGuid(),
             UserId = adminId,
@@ -85,13 +85,13 @@ public class AcceptAsyncFoldTests(HumansTestDatabase database) : IntegrationTest
         await using var assertScope = Factory.Services.CreateAsyncScope();
         var emailRepo = assertScope.ServiceProvider.GetRequiredService<IUserRepository>();
 
-        var targetEmails = await emailRepo.GetUserEmailsByUserIdReadOnlyAsync(targetId, TestContext.Current.CancellationToken);
+        var targetEmails = await emailRepo.GetUserEmailsByUserIdAsync(targetId, TestContext.Current.CancellationToken);
         var collapsed = targetEmails.Should()
             .ContainSingle(e => string.Equals(e.Email, sharedEmail, StringComparison.OrdinalIgnoreCase)).Subject;
         collapsed.IsVerified.Should().BeTrue("source's verified flag should OR-combine into the target row");
         collapsed.IsPrimary.Should().BeTrue("target's authoritative IsPrimary should be preserved");
 
-        var sourceEmails = await emailRepo.GetUserEmailsByUserIdReadOnlyAsync(sourceId, TestContext.Current.CancellationToken);
+        var sourceEmails = await emailRepo.GetUserEmailsByUserIdAsync(sourceId, TestContext.Current.CancellationToken);
         sourceEmails.Should().NotContain(e => string.Equals(e.Email, sharedEmail, StringComparison.OrdinalIgnoreCase));
     }
 
@@ -115,12 +115,12 @@ public class AcceptAsyncFoldTests(HumansTestDatabase database) : IntegrationTest
         await using var assertScope = Factory.Services.CreateAsyncScope();
         var emailRepo = assertScope.ServiceProvider.GetRequiredService<IUserRepository>();
 
-        var targetEmails = await emailRepo.GetUserEmailsByUserIdReadOnlyAsync(targetId, TestContext.Current.CancellationToken);
+        var targetEmails = await emailRepo.GetUserEmailsByUserIdAsync(targetId, TestContext.Current.CancellationToken);
 
         targetEmails.Should().ContainSingle(e => string.Equals(e.Email, collapseEmail, StringComparison.OrdinalIgnoreCase));
         targetEmails.Should().ContainSingle(e => string.Equals(e.Email, sourceOnlyEmail, StringComparison.OrdinalIgnoreCase));
 
-        var sourceEmails = await emailRepo.GetUserEmailsByUserIdReadOnlyAsync(sourceId, TestContext.Current.CancellationToken);
+        var sourceEmails = await emailRepo.GetUserEmailsByUserIdAsync(sourceId, TestContext.Current.CancellationToken);
         sourceEmails.Should().BeEmpty();
     }
 
@@ -499,11 +499,11 @@ public class AcceptAsyncFoldTests(HumansTestDatabase database) : IntegrationTest
         var (sourceId, targetId) = await Factory.SeedMergeFixtureAsync(b =>
         {
             // Both active on sharedRole: source's row drops.
-            b.WithSourceRoleAssignment(sharedRole);
-            b.WithTargetRoleAssignment(sharedRole);
+            b.WithSourceSystemRole(sharedRole);
+            b.WithTargetSystemRole(sharedRole);
 
             // Source-only: re-FKs to target.
-            b.WithSourceRoleAssignment(sourceOnlyRole);
+            b.WithSourceSystemRole(sourceOnlyRole);
         });
         var requestId = await Factory.SeedMergeRequestAsync(sourceId, targetId);
 
@@ -513,7 +513,7 @@ public class AcceptAsyncFoldTests(HumansTestDatabase database) : IntegrationTest
         await using var assertScope = Factory.Services.CreateAsyncScope();
         var authDb = assertScope.ServiceProvider.GetRequiredService<AuthDbContext>();
 
-        var targetRows = await authDb.RoleAssignments
+        var targetRows = await authDb.SystemRoles
             .AsNoTracking()
             .Where(ra => ra.UserId == targetId
                 && (ra.RoleName == sharedRole || ra.RoleName == sourceOnlyRole))
@@ -523,7 +523,7 @@ public class AcceptAsyncFoldTests(HumansTestDatabase database) : IntegrationTest
         targetRows.Should().ContainSingle(ra => string.Equals(ra.RoleName, sharedRole, StringComparison.Ordinal));
         targetRows.Should().ContainSingle(ra => string.Equals(ra.RoleName, sourceOnlyRole, StringComparison.Ordinal));
 
-        var sourceRows = await authDb.RoleAssignments
+        var sourceRows = await authDb.SystemRoles
             .AsNoTracking()
             .Where(ra => ra.UserId == sourceId
                 && (ra.RoleName == sharedRole || ra.RoleName == sourceOnlyRole))

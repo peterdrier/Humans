@@ -33,7 +33,7 @@ public sealed class ShiftManagementWriteGuardTests : ShiftsTestHarness
         : base(TestNow)
     {
         _teamService = Substitute.For<ITeamService>();
-        var roleAssignments = Substitute.For<IRoleAssignmentService>();
+        var roleAssignments = Substitute.For<ISystemRoleService>();
         var userService = Substitute.For<IUserService>();
         userService.StubGetUserInfosFromContext(Db);
 

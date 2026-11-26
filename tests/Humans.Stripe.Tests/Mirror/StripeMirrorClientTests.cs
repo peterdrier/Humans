@@ -10,6 +10,20 @@ namespace Humans.Stripe.Tests.Mirror;
 
 public sealed class StripeMirrorClientTests
 {
+    [HumansTheory]
+    [Xunit.InlineData("")]
+    [Xunit.InlineData(" \t")]
+    [Xunit.InlineData("rk_test_bad suffix")]
+    [Xunit.InlineData("rk_test_secret\r\nhidden")]
+    public async Task Fetch_UnusableKey_RefusesBeforeSdk(string key)
+    {
+        var account = new StripeMirrorAccount { Name = "Tickets", Id = "acct_t", ApiKey = key };
+        var fetch = () => new StripeMirrorClient(_http).FetchAsync(account, Ct);
+
+        await fetch.Should().ThrowAsync<InvalidOperationException>().WithMessage("Stripe mirror account Tickets has no usable API key.");
+        _http.ReceivedCalls().Should().BeEmpty();
+    }
+
     private readonly IHttpClient _http = Substitute.For<IHttpClient>();
     private readonly List<StripeRequest> _requests = [];
 
@@ -231,6 +245,32 @@ public sealed class StripeMirrorClientTests
         await new StripeMirrorClient(_http).FetchAsync(account, Ct);
 
         _requests.Should().NotBeEmpty().And.OnlyContain(r => !r.StripeHeaders.ContainsKey("Stripe-Context"));
+    }
+
+    [HumansTheory]
+    [Xunit.InlineData(1)]
+    [Xunit.InlineData(2)]
+    public async Task A_rate_limited_page_is_retried_once(int rateLimited)
+    {
+        using var limited = new HttpResponseMessage();
+        limited.Headers.RetryAfter = new System.Net.Http.Headers.RetryConditionHeaderValue(TimeSpan.Zero);
+        using var ok = new HttpResponseMessage();
+        var left = rateLimited;
+        _http.MakeRequestAsync(Arg.Any<StripeRequest>(), Arg.Any<CancellationToken>()).Returns(call =>
+        {
+            var request = call.Arg<StripeRequest>();
+            _requests.Add(request);
+            return request.Uri.AbsolutePath.EndsWith("/payouts", StringComparison.Ordinal) && left-- > 0
+                ? new StripeResponse(HttpStatusCode.TooManyRequests, limited.Headers,
+                    """{"error":{"type":"invalid_request_error","message":"Request rate limit exceeded."}}""")
+                : new StripeResponse(HttpStatusCode.OK, ok.Headers, Route(request));
+        });
+        var account = new StripeMirrorAccount { Name = "Buses", Id = "acct_b", ApiKey = "sk_org_test" };
+
+        var fetch = () => new StripeMirrorClient(_http).FetchAsync(account, Ct);
+
+        if (rateLimited == 1) (await fetch()).Payouts.Should().HaveCount(2);
+        else await fetch.Should().ThrowAsync<StripeException>().Where(e => e.HttpStatusCode == HttpStatusCode.TooManyRequests);
     }
 
     [HumansTheory]

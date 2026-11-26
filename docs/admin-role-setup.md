@@ -33,7 +33,7 @@ VALUES (gen_random_uuid(), '<user-id>', 'Admin', now(), NULL, 'Initial admin set
 
 ### 4. User must log out and back in
 
-The `RoleAssignmentClaimsTransformation` runs on authentication, so the new role won't take effect until the user re-authenticates.
+The `SystemRoleClaimsTransformation` runs on authentication, so the new role won't take effect until the user re-authenticates.
 
 ## Available roles
 

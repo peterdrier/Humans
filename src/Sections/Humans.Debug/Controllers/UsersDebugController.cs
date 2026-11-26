@@ -67,7 +67,7 @@ internal sealed class UsersDebugController(
             ["hasName"] = (a, b) => NullableBoolRank(a.HasName).CompareTo(NullableBoolRank(b.HasName)),
             ["hasConsent"] = (a, b) => NullableBoolRank(a.HasConsent).CompareTo(NullableBoolRank(b.HasConsent)),
             ["createdAt"] = (a, b) => a.CreatedAt.CompareTo(b.CreatedAt),
-            ["lastLoginAt"] = (a, b) => (a.LastLoginAt ?? Instant.MinValue).CompareTo(b.LastLoginAt ?? Instant.MinValue),
+            ["lastSignInAt"] = (a, b) => (a.LastSignInAt ?? Instant.MinValue).CompareTo(b.LastSignInAt ?? Instant.MinValue),
         };
 
     private static List<UserDebugRow> ApplySort(List<UserDebugRow> rows, string sort, string dir)

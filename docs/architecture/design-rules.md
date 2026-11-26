@@ -240,7 +240,7 @@ await _budgetService.DeleteLineItemAsync(id);
 - **Exception: full-Admin destructive deletes.** A service may inject `IAdminAuthorizationService` and call `RequireCurrentUserIsAdminAsync` only for a method that permanently deletes data or performs a destructive reset, and whose rule is exactly "must hold the full `Admin` role". The action must still carry `[Authorize(Policy = PolicyNames.AdminOnly)]` or stricter. Never for resource-scoped auth, reads, ordinary edits or privilege flags.
 - **Roles are section-owned.** A grantable role is declared by its section through `ISectionRoles`; the base holds only the cross-section names ([`roles-are-section-owned`](../../memory/architecture/roles-are-section-owned.md)).
 
-**Do not push authorization into services.** Two attempts shipped service-layer authorization and both crashed DI validation on startup: `Service → RoleAssignmentService → IAuthorizationService → Handler → Service` is a cycle, and the hot-fix that hid it (lazy `IServiceProvider` resolution) hid the cycle from the validator rather than removing it. The unwind moved `AuthorizeAsync` back to controllers. Service-layer auth gives no real defence in depth here: one UI, no public API, background jobs are trusted server code, controllers are the only human-facing mutation path. Do not reopen this without changing this section first.
+**Do not push authorization into services.** Two attempts shipped service-layer authorization and both crashed DI validation on startup: `Service → SystemRoleService → IAuthorizationService → Handler → Service` is a cycle, and the hot-fix that hid it (lazy `IServiceProvider` resolution) hid the cycle from the validator rather than removing it. The unwind moved `AuthorizeAsync` back to controllers. Service-layer auth gives no real defence in depth here: one UI, no public API, background jobs are trusted server code, controllers are the only human-facing mutation path. Do not reopen this without changing this section first.
 
 ## Append-only entities
 
@@ -312,7 +312,7 @@ public async Task<Profile?> GetByUserIdReadOnlyAsync(Guid userId, CancellationTo
 }
 ```
 
-Read method naming: `*ReadOnlyAsync` is `AsNoTracking()` and returns detached entities; `*ForMutationAsync` tracks, for a caller that will mutate and call `UpdateAsync` on the same repository in the same method.
+Read method naming: `*ReadOnlyAsync` is `AsNoTracking()` and returns detached entities; `*ForMutationAsync` tracks, for a caller that will mutate and call `UpdateAsync` on the same repository in the same method. A repository with only one read for a thing names it without either suffix.
 
 ### Inner service rules
 

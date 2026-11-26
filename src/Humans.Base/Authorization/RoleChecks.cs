@@ -12,7 +12,7 @@ public static class RoleChecks
 {
     /// <summary>Carries the user's stored <see cref="UserState"/> enum name.</summary>
     /// <remarks>
-    /// Here, not on Shell's <c>RoleAssignmentClaimsTransformation</c> which stamps it, because a section view (Camps'
+    /// Here, not on Shell's <c>SystemRoleClaimsTransformation</c> which stamps it, because a section view (Camps'
     /// index) reads it and a section cannot name a <c>Humans.Web</c> type.
     /// </remarks>
     public const string UserStateClaimType = "UserState";

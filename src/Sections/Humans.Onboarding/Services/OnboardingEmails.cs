@@ -19,16 +19,13 @@ internal sealed class OnboardingEmails(
         => Localized(culture, () => new EmailMessage(
             userEmail, userName, userId,
             L("Onboarding_Email_SignupRejected_Subject"),
-            Lf("Onboarding_Email_SignupRejected_Body", Encode(userName), ReasonLine(reason), _settings.AdminAddress),
+            localizer["Onboarding_Email_SignupRejected_Body", Encode(userName), ReasonLine(reason), _settings.AdminAddress],
             "signup_rejected", MessageCategory.System));
 
     private string ReasonLine(string? reason) =>
-        string.IsNullOrEmpty(reason) ? "" : Lf("Onboarding_Email_ReasonLine", Encode(reason));
+        string.IsNullOrEmpty(reason) ? "" : localizer["Onboarding_Email_ReasonLine", Encode(reason)];
 
     private string L(string key) => localizer[key].Value;
-
-    private string Lf(string key, params object[] args) =>
-        string.Format(CultureInfo.CurrentCulture, localizer[key].Value, args);
 
     private static string Encode(string text) => WebUtility.HtmlEncode(text);
 

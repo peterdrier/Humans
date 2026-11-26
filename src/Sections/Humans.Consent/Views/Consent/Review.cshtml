@@ -4,7 +4,7 @@
    the <strong> markup in the resource value itself. *@
 @inject IHtmlLocalizer<ConsentResource> HtmlLocalizer
 @{
-    ViewData["Title"] = string.Format(Localizer["Consent_Review_Title"].Value, Model.DocumentName);
+    ViewData["Title"] = Localizer["Consent_Review_Title", Model.DocumentName].Value;
 }
 
 @section Crumbs {

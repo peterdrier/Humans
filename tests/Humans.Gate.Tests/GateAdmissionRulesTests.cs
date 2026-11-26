@@ -6,11 +6,7 @@ using NodaTime;
 namespace Humans.Gate.Tests;
 
 /// <summary>
-/// Exhaustive coverage of <see cref="GateAdmissionRules.Evaluate"/> — the pure
-/// admission precedence at the heart of the gate. Each test pins one branch or
-/// boundary so a precedence regression (e.g. a duplicate leaking past the void
-/// check, or a too-early stop swallowing an unknown-Early-Entry case) fails
-/// loudly.
+/// Pins each branch and boundary of <see cref="GateAdmissionRules.Evaluate"/>'s precedence.
 /// </summary>
 public class GateAdmissionRulesTests
 {

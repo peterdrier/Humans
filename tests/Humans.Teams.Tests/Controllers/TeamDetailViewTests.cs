@@ -101,6 +101,16 @@ public class TeamDetailViewTests
         html.Should().NotContain(name).And.NotContain("Old copied name");
     }
 
+    [HumansFact]
+    public async Task EditTeam_SystemTeam_PostsIsActive()
+    {
+        var model = new EditTeamViewModel { Id = Guid.NewGuid(), Name = "Volunteers", IsSystemTeam = true, IsActive = true };
+
+        var html = await RenderAsync("/Views/Team/EditTeam.cshtml", model);
+
+        html.Should().MatchRegex("<input[^>]*type=\"hidden\"[^>]*name=\"IsActive\"");
+    }
+
     private static async Task<string> RenderAsync(string path, object model, IUserService? users = null)
     {
         var builder = WebApplication.CreateBuilder(new WebApplicationOptions

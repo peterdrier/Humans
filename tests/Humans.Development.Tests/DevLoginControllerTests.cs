@@ -35,7 +35,7 @@ public class DevLoginControllerTests
     private readonly IAccountProvisioningService _provisioning = Substitute.For<IAccountProvisioningService>();
 
     private readonly IUserEmailService _userEmails = Substitute.For<IUserEmailService>();
-    private readonly IRoleAssignmentService _roleAssignments = Substitute.For<IRoleAssignmentService>();
+    private readonly ISystemRoleService _roleAssignments = Substitute.For<ISystemRoleService>();
     private readonly IUserService _users = Substitute.For<IUserService>();
     private readonly IWebHostEnvironment _environment = Substitute.For<IWebHostEnvironment>();
     private readonly IConfiguration _configuration = Substitute.For<IConfiguration>();
@@ -225,7 +225,7 @@ public class DevLoginControllerTests
         Substitute.For<IProfileEditorService>(),
         _userEmails,
         Substitute.For<IContactFieldService>(),
-        Substitute.For<IRoleAssignmentWrite>(),
+        Substitute.For<ISystemRoleWrite>(),
         Substitute.For<ITeamService>(),
         Substitute.For<ITeamWrite>(),
         Substitute.For<ITeamSeeding>(),

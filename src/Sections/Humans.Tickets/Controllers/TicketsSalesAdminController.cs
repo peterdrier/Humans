@@ -11,6 +11,7 @@ using Humans.Tickets.Services.Delivery;
 using Humans.Users.Contracts;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc.ModelBinding;
 using NodaTime;
 using NodaTime.Text;
 
@@ -26,7 +27,8 @@ internal sealed class TicketsSalesAdminController(
     IGrantService grants,
     IOrgTimeZone orgTimeZone,
     IClock clock,
-    IUserService userService) : HumansControllerBase(userService)
+    IUserService userService,
+    ILogger<TicketsSalesAdminController> logger) : HumansControllerBase(userService)
 {
     [HttpGet("")]
     public async Task<IActionResult> Index(CancellationToken ct)
@@ -59,7 +61,15 @@ internal sealed class TicketsSalesAdminController(
         var (errorResult, user) = await RequireCurrentUserAsync(ct);
         if (errorResult is not null) return errorResult;
 
+        if (!ModelState.IsValid)
+        {
+            logger.LogWarning("Rejected malformed ticketing settings form for {SettingsId} by {UserId}", id, user.Id);
+            return BadRequest(ModelState);
+        }
+
         var (save, parseError) = form.ToSave(id, orgTimeZone.Zone);
+        if (parseError is not null)
+            logger.LogWarning("Rejected ticketing settings form for {SettingsId} by {UserId}: {Refusal}", id, user.Id, parseError);
         var result = save is null ? new CheckoutMutationResult(parseError) : await checkout.SaveTicketingSettingsAsync(save, user.Id, ct);
         if (!result.Succeeded)
             return View("~/Views/Tickets/Admin/Sales/Edit.cshtml", await EditModelAsync(form, result.Refusal, ct));
@@ -100,13 +110,24 @@ internal sealed class TicketsSalesAdminController(
     [HttpPost("Order/{id:guid}/Refund")]
     [Authorize(Policy = TicketsPolicies.Manage)]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> Refund(Guid id, decimal amount, string? reason, CancellationToken ct)
+    public async Task<IActionResult> Refund(Guid id, [BindRequired] string? amount, string? reason, CancellationToken ct)
     {
         var (errorResult, user) = await RequireCurrentUserAsync(ct);
         if (errorResult is not null) return errorResult;
 
-        var result = await checkout.RefundAsync(
-            id, (long)Math.Round(amount * 100m, MidpointRounding.AwayFromZero), reason ?? string.Empty, user.Id, ct);
+        if (!ModelState.IsValid)
+        {
+            logger.LogWarning("Rejected malformed refund form for order {OrderId} by {UserId}", id, user.Id);
+            return BadRequest(ModelState);
+        }
+        if (!SalesEditForm.TryMinor(amount, out var amountMinor) || amountMinor <= 0)
+        {
+            logger.LogWarning("Rejected refund amount for order {OrderId} by {UserId}", id, user.Id);
+            SetError("Enter a valid positive refund amount. Nothing was refunded.");
+            return RedirectToAction(nameof(Order), new { id });
+        }
+
+        var result = await checkout.RefundAsync(id, amountMinor, reason ?? string.Empty, user.Id, CancellationToken.None); // a refund sent must be recorded even after a disconnect
         if (result.Succeeded)
             SetSuccess("Refund sent.");
         else
@@ -223,25 +244,35 @@ internal sealed record SalesEditViewModel(
 /// </summary>
 internal sealed class SalesEditForm
 {
+    [BindRequired]
     public Guid EventSettingsId { get; set; }
+    [BindRequired]
     public string PlatformKey { get; set; } = string.Empty;
     public string? PlatformEventRef { get; set; }
+    [BindRequired]
     public TicketSalesMode Mode { get; set; }
 
     /// <summary>Local date and time in the organisation's time zone, as a datetime-local input posts it.</summary>
     public string? SalesCloseAt { get; set; }
 
+    [BindRequired]
     public int Capacity { get; set; } = 3000;
+    [BindRequired]
     public string? TicketVatPercent { get; set; } = "10";
     public List<WaveRow> Waves { get; set; } = [];
     public List<VipRow> VipLevels { get; set; } = [];
     public List<PriceRuleRow> PriceRules { get; set; } = [];
     public List<ChildTypeRow> ChildTypes { get; set; } = [];
     public List<DonationPurposeRow> DonationPurposes { get; set; } = [];
+    [BindRequired]
     public ResaleScheme Resale { get; set; } = ResaleScheme.QueueAndDirected;
+    [BindRequired]
     public bool PartnerTickets { get; set; } = true;
+    [BindRequired]
     public bool Donations { get; set; } = true;
+    [BindRequired]
     public bool MailingListOptIn { get; set; } = true;
+    [BindRequired]
     public bool CompanionTickets { get; set; } = true;
     public string? TermsFolder { get; set; }
 
@@ -272,6 +303,7 @@ internal sealed class SalesEditForm
     internal sealed class PriceRuleRow
     {
         public Guid? GrantProgramId { get; set; }
+        [BindRequired]
         public TicketPriceRuleKind Kind { get; set; }
         public string? Amount { get; set; }
         public string? Label { get; set; }
@@ -318,7 +350,7 @@ internal sealed class SalesEditForm
             close = parsed.Value.InZoneLeniently(zone).ToInstant();
         }
 
-        if (!decimal.TryParse(TicketVatPercent, NumberStyles.Number, CultureInfo.InvariantCulture, out var vatPercent))
+        if (!decimal.TryParse(TicketVatPercent, NumberStyles.Float, CultureInfo.InvariantCulture, out var vatPercent))
             return (null, "Ticket VAT is a percentage, e.g. 10.");
 
         var waves = new List<TicketSalesWave>();
@@ -383,10 +415,10 @@ internal sealed class SalesEditForm
 
     private static bool Blank(params string?[] values) => values.All(string.IsNullOrWhiteSpace);
 
-    private static bool TryMinor(string? text, out long minor)
+    internal static bool TryMinor(string? text, out long minor)
     {
         minor = 0;
-        if (!decimal.TryParse(text?.Trim(), NumberStyles.Number, CultureInfo.InvariantCulture, out var eur)) return false;
+        if (!decimal.TryParse(text?.Trim(), NumberStyles.Float, CultureInfo.InvariantCulture, out var eur)) return false;
         var rounded = Math.Round(eur, 2, MidpointRounding.AwayFromZero);
         if (rounded < long.MinValue / 100m || rounded > long.MaxValue / 100m) return false;
         minor = (long)(rounded * 100m);

@@ -476,6 +476,50 @@ public class HiEventsPlatformTests
     }
 
     [HumansTheory]
+    [InlineData("key\r\nnext")]
+    [InlineData("key\nnext")]
+    [InlineData("key\rnext")]
+    [InlineData("   ")]
+    public async Task Check_InvalidApiKey_RemainsResolvableWithoutRequests(string apiKey)
+    {
+        var platform = Platform(apiKey: apiKey);
+
+        platform.IsConfigured.Should().BeFalse();
+        var findings = await platform.CheckAsync("7", Ct);
+
+        findings.Should().Contain(f => !f.Ok && f.Text.Contains("HIEVENTS_API_KEY", StringComparison.Ordinal));
+        _handler.Requests.Should().BeEmpty();
+        _stripe.ReceivedCalls().Should().BeEmpty();
+    }
+
+    [HumansTheory]
+    [InlineData("create")]
+    [InlineData("status")]
+    [InlineData("refund")]
+    [InlineData("cancel")]
+    [InlineData("erase")]
+    [InlineData("list")]
+    public async Task OrderOperation_InvalidApiKey_RefusesBeforeRequests(string operation)
+    {
+        var platform = Platform(apiKey: "   ");
+        Func<Task> act = operation switch
+        {
+            "create" => () => platform.CreateOrderAsync(Request(), Ct),
+            "status" => () => platform.GetStatusAsync("7:42", Ct),
+            "refund" => () => platform.RefundAsync(new RefundRequest(Guid.NewGuid(), "7:42", 22500, "resold"), Ct),
+            "cancel" => () => platform.CancelAsync("7:42", Ct),
+            "erase" => () => platform.ErasePersonalDataAsync("7:42", "human@example.test", Ct),
+            "list" => () => platform.ListOrdersAsync("7", Now, Now + Duration.FromDays(1), Ct),
+            _ => throw new InvalidOperationException(operation),
+        };
+
+        await act.Should().ThrowAsync<TicketingPlatformException>();
+
+        _handler.Requests.Should().BeEmpty();
+        _stripe.ReceivedCalls().Should().BeEmpty();
+    }
+
+    [HumansTheory]
     [InlineData("Ana Buyer", "Ana Buyer", null)]
     [InlineData("María de los Ángeles Fernández de Córdoba y Martínez",
         "María de los Ángeles Fernández de Córdoba y", "Martínez")]

@@ -234,7 +234,7 @@ Specified but not built. Reserved, not ranked, not to be built by a doctor run.
 Settled decisions. Do not re-litigate.
 
 - `IMembershipQuery` looks like a pointless pass-through over `ITeamService` and
-  `IRoleAssignmentService`. It is not: injecting them directly closes a DI cycle through
+  `ISystemRoleService`. It is not: injecting them directly closes a DI cycle through
   `ISystemTeamSync` and trips `ValidateOnBuild`. Same for the lazy `IConsentService`
   resolve through `IServiceProvider` inside `MembershipCalculator`.
 - `Humans.Governance` references whole sections, `Humans.Consent` and `Humans.Onboarding`,

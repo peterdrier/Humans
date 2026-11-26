@@ -11,6 +11,8 @@ using Humans.Permissions.Contracts;
 using Humans.Roles.Contracts;
 using Humans.Roles.Data;
 using Humans.Roles.Domain;
+using Humans.Users.Contracts;
+using Humans.Teams.Contracts;
 using Microsoft.Extensions.Localization;
 using NodaTime;
 
@@ -27,7 +29,8 @@ internal sealed class RoleService(
     IEnumerable<IRoleOwner> roleOwners,
     IEnumerable<ISectionPermissions> sectionPermissions,
     IEnumerable<IEntityNameContributor> names,
-    IRoleAssignmentService systemRoles,
+    ISystemRoleService systemRoles,
+    IUserService users,
     IAuditLogService audit,
     IClock clock,
     IStringLocalizer<RolesResource> localizer,
@@ -140,9 +143,9 @@ internal sealed class RoleService(
     {
         var tree = await GetTreeAsync(owner.Kind, ct);
         if (!tree.TryGetValue(owner.Id, out var node) || FindOwnerSection(owner.Kind) is null)
-            return Refuse(T("Roles_Refusal_NoOwner"));
+            return Refuse(localizer["Roles_Refusal_NoOwner"]);
         if (!await CanTouchAsync(owner, input.IsCoordinator, actorUserId, ct))
-            return Refuse(T("Roles_Refusal_NotAllowed"));
+            return Refuse(localizer["Roles_Refusal_NotAllowed"]);
 
         var roles = await repository.GetAllAsync(ct);
         if (InputRefusal(input, owner.Kind, node, roles.Where(r => OwnedBy(r, owner)).ToList(), excluding: null) is { } refusal)
@@ -171,19 +174,19 @@ internal sealed class RoleService(
         var roles = await repository.GetAllAsync(ct);
         var role = roles.FirstOrDefault(r => r.Id == roleId);
         if (role is null)
-            return Refuse(T("Roles_Refusal_NoRole"));
+            return Refuse(localizer["Roles_Refusal_NoRole"]);
 
         var owner = OwnerOf(role);
         if (!await CanTouchAsync(owner, role.IsCoordinator || input.IsCoordinator, actorUserId, ct))
-            return Refuse(T("Roles_Refusal_NotAllowed"));
+            return Refuse(localizer["Roles_Refusal_NotAllowed"]);
         if (role.IsCoordinator != input.IsCoordinator && role.Assignments.Count > 0)
-            return Refuse(T("Roles_Refusal_CoordinatorHasHolders"));
+            return Refuse(localizer["Roles_Refusal_CoordinatorHasHolders"]);
         if (input.SlotCount < role.Assignments.Count || role.Assignments.Any(a => a.Slot >= input.SlotCount))
-            return Refuse(T("Roles_Refusal_SlotsInUse"));
+            return Refuse(localizer["Roles_Refusal_SlotsInUse"]);
 
         var tree = await GetTreeAsync(owner.Kind, ct);
         if (!tree.TryGetValue(owner.Id, out var node))
-            return Refuse(T("Roles_Refusal_NoOwner"));
+            return Refuse(localizer["Roles_Refusal_NoOwner"]);
         if (InputRefusal(input, owner.Kind, node, roles.Where(r => OwnedBy(r, owner)).ToList(), excluding: role.Id) is { } refusal)
             return Refuse(refusal);
 
@@ -206,14 +209,14 @@ internal sealed class RoleService(
     {
         var role = (await repository.GetAllAsync(ct)).FirstOrDefault(r => r.Id == roleId);
         if (role is null)
-            return Refuse(T("Roles_Refusal_NoRole"));
+            return Refuse(localizer["Roles_Refusal_NoRole"]);
 
         var owner = OwnerOf(role);
         if (!await CanTouchAsync(owner, role.IsCoordinator, actorUserId, ct))
-            return Refuse(T("Roles_Refusal_NotAllowed"));
+            return Refuse(localizer["Roles_Refusal_NotAllowed"]);
 
         if (!await repository.DeleteAsync(roleId, ct))
-            return Refuse(T("Roles_Refusal_NoRole"));
+            return Refuse(localizer["Roles_Refusal_NoRole"]);
 
         await audit.LogAsync(RolesAuditActions.RoleDeleted, AuditEntityType, role.Id,
             $"Role '{role.Name}' on {await OwnerNameAsync(owner, ct)} deleted with {role.Assignments.Count} holder(s)",
@@ -226,21 +229,25 @@ internal sealed class RoleService(
     {
         var role = (await repository.GetAllAsync(ct)).FirstOrDefault(r => r.Id == roleId);
         if (role is null)
-            return Refuse(T("Roles_Refusal_NoRole"));
+            return Refuse(localizer["Roles_Refusal_NoRole"]);
 
         var owner = OwnerOf(role);
         if (!await CanTouchAsync(owner, role.IsCoordinator, actorUserId, ct))
-            return Refuse(T("Roles_Refusal_NotAllowed"));
+            return Refuse(localizer["Roles_Refusal_NotAllowed"]);
+        var person = await users.GetUserInfoAsync(userId, ct);
+        if (person is null || person.IsTombstone)
+            return Refuse(localizer["Roles_Refusal_NoPerson"]);
+        userId = person.Id;
         if (role.Assignments.Any(a => a.UserId == userId))
-            return Refuse(T("Roles_Refusal_AlreadyHolds"));
+            return Refuse(localizer["Roles_Refusal_AlreadyHolds"]);
 
         var taken = role.Assignments.Select(a => a.Slot).ToHashSet();
         var slot = Enumerable.Range(0, role.SlotCount).Cast<int?>().FirstOrDefault(s => !taken.Contains(s!.Value));
         if (slot is null)
-            return Refuse(T("Roles_Refusal_Full"));
+            return Refuse(localizer["Roles_Refusal_Full"]);
 
         if (FindOwnerSection(owner.Kind) is not { } ownerSection)
-            return Refuse(T("Roles_Refusal_NoOwner"));
+            return Refuse(localizer["Roles_Refusal_NoOwner"]);
         if (await ownerSection.EnsureMemberAsync(owner.Id, userId, actorUserId, ct) is { } ownerRefusal)
             return Refuse(ownerRefusal);
 
@@ -253,7 +260,7 @@ internal sealed class RoleService(
             AssignedAt = clock.GetCurrentInstant(),
         };
         if (!await repository.AddAssignmentAsync(assignment, ct))
-            return Refuse(T("Roles_Refusal_Conflict"));
+            return Refuse(localizer["Roles_Refusal_Conflict"]);
 
         await audit.LogAsync(RolesAuditActions.HolderAdded, AuditEntityType, role.Id,
             $"Assigned to role '{role.Name}' on {await OwnerNameAsync(owner, ct)}",
@@ -267,13 +274,13 @@ internal sealed class RoleService(
     {
         var role = (await repository.GetAllAsync(ct)).FirstOrDefault(r => r.Id == roleId);
         if (role is null)
-            return Refuse(T("Roles_Refusal_NoRole"));
+            return Refuse(localizer["Roles_Refusal_NoRole"]);
 
         var owner = OwnerOf(role);
         if (!await CanTouchAsync(owner, role.IsCoordinator, actorUserId, ct))
-            return Refuse(T("Roles_Refusal_NotAllowed"));
+            return Refuse(localizer["Roles_Refusal_NotAllowed"]);
         if (!await repository.RemoveAssignmentAsync(roleId, userId, ct))
-            return Refuse(T("Roles_Refusal_NotHolder"));
+            return Refuse(localizer["Roles_Refusal_NotHolder"]);
 
         if (role.Assignments.FirstOrDefault(a => a.UserId == userId) is { } removed)
             role.Assignments.Remove(removed);
@@ -349,51 +356,60 @@ internal sealed class RoleService(
         var others = siblings.Where(r => r.Id != excluding).ToList();
 
         if (string.IsNullOrWhiteSpace(input.Name))
-            return T("Roles_Refusal_NoName");
+            return localizer["Roles_Refusal_NoName"];
         if (input.Name.Trim().EnumerateRunes().Count() > 100)
-            return T("Roles_Refusal_NameTooLong");
+            return localizer["Roles_Refusal_NameTooLong"];
         if (others.Any(r => string.Equals(r.Name, input.Name.Trim(), StringComparison.OrdinalIgnoreCase)))
-            return T("Roles_Refusal_NameTaken");
+            return localizer["Roles_Refusal_NameTaken"];
 
         var slug = SlugHelper.GenerateSlug(input.Name.Trim());
         var customSlug = string.IsNullOrWhiteSpace(input.CustomSlug) ? null : SlugHelper.GenerateSlug(input.CustomSlug);
         if (slug.Length == 0)
-            return T("Roles_Refusal_NameNoLetters");
+            return localizer["Roles_Refusal_NameNoLetters"];
         if (customSlug is { Length: 0 })
-            return T("Roles_Refusal_LinkNoLetters");
+            return localizer["Roles_Refusal_LinkNoLetters"];
         if (customSlug is { Length: > 100 })
-            return T("Roles_Refusal_LinkTooLong");
+            return localizer["Roles_Refusal_LinkTooLong"];
         if (!string.IsNullOrWhiteSpace(input.Description) && input.Description.EnumerateRunes().Count() > 2000)
-            return T("Roles_Refusal_DescriptionTooLong");
+            return localizer["Roles_Refusal_DescriptionTooLong"];
         var taken = others.SelectMany(r => new[] { r.Slug, r.CustomSlug }).OfType<string>().ToHashSet(StringComparer.Ordinal);
         if (taken.Contains(slug) || (customSlug is not null && (taken.Contains(customSlug) || string.Equals(customSlug, slug, StringComparison.Ordinal))))
-            return T("Roles_Refusal_LinkTaken");
+            return localizer["Roles_Refusal_LinkTaken"];
 
         if (input.SlotCount < 1)
-            return T("Roles_Refusal_NoSlots");
-        if (input.Priorities.Count != input.SlotCount || input.Priorities.Any(p => !Enum.IsDefined(p)))
-            return T("Roles_Refusal_Priorities");
-        if (string.Join(",", input.Priorities).Length > 500)
-            return T("Roles_Refusal_PrioritiesTooLong");
+            return localizer["Roles_Refusal_NoSlots"];
+        // Count separators and default priorities before allocating from the submitted slot count.
+        var prioritiesLength = (long)input.SlotCount - 1
+            + (long)Math.Max(input.SlotCount - input.Priorities.Count, 0) * nameof(SlotPriority.None).Length;
+        if (prioritiesLength > 500)
+            return localizer["Roles_Refusal_PrioritiesTooLong"];
+        foreach (var priority in input.Priorities.Take(input.SlotCount))
+        {
+            if (!Enum.IsDefined(priority))
+                return localizer["Roles_Refusal_Priorities"];
+            prioritiesLength += priority.ToString().Length;
+            if (prioritiesLength > 500)
+                return localizer["Roles_Refusal_PrioritiesTooLong"];
+        }
         if (input.EstimatedHours is < 0)
-            return T("Roles_Refusal_NegativeHours");
+            return localizer["Roles_Refusal_NegativeHours"];
         if (!Enum.IsDefined(input.Period))
-            return T("Roles_Refusal_Period");
+            return localizer["Roles_Refusal_Period"];
 
         if (input.IsCoordinator && others.Any(r => r.IsCoordinator))
-            return T("Roles_Refusal_SecondCoordinator");
+            return localizer["Roles_Refusal_SecondCoordinator"];
         if (input.IsCoordinator && input.PermissionKeys.Count > 0)
-            return T("Roles_Refusal_CoordinatorKeys");
+            return localizer["Roles_Refusal_CoordinatorKeys"];
 
         var catalog = sectionPermissions.SelectMany(s => s.Permissions).ToDictionary(p => p.Key, StringComparer.Ordinal);
         foreach (var key in input.PermissionKeys)
         {
             if (!catalog.TryGetValue(key, out var permission))
-                return T("Roles_Refusal_UnknownPermission", key);
+                return localizer["Roles_Refusal_UnknownPermission", key];
             if (!permission.OwnerKinds.Contains(ownerKind, StringComparer.Ordinal))
-                return T("Roles_Refusal_PermissionNotHere", Title(permission));
+                return localizer["Roles_Refusal_PermissionNotHere", Title(permission)];
             if (permission.TopLevelOnly && owner.ParentId is not null)
-                return T("Roles_Refusal_PermissionTopLevel", Title(permission));
+                return localizer["Roles_Refusal_PermissionTopLevel", Title(permission)];
         }
 
         return null;
@@ -406,7 +422,8 @@ internal sealed class RoleService(
         role.CustomSlug = string.IsNullOrWhiteSpace(input.CustomSlug) ? null : SlugHelper.GenerateSlug(input.CustomSlug);
         role.Description = string.IsNullOrWhiteSpace(input.Description) ? null : input.Description;
         role.SlotCount = input.SlotCount;
-        role.Priorities = [.. input.Priorities];
+        role.Priorities = [.. Enumerable.Range(0, input.SlotCount)
+            .Select(i => i < input.Priorities.Count ? input.Priorities[i] : SlotPriority.None)];
         role.SortOrder = input.SortOrder;
         role.Period = input.Period;
         role.EstimatedHours = input.EstimatedHours;
@@ -451,8 +468,6 @@ internal sealed class RoleService(
     private static Owner OwnerOf(Role role) => new(role.OwnerKind, role.OwnerId);
 
     private static RoleResult Refuse(string refusal) => new(Refusal: refusal);
-
-    private string T(string key, params object[] args) => localizer[key, args].Value;
 
     private string Title(Permission permission) => localizers.Create(permission.Resource)[permission.Title].Value;
 

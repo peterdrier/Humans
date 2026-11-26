@@ -5,7 +5,7 @@
         <h5 class="mb-0">
             <i class="fa-solid fa-list-check me-2"></i>@Localizer["Todo_Title"]
         </h5>
-        <span class="badge bg-light text-primary">@string.Format(Localizer["Todo_PendingBadge"].Value, Model.PendingCount)</span>
+        <span class="badge bg-light text-primary">@Localizer["Todo_PendingBadge", Model.PendingCount]</span>
     </div>
     <ul class="list-group list-group-flush">
         @foreach (var item in Model.Items)

@@ -49,7 +49,7 @@ public sealed class ProfileCardViewComponentTests
             UserInfo.Create(new User { Id = targetId, FirstName = "Private name" }, [], [], UserFixtures.Profile()));
         users.GetUserInfoAsync(cookieId, Arg.Any<CancellationToken>()).Returns(viewerExists
             ? UserInfo.Create(new User { Id = survivorId }, [], [], null) : null);
-        var roles = Substitute.For<IRoleAssignmentService>();
+        var roles = Substitute.For<ISystemRoleService>();
         roles.IsUserBoardMemberAsync(survivorId, Arg.Any<CancellationToken>()).Returns(survivorIsBoard);
         roles.IsUserBoardMemberAsync(cookieId, Arg.Any<CancellationToken>()).Returns(!survivorIsBoard);
         var contacts = Substitute.For<IContactFieldService>();
@@ -139,7 +139,7 @@ public sealed class ProfileCardViewComponentTests
         });
         var component = new ProfileCardViewComponent(
             users, Substitute.For<IContactFieldService>(), Substitute.For<IUserEmailService>(), teams,
-            Substitute.For<IRoleAssignmentService>(), Substitute.For<ICommunicationPreferenceService>())
+            Substitute.For<ISystemRoleService>(), Substitute.For<ICommunicationPreferenceService>())
         {
             ViewComponentContext = new ViewComponentContext
             {
@@ -174,7 +174,7 @@ public sealed class ProfileCardViewComponentTests
             .Returns(_ => ValueTask.FromException<UserInfo?>(new OperationCanceledException(aborted.Token)));
         var component = new ProfileCardViewComponent(
             users, Substitute.For<IContactFieldService>(), Substitute.For<IUserEmailService>(),
-            Substitute.For<ITeamService>(), Substitute.For<IRoleAssignmentService>(),
+            Substitute.For<ITeamService>(), Substitute.For<ISystemRoleService>(),
             Substitute.For<ICommunicationPreferenceService>())
         {
             ViewComponentContext = new ViewComponentContext
@@ -209,7 +209,7 @@ public sealed class ProfileCardViewComponentTests
         var preferences = Substitute.For<ICommunicationPreferenceService>();
         preferences.AcceptsFacilitatedMessagesAsync(userId, Arg.Any<CancellationToken>()).Returns(true);
         var component = new ProfileCardViewComponent(users, Substitute.For<IContactFieldService>(),
-            Substitute.For<IUserEmailService>(), teams, Substitute.For<IRoleAssignmentService>(), preferences)
+            Substitute.For<IUserEmailService>(), teams, Substitute.For<ISystemRoleService>(), preferences)
         {
             Url = url,
             ViewComponentContext = new ViewComponentContext

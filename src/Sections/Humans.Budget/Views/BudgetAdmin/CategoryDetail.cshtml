@@ -1,3 +1,4 @@
+@using System.Globalization
 @model Humans.Budget.Contracts.BudgetCategorySnapshot
 @{
     ViewData["Title"] = $"Budget - {Model.Name}";
@@ -77,7 +78,8 @@
                 </div>
                 <div class="col-md-3">
                     <label class="form-label">Allocated Amount (&euro;, incl. VAT/IVA)</label>
-                    <input type="number" name="allocatedAmount" class="form-control" step="0.01" value="@Model.AllocatedAmount" required />
+                    <input type="hidden" name="__Invariant" value="allocatedAmount" />
+                    <input type="number" name="allocatedAmount" class="form-control" step="0.01" value="@Model.AllocatedAmount.ToString(CultureInfo.InvariantCulture)" required />
                 </div>
                 <div class="col-md-3">
                     <label class="form-label">Expenditure Type</label>
@@ -188,7 +190,8 @@
                                     </div>
                                     <div class="col-md-2">
                                         <label class="form-label form-label-sm">Amount (&euro;, incl. VAT/IVA)</label>
-                                        <input type="number" name="amount" class="form-control form-control-sm" step="0.01" value="@item.Amount" required />
+                                        <input type="hidden" name="__Invariant" value="amount" />
+                                        <input type="number" name="amount" class="form-control form-control-sm" step="0.01" value="@item.Amount.ToString(CultureInfo.InvariantCulture)" required />
                                     </div>
                                     <div class="col-md-1">
                                         <label class="form-label form-label-sm">VAT %</label>
@@ -261,6 +264,7 @@
             </div>
             <div class="col-md-2">
                 <label class="form-label form-label-sm">Amount (&euro;, incl. VAT/IVA)</label>
+                <input type="hidden" name="__Invariant" value="amount" />
                 <input type="number" name="amount" class="form-control form-control-sm" step="0.01" value="0" required />
             </div>
             <div class="col-md-1">

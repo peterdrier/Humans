@@ -10,6 +10,7 @@ using Humans.Users.Contracts;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Localization;
+using Microsoft.Extensions.Logging;
 
 namespace Humans.Tasks.Controllers;
 
@@ -22,7 +23,8 @@ internal sealed class TasksController(
     ISettingsService settings,
     IUserService userService,
     IAuthorizationService authorization,
-    IStringLocalizer<TasksResource> localizer) : HumansControllerBase(userService)
+    IStringLocalizer<TasksResource> localizer,
+    ILogger<TasksController> logger) : HumansControllerBase(userService)
 {
     [HttpGet("")]
     public async Task<IActionResult> Index([FromQuery] TaskListFilter filter, CancellationToken ct)
@@ -232,8 +234,11 @@ internal sealed class TasksController(
 
     private Task<TasksAccess?> AccessAsync(CancellationToken ct) => TasksAccess.ForAsync(User, permissions, authorization, ct);
 
-    /// <summary>A field that did not bind (a malformed date or event id) would otherwise reach the service as "none".</summary>
-    private TaskResult Unreadable() => new(Refusal: localizer["Tasks_Refusal_Unreadable"].Value);
+    private TaskResult Unreadable()
+    {
+        logger.LogWarning("Task form refused because a required field is missing or malformed");
+        return new(Refusal: localizer["Tasks_Refusal_Unreadable"].Value);
+    }
 
     private async Task<TeamPageViewModel> TeamPageAsync(
         TeamInfo team, TasksAccess access, IReadOnlyList<TaskInfo> onTeam, TaskListFilter filter, TaskForm addForm, CancellationToken ct)

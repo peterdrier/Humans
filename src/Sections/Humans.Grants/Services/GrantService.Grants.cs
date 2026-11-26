@@ -1,6 +1,7 @@
 using Humans.Grants.Contracts;
 using Humans.Base.Extensions;
 using Humans.Grants.Domain;
+using Humans.Users.Contracts;
 using NodaTime;
 
 namespace Humans.Grants.Services;
@@ -62,12 +63,23 @@ internal sealed partial class GrantService
         if (grant is null || grant.ProgramId != programId) return new("Grant not found.", NotFound: true);
         if (grant.RevokedAt is not null) return new("A revoked grant has no notice to resend.");
 
+        UserInfo? person = null;
+        var recipientResolved = false;
+        await BestEffortAsync("recipient lookup", GrantNoticeKind.Issued, grant.Id, async () =>
+        {
+            person = await users.GetUserInfoAsync(grant.UserId, ct);
+            recipientResolved = true;
+        }, ct);
+        if (recipientResolved && (person is null || person.IsTombstone))
+            return new("The grant holder is no longer available.");
+
         var year = await YearOfAsync(grant.Program, ct);
         grant.NotifiedAt = clock.GetCurrentInstant();
         await repository.UpdateGrantAsync(grant, ct);
         await AuditGrantAsync(GrantsAuditActions.GrantNoticeResent, grant,
             $"Notice for \"{grant.Program.Name}\" ({year}) sent again.", actorUserId);
-        await AnnounceIssuedAsync(grant, grant.Program, CancellationToken.None);
+        await AnnounceAsync(grant, grant.Program, GrantNoticeKind.Issued, GrantsNotificationSources.GrantReceived,
+            CancellationToken.None, person, recipientLookupAttempted: true);
         return GrantMutationResult.Ok;
     }
 

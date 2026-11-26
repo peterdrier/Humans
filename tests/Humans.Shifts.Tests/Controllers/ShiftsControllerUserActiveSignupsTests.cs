@@ -1,3 +1,4 @@
+using Humans.Testing;
 using Humans.Shifts.Domain;
 using AwesomeAssertions;
 using System.Security.Claims;
@@ -48,7 +49,7 @@ public class ShiftsControllerUserActiveSignupsTests
     private readonly IShiftRowView _shiftView = Substitute.For<IShiftRowView>();
     private readonly ITeamService _teamService = Substitute.For<ITeamService>();
     private readonly IUserService _userService = Substitute.For<IUserService>();
-    private readonly IStringLocalizer<ShiftsResource> _localizer = Substitute.For<IStringLocalizer<ShiftsResource>>();
+    private readonly IStringLocalizer<ShiftsResource> _localizer = Substitute.For<IStringLocalizer<ShiftsResource>>().AddFormatting();
     private readonly IClock _clock = Substitute.For<IClock>();
     private readonly Guid _userId = Guid.NewGuid();
 

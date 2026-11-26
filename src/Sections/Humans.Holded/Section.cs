@@ -9,7 +9,6 @@ using Humans.Holded.Data;
 using Humans.Holded.Jobs;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Options;
 
 [assembly: Humans.Base.Demo.NoDemoStory("Vendor mirror: its data arrives through the Holded sync, never from demo stories.")]
 
@@ -43,10 +42,8 @@ public sealed class Section : ISection, ISectionAdminNav, ISectionConfiguration,
 
         services.AddSingleton<IHoldedCallLog, HoldedCallLog>();
 
-        services.AddHttpClient<IHoldedClient, HoldedClient>((sp, client) =>
+        services.AddHttpClient<IHoldedClient, HoldedClient>(client =>
         {
-            var opts = sp.GetRequiredService<IOptions<HoldedClientOptions>>().Value;
-            client.BaseAddress = new Uri(opts.BaseUrl);
             client.Timeout = TimeSpan.FromSeconds(30);
         });
 

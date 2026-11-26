@@ -6,7 +6,7 @@
 
 <page-header title="@(Localizer["Users_AdminHumans_Title"].Value)">
     <div class="d-flex align-items-center gap-3">
-        <span class="text-muted">@string.Format(SharedLocalizer["Admin_TotalCount"].Value, Model.TotalCount)</span>
+        <span class="text-muted">@SharedLocalizer["Admin_TotalCount", Model.TotalCount]</span>
     </div>
 </page-header>
 
@@ -83,7 +83,7 @@
     </a>
     <span class="text-muted">|</span>
     <a asp-action="AdminList" asp-route-sort="login" asp-route-dir="@ToggleDir("login")" asp-route-search="@Model.SearchTerm" asp-route-filter="@Model.StatusFilter">
-        @SharedLocalizer["Admin_LastLogin"]@(Model.SortBy == "login" ? (Model.SortDir == "asc" ? " ▲" : " ▼") : "")
+        @SharedLocalizer["Admin_LastSignIn"]@(Model.SortBy == "login" ? (Model.SortDir == "asc" ? " ▲" : " ▼") : "")
     </a>
     <span class="text-muted">|</span>
     <a asp-action="AdminList" asp-route-sort="status" asp-route-dir="@ToggleDir("status")" asp-route-search="@Model.SearchTerm" asp-route-filter="@Model.StatusFilter">
@@ -118,9 +118,9 @@ else
                         </div>
                         <div class="small text-muted mt-1">
                             <span>@SharedLocalizer["Admin_Joined"] @human.CreatedAt.ToDate()</span>
-                            @if (human.LastLoginAt.HasValue)
+                            @if (human.LastSignInAt.HasValue)
                             {
-                                <span class="ms-2">@SharedLocalizer["Admin_LastLogin"] @human.LastLoginAt.Value.ToDate()</span>
+                                <span class="ms-2">@SharedLocalizer["Admin_LastSignIn"] @human.LastSignInAt.Value.ToDate()</span>
                             }
                         </div>
                     </div>

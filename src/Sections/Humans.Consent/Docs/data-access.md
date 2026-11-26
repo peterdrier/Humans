@@ -121,7 +121,7 @@ Repository: `IConsentRepository`.
 
 Cross-section calls via `ILegalDocumentSyncManagement`,
 `IHumanLifecycleService`, `IUserService`, `IHumansMetrics`, and, for the required-consent
-checks in `ConsentService`, `ITeamService` and `IRoleAssignmentService`. Implements
+checks in `ConsentService`, `ITeamService` and `ISystemRoleService`. Implements
 `IUserDataContributor`. The inner service has no `IMemoryCache`; caching
 lives in the decorator.
 

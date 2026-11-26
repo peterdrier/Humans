@@ -23,7 +23,7 @@
         }
         @if (item.Status == SurveyStatus.Draft && !string.IsNullOrWhiteSpace(item.RejectionNote))
         {
-            <div class="small text-danger">@string.Format(Localizer["Surveys_Admin_Index_RejectionNote"].Value, item.RejectionNote)</div>
+            <div class="small text-danger">@Localizer["Surveys_Admin_Index_RejectionNote", item.RejectionNote]</div>
         }
     </text>;
     Func<SurveyAdminSummary, IHtmlContent> statusCell = @<text>

@@ -4,8 +4,8 @@ namespace Humans.Auth.Services;
 
 internal sealed class AuthEmailPreviews(AuthEmails emails) : IEmailPreviewContributor
 {
-    private const string SampleLoginUrl = "https://humans.example/Account/MagicLinkConfirm?userId=sample&token=sample";
-    private const string SampleSignupUrl = "https://humans.example/Account/MagicLinkSignup?email=sample&token=sample";
+    private const string SampleSignInUrl = "https://humans.example/Account/SignInLinkConfirm?userId=sample&token=sample";
+    private const string SampleSignupUrl = "https://humans.example/Account/SignInLinkSignup?email=sample&token=sample";
 
     public IReadOnlyList<EmailPreviewSample> Samples(EmailPreviewPersona persona)
     {
@@ -14,10 +14,10 @@ internal sealed class AuthEmailPreviews(AuthEmails emails) : IEmailPreviewContri
 
         return
         [
-            new EmailPreviewSample("magic-link-login", "Magic Link Login",
-                emails.MagicLinkLogin(Guid.Empty, email, name, SampleLoginUrl, culture)),
-            new EmailPreviewSample("magic-link-signup", "Magic Link Signup",
-                emails.MagicLinkSignup(email, SampleSignupUrl, culture)),
+            new EmailPreviewSample("sign-in-link", "Sign-in Link",
+                emails.SignInLink(Guid.Empty, email, name, SampleSignInUrl, culture)),
+            new EmailPreviewSample("sign-in-link-signup", "Sign-in Link Signup",
+                emails.SignInLinkSignup(email, SampleSignupUrl, culture)),
         ];
     }
 }

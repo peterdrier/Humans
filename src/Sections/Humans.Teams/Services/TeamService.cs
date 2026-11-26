@@ -1580,6 +1580,11 @@ internal sealed class TeamService(
             var users = await UserService.GetUserInfosAsync([userId], cancellationToken);
             if (!users.TryGetValue(userId, out var user))
                 return;
+            if (user.IsTombstone)
+            {
+                logger.LogWarning("Skipping added-to-team welcome for unavailable user {UserId} team {TeamId}", userId, team.Id);
+                return;
+            }
 
             recipientId = user.Id;
             culture = CultureInfo.GetCultureInfo(user.PreferredLanguage.IsSupportedCultureCode() ? user.PreferredLanguage : "en");
@@ -2200,7 +2205,7 @@ internal sealed class TeamService(
 
     private IRoleWrite RoleWrite => serviceProvider.GetRequiredService<IRoleWrite>();
 
-    private IRoleAssignmentService RoleAssignmentService => serviceProvider.GetRequiredService<IRoleAssignmentService>();
+    private ISystemRoleService SystemRoleService => serviceProvider.GetRequiredService<ISystemRoleService>();
 
     // Lazy: Users depends on Teams during service resolution.
 
@@ -2355,10 +2360,10 @@ internal sealed class TeamService(
         Guid userId,
         CancellationToken cancellationToken = default)
     {
-        var isAdmin = await RoleAssignmentService.IsUserAdminAsync(userId, cancellationToken);
+        var isAdmin = await SystemRoleService.IsUserAdminAsync(userId, cancellationToken);
         if (isAdmin) return true;
 
-        var isTeamsAdmin = await RoleAssignmentService.IsUserTeamsAdminAsync(userId, cancellationToken);
+        var isTeamsAdmin = await SystemRoleService.IsUserTeamsAdminAsync(userId, cancellationToken);
         if (isTeamsAdmin) return true;
 
         return await IsUserCoordinatorOfTeamAsync(teamId, userId, cancellationToken);

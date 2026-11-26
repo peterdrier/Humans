@@ -21,6 +21,29 @@ namespace Humans.Governance.Tests.Services;
 public sealed class TermRenewalReminderJobTests
 {
     [HumansTheory]
+    [Xunit.InlineData(UserState.Deleted)]
+    [Xunit.InlineData(UserState.Merged)]
+    public async Task ExecuteAsync_TombstoneApplicant_LeavesReminderUnstamped(UserState state)
+    {
+        var ct = Xunit.TestContext.Current.CancellationToken;
+        var run = new ReminderRun();
+        var people = (await run.Users.GetUserInfosAsync([run.First.UserId, run.Next.UserId], ct))
+            .ToDictionary(pair => pair.Key, pair => pair.Value);
+        people[run.First.UserId] = people[run.First.UserId] with { State = state };
+        run.Users.GetUserInfosAsync(Arg.Any<IEnumerable<Guid>>(), Arg.Any<CancellationToken>()).Returns(people);
+
+        await run.Job.ExecuteAsync(ct);
+
+        var message = (EmailMessage)run.Email.ReceivedCalls().Should().ContainSingle().Subject.GetArguments()[0]!;
+        message.UserId.Should().Be(run.Next.UserId);
+        await run.Applications.DidNotReceive().MarkRenewalReminderSentAsync(run.First.Id,
+            Arg.Any<Instant>(), Arg.Any<CancellationToken>());
+        await run.Applications.Received(1).MarkRenewalReminderSentAsync(run.Next.Id, run.Now, CancellationToken.None);
+        ((IReadOnlyList<Guid>)run.Notices.ReceivedCalls().Should().ContainSingle().Subject.GetArguments()[4]!)
+            .Should().Equal(run.Next.UserId);
+    }
+
+    [HumansTheory]
     [Xunit.InlineData(ReminderReadBoundary.Applications)]
     [Xunit.InlineData(ReminderReadBoundary.Pending)]
     [Xunit.InlineData(ReminderReadBoundary.Applicants)]

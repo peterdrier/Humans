@@ -305,7 +305,7 @@ public class AgentToolDispatcherTests
         shift with { Id = Guid.NewGuid(), SignupBlockId = signupBlockId, Status = status };
 
     [HumansFact]
-    public async Task Handoff_returns_proposal_marker_without_creating_anything()
+    public async Task Dispatch_Handoff_ReturnsProposalMarker()
     {
         var dispatcher = MakeDispatcher();
 
@@ -325,7 +325,7 @@ public class AgentToolDispatcherTests
     [InlineData("{\"title\":42}")]
     [InlineData("{\"description\":[]}")]
     [InlineData("{\"category\":true}")]
-    public async Task Handoff_reports_an_error_for_malformed_arguments(string arguments)
+    public async Task Dispatch_MalformedHandoff_ReturnsError(string arguments)
     {
         var logger = Substitute.For<ILogger<AgentToolDispatcher>>();
         var dispatcher = MakeDispatcher(logger: logger);
@@ -379,7 +379,7 @@ public class AgentToolDispatcherTests
     /// ended in an empty reply to the user.
     /// </summary>
     [HumansFact]
-    public async Task FetchSectionDoc_miss_lists_the_valid_section_keys()
+    public async Task Dispatch_UnknownSection_ListsValidKeys()
     {
         var dispatcher = MakeDispatcher();
 

@@ -1,26 +1,26 @@
 # Auth — Authorization
 
-`Humans.Auth` is a horizontal (cross-cutting) section — see `docs/architecture/peters-hard-rules.md`. It owns the role-assignment resource handler consumed by its own `RoleAssignmentsController` (`AddRole`/`EndRole`), and serves the role-assignment admin pages at their stable `/Users/Admin/...` URLs.
+`Humans.Auth` is a horizontal (cross-cutting) section — see `docs/architecture/peters-hard-rules.md`. It owns the system-role resource handler consumed by its own `SystemRolesController` (`AddRole`/`RevokeRole`), and serves the system-role admin pages at their stable `/Users/Admin/...` URLs.
 
 ## Controllers
 
 | Controller / action | Level | Roles | Policy |
 |---|---|---|---|
-| `RoleAssignmentsController` | Class | `UsersAdmin, Board, Admin` | `UsersPolicies.Read` (`Roles` roster) |
-| `RoleAssignmentsController.AddRole` (GET/POST) / `EndRole` | Action | `UsersAdmin, Admin` | `UsersPolicies.Manage` — Board reads the roster but manages no role (`RoleAssignmentRules`) |
-| `RoleAssignmentsController.AddRole` (POST) / `EndRole` runtime guards | In-method | per target role name | `authorizationService.AuthorizeAsync(User, roleName, PolicyNames.RoleAssignmentManage)` — resource-based, evaluated by `RoleAssignmentAuthorizationHandler`. `AddRole` answers `Forbid`, `EndRole` answers `404` so a denied actor cannot probe assignment ids |
-| `RoleAssignmentsCardViewComponent` | User part (`AdminDetail`) | `UsersAdmin, Board, Admin` | Renders only in `ProfileCardViewMode.Admin` and when the viewer passes `UsersPolicies.Read`; nothing otherwise |
+| `SystemRolesController` | Class | `UsersAdmin, Board, Admin` | `UsersPolicies.Read` (`Roles` roster) |
+| `SystemRolesController.AddRole` (GET/POST) / `RevokeRole` | Action | `UsersAdmin, Admin` | `UsersPolicies.Manage` — Board reads the roster but manages no role (`SystemRoleRules`) |
+| `SystemRolesController.AddRole` (POST) / `RevokeRole` runtime guards | In-method | per target role name | `authorizationService.AuthorizeAsync(User, roleName, PolicyNames.SystemRoleManage)` — resource-based, evaluated by `SystemRoleAuthorizationHandler`. `AddRole` answers `Forbid`, `RevokeRole` answers `404` so a denied actor cannot probe assignment ids |
+| `SystemRolesCardViewComponent` | User part (`AdminDetail`) | `UsersAdmin, Board, Admin` | Renders only in `ProfileCardViewMode.Admin` and when the viewer passes `UsersPolicies.Read`; nothing otherwise |
 
 ## Resource-Based Authorization Handler
 
 | Handler | Requirement | Resource | Path |
 |---|---|---|---|
-| `RoleAssignmentAuthorizationHandler` | `RoleAssignmentOperationRequirement` (`Manage`) | `string` (roleName) | `Authorization/RoleAssignmentAuthorizationHandler.cs` — also backs the named `PolicyNames.RoleAssignmentManage` policy registered in `AuthorizationPolicyExtensions`; call sites can reach it either via the named policy or by passing the requirement directly |
+| `SystemRoleAuthorizationHandler` | `SystemRoleOperationRequirement` (`Manage`) | `string` (roleName) | `Authorization/SystemRoleAuthorizationHandler.cs` — also backs the named `PolicyNames.SystemRoleManage` policy registered in `AuthorizationPolicyExtensions`; call sites can reach it either via the named policy or by passing the requirement directly |
 
 ## The service-layer exception
 
-`design-rules.md`, *Authorization* makes services auth-free: controllers call `IAuthorizationService.AuthorizeAsync`, services do not check. `IAdminAuthorizationService.RequireCurrentUserIsAdminAsync` (`Auth.Contracts`, impl `Services/AdminAuthorizationService.cs`) is the documented sole exception — the full-Admin guard in front of destructive delete/reset paths. It throws rather than returning a result, and is cycle-safe: it reads role assignments through the section's own repository and never pulls `IAuthorizationService`.
+`design-rules.md`, *Authorization* makes services auth-free: controllers call `IAuthorizationService.AuthorizeAsync`, services do not check. `IAdminAuthorizationService.RequireCurrentUserIsAdminAsync` (`Auth.Contracts`, impl `Services/AdminAuthorizationService.cs`) is the documented sole exception — the full-Admin guard in front of destructive delete/reset paths. It throws rather than returning a result, and is cycle-safe: it reads system roles through the section's own repository and never pulls `IAuthorizationService`.
 
-**Why authorization never moved into services.** Two attempts did (role assignment in PR #210, commit `225ac14`; Google sync in `1626098`, reverted in `bbbe508`). `TeamService → RoleAssignmentService → IAuthorizationService → TeamAuthorizationHandler → ITeamService` is a DI cycle that crashed startup validation, and the hot-fix (lazy `IServiceProvider` resolution in the handler) only hid it from the validator. The unwind moved `AuthorizeAsync` back to controllers, deleted `SystemPrincipal` and the service-locator hack, and kept `RoleAssignmentAuthorizationHandler` + `RoleAssignmentOperationRequirement` because controllers invoke them. Budget mutations (#420) were closed as won't-do once the pattern was retired.
+**Why authorization never moved into services.** Two attempts did (system role in PR #210, commit `225ac14`; Google sync in `1626098`, reverted in `bbbe508`). `TeamService → SystemRoleService → IAuthorizationService → TeamAuthorizationHandler → ITeamService` is a DI cycle that crashed startup validation, and the hot-fix (lazy `IServiceProvider` resolution in the handler) only hid it from the validator. The unwind moved `AuthorizeAsync` back to controllers, deleted `SystemPrincipal` and the service-locator hack, and kept `SystemRoleAuthorizationHandler` + `SystemRoleOperationRequirement` because controllers invoke them. Budget mutations (#420) were closed as won't-do once the pattern was retired.
 
 Current callers (all on destructive/reset paths): `Humans.Shifts`' `ShiftManagementService` and `ShiftSignupService`, `Humans.Users`' `UserService`, `Humans.Teams`' `TeamService`. Adding a caller is a deliberate widening of the exception, not a convenience.
