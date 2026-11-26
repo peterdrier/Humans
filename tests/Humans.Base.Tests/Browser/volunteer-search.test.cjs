@@ -17,7 +17,7 @@ function page() {
     script = script.replace(/@Html\.Raw\(System\.Text\.Json\.JsonSerializer\.Serialize\((\w+)\)\)/g,
         (_, name) => JSON.stringify(serialized[name]));
     for (const [key, value] of Object.entries({
-        '@Html.Raw(Html.AntiForgeryTokenHtmlForJavaScript())': '',
+        '@Html.Raw(Html.AntiForgeryTokenForScript())': '',
         '@showPoolBadge.ToString().ToLowerInvariant()': 'false',
     })) script = script.replaceAll(key, value);
     const handlers = {};
