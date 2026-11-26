@@ -23,6 +23,13 @@ _Avoid_: holder (Holder means the person named on a ticket), user
 Making a key (for yourself, or Admin for someone else), swapping it for a fresh one, and switching it off for good.
 _Avoid_: make, issue, allocate
 
+**MCP endpoint**:
+`/api/backdoor/mcp`, where an AI client connects with an API key and asks which tools it may use.
+
+**Tool**:
+One named thing the MCP endpoint lets a client do, such as `hello`. Each declares a scope.
+_Avoid_: function, command
+
 **Scope**:
 Which people a part of the Backdoor API is for. Today: **Admin and Board**, and **Tasks** (people who can manage tasks on some team).
 _Avoid_: Staff
