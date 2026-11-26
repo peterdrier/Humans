@@ -1,3 +1,4 @@
+@using System.Globalization
 @model Humans.Budget.Models.CategoryDetailViewModel
 @{
     ViewData["Title"] = Localizer["Budget_TitleYear", Model.Category.Name].Value;
@@ -164,7 +165,8 @@
                                         </div>
                                         <div class="col-md-2">
                                             <label class="form-label form-label-sm">@Localizer["Budget_ColAmount"] @Localizer["Budget_IncludingVat"]</label>
-                                            <input type="number" name="amount" class="form-control form-control-sm" step="0.01" value="@item.Amount" required />
+                                            <input type="hidden" name="__Invariant" value="amount" />
+                                            <input type="number" name="amount" class="form-control form-control-sm" step="0.01" value="@item.Amount.ToString(CultureInfo.InvariantCulture)" required />
                                         </div>
                                         <div class="col-md-1">
                                             <label class="form-label form-label-sm">@Localizer["Budget_Vat"] %</label>
@@ -245,6 +247,7 @@
                 </div>
                 <div class="col-md-2">
                     <label class="form-label form-label-sm">@Localizer["Budget_ColAmount"] @Localizer["Budget_IncludingVat"]</label>
+                    <input type="hidden" name="__Invariant" value="amount" />
                     <input type="number" name="amount" class="form-control form-control-sm" step="0.01" value="0" required />
                 </div>
                 <div class="col-md-1">

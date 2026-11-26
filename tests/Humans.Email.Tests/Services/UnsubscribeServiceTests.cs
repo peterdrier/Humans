@@ -193,9 +193,13 @@ public class UnsubscribeServiceTests
     }
 
     [HumansTheory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public async Task ConfirmUnsubscribeAsync_ErasedAccount_DoesNotRecreatePreferences(bool legacy)
+    [InlineData(false, "anonymized")]
+    [InlineData(true, "anonymized")]
+    [InlineData(false, "deleted")]
+    [InlineData(true, "deleted")]
+    [InlineData(false, "local")]
+    [InlineData(true, "local")]
+    public async Task ConfirmUnsubscribeAsync_ErasedAccount_DoesNotRecreatePreferences(bool legacy, string kind)
     {
         var userId = Guid.NewGuid();
         var erasedUser = CreateUserInfo(new User
@@ -204,7 +208,13 @@ public class UnsubscribeServiceTests
             DisplayName = "Deleted User",
             Email = $"deleted-{userId:N}@deleted.local"
         });
-        erasedUser.IsGdprAnonymized.Should().BeTrue();
+        erasedUser = kind switch
+        {
+            "deleted" => erasedUser with { IsGdprAnonymized = false, IdentityEmailColumn = null, State = UserState.Deleted },
+            "local" => erasedUser with { IsGdprAnonymized = false, IdentityEmailColumn = "erased@gdpr.local" },
+            _ => erasedUser,
+        };
+        erasedUser.IsTombstone.Should().BeTrue();
         _userService.GetUserInfoAsync(userId, Arg.Any<CancellationToken>()).Returns(erasedUser);
         var token = "pre-erasure-token";
         if (legacy)

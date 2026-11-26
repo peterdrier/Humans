@@ -6,8 +6,8 @@ using NodaTime;
 namespace Humans.Tickets.Services.Checkout;
 
 /// <summary>
-/// The checkout lane: Humans prices the order, the event's ticketing platform takes the money. Authorization is the controllers'
-/// job; every method trusts its actor.
+/// The checkout lane: Humans prices the order, the event's ticketing platform takes the money. Controllers enforce
+/// role policies; the service enforces buyer and holder access to individual orders and tickets.
 /// </summary>
 internal interface ITicketCheckoutService : ITicketingPlatformEvents
 {
@@ -41,6 +41,9 @@ internal interface ITicketCheckoutService : ITicketingPlatformEvents
 
     Task<OrderDetail?> GetOrderDetailAsync(Guid orderId, CancellationToken ct = default);
 
+    /// <summary>Refreshes an order only for its buyer or a holder, returning only what that viewer may see.</summary>
+    Task<BuyOrder?> GetBuyOrderAsync(Guid orderId, Guid viewerId, CancellationToken ct = default);
+
     /// <summary>Asks the order's platform for its state and applies it. Null when the order does not exist.</summary>
     Task<TicketCheckoutOrder?> RefreshOrderAsync(Guid orderId, CancellationToken ct = default);
 
@@ -65,6 +68,9 @@ internal interface ITicketCheckoutService : ITicketingPlatformEvents
 
     /// <summary>Every ticket the person holds or held, any event and state, newest first.</summary>
     Task<IReadOnlyList<TicketCheckoutTicket>> GetTicketsForHolderAsync(Guid userId, CancellationToken ct = default);
+
+    /// <summary>Held tickets for the active event or an unclosed sale; all events when none is active.</summary>
+    Task<int> GetHeldTicketCountAsync(Guid userId, CancellationToken ct = default);
 
     Task<IReadOnlyList<TicketCheckoutTicket>> GetTicketsForSettingsAsync(Guid settingsId, CancellationToken ct = default);
 
@@ -325,6 +331,20 @@ internal sealed record StartCheckoutResult(Guid? OrderId, Uri? PaymentUrl, strin
     public static StartCheckoutResult Refused(string key, string? argument = null) =>
         new(null, null, key) { RefusalArgument = argument };
 }
+
+/// <summary>A buyer sees all lines and tickets; a holder sees only their own. Totals and payment URL are buyer-only.</summary>
+internal sealed record BuyOrder(
+    Guid Id,
+    string Reference,
+    TicketCheckoutOrderState State,
+    bool IsOpen,
+    bool IsBuyer,
+    long TotalMinor,
+    long TicketTotalMinor,
+    long RefundedMinor,
+    string? PaymentUrl,
+    IReadOnlyList<TicketCheckoutOrderLine> Lines,
+    IReadOnlyList<TicketCheckoutTicket> Tickets);
 
 /// <summary><paramref name="Timeline"/> is oldest first.</summary>
 internal sealed record OrderDetail(

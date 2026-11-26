@@ -7,15 +7,16 @@ const { installHumans } = require('../../browser-support/humans-js.cjs');
 
 const source = readFileSync(resolve(__dirname, '../../../src/Sections/Humans.Rideshare/wwwroot/js/rideshare/board.js'), 'utf8');
 
-for (const mode of ['success', 'missing-library', 'map-failure', 'map-never-loads', 'fetch-failure']) {
+for (const mode of ['success', 'missing-library', 'map-failure', 'map-never-loads', 'fetch-failure', 'http-failure', 'http-empty', 'invalid-json', 'invalid-collection', 'null-collection']) {
     test(`list opens both interest forms when ${mode}`, async () => {
         const handlers = {};
-        const shown = [];
+        const shown = [], toasts = [], sources = [];
+        let jsonReads = 0;
         const fields = Object.fromEntries(['interestTripId', 'interestSeats', 'interestModal',
             'takeRequestId', 'takeSeats', 'takeModal'].map(id => [id, { id }]));
         const context = {
             document: {
-                getElementById: id => id === 'map' ? { dataset: { boardUrl: '/api/rideshare/board' } } : fields[id],
+                getElementById: id => id === 'map' ? { dataset: { boardUrl: '/api/rideshare/board', mapLoadFailed: 'Localized map failure' } } : fields[id],
                 querySelectorAll: selector => [{
                     dataset: { tripId: 'trip-a', seatsRemaining: '3', requestId: 'request-b', partySize: '2' },
                     addEventListener: (_, handler) => { handlers[selector] = handler; },
@@ -26,7 +27,7 @@ for (const mode of ['success', 'missing-library', 'map-failure', 'map-never-load
                 Map: function () {
                     if (mode === 'map-failure') throw new Error('WebGL unavailable');
                     return {
-                        addControl() {}, addSource() {}, addLayer() {},
+                        addControl() {}, addSource(id) { sources.push(id); }, addLayer() {},
                         on(event, callback) { if (event === 'load' && mode !== 'map-never-loads') callback(); },
                     };
                 },
@@ -34,9 +35,18 @@ for (const mode of ['success', 'missing-library', 'map-failure', 'map-never-load
             },
             fetch: async () => {
                 if (mode === 'fetch-failure') throw new Error('offline');
-                return { json: async () => ({ features: [] }) };
+                return { ok: !mode.startsWith('http-'), status: mode.startsWith('http-') ? 503 : 200,
+                    json: async () => {
+                        jsonReads++;
+                        if (mode === 'invalid-json') throw new Error('Invalid JSON');
+                        if (mode === 'http-failure') return { title: 'Unavailable', status: 503 };
+                        if (mode === 'invalid-collection') return { type: 'FeatureCollection', features: 'invalid' };
+                        if (mode === 'null-collection') return null;
+                        return { type: 'FeatureCollection', features: [] };
+                    } };
             },
             console: { error() {} },
+            showToast: (message, type) => toasts.push([message, type]),
         };
         if (mode === 'missing-library') delete context.maplibregl;
         installHumans(context);
@@ -52,6 +62,17 @@ for (const mode of ['success', 'missing-library', 'map-failure', 'map-never-load
         assert.equal(fields.interestSeats.value, '1');
         assert.equal(fields.takeRequestId.value, 'request-b');
         assert.equal(fields.takeSeats.value, '2');
+        if (mode === 'success') {
+            assert.equal(toasts.length, 0);
+            assert.deepEqual(sources, ['trips', 'trip-starts', 'requests']);
+        } else if (mode === 'map-never-loads') {
+            assert.equal(toasts.length, 0);
+            assert.equal(sources.length, 0);
+        } else {
+            assert.deepEqual(toasts, [['Localized map failure', 'danger']]);
+            assert.equal(sources.length, 0);
+        }
+        if (mode.startsWith('http-')) assert.equal(jsonReads, 0);
     });
 }
 

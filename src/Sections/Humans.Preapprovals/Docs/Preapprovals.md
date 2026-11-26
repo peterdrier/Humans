@@ -124,6 +124,7 @@ Admin pages live under the section's URL space, not `/Admin`; they are localizat
 
 ## Invariants
 
+- HTML number fields render and bind amounts invariantly in every supported culture. Raw issue, approval and amount-change forms carry MVC invariant-field metadata; member application prefills use the same dot-decimal format. Optional approval amounts still fall back only when blank, and service validation retains sizing, precision and ceiling rules.
 - Member application notes are optional and limited to 2,000 characters. A supplied requested amount must be between 0.01 and 1,000,000. Validation feedback uses the shared `Validation_MaxLength` and `Validation_Range` resources in the current supported UI culture.
 - Status follows: `Applied → Open | Declined`; `Open → Claimed | Revoked`; `Claimed → Open`
   (withdraw before approval) `| Consumed | Revoked`. Consumed, Declined and Revoked are

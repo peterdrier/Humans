@@ -48,6 +48,8 @@ The base builds with `Microsoft.NET.Sdk.Razor` + `AddRazorSupportForMvc` to host
 
 ### Behavioural notes
 
+- Shared MVC/API current-user resolution guards treat missing and tombstoned account snapshots as unavailable, returning the helper's existing NotFound, Challenge or Unauthorized result. Live merge survivors resolve to their canonical account; lookup cancellation still propagates. Tombstone refusals log Warning with the account ID.
+
 - Memory-cache helpers cover exclusive token/cooldown reservations and camp-contact rate-limit invalidation.
 
 - Bulk cache warmups use a coordinator-supplied row publisher guarded by the existing mutation generation. A concurrent mutation during loading, publication or finalization discards the partial attempt and retries the complete snapshot and derived indexes under the existing warmup lock. Cancellation and loader failures discard all rows published by the aborted attempt and leave the cache cold, so a later successful snapshot cannot retain rows absent from its source. Cancellation is checked again after the loader returns, including when it did not throw. Startup load failures still warn and allow the host to boot.

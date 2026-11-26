@@ -848,7 +848,7 @@ internal sealed class TicketQueryService(
             events.Add(activeEvent);
 
         var heldSettingsIds = (await checkout.GetTicketsForHolderAsync(userId, ct))
-            .Where(t => t.State is TicketCheckoutTicketState.Valid or TicketCheckoutTicketState.Offered)
+            .Where(t => t.IsHeld)
             .Select(t => t.TicketingSettingsId)
             .Distinct();
         foreach (var settingsId in heldSettingsIds)

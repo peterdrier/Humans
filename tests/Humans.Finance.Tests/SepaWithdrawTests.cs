@@ -151,6 +151,26 @@ public class SepaWithdrawTests
         result.Message.Should().Contain("no longer exists");
     }
 
+    [HumansTheory]
+    [InlineData(UserState.Deleted)]
+    [InlineData(UserState.Merged)]
+    public async Task Withdraw_TombstoneRecipient_KeepsWithdrawalWithoutEmail(UserState state)
+    {
+        Seed();
+        var members = await _users.GetUserInfosAsync([UserId], TestContext.Current.CancellationToken);
+        _users.GetUserInfosAsync(Arg.Any<IEnumerable<Guid>>(), Arg.Any<CancellationToken>())
+            .Returns(new Dictionary<Guid, UserInfo> { [UserId] = members[UserId] with { State = state } });
+
+        var result = await MakeService().WithdrawSepaTransferAsync(TransferId, Actor, TestContext.Current.CancellationToken);
+
+        result.Succeeded.Should().BeTrue();
+        await _repo.Received(1).SaveSepaTransfersWithdrawnAsync(
+            Arg.Is<IReadOnlyCollection<Guid>>(ids => ids.Single() == TransferId), FixedNow, Actor, Arg.Any<CancellationToken>());
+        await _audit.Received(1).LogAsync(FinanceAuditActions.SepaPayoutTransferWithdrawn,
+            nameof(SepaPayoutTransfer), TransferId, Arg.Any<string>(), Actor, UserId, nameof(User));
+        _emailService.ReceivedCalls().Should().BeEmpty();
+    }
+
     [HumansFact]
     public async Task Withdraw_MemberWithoutAnEmail_StillWithdraws()
     {

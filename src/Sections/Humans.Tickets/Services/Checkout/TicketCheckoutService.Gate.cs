@@ -50,8 +50,7 @@ internal sealed partial class TicketCheckoutService : ITicketGateLookup
             ticket.HolderUserId,
             entryUserId,
             ticket.Kind == TicketHolderKind.Adult ? label : $"{ticket.Kind} · {label}",
-            IsValid: !inResaleQueue
-                && ticket.State is TicketCheckoutTicketState.Valid or TicketCheckoutTicketState.Offered,
+            IsValid: !inResaleQueue && ticket.IsHeld,
             InResaleQueue: inResaleQueue);
     }
 }

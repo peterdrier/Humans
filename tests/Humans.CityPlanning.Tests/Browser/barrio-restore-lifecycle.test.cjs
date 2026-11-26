@@ -18,7 +18,7 @@ function editor() {
     state.draw = { getAll: () => ({ features: state.features }), deleteAll() { clears++; state.features = []; } };
     const context = {
         appState: state, CONFIG: {}, setActivePolygonDim() {},
-        document: { getElementById: id => id === 'history-panel' ? panel : id === 'history-list' ? list :
+        document: { getElementById: id => id.startsWith('add-') ? null : id === 'history-panel' ? panel : id === 'history-list' ? list :
             { disabled: false, classList: { add() {}, remove() {}, toggle() {}, contains: () => false } }, querySelector: () => ({ value: 'csrf' }) },
         bootstrap: { Offcanvas: { getInstance: () => ({ hide: () => hides++ }) } },
         confirm: () => true, showToast: message => alerts.push(message), console: { error() {} },
