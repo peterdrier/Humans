@@ -787,3 +787,19 @@ src/Sections/Humans.Tickets/Data/Migrations/20261121235220_DropRetiredResaleInvi
 # references are the EF mapping and seed value, which this PR removes. Nothing reads or writes it.
 # Approval: Peter, 2026-11-24, in the Agent rename thread: "yes for preloadconfig drop".
 src/Sections/Humans.Agent/Data/Migrations/20261124151418_DropAgentSettingsPreloadConfig.cs:DropColumn(name=PreloadConfig,table=agent_settings)#1
+
+# Shifts: shift_volunteer_event_profiles.DietaryPreference, Allergies, Intolerances, AllergyOtherText,
+# IntoleranceOtherText and MedicalConditions (the old dietary and medical answers on the shift profile).
+# Replaced by the Profile columns (Users) in #780, whose migration MoveDietaryMedicalToProfile
+# (2026-05-25) copied every row across; Cantina and the audited Users reveal read only the Profile copy.
+# Evidence: pickaxe git log -S 'MedicalConditions =', -S 'DietaryPreference =', -S 'AllergyOtherText =' and
+# -S 'IntoleranceOtherText =' over origin/main finds no write to VolunteerEventProfile after #780; later hits
+# are Profile, DTO or section-move commits. The entity carried a "do NOT read or write these" note since then.
+# Approval: Peter, 2026-11-26, in the role-retirement thread: "let's get rid of those two medical conditions
+# and the dietary columns that are in shifts ... Yes, drop the two columns".
+src/Sections/Humans.Shifts/Data/Migrations/20261126232724_DropVolunteerProfileDietaryMedicalColumns.cs:DropColumn(name=Allergies,table=shift_volunteer_event_profiles)#1
+src/Sections/Humans.Shifts/Data/Migrations/20261126232724_DropVolunteerProfileDietaryMedicalColumns.cs:DropColumn(name=AllergyOtherText,table=shift_volunteer_event_profiles)#1
+src/Sections/Humans.Shifts/Data/Migrations/20261126232724_DropVolunteerProfileDietaryMedicalColumns.cs:DropColumn(name=DietaryPreference,table=shift_volunteer_event_profiles)#1
+src/Sections/Humans.Shifts/Data/Migrations/20261126232724_DropVolunteerProfileDietaryMedicalColumns.cs:DropColumn(name=IntoleranceOtherText,table=shift_volunteer_event_profiles)#1
+src/Sections/Humans.Shifts/Data/Migrations/20261126232724_DropVolunteerProfileDietaryMedicalColumns.cs:DropColumn(name=Intolerances,table=shift_volunteer_event_profiles)#1
+src/Sections/Humans.Shifts/Data/Migrations/20261126232724_DropVolunteerProfileDietaryMedicalColumns.cs:DropColumn(name=MedicalConditions,table=shift_volunteer_event_profiles)#1
