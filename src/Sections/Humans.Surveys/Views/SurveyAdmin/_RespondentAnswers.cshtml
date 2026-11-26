@@ -1,49 +1,69 @@
-@model IReadOnlyList<Humans.Surveys.Contracts.RespondentAnswer>
+@model SurveyRespondentAnswersViewModel
+
+@{
+    var untitledQuestion = Localizer["Surveys_Admin_Results_UntitledQuestion"].Value;
+    var answered = Model.Answers.Select(a => a.QuestionId).ToHashSet();
+    bool IsNested(RespondentAnswer a) =>
+        Model.Questions.TryGetValue(a.QuestionId, out var q) && q.FollowUpOf is { } parent && answered.Contains(parent);
+    string Number(RespondentAnswer a) => Model.Questions.TryGetValue(a.QuestionId, out var q) ? $"Q{q.Number}" : "";
+    string PromptOf(RespondentAnswer a) => string.IsNullOrWhiteSpace(a.Prompt) ? untitledQuestion : a.Prompt;
+
+    void RenderValue(RespondentAnswer answer)
+    {
+        if (answer.GridSelections?.Count > 0)
+        {
+            <ul class="list-unstyled mb-0">
+                @foreach (var selection in answer.GridSelections)
+                {
+                    <li><strong>@selection.RowLabel:</strong> @string.Join(", ", selection.ColumnLabels)</li>
+                }
+            </ul>
+        }
+        else if (answer.RankedBallot is { } ballot)
+        {
+            <ol class="mb-0 ps-3">
+                @foreach (var group in ballot.RankGroups)
+                {
+                    <li>@string.Join(" = ", group)</li>
+                }
+            </ol>
+            @if (ballot.Rejected.Count > 0)
+            {
+                <div class="small text-danger mt-1">
+                    <strong>@Localizer["Surveys_Admin_Results_RespondentRejectedLabel"]</strong> @string.Join(", ", ballot.Rejected)
+                </div>
+            }
+        }
+        else if (answer.SelectedLabels.Count > 0)
+        {
+            @string.Join(", ", answer.SelectedLabels)
+        }
+        else if (answer.RatingValue is { } rating)
+        {
+            @rating
+        }
+        else if (!string.IsNullOrEmpty(answer.TextValue))
+        {
+            @answer.TextValue
+        }
+        else
+        {
+            <span class="text-muted">—</span>
+        }
+    }
+}
 
 <dl class="row mb-0">
-    @foreach (var answer in Model)
+    @foreach (var answer in Model.Answers.Where(a => !IsNested(a)))
     {
-        <dt class="col-sm-4">@answer.Prompt</dt>
+        <dt class="col-sm-4"><span class="text-muted small me-2">@Number(answer)</span>@PromptOf(answer)</dt>
         <dd class="col-sm-8">
-            @if (answer.GridSelections?.Count > 0)
+            @{ RenderValue(answer); }
+            @foreach (var followUp in Model.Answers.Where(a => IsNested(a) && Model.Questions[a.QuestionId].FollowUpOf == answer.QuestionId))
             {
-                <ul class="list-unstyled mb-0">
-                    @foreach (var selection in answer.GridSelections)
-                    {
-                        <li><strong>@selection.RowLabel:</strong> @string.Join(", ", selection.ColumnLabels)</li>
-                    }
-                </ul>
-            }
-            else if (answer.RankedBallot is { } ballot)
-            {
-                <ol class="mb-0 ps-3">
-                    @foreach (var group in ballot.RankGroups)
-                    {
-                        <li>@string.Join(" = ", group)</li>
-                    }
-                </ol>
-                @if (ballot.Rejected.Count > 0)
-                {
-                    <div class="small text-danger mt-1">
-                        <strong>@Localizer["Surveys_Admin_Results_RespondentRejectedLabel"]</strong> @string.Join(", ", ballot.Rejected)
-                    </div>
-                }
-            }
-            else if (answer.SelectedLabels.Count > 0)
-            {
-                @string.Join(", ", answer.SelectedLabels)
-            }
-            else if (answer.RatingValue is { } rating)
-            {
-                @rating
-            }
-            else if (!string.IsNullOrEmpty(answer.TextValue))
-            {
-                @answer.TextValue
-            }
-            else
-            {
-                <span class="text-muted">—</span>
+                <div class="text-muted mt-1">
+                    <i class="fa-solid fa-turn-up fa-rotate-90 me-2" aria-hidden="true"></i><span class="small me-1">@Number(followUp)</span>@{ RenderValue(followUp); }
+                </div>
             }
         </dd>
     }

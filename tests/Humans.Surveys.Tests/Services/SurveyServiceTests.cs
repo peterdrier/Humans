@@ -4611,6 +4611,73 @@ public class SurveyServiceTests
     }
 
     [HumansFact]
+    public async Task CreateAsync_UntitledQuestion_IsRejected()
+    {
+        var result = await CreateService().CreateAsync(
+            Input(Q(" ", SurveyQuestionType.ShortText, 1, 1)), Guid.NewGuid(), TestContext.Current.CancellationToken);
+
+        result.Error!.Key.Should().Be("Surveys_Validation_PromptRequired");
+        await _repo.DidNotReceive().AddAsync(Arg.Any<Survey>(), Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
+    public async Task GetResultsAsync_FollowUp_GroupsTextByParentChoice()
+    {
+        var surveyId = Guid.NewGuid();
+        var choiceId = Guid.NewGuid();
+        var whyId = Guid.NewGuid();
+        var survey = SurveyWith(SurveyStatus.Closed, null, null);
+        typeof(Survey).GetProperty(nameof(Survey.Id))!.SetValue(survey, surveyId);
+        var why = TextQuestion(whyId, surveyId, 2);
+        why.ShowIf = new BranchCondition
+        {
+            Clauses = [new BranchClause { QuestionId = choiceId, Operator = BranchOperator.Is, OptionValues = ["no", "maybe"] }],
+        };
+        survey.Questions = new List<SurveyQuestion>
+        {
+            ChoiceQuestion(choiceId, surveyId, SurveyQuestionType.SingleChoice, 1,
+                ("yes", "Yes", 1), ("no", "No", 2), ("maybe", "Maybe", 3)),
+            why,
+        };
+        _repo.GetByIdAsync(surveyId, Arg.Any<CancellationToken>()).Returns(survey);
+        var now = _clock.GetCurrentInstant();
+        SurveyResponse Answer(string choice, string text) => SubmittedResponse(surveyId, ResponseAnonymity.Anonymous,
+            SurveyInputMethod.Slug, now, null, TextAnswer(whyId, text), ChoiceAnswer(choiceId, choice));
+        _repo.GetResponsesForResultsAsync(surveyId, Arg.Any<CancellationToken>())
+            .Returns(new List<SurveyResponse> { Answer("maybe", "unsure"), Answer("no", "too dear"), Answer("no", "later") });
+
+        var result = await CreateResults().GetResultsAsync(surveyId, TestContext.Current.CancellationToken);
+
+        var followUp = result!.Questions.Single(q => q.QuestionId == whyId);
+        followUp.FollowUpOf.Should().Be(choiceId);
+        followUp.AskedWhen.Should().Equal("No", "Maybe");
+        followUp.FreeTextByParentChoice.Select(g => (g.Label, string.Join("|", g.Texts)))
+            .Should().Equal(("No", "too dear|later"), ("Maybe", "unsure"));
+    }
+
+    [HumansFact]
+    public async Task GetResultsAsync_RespondentAnswers_FollowSurveyOrder()
+    {
+        var surveyId = Guid.NewGuid();
+        var firstId = Guid.NewGuid();
+        var secondId = Guid.NewGuid();
+        var survey = SurveyWith(SurveyStatus.Closed, null, null);
+        typeof(Survey).GetProperty(nameof(Survey.Id))!.SetValue(survey, surveyId);
+        survey.Questions = new List<SurveyQuestion> { TextQuestion(secondId, surveyId, 2), TextQuestion(firstId, surveyId, 1) };
+        _repo.GetByIdAsync(surveyId, Arg.Any<CancellationToken>()).Returns(survey);
+        _repo.GetResponsesForResultsAsync(surveyId, Arg.Any<CancellationToken>())
+            .Returns(new List<SurveyResponse>
+            {
+                SubmittedResponse(surveyId, ResponseAnonymity.Identified, SurveyInputMethod.Slug, _clock.GetCurrentInstant(),
+                    Guid.NewGuid(), TextAnswer(secondId, "b"), TextAnswer(firstId, "a")),
+            });
+
+        var result = await CreateResults().GetResultsAsync(surveyId, TestContext.Current.CancellationToken);
+
+        result!.IdentifiedRespondents.Single().Answers.Select(a => a.QuestionId).Should().Equal(firstId, secondId);
+    }
+
+    [HumansFact]
     public async Task GetResultsAsync_aggregates_choice_rating_and_freetext_over_submitted_responses()
     {
         var surveyId = Guid.NewGuid();
