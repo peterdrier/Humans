@@ -436,11 +436,11 @@
   <data name="Users_EmailGrid_StatusPending" xml:space="preserve">
     <value>Pendiente</value>
   </data>
-  <data name="Users_EmailGrid_LinkGoogleAccount" xml:space="preserve">
-    <value>Vincular cuenta de Google</value>
+  <data name="Users_EmailGrid_LinkProviderAccount" xml:space="preserve">
+    <value>Vincular cuenta de {0}</value>
   </data>
-  <data name="Users_EmailGrid_LinkGoogleHelp" xml:space="preserve">
-    <value>Inicia sesión con Google para vincular una cuenta de Google adicional a tu perfil.</value>
+  <data name="Users_EmailGrid_LinkProviderHelp" xml:space="preserve">
+    <value>Inicia sesión con {0} para vincular una cuenta de {0} adicional a tu perfil.</value>
   </data>
   <data name="Users_EmailGrid_BackToAdminDetail" xml:space="preserve">
     <value>Volver al detalle del usuario</value>

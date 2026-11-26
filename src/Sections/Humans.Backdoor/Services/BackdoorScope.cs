@@ -3,7 +3,7 @@ namespace Humans.Backdoor.Services;
 /// <summary>
 /// Who a key-authed controller serves. A person may hold a key when any scope admits them, and a key reaches only the
 /// controllers whose scope admits its owner; the rest answer 403. A new scope is a value here plus its test in
-/// <see cref="BackdoorApiKeyService.AdmitsAsync"/>.
+/// <see cref="IBackdoorApiKeyService.AdmitsAsync"/>.
 /// </summary>
 internal enum BackdoorScope
 {

@@ -157,6 +157,7 @@ graph LR
     Events --> Settings
     Events -.-> Email
     Expenses --> AuditLog
+    Expenses --> Auth
     Expenses --> Budget
     Expenses --> Holded
     Expenses --> Permissions

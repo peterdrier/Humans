@@ -36,8 +36,8 @@ internal interface IBackdoorApiKeyService : IApplicationService
     /// </summary>
     Task<BackdoorKeyOwner?> ResolveOwnerAsync(string presentedKey, CancellationToken ct = default);
 
-    /// <summary>Whether the scope admits the key's owner, so a controller declaring it serves them.</summary>
-    Task<bool> AdmitsAsync(BackdoorKeyOwner owner, BackdoorScope scope, CancellationToken ct = default);
+    /// <summary>Whether the scope admits this person, read fresh, so a controller or tool declaring it serves them.</summary>
+    Task<bool> AdmitsAsync(Guid userId, BackdoorScope scope, CancellationToken ct = default);
 }
 
 [method: System.Text.Json.Serialization.JsonConstructor]
