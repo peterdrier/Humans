@@ -58,6 +58,8 @@ public class ProfileEmailsControllerGridTests
         _signInManager = Substitute.For<SignInManager<User>>(
             _userManager, contextAccessor, claimsFactory, identityOptions,
             NullLogger<SignInManager<User>>.Instance, schemeProvider, userConfirmation);
+        _signInManager.GetExternalAuthenticationSchemesAsync()
+            .Returns([new AuthenticationScheme("Google", "Google", typeof(IAuthenticationHandler))]);
 
         var localizer = Substitute.For<IStringLocalizer<UsersResource>>().AddFormatting();
         localizer[Arg.Any<string>()].Returns(ci => new LocalizedString(ci.Arg<string>(), ci.Arg<string>()));
@@ -378,6 +380,16 @@ public class ProfileEmailsControllerGridTests
         // Going straight to /Profile/Me/Emails would skip that branch.
         capturedProps.Should().NotBeNull();
         capturedProps!.RedirectUri.Should().Contain("ExternalLoginCallback");
+    }
+
+    [HumansFact]
+    public async Task Link_ProviderNotConfigured_ReturnsNotFound()
+    {
+        _signInManager.GetExternalAuthenticationSchemesAsync().Returns([]);
+
+        var result = await _controller.Link("Google", returnUrl: null);
+
+        result.Should().BeOfType<NotFoundResult>();
     }
 
     [HumansFact]

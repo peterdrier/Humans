@@ -10,11 +10,14 @@
         else
         {
             <div class="d-flex align-items-center gap-3">
-                <div class="login-method-dial" style="--pct: @(Model.GooglePercent)%;">
-                    <span>@Model.GooglePercent%</span>
+                <div class="login-method-dial" style="--pct: @(Model.ProviderPercent)%;">
+                    <span>@Model.ProviderPercent%</span>
                 </div>
                 <div>
-                    <div><i class="fa-brands fa-google me-1"></i>Google: <strong>@Model.Google</strong></div>
+                    @foreach (var (provider, count) in Model.Providers)
+                    {
+                        <div><i class="@(provider == "Google" ? "fa-brands fa-google" : "fa-solid fa-key") me-1"></i>@provider: <strong>@count</strong></div>
+                    }
                     <div><i class="fa-solid fa-envelope me-1"></i>Email link: <strong>@Model.SignInLink</strong></div>
                 </div>
             </div>
