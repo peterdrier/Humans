@@ -115,9 +115,10 @@
   <data name="Google_Identity_Updated" xml:space="preserve">
     <value>Correo de servicio de Google actualizado. La sincronización se reintentará con el nuevo correo.</value>
   </data>
-  <data name="Google_Identity_SetRejected" xml:space="preserve">
-    <value>No se pudo establecer el correo de servicio de Google: la fila es desconocida o no está verificada.</value>
-  </data>
+  <data name="Google_Identity_Refused_AccountNotFound" xml:space="preserve"><value>No se pudo establecer el correo de servicio de Google: esa cuenta ya no existe.</value></data>
+  <data name="Google_Identity_Refused_NotTheirEmail" xml:space="preserve"><value>No se pudo establecer el correo de servicio de Google: esa dirección no está en esta cuenta.</value></data>
+  <data name="Google_Identity_Refused_Unverified" xml:space="preserve"><value>No se pudo establecer el correo de servicio de Google: primero verifica esa dirección.</value></data>
+  <data name="Google_Identity_Refused_NobodiesAddressWins" xml:space="preserve"><value>No se pudo establecer el correo de servicio de Google: una dirección @nobodies.team verificada siempre es la identidad de Google.</value></data>
   <data name="Google_Identity_Google" xml:space="preserve">
     <value>Google</value>
   </data>

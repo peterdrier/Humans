@@ -205,7 +205,8 @@
   <data name="Expenses_SelectAccount" xml:space="preserve"><value>— Seleccioneu un compte —</value></data>
   <data name="Expenses_AccountGroupBudgetCategories" xml:space="preserve"><value>Categories del pressupost</value></data>
   <data name="Expenses_AccountGroupOther" xml:space="preserve"><value>Altres comptes</value></data>
-  <data name="Expenses_Validation_AccountNotFound" xml:space="preserve"><value>Compte no trobat o ja no disponible.</value></data>
+  <data name="Expenses_Validation_AccountNotFound" xml:space="preserve"><value>Aquest compte no existeix.</value></data>
+  <data name="Expenses_Validation_AccountInactive" xml:space="preserve"><value>Aquest compte ja no està obert a despeses.</value></data>
   <data name="Expenses_OptionalMaxChars" xml:space="preserve"><value>(opcional, màx. 500 caràcters)</value></data>
   <data name="Expenses_SubjectPlaceholder" xml:space="preserve"><value>Descriviu la despesa…</value></data>
   <data name="Expenses_CreateDraft" xml:space="preserve"><value>Crea un esborrany</value></data>
@@ -291,11 +292,16 @@
   <data name="Expenses_Preapprovals_Revoked" xml:space="preserve"><value>Aquesta preaprovació ha estat revocada. L'informe no es pot aprovar amb ella: un cop rebutjat, la preaprovació es pot treure o canviar a l'esborrany.</value></data>
   <data name="Expenses_Preapprovals_Column" xml:space="preserve"><value>Preaprovació</value></data>
   <data name="Expenses_Preapprovals_RevokedBadge" xml:space="preserve"><value>revocada</value></data>
-  <data name="Expenses_Validation_PreapprovalNotClaimable" xml:space="preserve"><value>No es pot presentar contra aquesta preaprovació: no és del membre, no està oberta o el seu termini ha vençut.</value></data>
   <data name="Expenses_Validation_PreapprovalLocked" xml:space="preserve"><value>La preaprovació i el compte d’un informe enviat no es poden canviar.</value></data>
   <data name="Expenses_Validation_PreapprovalRevoked" xml:space="preserve"><value>La preaprovació va ser revocada; aquest informe no es pot enviar contra ella.</value></data>
   <data name="Expenses_Validation_PreapprovalDeadlinePassed" xml:space="preserve"><value>El termini de reclamació ({0}) ha vençut; aquest informe ja no es pot enviar contra la preaprovació.</value></data>
-  <data name="Expenses_Validation_PreapprovalUnavailable" xml:space="preserve"><value>La preaprovació ja no està disponible: la va reclamar un altre informe o ja s’ha fet servir.</value></data>
+  <data name="Expenses_Validation_PreapprovalNotFound" xml:space="preserve"><value>Aquesta preaprovació ja no existeix.</value></data>
+  <data name="Expenses_Validation_PreapprovalNotTheirs" xml:space="preserve"><value>Aquesta preaprovació és d'una altra persona.</value></data>
+  <data name="Expenses_Validation_PreapprovalNotGranted" xml:space="preserve"><value>Aquesta preaprovació encara no s'ha concedit.</value></data>
+  <data name="Expenses_Validation_PreapprovalDeclined" xml:space="preserve"><value>Aquesta preaprovació es va denegar.</value></data>
+  <data name="Expenses_Validation_PreapprovalClaimedElsewhere" xml:space="preserve"><value>Un altre informe ja té aquesta preaprovació.</value></data>
+  <data name="Expenses_Validation_PreapprovalUsed" xml:space="preserve"><value>Aquesta preaprovació ja s'ha fet servir en un informe aprovat.</value></data>
+  <data name="Expenses_Validation_PreapprovalNotHeld" xml:space="preserve"><value>Aquest informe ja no té aquesta preaprovació.</value></data>
   <data name="Expenses_Detail_RejectedGuidance" xml:space="preserve"><value>Pots corregir aquest informe sense començar de nou: obre qualsevol línia de sota per editar-la, substituir-ne el rebut o eliminar-la, i torna a enviar-lo.</value></data>
   <data name="Expenses_Detail_RejectedGuidanceLink" xml:space="preserve"><value>Ves a les línies</value></data>
   <data name="Expenses_Submitter" xml:space="preserve"><value>Sol·licitant</value></data>

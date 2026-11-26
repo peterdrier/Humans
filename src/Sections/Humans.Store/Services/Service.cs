@@ -1107,7 +1107,7 @@ internal sealed class Service(
             var listed = await stripeService.ListStoreRefundsAsync(pi, ct);
             if (listed is null)
                 return RefuseRefundCheck(orderId,
-                    "Couldn't read refunds from Stripe: the Store account's read key is missing or lacks refund read access.");
+                    "Couldn't read refunds from Stripe with the Store account's read key. The Stripe warning in the log says why.");
             refunds.AddRange(listed);
         }
 
@@ -1124,7 +1124,8 @@ internal sealed class Service(
         var total = 0m;
         var pending = 0;
         var settled = 0;
-        var cancelled = 0;
+        var failed = 0;
+        var canceled = 0;
         foreach (var refund in refunds.OrderBy(r => r.CreatedAt))
         {
             var status = RefundStatusOf(refund.Status);
@@ -1142,7 +1143,8 @@ internal sealed class Service(
                     $"Stripe refund {refund.RefundId} of EUR {existing.AmountEur:0.00} {verb}",
                     actorUserId, orderId, AuditEntityTypes.Order);
                 if (status == PaymentStatus.Paid) settled++;
-                else cancelled++;
+                else if (string.Equals(refund.Status, "canceled", StringComparison.Ordinal)) canceled++;
+                else failed++;
                 continue;
             }
 
@@ -1172,7 +1174,7 @@ internal sealed class Service(
             if (status == PaymentStatus.Pending) pending++;
         }
 
-        return new StripeRefundCheckResult(recorded, total, pending, settled, cancelled);
+        return new StripeRefundCheckResult(recorded, total, pending, settled, failed, canceled);
     }
 
     /// <summary>Stripe's <c>pending</c> and <c>requires_action</c> are money on its way out; <c>failed</c> and
@@ -1189,7 +1191,7 @@ internal sealed class Service(
     private StripeRefundCheckResult RefuseRefundCheck(Guid orderId, string reason)
     {
         logger.LogWarning("Stripe refund check refused for order {OrderId}: {Reason}", orderId, reason);
-        return new StripeRefundCheckResult(0, 0m, 0, 0, 0, reason);
+        return new StripeRefundCheckResult(0, 0m, 0, 0, 0, 0, reason);
     }
 
     /// <summary>

@@ -128,7 +128,8 @@ internal sealed partial class GrantService
         if (save.Name.Trim().Length > NameMax || save.Entitles.Trim().Length > EntitlesMax
             || (save.Description?.Length ?? 0) > DescriptionMax)
             return "A field is too long.";
-        if (!Enum.IsDefined(save.IssuedBy) || !Enum.IsDefined(save.Status)) return "The issuer or status is out of range.";
+        if (!Enum.IsDefined(save.IssuedBy)) return "The issuer is out of range.";
+        if (!Enum.IsDefined(save.Status)) return "The status is out of range.";
         if (save.IssuedBy == GrantIssuer.Source)
         {
             if (string.IsNullOrWhiteSpace(save.SourceKey)) return "A source program needs the key of the section that fills it.";

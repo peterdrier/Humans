@@ -1842,7 +1842,7 @@ public class SepaBankBookingTests
         var result = await MakeService().BookSepaFileMatchesAsync(MatchedFileId, Guid.NewGuid());
 
         result.Succeeded.Should().BeFalse();
-        result.Message.Should().Contain("already booked or withdrawn");
+        result.Message.Should().Contain("1 transfer(s) in that file are already booked and 1 withdrawn");
         await AssertNothingPostedAsync();
     }
 

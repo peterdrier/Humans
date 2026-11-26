@@ -208,7 +208,7 @@ public class AccountControllerGateSignInTests
         _controller.ModelState.Clear();
         await _controller.GateSignIn(SystemUserIds.GateTerminalLoginName, "wrong");
         _controller.ModelState[string.Empty]!.Errors.Single().ErrorMessage
-            .Should().Contain("GateSignIn_Invalid");
+            .Should().Contain("GateSignIn_WrongPassword");
     }
 
     [HumansFact]

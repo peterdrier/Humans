@@ -26,6 +26,7 @@ public static class DrivePermissionLevelExtensions
         DrivePermissionLevel.Contributor => "writer",
         DrivePermissionLevel.ContentManager => "fileOrganizer",
         DrivePermissionLevel.Manager => "organizer",
-        _ => throw new ArgumentOutOfRangeException(nameof(level), level, "Cannot map None or unknown DrivePermissionLevel to an API role")
+        DrivePermissionLevel.None => throw new ArgumentOutOfRangeException(nameof(level), level, "DrivePermissionLevel.None has no API role"),
+        _ => throw new ArgumentOutOfRangeException(nameof(level), level, "Not a defined DrivePermissionLevel")
     };
 }

@@ -1,5 +1,6 @@
 using System.Globalization;
 using Humans.Base.Extensions;
+using Humans.Auth.Contracts;
 using Humans.Auth.Services;
 using Humans.Auth.Tests.Infrastructure;
 using AwesomeAssertions;
@@ -311,36 +312,36 @@ public sealed class SignInLinkServiceTests
     [HumansFact]
     public void VerifySignupToken_InvalidToken_ReturnsNull()
     {
-        _urlBuilder.UnprotectSignupToken(Arg.Any<string>()).Returns((SignInLinkToken?)null);
+        _urlBuilder.UnprotectSignupToken(Arg.Any<string>()).Returns(SignInLinkRead.Unreadable("token is not Base64url"));
         var result = _service.VerifySignupToken("not-a-valid-token");
-        result.Should().BeNull();
+        result.Should().Be(new SignInLinkSignupCheck(null, SignInLinkFailure.Unreadable));
     }
 
     [HumansFact]
-    public async Task VerifyLoginTokenAsync_NonexistentUser_ReturnsFalse()
+    public async Task VerifySignInTokenAsync_NonexistentUser_ReturnsFalse()
     {
         _userService.GetRawUserInfoAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>()).Returns((UserInfo?)null);
 
         var result = await _service.VerifySignInTokenAsync(Guid.NewGuid(), "some-token", Xunit.TestContext.Current.CancellationToken);
 
-        result.Should().BeFalse();
+        result.Should().Be(SignInLinkFailure.AccountNotFound);
     }
 
     [HumansFact]
-    public async Task VerifyLoginTokenAsync_InvalidToken_ReturnsFalse()
+    public async Task VerifySignInTokenAsync_InvalidToken_ReturnsFalse()
     {
         var userId = Guid.NewGuid();
         var user = new User { Id = userId, UserName = "test@test.com" };
         _userService.GetRawUserInfoAsync(userId, Arg.Any<CancellationToken>()).Returns(CreateUserInfo(user));
-        _urlBuilder.UnprotectSignInToken("bad-token").Returns((SignInLinkToken?)null);
+        _urlBuilder.UnprotectSignInToken("bad-token").Returns(SignInLinkRead.Unreadable("token is not Base64url"));
 
         var result = await _service.VerifySignInTokenAsync(userId, "bad-token", Xunit.TestContext.Current.CancellationToken);
 
-        result.Should().BeFalse();
+        result.Should().Be(SignInLinkFailure.Unreadable);
     }
 
     [HumansFact]
-    public async Task VerifyLoginTokenAsync_TokenAlreadyConsumed_ReturnsFalse()
+    public async Task VerifySignInTokenAsync_TokenAlreadyConsumed_ReturnsFalse()
     {
         var userId = Guid.NewGuid();
         var user = new User { Id = userId, UserName = "test@test.com" };
@@ -350,11 +351,11 @@ public sealed class SignInLinkServiceTests
 
         var result = await _service.VerifySignInTokenAsync(userId, "good-token", Xunit.TestContext.Current.CancellationToken);
 
-        result.Should().BeFalse();
+        result.Should().Be(SignInLinkFailure.AlreadyUsed);
     }
 
     [HumansFact]
-    public async Task VerifyLoginTokenAsync_ExpiredToken_ReturnsFalseWithoutConsumingIt()
+    public async Task VerifySignInTokenAsync_ExpiredToken_ReturnsExpiredUnconsumed()
     {
         var userId = Guid.NewGuid();
         _userService.GetRawUserInfoAsync(userId, Arg.Any<CancellationToken>())
@@ -363,7 +364,7 @@ public sealed class SignInLinkServiceTests
 
         var result = await _service.VerifySignInTokenAsync(userId, "old-token", Xunit.TestContext.Current.CancellationToken);
 
-        result.Should().BeFalse();
+        result.Should().Be(SignInLinkFailure.Expired);
         await _rateLimiter.DidNotReceiveWithAnyArgs().TryConsumeTokenAsync(default!, default);
     }
 
@@ -372,11 +373,11 @@ public sealed class SignInLinkServiceTests
     {
         _urlBuilder.UnprotectSignupToken("old-token").Returns(ExpiredToken("new@test.com"));
 
-        _service.VerifySignupToken("old-token").Should().BeNull();
+        _service.VerifySignupToken("old-token").Failure.Should().Be(SignInLinkFailure.Expired);
     }
 
     [HumansFact]
-    public async Task VerifyLoginTokenAsync_ValidToken_ReturnsTrue()
+    public async Task VerifySignInTokenAsync_ValidToken_ReturnsTrue()
     {
         var userId = Guid.NewGuid();
         var user = new User { Id = userId, UserName = "test@test.com" };
@@ -385,13 +386,13 @@ public sealed class SignInLinkServiceTests
 
         var result = await _service.VerifySignInTokenAsync(userId, "good-token", Xunit.TestContext.Current.CancellationToken);
 
-        result.Should().BeTrue();
+        result.Should().BeNull();
     }
 
     [HumansTheory]
     [Xunit.InlineData(false)]
     [Xunit.InlineData(true)]
-    public async Task VerifyLoginTokenAsync_MergedIdentity_KeepsOriginalTokenBinding(bool survivorPayload)
+    public async Task VerifySignInTokenAsync_MergedIdentity_KeepsOriginalTokenBinding(bool survivorPayload)
     {
         var userId = Guid.NewGuid();
         var survivorId = Guid.NewGuid();
@@ -403,7 +404,7 @@ public sealed class SignInLinkServiceTests
 
         var result = await _service.VerifySignInTokenAsync(userId, "merged-token", ct);
 
-        result.Should().Be(!survivorPayload);
+        result.Should().Be(survivorPayload ? SignInLinkFailure.Unreadable : null);
         await _userService.Received(1).GetRawUserInfoAsync(userId, ct);
         if (survivorPayload)
             await _rateLimiter.DidNotReceiveWithAnyArgs().TryConsumeTokenAsync(default!, default);
@@ -428,7 +429,7 @@ public sealed class SignInLinkServiceTests
     }
 
     [HumansFact]
-    public async Task VerifyLoginTokenAsync_IdentityReadCancellation_StopsBeforeTokenReservation()
+    public async Task VerifySignInTokenAsync_ReadCancelled_SkipsReservation()
     {
         using var cancellation = new CancellationTokenSource();
         await cancellation.CancelAsync();
@@ -444,19 +445,19 @@ public sealed class SignInLinkServiceTests
     }
 
     [HumansFact]
-    public async Task VerifyAndConsumeSignupTokenAsync_ValidUnusedToken_ReturnsEmail()
+    public async Task ConsumeSignupTokenAsync_ValidUnusedToken_ReturnsEmail()
     {
         _urlBuilder.UnprotectSignupToken("good-token").Returns(Token("new@test.com"));
 
         var result = await _service.ConsumeSignupTokenAsync(
             "good-token", ct: Xunit.TestContext.Current.CancellationToken);
 
-        result.Should().Be("new@test.com");
+        result.Email.Should().Be("new@test.com");
         await _rateLimiter.Received(1).TryConsumeTokenAsync("good-token", Arg.Any<TimeSpan>());
     }
 
     [HumansFact]
-    public async Task VerifyAndConsumeSignupTokenAsync_TokenAlreadyConsumed_ReturnsNull()
+    public async Task ConsumeSignupTokenAsync_TokenAlreadyConsumed_ReturnsNull()
     {
         // A consumed signup link must not redeem again. The payload still decodes —
         // only the reservation stops the second redemption.
@@ -466,18 +467,18 @@ public sealed class SignInLinkServiceTests
         var result = await _service.ConsumeSignupTokenAsync(
             "good-token", ct: Xunit.TestContext.Current.CancellationToken);
 
-        result.Should().BeNull();
+        result.Failure.Should().Be(SignInLinkFailure.AlreadyUsed);
     }
 
     [HumansFact]
     public async Task ConsumeSignupToken_InvalidToken_SkipsReservation()
     {
-        _urlBuilder.UnprotectSignupToken("bad-token").Returns((SignInLinkToken?)null);
+        _urlBuilder.UnprotectSignupToken("bad-token").Returns(SignInLinkRead.Unreadable("token is not Base64url"));
 
         var result = await _service.ConsumeSignupTokenAsync(
             "bad-token", ct: Xunit.TestContext.Current.CancellationToken);
 
-        result.Should().BeNull();
+        result.Failure.Should().Be(SignInLinkFailure.Unreadable);
         await _rateLimiter.DidNotReceive().TryConsumeTokenAsync(Arg.Any<string>(), Arg.Any<TimeSpan>());
     }
 
@@ -489,7 +490,7 @@ public sealed class SignInLinkServiceTests
 
         var result = _service.VerifySignupToken("good-token");
 
-        result.Should().Be("new@test.com");
+        result.Email.Should().Be("new@test.com");
         _rateLimiter.ReceivedCalls()
             .Select(c => c.GetMethodInfo().Name)
             .Should().NotContain(nameof(ISignInLinkRateLimiter.TryConsumeTokenAsync));
@@ -505,7 +506,7 @@ public sealed class SignInLinkServiceTests
         _rateLimiter.Received(1).ReleaseTokenReservation("good-token");
     }
 
-    private SignInLinkToken Token(string payload) => new(payload, _clock.GetCurrentInstant() + Duration.FromMinutes(15));
+    private SignInLinkRead Token(string payload) => new(new(payload, _clock.GetCurrentInstant() + Duration.FromMinutes(15)), null);
 
-    private SignInLinkToken ExpiredToken(string payload) => new(payload, _clock.GetCurrentInstant() - Duration.FromMinutes(1));
+    private SignInLinkRead ExpiredToken(string payload) => new(new(payload, _clock.GetCurrentInstant() - Duration.FromMinutes(1)), null);
 }

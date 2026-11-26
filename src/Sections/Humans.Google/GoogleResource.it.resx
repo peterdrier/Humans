@@ -115,9 +115,10 @@
   <data name="Google_Identity_Updated" xml:space="preserve">
     <value>Email di servizio Google aggiornata. La sincronizzazione verrà riprovata con la nuova email.</value>
   </data>
-  <data name="Google_Identity_SetRejected" xml:space="preserve">
-    <value>Impossibile impostare l'email di servizio Google — riga sconosciuta o non verificata.</value>
-  </data>
+  <data name="Google_Identity_Refused_AccountNotFound" xml:space="preserve"><value>Impossibile impostare l'email del servizio Google: quell'account non esiste più.</value></data>
+  <data name="Google_Identity_Refused_NotTheirEmail" xml:space="preserve"><value>Impossibile impostare l'email del servizio Google: quell'indirizzo non è su questo account.</value></data>
+  <data name="Google_Identity_Refused_Unverified" xml:space="preserve"><value>Impossibile impostare l'email del servizio Google: verifica prima quell'indirizzo.</value></data>
+  <data name="Google_Identity_Refused_NobodiesAddressWins" xml:space="preserve"><value>Impossibile impostare l'email del servizio Google: un indirizzo @nobodies.team verificato è sempre l'identità Google.</value></data>
   <data name="Google_Identity_Google" xml:space="preserve">
     <value>Google</value>
   </data>

@@ -58,7 +58,10 @@ internal sealed class GateController(
 
         if (!ModelState.IsValid || idConfirmed is not { } confirmed)
         {
-            logger.LogWarning("Rejected gate decision with missing or malformed values from scanner {ScannerId}", scanner.Id);
+            var problem = ModelState.IsValid
+                ? "no idConfirmed value"
+                : "malformed " + string.Join(", ", ModelState.Where(e => e.Value?.Errors.Count > 0).Select(e => e.Key));
+            logger.LogWarning("Rejected gate decision from scanner {ScannerId}: {Problem}", scanner.Id, problem);
             return BadRequest();
         }
 

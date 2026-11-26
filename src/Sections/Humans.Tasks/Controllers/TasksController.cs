@@ -234,10 +234,24 @@ internal sealed class TasksController(
 
     private Task<TasksAccess?> AccessAsync(CancellationToken ct) => TasksAccess.ForAsync(User, permissions, authorization, ct);
 
+    /// <summary>A field that did not bind (a malformed date or event id) would otherwise reach the service as "none".</summary>
     private TaskResult Unreadable()
     {
-        logger.LogWarning("Task form refused because a required field is missing or malformed");
-        return new(Refusal: localizer["Tasks_Refusal_Unreadable"].Value);
+        var fields = string.Join(", ", ModelState
+            .Where(e => e.Value?.Errors.Count > 0)
+            .Select(e => e.Key[(e.Key.LastIndexOf('.') + 1)..] switch
+            {
+                nameof(TaskForm.StartDate) => localizer["Tasks_Form_Start"].Value,
+                nameof(TaskForm.DueDate) => localizer["Tasks_Form_Due"].Value,
+                nameof(TaskForm.EventId) => localizer["Tasks_Form_Event"].Value,
+                nameof(TaskForm.TeamId) => localizer["Tasks_Form_Team"].Value,
+                nameof(TaskForm.SlotCount) => localizer["Tasks_Form_Slots"].Value,
+                nameof(TaskForm.Priority) => localizer["Tasks_Form_Priority"].Value,
+                "Status" => localizer["Tasks_Col_Status"].Value,
+                var field => field
+            }));
+        logger.LogWarning("Task form refused because these fields did not bind: {Fields}", fields);
+        return new(Refusal: localizer["Tasks_Refusal_Unreadable", fields].Value);
     }
 
     private async Task<TeamPageViewModel> TeamPageAsync(

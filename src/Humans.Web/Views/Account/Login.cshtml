@@ -6,9 +6,13 @@
     var providers = (await SignInManager.GetExternalAuthenticationSchemesAsync()).ToList();
     var devAuthEnabled = !HostEnv.IsProduction() && Config.GetValue<bool>("DevAuth:Enabled");
     var loginError = Context.Request.Query["error"].ToString();
-    var loginErrorMessage = string.Equals(loginError, "lockedout", StringComparison.Ordinal)
-        ? Localizer["Login_LockedOut"].Value
-        : Localizer["Login_SignInFailed"].Value;
+    var loginErrorMessage = loginError switch
+    {
+        "lockedout" => Localizer["Login_LockedOut"].Value,
+        "cancelled" => Localizer["Login_Cancelled"].Value,
+        "cookie-missing" => Localizer["Login_CookieMissing"].Value,
+        _ => Localizer["Login_SignInFailed"].Value,
+    };
 }
 
 <div class="row justify-content-center">

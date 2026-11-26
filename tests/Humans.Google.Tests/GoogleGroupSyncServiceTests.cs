@@ -489,7 +489,7 @@ public sealed class GoogleGroupSyncServiceTests
 
         _syncScheduler.Enqueued.Should().BeEmpty();
         _logger.Messages.Should().Contain(m =>
-            m.Contains("RequestSyncAsync called with null/empty group key", StringComparison.Ordinal));
+            m.Contains("RequestSyncAsync called with a blank group key", StringComparison.Ordinal));
     }
 
     [HumansFact]

@@ -215,9 +215,10 @@
   <data name="Teams_NotMember" xml:space="preserve">
     <value>Du bist kein Mitglied dieses Teams.</value>
   </data>
-  <data name="Teams_RequestUnavailable" xml:space="preserve">
-    <value>Diese Beitrittsanfrage ist nicht verfügbar oder nicht mehr offen.</value>
-  </data>
+  <data name="Teams_RequestNotFound" xml:space="preserve"><value>Du hast keine solche Beitrittsanfrage.</value></data>
+  <data name="Teams_RequestApproved" xml:space="preserve"><value>Diese Beitrittsanfrage wurde bereits angenommen.</value></data>
+  <data name="Teams_RequestRejected" xml:space="preserve"><value>Diese Beitrittsanfrage wurde bereits abgelehnt.</value></data>
+  <data name="Teams_RequestWithdrawn" xml:space="preserve"><value>Du hast diese Beitrittsanfrage bereits zurückgezogen.</value></data>
   <data name="Teams_ActionFailed" xml:space="preserve">
     <value>Diese Teamaktion konnte nicht abgeschlossen werden. Bitte versuche es erneut.</value>
   </data>

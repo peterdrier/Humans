@@ -103,8 +103,10 @@ internal interface ITeamRepository : IRepository
     Task<TeamMemberRole?> SetMemberRoleAsync(
         Guid teamId, Guid userId, TeamMemberRole role, CancellationToken ct = default);
 
-    /// <summary>False when no pending request was found.</summary>
-    Task<bool> WithdrawRequestAsync(
+    /// <summary>
+    /// The request's status before the call (Pending means it was withdrawn now), or null when the user has no such request.
+    /// </summary>
+    Task<TeamJoinRequestStatus?> WithdrawRequestAsync(
         Guid requestId, Guid userId, Instant now, CancellationToken ct = default);
 
     /// <summary>False when the request is missing or no longer pending.</summary>

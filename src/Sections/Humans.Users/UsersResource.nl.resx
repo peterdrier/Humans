@@ -451,17 +451,19 @@
   <data name="Users_EmailGrid_ConfirmUnlink" xml:space="preserve">
     <value>Dit Google-account ontkoppelen?</value>
   </data>
-  <data name="Users_EmailGrid_UnlinkRejected" xml:space="preserve">
-    <value>Ontkoppelen mislukt — de rij is onbekend of heeft geen inlogprovider.</value>
-  </data>
+  <data name="Users_EmailGrid_ClearPrimaryNotPrimary" xml:space="preserve"><value>Primaire markering kon niet worden verwijderd: dit e-mailadres is niet als primair gemarkeerd.</value></data>
+  <data name="Users_EmailGrid_ClearPrimaryOnlyOne" xml:space="preserve"><value>Primaire markering kon niet worden verwijderd: dit is het enige geverifieerde primaire e-mailadres.</value></data>
+  <data name="Users_EmailGrid_ClearPrimaryChanged" xml:space="preserve"><value>Primaire markering kon niet worden verwijderd: dit e-mailadres is intussen gewijzigd. Herlaad en controleer.</value></data>
+  <data name="Users_EmailGrid_UnlinkNoProvider" xml:space="preserve"><value>Ontkoppelen mislukt: dit e-mailadres heeft geen inlogprovider.</value></data>
+  <data name="Users_EmailGrid_UnlinkAccountNotFound" xml:space="preserve"><value>Ontkoppelen mislukt: het account bestaat niet meer.</value></data>
+  <data name="Users_EmailGrid_UnlinkLoginNotFound" xml:space="preserve"><value>Ontkoppelen mislukt: deze aanmelding is niet meer aan het account gekoppeld.</value></data>
+  <data name="Users_EmailGrid_UnlinkLoginRemovalFailed" xml:space="preserve"><value>Ontkoppelen mislukt: het verwijderen van de aanmelding is mislukt. Er is niets gewijzigd.</value></data>
+  <data name="Users_EmailGrid_UnlinkRowNotRemoved" xml:space="preserve"><value>De aanmelding is ontkoppeld, maar de bijbehorende e-mailrij kon niet worden verwijderd.</value></data>
   <data name="Users_EmailGrid_SetPrimary" xml:space="preserve">
     <value>Als primair instellen</value>
   </data>
   <data name="Users_EmailGrid_PrimaryFlagCleared" xml:space="preserve">
     <value>Primaire markering van die rij verwijderd.</value>
-  </data>
-  <data name="Users_EmailGrid_ClearPrimaryRejected" xml:space="preserve">
-    <value>Primaire markering kon niet worden verwijderd — de rij is onbekend of is momenteel niet gemarkeerd.</value>
   </data>
   <data name="Users_EmailGrid_Clear" xml:space="preserve">
     <value>Wissen</value>
