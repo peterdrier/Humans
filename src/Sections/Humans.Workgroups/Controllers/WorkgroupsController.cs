@@ -25,7 +25,7 @@ namespace Humans.Workgroups.Controllers;
 internal sealed class WorkgroupsController(
     IWorkgroupService workgroups,
     IUserService users,
-    IRoleAssignmentService roles,
+    ISystemRoleService roles,
     IGovernanceService governance,
     IStringLocalizer<WorkgroupsResource> localizer,
     IStringLocalizer<CalendarResource> calendarLocalizer,

@@ -150,7 +150,7 @@ public class CachingUserServiceTests
         var sut = CreateSut();
         (await sut.GetUserInfoAsync(userId, ct))!.BurnerName.Should().Be("Before");
         var failure = new IOException("Login tracking unavailable");
-        _inner.RecordLoginAsync(userId, ct).Returns(_ =>
+        _inner.RecordSignInAsync(userId, ct).Returns(_ =>
         {
             committed = true;
             return refreshFailure ? Task.CompletedTask : Task.FromException(failure);
@@ -158,7 +158,7 @@ public class CachingUserServiceTests
         _inner.GetUserInfoAsync(userId, Arg.Any<CancellationToken>())
             .Returns(_ => ValueTask.FromException<UserInfo?>(failure));
 
-        var record = () => sut.RecordLoginAsync(userId, ct);
+        var record = () => sut.RecordSignInAsync(userId, ct);
 
         await record.Should().NotThrowAsync();
         (await sut.GetUserInfoAsync(userId, ct))!.BurnerName.Should().Be("After");
@@ -170,11 +170,11 @@ public class CachingUserServiceTests
         var userId = Guid.NewGuid();
         using var cancelled = new CancellationTokenSource();
         await cancelled.CancelAsync();
-        _inner.RecordLoginAsync(userId, cancelled.Token)
+        _inner.RecordSignInAsync(userId, cancelled.Token)
             .Returns(Task.FromCanceled(cancelled.Token));
         var sut = CreateSut();
 
-        var record = () => sut.RecordLoginAsync(userId, cancelled.Token);
+        var record = () => sut.RecordSignInAsync(userId, cancelled.Token);
 
         await record.Should().ThrowAsync<OperationCanceledException>();
     }

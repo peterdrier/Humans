@@ -20,11 +20,11 @@ internal sealed partial class TeamResourceService(
     IClock clock,
     ILogger<TeamResourceService> logger) : ITeamResourceManagement
 {
-    // Lazy resolution: eagerly injecting IRoleAssignmentService creates a
-    // ctor cycle TeamResourceService → IRoleAssignmentService → ISystemTeamSync
+    // Lazy resolution: eagerly injecting ISystemRoleService creates a
+    // ctor cycle TeamResourceService → ISystemRoleService → ISystemTeamSync
     // → IGoogleGroupSync → ITeamResourceManagement. Only one method uses it.
-    private IRoleAssignmentService RoleAssignmentService
-        => serviceProvider.GetRequiredService<IRoleAssignmentService>();
+    private ISystemRoleService SystemRoleService
+        => serviceProvider.GetRequiredService<ISystemRoleService>();
 
     public Task MarkResourceSyncedAsync(Guid resourceId, Instant now, CancellationToken ct = default)
         => repository.MarkSyncedAsync(resourceId, now, ct);
@@ -399,7 +399,7 @@ internal sealed partial class TeamResourceService(
 
     public async Task<bool> CanManageTeamResourcesAsync(Guid teamId, Guid userId, CancellationToken ct = default)
     {
-        if (await RoleAssignmentService.IsUserTeamsAdminAsync(userId, ct))
+        if (await SystemRoleService.IsUserTeamsAdminAsync(userId, ct))
         {
             return true;
         }

@@ -40,16 +40,16 @@
   <resheader name="writer">
     <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=2.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
   </resheader>
-  <data name="Auth_Email_MagicLinkLogin_Subject" xml:space="preserve">
+  <data name="Auth_Email_SignInLink_Subject" xml:space="preserve">
     <value>Dein Anmeldelink für Nobodies</value>
   </data>
-  <data name="Auth_Email_MagicLinkLogin_Body" xml:space="preserve">
+  <data name="Auth_Email_SignInLink_Body" xml:space="preserve">
     <value>&lt;p&gt;Hallo {0},&lt;/p&gt;&lt;p&gt;Klicke auf den folgenden Link, um dich anzumelden:&lt;/p&gt;&lt;p&gt;&lt;a href="{1}"&gt;Bei Nobodies anmelden&lt;/a&gt;&lt;/p&gt;&lt;p&gt;Dieser Link läuft in 15 Minuten ab und kann nur einmal verwendet werden.&lt;/p&gt;&lt;p&gt;Falls du dies nicht angefordert hast, kannst du diese E-Mail ignorieren.&lt;/p&gt;</value>
   </data>
-  <data name="Auth_Email_MagicLinkSignup_Subject" xml:space="preserve">
+  <data name="Auth_Email_SignInLinkSignup_Subject" xml:space="preserve">
     <value>Willkommen bei Nobodies — bestätige deine E-Mail</value>
   </data>
-  <data name="Auth_Email_MagicLinkSignup_Body" xml:space="preserve">
+  <data name="Auth_Email_SignInLinkSignup_Body" xml:space="preserve">
     <value>&lt;p&gt;Willkommen bei Nobodies!&lt;/p&gt;&lt;p&gt;Klicke auf den folgenden Link, um dein Konto zu erstellen:&lt;/p&gt;&lt;p&gt;&lt;a href="{0}"&gt;Konto erstellen&lt;/a&gt;&lt;/p&gt;&lt;p&gt;Dieser Link läuft in 15 Minuten ab und kann nur einmal verwendet werden.&lt;/p&gt;&lt;p&gt;Falls du dies nicht angefordert hast, kannst du diese E-Mail ignorieren.&lt;/p&gt;</value>
   </data>
   <data name="Auth_Roles_Title" xml:space="preserve">
@@ -110,5 +110,5 @@
     <value>Grund der Zuweisung</value>
   </data>
   <data name="Auth_Notification_RoleAssigned" xml:space="preserve"><value>Dir wurde die Systemrolle {0} zugewiesen</value><comment>{0}=role name</comment></data>
-  <data name="Auth_Notification_RoleEnded" xml:space="preserve"><value>Dir wurde die Systemrolle {0} entzogen</value><comment>{0}=role name</comment></data>
+  <data name="Auth_Notification_RoleRevoked" xml:space="preserve"><value>Dir wurde die Systemrolle {0} entzogen</value><comment>{0}=role name</comment></data>
 </root>

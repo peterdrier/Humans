@@ -2,7 +2,7 @@
   src/Sections/Humans.Workgroups/**
   tests/Humans.Workgroups.Tests/**
   src/Humans.Base/Users/IUserService.cs
-  src/Sections/Humans.Auth/Contracts/IRoleAssignmentService.cs
+  src/Sections/Humans.Auth/Contracts/ISystemRoleService.cs
   src/Sections/Humans.Settings/Contracts/ISettingsService.cs
   src/Sections/Humans.Google/Contracts/IGoogleSyncService.cs
   src/Sections/Humans.Surveys/Contracts/ISurveyAnalysisRead.cs
@@ -49,7 +49,7 @@ Repository: `IWorkgroupRepository`.
 | workgroup_document_comments | R/W |
 | workgroups_settings | R/W |
 
-Cross-section calls: `IUserService`, `IRoleAssignmentService`,
+Cross-section calls: `IUserService`, `ISystemRoleService`,
 `ISettingsService` (legacy root read only), `IGoogleSyncService`, `IGoogleSyncWrite`, `IFinanceWrite`,
 `IHoldedService`, `INotificationService`, `IEmailService`, the section's own
 `WorkgroupsEmails` builder, `IAuditLogService`, `ISurveyAnalysisRead`, `IClock` (NodaTime).

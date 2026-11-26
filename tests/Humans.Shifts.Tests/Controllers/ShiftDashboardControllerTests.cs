@@ -142,7 +142,7 @@ public class ShiftDashboardControllerTests
             model.ShiftDurationBreakdown.Select(r => (r.IsAllDay, r.DurationHours)));
         var parent = model.CoordinatorActivity[2];
         Assert.Equal(new[] { "Old child", "Recent child" }, parent.Subgroups.Select(r => r.TeamName), StringComparer.Ordinal);
-        Assert.Equal(new[] { older, recent }, parent.Subgroups[0].Coordinators.Select(c => c.LastLoginAt!.Value));
+        Assert.Equal(new[] { older, recent }, parent.Subgroups[0].Coordinators.Select(c => c.LastSignInAt!.Value));
         Assert.Equal(activity[1].AggregatePendingCount, parent.AggregatePendingCount);
         Assert.Equal(new[] { "Recent", "Parent", "Z Never", "A Empty" },
             activity.Select(r => r.TeamName), StringComparer.Ordinal);

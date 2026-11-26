@@ -14,23 +14,24 @@ internal sealed class AuthEmails(
     IStringLocalizer<AuthResource> localizer,
     ILogger<AuthEmails> logger)
 {
-    internal const string MagicLinkLoginTemplate = "magic_link_login";
-    internal const string MagicLinkSignupTemplate = "magic_link_signup";
+    // Template names are stored on outbox rows, so they keep their original names.
+    internal const string SignInLinkTemplate = "magic_link_login";
+    internal const string SignInLinkSignupTemplate = "magic_link_signup";
 
-    public EmailMessage MagicLinkLogin(Guid userId, string toEmail, string displayName, string magicLinkUrl, string? culture = null)
+    public EmailMessage SignInLink(Guid userId, string toEmail, string displayName, string signInLinkUrl, string? culture = null)
         => Localized(culture, () => new EmailMessage(
             toEmail, displayName, userId,
-            L("Auth_Email_MagicLinkLogin_Subject"),
-            localizer["Auth_Email_MagicLinkLogin_Body", Encode(displayName), magicLinkUrl],
-            MagicLinkLoginTemplate, Urgent: true));
+            L("Auth_Email_SignInLink_Subject"),
+            localizer["Auth_Email_SignInLink_Body", Encode(displayName), signInLinkUrl],
+            SignInLinkTemplate, Urgent: true));
 
     /// <summary>No account stands behind the address yet, so the message carries no user.</summary>
-    public EmailMessage MagicLinkSignup(string toEmail, string magicLinkUrl, string? culture = null)
+    public EmailMessage SignInLinkSignup(string toEmail, string signInLinkUrl, string? culture = null)
         => Localized(culture, () => new EmailMessage(
             toEmail, toEmail, UserId: null,
-            L("Auth_Email_MagicLinkSignup_Subject"),
-            localizer["Auth_Email_MagicLinkSignup_Body", magicLinkUrl],
-            MagicLinkSignupTemplate, Urgent: true));
+            L("Auth_Email_SignInLinkSignup_Subject"),
+            localizer["Auth_Email_SignInLinkSignup_Body", signInLinkUrl],
+            SignInLinkSignupTemplate, Urgent: true));
 
     private string L(string key) => localizer[key].Value;
 

@@ -35,7 +35,7 @@ public class AboutControllerTests
         var environment = Substitute.For<IWebHostEnvironment>();
         environment.WebRootFileProvider.Returns(files);
         var logger = Substitute.For<ILogger<AboutController>>();
-        var controller = new AboutController(Substitute.For<IUserService>(), Substitute.For<IRoleAssignmentService>(),
+        var controller = new AboutController(Substitute.For<IUserService>(), Substitute.For<ISystemRoleService>(),
             new RoleCatalog(Array.Empty<ISectionRoles>()), SystemClock.Instance, logger);
 
         var view = Assert.IsType<ViewResult>(controller.Index(environment));
@@ -54,7 +54,7 @@ public class AboutControllerTests
     {
         using var request = new CancellationTokenSource();
         var users = Substitute.For<IUserService>();
-        var roles = Substitute.For<IRoleAssignmentService>();
+        var roles = Substitute.For<ISystemRoleService>();
         roles.GetFilteredAsync(null, true, 1, 500, Arg.Any<Instant>(), Arg.Any<CancellationToken>())
             .Returns(async call =>
             {
@@ -63,7 +63,7 @@ public class AboutControllerTests
                     await request.CancelAsync();
                     call.Arg<CancellationToken>().ThrowIfCancellationRequested();
                 }
-                return ((IReadOnlyList<RoleAssignmentSummarySnapshot>)[], 0);
+                return ((IReadOnlyList<SystemRoleSummarySnapshot>)[], 0);
             });
         async ValueTask<IReadOnlyDictionary<Guid, UserInfo>> ReadUsersAsync(CancellationToken ct)
         {
@@ -87,9 +87,9 @@ public class AboutControllerTests
     [HumansFact]
     public async Task Staff_UnrelatedDependencyCancellationKeepsEmptyPageFallback()
     {
-        var roles = Substitute.For<IRoleAssignmentService>();
+        var roles = Substitute.For<ISystemRoleService>();
         roles.GetFilteredAsync(null, true, 1, 500, Arg.Any<Instant>(), Arg.Any<CancellationToken>())
-            .Returns(Task.FromException<(IReadOnlyList<RoleAssignmentSummarySnapshot>, int)>(new OperationCanceledException()));
+            .Returns(Task.FromException<(IReadOnlyList<SystemRoleSummarySnapshot>, int)>(new OperationCanceledException()));
         var controller = new AboutController(Substitute.For<IUserService>(), roles,
             new RoleCatalog(Array.Empty<ISectionRoles>()), SystemClock.Instance, NullLogger<AboutController>.Instance)
         {

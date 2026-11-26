@@ -54,7 +54,7 @@ internal sealed record CoordinatorActivityRow(
     int AggregatePendingCount,
     IReadOnlyList<CoordinatorActivityRow> Subgroups);
 
-internal sealed record CoordinatorLogin(Guid UserId, Instant? LastLoginAt);
+internal sealed record CoordinatorLogin(Guid UserId, Instant? LastSignInAt);
 
 internal sealed record DashboardTrendPoint(
     LocalDate Date,

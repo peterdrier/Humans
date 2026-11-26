@@ -43,7 +43,7 @@ filtering the cached orders projection in memory — no new interface method),
 `ISettingsService` (event timezone / active event), `IShiftService`
 (gate-crew shift roster for the claim screen, via
 `GetBrowseShiftsAsync`), `IUserService` (`SearchUsersAsync`, find by name),
-`IRoleAssignmentService` (supervisor roles, used only by the dormant
+`ISystemRoleService` (supervisor roles, used only by the dormant
 `AuthorizeOverrideAsync` / `IsSupervisorAsync` path; live overrides and undo
 verify the shared `Gate:SupervisorPin`), `ITicketWrite` (participation
 projection and check-in undo), `IAuditLogService` (PIN set/reset audit, never

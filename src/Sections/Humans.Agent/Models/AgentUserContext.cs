@@ -8,7 +8,7 @@ internal sealed record AgentUserContext(
     string PreferredLocale,
     string Tier,
     UserState? AccountState,
-    IReadOnlyList<(string RoleName, string ExpiresIsoDate)> RoleAssignments,
+    IReadOnlyList<(string RoleName, string ExpiresIsoDate)> SystemRoles,
     IReadOnlyList<TeamMembership> Teams,
     IReadOnlyList<string> PendingConsentDocs,
     IReadOnlyList<Guid> OpenTicketIds,

@@ -17,7 +17,7 @@ internal sealed class DevPersonaSeeder(
     IProfileEditorService profileEditorService,
     IUserEmailService userEmailService,
     IContactFieldService contactFieldService,
-    IRoleAssignmentWrite roleAssignmentService,
+    ISystemRoleWrite systemRoleService,
     ITeamService teamService,
     ITeamWrite teamWrite,
     ITeamSeeding teamSeeding,
@@ -82,7 +82,7 @@ internal sealed class DevPersonaSeeder(
         var roleName = isCoordinatorPersona ? null : RoleNameFromSlug(slug);
         var roles = roleName is not null ? new[] { roleName } : Array.Empty<string>();
 
-        var errors = await accountProvisioning.CreateAccountAsync(id, displayName, now, lastLoginAt: now);
+        var errors = await accountProvisioning.CreateAccountAsync(id, displayName, now, lastSignInAt: now);
         if (errors.Count > 0)
         {
             logger.LogError("Failed to create dev persona {Email}: {Errors}", email, string.Join(", ", errors));
@@ -209,7 +209,7 @@ internal sealed class DevPersonaSeeder(
 
     private async Task EnsureSeededRoleAsync(Guid userId, string roleName, Guid assignerId)
     {
-        var result = await roleAssignmentService.AssignRoleAsync(
+        var result = await systemRoleService.AssignRoleAsync(
             userId, roleName, assignerId, "Dev persona — auto-seeded");
 
         if (!result.Success && !string.Equals(result.ErrorKey, "RoleAlreadyActive", StringComparison.Ordinal))
@@ -234,7 +234,7 @@ internal sealed class DevPersonaSeeder(
 
     private async Task SeedProfilelessUserAsync(Guid id, string email, string displayName, Instant now)
     {
-        var errors = await accountProvisioning.CreateAccountAsync(id, displayName, now, lastLoginAt: now);
+        var errors = await accountProvisioning.CreateAccountAsync(id, displayName, now, lastSignInAt: now);
         if (errors.Count > 0)
         {
             logger.LogError("Failed to create dev guest persona {Email}: {Errors}", email, string.Join(", ", errors));

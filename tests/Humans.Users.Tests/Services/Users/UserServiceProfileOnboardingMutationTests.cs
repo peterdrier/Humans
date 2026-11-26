@@ -46,12 +46,12 @@ public sealed class UserServiceProfileOnboardingMutationTests : ServiceTestHarne
         var failure = cancelled
             ? (Exception)new OperationCanceledException(request.Token)
             : new IOException("Last-login write unavailable");
-        repository.SetLastLoginAsync(userId, Arg.Any<Instant>(), request.Token)
+        repository.SetLastSignInAsync(userId, Arg.Any<Instant>(), request.Token)
             .Returns(Task.FromException<bool>(failure));
         var service = new UserService(repository, _fileStorage, Clock,
             NullLogger<UserService>.Instance, AuditLog);
 
-        var record = () => service.RecordLoginAsync(userId, request.Token);
+        var record = () => service.RecordSignInAsync(userId, request.Token);
 
         if (cancelled)
             await record.Should().ThrowAsync<OperationCanceledException>();

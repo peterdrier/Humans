@@ -268,7 +268,7 @@ no links and are shelved under nobodies-collective/Humans#933.
   _Cross-section read approved by Peter (verbal, 2026-06-29)._
 - **Users** — `IUserService` (resolving the signed-in account to its survivor for scanner/actor attribution; the
   claim-search lookup; the kiosk name search by burner or legal name; names render via `<vc:human>`).
-- **Auth** — `IRoleAssignmentService.HasActiveRoleAsync` (is this user a supervisor? Used only by the
+- **Auth** — `ISystemRoleService.HasActiveRoleAsync` (is this user a supervisor? Used only by the
   dormant per-PIN claim/override methods, shelved under nobodies-collective/Humans#933).
 
 ## Configuration
