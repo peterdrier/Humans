@@ -1,3 +1,4 @@
+using Humans.Testing;
 using Humans.Users.Tests.Infrastructure;
 using Humans.Users.Controllers;
 using Humans.Users.Services;
@@ -36,7 +37,7 @@ public class ProfileViewControllerPopoverTests
     private readonly IShiftService _shiftManagement = Substitute.For<IShiftService>();
     private readonly IAuthorizationService _authorizationService = Substitute.For<IAuthorizationService>();
     private readonly ICampService _campService = Substitute.For<ICampService>();
-    private readonly IStringLocalizer<SharedResource> _sharedLocalizer = Substitute.For<IStringLocalizer<SharedResource>>();
+    private readonly IStringLocalizer<SharedResource> _sharedLocalizer = Substitute.For<IStringLocalizer<SharedResource>>().AddFormatting();
     private readonly ProfileViewController _controller;
     private readonly Guid _viewerId = Guid.NewGuid();
 

@@ -47,8 +47,8 @@
                         @foreach (var cell in row.Cells)
                         {
                             var tooltip = cell.TotalSlots == 0
-                                ? string.Format(Localizer["Shifts_ShiftDash_Heatmap_Tooltip_None"].Value, row.RotaName)
-                                : string.Format(Localizer["Shifts_ShiftDash_Heatmap_Tooltip_Filled"].Value, row.RotaName, cell.FilledSlots, cell.TotalSlots);
+                                ? Localizer["Shifts_ShiftDash_Heatmap_Tooltip_None", row.RotaName].Value
+                                : Localizer["Shifts_ShiftDash_Heatmap_Tooltip_Filled", row.RotaName, cell.FilledSlots, cell.TotalSlots].Value;
                             <td class="text-center @CellClass(cell.TotalSlots, cell.FilledSlots)"
                                 title="@tooltip"
                                 style="font-size: 0.8rem; font-weight: 600;">

@@ -11,7 +11,7 @@
             @Model.Name
         }
     </span>
-    <span class="team-count" title="@string.Format(Localizer["Teams_MemberCount"].Value, Model.MemberCount)"><i class="fa-solid fa-user fa-xs"></i> @Model.MemberCount</span>
+    <span class="team-count" title="@Localizer["Teams_MemberCount", Model.MemberCount]"><i class="fa-solid fa-user fa-xs"></i> @Model.MemberCount</span>
     @if (!string.IsNullOrWhiteSpace(Model.Description))
     {
         <div class="team-desc">@Html.SanitizedMarkdown(Model.Description)</div>

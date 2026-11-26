@@ -22,7 +22,7 @@ internal sealed class AuthEmails(
         => Localized(culture, () => new EmailMessage(
             toEmail, displayName, userId,
             L("Auth_Email_SignInLink_Subject"),
-            Lf("Auth_Email_SignInLink_Body", Encode(displayName), signInLinkUrl),
+            localizer["Auth_Email_SignInLink_Body", Encode(displayName), signInLinkUrl],
             SignInLinkTemplate, Urgent: true));
 
     /// <summary>No account stands behind the address yet, so the message carries no user.</summary>
@@ -30,13 +30,10 @@ internal sealed class AuthEmails(
         => Localized(culture, () => new EmailMessage(
             toEmail, toEmail, UserId: null,
             L("Auth_Email_SignInLinkSignup_Subject"),
-            Lf("Auth_Email_SignInLinkSignup_Body", signInLinkUrl),
+            localizer["Auth_Email_SignInLinkSignup_Body", signInLinkUrl],
             SignInLinkSignupTemplate, Urgent: true));
 
     private string L(string key) => localizer[key].Value;
-
-    private string Lf(string key, params object[] args) =>
-        string.Format(CultureInfo.CurrentCulture, localizer[key].Value, args);
 
     private static string Encode(string text) => WebUtility.HtmlEncode(text);
 

@@ -55,7 +55,7 @@
                         }
                         else
                         {
-                            @string.Format(Localizer["Tickets_Buy_Line_Donation"].Value, line.DonationPurpose ?? Localizer["Tickets_Buy_Purpose_General"].Value)
+                            @Localizer["Tickets_Buy_Line_Donation", line.DonationPurpose ?? Localizer["Tickets_Buy_Purpose_General"].Value]
                             <span class="d-block small text-muted">@Localizer["Tickets_Buy_DonationLineNote"]</span>
                         }
                         @if (line.HolderName is not null)
@@ -79,7 +79,7 @@
             </dl>
             @if (Model.IsBuyer && order.RefundedMinor > 0)
             {
-                <p class="small text-muted text-end mt-2 mb-0">@string.Format(Localizer["Tickets_Buy_Refunded"].Value, (order.RefundedMinor / 100m).ToEuro())</p>
+                <p class="small text-muted text-end mt-2 mb-0">@Localizer["Tickets_Buy_Refunded", (order.RefundedMinor / 100m).ToEuro()]</p>
             }
 
             @if (open && Model.IsBuyer)

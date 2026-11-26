@@ -18,9 +18,9 @@ internal sealed class TeamsEmails(
     public EmailMessage AddedToTeam(Guid userId, string userEmail, string userName, string teamName, string teamSlug, IEnumerable<(string Name, string? Url)> resources, string? culture = null)
         => Localized(culture, () => new EmailMessage(
             userEmail, userName, userId,
-            Lf("Teams_Email_AddedToTeam_Subject", teamName),
-            Lf("Teams_Email_AddedToTeam_Body", Encode(userName), Encode(teamName),
-                ResourcesSection(resources), Encode($"{_settings.BaseUrl}/Teams/{teamSlug}")),
+            localizer["Teams_Email_AddedToTeam_Subject", teamName],
+            localizer["Teams_Email_AddedToTeam_Body", Encode(userName), Encode(teamName),
+                ResourcesSection(resources), Encode($"{_settings.BaseUrl}/Teams/{teamSlug}")],
             "added_to_team", MessageCategory.TeamUpdates));
 
     /// <summary>Omitted entirely rather than rendered as an empty list.</summary>
@@ -28,16 +28,13 @@ internal sealed class TeamsEmails(
     {
         var items = resources.OrderBy(r => r.Name, StringComparer.Ordinal).ToList();
         return items.Count > 0
-            ? Lf("Teams_Email_ResourcesSection",
+            ? localizer["Teams_Email_ResourcesSection",
                 string.Join("\n", items.Select(r =>
                     !string.IsNullOrEmpty(r.Url)
                         ? $"<li><a href=\"{Encode(r.Url)}\">{Encode(r.Name)}</a></li>"
-                        : $"<li>{Encode(r.Name)}</li>")))
+                        : $"<li>{Encode(r.Name)}</li>"))]
             : "";
     }
-
-    private string Lf(string key, params object[] args) =>
-        string.Format(CultureInfo.CurrentCulture, localizer[key].Value, args);
 
     private static string Encode(string text) => WebUtility.HtmlEncode(text);
 

@@ -1183,8 +1183,7 @@ internal sealed partial class TicketCheckoutService(
 
     /// <summary>The line's name on the payment page, in the buyer's language (the request culture at checkout).</summary>
     private string PaymentPageLabel(TicketCheckoutOrderLine line) => line.Kind == OrderLineKind.Donation
-        ? string.Format(CultureInfo.CurrentCulture, localizer["Tickets_Buy_Line_Donation"].Value,
-            line.DonationPurpose ?? localizer["Tickets_Buy_Purpose_General"].Value)
+        ? localizer["Tickets_Buy_Line_Donation", line.DonationPurpose ?? localizer["Tickets_Buy_Purpose_General"].Value]
         : line.HolderKind == TicketHolderKind.Child
             ? $"{localizer["Tickets_Buy_Line_Child"].Value} ({line.WaveName})"
             : $"{localizer["Tickets_Buy_Line_Ticket"].Value} ({line.ClassLabel ?? line.WaveName})";

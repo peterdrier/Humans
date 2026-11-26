@@ -1,3 +1,4 @@
+using Humans.Testing;
 using System.Reflection;
 using System.Security.Claims;
 using AwesomeAssertions;
@@ -134,7 +135,7 @@ public class MedicalConditionsServiceTests
             .Returns(ci => _userService.GetUserInfoAsync(ci.ArgAt<Guid>(0), ci.ArgAt<CancellationToken>(1)));
         var controller = new ProfileViewController(users, Substitute.For<IProfilePictureService>(),
             Substitute.For<IShiftService>(),
-            Substitute.For<IStringLocalizer<SharedResource>>(), Substitute.For<ITeamService>(),
+            Substitute.For<IStringLocalizer<SharedResource>>().AddFormatting(), Substitute.For<ITeamService>(),
             Substitute.For<ICampService>(), Substitute.For<IGovernanceService>(),
             Substitute.For<Humans.Auth.Contracts.ISystemRoleService>(),
             Substitute.For<IAuthorizationService>(), _sut);

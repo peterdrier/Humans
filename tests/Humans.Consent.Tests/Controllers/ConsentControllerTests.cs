@@ -1,3 +1,4 @@
+using Humans.Testing;
 using System.Globalization;
 using Humans.Base.Extensions;
 using Microsoft.AspNetCore.Builder;
@@ -39,7 +40,7 @@ public sealed class ConsentControllerTests
     private readonly IOnboardingIntake _onboardingService = Substitute.For<IOnboardingIntake>();
     private readonly IUserService _userService = Substitute.For<IUserService>();
     private readonly IStringLocalizer<ConsentResource> _localizer =
-        Substitute.For<IStringLocalizer<ConsentResource>>();
+        Substitute.For<IStringLocalizer<ConsentResource>>().AddFormatting();
     private readonly DefaultHttpContext _http = new();
 
     public ConsentControllerTests()

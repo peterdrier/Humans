@@ -1,3 +1,4 @@
+using Humans.Testing;
 using Humans.Permissions.Contracts;
 using Humans.Base.Extensions;
 using Humans.Shifts.Domain;
@@ -64,7 +65,7 @@ public sealed class ShiftSignupServiceCoverageGapTests : ShiftsTestHarness
             Clock,
             NullLogger<ShiftSignupService>.Instance,
             _users,
-            Substitute.For<IStringLocalizer<ShiftsResource>>());
+            Substitute.For<IStringLocalizer<ShiftsResource>>().AddFormatting());
     }
 
     [HumansTheory]

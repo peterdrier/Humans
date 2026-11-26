@@ -1,3 +1,4 @@
+using Humans.Testing;
 using AwesomeAssertions;
 using Humans.Base;
 using Humans.Base.Extensions;
@@ -70,7 +71,7 @@ public sealed class IssuesControllerTests
         var authorization = Substitute.For<IAuthorizationService>();
         authorization.AuthorizeAsync(Arg.Any<ClaimsPrincipal>(), Arg.Any<object>(), Arg.Any<IEnumerable<IAuthorizationRequirement>>())
             .Returns(AuthorizationResult.Success());
-        var localizer = Substitute.For<IStringLocalizer<IssuesResource>>();
+        var localizer = Substitute.For<IStringLocalizer<IssuesResource>>().AddFormatting();
         localizer[Arg.Any<string>()].Returns(call => new LocalizedString(call.Arg<string>(), call.Arg<string>()));
         var http = new DefaultHttpContext
         {
@@ -280,7 +281,7 @@ public sealed class IssuesControllerTests
         var authorization = Substitute.For<IAuthorizationService>();
         authorization.AuthorizeAsync(Arg.Any<ClaimsPrincipal>(), Arg.Any<object>(), Arg.Any<IEnumerable<IAuthorizationRequirement>>())
             .Returns(allowed ? AuthorizationResult.Success() : AuthorizationResult.Failed());
-        var localizer = Substitute.For<IStringLocalizer<IssuesResource>>();
+        var localizer = Substitute.For<IStringLocalizer<IssuesResource>>().AddFormatting();
         localizer[Arg.Any<string>()].Returns(call => new LocalizedString(call.Arg<string>(), call.Arg<string>()));
         var http = new DefaultHttpContext
         {
@@ -335,7 +336,7 @@ public sealed class IssuesControllerTests
             RequestServices = services,
             User = new ClaimsPrincipal(new ClaimsIdentity([new Claim(ClaimTypes.NameIdentifier, actor.ToString())], "test"))
         };
-        var localizer = Substitute.For<IStringLocalizer<IssuesResource>>();
+        var localizer = Substitute.For<IStringLocalizer<IssuesResource>>().AddFormatting();
         localizer[Arg.Any<string>()].Returns(call => new LocalizedString(call.Arg<string>(), call.Arg<string>()));
         var controller = new IssuesController(issues, authorization, users, new IssueSectionRouting([]),
             localizer, NullLogger<IssuesController>.Instance)
@@ -403,7 +404,7 @@ public sealed class IssuesControllerTests
             User = new ClaimsPrincipal(new ClaimsIdentity([new Claim(ClaimTypes.NameIdentifier, actor.ToString())], "test"))
         };
         if (ajax) http.Request.Headers.XRequestedWith = "XMLHttpRequest";
-        var localizer = Substitute.For<IStringLocalizer<IssuesResource>>();
+        var localizer = Substitute.For<IStringLocalizer<IssuesResource>>().AddFormatting();
         localizer[Arg.Any<string>()].Returns(call => new LocalizedString(call.Arg<string>(), call.Arg<string>()));
         var controller = new IssuesController(issues, Substitute.For<IAuthorizationService>(), users, new IssueSectionRouting([]),
             localizer, NullLogger<IssuesController>.Instance)
@@ -468,7 +469,7 @@ public sealed class IssuesControllerTests
         users.GetUserInfoAsync(adminId, Arg.Any<CancellationToken>()).Returns(
             UserInfo.Create(new User { Id = adminId }, [], [], null));
         var controller = new IssuesController(issues, Substitute.For<IAuthorizationService>(), users,
-            new IssueSectionRouting([]), Substitute.For<IStringLocalizer<IssuesResource>>(),
+            new IssueSectionRouting([]), Substitute.For<IStringLocalizer<IssuesResource>>().AddFormatting(),
             NullLogger<IssuesController>.Instance)
         {
             ControllerContext = new ControllerContext
@@ -500,7 +501,7 @@ public sealed class IssuesControllerTests
         users.GetUserInfoAsync(userId, Arg.Any<CancellationToken>()).Returns(
             UserInfo.Create(new User { Id = userId }, [], [], null));
         var controller = new IssuesController(issues, Substitute.For<IAuthorizationService>(), users,
-            new IssueSectionRouting([]), Substitute.For<IStringLocalizer<IssuesResource>>(),
+            new IssueSectionRouting([]), Substitute.For<IStringLocalizer<IssuesResource>>().AddFormatting(),
             NullLogger<IssuesController>.Instance)
         {
             ControllerContext = new ControllerContext

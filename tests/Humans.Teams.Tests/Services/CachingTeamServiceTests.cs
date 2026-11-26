@@ -1,3 +1,4 @@
+using Humans.Testing;
 using Microsoft.Extensions.Localization;
 using Humans.Base.Constants;
 using AwesomeAssertions;
@@ -66,7 +67,7 @@ public sealed class CachingTeamServiceTests : TeamsTestHarness
 
         _service = new CachingTeamService(
             _serviceProvider.GetRequiredService<IServiceScopeFactory>(),
-            NullLogger<CachingTeamService>.Instance, Substitute.For<IStringLocalizer<TeamsResource>>());
+            NullLogger<CachingTeamService>.Instance, Substitute.For<IStringLocalizer<TeamsResource>>().AddFormatting());
         _pages = new TeamPageService(
             _service,
             Substitute.For<Humans.Google.Contracts.ITeamResourceService>(),

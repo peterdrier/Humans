@@ -19,9 +19,9 @@ internal sealed class IssuesEmails(
     public EmailMessage IssueComment(Guid userId, string to, string displayName, string issueTitle, string commentContent, string issueLink, string preferredLanguage)
         => Localized(preferredLanguage, () => new EmailMessage(
             to, displayName, userId,
-            Lf("Issues_Email_IssueComment_Subject", issueTitle),
-            Lf("Issues_Email_IssueComment_Body", Encode(displayName), Encode(issueTitle),
-                SanitizedMarkdownRenderer.Render(commentContent), Encode(AbsoluteUrl(issueLink))),
+            localizer["Issues_Email_IssueComment_Subject", issueTitle],
+            localizer["Issues_Email_IssueComment_Body", Encode(displayName), Encode(issueTitle),
+                SanitizedMarkdownRenderer.Render(commentContent), Encode(AbsoluteUrl(issueLink))],
             "issue_comment", MessageCategory.System));
 
     /// <summary>
@@ -32,9 +32,6 @@ internal sealed class IssuesEmails(
         issueLink.StartsWith("http", StringComparison.OrdinalIgnoreCase)
             ? issueLink
             : $"{_settings.BaseUrl.TrimEnd('/')}{(issueLink.StartsWith('/') ? "" : "/")}{issueLink}";
-
-    private string Lf(string key, params object[] args) =>
-        string.Format(CultureInfo.CurrentCulture, localizer[key].Value, args);
 
     private static string Encode(string text) => WebUtility.HtmlEncode(text);
 
