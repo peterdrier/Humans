@@ -437,8 +437,8 @@
   <data name="LinkPreview_Welcome_Description" xml:space="preserve">
     <value>Ga aan de slag op Humans.</value>
   </data>
-  <data name="Login_SignInWithGoogle" xml:space="preserve">
-    <value>Inloggen met Google</value>
+  <data name="Login_SignInWithProvider" xml:space="preserve">
+    <value>Inloggen met {0}</value>
   </data>
   <data name="Login_SetupFailed" xml:space="preserve"><value>We konden je account niet helemaal instellen. Probeer het opnieuw.</value></data>
   <data name="Login_SignInFailed" xml:space="preserve">

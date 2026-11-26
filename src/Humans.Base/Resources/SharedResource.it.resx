@@ -437,8 +437,8 @@
   <data name="LinkPreview_Welcome_Description" xml:space="preserve">
     <value>Configura il tuo account su Humans.</value>
   </data>
-  <data name="Login_SignInWithGoogle" xml:space="preserve">
-    <value>Accedi con Google</value>
+  <data name="Login_SignInWithProvider" xml:space="preserve">
+    <value>Accedi con {0}</value>
   </data>
   <data name="Login_SetupFailed" xml:space="preserve"><value>Non siamo riusciti a completare la configurazione del tuo account. Riprova.</value></data>
   <data name="Login_SignInFailed" xml:space="preserve">
