@@ -120,6 +120,9 @@ internal sealed class RoleAssignmentsController(
         var result = await roleAssignmentManagement.AssignRoleAsync(
             id, model.RoleName, currentUser.Id, model.Notes);
 
+        if (string.Equals(result.ErrorKey, "UserUnavailable", StringComparison.Ordinal))
+            return NotFound();
+
         if (result.Success)
             SetSuccess(localizer["Admin_RoleAssigned", model.RoleName]);
         else if (string.Equals(result.ErrorKey, "NotesTooLong", StringComparison.Ordinal))

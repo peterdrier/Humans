@@ -2,7 +2,7 @@
 import { appState } from './state.js';
 import { buildCampPolygonFeatures } from './geometry.js';
 import { addOfficialZonesLayers } from '../shared/official-zones-layer.js';
-import { SOUND_ZONE_FILL_EXPR, SOUND_ZONE_LINE_EXPR } from '../shared/sound-zone-colors.js';
+import { SOUND_ZONE_FILL_EXPR, SOUND_ZONE_LINE_EXPR, getOverlaySoundZone } from '../shared/sound-zone-colors.js';
 import { isMeasuring } from '../shared/measure.js';
 
 export const DRAW_STYLES = [
@@ -95,16 +95,19 @@ export function renderMap(onCampPolygonClick) {
 
   if (appState.campMap.limitZoneGeoJson) {
     let limitZoneData = JSON.parse(appState.campMap.limitZoneGeoJson);
-    if (limitZoneData.type === 'Feature') {
-      limitZoneData = { type: 'FeatureCollection', features: [limitZoneData] };
+    if (limitZoneData.type !== 'FeatureCollection') {
+      const feature = limitZoneData.type === 'Feature' ? limitZoneData
+        : { type: 'Feature', properties: {}, geometry: limitZoneData };
+      limitZoneData = { type: 'FeatureCollection', features: [feature] };
     }
+    limitZoneData.features = limitZoneData.features.map(feature => ({
+      ...feature, properties: { ...feature.properties, mapSoundZone: getOverlaySoundZone(feature) },
+    }));
     map.addSource('limit-zone', { type: 'geojson', data: limitZoneData });
     map.addLayer({ id: 'limit-zone-fill', type: 'fill', source: 'limit-zone', paint: { 'fill-color': '#ffffff', 'fill-opacity': 0.08 } });
 
     const ZONE_COLORS = { blue: '#2266cc', green: '#229944', yellow: '#cc9900', orange: '#cc6600', red: '#cc1111' };
-    // Support both PascalCase (SoundZone) and legacy snake_case (sound_zone) property names
-    const getSoundZone = (f) => f.properties?.SoundZone || f.properties?.sound_zone;
-    const SoundZones = [...new Set((limitZoneData.features || []).map(getSoundZone).filter(Boolean))];
+    const SoundZones = [...new Set(limitZoneData.features.map(f => f.properties.mapSoundZone).filter(Boolean))];
 
     for (const zone of SoundZones) {
       const colors = zone.split('_').map(c => ZONE_COLORS[c]).filter(Boolean);
@@ -118,16 +121,16 @@ export function renderMap(onCampPolygonClick) {
         map.addLayer({
           id: `limit-zone-line-${zone}-${i}`,
           type: 'line', source: 'limit-zone',
-          filter: ['==', ['coalesce', ['get', 'SoundZone'], ['get', 'sound_zone']], zone],
+          filter: ['==', ['get', 'mapSoundZone'], zone],
           paint: { 'line-color': color, 'line-width': 2, 'line-dasharray': dashArray },
         });
       });
     }
 
-    // Fallback: features with neither SoundZone nor sound_zone property
+    // Unassigned or unusable metadata keeps the boundary visible.
     map.addLayer({
       id: 'limit-zone-line-fallback', type: 'line', source: 'limit-zone',
-      filter: ['all', ['!', ['has', 'SoundZone']], ['!', ['has', 'sound_zone']]],
+      filter: ['==', ['get', 'mapSoundZone'], null],
       paint: { 'line-color': '#ffffff', 'line-width': 2, 'line-dasharray': [4, 2] },
     });
   }

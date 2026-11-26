@@ -20,14 +20,42 @@ namespace Humans.BoxOffice.Tests;
 
 public sealed class BoxOfficePlatformTests
 {
+    [HumansTheory]
+    [InlineData("")]
+    [InlineData(" \t")]
+    [InlineData("rk_test_bad suffix")]
+    [InlineData("rk_test_secret\r\nhidden")]
+    public async Task Platform_UnusableKey_RefusesBeforeSdk(string key)
+    {
+        using var assertions = new AwesomeAssertions.Execution.AssertionScope();
+        var platform = Platform(secretKey: key);
+        var ct = TestContext.Current.CancellationToken;
+        platform.IsConfigured.Should().BeFalse();
+        var findings = await platform.CheckAsync(null, ct);
+        findings.Should().ContainSingle().Which.Ok.Should().BeFalse();
+        findings.Should().OnlyContain(f => !f.Text.Contains("rk_test_secret", StringComparison.Ordinal));
+        Func<Task>[] operations =
+        [
+            () => platform.CreateOrderAsync(Order(Now + Duration.FromHours(1), new PlatformOrderLine(OrderLineKind.Ticket, "Entry", 1000, 0.21m, "Ana")), ct),
+            () => platform.GetStatusAsync("cs_test_config", ct),
+            () => platform.ListOrdersAsync(null, Now - Duration.FromDays(1), Now, ct),
+            () => platform.RefundAsync(new RefundRequest(Guid.NewGuid(), "cs_test_config", 1000, "Resold"), ct),
+            () => platform.CancelAsync("cs_test_config", ct),
+            () => platform.GetPaymentLedgerAsync(Now - Duration.FromDays(1), Now, ct),
+        ];
+        foreach (var operation in operations)
+            await operation.Should().ThrowAsync<TicketingPlatformException>().WithMessage("*not configured*");
+        _http.ReceivedCalls().Should().BeEmpty();
+    }
+
     private static readonly Instant Now = Instant.FromUtc(2027, 1, 10, 12, 0);
     private readonly IHttpClient _http = Substitute.For<IHttpClient>();
     private readonly List<StripeRequest> _requests = [];
 
     private const string WebhookSecret = "whsec_test_boxoffice";
 
-    private BoxOfficePlatform Platform(string webhookSecret = "") =>
-        new(Options.Create(new BoxOfficeSettings { SecretKey = "sk_test_boxoffice", WebhookSecret = webhookSecret }),
+    private BoxOfficePlatform Platform(string webhookSecret = "", string secretKey = "sk_test_boxoffice") =>
+        new(Options.Create(new BoxOfficeSettings { SecretKey = secretKey, WebhookSecret = webhookSecret }),
             new FakeClock(Now), NullLogger<BoxOfficePlatform>.Instance, _http);
 
     private static PlatformOrderRequest Order(Instant expiresAt, params PlatformOrderLine[] lines) => new(

@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Reflection;
 using System.Security.Claims;
 using AwesomeAssertions;
@@ -15,8 +16,12 @@ using Humans.Users.Contracts;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc.Controllers;
+using Microsoft.AspNetCore.Mvc.ModelBinding;
 using Microsoft.AspNetCore.Mvc.ViewFeatures;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging.Abstractions;
+using Microsoft.Extensions.Primitives;
 using NSubstitute;
 using Xunit;
 
@@ -48,7 +53,7 @@ public sealed class TasksControllerTests
             [new Claim(ClaimTypes.NameIdentifier, _me.ToString()), .. roles.Select(r => new Claim(ClaimTypes.Role, r))], "test");
         var http = new DefaultHttpContext { User = new ClaimsPrincipal(identity) };
         return new TasksController(
-            _kit.Service, permissions, _kit.Teams, _kit.Settings, Substitute.For<IUserService>(), Authorization, new TaskTestKit.KeyLocalizer())
+            _kit.Service, permissions, _kit.Teams, _kit.Settings, Substitute.For<IUserService>(), Authorization, new TaskTestKit.KeyLocalizer(), NullLogger<TasksController>.Instance)
         {
             ControllerContext = new ControllerContext { HttpContext = http },
             TempData = new TempDataDictionary(http, Substitute.For<ITempDataProvider>()),
@@ -68,6 +73,124 @@ public sealed class TasksControllerTests
     }
 
     private static TaskForm FormFor(Guid team, string title = "Paint the gate") => new() { TeamId = team, Title = title };
+
+    public static IEnumerable<object?[]> GetRequiredFieldCases()
+    {
+        foreach (var editing in new[] { false, true })
+        {
+            foreach (var field in new[] { "Priority", "SlotCount", "StartRelative", "DueRelative", "NeedsApproval", "IsHidden" })
+            {
+                yield return [editing, field, null];
+                yield return [editing, field, "bad"];
+            }
+            yield return [editing, null, null];
+        }
+    }
+
+    [HumansTheory]
+    [MemberData(nameof(GetRequiredFieldCases))]
+    public async Task TaskForms_IncompleteFields_RefuseWrites(bool editing, string? field, string? value)
+    {
+        var existing = editing ? await _kit.CreateAsync(TaskTestKit.Input(slots: 3, needsApproval: true,
+            reason: "Training", hidden: true)) : null;
+        var controller = ManagerOfProduction();
+        var fields = new Dictionary<string, StringValues>(StringComparer.Ordinal)
+        {
+            ["TeamId"] = TaskTestKit.Production.ToString(),
+            ["Title"] = "Paint the gate",
+            ["EventId"] = TaskTestKit.Spring.ToString(),
+            ["StartDate"] = "2027-03-10",
+            ["DueDate"] = "2027-03-11",
+            ["StartRelative"] = "false",
+            ["DueRelative"] = "false",
+            ["Priority"] = "None",
+            ["SlotCount"] = "4",
+            ["NeedsApproval"] = "false",
+            ["IsHidden"] = "false",
+        };
+        if (field is not null)
+        {
+            if (value is null) fields.Remove(field);
+            else fields[field] = value;
+        }
+        var action = editing ? nameof(TasksController.Edit) : nameof(TasksController.Add);
+        var form = await BindAsync<TaskForm>(controller, action, fields);
+        _kit.Audit.ClearReceivedCalls();
+
+        var result = editing
+            ? await controller.Edit(existing!.Id, form, Ct)
+            : await controller.Add("production", form, Ct);
+
+        if (field is not null)
+        {
+            result.Should().BeOfType<ViewResult>();
+            _kit.Audit.ReceivedCalls().Should().BeEmpty();
+            var saved = await _kit.Service.GetTasksAsync(Ct);
+            if (editing) saved.Should().ContainSingle().Which.Should().BeEquivalentTo(existing);
+            else saved.Should().BeEmpty();
+        }
+        else
+        {
+            result.Should().BeOfType<RedirectToActionResult>();
+            var saved = (await _kit.Service.GetTasksAsync(Ct)).Should().ContainSingle().Which;
+            saved.Priority.Should().Be(SlotPriority.None);
+            saved.SlotCount.Should().Be(4);
+            saved.NeedsApproval.Should().BeFalse();
+            saved.IsHidden.Should().BeFalse();
+            saved.Start!.IsRelative.Should().BeFalse();
+            saved.Due!.IsRelative.Should().BeFalse();
+        }
+    }
+
+    [HumansTheory]
+    [InlineData(null)]
+    [InlineData("bad")]
+    [InlineData("Todo")]
+    public async Task SetStatus_IncompleteField_PreservesBlockedTask(string? status)
+    {
+        var task = await TaskOnAsync(TaskTestKit.Production);
+        await _kit.SetStatusAsync(task.Id, TaskItemStatus.Blocked, "Waiting on supplies");
+        var controller = ManagerOfProduction();
+        var fields = new Dictionary<string, StringValues>(StringComparer.Ordinal);
+        if (status is not null) fields["Status"] = status;
+        var form = await BindAsync<StatusForm>(controller, nameof(TasksController.SetStatus), fields);
+        _kit.Audit.ClearReceivedCalls();
+
+        var result = await controller.SetStatus(task.Id, form, Ct);
+
+        var saved = (await _kit.Service.GetTaskAsync(task.Id, Ct))!;
+        if (string.Equals(status, "Todo", StringComparison.Ordinal))
+        {
+            result.Should().BeOfType<RedirectToActionResult>();
+            saved.Status.Should().Be(TaskItemStatus.Todo);
+            saved.BlockedNote.Should().BeNull();
+        }
+        else
+        {
+            result.Should().BeOfType<ViewResult>();
+            saved.Status.Should().Be(TaskItemStatus.Blocked);
+            saved.BlockedNote.Should().Be("Waiting on supplies");
+            _kit.Audit.ReceivedCalls().Should().BeEmpty();
+        }
+    }
+
+    private static async Task<T> BindAsync<T>(TasksController controller, string action, Dictionary<string, StringValues> fields)
+    {
+        var registrations = new ServiceCollection().AddLogging();
+        registrations.AddControllers();
+        using var services = registrations.BuildServiceProvider();
+        var previousServices = controller.HttpContext.RequestServices;
+        controller.HttpContext.RequestServices = services;
+        var parameter = typeof(TasksController).GetMethod(action)!.GetParameters()
+            .Single(p => string.Equals(p.Name, "form", StringComparison.Ordinal));
+        var metadata = ((ModelMetadataProvider)services.GetRequiredService<IModelMetadataProvider>()).GetMetadataForParameter(parameter);
+        var binder = services.GetRequiredService<IModelBinderFactory>().CreateBinder(new ModelBinderFactoryContext { Metadata = metadata });
+        var descriptor = new ControllerParameterDescriptor { Name = parameter.Name!, ParameterType = parameter.ParameterType, ParameterInfo = parameter };
+        var binding = await services.GetRequiredService<ParameterBinder>().BindModelAsync(controller.ControllerContext, binder,
+            new FormValueProvider(BindingSource.Form, new FormCollection(fields), CultureInfo.InvariantCulture), descriptor, metadata, value: null);
+        controller.HttpContext.RequestServices = previousServices;
+        return (T)binding.Model!;
+    }
 
     [HumansFact]
     public async Task Index_ListsTasksButNotHiddenOnesToAPlainHuman()

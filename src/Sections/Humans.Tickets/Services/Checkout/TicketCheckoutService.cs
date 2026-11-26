@@ -493,6 +493,25 @@ internal sealed partial class TicketCheckoutService(
         return new OrderDetail(order, refunds, timeline, await GetTicketsForOrderAsync(orderId, ct));
     }
 
+    public async Task<BuyOrder?> GetBuyOrderAsync(Guid orderId, Guid viewerId, CancellationToken ct = default)
+    {
+        var order = await repository.GetOrderAsync(orderId, ct);
+        if (order is null)
+            return null;
+        var isBuyer = order.BuyerUserId == viewerId;
+        if (!isBuyer && !order.Lines.Any(line => line.HolderUserId == viewerId))
+            return null;
+
+        // Only the order's own people may trigger a platform refresh.
+        await RefreshAsync(order, ct);
+        var tickets = await repository.GetTicketsForOrderAsync(orderId, ct);
+        return new BuyOrder(order.Id, order.Reference, order.State, order.IsOpen, isBuyer,
+            isBuyer ? order.TotalMinor : 0, isBuyer ? order.TicketTotalMinor : 0, isBuyer ? order.RefundedMinor : 0,
+            isBuyer ? order.PaymentUrl : null,
+            order.Lines.Where(line => isBuyer || line.HolderUserId == viewerId).ToList(),
+            tickets.Where(ticket => isBuyer || ticket.HolderUserId == viewerId).ToList());
+    }
+
     public async Task PlatformOrderChangedAsync(string platformKey, string platformOrderId, CancellationToken ct = default)
     {
         var order = await repository.GetOrderByPlatformIdAsync(platformKey, platformOrderId, ct);
@@ -711,9 +730,11 @@ internal sealed partial class TicketCheckoutService(
         var changed = false;
         foreach (var refund in refunds.Where(r => r.State is RefundState.Pending or RefundState.ManualRequired))
         {
+            ct.ThrowIfCancellationRequested();
+            // A replay may still mutate the platform; finish this refund before honoring shutdown on the next one.
             var own = refund is { State: RefundState.Pending, PlatformRefundId: not null }
                 && order.PlatformOrderId is not null && PlatformFor(order.PlatformKey) is { } platform
-                ? await OwnRefundStateAsync(platform, order, refund, ct)
+                ? await OwnRefundStateAsync(platform, order, refund, CancellationToken.None)
                 : null;
             if (own is { State: RefundState.Succeeded }
                 || (refund.State == RefundState.ManualRequired && refund.AmountMinor <= covered))
@@ -730,9 +751,9 @@ internal sealed partial class TicketCheckoutService(
             {
                 continue;
             }
-            await repository.UpdateRefundAsync(refund, ct);
+            await repository.UpdateRefundAsync(refund, CancellationToken.None);
             await TimelineAsync(order.Id, TicketCheckoutOrderEventKind.RefundSettled,
-                $"Refund of {FormatMinor(refund.AmountMinor)} {order.Currency} {refund.State} per {order.PlatformKey}", null, ct);
+                $"Refund of {FormatMinor(refund.AmountMinor)} {order.Currency} {refund.State} per {order.PlatformKey}", null, CancellationToken.None);
             changed = true;
         }
         return changed;
@@ -818,6 +839,9 @@ internal sealed partial class TicketCheckoutService(
         ITicketingPlatform platform, TicketCheckoutOrder order, TicketCheckoutRefund refund, Guid? actorUserId,
         CancellationToken ct, bool resend = false)
     {
+        ct.ThrowIfCancellationRequested();
+        // Finish the vendor attempt, its saved result and order refresh once a refund starts.
+        ct = CancellationToken.None;
         var amountMinor = refund.AmountMinor;
         RefundResult result;
         try
@@ -1028,7 +1052,7 @@ internal sealed partial class TicketCheckoutService(
         var now = clock.GetCurrentInstant();
         var held = await repository.GetTicketsForHolderAsync(userId, ct);
         foreach (var ticket in held.Concat(await ChildrenOfAsync(held, ct))
-                     .Where(t => t.State is TicketCheckoutTicketState.Valid or TicketCheckoutTicketState.Offered))
+                     .Where(t => t.IsHeld))
         {
             ticket.State = TicketCheckoutTicketState.Void;
             ticket.VoidedAt = now;
@@ -1172,7 +1196,7 @@ internal sealed partial class TicketCheckoutService(
     {
         if ((await repository.GetTicketsForHolderAsync(userId, ct)).Any(t =>
                 t.TicketingSettingsId == settingsId && t.Kind != TicketHolderKind.Child
-                && t.State is TicketCheckoutTicketState.Valid or TicketCheckoutTicketState.Offered))
+                && t.IsHeld))
             return true;
         return (await repository.GetOrdersForUserAsync(userId, ct)).Any(o =>
             o.TicketingSettingsId == settingsId && o.State != TicketCheckoutOrderState.Paid && o.HoldsTickets(now)
@@ -1188,7 +1212,7 @@ internal sealed partial class TicketCheckoutService(
     private async Task<Stock> LoadStockAsync(TicketingSettings ticketing, Instant now, CancellationToken ct)
     {
         var tickets = await repository.GetTicketsForSettingsAsync(ticketing.Id, ct);
-        var sold = tickets.Count(t => t.State is TicketCheckoutTicketState.Valid or TicketCheckoutTicketState.Offered);
+        var sold = tickets.Count(t => t.IsHeld);
         var pending = (await repository.GetOrdersForSettingsAsync(ticketing.Id, ct))
             .Where(o => o.State != TicketCheckoutOrderState.Paid && o.HoldsTickets(now))
             .Sum(o => o.Lines.Count(l => l.Kind == OrderLineKind.Ticket && l.ResaleOfferId is null));

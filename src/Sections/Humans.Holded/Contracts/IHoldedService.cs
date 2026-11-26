@@ -7,7 +7,7 @@ namespace Humans.Holded.Contracts;
 /// says otherwise; callers flip for display.</summary>
 public interface IHoldedService : IApplicationService
 {
-    /// <summary>False without <c>HOLDED_API_KEY_V2</c> (PR previews, local dev): every Holded call would 401, so
+    /// <summary>False without a usable HTTP(S) endpoint and <c>HOLDED_API_KEY_V2</c> authorization header, so
     /// callers skip the work instead of writing off their queues. The mirror's reads still answer.</summary>
     bool IsConfigured { get; }
 

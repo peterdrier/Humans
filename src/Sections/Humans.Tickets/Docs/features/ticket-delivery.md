@@ -30,7 +30,7 @@ so every named person gets their own ticket by email, and can open it in Humans 
 - **Receipt:** order reference (`TicketCheckoutOrder.Reference`, also shown on the buyer and admin order pages), paid date in the event's time zone, payment
   method, each ticket line with its VAT rate, each donation line marked without VAT, total, any refund so far, and
   "a receipt, not an invoice" (no invoices for tickets).
-- **Invitation:** asks the holder to complete their profile and pick a shift, linking `/Profile` and `/Shifts`.
+- **Invitation:** asks the holder to complete their profile and pick a shift, linking `/Profile` and `/Shifts`. It requires a resolved, non-tombstoned account, skips unavailable accounts even if the ticket retains an address, and identifies live merge recipients by their survivor id.
 
 Each holder's mail renders in their profile language once they have signed in, otherwise in the language the order
 was placed in (an account that has never signed in has the default language, not a choice); the receipt in the order's language. All copy lives in `TicketsResource`

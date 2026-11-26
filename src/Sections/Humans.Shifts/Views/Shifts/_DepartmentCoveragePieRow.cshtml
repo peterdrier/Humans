@@ -65,7 +65,9 @@
         var key = 'humans.pieTipDismissed';
         var tip = document.querySelector('[data-dept-pie-tip]');
         if (!tip) return;
-        if (localStorage.getItem(key) !== '1') tip.removeAttribute('hidden');
+        var dismissed = false;
+        try { dismissed = localStorage.getItem(key) === '1'; } catch (_) { /* storage may be disabled */ }
+        if (!dismissed) tip.removeAttribute('hidden');
         var btn = tip.querySelector('[data-dept-pie-tip-dismiss]');
         if (!btn) return;
         btn.addEventListener('click', function () {

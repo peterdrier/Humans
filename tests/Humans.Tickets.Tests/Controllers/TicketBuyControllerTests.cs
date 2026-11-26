@@ -77,13 +77,12 @@ public class TicketBuyControllerTests
         var older = new TicketCheckoutTicket { Id = Guid.NewGuid(), Kind = TicketHolderKind.Adult, IssuedAt = Now };
         var newer = new TicketCheckoutTicket { Id = Guid.NewGuid(), Kind = TicketHolderKind.Adult, IssuedAt = Now + Duration.FromDays(1) };
         var child = new TicketCheckoutTicket { Id = Guid.NewGuid(), Kind = TicketHolderKind.Child, IssuedAt = Now - Duration.FromDays(1) };
-        _checkout.GetOrderDetailAsync(order.Id, Arg.Any<CancellationToken>()).Returns(new OrderDetail(order, [], [], []));
-        _checkout.RefreshOrderAsync(order.Id, Arg.Any<CancellationToken>()).Returns(order);
-        _checkout.GetTicketsForOrderAsync(order.Id, Arg.Any<CancellationToken>()).Returns([child, newer, older]);
+        _checkout.GetBuyOrderAsync(order.Id, _userId, Arg.Any<CancellationToken>())
+            .Returns(new BuyOrder(order.Id, order.Reference, order.State, order.IsOpen, true, 0, 0, 0, null, [], [child, newer, older]));
 
         var result = (ViewResult)await Controller().Order(order.Id, TestContext.Current.CancellationToken);
 
-        ((TicketBuyOrderViewModel)result.Model!).VisibleTickets.Should().Equal(older, newer, child);
+        ((BuyOrder)result.Model!).Tickets.Should().Equal(older, newer, child);
     }
 
     [HumansFact]
@@ -150,14 +149,10 @@ public class TicketBuyControllerTests
         };
     }
 
-    private void Stored(TicketCheckoutOrder order) =>
-        _checkout.GetOrderDetailAsync(order.Id, Arg.Any<CancellationToken>()).Returns(new OrderDetail(order, [], [], []));
-
     [HumansFact]
-    public async Task Someone_elses_order_is_not_found_and_never_refreshed_from_the_platform()
+    public async Task Order_RestrictedReadReturnsNull_NotFound()
     {
         var order = new TicketCheckoutOrder { Id = Guid.NewGuid(), BuyerUserId = Guid.NewGuid() };
-        Stored(order);
 
         var result = await NewController().Order(order.Id, Xunit.TestContext.Current.CancellationToken);
 
@@ -166,15 +161,15 @@ public class TicketBuyControllerTests
     }
 
     [HumansFact]
-    public async Task The_buyer_sees_their_order_refreshed_from_the_platform()
+    public async Task Order_AuthorizedRead_ReturnsView()
     {
         var order = new TicketCheckoutOrder { Id = Guid.NewGuid(), BuyerUserId = ViewerId };
-        Stored(order);
-        _checkout.RefreshOrderAsync(order.Id, Arg.Any<CancellationToken>()).Returns(order);
+        _checkout.GetBuyOrderAsync(order.Id, ViewerId, Arg.Any<CancellationToken>())
+            .Returns(new BuyOrder(order.Id, order.Reference, order.State, order.IsOpen, true, 0, 0, 0, null, [], []));
 
         var result = await NewController().Order(order.Id, Xunit.TestContext.Current.CancellationToken);
 
         result.Should().BeOfType<ViewResult>();
-        await _checkout.Received(1).RefreshOrderAsync(order.Id, Arg.Any<CancellationToken>());
+        await _checkout.Received(1).GetBuyOrderAsync(order.Id, ViewerId, Arg.Any<CancellationToken>());
     }
 }

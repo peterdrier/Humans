@@ -35,6 +35,8 @@ internal sealed class GovernanceBoardSeats(
             return new RoleAssignmentResult(false, InactiveAccount);
 
         var result = await roleWrite.AssignRoleAsync(member.Id, RoleNames.Board, actorUserId, notes: null, ct);
+        if (string.Equals(result.ErrorKey, "UserUnavailable", StringComparison.Ordinal))
+            return new RoleAssignmentResult(false, InactiveAccount);
         if (result.Success)
             await bodySync.RequestAsync(GovernanceBody.Board, ct);
         return result;

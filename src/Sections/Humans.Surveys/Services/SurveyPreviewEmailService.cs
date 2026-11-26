@@ -74,7 +74,12 @@ internal sealed class SurveyPreviewEmailService(
             return (null, "Surveys_PreviewNotFound");
         var survey = detail.Editable;
         var user = await userService.GetUserInfoAsync(userId, ct);
-        if (user?.Email is not { } email || string.IsNullOrWhiteSpace(email))
+        if (user is null || user.IsTombstone)
+        {
+            logger.LogWarning("Refused survey {SurveyId} preview email for unavailable user {UserId}", surveyId, userId);
+            return (null, "Surveys_PreviewNoEmail");
+        }
+        if (user.Email is not { } email || string.IsNullOrWhiteSpace(email))
             return (null, "Surveys_PreviewNoEmail");
 
         var name = user.BurnerName;
@@ -86,7 +91,7 @@ internal sealed class SurveyPreviewEmailService(
         var customMessage = survey.InvitationEmailMessage.ResolveOptional(culture, survey.DefaultCulture);
         var token = previewTokens.Create(surveyId, culture);
         return (emailMessages.SurveyInvitation(
-            userId,
+            user.Id,
             email, name, title, token, culture, customSubject, customMessage), null);
     }
 }

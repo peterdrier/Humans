@@ -597,6 +597,130 @@ public sealed partial class TicketCheckoutServiceTests
 
     private static CancellationToken Ct => TestContext.Current.CancellationToken;
 
+    [HumansTheory]
+    [InlineData("Valid", 1)]
+    [InlineData("Offered", 1)]
+    [InlineData("Resold", 0)]
+    [InlineData("Void", 0)]
+    public async Task GetHeldTicketCountAsync_TicketState_MatchesBuyPage(string state, int count)
+    {
+        _repo.Tickets.Add(new TicketCheckoutTicket
+        {
+            Id = Guid.NewGuid(),
+            TicketingSettingsId = _ticketing.Id,
+            HolderUserId = _buyerId,
+            State = Enum.Parse<TicketCheckoutTicketState>(state),
+        });
+
+        (await _service.GetHeldTicketCountAsync(_buyerId, Ct)).Should().Be(count);
+        (await _service.GetBuyPagesAsync(_buyerId, Ct)).Single().AlreadyHoldsTicket.Should().Be(count > 0);
+    }
+
+    [HumansTheory]
+    [InlineData(true, 4)]
+    [InlineData(false, 6)]
+    public async Task GetHeldTicketCountAsync_EventScope_CountsRelevantEvents(bool active, int count)
+    {
+        _ticketing.Mode = TicketSalesMode.Closed;
+        if (!active)
+            _settings.GetActiveEventSettings().Returns((EventSettingsInfo?)null);
+        var previous = new TicketingSettings { Id = Guid.NewGuid(), EventSettingsId = Guid.NewGuid(), Mode = TicketSalesMode.Closed };
+        var upcoming = new TicketingSettings { Id = Guid.NewGuid(), EventSettingsId = Guid.NewGuid(), Mode = TicketSalesMode.Open };
+        _repo.Settings.AddRange([previous, upcoming]);
+        foreach (var (sale, tickets) in new[] { (_ticketing, 1), (previous, 2), (upcoming, 3) })
+            for (var i = 0; i < tickets; i++)
+                _repo.Tickets.Add(new TicketCheckoutTicket
+                {
+                    Id = Guid.NewGuid(),
+                    TicketingSettingsId = sale.Id,
+                    HolderUserId = _buyerId,
+                    State = TicketCheckoutTicketState.Valid,
+                });
+        _repo.Tickets.Add(new TicketCheckoutTicket
+        {
+            Id = Guid.NewGuid(),
+            TicketingSettingsId = upcoming.Id,
+            HolderUserId = _otherBuyerId,
+            State = TicketCheckoutTicketState.Valid,
+        });
+
+        (await _service.GetHeldTicketCountAsync(_buyerId, Ct)).Should().Be(count);
+    }
+
+    [HumansTheory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public async Task GetBuyOrderAsync_Viewer_ReturnsPermittedData(bool buyer)
+    {
+        var ownLine = new TicketCheckoutOrderLine { Kind = OrderLineKind.Ticket, HolderUserId = _otherBuyerId, AmountMinor = 22500 };
+        var otherLine = new TicketCheckoutOrderLine { Kind = OrderLineKind.Ticket, HolderUserId = _buyerId, AmountMinor = 22500 };
+        var donation = new TicketCheckoutOrderLine { Kind = OrderLineKind.Donation, AmountMinor = 1000 };
+        var order = new TicketCheckoutOrder
+        {
+            Id = Guid.NewGuid(),
+            BuyerUserId = _buyerId,
+            BuyerEmail = "buyer@example.org",
+            TicketingSettingsId = _ticketing.Id,
+            PlatformKey = "test",
+            PlatformOrderId = "cs_1",
+            State = TicketCheckoutOrderState.Paid,
+            TotalMinor = 46000,
+            PaymentUrl = "https://pay.example/cs_1",
+            Lines = [ownLine, otherLine, donation],
+        };
+        _repo.Orders.Add(order);
+        var ownTicket = new TicketCheckoutTicket { Id = Guid.NewGuid(), OrderId = order.Id, HolderUserId = _otherBuyerId };
+        var otherTicket = new TicketCheckoutTicket { Id = Guid.NewGuid(), OrderId = order.Id, HolderUserId = _buyerId };
+        _repo.Tickets.AddRange([ownTicket, otherTicket]);
+        _platform.GetStatusAsync("cs_1", Arg.Any<CancellationToken>())
+            .Returns(new PlatformOrderStatus(PlatformOrderState.Paid, null, null, Now, RefundedMinor: 1000));
+
+        var result = (await _service.GetBuyOrderAsync(order.Id, buyer ? _buyerId : _otherBuyerId, Ct))!;
+
+        result.IsBuyer.Should().Be(buyer);
+        result.Lines.Should().Equal(buyer ? [ownLine, otherLine, donation] : [ownLine]);
+        result.Tickets.Should().Equal(buyer ? [ownTicket, otherTicket] : [ownTicket]);
+        result.TotalMinor.Should().Be(buyer ? 46000 : 0);
+        result.TicketTotalMinor.Should().Be(buyer ? 45000 : 0);
+        result.RefundedMinor.Should().Be(buyer ? 1000 : 0);
+        result.PaymentUrl.Should().Be(buyer ? order.PaymentUrl : null);
+        order.Lines.Should().Equal(ownLine, otherLine, donation);
+        _repo.Tickets.Should().Equal(ownTicket, otherTicket);
+        await _platform.Received(1).GetStatusAsync("cs_1", Ct);
+    }
+
+    [HumansFact]
+    public async Task GetBuyOrderAsync_UnrelatedViewer_DoesNotRefresh()
+    {
+        await _service.StartCheckoutAsync(Buy(), _buyerId, Ct);
+
+        (await _service.GetBuyOrderAsync(_repo.Orders.Single().Id, _otherBuyerId, Ct)).Should().BeNull();
+
+        await _platform.DidNotReceiveWithAnyArgs().GetStatusAsync(default!);
+    }
+
+    [HumansFact]
+    public async Task GetBuyOrderAsync_MissingOrder_ReturnsNull()
+    {
+        (await _service.GetBuyOrderAsync(Guid.NewGuid(), _buyerId, Ct)).Should().BeNull();
+
+        await _platform.DidNotReceiveWithAnyArgs().GetStatusAsync(default!);
+    }
+
+    [HumansFact]
+    public async Task GetBuyOrderAsync_NewPayment_ReturnsIssuedTickets()
+    {
+        await _service.StartCheckoutAsync(Buy(), _buyerId, Ct);
+        var order = _repo.Orders.Single();
+        _platform.GetStatusAsync(order.PlatformOrderId!, Arg.Any<CancellationToken>())
+            .Returns(new PlatformOrderStatus(PlatformOrderState.Paid, 0, "card", Now));
+
+        var result = (await _service.GetBuyOrderAsync(order.Id, _buyerId, Ct))!;
+
+        result.State.Should().Be(TicketCheckoutOrderState.Paid);
+        result.Tickets.Should().ContainSingle().Which.HolderUserId.Should().Be(_buyerId);
+    }
+
     private async Task<TicketCheckoutOrder> BuyAndPayAsync(StartCheckout command, Guid userId)
     {
         var result = await _service.StartCheckoutAsync(command, userId, Ct);
@@ -1812,6 +1936,59 @@ public sealed partial class TicketCheckoutServiceTests
         await _platform.DidNotReceive().RefundAsync(Arg.Any<RefundRequest>(), Arg.Any<CancellationToken>());
     }
 
+    [HumansTheory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task RefundAsync_CancellationDuringAttempt_FinishesRefund(bool replay)
+    {
+        var order = await BuyAndPayAsync(Buy(), _buyerId);
+        using var caller = new CancellationTokenSource();
+        if (replay)
+        {
+            foreach (var id in new[] { "re_first", "re_second" })
+            {
+                var refund = new TicketCheckoutRefund
+                {
+                    Id = Guid.NewGuid(),
+                    OrderId = order.Id,
+                    AmountMinor = 5000,
+                    Reason = "Returned",
+                    State = RefundState.Pending,
+                    PlatformRefundId = id,
+                    CreatedAt = Now
+                };
+                _repo.Refunds.Add((refund.Id, refund));
+            }
+        }
+        _repo.Events.Clear();
+        _platform.ClearReceivedCalls();
+        _platform.RefundAsync(Arg.Any<RefundRequest>(), Arg.Any<CancellationToken>()).Returns(call =>
+        {
+            caller.Cancel();
+            call.ArgAt<CancellationToken>(1).ThrowIfCancellationRequested();
+            return new RefundResult(RefundState.Succeeded, "re_first", null);
+        });
+
+        if (replay)
+        {
+            var refresh = () => _service.RefreshOrderAsync(order.Id, caller.Token);
+            await refresh.Should().ThrowAsync<OperationCanceledException>();
+            _repo.Refunds[1].Refund.State.Should().Be(RefundState.Pending);
+            await _platform.Received(1).GetStatusAsync(order.PlatformOrderId!, caller.Token);
+        }
+        else
+        {
+            (await _service.RefundAsync(order.Id, 5000, "Returned", _buyerId, caller.Token)).Succeeded.Should().BeTrue();
+            await _platform.Received(1).GetStatusAsync(order.PlatformOrderId!, CancellationToken.None);
+        }
+
+        _repo.Refunds[0].Refund.State.Should().Be(RefundState.Succeeded);
+        _repo.Events.Should().Contain(e => e.Kind == TicketCheckoutOrderEventKind.RefundSettled);
+        await _platform.Received(1).RefundAsync(Arg.Any<RefundRequest>(), CancellationToken.None);
+        _platform.ReceivedCalls().Count(call => string.Equals(call.GetMethodInfo().Name,
+            nameof(ITicketingPlatform.RefundAsync), StringComparison.Ordinal)).Should().Be(1);
+    }
+
     [HumansFact]
     public async Task Pending_refunds_take_the_state_the_platform_answers_for_their_id_and_a_failure_frees_the_amount()
     {
@@ -2484,12 +2661,17 @@ public sealed partial class TicketCheckoutServiceTests
             Refunds.Add((refund.Id, refund));
             return Task.CompletedTask;
         }
-        public Task UpdateRefundAsync(TicketCheckoutRefund refund, CancellationToken ct = default) => Task.CompletedTask;
+        public Task UpdateRefundAsync(TicketCheckoutRefund refund, CancellationToken ct = default)
+        {
+            ct.ThrowIfCancellationRequested();
+            return Task.CompletedTask;
+        }
 
         public List<TicketCheckoutOrderEvent> Events { get; } = [];
 
         public Task AddOrderEventAsync(TicketCheckoutOrderEvent orderEvent, CancellationToken ct = default)
         {
+            ct.ThrowIfCancellationRequested();
             Events.Add(orderEvent);
             return Task.CompletedTask;
         }

@@ -1,3 +1,4 @@
+using Humans.Base.Enums;
 using Humans.Base.Extensions;
 using AwesomeAssertions;
 using Humans.Email.Contracts;
@@ -76,6 +77,67 @@ public sealed class SurveyPreviewEmailServiceTests
         });
         if (!string.Equals(failure, "queue-failure", StringComparison.Ordinal))
             await emailService.DidNotReceive().SendAsync(Arg.Any<EmailMessage>(), Arg.Any<CancellationToken>());
+    }
+
+    public enum PreviewAction { Render, Send }
+    public enum PreviewAccount { Deleted, LegacyTombstone, Survivor }
+
+    [HumansTheory]
+    [Xunit.InlineData(PreviewAction.Render, PreviewAccount.Deleted)]
+    [Xunit.InlineData(PreviewAction.Render, PreviewAccount.LegacyTombstone)]
+    [Xunit.InlineData(PreviewAction.Send, PreviewAccount.Deleted)]
+    [Xunit.InlineData(PreviewAction.Send, PreviewAccount.LegacyTombstone)]
+    [Xunit.InlineData(PreviewAction.Render, PreviewAccount.Survivor)]
+    [Xunit.InlineData(PreviewAction.Send, PreviewAccount.Survivor)]
+    public async Task PreviewEmail_ResolvedAccount_ControlsRecipient(PreviewAction action, PreviewAccount account)
+    {
+        var surveyId = Guid.NewGuid();
+        var requestedId = Guid.NewGuid();
+        var resolvedId = account == PreviewAccount.Survivor ? Guid.NewGuid() : requestedId;
+        var user = UserInfo.Create(new User
+        {
+            Id = resolvedId,
+            BurnerName = "Tester",
+            PreferredLanguage = "fr",
+            Email = account == PreviewAccount.LegacyTombstone ? "erased@deleted.local" : "tester@example.org"
+        }, [], [], null);
+        if (account == PreviewAccount.Deleted) user = user with { State = UserState.Deleted };
+        var surveys = Substitute.For<ISurveyService>();
+        var editable = new SurveyEditInput(Text("Survey"), LocalizedText.Empty, LocalizedText.Empty,
+            LocalizedText.Empty, LocalizedText.Empty, "en", false, null, null, null, null, null, null, []);
+        surveys.GetForEditAsync(surveyId, Arg.Any<CancellationToken>())
+            .Returns(new SurveyDetail(surveyId, SurveyStatus.Draft, editable, resolvedId));
+        var users = Substitute.For<IUserService>();
+        users.GetUserInfoAsync(requestedId, Arg.Any<CancellationToken>()).Returns(user);
+        var emails = Substitute.For<IEmailService>();
+        var previews = Substitute.For<IEmailPreviewService>();
+        previews.RenderSystemMessage(Arg.Any<EmailMessage>())
+            .Returns(new RenderedEmailPreview("tester@example.org", "Subject", "<p>Preview</p>"));
+        var sut = new SurveyPreviewEmailService(surveys, users, emails, TestSurveysEmails.Create(), previews,
+            new SurveyPreviewTokenProvider(DataProtectionProvider.Create("survey-preview-account-tests")),
+            NullLogger<SurveyPreviewEmailService>.Instance);
+        var ct = Xunit.TestContext.Current.CancellationToken;
+
+        var error = action == PreviewAction.Render
+            ? (await sut.PreviewForUserAsync(surveyId, requestedId, ct)).ErrorKey
+            : (await sut.SendToUserAsync(surveyId, requestedId, ct)).ErrorKey;
+
+        if (account != PreviewAccount.Survivor)
+        {
+            error.Should().Be("Surveys_PreviewNoEmail");
+            emails.ReceivedCalls().Should().BeEmpty();
+            previews.ReceivedCalls().Should().BeEmpty();
+            return;
+        }
+        error.Should().BeNull();
+        var call = action == PreviewAction.Render
+            ? previews.ReceivedCalls().Should().ContainSingle().Which
+            : emails.ReceivedCalls().Should().ContainSingle().Which;
+        var message = call.GetArguments()[0].Should().BeOfType<EmailMessage>().Subject;
+        message.UserId.Should().Be(resolvedId);
+        message.RecipientEmail.Should().Be("tester@example.org");
+        if (action == PreviewAction.Render) emails.ReceivedCalls().Should().BeEmpty();
+        else previews.ReceivedCalls().Should().BeEmpty();
     }
 
     [HumansFact]

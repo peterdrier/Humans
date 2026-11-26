@@ -49,6 +49,27 @@ public sealed class ApplicationDecisionServiceTests : IDisposable
 {
 
     [HumansTheory]
+    [InlineData(ApplicationMutation.Approve, UserState.Deleted)]
+    [InlineData(ApplicationMutation.Approve, UserState.Merged)]
+    [InlineData(ApplicationMutation.Reject, UserState.Deleted)]
+    [InlineData(ApplicationMutation.Reject, UserState.Merged)]
+    public async Task DecisionEmail_TombstoneApplicant_SkipsDelivery(ApplicationMutation decision, UserState state)
+    {
+        var userId = Guid.NewGuid();
+        _userService.GetUserInfoAsync(userId, Arg.Any<CancellationToken>()).Returns(UserInfo.Create(
+            new User { Id = userId, BurnerName = "Archived", Email = "archived@example.org", State = state },
+            [], [], null));
+        var application = new MemberApplication { Id = Guid.NewGuid(), UserId = userId, MembershipTier = MembershipTier.Colaborador };
+
+        if (decision == ApplicationMutation.Approve)
+            await _service.SendApprovalAsync(application, TestContext.Current.CancellationToken);
+        else
+            await _service.SendRejectionAsync(application, "Reason", TestContext.Current.CancellationToken);
+
+        _emailService.ReceivedCalls().Should().BeEmpty();
+    }
+
+    [HumansTheory]
     [InlineData(ApplicationMutation.Approve)]
     [InlineData(ApplicationMutation.Reject)]
     public async Task CanonicalNoticeRecipients_ApplicationDecision(ApplicationMutation decision)

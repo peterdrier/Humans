@@ -32,11 +32,22 @@ public class GuestAccountControllerTests
     private readonly IClock _clock = Substitute.For<IClock>();
     private readonly IStringLocalizer<EmailResource> _localizer = Substitute.For<IStringLocalizer<EmailResource>>().AddFormatting();
 
+    [HumansFact]
+    public async Task UpdatePreference_UnavailableAccount_ReturnsUnauthorized()
+    {
+        var controller = BuildSut(new User { Id = Guid.NewGuid() });
+        _commPrefService.UpdatePreferenceAsync(Arg.Any<Guid>(), Arg.Any<MessageCategory>(), Arg.Any<bool>(),
+            Arg.Any<bool>(), Arg.Any<string>(), Arg.Any<Guid?>(), Arg.Any<CancellationToken>())
+            .Returns(PreferenceUpdateOutcome.UserUnavailable);
+
+        Assert.IsType<UnauthorizedResult>(await controller.UpdatePreference(MessageCategory.Marketing, false, false, utoken: null));
+    }
+
     private GuestAccountController BuildSut(User user)
     {
         _localizer[Arg.Any<string>()].Returns(call => new LocalizedString(call.ArgAt<string>(0), call.ArgAt<string>(0)));
         _commPrefService.UpdatePreferenceAsync(Arg.Any<Guid>(), Arg.Any<MessageCategory>(), Arg.Any<bool>(),
-            Arg.Any<bool>(), Arg.Any<string>(), Arg.Any<Guid?>(), Arg.Any<CancellationToken>()).Returns(true);
+            Arg.Any<bool>(), Arg.Any<string>(), Arg.Any<Guid?>(), Arg.Any<CancellationToken>()).Returns(PreferenceUpdateOutcome.Success);
 
         _userService.GetUserInfoAsync(user.Id, Arg.Any<CancellationToken>())
             .Returns(new ValueTask<UserInfo?>(UserInfo.Create(user, [], [], profile: null)));
@@ -195,19 +206,35 @@ public class GuestAccountControllerTests
     }
 
     [HumansTheory]
-    [InlineData(false, false)]
-    [InlineData(false, true)]
-    [InlineData(true, false)]
-    [InlineData(true, true)]
-    public async Task CommunicationPreferences_ErasedAccount_IsRefused(bool signedIn, bool update)
+    [InlineData(false, false, "anonymized")]
+    [InlineData(false, true, "anonymized")]
+    [InlineData(true, false, "anonymized")]
+    [InlineData(true, true, "anonymized")]
+    [InlineData(false, false, "deleted")]
+    [InlineData(false, true, "deleted")]
+    [InlineData(true, false, "deleted")]
+    [InlineData(true, true, "deleted")]
+    [InlineData(false, false, "local")]
+    [InlineData(false, true, "local")]
+    [InlineData(true, false, "local")]
+    [InlineData(true, true, "local")]
+    public async Task CommunicationPreferences_ErasedAccount_IsRefused(bool signedIn, bool update, string kind)
     {
         var userId = Guid.NewGuid();
-        var controller = BuildSut(new User
+        var user = new User
         {
             Id = userId,
             DisplayName = "Deleted User",
             Email = $"deleted-{userId:N}@deleted.local"
-        });
+        };
+        if (string.Equals(kind, "deleted", StringComparison.Ordinal))
+        {
+            user.Email = null;
+            user.State = UserState.Deleted;
+        }
+        else if (string.Equals(kind, "local", StringComparison.Ordinal))
+            user.Email = "erased@gdpr.local";
+        var controller = BuildSut(user);
         if (!signedIn)
             controller.HttpContext.User = new ClaimsPrincipal(new ClaimsIdentity());
         _commPrefService.ValidateUnsubscribeToken("pre-erasure-token")

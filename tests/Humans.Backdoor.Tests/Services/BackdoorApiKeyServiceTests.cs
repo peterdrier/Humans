@@ -102,7 +102,7 @@ public class BackdoorApiKeyServiceTests
     }
 
     [HumansFact]
-    public async Task Create_ValidLabel_StoresOnlyHashAndPrefix()
+    public async Task Create_ValidLabel_KeepsPlaintextOutOfStorage()
     {
         MakeEligible(_owner);
         BackdoorApiKey? stored = null;

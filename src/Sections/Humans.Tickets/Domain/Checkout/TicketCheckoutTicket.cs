@@ -45,6 +45,9 @@ internal sealed class TicketCheckoutTicket
 
     public TicketCheckoutTicketState State { get; set; }
 
+    /// <summary>Counts as held until resold or voided; admission may still be blocked by an open resale offer.</summary>
+    public bool IsHeld => State is TicketCheckoutTicketState.Valid or TicketCheckoutTicketState.Offered;
+
     public Instant IssuedAt { get; init; }
 
     public Instant? VoidedAt { get; set; }
