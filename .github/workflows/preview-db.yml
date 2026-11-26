@@ -47,7 +47,7 @@ jobs:
 
           migrations() {
             gh api "repos/${{ github.repository }}/git/trees/$1?recursive=1" \
-              --jq '.tree[].path | select(test("/Data/Migrations/[0-9]{14}_[^/]+\\.cs$")) | select(endswith(".Designer.cs") | not)' \
+              --jq '.tree[].path | select(test("/Migrations/([^/]+/)?[0-9]{14}_[^/]+\\.cs$")) | select(endswith(".Designer.cs") | not)' \
               | sort
           }
           BEFORE_LIST=$(migrations "$BEFORE") || { echo "Cannot read ${BEFORE}; re-cloning"; echo "clone=true" >> "$GITHUB_OUTPUT"; exit 0; }
