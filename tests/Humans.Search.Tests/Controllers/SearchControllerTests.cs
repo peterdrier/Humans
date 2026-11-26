@@ -32,7 +32,7 @@ public sealed class SearchControllerTests
     [InlineData("")]
     [InlineData(" ")]
     [InlineData("a")]
-    public async Task Index_QueryShorterThanTwoChars_KeepsTheRawQuery_AndListsTheCategoriesForTheHint(string? query)
+    public async Task Index_ShortQuery_KeepsRawQuery(string? query)
     {
         StubResults(new GlobalSearchResults((query ?? string.Empty).Trim(), null, [Bucket("Human")]));
 
@@ -44,7 +44,7 @@ public sealed class SearchControllerTests
     }
 
     [HumansFact]
-    public async Task Index_TrimsTheQuery_ForwardsTheFilter_AndShowsTheServicesMatchedKey()
+    public async Task Index_Filter_ShowsServiceMatchedKey()
     {
         StubResults(new GlobalSearchResults("Kitchen", "Team", [Bucket("Team")]));
 
@@ -57,7 +57,7 @@ public sealed class SearchControllerTests
     }
 
     [HumansFact]
-    public async Task Index_SortsCategoriesByWeightAndKey_AndHitsByScoreAndSortKey()
+    public async Task Index_Results_SortedForDisplay()
     {
         SearchHit[] hits = [Hit("beta", 60), Hit("Alpha", 60), Hit("Zulu", 100)];
         StubResults(new GlobalSearchResults("q", null,
@@ -73,7 +73,7 @@ public sealed class SearchControllerTests
     }
 
     [HumansFact]
-    public async Task Index_PassesTheMatchContext_ThroughToTheView_Untouched()
+    public async Task Index_MatchContext_PassesThroughUntouched()
     {
         var hit = new SearchHit(Guid.NewGuid(), "Sparkle", 60, "Bio", "…builds <em>kitchens</em>…");
         StubResults(new GlobalSearchResults("kitchen", null, [Bucket("Human", hit)]));
@@ -86,7 +86,7 @@ public sealed class SearchControllerTests
     [HumansTheory]
     [InlineData(false)]
     [InlineData(true)]
-    public async Task Index_SearchThrows_RendersTheShellWithTheQueryPreserved_InsteadOfA500(bool dependencyCancelled)
+    public async Task Index_SearchThrows_RendersFailedShell(bool dependencyCancelled)
     {
         Exception failure = dependencyCancelled
             ? new OperationCanceledException("section timed out")
