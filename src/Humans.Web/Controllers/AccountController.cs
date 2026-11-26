@@ -11,6 +11,7 @@ using Humans.Base.Constants;
 using Humans.Base;
 using Humans.Web.Services;
 using Humans.Users.Contracts;
+using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authorization;
 
 namespace Humans.Web.Controllers;
@@ -29,7 +30,8 @@ public class AccountController(
     IAccountProvisioningService accountProvisioningService,
     GateSignInThrottle gateThrottle,
     SignInMethodCounter signInMethods,
-    IStringLocalizer<SharedResource> localizer) : HumansControllerBase(userService)
+    IStringLocalizer<SharedResource> localizer,
+    IAuthenticationSchemeProvider authSchemes) : HumansControllerBase(userService)
 {
     [HttpGet]
     public IActionResult Login(string? returnUrl = null)
@@ -53,8 +55,11 @@ public class AccountController(
 
     [HttpPost]
     [ValidateAntiForgeryToken]
-    public IActionResult ExternalLogin(string provider, string? returnUrl = null)
+    public async Task<IActionResult> ExternalLogin(string provider, string? returnUrl = null)
     {
+        if (await authSchemes.GetSchemeAsync(provider) is null)
+            return RedirectToAction(nameof(Login), new { returnUrl, error = "oauth" });
+
         var redirectUrl = Url.Action(nameof(ExternalLoginCallback), "Account", new { returnUrl });
         var properties = signIn.ConfigureExternalAuthenticationProperties(provider, redirectUrl);
         return Challenge(properties, provider);
@@ -78,7 +83,7 @@ public class AccountController(
             return RedirectToAction(nameof(Login), new { returnUrl, error = "oauth" });
         }
 
-        // Already signed in means this callback links a Google account, not a sign-in —
+        // Already signed in means this callback links a provider account, not a sign-in —
         // skip ExternalLoginSignInAsync so Identity cannot overwrite the session cookie with another account.
         var wasAuthenticated = IsAuthenticated();
         var result = wasAuthenticated
@@ -102,7 +107,7 @@ public class AccountController(
         {
             case ExternalLoginOutcome.SignedIn:
                 if (!wasAuthenticated)
-                    signInMethods.RecordGoogle();
+                    signInMethods.RecordProvider(info.LoginProvider);
                 return RedirectToLocal(returnUrl);
 
             case ExternalLoginOutcome.LinkToCurrentUserFailed:
