@@ -49,10 +49,11 @@ internal sealed class HiEventsWebhookController(
             return Ok();
         }
 
+        // Applying an order change can write to the platform; a sender that hangs up must not tear it.
         await platformEvents.PlatformOrderChangedAsync(
             HiEventsPlatform.PlatformKey,
             HiEventsPlatform.ToPlatformOrderId(order.EventId, order.OrderId),
-            ct);
+            CancellationToken.None);
 
         return Ok();
     }

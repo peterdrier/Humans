@@ -1,3 +1,4 @@
+using Humans.Search.Services;
 using Humans.Search.Services.Dtos;
 
 namespace Humans.Search.Models;
@@ -16,6 +17,6 @@ internal sealed class GlobalSearchViewModel
     public int TotalCount => Buckets.Sum(b => b.Hits.Count);
 
     public bool HasQuery => !string.IsNullOrWhiteSpace(Query);
-    public bool QueryIsTooShort => HasQuery && (Query?.Trim().Length ?? 0) < 2;
+    public bool QueryIsTooShort => HasQuery && (Query?.Trim().Length ?? 0) < SearchService.MinQueryLength;
     public bool HasResults => TotalCount > 0;
 }

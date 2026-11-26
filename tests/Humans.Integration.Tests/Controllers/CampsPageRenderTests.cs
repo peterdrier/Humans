@@ -76,8 +76,8 @@ public class CampsPageRenderTests(HumansTestDatabase database) : IntegrationTest
 
         html.Should().Contain("Barrio Guide",
             because: "Camps_Index_BarrioGuide resolves through IStringLocalizer<CampsResource>");
-        html.Should().Contain("Filter",
-            because: "Camps_Index_FilterButton is on the section's own filter bar");
+        html.Should().Contain("Kids Welcome",
+            because: "Camps_Index_KidsWelcomeFilter is on the section's own filter bar");
         // An unbound <vc:> ships as inert markup, so assert the emitted modal id, not only the absence of "<vc:".
         html.Should().Contain("sectionHelp-Camps",
             because: "<vc:access-matrix section=\"Camps\" /> must bind and emit its modal");
@@ -127,7 +127,7 @@ public class CampsPageRenderTests(HumansTestDatabase database) : IntegrationTest
         var html = await response.Content.ReadAsStringAsync(ct);
 
         html.Should().Contain("del Barrio");   // Camps_Index_BarrioGuide
-        html.Should().Contain("Filtrar");      // Camps_Index_FilterButton
+        html.Should().Contain("Buscar");       // Camps_Index_SearchLabel
         html.Should().NotContain("Barrio Guide 2026");
         html.Should().NotContain("Camp_");
         html.Should().NotContain("Camps_");

@@ -18,8 +18,8 @@ see reserve holds). Spec: [`features/stripe-mirror.md`](features/stripe-mirror.m
   Stripe accounts those ticketing platforms charge into (ledger, fees, key check) for Tickets' reconciliation.
 - **Good looks like:** a thin, honest translator. Each call answers, returns `null` for a case
   it checked, or throws — never a silent failure, never a decision about what a payment means.
-- **Deliberate choices:** two Stripe accounts on least-privilege restricted keys; no retries, no
-  cache; the webhook registrar exists only for PR previews.
+- **Deliberate choices:** two Stripe accounts on least-privilege restricted keys; no retries (except one
+  paced retry of a mirror read on a 429), no cache; the webhook registrar exists only for PR previews.
 - **Out of scope:** issuing payouts and chargebacks (dashboard-manual; the mirror only reads
   them), invoicing (Store/Holded), payment bookkeeping (Store) and booking the mirror into
   Holded (a later step, after Peter has reviewed the mirror). Refunds are issued on the dashboard too; this
@@ -151,7 +151,8 @@ integration uses — see [`memory/code/stripe-restricted-keys.md`](../../../../m
   accounts or replacing caller cancellation; the sync gate is still released. The shared transaction, payout
   and automatic-payout breakdown pager requires an explicit boolean `has_more` in the raw response; the SDK's
   default `false` cannot complete a sweep when the field is missing. Only an explicit `false` completes a list. Every list item requires a nonblank ID, unique within its page walk; a repeat within or across pages fails the fetch before mirror replacement. IDs may still recur in separate transaction and payout-breakdown walks. Full transaction records additionally require type, status, currency, reporting category, integer amount/fee/net and creation/availability timestamps; full payout records require currency, status, integer amount and creation/arrival timestamps, plus an explicit automatic flag. Missing fields fail the fetch rather than accepting SDK defaults. Payout-breakdown reads consume and validate IDs only; optional metadata remains optional.
-  The pager also fails closed on `has_more` on an empty page or a 500-page cap. One sweep at a time: an in-process gate shared by
+  The pager also fails closed on `has_more` on an empty page or a 500-page cap. A 429 on a mirror read waits for `Retry-After` (2 s
+  without one, 60 s at most) and retries once; a second 429 fails the account. One sweep at a time: an in-process gate shared by
   the job and Sync now.
 - Account startup saves are covered by account failure handling, so one failed `Running` save does not stop
   healthy accounts. Preparation shutdown restores `Idle` with the previous summary and diagnostic. Reads and

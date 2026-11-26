@@ -8,6 +8,8 @@ internal sealed class SearchService(
     IEnumerable<ISearchContributor> contributors,
     IServiceProvider services) : ISearchService
 {
+    internal const int MinQueryLength = 2;
+
     public async Task<GlobalSearchResults> SearchAsync(
         string query,
         string? filter = null,
@@ -23,7 +25,7 @@ internal sealed class SearchService(
         var buckets = new List<SearchBucket>(categories.Count);
         foreach (var category in categories)
         {
-            var searched = trimmed.Length >= 2 && (only is null || string.Equals(only, category.Key, StringComparison.Ordinal));
+            var searched = trimmed.Length >= MinQueryLength && (only is null || string.Equals(only, category.Key, StringComparison.Ordinal));
             buckets.Add(new SearchBucket(
                 category.Key,
                 category.Weight,
