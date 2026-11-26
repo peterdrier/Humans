@@ -1,0 +1,152 @@
+@using Humans.Tickets.Domain.Checkout
+@model Humans.Tickets.Controllers.PlatformStatusViewModel
+@{
+    var info = Model.Info;
+    ViewData["Title"] = info.Setup.DisplayName;
+    var paid = Model.Ledger.Paid;
+    var stuck = Model.Ledger.Stuck;
+    var openRefunds = Model.Ledger.UnsettledRefunds;
+    var failedRefunds = Model.Ledger.FailedRefunds;
+    var orderById = Model.Ledger.Orders.ToDictionary(o => o.Id);
+    var culture = System.Globalization.CultureInfo.CurrentCulture;
+    StatTileViewModel[] tiles =
+    [
+        new("Paid orders", paid.Count.ToString(culture),
+            Subline: $"{paid.Sum(o => o.Lines.Count(l => l.Kind == OrderLineKind.Ticket)).ToString(culture)} tickets, free orders left out"),
+        new("Taken", (paid.Sum(o => o.TotalMinor) / 100m).ToEuro(),
+            Subline: $"{(paid.Sum(o => o.RefundedMinor) / 100m).ToEuro()} refunded, {(paid.Sum(o => o.ChargedBackMinor) / 100m).ToEuro()} charged back"),
+        new("Stuck orders", stuck.Count.ToString(culture), Subline: "still open past expiry",
+            Severity: stuck.Count > 0 ? TileSeverity.Critical : TileSeverity.Normal),
+        new("Refunds not settled", openRefunds.Count.ToString(culture), Subline: $"pending or manual; {failedRefunds.Count.ToString(culture)} failed",
+            Severity: failedRefunds.Count > 0 ? TileSeverity.Critical : openRefunds.Count > 0 ? TileSeverity.Warning : TileSeverity.Normal),
+    ];
+
+    string Reference(Guid orderId) => orderById.TryGetValue(orderId, out var o) ? o.Reference : orderId.ToString();
+    Func<TicketCheckoutOrder, IHtmlContent> referenceCell = @<text><a asp-controller="TicketsSalesAdmin" asp-action="Order" asp-route-id="@item.Id"><code>@item.Reference</code></a></text>;
+    Func<TicketCheckoutRefund, IHtmlContent> refundOrderCell = @<text><a asp-controller="TicketsSalesAdmin" asp-action="Order" asp-route-id="@item.OrderId"><code>@Reference(item.OrderId)</code></a></text>;
+
+    var byState = Model.Ledger.Orders.GroupBy(o => o.State).OrderBy(g => g.Key)
+        .Select(g => new StateLine(g.Key, g.Count(), g.Sum(o => o.TotalMinor))).ToList();
+    var byStateTable = TableModel.For(byState)
+        .Column("State", x => x.State, c => c.EnumBadge())
+        .Column("Orders", x => x.Count, c => c.Number().End())
+        .Column("Order value (€)", x => x.TotalMinor / 100m, c => c.Currency().End())
+        .Empty("No orders on this platform yet.")
+        .Build();
+
+    var stuckTable = TableModel.For(stuck)
+        .Template("Reference", referenceCell, sortBy: o => o.Reference)
+        .Column("Created", o => o.CreatedAt, c => c.DateTime())
+        .Column("Expires", o => o.ExpiresAt, c => c.DateTime())
+        .Column("State", o => o.State, c => c.EnumBadge())
+        .Column("Platform order", o => o.PlatformOrderId ?? "none", c => c.Code())
+        .Empty("No stuck orders.")
+        .Build();
+
+    Func<TicketCheckoutRefund, IHtmlContent> refundDetailCell = @<text>
+        @item.FailureReason
+        @if (item.ManualRefundUrl is not null)
+        {
+            <a href="@item.ManualRefundUrl" target="_blank" rel="noopener">issue in the platform</a>
+        }
+    </text>;
+    var openRefundsTable = TableModel.For(openRefunds)
+        .Template("Order", refundOrderCell, c => c.NoSort())
+        .Column("Requested", r => r.CreatedAt, c => c.DateTime())
+        .Column("Amount (€)", r => r.AmountMinor / 100m, c => c.Currency().End())
+        .Column("State", r => r.State, c => c.EnumBadge())
+        .Template("Detail", refundDetailCell, c => c.NoSort())
+        .Empty("Every refund has settled.")
+        .Build();
+
+    var failedRefundsTable = TableModel.For(failedRefunds)
+        .Template("Order", refundOrderCell, c => c.NoSort())
+        .Column("Requested", r => r.CreatedAt, c => c.DateTime())
+        .Column("Amount (€)", r => r.AmountMinor / 100m, c => c.Currency().End())
+        .Column("Reason", r => r.FailureReason)
+        .Empty("No failed refunds.")
+        .Build();
+
+    Func<TicketCheckoutOrder, IHtmlContent> platformCell = @<text>
+        @if (item.AdminUrl is not null)
+        {
+            <a href="@item.AdminUrl" target="_blank" rel="noopener">in @info.Setup.DisplayName</a>
+        }
+    </text>;
+    var ordersTable = TableModel.For(Model.Ledger.Orders)
+        .Template("Reference", referenceCell, sortBy: o => o.Reference)
+        .Column("Created", o => o.CreatedAt, c => c.DateTime())
+        .Column("Buyer", o => o.BuyerName, c => c.TextFilter())
+        .Column("Tickets", o => o.Lines.Count(l => l.Kind == OrderLineKind.Ticket), c => c.Number().End())
+        .Column("Total (€)", o => o.TotalMinor / 100m, c => c.Currency().End())
+        .Column("State", o => o.State, c => c.EnumBadge().SelectFilter())
+        .Template("", platformCell, c => c.NoSort().End().Css("text-nowrap"))
+        .RowHref(o => Url.Action("Order", "TicketsSalesAdmin", new { id = o.Id }))
+        .Empty("No orders on this platform yet.")
+        .Build();
+}
+
+<page-header title="@info.Setup.DisplayName" subtitle="Orders and refunds Humans opened on this platform, for every event">
+    <a class="btn btn-outline-secondary btn-sm" asp-controller="TicketsSalesAdmin" asp-action="Recon" asp-route-platform="@info.Key" asp-route-from="@Model.ReconFrom">Reconciliation</a>
+</page-header>
+
+<div class="stats">
+    @foreach (var tile in tiles)
+    {
+        <partial name="_StatTile" model="tile" />
+    }
+</div>
+
+@if (stuck.Count > 0)
+{
+    <div class="card mb-4">
+        <div class="card-header text-danger">Stuck orders</div>
+        <partial name="_Table" model="stuckTable" />
+        <div class="card-footer small text-muted">
+            Still open well after they should have expired: neither a webhook nor the five-minute reconcile has settled
+            them. Opening an order asks the platform for its state.
+        </div>
+    </div>
+}
+
+@if (failedRefunds.Count > 0)
+{
+    <div class="card mb-4">
+        <div class="card-header text-danger">Failed refunds</div>
+        <partial name="_Table" model="failedRefundsTable" />
+        <div class="card-footer small text-muted">The platform refused these and no later refund on the order went through.</div>
+    </div>
+}
+
+@if (openRefunds.Count > 0)
+{
+    <div class="card mb-4">
+        <div class="card-header">Refunds not settled</div>
+        <partial name="_Table" model="openRefundsTable" />
+    </div>
+}
+
+<div class="row g-4 mb-4">
+    <div class="col-lg-4">
+        <div class="card">
+            <div class="card-header">Orders by state</div>
+            <partial name="_Table" model="byStateTable" />
+        </div>
+    </div>
+    <div class="col-lg-8">
+        <div class="card">
+            <div class="card-header">Orders, newest first</div>
+            <partial name="_Table" model="ordersTable" />
+        </div>
+    </div>
+</div>
+
+<partial name="~/Views/Tickets/Admin/Platforms/_PlatformCard.cshtml" model="(Model.Platform, info)" />
+
+<p class="small text-muted">
+    Pick the platform and open or close sales per event in its <a asp-controller="TicketsSalesAdmin" asp-action="Index">ticketing settings</a>.
+</p>
+
+@functions {
+    private sealed record StateLine(TicketCheckoutOrderState State, int Count, long TotalMinor);
+}

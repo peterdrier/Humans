@@ -21,6 +21,12 @@ public class BackdoorApiKeyAuthFilterTests
 {
     private readonly IBackdoorApiKeyService _keys = Substitute.For<IBackdoorApiKeyService>();
 
+    public BackdoorApiKeyAuthFilterTests()
+    {
+        _keys.AdmitsAsync(Arg.Any<BackdoorKeyOwner>(), BackdoorScope.AdminAndBoard, Arg.Any<CancellationToken>())
+            .Returns(true);
+    }
+
     [HumansFact]
     public void Every_machine_controller_hangs_off_this_filter()
     {
@@ -32,6 +38,33 @@ public class BackdoorApiKeyAuthFilterTests
         machineControllers.Should().NotBeEmpty();
         machineControllers.Should().AllSatisfy(t => t.GetCustomAttributes<ServiceFilterAttribute>(inherit: false)
             .Should().ContainSingle(f => f.ServiceType == typeof(BackdoorApiKeyAuthFilter), t.Name));
+        machineControllers.Should().AllSatisfy(t =>
+            t.GetCustomAttribute<BackdoorScopeAttribute>().Should().NotBeNull(t.Name));
+    }
+
+    [HumansFact]
+    public async Task OnAuthorization_OwnerOutsideScope_Returns403()
+    {
+        var owner = new BackdoorKeyOwner(Guid.NewGuid(), []);
+        _keys.ResolveOwnerAsync("right-key", Arg.Any<CancellationToken>()).Returns(owner);
+        _keys.AdmitsAsync(owner, BackdoorScope.AdminAndBoard, Arg.Any<CancellationToken>()).Returns(false);
+        var ctx = MakeContext(headerKey: "right-key");
+
+        await Filter().OnAuthorizationAsync(ctx);
+
+        ctx.Result.Should().BeOfType<StatusCodeResult>().Which.StatusCode.Should().Be(403);
+    }
+
+    [HumansFact]
+    public async Task A_controller_declaring_no_scope_serves_nobody()
+    {
+        _keys.ResolveOwnerAsync("right-key", Arg.Any<CancellationToken>())
+            .Returns(new BackdoorKeyOwner(Guid.NewGuid(), []));
+        var ctx = MakeContext(headerKey: "right-key", scope: null);
+
+        await Filter().OnAuthorizationAsync(ctx);
+
+        ctx.Result.Should().BeOfType<StatusCodeResult>().Which.StatusCode.Should().Be(403);
     }
 
     [HumansFact]
@@ -108,14 +141,18 @@ public class BackdoorApiKeyAuthFilterTests
 
     private BackdoorApiKeyAuthFilter Filter() => new(_keys);
 
-    private static AuthorizationFilterContext MakeContext(string? headerKey)
+    private static AuthorizationFilterContext MakeContext(
+        string? headerKey, BackdoorScope? scope = BackdoorScope.AdminAndBoard)
     {
         var http = new DefaultHttpContext();
         if (headerKey is not null)
             http.Request.Headers[BackdoorApiKeyAuthFilter.ApiKeyHeaderName] = headerKey;
 
         return new AuthorizationFilterContext(
-            new ActionContext(http, new RouteData(), new ActionDescriptor()),
+            new ActionContext(http, new RouteData(), new ActionDescriptor
+            {
+                EndpointMetadata = scope is { } s ? [new BackdoorScopeAttribute(s)] : [],
+            }),
             []);
     }
 }

@@ -2,7 +2,6 @@ using Humans.Users.Services;
 using Hangfire;
 using NodaTime;
 using Humans.Base.Interfaces;
-using Humans.Users.Contracts;
 
 namespace Humans.Users.Jobs;
 

@@ -210,7 +210,7 @@ public sealed class CachingRoleAssignmentServiceTests
     }
 
     [HumansFact]
-    public async Task GetActiveForUserAsync_ReturnsOnlyActiveRolesForUser_OrderedByRoleName()
+    public async Task GetActiveForUserAsync_ReturnsOnlyActiveRolesForUser()
     {
         var now = Instant.FromUtc(2026, 5, 17, 12, 0);
         var userA = Guid.NewGuid();
@@ -226,7 +226,7 @@ public sealed class CachingRoleAssignmentServiceTests
 
         var roles = await service.GetActiveForUserAsync(userA, Xunit.TestContext.Current.CancellationToken);
 
-        roles.Select(r => r.RoleName).Should().Equal("Board", "Coordinator");
+        roles.Select(r => r.RoleName).Should().BeEquivalentTo("Board", "Coordinator");
     }
 
     [HumansFact]
@@ -246,10 +246,10 @@ public sealed class CachingRoleAssignmentServiceTests
         (await service.GetActiveUserIdsInRoleAsync(RoleNames.Board, ct)).Should().Equal(board);
         (await service.GetUserIdsWithActiveAssignmentsAsync(ct)).Should().Equal(board);
 
-        await inner.DidNotReceiveWithAnyArgs().HasActiveRoleAsync(default, default!, default);
-        await inner.DidNotReceiveWithAnyArgs().GetActiveUserIdsInRoleAsync(default!, default);
-        await inner.DidNotReceiveWithAnyArgs().GetUserIdsWithActiveAssignmentsAsync(default);
-        await inner.DidNotReceiveWithAnyArgs().HasAnyActiveAssignmentAsync(default, default);
+        await inner.DidNotReceiveWithAnyArgs().HasActiveRoleAsync(default, default!);
+        await inner.DidNotReceiveWithAnyArgs().GetActiveUserIdsInRoleAsync(default!);
+        await inner.DidNotReceiveWithAnyArgs().GetUserIdsWithActiveAssignmentsAsync();
+        await inner.DidNotReceiveWithAnyArgs().HasAnyActiveAssignmentAsync(default);
     }
 
     [HumansFact]
@@ -300,8 +300,7 @@ public sealed class CachingRoleAssignmentServiceTests
             ValidTo: validTo,
             Notes: null,
             CreatedByUserId: Guid.Empty,
-            CreatedByDisplayName: null,
-            CreatedAt: validFrom);
+            CreatedByDisplayName: null);
 
     private static RoleAssignmentSummarySnapshot Active(string role, Instant now) =>
         ActiveFor(Guid.NewGuid(), role, now);

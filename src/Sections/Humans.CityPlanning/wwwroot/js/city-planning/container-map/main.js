@@ -3,7 +3,7 @@ import { loadContainers, savePlacement, clearPlacement }   from './api.js';
 import { initPlacementNotes, openPlacementNotes }           from './placement-notes.js';
 import { addBackgroundLayers, addContainerLayers, updateContainerSource } from './layers.js';
 import { initSidebar, setContainers, setActiveId, markPlaced, scrollToPlaced } from './sidebar.js';
-import { initInteraction, activateContainer, selectPlacedContainer, deactivate } from './interaction.js';
+import { initInteraction, activateContainer, selectPlacedContainer, deactivate, getActiveContainerId } from './interaction.js';
 import { initMeasure, exitMeasureMode, wireMeasureButtons } from '../shared/measure.js';
 
 const toast = document.getElementById('map-toast');
@@ -91,8 +91,11 @@ async function init() {
                 await clearPlacement(container.id, CONFIG.YEAR);
                 patchContainer(container.id, null);
                 setContainers(containers);
-                updateContainerSource(map, containers, null);
-                deactivate();
+                if (getActiveContainerId() === container.id) {
+                    deactivate();
+                    setActiveId(null);
+                }
+                updateContainerSource(map, containers, getActiveContainerId());
             } catch (err) {
                 showToast(err.message);
             }
@@ -128,8 +131,9 @@ async function init() {
                 patchContainer(container.id, geoJson);
                 setContainers(containers);
                 markPlaced(container.id);
-                updateContainerSource(map, containers, container.id);
-                scrollToPlaced(container.id);
+                const activeId = getActiveContainerId();
+                updateContainerSource(map, containers, activeId);
+                if (activeId === container.id) scrollToPlaced(container.id);
             } catch (err) {
                 showToast(err.message);
             }

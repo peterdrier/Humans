@@ -121,7 +121,7 @@ public class CampAdminControllerTests
         camps.GetSettingsAsync(Arg.Any<CancellationToken>()).Returns(new CampSettingsInfo(2026, [2026]));
         var roles = Substitute.For<ICampRoleService>();
         CampRoleDefinitionInfo Definition(string name, int order, bool active) =>
-            new(Guid.NewGuid(), name, "", null, 1, 1, order, default, default,
+            new(Guid.NewGuid(), name, "", null, 1, 1, order,
                 active ? null : Instant.FromUtc(2026, 1, 1, 0, 0), CampSpecialRole.None);
         roles.ListDefinitionsAsync(true, Arg.Any<CancellationToken>()).Returns([
             Definition("Zebra", 1, true), Definition("Old Zebra", 1, false),
@@ -155,7 +155,7 @@ public class CampAdminControllerTests
         if (hasSeason)
             camp = camp with
             {
-                Seasons = [new CampSeasonInfo(Guid.NewGuid(), camp.Id, camp.Slug, 2026, null,
+                Seasons = [new CampSeasonInfo(Guid.NewGuid(), camp.Id, 2026, null,
                     "Camp name", "", "en", [], CampSeasonStatus.Active, YesNoMaybe.Yes, YesNoMaybe.Yes,
                     AdultPlayspacePolicy.No, 12, null, null, null, 0, null, null) { LeadUserIds = [leadId] }]
             };
@@ -216,7 +216,7 @@ public class CampAdminControllerTests
         (await controller.SetCampSeasonEeSlotCount(Guid.NewGuid(), 3, TestContext.Current.CancellationToken))
             .Should().BeOfType<RedirectToActionResult>();
 
-        controller.TempData[Humans.Base.Constants.TempDataKeys.ErrorMessage].Should().Be(reason);
+        controller.TempData[Base.Constants.TempDataKeys.ErrorMessage].Should().Be(reason);
         controller.TempData.Should().ContainSingle();
     }
 
@@ -657,6 +657,50 @@ public class CampAdminControllerTests
         args[0].Should().Be(LogLevel.Error);
         args[3].Should().BeOfType<System.Diagnostics.UnreachableException>().Which.Message.Should().Contain("99");
         args[2]!.ToString().Should().Contain(roleId.ToString());
+    }
+
+    [HumansTheory]
+    [InlineData(false, false)]
+    [InlineData(false, true)]
+    [InlineData(true, false)]
+    [InlineData(true, true)]
+    public async Task Event_selectors_sort_by_gate_and_keep_active_event_precedence(bool compliance, bool active)
+    {
+        var ct = TestContext.Current.CancellationToken;
+        var older = new CampEventRegistration(Guid.NewGuid(), "Summer", 2026, true) { GateOpeningDate = new LocalDate(2026, 7, 1) };
+        var newer = new CampEventRegistration(Guid.NewGuid(), "Autumn", 2026, false) { GateOpeningDate = new LocalDate(2026, 10, 1) };
+        var camps = Substitute.For<ICampManagement>();
+        var roles = Substitute.For<ICampRoleService>();
+        var users = Substitute.For<IUserService>();
+        camps.GetSettingsAsync(ct).Returns(new CampSettingsInfo(2026, [2026])
+        {
+            ActiveEventSettingsId = active ? older.EventSettingsId : null,
+            Events = [older, newer]
+        });
+        var selected = active ? older : newer;
+        IReadOnlyList<CampEventRegistration> options;
+        if (compliance)
+        {
+            roles.BuildComplianceMatrixAsync(selected.EventSettingsId, ct).Returns(new CampComplianceMatrixData(selected, [], []));
+            var result = await new CampComplianceController(camps, roles, users).Compliance(null, ct);
+            var model = result.Should().BeOfType<ViewResult>().Which.Model.Should().BeOfType<CampComplianceViewModel>().Which;
+            model.Event.Should().Be(selected);
+            options = model.EventOptions;
+        }
+        else
+        {
+            var role = new CampRoleDefinitionInfo(Guid.NewGuid(), "Worker", "worker", null, 1, 1, 0, null, default);
+            roles.GetDefinitionBySlugAsync("worker", ct).Returns(role);
+            roles.BuildDrillDownAsync(role.Id, selected.EventSettingsId, ct).Returns(new CampRoleDrillDownData(role, selected, null, []));
+            var result = await CreateController(camps, roles, users, Guid.NewGuid()).RolesDrillDown("worker", null, ct);
+            var model = result.Should().BeOfType<ViewResult>().Which.Model.Should().BeOfType<CampRoleDrillDownViewModel>().Which;
+            model.Event.Should().Be(selected);
+            options = model.EventOptions;
+        }
+        options.Should().Equal(newer, older);
+        var dashboard = await new CampAdminPageBuilder(camps, roles).BuildAsync(ct);
+        dashboard.Events.Should().Equal(newer, older);
+        dashboard.OpenEventNames.Should().Equal("Summer");
     }
 
     private static void ConfigureFailure(ICampManagement camps, string action, Guid targetId, Guid actorId, Exception failure)

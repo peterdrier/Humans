@@ -9,8 +9,7 @@ internal sealed record AttendeeImportPlan(
         AmbiguousEmailMatches: Decisions.Count(d => d.Outcome == AttendeeImportOutcome.AmbiguousEmailMatches),
         DeleteUnverifiedThenCreate: Decisions.Count(d => d.Outcome == AttendeeImportOutcome.DeleteUnverifiedThenCreate),
         CreateNewUser: Decisions.Count(d => d.Outcome == AttendeeImportOutcome.CreateNewUser),
-        SkipNoEmail: Decisions.Count(d => d.Outcome == AttendeeImportOutcome.SkipNoEmail),
-        SkipVoided: Decisions.Count(d => d.Outcome == AttendeeImportOutcome.SkipVoided));
+        SkipNoEmail: Decisions.Count(d => d.Outcome == AttendeeImportOutcome.SkipNoEmail));
 }
 
 internal sealed record AttendeeImportPlanCounts(
@@ -18,5 +17,4 @@ internal sealed record AttendeeImportPlanCounts(
     int AmbiguousEmailMatches,
     int DeleteUnverifiedThenCreate,
     int CreateNewUser,
-    int SkipNoEmail,
-    int SkipVoided);
+    int SkipNoEmail);

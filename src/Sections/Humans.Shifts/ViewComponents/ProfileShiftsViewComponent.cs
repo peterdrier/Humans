@@ -1,4 +1,3 @@
-using System.Security.Claims;
 using Humans.Base.Enums;
 using Humans.Base.Extensions;
 using Humans.Shifts.Contracts;

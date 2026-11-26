@@ -1,5 +1,4 @@
 using Humans.Users.Contracts;
-using Humans.Base.Authorization;
 using Humans.Base.Enums;
 using Humans.Grants.Authorization;
 using Humans.Grants.Services;

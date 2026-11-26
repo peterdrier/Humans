@@ -1,7 +1,6 @@
 using System.Reflection;
 using AwesomeAssertions;
 using Humans.AuditLog.Contracts;
-using Humans.Base.Authorization;
 using Humans.Base.Enums;
 using Humans.Base.Interfaces;
 using Humans.Google.Contracts;
@@ -16,7 +15,6 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.AspNetCore.Mvc.ViewComponents;
 using Microsoft.AspNetCore.Mvc.ViewFeatures;
-using Microsoft.Extensions.DependencyInjection;
 using NodaTime;
 using NSubstitute;
 
@@ -63,7 +61,7 @@ public sealed class WorkspaceIdentityServiceTests
         var info = UserInfoFixtures.FromUser(user, rows);
         _infos[id] = info;
         if (addresses.FirstOrDefault(a => a.Designated) is { } designated)
-            _repo.Rows[id] = new Humans.Google.Domain.WorkspaceIdentityRecord
+            _repo.Rows[id] = new Domain.WorkspaceIdentityRecord
             {
                 UserId = id,
                 Email = designated.Email,
@@ -81,19 +79,22 @@ public sealed class WorkspaceIdentityServiceTests
             new Addr(address, Designated: true, Status: status));
 
         (await _sut.GetWorkspaceIdentityAsync(info.Id, Ct)).Should()
-            .Be(new WorkspaceIdentity(info.Id, address, status));
+            .Be(new WorkspaceIdentity(address, status));
     }
 
-    [HumansFact]
-    public async Task NoDesignation_FallsBackToTheVerifiedPrimary()
+    [HumansTheory]
+    [Xunit.InlineData(true)]
+    [Xunit.InlineData(false)]
+    public async Task NoDesignation_FallsBackToTheVerifiedPrimaryOrFirstAddress(bool hasPrimary)
     {
         var info = Seed(
             new Addr("aaa@example.org"),
-            new Addr("alice@example.org", Primary: true),
+            new Addr("alice@example.org", Primary: hasPrimary),
             new Addr("unverified@nobodies.team", Verified: false));
+        _infos[info.Id] = info with { UserEmails = info.UserEmails.Reverse().ToArray() };
 
         (await _sut.GetWorkspaceIdentityAsync(info.Id, Ct)).Should()
-            .Be(new WorkspaceIdentity(info.Id, "alice@example.org", GoogleEmailStatus.Unknown));
+            .Be(new WorkspaceIdentity(hasPrimary ? "alice@example.org" : "aaa@example.org", GoogleEmailStatus.Unknown));
     }
 
     [HumansFact]
@@ -132,7 +133,7 @@ public sealed class WorkspaceIdentityServiceTests
         var result = await _sut.GetWorkspaceIdentitiesAsync([archivedId, Guid.NewGuid()], Ct);
 
         result.Should().ContainSingle().Which.Should().Be(new KeyValuePair<Guid, WorkspaceIdentity>(
-            archivedId, new WorkspaceIdentity(info.Id, "alice@nobodies.team", GoogleEmailStatus.Unknown)));
+            archivedId, new WorkspaceIdentity("alice@nobodies.team", GoogleEmailStatus.Unknown)));
     }
 
     [HumansFact]
@@ -146,7 +147,7 @@ public sealed class WorkspaceIdentityServiceTests
 
         _repo.Rows[info.Id].Email.Should().BeNull();
         (await _sut.GetWorkspaceIdentityAsync(info.Id, Ct)).Should()
-            .Be(new WorkspaceIdentity(info.Id, "alice@example.org", GoogleEmailStatus.Unknown));
+            .Be(new WorkspaceIdentity("alice@example.org", GoogleEmailStatus.Unknown));
     }
 
     [HumansFact]
@@ -171,7 +172,7 @@ public sealed class WorkspaceIdentityServiceTests
         (await _sut.SetAsync(info.Id, "alice@gmail.com", actor, Ct)).Should().BeTrue();
 
         (await _sut.GetWorkspaceIdentityAsync(info.Id, Ct)).Should()
-            .Be(new WorkspaceIdentity(info.Id, "alice@gmail.com", GoogleEmailStatus.Unknown));
+            .Be(new WorkspaceIdentity("alice@gmail.com", GoogleEmailStatus.Unknown));
         await _audit.Received(1).LogAsync(
             GoogleAuditActions.UserEmailGoogleSet, nameof(User), info.Id,
             "Set Google identity to alice@gmail.com (was alice@example.org)", actor,
@@ -260,7 +261,7 @@ public sealed class WorkspaceIdentityServiceTests
         (await _sut.SetDriveEmailFromSyncAsync(info.Id, "alice+burn@example.org", "alice@example.org", Ct)).Should().BeFalse();
 
         var identity = await _sut.GetWorkspaceIdentityAsync(info.Id, Ct);
-        identity.Should().Be(new WorkspaceIdentity(info.Id, "alice+burn@example.org", GoogleEmailStatus.Valid));
+        identity.Should().Be(new WorkspaceIdentity("alice+burn@example.org", GoogleEmailStatus.Valid));
         (await _sut.GetDriveEmailsAsync(Ct)).Should().ContainSingle().Which.Should().Be(
             new KeyValuePair<Guid, DriveEmailOverride>(info.Id, new DriveEmailOverride("alice+burn@example.org", "alice@example.org")));
     }
@@ -419,7 +420,7 @@ public sealed class WorkspaceIdentityServiceTests
     [HumansFact]
     public void UserParts_ContributeTheCardsToTheAdminDetailSidebar()
     {
-        IUserPart contribution = ((IUserPart)new Section());
+        IUserPart contribution = new Section();
 
         contribution.Parts().Should().ContainSingle().Which.Slot.Should().Be(UserPartSlots.AdminDetailSidebar);
     }

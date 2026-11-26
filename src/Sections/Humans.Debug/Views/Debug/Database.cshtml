@@ -36,7 +36,7 @@
     </div>
     <div class="stat">
         <div class="label">Cache hit rate</div>
-        <div class="value">@(s.CacheHitPercent?.ToString("F2") ?? "—")<em>%</em></div>
+        <div class="value">@(s.CacheHitPercent?.ToString("F2", System.Globalization.CultureInfo.CurrentCulture) ?? "—")<em>%</em></div>
     </div>
     <div class="stat">
         <div class="label">Commits</div>
@@ -52,7 +52,7 @@
     </div>
     <div class="stat">
         <div class="label">Temp files</div>
-        <div class="value">@s.TempFiles.ToString("N0")<em>@Kb(s.TempBytes).ToString("N0") KB</em></div>
+        <div class="value">@s.TempFiles.ToString("N0", System.Globalization.CultureInfo.CurrentCulture)<em>@Kb(s.TempBytes).ToString("N0", System.Globalization.CultureInfo.CurrentCulture) KB</em></div>
     </div>
     <div class="stat">
         <div class="label">Server started</div>

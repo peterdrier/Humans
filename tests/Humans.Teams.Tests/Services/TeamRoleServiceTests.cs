@@ -1,7 +1,6 @@
 using Humans.Roles.Contracts;
 using Humans.Base.Interfaces;
 using AwesomeAssertions;
-using Humans.Base.Interfaces.Caching;
 using Humans.Auth.Contracts;
 using Humans.Auth.Data;
 using Humans.Auth.Domain;
@@ -12,7 +11,6 @@ using Humans.Email.Contracts;
 using Humans.Google.Contracts;
 using Humans.Google.Data;
 using Humans.Google.Services;
-using Humans.Settings.Contracts;
 using Humans.Teams.Contracts;
 using Humans.Teams.Data;
 using Humans.Teams.Domain;
@@ -105,6 +103,66 @@ public sealed class TeamRoleServiceTests : TeamsTestHarness
         var inDb = await TeamsDb.Set<TeamRoleDefinition>()
             .FirstOrDefaultAsync(d => d.Id == result.Definition!.Id, Xunit.TestContext.Current.CancellationToken);
         inDb.Should().NotBeNull();
+    }
+
+    [HumansTheory]
+    [Xunit.InlineData(false, 50, true)]
+    [Xunit.InlineData(false, 51, false)]
+    [Xunit.InlineData(true, 50, true)]
+    [Xunit.InlineData(true, 51, false)]
+    public async Task RoleDefinition_EnforcesSerializedPriorityLimit(bool update, int slots, bool succeeds)
+    {
+        var ct = Xunit.TestContext.Current.CancellationToken;
+        var admin = SeedUser("Admin");
+        SeedAdminRole(admin);
+        var team = SeedTeam("Test Team");
+        await SaveAllAsync(ct);
+        Guid? definitionId = null;
+        if (update)
+        {
+            var created = await _service.CreateRoleDefinitionAsync(team.Id, "Existing", null, 1,
+                [SlotPriority.Important], 0, RolePeriod.YearRound, admin.Id, cancellationToken: ct);
+            definitionId = created.Definition!.Id;
+        }
+        AuditLog.ClearReceivedCalls();
+        var priorities = Enumerable.Repeat(SlotPriority.Important, slots).ToList();
+
+        var result = update
+            ? await _service.UpdateRoleDefinitionAsync(definitionId!.Value, "Changed", null, slots,
+                priorities, 0, false, RolePeriod.YearRound, admin.Id, cancellationToken: ct)
+            : await _service.CreateRoleDefinitionAsync(team.Id, "Changed", null, slots,
+                priorities, 0, RolePeriod.YearRound, admin.Id, cancellationToken: ct);
+
+        result.Succeeded.Should().Be(succeeds);
+        var stored = await TeamsDb.Set<TeamRoleDefinition>().AsNoTracking().ToListAsync(ct);
+        if (succeeds)
+            stored.Should().ContainSingle().Which.Priorities.Should().Equal(priorities);
+        else
+        {
+            result.Refusal.Should().Be("There are too many slots with these priorities. Reduce the number of slots.");
+            if (update)
+                stored.Should().ContainSingle().Which.Name.Should().Be("Existing");
+            else
+                stored.Should().BeEmpty();
+            AuditLog.ReceivedCalls().Should().BeEmpty();
+        }
+    }
+
+    [HumansFact]
+    public async Task CreateRoleDefinitionAsync_AcceptsAUnicodeNameWithinTheStoredLimit()
+    {
+        var ct = Xunit.TestContext.Current.CancellationToken;
+        var admin = SeedUser("Admin");
+        SeedAdminRole(admin);
+        var team = SeedTeam("Test Team");
+        await SaveAllAsync(ct);
+        var name = "a" + string.Concat(Enumerable.Repeat("😀", 99));
+
+        var result = await _service.CreateRoleDefinitionAsync(team.Id, name, null, 1,
+            [SlotPriority.Important], 0, RolePeriod.YearRound, admin.Id, cancellationToken: ct);
+
+        result.Definition.Should().NotBeNull();
+        result.Definition!.Name.Should().Be(name);
     }
 
     [HumansTheory]

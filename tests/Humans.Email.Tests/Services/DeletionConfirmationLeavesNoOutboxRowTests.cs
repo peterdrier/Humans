@@ -1,5 +1,4 @@
 using Humans.Users.Data;
-using Humans.Application.Services.Users.AccountLifecycle;
 using Humans.Auth.Contracts;
 using Humans.Gdpr.Contracts;
 using Humans.Teams.Contracts;
@@ -8,7 +7,6 @@ using Microsoft.Extensions.Hosting;
 using AwesomeAssertions;
 using Humans.AuditLog.Contracts;
 using Humans.Base.Interfaces;
-using Humans.Email.Contracts;
 using Humans.Email.Data;
 using Humans.Email.Services;
 using Humans.Base.Configuration;

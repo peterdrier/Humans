@@ -5,7 +5,7 @@ using Humans.Gdpr.Contracts;
 
 namespace Humans.Camps.Services;
 
-internal interface ICampManagement : ICampService, IApplicationService, IEarlyEntryProvider
+internal interface ICampManagement : ICampService, IEarlyEntryProvider
 {
     Task<CampWriteResult<Camp>> CreateCampAsync(
         Guid createdByUserId,

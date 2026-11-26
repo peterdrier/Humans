@@ -29,7 +29,7 @@ internal sealed class TeamAdminController(
     ISettingsService settings)
     : HumansTeamControllerBase(userService, teamService, authorizationService)
 {
-    private readonly TeamMembersPageBuilder membersPageBuilder = new(teamService, teamResourceService, userService);
+    private readonly TeamMembersPageBuilder _membersPageBuilder = new(teamService, teamResourceService, userService);
     private readonly ITeamManagementService _teamService = teamService;
     private readonly IUserService _userService = userService;
     private readonly ITicketService _tickets = tickets;
@@ -108,7 +108,7 @@ internal sealed class TeamAdminController(
             return teamError;
         }
 
-        var viewModel = await membersPageBuilder.BuildAsync(
+        var viewModel = await _membersPageBuilder.BuildAsync(
             team, user.Id, canManage, page, HttpContext.RequestAborted);
 
         return View(viewModel);
@@ -287,8 +287,6 @@ internal sealed class TeamAdminController(
         var teamMembers = members.Select(m => new TeamMemberViewModel
         {
             UserId = m.UserId,
-            Email = m.Email ?? "",
-            Role = m.Role,
             JoinedAt = m.JoinedAt.ToDateTimeUtc(),
             IsCoordinator = m.Role == TeamMemberRole.Coordinator
         }).ToList();
@@ -555,6 +553,7 @@ internal sealed class TeamAdminController(
 
         if (!ModelState.IsValid)
         {
+            logger.LogWarning("Rejected malformed team page update for team {TeamId} by user {UserId}", team.Id, user.Id);
             await PopulateEditTeamPageModelAsync(model, team, HttpContext.RequestAborted);
             return View(model);
         }

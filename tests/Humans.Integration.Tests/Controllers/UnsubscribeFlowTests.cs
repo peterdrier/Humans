@@ -58,7 +58,7 @@ public class UnsubscribeFlowTests(HumansTestDatabase database) : IntegrationTest
             $"the AJAX update endpoint returns 200 OK on success (got {(int)resp.StatusCode}).");
 
         await using var assertScope = Factory.Services.CreateAsyncScope();
-        var db = assertScope.ServiceProvider.GetRequiredService<Humans.Email.Data.EmailDbContext>();
+        var db = assertScope.ServiceProvider.GetRequiredService<Email.Data.EmailDbContext>();
         var pref = await db.CommunicationPreferences
             .AsNoTracking()
             .SingleAsync(p => p.UserId == userId && p.Category == MessageCategory.VolunteerUpdates, Xunit.TestContext.Current.CancellationToken);
@@ -90,7 +90,7 @@ public class UnsubscribeFlowTests(HumansTestDatabase database) : IntegrationTest
             $"the AJAX update endpoint returns 200 OK on success (got {(int)resp.StatusCode}).");
 
         await using var assertScope = Factory.Services.CreateAsyncScope();
-        var db = assertScope.ServiceProvider.GetRequiredService<Humans.Email.Data.EmailDbContext>();
+        var db = assertScope.ServiceProvider.GetRequiredService<Email.Data.EmailDbContext>();
         var pref = await db.CommunicationPreferences
             .AsNoTracking()
             .SingleAsync(p => p.UserId == userId && p.Category == MessageCategory.VolunteerUpdates, Xunit.TestContext.Current.CancellationToken);
@@ -158,7 +158,8 @@ public class UnsubscribeFlowTests(HumansTestDatabase database) : IntegrationTest
             ["__RequestVerificationToken"] = formToken,
         };
         using var content = new FormUrlEncodedContent(withToken);
-        using var req = new HttpRequestMessage(HttpMethod.Post, url) { Content = content };
+        using var req = new HttpRequestMessage(HttpMethod.Post, url);
+        req.Content = content;
         req.Headers.TryAddWithoutValidation("Cookie", antiforgeryCookie);
         return await Client.SendAsync(req, Xunit.TestContext.Current.CancellationToken);
     }

@@ -37,9 +37,10 @@ public sealed class BackdoorIdentityViewTests
         var at = Instant.FromUtc(2026, 1, 1, 12, 0);
         var model = new BackdoorKeysViewModel
         {
+            ShowsOwners = true,
             Keys = [
-                new BackdoorKeyListItem(Guid.NewGuid(), known, "laptop", "hum_active", at, null, null, true),
-                new BackdoorKeyListItem(Guid.NewGuid(), missing, "retired", "hum_revoked", at, null, at, false),
+                new BackdoorKeyListItem(Guid.NewGuid(), known, "laptop", "hum_active", at, null, null, null, true, false, true),
+                new BackdoorKeyListItem(Guid.NewGuid(), missing, "retired", "hum_revoked", at, null, at, null, false, false, true),
             ],
         };
         var html = await RenderAsync("Index", model, users);
@@ -68,7 +69,7 @@ public sealed class BackdoorIdentityViewTests
         var urls = Substitute.For<IUrlHelperFactory>();
         urls.GetUrlHelper(Arg.Any<ActionContext>()).Returns(url);
         builder.Services.AddSingleton(urls);
-        builder.Services.AddSingleton<Humans.Base.Interfaces.IOrgTimeZone>(FixedOrgTimeZone.Madrid);
+        builder.Services.AddSingleton<Base.Interfaces.IOrgTimeZone>(FixedOrgTimeZone.Madrid);
         await using var app = builder.Build();
         using var scope = app.Services.CreateScope();
         var services = scope.ServiceProvider;

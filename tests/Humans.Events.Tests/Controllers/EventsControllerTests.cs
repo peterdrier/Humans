@@ -146,7 +146,7 @@ public class EventsControllerTests
         var id = Guid.NewGuid();
         var burn = MakeBurnSettings();
         _guide.GetEventSettingsByIdAsync(burn.Id, Arg.Any<CancellationToken>()).Returns(call =>
-            ReadAsync<EventSettingsInfo?>(action == AdminFormAction.SettingsMissing ? null : burn, AdminFormRead.Edition, call.Arg<CancellationToken>()));
+            ReadAsync(action == AdminFormAction.SettingsMissing ? null : burn, AdminFormRead.Edition, call.Arg<CancellationToken>()));
         _guide.GetEventSettingsOptions().Returns([burn]);
         _guide.GetCategoryAsync(id, Arg.Any<CancellationToken>()).Returns(call =>
             ReadAsync<EventCategoryView?>(new(id, "Category", "category", false, 0, true), AdminFormRead.Category, call.Arg<CancellationToken>()));
@@ -374,7 +374,7 @@ public class EventsControllerTests
         var checkedChoices = string.Equals(scenario, "validTrue", StringComparison.Ordinal)
             || string.Equals(scenario, "invalidScheduleAllDay", StringComparison.Ordinal);
         var season = new CampSeasonInfo(
-            Guid.NewGuid(), campId, "camp", 2026, null, "Camp", "", "en", [],
+            Guid.NewGuid(), campId, 2026, null, "Camp", "", "en", [],
             default, default, default, default, 1, null, null, null, 0, null, null)
         { LeadUserIds = [userId] };
         var camp = new CampInfo(campId, "camp", "camp@example.org", "", false, 0, [season]);
@@ -534,7 +534,7 @@ public class EventsControllerTests
         var userId = Guid.NewGuid();
         var campId = Guid.NewGuid();
         var season = new CampSeasonInfo(
-            Guid.NewGuid(), campId, "camp", 2026, null, "Camp", "", "en", [],
+            Guid.NewGuid(), campId, 2026, null, "Camp", "", "en", [],
             default, default, default, default, 1, null, null, null, 0, null, null)
         { LeadUserIds = [userId] };
         var camp = new CampInfo(campId, "camp", "camp@example.org", "", false, 0, [season]);
@@ -679,7 +679,7 @@ public class EventsControllerTests
         var guideEvent = MakeEvent(null, userId, EventStatus.ResubmitRequested);
         var campId = Guid.NewGuid();
         var season = new CampSeasonInfo(
-            Guid.NewGuid(), campId, "camp", 2026, null, "Camp", "", "en", [],
+            Guid.NewGuid(), campId, 2026, null, "Camp", "", "en", [],
             default, default, default, default, 1, null, null, null, 0, null, null)
         { LeadUserIds = [userId] };
         var camp = new CampInfo(campId, "camp", "camp@example.org", "", false, 0, [season]);
@@ -694,8 +694,7 @@ public class EventsControllerTests
             ReadAsync<byte[]>([], "Template", call.Arg<CancellationToken>()));
         var submitterId = Guid.NewGuid();
         var approved = new ApprovedEventView(Guid.NewGuid(), null, null, submitterId, Guid.NewGuid(), "music", "Music", false,
-            null, "Event", "Description", null, null, Instant.FromUtc(2026, 8, 1, 18, 0), 60, false, null, null,
-            Instant.FromUtc(2026, 1, 1, 0, 0), Instant.FromUtc(2026, 1, 1, 0, 0));
+            null, "Event", "Description", null, null, Instant.FromUtc(2026, 8, 1, 18, 0), 60, false, null, null);
         _users.GetUserInfoAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>()).Returns(call =>
             new ValueTask<UserInfo?>(ReadAsync<UserInfo?>(MakeUserInfo(call.Arg<Guid>(), "Human"),
                 call.Arg<Guid>() == userId ? "Viewer" : "Submitter", call.Arg<CancellationToken>())));
@@ -926,7 +925,7 @@ public class EventsControllerTests
         _guide.GetEventSettingsByIdAsync(settings.EventSettingsId, Arg.Any<CancellationToken>())
             .Returns(MakeBurnSettings() with { Id = settings.EventSettingsId });
         var season = new CampSeasonInfo(
-            Guid.NewGuid(), campId, "camp", 2026, null, "Guide Camp", "", "en", [],
+            Guid.NewGuid(), campId, 2026, null, "Guide Camp", "", "en", [],
             default, default, default, default, 1, null, null, null, 0, null, null)
         { LeadUserIds = [userId], EventSettingsId = settings.EventSettingsId };
         var future = season with { Id = Guid.NewGuid(), Year = 2027, Name = "Future Camp", EventSettingsId = Guid.NewGuid() };
@@ -983,7 +982,7 @@ public class EventsControllerTests
             .Returns(MakeBurnSettings() with { Id = settings.EventSettingsId });
         var campId = Guid.NewGuid();
         var selected = new CampSeasonInfo(
-            Guid.NewGuid(), campId, "selected", 2026, null, "Selected camp", "", "en", [],
+            Guid.NewGuid(), campId, 2026, null, "Selected camp", "", "en", [],
             default, default, default, default, 1, null, null, null, 0, null, null)
         {
             EventSettingsId = settings.EventSettingsId,
@@ -1031,7 +1030,7 @@ public class EventsControllerTests
         StubEditableGuideSettings();
         var settings = (await _guide.GetGuideSettingsAsync())!;
         var season = new CampSeasonInfo(
-            Guid.NewGuid(), campId, "camp", 2026, null, "Camp", "", "en", [],
+            Guid.NewGuid(), campId, 2026, null, "Camp", "", "en", [],
             default, default, default, default, 1, null, null, null, 0, null, null)
         {
             LeadUserIds = [userId],
@@ -1039,7 +1038,7 @@ public class EventsControllerTests
         };
         var camp = new CampInfo(campId, "camp", "camp@example.org", "", false, 0, [season]);
         _camps.GetCampsForEventAsync(settings.EventSettingsId, Arg.Any<CancellationToken>()).Returns([camp]);
-        _guide.GetGuideSettingsAsync(Arg.Any<CancellationToken>()).Returns(settings! with
+        _guide.GetGuideSettingsAsync(Arg.Any<CancellationToken>()).Returns(settings with
         {
             SubmissionOpenAt = Instant.FromUtc(2026, 5, 1, 0, 0),
             SubmissionCloseAt = Instant.FromUtc(2026, 6, 1, 0, 0)
@@ -1049,7 +1048,7 @@ public class EventsControllerTests
             Guid.NewGuid(), campId, null, userId, Guid.NewGuid(), "Music", "music", false,
             null, "Older", "", null, null, Instant.FromUtc(2026, 8, 1, 18, 0), 60, false,
             null, null, EventStatus.Pending, Instant.FromUtc(2026, 5, 1, 12, 0),
-            Instant.FromUtc(2026, 5, 1, 12, 0), []);
+            []);
         var newer = older with { Id = Guid.NewGuid(), Title = "Newer", SubmittedAt = older.SubmittedAt + Duration.FromDays(1) };
         _guide.GetUserSubmissionsSummaryAsync(userId, Arg.Any<CancellationToken>())
             .Returns(new EventSubmissionsSummary(7, 3, 2, [older with { CampId = null }, newer with { CampId = null }]));
@@ -1376,9 +1375,7 @@ public class EventsControllerTests
                 SubmissionCloseAt: Instant.MaxValue,
                 GuidePublishAt: Instant.MaxValue,
                 MaxPrintSlots: 100,
-                TimeZoneId: "Europe/Madrid",
-                CreatedAt: Instant.FromUtc(2026, 1, 1, 0, 0),
-                UpdatedAt: Instant.FromUtc(2026, 1, 1, 0, 0)));
+                TimeZoneId: "Europe/Madrid"));
         _guide.GetEventSettingsByIdAsync(settingsId, Arg.Any<CancellationToken>())
             .Returns(MakeBurnSettings());
         _guide.GetActiveCategoriesAsync(Arg.Any<CancellationToken>())
@@ -1422,7 +1419,7 @@ public class EventsControllerTests
         Guid.NewGuid(), campId, campId == null ? Guid.NewGuid() : null, submitterId, Guid.NewGuid(),
         "Music", "music", false, null, "Test Event", "Description", null, null,
         Instant.FromUtc(2026, 8, 1, 18, 0), 60, false, null, null, status,
-        Instant.FromUtc(2026, 7, 1, 0, 0), Instant.FromUtc(2026, 7, 1, 0, 0), []);
+        Instant.FromUtc(2026, 7, 1, 0, 0), []);
 
     private static UserInfo MakeUserInfo(Guid userId, string burnerName)
     {

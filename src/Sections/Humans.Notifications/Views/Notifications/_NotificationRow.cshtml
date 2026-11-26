@@ -31,7 +31,7 @@
         {
             userId = Model.ResolvedByUserId ?? Guid.Empty,
         });
-        using var resolverWriter = new System.IO.StringWriter();
+        using var resolverWriter = new StringWriter();
         resolver.WriteTo(resolverWriter, System.Text.Encodings.Web.HtmlEncoder.Default);
         // Template indentation must not add whitespace before the localized sentence's punctuation.
         var resolverHtml = new Microsoft.AspNetCore.Html.HtmlString(resolverWriter.ToString().Trim());

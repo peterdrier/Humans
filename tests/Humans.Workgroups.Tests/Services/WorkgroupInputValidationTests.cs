@@ -88,15 +88,17 @@ public sealed class WorkgroupInputValidationTests : WorkgroupsTestHarness
     // <input type="number"> posts "12.34" in every culture; a comma-decimal request culture must
     // not read it as 1234.
     [HumansTheory]
-    [InlineData("es-ES")]
-    [InlineData("de-DE")]
-    public void BudgetForm_ParsesAmountInvariantlyWhateverTheRequestCulture(string culture)
+    [InlineData("es-ES", "12.34")]
+    [InlineData("de-DE", "12.34")]
+    [InlineData("es-ES", "1.234e1")]
+    [InlineData("de-DE", "1234e-2")]
+    public void BudgetForm_ParsesAmountInvariantlyWhateverTheRequestCulture(string culture, string amount)
     {
         var previous = CultureInfo.CurrentCulture;
         try
         {
             CultureInfo.CurrentCulture = CultureInfo.GetCultureInfo(culture);
-            var model = new WorkgroupBudgetFormViewModel { HasBudget = true, Amount = "12.34" };
+            var model = new WorkgroupBudgetFormViewModel { HasBudget = true, Amount = amount };
 
             model.ToSave().Amount.Should().Be(12.34m);
         }
@@ -273,7 +275,7 @@ public sealed class WorkgroupInputValidationTests : WorkgroupsTestHarness
         {
             (await ctx.LogEntries.AnyAsync(e => e.WorkgroupId == group.Id, Ct)).Should().BeFalse();
             AuditLog.ReceivedCalls().Should().BeEmpty();
-            Notifications.ReceivedCalls().Should().BeEmpty();
+            NotificationCalls().Should().BeEmpty();
             Email.ReceivedCalls().Should().BeEmpty();
         }
     }

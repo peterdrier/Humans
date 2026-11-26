@@ -374,7 +374,7 @@ The only authorization files left in `src/Humans.Web/` are `Authorization/Author
 | `src/Sections/Humans.Camps/Contracts/HumansCampControllerBase.cs` | 54 | `AuthorizeAsync(User, camp, CampOperationRequirement.Manage)` |
 | `src/Sections/Humans.Camps/Contracts/HumansCampControllerBase.cs` | 82 | `AuthorizeAsync(User, camp, CampOperationRequirement.SubmitEvent)` |
 | `src/Sections/Humans.Budget/Controllers/BudgetController.cs` | 34, 112 | `AuthorizeAsync(User, FinancePolicies.Manage)` |
-| `src/Sections/Humans.Budget/Controllers/BudgetController.cs` | 91 | `AuthorizeAsync(User, FinancePolicies.Manage)` (drives `IsCoordinator` flag alongside a coordinator-team-id lookup) |
+| `src/Sections/Humans.Budget/Controllers/BudgetController.cs` | 91 | `AuthorizeAsync(User, FinancePolicies.Manage)` (drives `CanEditBudget` flag alongside the Edit budget owners lookup) |
 | `src/Sections/Humans.Budget/Controllers/BudgetController.cs` | 118, 253 | `AuthorizeAsync(User, category, BudgetOperationRequirement.Edit)` |
 | `src/Sections/Humans.Containers/Controllers/ContainerController.cs` | 25 | `AuthorizeAsync(User, target, requirement)` (private `AuthorizeAsync` helper, called from every `Manage`/`Place` gate in the controller, including `ResolveAndAuthorizeAsync`) |
 | `src/Sections/Humans.Expenses/Controllers/ExpensesController.cs` | 631 | `AuthorizeAsync(User, owningReport, new ExpenseReportOperationRequirement(ExpenseReportOperation.View))` (Attachment — 404 on denial) |

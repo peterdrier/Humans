@@ -5,7 +5,6 @@ using AwesomeAssertions;
 using Humans.Base.Interfaces;
 using Humans.Integration.Tests.Infrastructure;
 using Humans.Shifts.Contracts;
-using Humans.Base.Authorization;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.Extensions.DependencyInjection;
 

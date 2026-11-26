@@ -176,8 +176,8 @@
   <!-- ======================== -->
   <!-- Login Partial            -->
   <!-- ======================== -->
-  <data name="Login_Logout" xml:space="preserve"><value>Logout</value></data>
-  <data name="Login_Login" xml:space="preserve"><value>Login</value></data>
+  <data name="Login_Logout" xml:space="preserve"><value>Sign out</value></data>
+  <data name="Login_Login" xml:space="preserve"><value>Sign in</value></data>
 
   <!-- ======================== -->
   <!-- Account / Login          -->
@@ -420,9 +420,9 @@
   <data name="Admin_TeamUpdated" xml:space="preserve"><value>Team updated successfully.</value></data>
   <data name="Admin_TeamDeactivated" xml:space="preserve"><value>Team deactivated.</value></data>
   <data name="Admin_RoleAlreadyActive" xml:space="preserve"><value>User already has an active '{0}' role assignment.</value><comment>{0} = role name</comment></data>
-  <data name="Admin_RoleAssigned" xml:space="preserve"><value>Role '{0}' assigned successfully.</value><comment>{0} = role name</comment></data>
+  <data name="Admin_RoleAssigned" xml:space="preserve"><value>System role '{0}' assigned.</value><comment>{0} = role name</comment></data>
   <data name="Admin_RoleNotActive" xml:space="preserve"><value>This role assignment is not currently active.</value></data>
-  <data name="Admin_RoleEnded" xml:space="preserve"><value>Role '{0}' ended for {1}.</value><comment>{0} = role name, {1} = user display name</comment></data>
+  <data name="Admin_RoleEnded" xml:space="preserve"><value>System role '{0}' revoked for {1}.</value><comment>{0} = role name, {1} = user display name</comment></data>
   <data name="Admin_GoogleSyncSuccess" xml:space="preserve"><value>Google resources synced successfully.</value></data>
   <data name="Admin_GoogleSyncFailed" xml:space="preserve"><value>Sync failed. Check logs for details.</value></data>
 
@@ -473,7 +473,7 @@
   <data name="Admin_Clear" xml:space="preserve"><value>Clear</value></data>
   <data name="Admin_NoMembersFound" xml:space="preserve"><value>No humans found.</value></data>
   <data name="Admin_Joined" xml:space="preserve"><value>Joined</value></data>
-  <data name="Admin_LastLogin" xml:space="preserve"><value>Last Login</value></data>
+  <data name="Admin_LastLogin" xml:space="preserve"><value>Last sign-in</value></data>
   <data name="Admin_Never" xml:space="preserve"><value>Never</value></data>
   <data name="Admin_NoProfile" xml:space="preserve"><value>No Profile</value></data>
 
@@ -561,7 +561,7 @@
   <!-- Magic Link Auth -->
   <data name="Login_MagicLink_Title" xml:space="preserve"><value>Or sign in with email</value></data>
   <data name="Login_MagicLink_Placeholder" xml:space="preserve"><value>your@email.com</value></data>
-  <data name="Login_MagicLink_Submit" xml:space="preserve"><value>Send me a login link</value></data>
+  <data name="Login_MagicLink_Submit" xml:space="preserve"><value>Send me a sign-in link</value></data>
   <data name="GateLogin_Title" xml:space="preserve"><value>Gate terminal</value></data>
   <data name="GateLogin_Description" xml:space="preserve"><value>Sign in the shared gate laptop to look up tickets. Ask the ticket team for the credentials.</value></data>
   <data name="GateLogin_Username" xml:space="preserve"><value>Username</value></data>
@@ -572,7 +572,7 @@
   <data name="MagicLinkSent_Title" xml:space="preserve"><value>Check your email</value></data>
   <data name="MagicLinkSent_Message" xml:space="preserve"><value>We've sent a link to that email address from humans@nobodies.team. Check your inbox (and spam folder).</value></data>
   <data name="MagicLinkError_Title" xml:space="preserve"><value>Link expired or invalid</value></data>
-  <data name="MagicLinkError_Message" xml:space="preserve"><value>This login link has expired or has already been used.</value></data>
+  <data name="MagicLinkError_Message" xml:space="preserve"><value>This sign-in link has expired or has already been used.</value></data>
   <data name="MagicLinkError_RequestNew" xml:space="preserve"><value>Request a new link</value></data>
   <data name="CompleteSignup_Title" xml:space="preserve"><value>Complete your signup</value></data>
   <data name="CompleteSignup_BurnerNameLabel" xml:space="preserve"><value>Burner name</value></data>
@@ -583,7 +583,7 @@
   <data name="CompleteSignup_PrivacyLink" xml:space="preserve"><value>Read our privacy policy</value></data>
   <data name="CompleteSignup_AllFieldsRequired" xml:space="preserve"><value>Please fill in your burner name and your legal first and last name.</value></data>
   <data name="CompleteSignup_Submit" xml:space="preserve"><value>Create account</value></data>
-  <data name="MagicLinkSent_BackToLogin" xml:space="preserve"><value>Back to login</value></data>
+  <data name="MagicLinkSent_BackToLogin" xml:space="preserve"><value>Back to sign in</value></data>
   <data name="MagicLinkSent_Expiry" xml:space="preserve"><value>Your link expires at {0}.</value></data>
   <data name="MagicLinkConfirm_Title" xml:space="preserve"><value>Sign in</value></data>
   <data name="MagicLinkConfirm_Message" xml:space="preserve"><value>Click the button below to sign in to your account.</value></data>
@@ -936,4 +936,5 @@
   <data name="Todo_Medical_Title" xml:space="preserve"><value>Anything coordinators should know about your health?</value></data>
   <data name="Todo_Medical_Pending" xml:space="preserve"><value>Optional. Only you and the No-Info Admins can see it.</value></data>
   <data name="Nav_Roles" xml:space="preserve"><value>Roles</value></data>
+  <data name="Nav_Tasks" xml:space="preserve"><value>Tasks</value></data>
 </root>

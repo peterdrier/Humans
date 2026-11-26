@@ -118,7 +118,7 @@ internal sealed record DriveFileMetadata(
 /// <summary>Exactly one of <see cref="Drive"/> or <see cref="Error"/> is non-null.</summary>
 internal sealed record SharedDriveMetadataResult(SharedDriveMetadata? Drive, GoogleClientError? Error);
 
-internal sealed record SharedDriveMetadata(string Id, string Name);
+internal sealed record SharedDriveMetadata(string Name);
 
 /// <summary>Exactly one of <see cref="FolderId"/> or <see cref="Error"/> is non-null.</summary>
 internal sealed record DriveFolderCreateResult(string? FolderId, GoogleClientError? Error);

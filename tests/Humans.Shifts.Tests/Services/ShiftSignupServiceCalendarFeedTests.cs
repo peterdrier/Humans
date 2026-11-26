@@ -6,7 +6,6 @@ using Humans.Base.Extensions;
 using Microsoft.Extensions.Options;
 using Humans.Teams.Domain;
 using AwesomeAssertions;
-using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Logging.Abstractions;
 using NodaTime;
 using NSubstitute;
@@ -14,7 +13,6 @@ using Xunit;
 using Humans.Shifts.Services;
 using Humans.Shifts.Tests.Infrastructure;
 using Humans.Base.Enums;
-using Humans.EarlyEntry.Contracts;
 using Humans.Notifications.Contracts;
 using Humans.Shifts.Contracts;
 using Humans.Teams.Contracts;
@@ -145,7 +143,7 @@ public sealed class ShiftSignupServiceCalendarFeedTests : ShiftsTestHarness
     [HumansFact]
     public async Task GetCalendarItems_ConfirmedSignup_ResolvesAbsoluteTimesAndTeamName()
     {
-        var (es, rota, shift) = SeedShiftScenario();
+        var (_, rota, shift) = SeedShiftScenario();
         var userId = Guid.NewGuid();
         var signup = SeedSignup(shift, userId, SignupStatus.Confirmed);
         _teamService.GetTeamsAsync(Arg.Any<CancellationToken>())

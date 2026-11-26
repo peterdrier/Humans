@@ -17,7 +17,8 @@ namespace Humans.Roles.Controllers;
 internal sealed class RolesController(
     IRoleManagementService roles,
     IUserService userService,
-    IStringLocalizer<RolesResource> localizer) : HumansControllerBase(userService)
+    IStringLocalizer<RolesResource> localizer,
+    ILogger<RolesController> logger) : HumansControllerBase(userService)
 {
     [HttpGet("")]
     public async Task<IActionResult> Index(CancellationToken ct)
@@ -108,6 +109,13 @@ internal sealed class RolesController(
         if (error is not null) return error;
         if (await FindOwnerAsync(kind, key, ct) is not { } owner) return NotFound();
 
+        if (!ModelState.IsValid)
+        {
+            if (!await roles.CanManageAsync(owner.Owner, user.Id, ct)) return Forbid();
+            logger.LogWarning("Rejected malformed role creation for owner {OwnerKind}/{OwnerId} by {UserId}", owner.Owner.Kind, owner.Owner.Id, user.Id);
+            return BadRequest(ModelState);
+        }
+
         var result = await roles.CreateAsync(owner.Owner, form.ToInput(), user.Id, ct);
         if (!result.Succeeded)
         {
@@ -128,6 +136,13 @@ internal sealed class RolesController(
         if (error is not null) return error;
         if (await FindOwnerAsync(kind, key, ct) is not { } owner) return NotFound();
         if (await FindRoleAsync(owner, slug, ct) is not { } role) return NotFound();
+
+        if (!ModelState.IsValid)
+        {
+            if (!await roles.CanManageAsync(owner.Owner, user.Id, ct)) return Forbid();
+            logger.LogWarning("Rejected malformed role edit for {RoleId} by {UserId}", role.Id, user.Id);
+            return BadRequest(ModelState);
+        }
 
         var result = await roles.UpdateAsync(role.Id, form.ToInput(), user.Id, ct);
         if (!result.Succeeded)

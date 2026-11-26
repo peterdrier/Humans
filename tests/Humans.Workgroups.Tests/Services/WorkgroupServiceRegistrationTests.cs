@@ -1,6 +1,5 @@
 using Xunit;
 using AwesomeAssertions;
-using Humans.AuditLog.Contracts;
 using Humans.Finance.Contracts;
 using Humans.Email.Contracts;
 using Humans.Base.Constants;

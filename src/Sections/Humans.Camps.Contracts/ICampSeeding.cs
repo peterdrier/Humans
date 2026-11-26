@@ -39,7 +39,7 @@ public interface ICampRoleSeeding
     Task<Guid?> GetDefinitionIdBySlugAsync(string slug, CancellationToken cancellationToken = default);
 }
 
-public sealed record CampRoleDefinitionSeedInfo(Guid Id, string Slug, string Name);
+public sealed record CampRoleDefinitionSeedInfo(string Name);
 
 public static class CampSeedRoles
 {

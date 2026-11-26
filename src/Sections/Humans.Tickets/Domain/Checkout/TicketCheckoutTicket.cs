@@ -3,14 +3,14 @@ using NodaTime;
 namespace Humans.Tickets.Domain.Checkout;
 
 /// <summary>
-/// A named ticket issued from a paid checkout order: what the gate scans. Never renamed by a holder; resale voids it
+/// A named ticket issued from a paid order: what the gate scans. Never renamed by a holder; resale voids it
 /// and issues a new one in the buyer's name.
 /// </summary>
 internal sealed class TicketCheckoutTicket
 {
     public Guid Id { get; init; }
 
-    public Guid SalesEventId { get; init; }
+    public Guid TicketingSettingsId { get; init; }
 
     public Guid OrderId { get; init; }
 
@@ -41,9 +41,12 @@ internal sealed class TicketCheckoutTicket
 
     public string? ClassLabel { get; init; }
 
-    public long CreditsMinor { get; init; }
+    public long DiscountsMinor { get; init; }
 
     public TicketCheckoutTicketState State { get; set; }
+
+    /// <summary>Counts as held until resold or voided; admission may still be blocked by an open resale offer.</summary>
+    public bool IsHeld => State is TicketCheckoutTicketState.Valid or TicketCheckoutTicketState.Offered;
 
     public Instant IssuedAt { get; init; }
 
@@ -62,7 +65,7 @@ internal enum TicketHolderKind
 internal enum TicketCheckoutTicketState
 {
     Valid = 0,
-    /// <summary>Returned to the resale queue; the gate refuses it while it can still sell (the holder withdraws it to enter).</summary>
+    /// <summary>Put up for resale; the gate refuses it while it can still sell (the holder withdraws it to enter).</summary>
     Offered = 1,
     /// <summary>Sold on to someone else, who holds a new ticket.</summary>
     Resold = 2,
@@ -80,7 +83,7 @@ internal sealed class TicketResaleOffer
 {
     public Guid Id { get; init; }
 
-    public Guid SalesEventId { get; init; }
+    public Guid TicketingSettingsId { get; init; }
 
     public Guid TicketId { get; init; }
 
@@ -93,7 +96,7 @@ internal sealed class TicketResaleOffer
     /// <summary>What the holder paid for the ticket, refunded when it sells.</summary>
     public long RefundOwedMinor { get; init; }
 
-    /// <summary>The checkout holding the offer while it is <see cref="TicketResaleOfferState.Reserved"/>.</summary>
+    /// <summary>The unpaid order holding the offer while it is <see cref="TicketResaleOfferState.Reserved"/>.</summary>
     public Guid? ReservedByOrderId { get; set; }
 
     public Guid? SoldToOrderId { get; set; }
@@ -139,7 +142,7 @@ internal sealed class TicketResaleInvite
 internal enum TicketResaleOfferState
 {
     Open = 0,
-    /// <summary>Held by an unpaid checkout; back to Open if that checkout lapses.</summary>
+    /// <summary>Held by an unpaid order; back to Open if that order lapses.</summary>
     Reserved = 1,
     Sold = 2,
     Withdrawn = 3,

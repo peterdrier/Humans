@@ -1,7 +1,6 @@
 using AwesomeAssertions;
 using Humans.Calendar.Contracts;
 using NodaTime;
-using Xunit;
 
 namespace Humans.Calendar.Tests.Contracts;
 

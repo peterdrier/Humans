@@ -1,4 +1,3 @@
-using Humans.Auth.Contracts;
 using Humans.AuditLog.Contracts;
 using Humans.Base.Extensions;
 using Humans.Base.Interfaces;
@@ -9,7 +8,6 @@ using Humans.Base.Helpers;
 using Humans.Users.Helpers;
 using Humans.Gdpr.Contracts;
 using NodaTime;
-using Humans.Users.Domain;
 using System.ComponentModel.DataAnnotations;
 using Humans.Base.Threading;
 
@@ -325,9 +323,7 @@ internal sealed class UserService(
         var userEmails = await repo.GetUserEmailsByUserIdReadOnlyAsync(userId, ct);
         var effectiveEmail = userEmails
             .Where(e => e.IsVerified)
-            .OrderByDescending(e => e.IsPrimary)
-            .Select(e => e.Email)
-            .FirstOrDefault() ?? user.IdentityEmailColumn;
+            .MaxBy(e => e.IsPrimary)?.Email ?? user.IdentityEmailColumn;
 
         var shaped = new
         {
@@ -663,7 +659,7 @@ internal sealed class UserService(
 
         var winner =
             verified.FirstOrDefault(e => e.Email.EndsWith("@nobodies.team", StringComparison.OrdinalIgnoreCase))
-            ?? currentPrimaries.OrderBy(e => e.Id).FirstOrDefault()
+            ?? currentPrimaries.MinBy(e => e.Id)
             ?? verified.OrderByDescending(e => e.UpdatedAt).ThenBy(e => e.Id).First();
 
         if (currentPrimaries.Count == 1 && currentPrimaries[0].Id == winner.Id)
@@ -1035,8 +1031,7 @@ internal sealed class UserService(
 
         var match = rows
             .Where(r => r.IsVerified && EmailNormalization.EmailsMatch(r.Email, normalized))
-            .OrderByDescending(r => r.IsPrimary)
-            .FirstOrDefault();
+            .MaxBy(r => r.IsPrimary);
 
         return match is null ? null : await GetUserInfoAsync(match.UserId, ct);
     }

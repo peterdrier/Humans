@@ -1,6 +1,5 @@
 using Humans.AuditLog.Contracts;
 using Humans.Google.Contracts;
-using Humans.Google.Data;
 using Humans.Google.Domain;
 
 namespace Humans.Google.Services;
@@ -123,7 +122,6 @@ internal sealed class GoogleSyncHistoryMigrationService(
 
         return shown
             .Select(e => new GoogleSyncHistoryMovableRow(
-                e.Id,
                 e.OccurredAt,
                 e.Action,
                 names.TryGetValue(e.ResourceId, out var name) ? name : null,

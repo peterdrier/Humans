@@ -7,7 +7,7 @@ using Humans.Base.Configuration;
 using Microsoft.Extensions.Options;
 using SdkGroup = Google.Apis.CloudIdentity.v1.Data.Group;
 using SdkGroupSettings = Google.Apis.Groupssettings.v1.Data.Groups;
-using SdkGroupSettingsBaseServiceRequest = Google.Apis.Groupssettings.v1.GroupssettingsBaseServiceRequest<global::Google.Apis.Groupssettings.v1.Data.Groups>;
+using SdkGroupSettingsBaseServiceRequest = Google.Apis.Groupssettings.v1.GroupssettingsBaseServiceRequest<Google.Apis.Groupssettings.v1.Data.Groups>;
 
 namespace Humans.Google.Services.Workspace;
 

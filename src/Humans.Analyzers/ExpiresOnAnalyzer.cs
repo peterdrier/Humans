@@ -44,12 +44,12 @@ public sealed class ExpiresOnAnalyzer : DiagnosticAnalyzer
     /// override must flow through async scheduling to <c>OnCompilationStart</c> without bleeding across concurrent
     /// test collections.
     /// </remarks>
-    private static readonly AsyncLocal<Func<DateTime>?> _todayOverride = new();
+    private static readonly AsyncLocal<Func<DateTime>?> TodayOverrideLocal = new();
 
     public static Func<DateTime>? TodayOverride
     {
-        get => _todayOverride.Value;
-        set => _todayOverride.Value = value;
+        get => TodayOverrideLocal.Value;
+        set => TodayOverrideLocal.Value = value;
     }
 
     private static readonly LocalizableString UsageTitle =

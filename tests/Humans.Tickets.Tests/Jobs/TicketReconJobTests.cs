@@ -1,7 +1,6 @@
 using AwesomeAssertions;
 using Humans.Base.Interfaces;
 using Humans.Email.Contracts;
-using Humans.Testing;
 using Humans.Tickets.Contracts;
 using Humans.Tickets.Domain.Checkout;
 using Humans.Tickets.Jobs;
@@ -26,9 +25,9 @@ public sealed class TicketReconJobTests
 
     public TicketReconJobTests()
     {
-        _checkout.GetSalesEventsAsync(Arg.Any<CancellationToken>()).Returns([new TicketSalesEvent { CreatedAt = Opened }]);
-        _checkout.GetBackendsInUseAsync(Arg.Any<CancellationToken>()).Returns(["boxoffice", "pretix"]);
-        _checkout.ReconcileBackendAsync(Arg.Any<string>(), Arg.Any<Instant>(), Arg.Any<Instant>(), Arg.Any<CancellationToken>())
+        _checkout.ListTicketingSettingsAsync(Arg.Any<CancellationToken>()).Returns([new TicketingSettings { CreatedAt = Opened }]);
+        _checkout.GetPlatformsInUseAsync(Arg.Any<CancellationToken>()).Returns(["boxoffice", "pretix"]);
+        _checkout.ReconcilePlatformAsync(Arg.Any<string>(), Arg.Any<Instant>(), Arg.Any<Instant>(), Arg.Any<CancellationToken>())
             .Returns(ci => Balanced(ci.ArgAt<string>(0)));
         _email.SendAsync(Arg.Do<EmailMessage>(_sent.Add), Arg.Any<CancellationToken>()).Returns(Task.CompletedTask);
     }
@@ -36,7 +35,7 @@ public sealed class TicketReconJobTests
     private static TicketRecon Balanced(string key)
     {
         var totals = new TicketReconTotals(0, 0, 0, 0, 0);
-        return new TicketRecon(key, Opened, Now, totals, totals, 0, [], [], null);
+        return new TicketRecon(key, totals, totals, 0, [], [], null);
     }
 
     private TicketReconJob Job()
@@ -58,11 +57,11 @@ public sealed class TicketReconJobTests
     [HumansFact]
     public async Task Mails_the_team_once_with_every_finding()
     {
-        var order = new TicketCheckoutOrder { Id = Guid.NewGuid(), BackendKey = "boxoffice", State = TicketCheckoutOrderState.Paid, TotalMinor = 30000, FeeMinor = 450 };
+        var order = new TicketCheckoutOrder { Id = Guid.NewGuid(), PlatformKey = "boxoffice", State = TicketCheckoutOrderState.Paid, TotalMinor = 30000, FeeMinor = 450 };
         var fee = new PaymentLedgerEntry("txn_1", Now, PaymentLedgerEntryKind.Charge, 30000, 470, order.Id, null);
         _checkout.ReconcilePaymentsAsync("boxoffice", Arg.Any<Instant>(), Arg.Any<Instant>(), Arg.Any<CancellationToken>())
             .Returns(TicketPaymentReconBuilder.Build("boxoffice", Opened, Now, new PaymentLedger([fee], []), [order]));
-        _checkout.ReconcileBackendAsync("pretix", Arg.Any<Instant>(), Arg.Any<Instant>(), Arg.Any<CancellationToken>())
+        _checkout.ReconcilePlatformAsync("pretix", Arg.Any<Instant>(), Arg.Any<Instant>(), Arg.Any<CancellationToken>())
             .Throws(new InvalidOperationException("boom"));
 
         await Job().ExecuteAsync(TestContext.Current.CancellationToken);

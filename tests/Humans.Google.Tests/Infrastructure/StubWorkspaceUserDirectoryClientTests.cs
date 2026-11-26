@@ -22,6 +22,6 @@ public sealed class StubWorkspaceUserDirectoryClientTests
 
         var account = await sut.GetAccountAsync("new@nobodies.team", Xunit.TestContext.Current.CancellationToken);
         account.Should().NotBeNull();
-        account!.CreationTime.Should().Be(now.ToDateTimeUtc());
+        account.CreationTime.Should().Be(now.ToDateTimeUtc());
     }
 }

@@ -8,7 +8,6 @@ namespace Humans.Shifts.Contracts;
 /// are absent: nothing outside reads them.
 /// </summary>
 public sealed record ShiftUserSummary(
-    Guid UserId,
     IReadOnlyList<ShiftTagPreferenceInfo> TagPreferences,
     IReadOnlyList<ShiftSignupSummary> Signups)
 {
@@ -22,10 +21,10 @@ public sealed record ShiftUserSummary(
         Signups.Any(s => s.IsActive && s.Period == period);
 
     /// <summary>For unknown ids or no active event.</summary>
-    public static ShiftUserSummary Empty(Guid userId) => new(userId, [], []);
+    public static ShiftUserSummary Empty(Guid userId) => new([], []);
 }
 
-public sealed record ShiftTagPreferenceInfo(Guid ShiftTagId, string Name);
+public sealed record ShiftTagPreferenceInfo(Guid ShiftTagId);
 
 /// <summary>
 /// <c>SignupBlockId</c> is shared by every row of a multi-day block. <c>RotaName</c> is empty when the rota row is
@@ -36,7 +35,6 @@ public sealed record ShiftSignupSummary(
     Guid ShiftId,
     Guid? SignupBlockId,
     SignupStatus Status,
-    Guid RotaId,
     string RotaName,
     string? RotaDescription,
     string? RotaPracticalInfo,

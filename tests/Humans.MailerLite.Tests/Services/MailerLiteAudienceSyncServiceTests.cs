@@ -147,7 +147,7 @@ public class MailerLiteAudienceSyncServiceTests
             .Returns(async call =>
             {
                 await ObserveWriteAsync(AudienceWrite.BulkImport, call.ArgAt<CancellationToken>(2));
-                return new BulkImportResult(1, 0, 0, 0);
+                return new BulkImportResult(1, 0);
             });
         _ml.AssignSubscriberToGroupAsync("existing", "g1", Arg.Any<CancellationToken>()).Returns(async call =>
             await ObserveWriteAsync(AudienceWrite.Assign, call.ArgAt<CancellationToken>(2)));
@@ -159,7 +159,7 @@ public class MailerLiteAudienceSyncServiceTests
         await act.Should().ThrowAsync<OperationCanceledException>();
         var state = await _repository.GetSyncStateAsync(audience.Key, TestContext.Current.CancellationToken);
         state.Should().NotBeNull();
-        state!.Created.Should().Be(1);
+        state.Created.Should().Be(1);
         state.Assigned.Should().Be(1);
         state.Unassigned.Should().Be(createsGroup ? 0 : 1);
         state.Errors.Should().Be(0);
@@ -185,7 +185,7 @@ public class MailerLiteAudienceSyncServiceTests
         _ml.ListGroupsAsync(shutdown.Token).Returns(async _ =>
         {
             await shutdown.CancelAsync();
-            return (IReadOnlyList<MailerLiteGroup>)[];
+            return [];
         });
 
         var act = () => NewService(audience).SyncAllAsync(ct: shutdown.Token);
@@ -227,7 +227,7 @@ public class MailerLiteAudienceSyncServiceTests
                 "g1",
                 Arg.Is<IReadOnlyList<string>>(l => l.Single() == "a@example.com"),
                 Arg.Any<CancellationToken>())
-            .Returns(new BulkImportResult(1, 0, 0, 0));
+            .Returns(new BulkImportResult(1, 0));
 
         var result = await NewService(audience).SyncAsync(audience, ct: TestContext.Current.CancellationToken);
 
@@ -252,7 +252,7 @@ public class MailerLiteAudienceSyncServiceTests
         SetupGroups(Group("g1", "Humans - A"));
         SetupSubscribers(existingSubscriber ? [Subscriber("s1", "duplicate@example.com", "active")] : []);
         _ml.BulkImportSubscribersToGroupAsync("g1", Arg.Any<IReadOnlyList<string>>(), Arg.Any<CancellationToken>())
-            .Returns(new BulkImportResult(1, 0, 0, 0));
+            .Returns(new BulkImportResult(1, 0));
 
         var result = await NewService(audience).SyncAsync(audience, ct: TestContext.Current.CancellationToken);
 
@@ -340,7 +340,7 @@ public class MailerLiteAudienceSyncServiceTests
         SetupSubscribers();
         _ml.BulkImportSubscribersToGroupAsync(
                 "g1", Arg.Any<IReadOnlyList<string>>(), Arg.Any<CancellationToken>())
-            .Returns(new BulkImportResult(1, 0, 0, 0));
+            .Returns(new BulkImportResult(1, 0));
 
         await NewService(audience).SyncAsync(audience, ct: TestContext.Current.CancellationToken);
 

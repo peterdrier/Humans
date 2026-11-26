@@ -8,7 +8,6 @@ using Microsoft.AspNetCore.Mvc;
 using NodaTime;
 using NodaTime.Text;
 
-using Humans.Base.Authorization;
 using Humans.Users.Contracts;
 
 namespace Humans.Shifts.Controllers;

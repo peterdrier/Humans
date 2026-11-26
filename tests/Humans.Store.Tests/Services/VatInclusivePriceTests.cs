@@ -64,6 +64,5 @@ public class VatInclusivePriceTests
         new(Guid.NewGuid(), 2026, "P", "", unitEx, vat, null, default, true);
 
     private static OrderLineDto Line(int qty, decimal unitEx, decimal vat) =>
-        new(Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid(), "P", qty, unitEx, vat, null,
-            default, 0m, 0m, 0m, 0m);
+        new(Guid.NewGuid(), Guid.NewGuid(), "P", qty, unitEx, vat, null, 0m, 0m);
 }

@@ -40,7 +40,7 @@ public sealed class WorkgroupsAdminControllerTests : WorkgroupsTestHarness
         service.RegisterExistingAsync(Arg.Any<Guid>(), Arg.Any<WorkgroupBootstrap>(), Arg.Any<CancellationToken>())
             .Returns(new WorkgroupMutationResult<Guid>(Refusal: refusal));
         service.SetBudgetAsync(Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<WorkgroupBudgetSave>(), Arg.Any<CancellationToken>())
-            .Returns(new WorkgroupMutationResult<Humans.Finance.Contracts.ExpenseAccountRef?>(Refusal: refusal));
+            .Returns(new WorkgroupMutationResult<Finance.Contracts.ExpenseAccountRef?>(Refusal: refusal));
         var controller = MakeAdminController("Budget", errorMessage: "Unexpected localized text", service: service);
 
         if (bootstrap)
@@ -79,7 +79,7 @@ public sealed class WorkgroupsAdminControllerTests : WorkgroupsTestHarness
         service.RegisterExistingAsync(Arg.Any<Guid>(), Arg.Any<WorkgroupBootstrap>(), Arg.Any<CancellationToken>())
             .Returns(new WorkgroupMutationResult<Guid>(Guid.NewGuid()));
         service.SetBudgetAsync(Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<WorkgroupBudgetSave>(), Arg.Any<CancellationToken>())
-            .Returns(new WorkgroupMutationResult<Humans.Finance.Contracts.ExpenseAccountRef?>());
+            .Returns(new WorkgroupMutationResult<Finance.Contracts.ExpenseAccountRef?>());
         var controller = MakeAdminController(bootstrap ? nameof(WorkgroupsAdminController.RegisterExisting) : nameof(WorkgroupsAdminController.Budget), service: service);
         controller.Url = Substitute.For<IUrlHelper>();
         using var services = new ServiceCollection().AddLogging().AddControllers().Services.BuildServiceProvider();
@@ -244,7 +244,7 @@ public sealed class WorkgroupsAdminControllerTests : WorkgroupsTestHarness
         if (malformed || missingChoice)
         {
             AuditLog.ReceivedCalls().Should().BeEmpty();
-            Notifications.ReceivedCalls().Should().BeEmpty();
+            NotificationCalls().Should().BeEmpty();
             Email.ReceivedCalls().Should().BeEmpty();
         }
     }
@@ -258,7 +258,7 @@ public sealed class WorkgroupsAdminControllerTests : WorkgroupsTestHarness
         var id = Guid.NewGuid();
         var failure = new KeyNotFoundException("Dependency lookup failed");
         service.SetBudgetAsync(id, Arg.Any<Guid>(), Arg.Any<WorkgroupBudgetSave>(), Ct)
-            .Returns(Task.FromException<WorkgroupMutationResult<Humans.Finance.Contracts.ExpenseAccountRef?>>(failure));
+            .Returns(Task.FromException<WorkgroupMutationResult<Finance.Contracts.ExpenseAccountRef?>>(failure));
         service.RecordDispositionAsync(id, Arg.Any<Guid>(), WorkgroupDisposition.Noted, "Noted", Ct)
             .Returns(Task.FromException<WorkgroupMutationResult>(failure));
         var controller = MakeAdminController("Test", service: service);
@@ -421,7 +421,7 @@ public sealed class WorkgroupsAdminControllerTests : WorkgroupsTestHarness
     {
         Holded.GetChartAsync(Arg.Any<CancellationToken>())
             .Returns(_ => Task.FromResult<IReadOnlyList<HoldedChartAccountInfo>>(
-                [new HoldedChartAccountInfo(62900007, "Sound (legacy)", null, null, false, 0m)]));
+                [new HoldedChartAccountInfo(62900007, "Sound (legacy)", null, false, 0m)]));
         var sut = MakeAdminController(nameof(WorkgroupsAdminController.RegisterExisting));
 
         var result = await sut.RegisterExisting(Ct);

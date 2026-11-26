@@ -74,7 +74,7 @@ internal sealed class SurveyAdminController(
     [HttpPost("Approve/{id:guid}")]
     [Authorize(Policy = SurveysPolicies.Manage)]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> Approve(Guid id, CancellationToken ct)
+    public async Task<IActionResult> Approve(Guid id, string? returnUrl, CancellationToken ct)
     {
         var actor = await GetCurrentUserInfoAsync(ct);
         if (actor is null) return Forbid();
@@ -92,13 +92,13 @@ internal sealed class SurveyAdminController(
             logger.LogWarning("Survey approval rejected for {SurveyId}: {Reason}", id, result.Refusal);
             SetError(result.Refusal!);
         }
-        return RedirectToAction(nameof(Queue));
+        return ReturnOrQueue(returnUrl);
     }
 
     [HttpPost("Reject/{id:guid}")]
     [Authorize(Policy = SurveysPolicies.Manage)]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> Reject(Guid id, string note, CancellationToken ct)
+    public async Task<IActionResult> Reject(Guid id, string note, string? returnUrl, CancellationToken ct)
     {
         var actor = await GetCurrentUserInfoAsync(ct);
         if (actor is null) return Forbid();
@@ -108,13 +108,25 @@ internal sealed class SurveyAdminController(
         if (!result.Succeeded)
         {
             logger.LogWarning("Survey rejection rejected for {SurveyId}: {Reason}", id, result.Refusal);
+            if (IsLocalReturnUrl(returnUrl))
+            {
+                SetError(result.Refusal!);
+                return LocalRedirect(returnUrl);
+            }
             ModelState.AddModelError(string.Empty, result.Refusal!);
             ViewData[$"RejectionNote:{id}"] = note;
             return await Queue(ct);
         }
         SetSuccess(localizer["Surveys_Admin_Queue_Rejected"]);
-        return RedirectToAction(nameof(Queue));
+        return ReturnOrQueue(returnUrl);
     }
+
+    // The builder and Send pages post approve/reject too; send the reviewer back where they were.
+    private IActionResult ReturnOrQueue(string? returnUrl) =>
+        IsLocalReturnUrl(returnUrl) ? LocalRedirect(returnUrl) : RedirectToAction(nameof(Queue));
+
+    private bool IsLocalReturnUrl([System.Diagnostics.CodeAnalysis.NotNullWhen(true)] string? returnUrl) =>
+        !string.IsNullOrEmpty(returnUrl) && Url.IsLocalUrl(returnUrl);
 
     [HttpPost("Submit/{id:guid}")]
     [ValidateAntiForgeryToken]

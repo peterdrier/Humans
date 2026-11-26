@@ -1,7 +1,6 @@
 using System.Security.Claims;
 using Humans.Shifts.Contracts;
 using Humans.Shifts.Controllers;
-using Humans.Shifts.Domain;
 using Humans.Shifts.Helpers;
 using Humans.Shifts.Models;
 using Humans.Shifts.Services;
@@ -80,7 +79,7 @@ public class ShiftDashboardControllerTests
         var settings = Event;
         var empty = new PeriodStaffing(0, 0, 0, 0, 0);
         SubgroupStaffingRow Subgroup(string name, bool direct, int total, int filled) =>
-            new(Guid.NewGuid(), name, null, direct, 0, 0, total, filled, total - filled,
+            new(name, null, direct, 0, 0, total, filled, total - filled,
                 empty, empty, empty);
         DepartmentStaffingRow Department(string name, int total, int filled,
             IReadOnlyList<SubgroupStaffingRow> subgroups) =>

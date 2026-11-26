@@ -2,7 +2,6 @@ using System.Security.Claims;
 using AwesomeAssertions;
 using Humans.AuditLog.Contracts;
 using Humans.Auth.Contracts;
-using Humans.Governance;
 using Humans.Governance.Data;
 using Humans.Google.Contracts;
 using Humans.Governance.Domain;
@@ -11,7 +10,6 @@ using Humans.Base.Authorization;
 using Humans.Base.Constants;
 using Humans.Governance.Controllers;
 using Humans.Governance.Services;
-using Humans.Testing;
 using Humans.Users.Contracts;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
@@ -113,6 +111,22 @@ public sealed class GovernanceBoardSeatsTests
     }
 
     [HumansFact]
+    public async Task Add_UnavailableRoleTarget_RefusesSeat()
+    {
+        var userId = Guid.NewGuid();
+        _users.GetUserInfoAsync(userId, Arg.Any<CancellationToken>()).Returns(
+            UserInfo.Create(new User { Id = userId }, [], [], null) with { State = UserState.Active });
+        _write.AssignRoleAsync(userId, RoleNames.Board, Arg.Any<Guid>(), null, Arg.Any<CancellationToken>())
+            .Returns(new RoleAssignmentResult(false, "UserUnavailable"));
+
+        var result = await Seats().AddAsync(userId, Guid.NewGuid(), Xunit.TestContext.Current.CancellationToken);
+
+        result.ErrorKey.Should().Be(GovernanceBoardSeats.InactiveAccount);
+        _groupSync.ReceivedCalls().Should().BeEmpty();
+        _audit.ReceivedCalls().Should().BeEmpty();
+    }
+
+    [HumansFact]
     public async Task Add_refuses_an_unknown_account()
     {
         (await Seats().AddAsync(Guid.NewGuid(), Guid.NewGuid())).ErrorKey.Should().Be(GovernanceBoardSeats.InactiveAccount);
@@ -121,7 +135,7 @@ public sealed class GovernanceBoardSeatsTests
     }
 
     private static RoleAssignmentSummarySnapshot Row(Guid userId, string role, Instant? validTo = null) =>
-        new(Guid.NewGuid(), userId, null, "Member", role, Now - Duration.FromDays(30), validTo, null, Guid.NewGuid(), null, Now);
+        new(Guid.NewGuid(), userId, null, "Member", role, Now - Duration.FromDays(30), validTo, null, Guid.NewGuid(), null);
 
     [HumansFact]
     public async Task End_ends_only_the_active_Board_seat()

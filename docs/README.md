@@ -1,5 +1,7 @@
 # Nobodies Humans — Documentation
 
+Running Humans for another burn? Start with [Running Humans for your burn](adopting-humans.md).
+
 ## Feature Specifications
 
 Business requirements, user stories, data model, and workflows for each feature area.
@@ -102,7 +104,7 @@ Terse, authoritative invariant docs for each major section: concepts, data model
 | [Agent](../src/Sections/Humans.Agent/Docs/Agent.md) | Conversational helper backed by Anthropic Claude, available to authenticated consented users when `AgentSettings.Enabled = true` |
 | [Audit Log](../src/Sections/Humans.AuditLog/Docs/AuditLog.md) | Append-only system audit trail capturing actor, action, entity, and timestamp; enforced append-only per design-rules.md, *Append-only entities* |
 | [Auth](../src/Sections/Humans.Auth/Docs/Auth.md) | Temporal role assignments, magic-link login/signup, and claims transformation |
-| [Backdoor](../src/Sections/Humans.Backdoor/Docs/Backdoor.md) | The machine surface — every key-authed API an agent talks to, under `/api/backdoor/*`, gated by one personal key per human |
+| [Backdoor](../src/Sections/Humans.Backdoor/Docs/Backdoor.md) | The Backdoor API — every key-authed API an agent talks to, under `/api/backdoor/*`, gated by one personal key per human |
 | [Budget](../src/Sections/Humans.Budget/Docs/Budget.md) | Fiscal-year budgets (Draft/Active/Closed) with groups, categories, line items, and an append-only audit log |
 | [Calendar](../src/Sections/Humans.Calendar/Docs/Calendar.md) | Per-team community calendar with one-off and recurring events plus per-occurrence overrides and cancellations |
 | [Campaigns](../src/Sections/Humans.Campaigns/Docs/Campaigns.md) | Bulk code-distribution campaigns: codes imported or generated, assigned to humans, delivered via email waves |
@@ -134,6 +136,7 @@ Terse, authoritative invariant docs for each major section: concepts, data model
 | [Onboarding](../src/Sections/Humans.Onboarding/Docs/Onboarding.md) | Pure orchestrator over Profiles, Consent, Teams, and Governance — owns no tables |
 | [Permissions](../src/Sections/Humans.Permissions/Docs/Permissions.md) | May this person do this on this owner: permissions declared by sections, granted by roles (later tasks) and system roles; stores nothing |
 | [Roles](../src/Sections/Humans.Roles/Docs/Roles.md) | Standing responsibilities on an owner (a team today, camps next): slots, holders, and the permission keys they carry |
+| [Tasks](../src/Sections/Humans.Tasks/Docs/Tasks.md) | Pieces of work with an end, hanging on a team: slots, people, dependencies, an optional event |
 | [Pleo](../src/Sections/Humans.Pleo/Docs/Pleo.md) | Read-only mirror of the Pleo card wallet (entries, chart, cardholders, balance), the category → Holded account mapping, and the `/Pleo` admin pages with the wallet reconciliation |
 | [Rideshare](../src/Sections/Humans.Rideshare/Docs/Rideshare.md) | Members-only map board for organizing rides to and from the burn — offers, requests, and a lightweight interest lifecycle, no booking or payment |
 | [Scanner](../src/Sections/Humans.Scanner/Docs/Scanner.md) | In-browser camera tools for barcode decode (`/Scanner/Barcode`) and read-only ticket lookup (`/Scanner/Tickets`); no owned tables |

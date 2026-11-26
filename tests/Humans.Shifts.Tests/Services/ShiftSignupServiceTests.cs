@@ -1,7 +1,6 @@
 using Humans.Permissions.Contracts;
 using Humans.Base.Authorization;
 using Humans.Shifts.Services.Dtos;
-using Microsoft.Extensions.DependencyInjection;
 using System.Globalization;
 using System.Resources;
 using Humans.Shifts.Domain;
@@ -11,7 +10,6 @@ using AwesomeAssertions;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Diagnostics;
-using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Logging.Abstractions;
 using NodaTime;
 using Humans.Tickets.Contracts;
@@ -25,12 +23,10 @@ using Humans.Base.Extensions;
 using ShiftSignupService = Humans.Shifts.Services.ShiftSignupService;
 using Humans.Teams.Contracts;
 using Humans.Notifications.Contracts;
-using Humans.EarlyEntry.Contracts;
 using Humans.Shifts.Contracts;
 using Humans.Shifts.Data;
 using Xunit;
 using Humans.Users.Contracts;
-using Humans.AuditLog.Contracts;
 using Microsoft.Extensions.Localization;
 
 namespace Humans.Shifts.Tests.Services;
@@ -162,7 +158,7 @@ public sealed class ShiftSignupServiceTests : ShiftsTestHarness
     public async Task SignupWrite_CommittedButAcknowledgementFails_SkipsAuditAndNotices(SignupWrite operation)
     {
         var ct = TestContext.Current.CancellationToken;
-        var (es, rota, shift) = SeedShiftScenario(SignupPolicy.Public);
+        var (_, rota, shift) = SeedShiftScenario(SignupPolicy.Public);
         rota.IsVisibleToVolunteers = true;
         shift.IsAllDay = operation is SignupWrite.VoluntellRange or SignupWrite.SignUpRange
             or SignupWrite.ApproveRange or SignupWrite.RefuseRange or SignupWrite.BailRange;
@@ -240,7 +236,7 @@ public sealed class ShiftSignupServiceTests : ShiftsTestHarness
     public async Task Erasure_AnyCommittedStepFails_KeepsEarlierSteps(ErasureSave failingSave)
     {
         var ct = TestContext.Current.CancellationToken;
-        var (es, rota, shift) = SeedShiftScenario(SignupPolicy.Public);
+        var (es, _, shift) = SeedShiftScenario(SignupPolicy.Public);
         var userId = Guid.NewGuid();
         var signup = SeedSignup(userId, shift.Id, SignupStatus.Confirmed);
         signup.StatusReason = "Private note";
@@ -257,7 +253,7 @@ public sealed class ShiftSignupServiceTests : ShiftsTestHarness
                 (DbContextOptions<ShiftsDbContext>)ShiftsDb.GetService<IDbContextOptions>())
             .AddInterceptors(new FailSignupAcknowledgement(failure, (int)failingSave)).Options;
         await using var db = new ShiftsDbContext(options);
-        var repo = new ShiftRepository(new Humans.Testing.TestDbContextFactory<ShiftsDbContext>(options), db, Clock);
+        var repo = new ShiftRepository(new TestDbContextFactory<ShiftsDbContext>(options), db, Clock);
         var service = new ShiftSignupService(repo, new VolunteerTrackingRepository(db), Substitute.For<IShiftManagement>(),
             NewCalendarResolver(), AuditLog, Notifier, new ServiceLocatorBuilder().Build(), Clock, NullLogger<ShiftSignupService>.Instance, _users, _localizer);
 
@@ -2027,7 +2023,7 @@ public sealed class ShiftSignupServiceTests : ShiftsTestHarness
             .With(_teamService).With(_teamService)
             .With(_roleAssignmentService).With(_users).Build();
         var service = new ShiftSignupService(
-            _repo, Substitute.For<IVolunteerTrackingRepository>(), _shiftMgmt, new EventCalendarResolver(settings, Substitute.For<Humans.Shifts.Data.IShiftManagementRepository>()),
+            _repo, Substitute.For<IVolunteerTrackingRepository>(), _shiftMgmt, new EventCalendarResolver(settings, Substitute.For<IShiftManagementRepository>()),
             AuditLog, Notifier, serviceProvider, Clock, NullLogger<ShiftSignupService>.Instance, _users, _localizer);
 
         var result = await service.BailRangeAsync(signup.SignupBlockId.Value, userId);
@@ -2523,7 +2519,7 @@ public sealed class ShiftSignupServiceTests : ShiftsTestHarness
 
         var probe = await service.GetTeamProbeAsync(block ? blockId : signup.Id, scope, TestContext.Current.CancellationToken);
 
-        probe.Should().Be(new ShiftSignupTeamProbe(signup.Id, shift.Id, teamId));
+        probe.Should().Be(new ShiftSignupTeamProbe(teamId));
         (await service.GetTeamProbeAsync(Guid.NewGuid(), scope, TestContext.Current.CancellationToken)).Should().BeNull();
     }
 
@@ -2551,7 +2547,7 @@ public sealed class ShiftSignupServiceTests : ShiftsTestHarness
     [InlineData(true)]
     public async Task Reassign_MovesActorReferences(bool ownsDuplicateSignup)
     {
-        var (eventSettings, rota, shift) = SeedShiftScenario(SignupPolicy.Public);
+        var (_, _, shift) = SeedShiftScenario(SignupPolicy.Public);
         var source = Guid.NewGuid();
         var target = Guid.NewGuid();
         var otherActor = Guid.NewGuid();

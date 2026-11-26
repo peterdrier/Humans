@@ -6,7 +6,6 @@ using Humans.Finance.Contracts;
 using Humans.Finance.Models;
 using Humans.Finance.Services;
 using Humans.Holded.Contracts;
-using Humans.Base.Authorization;
 using Humans.Base.Controllers;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -283,7 +282,7 @@ internal sealed class FinanceController(
     {
         // Parsed invariantly like the amounts below. The posted value is authoritative; Sepa:MaxPayoutPerTransfer is
         // only the prefill. Grouping is forbidden so a comma decimal cannot silently become a larger amount.
-        if (!decimal.TryParse(maxPerTransfer, NumberStyles.Number & ~NumberStyles.AllowThousands, CultureInfo.InvariantCulture, out var cap)
+        if (!decimal.TryParse(maxPerTransfer, NumberStyles.Float, CultureInfo.InvariantCulture, out var cap)
             || cap <= 0m)
         {
             SetError("The per-transfer cap must be a positive amount.");
@@ -297,7 +296,7 @@ internal sealed class FinanceController(
             .Select(num => new SepaPayoutSelection(
                 num,
                 amounts.TryGetValue(num, out var raw)
-                && decimal.TryParse(raw, NumberStyles.Number & ~NumberStyles.AllowThousands, CultureInfo.InvariantCulture, out var amount)
+                && decimal.TryParse(raw, NumberStyles.Float, CultureInfo.InvariantCulture, out var amount)
                     ? amount
                     : 0m))
             .ToList();

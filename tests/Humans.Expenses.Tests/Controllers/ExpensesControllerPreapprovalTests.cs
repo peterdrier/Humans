@@ -1,3 +1,5 @@
+using Humans.Base.Authorization;
+using Humans.Permissions.Contracts;
 using System.Security.Claims;
 using AwesomeAssertions;
 using Humans.Base.Constants;
@@ -26,7 +28,7 @@ namespace Humans.Expenses.Tests.Controllers;
 /// preselect on the new form, and a grant standing in for the account at create.</summary>
 public sealed class ExpensesControllerPreapprovalTests
 {
-    private readonly ITeamService _teams = Substitute.For<ITeamService>();
+    private readonly IPermissionService _permissions = Substitute.For<IPermissionService>();
     private static readonly FakeClock TestClock = new(Instant.FromUtc(2026, 5, 10, 12, 0));
     private static readonly LocalDate Today = new(2026, 5, 10);
 
@@ -47,11 +49,11 @@ public sealed class ExpensesControllerPreapprovalTests
             UserInfo.Create(new User { Id = _actorId }, [], [], null));
         _reports.GetForSubmitterAsync(_actorId, Arg.Any<CancellationToken>()).Returns([]);
         _review.GetCoordinatorQueueAsync(_actorId, Arg.Any<CancellationToken>()).Returns([]);
-        _teams.GetEffectiveBudgetCoordinatorTeamIdsAsync(_actorId, Arg.Any<CancellationToken>()).Returns(new HashSet<Guid>());
+        _permissions.GetOwnersAsync(_actorId, ExpensesPermissions.Endorse, Arg.Any<CancellationToken>()).Returns([]);
         _finance.ListExpenseAccountsAsync(activeOnly: true, Arg.Any<CancellationToken>())
             .Returns([new ExpenseAccountOption(62900001, "acc-1", "Materials", true, true)]);
         _preapprovals.GetGrantsAsync(Arg.Any<CancellationToken>())
-            .Returns(_ => (IReadOnlyList<GrantOption>)_grantStore.Values.ToList());
+            .Returns(_ => _grantStore.Values.ToList());
         _authorization.AuthorizeAsync(Arg.Any<ClaimsPrincipal>(), Arg.Any<object?>(), Arg.Any<string>())
             .Returns(AuthorizationResult.Failed());
         _localizer[Arg.Any<string>()].Returns(call => new LocalizedString(call.Arg<string>(), call.Arg<string>()));
@@ -71,7 +73,7 @@ public sealed class ExpensesControllerPreapprovalTests
         var groupId = Guid.NewGuid();
         _budget.GetActiveYearAsync(Arg.Any<CancellationToken>()).Returns(new BudgetYearDetail(yearId, "2026", "Year", BudgetYearStatus.Active, false,
             [new BudgetGroupDetail(groupId, yearId, "Group", 0, false, false, false, null,
-                [new BudgetCategoryDetail(categoryId, groupId, "Category", 0, ExpenditureType.OpEx, Guid.NewGuid(), 0, [])])]));
+                [new BudgetCategoryDetail(categoryId, "Category", 0, ExpenditureType.OpEx, Guid.NewGuid(), 0, [])])]));
         var own = ReviewRow(null) with { SubmitterUserId = archived };
         var current = ReviewRow(null) with { SubmitterUserId = Guid.NewGuid(), BudgetCategoryId = categoryId };
         var old = ReviewRow(null) with { SubmitterUserId = Guid.NewGuid(), BudgetCategoryId = Guid.NewGuid() };
@@ -235,7 +237,7 @@ public sealed class ExpensesControllerPreapprovalTests
             User = new ClaimsPrincipal(new ClaimsIdentity(
                 [new Claim(ClaimTypes.NameIdentifier, _actorId.ToString())], "test"))
         };
-        return new ExpensesController(_teams, _users, _reports, _review, _budget, _finance, _preapprovals,
+        return new ExpensesController(_permissions, _users, _reports, _review, _budget, _finance, _preapprovals,
             _authorization, TestClock, FixedOrgTimeZone.Madrid, logger ?? NullLogger<ExpensesController>.Instance, _localizer)
         {
             ControllerContext = new ControllerContext { HttpContext = http },
@@ -406,7 +408,7 @@ public sealed class ExpensesControllerPreapprovalTests
         using var request = new CancellationTokenSource();
         var grantId = Guid.NewGuid();
         var failure = new IOException("Draft write unavailable");
-        var logger = new Humans.Testing.CapturingLogger<ExpensesController>();
+        var logger = new CapturingLogger<ExpensesController>();
         _reports.CreateDraftAsync(_actorId, _actorId, 0, null, grantId, Arg.Any<CancellationToken>())
             .Returns(writeFails ? Task.FromException<ExpenseCreateDraftResult>(failure)
                 : Task.FromResult(new ExpenseCreateDraftResult(false, null, null)));
@@ -417,7 +419,7 @@ public sealed class ExpensesControllerPreapprovalTests
                 await request.CancelAsync();
                 call.Arg<CancellationToken>().ThrowIfCancellationRequested();
             }
-            return (IReadOnlyList<ExpenseAccountOption>)[];
+            return [];
         });
         var grantReads = 0;
         _preapprovals.GetGrantsAsync(Arg.Any<CancellationToken>()).Returns(async call =>
@@ -429,7 +431,7 @@ public sealed class ExpensesControllerPreapprovalTests
                 await request.CancelAsync();
                 call.Arg<CancellationToken>().ThrowIfCancellationRequested();
             }
-            return (IReadOnlyList<GrantOption>)[];
+            return [];
         });
         var controller = Build(logger);
         controller.HttpContext.RequestAborted = request.Token;
@@ -731,7 +733,7 @@ public sealed class ExpensesControllerPreapprovalTests
         else
         {
             model.FailedHoldedPushReportIds.Should().BeEmpty();
-            await _review.DidNotReceiveWithAnyArgs().GetFailedHoldedPushReportIdsAsync(default);
+            await _review.DidNotReceiveWithAnyArgs().GetFailedHoldedPushReportIdsAsync();
         }
     }
 

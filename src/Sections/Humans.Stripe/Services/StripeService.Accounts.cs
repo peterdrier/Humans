@@ -7,7 +7,7 @@ using Stripe;
 
 namespace Humans.Stripe.Services;
 
-/// <summary>Live reads of a named mirror account, for a ticket backend that charges into its own Stripe account.</summary>
+/// <summary>Live reads of a named mirror account, for a ticketing platform that charges into its own Stripe account.</summary>
 internal sealed partial class StripeService
 {
     private static readonly Duration SearchLag = Duration.FromHours(2);
@@ -165,7 +165,7 @@ internal sealed partial class StripeService
             return [new(false, $"Stripe:MirrorAccounts has no {accountName} entry: its Stripe fees and payouts are not reconciled.")];
         var keyName = account.UsesOrgKey ? StripeMirrorConfiguration.OrgKeyVariable : account.KeyVariable!;
         if (Reader(accountName) is not var (client, request))
-            return [new(false, $"{keyName} is unset: the {accountName} account's Stripe fees and payouts are not reconciled.")];
+            return [new(false, $"{keyName} is unset or contains whitespace: the {accountName} account's Stripe fees and payouts are not reconciled.")];
 
         var mode = account.ApiKey.StartsWith("sk_test_", StringComparison.Ordinal) || account.ApiKey.StartsWith("rk_test_", StringComparison.Ordinal)
             ? "test mode"

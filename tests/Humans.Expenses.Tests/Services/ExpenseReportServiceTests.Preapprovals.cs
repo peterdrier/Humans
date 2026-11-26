@@ -5,7 +5,6 @@ using Xunit;
 using Humans.Expenses.Contracts;
 using Humans.Expenses.Data;
 using Humans.Expenses.Services;
-using Humans.Expenses.Tests.Infrastructure;
 using Humans.Expenses.Services.Dtos;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
@@ -35,7 +34,7 @@ public sealed partial class ExpenseReportServiceTests
         var firstId = await CreateSubmittableGrantDraftAsync(owner, grant);
         var nextId = await CreateSubmittableGrantDraftAsync(owner, grant);
         Guid? committedHolder = null;
-        _preapprovals.GetGrantsAsync(Arg.Any<CancellationToken>()).Returns(_ => (IReadOnlyList<GrantOption>)
+        _preapprovals.GetGrantsAsync(Arg.Any<CancellationToken>()).Returns(_ =>
             [grant with { HolderUserId = owner, Status = committedHolder is null ? GrantStatus.Open : GrantStatus.Claimed, ClaimableToday = committedHolder is null }]);
         _preapprovalWrites.ClaimAsync(grant.Id, Arg.Any<Guid>(), owner, ct,
             Arg.Any<Action<Func<CancellationToken, Task>>>()).Returns(call =>
@@ -72,8 +71,8 @@ public sealed partial class ExpenseReportServiceTests
                 call.ArgAt<Instant>(3), call.ArgAt<ExpenseBooking?>(4), call.ArgAt<decimal?>(5), call.Arg<CancellationToken>());
         });
         ExpenseReportService ScopedService() => new(repository, _fileStorage, _budgetService,
-            _userService, AuditLog, Substitute.For<IAuditViewerService>(),
-            _holdedService, _finance, _financeWrite, _preapprovals, _preapprovalWrites, Clock,
+            _userService, _auditLog, Substitute.For<IAuditViewerService>(),
+            _holdedService, _finance, _financeWrite, _preapprovals, _preapprovalWrites, _clock,
             NullLogger<ExpenseReportService>.Instance, Options.Create(new TravelReimbursementConfig()));
         var first = ScopedService().SubmitWithResultAsync(firstId, owner, ct);
         await saving.Task.WaitAsync(ct);
@@ -393,7 +392,7 @@ public sealed partial class ExpenseReportServiceTests
         var endorsed = await _sut.GetAsync(reportId, TestContext.Current.CancellationToken);
         endorsed!.Status.Should().Be(ExpenseReportStatus.CoordinatorEndorsed);
         endorsed.MaxAmount.Should().Be(150m, "a blank cap keeps the pre-approved amount");
-        await AuditLog.Received(1).LogAsync(ExpensesAuditActions.ExpenseEndorse, Arg.Any<string>(), reportId,
+        await _auditLog.Received(1).LogAsync(ExpensesAuditActions.ExpenseEndorse, Arg.Any<string>(), reportId,
             Arg.Is<string>(d => d.StartsWith("Pre-approval manager endorsed", StringComparison.Ordinal)), manager);
         (await _review.GetCoordinatorQueueAsync(manager, TestContext.Current.CancellationToken))
             .Should().BeEmpty("only Submitted reports wait on the first review");

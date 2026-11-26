@@ -56,7 +56,7 @@ public sealed class CityPlanningApiControllerTests : CityPlanningTestBase
         _users.GetUserInfoAsync(_userId, Arg.Any<CancellationToken>())
             .Returns(UserInfo.Create(new User { Id = _userId }, [], [], profile: null));
         _campService.GetCampSeasonByIdAsync(_campSeasonId, Arg.Any<CancellationToken>())
-            .Returns(new CampSeasonInfo(_campSeasonId, Guid.NewGuid(), "camp", 2026, null, "Camp", "", "",
+            .Returns(new CampSeasonInfo(_campSeasonId, Guid.NewGuid(), 2026, null, "Camp", "", "",
                 [], CampSeasonStatus.Pending, YesNoMaybe.No, YesNoMaybe.No, AdultPlayspacePolicy.No,
                 0, null, null, null, 0, null, null));
         _campService.GetSettingsAsync(Arg.Any<CancellationToken>())
@@ -165,7 +165,7 @@ public sealed class CityPlanningApiControllerTests : CityPlanningTestBase
             .Returns(UserInfo.Create(new User { Id = survivorId }, [], [], profile: null));
         var id = Guid.NewGuid();
         _containers.GetByIdAsync(id, Arg.Any<CancellationToken>()).Returns(
-            new ContainerDto(id, Guid.NewGuid(), "Container", null, [], Instant.MinValue, Instant.MinValue));
+            new ContainerDto(id, Guid.NewGuid(), "Container", null, []));
         _authorization = Substitute.For<IAuthorizationService>();
         _authorization.AuthorizeAsync(Arg.Any<ClaimsPrincipal>(), Arg.Any<object>(), Arg.Any<IEnumerable<IAuthorizationRequirement>>())
             .Returns(AuthorizationResult.Success());
@@ -201,7 +201,7 @@ public sealed class CityPlanningApiControllerTests : CityPlanningTestBase
         _users.GetUserInfoAsync(_userId, Arg.Any<CancellationToken>())
             .Returns(UserInfo.Create(new User { Id = survivorId }, [], [], profile: null));
         var campId = Guid.NewGuid();
-        var season = new CampSeasonInfo(_campSeasonId, campId, "camp", 2026, null, "Camp", "", "",
+        var season = new CampSeasonInfo(_campSeasonId, campId, 2026, null, "Camp", "", "",
             [], CampSeasonStatus.Pending, YesNoMaybe.No, YesNoMaybe.No, AdultPlayspacePolicy.No,
             0, null, null, null, 0, null, null)
         { LeadUserIds = [survivorId] };
@@ -224,7 +224,7 @@ public sealed class CityPlanningApiControllerTests : CityPlanningTestBase
         var camps = Enumerable.Range(0, 4).Select(index =>
         {
             var campId = Guid.NewGuid();
-            var season = new CampSeasonInfo(Guid.NewGuid(), campId, $"camp-{index}", index == 3 ? 2025 : 2026,
+            var season = new CampSeasonInfo(Guid.NewGuid(), campId, index == 3 ? 2025 : 2026,
                 null, "Camp", "", "", [], CampSeasonStatus.Pending, YesNoMaybe.No, YesNoMaybe.No,
                 AdultPlayspacePolicy.No, 0, null, null, null, 0, null, null)
             { LeadUserIds = isLead && index != 2 ? [_userId] : [] };
@@ -232,12 +232,12 @@ public sealed class CityPlanningApiControllerTests : CityPlanningTestBase
         }).ToArray();
         _campService.GetCampsForYearAsync(2026, Arg.Any<CancellationToken>()).Returns(camps);
         var containers = camps.Select(camp => new ContainerDto(Guid.NewGuid(), camp.Id, camp.Slug,
-            null, [], Instant.MinValue, Instant.MinValue)).ToArray();
+            null, [])).ToArray();
         _containers.GetAllAsync(Arg.Any<CancellationToken>()).Returns(containers);
         _containers.GetPlacementsByYearAsync(2026, Arg.Any<CancellationToken>()).Returns(
             containers.Select(container => new ContainerPlacementDto(container.Id, 2026,
                 "{\"type\":\"Feature\",\"geometry\":null,\"properties\":{}}", null, null, null,
-                Instant.MinValue, Instant.MinValue)).ToArray());
+                Instant.MinValue)).ToArray());
 
         var result = await CreateController(isAdmin ? [CampsRoles.CampsAdmin] : [])
             .ExportContainersGeoJson(2026, TestContext.Current.CancellationToken);
@@ -245,8 +245,8 @@ public sealed class CityPlanningApiControllerTests : CityPlanningTestBase
         if (!isAdmin && !isLead)
         {
             result.Should().BeOfType<ForbidResult>();
-            await _containers.DidNotReceiveWithAnyArgs().GetAllAsync(default);
-            await _containers.DidNotReceiveWithAnyArgs().GetPlacementsByYearAsync(default, default);
+            await _containers.DidNotReceiveWithAnyArgs().GetAllAsync();
+            await _containers.DidNotReceiveWithAnyArgs().GetPlacementsByYearAsync(default);
             return;
         }
 
@@ -268,7 +268,7 @@ public sealed class CityPlanningApiControllerTests : CityPlanningTestBase
             .Returns(AuthorizationResult.Success());
         var id = Guid.NewGuid();
         _containers.GetByIdAsync(id, Arg.Any<CancellationToken>()).Returns(
-            new ContainerDto(id, Guid.NewGuid(), "Container", null, [], Instant.MinValue, Instant.MinValue));
+            new ContainerDto(id, Guid.NewGuid(), "Container", null, []));
         _containers.SavePlacementAsync(id, 2026, "{}", _userId, Arg.Any<CancellationToken>())
             .Returns(new ContainerMutationResult<ContainerPlacementDto>(null, "Containers_Error_InvalidPlacementGeoJson"));
 
@@ -288,7 +288,7 @@ public sealed class CityPlanningApiControllerTests : CityPlanningTestBase
             .Returns(AuthorizationResult.Success());
         var id = Guid.NewGuid();
         _containers.GetByIdAsync(id, Arg.Any<CancellationToken>()).Returns(
-            new ContainerDto(id, Guid.NewGuid(), "Container", null, [], Instant.MinValue, Instant.MinValue));
+            new ContainerDto(id, Guid.NewGuid(), "Container", null, []));
         _containers.SavePlacementAsync(id, 2026, "{}", _userId, Arg.Any<CancellationToken>())
             .ThrowsAsync(new InvalidOperationException(diagnostic));
 
@@ -311,7 +311,7 @@ public sealed class CityPlanningApiControllerTests : CityPlanningTestBase
             .Returns(AuthorizationResult.Success());
         var id = Guid.NewGuid();
         _containers.GetByIdAsync(id, Arg.Any<CancellationToken>()).Returns(
-            new ContainerDto(id, Guid.NewGuid(), "Container", null, [], Instant.MinValue, Instant.MinValue));
+            new ContainerDto(id, Guid.NewGuid(), "Container", null, []));
         var notes = overlongNotes ? new string('x', 5001) : null;
         var key = overlongNotes ? "Containers_Error_PlacementNotesLength" : "Containers_Error_PlacementNotFound";
         object[] args = overlongNotes ? [5000] : [];
@@ -340,7 +340,7 @@ public sealed class CityPlanningApiControllerTests : CityPlanningTestBase
         var id = Guid.NewGuid();
         const int year = 2025;
         _containers.GetByIdAsync(id, Arg.Any<CancellationToken>()).Returns(
-            new ContainerDto(id, Guid.NewGuid(), "Container", null, [], Instant.MinValue, Instant.MinValue));
+            new ContainerDto(id, Guid.NewGuid(), "Container", null, []));
         _authorization = Substitute.For<IAuthorizationService>();
         _authorization.AuthorizeAsync(Arg.Any<ClaimsPrincipal>(), Arg.Any<object>(), Arg.Any<IEnumerable<IAuthorizationRequirement>>())
             .Returns(call => call.ArgAt<object>(1) is ContainerAuthorizationTarget { Year: year }
@@ -364,8 +364,8 @@ public sealed class CityPlanningApiControllerTests : CityPlanningTestBase
     {
         const int year = 2025;
         var editableCampId = Guid.NewGuid();
-        var editable = new ContainerDto(Guid.NewGuid(), editableCampId, "Mine", null, [], Instant.MinValue, Instant.MinValue);
-        var other = new ContainerDto(Guid.NewGuid(), Guid.NewGuid(), "Theirs", null, [], Instant.MinValue, Instant.MinValue);
+        var editable = new ContainerDto(Guid.NewGuid(), editableCampId, "Mine", null, []);
+        var other = new ContainerDto(Guid.NewGuid(), Guid.NewGuid(), "Theirs", null, []);
         _containers.GetAllAsync(Arg.Any<CancellationToken>()).Returns([editable, other]);
         _containers.GetPlacementsByYearAsync(year, Arg.Any<CancellationToken>()).Returns([]);
         _campService.GetCampsForYearAsync(year, Arg.Any<CancellationToken>()).Returns([]);
@@ -540,7 +540,7 @@ public sealed class CityPlanningApiControllerTests : CityPlanningTestBase
     public async Task RestoreCampPolygon_NegativeHistoricArea_ReturnsBadRequestWithoutWritingOrBroadcasting()
     {
         var ct = TestContext.Current.CancellationToken;
-        var history = new Humans.CityPlanning.Domain.CampPolygonHistory
+        var history = new Domain.CampPolygonHistory
         {
             CampSeasonId = _campSeasonId,
             GeoJson = Square,
@@ -596,7 +596,7 @@ public sealed class CityPlanningApiControllerTests : CityPlanningTestBase
         result.Should().BeOfType<BadRequestResult>();
         (await CityPlanningDb.CampPolygons.CountAsync(ct)).Should().Be(restore ? 1 : 0);
         (await CityPlanningDb.CampPolygonHistories.CountAsync(ct)).Should().Be(restore ? 1 : 0);
-        await _allClients.DidNotReceiveWithAnyArgs().SendCoreAsync(default!, default!, default);
+        await _allClients.DidNotReceiveWithAnyArgs().SendCoreAsync(default!, default!);
     }
 
     [HumansTheory]
@@ -635,9 +635,9 @@ public sealed class CityPlanningApiControllerTests : CityPlanningTestBase
         var ct = TestContext.Current.CancellationToken;
         var repo = Substitute.For<ICityPlanningRepository>();
         var failure = new ArgumentException("Private persistence failure", nameof(restore));
-        repo.SavePolygonAndAppendHistoryAsync(default, default!, default, default, default!, default, default)
+        repo.SavePolygonAndAppendHistoryAsync(default, default!, default, default, default!, default)
             .ThrowsAsyncForAnyArgs(failure);
-        repo.GetHistoryEntryAsync(default, default, default).ThrowsAsyncForAnyArgs(failure);
+        repo.GetHistoryEntryAsync(default, default).ThrowsAsyncForAnyArgs(failure);
         _service = new CityPlanningService(repo, Clock,
             Options.Create(new CityPlanningOptions { CityPlanningTeamSlug = "city-planning" }),
             _campService, _teamService, Substitute.For<IUserService>(), Substitute.For<IAuditLogService>(), _settings, _containers);
@@ -652,7 +652,7 @@ public sealed class CityPlanningApiControllerTests : CityPlanningTestBase
 
         (await act.Should().ThrowAsync<ArgumentException>()).Which.Should().BeSameAs(failure);
         _logger.ReceivedCalls().Should().BeEmpty();
-        await _allClients.DidNotReceiveWithAnyArgs().SendCoreAsync(default!, default!, default);
+        await _allClients.DidNotReceiveWithAnyArgs().SendCoreAsync(default!, default!);
     }
 
     [HumansFact]

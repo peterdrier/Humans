@@ -6,7 +6,7 @@
 
 <page-header title="@($"{SharedLocalizer["Camp_Plural"].Value} {Model.Year}")">
     <vc:access-matrix section="Camps" />
-    <a asp-controller="CampAdmin" asp-action="Index" class="btn btn-outline-secondary" authorize-policy="@Humans.Camps.Contracts.CampsPolicies.Read">
+    <a asp-controller="CampAdmin" asp-action="Index" class="btn btn-outline-secondary" authorize-policy="@CampsPolicies.Read">
         <i class="fa-solid fa-shield-halved me-1"></i> @Localizer["Camps_AdminTitle"]
         @if (pendingCount > 0)
         {
@@ -35,7 +35,7 @@
             <div class="col-md-12">
                 <label asp-for="Filters.Search" class="form-label">@Localizer["Camps_Index_SearchLabel"]</label>
                 <input type="search" asp-for="Filters.Search" id="camp-name-search" class="form-control"
-                       placeholder="@Localizer["Camps_Index_SearchPlaceholder", Localizer["Camps_Singular"].Value.ToLower()]"
+                       placeholder="@Localizer["Camps_Index_SearchPlaceholder", Localizer["Camps_Singular"].Value.ToLower(System.Globalization.CultureInfo.CurrentUICulture)]"
                        autocomplete="off" />
             </div>
             <div class="col-md-3">

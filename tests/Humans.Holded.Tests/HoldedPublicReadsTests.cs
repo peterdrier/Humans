@@ -116,7 +116,7 @@ public sealed class HoldedPublicReadsTests
             Account(40000004, "Member A", -10m),
             Account(47200000, "Hacienda Pública, IVA soportado", 5m),
             Account(57200001, "Banco Sabadell", 500m),
-            Account(57200002, "Old bank", 0m, archived: true),
+            Account(57200002, "Old bank", archived: true),
             Account(57200003, "Never used"),
         ], FixedNow, ct);
         await SeedAsync(ct,
@@ -165,6 +165,19 @@ public sealed class HoldedPublicReadsTests
 
         var entry = await _service.GetEntryViewAsync(1, ct);
         entry!.EntryId.Should().Be("e1");
+    }
+
+    [HumansFact]
+    public async Task A_negative_purchase_line_finds_its_counterparty_on_the_normal_side()
+    {
+        var ct = Xunit.TestContext.Current.CancellationToken;
+        await SeedAsync(ct,
+            Line(1, 1, 62900000, "purchase", debit: -0.01m),
+            Line(1, 2, 40000066, "purchase", credit: -0.01m));
+
+        var statement = await _service.GetAccountStatementAsync(62900000, ct);
+
+        statement!.Lines.Should().ContainSingle().Subject.Counterparty!.AccountNum.Should().Be(40000066);
     }
 
     [HumansFact]

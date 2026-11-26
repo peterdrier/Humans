@@ -1,23 +1,15 @@
-using Humans.Base.Extensions;
 using Humans.AuditLog.Contracts;
 using Humans.Base.Attributes;
 using Humans.Base.Interfaces;
-using Humans.Camps.Contracts;
 using Humans.Finance.Contracts;
 using Humans.Holded.Contracts;
-using Humans.Settings.Contracts;
 using Humans.Store.Contracts;
 using Humans.Store.Data;
 using Humans.Store.Domain;
-using NodaTime.Text;
-using Humans.Teams.Contracts;
-using Humans.Store.Services.Dtos;
 using Humans.Stripe.Contracts;
 using NodaTime;
 using System.Globalization;
 using System.Text.Json;
-using System.Resources;
-using Humans.Base.Threading;
 
 namespace Humans.Store.Services;
 
@@ -152,7 +144,7 @@ internal sealed class InvoiceService(
                     adoptedKind, adoptedDoc.Id, CancellationToken.None);
             }
             return await CommitInvoiceAsync(
-                order, adoptedKind, adoptedDoc, plan,
+                order, adoptedDoc, plan,
                 JsonSerializer.Serialize(new { kind = adoptedKind.ToString(), adopted = true, tag }),
                 actorUserId,
                 $"Adopted Holded {DocumentKindName(adoptedKind)} {adoptedDoc.DocNumber} "
@@ -221,7 +213,7 @@ internal sealed class InvoiceService(
         var document = await holdedWrite.IssueSalesDocumentAsync(kind, input, CancellationToken.None);
 
         return await CommitInvoiceAsync(
-            order, kind, document, plan,
+            order, document, plan,
             JsonSerializer.Serialize(new { kind = kind.ToString(), input }),
             actorUserId,
             $"Issued Holded {DocumentKindName(kind)} {document.DocNumber} "
@@ -316,7 +308,6 @@ internal sealed class InvoiceService(
     /// <summary>Shared by first issuance and adoption, which differ only in the request payload they can honestly record and the audit line.</summary>
     private async Task<AdminMutationResult> CommitInvoiceAsync(
         Order order,
-        HoldedSalesDocumentKind kind,
         HoldedSalesDocumentDto document,
         StoreInvoicePlan plan,
         string requestPayload,

@@ -4,7 +4,6 @@ using Humans.Store.Contracts;
 using Humans.Store.Domain;
 using Humans.Store.Services;
 using Humans.Store.Services.Dtos;
-using Humans.Base.Authorization;
 using Humans.Store.Authorization;
 using Humans.Store.Models;
 using Humans.Base.Controllers;
@@ -16,6 +15,7 @@ using NodaTime;
 
 using Humans.Users.Contracts;
 using Humans.Holded.Contracts;
+using System.Globalization;
 
 namespace Humans.Store.Controllers;
 
@@ -153,13 +153,20 @@ internal sealed class StoreController(
 
     [HttpPost("Order/{id:guid}/Pay")]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> Pay(Guid id, decimal amountEur, CancellationToken ct)
+    public async Task<IActionResult> Pay(Guid id, string? amountEur, CancellationToken ct)
     {
         var (errorResult, _, order) = await RequireOrderAsync(id, ct);
         if (errorResult is not null) return errorResult;
 
         var auth = await authService.AuthorizeAsync(User, order, OrderOperationRequirement.Pay);
         if (!auth.Succeeded) return Forbid();
+        if (!TryPaymentAmount(amountEur, out var amount))
+            ModelState.AddModelError(nameof(amountEur), localizer["Store_PaymentPositive"].Value);
+        if (!ModelState.IsValid)
+        {
+            logger.LogWarning("Rejected malformed Store checkout form for order {OrderId}", id);
+            return BadRequest(ModelState);
+        }
 
         var orderUrl = Url.Action(nameof(Order), "Store", new { id }, Request.Scheme, Request.Host.Value)
             ?? throw new InvalidOperationException("Failed to compute order URL.");
@@ -169,7 +176,7 @@ internal sealed class StoreController(
             // Not the request token: creating the Checkout Session is a Stripe write whose session id must exist
             // whole or not at all.
             var result = await storeService.CreateStripeCheckoutSessionAsync(
-                order, amountEur, orderUrl, CancellationToken.None);
+                order, amount, orderUrl, CancellationToken.None);
             if (result.ErrorKey is { } key)
             {
                 SetError(result.MaximumAmount is { } maximumAmount
@@ -269,7 +276,7 @@ internal sealed class StoreController(
     [HttpPost("Order/{id:guid}/RecordPayment")]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> RecordPayment(
-        Guid id, PaymentMethod method, decimal amountEur, string? externalRef, string? notes, LocalDate? valueDate,
+        Guid id, PaymentMethod method, string? amountEur, string? externalRef, string? notes, LocalDate? valueDate,
         Guid? productId, CancellationToken ct)
     {
         var (errorResult, user, order) = await RequireOrderAsync(id, ct);
@@ -280,13 +287,24 @@ internal sealed class StoreController(
         if (method is PaymentMethod.Refund or PaymentMethod.BankTransfer or PaymentMethod.WriteOff
             && !(await authService.AuthorizeAsync(User, order, OrderOperationRequirement.RecordFinancePayment)).Succeeded)
             return Forbid();
+        if (!TryPaymentAmount(amountEur, out var amount))
+            ModelState.AddModelError(nameof(amountEur), localizer["Store_PaymentPositive"].Value);
+        if (!ModelState.IsValid)
+        {
+            logger.LogWarning("Rejected malformed Store payment form for order {OrderId} by {UserId}", id, user.Id);
+            return BadRequest(ModelState);
+        }
 
         var result = await storeService.RecordAdminPaymentAsync(
-            id, method, amountEur, externalRef, notes, valueDate, user.Id, CancellationToken.None, productId);
+            id, method, amount, externalRef, notes, valueDate, user.Id, CancellationToken.None, productId);
         if (result.Succeeded) SetSuccess(localizer["Store_PaymentRecorded"].Value);
         else SetError(result.Refusal!);
         return RedirectToAction(nameof(Order), new { id });
     }
+
+    private static bool TryPaymentAmount(string? text, out decimal amount) =>
+        decimal.TryParse(text?.Trim(), NumberStyles.Float,
+            CultureInfo.InvariantCulture, out amount);
 
     [HttpPost("Order/{id:guid}/CheckStripeRefunds")]
     [ValidateAntiForgeryToken]

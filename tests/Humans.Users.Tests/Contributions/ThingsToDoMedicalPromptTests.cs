@@ -136,7 +136,7 @@ public class ThingsToDoMedicalPromptTests
                 ? null
                 : new DietaryProfileInfo(userId, dietary, [], null, [], null, declined));
         _shiftView.GetUserAsync(userId, Arg.Any<CancellationToken>())
-            .Returns(new ValueTask<ShiftUserSummary>(new ShiftUserSummary(userId, [], [])));
+            .Returns(new ValueTask<ShiftUserSummary>(new ShiftUserSummary([], [])));
         return userId;
     }
 

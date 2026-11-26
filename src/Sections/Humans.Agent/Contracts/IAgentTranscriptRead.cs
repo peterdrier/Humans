@@ -8,7 +8,7 @@ public interface IAgentTranscriptRead : IApplicationService
 {
     /// <summary>Messages eagerly loaded, so per-conversation aggregates need no N+1 round trips.</summary>
     Task<IReadOnlyList<AgentConversationTranscriptSnapshot>> ListAllConversationsForAdminWithMessagesAsync(
-        bool refusalsOnly, bool handoffsOnly, Guid? userId, int take, int skip,
+        bool unansweredOnly, bool handoffsOnly, Guid? userId, int take, int skip,
         CancellationToken cancellationToken);
 
     /// <summary>One conversation with messages eagerly loaded, or null.</summary>
@@ -27,7 +27,6 @@ public sealed record AgentConversationTranscriptSnapshot(
 
 public sealed record AgentMessageSnapshot(
     Guid Id,
-    Guid ConversationId,
     AgentRole Role,
     string Content,
     Instant CreatedAt,
@@ -37,14 +36,14 @@ public sealed record AgentMessageSnapshot(
     string Model,
     int DurationMs,
     string[] FetchedDocs,
-    string? RefusalReason,
+    string? Outcome,
     Guid? HandedOffToFeedbackId)
 {
     /// <summary>
-    /// A legacy FeedbackReport link, or a successful <c>route_to_issue</c> recorded in <see cref="FetchedDocs"/>.
+    /// A legacy FeedbackReport link, or a successful <c>handoff</c> recorded in <see cref="FetchedDocs"/>.
     /// Mirrors the <c>handoffsOnly</c> filter in <c>AgentRepository</c>.
     /// </summary>
     public bool IsHandoff =>
         HandedOffToFeedbackId is not null
-        || FetchedDocs.Contains(AgentToolNames.RouteToIssue, StringComparer.Ordinal);
+        || FetchedDocs.Any(AgentToolNames.IsHandoffMarker);
 }

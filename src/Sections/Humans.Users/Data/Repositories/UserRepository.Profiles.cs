@@ -1,7 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using NodaTime;
 using Humans.Users.Contracts;
-using Humans.Users.Services;
 
 namespace Humans.Users.Data.Repositories;
 
@@ -114,7 +113,7 @@ internal sealed partial class UserRepository
         ctx.Attach(profile);
         ctx.Entry(profile).State = EntityState.Modified;
         if (volunteerHistory is not null)
-            await ReconcileCVEntriesAsync(ctx, profile, volunteerHistory, ct);
+            await ReconcileCvEntriesAsync(ctx, profile, volunteerHistory, ct);
         await UpdateUserFromProfileAsync(ctx, profile, names, ct);
         await ctx.SaveChangesAsync(ct);
     }
@@ -354,7 +353,7 @@ internal sealed partial class UserRepository
         return true;
     }
 
-    private async Task ReconcileCVEntriesAsync(
+    private async Task ReconcileCvEntriesAsync(
         UsersDbContext ctx,
         Profile profile,
         IReadOnlyList<CVEntry> entries,

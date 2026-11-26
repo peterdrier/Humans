@@ -10,7 +10,6 @@ using Microsoft.AspNetCore.Mvc;
 using static Humans.Events.Helpers.EventsLookupHelpers;
 using static Humans.Events.Helpers.EventsTimeHelpers;
 
-using Humans.Base.Authorization;
 using Humans.Events.Contracts;
 using Humans.Users.Contracts;
 

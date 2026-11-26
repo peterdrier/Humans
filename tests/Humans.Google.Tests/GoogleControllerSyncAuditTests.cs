@@ -74,7 +74,7 @@ public sealed class GoogleControllerSyncAuditTests
     public async Task ActivityLog_ConvertsInclusiveDatesToUtcRange_AndPassesFilters()
     {
         using var cancellation = new CancellationTokenSource();
-        var views = new List<GoogleSyncLogView>();
+        IReadOnlyList<GoogleSyncLogView> views = [];
         _syncLog.GetRecentAsync(default, default, default, default, default, default)
             .ReturnsForAnyArgs(views);
 
@@ -142,7 +142,7 @@ public sealed class GoogleControllerSyncAuditTests
         result.Model.Should().BeAssignableTo<IReadOnlyList<UserEmailFlagViolation>>().Subject
             .Select(v => v.UserId).Should().Equal(first, second);
         await _users.Received(1).GetUserInfosAsync(
-            Arg.Is<IEnumerable<Guid>>(ids => ids.Distinct().Count() == 2 && ids.Contains(first) && ids.Contains(second)), token);
+            Arg.Is<IEnumerable<Guid>>(ids => ids.ToHashSet().SetEquals(new[] { first, second })), token);
     }
 
     private GoogleController BuildSut(CancellationToken token) => new(

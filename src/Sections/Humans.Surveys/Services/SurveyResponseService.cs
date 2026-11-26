@@ -1,14 +1,8 @@
-using Humans.Google.Contracts;
-using Humans.Base.Extensions;
-using Humans.AuditLog.Contracts;
-using Humans.Gdpr.Contracts;
 using Humans.Users.Contracts;
 using Humans.Surveys.Data;
 using Humans.Surveys.Contracts;
-using Humans.Base.Interfaces;
 using NodaTime;
 using Humans.Base.Threading;
-using Humans.Base.Enums;
 using Humans.Surveys.Domain;
 
 namespace Humans.Surveys.Services;
@@ -406,7 +400,7 @@ internal sealed class SurveyResponseService(
         {
             if (question.Type == SurveyQuestionType.Information) continue;
             var id = question.Id!.Value;
-            var questionAnswers = posted[id];
+            var questionAnswers = posted[id].ToList();
             if (questionAnswers.Count() > 1)
             {
                 logger.LogWarning("Rejected duplicate wizard answers for survey {SurveyId} question {QuestionId}", state.SurveyId, id);

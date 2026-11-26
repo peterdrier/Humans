@@ -1,7 +1,6 @@
 using Humans.AuditLog.Contracts;
 using Humans.Gdpr.Contracts;
 using Humans.Google.Contracts;
-using Humans.Google.Data;
 using Humans.Google.Domain;
 using Humans.Users.Contracts;
 using NodaTime;
@@ -136,12 +135,12 @@ internal sealed class WorkspaceIdentityService(
             ? designatedRow
             : nobodies
                 ?? verified.FirstOrDefault(e => e.IsPrimary)
-                ?? verified.OrderBy(e => e.Email, StringComparer.OrdinalIgnoreCase).First();
+                ?? verified.MinBy(e => e.Email, StringComparer.OrdinalIgnoreCase)!;
 
         var status = row is not null
             ? (row.Email is not null && Same(row.Email, chosen.Email) ? row.Status : GoogleEmailStatus.Unknown)
             : GoogleEmailStatus.Unknown;
-        return new WorkspaceIdentity(info.Id, chosen.Email, status);
+        return new WorkspaceIdentity(chosen.Email, status);
     }
 
     private static bool Same(string a, string b) => string.Equals(a, b, StringComparison.OrdinalIgnoreCase);

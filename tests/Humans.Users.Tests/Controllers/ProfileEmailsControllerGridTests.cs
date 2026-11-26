@@ -1,4 +1,3 @@
-using Humans.Base.Extensions;
 using System.ComponentModel.DataAnnotations;
 using Microsoft.Extensions.Logging;
 using Xunit;
@@ -7,11 +6,8 @@ using Humans.Users.Models;
 using Humans.Users.Controllers;
 using System.Security.Claims;
 using AwesomeAssertions;
-using Humans.AuditLog.Contracts;
-using Humans.Email.Contracts;
 using Humans.Users.Contracts;
 
-using Humans.Users.Tests.Infrastructure;
 using Humans.Base;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authorization;
@@ -126,9 +122,9 @@ public class ProfileEmailsControllerGridTests
     }
 
     [HumansTheory]
-    [Xunit.InlineData(EmailMutation.SetEmailVisibility)]
-    [Xunit.InlineData(EmailMutation.DeleteEmail)]
-    [Xunit.InlineData(EmailMutation.LinkGoogle)]
+    [InlineData(EmailMutation.SetEmailVisibility)]
+    [InlineData(EmailMutation.DeleteEmail)]
+    [InlineData(EmailMutation.LinkGoogle)]
     public async Task Email_mutation_account_preflight_observes_cancellation(EmailMutation action)
     {
         using var request = new CancellationTokenSource();
@@ -178,7 +174,7 @@ public class ProfileEmailsControllerGridTests
         if (serviceRefused)
             await _userEmailService.Received(1).AddEmailAsync(_userId, address, CancellationToken.None, _userId);
         else
-            await _userEmailService.DidNotReceiveWithAnyArgs().AddEmailAsync(default, default!, default, default);
+            await _userEmailService.DidNotReceiveWithAnyArgs().AddEmailAsync(default, default!);
     }
 
     public enum AdminVerificationOutcome { NoPending, Refused, Verified }
@@ -775,22 +771,6 @@ public class ProfileEmailsControllerGridTests
 
     // Linked OAuth accounts: unlink is keyed by (Provider, ProviderKey), and is refused when no
     // verified UserEmail row would remain (that row is what keeps magic-link sign-in working).
-
-    private static UserEmailRowSnapshot Snapshot(
-        Guid userId, Guid id, string email, bool isVerified,
-        string? provider, string? providerKey)
-        => new(
-            Id: id,
-            UserId: userId,
-            Email: email,
-            IsVerified: isVerified,
-            Provider: provider,
-            ProviderKey: providerKey,
-            IsPrimary: false,
-            Visibility: null,
-            VerificationSentAt: null,
-            CreatedAt: Instant.FromUtc(2026, 1, 1, 0, 0),
-            UpdatedAt: Instant.FromUtc(2026, 1, 1, 0, 0));
 
     [HumansTheory]
     [InlineData(true)]

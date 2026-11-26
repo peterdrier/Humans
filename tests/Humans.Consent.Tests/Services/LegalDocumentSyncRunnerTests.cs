@@ -11,7 +11,6 @@ using Microsoft.Extensions.Options;
 using AwesomeAssertions;
 using Humans.Base.Enums;
 using Humans.Consent.Data;
-using Humans.Consent.Contracts;
 using Humans.Consent.Domain;
 using Humans.Consent.Services;
 using Humans.Consent.Tests.Infrastructure;
@@ -201,7 +200,7 @@ public sealed class LegalDocumentSyncRunnerTests
         using var culture = new CultureScope("fr");
         var member = new User { Id = Guid.NewGuid(), BurnerName = "Member", PreferredLanguage = language!, State = state };
         var user = UserInfo.Create(member,
-            [new UserEmail { Id = Guid.NewGuid(), UserId = member.Id, Email = recipientEmail, IsVerified = true, IsPrimary = true }], [], hasProfile ? Humans.Testing.UserFixtures.Profile() : null);
+            [new UserEmail { Id = Guid.NewGuid(), UserId = member.Id, Email = recipientEmail, IsVerified = true, IsPrimary = true }], [], hasProfile ? UserFixtures.Profile() : null);
         var own = MakeDocument("Own required", true);
         var other = MakeDocument("Other required", true);
         var optional = MakeDocument("Own optional", false);

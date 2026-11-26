@@ -62,7 +62,9 @@ internal sealed class TicketsEmails(
             var boughtBy = ticket.BuyerName is { } buyer
                 ? $"<p>{Lf("Tickets_Delivery_Ticket_BoughtBy", Encode(buyer))}</p>"
                 : string.Empty;
-            var cards = string.Concat(ticket.Tickets.Select(card => $"""
+            var orderedCards = ticket.Tickets.Take(1).Concat(ticket.Tickets.Skip(1)
+                .OrderBy(card => card.Kind).ThenBy(card => card.IssuedAt));
+            var cards = string.Concat(orderedCards.Select(card => $"""
                 <div style="border: 2px dashed #c9a96e; border-radius: 12px; padding: 20px; margin: 20px 0; text-align: center; background: #ffffff;">
                     <div style="font-size: 12px; letter-spacing: 0.15em; text-transform: uppercase; color: #8b7355;">{eventName}</div>
                     <div style="font-family: Georgia, serif; font-size: 24px; color: #3d2b1f; margin: 6px 0 2px 0;">{Encode(card.HolderName)}</div>
@@ -85,8 +87,8 @@ internal sealed class TicketsEmails(
                 <h3>{localizer["Tickets_Delivery_Rules_Heading"].Value}</h3>
                 <ul>
                     <li>{localizer["Tickets_Delivery_Rules_Named"].Value}</li>
-                    <li>{localizer["Tickets_Delivery_Rules_NoTransfer"].Value}</li>
-                    <li>{localizer["Tickets_Delivery_Rules_Return"].Value}</li>
+                    <li>{localizer["Tickets_Delivery_Rules_NoPassingOn"].Value}</li>
+                    <li>{localizer["Tickets_Delivery_Rules_Resale"].Value}</li>
                     <li>{localizer["Tickets_Delivery_Rules_Private"].Value}</li>
                 </ul>
                 """;
@@ -97,15 +99,15 @@ internal sealed class TicketsEmails(
         }
     }
 
-    /// <summary>A plain receipt to the payer, never an invoice: the ticket part with its VAT, each donation without.</summary>
+    /// <summary>A plain receipt to the buyer, never an invoice: the ticket part with its VAT, each donation without.</summary>
     public EmailMessage OrderReceipt(OrderReceiptMail receipt, string? culture = null)
     {
         using (new CultureScope(culture, logger))
         {
             var rows = string.Concat(receipt.Lines.Select(line =>
             {
-                var label = line.Kind == CheckoutLineKind.Ticket
-                    ? Lf("Tickets_Delivery_Receipt_TicketLine", Encode(line.AttendeeName ?? string.Empty), (line.VatRate * 100m).ToString("0.##", CultureInfo.CurrentCulture))
+                var label = line.Kind == OrderLineKind.Ticket
+                    ? Lf("Tickets_Delivery_Receipt_TicketLine", Encode(line.HolderName ?? string.Empty), (line.VatRate * 100m).ToString("0.##", CultureInfo.CurrentCulture))
                     : Lf("Tickets_Delivery_Receipt_DonationLine", Encode(line.DonationPurpose ?? localizer["Tickets_Buy_Purpose_General"].Value));
                 return $"<tr><td>{label}</td><td style=\"text-align: right;\">{Money(line.AmountMinor)}</td></tr>";
             }));
@@ -115,7 +117,7 @@ internal sealed class TicketsEmails(
             var method = string.IsNullOrWhiteSpace(receipt.PaymentMethod)
                 ? string.Empty
                 : $"<br>{Lf("Tickets_Delivery_Receipt_Method", Encode(receipt.PaymentMethod))}";
-            var donationNote = receipt.Lines.Any(l => l.Kind == CheckoutLineKind.Donation)
+            var donationNote = receipt.Lines.Any(l => l.Kind == OrderLineKind.Donation)
                 ? $"<p>{localizer["Tickets_Delivery_Receipt_DonationNote"].Value}</p>"
                 : string.Empty;
             var body = $"""
@@ -166,7 +168,7 @@ internal sealed class TicketsEmails(
     }
 
     /// <summary>
-    /// To the payer of each order of a cancelled event. System: it says their ticket is void and their money is coming
+    /// To the buyer of each order of a cancelled event. System: it says their ticket is void and their money is coming
     /// back, which is not optional mail.
     /// </summary>
     public EmailMessage EventCancelled(
@@ -192,7 +194,7 @@ internal sealed class TicketsEmails(
     }
 
     /// <summary>
-    /// The checkout ended without payment: <paramref name="failed"/> when the payment was declined, otherwise the hold
+    /// The order ended without payment: <paramref name="failed"/> when the payment was declined, otherwise the hold
     /// lapsed. A payment that still lands later issues the tickets anyway, so the mail never says nothing was charged.
     /// </summary>
     public EmailMessage PaymentEnded(
@@ -214,7 +216,7 @@ internal sealed class TicketsEmails(
         }
     }
 
-    /// <summary>The holder's returned ticket sold; the refund follows in the evening batch.</summary>
+    /// <summary>The holder's ticket in resale sold; the refund follows in the evening batch.</summary>
     public EmailMessage ResaleSold(
         Guid holderUserId, string holderEmail, string holderName, string eventName, long refundMinor, Uri ticketsUrl,
         Guid? deliveryId, string? culture = null)
@@ -273,7 +275,10 @@ internal sealed record IssuedTicketMail(
     Guid? DeliveryId);
 
 /// <summary><paramref name="Kind"/> names a <c>Tickets_Delivery_Kind_*</c> key.</summary>
-internal sealed record TicketCard(string HolderName, string Kind, string Barcode, Uri CodeImageUrl);
+internal sealed record TicketCard(string HolderName, TicketHolderKind Kind, string Barcode, Uri CodeImageUrl)
+{
+    public NodaTime.Instant IssuedAt { get; init; }
+}
 
 internal sealed record OrderReceiptMail(
     Guid BuyerUserId,

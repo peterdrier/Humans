@@ -15,8 +15,8 @@ public sealed class CampBarriosSettingsTabViewComponentTests
         var campService = Substitute.For<ICampManagement>();
         IReadOnlyList<CampEventRegistration> events =
         [
-            new(Guid.NewGuid(), "Nowhere 2026", 2026, RegistrationOpen: true),
-            new(Guid.NewGuid(), "Nowhere 2025", 2025, RegistrationOpen: false),
+            new(Guid.NewGuid(), "Nowhere summer", 2026, RegistrationOpen: true) { GateOpeningDate = new NodaTime.LocalDate(2026, 7, 1) },
+            new(Guid.NewGuid(), "Nowhere autumn", 2026, RegistrationOpen: false) { GateOpeningDate = new NodaTime.LocalDate(2026, 10, 1) },
         ];
         campService.GetRegistrationByEventAsync(Arg.Any<CancellationToken>()).Returns(events);
 
@@ -30,6 +30,6 @@ public sealed class CampBarriosSettingsTabViewComponentTests
         var result = await sut.InvokeAsync();
         var model = (CampBarriosSettingsViewModel)((ViewViewComponentResult)result).ViewData!.Model!;
 
-        model.Events.Should().Equal(events);
+        model.Events.Should().Equal(events[1], events[0]);
     }
 }

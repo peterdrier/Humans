@@ -58,7 +58,6 @@ internal sealed class EventCategoryRowViewModel
     public string Slug { get; set; } = string.Empty;
     public bool IsSensitive { get; set; }
     public bool IsActive { get; set; }
-    public int DisplayOrder { get; set; }
     public int EventCount { get; set; }
 }
 
@@ -99,7 +98,6 @@ internal sealed class GuideVenueRowViewModel
     public string Name { get; set; } = string.Empty;
     public string? LocationDescription { get; set; }
     public bool IsActive { get; set; }
-    public int DisplayOrder { get; set; }
     public int EventCount { get; set; }
 }
 

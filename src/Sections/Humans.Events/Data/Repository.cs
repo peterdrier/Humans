@@ -2,7 +2,6 @@ using Humans.Events.Services.Dtos;
 using Humans.Events.Domain;
 using Microsoft.EntityFrameworkCore;
 using NodaTime;
-using Humans.Events.Contracts;
 
 namespace Humans.Events.Data;
 

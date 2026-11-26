@@ -3,9 +3,6 @@ using Humans.Users.Contracts;
 using NodaTime;
 using Humans.AuditLog.Contracts;
 using Humans.Base.Extensions;
-using Humans.Base.Interfaces;
-using Humans.Grants.Data;
-using Humans.Settings.Contracts;
 
 namespace Humans.Grants.Services;
 

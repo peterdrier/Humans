@@ -24,7 +24,7 @@
     <ProjectReference Include="..\..\Humans.Base\Humans.Base.csproj" />
     <ProjectReference Include="..\Humans.Auth\Humans.Auth.csproj" />
     <!--
-      The sections whose machine surface Backdoor serves. Each is reached only through
+      The sections the Backdoor API serves. Each is reached only through
       the public interface in its Contracts/ folder (Agent, Issues,
       Store, Surveys, Expenses) or its contracts leaf (Notifications, Finance) — HUM0034 keeps everything
       else in those assemblies internal, so the reference cannot widen past the published
@@ -51,6 +51,10 @@
     <ProjectReference Include="..\Humans.Holded\Humans.Holded.csproj" />
     <!-- The budget year label (e.g. "2026") a report is booked to, for the year filter/field. -->
     <ProjectReference Include="..\Humans.Budget\Humans.Budget.csproj" />
+    <!-- Bulk task load: ITaskWrite, and Tasks.Manage checked on every team in the payload through IPermissionService. -->
+    <ProjectReference Include="..\Humans.Tasks\Humans.Tasks.csproj" />
+    <ProjectReference Include="..\Humans.Permissions\Humans.Permissions.csproj" />
+    <ProjectReference Include="..\Humans.Teams.Contracts\Humans.Teams.Contracts.csproj" />
   </ItemGroup>
 
   <ItemGroup>

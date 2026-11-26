@@ -4,7 +4,6 @@ using System.Resources;
 using Humans.Shifts.Domain;
 using Humans.Auth.Contracts;
 using Humans.Teams.Domain;
-using Humans.EarlyEntry.Contracts;
 using Humans.Notifications.Contracts;
 using Humans.Shifts.Contracts;
 using Humans.Teams.Contracts;
@@ -14,7 +13,6 @@ using Humans.Base.Enums;
 using Humans.Shifts.Data;
 using Humans.Users.Contracts;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Logging.Abstractions;
 using NodaTime;
 using NSubstitute;
@@ -29,8 +27,6 @@ namespace Humans.Shifts.Tests.Services;
 /// </summary>
 public sealed class ShiftSignupServiceAutoConfirmIgnoresConsentTests : ShiftsTestHarness
 {
-    private readonly ShiftManagementService _shiftMgmt;
-    private readonly ShiftRepository _repo;
     private readonly ShiftSignupService _service;
     private readonly IUserService _users = Substitute.For<IUserService>();
     private readonly UserInfo _userInfo;
@@ -63,7 +59,7 @@ public sealed class ShiftSignupServiceAutoConfirmIgnoresConsentTests : ShiftsTes
 
         var shiftRepo = new ShiftRepository(ShiftsDbFactory, ShiftsDb, Clock);
 
-        _shiftMgmt = new ShiftManagementService(
+        var shiftMgmt = new ShiftManagementService(
             shiftRepo,
             AuditLog,
             serviceProvider,
@@ -71,7 +67,7 @@ public sealed class ShiftSignupServiceAutoConfirmIgnoresConsentTests : ShiftsTes
             Clock,
             NullLogger<ShiftManagementService>.Instance);
 
-        _repo = new ShiftRepository(ShiftsDbFactory, ShiftsDb, Clock);
+        var repo = new ShiftRepository(ShiftsDbFactory, ShiftsDb, Clock);
         var localizer = Substitute.For<IStringLocalizer<ShiftsResource>>();
         const string warningKey = "Shifts_Signup_RangeEarlyEntryCapacityDays";
         localizer[warningKey, Arg.Any<object[]>()].Returns(call => new LocalizedString(warningKey,
@@ -79,9 +75,9 @@ public sealed class ShiftSignupServiceAutoConfirmIgnoresConsentTests : ShiftsTes
                 new ResourceManager(typeof(ShiftsResource)).GetString(warningKey, CultureInfo.GetCultureInfo("en"))!,
                 call.Arg<object[]>())));
         _service = new ShiftSignupService(
-            _repo,
+            repo,
             Substitute.For<IVolunteerTrackingRepository>(),
-            _shiftMgmt,
+            shiftMgmt,
             NewCalendarResolver(),
             AuditLog,
             Substitute.For<INotificationEmitter>(),

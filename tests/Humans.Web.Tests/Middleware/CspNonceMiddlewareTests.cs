@@ -1,7 +1,6 @@
 using AwesomeAssertions;
 using Humans.Web.Middleware;
 using Microsoft.AspNetCore.Http;
-using Xunit;
 
 namespace Humans.Web.Tests.Middleware;
 

@@ -16,7 +16,6 @@ internal sealed class AgentSettingsTabViewComponent(IAgentSettingsService settin
             Enabled = s.Enabled,
             Model = s.Model,
             ModelOptions = modelOptions,
-            PreloadConfig = s.PreloadConfig,
             DailyMessageCap = s.DailyMessageCap,
             HourlyMessageCap = s.HourlyMessageCap,
             DailyTokenCap = s.DailyTokenCap,

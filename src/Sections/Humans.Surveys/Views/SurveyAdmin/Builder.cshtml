@@ -20,7 +20,7 @@
 }
 
 @section Crumbs {
-    <span authorize-policy="@Humans.Surveys.Contracts.SurveysPolicies.Read"><a asp-controller="Admin" asp-action="Index">@Localizer["Surveys_Admin_Common_AdminBreadcrumb"]</a></span>
+    <span authorize-policy="@SurveysPolicies.Read"><a asp-controller="Admin" asp-action="Index">@Localizer["Surveys_Admin_Common_AdminBreadcrumb"]</a></span>
     <a asp-controller="SurveyAdmin" asp-action="Index">@Localizer["Surveys_Admin_Index_Title"]</a>
     <span>@ViewData["Title"]</span>
 }
@@ -51,6 +51,10 @@
                                 ? Localizer["Surveys_Admin_Builder_ConfirmOpenVote"].Value
                                 : Localizer["Surveys_Admin_Builder_ConfirmOpenSurvey"].Value)">@Localizer["Surveys_Admin_Builder_Open"]</button>
                 </form>
+            }
+            @if (Model.Status == SurveyStatus.PendingApproval)
+            {
+                <partial name="_SurveyReviewActions" model="@Model.Id!.Value" view-data="@(new ViewDataDictionary(ViewData) { ["ReviewReturnUrl"] = Url.Action("Edit", "SurveyAdmin", new { id = Model.Id }) })" />
             }
             @if (Model.ManagesEverySurvey && Model.Status == SurveyStatus.Open)
             {

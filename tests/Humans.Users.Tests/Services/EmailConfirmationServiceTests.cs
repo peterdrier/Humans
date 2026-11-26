@@ -1,7 +1,6 @@
 using AwesomeAssertions;
 using Humans.Email.Contracts;
 using Humans.Users.Contracts;
-using Humans.Users.Domain;
 using Humans.Users.Data.Repositories;
 using Humans.Users.Services;
 using Humans.Users.Tests.Infrastructure;

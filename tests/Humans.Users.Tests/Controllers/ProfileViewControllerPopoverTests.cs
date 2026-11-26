@@ -1,4 +1,3 @@
-using Humans.Consent.Contracts;
 using Humans.Users.Tests.Infrastructure;
 using Humans.Users.Controllers;
 using Humans.Users.Services;
@@ -31,10 +30,7 @@ namespace Humans.Users.Tests.Controllers;
 
 public class ProfileViewControllerPopoverTests
 {
-    private readonly Dictionary<Guid, ConsentReviewInfo> _reviews = [];
-    private readonly IConsentService _consentService;
     private readonly IUserManagement _userService = Substitute.For<IUserManagement>();
-    private readonly IUserEmailService _userEmailService = Substitute.For<IUserEmailService>();
     private readonly IProfilePictureService _profilePictureService = Substitute.For<IProfilePictureService>();
     private readonly ITeamService _teamService = Substitute.For<ITeamService>();
     private readonly IShiftService _shiftManagement = Substitute.For<IShiftService>();
@@ -46,21 +42,6 @@ public class ProfileViewControllerPopoverTests
 
     public ProfileViewControllerPopoverTests()
     {
-        _consentService = ConsentReviewStubs.Create(_reviews);
-        var userStore = Substitute.For<IUserStore<User>>();
-        var userManager = Substitute.For<UserManager<User>>(
-            userStore, null, null, null, null, null, null, null, null);
-
-        var contextAccessor = Substitute.For<IHttpContextAccessor>();
-        var claimsFactory = Substitute.For<IUserClaimsPrincipalFactory<User>>();
-        var identityOptions = Substitute.For<IOptions<IdentityOptions>>();
-        identityOptions.Value.Returns(new IdentityOptions());
-        var schemeProvider = Substitute.For<IAuthenticationSchemeProvider>();
-        var userConfirmation = Substitute.For<IUserConfirmation<User>>();
-        var signInManager = Substitute.For<SignInManager<User>>(
-            userManager, contextAccessor, claimsFactory, identityOptions,
-            NullLogger<SignInManager<User>>.Instance, schemeProvider, userConfirmation);
-
         _sharedLocalizer[Arg.Any<string>()].Returns(ci => new LocalizedString(ci.Arg<string>(), ci.Arg<string>()));
 
         _controller = new ProfileViewController(
@@ -99,7 +80,7 @@ public class ProfileViewControllerPopoverTests
     {
         var userId = Guid.NewGuid();
         _profilePictureService.GetProfilePictureAsync(userId, Arg.Any<CancellationToken>())
-            .Returns(((byte[] Data, string ContentType)?)(new byte[] { 1, 2, 3 }, "image/jpeg"));
+            .Returns((new byte[] { 1, 2, 3 }, "image/jpeg"));
 
         await _controller.Picture(userId, version, TestContext.Current.CancellationToken);
 
@@ -234,19 +215,19 @@ public class ProfileViewControllerPopoverTests
             .Returns(BuildUserInfo(user, profile, userEmails: null));
 
         var season = new CampSeasonInfo(
-            Guid.NewGuid(), Guid.NewGuid(), "camp-funhouse", 2026, null,
+            Guid.NewGuid(), Guid.NewGuid(), 2026, null,
             "Camp Funhouse", "", "", [],
             CampSeasonStatus.Active, YesNoMaybe.Yes, YesNoMaybe.No,
             AdultPlayspacePolicy.No, 0, null, null, null, 0, null, null);
         _campService.GetCampUserInfoAsync(id, Arg.Any<CancellationToken>())
-            .Returns(new CampUserInfo(season, ["Camp Lead", "Greeter"]));
+            .Returns(new CampUserInfo(season, [("Zulu", 2), ("Greeter", 1), ("alpha", 2), ("Camp Lead", 0), ("Greeter", 3)]));
 
         var result = await _controller.Popover(id, TestContext.Current.CancellationToken);
 
         var vm = result.Should().BeOfType<PartialViewResult>().Subject
             .Model.Should().BeOfType<ProfileSummaryViewModel>().Subject;
         vm.CampName.Should().Be("Camp Funhouse");
-        vm.CampRoles.Should().Equal("Camp Lead", "Greeter");
+        vm.CampRoles.Should().Equal("Camp Lead", "Greeter", "alpha", "Zulu", "Greeter");
     }
 
     [HumansTheory]

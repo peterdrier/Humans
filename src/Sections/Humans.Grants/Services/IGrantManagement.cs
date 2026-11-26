@@ -1,11 +1,10 @@
-using Humans.Base.Interfaces;
 using Humans.Grants.Contracts;
 using NodaTime;
 
 namespace Humans.Grants.Services;
 
 /// <summary>Authorization is the controllers' job: every method trusts its actor.</summary>
-internal interface IGrantManagement : IGrantWrite, IApplicationService
+internal interface IGrantManagement : IGrantWrite
 {
     Task<IReadOnlyList<ProgramInfo>> GetProgramsAsync(CancellationToken ct = default);
     Task<ProgramInfo?> GetProgramAsync(Guid programId, CancellationToken ct = default);

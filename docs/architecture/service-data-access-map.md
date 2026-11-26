@@ -44,6 +44,7 @@ The goal is to identify cross-section table overlap, duplicated caching, and cac
 > | `SettingsDbContext` | `Setting`, `EventSettings` — tables `settings_system_values` and `settings_events` (own project, `src/Sections/Humans.Settings/`) |
 > | `ContainersDbContext` | `Containers`, `ContainerPlacements`, `ContainerImages` (own project, `src/Sections/Humans.Containers/`) |
 > | `RolesDbContext` | `role_definitions`, `role_assignments` (own project, `src/Sections/Humans.Roles/`) |
+> | `TasksDbContext` | `task_items`, `task_assignments`, `task_dependencies` (own project, `src/Sections/Humans.Tasks/`) |
 > | `ExpensesDbContext` | `ExpenseReports`, `ExpenseLines`, `ExpenseAttachments`, `HoldedExpenseOutboxEvents` (own project, `src/Sections/Humans.Expenses/`) |
 > | `FinanceDbContext` | `HoldedExpenseDocs`, `HoldedCategoryMap`, `HoldedCreditorContacts`, `HoldedDocSyncStates`, `HoldedManagedAccounts`, `SepaPayoutFiles`, `SepaPayoutTransfers`, `finance_payment_details` (own project, `src/Sections/Humans.Finance/`). The ledger mirror (`HoldedLedgerLines`, its sync state, the chart-of-accounts cache, and the API call log) lives in the separate `HoldedDbContext` below. |
 > | `HoldedDbContext` | `HoldedLedgerLines`, `HoldedSyncStates`, `HoldedAccounts`, `HoldedApiCalls`, `HoldedPurchaseDocs` (own project, `src/Sections/Humans.Holded/`). The daybook-journal ledger mirror, purchase-document mirror, chart-of-accounts cache, and Holded API call-log/metering — split out of Finance so the two sections that both touch Holded data stay structurally isolated from each other. |
@@ -340,7 +341,7 @@ Every table is owned by exactly one repository; there are no HUM0025
     `ISurveyAnalysisRead` (Surveys) — and formats the result.
     `IBackdoorApiKeyRepository` is the only repository Backdoor's own service
     touches, scoped to its one table, `backdoor_api_keys`. The four consumed
-    interfaces exist solely for this machine surface and carry no other
+    interfaces exist solely for the Backdoor API and carry no other
     caller, so their `###` headings live in the owning section's own
     `Docs/data-access.md`, not here.
 

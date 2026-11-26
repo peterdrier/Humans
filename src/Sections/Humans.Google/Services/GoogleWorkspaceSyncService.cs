@@ -7,9 +7,7 @@ using Humans.Base.Enums;
 using Humans.Base.Helpers;
 using Microsoft.Extensions.Options;
 using NodaTime;
-using Humans.Google.Data;
 using Humans.Google.Services.Workspace;
-using Humans.Base.Interfaces;
 
 namespace Humans.Google.Services;
 
@@ -541,7 +539,6 @@ internal sealed class GoogleWorkspaceSyncService(
             {
                 reports.Add(new GroupSettingsDriftReport
                 {
-                    ResourceId = resource.Id,
                     GroupName = resource.Name,
                     Url = resource.Url,
                     ErrorMessage = "Cannot determine group email address"
@@ -574,7 +571,6 @@ internal sealed class GoogleWorkspaceSyncService(
                 logger.LogWarning("Cannot read settings for group '{GroupEmail}' (HTTP {Code})", groupEmail, code);
                 return new GroupSettingsDriftReport
                 {
-                    ResourceId = resource.Id,
                     GroupEmail = groupEmail,
                     GroupName = resource.Name,
                     Url = resource.Url,
@@ -586,7 +582,6 @@ internal sealed class GoogleWorkspaceSyncService(
                 groupEmail, code, getResult.Error?.RawMessage);
             return new GroupSettingsDriftReport
             {
-                ResourceId = resource.Id,
                 GroupEmail = groupEmail,
                 GroupName = resource.Name,
                 Url = resource.Url,
@@ -610,7 +605,6 @@ internal sealed class GoogleWorkspaceSyncService(
 
         return new GroupSettingsDriftReport
         {
-            ResourceId = resource.Id,
             GroupEmail = groupEmail,
             GroupName = resource.Name,
             Url = resource.Url,
@@ -729,7 +723,6 @@ internal sealed class GoogleWorkspaceSyncService(
                 {
                     GroupEmail = email,
                     DisplayName = group.DisplayName ?? email,
-                    GoogleId = group.Id,
                     MemberCount = (int)(group.DirectMembersCount ?? 0),
                     LinkedTeamName = linkedTeam?.Name,
                     LinkedTeamId = linkedTeam?.Id,
@@ -866,8 +859,7 @@ internal sealed class GoogleWorkspaceSyncService(
         var activeResources = await resourceRepository.GetActiveByTeamIdAsync(teamId, cancellationToken);
         var existingGroup = activeResources
             .Where(r => r.ResourceType == GoogleResourceType.Group)
-            .OrderBy(r => r.ProvisionedAt)
-            .FirstOrDefault();
+            .MinBy(r => r.ProvisionedAt);
 
         if (team.GoogleGroupPrefix is null)
         {

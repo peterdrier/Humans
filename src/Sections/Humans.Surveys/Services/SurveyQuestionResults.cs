@@ -168,7 +168,6 @@ internal static class SurveyQuestionResults
             current.Methods,
             current.Matrix.Contests,
             original.PreferenceCycle,
-            current.PreferenceCycle,
-            unavailable.ToList());
+            current.PreferenceCycle);
     }
 }

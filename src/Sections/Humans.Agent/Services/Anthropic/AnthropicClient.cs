@@ -61,7 +61,6 @@ internal sealed class AnthropicClient : IAnthropicClient
             ToolChoice = request.DisallowToolUse ? new ToolChoice(new ToolChoiceNone()) : null,
         };
 
-        string? model = null;
         long inputTokens = 0;
         long outputTokens = 0;
         long cacheReadTokens = 0;
@@ -77,7 +76,7 @@ internal sealed class AnthropicClient : IAnthropicClient
 
         AgentTurnFinalizer Snapshot(string? reason = null) => new(
             ClampToInt(inputTokens), ClampToInt(outputTokens), ClampToInt(cacheReadTokens),
-            ClampToInt(cacheCreationTokens), model ?? request.Model, reason);
+            ClampToInt(cacheCreationTokens), reason);
 
         // Stream failures get a synthetic "error" finalizer so AgentService can complete the SSE frame.
         var enumerator = _sdk.Messages.CreateStreaming(sdkRequest, cancellationToken).GetAsyncEnumerator(cancellationToken);
@@ -114,7 +113,6 @@ internal sealed class AnthropicClient : IAnthropicClient
 
                 if (evt.TryPickStart(out var startEvent))
                 {
-                    model = startEvent.Message.Model;
                     inputTokens = startEvent.Message.Usage.InputTokens;
                     outputTokens = startEvent.Message.Usage.OutputTokens;
                     cacheReadTokens = startEvent.Message.Usage.CacheReadInputTokens ?? 0;

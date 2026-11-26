@@ -1,7 +1,6 @@
 using Humans.Users.Contracts;
 using System.Security.Claims;
 using AwesomeAssertions;
-using Humans.Base.Authorization;
 using Humans.Base.Enums;
 using Humans.Base.Interfaces;
 using Humans.Campaigns.Services;
@@ -26,13 +25,13 @@ public class UserPartsTests
     private readonly Guid _userId = Guid.NewGuid();
 
     private CampaignGrantSummary Grant(string title) => new(
-        Guid.NewGuid(), Guid.NewGuid(), title, Guid.NewGuid(), "CODE-" + title, _userId,
+        Guid.NewGuid(), title, "CODE-" + title, _userId,
         Instant.FromUtc(2026, 1, 1, 0, 0), null);
 
     [HumansFact]
     public void Parts_ContributeMyCodesToProfile_AndCampaignCodesToAdminDetail()
     {
-        IUserPart contribution = ((IUserPart)new Section());
+        IUserPart contribution = new Section();
 
         contribution.Parts().Should().BeEquivalentTo(
         [

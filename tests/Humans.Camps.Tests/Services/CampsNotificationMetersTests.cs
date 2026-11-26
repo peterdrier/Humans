@@ -1,8 +1,6 @@
 using System.Security.Claims;
 using AwesomeAssertions;
 using Humans.Base.Enums;
-using Humans.Camps.Contracts;
-using Humans.Camps.Services;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Localization;
 using NodaTime;
@@ -94,14 +92,14 @@ public sealed class CampsNotificationMetersTests : IDisposable
         var campId = Guid.NewGuid();
         var pendingMember = new CampSeasonMemberInfo(
             Guid.NewGuid(), Guid.NewGuid(), CampMemberStatus.Pending,
-            Instant.FromUtc(2026, 3, 1, 0, 0), ConfirmedAt: null, HasEarlyEntry: false);
+            Instant.FromUtc(2026, 3, 1, 0, 0), HasEarlyEntry: false);
 
         return new CampInfo(
             campId, "lead-camp", "lead@example.com", "+34600000000", IsSwissCamp: false, TimesAtNowhere: 1,
             Seasons:
             [
                 new CampSeasonInfo(
-                    Guid.NewGuid(), campId, "lead-camp", 2026, null, "Lead Camp",
+                    Guid.NewGuid(), campId, 2026, null, "Lead Camp",
                     string.Empty, string.Empty, [], CampSeasonStatus.Active,
                     YesNoMaybe.No, YesNoMaybe.No, AdultPlayspacePolicy.No,
                     0, null, null, null, 0, null, null)

@@ -11,24 +11,9 @@
         </small>
     </div>
     <div class="staffing">
-        @if (Model.Departments.Count == 0)
-        {
-            <p class="text-muted px-3">
-                Live staffing tile coming — see
-                <a asp-controller="Shifts" asp-action="Index">Shifts</a>.
-            </p>
-        }
-        else
-        {
-            foreach (var dept in Model.Departments)
-            {
-                var pct = (int)(dept.Ratio * 100);
-                <div class="dept-row">
-                    <span class="name">@dept.Name</span>
-                    <div class="track @dept.TrackClass"><div style="width:@(pct)%"></div></div>
-                    <span class="num">@pct%</span>
-                </div>
-            }
-        }
+        <p class="text-muted px-3">
+            Live staffing tile coming — see
+            <a asp-controller="Shifts" asp-action="Index">Shifts</a>.
+        </p>
     </div>
 </div>

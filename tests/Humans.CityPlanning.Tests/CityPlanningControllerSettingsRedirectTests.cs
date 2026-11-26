@@ -2,7 +2,6 @@ using System.Security.Claims;
 using AwesomeAssertions;
 using Humans.AuditLog.Contracts;
 using Humans.Base.Authorization;
-using Humans.Base.Constants;
 using Humans.Camps.Contracts;
 using Humans.CityPlanning.Contracts;
 using Humans.CityPlanning.Controllers;
@@ -34,7 +33,6 @@ public sealed class CityPlanningControllerSettingsRedirectTests : CityPlanningTe
 {
     private readonly ICampService _campService = Substitute.For<ICampService>();
     private readonly IUserService _userService = Substitute.For<IUserService>();
-    private readonly CityPlanningService _service;
     private readonly CityPlanningController _controller;
     private readonly Guid _userId = Guid.NewGuid();
 
@@ -43,14 +41,14 @@ public sealed class CityPlanningControllerSettingsRedirectTests : CityPlanningTe
         _campService.GetSettingsAsync(Arg.Any<CancellationToken>())
             .Returns(new CampSettingsInfo(2026, []));
 
-        _service = new CityPlanningService(
+        var service = new CityPlanningService(
             new CityPlanningRepository(CityPlanningDbFactory), Clock,
             Options.Create(new CityPlanningOptions { CityPlanningTeamSlug = "city-planning" }),
             _campService, Substitute.For<ITeamService>(), _userService, Substitute.For<IAuditLogService>(), ActiveEvent(2026), Substitute.For<IContainerService>());
 
         _controller = new CityPlanningController(
-            _service, Substitute.For<IContainerService>(), Substitute.For<IStringLocalizer<ContainersResource>>(), _userService,
-            MapAdminAuthorization(_service), NullLogger<CityPlanningController>.Instance);
+            service, Substitute.For<IContainerService>(), Substitute.For<IStringLocalizer<ContainersResource>>(), _userService,
+            MapAdminAuthorization(service), NullLogger<CityPlanningController>.Instance);
 
         var claims = new[]
         {

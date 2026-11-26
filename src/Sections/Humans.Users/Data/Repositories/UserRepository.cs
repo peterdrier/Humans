@@ -1,4 +1,3 @@
-using Humans.Users.Domain;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using NodaTime;
@@ -358,6 +357,6 @@ internal sealed partial class UserRepository : IUserRepository
         await ResyncStateInContextAsync(ctx, user, ct);
         await ctx.SaveChangesAsync(ct);
         return new ExpiredDeletionAnonymizationResult(
-            originalEmail, originalBurnerName, preferredLanguage);
+            originalBurnerName);
     }
 }

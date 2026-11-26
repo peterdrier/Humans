@@ -15,5 +15,4 @@ public interface IPermissionSource
 /// <param name="Owner">Where the holding is.</param>
 /// <param name="IsCoordinator">The owner's coordinator role: every permission that applies to the owner's kind.</param>
 /// <param name="Keys">Permission keys held when not the coordinator. Keys no section declares are ignored.</param>
-/// <param name="Reason">Why, for the permissions page: "Cantina coordinator".</param>
-public sealed record Holding(Owner Owner, bool IsCoordinator, IReadOnlyList<string> Keys, string Reason);
+public sealed record Holding(Owner Owner, bool IsCoordinator, IReadOnlyList<string> Keys);

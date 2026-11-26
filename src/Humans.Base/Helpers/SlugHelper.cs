@@ -11,11 +11,8 @@ public static partial class SlugHelper
 
     public static string GenerateSlug(string name)
     {
-        var slug = name.ToLowerInvariant();
-        slug = NonAlphanumericRegex().Replace(slug, "-");
-        slug = MultipleHyphensRegex().Replace(slug, "-");
-        slug = slug.Trim('-');
-        return slug;
+        var slug = NonAlphanumericRegex().Replace(name.ToLowerInvariant(), "-");
+        return slug.Trim('-');
     }
 
     public static bool IsReservedCampSlug(string slug)
@@ -34,11 +31,8 @@ public static partial class SlugHelper
         return KebabSlugRegex().IsMatch(slug);
     }
 
-    [GeneratedRegex(@"[^a-z0-9\-]", RegexOptions.None, matchTimeoutMilliseconds: 1000)]
+    [GeneratedRegex(@"[^a-z0-9]+", RegexOptions.None, matchTimeoutMilliseconds: 1000)]
     private static partial Regex NonAlphanumericRegex();
-
-    [GeneratedRegex(@"-{2,}", RegexOptions.None, matchTimeoutMilliseconds: 1000)]
-    private static partial Regex MultipleHyphensRegex();
 
     [GeneratedRegex(@"^[a-z0-9]+(?:-[a-z0-9]+)*$", RegexOptions.ExplicitCapture, matchTimeoutMilliseconds: 1000)]
     private static partial Regex KebabSlugRegex();

@@ -34,8 +34,7 @@ public class GateControllerOverridePinTests
         _users.GetUserInfoAsync(_gateAccount, Arg.Any<CancellationToken>())
             .Returns(UserInfo.Create(new User { Id = _gateAccount }, [], [], null));
         _gate.RecordDecisionAsync(Arg.Any<GateDecisionInput>(), Arg.Any<Guid>(), Arg.Any<CancellationToken>())
-            .Returns(new GateDecisionResult(GateVerdict.AdmittedEarlyOverride, "Guest", null,
-                IsEarly: true, null, null));
+            .Returns(new GateDecisionResult(GateVerdict.AdmittedEarlyOverride, "Guest", IsEarly: true, null));
     }
 
     public enum GateAction
@@ -149,7 +148,7 @@ public class GateControllerOverridePinTests
     public async Task Decision_OverlongInput_ReturnsBadRequest()
     {
         _gate.RecordDecisionAsync(Arg.Any<GateDecisionInput>(), Arg.Any<Guid>(), Arg.Any<CancellationToken>())
-            .Returns(new GateDecisionResult(GateVerdict.Unresolved, null, null, false, null, null, InputTooLong: true));
+            .Returns(new GateDecisionResult(GateVerdict.Unresolved, null, false, null, InputTooLong: true));
         var controller = BuildController(Pin);
 
         var result = await controller.Decision(Barcode, true, false, false, null, null,
@@ -194,7 +193,7 @@ public class GateControllerOverridePinTests
     {
         var failure = (GateOverrideFailure)failureValue;
         _gate.RecordDecisionAsync(Arg.Any<GateDecisionInput>(), Arg.Any<Guid>(), Arg.Any<CancellationToken>())
-            .Returns(new GateDecisionResult(GateVerdict.Unresolved, null, null, false, null, null,
+            .Returns(new GateDecisionResult(GateVerdict.Unresolved, null, false, null,
                 OverrideFailure: failure, RetryAfterSeconds: failure == GateOverrideFailure.LockedOut ? 60 : null));
 
         var card = CardOf(await DecideAsync(BuildController(Pin), overrideEarly: !child, child: child, pin: "0000"));

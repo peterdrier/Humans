@@ -24,7 +24,7 @@ public sealed class GoogleGroupClientTransportErrorTests
     public async Task LookupGroupIdAsync_TransportError_ReturnsStructuredError()
     {
         using var cloudIdentity = new CloudIdentityService(CreateInitializer());
-        var logger = new Humans.Testing.CapturingLogger<GoogleGroupProvisioningClient>();
+        var logger = new CapturingLogger<GoogleGroupProvisioningClient>();
         var client = new GoogleGroupProvisioningClient(
             Options.Create(new GoogleWorkspaceSettings()), logger);
         Inject(client, "_cloudIdentityService", cloudIdentity);
@@ -43,7 +43,7 @@ public sealed class GoogleGroupClientTransportErrorTests
     public async Task ListMembershipsAsync_TransportError_ReturnsStructuredError()
     {
         using var directory = new DirectoryService(CreateInitializer());
-        var logger = new Humans.Testing.CapturingLogger<GoogleGroupMembershipClient>();
+        var logger = new CapturingLogger<GoogleGroupMembershipClient>();
         var client = new GoogleGroupMembershipClient(
             Options.Create(new GoogleWorkspaceSettings()), logger);
         Inject(client, "_directoryService", directory);
@@ -74,6 +74,16 @@ public sealed class GoogleGroupClientTransportErrorTests
     [Xunit.InlineData(GooglePagedRead.Activity, PageTokenSequence.Repeat)]
     [Xunit.InlineData(GooglePagedRead.Activity, PageTokenSequence.Cycle)]
     [Xunit.InlineData(GooglePagedRead.Activity, PageTokenSequence.Valid)]
+    [Xunit.InlineData(GooglePagedRead.Accounts, PageTokenSequence.Endless)]
+    [Xunit.InlineData(GooglePagedRead.Accounts, PageTokenSequence.Limit)]
+    [Xunit.InlineData(GooglePagedRead.Groups, PageTokenSequence.Endless)]
+    [Xunit.InlineData(GooglePagedRead.Groups, PageTokenSequence.Limit)]
+    [Xunit.InlineData(GooglePagedRead.Members, PageTokenSequence.Endless)]
+    [Xunit.InlineData(GooglePagedRead.Members, PageTokenSequence.Limit)]
+    [Xunit.InlineData(GooglePagedRead.Permissions, PageTokenSequence.Endless)]
+    [Xunit.InlineData(GooglePagedRead.Permissions, PageTokenSequence.Limit)]
+    [Xunit.InlineData(GooglePagedRead.Activity, PageTokenSequence.Endless)]
+    [Xunit.InlineData(GooglePagedRead.Activity, PageTokenSequence.Limit)]
     public async Task Paginated_reads_reject_repeated_tokens_without_completing_a_partial_list(GooglePagedRead kind, PageTokenSequence sequence)
     {
         using var handler = new PageHandler(kind, sequence);
@@ -119,16 +129,16 @@ public sealed class GoogleGroupClientTransportErrorTests
                     var activity = new GoogleDriveActivityClient(settings, NullLogger<GoogleDriveActivityClient>.Instance);
                     Inject(activity, "_activityService", sdk);
                     var count = 0;
-                    await foreach (var item in activity.QueryActivityAsync("file", "2026-11-20T00:00:00Z",
+                    await foreach (var _ in activity.QueryActivityAsync("file", "2026-11-20T00:00:00Z",
                                        Xunit.TestContext.Current.CancellationToken))
                         count++;
                     return count;
             }
         }
 
-        if (sequence is PageTokenSequence.Valid)
+        if (sequence is PageTokenSequence.Valid or PageTokenSequence.Limit)
         {
-            (await FetchAsync()).Should().Be(3);
+            (await FetchAsync()).Should().Be(sequence is PageTokenSequence.Limit ? 500 : 3);
             error.Should().BeNull();
         }
         else if (kind is GooglePagedRead.Groups or GooglePagedRead.Members or GooglePagedRead.Permissions)
@@ -136,14 +146,16 @@ public sealed class GoogleGroupClientTransportErrorTests
             (await FetchAsync()).Should().Be(0);
             error.Should().NotBeNull();
             error!.IsTransient.Should().BeTrue();
-            error.RawMessage.Should().Contain("repeated page token");
+            error.RawMessage.Should().Contain(sequence is PageTokenSequence.Endless ? "page limit" : "repeated page token");
         }
         else
         {
             var fetch = FetchAsync;
-            await fetch.Should().ThrowAsync<InvalidOperationException>().WithMessage("*repeated page token*");
+            await fetch.Should().ThrowAsync<InvalidOperationException>()
+                .WithMessage(sequence is PageTokenSequence.Endless ? "*page limit*" : "*repeated page token*");
         }
-        handler.Requests.Count.Should().Be(sequence is PageTokenSequence.Repeat ? 2 : 3);
+        handler.Requests.Count.Should().Be(sequence is PageTokenSequence.Endless or PageTokenSequence.Limit ? 500
+            : sequence is PageTokenSequence.Repeat ? 2 : 3);
         if (kind is not GooglePagedRead.Activity)
             handler.Requests[1].Should().Contain("cursor-a");
     }
@@ -197,8 +209,8 @@ public sealed class GoogleGroupClientTransportErrorTests
             Domain = "example.org",
             ServiceAccountKeyPath = $"/tmp/debt98-missing-{Guid.NewGuid():N}/credentials.json",
         });
-        var groupLogger = new Humans.Testing.CapturingLogger<GoogleDirectoryClient>();
-        var driveLogger = new Humans.Testing.CapturingLogger<GoogleDrivePermissionsClient>();
+        var groupLogger = new CapturingLogger<GoogleDirectoryClient>();
+        var driveLogger = new CapturingLogger<GoogleDrivePermissionsClient>();
 
         async Task<GoogleClientError?> FetchAsync()
         {
@@ -291,7 +303,7 @@ public sealed class GoogleGroupClientTransportErrorTests
             GoogleGroupCredentialOperation.CreateGroup => provisioning.CreateGroupAsync("team@example.org", "Team", "Description", ct),
             GoogleGroupCredentialOperation.LookupGroup => provisioning.LookupGroupIdAsync("team@example.org", ct),
             GoogleGroupCredentialOperation.ReadSettings => provisioning.GetGroupSettingsAsync("team@example.org", ct),
-            GoogleGroupCredentialOperation.WriteSettings => provisioning.UpdateGroupSettingsAsync("team@example.org", Humans.Google.Services.GroupSettingsPolicy.BuildExpected(new Humans.Google.Contracts.GoogleWorkspaceGroupOptions()), ct),
+            GoogleGroupCredentialOperation.WriteSettings => provisioning.UpdateGroupSettingsAsync("team@example.org", Services.GroupSettingsPolicy.BuildExpected(new Contracts.GoogleWorkspaceGroupOptions()), ct),
             GoogleGroupCredentialOperation.ListMembers => membership.ListMembershipsAsync("group", ct),
             GoogleGroupCredentialOperation.CreateMember => membership.CreateMembershipAsync("group", "person@example.org", ct),
             _ => membership.DeleteMembershipAsync("groups/group/memberships/person@example.org", ct),
@@ -331,8 +343,12 @@ public sealed class GoogleGroupClientTransportErrorTests
         protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
         {
             Requests.Add(request.RequestUri!.ToString());
-            if (Requests.Count > 4) throw new InvalidOperationException("Test transport exceeded four pages.");
-            var next = Requests.Count == 1 ? "cursor-a"
+            if (Requests.Count > (sequence is PageTokenSequence.Endless or PageTokenSequence.Limit ? 500 : 4))
+                throw new InvalidOperationException("Test transport exceeded its expected pages.");
+            var next = sequence is PageTokenSequence.Endless or PageTokenSequence.Limit
+                ? sequence is PageTokenSequence.Limit && Requests.Count == 500 ? null
+                    : Requests.Count == 1 ? "cursor-a" : $"cursor-{Requests.Count}"
+                : Requests.Count == 1 ? "cursor-a"
                 : sequence is PageTokenSequence.Repeat ? "cursor-a"
                 : Requests.Count == 2 ? "cursor-b"
                 : sequence is PageTokenSequence.Cycle ? "cursor-a" : null;
@@ -363,7 +379,7 @@ public sealed class GoogleGroupClientTransportErrorTests
 
 public enum GooglePagedRead { Accounts, Groups, Members, Permissions, Activity }
 
-public enum PageTokenSequence { Repeat, Cycle, Valid }
+public enum PageTokenSequence { Repeat, Cycle, Valid, Endless, Limit }
 
 public enum GoogleStructuredCall { Groups, Permissions, File, Drive, Create, Update, Delete, Inherit, Folder }
 

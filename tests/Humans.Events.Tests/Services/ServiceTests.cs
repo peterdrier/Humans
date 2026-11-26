@@ -15,7 +15,6 @@ using Microsoft.EntityFrameworkCore.Diagnostics;
 using AwesomeAssertions;
 using Humans.Base.Csv;
 using Humans.Email.Contracts;
-using Humans.Events.Contracts;
 using Humans.Events.Data;
 using Humans.Events.Domain;
 using Humans.Events.Services;
@@ -289,7 +288,7 @@ public sealed class EventServiceTests
         _burnSettings.GetEventSettingsByIdAsync(burn.Id, ct).Returns(burn);
         var campId = Guid.NewGuid();
         var season = new CampSeasonInfo(
-            Guid.NewGuid(), campId, "camp", 2026, null, "Guide Camp", "", "en", [],
+            Guid.NewGuid(), campId, 2026, null, "Guide Camp", "", "en", [],
             default, default, default, default, 1, null, null, null, 0, null, null)
         { EventSettingsId = burn.Id };
         var otherSeason = season with
@@ -747,6 +746,69 @@ public sealed class EventServiceTests
                 && m.Subject == subject
                 && m.HtmlBody.Contains("Fire show")
                 && m.HtmlBody.Contains("https://x/Events/MySubmissions")));
+    }
+
+    public enum LifecycleAction { Submit, Approve, Reject, RequestEdit }
+
+    [HumansTheory]
+    [InlineData(UserState.Deleted, LifecycleAction.Submit)]
+    [InlineData(UserState.Merged, LifecycleAction.Submit)]
+    [InlineData(UserState.Deleted, LifecycleAction.Approve)]
+    [InlineData(UserState.Merged, LifecycleAction.Approve)]
+    [InlineData(UserState.Deleted, LifecycleAction.Reject)]
+    [InlineData(UserState.Merged, LifecycleAction.Reject)]
+    [InlineData(UserState.Deleted, LifecycleAction.RequestEdit)]
+    [InlineData(UserState.Merged, LifecycleAction.RequestEdit)]
+    public async Task LifecycleEmail_TombstoneSubmitter_PreservesEventChange(UserState state, LifecycleAction step)
+    {
+        var ct = TestContext.Current.CancellationToken;
+        OpenSubmissionWindow();
+        var submitterId = StubSubmitterWithEmail("sub@example.com", "Burner");
+        var submitter = Xunit.Assert.IsType<UserInfo>(await _userService.GetUserInfoAsync(submitterId, ct));
+        _userService.GetUserInfoAsync(submitterId, Arg.Any<CancellationToken>()).Returns(submitter with { State = state });
+        var guideEvent = new Event
+        {
+            Id = Guid.NewGuid(),
+            SubmitterUserId = submitterId,
+            Status = step == LifecycleAction.Submit ? EventStatus.Draft : EventStatus.Pending
+        };
+        if (step == LifecycleAction.Submit)
+        {
+            _repo.Categories.Add(new EventCategory { Id = guideEvent.CategoryId });
+            guideEvent.GuideSharedVenueId = Guid.NewGuid();
+            _repo.Venues.Add(new EventVenue { Id = guideEvent.GuideSharedVenueId.Value });
+
+            (await _service.SubmitEventAsync(guideEvent, "https://x/edit", ct)).ErrorKey.Should().BeNull();
+
+            guideEvent.Status.Should().Be(EventStatus.Pending);
+        }
+        else
+        {
+            _repo.Events.Add(guideEvent);
+            var actor = Guid.NewGuid();
+            var action = step switch
+            {
+                LifecycleAction.Approve => EventModerationActionType.Approved,
+                LifecycleAction.Reject => EventModerationActionType.Rejected,
+                _ => EventModerationActionType.ResubmitRequested
+            };
+            var status = step switch
+            {
+                LifecycleAction.Approve => EventStatus.Approved,
+                LifecycleAction.Reject => EventStatus.Rejected,
+                _ => EventStatus.ResubmitRequested
+            };
+
+            (await _service.ApplyModerationAsync(guideEvent.Id, actor, action, "Decision", "https://x/edit", ct))
+                .Should().Be(ModerationOutcome.Applied);
+
+            guideEvent.Status.Should().Be(status);
+            _repo.EventModerationActions.Should().ContainSingle(a =>
+                a.GuideEventId == guideEvent.Id && a.ActorUserId == actor && a.Action == action);
+        }
+        _repo.Events.Should().Contain(guideEvent);
+        _repo.SaveChangesCount.Should().Be(1);
+        _emailService.ReceivedCalls().Should().BeEmpty();
     }
 
     [HumansFact]

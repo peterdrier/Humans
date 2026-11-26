@@ -10,7 +10,7 @@ public static class DateFormattingExtensions
     public const string MailerLiteTimestampPattern = "yyyy-MM-dd HH:mm:ss";
 
     public static string ToInvariantDate(this LocalDate value) =>
-        value.ToString("yyyy-MM-dd", null);
+        value.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture);
 
     public static string? ToInvariantDate(this LocalDate? value) =>
         value?.ToInvariantDate();

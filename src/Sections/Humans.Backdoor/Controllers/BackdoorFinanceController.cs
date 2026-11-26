@@ -1,6 +1,7 @@
 using System.Text.Json;
 using System.Text.Json.Nodes;
 using Humans.Backdoor.Filters;
+using Humans.Backdoor.Services;
 using Humans.Base.Authorization;
 using Humans.Base.Controllers;
 using Humans.Base.Extensions;
@@ -27,6 +28,7 @@ namespace Humans.Backdoor.Controllers;
 [ApiController]
 [Route("api/backdoor/finance")]
 [ServiceFilter(typeof(BackdoorApiKeyAuthFilter))]
+[BackdoorScope(BackdoorScope.AdminAndBoard)]
 [AllowAnonymous]
 internal sealed class BackdoorFinanceController(
     IExpenseReportService expenses,
@@ -236,7 +238,7 @@ internal sealed class BackdoorFinanceController(
             year = r.Year,
             mirrorSyncedAt = r.MirrorSyncedAt?.ToIso8601(),
             unavailableReason = r.UnavailableReason,
-            years = r.Years,
+            years = r.Years.OrderDescending().ToList(),
             totals = new
             {
                 reports = r.Totals.Reports,
@@ -303,7 +305,7 @@ internal sealed class BackdoorFinanceController(
                         description = o.Description,
                         amount = o.Amount,
                     }),
-                    openTransfers = m.OpenTransfers.Select(Transfer),
+                    openTransfers = m.OpenTransfers.OrderBy(t => t.GeneratedAt).Select(Transfer),
                 }),
         });
 

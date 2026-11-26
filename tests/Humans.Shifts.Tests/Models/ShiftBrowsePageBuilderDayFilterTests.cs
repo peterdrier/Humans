@@ -49,7 +49,6 @@ public class ShiftBrowsePageBuilderDayFilterTests
 
     private static ShiftBrowsePageRequest RequestFor(string? day, string? sort = null) => new(
         Event,
-        Guid.NewGuid(),
         [],
         [],
         [],

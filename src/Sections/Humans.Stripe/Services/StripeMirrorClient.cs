@@ -20,7 +20,7 @@ internal sealed class StripeMirrorAccount
     public string ApiKey { get; set; } = "";
 
     public bool UsesOrgKey => string.IsNullOrEmpty(KeyVariable);
-    public bool IsConfigured => !string.IsNullOrEmpty(ApiKey);
+    public bool IsConfigured => StripeSettings.IsUsableApiKey(ApiKey);
 }
 
 internal sealed class StripeMirrorOptions
@@ -50,6 +50,9 @@ internal sealed class StripeMirrorClient(IHttpClient? httpClient = null) : IStri
 
     public async Task<StripeAccountFetch> FetchAsync(StripeMirrorAccount account, CancellationToken ct = default)
     {
+        if (!account.IsConfigured)
+            throw new InvalidOperationException($"Stripe mirror account {account.Name} has no usable API key.");
+
         var client = new StripeClient(account.ApiKey, httpClient: httpClient);
         // The org key reaches each account through Stripe-Context; an account's own key needs none. The SDK always
         // sends its pinned Stripe-Version (ApiVersion.Current), which an org key requires.
@@ -95,6 +98,7 @@ internal sealed class StripeMirrorClient(IHttpClient? httpClient = null) : IStri
         Action<JsonElement>? validateItem = null)
     {
         var items = new List<T>();
+        var seenIds = new HashSet<string>(StringComparer.Ordinal);
         string? after = null;
         for (var n = 1; n <= PageSafetyCap; n++)
         {
@@ -110,6 +114,8 @@ internal sealed class StripeMirrorClient(IHttpClient? httpClient = null) : IStri
             foreach (var item in data.EnumerateArray())
             {
                 RequireMirrorFields(item, what, ["id"], []);
+                if (!seenIds.Add(item.GetProperty("id").GetString()!))
+                    throw new InvalidOperationException($"Stripe {what}: repeated item id.");
                 validateItem?.Invoke(item);
             }
             items.AddRange(list.Data);

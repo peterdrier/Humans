@@ -19,7 +19,7 @@ public class ShiftViewServiceTests
 
     public ShiftViewServiceTests()
     {
-        _calendarResolver = new(_settingsService, Substitute.For<Humans.Shifts.Data.IShiftManagementRepository>());
+        _calendarResolver = new(_settingsService, Substitute.For<IShiftManagementRepository>());
         _rotaRows.GetRotaRowsAsync(Arg.Any<IReadOnlyCollection<Guid>?>(), Arg.Any<CancellationToken>()).Returns([]);
     }
 

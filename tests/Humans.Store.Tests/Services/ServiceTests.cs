@@ -30,7 +30,6 @@ using Humans.Base.Enums;
 using Humans.Holded.Contracts;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Options;
 using NodaTime;
 using NodaTime.Testing;
 using NodaTime.Text;
@@ -518,7 +517,7 @@ public class ServiceTests
         Order? captured = null;
         await _repo.AddOrderAsync(Arg.Do<Order>(o => captured = o), Arg.Any<CancellationToken>());
         _campService.GetCampSeasonByIdAsync(campSeasonId, Arg.Any<CancellationToken>())
-            .Returns(new CampSeasonInfo(campSeasonId, Guid.NewGuid(), "alpha", 2026, null,
+            .Returns(new CampSeasonInfo(campSeasonId, Guid.NewGuid(), 2026, null,
                 "Camp X", string.Empty, string.Empty, [], CampSeasonStatus.Pending,
                 YesNoMaybe.No, YesNoMaybe.No, AdultPlayspacePolicy.No, 0, null, null, null, 0, null, null));
 
@@ -709,8 +708,7 @@ public class ServiceTests
                 ? Task.FromException<Product?>(failure) : Task.FromResult<Product?>(product));
         _repo.GetLineWithOrderAndProductAsync(lineId, Arg.Any<CancellationToken>()).Returns(_ => lookupFailure
             ? Task.FromException<LineContext?>(failure)
-            : Task.FromResult<LineContext?>(new LineContext(lineId, order.Id, product.Id,
-                OrderState.Open, product.OrderableUntil, "Ice", 1, 10m)));
+            : Task.FromResult<LineContext?>(new LineContext(order.Id, OrderState.Open, product.OrderableUntil, "Ice", 1, 10m)));
         _repo.UpdateProductAsync(product, Arg.Any<CancellationToken>()).Returns(Task.FromException(failure));
         _repo.AddLineAsync(Arg.Any<OrderLine>(), Arg.Any<CancellationToken>()).Returns(Task.FromException(failure));
         _repo.RemoveLineAsync(lineId, Arg.Any<CancellationToken>()).Returns(Task.FromException(failure));
@@ -837,8 +835,7 @@ public class ServiceTests
         var routeOrderId = Guid.NewGuid();
         _repo.GetLineWithOrderAndProductAsync(lineId, Arg.Any<CancellationToken>())
             .Returns(new LineContext(
-                lineId, actualOrderId, Guid.NewGuid(),
-                OrderState.Open, new LocalDate(2026, 12, 31), "Ice", 1, 10m));
+                actualOrderId, OrderState.Open, new LocalDate(2026, 12, 31), "Ice", 1, 10m));
 
         var rejection = await _service.RemoveLineAsync(routeOrderId, lineId, Guid.NewGuid(), TestContext.Current.CancellationToken);
         rejection.Succeeded.Should().BeFalse();
@@ -853,8 +850,7 @@ public class ServiceTests
         var orderId = Guid.NewGuid();
         _repo.GetLineWithOrderAndProductAsync(lineId, Arg.Any<CancellationToken>())
             .Returns(new LineContext(
-                lineId, orderId, Guid.NewGuid(),
-                OrderState.InvoiceIssued, new LocalDate(2026, 12, 31), "Ice", 1, 10m));
+                orderId, OrderState.InvoiceIssued, new LocalDate(2026, 12, 31), "Ice", 1, 10m));
 
         var rejection = await _service.RemoveLineAsync(orderId, lineId, Guid.NewGuid(), TestContext.Current.CancellationToken);
         rejection.Succeeded.Should().BeFalse();
@@ -872,8 +868,7 @@ public class ServiceTests
         var actor = Guid.NewGuid();
         _repo.GetLineWithOrderAndProductAsync(lineId, Arg.Any<CancellationToken>())
             .Returns(new LineContext(
-                lineId, orderId, Guid.NewGuid(),
-                OrderState.Open, new LocalDate(2026, 1, 1), "Ice", 3, 10m));
+                orderId, OrderState.Open, new LocalDate(2026, 1, 1), "Ice", 3, 10m));
 
         await _service.RemoveLineAsync(orderId, lineId, actor, TestContext.Current.CancellationToken);
 
@@ -892,8 +887,7 @@ public class ServiceTests
         var actor = Guid.NewGuid();
         _repo.GetLineWithOrderAndProductAsync(lineId, Arg.Any<CancellationToken>())
             .Returns(new LineContext(
-                lineId, orderId, Guid.NewGuid(),
-                OrderState.Open, new LocalDate(2026, 12, 31), "Ice", 1, 10m));
+                orderId, OrderState.Open, new LocalDate(2026, 12, 31), "Ice", 1, 10m));
 
         await _service.RemoveLineAsync(orderId, lineId, actor, TestContext.Current.CancellationToken);
 
@@ -926,8 +920,7 @@ public class ServiceTests
         var actor = Guid.NewGuid();
         _repo.GetLineWithOrderAndProductAsync(lineId, Arg.Any<CancellationToken>())
             .Returns(new LineContext(
-                lineId, orderId, Guid.NewGuid(),
-                OrderState.Open, new LocalDate(2026, 12, 31), "Ice", 1, 10m));
+                orderId, OrderState.Open, new LocalDate(2026, 12, 31), "Ice", 1, 10m));
 
         var result = await _service.RemoveLineAsync(orderId, lineId, actor, TestContext.Current.CancellationToken);
 
@@ -1087,7 +1080,7 @@ public class ServiceTests
         await _repo.AddProductAsync(Arg.Do<Product>(p => captured = p), Arg.Any<CancellationToken>());
 
         _holded.GetChartAsync(Arg.Any<CancellationToken>())
-            .Returns([new HoldedChartAccountInfo(75900002, "Hielo", null, null, Archived: false, 0m)]);
+            .Returns([new HoldedChartAccountInfo(75900002, "Hielo", null, Archived: false, 0m)]);
         var draft = new ProductDto(
             Guid.Empty, 2026, "  Tent  ", "Big tent", 50m, 21m, 100m,
             new LocalDate(2026, 8, 1), IsActive: true, HoldedRevenueAccountNum: 75900002);
@@ -1222,7 +1215,7 @@ public class ServiceTests
 
         var actor = Guid.NewGuid();
         _holded.GetChartAsync(Arg.Any<CancellationToken>())
-            .Returns([new HoldedChartAccountInfo(75900002, "Hielo", null, null, Archived: false, 0m)]);
+            .Returns([new HoldedChartAccountInfo(75900002, "Hielo", null, Archived: false, 0m)]);
         var draft = new ProductDto(
             existing.Id, 2026, "  New  ", "New desc", 99m, 10m, 25m,
             new LocalDate(2026, 9, 1), IsActive: true, HoldedRevenueAccountNum: 75900002);
@@ -1464,6 +1457,62 @@ public class ServiceTests
     }
 
     [HumansTheory]
+    [InlineData(null)]
+    [InlineData("0")]
+    [InlineData("400.50")]
+    public async Task SaveSettings_OmittedThreshold_RefusesWithoutWriting(string? threshold)
+    {
+        var actor = Guid.NewGuid();
+        var users = Substitute.For<IUserService>();
+        users.GetUserInfoAsync(actor, Arg.Any<CancellationToken>()).Returns(
+            UserInfo.Create(new User { Id = actor }, [], [], null));
+        using var services = new ServiceCollection().AddLogging().AddControllers().Services.BuildServiceProvider();
+        var http = new DefaultHttpContext
+        {
+            RequestServices = services,
+            User = new ClaimsPrincipal(new ClaimsIdentity([new Claim(ClaimTypes.NameIdentifier, actor.ToString())], "test"))
+        };
+        var controller = new StoreAdminController(_service, _catalog, users)
+        {
+            ControllerContext = new ControllerContext { HttpContext = http },
+            TempData = new TempDataDictionary(http, Substitute.For<ITempDataProvider>())
+        };
+        var fields = new Dictionary<string, StringValues>(StringComparer.OrdinalIgnoreCase)
+        {
+            ["StripeGatewayTreasuryId"] = "gateway"
+        };
+        if (threshold is not null) fields["SimplifiedInvoiceThresholdEur"] = threshold;
+        var metadata = services.GetRequiredService<IModelMetadataProvider>().GetMetadataForType(typeof(StoreSettingsViewModel));
+        var binder = services.GetRequiredService<IModelBinderFactory>().CreateBinder(new ModelBinderFactoryContext { Metadata = metadata });
+        var binding = DefaultModelBindingContext.CreateBindingContext(controller.ControllerContext,
+            new FormValueProvider(BindingSource.Form, new FormCollection(fields), CultureInfo.InvariantCulture),
+            metadata, bindingInfo: null, modelName: "");
+        await binder.BindModelAsync(binding);
+        var model = (StoreSettingsViewModel)binding.Result.Model!;
+        services.GetRequiredService<IObjectModelValidator>().Validate(controller.ControllerContext, binding.ValidationState, "", model);
+        var ct = TestContext.Current.CancellationToken;
+
+        (await controller.SaveSettings(model, ct)).Should().BeOfType<RedirectResult>().Which.Url.Should().Be("/Settings#store");
+
+        if (threshold is null)
+        {
+            controller.ModelState[nameof(StoreSettingsViewModel.SimplifiedInvoiceThresholdEur)]!.Errors.Should().ContainSingle();
+            await _repo.DidNotReceiveWithAnyArgs().SaveSettingsAsync(default!);
+            _audit.ReceivedCalls().Should().BeEmpty();
+        }
+        else
+        {
+            controller.ModelState.IsValid.Should().BeTrue();
+            var expected = decimal.Parse(threshold, CultureInfo.InvariantCulture);
+            await _repo.Received(1).SaveSettingsAsync(
+                Arg.Is<StoreSettings>(settings => settings.SimplifiedInvoiceThresholdEur == expected
+                    && settings.StripeGatewayTreasuryId == "gateway"), ct);
+            await _audit.Received(1).LogAsync(StoreAuditActions.StoreSettingsUpdated, AuditEntityTypes.Settings, Guid.Empty,
+                Arg.Any<string>(), actor);
+        }
+    }
+
+    [HumansTheory]
     [InlineData("UnitPriceEur")]
     [InlineData("VatRatePercent")]
     [InlineData("IsActive")]
@@ -1513,7 +1562,7 @@ public class ServiceTests
             CacheToken = typeof(ProductInputModel)
         });
         var context = DefaultModelBindingContext.CreateBindingContext(controller.ControllerContext,
-            new FormValueProvider(BindingSource.Form, new FormCollection(fields), System.Globalization.CultureInfo.InvariantCulture),
+            new FormValueProvider(BindingSource.Form, new FormCollection(fields), CultureInfo.InvariantCulture),
             metadata, bindingInfo: null, modelName: "");
         await binder.BindModelAsync(context);
         var model = (ProductInputModel)context.Result.Model!;
@@ -1749,7 +1798,7 @@ public class ServiceTests
         await _stripeService.Received(1).CreateCheckoutSessionAsync(Arg.Any<Guid>(), Arg.Any<decimal>(),
             Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string?>(), Arg.Any<string>(), Arg.Any<CancellationToken>(),
             Arg.Any<Guid?>(), Arg.Any<string?>());
-        await _repo.DidNotReceiveWithAnyArgs().UpdateOrderAsync(default!, default);
+        await _repo.DidNotReceiveWithAnyArgs().UpdateOrderAsync(default!);
     }
 
     [HumansFact]
@@ -1808,7 +1857,7 @@ public class ServiceTests
         await _stripeService.Received(1).CreateCheckoutSessionAsync(Arg.Any<Guid>(), Arg.Any<decimal>(),
             Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string?>(), Arg.Any<string>(), Arg.Any<CancellationToken>(),
             Arg.Any<Guid?>(), Arg.Any<string?>());
-        await _repo.DidNotReceiveWithAnyArgs().UpdateOrderAsync(default!, default);
+        await _repo.DidNotReceiveWithAnyArgs().UpdateOrderAsync(default!);
     }
 
     [HumansFact]
@@ -2019,13 +2068,13 @@ public class ServiceTests
             Url = url
         };
 
-        (await controller.Pay(order.Id, 10.01m, TestContext.Current.CancellationToken))
+        (await controller.Pay(order.Id, "10.01", TestContext.Current.CancellationToken))
             .Should().BeOfType<RedirectToActionResult>();
         controller.TempData["ErrorMessage"].Should().Be(localizer["Store_PaymentAboveBalance", 10m].Value);
         await _stripeService.DidNotReceiveWithAnyArgs().CreateCheckoutSessionAsync(default, default,
             default!, default!, default, default!);
 
-        (await controller.Pay(order.Id, 5m, TestContext.Current.CancellationToken))
+        (await controller.Pay(order.Id, "5", TestContext.Current.CancellationToken))
             .Should().BeOfType<RedirectToActionResult>();
         controller.TempData["ErrorMessage"].Should().Be(localizer["Store_CheckoutFailed"].Value);
         controller.TempData["ErrorMessage"]!.ToString().Should().NotContain("Private Stripe diagnostic");
@@ -2034,27 +2083,6 @@ public class ServiceTests
         await _stripeService.Received(1).CreateCheckoutSessionAsync(order.Id, 5m,
             "https://humans.test/order", "https://humans.test/order", Arg.Any<string?>(), Arg.Any<string>(),
             Arg.Is<CancellationToken>(token => !token.CanBeCanceled), Arg.Any<Guid?>(), Arg.Any<string?>());
-    }
-
-    [HumansFact]
-    public async Task RecordStripePaymentAsync_inserts_payment_when_payment_intent_id_is_new()
-    {
-        var orderId = Guid.NewGuid();
-        var paymentIntentId = "pi_test_abc123";
-        _repo.StripePaymentIntentExistsAsync(paymentIntentId, Arg.Any<CancellationToken>())
-            .Returns(false);
-
-        await _service.RecordStripePaymentAsync(orderId, paymentIntentId, 42.50m, ct: TestContext.Current.CancellationToken);
-
-        await _repo.Received(1).AddPaymentAsync(
-            Arg.Is<Payment>(p =>
-                p.OrderId == orderId &&
-                p.AmountEur == 42.50m &&
-                p.Method == PaymentMethod.Stripe &&
-                p.StripePaymentIntentId == paymentIntentId &&
-                p.MethodName == PaymentMethod.Stripe &&
-                p.RecordedByUserId == null),
-            Arg.Any<CancellationToken>());
     }
 
     [HumansTheory]
@@ -2117,7 +2145,7 @@ public class ServiceTests
         if (oversized)
         {
             result.Succeeded.Should().BeFalse();
-            result.Refusal.Should().Contain(maximum.ToString(System.Globalization.CultureInfo.InvariantCulture));
+            result.Refusal.Should().Contain(maximum.ToString(CultureInfo.InvariantCulture));
             await _repo.DidNotReceive().AddPaymentAsync(Arg.Any<Payment>(), Arg.Any<CancellationToken>());
             _audit.ReceivedCalls().Should().BeEmpty();
         }
@@ -2380,14 +2408,17 @@ public class ServiceTests
     };
 
     [HumansFact]
-    public async Task RecordStripePaymentAsync_no_ops_when_payment_intent_id_already_exists()
+    public async Task CompletedCheckout_no_ops_when_payment_intent_id_already_exists()
     {
         var orderId = Guid.NewGuid();
         var paymentIntentId = "pi_test_dup";
         _repo.StripePaymentIntentExistsAsync(paymentIntentId, Arg.Any<CancellationToken>())
             .Returns(true);
 
-        await _service.RecordStripePaymentAsync(orderId, paymentIntentId, 42.50m, ct: TestContext.Current.CancellationToken);
+        await _service.HandleStripeCheckoutWebhookEventAsync(new StoreCheckoutWebhookEvent(
+            "evt_duplicate", StoreCheckoutEventKind.CheckoutSessionCompleted,
+            new StoreCheckoutSessionData("cs_duplicate", orderId, paymentIntentId, 42.50m, PaymentStatus: "paid")),
+            TestContext.Current.CancellationToken);
 
         await _repo.DidNotReceive().AddPaymentAsync(Arg.Any<Payment>(), Arg.Any<CancellationToken>());
         await _audit.DidNotReceive().LogAsync(
@@ -2397,33 +2428,21 @@ public class ServiceTests
     }
 
     [HumansFact]
-    public async Task RecordStripePaymentAsync_emits_audit_log_with_job_actor()
+    public async Task CompletedCheckout_skips_non_positive_amounts()
     {
         var orderId = Guid.NewGuid();
         _repo.StripePaymentIntentExistsAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
             .Returns(false);
 
-        await _service.RecordStripePaymentAsync(orderId, "pi_x", 10m, ct: TestContext.Current.CancellationToken);
+        await _service.HandleStripeCheckoutWebhookEventAsync(new StoreCheckoutWebhookEvent(
+            "evt_zero", StoreCheckoutEventKind.CheckoutSessionCompleted,
+            new StoreCheckoutSessionData("cs_zero", orderId, "pi_x", 0m, PaymentStatus: "paid")),
+            TestContext.Current.CancellationToken);
 
-        await _audit.Received(1).LogAsync(
-            StoreAuditActions.StorePaymentRecorded,
-            AuditEntityTypes.Payment,
-            Arg.Any<Guid>(),
-            Arg.Any<string>(),
-            "StripeWebhook",
-            orderId,
-            AuditEntityTypes.Order);
-    }
-
-    [HumansFact]
-    public async Task RecordStripePaymentAsync_rejects_non_positive_amounts()
-    {
-        var orderId = Guid.NewGuid();
-        _repo.StripePaymentIntentExistsAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
-            .Returns(false);
-
-        Func<Task> act = () => _service.RecordStripePaymentAsync(orderId, "pi_x", 0m, ct: TestContext.Current.CancellationToken);
-        await act.Should().ThrowAsync<ArgumentOutOfRangeException>();
+        await _repo.DidNotReceive().AddPaymentAsync(Arg.Any<Payment>(), Arg.Any<CancellationToken>());
+        await _audit.DidNotReceive().LogAsync(
+            Arg.Any<AuditActionDefinition>(), Arg.Any<string>(), Arg.Any<Guid>(),
+            Arg.Any<string>(), Arg.Any<string>(), Arg.Any<Guid?>(), Arg.Any<string?>());
     }
 
     [HumansFact]
@@ -2443,8 +2462,14 @@ public class ServiceTests
                 p.OrderId == orderId &&
                 p.StripePaymentIntentId == "pi_checkout" &&
                 p.AmountEur == 42.50m &&
-                p.Status == PaymentStatus.Paid),
+                p.Status == PaymentStatus.Paid &&
+                p.Method == PaymentMethod.Stripe &&
+                p.MethodName == PaymentMethod.Stripe &&
+                p.RecordedByUserId == null),
             Arg.Any<CancellationToken>());
+        await _audit.Received(1).LogAsync(
+            StoreAuditActions.StorePaymentRecorded, AuditEntityTypes.Payment, Arg.Any<Guid>(),
+            Arg.Any<string>(), "StripeWebhook", orderId, AuditEntityTypes.Order);
     }
 
     [HumansFact]
@@ -2865,7 +2890,6 @@ public class ServiceTests
                 new CampSeasonInfo(
                     seasonId,
                     campId,
-                    "camp-alpha",
                     2026,
                     null,
                     seasonName,
@@ -2889,7 +2913,7 @@ public class ServiceTests
             ]);
 
     private static CampSeasonInfo MakeCampSeasonInfo(Guid seasonId, string name, int year) =>
-        new(seasonId, Guid.NewGuid(), "camp", year, null, name, string.Empty, string.Empty, [],
+        new(seasonId, Guid.NewGuid(), year, null, name, string.Empty, string.Empty, [],
             CampSeasonStatus.Active, YesNoMaybe.Yes, YesNoMaybe.No, AdultPlayspacePolicy.No,
             0, null, null, null, 0, null, null);
 

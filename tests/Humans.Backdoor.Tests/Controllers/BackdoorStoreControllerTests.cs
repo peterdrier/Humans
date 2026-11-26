@@ -145,7 +145,7 @@ public class BackdoorStoreControllerTests
     }
 
     [HumansFact]
-    public async Task OrderHistory_is_refused_to_a_key_whose_holder_cannot_administer_the_store()
+    public async Task OrderHistory_OwnerNotStoreAdmin_Forbidden()
     {
         _sut.ControllerContext.HttpContext.User = new ClaimsPrincipal(new ClaimsIdentity(
             [new Claim(ClaimTypes.NameIdentifier, KeyOwnerId.ToString()), new Claim(ClaimTypes.Role, "Board")], "test"));

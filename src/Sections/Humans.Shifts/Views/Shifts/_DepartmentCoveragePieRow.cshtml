@@ -34,8 +34,8 @@
     {
         var isSelected = Model.FilterDepartmentId == pie.TeamId;
         var pct = Math.Clamp(pie.FillPercent, 0, 100);
-        var requestedDisplay = pie.RequestedHours.ToString("0.#");
-        var filledDisplay = pie.FilledHours.ToString("0.#");
+        var requestedDisplay = pie.RequestedHours.ToString("0.#", System.Globalization.CultureInfo.CurrentCulture);
+        var filledDisplay = pie.FilledHours.ToString("0.#", System.Globalization.CultureInfo.CurrentCulture);
         var ariaLabel = string.Format(
             Localizer["Shifts_PieCoverage_Aria"].Value,
             pie.TeamName, pct, filledDisplay, requestedDisplay);
@@ -69,7 +69,9 @@
         var key = 'humans.pieTipDismissed';
         var tip = document.querySelector('[data-dept-pie-tip]');
         if (!tip) return;
-        if (localStorage.getItem(key) !== '1') tip.removeAttribute('hidden');
+        var dismissed = false;
+        try { dismissed = localStorage.getItem(key) === '1'; } catch (_) { /* storage may be disabled */ }
+        if (!dismissed) tip.removeAttribute('hidden');
         var btn = tip.querySelector('[data-dept-pie-tip-dismiss]');
         if (!btn) return;
         btn.addEventListener('click', function () {

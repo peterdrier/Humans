@@ -1,13 +1,11 @@
 using System.Security.Claims;
 using AwesomeAssertions;
 using Humans.AuditLog.Contracts;
-using Humans.Base.Constants;
 using Humans.Base.Enums;
 using Humans.Camps.Contracts;
 using Humans.CityPlanning.Contracts;
 using Humans.CityPlanning.Controllers;
 using Humans.CityPlanning.Data;
-using Humans.CityPlanning.Domain;
 using Humans.CityPlanning.Services;
 using Humans.Containers;
 using Humans.Containers.Contracts;
@@ -187,13 +185,13 @@ public sealed class CityPlanningContainerAdminYearTests : CityPlanningTestBase
     }
 
     private static ContainerDto ContainerDtoFor(Guid id) =>
-        new(id, Guid.NewGuid(), "Box", null, [], Instant.MinValue, Instant.MinValue);
+        new(id, Guid.NewGuid(), "Box", null, []);
 
     private Guid SeedLeadCamp()
     {
         var campId = Guid.NewGuid();
         var season = new CampSeasonInfo(
-            Guid.NewGuid(), campId, string.Empty, RouteYear, null, "Lead Camp", string.Empty, string.Empty,
+            Guid.NewGuid(), campId, RouteYear, null, "Lead Camp", string.Empty, string.Empty,
             [], CampSeasonStatus.Pending, YesNoMaybe.No, YesNoMaybe.No, AdultPlayspacePolicy.No,
             0, null, null, null, 0, null, null)
         {

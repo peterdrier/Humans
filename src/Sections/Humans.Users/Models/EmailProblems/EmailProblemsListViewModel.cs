@@ -19,7 +19,7 @@ internal sealed class EmailProblemsListViewModel
         IReadOnlyDictionary<Guid, UserInfo> users)
     {
         string DisplayName(Guid? id) =>
-            id is Guid g && users.TryGetValue(g, out var u) ? u.BurnerName : "(unknown)";
+            id is { } g && users.TryGetValue(g, out var u) ? u.BurnerName : "(unknown)";
 
         var singleUserMap = new Dictionary<Guid, List<string>>();
         var systemLevel = new List<SystemLevelIssueRow>();
@@ -32,7 +32,7 @@ internal sealed class EmailProblemsListViewModel
                 case EmailProblemKind.MultipleIsPrimary
                     or EmailProblemKind.ZeroIsPrimary
                     or EmailProblemKind.Unverified
-                    when p.UserId is Guid u:
+                    when p.UserId is { } u:
                     if (!singleUserMap.TryGetValue(u, out var list))
                     {
                         list = [];
@@ -59,7 +59,7 @@ internal sealed class EmailProblemsListViewModel
                         $"Ghost AspNetUserLogins for userId {p.UserId}"));
                     break;
 
-                case EmailProblemKind.LegacyIdentityEmailNotInUserEmails when p.UserId is Guid uid:
+                case EmailProblemKind.LegacyIdentityEmailNotInUserEmails when p.UserId is { } uid:
                     legacyEmails.Add(new LegacyEmailRow(uid, DisplayName(uid), p.Email ?? "(unknown)"));
                     break;
             }

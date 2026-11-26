@@ -1,6 +1,5 @@
 using Humans.Events.Services.Dtos;
 using AwesomeAssertions;
-using Humans.Events.Contracts;
 using Humans.Events.Models;
 using Humans.Events.Services;
 using Humans.Events.ViewComponents;
@@ -69,9 +68,7 @@ public sealed class EventGuideSettingsTabViewComponentTests
             SubmissionCloseAt: Instant.FromUtc(2026, 6, 1, 0, 0),
             GuidePublishAt: Instant.FromUtc(2026, 6, 15, 0, 0),
             MaxPrintSlots: 50,
-            TimeZoneId: "Europe/Madrid",
-            CreatedAt: Instant.FromUtc(2025, 1, 1, 0, 0),
-            UpdatedAt: Instant.FromUtc(2025, 1, 1, 0, 0)));
+            TimeZoneId: "Europe/Madrid"));
         _guide.GetEventSettingsByIdAsync(settingsId, Arg.Any<CancellationToken>()).Returns(new EventSettingsInfo(
             Id: settingsId, EventName: "Test Burn", Year: 2026, TimeZoneId: "Europe/Madrid",
             GateOpeningDate: new LocalDate(2026, 7, 9), BuildStartOffset: -25, EventEndOffset: 6,

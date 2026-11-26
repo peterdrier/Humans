@@ -258,6 +258,29 @@ Some entities are append-only: new state = new row. **Never add UPDATE or DELETE
 - **Domain entities should not leak into Razor views** when a DTO gives better separation. Simple 1:1 cases are acceptable; anything that would have required `.Include` for navigation is not.
 - **View components** are Web-role code: a section's `ViewComponents/`, or the base's for the section-agnostic ones. They call services, not repositories, and are one of the two framework carve-outs HUM0034 allows a section to declare `public`.
 
+## Naming
+
+A name is short and says one thing. A name that needs "And" is describing two things, and a name that reads as a sentence is doing a comment's job.
+
+**All names**
+
+- A method is a verb. A type is a noun. A bool reads as a yes/no question (`IsActive`, `HasPin`).
+- Pairs use matching words: `Add`/`Remove`, `Start`/`Stop`, `Open`/`Close`.
+- Say what it does in the fewest plain words. Don't repeat what the class, the parameters or the return type already say: on a slot repository it is `RemoveAsync`, not `UnassignFromAllRolesAsync`.
+- No "And" in a method name. A method that needs one does two things: split it, or name the one outcome the caller wants (`RedeemSignupToken`, not `VerifyAndConsumeSignupToken`). "Or" is fine (`GetOrCreate`).
+- The name does not carry who is calling (`ForFinanceCorrection`), what comes back (`WithResult`) or that it saves (`AndSave`).
+- No coined words. Use the word from [`CONTEXT.md`](../../CONTEXT.md) or the everyday one.
+- A method name has at most 6 words, not counting `Async`.
+
+**Test names**
+
+- One shape: `Method_Result` or `Method_Condition_Result`, PascalCase, three parts at most. The first part is the method under test, without `Async`.
+- The name states the one rule the test proves. The asserts are the list of details; adding an assert does not change the name.
+- No "And" after the first part. No lowercase sentences. At most 10 words.
+- A "why" goes in a one-line comment above the test.
+
+**Enforced by** `NameLengthAnalyzer`, on production and test projects: method names over 6 words or with "And", test names outside the shape, over 10 words or with "And". Overrides, interface implementations and controller actions (their names are URLs) are exempt, since the name was chosen elsewhere. Names that broke the rule when it arrived are listed in each project's `NameBaseline.txt`; a line whose method is gone or now passes is a build error, so the lists only shrink. Verbs, nouns, matching pairs and "first part is the method" are review only.
+
 ## Section caching pattern
 
 The `TrackedCache` decorator stack is the caching architecture for any section that warrants one. Not every section needs it — reach for it only when traffic or bulk-read patterns justify an in-memory projection; a low-traffic section correctly talks to its repository per request. `CachingUserService` (`src/Sections/Humans.Users/Data/`) is the reference implementation. Short-TTL request-acceleration caches (nav badge counts, meters) are a different, sanctioned shape covered at the end.

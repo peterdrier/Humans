@@ -6,7 +6,6 @@ using Humans.Shifts.Services;
 using Humans.Shifts.Contracts;
 using Humans.Teams.Contracts;
 using Humans.Shifts.Tests.Infrastructure;
-using Humans.Base.Constants;
 using Humans.Base.Enums;
 using Humans.Shifts.Data;
 using Microsoft.EntityFrameworkCore;
@@ -16,7 +15,6 @@ using NodaTime;
 using NSubstitute;
 using Xunit;
 using Humans.Users.Contracts;
-using Humans.AuditLog.Contracts;
 using Humans.Settings.Contracts;
 using Humans.Permissions.Contracts;
 using Humans.Base.Authorization;
@@ -29,14 +27,13 @@ public sealed class ShiftManagementWriteGuardTests : ShiftsTestHarness
 
     private readonly IPermissionService _permissions = Substitute.For<IPermissionService>();
     private readonly ITeamService _teamService;
-    private readonly IRoleAssignmentService _roleAssignments;
     private readonly ShiftManagementService _service;
 
     public ShiftManagementWriteGuardTests()
         : base(TestNow)
     {
         _teamService = Substitute.For<ITeamService>();
-        _roleAssignments = Substitute.For<IRoleAssignmentService>();
+        var roleAssignments = Substitute.For<IRoleAssignmentService>();
         var userService = Substitute.For<IUserService>();
         userService.StubGetUserInfosFromContext(Db);
 
@@ -55,7 +52,7 @@ public sealed class ShiftManagementWriteGuardTests : ShiftsTestHarness
             .With(_teamService)
             .With(userService)
             .With(userService)
-            .With(_roleAssignments)
+            .With(roleAssignments)
             .With(_permissions)
             .Build();
 
@@ -206,7 +203,7 @@ public sealed class ShiftManagementWriteGuardTests : ShiftsTestHarness
             new ShiftRepository(ShiftsDbFactory, ShiftsDb, Clock),
             AuditLog,
             new ServiceLocatorBuilder().With(_teamService).Build(),
-            new EventCalendarResolver(settingsService, Substitute.For<Humans.Shifts.Data.IShiftManagementRepository>()), Clock,
+            new EventCalendarResolver(settingsService, Substitute.For<IShiftManagementRepository>()), Clock,
             Microsoft.Extensions.Logging.Abstractions.NullLogger<ShiftManagementService>.Instance);
 
         await service.CreateRotaAsync(NewRota(eventId, team.Id));

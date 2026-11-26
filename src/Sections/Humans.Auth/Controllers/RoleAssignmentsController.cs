@@ -51,9 +51,7 @@ internal sealed class RoleAssignmentsController(
                 ValidFrom = ra.ValidFrom.ToDateTimeUtc(),
                 ValidTo = ra.ValidTo?.ToDateTimeUtc(),
                 Notes = ra.Notes,
-                IsActive = ra.IsActive(now),
-                CreatedByName = ra.CreatedByDisplayName,
-                CreatedAt = ra.CreatedAt.ToDateTimeUtc()
+                IsActive = ra.IsActive(now)
             }).ToList(),
             RoleFilter = role,
             ShowInactive = showInactive,
@@ -121,6 +119,9 @@ internal sealed class RoleAssignmentsController(
 
         var result = await roleAssignmentManagement.AssignRoleAsync(
             id, model.RoleName, currentUser.Id, model.Notes);
+
+        if (string.Equals(result.ErrorKey, "UserUnavailable", StringComparison.Ordinal))
+            return NotFound();
 
         if (result.Success)
             SetSuccess(string.Format(localizer["Admin_RoleAssigned"].Value, model.RoleName));

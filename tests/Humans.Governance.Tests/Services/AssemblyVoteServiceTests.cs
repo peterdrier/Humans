@@ -14,7 +14,6 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.ViewFeatures;
 using Microsoft.Extensions.Localization;
-using Humans.AuditLog.Contracts;
 using Humans.Email.Contracts;
 using Humans.Governance.Domain;
 using Humans.Governance.Data;
@@ -38,6 +37,8 @@ namespace Humans.Governance.Tests.Services;
 /// </summary>
 public sealed class AssemblyVoteServiceTests : IDisposable
 {
+    public enum AssemblyEmailPhase { Opened, Reminder, Cancelled }
+
     public enum AdminOperation
     {
         Create,
@@ -113,7 +114,7 @@ public sealed class AssemblyVoteServiceTests : IDisposable
             User = new ClaimsPrincipal(new ClaimsIdentity([new Claim(ClaimTypes.NameIdentifier, cookieId.ToString())], "test"))
         };
         var controller = new GovernanceVotesAdminController(users, votes, FixedOrgTimeZone.Madrid,
-            Microsoft.Extensions.Logging.Abstractions.NullLogger<GovernanceVotesAdminController>.Instance)
+            NullLogger<GovernanceVotesAdminController>.Instance)
         {
             ControllerContext = new ControllerContext { HttpContext = http },
             TempData = new TempDataDictionary(http, Substitute.For<ITempDataProvider>()),
@@ -186,7 +187,7 @@ public sealed class AssemblyVoteServiceTests : IDisposable
         };
         var controller = new GovernanceVotesController(users, votes,
             Substitute.For<IStringLocalizer<GovernanceResource>>(),
-            Microsoft.Extensions.Logging.Abstractions.NullLogger<GovernanceVotesController>.Instance)
+            NullLogger<GovernanceVotesController>.Instance)
         { ControllerContext = new ControllerContext { HttpContext = http } };
         var voteId = Guid.NewGuid();
         Func<Task<IActionResult>> run = () => action switch
@@ -242,7 +243,7 @@ public sealed class AssemblyVoteServiceTests : IDisposable
         if (admin)
         {
             var controller = new GovernanceVotesAdminController(_fx.Users, votes, FixedOrgTimeZone.Madrid,
-                Microsoft.Extensions.Logging.Abstractions.NullLogger<GovernanceVotesAdminController>.Instance)
+                NullLogger<GovernanceVotesAdminController>.Instance)
             { ControllerContext = context };
             var view = (await controller.Index(TestContext.Current.CancellationToken))
                 .Should().BeOfType<ViewResult>().Subject;
@@ -252,7 +253,7 @@ public sealed class AssemblyVoteServiceTests : IDisposable
         {
             var controller = new GovernanceVotesController(_fx.Users, votes,
                 Substitute.For<IStringLocalizer<GovernanceResource>>(),
-                Microsoft.Extensions.Logging.Abstractions.NullLogger<GovernanceVotesController>.Instance)
+                NullLogger<GovernanceVotesController>.Instance)
             { ControllerContext = context };
             var view = (await controller.Index(TestContext.Current.CancellationToken))
                 .Should().BeOfType<ViewResult>().Subject;
@@ -293,7 +294,7 @@ public sealed class AssemblyVoteServiceTests : IDisposable
             User = new ClaimsPrincipal(new ClaimsIdentity([new Claim(ClaimTypes.NameIdentifier, userId.ToString())], "test"))
         };
         var controller = new GovernanceVotesController(_fx.Users, _fx.Service, localizer,
-            Microsoft.Extensions.Logging.Abstractions.NullLogger<GovernanceVotesController>.Instance)
+            NullLogger<GovernanceVotesController>.Instance)
         {
             ControllerContext = new ControllerContext { HttpContext = http },
             TempData = new TempDataDictionary(http, Substitute.For<ITempDataProvider>()),
@@ -657,7 +658,7 @@ public sealed class AssemblyVoteServiceTests : IDisposable
             vote.Id, userId, viewerIsBoardOrAdmin: false, TestContext.Current.CancellationToken);
 
         results.Should().NotBeNull("a process that died between the two writes must not leave the page blank forever");
-        (await _fx.Db.AssemblyVotes.SingleAsync(v => v.Id == vote.Id, Xunit.TestContext.Current.CancellationToken)).ResultJson.Should().NotBeNull();
+        (await _fx.Db.AssemblyVotes.SingleAsync(v => v.Id == vote.Id, TestContext.Current.CancellationToken)).ResultJson.Should().NotBeNull();
     }
 
     [HumansFact]
@@ -1069,7 +1070,7 @@ public sealed class AssemblyVoteServiceTests : IDisposable
         _fx.Users.GetUserInfoAsync(actorId, Arg.Any<CancellationToken>())
             .Returns(UserInfo.Create(new User { Id = actorId }, [], [], null));
         var controller = new GovernanceVotesAdminController(_fx.Users, _fx.Service, FixedOrgTimeZone.Madrid,
-            Microsoft.Extensions.Logging.Abstractions.NullLogger<GovernanceVotesAdminController>.Instance)
+            NullLogger<GovernanceVotesAdminController>.Instance)
         {
             ControllerContext = new ControllerContext { HttpContext = http },
             TempData = new TempDataDictionary(http, Substitute.For<ITempDataProvider>())
@@ -1143,7 +1144,7 @@ public sealed class AssemblyVoteServiceTests : IDisposable
         _fx.Users.GetUserInfoAsync(actor, Arg.Any<CancellationToken>())
             .Returns(UserInfo.Create(new User { Id = actor }, [], [], null));
         var controller = new GovernanceVotesAdminController(_fx.Users, _fx.Service, FixedOrgTimeZone.Madrid,
-            Microsoft.Extensions.Logging.Abstractions.NullLogger<GovernanceVotesAdminController>.Instance)
+            NullLogger<GovernanceVotesAdminController>.Instance)
         {
             ControllerContext = new ControllerContext { HttpContext = http },
             TempData = new TempDataDictionary(http, Substitute.For<ITempDataProvider>()),
@@ -2351,7 +2352,7 @@ public sealed class AssemblyVoteServiceTests : IDisposable
                 User = new ClaimsPrincipal(new ClaimsIdentity([new Claim(ClaimTypes.NameIdentifier, mergedAway.ToString())], "test"))
             };
             var controller = new GovernanceVotesController(_fx.Users, _fx.Service, localizer,
-                Microsoft.Extensions.Logging.Abstractions.NullLogger<GovernanceVotesController>.Instance)
+                NullLogger<GovernanceVotesController>.Instance)
             {
                 ControllerContext = new ControllerContext { HttpContext = http },
                 TempData = new TempDataDictionary(http, Substitute.For<ITempDataProvider>()),
@@ -2516,6 +2517,36 @@ public sealed class AssemblyVoteServiceTests : IDisposable
             .SingleAsync(r => r.Id == row.Id, ct);
         if (reminder) stored.ReminderSentAt.Should().NotBeNull();
         else if (!cancelled) stored.NotifiedAt.Should().NotBeNull();
+    }
+
+    [HumansTheory]
+    [InlineData(AssemblyEmailPhase.Opened)]
+    [InlineData(AssemblyEmailPhase.Reminder)]
+    [InlineData(AssemblyEmailPhase.Cancelled)]
+    public async Task AssemblyEmails_TombstoneRecipient_SkipsDelivery(AssemblyEmailPhase phase)
+    {
+        var ct = TestContext.Current.CancellationToken;
+        var member = Guid.NewGuid();
+        _fx.StubActiveUsers(member);
+        var info = (await _fx.Users.GetUserInfosAsync([member], ct))[member] with { State = UserState.Deleted };
+        var vote = await _fx.AddVoteAsync(closesAt: _fx.Clock.GetCurrentInstant()
+            + Duration.FromHours(phase == AssemblyEmailPhase.Reminder ? 12 : 120));
+        var row = await _fx.AddRosterRowAsync(vote.Id, member, isOfficial: true,
+            notified: phase != AssemblyEmailPhase.Opened);
+        _fx.Users.GetUserInfosAsync(Arg.Any<IEnumerable<Guid>>(), Arg.Any<CancellationToken>())
+            .Returns(new Dictionary<Guid, UserInfo> { [member] = info });
+
+        if (phase == AssemblyEmailPhase.Cancelled)
+            (await _fx.Service.CancelAsync(vote.Id, "Cancelled by admin", Guid.NewGuid(), ct))
+                .Should().Be(AssemblyVoteActionResult.Ok);
+        else
+            await _fx.Service.RunLapseAndReminderSweepAsync(ct);
+
+        _fx.Email.ReceivedCalls().Should().BeEmpty();
+        var stored = await _fx.Db.AssemblyVoteRosterEntries.AsNoTracking().SingleAsync(r => r.Id == row.Id, ct);
+        stored.UserId.Should().Be(member);
+        stored.NotifiedAt.Should().Be(row.NotifiedAt);
+        stored.ReminderSentAt.Should().BeNull();
     }
 
     [HumansFact]

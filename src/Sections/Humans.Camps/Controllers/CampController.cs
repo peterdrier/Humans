@@ -1,6 +1,5 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Humans.Base.Enums;
 
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Localization;
@@ -28,7 +27,7 @@ internal sealed class CampController(
     IStringLocalizer<SharedResource> sharedLocalizer)
     : HumansCampControllerBase(userService, campService, authorizationService)
 {
-    private readonly CampDirectoryPageBuilder directoryPageBuilder = new(campService, campRoleService);
+    private readonly CampDirectoryPageBuilder _directoryPageBuilder = new(campService, campRoleService);
     private readonly ICampManagement _campService = campService;
     private readonly IUserService _userService = userService;
     private readonly IClock _clock = clock;
@@ -45,7 +44,7 @@ internal sealed class CampController(
         }
 
         var user = await GetCurrentUserInfoAsync(ct);
-        var (viewModel, pendingCount) = await directoryPageBuilder.BuildAsync(user, filters, ct);
+        var (viewModel, pendingCount) = await _directoryPageBuilder.BuildAsync(user, filters, ct);
         ViewBag.PendingCount = pendingCount;
 
         return View(viewModel);
@@ -54,7 +53,7 @@ internal sealed class CampController(
     /// <summary>New camps register for the open event with the latest gate opening; null when none is open.</summary>
     private async Task<CampEventRegistration?> PopulateRegisterSeasonAsync(CancellationToken ct)
     {
-        var registrationEvent = (await _campService.GetSettingsAsync(ct)).OpenEvents.FirstOrDefault();
+        var registrationEvent = (await _campService.GetSettingsAsync(ct)).OpenEvents.MaxBy(e => e.GateOpeningDate);
         ViewData["SeasonYear"] = registrationEvent?.Year ?? 0;
         ViewData["RegistrationInfo"] = registrationEvent is null
             ? null
@@ -188,6 +187,7 @@ internal sealed class CampController(
         var campDisplayName = season.Name;
         if (!ModelState.IsValid)
         {
+            logger.LogWarning("Rejected malformed camp contact form for camp {CampId} by user {UserId}", camp.Id, currentUser.Id);
             model.CampSlug = slug;
             model.CampName = campDisplayName;
             return View(model);
@@ -264,6 +264,7 @@ internal sealed class CampController(
 
         if (!ModelState.IsValid)
         {
+            logger.LogWarning("Rejected malformed camp registration");
             await PopulateRegisterSeasonAsync(ct);
             return View(model);
         }
@@ -274,7 +275,7 @@ internal sealed class CampController(
             return currentUserError;
         }
 
-        var registrationEvent = (await _campService.GetSettingsAsync(ct)).OpenEvents.FirstOrDefault();
+        var registrationEvent = (await _campService.GetSettingsAsync(ct)).OpenEvents.MaxBy(e => e.GateOpeningDate);
         if (registrationEvent is null)
         {
             SetError(campsLocalizer["Camps_Flash_RegistrationClosed"].Value);
@@ -412,7 +413,6 @@ internal sealed class CampController(
 
         var activeMembers = activeMemberRows
             .Select(m => new CampMemberPickerOption(
-                m.Id,
                 m.UserId,
                 users.TryGetValue(m.UserId, out var u) ? u.BurnerName : campsLocalizer["Camps_Flash_UnknownHuman"].Value))
             .OrderBy(o => o.DisplayName, StringComparer.OrdinalIgnoreCase)
@@ -429,7 +429,7 @@ internal sealed class CampController(
                 MinimumRequired = r.Definition.MinimumRequired,
                 FilledSlots = r.FilledSlots
                 .OrderBy(s => s.AssignedAt)
-                .Select(s => new CampRoleSlotViewModel(s.AssignmentId, s.CampMemberId, s.UserId))
+                .Select(s => new CampRoleSlotViewModel(s.AssignmentId, s.UserId))
                 .ToList(),
                 EmptySlotCount = r.EmptySlotCount,
                 OverCapacity = r.OverCapacity,
@@ -440,7 +440,6 @@ internal sealed class CampController(
         return new CampRolesPanelViewModel
         {
             CampSeasonId = season.Id,
-            CampSlug = campSlug,
             CanManage = canManage,
             ActiveMembers = activeMembers,
             Rows = rows,
@@ -490,6 +489,7 @@ internal sealed class CampController(
 
         if (!ModelState.IsValid)
         {
+            logger.LogWarning("Rejected malformed camp update for camp {CampId} by user {UserId}", camp.Id, user.Id);
             await PopulateEditReadOnlyFieldsAsync(model, camp, HttpContext.RequestAborted);
             return View(model);
         }
@@ -1190,10 +1190,8 @@ internal sealed class CampController(
                 Id = season.Id,
                 Year = season.Year,
                 EventSettingsId = season.EventSettingsId,
-                Name = season.Name,
                 Status = season.Status,
                 BlurbLong = season.BlurbLong,
-                BlurbShort = season.BlurbShort,
                 Languages = season.Languages,
                 AcceptingMembers = season.AcceptingMembers,
                 KidsWelcome = season.KidsWelcome,
@@ -1206,8 +1204,7 @@ internal sealed class CampController(
                 MemberCount = season.MemberCount,
                 SpaceRequirement = season.SpaceRequirement,
                 SoundZone = season.SoundZone,
-                ElectricalGrid = season.ElectricalGrid,
-                IsNameLocked = season.IsNameLocked(today)
+                ElectricalGrid = season.ElectricalGrid
             },
             ActiveEventSettingsId = activeEventSettingsId,
             IsCurrentUserLead = isLead,

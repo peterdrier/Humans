@@ -1,7 +1,8 @@
 // Pure spatial helpers. Depend on turf (global) and shared state for context.
 import { appState } from './state.js';
 import { CONFIG } from './config.js';
-import { SOUND_ZONE_NAMES } from '../shared/sound-zone-colors.js';
+import { parseCampFeature } from '../shared/camp-geometry.js';
+import { SOUND_ZONE_NAMES, getOverlaySoundZone } from '../shared/sound-zone-colors.js';
 
 export const SIZE_RATIO_UPPER = 1.5;
 export const SIZE_RATIO_LOWER = 0.5;
@@ -18,36 +19,56 @@ export function getSoundZoneOutOfRange(feature, campSoundZone) {
     if (!appState.campMap?.limitZoneGeoJson) return false;
     let limitZoneData;
     try { limitZoneData = JSON.parse(appState.campMap.limitZoneGeoJson); } catch { return false; }
-    const features = limitZoneData.type === 'FeatureCollection' ? limitZoneData.features : [limitZoneData];
-    let bestZone = null;
+    const features = getAreaFeatures(limitZoneData);
+    let bestZoneNames = null;
     let bestArea = 0;
     for (const zf of features) {
-        if (!zf.properties?.SoundZone) continue;
+        const zoneNames = getOverlaySoundZone(zf);
+        if (!zoneNames) continue;
         try {
             const intersection = turf.intersect(turf.featureCollection([feature, zf]));
             if (!intersection) continue;
             const area = turf.area(intersection);
-            if (area > bestArea) { bestArea = area; bestZone = zf; }
+            if (area > bestArea) { bestArea = area; bestZoneNames = zoneNames; }
         } catch (e) { console.debug('Sound zone geometry check failed:', e); }
     }
-    if (!bestZone) return false;
-    return !bestZone.properties.SoundZone.split('_').includes(campZoneName);
+    if (!bestZoneNames) return false;
+    return !bestZoneNames.split('_').includes(campZoneName);
+}
+
+function getAreaFeatures(data) {
+    if (data.type === 'FeatureCollection') return data.features.flatMap(getAreaFeatures);
+    const feature = data.type === 'Feature' ? data : { type: 'Feature', properties: {}, geometry: data };
+    const polygons = [];
+    function collect(geometry) {
+        if (!geometry) return;
+        if (geometry.type === 'GeometryCollection') {
+            geometry.geometries.forEach(collect);
+        } else if (geometry.type === 'Polygon' && geometry.coordinates.length > 0) {
+            polygons.push(geometry.coordinates);
+        } else if (geometry.type === 'MultiPolygon') {
+            polygons.push(...geometry.coordinates.filter(rings => rings.length > 0));
+        }
+    }
+    collect(feature.geometry);
+    if (polygons.length === 0) return [];
+    return [{ ...feature, geometry: {
+        type: polygons.length === 1 ? 'Polygon' : 'MultiPolygon',
+        coordinates: polygons.length === 1 ? polygons[0] : polygons,
+    } }];
 }
 
 export function parseLimitZoneGeom(geoJson) {
     if (!geoJson) return null;
-    const lz = JSON.parse(geoJson);
-    if (lz.type === 'FeatureCollection') {
-        if (lz.features.length === 0) return null;
-        if (lz.features.length === 1) return lz.features[0];
-        return turf.union(lz);
-    }
-    return lz;
+    const features = getAreaFeatures(JSON.parse(geoJson));
+    if (features.length === 0) return null;
+    if (features.length === 1) return features[0];
+    return turf.union(turf.featureCollection(features));
 }
 
 export function buildCampPolygonFeatures(campPolygons) {
     const features = campPolygons.map(p => {
-        const f = JSON.parse(p.geoJson);
+        const f = parseCampFeature(p.geoJson);
         const spaceReq = p.spaceRequirementSqm ?? null;
         const spaceOutOfRange = spaceReq && p.areaSqm
             ? (p.areaSqm > spaceReq * SIZE_RATIO_UPPER || p.areaSqm < spaceReq * SIZE_RATIO_LOWER)
@@ -86,7 +107,7 @@ function getCachedFeature(p) {
     // Lazily cache the parsed feature on the polygon entry. SignalR handlers
     // null this out when they overwrite geoJson so the cache stays in sync.
     if (!p._parsedFeature) {
-        try { p._parsedFeature = JSON.parse(p.geoJson); }
+        try { p._parsedFeature = parseCampFeature(p.geoJson); }
         catch { p._parsedFeature = null; }
     }
     return p._parsedFeature;

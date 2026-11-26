@@ -1,10 +1,11 @@
-@model Humans.Budget.Models.CoordinatorCategoryDetailViewModel
+@using System.Globalization
+@model Humans.Budget.Models.CategoryDetailViewModel
 @{
     ViewData["Title"] = Localizer["Budget_TitleYear", Model.Category.Name].Value;
     var category = Model.Category;
     var group = category.BudgetGroup;
     var lineItemTotal = category.LineItemTotal;
-    var unallocated = category.UnallocatedAmount;
+    var available = category.AvailableAmount;
 
     var vatProjections = VatProjection.ForLineItems(category.LineItems);
 }
@@ -51,7 +52,7 @@
     <div class="col-md-4">
         <div class="card text-center">
             <div class="card-body">
-                <h6 class="card-subtitle mb-2 text-muted">@Localizer["Budget_DetailedInLineItems"]</h6>
+                <h6 class="card-subtitle mb-2 text-muted">@Localizer["Budget_Planned"]</h6>
                 <h3 class="card-title mb-0">@lineItemTotal.ToEuro()</h3>
             </div>
         </div>
@@ -59,9 +60,9 @@
     <div class="col-md-4">
         <div class="card text-center">
             <div class="card-body">
-                <h6 class="card-subtitle mb-2 text-muted">@Localizer["Budget_Unallocated"]</h6>
-                <h3 class="card-title mb-0 @(unallocated < 0 ? "text-danger" : "")">
-                    @unallocated.ToEuro()
+                <h6 class="card-subtitle mb-2 text-muted">@Localizer["Budget_Available"]</h6>
+                <h3 class="card-title mb-0 @(available < 0 ? "text-danger" : "")">
+                    @available.ToEuro()
                 </h3>
             </div>
         </div>
@@ -78,7 +79,7 @@
             <small class="text-muted">@pct.ToString("N0", System.Globalization.CultureInfo.CurrentUICulture)%</small>
         </div>
         <div class="progress" style="height: 8px;">
-            <div class="progress-bar @barClass" style="width: @Math.Min(pct, 100).ToString("N0")%"></div>
+            <div class="progress-bar @barClass" style="width: @Math.Min(pct, 100).ToString("0", System.Globalization.CultureInfo.InvariantCulture)%"></div>
         </div>
     </div>
 }
@@ -164,7 +165,8 @@
                                         </div>
                                         <div class="col-md-2">
                                             <label class="form-label form-label-sm">@Localizer["Budget_ColAmount"] @Localizer["Budget_IncludingVat"]</label>
-                                            <input type="number" name="amount" class="form-control form-control-sm" step="0.01" value="@item.Amount" required />
+                                            <input type="hidden" name="__Invariant" value="amount" />
+                                            <input type="number" name="amount" class="form-control form-control-sm" step="0.01" value="@item.Amount.ToString(CultureInfo.InvariantCulture)" required />
                                         </div>
                                         <div class="col-md-1">
                                             <label class="form-label form-label-sm">@Localizer["Budget_Vat"] %</label>
@@ -245,6 +247,7 @@
                 </div>
                 <div class="col-md-2">
                     <label class="form-label form-label-sm">@Localizer["Budget_ColAmount"] @Localizer["Budget_IncludingVat"]</label>
+                    <input type="hidden" name="__Invariant" value="amount" />
                     <input type="number" name="amount" class="form-control form-control-sm" step="0.01" value="0" required />
                 </div>
                 <div class="col-md-1">

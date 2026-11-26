@@ -150,7 +150,7 @@ public class BackdoorFinanceControllerTests
         json.Should().Contain(allowed.Id.ToString()).And.Contain(current.Id.ToString()).And.Contain(managed.Id.ToString())
             .And.NotContain(denied.Id.ToString()).And.NotContain(historical.Id.ToString());
         await _users.DidNotReceive().GetUserInfosAsync(
-            Arg.Is<IEnumerable<Guid>>(ids => ids.Contains(denied.SubmitterUserId) || ids.Contains(historical.SubmitterUserId)),
+            Arg.Is<IEnumerable<Guid>>(ids => ids.Intersect(new[] { denied.SubmitterUserId, historical.SubmitterUserId }).Any()),
             Arg.Any<CancellationToken>());
         await _expenses.DidNotReceiveWithAnyArgs().GetHoldedTimelineAsync(default!);
     }
@@ -226,7 +226,7 @@ public class BackdoorFinanceControllerTests
         var groupId = Guid.NewGuid();
         _budget.GetActiveYearAsync(Arg.Any<CancellationToken>()).Returns(new BudgetYearDetail(yearId, "2026", "Year", BudgetYearStatus.Active, false,
             [new BudgetGroupDetail(groupId, yearId, "Group", 0, false, false, false, null,
-                [new BudgetCategoryDetail(report.BudgetCategoryId!.Value, groupId, "Category", 0, ExpenditureType.OpEx, Guid.NewGuid(), 0, [])])]));
+                [new BudgetCategoryDetail(report.BudgetCategoryId!.Value, "Category", 0, ExpenditureType.OpEx, Guid.NewGuid(), 0, [])])]));
     }
 
     private void SetFinanceAdmin(bool isFinanceAdmin) =>
@@ -431,7 +431,7 @@ public class BackdoorFinanceControllerTests
             [
                 new ExpenseLineDto
                 {
-                    Id = Guid.NewGuid(), ExpenseReportId = Guid.NewGuid(), Description = "Taxi",
+                    Id = Guid.NewGuid(), Description = "Taxi",
                     Amount = 20m, LineType = ExpenseLineType.Receipt, SortOrder = 0,
                 },
             ],
@@ -520,7 +520,6 @@ public class BackdoorFinanceControllerTests
     private static ExpenseLineDto LineWithHoldedDoc(string docId) => new()
     {
         Id = Guid.NewGuid(),
-        ExpenseReportId = Guid.NewGuid(),
         Description = "Taxi",
         Amount = 20m,
         LineType = ExpenseLineType.Receipt,
@@ -801,9 +800,10 @@ public class BackdoorFinanceControllerTests
         var warning = new ExpenseReconMember(member, "Ana", 41000001, -100m, -200m, 0m, -100m, 0, 1, [],
             [new ExpenseReconMovement(new LocalDate(2026, 10, 12), 12, "payment", "Compra  Hand", 200m)],
             ExpenseReconMemberStatus.Off,
-            [new ExpenseReconOpenTransfer(Guid.NewGuid(), "batch.xml", Instant.FromUtc(2026, 10, 18, 9, 0), 200m)]);
+            [new ExpenseReconOpenTransfer(Guid.NewGuid(), "later.xml", Instant.FromUtc(2026, 10, 19, 9, 0), 50m),
+                new ExpenseReconOpenTransfer(Guid.NewGuid(), "batch.xml", Instant.FromUtc(2026, 10, 18, 9, 0), 200m)]);
         _finance.GetExpenseReconAsync(2026, Arg.Any<CancellationToken>()).Returns(new ExpenseReconReport(
-            2026, Instant.FromUtc(2026, 10, 29, 2, 45), null, [2026],
+            2026, Instant.FromUtc(2026, 10, 29, 2, 45), null, [2024, 2026, 2025],
             [line with { ExpenseReportId = Guid.NewGuid(), LineId = Guid.NewGuid(), Status = ExpenseReconLineStatus.Booked,
                 HoldedDocId = "booked", DuplicateEntryNumbers = [], ExcessAmount = 0m }, line],
             [orphan with { EntryNumber = 3, Date = orphan.Date.PlusDays(-1) }, orphan],
@@ -822,12 +822,17 @@ public class BackdoorFinanceControllerTests
         json.Should().Contain(@"""warnings"":2");
         json.Should().NotContainEquivalentOf("iban");
         using var body = JsonDocument.Parse(json);
+        body.RootElement.GetProperty("years").EnumerateArray().Select(y => y.GetInt32())
+            .Should().Equal(2026, 2025, 2024);
         body.RootElement.GetProperty("lines").EnumerateArray().Select(l => l.GetProperty("holdedDocId").GetString())
             .Should().Equal("d1", "booked");
         body.RootElement.GetProperty("orphans").EnumerateArray().Select(o => o.GetProperty("entryNumber").GetInt32())
             .Should().Equal(9, 3);
         body.RootElement.GetProperty("members").EnumerateArray().Select(m => m.GetProperty("memberName").GetString())
             .Should().Equal("Ana", "Zed", "Aardvark");
+        foreach (var projectedMember in body.RootElement.GetProperty("members").EnumerateArray())
+            projectedMember.GetProperty("openTransfers").EnumerateArray().Select(t => t.GetProperty("fileName").GetString())
+                .Should().Equal("batch.xml", "later.xml");
     }
 
     private const string SpacedIban = "es79 2100 0813 6101 2345 6789";
@@ -977,6 +982,7 @@ public class BackdoorFinanceControllerTests
         SetReportViewer(userId, report);
         var keys = Substitute.For<IBackdoorApiKeyService>();
         keys.ResolveOwnerAsync("key", Arg.Any<CancellationToken>()).Returns(new BackdoorKeyOwner(userId, []));
+        keys.AdmitsAsync(Arg.Any<BackdoorKeyOwner>(), BackdoorScope.AdminAndBoard, Arg.Any<CancellationToken>()).Returns(true);
 
         var builder = WebApplication.CreateSlimBuilder();
         builder.WebHost.UseUrls("http://127.0.0.1:0");
@@ -994,7 +1000,8 @@ public class BackdoorFinanceControllerTests
         app.MapControllers();
         await app.StartAsync(ct);
 
-        using var client = new HttpClient { BaseAddress = new Uri(app.Urls.Single()) };
+        using var client = new HttpClient();
+        client.BaseAddress = new Uri(app.Urls.Single());
         client.DefaultRequestHeaders.Add(BackdoorApiKeyAuthFilter.ApiKeyHeaderName, "key");
         var body = await client.GetStringAsync("/api/backdoor/finance/expense-reports", ct);
         await app.StopAsync(ct);

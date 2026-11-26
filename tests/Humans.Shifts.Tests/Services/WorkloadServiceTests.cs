@@ -404,7 +404,7 @@ public sealed class WorkloadServiceTests : ShiftsTestHarness
         RolePeriod period, int? estimatedHours, int slotCount, params Guid?[] assignedUserIds)
     {
         var assignments = assignedUserIds
-            .Select((uid, i) => new TeamRoleAssignmentSnapshot(Guid.NewGuid(), Guid.NewGuid(), i, uid))
+            .Select((uid, i) => new TeamRoleAssignmentSnapshot(Guid.NewGuid(), i, uid))
             .ToList();
         return new TeamRoleDefinitionSnapshot(
             Guid.NewGuid(), teamId, teamName, teamSlug, "Role", null, slotCount, estimatedHours,

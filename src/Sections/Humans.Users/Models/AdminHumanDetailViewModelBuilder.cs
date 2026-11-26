@@ -34,7 +34,6 @@ internal static class AdminHumanDetailViewModelBuilder
                 .ThenBy(pl => pl.LanguageCode, StringComparer.OrdinalIgnoreCase)
                 .Select(pl => new ProfileLanguageDisplayViewModel
                 {
-                    LanguageCode = pl.LanguageCode,
                     LanguageName = LanguageCatalog.GetDisplayName(pl.LanguageCode),
                     Proficiency = pl.Proficiency
                 }).ToList(),

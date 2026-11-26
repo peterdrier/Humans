@@ -13,7 +13,7 @@
 
   <ItemGroup>
     <!--
-      Adapter section: Humans' own ticket checkout, one implementation of Tickets' ITicketCheckoutBackend
+      Adapter section: Humans' own ticketing platform, one implementation of Tickets' ITicketingPlatform
       port. It takes payment through Stripe hosted Checkout on its own key and webhook, so it owns its
       Stripe settings rather than borrowing the Stripe section's Store or mirror keys. No tables.
       Tickets names nothing here; the only edge is this section onto the Tickets.Contracts leaf.

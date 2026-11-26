@@ -14,7 +14,6 @@ using Humans.Users.Contracts;
 using Humans.Workgroups.Data;
 using Humans.Workgroups.Domain;
 using NodaTime;
-using Humans.Base.Interfaces;
 using Humans.Calendar.Contracts;
 using System.Globalization;
 using Humans.Gdpr.Contracts;
@@ -198,7 +197,7 @@ internal sealed partial class WorkgroupService(
         ct = CancellationToken.None;
 
         await AuditAsync(WorkgroupsAuditActions.WorkgroupGoogleGroupSet, workgroup,
-            workgroup.GoogleGroupEmail is { } email ? $"Email group set to {email}" : "Email group cleared", actorUserId);
+            workgroup.GoogleGroupEmail is { } groupEmail ? $"Email group set to {groupEmail}" : "Email group cleared", actorUserId);
         await RequestGoogleSyncAsync(workgroup, ct);
         return new();
     }
@@ -206,7 +205,7 @@ internal sealed partial class WorkgroupService(
     /// <summary>Same rule as a team's group prefix. Admins paste the full address as often as its local part; only our own domain is accepted.</summary>
     private static WorkgroupMutationResult<string?> ParseGoogleGroupPrefix(string? value)
     {
-        if (string.IsNullOrWhiteSpace(value)) return new((string?)null);
+        if (string.IsNullOrWhiteSpace(value)) return new(null);
 
         var prefix = value.Trim().ToLowerInvariant();
         var at = prefix.IndexOf('@', StringComparison.Ordinal);
@@ -1042,7 +1041,7 @@ internal sealed partial class WorkgroupService(
         WorkgroupCommentDisposition disposition,
         string? response,
         Guid actorUserId,
-        NodaTime.Instant now)
+        Instant now)
     {
         comment.Disposition = disposition;
         comment.Response = Trimmed(response);
@@ -1465,18 +1464,21 @@ internal sealed partial class WorkgroupService(
             return 0;
         }
         // In-app notices are keyed by user id: deliver to the live id the read resolved to.
-        var recipients = recipientUserIds.Select(id =>
+        var recipients = recipientUserIds.Select(id => people.GetValueOrDefault(id))
+            .OfType<UserInfo>()
+            .Where(person => !person.IsTombstone)
+            .DistinctBy(person => person.Id)
+            .Select(person =>
         {
-            var person = people.GetValueOrDefault(id);
-            var language = person?.PreferredLanguage;
-            return (Id: person?.Id ?? id, Language: language.IsSupportedCultureCode() ? language! : "en");
-        }).DistinctBy(person => person.Id);
+            var language = person.PreferredLanguage;
+            return (person.Id, Language: language.IsSupportedCultureCode() ? language! : "en");
+        });
         var dispatched = 0;
         foreach (var group in recipients.GroupBy(person => person.Language, StringComparer.OrdinalIgnoreCase))
         {
             try
             {
-                var culture = System.Globalization.CultureInfo.GetCultureInfo(group.Key);
+                var culture = CultureInfo.GetCultureInfo(group.Key);
                 var title = $"{NoticeResources.GetString(titleKey, culture)}: {w.Name}";
                 var ids = group.Select(person => person.Id).ToList();
                 await notificationEmitter.SendAsync(source, NotificationClass.Informational, NotificationPriority.Normal,
@@ -1549,10 +1551,10 @@ internal sealed partial class WorkgroupService(
         {
             infos.TryGetValue(id, out var info);
             var address = info?.Email;
-            if (info is null || string.IsNullOrWhiteSpace(address))
+            if (info is null || info.IsTombstone || string.IsNullOrWhiteSpace(address))
             {
                 logger.LogWarning(
-                    "Skipping workgroup {Kind} email for {UserId} on {WorkgroupId}: no effective email",
+                    "Skipping workgroup {Kind} email for {UserId} on {WorkgroupId}: unavailable recipient or no effective email",
                     kind, id, w.Id);
                 continue;
             }
@@ -1636,7 +1638,7 @@ internal sealed partial class WorkgroupService(
         w.RegisteredAt,
         w.EndedAt,
         w.Members
-            .Select(m => new WorkgroupMemberInfo(m.Id, m.UserId, m.Role, m.JoinedAt, m.LeftAt, m.IsPending == true))
+            .Select(m => new WorkgroupMemberInfo(m.UserId, m.Role, m.JoinedAt, m.LeftAt, m.IsPending == true))
             .ToList(),
         // Soft-deleted meetings are gone outside the repository; the log keeps the history.
         w.Meetings
@@ -1648,8 +1650,7 @@ internal sealed partial class WorkgroupService(
             .ToList(),
         w.LogEntries
             .Select(e => new WorkgroupLogEntryInfo(
-                e.Id, e.Kind, e.OccurredOn, e.Title, e.Body, e.AuthorUserId, e.DocumentId,
-                e.SurveyId, e.CreatedAt, e.MeetingId))
+                e.Id, e.Kind, e.OccurredOn, e.Title, e.Body, e.AuthorUserId, e.CreatedAt, e.MeetingId))
             .ToList(),
         w.Documents
             .Select(ToInfo)
@@ -1662,7 +1663,6 @@ internal sealed partial class WorkgroupService(
 
     public static WorkgroupDocumentInfo ToInfo(WorkgroupDocument d) => new(
         d.Id,
-        d.WorkgroupId,
         d.Title,
         d.Kind,
         d.Body,
@@ -1673,17 +1673,15 @@ internal sealed partial class WorkgroupService(
         d.DeliveredAt,
         d.Disposition,
         d.DispositionNote,
-        d.DispositionAt,
-        d.DispositionByUserId,
         d.CreatedByUserId,
         d.UpdatedByUserId,
         d.CreatedAt,
         d.UpdatedAt,
         d.Comments
             .Select(c => new WorkgroupCommentInfo(
-                c.Id, c.DocumentId, c.Category, c.AuthorUserId, c.Body, c.CreatedAt,
-                c.Disposition, c.Response, c.RespondedByUserId, c.RespondedAt, c.HiddenAt,
-                c.HiddenByUserId, c.HiddenReason))
+                c.Id, c.Category, c.AuthorUserId, c.Body, c.CreatedAt,
+                c.Disposition, c.Response, c.HiddenAt,
+                c.HiddenReason))
             .ToList());
 
     // Also guards stored legacy links when projecting them into an href.

@@ -139,5 +139,5 @@ public sealed class EventOccurrenceExpanderTests
         CategoryId: Guid.NewGuid(), CategorySlug: "music", CategoryName: "Music", CategoryIsSensitive: false,
         VenueName: null, Title: "Test Event", Description: "", LocationNote: null, Host: null,
         StartAt: startAt, DurationMinutes: 60, IsRecurring: isRecurring, RecurrenceDays: recurrenceDays,
-        PriorityRank: 0, SubmittedAt: startAt, LastUpdatedAt: startAt);
+        PriorityRank: 0);
 }

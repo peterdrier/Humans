@@ -2,7 +2,6 @@ using Microsoft.AspNetCore.Identity;
 using NodaTime;
 
 using Humans.Base.Attributes;
-using Humans.Users.Contracts;
 
 namespace Humans.Users.Domain;
 

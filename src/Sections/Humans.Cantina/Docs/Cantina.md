@@ -76,6 +76,9 @@ Numeric offsets must also fit the requested day or full seven-day window within 
 - Dietary save and decline actions honour request cancellation while resolving the
   account, before saving. Once started, either mutation finishes independently of
   the browser request; mutation failures retain the form's existing error handling.
+  Both writes resolve archived IDs to the survivor and refuse missing or tombstoned
+  accounts before storing answers or an opt-out. Refusals report save failure without
+  recreating erased data or claiming success.
 
 - Roster exports and health reveals resolve the signed-in account before loading
   personal rows and audit the surviving account ID after a merge. Missing accounts
@@ -92,6 +95,7 @@ Numeric offsets must also fit the requested day or full seven-day window within 
 - Allergy and intolerance details (health data) are hidden on the roster pages until an audited reveal: the reveal POST records `CantinaHealthDetailsRevealed` through the same roster service path (one row on the event naming the actor, the week or day and the person-row count; never one row per member shown, because the roster is the kitchen's working list across a few hundred people, not a lookup of one person's health data), hands a token for that one week or day through TempData, and the following render shows the details once. Preference roll-ups and allergy / intolerance **counts** always show. Pinned by `CantinaRosterServiceTests.HealthReveal_IsAudited_AndUnlocksOnlyThePageItWasPostedFor` and `HealthReveal_WritesOneRow_HoweverManyMembersItShows`.
 - The roster is rendered live on every request — no cached aggregates. CSV exports the same in-memory aggregate produced for the HTML view. Daily HTML and CSV column totals share the matrix’s per-preference, allergy and intolerance counts; health totals stay behind the existing audited disclosure gates.
 - Every `RosterPersonDto` in the cohort has a confirmed shift no later than the day after the week, so its arrival day always exists and `ArrivesOn` is non-nullable.
+- Weekly roster calculation uses on-site dates as a set; its fallback arrival is the minimum date without reordering the source list.
 - A dietary save is the member's own: the form takes the user from the principal, refuses "Other" without its text, filters chips against `DietaryOptions`, and keeps no medical field. A save clears `DeclinedToAnswer`; a decline clears every food field. After normalization, saves refuse preferences over 200 Unicode characters and retained Other texts over 500, matching the existing columns. Refusals preserve all stored answers and the opt-out; unknown preferences within the bound and discarded text remain supported. Member self-saves and declines are not audited.
 - Merge (`IUserMerge`): the survivor's answers win. When the survivor has no row, the source's row moves. Saved empty answers and declines are preserved. The source's row is removed; retries preserve the result. Reads under an archived id resolve to the survivor.
 - GDPR: export slice `DietaryProfile` (row, including `DeclinedToAnswer`; null when none); erasure deletes the row. Users' erasure still nulls the legacy columns.

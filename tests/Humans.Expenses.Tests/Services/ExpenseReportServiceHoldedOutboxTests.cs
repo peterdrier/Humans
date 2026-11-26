@@ -1,3 +1,5 @@
+using Humans.Base.Authorization;
+using Humans.Permissions.Contracts;
 using Xunit;
 using AwesomeAssertions;
 using Humans.Expenses.Contracts;
@@ -28,14 +30,9 @@ namespace Humans.Expenses.Tests.Services;
 [Collection("HoldedDrainGate")]
 public class ExpenseReportServiceHoldedOutboxTests
 {
-    private readonly IStringLocalizer<ExpensesResource> _localizer =
-        new StringLocalizer<ExpensesResource>(new ResourceManagerStringLocalizerFactory(
-            Options.Create(new LocalizationOptions()), NullLoggerFactory.Instance));
-
     private const int BatchSize = 100;
 
     private readonly IExpenseRepository _repo;
-    private readonly IBudgetService _budgetService;
     private readonly IUserService _userService;
     private readonly IHoldedService _holdedService = Substitute.For<IHoldedService>();
     private readonly IHoldedWrite _holdedWrite;
@@ -52,12 +49,10 @@ public class ExpenseReportServiceHoldedOutboxTests
     private static readonly Guid SubmitterId = Guid.NewGuid();
     private static readonly Guid CategoryId = Guid.NewGuid();
 
-    private readonly BudgetCategorySnapshot _category;
-
     public ExpenseReportServiceHoldedOutboxTests()
     {
         var groupId = Guid.NewGuid();
-        _category = new BudgetCategorySnapshot(
+        var category = new BudgetCategorySnapshot(
             CategoryId,
             groupId,
             "Camp",
@@ -65,11 +60,11 @@ public class ExpenseReportServiceHoldedOutboxTests
             default,
             null,
             0,
-            new BudgetCategoryGroupSnapshot(groupId, Guid.NewGuid(), "Camp Build", false, false, null),
+            new BudgetCategoryGroupSnapshot(Guid.NewGuid(), "Camp Build", false, false, null),
             []);
 
         _repo = Substitute.For<IExpenseRepository>();
-        _budgetService = Substitute.For<IBudgetService>();
+        var budgetService = Substitute.For<IBudgetService>();
         _userService = Substitute.For<IUserService>();
         _holdedWrite = Substitute.For<IHoldedWrite>();
         // DrainHoldedOutboxAsync returns early unless IHoldedService.IsConfigured, so every test
@@ -83,8 +78,8 @@ public class ExpenseReportServiceHoldedOutboxTests
                 Arg.Any<Guid>(), Arg.Any<string>(), Arg.Any<Instant>(), Arg.Any<CancellationToken>())
             .Returns(true);
 
-        _budgetService.GetCategoryByIdAsync(CategoryId, Arg.Any<CancellationToken>())
-            .Returns(_category);
+        budgetService.GetCategoryByIdAsync(CategoryId, Arg.Any<CancellationToken>())
+            .Returns(category);
 
         var submitter = new User { Id = SubmitterId, DisplayName = "Alice Smith" };
         _userService.GetUserInfosAsync(Arg.Any<IEnumerable<Guid>>(), Arg.Any<CancellationToken>())
@@ -101,8 +96,8 @@ public class ExpenseReportServiceHoldedOutboxTests
         _holdedService.GetContactsAsync(Arg.Any<CancellationToken>())
             .Returns(new HoldedContactMirror(Instant.FromUtc(2026, 1, 1, 0, 0), [new HoldedContactDto { Id = "holded-contact-1", SupplierAccountNum = 40000050 }]));
 
-        _sut = new ExpenseReportService(_repo, _fileStorage, _budgetService, _userService, _auditLog, Substitute.For<IAuditViewerService>(), _holdedService, _finance, Substitute.For<IFinanceWrite>(), Substitute.For<Humans.Preapprovals.Contracts.IPreapprovalService>(), Substitute.For<Humans.Preapprovals.Contracts.IPreapprovalWrite>(), _clock, Substitute.For<ILogger<ExpenseReportService>>(), Options.Create(new TravelReimbursementConfig()));
-        _review = new ExpenseReviewService(_repo, _sut, _budgetService, Substitute.For<ITeamService>(), _userService, Substitute.For<IEmailService>(), TestExpensesEmails.Create(), _auditLog, Substitute.For<Humans.Preapprovals.Contracts.IPreapprovalService>(), Substitute.For<Humans.Preapprovals.Contracts.IPreapprovalWrite>(), _clock, NullLogger<ExpenseReviewService>.Instance);
+        _sut = new ExpenseReportService(_repo, _fileStorage, budgetService, _userService, _auditLog, Substitute.For<IAuditViewerService>(), _holdedService, _finance, Substitute.For<IFinanceWrite>(), Substitute.For<Humans.Preapprovals.Contracts.IPreapprovalService>(), Substitute.For<Humans.Preapprovals.Contracts.IPreapprovalWrite>(), _clock, Substitute.For<ILogger<ExpenseReportService>>(), Options.Create(new TravelReimbursementConfig()));
+        _review = new ExpenseReviewService(_repo, _sut, budgetService, Substitute.For<IPermissionService>(), _userService, Substitute.For<IEmailService>(), TestExpensesEmails.Create(), _auditLog, Substitute.For<Humans.Preapprovals.Contracts.IPreapprovalService>(), Substitute.For<Humans.Preapprovals.Contracts.IPreapprovalWrite>(), _clock, NullLogger<ExpenseReviewService>.Instance);
         _backgroundProcessor = new ExpenseReportBackgroundProcessor(
             _repo, _fileStorage, _userService, _holdedService, _holdedWrite, _finance, _financeWrite, _auditLog, _clock,
             NullLogger<ExpenseReportBackgroundProcessor>.Instance);
@@ -243,7 +238,6 @@ public class ExpenseReportServiceHoldedOutboxTests
                 new()
                 {
                     Id = Guid.NewGuid(),
-                    ExpenseReportId = reportId,
                     Description = "Wood",
                     Amount = 50m,
                     LineType = ExpenseLineType.Receipt,
@@ -276,7 +270,6 @@ public class ExpenseReportServiceHoldedOutboxTests
         return new ExpenseLineDto
         {
             Id = Guid.NewGuid(),
-            ExpenseReportId = reportId,
             Description = fileName,
             Amount = 10m,
             LineType = ExpenseLineType.Receipt,
@@ -479,7 +472,7 @@ public class ExpenseReportServiceHoldedOutboxTests
         {
             Lines = new List<ExpenseLineDto>
             {
-                new() { Id = Guid.NewGuid(), ExpenseReportId = Guid.NewGuid(), Description = "Wood", Amount = 42m, LineType = ExpenseLineType.Receipt, SortOrder = 1 },
+                new() { Id = Guid.NewGuid(), Description = "Wood", Amount = 42m, LineType = ExpenseLineType.Receipt, SortOrder = 1 },
             },
         };
         var outboxEvent = MakeEvent(report.Id, HoldedExpenseOutboxEventType.CreateIncomingDoc);
@@ -515,7 +508,7 @@ public class ExpenseReportServiceHoldedOutboxTests
             BudgetYearId = null,
             Lines = new List<ExpenseLineDto>
             {
-                new() { Id = Guid.NewGuid(), ExpenseReportId = Guid.NewGuid(), Description = "Wood", Amount = 42m, LineType = ExpenseLineType.Receipt, SortOrder = 1 },
+                new() { Id = Guid.NewGuid(), Description = "Wood", Amount = 42m, LineType = ExpenseLineType.Receipt, SortOrder = 1 },
             },
         };
         var outboxEvent = MakeEvent(report.Id, HoldedExpenseOutboxEventType.CreateIncomingDoc);
@@ -544,7 +537,7 @@ public class ExpenseReportServiceHoldedOutboxTests
         {
             Lines = new List<ExpenseLineDto>
             {
-                new() { Id = Guid.NewGuid(), ExpenseReportId = Guid.NewGuid(), Description = "Wood", Amount = 42m, LineType = ExpenseLineType.Receipt, SortOrder = 1 },
+                new() { Id = Guid.NewGuid(), Description = "Wood", Amount = 42m, LineType = ExpenseLineType.Receipt, SortOrder = 1 },
             },
         };
         var outboxEvent = MakeEvent(report.Id, HoldedExpenseOutboxEventType.CreateIncomingDoc);
@@ -576,7 +569,7 @@ public class ExpenseReportServiceHoldedOutboxTests
             MaxAmount = 60m,
             Lines = new List<ExpenseLineDto>
             {
-                new() { Id = Guid.NewGuid(), ExpenseReportId = Guid.NewGuid(), Description = "Wood", Amount = 100m, LineType = ExpenseLineType.Receipt, SortOrder = 1 },
+                new() { Id = Guid.NewGuid(), Description = "Wood", Amount = 100m, LineType = ExpenseLineType.Receipt, SortOrder = 1 },
             },
         };
         var outboxEvent = MakeEvent(report.Id, HoldedExpenseOutboxEventType.CreateIncomingDoc);
@@ -610,7 +603,7 @@ public class ExpenseReportServiceHoldedOutboxTests
             MaxAmount = 100m,
             Lines = new List<ExpenseLineDto>
             {
-                new() { Id = Guid.NewGuid(), ExpenseReportId = Guid.NewGuid(), Description = "Wood", Amount = 100m, LineType = ExpenseLineType.Receipt, SortOrder = 1 },
+                new() { Id = Guid.NewGuid(), Description = "Wood", Amount = 100m, LineType = ExpenseLineType.Receipt, SortOrder = 1 },
             },
         };
         var outboxEvent = MakeEvent(report.Id, HoldedExpenseOutboxEventType.CreateIncomingDoc);
@@ -657,8 +650,8 @@ public class ExpenseReportServiceHoldedOutboxTests
         {
             Lines = new List<ExpenseLineDto>
             {
-                new() { Id = Guid.NewGuid(), ExpenseReportId = Guid.NewGuid(), Description = "Line A", Amount = 10m, LineType = ExpenseLineType.Receipt, SortOrder = 1, AttachmentId = attachment1.Id, Attachment = attachment1 },
-                new() { Id = Guid.NewGuid(), ExpenseReportId = Guid.NewGuid(), Description = "Line B", Amount = 20m, LineType = ExpenseLineType.Receipt, SortOrder = 2, AttachmentId = attachment2.Id, Attachment = attachment2 },
+                new() { Id = Guid.NewGuid(), Description = "Line A", Amount = 10m, LineType = ExpenseLineType.Receipt, SortOrder = 1, AttachmentId = attachment1.Id, Attachment = attachment1 },
+                new() { Id = Guid.NewGuid(), Description = "Line B", Amount = 20m, LineType = ExpenseLineType.Receipt, SortOrder = 2, AttachmentId = attachment2.Id, Attachment = attachment2 },
             }
         };
 
@@ -708,7 +701,7 @@ public class ExpenseReportServiceHoldedOutboxTests
         {
             Lines = new List<ExpenseLineDto>
             {
-                new() { Id = Guid.NewGuid(), ExpenseReportId = Guid.NewGuid(), Description = "No receipt", Amount = 5m, LineType = ExpenseLineType.Receipt, SortOrder = 1, AttachmentId = null, Attachment = null },
+                new() { Id = Guid.NewGuid(), Description = "No receipt", Amount = 5m, LineType = ExpenseLineType.Receipt, SortOrder = 1, AttachmentId = null, Attachment = null },
             }
         };
 
@@ -750,7 +743,7 @@ public class ExpenseReportServiceHoldedOutboxTests
         {
             Lines = new List<ExpenseLineDto>
             {
-                new() { Id = Guid.NewGuid(), ExpenseReportId = Guid.NewGuid(), Description = "Line A", Amount = 10m, LineType = ExpenseLineType.Receipt, SortOrder = 1, AttachmentId = attachment.Id, Attachment = attachment },
+                new() { Id = Guid.NewGuid(), Description = "Line A", Amount = 10m, LineType = ExpenseLineType.Receipt, SortOrder = 1, AttachmentId = attachment.Id, Attachment = attachment },
             }
         };
         var outboxEvent = MakeEvent(report.Id, HoldedExpenseOutboxEventType.CreateIncomingDoc);
@@ -845,7 +838,6 @@ public class ExpenseReportServiceHoldedOutboxTests
         ExpenseLineDto Line(string description, int sortOrder) => new()
         {
             Id = Guid.NewGuid(),
-            ExpenseReportId = Guid.NewGuid(),
             Description = description,
             Amount = 100m,
             LineType = ExpenseLineType.Receipt,
@@ -1094,8 +1086,8 @@ public class ExpenseReportServiceHoldedOutboxTests
 
         await _backgroundProcessor.DrainHoldedOutboxAsync(BatchSize, ct);
 
-        await _repo.DidNotReceiveWithAnyArgs().IncrementOutboxRetryAsync(default, null!, default, default);
-        await _repo.DidNotReceiveWithAnyArgs().MarkOutboxFailedPermanentlyAsync(default, null!, default, default);
+        await _repo.DidNotReceiveWithAnyArgs().IncrementOutboxRetryAsync(default, null!, default);
+        await _repo.DidNotReceiveWithAnyArgs().MarkOutboxFailedPermanentlyAsync(default, null!, default);
         await _auditLog.DidNotReceive().LogAsync(ExpensesAuditActions.ExpenseHoldedFailed,
             Arg.Any<string>(), report.Id, Arg.Any<string>(), Arg.Any<string>());
     }
@@ -1229,8 +1221,8 @@ public class ExpenseReportServiceHoldedOutboxTests
         var action = () => _backgroundProcessor.DrainHoldedOutboxAsync(BatchSize, cancellation.Token);
 
         await action.Should().ThrowAsync<OperationCanceledException>();
-        await _repo.DidNotReceiveWithAnyArgs().IncrementOutboxRetryAsync(default, null!, default, default);
-        await _repo.DidNotReceiveWithAnyArgs().MarkOutboxFailedPermanentlyAsync(default, null!, default, default);
+        await _repo.DidNotReceiveWithAnyArgs().IncrementOutboxRetryAsync(default, null!, default);
+        await _repo.DidNotReceiveWithAnyArgs().MarkOutboxFailedPermanentlyAsync(default, null!, default);
     }
 
     [HumansFact]

@@ -1,4 +1,3 @@
-@using Humans.Tickets.Contracts
 @using Humans.Tickets.Services.Checkout
 @model Humans.Tickets.Controllers.RefundsViewModel
 @{
@@ -39,7 +38,7 @@
 }
 
 <page-header title="Refunds" subtitle="@Model.EventName">
-    <a class="btn btn-outline-secondary btn-sm" asp-action="Report" asp-route-id="@Model.SalesEventId">Sales report</a>
+    <a class="btn btn-outline-secondary btn-sm" asp-action="Report" asp-route-id="@Model.TicketingSettingsId">Sales report</a>
 </page-header>
 
 <div class="stats" style="--stats-cols: 3">
@@ -50,16 +49,16 @@
 </div>
 
 <ul class="nav nav-pills mb-3">
-    <li class="nav-item"><a class="nav-link @(Model.State is null ? "active" : "")" asp-action="Refunds" asp-route-id="@Model.SalesEventId">All</a></li>
+    <li class="nav-item"><a class="nav-link @(Model.State is null ? "active" : "")" asp-action="Refunds" asp-route-id="@Model.TicketingSettingsId">All</a></li>
     @foreach (var s in states)
     {
-        <li class="nav-item"><a class="nav-link @(Model.State == s ? "active" : "")" asp-action="Refunds" asp-route-id="@Model.SalesEventId" asp-route-state="@s">@SharedLocalizer.EnumDisplay(s)</a></li>
+        <li class="nav-item"><a class="nav-link @(Model.State == s ? "active" : "")" asp-action="Refunds" asp-route-id="@Model.TicketingSettingsId" asp-route-state="@s">@SharedLocalizer.EnumDisplay(s)</a></li>
     }
 </ul>
 
 @if (Model.State == RefundState.ManualRequired)
 {
-    <p class="small text-muted">These need a person to issue them in the backend's dashboard; the order page links there.</p>
+    <p class="small text-muted">These need a person to issue them in the platform's dashboard; the order page links there.</p>
 }
 
 <div class="card mb-4">

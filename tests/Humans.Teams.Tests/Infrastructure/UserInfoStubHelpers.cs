@@ -18,7 +18,7 @@ internal static class UserInfoStubHelpers
     /// can't see.
     /// </summary>
     public static UserInfo FromEntities(User user, Profile? profile) =>
-        UserInfoFactory.Create(user, user.UserEmails?.ToList() ?? [], [], profile, [], [], []);
+        UserInfoFactory.Create(user, user.UserEmails.ToList(), [], profile, [], [], []);
 
     /// <summary>
     /// Opens a new context per call.

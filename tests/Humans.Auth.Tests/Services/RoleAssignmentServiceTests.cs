@@ -12,7 +12,6 @@ using Humans.Auth.Contracts;
 using Humans.Auth.Data;
 using Humans.Auth.Domain;
 using Humans.Auth.Services;
-using Humans.AuditLog.Contracts;
 using Humans.Base.Constants;
 using Humans.Notifications.Contracts;
 using NSubstitute;
@@ -22,7 +21,6 @@ using Humans.Camps.Contracts;
 using Humans.Users.Contracts;
 
 
-using Humans.Teams.Contracts;
 
 namespace Humans.Auth.Tests.Services;
 
@@ -59,6 +57,54 @@ public sealed class RoleAssignmentServiceTests : AuthTestHarness
             TestRoles.Catalog(),
             Clock,
             NullLogger<RoleAssignmentService>.Instance);
+    }
+
+    [HumansTheory]
+    [InlineData(null, null)]
+    [InlineData(UserState.Deleted, null)]
+    [InlineData(UserState.Merged, null)]
+    [InlineData(UserState.Bare, "erased@gdpr.local")]
+    [InlineData(UserState.Bare, "erased@deleted.local")]
+    public async Task AssignRole_UnavailableTarget_Refuses(UserState? state, string? identityEmail)
+    {
+        var userId = Guid.NewGuid();
+        if (state is not null)
+        {
+            await SeedUserAsync(userId, "Target");
+            var target = (await _userService.GetRawUserInfoAsync(userId, TestContext.Current.CancellationToken))!
+                with
+            { State = state.Value, IdentityEmailColumn = identityEmail };
+            _userService.GetRawUserInfoAsync(userId, Arg.Any<CancellationToken>()).Returns(target);
+        }
+
+        var result = await _service.AssignRoleAsync(userId, RoleNames.Board, Guid.NewGuid(), null,
+            TestContext.Current.CancellationToken);
+
+        result.Should().Be(new RoleAssignmentResult(false, "UserUnavailable"));
+        AuthDb.RoleAssignments.Should().BeEmpty();
+        AuditLog.ReceivedCalls().Should().BeEmpty();
+        Notifier.ReceivedCalls().Should().BeEmpty();
+    }
+
+    [HumansFact]
+    public async Task AssignRole_ArchivedTarget_DoesNotGrantSurvivor()
+    {
+        var archivedId = Guid.NewGuid();
+        var survivorId = Guid.NewGuid();
+        await SeedUserAsync(archivedId, "Archived");
+        await SeedUserAsync(survivorId, "Survivor");
+        var archived = (await _userService.GetRawUserInfoAsync(archivedId, TestContext.Current.CancellationToken))!;
+        var survivor = (await _userService.GetRawUserInfoAsync(survivorId, TestContext.Current.CancellationToken))!;
+        _userService.GetRawUserInfoAsync(archivedId, Arg.Any<CancellationToken>()).Returns(archived with { State = UserState.Merged });
+        _userService.GetUserInfoAsync(archivedId, Arg.Any<CancellationToken>()).Returns(survivor with { MergedUserIds = [archivedId] });
+
+        var result = await _service.AssignRoleAsync(archivedId, RoleNames.Admin, Guid.NewGuid(), null,
+            TestContext.Current.CancellationToken);
+
+        result.Should().Be(new RoleAssignmentResult(false, "UserUnavailable"));
+        AuthDb.RoleAssignments.Should().BeEmpty();
+        AuditLog.ReceivedCalls().Should().BeEmpty();
+        Notifier.ReceivedCalls().Should().BeEmpty();
     }
 
     [HumansFact]
@@ -185,7 +231,7 @@ public sealed class RoleAssignmentServiceTests : AuthTestHarness
     [InlineData("lookup-fails")]
     public async Task RoleChanges_NotifyInTheRecipientsLanguage(string language)
     {
-        using var actorCulture = new Humans.Base.Extensions.CultureScope("en");
+        using var actorCulture = new CultureScope("en");
         var userId = Guid.NewGuid();
         var actorId = Guid.NewGuid();
         await SeedUserAsync(userId, "Target");

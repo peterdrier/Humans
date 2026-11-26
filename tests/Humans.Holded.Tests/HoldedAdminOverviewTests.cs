@@ -124,7 +124,6 @@ public sealed class HoldedAdminOverviewTests
         calls[1].ByEndpoint["ListLedgerEntriesAsync"].Should().Be(2);
         calls[1].ByEndpoint["GetUsageAsync"].Should().Be(1);
 
-        var summary = await _service.GetSummaryAsync(ct);
     }
 
     [HumansFact]
@@ -324,7 +323,7 @@ public sealed class HoldedAdminOverviewTests
     }
 
     [HumansFact]
-    public async Task GetAccountStatement_returns_header_and_ordered_lines()
+    public async Task GetAccountStatement_returns_header_and_account_lines()
     {
         var ct = Xunit.TestContext.Current.CancellationToken;
         var earlier = Instant.FromUtc(2026, 8, 1, 10, 0);
@@ -347,8 +346,8 @@ public sealed class HoldedAdminOverviewTests
         statement.Account.LocalBalance.Should().Be(-121_784.00m);
         statement.Account.LocalLineCount.Should().Be(3);
         statement.Account.Reconciled.Should().BeFalse();
-        // Date first, then entry/line — the other account's line is not here at all.
-        statement.Lines.Select(l => (l.EntryNumber, l.Line)).Should().Equal((3, 1), (9, 1), (9, 2));
+        // The other account's line is not here; each line retains its ordering metadata.
+        statement.Lines.Select(l => (l.EntryNumber, l.Line)).Should().BeEquivalentTo([(3, 1), (9, 1), (9, 2)]);
     }
 
     [HumansFact]
@@ -385,13 +384,13 @@ public sealed class HoldedAdminOverviewTests
             Line(6, 62900200, credit: 50m, line: 1));     // deposit returned
 
         var bank = await _service.GetAccountStatementAsync(57200001, ct);
-        bank!.Lines.Select(l => l.Amount).Should().Equal(50_000m, -62_000m);
+        bank!.Lines.Select(l => (l.EntryNumber, l.Amount)).Should().BeEquivalentTo([(1, 50_000m), (2, -62_000m)]);
 
         var busSales = await _service.GetAccountStatementAsync(75900001, ct);
-        busSales!.Lines.Select(l => l.Amount).Should().Equal(5m, -5m);
+        busSales!.Lines.Select(l => (l.EntryNumber, l.Amount)).Should().BeEquivalentTo([(3, 5m), (4, -5m)]);
 
         var rental = await _service.GetAccountStatementAsync(62900200, ct);
-        rental!.Lines.Select(l => l.Amount).Should().Equal(-123m, 50m);
+        rental!.Lines.Select(l => (l.EntryNumber, l.Amount)).Should().BeEquivalentTo([(5, -123m), (6, 50m)]);
 
         // Σ Amount agrees with the header balance under the signed-amount convention.
         bank.Lines.Sum(l => l.Amount).Should().Be(bank.Account.LocalBalance);
@@ -470,11 +469,11 @@ public sealed class HoldedAdminOverviewTests
         entry.Should().NotBeNull();
         entry.EntryNumber.Should().Be(1852);
         entry.Lines.Should().HaveCount(2);
-        entry.Lines[0].AccountNum.Should().Be(57200001);
-        entry.Lines[0].AccountName.Should().Be("acct 57200001");
-        entry.Lines[0].Amount.Should().Be(50_000m);
-        entry.Lines[1].AccountNum.Should().Be(40000010);
-        entry.Lines[1].Amount.Should().Be(-50_000m);
+        entry.Lines.Single(l => l.Line == 1).AccountNum.Should().Be(57200001);
+        entry.Lines.Single(l => l.Line == 1).AccountName.Should().Be("acct 57200001");
+        entry.Lines.Single(l => l.Line == 1).Amount.Should().Be(50_000m);
+        entry.Lines.Single(l => l.Line == 2).AccountNum.Should().Be(40000010);
+        entry.Lines.Single(l => l.Line == 2).Amount.Should().Be(-50_000m);
     }
 
     [HumansFact]

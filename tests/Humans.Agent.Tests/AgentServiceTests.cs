@@ -38,8 +38,8 @@ public class AgentServiceTests
         }, rateLimitStore: store, saveInterceptor: interceptor);
         client.EnqueueTurn(
             new AgentTurnToken("Answer", null, null,
-                Usage: new AgentTurnFinalizer(100, 20, 5, 3, "test-model", null)),
-            new AgentTurnToken(null, null, new AgentTurnFinalizer(100, 20, 5, 3, "test-model", "end_turn")));
+                Usage: new AgentTurnFinalizer(100, 20, 5, 3, null)),
+            new AgentTurnToken(null, null, new AgentTurnFinalizer(100, 20, 5, 3, "end_turn")));
 
         var run = async () =>
         {
@@ -62,7 +62,7 @@ public class AgentServiceTests
         await foreach (var token in service.AskAsync(new AgentTurnRequest(Guid.Empty, userId, "Retry", "en"),
             Xunit.TestContext.Current.CancellationToken))
             nextTurn.Add(token);
-        nextTurn.Last().Finalizer!.StopReason.Should().Be("rate_limited");
+        nextTurn.Last().Finalizer!.StopReason.Should().Be(AgentTurnOutcome.LimitReached);
         client.LastRequest.Should().BeSameAs(providerRequest);
     }
 
@@ -75,7 +75,7 @@ public class AgentServiceTests
         foreach (var ownerId in new[] { userId, otherUserId })
         {
             client.EnqueueTurn(new AgentTurnToken("Answer", null, null),
-                new AgentTurnToken(null, null, new AgentTurnFinalizer(0, 0, 0, 0, "claude-sonnet-4-6", "end_turn")));
+                new AgentTurnToken(null, null, new AgentTurnFinalizer(0, 0, 0, 0, "end_turn")));
             await foreach (var _ in service.AskAsync(new AgentTurnRequest(
                 Guid.Empty, ownerId, ownerId == userId ? "My question" : "Other person's secret", "es"),
                 Xunit.TestContext.Current.CancellationToken)) { }
@@ -117,7 +117,7 @@ public class AgentServiceTests
         })
         {
             client.EnqueueTurn(new AgentTurnToken("Answer", null, null),
-                new AgentTurnToken(null, null, new AgentTurnFinalizer(0, 0, 0, 0, "test-model", "end_turn")));
+                new AgentTurnToken(null, null, new AgentTurnFinalizer(0, 0, 0, 0, "end_turn")));
             await foreach (var _ in service.AskAsync(new AgentTurnRequest(Guid.Empty, ownerId, question, "es"),
                 Xunit.TestContext.Current.CancellationToken)) { }
         }
@@ -132,7 +132,7 @@ public class AgentServiceTests
 
     [HumansTheory]
     [Xunit.MemberData(nameof(SupportedCultures.All), MemberType = typeof(SupportedCultures))]
-    public async Task Ask_localizes_the_abuse_refusal_in_the_requested_culture(string locale)
+    public async Task Ask_DistressQuestion_RepliesInRequestedCulture(string locale)
     {
         var (svc, _) = await BuildServiceAsync(s => s.Enabled = true);
         var tokens = new List<AgentTurnToken>();
@@ -143,8 +143,8 @@ public class AgentServiceTests
 
         var resources = new System.Resources.ResourceManager(typeof(AgentResource));
         string.Concat(tokens.Select(t => t.TextDelta)).Should().Be(
-            resources.GetString("Agent_AbuseRefusal", System.Globalization.CultureInfo.GetCultureInfo(locale)));
-        tokens.Last().Finalizer!.StopReason.Should().Be("abuse_flag");
+            resources.GetString("Agent_DistressReply", System.Globalization.CultureInfo.GetCultureInfo(locale)));
+        tokens.Last().Finalizer!.StopReason.Should().Be(AgentTurnOutcome.DistressReply);
     }
 
     [HumansFact]
@@ -172,7 +172,7 @@ public class AgentServiceTests
 
         // != null (not "is not null"): the predicate is an expression tree.
         tokens.Should().ContainSingle(t => t.Finalizer != null);
-        tokens.Last().Finalizer!.StopReason.Should().Be("rate_limited");
+        tokens.Last().Finalizer!.StopReason.Should().Be(AgentTurnOutcome.LimitReached);
     }
 
     [HumansTheory]
@@ -194,7 +194,7 @@ public class AgentServiceTests
         var (second, secondClient) = await BuildServiceAsync(Configure, rateLimitStore: store);
         foreach (var client in new[] { firstClient, secondClient })
             client.EnqueueTurn(new AgentTurnToken("Answer", null, null),
-                new AgentTurnToken(null, null, new AgentTurnFinalizer(2, 1, 0, 0, "test-model", "end_turn")));
+                new AgentTurnToken(null, null, new AgentTurnFinalizer(2, 1, 0, 0, "end_turn")));
 
         var ct = Xunit.TestContext.Current.CancellationToken;
         await using var active = first.AskAsync(new AgentTurnRequest(Guid.Empty, userId, "First", "en"), ct)
@@ -207,7 +207,7 @@ public class AgentServiceTests
 
         secondReachedProviderBeforeFirstFinished.Should().BeFalse();
         secondClient.LastRequest.Should().BeNull();
-        secondResult.Last().Finalizer!.StopReason.Should().Be("rate_limited");
+        secondResult.Last().Finalizer!.StopReason.Should().Be(AgentTurnOutcome.LimitReached);
 
         async Task<List<AgentTurnToken>> ReadSecondAsync()
         {
@@ -228,11 +228,11 @@ public class AgentServiceTests
         var (second, secondClient) = await BuildServiceAsync(s => s.Enabled = true, rateLimitStore: store);
         firstClient.EnqueueTurn(new AgentTurnToken("Partial answer", null, null));
         secondClient.EnqueueTurn(new AgentTurnToken("Other user", null, null),
-            new AgentTurnToken(null, null, new AgentTurnFinalizer(0, 0, 0, 0, "test-model", "end_turn")));
+            new AgentTurnToken(null, null, new AgentTurnFinalizer(0, 0, 0, 0, "end_turn")));
         secondClient.EnqueueTurn(new AgentTurnToken("Next answer", null, null),
-            new AgentTurnToken(null, null, new AgentTurnFinalizer(0, 0, 0, 0, "test-model", "end_turn")));
+            new AgentTurnToken(null, null, new AgentTurnFinalizer(0, 0, 0, 0, "end_turn")));
         var ct = Xunit.TestContext.Current.CancellationToken;
-        await using var active = first.AskAsync(new AgentTurnRequest(Guid.Empty, userId, "First", "en"), ct)
+        var active = first.AskAsync(new AgentTurnRequest(Guid.Empty, userId, "First", "en"), ct)
             .GetAsyncEnumerator(ct);
         (await active.MoveNextAsync()).Should().BeTrue();
 
@@ -270,7 +270,7 @@ public class AgentServiceTests
 
         client.EnqueueTurn(
             new AgentTurnToken("hello!", null, null),
-            new AgentTurnToken(null, null, new AgentTurnFinalizer(0, 0, 0, 0, "claude-sonnet-4-6", "end_turn")));
+            new AgentTurnToken(null, null, new AgentTurnFinalizer(0, 0, 0, 0, "end_turn")));
 
         var tokens = new List<AgentTurnToken>();
         await foreach (var t in svc.AskAsync(
@@ -294,7 +294,7 @@ public class AgentServiceTests
         // Turn 1 — establishes the conversation.
         client.EnqueueTurn(
             new AgentTurnToken("Volunteers is a team.", null, null),
-            new AgentTurnToken(null, null, new AgentTurnFinalizer(0, 0, 0, 0, "claude-sonnet-4-6", "end_turn")));
+            new AgentTurnToken(null, null, new AgentTurnFinalizer(0, 0, 0, 0, "end_turn")));
 
         Guid? conversationId = null;
         await foreach (var t in svc.AskAsync(
@@ -308,7 +308,7 @@ public class AgentServiceTests
         // Turn 2 — same conversation. Anthropic should see the prior turn replayed.
         client.EnqueueTurn(
             new AgentTurnToken("Yes, anyone can join.", null, null),
-            new AgentTurnToken(null, null, new AgentTurnFinalizer(0, 0, 0, 0, "claude-sonnet-4-6", "end_turn")));
+            new AgentTurnToken(null, null, new AgentTurnFinalizer(0, 0, 0, 0, "end_turn")));
 
         await foreach (var _ in svc.AskAsync(
             new AgentTurnRequest(ConversationId: conversationId.Value, UserId: userId, Message: "Can I join?", Locale: "es"),
@@ -334,7 +334,7 @@ public class AgentServiceTests
 
         client.EnqueueTurn(
             new AgentTurnToken("hi back", null, null),
-            new AgentTurnToken(null, null, new AgentTurnFinalizer(0, 0, 0, 0, "claude-sonnet-4-6", "end_turn")));
+            new AgentTurnToken(null, null, new AgentTurnFinalizer(0, 0, 0, 0, "end_turn")));
 
         Guid? finalConversationId = null;
         // Conversation may have been retention-purged or deleted in another tab —
@@ -358,7 +358,7 @@ public class AgentServiceTests
         var (svc, client) = await BuildServiceAsync(s => s.Enabled = true);
         client.EnqueueTurn(
             new AgentTurnToken("Hi.", null, null),
-            new AgentTurnToken(null, null, new AgentTurnFinalizer(0, 0, 0, 0, "claude-sonnet-4-6", "end_turn")));
+            new AgentTurnToken(null, null, new AgentTurnFinalizer(0, 0, 0, 0, "end_turn")));
         Guid victimConversation = Guid.Empty;
         await foreach (var t in svc.AskAsync(
             new AgentTurnRequest(ConversationId: Guid.Empty, UserId: victimId, Message: "Hello", Locale: "es"),
@@ -367,7 +367,7 @@ public class AgentServiceTests
             if (t.Finalizer is { } f) victimConversation = f.ConversationId;
         }
 
-        // "hurt myself" trips the abuse refusal, which would otherwise be persisted first.
+        // "hurt myself" trips the distress check, which would otherwise be persisted first.
         var ask = async () =>
         {
             await foreach (var _ in svc.AskAsync(
@@ -385,7 +385,7 @@ public class AgentServiceTests
     }
 
     [HumansFact]
-    public async Task Rate_limited_refusal_is_not_written_into_another_users_conversation()
+    public async Task Ask_LimitReached_NeverWritesIntoForeignConversation()
     {
         var attackerId = Guid.NewGuid();
 
@@ -403,7 +403,7 @@ public class AgentServiceTests
         // The repo behind the service is private; we can't reach the victim's
         // conversation directly. Instead, exercise the surface: the attacker
         // submits with a non-empty (and thus unknown-to-them) conversation id
-        // and trips the rate limit. The refusal must NOT land on the supplied
+        // and trips the rate limit. The outcome must NOT land on the supplied
         // GUID. Verified by reading the conversation back through the service:
         // it must either not exist or not belong to the attacker.
         var spoofedId = Guid.NewGuid();
@@ -414,11 +414,11 @@ public class AgentServiceTests
         }
 
         // The attacker's GET-history must not surface the spoofed id (because the
-        // service started a new conversation owned by the attacker for the refusal).
+        // service started a new conversation owned by the attacker for the outcome).
         var attackerHistory = await svc.GetHistoryAsync(attackerId, take: 10, Xunit.TestContext.Current.CancellationToken);
         attackerHistory.Should().NotContain(c => c.Id == spoofedId,
-            "the rate-limit refusal must persist into a new attacker-owned conversation, never into the spoofed id");
-        attackerHistory.Should().HaveCount(1, "exactly one new conversation was started for the refusal");
+            "the limit-reached outcome must persist into a new attacker-owned conversation, never into the spoofed id");
+        attackerHistory.Should().HaveCount(1, "exactly one new conversation was started for the outcome");
     }
 
     [HumansFact]
@@ -443,7 +443,7 @@ public class AgentServiceTests
     public async Task PromptPreview_classifies_failures_and_renders_without_a_token_count(bool unexpected)
     {
         var userId = Guid.NewGuid();
-        var logger = new Humans.Testing.CapturingLogger<AgentService>();
+        var logger = new CapturingLogger<AgentService>();
         var (svc, client) = await BuildServiceAsync(s => s.Enabled = true, logger: logger);
 
         var conversationId = await StartConversationAsync(svc, client, userId);
@@ -497,15 +497,15 @@ public class AgentServiceTests
         // Iteration 1: the model burns the whole tool budget (MaxToolCallsPerTurn = 3).
         client.EnqueueTurn(
             new AgentTurnToken("Let me look that up. ", null, null),
-            new AgentTurnToken(null, new AnthropicToolCall("t1", "fetch_section_guide", """{"section":"teams"}"""), null),
-            new AgentTurnToken(null, new AnthropicToolCall("t2", "fetch_section_guide", """{"section":"camps"}"""), null),
+            new AgentTurnToken(null, new AnthropicToolCall("t1", "fetch_section_doc", """{"section":"teams"}"""), null),
+            new AgentTurnToken(null, new AnthropicToolCall("t2", "fetch_section_doc", """{"section":"camps"}"""), null),
             new AgentTurnToken(null, new AnthropicToolCall("t3", "fetch_community_faq", "{}"), null),
-            new AgentTurnToken(null, null, new AgentTurnFinalizer(100, 20, 5, 3, "claude-sonnet-4-6", "tool_use")));
+            new AgentTurnToken(null, null, new AgentTurnFinalizer(100, 20, 5, 3, "tool_use")));
 
         // Iteration 2: the synthesis call (tools withheld) answers from the fetched results.
         client.EnqueueTurn(
             new AgentTurnToken("Teams are groups of volunteers; see the Teams page.", null, null),
-            new AgentTurnToken(null, null, new AgentTurnFinalizer(40, 30, 7, 2, "claude-sonnet-4-6", "end_turn")));
+            new AgentTurnToken(null, null, new AgentTurnFinalizer(40, 30, 7, 2, "end_turn")));
 
         var tokens = new List<AgentTurnToken>();
         await foreach (var t in svc.AskAsync(
@@ -561,13 +561,13 @@ public class AgentServiceTests
         // Turn 1 — plain answer, no handoff. Must NOT match the handoffs filter.
         await StartConversationAsync(svc, client, Guid.NewGuid());
 
-        // Turn 2 — the agent hands off via route_to_issue.
+        // Turn 2 — the agent hands off via handoff.
         client.EnqueueTurn(
             new AgentTurnToken("Let me draft an issue for you.", null, null),
             new AgentTurnToken(null, new AnthropicToolCall(
-                "tc1", AgentToolNames.RouteToIssue,
+                "tc1", AgentToolNames.Handoff,
                 """{"title":"Broken link","category":"Bug","description":"The camps page 404s."}"""), null),
-            new AgentTurnToken(null, null, new AgentTurnFinalizer(0, 0, 0, 0, "claude-sonnet-4-6", "tool_use")));
+            new AgentTurnToken(null, null, new AgentTurnFinalizer(0, 0, 0, 0, "tool_use")));
 
         Guid handoffConversationId = Guid.Empty;
         await foreach (var t in svc.AskAsync(
@@ -578,25 +578,25 @@ public class AgentServiceTests
         }
 
         var rows = await svc.ListAllConversationsForAdminWithMessagesAsync(
-            refusalsOnly: false, handoffsOnly: true, userId: null, take: 50, skip: 0,
+            unansweredOnly: false, handoffsOnly: true, userId: null, take: 50, skip: 0,
             Xunit.TestContext.Current.CancellationToken);
 
         var row = rows.Should().ContainSingle(
-            "only the route_to_issue conversation is a handoff").Subject;
+            "only the handoff conversation is a handoff").Subject;
         row.Id.Should().Be(handoffConversationId);
         // Same predicate the API uses for HandoffCount.
         row.Messages.Count(m => m.HandedOffToFeedbackId != null
-                || m.FetchedDocs.Contains(AgentToolNames.RouteToIssue, StringComparer.Ordinal))
+                || m.FetchedDocs.Contains(AgentToolNames.Handoff, StringComparer.Ordinal))
             .Should().BeGreaterThan(0, "the saved assistant message must carry the handoff marker");
     }
 
     [HumansFact]
-    public async Task Failed_route_to_issue_dispatch_does_not_count_as_a_handoff()
+    public async Task Ask_FailedDispatch_DoesNotCountHandoff()
     {
         var userId = Guid.NewGuid();
         var dispatcher = Substitute.For<IAgentToolDispatcher>();
         // Malformed args → AgentToolDispatcher returns IsError=true and no
-        // issueProposal frame is emitted, so the user never sees the Issues modal.
+        // handoff frame is emitted, so the user never sees the Issues modal.
         dispatcher.DispatchAsync(Arg.Any<AnthropicToolCall>(), Arg.Any<Guid>(), Arg.Any<CancellationToken>())
             .Returns(call => Task.FromResult(new AnthropicToolResult(
                 call.Arg<AnthropicToolCall>().Id, "Malformed tool arguments (expected JSON object).", IsError: true)));
@@ -604,12 +604,12 @@ public class AgentServiceTests
 
         client.EnqueueTurn(
             new AgentTurnToken(null, new AnthropicToolCall(
-                "tc1", AgentToolNames.RouteToIssue, """{"title":"Broken"""), null),
-            new AgentTurnToken(null, null, new AgentTurnFinalizer(0, 0, 0, 0, "claude-sonnet-4-6", "tool_use")));
+                "tc1", AgentToolNames.Handoff, """{"title":"Broken"""), null),
+            new AgentTurnToken(null, null, new AgentTurnFinalizer(0, 0, 0, 0, "tool_use")));
         // The loop continues after the failed tool call; script the follow-up turn.
         client.EnqueueTurn(
             new AgentTurnToken("Sorry, I could not draft that issue.", null, null),
-            new AgentTurnToken(null, null, new AgentTurnFinalizer(0, 0, 0, 0, "claude-sonnet-4-6", "end_turn")));
+            new AgentTurnToken(null, null, new AgentTurnFinalizer(0, 0, 0, 0, "end_turn")));
 
         await foreach (var _ in svc.AskAsync(
             new AgentTurnRequest(ConversationId: Guid.Empty, UserId: userId, Message: "the camps page is broken", Locale: "es"),
@@ -618,17 +618,17 @@ public class AgentServiceTests
         }
 
         var rows = await svc.ListAllConversationsForAdminWithMessagesAsync(
-            refusalsOnly: false, handoffsOnly: true, userId: null, take: 50, skip: 0,
+            unansweredOnly: false, handoffsOnly: true, userId: null, take: 50, skip: 0,
             Xunit.TestContext.Current.CancellationToken);
-        rows.Should().BeEmpty("a failed route_to_issue dispatch never showed the user the Issues modal");
+        rows.Should().BeEmpty("a failed handoff dispatch never showed the user the Issues modal");
 
         // Same predicate the API uses for HandoffCount — must stay at zero.
         var all = await svc.ListAllConversationsForAdminWithMessagesAsync(
-            refusalsOnly: false, handoffsOnly: false, userId: null, take: 50, skip: 0,
+            unansweredOnly: false, handoffsOnly: false, userId: null, take: 50, skip: 0,
             Xunit.TestContext.Current.CancellationToken);
         all.Should().ContainSingle().Which.Messages
             .Count(m => m.HandedOffToFeedbackId != null
-                || m.FetchedDocs.Contains(AgentToolNames.RouteToIssue, StringComparer.Ordinal))
+                || m.FetchedDocs.Contains(AgentToolNames.Handoff, StringComparer.Ordinal))
             .Should().Be(0, "failed handoff attempts must not carry the handoff marker");
     }
 
@@ -648,15 +648,15 @@ public class AgentServiceTests
 
         // Iteration 1: the model burns the whole tool budget (MaxToolCallsPerTurn = 3) with no prose at all.
         client.EnqueueTurn(
-            new AgentTurnToken(null, new AnthropicToolCall("t1", "fetch_section_guide", """{"section":"teams"}"""), null),
-            new AgentTurnToken(null, new AnthropicToolCall("t2", "fetch_section_guide", """{"section":"camps"}"""), null),
+            new AgentTurnToken(null, new AnthropicToolCall("t1", "fetch_section_doc", """{"section":"teams"}"""), null),
+            new AgentTurnToken(null, new AnthropicToolCall("t2", "fetch_section_doc", """{"section":"camps"}"""), null),
             new AgentTurnToken(null, new AnthropicToolCall("t3", "fetch_community_faq", "{}"), null),
-            new AgentTurnToken(null, null, new AgentTurnFinalizer(100, 20, 5, 3, "claude-sonnet-4-6", "tool_use")));
+            new AgentTurnToken(null, null, new AgentTurnFinalizer(100, 20, 5, 3, "tool_use")));
 
         // Iteration 2: the synthesis call (tools withheld) still produces no text — the
         // investigation dead-ended with nothing worth saying.
         client.EnqueueTurn(
-            new AgentTurnToken(null, null, new AgentTurnFinalizer(40, 5, 0, 0, "claude-sonnet-4-6", "end_turn")));
+            new AgentTurnToken(null, null, new AgentTurnFinalizer(40, 5, 0, 0, "end_turn")));
 
         var tokens = new List<AgentTurnToken>();
         await foreach (var t in svc.AskAsync(
@@ -696,10 +696,10 @@ public class AgentServiceTests
     [Xunit.InlineData(false, "x", "x", "-1", "Question")]
     [Xunit.InlineData(false, "x", "x", "unknown", "Question")]
     [Xunit.InlineData(false, "x", "x", "question", "Question")]
-    public async Task Ask_stores_a_one_liner_when_route_to_issue_produces_no_preamble_text(
+    public async Task Ask_HandoffWithoutPreamble_StoresSummary(
         bool oversized, string boundary, string expectedBoundary, string category, string expectedCategory)
     {
-        // route_to_issue's proposal frame is the terminal
+        // handoff's proposal frame is the terminal
         // output for the client, but a blank stored Content makes the admin transcript
         // view misleading when the model called the tool with no preamble.
         var userId = Guid.NewGuid();
@@ -716,8 +716,8 @@ public class AgentServiceTests
         var arguments = JsonSerializer.Serialize(new { title, category, description });
         client.EnqueueTurn(
             new AgentTurnToken(null, new AnthropicToolCall(
-                "tc1", AgentToolNames.RouteToIssue, arguments), null),
-            new AgentTurnToken(null, null, new AgentTurnFinalizer(0, 0, 0, 0, "claude-sonnet-4-6", "tool_use")));
+                "tc1", AgentToolNames.Handoff, arguments), null),
+            new AgentTurnToken(null, null, new AgentTurnFinalizer(0, 0, 0, 0, "tool_use")));
 
         var tokens = new List<AgentTurnToken>();
         await foreach (var t in svc.AskAsync(
@@ -732,7 +732,7 @@ public class AgentServiceTests
         // would override that localization for non-English users.
         tokens.Should().NotContain(t => t.TextDelta != null,
             "a proposal-only turn streams no prose so the widget's localized fallback applies");
-        var proposal = tokens.Single(t => t.IssueProposal != null).IssueProposal!;
+        var proposal = tokens.Single(t => t.Handoff != null).Handoff!;
         proposal.Title.Should().Be(oversized ? titlePrefix + expectedBoundary : title);
         proposal.Description.Should().Be(oversized ? descriptionPrefix + expectedBoundary : description);
         proposal.Category.ToString().Should().Be(expectedCategory);
@@ -756,7 +756,7 @@ public class AgentServiceTests
 
         client.EnqueueTurn(
             new AgentTurnToken(" \n\n ", null, null),
-            new AgentTurnToken(null, null, new AgentTurnFinalizer(40, 5, 0, 0, "claude-sonnet-4-6", "end_turn")));
+            new AgentTurnToken(null, null, new AgentTurnFinalizer(40, 5, 0, 0, "end_turn")));
 
         var tokens = new List<AgentTurnToken>();
         await foreach (var t in svc.AskAsync(
@@ -791,14 +791,14 @@ public class AgentServiceTests
         dispatcher.DispatchAsync(Arg.Any<AnthropicToolCall>(), Arg.Any<Guid>(), Arg.Any<CancellationToken>())
             .Returns(call => Task.FromResult(new AnthropicToolResult(call.Arg<AnthropicToolCall>().Id, "Teams doc", IsError: false)));
         var (svc, client) = await BuildServiceAsync(s => s.Enabled = true, toolDispatcher: dispatcher);
-        var truncated = new AnthropicToolCall("t1", "fetch_section_guide", """{"section":"tea""");
+        var truncated = new AnthropicToolCall("t1", "fetch_section_doc", """{"section":"tea""");
         client.EnqueueTurn(
             new AgentTurnToken(null, truncated, null),
-            new AgentTurnToken(null, null, new AgentTurnFinalizer(100, 20, 0, 0, "claude-sonnet-5-5", "tool_use"),
+            new AgentTurnToken(null, null, new AgentTurnFinalizer(100, 20, 0, 0, "tool_use"),
                 AssistantContent: [new AnthropicThinkingBlock("Need the Teams doc.", "sig"), new AnthropicToolUseBlock(truncated)]));
         client.EnqueueTurn(
             new AgentTurnToken("Teams are groups of volunteers.", null, null),
-            new AgentTurnToken(null, null, new AgentTurnFinalizer(40, 10, 0, 0, "claude-sonnet-5-5", "end_turn")));
+            new AgentTurnToken(null, null, new AgentTurnFinalizer(40, 10, 0, 0, "end_turn")));
 
         await foreach (var _ in svc.AskAsync(
             new AgentTurnRequest(ConversationId: Guid.Empty, UserId: Guid.NewGuid(), Message: "What are teams?", Locale: "en"),
@@ -829,13 +829,13 @@ public class AgentServiceTests
         // Iteration 1: max_tokens hits mid tool-call JSON.
         client.EnqueueTurn(
             new AgentTurnToken("Let me check that. ", null, null),
-            new AgentTurnToken(null, new AnthropicToolCall("t1", "fetch_section_guide", """{"section":"tea"""), null),
-            new AgentTurnToken(null, null, new AgentTurnFinalizer(100, 20, 0, 0, "claude-sonnet-4-6", "max_tokens")));
+            new AgentTurnToken(null, new AnthropicToolCall("t1", "fetch_section_doc", """{"section":"tea"""), null),
+            new AgentTurnToken(null, null, new AgentTurnFinalizer(100, 20, 0, 0, "max_tokens")));
 
         // Iteration 2: the follow-up call recovers and answers normally.
         client.EnqueueTurn(
             new AgentTurnToken("Teams are groups of volunteers.", null, null),
-            new AgentTurnToken(null, null, new AgentTurnFinalizer(40, 10, 0, 0, "claude-sonnet-4-6", "end_turn")));
+            new AgentTurnToken(null, null, new AgentTurnFinalizer(40, 10, 0, 0, "end_turn")));
 
         var tokens = new List<AgentTurnToken>();
         await foreach (var t in svc.AskAsync(
@@ -864,7 +864,7 @@ public class AgentServiceTests
         // NormalizeFetchedDocSlug can't parse the truncated args, so it would fall back to the
         // bare tool name and record a lookup that never returned a document.
         var rows = await svc.ListAllConversationsForAdminWithMessagesAsync(
-            refusalsOnly: false, handoffsOnly: false, userId: userId, take: 50, skip: 0,
+            unansweredOnly: false, handoffsOnly: false, userId: userId, take: 50, skip: 0,
             Xunit.TestContext.Current.CancellationToken);
         rows.SelectMany(r => r.Messages).SelectMany(m => m.FetchedDocs)
             .Should().BeEmpty("a failed tool dispatch is not a fetched doc");
@@ -888,16 +888,16 @@ public class AgentServiceTests
         if (afterToolIteration)
         {
             client.EnqueueTurn(
-                new AgentTurnToken(null, new AnthropicToolCall("complete", "fetch_section_guide", """{"section":"teams"}"""), null),
-                new AgentTurnToken(null, null, new AgentTurnFinalizer(100, 20, 5, 3, "claude-sonnet-4-6", "tool_use")));
+                new AgentTurnToken(null, new AnthropicToolCall("complete", "fetch_section_doc", """{"section":"teams"}"""), null),
+                new AgentTurnToken(null, null, new AgentTurnFinalizer(100, 20, 5, 3, "tool_use")));
         }
         var interrupted = new List<AgentTurnToken>
         {
             new("Partial answer", null, null),
-            new(null, new AnthropicToolCall("interrupted", "fetch_section_guide", """{"section":"camps"}"""), null)
+            new(null, new AnthropicToolCall("interrupted", "fetch_section_doc", """{"section":"camps"}"""), null)
         };
         if (hasErrorFinalizer)
-            interrupted.Add(new AgentTurnToken(null, null, new AgentTurnFinalizer(0, 0, 0, 0, "claude-sonnet-4-6", "error")));
+            interrupted.Add(new AgentTurnToken(null, null, new AgentTurnFinalizer(0, 0, 0, 0, "error")));
         client.EnqueueTurn(interrupted.ToArray());
 
         var tokens = new List<AgentTurnToken>();
@@ -920,10 +920,10 @@ public class AgentServiceTests
             userId, finalizer.ConversationId, Xunit.TestContext.Current.CancellationToken);
         var assistant = transcript!.Messages.Should().ContainSingle(message => message.Role == AgentRole.Assistant).Subject;
         assistant.Content.Should().Be("Partial answer");
-        assistant.RefusalReason.Should().Be("error");
-        var refusals = await service.ListAllConversationsForAdminAsync(
-            refusalsOnly: true, userId, take: 25, skip: 0, Xunit.TestContext.Current.CancellationToken);
-        refusals.Should().ContainSingle(row => row.Id == finalizer.ConversationId);
+        assistant.Outcome.Should().Be(AgentTurnOutcome.Failed);
+        var unanswered = await service.ListAllConversationsForAdminAsync(
+            unansweredOnly: true, userId, take: 25, skip: 0, Xunit.TestContext.Current.CancellationToken);
+        unanswered.Should().ContainSingle(row => row.Id == finalizer.ConversationId);
         assistant.PromptTokens.Should().Be(finalizer.InputTokens + finalizer.CacheCreationTokens);
         assistant.OutputTokens.Should().Be(finalizer.OutputTokens);
         var usage = store.Get(userId, new LocalDate(2026, 4, 21), hour: 12);
@@ -949,8 +949,8 @@ public class AgentServiceTests
             toolDispatcher: dispatcher, logger: logger);
 
         client.EnqueueTurn(
-            new AgentTurnToken(null, new AnthropicToolCall("t1", "fetch_section_guide", """{"section":"teams"}"""), null),
-            new AgentTurnToken(null, null, new AgentTurnFinalizer(100, 20, 0, 3, "claude-sonnet-4-6", "tool_use")));
+            new AgentTurnToken(null, new AnthropicToolCall("t1", "fetch_section_doc", """{"section":"teams"}"""), null),
+            new AgentTurnToken(null, null, new AgentTurnFinalizer(100, 20, 0, 3, "tool_use")));
 
         var tokens = new List<AgentTurnToken>();
         await foreach (var t in svc.AskAsync(
@@ -977,7 +977,7 @@ public class AgentServiceTests
         transcript.Should().NotBeNull();
         var failureMessage = transcript.Messages.Should().ContainSingle(m => m.Role == AgentRole.Assistant,
             "a turn that throws mid-stream must still leave an assistant message in the transcript").Subject;
-        failureMessage.RefusalReason.Should().Be("error");
+        failureMessage.Outcome.Should().Be(AgentTurnOutcome.Failed);
         // AgentAdminStatusService prices spend straight off these fields, so a zeroed trace
         // would hide a turn the provider actually billed us for.
         failureMessage.PromptTokens.Should().Be(103);
@@ -1005,13 +1005,13 @@ public class AgentServiceTests
     {
         // AgentRepository shares one scoped AgentDbContext across the turn. A cancellation that
         // lands inside the final AppendMessageAsync leaves the assistant message tracked as
-        // Added, so the failure trace's save would flush BOTH — a real reply plus an "error"
-        // refusal for the same turn, and a double MessageCount bump. The repository discards the
+        // Added, so the failure trace's save would flush BOTH — a real reply plus a failed
+        // outcome for the same turn, and a double MessageCount bump. The repository discards the
         // half-written append on failure so the turn ends with exactly one trace.
         var userId = Guid.NewGuid();
         using var cts = new CancellationTokenSource();
 
-        // route_to_issue is the one turn shape that reaches the final append with no further
+        // handoff is the one turn shape that reaches the final append with no further
         // provider call in between (the proposal frame is terminal), so cancelling from the
         // dispatcher lands the cancellation inside AppendMessageAsync itself rather than in
         // the streaming loop — which is the ordering the duplicate-write hazard needs.
@@ -1027,9 +1027,9 @@ public class AgentServiceTests
 
         client.EnqueueTurn(
             new AgentTurnToken(null, new AnthropicToolCall(
-                "tc1", AgentToolNames.RouteToIssue,
+                "tc1", AgentToolNames.Handoff,
                 """{"title":"Broken link","category":"Bug","description":"The camps page 404s."}"""), null),
-            new AgentTurnToken(null, null, new AgentTurnFinalizer(40, 10, 0, 0, "claude-sonnet-4-6", "tool_use")));
+            new AgentTurnToken(null, null, new AgentTurnFinalizer(40, 10, 0, 0, "tool_use")));
 
         await foreach (var _ in svc.AskAsync(
             new AgentTurnRequest(ConversationId: Guid.Empty, UserId: userId, Message: "the camps page is broken", Locale: "es"),
@@ -1039,14 +1039,14 @@ public class AgentServiceTests
         }
 
         var rows = await svc.ListAllConversationsForAdminWithMessagesAsync(
-            refusalsOnly: false, handoffsOnly: false, userId: userId, take: 50, skip: 0,
+            unansweredOnly: false, handoffsOnly: false, userId: userId, take: 50, skip: 0,
             Xunit.TestContext.Current.CancellationToken);
         var conversation = rows.Should().ContainSingle().Subject;
         var assistant = conversation.Messages.Should()
             .ContainSingle(m => m.Role == AgentRole.Assistant,
                 "the cancelled append must not be flushed alongside the failure trace")
             .Subject;
-        assistant.RefusalReason.Should().Be("error");
+        assistant.Outcome.Should().Be(AgentTurnOutcome.Failed);
         assistant.Content.Should().BeEmpty();
         conversation.MessageCount.Should().Be(2, "one user message and one assistant trace");
     }
@@ -1067,10 +1067,10 @@ public class AgentServiceTests
         using var cancellation = CancellationTokenSource.CreateLinkedTokenSource(Xunit.TestContext.Current.CancellationToken);
 
         client.EnqueueTurn(
-            new AgentTurnToken(null, null, null, Usage: new AgentTurnFinalizer(40, 1, 5, 3, "claude-sonnet-4-6", null)),
+            new AgentTurnToken(null, null, null, Usage: new AgentTurnFinalizer(40, 1, 5, 3, null)),
             new AgentTurnToken("Teams are groups of ", null, null),
             new AgentTurnToken("volunteers.", null, null),
-            new AgentTurnToken(null, null, new AgentTurnFinalizer(40, 10, 0, 0, "claude-sonnet-4-6", "end_turn")));
+            new AgentTurnToken(null, null, new AgentTurnFinalizer(40, 10, 0, 0, "end_turn")));
 
         // `break` disposes the async enumerator — exactly what the controller's `await foreach`
         // does when the response write throws on a dead connection.
@@ -1086,7 +1086,7 @@ public class AgentServiceTests
         }
 
         var rows = await svc.ListAllConversationsForAdminWithMessagesAsync(
-            refusalsOnly: false, handoffsOnly: false, userId: userId, take: 50, skip: 0,
+            unansweredOnly: false, handoffsOnly: false, userId: userId, take: 50, skip: 0,
             Xunit.TestContext.Current.CancellationToken);
         var messages = rows.SelectMany(r => r.Messages).ToList();
         messages.Should().Contain(m => m.Role == AgentRole.User,
@@ -1094,8 +1094,8 @@ public class AgentServiceTests
         var failure = messages.Should().ContainSingle(m => m.Role == AgentRole.Assistant,
             "an abandoned turn must leave exactly one assistant trace — no reply, and no duplicate")
             .Subject;
-        failure.RefusalReason.Should().Be("error",
-            "the trace surfaces through the existing admin refusals filter");
+        failure.Outcome.Should().Be(AgentTurnOutcome.Failed,
+            "the trace surfaces through the admin unanswered filter");
         failure.PromptTokens.Should().Be(43);
         failure.OutputTokens.Should().Be(1);
         failure.CachedTokens.Should().Be(5);
@@ -1114,9 +1114,9 @@ public class AgentServiceTests
         var (svc, client) = await BuildServiceAsync(s => s.Enabled = true);
 
         client.EnqueueTurn(
-            new AgentTurnToken(null, null, null, Usage: new AgentTurnFinalizer(40, 1, 5, 3, "claude-sonnet-4-6", null)),
+            new AgentTurnToken(null, null, null, Usage: new AgentTurnFinalizer(40, 1, 5, 3, null)),
             new AgentTurnToken("Teams are groups of volunteers.", null, null),
-            new AgentTurnToken(null, null, new AgentTurnFinalizer(40, 10, 5, 3, "claude-sonnet-4-6", "end_turn")));
+            new AgentTurnToken(null, null, new AgentTurnFinalizer(40, 10, 5, 3, "end_turn")));
 
         await foreach (var t in svc.AskAsync(
             new AgentTurnRequest(ConversationId: Guid.Empty, UserId: userId, Message: "What are teams?", Locale: "es"),
@@ -1127,19 +1127,19 @@ public class AgentServiceTests
         }
 
         var rows = await svc.ListAllConversationsForAdminWithMessagesAsync(
-            refusalsOnly: false, handoffsOnly: false, userId: userId, take: 50, skip: 0,
+            unansweredOnly: false, handoffsOnly: false, userId: userId, take: 50, skip: 0,
             Xunit.TestContext.Current.CancellationToken);
         var assistant = rows.SelectMany(r => r.Messages).Should()
             .ContainSingle(m => m.Role == AgentRole.Assistant).Subject;
         assistant.Content.Should().Be("Teams are groups of volunteers.");
-        assistant.RefusalReason.Should().BeNull();
+        assistant.Outcome.Should().BeNull();
         assistant.PromptTokens.Should().Be(43);
         assistant.OutputTokens.Should().Be(10);
         assistant.CachedTokens.Should().Be(5);
     }
 
     [HumansFact]
-    public async Task Refused_conversations_are_surfaced_by_the_admin_refusals_filter()
+    public async Task ListAll_UnansweredOnly_ReturnsLimitReachedConversation()
     {
         var userId = Guid.NewGuid();
         var store = new AgentRateLimitStore();
@@ -1152,10 +1152,10 @@ public class AgentServiceTests
             s.DailyMessageCap = 30;
         }, rateLimitStore: store);
 
-        // A second user with a normal, non-refused conversation. Must NOT match the filter.
+        // A second user with a normal, answered conversation. Must NOT match the filter.
         await StartConversationAsync(svc, client, Guid.NewGuid());
 
-        // The capped user trips the rate limit — PersistRefusalAsync writes RefusalReason.
+        // The capped user trips the rate limit — PersistOutcomeAsync writes Outcome.
         await foreach (var _ in svc.AskAsync(
             new AgentTurnRequest(ConversationId: Guid.Empty, UserId: userId, Message: "hi", Locale: "es"),
             Xunit.TestContext.Current.CancellationToken))
@@ -1163,13 +1163,13 @@ public class AgentServiceTests
         }
 
         var rows = await svc.ListAllConversationsForAdminWithMessagesAsync(
-            refusalsOnly: true, handoffsOnly: false, userId: null, take: 50, skip: 0,
+            unansweredOnly: true, handoffsOnly: false, userId: null, take: 50, skip: 0,
             Xunit.TestContext.Current.CancellationToken);
 
-        var row = rows.Should().ContainSingle("only the rate-limited conversation is a refusal").Subject;
+        var row = rows.Should().ContainSingle("only the limit-reached conversation is unanswered").Subject;
         row.UserId.Should().Be(userId);
-        row.Messages.Should().Contain(m => m.RefusalReason == "rate_limited",
-            "the API's RefusalCount projects from RefusalReason");
+        row.Messages.Should().Contain(m => m.Outcome == AgentTurnOutcome.LimitReached,
+            "the API's UnansweredCount projects from Outcome");
     }
 
     private static async Task<Guid> StartConversationAsync(
@@ -1177,7 +1177,7 @@ public class AgentServiceTests
     {
         client.EnqueueTurn(
             new AgentTurnToken("hi", null, null),
-            new AgentTurnToken(null, null, new AgentTurnFinalizer(0, 0, 0, 0, "claude-sonnet-4-6", "end_turn")));
+            new AgentTurnToken(null, null, new AgentTurnFinalizer(0, 0, 0, 0, "end_turn")));
 
         var conversationId = Guid.Empty;
         await foreach (var t in svc.AskAsync(
@@ -1208,7 +1208,6 @@ public class AgentServiceTests
             Id = 1,
             Enabled = false,
             Model = "claude-sonnet-4-6",
-            PreloadConfig = AgentPreloadConfig.Tier1,
             DailyMessageCap = 30,
             HourlyMessageCap = 10,
             DailyTokenCap = 50_000,
@@ -1224,28 +1223,28 @@ public class AgentServiceTests
         var repo = new AgentRepository(db, clock);
         var settingsService = new AgentSettingsService(repo, store, clock, Substitute.For<Humans.AuditLog.Contracts.IAuditLogService>(),
             Substitute.For<IAnthropicClient>(),
-            Microsoft.Extensions.Logging.Abstractions.NullLogger<AgentSettingsService>.Instance);
+            NullLogger<AgentSettingsService>.Instance);
         await settingsService.LoadAsync(Xunit.TestContext.Current.CancellationToken);
         var ratelimit = rateLimitStore ?? new AgentRateLimitStore();
-        var abuse = new AgentAbuseDetector();
-        var snapshots = Substitute.For<IAgentUserSnapshotProvider>();
-        snapshots.LoadAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>()).Returns(
-            new AgentUserSnapshot(Guid.NewGuid(), "Test User", "es", "Volunteer", UserState.Active,
+        var distressCheck = new AgentDistressCheck();
+        var contexts = Substitute.For<IAgentUserContextProvider>();
+        contexts.LoadAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>()).Returns(
+            new AgentUserContext("Test User", "es", "Volunteer", UserState.Active,
                 [],
                 [],
                 [],
                 [],
                 []));
         var preload = Substitute.For<IAgentPreloadCorpusBuilder>();
-        preload.BuildAsync(Arg.Any<AgentPreloadConfig>(), Arg.Any<CancellationToken>()).Returns("");
+        preload.BuildAsync(Arg.Any<CancellationToken>()).Returns("");
         var assembler = new AgentPromptAssembler();
         var tools = toolDispatcher ?? Substitute.For<IAgentToolDispatcher>();
         var client = new AnthropicClientFake();
         var options = Options.Create(new AnthropicOptions());
         var resolvedLogger = logger ?? NullLogger<AgentService>.Instance;
 
-        var svc = new AgentService(settingsService, ratelimit, abuse, repo, new AgentRetentionRunStore(),
-            snapshots, preload, assembler, tools, client, options, clock, resolvedLogger, users ?? Substitute.For<IUserService>());
+        var svc = new AgentService(settingsService, ratelimit, distressCheck, repo, new AgentRetentionRunStore(),
+            contexts, preload, assembler, tools, client, options, clock, resolvedLogger, users ?? Substitute.For<IUserService>());
         return (svc, client);
     }
 
@@ -1258,7 +1257,7 @@ public class AgentServiceTests
         {
             if (eventData.Context!.ChangeTracker.Entries<AgentMessage>().Any(entry =>
                 entry.State == EntityState.Added && entry.Entity.Role == AgentRole.Assistant
-                    && entry.Entity.RefusalReason is null or "error"))
+                    && entry.Entity.Outcome is null or AgentTurnOutcome.Failed))
                 throw Failure;
             return base.SavingChangesAsync(eventData, result, cancellationToken);
         }

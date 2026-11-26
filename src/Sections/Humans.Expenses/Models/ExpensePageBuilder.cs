@@ -1,3 +1,4 @@
+using Humans.Permissions.Contracts;
 using Humans.Base.Interfaces;
 using System.Globalization;
 using Humans.Base.Helpers;
@@ -14,7 +15,7 @@ using NodaTime;
 namespace Humans.Expenses.Models;
 
 internal sealed class ExpensePageBuilder(
-    ITeamService teams,
+    IPermissionService permissions,
     IOrgTimeZone orgTimeZone,
     IExpenseReportManagement service,
     IExpenseReview review,
@@ -38,7 +39,7 @@ internal sealed class ExpensePageBuilder(
         var bookingLabels = await ResolveBookingLabelsAsync(reports, ct);
 
         var coordinatorQueue = await review.GetCoordinatorQueueAsync(userId, ct);
-        var coordinatorTeamIds = await teams.GetEffectiveBudgetCoordinatorTeamIdsAsync(userId, ct);
+        var endorsesSomewhere = (await permissions.GetOwnersAsync(userId, ExpensesPermissions.Endorse, ct)).Count > 0;
         var openGrants = (await PreapprovalGrantQueries.ListClaimableAsync(preapprovals, viewer.AllUserIds, ct))
             .OrderBy(g => g.ClaimBy).ThenBy(g => g.ProgramName, StringComparer.OrdinalIgnoreCase).ToList();
 
@@ -72,7 +73,7 @@ internal sealed class ExpensePageBuilder(
             AccountLedger = accountLedger,
             BoundAccountNum = boundAccountNum,
             // A claim waiting on this viewer's sign-off always earns the link.
-            IsCoordinator = coordinatorTeamIds.Count > 0 || coordinatorQueue.Count > 0,
+            IsCoordinator = endorsesSomewhere || coordinatorQueue.Count > 0,
             CoordinatorQueueCount = coordinatorQueue.Count,
         };
         return model;

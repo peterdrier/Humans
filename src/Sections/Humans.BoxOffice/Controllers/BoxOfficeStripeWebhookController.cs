@@ -14,15 +14,15 @@ namespace Humans.BoxOffice.Controllers;
 [AllowAnonymous]
 [Route("BoxOffice/StripeWebhook")]
 internal sealed class BoxOfficeStripeWebhookController(
-    BoxOfficeCheckoutBackend backend,
-    ITicketCheckoutEvents checkoutEvents,
+    BoxOfficePlatform platform,
+    ITicketingPlatformEvents platformEvents,
     ILogger<BoxOfficeStripeWebhookController> logger) : ControllerBase
 {
     [HttpPost("")]
     [IgnoreAntiforgeryToken]
     public async Task<IActionResult> Receive(CancellationToken ct)
     {
-        if (!backend.IsWebhookConfigured || !backend.IsConfigured)
+        if (!platform.IsWebhookConfigured || !platform.IsConfigured)
         {
             logger.LogWarning("Box Office webhook hit while STRIPE_BOXOFFICE_* is unset; rejecting.");
             return StatusCode(StatusCodes.Status503ServiceUnavailable);
@@ -32,11 +32,11 @@ internal sealed class BoxOfficeStripeWebhookController(
         using (var reader = new StreamReader(Request.Body))
             body = await reader.ReadToEndAsync(ct);
 
-        var sessionIds = await backend.ParseWebhookAsync(body, Request.Headers["Stripe-Signature"].ToString(), ct);
+        var sessionIds = await platform.ParseWebhookAsync(body, Request.Headers["Stripe-Signature"].ToString(), ct);
         if (sessionIds is null)
             return BadRequest();
         foreach (var sessionId in sessionIds)
-            await checkoutEvents.CheckoutChangedAsync(BoxOfficeCheckoutBackend.BackendKey, sessionId, ct);
+            await platformEvents.PlatformOrderChangedAsync(BoxOfficePlatform.PlatformKey, sessionId, ct);
 
         return Ok();
     }

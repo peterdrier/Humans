@@ -2,7 +2,6 @@ using AwesomeAssertions;
 using Humans.Base.Interfaces;
 using Humans.Users.Contracts;
 using Humans.Workgroups.Domain;
-using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Localization;
 using Humans.Workgroups.Services;
@@ -47,8 +46,8 @@ public sealed class MyWorkgroupsViewComponentTests
         var group = new WorkgroupInfo(Guid.NewGuid(), "group", "Group", "Purpose", "Report",
             WorkgroupDeliverableKind.Report, WorkgroupAudience.Board, null, WorkgroupStatus.Active,
             null, null, null, null, joined, joined, null,
-            [new WorkgroupMemberInfo(Guid.NewGuid(), survivorId, WorkgroupMemberRole.Coordinator, joined, null),
-                new WorkgroupMemberInfo(Guid.NewGuid(), Guid.NewGuid(), WorkgroupMemberRole.Member, joined, null, true)],
+            [new WorkgroupMemberInfo(survivorId, WorkgroupMemberRole.Coordinator, joined, null),
+                new WorkgroupMemberInfo(Guid.NewGuid(), WorkgroupMemberRole.Member, joined, null, true)],
             [], [], [], null, null, null);
         var workgroups = Substitute.For<IWorkgroupService>();
         workgroups.GetForMemberAsync(survivorId, request.Token).Returns(new[] { group });

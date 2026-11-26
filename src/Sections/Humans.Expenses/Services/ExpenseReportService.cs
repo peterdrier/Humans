@@ -2,12 +2,10 @@ using Humans.Base.Extensions;
 using Humans.Base.Interfaces;
 using Humans.AuditLog.Contracts;
 using Humans.Budget.Contracts;
-using Humans.Email.Contracts;
 using Humans.Finance.Contracts;
 using Humans.Gdpr.Contracts;
 using Humans.Holded.Contracts;
 using Humans.Preapprovals.Contracts;
-using Humans.Teams.Contracts;
 using Humans.Expenses.Services.Dtos;
 using Humans.Base.Helpers;
 using Microsoft.Extensions.Options;
@@ -73,6 +71,11 @@ internal sealed class ExpenseReportService(
         Guid? attemptedId = null;
         var result = await RunMutationAsync(logger, ct, async () =>
         {
+            var submitter = await userService.GetUserInfoAsync(submitterUserId, ct);
+            if (submitter is null || submitter.IsTombstone)
+                return ExpenseMutationResult.Failure("Expenses_Validation_SubmitterUnavailable");
+            submitterUserId = submitter.Id;
+
             var (resolved, refusal) = preapprovalGrantId is { } grantId
                 ? await ResolveGrantBookingAsync(grantId, submitterUserId, heldGrantId: null, ct)
                 : await ResolveBookingAsync(holdedAccountNumber, pinnedYearId: null, ct);
@@ -370,7 +373,7 @@ internal sealed class ExpenseReportService(
     internal static (string? Extension, ExpenseError? Refusal) ValidateAttachmentUpload(
         string originalFileName, string contentType, Stream content)
     {
-        if (content is null || content.Length == 0)
+        if (content.Length == 0)
             return (null, ExpenseMutationResult.Failure("Expenses_Flash_SelectFile").Error);
         if (content.Length > AttachmentMaxBytes)
             return (null, ExpenseMutationResult.Failure("Expenses_Validation_FileTooLarge", AttachmentMaxBytes / (1024 * 1024)).Error);
@@ -428,7 +431,7 @@ internal sealed class ExpenseReportService(
             UploadedByUserId = actorUserId,
             UploadedAt = clock.GetCurrentInstant()
         };
-        ExpenseAttachment? replacedAttachment = null;
+        ExpenseAttachment? replacedAttachment;
         try
         {
             var replacement = await repo.ReplaceLineAttachmentAsync(reportId, lineId, attachment, ct,
@@ -1394,7 +1397,7 @@ internal sealed class ExpenseReportService(
         {
             // The claim pre-check only picks the member's message; ClaimAsync is the gate, and it
             // runs first inside the transaction so a refused claim leaves the report untouched.
-            var grantRefusal = await GetGrantClaimRefusalAsync(grantId, reportId, ct);
+            var grantRefusal = await GetGrantClaimRefusalAsync(grantId, ct);
             if (grantRefusal is not null) return grantRefusal;
 
             var afterCommit = new List<Func<CancellationToken, Task>>();
@@ -1494,7 +1497,7 @@ internal sealed class ExpenseReportService(
         return ExpenseMutationResult.Success;
     }
 
-    private async Task<ExpenseMutationResult?> GetGrantClaimRefusalAsync(Guid grantId, Guid reportId, CancellationToken ct)
+    private async Task<ExpenseMutationResult?> GetGrantClaimRefusalAsync(Guid grantId, CancellationToken ct)
     {
         var grant = await PreapprovalGrantQueries.GetGrantAsync(preapprovals, grantId, ct);
         switch (grant?.Status)

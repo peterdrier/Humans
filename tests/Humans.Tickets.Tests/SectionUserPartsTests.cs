@@ -8,7 +8,7 @@ public sealed class SectionUserPartsTests
     [HumansFact]
     public void Parts_ContributesHoldingsAndIssuedTicketsSidebars_AndTheOnsiteChip()
     {
-        IUserPart contribution = ((IUserPart)new Section());
+        IUserPart contribution = new Section();
 
         var parts = contribution.Parts();
 

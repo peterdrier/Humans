@@ -1,3 +1,4 @@
+using System.Text;
 using Humans.Roles.Contracts;
 using Humans.Base.Constants;
 using Humans.Google.Contracts;
@@ -7,7 +8,6 @@ using NodaTime;
 using Humans.Base.Extensions;
 using Humans.Base.Helpers;
 using Humans.AuditLog.Contracts;
-using Humans.Base.Interfaces.Caching;
 using Humans.EarlyEntry.Contracts;
 using Humans.Gdpr.Contracts;
 using Humans.Notifications.Contracts;
@@ -16,7 +16,6 @@ using Humans.Teams.Contracts;
 using Humans.Teams.Domain;
 using Humans.Base.Enums;
 using Humans.Users.Contracts;
-using Humans.Base.Interfaces;
 using Humans.Settings.Contracts;
 using Humans.Base.Threading;
 using System.Globalization;
@@ -1581,6 +1580,11 @@ internal sealed class TeamService(
             var users = await UserService.GetUserInfosAsync([userId], cancellationToken);
             if (!users.TryGetValue(userId, out var user))
                 return;
+            if (user.IsTombstone)
+            {
+                logger.LogWarning("Skipping added-to-team welcome for unavailable user {UserId} team {TeamId}", userId, team.Id);
+                return;
+            }
 
             recipientId = user.Id;
             culture = CultureInfo.GetCultureInfo(user.PreferredLanguage.IsSupportedCultureCode() ? user.PreferredLanguage : "en");
@@ -2066,7 +2070,7 @@ internal sealed class TeamService(
         if (string.IsNullOrWhiteSpace(name))
             return "Role name cannot be empty";
 
-        if (name.Length > 100)
+        if (name.EnumerateRunes().Count() > 100)
             return "Role name cannot exceed 100 characters";
         return null;
     }
@@ -2081,6 +2085,8 @@ internal sealed class TeamService(
 
         if (priorities.Any(priority => !Enum.IsDefined(priority)))
             return "Each slot priority must be a defined priority value";
+        if (string.Join(",", priorities).Length > 500)
+            return "There are too many slots with these priorities. Reduce the number of slots.";
         if (estimatedHours is < 0)
             return "Estimated hours cannot be negative";
         return null;
@@ -2345,7 +2351,6 @@ internal sealed class TeamService(
             definition.IsPublic,
             definition.Assignments
                 .Select(assignment => new TeamRoleAssignmentSnapshot(
-                    assignment.Id,
                     assignment.TeamMemberId,
                     assignment.SlotIndex,
                     assignment.TeamMember?.UserId))
@@ -2404,14 +2409,7 @@ internal sealed class TeamService(
         CancellationToken cancellationToken = default)
     {
         var requests = await repo.GetPendingForTeamAsync(teamId, cancellationToken);
-        var usersById = requests.Count == 0
-            ? new Dictionary<Guid, UserInfo>()
-            : await UserService.GetUserInfosAsync(
-                requests.Select(request => request.UserId),
-                cancellationToken);
-        return requests
-            .Select(request => ToJoinRequestSnapshot(request, usersById))
-            .ToList();
+        return requests.Select(ToJoinRequestSnapshot).ToList();
     }
 
     public async Task<IReadOnlyList<TeamJoinRequestSnapshot>> GetPendingRequestsForUserAsync(
@@ -2436,26 +2434,9 @@ internal sealed class TeamService(
         request.TeamId,
         request.Team?.Name,
         request.UserId,
-        UserDisplayName: null,
-        UserProfilePictureUrl: null,
-        request.Status,
         request.Message,
         request.RequestedAt,
-        request.ResolvedAt,
-        request.ReviewNotes,
         request.Team?.Slug);
-
-    private static TeamJoinRequestSnapshot ToJoinRequestSnapshot(
-        TeamJoinRequest request,
-        IReadOnlyDictionary<Guid, UserInfo> usersById)
-    {
-        usersById.TryGetValue(request.UserId, out var user);
-        return ToJoinRequestSnapshot(request) with
-        {
-            UserDisplayName = user?.BurnerName,
-            UserProfilePictureUrl = user?.ProfilePictureUrl
-        };
-    }
 
     public async Task<IReadOnlyList<UserTeamMembershipInfo>> GetUserTeamMembershipsAsync(
         Guid userId, CancellationToken cancellationToken = default)
@@ -2463,7 +2444,7 @@ internal sealed class TeamService(
         var memberships = await repo.GetActiveByUserIdAsync(userId, cancellationToken);
         return memberships
             .Select(m => new UserTeamMembershipInfo(
-                m.Id, m.TeamId, m.Team.Name, m.Team.Slug, m.Team.IsSystemTeam, m.Role, m.JoinedAt)
+                m.TeamId, m.Team.Name, m.Team.Slug, m.Role)
             {
                 IsActive = m.Team.IsActive,
                 IsHidden = m.Team.IsHidden,

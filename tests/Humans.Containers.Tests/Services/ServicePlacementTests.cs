@@ -25,7 +25,7 @@ public sealed class ServicePlacementTests
     private readonly IFileStorage _fileStorage = Substitute.For<IFileStorage>();
     private readonly IAuditLogService _auditLog = Substitute.For<IAuditLogService>();
     private readonly Service _sut;
-    private readonly FakeClock Clock = new(Instant.FromUtc(2026, 4, 26, 10, 0));
+    private readonly FakeClock _clock = new(Instant.FromUtc(2026, 4, 26, 10, 0));
 
     private readonly DbContextOptions<ContainersDbContext> _containersOptions =
         new DbContextOptionsBuilder<ContainersDbContext>()
@@ -40,7 +40,7 @@ public sealed class ServicePlacementTests
             _fileStorage,
             Substitute.For<ICampService>(),
             _auditLog,
-            Clock, Microsoft.Extensions.Logging.Abstractions.NullLogger<Service>.Instance);
+            _clock, Microsoft.Extensions.Logging.Abstractions.NullLogger<Service>.Instance);
     }
 
     private static ContainerImageUpload Sketch(string name = "sketch.jpg") =>
@@ -48,7 +48,7 @@ public sealed class ServicePlacementTests
 
     private async Task<Container> SeedContainerAsync()
     {
-        var now = Clock.GetCurrentInstant();
+        var now = _clock.GetCurrentInstant();
         var container = new Container
         {
             Id = Guid.NewGuid(),
@@ -85,7 +85,7 @@ public sealed class ServicePlacementTests
         var before = await GetPlacementAsync(container.Id);
         _fileStorage.ClearReceivedCalls();
         _auditLog.ClearReceivedCalls();
-        Clock.AdvanceSeconds(60);
+        _clock.AdvanceSeconds(60);
 
         var result = await _sut.UpdatePlacementNotesAsync(container.Id, Year, new string('x', 5001),
             removeImage ? null : Sketch("replacement.jpg"), removeImage, ActorUserId, ct);
@@ -118,19 +118,19 @@ public sealed class ServicePlacementTests
     public async Task SavePlacementAsync_SetsLocationGeoJsonAndUpdatedAt()
     {
         var container = await SeedContainerAsync();
-        Clock.AdvanceSeconds(60);
+        _clock.AdvanceSeconds(60);
 
         var result = (await _sut.SavePlacementAsync(container.Id, Year, GeoJson, ActorUserId, TestContext.Current.CancellationToken)).Value!;
 
         result.LocationGeoJson.Should().Be(GeoJson);
-        result.UpdatedAt.Should().Be(Clock.GetCurrentInstant());
+        result.UpdatedAt.Should().Be(_clock.GetCurrentInstant());
         result.Year.Should().Be(Year);
     }
 
     [HumansFact]
     public async Task SavePlacementAsync_RejectsInvalidGeometry()
     {
-        using var cultureScope = new Humans.Base.Extensions.CultureScope("en");
+        using var cultureScope = new Base.Extensions.CultureScope("en");
         var container = await SeedContainerAsync();
 
         var act = () => _sut.SavePlacementAsync(container.Id, Year, "{}", ActorUserId, TestContext.Current.CancellationToken);
@@ -328,7 +328,7 @@ public sealed class ServicePlacementTests
         var options = new DbContextOptionsBuilder<ContainersDbContext>(_containersOptions)
             .AddInterceptors(new ServiceImageTests.FailImageMetadataSave(afterCommit, failure)).Options;
         var service = new Service(new Repository(new TestDbContextFactory<ContainersDbContext>(options)),
-            _fileStorage, Substitute.For<ICampService>(), _auditLog, Clock,
+            _fileStorage, Substitute.For<ICampService>(), _auditLog, _clock,
             Microsoft.Extensions.Logging.Abstractions.NullLogger<Service>.Instance);
 
         var save = () => service.UpdatePlacementNotesAsync(container.Id, Year, "new notes", Sketch("new.jpg"), false,
@@ -363,13 +363,13 @@ public sealed class ServicePlacementTests
             ContainerId = id,
             Year = Year,
             PlacementImageStoragePath = "uploads/containers/original.jpg",
-            CreatedAt = Clock.GetCurrentInstant(),
-            UpdatedAt = Clock.GetCurrentInstant()
+            CreatedAt = _clock.GetCurrentInstant(),
+            UpdatedAt = _clock.GetCurrentInstant()
         });
         repo.UpsertPlacementAsync(Arg.Any<ContainerPlacement>(), Arg.Any<CancellationToken>())
             .ThrowsAsync(new IOException("Database write failed"));
         var service = new Service(repo, _fileStorage, Substitute.For<ICampService>(), _auditLog,
-            Clock, Microsoft.Extensions.Logging.Abstractions.NullLogger<Service>.Instance);
+            _clock, Microsoft.Extensions.Logging.Abstractions.NullLogger<Service>.Instance);
 
         var act = () => service.UpdatePlacementNotesAsync(id, Year, "notes",
             removeImage ? null : Sketch(), removeImage, ActorUserId, TestContext.Current.CancellationToken);

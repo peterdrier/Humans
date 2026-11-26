@@ -157,7 +157,7 @@ public sealed class ServiceImageTests
     [HumansFact]
     public async Task CreateAsync_ImageRuleMessage_CarriesTheImageLimit()
     {
-        using var culture = new Humans.Base.Extensions.CultureScope("en");
+        using var culture = new Base.Extensions.CultureScope("en");
         var refusal = await _sut.CreateAsync(actorUserId: Guid.NewGuid(), data: new ContainerData(
             CampId: CampId,
             Name: "Test",
@@ -400,10 +400,7 @@ public sealed class ServiceImageTests
     {
         public override ValueTask<InterceptionResult<int>> SavingChangesAsync(
             DbContextEventData eventData, InterceptionResult<int> result, CancellationToken cancellationToken = default)
-        {
-            if (!afterCommit) throw failure;
-            return base.SavingChangesAsync(eventData, result, cancellationToken);
-        }
+            => afterCommit ? base.SavingChangesAsync(eventData, result, cancellationToken) : throw failure;
 
         public override ValueTask<int> SavedChangesAsync(
             SaveChangesCompletedEventData eventData, int result, CancellationToken cancellationToken = default)

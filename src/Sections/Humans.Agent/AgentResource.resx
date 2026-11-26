@@ -58,37 +58,37 @@
   <resheader name="writer">
     <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a2c561934e089</value>
   </resheader>
-  <data name="Agent_ConversationBackToHistory" xml:space="preserve"><value>Back to history</value></data>
+  <data name="Agent_ConversationBackToHistory" xml:space="preserve"><value>Back to my conversations</value></data>
   <data name="Agent_ConversationEmpty" xml:space="preserve"><value>No messages in this conversation.</value></data>
-  <data name="Agent_ConversationRefusedLabel" xml:space="preserve"><value>The agent declined to answer this turn.</value></data>
-  <data name="Agent_ConversationTitle" xml:space="preserve"><value>Agent conversation</value></data>
+  <data name="Agent_ConversationUnansweredLabel" xml:space="preserve"><value>The Assistant didn't answer this question.</value></data>
+  <data name="Agent_ConversationTitle" xml:space="preserve"><value>Conversation with the Assistant</value></data>
   <data name="Agent_ConversationToolCallsSummary" xml:space="preserve"><value>{0} tool call(s)</value></data>
-  <data name="Agent_ConversationTranscript" xml:space="preserve"><value>Transcript</value></data>
-  <data name="Agent_ContextCardCaveat" xml:space="preserve"><value>This is your current context. If your roles or teams have changed since this conversation, the agent saw a different version at the time.</value></data>
-  <data name="Agent_ContextCardEmpty" xml:space="preserve"><value>No personal context is currently being sent to the agent.</value></data>
-  <data name="Agent_ContextCardSummary" xml:space="preserve"><value>Your context (as the agent sees you now)</value></data>
+  <data name="Agent_ConversationTranscript" xml:space="preserve"><value>Messages</value></data>
+  <data name="Agent_ContextCardCaveat" xml:space="preserve"><value>This is what the Assistant knows about you now. If your roles or teams have changed since this conversation, it knew something different at the time.</value></data>
+  <data name="Agent_ContextCardEmpty" xml:space="preserve"><value>The Assistant currently knows nothing about you.</value></data>
+  <data name="Agent_ContextCardSummary" xml:space="preserve"><value>What the Assistant knows about you</value></data>
   <data name="Agent_DetailId" xml:space="preserve"><value>ID</value></data>
   <data name="Agent_DetailLocale" xml:space="preserve"><value>Locale</value></data>
-  <data name="Agent_DetailRefusal" xml:space="preserve"><value>Refusal: {0}</value></data>
+  <data name="Agent_DetailOutcome" xml:space="preserve"><value>Outcome: {0}</value></data>
   <data name="Agent_HistoryEmpty" xml:space="preserve"><value>No conversations yet.</value></data>
   <data name="Agent_HistoryLastMessage" xml:space="preserve"><value>Last message</value></data>
   <data name="Agent_HistoryMessages" xml:space="preserve"><value>Messages</value></data>
   <data name="Agent_HistoryStarted" xml:space="preserve"><value>Started</value></data>
-  <data name="Agent_HistoryTitle" xml:space="preserve"><value>Agent — My Conversations</value></data>
+  <data name="Agent_HistoryTitle" xml:space="preserve"><value>My conversations</value></data>
   <data name="Agent_InputPlaceholder" xml:space="preserve"><value>Ask a question about how the system works…</value></data>
   <data name="Agent_PanelTitle" xml:space="preserve"><value>Assistant</value></data>
   <data name="Agent_TermsLink" xml:space="preserve"><value>AI Terms</value></data>
   <data name="Agent_Send" xml:space="preserve"><value>Send</value></data>
-  <data name="Agent_ViewHistory" xml:space="preserve"><value>History</value></data>
+  <data name="Agent_ViewHistory" xml:space="preserve"><value>My conversations</value></data>
   <data name="Agent_Help_WidgetButton" xml:space="preserve"><value>Help</value></data>
   <data name="Agent_Help_Menu_TalkWithAgent" xml:space="preserve"><value>Talk with the Assistant</value></data>
   <data name="Agent_Help_Menu_CreateIssue" xml:space="preserve"><value>Create issue</value></data>
-  <data name="Agent_IssueProposed" xml:space="preserve"><value>I can't answer this myself. I've drafted an issue for the team — please review and submit it.</value></data>
+  <data name="Agent_HandoffDrafted" xml:space="preserve"><value>I can't answer this myself. I've drafted an issue for the team — please review and submit it.</value></data>
   <data name="Agent_SilentTurnFallback" xml:space="preserve"><value>I wasn't able to put together an answer for that — could you try rephrasing or asking again?</value></data>
-  <data name="Agent_AbuseRefusal" xml:space="preserve"><value>This isn't something I can help with. If you're in distress, please contact a coordinator or emergency services.</value></data>
+  <data name="Agent_DistressReply" xml:space="preserve"><value>This isn't something I can help with. If you're in distress, please contact a coordinator or emergency services.</value></data>
   <data name="Agent_HttpError" xml:space="preserve"><value>Error: {0}</value></data>
   <data name="Agent_NetworkError" xml:space="preserve"><value>Network error.</value></data>
-  <data name="Agent_DisabledReply" xml:space="preserve"><value>(The agent is currently disabled.)</value></data>
+  <data name="Agent_DisabledReply" xml:space="preserve"><value>(The Assistant is currently turned off.)</value></data>
   <data name="Agent_RateLimitedReply" xml:space="preserve"><value>(Daily limit reached — try again tomorrow.)</value></data>
   <data name="Agent_TurnErrorReply" xml:space="preserve"><value>(Something went wrong answering that. Please try again.)</value></data>
 </root>

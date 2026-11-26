@@ -11,15 +11,11 @@ using Humans.Base.Enums;
 using Humans.Base.Extensions;
 using Humans.Shifts.Data;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.EntityFrameworkCore.Infrastructure;
-using Microsoft.EntityFrameworkCore.Diagnostics;
-using Microsoft.Extensions.Caching.Memory;
 using NodaTime;
 using NSubstitute;
 using Humans.Permissions.Contracts;
 using Humans.Base.Authorization;
 using Humans.Users.Contracts;
-using Humans.AuditLog.Contracts;
 
 using Humans.Shifts.Models;
 
@@ -28,8 +24,6 @@ namespace Humans.Shifts.Tests.Services;
 public sealed class ShiftManagementServiceTests : ShiftsTestHarness
 {
     private readonly ITeamService _teamService;
-    private readonly IUserService _userService;
-    private readonly IRoleAssignmentService _roleAssignmentService;
     private readonly IPermissionService _permissions = Substitute.For<IPermissionService>();
     private readonly Humans.Settings.Contracts.ISettingsService _settingsService = Substitute.For<Humans.Settings.Contracts.ISettingsService>();
     private readonly ShiftManagementService _service;
@@ -40,13 +34,13 @@ public sealed class ShiftManagementServiceTests : ShiftsTestHarness
         : base(TestNow)
     {
         _teamService = Substitute.For<ITeamService>();
-        _userService = Substitute.For<IUserService>();
-        _roleAssignmentService = Substitute.For<IRoleAssignmentService>();
+        var userService = Substitute.For<IUserService>();
+        var roleAssignmentService = Substitute.For<IRoleAssignmentService>();
 
         // Default: users looked up by id resolve to the entities seeded in Db
         // so the cross-section signup stitching in GetBrowseShiftsAsync returns the
         // correct DisplayName.
-        _userService.StubGetUserInfosFromContext(Db);
+        userService.StubGetUserInfosFromContext(Db);
 
         _teamService.GetTeamsAsync(Arg.Any<CancellationToken>())
             .Returns(_ => Task.FromResult<IReadOnlyDictionary<Guid, TeamInfo>>(
@@ -63,9 +57,9 @@ public sealed class ShiftManagementServiceTests : ShiftsTestHarness
 
         var serviceProvider = new ServiceLocatorBuilder()
             .With(_teamService)
-            .With(_userService)
-            .With(_userService)
-            .With(_roleAssignmentService)
+            .With(userService)
+            .With(userService)
+            .With(roleAssignmentService)
             .With(_permissions)
             .With(_settingsService)
             .Build();
@@ -401,14 +395,14 @@ public sealed class ShiftManagementServiceTests : ShiftsTestHarness
         var locator = Substitute.For<IServiceProvider>();
         var service = new ShiftManagementService(
             new ShiftRepository(ShiftsDbFactory, ShiftsDb, Clock), AuditLog,
-            locator, new EventCalendarResolver(Substitute.For<Humans.Settings.Contracts.ISettingsService>(), Substitute.For<Humans.Shifts.Data.IShiftManagementRepository>()), Clock,
+            locator, new EventCalendarResolver(Substitute.For<Humans.Settings.Contracts.ISettingsService>(), Substitute.For<IShiftManagementRepository>()), Clock,
             Microsoft.Extensions.Logging.Abstractions.NullLogger<ShiftManagementService>.Instance);
         locator.GetService(typeof(IShiftRotaRows)).Returns(service);
 
         var found = await service.GetShiftByIdAsync(shift.Id, Xunit.TestContext.Current.CancellationToken);
 
         found.Should().NotBeNull();
-        found!.Shift.Id.Should().Be(shift.Id);
+        found.Shift.Id.Should().Be(shift.Id);
         found.Shift.DayOffset.Should().Be(2);
         found.Rota.Id.Should().Be(rota.Id);
         found.Rota.TeamId.Should().Be(rota.TeamId);

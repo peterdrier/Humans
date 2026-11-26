@@ -29,7 +29,7 @@ public sealed class UserCalendarViewComponentTests
             new("early", "Shifts", "Early", null, early, early.Plus(Duration.FromHours(1)), null, null),
         });
         var tokens = Substitute.For<ICalendarFeedTokenService>();
-        tokens.GetAsync(userId, Arg.Any<CancellationToken>()).Returns((Guid?)Guid.NewGuid());
+        tokens.GetAsync(userId, Arg.Any<CancellationToken>()).Returns(Guid.NewGuid());
         var component = new UserCalendarViewComponent(feed, Substitute.For<IUserService>(), tokens,
             NullLogger<UserCalendarViewComponent>.Instance)
         {

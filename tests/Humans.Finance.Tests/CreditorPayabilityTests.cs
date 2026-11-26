@@ -11,13 +11,11 @@ using Humans.Finance.Models;
 using Humans.Finance.Services;
 using Humans.Holded.Contracts;
 using Humans.Users.Contracts;
-using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using NodaTime;
 using NodaTime.Testing;
 using NSubstitute;
-using NSubstitute.ExceptionExtensions;
 using Xunit;
 
 namespace Humans.Finance.Tests;
@@ -79,7 +77,7 @@ public class CreditorPayabilityTests
             "Paul Vivien", "ES79****789", 4800m, bookedAt, null, null, null, null, null, null, WithdrawnAt: withdrawnAt);
 
     private static HoldedPurchaseDocInfo Doc(string id, decimal total, decimal? pending = null) => new HoldedPurchaseDocInfo(
-        id, id, "Paul Vivien", "c1", "ER: Van hire", FixedNow.InZone(DateTimeZoneProviders.Tzdb["Europe/Madrid"]).Date, total, 0m, total, "eur", true, null, [], null, "", pending ?? total);
+        id, id, "Paul Vivien", "c1", "ER: Van hire", FixedNow.InZone(DateTimeZoneProviders.Tzdb["Europe/Madrid"]).Date, total, total, true, null, [], null, "", pending ?? total);
 
     private static ExpenseHoldedBooking Booking(string docId, Guid? lineId = null) =>
         new(ReportId, lineId ?? Guid.NewGuid(), UserId, "c1", docId, "ER: Van hire", $"Expense report {ReportId}", 4800m);

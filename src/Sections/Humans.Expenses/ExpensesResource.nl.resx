@@ -305,4 +305,7 @@
   <data name="Expenses_Validation_AmountPrecision" xml:space="preserve"><value>Voer een bedrag in met maximaal twee decimalen.</value></data>
   <data name="Expenses_Flash_DraftSavedFollowupFailed" xml:space="preserve"><value>Het concept is opgeslagen, maar het verzoek kon niet worden afgerond. Controleer het voordat je verdergaat.</value></data>
   <data name="Expenses_Flash_DraftOutcomeUnknown" xml:space="preserve"><value>We konden niet bevestigen of het concept is opgeslagen. Controleer bestaande declaraties voordat je nog een concept aanmaakt.</value></data>
+  <data name="Expenses_Permission_Endorse_Title" xml:space="preserve"><value>Declaraties goedkeuren</value></data>
+  <data name="Expenses_Permission_Endorse_Blurb" xml:space="preserve"><value>Declaraties op het budget van het team goedkeuren, afwijzen en regels weigeren.</value></data>
+  <data name="Expenses_Validation_SubmitterUnavailable" xml:space="preserve"><value>De indiener is niet meer beschikbaar.</value></data>
 </root>

@@ -2,7 +2,6 @@ using Humans.Gdpr.Contracts;
 using AwesomeAssertions;
 using Humans.EarlyEntry.Contracts;
 using Humans.Base.Enums;
-using Humans.Base.Interfaces.Caching;
 using Humans.Base.Extensions;
 using Humans.Settings.Contracts;
 using Microsoft.EntityFrameworkCore;
@@ -110,6 +109,42 @@ public sealed class CachingCampServiceTests : CampsTestHarness
             return camps.Select(ProjectCampInfo).ToList();
         }
 
+    }
+
+    [HumansFact]
+    public async Task Failed_partial_warmup_cannot_restore_a_camp_missing_from_the_recovery_snapshot()
+    {
+        var ct = TestContext.Current.CancellationToken;
+        var (first, _) = await SeedCampWithSeasonAsync(2026);
+        var (second, _) = await SeedCampWithSeasonAsync(2026);
+        var source = new Dictionary<Guid, CampInfo>
+        {
+            [first.Id] = (await _innerSubstitute.GetCampByIdAsync(first.Id, ct))!,
+            [second.Id] = (await _innerSubstitute.GetCampByIdAsync(second.Id, ct))!
+        };
+        _innerSubstitute.GetCampsForYearAsync(Arg.Any<int>(), Arg.Any<CancellationToken>())
+            .Returns(call => (IReadOnlyList<CampInfo>)source.Values.Where(camp => camp.Seasons.Any(season => season.Year == call.Arg<int>())).ToList());
+        var reads = 0;
+        var publishedId = Guid.Empty;
+        var fail = true;
+        _innerSubstitute.GetCampByIdAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>()).Returns(call =>
+        {
+            var id = call.Arg<Guid>();
+            if (fail && ++reads == 2) throw new InvalidOperationException("Second camp load failed");
+            publishedId = id;
+            return source.GetValueOrDefault(id);
+        });
+        Func<Task> warm = () => _service.GetCampsForYearAsync(2026, ct);
+
+        await warm.Should().ThrowAsync<InvalidOperationException>();
+        _service.AsReadOnlyDictionary.Should().BeEmpty();
+        source.Remove(publishedId);
+        fail = false;
+
+        var recovered = await _service.GetCampsForYearAsync(2026, ct);
+
+        recovered.Should().ContainSingle().Which.Id.Should().Be(source.Keys.Single());
+        _service.IsWarmedUp.Should().BeTrue();
     }
 
     public override void Dispose()
@@ -316,7 +351,6 @@ public sealed class CachingCampServiceTests : CampsTestHarness
                     new CampSeasonInfo(
                         seasonId,
                         campId,
-                        "role-camp",
                         2026,
                         null,
                         "Role Camp",
@@ -364,7 +398,6 @@ public sealed class CachingCampServiceTests : CampsTestHarness
         var cachedSeason = new CampSeasonInfo(
             seasonId,
             campId,
-            "season-camp",
             2026,
             null,
             "Season Camp",
@@ -576,42 +609,42 @@ public sealed class CachingCampServiceTests : CampsTestHarness
 
     public static TheoryData<string, Func<CachingCampServiceTests, Guid, Guid, CancellationToken, Task>> SnapshotWriteVerbs => new()
     {
-        { nameof(ICampManagement.CreateCampAsync), (t, c, se, ct) => t._service.CreateCampAsync(Guid.NewGuid(), "New Camp", "n@x.com", "+34600000001", null, null, false, 1, SeedSeasonData(), null, EventIdFor(2026), ct) },
-        { nameof(ICampManagement.OptInToSeasonAsync), (t, c, se, ct) => t._service.OptInToSeasonAsync(c, EventIdFor(2026), actorUserId: TestActorId, ct) },
+        { nameof(ICampManagement.CreateCampAsync), (t, _, _, ct) => t._service.CreateCampAsync(Guid.NewGuid(), "New Camp", "n@x.com", "+34600000001", null, null, false, 1, SeedSeasonData(), null, EventIdFor(2026), ct) },
+        { nameof(ICampManagement.OptInToSeasonAsync), (t, c, _, ct) => t._service.OptInToSeasonAsync(c, EventIdFor(2026), actorUserId: TestActorId, ct) },
         { nameof(ICampManagement.UpdateSeasonAsync), (t, c, se, ct) => t._service.UpdateSeasonAsync(c, se, SeedSeasonData(), actorUserId: TestActorId, ct) },
-        { nameof(ICampManagement.ApproveSeasonAsync), (t, c, se, ct) => t._service.ApproveSeasonAsync(se, Guid.NewGuid(), null, ct) },
-        { nameof(ICampManagement.RejectSeasonAsync), (t, c, se, ct) => t._service.RejectSeasonAsync(se, Guid.NewGuid(), "notes", ct) },
+        { nameof(ICampManagement.ApproveSeasonAsync), (t, _, se, ct) => t._service.ApproveSeasonAsync(se, Guid.NewGuid(), null, ct) },
+        { nameof(ICampManagement.RejectSeasonAsync), (t, _, se, ct) => t._service.RejectSeasonAsync(se, Guid.NewGuid(), "notes", ct) },
         { nameof(ICampManagement.WithdrawSeasonAsync), (t, c, se, ct) => t._service.WithdrawSeasonAsync(c, se, actorUserId: TestActorId, ct) },
-        { nameof(ICampManagement.ReactivateSeasonAsync), (t, c, se, ct) => t._service.ReactivateSeasonAsync(se, actorUserId: TestActorId, ct) },
+        { nameof(ICampManagement.ReactivateSeasonAsync), (t, _, se, ct) => t._service.ReactivateSeasonAsync(se, actorUserId: TestActorId, ct) },
         { nameof(ICampManagement.MarkSeasonFullAsync), (t, c, se, ct) => t._service.MarkSeasonFullAsync(c, se, actorUserId: TestActorId, ct) },
         { nameof(ICampManagement.UpdateCampAsync), (t, c, se, ct) => t._service.UpdateCampAsync(new CampUpdateInput(c, "e@x.com", "+34600000000", null, null, false, 1, false, se, "Name", SeedSeasonData()), actorUserId: TestActorId, ct) },
-        { nameof(ICampManagement.AddHistoricalNameAsync), (t, c, se, ct) => t._service.AddHistoricalNameAsync(c, "Old Name", TestActorId, ct) },
-        { nameof(ICampManagement.RemoveHistoricalNameAsync), (t, c, se, ct) => t._service.RemoveHistoricalNameAsync(c, Guid.NewGuid(), TestActorId, ct) },
-        { nameof(ICampManagement.UploadImageAsync), (t, c, se, ct) => t._service.UploadImageAsync(c, Stream.Null, "a.jpg", "image/jpeg", 1, actorUserId: TestActorId, ct) },
-        { nameof(ICampManagement.DeleteImageAsync), (t, c, se, ct) => t._service.DeleteImageAsync(c, Guid.NewGuid(), actorUserId: TestActorId, ct) },
-        { nameof(ICampManagement.ReorderImagesAsync), (t, c, se, ct) => t._service.ReorderImagesAsync(c, [], TestActorId, ct) },
-        { nameof(ICampManagement.SetNameLockDateAsync), (t, c, se, ct) => t._service.SetNameLockDateAsync(EventIdFor(2026), new LocalDate(2026, 5, 1), Guid.NewGuid(), ct) },
+        { nameof(ICampManagement.AddHistoricalNameAsync), (t, c, _, ct) => t._service.AddHistoricalNameAsync(c, "Old Name", TestActorId, ct) },
+        { nameof(ICampManagement.RemoveHistoricalNameAsync), (t, c, _, ct) => t._service.RemoveHistoricalNameAsync(c, Guid.NewGuid(), TestActorId, ct) },
+        { nameof(ICampManagement.UploadImageAsync), (t, c, _, ct) => t._service.UploadImageAsync(c, Stream.Null, "a.jpg", "image/jpeg", 1, actorUserId: TestActorId, ct) },
+        { nameof(ICampManagement.DeleteImageAsync), (t, c, _, ct) => t._service.DeleteImageAsync(c, Guid.NewGuid(), actorUserId: TestActorId, ct) },
+        { nameof(ICampManagement.ReorderImagesAsync), (t, c, _, ct) => t._service.ReorderImagesAsync(c, [], TestActorId, ct) },
+        { nameof(ICampManagement.SetNameLockDateAsync), (t, _, _, ct) => t._service.SetNameLockDateAsync(EventIdFor(2026), new LocalDate(2026, 5, 1), Guid.NewGuid(), ct) },
         // Seasons without an event id take their year's open event, so registration and event changes can remap them.
-        { nameof(ICampManagement.OpenSeasonAsync), (t, c, se, ct) => t._service.OpenSeasonAsync(EventIdFor(2026), Guid.NewGuid(), ct) },
-        { nameof(ICampManagement.CloseSeasonAsync), (t, c, se, ct) => t._service.CloseSeasonAsync(EventIdFor(2026), Guid.NewGuid(), ct) },
-        { nameof(IEventSettingsChangeListener.EventSettingsChanged), (t, c, se, ct) => { t._service.EventSettingsChanged(EventIdFor(2026)); return Task.CompletedTask; } },
-        { nameof(ICampManagement.RequestCampMembershipAsync), (t, c, se, ct) => t._service.RequestCampMembershipAsync(c, Guid.NewGuid(), ct) },
-        { nameof(ICampManagement.ApproveCampMemberAsync), (t, c, se, ct) => t._service.ApproveCampMemberAsync(c, Guid.NewGuid(), Guid.NewGuid(), ct) },
-        { nameof(ICampManagement.RejectCampMemberAsync), (t, c, se, ct) => t._service.RejectCampMemberAsync(c, Guid.NewGuid(), Guid.NewGuid(), ct) },
-        { nameof(ICampManagement.RemoveCampMemberAsync), (t, c, se, ct) => t._service.RemoveCampMemberAsync(c, Guid.NewGuid(), Guid.NewGuid(), ct) },
-        { nameof(ICampManagement.AddCampMemberToActiveSeasonAsync), (t, c, se, ct) => t._service.AddCampMemberToActiveSeasonAsync(c, Guid.NewGuid(), Guid.NewGuid(), ct) },
-        { nameof(ICampManagement.AddMemberAndAssignRoleInActiveSeasonAsync), (t, c, se, ct) => t._service.AddMemberAndAssignRoleInActiveSeasonAsync(c, Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid(), ct) },
-        { nameof(ICampManagement.WithdrawCampMembershipRequestAsync), (t, c, se, ct) => t._service.WithdrawCampMembershipRequestAsync(Guid.NewGuid(), Guid.NewGuid(), ct) },
-        { nameof(ICampManagement.LeaveCampAsync), (t, c, se, ct) => t._service.LeaveCampAsync(Guid.NewGuid(), Guid.NewGuid(), ct) },
-        { nameof(ICampManagement.SetEarlyEntryAsync), (t, c, se, ct) => t._service.SetEarlyEntryAsync(c, Guid.NewGuid(), true, Guid.NewGuid(), ct) },
-        { nameof(ICampManagement.SetCampSeasonEeSlotCountAsync), (t, c, se, ct) => t._service.SetCampSeasonEeSlotCountAsync(se, 3, Guid.NewGuid(), ct) },
-        { nameof(IUserMerge.ReassignAsync), (t, c, se, ct) => t._service.ReassignAsync(Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid(), Instant.FromUtc(2026, 3, 13, 12, 0), ct) },
-        { nameof(IUserDataContributor.EraseForUserAsync), (t, c, se, ct) => t._service.EraseForUserAsync(Guid.NewGuid(), ct) },
-        { nameof(ICampRoleService.UpdateDefinitionAsync), (t, c, se, ct) => ((ICampRoleService)t._service).UpdateDefinitionAsync(Guid.NewGuid(), RoleInput, TestActorId, ct) },
-        { nameof(ICampRoleService.DeactivateDefinitionAsync), (t, c, se, ct) => ((ICampRoleService)t._service).DeactivateDefinitionAsync(Guid.NewGuid(), TestActorId, ct) },
-        { nameof(ICampRoleService.ReactivateDefinitionAsync), (t, c, se, ct) => ((ICampRoleService)t._service).ReactivateDefinitionAsync(Guid.NewGuid(), TestActorId, ct) },
-        { nameof(ICampRoleService.AssignAsync), (t, c, se, ct) => ((ICampRoleService)t._service).AssignAsync(se, Guid.NewGuid(), Guid.NewGuid(), TestActorId, ct) },
-        { nameof(ICampRoleService.UnassignAsync), (t, c, se, ct) => ((ICampRoleService)t._service).UnassignAsync(Guid.NewGuid(), TestActorId, ct) },
+        { nameof(ICampManagement.OpenSeasonAsync), (t, _, _, ct) => t._service.OpenSeasonAsync(EventIdFor(2026), Guid.NewGuid(), ct) },
+        { nameof(ICampManagement.CloseSeasonAsync), (t, _, _, ct) => t._service.CloseSeasonAsync(EventIdFor(2026), Guid.NewGuid(), ct) },
+        { nameof(IEventSettingsChangeListener.EventSettingsChanged), (t, _, _, _) => { t._service.EventSettingsChanged(EventIdFor(2026)); return Task.CompletedTask; } },
+        { nameof(ICampManagement.RequestCampMembershipAsync), (t, c, _, ct) => t._service.RequestCampMembershipAsync(c, Guid.NewGuid(), ct) },
+        { nameof(ICampManagement.ApproveCampMemberAsync), (t, c, _, ct) => t._service.ApproveCampMemberAsync(c, Guid.NewGuid(), Guid.NewGuid(), ct) },
+        { nameof(ICampManagement.RejectCampMemberAsync), (t, c, _, ct) => t._service.RejectCampMemberAsync(c, Guid.NewGuid(), Guid.NewGuid(), ct) },
+        { nameof(ICampManagement.RemoveCampMemberAsync), (t, c, _, ct) => t._service.RemoveCampMemberAsync(c, Guid.NewGuid(), Guid.NewGuid(), ct) },
+        { nameof(ICampManagement.AddCampMemberToActiveSeasonAsync), (t, c, _, ct) => t._service.AddCampMemberToActiveSeasonAsync(c, Guid.NewGuid(), Guid.NewGuid(), ct) },
+        { nameof(ICampManagement.AddMemberAndAssignRoleInActiveSeasonAsync), (t, c, _, ct) => t._service.AddMemberAndAssignRoleInActiveSeasonAsync(c, Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid(), ct) },
+        { nameof(ICampManagement.WithdrawCampMembershipRequestAsync), (t, _, _, ct) => t._service.WithdrawCampMembershipRequestAsync(Guid.NewGuid(), Guid.NewGuid(), ct) },
+        { nameof(ICampManagement.LeaveCampAsync), (t, _, _, ct) => t._service.LeaveCampAsync(Guid.NewGuid(), Guid.NewGuid(), ct) },
+        { nameof(ICampManagement.SetEarlyEntryAsync), (t, c, _, ct) => t._service.SetEarlyEntryAsync(c, Guid.NewGuid(), true, Guid.NewGuid(), ct) },
+        { nameof(ICampManagement.SetCampSeasonEeSlotCountAsync), (t, _, se, ct) => t._service.SetCampSeasonEeSlotCountAsync(se, 3, Guid.NewGuid(), ct) },
+        { nameof(IUserMerge.ReassignAsync), (t, _, _, ct) => t._service.ReassignAsync(Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid(), Instant.FromUtc(2026, 3, 13, 12, 0), ct) },
+        { nameof(IUserDataContributor.EraseForUserAsync), (t, _, _, ct) => t._service.EraseForUserAsync(Guid.NewGuid(), ct) },
+        { nameof(ICampRoleService.UpdateDefinitionAsync), (t, _, _, ct) => ((ICampRoleService)t._service).UpdateDefinitionAsync(Guid.NewGuid(), RoleInput, TestActorId, ct) },
+        { nameof(ICampRoleService.DeactivateDefinitionAsync), (t, _, _, ct) => ((ICampRoleService)t._service).DeactivateDefinitionAsync(Guid.NewGuid(), TestActorId, ct) },
+        { nameof(ICampRoleService.ReactivateDefinitionAsync), (t, _, _, ct) => ((ICampRoleService)t._service).ReactivateDefinitionAsync(Guid.NewGuid(), TestActorId, ct) },
+        { nameof(ICampRoleService.AssignAsync), (t, _, se, ct) => ((ICampRoleService)t._service).AssignAsync(se, Guid.NewGuid(), Guid.NewGuid(), TestActorId, ct) },
+        { nameof(ICampRoleService.UnassignAsync), (t, _, _, ct) => ((ICampRoleService)t._service).UnassignAsync(Guid.NewGuid(), TestActorId, ct) },
     };
 
     private static readonly CampRoleDefinitionInput RoleInput =
@@ -952,7 +985,6 @@ public sealed class CachingCampServiceTests : CampsTestHarness
     private static CampSeasonInfo ProjectSeasonInfo(CampSeason season) => new(
             season.Id,
             season.CampId,
-            season.Camp?.Slug ?? string.Empty,
             season.Year,
             season.NameLockDate,
             season.Name,
@@ -980,7 +1012,6 @@ public sealed class CachingCampServiceTests : CampsTestHarness
                     m.UserId,
                     m.Status,
                     m.RequestedAt,
-                    m.ConfirmedAt,
                     m.HasEarlyEntry))
                 .ToList()
     };

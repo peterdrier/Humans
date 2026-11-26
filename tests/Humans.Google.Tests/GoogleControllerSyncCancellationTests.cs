@@ -84,7 +84,7 @@ public class GoogleControllerSyncCancellationTests
         else
             (await act()).Should().BeOfType<RedirectToActionResult>().Which.ActionName.Should().Be(nameof(GoogleController.Index));
 
-        var resultKey = groupSettings ? Humans.Base.Constants.TempDataKeys.GroupSettingsResult : Humans.Base.Constants.TempDataKeys.EmailRenameResult;
+        var resultKey = groupSettings ? Base.Constants.TempDataKeys.GroupSettingsResult : Base.Constants.TempDataKeys.EmailRenameResult;
         controller.TempData.ContainsKey(resultKey).Should().BeFalse();
         var args = _logger.ReceivedCalls().Should().ContainSingle().Subject.GetArguments();
         args[0].Should().Be(callerAborted ? LogLevel.Warning : LogLevel.Error);
@@ -147,7 +147,7 @@ public class GoogleControllerSyncCancellationTests
 
             await _syncService.Received(1).GetRecentOutboxEventsAsync(200, ct);
             await _users.Received(1).GetUserInfosAsync(
-                Arg.Is<IEnumerable<Guid>>(ids => ids.Distinct().Count() == 1 && ids.Contains(userId)), ct);
+                Arg.Is<IEnumerable<Guid>>(ids => ids.ToHashSet().SetEquals(new[] { userId })), ct);
             await teams.Received(1).GetTeamsAsync(ct);
             await _resources.Received(1).GetResourcesByTeamIdsAsync(Arg.Is<IReadOnlyCollection<Guid>>(ids => ids.Contains(teamId)), ct);
         }

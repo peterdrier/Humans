@@ -63,7 +63,6 @@ public class ScannerControllerTests
         AttendeeName: "Ada Lovelace",
         AttendeeEmail: "ada@example.com",
         TicketTypeName: "General Admission",
-        Price: 10m,
         Status: status,
         MatchedUserId: matchedUserId,
         Barcode: "xyz34Qy5");
@@ -101,9 +100,7 @@ public class ScannerControllerTests
         DurationMinutes: 90,
         IsRecurring: isRecurring,
         RecurrenceDays: recurrenceDays,
-        PriorityRank: 0,
-        SubmittedAt: Instant.FromUtc(2026, 5, 1, 0, 0),
-        LastUpdatedAt: Instant.FromUtc(2026, 5, 1, 0, 0));
+        PriorityRank: 0);
 
     [HumansFact]
     public async Task Card_MatchingBarcode_ReturnsFoundCard()
@@ -134,7 +131,6 @@ public class ScannerControllerTests
             AttendeeName: "Old Owner",
             AttendeeEmail: "old@example.com",
             TicketTypeName: "General Admission",
-            Price: 10m,
             Status: TicketAttendeeStatus.Void,
             MatchedUserId: null,
             Barcode: "vb1",

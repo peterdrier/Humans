@@ -1,0 +1,103 @@
+@model TaskFormViewModel
+
+@{
+    var form = Model.Form;
+    var id = Model.Id;
+}
+
+<form action="@Model.Action" method="post">
+    @Html.AntiForgeryToken()
+    <div class="row g-3">
+        <div class="col-md-8">
+            <label class="form-label" for="title-@id">@Localizer["Tasks_Form_Title"]</label>
+            <input type="text" class="form-control" id="title-@id" name="Title" value="@form.Title" maxlength="200" required />
+        </div>
+        <div class="col-md-4">
+            @if (Model.Teams.Count > 1)
+            {
+                <label class="form-label" for="team-@id">@Localizer["Tasks_Form_Team"]</label>
+                <select class="form-select" id="team-@id" name="TeamId">
+                    @foreach (var team in Model.Teams)
+                    {
+                        <option value="@team.Id" selected="@(form.TeamId == team.Id)">@team.Name</option>
+                    }
+                </select>
+            }
+            else
+            {
+                <input type="hidden" name="TeamId" value="@(Model.Teams.Count == 1 ? Model.Teams[0].Id : form.TeamId)" />
+            }
+        </div>
+        <div class="col-12">
+            <label class="form-label" for="description-@id">@Localizer["Tasks_Form_Description"]</label>
+            <markdown-editor name="Description" id="description-@id" value="@form.Description" rows="4" maxlength="4000" />
+        </div>
+        <div class="col-md-6">
+            <label class="form-label" for="event-@id">@Localizer["Tasks_Form_Event"]</label>
+            <select class="form-select" id="event-@id" name="EventId">
+                <option value="">@Localizer["Tasks_Form_NoEvent"]</option>
+                @foreach (var e in Model.Events)
+                {
+                    <option value="@e.Id" selected="@(form.EventId == e.Id)">@e.Name</option>
+                }
+            </select>
+        </div>
+        <div class="col-6 col-md-3">
+            <label class="form-label" for="priority-@id">@Localizer["Tasks_Form_Priority"]</label>
+            <select class="form-select" id="priority-@id" name="Priority">
+                @foreach (var priority in Enum.GetValues<SlotPriority>())
+                {
+                    <option value="@priority" selected="@(form.Priority == priority)">@SharedLocalizer[$"Enum_SlotPriority_{priority}"]</option>
+                }
+            </select>
+        </div>
+        <div class="col-6 col-md-3">
+            <label class="form-label" for="slots-@id">@Localizer["Tasks_Form_Slots"]</label>
+            <input type="number" class="form-control" id="slots-@id" name="SlotCount" value="@form.SlotCount" min="1" required />
+        </div>
+        <div class="col-md-6">
+            <label class="form-label" for="start-@id">@Localizer["Tasks_Form_Start"]</label>
+            <div class="input-group">
+                <input type="date" class="form-control" id="start-@id" name="StartDate" value="@form.StartDate?.ToDateTime(TimeOnly.MinValue).ToInvariantDate()" />
+                <select class="form-select" name="StartRelative" aria-label="@Localizer["Tasks_Form_Start"]">
+                    <option value="false" selected="@(!form.StartRelative)">@Localizer["Tasks_Form_DateFixed"]</option>
+                    <option value="true" selected="@form.StartRelative">@Localizer["Tasks_Form_DateRelative"]</option>
+                </select>
+            </div>
+        </div>
+        <div class="col-md-6">
+            <label class="form-label" for="due-@id">@Localizer["Tasks_Form_Due"]</label>
+            <div class="input-group">
+                <input type="date" class="form-control" id="due-@id" name="DueDate" value="@form.DueDate?.ToDateTime(TimeOnly.MinValue).ToInvariantDate()" />
+                <select class="form-select" name="DueRelative" aria-label="@Localizer["Tasks_Form_Due"]">
+                    <option value="false" selected="@(!form.DueRelative)">@Localizer["Tasks_Form_DateFixed"]</option>
+                    <option value="true" selected="@form.DueRelative">@Localizer["Tasks_Form_DateRelative"]</option>
+                </select>
+            </div>
+        </div>
+        <div class="col-12"><div class="form-text mt-0">@Localizer["Tasks_Form_DateHelp"]</div></div>
+        <div class="col-12">
+            <div class="form-check form-switch">
+                <input type="checkbox" class="form-check-input" role="switch" id="approval-@id" name="NeedsApproval" value="true" checked="@form.NeedsApproval" />
+                <input type="hidden" name="NeedsApproval" value="false" />
+                <label class="form-check-label" for="approval-@id">@Localizer["Tasks_Form_NeedsApproval"]</label>
+            </div>
+        </div>
+        <div class="col-md-8">
+            <label class="form-label" for="reason-@id">@Localizer["Tasks_Form_ApprovalReason"]</label>
+            <input type="text" class="form-control" id="reason-@id" name="ApprovalReason" value="@form.ApprovalReason" maxlength="200" />
+            <div class="form-text">@Localizer["Tasks_Form_ApprovalReasonHelp"]</div>
+        </div>
+        <div class="col-12">
+            <div class="form-check form-switch">
+                <input type="checkbox" class="form-check-input" role="switch" id="hidden-@id" name="IsHidden" value="true" checked="@form.IsHidden" />
+                <input type="hidden" name="IsHidden" value="false" />
+                <label class="form-check-label" for="hidden-@id">@Localizer["Tasks_Form_Hidden"]</label>
+                <div class="form-text">@Localizer["Tasks_Form_HiddenHelp"]</div>
+            </div>
+        </div>
+        <div class="col-12">
+            <button type="submit" class="btn btn-primary">@(Model.IsNew ? Localizer["Tasks_Form_Add"] : Localizer["Tasks_Form_Save"])</button>
+        </div>
+    </div>
+</form>

@@ -1,6 +1,5 @@
 using Humans.Events.Domain;
 using NodaTime;
-using Humans.Events.Contracts;
 
 namespace Humans.Events.Services.Dtos;
 
@@ -71,7 +70,6 @@ internal sealed record EventInfo(
     int? PriorityRank,
     EventStatus Status,
     Instant SubmittedAt,
-    Instant LastUpdatedAt,
     IReadOnlyList<EventModerationHistoryInfo> ModerationHistory)
 {
     public Guid? EventSettingsId { get; init; }
@@ -100,7 +98,6 @@ internal sealed record EventInfo(
         PriorityRank: e.PriorityRank,
         Status: e.Status,
         SubmittedAt: e.SubmittedAt,
-        LastUpdatedAt: e.LastUpdatedAt,
         ModerationHistory: e.EventModerationActions
             .Select(a => new EventModerationHistoryInfo(a.ActorUserId, a.Action, a.Reason, a.CreatedAt))
             .ToList())
@@ -155,11 +152,8 @@ internal enum AddFavouriteOutcome
 /// project as one whole-event target.
 /// </summary>
 internal sealed record EventFavouriteInfo(
-    Guid Id,
-    Guid UserId,
     Guid GuideEventId,
     int? DayOffset,
-    Instant CreatedAt,
     EventInfo Event);
 
 /// <summary>Unordered: consumers choose the display order.</summary>

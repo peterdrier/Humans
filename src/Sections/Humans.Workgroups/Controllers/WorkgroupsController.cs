@@ -9,7 +9,6 @@ using Humans.Calendar.Contracts;
 using Humans.Governance.Contracts;
 using Humans.Holded.Contracts;
 using Humans.Settings.Contracts;
-using Humans.Teams.Contracts;
 using Humans.Users.Contracts;
 using Humans.Workgroups.Domain;
 using Humans.Workgroups.Models;
@@ -550,7 +549,7 @@ internal sealed class WorkgroupsController(
         }
     }
 
-    private string? ActionName() => ControllerContext.ActionDescriptor.ActionName;
+    private string ActionName() => ControllerContext.ActionDescriptor.ActionName;
 
     private async Task<DateTimeZone> OrganisationZoneAsync(CancellationToken ct) =>
         CalendarEventForm.TryResolveZone(await settings.GetTimeZoneIdAsync(ct)) ?? DateTimeZone.Utc;

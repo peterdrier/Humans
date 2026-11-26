@@ -11,7 +11,6 @@ using Humans.Store.Services.Dtos;
 using Humans.Stripe.Contracts;
 using Humans.Holded.Contracts;
 using Microsoft.Extensions.Logging.Abstractions;
-using Microsoft.Extensions.Options;
 using NodaTime;
 using NodaTime.Testing;
 using NSubstitute;
@@ -28,7 +27,6 @@ public class ServiceStripeReconciliationTests
     private readonly IStripeService _stripe = Substitute.For<IStripeService>();
     private readonly FakeClock _clock = new(Instant.FromUtc(2026, 6, 4, 12, 0));
     private readonly IHoldedService _holded = Substitute.For<IHoldedService>();
-    private readonly IHoldedWrite _holdedWrite = Substitute.For<IHoldedWrite>();
     private readonly Service _service;
 
     public ServiceStripeReconciliationTests()

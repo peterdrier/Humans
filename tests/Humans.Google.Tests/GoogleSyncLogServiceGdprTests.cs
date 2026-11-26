@@ -5,10 +5,8 @@ using System.Text.Json;
 using System.Text.Json.Serialization;
 using Humans.Base.Enums;
 using Humans.Google.Domain;
-using Humans.Google.Contracts;
 using Humans.Google.Data;
 using Humans.Google.Services;
-using Humans.Google.Tests.Infrastructure;
 using Humans.Users.Contracts;
 using Microsoft.Extensions.Logging.Abstractions;
 using NodaTime;
@@ -146,7 +144,7 @@ public sealed class GoogleSyncLogServiceGdprTests
         if (secondFails)
         {
             error.Should().BeOfType<InvalidOperationException>();
-            await _repo.DidNotReceiveWithAnyArgs().DeleteByUserIdsAsync(default!, default);
+            await _repo.DidNotReceiveWithAnyArgs().DeleteByUserIdsAsync(default!);
         }
         else
         {

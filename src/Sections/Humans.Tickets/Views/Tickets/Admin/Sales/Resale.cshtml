@@ -11,7 +11,7 @@
     var (resaleState, resaleBadge, whyStill) = Model.ResaleSelling
         ? ("Selling", "bg-success", null)
         : Model.SwitchedOff
-            ? ("Switched off", "bg-secondary", "Resale is switched off for this event in its sales setup, so nothing in the queue sells.")
+            ? ("Switched off", "bg-secondary", "Resale is switched off for this event in its ticketing settings, so nothing in the queue sells.")
             : Model.Mode is TicketSalesMode.Closed or TicketSalesMode.InvitedOnly
                 ? ("Not open to everyone", "bg-secondary", "Sales are not open to everyone, so nothing in the queue sells.")
                 : ("Paused", "bg-warning text-dark", "Resale is paused, so the queue is not moving yet.");
@@ -31,14 +31,14 @@
         }
     </text>;
     Func<ResaleQueueRow, IHtmlContent> waitingStateCell = @<text>
-        <status-badge value="@item.Offer.State" text="@(item.Offer.State == TicketResaleOfferState.Reserved ? "In a checkout" : "Waiting")" />
+        <status-badge value="@item.Offer.State" text="@(item.Offer.State == TicketResaleOfferState.Reserved ? "In an order" : "Waiting")" />
         @if (item.Offer is { State: TicketResaleOfferState.Reserved, ReservedByOrderId: { } holdingId })
         {
             var holding = Model.Orders.GetValueOrDefault(holdingId);
             <a class="small d-block" asp-controller="TicketsSalesAdmin" asp-action="Order" asp-route-id="@holdingId">order @(holding?.Reference ?? holdingId.ToString())</a>
             @if (Model.IsStuck(item.Offer))
             {
-                <span class="badge bg-danger" title="The checkout holding it is over or past its hold; the reconcile job should release or complete it within five minutes. Open the order to check it.">Stuck</span>
+                <span class="badge bg-danger" title="The order holding it is closed or past its hold; the reconcile job should release or complete it within five minutes. Open the order to check it.">Stuck</span>
             }
         }
     </text>;
@@ -47,7 +47,7 @@
         {
             <details authorize-policy="@TicketsPolicies.Manage">
                 <summary class="small">Take out</summary>
-                <form method="post" asp-action="WithdrawOffer" asp-route-id="@Model.SalesEventId" asp-route-offerId="@item.Offer.Id" class="mt-1">
+                <form method="post" asp-action="WithdrawOffer" asp-route-id="@Model.TicketingSettingsId" asp-route-offerId="@item.Offer.Id" class="mt-1">
                     @Html.AntiForgeryToken()
                     <input class="form-control form-control-sm mb-1" name="reason" maxlength="500" required placeholder="Reason" aria-label="Reason" />
                     <button type="submit" class="btn btn-outline-secondary btn-sm">Take out of the queue</button>
@@ -88,7 +88,7 @@
             <span class="me-1">@((item.Offer.RefundOwedMinor / 100m).ToEuro())</span>
             @if (item.Refund is { } refund)
             {
-                <a asp-action="Refunds" asp-route-id="@Model.SalesEventId" asp-route-state="@refund.State"><status-badge value="@refund.State" /></a>
+                <a asp-action="Refunds" asp-route-id="@Model.TicketingSettingsId" asp-route-state="@refund.State"><status-badge value="@refund.State" /></a>
             }
             else
             {
@@ -109,10 +109,10 @@
 <page-header title="Resale queue" subtitle="@Model.EventName" badge="@resaleState" badge-class="@resaleBadge">
     @if (canToggle)
     {
-        <form method="post" asp-action="SetResaleOpen" asp-route-id="@Model.SalesEventId" authorize-policy="@TicketsPolicies.Manage">
+        <form method="post" asp-action="SetResaleOpen" asp-route-id="@Model.TicketingSettingsId" authorize-policy="@TicketsPolicies.Manage">
             @Html.AntiForgeryToken()
-            <input type="hidden" name="open" value="@(Model.SalesEvent.ResaleOpenedAt is null ? "true" : "false")" />
-            @if (Model.SalesEvent.ResaleOpenedAt is null)
+            <input type="hidden" name="open" value="@(Model.Ticketing.ResaleOpenedAt is null ? "true" : "false")" />
+            @if (Model.Ticketing.ResaleOpenedAt is null)
             {
                 <button type="submit" class="btn btn-primary">Open resale</button>
             }
@@ -136,16 +136,16 @@
     {
         <span class="d-block">@whyStill</span>
     }
-    @if (canToggle && Model.SalesEvent.ResaleOpenedAt is { } openedAt)
+    @if (canToggle && Model.Ticketing.ResaleOpenedAt is { } openedAt)
     {
-        <span class="d-block">Opened @openedAt.ToDateTime(). Pausing stops returned tickets selling; they keep their place.</span>
+        <span class="d-block">Opened @openedAt.ToDateTime(). Pausing stops resale offers selling; they keep their place.</span>
     }
     else if (canToggle)
     {
-        <span class="d-block">Opening lets returned tickets sell, oldest first, before fresh stock.</span>
+        <span class="d-block">Opening lets resale offers sell, oldest first, before fresh stock.</span>
     }
-    <span class="d-block">An invited ticket keeps its place: any invited buyer can buy it through their link, and the queue can sell it too. Whoever buys first gets it; a later link offers the next returned ticket.</span>
-    <span class="d-block">Refunds for sold tickets go out in the evening batch once the buyer's order has held for 12 hours. A buyer order that was refunded or disputed holds the refund back for the team.</span>
+    <span class="d-block">An invited ticket keeps its place: any invited buyer can buy it through their link, and the queue can sell it too. Whoever buys first gets it; a later link offers the next resale offer.</span>
+    <span class="d-block">Refunds for sold tickets go out in the evening batch once the buyer's order has held for 12 hours. A buyer order that was refunded or charged back holds the refund back for the team.</span>
     <span class="d-block">Taking a ticket out gives it back to its holder, valid. To void it and refund instead, open the ticket.</span>
 </p>
 

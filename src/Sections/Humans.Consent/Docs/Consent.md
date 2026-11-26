@@ -177,6 +177,8 @@ Document archival uses the shared `data-confirm` handler: each click prompts onc
 
 - Consent registers the external `github` health check for the legal-document repository in `GitHubSettings`. It reports repository access, authentication and rate limits; it does not probe Guide's source. Configured probes observe the framework timeout/abort token, and caller cancellation propagates without logging an availability failure or starting an already-canceled request.
 
+- Legal-content and single/bulk consent-set reads check caller cancellation after fetching and before cache publication. A fetch that returns data after cancellation cannot populate those caches; the next read retries. Successful consent submissions still finish their detached cache refresh.
+
 - A replacement consent-snapshot reload cannot publish across an intervening cache mutation. The affected alias is evicted for source retry, so an older reload cannot overwrite a newer signature refresh or restore an evicted snapshot.
 
 - Review notes and rejection reasons are limited to 4,000 Unicode characters before any review write or audit. Oversized text that would be written returns `ReviewTextTooLong`; existing rejection preconditions retain precedence, and valid text is stored without truncation. The operator queue shows the limit and specific refusal feedback.
@@ -189,7 +191,7 @@ Document archival uses the shared `data-confirm` handler: each click prompts onc
 - `ConsentService.GetRequiredConsentRowsForUserAsync` owns required-document row shaping; the cache delegates to it. It selects each document's latest effective version, omits future-only documents, and returns unsigned rows first, then ordinal title order.
 
 - The admin GitHub-folder preview renders pasted URL parts as text. It preserves the full URL until the server validates the configured repository and branch and normalizes the folder path.
-- The admin legal-document controller orders the document list by team name, then document name, using ordinal comparison. The service returns document data without display ordering.
+- The admin legal-document controller orders the document list by team name, then document name, using ordinal comparison. The version editor orders language badges ordinally. The service returns document and version-language data without display ordering.
 
 - Legal-document create, edit, archive, manual sync and version-summary actions resolve their actor through Users before mutation. Merged sessions use the surviving account for audit attribution; missing accounts receive Unauthorized. Account lookup uses request cancellation, while document writes and sync retain their non-cancellable mutation boundary.
 
@@ -267,6 +269,7 @@ GitHub document discovery, metadata/raw content, commit-summary and prefix-conte
 - When a Consent Coordinator flags a consent check: the review's `IsApproved` is set to false and `Status = Flagged`, with a `ConsentCheckFlagged` audit row from the same write. This is an audit annotation only — flagging provisions/deprovisions no team; Volunteers membership and app access are unaffected. `RejectSignupAsync` (the review's `RejectedAt` here, `UserState.Rejected` in Users) is the CC's only actual kick-out lever.
 - When a new document version is published: affected humans are notified to re-consent. A background job sends re-consent reminders.
 - Re-consent reminder emails render in each recipient’s supported preferred language, with English fallback for blank, malformed or unsupported preferences.
+- Periodic re-consent reminders resolve the requested audience to available accounts before cooldown lookup and delivery. Missing or tombstoned accounts receive no email or cooldown stamp; merged aliases share one send request and one survivor-keyed stamp per pass. Historical cooldown rows remain under their original IDs and still suppress reminders across the merge chain.
 - The reminder job skips a member stamped in `consent_reminders` within `ConsentReminderCooldownDays` and stamps each member it reminds. It checks shutdown before each recipient and finishes a started enqueue/cooldown-stamp unit without the shutdown token. It attempts remaining eligible recipients before reporting preparation, enqueue or cooldown-stamp failures unless shutdown stops the loop; earlier genuine failures still fail the run. Failed enqueues do not stamp the cooldown; successful reminders retain it. Collected failures still fail the job so Hangfire can retry, skipping recipients already in cooldown. Each member’s delivery ID is anchored to their previous successful-send stamp (or first-send state), so retries after a failed stamp reuse the persisted Email outbox row. A later cooldown cycle uses a new delivery ID.
 - Users' `SuspendNonCompliantMembersJob` (04:30, 30 minutes after Consent's reminder job) suspends humans who no longer have valid consents for required documents.
 

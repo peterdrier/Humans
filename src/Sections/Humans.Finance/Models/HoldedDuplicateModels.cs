@@ -2,7 +2,7 @@ namespace Humans.Finance.Models;
 
 /// <summary>Holded refuses to delete a document that carries a payment, and a draft reports no
 /// <c>payments_pending</c> to judge by.</summary>
-internal sealed record HoldedDuplicateRefusal(string DocId, decimal Total, string Reason);
+internal sealed record HoldedDuplicateRefusal(string DocId, string Reason);
 
 /// <summary>
 /// <paramref name="KeptDocId"/> is the one the line links to and is never deleted. <paramref name="DeletableDocIds"/>

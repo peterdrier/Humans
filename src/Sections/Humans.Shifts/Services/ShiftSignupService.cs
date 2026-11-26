@@ -1,6 +1,5 @@
 using System.Globalization;
 using System.Resources;
-using Humans.Auth.Contracts;
 using Humans.Base.Extensions;
 using Humans.Base.Threading;
 using Humans.AuditLog.Contracts;
@@ -603,7 +602,7 @@ internal sealed class ShiftSignupService(
         (await serviceProvider.GetRequiredService<IShiftRotaRows>().GetRotaRowsAsync(ct: ct))
             .SelectMany(r => r.Shifts.SelectMany(s => s.Signups
                 .Where(signup => scope == ShiftSignupTeamProbeScope.Signup ? signup.Id == id : signup.SignupBlockId == id)
-                .Select(signup => new ShiftSignupTeamProbe(signup.Id, s.Shift.Id, r.Rota.TeamId))))
+                .Select(signup => new ShiftSignupTeamProbe(r.Rota.TeamId))))
             .FirstOrDefault();
 
     private bool IsStatusReasonTooLong(string? reason, Guid signupId, Guid actorUserId)

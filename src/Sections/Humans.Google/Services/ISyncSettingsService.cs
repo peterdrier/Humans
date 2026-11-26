@@ -1,5 +1,4 @@
 using Humans.Google.Domain;
-using Humans.Google.Contracts;
 using NodaTime;
 using Humans.Base.Interfaces;
 
@@ -15,7 +14,6 @@ internal interface ISyncSettingsService : IApplicationService
 }
 
 internal sealed record SyncServiceSettingsInfo(
-    Guid Id,
     SyncServiceType ServiceType,
     SyncMode SyncMode,
     Instant UpdatedAt,

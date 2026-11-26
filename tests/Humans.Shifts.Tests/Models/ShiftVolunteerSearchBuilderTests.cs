@@ -1,13 +1,9 @@
-using AwesomeAssertions;
 using Humans.Shifts.Domain;
 using Humans.Shifts.Services.Dtos;
 using Humans.Shifts.Services;
 using Humans.Shifts.Contracts;
-using Humans.Shifts.Tests.Infrastructure;
 using Humans.Users.Contracts;
-using Humans.Users.Domain;
 using Humans.Shifts.Helpers;
-using Humans.Shifts.Models;
 using NodaTime;
 using NSubstitute;
 using Xunit;

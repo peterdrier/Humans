@@ -42,7 +42,7 @@
 ## Invariants
 
 - All scanner routes require the `ScannerAccess` policy (`TicketsAdmin`, `Board`, or `Admin` role — or the gate-terminal account by well-known id). Enforced by `[Authorize(Policy = PolicyNames.ScannerAccess)]` on `ScannerController`; pinned by `EndpointAuthorizationTests` in `tests/Humans.Web.Tests`.
-- `/Scanner/Barcode` is client-only: no data from a decoded barcode is sent to the server; all decode logic runs in the browser.
+- `/Scanner/Barcode` is client-only: no data from a decoded barcode is sent to the server; all decode logic runs in the browser. ZXing format badges use the SDK’s exported format names instead of numeric enum values; unmapped formats display `UNKNOWN`.
 - `/Scanner/Tickets/Card` searches only orders flagged `IsCurrentEvent`; a blank or unknown barcode renders the not-found card (blank: without echoing a code).
 - `/Scanner/Tickets` performs only the cross-section reads listed under Cross-Section Dependencies to render the ticket card plus door context. It is strictly read-only and must never write server-side state.
 - Door context is read only when the ticket has a matched Human; otherwise every per-person field is null. The check-in timestamp is read for the active event year only.

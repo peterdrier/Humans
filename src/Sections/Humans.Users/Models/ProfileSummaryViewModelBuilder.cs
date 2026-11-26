@@ -44,12 +44,15 @@ internal static class ProfileSummaryViewModelBuilder
                 .ThenBy(pl => pl.LanguageCode, StringComparer.OrdinalIgnoreCase)
                 .Select(pl => new ProfileLanguageDisplayViewModel
                 {
-                    LanguageCode = pl.LanguageCode,
                     LanguageName = LanguageCatalog.GetDisplayName(pl.LanguageCode),
                     Proficiency = pl.Proficiency
                 }).ToList(),
             CampName = camp?.Season?.Name,
-            CampRoles = camp?.Roles ?? []
+            CampRoles = camp?.Roles
+                .OrderBy(role => role.SortOrder)
+                .ThenBy(role => role.Name, StringComparer.OrdinalIgnoreCase)
+                .Select(role => role.Name)
+                .ToList() ?? []
         };
     }
 }

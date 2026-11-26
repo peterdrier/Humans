@@ -1,5 +1,4 @@
 using Humans.Base.Extensions;
-using System.Security.Claims;
 using Humans.Base.Enums;
 using Humans.Campaigns.Services;
 using Microsoft.AspNetCore.Mvc;

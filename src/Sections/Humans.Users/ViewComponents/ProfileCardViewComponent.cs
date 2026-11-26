@@ -3,7 +3,6 @@ using Humans.Email.Contracts;
 using Humans.Users.Models;
 using Humans.Base.Helpers;
 using Humans.Auth.Contracts;
-using System.Security.Claims;
 using Microsoft.AspNetCore.Mvc;
 using Humans.Base.Enums;
 using Humans.Teams.Contracts;
@@ -126,7 +125,6 @@ public sealed class ProfileCardViewComponent(
                 .ThenBy(pl => pl.LanguageCode, StringComparer.OrdinalIgnoreCase)
                 .Select(pl => new ProfileLanguageDisplayViewModel
                 {
-                    LanguageCode = pl.LanguageCode,
                     LanguageName = LanguageCatalog.GetDisplayName(pl.LanguageCode),
                     Proficiency = pl.Proficiency
                 }).ToList(),

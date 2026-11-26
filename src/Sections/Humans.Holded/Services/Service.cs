@@ -6,7 +6,6 @@ using Humans.Holded.Models;
 using Microsoft.Extensions.Options;
 using NodaTime;
 using Humans.Base.Interfaces;
-using static Humans.Holded.Services.HoldedJson;
 
 namespace Humans.Holded.Services;
 
@@ -56,7 +55,7 @@ internal sealed class Service(
     public async Task<IReadOnlyList<HoldedChartAccountInfo>> GetChartAsync(CancellationToken ct = default) =>
         (await repo.GetAccountsAsync(ct))
             .Select(a => new HoldedChartAccountInfo(
-                a.Number, a.Name, PgcAccountNames.EnglishName(a.Number, a.Name), a.Group, a.Archived, a.Balance))
+                a.Number, a.Name, PgcAccountNames.EnglishName(a.Number, a.Name), a.Archived, a.Balance))
             .ToList();
 
     public async Task<HoldedPurchaseDocMirror> GetPurchaseDocumentsAsync(CancellationToken ct = default)
@@ -70,8 +69,8 @@ internal sealed class Service(
             state?.LastCount ?? 0,
             state?.StatusChangedAt,
             docs.Select(d => new HoldedPurchaseDocInfo(
-                    d.Id, d.DocNumber, d.ContactName, d.ContactId, d.Description, d.Date, d.Subtotal, d.Tax, d.Total,
-                    d.Currency, d.IsApproved, d.Notes, d.Tags, d.BookedAccountId, PurchaseDocUrl(d.Id),
+                    d.Id, d.DocNumber, d.ContactName, d.ContactId, d.Description, d.Date, d.Subtotal, d.Total,
+                    d.IsApproved, d.Notes, d.Tags, d.BookedAccountId, PurchaseDocUrl(d.Id),
                     d.PaymentsPending))
                 .ToList());
     }
@@ -266,32 +265,27 @@ internal sealed class Service(
         return new HoldedAccountStatement(
             MakeAccountRow(
                 number, account?.Name ?? "", holdedBalanceRaw, localBalanceRaw, lines.Count,
-                account is { } a && (a.Debit != 0m || a.Credit != 0m), account?.Archived ?? false),
+                account is { } held && (held.Debit != 0m || held.Credit != 0m), account?.Archived ?? false),
             lines
-                .OrderBy(l => l.Date)
-                .ThenBy(l => l.EntryNumber)
-                .ThenBy(l => l.Line)
                 .Select(l => ToStatementLine(l, number, byEntry, accountsByNumber))
                 .ToList());
     }
 
     public async Task<HoldedEntry?> GetEntryViewAsync(int entryNumber, CancellationToken ct = default)
     {
-        var lines = (await repo.GetLedgerLinesByEntryNumbersAsync([entryNumber], ct))
-            .OrderBy(l => l.Line)
-            .ToList();
+        var lines = await repo.GetLedgerLinesByEntryNumbersAsync([entryNumber], ct);
         if (lines.Count == 0)
             return null;
 
         var accountsByNumber = (await repo.GetAccountsAsync(ct)).ToDictionary(a => a.Number);
         return new HoldedEntry(
             entryNumber,
-            lines.Select(l => l.EntryId).FirstOrDefault(id => !string.IsNullOrEmpty(id)),
+            lines.Where(l => !string.IsNullOrEmpty(l.EntryId)).MinBy(l => l.Line)?.EntryId,
             lines.Select(l =>
             {
                 accountsByNumber.TryGetValue(l.AccountNum, out var account);
                 return new HoldedEntryLine(
-                    l.AccountNum, account?.Name, l.Type, l.Description,
+                    l.Line, l.AccountNum, account?.Name, l.Type, l.Description,
                     ToAssociationPov(l.AccountNum, l.Debit - l.Credit), l.Checked);
             }).ToList());
     }
@@ -371,7 +365,8 @@ internal sealed class Service(
         ResolveCounterparty(line, byEntry, accountsByNumber), line.EntryId, line.Checked);
 
     /// <summary>A debit line's counterparties are the entry's credit lines and vice versa: the API returns no contra
-    /// account. Null when the entry has no opposing leg (unbalanced or partly mirrored).</summary>
+    /// account. Sides go by debit minus credit, because Holded posts a negative amount on its normal side (a negative
+    /// purchase is Dr 629 -x / Cr 400 -x). Null when the entry has no opposing leg (unbalanced or partly mirrored).</summary>
     private static HoldedCounterparty? ResolveCounterparty(
         HoldedLedgerLine line,
         IReadOnlyDictionary<int, List<HoldedLedgerLine>> byEntry,
@@ -380,13 +375,12 @@ internal sealed class Service(
         if (!byEntry.TryGetValue(line.EntryNumber, out var siblings))
             return null;
 
-        var opposing = line.Debit > 0
-            ? siblings.Where(s => s.Line != line.Line && s.Credit > 0).ToList()
-            : siblings.Where(s => s.Line != line.Line && s.Debit > 0).ToList();
-        if (opposing.Count == 0)
+        var side = Math.Sign(line.Debit - line.Credit);
+        var opposing = siblings.Where(s => s.Line != line.Line && Math.Sign(s.Debit - s.Credit) == -side).ToList();
+        if (side == 0 || opposing.Count == 0)
             return null;
 
-        var largest = opposing.OrderByDescending(s => Math.Max(s.Debit, s.Credit)).First();
+        var largest = opposing.MaxBy(s => Math.Abs(s.Debit - s.Credit))!;
         accountsByNumber.TryGetValue(largest.AccountNum, out var account);
         return new HoldedCounterparty(largest.AccountNum, account?.Name, opposing.Count);
     }

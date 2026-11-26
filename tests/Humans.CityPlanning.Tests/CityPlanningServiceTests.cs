@@ -508,7 +508,7 @@ public sealed class CityPlanningServiceTests : CityPlanningTestBase
 
         var repo = Substitute.For<ICityPlanningRepository>();
         repo.GetOrCreateSettingsAsync(Arg.Any<int>(), Arg.Any<Instant>(), Arg.Any<CancellationToken>())
-            .Returns(async ci =>
+            .Returns(async _ =>
             {
                 // The abort arrives after the read and before the write — the window the
                 // production repository would carry into SaveChangesAsync.
@@ -718,7 +718,7 @@ public sealed class CityPlanningServiceTests : CityPlanningTestBase
         var settings = await _sut.GetSettingsAsync(TestContext.Current.CancellationToken);
 
         settings.Should().NotBeNull();
-        settings!.Id.Should().Be(Guid.Empty);
+        settings.Id.Should().Be(Guid.Empty);
         settings.Year.Should().Be(2026);
         settings.PlacementState.Should().Be(BarrioPlacementState.Closed);
         settings.PlacementOverride.Should().BeNull();
@@ -1045,7 +1045,7 @@ public sealed class CityPlanningServiceTests : CityPlanningTestBase
             .Returns(MakeCampSeasonInfo(seasonId, Guid.NewGuid(), year, "Camp"));
 
     private static CampSeasonInfo MakeCampSeasonInfo(Guid id, Guid campId, int year, string name, SoundZone? soundZone = null) =>
-        new(id, campId, string.Empty, year, null, name, string.Empty, string.Empty,
+        new(id, campId, year, null, name, string.Empty, string.Empty,
             [], CampSeasonStatus.Pending, YesNoMaybe.No, YesNoMaybe.No, AdultPlayspacePolicy.No,
             0, soundZone, null, null, 0, null, null);
 

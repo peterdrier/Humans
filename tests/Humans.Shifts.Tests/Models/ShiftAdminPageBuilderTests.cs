@@ -1,7 +1,5 @@
 using Humans.Consent.Contracts;
-using Humans.Shifts.Domain;
 using AwesomeAssertions;
-using Humans.Governance.Contracts;
 using Humans.Shifts.Services;
 using Humans.Shifts.Contracts;
 using Humans.Teams.Contracts;
@@ -12,8 +10,6 @@ using Humans.Shifts.Services.Dtos;
 using NodaTime;
 using NSubstitute;
 using Humans.Users.Contracts;
-using Humans.Users.Domain;
-using Humans.Shifts.Tests.Infrastructure;
 
 namespace Humans.Shifts.Tests.Models;
 
@@ -170,11 +166,12 @@ public sealed class ShiftAdminPageBuilderTests
     public async Task DistinctUserIdsPassedToMembership()
     {
         var sharedUser = Guid.NewGuid();
+        var otherUser = Guid.NewGuid();
 
         var shift = MakeShift(
             MakePending(sharedUser),
             MakePending(sharedUser),
-            MakePending(Guid.NewGuid()));
+            MakePending(otherUser));
         StubRotas(MakeRota(shift));
 
         _membership.GetUsersWithAllRequiredConsentsForTeamAsync(
@@ -184,8 +181,7 @@ public sealed class ShiftAdminPageBuilderTests
         await BuildAsync();
 
         await _membership.Received(1).GetUsersWithAllRequiredConsentsForTeamAsync(
-            // ReSharper disable once PossibleMultipleEnumeration — Arg.Is requires an expression-tree lambda.
-            Arg.Is<IEnumerable<Guid>>(ids => ids.Distinct().Count() == ids.Count() && ids.Count() == 2),
+            Arg.Is<IEnumerable<Guid>>(ids => ids.Order().SequenceEqual(new[] { sharedUser, otherUser }.Order())),
             SystemTeamIds.Volunteers,
             Arg.Any<CancellationToken>());
     }

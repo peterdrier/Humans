@@ -1,7 +1,6 @@
 using Humans.Users.Contracts;
 using Humans.Auth.Contracts;
 using Humans.Auth.Models;
-using Humans.Base.Authorization;
 using Humans.Base.Enums;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -37,8 +36,7 @@ public sealed class RoleAssignmentsCardViewComponent(
                 ValidFrom = ra.ValidFrom.ToDateTimeUtc(),
                 ValidTo = ra.ValidTo?.ToDateTimeUtc(),
                 Notes = ra.Notes,
-                IsActive = ra.IsActive(now),
-                CreatedAt = ra.CreatedAt.ToDateTimeUtc()
+                IsActive = ra.IsActive(now)
             })]));
     }
 }
