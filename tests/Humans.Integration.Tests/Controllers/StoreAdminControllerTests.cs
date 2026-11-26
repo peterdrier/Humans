@@ -126,7 +126,7 @@ public class StoreAdminControllerTests(HumansTestDatabase database) : Integratio
             ("IsActive", "true")), ct);
 
         editBody.Should().Contain("<html lang=\"es\"");
-        editBody.Should().MatchRegex("id=\"priceExVat\"[^>]*value=\"42.50\"|value=\"42.50\"[^>]*id=\"priceExVat\"");
+        editBody.Should().MatchRegex("id=\"priceExVat\"[^>]*value=\"42\\.50\"|value=\"42\\.50\"[^>]*id=\"priceExVat\"");
         using var scope = Factory.Services.CreateScope();
         var product = await scope.ServiceProvider.GetRequiredService<StoreDbContext>().Products.AsNoTracking()
             .SingleAsync(p => p.Id == id, ct);
