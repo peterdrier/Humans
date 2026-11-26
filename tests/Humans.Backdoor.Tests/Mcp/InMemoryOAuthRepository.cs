@@ -88,14 +88,29 @@ internal sealed class InMemoryOAuthRepository : IBackdoorOAuthRepository
     // Copies stand in for the database's detached rows: a caller's later edits never leak into the store.
     private static BackdoorOAuthConnection Copy(BackdoorOAuthConnection c) => new()
     {
-        Id = c.Id, UserId = c.UserId, ClientId = c.ClientId, Status = c.Status, Type = c.Type, Scopes = c.Scopes,
-        CreatedAt = c.CreatedAt, Properties = c.Properties,
+        Id = c.Id,
+        UserId = c.UserId,
+        ClientId = c.ClientId,
+        Status = c.Status,
+        Type = c.Type,
+        Scopes = c.Scopes,
+        CreatedAt = c.CreatedAt,
+        Properties = c.Properties,
     };
 
     private static BackdoorOAuthToken Copy(BackdoorOAuthToken t) => new()
     {
-        Id = t.Id, ConnectionId = t.ConnectionId, ClientId = t.ClientId, UserId = t.UserId, Type = t.Type,
-        Status = t.Status, CreatedAt = t.CreatedAt, ExpiresAt = t.ExpiresAt, RedeemedAt = t.RedeemedAt,
-        ReferenceId = t.ReferenceId, Payload = t.Payload, Properties = t.Properties,
+        Id = t.Id,
+        ConnectionId = t.ConnectionId,
+        ClientId = t.ClientId,
+        UserId = t.UserId,
+        Type = t.Type,
+        Status = t.Status,
+        CreatedAt = t.CreatedAt,
+        ExpiresAt = t.ExpiresAt,
+        RedeemedAt = t.RedeemedAt,
+        ReferenceId = t.ReferenceId,
+        Payload = t.Payload,
+        Properties = t.Properties,
     };
 }
