@@ -150,8 +150,8 @@
   <data name="Notifications_Audience_Board" xml:space="preserve">
     <value>het bestuur</value>
   </data>
-  <data name="Notifications_Audience_ConsentCoordinator" xml:space="preserve">
-    <value>Toestemmingscoördinatoren</value>
+  <data name="Notifications_Audience_ConsentAdmin" xml:space="preserve">
+    <value>Toestemmingsbeheerders</value>
   </data>
   <data name="Notifications_Audience_ShiftsAdmin" xml:space="preserve">
     <value>Dienstenbeheerders</value>

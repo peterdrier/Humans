@@ -402,4 +402,9 @@
   <data name="Surveys_Validation_ChoiceOptionUnique" xml:space="preserve"><value>Els valors de les opcions de cada pregunta de selecció han de ser únics.</value></data>
   <data name="Surveys_Validation_DuplicateItem" xml:space="preserve"><value>Cada pregunta, opció de resposta i imatge només pot aparèixer una vegada en una enquesta.</value></data>
   <data name="Surveys_Validation_RatingBounds" xml:space="preserve"><value>El mínim de la valoració no pot superar el màxim.</value></data>
+  <data name="Surveys_Admin_Results_UntitledQuestion" xml:space="preserve"><value>Pregunta sense títol</value></data>
+  <data name="Surveys_Admin_Results_ColumnCount" xml:space="preserve"><value>Recompte</value></data>
+  <data name="Surveys_Admin_Results_ColumnShare" xml:space="preserve"><value>Percentatge</value></data>
+  <data name="Surveys_Admin_Results_AskedWhen" xml:space="preserve"><value>es pregunta si {0}</value></data>
+  <data name="Surveys_Validation_PromptRequired" xml:space="preserve"><value>Cada pregunta necessita un títol.</value></data>
 </root>

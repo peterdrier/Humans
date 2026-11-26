@@ -24,6 +24,12 @@ internal interface ITaskRepository : IRepository
 
     Task<bool> RemoveAssignmentAsync(Guid taskId, Guid userId, CancellationToken ct = default);
 
+    /// <summary>Turns the person's request into a confirmed place. False when they have no request on that task.</summary>
+    Task<bool> ConfirmRequestAsync(Guid taskId, Guid userId, CancellationToken ct = default);
+
+    /// <summary>Deletes the person's request, never a confirmed place. False when they have no request on that task.</summary>
+    Task<bool> RemoveRequestAsync(Guid taskId, Guid userId, CancellationToken ct = default);
+
     /// <summary>False when the link already exists.</summary>
     Task<bool> AddDependencyAsync(TaskDependency dependency, CancellationToken ct = default);
 

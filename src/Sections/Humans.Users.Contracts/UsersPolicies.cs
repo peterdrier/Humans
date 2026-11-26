@@ -10,7 +10,7 @@ public static class UsersPolicies
     public const string Manage = "UsersManage";
 
     /// <summary>
-    /// Admin, Board or Shifts NoInfo: may open one member's medical conditions through the audited reveal
+    /// Admin or Board: may open one member's medical conditions through the audited reveal
     /// (<c>POST /Profile/{id}/Medical/Reveal</c>). Every reveal is audited, which is what lets Board in.
     /// </summary>
     public const string MedicalDataViewer = "UsersMedicalDataViewer";

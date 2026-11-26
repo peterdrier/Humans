@@ -43,7 +43,7 @@ Source: [nobodies-collective/Humans#732](https://github.com/nobodies-collective/
 - Shift list uses the event's timezone (matches the rota detail page convention): `"ddd MMMM d"` for all-day shifts, `"ddd MMMM d @ HH:mm"` for time-slotted shifts.
 - Delivery flows through `IEmailService` → outbox so audit, opt-out routing, and category suppression stay consistent with every other transactional send.
 - A single audit row (`ShiftsAuditActions.CoordinatorRotaMessageSent`) records the dispatch, including successful send-request count, skipped count, and a truncated copy of the message text. Outbox cancellation exceptions remain per-recipient failures while the dispatch token is live, so later recipients and the audit still run. A cancelled dispatch token propagates normally.
-- Non-coordinators (and `ShiftsNoInfo`) do not see the entry point and are blocked at the controller by `ResolveDepartmentManagementAsync`.
+- Non-coordinators do not see the entry point and are blocked at the controller by `ResolveDepartmentManagementAsync`.
 
 ### US-732.2: Recipients see exactly their own shifts
 
@@ -121,7 +121,7 @@ Thank you,
 The compose + submit endpoints (`GET/POST /Teams/{slug}/Shifts/Rotas/{rotaId}/Email`) use the standard shift-admin gate:
 
 - Resolves the team and confirms the current user can **manage** that department (`ResolveDepartmentManagementAsync`).
-- That gate excludes `ShiftsNoInfo` and non-managers; it admits Admin, ShiftsAdmin, and department coordinators — matching the existing rota CRUD authorization scope.
+- That gate excludes non-managers; it admits Admin, ShiftsAdmin, and department coordinators — matching the existing rota CRUD authorization scope.
 - `404` is returned when the rota does not belong to the resolved team (prevents cross-team probing).
 
 ## Data Model

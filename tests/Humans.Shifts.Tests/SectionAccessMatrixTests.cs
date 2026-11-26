@@ -17,7 +17,7 @@ public class SectionAccessMatrixTests
         matrix.Key.Should().Be("Shifts");
         matrix.SectionName.Should().Be("Shifts");
         matrix.Order.Should().Be(10);
-        matrix.Roles.Should().Equal("Volunteer", "Coordinator", "ShiftsNoInfo", "ShiftsAdmin");
+        matrix.Roles.Should().Equal("Volunteer", "Coordinator", "ShiftsAdmin");
     }
 
     [HumansFact]
@@ -26,12 +26,12 @@ public class SectionAccessMatrixTests
         Matrix().Features
             .Select(f => $"{f.Name}: {string.Join(", ", f.RoleAccess.Select(kv => $"{kv.Key}={kv.Value}"))}")
             .Should().Equal(
-                "Browse shifts: Volunteer=Allowed, Coordinator=Allowed, ShiftsNoInfo=Allowed, ShiftsAdmin=Allowed",
-                "Sign up for shifts: Volunteer=Allowed, Coordinator=Allowed, ShiftsNoInfo=Allowed, ShiftsAdmin=Allowed",
-                "My Shifts & availability: Volunteer=Allowed, Coordinator=Allowed, ShiftsNoInfo=Allowed, ShiftsAdmin=Allowed",
-                "Create/edit rotas & shifts: Volunteer=Denied, Coordinator=Allowed, ShiftsNoInfo=Denied, ShiftsAdmin=Allowed",
-                "Approve/refuse signups: Volunteer=Denied, Coordinator=Allowed, ShiftsNoInfo=Allowed, ShiftsAdmin=Allowed",
-                "Voluntell: Volunteer=Denied, Coordinator=Allowed, ShiftsNoInfo=Allowed, ShiftsAdmin=Allowed",
-                "Staffing dashboard: Volunteer=Denied, Coordinator=Denied, ShiftsNoInfo=Allowed, ShiftsAdmin=Allowed");
+                "Browse shifts: Volunteer=Allowed, Coordinator=Allowed, ShiftsAdmin=Allowed",
+                "Sign up for shifts: Volunteer=Allowed, Coordinator=Allowed, ShiftsAdmin=Allowed",
+                "My Shifts & availability: Volunteer=Allowed, Coordinator=Allowed, ShiftsAdmin=Allowed",
+                "Create/edit rotas & shifts: Volunteer=Denied, Coordinator=Allowed, ShiftsAdmin=Allowed",
+                "Approve/refuse signups: Volunteer=Denied, Coordinator=Allowed, ShiftsAdmin=Allowed",
+                "Voluntell: Volunteer=Denied, Coordinator=Allowed, ShiftsAdmin=Allowed",
+                "Staffing dashboard: Volunteer=Denied, Coordinator=Denied, ShiftsAdmin=Allowed");
     }
 }

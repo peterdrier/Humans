@@ -416,4 +416,9 @@
   <data name="Surveys_Validation_ChoiceOptionUnique" xml:space="preserve"><value>Los valores de las opciones de cada pregunta de selección deben ser únicos.</value></data>
   <data name="Surveys_Validation_DuplicateItem" xml:space="preserve"><value>Cada pregunta, opción de respuesta e imagen solo puede aparecer una vez en una encuesta.</value></data>
   <data name="Surveys_Validation_RatingBounds" xml:space="preserve"><value>El mínimo de la valoración no puede superar el máximo.</value></data>
+  <data name="Surveys_Admin_Results_UntitledQuestion" xml:space="preserve"><value>Pregunta sin título</value></data>
+  <data name="Surveys_Admin_Results_ColumnCount" xml:space="preserve"><value>Recuento</value></data>
+  <data name="Surveys_Admin_Results_ColumnShare" xml:space="preserve"><value>Porcentaje</value></data>
+  <data name="Surveys_Admin_Results_AskedWhen" xml:space="preserve"><value>se pregunta si {0}</value></data>
+  <data name="Surveys_Validation_PromptRequired" xml:space="preserve"><value>Cada pregunta necesita un título.</value></data>
 </root>

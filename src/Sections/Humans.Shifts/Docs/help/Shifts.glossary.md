@@ -11,5 +11,4 @@
 | **Event** | The main event phase. |
 | **Strike** | The post-event phase — teardown and cleanup. |
 | **Staffing Dashboard** | An overview of shift coverage for coordinators and admins. |
-| **ShiftsNoInfo** | A shift admin role with access to shift management and the staffing dashboard. |
 | **ShiftsAdmin** | A role that manages volunteer assignments and shift staffing across departments. |

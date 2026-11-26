@@ -99,6 +99,52 @@ internal static class SurveyQuestionResults
         }
     }
 
+    /// <summary>
+    /// Links a question to the earlier choice question its show-if names, when that show-if is a single
+    /// "is" clause, and groups a free-text follow-up's answers by each respondent's choice there.
+    /// </summary>
+    internal static QuestionAggregate WithFollowUp(
+        QuestionAggregate aggregate,
+        SurveyQuestion question,
+        IEnumerable<SurveyQuestion> allQuestions,
+        IReadOnlyList<SurveyResponse> responses,
+        string culture)
+    {
+        if (question.ShowIf is not { Clauses: [{ Operator: BranchOperator.Is } clause] }) return aggregate;
+
+        var parent = allQuestions.FirstOrDefault(q => q.Id == clause.QuestionId);
+        if (parent is null
+            || parent.Type is not (SurveyQuestionType.SingleChoice or SurveyQuestionType.MultiChoice)
+            || (parent.PageNumber, parent.Order).CompareTo((question.PageNumber, question.Order)) >= 0)
+            return aggregate;
+
+        var parentOptions = parent.Options.OrderBy(o => o.Order).ToList();
+        var groups = question.Type is SurveyQuestionType.ShortText or SurveyQuestionType.LongText
+            ? responses
+                .Select(r => (
+                    Chosen: parentOptions
+                        .Where(o => r.Answers.Any(a => a.QuestionId == parent.Id
+                            && a.SelectedOptionValues.Contains(o.Value, StringComparer.Ordinal)))
+                        .ToList(),
+                    Text: r.Answers.FirstOrDefault(a => a.QuestionId == question.Id)?.TextValue))
+                .Where(x => !string.IsNullOrEmpty(x.Text))
+                .GroupBy(x => string.Join(", ", x.Chosen.Select(o => o.Label.Resolve(culture, culture))), StringComparer.Ordinal)
+                .OrderBy(g => g.First().Chosen.Select(o => parentOptions.IndexOf(o)).DefaultIfEmpty(int.MaxValue).Min())
+                .Select(g => new FreeTextGroup(g.Key, g.Select(x => x.Text!).ToList()))
+                .ToList()
+            : [];
+
+        return aggregate with
+        {
+            FollowUpOf = parent.Id,
+            AskedWhen = parentOptions
+                .Where(o => clause.OptionValues.Contains(o.Value, StringComparer.Ordinal))
+                .Select(o => o.Label.Resolve(culture, culture))
+                .ToList(),
+            FreeTextByParentChoice = groups,
+        };
+    }
+
     internal static RankedQuestionResult BuildRankedQuestionResult(
         SurveyQuestion question,
         IReadOnlyList<SurveyResponse> responses,

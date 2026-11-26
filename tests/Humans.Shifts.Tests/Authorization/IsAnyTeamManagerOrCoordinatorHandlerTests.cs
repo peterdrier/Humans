@@ -83,7 +83,7 @@ public sealed class IsAnyTeamManagerOrCoordinatorHandlerTests
 
     [HumansTheory]
     [InlineData(RoleNames.Admin, true)]
-    [InlineData(ShiftsRoles.ShiftsNoInfo, true)]
+    [InlineData("ShiftsNoInfo", false)]
     [InlineData(ShiftsRoles.ShiftsAdmin, true)]
     [InlineData(RoleNames.Board, true)]
     [InlineData(TeamsRoles.TeamsAdmin, false)]

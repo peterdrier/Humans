@@ -24,7 +24,7 @@ internal static class SurveyResultsBuilder
             Funnel = view.Funnel,
             Scope = scoped.Scope,
             SelectedResponseCount = scoped.SelectedResponseCount,
-            Questions = view.Questions.OrderBy(q => q.PageNumber).ThenBy(q => q.Order).Select(BuildQuestion).ToList(),
+            Questions = BuildQuestions(view.Questions),
             Respondents = view.IdentifiedRespondents
                 .OrderBy(respondent => respondent.SubmittedAt)
                 .ThenBy(respondent => respondent.ResponseId)
@@ -38,8 +38,32 @@ internal static class SurveyResultsBuilder
         };
     }
 
-    private static SurveyResultsQuestionViewModel BuildQuestion(QuestionAggregate q) => new()
+    /// <summary>Numbers questions in survey order and moves each follow-up inside the question it follows.</summary>
+    private static IReadOnlyList<SurveyResultsQuestionViewModel> BuildQuestions(IReadOnlyList<QuestionAggregate> aggregates)
     {
+        var all = aggregates
+            .OrderBy(q => q.PageNumber).ThenBy(q => q.Order)
+            .Select((q, index) => BuildQuestion(q, index + 1))
+            .ToList();
+        var byId = all.ToDictionary(q => q.QuestionId);
+        var top = new List<SurveyResultsQuestionViewModel>();
+        foreach (var q in all)
+        {
+            if (q.FollowUpOf is { } parentId && byId.TryGetValue(parentId, out var parent) && parent.FollowUpOf is null)
+                parent.FollowUps.Add(q);
+            else
+                top.Add(q);
+        }
+        return top;
+    }
+
+    private static SurveyResultsQuestionViewModel BuildQuestion(QuestionAggregate q, int number) => new()
+    {
+        Number = number,
+        HelpText = q.HelpText,
+        FollowUpOf = q.FollowUpOf,
+        AskedWhen = q.AskedWhen,
+        FreeTextByParentChoice = q.FreeTextByParentChoice,
         QuestionId = q.QuestionId,
         Prompt = q.Prompt,
         Type = q.Type,
@@ -84,11 +108,26 @@ internal sealed class SurveyResultsViewModel
     public IReadOnlyList<SurveyResultsBallotViewModel> UnattributedBallots { get; init; } = [];
     public IReadOnlyDictionary<Guid, RankedQuestionResult> RankedQuestions { get; init; }
         = new Dictionary<Guid, RankedQuestionResult>();
+
+    /// <summary>Every question, follow-ups included, by id: numbers and nesting for the per-respondent answers.</summary>
+    public IReadOnlyDictionary<Guid, SurveyResultsQuestionViewModel> QuestionsById =>
+        Questions.Concat(Questions.SelectMany(q => q.FollowUps)).ToDictionary(q => q.QuestionId);
 }
+
+/// <summary>One respondent's or ballot's answers, with the page's question numbering and follow-up nesting.</summary>
+internal sealed record SurveyRespondentAnswersViewModel(
+    IReadOnlyList<RespondentAnswer> Answers,
+    IReadOnlyDictionary<Guid, SurveyResultsQuestionViewModel> Questions);
 
 /// <summary>One question's display aggregate. Populated collection depends on <see cref="Type"/> (reused from the service DTO).</summary>
 internal sealed class SurveyResultsQuestionViewModel
 {
+    public int Number { get; init; }
+    public string HelpText { get; init; } = string.Empty;
+    public Guid? FollowUpOf { get; init; }
+    public IReadOnlyList<string> AskedWhen { get; init; } = [];
+    public IReadOnlyList<FreeTextGroup> FreeTextByParentChoice { get; init; } = [];
+    public List<SurveyResultsQuestionViewModel> FollowUps { get; } = [];
     public Guid QuestionId { get; init; }
     public string Prompt { get; init; } = string.Empty;
     public SurveyQuestionType Type { get; init; }

@@ -20,6 +20,8 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\Humans.Base\Humans.Base.csproj" />
+    <!-- Email: IEmailService and EmailMessage, for the approved and declined emails. -->
+    <ProjectReference Include="..\Humans.Email.Contracts\Humans.Email.Contracts.csproj" />
     <!-- Permissions: Tasks.Manage is declared here. -->
     <ProjectReference Include="..\Humans.Permissions\Humans.Permissions.csproj" />
     <!-- Settings: the event record, for names and gate opening dates. -->

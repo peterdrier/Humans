@@ -69,9 +69,9 @@ public class EndpointAuthorizationTests
         { SectionType("Humans.Google.Controllers.GoogleController"), "CheckGroupSettings", "AdminOnly" },
         { SectionType("Humans.Google.Controllers.GoogleController"), "GroupSettingsResults", "AdminOnly" },
         { SectionType("Humans.Consent.Controllers.ConsentReviewQueueController"), null, "ReviewQueueAccess" },
-        { SectionType("Humans.Consent.Controllers.ConsentReviewQueueController"), "Clear", "ConsentCoordinatorBoardOrAdmin" },
-        { SectionType("Humans.Consent.Controllers.ConsentReviewQueueController"), "Flag", "ConsentCoordinatorBoardOrAdmin" },
-        { SectionType("Humans.Consent.Controllers.ConsentReviewQueueController"), "Reject", "ConsentCoordinatorBoardOrAdmin" },
+        { SectionType("Humans.Consent.Controllers.ConsentReviewQueueController"), "Clear", "ConsentAdminBoardOrAdmin" },
+        { SectionType("Humans.Consent.Controllers.ConsentReviewQueueController"), "Flag", "ConsentAdminBoardOrAdmin" },
+        { SectionType("Humans.Consent.Controllers.ConsentReviewQueueController"), "Reject", "ConsentAdminBoardOrAdmin" },
         { SectionType("Humans.Budget.Controllers.BudgetAdminController"), null, FinancePolicies.Read },
         { SectionType("Humans.Scanner.Controllers.ScannerController"), null, "ScannerAccess" },
         { SectionType("Humans.Tickets.Controllers.TicketsOnsiteAdminController"), null, "ScannerAccess" },
@@ -117,9 +117,9 @@ public class EndpointAuthorizationTests
     [InlineData("Clear")]
     [InlineData("Flag")]
     [InlineData("Reject")]
-    public void ConsentReviewQueueActions_RequireConsentCoordinatorBoardOrAdmin(string actionName)
+    public void ConsentReviewQueueActions_RequireConsentAdminBoardOrAdmin(string actionName)
     {
-        AssertHasPolicy(SectionType("Humans.Consent.Controllers.ConsentReviewQueueController"), actionName, "ConsentCoordinatorBoardOrAdmin");
+        AssertHasPolicy(SectionType("Humans.Consent.Controllers.ConsentReviewQueueController"), actionName, "ConsentAdminBoardOrAdmin");
     }
 
     [HumansFact]

@@ -397,4 +397,9 @@
   <data name="Surveys_Validation_ChoiceOptionUnique" xml:space="preserve"><value>Option values within a choice question must be unique.</value></data>
   <data name="Surveys_Validation_DuplicateItem" xml:space="preserve"><value>Each question, answer option and image can appear only once in a survey.</value></data>
   <data name="Surveys_Validation_RatingBounds" xml:space="preserve"><value>The rating minimum cannot exceed its maximum.</value></data>
+  <data name="Surveys_Admin_Results_UntitledQuestion" xml:space="preserve"><value>Untitled question</value></data>
+  <data name="Surveys_Admin_Results_ColumnCount" xml:space="preserve"><value>Count</value></data>
+  <data name="Surveys_Admin_Results_ColumnShare" xml:space="preserve"><value>Share</value></data>
+  <data name="Surveys_Admin_Results_AskedWhen" xml:space="preserve"><value>asked when {0}</value></data>
+  <data name="Surveys_Validation_PromptRequired" xml:space="preserve"><value>Every question needs a title.</value></data>
 </root>

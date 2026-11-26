@@ -402,4 +402,9 @@
   <data name="Surveys_Validation_ChoiceOptionUnique" xml:space="preserve"><value>Les valeurs des options de chaque question à choix doivent être uniques.</value></data>
   <data name="Surveys_Validation_DuplicateItem" xml:space="preserve"><value>Chaque question, option de réponse et image ne peut apparaître qu’une seule fois dans un questionnaire.</value></data>
   <data name="Surveys_Validation_RatingBounds" xml:space="preserve"><value>La valeur minimale de l’évaluation ne peut pas dépasser sa valeur maximale.</value></data>
+  <data name="Surveys_Admin_Results_UntitledQuestion" xml:space="preserve"><value>Question sans titre</value></data>
+  <data name="Surveys_Admin_Results_ColumnCount" xml:space="preserve"><value>Nombre</value></data>
+  <data name="Surveys_Admin_Results_ColumnShare" xml:space="preserve"><value>Part</value></data>
+  <data name="Surveys_Admin_Results_AskedWhen" xml:space="preserve"><value>posée si {0}</value></data>
+  <data name="Surveys_Validation_PromptRequired" xml:space="preserve"><value>Chaque question doit avoir un titre.</value></data>
 </root>

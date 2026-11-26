@@ -14,7 +14,7 @@ public class GuideFilterTests
 
         Volunteer content.
 
-        ## As a Coordinator (Consent Coordinator)
+        ## As a Coordinator (Consent Admin)
 
         Coord content.
 
@@ -91,16 +91,16 @@ public class GuideFilterTests
     }
 
     [HumansFact]
-    public void Apply_ConsentCoordinatorRoleOnly_SeesCoordinatorBlockByParenthetical()
+    public void Apply_ConsentAdminRoleOnly_SeesCoordinatorBlockByParenthetical()
     {
-        var result = Apply(Sample, Roles(isCoord: false, GuideTestRoles.ConsentCoordinator));
+        var result = Apply(Sample, Roles(isCoord: false, GuideTestRoles.ConsentAdmin));
 
         result.Should().Contain("Coord content.");
         result.Should().NotContain("Teams admin content.");
     }
 
     [HumansFact]
-    public void Apply_ConsentCoordinatorOnBareCoordinatorHeading_NotVisible()
+    public void Apply_ConsentAdminOnBareCoordinatorHeading_NotVisible()
     {
         const string bareCoord = """
             ## As a Coordinator
@@ -108,7 +108,7 @@ public class GuideFilterTests
             Bare coord content.
             """;
 
-        var result = Apply(bareCoord, Roles(isCoord: false, GuideTestRoles.ConsentCoordinator));
+        var result = Apply(bareCoord, Roles(isCoord: false, GuideTestRoles.ConsentAdmin));
 
         result.Should().NotContain("Bare coord content.");
     }

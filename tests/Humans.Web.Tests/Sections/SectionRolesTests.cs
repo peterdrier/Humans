@@ -37,7 +37,7 @@ public class SectionRolesTests
         "TeamsAdmin",
         "CampsAdmin", "CampAdmin",
         "TicketsAdmin", "TicketAdmin",
-        "ConsentCoordinator",
+        "ConsentAdmin", "ConsentCoordinator",
         "EventsAdmin",
         "FinanceAdmin",
         "StoreAdmin",
@@ -52,10 +52,17 @@ public class SectionRolesTests
         "TasksAdmin",
     ];
 
+    /// <summary>
+    /// Stored names whose role was removed on purpose, not renamed: their rows stay as history and grant nothing.
+    /// Shifts NoInfo was retired by Peter on 2026-11-26 with no replacement yet.
+    /// </summary>
+    private static readonly string[] RetiredStoredNames = ["ShiftsNoInfo", "NoInfoAdmin"];
+
     [HumansFact]
     public void Every_name_ever_stored_still_resolves_to_a_catalogued_role()
     {
-        var lost = ShippedStoredNames.Where(n => !Catalog.Contains(Catalog.Canonical(n))).ToList();
+        var lost = ShippedStoredNames.Except(RetiredStoredNames, StringComparer.Ordinal)
+            .Where(n => !Catalog.Contains(Catalog.Canonical(n))).ToList();
 
         lost.Should().BeEmpty(
             because: "a stored role name that no longer resolves silently strips the role from everyone holding it; "

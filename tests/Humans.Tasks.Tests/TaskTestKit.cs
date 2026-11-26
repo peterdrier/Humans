@@ -1,6 +1,8 @@
 using AwesomeAssertions;
 using Humans.AuditLog.Contracts;
+using Humans.Base.Configuration;
 using Humans.Base.Enums;
+using Humans.Email.Contracts;
 using Humans.Settings.Contracts;
 using Humans.Tasks.Data;
 using Humans.Tasks.Domain;
@@ -9,6 +11,9 @@ using Humans.Teams.Contracts;
 using Humans.Users.Contracts;
 using Microsoft.Extensions.Localization;
 using Microsoft.Extensions.Logging.Abstractions;
+using Microsoft.Extensions.Options;
+using System.Globalization;
+using System.Resources;
 using NodaTime;
 using NodaTime.Testing;
 using NSubstitute;
@@ -40,12 +45,31 @@ internal sealed class TaskTestKit
 
     public ITeamService Teams { get; } = Substitute.For<ITeamService>();
 
+    public IEmailService Email { get; } = Substitute.For<IEmailService>();
+
     public ISettingsService Settings { get; } = Substitute.For<ISettingsService>();
 
     /// <summary>Knows every person, unless a test says otherwise.</summary>
     public IUserService Users { get; } = Substitute.For<IUserService>();
 
+    /// <summary>Real copy from the resx, so what a person would read can be asserted.</summary>
+    public TasksEmails Emails { get; } = new(
+        Options.Create(new EmailSettings { BaseUrl = "https://humans.test" }),
+        new ResourceLocalizer(),
+        NullLogger<TasksEmails>.Instance);
+
     public TaskService Service { get; }
+
+    /// <summary>The messages <see cref="Email"/> was asked to send, in order.</summary>
+    public IReadOnlyList<EmailMessage> SentEmails => Email.ReceivedCalls()
+        .Where(c => string.Equals(c.GetMethodInfo().Name, nameof(IEmailService.SendAsync), StringComparison.Ordinal))
+        .Select(c => (EmailMessage)c.GetArguments()[0]!)
+        .ToList();
+
+    /// <summary>Gives the person an email address and language, which <see cref="TaskTestKit"/> does not by default.</summary>
+    public void GiveEmail(Guid userId, string address, string language = "en", string name = "Sam") =>
+        Users.GetUserInfoAsync(userId, Arg.Any<CancellationToken>()).Returns(
+            Humans.Testing.UserFixtures.MakeUserInfo(userId, displayName: name) with { IdentityEmailColumn = address, PreferredLanguage = language });
 
     public TaskTestKit()
     {
@@ -77,7 +101,7 @@ internal sealed class TaskTestKit
             .Returns(call => UserFixtures.MakeUserInfo(call.Arg<Guid>()));
 
         Service = new TaskService(
-            Repository, Teams, Settings, Users, Audit,
+            Repository, Teams, Settings, Users, Audit, Email, Emails,
             new FakeClock(Instant.FromUtc(2027, 1, 5, 12, 0)),
             new KeyLocalizer(),
             NullLogger<TaskService>.Instance);
@@ -115,6 +139,22 @@ internal sealed class TaskTestKit
     private static EventSettingsInfo Event(Guid id, string name, LocalDate gate, EventSettingsStatus status) => new(
         id, name, gate.Year, "Europe/Madrid", gate, -14, 7, 10,
         new Dictionary<int, int>(), null, null, status);
+
+    /// <summary>Reads the section's own resx for the current UI culture, as the app does.</summary>
+    internal sealed class ResourceLocalizer : IStringLocalizer<TasksResource>
+    {
+        private static readonly ResourceManager Manager = new("Humans.Tasks.TasksResource", typeof(TasksResource).Assembly);
+
+        public LocalizedString this[string name] =>
+            Manager.GetString(name, CultureInfo.CurrentUICulture) is { } value ? new(name, value) : new(name, name, resourceNotFound: true);
+
+        public LocalizedString this[string name, params object[] arguments] =>
+            Manager.GetString(name, CultureInfo.CurrentUICulture) is { } value
+                ? new(name, string.Format(CultureInfo.CurrentCulture, value, arguments))
+                : new(name, name, resourceNotFound: true);
+
+        public IEnumerable<LocalizedString> GetAllStrings(bool includeParentCultures) => [];
+    }
 
     internal sealed class KeyLocalizer : IStringLocalizer<TasksResource>
     {
@@ -166,16 +206,33 @@ internal sealed class FakeTaskRepository : ITaskRepository
         return Task.FromResult(_tasks.Remove(taskId));
     }
 
-    public Task<bool> AddAssignmentAsync(TaskAssignment assignment, CancellationToken ct = default)
+    /// <summary>Runs before each assignment is saved, so a test can hold two writes apart until both have read.</summary>
+    public Func<Task>? BeforeAddAssignment { get; set; }
+
+    public async Task<bool> AddAssignmentAsync(TaskAssignment assignment, CancellationToken ct = default)
     {
+        if (BeforeAddAssignment is { } hook)
+            await hook();
         if (_assignments.Any(a => a.TaskItemId == assignment.TaskItemId && a.UserId == assignment.UserId))
-            return Task.FromResult(false);
+            return false;
         _assignments.Add(assignment);
-        return Task.FromResult(true);
+        return true;
     }
 
     public Task<bool> RemoveAssignmentAsync(Guid taskId, Guid userId, CancellationToken ct = default) =>
         Task.FromResult(_assignments.RemoveAll(a => a.TaskItemId == taskId && a.UserId == userId) > 0);
+
+    public Task<bool> ConfirmRequestAsync(Guid taskId, Guid userId, CancellationToken ct = default)
+    {
+        var request = _assignments.FirstOrDefault(a => a.TaskItemId == taskId && a.UserId == userId && a.State == TaskAssignmentState.Requested);
+        if (request is null)
+            return Task.FromResult(false);
+        request.State = TaskAssignmentState.Confirmed;
+        return Task.FromResult(true);
+    }
+
+    public Task<bool> RemoveRequestAsync(Guid taskId, Guid userId, CancellationToken ct = default) =>
+        Task.FromResult(_assignments.RemoveAll(a => a.TaskItemId == taskId && a.UserId == userId && a.State == TaskAssignmentState.Requested) > 0);
 
     public Task<bool> AddDependencyAsync(TaskDependency dependency, CancellationToken ct = default)
     {

@@ -76,7 +76,7 @@ Inbox selection checkboxes have a localized accessible label in all supported cu
 | Actor | Capabilities |
 |-------|--------------|
 | Any authenticated human | View own notification inbox (`/Notifications`) and popup (`/Notifications/Popup`). Mark individual notifications as read; resolve actionable; dismiss informational; click-through (auto-marks read + redirects); bulk-resolve / bulk-dismiss; mark-all-read |
-| Admin / Board / Coordinators | See additional **meters** in inbox + popup, gated by role: Admin + Consent Coordinator → consent reviews pending; Board → applications pending your vote; Admin → pending deletions, failed Google sync events, team join requests, ticket sync error; Board + Shifts Admin → onboarding profiles pending (the consent-review count under their own label); Camp Leads → "N humans want to join your camp" |
+| Admin / Board / Coordinators | See additional **meters** in inbox + popup, gated by role: Admin + Consent Admin → consent reviews pending; Board → applications pending your vote; Admin → pending deletions, failed Google sync events, team join requests, ticket sync error; Board + Shifts Admin → onboarding profiles pending (the consent-review count under their own label); Camp Leads → "N humans want to join your camp" |
 | Any service / job | Emit notifications via `INotificationEmitter.SendAsync(source, class, priority, title, recipientUserIds, …)` for known recipient lists, or `INotificationService.SendToRoleAsync(…, roleName, …)` for role-group dispatch |
 
 ## Invariants
@@ -107,7 +107,7 @@ Inbox selection checkboxes have a localized accessible label in all supported cu
 - Inbox resolve operations require `Actionable`; dismiss operations require `Informational`, for both single and bulk actions. The service selects the class and the repository checks it alongside recipient ownership before writing shared resolution fields. A wrong-class single action returns Forbidden without changing state.
 - Notification fan-out should be fire-and-forget from the caller's perspective. (Note: the dispatch methods themselves are not `try/catch`-wrapped today — callers wrap the call when needed; see `design-rules.md`, *Decorators versus in-service crosscuts* for the current pattern.)
 - In-app notifications and email notifications are separate surfaces — emitting a notification does not automatically queue an email. Sections that need both send both.
-- Role-fanout `Actionable` notifications (`SendToRoleAsync(…, Actionable, …)`) must **not** duplicate a meter. If a role-gated meter already counts the same work (e.g. "Applications pending your vote" for Board, "Consent reviews pending" for Consent Coordinators), the meter is the surface and a stored per-event row would just be noise. Role-fanout `Actionable` is reserved for sources without a corresponding meter. Per-recipient `Actionable` (via `SendAsync(…, recipientUserIds)` to specific humans) is fine — it's not a fan-out.
+- Role-fanout `Actionable` notifications (`SendToRoleAsync(…, Actionable, …)`) must **not** duplicate a meter. If a role-gated meter already counts the same work (e.g. "Applications pending your vote" for Board, "Consent reviews pending" for Consent Admins), the meter is the surface and a stored per-event row would just be noise. Role-fanout `Actionable` is reserved for sources without a corresponding meter. Per-recipient `Actionable` (via `SendAsync(…, recipientUserIds)` to specific humans) is fine — it's not a fan-out.
 
 ## Negative Access Rules
 

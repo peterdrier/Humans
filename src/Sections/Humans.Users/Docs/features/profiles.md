@@ -110,7 +110,7 @@ Emergency contact fields are marked `[PersonalData]` and included in the data ex
 
 ## Membership Status
 
-No membership status is stored on `Profile` or computed: the account state is `UserState` on the user. The Consent Coordinator review is an independent annotation and does not affect this status or require an approval banner on the profile.
+No membership status is stored on `Profile` or computed: the account state is `UserState` on the user. The Consent Admin review is an independent annotation and does not affect this status or require an approval banner on the profile.
 
 | Status | Description | Visual |
 |--------|-------------|--------|
