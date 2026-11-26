@@ -53,8 +53,8 @@ internal interface IGateService : IApplicationService
     /// </summary>
     Task<IReadOnlyList<Guid>> GetShiftRosterAsync(Guid rosterTeamId, CancellationToken ct = default);
 
-    // Personal device PINs: the claim flow has no reachable page since peterdrier/Humans#1075; deletion is tracked in
-    // nobodies-collective/Humans#933. Kiosk overrides verify the shared Gate:SupervisorPin inside RecordDecisionAsync.
+    // Personal device PINs: dormant with the unreachable claim flow (nobodies-collective/Humans#933).
+    // Kiosk overrides verify the shared Gate:SupervisorPin inside RecordDecisionAsync.
 
     Task<GatePinStatus> GetPinStatusAsync(Guid userId, CancellationToken ct = default);
 
