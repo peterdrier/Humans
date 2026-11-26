@@ -93,7 +93,7 @@ public sealed class EmailProblemsServiceTests : ServiceTestHarness
             .Returns(orphans);
 
     private void SetGhosts(params Guid[] ghostUserIds) =>
-        _userService.GetUsersWithLoginsButNoEmailsAsync(Arg.Any<CancellationToken>())
+        _userService.GetLoginUsersWithoutEmailsAsync(Arg.Any<CancellationToken>())
             .Returns(ghostUserIds);
 
     [HumansFact]

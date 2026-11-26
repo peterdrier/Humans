@@ -82,7 +82,7 @@ internal sealed class EmailConfirmationService(
             return new(EmailConfirmationState.Invalid);
 
         // The table, not the cache: the decision must see this call's row state.
-        var pending = await repository.GetUserEmailByIdAndUserIdAsync(emailId, askingUserId, ct);
+        var pending = await repository.GetUserEmailForUserAsync(emailId, askingUserId, ct);
         if (pending is null || pending.IsVerified || pending.Provider is not null)
             return new(EmailConfirmationState.Invalid);
 
