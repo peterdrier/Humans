@@ -402,4 +402,9 @@
   <data name="Surveys_Validation_ChoiceOptionUnique" xml:space="preserve"><value>Die Optionswerte innerhalb einer Auswahlfrage müssen eindeutig sein.</value></data>
   <data name="Surveys_Validation_DuplicateItem" xml:space="preserve"><value>Jede Frage, Antwortoption und jedes Bild darf in einer Umfrage nur einmal vorkommen.</value></data>
   <data name="Surveys_Validation_RatingBounds" xml:space="preserve"><value>Der Mindestwert der Bewertung darf den Höchstwert nicht überschreiten.</value></data>
+  <data name="Surveys_Admin_Results_UntitledQuestion" xml:space="preserve"><value>Frage ohne Titel</value></data>
+  <data name="Surveys_Admin_Results_ColumnCount" xml:space="preserve"><value>Anzahl</value></data>
+  <data name="Surveys_Admin_Results_ColumnShare" xml:space="preserve"><value>Anteil</value></data>
+  <data name="Surveys_Admin_Results_AskedWhen" xml:space="preserve"><value>gefragt bei {0}</value></data>
+  <data name="Surveys_Validation_PromptRequired" xml:space="preserve"><value>Jede Frage braucht einen Titel.</value></data>
 </root>

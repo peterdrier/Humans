@@ -416,4 +416,9 @@
   <data name="Surveys_Validation_ChoiceOptionUnique" xml:space="preserve"><value>Optiewaarden binnen een keuzevraag moeten uniek zijn.</value></data>
   <data name="Surveys_Validation_DuplicateItem" xml:space="preserve"><value>Elke vraag, antwoordoptie en afbeelding mag maar één keer in een enquête voorkomen.</value></data>
   <data name="Surveys_Validation_RatingBounds" xml:space="preserve"><value>Het minimum van de beoordeling mag niet hoger zijn dan het maximum.</value></data>
+  <data name="Surveys_Admin_Results_UntitledQuestion" xml:space="preserve"><value>Vraag zonder titel</value></data>
+  <data name="Surveys_Admin_Results_ColumnCount" xml:space="preserve"><value>Aantal</value></data>
+  <data name="Surveys_Admin_Results_ColumnShare" xml:space="preserve"><value>Aandeel</value></data>
+  <data name="Surveys_Admin_Results_AskedWhen" xml:space="preserve"><value>gevraagd bij {0}</value></data>
+  <data name="Surveys_Validation_PromptRequired" xml:space="preserve"><value>Elke vraag heeft een titel nodig.</value></data>
 </root>

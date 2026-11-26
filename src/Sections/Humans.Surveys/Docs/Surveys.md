@@ -188,6 +188,8 @@ First-party, GDPR-compliant surveys: author typed/branching multi-language surve
 
 - Question aggregates carry authored page and position metadata without display sorting. The results builder and Backdoor aggregate projection order questions by page, then position. Choice option counts likewise carry authored positions for these consumers to order; grid columns remain aligned with their cells.
 - Identified response data includes submission time and response-id metadata without display ordering. The results builder orders respondents by submission time, then response id. Anonymous/unattributed ballot ordering and identity-disclosure gates are unchanged.
+- **Admin results read in survey order.** Questions are numbered Q1..n by page, then position, and show their help text. A question whose `ShowIf` is a single `Is` clause on an earlier Single/Multi choice question is a follow-up: it renders inside that question's card with the options that trigger it, and its free-text answers group by the respondent's chosen parent options. Grouped comments never carry names, in any scope. Choice counts use a compact table, never page-wide bars. Respondent and unattributed-ballot answers follow survey order, with answered follow-ups nested under their parent answer.
+- Every non-Information question needs a non-blank prompt; create and update reject an untitled one (`Surveys_Validation_PromptRequired`).
 
 - The approval-queue controller orders pending submissions oldest first, with undated rows first, on both GET and rejection redisplay. The service supplies pending items and author names without display sorting.
 
