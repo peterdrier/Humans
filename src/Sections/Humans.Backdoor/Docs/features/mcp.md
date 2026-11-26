@@ -33,7 +33,7 @@ The REST controllers keep `[AllowAnonymous]` and the filter, so the onboarding g
 - Official C# SDK, `ModelContextProtocol.AspNetCore`, stateless HTTP transport (nothing held between calls). Mapped at `/api/backdoor/mcp` through Backdoor's `ISectionEndpoints`.
 - The endpoint's policy names only the Backdoor schemes (the key, and the sign-in token below), never the cookie, and requires that some scope admits the person. No CORS policy.
 - Tools are hand-written classes in Backdoor, each carrying `[BackdoorScope]`, calling the same section interfaces the REST routes call. Two request filters enforce scope on every `tools/list` and `tools/call`: a tool with no scope is hidden and refused, a tool whose scope does not admit the caller is hidden and refused.
-- `hello` (scope Admin and Board) returns the caller's id, name, active roles, and which way they came in.
+- `hello` (scope Admin and Board) returns a greeting, which server answered (its address, environment and version, so production and staging can't be mixed up), and the caller's id, name, active roles, and which way they came in.
 
 ### "Sign in with Humans" (OAuth), second PR
 

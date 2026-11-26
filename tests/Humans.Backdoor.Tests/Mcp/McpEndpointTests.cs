@@ -74,6 +74,8 @@ public sealed class McpEndpointTests : IAsyncDisposable
         hello.GetProperty("userId").GetGuid().Should().Be(_admin);
         hello.GetProperty("name").GetString().Should().Be("Peter");
         hello.GetProperty("signedInWith").GetString().Should().Be("API key");
+        hello.GetProperty("server").GetString().Should().StartWith("http://");
+        hello.GetProperty("environment").GetString().Should().NotBeNullOrEmpty();
     }
 
     [HumansFact]

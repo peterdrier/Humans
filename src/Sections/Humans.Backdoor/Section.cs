@@ -47,6 +47,7 @@ public sealed class Section : ISection, ISectionAdminNav, ISectionEndpoints
         services.AddAuthentication()
             .AddScheme<AuthenticationSchemeOptions, BackdoorApiKeyHandler>(BackdoorApiKeyHandler.SchemeName, null);
         services.Configure<McpServerOptions>(McpToolScopeGate.Install);
+        services.AddHttpContextAccessor();
 
         // Stateless: nothing is kept between calls, so every call is signed in and scoped afresh.
         return services.AddMcpServer()
