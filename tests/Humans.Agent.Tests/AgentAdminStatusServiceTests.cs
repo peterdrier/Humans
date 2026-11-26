@@ -90,7 +90,7 @@ public class AgentAdminStatusServiceTests
     }
 
     [HumansFact]
-    public async Task GetStatus_Latency_ExcludesUserAndUnansweredRows()
+    public async Task GetStatus_Latency_UsesOnlyAnsweredAssistantRows()
     {
         // User rows carry no duration at all, and
         // unanswered rows (limit reached, distress reply, failed) are

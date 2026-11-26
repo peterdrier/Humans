@@ -1,3 +1,4 @@
+@using System.Globalization
 @model FinanceOverviewViewModel
 @using Humans.Base.Models.Tables
 @using Humans.Finance.Contracts
@@ -225,8 +226,9 @@
                                     </div>
                                     <div class="col-md-3">
                                         <label class="form-label form-label-sm">Daily Sales Rate</label>
+                                        <input type="hidden" name="__Invariant" value="dailySalesRate" />
                                         <input type="number" name="dailySalesRate" id="proj-dailySalesRate" class="form-control form-control-sm"
-                                               step="0.1" value="@proj.DailySalesRate" />
+                                               step="0.1" value="@proj.DailySalesRate.ToString(CultureInfo.InvariantCulture)" />
                                     </div>
                                 </div>
                                 <div class="row g-2 mb-2">
@@ -247,8 +249,9 @@
                                     </div>
                                     <div class="col-md-2">
                                         <label class="form-label form-label-sm">Avg Ticket Price (&euro;)</label>
+                                        <input type="hidden" name="__Invariant" value="averageTicketPrice" />
                                         <input type="number" name="averageTicketPrice" class="form-control form-control-sm"
-                                               step="0.01" value="@proj.AverageTicketPrice" />
+                                               step="0.01" value="@proj.AverageTicketPrice.ToString(CultureInfo.InvariantCulture)" />
                                     </div>
                                     <div class="col-md-1">
                                         <label class="form-label form-label-sm">VAT (%)</label>
@@ -257,18 +260,21 @@
                                     </div>
                                     <div class="col-md-2">
                                         <label class="form-label form-label-sm">Stripe Fee (%)</label>
+                                        <input type="hidden" name="__Invariant" value="stripeFeePercent" />
                                         <input type="number" name="stripeFeePercent" class="form-control form-control-sm"
-                                               step="0.01" value="@proj.StripeFeePercent" />
+                                               step="0.01" value="@proj.StripeFeePercent.ToString(CultureInfo.InvariantCulture)" />
                                     </div>
                                     <div class="col-md-1">
                                         <label class="form-label form-label-sm">Stripe Fixed</label>
+                                        <input type="hidden" name="__Invariant" value="stripeFeeFixed" />
                                         <input type="number" name="stripeFeeFixed" class="form-control form-control-sm"
-                                               step="0.01" value="@proj.StripeFeeFixed" />
+                                               step="0.01" value="@proj.StripeFeeFixed.ToString(CultureInfo.InvariantCulture)" />
                                     </div>
                                     <div class="col-md-2">
                                         <label class="form-label form-label-sm">TT Fee (%)</label>
+                                        <input type="hidden" name="__Invariant" value="platformFeePercent" />
                                         <input type="number" name="platformFeePercent" class="form-control form-control-sm"
-                                               step="0.01" value="@proj.PlatformFeePercent" />
+                                               step="0.01" value="@proj.PlatformFeePercent.ToString(CultureInfo.InvariantCulture)" />
                                     </div>
                                     <div class="col-md-1 d-flex align-items-end" authorize-policy="@FinancePolicies.Manage">
                                         <button type="submit" class="btn btn-primary btn-sm w-100">Save</button>
@@ -475,6 +481,7 @@
                             </div>
                             <div class="col-md-3">
                                 <label class="form-label form-label-sm">Allocated Amount (&euro;, incl. VAT/IVA)</label>
+                                <input type="hidden" name="__Invariant" value="allocatedAmount" />
                                 <input type="number" name="allocatedAmount" class="form-control form-control-sm" step="0.01" value="0" required />
                             </div>
                             <div class="col-md-3">

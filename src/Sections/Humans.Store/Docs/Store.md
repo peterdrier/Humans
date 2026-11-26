@@ -382,7 +382,7 @@ One `store_settings` row, edited on the Store tab of `/Settings` (`StoreSettings
 | Stripe gateway treasury | unset | Holded treasury id of the Store's Stripe gateway feed (production: `6a22e0f6e5e9f791670d311a`, ledger 44100003). Unset stops booking of Stripe money. The `DepositLiabilityAccountNum` column is no longer read. |
 | Simplified invoice limit | €400 | Order total at or below which a counterparty-less order may issue as a *factura simplificada*. Spanish law allows €400 generally / €3,000 for retail-type B2C; the conservative figure is the default until Acountax rules. |
 
-Each save writes `StoreSettingsUpdated` (entity `StoreSettings`) with both values.
+Each save writes `StoreSettingsUpdated` (entity `StoreSettings`) with both values. The settings form must explicitly post the simplified-invoice limit, including zero; omission is a binding refusal before any settings write or success audit, rather than a reset to zero.
 
 Implementation status: catalog CRUD (create, update, deactivate), order create, add/remove line, counterparty edit, Stripe payment recording, deposit-return / refund recording, and Holded invoice issuance are live. Bank-transfer / cash entry, treasury sync, and the Orders admin view are unbuilt — no code for them exists. See [`Store-feature.md`](features/Store-feature.md).
 
@@ -390,6 +390,7 @@ Implementation status: catalog CRUD (create, update, deactivate), order create, 
 - Line and counterparty mutations return resource-key refusals for invalid quantity, missing records, wrong-order lines, frozen line edits, unavailable products, catalog-year mismatch, and non-billable orders. Controllers localize these in all supported cultures; expected refusals log a warning without an exception and perform no mutation (apart from the existing audited legacy-year repair). Dependency faults and cancellation propagate rather than becoming business feedback.
 
 - Checkout returns resource-key refusals for unavailable configuration, non-positive or excessive amounts, and a pending settlement. The controller localizes the outstanding balance and logs actual Stripe failures at Error with generic localized feedback; a dependency InvalidOperationException cannot become a business refusal. Stripe writes remain detached from request cancellation.
+- Checkout and manual-payment forms parse the HTML number amount invariantly (including exponent notation), without grouping separators, in every supported request culture. Missing, malformed or unrepresentable amounts and other binding failures return 400 with a Warning after authorization and before any Stripe session or payment write. Service validation retains positive amounts, precision, balance/deposit caps and payment signs; valid writes remain detached from request cancellation.
 
 - Camp and department order creation returns the created id on success or a localized refusal for a missing counterparty, subteam, or existing order. Camp-season uniqueness includes legacy zero-year orders; department uniqueness uses the active event year. Refusals warn without an exception and write no order or audit. Dependency failures propagate unchanged.
 

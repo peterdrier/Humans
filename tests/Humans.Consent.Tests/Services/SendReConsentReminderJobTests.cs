@@ -23,6 +23,81 @@ namespace Humans.Consent.Tests.Services;
 
 public sealed class SendReConsentReminderJobTests
 {
+    public enum CooldownHistory { Never, Recent, Expired }
+
+    [HumansTheory]
+    [InlineData(UserState.Deleted)]
+    [InlineData(UserState.Merged)]
+    public async Task ExecuteAsync_TombstoneRecipient_LeavesCooldownUnstamped(UserState state)
+    {
+        var ct = TestContext.Current.CancellationToken;
+        var now = Instant.FromUtc(2026, 10, 2, 4, 0);
+        var unavailable = MakeUser("archived@example.org") with { State = state };
+        var available = MakeUser("human@example.org");
+        var consent = Substitute.For<IConsentService>();
+        consent.GetUsersPastConsentDeadlineAsync(Arg.Any<Duration?>(), ct).Returns([unavailable.Id, available.Id]);
+        var legal = Substitute.For<ILegalDocumentSyncManagement>();
+        legal.GetRequiredVersionsAsync(ct).Returns([]);
+        var users = Substitute.For<IUserService>();
+        users.GetUserInfosAsync(Arg.Any<IEnumerable<Guid>>(), ct)
+            .Returns(new Dictionary<Guid, UserInfo> { [unavailable.Id] = unavailable, [available.Id] = available });
+        var repo = Substitute.For<IConsentReminderRepository>();
+        repo.GetByUserIdsAsync(Arg.Any<IReadOnlyCollection<Guid>>(), ct).Returns([]);
+        var email = Substitute.For<IEmailService>();
+        var job = new SendReConsentReminderJob(consent, legal, users, new ConsentReminderService(repo, users), email,
+            TestConsentEmails.Create(), Options.Create(new EmailSettings { ConsentReminderCooldownDays = 7 }),
+            Substitute.For<IHumansMetrics>(), NullLogger<SendReConsentReminderJob>.Instance, new FakeClock(now));
+
+        await job.ExecuteAsync(ct);
+
+        var message = (EmailMessage)email.ReceivedCalls().Should().ContainSingle().Subject.GetArguments()[0]!;
+        message.UserId.Should().Be(available.Id);
+        await repo.DidNotReceive().UpsertAsync(unavailable.Id, Arg.Any<Instant>(), Arg.Any<CancellationToken>());
+        await repo.Received(1).UpsertAsync(available.Id, now, CancellationToken.None);
+    }
+
+    [HumansTheory]
+    [InlineData(CooldownHistory.Never)]
+    [InlineData(CooldownHistory.Recent)]
+    [InlineData(CooldownHistory.Expired)]
+    public async Task ExecuteAsync_MergedAliases_UsesOneCooldownCycle(CooldownHistory history)
+    {
+        var ct = TestContext.Current.CancellationToken;
+        var now = Instant.FromUtc(2026, 10, 2, 4, 0);
+        var archivedId = Guid.NewGuid();
+        var person = MakeUser("human@example.org") with { MergedUserIds = [archivedId] };
+        var consent = Substitute.For<IConsentService>();
+        consent.GetUsersPastConsentDeadlineAsync(Arg.Any<Duration?>(), ct).Returns([archivedId, person.Id]);
+        var legal = Substitute.For<ILegalDocumentSyncManagement>();
+        legal.GetRequiredVersionsAsync(ct).Returns([]);
+        var users = Substitute.For<IUserService>();
+        users.GetUserInfosAsync(Arg.Any<IEnumerable<Guid>>(), ct)
+            .Returns(new Dictionary<Guid, UserInfo> { [archivedId] = person, [person.Id] = person });
+        var repo = Substitute.For<IConsentReminderRepository>();
+        repo.GetByUserIdsAsync(Arg.Any<IReadOnlyCollection<Guid>>(), ct).Returns(history == CooldownHistory.Never
+            ? [] : [new ConsentReminder { UserId = archivedId, LastSentAt = now - Duration.FromDays(history == CooldownHistory.Recent ? 1 : 8) }]);
+        var email = Substitute.For<IEmailService>();
+        var job = new SendReConsentReminderJob(consent, legal, users, new ConsentReminderService(repo, users), email,
+            TestConsentEmails.Create(), Options.Create(new EmailSettings { ConsentReminderCooldownDays = 7 }),
+            Substitute.For<IHumansMetrics>(), NullLogger<SendReConsentReminderJob>.Instance, new FakeClock(now));
+
+        await job.ExecuteAsync(ct);
+
+        if (history == CooldownHistory.Recent)
+        {
+            email.ReceivedCalls().Should().BeEmpty();
+            await repo.DidNotReceiveWithAnyArgs().UpsertAsync(default, default, default);
+        }
+        else
+        {
+            var message = (EmailMessage)email.ReceivedCalls().Should().ContainSingle().Subject.GetArguments()[0]!;
+            message.UserId.Should().Be(person.Id);
+            message.DeliveryId.Should().NotBeNull();
+            await repo.Received(1).UpsertAsync(person.Id, now, CancellationToken.None);
+            await repo.DidNotReceive().UpsertAsync(archivedId, Arg.Any<Instant>(), Arg.Any<CancellationToken>());
+        }
+    }
+
     [HumansTheory]
     [InlineData(ReminderBoundary.Read)]
     [InlineData(ReminderBoundary.Email)]

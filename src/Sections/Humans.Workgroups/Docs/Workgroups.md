@@ -311,7 +311,7 @@ Settings and Register an existing group on first setup or after clearing the que
 
 - Opt-outable email builders capture the recipient/template culture on `EmailMessage` before restoring their rendering scope; Email renders the shared unsubscribe footer in that culture.
 
-- The visible workgroup budget card uses the shared euro formatter in the selected UI culture. Registration and budget-edit forms parse posted amounts as invariant dot decimals without grouping separators, so comma-formatted values fail validation rather than becoming larger budgets.
+- The visible workgroup budget card uses the shared euro formatter in the selected UI culture. Registration and budget-edit forms parse posted amounts as invariant HTML numbers, including exponent notation, without grouping separators, so comma-formatted values fail validation rather than becoming larger budgets.
 
 - Budget preparation remains cancellable. Account creation or linking runs independently of browser cancellation through Finance, then saves the budget/binding and system log together before auditing. Amount-only saves retain cancellation until their combined save succeeds; audit finishes independently.
 
@@ -511,6 +511,7 @@ should end is the Board's decision, taken on the register in front of them.
   actor authored it before writing the log entry. One-way: Surveys never references Workgroups.
 - **Notifications, Email, AuditLog**: crosscuts, per Triggers above. `WorkgroupService` owns recipient lookup, culture grouping, Board delivery and independent best-effort sends. Lifecycle, document, membership, GDPR and rhythm paths invoke it after their existing state/audit steps; group lifecycle transitions remain in `WorkgroupService`; Drive provisioning and sync requests belong to `WorkgroupService`; document/comment transitions belong to `WorkgroupService`, and rhythm timing belongs to `WorkgroupService`. Member notifications
   use existing localized labels, grouped by supported recipient language (English fallback); authored content is unchanged.
+  Member notification requests and lifecycle/Board emails exclude missing or tombstoned accounts while continuing to live recipients. Rhythm nudge audits count only available canonical recipients submitted for dispatch; no success audit is written when none remain. Committed group changes remain intact.
   A merged-member alias carries both the resolved live id and its language into grouping,
   with one delivery per live recipient even when multiple requested ids resolve to them. Lifecycle and Board emails apply the same resolved-ID deduplication: outbox ownership uses the live recipient ID from the same snapshot as address, name and language, so merged aliases cannot queue duplicate copies or assign new mail to an archived account.
 - **Base / Users**: `IUserDataContributor` (`Humans.Base.Gdpr`), `IUserMerge` (`Humans.Users.Contracts`) — see GDPR below.

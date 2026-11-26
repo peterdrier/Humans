@@ -20,7 +20,7 @@ internal sealed class UnsubscribeService(
         {
             // A token minted for a since-merged id acts on the survivor, never on the token's id.
             var info = await userService.GetUserInfoAsync(result.UserId, ct);
-            if (info is null || info.IsGdprAnonymized)
+            if (info is null || info.IsTombstone)
                 return UnsubscribeTokenResult.Invalid();
 
             return UnsubscribeTokenResult.Valid(info.Id, result.Category);
@@ -52,7 +52,7 @@ internal sealed class UnsubscribeService(
             return UnsubscribeTokenResult.Invalid();
 
         var legacyInfo = await userService.GetUserInfoAsync(userId, ct);
-        if (legacyInfo is null || legacyInfo.IsGdprAnonymized)
+        if (legacyInfo is null || legacyInfo.IsTombstone)
             return UnsubscribeTokenResult.Invalid();
 
         return UnsubscribeTokenResult.Valid(legacyInfo.Id, MessageCategory.Marketing, isLegacy: true);

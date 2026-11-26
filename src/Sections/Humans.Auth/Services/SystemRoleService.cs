@@ -106,6 +106,13 @@ internal sealed class SystemRoleService(
             return new SystemRoleResult(false, "NotesTooLong");
         }
 
+        var assignee = await userService.GetRawUserInfoAsync(userId, ct);
+        if (assignee is null || assignee.IsTombstone)
+        {
+            logger.LogWarning("Role {RoleName} assignment refused for unavailable user {UserId}", roleName, userId);
+            return new SystemRoleResult(false, "UserUnavailable");
+        }
+
         var now = clock.GetCurrentInstant();
 
         var hasOverlap = await repository.HasOverlappingAssignmentAsync(

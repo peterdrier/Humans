@@ -5,11 +5,11 @@ import { parseLimitZoneGeom } from './geometry.js';
 import { DRAW_STYLES, generateRainbowPattern, generateCrosshatchPattern, generateDashedHorizontalPattern, renderMap } from './layers.js';
 import {
     onCampPolygonClick, exitEditMode, onDrawChange, onDrawRender, onDrawDelete,
-    setEditingControlsVisible, updateAddMyBarrioVisibility,
+    setEditingControlsVisible, updateAddControls,
 } from './edit.js';
 import { initSignalR } from './signalr.js';
 import { MarqueeDirectSelectMode } from './marquee-direct-select.js';
-import { initMeasure, exitMeasureMode, isMeasuring, wireMeasureButtons } from '../shared/measure.js';
+import { initMeasure, wireMeasureButtons } from '../shared/measure.js';
 
 async function init() {
     appState.map = new maplibregl.Map({
@@ -75,20 +75,19 @@ async function init() {
     appState.campMap = await (await fetch('/api/city-planning/state')).json();
     appState.limitZoneGeom = parseLimitZoneGeom(appState.campMap.limitZoneGeoJson);
     renderMap(onCampPolygonClick);
-    updateAddMyBarrioVisibility();
+    updateAddControls();
     initSignalR();
 }
 
 // Global keydown: Delete/Backspace for vertex deletion when draw doesn't have focus
 document.addEventListener('keydown', e => {
-    if (e.key === 'Escape' && isMeasuring()) {
-        exitMeasureMode();
-        return;
-    }
     if ((e.key === 'Delete' || e.key === 'Backspace') && appState.activeCampSeasonId) {
+        if (e.target?.closest('input, textarea, select') || e.target?.isContentEditable) return;
         e.preventDefault();
-        const poly = appState.draw.getAll().features.find(f => f.geometry.type === 'Polygon');
-        if (poly && poly.geometry.coordinates[0].length <= 4) return;
+        if (appState.draw.getMode() !== 'direct_select') {
+            const poly = appState.draw.getAll().features.find(f => f.geometry.type === 'Polygon');
+            if (poly && poly.geometry.coordinates[0].length <= 4) return;
+        }
         appState.draw.trash();
     }
 });

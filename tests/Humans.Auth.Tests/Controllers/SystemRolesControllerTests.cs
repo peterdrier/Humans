@@ -125,6 +125,21 @@ public sealed class SystemRolesControllerTests
     }
 
     [HumansFact]
+    public async Task AddRole_UnavailableTarget_ReturnsNotFound()
+    {
+        GivenKnownUsers();
+        GivenAuthorization(TeamsRoles.TeamsAdmin, succeeds: true);
+        _write.AssignRoleAsync(TargetId, TeamsRoles.TeamsAdmin, ActorId, null, Arg.Any<CancellationToken>())
+            .Returns(new SystemRoleResult(false, "UserUnavailable"));
+        var controller = BuildController();
+
+        var result = await controller.AddRole(TargetId, new CreateSystemRoleViewModel { RoleName = TeamsRoles.TeamsAdmin });
+
+        result.Should().BeOfType<NotFoundResult>();
+        controller.TempData.Should().BeEmpty();
+    }
+
+    [HumansFact]
     public async Task AddRolePost_AssignsAsSignedInActor()
     {
         GivenKnownUsers();

@@ -109,4 +109,5 @@
   <data name="Roles_Refusal_LinkTooLong" xml:space="preserve"><value>Un lien personnalisé ne peut pas dépasser 100 caractères.</value></data>
   <data name="Roles_Refusal_DescriptionTooLong" xml:space="preserve"><value>La description d’un rôle ne peut pas dépasser 2000 caractères.</value></data>
   <data name="Roles_Refusal_PrioritiesTooLong" xml:space="preserve"><value>Il y a trop de places avec ces priorités. Réduisez le nombre de places.</value></data>
+  <data name="Roles_Refusal_NoPerson" xml:space="preserve"><value>Choisis une personne dans la liste.</value></data>
 </root>

@@ -1580,6 +1580,11 @@ internal sealed class TeamService(
             var users = await UserService.GetUserInfosAsync([userId], cancellationToken);
             if (!users.TryGetValue(userId, out var user))
                 return;
+            if (user.IsTombstone)
+            {
+                logger.LogWarning("Skipping added-to-team welcome for unavailable user {UserId} team {TeamId}", userId, team.Id);
+                return;
+            }
 
             recipientId = user.Id;
             culture = CultureInfo.GetCultureInfo(user.PreferredLanguage.IsSupportedCultureCode() ? user.PreferredLanguage : "en");

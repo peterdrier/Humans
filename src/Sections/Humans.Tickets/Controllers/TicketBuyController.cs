@@ -95,12 +95,18 @@ internal sealed class TicketBuyController(
     [HttpPost("")]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Start(
-        Guid settingsId, bool forSelf, string?[]? otherEmails, long? vipTotalMinor, decimal? donation,
+        Guid settingsId, bool forSelf, string?[]? otherEmails, long? vipTotalMinor, string? donation,
         string? donationPurpose, string?[]? childNames, string?[]? childTypes, bool acceptTerms, string? termsFolder, string? termsVersion,
         bool marketingOptIn, string? directedToken, CancellationToken ct)
     {
         var (errorResult, user) = await RequireCurrentUserAsync(ct);
         if (errorResult is not null) return errorResult;
+
+        if (!ModelState.IsValid)
+        {
+            logger.LogWarning("Rejected malformed checkout form for {UserId}", user.Id);
+            return BadRequest(ModelState);
+        }
 
         IActionResult Back(string key, string? argument = null)
         {
@@ -110,11 +116,19 @@ internal sealed class TicketBuyController(
                 : RedirectToAction(nameof(Resale), new { token = directedToken });
         }
 
-        if (donation > MaxDonation)
+        var donationEuro = 0m;
+        if (!string.IsNullOrWhiteSpace(donation)
+            && !decimal.TryParse(donation.Trim(), NumberStyles.Float,
+                CultureInfo.InvariantCulture, out donationEuro))
+        {
+            logger.LogWarning("Rejected malformed checkout donation for {UserId}", user.Id);
+            return Back("Tickets_Buy_Invalid");
+        }
+        if (donationEuro > MaxDonation)
             return Back("Tickets_Buy_DonationTooLarge");
         var returnBase = new Uri(Url.Action(nameof(Order), "TicketBuy", new { id = Guid.Empty }, Request.Scheme, Request.Host.Value)!
             .Replace(Guid.Empty.ToString(), string.Empty, StringComparison.Ordinal));
-        var donationMinor = donation is > 0 ? (long)Math.Round(donation.Value * 100m, MidpointRounding.AwayFromZero) : 0;
+        var donationMinor = donationEuro > 0 ? (long)Math.Round(donationEuro * 100m, MidpointRounding.AwayFromZero) : 0;
 
         var result = await checkout.StartCheckoutAsync(new StartCheckout(
             settingsId, forSelf, vipTotalMinor, donationMinor, donationPurpose,
@@ -217,14 +231,12 @@ internal sealed class TicketBuyController(
         var (errorResult, user) = await RequireCurrentUserAsync(ct);
         if (errorResult is not null) return errorResult;
 
-        // Checked before the refresh, so only the order's own people make it call the ticketing platform.
-        if (await checkout.GetOrderDetailAsync(id, ct) is not { } detail || !CanSee(detail.Order, user.Id))
+        if (await checkout.GetBuyOrderAsync(id, user.Id, ct) is not { } order)
             return NotFound();
-        var order = await checkout.RefreshOrderAsync(id, ct) ?? detail.Order;
-
-        var tickets = (await checkout.GetTicketsForOrderAsync(order.Id, ct))
-            .OrderBy(ticket => ticket.Kind).ThenBy(ticket => ticket.IssuedAt).ToList();
-        return View("~/Views/Tickets/Buy/Order.cshtml", new TicketBuyOrderViewModel(order, tickets, user.Id));
+        return View("~/Views/Tickets/Buy/Order.cshtml", order with
+        {
+            Tickets = order.Tickets.OrderBy(ticket => ticket.Kind).ThenBy(ticket => ticket.IssuedAt).ToList(),
+        });
     }
 
     [HttpPost("Order/{id:guid}/Cancel")]
@@ -243,19 +255,4 @@ internal sealed class TicketBuyController(
         }
         return startAgain && result.Refusal is null ? RedirectToAction(nameof(Index)) : RedirectToAction(nameof(Order), new { id });
     }
-
-    /// <summary>The buyer sees the whole order; a holder sees only their own ticket line.</summary>
-    private static bool CanSee(TicketCheckoutOrder order, Guid userId) =>
-        order.BuyerUserId == userId || order.Lines.Any(l => l.HolderUserId == userId);
-}
-
-internal sealed record TicketBuyOrderViewModel(TicketCheckoutOrder Order, IReadOnlyList<TicketCheckoutTicket> Tickets, Guid ViewerId)
-{
-    public bool IsBuyer => Order.BuyerUserId == ViewerId;
-
-    public IEnumerable<TicketCheckoutOrderLine> VisibleLines =>
-        IsBuyer ? Order.Lines : Order.Lines.Where(l => l.HolderUserId == ViewerId);
-
-    public IEnumerable<TicketCheckoutTicket> VisibleTickets =>
-        IsBuyer ? Tickets : Tickets.Where(t => t.HolderUserId == ViewerId);
 }

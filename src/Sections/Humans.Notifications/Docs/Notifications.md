@@ -83,7 +83,7 @@ Inbox selection checkboxes have a localized accessible label in all supported cu
 
 - Section-owned resource keys use the `Notifications_` prefix in all supported cultures.
 
-- Known-recipient emission and shared role broadcasts share one dispatch pipeline in `NotificationEmitter`: recipient-ID deduplication, preference filtering, copy normalization, recipient construction and persistence. Repeated IDs deliver once per person and cannot create duplicate recipient keys in a shared notification. Direct sends create one notification per recipient; role sends group all eligible recipients into one shared notification.
+- Known-recipient emission and shared role broadcasts share one dispatch pipeline in `NotificationEmitter`: live-account resolution, survivor-ID deduplication, preference filtering, copy normalization, recipient construction and persistence. Missing or tombstoned recipients are skipped with a Warning. Users lookup failures propagate before writes; informational inbox preferences apply to survivor IDs. Repeated IDs deliver once per person and cannot create duplicate recipient keys in a shared notification. Direct sends create one notification per recipient; role sends group all eligible recipients into one shared notification.
 
 - Both dispatch modes use the same copy normalization: titles at most 200 Unicode characters,
   bodies at most 2,000. Excerpts end in an ellipsis without splitting surrogate pairs; an
@@ -130,7 +130,7 @@ Inbox selection checkboxes have a localized accessible label in all supported cu
 ## Cross-Section Dependencies
 
 - **Auth:** `ISystemRoleService.GetActiveUserIdsInRoleAsync` — role-scoped fan-out, injected by `NotificationService`.
-- **Users:** Resolver rendering uses the shared Human component from its stored user id; inbox reads load no user display data.
+- **Users:** `IUserService.GetUserInfosAsync` resolves live recipients for dispatch. Resolver rendering uses the shared Human component from its stored user id; inbox reads load no user display data.
 - **Meters:** none read. Consent, Governance, Users, Google, Teams, Tickets and Camps push their meters through `INotificationMeterContributor`.
 - **Email (communication preferences, since Users decomposition commit 14):** `ICommunicationPreferenceService.GetUsersWithInboxDisabledAsync` (`Humans.Email.Contracts`, a Base-only leaf — no cycle) — filters out informational notifications for users who suppressed the source's `MessageCategory`.
 - **GDPR:** `NotificationInboxService` implements `IUserDataContributor` (via `INotificationRepository.GetAllForUserContributorAsync`) for the GDPR export.

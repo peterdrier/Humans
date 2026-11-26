@@ -493,8 +493,12 @@ internal sealed class ApplicationDecisionService(
         try
         {
             var user = await userService.GetUserInfoAsync(application.UserId, cancellationToken);
-            if (user is null)
+            if (user is null || user.IsTombstone)
+            {
+                logger.LogWarning("Skipping {DecisionName} email for application {ApplicationId}: user {UserId} is unavailable",
+                    decisionName, application.Id, application.UserId);
                 return (recipientId, culture);
+            }
 
             recipientId = user.Id;
             culture = CultureInfo.GetCultureInfo(user.PreferredLanguage.IsSupportedCultureCode() ? user.PreferredLanguage : "en");

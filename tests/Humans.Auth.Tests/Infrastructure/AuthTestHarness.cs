@@ -12,7 +12,7 @@ using Humans.Users.Contracts;
 namespace Humans.Auth.Tests.Infrastructure;
 
 /// <summary>
-/// Base class for the section's service tests. Auth reads only display names from
+/// Base class for the section's service tests. Auth reads account availability and display names through
 /// <c>IUserService</c>, so the stub is a dictionary rather than a seeded user database.
 /// </summary>
 public abstract class AuthTestHarness : IDisposable
@@ -84,6 +84,10 @@ public abstract class AuthTestHarness : IDisposable
         var svc = Substitute.For<IUserService>();
 
         svc.GetUserInfoAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
+            .Returns(call => new ValueTask<UserInfo?>(
+                _users.TryGetValue(call.Arg<Guid>(), out var info) ? info : null));
+
+        svc.GetRawUserInfoAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
             .Returns(call => new ValueTask<UserInfo?>(
                 _users.TryGetValue(call.Arg<Guid>(), out var info) ? info : null));
 

@@ -36,7 +36,7 @@
                 <span class="badge bg-warning text-dark">@Model.BlockedCount blocked · @Model.BlockedAmount.ToEuro()</span>
             }
         </div>
-        <div class="small text-muted">Months closed through @(Model.LastClosedMonth?.ToString("yyyy-MM", CultureInfo.InvariantCulture) ?? "—")</div>
+        <div class="small text-muted">Months closed through @(Model.LastClosedMonth?.ToInvariantYearMonth() ?? "—")</div>
         @if (Model.Ready.Count > 0)
         {
             <form authorize-policy="@StorePolicies.Manage" asp-action="BookTransfers" method="post" class="ms-auto">

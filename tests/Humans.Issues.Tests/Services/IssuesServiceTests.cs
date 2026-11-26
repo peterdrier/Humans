@@ -1026,6 +1026,27 @@ public sealed class IssuesServiceTests
             Arg.Any<CancellationToken>());
     }
 
+    [HumansTheory]
+    [InlineData(UserState.Deleted)]
+    [InlineData(UserState.Merged)]
+    public async Task PostCommentAsync_TombstoneReporter_KeepsReplyWithoutEmail(UserState state)
+    {
+        var ct = TestContext.Current.CancellationToken;
+        var reporterId = Guid.NewGuid();
+        SeedUser(reporterId, "Reporter").Email = "reporter@example.org";
+        var issueId = await SeedIssueRowAsync(reporterId, IssueStatus.Open, "Needs a reply");
+        _userService.GetUserInfoAsync(reporterId, Arg.Any<CancellationToken>()).Returns(UserInfo.Create(
+            new User { Id = reporterId, BurnerName = "Reporter", Email = "reporter@example.org", State = state },
+            [], [], null));
+
+        var result = await _service.PostCommentAsync(issueId, Admin, Admin.UserId, "Fixed this", true, ct);
+
+        result.Comment.Should().NotBeNull();
+        (await _issuesDb.Issues.AsNoTracking().SingleAsync(i => i.Id == issueId, ct)).Status.Should().Be(IssueStatus.Resolved);
+        (await _issuesDb.IssueComments.AsNoTracking().SingleAsync(c => c.IssueId == issueId, ct)).Content.Should().Be("Fixed this");
+        _emailService.ReceivedCalls().Should().BeEmpty();
+    }
+
     [HumansFact]
     public async Task HandlerReply_RequestedResolutionIsDurableBeforeEmailStarts()
     {

@@ -19,7 +19,7 @@ internal sealed class BoxOfficeSettings
 
     public string WebhookSecret { get; set; } = string.Empty;
 
-    public bool IsConfigured => !string.IsNullOrEmpty(SecretKey);
+    public bool IsConfigured => !string.IsNullOrEmpty(SecretKey) && !SecretKey.Any(char.IsWhiteSpace);
 
     public bool IsWebhookConfigured => !string.IsNullOrEmpty(WebhookSecret);
 }
@@ -56,7 +56,7 @@ internal sealed class BoxOfficePlatform(
 
     private StripeClient Client() => _settings.IsConfigured
         ? new StripeClient(_settings.SecretKey, httpClient: httpClient)
-        : throw new TicketingPlatformException("Box Office is not configured: STRIPE_BOXOFFICE_KEY is unset.");
+        : throw new TicketingPlatformException("Box Office is not configured: STRIPE_BOXOFFICE_KEY is unset or contains whitespace.");
 
     public async Task<PlatformOrderSession> CreateOrderAsync(PlatformOrderRequest request, CancellationToken ct = default)
     {
@@ -447,7 +447,7 @@ internal sealed class BoxOfficePlatform(
     public async Task<IReadOnlyList<PlatformFinding>> CheckAsync(string? platformEventRef, CancellationToken ct = default)
     {
         if (!_settings.IsConfigured)
-            return [new(false, $"{Section.KeyVariable} is unset.")];
+            return [new(false, $"{Section.KeyVariable} is unset or contains whitespace.")];
 
         var client = Client();
         var findings = new List<PlatformFinding>

@@ -46,7 +46,7 @@ All under `/Account`. Anti-forgery on every POST.
 
 | Verb | Action | Auth | Purpose |
 |------|--------|------|---------|
-| GET | `Login` | anonymous | Renders login page (Google OAuth + sign-in-link request); Open Graph link-preview tags describe the area `returnUrl` points at (`SignInLinkPreview`) |
+| GET | `Login` | anonymous | Renders login page (Google OAuth + sign-in-link request); Open Graph link-preview tags describe the area `returnUrl` points at (`LoginLinkPreview`) |
 | POST | `ExternalLogin` | anonymous | Initiates external (Google) OAuth challenge |
 | GET | `ExternalLoginCallback` | anonymous | Handles OAuth return: signs in, links to existing account by verified email, recovers a locked-out source account by re-linking to an active one, or creates a new account |
 | POST | `SignInLinkRequest` | anonymous | Sends a sign-in link (login or signup) — always shows "check your email" (no enumeration) |
@@ -138,6 +138,8 @@ Reached from the Roles item of the Users admin sidebar group and the System Role
 | Admin, UsersAdmin | Assign / revoke system roles: Admin any role, UsersAdmin any role but Admin; Board seats through `/Governance/Board`. Board sees the roster and assigns nothing. |
 
 ## Invariants
+
+- System-role assignment checks the exact requested account through `GetRawUserInfoAsync` after role/name validation and before overlap checks or writes. Missing and tombstoned targets return `UserUnavailable` with a Warning, without an assignment, audit or notice. Archived IDs are refused rather than retargeted to a survivor; the admin POST returns 404 for that refusal.
 
 - Invalid, expired or replayed sign-in-link tokens and throttled login/signup sends log at Warning without exception stacks, making these expected refusals visible in the production log viewer. Successful sends retain their informational logs. Request-cancelled sign-in-link signup also logs Warning without a stack after releasing the token reservation, then propagates cancellation.
 

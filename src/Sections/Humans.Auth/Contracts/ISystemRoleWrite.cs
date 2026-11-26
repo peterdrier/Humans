@@ -4,6 +4,7 @@ namespace Humans.Auth.Contracts;
 
 public interface ISystemRoleWrite : IApplicationService
 {
+    /// <summary>Grants to the exact requested account; missing or tombstoned targets return <c>UserUnavailable</c>.</summary>
     Task<SystemRoleResult> AssignRoleAsync(
         Guid userId, string roleName, Guid assignerId,
         string? notes,

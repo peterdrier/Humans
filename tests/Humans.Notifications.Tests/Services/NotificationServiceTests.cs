@@ -1,3 +1,4 @@
+using Humans.Users.Contracts;
 using Humans.Email.Contracts;
 using Humans.Auth.Contracts;
 using Humans.Notifications.Data;
@@ -24,6 +25,7 @@ public class NotificationServiceTests : IDisposable
     private readonly NotificationRepository _repo;
     private readonly NotificationService _service;
     private readonly NotificationEmitter _emitter;
+    private readonly IUserService _users = StubUsers();
     private readonly ICommunicationPreferenceService _preferenceService = Substitute.For<ICommunicationPreferenceService>();
     private readonly ISystemRoleService _systemRoleService = Substitute.For<ISystemRoleService>();
 
@@ -40,7 +42,7 @@ public class NotificationServiceTests : IDisposable
         _preferenceService.StubInboxDisabledFrom(_dbContext);
 
         _emitter = new NotificationEmitter(
-            _repo, _preferenceService, _clock,
+            _repo, _preferenceService, _users, _clock,
             NullLogger<NotificationEmitter>.Instance);
         _service = new NotificationService(
             _emitter, _repo, _systemRoleService, NullLogger<NotificationService>.Instance);
@@ -81,7 +83,7 @@ public class NotificationServiceTests : IDisposable
         var repo = Substitute.For<INotificationRepository>();
         repo.ReassignRecipientsToUserAsync(source, target, Arg.Any<CancellationToken>())
             .Returns(Task.FromException(failure));
-        var emitter = new NotificationEmitter(repo, _preferenceService, _clock, NullLogger<NotificationEmitter>.Instance);
+        var emitter = new NotificationEmitter(repo, _preferenceService, _users, _clock, NullLogger<NotificationEmitter>.Instance);
         var service = new NotificationService(emitter, repo,
             _systemRoleService, NullLogger<NotificationService>.Instance);
 
@@ -118,6 +120,27 @@ public class NotificationServiceTests : IDisposable
         var notification = notifications.Single();
         notification.TargetGroupName.Should().Be("Board");
         notification.Recipients.Should().HaveCount(2);
+    }
+
+    [HumansFact]
+    public async Task SendToRole_MergedRecipients_StoresOneLiveRecipient()
+    {
+        var archivedId = Guid.NewGuid();
+        var survivorId = Guid.NewGuid();
+        var missingId = Guid.NewGuid();
+        var person = UserFixtures.MakeUserInfo(survivorId) with { MergedUserIds = [archivedId] };
+        _users.GetUserInfosAsync(Arg.Any<IEnumerable<Guid>>(), Arg.Any<CancellationToken>())
+            .Returns(new Dictionary<Guid, UserInfo> { [archivedId] = person, [survivorId] = person });
+        _systemRoleService.GetActiveUserIdsInRoleAsync("Board", Arg.Any<CancellationToken>())
+            .Returns([archivedId, survivorId, missingId]);
+
+        await _service.SendToRoleAsync(TestSources.Approval, NotificationClass.Actionable,
+            NotificationPriority.Normal, "Update", "Board", cancellationToken: TestContext.Current.CancellationToken);
+
+        var notification = await _notificationsDb.Notifications.Include(n => n.Recipients)
+            .SingleAsync(TestContext.Current.CancellationToken);
+        notification.TargetGroupName.Should().Be("Board");
+        notification.Recipients.Should().ContainSingle().Which.UserId.Should().Be(survivorId);
     }
 
     [HumansFact]

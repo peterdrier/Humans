@@ -67,7 +67,7 @@ internal sealed class HiEventsPlatform : ITicketingPlatform
             _http.BaseAddress = baseUri;
         }
 
-        if (!string.IsNullOrEmpty(_settings.ApiKey))
+        if (_settings.IsConfigured)
         {
             _http.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", _settings.ApiKey);
         }
@@ -79,8 +79,15 @@ internal sealed class HiEventsPlatform : ITicketingPlatform
 
     public bool IsConfigured => _settings.IsConfigured;
 
+    private void EnsureConfigured()
+    {
+        if (!IsConfigured)
+            throw new TicketingPlatformException("Hi.Events is not configured.");
+    }
+
     public async Task<PlatformOrderSession> CreateOrderAsync(PlatformOrderRequest request, CancellationToken ct = default)
     {
+        EnsureConfigured();
         if (!int.TryParse(request.PlatformEventRef, NumberStyles.None, CultureInfo.InvariantCulture, out var eventId))
             throw new TicketingPlatformException($"Hi.Events needs a numeric event id, got '{request.PlatformEventRef}'.");
 
@@ -134,6 +141,7 @@ internal sealed class HiEventsPlatform : ITicketingPlatform
 
     public async Task<PlatformOrderStatus> GetStatusAsync(string platformOrderId, CancellationToken ct = default)
     {
+        EnsureConfigured();
         var (eventId, orderId) = ParsePlatformOrderId(platformOrderId);
         var order = await GetOrderAsync(eventId, orderId, ct);
         var state = ToState(order);
@@ -162,6 +170,7 @@ internal sealed class HiEventsPlatform : ITicketingPlatform
 
     public async Task<RefundResult> RefundAsync(RefundRequest request, CancellationToken ct = default)
     {
+        EnsureConfigured();
         var (eventId, orderId) = ParsePlatformOrderId(request.PlatformOrderId);
 
         var body = new RefundBody(
@@ -196,6 +205,7 @@ internal sealed class HiEventsPlatform : ITicketingPlatform
 
     public async Task CancelAsync(string platformOrderId, CancellationToken ct = default)
     {
+        EnsureConfigured();
         var (eventId, orderId) = ParsePlatformOrderId(platformOrderId);
         var order = await GetOrderAsync(eventId, orderId, ct);
 
@@ -225,6 +235,7 @@ internal sealed class HiEventsPlatform : ITicketingPlatform
     /// </summary>
     public async Task ErasePersonalDataAsync(string platformOrderId, string email, CancellationToken ct = default)
     {
+        EnsureConfigured();
         var (eventId, orderId) = ParsePlatformOrderId(platformOrderId);
         using var response = await _http.PostAsync($"events/{eventId}/orders/{orderId}/anonymize", content: null, ct);
         await ReadOrderAsync(response, ct);
@@ -266,7 +277,7 @@ internal sealed class HiEventsPlatform : ITicketingPlatform
     public async Task<IReadOnlyList<PlatformFinding>> CheckAsync(string? platformEventRef, CancellationToken ct = default)
     {
         if (!IsConfigured)
-            return [new(false, "HiEvents:ApiUrl and HIEVENTS_API_KEY must be set, and HiEvents:ApiUrl and HiEvents:AppUrl (when set) must be absolute http(s) addresses.")];
+            return [new(false, "HIEVENTS_API_KEY must be a nonblank valid HTTP authorization value, and HiEvents:ApiUrl and HiEvents:AppUrl (when set) must be absolute http(s) addresses.")];
 
         var findings = new List<PlatformFinding>
         {
@@ -417,8 +428,7 @@ internal sealed class HiEventsPlatform : ITicketingPlatform
     public async Task<IReadOnlyList<PlatformOrderSummary>> ListOrdersAsync(
         string? platformEventRef, Instant from, Instant to, CancellationToken ct = default)
     {
-        if (!IsConfigured)
-            throw new TicketingPlatformException("Hi.Events is not configured.");
+        EnsureConfigured();
         if (!int.TryParse(platformEventRef, NumberStyles.None, CultureInfo.InvariantCulture, out var eventId))
             throw new TicketingPlatformException($"Hi.Events needs a numeric event id, got '{platformEventRef}'.");
 

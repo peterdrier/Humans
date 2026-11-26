@@ -1,8 +1,8 @@
 @using Humans.Tickets.Domain.Checkout
-@model Humans.Tickets.Controllers.TicketBuyOrderViewModel
+@model Humans.Tickets.Services.Checkout.BuyOrder
 @{
     ViewData["Title"] = Localizer["Tickets_Buy_OrderTitle"].Value;
-    var order = Model.Order;
+    var order = Model;
     var open = order.IsOpen;
     var processing = order.State == TicketCheckoutOrderState.Processing;
     var canPay = open && Model.IsBuyer && order.PaymentUrl is not null && order.State == TicketCheckoutOrderState.Pending;
@@ -41,7 +41,7 @@
                 <div class="value buy-total">@((order.TotalMinor / 100m).ToEuro())</div>
             }
             <dl class="buy-lines">
-                @foreach (var line in Model.VisibleLines)
+                @foreach (var line in Model.Lines)
                 {
                     <dt>
                         @if (line.Kind == OrderLineKind.Ticket)
@@ -102,12 +102,12 @@
         </div>
     </div>
 
-    @if (Model.VisibleTickets.Any())
+    @if (Model.Tickets.Any())
     {
         <div class="col-lg-5">
             <h2 class="h4">@Localizer["Tickets_Buy_YourTickets"]</h2>
             <div class="list-group mb-3">
-                @foreach (var ticket in Model.VisibleTickets)
+                @foreach (var ticket in Model.Tickets)
                 {
                     <div class="list-group-item d-flex justify-content-between align-items-start gap-2">
                         <span>
