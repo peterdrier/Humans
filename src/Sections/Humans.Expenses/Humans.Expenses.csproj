@@ -23,6 +23,8 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\Humans.Base\Humans.Base.csproj" />
+    <!-- ISystemRoleService: the services read the actor's Finance Admin role themselves. -->
+    <ProjectReference Include="..\Humans.Auth\Humans.Auth.csproj" />
     <ProjectReference Include="..\Humans.Teams.Contracts\Humans.Teams.Contracts.csproj" />
     <!-- Permissions: declares Expenses.Endorse, and checks it on teams. -->
     <ProjectReference Include="..\Humans.Permissions\Humans.Permissions.csproj" />

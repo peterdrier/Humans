@@ -50,7 +50,7 @@ public class ExpenseReportServiceGdprTests
                 ct: Arg.Any<CancellationToken>())
             .Returns([]);
 
-        _sut = new ExpenseReportService(_repo, Substitute.For<IFileStorage>(), Substitute.For<IBudgetService>(), _userService, auditLogService, _auditViewer, Substitute.For<IHoldedService>(), _finance, Substitute.For<IFinanceWrite>(), Substitute.For<Humans.Preapprovals.Contracts.IPreapprovalService>(), Substitute.For<Humans.Preapprovals.Contracts.IPreapprovalWrite>(), new FakeClock(FakeNow), NullLogger<ExpenseReportService>.Instance, Options.Create(new TravelReimbursementConfig()));
+        _sut = new ExpenseReportService(_repo, Substitute.For<IFileStorage>(), Substitute.For<IBudgetService>(), _userService, Substitute.For<Humans.Auth.Contracts.ISystemRoleService>(), auditLogService, _auditViewer, Substitute.For<IHoldedService>(), _finance, Substitute.For<IFinanceWrite>(), Substitute.For<Humans.Preapprovals.Contracts.IPreapprovalService>(), Substitute.For<Humans.Preapprovals.Contracts.IPreapprovalWrite>(), new FakeClock(FakeNow), NullLogger<ExpenseReportService>.Instance, Options.Create(new TravelReimbursementConfig()));
     }
 
     private static UserInfo WrapInUserInfo(Guid userId, ProfileInfo profile) => UserInfo.Create(
