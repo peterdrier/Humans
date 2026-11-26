@@ -64,11 +64,11 @@
                                 <ul class="list-unstyled mb-0 small">
                                     @foreach (var c in row.Coordinators)
                                     {
-                                        var stale = IsStale(c.LastLoginAt);
+                                        var stale = IsStale(c.LastSignInAt);
                                         <li>
                                             <span class="fw-semibold"><vc:human user-id="@c.UserId" layout="Text" link="Public" /></span>
                                             <span class="text-muted"> · </span>
-                                            <span class="@(stale ? "text-danger fw-semibold" : "text-muted")">@RelativeTime(c.LastLoginAt)@if (stale) {<span class="visually-hidden"> — @Localizer["Shifts_ShiftDash_Coordinators_StaleLabel"]</span>}</span>
+                                            <span class="@(stale ? "text-danger fw-semibold" : "text-muted")">@RelativeTime(c.LastSignInAt)@if (stale) {<span class="visually-hidden"> — @Localizer["Shifts_ShiftDash_Coordinators_StaleLabel"]</span>}</span>
                                         </li>
                                     }
                                 </ul>
@@ -105,11 +105,11 @@
                                                         <ul class="list-unstyled mb-0 small">
                                                             @foreach (var c in sub.Coordinators)
                                                             {
-                                                                var stale = IsStale(c.LastLoginAt);
+                                                                var stale = IsStale(c.LastSignInAt);
                                                                 <li>
                                                                     <span class="fw-semibold"><vc:human user-id="@c.UserId" layout="Text" link="Public" /></span>
                                                                     <span class="text-muted"> · </span>
-                                                                    <span class="@(stale ? "text-danger fw-semibold" : "text-muted")">@RelativeTime(c.LastLoginAt)@if (stale) {<span class="visually-hidden"> — @Localizer["Shifts_ShiftDash_Coordinators_StaleLabel"]</span>}</span>
+                                                                    <span class="@(stale ? "text-danger fw-semibold" : "text-muted")">@RelativeTime(c.LastSignInAt)@if (stale) {<span class="visually-hidden"> — @Localizer["Shifts_ShiftDash_Coordinators_StaleLabel"]</span>}</span>
                                                                 </li>
                                                             }
                                                         </ul>

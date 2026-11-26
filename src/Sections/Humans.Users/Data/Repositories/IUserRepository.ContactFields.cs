@@ -4,15 +4,11 @@ namespace Humans.Users.Data.Repositories;
 
 internal partial interface IUserRepository
 {
-    /// <summary>Read-only, ordered by <c>DisplayOrder</c> then <c>CreatedAt</c>.</summary>
-    Task<IReadOnlyList<ContactField>> GetContactFieldsByUserIdReadOnlyAsync(
-        Guid userId, CancellationToken ct = default);
-
     /// <summary>Every row, read-only, unordered.</summary>
     Task<IReadOnlyList<ContactField>> GetAllContactFieldsAsync(CancellationToken ct = default);
 
-    /// <summary>Detached: mutated entities must go back to <see cref="BatchSaveAsync"/> as <c>toUpdate</c>.</summary>
-    Task<IReadOnlyList<ContactField>> GetContactFieldsByUserIdForMutationAsync(
+    /// <summary>Detached and unordered: mutated entities must go back to <see cref="BatchSaveAsync"/> as <c>toUpdate</c>.</summary>
+    Task<IReadOnlyList<ContactField>> GetContactFieldsByUserIdAsync(
         Guid userId, CancellationToken ct = default);
 
     /// <summary>Adds, updates and removes in one save.</summary>

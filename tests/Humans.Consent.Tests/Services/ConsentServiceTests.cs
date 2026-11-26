@@ -25,7 +25,7 @@ public sealed class ConsentServiceTests : ConsentTestHarness
     // The real decorator over _service: the inner submit evicts it before its membership check.
     private readonly CachingConsentService _cache;
     private readonly ITeamService _teamService = Substitute.For<ITeamService>();
-    private readonly IRoleAssignmentService _roleAssignments = Substitute.For<IRoleAssignmentService>();
+    private readonly ISystemRoleService _roleAssignments = Substitute.For<ISystemRoleService>();
     private readonly List<(Guid UserId, Guid TeamId)> _memberships = [];
     private readonly ILegalDocumentSyncManagement _legalDocumentSyncService = Substitute.For<ILegalDocumentSyncManagement>();
     private readonly IHumanLifecycleService _humanLifecycleService = Substitute.For<IHumanLifecycleService>();

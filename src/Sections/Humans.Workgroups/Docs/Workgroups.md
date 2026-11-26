@@ -2,7 +2,7 @@
   src/Sections/Humans.Workgroups/**
   tests/Humans.Workgroups.Tests/**
   src/Humans.Base/Users/IUserService.cs
-  src/Sections/Humans.Auth/Contracts/IRoleAssignmentService.cs
+  src/Sections/Humans.Auth/Contracts/ISystemRoleService.cs
   src/Sections/Humans.Teams.Contracts/ITeamService.cs
   src/Sections/Humans.Finance.Contracts/IFinanceWrite.cs
   src/Sections/Humans.Holded/Contracts/IHoldedService.cs
@@ -491,7 +491,7 @@ should end is the Board's decision, taken on the register in front of them.
 - **Notifications:** `INotificationEmitter` for known-recipient sends directly, `INotificationService.SendToRoleAsync` for shared Board broadcasts (and `INotificationAutoResolve` where a source resolves). Its sources are declared in `WorkgroupsNotificationSources` (`src/Sections/Humans.Workgroups/WorkgroupsNotificationSources.cs`), one `NotificationSourceDefinition` each: `WorkgroupRegistrationPending` (actionable, to board role: a working group applies, or its application goes overdue); `WorkgroupRegistrationDecided` (informational, to the group's coordinators: registration decided (registered, refused, withdrawn, ended, reactivated)); `WorkgroupReportingDue` (informational, to the group's coordinators: thirty days without an update or meeting); `WorkgroupDocumentActivity` (informational (actionable to board when a document is delivered for disposition), to group members, comment authors, or Board role: document published, comment opened/answered, or delivered for disposition); `WorkgroupDispositionRecorded` (informational, to the group's current members: board records its written disposition on a delivered document); `WorkgroupMembershipRequested` (informational, to the group's coordinators: someone asks to join a working group); `WorkgroupMembershipDecided` (informational, to the requester or added person: join request approved or declined, or a coordinator adds the person directly).
 - **Users**: `IUserService` — names, approved-profile check, and canonical `UserInfo.Email` for lifecycle notices from the same recipient snapshot as name and language.
 - **Governance**: `IGovernanceService.GetMembershipTiersAsync` — roster tier badges and the budget-visibility tier check.
-- **Auth**: `IRoleAssignmentService` — active holders of the Board role: the recipients of Board emails, the Board badges (controller) and the root Drive readers (Drive source).
+- **Auth**: `ISystemRoleService` — active holders of the Board role: the recipients of Board emails, the Board badges (controller) and the root Drive readers (Drive source).
 - **Calendar**: implements `ICalendarFeedContributor` (inbound) — per-user meetings of
   Active groups the user belongs to; public meetings of Active groups for the community
   calendar window. Calendar names nothing of Workgroups.
@@ -585,7 +585,7 @@ picker labels and roster profile badges load a member dictionary.
 - **Log ordering** — the details timeline orders log entries by occurrence date, then creation time, both descending. The snapshot does not impose log display order; rhythm calculations select their latest qualifying activity explicitly.
 - **Display stitching** — `IUserService.GetUserInfosAsync` for burner names; `IGovernanceService.GetMembershipTiersAsync` (in `WorkgroupsController`) for tiers.
 - **Cross-section calls** — `IUserService`,
-  `IRoleAssignmentService`, `ISettingsService`, `IGoogleSyncService`, `IGoogleSyncWrite`,
+  `ISystemRoleService`, `ISettingsService`, `IGoogleSyncService`, `IGoogleSyncWrite`,
   `INotificationService`, `INotificationEmitter`, `IEmailService`, `IAuditLogService`,
   `ISurveyAnalysisRead`, `IClock`, `IFinanceWrite`, `IHoldedService`.
   `ITeamService` is used by `WorkgroupsController` and `WorkgroupDriveAccessSource`, not by `WorkgroupService`.

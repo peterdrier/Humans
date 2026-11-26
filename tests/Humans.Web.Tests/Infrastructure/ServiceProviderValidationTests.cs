@@ -45,9 +45,9 @@ public sealed class ServiceProviderValidationTests
     }
 
     [HumansTheory]
-    [InlineData("https://example.com/", "/Account/MagicLinkConfirm")]
-    [InlineData("https://example.com", "/Account/MagicLinkConfirm")]
-    [InlineData("https://example.com/humans/", "/humans/Account/MagicLinkConfirm")]
+    [InlineData("https://example.com/", "/Account/SignInLinkConfirm")]
+    [InlineData("https://example.com", "/Account/SignInLinkConfirm")]
+    [InlineData("https://example.com/humans/", "/humans/Account/SignInLinkConfirm")]
     public void Email_link_base_does_not_duplicate_route_separators(string baseUrl, string expectedPath)
     {
         var configuration = BuildMinimalConfiguration();
@@ -58,7 +58,7 @@ public sealed class ServiceProviderValidationTests
         using var services = registrations.BuildServiceProvider();
         var settings = services.GetRequiredService<IOptions<EmailSettings>>().Value;
 
-        new Uri($"{settings.BaseUrl}/Account/MagicLinkConfirm").AbsolutePath.Should().Be(expectedPath);
+        new Uri($"{settings.BaseUrl}/Account/SignInLinkConfirm").AbsolutePath.Should().Be(expectedPath);
     }
 
     [HumansFact]

@@ -301,7 +301,7 @@
     <value>Iscritto/a il {0}</value>
     <comment>{0} = date</comment>
   </data>
-  <data name="Users_ProfileCard_LastLogin" xml:space="preserve">
+  <data name="Users_ProfileCard_LastSignIn" xml:space="preserve">
     <value>Ultimo accesso {0}</value>
     <comment>{0} = date</comment>
   </data>

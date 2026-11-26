@@ -17,7 +17,7 @@ namespace Humans.Tickets.Controllers;
 [Route("Tickets/Buy")]
 internal sealed class TicketBuyController(
     ITicketCheckoutService checkout,
-    IMagicLinkService magicLinks,
+    ISignInLinkService signInLinks,
     IEarlyEntryService earlyEntry,
     IUserService userService,
     IStringLocalizer<TicketsResource> localizer,
@@ -63,7 +63,7 @@ internal sealed class TicketBuyController(
         {
             try
             {
-                await magicLinks.SendMagicLinkAsync(email.Trim(), Url.Action(nameof(Index)), ct);
+                await signInLinks.SendSignInLinkAsync(email.Trim(), Url.Action(nameof(Index)), ct);
             }
             catch (Exception ex) when (ex is not OperationCanceledException)
             {

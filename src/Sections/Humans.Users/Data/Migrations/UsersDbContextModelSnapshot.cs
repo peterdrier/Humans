@@ -81,12 +81,12 @@ namespace Humans.Users.Data.Migrations
                         .HasColumnType("character varying(256)")
                         .HasColumnName("GoogleEmail");
 
-                    b.Property<Instant?>("LastLoginAt")
-                        .HasColumnType("timestamp with time zone");
-
                     b.Property<string>("LastName")
                         .HasMaxLength(256)
                         .HasColumnType("character varying(256)");
+
+                    b.Property<Instant?>("LastSignInAt")
+                        .HasColumnType("timestamp with time zone");
 
                     b.Property<bool>("LockoutEnabled")
                         .HasColumnType("boolean");

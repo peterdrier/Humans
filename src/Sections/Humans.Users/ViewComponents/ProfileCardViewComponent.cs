@@ -17,7 +17,7 @@ public sealed class ProfileCardViewComponent(
     IContactFieldService contactFieldService,
     IUserEmailService userEmailService,
     ITeamService teamService,
-    IRoleAssignmentService roleAssignmentService,
+    ISystemRoleService systemRoleService,
     ICommunicationPreferenceService commPrefService) : ViewComponent
 {
     // Default is the whole card (/Profile/Me, /Profile/{id}); /Users/Me splits it into
@@ -47,7 +47,7 @@ public sealed class ProfileCardViewComponent(
             if (viewer is null) return Content(string.Empty);
 
             viewerUserId = viewer.Id;
-            canViewLegalName = await roleAssignmentService.IsUserBoardMemberAsync(viewerUserId, ct);
+            canViewLegalName = await systemRoleService.IsUserBoardMemberAsync(viewerUserId, ct);
         }
 
         var contactFields = profile is not null

@@ -29,12 +29,12 @@ namespace Humans.Web.Tests.Controllers;
 public class AccountControllerOAuthReconcileTests
 {
     private readonly IUserEmailService _userEmailService = Substitute.For<IUserEmailService>();
-    private readonly IMagicLinkService _magicLinkService = Substitute.For<IMagicLinkService>();
+    private readonly ISignInLinkService _signInLinkService = Substitute.For<ISignInLinkService>();
     private readonly IUserManagement _userService = Substitute.For<IUserManagement>();
     private readonly IStringLocalizer<Base.SharedResource> _localizer =
         Substitute.For<IStringLocalizer<Base.SharedResource>>();
     private readonly FakeClock _clock = new(Instant.FromUtc(2026, 5, 11, 12, 0));
-    private readonly Web.Services.LoginMethodCounter _loginMethods = new();
+    private readonly Web.Services.SignInMethodCounter _signInMethods = new();
     private readonly IAuthenticationSchemeProvider _schemeProvider = Substitute.For<IAuthenticationSchemeProvider>();
     private readonly UserManager<User> _userManager;
     private readonly SignInManager<User> _signInManager;
@@ -78,13 +78,13 @@ public class AccountControllerOAuthReconcileTests
             FixedOrgTimeZone.Madrid,
             NullLogger<AccountController>.Instance,
             externalLoginService,
-            _magicLinkService,
+            _signInLinkService,
             Substitute.For<IAccountProvisioningService>(),
-            new Web.Services.GateLoginThrottle(
+            new Web.Services.GateSignInThrottle(
                 new Microsoft.Extensions.Caching.Memory.MemoryCache(
                     new Microsoft.Extensions.Caching.Memory.MemoryCacheOptions()),
                 _clock),
-            _loginMethods,
+            _signInMethods,
             _localizer,
             _schemeProvider);
         _controller.Url = Substitute.For<IUrlHelper>();
@@ -161,8 +161,8 @@ public class AccountControllerOAuthReconcileTests
         await _userService.Received(1).EnsureStubProfileAsync(userId, null, null, null,
             Arg.Any<CancellationToken>(), userId);
 
-        _loginMethods.Providers.Should().ContainKey("Google").WhoseValue.Should().Be(1);
-        _loginMethods.MagicLink.Should().Be(0);
+        _signInMethods.Providers.Should().ContainKey("Google").WhoseValue.Should().Be(1);
+        _signInMethods.SignInLink.Should().Be(0);
     }
 
     [HumansFact]
@@ -303,7 +303,7 @@ public class AccountControllerOAuthReconcileTests
             Arg.Any<User>(), Arg.Any<bool>(), Arg.Any<string?>());
 
         // ...and linking is not a sign-in, so the dashboard tally doesn't move.
-        _loginMethods.Providers.Should().BeEmpty();
+        _signInMethods.Providers.Should().BeEmpty();
     }
 
     [HumansFact]
@@ -342,8 +342,8 @@ public class AccountControllerOAuthReconcileTests
         await _userManager.DidNotReceiveWithAnyArgs().AddLoginAsync(default!, default!);
         await _userEmailService.DidNotReceiveWithAnyArgs()
             .ReconcileOAuthIdentityAsync(default, default!, default!, default!, default);
-        await _userService.DidNotReceiveWithAnyArgs().RecordLoginAsync(default);
-        _loginMethods.Providers.Should().BeEmpty();
+        await _userService.DidNotReceiveWithAnyArgs().RecordSignInAsync(default);
+        _signInMethods.Providers.Should().BeEmpty();
     }
 
     [HumansFact]
@@ -381,8 +381,8 @@ public class AccountControllerOAuthReconcileTests
         await _userEmailService.Received(1).ReconcileOAuthIdentityAsync(
             userAId, Provider, ProviderKey, "usera@google.test",
             claimEmailVerified: true, Arg.Any<CancellationToken>());
-        await _userService.Received(1).RecordLoginAsync(userAId, Arg.Any<CancellationToken>());
-        _loginMethods.Providers.Should().BeEmpty();
+        await _userService.Received(1).RecordSignInAsync(userAId, Arg.Any<CancellationToken>());
+        _signInMethods.Providers.Should().BeEmpty();
     }
 
     [HumansTheory]

@@ -40,9 +40,9 @@
             {
                 <span>@Localizer["Users_ProfileCard_Joined", Model.MemberSince.Value.ToMonthYear()]</span>
             }
-            @if (Model.LastLogin.HasValue)
+            @if (Model.LastSignIn.HasValue)
             {
-                <span class="ms-2">@Localizer["Users_ProfileCard_LastLogin", Model.LastLogin.Value.ToDate()]</span>
+                <span class="ms-2">@Localizer["Users_ProfileCard_LastSignIn", Model.LastSignIn.Value.ToDate()]</span>
             }
         </div>
     </div>

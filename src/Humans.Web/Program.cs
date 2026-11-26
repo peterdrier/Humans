@@ -81,11 +81,11 @@ builder.Services.AddSingleton(configRegistry);
 
 builder.Services.AddSingleton<IClock>(SystemClock.Instance);
 
-// All environments: the per-source-IP sign-in failure throttle for /Account/GateLogin.
-builder.Services.AddSingleton<GateLoginThrottle>();
+// All environments: the per-source-IP sign-in failure throttle for /Account/GateSignIn.
+builder.Services.AddSingleton<GateSignInThrottle>();
 
 // Since-startup sign-in tally by method, shown on the /Admin dashboard. In-memory only.
-builder.Services.AddSingleton<LoginMethodCounter>();
+builder.Services.AddSingleton<SignInMethodCounter>();
 var shellChrome = new Humans.Web.ShellChrome();
 builder.Services.AddSingleton<ISectionChrome>(shellChrome);
 
@@ -144,7 +144,7 @@ builder.Services.AddAuthentication().AddSignInProviders(builder.Configuration, c
 
 builder.Services.AddHumansAuthorizationPolicies();
 builder.Services.AddHttpContextAccessor();
-builder.Services.AddTransient<Microsoft.AspNetCore.Authentication.IClaimsTransformation, RoleAssignmentClaimsTransformation>();
+builder.Services.AddTransient<Microsoft.AspNetCore.Authentication.IClaimsTransformation, SystemRoleClaimsTransformation>();
 
 // Storage is this host's own DI singleton, so Hangfire's client, recurring-job manager, server and dashboard never
 // read the per-process JobStorage.Current that parallel test hosts overwrite. (The health-check package still does.)
@@ -673,7 +673,7 @@ app.Use(async (context, next) =>
         var path = context.Request.Path;
         var allowed =
             path.StartsWithSegments("/Gate", StringComparison.OrdinalIgnoreCase)
-            || path.StartsWithSegments("/Account/GateLogin", StringComparison.OrdinalIgnoreCase)
+            || path.StartsWithSegments("/Account/GateSignIn", StringComparison.OrdinalIgnoreCase)
             || path.StartsWithSegments("/Account/Logout", StringComparison.OrdinalIgnoreCase)
             || path.StartsWithSegments("/Account/AccessDenied", StringComparison.OrdinalIgnoreCase);
         if (!allowed)

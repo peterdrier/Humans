@@ -14,7 +14,7 @@ internal sealed class ProfileSummaryViewModel
     public bool IsBoardMember { get; set; }
     public string? MembershipStatus { get; set; }
     public DateTime? MemberSince { get; set; }
-    public DateTime? LastLogin { get; set; }
+    public DateTime? LastSignIn { get; set; }
     public string? City { get; set; }
     public string? CountryCode { get; set; }
     public bool IsSuspended { get; set; }

@@ -50,7 +50,7 @@ internal sealed class EmailProblemsService(
                 EmailProblemKind.OrphanUserEmail, o.UserId, null, o.EmailId, o.Email));
         }
 
-        var ghosts = await userService.GetUsersWithLoginsButNoEmailsAsync(ct);
+        var ghosts = await userService.GetLoginUsersWithoutEmailsAsync(ct);
         foreach (var ghostId in ghosts)
         {
             problems.Add(new EmailProblem(

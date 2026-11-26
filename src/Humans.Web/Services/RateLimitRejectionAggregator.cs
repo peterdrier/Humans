@@ -9,7 +9,7 @@ namespace Humans.Web.Services;
 /// timer flushes the summary when the window closes — on time even if the
 /// burst has stopped — and skips it when only one rejection occurred (that one
 /// was already logged in detail).
-/// Deliberately not the <c>GateLoginThrottle</c>-style IMemoryCache+IClock
+/// Deliberately not the <c>GateSignInThrottle</c>-style IMemoryCache+IClock
 /// idiom: cache eviction callbacks fire lazily on later cache activity, which
 /// can't deliver the "summary lands within ~60s even if the burst stops"
 /// requirement — that needs a timer.

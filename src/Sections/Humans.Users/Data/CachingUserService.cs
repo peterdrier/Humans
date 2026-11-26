@@ -18,7 +18,7 @@ namespace Humans.Users.Data;
 /// </summary>
 /// <remarks>
 /// Writes through this surface refresh the affected entry; Identity-machinery writes
-/// (<c>UserManager.UpdateAsync</c>, sign-in <c>LastLoginAt</c>) are caught by
+/// (<c>UserManager.UpdateAsync</c>, sign-in <c>LastSignInAt</c>) are caught by
 /// <c>UserInfoSaveChangesInterceptor</c>. Warm and miss paths go through the keyed inner
 /// service, so the decorator never bypasses the repository-owning service.
 /// </remarks>
@@ -422,8 +422,8 @@ internal sealed class CachingUserService(
         Instant now, CancellationToken ct = default) =>
         WithInnerAsync(inner => inner.GetAccountsDueForAnonymizationAsync(now, ct));
 
-    public Task<IReadOnlyList<Guid>> GetUsersWithLoginsButNoEmailsAsync(CancellationToken ct = default) =>
-        WithInnerAsync(inner => inner.GetUsersWithLoginsButNoEmailsAsync(ct));
+    public Task<IReadOnlyList<Guid>> GetLoginUsersWithoutEmailsAsync(CancellationToken ct = default) =>
+        WithInnerAsync(inner => inner.GetLoginUsersWithoutEmailsAsync(ct));
 
     public Task<IReadOnlyDictionary<Guid, IReadOnlyList<(string Provider, string ProviderKey)>>>
         GetExternalLoginsByUserIdsAsync(
@@ -437,13 +437,13 @@ internal sealed class CachingUserService(
             await RefreshEntryAsync(userId);
         });
 
-    public async Task RecordLoginAsync(Guid userId, CancellationToken ct = default)
+    public async Task RecordSignInAsync(Guid userId, CancellationToken ct = default)
     {
         try
         {
             await MutateAsync(async () =>
             {
-                await WithInnerAsync(inner => inner.RecordLoginAsync(userId, ct));
+                await WithInnerAsync(inner => inner.RecordSignInAsync(userId, ct));
                 await RefreshEntryAsync(userId);
             });
         }

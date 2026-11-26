@@ -189,7 +189,7 @@ public class AccountMergeServiceMergeTests
         var writeOptions = new DbContextOptionsBuilder<UsersDbContext>(options);
         if (lostAcknowledgement) writeOptions.AddInterceptors(new LostContactMergeAcknowledgement(failure));
         var contacts = new ContactFieldService(new UserRepository(new TestDbContextFactory(writeOptions.Options), _clock),
-            cache, Substitute.For<ITeamService>(), Substitute.For<IRoleAssignmentService>(), cache,
+            cache, Substitute.For<ITeamService>(), Substitute.For<ISystemRoleService>(), cache,
             _clock, NullLogger<ContactFieldService>.Instance, Substitute.For<IStringLocalizer<UsersResource>>().AddFormatting());
         var later = Substitute.For<IUserMerge>();
         later.ReassignAsync(Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<NodaTime.Instant>(), Arg.Any<CancellationToken>())

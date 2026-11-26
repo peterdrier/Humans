@@ -128,7 +128,7 @@ public sealed class ApplicationDecisionServiceTests : IDisposable
     private readonly INotificationEmitter _notificationService = Substitute.For<INotificationEmitter>();
     private readonly IGoogleGroupSync _groupSync = Substitute.For<IGoogleGroupSync>();
     private readonly IHumansMetrics _metrics = Substitute.For<IHumansMetrics>();
-    private readonly IRoleAssignmentService _roleAssignmentService = Substitute.For<IRoleAssignmentService>();
+    private readonly ISystemRoleService _systemRoleService = Substitute.For<ISystemRoleService>();
     private readonly IMemoryCache _cache = new MemoryCache(new MemoryCacheOptions());
     private readonly ApplicationDecisionService _service;
 
@@ -142,7 +142,7 @@ public sealed class ApplicationDecisionServiceTests : IDisposable
         _userService = Substitute.For<IUserService>();
         _userService.GetUserInfosAsync(Arg.Any<IEnumerable<Guid>>(), Arg.Any<CancellationToken>())
             .Returns(new ValueTask<IReadOnlyDictionary<Guid, UserInfo>>(new Dictionary<Guid, UserInfo>()));
-        _roleAssignmentService.GetActiveUserIdsInRoleAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
+        _systemRoleService.GetActiveUserIdsInRoleAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
             .Returns(Task.FromResult<IReadOnlyList<Guid>>([]));
 
         _service = CreateService();
@@ -152,7 +152,7 @@ public sealed class ApplicationDecisionServiceTests : IDisposable
         IApplicationRepository? repository = null) => new(
         repository ?? _repository,
         _userService,
-        _roleAssignmentService,
+        _systemRoleService,
         _auditLog,
         _emailService,
         _emailMessages,
@@ -317,7 +317,7 @@ public sealed class ApplicationDecisionServiceTests : IDisposable
     {
         var userId = Guid.NewGuid();
         var boardMemberId = Guid.NewGuid();
-        _roleAssignmentService.GetActiveUserIdsInRoleAsync(RoleNames.Board, Arg.Any<CancellationToken>())
+        _systemRoleService.GetActiveUserIdsInRoleAsync(RoleNames.Board, Arg.Any<CancellationToken>())
             .Returns(Task.FromResult<IReadOnlyList<Guid>>([boardMemberId]));
         PrimeVotingBadges(boardMemberId);
 
@@ -536,7 +536,7 @@ public sealed class ApplicationDecisionServiceTests : IDisposable
     {
         var userId = Guid.NewGuid();
         var boardMemberId = Guid.NewGuid();
-        _roleAssignmentService.GetActiveUserIdsInRoleAsync(RoleNames.Board, Arg.Any<CancellationToken>())
+        _systemRoleService.GetActiveUserIdsInRoleAsync(RoleNames.Board, Arg.Any<CancellationToken>())
             .Returns(Task.FromResult<IReadOnlyList<Guid>>([boardMemberId]));
         var app = await SeedSubmittedApplicationAsync(userId);
         PrimeVotingBadges(boardMemberId);
@@ -912,7 +912,7 @@ public sealed class ApplicationDecisionServiceTests : IDisposable
         var voter1 = Guid.NewGuid();
         var voter2 = Guid.NewGuid();
         var nonVoter = Guid.NewGuid();
-        _roleAssignmentService.GetActiveUserIdsInRoleAsync(RoleNames.Board, Arg.Any<CancellationToken>())
+        _systemRoleService.GetActiveUserIdsInRoleAsync(RoleNames.Board, Arg.Any<CancellationToken>())
             .Returns(Task.FromResult<IReadOnlyList<Guid>>([voter1, voter2, nonVoter]));
         await _governanceDb.BoardVotes.AddRangeAsync(
             new BoardVote

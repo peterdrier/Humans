@@ -7,12 +7,12 @@ namespace Humans.Auth.Data;
 internal sealed class AuthDbContext(DbContextOptions<AuthDbContext> options)
     : DbContext(options)
 {
-    public DbSet<RoleAssignment> RoleAssignments => Set<RoleAssignment>();
+    public DbSet<SystemRole> SystemRoles => Set<SystemRole>();
 
     protected override void OnModelCreating(ModelBuilder builder)
     {
         base.OnModelCreating(builder);
 
-        builder.ApplyConfiguration(new RoleAssignmentConfiguration());
+        builder.ApplyConfiguration(new SystemRoleConfiguration());
     }
 }
