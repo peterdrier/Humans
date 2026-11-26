@@ -250,7 +250,7 @@ public sealed class StripeMirrorClientTests
     [HumansTheory]
     [Xunit.InlineData(1)]
     [Xunit.InlineData(2)]
-    public async Task A_rate_limited_page_is_retried_once(int rateLimited)
+    public async Task FetchAsync_RateLimitedPage_RetriesOnce(int rateLimited)
     {
         using var limited = new HttpResponseMessage();
         limited.Headers.RetryAfter = new System.Net.Http.Headers.RetryConditionHeaderValue(TimeSpan.Zero);
