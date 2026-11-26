@@ -58,8 +58,10 @@ internal sealed class CommunicationPreferencesController(
             if (category.IsAlwaysOn())
                 return BadRequest(localizer["Email_CommPrefs_AlwaysOnCategoryCannotChange"].Value);
 
-            if (!await commPrefService.UpdatePreferenceAsync(
-                    user.Id, category, optedOut: !emailEnabled, inboxEnabled: alertEnabled, "Profile", actorUserId: user.Id))
+            var outcome = await commPrefService.UpdatePreferenceAsync(
+                user.Id, category, optedOut: !emailEnabled, inboxEnabled: alertEnabled, "Profile", actorUserId: user.Id);
+            if (outcome == PreferenceUpdateOutcome.UserUnavailable) return Unauthorized();
+            if (outcome == PreferenceUpdateOutcome.Locked)
                 return BadRequest(localizer["Email_CommPrefs_TicketingLockedCannotChange"].Value);
 
             return Ok();

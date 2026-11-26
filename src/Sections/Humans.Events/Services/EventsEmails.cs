@@ -3,7 +3,6 @@ using System.Globalization;
 using System.Net;
 using Humans.Base.Extensions;
 using Humans.Email.Contracts;
-using Humans.Events.Contracts;
 using Microsoft.Extensions.Localization;
 
 namespace Humans.Events.Services;
@@ -29,11 +28,10 @@ internal sealed class EventsEmails(
                     $"EventLifecycleNotification does not support status {request.NewStatus}")
             };
 
-            var body = string.Format(CultureInfo.CurrentCulture, localizer[key + "_Body"].Value,
-                Encode(request.UserName),
+            var body = localizer[key + "_Body", Encode(request.UserName),
                 Encode(request.EventTitle),
                 Encode(request.Reason ?? string.Empty),
-                Encode(request.ActionUrl ?? string.Empty));
+                Encode(request.ActionUrl ?? string.Empty)];
 
             return new EmailMessage(
                 userEmail, request.UserName, userId, localizer[key + "_Subject"].Value, body, request.TemplateName());

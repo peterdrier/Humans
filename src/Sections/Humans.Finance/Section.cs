@@ -1,4 +1,3 @@
-using Humans.Base.Authorization;
 using Humans.Base.Caching;
 using Humans.Base.Configuration;
 using Humans.Base.Constants;
@@ -68,8 +67,8 @@ public sealed class Section :
         services.AddScoped<IFinanceService>(sp => sp.GetRequiredService<Service>());
         services.AddScoped<IFinanceWrite>(sp => sp.GetRequiredService<Service>());
         services.AddScoped<IFinanceAdminService>(sp => sp.GetRequiredService<Service>());
-        services.AddScoped<Jobs.SepaBankBookingJob>();
-        services.AddScoped<Jobs.ExpenseReconJob>();
+        services.AddScoped<SepaBankBookingJob>();
+        services.AddScoped<ExpenseReconJob>();
         services.AddScoped<IUserDataContributor>(sp => sp.GetRequiredService<Service>());
         services.AddScoped<IUserMerge>(sp => sp.GetRequiredService<Service>());
 

@@ -23,7 +23,7 @@ public class BackdoorApiKeyAuthFilterTests
 
     public BackdoorApiKeyAuthFilterTests()
     {
-        _keys.AdmitsAsync(Arg.Any<BackdoorKeyOwner>(), BackdoorScope.Staff, Arg.Any<CancellationToken>())
+        _keys.AdmitsAsync(Arg.Any<BackdoorKeyOwner>(), BackdoorScope.AdminAndBoard, Arg.Any<CancellationToken>())
             .Returns(true);
     }
 
@@ -43,11 +43,11 @@ public class BackdoorApiKeyAuthFilterTests
     }
 
     [HumansFact]
-    public async Task A_good_key_is_403_where_its_holder_is_outside_the_scope()
+    public async Task OnAuthorization_OwnerOutsideScope_Returns403()
     {
         var owner = new BackdoorKeyOwner(Guid.NewGuid(), []);
         _keys.ResolveOwnerAsync("right-key", Arg.Any<CancellationToken>()).Returns(owner);
-        _keys.AdmitsAsync(owner, BackdoorScope.Staff, Arg.Any<CancellationToken>()).Returns(false);
+        _keys.AdmitsAsync(owner, BackdoorScope.AdminAndBoard, Arg.Any<CancellationToken>()).Returns(false);
         var ctx = MakeContext(headerKey: "right-key");
 
         await Filter().OnAuthorizationAsync(ctx);
@@ -115,7 +115,7 @@ public class BackdoorApiKeyAuthFilterTests
         var ownerId = Guid.NewGuid();
         _keys.ResolveOwnerAsync("right-key", Arg.Any<CancellationToken>())
             .Returns(new BackdoorKeyOwner(ownerId,
-                [new RoleAssignmentSnapshot("Board", null), new RoleAssignmentSnapshot("Admin", null)]));
+                [new SystemRoleSnapshot("Board", null), new SystemRoleSnapshot("Admin", null)]));
         var ctx = MakeContext(headerKey: "right-key");
 
         await Filter().OnAuthorizationAsync(ctx);
@@ -142,7 +142,7 @@ public class BackdoorApiKeyAuthFilterTests
     private BackdoorApiKeyAuthFilter Filter() => new(_keys);
 
     private static AuthorizationFilterContext MakeContext(
-        string? headerKey, BackdoorScope? scope = BackdoorScope.Staff)
+        string? headerKey, BackdoorScope? scope = BackdoorScope.AdminAndBoard)
     {
         var http = new DefaultHttpContext();
         if (headerKey is not null)

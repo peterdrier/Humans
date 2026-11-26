@@ -30,7 +30,7 @@ internal sealed record UserDebugRow(
     bool? HasName,
     bool? HasConsent,
     Instant CreatedAt,
-    Instant? LastLoginAt)
+    Instant? LastSignInAt)
 {
     public static UserDebugRow From(UserInfo info, ConsentReviewInfo? review, bool hasTicket, bool? marketingOptedOut) => new(
         UserId: info.Id,
@@ -45,5 +45,5 @@ internal sealed record UserDebugRow(
             ? null
             : review?.Status == ConsentCheckStatus.Cleared,
         CreatedAt: info.CreatedAt,
-        LastLoginAt: info.LastLoginAt);
+        LastSignInAt: info.LastSignInAt);
 }

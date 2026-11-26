@@ -2,10 +2,8 @@ using Humans.Events.Services.Dtos;
 using Humans.Base.Extensions;
 using Humans.Camps.Contracts;
 using Humans.Settings.Contracts;
-using Humans.Events.Contracts;
 using Humans.Events.Models;
 using Humans.Events.Services;
-using NodaTime;
 using Humans.Users.Contracts;
 
 namespace Humans.Events.Helpers;

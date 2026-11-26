@@ -74,7 +74,7 @@ public sealed class ConsentNotificationMetersTests : IDisposable
         var meters = await _sut.GetMetersAsync(Viewer(roles), Guid.NewGuid(), TestContext.Current.CancellationToken);
 
         meters.Should().BeEmpty();
-        await _users.DidNotReceiveWithAnyArgs().GetAllUserInfosAsync(default);
+        await _users.DidNotReceiveWithAnyArgs().GetAllUserInfosAsync();
     }
 
     [HumansFact]

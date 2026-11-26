@@ -1,5 +1,4 @@
 @model Humans.Expenses.Models.ExpenseIbanViewModel
-@using Humans.Base.ViewComponents
 @inject Microsoft.AspNetCore.Mvc.Localization.IHtmlLocalizer<ExpensesResource> HtmlLocalizer
 @{
     ViewData["Title"] = Localizer["Expenses_PaymentIban"].Value;
@@ -10,7 +9,7 @@
         {
             userId = memberId,
         });
-        using var memberWriter = new System.IO.StringWriter();
+        using var memberWriter = new StringWriter();
         member.WriteTo(memberWriter, System.Text.Encodings.Web.HtmlEncoder.Default);
         // Keep template whitespace out of the localized sentence's punctuation.
         memberHtml = new Microsoft.AspNetCore.Html.HtmlString(memberWriter.ToString().Trim());

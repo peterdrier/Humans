@@ -9,9 +9,9 @@
         if (t is null) return Localizer["Shifts_ShiftDash_Coordinators_Never"].Value;
         var diff = now - t.Value;
         if (diff.TotalDays < 1) return diff.TotalHours < 1
-            ? string.Format(Localizer["Shifts_ShiftDash_Coordinators_MinutesAgo"].Value, (int)Math.Max(1, diff.TotalMinutes))
-            : string.Format(Localizer["Shifts_ShiftDash_Coordinators_HoursAgo"].Value, (int)diff.TotalHours);
-        return string.Format(Localizer["Shifts_ShiftDash_Coordinators_DaysAgo"].Value, (int)diff.TotalDays);
+            ? Localizer["Shifts_ShiftDash_Coordinators_MinutesAgo", (int)Math.Max(1, diff.TotalMinutes)].Value
+            : Localizer["Shifts_ShiftDash_Coordinators_HoursAgo", (int)diff.TotalHours].Value;
+        return Localizer["Shifts_ShiftDash_Coordinators_DaysAgo", (int)diff.TotalDays].Value;
     }
 
     bool IsStale(Instant? t) => t is null || (now - t.Value).TotalDays > 7;
@@ -64,11 +64,11 @@
                                 <ul class="list-unstyled mb-0 small">
                                     @foreach (var c in row.Coordinators)
                                     {
-                                        var stale = IsStale(c.LastLoginAt);
+                                        var stale = IsStale(c.LastSignInAt);
                                         <li>
                                             <span class="fw-semibold"><vc:human user-id="@c.UserId" layout="Text" link="Public" /></span>
                                             <span class="text-muted"> · </span>
-                                            <span class="@(stale ? "text-danger fw-semibold" : "text-muted")">@RelativeTime(c.LastLoginAt)@if (stale) {<span class="visually-hidden"> — @Localizer["Shifts_ShiftDash_Coordinators_StaleLabel"]</span>}</span>
+                                            <span class="@(stale ? "text-danger fw-semibold" : "text-muted")">@RelativeTime(c.LastSignInAt)@if (stale) {<span class="visually-hidden"> — @Localizer["Shifts_ShiftDash_Coordinators_StaleLabel"]</span>}</span>
                                         </li>
                                     }
                                 </ul>
@@ -79,7 +79,7 @@
                             @if (hasSubgroups && row.PendingSignupCount != row.AggregatePendingCount)
                             {
                                 <div class="text-muted small">
-                                    @string.Format(Localizer["Shifts_ShiftDash_Coordinators_DirectPending"].Value, row.PendingSignupCount)
+                                    @Localizer["Shifts_ShiftDash_Coordinators_DirectPending", row.PendingSignupCount]
                                 </div>
                             }
                         </td>
@@ -105,11 +105,11 @@
                                                         <ul class="list-unstyled mb-0 small">
                                                             @foreach (var c in sub.Coordinators)
                                                             {
-                                                                var stale = IsStale(c.LastLoginAt);
+                                                                var stale = IsStale(c.LastSignInAt);
                                                                 <li>
                                                                     <span class="fw-semibold"><vc:human user-id="@c.UserId" layout="Text" link="Public" /></span>
                                                                     <span class="text-muted"> · </span>
-                                                                    <span class="@(stale ? "text-danger fw-semibold" : "text-muted")">@RelativeTime(c.LastLoginAt)@if (stale) {<span class="visually-hidden"> — @Localizer["Shifts_ShiftDash_Coordinators_StaleLabel"]</span>}</span>
+                                                                    <span class="@(stale ? "text-danger fw-semibold" : "text-muted")">@RelativeTime(c.LastSignInAt)@if (stale) {<span class="visually-hidden"> — @Localizer["Shifts_ShiftDash_Coordinators_StaleLabel"]</span>}</span>
                                                                 </li>
                                                             }
                                                         </ul>

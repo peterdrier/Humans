@@ -1,12 +1,10 @@
+using Humans.Testing;
 using Humans.Shifts.Services.Dtos;
-using Humans.Shifts.Domain;
 using System.Reflection;
 using System.Security.Claims;
 using AwesomeAssertions;
-using Humans.AuditLog.Contracts;
 using Humans.Shifts.Services;
 using Humans.Shifts.Contracts;
-using Humans.Base.Authorization;
 using Humans.Base.Constants;
 using Humans.Shifts.Controllers;
 using Humans.Shifts.Models;
@@ -44,7 +42,7 @@ public class VolunteerTrackingControllerTests
     private readonly VolunteerTrackingXlsxBuilder _xlsxBuilder = new();
     private readonly IUserService _userService = Substitute.For<IUserService>();
     private readonly IStringLocalizer<ShiftsResource> _localizer =
-        Substitute.For<IStringLocalizer<ShiftsResource>>();
+        Substitute.For<IStringLocalizer<ShiftsResource>>().AddFormatting();
 
     public VolunteerTrackingControllerTests()
     {
@@ -214,7 +212,7 @@ public class VolunteerTrackingControllerTests
             {
                 await aborted.CancelAsync();
                 call.Arg<CancellationToken>().ThrowIfCancellationRequested();
-                return (IReadOnlyList<(Guid TeamId, string TeamName)>)[];
+                return [];
             });
         var controller = BuildSut(new User { Id = Guid.NewGuid() });
 

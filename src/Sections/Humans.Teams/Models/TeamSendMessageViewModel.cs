@@ -1,4 +1,5 @@
 using System.ComponentModel.DataAnnotations;
+using Microsoft.AspNetCore.Mvc.ModelBinding;
 
 namespace Humans.Teams.Models;
 
@@ -23,6 +24,7 @@ internal sealed class TeamSendMessageViewModel
         set => _message = value?.Replace("\r\n", "\n", StringComparison.Ordinal) ?? string.Empty;
     }
 
+    [BindRequired]
     public bool IncludeContactInfo { get; set; } = true;
 
     public string SenderEmail { get; set; } = string.Empty;

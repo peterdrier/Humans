@@ -38,7 +38,7 @@
                 </tr>
             </thead>
             <tbody>
-            @foreach (var l in Model.Lines)
+            @foreach (var l in Model.Lines.OrderBy(l => l.Line))
             {
                 <tr>
                     <td class="text-nowrap">

@@ -46,7 +46,7 @@ internal sealed class UserEmailConfirmationController(
         if (result.State != EmailConfirmationState.Confirm)
             return await PageAsync(token, user.Id, result, choiceMissing: false, ct);
 
-        SetSuccess(string.Format(CultureInfo.CurrentCulture, localizer["Users_Profile_EmailVerified"].Value, result.Email));
+        SetSuccess(localizer["Users_Profile_EmailVerified", result.Email]);
         return RedirectToAction(nameof(ProfileEmailsController.Emails), "ProfileEmails");
     }
 

@@ -57,9 +57,9 @@ public sealed class GitHubContentSourceTests
     {
         // Invalid repository coordinates ensure a regression fails without sending a network request.
         IGuideContentSource source = community
-            ? new GitHubCommunityKbContentSource(
-                Options.Create(new CommunityKbSettings { Owner = "", Repository = "" }),
-                Options.Create(new GitHubSettings()), NullLogger<GitHubCommunityKbContentSource>.Instance)
+            ? new GitHubCommunityFaqContentSource(
+                Options.Create(new CommunityFaqSettings { Owner = "", Repository = "" }),
+                Options.Create(new GitHubSettings()), NullLogger<GitHubCommunityFaqContentSource>.Instance)
             : new GitHubGuideContentSource(
                 Options.Create(new GuideSettings { Owner = "", Repository = "" }),
                 Options.Create(new GitHubSettings()), NullLogger<GitHubGuideContentSource>.Instance);

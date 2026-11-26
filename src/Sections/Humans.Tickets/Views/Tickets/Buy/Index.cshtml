@@ -99,14 +99,14 @@ else
             {
                 <div class="form-check">
                     <input class="form-check-input" type="checkbox" id="forSelf-@p" name="forSelf" value="true" checked />
-                    <label class="form-check-label" for="forSelf-@p">@string.Format(Localizer["Tickets_Buy_ForSelf"].Value, sale.BuyerName)</label>
+                    <label class="form-check-label" for="forSelf-@p">@Localizer["Tickets_Buy_ForSelf", sale.BuyerName]</label>
                 </div>
 
                 @if (sale.Ticketing.ChildTypes.Count > 0 && directedToken is null)
                 {
                     var childTypes = sale.Ticketing.ChildTypes;
-                    string ChildTypeText(TicketChildType t) => string.Format(Localizer["Tickets_Buy_ChildType"].Value, t.Name,
-                        t.UnderAge.ToString(System.Globalization.CultureInfo.CurrentCulture), (t.PriceMinor / 100m).ToEuro());
+                    string ChildTypeText(TicketChildType t) => Localizer["Tickets_Buy_ChildType", t.Name,
+                        t.UnderAge.ToString(System.Globalization.CultureInfo.CurrentCulture), (t.PriceMinor / 100m).ToEuro()].Value;
                     <hr class="my-4" />
                     <h3 class="h4">@Localizer["Tickets_Buy_Children"]</h3>
                     <p class="small text-muted mb-1">@Localizer["Tickets_Buy_ChildrenHelp"]</p>
@@ -119,7 +119,7 @@ else
                     <div class="row g-2">
                         @for (var c = 0; c < 3; c++)
                         {
-                            var childLabel = string.Format(Localizer["Tickets_Buy_ChildName"].Value, c + 1);
+                            var childLabel = Localizer["Tickets_Buy_ChildName", c + 1].Value;
                             <div class="@(childTypes.Count > 1 ? "col-md-7" : "col-md-8")">
                                 <input class="form-control" name="childNames" maxlength="513" autocomplete="off"
                                        aria-label="@childLabel" placeholder="@childLabel" />
@@ -127,7 +127,7 @@ else
                             @if (childTypes.Count > 1)
                             {
                                 <div class="col-md-5">
-                                    <select class="form-select" name="childTypes" aria-label="@string.Format(Localizer["Tickets_Buy_ChildTypeLabel"].Value, c + 1)">
+                                    <select class="form-select" name="childTypes" aria-label="@Localizer["Tickets_Buy_ChildTypeLabel", c + 1]">
                                         @foreach (var t in childTypes)
                                         {
                                             <option value="@t.Name">@t.Name, @((t.PriceMinor / 100m).ToEuro())</option>
@@ -153,7 +153,7 @@ else
                         {
                             <div class="form-check mb-2">
                                 <input class="form-check-input" type="radio" name="vipTotalMinor" id="vip-@total-@p" value="@total" />
-                                <label class="form-check-label" for="vip-@total-@p">@string.Format(Localizer["Tickets_Buy_VipOption"].Value, (total / 100m).ToEuro(), ((total - own.AmountMinor) / 100m).ToEuro())</label>
+                                <label class="form-check-label" for="vip-@total-@p">@Localizer["Tickets_Buy_VipOption", (total / 100m).ToEuro(), ((total - own.AmountMinor) / 100m).ToEuro()]</label>
                             </div>
                         }
                     </fieldset>
@@ -164,11 +164,11 @@ else
             {
                 <hr class="my-4" />
                 <h3 class="h4">@Localizer["Tickets_Buy_Others"]</h3>
-                <p class="small text-muted">@string.Format(Localizer["Tickets_Buy_OthersHelp"].Value, (sale.PublicPrice!.AmountMinor / 100m).ToEuro())</p>
+                <p class="small text-muted">@Localizer["Tickets_Buy_OthersHelp", (sale.PublicPrice!.AmountMinor / 100m).ToEuro()]</p>
                 <div class="row g-2" data-buy-others>
                     @for (var o = 0; o < 3; o++)
                     {
-                        var label = string.Format(Localizer["Tickets_Buy_OtherEmail"].Value, o + 1);
+                        var label = Localizer["Tickets_Buy_OtherEmail", o + 1].Value;
                         <div class="col-md-8" data-buy-other>
                             <input class="form-control" name="otherEmails" type="email" maxlength="320" autocomplete="off"
                                    aria-label="@label" placeholder="@label" />

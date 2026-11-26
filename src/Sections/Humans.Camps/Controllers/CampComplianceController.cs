@@ -1,5 +1,3 @@
-using Humans.Camps.Contracts;
-using Humans.Base.Authorization;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Humans.Users.Contracts;
@@ -22,9 +20,10 @@ internal sealed class CampComplianceController(
     public async Task<IActionResult> Compliance(Guid? eventSettingsId, CancellationToken ct)
     {
         var settings = await campService.GetSettingsAsync(ct);
+        var events = settings.Events.OrderByDescending(e => e.GateOpeningDate).ToList();
         var resolvedEventId = eventSettingsId
             ?? settings.ActiveEventSettingsId
-            ?? settings.Events.FirstOrDefault()?.EventSettingsId;
+            ?? events.FirstOrDefault()?.EventSettingsId;
         var matrix = resolvedEventId is { } id
             ? await campRoleService.BuildComplianceMatrixAsync(id, ct)
             : null;
@@ -38,7 +37,7 @@ internal sealed class CampComplianceController(
         return View(new CampComplianceViewModel
         {
             Event = matrix.Event,
-            EventOptions = settings.Events,
+            EventOptions = events,
             Roles = columns
                 .Select(column => new CampComplianceRoleColumn(column.Role.Name, column.Role.MinimumRequired))
                 .ToList(),

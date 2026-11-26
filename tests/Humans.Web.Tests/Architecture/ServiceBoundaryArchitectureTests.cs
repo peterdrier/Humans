@@ -162,7 +162,7 @@ public class ServiceBoundaryArchitectureTests
 
         foreach (var member in declaringTypes
                      .SelectMany(t => t.GetMethods().Where(IsReadMethod)
-                         .Select(m => (MemberName: m.Name, ReturnType: m.ReturnType))
+                         .Select(m => (MemberName: m.Name, m.ReturnType))
                          .Concat(t.GetProperties().Where(p => p.GetMethod is not null)
                              .Select(p => (MemberName: p.Name, ReturnType: p.PropertyType))))
                      .Distinct())

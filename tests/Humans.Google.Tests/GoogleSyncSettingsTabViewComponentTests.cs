@@ -1,6 +1,5 @@
 using Humans.Google.Domain;
 using AwesomeAssertions;
-using Humans.Google.Contracts;
 using Humans.Google.Models;
 using Humans.Google.Services;
 using Humans.Google.ViewComponents;

@@ -19,7 +19,7 @@ internal sealed class BoxOfficeSettings
 
     public string WebhookSecret { get; set; } = string.Empty;
 
-    public bool IsConfigured => !string.IsNullOrEmpty(SecretKey);
+    public bool IsConfigured => !string.IsNullOrEmpty(SecretKey) && !SecretKey.Any(char.IsWhiteSpace);
 
     public bool IsWebhookConfigured => !string.IsNullOrEmpty(WebhookSecret);
 }
@@ -56,7 +56,7 @@ internal sealed class BoxOfficePlatform(
 
     private StripeClient Client() => _settings.IsConfigured
         ? new StripeClient(_settings.SecretKey, httpClient: httpClient)
-        : throw new TicketingPlatformException("Box Office is not configured: STRIPE_BOXOFFICE_KEY is unset.");
+        : throw new TicketingPlatformException("Box Office is not configured: STRIPE_BOXOFFICE_KEY is unset or contains whitespace.");
 
     public async Task<PlatformOrderSession> CreateOrderAsync(PlatformOrderRequest request, CancellationToken ct = default)
     {
@@ -447,18 +447,18 @@ internal sealed class BoxOfficePlatform(
     public async Task<IReadOnlyList<PlatformFinding>> CheckAsync(string? platformEventRef, CancellationToken ct = default)
     {
         if (!_settings.IsConfigured)
-            return [new(false, $"{Section.KeyVariable} is unset.")];
+            return [new(false, $"{Section.KeyVariable} is unset or contains whitespace.")];
 
         var client = Client();
         var findings = new List<PlatformFinding>
         {
             await ProbeAsync($"Checkout Sessions ({ModeLabel})",
-                () => new SessionService(client).ListAsync(new SessionListOptions { Limit = 1 }, cancellationToken: ct)),
+                () => new SessionService(client).ListAsync(new SessionListOptions { Limit = 1 }, cancellationToken: ct), ct),
             // The reconciliation reads these; without them a missing scope shows only as the nightly alert.
             await ProbeAsync("Balance transactions",
-                () => new BalanceTransactionService(client).ListAsync(new BalanceTransactionListOptions { Limit = 1 }, cancellationToken: ct)),
+                () => new BalanceTransactionService(client).ListAsync(new BalanceTransactionListOptions { Limit = 1 }, cancellationToken: ct), ct),
             await ProbeAsync("Payouts",
-                () => new PayoutService(client).ListAsync(new PayoutListOptions { Limit = 1 }, cancellationToken: ct)),
+                () => new PayoutService(client).ListAsync(new PayoutListOptions { Limit = 1 }, cancellationToken: ct), ct),
         };
 
         findings.Add(_settings.IsWebhookConfigured
@@ -469,7 +469,7 @@ internal sealed class BoxOfficePlatform(
         return findings;
     }
 
-    private static async Task<PlatformFinding> ProbeAsync(string what, Func<Task> read)
+    private static async Task<PlatformFinding> ProbeAsync(string what, Func<Task> read, CancellationToken ct)
     {
         try
         {
@@ -479,6 +479,10 @@ internal sealed class BoxOfficePlatform(
         catch (StripeException ex)
         {
             return new(false, $"Stripe refused the key reading {what} ({(int)ex.HttpStatusCode} {ex.StripeError?.Code ?? ex.StripeError?.Type ?? "error"}).");
+        }
+        catch (OperationCanceledException) when (ct.IsCancellationRequested)
+        {
+            throw;
         }
         catch (Exception ex) when (ex is HttpRequestException or OperationCanceledException)
         {

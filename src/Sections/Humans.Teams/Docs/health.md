@@ -95,7 +95,7 @@ The shapes imply:
 
 ## 5. Seams
 
-- **`IRoleAssignmentService` / `ITeamResourceService`** carry the reconciler's
+- **`ISystemRoleService` / `ITeamResourceService`** carry the reconciler's
   read-only cross-section calls; mutations go through each owner's `I<Section>Write`.
 - **Cross-camp / sub-team shift management** (guide: "the system is being updated to
   reflect this properly") — coordinator scoping for shifts is Shifts' call, shaped by

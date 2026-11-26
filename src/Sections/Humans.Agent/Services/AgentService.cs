@@ -15,7 +15,6 @@ using Humans.Agent.Contracts;
 using Humans.Issues.Contracts;
 using Humans.Users.Contracts;
 using Humans.Agent.Services.Anthropic;
-using Humans.Base.Interfaces;
 
 namespace Humans.Agent.Services;
 
@@ -26,10 +25,10 @@ internal sealed class AgentService : IAgentService
 
     private readonly IAgentSettingsService _settings;
     private readonly IAgentRateLimitStore _rateLimit;
-    private readonly IAgentAbuseDetector _abuse;
+    private readonly IAgentDistressCheck _distressCheck;
     private readonly IAgentRepository _repo;
     private readonly IAgentRetentionRunStore _retentionRuns;
-    private readonly IAgentUserSnapshotProvider _snapshots;
+    private readonly IAgentUserContextProvider _snapshots;
     private readonly IAgentPreloadCorpusBuilder _preload;
     private readonly IAgentPromptAssembler _assembler;
     private readonly IAgentToolDispatcher _tools;
@@ -42,10 +41,10 @@ internal sealed class AgentService : IAgentService
     public AgentService(
         IAgentSettingsService settings,
         IAgentRateLimitStore rateLimit,
-        IAgentAbuseDetector abuse,
+        IAgentDistressCheck distressCheck,
         IAgentRepository repo,
         IAgentRetentionRunStore retentionRuns,
-        IAgentUserSnapshotProvider snapshots,
+        IAgentUserContextProvider snapshots,
         IAgentPreloadCorpusBuilder preload,
         IAgentPromptAssembler assembler,
         IAgentToolDispatcher tools,
@@ -55,7 +54,7 @@ internal sealed class AgentService : IAgentService
         ILogger<AgentService> logger,
         IUserService users)
     {
-        _settings = settings; _rateLimit = rateLimit; _abuse = abuse;
+        _settings = settings; _rateLimit = rateLimit; _distressCheck = distressCheck;
         _repo = repo; _retentionRuns = retentionRuns; _snapshots = snapshots; _preload = preload;
         _assembler = assembler; _tools = tools; _client = client;
         _anthropicOptions = anthropicOptions.Value;
@@ -88,7 +87,7 @@ internal sealed class AgentService : IAgentService
             yield break;
         }
 
-        // Ownership first (Agent.md invariant 7): a foreign id is refused before any refusal or
+        // Ownership first (Agent.md invariant 7): a foreign id is rejected before any outcome or
         // turn is written, and before the controller commits the stream.
         var existing = request.ConversationId == Guid.Empty
             ? null
@@ -103,17 +102,17 @@ internal sealed class AgentService : IAgentService
         var usage = _rateLimit.Get(request.UserId, today, hour);
         if (usage.IsAtLimit(settings))
         {
-            // Invariant 6 (Agent.md): every refused turn writes an AgentMessage with RefusalReason.
-            await PersistRefusalAsync(request, existing, "rate_limited", cancellationToken);
-            yield return Finalizer(stopReason: "rate_limited");
+            // Invariant 6 (Agent.md): every unanswered turn writes an AgentMessage with its Outcome.
+            await PersistOutcomeAsync(request, existing, AgentTurnOutcome.LimitReached, cancellationToken);
+            yield return Finalizer(stopReason: AgentTurnOutcome.LimitReached);
             yield break;
         }
 
-        if (_abuse.IsFlagged(request.Message, out var abuseReason))
+        if (_distressCheck.Matches(request.Message))
         {
-            await PersistRefusalAsync(request, existing, abuseReason!, cancellationToken);
-            yield return new AgentTurnToken(LocalizedReply("Agent_AbuseRefusal", request.Locale), null, null);
-            yield return Finalizer(stopReason: "abuse_flag");
+            await PersistOutcomeAsync(request, existing, AgentTurnOutcome.DistressReply, cancellationToken);
+            yield return new AgentTurnToken(LocalizedReply("Agent_DistressReply", request.Locale), null, null);
+            yield return Finalizer(stopReason: AgentTurnOutcome.DistressReply);
             yield break;
         }
 
@@ -121,7 +120,7 @@ internal sealed class AgentService : IAgentService
         var conversation = existing
             ?? await _repo.CreateConversationAsync(request.UserId, request.Locale, cancellationToken);
 
-        // Replay user/assistant text turns only — tool-call internals are dropped (model re-derives via fetch_section_guide).
+        // Replay user/assistant text turns only — tool-call internals are dropped (model re-derives via fetch_section_doc).
         var priorTurns = conversation.GetReplayableMessages();
 
         await _repo.AppendMessageAsync(new AgentMessage
@@ -206,7 +205,7 @@ internal sealed class AgentService : IAgentService
                             "Agent turn abandoned mid-stream (likely client disconnect) for conversation {ConversationId}",
                             conversation.Id);
                     // A disconnect must not cancel the attempt to leave a trace.
-                    await AppendFailureMessageAsync(conversation.Id, "error", settings.Model, turnUsage, CancellationToken.None);
+                    await AppendFailureMessageAsync(conversation.Id, AgentTurnOutcome.Failed, settings.Model, turnUsage, CancellationToken.None);
                 }
             }
             finally
@@ -251,7 +250,7 @@ internal sealed class AgentService : IAgentService
         [EnumeratorCancellation] CancellationToken cancellationToken)
     {
         var snapshot = await _snapshots.LoadAsync(request.UserId, cancellationToken);
-        var preloadText = await _preload.BuildAsync(settings.PreloadConfig, cancellationToken);
+        var preloadText = await _preload.BuildAsync(cancellationToken);
         var systemPrompt = _assembler.BuildSystemPrompt(preloadText);
         var tail = _assembler.BuildUserContextTail(snapshot);
         var tools = _assembler.BuildToolDefinitions();
@@ -274,7 +273,7 @@ internal sealed class AgentService : IAgentService
         var assistantBuffer = new StringBuilder();
         var fetchedDocs = new List<string>();
         var toolCallCount = 0;
-        AgentIssueProposal? issueProposal = null;
+        AgentHandoff? handoff = null;
         AgentTurnFinalizer? finalFinalizer;
         // Each loop iteration is a separate provider request: accumulate all of them on the caller's usage, so a turn
         // that throws mid-loop is still billed in full.
@@ -332,7 +331,7 @@ internal sealed class AgentService : IAgentService
             // A max_tokens cutoff mid tool-call JSON still yields a (possibly truncated) call. Treat it like tool_use
             // so it is dispatched, not discarded: the dispatcher handles malformed JSON, and MaxToolCallsPerTurn still
             // bounds the loop.
-            var stopReason = finalFinalizer?.StopReason;
+            var stopReason = finalFinalizer.StopReason;
             var continuesToolLoop = string.Equals(stopReason, "tool_use", StringComparison.Ordinal)
                 || string.Equals(stopReason, "max_tokens", StringComparison.Ordinal);
             if (withholdTools || pendingToolCalls.Count == 0 || !continuesToolLoop)
@@ -365,13 +364,13 @@ internal sealed class AgentService : IAgentService
                 var result = await _tools.DispatchAsync(call, request.UserId, cancellationToken);
                 results.Add(result);
 
-                if (string.Equals(call.Name, AgentToolNames.RouteToIssue, StringComparison.Ordinal))
+                if (string.Equals(call.Name, AgentToolNames.Handoff, StringComparison.Ordinal))
                 {
-                    var proposal = result.IsError ? null : ParseIssueProposalArgs(call.JsonArguments, conversation.Id);
+                    var proposal = result.IsError ? null : ParseHandoffArgs(call.JsonArguments, conversation.Id);
                     if (proposal is not null)
                     {
-                        issueProposal = proposal;
-                        // The route_to_issue slug in FetchedDocs is the handoff marker
+                        handoff = proposal;
+                        // The Handoff tool name in FetchedDocs marks the turn as a handoff
                         // (AgentRepository handoffsOnly / AgentMessageSnapshot.IsHandoff),
                         // so record it only when the proposal actually reaches the user —
                         // failed dispatches must not inflate handoff counts.
@@ -388,8 +387,8 @@ internal sealed class AgentService : IAgentService
 
             sdkMessages.Add(new AnthropicMessage("tool", Text: null, ToolCalls: null, ToolResults: results));
 
-            // route_to_issue handoff: the proposal frame is the terminal output; no synthesis call.
-            if (issueProposal is not null)
+            // A handoff's proposal frame is the terminal output; no synthesis call.
+            if (handoff is not null)
                 break;
 
             // Cap reached: loop once more with tool use withheld so the model answers
@@ -402,29 +401,29 @@ internal sealed class AgentService : IAgentService
         var assistantText = assistantBuffer.ToString();
         if (string.IsNullOrWhiteSpace(assistantText))
         {
-            if (issueProposal is not null)
+            if (handoff is not null)
             {
-                // The proposal frame is the terminal output for route_to_issue, but a
+                // The proposal frame is the terminal output for handoff, but a
                 // blank stored message makes the admin conversation view misleading.
                 // Persist the fallback without streaming it: when no prose arrives the
                 // widget renders its own localized handoff line live, and a streamed
                 // delta would override that localization.
-                assistantText = LocalizedReply("Agent_IssueProposed", conversation.Locale);
+                assistantText = LocalizedReply("Agent_HandoffDrafted", conversation.Locale);
             }
             else
             {
                 _logger.LogWarning(
                     "Agent turn produced no assistant text for conversation {ConversationId}: {ToolCallCount} tool calls, stop reason {StopReason}",
-                    conversation.Id, toolCallCount, finalFinalizer?.StopReason ?? "unknown");
+                    conversation.Id, toolCallCount, finalFinalizer.StopReason ?? "unknown");
                 assistantText = LocalizedReply("Agent_SilentTurnFallback", conversation.Locale);
                 yield return new AgentTurnToken(assistantText, null, null);
             }
         }
 
         // Proposal frame signals client to open pre-filled Issues modal.
-        if (issueProposal is not null)
+        if (handoff is not null)
         {
-            yield return new AgentTurnToken(null, null, null, issueProposal);
+            yield return new AgentTurnToken(null, null, null, handoff);
         }
 
         var turnEnd = _clock.GetCurrentInstant();
@@ -444,7 +443,7 @@ internal sealed class AgentService : IAgentService
             Model = settings.Model,
             DurationMs = durationMs,
             FetchedDocs = fetchedDocs.ToArray(),
-            RefusalReason = string.Equals(finalFinalizer?.StopReason, "error", StringComparison.Ordinal) ? "error" : null,
+            Outcome = string.Equals(finalFinalizer.StopReason, "error", StringComparison.Ordinal) ? AgentTurnOutcome.Failed : null,
             HandedOffToFeedbackId = null
         };
         await _repo.AppendMessageAsync(message, cancellationToken);
@@ -533,14 +532,14 @@ internal sealed class AgentService : IAgentService
     {
         switch (toolName)
         {
-            case AgentToolNames.FetchSectionGuide:
+            case AgentToolNames.FetchSectionDoc:
             case AgentToolNames.FetchFeatureSpec:
                 try
                 {
                     using var doc = System.Text.Json.JsonDocument.Parse(jsonArguments);
                     var root = doc.RootElement;
                     string? slug = null;
-                    if (string.Equals(toolName, AgentToolNames.FetchSectionGuide, StringComparison.Ordinal)
+                    if (string.Equals(toolName, AgentToolNames.FetchSectionDoc, StringComparison.Ordinal)
                         && root.TryGetProperty("section", out var s))
                         slug = s.GetString();
                     else if (string.Equals(toolName, AgentToolNames.FetchFeatureSpec, StringComparison.Ordinal)
@@ -558,7 +557,7 @@ internal sealed class AgentService : IAgentService
         }
     }
 
-    private AgentIssueProposal? ParseIssueProposalArgs(string jsonArguments, Guid conversationId)
+    private AgentHandoff? ParseHandoffArgs(string jsonArguments, Guid conversationId)
     {
         try
         {
@@ -577,12 +576,12 @@ internal sealed class AgentService : IAgentService
             title = BoundProposalText(title, 200);
             description = BoundProposalText(description, 5000);
 
-            return new AgentIssueProposal(title, category, description);
+            return new AgentHandoff(title, category, description);
         }
         catch (System.Text.Json.JsonException)
         {
             _logger.LogWarning(
-                "route_to_issue args could not be parsed for conversation {ConversationId}; proposal dropped. Args: {Args}",
+                "handoff args could not be parsed for conversation {ConversationId}; proposal dropped. Args: {Args}",
                 conversationId, jsonArguments);
             return null;
         }
@@ -599,18 +598,18 @@ internal sealed class AgentService : IAgentService
 
     // existing: the caller's own conversation, already ownership-checked by AskAsync;
     // null starts a fresh one.
-    private async Task PersistRefusalAsync(
+    private async Task PersistOutcomeAsync(
         AgentTurnRequest req, AgentConversation? existing, string reason, CancellationToken ct)
     {
-        // Refusal must be persisted (Agent.md invariant 6).
+        // Every unanswered turn is persisted (Agent.md invariant 6).
         var conv = existing ?? await _repo.CreateConversationAsync(req.UserId, req.Locale, ct);
 
-        // usage: null — a refused turn is rejected before any provider call, so it cost nothing.
+        // usage: null — this turn stopped before any provider call, so it cost nothing.
         await AppendFailureMessageAsync(conv.Id, reason, _settings.Current.Model, usage: null, ct);
     }
 
-    /// <summary>The same shape <see cref="PersistRefusalAsync"/> writes, so a failed turn shows in the admin refusal
-    /// views.</summary>
+    /// <summary>The same shape <see cref="PersistOutcomeAsync"/> writes, so a failed turn shows in the admin
+    /// unanswered views.</summary>
     /// <remarks>
     /// <paramref name="usage"/> is null only for a turn that never reached the provider: the admin spend panel prices
     /// straight off the stored token counts.
@@ -629,7 +628,7 @@ internal sealed class AgentService : IAgentService
             OutputTokens = usage?.OutputTokens ?? 0,
             CachedTokens = usage?.CacheReadTokens ?? 0,
             Model = model,
-            RefusalReason = reason
+            Outcome = reason
         }, ct);
     }
 
@@ -663,19 +662,19 @@ internal sealed class AgentService : IAgentService
     }
 
     public async Task<IReadOnlyList<AgentConversationListSnapshot>> ListAllConversationsForAdminAsync(
-        bool refusalsOnly, Guid? userId, int take, int skip,
+        bool unansweredOnly, Guid? userId, int take, int skip,
         CancellationToken ct)
     {
-        var conversations = await _repo.ListAllConversationsAsync(refusalsOnly, userId, take, skip, ct);
+        var conversations = await _repo.ListAllConversationsAsync(unansweredOnly, userId, take, skip, ct);
         return conversations.Select(ToListSnapshot).ToList();
     }
 
     public async Task<IReadOnlyList<AgentConversationTranscriptSnapshot>> ListAllConversationsForAdminWithMessagesAsync(
-        bool refusalsOnly, bool handoffsOnly, Guid? userId, int take, int skip,
+        bool unansweredOnly, bool handoffsOnly, Guid? userId, int take, int skip,
         CancellationToken ct)
     {
         var conversations = await _repo.ListAllConversationsWithMessagesAsync(
-            refusalsOnly, handoffsOnly, userId, take, skip, ct);
+            unansweredOnly, handoffsOnly, userId, take, skip, ct);
         return conversations.Select(ToTranscriptSnapshot).ToList();
     }
 
@@ -699,7 +698,7 @@ internal sealed class AgentService : IAgentService
                     message.Model,
                     message.DurationMs,
                     message.FetchedDocs,
-                    message.RefusalReason,
+                    message.Outcome,
                     message.HandedOffToFeedbackId))
                 .ToList());
 
@@ -726,7 +725,7 @@ internal sealed class AgentService : IAgentService
 
         var currentSettings = _settings.Current;
         var snapshot = await _snapshots.LoadAsync(conversation.UserId, ct);
-        var preloadText = await _preload.BuildAsync(currentSettings.PreloadConfig, ct);
+        var preloadText = await _preload.BuildAsync(ct);
         var systemPrompt = _assembler.BuildSystemPrompt(preloadText);
         var tail = _assembler.BuildUserContextTail(snapshot);
         var toolDefs = _assembler.BuildToolDefinitions();
@@ -786,7 +785,7 @@ internal sealed class AgentService : IAgentService
                 m.Content,
                 CreatedAt = m.CreatedAt.ToIso8601(),
                 m.Model,
-                m.RefusalReason,
+                m.Outcome,
                 m.HandedOffToFeedbackId
             }).ToList()
         }).ToList();

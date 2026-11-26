@@ -25,10 +25,10 @@ public class AccountController(
     IOrgTimeZone orgTimeZone,
     ILogger<AccountController> logger,
     IExternalLoginService externalLoginService,
-    IMagicLinkService magicLinkService,
+    ISignInLinkService signInLinkService,
     IAccountProvisioningService accountProvisioningService,
-    GateLoginThrottle gateThrottle,
-    LoginMethodCounter loginMethods,
+    GateSignInThrottle gateThrottle,
+    SignInMethodCounter signInMethods,
     IStringLocalizer<SharedResource> localizer) : HumansControllerBase(userService)
 {
     [HttpGet]
@@ -37,8 +37,8 @@ public class AccountController(
         ViewData["ReturnUrl"] = returnUrl;
 
         // Link previews: chat crawlers land here anonymously, so the Open Graph tags describe
-        // the area the shared link points at instead of "Sign In" — see LoginLinkPreview.
-        var segment = LoginLinkPreview.SegmentFor(returnUrl);
+        // the area the shared link points at instead of "Sign In" — see SignInLinkPreview.
+        var segment = SignInLinkPreview.SegmentFor(returnUrl);
         ViewData["OgTitle"] = segment is null
             ? localizer["Nav_Brand"].Value
             : $"{localizer[$"LinkPreview_{segment}_Title"].Value} - {localizer["Nav_Brand"].Value}";
@@ -102,7 +102,7 @@ public class AccountController(
         {
             case ExternalLoginOutcome.SignedIn:
                 if (!wasAuthenticated)
-                    loginMethods.RecordGoogle();
+                    signInMethods.RecordGoogle();
                 return RedirectToLocal(returnUrl);
 
             case ExternalLoginOutcome.LinkToCurrentUserFailed:
@@ -160,7 +160,7 @@ public class AccountController(
 
     [HttpPost]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> MagicLinkRequest(string email, string? returnUrl = null)
+    public async Task<IActionResult> SignInLinkRequest(string email, string? returnUrl = null)
     {
         if (string.IsNullOrWhiteSpace(email))
         {
@@ -169,64 +169,64 @@ public class AccountController(
 
         try
         {
-            await magicLinkService.SendMagicLinkAsync(email.Trim(), returnUrl);
+            await signInLinkService.SendSignInLinkAsync(email.Trim(), returnUrl);
         }
         catch (Exception ex)
         {
-            logger.LogError(ex, "Error sending magic link for {Email}", email);
+            logger.LogError(ex, "Error sending sign-in link for {Email}", email);
         }
 
         // Always show "check your email" — no account enumeration.
         var expiryInstant = clock.GetCurrentInstant() + Duration.FromMinutes(15);
         var expiryLocal = expiryInstant.InZone(orgTimeZone.Zone);
         ViewData["ExpiryTime"] = DateFormattingExtensions.TimeOfDayPattern.Format(expiryLocal.TimeOfDay);
-        return View("MagicLinkSent");
+        return View("SignInLinkSent");
     }
 
     [HttpGet]
-    public IActionResult MagicLinkConfirm(Guid userId, string token, string? returnUrl = null)
+    public IActionResult SignInLinkConfirm(Guid userId, string token, string? returnUrl = null)
     {
         // Landing page prevents email scanners from consuming the token; sign-in is POST.
         ViewData["UserId"] = userId;
         ViewData["Token"] = token;
         ViewData["ReturnUrl"] = returnUrl;
-        return View("MagicLinkConfirm");
+        return View("SignInLinkConfirm");
     }
 
     [HttpPost]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> MagicLink(Guid userId, string token, string? returnUrl = null)
+    public async Task<IActionResult> SignInLink(Guid userId, string token, string? returnUrl = null)
     {
         returnUrl ??= Url.Content("~/");
 
-        if (!await magicLinkService.VerifyLoginTokenAsync(userId, token))
+        if (!await signInLinkService.VerifySignInTokenAsync(userId, token))
         {
-            return View("MagicLinkError");
+            return View("SignInLinkError");
         }
 
-        await userWrite.RecordLoginAsync(userId);
+        await userWrite.RecordSignInAsync(userId);
 
         if (!await signIn.SignInAsync(userId))
         {
-            return View("MagicLinkError");
+            return View("SignInLinkError");
         }
 
-        loginMethods.RecordMagicLink();
-        logger.LogInformation("User {UserId} logged in via magic link", userId);
+        signInMethods.RecordSignInLink();
+        logger.LogInformation("User {UserId} signed in via sign-in link", userId);
 
         return RedirectToLocal(returnUrl);
     }
 
     [HttpGet]
-    public IActionResult MagicLinkSignup(string token, string? email = null, string? returnUrl = null)
+    public IActionResult SignInLinkSignup(string token, string? email = null, string? returnUrl = null)
     {
         if (string.IsNullOrEmpty(token))
-            return View("MagicLinkError");
+            return View("SignInLinkError");
 
-        var verifiedEmail = magicLinkService.VerifySignupToken(token, email);
+        var verifiedEmail = signInLinkService.VerifySignupToken(token, email);
         if (verifiedEmail is null)
         {
-            return View("MagicLinkError");
+            return View("SignInLinkError");
         }
 
         ViewData["ReturnUrl"] = returnUrl;
@@ -242,14 +242,14 @@ public class AccountController(
         string? email = null, string? returnUrl = null)
     {
         if (string.IsNullOrEmpty(token))
-            return View("MagicLinkError");
+            return View("SignInLinkError");
 
         returnUrl ??= Url.Content("~/");
 
-        var verifiedEmail = magicLinkService.VerifySignupToken(token, email);
+        var verifiedEmail = signInLinkService.VerifySignupToken(token, email);
         if (verifiedEmail is null)
         {
-            return View("MagicLinkError");
+            return View("SignInLinkError");
         }
 
         foreach (var (value, field, label) in new[]
@@ -280,7 +280,7 @@ public class AccountController(
 
         // Redeem only once the submission is complete — consuming before the
         // validation re-render above would burn the link on a blank field.
-        var redeemedEmail = await magicLinkService.VerifyAndConsumeSignupTokenAsync(
+        var redeemedEmail = await signInLinkService.ConsumeSignupTokenAsync(
             token, email, HttpContext.RequestAborted);
         if (redeemedEmail is null)
         {
@@ -294,13 +294,13 @@ public class AccountController(
             if (User.Identity?.IsAuthenticated == true)
                 return RedirectToLocal(returnUrl);
 
-            return View("MagicLinkError");
+            return View("SignInLinkError");
         }
 
-        MagicLinkSignupCompletionResult result;
+        SignInLinkSignupResult result;
         try
         {
-            result = await accountProvisioningService.CompleteMagicLinkSignupAsync(
+            result = await accountProvisioningService.CompleteSignInLinkSignupAsync(
                 redeemedEmail,
                 burnerName,
                 firstName,
@@ -311,8 +311,8 @@ public class AccountController(
         {
             // The reservation must still be released: no account may have been created, and a
             // retry either completes signup or finds the account this request already created.
-            magicLinkService.ReleaseSignupToken(token);
-            logger.LogWarning("Magic link signup request was cancelled for {Email}; " +
+            signInLinkService.ReleaseSignupToken(token);
+            logger.LogWarning("Sign-in link signup request was cancelled for {Email}; " +
                 "the signup token reservation was released", redeemedEmail);
             throw;
         }
@@ -321,8 +321,8 @@ public class AccountController(
             // Provisioning failed. Hand the link back before the exception surfaces: if it
             // created nothing, the retry signs them up; if it got as far as the account, the
             // retry finds it and signs them in.
-            magicLinkService.ReleaseSignupToken(token);
-            logger.LogError(ex, "Magic link signup: provisioning threw for {Email}; " +
+            signInLinkService.ReleaseSignupToken(token);
+            logger.LogError(ex, "Sign-in link signup: provisioning threw for {Email}; " +
                 "the signup token reservation was released", redeemedEmail);
             throw;
         }
@@ -332,11 +332,11 @@ public class AccountController(
             // Provisioning failed and rolled itself back, so the redemption
             // accomplished nothing. Hand the link back rather than making the
             // person request a new email over a transient failure.
-            magicLinkService.ReleaseSignupToken(token);
-            return View("MagicLinkError");
+            signInLinkService.ReleaseSignupToken(token);
+            return View("SignInLinkError");
         }
 
-        loginMethods.RecordMagicLink();
+        signInMethods.RecordSignInLink();
 
         return RedirectToLocal(returnUrl);
     }
@@ -351,11 +351,11 @@ public class AccountController(
     /// restarts without an admin on-site.
     /// </summary>
     [HttpGet]
-    public IActionResult GateLogin() => View();
+    public IActionResult GateSignIn() => View();
 
     [HttpPost]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> GateLogin(string? username, string? password)
+    public async Task<IActionResult> GateSignIn(string? username, string? password)
     {
         // Throttle by source IP, never by account — anyone failing passwords on
         // purpose must only lock themselves out, not the terminal at gate.
@@ -365,7 +365,7 @@ public class AccountController(
             logger.LogWarning(
                 "Gate terminal sign-in throttled for {Source} ({WaitSeconds}s remaining)",
                 source, waitSeconds);
-            ModelState.AddModelError(string.Empty, localizer["GateLogin_Throttled", waitSeconds]);
+            ModelState.AddModelError(string.Empty, localizer["GateSignIn_Throttled", waitSeconds]);
             return View();
         }
 
@@ -375,7 +375,7 @@ public class AccountController(
         if (!isGateUser || string.IsNullOrEmpty(password))
         {
             gateThrottle.RecordFailure(source);
-            ModelState.AddModelError(string.Empty, localizer["GateLogin_Invalid"]);
+            ModelState.AddModelError(string.Empty, localizer["GateSignIn_Invalid"]);
             return View();
         }
 
@@ -383,13 +383,13 @@ public class AccountController(
         {
             gateThrottle.RecordFailure(source);
             logger.LogWarning("Gate terminal sign-in failed (wrong password) from {Source}", source);
-            ModelState.AddModelError(string.Empty, localizer["GateLogin_Invalid"]);
+            ModelState.AddModelError(string.Empty, localizer["GateSignIn_Invalid"]);
             return View();
         }
 
         gateThrottle.Reset(source);
 
-        await userWrite.RecordLoginAsync(SystemUserIds.GateTerminal);
+        await userWrite.RecordSignInAsync(SystemUserIds.GateTerminal);
 
         await signIn.SignInAsync(SystemUserIds.GateTerminal);
         logger.LogInformation("Gate terminal signed in");

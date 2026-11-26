@@ -7,7 +7,7 @@ namespace Humans.MailerLite.Services;
 
 /// <summary>
 /// Cached in memory, populated on first read and refreshed only by <see cref="RefreshAsync"/>, so page loads don't
-/// burn the MailerLite rate limit.
+/// burn the MailerLite rate limit. A failed population discards cached account data; the next read retries.
 /// </summary>
 internal interface IMailerLiteService : IApplicationService
 {
@@ -45,8 +45,8 @@ internal interface IMailerLiteService : IApplicationService
         string groupId, IReadOnlyList<string> emails, CancellationToken ct = default);
 
     /// <summary>
-    /// GDPR erasure, so not limited to "Humans - " groups. A 404 counts as success, keeping the retried erasure
-    /// cascade idempotent.
+    /// GDPR erasure via MailerLite's forget operation, which schedules permanent removal within 30 days; not
+    /// limited to "Humans - " groups. Looks up the email's subscriber ID. A lookup or forget 404 is idempotent success.
     /// </summary>
     [ExternalWrite]
     Task DeleteSubscriberAsync(string email, CancellationToken ct = default);

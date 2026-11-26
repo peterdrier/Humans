@@ -17,7 +17,7 @@ namespace Humans.Integration.Tests.Services;
 public class GooglePermissionSwitchTests(HumansTestDatabase database) : IntegrationTestBase(database)
 {
     [HumansFact(Timeout = 180000)]
-    public async Task Todays_coordinators_manage_resources_exactly_where_they_did_before()
+    public async Task ManageResources_TodaysCoordinators_MatchesOldDepartmentCheck()
     {
         var ct = TestContext.Current.CancellationToken;
         // The coordinator persona seeds a department it coordinates and a sub-team below it.

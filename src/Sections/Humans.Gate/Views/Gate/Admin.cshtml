@@ -6,14 +6,13 @@
 
 <page-header title="Staff PINs" />
 <p class="text-muted">
-    Gate settings (general entry time, minor age threshold) moved to
+    Gate settings (general entry time, minor age threshold) live in
     <a href="/Settings#gate">/Settings</a>.
 </p>
 <p class="text-muted mw-540">
-    Staff PINs attribute scans when claiming the gate — anyone, supervisors included, can set their
-    own at the kiosk, or enrol one here out of band. Overrides are authorized by the shared supervisor
-    PIN (set in configuration), never by these. Resetting a PIN clears it; enrol the replacement
-    here (the kiosk claim step is currently bypassed).
+    Staff PINs are dormant: the kiosk scans as the shared gate account and skips the claim step, so
+    PINs are enrolled only here. Overrides are authorized by the shared supervisor PIN (set in
+    configuration), never by these. Resetting a PIN clears it.
 </p>
 
 <form method="post" asp-action="SetStaffPin" class="mb-3 mw-540">

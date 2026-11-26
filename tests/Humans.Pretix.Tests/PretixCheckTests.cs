@@ -12,6 +12,22 @@ public class PretixCheckTests
     private static FakePretix Organizer() => new FakePretix()
         .On("GET", "/api/v1/organizers/nobodies/events/", HttpStatusCode.OK, new { results = Array.Empty<object>() });
 
+    [HumansTheory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public async Task Check_propagates_caller_cancellation_but_reports_timeouts(bool cancelCaller)
+    {
+        using var caller = new CancellationTokenSource();
+        if (cancelCaller) await caller.CancelAsync();
+        var pretix = new FakePretix { Failure = new TaskCanceledException("probe cancelled", null, caller.Token) };
+        var check = () => Create(pretix).CheckAsync(null, caller.Token);
+
+        if (cancelCaller)
+            await check.Should().ThrowAsync<OperationCanceledException>();
+        else
+            (await check()).Should().Contain(f => !f.Ok && f.Text.Contains("could not be read"));
+    }
+
     [HumansFact]
     public async Task A_ready_event_passes_with_reads_only()
     {
@@ -19,7 +35,12 @@ public class PretixCheckTests
             .On("GET", Api, HttpStatusCode.OK, new { currency = "EUR", live = true, testmode = false })
             .On("GET", Api + "items/", HttpStatusCode.OK, new
             {
-                results = new[] { new { id = 1, internal_name = "humans-ticket" }, new { id = 2, internal_name = "humans-donation" } },
+                results = new[] { new { id = 1, internal_name = "humans-ticket" } },
+                next = $"https://pretix.test{Api}items/?page=2",
+            })
+            .On("GET", Api + "items/", HttpStatusCode.OK, new
+            {
+                results = new[] { new { id = 2, internal_name = "humans-donation" } },
             });
 
         var findings = await Create(pretix).CheckAsync("nowhere2027", Ct);

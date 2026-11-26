@@ -17,7 +17,7 @@ internal static class UserInfoStubHelpers
     /// can't see.
     /// </summary>
     public static UserInfo FromEntities(User user, Profile? profile, IReadOnlyList<UserEmail>? userEmails = null) =>
-        UserInfoFactory.Create(user, userEmails ?? user.UserEmails?.ToList() ?? [], [], profile, [], [], []);
+        UserInfoFactory.Create(user, userEmails ?? user.UserEmails.ToList(), [], profile, [], [], []);
 
     /// <summary>
     /// Stubs GetUserInfosAsync to read from the provided DbContext options (new context per call,

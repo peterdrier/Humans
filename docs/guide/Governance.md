@@ -6,7 +6,7 @@
   src/Sections/Humans.Governance/Controllers/GovernanceVotesController.cs
   src/Sections/Humans.Governance/Controllers/GovernanceVotesAdminController.cs
   src/Sections/Humans.Governance/Services/**
-  src/Sections/Humans.Auth/Services/RoleAssignmentService.cs
+  src/Sections/Humans.Auth/Services/SystemRoleService.cs
   src/Sections/Humans.Governance/Domain/Application.cs
   src/Sections/Humans.Governance/Domain/ApplicationStateHistory.cs
   src/Sections/Humans.Governance/Domain/BoardVote.cs
@@ -44,7 +44,7 @@ Both tiers run on synchronized 2-year terms that expire on December 31 of the cu
 - `/Governance/Votes/{id}/Results` — the result, once the vote has closed. `Results.csv` is the same numbers as a download.
 - `/Governance/Votes/Admin` — every vote in every state, including drafts (Board and Admin).
 - `/Auth/Admin/Roles` — paginated list of all role assignments, filterable by role (Users Admin, Board or Admin).
-- `/Auth/Admin/{id}/Roles/Add` and `/Auth/Admin/{id}/Roles/{roleId}/End` — assign and end role assignments on a specific human (Users Admin and Admin).
+- `/Auth/Admin/{id}/Roles/Add` and `/Auth/Admin/{id}/Roles/{roleId}/Revoke` — assign and end role assignments on a specific human (Users Admin and Admin).
 
 ## As a Volunteer
 

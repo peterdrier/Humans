@@ -1,6 +1,5 @@
 @model Humans.Expenses.Models.ExpenseReviewViewModel
 @using Microsoft.AspNetCore.Html
-@using Humans.Base.ViewComponents
 @{
     ViewData["Title"] = Localizer["Expenses_ReviewQueueTitle"].Value;
     ViewData["BodyClass"] = "page-wide";
@@ -31,7 +30,7 @@
                 {
                     userId = failed.SubmitterUserId,
                 });
-                using var submitterWriter = new System.IO.StringWriter();
+                using var submitterWriter = new StringWriter();
                 submitter.WriteTo(submitterWriter, System.Text.Encodings.Web.HtmlEncoder.Default);
                 var submitterHtml = new HtmlString(submitterWriter.ToString().Trim());
                 <li>

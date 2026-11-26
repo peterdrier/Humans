@@ -92,7 +92,7 @@ else
             {
                 <button type="button" class="btn btn-sm btn-success js-open-confirm-signup"
                         data-bs-toggle="modal" data-bs-target="#confirmSignup-@rotaGroup.Rota.Id">
-                    @string.Format(Localizer["Shifts_SignUpForDates"].Value, rotaGroup.Rota.Period == RotaPeriod.Build ? SharedLocalizer["Shifts_SetUp"].Value.ToLowerInvariant() : SharedLocalizer["Shifts_Strike"].Value.ToLowerInvariant())
+                    @Localizer["Shifts_SignUpForDates", rotaGroup.Rota.Period == RotaPeriod.Build ? SharedLocalizer["Shifts_SetUp"].Value.ToLowerInvariant() : SharedLocalizer["Shifts_Strike"].Value.ToLowerInvariant()]
                 </button>
             }
         </div>
@@ -127,16 +127,14 @@ else
                 <div class="modal-content">
                     <div class="modal-header">
                         <h5 class="modal-title" id="confirmSignupTitle-@rotaGroup.Rota.Id">
-                            @string.Format(Localizer["Shifts_ConfirmSignup_Title"].Value,
-                                rotaGroup.Rota.Period == RotaPeriod.Build ? SharedLocalizer["Shifts_SetUp"].Value.ToLowerInvariant() : SharedLocalizer["Shifts_Strike"].Value.ToLowerInvariant())
+                            @Localizer["Shifts_ConfirmSignup_Title", rotaGroup.Rota.Period == RotaPeriod.Build ? SharedLocalizer["Shifts_SetUp"].Value.ToLowerInvariant() : SharedLocalizer["Shifts_Strike"].Value.ToLowerInvariant()]
                         </h5>
                         <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="@SharedLocalizer["Common_Close"]"></button>
                     </div>
                     <div class="modal-body">
                         <p class="js-phase-line">
-                            @string.Format(Localizer["Shifts_ConfirmSignup_Phase"].Value,
-                                rotaGroup.Rota.Name,
-                                rotaGroup.Rota.Period == RotaPeriod.Build ? SharedLocalizer["Shifts_SetUp"].Value.ToLowerInvariant() : SharedLocalizer["Shifts_Strike"].Value.ToLowerInvariant())
+                            @Localizer["Shifts_ConfirmSignup_Phase", rotaGroup.Rota.Name,
+                                rotaGroup.Rota.Period == RotaPeriod.Build ? SharedLocalizer["Shifts_SetUp"].Value.ToLowerInvariant() : SharedLocalizer["Shifts_Strike"].Value.ToLowerInvariant()]
                         </p>
                         <p class="js-range-line"></p>
 
@@ -334,11 +332,11 @@ else if (allDayShifts.All(s => s.RemainingSlots <= 0) && allDayShifts.Any(s => s
                         <td>
                             @if (userSignedUpDays == range.Count)
                             {
-                                <span class="badge bg-info">@string.Format(Localizer["Shifts_SignedUpAllDays"].Value, range.Count)</span>
+                                <span class="badge bg-info">@Localizer["Shifts_SignedUpAllDays", range.Count]</span>
                             }
                             else if (userSignedUpDays > 0)
                             {
-                                <span class="badge bg-info">@string.Format(Localizer["Shifts_SignedUpPartial"].Value, userSignedUpDays, range.Count)</span>
+                                <span class="badge bg-info">@Localizer["Shifts_SignedUpPartial", userSignedUpDays, range.Count]</span>
                             }
                             else if (allRangeFull)
                             {
@@ -346,7 +344,7 @@ else if (allDayShifts.All(s => s.RemainingSlots <= 0) && allDayShifts.Any(s => s
                             }
                             else if (daysNeedingHelp > 0)
                             {
-                                <span class="badge bg-warning text-dark">@string.Format((daysNeedingHelp == 1 ? Localizer["Shifts_DayNeedsHelp"] : Localizer["Shifts_DaysNeedHelp"]).Value, daysNeedingHelp)</span>
+                                <span class="badge bg-warning text-dark">@Localizer[daysNeedingHelp == 1 ? "Shifts_DayNeedsHelp" : "Shifts_DaysNeedHelp", daysNeedingHelp]</span>
                             }
                         </td>
                         <td><small class="text-muted fst-italic">@Localizer["Shifts_ClickToExpand"]</small></td>

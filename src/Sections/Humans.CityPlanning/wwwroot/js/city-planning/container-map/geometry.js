@@ -65,10 +65,6 @@ export function getRotationHandleCoordsForContainer(feature) {
     ];
 }
 
-export function featureToCollection(feature) {
-    return { type: 'FeatureCollection', features: [feature] };
-}
-
 /**
  * Converts the bearing of the mouse from the container center to a
  * turf.transformRotate-compatible rotation angle (CCW, 0 = door east).

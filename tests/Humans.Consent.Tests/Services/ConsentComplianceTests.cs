@@ -3,7 +3,6 @@ using AwesomeAssertions;
 using Humans.Auth.Contracts;
 using Humans.Base.Constants;
 using Humans.Base.Enums;
-using Humans.Consent.Contracts;
 using Humans.Consent.Data;
 using Humans.Consent.Services;
 using Humans.Base.Interfaces;
@@ -24,7 +23,7 @@ public sealed class ConsentComplianceTests
     private readonly IConsentManagement _consents = Substitute.For<IConsentManagement>();
     private readonly ILegalDocumentSyncManagement _legalDocuments = Substitute.For<ILegalDocumentSyncManagement>();
     private readonly ITeamService _teams = Substitute.For<ITeamService>();
-    private readonly IRoleAssignmentService _roleAssignments = Substitute.For<IRoleAssignmentService>();
+    private readonly ISystemRoleService _roleAssignments = Substitute.For<ISystemRoleService>();
     private readonly Dictionary<Guid, IReadOnlySet<Guid>> _signed = [];
     private readonly ConsentService _sut;
 

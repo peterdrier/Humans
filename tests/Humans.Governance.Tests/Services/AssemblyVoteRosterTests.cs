@@ -10,8 +10,8 @@ using Humans.Users.Contracts;
 using Microsoft.EntityFrameworkCore;
 using NodaTime;
 using NSubstitute;
-
 using Xunit;
+
 
 namespace Humans.Governance.Tests.Services;
 
@@ -35,18 +35,18 @@ public sealed class AssemblyVoteRosterTests : IDisposable
         _fx.Applications.GetActiveApprovedTierUserIdsAsync(
                 MembershipTier.Asociado, Arg.Any<LocalDate>(), Arg.Any<CancellationToken>())
             .Returns(Task.FromResult<IReadOnlyList<Guid>>([asociado]));
-        _fx.RoleAssignments.GetActiveUserIdsInRoleAsync(RoleNames.Board, Arg.Any<CancellationToken>())
+        _fx.SystemRoles.GetActiveUserIdsInRoleAsync(RoleNames.Board, Arg.Any<CancellationToken>())
             .Returns(Task.FromResult<IReadOnlyList<Guid>>([boardMember]));
         _fx.StubActiveUsers(asociado, boardMember);
 
         var result = await _fx.Service.OpenAsync(
-            vote.Id, Guid.NewGuid(), Xunit.TestContext.Current.CancellationToken);
+            vote.Id, Guid.NewGuid(), TestContext.Current.CancellationToken);
 
         result.Should().Be(AssemblyVoteActionResult.Ok);
         var roster = await _fx.Db.AssemblyVoteRosterEntries
             .AsNoTracking()
             .Where(r => r.VoteId == vote.Id)
-            .ToListAsync(Xunit.TestContext.Current.CancellationToken);
+            .ToListAsync(TestContext.Current.CancellationToken);
 
         roster.Should().HaveCount(2);
         roster.Should().OnlyContain(r => r.IsOfficial);
@@ -61,16 +61,16 @@ public sealed class AssemblyVoteRosterTests : IDisposable
         _fx.Applications.GetActiveApprovedTierUserIdsAsync(
                 MembershipTier.Asociado, Arg.Any<LocalDate>(), Arg.Any<CancellationToken>())
             .Returns(Task.FromResult<IReadOnlyList<Guid>>([person]));
-        _fx.RoleAssignments.GetActiveUserIdsInRoleAsync(RoleNames.Board, Arg.Any<CancellationToken>())
+        _fx.SystemRoles.GetActiveUserIdsInRoleAsync(RoleNames.Board, Arg.Any<CancellationToken>())
             .Returns(Task.FromResult<IReadOnlyList<Guid>>([person]));
         _fx.StubActiveUsers(person);
 
-        await _fx.Service.OpenAsync(vote.Id, Guid.NewGuid(), Xunit.TestContext.Current.CancellationToken);
+        await _fx.Service.OpenAsync(vote.Id, Guid.NewGuid(), TestContext.Current.CancellationToken);
 
         var roster = await _fx.Db.AssemblyVoteRosterEntries
             .AsNoTracking()
             .Where(r => r.VoteId == vote.Id)
-            .ToListAsync(Xunit.TestContext.Current.CancellationToken);
+            .ToListAsync(TestContext.Current.CancellationToken);
 
         roster.Should().ContainSingle(r => r.UserId == person);
         roster.Single().IsOfficial.Should().BeTrue();
@@ -87,11 +87,11 @@ public sealed class AssemblyVoteRosterTests : IDisposable
             .Returns(Task.FromResult<IReadOnlyList<Guid>>([colaborador]));
         _fx.StubActiveUsers(colaborador);
 
-        await _fx.Service.OpenAsync(vote.Id, Guid.NewGuid(), Xunit.TestContext.Current.CancellationToken);
+        await _fx.Service.OpenAsync(vote.Id, Guid.NewGuid(), TestContext.Current.CancellationToken);
 
         var row = await _fx.Db.AssemblyVoteRosterEntries
             .AsNoTracking()
-            .SingleAsync(r => r.VoteId == vote.Id, Xunit.TestContext.Current.CancellationToken);
+            .SingleAsync(r => r.VoteId == vote.Id, TestContext.Current.CancellationToken);
         row.IsOfficial.Should().BeFalse();
     }
 
@@ -110,11 +110,11 @@ public sealed class AssemblyVoteRosterTests : IDisposable
                     TeamMemberRole.Member, _fx.Clock.GetCurrentInstant())])));
         _fx.StubActiveUsers(volunteer);
 
-        await _fx.Service.OpenAsync(vote.Id, Guid.NewGuid(), Xunit.TestContext.Current.CancellationToken);
+        await _fx.Service.OpenAsync(vote.Id, Guid.NewGuid(), TestContext.Current.CancellationToken);
 
         var row = await _fx.Db.AssemblyVoteRosterEntries
             .AsNoTracking()
-            .SingleAsync(r => r.VoteId == vote.Id, Xunit.TestContext.Current.CancellationToken);
+            .SingleAsync(r => r.VoteId == vote.Id, TestContext.Current.CancellationToken);
         row.UserId.Should().Be(volunteer);
         row.IsOfficial.Should().BeFalse();
     }
@@ -129,7 +129,7 @@ public sealed class AssemblyVoteRosterTests : IDisposable
             .Returns(Task.FromResult<IReadOnlyList<Guid>>([asociado]));
         _fx.StubActiveUsers(asociado);
 
-        await _fx.Service.OpenAsync(vote.Id, Guid.NewGuid(), Xunit.TestContext.Current.CancellationToken);
+        await _fx.Service.OpenAsync(vote.Id, Guid.NewGuid(), TestContext.Current.CancellationToken);
 
         await _fx.Teams.DidNotReceive().GetTeamAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>());
     }
@@ -146,12 +146,12 @@ public sealed class AssemblyVoteRosterTests : IDisposable
         // empty map, so the candidate has no known Active state and is dropped.
 
         var result = await _fx.Service.OpenAsync(
-            vote.Id, Guid.NewGuid(), Xunit.TestContext.Current.CancellationToken);
+            vote.Id, Guid.NewGuid(), TestContext.Current.CancellationToken);
 
         // No survivors at all makes an empty roster, which OpenAsync itself refuses.
         result.Should().Be(AssemblyVoteActionResult.Invalid);
         (await _fx.Db.AssemblyVoteRosterEntries
-            .CountAsync(r => r.VoteId == vote.Id, Xunit.TestContext.Current.CancellationToken))
+            .CountAsync(r => r.VoteId == vote.Id, TestContext.Current.CancellationToken))
             .Should().Be(0);
     }
 
@@ -188,12 +188,12 @@ public sealed class AssemblyVoteRosterTests : IDisposable
         _fx.Users.GetUserInfosAsync(Arg.Any<IEnumerable<Guid>>(), Arg.Any<CancellationToken>())
             .Returns(new ValueTask<IReadOnlyDictionary<Guid, UserInfo>>(map));
 
-        await _fx.Service.OpenAsync(vote.Id, Guid.NewGuid(), Xunit.TestContext.Current.CancellationToken);
+        await _fx.Service.OpenAsync(vote.Id, Guid.NewGuid(), TestContext.Current.CancellationToken);
 
         var roster = await _fx.Db.AssemblyVoteRosterEntries
             .AsNoTracking()
             .Where(r => r.VoteId == vote.Id)
-            .ToListAsync(Xunit.TestContext.Current.CancellationToken);
+            .ToListAsync(TestContext.Current.CancellationToken);
         roster.Should().ContainSingle(r => r.UserId == active);
         roster.Should().NotContain(r => r.UserId == suspended);
     }
@@ -207,7 +207,7 @@ public sealed class AssemblyVoteRosterTests : IDisposable
                 MembershipTier.Asociado, Arg.Any<LocalDate>(), Arg.Any<CancellationToken>())
             .Returns(Task.FromResult<IReadOnlyList<Guid>>([earlyAsociado]));
         _fx.StubActiveUsers(earlyAsociado);
-        await _fx.Service.OpenAsync(vote.Id, Guid.NewGuid(), Xunit.TestContext.Current.CancellationToken);
+        await _fx.Service.OpenAsync(vote.Id, Guid.NewGuid(), TestContext.Current.CancellationToken);
 
         // A member becomes Asociado only after the vote already opened.
         var lateAsociado = Guid.NewGuid();
@@ -218,11 +218,11 @@ public sealed class AssemblyVoteRosterTests : IDisposable
 
         var outcome = await _fx.Service.CastBallotAsync(
             vote.Id, lateAsociado, AssemblyBallotChoice.Yes, null,
-            Xunit.TestContext.Current.CancellationToken);
+            TestContext.Current.CancellationToken);
 
         outcome.Should().Be(BallotSubmissionOutcome.NotOnRoster);
         (await _fx.Db.AssemblyVoteRosterEntries
-            .CountAsync(r => r.VoteId == vote.Id, Xunit.TestContext.Current.CancellationToken))
+            .CountAsync(r => r.VoteId == vote.Id, TestContext.Current.CancellationToken))
             .Should().Be(1);
     }
 
@@ -235,7 +235,7 @@ public sealed class AssemblyVoteRosterTests : IDisposable
                 MembershipTier.Asociado, Arg.Any<LocalDate>(), Arg.Any<CancellationToken>())
             .Returns(Task.FromResult<IReadOnlyList<Guid>>([asociado]));
         _fx.StubActiveUsers(asociado);
-        await _fx.Service.OpenAsync(vote.Id, Guid.NewGuid(), Xunit.TestContext.Current.CancellationToken);
+        await _fx.Service.OpenAsync(vote.Id, Guid.NewGuid(), TestContext.Current.CancellationToken);
 
         // Their term now expires; the roster row does not know or care.
         _fx.Applications.GetActiveApprovedTierUserIdsAsync(
@@ -244,7 +244,7 @@ public sealed class AssemblyVoteRosterTests : IDisposable
 
         var outcome = await _fx.Service.CastBallotAsync(
             vote.Id, asociado, AssemblyBallotChoice.Yes, null,
-            Xunit.TestContext.Current.CancellationToken);
+            TestContext.Current.CancellationToken);
 
         outcome.Should().Be(BallotSubmissionOutcome.Recorded);
     }

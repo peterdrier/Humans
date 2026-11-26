@@ -153,6 +153,9 @@ public class PersonSearchMatcherTests
     [HumansTheory]
     [InlineData("jose", "José")]
     [InlineData("munoz", "Muñoz")]
+    [InlineData("istanbul", "İstanbul")]
+    [InlineData("İSTANBUL", "istanbul")]
+    [InlineData("istanbul", "I\u0307stanbul")]
     [InlineData("JOSÉ", "josé")]
     public void Name_match_is_accent_and_case_insensitive(string query, string burnerName)
     {
@@ -280,7 +283,7 @@ public class PersonSearchMatcherTests
 
         var match = PersonSearchMatcher.Match(human, "elsewhere", PersonSearchFields.Bio);
         match.Should().NotBeNull();
-        match!.Snippet.Should().Be("Elsewhere 2025");
+        match.Snippet.Should().Be("Elsewhere 2025");
     }
 
     [HumansFact]
@@ -320,7 +323,7 @@ public class PersonSearchMatcherTests
 
         var match = PersonSearchMatcher.Match(human, "handle", fields);
         match.Should().NotBeNull();
-        match!.Snippet.Should().Be("handle-first");
+        match.Snippet.Should().Be("handle-first");
     }
 
     [HumansFact]
@@ -374,6 +377,9 @@ public class PersonSearchMatcherTests
     [HumansTheory]
     [InlineData("jose", "José")]   // diacritic + case folded
     [InlineData("JOSÉ", "josé")]
+    [InlineData("istanbul", "İstanbul")]
+    [InlineData("İSTANBUL", "istanbul")]
+    [InlineData("istanbul", "I\u0307stanbul")]
     [InlineData("peter pan", "Peter Pan")]  // full multi-token string, exact
     public void ExactName_matches_folded_full_string_equality(string query, string burnerName)
     {

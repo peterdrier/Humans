@@ -1,6 +1,5 @@
 using AwesomeAssertions;
 using Humans.Base.Models.Tables;
-using Humans.Events.Contracts;
 using Humans.Events.Domain;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;

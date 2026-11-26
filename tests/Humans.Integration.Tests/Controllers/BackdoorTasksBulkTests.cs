@@ -18,7 +18,7 @@ public class BackdoorTasksBulkTests(HumansTestDatabase database) : IntegrationTe
     {
         var ct = Xunit.TestContext.Current.CancellationToken;
         var adminId = await Factory.SignInAsFullyOnboardedAsync(Client, DevPersona.Admin);
-        var key = await IssueKeyAsync(adminId, ct);
+        var key = await CreateKeyAsync(adminId, ct);
 
         using var request = new HttpRequestMessage(HttpMethod.Post, "/api/backdoor/tasks/bulk")
         {
@@ -48,19 +48,19 @@ public class BackdoorTasksBulkTests(HumansTestDatabase database) : IntegrationTe
         problems.Should().Contain((2, "priority"), body);
     }
 
-    private async Task<string> IssueKeyAsync(Guid ownerUserId, CancellationToken ct)
+    private async Task<string> CreateKeyAsync(Guid ownerUserId, CancellationToken ct)
     {
         var page = await Client.GetStringAsync("/Backdoor", ct);
         var token = Regex.Match(page, "name=\"__RequestVerificationToken\"[^>]{0,200}value=\"(?<t>[^\"]+)\"",
             RegexOptions.ExplicitCapture, TimeSpan.FromSeconds(2)).Groups["t"].Value;
 
-        var issued = await Client.PostAsync("/Backdoor/Issue", new FormUrlEncodedContent(
+        var created = await Client.PostAsync("/Backdoor/Create", new FormUrlEncodedContent(
         [
             new("__RequestVerificationToken", token),
             new("ownerUserId", ownerUserId.ToString()),
             new("label", "integration"),
         ]), ct);
-        issued.StatusCode.Should().Be(HttpStatusCode.Found);
+        created.StatusCode.Should().Be(HttpStatusCode.Found);
 
         var shown = await Client.GetStringAsync("/Backdoor", ct);
         var match = Regex.Match(shown, "user-select-all[^>]*>(?<k>[^<]+)<", RegexOptions.ExplicitCapture, TimeSpan.FromSeconds(2));

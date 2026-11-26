@@ -1,6 +1,5 @@
 using Humans.Events.Domain;
 using NodaTime;
-using Humans.Events.Contracts;
 
 namespace Humans.Events.Services.Dtos;
 

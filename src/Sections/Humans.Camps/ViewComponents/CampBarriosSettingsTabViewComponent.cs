@@ -8,6 +8,6 @@ internal sealed class CampBarriosSettingsTabViewComponent(ICampManagement campSe
     public async Task<IViewComponentResult> InvokeAsync()
     {
         var events = await campService.GetRegistrationByEventAsync(HttpContext.RequestAborted);
-        return View(new CampBarriosSettingsViewModel(events));
+        return View(new CampBarriosSettingsViewModel(events.OrderByDescending(e => e.GateOpeningDate).ToList()));
     }
 }

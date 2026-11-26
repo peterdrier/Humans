@@ -1,8 +1,6 @@
 using Humans.AuditLog.Contracts;
 using Humans.Auth.Contracts;
-using Humans.EarlyEntry.Contracts;
 using Humans.Notifications.Contracts;
-using Humans.Shifts.Contracts;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Diagnostics;
 using Microsoft.Extensions.Caching.Memory;

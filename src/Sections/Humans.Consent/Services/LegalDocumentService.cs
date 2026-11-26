@@ -43,6 +43,7 @@ internal sealed class LegalDocumentService(
 
             var contentDict = await gitHub.GetFolderContentByPrefixAsync(
                 definition.RepoFolder, definition.FilePrefix, ct);
+            ct.ThrowIfCancellationRequested();
 
             var content = new Dictionary<string, string>(contentDict, StringComparer.Ordinal);
             cache.Set(cacheKey, content, CacheTtl);

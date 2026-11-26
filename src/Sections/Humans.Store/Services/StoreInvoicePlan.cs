@@ -56,7 +56,6 @@ internal sealed record StoreInvoicePlan(
             .ToList();
         var returns = order.Payments
             .Where(p => p.Method == PaymentMethod.DepositReturn && p.Status == PaymentStatus.Paid)
-            .OrderBy(p => p.ReceivedAt)
             .ToList();
         // Returns recorded before they named a product returned every deposit on their order (Peter, 2026-11-19).
         var legacyReturnsCoverAll = returns.Any(r => r.ProductId is null);
@@ -166,7 +165,7 @@ internal sealed record StoreInvoicePlan(
     public string Notes(string campName, Guid orderId)
     {
         var notes = new List<string> { campName, $"Humans store order {orderId}" };
-        foreach (var r in Returns)
+        foreach (var r in Returns.OrderBy(r => r.ReturnedAt))
             notes.Add(string.Create(CultureInfo.InvariantCulture,
                 $"Deposit returned: EUR {r.AmountEur:0.00} on {r.ReturnedAt.InUtc().Date.ToInvariantDate()}")
                 + (r.ProductName is { } name ? $" ({name})" : string.Empty));

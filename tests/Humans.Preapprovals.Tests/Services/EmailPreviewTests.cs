@@ -2,7 +2,6 @@ using AwesomeAssertions;
 using Humans.Email.Contracts;
 using Humans.Preapprovals.Services;
 using Humans.Preapprovals.Tests.Infrastructure;
-using Humans.Testing;
 
 namespace Humans.Preapprovals.Tests.Services;
 

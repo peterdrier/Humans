@@ -1,11 +1,10 @@
 using Humans.Base.Attributes;
-using Humans.Base.Interfaces;
 using Humans.Google.Contracts;
 using NodaTime;
 
 namespace Humans.Google.Services;
 
-internal interface ITeamResourceManagement : ITeamResourceService, IApplicationService
+internal interface ITeamResourceManagement : ITeamResourceService
 {
     /// <summary>TeamsAdmin always can; holders of Google.ManageResources only when AllowCoordinatorsToManageResources is on.</summary>
     Task<bool> CanManageTeamResourcesAsync(Guid teamId, Guid userId, CancellationToken ct = default);

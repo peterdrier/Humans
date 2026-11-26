@@ -36,12 +36,8 @@
         var pct = Math.Clamp(pie.FillPercent, 0, 100);
         var requestedDisplay = pie.RequestedHours.ToString("0.#", System.Globalization.CultureInfo.CurrentCulture);
         var filledDisplay = pie.FilledHours.ToString("0.#", System.Globalization.CultureInfo.CurrentCulture);
-        var ariaLabel = string.Format(
-            Localizer["Shifts_PieCoverage_Aria"].Value,
-            pie.TeamName, pct, filledDisplay, requestedDisplay);
-        var titleText = string.Format(
-            Localizer["Shifts_PieCoverage_Title"].Value,
-            pie.TeamName, filledDisplay, requestedDisplay, pct);
+        var ariaLabel = Localizer["Shifts_PieCoverage_Aria", pie.TeamName, pct, filledDisplay, requestedDisplay].Value;
+        var titleText = Localizer["Shifts_PieCoverage_Title", pie.TeamName, filledDisplay, requestedDisplay, pct].Value;
         var deptValue = isSelected ? string.Empty : pie.TeamId.ToString();
         var coverageClass = pct >= 100 ? " coverage-complete"
                           : pct < 25 ? " coverage-critical"
@@ -69,7 +65,9 @@
         var key = 'humans.pieTipDismissed';
         var tip = document.querySelector('[data-dept-pie-tip]');
         if (!tip) return;
-        if (localStorage.getItem(key) !== '1') tip.removeAttribute('hidden');
+        var dismissed = false;
+        try { dismissed = localStorage.getItem(key) === '1'; } catch (_) { /* storage may be disabled */ }
+        if (!dismissed) tip.removeAttribute('hidden');
         var btn = tip.querySelector('[data-dept-pie-tip-dismiss]');
         if (!btn) return;
         btn.addEventListener('click', function () {

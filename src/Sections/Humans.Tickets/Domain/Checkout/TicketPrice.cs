@@ -30,8 +30,7 @@ internal sealed record TicketPrice(
         var rules = ticketing.PriceRules.Where(r => activeProgramIds.Contains(r.GrantProgramId)).ToList();
         var classPrice = rules
             .Where(r => r.Kind == TicketPriceRuleKind.ClassPrice)
-            .OrderBy(r => r.AmountMinor)
-            .FirstOrDefault();
+            .MinBy(r => r.AmountMinor);
         var discounts = rules.Where(r => r.Kind == TicketPriceRuleKind.Discount).ToList();
         // One early discount per person: an asociado who is also a colaborador gets the larger, not both.
         if (early && rules.Where(r => r.Kind == TicketPriceRuleKind.EarlyAccess && r.AmountMinor > 0)

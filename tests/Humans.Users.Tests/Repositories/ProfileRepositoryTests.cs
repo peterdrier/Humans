@@ -6,7 +6,6 @@ using Humans.Users.Tests.Infrastructure;
 using Humans.Users.Data.Repositories;
 using Humans.Users.Contracts;
 using Humans.Users.Data;
-using Humans.Users.Domain;
 
 namespace Humans.Users.Tests.Repositories;
 

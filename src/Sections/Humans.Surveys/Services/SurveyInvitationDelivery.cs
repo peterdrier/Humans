@@ -3,7 +3,6 @@ using System.Text;
 using Humans.AuditLog.Contracts;
 using Humans.Base.Enums;
 using Humans.Base.Extensions;
-using Humans.Base.Interfaces;
 using Humans.Email.Contracts;
 using Humans.Surveys.Contracts;
 using Humans.Surveys.Data;
@@ -39,8 +38,7 @@ internal sealed class SurveyInvitationDelivery(
             audienceType, survey.AudienceTeamId, survey.AudienceLoggedInSince, ct);
         if (recipients.Count == 0) return 0;
         var participationRows = await repo.GetInvitationsAsync(surveyId, ct);
-        var excluded = await ExcludedRecipientUserIdsAsync(participationRows, ct);
-        return recipients.Except(excluded).Count();
+        return (await GetNewRecipientsAsync(recipients, participationRows, surveyId, ct)).Count;
     }
 
     public async Task<SendResult> SendInvitesAsync(Guid surveyId, Guid actorUserId, CancellationToken ct = default)
@@ -60,11 +58,8 @@ internal sealed class SurveyInvitationDelivery(
         var target = await audience.ResolveRecipientIdsAsync(
             audienceType, survey.AudienceTeamId, survey.AudienceLoggedInSince, ct);
         var participationRows = await repo.GetInvitationsAsync(surveyId, ct);
-        var excluded = await ExcludedRecipientUserIdsAsync(participationRows, ct);
-        var netNew = target.Except(excluded).ToList();
+        var users = await GetNewRecipientsAsync(target, participationRows, surveyId, ct);
         var existingParticipation = participationRows.ToDictionary(invitation => invitation.UserId);
-
-        var users = await userService.GetUserInfosAsync(netNew, ct);
         var invitationsProcessed = 0;
         var emailsQueued = 0;
         var failed = 0;
@@ -74,16 +69,8 @@ internal sealed class SurveyInvitationDelivery(
         ct.ThrowIfCancellationRequested();
         var sendCt = CancellationToken.None;
 
-        foreach (var userId in netNew)
+        foreach (var (userId, user) in users)
         {
-            if (!users.TryGetValue(userId, out var user) || user.Email is not { } email || string.IsNullOrWhiteSpace(email))
-            {
-                logger.LogWarning(
-                    "User {UserId} has no notification email for survey {SurveyId}; skipping invitation",
-                    userId, surveyId);
-                continue;
-            }
-
             SurveyInvitation inv;
             if (existingParticipation.TryGetValue(userId, out var existing))
             {
@@ -106,7 +93,7 @@ internal sealed class SurveyInvitationDelivery(
             {
                 var preferredCulture = user.PreferredLanguage;
                 var culture = preferredCulture.IsSupportedCultureCode()
-                    ? preferredCulture!
+                    ? preferredCulture
                     : survey.DefaultCulture;
                 var name = user.BurnerName;
                 var title = survey.Title.Resolve(culture, survey.DefaultCulture);
@@ -115,7 +102,7 @@ internal sealed class SurveyInvitationDelivery(
                 var token = tokenProvider.Create(inv.Id);
                 var msg = emailMessages.SurveyInvitation(
                     userId,
-                    email, name, title, token, culture, customSubject, customMessage);
+                    user.Email!, name, title, token, culture, customSubject, customMessage);
                 // Retry the invitation delivery without consuming the reminder's invitation-id delivery key.
                 var deliveryKey = $"{msg.TemplateName}:{inv.Id:N}";
                 msg = msg with
@@ -145,18 +132,37 @@ internal sealed class SurveyInvitationDelivery(
     }
 
     /// <summary>
-    /// Emailed invitees and completed public participants, including their merge survivors. Participation
-    /// rows keep their original ids, but the live audience must not re-invite the same human under a new id.
+    /// Available, unsent audience accounts only. Frozen participation rows exclude their merge
+    /// survivors, but new credentials must never be issued under an archived account id.
     /// </summary>
-    private async Task<HashSet<Guid>> ExcludedRecipientUserIdsAsync(
-        IReadOnlyList<SurveyInvitation> invitations, CancellationToken ct)
+    private async Task<IReadOnlyDictionary<Guid, UserInfo>> GetNewRecipientsAsync(
+        IReadOnlySet<Guid> audienceIds, IReadOnlyList<SurveyInvitation> invitations, Guid surveyId, CancellationToken ct)
     {
         var excluded = invitations.Where(invitation => invitation.SentAt is not null || invitation.Completed)
             .Select(invitation => invitation.UserId).ToHashSet();
-        if (excluded.Count == 0) return excluded;
-        foreach (var info in (await userService.GetUserInfosAsync(excluded, ct)).Values)
-            excluded.Add(info.Id);
-        return excluded;
+        if (excluded.Count > 0)
+            foreach (var info in (await userService.GetUserInfosAsync(excluded, ct)).Values)
+                excluded.Add(info.Id);
+
+        var candidates = audienceIds.Except(excluded).ToList();
+        var recipients = new Dictionary<Guid, UserInfo>();
+        if (candidates.Count == 0) return recipients;
+        var users = await userService.GetUserInfosAsync(candidates, ct);
+        foreach (var userId in candidates)
+        {
+            if (!users.TryGetValue(userId, out var user) || user.IsTombstone || user.Id != userId)
+            {
+                logger.LogWarning("User {UserId} is unavailable for survey {SurveyId}; skipping invitation", userId, surveyId);
+                continue;
+            }
+            if (string.IsNullOrWhiteSpace(user.Email))
+            {
+                logger.LogWarning("User {UserId} has no notification email for survey {SurveyId}; skipping invitation", userId, surveyId);
+                continue;
+            }
+            recipients.Add(userId, user);
+        }
+        return recipients;
     }
 
     public async Task<IReadOnlyList<SurveyInviteStatus>> GetInviteStatusesAsync(Guid surveyId, CancellationToken ct = default)
@@ -214,10 +220,11 @@ internal sealed class SurveyInvitationDelivery(
                     continue;
                 }
 
-                if (!users.TryGetValue(inv.UserId, out var user) || user.Email is not { } email || string.IsNullOrWhiteSpace(email))
+                if (!users.TryGetValue(inv.UserId, out var user) || user.IsTombstone
+                    || user.Email is not { } email || string.IsNullOrWhiteSpace(email))
                 {
                     logger.LogWarning(
-                        "User {UserId} has no notification email for survey {SurveyId}; skipping reminder",
+                        "User {UserId} is unavailable or has no notification email for survey {SurveyId}; skipping reminder",
                         inv.UserId, inv.SurveyId);
                     continue;
                 }
@@ -241,7 +248,7 @@ internal sealed class SurveyInvitationDelivery(
 
                     var preferredCulture = user.PreferredLanguage;
                     var culture = preferredCulture.IsSupportedCultureCode()
-                        ? preferredCulture!
+                        ? preferredCulture
                         : meta.DefaultCulture;
                     var name = user.BurnerName;
                     var token = tokenProvider.Create(inv.Id);

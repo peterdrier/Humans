@@ -1,5 +1,4 @@
 using Humans.Base.Extensions;
-using System.Security.Claims;
 using Humans.Users.Contracts;
 using Humans.Users.Models;
 using Microsoft.AspNetCore.Mvc;

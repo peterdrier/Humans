@@ -12,16 +12,16 @@ using Microsoft.Extensions.Localization;
 namespace Humans.Backdoor.Controllers;
 
 /// <summary>
-/// A freshly issued plaintext rides one redirect in TempData and is shown once. It is never stored, so a lost key is
+/// A freshly created plaintext rides one redirect in TempData and is shown once. It is never stored, so a lost key is
 /// rotated, not recovered.
 /// Anyone a <see cref="BackdoorScope"/> admits makes, rotates and revokes their own keys here. Board and Admin read
-/// every key (who holds one, never the key itself); only Admin issues, rotates or revokes someone else's. The page is
+/// every key (whose it is, never the key itself); only Admin creates, rotates or revokes someone else's. The page is
 /// not linked for anyone but Admin and Board.
 /// </summary>
 [Route("Backdoor")]
 internal sealed class BackdoorController(
     IBackdoorApiKeyService keys,
-    IRoleAssignmentService roles,
+    ISystemRoleService roles,
     IUserService users,
     IAuthorizationService authorization,
     IStringLocalizer<BackdoorResource> localizer) : HumansControllerBase(users)
@@ -40,9 +40,9 @@ internal sealed class BackdoorController(
     }
 
     /// <summary>No owner means the caller's own key; naming someone else is Admin-only.</summary>
-    [HttpPost("Issue")]
+    [HttpPost("Create")]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> Issue(Guid? ownerUserId, string label, CancellationToken ct)
+    public async Task<IActionResult> Create(Guid? ownerUserId, string label, CancellationToken ct)
     {
         var (userMissing, actor) = await RequireCurrentUserAsync(ct);
         if (userMissing is not null) return userMissing;
@@ -54,7 +54,7 @@ internal sealed class BackdoorController(
             return RedirectToAction(nameof(Index));
         }
 
-        var result = await keys.IssueAsync(owner, label ?? string.Empty, actor.Id, ct);
+        var result = await keys.CreateAsync(owner, label ?? string.Empty, actor.Id, ct);
         return RedirectAfter(result);
     }
 
@@ -66,7 +66,7 @@ internal sealed class BackdoorController(
         if (userMissing is not null) return userMissing;
 
         if (!await MayHandleKeyAsync(id, actor.Id, ct))
-            return RedirectAfter(BackdoorKeyIssueResult.Failed(BackdoorKeyError.NotFound));
+            return RedirectAfter(BackdoorKeyCreateResult.Failed(BackdoorKeyError.NotFound));
 
         var result = await keys.RotateAsync(id, actor.Id, ct);
         return RedirectAfter(result);
@@ -87,7 +87,7 @@ internal sealed class BackdoorController(
         return RedirectToAction(nameof(Index));
     }
 
-    private IActionResult RedirectAfter(BackdoorKeyIssueResult result)
+    private IActionResult RedirectAfter(BackdoorKeyCreateResult result)
     {
         if (result.Succeeded)
         {
@@ -139,15 +139,15 @@ internal sealed class BackdoorController(
                 r.IsOwnerEligible,
                 r.IsExpired,
                 isAdmin || r.UserId == me))],
-            EligibleUsers = isAdmin ? await AllocationCandidatesAsync(ct) : [],
+            EligibleUsers = isAdmin ? await OwnerCandidatesAsync(ct) : [],
             NewPlaintextKey = newPlaintextKey,
             ShortKeyLifetimeDays = (int)BackdoorApiKeyService.ShortKeyLifetime.TotalDays,
             ShowsOwners = seesEveryKey,
         };
     }
 
-    /// <summary>Admin allocates to Admin and Board holders; anyone else a scope admits makes their own key.</summary>
-    private async Task<IReadOnlyList<BackdoorKeyCandidate>> AllocationCandidatesAsync(CancellationToken ct)
+    /// <summary>Admin creates keys for Admin and Board members; anyone else a scope admits makes their own key.</summary>
+    private async Task<IReadOnlyList<BackdoorKeyCandidate>> OwnerCandidatesAsync(CancellationToken ct)
     {
         var eligibleIds = new HashSet<Guid>(await roles.GetActiveUserIdsInRoleAsync(RoleNames.Admin, ct));
         eligibleIds.UnionWith(await roles.GetActiveUserIdsInRoleAsync(RoleNames.Board, ct));
@@ -155,7 +155,7 @@ internal sealed class BackdoorController(
         var infos = await UserService.GetUserInfosAsync([.. eligibleIds], ct);
 
         // A role assignment outlives a suspension, so the role sets alone name accounts the service refuses. Narrowing
-        // by state matches the account-state half of the test IBackdoorApiKeyService applies at issue.
+        // by state matches the account-state half of the test IBackdoorApiKeyService applies at creation.
         var eligibleOwnerIds = eligibleIds
             .Where(id => infos.GetValueOrDefault(id)?.State == UserState.Active)
             .ToHashSet();

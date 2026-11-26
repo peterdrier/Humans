@@ -117,7 +117,7 @@ internal sealed class UsersAdminAccountMergesController(
         Email = user.Email,
         PreferredLanguage = user.PreferredLanguage,
         MembershipStatus = user.IsSuspended ? "Suspended" : user.State == UserState.Active ? "Active" : "Pending",
-        LastLogin = user.LastLoginAt?.ToDateTimeUtc(),
+        LastSignIn = user.LastSignInAt?.ToDateTimeUtc(),
         MemberSince = user.CreatedAt.ToDateTimeUtc(),
         HasProfile = user.Profile is not null
     };
@@ -128,7 +128,7 @@ internal sealed class UsersAdminAccountMergesController(
         Email = account.Email,
         MembershipTier = account.MembershipTier,
         MembershipStatus = account.MembershipStatus,
-        LastLogin = account.LastLogin,
+        LastSignIn = account.LastSignIn,
         MemberSince = account.CreatedAt,
         Teams = account.Teams,
         HasProfile = account.HasProfile

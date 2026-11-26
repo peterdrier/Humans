@@ -1,6 +1,5 @@
 using Humans.Shifts.Contracts;
 using Humans.Shifts.Services;
-using Humans.Base.Authorization;
 using Humans.Base.Controllers;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;

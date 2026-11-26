@@ -1,10 +1,8 @@
 using Humans.Events.Services.Dtos;
 using Humans.Events.Services;
-using Humans.Base.Extensions;
 using Humans.Camps.Contracts;
 using Humans.Settings.Contracts;
 using Humans.Events.Domain;
-using Humans.Base.Authorization;
 using Humans.Events.Filters;
 using Humans.Events.Models;
 using Microsoft.AspNetCore.Authorization;
@@ -361,7 +359,7 @@ internal sealed class EventsController(
     private void ValidateSchedule(DateOnly date, TimeOnly time, int durationMinutes, EventSettingsInfo settings)
     {
         if (!ModelState.IsValid || CanDisplaySchedule(
-            LocalDateTime.FromDateTime(date.ToDateTime(time)), durationMinutes, settings?.TimeZone)) return;
+            LocalDateTime.FromDateTime(date.ToDateTime(time)), durationMinutes, settings.TimeZone)) return;
         logger.LogWarning("Event form rejected: schedule is outside the supported calendar range");
         ModelState.AddModelError(nameof(IndividualEventFormViewModel.StartDate),
             localizer["Events_Upload_DateRange"].Value);
@@ -724,11 +722,7 @@ internal sealed class EventsController(
         logger.LogInformation(
             "Bulk upload by user {UserId} for camp {CampId}: {Created} created, {Updated} updated.",
             userId, campId, result.CreatedCount, result.UpdatedCount);
-        SetSuccess(string.Format(
-            System.Globalization.CultureInfo.CurrentCulture,
-            localizer["Events_UploadComplete"].Value,
-            result.CreatedCount,
-            result.UpdatedCount));
+        SetSuccess(localizer["Events_UploadComplete", result.CreatedCount, result.UpdatedCount]);
         return RedirectToAction(nameof(MySubmissions));
     }
 
@@ -738,7 +732,7 @@ internal sealed class EventsController(
         ResolveCampName(camp, eventSettingsId)!;
 
     private string FormatEventFeedback(string resourceKey, string title) =>
-        string.Format(localizer[resourceKey].Value, title);
+        localizer[resourceKey, title];
 
     private async Task<CampEventFormViewModel> BuildBarrioFormAsync(string slug, CampInfo camp, EventSettingsInfo burn, CancellationToken ct = default)
     {

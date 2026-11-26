@@ -48,7 +48,11 @@ internal static class ProfileSummaryViewModelBuilder
                     Proficiency = pl.Proficiency
                 }).ToList(),
             CampName = camp?.Season?.Name,
-            CampRoles = camp?.Roles ?? []
+            CampRoles = camp?.Roles
+                .OrderBy(role => role.SortOrder)
+                .ThenBy(role => role.Name, StringComparer.OrdinalIgnoreCase)
+                .Select(role => role.Name)
+                .ToList() ?? []
         };
     }
 }

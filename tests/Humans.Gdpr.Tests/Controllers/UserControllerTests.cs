@@ -1,3 +1,4 @@
+using Humans.Testing;
 using Xunit;
 using System.Security.Claims;
 using AwesomeAssertions;
@@ -24,7 +25,7 @@ public class UserControllerTests
 
     private UserController Create(UserState? state)
     {
-        var localizer = Substitute.For<IStringLocalizer<GdprResource>>();
+        var localizer = Substitute.For<IStringLocalizer<GdprResource>>().AddFormatting();
         localizer[Arg.Any<string>()].Returns(ci => new LocalizedString(ci.Arg<string>(), ci.Arg<string>()));
         var claims = state is { } s
             ? [new Claim(RoleChecks.UserStateClaimType, s.ToString())]

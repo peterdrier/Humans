@@ -9,7 +9,7 @@ namespace Humans.Governance.Tests.Domain;
 
 // A Humans.Application.* namespace exists, so the bare name `Application` would resolve to it
 // instead of the entity. The alias must sit inside the namespace declaration to win the lookup.
-using MemberApplication = Humans.Governance.Domain.Application;
+using MemberApplication = Application;
 
 public class ApplicationTests
 {

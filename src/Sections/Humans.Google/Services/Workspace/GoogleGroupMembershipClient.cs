@@ -28,6 +28,7 @@ internal sealed class GoogleGroupMembershipClient(
         var memberships = new List<GroupMembership>();
         string? pageToken = null;
         var seenPageTokens = new HashSet<string>(StringComparer.Ordinal);
+        var pagesRead = 0;
 
         var directory = await GetDirectoryServiceAsync(ct);
         try
@@ -44,6 +45,13 @@ internal sealed class GoogleGroupMembershipClient(
                 var response = await request.ExecuteAsync(ct);
 
                 pageToken = response.NextPageToken;
+                if (++pagesRead >= 500 && !string.IsNullOrEmpty(pageToken))
+                {
+                    logger.LogWarning("Google group memberships exceeded the page limit.");
+                    return new GroupMembershipListResult(Memberships: null,
+                        Error: new GoogleClientError(502, "Google group memberships exceeded the page limit."));
+                }
+
                 if (!string.IsNullOrEmpty(pageToken) && !seenPageTokens.Add(pageToken))
                 {
                     logger.LogWarning("Google group memberships returned a repeated page token for {GroupId}.", groupGoogleId);

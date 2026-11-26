@@ -428,9 +428,7 @@ internal sealed class SurveyAdminController(
             var filled = await surveyService.PreFillTranslationsAsync(
                 id, CultureCatalog.SupportedCultureCodes, viewer, ct);
             SetSuccess(filled > 0
-                ? string.Format(
-                    CultureInfo.CurrentCulture,
-                    localizer["Surveys_Admin_Builder_Saved_TranslationsFilled"].Value, filled)
+                ? localizer["Surveys_Admin_Builder_Saved_TranslationsFilled", filled]
                 : localizer["Surveys_Admin_Builder_Saved_NoTranslationsNeeded"].Value);
         }
         catch (OperationCanceledException) when (ct.IsCancellationRequested)

@@ -271,7 +271,7 @@ public sealed class StripeMirrorSyncTests
             new FakeClock(Instant.FromUtc(2026, 11, 5, 12, 0)), _users, NullLogger<StripeMirrorService>.Instance);
 
         (await service.SyncAsync(Ct)).Should().Be(StripeSyncOutcome.NotConfigured);
-        await _client.DidNotReceiveWithAnyArgs().FetchAsync(default!, default);
+        await _client.DidNotReceiveWithAnyArgs().FetchAsync(default!);
     }
 
     [HumansFact]

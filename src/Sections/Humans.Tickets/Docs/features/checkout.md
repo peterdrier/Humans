@@ -37,6 +37,7 @@ Rules every platform follows:
 - **Chargebacks.** `ChargedBackMinor` is what the buyer's bank has taken back and the event has not won. Each change goes on
   the timeline and to the audit log as needing attention; tickets stay valid until the ticketing team decides. It comes
   off what can still be refunded, and the order's tickets cannot be offered for resale while it stands.
+- **Refund cancellation.** Cancellation is checked before each attempt. A started platform refund and its local completion finish independently of request abort or job shutdown. The initial read-only status fetch stays cancellable; settlement replays finish their saved outcome and timeline before cancellation stops the next refund.
 - **Refund outcome.** `RefundedMinor` moves only once money went back. On every status read Tickets settles its
   `Pending` and `ManualRequired` refunds, oldest first. A pending refund the platform knows by id is repeated under that
   id and takes the state the platform answers (`RefundFailed` may follow only the newest refund); one whose call got no
@@ -120,6 +121,8 @@ sold under is read (`EventRefOf`), beside the events their ticketing settings se
    totals (the VIP ticket buttons), grant price rules (`ClassPrice`, `Discount`, `WavePin`, `EarlyAccess`), child ticket types, donation purposes, the ticket rules folder
    (a path in the legal GitHub repo, see "Ticket rules" below) and the ticketing switches (below). The form edits waves,
    price rules and VIP totals as rows, the VAT as a percentage and sales close in the organisation's time zone.
+   Prices, VAT and refund/void amounts use invariant HTML-number syntax: dot decimals or exponent notation, never grouping separators.
+   Missing mandatory settings or malformed typed fields return 400 before saving; explicit zero/false values remain valid. Optional text, blank spare rows and disabled wave-pin amounts retain their form semantics.
    **Early sales** (and test purchases): mode `InvitedOnly` sells only to members holding an active grant in a program
    with an `EarlyAccess` rule (e.g. asociados and colaboradores in a wave zero, or a few testers), with the rule's
    amount off while the mode lasts (none when left empty; someone in several early access programs gets the largest
@@ -307,12 +310,12 @@ and nothing goes to Consent.
 
 - The version is the last commit changing the folder; the text is read at that commit, so the text shown and the version
   recorded always match. Reads are cached for 10 minutes; GitHub requests time out after 5 seconds.
-- When GitHub cannot be read, the folder's last good rules stay in use (kept in memory without expiry, retried every
-  minute), so an outage does not stop sales. A folder that reads but holds no valid rules drops them. The settings' save
-  check reads GitHub afresh, so a fixed folder is accepted at once.
+- When GitHub cannot be read, the rules are unavailable; an older version is never substituted. Failures and invalid
+  folders are cached for one minute before retrying. The settings' save check reads GitHub afresh, so a fixed folder is
+  accepted at once.
 - The buy page shows the rules in language tabs and sends the folder and version it showed. Checkout refuses either one no
   longer current (`Tickets_Buy_TermsChanged`), so the buyer reads the new text first. While there are no rules to show
-  (never read since the app started, or invalid), the event is unavailable to buy (`Tickets_Buy_TermsUnavailable`).
+  (unreadable or invalid), the event is unavailable to buy (`Tickets_Buy_TermsUnavailable`).
 - The order keeps `TermsFolder` and `TermsVersion`; its `TermsAccepted` timeline entry links that exact version on GitHub.
 
 ## Not yet

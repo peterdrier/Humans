@@ -2,7 +2,7 @@
   src/Sections/Humans.Workgroups/**
   tests/Humans.Workgroups.Tests/**
   src/Humans.Base/Users/IUserService.cs
-  src/Sections/Humans.Auth/Contracts/IRoleAssignmentService.cs
+  src/Sections/Humans.Auth/Contracts/ISystemRoleService.cs
   src/Sections/Humans.Teams.Contracts/ITeamService.cs
   src/Sections/Humans.Finance.Contracts/IFinanceWrite.cs
   src/Sections/Humans.Holded/Contracts/IHoldedService.cs
@@ -311,7 +311,7 @@ Settings and Register an existing group on first setup or after clearing the que
 
 - Opt-outable email builders capture the recipient/template culture on `EmailMessage` before restoring their rendering scope; Email renders the shared unsubscribe footer in that culture.
 
-- The visible workgroup budget card uses the shared euro formatter in the selected UI culture. Registration and budget-edit forms parse posted amounts as invariant dot decimals without grouping separators, so comma-formatted values fail validation rather than becoming larger budgets.
+- The visible workgroup budget card uses the shared euro formatter in the selected UI culture. Registration and budget-edit forms parse posted amounts as invariant HTML numbers, including exponent notation, without grouping separators, so comma-formatted values fail validation rather than becoming larger budgets.
 
 - Budget preparation remains cancellable. Account creation or linking runs independently of browser cancellation through Finance, then saves the budget/binding and system log together before auditing. Amount-only saves retain cancellation until their combined save succeeds; audit finishes independently.
 
@@ -491,7 +491,7 @@ should end is the Board's decision, taken on the register in front of them.
 - **Notifications:** `INotificationEmitter` for known-recipient sends directly, `INotificationService.SendToRoleAsync` for shared Board broadcasts (and `INotificationAutoResolve` where a source resolves). Its sources are declared in `WorkgroupsNotificationSources` (`src/Sections/Humans.Workgroups/WorkgroupsNotificationSources.cs`), one `NotificationSourceDefinition` each: `WorkgroupRegistrationPending` (actionable, to board role: a working group applies, or its application goes overdue); `WorkgroupRegistrationDecided` (informational, to the group's coordinators: registration decided (registered, refused, withdrawn, ended, reactivated)); `WorkgroupReportingDue` (informational, to the group's coordinators: thirty days without an update or meeting); `WorkgroupDocumentActivity` (informational (actionable to board when a document is delivered for disposition), to group members, comment authors, or Board role: document published, comment opened/answered, or delivered for disposition); `WorkgroupDispositionRecorded` (informational, to the group's current members: board records its written disposition on a delivered document); `WorkgroupMembershipRequested` (informational, to the group's coordinators: someone asks to join a working group); `WorkgroupMembershipDecided` (informational, to the requester or added person: join request approved or declined, or a coordinator adds the person directly).
 - **Users**: `IUserService` — names, approved-profile check, and canonical `UserInfo.Email` for lifecycle notices from the same recipient snapshot as name and language.
 - **Governance**: `IGovernanceService.GetMembershipTiersAsync` — roster tier badges and the budget-visibility tier check.
-- **Auth**: `IRoleAssignmentService` — active holders of the Board role: the recipients of Board emails, the Board badges (controller) and the root Drive readers (Drive source).
+- **Auth**: `ISystemRoleService` — active holders of the Board role: the recipients of Board emails, the Board badges (controller) and the root Drive readers (Drive source).
 - **Calendar**: implements `ICalendarFeedContributor` (inbound) — per-user meetings of
   Active groups the user belongs to; public meetings of Active groups for the community
   calendar window. Calendar names nothing of Workgroups.
@@ -511,6 +511,7 @@ should end is the Board's decision, taken on the register in front of them.
   actor authored it before writing the log entry. One-way: Surveys never references Workgroups.
 - **Notifications, Email, AuditLog**: crosscuts, per Triggers above. `WorkgroupService` owns recipient lookup, culture grouping, Board delivery and independent best-effort sends. Lifecycle, document, membership, GDPR and rhythm paths invoke it after their existing state/audit steps; group lifecycle transitions remain in `WorkgroupService`; Drive provisioning and sync requests belong to `WorkgroupService`; document/comment transitions belong to `WorkgroupService`, and rhythm timing belongs to `WorkgroupService`. Member notifications
   use existing localized labels, grouped by supported recipient language (English fallback); authored content is unchanged.
+  Member notification requests and lifecycle/Board emails exclude missing or tombstoned accounts while continuing to live recipients. Rhythm nudge audits count only available canonical recipients submitted for dispatch; no success audit is written when none remain. Committed group changes remain intact.
   A merged-member alias carries both the resolved live id and its language into grouping,
   with one delivery per live recipient even when multiple requested ids resolve to them. Lifecycle and Board emails apply the same resolved-ID deduplication: outbox ownership uses the live recipient ID from the same snapshot as address, name and language, so merged aliases cannot queue duplicate copies or assign new mail to an archived account.
 - **Base / Users**: `IUserDataContributor` (`Humans.Base.Gdpr`), `IUserMerge` (`Humans.Users.Contracts`) — see GDPR below.
@@ -584,7 +585,7 @@ picker labels and roster profile badges load a member dictionary.
 - **Log ordering** — the details timeline orders log entries by occurrence date, then creation time, both descending. The snapshot does not impose log display order; rhythm calculations select their latest qualifying activity explicitly.
 - **Display stitching** — `IUserService.GetUserInfosAsync` for burner names; `IGovernanceService.GetMembershipTiersAsync` (in `WorkgroupsController`) for tiers.
 - **Cross-section calls** — `IUserService`,
-  `IRoleAssignmentService`, `ISettingsService`, `IGoogleSyncService`, `IGoogleSyncWrite`,
+  `ISystemRoleService`, `ISettingsService`, `IGoogleSyncService`, `IGoogleSyncWrite`,
   `INotificationService`, `INotificationEmitter`, `IEmailService`, `IAuditLogService`,
   `ISurveyAnalysisRead`, `IClock`, `IFinanceWrite`, `IHoldedService`.
   `ITeamService` is used by `WorkgroupsController` and `WorkgroupDriveAccessSource`, not by `WorkgroupService`.

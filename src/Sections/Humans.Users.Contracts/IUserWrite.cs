@@ -9,11 +9,11 @@ public interface IUserWrite
     Task SetPreferredLanguageAsync(Guid userId, string preferredLanguage, CancellationToken ct = default);
 
     /// <summary>
-    /// After any successful sign-in. The only writer of <c>LastLoginAt</c>: sign-in flows must not set it directly.
+    /// After any successful sign-in. The only writer of <c>LastSignInAt</c>: sign-in flows must not set it directly.
     /// Tracking failures are logged without blocking sign-in; caller cancellation propagates.
     /// No-op if the user doesn't exist.
     /// </summary>
-    Task RecordLoginAsync(Guid userId, CancellationToken ct = default);
+    Task RecordSignInAsync(Guid userId, CancellationToken ct = default);
 
     /// <summary>
     /// Marks the account as not a real person, so people-only queues and counts skip it. Idempotent: audited only

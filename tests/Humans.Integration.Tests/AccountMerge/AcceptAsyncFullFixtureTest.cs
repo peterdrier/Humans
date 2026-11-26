@@ -22,7 +22,6 @@ using NodaTime;
 using Xunit;
 using Humans.Users.Contracts;
 using Humans.Users.Data;
-using Humans.AuditLog.Contracts;
 
 namespace Humans.Integration.Tests.AccountMerge;
 
@@ -85,9 +84,9 @@ public class AcceptAsyncFullFixtureTest(HumansTestDatabase database)
             b.WithSourceAuditLogEntry("AccountAnonymized", auditDescription);
 
             // Shared (source drops) plus source-only (re-FKs).
-            b.WithSourceRoleAssignment(sharedRole);
-            b.WithTargetRoleAssignment(sharedRole);
-            b.WithSourceRoleAssignment(sourceOnlyRole);
+            b.WithSourceSystemRole(sharedRole);
+            b.WithTargetSystemRole(sharedRole);
+            b.WithSourceSystemRole(sourceOnlyRole);
         });
 
         // Rows that need ad-hoc parents, seeded as in AcceptAsyncFoldTests.
@@ -152,7 +151,7 @@ public class AcceptAsyncFullFixtureTest(HumansTestDatabase database)
         var budgetDb = assertScope.ServiceProvider.GetRequiredService<BudgetDbContext>();
         var legalDb = assertScope.ServiceProvider.GetRequiredService<LegalDbContext>();
         var auditLogDb = assertScope.ServiceProvider.GetRequiredService<AuditLogDbContext>();
-        var emailDb = assertScope.ServiceProvider.GetRequiredService<Humans.Email.Data.EmailDbContext>();
+        var emailDb = assertScope.ServiceProvider.GetRequiredService<Email.Data.EmailDbContext>();
 
         var sourceUser = await db.Users.AsNoTracking().FirstOrDefaultAsync(u => u.Id == sourceId, TestContext.Current.CancellationToken);
         sourceUser.Should().NotBeNull();
@@ -176,7 +175,7 @@ public class AcceptAsyncFullFixtureTest(HumansTestDatabase database)
             .Should().Be(0, "Tickets clears the source's participations");
         (await governanceDb.Applications.AsNoTracking().CountAsync(a => a.UserId == sourceId, TestContext.Current.CancellationToken))
             .Should().Be(0);
-        (await authDb.RoleAssignments.AsNoTracking().CountAsync(ra =>
+        (await authDb.SystemRoles.AsNoTracking().CountAsync(ra =>
                 ra.UserId == sourceId && (ra.RoleName == sharedRole || ra.RoleName == sourceOnlyRole), TestContext.Current.CancellationToken))
             .Should().Be(0);
         (await teamsDb.TeamMembers.AsNoTracking().CountAsync(tm =>
@@ -259,10 +258,10 @@ public class AcceptAsyncFullFixtureTest(HumansTestDatabase database)
                     && a.MembershipTier == MembershipTier.Colaborador, TestContext.Current.CancellationToken))
             .Should().BeGreaterThan(0, "source application moved to target");
 
-        (await authDb.RoleAssignments.AsNoTracking()
+        (await authDb.SystemRoles.AsNoTracking()
                 .AnyAsync(ra => ra.UserId == targetId && ra.RoleName == sourceOnlyRole, TestContext.Current.CancellationToken))
             .Should().BeTrue("source-only role re-FK'd to target");
-        (await authDb.RoleAssignments.AsNoTracking()
+        (await authDb.SystemRoles.AsNoTracking()
                 .CountAsync(ra => ra.UserId == targetId && ra.RoleName == sharedRole, TestContext.Current.CancellationToken))
             .Should().Be(1, "shared role stays as target's single active assignment");
 
@@ -325,7 +324,7 @@ public class AcceptAsyncFullFixtureTest(HumansTestDatabase database)
                 + string.Join("; ", result.Errors.Select(e => e.Description)));
         }
 
-        authDb.RoleAssignments.Add(new RoleAssignment
+        authDb.SystemRoles.Add(new SystemRole
         {
             Id = Guid.NewGuid(),
             UserId = adminId,

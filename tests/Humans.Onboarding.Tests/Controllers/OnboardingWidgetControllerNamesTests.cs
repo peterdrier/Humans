@@ -1,11 +1,10 @@
+using Humans.Testing;
 using AwesomeAssertions;
 using Humans.Base;
 using Humans.Base.Extensions;
 using Microsoft.AspNetCore.Mvc.ModelBinding.Validation;
 using Microsoft.Extensions.DependencyInjection;
 using System.Security.Claims;
-using Humans.Consent;
-using Humans.Consent.Contracts;
 using Humans.Onboarding.Services;
 using Humans.Users.Contracts;
 using Humans.Settings.Contracts;
@@ -68,7 +67,7 @@ public class OnboardingWidgetControllerNamesTests
     private readonly IUserService _userService = Substitute.For<IUserService>();
 
     private readonly IStringLocalizer<OnboardingResource> _localizer =
-        Substitute.For<IStringLocalizer<OnboardingResource>>();
+        Substitute.For<IStringLocalizer<OnboardingResource>>().AddFormatting();
 
     public OnboardingWidgetControllerNamesTests()
     {

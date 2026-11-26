@@ -1,7 +1,6 @@
 using Humans.Roles.Contracts;
 using Humans.Base.Interfaces;
 using AwesomeAssertions;
-using Humans.Base.Interfaces.Caching;
 using Humans.Auth.Contracts;
 using Humans.Auth.Data;
 using Humans.Auth.Domain;
@@ -12,7 +11,6 @@ using Humans.Email.Contracts;
 using Humans.Google.Contracts;
 using Humans.Google.Data;
 using Humans.Google.Services;
-using Humans.Settings.Contracts;
 using Humans.Teams.Contracts;
 using Humans.Teams.Data;
 using Humans.Teams.Domain;
@@ -24,7 +22,7 @@ using Microsoft.Extensions.Logging.Abstractions;
 using NodaTime;
 using Microsoft.Extensions.DependencyInjection;
 using NSubstitute;
-using RoleAssignmentService = Humans.Auth.Services.RoleAssignmentService;
+using SystemRoleService = Humans.Auth.Services.SystemRoleService;
 using TeamService = Humans.Teams.Services.TeamService;
 
 namespace Humans.Teams.Tests.Services;
@@ -37,14 +35,14 @@ public sealed class TeamRoleServiceTests : TeamsTestHarness
 
     public TeamRoleServiceTests() : base(Instant.FromUtc(2026, 3, 11, 12, 0))
     {
-        var roleAssignmentService = new RoleAssignmentService(
-            new RoleAssignmentRepository(AuthDbFactory),
+        var systemRoleService = new SystemRoleService(
+            new SystemRoleRepository(AuthDbFactory),
             Substitute.For<IUserService>(),
             AuditLog,
             Notifier,
-            new CachingRoleAssignmentService(
+            new CachingSystemRoleService(
                 Substitute.For<IServiceScopeFactory>(), Clock,
-                NullLogger<CachingRoleAssignmentService>.Instance),
+                NullLogger<CachingSystemRoleService>.Instance),
             new RoleCatalog(new RoleDefinition[]
             {
                 new(RoleNames.Admin, "Admin", "", ""),
@@ -52,7 +50,7 @@ public sealed class TeamRoleServiceTests : TeamsTestHarness
                 new(TeamsRoles.TeamsAdmin, "Teams Admin", "", ""),
             }),
             Clock,
-            NullLogger<RoleAssignmentService>.Instance);
+            NullLogger<SystemRoleService>.Instance);
         var teamResourceService = Substitute.For<ITeamResourceService>();
         teamResourceService
             .GetTeamResourceSummariesAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
@@ -62,7 +60,7 @@ public sealed class TeamRoleServiceTests : TeamsTestHarness
             new GoogleSyncOutboxRepository(GoogleDbFactory));
         var serviceProvider = new ServiceLocatorBuilder()
             .With<ITeamManagement>()
-            .With<IRoleAssignmentService>(roleAssignmentService)
+            .With<ISystemRoleService>(systemRoleService)
             .With<IEmailService>()
             .With(_systemTeamSync)
             .With(_roleWrite)
@@ -105,6 +103,66 @@ public sealed class TeamRoleServiceTests : TeamsTestHarness
         var inDb = await TeamsDb.Set<TeamRoleDefinition>()
             .FirstOrDefaultAsync(d => d.Id == result.Definition!.Id, Xunit.TestContext.Current.CancellationToken);
         inDb.Should().NotBeNull();
+    }
+
+    [HumansTheory]
+    [Xunit.InlineData(false, 50, true)]
+    [Xunit.InlineData(false, 51, false)]
+    [Xunit.InlineData(true, 50, true)]
+    [Xunit.InlineData(true, 51, false)]
+    public async Task RoleDefinition_EnforcesSerializedPriorityLimit(bool update, int slots, bool succeeds)
+    {
+        var ct = Xunit.TestContext.Current.CancellationToken;
+        var admin = SeedUser("Admin");
+        SeedAdminRole(admin);
+        var team = SeedTeam("Test Team");
+        await SaveAllAsync(ct);
+        Guid? definitionId = null;
+        if (update)
+        {
+            var created = await _service.CreateRoleDefinitionAsync(team.Id, "Existing", null, 1,
+                [SlotPriority.Important], 0, RolePeriod.YearRound, admin.Id, cancellationToken: ct);
+            definitionId = created.Definition!.Id;
+        }
+        AuditLog.ClearReceivedCalls();
+        var priorities = Enumerable.Repeat(SlotPriority.Important, slots).ToList();
+
+        var result = update
+            ? await _service.UpdateRoleDefinitionAsync(definitionId!.Value, "Changed", null, slots,
+                priorities, 0, false, RolePeriod.YearRound, admin.Id, cancellationToken: ct)
+            : await _service.CreateRoleDefinitionAsync(team.Id, "Changed", null, slots,
+                priorities, 0, RolePeriod.YearRound, admin.Id, cancellationToken: ct);
+
+        result.Succeeded.Should().Be(succeeds);
+        var stored = await TeamsDb.Set<TeamRoleDefinition>().AsNoTracking().ToListAsync(ct);
+        if (succeeds)
+            stored.Should().ContainSingle().Which.Priorities.Should().Equal(priorities);
+        else
+        {
+            result.Refusal.Should().Be("There are too many slots with these priorities. Reduce the number of slots.");
+            if (update)
+                stored.Should().ContainSingle().Which.Name.Should().Be("Existing");
+            else
+                stored.Should().BeEmpty();
+            AuditLog.ReceivedCalls().Should().BeEmpty();
+        }
+    }
+
+    [HumansFact]
+    public async Task CreateRoleDefinitionAsync_AcceptsAUnicodeNameWithinTheStoredLimit()
+    {
+        var ct = Xunit.TestContext.Current.CancellationToken;
+        var admin = SeedUser("Admin");
+        SeedAdminRole(admin);
+        var team = SeedTeam("Test Team");
+        await SaveAllAsync(ct);
+        var name = "a" + string.Concat(Enumerable.Repeat("😀", 99));
+
+        var result = await _service.CreateRoleDefinitionAsync(team.Id, name, null, 1,
+            [SlotPriority.Important], 0, RolePeriod.YearRound, admin.Id, cancellationToken: ct);
+
+        result.Definition.Should().NotBeNull();
+        result.Definition!.Name.Should().Be(name);
     }
 
     [HumansTheory]
@@ -237,7 +295,7 @@ public sealed class TeamRoleServiceTests : TeamsTestHarness
         var user = SeedUser("User");
         var mgmtRole = SeedRoleDefinition(team, "Coordinator", slotCount: 1, sortOrder: 0, isManagement: true);
         var member = SeedMember(team, user);
-        SeedRoleAssignment(mgmtRole, member, slotIndex: 0);
+        SeedSystemRole(mgmtRole, member, slotIndex: 0);
         await SaveAllAsync(Xunit.TestContext.Current.CancellationToken);
 
         var act = () => _service.DeleteRoleDefinitionAsync(mgmtRole.Id, admin.Id, Xunit.TestContext.Current.CancellationToken);
@@ -258,8 +316,8 @@ public sealed class TeamRoleServiceTests : TeamsTestHarness
         var role = SeedRoleDefinition(team, slotCount: 2, sortOrder: 1);
         var member1 = SeedMember(team, user1);
         var member2 = SeedMember(team, user2);
-        SeedRoleAssignment(role, member1, slotIndex: 0);
-        SeedRoleAssignment(role, member2, slotIndex: 1);
+        SeedSystemRole(role, member1, slotIndex: 0);
+        SeedSystemRole(role, member2, slotIndex: 1);
         await SaveAllAsync(Xunit.TestContext.Current.CancellationToken);
 
         var act = () => _service.UpdateRoleDefinitionAsync(
@@ -284,7 +342,7 @@ public sealed class TeamRoleServiceTests : TeamsTestHarness
         var holder = SeedUser("Holder");
         var role = SeedRoleDefinition(team, slotCount: 4);
         var member = SeedMember(team, holder);
-        SeedRoleAssignment(role, member, occupiedSlotIndex);
+        SeedSystemRole(role, member, occupiedSlotIndex);
         await SaveAllAsync(Xunit.TestContext.Current.CancellationToken);
 
         var result = await _service.UpdateRoleDefinitionAsync(
@@ -370,8 +428,8 @@ public sealed class TeamRoleServiceTests : TeamsTestHarness
         var role = SeedRoleDefinition(team, "Lead", slotCount: 2, sortOrder: 0);
         var member1 = SeedMember(team, user1);
         var member2 = SeedMember(team, user2);
-        SeedRoleAssignment(role, member1, slotIndex: 0);
-        SeedRoleAssignment(role, member2, slotIndex: 1);
+        SeedSystemRole(role, member1, slotIndex: 0);
+        SeedSystemRole(role, member2, slotIndex: 1);
         await SaveAllAsync(Xunit.TestContext.Current.CancellationToken);
 
         await _service.UpdateRoleDefinitionAsync(
@@ -405,7 +463,7 @@ public sealed class TeamRoleServiceTests : TeamsTestHarness
         var user = SeedUser("User");
         var mgmtRole = SeedRoleDefinition(team, "Coordinator", slotCount: 2, sortOrder: 0, isManagement: true);
         var member = SeedMember(team, user, TeamMemberRole.Coordinator);
-        SeedRoleAssignment(mgmtRole, member, slotIndex: 0);
+        SeedSystemRole(mgmtRole, member, slotIndex: 0);
         await SaveAllAsync(Xunit.TestContext.Current.CancellationToken);
 
         var result = editRole
@@ -437,7 +495,7 @@ public sealed class TeamRoleServiceTests : TeamsTestHarness
         var user = SeedUser("User");
         var role = SeedRoleDefinition(team, slotCount: 2, sortOrder: 1);
         var member = SeedMember(team, user);
-        SeedRoleAssignment(role, member, slotIndex: 0);
+        SeedSystemRole(role, member, slotIndex: 0);
         await SaveAllAsync(Xunit.TestContext.Current.CancellationToken);
 
         var act = () => _service.ToggleRoleIsManagementAsync(role.Id, admin.Id, Xunit.TestContext.Current.CancellationToken);
@@ -486,7 +544,7 @@ public sealed class TeamRoleServiceTests : TeamsTestHarness
         var holder = SeedUser("Holder");
         var member = SeedMember(team, holder);
         var role = SeedRoleDefinition(team);
-        if (!unassign) SeedRoleAssignment(role, member, 0);
+        if (!unassign) SeedSystemRole(role, member, 0);
         await SaveAllAsync(Xunit.TestContext.Current.CancellationToken);
 
         var result = unassign
@@ -610,7 +668,7 @@ public sealed class TeamRoleServiceTests : TeamsTestHarness
                 UserId = user2.Id,
                 RequestedAt = Clock.GetCurrentInstant()
             });
-        SeedRoleAssignment(role, member1, slotIndex: 0);
+        SeedSystemRole(role, member1, slotIndex: 0);
         await SaveAllAsync(Xunit.TestContext.Current.CancellationToken);
 
         var result = await _service.AssignToRoleAsync(role.Id, user2.Id, admin.Id, Xunit.TestContext.Current.CancellationToken);
@@ -656,7 +714,7 @@ public sealed class TeamRoleServiceTests : TeamsTestHarness
         var user = SeedUser("User");
         var role = SeedRoleDefinition(team, slotCount: 2, sortOrder: 1);
         var member = SeedMember(team, user);
-        SeedRoleAssignment(role, member, slotIndex: 0);
+        SeedSystemRole(role, member, slotIndex: 0);
         await SaveAllAsync(Xunit.TestContext.Current.CancellationToken);
 
         await _service.UnassignFromRoleAsync(role.Id, member.Id, admin.Id, Xunit.TestContext.Current.CancellationToken);
@@ -676,7 +734,7 @@ public sealed class TeamRoleServiceTests : TeamsTestHarness
         var user = SeedUser("User");
         var mgmtRole = SeedRoleDefinition(team, "Coordinator", slotCount: 2, sortOrder: 0, isManagement: true);
         var member = SeedMember(team, user, TeamMemberRole.Coordinator);
-        SeedRoleAssignment(mgmtRole, member, slotIndex: 0);
+        SeedSystemRole(mgmtRole, member, slotIndex: 0);
         await SaveAllAsync(Xunit.TestContext.Current.CancellationToken);
 
         await _service.UnassignFromRoleAsync(mgmtRole.Id, member.Id, admin.Id, Xunit.TestContext.Current.CancellationToken);
@@ -699,8 +757,8 @@ public sealed class TeamRoleServiceTests : TeamsTestHarness
         var mgmtRole2 = SeedRoleDefinition(team2, "Coordinator", slotCount: 2, sortOrder: 0, isManagement: true);
         var member1 = SeedMember(team1, user, TeamMemberRole.Coordinator);
         var member2 = SeedMember(team2, user, TeamMemberRole.Coordinator);
-        SeedRoleAssignment(mgmtRole1, member1, slotIndex: 0);
-        SeedRoleAssignment(mgmtRole2, member2, slotIndex: 0);
+        SeedSystemRole(mgmtRole1, member1, slotIndex: 0);
+        SeedSystemRole(mgmtRole2, member2, slotIndex: 0);
         await SaveAllAsync(Xunit.TestContext.Current.CancellationToken);
 
         await _service.UnassignFromRoleAsync(mgmtRole1.Id, member1.Id, admin.Id, Xunit.TestContext.Current.CancellationToken);
@@ -726,7 +784,7 @@ public sealed class TeamRoleServiceTests : TeamsTestHarness
         var user = SeedUser("User");
         var role = SeedRoleDefinition(team, slotCount: 2, sortOrder: 1);
         var member = SeedMember(team, user);
-        SeedRoleAssignment(role, member, slotIndex: 0);
+        SeedSystemRole(role, member, slotIndex: 0);
         await SaveAllAsync(Xunit.TestContext.Current.CancellationToken);
 
         await _service.LeaveTeamAsync(team.Id, user.Id, Xunit.TestContext.Current.CancellationToken);
@@ -798,7 +856,7 @@ public sealed class TeamRoleServiceTests : TeamsTestHarness
 
     private void SeedAdminRole(User user)
     {
-        AuthDb.RoleAssignments.Add(new RoleAssignment
+        AuthDb.SystemRoles.Add(new SystemRole
         {
             Id = Guid.NewGuid(),
             UserId = user.Id,
@@ -810,7 +868,7 @@ public sealed class TeamRoleServiceTests : TeamsTestHarness
         AuthDb.SaveChanges();
     }
 
-    private void SeedRoleAssignment(TeamRoleDefinition definition, TeamMember member, int slotIndex)
+    private void SeedSystemRole(TeamRoleDefinition definition, TeamMember member, int slotIndex)
     {
         TeamsDb.Set<TeamRoleAssignment>().Add(new TeamRoleAssignment
         {

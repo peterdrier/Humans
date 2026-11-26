@@ -1,4 +1,3 @@
-using System.Text;
 using Humans.Base.Configuration;
 using Humans.Auth.Contracts;
 using Humans.Users.Contracts;
@@ -18,7 +17,7 @@ internal sealed class DevLoginController(
     IUserSignInService signIn,
     IUserEmailService userEmailService,
     DevPersonaSeeder personaSeeder,
-    IRoleAssignmentService roleAssignmentService,
+    ISystemRoleService systemRoleService,
     IWebHostEnvironment env,
     IConfiguration config,
     ConfigurationRegistry configRegistry,
@@ -132,7 +131,7 @@ internal sealed class DevLoginController(
             return NotFound();
 
         // Impersonating a real Admin is the same hole as the Admin persona.
-        if (!AdminSignInAllowed(env, config) && await roleAssignmentService.IsUserAdminAsync(id))
+        if (!AdminSignInAllowed(env, config) && await systemRoleService.IsUserAdminAsync(id))
             return NotFound();
 
         if (!await signIn.SignInAsync(id))

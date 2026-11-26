@@ -2,11 +2,10 @@ using Humans.Gdpr.Contracts;
 using NodaTime;
 using Humans.Agent.Contracts;
 using Humans.Agent.Models;
-using Humans.Base.Interfaces;
 
 namespace Humans.Agent.Services;
 
-internal interface IAgentService : IApplicationService, IUserDataContributor, IAgentTranscriptRead
+internal interface IAgentService : IUserDataContributor, IAgentTranscriptRead
 {
     /// <summary>
     /// Deletes conversations older than the configured retention window and records the run for the admin
@@ -31,7 +30,7 @@ internal interface IAgentService : IApplicationService, IUserDataContributor, IA
         Guid userId, Guid conversationId, CancellationToken cancellationToken);
 
     Task<IReadOnlyList<AgentConversationListSnapshot>> ListAllConversationsForAdminAsync(
-        bool refusalsOnly, Guid? userId, int take, int skip,
+        bool unansweredOnly, Guid? userId, int take, int skip,
         CancellationToken cancellationToken);
 
     /// <summary>Regenerated with the current code and state, never stored. Null when the conversation is missing.</summary>

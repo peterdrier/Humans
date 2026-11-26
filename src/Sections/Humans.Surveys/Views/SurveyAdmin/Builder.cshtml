@@ -20,7 +20,7 @@
 }
 
 @section Crumbs {
-    <span authorize-policy="@Humans.Surveys.Contracts.SurveysPolicies.Read"><a asp-controller="Admin" asp-action="Index">@Localizer["Surveys_Admin_Common_AdminBreadcrumb"]</a></span>
+    <span authorize-policy="@SurveysPolicies.Read"><a asp-controller="Admin" asp-action="Index">@Localizer["Surveys_Admin_Common_AdminBreadcrumb"]</a></span>
     <a asp-controller="SurveyAdmin" asp-action="Index">@Localizer["Surveys_Admin_Index_Title"]</a>
     <span>@ViewData["Title"]</span>
 }
@@ -70,7 +70,7 @@
 @if (Model.Status == SurveyStatus.Draft && !string.IsNullOrWhiteSpace(Model.RejectionNote))
 {
     <div class="alert alert-danger" role="alert">
-        @string.Format(Localizer["Surveys_Admin_Index_RejectionNote"].Value, Model.RejectionNote)
+        @Localizer["Surveys_Admin_Index_RejectionNote", Model.RejectionNote]
     </div>
 }
 

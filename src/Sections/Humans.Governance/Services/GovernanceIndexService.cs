@@ -13,7 +13,7 @@ internal sealed class GovernanceIndexService(
     IGovernanceManagement applicationDecisionService,
     ILegalDocumentService legalDocService,
     IAssemblyVoteService assemblyVotes,
-    IRoleAssignmentService roleAssignments,
+    ISystemRoleService roleAssignments,
     IUserService users,
     GovernanceBodyLinksService bodyLinks,
     GovernanceBodyRosters bodyRosters) : IGovernanceIndexService

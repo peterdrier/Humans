@@ -58,6 +58,54 @@ public class DietaryProfileTests
         IReadOnlyList<string>? intolerances = null, string? intoleranceOther = null) =>
         new(id, preference, allergies ?? [], allergyOther, intolerances ?? [], intoleranceOther);
 
+    [HumansTheory]
+    [Xunit.InlineData("missing", false)]
+    [Xunit.InlineData("missing", true)]
+    [Xunit.InlineData("deleted", false)]
+    [Xunit.InlineData("deleted", true)]
+    [Xunit.InlineData("legacy", false)]
+    [Xunit.InlineData("legacy", true)]
+    public async Task Write_UnavailableAccount_DoesNotCreateProfile(string kind, bool decline)
+    {
+        var id = Guid.NewGuid();
+        if (!string.Equals(kind, "missing", StringComparison.Ordinal))
+        {
+            var person = SeedUser(id);
+            await _sut.SaveAsync(id, Answers(id), Ct);
+            await _sut.EraseForUserAsync(id, Ct);
+            person = string.Equals(kind, "legacy", StringComparison.Ordinal)
+                ? person with { IdentityEmailColumn = "erased@gdpr.local" }
+                : person with { State = UserState.Deleted };
+            _users.GetUserInfoAsync(id, Arg.Any<CancellationToken>()).Returns(person);
+        }
+
+        if (decline) (await _sut.DeclineAsync(id, Ct)).Should().Be("Cantina_Dietary_SaveFailed");
+        else (await _sut.SaveAsync(id, Answers(id), Ct)).Should().Be("Cantina_Dietary_SaveFailed");
+
+        (await _repo.GetAsync(id, Ct)).Should().BeNull();
+    }
+
+    [HumansTheory]
+    [Xunit.InlineData(false)]
+    [Xunit.InlineData(true)]
+    public async Task Write_ArchivedId_UpdatesSurvivor(bool decline)
+    {
+        var archived = Guid.NewGuid();
+        var survivor = Guid.NewGuid();
+        SeedUser(archived, resolvesTo: survivor);
+        SeedUser(survivor);
+        await _sut.SaveAsync(survivor, Answers(survivor), Ct);
+
+        if (decline) (await _sut.DeclineAsync(archived, Ct)).Should().BeNull();
+        else (await _sut.SaveAsync(archived, Answers(archived, "Vegetarian"), Ct)).Should().BeNull();
+
+        (await _repo.GetAsync(archived, Ct)).Should().BeNull();
+        var saved = (await _sut.GetDietaryProfileAsync(archived, Ct))!;
+        saved.UserId.Should().Be(survivor);
+        saved.DeclinedToAnswer.Should().Be(decline);
+        saved.DietaryPreference.Should().Be(decline ? null : "Vegetarian");
+    }
+
     [HumansFact]
     public async Task Read_ReturnsNullUntilAnswersAreSaved()
     {

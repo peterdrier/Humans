@@ -1,5 +1,4 @@
 using Humans.Users.Contracts;
-using Humans.Base.Authorization;
 using Humans.Base.Enums;
 using Humans.Campaigns.Services;
 using Microsoft.AspNetCore.Authorization;

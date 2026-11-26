@@ -1,26 +1,18 @@
 using Humans.Base.Authorization;
 using Humans.Permissions.Contracts;
 using Humans.Base.Extensions;
-using Humans.Base.Interfaces;
 using Humans.AuditLog.Contracts;
 using Humans.Budget.Contracts;
 using Humans.Email.Contracts;
-using Humans.Finance.Contracts;
-using Humans.Gdpr.Contracts;
-using Humans.Holded.Contracts;
 using Humans.Preapprovals.Contracts;
 using Humans.Teams.Contracts;
-using Humans.Expenses.Services.Dtos;
 using Humans.Base.Helpers;
-using Microsoft.Extensions.Options;
 using NodaTime;
 using Humans.Expenses.Contracts;
 using Humans.Expenses.Data;
-using Humans.Expenses.Domain;
 using Humans.Users.Contracts;
 using System.Globalization;
 using System.Transactions;
-using Humans.Base.Threading;
 
 namespace Humans.Expenses.Services;
 
@@ -449,10 +441,10 @@ internal sealed class ExpenseReviewService(
 
         var submitter = await userService.GetUserInfoAsync(approved.SubmitterUserId, ct);
         var recipient = submitter?.Email;
-        if (submitter is null || string.IsNullOrWhiteSpace(recipient))
+        if (submitter is null || submitter.IsTombstone || string.IsNullOrWhiteSpace(recipient))
         {
             logger.LogWarning(
-                "Skipping expense-approved email for report {ReportId}: submitter {UserId} has no notification email",
+                "Skipping expense-approved email for report {ReportId}: submitter {UserId} is unavailable or has no notification email",
                 reportId, approved.SubmitterUserId);
             return;
         }

@@ -407,7 +407,7 @@
                         ("trail", "<code>IHtmlContent?</code> — the rendered <code>Crumbs</code> section; <code>_Layout</code> supplies it")
                     )
                     <div class="wg-card-example">
-                        @{ var breadcrumbDemo = new Microsoft.AspNetCore.Html.HtmlString("<a href='#'>Teams</a><a href='#'>Fire safety</a><span>Edit</span>"); }
+                        @{ var breadcrumbDemo = new HtmlString("<a href='#'>Teams</a><a href='#'>Fire safety</a><span>Edit</span>"); }
                         <vc:breadcrumb trail="@breadcrumbDemo" />
                     </div>
                 </div>
@@ -929,7 +929,7 @@ Line two (pre-wrap keeps this break)</p>
                     <li><strong>Admin shell chrome</strong> — <code>AdminSidebarViewComponent</code>, <code>AdminTabsViewComponent</code>, <code>AdminNavComposition</code>: this page is rendered inside the admin shell, so the sidebar is already on screen around you.</li>
                     <li><strong>Layout partials</strong> — <code>_Layout</code>, <code>_AdminLayout</code>, <code>_GuideLayout</code>, <code>_LoginPartial</code>, <code>_VersionInfo</code>: page chrome that doesn't render in isolation.</li>
                     <li><strong>Coordinator dashboard</strong> — <code>AdminSummaryViewComponent</code>: the summary strip is assembled from the tiles sections contribute, so it only renders inside a request that carries an admin identity. See <a href="/Admin/Dashboard">/Admin/Dashboard</a>.</li>
-                    <li><strong>Sign-in method dial</strong> — <code>LoginMethodCardViewComponent</code>: Shell-owned dashboard card over the process-wide in-memory sign-in tally; nothing references the Shell, so it can't be invoked from here. See <a href="/Admin">/Admin</a>.</li>
+                    <li><strong>Sign-in method dial</strong> — <code>SignInMethodCardViewComponent</code>: Shell-owned dashboard card over the process-wide in-memory sign-in tally; nothing references the Shell, so it can't be invoked from here. See <a href="/Admin">/Admin</a>.</li>
                     <li><strong>Script-only partials</strong> — <code>_GitHubFolderPathScript</code>, <code>_VolunteerSearchScript</code>, <code>_ValidationScriptsPartial</code>: emit JS only.</li>
                     <li><strong>Infrastructure tag helper</strong> — <code>NonceTagHelper</code>: applies CSP nonces to <code>&lt;script&gt;</code>/<code>&lt;style&gt;</code>; nothing visible to render.</li>
                 </ul>

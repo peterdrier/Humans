@@ -48,12 +48,12 @@ internal sealed class AgentAdminStatusService(
         var spend30Days = BuildSpend(rows, window30Days, defaultModel);
         var spendMtd = BuildSpend(rows, firstOfMonth, defaultModel);
 
-        var refusals7Days = rows
-            .Where(r => r.CreatedAt >= window7Days && !string.IsNullOrEmpty(r.RefusalReason))
-            .GroupBy(r => r.RefusalReason!, StringComparer.Ordinal)
-            .Select(g => new AgentRefusalBucket(g.Key, g.Count()))
+        var outcomes7Days = rows
+            .Where(r => r.CreatedAt >= window7Days && !string.IsNullOrEmpty(r.Outcome))
+            .GroupBy(r => r.Outcome!, StringComparer.Ordinal)
+            .Select(g => new AgentOutcomeBucket(g.Key, g.Count()))
             .ToList();
-        var refusals7DaysCount = refusals7Days.Sum(b => b.Count);
+        var unanswered7DaysCount = outcomes7Days.Sum(b => b.Count);
 
         var topDocs7Days = rows
             .Where(r => r.CreatedAt >= window7Days)
@@ -77,8 +77,8 @@ internal sealed class AgentAdminStatusService(
             Spend7Days: spend7Days,
             Spend30Days: spend30Days,
             SpendMtd: spendMtd,
-            Refusals7DaysCount: refusals7DaysCount,
-            Refusals7Days: refusals7Days,
+            Unanswered7DaysCount: unanswered7DaysCount,
+            Outcomes7Days: outcomes7Days,
             TopDocs7Days: topDocs7Days,
             TopUsers7Days: topUsers7Days,
             Retention: retention.Snapshot,
@@ -88,7 +88,7 @@ internal sealed class AgentAdminStatusService(
 
     private static string CanonicalDocSlug(string slug)
     {
-        const string sectionPrefix = AgentToolNames.FetchSectionGuide + ":";
+        const string sectionPrefix = AgentToolNames.FetchSectionDoc + ":";
         return slug.StartsWith(sectionPrefix, StringComparison.Ordinal)
             && AgentSectionKeys.TryResolve(slug[sectionPrefix.Length..], out var section)
                 ? sectionPrefix + section
@@ -111,9 +111,9 @@ internal sealed class AgentAdminStatusService(
             output += r.OutputTokens;
             cached += r.CachedTokens;
             messageCount++;
-            // Completed turns only: user rows carry no duration, and refusal/error rows never finished a timed
+            // Completed turns only: user rows carry no duration, and unanswered rows never finished a timed
             // provider turn (a structural 0). Either would drag the average toward half the real figure.
-            if (r.Role == AgentRole.Assistant && string.IsNullOrEmpty(r.RefusalReason))
+            if (r.Role == AgentRole.Assistant && string.IsNullOrEmpty(r.Outcome))
                 durations.Add(r.DurationMs);
             uniqueUsers.Add(r.UserId);
         }

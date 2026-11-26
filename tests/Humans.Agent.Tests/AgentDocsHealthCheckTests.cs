@@ -1,6 +1,5 @@
 using AwesomeAssertions;
 using Humans.Agent.Services;
-using Humans.Agent.Domain;
 using NodaTime;
 using Humans.Agent.Health;
 using Humans.Base.Interfaces;
@@ -48,11 +47,11 @@ public class AgentDocsHealthCheckTests
     {
         var agent = Substitute.For<IAgentSettingsService>();
         agent.Current.Returns(new AgentSettingsDto(
-            Enabled: true, Model: "m", PreloadConfig: AgentPreloadConfig.Tier1,
+            Enabled: true, Model: "m",
             DailyMessageCap: 10, HourlyMessageCap: 5, DailyTokenCap: 50_000,
             RetentionDays: 30, UpdatedAt: Instant.MinValue));
         return new AgentDocsHealthCheck(agent, source, NullLogger<AgentDocsHealthCheck>.Instance)
-            .CheckHealthAsync(new HealthCheckContext(), Xunit.TestContext.Current.CancellationToken);
+            .CheckHealthAsync(new HealthCheckContext(), TestContext.Current.CancellationToken);
     }
 
     /// <summary>Serves the probe from this checkout, throwing as GitHub does on a missing file.</summary>

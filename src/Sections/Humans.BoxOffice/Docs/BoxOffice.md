@@ -12,6 +12,8 @@
 
 # BoxOffice — Section Invariants
 
+Vocabulary: [`CONTEXT.md`](CONTEXT.md).
+
 Humans' own ticketing platform: one implementation of Tickets' `ITicketingPlatform` port, key `boxoffice`, that
 takes payment through Stripe hosted Checkout and refunds through the Stripe API. It owns no tables and no Tickets data:
 Tickets owns the order, the price and the named ticket; this section only turns them into a Stripe Checkout Session
@@ -70,6 +72,8 @@ None. The section owns no tables. The Checkout Session is the record of the paym
 
 ## Invariants
 
+- The checkout API key must be nonempty and contain no whitespace, matching Stripe.net client validation. An unusable key makes the platform unconfigured; order operations refuse through `TicketingPlatformException` before SDK construction, reporting returns null, and connection checks report configuration without Stripe calls or key text. Webhook signing secrets retain their separate validation.
+
 - Charges EUR only; a non-EUR request, a negative line or a non-positive total throws `TicketingPlatformException` before
   any Stripe call. The adapter never changes an amount.
 - Session expiry is clamped to 31 minutes .. 23 hours from now, inside Stripe's 30 minutes .. 24 hours.
@@ -82,6 +86,7 @@ None. The section owns no tables. The Checkout Session is the record of the paym
   answers 400, so a wrong secret shows as failed deliveries in Stripe.
 - Cancelling expires the session; Stripe refusing that is an error only when the session is complete and not failed.
 - `Setup` shows both variables only as set or missing, and test or live mode from the key prefix. `CheckAsync` lists one Checkout Session, balance transaction and payout (each its own finding, so a key missing a read the reconciliation needs shows before deploy) and reports a missing webhook secret; it cannot test the refund permission without refunding.
+- Backend setup checks propagate caller cancellation instead of reporting a vendor failure; independent transport timeouts remain diagnostic findings.
 - `ListOrdersAsync` lists every Checkout Session created in the period, whatever made it, since the account sells tickets only. Each session carries `humans_ticket_count` (ticket lines, free ones included) for reconciliation; one without it has no count. Refunds are read only for a charge that shows some. `EventRefOf` is always null.
 - `GetPaymentLedgerAsync` lists the account's balance transactions created in the period (kind from Stripe's `reporting_category`) and its payouts. A movement's order is the `humans_ticket_order_id` on its charge, refund or dispute, else on its PaymentIntent: those created from a day before the period are listed once, older ones read one by one. An automatic payout's contents are its balance transactions (`payout=`); a manual payout's are not listed.
 
@@ -89,7 +94,7 @@ None. The section owns no tables. The Checkout Session is the record of the paym
 
 | Variable | Purpose |
 |---|---|
-| `STRIPE_BOXOFFICE_KEY` | Restricted key on the ticket Stripe account: Checkout Sessions write, PaymentIntents, Charges, Disputes, Balance transactions and Payouts read, Refunds write. Unset means `IsConfigured` is false and Tickets takes no orders on this platform |
+| `STRIPE_BOXOFFICE_KEY` | Restricted key on the ticket Stripe account: Checkout Sessions write, PaymentIntents, Charges, Disputes, Balance transactions and Payouts read, Refunds write. Unset or whitespace-containing means `IsConfigured` is false and Tickets takes no orders on this platform |
 | `STRIPE_BOXOFFICE_WEBHOOK_SECRET` | Signing secret of the endpoint `https://<host>/BoxOffice/StripeWebhook` subscribed to `checkout.session.completed`, `checkout.session.async_payment_succeeded`, `checkout.session.async_payment_failed`, `checkout.session.expired`, `charge.refunded`, `refund.updated`, `refund.failed`, `charge.dispute.created`, `charge.dispute.closed`, `charge.dispute.funds_withdrawn`, `charge.dispute.funds_reinstated`. Without it, Tickets still learns outcomes from the return page and its 5-minute poll |
 
 Tickets' `/Tickets/Admin/Sales` shows whether the platform is configured.

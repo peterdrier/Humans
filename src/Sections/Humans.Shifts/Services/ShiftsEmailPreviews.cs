@@ -1,3 +1,4 @@
+using NodaTime;
 using Humans.Email.Contracts;
 
 namespace Humans.Shifts.Services;
@@ -24,14 +25,14 @@ internal sealed class ShiftsEmailPreviews(ShiftsEmails emails) : IEmailPreviewCo
                 emails.CoordinatorRotaMessage(new CoordinatorRotaMessageRequest(
                     Guid.Empty, email, name, SampleSender, SampleSenderEmail,
                     "Saturday Bar", SampleMessage,
-                    ["Saturday 10:00-14:00", "Saturday 18:00-22:00"], Culture: culture))),
+                    [(new LocalDateTime(2026, 7, 11, 10, 0).InUtc(), false), (new LocalDateTime(2026, 7, 11, 18, 0).InUtc(), false)], Culture: culture))),
             new EmailPreviewSample("coordinator-team-rotas-message", "Coordinator Team Rotas Message",
                 emails.CoordinatorTeamRotasMessage(new CoordinatorTeamRotasMessageRequest(
                     Guid.Empty, email, name, SampleSender, SampleSenderEmail,
                     "Bar Team", SampleMessage,
                     [
-                        new CoordinatorRotaShiftGroup("Saturday Bar", ["Saturday 10:00-14:00"]),
-                        new CoordinatorRotaShiftGroup("Sunday Bar", ["Sunday 12:00-16:00"]),
+                        new CoordinatorRotaShiftGroup("Saturday Bar", [(new LocalDateTime(2026, 7, 11, 10, 0).InUtc(), false)]),
+                        new CoordinatorRotaShiftGroup("Sunday Bar", [(new LocalDateTime(2026, 7, 12, 12, 0).InUtc(), false)]),
                     ],
                     Culture: culture))),
         ];

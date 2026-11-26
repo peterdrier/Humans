@@ -140,7 +140,7 @@
   <data name="Users_ProfileCard_PendingBadge" xml:space="preserve"><value>Pending</value></data>
   <data name="Users_ProfileCard_Teams" xml:space="preserve"><value>Teams:</value></data>
   <data name="Users_ProfileCard_Joined" xml:space="preserve"><value>Joined {0}</value><comment>{0} = date</comment></data>
-  <data name="Users_ProfileCard_LastLogin" xml:space="preserve"><value>Last login {0}</value><comment>{0} = date</comment></data>
+  <data name="Users_ProfileCard_LastSignIn" xml:space="preserve"><value>Last sign-in {0}</value><comment>{0} = date</comment></data>
 
   <!-- ======================== -->
   <!-- Privacy / My Data        -->

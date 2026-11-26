@@ -1,7 +1,6 @@
 using Humans.Base.Controllers;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Humans.AuditLog.Contracts;
 using Humans.Users.Contracts;
 using Humans.Base.Authorization;
 using Humans.Users.Models.EmailProblems;

@@ -3,14 +3,14 @@
 @inject IAuthorizationService AuthService
 @inject Microsoft.AspNetCore.Mvc.Localization.IHtmlLocalizer<UsersResource> HtmlLocalizer
 @{
-    var human = await Component.InvokeAsync(typeof(Humans.Base.ViewComponents.HumanViewComponent), new
+    var human = await Component.InvokeAsync(typeof(HumanViewComponent), new
     {
         userId = Model.UserId,
     });
-    using var humanWriter = new System.IO.StringWriter();
+    using var humanWriter = new StringWriter();
     human.WriteTo(humanWriter, System.Text.Encodings.Web.HtmlEncoder.Default);
     // The same encoded name fits the heading and localized sentence without template indentation.
-    var humanHtml = new Microsoft.AspNetCore.Html.HtmlString(humanWriter.ToString().Trim());
+    var humanHtml = new HtmlString(humanWriter.ToString().Trim());
 }
 
 <div class="card mb-4">

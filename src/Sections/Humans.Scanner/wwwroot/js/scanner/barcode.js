@@ -207,6 +207,7 @@ export function initBarcodeScanner(refs) {
             const mod = await import(ZXING_CDN_URL);
             if (session !== currentSession) return;
             const BrowserMultiFormatReader = mod.BrowserMultiFormatReader ?? mod.default?.BrowserMultiFormatReader;
+            const barcodeFormats = mod.BarcodeFormat ?? mod.default?.BarcodeFormat;
             if (!BrowserMultiFormatReader) {
                 throw new Error('BrowserMultiFormatReader not found in ZXing module export');
             }
@@ -215,7 +216,7 @@ export function initBarcodeScanner(refs) {
             const controls = await zxingReader.decodeFromStream(stream, video, (result, err) => {
                 if (session !== currentSession) return;
                 if (result) {
-                    const format = result.getBarcodeFormat?.()?.toString?.() ?? 'UNKNOWN';
+                    const format = barcodeFormats?.[result.getBarcodeFormat?.()] ?? 'UNKNOWN';
                     addResult(result.getText(), format);
                 }
                 // err is a NotFoundException on every empty frame — ignore silently.

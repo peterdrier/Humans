@@ -106,7 +106,7 @@ internal sealed class ShiftDashboardPageBuilder(
         .ThenBy(r => r.TeamName, StringComparer.Ordinal)
         .Select(r => r with
         {
-            Coordinators = r.Coordinators.OrderBy(c => c.LastLoginAt ?? Instant.MinValue).ToList(),
+            Coordinators = r.Coordinators.OrderBy(c => c.LastSignInAt ?? Instant.MinValue).ToList(),
             Subgroups = OrderCoordinatorRows(r.Subgroups)
         })
         .ToList();
@@ -119,7 +119,7 @@ internal sealed class ShiftDashboardPageBuilder(
         {
             foreach (var c in r.Coordinators)
             {
-                var lv = c.LastLoginAt ?? Instant.MinValue;
+                var lv = c.LastSignInAt ?? Instant.MinValue;
                 if (!found || lv < oldest) { oldest = lv; found = true; }
             }
             foreach (var sub in r.Subgroups) Walk(sub);

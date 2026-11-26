@@ -1,7 +1,6 @@
 using AwesomeAssertions;
 using Humans.Base.Extensions;
 using Humans.Base.Enums;
-using Humans.Google.Contracts;
 using Humans.Google.Data;
 using Humans.Google.Domain;
 using Humans.Google.Services;

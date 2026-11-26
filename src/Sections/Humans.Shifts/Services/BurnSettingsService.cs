@@ -1,5 +1,3 @@
-using Humans.Shifts.Contracts;
-
 namespace Humans.Shifts.Services;
 
 /// <summary>The same composed calendar used by the section's internal readers.</summary>

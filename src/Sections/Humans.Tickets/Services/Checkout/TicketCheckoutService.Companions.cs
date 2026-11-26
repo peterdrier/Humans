@@ -1,5 +1,4 @@
 using Humans.AuditLog.Contracts;
-using Humans.Users.Contracts;
 using Humans.Tickets.Domain.Checkout;
 
 namespace Humans.Tickets.Services.Checkout;
@@ -68,8 +67,7 @@ internal sealed partial class TicketCheckoutService
     {
         var tickets = (await repository.GetTicketsForSettingsAsync(settingsId, ct)).ToDictionary(t => t.Id);
         var rows = new List<CompanionRequestRow>();
-        foreach (var request in (await repository.GetCompanionRequestsForSettingsAsync(settingsId, ct))
-                     .OrderBy(r => r.State != TicketCompanionRequestState.Pending).ThenByDescending(r => r.RequestedAt))
+        foreach (var request in await repository.GetCompanionRequestsForSettingsAsync(settingsId, ct))
         {
             tickets.TryGetValue(request.TicketId, out var ticket);
             var companion = await users.GetUserInfoAsync(request.CompanionUserId, ct);

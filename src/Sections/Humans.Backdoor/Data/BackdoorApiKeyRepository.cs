@@ -85,7 +85,7 @@ internal sealed class BackdoorApiKeyRepository(IDbContextFactory<BackdoorDbConte
 
         await ctx.ApiKeys.Where(k => k.UserId == userId).ExecuteDeleteAsync(ct);
 
-        // Someone else's key they happened to issue or revoke: drop the back-reference,
+        // Someone else's key they happened to create or revoke: drop the back-reference,
         // keep the row. The key belongs to its owner, not to the admin who handled it.
         await ctx.ApiKeys
             .Where(k => k.CreatedByUserId == userId)

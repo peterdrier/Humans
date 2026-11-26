@@ -9,7 +9,6 @@ using Humans.Users.Contracts;
 using Humans.Base.Helpers;
 using Humans.Base.Threading;
 using Humans.Users.Helpers;
-using Humans.Base.Interfaces;
 using Humans.Base.Configuration;
 using Humans.Base.Extensions;
 using Humans.Email.Contracts;
@@ -69,7 +68,7 @@ internal sealed class UserEmailService(
     {
         using var removal = await RemovalLocks.GetOrAdd(userId,
             static id => new TrackedLock($"Users.EmailRemoval[{id}]")).AcquireAsync(logger, cancellationToken);
-        var email = await repository.GetUserEmailByIdAndUserIdAsync(emailId, userId, cancellationToken);
+        var email = await repository.GetUserEmailForUserAsync(emailId, userId, cancellationToken);
         if (email is null)
             return new DeleteEmailResult(false, "Users_EmailUpdate_NotFound");
 
@@ -89,7 +88,7 @@ internal sealed class UserEmailService(
         // Block deleting the last verified row: the user would silently lose all notifications.
         if (email.IsVerified)
         {
-            var allEmails = await repository.GetUserEmailsByUserIdForMutationAsync(userId, cancellationToken);
+            var allEmails = await repository.GetUserEmailsByUserIdAsync(userId, cancellationToken);
             var verifiedRemaining = allEmails.Count(e => e.IsVerified && e.Id != emailId);
 
             if (verifiedRemaining == 0)
@@ -186,11 +185,11 @@ internal sealed class UserEmailService(
         Guid userId, Guid userEmailId, Guid actorUserId,
         CancellationToken cancellationToken = default)
     {
-        var row = await repository.GetUserEmailByIdAndUserIdAsync(userEmailId, userId, cancellationToken);
+        var row = await repository.GetUserEmailForUserAsync(userEmailId, userId, cancellationToken);
         if (row is null || !row.IsPrimary) return false;
 
         // Duplicate verified rows only, mirroring the scanner's filter, so this can't cause ZeroIsPrimary.
-        var allEmails = await repository.GetUserEmailsByUserIdReadOnlyAsync(userId, cancellationToken);
+        var allEmails = await repository.GetUserEmailsByUserIdAsync(userId, cancellationToken);
         if (allEmails.Count(e => e.IsPrimary && e.IsVerified) <= 1) return false;
 
         var updated = await userService.UpdateUserEmailAsync(
@@ -213,7 +212,7 @@ internal sealed class UserEmailService(
     /// <inheritdoc />
     public async Task<bool> DeleteByIdAsync(Guid emailId, CancellationToken ct = default, Guid? actorUserId = null)
     {
-        var row = await repository.GetUserEmailByIdReadOnlyAsync(emailId, ct);
+        var row = await repository.GetUserEmailByIdAsync(emailId, ct);
         if (row is null) return false;
 
         var removed = await userService.RemoveUserEmailAsync(
@@ -245,11 +244,11 @@ internal sealed class UserEmailService(
     {
         using var removal = await RemovalLocks.GetOrAdd(userId,
             static id => new TrackedLock($"Users.EmailRemoval[{id}]")).AcquireAsync(logger, cancellationToken);
-        var allEmails = await repository.GetUserEmailsByUserIdForMutationAsync(userId, cancellationToken);
+        var allEmails = await repository.GetUserEmailsByUserIdAsync(userId, cancellationToken);
         UserEmail? row;
         if (userEmailId.HasValue)
         {
-            row = await repository.GetUserEmailByIdAndUserIdAsync(userEmailId.Value, userId, cancellationToken);
+            row = await repository.GetUserEmailForUserAsync(userEmailId.Value, userId, cancellationToken);
             if (row is null) return new(false);
             provider = row.Provider;
             providerKey = row.ProviderKey;
@@ -372,7 +371,7 @@ internal sealed class UserEmailService(
     public async Task<(bool CanAdd, int MinutesUntilResend, Guid? PendingEmailId)>
         GetEmailCooldownInfoAsync(Guid pendingEmailId, CancellationToken ct = default)
     {
-        var pendingRecord = await repository.GetUserEmailByIdReadOnlyAsync(pendingEmailId, ct);
+        var pendingRecord = await repository.GetUserEmailByIdAsync(pendingEmailId, ct);
 
         if (pendingRecord?.VerificationSentAt.HasValue == true)
         {
@@ -547,7 +546,7 @@ internal sealed class UserEmailService(
         CancellationToken cancellationToken = default)
     {
         var now = clock.GetCurrentInstant();
-        var rows = (await repository.GetUserEmailsByUserIdForMutationAsync(userId, cancellationToken)).ToList();
+        var rows = (await repository.GetUserEmailsByUserIdAsync(userId, cancellationToken)).ToList();
 
         var tagged = rows.FirstOrDefault(r =>
             string.Equals(r.Provider, provider, StringComparison.Ordinal) &&
@@ -577,7 +576,7 @@ internal sealed class UserEmailService(
         //    emailed confirmation link instead.
         if (blocker is not null)
         {
-            var blockerRows = await repository.GetUserEmailsByUserIdForMutationAsync(
+            var blockerRows = await repository.GetUserEmailsByUserIdAsync(
                 blocker.UserId, cancellationToken);
 
             var blockedDescription = await BuildCrossUserDiagnosticAsync(
@@ -825,7 +824,7 @@ internal sealed class UserEmailService(
         Guid userId, Guid emailId, Guid actorUserId,
         CancellationToken cancellationToken = default)
     {
-        var pendingEmail = await repository.GetUserEmailByIdAndUserIdAsync(emailId, userId, cancellationToken);
+        var pendingEmail = await repository.GetUserEmailForUserAsync(emailId, userId, cancellationToken);
         if (pendingEmail is null || pendingEmail.IsVerified || pendingEmail.Provider is not null)
         {
             return new VerifyEmailResult(string.Empty) { NoPendingVerification = true };

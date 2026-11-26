@@ -36,7 +36,7 @@
                         <th class="text-center"><a href="@Toggle("hasName")">HasName@(ArrowFor("hasName"))</a></th>
                         <th class="text-center"><a href="@Toggle("hasConsent")">HasConsent@(ArrowFor("hasConsent"))</a></th>
                         <th><a href="@Toggle("createdAt")">Created@(ArrowFor("createdAt"))</a></th>
-                        <th><a href="@Toggle("lastLoginAt")">Last login@(ArrowFor("lastLoginAt"))</a></th>
+                        <th><a href="@Toggle("lastSignInAt")">Last login@(ArrowFor("lastSignInAt"))</a></th>
                     </tr>
                 </thead>
                 <tbody>
@@ -53,7 +53,7 @@
                         <td class="text-center">@Tri(row.HasName)</td>
                         <td class="text-center">@Tri(row.HasConsent)</td>
                         <td>@row.CreatedAt.ToDateTime()</td>
-                        <td>@(row.LastLoginAt?.ToDateTime() ?? "—")</td>
+                        <td>@(row.LastSignInAt?.ToDateTime() ?? "—")</td>
                     </tr>
                 }
                 </tbody>

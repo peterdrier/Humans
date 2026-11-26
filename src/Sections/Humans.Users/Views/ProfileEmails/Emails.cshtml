@@ -11,7 +11,7 @@
         && (await AuthService.AuthorizeAsync(User, PolicyNames.AdminOnly)).Succeeded;
     // Board reads another member's emails but changes nothing.
     var canEdit = !Model.IsAdminContext
-        || (await AuthService.AuthorizeAsync(User, Humans.Users.Contracts.UsersPolicies.Manage)).Succeeded;
+        || (await AuthService.AuthorizeAsync(User, UsersPolicies.Manage)).Succeeded;
 }
 
 @section Crumbs {
@@ -36,11 +36,11 @@
                 <i class="fa-solid fa-user-shield me-2 fs-4"></i>
                 <div>
                     @{
-                        var target = await Component.InvokeAsync(typeof(Humans.Base.ViewComponents.HumanViewComponent), new { userId = Model.TargetUserId });
-                        using var targetWriter = new System.IO.StringWriter();
+                        var target = await Component.InvokeAsync(typeof(HumanViewComponent), new { userId = Model.TargetUserId });
+                        using var targetWriter = new StringWriter();
                         target.WriteTo(targetWriter, System.Text.Encodings.Web.HtmlEncoder.Default);
                     }
-                    @HtmlLocalizer["Users_EmailGrid_AdminContextBannerNamed", new Microsoft.AspNetCore.Html.HtmlString(targetWriter.ToString().Trim())]
+                    @HtmlLocalizer["Users_EmailGrid_AdminContextBannerNamed", new HtmlString(targetWriter.ToString().Trim())]
                 </div>
             </div>
         }
@@ -529,7 +529,7 @@
                         @if (!Model.IsAdminContext && !Model.CanAddEmail)
                         {
                             <small class="text-muted ms-2">
-                                @string.Format(Localizer["Users_Emails_ResendCooldown"].Value, Model.MinutesUntilResend)
+                                @Localizer["Users_Emails_ResendCooldown", Model.MinutesUntilResend]
                             </small>
                         }
                     </form>

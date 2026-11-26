@@ -189,7 +189,7 @@ Sole owner of `google_resources`. All consumers call
 HUM0008/HUM0009/HUM0025. Cross-section calls via
 `ITeamResourceGoogleClient`, `IGoogleDrivePermissionsClient`,
 `IAuditLogService`, plus `IServiceProvider` to lazy-resolve
-`IRoleAssignmentService` and `IPermissionService` (breaks a DI cycle). No cache.
+`ISystemRoleService` and `IPermissionService` (breaks a DI cycle). No cache.
 
 ### GoogleSyncOutboxProcessor (Scoped, `internal`)
 

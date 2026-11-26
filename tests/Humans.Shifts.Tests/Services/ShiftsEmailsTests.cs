@@ -1,3 +1,4 @@
+using NodaTime;
 using Xunit;
 using System.Reflection;
 using AwesomeAssertions;
@@ -24,7 +25,7 @@ public sealed class ShiftsEmailsTests
             SenderEmail: "coord@x.com",
             RotaName: "Gate",
             MessageText: messageText,
-            ShiftLines: ["Mon"],
+            Shifts: [(new LocalDateTime(2026, 7, 6, 9, 0).InUtc(), false)],
             Culture: "en");
 
     [HumansTheory]
@@ -47,7 +48,7 @@ public sealed class ShiftsEmailsTests
         var without = Create().CoordinatorRotaMessage(RotaRequest() with { IncludeShifts = false }).HtmlBody;
 
         // The test localizer echoes keys, so the lead-in shows up as its key name.
-        withShifts.Should().Contain("<li>Mon</li>").And.Contain("CoordinatorRotaMessage_ShiftsIntro");
+        withShifts.Should().Contain("<li>Mon July 6 @ 09:00</li>").And.Contain("CoordinatorRotaMessage_ShiftsIntro");
         without.Should().NotContain("<li>").And.NotContain("CoordinatorRotaMessage_ShiftsIntro",
             "the lead-in goes with the list, never stranded above nothing");
         without.Should().Contain("Hello", "the coordinator's own message still ships");
@@ -64,7 +65,7 @@ public sealed class ShiftsEmailsTests
             SenderEmail: "coord@x.com",
             TeamName: "Bar Team",
             MessageText: "Thank you",
-            ShiftGroups: [new CoordinatorRotaShiftGroup("Gate", ["Mon"])],
+            ShiftGroups: [new CoordinatorRotaShiftGroup("Gate", [(new LocalDateTime(2026, 7, 6, 9, 0).InUtc(), false)])],
             Culture: "en");
 
         var without = Create().CoordinatorTeamRotasMessage(request with { IncludeShifts = false }).HtmlBody;
@@ -84,7 +85,7 @@ public sealed class ShiftsEmailsTests
             SenderEmail: "coord@x.com",
             TeamName: "Bar Team",
             MessageText: "Hello",
-            ShiftGroups: [new CoordinatorRotaShiftGroup("Gate", ["Mon"])],
+            ShiftGroups: [new CoordinatorRotaShiftGroup("Gate", [(new LocalDateTime(2026, 7, 6, 9, 0).InUtc(), false)])],
             Culture: "en"));
 
         msg.TemplateName.Should().Be("coordinator_team_rotas_message");
@@ -115,7 +116,7 @@ public sealed class ShiftsEmailsTests
             SenderEmail: null,
             TeamName: "Bar Team",
             MessageText: "**Heads up** — early start\r\n\r\nSee you there",
-            ShiftGroups: [new CoordinatorRotaShiftGroup("Saturday Bar", ["Saturday 10:00-14:00"])]));
+            ShiftGroups: [new CoordinatorRotaShiftGroup("Saturday Bar", [(new LocalDateTime(2026, 7, 11, 10, 0).InUtc(), false)])]));
 
         msg.HtmlBody.Should().Contain("<p><strong>Heads up</strong>");
         msg.HtmlBody.Should().Contain("<p>See you there</p>");
@@ -136,12 +137,47 @@ public sealed class ShiftsEmailsTests
         var rota = emails.CoordinatorRotaMessage(RotaRequest() with { RotaName = "Lights & sound" });
         var team = emails.CoordinatorTeamRotasMessage(new CoordinatorTeamRotasMessageRequest(
             Guid.NewGuid(), "rcpt@x.com", "Recipient", "Sender", "coord@x.com", "Bar & kitchen", "Hello",
-            [new CoordinatorRotaShiftGroup("Gate", ["Mon"])], Culture: "en"));
+            [new CoordinatorRotaShiftGroup("Gate", [(new LocalDateTime(2026, 7, 6, 9, 0).InUtc(), false)])], Culture: "en"));
 
         rota.Subject.Should().Be("Message about Lights & sound");
         rota.HtmlBody.Should().Contain("Lights &amp; sound");
         team.Subject.Should().Be("Message with Bar & kitchen");
         team.HtmlBody.Should().Contain("Bar &amp; kitchen");
+    }
+
+    [HumansTheory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void Coordinator_templates_sort_absolute_starts_and_render_rota_local_times(bool teamMessage)
+    {
+        var zone = DateTimeZoneProviders.Tzdb["Europe/Madrid"];
+        IReadOnlyList<(ZonedDateTime Start, bool IsAllDay)> shifts =
+        [
+            (Instant.FromUtc(2026, 10, 25, 1, 15).InZone(zone), false),
+            (new LocalDate(2026, 10, 26).AtStartOfDayInZone(zone), true),
+            (Instant.FromUtc(2026, 10, 25, 0, 45).InZone(zone), false)
+        ];
+        var emails = Create();
+        var message = teamMessage
+            ? emails.CoordinatorTeamRotasMessage(new CoordinatorTeamRotasMessageRequest(
+                Guid.NewGuid(), "recipient@example.com", "Recipient", "Sender", null, "Team", "Hello",
+                [new CoordinatorRotaShiftGroup("Zebra", shifts), new CoordinatorRotaShiftGroup("alpha", []), new CoordinatorRotaShiftGroup("Alpha", [])], Culture: "en"))
+            : emails.CoordinatorRotaMessage(RotaRequest() with { Shifts = shifts });
+
+        const string earlier = "<li>Sun October 25 @ 02:45</li>";
+        const string later = "<li>Sun October 25 @ 02:15</li>";
+        const string allDay = "<li>Mon October 26</li>";
+        message.HtmlBody.Should().Contain(earlier).And.Contain(later).And.Contain(allDay);
+        message.HtmlBody.IndexOf(earlier, StringComparison.Ordinal).Should().BeLessThan(message.HtmlBody.IndexOf(later, StringComparison.Ordinal));
+        message.HtmlBody.IndexOf(later, StringComparison.Ordinal).Should().BeLessThan(message.HtmlBody.IndexOf(allDay, StringComparison.Ordinal));
+        if (teamMessage)
+        {
+            message.HtmlBody.Should().Contain("<strong>Alpha</strong>").And.Contain("<strong>alpha</strong>").And.Contain("<strong>Zebra</strong>");
+            message.HtmlBody.IndexOf("<strong>Alpha</strong>", StringComparison.Ordinal).Should().BeLessThan(
+                message.HtmlBody.IndexOf("<strong>alpha</strong>", StringComparison.Ordinal));
+            message.HtmlBody.IndexOf("<strong>alpha</strong>", StringComparison.Ordinal).Should().BeLessThan(
+                message.HtmlBody.IndexOf("<strong>Zebra</strong>", StringComparison.Ordinal));
+        }
     }
 
     [HumansFact]
@@ -187,7 +223,7 @@ public sealed class ShiftsEmailsTests
         if (type == typeof(CoordinatorTeamRotasMessageRequest))
             return new CoordinatorTeamRotasMessageRequest(
                 Guid.NewGuid(), "rcpt@x.com", "Rcpt", "Coord", "coord@x.com", "Bar Team", "Hello",
-                [new CoordinatorRotaShiftGroup("Gate", ["Mon"])], Culture: "en");
+                [new CoordinatorRotaShiftGroup("Gate", [(new LocalDateTime(2026, 7, 6, 9, 0).InUtc(), false)])], Culture: "en");
         throw new NotSupportedException(
             $"ShiftsEmails.{parameter.Member.Name} takes a {type.Name}; teach this test how to sample one.");
     }

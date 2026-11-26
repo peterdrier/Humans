@@ -49,7 +49,7 @@ public class RepositoryTests
             Binding(userId, "contact-2", null), Now, Ct);
 
         await using var ctx = await factory.CreateDbContextAsync(Ct);
-        var stored = await ctx.HoldedCreditorContacts.SingleAsync(Xunit.TestContext.Current.CancellationToken);
+        var stored = await ctx.HoldedCreditorContacts.SingleAsync(TestContext.Current.CancellationToken);
         stored.HoldedContactId.Should().Be("contact-2");
         stored.SupplierAccountNum.Should().Be(40000004);
         stored.UpdatedAt.Should().Be(Now);
@@ -81,7 +81,7 @@ public class RepositoryTests
             .Should().BeTrue();
 
         await using var ctx = await factory.CreateDbContextAsync(Ct);
-        (await ctx.HoldedCreditorContacts.SingleAsync(Xunit.TestContext.Current.CancellationToken)).HoldedContactId.Should().Be("contact-1");
+        (await ctx.HoldedCreditorContacts.SingleAsync(TestContext.Current.CancellationToken)).HoldedContactId.Should().Be("contact-1");
     }
 
     [HumansFact]
@@ -95,7 +95,7 @@ public class RepositoryTests
             Binding(userId, "contact-2", 40000009), Now, Ct);
 
         await using var ctx = await factory.CreateDbContextAsync(Ct);
-        var stored = await ctx.HoldedCreditorContacts.SingleAsync(Xunit.TestContext.Current.CancellationToken);
+        var stored = await ctx.HoldedCreditorContacts.SingleAsync(TestContext.Current.CancellationToken);
         stored.SupplierAccountNum.Should().Be(40000009);
         stored.CreatedAt.Should().Be(Created); // mutated in place, not replaced
     }
@@ -113,7 +113,7 @@ public class RepositoryTests
         (await repo.DeleteCreditorContactAsync(ana, Ct)).Should().BeNull();
 
         await using var ctx = await factory.CreateDbContextAsync(Ct);
-        (await ctx.HoldedCreditorContacts.SingleAsync(Xunit.TestContext.Current.CancellationToken)).UserId.Should().Be(bo);
+        (await ctx.HoldedCreditorContacts.SingleAsync(TestContext.Current.CancellationToken)).UserId.Should().Be(bo);
     }
 
     [HumansFact]

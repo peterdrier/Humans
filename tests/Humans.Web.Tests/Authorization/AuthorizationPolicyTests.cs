@@ -4,7 +4,6 @@ using Humans.Consent.Contracts;
 using Humans.Events.Contracts;
 using Humans.Cantina.Contracts;
 using Humans.Rideshare.Contracts;
-using System.Reflection;
 using Humans.Auth.Contracts;
 using Humans.Base.Interfaces;
 using Humans.Web.Extensions;
@@ -539,13 +538,13 @@ public class AuthorizationPolicyTests : IDisposable
         endpoints.Should().HaveCount(2);
         var user = authenticated ? CreateUserWithRoles(RoleNames.Admin) : new ClaimsPrincipal(new ClaimsIdentity());
         if (state is not null)
-            ((ClaimsIdentity)user.Identity!).AddClaim(new Claim(RoleAssignmentClaimsTransformation.UserStateClaimType, state));
+            ((ClaimsIdentity)user.Identity!).AddClaim(new Claim(SystemRoleClaimsTransformation.UserStateClaimType, state));
         var provider = _serviceProvider.GetRequiredService<IAuthorizationPolicyProvider>();
         foreach (var endpoint in endpoints)
         {
             var policy = await AuthorizationPolicy.CombineAsync(provider, endpoint.Metadata.GetOrderedMetadata<IAuthorizeData>());
             policy.Should().NotBeNull();
-            var result = await _authorizationService.AuthorizeAsync(user, resource: null, policy!);
+            var result = await _authorizationService.AuthorizeAsync(user, resource: null, policy);
             result.Succeeded.Should().Be(allowed, endpoint.RoutePattern.RawText);
         }
     }
@@ -554,7 +553,7 @@ public class AuthorizationPolicyTests : IDisposable
     public async Task AppAccess_AllowsActiveStateUserWithNoRole()
     {
         var user = CreateUserWithClaim(
-            RoleAssignmentClaimsTransformation.UserStateClaimType,
+            SystemRoleClaimsTransformation.UserStateClaimType,
             UserState.Active.ToString());
         var result = await _authorizationService.AuthorizeAsync(user, PolicyNames.AppAccess);
         result.Succeeded.Should().BeTrue();
@@ -577,7 +576,7 @@ public class AuthorizationPolicyTests : IDisposable
     public async Task AppAccess_DeniesNonActiveStateUserWithNoRole(string state)
     {
         var user = CreateUserWithClaim(
-            RoleAssignmentClaimsTransformation.UserStateClaimType,
+            SystemRoleClaimsTransformation.UserStateClaimType,
             state);
         var result = await _authorizationService.AuthorizeAsync(user, PolicyNames.AppAccess);
         result.Succeeded.Should().BeFalse();

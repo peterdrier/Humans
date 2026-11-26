@@ -1,0 +1,3 @@
+Humans.Camps.Data.ICampRepository.CountAssignmentsForSeasonAndDefinitionAsync
+Humans.Camps.Data.ICampRepository.GetPendingRequesterUserIdsForSeasonAsync
+Humans.Camps.Services.ICampManagement.AddMemberAndAssignRoleInActiveSeasonAsync

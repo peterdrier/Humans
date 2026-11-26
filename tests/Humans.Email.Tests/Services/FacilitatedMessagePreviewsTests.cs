@@ -1,3 +1,4 @@
+using Humans.Testing;
 using System.Reflection;
 using AwesomeAssertions;
 using Humans.Email.Contracts;
@@ -65,7 +66,7 @@ public sealed class FacilitatedMessagePreviewsTests
 
     private static EmailMessageFactory CreateFactory()
     {
-        var localizer = Substitute.For<IStringLocalizer<EmailResource>>();
+        var localizer = Substitute.For<IStringLocalizer<EmailResource>>().AddFormatting();
         localizer[Arg.Any<string>()].Returns(call =>
         {
             var key = call.Arg<string>();

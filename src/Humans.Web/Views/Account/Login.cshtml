@@ -43,14 +43,14 @@
 
                 <hr class="my-4" />
 
-                <p class="text-muted small mb-3">@Localizer["Login_MagicLink_Title"]</p>
-                <form asp-controller="Account" asp-action="MagicLinkRequest" method="post" class="d-flex gap-2 justify-content-center">
+                <p class="text-muted small mb-3">@Localizer["Login_SignInLink_Title"]</p>
+                <form asp-controller="Account" asp-action="SignInLinkRequest" method="post" class="d-flex gap-2 justify-content-center">
                     <input type="hidden" name="returnUrl" value="@ViewData["ReturnUrl"]" />
                     <input type="email" name="email" class="form-control" style="max-width: 280px;"
-                           placeholder="@Localizer["Login_MagicLink_Placeholder"]" required />
+                           placeholder="@Localizer["Login_SignInLink_Placeholder"]" required />
                     <button type="submit" class="btn btn-outline-primary">
                         <i class="fa-solid fa-paper-plane me-1"></i>
-                        @Localizer["Login_MagicLink_Submit"]
+                        @Localizer["Login_SignInLink_Submit"]
                     </button>
                 </form>
             </div>

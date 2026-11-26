@@ -1,4 +1,3 @@
-using Humans.Users.Domain;
 using Humans.Onboarding.Contracts;
 using Humans.Users.Contracts;
 using NodaTime;
@@ -124,7 +123,7 @@ internal interface IUserManagement : IUserService, IUserWrite, IUserMerge
         Guid sourceUserId, Guid targetUserId, Instant now,
         CancellationToken ct = default);
 
-    Task<IReadOnlyList<Guid>> GetUsersWithLoginsButNoEmailsAsync(CancellationToken ct = default);
+    Task<IReadOnlyList<Guid>> GetLoginUsersWithoutEmailsAsync(CancellationToken ct = default);
 
     /// <summary>External logins per user; users without any are absent.</summary>
     Task<IReadOnlyDictionary<Guid, IReadOnlyList<(string Provider, string ProviderKey)>>>

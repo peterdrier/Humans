@@ -1,6 +1,6 @@
 @model Humans.Teams.Models.JoinTeamViewModel
 @{
-    ViewData["Title"] = string.Format(Localizer["Teams_JoinTeam_Title"].Value, Model.TeamName);
+    ViewData["Title"] = Localizer["Teams_JoinTeam_Title", Model.TeamName].Value;
 }
 
 @section Crumbs {
@@ -13,7 +13,7 @@
     <div class="col-md-6">
         <div class="card">
             <div class="card-header">
-                <h4 class="mb-0">@string.Format(Localizer["Teams_JoinTeam_Title"].Value, Model.TeamName)</h4>
+                <h4 class="mb-0">@Localizer["Teams_JoinTeam_Title", Model.TeamName]</h4>
             </div>
             <div class="card-body">
                 @if (Model.RequiresApproval)

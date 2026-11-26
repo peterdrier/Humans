@@ -10,7 +10,7 @@ internal interface IBackdoorApiKeyService : IApplicationService
     /// Returns the plaintext: the only moment it exists. Rejects a missing or over-long label and an owner no <see cref="BackdoorScope"/> admits. Owners below Admin and Board get
     /// a key that expires after <see cref="BackdoorApiKeyService.ShortKeyLifetime"/>.
     /// </summary>
-    Task<BackdoorKeyIssueResult> IssueAsync(
+    Task<BackdoorKeyCreateResult> CreateAsync(
         Guid ownerUserId, string label, Guid actorUserId, CancellationToken ct = default);
 
     /// <summary>Revokes an active key. Returns false if it is missing or already revoked.</summary>
@@ -20,7 +20,7 @@ internal interface IBackdoorApiKeyService : IApplicationService
     /// Replaces the key with one for the same owner and label, its expiry worked out afresh. Fails as
     /// <see cref="RevokeAsync"/> does, and when its owner no longer qualifies.
     /// </summary>
-    Task<BackdoorKeyIssueResult> RotateAsync(
+    Task<BackdoorKeyCreateResult> RotateAsync(
         Guid keyId, Guid actorUserId, CancellationToken ct = default);
 
     /// <summary>Includes revoked keys, each flagged with whether its owner passes <see cref="ResolveOwnerAsync"/>'s
@@ -36,12 +36,12 @@ internal interface IBackdoorApiKeyService : IApplicationService
     /// </summary>
     Task<BackdoorKeyOwner?> ResolveOwnerAsync(string presentedKey, CancellationToken ct = default);
 
-    /// <summary>Whether the scope admits the key's holder, so a controller declaring it serves them.</summary>
+    /// <summary>Whether the scope admits the key's owner, so a controller declaring it serves them.</summary>
     Task<bool> AdmitsAsync(BackdoorKeyOwner owner, BackdoorScope scope, CancellationToken ct = default);
 }
 
 [method: System.Text.Json.Serialization.JsonConstructor]
-internal sealed record BackdoorKeyOwner(Guid UserId, IReadOnlyList<RoleAssignmentSnapshot> Roles);
+internal sealed record BackdoorKeyOwner(Guid UserId, IReadOnlyList<SystemRoleSnapshot> Roles);
 
 internal enum BackdoorKeyError
 {
@@ -52,11 +52,11 @@ internal enum BackdoorKeyError
 }
 
 /// <summary><see cref="PlaintextKey"/> is non-null only on success and never retrievable again.</summary>
-internal sealed record BackdoorKeyIssueResult(bool Succeeded, string? PlaintextKey, BackdoorKeyError? Error)
+internal sealed record BackdoorKeyCreateResult(bool Succeeded, string? PlaintextKey, BackdoorKeyError? Error)
 {
-    public static BackdoorKeyIssueResult Success(string plaintext) => new(true, plaintext, null);
+    public static BackdoorKeyCreateResult Success(string plaintext) => new(true, plaintext, null);
 
-    public static BackdoorKeyIssueResult Failed(BackdoorKeyError error) => new(false, null, error);
+    public static BackdoorKeyCreateResult Failed(BackdoorKeyError error) => new(false, null, error);
 }
 
 /// <summary>One row of the key list. Owner display data is stitched by the controller.</summary>

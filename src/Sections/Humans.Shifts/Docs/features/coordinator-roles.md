@@ -1,12 +1,12 @@
 <!-- freshness:triggers
-  src/Sections/Humans.Auth/Services/RoleAssignmentService.cs
+  src/Sections/Humans.Auth/Services/SystemRoleService.cs
   src/Sections/Humans.Onboarding/Services/**
   src/Sections/Humans.Consent/Services/**
   src/Sections/Humans.Consent/Controllers/ConsentReviewQueueController.cs
   src/Sections/Humans.Users/Controllers/UsersAdminController.cs
   src/Sections/Humans.Users/Controllers/ProfileController.cs
   src/Humans.Web/Authorization/MembershipRequiredFilter.cs
-  src/Humans.Web/Authorization/RoleAssignmentClaimsTransformation.cs
+  src/Humans.Web/Authorization/SystemRoleClaimsTransformation.cs
   src/Sections/Humans.Consent/Views/ConsentReviewQueue/**
   src/Humans.Base/Constants/RoleNames.cs
   src/Sections/Humans.Shifts/Contracts/ShiftsRoles.cs
@@ -116,7 +116,7 @@ With action-level restrictions:
 - **Vote on tier applications**: Board only (separate Board Voting dashboard)
 
 ### Role Assignment Authorization
-Role management lives on `RoleAssignmentsController.AddRole`/`EndRole` (`Humans.Auth`) and is enforced by the resource-based `RoleAssignmentAuthorizationHandler` (`RoleAssignmentOperationRequirement.Manage`), not a `CanManageRole()` method:
+Role management lives on `SystemRolesController.AddRole`/`RevokeRole` (`Humans.Auth`) and is enforced by the resource-based `SystemRoleAuthorizationHandler` (`SystemRoleOperationRequirement.Manage`), not a `CanManageRole()` method:
 - **Admin** can assign any role
 - **UsersAdmin** can assign every role except Admin, including ConsentCoordinator and ShiftsAdmin; Board assigns no roles
 

@@ -74,7 +74,7 @@ public sealed record UserInfo(
     string PreferredLanguage,
     string? FallbackPictureUrl,
     Instant CreatedAt,
-    Instant? LastLoginAt,
+    Instant? LastSignInAt,
     Instant? DeletionRequestedAt,
     Instant? DeletionScheduledFor,
     Instant? DeletionEligibleAfter,
@@ -134,9 +134,7 @@ public sealed record UserInfo(
 
             return UserEmails
                 .Where(e => e.IsVerified)
-                .OrderByDescending(e => e.IsPrimary)
-                .Select(e => e.Email)
-                .FirstOrDefault() ?? IdentityEmailColumn;
+                .MaxBy(e => e.IsPrimary)?.Email ?? IdentityEmailColumn;
         }
     }
 
@@ -258,7 +256,7 @@ public sealed record UserInfo(
             PreferredLanguage: user.PreferredLanguage,
             FallbackPictureUrl: user.ProfilePictureUrl,
             CreatedAt: user.CreatedAt,
-            LastLoginAt: user.LastLoginAt,
+            LastSignInAt: user.LastSignInAt,
             DeletionRequestedAt: user.DeletionRequestedAt,
             DeletionScheduledFor: user.DeletionScheduledFor,
             DeletionEligibleAfter: user.DeletionEligibleAfter,

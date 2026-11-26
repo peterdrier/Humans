@@ -62,7 +62,7 @@ internal sealed class TicketQueryService(
         var approved = await ticketTransferRepository.GetApprovedAsync(ct);
         var transfersByAttendee = approved
             .GroupBy(t => t.OriginalTicketAttendeeId)
-            .ToDictionary(g => g.Key, g => g.OrderByDescending(t => t.DecidedAt).First());
+            .ToDictionary(g => g.Key, g => g.MaxBy(t => t.DecidedAt)!);
 
         return orders.Select(o => Project(o, currentEventId, transfersByAttendee)).ToList();
     }
@@ -848,7 +848,7 @@ internal sealed class TicketQueryService(
             events.Add(activeEvent);
 
         var heldSettingsIds = (await checkout.GetTicketsForHolderAsync(userId, ct))
-            .Where(t => t.State is TicketCheckoutTicketState.Valid or TicketCheckoutTicketState.Offered)
+            .Where(t => t.IsHeld)
             .Select(t => t.TicketingSettingsId)
             .Distinct();
         foreach (var settingsId in heldSettingsIds)

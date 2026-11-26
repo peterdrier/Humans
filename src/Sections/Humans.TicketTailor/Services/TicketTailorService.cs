@@ -20,6 +20,7 @@ namespace Humans.TicketTailor.Services;
 internal sealed class TicketTailorService : ITicketVendorService
 {
     private const string BaseUrl = "https://api.tickettailor.com/v1";
+    private const int PageSafetyCap = 500;
 
     private readonly HttpClient _httpClient;
     private readonly ILogger<TicketTailorService> _logger;
@@ -135,7 +136,7 @@ internal sealed class TicketTailorService : ITicketVendorService
     {
         string? cursor = null;
         var seenCursors = new HashSet<string>(StringComparer.Ordinal);
-        do
+        for (var page = 1; page <= PageSafetyCap; page++)
         {
             var url = $"{BaseUrl}/{resource}?event_id={eventId}";
             if (since.HasValue)
@@ -177,7 +178,9 @@ internal sealed class TicketTailorService : ITicketVendorService
             if (body.Links.Next is not null
                 && (string.IsNullOrWhiteSpace(cursor) || !seenCursors.Add(cursor)))
                 throw new HttpRequestException("TicketTailor pagination returned a missing or repeated cursor.");
-        } while (cursor is not null);
+            if (cursor is null) yield break;
+        }
+        throw new HttpRequestException($"TicketTailor pagination hit the {PageSafetyCap}-page safety cap.");
     }
 
     public async Task<VendorEventSummaryDto> GetEventSummaryAsync(

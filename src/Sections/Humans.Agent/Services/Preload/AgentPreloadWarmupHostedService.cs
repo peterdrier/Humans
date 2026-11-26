@@ -1,6 +1,5 @@
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
-using Humans.Agent.Domain;
 
 namespace Humans.Agent.Services.Preload;
 
@@ -42,8 +41,7 @@ internal sealed class AgentPreloadWarmupHostedService(
     internal static async Task WarmCachesAsync(IServiceProvider sp, CancellationToken cancellationToken)
     {
         var corpus = sp.GetRequiredService<IAgentPreloadCorpusBuilder>();
-        foreach (var config in Enum.GetValues<AgentPreloadConfig>())
-            await corpus.BuildAsync(config, cancellationToken);
+        await corpus.BuildAsync(cancellationToken);
 
         // ListTopicsAsync reads every community doc to build the index, which warms the
         // per-file cache that fetch_community_faq serves from.

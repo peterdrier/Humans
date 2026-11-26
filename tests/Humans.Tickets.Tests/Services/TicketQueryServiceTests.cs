@@ -138,7 +138,7 @@ public sealed class TicketQueryServiceTests : TicketsTestHarness
         await using var provider = services.BuildServiceProvider();
         var decorator = new CachingTicketQueryService(provider.GetRequiredService<IServiceScopeFactory>(),
             Clock, NullLogger<CachingTicketQueryService>.Instance);
-        var logger = new Humans.Testing.CapturingLogger<TicketDashboardPageBuilder>();
+        var logger = new CapturingLogger<TicketDashboardPageBuilder>();
         var dashboard = new TicketDashboardPageBuilder(vendor,
             Options.Create(new TicketVendorSettings { EventId = "event", ApiKey = "key" }), decorator, logger);
         var controller = new TicketController(decorator, Substitute.For<ITicketSyncService>(),
@@ -602,8 +602,8 @@ public sealed class TicketQueryServiceTests : TicketsTestHarness
         order.ApplicationFee = 2m;
         order.FeeTax = 1.05m;
         order.WithheldTax = 0.50m;
-        await TicketsDb.TicketOrders.AddAsync(order, Xunit.TestContext.Current.CancellationToken);
-        await SaveAllAsync(Xunit.TestContext.Current.CancellationToken);
+        await TicketsDb.TicketOrders.AddAsync(order, TestContext.Current.CancellationToken);
+        await SaveAllAsync(TestContext.Current.CancellationToken);
 
         var stats = await _service.GetDashboardStatsAsync();
 
@@ -1026,13 +1026,13 @@ public sealed class TicketQueryServiceTests : TicketsTestHarness
                 Instant.FromUtc(2026, 3, 1, 10, 0), 100m, 0m, 0m, 1, 0m, id);
             TicketsDb.TicketOrders.Add(order);
         }
-        await SaveAllAsync(Xunit.TestContext.Current.CancellationToken);
+        await SaveAllAsync(TestContext.Current.CancellationToken);
 
         var paged = new List<Guid>();
         for (var page = 1; page <= ids.Length; page++)
         {
             var result = await _service.GetOrdersPageAsync(
-                null, "amount", false, page, 1, null, null, null, Xunit.TestContext.Current.CancellationToken);
+                null, "amount", false, page, 1, null, null, null, TestContext.Current.CancellationToken);
             paged.Add(result.Rows.Single().Id);
         }
 
@@ -1047,13 +1047,13 @@ public sealed class TicketQueryServiceTests : TicketsTestHarness
             Instant.FromUtc(2026, 3, 1, 10, 0), 300m, 0m, 0m, 3, 0m,
             attendeeId: i => new Guid($"00000000-0000-0000-0000-00000000000{4 - i}"));
         TicketsDb.TicketOrders.Add(order);
-        await SaveAllAsync(Xunit.TestContext.Current.CancellationToken);
+        await SaveAllAsync(TestContext.Current.CancellationToken);
 
         var paged = new List<Guid>();
         for (var page = 1; page <= 3; page++)
         {
             var result = await _service.GetAttendeesPageAsync(
-                null, "price", false, page, 1, null, null, null, null, ct: Xunit.TestContext.Current.CancellationToken);
+                null, "price", false, page, 1, null, null, null, null, ct: TestContext.Current.CancellationToken);
             paged.Add(result.Rows.Single().Id);
         }
 

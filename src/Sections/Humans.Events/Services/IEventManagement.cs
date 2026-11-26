@@ -3,12 +3,11 @@ using Humans.Settings.Contracts;
 using Humans.Events.Domain;
 using NodaTime;
 using Humans.Events.Contracts;
-using Humans.Base.Interfaces;
 using Humans.Gdpr.Contracts;
 
 namespace Humans.Events.Services;
 
-internal interface IEventManagement : IApplicationService, IEventService
+internal interface IEventManagement : IEventService
 {
     /// <summary>Carries <c>TimeZoneId</c> for rendering start times in the burn's local zone.</summary>
     Task<EventGuideSettingsView?> GetGuideSettingsAsync(CancellationToken ct = default);

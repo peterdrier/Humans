@@ -3,7 +3,6 @@ using Humans.Shifts.Contracts;
 using Humans.Teams.Contracts;
 using Humans.Shifts.Domain;
 using Humans.Shifts.Data;
-using Humans.Shifts.Helpers;
 using Humans.Users.Contracts;
 
 namespace Humans.Shifts.Services;
