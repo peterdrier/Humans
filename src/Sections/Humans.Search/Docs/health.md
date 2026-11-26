@@ -104,4 +104,4 @@ The shapes imply today's layout:
 | Run | Date | Headline | PR |
 |---|---|---|---|
 | 1 | 2026-09-06 | First doctor pass — the code is at target; the docs are not: the Shifts read-split, the nav's move to `ISectionNav`, and two rulings that closed as designed are all recorded as still pending, and every line-number citation had drifted | peterdrier/Humans#1602 |
-| 2 | 2026-11-26 | Re-doctor after the contributor-seam rebuild: target regenerated; a failed search now always shows the unavailable notice; the two-character minimum stated once; run-on test names renamed; doc drift fixed | pending |
+| 2 | 2026-11-26 | Re-doctor after the contributor-seam rebuild: target regenerated; a failed search now always shows the unavailable notice; the two-character minimum stated once; run-on test names renamed; doc drift fixed | peterdrier/Humans#2631 |
