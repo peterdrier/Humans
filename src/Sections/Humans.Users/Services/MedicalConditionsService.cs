@@ -18,6 +18,13 @@ internal sealed class MedicalConditionsService(
     public async Task<string?> GetOwnAsync(Guid userId, CancellationToken ct = default) =>
         (await repo.GetByUserIdReadOnlyAsync(userId, ct))?.MedicalConditions;
 
+    /// <summary>
+    /// Whether anything is on file, for a viewer the reveal policy admits. Not audited: knowing the box is
+    /// non-empty is what spares a reveal of an empty one.
+    /// </summary>
+    public async Task<bool> IsOnFileAsync(Guid userId, CancellationToken ct = default) =>
+        !string.IsNullOrEmpty(await GetOwnAsync(userId, ct));
+
     /// <summary>Null when the member is unknown or nothing is on file; then nothing is audited.</summary>
     public async Task<string?> RevealAsync(Guid subjectUserId, Guid actorUserId, CancellationToken ct = default)
     {

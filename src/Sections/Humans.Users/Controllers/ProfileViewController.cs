@@ -81,6 +81,10 @@ internal sealed class ProfileViewController(
             && await shiftMgmt.CanManageOrApproveAnyShiftsAsync(viewer.Id, ct);
 
         var canViewSentMessages = await CanViewSentMessagesAsync(isOwnProfile, viewerRunsShifts);
+        bool? hasMedicalConditions = !isOwnProfile
+            && (await authorizationService.AuthorizeAsync(User, UsersPolicies.MedicalDataViewer)).Succeeded
+                ? await medicalConditions.IsOnFileAsync(id, ct)
+                : null;
 
         var viewModel = new ProfileViewModel
         {
@@ -89,6 +93,7 @@ internal sealed class ProfileViewController(
             PageTitle = profileInfo.BurnerName,
             IsOwnProfile = isOwnProfile,
             CanViewSentMessages = canViewSentMessages,
+            HasMedicalConditions = hasMedicalConditions,
         };
 
         return View("~/Views/Profile/Index.cshtml", viewModel);
@@ -170,8 +175,7 @@ internal sealed class ProfileViewController(
         // Resolved, so a merged-away session audits the survivor and a gone account reads nothing.
         if (await GetCurrentUserInfoAsync(ct) is not { } actor) return Forbid();
 
-        // Null text is "nothing on file": the button shows for every viewer the policy admits, because no
-        // other section may know whether a member has conditions.
+        // The page offers the button only when something is on file; null text still answers a stale page.
         var text = await medicalConditions.RevealAsync(id, actor.Id, ct);
         return Json(new { text });
     }
