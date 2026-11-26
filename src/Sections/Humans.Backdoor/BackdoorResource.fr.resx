@@ -65,4 +65,23 @@
   <data name="Backdoor_Error_NotEligible" xml:space="preserve"><value>Ce compte ne peut pas détenir de clé.</value></data>
   <data name="Backdoor_Error_NotAllowed" xml:space="preserve"><value>Tu ne peux créer et modifier que tes propres clés.</value></data>
   <data name="Backdoor_Error_NotFound" xml:space="preserve"><value>Cette clé n'existe plus ou est déjà révoquée.</value></data>
+  <data name="Backdoor_Connections_Title" xml:space="preserve"><value>Applications connectées</value></data>
+  <data name="Backdoor_Connections_Empty" xml:space="preserve"><value>Aucune application connectée.</value></data>
+  <data name="Backdoor_Connections_App" xml:space="preserve"><value>Application</value></data>
+  <data name="Backdoor_Connections_Connected" xml:space="preserve"><value>Connectée</value></data>
+  <data name="Backdoor_Connections_Revoked" xml:space="preserve"><value>Connexion révoquée.</value></data>
+  <data name="Backdoor_Connections_Error_NotFound" xml:space="preserve"><value>Cette connexion n'existe plus ou est déjà révoquée.</value></data>
+  <data name="Backdoor_Connect_Title" xml:space="preserve"><value>Connecter Claude</value></data>
+  <data name="Backdoor_Connect_Steps" xml:space="preserve"><value>Dans Claude, ajoute un connecteur personnalisé avec cette adresse. Dans les paramètres avancés, saisis l'ID client OAuth ci-dessous. Claude ouvre alors Humans, où tu te connectes et l'autorises.</value></data>
+  <data name="Backdoor_Connect_Address" xml:space="preserve"><value>Adresse</value></data>
+  <data name="Backdoor_Connect_ClientId" xml:space="preserve"><value>ID client OAuth</value></data>
+  <data name="Backdoor_Authorize_Title" xml:space="preserve"><value>Autoriser {0} à utiliser Humans en ton nom ?</value></data>
+  <data name="Backdoor_Authorize_Body" xml:space="preserve"><value>{0} pourra utiliser les outils Humans auxquels tu as accès, en ton nom, jusqu'à ce que tu le révoques sur ta page de clés API ou que 30 jours passent.</value></data>
+  <data name="Backdoor_Authorize_ReturnsTo" xml:space="preserve"><value>Après l'avoir autorisé, tu seras renvoyé vers :</value></data>
+  <data name="Backdoor_Authorize_Warning" xml:space="preserve"><value>N'autorise ceci que si tu viens toi-même de commencer à connecter {0}. Sinon, appuie sur Refuser.</value></data>
+  <data name="Backdoor_Authorize_Allow" xml:space="preserve"><value>Autoriser</value></data>
+  <data name="Backdoor_Authorize_Deny" xml:space="preserve"><value>Refuser</value></data>
+  <data name="Backdoor_Connection_Notification_Title" xml:space="preserve"><value>{0} a été connecté à ton compte Humans</value></data>
+  <data name="Backdoor_Connection_Notification_Body" xml:space="preserve"><value>Si ce n'était pas toi, révoque-le sur ta page de clés API.</value></data>
+  <data name="Backdoor_Connection_Notification_Action" xml:space="preserve"><value>Vérifier</value></data>
 </root>
