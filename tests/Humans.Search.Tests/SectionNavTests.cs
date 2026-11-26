@@ -13,7 +13,7 @@ namespace Humans.Search.Tests;
 public sealed class SectionNavTests
 {
     [HumansFact]
-    public void TheSearchItem_ShowsToAnAuthenticatedUser_WithNoProfile()
+    public void Visible_SignedInWithoutProfile_ReturnsTrue()
     {
         var item = ((ISectionNav)new Section()).Items().Should().ContainSingle().Subject;
         var signedIn = new ClaimsPrincipal(new ClaimsIdentity(authenticationType: "test"));
@@ -22,7 +22,7 @@ public sealed class SectionNavTests
     }
 
     [HumansFact]
-    public void TheSearchItem_IsHiddenFromAnAnonymousVisitor()
+    public void Visible_Anonymous_ReturnsFalse()
     {
         var item = ((ISectionNav)new Section()).Items().Single();
         var anonymous = new ClaimsPrincipal(new ClaimsIdentity());

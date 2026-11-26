@@ -19,6 +19,8 @@
   src/Sections/Humans.Shifts/Controllers/ShiftsController.cs
   src/Sections/Humans.Shifts/Models/ShiftBrowsePageBuilder.cs
   src/Sections/Humans.Teams/ViewComponents/TeamsSearchResultViewComponent.cs
+  src/Sections/Humans.Users/ViewComponents/UserSearchResultViewComponent.cs
+  src/Humans.Base/Extensions/StringSearchExtensions.cs
   src/Sections/Humans.Camps/ViewComponents/CampsSearchResultViewComponent.cs
   src/Sections/Humans.Shifts/ViewComponents/ShiftsSearchResultViewComponent.cs
   src/Sections/Humans.Events/ViewComponents/EventsSearchResultViewComponent.cs

@@ -16,7 +16,7 @@
   src/Humans.Web/Controllers/HomeController.cs
   src/Sections/Humans.Consent/Controllers/ConsentReviewQueueController.cs
   src/Sections/Humans.Onboarding/Services/**
-  src/Sections/Humans.Auth/Services/MagicLinkService.cs
+  src/Sections/Humans.Auth/Services/SignInLinkService.cs
   src/Sections/Humans.Consent/Services/**
   src/Humans.Web/Authorization/MembershipRequiredFilter.cs
 -->

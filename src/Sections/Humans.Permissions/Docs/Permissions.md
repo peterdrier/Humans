@@ -52,7 +52,7 @@ None. Permissions writes nothing; audit happens where a holding changes (Roles, 
 
 ## Cross-Section Dependencies
 
-- **Auth**: `IRoleAssignmentService.GetActiveForUserAsync` for the person's system roles.
+- **Auth**: `ISystemRoleService.GetActiveForUserAsync` for the person's system roles.
 - **Owner sections and sources**: found at runtime through DI (`IOwnerKind`, `IPermissionSource`); Permissions references none of them.
 
 ## Architecture

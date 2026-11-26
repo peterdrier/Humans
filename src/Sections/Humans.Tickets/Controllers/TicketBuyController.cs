@@ -17,7 +17,7 @@ namespace Humans.Tickets.Controllers;
 [Route("Tickets/Buy")]
 internal sealed class TicketBuyController(
     ITicketCheckoutService checkout,
-    IMagicLinkService magicLinks,
+    ISignInLinkService signInLinks,
     IEarlyEntryService earlyEntry,
     IUserService userService,
     IStringLocalizer<TicketsResource> localizer,
@@ -63,7 +63,7 @@ internal sealed class TicketBuyController(
         {
             try
             {
-                await magicLinks.SendMagicLinkAsync(email.Trim(), Url.Action(nameof(Index)), ct);
+                await signInLinks.SendSignInLinkAsync(email.Trim(), Url.Action(nameof(Index)), ct);
             }
             catch (Exception ex) when (ex is not OperationCanceledException)
             {
@@ -246,7 +246,8 @@ internal sealed class TicketBuyController(
         var (errorResult, user) = await RequireCurrentUserAsync(ct);
         if (errorResult is not null) return errorResult;
 
-        var result = await checkout.CancelAsync(id, user.Id, ct);
+        // A buyer who leaves mid-request must not strand an order cancelled at the platform but open here.
+        var result = await checkout.CancelAsync(id, user.Id, CancellationToken.None);
         if (result.Refusal is { } refusal)
         {
             if (string.Equals(refusal, "Tickets_Buy_OrderNotFound", StringComparison.Ordinal))

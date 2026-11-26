@@ -22,7 +22,7 @@ internal sealed class DuplicateAccountInfo
     public string? Email { get; init; }
     public string? MembershipTier { get; init; }
     public string? MembershipStatus { get; init; }
-    public DateTime? LastLogin { get; init; }
+    public DateTime? LastSignIn { get; init; }
     public DateTime? CreatedAt { get; init; }
     public bool HasProfile { get; init; }
     public List<string> Teams { get; init; } = [];

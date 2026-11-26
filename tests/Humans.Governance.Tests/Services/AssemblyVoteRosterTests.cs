@@ -35,7 +35,7 @@ public sealed class AssemblyVoteRosterTests : IDisposable
         _fx.Applications.GetActiveApprovedTierUserIdsAsync(
                 MembershipTier.Asociado, Arg.Any<LocalDate>(), Arg.Any<CancellationToken>())
             .Returns(Task.FromResult<IReadOnlyList<Guid>>([asociado]));
-        _fx.RoleAssignments.GetActiveUserIdsInRoleAsync(RoleNames.Board, Arg.Any<CancellationToken>())
+        _fx.SystemRoles.GetActiveUserIdsInRoleAsync(RoleNames.Board, Arg.Any<CancellationToken>())
             .Returns(Task.FromResult<IReadOnlyList<Guid>>([boardMember]));
         _fx.StubActiveUsers(asociado, boardMember);
 
@@ -61,7 +61,7 @@ public sealed class AssemblyVoteRosterTests : IDisposable
         _fx.Applications.GetActiveApprovedTierUserIdsAsync(
                 MembershipTier.Asociado, Arg.Any<LocalDate>(), Arg.Any<CancellationToken>())
             .Returns(Task.FromResult<IReadOnlyList<Guid>>([person]));
-        _fx.RoleAssignments.GetActiveUserIdsInRoleAsync(RoleNames.Board, Arg.Any<CancellationToken>())
+        _fx.SystemRoles.GetActiveUserIdsInRoleAsync(RoleNames.Board, Arg.Any<CancellationToken>())
             .Returns(Task.FromResult<IReadOnlyList<Guid>>([person]));
         _fx.StubActiveUsers(person);
 

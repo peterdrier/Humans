@@ -23,8 +23,8 @@ public enum SystemTeamType
     Coordinators = 2,
 
     /// <summary>
-    /// Board members with active RoleAssignment.
-    /// Auto-synced from RoleAssignment table.
+    /// Board members with active SystemRole.
+    /// Auto-synced from SystemRole table.
     /// </summary>
     Board = 3,
 

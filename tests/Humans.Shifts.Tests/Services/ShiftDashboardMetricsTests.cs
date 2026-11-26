@@ -58,7 +58,7 @@ public sealed class ShiftDashboardMetricsTests : ShiftsTestHarness
             .With<ITeamService>(fakeTeamService)
             .With<ITicketService>(fakeTicketService)
             .With<IUserService>(fakeUserService)
-            .With<IRoleAssignmentService>()
+            .With<ISystemRoleService>()
             .Build();
 
         var repo = new ShiftRepository(ShiftsDbFactory, ShiftsDb, Clock);
@@ -490,9 +490,9 @@ public sealed class ShiftDashboardMetricsTests : ShiftsTestHarness
 
         result.Should().HaveCount(2);
         result.Single(r => string.Equals(r.TeamName, "A", StringComparison.Ordinal))
-            .Coordinators.Should().ContainSingle().Which.LastLoginAt.Should().Be(coordA.LastLoginAt);
+            .Coordinators.Should().ContainSingle().Which.LastSignInAt.Should().Be(coordA.LastSignInAt);
         result.Single(r => string.Equals(r.TeamName, "B", StringComparison.Ordinal))
-            .Coordinators.Should().ContainSingle().Which.LastLoginAt.Should().Be(coordB.LastLoginAt);
+            .Coordinators.Should().ContainSingle().Which.LastSignInAt.Should().Be(coordB.LastSignInAt);
     }
 
     [HumansFact]
@@ -1044,7 +1044,7 @@ public sealed class ShiftDashboardMetricsTests : ShiftsTestHarness
         await SaveAllAsync(TestContext.Current.CancellationToken);
     }
 
-    private async Task<User> SeedUserAsync(string displayName, Instant? lastLogin = null)
+    private async Task<User> SeedUserAsync(string displayName, Instant? lastSignIn = null)
     {
         var user = new User
         {
@@ -1054,7 +1054,7 @@ public sealed class ShiftDashboardMetricsTests : ShiftsTestHarness
             Email = $"{displayName}@test",
             NormalizedEmail = $"{displayName.ToUpperInvariant()}@TEST",
             DisplayName = displayName,
-            LastLoginAt = lastLogin,
+            LastSignInAt = lastSignIn,
             SecurityStamp = Guid.NewGuid().ToString(),
             CreatedAt = TestNow,
         };
@@ -1159,7 +1159,7 @@ public sealed class ShiftDashboardMetricsTests : ShiftsTestHarness
 
         public Task<IReadOnlyCollection<UserInfo>> GetAllUserInfosAsync(CancellationToken ct = default)
         {
-            // ComputeDashboardTrendsAsync filters LastLoginAt off the UserInfo snapshot.
+            // ComputeDashboardTrendsAsync filters LastSignInAt off the UserInfo snapshot.
             var users = db.Users.ToList();
             IReadOnlyCollection<UserInfo> result = users.Select(u => UserInfoFactory.Create(
                 u,

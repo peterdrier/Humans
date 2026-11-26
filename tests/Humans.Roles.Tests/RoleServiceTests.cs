@@ -46,7 +46,7 @@ public sealed class RoleServiceTests
     private readonly Guid _actor = Guid.NewGuid();
     private readonly FakeRepository _repository = new();
     private readonly FakeOwner _owner = new();
-    private readonly IRoleAssignmentService _systemRoles = Substitute.For<IRoleAssignmentService>();
+    private readonly ISystemRoleService _systemRoles = Substitute.For<ISystemRoleService>();
     private readonly IUserService _users = Substitute.For<IUserService>();
     private readonly IAuditLogService _audit = Substitute.For<IAuditLogService>();
     private readonly RoleService _service;
@@ -429,7 +429,7 @@ public sealed class RoleServiceTests
         {
             case "system":
                 _systemRoles.GetActiveForUserAsync(_actor, Arg.Any<CancellationToken>())
-                    .Returns([new RoleAssignmentSnapshot(parts[1], null)]);
+                    .Returns([new SystemRoleSnapshot(parts[1], null)]);
                 break;
             case "coordinator":
             case "narrow":

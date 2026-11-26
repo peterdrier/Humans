@@ -15,7 +15,7 @@ public static class SystemUserIds
     /// </summary>
     public static readonly Guid GateTerminal = Guid.Parse("00000000-0000-0000-0004-000000000001");
 
-    /// <summary>Username gate staff type on /Account/GateLogin.</summary>
+    /// <summary>Username gate staff type on /Account/GateSignIn.</summary>
     public const string GateTerminalLoginName = "gate";
 
     /// <summary>Display name of the gate-terminal account.</summary>

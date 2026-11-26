@@ -8,7 +8,7 @@ namespace Humans.Workgroups.Services.Contributors;
 /// <summary>User ids only, never emails: Google hydrates and filters them uniformly across sources.</summary>
 internal sealed class WorkgroupDriveAccessSource(
     IWorkgroupService workgroups,
-    IRoleAssignmentService roles) : IGoogleDriveAccessSource
+    ISystemRoleService roles) : IGoogleDriveAccessSource
 {
     public async Task<Dictionary<string, GoogleDriveAccessClaim>> GetExpectedAccessAsync(
         string? folderId = null, CancellationToken ct = default)

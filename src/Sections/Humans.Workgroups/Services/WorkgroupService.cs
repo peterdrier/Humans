@@ -25,7 +25,7 @@ internal sealed partial class WorkgroupService(
     IWorkgroupRepository repository,
     IUserService users,
     ISurveyAnalysisRead surveys,
-    IRoleAssignmentService roles,
+    ISystemRoleService roles,
     ISettingsService settings,
     IGoogleSyncService googleSync,
     IGoogleSyncWrite googleSyncWrite,

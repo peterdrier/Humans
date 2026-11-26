@@ -6,7 +6,7 @@ internal sealed record AdminHumanRow(
     string Email,
     string DisplayName,
     DateTime CreatedAt,
-    DateTime? LastLoginAt,
+    DateTime? LastSignInAt,
     UserState State)
 {
     /// <summary>Status-column label. Read by the sort comparer and by <c>AdminList</c>'s rows.</summary>

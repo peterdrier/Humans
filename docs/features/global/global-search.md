@@ -12,6 +12,12 @@
   src/Sections/Humans.Shifts/Controllers/ShiftsController.cs
   src/Sections/Humans.Shifts/Models/ShiftBrowsePageBuilder.cs
   src/Sections/Humans.Camps.Contracts/CampSearchHit.cs
+  src/Sections/Humans.Events/Contracts/EventSearchHit.cs
+  src/Sections/Humans.Users/ViewComponents/UserSearchResultViewComponent.cs
+  src/Sections/Humans.Camps/ViewComponents/CampsSearchResultViewComponent.cs
+  src/Sections/Humans.Shifts/ViewComponents/ShiftsSearchResultViewComponent.cs
+  src/Sections/Humans.Events/ViewComponents/EventsSearchResultViewComponent.cs
+  src/Humans.Base/Extensions/StringSearchExtensions.cs
   src/Sections/Humans.Shifts/Contracts/IShiftService.cs
   src/Sections/Humans.Teams.Contracts/TeamSearchHit.cs
   src/Humans.Base/Interfaces/ISearchContributor.cs
@@ -22,8 +28,7 @@
 <!-- freshness:flag-on-change
   Search scope (which fields are searched per section), the authorization model (role-blind on both paths; public-only on text queries), the US-GS.4 GUID exception, and per-section SearchAsync contracts — review when search code, the auth-conventions atom, or the person-search atom change.
 
-  The trigger list reaches outside src/**/Search/** on purpose. Since the nobodies-collective/Humans#985
-  ruling, the visibility guarantee is enforced by the destination pages, not by Search — so the
+  The trigger list reaches outside src/**/Search/** on purpose. The visibility guarantee is enforced by the destination pages, not by Search (nobodies-collective/Humans#985) — so the
   US-GS.4 GUID exception and its known-gap note depend on CampController/TeamController, and the
   per-bucket filters and GUID branches live in the Caching*Service classes and ShiftManagementService —
   and for Shifts, one level deeper still: the service's text branch delegates to
@@ -113,7 +118,7 @@ The feature matches **each entity's own public fields only** — no cross-modal 
 
 ## Authorization Model
 
-`/Search` is gated by `[Authorize]` — anonymous viewers can't reach it. Beyond that, **search is not an authorization boundary**: a hit says a URL exists, not that the caller may open it. Visibility is enforced at the destination, in whatever shape that destination has — a detail page refuses outright, a listing page renders and omits the row (ruling on nobodies-collective/Humans#985, 2026-08-07). Text queries are still filtered to the public surface per US-GS.4; the GUID path in US-GS.5 is deliberately unfiltered, because you can only use it if you already hold the id.
+`/Search` is gated by `[Authorize]` — anonymous viewers can't reach it. Beyond that, **search is not an authorization boundary**: a hit says a URL exists, not that the caller may open it. Visibility is enforced at the destination, in whatever shape that destination has — a detail page refuses outright, a listing page renders and omits the row (nobodies-collective/Humans#985). Text queries are still filtered to the public surface per US-GS.4; the GUID path in US-GS.5 is deliberately unfiltered, because you can only use it if you already hold the id.
 
 The destination decides what "refuse" means. `CampController.Details` (and `SeasonDetails`) 404s a camp whose season is outside `Active`/`Full` unless the viewer is that camp's lead or a CampsAdmin (nobodies-collective/Humans#993) — the same refusal a non-lead hits from the camp directory, so Search's GUID exception doesn't expose anything the destination wouldn't already refuse.
 
@@ -141,7 +146,7 @@ SearchController
                └── Events "Event"  → IEventService.SearchAsync(query, int.MaxValue)  (IsEnabled: Features:Events)
 ```
 
-Humans, Teams, Camps and Events are served entirely from their caching decorators' warm in-memory snapshots — the inner `TeamService` / `CampService` / `EventService` `SearchAsync` throw `NotSupportedException` and the DB-search repository methods are gone. `IEventService` is registered as the `CachingEventService` singleton (Events' `Section.cs`), whose `SearchAsync` filters the approved-event cache in memory with `Contains(…, OrdinalIgnoreCase)` — no DB round trip per search. **Shifts is the only bucket that reaches Postgres**, running the case-insensitive `ILike` filter against the name field with `EscapeLikePattern` to defang `%` / `_` / `\` in user input. Section services map their domain entities to type-specific search-hit DTOs (`TeamSearchHit`, `CampSearchHit`, `RotaSearchHit`, `EventSearchHit`) so the orchestrator never has to traverse cross-domain navigation properties to render a row.
+Humans, Teams, Camps and Events are served entirely from their caching decorators' warm in-memory snapshots — the inner `TeamService` / `CampService` / Events' inner `Service` `SearchAsync` throw `NotSupportedException` and the DB-search repository methods are gone. `IEventService` is registered as the `CachingEventService` singleton (Events' `Section.cs`), whose `SearchAsync` filters the approved-event cache in memory with `Contains(…, OrdinalIgnoreCase)` — no DB round trip per search. **Shifts is the only bucket that reaches Postgres**, running the case-insensitive `ILike` filter against the name field with `EscapeLikePattern` to defang `%` / `_` / `\` in user input. Section services map their domain entities to type-specific search-hit DTOs (`TeamSearchHit`, `CampSearchHit`, `RotaSearchHit`, `EventSearchHit`) so the orchestrator never has to traverse cross-domain navigation properties to render a row.
 
 Every hit arrives pre-scored by the section that produced it, against one shared rubric —
 `StringSearchExtensions.NameMatchScore` in `Humans.Base` (humans use `PersonSearchMatcher`, which
@@ -166,7 +171,7 @@ Counts reflect every match — there is no cap, so the chip count is the true nu
 | `SearchCategory (Key, Label, IconCssClass, ResultComponent, SearchAsync, Weight, IsEnabled)` | each section's `ISearchContributor.Categories()` | Orchestrator |
 | `SearchHit (Key, SortKey, Score, MatchField?, MatchSnippet?)` | a category's `SearchAsync` | View invokes the category's `ResultComponent` with the hit as arguments |
 | `HumanSearchResult` / `TeamSearchHit` / `CampSearchHit` / `RotaSearchHit` / `EventSearchHit` | each section's own search method | That section's contributor maps it to `SearchHit` |
-| `SearchBucket (Key, Label, IconCssClass, ResultComponent, Hits)` | Orchestrator | View-model / view |
+| `SearchBucket (Key, Weight, Label, IconCssClass, ResultComponent, Hits)` | Orchestrator | View-model / view |
 | `GlobalSearchResults (Query, Filter, Buckets)` | `ISearchService` | Controller |
 
 ## UI

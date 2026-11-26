@@ -35,12 +35,12 @@ public sealed class ShiftSignupServiceCoverageGapTests : ShiftsTestHarness
     {
         _notificationService = Substitute.For<INotificationEmitter>();
         _teamService = Substitute.For<ITeamService>();
-        var roleAssignmentService = Substitute.For<IRoleAssignmentService>();
+        var systemRoleService = Substitute.For<ISystemRoleService>();
 
         var serviceProvider = new ServiceLocatorBuilder()
             .With(_teamService)
             .With(_teamService)
-            .With(roleAssignmentService)
+            .With(systemRoleService)
             .With<IPermissionService>()
             .Build();
 
