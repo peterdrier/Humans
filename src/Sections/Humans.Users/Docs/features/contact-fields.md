@@ -201,8 +201,11 @@ IContactFieldService
 │   → Returns all fields for editing (owner only)
 ├── SaveContactFieldsAsync(userId, fields, cancellationToken, removedLegacyContactFieldIds)
 │   → Upsert/delete current fields; remove historical email rows only by explicit, profile-scoped IDs
-└── GetViewerAccessLevelAsync(ownerUserId, viewerUserId)
-    → Determines what visibility level viewer has
+├── GetViewerAccessLevelAsync(ownerUserId, viewerUserId)
+│   → Determines what visibility level viewer has
+└── GetProfileCardVisibilityAsync(ownerUserId, viewerUserId)
+    → The profile card's privacy rules: legal name (owner or Board), access level, and the
+      Send message button (not the owner, no email visible to all profiles, owner accepts messages)
 ```
 
 ## Database Schema

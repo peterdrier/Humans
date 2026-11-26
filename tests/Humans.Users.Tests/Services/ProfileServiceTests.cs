@@ -1,3 +1,4 @@
+using Humans.Email.Contracts;
 using Humans.Testing;
 using AwesomeAssertions;
 using ImageMagick;
@@ -89,7 +90,8 @@ public sealed class ProfileServiceTests : ServiceTestHarness
         var contacts = new ContactFieldService(_userRepository, _userService,
             Substitute.For<ITeamService>(), Substitute.For<ISystemRoleService>(),
             Substitute.For<IUserInfoSliceRefresher>(), Clock, NullLogger<ContactFieldService>.Instance,
-            Substitute.For<IStringLocalizer<UsersResource>>().AddFormatting());
+            Substitute.For<IStringLocalizer<UsersResource>>().AddFormatting(),
+            Substitute.For<IUserEmailService>(), Substitute.For<ICommunicationPreferenceService>());
         var editor = new ProfileEditorService(_userService, contacts, NullLogger<ProfileEditorService>.Instance);
         _userService.SaveProfileLanguagesAsync(Arg.Any<Guid>(), Arg.Any<IReadOnlyList<ProfileLanguageInfo>>(), Arg.Any<CancellationToken>())
             .Returns(call => _storageUserService.SaveProfileLanguagesAsync(call.Arg<Guid>(),

@@ -8,6 +8,7 @@ using Humans.Users.Contracts;
 using Humans.Users.Data;
 using Humans.Base.Enums;
 using Humans.Teams.Contracts;
+using Humans.Email.Contracts;
 
 namespace Humans.Users.Services;
 
@@ -19,7 +20,9 @@ internal sealed class ContactFieldService(
     IUserInfoSliceRefresher userInfoRefresher,
     IClock clock,
     ILogger<ContactFieldService> logger,
-    IStringLocalizer<UsersResource> localizer) : IContactFieldService, IUserMerge
+    IStringLocalizer<UsersResource> localizer,
+    IUserEmailService userEmailService,
+    ICommunicationPreferenceService communicationPreferences) : IContactFieldService, IUserMerge
 {
     public async Task<IReadOnlyList<ContactFieldDto>> GetVisibleContactFieldsAsync(
         Guid userId,
@@ -194,6 +197,24 @@ internal sealed class ContactFieldService(
             return ContactFieldVisibility.MyTeams;
 
         return ContactFieldVisibility.AllActiveProfiles;
+    }
+
+    public async Task<ProfileCardVisibility> GetProfileCardVisibilityAsync(
+        Guid ownerUserId,
+        Guid viewerUserId,
+        CancellationToken cancellationToken = default)
+    {
+        var accessLevel = await GetViewerAccessLevelAsync(ownerUserId, viewerUserId, cancellationToken);
+
+        // BoardOnly access is exactly the owner or a Board member, the same people who may see the legal name.
+        var canViewLegalName = accessLevel == ContactFieldVisibility.BoardOnly;
+
+        var canSendMessage = ownerUserId != viewerUserId
+            && !(await userEmailService.GetVisibleEmailsAsync(ownerUserId, accessLevel, cancellationToken))
+                .Any(e => e.Visibility >= ContactFieldVisibility.AllActiveProfiles)
+            && await communicationPreferences.AcceptsFacilitatedMessagesAsync(ownerUserId, cancellationToken);
+
+        return new ProfileCardVisibility(canViewLegalName, accessLevel, canSendMessage);
     }
 
     public Task ReassignAsync(Guid sourceUserId, Guid targetUserId, Guid actorUserId, Instant updatedAt,

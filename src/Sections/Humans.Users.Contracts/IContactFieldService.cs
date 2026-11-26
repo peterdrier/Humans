@@ -29,4 +29,16 @@ public interface IContactFieldService
         Guid ownerUserId,
         Guid viewerUserId,
         CancellationToken cancellationToken = default);
+
+    /// <summary>What <paramref name="viewerUserId"/> may see of <paramref name="ownerUserId"/> on a profile card.</summary>
+    Task<ProfileCardVisibility> GetProfileCardVisibilityAsync(
+        Guid ownerUserId,
+        Guid viewerUserId,
+        CancellationToken cancellationToken = default);
 }
+
+/// <summary>The privacy rules a profile card renders, decided by <see cref="IContactFieldService"/>.</summary>
+/// <param name="CanViewLegalName">Legal name, emergency contact and Board notes: the owner and the Board only.</param>
+/// <param name="AccessLevel">The most private contact visibility the viewer may see.</param>
+/// <param name="CanSendMessage">Not the owner, no email visible to all profiles, and the owner accepts facilitated messages.</param>
+public sealed record ProfileCardVisibility(bool CanViewLegalName, ContactFieldVisibility AccessLevel, bool CanSendMessage);

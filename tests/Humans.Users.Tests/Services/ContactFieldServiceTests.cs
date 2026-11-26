@@ -18,6 +18,7 @@ using Humans.Teams.Contracts;
 using Humans.Users.Data.Repositories;
 using Microsoft.Extensions.Logging.Abstractions;
 using Humans.Users.Contracts;
+using Humans.Email.Contracts;
 
 namespace Humans.Users.Tests.Services;
 
@@ -28,6 +29,8 @@ public sealed class ContactFieldServiceTests : ServiceTestHarness
     private readonly IUserManagement _userService;
     private readonly IUserInfoSliceRefresher _userInfoRefresher = Substitute.For<IUserInfoSliceRefresher>();
     private readonly ContactFieldService _service;
+    private readonly IUserEmailService _userEmailService = Substitute.For<IUserEmailService>();
+    private readonly ICommunicationPreferenceService _communicationPreferences = Substitute.For<ICommunicationPreferenceService>();
 
     public ContactFieldServiceTests()
         : base(Instant.FromUtc(2024, 1, 15, 12, 0, 0))
@@ -43,7 +46,8 @@ public sealed class ContactFieldServiceTests : ServiceTestHarness
             _userInfoRefresher,
             Clock, NullLogger<ContactFieldService>.Instance,
             new StringLocalizer<UsersResource>(new ResourceManagerStringLocalizerFactory(
-                Options.Create(new LocalizationOptions()), NullLoggerFactory.Instance)));
+                Options.Create(new LocalizationOptions()), NullLoggerFactory.Instance)),
+            _userEmailService, _communicationPreferences);
     }
 
     [HumansTheory]
@@ -121,7 +125,8 @@ public sealed class ContactFieldServiceTests : ServiceTestHarness
         var service = new ContactFieldService(new UserRepository(new TestDbContextFactory(options), Clock),
             cache, _teamService, _systemRoleService, cache, Clock, NullLogger<ContactFieldService>.Instance,
             new StringLocalizer<UsersResource>(new ResourceManagerStringLocalizerFactory(
-                Options.Create(new LocalizationOptions()), NullLoggerFactory.Instance)));
+                Options.Create(new LocalizationOptions()), NullLoggerFactory.Instance)),
+            _userEmailService, _communicationPreferences);
         var save = () => service.SaveContactFieldsAsync(profile.UserId,
             [new(field.Id, field.FieldType, null, "+34 622222222", ContactFieldVisibility.BoardOnly, 0)], cancellation.Token);
 
@@ -178,6 +183,46 @@ public sealed class ContactFieldServiceTests : ServiceTestHarness
             .Returns(Task.FromResult<IReadOnlyDictionary<Guid, TeamInfo>>(
                 new Dictionary<Guid, TeamInfo>()));
     }
+
+    #region GetProfileCardVisibilityAsync Tests
+
+    [HumansTheory]
+    [InlineData(true, false, true)]
+    [InlineData(false, true, true)]
+    [InlineData(false, false, false)]
+    public async Task GetProfileCardVisibility_LegalName_BoardOrOwnerOnly(bool isOwner, bool isBoard, bool expected)
+    {
+        var ownerId = Guid.NewGuid();
+        var viewerId = isOwner ? ownerId : Guid.NewGuid();
+        _systemRoleService.IsUserBoardMemberAsync(viewerId, Arg.Any<CancellationToken>()).Returns(isBoard);
+        SetupTeams();
+
+        var result = await _service.GetProfileCardVisibilityAsync(ownerId, viewerId, TestContext.Current.CancellationToken);
+
+        result.CanViewLegalName.Should().Be(expected);
+    }
+
+    [HumansTheory]
+    [InlineData(false, ContactFieldVisibility.MyTeams, true, true)]
+    [InlineData(true, ContactFieldVisibility.MyTeams, true, false)]
+    [InlineData(false, ContactFieldVisibility.AllActiveProfiles, true, false)]
+    [InlineData(false, ContactFieldVisibility.MyTeams, false, false)]
+    public async Task GetProfileCardVisibility_Message_OnlyWithHiddenEmails(
+        bool isOwner, ContactFieldVisibility emailVisibility, bool accepts, bool expected)
+    {
+        var ownerId = Guid.NewGuid();
+        var viewerId = isOwner ? ownerId : Guid.NewGuid();
+        SetupTeams();
+        _userEmailService.GetVisibleEmailsAsync(ownerId, Arg.Any<ContactFieldVisibility>(), Arg.Any<CancellationToken>())
+            .Returns([new UserEmailDto(Guid.NewGuid(), "owner@example.com", true, null, null, true, emailVisibility)]);
+        _communicationPreferences.AcceptsFacilitatedMessagesAsync(ownerId, Arg.Any<CancellationToken>()).Returns(accepts);
+
+        var result = await _service.GetProfileCardVisibilityAsync(ownerId, viewerId, TestContext.Current.CancellationToken);
+
+        result.CanSendMessage.Should().Be(expected);
+    }
+
+    #endregion
 
     #region GetViewerAccessLevelAsync Tests
 
