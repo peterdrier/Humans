@@ -1,3 +1,4 @@
+using Humans.Testing;
 using System.Globalization;
 using Humans.Base.Configuration;
 using Humans.Expenses.Services;
@@ -27,7 +28,7 @@ internal static class TestExpensesEmails
 
     public static ExpensesEmails Create()
     {
-        var localizer = Substitute.For<IStringLocalizer<ExpensesResource>>();
+        var localizer = Substitute.For<IStringLocalizer<ExpensesResource>>().AddFormatting();
         localizer[Arg.Any<string>()].Returns(call =>
         {
             var key = call.Arg<string>();

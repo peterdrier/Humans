@@ -392,6 +392,8 @@ export function initGate(refs) {
             search();
         });
         findInput.addEventListener('input', () => {
+            seq++;
+            results.replaceChildren();
             bumpIdle();
             if (typeTimer) clearTimeout(typeTimer);
             typeTimer = setTimeout(search, TYPE_QUIET_MS);

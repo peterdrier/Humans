@@ -29,8 +29,8 @@
       One reason per reference:
       Notifications.Contracts — best-effort in-app notice to the human whose role changed.
       Users.Contracts — IUserService for assignee/creator display stitching;
-                        MagicLinkService uses its raw identity projection and IUserEmailService.
-      Email.Contracts — IEmailService, which MagicLinkService injects to send the
+                        SignInLinkService uses its raw identity projection and IUserEmailService.
+      Email.Contracts — IEmailService, which SignInLinkService injects to send the
                         login/signup mail built by the section's own AuthEmails.
       Teams.Contracts — TeamsRoles, for the Teams Admin role check.
       No Onboarding.Contracts reference.

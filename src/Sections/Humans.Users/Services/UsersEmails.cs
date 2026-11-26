@@ -27,8 +27,8 @@ internal sealed class UsersEmails(
         => Localized(culture, () => new EmailMessage(
             toEmail, userName, userId,
             L("Users_Email_VerifyEmail_Subject"),
-            Lf(isConflict ? "Users_Email_EmailVerification_Merge_Body" : "Users_Email_EmailVerification_Body",
-                Encode(userName), Encode(toEmail), verificationUrl),
+            localizer[isConflict ? "Users_Email_EmailVerification_Merge_Body" : "Users_Email_EmailVerification_Body",
+                Encode(userName), Encode(toEmail), verificationUrl],
             EmailVerificationTemplate, Urgent: true));
 
     /// <summary>
@@ -39,14 +39,14 @@ internal sealed class UsersEmails(
         => Localized(culture, () => new EmailMessage(
             toEmail, userName, userId,
             L("Users_Email_AccountsMerged_Subject"),
-            Lf("Users_Email_AccountsMerged_Body", Encode(userName), Encode(_settings.AdminAddress)),
+            localizer["Users_Email_AccountsMerged_Body", Encode(userName), Encode(_settings.AdminAddress)],
             "accounts_merged", Urgent: true));
 
     public EmailMessage AccountDeletionRequested(Guid userId, string userEmail, string userName, Instant deletionDate, string? culture = null)
         => Localized(culture, () => new EmailMessage(
             userEmail, userName, userId,
             L("Users_Email_DeletionRequested_Subject"),
-            Lf("Users_Email_AccountDeletionRequested_Body", Encode(userName), deletionDate.InUtc().Date.ToDate(), _settings.BaseUrl),
+            localizer["Users_Email_AccountDeletionRequested_Body", Encode(userName), deletionDate.InUtc().Date.ToDate(), _settings.BaseUrl],
             "deletion_requested"));
 
     /// <summary>
@@ -57,20 +57,17 @@ internal sealed class UsersEmails(
         => Localized(culture, () => new EmailMessage(
             userEmail, userName, userId,
             L("Users_Email_AccountDeleted_Subject"),
-            Lf("Users_Email_AccountDeleted_Body", Encode(userName)),
+            localizer["Users_Email_AccountDeleted_Body", Encode(userName)],
             "account_deleted", DoNotPersist: true));
 
     public EmailMessage AccessSuspended(Guid userId, string userEmail, string userName, string reason, string? culture = null)
         => Localized(culture, () => new EmailMessage(
             userEmail, userName, userId,
             L("Users_Email_AccessSuspended_Subject"),
-            Lf("Users_Email_AccessSuspended_Body", Encode(userName), Encode(reason), _settings.BaseUrl, _settings.AdminAddress),
+            localizer["Users_Email_AccessSuspended_Body", Encode(userName), Encode(reason), _settings.BaseUrl, _settings.AdminAddress],
             "access_suspended"));
 
     private string L(string key) => localizer[key].Value;
-
-    private string Lf(string key, params object[] args) =>
-        string.Format(CultureInfo.CurrentCulture, localizer[key].Value, args);
 
     private static string Encode(string text) => WebUtility.HtmlEncode(text);
 

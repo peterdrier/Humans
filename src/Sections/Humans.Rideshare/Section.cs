@@ -51,7 +51,10 @@ public sealed class Section :
         services.AddHttpClient<IRouteProvider, OpenRouteServiceClient>((sp, client) =>
             {
                 var opts = sp.GetRequiredService<IOptions<RouteProviderOptions>>().Value;
-                client.BaseAddress = new Uri(opts.BaseUrl.TrimEnd('/') + "/");
+                // Invalid routing configuration must reach the provider's unavailable path, not break service resolution.
+                if (Uri.TryCreate(opts.BaseUrl.TrimEnd('/') + "/", UriKind.Absolute, out var baseAddress)
+                    && baseAddress.Scheme is "http" or "https")
+                    client.BaseAddress = baseAddress;
                 client.Timeout = TimeSpan.FromSeconds(30);
             })
             // The geocode request carries the API key in its query string; the default

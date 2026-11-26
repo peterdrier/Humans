@@ -1,3 +1,4 @@
+using Humans.Testing;
 using AwesomeAssertions;
 using Humans.Base;
 using Humans.Base.Constants;
@@ -25,7 +26,7 @@ public sealed class GuestDataControllerTests
     private readonly IUserService _users = Substitute.For<IUserService>();
     private readonly IGdprService _gdpr = Substitute.For<IGdprService>();
     private readonly IAccountDeletionService _deletion = Substitute.For<IAccountDeletionService>();
-    private readonly IStringLocalizer<GdprResource> _localizer = Substitute.For<IStringLocalizer<GdprResource>>();
+    private readonly IStringLocalizer<GdprResource> _localizer = Substitute.For<IStringLocalizer<GdprResource>>().AddFormatting();
     private readonly Guid _userId = Guid.NewGuid();
 
     private GuestDataController Sut(bool signedIn = true)
@@ -39,7 +40,7 @@ public sealed class GuestDataControllerTests
                 _ => key,
             });
         });
-        var shared = Substitute.For<IStringLocalizer<SharedResource>>();
+        var shared = Substitute.For<IStringLocalizer<SharedResource>>().AddFormatting();
         shared[Arg.Any<string>()].Returns(ci => new LocalizedString(ci.Arg<string>(), ci.Arg<string>()));
         _users.GetUserInfoAsync(_userId, Arg.Any<CancellationToken>())
             .Returns(new ValueTask<UserInfo?>(ControllerTestHost.Info(_userId)));

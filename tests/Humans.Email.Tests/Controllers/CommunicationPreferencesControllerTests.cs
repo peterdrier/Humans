@@ -1,3 +1,4 @@
+using Humans.Testing;
 using System.Globalization;
 using System.Reflection;
 using System.Security.Claims;
@@ -27,14 +28,14 @@ public class CommunicationPreferencesControllerTests
     private readonly Guid _userId = Guid.NewGuid();
     private readonly IUserService _userService = Substitute.For<IUserService>();
     private readonly ICommunicationPreferenceManagement _commPrefService = Substitute.For<ICommunicationPreferenceManagement>();
-    private readonly IStringLocalizer<EmailResource> _localizer = Substitute.For<IStringLocalizer<EmailResource>>();
+    private readonly IStringLocalizer<EmailResource> _localizer = Substitute.For<IStringLocalizer<EmailResource>>().AddFormatting();
     private readonly CommunicationPreferencesController _controller;
 
     public CommunicationPreferencesControllerTests()
     {
         _localizer[Arg.Any<string>()].Returns(call => new LocalizedString(call.ArgAt<string>(0), call.ArgAt<string>(0)));
         _commPrefService.UpdatePreferenceAsync(Arg.Any<Guid>(), Arg.Any<MessageCategory>(), Arg.Any<bool>(),
-            Arg.Any<bool>(), Arg.Any<string>(), Arg.Any<Guid?>(), Arg.Any<CancellationToken>()).Returns(true);
+            Arg.Any<bool>(), Arg.Any<string>(), Arg.Any<Guid?>(), Arg.Any<CancellationToken>()).Returns(PreferenceUpdateOutcome.Success);
         _userService.GetUserInfoAsync(_userId, Arg.Any<CancellationToken>())
             .Returns(new ValueTask<UserInfo?>(Viewer()));
 
@@ -152,6 +153,18 @@ public class CommunicationPreferencesControllerTests
     }
 
     [HumansFact]
+    public async Task UpdatePreference_UnavailableAccount_ReturnsUnauthorized()
+    {
+        _commPrefService.UpdatePreferenceAsync(Arg.Any<Guid>(), Arg.Any<MessageCategory>(), Arg.Any<bool>(),
+            Arg.Any<bool>(), Arg.Any<string>(), Arg.Any<Guid?>(), Arg.Any<CancellationToken>())
+            .Returns(PreferenceUpdateOutcome.UserUnavailable);
+
+        var result = await _controller.UpdatePreference(MessageCategory.Marketing, false, false);
+
+        result.Should().BeOfType<UnauthorizedResult>();
+    }
+
+    [HumansFact]
     public async Task UpdatePreference_AlwaysOnCategory_IsRejected()
     {
         var result = await _controller.UpdatePreference(MessageCategory.System, emailEnabled: false, alertEnabled: false);
@@ -165,7 +178,7 @@ public class CommunicationPreferencesControllerTests
     public async Task UpdatePreference_ServiceRefusesLockedTicketing_IsRejected()
     {
         _commPrefService.UpdatePreferenceAsync(_userId, MessageCategory.Ticketing, Arg.Any<bool>(), Arg.Any<bool>(),
-            Arg.Any<string>(), Arg.Any<Guid?>(), Arg.Any<CancellationToken>()).Returns(false);
+            Arg.Any<string>(), Arg.Any<Guid?>(), Arg.Any<CancellationToken>()).Returns(PreferenceUpdateOutcome.Locked);
 
         var result = await _controller.UpdatePreference(MessageCategory.Ticketing, emailEnabled: false, alertEnabled: false);
 

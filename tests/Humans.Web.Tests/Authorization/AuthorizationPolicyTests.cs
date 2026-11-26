@@ -538,7 +538,7 @@ public class AuthorizationPolicyTests : IDisposable
         endpoints.Should().HaveCount(2);
         var user = authenticated ? CreateUserWithRoles(RoleNames.Admin) : new ClaimsPrincipal(new ClaimsIdentity());
         if (state is not null)
-            ((ClaimsIdentity)user.Identity!).AddClaim(new Claim(RoleAssignmentClaimsTransformation.UserStateClaimType, state));
+            ((ClaimsIdentity)user.Identity!).AddClaim(new Claim(SystemRoleClaimsTransformation.UserStateClaimType, state));
         var provider = _serviceProvider.GetRequiredService<IAuthorizationPolicyProvider>();
         foreach (var endpoint in endpoints)
         {
@@ -553,7 +553,7 @@ public class AuthorizationPolicyTests : IDisposable
     public async Task AppAccess_AllowsActiveStateUserWithNoRole()
     {
         var user = CreateUserWithClaim(
-            RoleAssignmentClaimsTransformation.UserStateClaimType,
+            SystemRoleClaimsTransformation.UserStateClaimType,
             UserState.Active.ToString());
         var result = await _authorizationService.AuthorizeAsync(user, PolicyNames.AppAccess);
         result.Succeeded.Should().BeTrue();
@@ -576,7 +576,7 @@ public class AuthorizationPolicyTests : IDisposable
     public async Task AppAccess_DeniesNonActiveStateUserWithNoRole(string state)
     {
         var user = CreateUserWithClaim(
-            RoleAssignmentClaimsTransformation.UserStateClaimType,
+            SystemRoleClaimsTransformation.UserStateClaimType,
             state);
         var result = await _authorizationService.AuthorizeAsync(user, PolicyNames.AppAccess);
         result.Succeeded.Should().BeFalse();

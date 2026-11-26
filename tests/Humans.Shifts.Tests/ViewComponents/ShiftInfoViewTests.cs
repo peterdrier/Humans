@@ -1,3 +1,4 @@
+using Humans.Testing;
 using System.Globalization;
 using System.Resources;
 using System.Text.Json;
@@ -30,7 +31,7 @@ public class ShiftInfoViewTests
         using var culture = new CultureScope(CultureCatalog.DefaultCultureCode);
         var resources = new ResourceManager(typeof(ShiftsResource));
         string Copy(string key) => overrideCopy ?? resources.GetString(key, CultureInfo.CurrentUICulture)!;
-        var localizer = Substitute.For<IStringLocalizer<ShiftsResource>>();
+        var localizer = Substitute.For<IStringLocalizer<ShiftsResource>>().AddFormatting();
         localizer[Arg.Any<string>()].Returns(call => new LocalizedString(call.Arg<string>(), Copy(call.Arg<string>())));
         var script = await RenderScriptAsync(localizer);
         var literal = Regex.Match(script, @"const STEPS = (?<literal>.*?);", RegexOptions.Singleline | RegexOptions.NonBacktracking)

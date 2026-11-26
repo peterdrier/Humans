@@ -16,7 +16,8 @@ internal sealed class TeamMessageController(
     IUserService userService,
     ITeamMessageOptionsProvider teamOptions,
     IStringLocalizer<TeamsResource> localizer,
-    IStringLocalizer<SharedResource> sharedLocalizer) : HumansControllerBase(userService)
+    IStringLocalizer<SharedResource> sharedLocalizer,
+    ILogger<TeamMessageController> logger) : HumansControllerBase(userService)
 {
     private const string ProfileController = "ProfileView";
     private const string ViewProfileAction = "ViewProfile";
@@ -55,7 +56,11 @@ internal sealed class TeamMessageController(
 
         PopulateModel(model, context, team);
         if (!ModelState.IsValid)
+        {
+            logger.LogWarning("Rejected invalid team-message form from user {UserId} to user {RecipientId} as team {TeamId}",
+                currentUser.Id, context.Recipient!.Id, team.TeamId);
             return View(model);
+        }
 
         if (!await teamOptions.SendAsync(context, team, model.Message, model.IncludeContactInfo))
         {
@@ -63,7 +68,7 @@ internal sealed class TeamMessageController(
             return View(model);
         }
 
-        SetSuccess(string.Format(localizer["Teams_SendMessage_Success"].Value, context.Recipient!.BurnerName));
+        SetSuccess(localizer["Teams_SendMessage_Success", context.Recipient!.BurnerName]);
         return RedirectToProfile(context.Recipient.Id);
     }
 
@@ -87,7 +92,7 @@ internal sealed class TeamMessageController(
         model.TeamName = team.TeamName;
         model.TeamReplyToEmail = team.GoogleGroupEmail;
         model.RecipientId = context.Recipient!.Id;
-        model.PageTitle = string.Format(localizer["Teams_SendMessage_FromTeam"].Value, context.Recipient.BurnerName, team.TeamName);
+        model.PageTitle = localizer["Teams_SendMessage_FromTeam", context.Recipient.BurnerName, team.TeamName];
         model.SenderEmail = context.Sender!.Email ?? string.Empty;
     }
 

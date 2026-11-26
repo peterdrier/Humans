@@ -10,6 +10,20 @@ namespace Humans.Stripe.Tests.Mirror;
 
 public sealed class StripeMirrorClientTests
 {
+    [HumansTheory]
+    [Xunit.InlineData("")]
+    [Xunit.InlineData(" \t")]
+    [Xunit.InlineData("rk_test_bad suffix")]
+    [Xunit.InlineData("rk_test_secret\r\nhidden")]
+    public async Task Fetch_UnusableKey_RefusesBeforeSdk(string key)
+    {
+        var account = new StripeMirrorAccount { Name = "Tickets", Id = "acct_t", ApiKey = key };
+        var fetch = () => new StripeMirrorClient(_http).FetchAsync(account, Ct);
+
+        await fetch.Should().ThrowAsync<InvalidOperationException>().WithMessage("Stripe mirror account Tickets has no usable API key.");
+        _http.ReceivedCalls().Should().BeEmpty();
+    }
+
     private readonly IHttpClient _http = Substitute.For<IHttpClient>();
     private readonly List<StripeRequest> _requests = [];
 

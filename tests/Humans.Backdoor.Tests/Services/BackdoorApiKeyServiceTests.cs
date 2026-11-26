@@ -24,7 +24,7 @@ public class BackdoorApiKeyServiceTests
     private static readonly Instant Now = Instant.FromUtc(2026, 8, 24, 10, 0);
 
     private readonly IBackdoorApiKeyRepository _repository = Substitute.For<IBackdoorApiKeyRepository>();
-    private readonly IRoleAssignmentService _roles = Substitute.For<IRoleAssignmentService>();
+    private readonly ISystemRoleService _roles = Substitute.For<ISystemRoleService>();
     private readonly IUserService _users = Substitute.For<IUserService>();
     private readonly IPermissionService _permissions = Substitute.For<IPermissionService>();
     private readonly IAuditLogService _audit = Substitute.For<IAuditLogService>();
@@ -61,9 +61,9 @@ public class BackdoorApiKeyServiceTests
     private void MakeEligible(
         Guid userId, bool admin = true, bool board = false, UserState state = UserState.Active)
     {
-        List<RoleAssignmentSnapshot> assignments = [];
-        if (admin) assignments.Add(new RoleAssignmentSnapshot("Admin", null));
-        if (board) assignments.Add(new RoleAssignmentSnapshot("Board", null));
+        List<SystemRoleSnapshot> assignments = [];
+        if (admin) assignments.Add(new SystemRoleSnapshot("Admin", null));
+        if (board) assignments.Add(new SystemRoleSnapshot("Board", null));
         _roles.GetActiveForUserAsync(userId, Arg.Any<CancellationToken>()).Returns(assignments);
         _users.GetUserInfoAsync(userId, Arg.Any<CancellationToken>())
             .Returns(new ValueTask<UserInfo?>(UserInfo.Create(
@@ -102,7 +102,7 @@ public class BackdoorApiKeyServiceTests
     }
 
     [HumansFact]
-    public async Task Create_ValidLabel_StoresOnlyHashAndPrefix()
+    public async Task Create_ValidLabel_KeepsPlaintextOutOfStorage()
     {
         MakeEligible(_owner);
         BackdoorApiKey? stored = null;

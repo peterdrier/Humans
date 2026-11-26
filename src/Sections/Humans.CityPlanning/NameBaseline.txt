@@ -1,0 +1,3 @@
+Humans.CityPlanning.Controllers.CityPlanningApiController.BroadcastAndReturnAsync
+Humans.CityPlanning.Data.ICityPlanningRepository.SavePolygonAndAppendHistoryAsync
+Humans.CityPlanning.Services.CityPlanningService.MutateSettingsAndAuditAsync

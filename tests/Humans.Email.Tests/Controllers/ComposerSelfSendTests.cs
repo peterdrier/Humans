@@ -1,3 +1,5 @@
+using Humans.Testing;
+using Humans.Base.Enums;
 using System.Reflection;
 using System.Security.Claims;
 using AwesomeAssertions;
@@ -31,7 +33,7 @@ public sealed class ComposerSelfSendTests
 
     private ComposerSelfSendService BuildService()
     {
-        var localizer = Substitute.For<IStringLocalizer<EmailResource>>();
+        var localizer = Substitute.For<IStringLocalizer<EmailResource>>().AddFormatting();
         localizer["Email_ComposerSelfTest_Subject"].Returns(new LocalizedString("s", "[Test] {0}"));
         localizer["Email_ComposerSelfTest_DefaultSubject"].Returns(new LocalizedString("d", "[Test] Preview"));
         return new ComposerSelfSendService(
@@ -180,6 +182,29 @@ public sealed class ComposerSelfSendTests
         result.Should().BeOfType<UnauthorizedResult>();
         await _email.DidNotReceiveWithAnyArgs().SendAsync(default!);
         await _audit.DidNotReceiveWithAnyArgs().LogAsync(null!, default!, default, default!, default(Guid));
+    }
+
+    public enum UnavailableAccount { Deleted, LegacyTombstone }
+
+    [HumansTheory]
+    [Xunit.InlineData(UnavailableAccount.Deleted)]
+    [Xunit.InlineData(UnavailableAccount.LegacyTombstone)]
+    public async Task SendMarkdownToSelf_Tombstone_RefusesQueue(UnavailableAccount account)
+    {
+        var user = UserInfo.Create(new User
+        {
+            Id = UserId,
+            Email = account == UnavailableAccount.LegacyTombstone ? "erased@deleted.local" : "me@example.org"
+        }, [], [], null);
+        if (account == UnavailableAccount.Deleted) user = user with { State = UserState.Deleted };
+        _users.GetUserInfoAsync(UserId, Arg.Any<CancellationToken>()).Returns(user);
+
+        var result = await BuildController(signedIn: true)
+            .SendMarkdownToSelf("Hello", "Body", CancellationToken.None);
+
+        result.Should().BeOfType<UnprocessableEntityResult>();
+        _email.ReceivedCalls().Should().BeEmpty();
+        _audit.ReceivedCalls().Should().BeEmpty();
     }
 
     [HumansFact]

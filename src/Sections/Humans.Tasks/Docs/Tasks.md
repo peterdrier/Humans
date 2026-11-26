@@ -71,14 +71,14 @@ Pieces of work with an end, hanging on a team. A task is to a role (standing res
 - Blocked needs a note; leaving blocked clears it. The approval reason is dropped when needs-approval is off.
 - A due date never precedes the start date (resolved dates).
 - A task cannot wait on itself, and a dependency circle is refused.
-- A person is on a task at most once, and must exist to be assigned. Approving requests arrives with claiming.
+- A person is on a task at most once. Assignment rejects missing or tombstoned accounts and resolves archived ids to the surviving account before checking duplicates, storing the assignment and linking its audit entry. Approving requests arrives with claiming.
 - An event is picked only if it exists and is not withdrawn; a task keeps an event withdrawn later.
 - Hidden tasks, and every task of a hidden team, show only to managers of the team, people confirmed on them, TasksAdmin, Board and Admin. A hidden task a viewer cannot see is "a hidden task" in waiting-on lists, without its status.
 - A done or cancelled task is never shown as waiting.
 - A hidden team's tasks page (`/Tasks/Team/{slug}`) is found only by TasksAdmin, Board, Admin, the team's managers and people confirmed on one of its tasks; 404 for everyone else.
 - Services are auth-free: controllers build `TasksAccess` (`Authorization/TasksAccess.cs`) from `IPermissionService` and the `TasksPolicies.Read` policy, and check it before every write and filter every read. Tests: `tests/Humans.Tasks.Tests/TasksAccessTests.cs`.
 - Every create (bulk or form), update, status change, delete, assign, unassign and dependency change is audited (`TasksAuditActions`, entity type `TaskItem`). Every refusal is logged at Warning.
-- A form field that does not bind (a malformed date or event) refuses the write and shows the form again with what was typed; so does a refused status change.
+- Add/edit forms require explicit priority, slot count, date modes, approval and visibility flags; status changes require an explicit status. Missing required values and malformed fields refuse the write, log a Warning and show the form again with what was typed. Explicit false flags and the None priority remain valid. A refused status change preserves the existing status and blocked note.
 - GDPR: export lists the person's tasks with state and date; erasure removes their places and requests; a merge moves them to the survivor, keeping one row, confirmed winning. Task text is not tied to a person and stays.
 - Demo story: `Services/Demo/TasksDemoStory.cs`, after Teams.
 

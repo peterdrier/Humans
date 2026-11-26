@@ -799,6 +799,27 @@ public class FinanceControllerTests
             Arg.Any<IReadOnlyList<SepaPayoutSelection>>(), 75.00m, Ana, Arg.Any<CancellationToken>());
     }
 
+    [HumansTheory]
+    [InlineData("es", "1e1", "75.00")]
+    [InlineData("de", "10.00", "7.5e1")]
+    public async Task GenerateSepa_ExponentInput_ParsesInvariantly(string culture, string amount, string cap)
+    {
+        using var scope = new CultureScope(culture);
+        var controller = MakeControllerWithHttpContext(Ana);
+        _connector.GenerateSepaPayoutAsync(
+            Arg.Any<IReadOnlyList<SepaPayoutSelection>>(), Arg.Any<decimal>(), Arg.Any<Guid>(),
+            Arg.Any<CancellationToken>()).Returns(new SepaPayoutResult("f.xml", "<xml/>", null));
+
+        await controller.GenerateSepa(
+            [40000004], new Dictionary<int, string> { [40000004] = amount }, cap,
+            TestContext.Current.CancellationToken);
+
+        await _connector.Received(1).GenerateSepaPayoutAsync(
+            Arg.Is<IReadOnlyList<SepaPayoutSelection>>(selections => selections.Count == 1
+                && selections[0].Amount == 10m),
+            75m, Ana, Arg.Any<CancellationToken>());
+    }
+
     [HumansFact]
     public async Task CreditorStatement_AccountWithNoCachedLedger_IsNotFound()
     {
@@ -1446,7 +1467,7 @@ public class FinanceControllerTests
         PreferredLanguage: "en",
         FallbackPictureUrl: null,
         CreatedAt: Instant.FromUtc(2026, 1, 1, 0, 0),
-        LastLoginAt: null,
+        LastSignInAt: null,
         DeletionRequestedAt: null,
         DeletionScheduledFor: null,
         DeletionEligibleAfter: null,

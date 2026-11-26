@@ -54,7 +54,7 @@
 
                 @if (held.Offer is { } offer)
                 {
-                    <p class="mt-2 mb-2">@string.Format(Localizer["Tickets_Resale_InQueue"].Value, held.QueuePosition, (offer.RefundOwedMinor / 100m).ToEuro())</p>
+                    <p class="mt-2 mb-2">@Localizer["Tickets_Resale_InQueue", held.QueuePosition?.ToString() ?? string.Empty, (offer.RefundOwedMinor / 100m).ToEuro()]</p>
                     <p class="small text-muted">@Localizer["Tickets_Resale_QueueNote"]</p>
                     <div class="d-flex flex-wrap gap-2">
                         <form asp-action="Withdraw" asp-route-ticketId="@t.Id" method="post">
@@ -63,7 +63,7 @@
                         </form>
                         @if (held.DirectedActive)
                         {
-                            <span class="small">@string.Format(Localizer["Tickets_Resale_InvitedTo"].Value, string.Join(", ", offer.Invites.Select(i => i.Email)))</span>
+                            <span class="small">@Localizer["Tickets_Resale_InvitedTo", string.Join(", ", offer.Invites.Select(i => i.Email))]</span>
                             <form asp-action="CancelInvite" asp-route-ticketId="@t.Id" method="post">
                                 @Html.AntiForgeryToken()
                                 <button type="submit" class="btn btn-outline-secondary btn-sm">@Localizer["Tickets_Resale_CancelInvite"]</button>
@@ -116,7 +116,7 @@
                 {
                     @if (held.CompanionRequest is { State: TicketCompanionRequestState.Declined } declined)
                     {
-                        <p class="small mt-3 mb-0">@string.Format(Localizer["Tickets_Companion_Declined"].Value, declined.DecisionNote)</p>
+                        <p class="small mt-3 mb-0">@Localizer["Tickets_Companion_Declined", declined.DecisionNote ?? string.Empty]</p>
                     }
                     <details class="mt-2">
                         <summary class="small">@Localizer["Tickets_Companion_Ask"]</summary>

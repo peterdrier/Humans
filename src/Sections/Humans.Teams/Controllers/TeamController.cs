@@ -527,7 +527,7 @@ internal sealed class TeamController(
                 var currentUser = await GetCurrentUserInfoAsync();
                 logger.LogInformation("Admin {AdminId} created team {TeamId} ({TeamName})", currentUser?.Id, result.Team!.Id, result.Team.Name);
 
-                SetSuccess(string.Format(sharedLocalizer["Admin_TeamCreated"].Value, result.Team.Name));
+                SetSuccess(sharedLocalizer["Admin_TeamCreated", result.Team.Name]);
                 if (result.GroupWarning is not null)
                     SetError(result.GroupWarning);
                 return RedirectToAction(nameof(Summary));
@@ -589,6 +589,7 @@ internal sealed class TeamController(
 
         if (!ModelState.IsValid)
         {
+            logger.LogWarning("Rejected malformed team update for team {TeamId}", id);
             await PopulateEligibleParentsAsync(model, id, HttpContext.RequestAborted);
             return View(model);
         }

@@ -29,7 +29,7 @@ public sealed class TeamServiceEarlyEntryTests
     private readonly FakeClock _clock = new(Instant.FromUtc(2026, 3, 1, 12, 0));
     private readonly TeamService _service;
     private readonly ISystemTeamSync _systemTeamSync = Substitute.For<ISystemTeamSync>();
-    private readonly IRoleAssignmentService _roles = Substitute.For<IRoleAssignmentService>();
+    private readonly ISystemRoleService _roles = Substitute.For<ISystemRoleService>();
     private readonly IUserService _users = Substitute.For<IUserService>();
     private readonly ISettingsService _settings = Substitute.For<ISettingsService>();
     private readonly Guid _eventId = Guid.NewGuid();

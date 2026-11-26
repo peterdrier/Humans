@@ -1,3 +1,4 @@
+using Humans.Testing;
 using System.Globalization;
 using Humans.Auth.Services;
 using Microsoft.Extensions.Localization;
@@ -17,13 +18,13 @@ internal static class TestAuthEmails
 {
     private static readonly Dictionary<string, string> Formats = new(StringComparer.Ordinal)
     {
-        ["Auth_Email_MagicLinkLogin_Body"] = "<p>Hi {0}</p><a href=\"{1}\">Sign in</a>",
-        ["Auth_Email_MagicLinkSignup_Body"] = "<a href=\"{0}\">Create your account</a>",
+        ["Auth_Email_SignInLink_Body"] = "<p>Hi {0}</p><a href=\"{1}\">Sign in</a>",
+        ["Auth_Email_SignInLinkSignup_Body"] = "<a href=\"{0}\">Create your account</a>",
     };
 
     public static AuthEmails Create()
     {
-        var localizer = Substitute.For<IStringLocalizer<AuthResource>>();
+        var localizer = Substitute.For<IStringLocalizer<AuthResource>>().AddFormatting();
         localizer[Arg.Any<string>()].Returns(call =>
         {
             var key = call.Arg<string>();

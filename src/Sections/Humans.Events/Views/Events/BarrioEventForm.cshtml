@@ -94,6 +94,10 @@
                             var label = EventDurationFormatter.Format(mins, Localizer);
                             <option value="@mins" selected="@(mins == Model.DurationMinutes ? "selected" : null)">@label</option>
                         }
+                        @if (Model.DurationMinutes is >= 15 and <= 480 && Model.DurationMinutes % 15 != 0)
+                        {
+                            <option value="@Model.DurationMinutes" selected>@EventDurationFormatter.Format(Model.DurationMinutes, Localizer)</option>
+                        }
                     </select>
                     <span asp-validation-for="DurationMinutes" class="text-danger"></span>
                 </div>
@@ -154,42 +158,5 @@
 <partial name="_MarkdownHelp" />
 
 @section Scripts {
-    <partial name="_EventCharacterCounters" />
-    <script>
-        (function () {
-            var recurringCheck = document.getElementById('IsRecurring');
-            var recSection = document.getElementById('recurrence-days-section');
-            var recHidden = document.getElementById('RecurrenceDaysHidden');
-            var dayCheckboxes = document.querySelectorAll('.recurrence-day-check');
-
-            function syncRecurrenceDays() {
-                var selected = [];
-                dayCheckboxes.forEach(function (cb) {
-                    if (cb.checked) selected.push(cb.value);
-                });
-                if (recHidden) recHidden.value = selected.join(',');
-            }
-
-            function toggleRecurrence() {
-                if (!recurringCheck || !recSection) return;
-                recSection.style.display = recurringCheck.checked ? 'block' : 'none';
-            }
-
-            if (recurringCheck) {
-                toggleRecurrence();
-                recurringCheck.addEventListener('change', toggleRecurrence);
-            }
-
-            dayCheckboxes.forEach(function (cb) {
-                cb.addEventListener('change', syncRecurrenceDays);
-            });
-
-            var form = document.querySelector('form[method="post"]');
-            if (form) {
-                form.addEventListener('submit', syncRecurrenceDays);
-            }
-
-            syncRecurrenceDays();
-        })();
-    </script>
+    <partial name="_EventFormScripts" />
 }

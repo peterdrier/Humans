@@ -93,7 +93,7 @@ internal sealed class TicketDeliveryService(
     public async Task<CheckoutMutationResult> ResendAsync(Guid orderId, Guid actorUserId, CancellationToken ct = default)
     {
         var detail = await checkout.GetOrderDetailAsync(orderId, ct);
-        if (detail?.Tickets.Any(t => t.State is TicketCheckoutTicketState.Valid or TicketCheckoutTicketState.Offered) != true)
+        if (detail?.Tickets.Any(t => t.IsHeld) != true)
             return new("Only a paid order with a live ticket can be resent.");
         var sent = await SendAsync(orderId, fresh: true, ct);
         if (sent is null)
@@ -118,11 +118,11 @@ internal sealed class TicketDeliveryService(
             return;
 
         var holder = await users.GetUserInfoAsync(holderId, ct);
-        if ((holder?.Email ?? ticket.HolderEmail) is not { } address)
+        if (holder is null || holder.IsTombstone || (holder.Email ?? ticket.HolderEmail) is not { } address)
             return;
         var baseUrl = BaseUrl;
         await email.SendAsync(emails.JoinInvitation(
-            holderId, address, ticket.HolderName, eventName,
+            holder.Id, address, ticket.HolderName, eventName,
             new Uri($"{baseUrl}/Profile"), new Uri($"{baseUrl}/Shifts"),
             DeliveryIdFor("ticket_join_invitation", ticket.Id), CultureOf(holder, detail.Order)), ct);
         await auditLog.LogAsync(TicketsAuditActions.TicketJoinInvitationSent, TicketCheckoutService.AuditEntityType, orderId,
@@ -221,7 +221,7 @@ internal sealed class TicketDeliveryService(
         }
 
         var tickets = detail.Tickets
-            .Where(t => t.State is TicketCheckoutTicketState.Valid or TicketCheckoutTicketState.Offered)
+            .Where(t => t.IsHeld)
             .ToList();
         var baseUrl = BaseUrl;
         var buyer = await users.GetUserInfoAsync(order.BuyerUserId, ct);
@@ -302,7 +302,7 @@ internal sealed class TicketDeliveryService(
     /// holder has signed in, the language the order was placed in is the better guess.
     /// </summary>
     private static string CultureOf(UserInfo? holder, TicketCheckoutOrder order) =>
-        SupportedOr(holder is { LastLoginAt: not null } ? holder.PreferredLanguage : order.Culture);
+        SupportedOr(holder is { LastSignInAt: not null } ? holder.PreferredLanguage : order.Culture);
 
     private static string SupportedOr(string? language) =>
         language is not null && language.IsSupportedCultureCode() ? language : CultureCatalog.DefaultCultureCode;

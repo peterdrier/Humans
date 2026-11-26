@@ -33,27 +33,27 @@ internal sealed class SurveysEmails(
         => Localized(culture, () =>
         {
             var subject = string.IsNullOrWhiteSpace(customSubject)
-                ? Lf("Surveys_Email_SurveyInvitation_Subject", surveyTitle)
+                ? localizer["Surveys_Email_SurveyInvitation_Subject", surveyTitle]
                 : customSubject.Trim();
             var messageHtml = string.IsNullOrWhiteSpace(customMessage)
-                ? $"<p>{Lf("Surveys_Email_SurveyInvitation_DefaultMessage", Encode(surveyTitle))}</p>"
+                ? $"<p>{localizer["Surveys_Email_SurveyInvitation_DefaultMessage", Encode(surveyTitle)]}</p>"
                 : SanitizedMarkdownRenderer.Render(customMessage.Trim());
 
             return new EmailMessage(userEmail, userName, userId,
                 subject,
-                Lf("Surveys_Email_SurveyInvitation_Body",
+                localizer["Surveys_Email_SurveyInvitation_Body",
                     Encode(userName),
                     Encode(surveyTitle),
                     AnswerUrl(answerToken),
-                    messageHtml),
+                    messageHtml],
                 "survey_invitation", MessageCategory.System);
         });
 
     /// <summary>Survey reminder — single nudge for an unfinished invitation (System category).</summary>
     public EmailMessage SurveyReminder(Guid userId, string userEmail, string userName, string surveyTitle, string answerToken, string? culture = null)
         => Localized(culture, () => new EmailMessage(userEmail, userName, userId,
-            Lf("Surveys_Email_SurveyReminder_Subject", surveyTitle),
-            Lf("Surveys_Email_SurveyReminder_Body", Encode(userName), Encode(surveyTitle), AnswerUrl(answerToken)),
+            localizer["Surveys_Email_SurveyReminder_Subject", surveyTitle],
+            localizer["Surveys_Email_SurveyReminder_Body", Encode(userName), Encode(surveyTitle), AnswerUrl(answerToken)],
             "survey_reminder", MessageCategory.System));
 
     /// <summary>
@@ -62,9 +62,6 @@ internal sealed class SurveysEmails(
     /// </summary>
     private string AnswerUrl(string token)
         => $"{_settings.BaseUrl.TrimEnd('/')}/Survey/Answer?t={Uri.EscapeDataString(token)}";
-
-    private string Lf(string key, params object[] args) =>
-        string.Format(CultureInfo.CurrentCulture, localizer[key].Value, args);
 
     private static string Encode(string text) => WebUtility.HtmlEncode(text);
 

@@ -7,6 +7,7 @@ using Humans.Tickets.Services.Checkout;
 using Humans.Users.Contracts;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc.ModelBinding;
 using NodaTime;
 
 namespace Humans.Tickets.Controllers;
@@ -22,7 +23,8 @@ internal sealed class TicketsSupportAdminController(
     ITicketCheckoutService checkout,
     ISettingsService settings,
     IClock clock,
-    IUserService userService) : HumansControllerBase(userService)
+    IUserService userService,
+    ILogger<TicketsSupportAdminController> logger) : HumansControllerBase(userService)
 {
     [HttpGet("Lookup")]
     public async Task<IActionResult> Lookup(string? q, CancellationToken ct)
@@ -125,10 +127,15 @@ internal sealed class TicketsSupportAdminController(
     [HttpPost("{id:guid}/Resale/Open")]
     [Authorize(Policy = TicketsPolicies.Manage)]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> SetResaleOpen(Guid id, bool open, CancellationToken ct)
+    public async Task<IActionResult> SetResaleOpen(Guid id, [BindRequired] bool open, CancellationToken ct)
     {
         var (errorResult, user) = await RequireCurrentUserAsync(ct);
         if (errorResult is not null) return errorResult;
+        if (!ModelState.IsValid)
+        {
+            logger.LogWarning("Rejected malformed resale control for sale {SaleId} by {ActorUserId}", id, user.Id);
+            return BadRequest(ModelState);
+        }
 
         var result = await checkout.SetResaleOpenAsync(id, open, user.Id, ct);
         if (result.Succeeded)
@@ -154,10 +161,15 @@ internal sealed class TicketsSupportAdminController(
     [HttpPost("{id:guid}/Companions/{requestId:guid}")]
     [Authorize(Policy = TicketsPolicies.Manage)]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> DecideCompanion(Guid id, Guid requestId, bool approve, string? note, CancellationToken ct)
+    public async Task<IActionResult> DecideCompanion(Guid id, Guid requestId, [BindRequired] bool approve, string? note, CancellationToken ct)
     {
         var (errorResult, user) = await RequireCurrentUserAsync(ct);
         if (errorResult is not null) return errorResult;
+        if (!ModelState.IsValid)
+        {
+            logger.LogWarning("Rejected malformed companion decision for request {RequestId} by {ActorUserId}", requestId, user.Id);
+            return BadRequest(ModelState);
+        }
 
         var result = await checkout.DecideCompanionRequestAsync(requestId, approve, note, user.Id, ct);
         if (result.Succeeded)
@@ -226,17 +238,24 @@ internal sealed class TicketsSupportAdminController(
     [HttpPost("Order/{orderId:guid}/Ticket/{ticketId:guid}/Void")]
     [Authorize(Policy = TicketsPolicies.Manage)]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> Void(Guid orderId, Guid ticketId, string? reason, decimal? refund, bool noRefund, CancellationToken ct)
+    public async Task<IActionResult> Void(Guid orderId, Guid ticketId, string? reason, string? refund, [BindRequired] bool noRefund, CancellationToken ct)
     {
-        var refundMinor = noRefund || refund is not { } euros ? 0 : (long)Math.Round(euros * 100m, MidpointRounding.AwayFromZero);
-        if (!noRefund && refundMinor <= 0)
+        if (!ModelState.IsValid)
         {
+            logger.LogWarning("Rejected malformed ticket void for {TicketId} by {UserId}", ticketId, GetCurrentUserId());
+            return BadRequest(ModelState);
+        }
+        var refundMinor = 0L;
+        if (!noRefund && (!SalesEditForm.TryMinor(refund, out refundMinor) || refundMinor <= 0))
+        {
+            logger.LogWarning("Rejected void refund amount for ticket {TicketId} by {UserId}", ticketId, GetCurrentUserId());
             SetError("Enter the amount to refund, or choose 'No refund' to void without one. Nothing was voided.");
             return RedirectToAction(nameof(Ticket), new { orderId, ticketId });
         }
         return await ActAsync(orderId, ticketId,
             noRefund ? "Ticket voided with no refund." : "Ticket voided and the refund sent; it shows on the order and the refund list.",
-            (actor, c) => checkout.VoidTicketAsync(ticketId, reason ?? string.Empty, refundMinor, actor, c), ct);
+            // Voiding can refund at the platform; a disconnect must not leave the refund unrecorded.
+            (actor, _) => checkout.VoidTicketAsync(ticketId, reason ?? string.Empty, refundMinor, actor, CancellationToken.None), ct);
     }
 
     [HttpPost("Order/{orderId:guid}/Ticket/{ticketId:guid}/Restore")]

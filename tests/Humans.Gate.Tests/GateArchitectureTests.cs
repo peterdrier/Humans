@@ -72,6 +72,12 @@ public class GateArchitectureTests
                 because: $"POST {post.Name} must not inherit only the class-level read policy");
         }
 
+        // The arrivals report reads under Tickets Read; its undo needs Manage.
+        typeof(GateReportController).GetCustomAttribute<AuthorizeAttribute>(inherit: false)!
+            .Policy.Should().Be(TicketsPolicies.Read);
+        typeof(GateReportController).GetMethod(nameof(GateReportController.Undo))!
+            .GetCustomAttribute<AuthorizeAttribute>(inherit: false)!.Policy.Should().Be(TicketsPolicies.Manage);
+
         // The one-off vendor backfill page is admin-only at the class level.
         typeof(GateVendorBackfillAdminController).GetCustomAttribute<AuthorizeAttribute>(inherit: false)!
             .Policy.Should().Be(PolicyNames.AdminOnly);

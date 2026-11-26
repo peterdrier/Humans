@@ -11,6 +11,7 @@ export const CONFIG = {
     IS_MAP_ADMIN:        el.dataset.isMapAdmin === 'true',
 
     SAVE_FAILED: el.dataset.saveFailed,
+    MAP_REFRESH_FAILED: el.dataset.mapRefreshFailed,
     DISCARD_CONFIRM: el.dataset.discardConfirm,
     HISTORY_FOR_CAMP: el.dataset.historyForCamp,
     HISTORY_LOAD_FAILED: el.dataset.historyLoadFailed,

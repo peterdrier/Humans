@@ -7,18 +7,93 @@ using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using NodaTime;
 using NodaTime.Testing;
+using Humans.Base.Interfaces;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace Humans.Holded.Tests.Services;
 
 public class HoldedClientTransportTests
 {
-    private static HoldedClient Make(StubHandler handler, HoldedCallLog? log = null, FakeClock? clock = null) =>
+    [HumansTheory]
+    [Xunit.InlineData("not a URI", false)]
+    [Xunit.InlineData("", false)]
+    [Xunit.InlineData("/relative", false)]
+    [Xunit.InlineData("ftp://holded.example", false)]
+    [Xunit.InlineData("https://holded.example", true)]
+    [Xunit.InlineData("http://holded.example", true)]
+    public async Task Register_Endpoint_ResolvesBeforeValidation(string baseUrl, bool valid)
+    {
+        var services = new ServiceCollection();
+        new Section().Register(services, new ConfigurationBuilder().AddInMemoryCollection(
+            new Dictionary<string, string?>(StringComparer.Ordinal) { ["Holded:BaseUrl"] = baseUrl }).Build());
+        services.Configure<HoldedClientOptions>(o => o.ApiKey = "test-key");
+        services.AddSingleton<IClock>(new FakeClock(Instant.FromUtc(2026, 8, 10, 12, 0)));
+        services.AddSingleton<IOrgTimeZone>(FixedOrgTimeZone.Madrid);
+        var calls = 0;
+        services.AddHttpClient<IHoldedClient, HoldedClient>().ConfigurePrimaryHttpMessageHandler(() => new StubHandler(request =>
+        {
+            calls++;
+            request.RequestUri!.Host.Should().Be("holded.example");
+            return Respond(HttpStatusCode.OK, request.Method == HttpMethod.Get ? """{"items":[]}""" : """{"id":"account-1"}""");
+        }));
+        using var provider = services.BuildServiceProvider();
+
+        var client = provider.GetRequiredService<IHoldedClient>();
+        var read = () => client.ListExpenseAccountsAsync(Xunit.TestContext.Current.CancellationToken);
+        var write = () => client.CreateExpenseAccountAsync(60000000, "Test account", Xunit.TestContext.Current.CancellationToken);
+
+        client.IsConfigured.Should().Be(valid);
+        if (valid)
+        {
+            (await read()).Should().BeEmpty();
+            (await write()).Should().Be("account-1");
+        }
+        else
+        {
+            await read.Should().ThrowAsync<HoldedPermanentException>().WithMessage("*absolute HTTP(S)*");
+            await write.Should().ThrowAsync<HoldedPermanentException>().WithMessage("*absolute HTTP(S)*");
+        }
+        calls.Should().Be(valid ? 2 : 0);
+    }
+
+    private static HoldedClient Make(StubHandler handler, HoldedCallLog? log = null, FakeClock? clock = null, string apiKey = "test-key") =>
         new(
             new HttpClient(handler) { BaseAddress = new Uri("https://api.holded.com") },
-            Options.Create(new HoldedClientOptions { ApiKey = "test-key" }),
+            Options.Create(new HoldedClientOptions { ApiKey = apiKey }),
             NullLogger<HoldedClient>.Instance,
             log ?? new HoldedCallLog(),
             clock ?? new FakeClock(Instant.FromUtc(2026, 8, 10, 12, 0)), FixedOrgTimeZone.Madrid);
+
+    [HumansTheory]
+    [Xunit.InlineData("")]
+    [Xunit.InlineData(" \t")]
+    [Xunit.InlineData("secret\nhidden")]
+    [Xunit.InlineData("secret\r\nX-Injected: hidden")]
+    public async Task Requests_InvalidKey_RefuseBeforeHttp(string apiKey)
+    {
+        using var assertions = new AwesomeAssertions.Execution.AssertionScope();
+        var calls = 0;
+        var log = new HoldedCallLog();
+        var client = Make(new StubHandler(request =>
+        {
+            calls++;
+            return Respond(HttpStatusCode.OK, request.Method == HttpMethod.Get ? """{"items":[]}""" : """{"id":"account-1"}""");
+        }), log: log, apiKey: apiKey);
+        var ct = Xunit.TestContext.Current.CancellationToken;
+        client.IsConfigured.Should().BeFalse();
+        Func<Task>[] operations =
+        [
+            () => client.ListExpenseAccountsAsync(ct),
+            () => client.CreateExpenseAccountAsync(60000000, "Test account", ct),
+            () => client.ApproveSalesDocumentAsync(HoldedSalesDocumentKind.Invoice, "document", ct),
+        ];
+        foreach (var operation in operations)
+            await operation.Should().ThrowAsync<HoldedPermanentException>()
+                .WithMessage("HOLDED_API_KEY_V2 must be nonblank and valid in an HTTP authorization header.");
+        calls.Should().Be(0);
+        log.DrainAll().Should().BeEmpty();
+    }
 
     [HumansFact]
     public async Task Sends_bearer_authorization_header()

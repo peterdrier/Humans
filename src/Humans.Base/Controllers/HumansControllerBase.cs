@@ -1,3 +1,5 @@
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 using Humans.Base.Extensions;
 using Humans.Base.Constants;
 using Microsoft.AspNetCore.Authorization;
@@ -48,6 +50,12 @@ public abstract class HumansControllerBase(IUserService userService) : Controlle
     private async Task<(IActionResult? ErrorResult, UserInfo User)> ResolveCurrentUserAsync(Func<IActionResult> onMissing, CancellationToken ct)
     {
         var user = await GetCurrentUserInfoAsync(ct);
+        if (user is not null && user.IsTombstone)
+        {
+            HttpContext.RequestServices?.GetService<ILogger<HumansControllerBase>>()?
+                .LogWarning("Refused current-user resolution for unavailable account {UserId}", user.Id);
+            user = null;
+        }
         return user is null ? (onMissing(), null!) : (null, user);
     }
 

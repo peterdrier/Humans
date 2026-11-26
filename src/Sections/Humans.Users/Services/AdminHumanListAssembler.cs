@@ -39,7 +39,7 @@ internal static class AdminHumanListAssembler
                 email,
                 u.BurnerName,
                 u.CreatedAt.ToDateTimeUtc(),
-                u.LastLoginAt?.ToDateTimeUtc(),
+                u.LastSignInAt?.ToDateTimeUtc(),
                 u.State);
         }).ToList();
     }

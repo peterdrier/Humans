@@ -84,7 +84,7 @@ service is the only one that touches `AgentSettings` directly (via
 backed in-memory by `AgentSettingsStore`, and audits each change through
 `IAuditLogService`. The others are stateless
 adapters or fan-out over public service interfaces (`ITeamService`,
-`IUserService`, `IRoleAssignmentService`, `IConsentService`,
+`IUserService`, `ISystemRoleService`, `IConsentService`,
 `ITicketService`, `IShiftView`,
 `ISettingsService`, `IAuditViewerService`, etc.) for the agent's
 tool-dispatch and user-context surfaces. No `IMemoryCache`.

@@ -71,6 +71,40 @@ public sealed class WorkgroupServiceLifecycleTests : WorkgroupsTestHarness
     }
 
     [HumansTheory]
+    [InlineData(NoticeAudience.Coordinators, UserState.Deleted)]
+    [InlineData(NoticeAudience.Coordinators, UserState.Merged)]
+    [InlineData(NoticeAudience.Board, UserState.Deleted)]
+    [InlineData(NoticeAudience.Board, UserState.Merged)]
+    public async Task LifecycleEmails_TombstoneRecipient_ContinuesLiveDelivery(NoticeAudience audience, UserState state)
+    {
+        var unavailable = SeedUser("Unavailable");
+        var live = SeedUser("Live recipient");
+        var snapshot = Xunit.Assert.IsType<UserInfo>(await Users.GetUserInfoAsync(unavailable, Ct));
+        var liveInfo = Xunit.Assert.IsType<UserInfo>(await Users.GetUserInfoAsync(live, Ct));
+        var people = new Dictionary<Guid, UserInfo> { [unavailable] = snapshot with { State = state }, [live] = liveInfo };
+        Users.GetUserInfosAsync(Arg.Any<IEnumerable<Guid>>(), Arg.Any<CancellationToken>())
+            .Returns(call => call.Arg<IEnumerable<Guid>>().Where(people.ContainsKey).ToDictionary(id => id, id => people[id]));
+        var group = await SeedWorkgroupAsync(
+            status: audience == NoticeAudience.Coordinators ? WorkgroupStatus.Dormant : WorkgroupStatus.Applied,
+            coordinatorUserId: live);
+        if (audience == NoticeAudience.Coordinators)
+            await AddMemberAsync(group.Id, unavailable, WorkgroupMemberRole.Coordinator);
+        else
+            Roles.GetActiveUserIdsInRoleAsync(Arg.Any<string>(), Arg.Any<CancellationToken>()).Returns([unavailable, live]);
+
+        var result = audience == NoticeAudience.Coordinators
+            ? await NewService().ReactivateAsync(group.Id, live, Ct)
+            : await NewService().ReferAsync(group.Id, live, "Review", Ct);
+
+        result.Refusal.Should().BeNull();
+        await using var db = OpenContext();
+        (await db.Workgroups.SingleAsync(w => w.Id == group.Id, Ct)).Status.Should().Be(
+            audience == NoticeAudience.Coordinators ? WorkgroupStatus.Active : WorkgroupStatus.Referred);
+        var messages = Email.ReceivedCalls().Select(call => call.GetArguments()[0]).Cast<Email.Contracts.EmailMessage>();
+        messages.Should().ContainSingle().Which.UserId.Should().Be(live);
+    }
+
+    [HumansTheory]
     [InlineData("register")]
     [InlineData("refer")]
     [InlineData("refuse")]

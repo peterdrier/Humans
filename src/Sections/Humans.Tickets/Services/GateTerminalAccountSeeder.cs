@@ -6,7 +6,7 @@ using NodaTime;
 
 namespace Humans.Tickets.Services;
 
-internal sealed record GateTerminalStatus(bool Provisioned, bool HasPassword, Instant? LastLoginAt);
+internal sealed record GateTerminalStatus(bool Provisioned, bool HasPassword, Instant? LastSignInAt);
 
 /// <summary>
 /// A real User row, not a person, created on the first password set and marked fake in Users, which keeps it out of
@@ -29,12 +29,12 @@ internal sealed class GateTerminalAccountSeeder(
             return new GateTerminalStatus(false, false, null);
 
         var hasPassword = await signIn.HasPasswordAsync(SystemUserIds.GateTerminal);
-        return new GateTerminalStatus(true, hasPassword, user.LastLoginAt);
+        return new GateTerminalStatus(true, hasPassword, user.LastSignInAt);
     }
 
     /// <summary>
     /// Rotation bumps the security stamp, ending existing gate sessions. Lockout is off: the username is public, so
-    /// lockout would let anyone lock out the real terminal. Shell's <c>GateLoginThrottle</c> throttles per IP instead.
+    /// lockout would let anyone lock out the real terminal. Shell's <c>GateSignInThrottle</c> throttles per IP instead.
     /// </summary>
     public async Task<IdentityResult> SetPasswordAsync(string password, Guid actorUserId)
     {
