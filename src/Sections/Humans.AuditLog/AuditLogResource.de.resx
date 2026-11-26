@@ -425,4 +425,10 @@
   <data name="Enum_AuditAction_WorkgroupMemberAdded" xml:space="preserve"><value>Mitglied der Arbeitsgruppe hinzugefügt</value></data>
   <data name="Enum_AuditAction_WorkgroupMembershipApproved" xml:space="preserve"><value>Mitgliedschaft in der Arbeitsgruppe genehmigt</value></data>
   <data name="Enum_AuditAction_WorkgroupMembershipDeclined" xml:space="preserve"><value>Mitgliedschaft in der Arbeitsgruppe abgelehnt</value></data>
+  <data name="AuditLog_Temporary" xml:space="preserve">
+    <value>befristet</value>
+  </data>
+  <data name="AuditLog_TemporaryHint" xml:space="preserve">
+    <value>Wird gelöscht, sobald es älter als die Aufbewahrungsfrist ist</value>
+  </data>
 </root>

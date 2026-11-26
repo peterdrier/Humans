@@ -1,3 +1,4 @@
+using System.Globalization;
 using Humans.AuditLog.Contracts;
 using Humans.Settings.Contracts;
 using Humans.Settings.Data;
@@ -71,6 +72,21 @@ internal sealed class Service(
         await auditLog.LogAsync(
             SettingsAuditActions.EventSettingsUpdated, AuditEntityTypes.EventTimeZone, Guid.Empty,
             $"Event timezone changed from {previous} to {timeZoneId}.", actorUserId);
+
+        return new(true);
+    }
+
+    public async Task<EventSettingsSaveResult> SaveRetentionDaysAsync(
+        int days, Guid actorUserId, CancellationToken cancellationToken = default)
+    {
+        if (days < 1)
+            return new(false, "The retention period must be at least 1 day.");
+
+        var previous = RetentionPeriod.Parse(await repository.GetValueAsync(RetentionPeriod.Key, cancellationToken));
+        await SetValueAsync(RetentionPeriod.Key, days.ToString(CultureInfo.InvariantCulture), cancellationToken);
+        await auditLog.LogAsync(
+            SettingsAuditActions.RetentionPeriodChanged, AuditEntityTypes.RetentionPeriod, Guid.Empty,
+            $"Retention period changed from {previous} to {days} days.", actorUserId);
 
         return new(true);
     }

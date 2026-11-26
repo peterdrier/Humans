@@ -9,6 +9,10 @@
 
 <div class="d-flex align-items-baseline gap-1 small flex-wrap">
     <span class="text-muted text-nowrap">@Model.OccurredAt.ToInvariantTimestamp()</span>
+    @if (Model.Kept == AuditKept.RetentionPeriod)
+    {
+        <span class="badge text-bg-light border" title="@Localizer["AuditLog_TemporaryHint"]">@Localizer["AuditLog_Temporary"]</span>
+    }
     <span class="text-muted">—</span>
     @if (render.Verb != null)
     {
