@@ -68,7 +68,7 @@ internal sealed class TeamMessageController(
             return View(model);
         }
 
-        SetSuccess(string.Format(localizer["Teams_SendMessage_Success"].Value, context.Recipient!.BurnerName));
+        SetSuccess(localizer["Teams_SendMessage_Success", context.Recipient!.BurnerName]);
         return RedirectToProfile(context.Recipient.Id);
     }
 
@@ -92,7 +92,7 @@ internal sealed class TeamMessageController(
         model.TeamName = team.TeamName;
         model.TeamReplyToEmail = team.GoogleGroupEmail;
         model.RecipientId = context.Recipient!.Id;
-        model.PageTitle = string.Format(localizer["Teams_SendMessage_FromTeam"].Value, context.Recipient.BurnerName, team.TeamName);
+        model.PageTitle = localizer["Teams_SendMessage_FromTeam", context.Recipient.BurnerName, team.TeamName];
         model.SenderEmail = context.Sender!.Email ?? string.Empty;
     }
 

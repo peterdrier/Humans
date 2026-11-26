@@ -53,7 +53,7 @@ internal sealed class ContactFieldService(
         Guid userId,
         CancellationToken cancellationToken = default)
     {
-        var fields = await userRepository.GetContactFieldsByUserIdReadOnlyAsync(userId, cancellationToken);
+        var fields = await userRepository.GetContactFieldsByUserIdAsync(userId, cancellationToken);
 
         return fields.Select(cf => new ContactFieldEditDto(
             cf.Id,
@@ -80,7 +80,7 @@ internal sealed class ContactFieldService(
         var now = clock.GetCurrentInstant();
 
         // Detached: mutations go back explicitly through BatchSaveAsync.
-        var existingFields = await userRepository.GetContactFieldsByUserIdForMutationAsync(userId, cancellationToken);
+        var existingFields = await userRepository.GetContactFieldsByUserIdAsync(userId, cancellationToken);
 
         var existingById = existingFields.ToDictionary(cf => cf.Id);
         var incomingIds = fields.Where(f => f.Id.HasValue).Select(f => f.Id!.Value).ToHashSet();

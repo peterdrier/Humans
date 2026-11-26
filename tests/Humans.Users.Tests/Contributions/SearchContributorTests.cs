@@ -1,3 +1,4 @@
+using Humans.Testing;
 using AwesomeAssertions;
 using Humans.Base.Interfaces;
 using Humans.Users.Contracts;
@@ -51,7 +52,7 @@ public sealed class SearchContributorTests
 
     private ServiceProvider Services()
     {
-        var localizer = Substitute.For<IStringLocalizer<UsersResource>>();
+        var localizer = Substitute.For<IStringLocalizer<UsersResource>>().AddFormatting();
         localizer["Users_Search_Category"].Returns(new LocalizedString("Users_Search_Category", "Humans"));
         return new ServiceCollection().AddSingleton(_users).AddSingleton(localizer).BuildServiceProvider();
     }

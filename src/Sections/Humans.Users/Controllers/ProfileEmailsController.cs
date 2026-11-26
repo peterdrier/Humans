@@ -76,7 +76,7 @@ internal sealed class ProfileEmailsController(
 
         logger.LogInformation("Sent email confirmation to {Email} for user {UserId}", model.NewEmail.Trim(), user.Id);
         // The same words whether or not another account has the address: only its mailbox learns that.
-        SetSuccess(string.Format(CultureInfo.CurrentCulture, localizer["Users_Profile_VerificationSent"].Value, model.NewEmail.Trim()));
+        SetSuccess(localizer["Users_Profile_VerificationSent", model.NewEmail.Trim()]);
 
         return RedirectToAction(nameof(Emails));
     }

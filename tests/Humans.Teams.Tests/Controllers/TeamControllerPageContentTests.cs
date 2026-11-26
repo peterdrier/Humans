@@ -1,3 +1,4 @@
+using Humans.Testing;
 using Humans.Teams.Domain;
 using Xunit;
 using System.Globalization;
@@ -75,8 +76,8 @@ public class TeamControllerPageContentTests
             .Returns(new[] { childZulu, hiddenChild, zulu, system, childAlpha, hidden, alpha });
         var controller = new TeamController(
             teams, Substitute.For<ITeamPageService>(), Substitute.For<IUserService>(),
-            Substitute.For<ITeamResourceService>(), Substitute.For<IStringLocalizer<TeamsResource>>(),
-            Substitute.For<IStringLocalizer<SharedResource>>(), Substitute.For<IAuthorizationService>(),
+            Substitute.For<ITeamResourceService>(), Substitute.For<IStringLocalizer<TeamsResource>>().AddFormatting(),
+            Substitute.For<IStringLocalizer<SharedResource>>().AddFormatting(), Substitute.For<IAuthorizationService>(),
             NullLogger<TeamController>.Instance);
 
         var result = await controller.Summary(TestContext.Current.CancellationToken);
@@ -340,7 +341,7 @@ public class TeamControllerPageContentTests
         if (role is not null) claims.Add(new Claim(ClaimTypes.Role, role));
         var controller = new TeamController(
             teams, pages, users, Substitute.For<ITeamResourceService>(),
-            Substitute.For<IStringLocalizer<TeamsResource>>(), Substitute.For<IStringLocalizer<SharedResource>>(),
+            Substitute.For<IStringLocalizer<TeamsResource>>().AddFormatting(), Substitute.For<IStringLocalizer<SharedResource>>().AddFormatting(),
             Substitute.For<IAuthorizationService>(), NullLogger<TeamController>.Instance)
         {
             ControllerContext = new ControllerContext
@@ -408,7 +409,7 @@ public class TeamControllerPageContentTests
         if (role is not null) claims.Add(new Claim(ClaimTypes.Role, role));
         var controller = new TeamController(
             teams, pages, users, Substitute.For<ITeamResourceService>(),
-            Substitute.For<IStringLocalizer<TeamsResource>>(), Substitute.For<IStringLocalizer<SharedResource>>(),
+            Substitute.For<IStringLocalizer<TeamsResource>>().AddFormatting(), Substitute.For<IStringLocalizer<SharedResource>>().AddFormatting(),
             Substitute.For<IAuthorizationService>(), NullLogger<TeamController>.Instance)
         {
             ControllerContext = new ControllerContext
@@ -889,8 +890,8 @@ public class TeamControllerPageContentTests
         pages.GetTeamPageDetailAsync("test", null, Arg.Any<CancellationToken>()).Returns(page);
         var controller = new TeamController(
             Substitute.For<ITeamManagementService>(), pages, Substitute.For<IUserService>(),
-            Substitute.For<ITeamResourceService>(), Substitute.For<IStringLocalizer<TeamsResource>>(),
-            Substitute.For<IStringLocalizer<SharedResource>>(), Substitute.For<IAuthorizationService>(),
+            Substitute.For<ITeamResourceService>(), Substitute.For<IStringLocalizer<TeamsResource>>().AddFormatting(),
+            Substitute.For<IStringLocalizer<SharedResource>>().AddFormatting(), Substitute.For<IAuthorizationService>(),
             NullLogger<TeamController>.Instance)
         {
             ControllerContext = new ControllerContext { HttpContext = new DefaultHttpContext() }
@@ -925,8 +926,8 @@ public class TeamControllerPageContentTests
         pages.GetTeamPageDetailAsync("test", null, Arg.Any<CancellationToken>()).Returns(page);
         var controller = new TeamController(
             Substitute.For<ITeamManagementService>(), pages, Substitute.For<IUserService>(),
-            Substitute.For<ITeamResourceService>(), Substitute.For<IStringLocalizer<TeamsResource>>(),
-            Substitute.For<IStringLocalizer<SharedResource>>(), Substitute.For<IAuthorizationService>(),
+            Substitute.For<ITeamResourceService>(), Substitute.For<IStringLocalizer<TeamsResource>>().AddFormatting(),
+            Substitute.For<IStringLocalizer<SharedResource>>().AddFormatting(), Substitute.For<IAuthorizationService>(),
             NullLogger<TeamController>.Instance)
         {
             ControllerContext = new ControllerContext { HttpContext = new DefaultHttpContext() }

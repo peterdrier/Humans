@@ -1,3 +1,4 @@
+using Humans.Testing;
 using Humans.Permissions.Contracts;
 using System.Globalization;
 using System.Resources;
@@ -68,7 +69,7 @@ public sealed class ShiftSignupServiceAutoConfirmIgnoresConsentTests : ShiftsTes
             NullLogger<ShiftManagementService>.Instance);
 
         var repo = new ShiftRepository(ShiftsDbFactory, ShiftsDb, Clock);
-        var localizer = Substitute.For<IStringLocalizer<ShiftsResource>>();
+        var localizer = Substitute.For<IStringLocalizer<ShiftsResource>>().AddFormatting();
         const string warningKey = "Shifts_Signup_RangeEarlyEntryCapacityDays";
         localizer[warningKey, Arg.Any<object[]>()].Returns(call => new LocalizedString(warningKey,
             string.Format(CultureInfo.InvariantCulture,

@@ -1,3 +1,4 @@
+using Humans.Testing;
 using System.ComponentModel.DataAnnotations;
 using Microsoft.Extensions.Logging;
 using Xunit;
@@ -35,7 +36,7 @@ public class ProfileEmailsControllerGridTests
     private readonly UserManager<User> _userManager;
     private readonly SignInManager<User> _signInManager;
     private readonly ProfileEmailsController _controller;
-    private readonly IStringLocalizer<SharedResource> _sharedLocalizer = Substitute.For<IStringLocalizer<SharedResource>>();
+    private readonly IStringLocalizer<SharedResource> _sharedLocalizer = Substitute.For<IStringLocalizer<SharedResource>>().AddFormatting();
     private readonly Guid _userId = Guid.NewGuid();
 
     public ProfileEmailsControllerGridTests()
@@ -58,7 +59,7 @@ public class ProfileEmailsControllerGridTests
             _userManager, contextAccessor, claimsFactory, identityOptions,
             NullLogger<SignInManager<User>>.Instance, schemeProvider, userConfirmation);
 
-        var localizer = Substitute.For<IStringLocalizer<UsersResource>>();
+        var localizer = Substitute.For<IStringLocalizer<UsersResource>>().AddFormatting();
         localizer[Arg.Any<string>()].Returns(ci => new LocalizedString(ci.Arg<string>(), ci.Arg<string>()));
 
         localizer["Validation_EmailAddress"].Returns(new LocalizedString("Validation_EmailAddress", "Validation_EmailAddress", resourceNotFound: true));

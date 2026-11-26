@@ -1,3 +1,4 @@
+using Humans.Testing;
 using Humans.Shifts.Services.Dtos;
 using System.Reflection;
 using System.Security.Claims;
@@ -41,7 +42,7 @@ public class VolunteerTrackingControllerTests
     private readonly VolunteerTrackingXlsxBuilder _xlsxBuilder = new();
     private readonly IUserService _userService = Substitute.For<IUserService>();
     private readonly IStringLocalizer<ShiftsResource> _localizer =
-        Substitute.For<IStringLocalizer<ShiftsResource>>();
+        Substitute.For<IStringLocalizer<ShiftsResource>>().AddFormatting();
 
     public VolunteerTrackingControllerTests()
     {

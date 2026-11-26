@@ -259,8 +259,7 @@ public sealed class Section :
             {
                 Description = complete
                     ? localizer["Todo_Consents_Done"].Value
-                    : string.Format(CultureInfo.CurrentCulture, localizer["Todo_Consents_Pending"].Value,
-                        progress.PendingCount, progress.RequiredCount),
+                    : localizer["Todo_Consents_Pending", progress.PendingCount, progress.RequiredCount],
                 IsDone = complete,
                 ActionText = localizer["Todo_Consents_Action"].Value,
             });
@@ -290,9 +289,7 @@ public sealed class Section :
                 "fa-solid fa-check-to-slot",
                 Controller: "GovernanceVotes", Action: "Index", Weight: 15)
             {
-                Description = string.Format(CultureInfo.CurrentCulture,
-                    localizer[v.HasBallot ? "Todo_AssemblyVote_Done" : "Todo_AssemblyVote_Pending"].Value,
-                    v.Title),
+                Description = localizer[v.HasBallot ? "Todo_AssemblyVote_Done" : "Todo_AssemblyVote_Pending", v.Title],
                 IsDone = v.HasBallot,
                 ActionText = localizer["Todo_AssemblyVote_Action"].Value,
             })

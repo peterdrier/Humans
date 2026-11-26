@@ -24,12 +24,12 @@ internal sealed class ConsentEmails(
         {
             ArgumentNullException.ThrowIfNull(documentNames);
             var subject = documentNames.Count == 1
-                ? Lf("Consent_Email_ReConsentRequired_Subject_Single", documentNames[0])
+                ? localizer["Consent_Email_ReConsentRequired_Subject_Single", documentNames[0]]
                 : L("Consent_Email_ReConsentRequired_Subject_Multiple");
             var docsHtml = string.Join("\n", documentNames.Select(d => $"<li><strong>{Encode(d)}</strong></li>"));
             return new EmailMessage(userEmail, userName, userId,
                 subject,
-                Lf("Consent_Email_ReConsentsRequired_Body", Encode(userName), docsHtml, _settings.BaseUrl),
+                localizer["Consent_Email_ReConsentsRequired_Body", Encode(userName), docsHtml, _settings.BaseUrl],
                 "reconsents_required");
         });
 
@@ -39,15 +39,12 @@ internal sealed class ConsentEmails(
             ArgumentNullException.ThrowIfNull(documentNames);
             var docsHtml = string.Join("\n", documentNames.Select(d => $"<li>{Encode(d)}</li>"));
             return new EmailMessage(userEmail, userName, userId,
-                Lf("Consent_Email_ReConsentReminder_Subject", daysRemaining),
-                Lf("Consent_Email_ReConsentReminder_Body", Encode(userName), daysRemaining, docsHtml, _settings.BaseUrl),
+                localizer["Consent_Email_ReConsentReminder_Subject", daysRemaining],
+                localizer["Consent_Email_ReConsentReminder_Body", Encode(userName), daysRemaining, docsHtml, _settings.BaseUrl],
                 "reconsent_reminder");
         });
 
     private string L(string key) => localizer[key].Value;
-
-    private string Lf(string key, params object[] args) =>
-        string.Format(CultureInfo.CurrentCulture, localizer[key].Value, args);
 
     private static string Encode(string text) => WebUtility.HtmlEncode(text);
 

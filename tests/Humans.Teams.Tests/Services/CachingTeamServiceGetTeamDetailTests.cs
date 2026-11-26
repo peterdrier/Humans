@@ -1,3 +1,4 @@
+using Humans.Testing;
 using Microsoft.Extensions.Localization;
 using Humans.Base.Extensions;
 using Humans.Base.Constants;
@@ -59,7 +60,7 @@ public sealed class CachingTeamServiceGetTeamDetailTests : IDisposable
 
         var service = new CachingTeamService(
             _serviceProvider.GetRequiredService<IServiceScopeFactory>(),
-            NullLogger<CachingTeamService>.Instance, Substitute.For<IStringLocalizer<TeamsResource>>());
+            NullLogger<CachingTeamService>.Instance, Substitute.For<IStringLocalizer<TeamsResource>>().AddFormatting());
         _pages = new TeamPageService(
             service,
             Substitute.For<Humans.Google.Contracts.ITeamResourceService>(),

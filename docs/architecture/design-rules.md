@@ -312,7 +312,7 @@ public async Task<Profile?> GetByUserIdReadOnlyAsync(Guid userId, CancellationTo
 }
 ```
 
-Read method naming: `*ReadOnlyAsync` is `AsNoTracking()` and returns detached entities; `*ForMutationAsync` tracks, for a caller that will mutate and call `UpdateAsync` on the same repository in the same method.
+Read method naming: `*ReadOnlyAsync` is `AsNoTracking()` and returns detached entities; `*ForMutationAsync` tracks, for a caller that will mutate and call `UpdateAsync` on the same repository in the same method. A repository with only one read for a thing names it without either suffix.
 
 ### Inner service rules
 

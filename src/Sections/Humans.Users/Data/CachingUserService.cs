@@ -422,8 +422,8 @@ internal sealed class CachingUserService(
         Instant now, CancellationToken ct = default) =>
         WithInnerAsync(inner => inner.GetAccountsDueForAnonymizationAsync(now, ct));
 
-    public Task<IReadOnlyList<Guid>> GetUsersWithLoginsButNoEmailsAsync(CancellationToken ct = default) =>
-        WithInnerAsync(inner => inner.GetUsersWithLoginsButNoEmailsAsync(ct));
+    public Task<IReadOnlyList<Guid>> GetLoginUsersWithoutEmailsAsync(CancellationToken ct = default) =>
+        WithInnerAsync(inner => inner.GetLoginUsersWithoutEmailsAsync(ct));
 
     public Task<IReadOnlyDictionary<Guid, IReadOnlyList<(string Provider, string ProviderKey)>>>
         GetExternalLoginsByUserIdsAsync(

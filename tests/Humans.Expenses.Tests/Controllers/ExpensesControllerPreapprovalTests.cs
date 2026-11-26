@@ -1,3 +1,4 @@
+using Humans.Testing;
 using Humans.Base.Authorization;
 using Humans.Permissions.Contracts;
 using System.Security.Claims;
@@ -40,7 +41,7 @@ public sealed class ExpensesControllerPreapprovalTests
     private readonly IFinanceService _finance = Substitute.For<IFinanceService>();
     private readonly IPreapprovalService _preapprovals = Substitute.For<IPreapprovalService>();
     private readonly Dictionary<Guid, GrantOption> _grantStore = new();
-    private readonly IStringLocalizer<ExpensesResource> _localizer = Substitute.For<IStringLocalizer<ExpensesResource>>();
+    private readonly IStringLocalizer<ExpensesResource> _localizer = Substitute.For<IStringLocalizer<ExpensesResource>>().AddFormatting();
     private readonly IAuthorizationService _authorization = Substitute.For<IAuthorizationService>();
 
     public ExpensesControllerPreapprovalTests()

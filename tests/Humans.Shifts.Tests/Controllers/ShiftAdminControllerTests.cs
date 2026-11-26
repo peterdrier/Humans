@@ -1,3 +1,4 @@
+using Humans.Testing;
 using System.Text.RegularExpressions;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Mvc.Razor;
@@ -61,7 +62,7 @@ public class ShiftAdminControllerTests
     private readonly IShiftRowView _shiftView = Substitute.For<IShiftRowView>();
     private readonly IShiftRotaRows _rotaRows = Substitute.For<IShiftRotaRows>();
     private readonly IVolunteerTrackingManagement _tracking = Substitute.For<IVolunteerTrackingManagement>();
-    private readonly IStringLocalizer<ShiftsResource> _localizer = Substitute.For<IStringLocalizer<ShiftsResource>>();
+    private readonly IStringLocalizer<ShiftsResource> _localizer = Substitute.For<IStringLocalizer<ShiftsResource>>().AddFormatting();
     private readonly ILogger<ShiftAdminController> _logger = Substitute.For<ILogger<ShiftAdminController>>();
     private readonly IRotaCoordinatorMessageService _rotaMessenger = Substitute.For<IRotaCoordinatorMessageService>();
     private readonly IPermissionService _permissions = Substitute.For<IPermissionService>();

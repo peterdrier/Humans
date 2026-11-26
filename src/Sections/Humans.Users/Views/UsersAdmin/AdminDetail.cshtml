@@ -1,7 +1,7 @@
 @model Humans.Users.Models.AdminHumanDetailViewModel
 @inject IAuthorizationService AuthService
 @{
-    ViewData["Title"] = string.Format(Localizer["Users_AdminHumanDetail_Title"].Value, Model.DisplayName);
+    ViewData["Title"] = Localizer["Users_AdminHumanDetail_Title", Model.DisplayName].Value;
     var stateLabel = Model.State == UserState.DeletePending ? "Delete Pending" : Model.State.ToString();
     var stateBadgeClass = StatusBadgeExtensions.GetMembershipStatusBadgeClass(stateLabel);
 }

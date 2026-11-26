@@ -21,7 +21,7 @@ internal sealed class AuthEmails(
         => Localized(culture, () => new EmailMessage(
             toEmail, displayName, userId,
             L("Auth_Email_MagicLinkLogin_Subject"),
-            Lf("Auth_Email_MagicLinkLogin_Body", Encode(displayName), magicLinkUrl),
+            localizer["Auth_Email_MagicLinkLogin_Body", Encode(displayName), magicLinkUrl],
             MagicLinkLoginTemplate, Urgent: true));
 
     /// <summary>No account stands behind the address yet, so the message carries no user.</summary>
@@ -29,13 +29,10 @@ internal sealed class AuthEmails(
         => Localized(culture, () => new EmailMessage(
             toEmail, toEmail, UserId: null,
             L("Auth_Email_MagicLinkSignup_Subject"),
-            Lf("Auth_Email_MagicLinkSignup_Body", magicLinkUrl),
+            localizer["Auth_Email_MagicLinkSignup_Body", magicLinkUrl],
             MagicLinkSignupTemplate, Urgent: true));
 
     private string L(string key) => localizer[key].Value;
-
-    private string Lf(string key, params object[] args) =>
-        string.Format(CultureInfo.CurrentCulture, localizer[key].Value, args);
 
     private static string Encode(string text) => WebUtility.HtmlEncode(text);
 
