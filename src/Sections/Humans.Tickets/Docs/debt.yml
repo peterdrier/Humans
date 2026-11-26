@@ -1,5 +1,9 @@
 # Section debt ledger for Humans.Tickets. Shape + routing: memory/process/debt-ledger-additions.md.
 # /debt-sweep pools every src/Sections/*/Docs/debt.yml into the same inbox as the central ledger.
 version: 1
-next_id: 18
-inbox: []
+next_id: 19
+inbox:
+  - added: 2026-11-26
+    id: TICKETS-18
+    what: "ITicketCheckoutService.RefreshOrderAsync runs RefreshAsync, which can cancel at the platform (TryCancelAtPlatformAsync) or resend a refund (OwnRefundStateAsync), yet the TicketBuyController.Order and TicketsSalesAdminController.Order GETs call it with the request token, unmarked. Marking it [ExternalWrite] trips HUM0038. Make the GET refresh read-only (status only, leave cancel and refund resend to webhooks and the reconcile job), then mark what still writes. Found by review of peterdrier/Humans#2625."
+    review: panel
