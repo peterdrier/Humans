@@ -24,7 +24,7 @@ namespace Humans.Backdoor.Tests.Controllers;
 public class BackdoorControllerTests
 {
     private readonly IBackdoorApiKeyService _keys = Substitute.For<IBackdoorApiKeyService>();
-    private readonly IRoleAssignmentService _roles = Substitute.For<IRoleAssignmentService>();
+    private readonly ISystemRoleService _roles = Substitute.For<ISystemRoleService>();
     private readonly IUserService _users = Substitute.For<IUserService>();
     private readonly IAuthorizationService _auth = Substitute.For<IAuthorizationService>();
     private readonly BackdoorController _sut;

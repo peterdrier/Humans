@@ -51,7 +51,7 @@ public class AgentPreloadWarmupHostedServiceTests
     }
 
     [HumansFact]
-    public async Task WarmCachesAsync_BuildsCorpusAndListsCommunityTopics()
+    public async Task WarmCaches_PrimesContentCaches()
     {
         var corpus = Substitute.For<IAgentPreloadCorpusBuilder>();
         corpus.BuildAsync(Arg.Any<CancellationToken>())

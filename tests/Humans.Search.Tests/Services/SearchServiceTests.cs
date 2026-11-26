@@ -21,7 +21,7 @@ public sealed class SearchServiceTests
     [InlineData(" ")]
     [InlineData("a")]
     [InlineData("  k  ")]
-    public async Task SearchAsync_QueryShorterThanTwoCharsAfterTrim_ListsEveryCategoryEmpty_AndSearchesNone(string query)
+    public async Task SearchAsync_ShortQuery_SearchesNoCategory(string query)
     {
         var results = await Build().SearchAsync(query, ct: TestContext.Current.CancellationToken);
 
@@ -32,7 +32,7 @@ public sealed class SearchServiceTests
     }
 
     [HumansFact]
-    public async Task SearchAsync_TwoCharQuery_IsAtTheGateBoundary_AndFansOut()
+    public async Task SearchAsync_TwoCharQuery_SearchesEveryCategory()
     {
         await Build().SearchAsync("ki", ct: TestContext.Current.CancellationToken);
 
@@ -40,7 +40,7 @@ public sealed class SearchServiceTests
     }
 
     [HumansFact]
-    public async Task SearchAsync_TrimsQuery_BeforeFanOut_AndEchoesTheTrimmedForm()
+    public async Task SearchAsync_PaddedQuery_TrimsBeforeFanOut()
     {
         var results = await Build().SearchAsync("  Kitchen  ", ct: TestContext.Current.CancellationToken);
 
@@ -51,7 +51,7 @@ public sealed class SearchServiceTests
     [HumansTheory]
     [InlineData("Team")]
     [InlineData("team")]
-    public async Task SearchAsync_Filter_SearchesOnlyThatCategory_AndStillListsTheOthers(string filter)
+    public async Task SearchAsync_Filter_SearchesOnlyThatCategory(string filter)
     {
         var results = await Build().SearchAsync("Kitchen", filter, TestContext.Current.CancellationToken);
 
@@ -71,7 +71,7 @@ public sealed class SearchServiceTests
     }
 
     [HumansFact]
-    public async Task SearchAsync_DisabledCategory_IsNeitherListedNorSearched_EvenWhenFiltered()
+    public async Task SearchAsync_DisabledCategory_IsExcluded()
     {
         _events.Enabled = false;
 
@@ -79,7 +79,7 @@ public sealed class SearchServiceTests
 
         results.Filter.Should().BeNull();
         results.Buckets.Select(b => b.Key).Should().BeEquivalentTo(["Human", "Team"]);
-        _events.Calls.Should().BeEmpty();
+        AllCalls().Should().Equal("Human:Kitchen", "Team:Kitchen");
     }
 
     [HumansFact]
@@ -92,7 +92,7 @@ public sealed class SearchServiceTests
     }
 
     [HumansFact]
-    public async Task SearchAsync_PassesEachContributorsHitsAndLabelThrough_WithoutRescoring()
+    public async Task SearchAsync_Hits_PassThroughUnscored()
     {
         var hit = new SearchHit(Guid.NewGuid(), "Nothing Like The Query", 40, "Bio", "…kitchen…");
         _teams.Hits = [hit];

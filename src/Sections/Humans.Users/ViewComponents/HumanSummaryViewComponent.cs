@@ -13,7 +13,7 @@ namespace Humans.Users.ViewComponents;
 /// </summary>
 public sealed class HumanSummaryViewComponent(
     IUserService userService, ITeamService teamService, IGovernanceService governanceService,
-    IRoleAssignmentService roleAssignments) : ViewComponent
+    ISystemRoleService roleAssignments) : ViewComponent
 {
     public async Task<IViewComponentResult> InvokeAsync(Guid userId)
     {

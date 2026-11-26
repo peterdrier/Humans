@@ -5,7 +5,7 @@
 
 <page-header title="@(Localizer["Email_Unsubscribe_DoneTitle"].Value)" />
 
-<p>@Html.Raw(string.Format(Localizer["Email_Unsubscribe_DoneMessage"].Value, Html.Encode(categoryName)))</p>
+<p>@Html.Raw(Localizer["Email_Unsubscribe_DoneMessage", Html.Encode(categoryName)])</p>
 
 <p>
     @Localizer["Email_Unsubscribe_DoneManage"]

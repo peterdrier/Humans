@@ -15,7 +15,7 @@ public sealed class HoldedTransientException : HoldedApiException
     public HoldedTransientException(string message, Exception inner) : base(message, inner) { }
 }
 
-/// <summary>4xx: never retry.</summary>
+/// <summary>Invalid endpoint or permanent API failure: never retry.</summary>
 public sealed class HoldedPermanentException : HoldedApiException
 {
     public int StatusCode { get; }

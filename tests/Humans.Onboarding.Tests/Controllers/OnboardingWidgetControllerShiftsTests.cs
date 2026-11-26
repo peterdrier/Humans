@@ -1,3 +1,4 @@
+using Humans.Testing;
 using Microsoft.Extensions.Primitives;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.AspNetCore.Mvc.ModelBinding;
@@ -35,7 +36,7 @@ public class OnboardingWidgetControllerShiftsTests
     private readonly IUserService _userService = Substitute.For<IUserService>();
 
     private readonly IStringLocalizer<OnboardingResource> _localizer =
-        Substitute.For<IStringLocalizer<OnboardingResource>>();
+        Substitute.For<IStringLocalizer<OnboardingResource>>().AddFormatting();
     private readonly DefaultHttpContext _http = new();
 
     public OnboardingWidgetControllerShiftsTests()

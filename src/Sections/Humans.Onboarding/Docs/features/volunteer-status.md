@@ -4,7 +4,7 @@
   src/Sections/Humans.Consent/Services/**
   src/Sections/Humans.Auth/**
   src/Humans.Web/Authorization/MembershipRequiredFilter.cs
-  src/Humans.Web/Authorization/RoleAssignmentClaimsTransformation.cs
+  src/Humans.Web/Authorization/SystemRoleClaimsTransformation.cs
   src/Humans.Web/Controllers/HomeController.cs
   src/Humans.Base/Constants/SystemTeamIds.cs
   src/Humans.Base/Constants/RoleNames.cs
@@ -65,7 +65,7 @@ Non-Active users are restricted from most of the application. A global action fi
 
 ### How It Works
 
-1. `RoleAssignmentClaimsTransformation` runs on each request and stamps the user's stored `UserState` as a claim
+1. `SystemRoleClaimsTransformation` runs on each request and stamps the user's stored `UserState` as a claim
 2. `MembershipRequiredFilter` (registered globally) reads it: only `UserState == Active` reaches the app
 3. Non-Active users are routed by state — `Bare` → name entry, `DeletePending` → cancel-deletion, `Suspended`/`Rejected`/`Deleted`/`Merged` → the account-status page
 

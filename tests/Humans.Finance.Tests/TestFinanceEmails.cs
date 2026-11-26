@@ -1,3 +1,4 @@
+using Humans.Testing;
 using System.Globalization;
 using Humans.Finance.Services;
 using Microsoft.Extensions.Localization;
@@ -23,7 +24,7 @@ internal static class TestFinanceEmails
 
     public static FinanceEmails Create(Action<string>? onLocalize = null)
     {
-        var localizer = Substitute.For<IStringLocalizer<FinanceResource>>();
+        var localizer = Substitute.For<IStringLocalizer<FinanceResource>>().AddFormatting();
         localizer[Arg.Any<string>()].Returns(call =>
         {
             var key = call.Arg<string>();

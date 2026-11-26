@@ -529,7 +529,7 @@
                         @if (!Model.IsAdminContext && !Model.CanAddEmail)
                         {
                             <small class="text-muted ms-2">
-                                @string.Format(Localizer["Users_Emails_ResendCooldown"].Value, Model.MinutesUntilResend)
+                                @Localizer["Users_Emails_ResendCooldown", Model.MinutesUntilResend]
                             </small>
                         }
                     </form>

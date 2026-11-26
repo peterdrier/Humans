@@ -4,6 +4,7 @@ using AwesomeAssertions;
 using Humans.Pretix.Services;
 using Humans.Tickets.Contracts;
 using NodaTime;
+using NSubstitute;
 using Xunit;
 using static Humans.Pretix.Tests.PretixTestHost;
 
@@ -167,6 +168,60 @@ public class PretixPlatformTests
         var act = () => Create(pretix).CreateOrderAsync(Request(), TestContext.Current.CancellationToken);
 
         await act.Should().ThrowAsync<TicketingPlatformException>();
+        pretix.Requests.Should().ContainSingle();
+    }
+
+    [HumansTheory]
+    [InlineData("ftp://pretix.test/", "tok")]
+    [InlineData("file:///tmp/pretix/", "tok")]
+    [InlineData("https://pretix.test/", "secret\r\nX-Injected: hidden")]
+    [InlineData("https://pretix.test/", "secret\nhidden")]
+    [InlineData("not a URL", "tok")]
+    public async Task Platform_InvalidConfiguration_RefusesBeforeCalls(string baseUrl, string token)
+    {
+        using var assertions = new AwesomeAssertions.Execution.AssertionScope();
+        var settings = PretixTestHost.Settings();
+        settings.BaseUrl = baseUrl;
+        settings.ApiToken = token;
+        var pretix = new FakePretix();
+        var stripe = NoStripeAccount();
+        var platform = Create(pretix, settings, stripe);
+        var ct = TestContext.Current.CancellationToken;
+        platform.IsConfigured.Should().BeFalse();
+        var findings = await platform.CheckAsync("nowhere2027", ct);
+        findings.Should().ContainSingle().Which.Ok.Should().BeFalse();
+        findings.Should().OnlyContain(f => !f.Text.Contains("secret", StringComparison.Ordinal)
+            && !f.Text.Contains("hidden", StringComparison.Ordinal));
+        (await platform.GetPaymentLedgerAsync(Instant.MinValue, Instant.MaxValue, ct)).Should().BeNull();
+        Func<Task>[] operations =
+        [
+            () => platform.CreateOrderAsync(Request(), ct),
+            () => platform.GetStatusAsync($"nowhere2027/{Code}", ct),
+            () => platform.RefundAsync(new RefundRequest(Guid.NewGuid(), $"nowhere2027/{Code}", 22500, "Resold"), ct),
+            () => platform.CancelAsync($"nowhere2027/{Code}", ct),
+            () => platform.ErasePersonalDataAsync($"nowhere2027/{Code}", "bea@example.org", ct),
+            () => platform.ListOrdersAsync("nowhere2027", Instant.MinValue, Instant.MaxValue, ct),
+        ];
+        foreach (var operation in operations)
+            await operation.Should().ThrowAsync<TicketingPlatformException>().WithMessage("pretix is not configured.");
+        pretix.Requests.Should().BeEmpty();
+        stripe.ReceivedCalls().Should().BeEmpty();
+    }
+
+    [HumansTheory]
+    [InlineData("http://pretix.test/")]
+    [InlineData("https://pretix.test/")]
+    public async Task Platform_HttpConfiguration_RemainsUsable(string baseUrl)
+    {
+        var settings = PretixTestHost.Settings();
+        settings.BaseUrl = baseUrl;
+        var pretix = new FakePretix().On("GET", "/api/v1/organizers/nobodies/events/", HttpStatusCode.OK, new { results = Array.Empty<object>() });
+        var platform = Create(pretix, settings);
+
+        platform.IsConfigured.Should().BeTrue();
+        var findings = await platform.CheckAsync(null, TestContext.Current.CancellationToken);
+
+        findings.Should().OnlyContain(f => f.Ok);
         pretix.Requests.Should().ContainSingle();
     }
 

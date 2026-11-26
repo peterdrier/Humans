@@ -47,7 +47,7 @@
                 {
                     <div class="alert alert-warning">
                         <strong>@Localizer["Consent_MyData_DeletionPending"]</strong><br />
-                        @string.Format(Localizer["Consent_MyData_DeletionScheduledFor"].Value, Model.DeletionScheduledFor.ToDate())
+                        @Localizer["Consent_MyData_DeletionScheduledFor", Model.DeletionScheduledFor.ToDate() ?? string.Empty]
                     </div>
                     <p>@Localizer["Consent_MyData_DeletionAccessRevoked"]</p>
                     <p>@Localizer["Consent_MyData_DeletionCancelInfo"]</p>

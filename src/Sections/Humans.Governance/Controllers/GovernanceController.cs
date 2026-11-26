@@ -201,5 +201,5 @@ internal sealed class GovernanceController(
             .ThenBy(id => infos.TryGetValue(id, out var info) ? info.BurnerName : string.Empty, StringComparer.CurrentCultureIgnoreCase)];
 
     private async Task<bool> MayManageBoardAsync() =>
-        (await authorization.AuthorizeAsync(User, RoleNames.Board, PolicyNames.RoleAssignmentManage)).Succeeded;
+        (await authorization.AuthorizeAsync(User, RoleNames.Board, PolicyNames.SystemRoleManage)).Succeeded;
 }

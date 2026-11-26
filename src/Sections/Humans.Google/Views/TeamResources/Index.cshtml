@@ -1,7 +1,7 @@
 @model TeamResourcesViewModel
 @inject IStringLocalizer<SharedResource> SharedLocalizer
 @{
-    ViewData["Title"] = string.Format(Localizer["Google_TeamResources_Title"].Value, Model.TeamName);
+    ViewData["Title"] = Localizer["Google_TeamResources_Title", Model.TeamName].Value;
 }
 
 @section Crumbs {

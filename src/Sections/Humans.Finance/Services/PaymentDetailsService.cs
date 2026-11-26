@@ -31,7 +31,7 @@ internal sealed class PaymentDetailsService(
     public async Task<bool> SetIbanAsync(Guid userId, string? iban, CancellationToken ct = default)
     {
         var info = await users.GetUserInfoAsync(userId, ct);
-        if (info is null) return false;
+        if (info is null || info.IsTombstone) return false;
         var normalized = string.IsNullOrWhiteSpace(iban) ? null : IbanValidator.Normalize(iban);
         await repo.UpsertAsync(info.Id, normalized, clock.GetCurrentInstant(), ct);
         return true;

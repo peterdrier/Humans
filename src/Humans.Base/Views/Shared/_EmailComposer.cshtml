@@ -25,7 +25,7 @@
         null => null,
         1 when hasNamedRecipient => null,
         1 => Localizer["EmailComposer_RecipientCountOne"].Value,
-        var n => string.Format(Localizer["EmailComposer_RecipientCountMany"].Value, n),
+        var n => Localizer["EmailComposer_RecipientCountMany", n].Value,
     };
 }
 

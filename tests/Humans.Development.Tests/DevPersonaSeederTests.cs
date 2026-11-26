@@ -30,7 +30,7 @@ public class DevPersonaSeederTests
     private readonly IProfileEditorService _profileEditor = Substitute.For<IProfileEditorService>();
     private readonly IUserEmailService _userEmails = Substitute.For<IUserEmailService>();
     private readonly IContactFieldService _contactFields = Substitute.For<IContactFieldService>();
-    private readonly IRoleAssignmentWrite _roleAssignments = Substitute.For<IRoleAssignmentWrite>();
+    private readonly ISystemRoleWrite _roleAssignments = Substitute.For<ISystemRoleWrite>();
     private readonly ITeamService _teams = Substitute.For<ITeamService>();
     private readonly ITeamWrite _teamsWrite = Substitute.For<ITeamWrite>();
     private readonly ITeamSeeding _teamSeeding = Substitute.For<ITeamSeeding>();

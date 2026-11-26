@@ -9,7 +9,7 @@ using Xunit;
 namespace Humans.Web.Tests.Services;
 
 /// <summary>
-/// <see cref="LoginLinkPreview"/> maps a login ReturnUrl to the area that owns it, so a shared
+/// <see cref="SignInLinkPreview"/> maps a login ReturnUrl to the area that owns it, so a shared
 /// deep link previews as that area rather than "Sign In".
 /// </summary>
 public class LoginLinkPreviewTests
@@ -22,7 +22,7 @@ public class LoginLinkPreviewTests
     [InlineData("/budget", "Budget")]
     public void ResolvesTheFirstSegmentToItsCanonicalArea(string returnUrl, string expected)
     {
-        LoginLinkPreview.SegmentFor(returnUrl).Should().Be(expected);
+        SignInLinkPreview.SegmentFor(returnUrl).Should().Be(expected);
     }
 
     [HumansTheory]
@@ -35,7 +35,7 @@ public class LoginLinkPreviewTests
     [InlineData("https://evil.example/Shifts")]
     public void ReturnsNullForUnknownOrNonLocalTargets(string? returnUrl)
     {
-        LoginLinkPreview.SegmentFor(returnUrl).Should().BeNull();
+        SignInLinkPreview.SegmentFor(returnUrl).Should().BeNull();
     }
 
     [HumansFact]
@@ -45,7 +45,7 @@ public class LoginLinkPreviewTests
             Options.Create(new LocalizationOptions()), NullLoggerFactory.Instance);
         var localizer = new StringLocalizer<SharedResource>(factory);
 
-        foreach (var segment in LoginLinkPreview.Segments)
+        foreach (var segment in SignInLinkPreview.Segments)
         {
             localizer[$"LinkPreview_{segment}_Title"].ResourceNotFound.Should().BeFalse(segment);
             localizer[$"LinkPreview_{segment}_Description"].ResourceNotFound.Should().BeFalse(segment);

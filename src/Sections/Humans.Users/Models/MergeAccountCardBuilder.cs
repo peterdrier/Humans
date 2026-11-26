@@ -16,7 +16,7 @@ internal sealed class MergeAccountCardBuilder(
     ITeamService teamService,
     ICampService campService,
     IGovernanceService governanceService,
-    IRoleAssignmentService roleAssignments,
+    ISystemRoleService roleAssignments,
     IShiftView shiftView,
     ITicketService ticketService,
     IClock clock)
@@ -66,7 +66,7 @@ internal sealed class MergeAccountCardBuilder(
                 .Select(e => googleAddresses.Contains(e) ? $"{e} (Google)" : e)
                 .ToList(),
             Created = info.CreatedAt.ToDateTimeUtc(),
-            LastSignIn = info.LastLoginAt?.ToDateTimeUtc(),
+            LastSignIn = info.LastSignInAt?.ToDateTimeUtc(),
         };
     }
 }

@@ -14,7 +14,7 @@ public sealed class DuplicateAccountServiceTests
 {
     private readonly IUserManagement _userService = Substitute.For<IUserManagement>();
     private readonly ITeamService _teamService = Substitute.For<ITeamService>();
-    private readonly IRoleAssignmentService _roles = Substitute.For<IRoleAssignmentService>();
+    private readonly ISystemRoleService _roles = Substitute.For<ISystemRoleService>();
     private readonly IAuditLogService _audit = Substitute.For<IAuditLogService>();
     private readonly IAuditViewerService _auditViewer = Substitute.For<IAuditViewerService>();
     private static readonly Instant Now = Instant.FromUtc(2026, 6, 6, 12, 0);

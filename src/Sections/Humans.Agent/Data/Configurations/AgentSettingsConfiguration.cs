@@ -17,8 +17,6 @@ internal sealed class AgentSettingsConfiguration : IEntityTypeConfiguration<Agen
         builder.Property(s => s.Id).ValueGeneratedNever();
 
         builder.Property(s => s.Model).HasMaxLength(64).IsRequired();
-#pragma warning disable CS0618 // the retired column stays mapped until its drop is approved
-        builder.Property(s => s.PreloadConfig).HasConversion<string>().HasMaxLength(16).IsRequired();
         builder.Property(s => s.UpdatedAt).IsRequired();
 
         // Seed the singleton row with disabled defaults so the app is always queryable.
@@ -27,14 +25,12 @@ internal sealed class AgentSettingsConfiguration : IEntityTypeConfiguration<Agen
             Id = 1,
             Enabled = false,
             Model = "claude-sonnet-4-6",
-            PreloadConfig = AgentPreloadConfig.Tier1,
             DailyMessageCap = 30,
             HourlyMessageCap = 10,
             DailyTokenCap = 50000,
             RetentionDays = 90,
             UpdatedAt = Instant.FromUtc(2026, 4, 21, 0, 0)
         });
-#pragma warning restore CS0618
 
     }
 }

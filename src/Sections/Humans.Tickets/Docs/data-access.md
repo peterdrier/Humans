@@ -221,7 +221,7 @@ No repository. Parses the `/Tickets/Participation/Backfill` CSV and calls
 No repository. "Who's onsite" roster orchestrator. Pure read
 orchestration over `ITicketService` (this year's onsite
 participations), `IUserService`, `ICampService`, `ITeamService`,
-`IRoleAssignmentService` (the controller resolves the active year via
+`ISystemRoleService` (the controller resolves the active year via
 `ISettingsService`). Implements
 `IOnsiteRosterService`, `IApplicationService`. No direct DB access, no cache.
 

@@ -1,3 +1,4 @@
+using Humans.Testing;
 using AwesomeAssertions;
 using Humans.Auth.Contracts;
 using Humans.Governance.Contracts;
@@ -16,9 +17,9 @@ public sealed class MembershipTierBadgeViewComponentTests
     private static MembershipTierBadgeViewComponent Create(
         IGovernanceService governance, CancellationToken ct = default, bool isBoard = false)
     {
-        var roles = Substitute.For<IRoleAssignmentService>();
+        var roles = Substitute.For<ISystemRoleService>();
         roles.IsUserBoardMemberAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>()).Returns(isBoard);
-        var localizer = Substitute.For<IStringLocalizer<GovernanceResource>>();
+        var localizer = Substitute.For<IStringLocalizer<GovernanceResource>>().AddFormatting();
         localizer[Arg.Any<string>()].Returns(ci => new LocalizedString(ci.Arg<string>(), "Board"));
         return new(governance, roles, localizer)
         {

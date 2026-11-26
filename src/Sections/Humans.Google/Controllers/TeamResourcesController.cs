@@ -114,7 +114,7 @@ internal sealed class TeamResourcesController(
 
         var result = await teamResources.LinkGroupAsync(team.Id, model.GroupEmail, actorUserId: user.Id);
         if (result.Success)
-            SetSuccess(string.Format(localizer["Google_TeamResources_GroupLinked"].Value, result.Resource!.Name));
+            SetSuccess(localizer["Google_TeamResources_GroupLinked", result.Resource!.Name]);
         else
             SetError(BuildResourceLinkError(result, localizer["Google_TeamResources_GroupLinkFailed"].Value));
 
@@ -227,14 +227,14 @@ internal sealed class TeamResourcesController(
                 SyncAction.Execute,
                 CancellationToken.None);
             if (diff.ErrorMessage is not null)
-                SetError(string.Format(localizer["Google_TeamResources_ResourceSyncFailed"].Value, diff.ErrorMessage));
+                SetError(localizer["Google_TeamResources_ResourceSyncFailed", diff.ErrorMessage]);
             else
                 SetSuccess(localizer["Google_TeamResources_ResourceSynced"].Value);
         }
         catch (Exception ex)
         {
             logger.LogError(ex, "Error syncing resource {ResourceId}", resourceId);
-            SetError(string.Format(localizer["Google_TeamResources_ResourceSyncFailed"].Value, ex.Message));
+            SetError(localizer["Google_TeamResources_ResourceSyncFailed", ex.Message]);
         }
 
         return RedirectToAction(nameof(Index), new { slug });
@@ -284,7 +284,7 @@ internal sealed class TeamResourcesController(
         var errorMessage = result.ErrorMessage ?? defaultMessage;
         if (result.ServiceAccountEmail is not null)
         {
-            errorMessage += $" {string.Format(localizer["Google_TeamResources_ServiceAccount"].Value, result.ServiceAccountEmail)}";
+            errorMessage += $" {localizer["Google_TeamResources_ServiceAccount", result.ServiceAccountEmail]}";
         }
 
         return errorMessage;

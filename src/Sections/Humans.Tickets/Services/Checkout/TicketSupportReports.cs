@@ -122,7 +122,7 @@ internal static class TicketSupportReports
 
         return new SalesReport(
             issued.Count,
-            issued.Count(t => t.State is TicketCheckoutTicketState.Valid or TicketCheckoutTicketState.Offered),
+            issued.Count(t => t.IsHeld),
             paid.Sum(o => o.TicketTotalMinor),
             donations.Sum(l => l.AmountMinor),
             paid.Sum(o => o.FeeMinor ?? 0),

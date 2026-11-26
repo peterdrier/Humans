@@ -139,7 +139,7 @@ internal sealed class ConsentController(
     }
 
     private void SetConsentSubmitSuccessFlash(ConsentSubmitResult result) =>
-        SetSuccess(string.Format(localizer["Consent_ThankYou"].Value, result.DocumentName));
+        SetSuccess(localizer["Consent_ThankYou", result.DocumentName ?? string.Empty]);
 
     private IActionResult RedirectToProfileEditForStub()
     {

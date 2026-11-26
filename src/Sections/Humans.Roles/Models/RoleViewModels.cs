@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Mvc.ModelBinding;
 using Humans.Permissions.Contracts;
 using Humans.Roles.Contracts;
 using Humans.Roles.Services;
@@ -50,12 +51,17 @@ internal sealed class RoleForm
     public string Name { get; set; } = string.Empty;
     public string? CustomSlug { get; set; }
     public string? Description { get; set; }
+    [BindRequired]
     public int SlotCount { get; set; } = 1;
     public List<SlotPriority> Priorities { get; set; } = [];
+    [BindRequired]
     public int SortOrder { get; set; }
+    [BindRequired]
     public RolePeriod Period { get; set; } = RolePeriod.YearRound;
     public int? EstimatedHours { get; set; }
+    [BindRequired]
     public bool IsPublic { get; set; } = true;
+    [BindRequired]
     public bool IsCoordinator { get; set; }
     public List<string> PermissionKeys { get; set; } = [];
 
@@ -74,13 +80,12 @@ internal sealed class RoleForm
         PermissionKeys = [.. role.PermissionKeys],
     };
 
-    /// <summary>New slots start at no priority; extra priorities beyond the slot count are dropped.</summary>
     public RoleInput ToInput() => new(
         Name,
         CustomSlug,
         Description,
         SlotCount,
-        [.. Enumerable.Range(0, Math.Max(SlotCount, 0)).Select(i => i < Priorities.Count ? Priorities[i] : SlotPriority.None)],
+        Priorities,
         SortOrder,
         Period,
         EstimatedHours,

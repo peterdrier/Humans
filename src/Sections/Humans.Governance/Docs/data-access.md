@@ -41,7 +41,7 @@ Repository: `IApplicationRepository`.
 | `NavBadge:Voting:{userId}` (`ApplicationDecisionService.VotingBadgeCacheKey`) | 2 min | yes | yes | yes (per voter, in-service) |
 
 Cross-section calls via `IUserService`,
-`IRoleAssignmentService`, `IEmailService`, `IUserEmailService`, `INotificationEmitter`,
+`ISystemRoleService`, `IEmailService`, `IUserEmailService`, `INotificationEmitter`,
 `IAuditLogService`, `IHumansMetrics`, the section's `GovernanceBodySync`,
 and the section's own `GovernanceEmails` builder. Implements `IGovernanceManagement` (which
 extends `IGovernanceService`), `IUserDataContributor`, `IUserMerge`.
@@ -88,7 +88,7 @@ for adding a file, `ITeamResourceService.LookUpDriveLinkAsync`. Writes `IAuditLo
 ### GovernanceBodyRosters (Scoped, internal)
 
 Each body's members before account filtering: `IApplicationRepository.GetActiveApprovedTierUserIdsAsync`
-(Asociados, Colaboradores) and `IRoleAssignmentService.GetActiveUserIdsInRoleAsync(Board)`. Reads no
+(Asociados, Colaboradores) and `ISystemRoleService.GetActiveUserIdsInRoleAsync(Board)`. Reads no
 Governance service, so Google's sync can reach it without a cycle. Used by `GovernanceIndexService` (which
 filters through `IUserService`) and `GovernanceBodyGoogleSource`.
 
@@ -105,8 +105,8 @@ on approval, by `GovernanceBoardSeats` after a seat is added or ended, and by `G
 
 ### GovernanceBoardSeats (Scoped, internal)
 
-Adds and ends Board seats through `IRoleAssignmentWrite.AssignRoleAsync` / `EndRoleAsync`, finding the
-seat with `IRoleAssignmentService.GetByUserIdAsync`; Auth stores and audits them. Owns the Board offices in
+Adds and ends Board seats through `ISystemRoleWrite.AssignRoleAsync` / `RevokeRoleAsync`, finding the
+seat with `ISystemRoleService.GetByUserIdAsync`; Auth stores and audits them. Owns the Board offices in
 `governance_board_positions` through `IGovernanceBodyRepository` (R/W), and is that table's GDPR contributor and merge step.
 
 ### AssemblyVoteService (Scoped)
@@ -127,7 +127,7 @@ Repositories: `IAssemblyVoteRepository`, plus the section's `IApplicationReposit
 No cache, no caching decorator — one vote at a time and ~120 voters.
 
 Cross-section calls via `IUserService`,
-`IRoleAssignmentService`, `ITeamService`, `IEmailService`,
+`ISystemRoleService`, `ITeamService`, `IEmailService`,
 the section's own `GovernanceEmails` builder, `INotificationEmitter`,
 `INotificationAutoResolve`, `IAuditLogService`, `IGoogleTranslationService`,
 `IClock`. Implements

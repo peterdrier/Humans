@@ -39,7 +39,7 @@ public sealed class MemberTicketStatusViewComponent(
             return Content(string.Empty);
         }
 
-        var humansTickets = await HumansTicketCountAsync(checkout, userId, activeEvent, allSettings, ct);
+        var humansTickets = await checkout.GetHeldTicketCountAsync(userId, ct);
         var configured = ticketSettings.Value.IsConfigured;
         var ticketCount = configured ? await TicketCountAsync(userId, ct) : 0;
         if (ticketCount is null)
@@ -62,22 +62,6 @@ public sealed class MemberTicketStatusViewComponent(
             SellsInHumans = sellsInHumans,
             HumansTicketCount = humansTickets,
         });
-    }
-
-    /// <summary>
-    /// Tickets the person holds (Valid, or Offered for resale until it sells) bought through Humans: for the active
-    /// event, and for any sale still open, matching the events the buy page offers.
-    /// </summary>
-    private static async Task<int> HumansTicketCountAsync(
-        Services.Checkout.ITicketCheckoutService checkout, Guid userId, EventSettingsInfo? activeEvent,
-        IReadOnlyList<Domain.Checkout.TicketingSettings> allSettings, CancellationToken ct)
-    {
-        var forEvent = allSettings
-            .Where(e => activeEvent is null || e.EventSettingsId == activeEvent.Id || e.Mode != Domain.Checkout.TicketSalesMode.Closed)
-            .Select(e => e.Id).ToHashSet();
-        return (await checkout.GetTicketsForHolderAsync(userId, ct))
-            .Count(t => t.State is Domain.Checkout.TicketCheckoutTicketState.Valid or Domain.Checkout.TicketCheckoutTicketState.Offered
-                && forEvent.Contains(t.TicketingSettingsId));
     }
 
     /// <summary>Null when the holdings read failed.</summary>

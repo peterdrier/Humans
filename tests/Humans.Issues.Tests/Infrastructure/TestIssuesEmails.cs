@@ -1,3 +1,4 @@
+using Humans.Testing;
 using System.Globalization;
 using Humans.Base.Configuration;
 using Humans.Issues.Services;
@@ -29,7 +30,7 @@ internal static class TestIssuesEmails
     // The optional observer verifies the culture active when a dispatched message is rendered.
     public static IssuesEmails Create(Action<string>? observeCulture = null)
     {
-        var localizer = Substitute.For<IStringLocalizer<IssuesResource>>();
+        var localizer = Substitute.For<IStringLocalizer<IssuesResource>>().AddFormatting();
         localizer[Arg.Any<string>()].Returns(call =>
         {
             var key = call.Arg<string>();

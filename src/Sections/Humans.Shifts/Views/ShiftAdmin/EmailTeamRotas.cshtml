@@ -1,6 +1,6 @@
 @model Humans.Shifts.Models.EmailTeamRotasViewModel
 @{
-    ViewData["Title"] = string.Format(Localizer["Shifts_EmailTeamRotas_Title"].Value, Model.TeamName);
+    ViewData["Title"] = Localizer["Shifts_EmailTeamRotas_Title", Model.TeamName].Value;
 }
 
 @section Crumbs {
@@ -10,7 +10,7 @@
 }
 
 <div class="container py-4">
-    <page-header title="@(string.Format(Localizer["Shifts_EmailTeamRotas_Heading"].Value, Model.TeamName))" />
+    <page-header title="@(Localizer["Shifts_EmailTeamRotas_Heading", Model.TeamName])" />
 
 
     <div class="row mt-3">
@@ -78,7 +78,7 @@
 
                         <div class="d-flex gap-2">
                             <button type="submit" class="btn btn-primary" @(Model.RecipientCount == 0 ? "disabled" : null)>
-                                @string.Format(Localizer["Shifts_EmailTeamRotas_Send"].Value, Model.RecipientCount)
+                                @Localizer["Shifts_EmailTeamRotas_Send", Model.RecipientCount]
                             </button>
                             <button type="submit" class="btn btn-outline-secondary" id="refresh-recipients"
                                     name="intent" value="@EmailTeamRotasViewModel.RefreshIntent"
@@ -95,8 +95,8 @@
         <div class="col-lg-4">
             <div class="card">
                 <div class="card-header">
-                    <h5 class="mb-0">@string.Format(Localizer["Shifts_EmailTeamRotas_RecipientsHeading"].Value, Model.RecipientCount)</h5>
-                    <small class="text-muted">@string.Format(Localizer["Shifts_EmailTeamRotas_RotaCount"].Value, Model.RotaCount)</small>
+                    <h5 class="mb-0">@Localizer["Shifts_EmailTeamRotas_RecipientsHeading", Model.RecipientCount]</h5>
+                    <small class="text-muted">@Localizer["Shifts_EmailTeamRotas_RotaCount", Model.RotaCount]</small>
                 </div>
                 <div class="card-body">
                     @if (Model.RecipientCount == 0)
