@@ -29,6 +29,8 @@ Tickets answers who may come to the event, what they paid, and how the money rec
 
 Dashboard statistics, break-even budget and vendor-capacity reads honor request cancellation through the page builder and service decorator. Requested cancellation propagates; an unrelated vendor-capacity failure retains the zero-capacity fallback. The local stale-sync recovery save uses the same request token.
 
+Checkout methods that write to a ticketing platform carry `[ExternalWrite]`. Buyer cancel, admin refund, ticket void and the BoxOffice, Hi.Events and pretix webhooks call them with `CancellationToken.None` after the actor lookup or signature check, so a disconnect cannot leave a platform change unrecorded here. The order page GETs still refresh from the platform with the request token.
+
 Bulk cache warmups publish through the shared mutation guard. A refresh, deletion, eviction or clear overlapping the load discards the partial attempt and reloads the full snapshot and derived indexes before a read can treat the cache as warmed.
 
 Configured ticket rules must be available before checkout. Successful GitHub reads are cached for ten minutes;

@@ -35,8 +35,9 @@ internal sealed class BoxOfficeStripeWebhookController(
         var sessionIds = await platform.ParseWebhookAsync(body, Request.Headers["Stripe-Signature"].ToString(), ct);
         if (sessionIds is null)
             return BadRequest();
+        // Applying an order change can write to the platform; a sender that hangs up must not tear it.
         foreach (var sessionId in sessionIds)
-            await platformEvents.PlatformOrderChangedAsync(BoxOfficePlatform.PlatformKey, sessionId, ct);
+            await platformEvents.PlatformOrderChangedAsync(BoxOfficePlatform.PlatformKey, sessionId, CancellationToken.None);
 
         return Ok();
     }

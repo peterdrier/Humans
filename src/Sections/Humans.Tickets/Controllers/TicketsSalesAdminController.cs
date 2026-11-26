@@ -106,7 +106,7 @@ internal sealed class TicketsSalesAdminController(
         if (errorResult is not null) return errorResult;
 
         var result = await checkout.RefundAsync(
-            id, (long)Math.Round(amount * 100m, MidpointRounding.AwayFromZero), reason ?? string.Empty, user.Id, ct);
+            id, (long)Math.Round(amount * 100m, MidpointRounding.AwayFromZero), reason ?? string.Empty, user.Id, CancellationToken.None); // a refund sent must be recorded even after a disconnect
         if (result.Succeeded)
             SetSuccess("Refund sent.");
         else
