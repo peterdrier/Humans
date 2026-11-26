@@ -148,7 +148,10 @@ internal sealed class TaskTestKit
         public LocalizedString this[string name] =>
             Manager.GetString(name, CultureInfo.CurrentUICulture) is { } value ? new(name, value) : new(name, name, resourceNotFound: true);
 
-        public LocalizedString this[string name, params object[] arguments] => this[name];
+        public LocalizedString this[string name, params object[] arguments] =>
+            Manager.GetString(name, CultureInfo.CurrentUICulture) is { } value
+                ? new(name, string.Format(CultureInfo.CurrentCulture, value, arguments))
+                : new(name, name, resourceNotFound: true);
 
         public IEnumerable<LocalizedString> GetAllStrings(bool includeParentCultures) => [];
     }

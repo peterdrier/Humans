@@ -51,7 +51,7 @@ internal sealed class TasksEmails(
     private string TaskUrl(TaskAnswerEmail request) => $"{_settings.BaseUrl}/Tasks/{request.TaskId}";
 
     private string Lf(string key, params object[] args) =>
-        string.Format(CultureInfo.CurrentCulture, localizer[key].Value, args);
+        localizer[key, args].Value;
 
     private static string Encode(string text) => WebUtility.HtmlEncode(text);
 

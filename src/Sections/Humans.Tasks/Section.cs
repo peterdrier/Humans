@@ -111,8 +111,7 @@ public sealed class Section : ISection, ISectionRoles, ISectionNav, ISectionAdmi
             "fa-solid fa-hand",
             RawHref: $"/Tasks/Team/{(string.IsNullOrEmpty(t.TeamSlug) ? t.TeamId.ToString() : t.TeamSlug)}", Weight: 40)
         {
-            Description = string.Format(CultureInfo.CurrentCulture,
-                localizer["Tasks_Todo_Requests_Description"].Value, t.TeamName, t.Count),
+            Description = localizer["Tasks_Todo_Requests_Description", t.TeamName, t.Count].Value,
             ActionText = localizer["Tasks_Todo_Requests_Action"].Value,
         });
     }
