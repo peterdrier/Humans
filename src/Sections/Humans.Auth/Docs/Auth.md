@@ -139,6 +139,8 @@ Reached from the Roles item of the Users admin sidebar group and the Role Assign
 
 ## Invariants
 
+- System-role assignment checks the exact requested account through `GetRawUserInfoAsync` after role/name validation and before overlap checks or writes. Missing and tombstoned targets return `UserUnavailable` with a Warning, without an assignment, audit or notice. Archived IDs are refused rather than retargeted to a survivor; the admin POST returns 404 for that refusal.
+
 - Invalid, expired or replayed magic-link tokens and throttled login/signup sends log at Warning without exception stacks, making these expected refusals visible in the production log viewer. Successful sends retain their informational logs. Request-cancelled magic-link signup also logs Warning without a stack after releasing the token reservation, then propagates cancellation.
 
 - Role assignment and ending honour request cancellation during target, assignment

@@ -411,9 +411,11 @@ internal sealed class ShiftAdminController(
             .ToList();
         if (userIds.Count == 0) return [];
 
-        var infos = await UserService.GetUserInfosAsync(userIds, ct);
-        return userIds
-            .Select(id => infos.TryGetValue(id, out var u) ? u.BurnerName : null)
+        var infos = RotaCoordinatorMessageService.GetAvailableRecipients(
+            userIds, await UserService.GetUserInfosAsync(userIds, ct));
+        return infos.Values
+            .DistinctBy(user => user.Id)
+            .Select(user => user.BurnerName)
             .Where(n => !string.IsNullOrWhiteSpace(n))
             .Select(n => n!)
             .OrderBy(n => n, StringComparer.OrdinalIgnoreCase)

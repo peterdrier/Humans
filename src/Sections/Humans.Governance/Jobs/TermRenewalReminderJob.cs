@@ -68,10 +68,10 @@ internal sealed class TermRenewalReminderJob(
                     continue;
                 }
 
-                if (!applicantsById.TryGetValue(application.UserId, out var applicant))
+                if (!applicantsById.TryGetValue(application.UserId, out var applicant) || applicant.IsTombstone)
                 {
                     logger.LogWarning(
-                        "User {UserId} not found while sending renewal reminder for {Tier}",
+                        "User {UserId} is unavailable while sending renewal reminder for {Tier}",
                         application.UserId, application.MembershipTier);
                     continue;
                 }

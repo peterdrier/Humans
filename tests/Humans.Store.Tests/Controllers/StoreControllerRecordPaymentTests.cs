@@ -27,6 +27,11 @@ using NodaTime;
 using NodaTime.Testing;
 using NSubstitute;
 using Xunit;
+using Humans.Base.Extensions;
+using System.Globalization;
+using Microsoft.AspNetCore.Mvc.Controllers;
+using Microsoft.AspNetCore.Mvc.ModelBinding;
+using Microsoft.Extensions.Primitives;
 
 namespace Humans.Store.Tests.Controllers;
 
@@ -40,6 +45,7 @@ public sealed class StoreControllerRecordPaymentTests
 {
     private readonly IStoreRepository _repo = Substitute.For<IStoreRepository>();
     private readonly IAuditLogService _audit = Substitute.For<IAuditLogService>();
+    private readonly IStripeService _stripe = Substitute.For<IStripeService>();
     private Service _service = null!;
     private CatalogService _catalog = null!;
     private readonly Guid _userId = Guid.NewGuid();
@@ -66,7 +72,7 @@ public sealed class StoreControllerRecordPaymentTests
         _repo.GetOrderWithLinesAndPaymentsAsync(_order.Id, Arg.Any<CancellationToken>()).Returns(_order);
         _repo.GetAllProductsForYearAsync(Arg.Any<int>(), Arg.Any<CancellationToken>()).Returns(new List<Product>());
         _repo.GetProductsByIdsAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>()).Returns(new List<Product>());
-        var stripe = Substitute.For<IStripeService>();
+        var stripe = _stripe;
         var holded = Substitute.For<IHoldedService>();
         _catalog = new CatalogService(_repo, _audit, clock, holded, NullLogger<CatalogService>.Instance);
         var service = _service = new Service(
@@ -107,6 +113,113 @@ public sealed class StoreControllerRecordPaymentTests
     private static UserInfo MakeUserInfo(Guid id) => new(
         id, "Tester", false, "en", null, Instant.FromUtc(2026, 1, 1, 0, 0), null, null, null, null,
         null, null, null, null, null, [], [], null);
+
+    [HumansTheory]
+    [InlineData(true, "en", "12.34", true)]
+    [InlineData(true, "es", "12.34", true)]
+    [InlineData(true, "de", "12.34", true)]
+    [InlineData(true, "it", "12.34", true)]
+    [InlineData(true, "fr", "12.34", true)]
+    [InlineData(true, "ca", "12.34", true)]
+    [InlineData(true, "nl", "12.34", true)]
+    [InlineData(false, "en", "12.34", true)]
+    [InlineData(false, "es", "12.34", true)]
+    [InlineData(false, "de", "12.34", true)]
+    [InlineData(false, "it", "12.34", true)]
+    [InlineData(false, "fr", "12.34", true)]
+    [InlineData(false, "ca", "12.34", true)]
+    [InlineData(false, "nl", "12.34", true)]
+    [InlineData(true, "en", "1.234e1", true)]
+    [InlineData(false, "es", "1.234e1", true)]
+    [InlineData(true, "en", "bad", false)]
+    [InlineData(false, "en", "bad", false)]
+    [InlineData(true, "en", null, false)]
+    [InlineData(false, "en", null, false)]
+    [InlineData(true, "en", "1,23", false)]
+    [InlineData(false, "en", "1,23", false)]
+    [InlineData(true, "en", "79228162514264337593543950336", false)]
+    [InlineData(false, "en", "79228162514264337593543950336", false)]
+    [InlineData(false, "en", "12.34", false, "valueDate")]
+    [InlineData(false, "en", "12.34", false, "method")]
+    public async Task Payment_FormAmount_PreservesInvariantValue(
+        bool paying, string cultureName, string? amount, bool valid, string? invalidField = null)
+    {
+        using var culture = new CultureScope(cultureName);
+        var controller = BuildController(RoleNames.Admin);
+        _order.Lines.Add(new OrderLine
+        {
+            Id = Guid.NewGuid(),
+            OrderId = _order.Id,
+            ProductId = Guid.NewGuid(),
+            Qty = 1,
+            UnitPriceSnapshot = 2000m,
+        });
+        _repo.GetOrderByIdAsync(_order.Id, Arg.Any<CancellationToken>()).Returns(_order);
+        _stripe.IsStoreCheckoutConfigured.Returns(true);
+        _stripe.CreateCheckoutSessionAsync(Arg.Any<Guid>(), Arg.Any<decimal>(), Arg.Any<string>(), Arg.Any<string>(),
+            Arg.Any<string?>(), Arg.Any<string>(), Arg.Any<CancellationToken>(), Arg.Any<Guid?>(), Arg.Any<string?>())
+            .Returns(new StoreCheckoutSessionData("cs_test", _order.Id, null, 12.34m, Status: "open", Url: "https://stripe.example/pay"));
+        var registrations = new ServiceCollection().AddLogging();
+        registrations.AddControllers();
+        using var services = registrations.BuildServiceProvider();
+        controller.HttpContext.RequestServices = services;
+        controller.Url = Substitute.For<IUrlHelper>();
+        controller.Url.Action(Arg.Any<Microsoft.AspNetCore.Mvc.Routing.UrlActionContext>()).Returns("https://humans.example/order");
+        var fields = new Dictionary<string, StringValues>(StringComparer.Ordinal)
+        {
+            ["id"] = _order.Id.ToString(),
+            ["method"] = "WriteOff",
+            ["notes"] = "Adjustment",
+        };
+        if (amount is not null) fields["amountEur"] = amount;
+        if (invalidField is not null) fields[invalidField] = "bad";
+        var method = typeof(StoreController).GetMethod(paying ? nameof(StoreController.Pay) : nameof(StoreController.RecordPayment))!;
+        var args = new List<object?>();
+        foreach (var parameter in method.GetParameters())
+        {
+            if (parameter.ParameterType == typeof(CancellationToken))
+            {
+                args.Add(TestContext.Current.CancellationToken);
+                continue;
+            }
+            var metadata = ((ModelMetadataProvider)services.GetRequiredService<IModelMetadataProvider>()).GetMetadataForParameter(parameter);
+            var binder = services.GetRequiredService<IModelBinderFactory>().CreateBinder(new ModelBinderFactoryContext
+            {
+                Metadata = metadata,
+                CacheToken = parameter,
+            });
+            var descriptor = new ControllerParameterDescriptor
+            {
+                Name = parameter.Name!,
+                ParameterType = parameter.ParameterType,
+                ParameterInfo = parameter,
+            };
+            var bound = await services.GetRequiredService<ParameterBinder>().BindModelAsync(controller.ControllerContext, binder,
+                new FormValueProvider(BindingSource.Form, new FormCollection(fields), CultureInfo.CurrentCulture),
+                descriptor, metadata, value: null);
+            args.Add(bound.IsModelSet ? bound.Model : parameter.ParameterType.IsValueType ? Activator.CreateInstance(parameter.ParameterType) : null);
+        }
+
+        var result = await (Task<IActionResult>)method.Invoke(controller, [.. args])!;
+
+        if (!valid)
+        {
+            result.Should().BeOfType<BadRequestObjectResult>();
+            await _repo.DidNotReceive().AddPaymentAsync(Arg.Any<Payment>(), Arg.Any<CancellationToken>());
+            await _stripe.DidNotReceiveWithAnyArgs().CreateCheckoutSessionAsync(default, default, default!, default!, default, default!);
+        }
+        else if (paying)
+        {
+            result.Should().BeOfType<RedirectResult>();
+            await _stripe.Received(1).CreateCheckoutSessionAsync(_order.Id, 12.34m, Arg.Any<string>(), Arg.Any<string>(),
+                Arg.Any<string?>(), Arg.Any<string>(), CancellationToken.None, Arg.Any<Guid?>(), Arg.Any<string?>());
+        }
+        else
+        {
+            result.Should().BeOfType<RedirectToActionResult>();
+            await _repo.Received(1).AddPaymentAsync(Arg.Is<Payment>(p => p.AmountEur == 12.34m && p.Method == PaymentMethod.WriteOff), CancellationToken.None);
+        }
+    }
 
     [HumansTheory]
     [InlineData("pay")]
@@ -156,9 +269,9 @@ public sealed class StoreControllerRecordPaymentTests
         if (!afterAccount) await request.CancelAsync();
         Func<Task<IActionResult>> run = () => action switch
         {
-            "pay" => controller.Pay(_order.Id, 10m, request.Token),
+            "pay" => controller.Pay(_order.Id, "10", request.Token),
             "invoice" or "invoice-order" => controller.IssueInvoice(_order.Id),
-            "record-payment" => controller.RecordPayment(_order.Id, PaymentMethod.DepositReturn, 10m, null, null, null, null, request.Token),
+            "record-payment" => controller.RecordPayment(_order.Id, PaymentMethod.DepositReturn, "10", null, null, null, null, request.Token),
             "delete-payment" => controller.DeletePayment(_order.Id, Guid.NewGuid(), request.Token),
             "create" => controller.Create(_order.CampSeasonId!.Value, request.Token),
             "create-team" => controller.CreateTeamOrder(Guid.NewGuid(), request.Token),
@@ -228,7 +341,7 @@ public sealed class StoreControllerRecordPaymentTests
         var controller = BuildController(StoreRoles.StoreAdmin);
 
         var result = await controller.RecordPayment(
-            _order.Id, Enum.Parse<PaymentMethod>(methodName), 10m, "re_123", null, new LocalDate(2026, 6, 24), null,
+            _order.Id, Enum.Parse<PaymentMethod>(methodName), "10", "re_123", null, new LocalDate(2026, 6, 24), null,
             TestContext.Current.CancellationToken);
 
         result.Should().BeOfType<ForbidResult>();
@@ -256,7 +369,7 @@ public sealed class StoreControllerRecordPaymentTests
         var controller = BuildController(role);
 
         var result = await controller.RecordPayment(
-            _order.Id, PaymentMethod.Refund, 10m, "re_123", null, null, null, TestContext.Current.CancellationToken);
+            _order.Id, PaymentMethod.Refund, "10", "re_123", null, null, null, TestContext.Current.CancellationToken);
 
         result.Should().BeOfType<RedirectToActionResult>();
         await _repo.Received(1).AddPaymentAsync(
@@ -283,7 +396,7 @@ public sealed class StoreControllerRecordPaymentTests
         var controller = BuildController(role);
 
         var result = await controller.RecordPayment(
-            _order.Id, PaymentMethod.BankTransfer, 7216.71m, " 6a3b8e7cbd5b6f5ec40cbb87 ", null, new LocalDate(2026, 6, 24), null,
+            _order.Id, PaymentMethod.BankTransfer, "7216.71", " 6a3b8e7cbd5b6f5ec40cbb87 ", null, new LocalDate(2026, 6, 24), null,
             TestContext.Current.CancellationToken);
 
         result.Should().BeOfType<RedirectToActionResult>();
@@ -316,7 +429,7 @@ public sealed class StoreControllerRecordPaymentTests
         var controller = BuildController(StoreRoles.StoreAdmin);
 
         var result = await controller.RecordPayment(
-            _order.Id, PaymentMethod.DepositReturn, 30m, null, null, null, productId, TestContext.Current.CancellationToken);
+            _order.Id, PaymentMethod.DepositReturn, "30", null, null, null, productId, TestContext.Current.CancellationToken);
 
         result.Should().BeOfType<RedirectToActionResult>();
         await _repo.Received(1).AddPaymentAsync(
@@ -419,7 +532,7 @@ public sealed class StoreControllerRecordPaymentTests
         {
             _ = operation switch
             {
-                "record" => await controller.RecordPayment(_order.Id, PaymentMethod.Refund, 10m, "refund-ref", null, null, null,
+                "record" => await controller.RecordPayment(_order.Id, PaymentMethod.Refund, "10", "refund-ref", null, null, null,
                     TestContext.Current.CancellationToken),
                 "payment-delete" => await controller.DeletePayment(_order.Id, payment.Id, TestContext.Current.CancellationToken),
                 _ => await controller.Delete(_order.Id, TestContext.Current.CancellationToken)

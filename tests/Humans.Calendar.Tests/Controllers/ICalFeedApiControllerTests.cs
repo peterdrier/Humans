@@ -28,6 +28,24 @@ public class ICalFeedApiControllerTests
         result.Should().BeOfType<NotFoundResult>();
     }
 
+    [HumansTheory]
+    [Xunit.InlineData(UserState.Deleted)]
+    [Xunit.InlineData(UserState.Merged)]
+    public async Task GetFeed_TombstoneUser_Returns404BeforeTokenLookup(UserState state)
+    {
+        var userId = Guid.NewGuid();
+        var token = Guid.NewGuid();
+        _users.GetUserInfoAsync(userId, Arg.Any<CancellationToken>()).Returns(
+            UserInfo.Create(new User { Id = userId, State = state }, [], [], null));
+        var tokens = Substitute.For<ICalendarFeedTokenService>();
+        tokens.GetAsync(userId, Arg.Any<CancellationToken>()).Returns(token);
+
+        var result = await CreateController(tokens).GetFeed(userId, token, Xunit.TestContext.Current.CancellationToken);
+
+        result.Should().BeOfType<NotFoundResult>();
+        tokens.ReceivedCalls().Should().BeEmpty();
+    }
+
     [HumansFact]
     public async Task GetFeed_ValidToken_ReturnsTextCalendarFile()
     {

@@ -78,6 +78,10 @@
                             <div class="form-text">@Localizer["Teams_EditTeam_IncludeInBudgetHelp"]</div>
                         </div>
                     }
+                    else
+                    {
+                        <input type="hidden" asp-for="IsActive" />
+                    }
 
                     @if (Model.ParentTeamId.HasValue)
                     {

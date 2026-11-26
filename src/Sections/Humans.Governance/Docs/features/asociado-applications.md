@@ -237,7 +237,7 @@ When an Application is approved:
 5. Membership tier row (`governance_membership_tiers`) → Application's tier
 6. The Colaboradores or Asociados body's Google group and files are synced
 7. Individual BoardVote records deleted
-8. Approval email attempted best-effort, including recipient lookup; email failure does not skip the in-app notice.
+8. Approval email attempted best-effort, including recipient lookup; missing or tombstoned recipients are skipped. Email failure does not skip the in-app notice.
 
 Steps 1–5 and 7 commit together before team sync, audit and notices. A failed tier grant leaves the application Submitted and retains its Board votes.
 

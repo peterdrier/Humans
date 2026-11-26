@@ -1,3 +1,5 @@
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 using Humans.Base.Extensions;
 using Humans.Users.Contracts;
 using Microsoft.AspNetCore.Authorization;
@@ -33,14 +35,20 @@ public abstract class ApiControllerBase(IUserService userService) : ControllerBa
     /// <summary>
     /// Resolves the current user or returns 401 Unauthorized. Use this on
     /// authenticated API actions so the "auth cookie still valid but the
-    /// user row is gone" race produces 401 rather than soft-failing into
+    /// user row is missing or tombstoned" race produces 401 rather than soft-failing into
     /// empty data. <see cref="Microsoft.AspNetCore.Authorization.AuthorizeAttribute"/>
     /// handles the no-cookie case at the framework layer; this helper
-    /// covers the deleted-while-session-valid case at the action layer.
+    /// covers deleted accounts whose sessions remain valid at the action layer.
     /// </summary>
     protected async Task<(IActionResult? ErrorResult, UserInfo User)> ResolveCurrentUserOrUnauthorizedAsync(CancellationToken ct = default)
     {
         var user = await GetCurrentUserInfoAsync(ct);
+        if (user is not null && user.IsTombstone)
+        {
+            HttpContext.RequestServices?.GetService<ILogger<ApiControllerBase>>()?
+                .LogWarning("Refused current-user resolution for unavailable account {UserId}", user.Id);
+            user = null;
+        }
         return user is null ? (Unauthorized(), null!) : (null, user);
     }
 }

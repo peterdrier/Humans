@@ -1,6 +1,7 @@
 // Editing mode: toolbar state, draw label updates, popup, button handlers.
 import { appState } from './state.js';
 import { CONFIG } from './config.js';
+import { parseCampFeature } from '../shared/camp-geometry.js';
 import { isOutsideZone, overlapsOtherCamps, getSoundZoneOutOfRange, SIZE_RATIO_UPPER, SIZE_RATIO_LOWER } from './geometry.js';
 import { setActivePolygonDim } from './layers.js';
 import { isMeasuring } from '../shared/measure.js';
@@ -68,7 +69,7 @@ export function startEditing(campSeasonId) {
 
     const poly = appState.campMap.campPolygons.find(p => p.campSeasonId === campSeasonId);
     if (poly) {
-        const f = JSON.parse(poly.geoJson);
+        const f = parseCampFeature(poly.geoJson);
         if (!f.id) f.id = 'active-polygon';
         appState.draw.add(f);
         appState.draw.changeMode('direct_select', { featureId: f.id });
@@ -99,9 +100,8 @@ export function onDrawChange() {
 let lastRenderedPolyKey = null;
 export function onDrawRender() {
     const features = appState.draw.getAll().features;
-    const poly = features.find(f =>
-        f.geometry.type === 'Polygon' && (f.geometry.coordinates[0]?.length ?? 0) >= 4);
-    const key = poly ? JSON.stringify(poly.geometry.coordinates) : '';
+    const poly = getAreaFeature(features);
+    const key = poly ? JSON.stringify(poly.geometry) : '';
     if (key === lastRenderedPolyKey) return;
     lastRenderedPolyKey = key;
     updateSaveButton();
@@ -127,20 +127,30 @@ export function setEditingControlsVisible(visible) {
         return;
     }
     saveBtn?.classList.add('d-none');
-    updateAddMyBarrioVisibility();
+    updateAddControls();
     const addMyBarrioVisible = document.getElementById('add-my-barrio-btn')?.classList.contains('d-none') === false;
-    const addBarrioPresent   = !!document.getElementById('add-barrio-container');
+    const addBarrioPresent = document.getElementById('add-barrio-container')?.classList.contains('d-none') === false;
     if (!addMyBarrioVisible && !addBarrioPresent) toolbar.classList.add('d-none');
 }
 
-export function updateAddMyBarrioVisibility() {
+export function updateAddControls() {
+    const select = document.getElementById('add-barrio-select');
+    let hasUnmapped = false;
+    if (select) {
+        const placed = new Set(appState.campMap.campPolygons.map(p => p.campSeasonId));
+        for (const option of [...select.options]) {
+            if (option.value && placed.has(option.value)) option.remove();
+        }
+        hasUnmapped = [...select.options].some(option => option.value);
+        document.getElementById('add-barrio-container')?.classList.toggle('d-none', !hasUnmapped);
+    }
+
     const btn = document.getElementById('add-my-barrio-btn');
-    if (!btn) return;
     const hasPolygon = appState.campMap.campPolygons.some(p => p.campSeasonId === CONFIG.USER_CAMP_SEASON_ID);
-    const show = CONFIG.IS_PLACEMENT_OPEN && CONFIG.USER_CAMP_SEASON_ID && !hasPolygon;
-    btn.classList.toggle('d-none', !show);
-    if (show) {
-        document.getElementById('main-toolbar')?.classList.remove('d-none');
+    const showOwn = btn && CONFIG.IS_PLACEMENT_OPEN && CONFIG.USER_CAMP_SEASON_ID && !hasPolygon;
+    btn?.classList.toggle('d-none', !showOwn);
+    if (!appState.activeCampSeasonId) {
+        document.getElementById('main-toolbar')?.classList.toggle('d-none', !showOwn && !hasUnmapped);
     }
 }
 
@@ -152,18 +162,25 @@ export function clearDrawLabel() {
     map.getSource('draw-warning-overlap')?.setData({ type: 'FeatureCollection', features: [] });
 }
 
+function getAreaFeature(features) {
+    return features.find(f => {
+        const { type, coordinates } = f.geometry;
+        const polygons = type === 'Polygon' ? [coordinates] : type === 'MultiPolygon' ? coordinates : [];
+        return polygons.length > 0 && polygons.every(rings =>
+            rings.length > 0 && rings.every(ring => ring.length >= 4));
+    });
+}
+
 export function updateSaveButton() {
     const { map, draw } = appState;
     const features = draw.getAll().features;
-    const hasValidPolygon = features.some(f =>
-        f.geometry.type === 'Polygon' && (f.geometry.coordinates[0]?.length ?? 0) >= 4);
-    const editing = hasValidPolygon && appState.activeCampSeasonId;
+    const poly = getAreaFeature(features);
+    const editing = poly && appState.activeCampSeasonId;
     const saveButton = document.getElementById('save-btn');
     saveButton.disabled = !editing || saveButton.dataset.saving === 'true';
     document.getElementById('cancel-btn')?.classList.toggle('d-none', !appState.activeCampSeasonId);
 
-    if (hasValidPolygon) {
-        const poly     = features[0];
+    if (poly) {
         const area     = turf.area(poly);
         const centroid = turf.centroid(poly);
         const outside  = isOutsideZone(poly);
@@ -195,13 +212,17 @@ export function updateSaveButton() {
         centroid.properties = { label: Math.round(area).toLocaleString() + ' m²' + warnings.join('') };
         map.getSource('draw-label').setData({ type: 'FeatureCollection', features: [centroid] });
 
-        const coords = poly.geometry.coordinates[0];
+        const polygons = poly.geometry.type === 'Polygon' ? [poly.geometry.coordinates] : poly.geometry.coordinates;
         const edgeFeatures = [];
-        for (let i = 0; i < coords.length - 1; i++) {
-            const lengthM = turf.length(turf.lineString([coords[i], coords[i + 1]]), { units: 'meters' });
-            const mid = turf.midpoint(turf.point(coords[i]), turf.point(coords[i + 1]));
-            mid.properties = { label: Math.round(lengthM) + ' m' };
-            edgeFeatures.push(mid);
+        for (const rings of polygons) {
+            for (const coords of rings) {
+                for (let i = 0; i < coords.length - 1; i++) {
+                    const lengthM = turf.length(turf.lineString([coords[i], coords[i + 1]]), { units: 'meters' });
+                    const mid = turf.midpoint(turf.point(coords[i]), turf.point(coords[i + 1]));
+                    mid.properties = { label: Math.round(lengthM) + ' m' };
+                    edgeFeatures.push(mid);
+                }
+            }
         }
         map.getSource('draw-edge-labels').setData({ type: 'FeatureCollection', features: edgeFeatures });
     } else {
@@ -275,7 +296,7 @@ export async function loadHistory(campSeasonId, canEdit = false) {
             btn.addEventListener('click', () => {
                 appState.previewCampSeasonId = id;
                 appState.draw.deleteAll();
-                appState.draw.add(JSON.parse(decodeURIComponent(btn.dataset.geojson)));
+                appState.draw.add(parseCampFeature(decodeURIComponent(btn.dataset.geojson)));
             });
         });
         list.querySelectorAll('.restore-btn').forEach(btn => {

@@ -80,11 +80,11 @@
     </div>
     <div class="col-auto">
         <label class="form-label" for="from">From</label>
-        <input class="form-control" type="date" id="from" name="from" value="@Model.From.ToString("yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture)" />
+        <input class="form-control" type="date" id="from" name="from" value="@Model.From.ToInvariantDate()" />
     </div>
     <div class="col-auto">
         <label class="form-label" for="to">To (included)</label>
-        <input class="form-control" type="date" id="to" name="to" value="@Model.To.ToString("yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture)" />
+        <input class="form-control" type="date" id="to" name="to" value="@Model.To.ToInvariantDate()" />
     </div>
     <div class="col-auto form-check mb-2 ms-2">
         @if (Model.All)
@@ -279,7 +279,7 @@
 
                 var payoutTable = TableModel.For(p.Payouts)
                     .Column("Made", x => x.Payout.CreatedAt.ToDateTime(Model.Zone), c => c.Css("text-nowrap"))
-                    .Column("Arrives", x => x.Payout.ArrivalAt is { } arrives ? arrives.InZone(Model.Zone).Date.ToString("yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture) : "–")
+                    .Column("Arrives", x => x.Payout.ArrivalAt is { } arrives ? arrives.InZone(Model.Zone).Date.ToInvariantDate() : "–")
                     .Column("Payout", x => x.Payout.Id, c => c.Css("font-monospace"))
                     .Column("Status", x => x.Payout.Status)
                     .Column("Amount", x => Eur(x.Payout.AmountMinor), c => c.End().Css("text-nowrap"))

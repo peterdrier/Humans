@@ -38,6 +38,16 @@ internal sealed partial class TicketCheckoutService
     public Task<IReadOnlyList<TicketCheckoutTicket>> GetTicketsForHolderAsync(Guid userId, CancellationToken ct = default) =>
         repository.GetTicketsForHolderAsync(userId, ct);
 
+    public async Task<int> GetHeldTicketCountAsync(Guid userId, CancellationToken ct = default)
+    {
+        var activeEvent = settings.GetActiveEventSettings();
+        var forEvent = (await repository.ListTicketingSettingsAsync(ct))
+            .Where(e => activeEvent is null || e.EventSettingsId == activeEvent.Id || e.Mode != TicketSalesMode.Closed)
+            .Select(e => e.Id).ToHashSet();
+        return (await repository.GetTicketsForHolderAsync(userId, ct))
+            .Count(t => t.IsHeld && forEvent.Contains(t.TicketingSettingsId));
+    }
+
     public Task<IReadOnlyList<TicketCheckoutTicket>> GetTicketsForSettingsAsync(Guid settingsId, CancellationToken ct = default) =>
         repository.GetTicketsForSettingsAsync(settingsId, ct);
 
@@ -51,7 +61,7 @@ internal sealed partial class TicketCheckoutService
     {
         var held = new List<HeldTicket>();
         foreach (var group in (await repository.GetTicketsForHolderAsync(userId, ct))
-                     .Where(t => t.State is TicketCheckoutTicketState.Valid or TicketCheckoutTicketState.Offered)
+                     .Where(t => t.IsHeld)
                      .GroupBy(t => t.TicketingSettingsId))
         {
             var ticketing = await repository.GetTicketingSettingsAsync(group.Key, ct);

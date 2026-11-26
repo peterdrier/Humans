@@ -1492,6 +1492,10 @@ public class SurveyServiceTests
             shiftParticipants ? SurveyAudienceType.ShiftParticipants : SurveyAudienceType.AllActiveMembers, null);
         _repo.GetByIdAsync(survey.Id, Arg.Any<CancellationToken>()).Returns(survey);
 
+        _userService.GetUserInfosAsync(Arg.Any<IEnumerable<Guid>>(), Arg.Any<CancellationToken>())
+            .Returns(call => call.Arg<IEnumerable<Guid>>().ToDictionary(id => id,
+                id => UserInfoWithName(id, "Human") with { IdentityEmailColumn = "human@example.org" }));
+
         var count = await CreateInvitations().PreviewAudienceCountAsync(survey.Id, TestContext.Current.CancellationToken);
 
         count.Should().Be(1);
@@ -1539,6 +1543,104 @@ public class SurveyServiceTests
             .Select(u => new TeamMemberInfo(Guid.NewGuid(), u, "M", null, null, TeamMemberRole.Member, Instant.MinValue))
             .ToList());
 
+    [HumansTheory]
+    [InlineData("missing")]
+    [InlineData("deleted")]
+    [InlineData("merged")]
+    [InlineData("legacy")]
+    [InlineData("alias")]
+    public async Task SendInvitesAsync_UnavailableAudience_SkipsInvitation(string account)
+    {
+        var ct = TestContext.Current.CancellationToken;
+        var requestedId = Guid.NewGuid();
+        var teamId = Guid.NewGuid();
+        var survey = SurveyWith(SurveyStatus.Open, SurveyAudienceType.Team, teamId);
+        _repo.GetByIdAsync(survey.Id, ct).Returns(survey);
+        _teamService.GetTeamAsync(teamId, ct).Returns(TeamWith(teamId, requestedId));
+        var user = UserInfoWithName(account is "alias" ? Guid.NewGuid() : requestedId, "Human")
+            with
+        { IdentityEmailColumn = "human@example.org" };
+        user = account switch
+        {
+            "deleted" => user with { State = UserState.Deleted },
+            "merged" => user with { State = UserState.Merged },
+            "legacy" => user with { IdentityEmailColumn = "archived@deleted.local" },
+            _ => user
+        };
+        _userService.GetUserInfosAsync(Arg.Any<IEnumerable<Guid>>(), ct)
+            .Returns(account is "missing" ? new Dictionary<Guid, UserInfo>()
+                : new Dictionary<Guid, UserInfo> { [requestedId] = user });
+        var invitations = CreateInvitations();
+
+        (await invitations.PreviewAudienceCountAsync(survey.Id, ct)).Should().Be(0);
+        var result = await invitations.SendInvitesAsync(survey.Id, Guid.NewGuid(), ct);
+
+        result.InvitationsProcessed.Should().Be(0);
+        result.EmailsQueued.Should().Be(0);
+        await _repo.DidNotReceiveWithAnyArgs().AddInvitationAndSaveAsync(default!, default);
+        _emailService.ReceivedCalls().Should().BeEmpty();
+        _tokenProvider.ReceivedCalls().Should().BeEmpty();
+    }
+
+    [HumansFact]
+    public async Task SendInvitesAsync_AliasAlongsideSurvivor_InvitesLiveIdentityOnce()
+    {
+        var ct = TestContext.Current.CancellationToken;
+        var archivedId = Guid.NewGuid();
+        var survivorId = Guid.NewGuid();
+        var teamId = Guid.NewGuid();
+        var survey = SurveyWith(SurveyStatus.Open, SurveyAudienceType.Team, teamId);
+        _repo.GetByIdAsync(survey.Id, ct).Returns(survey);
+        _teamService.GetTeamAsync(teamId, ct).Returns(TeamWith(teamId, archivedId, survivorId));
+        var user = UserInfoWithName(survivorId, "Human") with { IdentityEmailColumn = "human@example.org" };
+        _userService.GetUserInfosAsync(Arg.Any<IEnumerable<Guid>>(), ct)
+            .Returns(new Dictionary<Guid, UserInfo> { [archivedId] = user, [survivorId] = user });
+        var invitations = CreateInvitations();
+
+        (await invitations.PreviewAudienceCountAsync(survey.Id, ct)).Should().Be(1);
+        var result = await invitations.SendInvitesAsync(survey.Id, Guid.NewGuid(), ct);
+
+        result.InvitationsProcessed.Should().Be(1);
+        await _repo.Received(1).AddInvitationAndSaveAsync(Arg.Is<SurveyInvitation>(i => i.UserId == survivorId),
+            CancellationToken.None);
+        await _repo.DidNotReceive().AddInvitationAndSaveAsync(Arg.Is<SurveyInvitation>(i => i.UserId == archivedId),
+            Arg.Any<CancellationToken>());
+        await _emailService.Received(1).SendAsync(Arg.Is<EmailMessage>(m => m.UserId == survivorId), CancellationToken.None);
+    }
+
+    [HumansTheory]
+    [InlineData(UserState.Deleted, false)]
+    [InlineData(UserState.Merged, false)]
+    [InlineData(UserState.Active, true)]
+    public async Task SendDueRemindersAsync_TombstoneRecipient_LeavesReminderUnsent(UserState state, bool legacy)
+    {
+        var ct = TestContext.Current.CancellationToken;
+        var userId = Guid.NewGuid();
+        var survey = SurveyWith(SurveyStatus.Open, SurveyAudienceType.Team, Guid.NewGuid());
+        var invitation = new SurveyInvitation
+        {
+            Id = Guid.NewGuid(),
+            SurveyId = survey.Id,
+            UserId = userId,
+            SentAt = _clock.GetCurrentInstant() - Duration.FromDays(8)
+        };
+        _repo.GetInvitationsDueForReminderAsync(Arg.Any<Instant>(), ct).Returns([invitation]);
+        _repo.GetByIdAsync(survey.Id, ct).Returns(survey);
+        var user = UserInfoWithName(userId, "Human") with
+        {
+            State = state,
+            IdentityEmailColumn = legacy ? "archived@deleted.local" : "human@example.org"
+        };
+        _userService.GetUserInfosAsync(Arg.Any<IEnumerable<Guid>>(), ct)
+            .Returns(new Dictionary<Guid, UserInfo> { [userId] = user });
+
+        (await CreateReminderSender().SendDueRemindersAsync(ct)).Should().Be(0);
+
+        _emailService.ReceivedCalls().Should().BeEmpty();
+        await _repo.DidNotReceiveWithAnyArgs().SetReminderSentAsync(default, default, default);
+        invitation.ReminderSentAt.Should().BeNull();
+    }
+
     [HumansFact]
     public async Task PreviewAudienceCountAsync_team_counts_only_net_new_members()
     {
@@ -1552,7 +1654,12 @@ public class SurveyServiceTests
             .Returns([new SurveyInvitation { Id = Guid.NewGuid(), SurveyId = survey.Id,
                 UserId = alreadyInvited, SentAt = _clock.GetCurrentInstant() }]);
         _userService.GetUserInfosAsync(Arg.Any<IEnumerable<Guid>>(), Arg.Any<CancellationToken>())
-            .Returns(new Dictionary<Guid, UserInfo>());
+            .Returns(call => new Dictionary<Guid, UserInfo>
+            {
+                [newA] = UserInfoWithName(newA, "A") with { IdentityEmailColumn = "a@example.org" },
+                [newB] = UserInfoWithName(newB, "B") with { IdentityEmailColumn = "b@example.org" }
+            }.Where(pair => call.Arg<IEnumerable<Guid>>().Contains(pair.Key))
+                .ToDictionary(pair => pair.Key, pair => pair.Value));
 
         var count = await CreateInvitations().PreviewAudienceCountAsync(survey.Id, TestContext.Current.CancellationToken);
 
@@ -1574,7 +1681,12 @@ public class SurveyServiceTests
             .Returns([new SurveyInvitation { Id = Guid.NewGuid(), SurveyId = survey.Id,
                 UserId = archived, SentAt = _clock.GetCurrentInstant() }]);
         _userService.GetUserInfosAsync(Arg.Any<IEnumerable<Guid>>(), Arg.Any<CancellationToken>())
-            .Returns(new Dictionary<Guid, UserInfo> { [archived] = Asociado(survivor) });
+            .Returns(call => new Dictionary<Guid, UserInfo>
+            {
+                [archived] = Asociado(survivor),
+                [newA] = UserInfoWithName(newA, "New") with { IdentityEmailColumn = "new@example.org" }
+            }.Where(pair => call.Arg<IEnumerable<Guid>>().Contains(pair.Key))
+                .ToDictionary(pair => pair.Key, pair => pair.Value));
 
         var count = await CreateInvitations().PreviewAudienceCountAsync(survey.Id, TestContext.Current.CancellationToken);
 
@@ -1610,6 +1722,10 @@ public class SurveyServiceTests
             UserWithLastLogin(Guid.NewGuid(), null),                           // never logged in → excluded
         });
 
+        _userService.GetUserInfosAsync(Arg.Any<IEnumerable<Guid>>(), Arg.Any<CancellationToken>())
+            .Returns(call => call.Arg<IEnumerable<Guid>>().ToDictionary(id => id,
+                id => UserInfoWithName(id, "Human") with { IdentityEmailColumn = "human@example.org" }));
+
         var count = await CreateInvitations().PreviewAudienceCountAsync(survey.Id, TestContext.Current.CancellationToken);
 
         count.Should().Be(2);
@@ -1631,6 +1747,10 @@ public class SurveyServiceTests
             UserWithLastLogin(Guid.NewGuid(), recentLogin, UserState.Suspended),      // status wall → excluded
             UserWithLastLogin(Guid.NewGuid(), recentLogin, UserState.AdminSuspended), // status wall → excluded
         });
+
+        _userService.GetUserInfosAsync(Arg.Any<IEnumerable<Guid>>(), Arg.Any<CancellationToken>())
+            .Returns(call => call.Arg<IEnumerable<Guid>>().ToDictionary(id => id,
+                id => UserInfoWithName(id, "Human") with { IdentityEmailColumn = "human@example.org" }));
 
         var count = await CreateInvitations().PreviewAudienceCountAsync(survey.Id, TestContext.Current.CancellationToken);
 
@@ -6058,6 +6178,9 @@ public class SurveyServiceTests
         _userService.GetAllUserInfosAsync(Arg.Any<CancellationToken>()).Returns(new List<UserInfo> { asociado });
         var survey = SurveyWith(SurveyStatus.Draft, SurveyAudienceType.Asociados, null);
         _repo.GetByIdAsync(survey.Id, Arg.Any<CancellationToken>()).Returns(survey);
+        _userService.GetUserInfosAsync(Arg.Any<IEnumerable<Guid>>(), Arg.Any<CancellationToken>())
+            .Returns(new Dictionary<Guid, UserInfo>
+            { [userId] = asociado with { IdentityEmailColumn = "voter@example.org" } });
         var invitations = CreateInvitations();
 
         (await CreateAudience().IsEligibleAsociadoAsync(userId, TestContext.Current.CancellationToken))

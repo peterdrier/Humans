@@ -6,7 +6,7 @@ const vm = require('node:vm');
 
 function placement() {
     const handlers = {}, documentHandlers = {}, handleHandlers = {}, frames = [], saved = [];
-    let displayed;
+    let displayed, prevented = 0, stopped = 0;
     const canvas = { style: { cursor: '' }, getBoundingClientRect: () => ({ left: 0, top: 0 }) };
     const handle = { style: {}, addEventListener: (event, callback) => { handleHandlers[event] = callback; } };
     const map = {
@@ -30,12 +30,13 @@ function placement() {
     context.initInteraction(map, (container, feature) => saved.push({ id: container.id, feature: JSON.parse(JSON.stringify(feature)) }));
     const container = id => ({ id, name: id, locationGeoJson: JSON.stringify(polygon(40, 50, 20)) });
     return {
-        saved, canvas, displayed: () => displayed, flush: () => { while (frames.length) frames.shift()(); },
+        saved, canvas, prevented: () => prevented, stopped: () => stopped, displayed: () => displayed, flush: () => { while (frames.length) frames.shift()(); },
         activate: id => context.activateContainer(container(id), 10, 20),
         select: id => context.selectPlacedContainer(container(id)), deactivate: () => context.deactivate(),
-        drag() { handlers.mousedown({ lngLat: { lng: 0, lat: 0 }, preventDefault() {} }); handlers.mousemove({ lngLat: { lng: 3, lat: 4 } }); },
-        rotate() { handleHandlers.mousedown({ preventDefault() {}, stopPropagation() {} }); documentHandlers.mousemove({ clientX: 135, clientY: 0 }); },
-        releaseDrag: () => handlers.mouseup(), releaseRotation: () => documentHandlers.mouseup(),
+        drag(button = 0) { handlers.mousedown({ originalEvent: { button }, lngLat: { lng: 0, lat: 0 }, preventDefault() { prevented++; } }); handlers.mousemove({ lngLat: { lng: 3, lat: 4 } }); },
+        rotate(button = 0) { handleHandlers.mousedown({ button, preventDefault() { prevented++; }, stopPropagation() { stopped++; } }); documentHandlers.mousemove({ clientX: 135, clientY: 0 }); },
+        move: (lng, lat) => handlers.mousemove({ lngLat: { lng, lat } }),
+        releaseDrag: () => handlers.mouseup(), releaseDocument: () => documentHandlers.mouseup(),
     };
 }
 
@@ -47,7 +48,7 @@ test('drag release saves the final movement before the animation frame', async (
 });
 
 test('rotation release saves the final bearing before the animation frame', async () => {
-    const ui = placement(); ui.activate('A'); ui.rotate(); await ui.releaseRotation();
+    const ui = placement(); ui.activate('A'); ui.rotate(); await ui.releaseDocument();
     assert.equal(ui.saved[0].feature.properties.rotation_degrees, 45);
     ui.flush(); assert.equal(ui.displayed().properties.rotation_degrees, 45);
 });
@@ -56,7 +57,7 @@ for (const gesture of ['drag', 'rotate']) {
     for (const change of ['activate', 'select', 'deactivate']) {
         test(`${change} discards an earlier pending ${gesture} and its release`, async () => {
             const ui = placement(); ui.activate('A'); ui[gesture](); ui[change]('B'); ui.flush();
-            await ui.releaseDrag(); await ui.releaseRotation();
+            await ui.releaseDrag(); await ui.releaseDocument();
             assert.equal(ui.saved.length, 0);
             if (change === 'deactivate') assert.equal(ui.displayed(), null);
             else {
@@ -77,7 +78,7 @@ test('an already-rendered drag still saves once on release', async () => {
 for (const gesture of ['drag', 'rotate']) {
     test(`deactivate then activate discards a queued ${gesture}`, async () => {
         const ui = placement(); ui.activate('A'); ui[gesture](); ui.deactivate(); ui.activate('B'); ui.flush();
-        await ui.releaseDrag(); await ui.releaseRotation();
+        await ui.releaseDrag(); await ui.releaseDocument();
         assert.equal(ui.saved.length, 0);
         assert.equal(ui.displayed().properties.center_lng, 10);
         assert.equal(ui.displayed().properties.rotation_degrees, 0);
@@ -90,3 +91,49 @@ test('a fresh gesture can use a frame already queued by the previous selection',
     assert.equal(ui.saved[0].feature.properties.center_lng, 43);
     assert.equal(ui.saved[0].feature.properties.center_lat, 54);
 });
+
+for (const rendered of [false, true]) {
+    test(`outside drag release saves the latest ${rendered ? 'rendered' : 'queued'} map position`, async () => {
+        const ui = placement(); ui.activate('A'); ui.drag();
+        if (rendered) ui.flush();
+        await ui.releaseDocument();
+        assert.equal(ui.saved.length, 1);
+        assert.equal(ui.saved[0].feature.properties.center_lng, 13);
+        assert.equal(ui.saved[0].feature.properties.center_lat, 24);
+        assert.equal(ui.canvas.style.cursor, '');
+        ui.flush();
+        assert.equal(ui.displayed().properties.center_lng, 13);
+    });
+}
+
+test('returning to the map after an outside release cannot resume the old drag', async () => {
+    const ui = placement(); ui.activate('A'); ui.drag(); await ui.releaseDocument();
+    ui.move(9, 9); ui.flush();
+    assert.equal(ui.displayed().properties.center_lng, 13);
+    assert.equal(ui.displayed().properties.center_lat, 24);
+    assert.equal(ui.saved.length, 1);
+});
+
+for (const first of ['releaseDrag', 'releaseDocument']) {
+    test(`${first} followed by the other release saves a drag only once`, async () => {
+        const ui = placement(); ui.activate('A'); ui.drag();
+        await ui[first]();
+        await ui[first === 'releaseDrag' ? 'releaseDocument' : 'releaseDrag']();
+        assert.equal(ui.saved.length, 1);
+    });
+}
+
+for (const button of [1, 2]) {
+    for (const gesture of ['drag', 'rotate']) {
+        test(`${gesture} ignores mouse button ${button} without suppressing its native gesture`, async () => {
+            const ui = placement(); ui.activate('A'); ui[gesture](button); ui.flush();
+            await ui.releaseDrag(); await ui.releaseDocument();
+            assert.equal(ui.saved.length, 0);
+            assert.equal(ui.displayed().properties.center_lng, 10);
+            assert.equal(ui.displayed().properties.rotation_degrees, 0);
+            assert.equal(ui.prevented(), 0);
+            assert.equal(ui.stopped(), 0);
+            assert.equal(ui.canvas.style.cursor, '');
+        });
+    }
+}
