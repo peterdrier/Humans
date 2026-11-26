@@ -1,3 +1,4 @@
+using Humans.Testing;
 using AwesomeAssertions;
 using System.Security.Claims;
 using Humans.Audit.Contracts;
@@ -33,7 +34,7 @@ public class ShiftsControllerNameGateTests
     private readonly IShiftRowView _shiftView = Substitute.For<IShiftRowView>();
     private readonly ITeamService _teamService = Substitute.For<ITeamService>();
     private readonly IUserService _userService = Substitute.For<IUserService>();
-    private readonly IStringLocalizer<ShiftsResource> _localizer = Substitute.For<IStringLocalizer<ShiftsResource>>();
+    private readonly IStringLocalizer<ShiftsResource> _localizer = Substitute.For<IStringLocalizer<ShiftsResource>>().AddFormatting();
     private readonly IClock _clock = Substitute.For<IClock>();
     private readonly IBurnSettingsService _burnSettings = Substitute.For<IBurnSettingsService>();
     private readonly ShiftBrowsePageBuilder _builder;

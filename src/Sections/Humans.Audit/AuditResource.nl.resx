@@ -38,7 +38,8 @@
   <data name="Enum_AuditAction_MemberUnsuspended" xml:space="preserve"><value>Schorsing van lid opgeheven</value></data>
   <data name="Enum_AuditAction_AccountAnonymized" xml:space="preserve"><value>Account geanonimiseerd</value></data>
   <data name="Enum_AuditAction_RoleAssigned" xml:space="preserve"><value>Rol toegewezen</value></data>
-  <data name="Enum_AuditAction_RoleEnded" xml:space="preserve"><value>Rol beëindigd</value></data>
+  <data name="Enum_AuditAction_RoleEnded" xml:space="preserve"><value>Rol ingetrokken</value></data>
+  <data name="Enum_AuditAction_RoleRevoked" xml:space="preserve"><value>Rol ingetrokken</value></data>
   <data name="Enum_AuditAction_VolunteerApproved" xml:space="preserve"><value>Vrijwilliger goedgekeurd</value></data>
   <data name="Enum_AuditAction_GoogleResourceAccessGranted" xml:space="preserve"><value>Toegang tot Google-resource verleend</value></data>
   <data name="Enum_AuditAction_GoogleResourceAccessRevoked" xml:space="preserve"><value>Toegang tot Google-resource ingetrokken</value></data>
@@ -339,8 +340,10 @@
   <data name="Audit_NoPersonVerb_VolunteerApproved" xml:space="preserve"><value>keurde goed</value></data>
   <data name="Audit_Verb_RoleAssigned" xml:space="preserve"><value>wees een rol toe aan</value></data>
   <data name="Audit_NoPersonVerb_RoleAssigned" xml:space="preserve"><value>wees een rol toe</value></data>
-  <data name="Audit_Verb_RoleEnded" xml:space="preserve"><value>beëindigde de rol van</value></data>
-  <data name="Audit_NoPersonVerb_RoleEnded" xml:space="preserve"><value>beëindigde de rol</value></data>
+  <data name="Audit_Verb_RoleEnded" xml:space="preserve"><value>trok de rol in van</value></data>
+  <data name="Audit_Verb_RoleRevoked" xml:space="preserve"><value>trok de rol in van</value></data>
+  <data name="Audit_NoPersonVerb_RoleEnded" xml:space="preserve"><value>trok een rol in</value></data>
+  <data name="Audit_NoPersonVerb_RoleRevoked" xml:space="preserve"><value>trok een rol in</value></data>
   <data name="Audit_Verb_WorkspaceAccountPasswordReset" xml:space="preserve"><value>stelde het Workspace-wachtwoord opnieuw in voor</value></data>
   <data name="Audit_NoPersonVerb_WorkspaceAccountPasswordReset" xml:space="preserve"><value>stelde het Workspace-wachtwoord opnieuw in</value></data>
   <data name="Audit_Verb_WorkspaceAccountBackupCodesGenerated" xml:space="preserve"><value>genereerde Workspace-back-upcodes voor</value></data>

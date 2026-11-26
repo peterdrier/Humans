@@ -38,7 +38,8 @@
   <data name="Enum_AuditAction_MemberUnsuspended" xml:space="preserve"><value>Miembro reactivado</value></data>
   <data name="Enum_AuditAction_AccountAnonymized" xml:space="preserve"><value>Cuenta anonimizada</value></data>
   <data name="Enum_AuditAction_RoleAssigned" xml:space="preserve"><value>Rol asignado</value></data>
-  <data name="Enum_AuditAction_RoleEnded" xml:space="preserve"><value>Rol finalizado</value></data>
+  <data name="Enum_AuditAction_RoleEnded" xml:space="preserve"><value>Rol revocado</value></data>
+  <data name="Enum_AuditAction_RoleRevoked" xml:space="preserve"><value>Rol revocado</value></data>
   <data name="Enum_AuditAction_VolunteerApproved" xml:space="preserve"><value>Voluntario aprobado</value></data>
   <data name="Enum_AuditAction_GoogleResourceAccessGranted" xml:space="preserve"><value>Acceso a recursos de Google concedido</value></data>
   <data name="Enum_AuditAction_GoogleResourceAccessRevoked" xml:space="preserve"><value>Acceso a recursos de Google revocado</value></data>
@@ -339,8 +340,10 @@
   <data name="Audit_NoPersonVerb_VolunteerApproved" xml:space="preserve"><value>aprobó</value></data>
   <data name="Audit_Verb_RoleAssigned" xml:space="preserve"><value>asignó un rol a</value></data>
   <data name="Audit_NoPersonVerb_RoleAssigned" xml:space="preserve"><value>asignó un rol</value></data>
-  <data name="Audit_Verb_RoleEnded" xml:space="preserve"><value>finalizó el rol de</value></data>
-  <data name="Audit_NoPersonVerb_RoleEnded" xml:space="preserve"><value>finalizó un rol</value></data>
+  <data name="Audit_Verb_RoleEnded" xml:space="preserve"><value>revocó el rol de</value></data>
+  <data name="Audit_Verb_RoleRevoked" xml:space="preserve"><value>revocó el rol de</value></data>
+  <data name="Audit_NoPersonVerb_RoleEnded" xml:space="preserve"><value>revocó un rol</value></data>
+  <data name="Audit_NoPersonVerb_RoleRevoked" xml:space="preserve"><value>revocó un rol</value></data>
   <data name="Audit_Verb_WorkspaceAccountPasswordReset" xml:space="preserve"><value>restableció la contraseña de Workspace de</value></data>
   <data name="Audit_NoPersonVerb_WorkspaceAccountPasswordReset" xml:space="preserve"><value>restableció la contraseña de Workspace</value></data>
   <data name="Audit_Verb_WorkspaceAccountBackupCodesGenerated" xml:space="preserve"><value>generó códigos de respaldo de Workspace para</value></data>

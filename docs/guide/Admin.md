@@ -16,7 +16,7 @@
   src/Sections/Humans.Notifications/Services/**
   src/Sections/Humans.Users/Services/AccountMergeService.cs
   src/Sections/Humans.Users/Services/DuplicateAccountService.cs
-  src/Sections/Humans.Auth/Services/RoleAssignmentService.cs
+  src/Sections/Humans.Auth/Services/SystemRoleService.cs
   src/Sections/Humans.Users/Services/AccountProvisioningService.cs
   src/Sections/Humans.Google/Services/SyncSettingsService.cs
 -->

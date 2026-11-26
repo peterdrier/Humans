@@ -15,7 +15,7 @@ internal sealed class ContactFieldService(
     IUserRepository userRepository,
     IUserService userService,
     ITeamService teamService,
-    IRoleAssignmentService roleAssignmentService,
+    ISystemRoleService systemRoleService,
     IUserInfoSliceRefresher userInfoRefresher,
     IClock clock,
     ILogger<ContactFieldService> logger,
@@ -53,7 +53,7 @@ internal sealed class ContactFieldService(
         Guid userId,
         CancellationToken cancellationToken = default)
     {
-        var fields = await userRepository.GetContactFieldsByUserIdReadOnlyAsync(userId, cancellationToken);
+        var fields = await userRepository.GetContactFieldsByUserIdAsync(userId, cancellationToken);
 
         return fields.Select(cf => new ContactFieldEditDto(
             cf.Id,
@@ -80,7 +80,7 @@ internal sealed class ContactFieldService(
         var now = clock.GetCurrentInstant();
 
         // Detached: mutations go back explicitly through BatchSaveAsync.
-        var existingFields = await userRepository.GetContactFieldsByUserIdForMutationAsync(userId, cancellationToken);
+        var existingFields = await userRepository.GetContactFieldsByUserIdAsync(userId, cancellationToken);
 
         var existingById = existingFields.ToDictionary(cf => cf.Id);
         var incomingIds = fields.Where(f => f.Id.HasValue).Select(f => f.Id!.Value).ToHashSet();
@@ -167,7 +167,7 @@ internal sealed class ContactFieldService(
         if (ownerUserId == viewerUserId)
             return ContactFieldVisibility.BoardOnly;
 
-        if (await roleAssignmentService.IsUserBoardMemberAsync(viewerUserId, cancellationToken))
+        if (await systemRoleService.IsUserBoardMemberAsync(viewerUserId, cancellationToken))
             return ContactFieldVisibility.BoardOnly;
 
         // Permissions belong to this viewer, not to the scoped service instance.

@@ -1,1 +1,1 @@
-Humans.Auth.Contracts.IMagicLinkService.VerifyAndConsumeSignupTokenAsync
+

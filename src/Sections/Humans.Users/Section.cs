@@ -360,8 +360,7 @@ public sealed class Section :
         {
             Description = complete
                 ? localizer["Todo_Profile_Done"].Value
-                : string.Format(CultureInfo.CurrentCulture,
-                    localizer["Dashboard_ProfileCompletionPercent"].Value, percent),
+                : localizer["Dashboard_ProfileCompletionPercent", percent],
             IsDone = complete,
             ActionText = localizer["Todo_Profile_Action"].Value,
             PercentComplete = complete ? null : percent,

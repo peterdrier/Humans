@@ -1,3 +1,4 @@
+using Humans.Testing;
 using System.Globalization;
 using Humans.Base.Configuration;
 using Humans.Governance.Services;
@@ -27,7 +28,7 @@ internal static class TestGovernanceEmails
 
     public static GovernanceEmails Create()
     {
-        var localizer = Substitute.For<IStringLocalizer<GovernanceResource>>();
+        var localizer = Substitute.For<IStringLocalizer<GovernanceResource>>().AddFormatting();
         localizer[Arg.Any<string>()].Returns(call =>
         {
             var key = call.Arg<string>();

@@ -1,6 +1,6 @@
 @model Humans.Teams.Models.TeamMembersViewModel
 @{
-    ViewData["Title"] = string.Format(Localizer["Teams_TeamAdminMembers_Title"].Value, Model.TeamName);
+    ViewData["Title"] = Localizer["Teams_TeamAdminMembers_Title", Model.TeamName].Value;
 }
 
 @section Crumbs {

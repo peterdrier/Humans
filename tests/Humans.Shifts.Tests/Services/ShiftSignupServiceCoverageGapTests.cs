@@ -1,3 +1,4 @@
+using Humans.Testing;
 using Humans.Permissions.Contracts;
 using Humans.Base.Extensions;
 using Humans.Shifts.Domain;
@@ -34,12 +35,12 @@ public sealed class ShiftSignupServiceCoverageGapTests : ShiftsTestHarness
     {
         _notificationService = Substitute.For<INotificationEmitter>();
         _teamService = Substitute.For<ITeamService>();
-        var roleAssignmentService = Substitute.For<IRoleAssignmentService>();
+        var systemRoleService = Substitute.For<ISystemRoleService>();
 
         var serviceProvider = new ServiceLocatorBuilder()
             .With(_teamService)
             .With(_teamService)
-            .With(roleAssignmentService)
+            .With(systemRoleService)
             .With<IPermissionService>()
             .Build();
 
@@ -64,7 +65,7 @@ public sealed class ShiftSignupServiceCoverageGapTests : ShiftsTestHarness
             Clock,
             NullLogger<ShiftSignupService>.Instance,
             _users,
-            Substitute.For<IStringLocalizer<ShiftsResource>>());
+            Substitute.For<IStringLocalizer<ShiftsResource>>().AddFormatting());
     }
 
     [HumansTheory]

@@ -224,7 +224,7 @@ public class TicketsSupportAdminControllerTests
         users.GetUserInfoAsync(actorId, Arg.Any<CancellationToken>()).Returns(UserFixtures.MakeUserInfo(actorId));
         var localizer = Substitute.For<IStringLocalizer<TicketsResource>>();
         localizer[Arg.Any<string>()].Returns(call => new LocalizedString(call.Arg<string>(), call.Arg<string>()));
-        var controller = new TicketBuyController(_checkout, Substitute.For<IMagicLinkService>(), Substitute.For<IEarlyEntryService>(),
+        var controller = new TicketBuyController(_checkout, Substitute.For<ISignInLinkService>(), Substitute.For<IEarlyEntryService>(),
             users, localizer, NullLogger<TicketBuyController>.Instance);
         var registrations = new ServiceCollection().AddLogging();
         registrations.AddControllers();

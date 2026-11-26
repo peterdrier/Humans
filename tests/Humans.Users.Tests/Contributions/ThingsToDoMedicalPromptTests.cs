@@ -1,3 +1,4 @@
+using Humans.Testing;
 using Humans.Base.Interfaces;
 using Humans.Users.Services;
 using Humans.Audit.Contracts;
@@ -22,7 +23,7 @@ public class ThingsToDoMedicalPromptTests
     private readonly IUserRepository _repo = Substitute.For<IUserRepository>();
     private readonly ICantinaService _cantina = Substitute.For<ICantinaService>();
     private readonly IShiftView _shiftView = Substitute.For<IShiftView>();
-    private readonly IStringLocalizer<SharedResource> _localizer = Substitute.For<IStringLocalizer<SharedResource>>();
+    private readonly IStringLocalizer<SharedResource> _localizer = Substitute.For<IStringLocalizer<SharedResource>>().AddFormatting();
     private readonly IServiceProvider _services;
     private readonly ISectionThingsToDo _sut = new Section();
 

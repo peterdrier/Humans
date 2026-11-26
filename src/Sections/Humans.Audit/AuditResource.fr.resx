@@ -38,7 +38,8 @@
   <data name="Enum_AuditAction_MemberUnsuspended" xml:space="preserve"><value>Membre réactivé</value></data>
   <data name="Enum_AuditAction_AccountAnonymized" xml:space="preserve"><value>Compte anonymisé</value></data>
   <data name="Enum_AuditAction_RoleAssigned" xml:space="preserve"><value>Rôle attribué</value></data>
-  <data name="Enum_AuditAction_RoleEnded" xml:space="preserve"><value>Rôle terminé</value></data>
+  <data name="Enum_AuditAction_RoleEnded" xml:space="preserve"><value>Rôle révoqué</value></data>
+  <data name="Enum_AuditAction_RoleRevoked" xml:space="preserve"><value>Rôle révoqué</value></data>
   <data name="Enum_AuditAction_VolunteerApproved" xml:space="preserve"><value>Bénévole approuvé</value></data>
   <data name="Enum_AuditAction_GoogleResourceAccessGranted" xml:space="preserve"><value>Accès aux ressources Google accordé</value></data>
   <data name="Enum_AuditAction_GoogleResourceAccessRevoked" xml:space="preserve"><value>Accès aux ressources Google révoqué</value></data>
@@ -339,8 +340,10 @@
   <data name="Audit_NoPersonVerb_VolunteerApproved" xml:space="preserve"><value>a approuvé</value></data>
   <data name="Audit_Verb_RoleAssigned" xml:space="preserve"><value>a attribué un rôle à</value></data>
   <data name="Audit_NoPersonVerb_RoleAssigned" xml:space="preserve"><value>a attribué un rôle</value></data>
-  <data name="Audit_Verb_RoleEnded" xml:space="preserve"><value>a mis fin au rôle de</value></data>
-  <data name="Audit_NoPersonVerb_RoleEnded" xml:space="preserve"><value>a mis fin à un rôle</value></data>
+  <data name="Audit_Verb_RoleEnded" xml:space="preserve"><value>a révoqué le rôle de</value></data>
+  <data name="Audit_Verb_RoleRevoked" xml:space="preserve"><value>a révoqué le rôle de</value></data>
+  <data name="Audit_NoPersonVerb_RoleEnded" xml:space="preserve"><value>a révoqué un rôle</value></data>
+  <data name="Audit_NoPersonVerb_RoleRevoked" xml:space="preserve"><value>a révoqué un rôle</value></data>
   <data name="Audit_Verb_WorkspaceAccountPasswordReset" xml:space="preserve"><value>a réinitialisé le mot de passe Workspace de</value></data>
   <data name="Audit_NoPersonVerb_WorkspaceAccountPasswordReset" xml:space="preserve"><value>a réinitialisé le mot de passe Workspace</value></data>
   <data name="Audit_Verb_WorkspaceAccountBackupCodesGenerated" xml:space="preserve"><value>a généré les codes de secours Workspace de</value></data>

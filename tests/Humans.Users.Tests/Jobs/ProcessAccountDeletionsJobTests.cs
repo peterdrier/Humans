@@ -49,7 +49,7 @@ public class ProcessAccountDeletionsJobTests : IDisposable
 
         _accountDeletionService = new AccountDeletionService(
             _userService, Substitute.For<IUserEmailService>(), Substitute.For<ITeamWrite>(),
-            Substitute.For<IRoleAssignmentWrite>(), _gdprService, _tickets,
+            Substitute.For<ISystemRoleWrite>(), _gdprService, _tickets,
             Substitute.For<IUserInfoSliceRefresher>(), _auditLogService, _emailService,
             _emailMessages, _clock, Substitute.For<IHostEnvironment>(), NullLogger<AccountDeletionService>.Instance);
 

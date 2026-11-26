@@ -1,3 +1,4 @@
+using Humans.Testing;
 using AwesomeAssertions;
 using Humans.Base;
 using Humans.Base.Extensions;
@@ -66,7 +67,7 @@ public class OnboardingWidgetControllerNamesTests
     private readonly IUserService _userService = Substitute.For<IUserService>();
 
     private readonly IStringLocalizer<OnboardingResource> _localizer =
-        Substitute.For<IStringLocalizer<OnboardingResource>>();
+        Substitute.For<IStringLocalizer<OnboardingResource>>().AddFormatting();
 
     public OnboardingWidgetControllerNamesTests()
     {

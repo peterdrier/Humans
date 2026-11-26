@@ -23,7 +23,7 @@ internal sealed class AccountDeletionService(
     IUserManagement userService,
     IUserEmailService userEmailService,
     ITeamWrite teamService,
-    IRoleAssignmentWrite roleAssignmentService,
+    ISystemRoleWrite systemRoleService,
     IGdprService gdprService,
     ITicketService ticketQueryService,
     IUserInfoSliceRefresher userInfoRefresher,
@@ -71,7 +71,7 @@ internal sealed class AccountDeletionService(
 
             // Access ends during the grace period.
             endedMemberships = await teamService.RevokeAllMembershipsAsync(userId, ct);
-            endedRoles = await roleAssignmentService.RevokeAllActiveAsync(userId, ct);
+            endedRoles = await systemRoleService.RevokeAllActiveAsync(userId, ct);
 
             scope.Complete();
         }

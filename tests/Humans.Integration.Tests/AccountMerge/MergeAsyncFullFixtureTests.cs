@@ -40,7 +40,7 @@ public class MergeAsyncFullFixtureTests(HumansTestDatabase database) : Integrati
 
             b.WithSourceLogin("Google", sourceLoginKey);
 
-            b.WithSourceRoleAssignment(sourceOnlyRole);
+            b.WithSourceSystemRole(sourceOnlyRole);
         });
 
         await using (var seedScope = Factory.Services.CreateAsyncScope())
@@ -121,7 +121,7 @@ public class MergeAsyncFullFixtureTests(HumansTestDatabase database) : Integrati
                     && tm.LeftAt == null, TestContext.Current.CancellationToken))
             .Should().BeTrue("source-only team membership must be re-FK'd to target");
 
-        (await authDb.RoleAssignments.AsNoTracking()
+        (await authDb.SystemRoles.AsNoTracking()
                 .AnyAsync(ra => ra.UserId == targetId && ra.RoleName == sourceOnlyRole, TestContext.Current.CancellationToken))
             .Should().BeTrue("source-only role assignment must be re-FK'd to target");
     }
@@ -150,7 +150,7 @@ public class MergeAsyncFullFixtureTests(HumansTestDatabase database) : Integrati
                 + string.Join("; ", result.Errors.Select(e => e.Description)));
         }
 
-        authDb.RoleAssignments.Add(new RoleAssignment
+        authDb.SystemRoles.Add(new SystemRole
         {
             Id = Guid.NewGuid(),
             UserId = adminId,

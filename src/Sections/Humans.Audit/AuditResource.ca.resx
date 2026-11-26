@@ -38,7 +38,8 @@
   <data name="Enum_AuditAction_MemberUnsuspended" xml:space="preserve"><value>Membre reactivat</value></data>
   <data name="Enum_AuditAction_AccountAnonymized" xml:space="preserve"><value>Compte anonimitzat</value></data>
   <data name="Enum_AuditAction_RoleAssigned" xml:space="preserve"><value>Rol assignat</value></data>
-  <data name="Enum_AuditAction_RoleEnded" xml:space="preserve"><value>Rol finalitzat</value></data>
+  <data name="Enum_AuditAction_RoleEnded" xml:space="preserve"><value>Rol revocat</value></data>
+  <data name="Enum_AuditAction_RoleRevoked" xml:space="preserve"><value>Rol revocat</value></data>
   <data name="Enum_AuditAction_VolunteerApproved" xml:space="preserve"><value>Voluntari aprovat</value></data>
   <data name="Enum_AuditAction_GoogleResourceAccessGranted" xml:space="preserve"><value>Accés als recursos de Google concedit</value></data>
   <data name="Enum_AuditAction_GoogleResourceAccessRevoked" xml:space="preserve"><value>S'ha revocat l'accés als recursos de Google</value></data>
@@ -339,8 +340,10 @@
   <data name="Audit_NoPersonVerb_VolunteerApproved" xml:space="preserve"><value>ha aprovat</value></data>
   <data name="Audit_Verb_RoleAssigned" xml:space="preserve"><value>ha assignat un rol a</value></data>
   <data name="Audit_NoPersonVerb_RoleAssigned" xml:space="preserve"><value>ha assignat un rol</value></data>
-  <data name="Audit_Verb_RoleEnded" xml:space="preserve"><value>ha finalitzat el rol de</value></data>
-  <data name="Audit_NoPersonVerb_RoleEnded" xml:space="preserve"><value>ha finalitzat un rol</value></data>
+  <data name="Audit_Verb_RoleEnded" xml:space="preserve"><value>ha revocat el rol de</value></data>
+  <data name="Audit_Verb_RoleRevoked" xml:space="preserve"><value>ha revocat el rol de</value></data>
+  <data name="Audit_NoPersonVerb_RoleEnded" xml:space="preserve"><value>ha revocat un rol</value></data>
+  <data name="Audit_NoPersonVerb_RoleRevoked" xml:space="preserve"><value>ha revocat un rol</value></data>
   <data name="Audit_Verb_WorkspaceAccountPasswordReset" xml:space="preserve"><value>ha restablert la contrasenya de Workspace de</value></data>
   <data name="Audit_NoPersonVerb_WorkspaceAccountPasswordReset" xml:space="preserve"><value>ha restablert la contrasenya de Workspace</value></data>
   <data name="Audit_Verb_WorkspaceAccountBackupCodesGenerated" xml:space="preserve"><value>ha generat codis de recuperació de Workspace per a</value></data>

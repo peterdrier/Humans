@@ -55,7 +55,7 @@ public sealed class AccountDeletionServiceRealContributorTests : ServiceTestHarn
             _userService,
             Substitute.For<IUserEmailService>(),
             _teamService,
-            Substitute.For<IRoleAssignmentWrite>(),
+            Substitute.For<ISystemRoleWrite>(),
             gdprService,
             _ticketQueryService,
             Substitute.For<IUserInfoSliceRefresher>(),
@@ -116,7 +116,7 @@ public sealed class AccountDeletionServiceRealContributorTests : ServiceTestHarn
         });
         var audit = Substitute.For<IAuditLogService>();
         var service = new AccountDeletionService(cache, Substitute.For<IUserEmailService>(),
-            _teamService, Substitute.For<IRoleAssignmentWrite>(), gdpr, _ticketQueryService, cache,
+            _teamService, Substitute.For<ISystemRoleWrite>(), gdpr, _ticketQueryService, cache,
             audit, Substitute.For<IEmailService>(), TestUsersEmails.Create(), Clock,
             Substitute.For<IHostEnvironment>(), NullLogger<AccountDeletionService>.Instance);
         Func<Task> erase = expiry

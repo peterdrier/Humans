@@ -1,3 +1,4 @@
+using Humans.Testing;
 using Xunit;
 using AwesomeAssertions;
 using Humans.Base;
@@ -25,9 +26,9 @@ public class MemberDataControllerTests
 
     private MemberDataController Create(bool signedIn = true)
     {
-        var localizer = Substitute.For<IStringLocalizer<GdprResource>>();
+        var localizer = Substitute.For<IStringLocalizer<GdprResource>>().AddFormatting();
         localizer[Arg.Any<string>()].Returns(ci => new LocalizedString(ci.Arg<string>(), ci.Arg<string>()));
-        var shared = Substitute.For<IStringLocalizer<SharedResource>>();
+        var shared = Substitute.For<IStringLocalizer<SharedResource>>().AddFormatting();
         shared[Arg.Any<string>()].Returns(ci => new LocalizedString(ci.Arg<string>(), ci.Arg<string>()));
         _users.GetUserInfoAsync(_userId, Arg.Any<CancellationToken>()).Returns(ControllerTestHost.Info(_userId));
         return new MemberDataController(

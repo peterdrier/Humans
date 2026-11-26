@@ -33,7 +33,7 @@ public sealed class GovernanceIndexServiceTests
     private readonly ILegalDocumentService _legalDocuments = Substitute.For<ILegalDocumentService>();
     private readonly IUserService _users = Substitute.For<IUserService>();
     private readonly IAssemblyVoteService _votes = Substitute.For<IAssemblyVoteService>();
-    private readonly IRoleAssignmentService _roles = Substitute.For<IRoleAssignmentService>();
+    private readonly ISystemRoleService _roles = Substitute.For<ISystemRoleService>();
     private readonly HashSet<Guid> _inactive = [];
     private readonly GovernanceBodyRepository _bodies = new(new TestDbContextFactory<GovernanceDbContext>(
         new DbContextOptionsBuilder<GovernanceDbContext>().UseInMemoryDatabase(Guid.NewGuid().ToString()).Options));
@@ -120,7 +120,7 @@ public sealed class GovernanceIndexServiceTests
             .Returns([viewer]);
         _roles.GetActiveUserIdsInRoleAsync(RoleNames.Board, Arg.Any<CancellationToken>()).Returns([viewer]);
         _roles.GetByUserIdAsync(viewer, Arg.Any<CancellationToken>()).Returns([
-            new RoleAssignmentSummarySnapshot(Guid.NewGuid(), viewer, null, "Viewer", RoleNames.Board, seated, null, null,
+            new SystemRoleSummarySnapshot(Guid.NewGuid(), viewer, null, "Viewer", RoleNames.Board, seated, null, null,
                 Guid.NewGuid(), null)]);
 
         var data = await CreateService().GetIndexDataAsync(viewer);
@@ -282,7 +282,7 @@ public sealed class GovernanceIndexServiceTests
 
     private GovernanceController CreateController(Guid userId, IAuthorizationService authorization, CancellationToken ct = default) =>
         new(_users, CreateService(),
-            new GovernanceBoardSeats(_roles, Substitute.For<IRoleAssignmentWrite>(), _users, _bodies,
+            new GovernanceBoardSeats(_roles, Substitute.For<ISystemRoleWrite>(), _users, _bodies,
                 Substitute.For<IAuditLogService>(),
                 new GovernanceBodySync(_bodies, Substitute.For<IGoogleGroupSync>(), Substitute.For<IGoogleSyncWrite>()),
                 SystemClock.Instance),

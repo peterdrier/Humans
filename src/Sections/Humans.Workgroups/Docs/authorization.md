@@ -1,7 +1,7 @@
 <!-- freshness:triggers
   src/Sections/Humans.Workgroups/**
   tests/Humans.Workgroups.Tests/**
-  src/Sections/Humans.Auth/Contracts/IRoleAssignmentService.cs
+  src/Sections/Humans.Auth/Contracts/ISystemRoleService.cs
   src/Sections/Humans.Teams.Contracts/ITeamService.cs
   src/Humans.Base/Constants/SystemTeamIds.cs
 -->

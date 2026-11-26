@@ -18,7 +18,7 @@ public class AgentPromptAssemblerTests
             PreferredLocale: "es",
             Tier: "Volunteer",
             AccountState: UserState.Active,
-            RoleAssignments: [("TeamsAdmin", "2027-12-31"), ("Board", "2027-06-30")],
+            SystemRoles: [("TeamsAdmin", "2027-12-31"), ("Board", "2027-06-30")],
             Teams:
             [
                 new TeamMembership("Volunteers", TeamMemberRole.Member),
@@ -46,7 +46,7 @@ public class AgentPromptAssemblerTests
             PreferredLocale: "es",
             Tier: "Volunteer",
             AccountState: UserState.Active,
-            RoleAssignments: [],
+            SystemRoles: [],
             Teams:
             [
                 new TeamMembership("Build", TeamMemberRole.Coordinator),
@@ -135,7 +135,7 @@ public class AgentPromptAssemblerTests
             PreferredLocale: "es",
             Tier: "Volunteer",
             AccountState: UserState.Active,
-            RoleAssignments: [],
+            SystemRoles: [],
             Teams:
             [
                 new TeamMembership("Zebra", TeamMemberRole.Member),
@@ -195,7 +195,7 @@ public class AgentPromptAssemblerTests
             PreferredLocale: "es",
             Tier: "Volunteer",
             AccountState: UserState.Active,
-            RoleAssignments: [],
+            SystemRoles: [],
             Teams: [],
             PendingConsentDocs: [],
             OpenTicketIds: [],

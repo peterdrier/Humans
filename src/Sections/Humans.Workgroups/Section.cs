@@ -163,9 +163,7 @@ public sealed class Section :
                 "fa-solid fa-user-plus",
                 RawHref: $"/Workgroups/{workgroup.Slug}", Weight: 40)
             {
-                Description = string.Format(CultureInfo.CurrentCulture,
-                    localizer["Workgroups_Todo_MembershipRequests_Description"].Value,
-                    workgroup.Name, workgroup.PendingMembers().Count()),
+                Description = localizer["Workgroups_Todo_MembershipRequests_Description", workgroup.Name, workgroup.PendingMembers().Count()],
                 ActionText = localizer["Workgroups_Todo_MembershipRequests_Action"].Value,
             });
         }
@@ -177,8 +175,7 @@ public sealed class Section :
                 "fa-solid fa-people-group",
                 RawHref: $"/Workgroups/{workgroup.Slug}", Weight: 45)
             {
-                Description = string.Format(CultureInfo.CurrentCulture,
-                    localizer["Workgroups_Todo_UpdateDue_Description"].Value, workgroup.Name),
+                Description = localizer["Workgroups_Todo_UpdateDue_Description", workgroup.Name],
                 ActionText = localizer["Workgroups_Todo_UpdateDue_Action"].Value,
             });
         }

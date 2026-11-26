@@ -1,3 +1,4 @@
+using Humans.Testing;
 using Humans.Governance.Contracts;
 using Humans.Base.Extensions;
 using AwesomeAssertions;
@@ -186,7 +187,7 @@ public sealed class AssemblyVoteServiceTests : IDisposable
             User = new ClaimsPrincipal(new ClaimsIdentity([new Claim(ClaimTypes.NameIdentifier, cookieId.ToString())], "test"))
         };
         var controller = new GovernanceVotesController(users, votes,
-            Substitute.For<IStringLocalizer<GovernanceResource>>(),
+            Substitute.For<IStringLocalizer<GovernanceResource>>().AddFormatting(),
             NullLogger<GovernanceVotesController>.Instance)
         { ControllerContext = new ControllerContext { HttpContext = http } };
         var voteId = Guid.NewGuid();
@@ -252,7 +253,7 @@ public sealed class AssemblyVoteServiceTests : IDisposable
         else
         {
             var controller = new GovernanceVotesController(_fx.Users, votes,
-                Substitute.For<IStringLocalizer<GovernanceResource>>(),
+                Substitute.For<IStringLocalizer<GovernanceResource>>().AddFormatting(),
                 NullLogger<GovernanceVotesController>.Instance)
             { ControllerContext = context };
             var view = (await controller.Index(TestContext.Current.CancellationToken))
@@ -287,7 +288,7 @@ public sealed class AssemblyVoteServiceTests : IDisposable
         }
         var historyBefore = await _fx.Db.AssemblyBallotHistories.CountAsync(ct);
         _fx.Audit.ClearReceivedCalls();
-        var localizer = Substitute.For<IStringLocalizer<GovernanceResource>>();
+        var localizer = Substitute.For<IStringLocalizer<GovernanceResource>>().AddFormatting();
         localizer[Arg.Any<string>()].Returns(call => new LocalizedString(call.Arg<string>(), call.Arg<string>()));
         var http = new DefaultHttpContext
         {
@@ -1872,7 +1873,7 @@ public sealed class AssemblyVoteServiceTests : IDisposable
             repo.StampNotifiedAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<Instant>(), vote.ClosesAt, Arg.Any<CancellationToken>()).Returns(_ => FailAsync());
             repo.StampReminderSentAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<Instant>(), vote.ClosesAt, Arg.Any<CancellationToken>()).Returns(_ => FailAsync());
         }
-        var effects = new AssemblyVoteService(repo, _fx.Applications, _fx.RoleAssignments, _fx.Teams, _fx.Users,
+        var effects = new AssemblyVoteService(repo, _fx.Applications, _fx.SystemRoles, _fx.Teams, _fx.Users,
             _fx.Email, _fx.Messages, _fx.Notifications, _fx.NotificationResolve, _fx.Audit, _fx.Translation, _fx.Clock, FixedOrgTimeZone.Madrid,
             NullLogger<AssemblyVoteService>.Instance);
         var failures = new List<Exception>();
@@ -1903,7 +1904,7 @@ public sealed class AssemblyVoteServiceTests : IDisposable
             .Returns(Task.FromException<IReadOnlyList<AssemblyVote>>(earlier));
         repo.GetLapsedOpenVotesAsync(now, shutdown.Token).Returns(async Task<IReadOnlyList<AssemblyVote>> (_) =>
         { if (shutdownRequested) await shutdown.CancelAsync(); throw later; });
-        var service = new AssemblyVoteService(repo, _fx.Applications, _fx.RoleAssignments, _fx.Teams, _fx.Users,
+        var service = new AssemblyVoteService(repo, _fx.Applications, _fx.SystemRoles, _fx.Teams, _fx.Users,
             _fx.Email, _fx.Messages, _fx.Notifications, _fx.NotificationResolve, _fx.Audit, _fx.Translation, _fx.Clock, FixedOrgTimeZone.Madrid,
             NullLogger<AssemblyVoteService>.Instance);
 
@@ -2031,7 +2032,7 @@ public sealed class AssemblyVoteServiceTests : IDisposable
         if (lookupFails)
             _fx.Users.GetUserInfosAsync(Arg.Any<IEnumerable<Guid>>(), Arg.Any<CancellationToken>())
                 .Returns(ValueTask.FromException<IReadOnlyDictionary<Guid, UserInfo>>(new IOException("Identity lookup unavailable")));
-        var effects = new AssemblyVoteService(_fx.Repository, _fx.Applications, _fx.RoleAssignments, _fx.Teams, _fx.Users,
+        var effects = new AssemblyVoteService(_fx.Repository, _fx.Applications, _fx.SystemRoles, _fx.Teams, _fx.Users,
             _fx.Email, _fx.Messages, _fx.Notifications, _fx.NotificationResolve, _fx.Audit, _fx.Translation, _fx.Clock, FixedOrgTimeZone.Madrid,
             NullLogger<AssemblyVoteService>.Instance);
 
@@ -2345,7 +2346,7 @@ public sealed class AssemblyVoteServiceTests : IDisposable
 
         if (oldCookie)
         {
-            var localizer = Substitute.For<IStringLocalizer<GovernanceResource>>();
+            var localizer = Substitute.For<IStringLocalizer<GovernanceResource>>().AddFormatting();
             localizer[Arg.Any<string>()].Returns(call => new LocalizedString(call.Arg<string>(), call.Arg<string>()));
             var http = new DefaultHttpContext
             {
@@ -2855,7 +2856,7 @@ public sealed class AssemblyVoteServiceTests : IDisposable
         else
             repo.GetByIdAsync(vote.Id, ct)
                 .Returns(_ => Task.FromException<AssemblyVote?>(failure), _ => Task.FromResult<AssemblyVote?>(vote));
-        var effects = new AssemblyVoteService(repo, _fx.Applications, _fx.RoleAssignments, _fx.Teams, _fx.Users,
+        var effects = new AssemblyVoteService(repo, _fx.Applications, _fx.SystemRoles, _fx.Teams, _fx.Users,
             _fx.Email, _fx.Messages, _fx.Notifications, _fx.NotificationResolve, _fx.Audit, _fx.Translation, _fx.Clock, FixedOrgTimeZone.Madrid,
             NullLogger<AssemblyVoteService>.Instance);
         var failures = new List<Exception>();

@@ -11,7 +11,7 @@ namespace Humans.Users.Services;
 internal sealed class DuplicateAccountService(
     IUserManagement userService,
     ITeamService teamService,
-    IRoleAssignmentService roleAssignmentService,
+    ISystemRoleService systemRoleService,
     IGovernanceService governanceService,
     IAuditLogService auditLogService,
     IAuditViewerService auditViewer) : IDuplicateAccountService
@@ -89,7 +89,7 @@ internal sealed class DuplicateAccountService(
             var memberships = await teamService.GetUserTeamMembershipsAsync(userId, ct);
             teamCounts[userId] = memberships.Count;
 
-            var roles = await roleAssignmentService.GetByUserIdAsync(userId, ct);
+            var roles = await systemRoleService.GetByUserIdAsync(userId, ct);
             roleAssignmentCounts[userId] = roles.Count(r => r.ValidTo == null);
         }
 
@@ -192,7 +192,7 @@ internal sealed class DuplicateAccountService(
             Email = info?.Email,
             MembershipTier = membershipTier,
             MembershipStatus = membershipStatus,
-            LastLogin = info?.LastLoginAt?.ToDateTimeUtc(),
+            LastSignIn = info?.LastSignInAt?.ToDateTimeUtc(),
             CreatedAt = info?.CreatedAt.ToDateTimeUtc(),
             HasProfile = hasProfile
         };

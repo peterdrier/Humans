@@ -45,8 +45,7 @@
 {
     <div class="alert alert-info">
         <i class="fa-solid fa-circle-info me-2"></i>
-        @string.Format(CultureInfo.CurrentCulture, Localizer["Search_GlobalHint"].Value,
-            string.Join(", ", Model.Buckets.Select(b => b.Label)))
+        @Localizer["Search_GlobalHint", string.Join(", ", Model.Buckets.Select(b => b.Label))]
     </div>
 }
 else if (Model.QueryIsTooShort)

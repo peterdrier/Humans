@@ -21,7 +21,7 @@ public class IssuesArchitectureTests
 
         paramTypes.Should().Contain(typeof(IUserService),
             because: "Issues reads names, cultures and canonical reporter emails through the read-only user interface");
-        paramTypes.Should().Contain(typeof(IRoleAssignmentService),
+        paramTypes.Should().Contain(typeof(ISystemRoleService),
             because: "Issues reads section role-holders through the read-only role interface");
     }
 

@@ -27,7 +27,7 @@ internal sealed class ProfileViewController(
     ITeamService teamService,
     ICampService campService,
     IGovernanceService governanceService,
-    IRoleAssignmentService roleAssignments,
+    ISystemRoleService roleAssignments,
     IAuthorizationService authorizationService,
     MedicalConditionsService medicalConditions) : HumansControllerBase(userService)
 {

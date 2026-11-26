@@ -18,7 +18,7 @@ internal sealed class FinanceEmails(
         => Localized(culture, () => new EmailMessage(
             userEmail, userName, userId,
             L("Finance_Email_SepaPayoutGenerated_Subject"),
-            Lf("Finance_Email_SepaPayoutGenerated_Body", Encode(userName), amount.ToEuro(), Encode(ibanMasked)),
+            localizer["Finance_Email_SepaPayoutGenerated_Body", Encode(userName), amount.ToEuro(), Encode(ibanMasked)],
             "sepa_payout_generated", MessageCategory.System));
 
     /// <summary><paramref name="announcedOn"/> is the file's generation day in the organisation's zone.</summary>
@@ -28,14 +28,11 @@ internal sealed class FinanceEmails(
         => Localized(culture, () => new EmailMessage(
             userEmail, userName, userId,
             L("Finance_Email_SepaPayoutWithdrawn_Subject"),
-            Lf("Finance_Email_SepaPayoutWithdrawn_Body", Encode(userName), amount.ToEuro(), Encode(ibanMasked),
-                announcedOn.ToString("d", CultureInfo.CurrentCulture)),
+            localizer["Finance_Email_SepaPayoutWithdrawn_Body", Encode(userName), amount.ToEuro(), Encode(ibanMasked),
+                announcedOn.ToString("d", CultureInfo.CurrentCulture)],
             "sepa_payout_withdrawn", MessageCategory.System));
 
     private string L(string key) => localizer[key].Value;
-
-    private string Lf(string key, params object[] args) =>
-        string.Format(CultureInfo.CurrentCulture, localizer[key].Value, args);
 
     private static string Encode(string text) => WebUtility.HtmlEncode(text);
 

@@ -36,7 +36,7 @@
 | Actor | Capabilities |
 |-------|-------------|
 | TicketsAdmin, Board, Admin | Access the scanner index and use the barcode + ticket lookup tools |
-| Gate terminal account (`SystemUserIds.GateTerminal`) | Admitted by `ScannerAccess` by well-known id, but never reaches these routes: the kiosk route-restriction middleware in `src/Humans.Web/Program.cs` redirects the signed-in gate account to `/Gate` for any path outside `/Gate/*` and its own login/logout. Signs in at `/Account/GateLogin` with the credential set on `/Tickets/Admin/Gate`; holds no roles. See `Docs/features/gate-terminal-login.md` and `src/Sections/Humans.Gate/Docs/Gate.md` |
+| Gate terminal account (`SystemUserIds.GateTerminal`) | Admitted by `ScannerAccess` by well-known id, but never reaches these routes: the kiosk route-restriction middleware in `src/Humans.Web/Program.cs` redirects the signed-in gate account to `/Gate` for any path outside `/Gate/*` and its own login/logout. Signs in at `/Account/GateSignIn` with the credential set on `/Tickets/Admin/Gate`; holds no roles. See `Docs/features/gate-terminal-login.md` and `src/Sections/Humans.Gate/Docs/Gate.md` |
 | Everyone else | No access — all routes require `ScannerAccess` |
 
 ## Invariants

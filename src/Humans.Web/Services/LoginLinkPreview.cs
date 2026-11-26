@@ -13,7 +13,7 @@ namespace Humans.Web.Services;
 /// means adding it here plus the two keys in all supported cultures. Only local URLs match; nothing
 /// about the target beyond its area ever reaches the preview.
 /// </remarks>
-public static class LoginLinkPreview
+public static class SignInLinkPreview
 {
     /// <summary>Top-level route segments with preview text, in canonical casing.</summary>
     public static readonly IReadOnlyList<string> Segments =

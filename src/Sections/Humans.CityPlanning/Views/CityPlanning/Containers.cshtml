@@ -75,7 +75,7 @@
 
     @if (group.Containers.Count == 0)
     {
-        <empty-state class="mb-3">@string.Format(Localizer["CityPlanning_Admin_BarrioContainersEmpty"], group.CampName)</empty-state>
+        <empty-state class="mb-3">@Localizer["CityPlanning_Admin_BarrioContainersEmpty", group.CampName]</empty-state>
     }
     else
     {
@@ -94,7 +94,7 @@
         <div class="modal-dialog modal-lg">
             <div class="modal-content">
                 <div class="modal-header">
-                    <h5 class="modal-title">@string.Format(Localizer["CityPlanning_Admin_AddBarrioContainer"], group.CampName)</h5>
+                    <h5 class="modal-title">@Localizer["CityPlanning_Admin_AddBarrioContainer", group.CampName]</h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                 </div>
                 <form asp-action="CreateBarrioContainer" asp-route-year="@Model.Year" asp-route-campId="@group.CampId"

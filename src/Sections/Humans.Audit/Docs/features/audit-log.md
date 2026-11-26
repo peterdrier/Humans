@@ -79,8 +79,8 @@ Each call is self-persisting via `IAuditLogRepository.AddAsync`, which opens a f
 |--------|--------------|--------|
 | Suspend member | MemberSuspended | `HumanLifecycleService`, `NonCompliantMemberSuspension` |
 | Unsuspend member | MemberUnsuspended | `HumanLifecycleService` |
-| Add role | RoleAssigned | `RoleAssignmentService` |
-| End role | RoleEnded | `RoleAssignmentService` |
+| Add role | RoleAssigned | `SystemRoleService` |
+| Revoke role | RoleRevoked (before 2026-11: RoleEnded) | `SystemRoleService` |
 
 `VolunteerApproved` has no writer (reserved).
 

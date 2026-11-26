@@ -1,3 +1,4 @@
+using Humans.Testing;
 using System.Security.Claims;
 using AwesomeAssertions;
 using Humans.Audit.Contracts;
@@ -387,7 +388,7 @@ public sealed class EventParticipationServiceTests : IDisposable
         var settings = Substitute.For<ISettingsService>();
         settings.GetActiveEventSettings()
             .Returns(activeYear is { } year ? BurnFixtures.Burn(year: year) : null);
-        var localizer = Substitute.For<IStringLocalizer<TicketsResource>>();
+        var localizer = Substitute.For<IStringLocalizer<TicketsResource>>().AddFormatting();
         localizer[Arg.Any<string>()].Returns(call => new LocalizedString((string)call[0], (string)call[0]));
         var controller = new TicketParticipationController(
             participations, settings, _users, localizer, NullLogger<TicketParticipationController>.Instance);

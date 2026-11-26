@@ -35,7 +35,7 @@ public sealed class ShiftManagementServiceTests : ShiftsTestHarness
     {
         _teamService = Substitute.For<ITeamService>();
         var userService = Substitute.For<IUserService>();
-        var roleAssignmentService = Substitute.For<IRoleAssignmentService>();
+        var systemRoleService = Substitute.For<ISystemRoleService>();
 
         // Default: users looked up by id resolve to the entities seeded in Db
         // so the cross-section signup stitching in GetBrowseShiftsAsync returns the
@@ -59,7 +59,7 @@ public sealed class ShiftManagementServiceTests : ShiftsTestHarness
             .With(_teamService)
             .With(userService)
             .With(userService)
-            .With(roleAssignmentService)
+            .With(systemRoleService)
             .With(_permissions)
             .With(_settingsService)
             .Build();

@@ -21,7 +21,7 @@
       "safe": false,
       "reason": "Completes external login, signs in/links account, sets auth cookie (AccountController.cs:95)"
     },
-    "/Account/GateLogin": {
+    "/Account/GateSignIn": {
       "safe": true,
       "reason": "read-only login form view"
     },
@@ -29,11 +29,11 @@
       "safe": true,
       "reason": "read-only"
     },
-    "/Account/MagicLinkConfirm": {
+    "/Account/SignInLinkConfirm": {
       "safe": true,
       "reason": "read-only landing page; sign-in is POST"
     },
-    "/Account/MagicLinkSignup": {
+    "/Account/SignInLinkSignup": {
       "safe": true,
       "reason": "read-only; VerifySignupToken does not consume the token"
     },
