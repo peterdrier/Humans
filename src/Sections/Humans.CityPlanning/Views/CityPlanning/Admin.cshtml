@@ -102,7 +102,7 @@
         <div class="col-12">
             <div class="card">
                 <div class="card-header fw-semibold">
-                    <i class="fa-solid fa-box me-1"></i> @string.Format(Localizer["CityPlanning_Admin_ContainersCard"], settings.Year)
+                    <i class="fa-solid fa-box me-1"></i> @Localizer["CityPlanning_Admin_ContainersCard", settings.Year]
                 </div>
                 <div class="card-body">
                     <p class="mb-2">@Localizer["CityPlanning_Admin_ContainersDesc"]</p>
@@ -119,9 +119,9 @@
                     <i class="fa-solid fa-file-export me-1"></i> @Localizer["CityPlanning_Admin_ExportCard"]
                 </div>
                 <div class="card-body">
-                    <p class="mb-2">@string.Format(Localizer["CityPlanning_Admin_ExportDescription"].Value, settings.Year)</p>
+                    <p class="mb-2">@Localizer["CityPlanning_Admin_ExportDescription", settings.Year]</p>
                     <a href="/api/city-planning/export.geojson?year=@settings.Year" class="btn btn-outline-secondary btn-sm" download="city-planning-@(settings.Year).geojson">
-                        <i class="fa-solid fa-download me-1"></i> @string.Format(Localizer["CityPlanning_Admin_DownloadGeoJson"].Value, settings.Year)
+                        <i class="fa-solid fa-download me-1"></i> @Localizer["CityPlanning_Admin_DownloadGeoJson", settings.Year]
                     </a>
                 </div>
             </div>
@@ -133,7 +133,7 @@
                     <i class="fa-solid fa-file-import me-1"></i> @Localizer["CityPlanning_Admin_ImportCard"] (@settings.Year)
                 </div>
                 <div class="card-body">
-                    <p class="mb-2">@string.Format(Localizer["CityPlanning_Admin_ImportDescription"].Value, settings.Year)</p>
+                    <p class="mb-2">@Localizer["CityPlanning_Admin_ImportDescription", settings.Year]</p>
                     <div class="mb-3">
                         <label class="form-label small fw-semibold">@Localizer["CityPlanning_Admin_ImportFileLabel"]</label>
                         <input type="file" id="import-file-input" accept=".geojson,.json,application/geo+json" class="form-control form-control-sm" />

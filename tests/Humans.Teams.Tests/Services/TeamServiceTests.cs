@@ -1,3 +1,4 @@
+using Humans.Testing;
 using Microsoft.Extensions.Localization;
 using Humans.Roles.Contracts;
 using System.Globalization;
@@ -1300,7 +1301,7 @@ public sealed class TeamServiceTests : TeamsTestHarness
             .AddKeyedScoped<ITeamManagementService>(CachingTeamService.InnerServiceKey, (_, _) => _service)
             .BuildServiceProvider();
         var cached = new CachingTeamService(provider.GetRequiredService<IServiceScopeFactory>(),
-            NullLogger<CachingTeamService>.Instance, Substitute.For<IStringLocalizer<TeamsResource>>());
+            NullLogger<CachingTeamService>.Instance, Substitute.For<IStringLocalizer<TeamsResource>>().AddFormatting());
         await cached.GetTeamsAsync(TestContext.Current.CancellationToken);
         _teamCache.When(t => t.InvalidateActiveTeamsCache()).Do(_ => cached.InvalidateActiveTeamsCache());
         TeamInfo? observedTeam = null;
@@ -3035,7 +3036,7 @@ public sealed class TeamServiceTests : TeamsTestHarness
             .AddKeyedScoped<ITeamManagementService>(CachingTeamService.InnerServiceKey, (_, _) => _service)
             .BuildServiceProvider();
         var cache = new CachingTeamService(provider.GetRequiredService<IServiceScopeFactory>(),
-            NullLogger<CachingTeamService>.Instance, Substitute.For<IStringLocalizer<TeamsResource>>());
+            NullLogger<CachingTeamService>.Instance, Substitute.For<IStringLocalizer<TeamsResource>>().AddFormatting());
         var before = await cache.GetTeamAsync(team.Id, ct);
         before!.Members.Should().ContainSingle().Which.DisplayName.Should().Be("Alice");
         var invalidations = cache.BulkInvalidations;

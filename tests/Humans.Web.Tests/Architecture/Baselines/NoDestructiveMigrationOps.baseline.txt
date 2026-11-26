@@ -781,6 +781,13 @@ src/Sections/Humans.Tickets/Data/Migrations/20261121235220_DropRetiredResaleInvi
 src/Sections/Humans.Tickets/Data/Migrations/20261121235220_DropRetiredResaleInviteColumns.cs:DropColumn(name=DirectedEmail,table=ticket_resale_offers)#1
 src/Sections/Humans.Tickets/Data/Migrations/20261121235220_DropRetiredResaleInviteColumns.cs:DropColumn(name=DirectedTokenHash,table=ticket_resale_offers)#1
 
+# Agent: agent_settings.PreloadConfig (the Tier1/Tier2 preload size on the singleton settings row).
+# peterdrier/Humans#2610 made the preload one size and marked the property [Obsolete].
+# Evidence: pickaxe git log -S '.PreloadConfig' over origin/main ends at #2610; after it the only
+# references are the EF mapping and seed value, which this PR removes. Nothing reads or writes it.
+# Approval: Peter, 2026-11-24, in the Agent rename thread: "yes for preloadconfig drop".
+src/Sections/Humans.Agent/Data/Migrations/20261124151418_DropAgentSettingsPreloadConfig.cs:DropColumn(name=PreloadConfig,table=agent_settings)#1
+
 # Tickets: ticket_sales_events.ChildPriceMinor and ChildMaxAge (the single child price and age limit
 # of a sales event, both nullable). Replaced by per-event child ticket types (ChildTypes) in
 # peterdrier/Humans#2549, which has merged and carries every child price.

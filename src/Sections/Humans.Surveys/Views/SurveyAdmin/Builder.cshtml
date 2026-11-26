@@ -70,7 +70,7 @@
 @if (Model.Status == SurveyStatus.Draft && !string.IsNullOrWhiteSpace(Model.RejectionNote))
 {
     <div class="alert alert-danger" role="alert">
-        @string.Format(Localizer["Surveys_Admin_Index_RejectionNote"].Value, Model.RejectionNote)
+        @Localizer["Surveys_Admin_Index_RejectionNote", Model.RejectionNote]
     </div>
 }
 

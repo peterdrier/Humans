@@ -216,7 +216,7 @@ internal sealed class CampController(
                 SetError(campsLocalizer["Camps_Contact_RateLimited"].Value);
                 return RedirectToAction(nameof(Details), new { slug });
             }
-            SetSuccess(string.Format(campsLocalizer["Camps_Contact_Success"].Value, campDisplayName));
+            SetSuccess(campsLocalizer["Camps_Contact_Success", campDisplayName]);
             return RedirectToAction(nameof(Details), new { slug });
         }
         catch (Exception ex)

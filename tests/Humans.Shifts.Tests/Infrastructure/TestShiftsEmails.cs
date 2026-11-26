@@ -1,3 +1,4 @@
+using Humans.Testing;
 using System.Globalization;
 using Humans.Shifts.Services;
 using Microsoft.Extensions.Localization;
@@ -24,7 +25,7 @@ internal static class TestShiftsEmails
     public static ShiftsEmails Create(IReadOnlyDictionary<string, string>? formats = null)
     {
         formats ??= Formats;
-        var localizer = Substitute.For<IStringLocalizer<ShiftsResource>>();
+        var localizer = Substitute.For<IStringLocalizer<ShiftsResource>>().AddFormatting();
         localizer[Arg.Any<string>()].Returns(call =>
         {
             var key = call.Arg<string>();

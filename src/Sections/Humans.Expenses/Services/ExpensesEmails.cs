@@ -23,8 +23,8 @@ internal sealed class ExpensesEmails(
         => Localized(culture, () => new EmailMessage(
             userEmail, userName, userId,
             L("Expenses_Email_Approved_Subject"),
-            Lf("Expenses_Email_Approved_Body",
-                Encode(userName), payable.ToEuro(), Encode(ibanMasked), AbsoluteUrl($"/Expenses/{reportId}")),
+            localizer["Expenses_Email_Approved_Body",
+                Encode(userName), payable.ToEuro(), Encode(ibanMasked), AbsoluteUrl($"/Expenses/{reportId}")],
             "expense_approved", MessageCategory.System));
 
     /// <summary>Webmail has no Humans origin, so a root-relative link would resolve against the reader's host.</summary>
@@ -32,9 +32,6 @@ internal sealed class ExpensesEmails(
         $"{_settings.BaseUrl.TrimEnd('/')}/{path.TrimStart('/')}";
 
     private string L(string key) => localizer[key].Value;
-
-    private string Lf(string key, params object[] args) =>
-        string.Format(CultureInfo.CurrentCulture, localizer[key].Value, args);
 
     private static string Encode(string text) => WebUtility.HtmlEncode(text);
 

@@ -1,3 +1,4 @@
+using Humans.Testing;
 using Humans.Governance.Contracts;
 using Humans.Base.Extensions;
 using AwesomeAssertions;
@@ -186,7 +187,7 @@ public sealed class AssemblyVoteServiceTests : IDisposable
             User = new ClaimsPrincipal(new ClaimsIdentity([new Claim(ClaimTypes.NameIdentifier, cookieId.ToString())], "test"))
         };
         var controller = new GovernanceVotesController(users, votes,
-            Substitute.For<IStringLocalizer<GovernanceResource>>(),
+            Substitute.For<IStringLocalizer<GovernanceResource>>().AddFormatting(),
             NullLogger<GovernanceVotesController>.Instance)
         { ControllerContext = new ControllerContext { HttpContext = http } };
         var voteId = Guid.NewGuid();
@@ -252,7 +253,7 @@ public sealed class AssemblyVoteServiceTests : IDisposable
         else
         {
             var controller = new GovernanceVotesController(_fx.Users, votes,
-                Substitute.For<IStringLocalizer<GovernanceResource>>(),
+                Substitute.For<IStringLocalizer<GovernanceResource>>().AddFormatting(),
                 NullLogger<GovernanceVotesController>.Instance)
             { ControllerContext = context };
             var view = (await controller.Index(TestContext.Current.CancellationToken))
@@ -287,7 +288,7 @@ public sealed class AssemblyVoteServiceTests : IDisposable
         }
         var historyBefore = await _fx.Db.AssemblyBallotHistories.CountAsync(ct);
         _fx.Audit.ClearReceivedCalls();
-        var localizer = Substitute.For<IStringLocalizer<GovernanceResource>>();
+        var localizer = Substitute.For<IStringLocalizer<GovernanceResource>>().AddFormatting();
         localizer[Arg.Any<string>()].Returns(call => new LocalizedString(call.Arg<string>(), call.Arg<string>()));
         var http = new DefaultHttpContext
         {
@@ -2345,7 +2346,7 @@ public sealed class AssemblyVoteServiceTests : IDisposable
 
         if (oldCookie)
         {
-            var localizer = Substitute.For<IStringLocalizer<GovernanceResource>>();
+            var localizer = Substitute.For<IStringLocalizer<GovernanceResource>>().AddFormatting();
             localizer[Arg.Any<string>()].Returns(call => new LocalizedString(call.Arg<string>(), call.Arg<string>()));
             var http = new DefaultHttpContext
             {
