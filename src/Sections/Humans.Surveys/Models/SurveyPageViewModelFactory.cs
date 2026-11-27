@@ -81,6 +81,9 @@ internal static class SurveyPageViewModelFactory
                     image.Label.Resolve(state.Culture, editable.DefaultCulture),
                     image.AltText.Resolve(state.Culture, editable.DefaultCulture)))
                 .ToList(),
+            AsksForComment = question.Comment is not null,
+            CommentPrompt = question.Comment?.Prompt.Resolve(state.Culture, editable.DefaultCulture) ?? string.Empty,
+            CommentOptionValues = question.Comment?.OptionValues ?? [],
             SelectedOptionValues = prior?.SelectedOptionValues ?? [],
             GridSelections = prior?.GridSelections.ToDictionary(
                 kv => kv.Key,

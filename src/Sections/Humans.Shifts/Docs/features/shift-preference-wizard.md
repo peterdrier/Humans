@@ -83,9 +83,9 @@ The view model should expose `TimePreference` (string, nullable) separately from
 
 The set of time preference values should be a `static readonly` array (like the existing `SkillOptions`) so both the strip-on-save and extract-on-load logic reference the same source of truth.
 
-### Fields Removed From This Page (Not Deleted)
+### Fields Removed From This Page
 
-The following fields are not editable on `/Shifts/ShiftInfo`; food answers live in Cantina and medical on `Profile` ([Dietary Nudge](../../../Humans.Cantina/Docs/features/dietary-nudge.md)), and the corresponding `VolunteerEventProfile` columns are unused pending a deferred drop:
+The following fields are not editable on `/Shifts/ShiftInfo`; food answers live in Cantina and medical on `Profile` ([Dietary Nudge](../../../Humans.Cantina/Docs/features/dietary-nudge.md)). The old `VolunteerEventProfile` columns were dropped on 2026-11-26:
 - `DietaryPreference`
 - `Allergies[]` + `AllergyOtherText`
 - `Intolerances[]` + `IntoleranceOtherText`

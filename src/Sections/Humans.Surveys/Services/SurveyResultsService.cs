@@ -78,7 +78,10 @@ internal sealed class SurveyResultsService(
                          .OrderBy(o => o.Order)
                          .Select(o => new SurveyExportOption(o.Value, o.Label.Resolve(culture, culture)))],
                      SurveyQuestionMapping.ToRankedSettings(q.RankedSettings),
-                     q.RankedUnavailableOptionValues?.ToList()))]);
+                     q.RankedUnavailableOptionValues?.ToList(),
+                     q.Comment is { } comment
+                         ? new SurveyDefinitionComment(comment.Prompt.Resolve(culture, culture), comment.OptionValues)
+                         : null))]);
     }
 
     private static SurveyBranchCondition? ToBranchCondition(BranchCondition? condition) =>
@@ -120,14 +123,14 @@ internal sealed class SurveyResultsService(
             ? []
             : survey.Questions
                 .Where(q => q.Type != SurveyQuestionType.Information)
-                .Select(q => SurveyQuestionResults.WithFollowUp(
+                .Select(q => SurveyQuestionResults.WithComments(SurveyQuestionResults.WithFollowUp(
                     SurveyQuestionResults.BuildQuestionAggregate(q, selectedResponses, culture) with
                     {
                         PageNumber = q.PageNumber,
                         Order = q.Order,
                         HelpText = q.HelpText.Resolve(culture, culture),
                     },
-                    q, survey.Questions, selectedResponses, culture))
+                    q, survey.Questions, selectedResponses, culture), q, selectedResponses, culture))
                 .ToList();
 
         var funnel = new SurveyFunnel(
@@ -203,7 +206,8 @@ internal sealed class SurveyResultsService(
                      row.Value,
                      row.Label.Resolve(culture, culture))).ToList(),
                  SurveyQuestionMapping.ToRankedSettings(q.RankedSettings),
-                 q.RankedUnavailableOptionValues?.ToList()))
+                 q.RankedUnavailableOptionValues?.ToList(),
+                 q.Comment?.Prompt.Resolve(culture, culture)))
             .ToList();
 
         var answerContext = new SurveyAnswerProjection(survey, culture);

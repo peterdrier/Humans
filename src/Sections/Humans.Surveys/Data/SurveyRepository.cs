@@ -530,6 +530,7 @@ internal sealed class SurveyRepository(IDbContextFactory<SurveysDbContext> facto
             keptQuestion.InformationImages = incomingQuestion.InformationImages;
             keptQuestion.RankedSettings = incomingQuestion.RankedSettings;
             keptQuestion.RankedUnavailableOptionValues = incomingQuestion.RankedUnavailableOptionValues;
+            keptQuestion.Comment = incomingQuestion.Comment;
             keptQuestion.ShowIf = incomingQuestion.ShowIf;
 
             ReconcileOptions(ctx, keptQuestion, incomingQuestion);

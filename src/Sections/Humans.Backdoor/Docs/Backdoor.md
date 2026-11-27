@@ -26,6 +26,7 @@ The Backdoor API. Every key-authed API an agent talks to lives here, under `/api
 - A **Backdoor API key** is a key created for a *person*, not a service. Its plaintext exists only at the moment of creation; the database keeps a SHA-256 hash and a 12-character display prefix.
 - **Create / rotate / revoke** are the whole lifecycle. There is no "read the key back" — a lost key is rotated.
 - A **scope** (`BackdoorScope`) names who a key-authed controller serves. Every controller declares one with `[BackdoorScope(...)]`. A person may hold a key when any scope admits their active account, and the key reaches only the controllers whose scope admits them. There are two: **Admin and Board** (`AdminAndBoard`: a full Admin or a Board member), declared by every controller except tasks; and **Tasks** (holds `Tasks.Manage` on some team, through `IPermissionService`; TasksAdmin and Admin hold it everywhere), declared by the tasks bulk-load controller. A new scope is an enum value plus its test in `BackdoorApiKeyService.AdmitsAsync`.
+- A **connection** is one person's "Sign in with Humans" approval for the Claude apps: the OAuth authorization behind their tokens. Like a key it acts as that person; unlike a key it is made by pressing Allow, not created on the keys page.
 - The **Backdoor API** is the key-authed APIs Backdoor owns. Each is a thin orchestrator over another section's public contracts interface; Backdoor owns no domain data beyond its keys.
 
 ## Data Model
@@ -52,6 +53,44 @@ The Backdoor API. Every key-authed API an agent talks to lives here, under `/api
 
 **Cross-section FKs:** `UserId`, `CreatedByUserId`, `RevokedByUserId` → `Users.User` (Users), as bare Guids — the Identity tables stay in `UsersDbContext`.
 
+### BackdoorOAuthConnection
+
+**Table:** `backdoor_oauth_connections`. OpenIddict's authorization, stored through `BackdoorOAuthConnectionStore` over `IBackdoorOAuthRepository`.
+
+| Property | Type | Notes |
+|----------|------|-------|
+| Id | Guid | PK |
+| UserId | Guid | The person who pressed Allow (OpenIddict's subject) |
+| ClientId | string | The OAuth client, today always `humans-claude` |
+| Status | string | `valid` or `revoked` |
+| Type | string | `permanent` for an approval; `ad-hoc` for OpenIddict's own |
+| Scopes | string? | Space-separated; only `offline_access` is granted |
+| CreatedAt | Instant | |
+| Properties | string? | OpenIddict's extra properties, JSON |
+
+**Indexes:** non-unique on `UserId`.
+
+### BackdoorOAuthToken
+
+**Table:** `backdoor_oauth_tokens`. OpenIddict's token entries (authorization codes, access and refresh tokens), stored through `BackdoorOAuthTokenStore`.
+
+| Property | Type | Notes |
+|----------|------|-------|
+| Id | Guid | PK |
+| ConnectionId | Guid? | FK to `backdoor_oauth_connections`, cascade delete |
+| ClientId | string? | |
+| UserId | Guid? | Subject |
+| Type | string | OpenIddict token type |
+| Status | string | `valid`, `inactive`, `redeemed`, `rejected` or `revoked` |
+| CreatedAt / ExpiresAt / RedeemedAt | Instant? | |
+| ReferenceId | string? | Unique; set for reference tokens |
+| Payload | string? | The protected token, for reference tokens |
+| Properties | string? | JSON |
+
+**Indexes:** unique on `ReferenceId`; non-unique on `UserId`. Neither table carries a concurrency token. OAuth clients are not stored: they come from code (`BackdoorOAuthClients`).
+
+**Cross-section FKs:** `UserId` on both → `Users.User`, as a bare Guid.
+
 ## Routing
 
 | Route | Access | Serves |
@@ -74,10 +113,13 @@ The Backdoor API. Every key-authed API an agent talks to lives here, under `/api
 | `/api/backdoor/finance/holded-sync` | read | Holded's purchase-document sync state (`IHoldedService.GetPurchaseDocumentsAsync`) plus the docs Finance could not attribute (`IFinanceService.GetUnmatchedAsync`); no creditor-binding count |
 | `/api/backdoor/tasks/bulk` | write | `POST`: loads a whole set of tasks, or checks it with `dryRun`, via `ITaskWrite.BulkLoadAsync`. The key owner needs `Tasks.Manage` on every team the payload names (403 otherwise, nothing loaded; a team that does not exist gets the same 403). Every problem in the payload comes back at once as 422; nothing is created unless there are none. An unknown JSON field is a 400, so a misspelt `dryRun` never loads for real. Loading a payload twice creates the tasks twice. Shape and rules: Tasks' `Docs/Tasks.md` |
 | `/api/backdoor/notifications` | read | The key owner's unread notifications, newest first, and the live meters their roles unlock, via `INotificationInboxRead`. Polling marks nothing read |
-| `/api/backdoor/mcp` | MCP | The MCP endpoint (stateless HTTP), signed in with an API key. Lists and runs only the tools whose scope admits the caller; see [`features/mcp.md`](features/mcp.md). Tools: `hello` (Admin and Board), which returns a greeting, the server's address, environment and version, and the caller's id, name, roles and how they signed in |
-| `/Backdoor` | Key page | Anyone a scope admits makes, rotates and revokes their own keys; Admin and Board see every key, and Admin creates, rotates and revokes anyone's. Linked only from the admin nav |
+| `/api/backdoor/mcp` | MCP | The MCP endpoint (stateless HTTP), signed in with an API key or a "Sign in with Humans" token. Lists and runs only the tools whose scope admits the caller; see [`features/mcp.md`](features/mcp.md). Tools: `hello` (Admin and Board), which returns a greeting, the server's address, environment and version, and the caller's id, name, roles and how they signed in |
+| `/Backdoor` | Key page | Anyone a scope admits makes, rotates and revokes their own keys; Admin and Board see every key, and Admin creates, rotates and revokes anyone's. Also shows the MCP address and Claude's client id, and lists connections with Revoke (own; Admin revokes anyone's). Linked only from the admin nav |
+| `/Backdoor/OAuth/Authorize` | Approval page | Cookie sign-in. The "Sign in with Humans" page: names Claude and the return address, Allow or Deny with antiforgery. Anyone no scope admits gets 403 |
+| `/api/backdoor/oauth/token` | public | OpenIddict's token endpoint: code and refresh grants for the registered client, PKCE required |
+| `/.well-known/oauth-protected-resource`, `/.well-known/oauth-authorization-server`, `/.well-known/openid-configuration`, `/.well-known/jwks` | public | Discovery: where the MCP endpoint's sign-in lives |
 
-Authentication is the `X-Api-Key` header on every `/api/backdoor/*` request, checked by the `BackdoorApiKey` authentication scheme (`BackdoorApiKeyHandler`). It is never a default scheme, so a key signs nobody in to the browser pages, and the browser cookie is never accepted under `/api/backdoor/*`. There is no anonymous endpoint.
+Authentication is the `X-Api-Key` header on every `/api/backdoor/*` request, checked by the `BackdoorApiKey` authentication scheme (`BackdoorApiKeyHandler`). It is never a default scheme, so a key signs nobody in to the browser pages, and the browser cookie is never accepted under `/api/backdoor/*`. The REST routes have no anonymous endpoint. The MCP endpoint also takes a "Sign in with Humans" bearer token (OpenIddict validation), and the token and discovery endpoints are public by necessity.
 
 ## Actors & Roles
 
@@ -124,7 +166,10 @@ Authentication is the `X-Api-Key` header on every `/api/backdoor/*` request, che
 - Create and revoke both write an audit entry naming the key and its owner (`BackdoorApiKeyCreated` / `BackdoorApiKeyRevoked`); a rotation is recorded as a revoke followed by a create. Entries written before the rename carry `BackdoorApiKeyIssued`, still declared so they resolve.
 - Every controller here is an orchestrator: it calls another section's contracts interface and formats the result. None of them touch a repository or a `DbContext` other than through `IBackdoorApiKeyRepository`.
 - A key-authed principal carries the `BackdoorApiKey` authentication scheme (`BackdoorApiKeyHandler.SchemeName`) and only the owner's id from the handler. The Shell's claims transformation adds roles and account state, as for any sign-in, so a key and a browser session for the same person look the same to every later check. The Shell's onboarding gates (`NameRequiredFilter`, `MembershipRequiredFilter`) skip REST key requests because every key-authed controller is `[AllowAnonymous]`, rather than redirecting a JSON client to an HTML page; the MCP endpoint is not MVC, so the gates never see it.
-- The MCP endpoint's policy names only the `BackdoorApiKey` scheme and requires that some scope admits the caller, read fresh on every request. A tool is listed and callable only when it declares `[BackdoorScope]` and that scope admits the caller (`McpToolScopeGate`); the SDK's own default, which allows any tool without a rule, never applies. Stateless transport: nothing is held between calls.
+- The MCP endpoint's policy names only the Backdoor schemes (`BackdoorMcpCaller`: the key scheme when an `X-Api-Key` header is present, else OpenIddict token validation) and requires that some scope admits the caller, read fresh on every request. A tool is listed and callable only when it declares `[BackdoorScope]` and that scope admits the caller (`McpToolScopeGate`); the SDK's own default, which allows any tool without a rule, never applies. Stateless transport: nothing is held between calls.
+- A "Sign in with Humans" token is made out to this host's MCP address, worked out per request from the forwarded scheme and host, and the approval page refuses a request for any other resource. The token's `sub` is the person's id and also becomes `ClaimTypes.NameIdentifier`, so the Shell's claims transformation adds roles and state exactly as for a key.
+- The approval page always asks; nothing is approved silently, even for a returning person. Allow creates a permanent connection, writes `BackdoorConnectionApproved` and notifies the person.
+- Token validation checks the stored token and connection on every call, so a revoked connection stops its access and refresh tokens at once. Access tokens last one hour, refresh tokens 30 days, not sliding.
 - Every `PATCH /api/backdoor/issues/{id}/*` answers the same way whichever field moved: `{success:true}`, 404 for a missing item, 422 carrying the service's reason for a rejected change.
 
 - Issues mutations map owner-section results to 404 for missing/inaccessible issues, 422 for rule refusals, and 500 for dependency failures. Comment posting uses an explicit missing result. Exceptions and their diagnostic text never select 404/422 or enter the response body.
@@ -132,6 +177,10 @@ Authentication is the `X-Api-Key` header on every `/api/backdoor/*` request, che
 ## Negative Access Rules
 
 - A caller with no `X-Api-Key` header **cannot** reach any endpoint — 401. A signed-in browser session without a key gets the same 401 at the MCP endpoint.
+- A request carrying both an `X-Api-Key` header and an `Authorization` header **cannot** reach the MCP endpoint — 401, so two people's rights never merge.
+- A person no scope admits **cannot** approve a connection — 403 from the approval page, and no connection is written.
+- A revoked connection's tokens **cannot** reach the MCP endpoint (401) or refresh (400).
+- A non-Admin **cannot** revoke someone else's connection; it reads as missing.
 - A key owner **cannot** see or run an MCP tool whose scope does not admit them, nor any tool that declares no scope: it is left out of `tools/list` and `tools/call` refuses it.
 - A key whose owner lacks `Tasks.Manage` on any one team in a bulk-load payload **cannot** load any of it — 403 naming those teams, and a reference that matches no team is named the same way, so the answer never tells an unknown team from an unmanaged one; the payload is not checked further and nothing is created.
 - A caller with an unknown or revoked key **cannot** reach any endpoint — 401, deliberately indistinguishable from the above. There is no "server not configured" status: keys are rows, not environment variables.
@@ -150,11 +199,15 @@ Authentication is the `X-Api-Key` header on every `/api/backdoor/*` request, che
 - On rotate: revoke of the old key, then creation of a replacement carrying the same owner and label — two audit entries.
 - On every successful authentication: `LastUsedAt` stamped on the key. An expired key, or one whose owner is no longer eligible, authenticates nothing and is not stamped.
 - On GDPR erasure: the human's keys are hard-deleted, and they are detached as the creator or revoker of anyone else's — the row belongs to its owner, not to the admin who handled it.
-- On account merge: the eliminated account's keys, and its actor columns, fold onto the survivor.
+- On account merge: the eliminated account's keys, and its actor columns, fold onto the survivor. Its connections are revoked instead, each with an audit entry, since their tokens carry the old id; the person reconnects.
+- On connection approval: an audit entry (`BackdoorConnectionApproved`) and a notification to the person (`BackdoorConnectionApproved` source, System category).
+- On connection revoke: the connection and its tokens set to revoked, and an audit entry (`BackdoorConnectionRevoked`).
+- On GDPR erasure: the person's connections and tokens are deleted.
+- Daily at 03:40 (`backdoor-oauth-prune`): spent, expired and orphaned tokens and dead connections older than a day are deleted.
 
 ## Cross-Section Dependencies
 
-- **Audit actions:** declared on `BackdoorAuditActions` (`src/Sections/Humans.Backdoor/BackdoorAuditActions.cs`), one `AuditActionDefinition` each, written through `IAuditLogService`: `BackdoorApiKeyCreated`, `BackdoorApiKeyRevoked`, and the retired `BackdoorApiKeyIssued` (no longer written).
+- **Audit actions:** declared on `BackdoorAuditActions` (`src/Sections/Humans.Backdoor/BackdoorAuditActions.cs`), one `AuditActionDefinition` each, written through `IAuditLogService`: `BackdoorApiKeyCreated`, `BackdoorApiKeyRevoked`, `BackdoorConnectionApproved`, `BackdoorConnectionRevoked`, and the retired `BackdoorApiKeyIssued` (no longer written).
 - **Agent**: reads transcripts via `IAgentTranscriptRead` (`Humans.Agent.Contracts`).
 - **Issues**: reads and triages via `IIssueTriage` (`Humans.Issues.Contracts`).
 - **Surveys**: reads definitions, exports and aggregates via `ISurveyAnalysisRead` (`Humans.Surveys.Contracts`).
@@ -166,8 +219,9 @@ Authentication is the `X-Api-Key` header on every `/api/backdoor/*` request, che
 - **Tasks**: loads a set of tasks via `ITaskWrite` (`Humans.Tasks/Contracts`, a section reference). Before calling it the controller checks `Tasks.Manage` on every team in the payload through `IPermissionService` (`Humans.Permissions`), finding each team by slug or id through `ITeamService` (`Humans.Teams.Contracts`) and passing Tasks the id it checked; Tasks holds every other rule. A refusal is logged at Warning.
 - **Notifications**: reads the key owner's unread inbox and meters via `INotificationInboxRead` (the `Humans.Notifications.Contracts` leaf, so Backdoor never references the Notifications section project). Rows are the owner's own; meters follow the owner's roles.
 - **Auth**: `ISystemRoleService.GetActiveForUserAsync` supplies the roles for each scope check (`ResolveOwnerAsync` at sign-in, `AdmitsAsync` per route or tool). The principal's role claims come separately from the Shell's claims transformation, so a call reads roles more than once; scope decisions use only the service's own lookups, never the claims. `GetActiveUserIdsInRoleAsync` supplies the admin page's recipient list, narrowed to active accounts so the dropdown never offers someone the service would refuse. Each listed key's usable/refused badge reads `BackdoorKeyRow.IsOwnerEligible`, which `ListAsync` computes with the same eligibility test as authentication.
-- **AuditLog**: `IAuditLogService.LogAsync` for the key lifecycle.
-- **Gdpr**: `IUserDataContributor` — `backdoor_api_keys` is user-keyed, so the section owes an Article 15 slice (`BackdoorApiKeyService.BackdoorApiKeys`, hash excluded) and an Article 17 erasure.
+- **Audit**: `IAuditLogService.LogAsync` for the key and connection lifecycle.
+- **Notifications (send)**: `INotificationEmitter.SendAsync` tells a person a connection was approved, through the `BackdoorConnectionApproved` source.
+- **Gdpr**: `IUserDataContributor` — `backdoor_api_keys` is user-keyed, so the section owes an Article 15 slice (`BackdoorApiKeyService.BackdoorApiKeys`, hash excluded) and an Article 17 erasure. `backdoor_oauth_connections` likewise: `BackdoorConnectionService` exports the slice `BackdoorConnections` and erases the person's connections.
 - **Users**: `IUserService.GetUserInfoAsync` for the account-state half of key eligibility and `GetUserInfosAsync` for display names on the admin page and on the API's issue, agent and finance projections (the finance report detail reads its one submitter through `GetUserInfoAsync`); `IUserMerge` to fold an eliminated account's keys onto the survivor.
 - **Base**: `InMemoryLogSink` behind `/api/backdoor/logs`.
 
@@ -175,8 +229,8 @@ No section depends on Backdoor. It is a leaf, and deliberately so — the fan-in
 
 ## Architecture
 
-**Owning services:** `BackdoorApiKeyService`
-**Owned tables:** `backdoor_api_keys`
+**Owning services:** `BackdoorApiKeyService`, `BackdoorConnectionService` (with OpenIddict's managers calling the Backdoor stores)
+**Owned tables:** `backdoor_api_keys`, `backdoor_oauth_connections`, `backdoor_oauth_tokens`
 **Status:** (A) Migrated — created at this shape in nobodies-collective/Humans#1128 (2026-08).
 
 ### Cross-section read interface

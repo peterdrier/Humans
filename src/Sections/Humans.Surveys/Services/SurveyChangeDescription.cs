@@ -81,6 +81,7 @@ internal static class SurveyChangeDescription
         || !old.RatingMaxLabel.Equals(updated.RatingMaxLabel)
         || old.GridSelectionMode != updated.GridSelectionMode
         || old.RankedSettings != updated.RankedSettings
+        || !Equals(old.Comment, updated.Comment)
         || !(old.RankedUnavailableOptionValues ?? [])
             .SequenceEqual(updated.RankedUnavailableOptionValues ?? [], StringComparer.Ordinal)
         || !OptionsEqual(old.Options, updated.Options);

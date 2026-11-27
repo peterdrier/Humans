@@ -117,7 +117,21 @@ internal sealed class SurveyResultsViewModel
 /// <summary>One respondent's or ballot's answers, with the page's question numbering and follow-up nesting.</summary>
 internal sealed record SurveyRespondentAnswersViewModel(
     IReadOnlyList<RespondentAnswer> Answers,
-    IReadOnlyDictionary<Guid, SurveyResultsQuestionViewModel> Questions);
+    IReadOnlyDictionary<Guid, SurveyResultsQuestionViewModel> Questions)
+{
+    /// <summary>
+    /// The answered top-level question this answer renders under, or null for its own row. Nesting is one level,
+    /// matching the results cards, so a follow-up of a follow-up keeps its own row.
+    /// </summary>
+    public Guid? NestedUnder(RespondentAnswer answer)
+        => Questions.TryGetValue(answer.QuestionId, out var question)
+            && question.FollowUpOf is { } parentId
+            && Questions.TryGetValue(parentId, out var parent)
+            && parent.FollowUpOf is null
+            && Answers.Any(a => a.QuestionId == parentId)
+                ? parentId
+                : null;
+}
 
 /// <summary>One question's display aggregate. Populated collection depends on <see cref="Type"/> (reused from the service DTO).</summary>
 internal sealed class SurveyResultsQuestionViewModel
