@@ -1,0 +1,11 @@
+{
+  "date": "2026-11",
+  "family": "Claude",
+  "model": "Opus",
+  "version": "4.6",
+  "effort": "high",
+  "brief": "v1",
+  "notes": {
+    "en": "Aimed for a faithful Vitruvian Man with clear dual-pose overlay and correct Leonardo geometry — circle on the navel, square on the groin, eight-head proportions. Three detail tiers let the bold gold silhouette carry navbar sizes while aged-ink etching and cross-hatching add anatomical depth at larger renders. Weaknesses: the hands are simplified and converge to narrow tips rather than showing full palms, the raised-arm hands are very small at this angle, and the groin area where the two leg poses cross reads as busy at medium sizes."
+  }
+}
