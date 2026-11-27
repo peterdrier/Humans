@@ -10,7 +10,7 @@ public sealed class RoleCatalogTests
         new(name, title, "", "", FormerNames: former);
 
     [HumansFact]
-    public void Duplicate_name_across_sections_throws()
+    public void Create_DuplicateNameAcrossSections_Throws()
     {
         var act = () => new RoleCatalog([Role("XAdmin", "X Admin"), Role("XAdmin", "Other")]);
 
@@ -18,7 +18,7 @@ public sealed class RoleCatalogTests
     }
 
     [HumansFact]
-    public void Duplicate_title_throws()
+    public void Create_DuplicateTitle_Throws()
     {
         // Guide parentheticals resolve by title, so two roles sharing one would be ambiguous.
         var act = () => new RoleCatalog([Role("XAdmin", "Same"), Role("YAdmin", "same")]);
@@ -27,7 +27,7 @@ public sealed class RoleCatalogTests
     }
 
     [HumansFact]
-    public void Former_name_that_still_names_a_role_throws()
+    public void Create_FormerNameStillInUse_Throws()
     {
         var act = () => new RoleCatalog([Role("XAdmin", "X Admin", "YAdmin"), Role("YAdmin", "Y Admin")]);
 
@@ -35,7 +35,7 @@ public sealed class RoleCatalogTests
     }
 
     [HumansFact]
-    public void Former_name_shared_by_two_roles_throws()
+    public void Create_FormerNameSharedByTwoRoles_Throws()
     {
         var act = () => new RoleCatalog([Role("XAdmin", "X Admin", "Old"), Role("YAdmin", "Y Admin", "Old")]);
 
@@ -43,7 +43,7 @@ public sealed class RoleCatalogTests
     }
 
     [HumansFact]
-    public void Canonical_maps_former_names_and_passes_unknown_names_through()
+    public void Canonical_FormerName_MapsToCurrent()
     {
         var catalog = new RoleCatalog([Role("XAdmin", "X Admin", "OldX")]);
 
@@ -53,7 +53,7 @@ public sealed class RoleCatalogTests
     }
 
     [HumansFact]
-    public void StoredNames_lists_current_name_first_then_former_ones()
+    public void StoredNames_ListsCurrentNameFirst()
     {
         var catalog = new RoleCatalog([Role("XAdmin", "X Admin", "OldX", "OlderX"), Role("YAdmin", "Y Admin")]);
 
@@ -64,7 +64,7 @@ public sealed class RoleCatalogTests
     }
 
     [HumansFact]
-    public void FindByTitle_ignores_case_and_surrounding_whitespace()
+    public void FindByTitle_IgnoresCaseOuterWhitespace()
     {
         var catalog = new RoleCatalog([Role("XAdmin", "X Admin")]);
 
@@ -75,7 +75,7 @@ public sealed class RoleCatalogTests
     }
 
     [HumansFact]
-    public void Roles_keep_contribution_order()
+    public void Roles_KeepContributionOrder()
     {
         var catalog = new RoleCatalog(new ISectionRoles[]
         {

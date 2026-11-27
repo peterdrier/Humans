@@ -16,20 +16,6 @@ internal sealed class VolunteerEventProfile
 
     public List<string> Languages { get; set; } = [];
 
-    // Moved to Profile and retained only until the prod-verified drop
-    // (memory/architecture/destructive-drops-need-approval.md). Do NOT read or write these.
-    public string? DietaryPreference { get; set; }
-
-    public List<string> Allergies { get; set; } = [];
-
-    public List<string> Intolerances { get; set; } = [];
-
-    public string? AllergyOtherText { get; set; }
-
-    public string? IntoleranceOtherText { get; set; }
-
-    public string? MedicalConditions { get; set; }
-
     public Instant CreatedAt { get; init; }
 
     public Instant UpdatedAt { get; set; }

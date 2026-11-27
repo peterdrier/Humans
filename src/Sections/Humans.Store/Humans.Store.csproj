@@ -31,6 +31,8 @@
     <ProjectReference Include="..\Humans.Holded\Humans.Holded.csproj" />
     <ProjectReference Include="..\Humans.Camps.Contracts\Humans.Camps.Contracts.csproj" />
     <ProjectReference Include="..\Humans.Teams.Contracts\Humans.Teams.Contracts.csproj" />
+    <!-- Permissions: declares Store.TeamOrders, and checks it on departments. -->
+    <ProjectReference Include="..\Humans.Permissions\Humans.Permissions.csproj" />
     <ProjectReference Include="..\Humans.Settings\Humans.Settings.csproj" />
     <!-- StoreAdmin/CatalogEdit.cshtml renders <vc:audit-log>, owned by the AuditLog section. -->
     <!--

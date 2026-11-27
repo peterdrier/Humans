@@ -75,7 +75,7 @@ public class DriveActivityMonitorJobTests
     }
 
     [HumansFact]
-    public async Task ExecuteAsync_RecordsFailureAndRethrows_WhenTheScanThrows()
+    public async Task ExecuteAsync_ScanThrows_RecordsFailure()
     {
         // The scan throws on a total connector outage. Swallowing it here would leave
         // Hangfire recording a successful run while nothing was actually checked.

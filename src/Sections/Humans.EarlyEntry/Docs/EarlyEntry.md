@@ -60,18 +60,18 @@ verbatim; the nav entry is the section's own "Early Entry" group. The route is n
 ## Invariants
 
 - The section owns no tables and injects no repository; the orchestrator's only dependency is
-  the provider fan-out (`EarlyEntryArchitectureTests.OrchestratorInjectsOnlyTheProviderFanout`).
+  the provider fan-out (`EarlyEntryArchitectureTests.Orchestrator_InjectsOnlyProviderFanout`).
 - The fan-out is sequential — a simplicity choice, not a thread-safety requirement
   (design-rules.md, *Crosscuts, orchestrators and fan-out*); each provider reads through its own section.
 - **Nothing outlives the request.** The scoped service fans out over the providers once per
   request scope, so a grant written in any contributing section shows
   on the next request and no section has to tell this one about its writes
-  (`EarlyEntryServiceTests.GetForUserAsync_GathersOncePerScope_AndFreshInTheNext`,
-  `EarlyEntryArchitectureTests.SectionRegistersTheOrchestratorPerRequest`).
+  (`EarlyEntryServiceTests.GetForUserAsync_SameScope_GathersOnce`,
+  `EarlyEntryArchitectureTests.Section_RegistersOrchestratorPerRequest`).
 - Per human: earliest date wins, sources are distinct and ordinal-compared in provider order,
   and `HasMultiple` is `Sources.Count > 1`.
 - The roster is gated by the section's own `EarlyEntryPolicies.Roster`
-  (`EarlyEntryArchitectureTests.RosterIsGatedByEarlyEntrysOwnRoles`). Early entry references no Shifts project.
+  (`EarlyEntryArchitectureTests.Roster_IsGatedByOwnRoles`). Early entry references no Shifts project.
 - No `Resources/` folder: the roster is an admin page with inline English
   ([`localization-admin-exempt`](../../../../memory/code/localization-admin-exempt.md)).
 

@@ -75,7 +75,7 @@ public sealed class PermissionServiceTests
     }
 
     [HumansFact]
-    public async Task GetOwnersAsync_ReturnsTheOwnerAndEverythingBelowIt()
+    public async Task GetOwnersAsync_ReturnsOwnerWithDescendants()
     {
         var service = Build("coordinator:Production");
 

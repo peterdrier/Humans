@@ -6,7 +6,7 @@ namespace Humans.Auth.Tests;
 public class SectionHelpTests
 {
     [HumansFact]
-    public void Reads_the_RoleAssignments_help_out_of_the_assembly()
+    public void Help_ReadsRoleAssignmentsFromAssembly()
     {
         var entry = ((ISectionHelp)new Section()).HelpEntries
             .Single(e => string.Equals(e.Key, "SystemRoles", StringComparison.Ordinal));

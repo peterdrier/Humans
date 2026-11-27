@@ -38,7 +38,7 @@ public class AccountingReadTests
     public AccountingReadTests()
     {
         _reader = new Service(
-            _repo, _audit, _auditViewer, _camps, _teams, new FakeClock(Instant.FromUtc(2026, 9, 1, 12, 0)), Substitute.For<ISettingsService>(), Substitute.For<Humans.Stripe.Contracts.IStripeService>(),
+            _repo, _audit, _auditViewer, _camps, _teams, Substitute.For<Humans.Permissions.Contracts.IPermissionService>(), new FakeClock(Instant.FromUtc(2026, 9, 1, 12, 0)), Substitute.For<ISettingsService>(), Substitute.For<Humans.Stripe.Contracts.IStripeService>(),
             new CatalogService(_repo, _audit, new FakeClock(Instant.FromUtc(2026, 9, 1, 12, 0)), Substitute.For<Humans.Holded.Contracts.IHoldedService>(), Microsoft.Extensions.Logging.Abstractions.NullLogger<CatalogService>.Instance), Microsoft.Extensions.Logging.Abstractions.NullLogger<Service>.Instance);
 
         _camps.GetCampsForYearAsync(2026, Arg.Any<CancellationToken>()).Returns([MakeCampInfo(SeasonId, "Camp Alpha")]);

@@ -32,7 +32,7 @@ public class GateArchitectureTests
     }
 
     [HumansFact]
-    public void ServiceImplementsTheUserLifecycleContracts()
+    public void GateService_ImplementsUserLifecycleContracts()
     {
         typeof(IUserDataContributor).IsAssignableFrom(typeof(GateService))
             .Should().BeTrue(
@@ -44,7 +44,7 @@ public class GateArchitectureTests
     }
 
     [HumansFact]
-    public void WriteAndAdminActions_NeverRideOnTheClassLevelReadPolicy()
+    public void Posts_CarryOwnPolicy()
     {
         // The kiosk read surface is the class-level ScannerAccess policy…
         typeof(GateController).GetCustomAttribute<AuthorizeAttribute>(inherit: false)!
@@ -79,7 +79,7 @@ public class GateArchitectureTests
     }
 
     [HumansFact]
-    public void SectionRegistersTheUserMergeForwarder()
+    public void Section_RegistersUserMerge()
     {
         // When two accounts are merged, Gate has to move its scan rows over to the
         // surviving user. That only happens if this registration is present — drop it

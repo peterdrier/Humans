@@ -100,7 +100,7 @@ public class GateControllerOverridePinTests
     [InlineData(true, "overrideEarly", true)]
     [InlineData(null, null, false)]
     [InlineData(null, "idConfirmed", false)]
-    public async Task Decision_MissingOrMalformedValues_DoNotRecordADefaultedVerdict(
+    public async Task Decision_MissingOrMalformedValues_RecordsNothing(
         bool? idConfirmed, string? invalidField, bool authenticated)
     {
         var controller = BuildController();
@@ -144,7 +144,7 @@ public class GateControllerOverridePinTests
     [HumansTheory]
     [InlineData(true, false)]
     [InlineData(false, true)]
-    public async Task Override_ForwardsPinAndIntent_WithPrincipalAttribution(bool early, bool child)
+    public async Task Decision_WithOverride_ForwardsPinWithIntent(bool early, bool child)
     {
         var controller = BuildController();
 
