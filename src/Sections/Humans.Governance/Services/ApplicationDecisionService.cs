@@ -61,7 +61,6 @@ internal sealed class ApplicationDecisionService(
         var today = clock.GetCurrentInstant().InUtc().Date;
         application.Approve(reviewerUserId, notes, clock);
         application.BoardMeetingDate = boardMeetingDate;
-        application.DecisionNote = notes;
 
         application.TermExpiresAt = TermExpiryCalculator.ComputeTermExpiry(today);
 
@@ -99,7 +98,6 @@ internal sealed class ApplicationDecisionService(
 
         application.Reject(reviewerUserId, reason, clock);
         application.BoardMeetingDate = boardMeetingDate;
-        application.DecisionNote = reason;
 
         await FinalizeDecisionAsync(application, reviewerUserId, cancellationToken);
 
@@ -595,7 +593,7 @@ internal sealed class ApplicationDecisionService(
             SubmittedAt: application.SubmittedAt,
             ResolvedAt: application.ResolvedAt,
             ReviewedByUserId: application.ReviewedByUserId,
-            ReviewNotes: application.ReviewNotes,
+            DecisionNote: application.DecisionNote,
             History: historyDtos);
     }
 
@@ -664,7 +662,7 @@ internal sealed class ApplicationDecisionService(
             Language: application.Language,
             SubmittedAt: application.SubmittedAt,
             ReviewedByUserId: application.ReviewedByUserId,
-            ReviewNotes: application.ReviewNotes,
+            DecisionNote: application.DecisionNote,
             History: history);
     }
 
