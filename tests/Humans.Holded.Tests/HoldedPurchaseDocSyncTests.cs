@@ -58,7 +58,7 @@ public sealed class HoldedPurchaseDocSyncTests
         _client.ListPurchaseDocumentsAsync(Arg.Any<CancellationToken>()).Returns(docs);
 
     [HumansFact]
-    public async Task Sync_StoresTheDocsRaw_AndAnAbsentDraftFlagIsNotApproved()
+    public async Task Sync_AbsentDraftFlag_IsNotApproved()
     {
         StubList(
             Listed("a") with
@@ -89,7 +89,7 @@ public sealed class HoldedPurchaseDocSyncTests
     }
 
     [HumansFact]
-    public async Task Sync_FetchesNotesOnce_AndAResyncKeepsThem_WhileADroppedDocLeaves()
+    public async Task Sync_Resync_KeepsFetchedNotes()
     {
         StubList(Listed("a"), Listed("gone"));
         await _service.SyncPurchaseDocumentsAsync(Ct);
@@ -118,7 +118,7 @@ public sealed class HoldedPurchaseDocSyncTests
     }
 
     [HumansFact]
-    public async Task Sync_TransientNotesFailure_StopsFetching_AndTheSyncSucceeds()
+    public async Task Sync_TransientNotesFailure_StillSucceeds()
     {
         StubList(Listed("a", 2), Listed("b"));
         _client.GetPurchaseDocumentAsync("a", Arg.Any<CancellationToken>())
@@ -131,7 +131,7 @@ public sealed class HoldedPurchaseDocSyncTests
     }
 
     [HumansFact]
-    public async Task Sync_FailedList_RecordsTheError_AndKeepsTheLastGoodMirror()
+    public async Task Sync_ListFails_KeepsLastGoodMirror()
     {
         StubList(Listed("a"));
         await _service.SyncPurchaseDocumentsAsync(Ct);
@@ -149,7 +149,7 @@ public sealed class HoldedPurchaseDocSyncTests
     }
 
     [HumansFact]
-    public async Task ContactSync_ReadFailureKeepsThePreviousMirrorAndRecordsAnError()
+    public async Task ContactSync_ReadFails_KeepsPreviousMirror()
     {
         _client.ListContactsAsync(Arg.Any<CancellationToken>()).Returns(
             [new HoldedContactDto { Id = "retained", Name = "Ana", SupplierAccountNum = 40000004 }]);
@@ -171,7 +171,7 @@ public sealed class HoldedPurchaseDocSyncTests
     }
 
     [HumansFact]
-    public async Task ContactSync_ReplacesTheMirror_WhichIsNullUntilTheFirstSync()
+    public async Task ContactSync_FirstSync_ReplacesNullMirror()
     {
         (await _service.GetContactsAsync(Ct)).LastSyncAt.Should().BeNull();
         _client.ListContactsAsync(Arg.Any<CancellationToken>()).Returns(

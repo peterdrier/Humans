@@ -1340,7 +1340,7 @@ public class CachingUserServiceTests
         var command = new UserProfileSaveCommand("Alice", "Alice", "Person", null, null,
             null, null, null, null, null, null, null, null, null, null, null, null, false,
             UserProfilePictureMutation.None, null);
-        var entries = new[] { new CVEntry(Guid.Empty, new LocalDate(2025, 3, 1), "Nowhere 2025", "Sound crew") };
+        var entries = new[] { new CvEntry(Guid.Empty, new LocalDate(2025, 3, 1), "Nowhere 2025", "Sound crew") };
         _inner.SaveProfileAsync(userId, command, null, Arg.Any<CancellationToken>(), entries)
             .Returns(new UserProfileSaveResult(null, null));
 

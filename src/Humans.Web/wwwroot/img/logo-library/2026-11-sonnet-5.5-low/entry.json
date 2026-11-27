@@ -1,0 +1,17 @@
+{
+  "date": "2026-11",
+  "family": "Claude",
+  "model": "Sonnet",
+  "version": "5.5",
+  "effort": "low",
+  "brief": "v1",
+  "notes": {
+    "en": "I aimed for a clear engraved study: gold masses first, then ink contours that keep the two poses apart, with muscles, fingers and curls appearing only at larger sizes. Still weak: the anatomy lines look diagrammatic, with little real hatching; the hands are mitten-like with ruled fingers; the face and hair are stiff; and at navbar size the arms and frame are faint.",
+    "es": "Buscaba un estudio grabado y claro: primero las masas doradas, después contornos en tinta que separan las dos poses, con músculos, dedos y rizos visibles solo en tamaños grandes. Puntos débiles: las líneas anatómicas parecen un diagrama, casi sin sombreado real; las manos parecen manoplas con dedos trazados con regla; la cara y el pelo quedan rígidos; y al tamaño de la barra de navegación los brazos y el marco se ven tenues.",
+    "de": "Ziel war eine klare, gestochene Studie: zuerst goldene Flächen, dann Tintenkonturen, die beide Posen trennen; Muskeln, Finger und Locken erscheinen erst in größeren Größen. Noch schwach: Die Anatomielinien wirken schematisch, fast ohne echte Schraffur; die Hände ähneln Fäustlingen mit wie mit dem Lineal gezogenen Fingern; Gesicht und Haar sind steif; und in der Größe der Navigationsleiste wirken Arme und Rahmen blass.",
+    "it": "Puntavo a uno studio inciso e chiaro: prima le masse dorate, poi contorni a inchiostro che separano le due pose, con muscoli, dita e riccioli visibili solo alle dimensioni maggiori. Punti deboli: le linee anatomiche sembrano uno schema, con poco vero tratteggio; le mani ricordano muffole con dita tracciate col righello; viso e capelli sono rigidi; e alla dimensione della barra di navigazione braccia e cornice risultano tenui.",
+    "fr": "Je visais une étude gravée et lisible : d’abord les masses dorées, puis des contours à l’encre qui séparent les deux poses, les muscles, les doigts et les boucles n’apparaissant qu’en grande taille. Points faibles : les traits anatomiques font schéma, avec peu de vraies hachures ; les mains ressemblent à des moufles aux doigts tirés à la règle ; le visage et les cheveux sont raides ; et à la taille de la barre de navigation, les bras et le cadre sont pâles.",
+    "ca": "Buscava un estudi gravat i clar: primer les masses daurades, després contorns de tinta que separen les dues postures, amb músculs, dits i rínxols visibles només a mides grans. Punts febles: les línies anatòmiques semblen un diagrama, gairebé sense ombrejat real; les mans semblen manyoples amb dits traçats amb regle; la cara i els cabells queden rígids; i a la mida de la barra de navegació els braços i el marc es veuen tènues.",
+    "nl": "Ik streefde naar een heldere, gegraveerde studie: eerst gouden vlakken, dan inktcontouren die de twee houdingen scheiden; spieren, vingers en krullen verschijnen pas op groter formaat. Nog zwak: de anatomielijnen ogen schematisch, met weinig echte arcering; de handen lijken op wanten met liniaalrechte vingers; gezicht en haar zijn stijf; en op het formaat van de navigatiebalk zijn armen en kader flets."
+  }
+}

@@ -190,6 +190,21 @@ public sealed class ShiftAdminPageBuilderTests
         _shiftManagement.GetRotasByDepartmentAsync(Department.Id, Event.Id)
             .Returns(rotas.ToList());
 
+    [HumansFact]
+    public async Task BuildAsync_SubTeamPage_ShowsParentShiftList()
+    {
+        var parent = Department with { Id = Guid.NewGuid(), Slug = "cantina-dept", GoogleGroupPrefix = "cantina" };
+        var subTeam = Department with { ParentTeamId = parent.Id };
+        _teamService.GetTeamAsync(parent.Id, Arg.Any<CancellationToken>()).Returns(parent);
+        _shiftManagement.GetRotasByDepartmentAsync(subTeam.Id, Event.Id, Arg.Any<CancellationToken>())
+            .Returns([MakeRota(MakeShift())]);
+        var builder = new ShiftAdminPageBuilder(_shiftManagement, _membership, _userService, _teamService);
+
+        var vm = await builder.BuildAsync(new ShiftAdminPageRequest(subTeam, Event, true, true, false, TestNow));
+
+        vm.ShiftListEmail.Should().Be($"cantina-2026-shifts@{DomainConstants.GoogleGroupDomain}");
+    }
+
     private Task<ShiftAdminViewModel> BuildAsync()
     {
         var builder = new ShiftAdminPageBuilder(_shiftManagement, _membership, _userService, _teamService);

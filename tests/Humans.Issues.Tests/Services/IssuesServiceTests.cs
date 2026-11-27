@@ -239,7 +239,7 @@ public sealed class IssuesServiceTests
     }
 
     [HumansFact]
-    public async Task UpdateSection_ReturnsNotFoundWhenTheIssueDisappearsAfterPreflight()
+    public async Task UpdateSection_IssueGoneAfterPreflight_ReturnsNotFound()
     {
         var user = SeedUser();
         var issue = await SeedIssueAsync(IssueStatus.Open, section: "Tickets");
@@ -323,7 +323,7 @@ public sealed class IssuesServiceTests
     }
 
     [HumansFact]
-    public async Task CreateIssueAsync_audits_the_filer_and_the_thread_surfaces_it()
+    public async Task CreateIssueAsync_Filer_IsAudited()
     {
         var reporterId = Guid.NewGuid();
         SeedUser(reporterId, "Reporter").Email = "r@r.com";
@@ -354,7 +354,7 @@ public sealed class IssuesServiceTests
     }
 
     [HumansFact]
-    public async Task GetThreadAsync_merges_comments_and_audit_events_chronologically()
+    public async Task GetThreadAsync_CommentsWithAudit_AreChronological()
     {
         var (_, issueId) = await SeedIssueAsync(IssueStatus.Open);
         var commenterId = Guid.NewGuid();
@@ -384,7 +384,7 @@ public sealed class IssuesServiceTests
     }
 
     [HumansFact]
-    public async Task SubmitIssueAsync_lands_in_Triage_and_updates_nav_badge()
+    public async Task SubmitIssueAsync_NewIssue_LandsInTriage()
     {
         var userId = Guid.NewGuid();
         SeedUser(userId, "U").Email = "u@u.com";
@@ -414,7 +414,7 @@ public sealed class IssuesServiceTests
     [HumansTheory]
     [InlineData("Tickets", false)]
     [InlineData(null, true)]
-    public async Task SubmitIssueAsync_notifies_queue_handlers_with_admins_only_as_fallback(
+    public async Task SubmitIssueAsync_NewIssue_NotifiesQueueHandlers(
         string? section, bool expectAdmins)
     {
         var reporterId = Guid.NewGuid();
@@ -456,7 +456,7 @@ public sealed class IssuesServiceTests
     [HumansTheory]
     [InlineData(false)]
     [InlineData(true)]
-    public async Task SubmitIssueAsync_FailedPersistence_CleansScreenshotAndPreservesPrimaryError(bool cleanupFails)
+    public async Task SubmitIssueAsync_PersistenceFails_CleansScreenshot(bool cleanupFails)
     {
         var root = Directory.CreateTempSubdirectory("humans-issue-upload-");
         try
@@ -543,7 +543,7 @@ public sealed class IssuesServiceTests
     }
 
     [HumansFact]
-    public async Task SubmitIssueAsync_with_oversized_screenshot_returns_refusal()
+    public async Task SubmitIssueAsync_OversizedScreenshot_IsRefused()
     {
         var userId = Guid.NewGuid();
         var screenshot = Substitute.For<IFormFile>();
@@ -598,7 +598,7 @@ public sealed class IssuesServiceTests
     }
 
     [HumansFact]
-    public async Task SubmitIssueAsync_with_disallowed_content_type_returns_refusal()
+    public async Task SubmitIssueAsync_DisallowedContentType_IsRefused()
     {
         var userId = Guid.NewGuid();
         var screenshot = Substitute.For<IFormFile>();
@@ -617,7 +617,7 @@ public sealed class IssuesServiceTests
     }
 
     [HumansFact]
-    public async Task SubmitIssueAsync_appends_reporter_roles_to_additional_context()
+    public async Task SubmitIssueAsync_ReporterRoles_AppendToContext()
     {
         var userId = Guid.NewGuid();
 
@@ -638,7 +638,7 @@ public sealed class IssuesServiceTests
     [InlineData(1999, "x", 2000)]
     [InlineData(1999, "😀", 1999)]
     [InlineData(1998, "😀", 2000)]
-    public async Task SubmitIssueAsync_bounds_context_without_splitting_surrogate_pairs(int prefixLength, string boundary, int expectedLength)
+    public async Task SubmitIssueAsync_LongContext_KeepsSurrogatePairs(int prefixLength, string boundary, int expectedLength)
     {
         var prefix = new string('x', prefixLength);
         var issue = (await _service.SubmitIssueAsync(
@@ -652,7 +652,7 @@ public sealed class IssuesServiceTests
     }
 
     [HumansFact]
-    public async Task PostCommentAsync_reporter_on_terminal_auto_reopens_to_Open()
+    public async Task PostCommentAsync_ReporterOnTerminal_Reopens()
     {
         var (reporterId, issueId) = await SeedIssueAsync(IssueStatus.Resolved);
         var viewer = new IssueViewer(reporterId, []);
@@ -666,7 +666,7 @@ public sealed class IssuesServiceTests
     }
 
     [HumansFact]
-    public async Task PostCommentAsync_reporter_reopen_is_audited_as_the_reporter()
+    public async Task PostCommentAsync_ReporterReopen_IsAuditedAsReporter()
     {
         var (reporterId, issueId) = await SeedIssueAsync(IssueStatus.Resolved);
 
@@ -683,7 +683,7 @@ public sealed class IssuesServiceTests
     }
 
     [HumansFact]
-    public async Task PostCommentAsync_reporter_on_terminal_clears_resolved_fields()
+    public async Task PostCommentAsync_ReporterOnTerminal_ClearsResolvedFields()
     {
         var (reporterId, issueId) = await SeedIssueAsync(IssueStatus.WontFix, withResolvedFields: true);
 
@@ -695,7 +695,7 @@ public sealed class IssuesServiceTests
     }
 
     [HumansFact]
-    public async Task PostCommentAsync_reporter_on_open_does_not_change_status()
+    public async Task PostCommentAsync_ReporterOnOpen_KeepsStatus()
     {
         var (reporterId, issueId) = await SeedIssueAsync(IssueStatus.Open);
 
@@ -727,7 +727,7 @@ public sealed class IssuesServiceTests
     [InlineData("Submit", true)]
     [InlineData("Comment", false)]
     [InlineData("Comment", true)]
-    public async Task SavedIssueNotice_RoleLookupFailuresPreserveMutationAndRemainingRecipients(
+    public async Task SavedIssueNotice_RoleLookupFails_KeepsMutation(
         string operation, bool allRolesFail)
     {
         var ct = TestContext.Current.CancellationToken;
@@ -864,7 +864,7 @@ public sealed class IssuesServiceTests
 
     [HumansTheory]
     [MemberData(nameof(AllNoticeSources))]
-    public async Task IssueNotices_LongTitleAndDetail_DispatchFullCopyAndLinkToFullContent(NotificationSourceDefinition source)
+    public async Task IssueNotices_LongTitleWithDetail_KeepFullText(NotificationSourceDefinition source)
     {
         var reporterId = Guid.NewGuid();
         SeedUser(reporterId, "Reporter").Email = "reporter@test.com";
@@ -933,7 +933,7 @@ public sealed class IssuesServiceTests
     [InlineData("pt", "en")]
     [InlineData("fr-FR", "en")]
     [InlineData("not a culture!", "en")]
-    public async Task PostCommentAsync_handler_sends_email_and_notification_to_reporter(
+    public async Task PostCommentAsync_Handler_NotifiesReporter(
         string? language, string expectedLanguage)
     {
         using var culture = new Base.Extensions.CultureScope("fr");
@@ -977,7 +977,7 @@ public sealed class IssuesServiceTests
     [HumansTheory]
     [InlineData("Tickets", false)]
     [InlineData(null, true)]
-    public async Task PostCommentAsync_reporter_notifies_queue_handlers_with_admins_only_as_fallback(
+    public async Task PostCommentAsync_Reporter_NotifiesQueueHandlers(
         string? section, bool expectAdmins)
     {
         var (reporterId, issueId) = await SeedIssueAsync(IssueStatus.Open, section: section);
@@ -1008,7 +1008,7 @@ public sealed class IssuesServiceTests
     }
 
     [HumansFact]
-    public async Task PostCommentAsync_reporter_does_not_email_self()
+    public async Task PostCommentAsync_Reporter_DoesNotEmailSelf()
     {
         var (reporterId, issueId) = await SeedIssueAsync(IssueStatus.Open);
 
@@ -1068,7 +1068,7 @@ public sealed class IssuesServiceTests
     [InlineData(EmailFailureStage.Lookup, DeliveryFailure.Cancellation)]
     [InlineData(EmailFailureStage.Template, DeliveryFailure.Cancellation)]
     [InlineData(EmailFailureStage.Enqueue, DeliveryFailure.Cancellation)]
-    public async Task HandlerReply_EmailFailureStillNotifiesAndResolvesTheSavedReply(
+    public async Task HandlerReply_EmailFails_StillNotifies(
         EmailFailureStage stage, DeliveryFailure failure)
     {
         var reporterId = Guid.NewGuid();
@@ -1115,7 +1115,7 @@ public sealed class IssuesServiceTests
     }
 
     [HumansFact]
-    public async Task PostCommentAsync_resolve_on_post_marks_issue_resolved()
+    public async Task PostCommentAsync_ResolveOnPost_MarksResolved()
     {
         var (_, issueId) = await SeedIssueAsync(IssueStatus.Open);
         var actorId = Guid.NewGuid();
@@ -1134,7 +1134,7 @@ public sealed class IssuesServiceTests
     [HumansTheory]
     [InlineData(-1)]
     [InlineData(999)]
-    public async Task SubmitIssueAsync_undefined_category_writes_nothing(int category)
+    public async Task SubmitIssueAsync_UndefinedCategory_WritesNothing(int category)
     {
         var ct = TestContext.Current.CancellationToken;
         var act = () => _service.SubmitIssueAsync(Guid.NewGuid(), (IssueCategory)category,
@@ -1148,7 +1148,7 @@ public sealed class IssuesServiceTests
     [HumansTheory]
     [InlineData(-1)]
     [InlineData(999)]
-    public async Task UpdateStatusAsync_undefined_status_preserves_stored_state(int status)
+    public async Task UpdateStatusAsync_UndefinedStatus_ChangesNothing(int status)
     {
         var ct = TestContext.Current.CancellationToken;
         var (_, issueId) = await SeedIssueAsync(IssueStatus.Open);
@@ -1162,7 +1162,7 @@ public sealed class IssuesServiceTests
     }
 
     [HumansFact]
-    public async Task UpdateStatusAsync_to_terminal_sets_ResolvedAt_and_ResolvedByUserId()
+    public async Task UpdateStatusAsync_ToTerminal_SetsResolvedFields()
     {
         var (reporterId, issueId) = await SeedIssueAsync(IssueStatus.Open);
         var actorId = Guid.NewGuid();
@@ -1179,7 +1179,7 @@ public sealed class IssuesServiceTests
     }
 
     [HumansFact]
-    public async Task UpdateStatusAsync_to_terminal_resolves_IssueSubmitted_notifications()
+    public async Task UpdateStatusAsync_ToTerminal_ResolvesSubmittedNotifications()
     {
         var (_, issueId) = await SeedIssueAsync(IssueStatus.Open);
         var actorId = Guid.NewGuid();
@@ -1196,7 +1196,7 @@ public sealed class IssuesServiceTests
     }
 
     [HumansFact]
-    public async Task UpdateStatusAsync_to_nonterminal_does_not_resolve_IssueSubmitted_notifications()
+    public async Task UpdateStatusAsync_ToNonterminal_KeepsSubmittedNotifications()
     {
         var (_, issueId) = await SeedIssueAsync(IssueStatus.Open);
 
@@ -1207,7 +1207,7 @@ public sealed class IssuesServiceTests
     }
 
     [HumansFact]
-    public async Task UpdateStatusAsync_from_terminal_to_nonterminal_clears_resolved()
+    public async Task UpdateStatusAsync_TerminalToNonterminal_ClearsResolved()
     {
         var (_, issueId) = await SeedIssueAsync(IssueStatus.Open);
         var actorId = Guid.NewGuid();
@@ -1222,7 +1222,7 @@ public sealed class IssuesServiceTests
     }
 
     [HumansFact]
-    public async Task UpdateStatusAsync_no_change_returns_without_audit()
+    public async Task UpdateStatusAsync_NoChange_IsNotAudited()
     {
         var (_, issueId) = await SeedIssueAsync(IssueStatus.Open);
         var actorId = Guid.NewGuid();
@@ -1236,7 +1236,7 @@ public sealed class IssuesServiceTests
     }
 
     [HumansFact]
-    public async Task UpdateStatusAsync_without_actor_audits_as_API()
+    public async Task UpdateStatusAsync_NoActor_AuditsAsApi()
     {
         var (_, issueId) = await SeedIssueAsync(IssueStatus.Open);
 
@@ -1250,7 +1250,7 @@ public sealed class IssuesServiceTests
     }
 
     [HumansFact]
-    public async Task UpdateStatusAsync_notifies_reporter_and_assignee_excluding_actor()
+    public async Task UpdateStatusAsync_Change_NotifiesAllButActor()
     {
         var (reporterId, issueId) = await SeedIssueAsync(IssueStatus.Open);
 
@@ -1282,7 +1282,7 @@ public sealed class IssuesServiceTests
     }
 
     [HumansFact]
-    public async Task UpdateStatusAsync_short_circuits_when_actor_is_only_recipient()
+    public async Task UpdateStatusAsync_ActorOnlyRecipient_SendsNothing()
     {
         // Reporter flips their own issue's status with no assignee → recipient
         // set is empty → no notification is dispatched.
@@ -1484,7 +1484,7 @@ public sealed class IssuesServiceTests
     }
 
     [HumansFact]
-    public async Task Mutation_cancellation_propagates_instead_of_becoming_a_failure_result()
+    public async Task Mutations_Cancelled_Propagate()
     {
         using var cancellation = new CancellationTokenSource();
         await cancellation.CancelAsync();
@@ -1497,7 +1497,7 @@ public sealed class IssuesServiceTests
     [HumansTheory]
     [InlineData(false)]
     [InlineData(true)]
-    public async Task UpdateSectionAsync_MasksMissingAndInaccessibleIssues(bool inaccessible)
+    public async Task UpdateSectionAsync_MissingOrInaccessible_LooksTheSame(bool inaccessible)
     {
         var (_, issueId) = await SeedIssueAsync(IssueStatus.Open, section: "Tickets");
         var result = await _service.UpdateSectionAsync(
@@ -1510,7 +1510,7 @@ public sealed class IssuesServiceTests
     }
 
     [HumansFact]
-    public async Task UpdateStatusAsync_returns_success_when_status_updates()
+    public async Task UpdateStatusAsync_ValidStatus_Succeeds()
     {
         var (_, issueId) = await SeedIssueAsync(IssueStatus.Open);
         var actorId = Guid.NewGuid();
@@ -1530,7 +1530,7 @@ public sealed class IssuesServiceTests
     [InlineData("Assignee")]
     [InlineData("Section")]
     [InlineData("GitHub")]
-    public async Task Mutations_return_not_found_when_issue_is_missing(string field)
+    public async Task Mutations_MissingIssue_ReturnNotFound(string field)
     {
         var ct = TestContext.Current.CancellationToken;
         var result = field switch
@@ -1551,7 +1551,7 @@ public sealed class IssuesServiceTests
     }
 
     [HumansFact]
-    public async Task UpdateAssigneeAsync_audit_includes_old_and_new_names()
+    public async Task UpdateAssigneeAsync_Audit_NamesOldWithNew()
     {
         var (_, issueId) = await SeedIssueAsync(IssueStatus.Open);
         var oldAssignee = SeedUser(Guid.NewGuid(), "Old Person");
@@ -1576,7 +1576,7 @@ public sealed class IssuesServiceTests
     }
 
     [HumansFact]
-    public async Task UpdateAssigneeAsync_notifies_new_assignee()
+    public async Task UpdateAssigneeAsync_NewAssignee_IsNotified()
     {
         var (_, issueId) = await SeedIssueAsync(IssueStatus.Open);
         var newAssigneeId = Guid.NewGuid();
@@ -1602,7 +1602,7 @@ public sealed class IssuesServiceTests
     }
 
     [HumansFact]
-    public async Task UpdateAssigneeAsync_self_assign_does_not_notify_actor()
+    public async Task UpdateAssigneeAsync_SelfAssign_DoesNotNotify()
     {
         var (_, issueId) = await SeedIssueAsync(IssueStatus.Open);
         var actorId = Guid.NewGuid();
@@ -1626,7 +1626,7 @@ public sealed class IssuesServiceTests
     }
 
     [HumansFact]
-    public async Task UpdateAssigneeAsync_returns_success_when_assignee_updates()
+    public async Task UpdateAssigneeAsync_ValidAssignee_Succeeds()
     {
         var (_, issueId) = await SeedIssueAsync(IssueStatus.Open);
         var assigneeId = Guid.NewGuid();
@@ -1643,7 +1643,7 @@ public sealed class IssuesServiceTests
     }
 
     [HumansFact]
-    public async Task UpdateSectionAsync_audits_change_and_updates_both_queue_counts()
+    public async Task UpdateSectionAsync_Change_UpdatesBothQueueCounts()
     {
         var (_, issueId) = await SeedIssueAsync(IssueStatus.Open, section: "Tickets");
         var actorId = Guid.NewGuid();
@@ -1674,7 +1674,7 @@ public sealed class IssuesServiceTests
     }
 
     [HumansFact]
-    public async Task UpdateSectionAsync_section_handler_routes_an_issue_out_of_their_queue()
+    public async Task UpdateSectionAsync_SectionHandler_RoutesOutOfQueue()
     {
         // Authorized against the source section: a Ticket Admin holds no Teams role.
         var (_, issueId) = await SeedIssueAsync(IssueStatus.Open, section: "Tickets");
@@ -1689,7 +1689,7 @@ public sealed class IssuesServiceTests
     }
 
     [HumansFact]
-    public async Task UpdateSectionAsync_returns_success_when_section_updates()
+    public async Task UpdateSectionAsync_ValidSection_Succeeds()
     {
         var (_, issueId) = await SeedIssueAsync(IssueStatus.Open, section: "Tickets");
 
@@ -1700,7 +1700,7 @@ public sealed class IssuesServiceTests
     }
 
     [HumansFact]
-    public async Task SubmitIssueAsync_routes_an_unknown_section_to_the_Admin_queue()
+    public async Task SubmitIssueAsync_UnknownSection_GoesToAdminQueue()
     {
         var userId = Guid.NewGuid();
         SeedUser(userId, "U").Email = "u@u.com";
@@ -1717,7 +1717,7 @@ public sealed class IssuesServiceTests
     }
 
     [HumansFact]
-    public async Task SubmitIssueAsync_canonicalizes_a_known_section_whatever_its_casing()
+    public async Task SubmitIssueAsync_KnownSectionAnyCasing_IsCanonicalized()
     {
         var userId = Guid.NewGuid();
         SeedUser(userId, "U").Email = "u@u.com";
@@ -1733,7 +1733,7 @@ public sealed class IssuesServiceTests
     }
 
     [HumansFact]
-    public async Task SubmitIssueAsync_rejects_a_section_longer_than_the_column()
+    public async Task SubmitIssueAsync_TooLongSection_IsRejected()
     {
         var userId = Guid.NewGuid();
         SeedUser(userId, "U").Email = "u@u.com";
@@ -1750,7 +1750,7 @@ public sealed class IssuesServiceTests
     }
 
     [HumansFact]
-    public async Task UpdateSectionAsync_routes_an_unknown_section_to_the_Admin_queue()
+    public async Task UpdateSectionAsync_UnknownSection_GoesToAdminQueue()
     {
         var (_, issueId) = await SeedIssueAsync(IssueStatus.Open, section: "Tickets");
 
@@ -1761,7 +1761,7 @@ public sealed class IssuesServiceTests
     }
 
     [HumansFact]
-    public async Task UpdateSectionAsync_fails_on_a_section_longer_than_the_column()
+    public async Task UpdateSectionAsync_TooLongSection_Fails()
     {
         var (_, issueId) = await SeedIssueAsync(IssueStatus.Open, section: "Tickets");
 
@@ -1778,7 +1778,7 @@ public sealed class IssuesServiceTests
     }
 
     [HumansFact]
-    public async Task UpdateSectionAsync_returns_failure_message_for_terminal_issue()
+    public async Task UpdateSectionAsync_TerminalIssue_Fails()
     {
         var (_, issueId) = await SeedIssueAsync(IssueStatus.Resolved, section: "Tickets");
 
@@ -1797,7 +1797,7 @@ public sealed class IssuesServiceTests
     }
 
     [HumansFact]
-    public async Task SetGitHubIssueNumberAsync_returns_success_when_link_updates_or_clears()
+    public async Task SetGitHubIssueNumberAsync_UpdateOrClear_Succeeds()
     {
         var (_, issueId) = await SeedIssueAsync(IssueStatus.Open);
 
@@ -1816,7 +1816,7 @@ public sealed class IssuesServiceTests
     [HumansTheory]
     [InlineData(0)]
     [InlineData(-1)]
-    public async Task SetGitHubIssueNumberAsync_RejectsNonpositiveNumbersWithoutChangingLink(int number)
+    public async Task SetGitHubIssueNumberAsync_NonpositiveNumber_IsRejected(int number)
     {
         var ct = TestContext.Current.CancellationToken;
         var (_, issueId) = await SeedIssueAsync(IssueStatus.Open);
@@ -1835,7 +1835,7 @@ public sealed class IssuesServiceTests
     }
 
     [HumansFact]
-    public async Task SetGitHubIssueNumberAsync_audits_link_change()
+    public async Task SetGitHubIssueNumberAsync_LinkChange_IsAudited()
     {
         var (_, issueId) = await SeedIssueAsync(IssueStatus.Open);
         var actorId = Guid.NewGuid();
@@ -1852,7 +1852,7 @@ public sealed class IssuesServiceTests
     }
 
     [HumansFact]
-    public async Task GetIssueListAsync_applies_updated_descending_limit()
+    public async Task GetIssueListAsync_Limit_TakesNewestUpdated()
     {
         var reporterId = Guid.NewGuid();
         SeedUser(reporterId, "Reporter").Email = "reporter@example.org";
@@ -1902,7 +1902,7 @@ public sealed class IssuesServiceTests
     // by me; Admin sees everything.
 
     [HumansFact]
-    public async Task GetIssueListAsync_role_holder_sees_own_section_and_own_reports_only()
+    public async Task GetIssueListAsync_RoleHolder_SeesOwnSection()
     {
         var viewerId = Guid.NewGuid();
         var strangerId = Guid.NewGuid();
@@ -1923,7 +1923,7 @@ public sealed class IssuesServiceTests
     }
 
     [HumansFact]
-    public async Task GetIssueListAsync_admin_sees_every_section()
+    public async Task GetIssueListAsync_Admin_SeesEverySection()
     {
         var reporterId = Guid.NewGuid();
         SeedUser(reporterId, "Reporter").Email = "reporter@example.org";
@@ -1939,7 +1939,7 @@ public sealed class IssuesServiceTests
     }
 
     [HumansFact]
-    public async Task GetIssueListAsync_no_roles_sees_own_reports_only()
+    public async Task GetIssueListAsync_NoRoles_SeesOwnReports()
     {
         var viewerId = Guid.NewGuid();
         var strangerId = Guid.NewGuid();
@@ -1956,7 +1956,7 @@ public sealed class IssuesServiceTests
     }
 
     [HumansFact]
-    public async Task CountActionableAsync_counts_own_section_and_own_reports_only()
+    public async Task CountActionableAsync_OtherSections_AreNotCounted()
     {
         var viewerId = Guid.NewGuid();
         var strangerId = Guid.NewGuid();
@@ -1983,7 +1983,7 @@ public sealed class IssuesServiceTests
     [HumansTheory]
     [InlineData(false)]
     [InlineData(true)]
-    public async Task ContributeForUserAsync_includes_merged_reports_and_recognizes_both_comment_authors(bool archivedId)
+    public async Task ContributeForUserAsync_MergedAccounts_AreIncluded(bool archivedId)
     {
         var ct = TestContext.Current.CancellationToken;
         var survivorId = Guid.NewGuid();
@@ -2055,7 +2055,7 @@ public sealed class IssuesServiceTests
     }
 
     [HumansFact]
-    public async Task ContributeForUserAsync_returns_only_user_own_issues()
+    public async Task ContributeForUserAsync_OtherUsersIssues_AreExcluded()
     {
         var aliceId = Guid.NewGuid();
         var bobId = Guid.NewGuid();
@@ -2090,7 +2090,7 @@ public sealed class IssuesServiceTests
     }
 
     [HumansFact]
-    public async Task EraseForUserAsync_removes_own_issues_and_detaches_comments_elsewhere()
+    public async Task EraseForUserAsync_CommentsElsewhere_AreDetached()
     {
         var aliceId = Guid.NewGuid();
         var bobId = Guid.NewGuid();
@@ -2162,7 +2162,7 @@ public sealed class IssuesServiceTests
     private static IssueViewer Stranger() => new(Guid.NewGuid(), []);
 
     [HumansFact]
-    public async Task An_issue_is_invisible_to_a_viewer_who_neither_handles_nor_reported_it()
+    public async Task GetIssue_UnrelatedViewer_SeesNothing()
     {
         var (_, issueId) = await SeedIssueAsync(IssueStatus.Open, section: "Tickets");
 
@@ -2172,7 +2172,7 @@ public sealed class IssuesServiceTests
     }
 
     [HumansFact]
-    public async Task A_reporter_sees_their_own_issue_whatever_section_it_is_in()
+    public async Task GetIssue_Reporter_SeesOwnIssue()
     {
         var (reporterId, issueId) = await SeedIssueAsync(IssueStatus.Open, section: "Tickets");
 
@@ -2182,7 +2182,7 @@ public sealed class IssuesServiceTests
     }
 
     [HumansFact]
-    public async Task A_section_role_holder_sees_the_issues_their_role_owns()
+    public async Task GetIssue_SectionRoleHolder_SeesOwnedIssues()
     {
         var (_, issueId) = await SeedIssueAsync(IssueStatus.Open, section: "Tickets");
 
@@ -2192,7 +2192,7 @@ public sealed class IssuesServiceTests
     }
 
     [HumansFact]
-    public async Task The_thread_is_refused_to_a_viewer_who_cannot_see_the_issue()
+    public async Task GetThread_ViewerMayNotSee_IsRefused()
     {
         var (_, issueId) = await SeedIssueAsync(IssueStatus.Open, section: "Tickets");
 
@@ -2202,7 +2202,7 @@ public sealed class IssuesServiceTests
     }
 
     [HumansFact]
-    public async Task Every_mutation_is_refused_to_a_viewer_who_cannot_handle_the_issue()
+    public async Task Mutations_NonHandler_AreRefused()
     {
         var (reporterId, issueId) = await SeedIssueAsync(IssueStatus.Open, section: "Tickets");
 
@@ -2231,7 +2231,7 @@ public sealed class IssuesServiceTests
     }
 
     [HumansFact]
-    public async Task A_handler_may_move_an_issue_their_role_owns()
+    public async Task UpdateSection_OwningRoleHandler_MayMove()
     {
         var (_, issueId) = await SeedIssueAsync(IssueStatus.Open, section: "Tickets");
         var handler = Handler();
@@ -2243,7 +2243,7 @@ public sealed class IssuesServiceTests
     }
 
     [HumansFact]
-    public async Task A_stranger_cannot_comment()
+    public async Task PostComment_Stranger_IsRefused()
     {
         var (_, issueId) = await SeedIssueAsync(IssueStatus.Open, section: "Tickets");
         var stranger = Stranger();
@@ -2255,7 +2255,7 @@ public sealed class IssuesServiceTests
     }
 
     [HumansFact]
-    public async Task A_reporter_may_comment_on_their_own_issue_but_not_resolve_it()
+    public async Task PostComment_Reporter_CannotResolve()
     {
         var (reporterId, issueId) = await SeedIssueAsync(IssueStatus.Open, section: "Tickets");
         var reporter = new IssueViewer(reporterId, []);
@@ -2349,7 +2349,7 @@ public sealed class IssuesServiceTests
     [InlineData(252, false, "image/png")]
     [InlineData(252, true, "image/png")]
     [InlineData(4, false, "IMAGE/PNG")]
-    public async Task SubmitIssueAsync_saves_the_screenshot_through_file_storage(int nameLength, bool includePath, string contentType)
+    public async Task SubmitIssueAsync_Screenshot_UsesFileStorage(int nameLength, bool includePath, string contentType)
     {
         var reporter = SeedUser();
         byte[] bytes = [9, 8, 7];
@@ -2370,7 +2370,7 @@ public sealed class IssuesServiceTests
     }
 
     [HumansFact]
-    public async Task EraseForUserAsync_deletes_the_screenshot_through_file_storage_and_keeps_others()
+    public async Task EraseForUserAsync_OwnScreenshot_IsDeleted()
     {
         var aliceId = Guid.NewGuid();
         var bobId = Guid.NewGuid();
@@ -2407,7 +2407,7 @@ public sealed class IssuesServiceTests
     }
 
     [HumansFact]
-    public async Task GetScreenshotAsync_serves_the_reporter_and_a_section_handler()
+    public async Task GetScreenshotAsync_ReporterOrHandler_IsServed()
     {
         var reporterId = Guid.NewGuid();
         SeedUser(reporterId, "Reporter").Email = "r@r.com";
@@ -2426,7 +2426,7 @@ public sealed class IssuesServiceTests
     }
 
     [HumansFact]
-    public async Task GetScreenshotAsync_hides_the_screenshot_from_a_stranger_and_answers_missing_alike()
+    public async Task GetScreenshotAsync_Stranger_GetsNothing()
     {
         var reporterId = Guid.NewGuid();
         SeedUser(reporterId, "Reporter").Email = "r@r.com";
@@ -2458,7 +2458,7 @@ public sealed class IssuesServiceTests
     }
 
     [HumansFact]
-    public async Task Screenshot_action_returns_the_file_with_its_content_type_to_the_reporter()
+    public async Task Screenshot_Reporter_GetsFileWithContentType()
     {
         var reporter = SeedUser();
         byte[] bytes = [5, 6, 7];
@@ -2472,7 +2472,7 @@ public sealed class IssuesServiceTests
     }
 
     [HumansFact]
-    public async Task Screenshot_action_returns_404_to_someone_who_may_not_see_the_issue()
+    public async Task Screenshot_ViewerMayNotSee_Is404()
     {
         var reporter = SeedUser();
         var stranger = SeedUser();
@@ -2736,7 +2736,7 @@ public sealed class IssuesServiceTests
     [InlineData("mine")]
     [InlineData("count")]
     [InlineData("thread")]
-    public async Task Merged_reporter_keeps_own_issue_reads(string route)
+    public async Task GetIssue_MergedReporter_KeepsOwnReads(string route)
     {
         var archived = SeedUser();
         var survivor = SeedUser();
@@ -2783,7 +2783,7 @@ public sealed class IssuesServiceTests
     }
 
     [HumansFact]
-    public async Task Merged_reporter_comment_reopens_without_handler_privileges_or_self_email()
+    public async Task PostComment_MergedReporter_ReopensIssue()
     {
         var (archived, own) = await SeedIssueAsync(IssueStatus.Resolved, withResolvedFields: true, section: "Tickets");
         var survivor = SeedUser();
@@ -2810,7 +2810,7 @@ public sealed class IssuesServiceTests
     [HumansTheory]
     [InlineData(false)]
     [InlineData(true)]
-    public async Task Merged_assignee_filter_finds_both_accounts_without_granting_queue_access(bool filterByArchived)
+    public async Task AssigneeFilter_MergedAccount_FindsBothAccounts(bool filterByArchived)
     {
         var archived = SeedUser();
         var survivor = SeedUser();
@@ -2839,7 +2839,7 @@ public sealed class IssuesServiceTests
     // Merged-away ids: in-app notifications reach the survivor, and the assignee is stored as the live id.
 
     [HumansFact]
-    public async Task UpdateStatusAsync_notifies_the_survivor_when_the_reporter_id_was_merged_away()
+    public async Task UpdateStatusAsync_MergedAwayReporter_NotifiesSurvivor()
     {
         var (reporterId, issueId) = await SeedIssueAsync(IssueStatus.Open);
         var survivorId = Guid.NewGuid();
@@ -2866,7 +2866,7 @@ public sealed class IssuesServiceTests
     [HumansTheory]
     [InlineData("rejected")]
     [InlineData("unknown")]
-    public async Task UpdateAssigneeAsync_refuses_a_user_who_is_not_an_active_member(string who)
+    public async Task UpdateAssigneeAsync_NotActiveMember_IsRefused(string who)
     {
         var (_, issueId) = await SeedIssueAsync(IssueStatus.Open);
         var assigneeId = Guid.NewGuid();
@@ -2884,7 +2884,7 @@ public sealed class IssuesServiceTests
     }
 
     [HumansFact]
-    public async Task UpdateAssigneeAsync_stores_the_survivor_when_given_a_merged_away_id()
+    public async Task UpdateAssigneeAsync_MergedAwayId_StoresSurvivor()
     {
         var (_, issueId) = await SeedIssueAsync(IssueStatus.Open);
         var archivedId = Guid.NewGuid();
@@ -2940,7 +2940,7 @@ public sealed class IssuesServiceTests
     }
 
     [HumansFact]
-    public async Task IssueSubmittedNotice_ResolvesAndDeduplicatesQueueHandlersBeforeLanguageGrouping()
+    public async Task IssueSubmittedNotice_MergedHandlers_AreDeduplicated()
     {
         var reporter = SeedUser(displayName: "Reporter");
         var archived = SeedUser(displayName: "Archived handler");

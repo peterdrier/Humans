@@ -63,7 +63,7 @@ public class ExpenseRepositoryTests
     }
 
     [HumansFact]
-    public async Task AddLineAsync_AppendsLine_AndUpdatesTotal()
+    public async Task AddLineAsync_Line_AppendedTotalUpdated()
     {
         var report = MakeReport();
         await _sut.AddDraftAsync(report, Xunit.TestContext.Current.CancellationToken);
@@ -106,7 +106,7 @@ public class ExpenseRepositoryTests
     }
 
     [HumansFact]
-    public async Task RemoveLineAsync_RemovesAndRecomputesTotal()
+    public async Task RemoveLineAsync_Line_RemovedTotalRecomputed()
     {
         var report = MakeReport();
         await _sut.AddDraftAsync(report, Xunit.TestContext.Current.CancellationToken);
@@ -182,7 +182,7 @@ public class ExpenseRepositoryTests
     }
 
     [HumansFact]
-    public async Task RemoveLineAsync_InvoiceLine_RemovesProofsAndAttachmentRows_InOneSave()
+    public async Task RemoveLineAsync_InvoiceLine_RemovesProofsInOneSave()
     {
         var report = MakeReport();
         await _sut.AddDraftAsync(report, Xunit.TestContext.Current.CancellationToken);
@@ -217,7 +217,7 @@ public class ExpenseRepositoryTests
     }
 
     [HumansFact]
-    public async Task ReplaceLineAttachmentAsync_ChangesLinkAndMetadataTogether_AndScopesToReport()
+    public async Task ReplaceLineAttachmentAsync_Replace_ChangesLinkWithMetadata()
     {
         var ct = Xunit.TestContext.Current.CancellationToken;
         var report = MakeReport();
@@ -241,7 +241,7 @@ public class ExpenseRepositoryTests
     }
 
     [HumansFact]
-    public async Task SubmitAsync_FlipsStatus_AndStampsSubmittedAt()
+    public async Task SubmitAsync_Draft_BecomesSubmittedWithStamp()
     {
         var r = MakeReport();
         await _sut.AddDraftAsync(r, Xunit.TestContext.Current.CancellationToken);
@@ -276,7 +276,7 @@ public class ExpenseRepositoryTests
     }
 
     [HumansFact]
-    public async Task CoordinatorRejectAsync_ReturnsToDraft_AndLeavesTheCap()
+    public async Task CoordinatorRejectAsync_Report_ReturnsToDraftKeepsCap()
     {
         var ct = Xunit.TestContext.Current.CancellationToken;
         var r = MakeReport(status: ExpenseReportStatus.Submitted);
@@ -350,7 +350,7 @@ public class ExpenseRepositoryTests
     }
 
     [HumansFact]
-    public async Task ApproveAsync_StampsApproval_AndInsertsOutboxRow()
+    public async Task ApproveAsync_Report_StampedWithOutboxRow()
     {
         var r = MakeReport(status: ExpenseReportStatus.Submitted);
         await SeedAsync(r);
@@ -371,7 +371,7 @@ public class ExpenseRepositoryTests
     }
 
     [HumansFact]
-    public async Task GetUnprocessedOutboxAsync_FiltersAndLimits()
+    public async Task GetUnprocessedOutboxAsync_Rows_FilteredThenLimited()
     {
         var ev1 = NewOutbox();
         var ev2 = NewOutbox(processedAt: Instant.FromUtc(2026, 5, 5, 0, 0));
@@ -417,7 +417,7 @@ public class ExpenseRepositoryTests
     }
 
     [HumansFact]
-    public async Task RequeueOutboxForReportAsync_ClearsWriteOffAndBackoff()
+    public async Task RequeueOutboxForReportAsync_WrittenOff_IsCleared()
     {
         var reportId = Guid.NewGuid();
         var writtenOff = NewOutbox(reportId, failedPermanently: true, retryCount: 10,
@@ -436,7 +436,7 @@ public class ExpenseRepositoryTests
     }
 
     [HumansFact]
-    public async Task RequeueOutboxForReportAsync_AlsoClearsAnEventMerelyWaitingOutABackoff()
+    public async Task RequeueOutboxForReportAsync_BackoffOnly_IsCleared()
     {
         var reportId = Guid.NewGuid();
         await SeedOutboxAsync(NewOutbox(reportId, retryCount: 3, lastError: "timeout",
@@ -564,7 +564,7 @@ public class ExpenseRepositoryTests
     }
 
     [HumansFact]
-    public async Task SetLineHoldedDocIdAsync_PersistsLineDocIdAndReportUpdatedAt()
+    public async Task SetLineHoldedDocIdAsync_FirstWrite_Persists()
     {
         // Persistence is intentionally separate from outbox-event marking — the
         // service writes the line's HoldedDocId immediately after the Holded create call and
@@ -587,7 +587,7 @@ public class ExpenseRepositoryTests
     }
 
     [HumansFact]
-    public async Task SetLineHoldedDocIdAsync_SecondWriteIsRefused_AndKeepsTheFirstId()
+    public async Task SetLineHoldedDocIdAsync_SecondWrite_IsRefused()
     {
         var report = MakeReport(status: ExpenseReportStatus.Approved);
         await SeedAsync(report);

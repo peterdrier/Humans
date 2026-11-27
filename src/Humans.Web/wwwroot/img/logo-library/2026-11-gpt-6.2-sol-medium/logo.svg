@@ -1,0 +1,57 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="-2 -2 244 244" role="img" aria-label="Vitruvian Man">
+  <g fill="none" stroke="#c9a96e">
+    <circle cx="120" cy="120" r="120" stroke-width="2.3"/>
+    <path d="M23 46H217V240H23Z" stroke-width="1.8"/>
+    <path d="M120 8v224M8 120h224M109 120h22M120 109v22M19 120h8m186 0h8M120 42v8m0 186v8M48 192l-6 6m150-6 6 6" stroke-width=".7" opacity=".34"/>
+  </g>
+
+  <defs>
+    <g id="raised-arm">
+      <path fill="#c9a96e" d="M109 79C100 74 95 68 84 63C75 59 70 58 65 54L53 46C49 43 45 43 42 40L35 35C33 34 32 36 34 38L39 43L34 41C31 40 30 42 33 44L39 48L35 48C32 49 35 51 40 51C45 52 48 52 51 54C59 61 65 68 76 72L95 86Z"/>
+      <path fill="none" stroke="#3d2b1f" stroke-width="1.8" d="M51 54C59 61 65 68 76 72L95 86"/>
+      <path fill="none" stroke="#3d2b1f" stroke-width="1.4" d="M53 49Q62 54 69 61Q79 63 88 71"/>
+      <path fill="none" stroke="#3d2b1f" stroke-width=".9" d="M38 42l7 6m-7-1 5 2"/>
+    </g>
+    <g id="spread-leg">
+      <path fill="#c9a96e" d="M116 129C105 129 98 134 94 143C87 155 86 166 81 175C74 181 72 190 68 200L63 208C60 210 55 213 51 215C48 217 49 221 53 221L61 221C65 220 66 216 72 215C76 214 76 208 78 203C84 194 89 189 91 181C102 169 110 158 117 147Z"/>
+      <path fill="none" stroke="#3d2b1f" stroke-width="1.9" d="M64 209Q72 201 74 192Q77 181 83 177Q85 174 86 169M91 181Q87 193 79 201"/>
+      <path fill="none" stroke="#3d2b1f" stroke-width="1.35" d="M95 153Q91 166 88 172m-6 12q-3 5-4 11m-5 9q-2 5-1 7"/>
+      <path fill="none" stroke="#3d2b1f" stroke-width=".9" d="M55 216l1 3m2-4 1 3m2-5 1 3m23-40 2-2"/>
+    </g>
+    <g id="horizontal-arm">
+      <path fill="#c9a96e" d="M108 78C101 74 93 73 85 76C78 78 73 80 66 79C58 77 53 78 46 80L40 80C37 78 35 77 32 78C31 79 33 81 35 82L25 82Q22 82 23 84L30 85L24 86Q22 87 25 88L32 88Q32 90 37 89L44 87C51 87 58 89 65 88C75 87 82 91 90 88C96 86 100 86 105 90Z"/>
+      <path fill="none" stroke="#3d2b1f" stroke-width="1.95" d="M47 80Q58 77 66 79Q75 81 85 76Q94 73 103 77"/>
+      <path fill="none" stroke="#3d2b1f" stroke-width="1.4" d="M46 84Q57 81 66 84M71 84Q80 86 85 83Q91 79 96 81M91 87Q96 84 100 86"/>
+      <path fill="none" stroke="#3d2b1f" stroke-width=".85" d="M26 84h8m-7 2 8-1m-3 3 6-2m-3-5 5 2m25 0 3-1"/>
+    </g>
+    <g id="standing-leg">
+      <path fill="#c9a96e" d="M120 138C113 133 108 132 103 133C99 142 99 153 101 164L104 181C102 190 104 198 107 208L109 222C109 227 106 229 102 232C98 235 99 239 103 240H115C119 237 118 231 117 225L117 208C117 198 120 190 118 183L119 164L120 146Z"/>
+      <path fill="none" stroke="#3d2b1f" stroke-width="1.95" d="M102 140C99 149 100 158 102 169L105 183C102 195 106 204 108 213L109 224"/>
+      <path fill="none" stroke="#3d2b1f" stroke-width="1.4" d="M110 146C105 155 108 167 109 173M114 158q1 13-2 18m-4 3q2-4 5-1m-6 8q-1 8 2 13m5-12q-3 12-2 27m-2 12 3 2"/>
+      <path fill="none" stroke="#3d2b1f" stroke-width=".9" d="M103 234l1 3m2-4 1 4m2-5 1 5m2-5 1 5m-8-77 1 5m2 36 1 4m1-23 3-1"/>
+    </g>
+    <g id="body-etch" fill="none" stroke="#3d2b1f">
+      <path stroke-width="1.9" d="M114 68Q114 74 107 76M99 82C97 93 104 104 106 112C108 119 104 127 103 136M120 143q-4-5-11-7"/>
+      <path stroke-width="1.4" d="M104 80Q111 78 117 82M100 86Q106 95 117 90M106 95q3 4 3 8m-1 6 4 6m-5 12q3 5 9 7M118 95l-2 6m2 4-2 5"/>
+      <path stroke-width=".9" d="M105 97l2 3m-2 1 2 3m0 1 2 3m1 7 1 3m-1 5 2 2m-1 1 2 2m-6-41 3 1m2 0 3-1"/>
+      <path stroke-width="1.4" d="M110 54Q114 47 120 49M111 59Q110 54 116 51M113 56l-1 5"/>
+      <path stroke-width=".9" d="M114 56q2-1 4-.6m-3 2.6 1.5-.2m-3 3.2 1 2m4-6-1 4.5m-2.8 5 1.5.7"/>
+    </g>
+  </defs>
+
+  <g stroke-linecap="round" stroke-linejoin="round">
+    <use href="#raised-arm"/>
+    <use href="#raised-arm" transform="translate(240) scale(-1 1)"/>
+    <use href="#spread-leg"/>
+    <use href="#spread-leg" transform="translate(240) scale(-1 1)"/>
+    <use href="#horizontal-arm"/>
+    <use href="#horizontal-arm" transform="translate(240) scale(-1 1)"/>
+    <use href="#standing-leg"/>
+    <use href="#standing-leg" transform="translate(240) scale(-1 1)"/>
+    <path fill="#c9a96e" d="M120 46C113 46 109 50 109 57L110 61Q110 66 114 69C113 73 112 74 106 75L99 77C96 81 97 89 99 94L104 108Q109 119 105 128L102 138Q113 138 120 145Q127 138 138 138L135 128Q131 119 136 108L141 94C143 89 144 81 141 77L134 75C128 74 127 73 126 69Q130 66 130 61L131 57C131 50 127 46 120 46Z"/>
+    <use href="#body-etch"/>
+    <use href="#body-etch" transform="translate(240) scale(-1 1)"/>
+    <path fill="none" stroke="#3d2b1f" stroke-width="1.5" d="M119 120q1 2 2 0"/>
+    <path fill="none" stroke="#3d2b1f" stroke-width=".9" d="M118.8 63h2.4m-3.5 2.5q2.3-.7 4.6 0m-2.3 21.5v6m0 18v4m-4-46q4 2 8 0"/>
+  </g>
+</svg>

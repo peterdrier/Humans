@@ -30,7 +30,7 @@ public sealed class LegalDocumentRepositoryTests : IDisposable
     }
 
     [HumansFact]
-    public void DocumentContentComparer_EqualMapsHaveEqualHashesRegardlessOfInsertionOrder()
+    public void DocumentContentComparer_EqualMapsAnyOrder_HashEqual()
     {
         var comparer = _dbContext.Model.FindEntityType(typeof(DocumentVersion))!
             .FindProperty(nameof(DocumentVersion.Content))!.GetValueComparer();
@@ -201,7 +201,7 @@ public sealed class LegalDocumentRepositoryTests : IDisposable
     }
 
     [HumansFact]
-    public async Task AddVersionAsync_AddsVersionAndUpdatesDocument()
+    public async Task AddVersionAsync_NewVersion_UpdatesDocument()
     {
         var doc = await SeedDocumentAsync("Privacy");
         var now = _clock.GetCurrentInstant();
@@ -225,7 +225,7 @@ public sealed class LegalDocumentRepositoryTests : IDisposable
     }
 
     [HumansFact]
-    public async Task UpdateVersionSummaryAsync_TrimsAndPersists()
+    public async Task UpdateVersionSummaryAsync_PaddedSummary_IsTrimmed()
     {
         var doc = await SeedDocumentAsync("Privacy");
         var version = await SeedVersionAsync(doc.Id, "v1", _clock.GetCurrentInstant());
@@ -238,7 +238,7 @@ public sealed class LegalDocumentRepositoryTests : IDisposable
     }
 
     [HumansFact]
-    public async Task UpdateVersionSummaryAsync_ReturnsFalse_WhenVersionBelongsToAnotherDocument()
+    public async Task UpdateVersionSummaryAsync_OtherDocumentsVersion_ReturnsFalse()
     {
         var docA = await SeedDocumentAsync("A");
         var docB = await SeedDocumentAsync("B");

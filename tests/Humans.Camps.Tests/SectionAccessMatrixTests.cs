@@ -11,7 +11,7 @@ public class SectionAccessMatrixTests
 
     /// <summary>The key is "Camps" but the heading is "Barrios" — the user-facing word.</summary>
     [HumansFact]
-    public void Contributes_the_Camps_matrix_headed_Barrios()
+    public void AccessMatrix_IsHeadedBarrios()
     {
         var matrix = Matrix();
 
@@ -22,7 +22,7 @@ public class SectionAccessMatrixTests
     }
 
     [HumansFact]
-    public void Pins_every_feature_row()
+    public void AccessMatrix_MatchesCampsPin()
     {
         Matrix().Features
             .Select(f => $"{f.Name}: {string.Join(", ", f.RoleAccess.Select(kv => $"{kv.Key}={kv.Value}"))}")

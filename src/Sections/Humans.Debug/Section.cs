@@ -1,3 +1,4 @@
+using JetBrains.Annotations;
 using System.Reflection;
 using Humans.Base.Authorization;
 using Humans.Base.Interfaces;
@@ -93,6 +94,8 @@ public sealed class Section : SectionBase, ISectionAdminNav, ISectionChrome, ISe
     }
 }
 
+[UsedImplicitly(ImplicitUseKindFlags.Access, ImplicitUseTargetFlags.WithMembers)]
 internal sealed record DataMigrationsStatusResponse(string Version, IReadOnlyList<DataMigrationProgress> Migrations);
 
+[UsedImplicitly(ImplicitUseKindFlags.Access, ImplicitUseTargetFlags.WithMembers)]
 internal sealed record DataMigrationProgress(string Key, int Pending, bool Done);

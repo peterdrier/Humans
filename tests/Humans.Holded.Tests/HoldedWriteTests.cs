@@ -28,7 +28,7 @@ public sealed class HoldedWriteTests
     }
 
     [HumansFact]
-    public async Task EnsureExpenseAccount_creates_only_a_number_missing_from_the_mirror_and_from_Holded()
+    public async Task EnsureExpenseAccount_NumberMissingEverywhere_IsCreated()
     {
         var ct = Xunit.TestContext.Current.CancellationToken;
         await _repo.UpsertAccountsAsync([new HoldedAccount { Number = 62900128, HoldedId = "a", Name = "Camp" }], Now, ct);
@@ -46,7 +46,7 @@ public sealed class HoldedWriteTests
     }
 
     [HumansFact]
-    public async Task PostJournalEntry_reports_an_unreadable_success_as_unconfirmed()
+    public async Task PostJournalEntry_UnreadableSuccess_IsUnconfirmed()
     {
         var ct = Xunit.TestContext.Current.CancellationToken;
         _client.PostLedgerEntryAsync(Date, 57200001, 41000012, 50m, "x", Arg.Any<CancellationToken>())
@@ -56,7 +56,7 @@ public sealed class HoldedWriteTests
     }
 
     [HumansFact]
-    public async Task IssueSalesDocument_books_each_line_to_the_chart_id_of_its_number_and_refuses_an_unknown_one()
+    public async Task IssueSalesDocument_UnknownAccountNumber_IsRefused()
     {
         var ct = Xunit.TestContext.Current.CancellationToken;
         await _repo.UpsertAccountsAsync([new HoldedAccount { Number = 70500000, HoldedId = "rev", Name = "Ventas" }], Now, ct);
@@ -84,7 +84,7 @@ public sealed class HoldedWriteTests
     }
 
     [HumansFact]
-    public async Task EnsurePurchaseDocumentApproved_approves_only_a_draft()
+    public async Task EnsurePurchaseDocumentApproved_NotDraft_IsNotApproved()
     {
         var ct = Xunit.TestContext.Current.CancellationToken;
         _client.GetPurchaseDocumentAsync("d1", Arg.Any<CancellationToken>()).Returns(Doc(approvedAt: Now));
@@ -98,7 +98,7 @@ public sealed class HoldedWriteTests
     }
 
     [HumansFact]
-    public async Task CreateContact_refreshes_the_contact_mirror()
+    public async Task CreateContact_Created_RefreshesContactMirror()
     {
         var ct = Xunit.TestContext.Current.CancellationToken;
         _client.CreateContactAsync(Arg.Any<HoldedContactInput>(), Arg.Any<CancellationToken>()).Returns("c9");

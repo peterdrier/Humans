@@ -96,7 +96,7 @@ public sealed class HoldedAdminOverviewTests
             Instant.FromUtc(2020, 1, 1, 0, 0), FixedNow, null, lines, FixedNow, ct);
 
     [HumansFact]
-    public async Task Calls_group_by_madrid_month_oldest_first_with_per_endpoint_counts()
+    public async Task Calls_Overview_GroupByMadridMonth()
     {
         var ct = Xunit.TestContext.Current.CancellationToken;
         await _repo.AddApiCallsAsync(
@@ -125,7 +125,7 @@ public sealed class HoldedAdminOverviewTests
     }
 
     [HumansFact]
-    public async Task Archived_accounts_are_dropped_and_the_chart_is_ordered_by_number()
+    public async Task Chart_ArchivedAccounts_AreDropped()
     {
         var ct = Xunit.TestContext.Current.CancellationToken;
         await _repo.UpsertAccountsAsync(
@@ -140,7 +140,7 @@ public sealed class HoldedAdminOverviewTests
     }
 
     [HumansFact]
-    public async Task Holded_postings_are_reported_even_when_debits_and_credits_cancel()
+    public async Task Postings_DebitsCancelCredits_AreStillReported()
     {
         var ct = Xunit.TestContext.Current.CancellationToken;
         await _repo.UpsertAccountsAsync(
@@ -164,7 +164,7 @@ public sealed class HoldedAdminOverviewTests
     }
 
     [HumansFact]
-    public async Task Accounts_carry_the_english_pgc_group_not_holdeds_spanish_one()
+    public async Task Accounts_PgcGroup_IsEnglish()
     {
         var ct = Xunit.TestContext.Current.CancellationToken;
         await _repo.UpsertAccountsAsync(
@@ -185,7 +185,7 @@ public sealed class HoldedAdminOverviewTests
     }
 
     [HumansFact]
-    public async Task Reconciled_compares_the_holded_balance_against_the_local_ledger_sum()
+    public async Task Reconciled_HoldedBalance_IsComparedToLedgerSum()
     {
         var ct = Xunit.TestContext.Current.CancellationToken;
         await _repo.UpsertAccountsAsync(
@@ -222,7 +222,7 @@ public sealed class HoldedAdminOverviewTests
     }
 
     [HumansFact]
-    public async Task Usage_is_read_only_on_refresh_and_a_failed_refresh_keeps_the_last_reading()
+    public async Task Usage_RefreshFails_KeepsLastReading()
     {
         var ct = Xunit.TestContext.Current.CancellationToken;
 
@@ -240,7 +240,7 @@ public sealed class HoldedAdminOverviewTests
     }
 
     [HumansFact]
-    public async Task Overview_drains_the_call_log_before_reading_it()
+    public async Task Overview_CallLog_IsDrainedFirst()
     {
         var ct = Xunit.TestContext.Current.CancellationToken;
         _callLog.DrainAll().Returns(new List<HoldedApiCallRecord>
@@ -255,7 +255,7 @@ public sealed class HoldedAdminOverviewTests
     }
 
     [HumansFact]
-    public async Task Overview_finishes_persisting_consumed_call_records_after_request_abort()
+    public async Task Overview_RequestAborted_StillSavesCallRecords()
     {
         using var cancellation = new CancellationTokenSource();
         _callLog.DrainAll().Returns(_ =>
@@ -275,7 +275,7 @@ public sealed class HoldedAdminOverviewTests
     }
 
     [HumansFact]
-    public async Task Overview_does_not_consume_call_records_when_already_cancelled()
+    public async Task Overview_AlreadyCancelled_ConsumesNoCallRecords()
     {
         using var cancellation = new CancellationTokenSource();
         await cancellation.CancelAsync();
@@ -287,7 +287,7 @@ public sealed class HoldedAdminOverviewTests
     }
 
     [HumansFact]
-    public async Task Sync_states_are_reported_per_kind()
+    public async Task SyncStates_Overview_AreReportedPerKind()
     {
         var ct = Xunit.TestContext.Current.CancellationToken;
         var state = await _repo.GetOrCreateSyncStateAsync(HoldedSyncKind.Ledger, ct: ct);
@@ -312,7 +312,7 @@ public sealed class HoldedAdminOverviewTests
     }
 
     [HumansFact]
-    public async Task GetAccountStatement_unknown_number_returns_null()
+    public async Task GetAccountStatement_UnknownNumber_ReturnsNull()
     {
         var ct = Xunit.TestContext.Current.CancellationToken;
         await _repo.UpsertAccountsAsync([Account(62900128, 121_684.00m)], FixedNow, ct);
@@ -321,7 +321,7 @@ public sealed class HoldedAdminOverviewTests
     }
 
     [HumansFact]
-    public async Task GetAccountStatement_returns_header_and_account_lines()
+    public async Task GetAccountStatement_KnownNumber_ReturnsHeaderWithLines()
     {
         var ct = Xunit.TestContext.Current.CancellationToken;
         var earlier = Instant.FromUtc(2026, 8, 1, 10, 0);
@@ -349,7 +349,7 @@ public sealed class HoldedAdminOverviewTests
     }
 
     [HumansFact]
-    public async Task GetAccountStatement_account_absent_from_the_chart_still_renders_its_cached_lines()
+    public async Task GetAccountStatement_AccountNotInChart_RendersCachedLines()
     {
         // A line can name an account the chart cache has not seen yet (new account, sync ordering).
         // Showing the lines beats 404ing on a page whose whole job is the lines.
@@ -367,7 +367,7 @@ public sealed class HoldedAdminOverviewTests
     }
 
     [HumansFact]
-    public async Task Signed_amount_matches_the_pages_people_actually_read()
+    public async Task SignedAmount_Statement_MatchesPageSign()
     {
         var ct = Xunit.TestContext.Current.CancellationToken;
         await SeedLinesAsync(ct,
@@ -397,7 +397,7 @@ public sealed class HoldedAdminOverviewTests
     }
 
     [HumansFact]
-    public async Task Counterparty_is_the_entrys_single_opposing_side_line()
+    public async Task Counterparty_OneOpposingLine_IsThatLine()
     {
         var ct = Xunit.TestContext.Current.CancellationToken;
         await _repo.UpsertAccountsAsync([Account(40000010, -50_000m)], FixedNow, ct);
@@ -415,7 +415,7 @@ public sealed class HoldedAdminOverviewTests
     }
 
     [HumansFact]
-    public async Task Counterparty_with_several_opposing_legs_names_the_largest_and_counts_the_rest()
+    public async Task Counterparty_SeveralOpposingLegs_NamesLargest()
     {
         // A purchase invoice: one creditor credit against an expense + VAT debit split.
         var ct = Xunit.TestContext.Current.CancellationToken;
@@ -439,7 +439,7 @@ public sealed class HoldedAdminOverviewTests
     }
 
     [HumansFact]
-    public async Task Counterparty_is_null_when_the_entry_has_no_opposing_side_line()
+    public async Task Counterparty_NoOpposingLine_IsNull()
     {
         var ct = Xunit.TestContext.Current.CancellationToken;
         await SeedLinesAsync(ct, Line(9, 57200001, debit: 100m, line: 1));
@@ -450,7 +450,7 @@ public sealed class HoldedAdminOverviewTests
     }
 
     [HumansFact]
-    public async Task GetEntry_lists_every_leg_with_account_name_and_signed_amount()
+    public async Task GetEntry_KnownNumber_ListsEveryLeg()
     {
         var ct = Xunit.TestContext.Current.CancellationToken;
         await _repo.UpsertAccountsAsync(
@@ -475,7 +475,7 @@ public sealed class HoldedAdminOverviewTests
     }
 
     [HumansFact]
-    public async Task GetEntry_unknown_number_returns_null()
+    public async Task GetEntry_UnknownNumber_ReturnsNull()
     {
         var ct = Xunit.TestContext.Current.CancellationToken;
         await SeedLinesAsync(ct, Line(1, 57200001, debit: 100m));
@@ -484,7 +484,7 @@ public sealed class HoldedAdminOverviewTests
     }
 
     [HumansFact]
-    public async Task Monthly_call_budget_comes_from_configuration()
+    public async Task MonthlyCallBudget_Overview_UsesConfiguration()
     {
         var ct = Xunit.TestContext.Current.CancellationToken;
         var service = new Service(_repo, _client, _callLog, new FakeClock(FixedNow),
@@ -495,7 +495,7 @@ public sealed class HoldedAdminOverviewTests
     }
 
     [HumansFact]
-    public async Task Mirror_reads_never_call_holded()
+    public async Task MirrorReads_Any_NeverCallHolded()
     {
         var ct = Xunit.TestContext.Current.CancellationToken;
         await _repo.UpsertAccountsAsync([Account(40000004, -10m), Account(62900000, 10m)], FixedNow, ct);

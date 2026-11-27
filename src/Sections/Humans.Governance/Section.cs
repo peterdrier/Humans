@@ -7,6 +7,7 @@ using Humans.Base.Extensions;
 using Humans.Base.Hosting;
 using Humans.AuditLog.Contracts;
 using Humans.Base.Interfaces;
+using Humans.Base.Interfaces.Caching;
 using Humans.Base.Models;
 using Humans.Base.Models.Tables;
 using Humans.Email.Contracts;
@@ -65,15 +66,23 @@ public sealed class Section :
 
         services.AddSingleton<IMembershipTierRepository>(sp => (IMembershipTierRepository)sp.GetRequiredService<IApplicationRepository>());
         services.AddScoped<MembershipTierService>();
+        services.AddKeyedScoped<IGovernanceService>(CachingGovernanceService.InnerServiceKey,
+            (sp, _) => sp.GetRequiredService<MembershipTierService>());
         services.AddScoped<IUserDataContributor>(sp => sp.GetRequiredService<MembershipTierService>());
         // Snapshot legacy tier grants before ApplicationDecisionService moves their applications.
         services.AddScoped<IUserMerge>(sp => sp.GetRequiredService<MembershipTierService>());
+        services.AddSingleton<CachingGovernanceService>();
+        services.AddSingleton<IGovernanceService>(sp => sp.GetRequiredService<CachingGovernanceService>());
+        services.AddSingleton<ICacheStats>(sp => sp.GetRequiredService<CachingGovernanceService>());
 
         services.AddScoped<ApplicationDecisionService>();
-        services.AddScoped<IGovernanceManagement>(sp => sp.GetRequiredService<ApplicationDecisionService>());
-        services.AddScoped<IGovernanceService>(sp => sp.GetRequiredService<MembershipTierService>());
+        services.AddKeyedScoped<IGovernanceManagement>(CachingGovernanceManagement.InnerServiceKey,
+            (sp, _) => sp.GetRequiredService<ApplicationDecisionService>());
         services.AddScoped<IUserDataContributor>(sp => sp.GetRequiredService<ApplicationDecisionService>());
         services.AddScoped<IUserMerge>(sp => sp.GetRequiredService<ApplicationDecisionService>());
+        services.AddSingleton<CachingGovernanceManagement>();
+        services.AddSingleton<IGovernanceManagement>(sp => sp.GetRequiredService<CachingGovernanceManagement>());
+        services.AddSingleton<ICacheStats>(sp => sp.GetRequiredService<CachingGovernanceManagement>());
 
         services.AddScoped<IGovernanceIndexService, GovernanceIndexService>();
 

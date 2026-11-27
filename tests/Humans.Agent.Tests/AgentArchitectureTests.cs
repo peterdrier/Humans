@@ -8,7 +8,7 @@ namespace Humans.Agent.Tests;
 public class AgentArchitectureTests
 {
     [HumansFact]
-    public void SectionRegistersTheConversationRetentionService()
+    public void Section_Registration_HasRetentionService()
     {
         // The daily job that deletes expired agent conversations asks for this interface.
         // Lose the registration and the job stops running, so old conversations are kept

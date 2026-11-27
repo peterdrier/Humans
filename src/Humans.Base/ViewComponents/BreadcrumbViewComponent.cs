@@ -11,9 +11,8 @@ namespace Humans.Base.ViewComponents;
 public sealed record BreadcrumbViewModel(IReadOnlyList<IHtmlContent> Items);
 
 /// <summary>
-/// The member layout's Bootstrap breadcrumb, built from the page's <c>Crumbs</c> section — the same
-/// section <c>_AdminLayout</c> hands to <see cref="AdminBreadcrumbViewComponent"/>, so a page writes
-/// its crumbs once, for either layout. Each top-level element or text run of the section is one item
+/// The member layout's Bootstrap breadcrumb, built from the page's <c>Crumbs</c> section. The admin
+/// shell shows no breadcrumb and ignores the section. Each top-level element or text run of the section is one item
 /// (links first, the current page last); an attribute-less <c>&lt;span&gt;</c> contributes its content.
 /// </summary>
 public sealed class BreadcrumbViewComponent : ViewComponent

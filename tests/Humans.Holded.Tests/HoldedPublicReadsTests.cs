@@ -76,14 +76,14 @@ public sealed class HoldedPublicReadsTests
     [HumansTheory]
     [Xunit.InlineData(true)]
     [Xunit.InlineData(false)]
-    public void IsConfigured_is_the_connectors(bool configured)
+    public void IsConfigured_Read_ComesFromConnector(bool configured)
     {
         _client.IsConfigured.Returns(configured);
         _service.IsConfigured.Should().Be(configured);
     }
 
     [HumansFact]
-    public async Task GetChart_carries_holded_and_english_names_and_no_holded_id()
+    public async Task GetChart_Accounts_CarryNoHoldedId()
     {
         var ct = Xunit.TestContext.Current.CancellationToken;
         await _repo.UpsertAccountsAsync(
@@ -106,7 +106,7 @@ public sealed class HoldedPublicReadsTests
     }
 
     [HumansFact]
-    public async Task Accounts_page_groups_by_leading_digit_then_subgroup_and_hides_archived_and_empty_by_default()
+    public async Task AccountsPage_Default_HidesArchivedOrEmpty()
     {
         var ct = Xunit.TestContext.Current.CancellationToken;
         await _repo.UpsertAccountsAsync(
@@ -146,7 +146,7 @@ public sealed class HoldedPublicReadsTests
     }
 
     [HumansFact]
-    public async Task Statement_lines_carry_entry_id_and_tick_and_counterparties_from_their_own_entries()
+    public async Task StatementLines_OwnEntries_GiveCounterparties()
     {
         var ct = Xunit.TestContext.Current.CancellationToken;
         await SeedAsync(ct,
@@ -166,7 +166,7 @@ public sealed class HoldedPublicReadsTests
     }
 
     [HumansFact]
-    public async Task A_negative_purchase_line_finds_its_counterparty_on_the_normal_side()
+    public async Task Counterparty_NegativePurchaseLine_IsOnNormalSide()
     {
         var ct = Xunit.TestContext.Current.CancellationToken;
         await SeedAsync(ct,
@@ -179,7 +179,7 @@ public sealed class HoldedPublicReadsTests
     }
 
     [HumansFact]
-    public async Task Summary_counts_the_mirror_and_estimates_a_full_resync()
+    public async Task Summary_Mirror_IsCounted()
     {
         var ct = Xunit.TestContext.Current.CancellationToken;
         _client.IsConfigured.Returns(false);

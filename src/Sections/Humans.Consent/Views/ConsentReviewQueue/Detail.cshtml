@@ -3,10 +3,9 @@
     ViewData["Title"] = Localizer["Consent_Queue_Title"].Value;
 }
 
-@section Crumbs {
-    <span><vc:human user-id="@Model.UserId" /></span>
-}
-
+<page-header>
+    <page-header-title><vc:human user-id="@Model.UserId" layout="Text" /></page-header-title>
+</page-header>
 
 <div class="row">
     <div class="col-md-8">

@@ -12,14 +12,6 @@
     };
 }
 
-<page-header title="Stripe" />
-<partial name="_StripeNav" />
-
-<p class="text-muted">
-    A read-only mirror of our Stripe accounts, rebuilt from Stripe by every sweep (nightly at 03:30). Nothing here is
-    written to Stripe or booked into Holded.
-</p>
-
 <div class="mb-4">
     <form authorize-policy="@FinancePolicies.Manage" asp-action="SyncNow" method="post" class="d-inline js-sync-form">
         @Html.AntiForgeryToken()
@@ -136,6 +128,11 @@
         </div>
     }
 </div>
+
+<p class="text-muted small mt-3">
+    A read-only mirror of our Stripe accounts, rebuilt from Stripe by every sweep (nightly at 03:30). Nothing here is
+    written to Stripe or booked into Holded.
+</p>
 
 <script>
     // A second submit only earns a "skipped" toast; disable on click.

@@ -1,3 +1,5 @@
+using JetBrains.Annotations;
+
 namespace Humans.Surveys.Contracts;
 
 /// <summary>
@@ -45,10 +47,12 @@ public sealed record SurveyDefinitionImage(Guid Id, string Url, string Label, st
 /// <summary>
 /// <c>All</c> = AND, <c>Any</c> = OR. A public mirror of the stored jsonb, so the persisted shape stays free to change.
 /// </summary>
+[UsedImplicitly(ImplicitUseKindFlags.Access, ImplicitUseTargetFlags.WithMembers)]
 public sealed record SurveyBranchCondition(string Combine, IReadOnlyList<SurveyBranchClause> Clauses);
 
 /// <summary>
 /// <see cref="Operator"/> is <c>Is</c>, <c>IsNot</c>, <c>Answered</c> or <c>NotAnswered</c>, applied to the
 /// referenced question's selected option values.
 /// </summary>
+[UsedImplicitly(ImplicitUseKindFlags.Access, ImplicitUseTargetFlags.WithMembers)]
 public sealed record SurveyBranchClause(Guid QuestionId, string Operator, IReadOnlyList<string> OptionValues);

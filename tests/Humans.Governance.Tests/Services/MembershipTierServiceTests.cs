@@ -7,6 +7,8 @@ using Humans.Governance.Domain;
 using Humans.Governance.Services;
 using Humans.Users.Contracts;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging.Abstractions;
 using NodaTime;
 using NodaTime.Testing;
 using NSubstitute;
@@ -25,14 +27,20 @@ public sealed class MembershipTierServiceTests : IDisposable
     private readonly IUserService _users = Substitute.For<IUserService>();
     private readonly GovernanceDbContext _db;
     private readonly MembershipTierService _sut;
+    private readonly CachingGovernanceService _cache;
 
     public MembershipTierServiceTests()
     {
         var factory = new TestDbContextFactory<GovernanceDbContext>(
             TestDbOptions.InMemory<GovernanceDbContext>());
         _db = factory.CreateDbContext();
+        var services = new ServiceCollection();
+        services.AddKeyedScoped<IGovernanceService>(CachingGovernanceService.InnerServiceKey, (_, _) => _sut!);
+        _cache = new CachingGovernanceService(
+            services.BuildServiceProvider().GetRequiredService<IServiceScopeFactory>(),
+            NullLogger<CachingGovernanceService>.Instance);
         _sut = new MembershipTierService(
-            new ApplicationRepository(factory), new ApplicationRepository(factory), _users, _audit, _clock);
+            new ApplicationRepository(factory), new ApplicationRepository(factory), _users, _audit, _cache, _clock);
     }
 
     public void Dispose() => _db.Dispose();
@@ -121,6 +129,44 @@ public sealed class MembershipTierServiceTests : IDisposable
             [colaborador] = MembershipTier.Colaborador,
             [rowed] = MembershipTier.Asociado,
         });
+    }
+
+    [HumansFact]
+    public async Task CachedRead_MergedAccount_ReadsTheSurvivorsTier()
+    {
+        var survivor = SeedUser();
+        await SeedRowAsync(survivor, MembershipTier.Asociado);
+        var survivorInfo = await _users.GetUserInfoAsync(survivor, Ct);
+        var merged = Guid.NewGuid();
+        _users.GetUserInfoAsync(merged, Arg.Any<CancellationToken>()).Returns(survivorInfo);
+
+        (await _cache.GetMembershipTierAsync(merged, Ct)).Should().Be(MembershipTier.Asociado);
+    }
+
+    [HumansFact]
+    public async Task Expire_Downgrade_ClearsTheCachedTier()
+    {
+        var lapsed = SeedUser();
+        await SeedRowAsync(lapsed, MembershipTier.Asociado);
+        await SeedApprovedAsync(lapsed, MembershipTier.Asociado, Today.PlusDays(-1));
+        (await _cache.GetMembershipTierAsync(lapsed, Ct)).Should().Be(MembershipTier.Asociado);
+
+        await _sut.ExpireAsync(MembershipTier.Asociado, Today, Ct);
+
+        (await _cache.GetMembershipTierAsync(lapsed, Ct)).Should().Be(MembershipTier.Volunteer);
+    }
+
+    [HumansFact]
+    public async Task Merge_MovedTier_ClearsTheCachedTier()
+    {
+        var source = SeedUser();
+        var target = SeedUser();
+        await SeedRowAsync(source, MembershipTier.Asociado);
+        (await _cache.GetMembershipTierAsync(target, Ct)).Should().Be(MembershipTier.Volunteer);
+
+        await _sut.ReassignAsync(source, target, Guid.NewGuid(), Now, Ct);
+
+        (await _cache.GetMembershipTierAsync(target, Ct)).Should().Be(MembershipTier.Asociado);
     }
 
     [HumansFact]

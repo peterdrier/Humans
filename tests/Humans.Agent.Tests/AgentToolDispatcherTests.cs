@@ -13,7 +13,7 @@ namespace Humans.Agent.Tests;
 public class AgentToolDispatcherTests
 {
     [HumansFact]
-    public async Task Unknown_tool_name_returns_error_result()
+    public async Task Dispatch_UnknownToolName_ReturnsError()
     {
         var dispatcher = MakeDispatcher();
         var result = await dispatcher.DispatchAsync(
@@ -26,7 +26,7 @@ public class AgentToolDispatcherTests
     }
 
     [HumansFact]
-    public async Task GetAuditHistory_renders_lines_with_viewer_substitution_and_filters_unmapped()
+    public async Task GetAuditHistory_UnmappedEntries_AreFiltered()
     {
         var viewer = Guid.NewGuid();
         var actor = Guid.NewGuid();
@@ -55,7 +55,7 @@ public class AgentToolDispatcherTests
     }
 
     [HumansFact]
-    public async Task GetAuditHistory_empty_history_returns_friendly_message()
+    public async Task GetAuditHistory_EmptyHistory_ReturnsFriendlyMessage()
     {
         var dispatcher = MakeDispatcher(new StubAuditViewer { Events = [] });
 
@@ -69,7 +69,7 @@ public class AgentToolDispatcherTests
     }
 
     [HumansFact]
-    public async Task GetAuditHistory_caps_limit_at_50_and_defaults_to_20()
+    public async Task GetAuditHistory_Limit_IsCappedWithDefault()
     {
         // The dispatcher passes `limit` straight to GetForUserAsync after
         // clamping. We capture the value used.
@@ -132,7 +132,7 @@ public class AgentToolDispatcherTests
             Description: "anomaly");
 
     [HumansFact]
-    public async Task GetShiftDetails_with_block_id_returns_rota_name_dates_and_day_count()
+    public async Task GetShiftDetails_BlockId_ReturnsBlockDetails()
     {
         var viewer = Guid.NewGuid();
         var blockId = Guid.NewGuid();
@@ -164,7 +164,7 @@ public class AgentToolDispatcherTests
     }
 
     [HumansFact]
-    public async Task GetShiftDetails_with_singleton_id_returns_single_date()
+    public async Task GetShiftDetails_SingletonId_ReturnsSingleDate()
     {
         var viewer = Guid.NewGuid();
         var ev = MakeEventSettings();
@@ -193,7 +193,7 @@ public class AgentToolDispatcherTests
     }
 
     [HumansFact]
-    public async Task GetShiftDetails_with_unknown_id_returns_not_found_error()
+    public async Task GetShiftDetails_UnknownId_ReturnsNotFound()
     {
         var viewer = Guid.NewGuid();
         var ev = MakeEventSettings();
@@ -216,7 +216,7 @@ public class AgentToolDispatcherTests
     }
 
     [HumansFact]
-    public async Task GetShiftDetails_does_not_leak_other_users_shifts()
+    public async Task GetShiftDetails_OtherUsersShift_IsNotLeaked()
     {
         // Lookup uses the viewer's own GetByUserAsync return — a foreign user's
         // signup id will not appear in that list, so we get a "not found"
@@ -244,7 +244,7 @@ public class AgentToolDispatcherTests
     }
 
     [HumansFact]
-    public async Task GetShiftDetails_with_invalid_guid_returns_validation_error()
+    public async Task GetShiftDetails_InvalidGuid_ReturnsValidationError()
     {
         var dispatcher = MakeDispatcher();
         var result = await dispatcher.DispatchAsync(
@@ -345,7 +345,7 @@ public class AgentToolDispatcherTests
     }
 
     [HumansFact]
-    public async Task FetchCommunityFaq_returns_wrapped_body_for_known_topic()
+    public async Task FetchCommunityFaq_KnownTopic_ReturnsWrappedBody()
     {
         var dispatcher = MakeDispatcher();
 
@@ -360,7 +360,7 @@ public class AgentToolDispatcherTests
     }
 
     [HumansFact]
-    public async Task FetchCommunityFaq_returns_error_for_unknown_topic()
+    public async Task FetchCommunityFaq_UnknownTopic_ReturnsError()
     {
         var dispatcher = MakeDispatcher();
 
@@ -394,7 +394,7 @@ public class AgentToolDispatcherTests
     }
 
     [HumansFact]
-    public async Task FetchCommunityFaq_miss_lists_the_valid_topics()
+    public async Task FetchCommunityFaq_Miss_ListsValidTopics()
     {
         var dispatcher = MakeDispatcher();
 
@@ -408,7 +408,7 @@ public class AgentToolDispatcherTests
     }
 
     [HumansFact]
-    public async Task FetchFeatureSpec_miss_lists_the_valid_stems()
+    public async Task FetchFeatureSpec_Miss_ListsValidStems()
     {
         var dispatcher = MakeDispatcher();
 
@@ -432,7 +432,7 @@ public class AgentToolDispatcherTests
     [InlineData("Events-feature")]
     [InlineData("gate-admissions")]
     [InlineData("gdpr-export")]
-    public async Task FetchFeatureSpec_resolves_a_stem_to_its_own_section_folder(string stem)
+    public async Task FetchFeatureSpec_Stem_ResolvesToSectionFolder(string stem)
     {
         var dispatcher = MakeDispatcher();
 
@@ -451,7 +451,7 @@ public class AgentToolDispatcherTests
     /// message rather than telling the model an empty set is what it may ask for.
     /// </summary>
     [HumansFact]
-    public async Task FetchFeatureSpec_miss_omits_the_key_list_when_the_folder_cannot_be_listed()
+    public async Task FetchFeatureSpec_MissFolderUnlistable_OmitsKeyList()
     {
         var dispatcher = MakeDispatcher(source: new UnlistableGuideSource());
 
@@ -486,7 +486,7 @@ public class AgentToolDispatcherTests
     [InlineData(AgentToolNames.FetchCommunityFaq, "{\"topic\":{}}")]
     [InlineData(AgentToolNames.GetShiftDetails, "{\"shiftId\":true}")]
     [InlineData(AgentToolNames.GetAuditHistory, "null")]
-    public async Task Malformed_tool_argument_types_return_an_error_without_reading_audit(string tool, string arguments)
+    public async Task Dispatch_MalformedArgumentTypes_ReturnsError(string tool, string arguments)
     {
         var audit = new StubAuditViewer();
         var dispatcher = MakeDispatcher(auditViewer: audit);
@@ -500,7 +500,7 @@ public class AgentToolDispatcherTests
     }
 
     [HumansFact]
-    public async Task GetAuditHistory_dependency_invalid_operation_is_not_a_malformed_argument()
+    public async Task GetAuditHistory_DependencyThrows_IsNotArgumentError()
     {
         var audit = Substitute.For<Humans.AuditLog.Contracts.IAuditViewerService>();
         audit.GetForUserAsync(Arg.Any<Guid>(), Arg.Any<int>(), Arg.Any<CancellationToken>())
@@ -515,7 +515,7 @@ public class AgentToolDispatcherTests
     }
 
     [HumansFact]
-    public async Task GetShiftDetails_dependency_json_failure_is_not_a_malformed_argument()
+    public async Task GetShiftDetails_DependencyJsonFailure_IsNotArgumentError()
     {
         var settings = Substitute.For<ISettingsService>();
         var failure = new System.Text.Json.JsonException("Stored event settings could not be decoded");

@@ -1,4 +1,5 @@
 using Humans.Google.Contracts;
+using JetBrains.Annotations;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using Humans.Base.Extensions;
@@ -68,6 +69,7 @@ internal sealed class GoogleTranslationClient(
             ?? throw new InvalidOperationException("Translation returned a segment without translated text.")).ToList();
     }
 
+    [UsedImplicitly(ImplicitUseKindFlags.Access, ImplicitUseTargetFlags.WithMembers)]
     private sealed record TranslateRequest(IReadOnlyList<string> Q, string Source, string Target, string Format);
 
     private sealed record TranslateResponse(TranslateData? Data);

@@ -1,4 +1,5 @@
 using Humans.Teams.Domain;
+using JetBrains.Annotations;
 using Microsoft.AspNetCore.Mvc.ModelBinding;
 using System.ComponentModel.DataAnnotations;
 using Humans.Teams.Contracts;
@@ -368,6 +369,7 @@ internal sealed class TeamMemberDropdownItem
     public string BurnerName { get; set; } = string.Empty;
 }
 
+[UsedImplicitly(ImplicitUseKindFlags.Assign, ImplicitUseTargetFlags.WithMembers)]
 internal sealed class CreateRoleDefinitionModel
 {
     public string Name { get; set; } = string.Empty;
@@ -386,6 +388,7 @@ internal sealed class CreateRoleDefinitionModel
     public RolePeriod Period { get; set; } = RolePeriod.YearRound;
 }
 
+[UsedImplicitly(ImplicitUseKindFlags.Assign, ImplicitUseTargetFlags.WithMembers)]
 internal sealed class EditRoleDefinitionModel
 {
     public string Name { get; set; } = string.Empty;

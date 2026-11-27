@@ -51,7 +51,10 @@ public sealed class Section : SectionBase, ISectionAdminNav, ISectionConfigurati
     IEnumerable<AdminNavGroup> ISectionAdminNav.Groups() =>
     [
         AdminGroup([
-            AdminLink<StripeController>("Stripe", nameof(StripeController.Index), "fa-brands fa-stripe-s", FinancePolicies.Read)
+            AdminLink<StripeController>("Accounts", nameof(StripeController.Index), "fa-brands fa-stripe-s", FinancePolicies.Read),
+            AdminLink<StripeController>("Transactions", nameof(StripeController.Transactions), "fa-solid fa-list", FinancePolicies.Read),
+            AdminLink<StripeController>("Payouts", nameof(StripeController.Payouts), "fa-solid fa-building-columns", FinancePolicies.Read),
+            AdminLink<StripeController>("Reserves", nameof(StripeController.Reserves), "fa-solid fa-vault", FinancePolicies.Read)
         ])
     ];
 

@@ -48,6 +48,53 @@ public class AboutController(
         return View(stats);
     }
 
+    private static readonly string[] EffortOrder = ["low", "medium", "high", "xhigh", "max"];
+
+    [AllowAnonymous]
+    [HttpGet("Logos")]
+    public IActionResult Logos([FromServices] IWebHostEnvironment env)
+    {
+        // Committed files, one folder per drawing; no index file so parallel entries never conflict.
+        var files = env.WebRootFileProvider;
+        var entries = new List<LogoLibraryEntry>();
+        foreach (var dir in files.GetDirectoryContents("img/logo-library").Where(d => d.IsDirectory))
+        {
+            var file = files.GetFileInfo($"img/logo-library/{dir.Name}/entry.json");
+            if (!file.Exists)
+            {
+                continue;
+            }
+            try
+            {
+                using var stream = file.CreateReadStream();
+                var entry = System.Text.Json.JsonSerializer.Deserialize<LogoLibraryEntry>(
+                    stream, new System.Text.Json.JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+                if (entry is not null)
+                {
+                    entries.Add(entry with { Slug = dir.Name });
+                }
+            }
+            catch (Exception ex) when (ex is System.Text.Json.JsonException or IOException or UnauthorizedAccessException)
+            {
+                logger.LogError(ex, "Failed to read logo library entry {Slug}", dir.Name);
+            }
+        }
+
+        var ordered = entries
+            .OrderBy(e => e.Family, StringComparer.OrdinalIgnoreCase)
+            .ThenBy(e => e.Model, StringComparer.OrdinalIgnoreCase)
+            .ThenBy(e => VersionKey(e.Version))
+            .ThenBy(e => Array.IndexOf(EffortOrder, e.Effort?.ToLowerInvariant()))
+            .ThenBy(e => e.Date, StringComparer.Ordinal)
+            .ToList();
+        return View(ordered);
+    }
+
+    private static Version VersionKey(string version) =>
+        Version.TryParse(version.Contains('.', StringComparison.Ordinal) ? version : version + ".0", out var parsed)
+            ? parsed
+            : new Version(0, 0);
+
     [Authorize]
     [HttpGet("Staff")]
     public async Task<IActionResult> Staff()

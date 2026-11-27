@@ -441,7 +441,7 @@ internal sealed class UserRepository : SectionRepository<UsersDbContext>, IUserR
     }
 
     public async Task UpdateAsync(
-        Profile profile, CancellationToken ct = default, IReadOnlyList<CVEntry>? volunteerHistory = null,
+        Profile profile, CancellationToken ct = default, IReadOnlyList<CvEntry>? volunteerHistory = null,
         UserNames? names = null)
     {
         await using var ctx = await CreateDbContextAsync(ct);
@@ -693,7 +693,7 @@ internal sealed class UserRepository : SectionRepository<UsersDbContext>, IUserR
     private async Task ReconcileCvEntriesAsync(
         UsersDbContext ctx,
         Profile profile,
-        IReadOnlyList<CVEntry> entries,
+        IReadOnlyList<CvEntry> entries,
         CancellationToken ct)
     {
         // Tracked, so the change tracker sees in-place mutations.

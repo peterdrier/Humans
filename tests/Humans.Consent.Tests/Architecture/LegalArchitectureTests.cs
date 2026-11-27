@@ -6,7 +6,7 @@ namespace Humans.Consent.Tests.Architecture;
 public sealed class LegalArchitectureTests
 {
     [HumansFact]
-    public void LegalDocumentSyncService_does_not_reference_octokit()
+    public void LegalDocumentSyncService_References_ExcludeOctokit()
     {
         var ctor = typeof(LegalDocumentSyncService).GetConstructors().Single();
         var octokitParam = ctor.GetParameters()

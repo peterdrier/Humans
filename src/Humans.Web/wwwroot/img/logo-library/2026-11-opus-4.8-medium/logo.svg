@@ -1,0 +1,140 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="-2 -2 244 244" role="img" aria-label="Vitruvian Man">
+  <defs>
+    <style>
+      .gold{fill:#c9a96e}
+      .goldline{fill:none;stroke:#c9a96e;stroke-linecap:round;stroke-linejoin:round}
+      .ink1{fill:none;stroke:#3d2b1f;stroke-width:2.0;stroke-linecap:round;stroke-linejoin:round}
+      .ink2{fill:none;stroke:#3d2b1f;stroke-width:1.4;stroke-linecap:round;stroke-linejoin:round}
+      .ink3{fill:none;stroke:#3d2b1f;stroke-width:0.9;stroke-linecap:round;stroke-linejoin:round}
+      .inkf{fill:#3d2b1f}
+    </style>
+  </defs>
+
+  <!-- faint gold construction -->
+  <g class="goldline" stroke-width="0.6" opacity="0.5">
+    <line x1="120" y1="0" x2="120" y2="240"/>
+    <line x1="0" y1="120" x2="240" y2="120"/>
+    <line x1="120" y1="120" x2="51" y2="22"/>
+    <line x1="120" y1="120" x2="189" y2="22"/>
+    <line x1="120" y1="120" x2="71" y2="230"/>
+    <line x1="120" y1="120" x2="169" y2="230"/>
+  </g>
+
+  <!-- bold gold frame -->
+  <circle cx="120" cy="120" r="120" class="goldline" stroke-width="2.6"/>
+  <rect x="23" y="46" width="194" height="194" class="goldline" stroke-width="2.6"/>
+
+  <!-- bold gold base: limbs as thick strokes -->
+  <g class="goldline" stroke-width="12">
+    <!-- horizontal arms -->
+    <path d="M120 86 L28 86"/>
+    <path d="M120 86 L212 86"/>
+    <!-- raised arms -->
+    <path d="M120 86 L84 58 L51 24"/>
+    <path d="M120 86 L156 58 L189 24"/>
+    <!-- legs together -->
+    <path d="M117 150 L112 236" stroke-width="13"/>
+    <path d="M123 150 L128 236" stroke-width="13"/>
+    <!-- legs spread -->
+    <path d="M114 150 L92 192 L72 229" stroke-width="13"/>
+    <path d="M126 150 L148 192 L168 229" stroke-width="13"/>
+  </g>
+
+  <!-- torso filled: broad chest, slim waist, wide hips -->
+  <path class="gold" d="M110 71 Q106 80 92 85 Q99 92 100 102 Q112 108 112 116 Q106 130 108 146 Q120 152 132 146 Q134 130 128 116 Q128 108 140 102 Q141 92 148 85 Q134 80 130 71 Z"/>
+  <!-- deltoids -->
+  <path class="gold" d="M92 85 Q86 82 82 88 Q90 92 100 90 Z"/>
+  <path class="gold" d="M148 85 Q154 82 158 88 Q150 92 140 90 Z"/>
+
+  <!-- neck -->
+  <rect class="gold" x="114" y="66" width="12" height="9" rx="3"/>
+  <!-- head -->
+  <ellipse class="gold" cx="120" cy="57" rx="10.5" ry="13"/>
+  <!-- pelvis -->
+  <path class="gold" d="M106 144 Q120 158 134 144 Q133 155 120 158 Q107 155 106 144 Z"/>
+
+  <!-- hands -->
+  <g class="gold">
+    <circle cx="26" cy="86" r="6.5"/>
+    <circle cx="214" cy="86" r="6.5"/>
+    <circle cx="50" cy="23" r="6"/>
+    <circle cx="190" cy="23" r="6"/>
+  </g>
+  <!-- feet -->
+  <g class="gold">
+    <ellipse cx="113" cy="238" rx="8" ry="4"/>
+    <ellipse cx="127" cy="238" rx="8" ry="4"/>
+    <ellipse cx="71" cy="231" rx="8" ry="4" transform="rotate(-30 71 231)"/>
+    <ellipse cx="169" cy="231" rx="8" ry="4" transform="rotate(30 169 231)"/>
+  </g>
+
+  <!-- INK TIER 1: main contours / pose separations -->
+  <g class="ink1">
+    <!-- torso outline -->
+    <path d="M110 73 Q106 80 92 85 Q99 92 100 102 Q112 108 112 116 Q106 130 108 146"/>
+    <path d="M130 73 Q134 80 148 85 Q141 92 140 102 Q128 108 128 116 Q134 130 132 146"/>
+    <!-- centre line -->
+    <path d="M120 76 L120 148"/>
+    <!-- leg separation (together) -->
+    <path d="M118 152 L113 234"/>
+    <path d="M122 152 L127 234"/>
+    <!-- spread leg contour -->
+    <path d="M114 152 L92 192 L73 228"/>
+    <path d="M126 152 L148 192 L167 228"/>
+    <!-- horizontal arm contour -->
+    <path d="M120 86 L29 86"/>
+    <path d="M120 86 L211 86"/>
+    <!-- raised arm contour -->
+    <path d="M120 86 L84 58 L51 25"/>
+    <path d="M120 86 L156 58 L189 25"/>
+  </g>
+
+  <!-- INK TIER 2: muscle groups / hair -->
+  <g class="ink2">
+    <!-- collarbones -->
+    <path d="M120 84 Q108 80 98 85"/>
+    <path d="M120 84 Q132 80 142 85"/>
+    <!-- pecs -->
+    <path d="M110 92 Q114 100 116 108"/>
+    <path d="M130 92 Q126 100 124 108"/>
+    <!-- ribcage / abs -->
+    <path d="M114 116 Q120 118 126 116"/>
+    <path d="M113 126 Q120 128 127 126"/>
+    <path d="M112 136 Q120 138 128 136"/>
+    <!-- elbows -->
+    <circle cx="84" cy="58" r="2.4"/>
+    <circle cx="156" cy="58" r="2.4"/>
+    <!-- knees -->
+    <circle cx="92" cy="192" r="2.4"/>
+    <circle cx="148" cy="192" r="2.4"/>
+    <!-- hair -->
+    <path d="M110 50 Q120 44 130 50"/>
+    <path d="M111 53 Q120 47 129 53"/>
+  </g>
+
+  <!-- INK TIER 3: face / fingers / toes / hatching -->
+  <g class="ink3">
+    <!-- face: neutral, no smile -->
+    <path d="M114 53 L118 53"/>
+    <path d="M122 53 L126 53"/>
+    <path d="M115 55 L116 57"/>
+    <path d="M125 55 L124 57"/>
+    <path d="M120 56 L120 62"/>
+    <path d="M119 63 L121 63"/>
+    <path d="M116 66 L124 66"/>
+    <!-- fingers horizontal hands -->
+    <path d="M22 83 L19 82 M22 86 L18 86 M22 89 L19 90"/>
+    <path d="M218 83 L221 82 M218 86 L222 86 M218 89 L221 90"/>
+    <!-- fingers raised hands -->
+    <path d="M47 20 L44 17 M50 18 L49 14 M53 20 L55 16"/>
+    <path d="M193 20 L196 17 M190 18 L191 14 M187 20 L185 16"/>
+    <!-- toes together -->
+    <path d="M108 240 L108 242 M113 240 L113 242 M118 240 L118 242"/>
+    <path d="M122 240 L122 242 M127 240 L127 242 M132 240 L132 242"/>
+    <!-- thigh / shin hatching -->
+    <path d="M100 176 L104 178 M98 182 L102 184"/>
+    <path d="M140 176 L136 178 M142 182 L138 184"/>
+    <!-- navel -->
+    <circle cx="120" cy="120" r="1.1" class="inkf"/>
+  </g>
+</svg>

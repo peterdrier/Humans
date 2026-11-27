@@ -48,7 +48,9 @@ public sealed class Section : SectionBase, ISectionAdminNav, ISectionConfigurati
     IEnumerable<AdminNavGroup> ISectionAdminNav.Groups() =>
     [
         AdminGroup([
-            AdminLink<PleoController>("Pleo", nameof(PleoController.Index), "fa-solid fa-credit-card", FinancePolicies.Read)
+            AdminLink<PleoController>("Summary", nameof(PleoController.Index), "fa-solid fa-credit-card", FinancePolicies.Read),
+            AdminLink<PleoController>("Entries", nameof(PleoController.Entries), "fa-solid fa-list", FinancePolicies.Read),
+            AdminLink<PleoController>("Categories", nameof(PleoController.Categories), "fa-solid fa-tags", FinancePolicies.Read)
         ])
     ];
 

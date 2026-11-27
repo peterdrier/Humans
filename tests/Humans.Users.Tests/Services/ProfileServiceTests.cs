@@ -71,13 +71,13 @@ public sealed class ProfileServiceTests : ServiceTestHarness
                 Arg.Any<UserProfileSaveCommand>(),
                 Arg.Any<byte[]?>(),
                 Arg.Any<CancellationToken>(),
-                Arg.Any<IReadOnlyList<CVEntry>?>())
+                Arg.Any<IReadOnlyList<CvEntry>?>())
             .Returns(call => _storageUserService.SaveProfileAsync(
                 call.ArgAt<Guid>(0),
                 call.ArgAt<UserProfileSaveCommand>(1),
                 call.ArgAt<byte[]?>(2),
                 call.ArgAt<CancellationToken>(3),
-                call.ArgAt<IReadOnlyList<CVEntry>?>(4)));
+                call.ArgAt<IReadOnlyList<CvEntry>?>(4)));
     }
 
     [HumansFact]
@@ -483,7 +483,7 @@ public sealed class ProfileServiceTests : ServiceTestHarness
         var repo = Substitute.For<IUserRepository>();
         repo.GetByUserIdAsync(userId, Arg.Any<CancellationToken>()).Returns(existing);
         repo.UpdateAsync(
-                Arg.Any<Profile>(), Arg.Any<CancellationToken>(), Arg.Any<IReadOnlyList<CVEntry>?>(), Arg.Any<UserNames?>())
+                Arg.Any<Profile>(), Arg.Any<CancellationToken>(), Arg.Any<IReadOnlyList<CvEntry>?>(), Arg.Any<UserNames?>())
             .ThrowsAsync(new InvalidOperationException("Database unavailable"));
         repo.GetProfilePictureLocationAsync(profileId, Arg.Any<CancellationToken>())
             .ThrowsAsync(new IOException("Could not verify the committed picture"));
@@ -513,7 +513,7 @@ public sealed class ProfileServiceTests : ServiceTestHarness
         failingRepo.GetByUserIdAsync(userId, Arg.Any<CancellationToken>()).Returns(existing);
         failingRepo.GetProfilePictureLocationAsync(profileId, Arg.Any<CancellationToken>()).Returns(("image/png", null));
         failingRepo.UpdateAsync(
-                Arg.Any<Profile>(), Arg.Any<CancellationToken>(), Arg.Any<IReadOnlyList<CVEntry>?>(), Arg.Any<UserNames?>())
+                Arg.Any<Profile>(), Arg.Any<CancellationToken>(), Arg.Any<IReadOnlyList<CvEntry>?>(), Arg.Any<UserNames?>())
             .ThrowsAsync(new InvalidOperationException("Database unavailable"));
         var sut = new UserService(
             failingRepo,
@@ -861,13 +861,13 @@ public sealed class ProfileServiceTests : ServiceTestHarness
         var options = new DbContextOptionsBuilder<UsersDbContext>(DbOptions)
             .AddInterceptors(new RejectCvSave()).Options;
         var failingService = BuildUserServiceWith(new UserRepository(new TestDbContextFactory(options), Clock));
-        _userService.SaveProfileAsync(userId, Arg.Any<UserProfileSaveCommand>(), Arg.Any<byte[]?>(), Arg.Any<CancellationToken>(), Arg.Any<IReadOnlyList<CVEntry>?>())
+        _userService.SaveProfileAsync(userId, Arg.Any<UserProfileSaveCommand>(), Arg.Any<byte[]?>(), Arg.Any<CancellationToken>(), Arg.Any<IReadOnlyList<CvEntry>?>())
             .Returns(call => failingService.SaveProfileAsync(userId,
-                call.Arg<UserProfileSaveCommand>(), call.Arg<byte[]?>(), call.Arg<CancellationToken>(), call.Arg<IReadOnlyList<CVEntry>?>()));
+                call.Arg<UserProfileSaveCommand>(), call.Arg<byte[]?>(), call.Arg<CancellationToken>(), call.Arg<IReadOnlyList<CvEntry>?>()));
         var request = MakeRequest() with
         {
             NoPriorBurnExperience = hadHistory,
-            VolunteerHistory = hadHistory ? [] : [new CVEntry(Guid.Empty, new LocalDate(2025, 7, 1), "New history", null)],
+            VolunteerHistory = hadHistory ? [] : [new CvEntry(Guid.Empty, new LocalDate(2025, 7, 1), "New history", null)],
         };
 
         var act = () => _editor.SaveProfileAsync(userId, request, ct);
@@ -902,10 +902,10 @@ public sealed class ProfileServiceTests : ServiceTestHarness
         var profileId = await SeedUserWithProfileAsync(userId);
         var historyReached = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
         var resumeHistory = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
-        _userService.SaveProfileAsync(userId, Arg.Any<UserProfileSaveCommand>(), Arg.Any<byte[]?>(), Arg.Any<CancellationToken>(), Arg.Any<IReadOnlyList<CVEntry>?>())
+        _userService.SaveProfileAsync(userId, Arg.Any<UserProfileSaveCommand>(), Arg.Any<byte[]?>(), Arg.Any<CancellationToken>(), Arg.Any<IReadOnlyList<CvEntry>?>())
             .Returns(async call =>
             {
-                var entries = call.Arg<IReadOnlyList<CVEntry>?>();
+                var entries = call.Arg<IReadOnlyList<CvEntry>?>();
                 if (entries is { Count: 0 })
                 {
                     historyReached.TrySetResult();
@@ -926,7 +926,7 @@ public sealed class ProfileServiceTests : ServiceTestHarness
             var second = secondEditor.SaveProfileAsync(userId, MakeRequest() with
             {
                 NoPriorBurnExperience = false,
-                VolunteerHistory = [new CVEntry(Guid.Empty, new LocalDate(2025, 7, 1), "Nowhere", null)],
+                VolunteerHistory = [new CvEntry(Guid.Empty, new LocalDate(2025, 7, 1), "Nowhere", null)],
             }, ct);
             await Task.WhenAny(second, Task.Delay(100, ct));
             resumeHistory.TrySetResult();
@@ -949,14 +949,14 @@ public sealed class ProfileServiceTests : ServiceTestHarness
     {
         var userId = Guid.NewGuid();
         await SeedUserAsync(userId);
-        var entry = new CVEntry(Guid.Empty, new LocalDate(2024, 7, 1), "Nowhere", null);
+        var entry = new CvEntry(Guid.Empty, new LocalDate(2024, 7, 1), "Nowhere", null);
         var request = MakeRequest() with { VolunteerHistory = [entry] };
 
         await _editor.SaveProfileAsync(userId, request, ct: Xunit.TestContext.Current.CancellationToken);
 
         await _userService.Received(1).SaveProfileAsync(userId, Arg.Any<UserProfileSaveCommand>(),
             Arg.Any<byte[]?>(), Arg.Any<CancellationToken>(),
-            Arg.Is<IReadOnlyList<CVEntry>>(l => l.Count == 1 && l[0].EventName == "Nowhere"));
+            Arg.Is<IReadOnlyList<CvEntry>>(l => l.Count == 1 && l[0].EventName == "Nowhere"));
         (await Db.VolunteerHistoryEntries.AsNoTracking().SingleAsync(Xunit.TestContext.Current.CancellationToken))
             .EventName.Should().Be("Nowhere");
     }

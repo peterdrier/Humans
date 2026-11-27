@@ -39,7 +39,7 @@ public class CalendarServiceAuditTests
         NullLogger<CalendarService>.Instance, Substitute.For<IServiceScopeFactory>());
 
     [HumansFact]
-    public async Task CreateEventWithResultAsync_WritesOneAuditEntry_RelatedToTheOwningTeam()
+    public async Task CreateEventWithResultAsync_Created_AuditsOwningTeam()
     {
         var teamId = Guid.NewGuid();
         var actor = Guid.NewGuid();
@@ -62,7 +62,7 @@ public class CalendarServiceAuditTests
     // The team the entry names is the one the update *sets*, which is what keeps a moved
     // event auditable under its new team rather than its old.
     [HumansFact]
-    public async Task UpdateEventWithResultAsync_WritesOneAuditEntry_RelatedToTheOwningTeam()
+    public async Task UpdateEventWithResultAsync_Updated_AuditsOwningTeam()
     {
         var id = Guid.NewGuid();
         var newTeamId = Guid.NewGuid();
@@ -95,7 +95,7 @@ public class CalendarServiceAuditTests
     }
 
     [HumansFact]
-    public async Task DeleteEventAsync_WritesOneAuditEntry_RelatedToTheOwningTeam()
+    public async Task DeleteEventAsync_Deleted_AuditsOwningTeam()
     {
         var id = Guid.NewGuid();
         var teamId = Guid.NewGuid();
