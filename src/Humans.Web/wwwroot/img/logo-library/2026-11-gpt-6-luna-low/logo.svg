@@ -1,0 +1,48 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="-2 -2 244 244" role="img" aria-label="Vitruvian Man">
+  <g fill="none" stroke="#c9a96e" stroke-width="1.4" opacity=".72">
+    <circle cx="120" cy="120" r="120" stroke-width="2"/>
+    <path d="M23 46h194v194H23z" stroke-width="2"/>
+    <path d="M120 2v236M2 120h236M25 120h190" stroke-width=".9" opacity=".55"/>
+    <path d="M120 0v5M120 235v5M0 120h5M235 120h5" stroke-width="1.4"/>
+  </g>
+  <!-- The raised pose sits behind the horizontal pose; both share a single centered trunk. -->
+  <g fill="#c9a96e" stroke="#c9a96e" stroke-linecap="round" stroke-linejoin="round">
+    <!-- raised arms -->
+    <path d="M91 83C78 70 64 55 51 42L37 26 32 20 29 17 26 17 24 20 24 24 20 23 17 25 18 29 15 28 13 31 15 35 12 35 11 38 14 43 20 48 31 55C46 66 61 81 75 98Z"/>
+    <path d="M149 83c13-13 27-28 40-41l14-16 5-6 3-3h3l2 3v4l4-1 3 2-1 4 3-1 2 3-2 4h3l1 3-3 5-6 5-11 7c-15 11-30 26-44 43z"/>
+    <!-- spread legs to circle -->
+    <path d="M99 137c-5 9-11 21-18 34-7 13-15 26-23 36l-8 10-8 7-7 2-7-2-4-4-1-4 3-3 6 1 5-2 4-5 6-11 14-30 15-39z"/>
+    <path d="M141 137c5 9 11 21 18 34 7 13 15 26 23 36l8 10 8 7 7 2 7-2 4-4 1-4-3-3-6 1-5-2-4-5-6-11-14-30-15-39z"/>
+    <!-- horizontal arms, shaped as continuous anatomical silhouettes -->
+    <path d="M93 88c-9-3-19-7-29-10-12-4-24-7-35-10L17 64 9 61 5 58 4 54l2-3 5 1-1-4 3-3 4 2 1-4 4-1 3 4 4 7 7 3 29 6 38 3z"/>
+    <path d="M147 88c9-3 19-7 29-10 12-4 24-7 35-10l12-4 8-3 4-3 1-4-2-3-5 1 1-4-3-3-4 2-1-4-4-1-3 4-4 7-7 3-29 6-38 3z"/>
+    <!-- trunk, pelvis, and joined legs -->
+    <path d="M108 69c-5 2-9 6-11 12l-5 16c-2 7-3 13-2 19l4 20c1 5 0 10-2 15l-5 12c-3 9-4 18-3 28l3 24c1 7 0 13-2 19l-3 10 10 2 6-12 5-24 7-29 10-2 10 2 7 29 5 24 6 12 10-2-3-10c-2-6-3-12-2-19l3-24c1-10 0-19-3-28l-5-12c-2-5-3-10-2-15l4-20c1-6 0-12-2-19l-5-16c-2-6-6-10-11-12l-7-2-5 2z"/>
+    <ellipse cx="120" cy="57" rx="10.5" ry="11"/>
+  </g>
+  <g fill="none" stroke="#3d2b1f" stroke-linecap="round" stroke-linejoin="round">
+    <!-- tier 1: pose separation and main anatomy -->
+    <g stroke-width="2">
+      <path d="M120 70v14M95 91c8 2 16 3 25 3s17-1 25-3M91 119c9 3 19 4 29 4s20-1 29-4M96 136c7 4 15 6 24 6s17-2 24-6"/>
+      <path d="M76 98c-7-8-14-15-22-21M144 77c-6 6-12 13-18 20M87 183c6 3 12 5 18 6M135 189c6-1 12-3 18-6"/>
+      <path d="M103 70c-5 4-7 10-9 16M137 70c5 4 7 10 9 16"/>
+      <path d="M112 57c2 2 4 2 8 0"/>
+    </g>
+    <!-- tier 2: muscle groups and hair -->
+    <g stroke-width="1.4">
+      <path d="M101 82c5 4 11 6 19 6s14-2 19-6M99 96c6 4 13 6 21 6s15-2 21-6M103 111c5 3 11 4 17 4s12-1 17-4"/>
+      <path d="M105 143c-4 7-7 14-8 22M135 143c4 7 7 14 8 22M106 159c-3 8-4 15-4 22M134 159c3 8 4 15 4 22"/>
+      <path d="M111 46c-5 3-7 8-7 13M120 45v12M129 46c5 3 7 8 7 13"/>
+      <path d="M44 64l3-7m7 9 3-7m7 9 2-7m98 3 3 7m7-9 3 7m7-9 4 7"/>
+      <path d="M90 171l-5 7m13-4-4 8m52-11 5 7m-13-4 4 8"/>
+    </g>
+    <!-- tier 3: face, fingers, and small engraved accents -->
+    <g stroke-width=".9">
+      <path d="M115 53v5l-2 2h6M114 64c4 2 8 2 12 0M110 50l3 1m7-1 3-1"/>
+      <path d="M20 41l5 2m-2-8 5 2m-2-9 5 2m-9 14 5 3m-9-6 4 3M224 41l-5 2m2-8-5 2m2-9-5 2m9 14-5 3m9-6-4 3"/>
+      <path d="M35 25l-4 5m-3-10 4 5m179 0-4 5m7-10-4 5"/>
+      <path d="M26 211l5 2m-1-7 5 2m-6 11 5 1m169-9-5 2m1-7-5 2m6 11-5 1"/>
+      <path d="M111 93l-3 10m24-10 3 10M109 118l-3 10m28-10 3 10M113 153l-4 9m22-9 4 9"/>
+    </g>
+  </g>
+</svg>
