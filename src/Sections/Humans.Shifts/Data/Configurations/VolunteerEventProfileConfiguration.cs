@@ -23,14 +23,6 @@ internal sealed class VolunteerEventProfileConfiguration : IEntityTypeConfigurat
         ConfigureJsonbList(builder, v => v.Skills, listComparer);
         ConfigureJsonbList(builder, v => v.Quirks, listComparer);
         ConfigureJsonbList(builder, v => v.Languages, listComparer);
-
-        // Retained dietary/medical columns, moved to Profile and awaiting their prod-verified drop. Nothing reads them.
-        ConfigureJsonbList(builder, v => v.Allergies, listComparer);
-        ConfigureJsonbList(builder, v => v.Intolerances, listComparer);
-        builder.Property(v => v.AllergyOtherText).HasMaxLength(500);
-        builder.Property(v => v.IntoleranceOtherText).HasMaxLength(500);
-        builder.Property(v => v.DietaryPreference).HasMaxLength(200);
-        builder.Property(v => v.MedicalConditions).HasMaxLength(4000);
     }
 
     private static void ConfigureJsonbList(

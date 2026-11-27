@@ -51,14 +51,14 @@ public sealed class AuthEmailsTests
     }
 
     [HumansFact]
-    public void RendersInTheRecipientsCulture()
+    public void Render_UsesRecipientsCulture()
     {
         Create().SignInLink(Guid.NewGuid(), "a@x.com", "Alice", "https://link", "es")
             .Subject.Should().Be("Auth_Email_SignInLink_Subject#es");
     }
 
     [HumansFact]
-    public void EveryTemplateHasAPreviewSample()
+    public void Templates_EachHasPreviewSample()
     {
         var emails = Create();
         var templates = TemplateNames(emails);
@@ -73,7 +73,7 @@ public sealed class AuthEmailsTests
     }
 
     [HumansFact]
-    public void PreviewSampleIdsAreUnique()
+    public void PreviewSampleIds_AreUnique()
     {
         var samples = new AuthEmailPreviews(Create())
             .Samples(new EmailPreviewPersona("en", "Sally Smith", "sally@example.com"));
@@ -83,7 +83,7 @@ public sealed class AuthEmailsTests
 
     /// <summary>
     /// Every template the builder can produce, found by reflection rather than listed, so a
-    /// template added without a gallery sample fails <see cref="EveryTemplateHasAPreviewSample"/>.
+    /// template added without a gallery sample fails <see cref="Templates_EachHasPreviewSample"/>.
     /// </summary>
     private static IReadOnlyList<string> TemplateNames(AuthEmails emails) =>
     [

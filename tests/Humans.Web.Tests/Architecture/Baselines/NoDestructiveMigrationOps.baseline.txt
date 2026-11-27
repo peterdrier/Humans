@@ -797,6 +797,25 @@ src/Sections/Humans.Agent/Data/Migrations/20261124151418_DropAgentSettingsPreloa
 # is okay."
 src/Sections/Humans.Finance/Data/Migrations/20261126234254_DropRetiredHoldedExpenseDocTables.cs:DropTable(name=finance_holded_doc_sync_states)#1
 src/Sections/Humans.Finance/Data/Migrations/20261126234254_DropRetiredHoldedExpenseDocTables.cs:DropTable(name=finance_holded_expense_docs)#1
+
+# Shifts: shift_volunteer_event_profiles.DietaryPreference, Allergies, Intolerances, AllergyOtherText,
+# IntoleranceOtherText and MedicalConditions (the old dietary and medical answers on the shift profile).
+# Replaced by the Profile columns (Users) in #780, whose migration MoveDietaryMedicalToProfile
+# (2026-05-25) copied every row across; Cantina and the audited Users reveal read only the Profile copy.
+# Evidence: pickaxe git log -S 'MedicalConditions =', -S 'DietaryPreference =', -S 'AllergyOtherText =' and
+# -S 'IntoleranceOtherText =' over origin/main finds no write to VolunteerEventProfile after #780; later hits
+# are Profile, DTO or section-move commits. The entity carried a "do NOT read or write these" note since then.
+# Approval: Peter, 2026-11-27, in the role-retirement thread, chose "Yes, drop all six" on the card
+# "Approve dropping all six old Shifts dietary and medical columns?", which named all six columns above.
+# Rollback caveat: Down() re-adds Allergies and Intolerances as NOT NULL jsonb with default '', which
+# Postgres rejects; rolling back means re-adding those two columns by a new migration.
+src/Sections/Humans.Shifts/Data/Migrations/20261126232724_DropVolunteerProfileDietaryMedicalColumns.cs:DropColumn(name=Allergies,table=shift_volunteer_event_profiles)#1
+src/Sections/Humans.Shifts/Data/Migrations/20261126232724_DropVolunteerProfileDietaryMedicalColumns.cs:DropColumn(name=AllergyOtherText,table=shift_volunteer_event_profiles)#1
+src/Sections/Humans.Shifts/Data/Migrations/20261126232724_DropVolunteerProfileDietaryMedicalColumns.cs:DropColumn(name=DietaryPreference,table=shift_volunteer_event_profiles)#1
+src/Sections/Humans.Shifts/Data/Migrations/20261126232724_DropVolunteerProfileDietaryMedicalColumns.cs:DropColumn(name=IntoleranceOtherText,table=shift_volunteer_event_profiles)#1
+src/Sections/Humans.Shifts/Data/Migrations/20261126232724_DropVolunteerProfileDietaryMedicalColumns.cs:DropColumn(name=Intolerances,table=shift_volunteer_event_profiles)#1
+src/Sections/Humans.Shifts/Data/Migrations/20261126232724_DropVolunteerProfileDietaryMedicalColumns.cs:DropColumn(name=MedicalConditions,table=shift_volunteer_event_profiles)#1
+
 # Tickets: ticket_sales_events.ChildPriceMinor and ChildMaxAge (the single child price and age limit
 # of a sales event, both nullable). Replaced by per-event child ticket types (ChildTypes) in
 # peterdrier/Humans#2549, which has merged and carries every child price.

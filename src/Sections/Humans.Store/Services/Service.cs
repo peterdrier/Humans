@@ -2,6 +2,7 @@ using Humans.Base.Extensions;
 using Humans.AuditLog.Contracts;
 using Humans.Base.Attributes;
 using Humans.Camps.Contracts;
+using Humans.Permissions.Contracts;
 using Humans.Settings.Contracts;
 using Humans.Store.Contracts;
 using Humans.Store.Data;
@@ -23,6 +24,7 @@ internal sealed class Service(
     IAuditViewerService auditViewer,
     ICampService campService,
     ITeamService teamService,
+    IPermissionService permissions,
     IClock clock,
     ISettingsService settingsService,
     IStripeService stripeService,
@@ -530,11 +532,11 @@ internal sealed class Service(
             .Where(season => season.Year == year && (allCounterparties || season.IsLead(userId)))
             .ToList();
 
+        HashSet<Guid> orderingFor = allCounterparties
+            ? []
+            : (await permissions.GetOwnersAsync(userId, StorePermissions.TeamOrders, ct)).Select(o => o.Id).ToHashSet();
         var teams = (await teamService.GetTeamsAsync(ct)).Values
-            .Where(t => t.ParentTeamId is null
-                        && (allCounterparties
-                            || (t.ManagementRoleHolderUserIds is not null
-                                && t.ManagementRoleHolderUserIds.Contains(userId))))
+            .Where(t => t.ParentTeamId is null && (allCounterparties || orderingFor.Contains(t.Id)))
             .ToList();
         var campOrders = await repo.GetOrdersForCampSeasonsAsync(
             campSeasons.Select(s => s.Id).ToList(), ct);

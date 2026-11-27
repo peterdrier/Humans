@@ -4,6 +4,7 @@ using Humans.Store.Contracts;
 using Humans.Base.Authorization;
 using System.Security.Claims;
 using Humans.Camps.Contracts;
+using Humans.Permissions.Contracts;
 using Humans.Settings.Contracts;
 using Humans.Teams.Contracts;
 using Humans.Users.Contracts;
@@ -20,7 +21,7 @@ namespace Humans.Store.Authorization;
 /// </summary>
 internal sealed class OrderAuthorizationHandler(
     ICampService campService,
-    ITeamService teamService,
+    IPermissionService permissions,
     IUserService users,
     ISettingsService settingsService,
     IClock clock,
@@ -89,12 +90,7 @@ internal sealed class OrderAuthorizationHandler(
         }
         else if (resource.TeamId is { } tid)
         {
-            var team = await teamService.GetTeamAsync(tid, ct);
-            if (team is not null
-                && team.ParentTeamId is null
-                && team.ManagementRoleHolderUserIds is not null
-                && team.ManagementRoleHolderUserIds.Contains(userId))
-                authorized = true;
+            authorized = await permissions.HasAsync(userId, StorePermissions.TeamOrders, new Owner(TeamOwner.Kind, tid), ct);
         }
         if (!authorized) return;
 

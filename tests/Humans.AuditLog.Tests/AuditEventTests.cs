@@ -175,7 +175,7 @@ public class AuditEventTests
     public void UndeclaredAction_RendersNullLikeAnyVerblessAction()
     {
         var ev = MakeEvent(
-            action: new AuditActionDefinition("SomethingNobodyDeclaresAnyMore"),
+            action: new AuditActionDefinition("SomethingNobodyDeclaresAnyMore", AuditKept.Forever),
             actorId: Guid.NewGuid(),
             actorName: "Peter",
             entityType: "User",
@@ -215,6 +215,7 @@ public class AuditEventTests
             TargetTeamSlug: targetTeamSlug,
             RelatedEntityId: relatedEntityId,
             RelatedEntityType: relatedEntityType,
-            Description: description);
+            Description: description,
+            Kept: AuditKept.Forever);
     }
 }

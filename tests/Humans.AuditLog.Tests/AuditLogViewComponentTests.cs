@@ -38,7 +38,8 @@ public class AuditLogViewComponentTests
         Id: Guid.NewGuid(), OccurredAt: occurredAt, Action: TestActions.StoreProductPriceChanged,
         ActorUserId: null, ActorDisplayName: null, EntityType: "StoreProduct", EntityId: Guid.NewGuid(),
         SubjectUserId: null, SubjectDisplayName: null, TargetTeamId: null, TargetTeamName: null,
-        TargetTeamSlug: null, RelatedEntityId: null, RelatedEntityType: null, Description: description);
+        TargetTeamSlug: null, RelatedEntityId: null, RelatedEntityType: null, Description: description,
+        Kept: AuditKept.Forever);
 
     private static (string? ViewName, AuditLogComponentViewModel Model) Unwrap(IViewComponentResult result)
     {
