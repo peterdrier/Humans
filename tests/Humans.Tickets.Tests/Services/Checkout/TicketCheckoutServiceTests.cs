@@ -1259,6 +1259,89 @@ public sealed partial class TicketCheckoutServiceTests
         await _rules.Received().GetAsync("TicketRules/2027", true, Arg.Any<CancellationToken>());
     }
 
+    [HumansTheory]
+    [InlineData(-1, false)]
+    [InlineData(0, false)]
+    [InlineData(1, true)]
+    public async Task OfferForResaleAsync_ClosingBoundary_MatchesHolderAction(int seconds, bool available)
+    {
+        var ticket = await PaidAdultAsync();
+        _ticketing.ResaleOpenedAt = null;
+        _ticketing.SalesCloseAt = Now + Duration.FromSeconds(seconds);
+
+        var canOffer = (await _service.GetHeldTicketsAsync(_buyerId, Ct)).Single().CanOffer;
+        (await _service.OfferForResaleAsync(ticket.Id, _buyerId, Ct)).Succeeded.Should().Be(available);
+        canOffer.Should().Be(available);
+    }
+
+    [HumansTheory]
+    [InlineData(-1, false)]
+    [InlineData(0, false)]
+    [InlineData(1, true)]
+    public async Task InviteBuyersAsync_ClosingBoundary_MatchesHolderAction(int seconds, bool available)
+    {
+        var ticket = await OfferedTicketAsync();
+        _ticketing.SalesCloseAt = Now + Duration.FromSeconds(seconds);
+
+        var canInvite = (await _service.GetHeldTicketsAsync(_buyerId, Ct)).Single().CanInvite;
+        var result = await _service.InviteBuyersAsync(ticket.Id, _buyerId, ["bo@example.com"], new Uri("https://h.example/r/"), "en", Ct);
+        result.Succeeded.Should().Be(available);
+        canInvite.Should().Be(available);
+        if (!available)
+            result.Refusal.Should().Be("Tickets_Resale_Closed");
+    }
+
+    [HumansFact]
+    public async Task GetHeldTicketsAsync_ResalePaused_HidesInvitationAction()
+    {
+        var ticket = await OfferedTicketAsync();
+        _ticketing.Mode = TicketSalesMode.Open;
+        _ticketing.ResaleOpenedAt = null;
+
+        (await _service.GetHeldTicketsAsync(_buyerId, Ct)).Single().CanInvite.Should().BeFalse();
+        (await _service.InviteBuyersAsync(ticket.Id, _buyerId, ["bo@example.com"], new Uri("https://h.example/r/"), "en", Ct))
+            .Refusal.Should().Be("Tickets_Resale_NotOpenYet");
+    }
+
+    [HumansTheory]
+    [InlineData(-1, false)]
+    [InlineData(0, false)]
+    [InlineData(1, true)]
+    public void ResaleSelling_ClosingBoundary_UsesSnapshotTime(int seconds, bool selling)
+    {
+        _ticketing.SalesCloseAt = Now + Duration.FromSeconds(seconds);
+        var model = new Humans.Tickets.Controllers.ResaleViewModel(_ticketing.Id, "Event", _ticketing, [],
+            new Dictionary<Guid, TicketCheckoutOrder>(), Now);
+
+        model.ResaleSelling.Should().Be(selling);
+    }
+
+    [HumansTheory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task ResaleAction_EligibilityCrossesDeadline_RefusesBeforeWrite(bool invite)
+    {
+        var ticket = invite ? await OfferedTicketAsync() : await PaidAdultAsync();
+        _ticketing.SalesCloseAt = Now + Duration.FromSeconds(1);
+        var reads = 0;
+        _gate.GetAdmittedAsync(Arg.Any<IReadOnlyCollection<string>>(), Arg.Any<CancellationToken>()).Returns(_ =>
+        {
+            if (++reads == (invite ? 2 : 1))
+                _clock.Advance(Duration.FromSeconds(2));
+            return new HashSet<string>(StringComparer.Ordinal);
+        });
+
+        var result = invite
+            ? await _service.InviteBuyersAsync(ticket.Id, _buyerId, ["bo@example.com"], new Uri("https://h.example/r/"), "en", Ct)
+            : await _service.OfferForResaleAsync(ticket.Id, _buyerId, Ct);
+
+        result.Refusal.Should().Be("Tickets_Resale_Closed");
+        if (invite)
+            _repo.Offers.Single().Invites.Should().BeEmpty();
+        else
+            _repo.Offers.Should().BeEmpty();
+    }
+
     [HumansFact]
     public async Task OfferForResaleAsync_TicketWriteFails_WritesNoOffer()
     {
@@ -1948,7 +2031,7 @@ public sealed partial class TicketCheckoutServiceTests
         var ticket = await PaidAdultAsync();
         _ticketing.Mode = TicketSalesMode.InvitedOnly;
 
-        _ticketing.ResaleSelling.Should().BeFalse();
+        _ticketing.IsResaleSelling(Now).Should().BeFalse();
         (await _service.GetHeldTicketsAsync(_buyerId, Ct)).Single(t => t.Ticket.Id == ticket.Id).CanOffer.Should().BeFalse();
         (await _service.OfferForResaleAsync(ticket.Id, _buyerId, Ct)).Refusal.Should().Be("Tickets_Resale_Closed");
         var save = new TicketingSettingsSave(_ticketing.Id, _event.Id, "test", null, TicketSalesMode.InvitedOnly, null, 100, 0.1m,

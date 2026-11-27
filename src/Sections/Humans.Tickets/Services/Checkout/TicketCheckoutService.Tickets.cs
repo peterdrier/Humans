@@ -81,6 +81,7 @@ internal sealed partial class TicketCheckoutService
     public async Task<IReadOnlyList<HeldTicket>> GetHeldTicketsAsync(Guid userId, CancellationToken ct = default)
     {
         var held = new List<HeldTicket>();
+        var now = clock.GetCurrentInstant();
         foreach (var group in (await repository.GetTicketsForHolderAsync(userId, ct))
                      .Where(t => t.IsHeld)
                      .GroupBy(t => t.TicketingSettingsId))
@@ -98,11 +99,12 @@ internal sealed partial class TicketCheckoutService
                 var offer = queue.FirstOrDefault(o => o.TicketId == ticket.Id);
                 var hasDependents = eventTickets.Any(t => t.ParentTicketId == ticket.Id && t.State == TicketCheckoutTicketState.Valid);
                 held.Add(new HeldTicket(ticket, eventName, offer, offer is null ? null : positions[offer.Id],
-                    CanOffer: ticketing?.EffectiveSwitches.Resale is not (null or ResaleScheme.Off) && offer is null && ticket.Kind == TicketHolderKind.Adult && ticketing is { Mode: not (TicketSalesMode.Closed or TicketSalesMode.InvitedOnly) },
+                    CanOffer: ticketing is { Mode: not TicketSalesMode.InvitedOnly } && !ticketing.IsClosed(now)
+                        && ticketing.EffectiveSwitches.Resale != ResaleScheme.Off && offer is null && ticket.Kind == TicketHolderKind.Adult,
                     HasDependents: hasDependents,
                     DirectedActive: offer?.HasLiveInvite == true)
                 {
-                    CanInvite = ticketing?.EffectiveSwitches.Resale == ResaleScheme.QueueAndDirected,
+                    CanInvite = ticketing?.EffectiveSwitches.Resale == ResaleScheme.QueueAndDirected && ticketing.IsResaleSelling(now),
                     CompanionRequest = companionRequests.Where(r => r.TicketId == ticket.Id).MaxBy(r => r.RequestedAt),
                     CanAskCompanion = CanAskCompanion(ticket, ticketing, eventTickets, companionRequests),
                 });
@@ -125,7 +127,8 @@ internal sealed partial class TicketCheckoutService
             .Any(o => o.TicketId == ticket.Id && o.State is TicketResaleOfferState.Open or TicketResaleOfferState.Reserved))
             return new("Tickets_Resale_NotOfferable");
         var ticketing = await repository.GetTicketingSettingsAsync(ticket.TicketingSettingsId, ct);
-        if (ticketing is null || ticketing.Mode is TicketSalesMode.Closed or TicketSalesMode.InvitedOnly
+        var now = clock.GetCurrentInstant();
+        if (ticketing is null || ticketing.IsClosed(now) || ticketing.Mode == TicketSalesMode.InvitedOnly
             || ticketing.EffectiveSwitches.Resale == ResaleScheme.Off)
             return new("Tickets_Resale_Closed");
         // The bank already took this order's money back: a resale would owe a refund of money Humans no longer holds.
@@ -139,7 +142,9 @@ internal sealed partial class TicketCheckoutService
             .ToList();
         if (dependents.Any(t => t.VoidRefundId is not null) || await IsAdmittedAsync(ticket, ct))
             return new("Tickets_Resale_NotOfferable");
-        var now = clock.GetCurrentInstant();
+        now = clock.GetCurrentInstant();
+        if (ticketing.IsClosed(now))
+            return new("Tickets_Resale_Closed");
         var offer = new TicketResaleOffer
         {
             Id = Guid.NewGuid(),
@@ -207,7 +212,11 @@ internal sealed partial class TicketCheckoutService
                 .Where(o => o.TicketId == ticket.Id).Sum(o => o.DirectedInviteCount) + newAddresses.Count > MaxInvitesPerTicket)
             return new("Tickets_Resale_InviteLimit");
         var now = clock.GetCurrentInstant();
-        if (!(await LoadStockAsync(ticketing, now, ct)).ResaleOpen)
+        var stock = await LoadStockAsync(ticketing, now, ct);
+        now = clock.GetCurrentInstant();
+        if (ticketing.IsClosed(now))
+            return new("Tickets_Resale_Closed");
+        if (!stock.ResaleOpen)
             return new("Tickets_Resale_NotOpenYet");
 
         var links = pending.Select(i => (Invite: i, Token: InvitationToken(offer.Id, i.DeliveryId!.Value))).ToList();
@@ -291,7 +300,7 @@ internal sealed partial class TicketCheckoutService
             ? "Tickets_Resale_InviteNotFound"
             : !string.Equals(invite.Email, context.Buyer?.Email, StringComparison.OrdinalIgnoreCase)
                 ? "Tickets_Resale_InviteOtherEmail"
-                : !context.Ticketing.ResaleSelling ? "Tickets_Resale_NotSelling" : null;
+                : !context.Ticketing.IsResaleSelling(context.Now) ? "Tickets_Resale_NotSelling" : null;
 
     /// <summary>The linked offer while it can still sell to this buyer: the link is theirs and the queue is open.</summary>
     private static TicketResaleOffer? DirectedOfferFor(TicketResaleOffer? offer, string tokenHash, BuyContext context) =>
@@ -753,8 +762,7 @@ internal sealed partial class TicketCheckoutService
         foreach (var ticketing in await repository.ListTicketingSettingsAsync(ct))
         {
             // A cancelled event is closed too, but its holders are refunded by the cancel sweep, not told there is no refund.
-            var closed = ticketing.CancelledAt is null
-                && (ticketing.Mode == TicketSalesMode.Closed || (ticketing.SalesCloseAt is { } close && now >= close));
+            var closed = ticketing.CancelledAt is null && ticketing.IsClosed(now);
             foreach (var offer in await repository.GetOffersForSettingsAsync(ticketing.Id, ct))
             {
                 if (ticketing.EffectiveSwitches.Resale == ResaleScheme.Off && offer.State == TicketResaleOfferState.Open)

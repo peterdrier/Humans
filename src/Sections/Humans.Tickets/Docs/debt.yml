@@ -1,5 +1,9 @@
 # Section debt ledger for Humans.Tickets. Shape + routing: memory/process/debt-ledger-additions.md.
 # /debt-sweep pools every src/Sections/*/Docs/debt.yml into the same inbox as the central ledger.
 version: 1
-next_id: 23
-inbox: []
+next_id: 24
+inbox:
+  - added: 2026-11-27
+    id: TICKETS-23
+    what: "TicketCheckoutService.ToGateInfo admits Offered tickets once sales close without checking whether a reserved buyer order can still pay; a later payment can complete the resale after the original holder was admitted. Barcode lookup and event ticket lists share this gap. Found tracing SalesCloseAt."
+    review: panel

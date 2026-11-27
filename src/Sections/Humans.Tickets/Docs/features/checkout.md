@@ -214,7 +214,9 @@ addresses were typed. Directed resale links buy only the buyer's own ticket.
 
 - `/Tickets/Buy/Mine` lists the member's live tickets with the valid child tickets under their adult. Its GET is
   open before the account is active, so someone bought for reaches their ticket from the email (name entry still comes first). A holder puts an adult ticket up for resale while the event is not
-  Closed; it joins `ticket_resale_offers` (oldest first) and the gate refuses it while it can still sell (the holder withdraws it to get in; once sales close it is valid again). They see their
+  Closed and before any configured `SalesCloseAt`; the exact close instant refuses new offers and invitations. The member controls
+  and admin selling status use the same time boundary. An offer may wait while resale is paused, but new invitations
+  require resale to be selling. It joins `ticket_resale_offers` (oldest first) and the gate refuses it while it can still sell (the holder withdraws it to get in; once sales close it is valid again). They see their
   queue position and can withdraw, except while a buyer's unpaid order holds it.
 - Creating an offer saves the row and its ticket's `Offered` state in one commit. Another open or reserved offer
   refuses creation. Checkout and the directed-link page use the same eligibility: an offered adult ticket with one

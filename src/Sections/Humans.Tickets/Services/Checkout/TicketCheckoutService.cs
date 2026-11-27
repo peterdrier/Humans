@@ -218,8 +218,7 @@ internal sealed partial class TicketCheckoutService(
         var sales = new List<PublicSale>();
         foreach (var ticketing in await repository.ListTicketingSettingsAsync(ct))
         {
-            if (ticketing.Mode is TicketSalesMode.Closed or TicketSalesMode.InvitedOnly
-                || (ticketing.SalesCloseAt is { } close && now >= close)
+            if (ticketing.IsClosed(now) || ticketing.Mode == TicketSalesMode.InvitedOnly
                 || PlatformFor(ticketing.PlatformKey) is not { IsConfigured: true }
                 || await settings.GetEventSettingsByIdAsync(ticketing.EventSettingsId, ct) is not { } evt
                 || TicketPrice.Public(ticketing, now.InZone(evt.TimeZone).Date) is not { } price)
@@ -1221,7 +1220,7 @@ internal sealed partial class TicketCheckoutService(
         var askMarketing = ticketing.EffectiveSwitches.MailingListOptIn && await preferenceReads.GetPreferenceOrNullAsync(userId, MessageCategory.Marketing, ct) is null;
 
         string? unavailable = null;
-        if (ticketing.Mode == TicketSalesMode.Closed || (ticketing.SalesCloseAt is { } close && now >= close))
+        if (ticketing.IsClosed(now))
             unavailable = "Tickets_Buy_Closed";
         else if (ownPrice is null || publicPrice is null || (early && !invited))
             unavailable = "Tickets_Buy_NotOnSale";
@@ -1271,7 +1270,7 @@ internal sealed partial class TicketCheckoutService(
         var pending = (await repository.GetOrdersForSettingsAsync(ticketing.Id, ct))
             .Where(o => o.State != TicketCheckoutOrderState.Paid && o.HoldsTickets(now))
             .Sum(o => o.Lines.Count(l => l.Kind == OrderLineKind.Ticket && l.ResaleOfferId is null));
-        var resaleOpen = ticketing.ResaleSelling;
+        var resaleOpen = ticketing.IsResaleSelling(now);
         // A ticket in resale whose holder was already admitted can never sell: the gate's admission is the only entry record.
         var offers = (await repository.GetOffersForSettingsAsync(ticketing.Id, ct))
             .Where(o => o.State is TicketResaleOfferState.Open or TicketResaleOfferState.Reserved).ToList();
