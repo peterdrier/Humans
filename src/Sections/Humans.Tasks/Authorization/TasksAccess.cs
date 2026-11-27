@@ -66,6 +66,22 @@ internal sealed record TasksAccess(Guid UserId, bool SeesAll, IReadOnlySet<Guid>
         tasks.Select(t => (t.Id, Place: PlaceOn(t))).Where(p => p.Place is not null).ToDictionary(p => p.Id, p => p.Place!.Value);
 
     /// <summary>
+    /// For each waiting task in <paramref name="rows"/>, the title of the first unfinished task it waits on, or null
+    /// when the person cannot see that task. <paramref name="all"/> is every task, so a blocker outside the list is found.
+    /// </summary>
+    public IReadOnlyDictionary<Guid, string?> BlockersOn(IEnumerable<TaskInfo> rows, IEnumerable<TaskInfo> all)
+    {
+        var visible = all.Where(CanSee).Select(t => t.Id).ToHashSet();
+        return rows
+            .Where(t => t.IsWaiting)
+            .ToDictionary(
+                t => t.Id,
+                t => t.WaitingOn.FirstOrDefault(l => l.Status is not (TaskItemStatus.Done or TaskItemStatus.Cancelled)) is { } link && visible.Contains(link.Id)
+                    ? link.Title
+                    : null);
+    }
+
+    /// <summary>
     /// Everyone sees a task that is not hidden. A hidden one shows to its managers, the people on it or asking to join
     /// it (so they can take the request back), and those who see all.
     /// </summary>

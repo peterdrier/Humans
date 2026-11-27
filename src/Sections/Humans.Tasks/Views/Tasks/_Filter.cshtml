@@ -1,4 +1,4 @@
-@* The filters of a task list: which event, and whether done and cancelled tasks count. *@
+@* The filters of a task list: which event, which team, which priority, and whether done and cancelled tasks count. *@
 @model TaskFilterViewModel
 
 <form method="get" class="d-flex flex-wrap align-items-end gap-3 mb-3">
@@ -7,18 +7,44 @@
         <div>
             <label class="form-label" for="filter-event">@Localizer["Tasks_Filter_Event"]</label>
             <select class="form-select" id="filter-event" name="Event">
-                <option value="@TaskListFilter.ActiveEvent" selected="@(Model.Filter.EventChoice == TaskListFilter.ActiveEvent)">@Localizer["Tasks_Filter_ActiveEvent"]</option>
-                <option value="@TaskListFilter.AnyEvent" selected="@(Model.Filter.EventChoice == TaskListFilter.AnyEvent)">@Localizer["Tasks_Filter_AnyEvent"]</option>
+                <option value="@TaskListFilter.ActiveEvent" selected="@(Model.Filter is TaskListFilter { EventChoice: TaskListFilter.ActiveEvent })">@Localizer["Tasks_Filter_ActiveEvent"]</option>
+                <option value="@TaskListFilter.AnyEvent" selected="@(Model.Filter is TaskListFilter { EventChoice: TaskListFilter.AnyEvent })">@Localizer["Tasks_Filter_AnyEvent"]</option>
                 @foreach (var e in Model.Events)
                 {
-                    <option value="@e.Id" selected="@(Model.Filter.SpecificEventId == e.Id)">@e.Name</option>
+                    <option value="@e.Id" selected="@(Model.Filter is TaskListFilter list && list.SpecificEventId == e.Id)">@e.Name</option>
                 }
             </select>
         </div>
     }
-    <div class="form-check mb-2">
-        <input type="checkbox" class="form-check-input" id="filter-finished" name="Finished" value="true" checked="@Model.Filter.Finished" />
-        <label class="form-check-label" for="filter-finished">@Localizer["Tasks_Filter_Finished"]</label>
+    @if (Model.Teams is not null)
+    {
+        <div>
+            <label class="form-label" for="filter-team">@Localizer["Tasks_Col_Team"]</label>
+            <select class="form-select" id="filter-team" name="Team">
+                <option value="">@Localizer["Tasks_Filter_AnyTeam"]</option>
+                @foreach (var team in Model.Teams)
+                {
+                    <option value="@team.Id" selected="@(Model.Filter.Team == team.Id)">@team.Name</option>
+                }
+            </select>
+        </div>
+    }
+    <div>
+        <label class="form-label" for="filter-priority">@Localizer["Tasks_Col_Priority"]</label>
+        <select class="form-select" id="filter-priority" name="Priority">
+            <option value="">@Localizer["Tasks_Filter_AnyPriority"]</option>
+            @foreach (var priority in new[] { SlotPriority.Critical, SlotPriority.Important, SlotPriority.NiceToHave })
+            {
+                <option value="@priority" selected="@(Model.Filter.Priority == priority)">@SharedLocalizer.EnumDisplay(priority)</option>
+            }
+        </select>
     </div>
+    @if (Model.Filter is TaskListFilter finishedFilter)
+    {
+        <div class="form-check mb-2">
+            <input type="checkbox" class="form-check-input" id="filter-finished" name="Finished" value="true" checked="@finishedFilter.Finished" />
+            <label class="form-check-label" for="filter-finished">@Localizer["Tasks_Filter_Finished"]</label>
+        </div>
+    }
     <button type="submit" class="btn btn-outline-secondary">@Localizer["Tasks_Filter_Apply"]</button>
 </form>
