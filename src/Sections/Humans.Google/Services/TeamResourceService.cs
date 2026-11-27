@@ -2,6 +2,8 @@ using Humans.Google.Contracts;
 using Humans.Auth.Contracts;
 using System.Text.RegularExpressions;
 using Humans.AuditLog.Contracts;
+using Humans.Base.Authorization;
+using Humans.Permissions.Contracts;
 using Humans.Teams.Contracts;
 using Microsoft.Extensions.DependencyInjection;
 using NodaTime;
@@ -13,18 +15,20 @@ internal sealed partial class TeamResourceService(
     IGoogleResourceRepository repository,
     ITeamResourceGoogleClient googleClient,
     IGoogleDrivePermissionsClient drivePermissions,
-    ITeamService teamService,
     IServiceProvider serviceProvider,
     IAuditLogService auditLogService,
     TeamResourceManagementOptions resourceOptions,
     IClock clock,
     ILogger<TeamResourceService> logger) : ITeamResourceManagement
 {
-    // Lazy resolution: eagerly injecting ISystemRoleService creates a
+    // Lazy resolution: eagerly injecting ISystemRoleService (or IPermissionService, which takes it) creates a
     // ctor cycle TeamResourceService → ISystemRoleService → ISystemTeamSync
-    // → IGoogleGroupSync → ITeamResourceManagement. Only one method uses it.
+    // → IGoogleGroupSync → ITeamResourceManagement. Only one method uses them.
     private ISystemRoleService SystemRoleService
         => serviceProvider.GetRequiredService<ISystemRoleService>();
+
+    private IPermissionService Permissions
+        => serviceProvider.GetRequiredService<IPermissionService>();
 
     public Task MarkResourceSyncedAsync(Guid resourceId, Instant now, CancellationToken ct = default)
         => repository.MarkSyncedAsync(resourceId, now, ct);
@@ -406,7 +410,7 @@ internal sealed partial class TeamResourceService(
 
         if (resourceOptions.AllowCoordinatorsToManageResources)
         {
-            return await teamService.IsUserCoordinatorOfTeamAsync(teamId, userId, ct);
+            return await Permissions.HasAsync(userId, GooglePermissions.ManageResources, new Owner(TeamOwner.Kind, teamId), ct);
         }
 
         return false;

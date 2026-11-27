@@ -112,4 +112,6 @@
   <data name="Google_TeamResources_ServiceAccount" xml:space="preserve"><value>Service account: {0}</value><comment>{0} = service account email</comment></data>
   <data name="Google_Meter_FailedSyncEvents" xml:space="preserve"><value>Failed Google sync events</value></data>
   <data name="Google_Meter_AudienceAdmin" xml:space="preserve"><value>Admins</value></data>
+  <data name="Google_Permission_ManageResources_Title" xml:space="preserve"><value>Manage Google resources</value></data>
+  <data name="Google_Permission_ManageResources_Blurb" xml:space="preserve"><value>Link and unlink the department's Drive folders and Google Groups.</value></data>
 </root>

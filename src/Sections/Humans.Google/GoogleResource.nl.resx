@@ -157,4 +157,6 @@
   <data name="Google_TeamResources_ServiceAccount" xml:space="preserve"><value>Serviceaccount: {0}</value><comment>{0} = service account email</comment></data>
   <data name="Google_Meter_FailedSyncEvents" xml:space="preserve"><value>Mislukte Google-synchronisaties</value></data>
   <data name="Google_Meter_AudienceAdmin" xml:space="preserve"><value>Beheerders</value></data>
+  <data name="Google_Permission_ManageResources_Title" xml:space="preserve"><value>Google-bronnen beheren</value></data>
+  <data name="Google_Permission_ManageResources_Blurb" xml:space="preserve"><value>Drive-mappen en Google-groepen van de afdeling koppelen en ontkoppelen.</value></data>
 </root>
