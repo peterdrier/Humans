@@ -1,9 +1,13 @@
+using JetBrains.Annotations;
+
 namespace Humans.Base.Models;
 
 // JSON row shapes for the person-search endpoints. In Humans.Base rather than Shell because
 // Humans.Teams' admin controller returns RoleAssignmentSearchResult and a section cannot
 // reference Humans.Web; neither record names any section vocabulary, which is the test.
 
+[UsedImplicitly(ImplicitUseKindFlags.Access, ImplicitUseTargetFlags.WithMembers)]
 public record RoleAssignmentSearchResult(Guid Id, string DisplayName, string Email, bool OnTeam);
 
+[UsedImplicitly(ImplicitUseKindFlags.Access, ImplicitUseTargetFlags.WithMembers)]
 public record BurnerNameCountResult(int Count);

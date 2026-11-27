@@ -1,3 +1,4 @@
+using JetBrains.Annotations;
 using System.ComponentModel.DataAnnotations;
 using System.Security.Claims;
 using System.Text.Json.Serialization;
@@ -344,16 +345,19 @@ internal sealed class UpdateIssueStatusModel
     public IssueStatus Status { get; set; }
 }
 
+[UsedImplicitly(ImplicitUseKindFlags.Assign, ImplicitUseTargetFlags.WithMembers)]
 internal sealed class UpdateIssueAssigneeModel
 {
     public Guid? AssigneeUserId { get; set; }
 }
 
+[UsedImplicitly(ImplicitUseKindFlags.Assign, ImplicitUseTargetFlags.WithMembers)]
 internal sealed class UpdateIssueSectionModel
 {
     public string? Section { get; set; }
 }
 
+[UsedImplicitly(ImplicitUseKindFlags.Assign, ImplicitUseTargetFlags.WithMembers)]
 internal sealed class SetIssueGitHubIssueModel
 {
     public int? GitHubIssueNumber { get; set; }

@@ -1,5 +1,6 @@
 using Humans.Base.Enums;
 using Humans.Base;
+using JetBrains.Annotations;
 using Microsoft.Extensions.Localization;
 using System.ComponentModel.DataAnnotations;
 using Microsoft.AspNetCore.Mvc.ModelBinding;
@@ -50,6 +51,7 @@ internal sealed class EventSettingsViewModel : IValidatableObject
     }
 }
 
+[UsedImplicitly(ImplicitUseKindFlags.Assign, ImplicitUseTargetFlags.WithMembers)]
 internal class CreateRotaModel
 {
     [Required, MaxLength(256)]
@@ -81,6 +83,7 @@ internal sealed class MoveRotaModel
     public Guid TargetTeamId { get; set; }
 }
 
+[UsedImplicitly(ImplicitUseKindFlags.Assign, ImplicitUseTargetFlags.WithMembers)]
 internal class CreateShiftModel
 {
     public Guid RotaId { get; set; }
