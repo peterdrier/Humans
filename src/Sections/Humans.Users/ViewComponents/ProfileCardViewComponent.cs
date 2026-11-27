@@ -129,10 +129,12 @@ public sealed class ProfileCardViewComponent(
                     Proficiency = pl.Proficiency
                 }).ToList(),
             PreferredLanguage = info.PreferredLanguage,
-            CanSendMessage = !isOwnProfile
-                && !visibleEmails.Any(e => e.Visibility >= ContactFieldVisibility.AllActiveProfiles)
-                && await commPrefService.AcceptsFacilitatedMessagesAsync(userId, ct)
+            BurnerName = info.BurnerName,
         };
+        // The card offers one way to reach the member: the email it shows, or else the button.
+        model.CanSendMessage = !isOwnProfile
+            && model.PublicUserEmails.Count == 0
+            && await commPrefService.AcceptsFacilitatedMessagesAsync(userId, ct);
 
         return View(Layouts.Contains(layout) ? layout : "Default", model);
     }

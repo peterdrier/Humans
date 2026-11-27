@@ -85,7 +85,7 @@
         @if (Model.CanSendMessage)
         {
             <a asp-controller="FacilitatedMessage" asp-action="SendMessage" asp-route-id="@Model.UserId" class="btn btn-outline-primary">
-                <i class="fa-solid fa-envelope me-1"></i> @HtmlLocalizer["Users_SendMessage_Button", humanHtml]
+                <i class="fa-solid fa-envelope me-1"></i> @Localizer["Users_SendMessage_Button", Model.BurnerName]
             </a>
         }
         @if (Model.IsOwnProfile)

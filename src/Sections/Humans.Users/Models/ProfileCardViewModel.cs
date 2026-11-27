@@ -55,6 +55,8 @@ internal sealed class ProfileCardViewModel
     }
 
     /// <summary>True when viewing another user's profile and no email is visible.</summary>
+    /// <summary>Plain name for text that sits inside a link, such as the message button.</summary>
+    public string BurnerName { get; set; } = string.Empty;
     public bool CanSendMessage { get; set; }
 
     public IReadOnlyList<UserEmailDisplayViewModel> PublicUserEmails =>
