@@ -27,6 +27,12 @@ public sealed class TaskClaimingTests
         Blocked,
     }
 
+    public enum Decision
+    {
+        Approve,
+        Decline,
+    }
+
     private readonly TaskTestKit _kit = new();
     private readonly Guid _sam = Guid.NewGuid();
     private readonly Guid _robin = Guid.NewGuid();
@@ -234,6 +240,43 @@ public sealed class TaskClaimingTests
         (await _kit.Service.WithdrawRequestAsync(task.Id, _sam, Ct)).Refusal.Should().Be("Tasks_Refusal_NoYourRequest");
         (await _kit.Service.WithdrawRequestAsync(task.Id, _robin, Ct)).Refusal.Should().Be("Tasks_Refusal_NoYourRequest");
         (await _kit.Service.GetTaskAsync(task.Id, Ct))!.Assignments.Should().ContainSingle(a => a.IsConfirmed);
+    }
+
+    [HumansTheory]
+    [InlineData(Decision.Approve)]
+    [InlineData(Decision.Decline)]
+    public async Task AnswerRequest_CancelledAfterAudit_CompletesEmail(Decision decision)
+    {
+        _kit.GiveEmail(_sam, "sam@example.com");
+        var task = await _kit.CreateAsync(Input(needsApproval: true));
+        await ClaimAsync(task.Id);
+        var person = await _kit.Users.GetUserInfoAsync(_sam, Ct);
+        using var request = new CancellationTokenSource();
+        var action = decision == Decision.Approve ? TasksAuditActions.TaskRequestApproved : TasksAuditActions.TaskRequestDeclined;
+        _kit.Audit.LogAsync(action, "TaskItem", task.Id, Arg.Any<string>(), _kit.Actor, _sam, AuditSubjectTypes.User)
+            .Returns(_ => request.CancelAsync());
+        _kit.Users.GetUserInfoAsync(_sam, Arg.Any<CancellationToken>()).Returns(call =>
+        {
+            call.Arg<CancellationToken>().ThrowIfCancellationRequested();
+            return person;
+        });
+        _kit.Email.SendAsync(Arg.Any<EmailMessage>(), Arg.Any<CancellationToken>()).Returns(call =>
+        {
+            call.Arg<CancellationToken>().ThrowIfCancellationRequested();
+            return Task.CompletedTask;
+        });
+
+        var result = decision == Decision.Approve
+            ? await _kit.Service.ApproveRequestAsync(task.Id, _sam, _kit.Actor, request.Token)
+            : await _kit.Service.DeclineRequestAsync(task.Id, _sam, "Not this time", _kit.Actor, request.Token);
+
+        request.IsCancellationRequested.Should().BeTrue();
+        result.Refusal.Should().BeNull();
+        var current = (await _kit.Service.GetTaskAsync(task.Id, Ct))!;
+        current.Assignments.Count.Should().Be(decision == Decision.Approve ? 1 : 0);
+        var mail = _kit.SentEmails.Should().ContainSingle().Subject;
+        mail.TemplateName.Should().Be(decision == Decision.Approve ? "task_request_approved" : "task_request_declined");
+        await _kit.Email.Received(1).SendAsync(Arg.Any<EmailMessage>(), CancellationToken.None);
     }
 
     [HumansFact]
