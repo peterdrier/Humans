@@ -134,3 +134,80 @@ test('compareSnapshots flags accelerating metrics and stays quiet on flat or shr
   assert.match(md, /\*\*FLAG\*\*/);
   assert.match(md, /a\.cs:1/);
 });
+
+test('long_methods brace depth ignores URL strings, char literals, and block comments', () => {
+  const filler = Array.from({ length: 120 }, () => '        x++;').join('\n');
+  const files = [
+    {
+      path: 'src/Sections/Humans.Demo/Services/DemoService.cs',
+      content: [
+        'internal sealed class DemoService',
+        '{',
+        '    public void ShortWithCharBrace(string s)',
+        '    {',
+        "        var parts = s.Split('{');",
+        '        /* { multi-line',
+        '           block comment { */',
+        '        if (s.StartsWith("https://example.com")) {',
+        '            return;',
+        '        }',
+        '    }',
+        '    public void LongWithUrlAndCharBrace(string s)',
+        '    {',
+        '        var x = 0;',
+        '        if (s.StartsWith("https://example.com")) {',
+        "            if (s.Contains('}')) x++;",
+        '        }',
+        filler,
+        '    }',
+        '}',
+      ].join('\n'),
+    },
+  ];
+
+  const result = analyzeFiles(files);
+  assert.equal(result.metrics.long_methods.value, 1);
+  assert.match(result.metrics.long_methods.outliers[0], /LongWithUrlAndCharBrace/);
+});
+
+test('broad catch metrics match Exception and bare catch, not narrow exception types', () => {
+  const files = [
+    {
+      path: 'src/Sections/Humans.Demo/Controllers/DemoController.cs',
+      content: [
+        'try { } catch (OperationCanceledException) { }',
+        'try { } catch (IOException ex) { }',
+        'try { } catch (CultureNotFoundException) { }',
+        'try { } catch (Exception ex) { }',
+        'try { } catch (System.Exception) { }',
+        'try { } catch { }',
+      ].join('\n'),
+    },
+  ];
+
+  const result = analyzeFiles(files);
+  assert.equal(result.metrics.broad_catch_controllers.value, 3);
+  assert.equal(result.metrics.broad_catch_total.value, 3);
+});
+
+test('compareSnapshots flags max growth even when violation count is flat or lower', () => {
+  const baseline = {
+    metrics: {
+      giant_services: { label: 'Giant services', value: 10, max: 1200, outliers: [] },
+      long_methods: { label: 'Long methods', value: 12, max: 150, outliers: [] },
+    },
+  };
+  const current = {
+    metrics: {
+      giant_services: { label: 'Giant services', value: 10, max: 2000, outliers: ['svc.cs'] },
+      long_methods: { label: 'Long methods', value: 11, max: 210, outliers: ['m.cs:1'] },
+    },
+  };
+
+  const rows = compareSnapshots(current, baseline);
+  const byId = Object.fromEntries(rows.map(r => [r.id, r]));
+  assert.equal(byId.giant_services.flagged, true);
+  assert.equal(byId.giant_services.flagReason, 'max 1200 -> 2000');
+  assert.equal(byId.long_methods.flagged, true);
+  assert.equal(byId.long_methods.flagReason, 'max 150 -> 210');
+});

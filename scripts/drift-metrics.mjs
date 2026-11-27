@@ -43,8 +43,55 @@ function countParams(paramText) {
   return commas + 1;
 }
 
-function stripCommentsAndStrings(line) {
-  return line.replace(/\/\/.*$/, '').replace(/"(?:\\.|[^"\\])*"/g, '""');
+const BROAD_CATCH_RE = /\bcatch\s*\(\s*(?:(?:global::)?System\.)?Exception\b|\bcatch\s*(?:\{|$)/;
+
+function stripCommentsAndStrings(line, state = { inBlockComment: false }) {
+  let out = '';
+  let i = 0;
+  while (i < line.length) {
+    if (state.inBlockComment) {
+      const end = line.indexOf('*/', i);
+      if (end === -1) return out;
+      state.inBlockComment = false;
+      i = end + 2;
+      continue;
+    }
+    const ch = line[i];
+    const next = line[i + 1];
+    if (ch === '/' && next === '/') {
+      return out;
+    }
+    if (ch === '/' && next === '*') {
+      state.inBlockComment = true;
+      i += 2;
+      continue;
+    }
+    if ((ch === '@' && next === '"') || (ch === '@' && next === '$' && line[i + 2] === '"')) {
+      i += next === '$' ? 3 : 2;
+      while (i < line.length) {
+        if (line[i] === '"') {
+          if (line[i + 1] === '"') { i += 2; continue; }
+          i++;
+          break;
+        }
+        i++;
+      }
+      continue;
+    }
+    if (ch === '"' || ch === '\'') {
+      const quote = ch;
+      i++;
+      while (i < line.length) {
+        if (line[i] === '\\') { i += 2; continue; }
+        if (line[i] === quote) { i++; break; }
+        i++;
+      }
+      continue;
+    }
+    out += ch;
+    i++;
+  }
+  return out;
 }
 
 function topN(items, keyFn, limit = 5) {
@@ -242,7 +289,8 @@ export function analyzeFiles(files) {
       if (/\.ToString\s*\(\s*"(?:N2|F2|C2|0\.00)"/.test(line)) {
         manualCurrency.push({ path: rf, line: i + 1 });
       }
-      if (/\bcatch\s*\([^)]*Exception\b/.test(line)) {
+      const codeLine = stripCommentsAndStrings(line);
+      if (BROAD_CATCH_RE.test(codeLine)) {
         totalBroadCatch++;
         fileCatchHits++;
       }
@@ -291,8 +339,9 @@ export function analyzeFiles(files) {
 
       let braceDepth = 0;
       let endLine = j;
+      const commentState = { inBlockComment: false };
       for (let k = j; k < lines.length; k++) {
-        const clean = stripCommentsAndStrings(lines[k]);
+        const clean = stripCommentsAndStrings(lines[k], commentState);
         for (const ch of clean) {
           if (ch === '{') braceDepth++;
           else if (ch === '}') braceDepth--;
@@ -498,10 +547,15 @@ export function compareSnapshots(current, baseline) {
         } else if (delta >= 15) {
           flagged = true;
           flagReason = `+${delta}`;
-        } else if (cur.max && prev.max && cur.max - prev.max >= Math.max(10, Math.round(prev.max * 0.15))) {
-          flagged = true;
-          flagReason = `max ${prev.max} -> ${cur.max}`;
         }
+      }
+    }
+
+    if (!flagged && prevVal !== null && !cur.isRatio && cur.max && prev.max) {
+      const maxJump = cur.max - prev.max;
+      if (maxJump >= Math.max(10, Math.round(prev.max * 0.15))) {
+        flagged = true;
+        flagReason = `max ${prev.max} -> ${cur.max}`;
       }
     }
 
