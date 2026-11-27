@@ -27,7 +27,7 @@ public sealed class PretixStripeTests
         payments: [new { local_id = 1, state = "confirmed", amount = "1000.00", provider = "stripe", payment_date = "2027-01-02T09:59:00Z", details }]);
 
     [HumansFact]
-    public async Task Ledger_finds_each_payment_s_pretix_order_and_its_Humans_order()
+    public async Task Ledger_EachPayment_NamesHumansOrder()
     {
         var paid = Guid.NewGuid();
         var refunded = Guid.NewGuid();
@@ -55,7 +55,7 @@ public sealed class PretixStripeTests
     }
 
     [HumansFact]
-    public async Task Without_the_Stripe_account_there_is_no_ledger_and_Check_says_so()
+    public async Task Ledger_NoStripeAccount_IsEmpty()
     {
         _stripe.CheckAccountAsync("Tickets", Arg.Any<CancellationToken>())
             .Returns([new StripeAccountCheck(false, "Stripe:MirrorAccounts has no Tickets entry")]);
@@ -68,7 +68,7 @@ public sealed class PretixStripeTests
     }
 
     [HumansFact]
-    public async Task A_paid_order_reports_the_fee_Stripe_kept_on_its_PaymentIntent()
+    public async Task Status_PaidOrder_ReportsStripeFee()
     {
         var pretix = new FakePretix().On("GET", $"{Api}orders/{Code}/", HttpStatusCode.OK, PaidWithStripe(new { id = "pi_1", payment_method = "pm_1" }));
         _stripe.GetAccountPaymentFeeAsync("Tickets", "pi_1", Arg.Any<CancellationToken>()).Returns(1440L);
@@ -80,7 +80,7 @@ public sealed class PretixStripeTests
     }
 
     [HumansFact]
-    public async Task A_payment_without_a_PaymentIntent_never_asks_Stripe()
+    public async Task Status_NoPaymentIntent_SkipsStripe()
     {
         var pretix = new FakePretix().On("GET", $"{Api}orders/{Code}/", HttpStatusCode.OK, PaidWithStripe(new { }));
 

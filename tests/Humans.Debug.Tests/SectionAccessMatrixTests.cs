@@ -6,7 +6,7 @@ namespace Humans.Debug.Tests;
 public class SectionAccessMatrixTests
 {
     [HumansFact]
-    public void Pins_the_Debug_matrix()
+    public void AccessMatrix_MatchesDebugPin()
     {
         var matrix = ((ISectionAccessMatrix)new Section()).AccessMatrices
             .Single(m => string.Equals(m.Key, "Debug", StringComparison.Ordinal));

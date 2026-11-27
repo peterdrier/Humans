@@ -40,7 +40,7 @@ public class PretixPlatformTests
             });
 
     [HumansFact]
-    public async Task Create_PostsHumansPricesAndReturnsPayLinkBackToHumans()
+    public async Task Create_ValidOrder_ReturnsPayLink()
     {
         var pretix = new FakePretix()
             .On("GET", Api, HttpStatusCode.OK, new { currency = "EUR" })
@@ -105,7 +105,7 @@ public class PretixPlatformTests
     }
 
     [HumansFact]
-    public async Task Create_TaxedDifferentlyThanAsked_CancelsTheOrderAndThrows()
+    public async Task Create_TaxedDifferently_CancelsOrder()
     {
         var pretix = WithEvent()
             .On("POST", $"{Api}orders/", HttpStatusCode.Created,
@@ -121,7 +121,7 @@ public class PretixPlatformTests
     [HumansTheory]
     [InlineData("200.00", "1000.00", "*line 1 costs 200.00*")]
     [InlineData("225.00", "1015.52", "*total 1015.52*")]
-    public async Task Create_ChargedDifferentlyThanAsked_CancelsTheOrderAndThrows(string ticketPrice, string total, string message)
+    public async Task Create_ChargedDifferently_CancelsOrder(string ticketPrice, string total, string message)
     {
         var pretix = WithEvent()
             .On("POST", $"{Api}orders/", HttpStatusCode.Created,
@@ -239,7 +239,7 @@ public class PretixPlatformTests
     }
 
     [HumansFact]
-    public async Task Status_PaidOrder_ReportsMethodAndCompletedRefunds()
+    public async Task Status_PaidOrder_ReportsCompletedRefunds()
     {
         var pretix = new FakePretix().On("GET", OrderPath, HttpStatusCode.OK, Order(
             Code, status: "p", total: 1015.52m,
@@ -337,7 +337,7 @@ public class PretixPlatformTests
     }
 
     [HumansFact]
-    public async Task Status_RefundMadeInTheStripeDashboard_CountsAsRefundedBeforeAnyoneProcessesIt()
+    public async Task Status_RefundMadeInStripe_CountsAsRefunded()
     {
         var pretix = new FakePretix().On("GET", OrderPath, HttpStatusCode.OK, PaidOrder(
             new { local_id = 1, state = "external", source = "external", amount = "40.00", payment = 1, comment = (string?)null, provider = "stripe", details = new { id = "re_3Q" } }));
@@ -350,7 +350,7 @@ public class PretixPlatformTests
     }
 
     [HumansFact]
-    public async Task Status_Chargeback_IsChargedBackNotRefundedUntilCancelledInPretix()
+    public async Task Status_Chargeback_IsChargedBack()
     {
         var pretix = new FakePretix().On("GET", OrderPath, HttpStatusCode.OK, PaidOrder(
             new { local_id = 1, state = "done", source = "admin", amount = "100.00", payment = 1, comment = "humans-refund:x", provider = "stripe", details = new { id = "re_1" } },
@@ -405,7 +405,7 @@ public class PretixPlatformTests
     }
 
     [HumansFact]
-    public async Task Erase_BuyersOrder_ClearsEmailAndAnyHolderData()
+    public async Task Erase_BuyersOrder_ClearsEmail()
     {
         var order = new
         {
@@ -553,7 +553,7 @@ public class PretixPlatformTests
     }
 
     [HumansFact]
-    public async Task Refund_RetryAfterTheFeeWasAdded_DoesNotLowerTheTotalTwice()
+    public async Task Refund_RetryAfterFeeAdded_LowersTotalOnce()
     {
         var refundId = Guid.NewGuid();
         var pretix = new FakePretix()
@@ -569,7 +569,7 @@ public class PretixPlatformTests
     }
 
     [HumansFact]
-    public async Task Refund_PretixServerError_ThrowsAndTheRetryReusesTheFee()
+    public async Task Refund_PretixServerError_Throws()
     {
         var refundId = Guid.NewGuid();
         var pretix = RefundablePretix(refundId)
@@ -592,7 +592,7 @@ public class PretixPlatformTests
     }
 
     [HumansFact]
-    public async Task Refund_PretixRefusesTheCall_FailsAndRestoresTheTotal()
+    public async Task Refund_PretixRefusesCall_RestoresTotal()
     {
         var refundId = Guid.NewGuid();
         var pretix = RefundablePretix(refundId)
@@ -610,7 +610,7 @@ public class PretixPlatformTests
     [InlineData("{\"detail\": \"External error: card_declined\"}")]
     [InlineData("{\"detail\": \"Invalid state of payment.\"}")]
     [InlineData("{\"amount\": [\"Invalid refund amount, only 100.00 are available to refund.\"]}")]
-    public async Task Refund_PretixDeclines_FailsAndRestoresTheTotal(string declined)
+    public async Task Refund_PretixDeclines_RestoresTotal(string declined)
     {
         var refundId = Guid.NewGuid();
         var pretix = RefundablePretix(refundId)
@@ -676,7 +676,7 @@ public class PretixPlatformTests
     }
 
     [HumansFact]
-    public async Task Refund_RepeatAfterTheRefundFailed_AnswersFailedAndNeverRefundsAgain()
+    public async Task Refund_RepeatAfterFailure_AnswersFailed()
     {
         var refundId = Guid.NewGuid();
         var pretix = new FakePretix()
@@ -697,7 +697,7 @@ public class PretixPlatformTests
     }
 
     [HumansFact]
-    public async Task Refund_MethodCannotRefundAutomatically_AsksForAPersonInPretix()
+    public async Task Refund_MethodNotAutomatic_NeedsPerson()
     {
         var refundId = Guid.NewGuid();
         var pretix = RefundablePretix(refundId)
@@ -714,7 +714,7 @@ public class PretixPlatformTests
     }
 
     [HumansFact]
-    public async Task Refund_MoreThanIsLeftOnThePayment_FailsWithoutCallingPretix()
+    public async Task Refund_AboveRemainingAmount_Fails()
     {
         var pretix = new FakePretix().On("GET", OrderPath, HttpStatusCode.OK, PaidOrder(
             new { local_id = 3, state = "done", amount = "900.00", payment = 1, comment = "", provider = "stripe" }));
@@ -727,7 +727,7 @@ public class PretixPlatformTests
     }
 
     [HumansFact]
-    public async Task Status_PendingOrderWithASettlingPayment_IsProcessingAndCannotBeCancelled()
+    public async Task Status_PendingWithSettlingPayment_IsProcessing()
     {
         var pretix = new FakePretix().On("GET", OrderPath, HttpStatusCode.OK, Order(
             Code, status: "n", total: 1000m,
@@ -781,7 +781,7 @@ public class PretixPlatformTests
     }
 
     [HumansFact]
-    public void OrderCode_IsStablePerOrderAndValidForPretix()
+    public void OrderCode_SameOrder_IsStable()
     {
         var first = Guid.CreateVersion7();
         var second = Guid.CreateVersion7();
@@ -863,7 +863,7 @@ public class PretixPlatformTests
     [HumansTheory]
     [InlineData(false)]
     [InlineData(true)]
-    public async Task ListOrders_FollowsPagesCountsTicketItemsAndAddsBackRefundFees(bool absoluteNext)
+    public async Task ListOrders_SeveralPages_FollowsThem(bool absoluteNext)
     {
         object Listed(string code, string datetime, object apiMeta, object[] fees, object[] refunds, decimal total) => new
         {
@@ -918,7 +918,7 @@ public class PretixPlatformTests
     }
 
     [HumansFact]
-    public async Task ListOrders_ChargesWhatWasReceivedAndCountsExternalRefundsAndChargebacks()
+    public async Task ListOrders_ExternalRefunds_AreCounted()
     {
         var pretix = new FakePretix()
             .On("GET", $"{Api}items/", HttpStatusCode.OK, new { results = new object[] { new { id = 7, internal_name = "humans-ticket" } } })
@@ -964,7 +964,7 @@ public class PretixPlatformTests
     [InlineData("n", "done", "re_1", "40.00", 4000, 0)]
     [InlineData("e", "done", "re_1", "40.00", 4000, 0)]
     [InlineData("e", "external", "dp_1", "100.00", 0, 10000)]
-    public async Task ListOrders_OrderThatTookItsMoney_StaysPaidWhateverPretixMadeOfItLater(
+    public async Task ListOrders_MoneyReceived_StaysPaid(
         string status, string refundState, string stripeId, string amount, long refunded, long chargedBack)
     {
         // Processing a refund in pretix cancels or reopens the order; a late payment leaves it expired. Tickets keeps

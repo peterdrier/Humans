@@ -60,28 +60,28 @@ Docs/                                      Pretix.md (invariants), data-access.m
   by `Create_RetriedWithSameOrderId_ReturnsTheExistingOrder` and `Create_CodeOwnedByAnotherOrder_Throws`.
 - pretix charges exactly the lines or no order survives: a price, tax or total mismatch cancels a
   just-created order and throws, `src/Sections/Humans.Pretix/Services/PretixPlatform.cs:115`;
-  pinned by `Create_TaxedDifferentlyThanAsked_CancelsTheOrderAndThrows` and
-  `Create_ChargedDifferentlyThanAsked_CancelsTheOrderAndThrows`.
+  pinned by `Create_TaxedDifferently_CancelsOrder` and
+  `Create_ChargedDifferently_CancelsOrder`.
 - Money decides the status: a pending or expired order its payments cover, or a cancelled order
   holding unrefunded money, reads Paid, `src/Sections/Humans.Pretix/Services/PretixPlatform.cs:454`;
   pinned by `Status_OrderItsPaymentsCover_IsPaid` and `Status_CancelledOrderHoldingMoney_IsPaid`.
 - A chargeback counts as charged back, never refunded: `src/Sections/Humans.Pretix/Services/PretixPlatform.cs:471`;
-  pinned by `Status_Chargeback_IsChargedBackNotRefundedUntilCancelledInPretix`.
+  pinned by `Status_Chargeback_IsChargedBack`.
 - A refund id refunds once: a repeat answers the earlier refund,
   `src/Sections/Humans.Pretix/Services/PretixPlatform.cs:153`, and a retry reuses the
   marked fee, `src/Sections/Humans.Pretix/Services/PretixPlatform.cs:171`; pinned by
-  `Refund_RepeatedRefundId_DoesNotRefundTwice` and `Refund_RetryAfterTheFeeWasAdded_DoesNotLowerTheTotalTwice`.
+  `Refund_RepeatedRefundId_DoesNotRefundTwice` and `Refund_RetryAfterFeeAdded_LowersTotalOnce`.
 - A refund pretix accepted but has not finished never reads Succeeded:
   `src/Sections/Humans.Pretix/Services/PretixPlatform.cs:619`; pinned by
   `Refund_AcceptedButNotYetDone_IsNotReportedSucceeded`.
 - No answer from pretix on a refund throws, so Tickets retries:
   `src/Sections/Humans.Pretix/Services/PretixPlatform.cs:183`; pinned by
-  `Refund_PretixServerError_ThrowsAndTheRetryReusesTheFee`.
+  `Refund_PretixServerError_Throws`.
 - Cancel refuses a paid or settling order: `src/Sections/Humans.Pretix/Services/PretixPlatform.cs:225`;
-  pinned by `Cancel_PaidOrder_Throws` and `Status_PendingOrderWithASettlingPayment_IsProcessingAndCannotBeCancelled`.
+  pinned by `Cancel_PaidOrder_Throws` and `Status_PendingWithSettlingPayment_IsProcessing`.
 - No names go to pretix: the order body carries email, code, comment and amounts only,
   `src/Sections/Humans.Pretix/Services/PretixPlatform.cs:544`; pinned by the last
-  assertion of `Create_PostsHumansPricesAndReturnsPayLinkBackToHumans`.
+  assertion of `Create_ValidOrder_ReturnsPayLink`.
 - The webhook changes nothing itself: a wrong secret is 404,
   `src/Sections/Humans.Pretix/Controllers/PretixWebhookController.cs:40`, an unset one 503,
   `src/Sections/Humans.Pretix/Controllers/PretixWebhookController.cs:32`, and a match only

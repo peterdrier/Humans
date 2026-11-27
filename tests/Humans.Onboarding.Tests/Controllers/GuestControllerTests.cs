@@ -62,7 +62,7 @@ public class GuestControllerTests
 
     [HumansTheory]
     [MemberData(nameof(SupportedCultures.All), MemberType = typeof(SupportedCultures))]
-    public async Task GuestGreeting_RendersTheCurrentEncodedIdentityInTheViewersCulture(string language)
+    public async Task GuestGreeting_RendersEncodedIdentity(string language)
     {
         using var culture = new CultureScope(language);
         var user = new User { Id = Guid.NewGuid(), BurnerName = "Original name" };
