@@ -1,3 +1,4 @@
+using JetBrains.Annotations;
 using System.Reflection;
 using AwesomeAssertions;
 using Humans.Base.Attributes;
@@ -121,30 +122,33 @@ public class ViewComponentSlotContractTests
         failures.Should().BeEmpty();
     }
 
+    [UsedImplicitly(ImplicitUseKindFlags.Access, ImplicitUseTargetFlags.WithMembers)]
     private sealed record FakeArgs(Guid UserId);
 
+    [UsedImplicitly(ImplicitUseKindFlags.Access, ImplicitUseTargetFlags.WithMembers)]
     private sealed record FakeStringUserIdArgs(string UserId);
 
+    [UsedImplicitly(ImplicitUseKindFlags.Access, ImplicitUseTargetFlags.WithMembers)]
     private sealed record FakeArgsWithExtraProperty(Guid UserId, string Extra);
 
     private sealed class FakeMissingArgumentViewComponent : ViewComponent
     {
-        public IViewComponentResult Invoke(Guid userId, string requiredButUnsupplied) => Content(string.Empty);
+        public IViewComponentResult Invoke([UsedImplicitly] Guid userId, [UsedImplicitly] string requiredButUnsupplied) => Content(string.Empty);
     }
 
     private sealed class FakeNoArgsViewComponent : ViewComponent
     {
-        public IViewComponentResult Invoke(Guid? optional = null) => Content(string.Empty);
+        public IViewComponentResult Invoke([UsedImplicitly] Guid? optional = null) => Content(string.Empty);
     }
 
     private sealed class FakeOptionalTypeMismatchViewComponent : ViewComponent
     {
-        public IViewComponentResult Invoke(Guid? userId = null) => Content(string.Empty);
+        public IViewComponentResult Invoke([UsedImplicitly] Guid? userId = null) => Content(string.Empty);
     }
 
     private sealed class FakeSingleParameterViewComponent : ViewComponent
     {
-        public IViewComponentResult Invoke(Guid userId) => Content(string.Empty);
+        public IViewComponentResult Invoke([UsedImplicitly] Guid userId) => Content(string.Empty);
     }
 
     /// <summary>

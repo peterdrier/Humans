@@ -34,7 +34,7 @@ public sealed class ConsentEmailsTests
     }
 
     [HumansFact]
-    public void ReConsentsRequired_SubjectNamesTheDocumentOnlyWhenThereIsOne()
+    public void ReConsentsRequired_OneDocument_SubjectNamesIt()
     {
         var single = Create().ReConsentsRequired(Guid.NewGuid(), "a@x.com", "Alice", ["Volunteer Agreement"], "en");
         single.Subject.Should().Be("Please re-accept: Volunteer Agreement");
@@ -44,7 +44,7 @@ public sealed class ConsentEmailsTests
     }
 
     [HumansFact]
-    public void DocumentNamesAreHtmlEncodedIntoTheList()
+    public void DocumentNames_InList_AreHtmlEncoded()
     {
         var msg = Create().ReConsentsRequired(Guid.NewGuid(), "a@x.com", "Alice", ["<b>Doc</b>"], "en");
 
@@ -52,14 +52,14 @@ public sealed class ConsentEmailsTests
     }
 
     [HumansFact]
-    public void RendersInTheRecipientsCulture()
+    public void Templates_RecipientCulture_IsUsed()
     {
         Create().ReConsentsRequired(Guid.NewGuid(), "a@x.com", "Alice", ["A", "B"], "es")
             .Subject.Should().Be("Consent_Email_ReConsentRequired_Subject_Multiple#es");
     }
 
     [HumansFact]
-    public void EveryTemplateHasAPreviewSample()
+    public void Templates_EachHasPreviewSample()
     {
         var emails = Create();
         var templates = TemplateNames(emails);
@@ -77,7 +77,7 @@ public sealed class ConsentEmailsTests
     }
 
     [HumansFact]
-    public void PreviewSampleIdsAreUnique()
+    public void PreviewSampleIds_AreUnique()
     {
         var samples = new ConsentEmailPreviews(Create())
             .Samples(new EmailPreviewPersona("en", "Sally Smith", "sally@example.com"));
@@ -87,7 +87,7 @@ public sealed class ConsentEmailsTests
 
     /// <summary>
     /// Every template the builder can produce, found by reflection rather than listed, so a
-    /// template added without a gallery sample fails <see cref="EveryTemplateHasAPreviewSample"/>.
+    /// template added without a gallery sample fails <see cref="Templates_EachHasPreviewSample"/>.
     /// </summary>
     private static IReadOnlyList<string> TemplateNames(ConsentEmails emails) =>
     [

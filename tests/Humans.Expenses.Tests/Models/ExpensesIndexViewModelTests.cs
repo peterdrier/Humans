@@ -40,7 +40,7 @@ public class ExpensesIndexViewModelTests
     };
 
     [HumansFact]
-    public void Bound_with_no_cached_lines_is_awaiting_activity_not_unbound()
+    public void AwaitingActivity_BoundNoLines_IsTrue()
     {
         var vm = Vm(boundAccountNum: 40000004, ledger: null);
 
@@ -48,7 +48,7 @@ public class ExpensesIndexViewModelTests
     }
 
     [HumansFact]
-    public void Unbound_is_not_awaiting_activity()
+    public void AwaitingActivity_Unbound_IsFalse()
     {
         var vm = Vm(boundAccountNum: null, ledger: null);
 
@@ -56,7 +56,7 @@ public class ExpensesIndexViewModelTests
     }
 
     [HumansFact]
-    public void A_rendered_statement_is_not_awaiting_activity()
+    public void AwaitingActivity_RenderedStatement_IsFalse()
     {
         var ledger = new CreditorLedger(
             SupplierAccountNum: 40000004, Balance: -23m, OwedToMember: 23m, Lines: []);
@@ -67,7 +67,7 @@ public class ExpensesIndexViewModelTests
     }
 
     [HumansFact]
-    public void Unbound_with_a_report_already_in_holded_is_a_failed_binding()
+    public void FailedBinding_UnboundWithPushedReport_IsTrue()
     {
         var vm = Vm(boundAccountNum: null, ledger: null, "doc-1");
 
@@ -75,7 +75,7 @@ public class ExpensesIndexViewModelTests
     }
 
     [HumansFact]
-    public void Unbound_with_nothing_pushed_to_holded_is_not_a_failed_binding()
+    public void FailedBinding_UnboundNothingPushed_IsFalse()
     {
         var vm = Vm(boundAccountNum: null, ledger: null, [null]);
 
@@ -83,7 +83,7 @@ public class ExpensesIndexViewModelTests
     }
 
     [HumansFact]
-    public void Bound_is_never_a_failed_binding()
+    public void FailedBinding_Bound_IsFalse()
     {
         var vm = Vm(boundAccountNum: 40000004, ledger: null, "doc-1");
 

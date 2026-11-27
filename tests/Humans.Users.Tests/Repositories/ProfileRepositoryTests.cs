@@ -99,7 +99,7 @@ public sealed class UserRepositoryProfileTests : IDisposable
         var afterAdvance = _clock.GetCurrentInstant();
 
         // Keep one (new description), add one, remove "Remove me".
-        var newEntries = new List<CVEntry>
+        var newEntries = new List<CvEntry>
         {
             new(keepId, new LocalDate(2024, 3, 1), "Keep me", "New desc"),
             new(Guid.Empty, new LocalDate(2024, 5, 1), "Add me", null),
@@ -155,7 +155,7 @@ public sealed class UserRepositoryProfileTests : IDisposable
         // Advance the clock — if UpdatedAt were bumped unconditionally, we'd see the new time.
         _clock.AdvanceSeconds(60);
 
-        var entries = new List<CVEntry>
+        var entries = new List<CvEntry>
         {
             new(entryId, new LocalDate(2024, 3, 1), "Keep me", "unchanged"),
         };
@@ -196,7 +196,7 @@ public sealed class UserRepositoryProfileTests : IDisposable
         var afterAdvance = _clock.GetCurrentInstant();
 
         // Mutate both Date and EventName but keep Id
-        var entries = new List<CVEntry>
+        var entries = new List<CvEntry>
         {
             new(entryId, new LocalDate(2024, 6, 15), "Renamed Event", "desc"),
         };
@@ -318,7 +318,7 @@ public sealed class UserRepositoryProfileTests : IDisposable
         await _repo.ReplaceLanguagesAsync(user.Id,
             [new ProfileLanguage { Id = Guid.NewGuid(), UserId = user.Id, LanguageCode = "es" }], ct);
         var detached = await _dbContext.Profiles.AsNoTracking().SingleAsync(p => p.Id == profile.Id, ct);
-        await _repo.UpdateAsync(detached, ct, [new CVEntry(Guid.Empty, new LocalDate(2025, 7, 1), "Nowhere", null)]);
+        await _repo.UpdateAsync(detached, ct, [new CvEntry(Guid.Empty, new LocalDate(2025, 7, 1), "Nowhere", null)]);
 
         (await _dbContext.ProfileLanguages.AsNoTracking().SingleAsync(ct)).UserId.Should().Be(user.Id);
         (await _dbContext.VolunteerHistoryEntries.AsNoTracking().SingleAsync(ct)).UserId.Should().Be(user.Id);

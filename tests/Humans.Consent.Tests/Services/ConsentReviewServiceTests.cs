@@ -97,7 +97,7 @@ public sealed class ConsentReviewServiceTests : IDisposable
     }
 
     [HumansFact]
-    public async Task Read_NoReviewAnywhere_IsNone_AndNotListed()
+    public async Task Read_NoReview_IsNone()
     {
         var user = SeedUser();
 
@@ -118,7 +118,7 @@ public sealed class ConsentReviewServiceTests : IDisposable
     }
 
     [HumansFact]
-    public async Task RejectedAccountAndReview_ReadRejectedAndRefuseRepeatedRejection()
+    public async Task Reject_AlreadyRejected_IsRefused()
     {
         var user = SeedUser(state: UserState.Rejected);
         await SeedRowAsync(new ConsentReview
@@ -143,7 +143,7 @@ public sealed class ConsentReviewServiceTests : IDisposable
     }
 
     [HumansFact]
-    public async Task RecordConsentCheck_Cleared_ApprovesAndStamps()
+    public async Task RecordConsentCheck_Cleared_Approves()
     {
         var user = SeedUser();
         var reviewer = Guid.NewGuid();
@@ -348,7 +348,7 @@ public sealed class ConsentReviewServiceTests : IDisposable
     }
 
     [HumansFact]
-    public void Predicates_GateOnTheReview_TheStateAndTombstones()
+    public void Predicates_ReviewStateOrTombstone_GateResult()
     {
         var active = SeedUser();
         var tombstone = SeedUser(state: UserState.Merged, mergedAt: Earlier);
@@ -370,7 +370,7 @@ public sealed class ConsentReviewServiceTests : IDisposable
     }
 
     [HumansFact]
-    public void UserParts_ContributeTheReviewCardAndTheRejectionReason()
+    public void UserParts_Contributed_HaveCardWithReason()
     {
         ((IUserPart)new Section()).Parts().Should().BeEquivalentTo(
         [
@@ -380,7 +380,7 @@ public sealed class ConsentReviewServiceTests : IDisposable
     }
 
     [HumansFact]
-    public async Task RejectionReason_RendersForSelfOnly_AndOnlyWithAReason()
+    public async Task RejectionReason_OtherViewer_IsNotRendered()
     {
         var consent = Substitute.For<IConsentService>();
         var withReason = Guid.NewGuid();
@@ -400,7 +400,7 @@ public sealed class ConsentReviewServiceTests : IDisposable
     }
 
     [HumansFact]
-    public async Task ReviewCard_RendersForAdminOnly_WithTheRejectionAndReviewer()
+    public async Task ReviewCard_NonAdmin_IsNotRendered()
     {
         var reviewer = SeedUser(UserFixtures.Profile(), burnerName: "Rita", firstName: "R", lastName: "C");
         var user = SeedUser(state: UserState.Rejected);

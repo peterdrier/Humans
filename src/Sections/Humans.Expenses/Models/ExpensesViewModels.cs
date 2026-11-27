@@ -1,3 +1,4 @@
+using JetBrains.Annotations;
 using System.ComponentModel.DataAnnotations;
 using Humans.Expenses.Contracts;
 using Humans.Finance.Contracts;
@@ -170,6 +171,7 @@ internal sealed class ExpenseLineProofsViewModel
     public decimal ProofTotal => Proofs.Sum(p => p.Amount);
 }
 
+[UsedImplicitly(ImplicitUseKindFlags.Assign, ImplicitUseTargetFlags.WithMembers)]
 internal sealed class AddLineInputModel
 {
     [Required(ErrorMessage = "Validation_Required"), StringLength(500, ErrorMessage = "Validation_MaxLength")]
@@ -227,6 +229,7 @@ internal sealed class ExpenseReviewViewModel
         Reports.GroupBy(r => r.Status).OrderBy(g => g.Key);
 }
 
+[UsedImplicitly(ImplicitUseKindFlags.Assign, ImplicitUseTargetFlags.WithMembers)]
 internal sealed class ApproveInputModel
 {
     /// <summary>Rebooks the report.</summary>
@@ -237,6 +240,7 @@ internal sealed class ApproveInputModel
     public decimal? MaxAmount { get; set; }
 }
 
+[UsedImplicitly(ImplicitUseKindFlags.Assign, ImplicitUseTargetFlags.WithMembers)]
 internal sealed class EndorseInputModel
 {
     [Range(0.01, 1_000_000)]

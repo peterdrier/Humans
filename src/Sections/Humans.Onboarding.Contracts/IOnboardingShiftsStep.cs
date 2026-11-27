@@ -1,5 +1,6 @@
 using Humans.Base.Attributes;
 using Humans.Base.Interfaces;
+using JetBrains.Annotations;
 
 namespace Humans.Onboarding.Contracts;
 
@@ -8,6 +9,7 @@ namespace Humans.Onboarding.Contracts;
 /// leaf names no Shifts type: Onboarding passes the shifts left after its priority filter, and the component reads
 /// the rows and the viewer's signups itself.
 /// </summary>
+[UsedImplicitly(ImplicitUseKindFlags.Access, ImplicitUseTargetFlags.WithMembers)]
 public sealed record OnboardingShiftsStepArgs(
     Guid EventSettingsId,
     Guid ViewerUserId,

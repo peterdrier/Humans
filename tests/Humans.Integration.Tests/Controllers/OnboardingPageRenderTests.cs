@@ -59,7 +59,7 @@ public class OnboardingPageRenderTests(HumansTestDatabase database) : Integratio
         AssertRenderedCleanly(html, "GET /Consent/ReviewQueue/{id}");
 
         html.Should().Contain("Legal Name");        // Consent_Queue_LegalName
-        html.Should().Contain("Onboarding Review Queue");  // Consent_Queue_Title, on the breadcrumb
+        html.Should().Contain("Onboarding Review Queue");  // Consent_Queue_Title, in the page title
     }
 
     [HumansFact(Timeout = 120000)]

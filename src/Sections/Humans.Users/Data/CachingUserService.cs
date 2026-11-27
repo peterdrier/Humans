@@ -521,7 +521,7 @@ internal sealed class CachingUserService(
         UserProfileSaveCommand command,
         byte[]? profilePictureData = null,
         CancellationToken ct = default,
-        IReadOnlyList<CVEntry>? volunteerHistory = null) =>
+        IReadOnlyList<CvEntry>? volunteerHistory = null) =>
         MutateAsync(async () =>
         {
             var result = await WithInnerAsync(inner =>
