@@ -52,9 +52,9 @@ Docs/                                    LowIncome.md (invariants), authorizatio
 - A Grants refusal becomes an error message and a Warning without a stack trace, never an
   exception: `src/Sections/Humans.LowIncome/Controllers/LowIncomeAdminController.cs:49`,
   `src/Sections/Humans.LowIncome/Controllers/LowIncomeAdminController.cs:72`; pinned by
-  `LowIncomeAdminControllerTests.TooLongReason_IsShownAsAnError_AndLogged`.
+  `LowIncomeAdminControllerTests.Refuse_TooLongReason_ShowsError`.
 - Any other Grants failure propagates untouched: pinned by
-  `LowIncomeAdminControllerTests.SourceDependencyFailurePropagatesWithoutRefusalFeedback`.
+  `LowIncomeAdminControllerTests.Refuse_SourceFails_Propagates`.
 - The section registers nothing and owns no tables: `src/Sections/Humans.LowIncome/Section.cs:22`
   has an empty body, and the `.csproj` references no data project.
 

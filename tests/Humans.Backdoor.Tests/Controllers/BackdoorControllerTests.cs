@@ -50,7 +50,7 @@ public class BackdoorControllerTests
         _users.GetUserInfoAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
             .Returns(ci => new ValueTask<UserInfo?>(Info(ci.Arg<Guid>(), UserState.Active)));
 
-        _sut = new BackdoorController(_keys, _roles, _users, _auth, Substitute.For<IStringLocalizer<BackdoorResource>>())
+        _sut = new BackdoorController(_keys, Substitute.For<IBackdoorConnectionService>(), _roles, _users, _auth, Substitute.For<IStringLocalizer<BackdoorResource>>())
         {
             TempData = new TempDataDictionary(
                 new DefaultHttpContext(), Substitute.For<ITempDataProvider>()),

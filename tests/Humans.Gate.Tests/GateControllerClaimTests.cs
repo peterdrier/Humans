@@ -42,7 +42,7 @@ public class GateControllerClaimTests
     }
 
     [HumansFact]
-    public async Task ClaimPin_Throttle_IsPerUser_OneStafferLockoutDoesNotBlockAnother()
+    public async Task ClaimPin_OneStafferLockedOut_OthersStillClaim()
     {
         var ct = TestContext.Current.CancellationToken;
         var userA = Guid.NewGuid();
@@ -69,7 +69,7 @@ public class GateControllerClaimTests
     }
 
     [HumansFact]
-    public async Task ClaimPin_UnknownUserId_DoesNotEnrolOrStampSession()
+    public async Task ClaimPin_UnknownUserId_DoesNotEnrol()
     {
         var ct = TestContext.Current.CancellationToken;
         var bogus = Guid.NewGuid();
@@ -104,7 +104,7 @@ public class GateControllerClaimTests
     }
 
     [HumansFact]
-    public async Task Search_BlankQuery_ReturnsEmpty_WithoutHittingTheSearchService()
+    public async Task Search_BlankQuery_ReturnsEmpty()
     {
         var ct = TestContext.Current.CancellationToken;
 
@@ -146,7 +146,7 @@ public class GateControllerClaimTests
     }
 
     [HumansFact]
-    public async Task ClaimPin_MergedAwayUserId_FailsClosed_DoesNotEnrolOrStampSession()
+    public async Task ClaimPin_MergedAwayUserId_DoesNotEnrol()
     {
         // The resolving read answers a merged-away id with its survivor. The kiosk must not
         // mint a PIN or claim the session for an id the PIN store no longer recognises.

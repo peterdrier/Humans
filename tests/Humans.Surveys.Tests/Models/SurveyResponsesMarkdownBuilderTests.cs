@@ -23,6 +23,21 @@ public sealed class SurveyResponsesMarkdownBuilderTests
             GridSelectionMode.Single,
             [new SurveyExportGridRow("monday", "Monday")]);
 
+    [HumansFact]
+    public void Build_CommentQuestion_AddsCommentColumn()
+    {
+        var id = Guid.NewGuid();
+        var question = Choice(id, "Agree?", ("no", "No")) with { CommentPrompt = "Why?" };
+
+        var markdown = SurveyResponsesMarkdownBuilder.Build(
+            [question],
+            [new SurveyExportRow(
+                Guid.NewGuid(), ResponseAnonymity.Anonymous, SurveyInputMethod.Slug, "en", Submitted,
+                null, null, [new SurveyExportAnswer(id, ["no"], ["No"], "too dear", null)])]);
+
+        markdown.Should().Contain("| Agree? | Agree? (comment) |").And.Contain("| no | too dear |");
+    }
+
     [HumansTheory]
     [Xunit.InlineData(@"one\|pipe")]
     [Xunit.InlineData(@"two\\|pipe")]

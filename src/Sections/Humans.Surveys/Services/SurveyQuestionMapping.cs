@@ -52,7 +52,8 @@ internal static class SurveyQuestionMapping
                         image.FileName))
                     .ToList(),
                 question.RankedSettings,
-                question.RankedUnavailableOptionValues))
+                question.RankedUnavailableOptionValues,
+                question.Comment))
             .ToList();
 
     /// <summary>Maps builder input to tracked entities, assigning new ids where the input id is null.</summary>
@@ -92,6 +93,9 @@ internal static class SurveyQuestionMapping
                     : null,
                 RankedUnavailableOptionValues = q.Type == SurveyQuestionType.RankedChoice
                     ? (q.RankedUnavailableOptionValues ?? []).Distinct(StringComparer.Ordinal).ToList()
+                    : null,
+                Comment = q.Type is SurveyQuestionType.SingleChoice or SurveyQuestionType.MultiChoice
+                    ? q.Comment
                     : null,
                 ShowIf = q.ShowIf,
                 Options = q.Options.Select(o => new SurveyQuestionOption
