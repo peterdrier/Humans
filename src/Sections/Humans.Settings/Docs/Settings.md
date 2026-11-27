@@ -197,7 +197,7 @@ too wide to keep in step by hand. Derive it from the call sites.
 | in | Monitor | `ISettingsService` (`DriveActivityMonitor:LastRunAt`) |
 | in (seam) | Camps, Events, Rideshare, Shifts | implement `IEventSettingsChangeListener`: Shifts' `CachingShiftViewService` (flushes every `ShiftUserView` and forwards the id to its dashboard aggregates), Events' `CachingEventService` (its guide settings carry the timezone), Camps' `CachingCampService` (open seasons derive from events), Rideshare's `CachingRideshareService` (clears its cache). Settings names no consumer and references no consuming section |
 | in (seam) | sections with settings | implement `ISectionSettings` to contribute a `/Settings` tab |
-| out (seam) | AuditLog (temporary side) | `IRetentionPeriodContributor` (Base): the retention job's fan-out. Settings names no contributor |
+| out (seam) | AuditLog (temporary side), CityPlanning (polygon history), Gate (scans), Google (sync log), Holded (API calls) | `IRetentionPeriodContributor` (Base): the retention job's fan-out. Settings names no contributor |
 
 - **Audit actions:** declared on `SettingsAuditActions` (`src/Sections/Humans.Settings/SettingsAuditActions.cs`), one `AuditActionDefinition` each, written through `IAuditLogService`: `EventSettingsUpdated`, `RetentionPeriodChanged`, `RetentionPeriodDeleted`.
 

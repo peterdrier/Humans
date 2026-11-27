@@ -164,6 +164,43 @@ public sealed class ProfileCardViewComponentTests
             ? new[] { "Visible" } : new[] { "Hidden", "Hidden - Visible" });
     }
 
+    [HumansTheory]
+    [Xunit.InlineData(ContactFieldVisibility.BoardOnly, true)]
+    [Xunit.InlineData(ContactFieldVisibility.MyTeams, false)]
+    public async Task MessageButton_ShownEmail_ReplacesButton(ContactFieldVisibility visibility, bool button)
+    {
+        var ownerId = Guid.NewGuid();
+        var users = Substitute.For<IUserService>();
+        users.GetUserInfoAsync(ownerId, Arg.Any<CancellationToken>()).Returns(
+            UserInfo.Create(new User { Id = ownerId, BurnerName = "Ada" }, [], [], UserFixtures.Profile()));
+        var teams = Substitute.For<ITeamService>();
+        teams.GetTeamsAsync(Arg.Any<CancellationToken>()).Returns(new Dictionary<Guid, TeamInfo>());
+        var emails = Substitute.For<IUserEmailService>();
+        emails.GetVisibleEmailsAsync(ownerId, Arg.Any<ContactFieldVisibility>(), Arg.Any<CancellationToken>())
+            .Returns([new UserEmailDto(Guid.NewGuid(), "ada@example.com", true, null, null, true, visibility)]);
+        var preferences = Substitute.For<ICommunicationPreferenceService>();
+        preferences.AcceptsFacilitatedMessagesAsync(ownerId, Arg.Any<CancellationToken>()).Returns(true);
+        var component = new ProfileCardViewComponent(users, Substitute.For<IContactFieldService>(),
+            emails, teams, Substitute.For<ISystemRoleService>(), preferences)
+        {
+            ViewComponentContext = new ViewComponentContext
+            {
+                ViewContext = new ViewContext
+                {
+                    HttpContext = new DefaultHttpContext(),
+                    ViewData = new ViewDataDictionary(new EmptyModelMetadataProvider(), new ModelStateDictionary())
+                }
+            }
+        };
+
+        var result = await component.InvokeAsync(ownerId, ProfileCardViewMode.Admin);
+
+        var model = result.Should().BeOfType<ViewViewComponentResult>().Which.ViewData!.Model
+            .Should().BeOfType<ProfileCardViewModel>().Which;
+        model.CanSendMessage.Should().Be(button);
+        model.PublicUserEmails.Should().HaveCount(button ? 0 : 1);
+    }
+
     [HumansFact]
     public async Task InvokeAsync_RequestAborted_PropagatesCancellation()
     {
@@ -208,8 +245,12 @@ public sealed class ProfileCardViewComponentTests
         url.Action(Arg.Any<UrlActionContext>()).Returns("/old-picture-projection");
         var preferences = Substitute.For<ICommunicationPreferenceService>();
         preferences.AcceptsFacilitatedMessagesAsync(userId, Arg.Any<CancellationToken>()).Returns(true);
+        var emails = Substitute.For<IUserEmailService>();
+        emails.GetVisibleEmailsAsync(userId, Arg.Any<ContactFieldVisibility>(), Arg.Any<CancellationToken>())
+            .Returns([new UserEmailDto(Guid.NewGuid(), "board@example.com", true, null, null, true,
+                ContactFieldVisibility.BoardOnly)]);
         var component = new ProfileCardViewComponent(users, Substitute.For<IContactFieldService>(),
-            Substitute.For<IUserEmailService>(), teams, Substitute.For<ISystemRoleService>(), preferences)
+            emails, teams, Substitute.For<ISystemRoleService>(), preferences)
         {
             Url = url,
             ViewComponentContext = new ViewComponentContext
@@ -242,6 +283,11 @@ public sealed class ProfileCardViewComponentTests
             new ResourceManager(typeof(UsersResource)).GetString("Users_SendMessage_Button", CultureInfo.CurrentUICulture)!, name);
         var text = WebUtility.HtmlDecode(Regex.Replace(html, "<[^>]*>", string.Empty, RegexOptions.NonBacktracking));
         text.Contains(messageLabel, StringComparison.Ordinal).Should().Be(viewMode != ProfileCardViewMode.Self);
+        // A link inside the button splits it in two.
+        var button = Regex.Match(html, "btn-outline-primary\"[^>]*>\\s*<i class=\"fa-solid fa-envelope me-1\"></i>(?<inner>.*?)</a>",
+            RegexOptions.Singleline | RegexOptions.NonBacktracking);
+        button.Success.Should().Be(viewMode != ProfileCardViewMode.Self);
+        button.Groups["inner"].Value.Should().NotContain("<a");
     }
 
     private static async Task<string> RenderAsync(ProfileCardViewModel model, IUserService users)
@@ -274,7 +320,12 @@ public sealed class ProfileCardViewComponentTests
         var result = services.GetRequiredService<IRazorViewEngine>()
             .GetView(null, "/Views/Shared/Components/ProfileCard/Default.cshtml", isMainPage: false);
         result.Success.Should().BeTrue();
-        var http = new DefaultHttpContext { RequestServices = services };
+        var http = new DefaultHttpContext
+        {
+            RequestServices = services,
+            // Signed in, so names render as links.
+            User = new ClaimsPrincipal(new ClaimsIdentity([new Claim(ClaimTypes.NameIdentifier, Guid.NewGuid().ToString())], "test")),
+        };
         var route = new RouteData();
         route.Values["controller"] = "Profile";
         var action = new ActionContext(http, route, new Microsoft.AspNetCore.Mvc.Abstractions.ActionDescriptor());

@@ -33,6 +33,7 @@ internal interface IHoldedMirrorRepository : IRepository
 
     Task AddApiCallsAsync(IReadOnlyList<HoldedApiCall> rows, CancellationToken ct = default);
     Task<IReadOnlyList<HoldedApiCall>> GetApiCallsAsync(CancellationToken ct = default);
+    Task<int> DeleteApiCallsBeforeAsync(Instant cutoff, CancellationToken ct = default);
 
     /// <summary>The fetch is the whole list: documents absent from <paramref name="docs"/> are deleted. A null
     /// <see cref="HoldedPurchaseDoc.Notes"/> keeps the stored notes.</summary>
