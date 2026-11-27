@@ -640,6 +640,27 @@ public sealed class TicketDeliveryServiceTests
         _audit.ReceivedCalls().Should().BeEmpty();
     }
 
+    [HumansTheory]
+    [Xunit.InlineData(null, null, false)]
+    [Xunit.InlineData("", "snapshot@example.com", false)]
+    [Xunit.InlineData(" \t", "snapshot@example.com", false)]
+    [Xunit.InlineData(null, "snapshot@example.com", true)]
+    public async Task JoinInvitation_RecipientAddress_RequiresNonblankValue(string? currentEmail, string? storedEmail, bool sent)
+    {
+        var ticket = Ticket(PartnerId, "Ben Partner", storedEmail);
+        Tickets(ticket);
+        var holder = Xunit.Assert.IsType<UserInfo>(await _users.GetUserInfoAsync(PartnerId));
+        _users.GetUserInfoAsync(PartnerId, Arg.Any<CancellationToken>()).Returns(holder with { IdentityEmailColumn = currentEmail });
+
+        await Create().SendJoinInvitationAsync(_order.Id, ticket.Id);
+
+        _sent.Should().HaveCount(sent ? 1 : 0);
+        if (sent)
+            _sent.Single().RecipientEmail.Should().Be(storedEmail);
+        else
+            _audit.ReceivedCalls().Should().BeEmpty();
+    }
+
     [HumansFact]
     public async Task JoinInvitation_MergedHolder_UsesSurvivorIdentity()
     {

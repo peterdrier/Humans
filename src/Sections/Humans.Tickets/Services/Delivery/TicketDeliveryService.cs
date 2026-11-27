@@ -124,7 +124,10 @@ internal sealed class TicketDeliveryService(
             return;
 
         var holder = await users.GetUserInfoAsync(holderId, ct);
-        if (holder is null || holder.IsTombstone || (holder.Email ?? ticket.HolderEmail) is not { } address)
+        if (holder is null || holder.IsTombstone)
+            return;
+        var address = holder.Email ?? ticket.HolderEmail;
+        if (string.IsNullOrWhiteSpace(address))
             return;
         var baseUrl = BaseUrl;
         await email.SendAsync(emails.JoinInvitation(
