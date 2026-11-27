@@ -1,0 +1,68 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="-2 -2 244 244" role="img" aria-label="Vitruvian Man">
+  <!-- Frame: Circle and Square in gold -->
+  <circle cx="120" cy="120" r="120" fill="none" stroke="#c9a96e" stroke-width="1.5"/>
+  <rect x="23" y="46" width="194" height="194" fill="none" stroke="#c9a96e" stroke-width="1.5"/>
+
+  <!-- Body - solid gold base -->
+  <!-- Head -->
+  <ellipse cx="120" cy="58" rx="11" ry="13" fill="#c9a96e"/>
+
+  <!-- Neck -->
+  <path d="M114 69 L114 80 L126 80 L126 69" fill="#c9a96e"/>
+
+  <!-- Torso - more anatomical shape -->
+  <path d="M102 80 Q95 85 96 95 L96 110 Q97 125 100 135 L103 143 L137 143 L140 135 Q143 125 144 110 L144 95 Q145 85 138 80 Z" fill="#c9a96e"/>
+
+  <!-- Horizontal arms (pose 1) - tapered -->
+  <!-- Left arm horizontal -->
+  <path d="M96 86 L96 96 L45 100 Q35 100 28 97 L23 95 L23 90 L28 88 Q35 86 45 87 L96 86" fill="#c9a96e"/>
+  <!-- Right arm horizontal -->
+  <path d="M144 86 L144 96 L195 100 Q205 100 212 97 L217 95 L217 90 L212 88 Q205 86 195 87 L144 86" fill="#c9a96e"/>
+
+  <!-- Raised arms (pose 2) - more natural curve -->
+  <!-- Left raised arm -->
+  <path d="M102 83 Q85 65 55 30 L45 20 Q38 15 32 12 L28 15 Q35 20 42 28 L48 35 Q75 65 98 88 Z" fill="#c9a96e"/>
+  <!-- Right raised arm -->
+  <path d="M138 83 Q155 65 185 30 L195 20 Q202 15 208 12 L212 15 Q205 20 198 28 L192 35 Q165 65 142 88 Z" fill="#c9a96e"/>
+
+  <!-- Legs together (pose 1) -->
+  <path d="M110 143 L107 220 Q107 228 110 232 L118 234 L120 143 Z" fill="#c9a96e"/>
+  <path d="M130 143 L133 220 Q133 228 130 232 L122 234 L120 143 Z" fill="#c9a96e"/>
+
+  <!-- Spread legs (pose 2) -->
+  <!-- Left spread leg -->
+  <path d="M110 145 Q85 175 50 215 Q42 225 38 232 L48 238 Q55 230 62 220 Q90 180 115 150 Z" fill="#c9a96e"/>
+  <!-- Right spread leg -->
+  <path d="M130 145 Q155 175 190 215 Q198 225 202 232 L192 238 Q185 230 178 220 Q150 180 125 150 Z" fill="#c9a96e"/>
+
+  <!-- Tier 1 etch: main contours (stroke-width 2.0) -->
+  <g fill="none" stroke="#3d2b1f" stroke-width="2.0" stroke-linecap="round" stroke-linejoin="round">
+    <!-- Head outline -->
+    <ellipse cx="120" cy="58" rx="11" ry="13"/>
+    <!-- Shoulder line -->
+    <path d="M96 86 L144 86"/>
+    <!-- Hip line -->
+    <path d="M103 143 L137 143"/>
+  </g>
+
+  <!-- Tier 2 etch: muscle groups (stroke-width 1.4) -->
+  <g fill="none" stroke="#3d2b1f" stroke-width="1.4" stroke-linecap="round">
+    <!-- Chest -->
+    <path d="M105 92 Q120 97 135 92"/>
+    <!-- Center line -->
+    <line x1="120" y1="97" x2="120" y2="140"/>
+    <!-- Neck -->
+    <line x1="114" y1="69" x2="114" y2="78"/>
+    <line x1="126" y1="69" x2="126" y2="78"/>
+  </g>
+
+  <!-- Tier 3 etch: fine details (stroke-width 0.9) -->
+  <g fill="none" stroke="#3d2b1f" stroke-width="0.9" stroke-linecap="round">
+    <!-- Hair mass -->
+    <path d="M109 48 Q112 44 120 44 Q128 44 131 48"/>
+    <!-- Brow line only - no eyes/mouth to avoid smiley -->
+    <path d="M113 53 L127 53"/>
+    <!-- Navel -->
+    <circle cx="120" cy="120" r="2"/>
+  </g>
+</svg>
