@@ -2,9 +2,6 @@
 
 @{
     var untitledQuestion = Localizer["Surveys_Admin_Results_UntitledQuestion"].Value;
-    var answered = Model.Answers.Select(a => a.QuestionId).ToHashSet();
-    bool IsNested(RespondentAnswer a) =>
-        Model.Questions.TryGetValue(a.QuestionId, out var q) && q.FollowUpOf is { } parent && answered.Contains(parent);
     string Number(RespondentAnswer a) => Model.Questions.TryGetValue(a.QuestionId, out var q) ? $"Q{q.Number}" : "";
     string PromptOf(RespondentAnswer a) => string.IsNullOrWhiteSpace(a.Prompt) ? untitledQuestion : a.Prompt;
 
@@ -58,12 +55,12 @@
 }
 
 <dl class="row mb-0">
-    @foreach (var answer in Model.Answers.Where(a => !IsNested(a)))
+    @foreach (var answer in Model.Answers.Where(a => Model.NestedUnder(a) is null))
     {
         <dt class="col-sm-4"><span class="text-muted small me-2">@Number(answer)</span>@PromptOf(answer)</dt>
         <dd class="col-sm-8">
             @{ RenderValue(answer); }
-            @foreach (var followUp in Model.Answers.Where(a => IsNested(a) && Model.Questions[a.QuestionId].FollowUpOf == answer.QuestionId))
+            @foreach (var followUp in Model.Answers.Where(a => Model.NestedUnder(a) == answer.QuestionId))
             {
                 <div class="text-muted mt-1">
                     <i class="fa-solid fa-turn-up fa-rotate-90 me-2" aria-hidden="true"></i><span class="small me-1">@Number(followUp)</span>@{ RenderValue(followUp); }
