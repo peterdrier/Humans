@@ -64,6 +64,22 @@ public sealed class SurveyCsvExportBuilderTests
             .Split('\n');
 
     [HumansFact]
+    public void Build_CommentHeaderCollision_StaysUnique()
+    {
+        SurveyExportQuestion Choice(string prompt) =>
+            new(Guid.NewGuid(), prompt, SurveyQuestionType.SingleChoice, [new SurveyExportOption("no", "No")], CommentPrompt: "");
+        var questions = new List<SurveyExportQuestion> { Choice("Why"), Choice("Why"), Text(Guid.NewGuid(), "Why (comment)") };
+        var export = new SurveyResponseExport(Guid.NewGuid(), "T", "en", questions,
+            [new SurveyExportRow(Guid.NewGuid(), ResponseAnonymity.Anonymous, SurveyInputMethod.Slug, "en", Submitted, null, null, [])]);
+        using var csv = CsvReader.FromText(
+            Encoding.UTF8.GetString(SurveyCsvExportBuilder.Build(export)).TrimStart('\uFEFF'), HumansCsv.ReadConfig());
+
+        csv.Read().Should().BeTrue();
+
+        csv.Headers.Select(header => header.Trim().ToLowerInvariant()).Should().OnlyHaveUniqueItems().And.HaveCount(11);
+    }
+
+    [HumansFact]
     public void Escapes_freetext_with_comma_quote_and_newline_per_rfc4180()
     {
         var textId = Guid.NewGuid();
