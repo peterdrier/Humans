@@ -129,10 +129,54 @@
   <data name="Tasks_DependencyAdded" xml:space="preserve"><value>Wartet jetzt auf diese Aufgabe.</value></data>
   <data name="Tasks_DependencyRemoved" xml:space="preserve"><value>Wartet nicht mehr auf diese Aufgabe.</value></data>
   <data name="Tasks_Refusal_NoPerson" xml:space="preserve"><value>Wähle eine Person aus der Liste.</value></data>
-  <data name="Tasks_Refusal_Unreadable" xml:space="preserve"><value>Ein Datum oder Event konnte nicht gelesen werden. Prüfe sie und versuche es erneut.</value></data>
+  <data name="Tasks_Refusal_Unreadable" xml:space="preserve"><value>Konnte nicht gelesen werden: {0}. Prüfe es und versuche es erneut.</value></data>
   <data name="Enum_TaskItemStatus_Todo" xml:space="preserve"><value>Offen</value></data>
   <data name="Enum_TaskItemStatus_InProgress" xml:space="preserve"><value>In Arbeit</value></data>
   <data name="Enum_TaskItemStatus_Blocked" xml:space="preserve"><value>Blockiert</value></data>
   <data name="Enum_TaskItemStatus_Done" xml:space="preserve"><value>Erledigt</value></data>
   <data name="Enum_TaskItemStatus_Cancelled" xml:space="preserve"><value>Abgebrochen</value></data>
+  <data name="Tasks_Refusal_Finished" xml:space="preserve"><value>Diese Aufgabe ist erledigt oder abgebrochen und kann nicht mehr übernommen werden.</value></data>
+  <data name="Tasks_Refusal_Full" xml:space="preserve"><value>Alle Plätze dieser Aufgabe sind besetzt.</value></data>
+  <data name="Tasks_Refusal_YouAreOn" xml:space="preserve"><value>Du bist schon bei dieser Aufgabe dabei.</value></data>
+  <data name="Tasks_Refusal_YouRequested" xml:space="preserve"><value>Du hast schon angefragt, bei dieser Aufgabe mitzumachen.</value></data>
+  <data name="Tasks_Refusal_YouAreNotOn" xml:space="preserve"><value>Du hast keinen Platz bei dieser Aufgabe.</value></data>
+  <data name="Tasks_Refusal_NoYourRequest" xml:space="preserve"><value>Du hast keine Anfrage bei dieser Aufgabe.</value></data>
+  <data name="Tasks_Refusal_NoRequest" xml:space="preserve"><value>Diese Person hat keine offene Anfrage bei dieser Aufgabe.</value></data>
+  <data name="Tasks_Email_Greeting" xml:space="preserve"><value>&lt;p&gt;Hallo {0},&lt;/p&gt;</value></data>
+  <data name="Tasks_Email_ReasonLine" xml:space="preserve"><value>&lt;p&gt;Begründung: {0}&lt;/p&gt;</value></data>
+  <data name="Tasks_Email_RequestApproved_Subject" xml:space="preserve"><value>Du bist dabei: {0}</value></data>
+  <data name="Tasks_Email_RequestApproved_Body" xml:space="preserve"><value>&lt;h2&gt;Anfrage angenommen&lt;/h2&gt;{0}&lt;p&gt;Deine Anfrage, bei &lt;strong&gt;{1}&lt;/strong&gt; ({2}) mitzumachen, wurde angenommen. Du hast jetzt einen Platz bei dieser Aufgabe.&lt;/p&gt;&lt;p&gt;&lt;a href="{3}"&gt;Aufgabe ansehen&lt;/a&gt;&lt;/p&gt;</value></data>
+  <data name="Tasks_Email_RequestDeclined_Subject" xml:space="preserve"><value>Deine Anfrage für: {0}</value></data>
+  <data name="Tasks_Email_RequestDeclined_Body" xml:space="preserve"><value>&lt;h2&gt;Anfrage nicht angenommen&lt;/h2&gt;{0}&lt;p&gt;Deine Anfrage, bei &lt;strong&gt;{1}&lt;/strong&gt; ({2}) mitzumachen, wurde diesmal nicht angenommen.&lt;/p&gt;{3}&lt;p&gt;Du kannst erneut anfragen, solange die Aufgabe noch einen freien Platz hat.&lt;/p&gt;&lt;p&gt;&lt;a href="{4}"&gt;Aufgabe ansehen&lt;/a&gt;&lt;/p&gt;</value></data>
+  <data name="Tasks_Todo_Requests_Title" xml:space="preserve"><value>Offene Aufgaben-Anfragen</value></data>
+  <data name="Tasks_Todo_Requests_Description" xml:space="preserve"><value>{0} hat {1} Anfrage(n), die auf deine Antwort warten.</value></data>
+  <data name="Tasks_Todo_Requests_Action" xml:space="preserve"><value>Anfragen beantworten</value></data>
+  <data name="Tasks_Claim" xml:space="preserve"><value>Ich übernehme das</value></data>
+  <data name="Tasks_AskToJoin" xml:space="preserve"><value>Beitritt anfragen</value></data>
+  <data name="Tasks_Release" xml:space="preserve"><value>Aufgabe verlassen</value></data>
+  <data name="Tasks_Withdraw" xml:space="preserve"><value>Anfrage zurückziehen</value></data>
+  <data name="Tasks_RequestWaiting" xml:space="preserve"><value>Wartet auf Freigabe</value></data>
+  <data name="Tasks_YouAreOn" xml:space="preserve"><value>Du bist bei dieser Aufgabe dabei</value></data>
+  <data name="Tasks_Claim_Approval" xml:space="preserve"><value>Eine Verantwortliche oder ein Verantwortlicher entscheidet, wer diese Aufgabe übernimmt.</value></data>
+  <data name="Tasks_Claim_FreeSlot" xml:space="preserve"><value>Diese Aufgabe hat einen freien Platz.</value></data>
+  <data name="Tasks_Claim_Waiting" xml:space="preserve"><value>Deine Anfrage wartet auf eine Antwort. Du bekommst eine E-Mail.</value></data>
+  <data name="Tasks_Requests_Title" xml:space="preserve"><value>Warten auf Freigabe</value></data>
+  <data name="Tasks_Requests_Approve" xml:space="preserve"><value>Freigeben</value></data>
+  <data name="Tasks_Requests_Decline" xml:space="preserve"><value>Ablehnen</value></data>
+  <data name="Tasks_Requests_Reason" xml:space="preserve"><value>Grund, wird in der E-Mail mitgeschickt (optional)</value></data>
+  <data name="Tasks_Col_Join" xml:space="preserve"><value>Mitmachen</value></data>
+  <data name="Tasks_Col_Free" xml:space="preserve"><value>Frei</value></data>
+  <data name="Tasks_List_Open" xml:space="preserve"><value>Offene Aufgaben</value></data>
+  <data name="Tasks_Open_Title" xml:space="preserve"><value>Offene Aufgaben</value></data>
+  <data name="Tasks_Open_Subtitle" xml:space="preserve"><value>Aufgaben, für die noch Leute gebraucht werden, die dringendsten zuerst.</value></data>
+  <data name="Tasks_Open_Slots" xml:space="preserve"><value>Freie Plätze</value></data>
+  <data name="Tasks_Open_Critical" xml:space="preserve"><value>Kritisch</value></data>
+  <data name="Tasks_Open_Empty" xml:space="preserve"><value>Im Moment haben alle Aufgaben ihre Leute.</value></data>
+  <data name="Tasks_Open_NeedsApproval" xml:space="preserve"><value>Braucht Freigabe</value></data>
+  <data name="Tasks_Claimed" xml:space="preserve"><value>Du bist bei {0} dabei.</value></data>
+  <data name="Tasks_Requested" xml:space="preserve"><value>Du hast angefragt, bei {0} mitzumachen. Es kommt eine Antwort.</value></data>
+  <data name="Tasks_Released" xml:space="preserve"><value>Du hast {0} verlassen.</value></data>
+  <data name="Tasks_Withdrawn" xml:space="preserve"><value>Anfrage zurückgezogen.</value></data>
+  <data name="Tasks_Approved" xml:space="preserve"><value>Anfrage freigegeben.</value></data>
+  <data name="Tasks_Declined" xml:space="preserve"><value>Anfrage abgelehnt.</value></data>
 </root>

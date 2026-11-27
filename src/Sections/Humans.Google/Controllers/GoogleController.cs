@@ -1,3 +1,4 @@
+using Humans.Google.Data;
 using Humans.Google.Domain;
 using Humans.Base.Enums;
 using Humans.Google.Contracts;
@@ -649,10 +650,12 @@ internal sealed class GoogleController(
         var currentUser = await GetCurrentUserInfoAsync(HttpContext.RequestAborted);
         if (currentUser is null) return Unauthorized();
 
-        var requeued = await googleSyncService.RequeueOutboxEventAsync(id, currentUser.Id);
-        if (!requeued)
+        var requeue = await googleSyncService.RequeueOutboxEventAsync(id, currentUser.Id);
+        if (requeue != OutboxRequeue.Requeued)
         {
-            SetError("Event not found or not in a failed state.");
+            SetError(requeue == OutboxRequeue.NotFound
+                ? "That event no longer exists."
+                : "That event has not failed, so there is nothing to requeue.");
             return RedirectToAction(nameof(SyncOutbox));
         }
 

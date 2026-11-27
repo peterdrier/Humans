@@ -185,4 +185,4 @@ The Issues API is the read/write surface Claude Code agents use to triage and fo
 - Notifications (`src/Sections/Humans.Notifications/Docs/features/notification-inbox.md`) — `IssuesNotificationSources.IssueSubmitted`, `IssuesNotificationSources.IssueComment`, `IssuesNotificationSources.IssueStatusChanged`, `IssuesNotificationSources.IssueAssigned`.
 - Audit log — every issue mutation is recorded.
 - `IssuesUserMenuViewComponent` — the section's own chrome contribution for the actionable item count.
-- Role management — `TicketsAdmin`, `CampsAdmin`, `TeamsAdmin`, `Board`, `ConsentCoordinator`, `ShiftsAdmin`, `UsersAdmin`, `ShiftsNoInfo`, `FinanceAdmin` roles all gate section-specific issue queues per `IssueSectionRouting.RolesFor`.
+- Role management — `TicketsAdmin`, `CampsAdmin`, `TeamsAdmin`, `Board`, `ConsentAdmin`, `ShiftsAdmin`, `UsersAdmin`, `FinanceAdmin` roles all gate section-specific issue queues per `IssueSectionRouting.RolesFor`.

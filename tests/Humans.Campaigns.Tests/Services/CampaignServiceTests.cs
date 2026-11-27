@@ -415,7 +415,7 @@ public sealed class CampaignServiceTests
         result.Should().BeOfType<RedirectToActionResult>();
         if (!valid)
         {
-            controller.TempData[TempDataKeys.ErrorMessage].Should().BeOfType<string>().Which.Should().Contain("Discount value");
+            controller.TempData[TempDataKeys.ErrorMessage].Should().BeOfType<string>().Which.Should().Contain("The discount must");
             controller.TempData.ContainsKey(TempDataKeys.SuccessMessage).Should().BeFalse();
             _ticketDiscountCodes.ReceivedCalls().Should().BeEmpty();
             (await _campaignsDb.CampaignCodes.CountAsync(Xunit.TestContext.Current.CancellationToken)).Should().Be(0);

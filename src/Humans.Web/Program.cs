@@ -140,62 +140,7 @@ builder.Services.ConfigureApplicationCookie(options =>
     options.AccessDeniedPath = "/Account/AccessDenied";
 });
 
-builder.Services.AddAuthentication()
-    .AddGoogle(options =>
-    {
-        options.ClientId = builder.Configuration.GetRequiredSetting(
-                configRegistry, "Authentication:Google:ClientId", "Authentication", isSensitive: true)
-            ?? throw new InvalidOperationException("Google ClientId not configured.");
-        options.ClientSecret = builder.Configuration.GetRequiredSetting(
-                configRegistry, "Authentication:Google:ClientSecret", "Authentication", isSensitive: true)
-            ?? throw new InvalidOperationException("Google ClientSecret not configured.");
-        options.Scope.Add("profile");
-        options.Scope.Add("email");
-        options.SaveTokens = false;
-        // MapJsonKey surfaces Google's email_verified as a claim.
-        Microsoft.AspNetCore.Authentication.ClaimActionCollectionMapExtensions
-            .MapJsonKey(options.ClaimActions, "email_verified", "email_verified", "boolean");
-        options.Events = new Microsoft.AspNetCore.Authentication.OAuth.OAuthEvents
-        {
-            OnRemoteFailure = context =>
-            {
-                var logger = context.HttpContext.RequestServices.GetRequiredService<ILoggerFactory>()
-                    .CreateLogger("GoogleOAuth");
-
-                var failureMessage = context.Failure?.Message ?? string.Empty;
-                var isCorrelationFailure = failureMessage.Contains("Correlation", StringComparison.OrdinalIgnoreCase);
-                var isAccessDenied = failureMessage.Contains("access_denied", StringComparison.OrdinalIgnoreCase)
-                    || failureMessage.Contains("denied by the resource owner", StringComparison.OrdinalIgnoreCase);
-
-                var clientIp = context.HttpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown";
-
-                // Warning + client IP so /Debug/Logs traces user-reported sign-in issues.
-                if (isAccessDenied)
-                {
-                    logger.LogWarning(
-                        "Google sign-in cancelled by user (access_denied) from {ClientIp}", clientIp);
-                }
-                else if (isCorrelationFailure)
-                {
-                    logger.LogWarning(
-                        "Google sign-in correlation cookie missing from {ClientIp} (stale or duplicate request)", clientIp);
-                }
-                else if (context.Failure is OperationCanceledException)
-                {
-                    // User closed tab / network dropped mid-callback.
-                }
-                else
-                {
-                    logger.LogWarning(
-                        context.Failure, "Google sign-in failed from {ClientIp}: {Error}", clientIp, failureMessage);
-                }
-
-                context.Response.Redirect("/Account/Login?error=sign-in-failed");
-                context.HandleResponse();
-                return Task.CompletedTask;
-            }
-        };
-    });
+builder.Services.AddAuthentication().AddSignInProviders(builder.Configuration, configRegistry);
 
 builder.Services.AddHumansAuthorizationPolicies();
 builder.Services.AddHttpContextAccessor();
@@ -608,8 +553,7 @@ foreach (var resourceType in SectionDiscoveryExtensions.SectionResourceTypes())
         if (policy is null)
         {
             app.Logger.LogError(
-                "AUTHORIZATION BROKEN: PolicyNames.{Name} has no registered policy. Its " +
-                "owning section may be missing, or its Policies contribution failed to register.",
+                "AUTHORIZATION BROKEN: no section registered a policy for PolicyNames.{Name}.",
                 name);
         }
     }

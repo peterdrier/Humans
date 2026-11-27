@@ -28,13 +28,13 @@ public sealed class IssuesAuthorizationHandlerTests
         { [CampsRoles.CampsAdmin], "Scanner", false },
         { [CampsRoles.CampsAdmin], "Camps", true },
         { [CampsRoles.CampsAdmin], "CityPlanning", true },
-        { [ConsentRoles.ConsentCoordinator], "Onboarding", true },
+        { [ConsentRoles.ConsentAdmin], "Onboarding", true },
         { [], "Tickets", false },
         { [TicketsRoles.TicketsAdmin, CampsRoles.CampsAdmin], null, false },
         { [TicketsRoles.TicketsAdmin], "ZSomeUnknownSection", false },
         // Keys that outlived their section names: Users declares Profiles, Consent declares Legal.
         { [UsersRoles.UsersAdmin], "Profiles", true },
-        { [ConsentRoles.ConsentCoordinator], "Legal", true },
+        { [ConsentRoles.ConsentAdmin], "Legal", true },
         { [TicketsRoles.TicketsAdmin], "Profiles", false },
     };
 

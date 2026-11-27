@@ -41,7 +41,7 @@
     <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=2.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
   </resheader>
   <data name="Issue_Unavailable" xml:space="preserve">
-    <value>Ce ticket n'est pas disponible — il a peut-être été supprimé, ou vous n'y avez pas accès.</value>
+    <value>Ce ticket ne vous est pas accessible.</value>
   </data>
   <data name="Issue_PageTitle" xml:space="preserve">
     <value>Incidents</value>

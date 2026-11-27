@@ -88,9 +88,15 @@ internal sealed class BackdoorConnectionService(
     public async Task<bool> RevokeAsync(Guid connectionId, Guid actorUserId, CancellationToken ct = default)
     {
         var connection = await repository.GetConnectionAsync(connectionId, ct);
-        if (connection is null || !string.Equals(connection.Status, Statuses.Valid, StringComparison.Ordinal))
+        if (connection is null)
         {
-            logger.LogWarning("Connection {ConnectionId} not revocable: missing or already revoked", connectionId);
+            logger.LogWarning("Connection {ConnectionId} not found", connectionId);
+            return false;
+        }
+
+        if (!string.Equals(connection.Status, Statuses.Valid, StringComparison.Ordinal))
+        {
+            logger.LogWarning("Connection {ConnectionId} is already revoked", connectionId);
             return false;
         }
 

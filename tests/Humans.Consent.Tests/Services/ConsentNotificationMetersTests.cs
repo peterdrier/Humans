@@ -29,7 +29,7 @@ public sealed class ConsentNotificationMetersTests : IDisposable
     public void Dispose() => _localization.Dispose();
 
     [HumansTheory]
-    [InlineData(ConsentRoles.ConsentCoordinator)]
+    [InlineData(ConsentRoles.ConsentAdmin)]
     [InlineData(RoleNames.Admin)]
     public async Task Reviewers_SeeThePendingCountExcludingApprovedMembers(string role)
     {
@@ -47,7 +47,7 @@ public sealed class ConsentNotificationMetersTests : IDisposable
         meter.Title.Should().Be("Consent reviews pending");
         meter.Count.Should().Be(2);
         meter.ActionUrl.Should().Be("/Consent/ReviewQueue");
-        meter.Audience.Should().Be("Consent Coordinators");
+        meter.Audience.Should().Be("Consent Admins");
         meter.Priority.Should().Be(10);
     }
 

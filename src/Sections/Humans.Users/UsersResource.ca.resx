@@ -181,9 +181,9 @@
   <data name="Users_Profile_WhatsApp" xml:space="preserve">
     <value>WhatsApp</value>
   </data>
-  <data name="Users_Profile_DietaryMedical_MedicalConditions_Hint" xml:space="preserve"><value>Visible per a tu, els Shifts NoInfo admins i la Junta; cada vegada que un d'ells ho obre, queda registrat i apareix a sota. Qualsevol cosa que l'equip hagi de saber — diabetis, epilèpsia, lesions greus, etc.</value></data>
+  <data name="Users_Profile_DietaryMedical_MedicalConditions_Hint" xml:space="preserve"><value>Visible per a tu, els administradors i la Junta; cada vegada que un d'ells ho obre, queda registrat i apareix a sota. Qualsevol cosa que l'equip hagi de saber — diabetis, epilèpsia, lesions greus, etc.</value></data>
   <data name="Users_Profile_DietaryMedical_MedicalConditions_Title" xml:space="preserve"><value>Afeccions mèdiques</value></data>
-  <data name="Users_Profile_DietaryMedical_MedicalConditions_VisibilityNote" xml:space="preserve"><value>Opcional. Visible per a tu, els Shifts NoInfo admins i la Junta; cada consulta queda registrada.</value></data>
+  <data name="Users_Profile_DietaryMedical_MedicalConditions_VisibilityNote" xml:space="preserve"><value>Opcional. Visible per a tu, els administradors i la Junta; cada consulta queda registrada.</value></data>
   <data name="Users_Profile_MyEmails" xml:space="preserve"><value>Els meus correus</value></data>
   <data name="Users_Profile_NoSentMessages" xml:space="preserve"><value>No hi ha cap missatge dins la plataforma registrat.</value></data>
   <data name="Users_Profile_SentMessages" xml:space="preserve"><value>Missatges enviats</value></data>
@@ -436,11 +436,11 @@
   <data name="Users_EmailGrid_StatusPending" xml:space="preserve">
     <value>Pendent</value>
   </data>
-  <data name="Users_EmailGrid_LinkGoogleAccount" xml:space="preserve">
-    <value>Vincular compte de Google</value>
+  <data name="Users_EmailGrid_LinkProviderAccount" xml:space="preserve">
+    <value>Vincular compte de {0}</value>
   </data>
-  <data name="Users_EmailGrid_LinkGoogleHelp" xml:space="preserve">
-    <value>Inicia sessió amb Google per vincular un compte de Google addicional al teu perfil.</value>
+  <data name="Users_EmailGrid_LinkProviderHelp" xml:space="preserve">
+    <value>Inicia sessió amb {0} per vincular un compte de {0} addicional al teu perfil.</value>
   </data>
   <data name="Users_EmailGrid_BackToAdminDetail" xml:space="preserve">
     <value>Torna al detall de l'usuari</value>
@@ -451,17 +451,19 @@
   <data name="Users_EmailGrid_ConfirmUnlink" xml:space="preserve">
     <value>Desvincular aquest compte de Google?</value>
   </data>
-  <data name="Users_EmailGrid_UnlinkRejected" xml:space="preserve">
-    <value>No s'ha pogut desvincular: fila desconeguda o sense proveïdor d'inici de sessió.</value>
-  </data>
+  <data name="Users_EmailGrid_ClearPrimaryNotPrimary" xml:space="preserve"><value>No s'ha pogut esborrar l'indicador principal: aquest correu no està marcat com a principal.</value></data>
+  <data name="Users_EmailGrid_ClearPrimaryOnlyOne" xml:space="preserve"><value>No s'ha pogut esborrar l'indicador principal: és l'únic correu principal verificat.</value></data>
+  <data name="Users_EmailGrid_ClearPrimaryChanged" xml:space="preserve"><value>No s'ha pogut esborrar l'indicador principal: aquest correu ha canviat mentrestant. Recarrega i revisa.</value></data>
+  <data name="Users_EmailGrid_UnlinkNoProvider" xml:space="preserve"><value>No s'ha pogut desvincular: aquest correu no té proveïdor d'inici de sessió.</value></data>
+  <data name="Users_EmailGrid_UnlinkAccountNotFound" xml:space="preserve"><value>No s'ha pogut desvincular: el compte ja no existeix.</value></data>
+  <data name="Users_EmailGrid_UnlinkLoginNotFound" xml:space="preserve"><value>No s'ha pogut desvincular: aquest inici de sessió ja no està vinculat al compte.</value></data>
+  <data name="Users_EmailGrid_UnlinkLoginRemovalFailed" xml:space="preserve"><value>No s'ha pogut desvincular: l'eliminació de l'inici de sessió ha fallat. No s'ha canviat res.</value></data>
+  <data name="Users_EmailGrid_UnlinkRowNotRemoved" xml:space="preserve"><value>S'ha desvinculat l'inici de sessió, però no s'ha pogut eliminar la seva fila de correu.</value></data>
   <data name="Users_EmailGrid_SetPrimary" xml:space="preserve">
     <value>Establir com a principal</value>
   </data>
   <data name="Users_EmailGrid_PrimaryFlagCleared" xml:space="preserve">
     <value>Indicador principal esborrat d'aquesta fila.</value>
-  </data>
-  <data name="Users_EmailGrid_ClearPrimaryRejected" xml:space="preserve">
-    <value>No s'ha pogut esborrar l'indicador principal — la fila és desconeguda o no està marcada actualment.</value>
   </data>
   <data name="Users_EmailGrid_Clear" xml:space="preserve">
     <value>Esborrar</value>

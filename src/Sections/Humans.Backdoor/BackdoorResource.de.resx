@@ -64,13 +64,14 @@
   <data name="Backdoor_Error_LabelTooLong" xml:space="preserve"><value>Die Bezeichnung darf höchstens 100 Zeichen lang sein.</value></data>
   <data name="Backdoor_Error_NotEligible" xml:space="preserve"><value>Dieses Konto darf keinen Schlüssel haben.</value></data>
   <data name="Backdoor_Error_NotAllowed" xml:space="preserve"><value>Du kannst nur deine eigenen Schlüssel erstellen und ändern.</value></data>
-  <data name="Backdoor_Error_NotFound" xml:space="preserve"><value>Dieser Schlüssel existiert nicht mehr oder ist bereits widerrufen.</value></data>
+  <data name="Backdoor_Error_NotFound" xml:space="preserve"><value>Dieser Schlüssel existiert nicht mehr.</value></data>
+  <data name="Backdoor_Error_AlreadyRevoked" xml:space="preserve"><value>Dieser Schlüssel ist bereits widerrufen.</value></data>
   <data name="Backdoor_Connections_Title" xml:space="preserve"><value>Verbundene Apps</value></data>
   <data name="Backdoor_Connections_Empty" xml:space="preserve"><value>Keine verbundenen Apps.</value></data>
   <data name="Backdoor_Connections_App" xml:space="preserve"><value>App</value></data>
   <data name="Backdoor_Connections_Connected" xml:space="preserve"><value>Verbunden</value></data>
   <data name="Backdoor_Connections_Revoked" xml:space="preserve"><value>Verbindung widerrufen.</value></data>
-  <data name="Backdoor_Connections_Error_NotFound" xml:space="preserve"><value>Diese Verbindung gibt es nicht mehr oder sie ist bereits widerrufen.</value></data>
+  <data name="Backdoor_Connections_Error_NotFound" xml:space="preserve"><value>Diese Verbindung gibt es nicht mehr.</value></data>
   <data name="Backdoor_Connect_Title" xml:space="preserve"><value>Claude verbinden</value></data>
   <data name="Backdoor_Connect_Steps" xml:space="preserve"><value>Füge in Claude einen benutzerdefinierten Connector mit dieser Adresse hinzu. Gib unter Erweiterte Einstellungen die OAuth-Client-ID unten ein. Claude öffnet dann Humans, wo du dich anmeldest und den Zugriff erlaubst.</value></data>
   <data name="Backdoor_Connect_Address" xml:space="preserve"><value>Adresse</value></data>

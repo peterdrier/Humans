@@ -89,6 +89,7 @@ internal sealed class SurveyInvitationDelivery(
             }
             invitationsProcessed++;
 
+            var step = "prepare";
             try
             {
                 var preferredCulture = user.PreferredLanguage;
@@ -110,7 +111,9 @@ internal sealed class SurveyInvitationDelivery(
                     DeliveryId = new Guid(SHA256.HashData(Encoding.UTF8.GetBytes(deliveryKey)).AsSpan(0, 16))
                 };
 
+                step = "enqueue";
                 await emailService.SendAsync(msg, sendCt);
+                step = "record";
                 await repo.UpdateInvitationStatusAsync(
                     inv.Id, EmailOutboxStatus.Queued, clock.GetCurrentInstant(), sendCt);
                 emailsQueued++;
@@ -118,8 +121,8 @@ internal sealed class SurveyInvitationDelivery(
             catch (Exception ex)
             {
                 logger.LogError(ex,
-                    "Failed to prepare, enqueue or record survey invitation email for user {UserId} invitation {InvitationId} in survey {SurveyId}",
-                    userId, inv.Id, surveyId);
+                    "Failed to {Step} survey invitation email for user {UserId} invitation {InvitationId} in survey {SurveyId}",
+                    step, userId, inv.Id, surveyId);
                 await repo.UpdateInvitationStatusAsync(inv.Id, EmailOutboxStatus.Failed, now, sendCt);
                 failed++;
             }

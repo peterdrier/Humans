@@ -205,7 +205,8 @@
   <data name="Expenses_SelectAccount" xml:space="preserve"><value>— Konto auswählen —</value></data>
   <data name="Expenses_AccountGroupBudgetCategories" xml:space="preserve"><value>Budgetkategorien</value></data>
   <data name="Expenses_AccountGroupOther" xml:space="preserve"><value>Andere Konten</value></data>
-  <data name="Expenses_Validation_AccountNotFound" xml:space="preserve"><value>Konto nicht gefunden oder nicht mehr verfügbar.</value></data>
+  <data name="Expenses_Validation_AccountNotFound" xml:space="preserve"><value>Dieses Konto existiert nicht.</value></data>
+  <data name="Expenses_Validation_AccountInactive" xml:space="preserve"><value>Dieses Konto steht für Ausgaben nicht mehr offen.</value></data>
   <data name="Expenses_OptionalMaxChars" xml:space="preserve"><value>(optional, max. 500 Zeichen)</value></data>
   <data name="Expenses_SubjectPlaceholder" xml:space="preserve"><value>Beschreibe die Ausgabe…</value></data>
   <data name="Expenses_CreateDraft" xml:space="preserve"><value>Entwurf erstellen</value></data>
@@ -291,11 +292,16 @@
   <data name="Expenses_Preapprovals_Revoked" xml:space="preserve"><value>Diese Vorabgenehmigung wurde widerrufen. Die Abrechnung kann damit nicht genehmigt werden: nach der Ablehnung kann die Vorabgenehmigung im Entwurf entfernt oder getauscht werden.</value></data>
   <data name="Expenses_Preapprovals_Column" xml:space="preserve"><value>Vorabgenehmigung</value></data>
   <data name="Expenses_Preapprovals_RevokedBadge" xml:space="preserve"><value>widerrufen</value></data>
-  <data name="Expenses_Validation_PreapprovalNotClaimable" xml:space="preserve"><value>Gegen diese Vorabgenehmigung kann nicht eingereicht werden: sie gehört nicht dem Mitglied, ist nicht offen oder ihre Frist ist abgelaufen.</value></data>
   <data name="Expenses_Validation_PreapprovalLocked" xml:space="preserve"><value>Vorabgenehmigung und Konto eines eingereichten Berichts können nicht geändert werden.</value></data>
   <data name="Expenses_Validation_PreapprovalRevoked" xml:space="preserve"><value>Die Vorabgenehmigung wurde widerrufen; dieser Bericht kann nicht dagegen eingereicht werden.</value></data>
   <data name="Expenses_Validation_PreapprovalDeadlinePassed" xml:space="preserve"><value>Die Frist {0} ist abgelaufen; dieser Bericht kann nicht mehr gegen die Vorabgenehmigung eingereicht werden.</value></data>
-  <data name="Expenses_Validation_PreapprovalUnavailable" xml:space="preserve"><value>Die Vorabgenehmigung ist nicht mehr verfügbar: sie wurde von einem anderen Bericht beansprucht oder bereits verwendet.</value></data>
+  <data name="Expenses_Validation_PreapprovalNotFound" xml:space="preserve"><value>Diese Vorabgenehmigung existiert nicht mehr.</value></data>
+  <data name="Expenses_Validation_PreapprovalNotTheirs" xml:space="preserve"><value>Diese Vorabgenehmigung gehört jemand anderem.</value></data>
+  <data name="Expenses_Validation_PreapprovalNotGranted" xml:space="preserve"><value>Diese Vorabgenehmigung wurde noch nicht erteilt.</value></data>
+  <data name="Expenses_Validation_PreapprovalDeclined" xml:space="preserve"><value>Diese Vorabgenehmigung wurde abgelehnt.</value></data>
+  <data name="Expenses_Validation_PreapprovalClaimedElsewhere" xml:space="preserve"><value>Ein anderer Bericht hält diese Vorabgenehmigung bereits.</value></data>
+  <data name="Expenses_Validation_PreapprovalUsed" xml:space="preserve"><value>Diese Vorabgenehmigung wurde bereits für einen genehmigten Bericht verwendet.</value></data>
+  <data name="Expenses_Validation_PreapprovalNotHeld" xml:space="preserve"><value>Dieser Bericht hält diese Vorabgenehmigung nicht mehr.</value></data>
   <data name="Expenses_Detail_RejectedGuidance" xml:space="preserve"><value>Du musst den Bericht nicht neu anlegen: Öffne unten eine beliebige Zeile, um sie zu bearbeiten, den Beleg zu ersetzen oder sie zu entfernen, und sende den Bericht dann erneut ab.</value></data>
   <data name="Expenses_Detail_RejectedGuidanceLink" xml:space="preserve"><value>Zu den Zeilen</value></data>
   <data name="Expenses_Submitter" xml:space="preserve"><value>Einreicher/in</value></data>

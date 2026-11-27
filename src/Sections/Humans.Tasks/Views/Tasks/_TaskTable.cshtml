@@ -6,6 +6,10 @@
     Func<TaskInfo, IHtmlContent> titleCell = @<text><a href="@Url.Action("Details", "Tasks", new { id = item.Id })">@item.Title</a>@if (item.IsEffectivelyHidden) { <i class="fa-solid fa-eye-slash text-muted ms-2" title="@Localizer["Tasks_Hidden"]" aria-hidden="true"></i><span class="visually-hidden">@Localizer["Tasks_Hidden"]</span> }@if (item.IsWaiting) { <span class="text-muted small ms-2"><i class="fa-solid fa-hourglass-half" aria-hidden="true"></i> @Localizer["Tasks_WaitingOn"]</span> }</text>;
     Func<TaskInfo, IHtmlContent> statusCell = @<status-badge value="@item.Status" localizer="@Localizer" />;
     Func<TaskInfo, IHtmlContent> priorityCell = @<text>@if (item.Priority != SlotPriority.None) { <status-badge value="@item.Priority" /> }</text>;
+    Func<TaskInfo, IHtmlContent> placeCell = @<text>@if (Model.Places.TryGetValue(item.Id, out var place))
+        {
+            <partial name="_ClaimButton" model="new ClaimButtonModel(item, Model.ReturnUrl, Small: true, Primary: false, place)" />
+        }</text>;
     var builder = TableModel.For(Model.Tasks)
         .Template(Localizer["Tasks_Col_Task"].Value, titleCell, null, t => t.Title);
     if (Model.ShowTeam)
@@ -17,9 +21,13 @@
         .Template(Localizer["Tasks_Col_Status"].Value, statusCell, c => c.SelectFilter(), t => (int)t.Status)
         .Template(Localizer["Tasks_Col_Priority"].Value, priorityCell, c => c.SelectFilter(), t => TaskPriorityOrder.Rank(t.Priority))
         .Column(Localizer["Tasks_Col_Due"].Value, t => t.Due?.Resolved, c => c.Date())
-        .Column(Localizer["Tasks_Col_Slots"].Value, t => Localizer["Tasks_Task_SlotsOf", t.ConfirmedCount, t.SlotCount].Value, c => c.End().NoSort())
-        .Empty(Localizer["Tasks_List_Empty"].Value)
-        .Build();
+        .Column(Localizer["Tasks_Col_Slots"].Value, t => Localizer["Tasks_Task_SlotsOf", t.ConfirmedCount, t.SlotCount].Value, c => c.End().NoSort().Css("text-nowrap"))
+        .Empty(Localizer["Tasks_List_Empty"].Value);
+    if (Model.Places.Count > 0)
+    {
+        table = table.Template(Localizer["Tasks_Col_Join"].Value, placeCell, c => c.End().NoSort());
+    }
+    var built = table.Build();
 }
 
-<partial name="_Table" model="table" />
+<partial name="_Table" model="built" />

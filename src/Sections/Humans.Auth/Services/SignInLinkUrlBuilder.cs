@@ -2,6 +2,7 @@ using System.Buffers.Binary;
 using System.Security.Cryptography;
 using System.Text;
 using Microsoft.AspNetCore.DataProtection;
+using Microsoft.AspNetCore.DataProtection.KeyManagement;
 using Microsoft.AspNetCore.WebUtilities;
 using Microsoft.Extensions.Options;
 using NodaTime;
@@ -11,6 +12,7 @@ namespace Humans.Auth.Services;
 
 internal sealed class SignInLinkUrlBuilder(
     IDataProtectionProvider dataProtection,
+    IKeyManager keyManager,
     IOptions<EmailSettings> emailSettings,
     IClock clock) : ISignInLinkUrlBuilder
 {
@@ -24,6 +26,10 @@ internal sealed class SignInLinkUrlBuilder(
     // Changing either breaks every link still in someone's inbox.
     private const string TimeLimitedPurpose = "Microsoft.AspNetCore.DataProtection.TimeLimitedDataProtector.v1";
 
+    // A Data Protection payload starts with this magic number, then the id of the key that protected it.
+    private const uint PayloadMagic = 0x09F0C9F0;
+    private const int PayloadHeaderLength = 4 + 16;
+
     private readonly IDataProtector _signInProtector = dataProtection.CreateProtector(SignInProtectorPurpose, TimeLimitedPurpose);
     private readonly IDataProtector _signupProtector = dataProtection.CreateProtector(SignupProtectorPurpose, TimeLimitedPurpose);
     private readonly string _baseUrl = emailSettings.Value.BaseUrl;
@@ -36,7 +42,7 @@ internal sealed class SignInLinkUrlBuilder(
         return $"{_baseUrl}/Account/SignInLinkConfirm?userId={userId}&token={encodedToken}{returnUrlParam}";
     }
 
-    public SignInLinkToken? UnprotectSignInToken(string token) => UnprotectToken(_signInProtector, token);
+    public SignInLinkRead UnprotectSignInToken(string token) => UnprotectToken(_signInProtector, token, _signupProtector, "signup");
 
     public string BuildSignupUrl(string email, string? returnUrl)
     {
@@ -47,7 +53,7 @@ internal sealed class SignInLinkUrlBuilder(
         return $"{_baseUrl}/Account/SignInLinkSignup?token={encodedToken}&email={encodedEmail}{returnUrlParam}";
     }
 
-    public SignInLinkToken? UnprotectSignupToken(string token) => UnprotectToken(_signupProtector, token);
+    public SignInLinkRead UnprotectSignupToken(string token) => UnprotectToken(_signupProtector, token, _signInProtector, "sign-in");
 
     private string Protect(IDataProtector protector, string payload)
     {
@@ -58,28 +64,63 @@ internal sealed class SignInLinkUrlBuilder(
         return WebEncoders.Base64UrlEncode(protector.Protect(plaintext));
     }
 
-    private static SignInLinkToken? UnprotectToken(IDataProtector protector, string token)
+    private SignInLinkRead UnprotectToken(IDataProtector protector, string token, IDataProtector otherKind, string otherKindName)
     {
-        if (string.IsNullOrEmpty(token)) return null;
+        if (string.IsNullOrEmpty(token)) return SignInLinkRead.Unreadable("token is empty");
+
+        byte[] protectedBytes;
+        try
+        {
+            protectedBytes = WebEncoders.Base64UrlDecode(token);
+        }
+        catch (FormatException)
+        {
+            return SignInLinkRead.Unreadable("token is not Base64url");
+        }
+
+        // Replay reservations hash the token text. Accept only the spelling
+        // we issue, so equivalent Base64 encodings cannot redeem it twice.
+        if (!string.Equals(token, WebEncoders.Base64UrlEncode(protectedBytes), StringComparison.Ordinal))
+            return SignInLinkRead.Unreadable("token is not spelled the way it was issued");
+
+        byte[] plaintext;
+        try
+        {
+            plaintext = protector.Unprotect(protectedBytes);
+        }
+        catch (CryptographicException)
+        {
+            return SignInLinkRead.Unreadable(WhyUnprotectFailed(protectedBytes, otherKind, otherKindName));
+        }
+
+        if (plaintext.Length < 8) return SignInLinkRead.Unreadable("token is too short to hold an expiry");
+
+        var ticks = BinaryPrimitives.ReadInt64BigEndian(plaintext);
+        if (ticks < DateTime.MinValue.Ticks || ticks > DateTime.MaxValue.Ticks)
+            return SignInLinkRead.Unreadable("token's expiry is not a valid date");
+
+        var expiresAt = Instant.FromDateTimeUtc(new DateTime(ticks, DateTimeKind.Utc));
+        return new SignInLinkRead(new SignInLinkToken(Encoding.UTF8.GetString(plaintext, 8, plaintext.Length - 8), expiresAt), null);
+    }
+
+    private string WhyUnprotectFailed(byte[] protectedBytes, IDataProtector otherKind, string otherKindName)
+    {
+        if (protectedBytes.Length < PayloadHeaderLength
+            || BinaryPrimitives.ReadUInt32BigEndian(protectedBytes) != PayloadMagic)
+            return "token is not a Data Protection payload";
+
+        var keyId = new Guid(protectedBytes.AsSpan(4, 16));
+        if (!keyManager.GetAllKeys().Any(k => k.KeyId == keyId))
+            return $"token was signed with key {keyId}, which is not in the key ring";
 
         try
         {
-            // Replay reservations hash the token text. Accept only the spelling
-            // we issue, so equivalent Base64 encodings cannot redeem it twice.
-            var protectedBytes = WebEncoders.Base64UrlDecode(token);
-            if (!string.Equals(token, WebEncoders.Base64UrlEncode(protectedBytes), StringComparison.Ordinal))
-                return null;
-
-            var plaintext = protector.Unprotect(protectedBytes);
-            if (plaintext.Length < 8) return null;
-
-            var ticks = BinaryPrimitives.ReadInt64BigEndian(plaintext);
-            var expiresAt = Instant.FromDateTimeUtc(new DateTime(ticks, DateTimeKind.Utc));
-            return new SignInLinkToken(Encoding.UTF8.GetString(plaintext, 8, plaintext.Length - 8), expiresAt);
+            otherKind.Unprotect(protectedBytes);
+            return $"token is a {otherKindName} link's";
         }
-        catch (Exception ex) when (ex is CryptographicException or FormatException or ArgumentOutOfRangeException)
+        catch (CryptographicException)
         {
-            return null;
+            return "token fails its integrity check: it was altered";
         }
     }
 }

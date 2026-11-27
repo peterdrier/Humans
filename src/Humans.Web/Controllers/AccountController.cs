@@ -11,6 +11,7 @@ using Humans.Base.Constants;
 using Humans.Base;
 using Humans.Web.Services;
 using Humans.Users.Contracts;
+using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authorization;
 
 namespace Humans.Web.Controllers;
@@ -29,7 +30,8 @@ public class AccountController(
     IAccountProvisioningService accountProvisioningService,
     GateSignInThrottle gateThrottle,
     SignInMethodCounter signInMethods,
-    IStringLocalizer<SharedResource> localizer) : HumansControllerBase(userService)
+    IStringLocalizer<SharedResource> localizer,
+    IAuthenticationSchemeProvider authSchemes) : HumansControllerBase(userService)
 {
     [HttpGet]
     public IActionResult Login(string? returnUrl = null)
@@ -53,8 +55,11 @@ public class AccountController(
 
     [HttpPost]
     [ValidateAntiForgeryToken]
-    public IActionResult ExternalLogin(string provider, string? returnUrl = null)
+    public async Task<IActionResult> ExternalLogin(string provider, string? returnUrl = null)
     {
+        if (await authSchemes.GetSchemeAsync(provider) is null)
+            return RedirectToAction(nameof(Login), new { returnUrl, error = "oauth" });
+
         var redirectUrl = Url.Action(nameof(ExternalLoginCallback), "Account", new { returnUrl });
         var properties = signIn.ConfigureExternalAuthenticationProperties(provider, redirectUrl);
         return Challenge(properties, provider);
@@ -78,7 +83,7 @@ public class AccountController(
             return RedirectToAction(nameof(Login), new { returnUrl, error = "oauth" });
         }
 
-        // Already signed in means this callback links a Google account, not a sign-in —
+        // Already signed in means this callback links a provider account, not a sign-in —
         // skip ExternalLoginSignInAsync so Identity cannot overwrite the session cookie with another account.
         var wasAuthenticated = IsAuthenticated();
         var result = wasAuthenticated
@@ -102,7 +107,7 @@ public class AccountController(
         {
             case ExternalLoginOutcome.SignedIn:
                 if (!wasAuthenticated)
-                    signInMethods.RecordGoogle();
+                    signInMethods.RecordProvider(info.LoginProvider);
                 return RedirectToLocal(returnUrl);
 
             case ExternalLoginOutcome.LinkToCurrentUserFailed:
@@ -199,16 +204,16 @@ public class AccountController(
     {
         returnUrl ??= Url.Content("~/");
 
-        if (!await signInLinkService.VerifySignInTokenAsync(userId, token))
+        if (await signInLinkService.VerifySignInTokenAsync(userId, token) is { } failure)
         {
-            return View("SignInLinkError");
+            return SignInLinkError(failure);
         }
 
         await userWrite.RecordSignInAsync(userId);
 
         if (!await signIn.SignInAsync(userId))
         {
-            return View("SignInLinkError");
+            return SignInLinkError(SignInLinkFailure.AccountNotFound);
         }
 
         signInMethods.RecordSignInLink();
@@ -221,12 +226,12 @@ public class AccountController(
     public IActionResult SignInLinkSignup(string token, string? email = null, string? returnUrl = null)
     {
         if (string.IsNullOrEmpty(token))
-            return View("SignInLinkError");
+            return SignInLinkError(SignInLinkFailure.Unreadable);
 
-        var verifiedEmail = signInLinkService.VerifySignupToken(token, email);
-        if (verifiedEmail is null)
+        var check = signInLinkService.VerifySignupToken(token, email);
+        if (check.Email is not { } verifiedEmail)
         {
-            return View("SignInLinkError");
+            return SignInLinkError(check.Failure);
         }
 
         ViewData["ReturnUrl"] = returnUrl;
@@ -242,14 +247,14 @@ public class AccountController(
         string? email = null, string? returnUrl = null)
     {
         if (string.IsNullOrEmpty(token))
-            return View("SignInLinkError");
+            return SignInLinkError(SignInLinkFailure.Unreadable);
 
         returnUrl ??= Url.Content("~/");
 
-        var verifiedEmail = signInLinkService.VerifySignupToken(token, email);
-        if (verifiedEmail is null)
+        var check = signInLinkService.VerifySignupToken(token, email);
+        if (check.Email is not { } verifiedEmail)
         {
-            return View("SignInLinkError");
+            return SignInLinkError(check.Failure);
         }
 
         foreach (var (value, field, label) in new[]
@@ -280,9 +285,9 @@ public class AccountController(
 
         // Redeem only once the submission is complete — consuming before the
         // validation re-render above would burn the link on a blank field.
-        var redeemedEmail = await signInLinkService.ConsumeSignupTokenAsync(
+        var redemption = await signInLinkService.ConsumeSignupTokenAsync(
             token, email, HttpContext.RequestAborted);
-        if (redeemedEmail is null)
+        if (redemption.Email is not { } redeemedEmail)
         {
             // Already redeemed. A resubmit that carries the cookie the first POST set
             // is the person who just signed up, so send them on. Everyone else errors:
@@ -294,7 +299,7 @@ public class AccountController(
             if (User.Identity?.IsAuthenticated == true)
                 return RedirectToLocal(returnUrl);
 
-            return View("SignInLinkError");
+            return SignInLinkError(redemption.Failure);
         }
 
         SignInLinkSignupResult result;
@@ -327,13 +332,12 @@ public class AccountController(
             throw;
         }
 
-        if (!await TrySignInAsync(result.UserId))
+        if (await SignInNewAccountAsync(result.UserId) is { } signInError)
         {
-            // Provisioning failed and rolled itself back, so the redemption
-            // accomplished nothing. Hand the link back rather than making the
-            // person request a new email over a transient failure.
+            // The redemption accomplished nothing. Hand the link back rather than
+            // making the person request a new email over a transient failure.
             signInLinkService.ReleaseSignupToken(token);
-            return View("SignInLinkError");
+            return View("SignInLinkError", signInError);
         }
 
         signInMethods.RecordSignInLink();
@@ -341,8 +345,22 @@ public class AccountController(
         return RedirectToLocal(returnUrl);
     }
 
-    private async Task<bool> TrySignInAsync(Guid? userId) =>
-        userId is { } id && await signIn.SignInAsync(id);
+    /// <summary>Signs in the account signup just provisioned; returns the error page's reason when that fails.</summary>
+    private async Task<string?> SignInNewAccountAsync(Guid? userId)
+    {
+        // A null id means provisioning failed and rolled itself back.
+        if (userId is not { } id)
+            return "signup-failed";
+        return await signIn.SignInAsync(id) ? null : "account-not-found";
+    }
+
+    private ViewResult SignInLinkError(SignInLinkFailure? failure) => View("SignInLinkError", failure switch
+    {
+        SignInLinkFailure.Expired => "expired",
+        SignInLinkFailure.AlreadyUsed => "used",
+        SignInLinkFailure.AccountNotFound => "account-not-found",
+        _ => "unreadable",
+    });
 
     /// <summary>
     /// Shared gate-terminal sign-in for the laptop at gate (see
@@ -375,7 +393,8 @@ public class AccountController(
         if (!isGateUser || string.IsNullOrEmpty(password))
         {
             gateThrottle.RecordFailure(source);
-            ModelState.AddModelError(string.Empty, localizer["GateSignIn_Invalid"]);
+            ModelState.AddModelError(string.Empty,
+                localizer[isGateUser ? "GateSignIn_NoPassword" : "GateSignIn_WrongUsername"]);
             return View();
         }
 
@@ -383,7 +402,7 @@ public class AccountController(
         {
             gateThrottle.RecordFailure(source);
             logger.LogWarning("Gate terminal sign-in failed (wrong password) from {Source}", source);
-            ModelState.AddModelError(string.Empty, localizer["GateSignIn_Invalid"]);
+            ModelState.AddModelError(string.Empty, localizer["GateSignIn_WrongPassword"]);
             return View();
         }
 

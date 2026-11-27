@@ -64,13 +64,14 @@
   <data name="Backdoor_Error_LabelTooLong" xml:space="preserve"><value>L'etiqueta ha de tenir 100 caràcters o menys.</value></data>
   <data name="Backdoor_Error_NotEligible" xml:space="preserve"><value>Aquest compte no pot tenir una clau.</value></data>
   <data name="Backdoor_Error_NotAllowed" xml:space="preserve"><value>Només pots crear i canviar les teves pròpies claus.</value></data>
-  <data name="Backdoor_Error_NotFound" xml:space="preserve"><value>Aquesta clau ja no existeix o ja està revocada.</value></data>
+  <data name="Backdoor_Error_NotFound" xml:space="preserve"><value>Aquesta clau ja no existeix.</value></data>
+  <data name="Backdoor_Error_AlreadyRevoked" xml:space="preserve"><value>Aquesta clau ja està revocada.</value></data>
   <data name="Backdoor_Connections_Title" xml:space="preserve"><value>Apps connectades</value></data>
   <data name="Backdoor_Connections_Empty" xml:space="preserve"><value>No hi ha apps connectades.</value></data>
   <data name="Backdoor_Connections_App" xml:space="preserve"><value>App</value></data>
   <data name="Backdoor_Connections_Connected" xml:space="preserve"><value>Connectada</value></data>
   <data name="Backdoor_Connections_Revoked" xml:space="preserve"><value>Connexió revocada.</value></data>
-  <data name="Backdoor_Connections_Error_NotFound" xml:space="preserve"><value>Aquesta connexió ja no existeix o ja està revocada.</value></data>
+  <data name="Backdoor_Connections_Error_NotFound" xml:space="preserve"><value>Aquesta connexió ja no existeix.</value></data>
   <data name="Backdoor_Connect_Title" xml:space="preserve"><value>Connectar Claude</value></data>
   <data name="Backdoor_Connect_Steps" xml:space="preserve"><value>A Claude, afegeix un connector personalitzat amb aquesta adreça. A Configuració avançada, introdueix l'ID de client OAuth de sota. Claude obrirà Humans, on inicies sessió i ho permets.</value></data>
   <data name="Backdoor_Connect_Address" xml:space="preserve"><value>Adreça</value></data>

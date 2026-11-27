@@ -16,12 +16,11 @@ internal static class GuideTestRoles
     public const string CampsAdmin = "CampsAdmin";
     public const string TicketsAdmin = "TicketsAdmin";
     public const string ShiftsAdmin = "ShiftsAdmin";
-    public const string ShiftsNoInfo = "ShiftsNoInfo";
     public const string UsersAdmin = "UsersAdmin";
     public const string FinanceAdmin = "FinanceAdmin";
     public const string EventsAdmin = "EventsAdmin";
     public const string StoreAdmin = "StoreAdmin";
-    public const string ConsentCoordinator = "ConsentCoordinator";
+    public const string ConsentAdmin = "ConsentAdmin";
 
     public static readonly RoleCatalog Catalog = new(new RoleDefinition[]
     {
@@ -31,12 +30,11 @@ internal static class GuideTestRoles
         new(CampsAdmin, "Camps Admin", "", ""),
         new(TicketsAdmin, "Tickets Admin", "", ""),
         new(ShiftsAdmin, "Shifts Admin", "", ""),
-        new(ShiftsNoInfo, "Shifts NoInfo", "", ""),
         new(UsersAdmin, "Users Admin", "", ""),
         new(FinanceAdmin, "Finance Admin", "", ""),
         new(EventsAdmin, "Events Admin", "", ""),
         new(StoreAdmin, "Store Admin", "", ""),
-        new(ConsentCoordinator, "Consent Coordinator", "", ""),
+        new(ConsentAdmin, "Consent Admin", "", ""),
     });
 
     public static readonly GuideRolePrivilegeMap Map = new(Catalog);

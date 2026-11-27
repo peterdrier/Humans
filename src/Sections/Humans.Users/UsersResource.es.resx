@@ -181,9 +181,9 @@
   <data name="Users_Profile_WhatsApp" xml:space="preserve">
     <value>WhatsApp</value>
   </data>
-  <data name="Users_Profile_DietaryMedical_MedicalConditions_Hint" xml:space="preserve"><value>Visible para ti, los Shifts NoInfo admins y la Junta; cada vez que uno de ellos lo abre, queda registrado y aparece abajo. Cualquier cosa que el equipo deba saber — diabetes, epilepsia, lesiones graves, etc.</value></data>
+  <data name="Users_Profile_DietaryMedical_MedicalConditions_Hint" xml:space="preserve"><value>Visible para ti, los administradores y la Junta; cada vez que uno de ellos lo abre, queda registrado y aparece abajo. Cualquier cosa que el equipo deba saber — diabetes, epilepsia, lesiones graves, etc.</value></data>
   <data name="Users_Profile_DietaryMedical_MedicalConditions_Title" xml:space="preserve"><value>Condiciones médicas</value></data>
-  <data name="Users_Profile_DietaryMedical_MedicalConditions_VisibilityNote" xml:space="preserve"><value>Opcional. Visible para ti, los Shifts NoInfo admins y la Junta; cada consulta queda registrada.</value></data>
+  <data name="Users_Profile_DietaryMedical_MedicalConditions_VisibilityNote" xml:space="preserve"><value>Opcional. Visible para ti, los administradores y la Junta; cada consulta queda registrada.</value></data>
   <data name="Users_Profile_MyEmails" xml:space="preserve"><value>Mis correos</value></data>
   <data name="Users_Profile_NoSentMessages" xml:space="preserve"><value>No hay mensajes en la plataforma registrados.</value></data>
   <data name="Users_Profile_SentMessages" xml:space="preserve"><value>Mensajes enviados</value></data>
@@ -436,11 +436,11 @@
   <data name="Users_EmailGrid_StatusPending" xml:space="preserve">
     <value>Pendiente</value>
   </data>
-  <data name="Users_EmailGrid_LinkGoogleAccount" xml:space="preserve">
-    <value>Vincular cuenta de Google</value>
+  <data name="Users_EmailGrid_LinkProviderAccount" xml:space="preserve">
+    <value>Vincular cuenta de {0}</value>
   </data>
-  <data name="Users_EmailGrid_LinkGoogleHelp" xml:space="preserve">
-    <value>Inicia sesión con Google para vincular una cuenta de Google adicional a tu perfil.</value>
+  <data name="Users_EmailGrid_LinkProviderHelp" xml:space="preserve">
+    <value>Inicia sesión con {0} para vincular una cuenta de {0} adicional a tu perfil.</value>
   </data>
   <data name="Users_EmailGrid_BackToAdminDetail" xml:space="preserve">
     <value>Volver al detalle del usuario</value>
@@ -451,17 +451,19 @@
   <data name="Users_EmailGrid_ConfirmUnlink" xml:space="preserve">
     <value>¿Desvincular esta cuenta de Google?</value>
   </data>
-  <data name="Users_EmailGrid_UnlinkRejected" xml:space="preserve">
-    <value>No se pudo desvincular: la fila es desconocida o no tiene proveedor de inicio de sesión.</value>
-  </data>
+  <data name="Users_EmailGrid_ClearPrimaryNotPrimary" xml:space="preserve"><value>No se pudo quitar la marca de principal: este correo no está marcado como principal.</value></data>
+  <data name="Users_EmailGrid_ClearPrimaryOnlyOne" xml:space="preserve"><value>No se pudo quitar la marca de principal: es el único correo principal verificado.</value></data>
+  <data name="Users_EmailGrid_ClearPrimaryChanged" xml:space="preserve"><value>No se pudo quitar la marca de principal: este correo cambió entretanto. Recarga y revisa.</value></data>
+  <data name="Users_EmailGrid_UnlinkNoProvider" xml:space="preserve"><value>No se pudo desvincular: este correo no tiene proveedor de inicio de sesión.</value></data>
+  <data name="Users_EmailGrid_UnlinkAccountNotFound" xml:space="preserve"><value>No se pudo desvincular: la cuenta ya no existe.</value></data>
+  <data name="Users_EmailGrid_UnlinkLoginNotFound" xml:space="preserve"><value>No se pudo desvincular: este inicio de sesión ya no está vinculado a la cuenta.</value></data>
+  <data name="Users_EmailGrid_UnlinkLoginRemovalFailed" xml:space="preserve"><value>No se pudo desvincular: falló la eliminación del inicio de sesión. No se ha cambiado nada.</value></data>
+  <data name="Users_EmailGrid_UnlinkRowNotRemoved" xml:space="preserve"><value>Se desvinculó el inicio de sesión, pero no se pudo eliminar su fila de correo.</value></data>
   <data name="Users_EmailGrid_SetPrimary" xml:space="preserve">
     <value>Establecer como principal</value>
   </data>
   <data name="Users_EmailGrid_PrimaryFlagCleared" xml:space="preserve">
     <value>Marca de principal quitada de esa fila.</value>
-  </data>
-  <data name="Users_EmailGrid_ClearPrimaryRejected" xml:space="preserve">
-    <value>No se pudo quitar la marca de principal: la fila es desconocida o no está marcada.</value>
   </data>
   <data name="Users_EmailGrid_Clear" xml:space="preserve">
     <value>Quitar</value>

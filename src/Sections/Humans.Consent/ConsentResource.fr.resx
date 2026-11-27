@@ -375,6 +375,6 @@
   <data name="Consent_Queue_SelectRowLabel" xml:space="preserve"><value>Sélectionner {0}</value></data>
   <data name="Consent_Meter_ReviewsPending" xml:space="preserve"><value>Vérifications du consentement en attente</value></data>
   <data name="Consent_Meter_OnboardingProfilesPending" xml:space="preserve"><value>Profils d’inscription en attente</value></data>
-  <data name="Consent_Meter_AudienceConsentCoordinator" xml:space="preserve"><value>coordinateurs du consentement</value></data>
+  <data name="Consent_Meter_AudienceConsentAdmin" xml:space="preserve"><value>administrateurs du consentement</value></data>
   <data name="Consent_Meter_AudienceBoard" xml:space="preserve"><value>le Conseil</value></data>
 </root>

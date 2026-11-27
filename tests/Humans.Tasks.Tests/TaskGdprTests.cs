@@ -35,6 +35,78 @@ public sealed class TaskGdprTests
     }
 
     [HumansFact]
+    public async Task Export_OmitsDeclinedRequests()
+    {
+        var plain = await _kit.CreateAsync(Input(title: "Plain", slots: 2));
+        var gated = await _kit.CreateAsync(Input(title: "Gated", slots: 2, needsApproval: true));
+        var declined = await _kit.CreateAsync(Input(title: "Declined", slots: 2, needsApproval: true));
+        foreach (var id in new[] { plain.Id, gated.Id, declined.Id })
+            await _kit.Service.ClaimAsync(id, _person, Ct);
+        await _kit.Service.DeclineRequestAsync(declined.Id, _person, "secret decline reason", _kit.Actor, Ct);
+
+        var data = (await _kit.Service.ContributeForUserAsync(_person, Ct)).Single().Data;
+
+        var text = System.Text.Json.JsonSerializer.Serialize(data);
+        text.Should().Contain("Plain").And.Contain("Confirmed").And.Contain("Gated").And.Contain("Requested");
+        text.Should().NotContain("Declined").And.NotContain("secret decline reason");
+        (await _kit.Service.GetTaskAsync(declined.Id, Ct))!.ApprovalReason.Should().BeNull("no field holds a decline reason");
+    }
+
+    [HumansFact]
+    public async Task Erasure_RemovesEveryClaimRow()
+    {
+        var plain = await _kit.CreateAsync(Input(slots: 2));
+        var gated = await _kit.CreateAsync(Input(slots: 2, needsApproval: true));
+        await _kit.Service.ClaimAsync(plain.Id, _person, Ct);
+        await _kit.Service.ClaimAsync(gated.Id, _person, Ct);
+
+        await _kit.Service.EraseForUserAsync(_person, Ct);
+
+        (await _kit.Service.GetTaskAsync(plain.Id, Ct))!.Assignments.Should().BeEmpty();
+        (await _kit.Service.GetTaskAsync(gated.Id, Ct))!.Assignments.Should().BeEmpty();
+        (await _kit.Service.ContributeForUserAsync(_person, Ct)).Single().Data.Should().BeAssignableTo<System.Collections.IEnumerable>()
+            .Which.Cast<object>().Should().BeEmpty();
+    }
+
+    [HumansFact]
+    public async Task RequestChanges_TouchOnlyRequestRows()
+    {
+        var (repository, factory) = Repository();
+        var task = Guid.NewGuid();
+        var asked = Guid.NewGuid();
+        var confirmed = Guid.NewGuid();
+        await using (var db = await factory.CreateDbContextAsync(Ct))
+        {
+            db.TaskItems.Add(new TaskItem { Id = task, OwnerKind = "Team", OwnerId = Production, Title = "T" });
+            db.TaskAssignments.AddRange(
+                Row(task, asked, TaskAssignmentState.Requested),
+                Row(task, confirmed, TaskAssignmentState.Confirmed));
+            await db.SaveChangesAsync(Ct);
+        }
+
+        (await repository.ConfirmRequestAsync(task, confirmed, Ct)).Should().BeFalse("a confirmed place is not a request");
+        (await repository.RemoveRequestAsync(task, confirmed, Ct)).Should().BeFalse();
+        (await repository.RemoveRequestAsync(task, Guid.NewGuid(), Ct)).Should().BeFalse();
+        (await repository.ConfirmRequestAsync(task, asked, Ct)).Should().BeTrue();
+        (await repository.ConfirmRequestAsync(task, asked, Ct)).Should().BeFalse("it is confirmed now");
+        (await repository.RemoveRequestAsync(task, asked, Ct)).Should().BeFalse("it is confirmed now");
+
+        await using var check = await factory.CreateDbContextAsync(Ct);
+        (await check.TaskAssignments.ToListAsync(Ct)).Should().OnlyContain(r => r.State == TaskAssignmentState.Confirmed).And.HaveCount(2);
+
+        var other = Guid.NewGuid();
+        await using (var db = await factory.CreateDbContextAsync(Ct))
+        {
+            db.TaskAssignments.Add(Row(task, other, TaskAssignmentState.Requested));
+            await db.SaveChangesAsync(Ct);
+        }
+
+        (await repository.RemoveRequestAsync(task, other, Ct)).Should().BeTrue();
+        await using var after = await factory.CreateDbContextAsync(Ct);
+        (await after.TaskAssignments.ToListAsync(Ct)).Should().HaveCount(2);
+    }
+
+    [HumansFact]
     public async Task Erasure_RemovesTheirPlacesAndLeavesTheFreeTextOnTheTask()
     {
         var task = await _kit.CreateAsync(Input(title: "Chainsaw work", description: "Needs a licence", needsApproval: true, reason: "chainsaw licence"));
@@ -98,7 +170,7 @@ public sealed class TaskGdprTests
         var repository = Substitute.For<ITaskRepository>();
         repository.ReassignUserAsync(Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<CancellationToken>()).Returns(2);
         var service = new Humans.Tasks.Services.TaskService(
-            repository, kit.Teams, kit.Settings, kit.Users, kit.Audit, new NodaTime.Testing.FakeClock(Instant.FromUtc(2027, 1, 1, 0, 0)),
+            repository, kit.Teams, kit.Settings, kit.Users, kit.Audit, kit.Email, kit.Emails, new NodaTime.Testing.FakeClock(Instant.FromUtc(2027, 1, 1, 0, 0)),
             Substitute.For<Microsoft.Extensions.Localization.IStringLocalizer<TasksResource>>(), NullLogger<Humans.Tasks.Services.TaskService>.Instance);
         var to = Guid.NewGuid();
 

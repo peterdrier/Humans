@@ -181,9 +181,9 @@
   <data name="Users_Profile_WhatsApp" xml:space="preserve">
     <value>WhatsApp</value>
   </data>
-  <data name="Users_Profile_DietaryMedical_MedicalConditions_Hint" xml:space="preserve"><value>Zichtbaar voor jou, de Shifts NoInfo-beheerders en het bestuur; elke keer dat een van hen dit opent, wordt dat vastgelegd en hieronder weergegeven. Alles wat coördinatoren moeten weten — diabetes, epilepsie, ernstig letsel, enz.</value></data>
+  <data name="Users_Profile_DietaryMedical_MedicalConditions_Hint" xml:space="preserve"><value>Zichtbaar voor jou, de beheerders en het bestuur; elke keer dat een van hen dit opent, wordt dat vastgelegd en hieronder weergegeven. Alles wat coördinatoren moeten weten — diabetes, epilepsie, ernstig letsel, enz.</value></data>
   <data name="Users_Profile_DietaryMedical_MedicalConditions_Title" xml:space="preserve"><value>Medische aandoeningen</value></data>
-  <data name="Users_Profile_DietaryMedical_MedicalConditions_VisibilityNote" xml:space="preserve"><value>Optioneel. Zichtbaar voor jou, de Shifts NoInfo-beheerders en het bestuur, en elke inzage wordt vastgelegd.</value></data>
+  <data name="Users_Profile_DietaryMedical_MedicalConditions_VisibilityNote" xml:space="preserve"><value>Optioneel. Zichtbaar voor jou, de beheerders en het bestuur, en elke inzage wordt vastgelegd.</value></data>
   <data name="Users_Profile_MyEmails" xml:space="preserve"><value>Mijn e-mails</value></data>
   <data name="Users_Profile_NoSentMessages" xml:space="preserve"><value>Geen berichten binnen het platform geregistreerd.</value></data>
   <data name="Users_Profile_SentMessages" xml:space="preserve"><value>Verzonden berichten</value></data>
@@ -436,11 +436,11 @@
   <data name="Users_EmailGrid_StatusPending" xml:space="preserve">
     <value>In afwachting</value>
   </data>
-  <data name="Users_EmailGrid_LinkGoogleAccount" xml:space="preserve">
-    <value>Google-account koppelen</value>
+  <data name="Users_EmailGrid_LinkProviderAccount" xml:space="preserve">
+    <value>{0}-account koppelen</value>
   </data>
-  <data name="Users_EmailGrid_LinkGoogleHelp" xml:space="preserve">
-    <value>Log in met Google om een extra Google-account aan je profiel te koppelen.</value>
+  <data name="Users_EmailGrid_LinkProviderHelp" xml:space="preserve">
+    <value>Log in met {0} om een extra {0}-account aan je profiel te koppelen.</value>
   </data>
   <data name="Users_EmailGrid_BackToAdminDetail" xml:space="preserve">
     <value>Terug naar gebruikersdetails</value>
@@ -451,17 +451,19 @@
   <data name="Users_EmailGrid_ConfirmUnlink" xml:space="preserve">
     <value>Dit Google-account ontkoppelen?</value>
   </data>
-  <data name="Users_EmailGrid_UnlinkRejected" xml:space="preserve">
-    <value>Ontkoppelen mislukt — de rij is onbekend of heeft geen inlogprovider.</value>
-  </data>
+  <data name="Users_EmailGrid_ClearPrimaryNotPrimary" xml:space="preserve"><value>Primaire markering kon niet worden verwijderd: dit e-mailadres is niet als primair gemarkeerd.</value></data>
+  <data name="Users_EmailGrid_ClearPrimaryOnlyOne" xml:space="preserve"><value>Primaire markering kon niet worden verwijderd: dit is het enige geverifieerde primaire e-mailadres.</value></data>
+  <data name="Users_EmailGrid_ClearPrimaryChanged" xml:space="preserve"><value>Primaire markering kon niet worden verwijderd: dit e-mailadres is intussen gewijzigd. Herlaad en controleer.</value></data>
+  <data name="Users_EmailGrid_UnlinkNoProvider" xml:space="preserve"><value>Ontkoppelen mislukt: dit e-mailadres heeft geen inlogprovider.</value></data>
+  <data name="Users_EmailGrid_UnlinkAccountNotFound" xml:space="preserve"><value>Ontkoppelen mislukt: het account bestaat niet meer.</value></data>
+  <data name="Users_EmailGrid_UnlinkLoginNotFound" xml:space="preserve"><value>Ontkoppelen mislukt: deze aanmelding is niet meer aan het account gekoppeld.</value></data>
+  <data name="Users_EmailGrid_UnlinkLoginRemovalFailed" xml:space="preserve"><value>Ontkoppelen mislukt: het verwijderen van de aanmelding is mislukt. Er is niets gewijzigd.</value></data>
+  <data name="Users_EmailGrid_UnlinkRowNotRemoved" xml:space="preserve"><value>De aanmelding is ontkoppeld, maar de bijbehorende e-mailrij kon niet worden verwijderd.</value></data>
   <data name="Users_EmailGrid_SetPrimary" xml:space="preserve">
     <value>Als primair instellen</value>
   </data>
   <data name="Users_EmailGrid_PrimaryFlagCleared" xml:space="preserve">
     <value>Primaire markering van die rij verwijderd.</value>
-  </data>
-  <data name="Users_EmailGrid_ClearPrimaryRejected" xml:space="preserve">
-    <value>Primaire markering kon niet worden verwijderd — de rij is onbekend of is momenteel niet gemarkeerd.</value>
   </data>
   <data name="Users_EmailGrid_Clear" xml:space="preserve">
     <value>Wissen</value>

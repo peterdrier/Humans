@@ -61,10 +61,12 @@ internal sealed class CalendarService(
 
     private async Task<CalendarEventMutationResult?> RejectOwningTeamAsync(Guid owningTeamId, CancellationToken ct)
     {
-        if (await teams.GetTeamAsync(owningTeamId, ct) is { } team && CanOwnEvents(team))
+        var team = await teams.GetTeamAsync(owningTeamId, ct);
+        if (team is not null && CanOwnEvents(team))
             return null;
 
-        logger.LogWarning("Calendar event rejected: owning team {TeamId} is missing, inactive or hidden", owningTeamId);
+        logger.LogWarning("Calendar event rejected: owning team {TeamId} {Problem}", owningTeamId,
+            team is null ? "does not exist" : !team.IsActive ? "is inactive" : "is hidden");
         return CalendarEventMutationResult.ValidationFailed(nameof(CreateCalendarEventDto.OwningTeamId),
             "Calendar_OwningTeamUnavailable");
     }

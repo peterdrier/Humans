@@ -29,11 +29,11 @@
 
 ## Business Context
 
-The onboarding pipeline defines the end-to-end journey from signup to active membership. All humans follow the same initial path: sign up, complete profile, then two parallel tracks: sign legal documents and pass a Consent Coordinator profile review. App access opens as soon as the human enters their legal name (`UserState == Active`) — it does not wait on consents or coordinator review. Name + all required consents are what add the human to the Volunteers team (a Google Workspace provisioning group); the coordinator review is a parallel audit track that does not gate admission. The two tracks can happen in any order.
+The onboarding pipeline defines the end-to-end journey from signup to active membership. All humans follow the same initial path: sign up, complete profile, then two parallel tracks: sign legal documents and pass a Consent Admin profile review. App access opens as soon as the human enters their legal name (`UserState == Active`) — it does not wait on consents or coordinator review. Name + all required consents are what add the human to the Volunteers team (a Google Workspace provisioning group); the coordinator review is a parallel audit track that does not gate admission. The two tracks can happen in any order.
 
 During initial signup only, the profile setup page shows a tier card that explains Colaborador and Asociado and links to Governance's application form (`/Governance/Applications/Create`, new tab); the profile form itself carries no tier fields. The tier application proceeds through Board voting in parallel — it never blocks Volunteer access.
 
-The consent check is a Consent Coordinator **audit annotation** on the Volunteer. It gates nothing and has nothing to do with tier applications.
+The consent check is a Consent Admin **audit annotation** on the Volunteer. It gates nothing and has nothing to do with tier applications.
 
 Board members vote only on Colaborador/Asociado tier applications. Volunteers admission is name + consents, not the coordinator review.
 
@@ -52,13 +52,13 @@ Profile Setup (one-shot onboarding experience)
     ▼
 Two parallel tracks (either order):
     ├── Sign Required Consents (Volunteers team docs)
-    └── Consent Coordinator profile review → Cleared or Flagged
+    └── Consent Admin profile review → Cleared or Flagged
     │
     ▼ [Name entered + all docs signed]
     │
     ├── ALL humans → name + consents → Volunteers team (Google Workspace) ✓
     │       (app access itself came earlier, at name entry: UserState == Active;
-    │        the consent-coordinator review is a parallel audit track, not an admission gate)
+    │        the Consent Admin review is a parallel audit track, not an admission gate)
     │
     └── If Colaborador/Asociado Application exists → Board Voting queue (parallel)
             │
@@ -78,7 +78,7 @@ Two parallel tracks (either order):
 - Sign up via Google OAuth
 - Fill basic profile
 - Sign required legal documents (can happen before or after profile review)
-- Consent Coordinator clears profile review → IsApproved = true (audit annotation only)
+- Consent Admin clears profile review → IsApproved = true (audit annotation only)
 - Volunteers team membership granted when name is entered AND all legal docs signed (consent-check clearance is not required)
 - Dashboard shows "Active" status (no tier badge for Volunteer)
 
@@ -153,7 +153,7 @@ The default Volunteer flow uses the **onboarding widget** (Names → Shifts → 
 ### Stage 4: Profile Review (audit track, parallel with Stage 3)
 
 **Trigger:** Profile exists, not yet rejected (coordinators can review at any time)
-**Actor:** Consent Coordinator
+**Actor:** Consent Admin
 **Actions:**
 - Coordinator reviews profile (can proceed regardless of legal document status)
 - Review queue shows legal document progress (X/Y signed) for context
@@ -227,7 +227,7 @@ The controller inherits `HumansControllerBase` for `SetError` / TempData convent
 ## Related Features
 
 - [Membership Tiers](../../../Humans.Governance/Docs/features/membership-tiers.md) — Tier definitions and lifecycle
-- [Coordinator Roles](../../../Humans.Shifts/Docs/features/coordinator-roles.md) — Consent Coordinator role
+- [Coordinator Roles](../../../Humans.Shifts/Docs/features/coordinator-roles.md) — Consent Admin role
 - [Board Voting](../../../Humans.Governance/Docs/features/board-voting.md) — Tier application voting
 - [Tier Applications](../../../Humans.Governance/Docs/features/asociado-applications.md) — Application entity and state machine
 - [Volunteer Status](volunteer-status.md) — UserState and access gating

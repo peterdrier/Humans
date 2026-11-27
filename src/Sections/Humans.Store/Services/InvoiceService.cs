@@ -258,12 +258,15 @@ internal sealed class InvoiceService(
     private static string? GetRecoveredLinesRefusal(
         Order order, HoldedSalesDocumentDto document, StoreInvoicePlan plan)
     {
-        if (LineSet(plan.Lines.Select(l => new SalesLine(l.Units, l.Price, l.VatRate))).SequenceEqual(
-                LineSet(document.Lines.Select(l => new SalesLine(l.Units, l.Price, l.TaxPercent)))))
+        var ordered = LineSet(plan.Lines.Select(l => new SalesLine(l.Units, l.Price, l.VatRate)));
+        var held = LineSet(document.Lines.Select(l => new SalesLine(l.Units, l.Price, l.TaxPercent)));
+        if (ordered.SequenceEqual(held))
             return null;
 
         return $"Holded already holds document {DocumentName(document)} for order {order.Id}, but its lines "
-            + (document.Lines.Count == 0 ? "could not be read" : "no longer match the order's quantities, unit prices or VAT rates")
+            + (document.Lines.Count == 0
+                ? "could not be read"
+                : $"({Describe(held)}) differ from the order's ({Describe(ordered)})")
             + ", though the totals agree. Resolve it by hand — correcting an issued document is a factura rectificativa, "
             + "and no second document will be issued in the meantime.";
     }
@@ -277,6 +280,9 @@ internal sealed class InvoiceService(
             .ToList();
 
     private sealed record SalesLine(decimal Units, decimal Price, decimal TaxPercent);
+
+    private static string Describe(IReadOnlyList<SalesLine> lines) => string.Join("; ", lines.Select(l =>
+        string.Create(CultureInfo.InvariantCulture, $"{l.Units:0.##} x EUR {l.Price:0.00} at {l.TaxPercent:0.##}% VAT")));
 
     /// <summary>Holded's list endpoints return <c>tags</c> but not <c>notes</c>, so the tag is what makes a document findable by its order.</summary>
     private static string OrderDocumentTag(Guid orderId) => $"humans-order-{orderId}";
@@ -319,7 +325,7 @@ internal sealed class InvoiceService(
             return Refuse(order.Id, actorUserId, totalsRefusal);
         if (document.IsDraft == true || string.IsNullOrWhiteSpace(document.DocNumber))
             return Refuse(order.Id, actorUserId,
-                $"Holded document {document.Id} is still a draft or has no issued document number. "
+                $"Holded document {document.Id} {(document.IsDraft == true ? "is still a draft" : "has no issued document number")}. "
                 + "The order remains open. Retry after Holded confirms issuance; the existing document will be recovered.");
 
         var invoice = new Invoice

@@ -215,9 +215,10 @@
   <data name="Teams_NotMember" xml:space="preserve">
     <value>Je bent geen lid van dit team.</value>
   </data>
-  <data name="Teams_RequestUnavailable" xml:space="preserve">
-    <value>Dit verzoek om lid te worden is niet beschikbaar of niet meer in afwachting.</value>
-  </data>
+  <data name="Teams_RequestNotFound" xml:space="preserve"><value>Je hebt zo'n aanvraag om lid te worden niet.</value></data>
+  <data name="Teams_RequestApproved" xml:space="preserve"><value>Die aanvraag om lid te worden is al goedgekeurd.</value></data>
+  <data name="Teams_RequestRejected" xml:space="preserve"><value>Die aanvraag om lid te worden is al afgewezen.</value></data>
+  <data name="Teams_RequestWithdrawn" xml:space="preserve"><value>Je hebt die aanvraag om lid te worden al ingetrokken.</value></data>
   <data name="Teams_ActionFailed" xml:space="preserve">
     <value>Deze teamactie kon niet worden voltooid. Probeer het opnieuw.</value>
   </data>

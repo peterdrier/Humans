@@ -157,11 +157,11 @@
             <div class="card-header">Spend by Holded account</div>
             @{
                 Func<PleoSpendTotal, IHtmlContent> accountCell = @<text>
-                    <span class="@(item.Flagged ? "text-danger" : "")">
+                    <span class="@(item.Problem is not null ? "text-danger" : "")">
                                                         <a asp-action="Entries" asp-route-account="@item.Key">@item.Label</a>
-                                                        @if (item.Flagged)
+                                                        @if (item.Problem is not null)
                                                         {
-                                                            <span class="small">(missing or archived in Pleo's chart)</span>
+                                                            <span class="small">(@item.Problem)</span>
                                                         }
                                                     </span>
                 </text>;

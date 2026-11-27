@@ -99,13 +99,12 @@ Defaults live in `src/Humans.Web/appsettings.json`; override them with user secr
 | Setting | Description |
 |---------|-------------|
 | `ConnectionStrings__DefaultConnection` | PostgreSQL connection string |
-| `Authentication__Google__ClientId` | Google OAuth client ID |
-| `Authentication__Google__ClientSecret` | Google OAuth client secret |
 
 ### Optional
 
 | Setting | Description |
 |---------|-------------|
+| `Authentication__Google__ClientId` / `__ClientSecret` | Google OAuth client. Without both, "Sign in with Google" is off and members sign in by email magic link. Other providers: "Adding a sign-in provider" in `src/Sections/Humans.Auth/Docs/Auth.md` |
 | `Email__Username` / `Email__Password` | SMTP credentials for outbound mail (host and sender are in `appsettings.json`) |
 | `GoogleMaps__ApiKey` | Maps and Places for profile locations and maps |
 | `GoogleWorkspace__ServiceAccountKeyJson` or `__ServiceAccountKeyPath` | Service account for Workspace provisioning and Drive/Groups sync |
@@ -163,7 +162,7 @@ The project grew quickly from the initial member portal into a broader operation
 |-------|------------|
 | **Feb** | Project inception (Feb 4) — member profiles, self-organizing teams, GDPR suite (consent tracking, data export, right to deletion), legal document sync from GitHub, Google Workspace provisioning with nightly Drive/Groups reconciliation, audit logging, five locales, volunteer map, the "Humans" rebrand, and the onboarding redesign with Colaborador/Asociado tiers and Board voting |
 | **Mar** | Service-layer extraction; Google Groups via Cloud Identity with configurable sync modes; team role slots; Camps registration with a public JSON API; email outbox; campaigns with discount-code distribution; TicketTailor sync; shift management and coordinator workflows; feedback system; budget phase 1; Playwright E2E smoke tests |
-| **Apr** | Notification inbox; duplicate-account detection; authorization overhaul with resource-based coordinator and camp-lead permissions; Catalan as sixth locale; City Planning barrio map; guest (profileless) accounts; full GDPR export; repository/store/decorator pattern across every section; in-app Guide; ticket scanner; admin shell redesign; Volunteer admission ungated from Consent Coordinator approval |
+| **Apr** | Notification inbox; duplicate-account detection; authorization overhaul with resource-based coordinator and camp-lead permissions; Catalan as sixth locale; City Planning barrio map; guest (profileless) accounts; full GDPR export; repository/store/decorator pattern across every section; in-app Guide; ticket scanner; admin shell redesign; Volunteer admission ungated from Consent Admin approval |
 | **May** | Issues section (succeeds Feedback); Barrios lead tooling; in-app AI Agent; Store; Expenses and Holded sections; MailerLite; Event Guide; ticket transfers; global search; email-identity decoupling; in-memory cached reads across sections; burner + legal name model; Early Entry roster; Roslyn analyzers replace IL-scan architecture tests |
 | **Jun** | Stripe payment reconciliation and async-payment checkout for the Store; Surveys section; personal iCal feeds; gate-terminal kiosk login and manual barcode entry; post-event shift stats; Holded creditor statements and daybook ledger; community knowledge base for the Agent; 3,700-string i18n sweep; Gate Admissions with staff PINs; automated TicketTailor void-and-reissue for transfers |
 | **Jul** | Gate terminal hardening for the event — PIN audit, supervisor override, kiosk sign-out; logged-in-since survey audience |

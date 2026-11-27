@@ -64,13 +64,14 @@
   <data name="Backdoor_Error_LabelTooLong" xml:space="preserve"><value>Een label mag hoogstens 100 tekens lang zijn.</value></data>
   <data name="Backdoor_Error_NotEligible" xml:space="preserve"><value>Dit account mag geen sleutel hebben.</value></data>
   <data name="Backdoor_Error_NotAllowed" xml:space="preserve"><value>Je kunt alleen je eigen sleutels maken en wijzigen.</value></data>
-  <data name="Backdoor_Error_NotFound" xml:space="preserve"><value>Die sleutel bestaat niet meer of is al ingetrokken.</value></data>
+  <data name="Backdoor_Error_NotFound" xml:space="preserve"><value>Die sleutel bestaat niet meer.</value></data>
+  <data name="Backdoor_Error_AlreadyRevoked" xml:space="preserve"><value>Die sleutel is al ingetrokken.</value></data>
   <data name="Backdoor_Connections_Title" xml:space="preserve"><value>Gekoppelde apps</value></data>
   <data name="Backdoor_Connections_Empty" xml:space="preserve"><value>Geen gekoppelde apps.</value></data>
   <data name="Backdoor_Connections_App" xml:space="preserve"><value>App</value></data>
   <data name="Backdoor_Connections_Connected" xml:space="preserve"><value>Gekoppeld</value></data>
   <data name="Backdoor_Connections_Revoked" xml:space="preserve"><value>Koppeling ingetrokken.</value></data>
-  <data name="Backdoor_Connections_Error_NotFound" xml:space="preserve"><value>Die koppeling bestaat niet meer of is al ingetrokken.</value></data>
+  <data name="Backdoor_Connections_Error_NotFound" xml:space="preserve"><value>Die koppeling bestaat niet meer.</value></data>
   <data name="Backdoor_Connect_Title" xml:space="preserve"><value>Claude koppelen</value></data>
   <data name="Backdoor_Connect_Steps" xml:space="preserve"><value>Voeg in Claude een aangepaste connector toe met dit adres. Vul onder Geavanceerde instellingen de OAuth-client-ID hieronder in. Claude opent dan Humans, waar je inlogt en toestemming geeft.</value></data>
   <data name="Backdoor_Connect_Address" xml:space="preserve"><value>Adres</value></data>

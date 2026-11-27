@@ -51,6 +51,10 @@ Rules are ordered by historical frequency — the patterns that have caused the 
 - **`catch (Exception)` without the variable is always a reject.** If you're catching, you must log — and you can't log without the exception variable.
 - **External service calls (Google API, email, HTTP) must be wrapped in try-catch with logging.** Unhandled exceptions from external services crash the request.
 
+## Joined Error Messages
+
+- **A log, exception or user-facing failure message that joins causes with "or" is a reject** ("invalid or expired token", "not found or not allowed"). Each cause gets its own message; if the code can't tell them apart, it must be made to (result enum, refusal key per cause, failed-step variable). Exceptions: deliberate non-disclosure, an upstream that can't tell, and requirement text listing valid options. See [`one-cause-messages`](../../memory/code/one-cause-messages.md).
+
 ## Orphaned Pages *(5+ historical fixes)*
 
 - **Every controller action must be reachable from UI.** No dead endpoints — if an action exists, there must be a form, link, or JS call that invokes it. Unreachable actions are dead code that misleads and rots.

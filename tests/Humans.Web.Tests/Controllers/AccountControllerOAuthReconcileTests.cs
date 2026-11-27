@@ -35,6 +35,7 @@ public class AccountControllerOAuthReconcileTests
         Substitute.For<IStringLocalizer<Base.SharedResource>>();
     private readonly FakeClock _clock = new(Instant.FromUtc(2026, 5, 11, 12, 0));
     private readonly Web.Services.SignInMethodCounter _signInMethods = new();
+    private readonly IAuthenticationSchemeProvider _schemeProvider = Substitute.For<IAuthenticationSchemeProvider>();
     private readonly UserManager<User> _userManager;
     private readonly SignInManager<User> _signInManager;
     private readonly AccountController _controller;
@@ -52,7 +53,7 @@ public class AccountControllerOAuthReconcileTests
         var claimsFactory = Substitute.For<IUserClaimsPrincipalFactory<User>>();
         var identityOptions = Substitute.For<IOptions<IdentityOptions>>();
         identityOptions.Value.Returns(new IdentityOptions());
-        var schemeProvider = Substitute.For<IAuthenticationSchemeProvider>();
+        var schemeProvider = _schemeProvider;
         var userConfirmation = Substitute.For<IUserConfirmation<User>>();
 
         _signInManager = Substitute.For<SignInManager<User>>(
@@ -84,7 +85,8 @@ public class AccountControllerOAuthReconcileTests
                     new Microsoft.Extensions.Caching.Memory.MemoryCacheOptions()),
                 _clock),
             _signInMethods,
-            _localizer);
+            _localizer,
+            _schemeProvider);
         _controller.Url = Substitute.For<IUrlHelper>();
         _controller.Url.IsLocalUrl(Arg.Any<string?>()).Returns(false);
         _controller.Url.Content(Arg.Any<string>()).Returns(ci => ci.Arg<string>());
@@ -126,6 +128,18 @@ public class AccountControllerOAuthReconcileTests
     }
 
     [HumansFact]
+    public async Task ExternalLogin_ProviderNotConfigured_ReturnsToLogin()
+    {
+        _schemeProvider.GetSchemeAsync("Google").Returns((AuthenticationScheme?)null);
+
+        var result = await _controller.ExternalLogin("Google", "/Shifts");
+
+        var redirect = result.Should().BeOfType<RedirectToActionResult>().Subject;
+        redirect.ActionName.Should().Be(nameof(AccountController.Login));
+        redirect.RouteValues!["error"].Should().Be("oauth");
+    }
+
+    [HumansFact]
     public async Task ExistingUserSignInSuccess_CallsReconcileOnceWithVerifiedClaim()
     {
         var userId = Guid.NewGuid();
@@ -147,7 +161,7 @@ public class AccountControllerOAuthReconcileTests
         await _userService.Received(1).EnsureStubProfileAsync(userId, null, null, null,
             Arg.Any<CancellationToken>(), userId);
 
-        _signInMethods.Google.Should().Be(1);
+        _signInMethods.Providers.Should().ContainKey("Google").WhoseValue.Should().Be(1);
         _signInMethods.SignInLink.Should().Be(0);
     }
 
@@ -289,7 +303,7 @@ public class AccountControllerOAuthReconcileTests
             Arg.Any<User>(), Arg.Any<bool>(), Arg.Any<string?>());
 
         // ...and linking is not a sign-in, so the dashboard tally doesn't move.
-        _signInMethods.Google.Should().Be(0);
+        _signInMethods.Providers.Should().BeEmpty();
     }
 
     [HumansFact]
@@ -329,7 +343,7 @@ public class AccountControllerOAuthReconcileTests
         await _userEmailService.DidNotReceiveWithAnyArgs()
             .ReconcileOAuthIdentityAsync(default, default!, default!, default!, default);
         await _userService.DidNotReceiveWithAnyArgs().RecordSignInAsync(default);
-        _signInMethods.Google.Should().Be(0);
+        _signInMethods.Providers.Should().BeEmpty();
     }
 
     [HumansFact]
@@ -368,7 +382,7 @@ public class AccountControllerOAuthReconcileTests
             userAId, Provider, ProviderKey, "usera@google.test",
             claimEmailVerified: true, Arg.Any<CancellationToken>());
         await _userService.Received(1).RecordSignInAsync(userAId, Arg.Any<CancellationToken>());
-        _signInMethods.Google.Should().Be(0);
+        _signInMethods.Providers.Should().BeEmpty();
     }
 
     [HumansTheory]

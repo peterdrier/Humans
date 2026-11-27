@@ -311,12 +311,19 @@ internal sealed class EventService(
         await repo.SaveEventAndModerationActionAsync(guideEvent, action, ct);
     }
 
-    /// <summary>Null when the submission window is closed or not configured.</summary>
+    /// <summary>Null, with the reason logged, when submissions are not open.</summary>
     private async Task<EventGuideSettings?> GetOpenSubmissionSettingsAsync(CancellationToken ct)
     {
         var settings = await repo.GetGuideSettingsAsync(ct);
-        if (settings is not null && settings.IsSubmissionOpenAt(clock.GetCurrentInstant())) return settings;
-        logger.LogWarning("Event submission refused: the submission window is closed or not configured");
+        var now = clock.GetCurrentInstant();
+        if (settings is null)
+            logger.LogWarning("Event submission refused: the guide settings have no submission window");
+        else if (now < settings.SubmissionOpenAt)
+            logger.LogWarning("Event submission refused: the submission window opens at {OpensAt}", settings.SubmissionOpenAt);
+        else if (now > settings.SubmissionCloseAt)
+            logger.LogWarning("Event submission refused: the submission window closed at {ClosedAt}", settings.SubmissionCloseAt);
+        else
+            return settings;
         return null;
     }
 

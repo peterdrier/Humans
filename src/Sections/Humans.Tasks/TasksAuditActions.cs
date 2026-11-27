@@ -17,6 +17,18 @@ internal sealed class TasksAuditActions : AuditActionContributor
 
     public static readonly AuditActionDefinition TaskUnassigned = new("TaskUnassigned");
 
+    public static readonly AuditActionDefinition TaskClaimed = new("TaskClaimed");
+
+    public static readonly AuditActionDefinition TaskReleased = new("TaskReleased");
+
+    public static readonly AuditActionDefinition TaskRequested = new("TaskRequested");
+
+    public static readonly AuditActionDefinition TaskRequestWithdrawn = new("TaskRequestWithdrawn");
+
+    public static readonly AuditActionDefinition TaskRequestApproved = new("TaskRequestApproved");
+
+    public static readonly AuditActionDefinition TaskRequestDeclined = new("TaskRequestDeclined");
+
     public static readonly AuditActionDefinition TaskDependencyAdded = new("TaskDependencyAdded");
 
     public static readonly AuditActionDefinition TaskDependencyRemoved = new("TaskDependencyRemoved");
