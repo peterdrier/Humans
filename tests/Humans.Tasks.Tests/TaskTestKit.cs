@@ -171,13 +171,18 @@ internal sealed class FakeTaskRepository : ITaskRepository
 {
     private readonly Dictionary<Guid, TaskItem> _tasks = [];
     private readonly List<TaskAssignment> _assignments = [];
-    private readonly Lock _assignmentInsert = new();
     private readonly List<TaskDependency> _dependencies = [];
+
+    // Concurrency tests release two writes at once; a database serializes them, so this does too.
+    private readonly Lock _assignmentsLock = new();
 
     public Task<IReadOnlyList<TaskItem>> GetAllAsync(CancellationToken ct = default)
     {
-        IReadOnlyList<TaskItem> all = [.. _tasks.Values.Select(Copy)];
-        return Task.FromResult(all);
+        lock (_assignmentsLock)
+        {
+            IReadOnlyList<TaskItem> all = [.. _tasks.Values.Select(Copy)];
+            return Task.FromResult(all);
+        }
     }
 
     public Task AddAsync(TaskItem task, CancellationToken ct = default)
@@ -214,8 +219,7 @@ internal sealed class FakeTaskRepository : ITaskRepository
     {
         if (BeforeAddAssignment is { } hook)
             await hook();
-        // Concurrent claims may both pass their service checks; each database insert is still atomic.
-        lock (_assignmentInsert)
+        lock (_assignmentsLock)
         {
             if (_assignments.Any(a => a.TaskItemId == assignment.TaskItemId && a.UserId == assignment.UserId))
                 return false;
