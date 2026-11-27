@@ -357,7 +357,9 @@ internal sealed partial class StripeService(
         var results = new List<StoreCheckoutSessionData>();
         try
         {
-            await foreach (var s in sessions.ListAutoPagingAsync(new SessionListOptions { Limit = 100 }, cancellationToken: ct))
+            foreach (var s in await StripeMirrorClient.AllPagesAsync(
+                         after => sessions.ListAsync(new SessionListOptions { Limit = 100, StartingAfter = after }, cancellationToken: ct),
+                         session => session.Id, "Store Checkout sessions", ct))
             {
                 results.Add(MapSession(s) ?? throw new InvalidOperationException(
                     "Stripe Store Checkout list contains a session without explicit EUR currency."));
@@ -390,8 +392,10 @@ internal sealed partial class StripeService(
         var results = new List<StoreRefundData>();
         try
         {
-            await foreach (var r in new RefundService(client).ListAutoPagingAsync(
-                               new RefundListOptions { PaymentIntent = paymentIntentId, Limit = 100 }, request, ct))
+            foreach (var r in await StripeMirrorClient.AllPagesAsync(
+                         after => new RefundService(client).ListAsync(new RefundListOptions
+                         { PaymentIntent = paymentIntentId, Limit = 100, StartingAfter = after }, request, ct),
+                         refund => refund.Id, "Store refunds", ct))
             {
                 if (!string.Equals(r.Currency, "eur", StringComparison.OrdinalIgnoreCase))
                     throw new InvalidOperationException($"Stripe refund {r.Id} does not declare EUR currency.");

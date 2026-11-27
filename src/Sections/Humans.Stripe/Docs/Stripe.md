@@ -122,6 +122,11 @@ integration uses — see [`memory/code/stripe-restricted-keys.md`](../../../../m
   cancellation — and `ParseStoreCheckoutEvent` never throws. An empty list means Stripe answered
   with nothing, so reconciliation cannot mistake an unreadable account for one with no sessions
   and false-flag recorded payments as orphans.
+- Complete live-account and Store inventories use the mirror's validated pager: every page requires an explicit
+  boolean `has_more` and data array, every item a nonblank unique ID. Empty continuation pages and the 500-page cap
+  fail the whole read rather than publishing partial reconciliation data. Read filters, account contexts and order
+  are preserved. Mirror pages retain their single paced rate-limit retry; live-account and Store reads retain their
+  existing error propagation. Access probes and first-match fee lookup do not require a full inventory.
 - Store refund and charge reads require an explicit nonblank ID and integer amount and creation timestamp in the
   raw response. Incomplete objects fail before returning financial data; SDK defaults cannot become booked amounts
   or invoice-matching dates. A refund's nullable status retains its pending/unknown handling.

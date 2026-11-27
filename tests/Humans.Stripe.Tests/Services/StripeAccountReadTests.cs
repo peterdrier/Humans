@@ -138,6 +138,59 @@ public sealed class StripeAccountReadTests
         }
     }
 
+    public enum InventoryRead { Movements, Intents, Payouts, PayoutContents, StoreSessions, StoreRefunds }
+
+    [HumansTheory]
+    [InlineData(InventoryRead.Movements)]
+    [InlineData(InventoryRead.Intents)]
+    [InlineData(InventoryRead.Payouts)]
+    [InlineData(InventoryRead.PayoutContents)]
+    [InlineData(InventoryRead.StoreSessions)]
+    [InlineData(InventoryRead.StoreRefunds)]
+    public async Task CompleteList_MissingMoreMarker_RejectsRead(InventoryRead source)
+    {
+        const string incomplete = """{"object":"list","data":[]}""";
+        if (source == InventoryRead.StoreSessions)
+            Answer("/v1/checkout/sessions", incomplete);
+        else if (source == InventoryRead.StoreRefunds)
+            Answer("/v1/refunds", incomplete);
+        else
+        {
+            Answer("/v1/balance_transactions", source == InventoryRead.Movements ? incomplete : List("/v1/balance_transactions"));
+            if (source != InventoryRead.Movements)
+                Answer("/v1/payment_intents", source == InventoryRead.Intents ? incomplete : List("/v1/payment_intents"));
+            if (source is InventoryRead.Payouts or InventoryRead.PayoutContents)
+                Answer("/v1/payouts", source == InventoryRead.Payouts ? incomplete : List("/v1/payouts",
+                    """{"id":"po_1","object":"payout","currency":"eur","amount":250,"created":1756720800,"arrival_date":1756807200,"status":"paid","automatic":true,"reconciliation_status":"completed"}"""));
+            if (source == InventoryRead.PayoutContents)
+                Answer("/v1/balance_transactions", incomplete);
+        }
+        var store = new StripeMirrorAccount { Name = "Store", Id = "acct_store", ApiKey = "rk_test_store" };
+        var service = new StripeService(Options.Create(new StripeSettings { StoreKey = "rk_test_store" }),
+            new CapturingLogger<StripeService>(), _http, Options.Create(new StripeMirrorOptions { Accounts = [OwnKey(), store] }));
+        Func<Task> read = source switch
+        {
+            InventoryRead.StoreSessions => () => service.ListStoreCheckoutSessionsAsync(Ct),
+            InventoryRead.StoreRefunds => () => service.ListStoreRefundsAsync("pi_1", Ct),
+            _ => () => service.GetAccountLedgerAsync("HiEvents", Now - Duration.FromDays(1), Now, Ct),
+        };
+
+        await read.Should().ThrowAsync<InvalidOperationException>().WithMessage("*has_more*");
+    }
+
+    [HumansFact]
+    public async Task StoreSessions_IncompleteLaterPage_RejectsPartialList()
+    {
+        Answer("/v1/checkout/sessions", """{"object":"list","has_more":true,"data":[{"id":"cs_1","object":"checkout.session","currency":"eur","created":1756720800}]}""");
+        Answer("/v1/checkout/sessions", """{"object":"list","data":[]}""");
+        var service = new StripeService(Options.Create(new StripeSettings { StoreKey = "rk_test_store" }),
+            new CapturingLogger<StripeService>(), _http);
+
+        var read = () => service.ListStoreCheckoutSessionsAsync(Ct);
+
+        await read.Should().ThrowAsync<InvalidOperationException>().WithMessage("*has_more*");
+    }
+
     public enum LedgerAmount { Movement, Payout, PayoutContents }
     public enum FeeRead { Direct, Search, Fallback }
 
