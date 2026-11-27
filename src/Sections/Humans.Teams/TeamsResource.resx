@@ -243,4 +243,8 @@
   <data name="Teams_Search_Category" xml:space="preserve"><value>Teams</value></data>
   <data name="Teams_Roles_SystemTeam" xml:space="preserve"><value>System teams can't hold roles.</value></data>
   <data name="Teams_Roles_InactiveTeam" xml:space="preserve"><value>This team isn't active.</value></data>
+  <data name="Teams_Permission_Manage_Title" xml:space="preserve"><value>Manage the team</value></data>
+  <data name="Teams_Permission_Manage_Blurb" xml:space="preserve"><value>Manage members, join requests, roles and the team page.</value></data>
+  <data name="Teams_Permission_EarlyEntry_Title" xml:space="preserve"><value>Manage early entry</value></data>
+  <data name="Teams_Permission_EarlyEntry_Blurb" xml:space="preserve"><value>Grant early entry for the team's projects.</value></data>
 </root>

@@ -98,10 +98,6 @@ internal sealed class GateRepository(IDbContextFactory<GateDbContext> factory) :
             if (row.GuestUserId == userId) row.GuestUserId = null;
             if (row.OverrideByUserId == userId) row.OverrideByUserId = null;
         }
-
-        var pins = await ctx.Set<GateStaffPin>().Where(p => p.UserId == userId).ToListAsync(ct);
-        ctx.Set<GateStaffPin>().RemoveRange(pins);
-
         return await ctx.SaveChangesAsync(ct);
     }
 
@@ -126,25 +122,7 @@ internal sealed class GateRepository(IDbContextFactory<GateDbContext> factory) :
                 row.UndoneByUserId = toUserId;
         }
 
-        // Carry the merged-away PIN over only when the survivor has none.
-        var fromPin = await ctx.Set<GateStaffPin>().FirstOrDefaultAsync(p => p.UserId == fromUserId, ct);
-        if (fromPin is not null)
-        {
-            if (!await ctx.Set<GateStaffPin>().AnyAsync(p => p.UserId == toUserId, ct))
-            {
-                ctx.Set<GateStaffPin>().Add(new GateStaffPin
-                {
-                    UserId = toUserId,
-                    PinHash = fromPin.PinHash,
-                    CreatedAt = fromPin.CreatedAt,
-                    UpdatedAt = fromPin.UpdatedAt,
-                    AdminEnrolled = fromPin.AdminEnrolled,
-                });
-            }
-            ctx.Set<GateStaffPin>().Remove(fromPin);
-        }
-
-        if (rows.Count == 0 && fromPin is null)
+        if (rows.Count == 0)
             return;
 
         await ctx.SaveChangesAsync(ct);
@@ -181,52 +159,13 @@ internal sealed class GateRepository(IDbContextFactory<GateDbContext> factory) :
             {
                 Id = 1,
                 GeneralEntryOpensAt = settings.GeneralEntryOpensAt,
-                MinorAgeThresholdYears = settings.MinorAgeThresholdYears,
             });
         }
         else
         {
             existing.GeneralEntryOpensAt = settings.GeneralEntryOpensAt;
-            existing.MinorAgeThresholdYears = settings.MinorAgeThresholdYears;
         }
 
-        await ctx.SaveChangesAsync(ct);
-    }
-
-    public async Task<GateStaffPin?> GetStaffPinAsync(Guid userId, CancellationToken ct = default)
-    {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
-        return await ctx.Set<GateStaffPin>()
-            .AsNoTracking()
-            .FirstOrDefaultAsync(p => p.UserId == userId, ct);
-    }
-
-    public async Task UpsertStaffPinAsync(GateStaffPin pin, CancellationToken ct = default)
-    {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
-        var existing = await ctx.Set<GateStaffPin>().FirstOrDefaultAsync(p => p.UserId == pin.UserId, ct);
-        if (existing is null)
-        {
-            ctx.Set<GateStaffPin>().Add(pin);
-        }
-        else
-        {
-            existing.PinHash = pin.PinHash;
-            existing.UpdatedAt = pin.UpdatedAt;
-            existing.AdminEnrolled = pin.AdminEnrolled;
-        }
-
-        await ctx.SaveChangesAsync(ct);
-    }
-
-    public async Task DeleteStaffPinAsync(Guid userId, CancellationToken ct = default)
-    {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
-        // Load-then-RemoveRange, not ExecuteDelete, so it runs under the in-memory provider.
-        var rows = await ctx.Set<GateStaffPin>().Where(p => p.UserId == userId).ToListAsync(ct);
-        if (rows.Count == 0)
-            return;
-        ctx.Set<GateStaffPin>().RemoveRange(rows);
         await ctx.SaveChangesAsync(ct);
     }
 

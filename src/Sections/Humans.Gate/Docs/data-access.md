@@ -4,14 +4,12 @@
 
 Folder: `src/Sections/Humans.Gate/`, its own project. **DbContext:**
 `GateDbContext`. `GateRepository` injects `IDbContextFactory<GateDbContext>`
-directly. Owns `gate_scan_events`, `gate_settings`, `gate_staff_pins`. Gate
+directly. Owns `gate_scan_events`, `gate_settings`. Gate
 admissions: barcode scan evaluation, append-only scan/verdict recording,
-undo of an admit, find by name, the arrivals report, supervisor overrides,
-leaderboard, a best-effort vendor check-in mirror back to TicketTailor, and
-personal staff claim PINs (dormant).
+undo of an admit, find by name, the arrivals report and supervisor overrides.
 
 `GateDbContext` declares real `DbSet<GateScanEvent>` /
-`DbSet<GateSettings>` / `DbSet<GateStaffPin>` properties (table names come
+`DbSet<GateSettings>` properties (table names come
 from the `IEntityTypeConfiguration` classes under
 `src/Sections/Humans.Gate/Data/Configurations/`, `ToTable("gate_…")`).
 `GateRepository` accesses them via `ctx.Set<T>()` and is a **Singleton**
@@ -23,16 +21,12 @@ the cached cross-section read surfaces.
 
 ### GateService (Scoped)
 
-Repository: `IGateRepository`. The service builds the vendor backfill snapshot, including
-pending/sent-awaiting-sync rows and mirror configuration. `EnqueueVendorCheckInBackfillAsync`
-recomputes that diff and claims each selected id in `GateVendorMirrorLedger` before enqueueing
-its original admit timestamp; the admin controller holds no ledger or job-client dependency.
+Repository: `IGateRepository`.
 
 | Table | R/W |
 |-------|-----|
 | gate_scan_events | R/W (append-only verdict log; admit dedupe via unique index on `AdmitDedupeKey`; retention purge; merge reassignment) |
-| gate_settings | R/W (singleton row — general-entry cutoff, minor-age threshold (stored and edited; nothing reads it yet)) |
-| gate_staff_pins | R/W (per-staffer PIN hash via `IPasswordHasher<GateStaffPin>`; `AdminEnrolled` flag applies only to the dormant claim path) |
+| gate_settings | R/W (singleton row — general-entry cutoff) |
 | tickets_event_participations | W via `ITicketWrite.RecordParticipationAsync` and `ITicketWrite.UndoCheckInAsync` (**not** a foreign table access — an admit projects an `Attended` participation row through the owning Tickets service, so consumed camp EE can't be revoked) |
 
 Checkout-issued tickets come from `ITicketGateLookup` (Tickets, live, no cache): `GetIssuedTicketsForEventAsync` and `FindIssuedTicketAsync`. `GateAdmissionReads` serves
@@ -40,16 +34,11 @@ Checkout-issued tickets come from `ITicketGateLookup` (Tickets, live, no cache):
 Cross-section calls via `ITicketService` (barcode → attendee resolved by
 filtering the cached orders projection in memory — no new interface method),
 `IEarlyEntryService` (cached per-user EE for the too-early rule),
-`ISettingsService` (event timezone / active event), `IShiftService`
-(gate-crew shift roster for the claim screen, via
-`GetBrowseShiftsAsync`), `IUserService` (`SearchUsersAsync`, find by name),
-`ISystemRoleService` (supervisor roles, used only by the dormant
-`AuthorizeOverrideAsync` / `IsSupervisorAsync` path; live overrides and undo
-verify the shared `Gate:SupervisorPin`), `ITicketWrite` (participation
-projection and check-in undo), `IAuditLogService` (PIN set/reset audit, never
-the PIN value, and `GateAdmitUndone`), plus
-`IPasswordHasher<GateStaffPin>` and `IClock` (cutoff is always evaluated
-against the server clock, never a device clock). Implements `IGateService`,
+`ISettingsService` (event timezone / active event), `IUserService`
+(`SearchUsersAsync`, find by name), `ITicketWrite` (participation
+projection and check-in undo), `IAuditLogService` (`GateAdmitUndone`), plus
+`IClock` (cutoff is always evaluated against the server clock, never a device
+clock). Overrides and undo verify the shared `Gate:SupervisorPin`. Implements `IGateService`,
 `IUserMerge` (re-points `GuestUserId` / `ScannedByUserId` /
 `OverrideByUserId` / `UndoneByUserId` on merge), `IUserDataContributor` (GDPR slice under the
 export key declared as `GateService.GateScans` — data-minimized:
@@ -65,27 +54,19 @@ is the decision table (void / duplicate / cutoff / EE / ID-check outcomes);
 ### Gate helpers holding `IMemoryCache` state
 
 Not Application services, but they hold the section's only `IMemoryCache`
-state (single-server in-memory, see Appendix B). `GatePinThrottle` and
-`GateVendorMirrorLedger` live in the Gate section itself
-(`src/Sections/Humans.Gate/Services/Stores/`) —
-`GatePinThrottle` (`GatePinFailures:{key}` — PIN brute-force lockout, 5
-failures / 15 min) and `GateVendorMirrorLedger`
-(`GateVendorMirrorSent:{vendorTicketId}` — 24 h atomic claim so the vendor
-check-in mirror and the backfill page never double-post a non-idempotent
-TicketTailor check-in). Two helpers live outside the section because they
+state (single-server in-memory, see Appendix B). `GatePinThrottle` lives in the
+Gate section itself (`src/Sections/Humans.Gate/Services/Stores/`,
+`GatePinFailures:{key}` — supervisor PIN brute-force lockout, 5 failures /
+15 min). Two helpers live outside the section because they
 gate terminal *sign-in*, not gate *admission*: `GateLoginThrottle`
 (`src/Humans.Web/Services/`, `GateLoginFailures:{sourceIp}` — per-IP
 terminal sign-in throttle) and `GateTerminalAccountSeeder`
 (`src/Sections/Humans.Tickets/Services/`), which provisions the shared
 kiosk account.
 
-### Background jobs (`Humans.Gate/Jobs/`)
+### Background jobs
 
-`GateVendorCheckInJob` (best-effort mirror of an admit to TicketTailor
-via `ITicketVendorMirror` — the Tickets Contracts leaf's narrow mirror
-surface, not the full `ITicketVendorService` port; off by default behind
-`Gate:VendorMirrorEnabled`, enqueued by `GateService` on admit and by the vendor check-in backfill page; a
-one-off backfill page covers a 30-day window).
+None. Settings' daily retention job deletes scan rows past the app-wide retention period through `GateService` as an `IRetentionPeriodContributor`.
 
 ---
 

@@ -10,13 +10,13 @@ using NodaTime;
 namespace Humans.Tickets.Tests.Services;
 
 /// <summary>
-/// Vendor reads and check-in mirroring use the same caching decorator through the production registration.
+/// Vendor reads and cache stats use the same caching decorator through the production registration.
 /// Resolving these paths creates no database context.
 /// </summary>
 public sealed class CachingTicketVendorServiceRegistrationTests
 {
     [HumansFact]
-    public async Task VendorReadsMirrorAndCacheStats_UseSameDecoratorAndDispatchCheckInOnce()
+    public void Register_VendorReads_ShareCacheStatsDecorator()
     {
         var services = new ServiceCollection();
         services.AddSingleton<IClock>(SystemClock.Instance);
@@ -31,14 +31,5 @@ public sealed class CachingTicketVendorServiceRegistrationTests
         var decorator = provider.GetRequiredService<CachingTicketVendorService>();
         provider.GetRequiredService<ITicketVendorService>().Should().BeSameAs(decorator);
         provider.GetRequiredService<ICacheStats>().Should().BeSameAs(decorator.EventSummaryCacheStats);
-        using var scope = provider.CreateScope();
-        var mirror = scope.ServiceProvider.GetRequiredService<ITicketVendorMirror>();
-        mirror.Should().BeSameAs(decorator);
-        var occurredAt = Instant.FromUtc(2026, 7, 1, 12, 0);
-        var ct = Xunit.TestContext.Current.CancellationToken;
-
-        await mirror.CreateCheckInAsync("ticket", occurredAt, ct);
-
-        await vendor.Received(1).CreateCheckInAsync("ticket", occurredAt, ct);
     }
 }

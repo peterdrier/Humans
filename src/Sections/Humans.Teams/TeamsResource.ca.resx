@@ -531,4 +531,8 @@
   <data name="Teams_Search_Category" xml:space="preserve"><value>Equips</value></data>
   <data name="Teams_Roles_SystemTeam" xml:space="preserve"><value>Els equips del sistema no poden tenir rols.</value></data>
   <data name="Teams_Roles_InactiveTeam" xml:space="preserve"><value>Aquest equip no està actiu.</value></data>
+  <data name="Teams_Permission_Manage_Title" xml:space="preserve"><value>Gestionar l'equip</value></data>
+  <data name="Teams_Permission_Manage_Blurb" xml:space="preserve"><value>Gestionar membres, sol·licituds d'ingrés, rols i la pàgina de l'equip.</value></data>
+  <data name="Teams_Permission_EarlyEntry_Title" xml:space="preserve"><value>Gestionar l'entrada anticipada</value></data>
+  <data name="Teams_Permission_EarlyEntry_Blurb" xml:space="preserve"><value>Concedir entrada anticipada als projectes de l'equip.</value></data>
 </root>

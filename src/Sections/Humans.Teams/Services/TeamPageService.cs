@@ -1,3 +1,4 @@
+using Humans.Permissions.Contracts;
 using Humans.Auth.Contracts;
 using Humans.Google.Contracts;
 using Humans.Teams.Contracts;
@@ -8,7 +9,8 @@ namespace Humans.Teams.Services;
 internal sealed class TeamPageService(
     ITeamManagementService teamService,
     ITeamResourceService teamResourceService,
-    ISystemRoleService systemRoleService) : ITeamPageService
+    ISystemRoleService systemRoleService,
+    IPermissionService permissions) : ITeamPageService
 {
     public async Task<TeamDirectoryResult> GetTeamDirectoryAsync(
         Guid? userId,
@@ -236,10 +238,8 @@ internal sealed class TeamPageService(
             if (membership is null)
                 continue;
 
-            // A direct Coordinator, a board member, or the parent's coordinator: same rule as CanUserApproveRequestsForTeamAsync.
-            var canManage =
-                (isBoardMember || TeamCoordinatorAccess.IsCoordinatorOfActiveTeam(teamsById, team.Id, userId))
-                && !team.IsSystemTeam;
+            var canManage = !team.IsSystemTeam && (isBoardMember
+                || await permissions.HasAsync(userId, TeamsPermissions.Manage, TeamOwner.Of(team.Id), cancellationToken));
 
             var pendingCount = 0;
             if (canManage)
@@ -333,7 +333,7 @@ internal sealed class TeamPageService(
         var isTeamsAdmin = await systemRoleService.IsUserTeamsAdminAsync(currentUserId, cancellationToken);
         var canSeeHiddenTeams = isBoardMember || isAdmin || isTeamsAdmin;
         // Board reads every team's admin pages and changes nothing.
-        var canManage = isCurrentUserCoordinator || isAdmin || isTeamsAdmin;
+        var canManage = await permissions.HasAsync(currentUserId, TeamsPermissions.Manage, TeamOwner.Of(team.Id), cancellationToken);
 
         if (team.IsHidden && !canSeeHiddenTeams)
             return null;

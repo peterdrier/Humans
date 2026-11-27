@@ -51,7 +51,8 @@ public sealed class TeamDirectoryBuilderTests
     {
         var teams = Substitute.For<ITeamManagementService>();
         teams.GetTeamsAsync(ct).Returns(graph);
-        var pages = new TeamPageService(teams, Substitute.For<ITeamResourceService>(), _roles);
+        var pages = new TeamPageService(teams, Substitute.For<ITeamResourceService>(), _roles,
+            Substitute.For<Humans.Permissions.Contracts.IPermissionService>());
         return await pages.GetTeamDirectoryAsync(userId, ct);
     }
 

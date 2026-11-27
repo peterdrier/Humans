@@ -2,21 +2,16 @@ using Humans.Base.Interfaces;
 using System.Globalization;
 using System.Security.Cryptography;
 using System.Text;
-using Humans.Auth.Contracts;
 using Humans.Base.Extensions;
 using Humans.AuditLog.Contracts;
 using Humans.EarlyEntry.Contracts;
 using Humans.Gdpr.Contracts;
 using Humans.Settings.Contracts;
-using Humans.Shifts.Contracts;
 using Humans.Tickets.Contracts;
 using Humans.Base.Constants;
 using Humans.Gate.Data;
 using Humans.Gate.Domain;
-using Humans.Gate.Jobs;
 using Humans.Gate.Services.Stores;
-using Hangfire;
-using Microsoft.AspNetCore.Identity;
 using Microsoft.Extensions.Configuration;
 using NodaTime;
 using Humans.Users.Contracts;
@@ -28,14 +23,9 @@ internal sealed class GateService(
     ITicketService tickets,
     IEarlyEntryService earlyEntry,
     ISettingsService settingsService,
-    IShiftService shifts,
-    ISystemRoleService roles,
     ITicketWrite ticketWrite,
     ITicketGateLookup issuedTickets,
-    IPasswordHasher<GateStaffPin> pinHasher,
     IAuditLogService auditLog,
-    IBackgroundJobClient backgroundJobs,
-    GateVendorMirrorLedger mirrorLedger,
     GatePinThrottle pinThrottle,
     IConfiguration configuration,
     ILogger<GateService> logger,
@@ -46,14 +36,6 @@ internal sealed class GateService(
 
     private const string SupervisorPinConfigKey = "Gate:SupervisorPin";
     private const string SharedOverridePinKey = "override:shared";
-
-    private const string VendorMirrorEnabledKey = "Gate:VendorMirrorEnabled";
-
-    /// <summary>How far either side of now a gate shift may start to count as current.</summary>
-    private static readonly Duration RosterWindow = Duration.FromHours(2);
-
-    /// <summary>Server-verified, never client-asserted. Board reads the gate and authorizes no override.</summary>
-    private static readonly string[] SupervisorRoles = [RoleNames.Admin, TicketsRoles.TicketsAdmin];
 
     public async Task<GateScanResult> EvaluateAsync(string barcode, CancellationToken ct = default)
     {
@@ -95,7 +77,6 @@ internal sealed class GateService(
             TicketAttendeeId: ticket.TicketAttendeeId,
             GuestUserId: ticket.GuestUserId,
             PreviousAdmitByUserId: priorAdmit?.ScannedByUserId,
-            VendorTicketId: ticket.VendorTicketId,
             // Date only, never the EE source (privacy).
             EarliestEntryDate: ee?.EarliestEntryDate,
             Today: today,
@@ -121,7 +102,7 @@ internal sealed class GateService(
                 IsVoid: attendee.Status == TicketAttendeeStatus.Void,
                 CheckedInAtVendor: IsCheckedInAtVendor(attendee),
                 GuestUserId: attendee.MatchedUserId, EntryUserId: attendee.MatchedUserId,
-                TicketAttendeeId: attendee.Id, CheckoutTicketId: null, VendorTicketId: attendee.VendorTicketId,
+                TicketAttendeeId: attendee.Id, CheckoutTicketId: null,
                 InResaleQueue: false);
 
         if (burn is null || await issuedTickets.FindIssuedTicketAsync(code, ct) is not { } issued
@@ -132,7 +113,7 @@ internal sealed class GateService(
             issued.HolderName, issued.TicketLabel,
             IsVoid: !issued.IsValid, CheckedInAtVendor: false,
             GuestUserId: issued.HolderUserId, EntryUserId: issued.EntryUserId,
-            TicketAttendeeId: null, CheckoutTicketId: issued.Id, VendorTicketId: null,
+            TicketAttendeeId: null, CheckoutTicketId: issued.Id,
             InResaleQueue: issued.InResaleQueue);
     }
 
@@ -145,7 +126,6 @@ internal sealed class GateService(
         Guid? EntryUserId,
         Guid? TicketAttendeeId,
         Guid? CheckoutTicketId,
-        string? VendorTicketId,
         bool InResaleQueue);
 
     public async Task<GateDecisionResult> RecordDecisionAsync(
@@ -181,11 +161,7 @@ internal sealed class GateService(
         }
 
         if (admit)
-        {
             await MarkAttendedAsync(eval.GuestUserId);
-            if (eval.VendorTicketId is { Length: > 0 } vendorTicketId)
-                MirrorVendorCheckIn(vendorTicketId, scan.OccurredAt);
-        }
 
         return new GateDecisionResult(verdict, eval.GuestName, IsEarly: admit && eval.IsEarly,
             eval.PreviousAdmitByUserId);
@@ -219,28 +195,8 @@ internal sealed class GateService(
             OverrideFailure: failure, RetryAfterSeconds: retryAfterSeconds);
 
     /// <summary>
-    /// Fire-and-forget. Marked in the ledger so the backfill page never re-sends a live admit, but only while the
-    /// flag is on: with it off the job no-ops, and a mark would hide the rows the backfill exists to recover.
-    /// </summary>
-    private void MirrorVendorCheckIn(string vendorTicketId, Instant admittedAt)
-    {
-        try
-        {
-            var admittedAtUnixSeconds = admittedAt.ToUnixTimeSeconds();
-            backgroundJobs.Enqueue<GateVendorCheckInJob>(j => j.ExecuteAsync(vendorTicketId, admittedAtUnixSeconds, CancellationToken.None));
-            if (configuration.GetValue<bool>(VendorMirrorEnabledKey))
-                mirrorLedger.TryMarkSent(vendorTicketId);
-        }
-        catch (Exception ex)
-        {
-            logger.LogWarning(ex,
-                "Vendor check-in mirror could not be enqueued for admitted ticket {VendorTicketId}", vendorTicketId);
-        }
-    }
-
-    /// <summary>
-    /// Without this, consumed-Early-Entry guards might never learn of a gate check-in: the vendor mirror is best-effort
-    /// and off by default. Skipped when the guest is unmatched or no event is active.
+    /// Without this, consumed-Early-Entry guards never learn of a gate check-in. Skipped when the guest is unmatched or
+    /// no event is active.
     /// </summary>
     private async Task MarkAttendedAsync(Guid? guestUserId)
     {
@@ -264,20 +220,6 @@ internal sealed class GateService(
             logger.LogWarning(ex,
                 "Attendance projection failed for admitted guest {GuestUserId}; participation row not marked Attended", guestUserId);
         }
-    }
-
-    public async Task<GateLeaderboard> GetLeaderboardAsync(Instant since, CancellationToken ct = default)
-    {
-        var scans = await repository.GetScansSinceAsync(since, ct);
-        var rows = scans
-            .GroupBy(s => s.ScannedByUserId)
-            .Select(g =>
-            {
-                var admitted = g.Count(s => s.IsLiveAdmit);
-                return new GateLeaderboardRow(g.Key, admitted, g.Count() - admitted, g.Count());
-            })
-            .ToList();
-        return new GateLeaderboard(rows.Sum(r => r.Admitted), scans.Count, rows);
     }
 
     public async Task<IReadOnlyList<GateNameMatch>> FindTicketsByNameAsync(string? query, CancellationToken ct = default)
@@ -377,15 +319,13 @@ internal sealed class GateService(
         attendee.CheckedInAt is not null || attendee.Status == TicketAttendeeStatus.CheckedIn;
 
     /// <summary>
-    /// With the mirror on, the admit's check-in job may post after the undo. Either way the ticket sync would read the
-    /// vendor's check-in back and mark the guest Attended again, and the gate would STOP the rescan as a duplicate.
+    /// Ticket Tailor's own scanner checked the ticket in: the ticket sync would read that back and mark the guest
+    /// Attended again, and the gate would STOP the rescan as a duplicate.
     /// </summary>
     private async Task<bool> IsAtVendorAsync(GateScanEvent admit, CancellationToken ct)
     {
         if (admit.TicketAttendeeId is not { } attendeeId)
             return false;
-        if (configuration.GetValue<bool>(VendorMirrorEnabledKey))
-            return true;
 
         var attendee = (await tickets.GetTicketOrdersAsync(ct))
             .SelectMany(o => o.Attendees)
@@ -473,7 +413,7 @@ internal sealed class GateService(
     public async Task<GateSettingsDto> GetSettingsAsync(CancellationToken ct = default)
     {
         var s = await repository.GetSettingsAsync(ct);
-        return new GateSettingsDto(s.GeneralEntryOpensAt, s.MinorAgeThresholdYears, s.IsCutoffConfigured);
+        return new GateSettingsDto(s.GeneralEntryOpensAt, s.IsCutoffConfigured);
     }
 
     public Task SaveSettingsAsync(GateSettingsDto settings, CancellationToken ct = default) =>
@@ -482,7 +422,6 @@ internal sealed class GateService(
             {
                 Id = 1,
                 GeneralEntryOpensAt = settings.GeneralEntryOpensAt,
-                MinorAgeThresholdYears = settings.MinorAgeThresholdYears,
             },
             ct);
 
@@ -490,183 +429,6 @@ internal sealed class GateService(
 
     public Task<int> DeleteOlderThanAsync(Instant cutoff, CancellationToken ct = default) =>
         repository.PurgeScansBeforeAsync(cutoff, ct);
-
-    /// <summary>Covers the whole event and its Early Entry run-up while keeping prior editions' admits out of the diff.</summary>
-    private static readonly Duration VendorBackfillWindow = Duration.FromDays(30);
-
-    public async Task<GateVendorBackfillSnapshot> GetVendorCheckInBackfillAsync(CancellationToken ct = default)
-    {
-        var scans = await repository.GetScansSinceAsync(clock.GetCurrentInstant().Minus(VendorBackfillWindow), ct);
-        // Checkout-issued tickets live only in Humans: there is no vendor to mirror them to.
-        var admits = scans.Where(s => s.IsLiveAdmit && s.CheckoutTicketId is null).ToList();
-
-        var attendees = (await CurrentEventAttendeesAsync(ct)).ToDictionary(a => a.Id);
-
-        List<GateVendorBackfillRow> pending = [];
-        List<GateVendorBackfillRow> unmirrorable = [];
-        List<GateVendorBackfillRow> sent = [];
-        var alreadyCheckedIn = 0;
-
-        foreach (var admit in admits)
-        {
-            var attendee = admit.TicketAttendeeId is { } id ? attendees.GetValueOrDefault(id) : null;
-            if (attendee is null || string.IsNullOrEmpty(attendee.VendorTicketId))
-                unmirrorable.Add(new GateVendorBackfillRow(
-                    admit.Barcode, attendee?.AttendeeName, admit.OccurredAt, VendorTicketId: null));
-            else if (IsCheckedInAtVendor(attendee))
-                alreadyCheckedIn++;
-            else
-            {
-                var row = new GateVendorBackfillRow(admit.Barcode, attendee.AttendeeName, admit.OccurredAt, attendee.VendorTicketId);
-                (mirrorLedger.WasSent(attendee.VendorTicketId) ? sent : pending).Add(row);
-            }
-        }
-
-        return new GateVendorBackfillSnapshot(admits.Count, alreadyCheckedIn, pending, unmirrorable, sent,
-            configuration.GetValue<bool>(VendorMirrorEnabledKey));
-    }
-
-    public async Task<GateVendorBackfillResult> EnqueueVendorCheckInBackfillAsync(
-        string? vendorTicketId, CancellationToken ct = default)
-    {
-        if (!configuration.GetValue<bool>(VendorMirrorEnabledKey))
-            return new GateVendorBackfillResult(false, []);
-
-        var snapshot = await GetVendorCheckInBackfillAsync(ct);
-        List<GateVendorBackfillRow> enqueued = [];
-        var claimedElsewhere = false;
-        foreach (var row in snapshot.Pending)
-        {
-            if (vendorTicketId is not null && !string.Equals(row.VendorTicketId, vendorTicketId, StringComparison.Ordinal))
-                continue;
-            // Claim before enqueue: overlapping backfill requests must not double-post a check-in.
-            if (!mirrorLedger.TryMarkSent(row.VendorTicketId!))
-            {
-                claimedElsewhere = true;
-                continue;
-            }
-
-            var admittedAtUnixSeconds = row.AdmittedAt.ToUnixTimeSeconds();
-            // The job keeps the original admit time and runs independently of the admin request.
-            backgroundJobs.Enqueue<GateVendorCheckInJob>(j =>
-                j.ExecuteAsync(row.VendorTicketId!, admittedAtUnixSeconds, CancellationToken.None));
-            enqueued.Add(row);
-        }
-
-        if (vendorTicketId is null || enqueued.Count > 0)
-            return new GateVendorBackfillResult(true, enqueued);
-        if (claimedElsewhere || snapshot.SentAwaitingSync.Any(r => string.Equals(r.VendorTicketId, vendorTicketId, StringComparison.Ordinal)))
-            return new GateVendorBackfillResult(true, enqueued, "That ticket's check-in was already sent to the vendor.");
-        var attendee = (await tickets.GetTicketOrdersAsync(ct))
-            .SelectMany(o => o.Attendees)
-            .FirstOrDefault(a => string.Equals(a.VendorTicketId, vendorTicketId, StringComparison.Ordinal));
-        return new GateVendorBackfillResult(true, enqueued,
-            attendee is not null && (attendee.CheckedInAt is not null || attendee.Status == TicketAttendeeStatus.CheckedIn)
-                ? "That ticket is already checked in at the vendor."
-                : "That ticket has no gate admit waiting to be sent.");
-    }
-
-    public async Task<IReadOnlyList<Guid>> GetShiftRosterAsync(
-        Guid rosterTeamId, CancellationToken ct = default)
-    {
-        var activeEvent = settingsService.GetActiveEventSettings();
-        if (activeEvent is null)
-            return [];
-
-        var now = clock.GetCurrentInstant();
-
-        var gateShifts = await shifts.GetBrowseShiftsAsync(new ShiftBrowseQuery(
-            activeEvent.Id, DepartmentId: rosterTeamId, Flags: ShiftBrowseQueryFlags.IncludeSignups), ct);
-
-        return gateShifts
-            .Where(s => s.AbsoluteStart >= now - RosterWindow && s.AbsoluteStart <= now + RosterWindow)
-            .SelectMany(s => s.Signups)
-            .Where(u => u.Status is SignupStatus.Pending or SignupStatus.Confirmed)
-            .DistinctBy(u => u.UserId)
-            .OrderBy(u => u.DisplayName, StringComparer.CurrentCultureIgnoreCase)
-            .Select(u => u.UserId)
-            .ToList();
-    }
-
-    public async Task<GatePinStatus> GetPinStatusAsync(Guid userId, CancellationToken ct = default) =>
-        new(await repository.GetStaffPinAsync(userId, ct) is not null);
-
-    public async Task<GatePinSetResult> SetOwnPinAsync(Guid userId, string pin, CancellationToken ct = default)
-    {
-        if (!IsValidPin(pin))
-            return GatePinSetResult.InvalidPin;
-        // AdminEnrolled false: AuthorizeOverrideAsync (uncalled outside tests, dormant with the claim flow,
-        // nobodies-collective/Humans#933) rejects a self-enrolled PIN.
-        await StorePinAsync(userId, pin, adminEnrolled: false, ct);
-        // Actor is the claimed staffer; the PIN value is never logged.
-        await auditLog.LogAsync(GateAuditActions.GateStaffPinSet, nameof(GateStaffPin), userId,
-            "Staffer self-enrolled their gate claim PIN at the kiosk", userId);
-        return GatePinSetResult.Ok;
-    }
-
-    public async Task<bool> AdminSetPinAsync(Guid userId, string pin, Guid actorUserId, CancellationToken ct = default)
-    {
-        if (!IsValidPin(pin))
-            return false;
-        // The only PIN AuthorizeOverrideAsync accepts (uncalled outside tests; see SetOwnPinAsync).
-        await StorePinAsync(userId, pin, adminEnrolled: true, ct);
-        await auditLog.LogAsync(GateAuditActions.GateStaffPinSet, nameof(GateStaffPin), userId,
-            "Admin set a staffer's gate PIN (override-enrolled)", actorUserId);
-        return true;
-    }
-
-    public async Task<bool> VerifyPinAsync(Guid userId, string pin, CancellationToken ct = default)
-    {
-        var row = await repository.GetStaffPinAsync(userId, ct);
-        if (row is null)
-            return false;
-        return pinHasher.VerifyHashedPassword(row, row.PinHash, pin) != PasswordVerificationResult.Failed;
-    }
-
-    public async Task<bool> AuthorizeOverrideAsync(Guid supervisorUserId, string pin, CancellationToken ct = default)
-    {
-        // Verify only, never enrol. Needs an admin-enrolled PIN, the right PIN and a currently held supervisor role.
-        var row = await repository.GetStaffPinAsync(supervisorUserId, ct);
-        if (row is not { AdminEnrolled: true })
-            return false;
-        if (pinHasher.VerifyHashedPassword(row, row.PinHash, pin) == PasswordVerificationResult.Failed)
-            return false;
-        return await IsSupervisorAsync(supervisorUserId, ct);
-    }
-
-    public async Task ClearPinAsync(Guid userId, Guid actorUserId, CancellationToken ct = default)
-    {
-        await repository.DeleteStaffPinAsync(userId, ct);
-        await auditLog.LogAsync(GateAuditActions.GateStaffPinReset, nameof(GateStaffPin), userId,
-            "Admin reset a staffer's gate PIN", actorUserId);
-    }
-
-    private async Task<bool> IsSupervisorAsync(Guid userId, CancellationToken ct)
-    {
-        foreach (var role in SupervisorRoles)
-            if (await roles.HasActiveRoleAsync(userId, role, ct))
-                return true;
-        return false;
-    }
-
-    private async Task StorePinAsync(Guid userId, string pin, bool adminEnrolled, CancellationToken ct)
-    {
-        var now = clock.GetCurrentInstant();
-        var entity = new GateStaffPin { UserId = userId, CreatedAt = now, UpdatedAt = now, AdminEnrolled = adminEnrolled };
-        entity.PinHash = pinHasher.HashPassword(entity, pin);
-        await repository.UpsertStaffPinAsync(entity, ct);
-    }
-
-    /// <summary>Exactly four digits and not a trivial run or repeat (0000, 1234, 4321…).</summary>
-    private static bool IsValidPin(string? pin)
-    {
-        if (pin is null || pin.Length != 4 || !pin.All(char.IsAsciiDigit))
-            return false;
-        if (pin.Distinct().Count() == 1)
-            return false;
-        return !"0123456789".Contains(pin, StringComparison.Ordinal)
-            && !"9876543210".Contains(pin, StringComparison.Ordinal);
-    }
 
     // actorUserId/now are unused: scan rows carry no audit column, and AccountMergeService audits the merge.
     public Task ReassignAsync(Guid mergedFromUserId, Guid mergedToUserId, Guid actorUserId, Instant now, CancellationToken ct) =>
@@ -696,7 +458,7 @@ internal sealed class GateService(
                 "Partially retained: scans the person performed or undid as gate staff keep their " +
                 "attribution — ScannedByUserId and UndoneByUserId are operational columns and the row " +
                 "is the venue's access-control record (GDPR Art. 17(3)(b) and (e)). Their own " +
-                "admission links (GuestUserId, OverrideByUserId) and their gate staff PIN are cleared."
+                "admission links (GuestUserId, OverrideByUserId) are cleared."
         };
 
     public IReadOnlyDictionary<string, string?> ErasureDeclaration => Erasure;
@@ -705,7 +467,7 @@ internal sealed class GateService(
         repository.EraseUserFromScansAsync(userId, ct);
 
     private static GateScanResult NotFound(string code) =>
-        new(GatePreCheckOutcome.Invalid, code, null, null, false, null, null, null, null, null);
+        new(GatePreCheckOutcome.Invalid, code, null, null, false, null, null, null);
 
     private static GateVerdict ResolveVerdict(GatePreCheckOutcome outcome, GateDecisionInput input, bool overrideAuthorized) => outcome switch
     {

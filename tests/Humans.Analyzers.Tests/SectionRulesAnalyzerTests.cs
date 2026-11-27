@@ -247,7 +247,7 @@ public class SectionRulesAnalyzerTests
     [HumansFact]
     public async Task Does_not_fire_on_public_Job_suffixed_type_under_Jobs()
     {
-        // Enqueue-style Hangfire jobs (e.g. GateVendorCheckInJob) don't implement
+        // Enqueue-style Hangfire jobs don't implement
         // IRecurringJob — only the *Job naming convention marks them.
         var source = SectionEntryPoint + """
 

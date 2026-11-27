@@ -1,5 +1,6 @@
 using System.Text;
 using Humans.Roles.Contracts;
+using Humans.Permissions.Contracts;
 using Humans.Base.Constants;
 using Humans.Google.Contracts;
 using Humans.Auth.Contracts;
@@ -2207,7 +2208,8 @@ internal sealed class TeamService(
 
     private IRoleWrite RoleWrite => serviceProvider.GetRequiredService<IRoleWrite>();
 
-    private ISystemRoleService SystemRoleService => serviceProvider.GetRequiredService<ISystemRoleService>();
+    // Lazy: the permission service reads this section's cached holdings, so an eager one would close a DI cycle.
+    private IPermissionService Permissions => serviceProvider.GetRequiredService<IPermissionService>();
 
     // Lazy: Users depends on Teams during service resolution.
 
@@ -2369,13 +2371,7 @@ internal sealed class TeamService(
         Guid userId,
         CancellationToken cancellationToken = default)
     {
-        var isAdmin = await SystemRoleService.IsUserAdminAsync(userId, cancellationToken);
-        if (isAdmin) return true;
-
-        var isTeamsAdmin = await SystemRoleService.IsUserTeamsAdminAsync(userId, cancellationToken);
-        if (isTeamsAdmin) return true;
-
-        return await IsUserCoordinatorOfTeamAsync(teamId, userId, cancellationToken);
+        return await Permissions.HasAsync(userId, TeamsPermissions.Manage, TeamOwner.Of(teamId), cancellationToken);
     }
 
     public async Task<bool> IsUserCoordinatorOfTeamAsync(
