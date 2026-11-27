@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="-2 -2 244 244" role="img" aria-label="Vitruvian Man" fill="#c9a96e">
+  <!-- Circle -->
+  <circle cx="120" cy="120" r="120" />
+  <!-- Square -->
+  <rect x="23" y="46" width="194" height="194" fill="none" stroke="#c9a96e" stroke-width="2" />
+  <!-- Horizontal arms -->
+  <line x1="23" y1="120" x2="217" y2="120" stroke="#c9a96e" stroke-width="2" />
+  <!-- Raised arms -->
+  <line x1="120" y1="46" x2="120" y2="-2" stroke="#c9a96e" stroke-width="2" />
+  <!-- Legs spread -->
+  <line x1="120" y1="214" x2="70" y2="346" stroke="#c9a96e" stroke-width="2" />
+  <line x1="120" y1="214" x2="170" y2="346" stroke="#c9a96e" stroke-width="2" />
+</svg>

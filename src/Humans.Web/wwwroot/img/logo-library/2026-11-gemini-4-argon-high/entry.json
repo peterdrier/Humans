@@ -1,0 +1,11 @@
+{
+  "date": "2026-11",
+  "family": "Gemini",
+  "model": "Argon",
+  "version": "4",
+  "effort": "high",
+  "brief": "v1",
+  "notes": {
+    "en": "Aimed for an engraved anatomical study built on a bold gold silhouette and a three-tier aged-ink hierarchy (1.85, 1.05, and 0.62 units) so the dual-pose limb overlaps, open patellar brackets, and longitudinal musculature read cleanly at 700px while the fine facial features, palmar creases, and rib lines melt away into a solid golden glyph by the 38px navbar size. The profile spread feet and four-fingered hands are carefully sculpted to avoid fork or club artifacts, though at 64px the linea semilunaris still leaves a faint shadow along the abdomen and the small-scale overlapping shoulders compress the deltopectoral detail."
+  }
+}
