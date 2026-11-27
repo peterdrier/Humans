@@ -163,4 +163,6 @@
   <data name="Consent_Meter_OnboardingProfilesPending" xml:space="preserve"><value>Onboarding profiles pending</value></data>
   <data name="Consent_Meter_AudienceConsentAdmin" xml:space="preserve"><value>Consent Admins</value></data>
   <data name="Consent_Meter_AudienceBoard" xml:space="preserve"><value>the Board</value></data>
+  <data name="Consent_Dashboard_AgreementSingular" xml:space="preserve"><value>agreement to review</value></data>
+  <data name="Consent_Dashboard_AgreementPlural" xml:space="preserve"><value>agreements to review</value></data>
 </root>
