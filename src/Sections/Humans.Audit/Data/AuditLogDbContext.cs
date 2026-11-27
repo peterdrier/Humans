@@ -12,10 +12,13 @@ internal sealed class AuditLogDbContext(DbContextOptions<AuditLogDbContext> opti
 {
     public DbSet<AuditLogEntry> AuditLogEntries => Set<AuditLogEntry>();
 
+    public DbSet<TemporaryAuditLogEntry> TemporaryAuditLogEntries => Set<TemporaryAuditLogEntry>();
+
     protected override void OnModelCreating(ModelBuilder builder)
     {
         base.OnModelCreating(builder);
 
         builder.ApplyConfiguration(new AuditLogEntryConfiguration());
+        builder.ApplyConfiguration(new TemporaryAuditLogEntryConfiguration());
     }
 }

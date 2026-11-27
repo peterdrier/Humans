@@ -426,4 +426,10 @@
   <data name="Enum_AuditAction_WorkgroupMemberAdded" xml:space="preserve"><value>Workgroup member added</value></data>
   <data name="Enum_AuditAction_WorkgroupMembershipApproved" xml:space="preserve"><value>Workgroup membership approved</value></data>
   <data name="Enum_AuditAction_WorkgroupMembershipDeclined" xml:space="preserve"><value>Workgroup membership declined</value></data>
+  <data name="Audit_Temporary" xml:space="preserve">
+    <value>temporary</value>
+  </data>
+  <data name="Audit_TemporaryHint" xml:space="preserve">
+    <value>Deleted once older than the retention period</value>
+  </data>
 </root>

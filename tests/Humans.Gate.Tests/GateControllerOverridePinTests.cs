@@ -54,7 +54,7 @@ public class GateControllerOverridePinTests
     [InlineData(GateAction.ResetStaffPin, AccountScenario.Merged)]
     [InlineData(GateAction.ResetStaffPin, AccountScenario.Missing)]
     [InlineData(GateAction.ResetStaffPin, AccountScenario.Cancelled)]
-    public async Task Gate_actor_boundaries_resolve_surviving_accounts(GateAction action, AccountScenario account)
+    public async Task Actions_MergedAwayActor_UseSurvivingAccount(GateAction action, AccountScenario account)
     {
         var controller = BuildController(Pin);
         var survivor = Guid.NewGuid();
@@ -128,7 +128,7 @@ public class GateControllerOverridePinTests
     [InlineData(true, "overrideEarly", true)]
     [InlineData(null, null, false)]
     [InlineData(null, "idConfirmed", false)]
-    public async Task Decision_MissingOrMalformedValues_DoNotRecordADefaultedVerdict(
+    public async Task Decision_MissingOrMalformedValues_RecordsNothing(
         bool? idConfirmed, string? invalidField, bool authenticated)
     {
         var controller = BuildController(Pin);
@@ -172,7 +172,7 @@ public class GateControllerOverridePinTests
     [HumansTheory]
     [InlineData(true, false)]
     [InlineData(false, true)]
-    public async Task Override_ForwardsPinAndIntent_WithPrincipalAttribution(bool early, bool child)
+    public async Task Decision_WithOverride_ForwardsPinWithIntent(bool early, bool child)
     {
         var controller = BuildController(Pin);
 

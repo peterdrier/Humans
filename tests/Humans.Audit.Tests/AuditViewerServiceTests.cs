@@ -153,7 +153,7 @@ public class AuditViewerServiceTests
     public async Task UndeclaredStoredName_StillRendersAsABareAction()
     {
         var entry = new AuditLogEntrySnapshot(
-            Guid.NewGuid(), "RetiredLongAgo", "User", Guid.NewGuid(), "kept", FixedAt, null, null, null);
+            Guid.NewGuid(), "RetiredLongAgo", "User", Guid.NewGuid(), "kept", FixedAt, null, null, null, AuditKept.Forever);
         var auditLog = Substitute.For<IAuditLogReader>();
         auditLog.GetByUserAsync(Arg.Any<Guid>(), Arg.Any<int>(), Arg.Any<CancellationToken>())
             .Returns([entry]);
@@ -162,7 +162,7 @@ public class AuditViewerServiceTests
 
         var entries = await service.GetForUserAsync(Guid.NewGuid(), 10, Xunit.TestContext.Current.CancellationToken);
 
-        entries.Single().Action.Should().Be(new AuditActionDefinition("RetiredLongAgo"));
+        entries.Single().Action.Should().Be(new AuditActionDefinition("RetiredLongAgo", AuditKept.Forever));
     }
 
     private static IEntityNameContributor StubContributor(
@@ -192,5 +192,6 @@ public class AuditViewerServiceTests
             FixedAt,
             actorId,
             targetId,
-            targetType);
+            targetType,
+            action.Kept);
 }

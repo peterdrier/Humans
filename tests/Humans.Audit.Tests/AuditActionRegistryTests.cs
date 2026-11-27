@@ -8,26 +8,26 @@ public class AuditActionRegistryTests
 {
     private sealed class SectionActions : AuditActionContributor
     {
-        public static readonly AuditActionDefinition Plain = new("Plain", Verb: "did");
+        public static readonly AuditActionDefinition Plain = new("Plain", AuditKept.Forever, Verb: "did");
 
-        public static readonly AuditActionDefinition Loud = new("Loud", Alert: true, QuickFilter: "Loud ones");
+        public static readonly AuditActionDefinition Loud = new("Loud", AuditKept.Forever, Alert: true, QuickFilter: "Loud ones");
 
-        public static readonly AuditActionDefinition Filtered = new("Filtered", QuickFilter: "Filtered ones");
+        public static readonly AuditActionDefinition Filtered = new("Filtered", AuditKept.Forever, QuickFilter: "Filtered ones");
     }
 
     private sealed class DuplicateActions : AuditActionContributor
     {
-        public static readonly AuditActionDefinition Plain = new("Plain");
+        public static readonly AuditActionDefinition Plain = new("Plain", AuditKept.Forever);
     }
 
     private sealed class CaseOnlyDuplicateActions : AuditActionContributor
     {
-        public static readonly AuditActionDefinition Plain = new("plain");
+        public static readonly AuditActionDefinition Plain = new("plain", AuditKept.Forever);
     }
 
     private sealed class OverLongActions : AuditActionContributor
     {
-        public static readonly AuditActionDefinition TooLong = new(new string('x', AuditActionDefinition.NameMaxLength + 1));
+        public static readonly AuditActionDefinition TooLong = new(new string('x', AuditActionDefinition.NameMaxLength + 1), AuditKept.Forever);
     }
 
     [HumansFact]
@@ -42,7 +42,7 @@ public class AuditActionRegistryTests
         var registry = new AuditActionRegistry([new SectionActions()]);
 
         registry.Resolve("Plain").Should().BeSameAs(SectionActions.Plain);
-        registry.Resolve("Unknown").Should().Be(new AuditActionDefinition("Unknown"));
+        registry.Resolve("Unknown").Should().Be(new AuditActionDefinition("Unknown", AuditKept.Forever));
     }
 
     [HumansFact]

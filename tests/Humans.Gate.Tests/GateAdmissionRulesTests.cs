@@ -76,7 +76,7 @@ public class GateAdmissionRulesTests
     }
 
     [HumansFact]
-    public void CutoffNotConfigured_StillYieldsToInvalidAndDuplicate()
+    public void CutoffNotConfigured_VoidOrUsedTicket_StillStops()
     {
         // Precedence: a void or already-used ticket still STOPs even with no cutoff set.
         GateAdmissionRules.Evaluate(Valid(isVoid: true, cutoffSet: false))
@@ -109,7 +109,7 @@ public class GateAdmissionRulesTests
     }
 
     [HumansFact]
-    public void BeforeCutoff_Matched_NoEarlyEntry_IsTooEarly()
+    public void BeforeCutoff_MatchedNoEarlyEntry_IsTooEarly()
     {
         GateAdmissionRules.Evaluate(Valid(now: Cutoff.Minus(Duration.FromHours(2)), earliest: null))
             .Should().Be(GatePreCheckOutcome.TooEarly);
@@ -123,7 +123,7 @@ public class GateAdmissionRulesTests
     }
 
     [HumansFact]
-    public void BeforeCutoff_EarlyEntryEarlierThanToday_NeedsIdCheckEarly()
+    public void BeforeCutoff_EarlyEntryPast_NeedsIdCheckEarly()
     {
         GateAdmissionRules.Evaluate(Valid(now: Cutoff.Minus(Duration.FromHours(2)), earliest: Today.PlusDays(-1)))
             .Should().Be(GatePreCheckOutcome.NeedsIdCheckEarly);

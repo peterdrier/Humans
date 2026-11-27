@@ -916,6 +916,28 @@ public sealed class CityPlanningServiceTests : CityPlanningTestBase
     }
 
     [HumansFact]
+    public async Task ExportAsGeoJsonAsync_EveryCulture_KeepsDotDecimals()
+    {
+        var campId = Guid.NewGuid();
+        var campSeasonId = Guid.NewGuid();
+        SetupExistingCampSeason(campSeasonId, 2026);
+        await _sut.SaveCampPolygonAsync(campSeasonId,
+            """{"type":"Polygon","coordinates":[[[-2.5,40.25],[-2.4,40.25],[-2.4,40.35],[-2.5,40.25]]]}""",
+            1234.5, NewUserId(), cancellationToken: TestContext.Current.CancellationToken);
+        _campService.GetCampsForYearAsync(2026, Arg.Any<CancellationToken>())
+            .Returns([MakeCampInfo(campId, "test-camp", [MakeCampSeasonInfo(campSeasonId, campId, 2026, "Test Camp")])]);
+
+        foreach (var culture in Base.Extensions.CultureCatalog.SupportedCultureCodes)
+        {
+            using var scope = new Base.Extensions.CultureScope(culture);
+
+            var result = await _sut.ExportAsGeoJsonAsync(2026, TestContext.Current.CancellationToken);
+
+            result.Should().Contain("-2.5").And.Contain("40.25").And.Contain("1234.5", "culture {0}", culture);
+        }
+    }
+
+    [HumansFact]
     public async Task GetCampPolygonHistoryAsync_ReturnsEntries_WithDisplayNamesFromUserService()
     {
         var campSeasonId = Guid.NewGuid();

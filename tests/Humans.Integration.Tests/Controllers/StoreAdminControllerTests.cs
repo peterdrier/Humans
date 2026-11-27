@@ -1,5 +1,7 @@
+using Humans.AuditLog.Data;
 using Humans.Camps.Data;
 using Humans.Store.Data;
+using Humans.Users.Contracts;
 using System.Net;
 using System.Text.RegularExpressions;
 using AwesomeAssertions;
@@ -95,6 +97,43 @@ public class StoreAdminControllerTests(HumansTestDatabase database) : Integratio
         var storeIndex = await Client.GetAsync("/Store", Xunit.TestContext.Current.CancellationToken);
         storeIndex.StatusCode.Should().Be(HttpStatusCode.OK);
         (await storeIndex.Content.ReadAsStringAsync(Xunit.TestContext.Current.CancellationToken)).Should().NotContain(renamed);
+    }
+
+    /// <summary>
+    /// A Spanish admin's price edit end to end: the number input, the posted price and the audit text stay
+    /// dot-decimal (peterdrier/Humans#2581 guard).
+    /// </summary>
+    [HumansFact(Timeout = 60000)]
+    public async Task CatalogSave_SpanishAdmin_StaysDotDecimal()
+    {
+        var ct = Xunit.TestContext.Current.CancellationToken;
+        var adminId = await Factory.SignInAsFullyOnboardedAsync(Client, new DevPersona("store-admin"));
+        using (var setup = Factory.Services.CreateScope())
+            await setup.ServiceProvider.GetRequiredService<IUserWrite>().SetPreferredLanguageAsync(adminId, "es", ct);
+        var year = (await GetActiveYearAsync()).ToString(System.Globalization.CultureInfo.InvariantCulture);
+        var name = $"Culture test product {Guid.NewGuid():N}";
+        var newToken = ExtractAntiForgeryToken(
+            await Client.GetStringAsync("/Store/Admin/Catalog/Edit", ct));
+        await Client.PostAsync("/Store/Admin/Catalog/Save", BuildForm(
+            ("__RequestVerificationToken", newToken!), ("Year", year), ("Name", name), ("UnitPriceEur", "42.50"),
+            ("VatRatePercent", "21"), ("OrderableUntil", $"{year}-12-31"), ("IsActive", "true")), ct);
+        var id = await GetProductIdByNameAsync(name);
+
+        var editBody = await Client.GetStringAsync($"/Store/Admin/Catalog/Edit/{id}", ct);
+        await Client.PostAsync("/Store/Admin/Catalog/Save", BuildForm(
+            ("__RequestVerificationToken", ExtractAntiForgeryToken(editBody)!), ("Id", id.ToString()), ("Year", year),
+            ("Name", name), ("UnitPriceEur", "55.25"), ("VatRatePercent", "21"), ("OrderableUntil", $"{year}-12-31"),
+            ("IsActive", "true")), ct);
+
+        editBody.Should().Contain("<html lang=\"es\"");
+        editBody.Should().MatchRegex("id=\"priceExVat\"[^>]*value=\"42\\.50\"|value=\"42\\.50\"[^>]*id=\"priceExVat\"");
+        using var scope = Factory.Services.CreateScope();
+        var product = await scope.ServiceProvider.GetRequiredService<StoreDbContext>().Products.AsNoTracking()
+            .SingleAsync(p => p.Id == id, ct);
+        product.UnitPriceEur.Should().Be(55.25m);
+        var audit = await scope.ServiceProvider.GetRequiredService<AuditLogDbContext>().AuditLogEntries.AsNoTracking()
+            .SingleAsync(a => a.SubjectId == id && a.Action == "StoreProductPriceChanged", ct);
+        audit.Description.Should().EndWith("changed from 42.50 to 55.25");
     }
 
     private async Task<int> GetActiveYearAsync()

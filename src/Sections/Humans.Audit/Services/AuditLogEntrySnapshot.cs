@@ -1,8 +1,12 @@
+using Humans.Audit.Contracts;
 using NodaTime;
 
 namespace Humans.Audit.Services;
 
-/// <summary><c>Action</c> is the stored name; <see cref="AuditViewerService"/> resolves it to its definition.</summary>
+/// <summary>
+/// One row from either side of the log. <c>Action</c> is the stored name; <see cref="Services.AuditViewerService"/>
+/// resolves it to its definition. <c>Kept</c> is the side the row is stored on.
+/// </summary>
 internal sealed record AuditLogEntrySnapshot(
     Guid Id,
     string Action,
@@ -13,4 +17,5 @@ internal sealed record AuditLogEntrySnapshot(
     Guid? ActorUserId,
     Guid? TargetId,
     string? TargetType,
+    AuditKept Kept,
     string? JobName = null);

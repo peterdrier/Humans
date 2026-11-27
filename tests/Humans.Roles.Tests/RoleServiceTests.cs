@@ -87,7 +87,7 @@ public sealed class RoleServiceTests
 
     [HumansTheory]
     [MemberData(nameof(ManageCases))]
-    public async Task CanManageAsync_CoordinatorsManageTheirOwnerAndBelow(string actor, string owner, bool expected)
+    public async Task CanManageAsync_Coordinator_ManagesOwnerDownward(string actor, string owner, bool expected)
     {
         Arrange(actor);
 
@@ -234,7 +234,7 @@ public sealed class RoleServiceTests
     }
 
     [HumansFact]
-    public async Task CreateAsync_MakesASlugAndKeepsPermissionKeys()
+    public async Task CreateAsync_NewRole_GetsSlug()
     {
         Arrange("coordinator:Production");
 
@@ -275,7 +275,7 @@ public sealed class RoleServiceTests
     }
 
     [HumansFact]
-    public async Task AssignAsync_AsksTheOwnerFirstAndTakesTheLowestOpenSlot()
+    public async Task AssignAsync_OwnerAllows_TakesLowestOpenSlot()
     {
         Arrange("coordinator:Production");
         var role = Role(Cantina, "Shift planner", slots: 3);
@@ -394,7 +394,7 @@ public sealed class RoleServiceTests
 
     [HumansTheory]
     [MemberData(nameof(VisibleCases))]
-    public async Task GetVisibleRolesAsync_HidesPrivateHiddenAndInactive(string actor, string owner, bool isPublic, bool expected)
+    public async Task GetVisibleRolesAsync_PrivateHiddenOrInactive_IsLeftOut(string actor, string owner, bool isPublic, bool expected)
     {
         Arrange(actor);
         var role = Role(Id(owner), "Shift planner");

@@ -9,7 +9,7 @@ namespace Humans.Tour.Tests;
 public class TourControllerTests
 {
     [HumansFact]
-    public void Controller_allows_anonymous_at_class_scope()
+    public void Controller_AllowsAnonymous()
     {
         typeof(TourController)
             .GetCustomAttributes(typeof(AllowAnonymousAttribute), inherit: false)
@@ -17,7 +17,7 @@ public class TourControllerTests
     }
 
     [HumansFact]
-    public void Index_is_routed_as_GET_Tour()
+    public void Index_IsRoutedAsGetTour()
     {
         typeof(TourController)
             .GetCustomAttributes(typeof(RouteAttribute), inherit: false)
@@ -30,7 +30,7 @@ public class TourControllerTests
     }
 
     [HumansFact]
-    public void Index_returns_the_default_view()
+    public void Index_ReturnsDefaultView()
     {
         var result = new TourController().Index();
 

@@ -90,7 +90,8 @@ internal sealed class AuditViewerService(
             TargetId: entry.TargetId,
             TargetType: entry.TargetType,
             Description: entry.Description,
-            JobName: entry.JobName);
+            JobName: entry.JobName,
+            Kept: entry.Kept);
     }
 
     private static string? NameOf(Guid? id, IReadOnlyDictionary<Guid, EntityName> names) =>

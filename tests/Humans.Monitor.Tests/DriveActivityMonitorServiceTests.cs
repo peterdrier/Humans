@@ -103,7 +103,7 @@ public class DriveActivityMonitorServiceTests
     }
 
     [HumansFact]
-    public async Task CheckForAnomalousActivityAsync_WithNoResources_ReturnsZeroAndDoesNotHitApi()
+    public async Task CheckForAnomalousActivityAsync_NoResources_ReturnsZero()
     {
         _teamResources.GetActiveDriveFoldersAsync(Arg.Any<CancellationToken>())
             .Returns([]);
@@ -118,7 +118,7 @@ public class DriveActivityMonitorServiceTests
     }
 
     [HumansFact]
-    public async Task CheckForAnomalousActivityAsync_FiltersSelfInitiatedChangesByEmailAndClientId()
+    public async Task CheckForAnomalousActivityAsync_OwnChanges_AreFilteredOut()
     {
         var resource = BuildResource("Drive-One");
         SeedResources(resource);
@@ -231,7 +231,7 @@ public class DriveActivityMonitorServiceTests
     }
 
     [HumansFact]
-    public async Task CheckForAnomalousActivityAsync_DoesNotLoadUserInfo_WhenAllPeopleIdsResolvedByDirectory()
+    public async Task CheckForAnomalousActivityAsync_DirectoryResolvesAll_SkipsUserInfo()
     {
         var resource = BuildResource("MultiActor-Drive");
         SeedResources(resource);
@@ -258,7 +258,7 @@ public class DriveActivityMonitorServiceTests
     }
 
     [HumansFact]
-    public async Task CheckForAnomalousActivityAsync_LeavesRawPeopleIdWhenUserInfoHasNullEmail()
+    public async Task CheckForAnomalousActivityAsync_NoEmail_KeepsRawId()
     {
         var resource = BuildResource("NullEmail-Drive");
         SeedResources(resource);
@@ -290,7 +290,7 @@ public class DriveActivityMonitorServiceTests
     }
 
     [HumansFact]
-    public async Task CheckForAnomalousActivityAsync_FallsBackToUserInfoWhenDirectoryLookupFails()
+    public async Task CheckForAnomalousActivityAsync_DirectoryLookupFails_UsesUserInfo()
     {
         var resource = BuildResource("Fallback-Drive");
         SeedResources(resource);
@@ -322,7 +322,7 @@ public class DriveActivityMonitorServiceTests
     }
 
     [HumansFact]
-    public async Task CheckForAnomalousActivityAsync_LeavesRawPeopleIdWhenUserInfoFallbackFails()
+    public async Task CheckForAnomalousActivityAsync_UserInfoFails_KeepsRawId()
     {
         var resource = BuildResource("Fallback-Failure-Drive");
         SeedResources(resource);
@@ -395,7 +395,7 @@ public class DriveActivityMonitorServiceTests
     [HumansTheory]
     [InlineData(true)]
     [InlineData(false)]
-    public async Task CheckForAnomalousActivityAsync_PropagatesCallerCancellationButContinuesAfterDependencyCancellation(bool cancelCaller)
+    public async Task CheckForAnomalousActivityAsync_CallerCancels_Propagates(bool cancelCaller)
     {
         using var cancellation = new CancellationTokenSource();
         var completed = BuildResource("Completed");
@@ -433,7 +433,7 @@ public class DriveActivityMonitorServiceTests
     [HumansTheory]
     [InlineData(true)]
     [InlineData(false)]
-    public async Task CheckForAnomalousActivityAsync_StopsAfterCancellationEvenWhenReadCompletes(bool moreResources)
+    public async Task CheckForAnomalousActivityAsync_CancelledAfterRead_Stops(bool moreResources)
     {
         using var cancellation = new CancellationTokenSource();
         var completed = BuildResource("Completed");
@@ -458,7 +458,7 @@ public class DriveActivityMonitorServiceTests
     }
 
     [HumansFact]
-    public async Task CheckForAnomalousActivityAsync_WithPartialFailure_DoesNotAdvanceMarker()
+    public async Task CheckForAnomalousActivityAsync_PartialFailure_KeepsMarker()
     {
         var ok = BuildResource("Ok-Drive");
         var broken = BuildResource("Broken-Drive");
@@ -508,7 +508,7 @@ public class DriveActivityMonitorServiceTests
     }
 
     [HumansFact]
-    public async Task CheckForAnomalousActivityAsync_WithTotalOutageMidStream_AuditsWhatStreamedThenThrows()
+    public async Task CheckForAnomalousActivityAsync_OutageMidStream_AuditsThenThrows()
     {
         // The connector drops after one event: that anomaly was seen, so it is audited before
         // the total-outage throw rather than lost with it.
@@ -536,7 +536,7 @@ public class DriveActivityMonitorServiceTests
     }
 
     [HumansFact]
-    public async Task CheckForAnomalousActivityAsync_DownGradesResourceNotFoundToWarning()
+    public async Task CheckForAnomalousActivityAsync_ResourceNotFound_LogsWarning()
     {
         var missing = BuildResource("Missing-Drive");
         SeedResources(missing);
@@ -557,7 +557,7 @@ public class DriveActivityMonitorServiceTests
     }
 
     [HumansFact]
-    public async Task CheckForAnomalousActivityAsync_WithUnconfiguredClient_DoesNotAdvanceMarker()
+    public async Task CheckForAnomalousActivityAsync_UnconfiguredClient_KeepsMarker()
     {
         // Simulates running the monitor in dev against StubGoogleDriveActivityClient:
         // the stub returns no events, so without this guard the marker would advance
@@ -619,7 +619,7 @@ public class DriveActivityMonitorServiceTests
     }
 
     [HumansFact]
-    public async Task CheckForAnomalousActivityAsync_UsesLookbackDefault_WhenMarkerDoesNotParse()
+    public async Task CheckForAnomalousActivityAsync_UnparsableMarker_UsesLookbackDefault()
     {
         var resource = BuildResource("Bad-Marker-Drive");
         SeedResources(resource);

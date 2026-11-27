@@ -88,7 +88,7 @@ public class ServiceIssueInvoiceTests
 
         _catalog = new CatalogService(_repo, _audit, _clock, _holdedService, NullLogger<CatalogService>.Instance);
         _orders = new Service(
-            _repo, _audit, Substitute.For<IAuditViewerService>(), _camps, _teams, _clock, _shifts, _stripe, _catalog,
+            _repo, _audit, Substitute.For<IAuditViewerService>(), _camps, _teams, Substitute.For<Humans.Permissions.Contracts.IPermissionService>(), _clock, _shifts, _stripe, _catalog,
             NullLogger<Service>.Instance);
         _service = new InvoiceService(_repo, _audit, _clock, _holdedService, _holded, _stripe,
             Substitute.For<Humans.Finance.Contracts.IFinanceService>(), _orders, NullLogger<InvoiceService>.Instance);

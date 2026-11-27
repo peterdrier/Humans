@@ -61,6 +61,29 @@ public sealed class ServiceTests
     }
 
     [HumansFact]
+    public async Task SaveRetentionDaysAsync_ZeroDays_Refused()
+    {
+        var result = await BuildSut().SaveRetentionDaysAsync(0, Actor, TestContext.Current.CancellationToken);
+
+        result.Succeeded.Should().BeFalse();
+        await _repository.DidNotReceive().SetValueAsync(RetentionPeriod.Key, Arg.Any<string>(), Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
+    public async Task SaveRetentionDaysAsync_Saved_AuditsPreviousPeriod()
+    {
+        var ct = TestContext.Current.CancellationToken;
+        _repository.GetAllEventSettingsAsync(Arg.Any<CancellationToken>()).Returns([]);
+
+        var result = await BuildSut().SaveRetentionDaysAsync(90, Actor, ct);
+
+        result.Succeeded.Should().BeTrue();
+        await _repository.Received(1).SetValueAsync(RetentionPeriod.Key, "90", Arg.Any<CancellationToken>());
+        await _auditLog.Received(1).LogAsync(SettingsAuditActions.RetentionPeriodChanged, SettingsAuditSubjectTypes.RetentionPeriod,
+            Guid.Empty, "Retention period changed from 365 to 90 days.", Actor);
+    }
+
+    [HumansFact]
     public async Task EventReads_AreServedFromMemoryUntilAWriteReloadsThem()
     {
         var ct = TestContext.Current.CancellationToken;

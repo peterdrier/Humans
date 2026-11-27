@@ -193,7 +193,7 @@ public class AuditEntryTests
     public void UndeclaredAction_RendersNullLikeAnyVerblessAction()
     {
         var entry = MakeEntry(
-            action: new AuditActionDefinition("SomethingNobodyDeclaresAnyMore"),
+            action: new AuditActionDefinition("SomethingNobodyDeclaresAnyMore", AuditKept.Forever),
             actorId: Guid.NewGuid(),
             actorName: "Peter",
             subjectType: "User",

@@ -262,6 +262,7 @@ graph LR
     Store --> Audit
     Store --> Budget
     Store --> Holded
+    Store --> Permissions
     Store --> Settings
     Store --> Stripe
     Store -.-> Camps

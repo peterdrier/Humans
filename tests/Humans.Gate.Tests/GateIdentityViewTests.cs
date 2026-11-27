@@ -29,7 +29,7 @@ namespace Humans.Gate.Tests;
 public class GateIdentityViewTests
 {
     [HumansFact]
-    public async Task Claim_and_PIN_labels_resolve_names_without_changing_roster_ids_or_PIN_mode()
+    public async Task Views_StaffLabels_ShowResolvedNames()
     {
         using var culture = new CultureScope("en");
         var id = Guid.NewGuid();

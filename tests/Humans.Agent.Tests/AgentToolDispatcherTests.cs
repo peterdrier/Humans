@@ -99,7 +99,7 @@ public class AgentToolDispatcherTests
         new(
             Id: Guid.NewGuid(),
             OccurredAt: NodaTime.Instant.FromUtc(2026, 4, 30, 17, 0),
-            Action: new Audit.Contracts.AuditActionDefinition("ShiftSignupVoluntold", Verb: "voluntold", DescriptionIsTail: true),
+            Action: new Audit.Contracts.AuditActionDefinition("ShiftSignupVoluntold", Audit.Contracts.AuditKept.Forever, Verb: "voluntold", DescriptionIsTail: true),
             ActorUserId: actor,
             ActorDisplayName: "Frank",
             SubjectType: "ShiftSignup",
@@ -117,7 +117,7 @@ public class AgentToolDispatcherTests
         new(
             Id: Guid.NewGuid(),
             OccurredAt: NodaTime.Instant.FromUtc(2026, 4, 30, 17, 0),
-            Action: new Audit.Contracts.AuditActionDefinition("AnomalousPermissionDetected"),
+            Action: new Audit.Contracts.AuditActionDefinition("AnomalousPermissionDetected", Audit.Contracts.AuditKept.Forever),
             ActorUserId: null,
             ActorDisplayName: null,
             SubjectType: "GoogleResource",

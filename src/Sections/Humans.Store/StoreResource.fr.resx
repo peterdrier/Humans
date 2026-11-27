@@ -136,4 +136,6 @@
   <data name="Store_DownloadInvoice" xml:space="preserve"><value>Télécharger la facture {0}</value></data>
   <data name="Store_RecordPaymentProduct" xml:space="preserve"><value>Caution de</value></data>
   <data name="Enum_PaymentMethod_WriteOff" xml:space="preserve"><value>Abandon de créance</value></data>
+  <data name="Store_Permission_TeamOrders_Title" xml:space="preserve"><value>Commander pour l'équipe</value></data>
+  <data name="Store_Permission_TeamOrders_Blurb" xml:space="preserve"><value>Créer et modifier la commande de la boutique du département.</value></data>
 </root>

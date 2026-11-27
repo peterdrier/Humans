@@ -36,11 +36,12 @@ internal sealed class AuditActionRegistry : IHostedService
         Alerts = actions.Where(a => a.Alert).ToList();
         AlertNames = Alerts.Select(a => a.Name).ToList();
         QuickFilters = actions.Where(a => a.QuickFilter is not null).ToList();
+        All = actions.OrderBy(a => a.Name, StringComparer.Ordinal).ToList();
     }
 
     /// <summary>A stored name nobody declares any more still renders: as a bare definition with no verb.</summary>
     public AuditActionDefinition Resolve(string name) =>
-        _byName.TryGetValue(name, out var definition) ? definition : new AuditActionDefinition(name);
+        _byName.TryGetValue(name, out var definition) ? definition : new AuditActionDefinition(name, AuditKept.Forever);
 
     /// <summary>The declared name that matches ignoring case, so a bookmarked filter keeps working; else the input.</summary>
     public string CanonicalName(string name) =>
@@ -49,6 +50,9 @@ internal sealed class AuditActionRegistry : IHostedService
     public IReadOnlyList<AuditActionDefinition> Alerts { get; }
 
     public IReadOnlyList<string> AlertNames { get; }
+
+    /// <summary>Every declared action, by name.</summary>
+    public IReadOnlyList<AuditActionDefinition> All { get; }
 
     /// <summary>In contributor order, then declaration order.</summary>
     public IReadOnlyList<AuditActionDefinition> QuickFilters { get; }

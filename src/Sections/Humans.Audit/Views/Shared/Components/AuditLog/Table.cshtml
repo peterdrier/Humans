@@ -8,7 +8,7 @@
     if (Model.Entries.Count > 0)
     {
         Func<AuditEntry, IHtmlContent> whenCell =
-            @<text><span class="text-nowrap">@item.OccurredAt.ToInvariantTimestamp()</span></text>;
+            @<text><span class="text-nowrap">@item.OccurredAt.ToInvariantTimestamp()</span>@if (item.Kept == AuditKept.RetentionPeriod) { <span class="badge text-bg-light border ms-1" title="@Localizer["Audit_TemporaryHint"]">@Localizer["Audit_Temporary"]</span> }</text>;
         Func<AuditEntry, IHtmlContent> actorCell = @<text>
             @if (!item.ActorUserId.HasValue)
             {

@@ -8,6 +8,7 @@ namespace Humans.Audit.Contracts;
 /// <see cref="AuditActionContributor"/>, and passes it to <see cref="IAuditLogService.LogAsync(AuditActionDefinition, string, Guid, string, Guid, Guid?, string?)"/>.
 /// </summary>
 /// <param name="Name">Stored on every row, so never change it once rows exist. Unique across sections, at most <see cref="NameMaxLength"/> characters.</param>
+/// <param name="Kept">Which side of the log new entries go to. Required, so every action makes the choice on purpose.</param>
 /// <param name="Verb">English narrative verb ("added", "assigned role to"); null renders the entry as actor · label · subject instead of a sentence. The hub resx may carry translations under <c>Audit_Verb_{Name}</c>.</param>
 /// <param name="SelfVerb">The verb when the actor is the subject ("signed up for" instead of "created signup for").</param>
 /// <param name="DescriptionIsTail">True when the description is a context tail to append after the sentence, not a sentence of its own.</param>
@@ -15,6 +16,7 @@ namespace Humans.Audit.Contracts;
 /// <param name="QuickFilter">A button label on the admin audit page that filters to this action; null for none.</param>
 public sealed record AuditActionDefinition(
     string Name,
+    AuditKept Kept,
     string? Verb = null,
     string? SelfVerb = null,
     bool DescriptionIsTail = false,
@@ -24,6 +26,16 @@ public sealed record AuditActionDefinition(
     public const int NameMaxLength = 100;
 
     public override string ToString() => Name;
+}
+
+/// <summary>Where an action's entries are stored, and so how long they last.</summary>
+public enum AuditKept
+{
+    /// <summary>The permanent log: the database refuses every update and delete.</summary>
+    Forever,
+
+    /// <summary>The temporary log: deleted once older than the app-wide retention period, or when the person it names is erased.</summary>
+    RetentionPeriod
 }
 
 /// <summary>

@@ -53,6 +53,7 @@ public sealed class Section : ISection, ISectionAdminNav, ISectionAdminTiles, IS
         services.AddScoped<IAuditLogService>(sp => sp.GetRequiredService<AuditLogService>());
         services.AddScoped<IAuditLogReader>(sp => sp.GetRequiredService<AuditLogService>());
         services.AddScoped<IUserDataContributor>(sp => sp.GetRequiredService<AuditLogService>());
+        services.AddScoped<IRetentionPeriodContributor>(sp => sp.GetRequiredService<AuditLogService>());
         // Temporary: goes with the six Google columns.
         services.AddScoped<ILegacyGoogleSyncAuditReader>(sp => sp.GetRequiredService<AuditLogService>());
 

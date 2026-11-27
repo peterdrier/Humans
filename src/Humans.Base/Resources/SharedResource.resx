@@ -913,6 +913,7 @@
   <data name="Settings_TabAgent" xml:space="preserve"><value>Agent</value></data>
   <data name="Settings_TabGoogleSync" xml:space="preserve"><value>Google Sync</value></data>
   <data name="Settings_TabEmail" xml:space="preserve"><value>Email</value></data>
+  <data name="Settings_TabRetention" xml:space="preserve"><value>Retention</value></data>
   <data name="Settings_TabCityPlanning" xml:space="preserve"><value>Barrio Map</value></data>
   <data name="Settings_TabGate" xml:space="preserve"><value>Gate</value></data>
   <data name="Settings_TabTickets" xml:space="preserve"><value>Tickets</value></data>

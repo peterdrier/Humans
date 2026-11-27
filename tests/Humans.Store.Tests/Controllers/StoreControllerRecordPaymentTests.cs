@@ -76,7 +76,7 @@ public sealed class StoreControllerRecordPaymentTests
         var holded = Substitute.For<IHoldedService>();
         _catalog = new CatalogService(_repo, _audit, clock, holded, NullLogger<CatalogService>.Instance);
         var service = _service = new Service(
-            _repo, _audit, Substitute.For<IAuditViewerService>(), camps, teams, clock, settings, stripe, _catalog,
+            _repo, _audit, Substitute.For<IAuditViewerService>(), camps, teams, Substitute.For<Humans.Permissions.Contracts.IPermissionService>(), clock, settings, stripe, _catalog,
             NullLogger<Service>.Instance);
         var invoices = new InvoiceService(_repo, _audit, clock, holded, Substitute.For<IHoldedWrite>(), stripe,
             Substitute.For<IFinanceService>(), service, NullLogger<InvoiceService>.Instance);
@@ -92,7 +92,7 @@ public sealed class StoreControllerRecordPaymentTests
         var services = new ServiceCollection();
         services.AddLogging();
         services.AddAuthorizationCore();
-        services.AddSingleton<IAuthorizationHandler>(new OrderAuthorizationHandler(camps, teams, users, settings, clock, new HttpContextAccessor()));
+        services.AddSingleton<IAuthorizationHandler>(new OrderAuthorizationHandler(camps, Substitute.For<Humans.Permissions.Contracts.IPermissionService>(), users, settings, clock, new HttpContextAccessor()));
         var auth = services.BuildServiceProvider().GetRequiredService<IAuthorizationService>();
 
         var localizer = Substitute.For<IStringLocalizer<StoreResource>>();

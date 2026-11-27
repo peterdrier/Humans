@@ -16,7 +16,7 @@ namespace Humans.Monitor.Tests;
 public sealed class MonitorControllerTests
 {
     [HumansFact]
-    public async Task CheckDriveActivity_WhenScanThrows_ShowsErrorAndRedirects()
+    public async Task CheckDriveActivity_ScanThrows_ShowsError()
     {
         var monitor = Substitute.For<IDriveActivityMonitorService>();
         monitor.CheckForAnomalousActivityAsync(Arg.Any<CancellationToken>())
@@ -35,7 +35,7 @@ public sealed class MonitorControllerTests
     [HumansTheory]
     [Xunit.InlineData(false)]
     [Xunit.InlineData(true)]
-    public async Task Manual_scan_cancels_only_the_account_preflight(bool cancelBeforeLookup)
+    public async Task CheckDriveActivity_RequestCancelled_CancelsOnlyPreflight(bool cancelBeforeLookup)
     {
         var userId = Guid.NewGuid();
         var users = Substitute.For<IUserService>();

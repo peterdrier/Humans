@@ -1,2 +1,0 @@
-Humans.Scanner.Tests.Controllers.ScannerControllerTests.Card_MatchedUserAllConsentsSigned_PendingListIsEmptyNotNull
-Humans.Scanner.Tests.Controllers.ScannerControllerTests.Card_MatchedUserWithoutActiveBurn_OfferedEventKeepsItsOwnStart

@@ -426,4 +426,10 @@
   <data name="Enum_AuditAction_WorkgroupMemberAdded" xml:space="preserve"><value>Miembro del grupo de trabajo añadido</value></data>
   <data name="Enum_AuditAction_WorkgroupMembershipApproved" xml:space="preserve"><value>Pertenencia al grupo de trabajo aprobada</value></data>
   <data name="Enum_AuditAction_WorkgroupMembershipDeclined" xml:space="preserve"><value>Pertenencia al grupo de trabajo rechazada</value></data>
+  <data name="Audit_Temporary" xml:space="preserve">
+    <value>temporal</value>
+  </data>
+  <data name="Audit_TemporaryHint" xml:space="preserve">
+    <value>Se borra cuando supera el periodo de conservación</value>
+  </data>
 </root>

@@ -39,7 +39,7 @@ public class AuditLogUiLocalizationTests
         using var culture = new CultureScope("es");
         using var services = new ServiceCollection().AddLogging().AddLocalization().BuildServiceProvider();
         var localizer = services.GetRequiredService<IStringLocalizer<AuditResource>>();
-        var fresh = new AuditActionDefinition("GrantHandedOver", Verb: "handed a grant to");
+        var fresh = new AuditActionDefinition("GrantHandedOver", AuditKept.Forever, Verb: "handed a grant to");
 
         fresh.ToLocalizedAuditVerb(false, localizer).Should().Be("handed a grant to");
         fresh.ToLocalizedAuditVerb(true, localizer).Should().Be("handed a grant");

@@ -1,6 +1,6 @@
 # Issue drain
 
-Daily unattended pass over the open issues on peterdrier/Humans. Read CLAUDE.md and AGENTS.md first and follow them: Peter merges, PRs go to `origin/main`, migrations and DB state are never hand-edited, and a destructive migration drop needs Peter's approval per drop.
+Daily unattended pass over the open issues on peterdrier/Humans. Read CLAUDE.md and AGENTS.md first and follow them: Peter merges, PRs go to `origin/main`, migrations and DB state are never hand-edited, and a destructive migration drop needs Peter's approval per drop. Never stall on a permission prompt: [`unattended-runs-never-prompt`](../../memory/process/unattended-runs-never-prompt.md).
 
 1. **Pick.** List the open issues (not PRs). N = max(3, ceil(10% of open)). Skip issues labeled `question` unless Peter has commented since the label went on. Pick N, preferring bugs with evidence of real user impact, then the oldest. If none qualify, say so and stop.
 2. **Vet each one** with the `vet` skill if it's available. Otherwise judge it on whether it is still true, a real requirement, plausible at this scale (Peter is the only admin, so multi-admin races are not real), backed by evidence, worth the cost, and not a dupe. Verify against the code, never the issue's own claims.

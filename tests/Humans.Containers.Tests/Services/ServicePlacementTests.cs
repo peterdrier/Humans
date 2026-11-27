@@ -101,7 +101,7 @@ public sealed class ServicePlacementTests
     [HumansTheory]
     [InlineData(5000, false)]
     [InlineData(5001, true)]
-    public async Task PlacementNotes_AcceptTheStorageBoundary_AndPreserveWhitespaceClearing(int length, bool whitespace)
+    public async Task PlacementNotes_MaxLength_AreAccepted(int length, bool whitespace)
     {
         var ct = TestContext.Current.CancellationToken;
         var container = await SeedPlacedContainerAsync();
@@ -115,7 +115,7 @@ public sealed class ServicePlacementTests
     }
 
     [HumansFact]
-    public async Task SavePlacementAsync_SetsLocationGeoJsonAndUpdatedAt()
+    public async Task SavePlacementAsync_ValidMapData_SetsLocation()
     {
         var container = await SeedContainerAsync();
         _clock.AdvanceSeconds(60);
@@ -157,7 +157,7 @@ public sealed class ServicePlacementTests
     [InlineData("coordinates", "[[[0,0],[0,90.01],[1,1],[0,0]]]")]
     [InlineData("coordinates", "[[[0,0],[180.01,1],[1,1],[0,0]]]")]
     [InlineData("coordinates", "[[[0,0],[0,1],[\"1\",1],[0,0]]]")]
-    public async Task SavePlacementAsync_RejectsMalformedMapDataWithoutChangingPlacementOrAudit(string field, string value)
+    public async Task SavePlacementAsync_MalformedMapData_ChangesNothing(string field, string value)
     {
         var container = await SeedPlacedContainerAsync();
         var before = await GetPlacementAsync(container.Id);
@@ -210,7 +210,7 @@ public sealed class ServicePlacementTests
     }
 
     [HumansFact]
-    public async Task SavePlacementAsync_PreservesNotesAndImageOnAnExistingRow()
+    public async Task SavePlacementAsync_ExistingRow_KeepsNotesWithImage()
     {
         var container = await SeedPlacedContainerAsync();
         await _sut.UpdatePlacementNotesAsync(container.Id, Year, "by the gate", Sketch(), removeImage: false, ActorUserId, TestContext.Current.CancellationToken);
@@ -390,7 +390,7 @@ public sealed class ServicePlacementTests
     }
 
     [HumansFact]
-    public async Task UpdatePlacementNotesAsync_RemoveImageDeletesTheFileAndClearsTheColumns()
+    public async Task UpdatePlacementNotesAsync_RemoveImage_DeletesFile()
     {
         var container = await SeedPlacedContainerAsync();
         var withImage = (await _sut.UpdatePlacementNotesAsync(container.Id, Year, "keep me", Sketch(), removeImage: false, ActorUserId, TestContext.Current.CancellationToken)).Value!;

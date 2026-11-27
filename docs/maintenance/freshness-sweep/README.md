@@ -20,7 +20,8 @@ The maintenance dispatcher starts the sweep as an unattended run. Never merge, n
 2. If peterdrier/Humans has 10 or more open PRs, don't sweep: say so in one line and stop. A skipped week is harmless; the next sweep diffs from the last anchor.
 3. Run every phase through opening the PR. If nothing needs sweeping, say so in one line and stop. Wherever a phase says to ask Peter and wait (Phase 5.5 steps 3a and 5, Phase 7.5), don't wait: list each item as a numbered one-line decision under `## Needs Peter` in the PR body and leave the affected content unchanged.
 4. Once the PR exists, run the `pd:spend` skill for this session and post its report as a PR comment whose first line is `**Freshness sweep cost** (pd:spend)`.
-5. Tend the PR yourself under `.claude/steward.md`. Stop 3 hours after PR creation or after 3 review rounds, whichever comes first, then unsubscribe. Report only the PR link, the Needs Peter list, and anything that blocks.
+5. Never stall on a permission prompt: [`unattended-runs-never-prompt`](../../../memory/process/unattended-runs-never-prompt.md). Subagent output is the Agent call's returned text, never a task `.output` file.
+6. Tend the PR yourself under `.claude/steward.md`. Stop 3 hours after PR creation or after 3 review rounds, whichever comes first, then unsubscribe. Report only the PR link, the Needs Peter list, and anything that blocks.
 
 ## Phase 0: Capture repo root
 

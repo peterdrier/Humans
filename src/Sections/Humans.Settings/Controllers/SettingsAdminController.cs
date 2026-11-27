@@ -60,6 +60,21 @@ internal sealed class SettingsAdminController(
         return Redirect("/Settings#event");
     }
 
+    [HttpPost("Retention")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> Retention(int days, CancellationToken ct = default)
+    {
+        var actor = await GetCurrentUserInfoAsync(ct);
+        if (actor is null) return Challenge();
+
+        var result = await settingsService.SaveRetentionDaysAsync(days, actor.Id, ct);
+        if (result.Succeeded)
+            SetSuccess("Retention period saved.");
+        else
+            SetError(result.ErrorMessage!);
+        return Redirect("/Settings#retention");
+    }
+
     [HttpPost("Activate/{id:guid}")]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Activate(Guid id, CancellationToken ct = default)

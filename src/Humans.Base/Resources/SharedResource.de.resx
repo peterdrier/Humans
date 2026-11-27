@@ -1459,6 +1459,9 @@
   <data name="Settings_TabEmail" xml:space="preserve">
     <value>E-Mail</value>
   </data>
+  <data name="Settings_TabRetention" xml:space="preserve">
+    <value>Aufbewahrung</value>
+  </data>
   <data name="Settings_TabCityPlanning" xml:space="preserve">
     <value>Barrio-Karte</value>
   </data>

@@ -5,4 +5,5 @@ internal static class SettingsAuditSubjectTypes
 {
     public const string EventSettings = "EventSettings";
     public const string EventTimeZone = "EventTimeZone";
+    public const string RetentionPeriod = "RetentionPeriod";
 }

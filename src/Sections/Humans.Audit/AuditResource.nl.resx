@@ -426,4 +426,10 @@
   <data name="Enum_AuditAction_WorkgroupMemberAdded" xml:space="preserve"><value>Werkgroeplid toegevoegd</value></data>
   <data name="Enum_AuditAction_WorkgroupMembershipApproved" xml:space="preserve"><value>Werkgroeplidmaatschap goedgekeurd</value></data>
   <data name="Enum_AuditAction_WorkgroupMembershipDeclined" xml:space="preserve"><value>Werkgroeplidmaatschap afgewezen</value></data>
+  <data name="Audit_Temporary" xml:space="preserve">
+    <value>tijdelijk</value>
+  </data>
+  <data name="Audit_TemporaryHint" xml:space="preserve">
+    <value>Verwijderd zodra het ouder is dan de bewaartermijn</value>
+  </data>
 </root>

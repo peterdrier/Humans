@@ -31,7 +31,7 @@ public class ServiceStripeRefundCheckTests
         var settings = Substitute.For<ISettingsService>();
         settings.GetActiveEventSettings().Returns(BurnFixtures.Burn(year: 2026, timeZoneId: "Europe/Madrid"));
         _service = new Service(
-            _repo, _audit, Substitute.For<IAuditViewerService>(), Substitute.For<ICampService>(), Substitute.For<ITeamService>(), new FakeClock(Instant.FromUtc(2026, 9, 2, 12, 0)), settings, _stripe,
+            _repo, _audit, Substitute.For<IAuditViewerService>(), Substitute.For<ICampService>(), Substitute.For<ITeamService>(), Substitute.For<Humans.Permissions.Contracts.IPermissionService>(), new FakeClock(Instant.FromUtc(2026, 9, 2, 12, 0)), settings, _stripe,
             new CatalogService(_repo, _audit, new FakeClock(Instant.FromUtc(2026, 9, 2, 12, 0)), Substitute.For<IHoldedService>(), NullLogger<CatalogService>.Instance), NullLogger<Service>.Instance);
     }
 

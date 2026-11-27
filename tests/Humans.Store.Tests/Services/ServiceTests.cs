@@ -61,7 +61,7 @@ public class ServiceTests
             .Returns(new List<CampInfo>());
         _catalog = new CatalogService(_repo, _audit, _clock, _holded, NullLogger<CatalogService>.Instance);
         _service = new Service(
-            _repo, _audit, Substitute.For<IAuditViewerService>(), _campService, _teams, _clock, _shifts, _stripeService,
+            _repo, _audit, Substitute.For<IAuditViewerService>(), _campService, _teams, Substitute.For<Humans.Permissions.Contracts.IPermissionService>(), _clock, _shifts, _stripeService,
             _catalog, NullLogger<Service>.Instance);
     }
 
@@ -608,7 +608,7 @@ public class ServiceTests
         _repo.GetProductByIdAsync(product.Id, Arg.Any<CancellationToken>()).Returns(string.Equals(missing, "product", StringComparison.Ordinal) ? null : product);
         var logger = Substitute.For<ILogger<Service>>();
         var service = new Service(
-            _repo, _audit, Substitute.For<IAuditViewerService>(), _campService, _teams, _clock, _shifts, _stripeService,
+            _repo, _audit, Substitute.For<IAuditViewerService>(), _campService, _teams, Substitute.For<Humans.Permissions.Contracts.IPermissionService>(), _clock, _shifts, _stripeService,
             _catalog, logger);
 
         var result = await service.AddLineAsync(order.Id, product.Id, 1, Guid.NewGuid(), TestContext.Current.CancellationToken);
@@ -717,7 +717,7 @@ public class ServiceTests
         var catalogLogger = Substitute.For<ILogger<CatalogService>>();
         var catalog = new CatalogService(_repo, _audit, _clock, _holded, catalogLogger);
         var service = new Service(
-            _repo, _audit, Substitute.For<IAuditViewerService>(), _campService, _teams, _clock, _shifts, _stripeService,
+            _repo, _audit, Substitute.For<IAuditViewerService>(), _campService, _teams, Substitute.For<Humans.Permissions.Contracts.IPermissionService>(), _clock, _shifts, _stripeService,
             catalog, serviceLogger);
         var isCatalog = string.Equals(operation, "Catalog", StringComparison.Ordinal);
         ILogger logger = isCatalog ? catalogLogger : serviceLogger;
@@ -2676,7 +2676,7 @@ public class ServiceTests
             .Returns(call => real.AddPaymentAsync(call.ArgAt<Payment>(0), ct));
         intercepted.UpdatePaymentStatusAsync(Arg.Any<Guid>(), Arg.Any<PaymentStatus>(), Arg.Any<CancellationToken>())
             .Returns(call => real.UpdatePaymentStatusAsync(call.ArgAt<Guid>(0), call.ArgAt<PaymentStatus>(1), ct));
-        Service NewService() => new(intercepted, _audit, Substitute.For<IAuditViewerService>(), _campService, _teams, _clock, _shifts,
+        Service NewService() => new(intercepted, _audit, Substitute.For<IAuditViewerService>(), _campService, _teams, Substitute.For<Humans.Permissions.Contracts.IPermissionService>(), _clock, _shifts,
             _stripeService, new CatalogService(intercepted, _audit, _clock, _holded, NullLogger<CatalogService>.Instance),
             NullLogger<Service>.Instance);
         var orderId = Guid.NewGuid();
