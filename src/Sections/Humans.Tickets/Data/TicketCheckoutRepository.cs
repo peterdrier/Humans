@@ -238,7 +238,14 @@ internal sealed class TicketCheckoutRepository(IDbContextFactory<TicketsDbContex
         // Owned JSON invites carry shadow ordinal keys, so a detached graph cannot be attached with Update().
         ctx.Entry(tracked).CurrentValues.SetValues(offer);
         tracked.Invites = offer.Invites
-            .Select(i => new TicketResaleInvite { Email = i.Email, TokenHash = i.TokenHash, SentAt = i.SentAt }).ToList();
+            .Select(i => new TicketResaleInvite
+            {
+                Email = i.Email,
+                TokenHash = i.TokenHash,
+                SentAt = i.SentAt,
+                DeliveryId = i.DeliveryId,
+                DeliveryPending = i.DeliveryPending,
+            }).ToList();
         await ctx.SaveChangesAsync(ct);
     }
 

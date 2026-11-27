@@ -246,12 +246,13 @@ addresses were typed. Directed resale links buy only the buyer's own ticket.
 - While fresh stock is sold out, a class-price buyer in `Open` mode takes a queue ticket at the resale price.
 - An order that fails, expires or is cancelled releases its offers to their original place.
 - **Directed resale** (H10): a holder whose offer is open emails one or more people each their own link
-  (`/Tickets/Buy/Resale/{token}`, one token per address, only its SHA-256 is stored in the offer's `directed_invites`).
+  (`/Tickets/Buy/Resale/{token}`). New links protect the offer and stable delivery IDs under the `TicketResaleInvitation` Data Protection purpose; raw tokens are never stored in Tickets. Each invitation stores its initial SHA-256, nullable delivery ID and nullable pending flag in `directed_invites`. Legacy hash-only links still resolve as before.
   Only a signed-in buyer with that address can use a link, for themselves, and only while resale is open. The links
   have no expiry and the offer stays in the public queue meanwhile, so whoever buys first gets it; a later invitee's
   link then sells the next ticket in the queue at the resale price, even to a buyer with a class price or pinned wave
   while fresh stock is on sale ("someone else bought it first"); only an empty queue sells fresh stock. A ticket gets at most ten invitations
-  over all its offers, each address once. Invitation, use and cancel are on the holder's order timeline; cancel
+  over all its offers, each address once. New invitation intent and its allowance are saved before Email is called; each successful enqueue clears that invitation's pending flag. Retrying pending addresses reuses the same invitation and Email delivery ID, costs no allowance, and skips completed addresses. A retry can encode the same authenticated IDs differently; both its original and retried links remain valid, including the outbox's first payload. Cancellation or erasure removes the invitation row and invalidates all its encodings. Existing legacy records have no retry metadata and are not rewritten. Pending invitation addresses are included in the holder's GDPR export.
+  Invitation, use and cancel are on the holder's order timeline; cancel
   clears every invitation, and the switch to `Queue`, a void or erasure clears them too.
 
 ## Companion tickets

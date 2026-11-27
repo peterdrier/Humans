@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.DataProtection;
 using Humans.Testing;
 using AwesomeAssertions;
 using Humans.AuditLog.Contracts;
@@ -46,6 +47,7 @@ public sealed partial class TicketCheckoutServiceTests
     private readonly ITicketRulesSource _rules = Substitute.For<ITicketRulesSource>();
     private readonly HashSet<string> _admitted = new(StringComparer.Ordinal);
     private readonly FakeClock _clock = new(Now);
+    private readonly IDataProtectionProvider _resaleProtection = new EphemeralDataProtectionProvider();
     private readonly IHostEnvironment _environment = Substitute.For<IHostEnvironment>();
     private readonly ITicketManagement _holdingsInner = Substitute.For<ITicketManagement>();
     private readonly CachingTicketQueryService _holdings;
@@ -120,7 +122,7 @@ public sealed partial class TicketCheckoutServiceTests
             _clock, NullLogger<CachingTicketQueryService>.Instance);
         _service = new TicketCheckoutService(_repo, [_platform], _grants, _settings, _users, _provisioning, _userEmails,
             _preferenceReads, _preferences, _email, emails, [_delivery], _gate, _rules, localizer, _audit, _environment,
-            _clock, _holdings, NullLogger<TicketCheckoutService>.Instance);
+            _clock, _holdings, NullLogger<TicketCheckoutService>.Instance, _resaleProtection);
     }
 
     private StartCheckout Buy(
@@ -1421,6 +1423,124 @@ public sealed partial class TicketCheckoutServiceTests
             .Refusal.Should().Be("Tickets_Resale_NotFound");
         (await _service.CancelInviteAsync(ticket.Id, _otherBuyerId, Ct)).Refusal.Should().Be("Tickets_Resale_NotFound");
         ticket.State.Should().Be(TicketCheckoutTicketState.Offered);
+    }
+
+    [HumansFact]
+    public async Task InviteBuyersAsync_QueueFailure_RetriesWithoutInvalidating()
+    {
+        var adult = await OfferedTicketAsync();
+        var sent = new List<EmailMessage>();
+        var failing = true;
+        _email.SendAsync(Arg.Any<EmailMessage>(), Arg.Any<CancellationToken>()).Returns(call =>
+        {
+            sent.Add(call.Arg<EmailMessage>());
+            return failing ? throw new InvalidOperationException("Queue unavailable") : Task.CompletedTask;
+        });
+        var link = new Uri("https://h.example/Tickets/Buy/Resale/");
+        var invite = () => _service.InviteBuyersAsync(adult.Id, _buyerId, ["bo@example.com"], link, "en", Ct);
+        await invite.Should().ThrowAsync<InvalidOperationException>();
+        var originalToken = sent.Single().HtmlBody[link.AbsoluteUri.Length..];
+        failing = false;
+
+        (await invite()).Succeeded.Should().BeTrue();
+
+        sent.Should().HaveCount(2);
+        sent[0].DeliveryId.Should().NotBeNull().And.Be(sent[1].DeliveryId);
+        _repo.Offers.Single().DirectedInviteCount.Should().Be(1);
+        _repo.Offers.Single().Invites.Should().ContainSingle();
+        var retriedToken = sent[1].HtmlBody[link.AbsoluteUri.Length..];
+        (await _service.GetDirectedBuyPageAsync(originalToken, _otherBuyerId, Ct))!.Unavailable.Should().BeNull();
+        (await _service.GetDirectedBuyPageAsync(retriedToken, _otherBuyerId, Ct))!.Unavailable.Should().BeNull();
+        (await _service.GetDirectedBuyPageAsync(retriedToken, _buyerId, Ct))!.Unavailable.Should().Be("Tickets_Resale_InviteOtherEmail");
+        var stored = System.Text.Json.JsonSerializer.Serialize(_repo.Offers.Single().Invites);
+        stored.Should().NotContain(originalToken).And.NotContain(retriedToken);
+        (await _service.CancelInviteAsync(adult.Id, _buyerId, Ct)).Succeeded.Should().BeTrue();
+        (await _service.GetDirectedBuyPageAsync(originalToken, _otherBuyerId, Ct)).Should().BeNull();
+        (await _service.GetDirectedBuyPageAsync(retriedToken, _otherBuyerId, Ct)).Should().BeNull();
+    }
+
+    [HumansFact]
+    public async Task InviteBuyersAsync_PartialQueueFailure_RetriesOnlyPending()
+    {
+        var adult = await OfferedTicketAsync();
+        var sent = new List<EmailMessage>();
+        var failing = true;
+        _email.SendAsync(Arg.Any<EmailMessage>(), Arg.Any<CancellationToken>()).Returns(call =>
+        {
+            sent.Add(call.Arg<EmailMessage>());
+            return failing && sent.Count == 2 ? throw new InvalidOperationException("Queue unavailable") : Task.CompletedTask;
+        });
+        var link = new Uri("https://h.example/Tickets/Buy/Resale/");
+        var invite = () => _service.InviteBuyersAsync(adult.Id, _buyerId, ["bo@example.com", "cy@example.com"], link, "en", Ct);
+        await invite.Should().ThrowAsync<InvalidOperationException>();
+        failing = false;
+
+        (await invite()).Succeeded.Should().BeTrue();
+
+        sent.Select(m => m.RecipientEmail).Should().Equal("bo@example.com", "cy@example.com", "cy@example.com");
+        sent[1].DeliveryId.Should().NotBeNull().And.Be(sent[2].DeliveryId);
+        _repo.Offers.Single().DirectedInviteCount.Should().Be(2);
+        (await invite()).Refusal.Should().Be("Tickets_Resale_InviteAlready");
+        sent.Should().HaveCount(3);
+    }
+
+    [HumansFact]
+    public async Task GetDirectedBuyPageAsync_ProtectedInvitation_RejectsForgery()
+    {
+        var adult = await OfferedTicketAsync();
+        EmailMessage? sent = null;
+        _email.SendAsync(Arg.Do<EmailMessage>(m => sent = m), Arg.Any<CancellationToken>()).Returns(Task.CompletedTask);
+        var link = new Uri("https://h.example/Tickets/Buy/Resale/");
+        (await _service.InviteBuyersAsync(adult.Id, _buyerId, ["bo@example.com"], link, "en", Ct)).Succeeded.Should().BeTrue();
+        var invite = _repo.Offers.Single().Invites.Single();
+        var token = sent!.HtmlBody[link.AbsoluteUri.Length..];
+        var tampered = token.ToCharArray();
+        tampered[token.Length / 2] = tampered[token.Length / 2] == 'A' ? 'B' : 'A';
+        var wrongPurpose = _resaleProtection.CreateProtector("AnotherPurpose")
+            .Protect($"{_repo.Offers.Single().Id:D}/{invite.DeliveryId:D}");
+        var absentInvite = _resaleProtection.CreateProtector("TicketResaleInvitation")
+            .Protect($"{_repo.Offers.Single().Id:D}/{Guid.NewGuid():D}");
+        foreach (var invalid in new[] { new string(tampered), wrongPurpose, absentInvite })
+        {
+            (await _service.GetDirectedBuyPageAsync(invalid, _otherBuyerId, Ct)).Should().BeNull();
+            (await _service.StartCheckoutAsync(Buy() with { DirectedToken = invalid }, _otherBuyerId, Ct))
+                .Refusal.Should().Be("Tickets_Resale_InviteNotFound");
+        }
+    }
+
+    [HumansFact]
+    public async Task InviteBuyersAsync_PendingAtLimit_RetriesWithoutNewAllowance()
+    {
+        var adult = await OfferedTicketAsync();
+        var addresses = Enumerable.Range(0, 10).Select(i => $"invite{i}@example.com").ToArray();
+        var failing = true;
+        _email.SendAsync(Arg.Any<EmailMessage>(), Arg.Any<CancellationToken>()).Returns(_ =>
+            failing ? throw new InvalidOperationException("Queue unavailable") : Task.CompletedTask);
+        var link = new Uri("https://h.example/r/");
+        var invite = () => _service.InviteBuyersAsync(adult.Id, _buyerId, addresses, link, "en", Ct);
+        await invite.Should().ThrowAsync<InvalidOperationException>();
+        failing = false;
+
+        (await invite()).Succeeded.Should().BeTrue();
+
+        _repo.Offers.Single().DirectedInviteCount.Should().Be(10);
+        _repo.Offers.Single().Invites.Should().OnlyContain(i => i.DeliveryPending == false);
+        (await _service.InviteBuyersAsync(adult.Id, _buyerId, ["extra@example.com"], link, "en", Ct))
+            .Refusal.Should().Be("Tickets_Resale_InviteLimit");
+    }
+
+    [HumansFact]
+    public async Task GetDirectedBuyPageAsync_LegacyToken_StillWorks()
+    {
+        var adult = await OfferedTicketAsync();
+        var offer = _repo.Offers.Single();
+        const string token = "legacy-opaque-token";
+        offer.Invites = [new TicketResaleInvite { Email = "bo@example.com", TokenHash = TicketCheckoutService.HashToken(token), SentAt = Now }];
+        offer.DirectedInviteCount = 1;
+
+        (await _service.GetDirectedBuyPageAsync(token, _otherBuyerId, Ct))!.Unavailable.Should().BeNull();
+        (await _service.InviteBuyersAsync(adult.Id, _buyerId, ["bo@example.com"], new Uri("https://h.example/r/"), "en", Ct))
+            .Refusal.Should().Be("Tickets_Resale_InviteAlready");
     }
 
     [HumansFact]

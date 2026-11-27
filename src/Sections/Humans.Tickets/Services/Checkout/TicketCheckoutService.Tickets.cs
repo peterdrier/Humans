@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.DataProtection;
 using System.Security.Cryptography;
 using System.Text;
 using Humans.Tickets.Contracts;
@@ -158,8 +159,8 @@ internal sealed partial class TicketCheckoutService
     }
 
     /// <summary>
-    /// Emails the link to each new address. Every link sells this one ticket to whoever buys first; anyone later buys the
-    /// next ticket in the queue. An address already sent this offer's link is skipped.
+    /// Queues new and pending invitations with stable delivery ids. Completed addresses are skipped; retry links
+    /// authenticate the same invitation so the outbox's first payload remains valid.
     /// </summary>
     public async Task<CheckoutMutationResult> InviteBuyersAsync(
         Guid ticketId, Guid userId, IReadOnlyList<string> inviteeEmails, Uri claimUrlBase, string culture, CancellationToken ct = default)
@@ -175,32 +176,50 @@ internal sealed partial class TicketCheckoutService
         var addresses = inviteeEmails.Select(e => e.Trim()).Where(e => e.Length > 0).Distinct(StringComparer.OrdinalIgnoreCase).ToList();
         if (addresses.Count == 0 || addresses.Any(e => !LooksLikeEmail(e) || string.Equals(e, ticket.HolderEmail, StringComparison.OrdinalIgnoreCase)))
             return new("Tickets_Resale_InviteEmailInvalid");
-        addresses.RemoveAll(e => offer.Invites.Any(i => string.Equals(i.Email, e, StringComparison.OrdinalIgnoreCase)));
-        if (addresses.Count == 0)
+        var newAddresses = addresses.Where(e => !offer.Invites.Any(i => string.Equals(i.Email, e, StringComparison.OrdinalIgnoreCase))).ToList();
+        var pending = offer.Invites.Where(i => i is { DeliveryPending: true, DeliveryId: not null }
+            && addresses.Contains(i.Email, StringComparer.OrdinalIgnoreCase)).ToList();
+        if (newAddresses.Count == 0 && pending.Count == 0)
             return new("Tickets_Resale_InviteAlready");
-        // Counted over all of the ticket's offers, so withdrawing and offering again does not start a fresh allowance.
+        // Retrying an existing invitation neither resets its allowance nor invalidates a possibly queued link.
         if ((await repository.GetOffersForSettingsAsync(ticket.TicketingSettingsId, ct))
-                .Where(o => o.TicketId == ticket.Id).Sum(o => o.DirectedInviteCount) + addresses.Count > MaxInvitesPerTicket)
+                .Where(o => o.TicketId == ticket.Id).Sum(o => o.DirectedInviteCount) + newAddresses.Count > MaxInvitesPerTicket)
             return new("Tickets_Resale_InviteLimit");
         var now = clock.GetCurrentInstant();
         if (!(await LoadStockAsync(ticketing, now, ct)).ResaleOpen)
             return new("Tickets_Resale_NotOpenYet");
 
-        var links = addresses.Select(address =>
+        var links = pending.Select(i => (Invite: i, Token: InvitationToken(offer.Id, i.DeliveryId!.Value))).ToList();
+        foreach (var address in newAddresses)
         {
-            var token = Convert.ToBase64String(RandomNumberGenerator.GetBytes(32)).TrimEnd('=').Replace('+', '-').Replace('/', '_');
-            return (Address: address, Token: token);
-        }).ToList();
-        offer.Invites = [.. offer.Invites, .. links.Select(l => new TicketResaleInvite { Email = l.Address, TokenHash = HashToken(l.Token), SentAt = now })];
-        offer.DirectedInviteCount += links.Count;
+            var deliveryId = Guid.NewGuid();
+            var token = InvitationToken(offer.Id, deliveryId);
+            var invite = new TicketResaleInvite
+            {
+                Email = address,
+                TokenHash = HashToken(token),
+                SentAt = now,
+                DeliveryId = deliveryId,
+                DeliveryPending = true,
+            };
+            offer.Invites.Add(invite);
+            links.Add((invite, token));
+        }
+        offer.DirectedInviteCount += newAddresses.Count;
         await repository.UpdateOfferAsync(offer, ct);
 
         var eventName = (await settings.GetEventSettingsByIdAsync(ticketing.EventSettingsId, ct))?.EventName ?? string.Empty;
-        foreach (var (address, token) in links)
+        foreach (var (invite, token) in links)
+        {
             await email.SendAsync(emails.ResaleInvitation(
-                address, ticket.HolderName, eventName, new Uri(claimUrlBase, token).ToString(), culture), ct);
+                invite.Email, ticket.HolderName, eventName, new Uri(claimUrlBase, token).ToString(), culture)
+                with
+            { DeliveryId = invite.DeliveryId }, ct);
+            invite.DeliveryPending = false;
+            await repository.UpdateOfferAsync(offer, ct);
+        }
         await TimelineAsync(ticket.OrderId, TicketCheckoutOrderEventKind.ResaleInvited,
-            $"Holder sent the link for ticket {ticket.Barcode} to {links.Count} more person(s), {offer.Invites.Count} in all; " +
+            $"Holder sent the link for ticket {ticket.Barcode} to {links.Count} person(s), {offer.Invites.Count} in all; " +
             "the ticket stays in the queue meanwhile", userId, ct);
         return CheckoutMutationResult.Ok;
     }
@@ -258,6 +277,31 @@ internal sealed partial class TicketCheckoutService
         offer?.State == TicketResaleOfferState.Open && InviteRefusal(offer, tokenHash, context) is null
             ? offer
             : null;
+
+    private string InvitationToken(Guid offerId, Guid deliveryId) =>
+        _resaleLinks.Protect($"{offerId:D}/{deliveryId:D}");
+
+    private async Task<(TicketResaleOffer? Offer, string TokenHash)> ResolveInvitationAsync(string token, CancellationToken ct)
+    {
+        var hash = HashToken(token);
+        if (await repository.GetOfferByTokenHashAsync(hash, ct) is { } legacy)
+            return (legacy, hash);
+        string payload;
+        try
+        {
+            payload = _resaleLinks.Unprotect(token);
+        }
+        catch (Exception ex) when (ex is CryptographicException or FormatException)
+        {
+            return (null, hash);
+        }
+        var parts = payload.Split('/');
+        if (parts.Length != 2 || !Guid.TryParse(parts[0], out var offerId) || !Guid.TryParse(parts[1], out var deliveryId))
+            return (null, hash);
+        var offer = await repository.GetOfferAsync(offerId, ct);
+        var invite = offer?.Invites.FirstOrDefault(i => i.DeliveryId == deliveryId);
+        return invite is null ? (null, hash) : (offer, invite.TokenHash);
+    }
 
     internal static string HashToken(string token) =>
         Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(token)));

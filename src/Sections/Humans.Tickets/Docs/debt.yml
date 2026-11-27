@@ -2,10 +2,4 @@
 # /debt-sweep pools every src/Sections/*/Docs/debt.yml into the same inbox as the central ledger.
 version: 1
 next_id: 20
-inbox:
-  - added: 2026-11-27
-    id: TICKETS-19
-    what: "TicketCheckoutService.InviteBuyersAsync persists token hashes, SentAt and DirectedInviteCount before IEmailService.SendAsync queues each invitation. If queueing throws, the invite remains recorded, retries skip its address as already invited, and the raw token cannot be recovered because only its hash is stored. A partial batch strands the unsent addresses and consumes their lifetime allowance. Found during the resale admission sweep."
-    review: panel
-    status: needs-detail
-    blocked_on: "Choose recovery semantics under the hash-only storage and lifetime-invitation rules: may an unconfirmed invitation be retried by rotating its token, invalidating any earlier link, without consuming another allowance?"
+inbox: []

@@ -128,7 +128,7 @@ internal sealed class TicketResaleOffer
         Invites.FirstOrDefault(i => string.Equals(i.TokenHash, tokenHash, StringComparison.Ordinal));
 }
 
-/// <summary>One emailed link: bound to the address it went to. The token itself is never stored.</summary>
+/// <summary>One address-bound invitation. Raw link tokens are never stored here.</summary>
 internal sealed class TicketResaleInvite
 {
     public string Email { get; set; } = string.Empty;
@@ -137,6 +137,10 @@ internal sealed class TicketResaleInvite
     public string TokenHash { get; set; } = string.Empty;
 
     public Instant SentAt { get; set; }
+
+    public Guid? DeliveryId { get; set; }
+
+    public bool? DeliveryPending { get; set; }
 }
 
 internal enum TicketResaleOfferState

@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.DataProtection;
 using System.Globalization;
 using System.Security.Cryptography;
 using System.Text.RegularExpressions;
@@ -40,7 +41,8 @@ internal sealed partial class TicketCheckoutService(
     IHostEnvironment environment,
     IClock clock,
     CachingTicketQueryService holdings,
-    ILogger<TicketCheckoutService> logger) : ITicketCheckoutService, IUserDataContributor, IUserMerge
+    ILogger<TicketCheckoutService> logger,
+    IDataProtectionProvider dataProtection) : ITicketCheckoutService, IUserDataContributor, IUserMerge
 {
     private const int MaxChildren = 6;
     private const int MaxOthers = 10;
@@ -59,6 +61,7 @@ internal sealed partial class TicketCheckoutService(
     internal static readonly Duration CheckoutLifetime = Duration.FromHours(1);
 
     private readonly IReadOnlyList<ITicketingPlatform> _platforms = platforms.ToList();
+    private readonly IDataProtector _resaleLinks = dataProtection.CreateProtector("TicketResaleInvitation");
 
     [GeneratedRegex(@"^[A-Za-z0-9][A-Za-z0-9_ ./-]*$", RegexOptions.None, 1000)]
     private static partial Regex TermsFolderPattern();
@@ -235,8 +238,7 @@ internal sealed partial class TicketCheckoutService(
     /// </summary>
     public async Task<BuyPage?> GetDirectedBuyPageAsync(string token, Guid userId, CancellationToken ct = default)
     {
-        var tokenHash = HashToken(token);
-        var offer = await repository.GetOfferByTokenHashAsync(tokenHash, ct);
+        var (offer, tokenHash) = await ResolveInvitationAsync(token, ct);
         if (offer is null || await LoadBuyContextAsync(offer.TicketingSettingsId, userId, ct) is not { } context
             || context.Ticketing.EffectiveSwitches.Resale != ResaleScheme.QueueAndDirected)
             return null;
@@ -345,9 +347,9 @@ internal sealed partial class TicketCheckoutService(
         if (command.DirectedToken is { } token)
         {
             var tokenHash = HashToken(token);
-            var invited = switches.Resale == ResaleScheme.QueueAndDirected
-                ? await repository.GetOfferByTokenHashAsync(tokenHash, ct)
-                : null;
+            TicketResaleOffer? invited = null;
+            if (switches.Resale == ResaleScheme.QueueAndDirected)
+                (invited, tokenHash) = await ResolveInvitationAsync(token, ct);
             if (InviteRefusal(invited, tokenHash, context) is { } refusal)
                 return StartCheckoutResult.Refused(refusal);
             if (!command.ForSelf || others.Count > 0)
@@ -1022,6 +1024,7 @@ internal sealed partial class TicketCheckoutService(
                 SoldAt = o.SoldAt.ToIso8601(),
                 WithdrawnAt = o.WithdrawnAt.ToIso8601(),
                 InvitedEmails = o.Invites.Select(i => i.Email).ToList(),
+                PendingInvitationEmails = o.Invites.Where(i => i.DeliveryPending == true).Select(i => i.Email).ToList(),
                 UnsoldNotifiedAt = o.UnsoldNotifiedAt.ToIso8601(),
             }).ToList()),
             new UserDataSlice(CompanionRequestsSlice, companionRequests.Select(r => new

@@ -39,6 +39,32 @@ public sealed class TicketCheckoutRepositoryTests
         (await db.TicketCheckoutTickets.AnyAsync(Xunit.TestContext.Current.CancellationToken)).Should().Be(!reject);
     }
 
+    [HumansFact]
+    public async Task UpdateOfferAsync_DeliveryMetadata_PersistsThenErases()
+    {
+        var options = new DbContextOptionsBuilder<TicketsDbContext>()
+            .UseInMemoryDatabase(Guid.NewGuid().ToString()).Options;
+        var repository = new TicketCheckoutRepository(new TestDbContextFactory<TicketsDbContext>(options));
+        var holder = Guid.NewGuid();
+        var deliveryId = Guid.NewGuid();
+        var offer = new TicketResaleOffer
+        {
+            Id = Guid.NewGuid(),
+            HolderUserId = holder,
+            Invites = [new TicketResaleInvite { Email = "invite@example.com", TokenHash = "hash", DeliveryId = deliveryId, DeliveryPending = true }],
+        };
+        await repository.AddOfferAsync(offer, Xunit.TestContext.Current.CancellationToken);
+        offer.Invites.Single().DeliveryPending = false;
+
+        await repository.UpdateOfferAsync(offer, Xunit.TestContext.Current.CancellationToken);
+
+        var stored = (await repository.GetOfferAsync(offer.Id, Xunit.TestContext.Current.CancellationToken))!;
+        stored.Invites.Should().ContainSingle().Which.DeliveryId.Should().Be(deliveryId);
+        stored.Invites.Single().DeliveryPending.Should().BeFalse();
+        await repository.ErasePiiForUserAsync(holder, [], Xunit.TestContext.Current.CancellationToken);
+        (await repository.GetOfferAsync(offer.Id, Xunit.TestContext.Current.CancellationToken))!.Invites.Should().BeEmpty();
+    }
+
     private sealed class RejectTicketSave(bool reject) : SaveChangesInterceptor
     {
         public override ValueTask<InterceptionResult<int>> SavingChangesAsync(
