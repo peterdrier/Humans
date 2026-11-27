@@ -2,8 +2,4 @@
 # /debt-sweep pools every src/Sections/*/Docs/debt.yml into the same inbox as the central ledger.
 version: 1
 next_id: 26
-inbox:
-  - added: 2026-11-27
-    id: TICKETS-25
-    what: "CallPlatformRefundAsync returns its initial provider result after RecoverAsync can save a different refund state; its original refund object can also be stale. RefundCoreAsync can therefore report success after Pending becomes Failed during refresh, so VoidTicketAsync can finish a void despite the declined refund. Return the final persisted outcome and review admin refund, void and resale callers. Found while tracing cancellation notices; financial outcome propagation is separate from the notice-selection batch."
-    review: panel
+inbox: []

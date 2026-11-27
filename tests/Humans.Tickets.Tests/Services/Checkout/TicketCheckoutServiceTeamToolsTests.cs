@@ -1,4 +1,6 @@
 using AwesomeAssertions;
+using Humans.Testing;
+using Microsoft.EntityFrameworkCore;
 using Humans.AuditLog.Contracts;
 using Humans.Email.Contracts;
 using Humans.Grants.Contracts;
@@ -16,6 +18,58 @@ namespace Humans.Tickets.Tests.Services.Checkout;
 
 public sealed partial class TicketCheckoutServiceTests
 {
+    [HumansTheory]
+    [InlineData(false, false)]
+    [InlineData(true, false)]
+    [InlineData(true, true)]
+    public async Task RefundAsync_RecoveryDeclines_ReturnsFailure(bool voidTicket, bool retry)
+    {
+        var ticket = await PaidAdultAsync();
+        var order = _repo.Orders.Single();
+        var options = new DbContextOptionsBuilder<TicketsDbContext>()
+            .UseInMemoryDatabase(Guid.NewGuid().ToString()).Options;
+        var repository = new TicketCheckoutRepository(new TestDbContextFactory<TicketsDbContext>(options));
+        await repository.SaveTicketingSettingsAsync(_ticketing, Ct);
+        await repository.AddOrderAsync(order, Ct, ticket);
+        var refundId = Guid.NewGuid();
+        if (retry)
+        {
+            ticket.VoidRefundId = refundId;
+            ticket.VoidRefundMinor = 22500;
+            ticket.VoidRequestedReason = "Returned";
+            await repository.UpdateTicketAsync(ticket, Ct);
+            await repository.AddRefundAsync(new TicketCheckoutRefund
+            {
+                Id = refundId,
+                OrderId = order.Id,
+                AmountMinor = 22500,
+                Reason = "Returned",
+                State = RefundState.Pending,
+                CreatedAt = Now,
+            }, Ct);
+        }
+        var service = CreateService(repository);
+        _platform.RefundAsync(Arg.Any<RefundRequest>(), Arg.Any<CancellationToken>())
+            .Returns(new RefundResult(RefundState.Pending, "re_1", null),
+                new RefundResult(RefundState.Failed, "re_1", "Card closed"));
+
+        var result = voidTicket
+            ? await service.VoidTicketAsync(ticket.Id, "Returned", 22500, _adminId, Ct)
+            : await service.RefundAsync(order.Id, 22500, "Returned", _adminId, Ct);
+
+        result.Succeeded.Should().BeFalse();
+        result.Refusal.Should().Contain("Card closed");
+        var saved = (await repository.GetRefundsAsync(order.Id, Ct)).Should().ContainSingle().Which;
+        saved.State.Should().Be(RefundState.Failed);
+        if (retry)
+            saved.Id.Should().Be(refundId);
+        var live = (await repository.GetTicketAsync(ticket.Id, Ct))!;
+        live.State.Should().Be(TicketCheckoutTicketState.Valid);
+        live.VoidRefundId.Should().BeNull();
+        (await service.FindIssuedTicketAsync(ticket.Barcode, Ct))!.IsValid.Should().BeTrue();
+        await _platform.Received(2).RefundAsync(Arg.Is<RefundRequest>(r => r.RefundId == saved.Id), Arg.Any<CancellationToken>());
+    }
+
     [HumansTheory]
     [InlineData(false, null)]
     [InlineData(false, UserState.Deleted)]

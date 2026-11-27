@@ -109,18 +109,23 @@ public sealed partial class TicketCheckoutServiceTests
         var other = new User { Id = _otherBuyerId, BurnerName = "Moth", FirstName = "Bo", LastName = "Smith", Email = "bo@example.com" };
         _users.GetUserInfoAsync(_otherBuyerId, Arg.Any<CancellationToken>())
             .Returns(UserInfo.Create(other, [], [], UserFixtures.Profile()));
-        var localizer = Substitute.For<IStringLocalizer<TicketsResource>>().AddFormatting();
-        localizer[Arg.Any<string>()].Returns(ci => new LocalizedString(ci.Arg<string>(), ci.Arg<string>()));
-        localizer["Tickets_Resale_Email_Invite_Body"].Returns(new LocalizedString("body", "{2}"));
-        var emails = new TicketsEmails(Options.Create(new EmailSettings()), localizer, NullLogger<TicketsEmails>.Instance);
-
         _gate.GetAdmittedAsync(Arg.Any<IReadOnlyCollection<string>>(), Arg.Any<CancellationToken>())
             .Returns(ci => ci.Arg<IReadOnlyCollection<string>>().Where(_admitted.Contains).ToHashSet(StringComparer.Ordinal));
         var services = new ServiceCollection();
         services.AddKeyedScoped(CachingTicketQueryService.InnerServiceKey, (_, _) => _holdingsInner);
         _holdings = new CachingTicketQueryService(services.BuildServiceProvider().GetRequiredService<IServiceScopeFactory>(),
             _clock, NullLogger<CachingTicketQueryService>.Instance);
-        _service = new TicketCheckoutService(_repo, [_platform], _grants, _settings, _users, _provisioning, _userEmails,
+        _service = CreateService(_repo);
+    }
+
+    private TicketCheckoutService CreateService(ITicketCheckoutRepository repository)
+    {
+        var localizer = Substitute.For<IStringLocalizer<TicketsResource>>().AddFormatting();
+        localizer[Arg.Any<string>()].Returns(ci => new LocalizedString(ci.Arg<string>(), ci.Arg<string>()));
+        localizer["Tickets_Resale_Email_Invite_Body"].Returns(new LocalizedString("body", "{2}"));
+        var emails = new TicketsEmails(Options.Create(new EmailSettings()), localizer, NullLogger<TicketsEmails>.Instance);
+
+        return new TicketCheckoutService(repository, [_platform], _grants, _settings, _users, _provisioning, _userEmails,
             _preferenceReads, _preferences, _email, emails, [_delivery], _gate, _rules, localizer, _audit, _environment,
             _clock, _holdings, NullLogger<TicketCheckoutService>.Instance, _resaleProtection);
     }

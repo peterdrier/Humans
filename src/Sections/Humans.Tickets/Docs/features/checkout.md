@@ -50,7 +50,7 @@ Rules every platform follows:
   automated `Pending` refunds before `ManualRequired` refunds, oldest first within each group. A pending refund the platform knows by id is repeated under that
   id and takes the state the platform answers (`RefundFailed` may follow only the newest refund); one whose call got no
   answer waits for the reconcile job's resend. So a refund made in the platform's dashboard never settles one of Tickets'
-  own. Only `ManualRequired` refunds settle from the part of `RefundedMinor` left after succeeded refunds and unresolved automated amounts are accounted for. The same money cannot settle both an automated and a manual refund. Failed refunds stop counting against what can still be refunded. The reconcile job re-reads paid orders with
+  own. Only `ManualRequired` refunds settle from the part of `RefundedMinor` left after succeeded refunds and unresolved automated amounts are accounted for. Refund attempts return the persisted outcome after recovery, including retries: a pending answer that recovery marks failed refuses the mutation, so a declined refunded void keeps its ticket valid and clears the failed intent. The same money cannot settle both an automated and a manual refund. Failed refunds stop counting against what can still be refunded. The reconcile job re-reads paid orders with
   unsettled refunds and resends any refund whose platform call threw.
 - **Erasure.** A deletion waits while the member holds a valid or offered ticket, until 30 days after that event's strike
   (Users re-checks when the deletion falls due), so erasure normally runs after the event. It then calls `ErasePersonalDataAsync` for each of their orders before Tickets tombstones its

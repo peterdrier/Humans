@@ -824,7 +824,7 @@ internal sealed partial class TicketCheckoutService(
             if (existing is { State: RefundState.Pending, PlatformRefundId: null }
                 && await repository.GetOrderAsync(orderId, ct) is { PlatformOrderId: not null } paidOrder
                 && PlatformFor(paidOrder.PlatformKey) is { } retryPlatform)
-                await CallPlatformRefundAsync(retryPlatform, paidOrder, existing, actorUserId, ct, resend: true);
+                existing = await CallPlatformRefundAsync(retryPlatform, paidOrder, existing, actorUserId, ct, resend: true);
             return (existing.State == RefundState.Failed
                 ? new CheckoutMutationResult($"The ticketing platform declined the refund: {existing.FailureReason}")
                 : CheckoutMutationResult.Ok, existing.Id);
@@ -871,7 +871,7 @@ internal sealed partial class TicketCheckoutService(
     }
 
     /// <summary>A <paramref name="resend"/> that changes nothing is only logged, so a platform that stays down adds no rows.</summary>
-    private async Task<RefundResult> CallPlatformRefundAsync(
+    private async Task<TicketCheckoutRefund> CallPlatformRefundAsync(
         ITicketingPlatform platform, TicketCheckoutOrder order, TicketCheckoutRefund refund, Guid? actorUserId,
         CancellationToken ct, bool resend = false)
     {
@@ -896,7 +896,7 @@ internal sealed partial class TicketCheckoutService(
         if (resend && !changed)
         {
             logger.LogInformation("Resent refund {RefundId} of order {OrderId} is still {State}", refund.Id, order.Id, result.State);
-            return result;
+            return refund;
         }
 
         await repository.UpdateRefundAsync(refund, ct);
@@ -911,7 +911,8 @@ internal sealed partial class TicketCheckoutService(
 
         if (result.State is RefundState.Succeeded or RefundState.Pending)
             await RecoverAsync(order, ct);
-        return result;
+        // Recovery reads detached snapshots; neither the provider answer nor this instance is authoritative afterward.
+        return (await repository.GetRefundsAsync(order.Id, ct)).Single(r => r.Id == refund.Id);
     }
 
     private static bool ApplyRefundResult(TicketCheckoutRefund refund, RefundResult result)
