@@ -74,10 +74,11 @@ internal sealed class TicketCheckoutOrder
 
     public long TicketTotalMinor => Lines.Where(l => l.Kind == OrderLineKind.Ticket).Sum(l => l.AmountMinor);
 
-    /// <summary>Holds capacity: paid, a payment on its way, or still payable.</summary>
+    /// <summary>A remote checkout holds capacity until explicitly closed; only a local order lapses by time.</summary>
     public bool HoldsTickets(Instant now) =>
         State is TicketCheckoutOrderState.Paid or TicketCheckoutOrderState.Processing
-        || (State is TicketCheckoutOrderState.Created or TicketCheckoutOrderState.Pending && ExpiresAt > now);
+        || (State is TicketCheckoutOrderState.Created or TicketCheckoutOrderState.Pending
+            && (PlatformOrderId is not null || ExpiresAt > now));
 
     /// <summary>Not yet settled either way.</summary>
     public bool IsOpen => State is TicketCheckoutOrderState.Created or TicketCheckoutOrderState.Pending

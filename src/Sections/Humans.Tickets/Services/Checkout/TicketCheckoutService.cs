@@ -1249,7 +1249,8 @@ internal sealed partial class TicketCheckoutService(
 
     /// <summary>
     /// <paramref name="Held"/> counts against capacity: issued tickets still valid or in resale, and fresh-stock lines on
-    /// unpaid orders that have not lapsed. A resold ticket replaces the one put up for resale, so it adds nothing.
+    /// unpaid orders still holding capacity, including overdue remote checkouts awaiting closure.
+    /// A resold ticket replaces the one put up for resale, so it adds nothing.
     /// </summary>
     private sealed record Stock(int Held, bool ResaleOpen, IReadOnlyList<TicketResaleOffer> Offers);
 

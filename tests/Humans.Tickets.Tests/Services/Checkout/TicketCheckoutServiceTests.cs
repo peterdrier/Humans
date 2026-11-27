@@ -407,6 +407,10 @@ public sealed partial class TicketCheckoutServiceTests
         var katie = Human("katie@example.com", "Katie", "Jones");
         await _service.StartCheckoutAsync(Buy(forSelf: false, others: ["katie@example.com"]), _buyerId, Ct);
         _clock.Advance(TicketCheckoutService.CheckoutLifetime + Duration.FromMinutes(1));
+        _platform.GetStatusAsync("cs_1", Arg.Any<CancellationToken>())
+            .Returns(new PlatformOrderStatus(PlatformOrderState.Expired, null, null, null));
+        await _service.ReconcileOpenOrdersAsync(Ct);
+        _repo.Orders.Single().State.Should().Be(TicketCheckoutOrderState.Expired);
         await BuyAndPayAsync(Buy(), katie);
 
         await PayAsync("cs_1");
@@ -513,6 +517,7 @@ public sealed partial class TicketCheckoutServiceTests
         var order = _repo.Orders.Single(o => o.Id == started.OrderId);
         order.State = state;
         _platform.Key.Returns("replacement");
+        _clock.Advance(Duration.FromHours(2));
         var writes = _repo.OrderWrites.Count;
         var events = _repo.Events.Count;
 
@@ -520,6 +525,7 @@ public sealed partial class TicketCheckoutServiceTests
 
         result.Refusal.Should().Be("Tickets_Buy_CancelUnavailable");
         order.State.Should().Be(state);
+        order.HoldsTickets(_clock.GetCurrentInstant()).Should().BeTrue();
         _repo.Offers.Should().ContainSingle().Which.ReservedByOrderId.Should().Be(order.Id);
         old.State.Should().Be(TicketCheckoutTicketState.Offered);
         _repo.OrderWrites.Should().HaveCount(writes);
@@ -2814,6 +2820,58 @@ public sealed partial class TicketCheckoutServiceTests
         await _platform.Received(1).CancelAsync(order.PlatformOrderId!, CancellationToken.None);
         order.State.Should().Be(TicketCheckoutOrderState.Expired);
         _repo.Events.Should().Contain(e => e.OrderId == order.Id && e.Kind == TicketCheckoutOrderEventKind.StateChanged);
+    }
+
+    [HumansTheory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task StartCheckoutAsync_RemoteHoldPastDeadline_ReservesCapacity(bool recoveryFails)
+    {
+        _ticketing.Capacity = 1;
+        var started = await _service.StartCheckoutAsync(Buy(), _buyerId, Ct);
+        var order = _repo.Orders.Single();
+        _clock.Advance(Duration.FromHours(2));
+        if (recoveryFails)
+        {
+            _platform.GetStatusAsync(order.PlatformOrderId!, Arg.Any<CancellationToken>())
+                .Returns(new PlatformOrderStatus(PlatformOrderState.Expired, null, null, null));
+            _platform.CancelAsync(order.PlatformOrderId!, Arg.Any<CancellationToken>())
+                .Returns(_ => throw new TicketingPlatformException("Provider unavailable"));
+            await _service.ReconcileOpenOrdersAsync(Ct);
+        }
+
+        var next = await _service.StartCheckoutAsync(Buy(), _otherBuyerId, Ct);
+
+        next.Refusal.Should().Be("Tickets_Buy_SoldOut");
+        _repo.Orders.Should().ContainSingle();
+        var page = (await _service.GetBuyPagesAsync(_buyerId, Ct)).Single();
+        page.AlreadyHoldsTicket.Should().BeTrue();
+        page.OpenOrder!.Id.Should().Be(started.OrderId!.Value);
+        (await _service.StartCheckoutAsync(Buy(), _buyerId, Ct)).Refusal.Should().Be("Tickets_Buy_AlreadyHolds");
+
+        _platform.GetStatusAsync(order.PlatformOrderId!, Arg.Any<CancellationToken>())
+            .Returns(new PlatformOrderStatus(PlatformOrderState.Expired, null, null, null));
+        _platform.CancelAsync(order.PlatformOrderId!, Arg.Any<CancellationToken>()).Returns(Task.CompletedTask);
+        await _service.ReconcileOpenOrdersAsync(Ct);
+
+        order.State.Should().Be(TicketCheckoutOrderState.Expired);
+        (await _service.StartCheckoutAsync(Buy(), _otherBuyerId, Ct)).Refusal.Should().BeNull();
+    }
+
+    [HumansFact]
+    public async Task StartCheckoutAsync_LocalHoldPastDeadline_ReleasesCapacity()
+    {
+        _ticketing.Capacity = 1;
+        await _service.StartCheckoutAsync(Buy(), _buyerId, Ct);
+        var order = _repo.Orders.Single();
+        order.PlatformOrderId = null;
+        order.State = TicketCheckoutOrderState.Created;
+        _clock.Advance(Duration.FromHours(2));
+
+        var next = await _service.StartCheckoutAsync(Buy(), _otherBuyerId, Ct);
+
+        next.Refusal.Should().BeNull();
+        order.HoldsTickets(_clock.GetCurrentInstant()).Should().BeFalse();
     }
 
     [HumansFact]

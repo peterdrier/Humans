@@ -342,13 +342,21 @@ public sealed partial class TicketCheckoutServiceTests
     }
 
     [HumansTheory]
-    [InlineData("Pending", -1, false)]
-    [InlineData("Pending", 1, true)]
-    [InlineData("Processing", 1, false)]
-    [InlineData("Expired", -1, true)]
-    public void A_reserved_offer_is_stuck_once_its_order_no_longer_holds_it(string state, int hoursPastHold, bool stuck)
+    [InlineData("Pending", -1, false, false)]
+    [InlineData("Pending", 1, true, false)]
+    [InlineData("Processing", 1, false, false)]
+    [InlineData("Expired", -1, true, false)]
+    [InlineData("Pending", 1, false, true)]
+    [InlineData("Created", 1, false, true)]
+    public void A_reserved_offer_is_stuck_once_its_order_no_longer_holds_it(string state, int hoursPastHold, bool stuck, bool remote)
     {
-        var holding = new TicketCheckoutOrder { Id = Guid.NewGuid(), State = Enum.Parse<TicketCheckoutOrderState>(state), ExpiresAt = Now - Duration.FromHours(hoursPastHold) };
+        var holding = new TicketCheckoutOrder
+        {
+            Id = Guid.NewGuid(),
+            State = Enum.Parse<TicketCheckoutOrderState>(state),
+            ExpiresAt = Now - Duration.FromHours(hoursPastHold),
+            PlatformOrderId = remote ? "remote" : null,
+        };
         var offer = new TicketResaleOffer { Id = Guid.NewGuid(), State = TicketResaleOfferState.Reserved, ReservedByOrderId = holding.Id };
         var model = new ResaleViewModel(_ticketing.Id, "Event", _ticketing, [],
             new Dictionary<Guid, TicketCheckoutOrder> { [holding.Id] = holding }, Now);
