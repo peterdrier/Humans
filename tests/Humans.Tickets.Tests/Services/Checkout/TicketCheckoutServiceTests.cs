@@ -1886,6 +1886,88 @@ public sealed partial class TicketCheckoutServiceTests
     }
 
     [HumansFact]
+    public async Task VoidTicketAsync_InterruptedAfterRefund_ReusesOriginalIntent()
+    {
+        var adult = await PaidAdultAsync();
+        _audit.LogAsync(TicketsAuditActions.TicketCheckoutRefunded, Arg.Any<string>(), adult.OrderId,
+            Arg.Any<string>(), Arg.Any<string>(), Arg.Any<Guid?>(), Arg.Any<string?>())
+            .Returns(_ => throw new InvalidOperationException("Interrupted after refund"));
+        var attempt = () => _service.VoidTicketAsync(adult.Id, "Original void", 5000, _adminId, Ct);
+        await attempt.Should().ThrowAsync<InvalidOperationException>().WithMessage("Interrupted after refund");
+        adult.State.Should().Be(TicketCheckoutTicketState.Valid);
+        _repo.Refunds.Should().ContainSingle().Which.Refund.State.Should().Be(RefundState.Succeeded);
+        _audit.LogAsync(TicketsAuditActions.TicketCheckoutRefunded, Arg.Any<string>(), adult.OrderId,
+            Arg.Any<string>(), Arg.Any<string>(), Arg.Any<Guid?>(), Arg.Any<string?>()).Returns(Task.CompletedTask);
+
+        (await _service.VoidTicketAsync(adult.Id, "Changed retry", 7000, _adminId, Ct)).Succeeded.Should().BeTrue();
+
+        _repo.Refunds.Should().ContainSingle();
+        adult.State.Should().Be(TicketCheckoutTicketState.Void);
+        adult.VoidReason.Should().Be("Original void");
+        await _platform.Received(1).RefundAsync(Arg.Is<RefundRequest>(r => r.AmountMinor == 5000), Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
+    public async Task VoidTicketAsync_DependentWriteFails_WritesNoPartialVoid()
+    {
+        _ticketing.ChildTypes = [new TicketChildType { Name = "Child", UnderAge = 13, PriceMinor = 5000 }];
+        var order = await BuyAndPayAsync(Buy() with { Children = [new("Kid García", null)] }, _buyerId);
+        var adult = _repo.Tickets.Single(t => t.Kind == TicketHolderKind.Adult);
+        var child = _repo.Tickets.Single(t => t.Kind == TicketHolderKind.Child);
+        _repo.RejectTicketWrites.Add(child.Id);
+        _repo.TicketWrites.Clear();
+        var attempt = () => _service.VoidTicketAsync(adult.Id, "Returned", 0, _adminId, Ct);
+
+        await attempt.Should().ThrowAsync<InvalidOperationException>().WithMessage("Ticket write failed");
+
+        _repo.TicketWrites.Should().BeEmpty();
+    }
+
+    [HumansFact]
+    public async Task VoidTicketAsync_DeclinedRefund_ClearsIntent()
+    {
+        var adult = await PaidAdultAsync();
+        _platform.RefundAsync(Arg.Any<RefundRequest>(), Arg.Any<CancellationToken>())
+            .Returns(new RefundResult(RefundState.Failed, "re_declined", "Declined"));
+
+        (await _service.VoidTicketAsync(adult.Id, "Returned", 5000, _adminId, Ct)).Succeeded.Should().BeFalse();
+
+        adult.State.Should().Be(TicketCheckoutTicketState.Valid);
+        adult.VoidRefundId.Should().BeNull();
+        adult.VoidRefundMinor.Should().BeNull();
+        adult.VoidRequestedReason.Should().BeNull();
+        (await _service.VoidTicketAsync(adult.Id, "No refund", 0, _adminId, Ct)).Succeeded.Should().BeTrue();
+        _repo.Refunds.Should().ContainSingle();
+    }
+
+    [HumansFact]
+    public async Task VoidTicketAsync_PendingIntent_BlocksHolderMutations()
+    {
+        var adult = await PaidAdultAsync();
+        adult.VoidRefundId = Guid.NewGuid();
+        adult.VoidRefundMinor = 5000;
+        adult.VoidRequestedReason = "Returned";
+
+        (await _service.RenameTicketAsync(adult.Id, "Other Person", "other@example.com", "Move", false, _adminId, Ct))
+            .Succeeded.Should().BeFalse();
+        (await _service.OfferForResaleAsync(adult.Id, _buyerId, Ct)).Succeeded.Should().BeFalse();
+        adult.State.Should().Be(TicketCheckoutTicketState.Valid);
+    }
+
+    [HumansFact]
+    public async Task StartCheckoutAsync_PendingVoid_ExcludesResaleOffer()
+    {
+        var adult = await OfferedTicketAsync();
+        adult.VoidRefundId = Guid.NewGuid();
+        adult.VoidRefundMinor = 5000;
+        adult.VoidRequestedReason = "Returned";
+        var buyer = Human("next@example.com", "Next", "Buyer");
+
+        (await _service.StartCheckoutAsync(Buy(), buyer, Ct)).Refusal.Should().Be("Tickets_Buy_ResaleOnly");
+        _repo.Offers.Single().State.Should().Be(TicketResaleOfferState.Open);
+    }
+
+    [HumansFact]
     public async Task Void_refuses_while_a_buyer_is_paying_for_the_offer()
     {
         var adult = await OfferedTicketAsync();
@@ -3432,7 +3514,18 @@ public sealed partial class TicketCheckoutServiceTests
             Tickets.AddRange(tickets);
             return Task.FromResult(true);
         }
-        public Task UpdateTicketAsync(TicketCheckoutTicket ticket, CancellationToken ct = default) => Task.CompletedTask;
+        public HashSet<Guid> RejectTicketWrites { get; } = [];
+        public List<(Guid Id, TicketCheckoutTicketState State)> TicketWrites { get; } = [];
+
+        public Task UpdateTicketAsync(TicketCheckoutTicket ticket, CancellationToken ct = default,
+            IReadOnlyList<TicketCheckoutTicket>? dependents = null, TicketResaleOffer? offer = null)
+        {
+            var changed = new[] { ticket }.Concat(dependents ?? []).ToList();
+            if (changed.Any(t => RejectTicketWrites.Contains(t.Id)))
+                throw new InvalidOperationException("Ticket write failed");
+            TicketWrites.AddRange(changed.Select(t => (t.Id, t.State)));
+            return Task.CompletedTask;
+        }
         public Task<TicketCheckoutTicket?> GetTicketAsync(Guid id, CancellationToken ct = default) =>
             Task.FromResult(Tickets.FirstOrDefault(t => t.Id == id));
         public Task<TicketCheckoutTicket?> GetTicketByBarcodeAsync(string barcode, CancellationToken ct = default) =>

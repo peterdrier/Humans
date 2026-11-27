@@ -24,9 +24,9 @@ public sealed partial class TicketCheckoutServiceTests
 
         adult.State.Should().Be(TicketCheckoutTicketState.Void);
         await _platform.Received(1).RefundAsync(Arg.Is<RefundRequest>(r => r.AmountMinor == 22500), Arg.Any<CancellationToken>());
-        _repo.Events.Should().Contain(e => e.Kind == TicketCheckoutOrderEventKind.Voided && e.Detail.Contains("225.00 refunded"));
+        _repo.Events.Should().Contain(e => e.Kind == TicketCheckoutOrderEventKind.Voided && e.Detail.Contains("refund of 225.00 requested"));
         await _audit.Received(1).LogAsync(TicketsAuditActions.TicketCheckoutTicketVoided, Arg.Any<string>(), adult.OrderId,
-            Arg.Is<string>(d => d.Contains("refunding 225.00", StringComparison.Ordinal)), _adminId, _buyerId, AuditSubjectTypes.User);
+            Arg.Is<string>(d => d.Contains("refund of 225.00 requested", StringComparison.Ordinal)), _adminId, _buyerId, AuditSubjectTypes.User);
     }
 
     [HumansFact]

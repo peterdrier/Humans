@@ -53,6 +53,12 @@ internal sealed class TicketCheckoutTicket
     public Instant? VoidedAt { get; set; }
 
     public string? VoidReason { get; set; }
+
+    public Guid? VoidRefundId { get; set; }
+
+    public long? VoidRefundMinor { get; set; }
+
+    public string? VoidRequestedReason { get; set; }
 }
 
 internal enum TicketHolderKind

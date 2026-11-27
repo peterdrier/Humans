@@ -65,6 +65,79 @@ public sealed class TicketCheckoutRepositoryTests
         (await repository.GetOfferAsync(offer.Id, Xunit.TestContext.Current.CancellationToken))!.Invites.Should().BeEmpty();
     }
 
+    [HumansTheory]
+    [Xunit.InlineData(false)]
+    [Xunit.InlineData(true)]
+    public async Task UpdateTicketAsync_VoidGraph_CommitsTogether(bool reject)
+    {
+        var interceptor = new RejectVoidSave();
+        var options = new DbContextOptionsBuilder<TicketsDbContext>()
+            .UseInMemoryDatabase(Guid.NewGuid().ToString()).AddInterceptors(interceptor).Options;
+        var repository = new TicketCheckoutRepository(new TestDbContextFactory<TicketsDbContext>(options));
+        var adult = new TicketCheckoutTicket
+        {
+            Id = Guid.NewGuid(),
+            Barcode = "ADULT",
+            State = TicketCheckoutTicketState.Offered,
+            VoidRefundId = Guid.NewGuid(),
+            VoidRefundMinor = 5000,
+            VoidRequestedReason = "Returned"
+        };
+        var child = new TicketCheckoutTicket
+        {
+            Id = Guid.NewGuid(),
+            Barcode = "CHILD",
+            ParentTicketId = adult.Id,
+            State = TicketCheckoutTicketState.Valid
+        };
+        var offer = new TicketResaleOffer
+        {
+            Id = Guid.NewGuid(),
+            TicketId = adult.Id,
+            State = TicketResaleOfferState.Open,
+            Invites = [new TicketResaleInvite { Email = "invited@example.com", TokenHash = "hash" }]
+        };
+        await using (var db = new TicketsDbContext(options))
+        {
+            db.TicketCheckoutTickets.AddRange(adult, child);
+            db.TicketResaleOffers.Add(offer);
+            await db.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
+        }
+        adult.State = child.State = TicketCheckoutTicketState.Void;
+        adult.VoidRefundId = null;
+        adult.VoidRefundMinor = null;
+        adult.VoidRequestedReason = null;
+        offer.State = TicketResaleOfferState.Withdrawn;
+        offer.Invites = [];
+        interceptor.Reject = reject;
+        var save = () => repository.UpdateTicketAsync(adult, Xunit.TestContext.Current.CancellationToken, [child], offer);
+        if (reject)
+            await save.Should().ThrowAsync<InvalidOperationException>().WithMessage("Void save failed");
+        else
+            await save();
+
+        var storedAdult = (await repository.GetTicketAsync(adult.Id, Xunit.TestContext.Current.CancellationToken))!;
+        storedAdult.State.Should().Be(reject ? TicketCheckoutTicketState.Offered : TicketCheckoutTicketState.Void);
+        storedAdult.VoidRefundMinor.Should().Be(reject ? 5000 : null);
+        (await repository.GetTicketAsync(child.Id, Xunit.TestContext.Current.CancellationToken))!.State
+            .Should().Be(reject ? TicketCheckoutTicketState.Valid : TicketCheckoutTicketState.Void);
+        var storedOffer = (await repository.GetOfferAsync(offer.Id, Xunit.TestContext.Current.CancellationToken))!;
+        storedOffer.State.Should().Be(reject ? TicketResaleOfferState.Open : TicketResaleOfferState.Withdrawn);
+        storedOffer.Invites.Should().HaveCount(reject ? 1 : 0);
+    }
+
+    private sealed class RejectVoidSave : SaveChangesInterceptor
+    {
+        public bool Reject { get; set; }
+        public override ValueTask<InterceptionResult<int>> SavingChangesAsync(
+            DbContextEventData eventData, InterceptionResult<int> result, CancellationToken cancellationToken = default)
+        {
+            if (Reject && eventData.Context!.ChangeTracker.Entries<TicketCheckoutTicket>().Any(e => e.State == EntityState.Modified))
+                throw new InvalidOperationException("Void save failed");
+            return base.SavingChangesAsync(eventData, result, cancellationToken);
+        }
+    }
+
     private sealed class RejectTicketSave(bool reject) : SaveChangesInterceptor
     {
         public override ValueTask<InterceptionResult<int>> SavingChangesAsync(

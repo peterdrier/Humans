@@ -187,10 +187,15 @@ internal sealed class TicketCheckoutRepository(IDbContextFactory<TicketsDbContex
         return claimed == 1;
     }
 
-    public async Task UpdateTicketAsync(TicketCheckoutTicket ticket, CancellationToken ct = default)
+    public async Task UpdateTicketAsync(TicketCheckoutTicket ticket, CancellationToken ct = default,
+        IReadOnlyList<TicketCheckoutTicket>? dependents = null, TicketResaleOffer? offer = null)
     {
         await using var ctx = await factory.CreateDbContextAsync(ct);
         ctx.TicketCheckoutTickets.Update(ticket);
+        if (dependents is not null)
+            ctx.TicketCheckoutTickets.UpdateRange(dependents);
+        if (offer is not null)
+            CopyOffer(ctx, await ctx.TicketResaleOffers.FirstAsync(o => o.Id == offer.Id, ct), offer);
         await ctx.SaveChangesAsync(ct);
     }
 
@@ -235,6 +240,12 @@ internal sealed class TicketCheckoutRepository(IDbContextFactory<TicketsDbContex
     {
         await using var ctx = await factory.CreateDbContextAsync(ct);
         var tracked = await ctx.TicketResaleOffers.FirstAsync(o => o.Id == offer.Id, ct);
+        CopyOffer(ctx, tracked, offer);
+        await ctx.SaveChangesAsync(ct);
+    }
+
+    private static void CopyOffer(TicketsDbContext ctx, TicketResaleOffer tracked, TicketResaleOffer offer)
+    {
         // Owned JSON invites carry shadow ordinal keys, so a detached graph cannot be attached with Update().
         ctx.Entry(tracked).CurrentValues.SetValues(offer);
         tracked.Invites = offer.Invites
@@ -246,7 +257,6 @@ internal sealed class TicketCheckoutRepository(IDbContextFactory<TicketsDbContex
                 DeliveryId = i.DeliveryId,
                 DeliveryPending = i.DeliveryPending,
             }).ToList();
-        await ctx.SaveChangesAsync(ct);
     }
 
     public async Task<TicketResaleOffer?> GetOfferAsync(Guid id, CancellationToken ct = default)
@@ -354,6 +364,9 @@ internal sealed class TicketCheckoutRepository(IDbContextFactory<TicketsDbContex
         {
             ticket.HolderName = TicketPiiTombstone.Name;
             ticket.HolderEmail = ticket.HolderEmail is null ? null : TicketPiiTombstone.EmailFor(userId);
+            ticket.VoidRefundId = null;
+            ticket.VoidRefundMinor = null;
+            ticket.VoidRequestedReason = null;
             changed++;
         }
         foreach (var offer in (await ctx.TicketResaleOffers.ToListAsync(ct))

@@ -21,6 +21,8 @@ internal sealed partial class TicketCheckoutService
         var ticket = await repository.GetTicketAsync(ticketId, ct);
         if (ticket is null)
             return new("That ticket does not exist.");
+        if (ticket.VoidRefundId is not null)
+            return new("Complete the pending void before renaming this ticket.");
         if (ticket.State != TicketCheckoutTicketState.Valid || ticket.Kind != TicketHolderKind.Adult)
             return new("Only a valid adult ticket can be renamed.");
 
@@ -100,8 +102,16 @@ internal sealed partial class TicketCheckoutService
             return new("That ticket does not exist.");
         if (!ticket.IsHeld)
             return new($"The ticket is already {ticket.State}.");
-        if (ticket.ParentTicketId is { } parentId && (await repository.GetTicketAsync(parentId, ct))?.State == TicketCheckoutTicketState.Offered)
-            return new("The adult's ticket is in the resale queue and its refund includes this one: withdraw it from the queue first.");
+        if (ticket.ParentTicketId is { } parentId && await repository.GetTicketAsync(parentId, ct) is { } parent)
+        {
+            if (parent.State == TicketCheckoutTicketState.Offered)
+                return new("The adult's ticket is in the resale queue and its refund includes this one: withdraw it from the queue first.");
+            if (parent.VoidRefundId is not null)
+                return new("Complete the pending void of the adult ticket first.");
+        }
+        if ((await repository.GetTicketsForSettingsAsync(ticket.TicketingSettingsId, ct))
+            .Any(t => t.ParentTicketId == ticket.Id && t.VoidRefundId is not null))
+            return new("Complete the pending void of the dependent ticket first.");
 
         var offer = (await repository.GetOffersForSettingsAsync(ticket.TicketingSettingsId, ct))
             .FirstOrDefault(o => o.TicketId == ticket.Id && o.State is TicketResaleOfferState.Open or TicketResaleOfferState.Reserved);
@@ -109,20 +119,45 @@ internal sealed partial class TicketCheckoutService
             return new("A buyer's order is paying for this ticket right now; try again once it settles.");
 
         var why = reason.Trim();
-        // Refund first: a refund the platform turns down leaves the ticket working, so the team can try again.
+        if (ticket.VoidRefundId is not null)
+        {
+            if (ticket.VoidRefundMinor is not { } originalAmount || ticket.VoidRequestedReason is not { } originalReason)
+                return new("The pending void has incomplete details; the ticketing team must review it.");
+            refundMinor = originalAmount;
+            why = originalReason;
+        }
+        // The intent survives a stop after the refund, so a retry cannot request that money twice.
         if (refundMinor > 0)
         {
-            var (refunded, _) = await RefundCoreAsync(ticket.OrderId, refundMinor, $"Ticket {ticket.Barcode} voided: {why}", actorUserId, ct);
+            if (ticket.VoidRefundId is null)
+            {
+                ticket.VoidRefundId = Guid.NewGuid();
+                ticket.VoidRefundMinor = refundMinor;
+                ticket.VoidRequestedReason = why;
+                await repository.UpdateTicketAsync(ticket, ct);
+                await auditLog.LogAsync(TicketsAuditActions.TicketCheckoutVoidRequested, AuditEntityType, ticket.OrderId,
+                    $"Void requested for ticket {ticket.Barcode}, refund {FormatMinor(refundMinor)}: {why}", actorUserId);
+            }
+            var (refunded, _) = await RefundCoreAsync(ticket.OrderId, refundMinor,
+                Truncate($"Ticket {ticket.Barcode} voided: {why}"), actorUserId, ct, ticket.VoidRefundId);
             if (!refunded.Succeeded)
+            {
+                var saved = (await repository.GetRefundsAsync(ticket.OrderId, ct)).FirstOrDefault(r => r.Id == ticket.VoidRefundId);
+                if (saved is null || saved.State == RefundState.Failed)
+                {
+                    ClearVoidIntent(ticket);
+                    await repository.UpdateTicketAsync(ticket, ct);
+                }
                 return new($"{refunded.Refusal} Nothing was voided.");
+            }
         }
 
         var dependents = await VoidWithDependentsAsync(ticket, offer, why, actorUserId,
-            refundMinor > 0 ? $"; {FormatMinor(refundMinor)} refunded" : "; no refund: no money goes back", ct);
+            refundMinor > 0 ? $"; refund of {FormatMinor(refundMinor)} requested" : "; no refund: no money goes back", ct);
         await auditLog.LogAsync(TicketsAuditActions.TicketCheckoutTicketVoided, AuditEntityType, ticket.OrderId,
             $"Ticket {ticket.Barcode} voided" + (dependents > 0 ? $" with {dependents} dependent ticket(s)" : string.Empty) +
             (offer is not null ? ", withdrawing its resale offer" : string.Empty) +
-            (refundMinor > 0 ? $", refunding {FormatMinor(refundMinor)}" : ", with no refund") + $": {why}",
+            (refundMinor > 0 ? $", refund of {FormatMinor(refundMinor)} requested" : ", with no refund") + $": {why}",
             actorUserId, ticket.HolderUserId, ticket.HolderUserId is null ? null : AuditSubjectTypes.User);
         return CheckoutMutationResult.Ok;
     }
@@ -137,7 +172,6 @@ internal sealed partial class TicketCheckoutService
             offer.State = TicketResaleOfferState.Withdrawn;
             offer.WithdrawnAt = now;
             offer.Invites = [];
-            await repository.UpdateOfferAsync(offer, ct);
         }
 
         var dependents = (await repository.GetTicketsForSettingsAsync(ticket.TicketingSettingsId, ct))
@@ -148,13 +182,24 @@ internal sealed partial class TicketCheckoutService
             voided.State = TicketCheckoutTicketState.Void;
             voided.VoidedAt = now;
             voided.VoidReason = voided == ticket ? why : "Voided with the adult's ticket";
-            await repository.UpdateTicketAsync(voided, ct);
+        }
+        ClearVoidIntent(ticket);
+        await repository.UpdateTicketAsync(ticket, ct, dependents, offer);
+        foreach (var voided in dependents.Prepend(ticket))
+        {
             await TimelineAsync(voided.OrderId, TicketCheckoutOrderEventKind.Voided,
                 $"Ticket {voided.Barcode} voided: {voided.VoidReason}" +
                 (voided == ticket ? note + (offer is not null ? "; taken out of the resale queue" : string.Empty) : string.Empty),
                 actorUserId, ct);
         }
         return dependents.Count;
+    }
+
+    private static void ClearVoidIntent(TicketCheckoutTicket ticket)
+    {
+        ticket.VoidRefundId = null;
+        ticket.VoidRefundMinor = null;
+        ticket.VoidRequestedReason = null;
     }
 
     /// <summary>The override for a ticket voided by mistake: it works again, whatever was refunded for it.</summary>
@@ -180,6 +225,7 @@ internal sealed partial class TicketCheckoutService
         ticket.State = TicketCheckoutTicketState.Valid;
         ticket.VoidedAt = null;
         ticket.VoidReason = null;
+        ClearVoidIntent(ticket);
         await repository.UpdateTicketAsync(ticket, ct);
         if (ticket.HolderUserId is { } holderId)
             holdings.InvalidateHoldings(holderId);

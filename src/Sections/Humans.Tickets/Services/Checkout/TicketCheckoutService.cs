@@ -361,6 +361,8 @@ internal sealed partial class TicketCheckoutService(
         }
 
         var stock = await LoadStockAsync(ticketing, now, ct);
+        if (directed is not null && !stock.Offers.Any(o => o.Id == directed.Id))
+            directed = null;
         var queue = stock.ResaleOpen
             ? new Queue<TicketResaleOffer>(stock.Offers
                 .Where(o => o.State == TicketResaleOfferState.Open && o.HolderUserId != buyer.Id && o.Id != directed?.Id)
@@ -824,7 +826,9 @@ internal sealed partial class TicketCheckoutService(
                 && await repository.GetOrderAsync(orderId, ct) is { PlatformOrderId: not null } paidOrder
                 && PlatformFor(paidOrder.PlatformKey) is { } retryPlatform)
                 await CallPlatformRefundAsync(retryPlatform, paidOrder, existing, actorUserId, ct, resend: true);
-            return (CheckoutMutationResult.Ok, existing.Id);
+            return (existing.State == RefundState.Failed
+                ? new CheckoutMutationResult($"The ticketing platform declined the refund: {existing.FailureReason}")
+                : CheckoutMutationResult.Ok, existing.Id);
         }
 
         if (string.IsNullOrWhiteSpace(reason) || reason.Length > 500)
@@ -1013,6 +1017,8 @@ internal sealed partial class TicketCheckoutService(
                 IssuedAt = t.IssuedAt.ToIso8601(),
                 VoidedAt = t.VoidedAt.ToIso8601(),
                 t.VoidReason,
+                PendingVoidRefund = t.VoidRefundMinor is { } amount ? FormatMinor(amount) : null,
+                t.VoidRequestedReason,
             }).ToList()),
             new UserDataSlice(OffersSlice, offers.Select(o => new
             {
@@ -1275,7 +1281,8 @@ internal sealed partial class TicketCheckoutService(
                 .ToList());
         var admitted = await gateAdmissions.GetAdmittedAsync(offeredCodes.Values.SelectMany(c => c).ToList(), ct);
         return new Stock(sold + pending, resaleOpen,
-            offers.Where(o => !(offeredCodes.TryGetValue(o.TicketId, out var codes) && codes.Any(admitted.Contains))).ToList());
+            offers.Where(o => !tickets.Any(t => (t.Id == o.TicketId || t.ParentTicketId == o.TicketId) && t.VoidRefundId is not null))
+                .Where(o => !(offeredCodes.TryGetValue(o.TicketId, out var codes) && codes.Any(admitted.Contains))).ToList());
     }
 
     private static TicketCheckoutOrderLine TicketLine(

@@ -280,6 +280,16 @@ namespace Humans.Tickets.Data.Migrations
                         .HasMaxLength(500)
                         .HasColumnType("character varying(500)");
 
+                    b.Property<Guid?>("VoidRefundId")
+                        .HasColumnType("uuid");
+
+                    b.Property<long?>("VoidRefundMinor")
+                        .HasColumnType("bigint");
+
+                    b.Property<string>("VoidRequestedReason")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
                     b.Property<Instant?>("VoidedAt")
                         .HasColumnType("timestamp with time zone");
 

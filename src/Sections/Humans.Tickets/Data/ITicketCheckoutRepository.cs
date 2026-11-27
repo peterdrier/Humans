@@ -53,7 +53,9 @@ internal interface ITicketCheckoutRepository : IRepository
     /// </summary>
     Task<bool> TryClaimPaidAsync(Guid orderId, Instant paidAt, CancellationToken ct = default);
 
-    Task UpdateTicketAsync(TicketCheckoutTicket ticket, CancellationToken ct = default);
+    /// <summary>Saves the ticket, optional dependents and resale offer in one commit.</summary>
+    Task UpdateTicketAsync(TicketCheckoutTicket ticket, CancellationToken ct = default,
+        IReadOnlyList<TicketCheckoutTicket>? dependents = null, TicketResaleOffer? offer = null);
 
     Task<TicketCheckoutTicket?> GetTicketAsync(Guid id, CancellationToken ct = default);
 

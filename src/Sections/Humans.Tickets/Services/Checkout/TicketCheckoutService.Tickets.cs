@@ -99,7 +99,7 @@ internal sealed partial class TicketCheckoutService
         var ticket = await repository.GetTicketAsync(ticketId, ct);
         if (ticket is null || ticket.HolderUserId != userId)
             return new("Tickets_Resale_NotFound");
-        if (ticket.State != TicketCheckoutTicketState.Valid || ticket.Kind != TicketHolderKind.Adult)
+        if (ticket.State != TicketCheckoutTicketState.Valid || ticket.Kind != TicketHolderKind.Adult || ticket.VoidRefundId is not null)
             return new("Tickets_Resale_NotOfferable");
         var ticketing = await repository.GetTicketingSettingsAsync(ticket.TicketingSettingsId, ct);
         if (ticketing is null || ticketing.Mode is TicketSalesMode.Closed or TicketSalesMode.InvitedOnly
@@ -114,7 +114,7 @@ internal sealed partial class TicketCheckoutService
         var dependents = (await repository.GetTicketsForSettingsAsync(ticket.TicketingSettingsId, ct))
             .Where(t => t.ParentTicketId == ticket.Id && t.State == TicketCheckoutTicketState.Valid)
             .ToList();
-        if (await IsAdmittedAsync(ticket, ct))
+        if (dependents.Any(t => t.VoidRefundId is not null) || await IsAdmittedAsync(ticket, ct))
             return new("Tickets_Resale_NotOfferable");
         var now = clock.GetCurrentInstant();
         var offer = new TicketResaleOffer
@@ -254,7 +254,7 @@ internal sealed partial class TicketCheckoutService
         Guid ticketId, Guid userId, CancellationToken ct)
     {
         var ticket = await repository.GetTicketAsync(ticketId, ct);
-        if (ticket is null || ticket.HolderUserId != userId || ticket.State != TicketCheckoutTicketState.Offered)
+        if (ticket is null || ticket.HolderUserId != userId || ticket.State != TicketCheckoutTicketState.Offered || ticket.VoidRefundId is not null)
             return (null, null);
         var offer = (await repository.GetOffersForSettingsAsync(ticket.TicketingSettingsId, ct))
             .FirstOrDefault(o => o.TicketId == ticket.Id && o.State is TicketResaleOfferState.Open or TicketResaleOfferState.Reserved);

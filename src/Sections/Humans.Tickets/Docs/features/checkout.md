@@ -273,6 +273,11 @@ page, reached from its order, with the three exceptions: rename (full price adul
 with no refund, said plainly), and a free companion ticket. The resale queue marks a reserved offer Stuck once its
 buyer's order closed or expired, and the team can take an open offer out for its holder.
 
+A void with a refund saves its original amount, reason and refund identity before the external call. Retrying an interrupted
+void resumes those details without issuing a second refund; the form shows the saved values. Rename and resale wait
+while the intent is unfinished. Ticket, valid dependents and offer withdrawal save together. A declined refund clears
+the intent and leaves the tickets usable; a pending refund remains recorded for reconciliation.
+
 Overrides (Admin only) repair what the rules miss: restore a voided ticket, move a class priced
 ticket, a companion past capacity. Each needs a reason and is audited `TicketOverride`.
 
