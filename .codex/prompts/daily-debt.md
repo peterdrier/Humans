@@ -27,7 +27,7 @@ branch, objective and deadline; never restart the clock or pause/clear the goal.
 Native continuation may carry unfinished work across turns; only complete the
 goal once the current batch is committed and all helpers have finished.
 
-The default window is 4 hours, at most 12. The weekly quota allowance grows by
+The default window is at most 12 hours. The weekly quota allowance grows by
 12 percentage points per day elapsed since the account's weekly reset, with the
 next day's allowance available upfront:
 `minimum remaining = max(16, 100 - 12 * (elapsed_days + 1))`. The cutoff is fixed

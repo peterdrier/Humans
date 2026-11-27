@@ -1,9 +1,9 @@
 ---
 name: Nightly debt runs stop when drained, or at time or quota boundaries
-description: "Nightly debt runs: 4-hour default window, stop early once the ledger and the ladder's Finds are drained, weekly quota checked between rounds, model routing."
+description: "Nightly debt runs: 12-hour window, stop early once the ledger and the ladder's Finds are drained, weekly quota checked between rounds, model routing."
 ---
 
-Work in validated, committed rounds for 4 hours by default (at most 12), finishing the active
+Work in validated, committed rounds for at most 12 hours, finishing the active
 batch afterward. When no ledger row is actionable and the ladder's Finds return nothing
 workable, stop early with the report line `Stop: ledger drained`: the wrapper then publishes what
 is committed (or exits cleanly with nothing), and that is a success, not a reason to hunt for
