@@ -451,6 +451,52 @@ public sealed partial class TicketCheckoutServiceTests
             .Refusal.Should().BeNull();
     }
 
+    [HumansTheory]
+    [InlineData(false, false)]
+    [InlineData(false, true)]
+    [InlineData(true, false)]
+    [InlineData(true, true)]
+    public async Task StartCheckoutAsync_LocalRecordingFails_RetainsReservation(bool failSave, bool resale)
+    {
+        TicketCheckoutTicket? old = resale ? await OfferedTicketAsync() : null;
+        if (!resale)
+            _ticketing.Capacity = 1;
+        var writes = _repo.OrderWrites.Count;
+        if (failSave)
+            _repo.FailOrderWrites = 1;
+        else
+            _repo.RejectEventKind = TicketCheckoutOrderEventKind.CheckoutOpened;
+        var start = () => _service.StartCheckoutAsync(Buy(), resale ? _otherBuyerId : _buyerId, Ct);
+
+        await start.Should().ThrowAsync<InvalidOperationException>()
+            .WithMessage(failSave ? "Order write failed" : "Timeline write failed");
+
+        var order = _repo.Orders.Last();
+        order.State.Should().Be(TicketCheckoutOrderState.Pending);
+        order.PlatformOrderId.Should().NotBeNull();
+        order.PaymentUrl.Should().NotBeNull();
+        _repo.OrderWrites.Should().HaveCount(writes + 1);
+        await _platform.Received(resale ? 2 : 1).CreateOrderAsync(Arg.Any<PlatformOrderRequest>(), Arg.Any<CancellationToken>());
+        _repo.Events.Should().NotContain(e => e.Kind == TicketCheckoutOrderEventKind.PlatformRefused);
+        if (resale)
+        {
+            _repo.Offers.Single().State.Should().Be(TicketResaleOfferState.Reserved);
+            _repo.Offers.Single().ReservedByOrderId.Should().Be(order.Id);
+        }
+        else
+            (await _service.StartCheckoutAsync(Buy(), _otherBuyerId, Ct)).Refusal.Should().Be("Tickets_Buy_SoldOut");
+        _repo.RejectEventKind = null;
+        _platform.GetStatusAsync(order.PlatformOrderId!, Arg.Any<CancellationToken>())
+            .Returns(new PlatformOrderStatus(PlatformOrderState.Paid, 0, "card", Now));
+
+        await _service.PlatformOrderChangedAsync("test", order.PlatformOrderId!, Ct);
+
+        order.State.Should().Be(TicketCheckoutOrderState.Paid);
+        _repo.Tickets.Should().ContainSingle(t => t.OrderId == order.Id);
+        if (old is not null)
+            old.State.Should().Be(TicketCheckoutTicketState.Resold);
+    }
+
     [HumansFact]
     public async Task Platform_failure_marks_the_order_failed_so_it_holds_no_capacity()
     {
@@ -4115,11 +4161,17 @@ public sealed partial class TicketCheckoutServiceTests
         public List<(Guid OrderId, string? PaymentMethod)> OrderWrites { get; } = [];
 
         public bool RejectOrderWrites { get; set; }
+        public int FailOrderWrites { get; set; }
 
         public Task UpdateOrderAsync(TicketCheckoutOrder order, CancellationToken ct = default, TicketCheckoutTicket? ticket = null)
         {
             if (RejectOrderWrites)
                 throw new InvalidOperationException("Order write failed");
+            if (FailOrderWrites > 0)
+            {
+                FailOrderWrites--;
+                throw new InvalidOperationException("Order write failed");
+            }
             if (ticket is not null && RejectTicketWrites.Contains(ticket.Id))
                 throw new InvalidOperationException("Ticket write failed");
             OrderWrites.Add((order.Id, order.PaymentMethod));

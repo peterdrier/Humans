@@ -449,6 +449,7 @@ internal sealed partial class TicketCheckoutService(
         }
 
         var platform = PlatformFor(order.PlatformKey)!;
+        var sessionSaved = false;
         try
         {
             var session = await platform.CreateOrderAsync(new PlatformOrderRequest(
@@ -469,12 +470,25 @@ internal sealed partial class TicketCheckoutService(
             order.State = TicketCheckoutOrderState.Pending;
             order.UpdatedAt = clock.GetCurrentInstant();
             await repository.UpdateOrderAsync(order, ct);
+            sessionSaved = true;
             await TimelineAsync(order.Id, TicketCheckoutOrderEventKind.CheckoutOpened,
                 $"{order.PlatformKey} opened platform order {session.PlatformOrderId}", null, ct);
             return new StartCheckoutResult(order.Id, session.PaymentUrl, null);
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
+            if (order.PlatformOrderId is not null)
+            {
+                logger.LogError(ex, "Recording checkout {OrderId} failed after {Platform} accepted order {PlatformOrderId}; its reservation stays held",
+                    order.Id, order.PlatformKey, order.PlatformOrderId);
+                if (!sessionSaved)
+                {
+                    order.State = TicketCheckoutOrderState.Pending;
+                    order.UpdatedAt = clock.GetCurrentInstant();
+                    await repository.UpdateOrderAsync(order, ct);
+                }
+                throw;
+            }
             logger.LogError(ex, "Ticketing platform {Platform} refused order {OrderId}", order.PlatformKey, order.Id);
             order.State = TicketCheckoutOrderState.Failed;
             order.UpdatedAt = clock.GetCurrentInstant();
