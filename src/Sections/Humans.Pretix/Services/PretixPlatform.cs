@@ -728,8 +728,11 @@ internal sealed partial class PretixPlatform(
             RefundState.ManualRequired, refund.LocalId.ToString(CultureInfo.InvariantCulture), null, manualUrl),
         "created" or "transit" or "external" => new RefundResult(
             RefundState.Pending, refund.LocalId.ToString(CultureInfo.InvariantCulture), null),
-        _ => new RefundResult(
+        "failed" or "canceled" => new RefundResult(
             RefundState.Failed, refund.LocalId.ToString(CultureInfo.InvariantCulture), $"pretix refund {refund.State}"),
+        _ => new RefundResult(
+            RefundState.Pending, refund.LocalId.ToString(CultureInfo.InvariantCulture),
+            $"Unknown pretix refund state '{refund.State ?? "(missing)"}'."),
     };
 
     /// <summary>pretix's 400 for a provider that cannot refund this amount itself; every other 400 is a decline.</summary>

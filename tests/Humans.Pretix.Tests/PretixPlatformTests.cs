@@ -664,6 +664,42 @@ public class PretixPlatformTests
         pretix.BodiesFor("POST", $"{OrderPath}payments/1/refund/").Should().HaveCount(recorded ? 0 : 2);
     }
 
+    [HumansTheory]
+    [InlineData(false, "unrecognized")]
+    [InlineData(true, "unrecognized")]
+    [InlineData(false, null)]
+    [InlineData(true, null)]
+    public async Task RefundAsync_UnknownState_RetainsHold(bool recorded, string? state)
+    {
+        var refundId = Guid.NewGuid();
+        var remote = new
+        {
+            local_id = 3,
+            state,
+            amount = "225.00",
+            payment = 1,
+            comment = $"humans-refund:{refundId} Resold",
+            provider = "stripe",
+        };
+        var pretix = recorded
+            ? EurEvent().On("GET", OrderPath, HttpStatusCode.OK, Order(Code, status: "p", total: 775m,
+                fees: [RefundFee(refundId)],
+                payments: [new { local_id = 1, state = "confirmed", amount = "1000.00", provider = "stripe" }],
+                refunds: [remote]))
+            : RefundablePretix(refundId).On("POST", $"{OrderPath}payments/1/refund/", HttpStatusCode.OK, remote);
+
+        var result = await Create(pretix).RefundAsync(
+            new RefundRequest(refundId, $"nowhere2027/{Code}", 22500, "Resold"), TestContext.Current.CancellationToken);
+
+        result.State.Should().Be(RefundState.Pending);
+        result.PlatformRefundId.Should().Be("3");
+        result.FailureReason.Should().Contain(state ?? "(missing)");
+        var changes = pretix.BodiesFor("POST", $"{OrderPath}change/").Select(body => JsonNode.Parse(body!)!).ToList();
+        changes.Should().HaveCount(recorded ? 0 : 1);
+        changes.Should().OnlyContain(body => body["cancel_fees"] == null);
+        pretix.BodiesFor("POST", $"{OrderPath}payments/1/refund/").Should().HaveCount(recorded ? 0 : 1);
+    }
+
     [HumansFact]
     public async Task Refund_PretixRefusesTheCall_FailsAndRestoresTheTotal()
     {
