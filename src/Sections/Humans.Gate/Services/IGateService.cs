@@ -39,8 +39,6 @@ internal interface IGateService : IApplicationService
     /// <summary>Authorized at the controller.</summary>
     Task SaveSettingsAsync(GateSettingsDto settings, CancellationToken ct = default);
 
-    Task<int> PurgeScansBeforeAsync(Instant cutoff, CancellationToken ct = default);
-
     /// <summary>Local admits against the vendor's check-in status as of the last ticket sync.</summary>
     Task<GateVendorBackfillSnapshot> GetVendorCheckInBackfillAsync(CancellationToken ct = default);
 
