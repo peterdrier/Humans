@@ -1,0 +1,27 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="-2 -2 244 244" role="img" aria-label="Vitruvian Man">
+  <g fill="none" stroke="#c9a96e" stroke-width="2.4">
+    <circle cx="120" cy="120" r="120"/>
+    <rect x="23" y="46" width="194" height="194"/>
+  </g>
+  <g fill="#c9a96e" stroke="#3d2b1f" stroke-width="1.4" stroke-linejoin="round">
+    <circle cx="120" cy="58" r="12"/>
+    <path d="M115 68 H125 V78 H115 Z"/>
+    <path d="M100 78 L140 78 L144 120 L138 144 L102 144 L96 120 Z"/>
+    <path d="M100 80 L24 92 L24 98 L100 94 Z"/>
+    <path d="M140 80 L216 92 L216 98 L140 94 Z"/>
+    <path d="M100 80 L84 50 L64 22 L70 20 L92 46 L106 76 Z"/>
+    <path d="M140 80 L156 50 L176 22 L170 20 L148 46 L134 76 Z"/>
+    <path d="M104 142 L120 142 L118 236 L104 236 Z"/>
+    <path d="M136 142 L120 142 L122 236 L136 236 Z"/>
+    <path d="M104 142 L84 200 L72 230 L80 234 L100 200 L110 150 Z"/>
+    <path d="M136 142 L156 200 L168 230 L160 234 L140 200 L130 150 Z"/>
+  </g>
+  <g fill="none" stroke="#3d2b1f" stroke-width="1" stroke-linecap="round">
+    <path d="M114 52 Q120 55 126 52"/>
+    <path d="M110 92 Q120 98 130 92"/>
+    <path d="M118 120 V126 M122 120 V126" />
+    <path d="M120 84 V108"/>
+    <path d="M24 92 L100 94 M140 94 L216 92"/>
+    <path d="M118 150 V228"/>
+  </g>
+</svg>
