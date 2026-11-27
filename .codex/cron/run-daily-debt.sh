@@ -145,7 +145,7 @@ main() {
   REPO_URL="${REPO_URL:-}"                                    # git remote to clone/push, e.g. git@github.com:peterdrier/Humans.git
   WORK_DIR="${WORK_DIR:-$HOME/.humans-debt-runner/clone}"      # DEDICATED clone. Never Peter's working checkout.
   # Per-run time/quota overrides take precedence over the saved environment file.
-  TIME_BUDGET="${requested_time_budget:-${TIME_BUDGET:-12h}}"
+  TIME_BUDGET="${requested_time_budget:-${TIME_BUDGET:-4h}}"
   IGNORE_QUOTA_CUTOFF="${requested_quota_override:-${IGNORE_QUOTA_CUTOFF:-0}}"
   export IGNORE_QUOTA_CUTOFF
   # Pinned rather than left to inherit the interactive `codex` config, so

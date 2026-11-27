@@ -1,10 +1,12 @@
 ---
-name: Nightly debt runs stop at time or quota boundaries
-description: "Nightly debt work selects the latest origin/main runner per run, uses Sol with optional Luna helpers, requires discovery before batching simple corrections and reasons for splits, checks cumulative weekly quota between committed rounds, and reports cleanup/repair/subagent spend."
+name: Nightly debt runs stop when drained, or at time or quota boundaries
+description: "Nightly debt runs: 4-hour default window, stop early once the ledger and the ladder's Finds are drained, weekly quota checked between rounds, model routing."
 ---
 
-Work in validated, committed rounds for at most 12 hours, finishing the active
-batch afterward. The wrapper checks live weekly quota before the first round
+Work in validated, committed rounds for 4 hours by default (at most 12), finishing the active
+batch afterward. When no ledger row is actionable and the ladder's Finds return nothing
+workable, stop early and report "ledger drained": that is a success, not a reason to hunt for
+other work. The wrapper checks live weekly quota before the first round
 and after each completed round. Stop new work if remaining quota falls below
 `max(16, 100 - 12 * (elapsed_days_since_weekly_reset + 1))` (the next day's
 allowance is available upfront; the cutoff is fixed per run and renewed on weekly

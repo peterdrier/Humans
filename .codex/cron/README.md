@@ -8,8 +8,8 @@ fail without publishing. Scheduler: systemd user timer (the only one shipped her
 A separate Claude cloud routine currently runs at 08:00 UTC using
 [`/debt-review`](../../docs/maintenance/debt-review/README.md): per-commit keep/repair/revert,
 bot findings, follow-up issues, then stewards the PR inline (3-round ceiling).
-The nightly timer starts at 00:00 UTC, so a full 12-hour run can publish after
-that review slot. Review scheduling is separate from this systemd timer.
+The nightly timer starts at 00:00 UTC, so a default 4-hour run publishes before
+that review slot; a manual 12-hour run can publish after it. Review scheduling is separate from this systemd timer.
 
 Both nightly runs and manual trials exclude `Humans.Integration.Tests`, using
 the same `FullyQualifiedName!~Humans.Integration.Tests` filter as CI. The runner
@@ -37,14 +37,13 @@ individual scrutiny. The cumulative report lists items and split reasons.
 
 ## Work window and completion
 
-`TIME_BUDGET` defaults to `12h` and cannot exceed 12 hours. The worker finishes
+`TIME_BUDGET` defaults to `4h` and cannot exceed 12 hours. The worker finishes
 its active batch afterward; final build/test and publication may extend past it.
 The service pins only the quota guard; `TIME_BUDGET` in `debt-runner.env`
-remains effective for scheduled runs. Set it to `12h` for the full window, or
-choose a shorter duration.
+remains effective for scheduled runs.
 
-There is no fix-count target. Work existing ledger rows before searching for new
-debt. One branch and PR contain all completed substantive fixes.
+There is no fix-count target. Work existing ledger rows, then the ladder's Finds;
+when both are drained the run stops early and that is a success. One branch and PR contain all completed substantive fixes.
 
 Before starting work and after each validated, committed round, the runner reads
 live quota through `account/rateLimits/read`. It selects the `codex` bucket's

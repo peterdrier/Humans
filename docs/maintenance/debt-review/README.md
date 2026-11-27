@@ -1,8 +1,8 @@
 # Debt review — validate the nightly Codex PR
 
 The Codex runner (`.codex/cron/run-daily-debt.sh`) opens one PR a night on
-`codex/daily-debt/<YYYY-MM-DD>`, ~25 commits, built and tested but never reviewed.
-Green is not good: this skill decides which commits are worth keeping, repairs or
+`codex/daily-debt/<YYYY-MM-DD>`, built and tested but never reviewed.
+Green is not good, and correct is not enough: this skill decides which commits are worth keeping, repairs or
 reverts the rest, deals with the bot findings, and gets the PR mergeable for Peter.
 Peter merges. Never merge, never force-push, never rewrite the branch's history.
 
@@ -45,8 +45,17 @@ commit shas, their PR-body lines, and this brief:
 > actually fixed; no other section's tables; no new public surface without a defensible
 > reason; user-facing strings in all supported cultures with section-prefixed keys; invariant
 > doc updated for behaviour changes; tests not weakened; no dead code left behind
-> (orphaned constants, unused overloads); not bookkeeping dressed as a fix. Default to
-> GOOD for a plain, correct change — style is not a defect. Return a table
+> (orphaned constants, unused overloads); not bookkeeping dressed as a fix.
+> Then ask whether it was **worth making**. REVERT, even when correct:
+> - a guard for a state nothing in the app produces, or a re-check of what the base
+>   controller already refuses ([`no-invented-validation`](../../../memory/code/no-invented-validation.md));
+> - code that keeps something working despite a malformed admin setting;
+> - tests that only pin wiring, such as cancelling a read to prove the token reaches it
+>   ([`cancellation-token-propagation`](../../../memory/architecture/cancellation-token-propagation.md));
+> - a commit that closes no ledger row and answers no rung's Finds, unless it fixes a bug
+>   a member or admin could actually hit (say how).
+> A commit that closes a ledger row, plainly and correctly, is GOOD; style is not a
+> defect. Return a table
 > `sha | claim | verdict | reason (≤20 words) | repair (if REPAIR)` and nothing else.
 
 **Production readings — verify, never trust.** For every commit that retires a data
