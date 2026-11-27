@@ -1,0 +1,28 @@
+@model TaskRowsModel
+
+@* The wg-* CSS classes belong to the gallery page this renders inside. *@
+
+<div class="wg-card">
+    <div class="wg-card-header">
+        <div>
+            <span class="wg-card-name">_TaskRows</span>
+            <span class="wg-card-kind kind-pa">Partial</span>
+        </div>
+        <span class="wg-card-path">src/Sections/Humans.Tasks/Views/Tasks/_TaskRows.cshtml</span>
+    </div>
+    <div class="wg-card-note">
+        The tasks of a list as card rows: title, tags (priority, status, understaffed, waiting, needs approval, hidden), slot dots, due date, team and the viewer's claim control. Left edge coloured by priority. Used by <code>/Tasks</code>, a team's tasks page, <code>/Tasks/Open</code> and the tasks card on the team page. Rows come ordered by <code>TaskRowOrder</code>: priority, due date, title.
+    </div>
+    <dl class="wg-params">
+        <dt>Tasks</dt><dd><code>IReadOnlyList&lt;TaskInfo&gt;</code> — already filtered and ordered</dd>
+        <dt>ShowTeam / ShowStatus</dt><dd><code>bool</code> — team link on lists spanning teams; status always, or only when not to do</dd>
+        <dt>Places / Blockers</dt><dd>the viewer's claim place per task; the blocker title per waiting task (null when hidden from the viewer)</dd>
+        <dt>ReturnUrl / Empty / Flush</dt><dd>where a claim returns to; the empty-state text; edge-to-edge inside a card</dd>
+    </dl>
+    <div class="wg-variants">
+        <div class="wg-variant-label">sample rows<span class="wg-variant-sub">critical and understaffed, waiting, needs approval</span></div>
+        <div class="wg-variant-render" style="display:block;">
+            <partial name="~/Views/Tasks/_TaskRows.cshtml" model="Model" />
+        </div>
+    </div>
+</div>

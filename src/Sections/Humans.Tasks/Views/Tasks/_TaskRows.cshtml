@@ -1,0 +1,110 @@
+@* The tasks of a list as rows: title, what to know about it, who is on it, and the viewer's claim. Lists, and the card on a team page, share it. *@
+@model TaskRowsModel
+
+@if (Model.Tasks.Count == 0)
+{
+    <empty-state>@Model.Empty</empty-state>
+}
+else
+{
+    <ul class="list-group task-list @(Model.Flush ? "list-group-flush" : null)">
+        @foreach (var item in Model.Tasks)
+        {
+            var edge = item.Priority switch
+            {
+                SlotPriority.Critical => "critical",
+                SlotPriority.Important => "important",
+                SlotPriority.NiceToHave => "nice",
+                _ => "none"
+            };
+            var filled = Math.Min(item.ConfirmedCount, item.SlotCount);
+            var understaffed = item.Priority == SlotPriority.Critical && !item.IsFinished && item.OpenSlots > 0;
+            <li class="list-group-item task-row task-row--@edge">
+                <div class="d-flex flex-wrap align-items-center gap-3">
+                    <div class="flex-grow-1 task-row-main">
+                        <a href="@Url.Action("Details", "Tasks", new { id = item.Id })" class="fw-semibold">@item.Title</a>
+                        <div class="d-flex flex-wrap align-items-center gap-2 mt-1">
+                            @if (item.Priority != SlotPriority.None)
+                            {
+                                <status-badge value="@item.Priority" />
+                            }
+                            @if (Model.ShowStatus || item.Status != TaskItemStatus.Todo)
+                            {
+                                <status-badge value="@item.Status" localizer="@Localizer" />
+                            }
+                            @if (understaffed)
+                            {
+                                <span class="badge rounded-pill bg-danger"><i class="fa-solid fa-triangle-exclamation" aria-hidden="true"></i> @Localizer["Tasks_Row_Understaffed"]</span>
+                            }
+                            @if (item.IsWaiting)
+                            {
+                                <span class="badge rounded-pill bg-warning text-dark"><i class="fa-solid fa-hourglass-half" aria-hidden="true"></i>
+                                    @if (Model.Blockers.GetValueOrDefault(item.Id) is { } blocker)
+                                    {
+                                        @Localizer["Tasks_Row_WaitingOnTask", blocker]
+                                    }
+                                    else
+                                    {
+                                        @Localizer["Tasks_Row_WaitingOnHidden"]
+                                    }
+                                </span>
+                            }
+                            @if (item.NeedsApproval)
+                            {
+                                <span class="badge rounded-pill bg-light text-dark border"><i class="fa-solid fa-user-check" aria-hidden="true"></i> @Localizer["Tasks_Open_NeedsApproval"]</span>
+                                @if (!string.IsNullOrWhiteSpace(item.ApprovalReason))
+                                {
+                                    <span class="text-muted small">@item.ApprovalReason</span>
+                                }
+                            }
+                            @if (item.IsEffectivelyHidden)
+                            {
+                                <span class="badge rounded-pill bg-light text-dark border"><i class="fa-solid fa-eye-slash" aria-hidden="true"></i> @Localizer["Tasks_Hidden"]</span>
+                            }
+                        </div>
+                        <div class="d-flex flex-wrap align-items-center gap-3 mt-1 small text-muted">
+                            @if (Model.ShowTeam && item.TeamName.Length > 0)
+                            {
+                                <span><i class="fa-solid fa-people-group" aria-hidden="true"></i>
+                                    @if (item.TeamSlug.Length > 0)
+                                    {
+                                        <a href="@Url.Action("Team", "Tasks", new { slug = item.TeamSlug })" class="text-muted">@item.TeamName</a>
+                                    }
+                                    else
+                                    {
+                                        @item.TeamName
+                                    }
+                                </span>
+                            }
+                            <span class="text-nowrap">
+                                @if (item.SlotCount <= 8)
+                                {
+                                    <span class="task-dots" aria-hidden="true">
+                                        @for (var i = 0; i < item.SlotCount; i++)
+                                        {
+                                            <i class="@(i < filled ? "fa-solid" : "fa-regular") fa-circle"></i>
+                                        }
+                                    </span>
+                                }
+                                @Localizer["Tasks_Task_SlotsOf", item.ConfirmedCount, item.SlotCount]@if (item.OpenSlots > 0 && !item.IsFinished)
+                                {
+                                    <text> · @Localizer["Tasks_Row_Needs", item.OpenSlots]</text>
+                                }
+                            </span>
+                            @if (item.Due?.Resolved is { } due)
+                            {
+                                <span class="text-nowrap"><i class="fa-regular fa-calendar" aria-hidden="true"></i> @due.ToDate()</span>
+                            }
+                        </div>
+                    </div>
+                    @if (Model.Places.TryGetValue(item.Id, out var place))
+                    {
+                        <div class="task-row-claim">
+                            <partial name="~/Views/Tasks/_ClaimButton.cshtml" model="new ClaimButtonModel(item, Model.ReturnUrl, Small: true, Primary: false, place)" />
+                        </div>
+                    }
+                </div>
+            </li>
+        }
+    </ul>
+}
