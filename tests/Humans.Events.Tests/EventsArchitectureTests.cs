@@ -105,7 +105,7 @@ public class EventsArchitectureTests
     }
 
     [HumansFact]
-    public void CachingEventService_Has_InnerServiceKey_Const()
+    public void CachingEventService_InnerServiceKey_IsConst()
     {
         var field = typeof(CachingEventService).GetField(
             "InnerServiceKey",
@@ -149,7 +149,7 @@ public class EventsArchitectureTests
     /// <see cref="IEventManagement"/> and <see cref="IEventService"/> resolve to one singleton from the production <c>Section.Register</c>, not a test-built mirror of it.
     /// </summary>
     [HumansFact]
-    public void IEventManagement_And_IEventService_ResolveToSameInstance()
+    public void EventInterfaces_Resolved_AreSameInstance()
     {
         var services = Registrations();
         services.AddLogging();

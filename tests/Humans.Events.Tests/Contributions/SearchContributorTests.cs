@@ -15,7 +15,7 @@ public sealed class SearchContributorTests
     private readonly IEventService _events = Substitute.For<IEventService>();
 
     [HumansFact]
-    public async Task Category_SearchesWithAnUnboundedCap_AndPassesKeySortKeyAndScoreThrough()
+    public async Task Category_Search_UsesUnboundedCap()
     {
         var id = Guid.NewGuid();
         _events.SearchAsync("Kitchen", int.MaxValue, Arg.Any<CancellationToken>())

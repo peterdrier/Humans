@@ -30,7 +30,7 @@ public sealed class EventOccurrenceExpanderTests
         Array.Empty<(Guid, int?)>().ToLookup(f => f.Item1, f => f.Item2);
 
     [HumansFact]
-    public void NonRecurringEvent_NoGateDate_YieldsSingleOccurrenceWithZeroDayOffset()
+    public void NonRecurringEvent_NoGateDate_YieldsSingleOccurrence()
     {
         var startAt = Instant.FromUtc(2026, 7, 8, 10, 0);
         var e = Approved(startAt, isRecurring: false);
@@ -45,7 +45,7 @@ public sealed class EventOccurrenceExpanderTests
     }
 
     [HumansFact]
-    public void RecurringEvent_ExpandsToOneItemPerMatchingDay_WithGateRelativeDayOffsets()
+    public void RecurringEvent_MatchingDays_ExpandOnePerDay()
     {
         var startAt = new LocalDateTime(2026, 7, 12, 18, 30).InZoneStrictly(Tz).ToInstant();
         var e = Approved(startAt, isRecurring: true, recurrenceDays: "2,3");
@@ -73,7 +73,7 @@ public sealed class EventOccurrenceExpanderTests
     }
 
     [HumansFact]
-    public void NonRecurringEvent_FavouriteDayOffsetIsAlwaysNull_EvenWithGateDateAndTimeZone()
+    public void NonRecurringEvent_FavouriteDayOffset_IsNull()
     {
         var startAt = new LocalDateTime(2026, 7, 8, 10, 0).InZoneStrictly(Tz).ToInstant();
         var e = Approved(startAt, isRecurring: false);
@@ -92,7 +92,7 @@ public sealed class EventOccurrenceExpanderTests
     [Xunit.InlineData(true, "0,1", false, true)]
     [Xunit.InlineData(true, "0,1", true, false)]
     [Xunit.InlineData(false, null, true, true)]
-    public void UnexpandedEvent_UsesWholeEventTargetAndRecognizesExistingDayFavourite(
+    public void UnexpandedEvent_ExistingDayFavourite_IsRecognized(
         bool isRecurring, string? recurrenceDays, bool hasGateDate, bool hasTimeZone)
     {
         var startAt = new LocalDateTime(2026, 7, 12, 18, 30).InZoneStrictly(Tz).ToInstant();

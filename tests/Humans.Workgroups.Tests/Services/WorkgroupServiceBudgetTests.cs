@@ -130,7 +130,7 @@ public sealed class WorkgroupServiceBudgetTests : WorkgroupsTestHarness
     }
 
     [HumansFact]
-    public async Task SetBudget_FirstTime_CreatesTheAccountNamedAfterTheGroup()
+    public async Task SetBudget_FirstTime_CreatesGroupNamedAccount()
     {
         var workgroup = await SeedWorkgroupAsync(name: "ALM 2027");
         var secretary = SeedUser("Secretary");

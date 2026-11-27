@@ -42,7 +42,7 @@ public sealed class WorkgroupDriveAccessSourceTests : WorkgroupsTestHarness
     }
 
     [HumansFact]
-    public async Task Claims_CarryTheGroupNameSoMembersNeverSeeARawFolderId()
+    public async Task Claims_Folder_CarryGroupName()
     {
         await SeedWorkgroupAsync(name: "Finance 2026", driveFolderId: "folder-1");
 

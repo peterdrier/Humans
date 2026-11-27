@@ -17,7 +17,7 @@ public sealed class WorkgroupsEmailsTests
     private static readonly EmailPreviewPersona Persona = new("en", "Sally Smith", "sally@example.com");
 
     [HumansFact]
-    public void WorkgroupNotice_EveryKindEveryCulture_RendersNonEmptyContentWithNoRawKeyLeak()
+    public void WorkgroupNotice_EveryKindEveryCulture_RendersContent()
     {
         var emails = TestWorkgroupsEmails.CreateReal();
 
@@ -46,7 +46,7 @@ public sealed class WorkgroupsEmailsTests
     }
 
     [HumansFact]
-    public void WorkgroupNotice_DetailLine_AppearsWhenSuppliedAndBodyIsWellFormedWhenNull()
+    public void WorkgroupNotice_DetailSupplied_ShowsDetailLine()
     {
         var emails = TestWorkgroupsEmails.CreateReal();
 
@@ -90,7 +90,7 @@ public sealed class WorkgroupsEmailsTests
     }
 
     [HumansFact]
-    public void WorkgroupNotice_NameWithAnAmpersand_StaysRawInTheSubjectAndEncodedInTheBody()
+    public void WorkgroupNotice_AmpersandInName_IsEncodedInBody()
     {
         var msg = TestWorkgroupsEmails.CreateReal().WorkgroupNotice(new WorkgroupNoticeRequest(
             Guid.NewGuid(),
@@ -103,7 +103,7 @@ public sealed class WorkgroupsEmailsTests
     }
 
     [HumansFact]
-    public void WorkgroupNotice_StampsGovernanceAndRecipient()
+    public void WorkgroupNotice_Built_IsStampedForGovernance()
     {
         var msg = TestWorkgroupsEmails.Create().WorkgroupNotice(new WorkgroupNoticeRequest(
             Guid.NewGuid(),
@@ -151,7 +151,7 @@ public sealed class WorkgroupsEmailsTests
     }
 
     [HumansFact]
-    public void EveryTemplateHasAPreviewSample()
+    public void Templates_EachHasPreviewSample()
     {
         var emails = TestWorkgroupsEmails.Create();
         var templates = TemplateNames(emails);
@@ -167,7 +167,7 @@ public sealed class WorkgroupsEmailsTests
     }
 
     [HumansFact]
-    public void PreviewSampleIdsAreUnique()
+    public void PreviewSampleIds_AreUnique()
     {
         var samples = new WorkgroupsEmailPreviews(TestWorkgroupsEmails.Create()).Samples(Persona);
 
@@ -176,7 +176,7 @@ public sealed class WorkgroupsEmailsTests
 
     /// <summary>
     /// Every template the builder can produce, found by reflection rather than listed, so a
-    /// notice kind added without a gallery sample fails <see cref="EveryTemplateHasAPreviewSample"/>.
+    /// notice kind added without a gallery sample fails <see cref="Templates_EachHasPreviewSample"/>.
     /// </summary>
     private static IReadOnlyList<string> TemplateNames(WorkgroupsEmails emails) =>
     [
