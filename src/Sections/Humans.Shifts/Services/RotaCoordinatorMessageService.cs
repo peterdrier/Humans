@@ -1,5 +1,5 @@
-using Humans.Base.Extensions;
 using Humans.AuditLog.Contracts;
+using Humans.Base.Extensions;
 using Humans.Email.Contracts;
 using Humans.Shifts.Contracts;
 using Humans.Teams.Contracts;
@@ -76,7 +76,7 @@ internal sealed class RotaCoordinatorMessageService(
         await AuditDispatchAsync(
             ShiftsAuditActions.CoordinatorRotaMessageSent,
             nameof(Rota), rota.Id,
-            $"Requested rota message '{Truncate(messageText, 120)}' for {summary.Requested} recipient(s) on '{rota.Name}'"
+            $"Requested rota message '{messageText.Truncate(121, "…")}' for {summary.Requested} recipient(s) on '{rota.Name}'"
                 + summary.AuditSuffix,
             senderUserId, summary.Requested);
 
@@ -133,7 +133,7 @@ internal sealed class RotaCoordinatorMessageService(
             ShiftsAuditActions.CoordinatorTeamRotasMessageSent,
             // Persisted literal: memory/code/type-name-as-persisted-string.md.
             "Team", teamId,
-            $"Requested team-wide rota message '{Truncate(messageText, 120)}' for {summary.Requested} recipient(s) "
+            $"Requested team-wide rota message '{messageText.Truncate(121, "…")}' for {summary.Requested} recipient(s) "
                 + $"across {groups.Count} rota(s) in '{team.Name}'"
                 + summary.AuditSuffix,
             senderUserId, summary.Requested);
@@ -349,14 +349,6 @@ internal sealed class RotaCoordinatorMessageService(
         return new DispatchSummary(requested, notFound, deleted, noEmail, failed);
     }
 
-    private static string Truncate(string text, int max)
-    {
-        if (text.Length <= max) return text;
-        var length = max;
-        if (char.IsHighSurrogate(text[length - 1]) && char.IsLowSurrogate(text[length]))
-            length--;
-        return text[..length] + "…";
-    }
 
     private sealed record RotaSignupGroup(
         Guid RotaId,

@@ -26,9 +26,7 @@ public sealed class HoldedPublicReadsTests
 
     public HoldedPublicReadsTests()
     {
-        var options = new DbContextOptionsBuilder<HoldedDbContext>()
-            .UseInMemoryDatabase(Guid.NewGuid().ToString())
-            .Options;
+        var options = TestDbOptions.InMemory<HoldedDbContext>();
         _repo = new Repository(new TestDbContextFactory<HoldedDbContext>(options));
         var callLog = Substitute.For<IHoldedCallLog>();
         callLog.DrainAll().Returns([]);

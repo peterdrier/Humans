@@ -120,7 +120,7 @@ internal sealed class StripeMirrorService(
         {
             state.SyncStatus = status;
             state.StatusChangedAt = clock.GetCurrentInstant();
-            state.LastError = message is null ? null : StripeMirrorClient.Clip(message, 2000);
+            state.LastError = message?.Truncate(2000);
             await repo.SaveSyncStateAsync(state, CancellationToken.None);
         }
         catch (Exception ex)

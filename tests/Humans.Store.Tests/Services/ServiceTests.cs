@@ -2640,8 +2640,7 @@ public class ServiceTests
     public async Task Concurrent_completed_and_settlement_preserve_one_terminal_payment(bool terminalReadsFirst, bool succeeded)
     {
         var ct = TestContext.Current.CancellationToken;
-        var options = new DbContextOptionsBuilder<StoreDbContext>()
-            .UseInMemoryDatabase(Guid.NewGuid().ToString()).Options;
+        var options = TestDbOptions.InMemory<StoreDbContext>();
         await using var db = new StoreDbContext(options);
         var real = new Repository(new TestDbContextFactory<StoreDbContext>(options));
         var intercepted = Substitute.For<IStoreRepository>();

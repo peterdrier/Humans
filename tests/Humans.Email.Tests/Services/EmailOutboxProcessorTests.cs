@@ -40,9 +40,7 @@ public class EmailOutboxProcessorTests : IDisposable
 
     public EmailOutboxProcessorTests()
     {
-        _options = new DbContextOptionsBuilder<EmailDbContext>()
-            .UseInMemoryDatabase(Guid.NewGuid().ToString())
-            .Options;
+        _options = TestDbOptions.InMemory<EmailDbContext>();
 
         _dbContext = new EmailDbContext(_options);
         _transport = Substitute.For<IEmailTransport>();

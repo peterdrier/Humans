@@ -13,9 +13,7 @@ public sealed class RepositoryTests : IDisposable
 
     public RepositoryTests()
     {
-        var options = new DbContextOptionsBuilder<SettingsDbContext>()
-            .UseInMemoryDatabase(Guid.NewGuid().ToString())
-            .Options;
+        var options = TestDbOptions.InMemory<SettingsDbContext>();
 
         var factory = new TestDbContextFactory<SettingsDbContext>(options);
         _seedContext = factory.CreateDbContext();

@@ -1,3 +1,4 @@
+using Humans.Base.Data;
 using Humans.Gate.Domain;
 using Microsoft.EntityFrameworkCore;
 using NodaTime;
@@ -5,30 +6,24 @@ using Npgsql;
 
 namespace Humans.Gate.Data;
 
-internal sealed class GateRepository(IDbContextFactory<GateDbContext> factory) : IGateRepository
+internal sealed class GateRepository(IDbContextFactory<GateDbContext> factory) : SectionRepository<GateDbContext>(factory), IGateRepository
 {
-    public async Task<GateScanEvent?> GetAdmitForBarcodeAsync(string admitDedupeKey, CancellationToken ct = default)
-    {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
-        return await ctx.Set<GateScanEvent>()
+    public async Task<GateScanEvent?> GetAdmitForBarcodeAsync(string admitDedupeKey, CancellationToken ct = default) =>
+        await RunAsync(ctx => ctx.Set<GateScanEvent>()
             .AsNoTracking()
-            .FirstOrDefaultAsync(e => e.AdmitDedupeKey == admitDedupeKey, ct);
-    }
+            .FirstOrDefaultAsync(e => e.AdmitDedupeKey == admitDedupeKey, ct), ct);
 
     public async Task<IReadOnlyList<string>> GetAdmittedKeysAsync(
-        IReadOnlyCollection<string> admitDedupeKeys, CancellationToken ct = default)
-    {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
-        return await ctx.Set<GateScanEvent>()
+        IReadOnlyCollection<string> admitDedupeKeys, CancellationToken ct = default) =>
+        await RunAsync(ctx => ctx.Set<GateScanEvent>()
             .AsNoTracking()
             .Where(e => e.AdmitDedupeKey != null && admitDedupeKeys.Contains(e.AdmitDedupeKey))
             .Select(e => e.AdmitDedupeKey!)
-            .ToListAsync(ct);
-    }
+            .ToListAsync(ct), ct);
 
     public async Task<GateRecordOutcome> RecordScanAsync(GateScanEvent scan, CancellationToken ct = default)
     {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
+        await using var ctx = await CreateDbContextAsync(ct);
 
         // The pre-check is the only dedupe the in-memory test provider exercises; the unique index is the atomic
         // backstop for a concurrent cross-lane race (caught below).
@@ -53,7 +48,7 @@ internal sealed class GateRepository(IDbContextFactory<GateDbContext> factory) :
     public async Task<GateScanEvent?> UndoAdmitAsync(
         Guid scanId, Instant undoneAt, Guid undoneByUserId, string reason, CancellationToken ct = default)
     {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
+        await using var ctx = await CreateDbContextAsync(ct);
         var row = await ctx.Set<GateScanEvent>().FirstOrDefaultAsync(e => e.Id == scanId, ct);
         if (row is not { IsLiveAdmit: true })
             return null;
@@ -66,27 +61,21 @@ internal sealed class GateRepository(IDbContextFactory<GateDbContext> factory) :
         return row;
     }
 
-    public async Task<IReadOnlyList<GateScanEvent>> GetScansSinceAsync(Instant since, CancellationToken ct = default)
-    {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
-        return await ctx.Set<GateScanEvent>()
+    public async Task<IReadOnlyList<GateScanEvent>> GetScansSinceAsync(Instant since, CancellationToken ct = default) =>
+        await RunAsync(ctx => ctx.Set<GateScanEvent>()
             .AsNoTracking()
             .Where(e => e.OccurredAt >= since)
-            .ToListAsync(ct);
-    }
+            .ToListAsync(ct), ct);
 
-    public async Task<IReadOnlyList<GateScanEvent>> GetScansForUserAsync(Guid userId, CancellationToken ct = default)
-    {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
-        return await ctx.Set<GateScanEvent>()
+    public async Task<IReadOnlyList<GateScanEvent>> GetScansForUserAsync(Guid userId, CancellationToken ct = default) =>
+        await RunAsync(ctx => ctx.Set<GateScanEvent>()
             .AsNoTracking()
             .Where(e => e.GuestUserId == userId || e.ScannedByUserId == userId || e.UndoneByUserId == userId)
-            .ToListAsync(ct);
-    }
+            .ToListAsync(ct), ct);
 
     public async Task<int> EraseUserFromScansAsync(Guid userId, CancellationToken ct = default)
     {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
+        await using var ctx = await CreateDbContextAsync(ct);
 
         // Load-modify-save, not ExecuteUpdate, so it runs under the in-memory test provider.
         var rows = await ctx.Set<GateScanEvent>()
@@ -103,7 +92,7 @@ internal sealed class GateRepository(IDbContextFactory<GateDbContext> factory) :
 
     public async Task ReassignUserAsync(Guid fromUserId, Guid toUserId, CancellationToken ct = default)
     {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
+        await using var ctx = await CreateDbContextAsync(ct);
         // Load-modify-save, not ExecuteUpdate, so it runs under the in-memory test provider. Idempotent on re-run.
         var rows = await ctx.Set<GateScanEvent>()
             .Where(e => e.GuestUserId == fromUserId || e.ScannedByUserId == fromUserId
@@ -130,7 +119,7 @@ internal sealed class GateRepository(IDbContextFactory<GateDbContext> factory) :
 
     public async Task<int> PurgeScansBeforeAsync(Instant cutoff, CancellationToken ct = default)
     {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
+        await using var ctx = await CreateDbContextAsync(ct);
         var old = await ctx.Set<GateScanEvent>()
             .Where(e => e.OccurredAt < cutoff)
             .ToListAsync(ct);
@@ -144,14 +133,14 @@ internal sealed class GateRepository(IDbContextFactory<GateDbContext> factory) :
 
     public async Task<GateSettings> GetSettingsAsync(CancellationToken ct = default)
     {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
+        await using var ctx = await CreateDbContextAsync(ct);
         var row = await ctx.Set<GateSettings>().AsNoTracking().FirstOrDefaultAsync(s => s.Id == 1, ct);
         return row ?? new GateSettings { Id = 1 };
     }
 
     public async Task SaveSettingsAsync(GateSettings settings, CancellationToken ct = default)
     {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
+        await using var ctx = await CreateDbContextAsync(ct);
         var existing = await ctx.Set<GateSettings>().FirstOrDefaultAsync(s => s.Id == 1, ct);
         if (existing is null)
         {

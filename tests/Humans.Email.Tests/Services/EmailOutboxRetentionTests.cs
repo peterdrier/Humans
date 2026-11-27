@@ -25,9 +25,7 @@ public class EmailOutboxRetentionTests : IDisposable
 
     public EmailOutboxRetentionTests()
     {
-        var options = new DbContextOptionsBuilder<EmailDbContext>()
-            .UseInMemoryDatabase(Guid.NewGuid().ToString())
-            .Options;
+        var options = TestDbOptions.InMemory<EmailDbContext>();
 
         _dbContext = new EmailDbContext(options);
         var settings = Options.Create(new EmailSettings { OutboxRetentionDays = 150 });

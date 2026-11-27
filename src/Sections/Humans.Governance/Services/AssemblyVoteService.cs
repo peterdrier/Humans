@@ -1006,17 +1006,8 @@ internal sealed class AssemblyVoteService(
     /// title validation existed, where it would otherwise throw after the vote opened.
     /// </summary>
     private string EmailTitle(AssemblyVote vote, string language) =>
-        Truncate(vote.Title.Resolve(language, vote.OfficialCulture), MaxTitleLength);
+        vote.Title.Resolve(language, vote.OfficialCulture).Truncate(MaxTitleLength, "…");
 
-    /// <summary>Trims to <paramref name="max"/> characters, ellipsis included in the count.</summary>
-    private static string Truncate(string text, int max)
-    {
-        if (text.Length <= max) return text;
-        var length = max - 1;
-        if (char.IsHighSurrogate(text[length - 1]) && char.IsLowSurrogate(text[length]))
-            length--;
-        return string.Concat(text.AsSpan(0, length), "\u2026");
-    }
 
     internal async Task NotifyRosterCancelledAsync(AssemblyVote vote, CancellationToken ct)
     {

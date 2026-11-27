@@ -1,3 +1,4 @@
+using Humans.Base.Data;
 using Humans.Email.Contracts;
 using Humans.Email.Domain;
 using Microsoft.EntityFrameworkCore;
@@ -5,20 +6,14 @@ using Microsoft.EntityFrameworkCore;
 namespace Humans.Email.Data;
 
 internal sealed class CommunicationPreferenceRepository(IDbContextFactory<EmailDbContext> factory)
-    : ICommunicationPreferenceRepository
+    : SectionRepository<EmailDbContext>(factory), ICommunicationPreferenceRepository
 {
-    public async Task<IReadOnlyList<CommunicationPreference>> GetByUserIdAsync(Guid userId, CancellationToken ct = default)
-    {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
-        return await ctx.CommunicationPreferences.AsNoTracking().Where(cp => cp.UserId == userId).ToListAsync(ct);
-    }
+    public async Task<IReadOnlyList<CommunicationPreference>> GetByUserIdAsync(Guid userId, CancellationToken ct = default) =>
+        await RunAsync(ctx => ctx.CommunicationPreferences.AsNoTracking().Where(cp => cp.UserId == userId).ToListAsync(ct), ct);
 
     public async Task<IReadOnlyList<CommunicationPreference>> GetByCategoryAsync(
-        MessageCategory category, CancellationToken ct = default)
-    {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
-        return await ctx.CommunicationPreferences.AsNoTracking().Where(cp => cp.Category == category).ToListAsync(ct);
-    }
+        MessageCategory category, CancellationToken ct = default) =>
+        await RunAsync(ctx => ctx.CommunicationPreferences.AsNoTracking().Where(cp => cp.Category == category).ToListAsync(ct), ct);
 
     public async Task<IReadOnlyList<CommunicationPreference>> GetForUsersAsync(
         IReadOnlyList<Guid> userIds, MessageCategory category, CancellationToken ct = default)
@@ -26,7 +21,7 @@ internal sealed class CommunicationPreferenceRepository(IDbContextFactory<EmailD
         if (userIds.Count == 0)
             return [];
 
-        await using var ctx = await factory.CreateDbContextAsync(ct);
+        await using var ctx = await CreateDbContextAsync(ct);
         return await ctx.CommunicationPreferences.AsNoTracking()
             .Where(cp => userIds.Contains(cp.UserId) && cp.Category == category)
             .ToListAsync(ct);
@@ -34,7 +29,7 @@ internal sealed class CommunicationPreferenceRepository(IDbContextFactory<EmailD
 
     public async Task UpsertAsync(CommunicationPreference row, CancellationToken ct = default)
     {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
+        await using var ctx = await CreateDbContextAsync(ct);
         var existing = await ctx.CommunicationPreferences
             .FirstOrDefaultAsync(cp => cp.UserId == row.UserId && cp.Category == row.Category, ct);
         if (existing is null)
@@ -46,7 +41,7 @@ internal sealed class CommunicationPreferenceRepository(IDbContextFactory<EmailD
 
     public async Task<bool> DeleteAsync(Guid userId, MessageCategory category, CancellationToken ct = default)
     {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
+        await using var ctx = await CreateDbContextAsync(ct);
         var existing = await ctx.CommunicationPreferences
             .FirstOrDefaultAsync(cp => cp.UserId == userId && cp.Category == category, ct);
         if (existing is null)
@@ -60,7 +55,7 @@ internal sealed class CommunicationPreferenceRepository(IDbContextFactory<EmailD
     public async Task ReplaceForUsersAsync(
         IReadOnlyList<(Guid UserId, IReadOnlyList<CommunicationPreference> Rows)> users, CancellationToken ct = default)
     {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
+        await using var ctx = await CreateDbContextAsync(ct);
         foreach (var (userId, rows) in users)
         {
             var existing = (await ctx.CommunicationPreferences.Where(cp => cp.UserId == userId).ToListAsync(ct))
@@ -79,7 +74,7 @@ internal sealed class CommunicationPreferenceRepository(IDbContextFactory<EmailD
 
     public async Task<int> DeleteAllForUserAsync(Guid userId, CancellationToken ct = default)
     {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
+        await using var ctx = await CreateDbContextAsync(ct);
         var rows = await ctx.CommunicationPreferences.Where(cp => cp.UserId == userId).ToListAsync(ct);
         ctx.CommunicationPreferences.RemoveRange(rows);
         await ctx.SaveChangesAsync(ct);

@@ -27,10 +27,7 @@ public abstract class CityPlanningTestBase : IDisposable
 
     private protected CityPlanningTestBase(Instant? now = null)
     {
-        var dbOptions = new DbContextOptionsBuilder<CityPlanningDbContext>()
-            .UseInMemoryDatabase(Guid.NewGuid().ToString())
-            .ConfigureWarnings(w => w.Ignore(InMemoryEventId.TransactionIgnoredWarning))
-            .Options;
+        var dbOptions = TestDbOptions.InMemory<CityPlanningDbContext>();
 
         CityPlanningDb = new CityPlanningDbContext(dbOptions);
         CityPlanningDbFactory = new TestDbContextFactory<CityPlanningDbContext>(dbOptions);

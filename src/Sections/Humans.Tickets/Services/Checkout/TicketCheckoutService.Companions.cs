@@ -1,3 +1,4 @@
+using Humans.Base.Extensions;
 using Humans.AuditLog.Contracts;
 using Humans.Tickets.Domain.Checkout;
 

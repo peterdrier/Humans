@@ -1,3 +1,4 @@
+using Humans.Base.Extensions;
 using Humans.Pleo.Contracts;
 using System.Globalization;
 using System.Net;
@@ -250,7 +251,7 @@ internal sealed class PleoClient : IPleoClient
             if (status >= 500 || resp.StatusCode == HttpStatusCode.TooManyRequests)
                 throw new PleoTransientException(label);
             var body = await resp.Content.ReadAsStringAsync(ct);
-            throw new PleoPermanentException($"{label}: {PleoTextBounds.Bound(body, 300)}", status);
+            throw new PleoPermanentException($"{label}: {body.Truncate(300)}", status);
         }
     }
 }

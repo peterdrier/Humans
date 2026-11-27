@@ -475,7 +475,7 @@ internal sealed partial class TicketCheckoutService(
             order.State = TicketCheckoutOrderState.Failed;
             order.UpdatedAt = clock.GetCurrentInstant();
             await repository.UpdateOrderAsync(order, ct);
-            await TimelineAsync(order.Id, TicketCheckoutOrderEventKind.PlatformRefused, Truncate(ex.Message), null, ct);
+            await TimelineAsync(order.Id, TicketCheckoutOrderEventKind.PlatformRefused, ex.Message.Truncate(MaxReasonLength), null, ct);
             await ReleaseOffersAsync(order, ct);
             return StartCheckoutResult.Refused("Tickets_Buy_PlatformFailed");
         }
@@ -767,7 +767,7 @@ internal sealed partial class TicketCheckoutService(
             else if (own is { State: RefundState.Failed })
             {
                 refund.State = RefundState.Failed;
-                refund.FailureReason = Truncate(own.FailureReason ?? $"{order.PlatformKey} reports the refund failed");
+                refund.FailureReason = (own.FailureReason ?? $"{order.PlatformKey} reports the refund failed").Truncate(MaxReasonLength);
             }
             else
             {
@@ -848,7 +848,7 @@ internal sealed partial class TicketCheckoutService(
         // Saved first, so a crash after the platform call still counts against what can be refunded.
         await repository.AddRefundAsync(refund, ct);
         await TimelineAsync(order.Id, TicketCheckoutOrderEventKind.RefundRequested,
-            $"Refund of {FormatMinor(amountMinor)} {order.Currency} requested: {Truncate(refund.Reason)}", actorUserId, ct);
+            $"Refund of {FormatMinor(amountMinor)} {order.Currency} requested: {refund.Reason.Truncate(MaxReasonLength)}", actorUserId, ct);
 
         var result = await CallPlatformRefundAsync(platform, order, refund, actorUserId, ct);
         return (result.State == RefundState.Failed
@@ -891,7 +891,7 @@ internal sealed partial class TicketCheckoutService(
         await repository.UpdateRefundAsync(refund, ct);
         await TimelineAsync(order.Id, TicketCheckoutOrderEventKind.RefundSettled,
             $"{order.PlatformKey} answered {result.State}" + (result.PlatformRefundId is { } refundRef ? $" ({refundRef})" : string.Empty) +
-            (result.FailureReason is { } failure ? $": {Truncate(failure)}" : string.Empty), null, ct);
+            (result.FailureReason is { } failure ? $": {failure.Truncate(MaxReasonLength)}" : string.Empty), null, ct);
 
         var description = $"Refund of {FormatMinor(amountMinor)} {order.Currency} through {order.PlatformKey}: {result.State}" +
             (result.FailureReason is { } why ? $" ({why})" : string.Empty) + $". Reason: {refund.Reason}";
@@ -1123,18 +1123,10 @@ internal sealed partial class TicketCheckoutService(
             OrderId = orderId,
             At = clock.GetCurrentInstant(),
             Kind = kind,
-            Detail = Truncate(detail, 2000),
+            Detail = detail.Truncate(2000),
             ActorUserId = actorUserId,
         }, ct);
 
-    private static string Truncate(string text, int max = 500)
-    {
-        if (text.Length <= max) return text;
-        var length = max;
-        if (char.IsHighSurrogate(text[length - 1]) && char.IsLowSurrogate(text[length]))
-            length--;
-        return text[..length];
-    }
 
     private void MarkPaid(TicketCheckoutOrder order, long? feeMinor, string? method, Instant paidAt)
     {

@@ -15,9 +15,7 @@ public sealed class SurveyRepositoryTests : IDisposable
 
     public SurveyRepositoryTests()
     {
-        var options = new DbContextOptionsBuilder<SurveysDbContext>()
-            .UseInMemoryDatabase(Guid.NewGuid().ToString())
-            .Options;
+        var options = TestDbOptions.InMemory<SurveysDbContext>();
         _db = new SurveysDbContext(options);
         _repository = new SurveyRepository(new TestDbContextFactory<SurveysDbContext>(options));
     }

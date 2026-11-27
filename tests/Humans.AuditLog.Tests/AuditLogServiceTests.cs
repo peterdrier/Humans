@@ -29,9 +29,7 @@ public class AuditLogServiceTests : IDisposable
 
     public AuditLogServiceTests()
     {
-        var options = new DbContextOptionsBuilder<AuditLogDbContext>()
-            .UseInMemoryDatabase(Guid.NewGuid().ToString())
-            .Options;
+        var options = TestDbOptions.InMemory<AuditLogDbContext>();
 
         _dbContext = new AuditLogDbContext(options);
         _clock = new FakeClock(Instant.FromUtc(2026, 3, 1, 12, 0));

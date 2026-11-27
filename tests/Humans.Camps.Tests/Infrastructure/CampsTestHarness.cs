@@ -24,14 +24,9 @@ public abstract class CampsTestHarness : IDisposable
 
     private protected DbContextOptions<UsersDbContext> DbOptions { get; }
     private protected UsersDbContext Db { get; }
+    private readonly SectionTestDbs _dbs = new();
 
-    // Section contexts are separate in-memory stores: a test seeding across two saves each.
-    // Every pair is built on first touch: eager construction gave each test its own EF
-    // service provider, which pushed a 5s-budget test past its CI timeout.
-
-    private readonly List<Func<DbContext?>> _sectionContextProbes = [];
-
-    private readonly Lazy<SectionDb<CampsDbContext>> _campsDb;
+    private readonly Lazy<SectionTestDb<CampsDbContext>> _campsDb;
     private protected CampsDbContext CampsDb => _campsDb.Value.Context;
     private protected TestDbContextFactory<CampsDbContext> CampsDbFactory => _campsDb.Value.Factory;
 
@@ -46,67 +41,19 @@ public abstract class CampsTestHarness : IDisposable
 
     protected CampsTestHarness(Instant? now = null)
     {
-        DbOptions = new DbContextOptionsBuilder<UsersDbContext>()
-            .UseInMemoryDatabase(Guid.NewGuid().ToString())
-            .ConfigureWarnings(w => w.Ignore(InMemoryEventId.TransactionIgnoredWarning))
-            .Options;
+        DbOptions = TestDbOptions.InMemory<UsersDbContext>();
         Db = new UsersDbContext(DbOptions);
+        _dbs.Track(Db);
 
-
-        _campsDb = RegisterSection<CampsDbContext>(o => new(o));
+        _campsDb = _dbs.Add<CampsDbContext>(o => new(o));
         Clock = new FakeClock(now ?? Instant.FromUtc(2026, 3, 1, 12, 0));
     }
-
-    /// <summary>A peeled section's in-memory context and the factory over the same store.</summary>
-    private sealed record SectionDb<TContext>(TContext Context, TestDbContextFactory<TContext> Factory)
-        where TContext : DbContext;
-
-    /// <summary>
-    /// Declares a peeled-section context without building it. The options, the
-    /// context and the factory are all created the first time a test reads the
-    /// corresponding property; until then the section costs nothing.
-    /// </summary>
-    private Lazy<SectionDb<TContext>> RegisterSection<TContext>(Func<DbContextOptions<TContext>, TContext> create)
-        where TContext : DbContext
-    {
-        var lazy = new Lazy<SectionDb<TContext>>(() =>
-        {
-            var options = NewSectionDbOptions<TContext>();
-            return new SectionDb<TContext>(create(options), new TestDbContextFactory<TContext>(options));
-        });
-
-        _sectionContextProbes.Add(() => lazy.IsValueCreated ? lazy.Value.Context : null);
-        return lazy;
-    }
-
-    /// <summary>The section contexts this test actually touched, in declaration order.</summary>
-    private IEnumerable<DbContext> CreatedSectionContexts() =>
-        _sectionContextProbes.Select(probe => probe()).OfType<DbContext>();
-
-    /// <summary>
-    /// In-memory options for a per-section DbContext. Pair with
-    /// <c>new TestDbContextFactory&lt;TContext&gt;(options)</c> for the repository under
-    /// test and construct a context directly from the options for seeding.
-    /// </summary>
-    private protected static DbContextOptions<TContext> NewSectionDbOptions<TContext>()
-        where TContext : DbContext =>
-        new DbContextOptionsBuilder<TContext>()
-            .UseInMemoryDatabase(Guid.NewGuid().ToString())
-            .ConfigureWarnings(w => w.Ignore(InMemoryEventId.TransactionIgnoredWarning))
-            .Options;
 
     /// <summary>
     /// Flushes <see cref="Db"/> and every touched section context, so a test seeding across
     /// several need not track which context each row landed in.
     /// </summary>
-    private protected async Task SaveAllAsync(CancellationToken ct = default)
-    {
-        await Db.SaveChangesAsync(ct);
-        foreach (var sectionDb in CreatedSectionContexts())
-        {
-            await sectionDb.SaveChangesAsync(ct);
-        }
-    }
+    private protected Task SaveAllAsync(CancellationToken ct = default) => _dbs.SaveAllAsync(ct);
 
     /// <summary>
     /// Clears the change tracker on <see cref="Db"/> and every peeled-section
@@ -115,33 +62,15 @@ public abstract class CampsTestHarness : IDisposable
     /// left tracked — the entity lives in whichever context owns its
     /// section, so clearing only <see cref="Db"/> silently returns stale state.
     /// </summary>
-    private protected void ClearAllTrackers()
-    {
-        Db.ChangeTracker.Clear();
-        foreach (var sectionDb in CreatedSectionContexts())
-        {
-            sectionDb.ChangeTracker.Clear();
-        }
-    }
+    private protected void ClearAllTrackers() => _dbs.ClearTrackers();
 
     /// <summary>Synchronous <see cref="SaveAllAsync"/>.</summary>
-    private protected void SaveAll()
-    {
-        Db.SaveChanges();
-        foreach (var sectionDb in CreatedSectionContexts())
-        {
-            sectionDb.SaveChanges();
-        }
-    }
+    private protected void SaveAll() => _dbs.SaveAll();
 
     public virtual void Dispose()
     {
         Cache.Dispose();
-        Db.Dispose();
-        foreach (var sectionDb in CreatedSectionContexts())
-        {
-            sectionDb.Dispose();
-        }
+        _dbs.Dispose();
         GC.SuppressFinalize(this);
     }
 
@@ -152,7 +81,7 @@ public abstract class CampsTestHarness : IDisposable
 
         svc.StubGetUserInfoFromContext(Db);
         svc.StubGetUserInfosFromDb(DbOptions);
-        svc.StubGetAllUserInfosFromDb(DbOptions);
+        svc.StubAllUserInfosFromDb(DbOptions);
 
         return svc;
     }
@@ -175,9 +104,5 @@ public abstract class CampsTestHarness : IDisposable
     }
 
     protected User SeedUser(string displayName) => SeedUser(null, displayName);
-
-
-
-
 
 }

@@ -45,8 +45,8 @@ internal sealed class GoogleSyncLogService(
             Role = role,
             Source = source,
             Success = success,
-            ErrorMessage = errorMessage is null ? null : StoredGoogleText.Bound(errorMessage, 4000),
-            Description = StoredGoogleText.Bound($"{jobName}: {description}", 4000),
+            ErrorMessage = errorMessage?.Truncate(4000),
+            Description = $"{jobName}: {description}".Truncate(4000),
             JobName = jobName,
             OccurredAt = clock.GetCurrentInstant()
         };

@@ -1,5 +1,6 @@
 using Serilog.Core;
 using Serilog.Events;
+using Humans.Base.Extensions;
 
 namespace Humans.Base.Logging;
 
@@ -92,12 +93,6 @@ public sealed class PiiRedactionEnricher : ILogEventEnricher
                propertyName.Contains("secret", StringComparison.OrdinalIgnoreCase);
     }
 
-    private static string RetainedPrefix(string value, int length)
-    {
-        if (length < value.Length && char.IsHighSurrogate(value[length - 1]) && char.IsLowSurrogate(value[length]))
-            length--;
-        return value[..length];
-    }
 
     private static object RedactValue(string propertyName, LogEventPropertyValue original)
     {
@@ -119,7 +114,7 @@ public sealed class PiiRedactionEnricher : ILogEventEnricher
             {
                 var plusIndex = stringValue.IndexOf('+', 0, atIndex);
                 var end = plusIndex > 0 ? plusIndex : atIndex;
-                return $"{RetainedPrefix(stringValue, Math.Min(2, end))}***{stringValue[end..]}";
+                return $"{stringValue.Truncate(Math.Min(2, end))}***{stringValue[end..]}";
             }
         }
 
@@ -134,6 +129,6 @@ public sealed class PiiRedactionEnricher : ILogEventEnricher
         if (stringValue.Length <= 2)
             return stringValue;
 
-        return $"{RetainedPrefix(stringValue, 2)}***";
+        return $"{stringValue.Truncate(2)}***";
     }
 }

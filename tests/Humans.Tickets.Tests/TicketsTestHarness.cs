@@ -23,10 +23,7 @@ public abstract class TicketsTestHarness : IDisposable
 
     protected TicketsTestHarness(Instant? now = null)
     {
-        var options = new DbContextOptionsBuilder<TicketsDbContext>()
-            .UseInMemoryDatabase(Guid.NewGuid().ToString())
-            .ConfigureWarnings(w => w.Ignore(InMemoryEventId.TransactionIgnoredWarning))
-            .Options;
+        var options = TestDbOptions.InMemory<TicketsDbContext>();
         TicketsDb = new TicketsDbContext(options);
         TicketsDbFactory = new TestDbContextFactory<TicketsDbContext>(options);
         Clock = new FakeClock(now ?? Instant.FromUtc(2026, 3, 1, 12, 0));

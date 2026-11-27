@@ -1,3 +1,4 @@
+using Humans.Base.Data;
 using Humans.Preapprovals.Contracts;
 using Humans.Preapprovals.Domain;
 using Microsoft.EntityFrameworkCore;
@@ -5,60 +6,44 @@ using NodaTime;
 
 namespace Humans.Preapprovals.Data;
 
-internal sealed class PreapprovalRepository(IDbContextFactory<PreapprovalsDbContext> factory) : IPreapprovalRepository
+internal sealed class PreapprovalRepository(IDbContextFactory<PreapprovalsDbContext> factory) : SectionRepository<PreapprovalsDbContext>(factory), IPreapprovalRepository
 {
-    public async Task<IReadOnlyList<PreapprovalProgram>> GetProgramsAsync(CancellationToken ct = default)
-    {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
-        return await ProgramsWithChildren(ctx).ToListAsync(ct);
-    }
+    public async Task<IReadOnlyList<PreapprovalProgram>> GetProgramsAsync(CancellationToken ct = default) =>
+        await RunAsync(ctx => ProgramsWithChildren(ctx).ToListAsync(ct), ct);
 
-    public async Task<PreapprovalProgram?> GetProgramAsync(Guid id, CancellationToken ct = default)
-    {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
-        return await ProgramsWithChildren(ctx).FirstOrDefaultAsync(p => p.Id == id, ct);
-    }
+    public async Task<PreapprovalProgram?> GetProgramAsync(Guid id, CancellationToken ct = default) =>
+        await RunAsync(ctx => ProgramsWithChildren(ctx).FirstOrDefaultAsync(p => p.Id == id, ct), ct);
 
-    public async Task<PreapprovalGrant?> GetGrantAsync(Guid id, CancellationToken ct = default)
-    {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
-        return await ctx.Grants.AsNoTrackingWithIdentityResolution()
+    public async Task<PreapprovalGrant?> GetGrantAsync(Guid id, CancellationToken ct = default) =>
+        await RunAsync(ctx => ctx.Grants.AsNoTrackingWithIdentityResolution()
             .Include(g => g.Program).ThenInclude(p => p.Managers)
-            .FirstOrDefaultAsync(g => g.Id == id, ct);
-    }
+            .FirstOrDefaultAsync(g => g.Id == id, ct), ct);
 
     public async Task<IReadOnlyList<PreapprovalGrant>> GetGrantsForUsersAsync(
         IReadOnlyCollection<Guid> userIds, CancellationToken ct = default)
     {
         if (userIds.Count == 0) return [];
-        await using var ctx = await factory.CreateDbContextAsync(ct);
+        await using var ctx = await CreateDbContextAsync(ct);
         return await ctx.Grants.AsNoTracking()
             .Include(g => g.Program)
             .Where(g => userIds.Contains(g.BeneficiaryUserId))
             .ToListAsync(ct);
     }
 
-    public async Task<IReadOnlyList<PreapprovalGrant>> GetGrantsByStatusAsync(GrantStatus status, CancellationToken ct = default)
-    {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
-        return await ctx.Grants.AsNoTracking()
+    public async Task<IReadOnlyList<PreapprovalGrant>> GetGrantsByStatusAsync(GrantStatus status, CancellationToken ct = default) =>
+        await RunAsync(ctx => ctx.Grants.AsNoTracking()
             .Include(g => g.Program)
             .Where(g => g.Status == status)
-            .ToListAsync(ct);
-    }
+            .ToListAsync(ct), ct);
 
-    public async Task AddProgramAsync(PreapprovalProgram program, CancellationToken ct = default)
-    {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
-        ctx.Programs.Add(program);
-        await ctx.SaveChangesAsync(ct);
-    }
+    public async Task AddProgramAsync(PreapprovalProgram program, CancellationToken ct = default) =>
+        await InsertAsync(program, ct);
 
     public async Task UpdateProgramAsync(
         PreapprovalProgram program, IReadOnlyList<ProgramManager> toAdd, IReadOnlyList<Guid> toRemove,
         CancellationToken ct = default)
     {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
+        await using var ctx = await CreateDbContextAsync(ct);
         // Apply scalar fields and explicit manager deltas without attaching the detached grant graph.
         var tracked = await ctx.Programs.FirstAsync(p => p.Id == program.Id, ct);
         ctx.Entry(tracked).CurrentValues.SetValues(program);
@@ -82,7 +67,7 @@ internal sealed class PreapprovalRepository(IDbContextFactory<PreapprovalsDbCont
 
     public async Task AddGrantsAsync(IReadOnlyList<PreapprovalGrant> grants, CancellationToken ct = default)
     {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
+        await using var ctx = await CreateDbContextAsync(ct);
         foreach (var grant in grants)
             ctx.Grants.Add(Scalar(grant));
         await ctx.SaveChangesAsync(ct);
@@ -90,7 +75,7 @@ internal sealed class PreapprovalRepository(IDbContextFactory<PreapprovalsDbCont
 
     public async Task UpdateGrantAsync(PreapprovalGrant grant, CancellationToken ct = default)
     {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
+        await using var ctx = await CreateDbContextAsync(ct);
         var tracked = await ctx.Grants.FirstAsync(g => g.Id == grant.Id, ct);
         ctx.Entry(tracked).CurrentValues.SetValues(Scalar(grant));
         await ctx.SaveChangesAsync(ct);
@@ -100,44 +85,37 @@ internal sealed class PreapprovalRepository(IDbContextFactory<PreapprovalsDbCont
         IReadOnlyCollection<Guid> grantIds, CancellationToken ct = default)
     {
         if (grantIds.Count == 0) return [];
-        await using var ctx = await factory.CreateDbContextAsync(ct);
+        await using var ctx = await CreateDbContextAsync(ct);
         return await ctx.RemindersSent.AsNoTracking()
             .Where(r => grantIds.Contains(r.GrantId))
             .ToListAsync(ct);
     }
 
-    public async Task AddReminderSentAsync(ReminderSent reminder, CancellationToken ct = default)
-    {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
-        ctx.RemindersSent.Add(reminder);
-        await ctx.SaveChangesAsync(ct);
-    }
+    public async Task AddReminderSentAsync(ReminderSent reminder, CancellationToken ct = default) =>
+        await InsertAsync(reminder, ct);
 
     public async Task<bool> HasGrantsForUsersAsync(IReadOnlyCollection<Guid> userIds, CancellationToken ct = default)
     {
         if (userIds.Count == 0) return false;
-        await using var ctx = await factory.CreateDbContextAsync(ct);
+        await using var ctx = await CreateDbContextAsync(ct);
         return await ctx.Grants.AsNoTracking().AnyAsync(g => userIds.Contains(g.BeneficiaryUserId), ct);
     }
 
     public async Task<bool> ManagesAnyProgramAsync(IReadOnlyCollection<Guid> userIds, CancellationToken ct = default)
     {
         if (userIds.Count == 0) return false;
-        await using var ctx = await factory.CreateDbContextAsync(ct);
+        await using var ctx = await CreateDbContextAsync(ct);
         return await ctx.Managers.AsNoTracking().AnyAsync(m => userIds.Contains(m.UserId), ct);
     }
 
-    public async Task<bool> AnyProgramAcceptsApplicationsAsync(LocalDate today, CancellationToken ct = default)
-    {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
-        return await ctx.Programs.AsNoTracking()
-            .AnyAsync(p => p.Status == ProgramStatus.Open && p.AcceptsApplications && p.ClaimBy >= today, ct);
-    }
+    public async Task<bool> AnyProgramAcceptsApplicationsAsync(LocalDate today, CancellationToken ct = default) =>
+        await RunAsync(ctx => ctx.Programs.AsNoTracking()
+            .AnyAsync(p => p.Status == ProgramStatus.Open && p.AcceptsApplications && p.ClaimBy >= today, ct), ct);
 
     public async Task<PreapprovalUserRows> GetRowsForUsersAsync(
         IReadOnlyCollection<Guid> userIds, CancellationToken ct = default)
     {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
+        await using var ctx = await CreateDbContextAsync(ct);
         var grants = await ctx.Grants.AsNoTracking().Include(g => g.Program)
             .Where(g => userIds.Contains(g.BeneficiaryUserId)).ToListAsync(ct);
         var created = await ctx.Programs.AsNoTracking()
@@ -154,7 +132,7 @@ internal sealed class PreapprovalRepository(IDbContextFactory<PreapprovalsDbCont
 
     public async Task EraseUserAsync(Guid userId, CancellationToken ct = default)
     {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
+        await using var ctx = await CreateDbContextAsync(ct);
         var applications = await ctx.Grants
             .Where(g => g.BeneficiaryUserId == userId && g.Status == GrantStatus.Applied)
             .ToListAsync(ct);
@@ -167,7 +145,7 @@ internal sealed class PreapprovalRepository(IDbContextFactory<PreapprovalsDbCont
     public async Task<IReadOnlyList<Guid>> ReassignToUserAsync(
         Guid sourceUserId, Guid targetUserId, Instant now, CancellationToken ct = default)
     {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
+        await using var ctx = await CreateDbContextAsync(ct);
         var dropped = new List<Guid>();
 
         var sourceGrants = await ctx.Grants.Where(g => g.BeneficiaryUserId == sourceUserId).ToListAsync(ct);

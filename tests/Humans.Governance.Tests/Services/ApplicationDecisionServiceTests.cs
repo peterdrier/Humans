@@ -108,10 +108,7 @@ public sealed class ApplicationDecisionServiceTests : IDisposable
     private readonly IAuditLogService _auditLog = Substitute.For<IAuditLogService>();
 
     private readonly TestDbContextFactory<GovernanceDbContext> _governanceDbFactory =
-        new(new DbContextOptionsBuilder<GovernanceDbContext>()
-            .UseInMemoryDatabase(Guid.NewGuid().ToString())
-            .ConfigureWarnings(w => w.Ignore(InMemoryEventId.TransactionIgnoredWarning))
-            .Options);
+        new(TestDbOptions.InMemory<GovernanceDbContext>());
 
     private readonly GovernanceDbContext _governanceDb;
 

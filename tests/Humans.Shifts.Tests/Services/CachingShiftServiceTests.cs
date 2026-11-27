@@ -25,10 +25,7 @@ public class CachingShiftServiceTests
     [HumansFact]
     public async Task Writes_Through_Any_Interface_Refresh_The_Cached_Rotas()
     {
-        var options = new DbContextOptionsBuilder<ShiftsDbContext>()
-            .UseInMemoryDatabase(Guid.NewGuid().ToString())
-            .ConfigureWarnings(w => w.Ignore(InMemoryEventId.TransactionIgnoredWarning))
-            .Options;
+        var options = TestDbOptions.InMemory<ShiftsDbContext>();
         var now = Instant.FromUtc(2026, 3, 1, 12, 0);
         var rota = new Rota { Id = Guid.NewGuid(), EventSettingsId = Guid.NewGuid(), Name = "Gate", CreatedAt = now, UpdatedAt = now };
         var kept = new Shift { Id = Guid.NewGuid(), RotaId = rota.Id, Duration = Duration.FromHours(4) };

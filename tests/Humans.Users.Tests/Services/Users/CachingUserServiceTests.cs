@@ -255,8 +255,7 @@ public class CachingUserServiceTests
         user.State = suspend ? UserState.Active : UserState.Suspended;
         var profile = SampleProfile(user.Id);
         var original = UserInfoFactory.Create(user, [], [], profile, [], [], []);
-        var options = new DbContextOptionsBuilder<UsersDbContext>()
-            .UseInMemoryDatabase(Guid.NewGuid().ToString(), new InMemoryDatabaseRoot()).Options;
+        var options = TestDbOptions.InMemory<UsersDbContext>();
         await using (var seed = new UsersDbContext(options))
         {
             seed.Users.Add(user);

@@ -26,9 +26,7 @@ public sealed class GoogleSyncHistoryMigrationServiceTests : IDisposable
 
     public GoogleSyncHistoryMigrationServiceTests()
     {
-        var options = new DbContextOptionsBuilder<GoogleIntegrationDbContext>()
-            .UseInMemoryDatabase(Guid.NewGuid().ToString())
-            .Options;
+        var options = TestDbOptions.InMemory<GoogleIntegrationDbContext>();
         _seedContext = new GoogleIntegrationDbContext(options);
 
         var teamResources = Substitute.For<ITeamResourceManagement>();

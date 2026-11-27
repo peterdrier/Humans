@@ -1,3 +1,4 @@
+using Humans.Base.Data;
 using Humans.Base.Interfaces.Admin;
 using Humans.Web.Data;
 using Humans.Base.Hosting;
@@ -10,11 +11,11 @@ internal sealed class AdminDatabaseDiagnosticsRepository(
     IDbContextFactory<SystemDbContext> factory,
     IServiceScopeFactory scopeFactory,
     IEnumerable<SectionDbContextRegistration> sectionContexts)
-    : IAdminDatabaseDiagnosticsRepository
+    : SectionRepository<SystemDbContext>(factory), IAdminDatabaseDiagnosticsRepository
 {
     public async Task<DatabaseMigrationStatus> GetMigrationStatusAsync(CancellationToken ct = default)
     {
-        await using var db = await factory.CreateDbContextAsync(ct);
+        await using var db = await CreateDbContextAsync(ct);
         var applied = (await db.Database.GetAppliedMigrationsAsync(ct)).ToList();
         var pending = await db.Database.GetPendingMigrationsAsync(ct);
 
@@ -42,15 +43,12 @@ internal sealed class AdminDatabaseDiagnosticsRepository(
             Sections: sections);
     }
 
-    public async Task<int> ClearHangfireLocksAsync(CancellationToken ct = default)
-    {
-        await using var db = await factory.CreateDbContextAsync(ct);
-        return await db.Database.ExecuteSqlRawAsync("DELETE FROM hangfire.lock", ct);
-    }
+    public async Task<int> ClearHangfireLocksAsync(CancellationToken ct = default) =>
+        await RunAsync(db => db.Database.ExecuteSqlRawAsync("DELETE FROM hangfire.lock", ct), ct);
 
     public async Task<DatabaseInfo> GetDatabaseInfoAsync(CancellationToken ct = default)
     {
-        await using var db = await factory.CreateDbContextAsync(ct);
+        await using var db = await CreateDbContextAsync(ct);
 
         var summary = (await db.Database.SqlQueryRaw<SummaryRow>(SummarySql).ToListAsync(ct)).Single();
         var tables = await db.Database.SqlQueryRaw<TableRow>(TablesSql).ToListAsync(ct);

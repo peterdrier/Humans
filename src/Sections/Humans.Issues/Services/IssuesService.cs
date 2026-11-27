@@ -191,10 +191,7 @@ internal sealed class IssuesService(
         if (parts.Count == 0)
             return null;
 
-        var result = string.Join(" | ", parts);
-        if (result.Length <= 2000) return result;
-        var length = char.IsHighSurrogate(result[1999]) && char.IsLowSurrogate(result[2000]) ? 1999 : 2000;
-        return result[..length];
+        return string.Join(" | ", parts).Truncate(2000);
     }
 
     public async Task<IssueCommentResult> PostCommentAsync(

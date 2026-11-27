@@ -28,10 +28,7 @@ public abstract class AuthTestHarness : IDisposable
 
     protected AuthTestHarness(Instant? now = null)
     {
-        var options = new DbContextOptionsBuilder<AuthDbContext>()
-            .UseInMemoryDatabase(Guid.NewGuid().ToString())
-            .ConfigureWarnings(w => w.Ignore(InMemoryEventId.TransactionIgnoredWarning))
-            .Options;
+        var options = TestDbOptions.InMemory<AuthDbContext>();
         AuthDb = new AuthDbContext(options);
         AuthDbFactory = new TestDbContextFactory<AuthDbContext>(options);
         Clock = new FakeClock(now ?? Instant.FromUtc(2026, 1, 1, 0, 0));

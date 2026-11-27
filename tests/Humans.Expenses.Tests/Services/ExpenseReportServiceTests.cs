@@ -55,13 +55,6 @@ public sealed partial class ExpenseReportServiceTests
     private readonly IAuditLogService _auditLog = Substitute.For<IAuditLogService>();
     private readonly FakeClock _clock = new(FakeNow);
 
-    private static DbContextOptions<TContext> NewSectionDbOptions<TContext>()
-        where TContext : DbContext =>
-        new DbContextOptionsBuilder<TContext>()
-            .UseInMemoryDatabase(Guid.NewGuid().ToString())
-            .ConfigureWarnings(w => w.Ignore(InMemoryEventId.TransactionIgnoredWarning))
-            .Options;
-
     private readonly IExpenseRepository _expenseRepo;
     private readonly IFileStorage _fileStorage;
     private readonly IBudgetService _budgetService;
@@ -94,7 +87,7 @@ public sealed partial class ExpenseReportServiceTests
     private readonly ExpenseReportBackgroundProcessor _backgroundProcessor;
 
     private readonly DbContextOptions<ExpensesDbContext> _expensesOptions =
-        NewSectionDbOptions<ExpensesDbContext>();
+        TestDbOptions.InMemory<ExpensesDbContext>();
 
     public ExpenseReportServiceTests()
     {

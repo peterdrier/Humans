@@ -27,8 +27,8 @@ public class CreditorMergeTests
     private static readonly Guid Admin = Guid.NewGuid();
     private readonly Guid _archived = Guid.NewGuid();
     private readonly Guid _survivor = Guid.NewGuid();
-    private readonly IDbContextFactory<FinanceDbContext> _factory = new Factory(
-        new DbContextOptionsBuilder<FinanceDbContext>().UseInMemoryDatabase($"finance-{Guid.NewGuid():N}").Options);
+    private readonly IDbContextFactory<FinanceDbContext> _factory = new TestDbContextFactory<FinanceDbContext>(
+        TestDbOptions.InMemory<FinanceDbContext>());
     private readonly IHoldedWrite _write = Substitute.For<IHoldedWrite>();
     private readonly IAuditLogService _audit = Substitute.For<IAuditLogService>();
     private readonly IUserService _users = Substitute.For<IUserService>();
@@ -42,10 +42,6 @@ public class CreditorMergeTests
         _write.CreateContactAsync(Arg.Any<HoldedContactInput>(), Arg.Any<CancellationToken>()).Returns("c-minted");
     }
 
-    private sealed class Factory(DbContextOptions<FinanceDbContext> options) : IDbContextFactory<FinanceDbContext>
-    {
-        public FinanceDbContext CreateDbContext() => new(options);
-    }
 
     private static CancellationToken Ct => TestContext.Current.CancellationToken;
 

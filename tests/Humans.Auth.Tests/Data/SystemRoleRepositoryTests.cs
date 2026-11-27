@@ -18,9 +18,7 @@ public sealed class SystemRoleRepositoryTests : IDisposable
 
     public SystemRoleRepositoryTests()
     {
-        var options = new DbContextOptionsBuilder<AuthDbContext>()
-            .UseInMemoryDatabase(Guid.NewGuid().ToString())
-            .Options;
+        var options = TestDbOptions.InMemory<AuthDbContext>();
         _dbContext = new AuthDbContext(options);
         _clock = new FakeClock(Instant.FromUtc(2026, 4, 22, 12, 0));
         _repo = new SystemRoleRepository(new TestDbContextFactory<AuthDbContext>(options));

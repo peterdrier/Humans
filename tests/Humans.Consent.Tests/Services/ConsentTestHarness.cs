@@ -28,10 +28,7 @@ public abstract class ConsentTestHarness : IDisposable
     {
         Clock = new FakeClock(now ?? Instant.FromUtc(2026, 3, 1, 12, 0));
 
-        var options = new DbContextOptionsBuilder<LegalDbContext>()
-            .UseInMemoryDatabase(Guid.NewGuid().ToString())
-            .ConfigureWarnings(w => w.Ignore(InMemoryEventId.TransactionIgnoredWarning))
-            .Options;
+        var options = TestDbOptions.InMemory<LegalDbContext>();
         LegalDb = new LegalDbContext(options);
         LegalDbFactory = new TestDbContextFactory<LegalDbContext>(options);
     }

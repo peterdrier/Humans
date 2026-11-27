@@ -29,7 +29,7 @@ public sealed class MembershipTierServiceTests : IDisposable
     public MembershipTierServiceTests()
     {
         var factory = new TestDbContextFactory<GovernanceDbContext>(
-            new DbContextOptionsBuilder<GovernanceDbContext>().UseInMemoryDatabase(Guid.NewGuid().ToString()).Options);
+            TestDbOptions.InMemory<GovernanceDbContext>());
         _db = factory.CreateDbContext();
         _sut = new MembershipTierService(
             new ApplicationRepository(factory), new ApplicationRepository(factory), _users, _audit, _clock);

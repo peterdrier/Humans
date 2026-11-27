@@ -13,9 +13,7 @@ public sealed class RepositoryTests
 
     public RepositoryTests()
     {
-        var options = new DbContextOptionsBuilder<StoreDbContext>()
-            .UseInMemoryDatabase(Guid.NewGuid().ToString())
-            .Options;
+        var options = TestDbOptions.InMemory<StoreDbContext>();
         _repo = new Repository(new TestDbContextFactory<StoreDbContext>(options));
     }
 
