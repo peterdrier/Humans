@@ -63,7 +63,7 @@ public class MailerLiteArchitectureTests
     }
 
     [HumansFact]
-    public void AllAudiences_HaveUniqueGroupNamesAndKeys()
+    public void Audiences_GroupNames_AreUnique()
     {
         var impls = AudienceInstances();
 

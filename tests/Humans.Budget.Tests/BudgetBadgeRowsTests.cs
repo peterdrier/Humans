@@ -16,7 +16,7 @@ public class BudgetBadgeRowsTests
     };
 
     [HumansFact]
-    public void SectionRegistersTheExpectedBadgeClassForEveryMember()
+    public void Section_EachMember_HasBadgeClass()
     {
         new Section().Register(new ServiceCollection(), new ConfigurationBuilder().Build());
 

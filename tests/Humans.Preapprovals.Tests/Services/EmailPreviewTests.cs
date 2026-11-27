@@ -12,7 +12,7 @@ public sealed class EmailPreviewTests
             .Samples(new EmailPreviewPersona("en", "Sally Smith", "sally@example.com"));
 
     [HumansFact]
-    public void EveryNoticeKindHasAUniquePreviewSample()
+    public void NoticeKinds_Each_HasUniquePreviewSample()
     {
         var samples = Samples();
         samples.Should().HaveCount(Enum.GetValues<PreapprovalNoticeKind>().Length);

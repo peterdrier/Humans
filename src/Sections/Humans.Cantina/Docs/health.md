@@ -86,7 +86,7 @@ The layout matches.
   `src/Sections/Humans.Cantina/Contracts/ICantinaService.cs:27`). A member who declined counts as
   unanswered on the roster.
 - **`MedicalConditions` is never read, never mapped, never rendered** by any viewer role. The
-  payload records have no such property, pinned by `RosterDtosCarryNoMedicalConditions`
+  payload records have no such property, pinned by `RosterDtos_Fields_CarryNoMedicalConditions`
   (`tests/Humans.Cantina.Tests/CantinaArchitectureTests.cs:28`).
 - **The roster writes nothing but its disclosure audit.** A weekly or daily CSV download appends
   `CantinaRosterExported` with actor, scope and person-row count; page reads append nothing
@@ -165,7 +165,7 @@ The layout matches.
 - **The burner name comes off `UserInfo`.** `UserInfo.BurnerName` is the resolved value
   (nobodies-collective/Humans#1097); `ProfileInfo` carries no names. This section is a pure read-side consumer of
   Users' read-model, so a change on that side lands here silently. Pinned by
-  `GetDailyRoster_BurnerName_ComesFromTheResolvedUserName`.
+  `GetDailyRoster_BurnerName_IsResolvedUserName`.
 - **The "Other" text rule is checked twice on save.** The controller checks first so the error
   lands on the field, in the member's language; the service refuses the same case for any other
   caller. Collapsing them needs a field-aware return, which is new surface.
