@@ -31,19 +31,19 @@ public class OrderDtoStateTests
     }
 
     [HumansFact]
-    public void Open_empty_zero_balance_order_is_deletable() =>
+    public void State_EmptyOpenOrder_IsDeletable() =>
         Order().IsDeletable.Should().BeTrue();
 
     [HumansFact]
-    public void Order_with_nonzero_balance_is_not_deletable() =>
+    public void State_NonzeroBalance_IsNotDeletable() =>
         Order(balance: 12.1m).IsDeletable.Should().BeFalse();
 
     [HumansFact]
-    public void Order_with_any_payment_is_not_deletable() =>
+    public void State_OrderWithPayment_IsNotDeletable() =>
         Order(payments: 1).IsDeletable.Should().BeFalse();
 
     [HumansFact]
-    public void Invoiced_order_is_neither_deletable_nor_issuable()
+    public void State_InvoicedOrder_IsLocked()
     {
         var order = Order(OrderState.InvoiceIssued, lines: 1);
 
@@ -52,10 +52,10 @@ public class OrderDtoStateTests
     }
 
     [HumansFact]
-    public void Open_order_with_lines_is_issuable() =>
+    public void State_OpenOrderWithLines_IsIssuable() =>
         Order(lines: 1).IsInvoiceIssuable.Should().BeTrue();
 
     [HumansFact]
-    public void Open_order_without_lines_is_not_issuable() =>
+    public void State_OpenOrderWithoutLines_IsNotIssuable() =>
         Order().IsInvoiceIssuable.Should().BeFalse();
 }

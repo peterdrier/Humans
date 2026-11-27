@@ -37,7 +37,7 @@ public class StorePricesViewTests
     [Xunit.InlineData("fr")]
     [Xunit.InlineData("ca")]
     [Xunit.InlineData("nl")]
-    public async Task PaymentMethodRepair_AmountsKeepInvariantSortValuesAndLocalizedEuroText(string cultureCode)
+    public async Task PaymentMethodRepair_Amounts_KeepInvariantSortValues(string cultureCode)
     {
         using var culture = new CultureScope(cultureCode);
         IReadOnlyList<PaymentMethodRepairRow> rows =
@@ -69,7 +69,7 @@ public class StorePricesViewTests
     }
 
     [HumansFact]
-    public async Task OrderPayments_ShowMoneyBackAsReturnedOrRefunded_AndAddUpToTheOrder()
+    public async Task OrderPayments_MoneyBack_ShownAsReturnedOrRefunded()
     {
         using var culture = new CultureScope(CultureCatalog.DefaultCultureCode);
         var now = Instant.FromUtc(2026, 7, 1, 0, 0);
@@ -192,7 +192,7 @@ public class StorePricesViewTests
     [Xunit.InlineData(null)]
     [Xunit.InlineData(75900001)]
     [Xunit.InlineData(75999999)]
-    public async Task AccountPicker_OrdersChoicesByNumber_AndPreservesSelection(int? selected)
+    public async Task AccountPicker_Choices_OrderedByNumber(int? selected)
     {
         var model = new AccountPickerModel("Income", "Income", "Income account", selected,
         [

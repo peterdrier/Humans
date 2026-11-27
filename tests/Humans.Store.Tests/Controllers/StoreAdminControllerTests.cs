@@ -22,7 +22,7 @@ public sealed class StoreAdminControllerTests
     [InlineData(FinanceRoles.FinanceAdmin, true)]
     [InlineData(RoleNames.Admin, true)]
     [InlineData(StoreRoles.StoreAdmin + "x", false)]
-    public async Task Admin_controller_reads_for_store_admin_roles_and_Board(string? role, bool allowed)
+    public async Task AdminReads_StoreAdminRolesOrBoard_AreAllowed(string? role, bool allowed)
     {
         var services = new ServiceCollection();
         services.AddLogging();
@@ -43,7 +43,7 @@ public sealed class StoreAdminControllerTests
     }
 
     [HumansFact]
-    public void RepairOrderYears_requires_post_and_antiforgery()
+    public void RepairOrderYears_Action_RequiresPostWithAntiforgery()
     {
         var method = typeof(StoreAdminController).GetMethod(nameof(StoreAdminController.RepairOrderYears));
 

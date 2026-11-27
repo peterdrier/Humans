@@ -83,7 +83,7 @@ public class RequestScopedCancellationOnExternalWriteAnalyzerTests
         """;
 
     [HumansFact]
-    public async Task Fires_when_post_action_passes_RequestAborted_to_external_write()
+    public async Task Analyze_PostPassesRequestAborted_Fires()
     {
         var diagnostics = await RunAsync(Controller("""
                     [Microsoft.AspNetCore.Mvc.HttpPost]
@@ -97,7 +97,7 @@ public class RequestScopedCancellationOnExternalWriteAnalyzerTests
     }
 
     [HumansFact]
-    public async Task Fires_when_post_action_passes_its_own_cancellation_token_parameter()
+    public async Task Analyze_PostPassesOwnToken_Fires()
     {
         var diagnostics = await RunAsync(Controller("""
                     [Microsoft.AspNetCore.Mvc.HttpPost]
@@ -113,7 +113,7 @@ public class RequestScopedCancellationOnExternalWriteAnalyzerTests
     [InlineData("HttpPut")]
     [InlineData("HttpDelete")]
     [InlineData("HttpPatch")]
-    public async Task Fires_for_every_state_changing_verb(string verb)
+    public async Task Analyze_StateChangingVerbs_AllFire(string verb)
     {
         var diagnostics = await RunAsync(Controller($$"""
                     [Microsoft.AspNetCore.Mvc.{{verb}}]
@@ -125,7 +125,7 @@ public class RequestScopedCancellationOnExternalWriteAnalyzerTests
     }
 
     [HumansFact]
-    public async Task Does_not_fire_for_get_action_because_reads_may_be_abandoned()
+    public async Task Analyze_GetAction_IsSilent()
     {
         var diagnostics = await RunAsync(Controller("""
                     [Microsoft.AspNetCore.Mvc.HttpGet]
@@ -137,7 +137,7 @@ public class RequestScopedCancellationOnExternalWriteAnalyzerTests
     }
 
     [HumansFact]
-    public async Task Does_not_fire_when_token_is_None()
+    public async Task Analyze_TokenNone_IsSilent()
     {
         var diagnostics = await RunAsync(Controller("""
                     [Microsoft.AspNetCore.Mvc.HttpPost]
@@ -149,7 +149,7 @@ public class RequestScopedCancellationOnExternalWriteAnalyzerTests
     }
 
     [HumansFact]
-    public async Task Does_not_fire_when_target_method_is_not_marked()
+    public async Task Analyze_UnmarkedTarget_IsSilent()
     {
         var diagnostics = await RunAsync(Controller("""
                     [Microsoft.AspNetCore.Mvc.HttpPost]
@@ -161,7 +161,7 @@ public class RequestScopedCancellationOnExternalWriteAnalyzerTests
     }
 
     [HumansFact]
-    public async Task Fires_when_called_through_the_implementing_class()
+    public async Task Analyze_ViaImplementingClass_Fires()
     {
         const string implementation = """
 
@@ -197,7 +197,7 @@ public class RequestScopedCancellationOnExternalWriteAnalyzerTests
     }
 
     [HumansFact]
-    public async Task Downgrades_to_warning_when_action_is_grandfathered()
+    public async Task Analyze_GrandfatheredAction_Warns()
     {
         var diagnostics = await RunAsync(Controller("""
                     [Microsoft.AspNetCore.Mvc.HttpPost]
@@ -211,7 +211,7 @@ public class RequestScopedCancellationOnExternalWriteAnalyzerTests
     }
 
     [HumansFact]
-    public async Task Fires_inside_a_section_assembly()
+    public async Task Analyze_SectionAssembly_Fires()
     {
         // The Section : ISection entry point is what makes AssemblyScope.IsSection
         // recognise the "Humans.Store" compilation below as a section.
