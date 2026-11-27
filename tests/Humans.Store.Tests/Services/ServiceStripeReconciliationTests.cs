@@ -14,6 +14,7 @@ using Microsoft.Extensions.Logging.Abstractions;
 using NodaTime;
 using NodaTime.Testing;
 using NSubstitute;
+using Xunit;
 
 namespace Humans.Store.Tests.Services;
 
@@ -99,7 +100,7 @@ public class ServiceStripeReconciliationTests
         report.Rows.Should().Contain(r => r.SessionId == "cs_nometa" && r.Status == StripeReconciliationStatus.Unmatched);
         report.Rows.Should().Contain(r => r.SessionId == "cs_unpaid" && r.Status == StripeReconciliationStatus.Unpaid);
         report.MissingCount.Should().Be(1);
-        report.MissingTotalEur.Should().Be(1800m);
+        report.RecoverableTotalEur.Should().Be(1800m);
     }
 
     [HumansFact]
@@ -125,6 +126,8 @@ public class ServiceStripeReconciliationTests
         report.RecordedCount.Should().Be(0);
         report.RecordedPendingCount.Should().Be(1);
         report.MissingCount.Should().Be(0);
+        report.RecoverableCount.Should().Be(1);
+        report.RecoverableTotalEur.Should().Be(100m);
     }
 
     [HumansFact]
@@ -225,6 +228,16 @@ public class ServiceStripeReconciliationTests
         _repo.GetOrderByIdAsync(missingOrder, Arg.Any<CancellationToken>()).Returns(CampOrder(missingOrder));
         _repo.GetOrderByIdAsync(teamOrder, Arg.Any<CancellationToken>()).Returns(TeamOrder(teamOrder));
 
+        _repo.GetPaymentByIntentIdAsync("pi_recorded", Arg.Any<CancellationToken>()).Returns(new Payment
+        {
+            Id = Guid.NewGuid(),
+            OrderId = recordedOrder,
+            AmountEur = 100m,
+            Method = PaymentMethod.Stripe,
+            Status = PaymentStatus.Paid,
+            StripePaymentIntentId = "pi_recorded"
+        });
+
         var result = await _service.RecordMissingStripePaymentsAsync(actor, Xunit.TestContext.Current.CancellationToken);
 
         result.RecordedCount.Should().Be(1);
@@ -242,6 +255,145 @@ public class ServiceStripeReconciliationTests
         await _audit.Received(1).LogAsync(
             StoreAuditActions.StorePaymentsReconciled, "Store", Guid.Empty,
             Arg.Any<string>(), actor, Arg.Any<Guid?>(), Arg.Any<string?>());
+    }
+
+    [HumansFact]
+    public async Task Reconciliation_PendingPaidSession_SettlesPayment()
+    {
+        var ct = Xunit.TestContext.Current.CancellationToken;
+        var orderId = Guid.NewGuid();
+        var actor = Guid.NewGuid();
+        var payment = new Payment
+        {
+            Id = Guid.NewGuid(),
+            OrderId = orderId,
+            AmountEur = 100m,
+            Method = PaymentMethod.Stripe,
+            Status = PaymentStatus.Pending,
+            StripePaymentIntentId = "pi_pending"
+        };
+        var order = CampOrder(orderId);
+        order.CheckoutAttemptId = Guid.NewGuid();
+        order.CheckoutSessionId = "cs_pending";
+        order.CheckoutAmountEur = 100m;
+        _stripe.ListStoreCheckoutSessionsAsync(Arg.Any<CancellationToken>()).Returns(new[]
+        {
+            Session("cs_pending", orderId, "pi_pending", 100m, "paid"),
+        });
+        _repo.GetRecordedStripePaymentsAsync(Arg.Any<CancellationToken>()).Returns(new[]
+        {
+            new RecordedStripePayment("pi_pending", orderId, 100m, _clock.GetCurrentInstant(), PaymentStatus.Pending),
+        });
+        _repo.GetOrderByIdAsync(orderId, Arg.Any<CancellationToken>()).Returns(order);
+        _repo.GetPaymentByIntentIdAsync("pi_pending", Arg.Any<CancellationToken>()).Returns(payment);
+        _repo.UpdatePaymentStatusAsync(payment.Id, PaymentStatus.Paid, Arg.Any<CancellationToken>()).Returns(_ =>
+        {
+            payment.Status = PaymentStatus.Paid;
+            return Task.CompletedTask;
+        });
+
+        var result = await _service.RecordMissingStripePaymentsAsync(actor, ct);
+        var replay = await _service.RecordMissingStripePaymentsAsync(actor, ct);
+
+        payment.Status.Should().Be(PaymentStatus.Paid);
+        order.HasCheckoutAttempt.Should().BeFalse();
+        result.RecordedCount.Should().Be(0);
+        result.SettledCount.Should().Be(1);
+        result.TotalEur.Should().Be(100m);
+        replay.SettledCount.Should().Be(0);
+        replay.TotalEur.Should().Be(0m);
+        await _repo.Received(1).UpdatePaymentStatusAsync(payment.Id, PaymentStatus.Paid, Arg.Any<CancellationToken>());
+        await _repo.DidNotReceiveWithAnyArgs().AddPaymentAsync(default!);
+        await _audit.Received(1).LogAsync(StoreAuditActions.StorePaymentSettled, AuditEntityTypes.Payment,
+            payment.Id, Arg.Any<string>(), actor, orderId, AuditEntityTypes.Order);
+        await _audit.Received(1).LogAsync(StoreAuditActions.StorePaymentsReconciled, "Store", Guid.Empty,
+            Arg.Any<string>(), actor, Arg.Any<Guid?>(), Arg.Any<string?>());
+    }
+
+    [HumansTheory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public async Task Reconciliation_CurrentTerminalPayment_ReportsNoChange(bool paid)
+    {
+        var status = paid ? PaymentStatus.Paid : PaymentStatus.Failed;
+        var orderId = Guid.NewGuid();
+        _stripe.ListStoreCheckoutSessionsAsync(Arg.Any<CancellationToken>()).Returns(new[]
+        {
+            Session("cs_terminal", orderId, "pi_terminal", 100m, "paid"),
+        });
+        // The initial inventory predates a webhook that already recorded this intent.
+        _repo.GetRecordedStripePaymentsAsync(Arg.Any<CancellationToken>()).Returns(Array.Empty<RecordedStripePayment>());
+        var order = CampOrder(orderId);
+        order.CheckoutAttemptId = Guid.NewGuid();
+        order.CheckoutSessionId = "cs_terminal";
+        order.CheckoutAmountEur = 100m;
+        _repo.GetOrderByIdAsync(orderId, Arg.Any<CancellationToken>()).Returns(order);
+        _repo.GetPaymentByIntentIdAsync("pi_terminal", Arg.Any<CancellationToken>()).Returns(new Payment
+        {
+            Id = Guid.NewGuid(),
+            OrderId = orderId,
+            AmountEur = 100m,
+            Method = PaymentMethod.Stripe,
+            Status = status,
+            StripePaymentIntentId = "pi_terminal"
+        });
+        _repo.StripePaymentIntentExistsAsync("pi_terminal", Arg.Any<CancellationToken>()).Returns(true);
+
+        var result = await _service.RecordMissingStripePaymentsAsync(Guid.NewGuid(), Xunit.TestContext.Current.CancellationToken);
+
+        order.HasCheckoutAttempt.Should().Be(!paid);
+        result.SettledCount.Should().Be(0);
+        result.RecordedCount.Should().Be(0);
+        result.TotalEur.Should().Be(0m);
+        await _repo.DidNotReceiveWithAnyArgs().AddPaymentAsync(default!);
+        await _repo.DidNotReceiveWithAnyArgs().UpdatePaymentStatusAsync(default, default);
+        _audit.ReceivedCalls().Should().BeEmpty();
+    }
+
+    [HumansTheory]
+    [InlineData("owner")]
+    [InlineData("amount")]
+    [InlineData("team")]
+    [InlineData("missing")]
+    public async Task Reconciliation_UnmatchedPayment_RequiresReview(string mismatch)
+    {
+        var orderId = Guid.NewGuid();
+        var payment = new Payment
+        {
+            Id = Guid.NewGuid(),
+            OrderId = mismatch is "owner" ? Guid.NewGuid() : orderId,
+            AmountEur = mismatch is "amount" ? 200m : 100m,
+            Method = PaymentMethod.Stripe,
+            Status = PaymentStatus.Pending,
+            StripePaymentIntentId = "pi_conflict"
+        };
+        Order? order = mismatch is "missing" ? null : mismatch is "team" ? TeamOrder(orderId) : CampOrder(orderId);
+        _stripe.ListStoreCheckoutSessionsAsync(Arg.Any<CancellationToken>()).Returns(new[]
+        {
+            Session("cs_conflict", orderId, "pi_conflict", 100m, "paid"),
+        });
+        _repo.GetOrderByIdAsync(orderId, Arg.Any<CancellationToken>()).Returns(order);
+        _repo.GetOrderWithLinesAsync(orderId, Arg.Any<CancellationToken>()).Returns(order);
+        _repo.GetPaymentByIntentIdAsync("pi_conflict", Arg.Any<CancellationToken>()).Returns(payment);
+        _repo.GetRecordedStripePaymentsAsync(Arg.Any<CancellationToken>()).Returns(new[]
+        {
+            new RecordedStripePayment("pi_conflict", payment.OrderId, payment.AmountEur, _clock.GetCurrentInstant(), PaymentStatus.Pending),
+        });
+
+        var report = await _service.GetStripeReconciliationAsync(Xunit.TestContext.Current.CancellationToken);
+        var result = await _service.RecordMissingStripePaymentsAsync(Guid.NewGuid(), Xunit.TestContext.Current.CancellationToken);
+
+        report.Rows.Should().ContainSingle().Which.Status.Should().Be(mismatch is "owner" or "amount"
+            ? StripeReconciliationStatus.RecordedConflict : StripeReconciliationStatus.Unmatched);
+        report.RecoverableCount.Should().Be(0);
+        report.IsReconciled.Should().BeFalse();
+        result.RecordedCount.Should().Be(0);
+        result.SettledCount.Should().Be(0);
+        result.TotalEur.Should().Be(0m);
+        payment.Status.Should().Be(PaymentStatus.Pending);
+        await _repo.DidNotReceiveWithAnyArgs().AddPaymentAsync(default!);
+        await _repo.DidNotReceiveWithAnyArgs().UpdatePaymentStatusAsync(default, default);
+        _audit.ReceivedCalls().Should().BeEmpty();
     }
 
     [HumansFact]

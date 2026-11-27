@@ -978,7 +978,7 @@ internal sealed class Service(
         var stripeQueried = sessionsOrNull is not null;
         var sessions = sessionsOrNull ?? [];
         var recorded = await repo.GetRecordedStripePaymentsAsync(ct);
-        var recordedByPi = recorded.ToDictionary(p => p.PaymentIntentId, p => p.Status, StringComparer.Ordinal);
+        var recordedByPi = recorded.ToDictionary(p => p.PaymentIntentId, StringComparer.Ordinal);
 
         var matchedIds = sessions.Where(s => s.OrderId is not null).Select(s => s.OrderId!.Value)
             .Concat(recorded.Select(p => p.OrderId))
@@ -1023,20 +1023,25 @@ internal sealed class Service(
     }
 
     private static StripeReconciliationStatus ClassifyStripeSession(
-        StoreCheckoutSessionData s, OrderDto? order, IReadOnlyDictionary<string, PaymentStatus> recordedByPi)
+        StoreCheckoutSessionData s, OrderDto? order, IReadOnlyDictionary<string, RecordedStripePayment> recordedByPi)
     {
         if (!string.Equals(s.PaymentStatus, "paid", StringComparison.Ordinal))
             return StripeReconciliationStatus.Unpaid;
-        if (s.PaymentIntentId is { } pi && recordedByPi.TryGetValue(pi, out var paymentStatus))
-            // Stripe says paid but the local row hasn't settled: the amount isn't in the balance yet, so it must not
-            // present as plain "Recorded".
-            return paymentStatus switch
+        if (s.PaymentIntentId is { } pi && recordedByPi.TryGetValue(pi, out var payment))
+        {
+            if (s.OrderId != payment.OrderId || s.AmountEur != payment.AmountEur || payment.AmountEur <= 0)
+                return StripeReconciliationStatus.RecordedConflict;
+            return payment.Status switch
             {
                 PaymentStatus.Paid => StripeReconciliationStatus.Recorded,
-                PaymentStatus.Pending => StripeReconciliationStatus.RecordedPending,
+                PaymentStatus.Pending when order is { CounterpartyType: OrderCounterpartyType.Camp }
+                    => StripeReconciliationStatus.RecordedPending,
+                PaymentStatus.Pending => StripeReconciliationStatus.Unmatched,
                 _ => StripeReconciliationStatus.RecordedFailed,
             };
-        if (order is null || s.PaymentIntentId is null || order.CounterpartyType == OrderCounterpartyType.Team)
+        }
+        if (order is null || string.IsNullOrWhiteSpace(s.PaymentIntentId) || s.AmountEur is null or <= 0
+            || order.CounterpartyType == OrderCounterpartyType.Team)
             return StripeReconciliationStatus.Unmatched;
         return StripeReconciliationStatus.Missing;
     }
@@ -1045,40 +1050,54 @@ internal sealed class Service(
         Guid actorUserId, CancellationToken ct = default)
     {
         var sessions = await stripeService.ListStoreCheckoutSessionsAsync(ct) ?? [];
-        var recorded = await repo.GetRecordedStripePaymentsAsync(ct);
-        var recordedPis = recorded.Select(p => p.PaymentIntentId).ToHashSet(StringComparer.Ordinal);
-
         var count = 0;
+        var settled = 0;
         var total = 0m;
         foreach (var s in sessions)
         {
             if (!string.Equals(s.PaymentStatus, "paid", StringComparison.Ordinal)) continue;
-            if (s.OrderId is not { } orderId || s.PaymentIntentId is not { } pi || s.AmountEur is not { } amount) continue;
-            if (amount <= 0 || recordedPis.Contains(pi)) continue;
+            if (s.OrderId is not { } orderId || string.IsNullOrWhiteSpace(s.PaymentIntentId)
+                || s.AmountEur is not { } amount || amount <= 0) continue;
+            var pi = s.PaymentIntentId;
 
-            // Never fabricate a payment on an unmatched or non-billable (Team) order.
+            using var mutation = await StripePaymentLock.AcquireAsync(logger, ct);
+            // Webhooks may have changed the ledger since the Stripe inventory was read.
             var order = await repo.GetOrderByIdAsync(orderId, ct);
             if (order is null || order.TeamId is not null) continue;
-
-            using (await StripePaymentLock.AcquireAsync(logger, ct))
+            var existing = await repo.GetPaymentByIntentIdAsync(pi, ct);
+            if (existing is not null)
             {
-                await RecordStripePaymentCoreAsync(orderId, pi, amount, PaymentStatus.Paid, ct); // idempotent on PI id
-                // Stands in for the undelivered completed webhook, so it releases the attempt the same way.
-                await ClearCheckoutAttemptAsync(s, ct);
+                if (existing.OrderId != orderId || existing.AmountEur != amount
+                    || existing.Method != PaymentMethod.Stripe || existing.Status is not (PaymentStatus.Pending or PaymentStatus.Paid))
+                {
+                    logger.LogWarning("Stripe reconciliation left conflicting payment {PaymentIntentId} unchanged", pi);
+                    continue;
+                }
+                if (existing.Status == PaymentStatus.Pending)
+                {
+                    await SetStripePaymentStatusAsync(existing, PaymentStatus.Paid, ct, actorUserId);
+                    settled++;
+                    total += amount;
+                }
             }
-            count++;
-            total += amount;
+            else
+            {
+                if (!await RecordStripePaymentCoreAsync(orderId, pi, amount, PaymentStatus.Paid, ct)) continue;
+                count++;
+                total += amount;
+            }
+            await ClearCheckoutAttemptAsync(s, ct);
         }
 
-        if (count > 0)
+        if (count + settled > 0)
         {
             await audit.LogAsync(
                 StoreAuditActions.StorePaymentsReconciled, "Store", Guid.Empty,
-                $"Reconciled {count} Stripe payment(s) totalling EUR {total:0.00} from the Store Stripe account",
+                $"Reconciled {count} new Stripe payment(s) and {settled} settlement(s) totalling EUR {total:0.00} from the Store Stripe account",
                 actorUserId);
         }
 
-        return new StripeReconciliationResult(count, total);
+        return new StripeReconciliationResult(count, total, settled);
     }
 
     /// <summary>
@@ -1284,7 +1303,7 @@ internal sealed class Service(
     }
 
     // Called only while the ingestion lock is held, including from webhook state transitions.
-    private async Task RecordStripePaymentCoreAsync(
+    private async Task<bool> RecordStripePaymentCoreAsync(
         Guid orderId, string paymentIntentId, decimal amountEur, PaymentStatus status, CancellationToken ct)
     {
         if (amountEur <= 0)
@@ -1293,7 +1312,7 @@ internal sealed class Service(
             throw new ArgumentException("PaymentIntent id is required.", nameof(paymentIntentId));
 
         if (await repo.StripePaymentIntentExistsAsync(paymentIntentId, ct))
-            return; // duplicate Stripe webhook delivery
+            return false; // duplicate Stripe webhook delivery
 
         // Defense in depth: never record a payment on a team-owned order.
         var order = await repo.GetOrderByIdAsync(orderId, ct);
@@ -1324,6 +1343,7 @@ internal sealed class Service(
             $"{settlement} of EUR {amountEur:0.00} (PI {paymentIntentId})",
             "StripeWebhook",
             orderId, AuditEntityTypes.Order);
+        return true;
     }
 
     public async Task HandleStripeCheckoutWebhookEventAsync(StoreCheckoutWebhookEvent evt, CancellationToken ct = default)
@@ -1501,15 +1521,23 @@ internal sealed class Service(
             return false;
         }
 
-        await repo.UpdatePaymentStatusAsync(existing.Id, target, ct);
+        await SetStripePaymentStatusAsync(existing, target, ct);
+        return true;
+    }
+
+    private async Task SetStripePaymentStatusAsync(
+        Payment payment, PaymentStatus target, CancellationToken ct, Guid? actorUserId = null)
+    {
+        await repo.UpdatePaymentStatusAsync(payment.Id, target, ct);
         var action = target == PaymentStatus.Paid ? StoreAuditActions.StorePaymentSettled : StoreAuditActions.StorePaymentFailed;
         var verb = target == PaymentStatus.Paid ? "settled" : "failed";
-        await audit.LogAsync(
-            action, AuditEntityTypes.Payment, existing.Id,
-            $"Stripe payment of EUR {existing.AmountEur:0.00} {verb} (PI {paymentIntentId})",
-            "StripeWebhook",
-            existing.OrderId, AuditEntityTypes.Order);
-        return true;
+        var description = $"Stripe payment of EUR {payment.AmountEur:0.00} {verb} (PI {payment.StripePaymentIntentId})";
+        if (actorUserId is { } actor)
+            await audit.LogAsync(action, AuditEntityTypes.Payment, payment.Id, description,
+                actor, payment.OrderId, AuditEntityTypes.Order);
+        else
+            await audit.LogAsync(action, AuditEntityTypes.Payment, payment.Id, description,
+                "StripeWebhook", payment.OrderId, AuditEntityTypes.Order);
     }
 
     /// <summary>

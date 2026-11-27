@@ -136,10 +136,10 @@ internal sealed class StoreAdminController(
         if (errorResult is not null) return errorResult;
 
         var result = await storeService.RecordMissingStripePaymentsAsync(user.Id, ct);
-        if (result.RecordedCount > 0)
-            SetSuccess($"Recorded {result.RecordedCount} Stripe payment(s) totalling €{result.TotalEur:0.00}.");
+        if (result.RecordedCount + result.SettledCount > 0)
+            SetSuccess($"Recorded {result.RecordedCount} new Stripe payment(s), settled {result.SettledCount} existing payment(s), totalling €{result.TotalEur:0.00}.");
         else
-            SetInfo("No missing Stripe payments to record — Stripe and the Store ledger are already reconciled.");
+            SetInfo("No Stripe payment changes were made. Review any remaining discrepancies.");
         return RedirectToAction(nameof(Payments));
     }
 
