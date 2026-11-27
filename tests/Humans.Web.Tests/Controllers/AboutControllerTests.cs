@@ -172,7 +172,7 @@ public class AboutControllerTests
             var entries = Assert.IsAssignableFrom<IReadOnlyList<LogoLibraryEntry>>(view.Model).ToDictionary(e => e.Slug, StringComparer.Ordinal);
             var priced = entries["2026-11-opus-5.5-low"].Stats!;
             Assert.Equal(6.2, priced.Minutes);
-            Assert.Equal(1400, priced.TotalTokens);
+            Assert.Equal(50, priced.OutputTokens);
             Assert.Equal(1.85m, priced.CostUsd);
             Assert.Null(entries["2026-11-opus-5.5-medium"].Stats!.CostUsd);
             Assert.Null(entries["2026-11-opus-5.5-high"].Stats);

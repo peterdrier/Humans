@@ -49,9 +49,9 @@
                         {
                             parts.Add($"{minutes.ToString("0.0", inv)} min");
                         }
-                        if (run.TotalTokens is { } tokens)
+                        if (run.OutputTokens is { } tokens)
                         {
-                            parts.Add(tokens >= 1_000_000 ? $"{(tokens / 1_000_000d).ToString("0.0", inv)}M tokens" : $"{(tokens / 1_000d).ToString("0", inv)}k tokens");
+                            parts.Add($"{(tokens / 1_000d).ToString("0", inv)}k tokens out");
                         }
                         if (run.CostUsd is { } cost)
                         {

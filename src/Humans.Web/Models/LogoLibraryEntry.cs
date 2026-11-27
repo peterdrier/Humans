@@ -33,9 +33,4 @@ public sealed record LogoRunStats
     public long? CacheReadTokens { get; init; }
     public long? CacheWriteTokens { get; init; }
     public decimal? CostUsd { get; init; }
-
-    /// <summary>Total tokens, or null when no token counts were recorded.</summary>
-    public long? TotalTokens => InputTokens is null && OutputTokens is null && CacheReadTokens is null && CacheWriteTokens is null
-        ? null
-        : (InputTokens ?? 0) + (OutputTokens ?? 0) + (CacheReadTokens ?? 0) + (CacheWriteTokens ?? 0);
 }
