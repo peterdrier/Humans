@@ -64,7 +64,7 @@ public sealed class SettingsAdminControllerTests
     [Xunit.InlineData(SettingsMutation.Activate, AccountScenario.Merged)]
     [Xunit.InlineData(SettingsMutation.Activate, AccountScenario.Missing)]
     [Xunit.InlineData(SettingsMutation.Activate, AccountScenario.Cancelled)]
-    public async Task Settings_mutation_resolves_account_before_writing(SettingsMutation action, AccountScenario account)
+    public async Task Mutations_Account_ResolvedBeforeWrite(SettingsMutation action, AccountScenario account)
     {
         var controller = BuildSut();
         var cookieId = Guid.Parse(controller.User.FindFirstValue(ClaimTypes.NameIdentifier)!);
@@ -131,7 +131,7 @@ public sealed class SettingsAdminControllerTests
     [Xunit.InlineData("IsOffSeason", false)]
     [Xunit.InlineData("", false)]
     [Xunit.InlineData("", true)]
-    public async Task Event_form_requires_posted_values_before_replacing_cycle_settings(string omitted, bool blankOptional)
+    public async Task EventForm_MissingValues_IsRefused(string omitted, bool blankOptional)
     {
         var id = Guid.NewGuid();
         var controller = BuildSut();
@@ -210,7 +210,7 @@ public sealed class SettingsAdminControllerTests
     }
 
     [HumansFact]
-    public async Task Index_Post_WithoutAnId_MintsANewCycle()
+    public async Task IndexPost_NoId_MintsNewCycle()
     {
         var sut = BuildSut();
 
@@ -222,7 +222,7 @@ public sealed class SettingsAdminControllerTests
     }
 
     [HumansFact]
-    public async Task Index_Post_ActivationConflict_FlashesTheConflictAndRedirectsToTheTab()
+    public async Task IndexPost_ActivationConflict_FlashesConflict()
     {
         const string conflict =
             "Only one event settings row can be Active at a time — deactivate the current one first.";
@@ -252,7 +252,7 @@ public sealed class SettingsAdminControllerTests
     }
 
     [HumansFact]
-    public async Task Index_Post_InvalidModel_FlashesTheFailingRuleAndRedirectsToTheTab()
+    public async Task IndexPost_InvalidModel_FlashesFailingRule()
     {
         // The form is only ever rendered by the /Settings#event tab, so a validation
         // failure has to name the broken rule in the flash or the operator sees nothing.
@@ -267,7 +267,7 @@ public sealed class SettingsAdminControllerTests
     }
 
     [HumansFact]
-    public async Task Index_Post_WithNoIdentifiableActor_ChallengesAndSavesNothing()
+    public async Task IndexPost_NoActor_Challenges()
     {
         // Every save is audited by actor, so a principal carrying no usable id is
         // challenged rather than saved anonymously.
@@ -298,7 +298,7 @@ public sealed class SettingsAdminControllerTests
     }
 
     [HumansFact]
-    public async Task Activate_Post_Refusal_FlashesTheReasonAndRedirectsToTheTab()
+    public async Task Activate_Refused_FlashesReason()
     {
         var id = Guid.NewGuid();
         _settings.ActivateEventSettingsAsync(id, Arg.Any<Guid>(), Arg.Any<CancellationToken>())
@@ -312,7 +312,7 @@ public sealed class SettingsAdminControllerTests
     }
 
     [HumansFact]
-    public async Task TimeZone_Post_SavesAndRedirectsToTheTab()
+    public async Task TimeZonePost_Saved_RedirectsToTab()
     {
         _settings.SaveTimeZoneAsync("Atlantic/Canary", Arg.Any<Guid>(), Arg.Any<CancellationToken>())
             .Returns(new EventSettingsSaveResult(true));
@@ -325,7 +325,7 @@ public sealed class SettingsAdminControllerTests
     }
 
     [HumansFact]
-    public async Task TimeZone_Post_Refusal_FlashesTheReason()
+    public async Task TimeZonePost_Refused_FlashesReason()
     {
         _settings.SaveTimeZoneAsync("Mars/Olympus", Arg.Any<Guid>(), Arg.Any<CancellationToken>())
             .Returns(new EventSettingsSaveResult(false, "Invalid IANA timezone ID."));

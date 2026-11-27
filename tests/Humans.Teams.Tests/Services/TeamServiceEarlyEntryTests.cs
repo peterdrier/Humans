@@ -1,3 +1,4 @@
+using Humans.Teams.Tests.Infrastructure;
 using Humans.Roles.Contracts;
 using Humans.Users.Contracts;
 using Humans.Settings.Contracts;
@@ -54,6 +55,7 @@ public sealed class TeamServiceEarlyEntryTests
                 .With(_systemTeamSync)
                 .With<IRoleWrite>()
                 .With(_roles)
+                .With(TestTeamPermissions.Create(_roles, () => _service!))
                 .With(_settings)
                 .Build(),
             _clock,

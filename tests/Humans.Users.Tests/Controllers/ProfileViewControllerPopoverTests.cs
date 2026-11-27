@@ -38,6 +38,8 @@ public class ProfileViewControllerPopoverTests
     private readonly IAuthorizationService _authorizationService = Substitute.For<IAuthorizationService>();
     private readonly ICampService _campService = Substitute.For<ICampService>();
     private readonly IStringLocalizer<SharedResource> _sharedLocalizer = Substitute.For<IStringLocalizer<SharedResource>>().AddFormatting();
+    private readonly Humans.Users.Data.Repositories.IUserRepository _userRepo = Substitute.For<Humans.Users.Data.Repositories.IUserRepository>();
+    private readonly Humans.AuditLog.Contracts.IAuditLogService _audit = Substitute.For<Humans.AuditLog.Contracts.IAuditLogService>();
     private readonly ProfileViewController _controller;
     private readonly Guid _viewerId = Guid.NewGuid();
 
@@ -55,9 +57,7 @@ public class ProfileViewControllerPopoverTests
             Substitute.For<IGovernanceService>(),
             Substitute.For<Humans.Auth.Contracts.ISystemRoleService>(),
             _authorizationService,
-            new MedicalConditionsService(
-                Substitute.For<Humans.Users.Data.Repositories.IUserRepository>(), _userService,
-                Substitute.For<Humans.AuditLog.Contracts.IAuditLogService>()));
+            new MedicalConditionsService(_userRepo, _userService, _audit));
 
         var identity = new ClaimsIdentity([
             new Claim(ClaimTypes.NameIdentifier, _viewerId.ToString()),
@@ -254,6 +254,31 @@ public class ProfileViewControllerPopoverTests
             .Model.Should().BeOfType<ProfileSummaryViewModel>().Subject;
         vm.City.Should().Be("Madrid");
         vm.IsSuspended.Should().BeTrue();
+    }
+
+    [HumansTheory]
+    [InlineData(true, "Asthma", true)]
+    [InlineData(true, null, false)]
+    [InlineData(false, "Asthma", null)]
+    public async Task ViewProfile_MedicalViewer_SeesWhetherAnythingIsOnFile(bool viewer, string? onFile, bool? expected)
+    {
+        var targetId = Guid.NewGuid();
+        var ct = TestContext.Current.CancellationToken;
+        _userService.GetUserInfoAsync(_viewerId, Arg.Any<CancellationToken>())
+            .Returns(BuildActiveUserInfo(_viewerId, "Viewer", "viewer@example.com"));
+        _userService.GetUserInfoAsync(targetId, Arg.Any<CancellationToken>())
+            .Returns(BuildActiveUserInfo(targetId, "Target", "target@example.com"));
+        _userRepo.GetByUserIdReadOnlyAsync(targetId, Arg.Any<CancellationToken>())
+            .Returns(new Profile { UserId = targetId, MedicalConditions = onFile });
+        if (viewer)
+            _authorizationService.AuthorizeAsync(Arg.Any<ClaimsPrincipal>(), Arg.Any<object?>(),
+                UsersPolicies.MedicalDataViewer).Returns(AuthorizationResult.Success());
+
+        var result = await _controller.ViewProfile(targetId, ct);
+
+        result.Should().BeOfType<ViewResult>().Which.Model.Should().BeOfType<ProfileViewModel>()
+            .Which.HasMedicalConditions.Should().Be(expected);
+        await _audit.DidNotReceiveWithAnyArgs().LogAsync(default!, default!, default, default!, default(Guid));
     }
 
     [HumansFact]

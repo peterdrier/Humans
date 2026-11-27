@@ -35,7 +35,7 @@ public class CampaignControllerTests
     }
 
     [HumansFact]
-    public void Class_has_expected_route_prefix()
+    public void Controller_RoutePrefix_IsExpected()
     {
         var routeAttr = typeof(CampaignController).GetCustomAttribute<RouteAttribute>();
         routeAttr.Should().NotBeNull();
@@ -43,19 +43,19 @@ public class CampaignControllerTests
     }
 
     [HumansFact]
-    public void Detail_Action_HasTicketsRead_Policy()
+    public void Detail_Policy_IsTicketsRead()
     {
         AssertActionPolicy(nameof(CampaignController.Detail), TicketsPolicies.Read, typeof(HttpGetAttribute));
     }
 
     [HumansFact]
-    public void GenerateCodes_Action_HasTicketsManage_Policy()
+    public void GenerateCodes_Policy_IsTicketsManage()
     {
         AssertActionPolicy(nameof(CampaignController.GenerateCodes), TicketsPolicies.Manage, typeof(HttpPostAttribute));
     }
 
     [HumansFact]
-    public void AdminOnlyActions_Have_AdminOnly_policy()
+    public void AdminActions_Policy_IsAdminOnly()
     {
         AssertActionPolicy(nameof(CampaignController.Index), PolicyNames.AdminOnly, typeof(HttpGetAttribute));
         AssertActionPolicy(nameof(CampaignController.Create), PolicyNames.AdminOnly, typeof(HttpGetAttribute));
@@ -71,7 +71,7 @@ public class CampaignControllerTests
     }
 
     [HumansFact]
-    public void PostActions_Have_AntiForgery_Validation()
+    public void PostActions_AntiForgery_IsValidated()
     {
         AssertActionHasValidateAntiForgery(nameof(CampaignController.Create), typeof(HttpPostAttribute));
         AssertActionHasValidateAntiForgery(nameof(CampaignController.Edit), typeof(HttpPostAttribute));
@@ -84,7 +84,7 @@ public class CampaignControllerTests
     }
 
     [HumansFact]
-    public void ImportCodes_caps_the_in_memory_csv_upload()
+    public void ImportCodes_CsvUpload_IsCapped()
     {
         var action = GetAction(nameof(CampaignController.ImportCodes), typeof(HttpPostAttribute));
 

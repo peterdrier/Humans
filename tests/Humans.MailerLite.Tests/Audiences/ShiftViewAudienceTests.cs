@@ -76,7 +76,7 @@ public class ShiftViewAudienceTests
     }
 
     [HumansFact]
-    public void Metadata_KeysGroupNamesAndPrefix()
+    public void Metadata_Keys_MatchExpected()
     {
         IReadOnlyDictionary<Guid, ShiftUserSummary> empty = new Dictionary<Guid, ShiftUserSummary>();
 

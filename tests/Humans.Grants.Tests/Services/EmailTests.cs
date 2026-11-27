@@ -10,7 +10,7 @@ public sealed class EmailTests
 {
     [HumansTheory]
     [Xunit.MemberData(nameof(SupportedCultures.All), MemberType = typeof(SupportedCultures))]
-    public void Issued_RendersInRecipientCulture_WithExpiryAndLink(string culture)
+    public void Issued_RecipientCulture_ShowsExpiry(string culture)
     {
         var recipientCulture = System.Globalization.CultureInfo.GetCultureInfo(culture);
         var subject = string.Format(recipientCulture, new System.Resources.ResourceManager(typeof(GrantsResource))

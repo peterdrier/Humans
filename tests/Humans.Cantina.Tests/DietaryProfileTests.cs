@@ -162,7 +162,7 @@ public class DietaryProfileTests
     [HumansTheory]
     [Xunit.InlineData(false)]
     [Xunit.InlineData(true)]
-    public async Task Save_ExactStorageBounds_PreserveUnicodeAndTrimOtherText(bool supplementaryCharacters)
+    public async Task Save_AtStorageBounds_KeepsUnicode(bool supplementaryCharacters)
     {
         var id = Guid.NewGuid();
         SeedUser(id);
@@ -198,7 +198,7 @@ public class DietaryProfileTests
     }
 
     [HumansFact]
-    public async Task Save_Normalizes_UnknownChipsDropped_OtherTextOnlyWithOther()
+    public async Task Save_UnknownChips_AreDropped()
     {
         var id = Guid.NewGuid();
         SeedUser(id);
@@ -217,7 +217,7 @@ public class DietaryProfileTests
     [HumansTheory]
     [Xunit.InlineData(true)]
     [Xunit.InlineData(false)]
-    public async Task Save_OtherWithoutText_IsRefused_AndNothingIsWritten(bool allergy)
+    public async Task Save_OtherWithoutText_IsRefused(bool allergy)
     {
         var id = Guid.NewGuid();
         SeedUser(id);
@@ -243,7 +243,7 @@ public class DietaryProfileTests
     }
 
     [HumansFact]
-    public async Task BulkRead_ResolvesMergedIds_AndOmitsMembersWithoutRows()
+    public async Task BulkRead_MergedIds_AreResolved()
     {
         var withRow = Guid.NewGuid();
         var archived = Guid.NewGuid();
@@ -266,7 +266,7 @@ public class DietaryProfileTests
     }
 
     [HumansFact]
-    public async Task Decline_IsReadBackAsTheOptOutFact_WithNoPreference()
+    public async Task Decline_ReadBack_IsOptOut()
     {
         var id = Guid.NewGuid();
         SeedUser(id);
@@ -280,7 +280,7 @@ public class DietaryProfileTests
     }
 
     [HumansFact]
-    public async Task Decline_ClearsEveryAnswer_AndSavingAnswersLaterClearsTheDecline()
+    public async Task Decline_ExistingAnswers_AreCleared()
     {
         var id = Guid.NewGuid();
         SeedUser(id);
@@ -303,7 +303,7 @@ public class DietaryProfileTests
     }
 
     [HumansFact]
-    public async Task Merge_MovesTheSourceRow_WhenTheSurvivorHasNoAnswers()
+    public async Task Merge_SurvivorHasNoAnswers_MovesSourceRow()
     {
         var from = Guid.NewGuid();
         var to = Guid.NewGuid();
@@ -322,7 +322,7 @@ public class DietaryProfileTests
     [Xunit.InlineData(true, false)]
     [Xunit.InlineData(false, true)]
     [Xunit.InlineData(true, true)]
-    public async Task Merge_PreservesClearedOrDeclinedAnswers_AndIsIdempotent(bool survivorHasRow, bool declined)
+    public async Task Merge_SurvivorDeclined_KeepsDecline(bool survivorHasRow, bool declined)
     {
         var source = Guid.NewGuid();
         var target = Guid.NewGuid();
@@ -358,7 +358,7 @@ public class DietaryProfileTests
     }
 
     [HumansFact]
-    public async Task Export_CarriesTheFoodAnswers_AndEraseDeletesTheRow()
+    public async Task Export_FoodAnswers_AreIncluded()
     {
         var id = Guid.NewGuid();
         SeedUser(id);
@@ -424,7 +424,7 @@ public class DietaryProfileTests
     [HumansTheory]
     [Xunit.InlineData(false)]
     [Xunit.InlineData(true)]
-    public async Task Nudge_PropagatesCancellationFromDietaryAndSignupReads(bool signupRead)
+    public async Task Nudge_ReadCancelled_Propagates(bool signupRead)
     {
         var id = Guid.NewGuid();
         SeedUser(id);

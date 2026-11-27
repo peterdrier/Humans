@@ -82,7 +82,7 @@ public sealed class PleoSyncTests
     [Xunit.InlineData("GBP", 6580L, "65.80", 2)]
     [Xunit.InlineData("EUR", 0L, "0", 2)]
     [Xunit.InlineData("KWD", -12345L, "-12.345", 3)]
-    public async Task Entry_list_and_detail_preserve_original_currency_units(
+    public async Task EntryViews_ForeignCurrency_KeepOriginalUnits(
         string currency, long minors, decimal expected, int decimals)
     {
         var ct = Xunit.TestContext.Current.CancellationToken;
@@ -114,7 +114,7 @@ public sealed class PleoSyncTests
     [Xunit.InlineData(SyncBoundary.DetachedSave)]
     [Xunit.InlineData(SyncBoundary.InitialSaveFailure)]
     [Xunit.InlineData(SyncBoundary.UnrelatedCancellation)]
-    public async Task Sweep_cancellation_respects_the_mirror_commit_boundary(SyncBoundary boundary)
+    public async Task Sync_Cancelled_KeepsMirrorWhole(SyncBoundary boundary)
     {
         using var shutdown = new CancellationTokenSource();
         var previousSync = Instant.FromUtc(2026, 10, 1, 12, 0);
@@ -194,7 +194,7 @@ public sealed class PleoSyncTests
     }
 
     [HumansFact]
-    public async Task Sweep_deletes_rows_Pleo_no_longer_returns()
+    public async Task Sync_RowGoneFromPleo_IsDeleted()
     {
         var ct = Xunit.TestContext.Current.CancellationToken;
         _entries = [Entry("a"), Entry("b"), Entry("c")];
@@ -213,7 +213,7 @@ public sealed class PleoSyncTests
     [Xunit.InlineData("transactionValue", "currency")]
     [Xunit.InlineData("totalBillValue", "minors")]
     [Xunit.InlineData("totalBillValue", "currency")]
-    public async Task Incomplete_money_fails_the_sweep_without_replacing_the_mirror(string moneyField, string missingField)
+    public async Task Sync_IncompleteMoney_Fails(string moneyField, string missingField)
     {
         var ct = Xunit.TestContext.Current.CancellationToken;
         _entries = [Entry("existing")];
@@ -234,7 +234,7 @@ public sealed class PleoSyncTests
     }
 
     [HumansFact]
-    public async Task Complete_zero_and_bill_only_amounts_keep_their_existing_meaning()
+    public async Task Sync_ZeroOrBillOnlyAmount_IsKept()
     {
         _entries =
         [
@@ -252,7 +252,7 @@ public sealed class PleoSyncTests
     [HumansTheory]
     [Xunit.InlineData(false)]
     [Xunit.InlineData(true)]
-    public async Task Bounded_entry_notes_preserve_unicode_and_the_original_raw_payload(bool pairFits)
+    public async Task Sync_LongEntryNote_KeepsUnicode(bool pairFits)
     {
         var prefix = new string('n', pairFits ? 1998 : 1999);
         var note = prefix + "😀tail";
@@ -272,7 +272,7 @@ public sealed class PleoSyncTests
     [HumansTheory]
     [Xunit.InlineData(false)]
     [Xunit.InlineData(true)]
-    public async Task Bounded_sync_errors_preserve_unicode_and_the_original_failure(bool pairFits)
+    public async Task Sync_LongError_KeepsUnicode(bool pairFits)
     {
         var ct = Xunit.TestContext.Current.CancellationToken;
         _entries = [Entry("existing")];
@@ -296,7 +296,7 @@ public sealed class PleoSyncTests
     [HumansTheory]
     [Xunit.InlineData(false)]
     [Xunit.InlineData(true)]
-    public async Task Outcome_save_failure_preserves_the_sync_failure_and_releases_the_gate(bool requestAborted)
+    public async Task Sync_OutcomeSaveFails_ReleasesGate(bool requestAborted)
     {
         using var cancellation = CancellationTokenSource.CreateLinkedTokenSource(Xunit.TestContext.Current.CancellationToken);
         Exception failure = requestAborted
@@ -334,7 +334,7 @@ public sealed class PleoSyncTests
     }
 
     [HumansFact]
-    public async Task Wallet_balance_is_the_last_sweeps_current_balance()
+    public async Task GetWalletBalance_AfterSweep_IsLastBalance()
     {
         var ct = Xunit.TestContext.Current.CancellationToken;
         (await _service.GetWalletBalanceAsync(ct)).Should().BeNull();
@@ -348,7 +348,7 @@ public sealed class PleoSyncTests
     [HumansTheory]
     [Xunit.InlineData(false)]
     [Xunit.InlineData(true)]
-    public async Task Empty_rows_are_skipped_counted_and_visible_in_logs(bool hasEmptyRows)
+    public async Task Sync_EmptyRows_AreSkipped(bool hasEmptyRows)
     {
         var ct = Xunit.TestContext.Current.CancellationToken;
         _entries =
@@ -377,7 +377,7 @@ public sealed class PleoSyncTests
     }
 
     [HumansFact]
-    public async Task Category_mapping_survives_a_sweep()
+    public async Task Sync_CategoryMapping_Survives()
     {
         var ct = Xunit.TestContext.Current.CancellationToken;
         _entries = [Entry("a")];
@@ -399,7 +399,7 @@ public sealed class PleoSyncTests
     }
 
     [HumansFact]
-    public async Task Sweep_links_and_adds_categories_from_Pleos_mapping_but_leaves_a_hand_link()
+    public async Task Sync_PleoMapping_LinksCategories()
     {
         var ct = Xunit.TestContext.Current.CancellationToken;
         var powerRow = Guid.Parse("ec1e51be-d96b-453f-8318-c79371282045");
@@ -435,7 +435,7 @@ public sealed class PleoSyncTests
     }
 
     [HumansFact]
-    public async Task A_sweep_linked_category_follows_a_changed_account_in_Pleo()
+    public async Task Sync_AccountChangedInPleo_RelinksCategory()
     {
         var ct = Xunit.TestContext.Current.CancellationToken;
         _client.SearchAccountsAsync(Arg.Any<CancellationToken>()).Returns(
@@ -457,7 +457,7 @@ public sealed class PleoSyncTests
     }
 
     [HumansFact]
-    public async Task A_hand_unlink_survives_a_sweep_that_reads_Pleos_mapping()
+    public async Task Sync_HandUnlink_Survives()
     {
         var ct = Xunit.TestContext.Current.CancellationToken;
         _client.SearchAccountsAsync(Arg.Any<CancellationToken>()).Returns(
@@ -479,7 +479,7 @@ public sealed class PleoSyncTests
     }
 
     [HumansFact]
-    public async Task A_failed_fetch_leaves_the_mirror_and_records_the_error()
+    public async Task Sync_FetchFails_LeavesMirror()
     {
         var ct = Xunit.TestContext.Current.CancellationToken;
         _entries = [Entry("a")];
@@ -499,7 +499,7 @@ public sealed class PleoSyncTests
     [HumansTheory]
     [Xunit.InlineData(false)]
     [Xunit.InlineData(true)]
-    public async Task A_failed_category_fetch_still_mirrors_entries_and_reports_the_error(bool unexpected)
+    public async Task Sync_CategoryFetchFails_StillMirrorsEntries(bool unexpected)
     {
         var ct = Xunit.TestContext.Current.CancellationToken;
         var before = await _repo.GetCategoriesAsync(ct);
@@ -529,7 +529,7 @@ public sealed class PleoSyncTests
     [Xunit.InlineData(false, true)]
     [Xunit.InlineData(true, false)]
     [Xunit.InlineData(true, true)]
-    public async Task Receipt_failures_keep_the_fallback_and_warn_without_stacks(bool download, bool transient)
+    public async Task Receipts_FetchFails_KeepFallback(bool download, bool transient)
     {
         var ct = Xunit.TestContext.Current.CancellationToken;
         _entries = [Entry("a")];
@@ -556,7 +556,7 @@ public sealed class PleoSyncTests
     }
 
     [HumansFact]
-    public async Task Summary_reconciles_loads_spend_and_refunds_against_Pleos_balance()
+    public async Task GetSummary_Entries_ReconcileWithBalance()
     {
         var ct = Xunit.TestContext.Current.CancellationToken;
         _entries =
@@ -600,7 +600,7 @@ public sealed class PleoSyncTests
     }
 
     [HumansFact]
-    public async Task Linking_missing_category_id_returns_refusal_without_changing_the_mapping()
+    public async Task LinkCategory_MissingId_IsRefused()
     {
         var ct = Xunit.TestContext.Current.CancellationToken;
         var http = new DefaultHttpContext
@@ -625,7 +625,7 @@ public sealed class PleoSyncTests
     }
 
     [HumansFact]
-    public async Task Linking_refuses_an_id_already_linked_elsewhere()
+    public async Task LinkCategory_IdLinkedElsewhere_IsRefused()
     {
         var ct = Xunit.TestContext.Current.CancellationToken;
         await _service.LinkCategoryAsync(LaCantinaCategory, LaCantinaRow, Guid.NewGuid(), ct);
@@ -636,7 +636,7 @@ public sealed class PleoSyncTests
     }
 
     [HumansFact]
-    public async Task Unlink_and_add_are_audited_and_add_refuses_a_duplicate_name()
+    public async Task AddCategory_DuplicateName_IsRefused()
     {
         var ct = Xunit.TestContext.Current.CancellationToken;
         await SyncAsync();
@@ -654,7 +654,7 @@ public sealed class PleoSyncTests
     }
 
     [HumansFact]
-    public async Task A_second_sweep_while_one_runs_is_skipped()
+    public async Task Sync_AlreadyRunning_IsSkipped()
     {
         using var started = new SemaphoreSlim(0);
         using var release = new SemaphoreSlim(0);
@@ -673,7 +673,7 @@ public sealed class PleoSyncTests
     }
 
     [HumansFact]
-    public async Task Without_a_key_the_sweep_does_nothing()
+    public async Task Sync_NoKey_DoesNothing()
     {
         _client.IsConfigured.Returns(false);
 

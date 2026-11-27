@@ -42,6 +42,7 @@ public sealed class Section :
     ISectionHelp,
     ISectionJobs,
     ISectionNav,
+    ISectionPermissions,
     ISectionPolicies,
     ISearchContributor,
     IUserPart
@@ -114,7 +115,6 @@ public sealed class Section :
 
         services.AddScoped<ISystemTeamSync, SystemTeamSyncJob>();
 
-        services.AddScoped<IAuthorizationHandler, TeamAuthorizationHandler>();
 
         services.AddSingleton<TeamsMetricsService>();
         services.AddHostedService(sp => sp.GetRequiredService<TeamsMetricsService>());
@@ -210,6 +210,9 @@ public sealed class Section :
         options.AddPolicy(TeamsPolicies.Manage, policy =>
             policy.RequireRole(TeamsRoles.TeamsAdmin, RoleNames.Admin));
     }
+
+    IReadOnlyList<Permission> ISectionPermissions.Permissions { get; } =
+        [TeamPermissionRequirements.ManagePermission, TeamPermissionRequirements.EarlyEntryPermission];
 
     IEnumerable<UserPart> IUserPart.Parts() =>
     [
