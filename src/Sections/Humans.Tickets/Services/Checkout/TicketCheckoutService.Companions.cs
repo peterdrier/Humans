@@ -1,4 +1,5 @@
 using Humans.AuditLog.Contracts;
+using Humans.Tickets.Data;
 using Humans.Tickets.Domain.Checkout;
 
 namespace Humans.Tickets.Services.Checkout;
@@ -100,8 +101,11 @@ internal sealed partial class TicketCheckoutService
         TicketCheckoutTicket? companionTicket = null;
         if (approve)
         {
-            if ((await repository.GetTicketAsync(request.TicketId, ct))?.HolderUserId != request.HolderUserId)
+            var parentTicket = await repository.GetTicketAsync(request.TicketId, ct);
+            if (parentTicket is null || parentTicket.HolderUserId != request.HolderUserId)
                 return new("The ticket no longer belongs to the requesting holder; decline the request.");
+            if (TicketPiiTombstone.IsTombstoned(parentTicket.HolderName, parentTicket.HolderEmail))
+                return new("Erased adult ticket data cannot receive a companion.");
             companionTicket = (await repository.GetTicketsForSettingsAsync(request.TicketingSettingsId, ct))
                 .FirstOrDefault(t => t.ParentTicketId == request.TicketId && t.HolderUserId == request.CompanionUserId
                     && t.Kind == TicketHolderKind.Companion && t.State == TicketCheckoutTicketState.Valid);
@@ -148,6 +152,7 @@ internal sealed partial class TicketCheckoutService
         TicketCheckoutTicket ticket, TicketingSettings? ticketing,
         IReadOnlyList<TicketCheckoutTicket> eventTickets, IReadOnlyList<TicketCompanionRequest> requests) =>
         ticket is { State: TicketCheckoutTicketState.Valid, Kind: TicketHolderKind.Adult, HolderUserId: not null }
+        && !TicketPiiTombstone.IsTombstoned(ticket.HolderName, ticket.HolderEmail)
         && ticketing is { Mode: not TicketSalesMode.Closed, EffectiveSwitches.CompanionTicketsOn: true }
         && !eventTickets.Any(t => t.ParentTicketId == ticket.Id && t.Kind == TicketHolderKind.Companion && t.State == TicketCheckoutTicketState.Valid)
         && !requests.Any(r => r.TicketId == ticket.Id && r.HolderUserId == ticket.HolderUserId && r.State == TicketCompanionRequestState.Pending);

@@ -218,8 +218,14 @@ internal sealed partial class TicketCheckoutService
             return new("Erased ticket data cannot be restored.");
         if ((await repository.GetTicketingSettingsAsync(ticket.TicketingSettingsId, ct))?.CancelledAt is not null)
             return new("The event is cancelled; its tickets stay void.");
-        if (ticket.ParentTicketId is { } parentId && (await repository.GetTicketAsync(parentId, ct))?.State != TicketCheckoutTicketState.Valid)
-            return new("Restore the adult's ticket first.");
+        if (ticket.ParentTicketId is { } parentId)
+        {
+            var parent = await repository.GetTicketAsync(parentId, ct);
+            if (parent?.State != TicketCheckoutTicketState.Valid)
+                return new("Restore the adult's ticket first.");
+            if (TicketPiiTombstone.IsTombstoned(parent.HolderName, parent.HolderEmail))
+                return new("Erased adult ticket data cannot have dependents restored.");
+        }
         if (ticket.HolderUserId is { } holder)
         {
             if (await users.GetUserInfoAsync(holder, ct) is not { IsTombstone: false })
@@ -279,6 +285,8 @@ internal sealed partial class TicketCheckoutService
             return (new("That ticket does not exist."), null);
         if (parent.State != TicketCheckoutTicketState.Valid || parent.Kind != TicketHolderKind.Adult || parent.HolderUserId is not { } parentHolderId)
             return (new("A companion attaches to a valid adult ticket with a holder."), null);
+        if (TicketPiiTombstone.IsTombstoned(parent.HolderName, parent.HolderEmail))
+            return (new("Erased adult ticket data cannot receive a companion."), null);
         var ticketing = await repository.GetTicketingSettingsAsync(parent.TicketingSettingsId, ct);
         if (ticketing is null)
             return (new("That ticket's ticketing settings no longer exist."), null);

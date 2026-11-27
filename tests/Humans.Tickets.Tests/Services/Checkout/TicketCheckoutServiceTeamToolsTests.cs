@@ -19,6 +19,107 @@ namespace Humans.Tickets.Tests.Services.Checkout;
 public sealed partial class TicketCheckoutServiceTests
 {
     [HumansTheory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task IssueCompanion_ErasedParent_Refuses(bool overrideCapacity)
+    {
+        var adult = await PaidAdultAsync();
+        adult.HolderName = TicketPiiTombstone.Name;
+        if (overrideCapacity)
+            _ticketing.Capacity = 1;
+        _provisioning.FindOrCreateUserByEmailAsync("newhelper@example.com", null, ContactSource.Manual, Arg.Any<CancellationToken>())
+            .Returns(new AccountProvisioningResult(Guid.NewGuid(), Created: true));
+        var events = _repo.Events.Count;
+        _delivery.ClearReceivedCalls();
+        _audit.ClearReceivedCalls();
+
+        var result = await _service.IssueCompanionAsync(adult.Id, "Helper Ruiz", "newhelper@example.com", "Support", overrideCapacity, _adminId, Ct);
+
+        result.Succeeded.Should().BeFalse();
+        _repo.Tickets.Should().ContainSingle();
+        _repo.Orders.Should().ContainSingle();
+        _repo.Events.Should().HaveCount(events);
+        _audit.ReceivedCalls().Should().BeEmpty();
+        await _provisioning.DidNotReceiveWithAnyArgs().FindOrCreateUserByEmailAsync(default!, default, default);
+        await _delivery.DidNotReceiveWithAnyArgs().TicketsIssuedAsync(default);
+    }
+
+    [HumansFact]
+    public async Task RequestCompanion_ErasedParent_Refuses()
+    {
+        var adult = await PaidAdultAsync();
+        adult.HolderEmail = TicketPiiTombstone.EmailFor(_buyerId);
+        Human("helper@example.com", "Helper", "Ruiz");
+        var events = _repo.Events.Count;
+
+        var held = (await _service.GetHeldTicketsAsync(_buyerId, Ct)).Single(t => t.Ticket.Id == adult.Id);
+        var result = await _service.RequestCompanionAsync(adult.Id, _buyerId, "helper@example.com", "Support", Ct);
+
+        held.CanAskCompanion.Should().BeFalse();
+        result.Refusal.Should().Be("Tickets_Companion_NotAllowed");
+        _repo.CompanionRequests.Should().BeEmpty();
+        _repo.Events.Should().HaveCount(events);
+    }
+
+    [HumansTheory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task DecideCompanionRequest_ErasedParent_Refuses(bool issued)
+    {
+        var adult = await PaidAdultAsync();
+        Human("helper@example.com", "Helper", "Ruiz");
+        await _service.RequestCompanionAsync(adult.Id, _buyerId, "helper@example.com", "Support", Ct);
+        var request = _repo.CompanionRequests.Single();
+        if (issued)
+            (await _service.IssueCompanionAsync(adult.Id, "Helper Ruiz", "helper@example.com", "Support", false, _adminId, Ct))
+                .Succeeded.Should().BeTrue();
+        adult.HolderName = TicketPiiTombstone.Name;
+        var tickets = _repo.Tickets.Count;
+        var orders = _repo.Orders.Count;
+        var events = _repo.Events.Count;
+        _delivery.ClearReceivedCalls();
+        _audit.ClearReceivedCalls();
+
+        var result = await _service.DecideCompanionRequestAsync(request.Id, true, null, _adminId, Ct);
+
+        result.Succeeded.Should().BeFalse();
+        request.State.Should().Be(TicketCompanionRequestState.Pending);
+        request.CompanionTicketId.Should().BeNull();
+        _repo.Tickets.Should().HaveCount(tickets);
+        _repo.Orders.Should().HaveCount(orders);
+        _repo.Events.Should().HaveCount(events);
+        _audit.ReceivedCalls().Should().BeEmpty();
+        await _delivery.DidNotReceiveWithAnyArgs().TicketsIssuedAsync(default);
+    }
+
+    [HumansTheory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task RestoreTicket_ErasedParent_Refuses(bool companion)
+    {
+        _ticketing.ChildTypes = [new TicketChildType { Name = "Child", UnderAge = 13, PriceMinor = 5000 }];
+        var order = await BuyAndPayAsync(companion ? Buy() : Buy() with { Children = [new("Kid García", null)] }, _buyerId);
+        var adult = _repo.Tickets.Single(t => t.OrderId == order.Id && t.Kind == TicketHolderKind.Adult);
+        if (companion)
+            (await _service.IssueCompanionAsync(adult.Id, "Helper Ruiz", null, "Support", false, _adminId, Ct))
+                .Succeeded.Should().BeTrue();
+        var dependent = _repo.Tickets.Single(t => t.ParentTicketId == adult.Id);
+        (await _service.VoidTicketAsync(dependent.Id, "Voided by mistake", 0, _adminId, Ct)).Succeeded.Should().BeTrue();
+        adult.HolderEmail = TicketPiiTombstone.EmailFor(_buyerId);
+        var events = _repo.Events.Count;
+        _repo.TicketWrites.Clear();
+        _audit.ClearReceivedCalls();
+
+        var result = await _service.RestoreTicketAsync(dependent.Id, "Restore", _adminId, Ct);
+
+        result.Succeeded.Should().BeFalse();
+        dependent.State.Should().Be(TicketCheckoutTicketState.Void);
+        _repo.TicketWrites.Should().BeEmpty();
+        _repo.Events.Should().HaveCount(events);
+        _audit.ReceivedCalls().Should().BeEmpty();
+    }
+
+    [HumansTheory]
     [InlineData(null)]
     [InlineData(UserState.Deleted)]
     [InlineData(UserState.Merged)]

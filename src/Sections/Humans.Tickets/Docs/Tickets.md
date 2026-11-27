@@ -47,6 +47,8 @@ Order-detail and delivery-card presentation ordering belongs to their rendering 
 
 Companion requests stay with their requesting holder after ticket transfer. Member reads and withdrawals exclude previous holders' requests and decision notes; a new holder may ask independently. Staff see the original requester and can decline a stale request, but cannot approve it against the new holder's ticket, including when reusing an already-issued companion.
 
+An adult ticket with erased identity markers cannot receive new companion requests or tickets, including approval recovery and capacity overrides. A child or companion cannot be restored under an erased adult. These checks precede provisioning, mutation, delivery and audit, matching Gate's refusal of erased families even on legacy rows still marked `Valid`.
+
 Refund audit entries record human refund and refunded-void callers in `ActorUserId`; automated refund attempts use the `TicketCheckout` job identity.
 
 Operator controllers order companion requests pending-first/newest-first, cancellation refund groups by state,
