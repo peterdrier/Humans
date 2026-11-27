@@ -131,7 +131,10 @@
     </header>
     <div class="container main-content">
         <main role="main" class="pb-3">
-            <partial name="_AuthorizationPill" />
+            @if (ViewData["AuthPillRoles"] is string { Length: > 0 })
+            {
+                <div class="text-center mb-3"><partial name="_AuthorizationPill" /></div>
+            }
             @if (ViewData["SuppressLayoutTempDataAlerts"] is not bool suppressLayoutTempDataAlerts || !suppressLayoutTempDataAlerts)
             {
                 <vc:temp-data-alerts />
