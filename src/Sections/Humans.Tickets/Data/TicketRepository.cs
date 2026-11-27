@@ -192,17 +192,19 @@ internal sealed class TicketRepository(IDbContextFactory<TicketsDbContext> facto
         {
             if (existing.TryGetValue(order.VendorOrderId, out var tracked))
             {
-                // Once GDPR-erased, sync never writes the buyer name/email back; every other field still syncs.
+                // Sync must preserve erasure even when vendor emails match a newly verified member.
                 if (tracked.PiiErasedAt is null
                     && !TicketPiiTombstone.IsTombstoned(tracked.BuyerName, tracked.BuyerEmail))
                 {
                     tracked.BuyerName = order.BuyerName;
                     tracked.BuyerEmail = order.BuyerEmail;
+                    tracked.MatchedUserId = order.MatchedUserId;
                 }
                 else
                 {
                     // Self-heal rows erased before PiiErasedAt existed: the tombstone records the same erasure.
                     tracked.PiiErasedAt ??= clock.GetCurrentInstant();
+                    tracked.MatchedUserId = null;
                 }
                 tracked.TotalAmount = order.TotalAmount;
                 tracked.Currency = order.Currency;
@@ -212,7 +214,6 @@ internal sealed class TicketRepository(IDbContextFactory<TicketsDbContext> facto
                 tracked.VendorDashboardUrl = order.VendorDashboardUrl;
                 tracked.PurchasedAt = order.PurchasedAt;
                 tracked.SyncedAt = order.SyncedAt;
-                tracked.MatchedUserId = order.MatchedUserId;
                 tracked.StripePaymentIntentId = order.StripePaymentIntentId;
                 tracked.DiscountAmount = order.DiscountAmount;
                 tracked.DonationAmount = order.DonationAmount;
@@ -242,24 +243,25 @@ internal sealed class TicketRepository(IDbContextFactory<TicketsDbContext> facto
         {
             if (existing.TryGetValue(attendee.VendorTicketId, out var tracked))
             {
-                // Once GDPR-erased, sync never writes the attendee name/email back; every other field still syncs.
+                // Sync must preserve erasure even when vendor emails match a newly verified member.
                 if (tracked.PiiErasedAt is null
                     && !TicketPiiTombstone.IsTombstoned(tracked.AttendeeName, tracked.AttendeeEmail))
                 {
                     tracked.AttendeeName = attendee.AttendeeName;
                     tracked.AttendeeEmail = attendee.AttendeeEmail;
+                    tracked.MatchedUserId = attendee.MatchedUserId;
                 }
                 else
                 {
                     // Self-heal rows erased before PiiErasedAt existed: the tombstone records the same erasure.
                     tracked.PiiErasedAt ??= clock.GetCurrentInstant();
+                    tracked.MatchedUserId = null;
                 }
                 tracked.TicketTypeName = attendee.TicketTypeName;
                 tracked.Price = attendee.Price;
                 tracked.Status = attendee.Status;
                 tracked.VendorEventId = attendee.VendorEventId;
                 tracked.SyncedAt = attendee.SyncedAt;
-                tracked.MatchedUserId = attendee.MatchedUserId;
                 tracked.Barcode = attendee.Barcode;
                 // TicketOrderId is init-only on existing rows; don't reparent.
             }
