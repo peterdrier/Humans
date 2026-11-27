@@ -116,29 +116,7 @@ internal sealed record GateFindResultsViewModel(string Query, IReadOnlyList<Gate
 /// <summary><paramref name="CutoffConfigured"/> drives the banner telling staff to have the cutoff set before doors.</summary>
 internal sealed record GateIndexViewModel(string DataAsOf, bool CutoffConfigured);
 
-internal sealed record GateSettingsViewModel(
-    string GeneralEntryOpensAtUtc,
-    // Validation must target the constructor parameter: ASP.NET throws at bind time on a record with property-level
-    // validation.
-    [param: System.ComponentModel.DataAnnotations.Range(0, 21,
-        ErrorMessage = "Minor age threshold must be between 0 and 21.")] int MinorAgeThresholdYears);
-
-internal sealed record GateClaimViewModel(IReadOnlyList<Guid> Roster);
-
-
-internal enum GatePinMode
-{
-    Set,
-
-    Verify,
-}
-
-internal sealed record GatePinViewModel(Guid UserId, GatePinMode Mode, string? Error)
-{
-    /// <summary>From the server-derived status, never a client hint. A self-set claim PIN attributes scans only.</summary>
-    public static GatePinViewModel ForClaim(Guid userId, GatePinStatus status, string? error = null) =>
-        new(userId, status.HasPin ? GatePinMode.Verify : GatePinMode.Set, error);
-}
+internal sealed record GateSettingsViewModel(string GeneralEntryOpensAtUtc);
 
 /// <summary><paramref name="Days"/> newest first; <paramref name="DayArrivals"/> are the shown day's admits, newest first.</summary>
 internal sealed record GateReportViewModel(

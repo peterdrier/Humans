@@ -13,7 +13,6 @@ body.gate-kiosk { margin: 0; min-height: 100vh; background: #f4ede1; }
     display: flex; align-items: center; gap: 1rem; flex-wrap: wrap;
     font-size: 1rem; color: #5f6b76; margin-bottom: .75rem;
 }
-.gate-topbar-link { margin-left: auto; font-weight: 600; }
 /* Reddens once the terminal's been open a while. */
 .gate-asof { color: #2b3440; font-weight: 600; }
 .gate-asof-stale { color: #B11217; }
@@ -103,43 +102,6 @@ body.gate-kiosk { margin: 0; min-height: 100vh; background: #f4ede1; }
 .gate-key-muted { font-size: 1.4rem; background: #5a6672; }
 .gate-key-muted:active { background: #3a4753; }
 
-/* ── Full-screen claim keypad (Pin.cshtml) ──────────────────────────────────*/
-.gate-pin-screen {
-    max-width: 480px; margin: 0 auto;
-    /* Fill the viewport and centre the keypad vertically (no top-heavy gap in portrait); the
-       min-height is a floor, so on a short screen the box just grows and the page scrolls — no clip. */
-    min-height: calc(100vh - 3rem);
-    display: flex; flex-direction: column; align-items: center; justify-content: center;
-    text-align: center;
-}
-/* The form is a flex child; without a definite width it shrinks to content and collapses the
-   keypad's width:100% to min-content (tall, thin keys). Make it span the column. */
-.gate-pin-screen form { width: 100%; }
-.gate-pin-head { margin-bottom: 1.25rem; }
-.gate-pin-name { font-size: 2.1rem; font-weight: 700; color: #1e2a33; line-height: 1.1; }
-.gate-pin-prompt { font-size: 1.4rem; color: #2b3440; margin-top: .35rem; }
-/* Re-enter (confirm) step of a first-time set — stands out from the neutral "set" prompt so the
-   volunteer notices the keypad is asking a second time, not repeating itself. */
-.gate-pin-prompt-confirm { color: #0B7A2F; font-weight: 700; }
-.gate-pin-sub { font-size: 1.05rem; color: #5f6b76; margin-top: .25rem; }
-.gate-pin-error {
-    margin-top: .9rem; padding: .6rem 1rem; border-radius: 10px;
-    background: #B11217; color: #fff; font-size: 1.15rem; font-weight: 600;
-}
-.gate-pin-back {
-    display: inline-block; margin-top: 1.5rem; font-size: 1.1rem; font-weight: 600; color: #5f6b76;
-}
-/* "Is this you?" confirm before a first-time PIN set — big, unmissable, glove-friendly. */
-.gate-pin-confirm { max-width: 440px; margin: 0 auto; }
-.gate-pin-confirm-q { font-size: 1.6rem; font-weight: 700; color: #1e2a33; }
-.gate-pin-confirm-note { font-size: 1.2rem; color: #2b3440; line-height: 1.45; margin: .5rem 0 1.5rem; }
-.gate-pin-confirm-note strong { color: #1e2a33; }
-.gate-pin-confirm-yes {
-    width: 100%; font-size: 1.6rem; font-weight: 700; color: #fff; background: #0B7A2F;
-    border: none; border-radius: 14px; padding: 1.1rem; min-height: 78px; cursor: pointer;
-}
-.gate-pin-confirm-yes:active { background: #095e24; }
-
 /* ── Supervisor-override panel (Index.cshtml) ───────────────────────────────
    Full-viewport scrim so the supervisor's name + PIN entry is the only focus. */
 .gate-override {
@@ -211,20 +173,6 @@ body.gate-kiosk { margin: 0; min-height: 100vh; background: #f4ede1; }
 .gate-help-list li { margin-bottom: .5rem; }
 .gate-help-dot { display: inline-block; width: 18px; height: 18px; border-radius: 50%; vertical-align: middle; margin-right: .5rem; }
 .gate-help-tip { font-size: 1.05rem; color: #2b3440; margin: .25rem 0 0; }
-
-/* Roster quick-pick on the claim screen — big FILLED tap targets (outline buttons
-   wash out in direct sun) for gloved use. Capped height so a large roster scrolls
-   instead of burying the search box below the fold. */
-.gate-roster {
-    display: flex; flex-wrap: wrap; gap: .6rem; max-width: 720px;
-    max-height: 46vh; overflow-y: auto;
-}
-.gate-roster-pick {
-    flex: 1 1 auto; min-width: 180px; font-size: 1.35rem; font-weight: 700;
-    padding: 1.1rem 1.25rem; border: none; border-radius: 12px; cursor: pointer;
-    background: #2b3440; color: #fff;
-}
-.gate-roster-pick:hover, .gate-roster-pick:focus { background: #1e2a33; color: #fff; }
 
 /* Undo on an ADMIT card: solid dark so it reads on the green, and clearly not the next-ticket button. */
 .gate-undo-btn { display: block; width: 100%; margin-top: 1rem; background: #3a4753; font-size: 1.15rem; }

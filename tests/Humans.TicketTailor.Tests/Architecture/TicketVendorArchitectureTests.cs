@@ -62,7 +62,7 @@ public class TicketVendorArchitectureTests
     }
 
     [HumansFact]
-    public void ITicketVendorService_AllDtoTypesLiveBesideThePort()
+    public void TicketVendorService_DtoTypes_LiveBesidePort()
     {
         // Strict allowlist: primitives, System.*, NodaTime.*, or types beside the port — namespace
         // Humans.Tickets.Contracts *and* the port's own assembly, since the Contracts leaf shares the

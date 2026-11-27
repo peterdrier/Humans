@@ -105,14 +105,14 @@ public sealed class BoxOfficePlatformTests
         """;
 
     [HumansFact]
-    public void Unconfigured_platform_says_so()
+    public void IsConfigured_NoKey_IsFalse()
     {
         new BoxOfficePlatform(Options.Create(new BoxOfficeSettings()), _stripe, new FakeClock(Now),
             NullLogger<BoxOfficePlatform>.Instance).IsConfigured.Should().BeFalse();
     }
 
     [HumansFact]
-    public void Setup_says_test_mode_and_never_shows_the_key()
+    public void Setup_NeverShowsKey()
     {
         var setup = Platform().Setup;
 
@@ -152,7 +152,7 @@ public sealed class BoxOfficePlatformTests
     }
 
     [HumansFact]
-    public async Task Checkout_charges_each_line_exactly_and_is_idempotent_per_order()
+    public async Task Checkout_ChargesEachLineExactly()
     {
         Respond(Session("open", "unpaid"));
         var orderId = Guid.NewGuid();
@@ -178,7 +178,7 @@ public sealed class BoxOfficePlatformTests
     }
 
     [HumansFact]
-    public async Task List_reads_every_session_of_the_period_and_refunds_only_where_the_charge_shows_some()
+    public async Task List_Period_ReadsEverySession()
     {
         var orderId = Guid.NewGuid();
         Respond(
@@ -203,7 +203,7 @@ public sealed class BoxOfficePlatformTests
     }
 
     [HumansFact]
-    public async Task Non_euro_order_is_refused_before_calling_Stripe()
+    public async Task Checkout_NonEuroOrder_IsRefused()
     {
         var act = () => Platform().CreateOrderAsync(new PlatformOrderRequest(
             Guid.NewGuid(), Guid.NewGuid(), null, "A", "a@example.com", "USD", "en", [new PlatformOrderLine(OrderLineKind.Ticket, "T", 100, 0m, "A")],
@@ -214,7 +214,7 @@ public sealed class BoxOfficePlatformTests
     }
 
     [HumansFact]
-    public async Task Status_of_a_paid_session_carries_fee_method_and_refunded_total()
+    public async Task Status_PaidSession_CarriesFee()
     {
         Respond(Session("complete", "paid", PaidCharge),
             RefundList(Refund("re_1", "succeeded", 5000), Refund("re_2", "pending", 3000), Refund("re_3", "failed", 2000, Guid.NewGuid())));
@@ -238,7 +238,7 @@ public sealed class BoxOfficePlatformTests
     [InlineData("complete", "unpaid", "requires_action", PlatformOrderState.Processing)]
     [InlineData("complete", "unpaid", "requires_payment_method", PlatformOrderState.Failed)]
     [InlineData("complete", "unpaid", "canceled", PlatformOrderState.Failed)]
-    public async Task Status_maps_open_expired_settling_and_failed_debits(
+    public async Task Status_SessionState_MapsToOrderStatus(
         string status, string paymentStatus, string intent, PlatformOrderState expected)
     {
         Respond(Session(status, paymentStatus, intent: intent), RefundList());
@@ -247,7 +247,7 @@ public sealed class BoxOfficePlatformTests
     }
 
     [HumansFact]
-    public async Task A_chargeback_counts_what_open_and_lost_disputes_hold_but_not_inquiries_or_won_ones()
+    public async Task Status_Chargeback_CountsOpenOrLostDisputes()
     {
         var chargedBack = PaidCharge.Replace("\"paid\":true", "\"paid\":true,\"disputed\":true", StringComparison.Ordinal);
         Respond(Session("complete", "paid", chargedBack), RefundList(),
@@ -265,7 +265,7 @@ public sealed class BoxOfficePlatformTests
     }
 
     [HumansFact]
-    public async Task Cancelling_a_session_whose_bank_debit_failed_succeeds_but_a_settling_one_is_refused()
+    public async Task Cancel_BankDebitFailed_Succeeds()
     {
         _http.MakeRequestAsync(Arg.Any<StripeRequest>(), Arg.Any<CancellationToken>()).Returns(
             new StripeResponse(HttpStatusCode.BadRequest, null,
@@ -282,7 +282,7 @@ public sealed class BoxOfficePlatformTests
     }
 
     [HumansFact]
-    public async Task Refund_above_what_the_payment_still_holds_is_refused_without_a_refund_call()
+    public async Task Refund_AboveRemainingAmount_IsRefused()
     {
         Respond(Session("complete", "paid", PaidCharge), RefundList());
 
@@ -294,7 +294,7 @@ public sealed class BoxOfficePlatformTests
     }
 
     [HumansFact]
-    public async Task Refund_sends_the_exact_amount_against_the_sessions_payment_with_the_refund_id_as_idempotency_key()
+    public async Task Refund_SendsExactAmount()
     {
         Respond(Session("complete", "paid", PaidCharge), RefundList(),
             """{"id":"re_1","object":"refund","status":"succeeded","amount":12000,"currency":"eur"}""");
@@ -312,7 +312,7 @@ public sealed class BoxOfficePlatformTests
     }
 
     [HumansFact]
-    public async Task A_repeated_refund_gets_the_earlier_refunds_state_without_a_second_refund()
+    public async Task Refund_Repeated_ReturnsEarlierState()
     {
         var refundId = Guid.NewGuid();
         Respond(Session("complete", "paid", PaidCharge), RefundList(Refund("re_7", "pending", 30000, refundId)));
@@ -377,7 +377,7 @@ public sealed class BoxOfficePlatformTests
     }
 
     [HumansFact]
-    public async Task A_webhook_with_a_bad_signature_is_rejected()
+    public async Task Webhook_BadSignature_IsRejected()
     {
         var platform = new BoxOfficePlatform(
             Options.Create(new BoxOfficeSettings { SecretKey = "sk_test_boxoffice", WebhookSecret = "whsec_test" }), _stripe, new FakeClock(Now),
@@ -388,7 +388,7 @@ public sealed class BoxOfficePlatformTests
     }
 
     [HumansFact]
-    public async Task Payment_ledger_ties_each_movement_to_its_order_and_lists_payout_contents()
+    public async Task Ledger_EachMovement_NamesItsOrder()
     {
         var paidHere = Guid.NewGuid();
         var refundedLater = Guid.NewGuid();
@@ -444,7 +444,7 @@ public sealed class BoxOfficePlatformTests
     }
 
     [HumansFact]
-    public async Task Checkout_refuses_a_negative_line_or_a_non_positive_total_before_calling_Stripe()
+    public async Task Checkout_NegativeLineOrZeroTotal_IsRefused()
     {
         var negative = () => Platform().CreateOrderAsync(Order(Now + Duration.FromHours(1),
             new PlatformOrderLine(OrderLineKind.Ticket, "T", 500, 0m, "A"),
@@ -460,7 +460,7 @@ public sealed class BoxOfficePlatformTests
     [HumansTheory]
     [InlineData(5, 31)]
     [InlineData(72 * 60, 23 * 60)]
-    public async Task Checkout_leaves_free_lines_out_and_keeps_the_session_inside_Stripes_lifetime(int askedMinutes, int sentMinutes)
+    public async Task Checkout_FreeLines_AreLeftOut(int askedMinutes, int sentMinutes)
     {
         Respond(Session("open", "unpaid"));
 
@@ -476,7 +476,7 @@ public sealed class BoxOfficePlatformTests
     }
 
     [HumansFact]
-    public async Task A_failed_refund_Humans_did_not_make_does_not_flag_the_order()
+    public async Task Status_ForeignFailedRefund_DoesNotFlagOrder()
     {
         Respond(Session("complete", "paid", PaidCharge), RefundList(Refund("re_1", "failed", 2000)));
 
@@ -487,7 +487,7 @@ public sealed class BoxOfficePlatformTests
     }
 
     [HumansFact]
-    public async Task Refund_of_an_order_with_no_settled_payment_fails_without_a_refund_call()
+    public async Task Refund_NoSettledPayment_Fails()
     {
         Respond(Session("complete", "unpaid", PaidCharge.Replace("\"paid\":true", "\"paid\":false", StringComparison.Ordinal)));
 
@@ -499,7 +499,7 @@ public sealed class BoxOfficePlatformTests
     }
 
     [HumansFact]
-    public async Task Refund_Stripe_declines_answers_failed_with_Stripes_reason()
+    public async Task Refund_StripeDeclines_FailsWithStripesReason()
     {
         using var headers = new HttpResponseMessage();
         _http.MakeRequestAsync(Arg.Any<StripeRequest>(), Arg.Any<CancellationToken>()).Returns(
@@ -516,7 +516,7 @@ public sealed class BoxOfficePlatformTests
     }
 
     [HumansFact]
-    public async Task Refund_Stripe_never_answered_throws_so_Tickets_repeats_it()
+    public async Task Refund_StripeNeverAnswers_Throws()
     {
         using var headers = new HttpResponseMessage();
         _http.MakeRequestAsync(Arg.Any<StripeRequest>(), Arg.Any<CancellationToken>()).Returns(
@@ -531,7 +531,7 @@ public sealed class BoxOfficePlatformTests
     }
 
     [HumansFact]
-    public async Task Cancelling_a_paid_session_is_refused()
+    public async Task Cancel_PaidSession_IsRefused()
     {
         _http.MakeRequestAsync(Arg.Any<StripeRequest>(), Arg.Any<CancellationToken>()).Returns(
             new StripeResponse(HttpStatusCode.BadRequest, null,
@@ -544,7 +544,7 @@ public sealed class BoxOfficePlatformTests
     }
 
     [HumansFact]
-    public async Task A_verified_session_event_names_its_session_without_calling_Stripe()
+    public async Task Webhook_SessionEvent_NamesItsSession()
     {
         var body = Event("checkout.session.completed", """{"id":"cs_9","object":"checkout.session"}""");
 
@@ -557,7 +557,7 @@ public sealed class BoxOfficePlatformTests
     [InlineData("charge.refunded", """{"id":"ch_1","object":"charge","payment_intent":"pi_1"}""")]
     [InlineData("refund.failed", """{"id":"re_1","object":"refund","payment_intent":"pi_1"}""")]
     [InlineData("charge.dispute.created", """{"id":"dp_1","object":"dispute","payment_intent":"pi_1"}""")]
-    public async Task A_verified_money_event_names_the_sessions_of_its_payment(string type, string dataObject)
+    public async Task Webhook_MoneyEvent_NamesPaymentSessions(string type, string dataObject)
     {
         Respond("""{"object":"list","url":"/v1/checkout/sessions","has_more":false,"data":[{"id":"cs_1","object":"checkout.session"}]}""");
         var body = Event(type, dataObject);
@@ -568,7 +568,7 @@ public sealed class BoxOfficePlatformTests
     }
 
     [HumansFact]
-    public async Task A_verified_unrelated_event_names_nothing()
+    public async Task Webhook_UnrelatedEvent_NamesNothing()
     {
         var body = Event("customer.created", """{"id":"cus_1","object":"customer"}""");
 
@@ -589,7 +589,7 @@ public sealed class BoxOfficePlatformTests
     }
 
     [HumansFact]
-    public async Task Webhook_answers_503_while_unset_400_on_a_bad_signature_and_nudges_Tickets_once_verified()
+    public async Task Webhook_Verified_NudgesTickets()
     {
         var events = Substitute.For<ITicketingPlatformEvents>();
         var body = Event("checkout.session.expired", """{"id":"cs_9","object":"checkout.session"}""");

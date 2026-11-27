@@ -102,7 +102,7 @@ public class NotificationRetentionTests : IDisposable
     }
 
     [HumansFact]
-    public async Task DeletesResolvedNotificationsOlderThan7Days()
+    public async Task Purge_ResolvedOver7Days_IsDeleted()
     {
         var now = _clock.GetCurrentInstant();
         var userId = Guid.NewGuid();
@@ -156,7 +156,7 @@ public class NotificationRetentionTests : IDisposable
     }
 
     [HumansFact(Timeout = 10000)]
-    public async Task DeletesStaleInformationalNotificationsOlderThan30Days()
+    public async Task Purge_InformationalOver30Days_IsDeleted()
     {
         var now = _clock.GetCurrentInstant();
 
@@ -206,7 +206,7 @@ public class NotificationRetentionTests : IDisposable
     }
 
     [HumansFact]
-    public async Task DeletesUnresolvedRetiredSourceNotifications()
+    public async Task Purge_RetiredSourceUnresolved_IsDeleted()
     {
         var now = _clock.GetCurrentInstant();
 

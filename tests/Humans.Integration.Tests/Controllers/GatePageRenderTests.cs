@@ -15,7 +15,6 @@ public class GatePageRenderTests(HumansTestDatabase database) : IntegrationTestB
     private const string GateCssPath = "/_content/Humans.Gate/css/gate/gate.css";
     private const string GateJsPath = "/_content/Humans.Gate/js/gate/gate.js";
     private const string GateKeypadJsPath = "/_content/Humans.Gate/js/gate/gate-keypad.js";
-    private const string GatePinJsPath = "/_content/Humans.Gate/js/gate/gate-pin.js";
 
     [HumansFact(Timeout = 60000)]
     public async Task Scan_terminal_renders_through_the_sections_own_kiosk_layout()
@@ -59,7 +58,7 @@ public class GatePageRenderTests(HumansTestDatabase database) : IntegrationTestB
         // An href resolving doesn't mean the file is served.
         var ct = Xunit.TestContext.Current.CancellationToken;
 
-        foreach (var asset in new[] { GateCssPath, GateJsPath, GateKeypadJsPath, GatePinJsPath })
+        foreach (var asset in new[] { GateCssPath, GateJsPath, GateKeypadJsPath })
         {
             var response = await Client.GetAsync(asset, ct);
             response.StatusCode.Should().Be(HttpStatusCode.OK, $"GET {asset} must be served");
@@ -75,10 +74,7 @@ public class GatePageRenderTests(HumansTestDatabase database) : IntegrationTestB
         var pages = new (string Url, string Copy)[]
         {
             ("/Gate", "Scan a ticket"),
-            ("/Gate/Claim", "Start scanning"),
-            ("/Gate/Leaderboard", "Gate leaderboard"),
-            ("/Gate/Admin", "Gate settings"),
-            ("/Gate/Admin/VendorCheckInBackfill", "Vendor check-in backfill"),
+            ("/Gate/Report", "Arrivals"),
         };
 
         foreach (var (url, copy) in pages)
@@ -92,17 +88,14 @@ public class GatePageRenderTests(HumansTestDatabase database) : IntegrationTestB
     }
 
     [HumansFact(Timeout = 60000)]
-    public async Task Admin_gate_pages_keep_the_shared_admin_layout()
+    public async Task Report_RendersInAdminLayout()
     {
         // The mirror case: section views resolving Shell's _AdminLayout.
         var ct = Xunit.TestContext.Current.CancellationToken;
         await Factory.SignInAsFullyOnboardedAsync(Client, DevPersona.Admin);
 
-        foreach (var url in new[] { "/Gate/Admin", "/Gate/Admin/VendorCheckInBackfill" })
-        {
-            var html = await (await Client.GetAsync(url, ct)).Content.ReadAsStringAsync(ct);
-            html.Should().NotContain("gate-kiosk", $"GET {url} is a desktop admin page");
-            html.Should().Contain("admin", $"GET {url} must render through the admin chrome");
-        }
+        var html = await (await Client.GetAsync("/Gate/Report", ct)).Content.ReadAsStringAsync(ct);
+        html.Should().NotContain("gate-kiosk", "the arrivals report is a desktop admin page");
+        html.Should().Contain("admin", "the arrivals report must render through the admin chrome");
     }
 }

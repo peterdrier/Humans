@@ -2,10 +2,4 @@
 # /debt-sweep pools every src/Sections/*/Docs/debt.yml into the same inbox as the central ledger.
 version: 1
 next_id: 5
-inbox:
-  - added: 2026-11-24
-    id: GATE-4
-    what: "GateVendorBackfillAdminController, its view and GateService.GetVendorCheckInBackfillAsync/EnqueueVendorCheckInBackfillAsync are a one-off page Gate.md marks temp, remove after use; no row tracked the removal. Delete once the 2026 vendor check-in backfill is confirmed done. Found by the 2026-11-24 section-doctor run (Comments thread)."
-    review: panel
-    status: needs-detail
-    blocked_on: "Peter confirming the backfill has run and the page is no longer needed."
+inbox: []
