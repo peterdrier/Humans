@@ -407,6 +407,7 @@ internal sealed class ApplicationDecisionService(
             ResolvedAt = a.ResolvedAt.ToIso8601(),
             TermExpiresAt = a.TermExpiresAt.ToInvariantDate(),
             BoardMeetingDate = a.BoardMeetingDate.ToInvariantDate(),
+            a.DecisionNote,
             StateHistory = a.StateHistory.OrderBy(sh => sh.ChangedAt).Select(sh => new
             {
                 sh.Status,

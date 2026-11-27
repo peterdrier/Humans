@@ -2095,6 +2095,22 @@ public sealed class ApplicationDecisionServiceTests : IDisposable
             .Should().Be(reminderSent ? "2026-10-03T08:15:00Z" : null);
     }
 
+    [HumansFact]
+    public async Task ContributeForUserAsync_DecidedApplication_IncludesDecisionNote()
+    {
+        var userId = Guid.NewGuid();
+        var application = await SeedSubmittedApplicationAsync(userId);
+        application.Reject(Guid.NewGuid(), "Not yet", _clock);
+        await SaveAllAsync(TestContext.Current.CancellationToken);
+
+        var slices = await _service.ContributeForUserAsync(userId, TestContext.Current.CancellationToken);
+        using var json = JsonDocument.Parse(JsonSerializer.Serialize(
+            slices.Single(slice => string.Equals(slice.SectionName, ApplicationDecisionService.Applications, StringComparison.Ordinal)).Data));
+
+        json.RootElement.EnumerateArray().Should().ContainSingle()
+            .Which.GetProperty("DecisionNote").GetString().Should().Be("Not yet");
+    }
+
     private async Task<MemberApplication> SeedSubmittedApplicationAsync(
         Guid userId,
         MembershipTier tier = MembershipTier.Colaborador)
