@@ -93,6 +93,9 @@ namespace Humans.Store.Data.Migrations
                     b.Property<Guid?>("CheckoutAttemptId")
                         .HasColumnType("uuid");
 
+                    b.Property<string>("CheckoutIntent")
+                        .HasColumnType("jsonb");
+
                     b.Property<string>("CheckoutSessionId")
                         .HasMaxLength(255)
                         .HasColumnType("character varying(255)");

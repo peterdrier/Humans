@@ -496,6 +496,77 @@ public class StripeServiceContractTests
     }
 
     [HumansFact]
+    public async Task Checkout_KnownSession_ReadsWithoutCreation()
+    {
+        var http = Substitute.For<IHttpClient>();
+        using var headers = new HttpResponseMessage();
+        var requests = new List<StripeRequest>();
+        var attempt = Guid.NewGuid();
+        var body = $$$"""{"id":"cs_known","object":"checkout.session","status":"complete","currency":"eur","metadata":{"humans_store_checkout_attempt_id":"{{{attempt}}}"}}""";
+        http.MakeRequestAsync(Arg.Do<StripeRequest>(requests.Add), Arg.Any<CancellationToken>())
+            .Returns(new StripeResponse(HttpStatusCode.OK, headers.Headers, body));
+        var service = new StripeService(Options.Create(new StripeSettings { StoreKey = "rk_test_store" }),
+            new CapturingLogger<StripeService>(), http);
+
+        var session = await service.CreateCheckoutSessionAsync(Guid.NewGuid(), 20m, "https://x/ok", "https://x/no", null,
+            "Camp", TestContext.Current.CancellationToken, attempt, "cs_previous", "cs_known");
+
+        session.Status.Should().Be("complete");
+        session.CheckoutAttemptId.Should().Be(attempt);
+        requests.Should().ContainSingle().Which.Method.Should().Be(HttpMethod.Get);
+    }
+
+    [HumansFact]
+    public async Task Checkout_NewAttempt_StampsRecoveryMetadata()
+    {
+        var http = Substitute.For<IHttpClient>();
+        using var headers = new HttpResponseMessage();
+        var requests = new List<StripeRequest>();
+        http.MakeRequestAsync(Arg.Do<StripeRequest>(requests.Add), Arg.Any<CancellationToken>())
+            .Returns(new StripeResponse(HttpStatusCode.OK, headers.Headers,
+                """{"id":"cs_created","object":"checkout.session","status":"open","currency":"eur"}"""));
+        var service = new StripeService(Options.Create(new StripeSettings { StoreKey = "rk_test_store" }),
+            new CapturingLogger<StripeService>(), http);
+        var attempt = Guid.NewGuid();
+        var order = Guid.NewGuid();
+
+        await service.CreateCheckoutSessionAsync(order, 20m, "https://x/ok", "https://x/no", null,
+            "Camp", TestContext.Current.CancellationToken, attempt);
+
+        requests.Should().HaveCount(2);
+        requests[0].Method.Should().Be(HttpMethod.Post);
+        requests[1].Method.Should().Be(HttpMethod.Get);
+        var form = Uri.UnescapeDataString(await requests[0].Content!.ReadAsStringAsync(TestContext.Current.CancellationToken));
+        form.Should().Contain($"metadata[humans_store_checkout_attempt_id]={attempt}")
+            .And.Contain($"metadata[humans_store_order_id]={order}");
+    }
+
+    [HumansTheory]
+    [InlineData(null)]
+    [InlineData("")]
+    public void Checkout_MissingIdentity_RejectsWebhook(string? id)
+    {
+        var payload = JsonNode.Parse(SessionPayload("checkout.session.expired"))!;
+        payload["data"]!["object"]!["id"] = id;
+        var text = payload.ToJsonString();
+        var (service, _) = Build(s => s.StoreWebhookSecret = TestWebhookSecret);
+
+        service.ParseStoreCheckoutEvent(text, Sign(text, TestWebhookSecret)).Should().BeNull();
+    }
+
+    [HumansFact]
+    public void Checkout_EarlyWebhook_ProjectsAttempt()
+    {
+        var attempt = Guid.NewGuid();
+        var metadata = $$"""{"humans_store_order_id":"{{Guid.NewGuid()}}","humans_store_checkout_attempt_id":"{{attempt}}"}""";
+        var payload = SessionPayload("checkout.session.expired", metadataJson: metadata);
+        var (service, _) = Build(s => s.StoreWebhookSecret = TestWebhookSecret);
+
+        service.ParseStoreCheckoutEvent(payload, Sign(payload, TestWebhookSecret))!
+            .Session!.CheckoutAttemptId.Should().Be(attempt);
+    }
+
+    [HumansFact]
     public async Task CreateCheckoutSession_returns_a_replayed_attempt_in_its_live_state()
     {
         var http = Substitute.For<IHttpClient>();

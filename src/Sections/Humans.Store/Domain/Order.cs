@@ -1,3 +1,4 @@
+using System.Text.Json.Serialization;
 using Humans.Store.Contracts;
 using NodaTime;
 
@@ -30,15 +31,16 @@ internal sealed class Order
     public Guid? IssuedInvoiceId { get; set; }
 
     /// <summary>
-    /// The order's one open Stripe checkout attempt: its idempotency id, session and amount. All three are set together
-    /// and cleared together, when the session completes or expires.
+    /// The order's checkout intent is saved before Stripe is called. Its session is filled after acknowledgement;
+    /// all checkout fields clear together when an accounted outcome or expiry closes that session.
     /// </summary>
     public Guid? CheckoutAttemptId { get; set; }
     public string? CheckoutSessionId { get; set; }
     public decimal? CheckoutAmountEur { get; set; }
+    public StoreCheckoutIntent? CheckoutIntent { get; set; }
 
     public bool HasCheckoutAttempt =>
-        CheckoutAttemptId is not null || CheckoutSessionId is not null || CheckoutAmountEur is not null;
+        CheckoutAttemptId is not null || CheckoutSessionId is not null || CheckoutAmountEur is not null || CheckoutIntent is not null;
 
     public Instant CreatedAt { get; set; }
     public Instant UpdatedAt { get; set; }
@@ -46,3 +48,8 @@ internal sealed class Order
     public ICollection<OrderLine> Lines { get; set; } = new List<OrderLine>();
     public ICollection<Payment> Payments { get; set; } = new List<Payment>();
 }
+
+[method: JsonConstructor]
+internal sealed record StoreCheckoutIntent(
+    decimal AmountEur, string ReturnUrl, string? CustomerEmail, string Description,
+    string? SupersededSessionId, long CreatedAtUnix);

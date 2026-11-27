@@ -140,10 +140,11 @@ integration uses — see [`memory/code/stripe-restricted-keys.md`](../../../../m
   whole ledger; optional descriptions, metadata and source links remain optional.
 - `CreateCheckoutSessionAsync` rejects a non-positive amount and an unconfigured Store key
   before any network call, and throws (rather than returning a sentinel) on Stripe failure.
-- A checkout attempt id becomes the Stripe idempotency key, so repeating an attempt replays its
+- A checkout attempt id is stamped as `humans_store_checkout_attempt_id` and projected in sessions, including signed webhooks and complete inventories. It becomes the Stripe idempotency key, so repeating an attempt replays its
   session; the session is then re-read so its live status (not the cached `open`) comes back. A
   superseded session is expired before its replacement is created; when it has already completed,
   no replacement is created and the completed session comes back (Status `complete`, no Url).
+  An optional known session ID performs only a GET, ignoring replacement inputs: callers can recover its live state without replaying a POST key beyond Stripe's retention window. Session projection requires a nonblank ID as well as EUR.
 - EUR → minor units rounds half away from zero; minor units → EUR is exact. Both conversions
   live only in `ToStripeMinorUnits` / `FromStripeMinorUnits`.
 - Live account reads also require explicit EUR, case-insensitively: a non-EUR or missing currency on any movement, payout or summed payout-content movement rejects the whole ledger. Direct, search and search-fallback fee reads return logged unknown (null) when the balance transaction lacks EUR; they never reinterpret another currency as EUR cents. The mirror still retains and flags non-EUR rows with their currencies.

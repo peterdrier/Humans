@@ -1195,9 +1195,8 @@ internal sealed class Service(
     }
 
     /// <summary>
-    /// One payable session per order: an unchanged amount replays the open attempt's session through its idempotency key;
-    /// a changed amount expires that session and opens a new attempt. Null when the superseded session had already been
-    /// paid, so no replacement exists.
+    /// Durably records the exact request before creating a payable session. Retries resolve that request before
+    /// replacing it; known sessions are read without replaying an expiring idempotency key.
     /// </summary>
     public async Task<string?> OpenCheckoutSessionAsync(
         Guid orderId, decimal amountEur, string returnUrl, string? customerEmail, string description, CancellationToken ct)
@@ -1206,54 +1205,81 @@ internal sealed class Service(
         var order = await repo.GetOrderByIdAsync(orderId, ct)
             ?? throw new InvalidOperationException($"Store order {orderId} not found.");
 
-        var session = order is { CheckoutAttemptId: { } openAttempt } && order.CheckoutAmountEur == amountEur
-            ? await TryReplayAsync(openAttempt)
-            : null;
-        if (IsComplete(session))
-            return null;
-
+        var desired = new StoreCheckoutIntent(amountEur, returnUrl, customerEmail, description, null,
+            clock.GetCurrentInstant().ToUnixTimeSeconds());
+        StoreCheckoutSessionData? session = null;
+        var intent = order.CheckoutIntent;
         var attemptId = order.CheckoutAttemptId;
-        if (session is not { Status: "open", Url: not null })
+        var knownId = order.CheckoutSessionId;
+        if (knownId is null && intent is not null)
         {
-            attemptId = Guid.NewGuid();
-            session = await stripeService.CreateCheckoutSessionAsync(
-                orderId, amountEur, returnUrl, returnUrl, customerEmail, description, ct,
-                checkoutAttemptId: attemptId, supersededSessionId: order.CheckoutSessionId);
-            if (IsComplete(session) || session.Url is null)
-                return null;
+            if (attemptId is null)
+                throw new InvalidOperationException("The saved checkout request has no attempt id.");
+            // Stripe may evict an idempotency key after 24 hours. Never recreate an unknown session past that window.
+            if (clock.GetCurrentInstant() - Instant.FromUnixTimeSeconds(intent.CreatedAtUnix) >= Duration.FromHours(23))
+            {
+                var inventory = await stripeService.ListStoreCheckoutSessionsAsync(ct);
+                var matches = inventory?.Where(s => s.OrderId == orderId && s.CheckoutAttemptId == attemptId).ToList();
+                if (matches is not { Count: 1 })
+                {
+                    logger.LogWarning("Checkout attempt {AttemptId} on order {OrderId} remains unresolved past its replay window", attemptId, orderId);
+                    return null;
+                }
+                knownId = matches[0].SessionId;
+            }
+            session = await ReadIntentAsync(intent, attemptId.Value, knownId);
+            await RememberAsync(intent, attemptId.Value, session);
+        }
+        else if (knownId is not null)
+        {
+            // Known sessions are read by id: replaying an old POST key could create a second session after 24 hours.
+            session = await stripeService.CreateCheckoutSessionAsync(orderId, intent?.AmountEur ?? amountEur,
+                intent?.ReturnUrl ?? returnUrl, intent?.ReturnUrl ?? returnUrl, intent?.CustomerEmail ?? customerEmail,
+                intent?.Description ?? description, ct, attemptId, knownSessionId: knownId);
+            ValidateSession(session);
+        }
+        else if (order.HasCheckoutAttempt)
+            throw new InvalidOperationException("The checkout attempt has no recoverable request or session.");
+
+        if (session is not null)
+        {
+            if (IsComplete(session)) return null;
+            if (intent is not null && session is { Status: "open", Url: not null }
+                && intent with { SupersededSessionId = null, CreatedAtUnix = 0 } == desired with { CreatedAtUnix = 0 })
+                return session.Url;
         }
 
-        if (attemptId != order.CheckoutAttemptId
-            || !string.Equals(order.CheckoutSessionId, session.SessionId, StringComparison.Ordinal))
-        {
-            await WriteCheckoutAttemptAsync(orderId, attemptId, session.SessionId, amountEur, ct);
-        }
-        return session.Url;
+        // Legacy attempts have no saved arguments. Supersede their known session rather than guessing its POST body.
+        intent = desired with { SupersededSessionId = session?.SessionId };
+        var nextAttempt = Guid.NewGuid();
+        await WriteCheckoutAttemptAsync(orderId, nextAttempt, null, amountEur, ct, intent);
+        session = await ReadIntentAsync(intent, nextAttempt, knownId: null);
+        await RememberAsync(intent, nextAttempt, session);
+        return IsComplete(session) ? null : string.Equals(session.Status, "open", StringComparison.Ordinal) ? session.Url : null;
 
-        bool IsComplete(StoreCheckoutSessionData? s)
+        bool IsComplete(StoreCheckoutSessionData value)
         {
-            if (!string.Equals(s?.Status, "complete", StringComparison.Ordinal)) return false;
-            logger.LogWarning("Checkout session {SessionId} for order {OrderId} already completed; no new session opened.",
-                s!.SessionId, orderId);
+            if (!string.Equals(value.Status, "complete", StringComparison.Ordinal)) return false;
+            logger.LogWarning("Checkout session {SessionId} for order {OrderId} already completed; no new session opened.", value.SessionId, orderId);
             return true;
         }
 
-        async Task<StoreCheckoutSessionData?> TryReplayAsync(Guid replayAttemptId)
+        Task<StoreCheckoutSessionData> ReadIntentAsync(StoreCheckoutIntent value, Guid id, string? knownId) =>
+            stripeService.CreateCheckoutSessionAsync(orderId, value.AmountEur, value.ReturnUrl, value.ReturnUrl,
+                value.CustomerEmail, value.Description, ct, id, value.SupersededSessionId, knownId);
+
+        async Task RememberAsync(StoreCheckoutIntent value, Guid id, StoreCheckoutSessionData response)
         {
-            try
-            {
-                return await stripeService.CreateCheckoutSessionAsync(
-                    orderId, amountEur, returnUrl, returnUrl, customerEmail, description, ct,
-                    checkoutAttemptId: replayAttemptId);
-            }
-            catch (Exception ex) when (ex is not OperationCanceledException)
-            {
-                // Stripe rejects a replay whose other arguments changed (a counterparty edit). Replacing the attempt
-                // expires its session first, so falling through never leaves two payable.
-                logger.LogWarning(ex, "Replaying checkout attempt {AttemptId} for order {OrderId} failed; replacing it.",
-                    replayAttemptId, orderId);
-                return null;
-            }
+            ValidateSession(response);
+            var saved = string.Equals(value.SupersededSessionId, response.SessionId, StringComparison.Ordinal)
+                ? value : value with { SupersededSessionId = null };
+            await WriteCheckoutAttemptAsync(orderId, id, response.SessionId, value.AmountEur, ct, saved);
+        }
+
+        static void ValidateSession(StoreCheckoutSessionData value)
+        {
+            if (string.IsNullOrWhiteSpace(value.SessionId) || value.Status is not ("open" or "complete" or "expired"))
+                throw new InvalidOperationException("Stripe returned an unidentified or indeterminate Checkout Session.");
         }
     }
 
@@ -1387,13 +1413,18 @@ internal sealed class Service(
         }
     }
 
-    /// <summary>Only the order's current attempt is cleared; a superseded session's event leaves its replacement open.</summary>
+    /// <summary>Superseded expiry cannot clear a replacement; completed payment can prevent an unacknowledged one.</summary>
     private async Task ClearCheckoutAttemptAsync(StoreCheckoutSessionData? session, CancellationToken ct)
     {
-        if (session is not { OrderId: { } orderId }) return;
+        if (session is not { OrderId: { } orderId } || string.IsNullOrWhiteSpace(session.SessionId)) return;
         var order = await repo.GetOrderByIdAsync(orderId, ct);
-        if (order is null || !string.Equals(order.CheckoutSessionId, session.SessionId, StringComparison.Ordinal))
-            return;
+        if (order is null) return;
+        var matchesSession = string.Equals(order.CheckoutSessionId, session.SessionId, StringComparison.Ordinal);
+        var matchesAttempt = session.CheckoutAttemptId is { } attempt && attempt == order.CheckoutAttemptId;
+        // A completed superseded session prevents Stripe from creating this replacement; expiry does not.
+        var supersededCompleted = order.CheckoutSessionId is null && string.Equals(session.Status, "complete", StringComparison.Ordinal)
+            && string.Equals(order.CheckoutIntent?.SupersededSessionId, session.SessionId, StringComparison.Ordinal);
+        if (!matchesSession && !matchesAttempt && !supersededCompleted) return;
 
         await WriteCheckoutAttemptAsync(orderId, null, null, null, ct);
     }
@@ -1403,13 +1434,17 @@ internal sealed class Service(
     /// trip would overwrite a concurrent order edit.
     /// </summary>
     private async Task WriteCheckoutAttemptAsync(
-        Guid orderId, Guid? attemptId, string? sessionId, decimal? amountEur, CancellationToken ct)
+        Guid orderId, Guid? attemptId, string? sessionId, decimal? amountEur, CancellationToken ct,
+        StoreCheckoutIntent? intent = null)
     {
         var order = await repo.GetOrderByIdAsync(orderId, ct);
-        if (order is null) return;
+        if (order is null) throw new InvalidOperationException($"Store order {orderId} no longer exists.");
+        if (order.CheckoutAttemptId == attemptId && string.Equals(order.CheckoutSessionId, sessionId, StringComparison.Ordinal)
+            && order.CheckoutAmountEur == amountEur && order.CheckoutIntent == intent) return;
         order.CheckoutAttemptId = attemptId;
         order.CheckoutSessionId = sessionId;
         order.CheckoutAmountEur = amountEur;
+        order.CheckoutIntent = intent;
         await repo.UpdateOrderAsync(order, ct);
     }
 

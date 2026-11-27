@@ -29,7 +29,8 @@ public interface IStripeService : IApplicationService
     /// non-null
     /// <paramref name="supersededSessionId"/> is expired first; when that session has already completed, no new session
     /// is created and the completed one is returned (Status <c>complete</c>, no Url). Throws on Stripe failure; a null
-    /// <paramref name="customerEmail"/> lets Stripe collect it.
+    /// <paramref name="customerEmail"/> lets Stripe collect it. A non-null <paramref name="knownSessionId"/> reads
+    /// that session without creating or expiring anything, including after the idempotency key's lifetime.
     /// </summary>
     [ExternalWrite]
     Task<StoreCheckoutSessionData> CreateCheckoutSessionAsync(
@@ -41,11 +42,12 @@ public interface IStripeService : IApplicationService
         string lineItemDescription,
         CancellationToken ct = default,
         Guid? checkoutAttemptId = null,
-        string? supersededSessionId = null);
+        string? supersededSessionId = null,
+        string? knownSessionId = null);
 
     /// <summary>
     /// <paramref name="body"/> must be the raw request body. Null when the signing secret is unset, the signature
-    /// is invalid, the payload is malformed or incomplete, or a session lacks EUR currency; never throws.
+    /// is invalid, the payload is malformed or incomplete, or a session lacks identity or EUR currency; never throws.
     /// </summary>
     StoreCheckoutWebhookEvent? ParseStoreCheckoutEvent(string body, string signature);
 
@@ -191,4 +193,5 @@ public sealed record StoreCheckoutSessionData(
     string? PaymentStatus = null,
     Instant? CreatedAt = null,
     string? Status = null,
-    string? Url = null);
+    string? Url = null,
+    Guid? CheckoutAttemptId = null);

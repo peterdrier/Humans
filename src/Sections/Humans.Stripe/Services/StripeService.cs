@@ -82,13 +82,21 @@ internal sealed partial class StripeService(
         string lineItemDescription,
         CancellationToken ct = default,
         Guid? checkoutAttemptId = null,
-        string? supersededSessionId = null)
+        string? supersededSessionId = null,
+        string? knownSessionId = null)
     {
         using var _ = logger.TimeOperation();
         if (amountEur <= 0)
             throw new ArgumentOutOfRangeException(nameof(amountEur), "Checkout amount must be positive.");
         if (!_settings.IsStoreCheckoutConfigured)
             throw new InvalidOperationException("Stripe Store key is not configured.");
+
+        if (knownSessionId is not null)
+        {
+            var known = await new SessionService(new StripeClient(_settings.StoreKey, httpClient: httpClient))
+                .GetAsync(knownSessionId, cancellationToken: ct);
+            return MapSession(known) ?? throw new InvalidOperationException("Stripe returned an unreadable Store Checkout Session.");
+        }
 
         if (supersededSessionId is not null)
         {
@@ -137,6 +145,9 @@ internal sealed partial class StripeService(
                 },
             },
         };
+
+        if (checkoutAttemptId is { } checkoutId)
+            options.Metadata["humans_store_checkout_attempt_id"] = checkoutId.ToString();
 
         try
         {
@@ -470,6 +481,11 @@ internal sealed partial class StripeService(
     /// <summary>Shared by the webhook and reconciliation paths so both read a session identically.</summary>
     private StoreCheckoutSessionData? MapSession(Session s)
     {
+        if (string.IsNullOrWhiteSpace(s.Id))
+        {
+            logger.LogWarning("Rejected Stripe Checkout session without an identity");
+            return null;
+        }
         if (!string.Equals(s.Currency, "eur", StringComparison.OrdinalIgnoreCase))
         {
             logger.LogWarning(
@@ -486,6 +502,11 @@ internal sealed partial class StripeService(
             orderId = parsed;
         }
 
+        Guid? checkoutAttemptId = null;
+        if (s.Metadata is not null && s.Metadata.TryGetValue("humans_store_checkout_attempt_id", out var attemptText)
+            && Guid.TryParse(attemptText, out var attempt))
+            checkoutAttemptId = attempt;
+
         Instant? createdAt = null;
         if (s.RawJsonElement is { } raw && raw.TryGetProperty("created", out var created)
             && created.ValueKind == JsonValueKind.Number && created.TryGetInt64(out _))
@@ -499,6 +520,7 @@ internal sealed partial class StripeService(
             PaymentStatus: s.PaymentStatus,
             CreatedAt: createdAt,
             Status: s.Status,
-            Url: string.IsNullOrEmpty(s.Url) ? null : s.Url);
+            Url: string.IsNullOrEmpty(s.Url) ? null : s.Url,
+            CheckoutAttemptId: checkoutAttemptId);
     }
 }
