@@ -1,0 +1,68 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="-2 -2 244 244" role="img" aria-label="Vitruvian Man">
+  <g stroke="#c9a96e" stroke-width="0.4" fill="none" opacity="0.3">
+    <circle cx="120" cy="120" r="120"/>
+    <rect x="23" y="46" width="194" height="194"/>
+    <line x1="120" y1="0" x2="120" y2="240"/>
+    <line x1="0" y1="120" x2="240" y2="120"/>
+  </g>
+
+  <g fill="#c9a96e">
+    <circle cx="120" cy="58" r="12"/>
+    <rect x="113" y="68" width="14" height="12" rx="4"/>
+    <path d="M98,80 C92,98 91,114 100,143 L140,143 C149,114 148,98 142,80 C134,76 106,76 98,80 Z"/>
+
+    <path d="M23,75 L98,81 L98,93 L23,89 Z"/>
+    <path d="M142,81 L217,75 L217,89 L142,93 Z"/>
+
+    <path d="M101,86 L51,23 L61,19 L109,82 Z"/>
+    <path d="M139,86 L189,23 L179,19 L131,82 Z"/>
+
+    <path d="M106,143 L104,224 L113,238 L119,224 L115,143 Z"/>
+    <path d="M134,143 L136,224 L127,238 L121,224 L125,143 Z"/>
+
+    <path d="M112,143 L63,222 L58,232 L72,230 L123,143 Z" opacity="0.92"/>
+    <path d="M128,143 L177,222 L182,232 L168,230 L117,143 Z" opacity="0.92"/>
+  </g>
+
+  <g stroke="#3d2b1f" stroke-width="2" fill="none" stroke-linecap="round">
+    <path d="M98,81 L98,93"/>
+    <path d="M142,81 L142,93"/>
+    <path d="M100,86 L109,82"/>
+    <path d="M140,86 L131,82"/>
+    <path d="M119,143 L123,143"/>
+    <path d="M117,143 L121,143"/>
+    <path d="M100,143 L106,143"/>
+    <path d="M140,143 L134,143"/>
+    <path d="M113,238 L108,230"/>
+    <path d="M127,238 L132,230"/>
+  </g>
+
+  <g stroke="#3d2b1f" stroke-width="1.4" fill="none" stroke-linecap="round" opacity="0.9">
+    <path d="M114,96 C110,110 110,128 116,143"/>
+    <path d="M126,96 C130,110 130,128 124,143"/>
+    <path d="M108,100 L30,93"/>
+    <path d="M132,100 L210,93"/>
+    <path d="M106,92 L62,32"/>
+    <path d="M134,92 L178,32"/>
+    <path d="M112,150 L109,210"/>
+    <path d="M128,150 L131,210"/>
+    <path d="M116,150 L80,210"/>
+    <path d="M124,150 L160,210"/>
+    <path d="M114,52 C117,49 123,49 126,52"/>
+  </g>
+
+  <g stroke="#3d2b1f" stroke-width="0.9" fill="none" stroke-linecap="round" opacity="0.85">
+    <circle cx="116" cy="57" r="1.2" fill="#3d2b1f" stroke="none"/>
+    <circle cx="124" cy="57" r="1.2" fill="#3d2b1f" stroke="none"/>
+    <path d="M118,63 L122,63"/>
+    <path d="M55,21 L50,24 L52,28"/>
+    <path d="M185,21 L190,24 L188,28"/>
+    <path d="M30,89 L24,88 M30,93 L24,94"/>
+    <path d="M210,89 L216,88 M210,93 L216,94"/>
+    <path d="M108,232 L105,236 M113,235 L111,238"/>
+    <path d="M132,232 L135,236 M127,235 L129,238"/>
+    <path d="M65,225 L60,230 M70,227 L66,231"/>
+    <path d="M175,225 L180,230 M170,227 L174,231"/>
+    <path d="M100,100 L102,110 M138,100 L136,110"/>
+  </g>
+</svg>

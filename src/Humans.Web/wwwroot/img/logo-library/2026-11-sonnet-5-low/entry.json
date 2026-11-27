@@ -1,0 +1,17 @@
+{
+  "date": "2026-11",
+  "family": "Claude",
+  "model": "Sonnet",
+  "version": "5",
+  "effort": "low",
+  "brief": "v1",
+  "notes": {
+    "en": "A quick, geometric pass: the dual-pose overlay reads clearly even at navbar size, but the torso came out more like a stylized urn than a ribcage, and the raised-arm hands and legs-spread feet are reduced to a few ticks rather than real fingers and toes.",
+    "es": "Un pase rápido y geométrico: la superposición de dos poses se lee con claridad incluso en tamaño de barra de navegación, pero el torso quedó más como una urna estilizada que una caja torácica, y las manos de los brazos alzados y los pies de las piernas abiertas se reducen a unas marcas en vez de dedos reales.",
+    "de": "Ein schneller, geometrischer Entwurf: Die Doppelpose-Überlagerung ist auch in Navbar-Größe klar erkennbar, aber der Torso wirkt eher wie eine stilisierte Urne als ein Brustkorb, und die Hände der erhobenen Arme sowie die Füße der gespreizten Beine sind auf wenige Striche statt echter Finger und Zehen reduziert.",
+    "it": "Un passaggio rapido e geometrico: la sovrapposizione delle due pose si legge chiaramente anche a dimensione navbar, ma il torso è venuto più simile a un'urna stilizzata che a una gabbia toracica, e le mani delle braccia alzate e i piedi delle gambe divaricate sono ridotti a pochi tratti invece di dita vere.",
+    "fr": "Un passage rapide et géométrique : la superposition des deux poses se lit clairement même à la taille de la barre de navigation, mais le torse ressemble plus à une urne stylisée qu'à une cage thoracique, et les mains des bras levés ainsi que les pieds des jambes écartées se réduisent à quelques traits plutôt qu'à de vrais doigts et orteils.",
+    "ca": "Un pas ràpid i geomètric: la superposició de les dues postures es llegeix clarament fins i tot a mida de barra de navegació, però el tors ha quedat més com una urna estilitzada que una caixa toràcica, i les mans dels braços alçats i els peus de les cames obertes queden reduïts a uns traços en comptes de dits reals.",
+    "nl": "Een snelle, geometrische poging: de dubbele-pose-overlay is zelfs op navbar-formaat duidelijk herkenbaar, maar de romp kwam meer uit als een gestileerde urn dan een borstkas, en de handen van de geheven armen en de voeten van de gespreide benen zijn teruggebracht tot een paar streepjes in plaats van echte vingers en tenen."
+  }
+}
