@@ -410,4 +410,11 @@
   <data name="Surveys_Admin_Results_ColumnShare" xml:space="preserve"><value>Share</value></data>
   <data name="Surveys_Admin_Results_AskedWhen" xml:space="preserve"><value>asked when {0}</value></data>
   <data name="Surveys_Validation_PromptRequired" xml:space="preserve"><value>Every question needs a title.</value></data>
+  <data name="Surveys_Admin_Builder_AskForComment" xml:space="preserve"><value>Ask for a comment</value></data>
+  <data name="Surveys_Admin_Builder_Field_CommentPrompt" xml:space="preserve"><value>Comment prompt</value></data>
+  <data name="Surveys_Admin_Builder_CommentOptions" xml:space="preserve"><value>Ask when they pick</value></data>
+  <data name="Surveys_Admin_Builder_CommentOptionsHelp" xml:space="preserve"><value>Pick none to ask after any choice.</value></data>
+  <data name="Surveys_Answer_CommentDefault" xml:space="preserve"><value>Anything to add?</value></data>
+  <data name="Surveys_Validation_CommentOptionUnknown" xml:space="preserve"><value>A comment can only be asked for on the question’s own options.</value></data>
+  <data name="Surveys_Admin_Results_Comments" xml:space="preserve"><value>Comments</value></data>
 </root>

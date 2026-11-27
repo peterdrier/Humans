@@ -8,7 +8,7 @@ namespace Humans.Tour.Tests;
 public class SectionMemberDashboardTests
 {
     [HumansFact]
-    public void Contributes_the_Tour_card_to_the_member_dashboard()
+    public void MemberDashboard_ContributesTourCard()
     {
         var component = ((ISectionMemberDashboard)new Section()).Components().Should().ContainSingle().Subject;
 

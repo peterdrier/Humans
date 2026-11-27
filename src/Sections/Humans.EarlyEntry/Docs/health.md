@@ -68,20 +68,20 @@ The layout matches this.
 
 - The orchestrator's only dependency is the provider fan-out — no repository, no tables
   (`src/Sections/Humans.EarlyEntry/Services/EarlyEntryService.cs:6`; pinned:
-  `EarlyEntryArchitectureTests.OrchestratorInjectsOnlyTheProviderFanout`).
+  `EarlyEntryArchitectureTests.Orchestrator_InjectsOnlyProviderFanout`).
 - Per person: **earliest date wins**
   (`src/Sections/Humans.EarlyEntry/Services/EarlyEntryService.cs:28`); reasons are **distinct,
   ordinal-compared**, in provider order
   (`src/Sections/Humans.EarlyEntry/Services/EarlyEntryService.cs:27`; pinned:
-  `EarlyEntryServiceTests.Source_labels_differing_only_in_case_are_two_sources`); **more than
+  `EarlyEntryServiceTests.GetForUserAsync_LabelsDifferByCase_AreTwoSources`); **more than
   one reason** is what "multiple" means
   (`src/Sections/Humans.EarlyEntry/Services/EarlyEntryService.cs:28`).
 - **Nothing outlives the request.** The providers are read at most once per request scope
   (`src/Sections/Humans.EarlyEntry/Services/EarlyEntryService.cs:35`) and the orchestrator is
   scoped (`src/Sections/Humans.EarlyEntry/Section.cs:14`), so a write in any contributing
   section shows on the next request and never has to signal this one (pinned:
-  `EarlyEntryArchitectureTests.SectionRegistersTheOrchestratorPerRequest`,
-  `EarlyEntryServiceTests.GetForUserAsync_GathersOncePerScope_AndFreshInTheNext`).
+  `EarlyEntryArchitectureTests.Section_RegistersOrchestratorPerRequest`,
+  `EarlyEntryServiceTests.GetForUserAsync_SameScope_GathersOnce`).
 - The gate card asks for the scanned attendee's (`src/Sections/Humans.Gate/Services/GateService.cs:73`). The stub
   and holdings view components answer for the user they are invoked with, so who sees that
   answer is the invoking page's gate, not this section's.

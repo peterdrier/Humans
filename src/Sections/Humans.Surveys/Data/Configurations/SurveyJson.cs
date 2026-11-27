@@ -20,6 +20,7 @@ internal static class SurveyJson
         string FileName,
         Dictionary<string, string> Label,
         Dictionary<string, string> AltText);
+    private sealed record CommentDocument(Dictionary<string, string> Prompt, List<string> OptionValues);
 
     public static void LocalizedText<TEntity>(
         EntityTypeBuilder<TEntity> b,
@@ -83,4 +84,20 @@ internal static class SurveyJson
                     new LocalizedText(image.Label),
                     new LocalizedText(image.AltText)))
                 .ToList();
+
+    public static string? SerializeComment(SurveyCommentSettings? comment)
+        => comment is null
+            ? null
+            : JsonSerializer.Serialize(
+                new CommentDocument(
+                    new Dictionary<string, string>(comment.Prompt.Values, StringComparer.OrdinalIgnoreCase),
+                    comment.OptionValues.ToList()),
+                Options);
+
+    public static SurveyCommentSettings? DeserializeComment(string? value)
+        => value is null
+            ? null
+            : JsonSerializer.Deserialize<CommentDocument>(value, Options) is { } document
+                ? new SurveyCommentSettings(new LocalizedText(document.Prompt), document.OptionValues)
+                : null;
 }

@@ -22,7 +22,7 @@ public sealed class ContainerControllerTests
     [InlineData("Create")]
     [InlineData("Edit")]
     [InlineData("Delete")]
-    public async Task Writes_stop_at_the_user_lookup_when_the_request_is_cancelled(string action)
+    public async Task Writes_RequestCancelled_StopAtUserLookup(string action)
     {
         using var cancellation = new CancellationTokenSource();
         await cancellation.CancelAsync();

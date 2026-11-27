@@ -17,7 +17,7 @@ public static class SurveyResponsesMarkdownBuilder
         ArgumentNullException.ThrowIfNull(rows);
 
         var headers = new List<string> { "anonymity", "input_method", "submitted_at", "user_name" };
-        headers.AddRange(questions.Select(q => Escape(q.Prompt)));
+        headers.AddRange(questions.SelectMany(q => ColumnHeaders(q).Select(Escape)));
 
         var sb = new StringBuilder();
         sb.Append("| ").Append(string.Join(" | ", headers)).Append(" |\n");
@@ -35,13 +35,24 @@ public static class SurveyResponsesMarkdownBuilder
                 Escape(row.UserName ?? string.Empty),   // blank for non-Identified rows
             };
 
-            cells.AddRange(questions.Select(q =>
-                byQuestion.TryGetValue(q.QuestionId, out var answer) ? Escape(CellValue(q, answer)) : string.Empty));
+            cells.AddRange(questions.SelectMany(q =>
+                Cells(q, byQuestion.GetValueOrDefault(q.QuestionId)).Select(Escape)));
 
             sb.Append("| ").Append(string.Join(" | ", cells)).Append(" |\n");
         }
 
         return sb.ToString();
+    }
+
+    /// <summary>The question's column header, plus a comment column when it asks for a comment.</summary>
+    internal static IEnumerable<string> ColumnHeaders(SurveyExportQuestion question)
+        => question.CommentPrompt is null ? [question.Prompt] : [question.Prompt, $"{question.Prompt} (comment)"];
+
+    /// <summary>The cells matching <see cref="ColumnHeaders"/>; blank when there is no answer.</summary>
+    internal static IEnumerable<string> Cells(SurveyExportQuestion question, SurveyExportAnswer? answer)
+    {
+        yield return answer is null ? string.Empty : CellValue(question, answer);
+        if (question.CommentPrompt is not null) yield return answer?.TextValue ?? string.Empty;
     }
 
     /// <summary>Choice values flattened <c>a|b</c>, free text verbatim, the rating integer, or JSON for Grid selections and ranked ballots.</summary>

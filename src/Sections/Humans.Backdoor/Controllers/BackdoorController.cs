@@ -1,5 +1,6 @@
 using Humans.Auth.Contracts;
 using Humans.Backdoor.Models;
+using Humans.Backdoor.OAuth;
 using Humans.Backdoor.Services;
 using Humans.Base.Authorization;
 using Humans.Base.Constants;
@@ -21,6 +22,7 @@ namespace Humans.Backdoor.Controllers;
 [Route("Backdoor")]
 internal sealed class BackdoorController(
     IBackdoorApiKeyService keys,
+    IBackdoorConnectionService connections,
     ISystemRoleService roles,
     IUserService users,
     IAuthorizationService authorization,
@@ -87,6 +89,25 @@ internal sealed class BackdoorController(
         return RedirectToAction(nameof(Index));
     }
 
+    /// <summary>Your own connections always; anyone's only as a full Admin. Someone else's reads as missing.</summary>
+    [HttpPost("Connections/{id:guid}/Revoke")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> RevokeConnection(Guid id, CancellationToken ct)
+    {
+        var (userMissing, actor) = await RequireCurrentUserAsync(ct);
+        if (userMissing is not null) return userMissing;
+
+        var connection = (await connections.ListAsync(ct)).FirstOrDefault(c => c.Id == id);
+        if (connection is not null
+            && await MayHandleKeysOfAsync(connection.UserId, actor.Id)
+            && await connections.RevokeAsync(id, actor.Id, ct))
+            SetSuccess(localizer["Backdoor_Connections_Revoked"]);
+        else
+            SetError(localizer["Backdoor_Connections_Error_NotFound"]);
+
+        return RedirectToAction(nameof(Index));
+    }
+
     private IActionResult RedirectAfter(BackdoorKeyCreateResult result)
     {
         if (result.Succeeded)
@@ -127,6 +148,9 @@ internal sealed class BackdoorController(
         if (!seesEveryKey)
             rows = [.. rows.Where(r => r.UserId == me)];
         var isAdmin = await IsAdminAsync();
+        var connectionRows = await connections.ListAsync(ct);
+        if (!seesEveryKey)
+            connectionRows = [.. connectionRows.Where(c => c.UserId == me)];
 
         return new BackdoorKeysViewModel
         {
@@ -146,6 +170,10 @@ internal sealed class BackdoorController(
             NewPlaintextKey = newPlaintextKey,
             ShortKeyLifetimeDays = (int)BackdoorApiKeyService.ShortKeyLifetime.TotalDays,
             ShowsOwners = seesEveryKey,
+            Connections = [.. connectionRows.OrderByDescending(c => c.CreatedAt).Select(c => new BackdoorConnectionListItem(
+                c.Id, c.UserId, c.ClientName, c.CreatedAt, isAdmin || c.UserId == me))],
+            McpAddress = Section.McpResource(Request),
+            ClaudeClientId = BackdoorOAuthClients.Claude.ClientId,
         };
     }
 
