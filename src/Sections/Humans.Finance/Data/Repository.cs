@@ -151,26 +151,26 @@ internal sealed class Repository(IDbContextFactory<FinanceDbContext> factory)
     public async Task<IReadOnlyList<SepaPayoutExportRow>> GetSepaPayoutsForUserAsync(
         Guid userId, CancellationToken ct = default) =>
         await RunAsync(ctx => (from t in ctx.SepaPayoutTransfers.AsNoTracking()
-                      join f in ctx.SepaPayoutFiles on t.FileId equals f.Id
-                      where t.UserId == userId
-                      orderby f.GeneratedAt
-                      select new SepaPayoutExportRow(
-                          f.GeneratedAt, f.FileName, t.SupplierAccountNum, t.HoldedContactId,
-                          t.CreditorName, t.IbanMasked, t.Amount, t.BookedAt,
-                          t.HoldedBankMovementId, t.ReconciledAt, t.WithdrawnAt))
+                               join f in ctx.SepaPayoutFiles on t.FileId equals f.Id
+                               where t.UserId == userId
+                               orderby f.GeneratedAt
+                               select new SepaPayoutExportRow(
+                                   f.GeneratedAt, f.FileName, t.SupplierAccountNum, t.HoldedContactId,
+                                   t.CreditorName, t.IbanMasked, t.Amount, t.BookedAt,
+                                   t.HoldedBankMovementId, t.ReconciledAt, t.WithdrawnAt))
             .ToListAsync(ct), ct);
 
     public async Task<IReadOnlyList<SepaPayoutTransferRow>> GetSepaPayoutTransferRowsAsync(
         CancellationToken ct = default) =>
         await RunAsync(ctx => (from t in ctx.SepaPayoutTransfers.AsNoTracking()
-                      join f in ctx.SepaPayoutFiles on t.FileId equals f.Id
-                      select new SepaPayoutTransferRow(
-                          t.Id, f.Id, f.FileName, f.GeneratedAt, f.GeneratedByUserId,
-                          t.UserId, t.SupplierAccountNum, t.HoldedContactId,
-                          t.CreditorName, t.IbanMasked, t.Amount,
-                          t.BookedAt, t.BookedByUserId, t.HoldedBankMovementId, t.ReconciledAt,
-                          t.HoldedPaymentRefs, null, null, null, null, null, null, false,
-                          t.WithdrawnAt, t.WithdrawnByUserId))
+                               join f in ctx.SepaPayoutFiles on t.FileId equals f.Id
+                               select new SepaPayoutTransferRow(
+                                   t.Id, f.Id, f.FileName, f.GeneratedAt, f.GeneratedByUserId,
+                                   t.UserId, t.SupplierAccountNum, t.HoldedContactId,
+                                   t.CreditorName, t.IbanMasked, t.Amount,
+                                   t.BookedAt, t.BookedByUserId, t.HoldedBankMovementId, t.ReconciledAt,
+                                   t.HoldedPaymentRefs, null, null, null, null, null, null, false,
+                                   t.WithdrawnAt, t.WithdrawnByUserId))
             .ToListAsync(ct), ct);
 
     public async Task<SepaPayoutTransfer?> GetSepaTransferAsync(

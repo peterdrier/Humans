@@ -15,9 +15,9 @@ public abstract class SectionBase : ISection
     private const string ControllerSuffix = "Controller";
 
     /// <summary>
-    /// The section's identity: its assembly name without <c>Humans.</c>, the same value Shell discovers it by.
+    /// The section's assembly name without <c>Humans.</c>; the default for <see cref="DisplayName"/>.
     /// </summary>
-    public string Name => GetType().Assembly.GetName().Name![AssemblyPrefix.Length..];
+    protected string Name => GetType().Assembly.GetName().Name![AssemblyPrefix.Length..];
 
     /// <summary>
     /// The name people see: the admin sidebar group label. Title Case; override where it differs from
