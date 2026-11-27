@@ -13,7 +13,7 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace Humans.Shifts.Data.Migrations
 {
     [DbContext(typeof(ShiftsDbContext))]
-    [Migration("20261122013946_DropShiftsEventSettingsCalendarColumns")]
+    [Migration("20261127153919_DropShiftsEventSettingsCalendarColumns")]
     partial class DropShiftsEventSettingsCalendarColumns
     {
         /// <inheritdoc />
@@ -365,36 +365,12 @@ namespace Humans.Shifts.Data.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
 
-                    b.Property<string>("Allergies")
-                        .IsRequired()
-                        .HasColumnType("jsonb");
-
-                    b.Property<string>("AllergyOtherText")
-                        .HasMaxLength(500)
-                        .HasColumnType("character varying(500)");
-
                     b.Property<Instant>("CreatedAt")
                         .HasColumnType("timestamp with time zone");
-
-                    b.Property<string>("DietaryPreference")
-                        .HasMaxLength(200)
-                        .HasColumnType("character varying(200)");
-
-                    b.Property<string>("IntoleranceOtherText")
-                        .HasMaxLength(500)
-                        .HasColumnType("character varying(500)");
-
-                    b.Property<string>("Intolerances")
-                        .IsRequired()
-                        .HasColumnType("jsonb");
 
                     b.Property<string>("Languages")
                         .IsRequired()
                         .HasColumnType("jsonb");
-
-                    b.Property<string>("MedicalConditions")
-                        .HasMaxLength(4000)
-                        .HasColumnType("character varying(4000)");
 
                     b.Property<string>("Quirks")
                         .IsRequired()

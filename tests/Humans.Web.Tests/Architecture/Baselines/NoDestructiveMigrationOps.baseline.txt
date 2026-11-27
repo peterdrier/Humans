@@ -217,22 +217,22 @@ src/Sections/Humans.Camps/Data/Migrations/20261029213715_AddCampEventIds.cs:Drop
 # Down() caveat: EF re-adds EarlyEntryCapacity as jsonb NOT NULL DEFAULT '', which PostgreSQL rejects as
 # invalid JSON, so Down() fails as generated; every other column re-adds with a constant default, not
 # its old value.
-src/Sections/Humans.Shifts/Data/Migrations/20261122013946_DropShiftsEventSettingsCalendarColumns.cs:DropIndex(name=IX_shift_event_settings_IsActive,table=shift_event_settings)#1
-src/Sections/Humans.Shifts/Data/Migrations/20261122013946_DropShiftsEventSettingsCalendarColumns.cs:DropColumn(name=BarriosEarlyEntryAllocation,table=shift_event_settings)#1
-src/Sections/Humans.Shifts/Data/Migrations/20261122013946_DropShiftsEventSettingsCalendarColumns.cs:DropColumn(name=BuildStartOffset,table=shift_event_settings)#1
-src/Sections/Humans.Shifts/Data/Migrations/20261122013946_DropShiftsEventSettingsCalendarColumns.cs:DropColumn(name=EarlyEntryCapacity,table=shift_event_settings)#1
-src/Sections/Humans.Shifts/Data/Migrations/20261122013946_DropShiftsEventSettingsCalendarColumns.cs:DropColumn(name=EarlyEntryClose,table=shift_event_settings)#1
-src/Sections/Humans.Shifts/Data/Migrations/20261122013946_DropShiftsEventSettingsCalendarColumns.cs:DropColumn(name=EventEndOffset,table=shift_event_settings)#1
-src/Sections/Humans.Shifts/Data/Migrations/20261122013946_DropShiftsEventSettingsCalendarColumns.cs:DropColumn(name=EventName,table=shift_event_settings)#1
-src/Sections/Humans.Shifts/Data/Migrations/20261122013946_DropShiftsEventSettingsCalendarColumns.cs:DropColumn(name=FinishingWeekendStartOffset,table=shift_event_settings)#1
-src/Sections/Humans.Shifts/Data/Migrations/20261122013946_DropShiftsEventSettingsCalendarColumns.cs:DropColumn(name=FirstCrewStartOffset,table=shift_event_settings)#1
-src/Sections/Humans.Shifts/Data/Migrations/20261122013946_DropShiftsEventSettingsCalendarColumns.cs:DropColumn(name=GateOpeningDate,table=shift_event_settings)#1
-src/Sections/Humans.Shifts/Data/Migrations/20261122013946_DropShiftsEventSettingsCalendarColumns.cs:DropColumn(name=IsActive,table=shift_event_settings)#1
-src/Sections/Humans.Shifts/Data/Migrations/20261122013946_DropShiftsEventSettingsCalendarColumns.cs:DropColumn(name=PreEventWeekStartOffset,table=shift_event_settings)#1
-src/Sections/Humans.Shifts/Data/Migrations/20261122013946_DropShiftsEventSettingsCalendarColumns.cs:DropColumn(name=SetupWeekStartOffset,table=shift_event_settings)#1
-src/Sections/Humans.Shifts/Data/Migrations/20261122013946_DropShiftsEventSettingsCalendarColumns.cs:DropColumn(name=StrikeEndOffset,table=shift_event_settings)#1
-src/Sections/Humans.Shifts/Data/Migrations/20261122013946_DropShiftsEventSettingsCalendarColumns.cs:DropColumn(name=TimeZoneId,table=shift_event_settings)#1
-src/Sections/Humans.Shifts/Data/Migrations/20261122013946_DropShiftsEventSettingsCalendarColumns.cs:DropColumn(name=Year,table=shift_event_settings)#1
+src/Sections/Humans.Shifts/Data/Migrations/20261127153919_DropShiftsEventSettingsCalendarColumns.cs:DropIndex(name=IX_shift_event_settings_IsActive,table=shift_event_settings)#1
+src/Sections/Humans.Shifts/Data/Migrations/20261127153919_DropShiftsEventSettingsCalendarColumns.cs:DropColumn(name=BarriosEarlyEntryAllocation,table=shift_event_settings)#1
+src/Sections/Humans.Shifts/Data/Migrations/20261127153919_DropShiftsEventSettingsCalendarColumns.cs:DropColumn(name=BuildStartOffset,table=shift_event_settings)#1
+src/Sections/Humans.Shifts/Data/Migrations/20261127153919_DropShiftsEventSettingsCalendarColumns.cs:DropColumn(name=EarlyEntryCapacity,table=shift_event_settings)#1
+src/Sections/Humans.Shifts/Data/Migrations/20261127153919_DropShiftsEventSettingsCalendarColumns.cs:DropColumn(name=EarlyEntryClose,table=shift_event_settings)#1
+src/Sections/Humans.Shifts/Data/Migrations/20261127153919_DropShiftsEventSettingsCalendarColumns.cs:DropColumn(name=EventEndOffset,table=shift_event_settings)#1
+src/Sections/Humans.Shifts/Data/Migrations/20261127153919_DropShiftsEventSettingsCalendarColumns.cs:DropColumn(name=EventName,table=shift_event_settings)#1
+src/Sections/Humans.Shifts/Data/Migrations/20261127153919_DropShiftsEventSettingsCalendarColumns.cs:DropColumn(name=FinishingWeekendStartOffset,table=shift_event_settings)#1
+src/Sections/Humans.Shifts/Data/Migrations/20261127153919_DropShiftsEventSettingsCalendarColumns.cs:DropColumn(name=FirstCrewStartOffset,table=shift_event_settings)#1
+src/Sections/Humans.Shifts/Data/Migrations/20261127153919_DropShiftsEventSettingsCalendarColumns.cs:DropColumn(name=GateOpeningDate,table=shift_event_settings)#1
+src/Sections/Humans.Shifts/Data/Migrations/20261127153919_DropShiftsEventSettingsCalendarColumns.cs:DropColumn(name=IsActive,table=shift_event_settings)#1
+src/Sections/Humans.Shifts/Data/Migrations/20261127153919_DropShiftsEventSettingsCalendarColumns.cs:DropColumn(name=PreEventWeekStartOffset,table=shift_event_settings)#1
+src/Sections/Humans.Shifts/Data/Migrations/20261127153919_DropShiftsEventSettingsCalendarColumns.cs:DropColumn(name=SetupWeekStartOffset,table=shift_event_settings)#1
+src/Sections/Humans.Shifts/Data/Migrations/20261127153919_DropShiftsEventSettingsCalendarColumns.cs:DropColumn(name=StrikeEndOffset,table=shift_event_settings)#1
+src/Sections/Humans.Shifts/Data/Migrations/20261127153919_DropShiftsEventSettingsCalendarColumns.cs:DropColumn(name=TimeZoneId,table=shift_event_settings)#1
+src/Sections/Humans.Shifts/Data/Migrations/20261127153919_DropShiftsEventSettingsCalendarColumns.cs:DropColumn(name=Year,table=shift_event_settings)#1
 
 # camp_settings (Camps) PublicYear and EeStartDate: replaced by the active Settings event's Year and
 # settings_event's EarlyEntryStartOffset (peterdrier/Humans#1761). PublicYear's HasData seed value goes too.
