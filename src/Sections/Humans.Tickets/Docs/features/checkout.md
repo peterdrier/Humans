@@ -216,7 +216,7 @@ addresses were typed. Directed resale links buy only the buyer's own ticket.
   open before the account is active, so someone bought for reaches their ticket from the email (name entry still comes first). A holder puts an adult ticket up for resale while the event is not
   Closed and before any configured `SalesCloseAt`; the exact close instant refuses new offers and invitations. The member controls
   and admin selling status use the same time boundary. An offer may wait while resale is paused, but new invitations
-  require resale to be selling. It joins `ticket_resale_offers` (oldest first) and the gate refuses it while it can still sell (the holder withdraws it to get in; once sales close it is valid again). They see their
+  require resale to be selling. It joins `ticket_resale_offers` (oldest first) and the gate refuses it while it can still sell (the holder withdraws it to get in; once sales close and no buyer reservation still holds it, it is valid again). They see their
   queue position and can withdraw, except while a buyer's unpaid order holds it.
 - Creating an offer saves the row and its ticket's `Offered` state in one commit. Another open or reserved offer
   refuses creation. Checkout and the directed-link page use the same eligibility: an offered adult ticket with one
@@ -325,7 +325,7 @@ tickets by itself (Peter, 2026-11-22).
 
 
 Gate looks codes up through `ITicketGateLookup.FindIssuedTicketAsync` (exact code, any event; Gate keeps only the
-active event's). `Valid` scans valid; `Offered` scans valid only once sales are closed, so a ticket can never admit its holder and then sell. A ticket the gate admitted (or whose valid child or companion ticket it admitted, including one on a separate order) cannot be offered or receive new resale invitations, and an admitted offer is never sold (`IGateAdmissions`, Gate's read). A child or companion ticket without an account carries the adult's
+active event's). `Valid` scans valid; `Offered` scans valid only once sales are closed and no reserved order still holds it. Overdue remote, processing and paid reservations keep the adult and its dependents blocked; missing reservation owners also block until recovery resolves them. Definitively closed orders and expired local orders release that hold. A sold offer invalidates the old adult and its dependents even if retirement was interrupted. A ticket the gate admitted (or whose valid child or companion ticket it admitted, including one on a separate order) cannot be offered or receive new resale invitations, and an admitted offer is never sold (`IGateAdmissions`, Gate's read). A child or companion ticket without an account carries the adult's
 user as `EntryUserId`, whose Early Entry applies. Both gate lookup and event lists refuse a dependent whose adult is
 missing, void or resold, even if an interrupted older retirement left the dependent marked `Valid`. Nobody signs the ticket rules at the gate: the buyer's acceptance
 covers every ticket on the order (Peter, 2026-11-21). The gate's scan row is the only admission record; no platform is told.

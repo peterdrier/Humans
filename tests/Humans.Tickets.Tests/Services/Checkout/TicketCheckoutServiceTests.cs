@@ -1690,6 +1690,80 @@ public sealed partial class TicketCheckoutServiceTests
         _repo.Offers.Single().State.Should().Be(TicketResaleOfferState.Open);
     }
 
+    [HumansTheory]
+    [InlineData((int)TicketCheckoutOrderState.Created, true, true)]
+    [InlineData((int)TicketCheckoutOrderState.Pending, true, true)]
+    [InlineData((int)TicketCheckoutOrderState.Processing, false, true)]
+    [InlineData((int)TicketCheckoutOrderState.Paid, false, true)]
+    [InlineData((int)TicketCheckoutOrderState.Created, false, false)]
+    [InlineData((int)TicketCheckoutOrderState.Pending, false, false)]
+    [InlineData((int)TicketCheckoutOrderState.Failed, true, false)]
+    [InlineData((int)TicketCheckoutOrderState.Expired, true, false)]
+    [InlineData((int)TicketCheckoutOrderState.Cancelled, true, false)]
+    [InlineData(-1, true, true)]
+    [InlineData(-2, true, true)]
+    public async Task FindIssuedTicketAsync_ClosedSales_RespectsReservedOrder(int state, bool remote, bool blocked)
+    {
+        var adult = AddTicket(holder: _buyerId, state: TicketCheckoutTicketState.Offered);
+        var child = AddTicket(TicketHolderKind.Child, parent: adult.Id);
+        var companion = AddTicket(TicketHolderKind.Companion, parent: adult.Id);
+        var orderId = Guid.NewGuid();
+        if (state >= 0)
+            _repo.Orders.Add(new TicketCheckoutOrder
+            {
+                Id = orderId,
+                TicketingSettingsId = _ticketing.Id,
+                State = (TicketCheckoutOrderState)state,
+                PlatformOrderId = remote ? "remote" : null,
+                ExpiresAt = Now - Duration.FromHours(1),
+            });
+        _repo.Offers.Add(new TicketResaleOffer
+        {
+            Id = Guid.NewGuid(),
+            TicketingSettingsId = _ticketing.Id,
+            TicketId = adult.Id,
+            State = TicketResaleOfferState.Reserved,
+            ReservedByOrderId = state == -2 ? null : orderId,
+        });
+        _ticketing.SalesCloseAt = Now;
+
+        var listed = await _service.GetIssuedTicketsForEventAsync(_event.Id, Ct);
+        foreach (var ticket in new[] { adult, child, companion })
+        {
+            var found = await _service.FindIssuedTicketAsync(ticket.Barcode, Ct);
+            found!.IsValid.Should().Be(!blocked);
+            found.InResaleQueue.Should().Be(blocked);
+            listed.Single(t => t.Id == ticket.Id).Should().Be(found);
+        }
+    }
+
+    [HumansTheory]
+    [InlineData((int)TicketCheckoutTicketState.Valid)]
+    [InlineData((int)TicketCheckoutTicketState.Offered)]
+    public async Task FindIssuedTicketAsync_SoldBeforeRetirement_RefusesOldTickets(int state)
+    {
+        var adult = AddTicket(holder: _buyerId, state: (TicketCheckoutTicketState)state);
+        var child = AddTicket(TicketHolderKind.Child, parent: adult.Id);
+        var companion = AddTicket(TicketHolderKind.Companion, parent: adult.Id);
+        _repo.Offers.Add(new TicketResaleOffer
+        {
+            Id = Guid.NewGuid(),
+            TicketingSettingsId = _ticketing.Id,
+            TicketId = adult.Id,
+            State = TicketResaleOfferState.Sold,
+        });
+        _ticketing.Mode = TicketSalesMode.Closed;
+
+        var listed = await _service.GetIssuedTicketsForEventAsync(_event.Id, Ct);
+        foreach (var ticket in new[] { adult, child, companion })
+        {
+            var found = await _service.FindIssuedTicketAsync(ticket.Barcode, Ct);
+            found!.IsValid.Should().BeFalse();
+            found.InResaleQueue.Should().BeFalse();
+            listed.Single(t => t.Id == ticket.Id).Should().Be(found);
+        }
+    }
+
     [HumansFact]
     public async Task An_offer_whose_child_was_used_at_the_gate_takes_no_invitation()
     {
