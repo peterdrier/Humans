@@ -82,7 +82,7 @@ Every table-owning section has a narrow, entity-shaped **repository interface** 
 Canonical shape:
 
 ```csharp
-internal partial interface IUserRepository
+internal interface IUserRepository
 {
     Task<Profile?> GetByIdAsync(Guid profileId, CancellationToken ct = default);
     Task<Profile?> GetByUserIdAsync(Guid userId, CancellationToken ct = default);

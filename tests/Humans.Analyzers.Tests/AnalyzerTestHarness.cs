@@ -31,13 +31,15 @@ internal static class AnalyzerTestHarness
     /// </param>
     /// <param name="sourcePath">Optional declaring path for folder-scoped rules.</param>
     /// <param name="additionalFile">Optional additional file handed to the analyzer, as MSBuild <c>AdditionalFiles</c> does.</param>
+    /// <param name="extraSources">Optional further source files compiled into the same assembly, for rules about several files.</param>
     public static async Task<ImmutableArray<Diagnostic>> RunAsync(
         DiagnosticAnalyzer analyzer,
         string assemblyName,
         string source,
         string? referencedSource = null,
         string sourcePath = "",
-        (string Path, string Text)? additionalFile = null)
+        (string Path, string Text)? additionalFile = null,
+        IReadOnlyList<(string Path, string Text)>? extraSources = null)
     {
         var references = BaseReferences;
         if (referencedSource is not null)
@@ -56,7 +58,7 @@ internal static class AnalyzerTestHarness
         var syntaxTree = CSharpSyntaxTree.ParseText(source, path: sourcePath, cancellationToken: Xunit.TestContext.Current.CancellationToken);
         var compilation = CSharpCompilation.Create(
             assemblyName: assemblyName,
-            syntaxTrees: [syntaxTree],
+            syntaxTrees: [syntaxTree, .. (extraSources ?? []).Select(s => CSharpSyntaxTree.ParseText(s.Text, path: s.Path, cancellationToken: Xunit.TestContext.Current.CancellationToken))],
             references: references,
             options: new CSharpCompilationOptions(
                 OutputKind.DynamicallyLinkedLibrary,

@@ -97,7 +97,7 @@ public sealed class FormViewModelTests
     }
 
     [HumansFact]
-    public void DefaultDate_IsTheDirectionsWindowStart_OrTodayWhenTheYearIsNotSetUp()
+    public void DefaultDate_NoWindow_FallsBackToToday()
     {
         BoardViewModel.DefaultDate(Settings, RideshareDirection.Inbound, Today).Should().Be(Settings.InboundWindowStart);
         BoardViewModel.DefaultDate(Settings, RideshareDirection.Outbound, Today).Should().Be(Settings.OutboundWindowStart);
@@ -112,7 +112,7 @@ public sealed class FormViewModelTests
     }
 
     [HumansFact]
-    public void OfferForm_ToSave_TrimsThePlace_AndSplitsWaypointsPerLine_DroppingBlanks()
+    public void OfferForm_ToSave_TrimsPlaceSplitsWaypoints()
     {
         var form = new OfferFormViewModel
         {
@@ -165,7 +165,7 @@ public sealed class FormViewModelTests
     [InlineData(0)]
     [InlineData(201)]
     [InlineData(256)]
-    public void ForNew_PrefillsTheProfilesPlace_AndTheDirectionsWindowStart(int cityLength)
+    public void ForNew_ProfileWithPlace_PrefillsForm(int cityLength)
     {
         var city = cityLength == 0 ? "Berlin" : new string('x', cityLength);
         var user = User(UserFixtures.Profile(city: city, latitude: 52.52, longitude: 13.405));
@@ -201,7 +201,7 @@ public sealed class FormViewModelTests
     }
 
     [HumansFact]
-    public void ForNew_WithoutAProfileOrSettings_StartsBlankOnToday()
+    public void ForNew_NoProfileOrSettings_StartsBlank()
     {
         var offer = OfferFormViewModel.ForNew(User(null), RideshareDirection.Inbound, null, Today);
 

@@ -7,7 +7,7 @@ using MemberApplication = Humans.Governance.Domain.Application;
 
 namespace Humans.Governance.Data;
 
-internal sealed partial class ApplicationRepository(IDbContextFactory<GovernanceDbContext> factory)
+internal sealed class ApplicationRepository(IDbContextFactory<GovernanceDbContext> factory)
     : SectionRepository<GovernanceDbContext>(factory), IApplicationRepository, IMembershipTierRepository
 {
     public async Task<MemberApplication?> GetByIdAsync(Guid applicationId, CancellationToken ct = default) =>
@@ -343,4 +343,53 @@ internal sealed partial class ApplicationRepository(IDbContextFactory<Governance
         Func<GovernanceDbContext, Task<T>> action,
         CancellationToken ct) =>
         await RunAsync(ctx => action(ctx), ct);
+
+    public async Task<MembershipTierRecord?> GetAsync(Guid userId, CancellationToken ct = default) =>
+        await RunAsync(ctx => ctx.MembershipTiers.AsNoTracking().SingleOrDefaultAsync(x => x.UserId == userId, ct), ct);
+
+    public async Task<IReadOnlyList<MembershipTierRecord>> GetAllAsync(CancellationToken ct = default) =>
+        await RunAsync(ctx => ctx.MembershipTiers.AsNoTracking().ToListAsync(ct), ct);
+
+    public async Task UpsertAsync(MembershipTierRecord values, CancellationToken ct = default)
+    {
+        await using var ctx = await CreateDbContextAsync(ct);
+        await PrepareTierUpsertAsync(ctx, values, ct);
+        await ctx.SaveChangesAsync(ct);
+    }
+
+    private static async Task PrepareTierUpsertAsync(
+        GovernanceDbContext ctx, MembershipTierRecord values, CancellationToken ct)
+    {
+        var row = await ctx.MembershipTiers.SingleOrDefaultAsync(x => x.UserId == values.UserId, ct);
+        if (row is null)
+        {
+            ctx.MembershipTiers.Add(Copy(values, values.UserId));
+        }
+        else
+        {
+            ctx.Entry(row).CurrentValues.SetValues(Copy(values, values.UserId));
+        }
+    }
+
+    public async Task ReassignAsync(Guid fromUserId, Guid toUserId, CancellationToken ct = default)
+    {
+        await using var ctx = await CreateDbContextAsync(ct);
+        var source = await ctx.MembershipTiers.SingleOrDefaultAsync(x => x.UserId == fromUserId, ct);
+        if (source is null) return;
+
+        // The key is the user id, so a move is a delete plus an insert in one save.
+        ctx.MembershipTiers.Remove(source);
+        if (!await ctx.MembershipTiers.AnyAsync(x => x.UserId == toUserId, ct))
+            ctx.MembershipTiers.Add(Copy(source, toUserId));
+        await ctx.SaveChangesAsync(ct);
+    }
+
+    private static MembershipTierRecord Copy(MembershipTierRecord v, Guid userId) => new()
+    {
+        UserId = userId,
+        Tier = v.Tier,
+        GrantedAt = v.GrantedAt,
+        ExpiresAt = v.ExpiresAt,
+        GrantedByApplicationId = v.GrantedByApplicationId,
+    };
 }

@@ -43,7 +43,7 @@ public sealed class EventGuideSettingsTabViewComponentTests
     }
 
     [HumansFact]
-    public async Task InvokeAsync_NoGuideSettingsYet_ReturnsAnEmptyFormDefaultingMaxPrintSlots()
+    public async Task InvokeAsync_NoGuideSettings_ReturnsEmptyForm()
     {
         _guide.GetGuideSettingsAsync(Arg.Any<CancellationToken>()).Returns((EventGuideSettingsView?)null);
         _guide.GetEventSettingsOptions().Returns([]);
@@ -57,7 +57,7 @@ public sealed class EventGuideSettingsTabViewComponentTests
     }
 
     [HumansFact]
-    public async Task InvokeAsync_ExistingGuideSettings_MapsIdAndEventSettingsId()
+    public async Task InvokeAsync_ExistingGuideSettings_MapsIds()
     {
         var settingsId = Guid.NewGuid();
         var existingId = Guid.NewGuid();

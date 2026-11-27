@@ -12,7 +12,7 @@ Lead authority is `CampRoleAssignment` (against the `SpecialRole=Lead`
 definition) — there is no separate `camp_leads` table. `SeedSystemRolesAsync`
 seeds role definitions for fresh environments.
 
-Camp-role persistence is the `.Roles.cs` partial of `ICampRepository`;
+Camp-role persistence lives in `ICampRepository`;
 `CampRoleService` injects `ICampRepository` directly.
 The Camps section is a single repository owning all of its tables.
 `IEarlyEntryProvider` is implemented by `CampService`; the registered

@@ -65,7 +65,7 @@ public sealed class CachingWorkgroupServiceTests
     [HumansTheory]
     [InlineData(false)]
     [InlineData(true)]
-    public async Task Join_ForwardsTheResultAndClearsTheRegisterCache(bool refused)
+    public async Task Join_Forwarded_ClearsRegisterCache(bool refused)
     {
         var workgroupId = Guid.NewGuid();
         var userId = Guid.NewGuid();

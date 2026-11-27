@@ -68,7 +68,7 @@ public class EmailOutboxProcessorTests : IDisposable
     [HumansTheory]
     [InlineData(false)]
     [InlineData(true)]
-    public async Task ScheduledDrain_RecordsEveryOutcome_AndPreservesFailure(bool failed)
+    public async Task ScheduledDrain_EveryOutcome_IsRecorded(bool failed)
     {
         var failure = new IOException("Settings unavailable");
         if (failed)
@@ -343,7 +343,7 @@ public class EmailOutboxProcessorTests : IDisposable
     [HumansTheory]
     [InlineData(false)]
     [InlineData(true)]
-    public async Task ProcessQueuedAsync_FinishesDeliveryOutcomeAfterCancellation_WithoutStartingNextMessage(bool transportFails)
+    public async Task ProcessQueuedAsync_CancelledMidDelivery_FinishesThatMessage(bool transportFails)
     {
         var first = await SeedMessageAsync(EmailOutboxStatus.Queued);
         _clock.Advance(Duration.FromSeconds(1));
@@ -445,7 +445,7 @@ public class EmailOutboxProcessorTests : IDisposable
     [HumansTheory]
     [InlineData(false)]
     [InlineData(true)]
-    public async Task ScheduledDrain_PreservesShutdownDuringThrottleAndPendingCount(bool pendingCount)
+    public async Task ScheduledDrain_ShutdownDuringThrottle_IsPreserved(bool pendingCount)
     {
         var message = await SeedMessageAsync(EmailOutboxStatus.Queued);
         using var shutdown = new CancellationTokenSource();
@@ -585,7 +585,7 @@ public class EmailOutboxProcessorTests : IDisposable
     }
 
     [HumansFact]
-    public async Task ProcessQueuedAsync_TallyFailureDoesNotFlipDeliveredMessageToFailed()
+    public async Task ProcessQueuedAsync_TallyFails_MessageStaysDelivered()
     {
         // A daily-count write failure is analytics-layer noise, not a delivery
         // failure — it must never flip an already-sent message back to Failed
@@ -622,7 +622,7 @@ public class EmailOutboxProcessorTests : IDisposable
     }
 
     [HumansFact(Timeout = 10000)]
-    public async Task ProcessQueuedAsync_TalliesEachOutcomeUnderItsOwnClockRead_NotBatchStartTime()
+    public async Task ProcessQueuedAsync_EachOutcome_TalliesAtOwnTime()
     {
         // Batch starts just before midnight UTC; the throttle delay between sends
         // pushes later messages in the same batch past midnight. Each outcome must

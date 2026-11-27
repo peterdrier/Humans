@@ -9,7 +9,7 @@ namespace Humans.CityPlanning.Tests;
 public class CityPlanningArchitectureTests
 {
     [HumansFact]
-    public void ApiControllerKeepsItsRoutePrefix()
+    public void ApiController_RoutePrefix_IsUnchanged()
     {
         // The city-planning JavaScript hard-codes /api/city-planning/...: change the prefix and
         // the maps silently stop loading. This is the only route assertion the PR build runs.
@@ -23,7 +23,7 @@ public class CityPlanningArchitectureTests
     [HumansTheory]
     [InlineData(nameof(CityPlanningController.UploadLimitZone))]
     [InlineData(nameof(CityPlanningController.UploadOfficialZones))]
-    public void GeoJsonUploadPosts_CarryTheServiceFileLimitPlusMultipartOverhead(string action)
+    public void GeoJsonUploadPosts_SizeLimit_CoversServiceLimit(string action)
     {
         var limit = typeof(CityPlanningController).GetMethod(action)!
             .GetCustomAttribute<RequestSizeLimitAttribute>();
@@ -36,7 +36,7 @@ public class CityPlanningArchitectureTests
     }
 
     [HumansFact]
-    public void PlacementImageUpdate_CarriesTheServiceFileLimitPlusMultipartOverhead()
+    public void PlacementImageUpdate_SizeLimit_CoversServiceLimit()
     {
         var apiController = typeof(Section).Assembly.GetType("Humans.CityPlanning.Controllers.CityPlanningApiController")!;
         var limit = apiController.GetMethod("UpdateContainerPlacementNotes")!
