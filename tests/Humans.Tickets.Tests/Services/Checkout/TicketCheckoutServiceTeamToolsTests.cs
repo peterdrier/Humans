@@ -13,6 +13,7 @@ using Xunit;
 
 namespace Humans.Tickets.Tests.Services.Checkout;
 
+[Humans.Base.Attributes.Grandfathered("HUM0046", "Splits with TicketCheckoutService.", "2026-11-27", "peterdrier/Humans#2675")]
 public sealed partial class TicketCheckoutServiceTests
 {
     [HumansFact]

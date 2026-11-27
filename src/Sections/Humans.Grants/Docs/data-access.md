@@ -14,7 +14,7 @@ injects `IDbContextFactory<GrantsDbContext>` directly. Owns `grant_programs`,
 
 ### GrantManagement (Scoped — class `GrantService`)
 
-One partial class (`GrantService.*.cs`) registered once and resolved as `IGrantManagement`
+One class (`GrantService.cs`) registered once and resolved as `IGrantManagement`
 (internal), `IGrantWrite` (cross-section issue / revoke by a source section),
 `IUserDataContributor` and `IUserMerge`. Repository: `IGrantRepository`.
 

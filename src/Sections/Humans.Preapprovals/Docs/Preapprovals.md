@@ -236,7 +236,7 @@ Admin pages live under the section's URL space, not `/Admin`; they are localizat
 
 ## Architecture
 
-`PreapprovalService` is one class (partial files by area: grants, programs, GDPR) holding reads,
+`PreapprovalService` is one class in one file holding reads,
 the three Expenses transitions, program create and edit, export/erasure/merge and audit text.
 `PreapprovalInput` owns the money and text rules; grant and program mutations call it directly.
 `GetGrantsAsync` builds the public grant options directly from the repository, preserving all statuses,
