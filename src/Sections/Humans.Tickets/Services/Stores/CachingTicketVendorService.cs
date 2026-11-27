@@ -10,7 +10,7 @@ namespace Humans.Tickets.Services.Stores;
 /// Caches only <see cref="GetEventSummaryAsync"/>. An order pull for an event evicts that event's summary, so it is
 /// never older than the orders the sync last pulled.
 /// </summary>
-internal sealed class CachingTicketVendorService : ITicketVendorService, ITicketVendorMirror
+internal sealed class CachingTicketVendorService : ITicketVendorService
 {
     private static readonly Duration EventSummaryCacheTtl = Duration.FromMinutes(15);
 
@@ -65,10 +65,6 @@ internal sealed class CachingTicketVendorService : ITicketVendorService, ITicket
     public Task<VendorTicketDto> IssueTicketAsync(
         IssueTicketRequest request, CancellationToken ct = default) =>
         WithInnerAsync(inner => inner.IssueTicketAsync(request, ct));
-
-    public Task CreateCheckInAsync(
-        string vendorTicketId, Instant occurredAt, CancellationToken ct = default) =>
-        WithInnerAsync(inner => inner.CreateCheckInAsync(vendorTicketId, occurredAt, ct));
 
     private async Task<TResult> WithInnerAsync<TResult>(Func<ITicketVendorService, Task<TResult>> action)
     {

@@ -1,14 +1,10 @@
 using Humans.Tickets.Contracts;
 using Humans.Gate.Models;
 using Humans.Gate.Services;
-using Humans.Gate.Services.Stores;
 using Humans.Base.Controllers;
 using Humans.Users.Contracts;
 using Humans.Base.Authorization;
-using Humans.Base.Extensions;
-using Humans.Base.Models;
 using Microsoft.AspNetCore.Authorization;
-using Microsoft.Extensions.Configuration;
 using Microsoft.AspNetCore.Mvc;
 using NodaTime;
 using NodaTime.Text;
@@ -24,12 +20,9 @@ namespace Humans.Gate.Controllers;
 internal sealed class GateController(
     IGateService gate,
     IUserService users,
-    IConfiguration configuration,
-    GatePinThrottle pinThrottle,
     IClock clock,
     ILogger<GateController> logger) : HumansControllerBase(users)
 {
-    private const string ScannerSessionKey = "GateScannerId";
     [HttpGet("")]
     public async Task<IActionResult> Index(CancellationToken ct)
     {
@@ -94,121 +87,7 @@ internal sealed class GateController(
         return PartialView("_VerdictCard", GateScanCardViewModel.FromUndo(result, barcode));
     }
 
-    [HttpGet("Claim")]
-    public async Task<IActionResult> Claim(CancellationToken ct)
-    {
-        // The roster is opt-in (Gate:RosterTeamId); search still finds helpers who aren't rostered.
-        var roster = await BuildRosterAsync(ct);
-        return View(new GateClaimViewModel(roster));
-    }
-
-    [HttpPost("Claim")]
-    [Authorize(Policy = PolicyNames.GateAdmit)]
-    [ValidateAntiForgeryToken]
-    public async Task<IActionResult> Claim(Guid userId, CancellationToken ct)
-    {
-        // The id comes from the form: it must be an active member, and a merged-away id fails closed rather than
-        // stamping the session with an id the PIN store no longer recognises.
-        var info = await UserService.GetUserInfoAsync(userId, ct);
-        if (info is not { IsActive: true } || info.Id != userId)
-            return RedirectToAction(nameof(Claim));
-
-        var status = await gate.GetPinStatusAsync(userId, ct);
-        return View("Pin", GatePinViewModel.ForClaim(userId, status));
-    }
-
-    [HttpPost("ClaimPin")]
-    [Authorize(Policy = PolicyNames.GateAdmit)]
-    [ValidateAntiForgeryToken]
-    public async Task<IActionResult> ClaimPin(Guid userId, string? pin, CancellationToken ct)
-    {
-        // Guard before any enrol/verify/stamp: a direct POST with an arbitrary or inactive id must not mint a PIN.
-        var info = await UserService.GetUserInfoAsync(userId, ct);
-        if (info is not { IsActive: true } || info.Id != userId)
-            return RedirectToAction(nameof(Claim));
-
-        // Re-derive the mode server-side; never trust a client set/verify hint.
-        var status = await gate.GetPinStatusAsync(userId, ct);
-
-        return status.HasPin
-            ? await VerifyClaimAsync(userId, status, pin, ct)
-            : await SetClaimPinAsync(userId, status, pin, ct);
-    }
-
-    [HttpPost("EndShift")]
-    [Authorize(Policy = PolicyNames.GateAdmit)]
-    [ValidateAntiForgeryToken]
-    public IActionResult EndShift()
-    {
-        // Clear attribution server-side: the session survives ~8h idle, so a walk-away would credit the next
-        // person's scans to whoever last claimed.
-        HttpContext.Session.Remove(ScannerSessionKey);
-        return RedirectToAction(nameof(Claim));
-    }
-
-    // The route-locked kiosk can't reach /api/profiles/search. Burner-name matching only, never email.
-    [HttpGet("Search")]
-    public async Task<IActionResult> Search(string? q, CancellationToken ct)
-    {
-        var query = q?.Trim() ?? string.Empty;
-        if (query.Length < 2)
-            return Json(Array.Empty<HumanLookupSearchResult>());
-
-        // A masked email tells same-name staffers apart; it is masked here, so the search itself stays email-free.
-        var matches = (await UserService.SearchUsersAsync(query, PersonSearchFields.Name, 10, ct))
-            .OrderByRelevance()
-            .ToList();
-        if (matches.Count == 0) return Json(new List<HumanLookupSearchResult>());
-        var infos = await UserService.GetUserInfosAsync(matches.Select(m => m.UserId), ct);
-        var rows = matches.Select(m => new HumanLookupSearchResult(
-            m.UserId, m.BurnerName, Detail: MaskEmail(PublicEmail(infos.GetValueOrDefault(m.UserId))),
-            ProfilePictureUrl: m.ProfilePictureUrl)).ToList();
-        return Json(rows);
-    }
-
-    // The one email safe to hint on a shared, role-less kiosk: verified and org-public, never a scoped address.
-    private static string? PublicEmail(UserInfo? info) =>
-        info is null
-            ? null
-            : info.UserEmails
-                .Where(e => e.IsVerified && e.Visibility == ContactFieldVisibility.AllActiveProfiles)
-                .OrderByDescending(e => e.IsPrimary)
-                .Select(e => e.Email)
-                .FirstOrDefault();
-
-    // p•••h@gmail.com: recognisable to its owner, minimal to a bystander. Presentation only, never matching.
-    private static string? MaskEmail(string? email)
-    {
-        if (string.IsNullOrWhiteSpace(email)) return null;
-        var at = email.IndexOf('@', StringComparison.Ordinal);
-        if (at <= 0 || at == email.Length - 1) return null;
-        var local = email[..at];
-        var domain = email[(at + 1)..];
-        var shown = local.Length <= 2 ? $"{local[0]}•••" : $"{local[0]}•••{local[^1]}";
-        return $"{shown}@{domain}";
-    }
-
-    [HttpGet("Leaderboard")]
-    public async Task<IActionResult> Leaderboard(CancellationToken ct)
-    {
-        var since = clock.GetCurrentInstant().Minus(Duration.FromDays(7));
-        var board = await gate.GetLeaderboardAsync(since, ct);
-
-        var rows = board.Rows
-            .OrderByDescending(r => r.Admitted)
-            .ThenByDescending(r => r.Total)
-            .ToList();
-
-        ViewData["TotalAdmitted"] = board.TotalAdmitted;
-        ViewData["TotalScanned"] = board.TotalScanned;
-        return View(rows);
-    }
-
-    // GET is the Staff PINs page; the POST is the save target of the /Settings#gate tab.
-    [HttpGet("Admin")]
-    [Authorize(Policy = TicketsPolicies.Manage)]
-    public IActionResult Admin() => View();
-
+    // The save target of the /Settings#gate tab.
     [HttpPost("Admin")]
     [ValidateAntiForgeryToken]
     [Authorize(Policy = TicketsPolicies.Manage)]
@@ -227,98 +106,8 @@ internal sealed class GateController(
             return Redirect("/Settings#gate");
         }
 
-        await gate.SaveSettingsAsync(new GateSettingsDto(parsed.Value, model.MinorAgeThresholdYears), ct);
+        await gate.SaveSettingsAsync(new GateSettingsDto(parsed.Value), ct);
         SetSuccess("Gate settings saved.");
         return Redirect("/Settings#gate");
     }
-
-    // Stored AdminEnrolled. Kiosk overrides use the shared Gate:SupervisorPin, not these PINs.
-    [HttpPost("Admin/SetPin")]
-    [ValidateAntiForgeryToken]
-    [Authorize(Policy = TicketsPolicies.Manage)]
-    public async Task<IActionResult> SetStaffPin(Guid userId, string? pin, CancellationToken ct)
-    {
-        var actor = await GetCurrentUserInfoAsync(ct);
-        if (actor is null)
-            return Unauthorized();
-        if (userId == Guid.Empty)
-            SetError("Pick a person before setting a PIN.");
-        else if (await gate.AdminSetPinAsync(userId, pin ?? string.Empty, actor.Id, ct))
-            SetSuccess("PIN set.");
-        else
-            SetError("PIN must be 4 digits and not trivially guessable (no 1234, 0000, or repeats).");
-
-        return RedirectToAction(nameof(Admin));
-    }
-
-    [HttpPost("Admin/ResetPin")]
-    [ValidateAntiForgeryToken]
-    [Authorize(Policy = TicketsPolicies.Manage)]
-    public async Task<IActionResult> ResetStaffPin(Guid userId, CancellationToken ct)
-    {
-        var actor = await GetCurrentUserInfoAsync(ct);
-        if (actor is null)
-            return Unauthorized();
-        if (userId == Guid.Empty)
-            SetError("Pick a person before resetting a PIN.");
-        else
-        {
-            await gate.ClearPinAsync(userId, actor.Id, ct);
-            SetSuccess("PIN reset — they'll set a new one on their next claim.");
-        }
-
-        return RedirectToAction(nameof(Admin));
-    }
-
-    private async Task<IActionResult> VerifyClaimAsync(
-        Guid userId, GatePinStatus status, string? pin, CancellationToken ct)
-    {
-        var userKey = UserKey(userId);
-        if (ThrottleWait(userKey) is { } wait)
-            return View("Pin", GatePinViewModel.ForClaim(userId, status, $"Too many tries — wait {wait}s"));
-
-        if (!await gate.VerifyPinAsync(userId, pin ?? string.Empty, ct))
-        {
-            RecordPinFailure(userKey);
-            return View("Pin", GatePinViewModel.ForClaim(userId, status, "That PIN didn't match — try again"));
-        }
-
-        ResetPinThrottle(userKey);
-        return StampAndScan(userId);
-    }
-
-    private async Task<IActionResult> SetClaimPinAsync(
-        Guid userId, GatePinStatus status, string? pin, CancellationToken ct) =>
-        await gate.SetOwnPinAsync(userId, pin ?? string.Empty, ct) switch
-        {
-            GatePinSetResult.Ok => StampAndScan(userId),
-            _ => View("Pin", GatePinViewModel.ForClaim(
-                userId, status, "Pick a less obvious PIN — not 1234, 0000, or repeats")),
-        };
-
-    private IActionResult StampAndScan(Guid userId)
-    {
-        // Server-side, never from the request body, so attribution can't be forged.
-        HttpContext.Session.SetString(ScannerSessionKey, userId.ToString());
-        return RedirectToAction(nameof(Index));
-    }
-
-    // Claim PINs throttle per target user: the proxy collapses all kiosk traffic to one IP, so an IP key would let
-    // one bad run freeze every claim.
-    private static string UserKey(Guid userId) => $"u:{userId}";
-
-    private int? ThrottleWait(string userKey) => pinThrottle.SecondsUntilRetry(userKey);
-
-    private void RecordPinFailure(string userKey) => pinThrottle.RecordFailure(userKey);
-
-    private void ResetPinThrottle(string userKey) => pinThrottle.Reset(userKey);
-
-    private async Task<IReadOnlyList<Guid>> BuildRosterAsync(CancellationToken ct)
-    {
-        if (!Guid.TryParse(configuration["Gate:RosterTeamId"], out var teamId))
-            return [];
-
-        return await gate.GetShiftRosterAsync(teamId, ct);
-    }
-
 }

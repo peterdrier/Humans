@@ -21,8 +21,8 @@ public static class PolicyNames
     public const string ScannerAccess = nameof(ScannerAccess);
 
     /// <summary>
-    /// Gate <em>write</em> actions (/Gate/Decision, /Gate/Claim POST): records a
-    /// durable admission or claims the scanning session. TicketsAdmin, Admin, or the
+    /// Gate <em>write</em> actions (/Gate/Decision, /Gate/Undo): records or undoes a
+    /// durable admission. TicketsAdmin, Admin, or the
     /// shared gate-terminal account; Board reads the gate through
     /// <see cref="ScannerAccess"/> and admits no one. Composite assertion policy.
     /// </summary>

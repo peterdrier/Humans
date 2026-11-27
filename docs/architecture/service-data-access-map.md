@@ -33,7 +33,7 @@ The goal is to identify cross-section table overlap, duplicated caching, and cac
 > | `CityPlanningDbContext` | `CityPlanningSettings`, `CampPolygons`, `CampPolygonHistories` (own project, `src/Sections/Humans.CityPlanning/`) |
 > | `BudgetDbContext` | `BudgetYears`, `BudgetGroups`, `BudgetCategories`, `BudgetLineItems`, `BudgetAuditLogs`, `TicketingProjections` (own project, `src/Sections/Humans.Budget/`) |
 > | `CampsDbContext` | `Camps`, `CampSeasons`, `CampHistoricalNames`, `CampImages`, `CampSettings`, `CampMembers`, `CampRoleDefinitions`, `CampRoleAssignments` (own project, `src/Sections/Humans.Camps/`) |
-> | `GateDbContext` | `GateScanEvents`, `GateSettings`, `GateStaffPins` (own project, `src/Sections/Humans.Gate/`, table names `gate_scan_events` / `gate_settings` / `gate_staff_pins`) |
+> | `GateDbContext` | `GateScanEvents`, `GateSettings` (own project, `src/Sections/Humans.Gate/`, table names `gate_scan_events` / `gate_settings`) |
 > | `SystemDbContext` | `DataProtectionKeys` — ASP.NET Data Protection key ring storage, wired directly in `src/Humans.Web/Program.cs`; **no owning Application section, no repository, no service** |
 > | `EmailDbContext` | `EmailOutboxMessages`, `EmailDailySendCounts` (`email_daily_send_counts`), `CommunicationPreferences` (`email_communication_preferences`) (own project, `src/Sections/Humans.Email/`) |
 > | `CalendarDbContext` | `CalendarEvents`, `CalendarEventExceptions`, `CalendarFeedTokens` (`calendar_feed_tokens` — per-user iCal feed tokens) (own project, `src/Sections/Humans.Calendar/`) |
@@ -369,7 +369,6 @@ separately below the key table.
 | `magic_link_signup:{normalizedEmail}` | 60 sec | Rate Limit | SignInLinkRateLimiter (`Humans.Auth`) | SignInLinkRateLimiter |
 | `GateLoginFailures:{sourceIp}` | 1 min window | Rate Limit | GateSignInThrottle (Web) | GateSignInThrottle (reset on success) |
 | `GatePinFailures:{key}` | 15 min lockout after 5 failures | Rate Limit | GatePinThrottle (`Humans.Gate`) | GatePinThrottle (only a correct PIN clears it) |
-| `GateVendorMirrorSent:{vendorTicketId}` | 24 hr | Dedupe claim | GateVendorMirrorLedger (`Humans.Gate`) | expiry only |
 
 > The three `Gate*` keys are held by helper singletons (`GateSignInThrottle` in
 > `src/Humans.Web/Services/`, the other two in `src/Sections/Humans.Gate/Services/Stores/`),
@@ -470,8 +469,7 @@ Controllers and components that touch `IMemoryCache` directly.
 | Controller / Component | Cache Operation | Key |
 |------------------------|-----------------|-----|
 | **GateSignInThrottle** (Web infrastructure, used by the gate-terminal sign-in) | TryGetValue / Set / Remove | `GateLoginFailures:{sourceIp}` |
-| **GatePinThrottle** (`Humans.Gate/Services/Stores/`; used by `GateController` PIN claim / override) | TryGetValue / Set / Remove | `GatePinFailures:{key}` |
-| **GateVendorMirrorLedger** (`Humans.Gate/Services/Stores/`; used by `GateController` and `GateVendorBackfillAdminController`) | TryGetValue / Set (atomic claim) | `GateVendorMirrorSent:{vendorTicketId}` |
+| **GatePinThrottle** (`Humans.Gate/Services/Stores/`; used by `GateService` for the supervisor PIN) | TryGetValue / Set / Remove | `GatePinFailures:{key}` |
 
 The caching-pattern work continues to push cache populators into the owning service
 behind transparent decorators. No view component injects `IMemoryCache`; nav

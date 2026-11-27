@@ -6,7 +6,6 @@
   src/Sections/Humans.Onboarding/Controllers/WelcomeController.cs
   src/Sections/Humans.Scanner/Controllers/ScannerController.cs
   src/Sections/Humans.Gate/Services/GateService.cs
-  src/Sections/Humans.Gate/Jobs/GateVendorCheckInJob.cs
   tests/Humans.Web.Tests/Architecture/TicketVendorPortArchitectureTests.cs
 -->
 <!-- freshness:flag-on-change
@@ -370,7 +369,7 @@ Inbound (who injects `Humans.Tickets.Contracts`):
 
 - **`ITicketService`** (`GetTicketOrdersAsync`, `GetUserTicketHoldingsAsync`, `FindCurrentEventAttendeeByBarcodeAsync`, `GetParticipationsAsync`, `GetAllParticipationsAsync`; no `SurfaceBudget` pinned) — Users (profile, guest orders, account deletion hold, audiences, the admin ticket-holder tile), MailerLite audiences, Shifts (volunteer tracking), Camps (early-entry "has entered"), Surveys, Teams admin, Budget, Gate (`GateService` barcode admits), Scanner (`/Scanner/Tickets` lookup card and check-in time), Debug (user grid, membership card), Agent. Read-only.
 - **`ITicketWrite`** (`RecordParticipationAsync`, `UndoCheckInAsync`) — Gate's admit records `Attended` with the check-in time; Gate's undo of a mistaken admit reverts it to `Ticketed`. The member declaration, ticket-sync clears and the admin backfill stay internal (`IEventParticipationManagement`).
-- **`ITicketDiscountCodes`** — Campaigns' grant waves. **`ITicketVendorMirror`** — Gate's `GateVendorCheckInJob` mirrors admits to the vendor (best-effort, behind `Gate:VendorMirrorEnabled`, default off; Gate's own `gate_scan_events` remains the dedupe authority). Each vendor check-in POST creates a record, so the job always uses zero retry attempts. Sync orchestration and its error-state meter use internal `ITicketSyncService` and `TicketSyncResult`.
+- **`ITicketDiscountCodes`** — Campaigns' grant waves. Sync orchestration and its error-state meter use internal `ITicketSyncService` and `TicketSyncResult`.
 
 Donation export rows carry their purchase instant internally; the CSV controller orders them oldest first, preserving VIP-before-separate-donation order within each purchase. The CSV keeps its date-only column in the organization time zone.
 
@@ -381,7 +380,7 @@ Donation export rows carry their purchase instant internally; the CSV controller
 **Owning services (all in `Humans.Tickets.Services`, all `internal sealed`):**
 - `TicketQueryService` — read-side dashboard / orders / attendees / codes / who-hasn't-bought / sales aggregates / per-user ticket probes; also implements `IUserDataContributor` for GDPR export and erasure. `TicketQueryService` owns sales aggregates and campaign-code reports, including discount attribution and time buckets; weekly/quarterly UTC and monthly Madrid bucketing, refunded processing fees, void-seat handling, ordering and cancellation are unchanged. The same owner builds dashboard statistics (including its existing stale-sync recovery) and budget-based break-even results; fee deductions, daily rolling averages, fallback targets and finance-detail disclosure are unchanged. No DI registration or public contract is added. `TicketQueryService` owns the per-user holdings read, including order summaries, current-owner rows, verified-email count fallback and post-event hold date. The hold date is the latest, still in the future, of each held event's strike end plus 30 days, over the active event when the person matches a vendor-synced ticket for it and every event they hold a valid or offered Humans-issued ticket for (use case H19); account deletion waits for it, so a holder's ticket stays usable and erasure only tombstones the sale record after the event. The same owner assembles the two GDPR slices from matched orders and attendees, preserving identifiers, status values and ISO timestamps. The query service keeps the existing read and contributor contracts, slice-key aliases and sales-record erasure policy; its decorator retains cache ownership. No new dependency, public contract or DI registration is added.
 - `TicketSyncService` — vendor sync orchestrator (orders + attendees upsert, Stripe enrichment, VAT compute, code redemption push, EventParticipation derivation); also implements `IUserMerge` so account merges re-FK `TicketOrder.MatchedUserId`, `TicketAttendee.MatchedUserId`, and `TicketTransferRequest.SenderUserId` / `TicketTransferRequest.ReceiverUserId`.
-- `TicketVendorGateway` — the section's forwarding edge onto its vendor port, and the only place in the codebase that names both the application's ticketing vocabulary (`TicketDiscountCodeRequest` / `TicketDiscountKind`) and the port's (`DiscountCodeSpec` / `DiscountType`). Serves `ITicketDiscountCodes` (Campaigns' grant waves). `ITicketVendorMirror` resolves directly to the existing `CachingTicketVendorService`, whose check-in method dispatches once through the keyed vendor port. Gate's non-retry policy, timestamps and cancellation are unchanged.
+- `TicketVendorGateway` — the section's forwarding edge onto its vendor port, and the only place in the codebase that names both the application's ticketing vocabulary (`TicketDiscountCodeRequest` / `TicketDiscountKind`) and the port's (`DiscountCodeSpec` / `DiscountType`). Serves `ITicketDiscountCodes` (Campaigns' grant waves).
 - `AttendeeContactImportService` — manually-triggered admin job that classifies unmatched ticket attendees and provisions Humans users for them via `IAccountProvisioningService` (plan + apply pattern mirroring the MailerLite import; squatter protection uses Users' atomic replacement-and-provisioning operation).
 - `OnsiteRosterService` — the "Who's Onsite" join of checked-in attendees with user, team, camp and role labels; onsite users are this year's participations with `OnsiteSince` set. The service deduplicates and filters names ignoring case without display ordering. The onsite controller orders rows newest-check-in first and all row-name lists and filter options with ordinal comparison ignoring case.
 - `EventParticipationService` — participation writes (`ITicketWrite`, the member declaration, ticket-sync reconciliation and admin backfill), the export slice and the merge fold (internal `IEventParticipationManagement`). Export reads use `ITicketService`; the retained-on-erasure policy stays here.
@@ -401,7 +400,7 @@ Ticketing is three things, and conflating them is what a vendor change punishes.
 this section. The **adapter** (`Humans.TicketTailor`) is one implementation of it, and takes a direct
 `ProjectReference` on `Humans.Tickets` to name the port. The port is deliberately **not** on the
 `Humans.Tickets.Contracts` leaf: no Base consumer names it, and the leaf must keep the vendor's
-vocabulary away from other sections (they use `ITicketDiscountCodes` / `ITicketVendorMirror`).
+vocabulary away from other sections (they use `ITicketDiscountCodes`).
 Retiring the vendor deletes the adapter project; nothing in `Humans.Tickets`, in Base or in any consumer changes.
 Selling in Humans uses the second port, `ITicketingPlatform`, implemented by the BoxOffice, Pretix and HiEvents sections.
 
@@ -427,7 +426,7 @@ because ticket admins are who rotate that credential. Whether it eventually land
 **Stripe connector:** `IStripeService` (`Humans.Stripe`) wraps the Stripe SDK and is consumed by `TicketSyncService` for fee enrichment.
 
 **Public surface:** the `Humans.Tickets.Contracts` leaf publishes `ITicketService`,
-`ITicketDiscountCodes`, `ITicketVendorMirror`, `ITicketWrite`, `ITicketingPlatform` (the port each ticketing platform section implements), `ITicketingPlatformEvents` (platforms report a changed order) and `ITicketGateLookup` (Gate's read of Humans-issued tickets), with `EventParticipationInfo` and the participation enums, and `TicketsPlatformAdminNav`, which a ticketing platform section calls for its admin sidebar row so the route to Tickets' platform status page stays Tickets' own. The `TicketDashboardDtos` surface is internal.
+`ITicketDiscountCodes`, `ITicketWrite`, `ITicketingPlatform` (the port each ticketing platform section implements), `ITicketingPlatformEvents` (platforms report a changed order) and `ITicketGateLookup` (Gate's read of Humans-issued tickets), with `EventParticipationInfo` and the participation enums, and `TicketsPlatformAdminNav`, which a ticketing platform section calls for its admin sidebar row so the route to Tickets' platform status page stays Tickets' own. The `TicketDashboardDtos` surface is internal.
 Tickets ships both a `.Contracts` leaf *and* a `Contracts/` folder: the
 leaf carries what cross-section consumers need, the folder carries public surface that is ASP.NET plumbing
 (`TicketStubViewComponent`) or the vendor port. The split is a judgement about what cross-section consumers should

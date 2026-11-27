@@ -36,7 +36,7 @@ public class GateArchitectureTests
     {
         typeof(IUserDataContributor).IsAssignableFrom(typeof(GateService))
             .Should().BeTrue(
-                because: "Gate owns gate_scan_events and gate_staff_pins (user-scoped); it must "
+                because: "Gate owns gate_scan_events (user-scoped); it must "
                        + "contribute to the GDPR Article 15 export");
         typeof(IUserMerge).IsAssignableFrom(typeof(GateService))
             .Should().BeTrue(
@@ -62,7 +62,6 @@ public class GateArchitectureTests
         foreach (var post in posts)
         {
             var expected = post.Name is nameof(GateController.Admin)
-                    or nameof(GateController.SetStaffPin) or nameof(GateController.ResetStaffPin)
                 ? TicketsPolicies.Manage
                 : PolicyNames.GateAdmit;
             var attribute = post.GetCustomAttribute<AuthorizeAttribute>(inherit: false);
@@ -77,10 +76,6 @@ public class GateArchitectureTests
             .Policy.Should().Be(TicketsPolicies.Read);
         typeof(GateReportController).GetMethod(nameof(GateReportController.Undo))!
             .GetCustomAttribute<AuthorizeAttribute>(inherit: false)!.Policy.Should().Be(TicketsPolicies.Manage);
-
-        // The one-off vendor backfill page is admin-only at the class level.
-        typeof(GateVendorBackfillAdminController).GetCustomAttribute<AuthorizeAttribute>(inherit: false)!
-            .Policy.Should().Be(PolicyNames.AdminOnly);
     }
 
     [HumansFact]

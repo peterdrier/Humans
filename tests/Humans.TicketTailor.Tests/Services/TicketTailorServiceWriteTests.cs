@@ -429,36 +429,6 @@ public class TicketTailorServiceWriteTests
         handler.Requests.Should().ContainSingle();
     }
 
-    [HumansFact]
-    public async Task CreateCheckInAsync_PostsFormEncodedRequiredFields()
-    {
-        var handler = new RecordingHttpHandler();
-        handler.EnqueueResponse(HttpStatusCode.OK, new { id = "ci_1" });
-
-        var service = TicketTailorTestHost.CreateService(handler);
-        await service.CreateCheckInAsync("tt_1", Instant.FromUnixTimeSeconds(1751983320L), TestContext.Current.CancellationToken);
-
-        var (request, body) = handler.Requests.Single();
-        request.RequestUri!.ToString().Should().EndWith("/check_ins");
-        request.Content!.Headers.ContentType!.MediaType.Should().Be("application/x-www-form-urlencoded");
-        body.Should().Contain("issued_ticket_id=tt_1").And.Contain("quantity=1").And.Contain("check_in_at=1751983320");
-    }
-
-    [HumansTheory]
-    [InlineData(HttpStatusCode.Forbidden)]
-    [InlineData(HttpStatusCode.ServiceUnavailable)]
-    public async Task CreateCheckInAsync_ThrowsRawHttpRequestExceptionOnFailure(HttpStatusCode status)
-    {
-        var handler = new RecordingHttpHandler();
-        handler.EnqueueResponse(status, new { error = "check-in failed" });
-
-        var service = TicketTailorTestHost.CreateService(handler);
-        var act = () => service.CreateCheckInAsync("tt_1", Instant.FromUnixTimeSeconds(1751983320L), TestContext.Current.CancellationToken);
-
-        await act.Should().ThrowAsync<HttpRequestException>();
-        handler.RequestCount.Should().Be(1);
-    }
-
     [HumansTheory]
     [InlineData(DiscountType.Percentage, 25, "percentage", "price_percent", "25", false)]
     [InlineData(DiscountType.Percentage, 25, "percentage", "price_percent", "25", true)]

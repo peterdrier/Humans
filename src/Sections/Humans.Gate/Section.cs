@@ -12,7 +12,6 @@ using Humans.Gate.ViewComponents;
 using Humans.Gdpr.Contracts;
 using Humans.Settings.Contracts;
 using Humans.Users.Contracts;
-using Microsoft.AspNetCore.Identity;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Humans.AuditLog.Contracts;
@@ -32,11 +31,7 @@ public sealed class Section : ISection, ISectionAdminNav, ISectionJobs, ISection
 
         services.AddSingleton<IGateRepository, GateRepository>();
 
-        // Identity registers only IPasswordHasher<User>, so register the GateStaffPin one.
-        services.AddSingleton<IPasswordHasher<GateStaffPin>, PasswordHasher<GateStaffPin>>();
-
         services.AddSingleton<GatePinThrottle>();
-        services.AddSingleton<GateVendorMirrorLedger>();
 
         services.AddScoped<GateService>();
         services.AddScoped<IGateService>(sp => sp.GetRequiredService<GateService>());
@@ -54,15 +49,13 @@ public sealed class Section : ISection, ISectionAdminNav, ISectionJobs, ISection
         });
 
         services.AddScoped<GateRetentionJob>();
-        services.AddScoped<GateVendorCheckInJob>();
     }
 
     IEnumerable<AdminNavGroup> ISectionAdminNav.Groups() =>
     [
         new("Gate", [
             new("Terminal",   "TicketsGateAdmin", "Index", null, null, "fa-solid fa-key",     TicketsPolicies.Read),
-            new("Arrivals",   "GateReport",       "Index", null, null, "fa-solid fa-person-walking-arrow-right", TicketsPolicies.Read),
-            new("Vendor check-in backfill", "GateVendorBackfillAdmin", "Index", null, null, "fa-solid fa-cloud-arrow-up", PolicyNames.AdminOnly)
+            new("Arrivals",   "GateReport",       "Index", null, null, "fa-solid fa-person-walking-arrow-right", TicketsPolicies.Read)
         ])
     ];
 
