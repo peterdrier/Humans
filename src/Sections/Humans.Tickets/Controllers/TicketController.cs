@@ -1,3 +1,4 @@
+using System.ComponentModel.DataAnnotations;
 using Humans.Tickets.Contracts;
 using Humans.Finance.Contracts;
 using CsvHelper;
@@ -206,6 +207,24 @@ internal sealed class TicketController(
 
         await ticketSyncService.SetScheduledSyncEnabledAsync(enabled, user.Id, HttpContext.RequestAborted);
         SetSuccess(enabled ? "Scheduled ticket sync turned on." : "Scheduled ticket sync turned off.");
+        return Redirect("/Settings#tickets");
+    }
+
+    [HttpPost("PostEventHold")]
+    [ValidateAntiForgeryToken]
+    [Authorize(Policy = TicketsPolicies.Manage)]
+    public async Task<IActionResult> PostEventHold([Range(0, int.MaxValue)] int days)
+    {
+        var (userError, user) = await ResolveCurrentUserOrUnauthorizedAsync(HttpContext.RequestAborted);
+        if (userError is not null) return userError;
+        if (!ModelState.IsValid)
+        {
+            logger.LogWarning("Rejected malformed post-event hold by {ActorUserId}", user.Id);
+            return BadRequest(ModelState);
+        }
+
+        await ticketSyncService.SetPostEventHoldDaysAsync(days, user.Id, HttpContext.RequestAborted);
+        SetSuccess($"Post-event hold set to {days} day(s).");
         return Redirect("/Settings#tickets");
     }
 

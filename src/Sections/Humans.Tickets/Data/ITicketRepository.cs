@@ -26,6 +26,12 @@ internal interface ITicketRepository : IRepository
     /// <summary>Inserts the settings row when it doesn't exist yet.</summary>
     Task SetScheduledSyncEnabledAsync(bool enabled, CancellationToken ct = default);
 
+    /// <summary>The post-event hold in days, the default when unset.</summary>
+    Task<int> GetPostEventHoldDaysAsync(CancellationToken ct = default);
+
+    /// <summary>Inserts the settings row when it doesn't exist yet.</summary>
+    Task SetPostEventHoldDaysAsync(int days, CancellationToken ct = default);
+
     Task<IReadOnlyDictionary<string, TicketOrder>> GetOrdersByVendorIdsAsync(
         IReadOnlyCollection<string> vendorOrderIds,
         CancellationToken ct = default);

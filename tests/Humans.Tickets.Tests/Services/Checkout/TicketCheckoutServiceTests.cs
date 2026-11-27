@@ -48,6 +48,7 @@ public sealed partial class TicketCheckoutServiceTests
     private readonly FakeClock _clock = new(Now);
     private readonly IHostEnvironment _environment = Substitute.For<IHostEnvironment>();
     private readonly ITicketManagement _holdingsInner = Substitute.For<ITicketManagement>();
+    private readonly ITicketSyncService _sync = Substitute.For<ITicketSyncService>();
     private readonly CachingTicketQueryService _holdings;
     private readonly Guid _otherBuyerId = Guid.NewGuid();
     private int _sessions;
@@ -116,6 +117,8 @@ public sealed partial class TicketCheckoutServiceTests
             .Returns(ci => ci.Arg<IReadOnlyCollection<string>>().Where(_admitted.Contains).ToHashSet(StringComparer.Ordinal));
         var services = new ServiceCollection();
         services.AddKeyedScoped(CachingTicketQueryService.InnerServiceKey, (_, _) => _holdingsInner);
+        services.AddKeyedScoped(CachingTicketQueryService.InnerServiceKey, (_, _) => _sync);
+        _sync.GetPostEventHoldDaysAsync(Arg.Any<CancellationToken>()).Returns(30);
         _holdings = new CachingTicketQueryService(services.BuildServiceProvider().GetRequiredService<IServiceScopeFactory>(),
             _clock, NullLogger<CachingTicketQueryService>.Instance);
         _service = new TicketCheckoutService(_repo, [_platform], _grants, _settings, _users, _provisioning, _userEmails,

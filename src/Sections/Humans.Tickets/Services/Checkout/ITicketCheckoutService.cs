@@ -165,6 +165,12 @@ internal interface ITicketCheckoutService : ITicketingPlatformEvents
     Task<ResaleRefundBatch> RunResaleRefundBatchAsync(CancellationToken ct = default);
 
     /// <summary>
+    /// Asks each event's platform, once, to erase the event's personal data after its post-event hold has passed; one
+    /// audit row per event. A platform that fails is logged and asked again on the next run. Returns how many erased.
+    /// </summary>
+    Task<int> EraseHeldEventDataAsync(CancellationToken ct = default);
+
+    /// <summary>
     /// Financial reconciliation of one platform for [<paramref name="from"/>, <paramref name="to"/>): Humans' orders
     /// against the platform's own list. Reads only. Null for an unknown platform; a platform that cannot be read gives a
     /// result carrying the error, never a partial comparison.

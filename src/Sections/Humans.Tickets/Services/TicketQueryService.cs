@@ -859,17 +859,19 @@ internal sealed class TicketQueryService(
         }
 
         var now = clock.GetCurrentInstant();
-        return events.Select(PostEventHoldDate)
+        var holdDays = await ticketRepository.GetPostEventHoldDaysAsync(ct);
+        return events.Select(ev => PostEventHoldDate(ev, holdDays))
             .Where(hold => hold > now)
             .Select(hold => (Instant?)hold)
             .Max();
     }
 
-    /// <summary>A ticket holder's deletion waits until about 30 days after the event (use case H19).</summary>
-    private static readonly Period PostEventHold = Period.FromDays(30);
-
-    private static Instant PostEventHoldDate(EventSettingsInfo ev) =>
-        ev.GateOpeningDate.PlusDays(ev.StrikeEndOffset + 1).Plus(PostEventHold).AtStartOfDayInZone(ev.TimeZone).ToInstant();
+    /// <summary>
+    /// A ticket holder's deletion waits until <paramref name="holdDays"/> after the event's strike (use case H19); the
+    /// event's personal data is erased at the platform from then on.
+    /// </summary>
+    internal static Instant PostEventHoldDate(EventSettingsInfo ev, int holdDays) =>
+        ev.GateOpeningDate.PlusDays(ev.StrikeEndOffset + 1 + holdDays).AtStartOfDayInZone(ev.TimeZone).ToInstant();
 
     private async Task<int> ComputeUserTicketCountAsync(Guid userId, CancellationToken ct)
     {

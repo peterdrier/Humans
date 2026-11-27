@@ -154,6 +154,13 @@ internal sealed class CachingTicketQueryService
     public Task SetScheduledSyncEnabledAsync(bool enabled, Guid actorUserId, CancellationToken ct = default) =>
         WithInnerAsync<ITicketSyncService>(inner => inner.SetScheduledSyncEnabledAsync(enabled, actorUserId, ct));
 
+    public Task<int> GetPostEventHoldDaysAsync(CancellationToken ct = default) =>
+        WithInnerAsync<ITicketSyncService, int>(inner => inner.GetPostEventHoldDaysAsync(ct));
+
+    // Cached holdings carry a hold date from the old length until their TTL ends.
+    public Task SetPostEventHoldDaysAsync(int days, Guid actorUserId, CancellationToken ct = default) =>
+        WithInnerAsync<ITicketSyncService>(inner => inner.SetPostEventHoldDaysAsync(days, actorUserId, ct));
+
     // Both users' holdings move with the fold; without the per-user eviction a merged
     // user's tickets card lags up to the holdings TTL behind it.
     public Task ReassignAsync(Guid mergedFromUserId, Guid mergedToUserId, Guid actorUserId, Instant now, CancellationToken ct) =>

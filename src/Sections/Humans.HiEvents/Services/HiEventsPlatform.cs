@@ -241,6 +241,10 @@ internal sealed class HiEventsPlatform : ITicketingPlatform
         await ReadOrderAsync(response, ct);
     }
 
+    /// <summary>Anonymising an order already scrubs what Hi.Events keeps of it, so nothing is left per event.</summary>
+    public Task EraseEventPersonalDataAsync(string? platformEventRef, CancellationToken ct = default) =>
+        Task.CompletedTask;
+
     public PlatformSetup Setup => new(
         "Hi.Events",
         Hosting(),
