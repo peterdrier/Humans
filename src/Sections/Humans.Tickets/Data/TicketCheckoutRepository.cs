@@ -86,13 +86,14 @@ internal sealed class TicketCheckoutRepository(IDbContextFactory<TicketsDbContex
             .ToListAsync(ct);
     }
 
-    public async Task<IReadOnlyList<TicketCheckoutOrder>> GetOrdersForUserAsync(Guid userId, CancellationToken ct = default)
+    public async Task<IReadOnlyList<TicketCheckoutOrder>> GetOrdersForUserAsync(Guid userId, CancellationToken ct = default, IReadOnlyCollection<string>? emails = null)
     {
         await using var ctx = await factory.CreateDbContextAsync(ct);
         // Ticket lines live in a JSON column; the whole table fits in memory, so filter holders there.
         var orders = await ctx.TicketCheckoutOrders.AsNoTracking().ToListAsync(ct);
         return orders
-            .Where(o => o.BuyerUserId == userId || o.Lines.Any(l => l.HolderUserId == userId))
+            .Where(o => o.BuyerUserId == userId || o.Lines.Any(l => l.HolderUserId == userId
+                || (l.HolderUserId is null && l.HolderEmail is { } email && emails?.Contains(email, StringComparer.OrdinalIgnoreCase) == true)))
             .ToList();
     }
 
@@ -219,10 +220,14 @@ internal sealed class TicketCheckoutRepository(IDbContextFactory<TicketsDbContex
         return await ctx.TicketCheckoutTickets.AsNoTracking().Where(t => t.OrderId == orderId).ToListAsync(ct);
     }
 
-    public async Task<IReadOnlyList<TicketCheckoutTicket>> GetTicketsForHolderAsync(Guid userId, CancellationToken ct = default)
+    public async Task<IReadOnlyList<TicketCheckoutTicket>> GetTicketsForHolderAsync(Guid userId, CancellationToken ct = default, IReadOnlyCollection<string>? emails = null)
     {
         await using var ctx = await factory.CreateDbContextAsync(ct);
-        return await ctx.TicketCheckoutTickets.AsNoTracking().Where(t => t.HolderUserId == userId).ToListAsync(ct);
+        var candidates = await ctx.TicketCheckoutTickets.AsNoTracking()
+            .Where(t => t.HolderUserId == userId || (emails != null && t.HolderUserId == null && t.HolderEmail != null))
+            .ToListAsync(ct);
+        return candidates.Where(t => t.HolderUserId == userId
+            || (t.HolderEmail is { } email && emails?.Contains(email, StringComparer.OrdinalIgnoreCase) == true)).ToList();
     }
 
     public async Task<IReadOnlyList<TicketCheckoutTicket>> GetTicketsForSettingsAsync(Guid settingsId, CancellationToken ct = default)

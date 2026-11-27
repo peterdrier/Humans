@@ -59,9 +59,11 @@ Rules every platform follows:
   it never blocks a deletion: a platform's data is exported or erased before its adapter is removed. Tickets then voids
   the member's live tickets and their children's, withdraws their offers, tombstones their names and emails (children's
   names included) clears any resale invitation sent to one of their addresses, and tombstones lines and tickets without an
-  account that carry one of those addresses (the account's primary address and those on the member's own orders; such
-  a ticket is tombstoned but left valid, and one issued to another of their addresses is missed). Someone bought for is
-  always an existing account, so their line is erased with that account.
+  account that carry one of those addresses. Export and erasure share ownership discovery: account ID, the account's
+  primary address and addresses on ID-owned order lines or tickets; email matches apply only to unbound holders.
+  Unbound dependent tickets and their order lines are included across orders. Their platform copies are erased first,
+  and every matching live barcode is voided before local identity erasure. Export hides other buyers' identity and totals;
+  another account's bound holder is never claimed by email alone.
 
 ## Reconciliation
 

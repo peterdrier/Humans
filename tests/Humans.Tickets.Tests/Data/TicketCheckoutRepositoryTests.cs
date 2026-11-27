@@ -12,6 +12,40 @@ public sealed class TicketCheckoutRepositoryTests
     [HumansTheory]
     [Xunit.InlineData(false)]
     [Xunit.InlineData(true)]
+    public async Task GetOrdersForUserAsync_EmailMatch_RequiresUnboundHolder(bool boundElsewhere)
+    {
+        var options = new DbContextOptionsBuilder<TicketsDbContext>()
+            .UseInMemoryDatabase(Guid.NewGuid().ToString()).Options;
+        var repository = new TicketCheckoutRepository(new TestDbContextFactory<TicketsDbContext>(options));
+        var userId = Guid.NewGuid();
+        var otherId = Guid.NewGuid();
+        var holder = boundElsewhere ? otherId : (Guid?)null;
+        var order = new TicketCheckoutOrder
+        {
+            Id = Guid.NewGuid(),
+            BuyerUserId = otherId,
+            Lines = [new TicketCheckoutOrderLine { HolderUserId = holder, HolderEmail = "ANA@example.com" }],
+        };
+        var ticket = new TicketCheckoutTicket
+        {
+            Id = Guid.NewGuid(),
+            OrderId = order.Id,
+            Barcode = "EMAILONLY",
+            HolderUserId = holder,
+            HolderEmail = "ANA@example.com",
+        };
+        var ct = Xunit.TestContext.Current.CancellationToken;
+        await repository.AddOrderAsync(order, ct, ticket);
+
+        (await repository.GetOrdersForUserAsync(userId, ct)).Should().BeEmpty();
+        (await repository.GetTicketsForHolderAsync(userId, ct)).Should().BeEmpty();
+        (await repository.GetOrdersForUserAsync(userId, ct, ["ana@example.com"])).Count.Should().Be(boundElsewhere ? 0 : 1);
+        (await repository.GetTicketsForHolderAsync(userId, ct, ["ana@example.com"])).Count.Should().Be(boundElsewhere ? 0 : 1);
+    }
+
+    [HumansTheory]
+    [Xunit.InlineData(false)]
+    [Xunit.InlineData(true)]
     public async Task AddOrderAsync_InitialTicket_CommitsTogether(bool reject)
     {
         var options = new DbContextOptionsBuilder<TicketsDbContext>()

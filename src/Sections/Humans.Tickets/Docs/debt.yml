@@ -2,8 +2,4 @@
 # /debt-sweep pools every src/Sections/*/Docs/debt.yml into the same inbox as the central ledger.
 version: 1
 next_id: 25
-inbox:
-  - added: 2026-11-27
-    id: TICKETS-24
-    what: "Checkout export/erasure discover records by buyer/holder IDs, while TicketCheckoutRepository.ErasePiiForUserAsync also matches unbound holder emails. An email-only ticket can be tombstoned without being voided, and its order can be omitted from platform erasure/export. Align ownership discovery across those paths so erased barcodes stop admitting. Found tracing restore eligibility."
-    review: panel
+inbox: []

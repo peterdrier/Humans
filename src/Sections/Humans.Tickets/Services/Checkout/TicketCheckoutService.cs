@@ -972,9 +972,7 @@ internal sealed partial class TicketCheckoutService(
 
     public async Task<IReadOnlyList<UserDataSlice>> ContributeForUserAsync(Guid userId, CancellationToken ct)
     {
-        var orders = await repository.GetOrdersForUserAsync(userId, ct);
-        var held = await repository.GetTicketsForHolderAsync(userId, ct);
-        var tickets = held.Concat(await ChildrenOfAsync(held, ct)).ToList();
+        var (orders, tickets, addresses) = await LoadUserDataAsync(userId, ct);
         var offers = new List<TicketResaleOffer>();
         foreach (var settingsId in tickets.Select(t => t.TicketingSettingsId).Distinct())
             offers.AddRange((await repository.GetOffersForSettingsAsync(settingsId, ct)).Where(o => o.HolderUserId == userId));
@@ -995,9 +993,7 @@ internal sealed partial class TicketCheckoutService(
                 PaidAt = o.PaidAt.ToIso8601(),
                 Refunded = o.BuyerUserId == userId ? FormatMinor(o.RefundedMinor) : null,
                 TicketRulesAccepted = o.BuyerUserId == userId && o.TermsVersion is not null ? $"{o.TermsFolder} at {o.TermsVersion}" : null,
-                Lines = o.Lines
-                    .Where(l => o.BuyerUserId == userId || l.HolderUserId == userId
-                        || (l.ParentLineIndex is { } parent && o.Lines[parent].HolderUserId == userId))
+                Lines = (o.BuyerUserId == userId ? o.Lines : OwnedLines(o, userId, addresses, tickets))
                     .Select(l => new { Kind = l.Kind.ToString(), l.Description, Amount = FormatMinor(l.AmountMinor), l.HolderName, l.HolderEmail })
                     .ToList(),
             }).ToList()),
@@ -1075,18 +1071,15 @@ internal sealed partial class TicketCheckoutService(
     /// </summary>
     public async Task EraseForUserAsync(Guid userId, CancellationToken ct)
     {
-        var orders = await repository.GetOrdersForUserAsync(userId, ct);
-        var addresses = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-        if ((await users.GetUserInfoAsync(userId, ct))?.Email is { } accountEmail)
-            addresses.Add(accountEmail);
+        var (orders, tickets, addresses) = await LoadUserDataAsync(userId, ct);
         foreach (var order in orders)
         {
-            var people = order.Lines.Where(l => l.HolderUserId == userId).Select(l => l.HolderEmail)
+            var people = OwnedLines(order, userId, addresses, tickets).Select(l => l.HolderEmail)
+                .Concat(tickets.Where(t => t.OrderId == order.Id).Select(t => t.HolderEmail))
                 .Append(order.BuyerUserId == userId ? order.BuyerEmail : null)
                 .OfType<string>()
                 .Distinct(StringComparer.OrdinalIgnoreCase)
                 .ToList();
-            addresses.UnionWith(people);
             if (order.PlatformOrderId is null)
                 continue;
             if (PlatformFor(order.PlatformKey) is not { } platform)
@@ -1103,16 +1096,14 @@ internal sealed partial class TicketCheckoutService(
         }
 
         var now = clock.GetCurrentInstant();
-        var held = await repository.GetTicketsForHolderAsync(userId, ct);
-        foreach (var ticket in held.Concat(await ChildrenOfAsync(held, ct))
-                     .Where(t => t.IsHeld))
+        foreach (var ticket in tickets.Where(t => t.IsHeld))
         {
             ticket.State = TicketCheckoutTicketState.Void;
             ticket.VoidedAt = now;
             ticket.VoidReason = "Holder's personal data erased";
             await repository.UpdateTicketAsync(ticket, ct);
         }
-        foreach (var settingsId in held.Select(t => t.TicketingSettingsId).Distinct())
+        foreach (var settingsId in tickets.Select(t => t.TicketingSettingsId).Distinct())
             foreach (var offer in (await repository.GetOffersForSettingsAsync(settingsId, ct))
                          .Where(o => o.HolderUserId == userId && o.State is TicketResaleOfferState.Open or TicketResaleOfferState.Reserved))
             {
@@ -1128,6 +1119,39 @@ internal sealed partial class TicketCheckoutService(
             await repository.UpdateCompanionRequestAsync(request, ct);
         }
         await repository.ErasePiiForUserAsync(userId, addresses, ct);
+    }
+
+    private async Task<(IReadOnlyList<TicketCheckoutOrder> Orders, IReadOnlyList<TicketCheckoutTicket> Tickets,
+        HashSet<string> Addresses)> LoadUserDataAsync(Guid userId, CancellationToken ct)
+    {
+        var orders = await repository.GetOrdersForUserAsync(userId, ct);
+        var held = await repository.GetTicketsForHolderAsync(userId, ct);
+        var addresses = orders.SelectMany(o => o.Lines.Where(l => l.HolderUserId == userId).Select(l => l.HolderEmail)
+                .Append(o.BuyerUserId == userId ? o.BuyerEmail : null))
+            .Concat(held.Select(t => t.HolderEmail))
+            .Append((await users.GetUserInfoAsync(userId, ct))?.Email)
+            .OfType<string>().ToHashSet(StringComparer.OrdinalIgnoreCase);
+        orders = await repository.GetOrdersForUserAsync(userId, ct, addresses);
+        held = await repository.GetTicketsForHolderAsync(userId, ct, addresses);
+        var tickets = held.Concat(await ChildrenOfAsync(held, ct)).DistinctBy(t => t.Id).ToList();
+        var allOrders = orders.ToList();
+        var orderIds = orders.Select(o => o.Id).ToHashSet();
+        foreach (var orderId in tickets.Select(t => t.OrderId).Distinct().Where(id => !orderIds.Contains(id)))
+            if (await repository.GetOrderAsync(orderId, ct) is { } order)
+                allOrders.Add(order);
+        return (allOrders, tickets, addresses);
+    }
+
+    private static IEnumerable<TicketCheckoutOrderLine> OwnedLines(TicketCheckoutOrder order, Guid userId,
+        HashSet<string> addresses, IReadOnlyList<TicketCheckoutTicket> tickets)
+    {
+        var own = order.Lines.Select((line, index) => (line, index))
+            .Where(x => x.line.HolderUserId == userId
+                || (x.line.HolderUserId is null && x.line.HolderEmail is { } email && addresses.Contains(email))
+                || tickets.Any(t => t.OrderId == order.Id && t.LineIndex == x.index))
+            .Select(x => x.index).ToHashSet();
+        return order.Lines.Where((line, index) => own.Contains(index)
+            || (line.ParentLineIndex is { } parent && own.Contains(parent)));
     }
 
     private async Task<IReadOnlyList<TicketCheckoutTicket>> ChildrenOfAsync(

@@ -3128,6 +3128,83 @@ public sealed partial class TicketCheckoutServiceTests
         _repo.Erased.Should().Be(1);
     }
 
+    [HumansTheory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task EraseForUserAsync_EmailOnlyHolder_MatchesExport(bool boundElsewhere)
+    {
+        var order = await BuyAndPayAsync(Buy(), _otherBuyerId);
+        var ticket = _repo.Tickets.Single();
+        ticket.HolderUserId = boundElsewhere ? _otherBuyerId : null;
+        ticket.HolderEmail = "ANA@example.com";
+        ticket.HolderName = "Email-only holder";
+        order.Lines[0].HolderUserId = ticket.HolderUserId;
+        order.Lines[0].HolderEmail = ticket.HolderEmail;
+        order.Lines[0].HolderName = ticket.HolderName;
+        var json = System.Text.Json.JsonSerializer.Serialize(
+            (await _service.ContributeForUserAsync(_buyerId, Ct)).Select(slice => slice.Data));
+        if (boundElsewhere)
+            json.Should().NotContain("Email-only holder");
+        else
+            json.Should().Contain("Email-only holder").And.NotContain("Bo Smith").And.NotContain("bo@example.com");
+
+        await _service.EraseForUserAsync(_buyerId, Ct);
+
+        ticket.State.Should().Be(boundElsewhere ? TicketCheckoutTicketState.Valid : TicketCheckoutTicketState.Void);
+        (await _service.FindIssuedTicketAsync(ticket.Barcode, Ct))!.IsValid.Should().Be(boundElsewhere);
+        if (boundElsewhere)
+            await _platform.DidNotReceive().ErasePersonalDataAsync(order.PlatformOrderId!, Arg.Any<string>(), Arg.Any<CancellationToken>());
+        else
+            await _platform.Received(1).ErasePersonalDataAsync(order.PlatformOrderId!, "ANA@example.com", Ct);
+    }
+
+    [HumansFact]
+    public async Task EraseForUserAsync_EmailOnlyPlatformFailure_PreservesTicket()
+    {
+        var order = await BuyAndPayAsync(Buy(), _otherBuyerId);
+        var ticket = _repo.Tickets.Single();
+        ticket.HolderUserId = null;
+        ticket.HolderEmail = "ana@example.com";
+        order.Lines[0].HolderUserId = null;
+        order.Lines[0].HolderEmail = ticket.HolderEmail;
+        _platform.ErasePersonalDataAsync(order.PlatformOrderId!, ticket.HolderEmail, Ct)
+            .Returns(_ => throw new TicketingPlatformException("down"));
+
+        var act = () => _service.EraseForUserAsync(_buyerId, Ct);
+
+        await act.Should().ThrowAsync<TicketingPlatformException>();
+        ticket.State.Should().Be(TicketCheckoutTicketState.Valid);
+        _repo.Erased.Should().Be(0);
+    }
+
+    [HumansFact]
+    public async Task EraseForUserAsync_SeparateDependentOrder_IncludesOwnedData()
+    {
+        var adult = await PaidAdultAsync();
+        var child = AddTicket(TicketHolderKind.Child, parent: adult.Id);
+        child.HolderName = "Separate child";
+        child.HolderEmail = "child@example.com";
+        var order = new TicketCheckoutOrder
+        {
+            Id = child.OrderId,
+            TicketingSettingsId = _ticketing.Id,
+            BuyerUserId = _otherBuyerId,
+            BuyerName = "Other buyer",
+            PlatformKey = "test",
+            PlatformOrderId = "child_order",
+            Lines = [new TicketCheckoutOrderLine { Kind = OrderLineKind.Ticket, HolderKind = TicketHolderKind.Child, HolderName = child.HolderName, HolderEmail = child.HolderEmail }],
+        };
+        _repo.Orders.Add(order);
+        var json = System.Text.Json.JsonSerializer.Serialize(
+            (await _service.ContributeForUserAsync(_buyerId, Ct)).Select(slice => slice.Data));
+        json.Should().Contain(order.Id.ToString()).And.Contain("Separate child").And.NotContain("Other buyer");
+
+        await _service.EraseForUserAsync(_buyerId, Ct);
+
+        child.State.Should().Be(TicketCheckoutTicketState.Void);
+        await _platform.Received(1).ErasePersonalDataAsync("child_order", "child@example.com", Ct);
+    }
+
     [HumansFact]
     public async Task A_ticket_in_resale_sells_only_at_the_public_price_so_a_class_price_buyer_takes_fresh_stock_while_there_is_any()
     {
@@ -4014,9 +4091,10 @@ public sealed partial class TicketCheckoutServiceTests
             Task.FromResult(Orders.FirstOrDefault(o => string.Equals(o.PlatformKey, platformKey, StringComparison.Ordinal) && string.Equals(o.PlatformOrderId, platformOrderId, StringComparison.Ordinal)));
         public Task<IReadOnlyList<TicketCheckoutOrder>> GetOrdersForSettingsAsync(Guid settingsId, CancellationToken ct = default) =>
             Task.FromResult<IReadOnlyList<TicketCheckoutOrder>>(Orders.Where(o => o.TicketingSettingsId == settingsId).ToList());
-        public Task<IReadOnlyList<TicketCheckoutOrder>> GetOrdersForUserAsync(Guid userId, CancellationToken ct = default) =>
+        public Task<IReadOnlyList<TicketCheckoutOrder>> GetOrdersForUserAsync(Guid userId, CancellationToken ct = default, IReadOnlyCollection<string>? emails = null) =>
             Task.FromResult<IReadOnlyList<TicketCheckoutOrder>>(
-                Orders.Where(o => o.BuyerUserId == userId || o.Lines.Any(l => l.HolderUserId == userId)).ToList());
+                Orders.Where(o => o.BuyerUserId == userId || o.Lines.Any(l => l.HolderUserId == userId
+                    || (l.HolderUserId is null && l.HolderEmail is { } email && emails?.Contains(email, StringComparer.OrdinalIgnoreCase) == true))).ToList());
         public Task<IReadOnlyList<TicketCheckoutOrder>> GetOpenOrdersAsync(CancellationToken ct = default) =>
             Task.FromResult<IReadOnlyList<TicketCheckoutOrder>>(Orders
                 .Where(o => o.IsOpen).ToList());
@@ -4118,8 +4196,9 @@ public sealed partial class TicketCheckoutServiceTests
             Task.FromResult(Tickets.FirstOrDefault(t => string.Equals(t.Barcode, barcode, StringComparison.Ordinal)));
         public Task<IReadOnlyList<TicketCheckoutTicket>> GetTicketsForOrderAsync(Guid orderId, CancellationToken ct = default) =>
             Task.FromResult<IReadOnlyList<TicketCheckoutTicket>>(Tickets.Where(t => t.OrderId == orderId).ToList());
-        public Task<IReadOnlyList<TicketCheckoutTicket>> GetTicketsForHolderAsync(Guid userId, CancellationToken ct = default) =>
-            Task.FromResult<IReadOnlyList<TicketCheckoutTicket>>(Tickets.Where(t => t.HolderUserId == userId).ToList());
+        public Task<IReadOnlyList<TicketCheckoutTicket>> GetTicketsForHolderAsync(Guid userId, CancellationToken ct = default, IReadOnlyCollection<string>? emails = null) =>
+            Task.FromResult<IReadOnlyList<TicketCheckoutTicket>>(Tickets.Where(t => t.HolderUserId == userId
+                || (t.HolderUserId is null && t.HolderEmail is { } email && emails?.Contains(email, StringComparer.OrdinalIgnoreCase) == true)).ToList());
         public Task<IReadOnlyList<TicketCheckoutTicket>> GetTicketsForSettingsAsync(Guid settingsId, CancellationToken ct = default) =>
             Task.FromResult<IReadOnlyList<TicketCheckoutTicket>>(Tickets.Where(t => t.TicketingSettingsId == settingsId).ToList());
         public Task AddOfferAsync(TicketResaleOffer offer, CancellationToken ct = default, TicketCheckoutTicket? ticket = null)

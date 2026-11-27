@@ -22,8 +22,8 @@ internal interface ITicketCheckoutRepository : IRepository
 
     Task<IReadOnlyList<TicketCheckoutOrder>> GetOrdersForSettingsAsync(Guid settingsId, CancellationToken ct = default);
 
-    /// <summary>Orders the person paid for or holds a ticket line in.</summary>
-    Task<IReadOnlyList<TicketCheckoutOrder>> GetOrdersForUserAsync(Guid userId, CancellationToken ct = default);
+    /// <summary>Orders the person paid for or holds a ticket line in; optional emails also match unbound holders.</summary>
+    Task<IReadOnlyList<TicketCheckoutOrder>> GetOrdersForUserAsync(Guid userId, CancellationToken ct = default, IReadOnlyCollection<string>? emails = null);
 
     /// <summary>Created, Pending or Processing orders on any event, for the reconcile poll.</summary>
     Task<IReadOnlyList<TicketCheckoutOrder>> GetOpenOrdersAsync(CancellationToken ct = default);
@@ -64,7 +64,7 @@ internal interface ITicketCheckoutRepository : IRepository
 
     Task<IReadOnlyList<TicketCheckoutTicket>> GetTicketsForOrderAsync(Guid orderId, CancellationToken ct = default);
 
-    Task<IReadOnlyList<TicketCheckoutTicket>> GetTicketsForHolderAsync(Guid userId, CancellationToken ct = default);
+    Task<IReadOnlyList<TicketCheckoutTicket>> GetTicketsForHolderAsync(Guid userId, CancellationToken ct = default, IReadOnlyCollection<string>? emails = null);
 
     Task<IReadOnlyList<TicketCheckoutTicket>> GetTicketsForSettingsAsync(Guid settingsId, CancellationToken ct = default);
 
