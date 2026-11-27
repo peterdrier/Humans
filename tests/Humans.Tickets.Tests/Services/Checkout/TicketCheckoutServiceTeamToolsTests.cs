@@ -507,23 +507,12 @@ public sealed partial class TicketCheckoutServiceTests
         await _platform.Received(1).RefundAsync(Arg.Any<RefundRequest>(), Arg.Any<CancellationToken>());
     }
 
-    [HumansTheory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public async Task CancelEventAsync_UnavailableContact_RecordsSkip(bool erased)
+    [HumansFact]
+    public async Task CancelEventAsync_ErasedSnapshot_RecordsSkip()
     {
         var order = await BuyAndPayAsync(Buy(), _buyerId);
-        if (erased)
-        {
-            order.BuyerName = TicketPiiTombstone.Name;
-            order.BuyerEmail = TicketPiiTombstone.EmailFor(_buyerId);
-        }
-        else
-        {
-            var buyer = Assert.IsType<UserInfo>(await _users.GetUserInfoAsync(_buyerId, Ct));
-            _users.GetUserInfoAsync(_buyerId, Arg.Any<CancellationToken>()).Returns(buyer with { IdentityEmailColumn = null });
-            order.BuyerEmail = string.Empty;
-        }
+        order.BuyerName = TicketPiiTombstone.Name;
+        order.BuyerEmail = TicketPiiTombstone.EmailFor(_buyerId);
         _email.ClearReceivedCalls();
         await _service.CancelEventAsync(_ticketing.Id, "Storm", _adminId, Ct);
 

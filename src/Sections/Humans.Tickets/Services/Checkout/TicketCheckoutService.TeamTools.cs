@@ -181,17 +181,15 @@ internal sealed partial class TicketCheckoutService
             $"{why}. {live.Count} ticket(s) voided" + (offers.Count > 0 ? $", {offers.Count} taken out of the resale queue" : string.Empty) +
             refundNote, null, ct);
         var buyer = await users.GetUserInfoAsync(order.BuyerUserId, ct);
-        var address = buyer?.Email ?? order.BuyerEmail;
-        if (buyer is not { IsTombstone: false } || TicketPiiTombstone.IsTombstoned(order.BuyerName, order.BuyerEmail)
-            || string.IsNullOrWhiteSpace(address))
+        if (buyer is not { IsTombstone: false } || TicketPiiTombstone.IsTombstoned(order.BuyerName, order.BuyerEmail))
         {
             if (!state.HasSkippedNotice(order))
                 await TimelineAsync(order.Id, TicketCheckoutOrderEventKind.CancellationNoticeSkipped,
-                    "Cancellation notice not sent: buyer account or contact is unavailable", null, ct);
+                    "Cancellation notice not sent: buyer account is unavailable", null, ct);
             return true;
         }
         var eventName = (await settings.GetEventSettingsByIdAsync(ticketing.EventSettingsId, ct))?.EventName ?? string.Empty;
-        var notice = emails.EventCancelled(buyer.Id, address, order.BuyerName, eventName, refundMinor,
+        var notice = emails.EventCancelled(buyer.Id, buyer.Email!, order.BuyerName, eventName, refundMinor,
             refundByHand, order.Lines.Any(l => l.Kind == OrderLineKind.Donation), order.Culture);
         await email.SendAsync(notice with { DeliveryId = CancellationState.CancelNoticeId(ticketing.Id, order.Id) }, ct);
         await repository.MarkCancellationEmailedAsync(order.Id, clock.GetCurrentInstant(), ct);

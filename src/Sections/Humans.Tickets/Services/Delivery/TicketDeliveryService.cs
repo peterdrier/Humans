@@ -124,10 +124,7 @@ internal sealed class TicketDeliveryService(
             return;
 
         var holder = await users.GetUserInfoAsync(holderId, ct);
-        if (holder is null || holder.IsTombstone)
-            return;
-        var address = holder.Email ?? ticket.HolderEmail;
-        if (string.IsNullOrWhiteSpace(address))
+        if (holder is null || holder.IsTombstone || (holder.Email ?? ticket.HolderEmail) is not { } address)
             return;
         var baseUrl = BaseUrl;
         await email.SendAsync(emails.JoinInvitation(
@@ -149,12 +146,9 @@ internal sealed class TicketDeliveryService(
         var buyer = await users.GetUserInfoAsync(order.BuyerUserId, ct);
         if (buyer is not { IsTombstone: false } || TicketPiiTombstone.IsTombstoned(order.BuyerName, order.BuyerEmail))
             return;
-        var address = buyer.Email ?? order.BuyerEmail;
-        if (string.IsNullOrWhiteSpace(address))
-            return;
         var failed = order.State == TicketCheckoutOrderState.Failed;
         await email.SendAsync(emails.PaymentEnded(
-            buyer.Id, address, order.BuyerName, eventName, order.Reference, failed,
+            buyer.Id, buyer.Email!, order.BuyerName, eventName, order.Reference, failed,
             new Uri($"{BaseUrl}/Tickets/Buy"), DeliveryIdFor("ticket_payment_ended", order.Id), CultureOf(buyer, order)), ct);
         await auditLog.LogAsync(TicketsAuditActions.TicketHolderNotified, TicketCheckoutService.AuditEntityType, orderId,
             failed ? "Told the buyer the payment failed" : "Told the buyer the order lapsed unpaid", JobName);
@@ -226,9 +220,8 @@ internal sealed class TicketDeliveryService(
             || await EventNameAsync(ticket.TicketingSettingsId, ct) is not { } eventName)
             return null;
         var holder = await users.GetUserInfoAsync(holderId, ct);
-        if (holder is not { IsTombstone: false } || string.IsNullOrWhiteSpace(holder.Email ?? ticket.HolderEmail))
+        if (holder is not { IsTombstone: false } || (holder.Email ?? ticket.HolderEmail) is not { } address)
             return null;
-        var address = holder.Email ?? ticket.HolderEmail!;
         var order = (await checkout.GetOrderDetailAsync(ticket.OrderId, ct))?.Order;
         return new HolderMail(ticket, holder.Id, address, eventName,
             order is null ? SupportedOr(holder?.PreferredLanguage) : CultureOf(holder, order));
@@ -308,12 +301,11 @@ internal sealed class TicketDeliveryService(
         }
 
         var receiptSent = false;
-        var buyerAddress = buyer?.Email ?? order.BuyerEmail;
-        if (buyer is not null && !string.IsNullOrWhiteSpace(buyerAddress))
+        if (buyer is not null)
         {
             var paidOn = (order.PaidAt ?? order.UpdatedAt).InZone(eventSettings.TimeZone).Date;
             await email.SendAsync(emails.OrderReceipt(new OrderReceiptMail(
-                buyer.Id, buyerAddress, order.BuyerName, eventSettings.EventName, order.Reference, paidOn,
+                buyer.Id, buyer.Email!, order.BuyerName, eventSettings.EventName, order.Reference, paidOn,
                 order.PaymentMethod, order.Lines, order.TotalMinor, order.RefundedMinor,
                 new Uri($"{baseUrl}/Tickets/Buy/Order/{order.Id}"),
                 fresh ? null : DeliveryIdFor("ticket_order_receipt", order.Id)), SupportedOr(order.Culture)), ct);
@@ -395,7 +387,7 @@ internal sealed class TicketDeliveryService(
 
         public string Describe() =>
             $"Handed {TicketMails} ticket email(s) for {Tickets.Count} eligible ticket(s)"
-            + (ReceiptSent ? " and the receipt to Email" : " to Email; receipt skipped because no eligible buyer address was available")
+            + (ReceiptSent ? " and the receipt to Email" : " to Email; receipt skipped because the buyer account was unavailable")
             + (Skipped > 0 ? $"; {Skipped} skipped for lack of an available recipient" : "");
     }
 }

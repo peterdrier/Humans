@@ -265,24 +265,6 @@ public sealed class TaskClaimingTests
     }
 
     [HumansTheory]
-    [InlineData(Decision.Approve, null)]
-    [InlineData(Decision.Decline, " \t")]
-    public async Task AnswerRequest_BlankAddress_SkipsEmail(Decision decision, string? address)
-    {
-        var task = await _kit.CreateAsync(Input(needsApproval: true));
-        await ClaimAsync(task.Id);
-        var person = Xunit.Assert.IsType<UserInfo>(await _kit.Users.GetUserInfoAsync(_sam, Ct));
-        _kit.Users.GetUserInfoAsync(_sam, Arg.Any<CancellationToken>()).Returns(person with { IdentityEmailColumn = address });
-
-        var result = decision == Decision.Approve
-            ? await _kit.Service.ApproveRequestAsync(task.Id, _sam, _kit.Actor, Ct)
-            : await _kit.Service.DeclineRequestAsync(task.Id, _sam, null, _kit.Actor, Ct);
-
-        result.Succeeded.Should().BeTrue();
-        _kit.SentEmails.Should().BeEmpty();
-    }
-
-    [HumansTheory]
     [InlineData(Decision.Approve)]
     [InlineData(Decision.Decline)]
     public async Task AnswerRequest_CancelledAfterAudit_CompletesEmail(Decision decision)

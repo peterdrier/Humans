@@ -136,15 +136,14 @@ internal sealed partial class TaskService
         try
         {
             var person = await users.GetUserInfoAsync(userId, CancellationToken.None);
-            var address = person?.Email;
-            if (person is not { IsTombstone: false } || string.IsNullOrWhiteSpace(address))
+            if (person is not { IsTombstone: false })
             {
                 logger.LogWarning("Task request answer email skipped: recipient {UserId} on task {TaskId} is unavailable", userId, task.Id);
                 return;
             }
 
             var request = new TaskAnswerEmail(
-                person.Id, address, person.BurnerName, task.Id, task.Title, TeamName(task, snapshot), reason,
+                person.Id, person.Email!, person.BurnerName, task.Id, task.Title, TeamName(task, snapshot), reason,
                 person.PreferredLanguage.IsSupportedCultureCode() ? person.PreferredLanguage : CultureCatalog.DefaultCultureCode);
             await email.SendAsync(approved ? emails.RequestApproved(request) : emails.RequestDeclined(request), CancellationToken.None);
         }
