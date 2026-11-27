@@ -35,7 +35,7 @@ public sealed class RotaCoordinatorMessageServiceTests
     private readonly FakeClock _clock = new(Instant.FromUtc(2026, 6, 15, 12, 0));
 
     // Stands in for the Settings section: calendars for the EventSettings rows the helpers create.
-    private readonly Dictionary<Guid, EventSettings> _calendars = [];
+    private readonly Dictionary<Guid, TestEventCalendar> _calendars = [];
     private readonly ISettingsService _settingsService = Substitute.For<ISettingsService>();
 
     private RotaCoordinatorMessageService CreateSut(ILogger<RotaCoordinatorMessageService>? logger = null)
@@ -43,8 +43,8 @@ public sealed class RotaCoordinatorMessageServiceTests
         _settingsService.GetEventSettingsByIdAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
             .Returns(ci =>
             {
-                var found = _calendars.TryGetValue(ci.Arg<Guid>(), out var es);
-                return Task.FromResult(found ? ToEventSettingsInfo(es!) : null);
+                var found = _calendars.TryGetValue(ci.Arg<Guid>(), out var cal);
+                return Task.FromResult(found ? cal!.ToInfo() : null);
             });
         var resolver = new EventCalendarResolver(_settingsService, Substitute.For<IShiftManagementRepository>());
         // The rows come from the inner management service over the rotas each test stubs on _repo.
@@ -72,20 +72,6 @@ public sealed class RotaCoordinatorMessageServiceTests
         }
         return rotas;
     }
-
-    private static EventSettingsInfo ToEventSettingsInfo(EventSettings src) => new(
-        Id: src.Id,
-        EventName: src.EventName,
-        Year: src.Year,
-        TimeZoneId: src.TimeZoneId,
-        GateOpeningDate: src.GateOpeningDate,
-        BuildStartOffset: src.BuildStartOffset,
-        EventEndOffset: src.EventEndOffset,
-        StrikeEndOffset: src.StrikeEndOffset,
-        EarlyEntryCapacity: new Dictionary<int, int>(src.EarlyEntryCapacity),
-        BarriosEarlyEntryAllocation: src.BarriosEarlyEntryAllocation is null
-            ? null : new Dictionary<int, int>(src.BarriosEarlyEntryAllocation),
-        EarlyEntryClose: src.EarlyEntryClose);
 
     [HumansTheory]
     [Xunit.InlineData(MessageScope.Rota, RecipientAccount.Deleted)]
@@ -1039,20 +1025,24 @@ public sealed class RotaCoordinatorMessageServiceTests
         var es = new EventSettings
         {
             Id = Guid.NewGuid(),
+            IsShiftBrowsingOpen = true,
+            CreatedAt = Instant.FromUtc(2026, 1, 1, 0, 0),
+            UpdatedAt = Instant.FromUtc(2026, 1, 1, 0, 0),
+        };
+        var calendar = new TestEventCalendar
+        {
+            Id = es.Id,
             EventName = "Test Event",
             TimeZoneId = "UTC",
             GateOpeningDate = new LocalDate(2026, 6, 1),
             BuildStartOffset = -30,
             EventEndOffset = 60,
             StrikeEndOffset = 90,
-            IsShiftBrowsingOpen = true,
             IsActive = true,
-            CreatedAt = Instant.FromUtc(2026, 1, 1, 0, 0),
-            UpdatedAt = Instant.FromUtc(2026, 1, 1, 0, 0),
         };
-        _calendars[es.Id] = es;
+        _calendars[es.Id] = calendar;
         _settingsService.GetActiveEventSettings()
-            .Returns(ToEventSettingsInfo(es));
+            .Returns(calendar.ToInfo());
         return es;
     }
 
@@ -1076,7 +1066,6 @@ public sealed class RotaCoordinatorMessageServiceTests
         string name,
         IReadOnlyList<(Shift Shift, Guid[] UserIds)> shiftsWithSignups)
     {
-        _calendars[es.Id] = es;
         var rota = new Rota
         {
             Id = Guid.NewGuid(),
@@ -1107,14 +1096,7 @@ public sealed class RotaCoordinatorMessageServiceTests
         var es = new EventSettings
         {
             Id = Guid.NewGuid(),
-            EventName = "Test Event",
-            TimeZoneId = "UTC",
-            GateOpeningDate = new LocalDate(2026, 7, 1),
-            BuildStartOffset = -7,
-            EventEndOffset = 7,
-            StrikeEndOffset = 9,
             IsShiftBrowsingOpen = true,
-            IsActive = true,
             CreatedAt = Instant.FromUtc(2026, 1, 1, 0, 0),
             UpdatedAt = Instant.FromUtc(2026, 1, 1, 0, 0),
         };
@@ -1131,7 +1113,17 @@ public sealed class RotaCoordinatorMessageServiceTests
             UpdatedAt = Instant.FromUtc(2026, 1, 1, 0, 0),
             EventSettings = es,
         };
-        _calendars[es.Id] = es;
+        _calendars[es.Id] = new TestEventCalendar
+        {
+            Id = es.Id,
+            EventName = "Test Event",
+            TimeZoneId = "UTC",
+            GateOpeningDate = new LocalDate(2026, 7, 1),
+            BuildStartOffset = -7,
+            EventEndOffset = 7,
+            StrikeEndOffset = 9,
+            IsActive = true,
+        };
         return rota;
     }
 

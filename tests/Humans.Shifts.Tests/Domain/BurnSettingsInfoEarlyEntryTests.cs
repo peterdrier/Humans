@@ -1,15 +1,19 @@
-using Humans.Shifts.Domain;
+using Humans.Shifts.Services;
 using AwesomeAssertions;
 using NodaTime;
 
 namespace Humans.Shifts.Tests.Domain;
 
-public class EventSettingsTests
+public class BurnSettingsInfoEarlyEntryTests
 {
     private static readonly Instant Close = Instant.FromUtc(2026, 6, 15, 12, 0);
 
-    private static EventSettings EventWithClose(Instant? close) =>
-        new() { Id = Guid.NewGuid(), EarlyEntryClose = close };
+    private static BurnSettingsInfo EventWithClose(Instant? close) => new(
+        Guid.NewGuid(), "Event", 2026, "Europe/Madrid", new LocalDate(2026, 7, 1),
+        BuildStartOffset: -14, EventEndOffset: 6, StrikeEndOffset: 9,
+        FirstCrewStartOffset: -25, SetupWeekStartOffset: -16, PreEventWeekStartOffset: -9,
+        FinishingWeekendStartOffset: -4, EarlyEntryCapacity: new Dictionary<int, int>(),
+        BarriosEarlyEntryAllocation: null, EarlyEntryClose: close, IsShiftBrowsingOpen: true);
 
     [HumansFact]
     public void IsEarlyEntryClosed_NoCloseConfigured_ReturnsFalse()
@@ -40,14 +44,14 @@ public class EventSettingsTests
     }
 
     [HumansFact]
-    public void IsEarlyEntrySignupsClosedFor_NonPrivileged_AfterClose_ReturnsTrue()
+    public void IsEarlyEntrySignupsClosedFor_MemberAfterClose_True()
     {
         EventWithClose(Close).IsEarlyEntrySignupsClosedFor(isPrivileged: false, Close.Plus(Duration.FromHours(1)))
             .Should().BeTrue();
     }
 
     [HumansFact]
-    public void IsEarlyEntrySignupsClosedFor_NonPrivileged_AtCloseInstant_ReturnsTrue()
+    public void IsEarlyEntrySignupsClosedFor_MemberAtClose_True()
     {
         // Boundary mirrors the server gate: the close instant itself locks (>=).
         EventWithClose(Close).IsEarlyEntrySignupsClosedFor(isPrivileged: false, Close)
@@ -55,14 +59,14 @@ public class EventSettingsTests
     }
 
     [HumansFact]
-    public void IsEarlyEntrySignupsClosedFor_NonPrivileged_BeforeClose_ReturnsFalse()
+    public void IsEarlyEntrySignupsClosedFor_MemberBeforeClose_False()
     {
         EventWithClose(Close).IsEarlyEntrySignupsClosedFor(isPrivileged: false, Close.Minus(Duration.FromHours(1)))
             .Should().BeFalse();
     }
 
     [HumansFact]
-    public void IsEarlyEntrySignupsClosedFor_Privileged_AfterClose_ReturnsFalse()
+    public void IsEarlyEntrySignupsClosedFor_PrivilegedAfterClose_False()
     {
         // Admins/coordinators bypass the lock exactly as the server gate does.
         EventWithClose(Close).IsEarlyEntrySignupsClosedFor(isPrivileged: true, Close.Plus(Duration.FromHours(1)))
@@ -70,7 +74,7 @@ public class EventSettingsTests
     }
 
     [HumansFact]
-    public void IsEarlyEntrySignupsClosedFor_NoCloseConfigured_ReturnsFalse()
+    public void IsEarlyEntrySignupsClosedFor_NoClose_False()
     {
         // Privilege OR an unset close short-circuits to false regardless of the clock.
         EventWithClose(null).IsEarlyEntrySignupsClosedFor(isPrivileged: false, Close.Plus(Duration.FromDays(1)))
