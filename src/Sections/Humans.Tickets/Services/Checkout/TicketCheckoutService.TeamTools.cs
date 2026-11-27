@@ -139,17 +139,17 @@ internal sealed partial class TicketCheckoutService
         }
 
         // A repeat after a stop part way finds the refund already asked for, so the email still names it.
-        var (refundMinor, refundFailed) = state.CancelRefund(order) is { } asked
-            ? (asked.AmountMinor, asked.State == RefundState.Failed)
+        var (refundMinor, refundByHand) = state.CancelRefund(order) is { } asked
+            ? (asked.AmountMinor, asked.State is RefundState.Failed or RefundState.ManualRequired)
             : (state.Refundable(order), false);
-        var refundNote = refundMinor > 0 ? $", {FormatMinor(refundMinor)} {order.Currency} refund asked for" : ", nothing to refund";
+        string? refundNote = null;
         if (refundMinor > 0 && !state.HasCancelRefund(order))
         {
             var cancelRefundId = CancellationState.CancelRefundId(ticketing.Id, order.Id);
             var (result, refundId) = await RefundCoreAsync(order.Id, refundMinor, Truncate(why), null, ct, cancelRefundId);
             if (!result.Succeeded)
             {
-                refundFailed = true;
+                refundByHand = true;
                 logger.LogError("Cancellation refund of order {OrderId} failed: {Refusal}", order.Id, result.Refusal);
                 // Written as failed so it is not asked again and the team sees what is owed.
                 if (refundId is null)
@@ -168,7 +168,13 @@ internal sealed partial class TicketCheckoutService
                 await auditLog.LogAsync(TicketsAuditActions.TicketCheckoutNeedsAttention, AuditEntityType, order.Id,
                     $"Cancellation refund{refundNote[1..]}", JobName);
             }
+            else if (refundId is { } id)
+                refundByHand = (await repository.GetRefundsAsync(order.Id, ct))
+                    .Any(r => r.Id == id && r.State is RefundState.Failed or RefundState.ManualRequired);
         }
+        refundNote ??= refundMinor <= 0 ? ", nothing to refund"
+            : refundByHand ? $"; the ticketing team must refund {FormatMinor(refundMinor)} {order.Currency} by hand"
+            : $", {FormatMinor(refundMinor)} {order.Currency} refund asked for";
 
         await TimelineAsync(order.Id, TicketCheckoutOrderEventKind.EventCancelled,
             $"{why}. {live.Count} ticket(s) voided" + (offers.Count > 0 ? $", {offers.Count} taken out of the resale queue" : string.Empty) +
@@ -177,7 +183,7 @@ internal sealed partial class TicketCheckoutService
         if (!string.IsNullOrWhiteSpace(order.BuyerEmail))
         {
             var notice = emails.EventCancelled(order.BuyerUserId, order.BuyerEmail, order.BuyerName, eventName, refundMinor,
-                refundFailed, order.Lines.Any(l => l.Kind == OrderLineKind.Donation), order.Culture);
+                refundByHand, order.Lines.Any(l => l.Kind == OrderLineKind.Donation), order.Culture);
             await email.SendAsync(notice with { DeliveryId = CancellationState.CancelNoticeId(ticketing.Id, order.Id) }, ct);
         }
         order.CancellationEmailedAt = clock.GetCurrentInstant();

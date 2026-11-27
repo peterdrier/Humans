@@ -306,8 +306,8 @@ job then works the paid orders within a two minute budget per run: withdraw open
 ticket lines through the order's platform, timeline `EventCancelled`, email the buyer (donation only orders too; marked
 `CancellationEmailedAt`, sent under a fixed delivery id). A repeat is safe: void stays void,
 and a refund asked for since the cancellation is not asked again, so one the platform turns down (or that cannot start)
-stays failed, flagged `TicketCheckoutNeedsAttention`, for the team to do by hand. Donations are not refunded; the email asks buyers to reply if they want theirs back. When the refund failed, the email
-says the team will refund by hand instead of promising it is on its way. An order with
+stays failed, flagged `TicketCheckoutNeedsAttention`, for the team to do by hand. Donations are not refunded; the email asks buyers to reply if they want theirs back. When the refund failed or requires manual handling, the email
+says the team will refund by hand instead of promising it is on its way. Delivery retries use the saved refund state and the same delivery ID, without submitting another refund. An order with
 a ticket in resale that a buyer is paying for waits until that settles. The cancel page balances the ticket money: taken =
 chargebacks + refunded + in flight + still refundable; the platform side is on the reconciliation page.
 
