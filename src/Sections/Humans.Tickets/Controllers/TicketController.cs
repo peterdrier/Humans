@@ -213,7 +213,7 @@ internal sealed class TicketController(
     [HttpPost("PostEventHold")]
     [ValidateAntiForgeryToken]
     [Authorize(Policy = TicketsPolicies.Manage)]
-    public async Task<IActionResult> PostEventHold([Range(0, int.MaxValue)] int days)
+    public async Task<IActionResult> PostEventHold([Range(0, 3650)] int days)
     {
         var (userError, user) = await ResolveCurrentUserOrUnauthorizedAsync(HttpContext.RequestAborted);
         if (userError is not null) return userError;

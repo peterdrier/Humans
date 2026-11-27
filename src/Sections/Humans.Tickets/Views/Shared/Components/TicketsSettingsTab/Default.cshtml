@@ -20,7 +20,7 @@
 <form class="mw-540 mt-4" method="post" asp-controller="Ticket" asp-action="PostEventHold">
     <label class="form-label" for="postEventHoldDays">Post-event hold (days)</label>
     <div class="d-flex gap-2 mb-2">
-        <input class="form-control w-auto" type="number" min="0" id="postEventHoldDays" name="days" value="@Model.PostEventHoldDays" required />
+        <input class="form-control w-auto" type="number" min="0" max="3650" id="postEventHoldDays" name="days" value="@Model.PostEventHoldDays" required />
         <button type="submit" class="btn btn-primary">Save</button>
     </div>
     <div class="form-text">Days after an event's strike that a ticket holder's account deletion waits. Once they pass, each ticketing platform erases the event's personal data.</div>
