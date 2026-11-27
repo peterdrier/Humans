@@ -96,21 +96,27 @@ internal sealed partial class TicketCheckoutService
         TicketCheckoutTicket? companionTicket = null;
         if (approve)
         {
-            var (companion, problem) = await CheckOtherAsync(
-                request.CompanionUserId, request.HolderUserId, request.TicketingSettingsId, clock.GetCurrentInstant(), ct);
-            if (problem is not null)
-                return new(problem switch
-                {
-                    "Holds" => "The companion now holds a ticket of their own; decline the request.",
-                    "NeedsName" => "The companion has no legal name in Humans yet; ask them to add it, then approve.",
-                    _ => "The companion's account is gone; decline the request.",
-                });
-            var (result, issued) = await IssueCompanionCoreAsync(request.TicketId, companion!.FullName, companion.Email,
-                _ => Task.FromResult<(Guid?, string?)>((companion.Id, null)),
-                "approved companion request" + (note is null ? string.Empty : $": {note}"), overrideCapacity: false, actorUserId, ct);
-            if (!result.Succeeded)
-                return result;
-            companionTicket = issued;
+            companionTicket = (await repository.GetTicketsForSettingsAsync(request.TicketingSettingsId, ct))
+                .FirstOrDefault(t => t.ParentTicketId == request.TicketId && t.HolderUserId == request.CompanionUserId
+                    && t.Kind == TicketHolderKind.Companion && t.State == TicketCheckoutTicketState.Valid);
+            if (companionTicket is null)
+            {
+                var (companion, problem) = await CheckOtherAsync(
+                    request.CompanionUserId, request.HolderUserId, request.TicketingSettingsId, clock.GetCurrentInstant(), ct);
+                if (problem is not null)
+                    return new(problem switch
+                    {
+                        "Holds" => "The companion now holds a ticket of their own; decline the request.",
+                        "NeedsName" => "The companion has no legal name in Humans yet; ask them to add it, then approve.",
+                        _ => "The companion's account is gone; decline the request.",
+                    });
+                var (result, issued) = await IssueCompanionCoreAsync(request.TicketId, companion!.FullName, companion.Email,
+                    _ => Task.FromResult<(Guid?, string?)>((companion.Id, null)),
+                    "approved companion request" + (note is null ? string.Empty : $": {note}"), overrideCapacity: false, actorUserId, ct);
+                if (!result.Succeeded)
+                    return result;
+                companionTicket = issued;
+            }
         }
 
         request.State = approve ? TicketCompanionRequestState.Approved : TicketCompanionRequestState.Declined;

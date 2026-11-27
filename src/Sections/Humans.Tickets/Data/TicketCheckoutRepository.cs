@@ -105,10 +105,12 @@ internal sealed class TicketCheckoutRepository(IDbContextFactory<TicketsDbContex
             .ToListAsync(ct);
     }
 
-    public async Task AddOrderAsync(TicketCheckoutOrder order, CancellationToken ct = default)
+    public async Task AddOrderAsync(TicketCheckoutOrder order, CancellationToken ct = default, TicketCheckoutTicket? ticket = null)
     {
         await using var ctx = await factory.CreateDbContextAsync(ct);
         ctx.TicketCheckoutOrders.Add(order);
+        if (ticket is not null)
+            ctx.TicketCheckoutTickets.Add(ticket);
         await ctx.SaveChangesAsync(ct);
     }
 

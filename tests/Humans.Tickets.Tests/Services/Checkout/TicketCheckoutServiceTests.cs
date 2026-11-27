@@ -1912,6 +1912,76 @@ public sealed partial class TicketCheckoutServiceTests
     }
 
     [HumansFact]
+    public async Task DecideCompanionRequestAsync_IssuedBeforeInterruption_CompletesRequest()
+    {
+        var adult = await PaidAdultAsync();
+        var helper = Human("helper@example.com", "Helper", "Ruiz");
+        (await _service.RequestCompanionAsync(adult.Id, _buyerId, "helper@example.com", "Support", Ct)).Succeeded.Should().BeTrue();
+        var request = _repo.CompanionRequests.Single();
+        (await _service.IssueCompanionAsync(adult.Id, "Helper Ruiz", "helper@example.com", "Interrupted approval", false, _adminId, Ct))
+            .Succeeded.Should().BeTrue();
+        var companion = _repo.Tickets.Single(t => t.Kind == TicketHolderKind.Companion);
+        companion.HolderUserId.Should().Be(helper);
+        var orders = _repo.Orders.Count;
+        var tickets = _repo.Tickets.Count;
+        _delivery.ClearReceivedCalls();
+
+        var result = await _service.DecideCompanionRequestAsync(request.Id, true, null, _adminId, Ct);
+
+        result.Succeeded.Should().BeTrue();
+        request.State.Should().Be(TicketCompanionRequestState.Approved);
+        request.CompanionTicketId.Should().Be(companion.Id);
+        _repo.Orders.Should().HaveCount(orders);
+        _repo.Tickets.Should().HaveCount(tickets);
+        await _delivery.DidNotReceiveWithAnyArgs().TicketsIssuedAsync(default);
+        await _audit.Received(1).LogAsync(TicketsAuditActions.TicketCompanionRequestDecided, Arg.Any<string>(), request.Id,
+            Arg.Any<string>(), _adminId, _buyerId, AuditSubjectTypes.User);
+    }
+
+    [HumansTheory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task DecideCompanionRequestAsync_DifferentCompanion_Refuses(bool differentParent)
+    {
+        var adult = await PaidAdultAsync();
+        Human("helper@example.com", "Helper", "Ruiz");
+        Human("another@example.com", "Another", "Helper");
+        (await _service.RequestCompanionAsync(adult.Id, _buyerId, "helper@example.com", "Support", Ct)).Succeeded.Should().BeTrue();
+        var request = _repo.CompanionRequests.Single();
+        var parent = adult;
+        if (differentParent)
+        {
+            var otherOrder = await BuyAndPayAsync(Buy(), _otherBuyerId);
+            parent = _repo.Tickets.Single(t => t.OrderId == otherOrder.Id);
+        }
+        var address = differentParent ? "helper@example.com" : "another@example.com";
+        (await _service.IssueCompanionAsync(parent.Id, "Companion", address, "Another approval", false, _adminId, Ct))
+            .Succeeded.Should().BeTrue();
+        var tickets = _repo.Tickets.Count;
+
+        var result = await _service.DecideCompanionRequestAsync(request.Id, true, null, _adminId, Ct);
+
+        result.Succeeded.Should().BeFalse();
+        request.State.Should().Be(TicketCompanionRequestState.Pending);
+        request.CompanionTicketId.Should().BeNull();
+        _repo.Tickets.Should().HaveCount(tickets);
+    }
+
+    [HumansFact]
+    public async Task IssueCompanionAsync_TicketSaveFails_LeavesNoOrder()
+    {
+        var adult = await PaidAdultAsync();
+        var orders = _repo.Orders.Count;
+        _repo.RejectCompanionWrites = true;
+        var issue = () => _service.IssueCompanionAsync(adult.Id, "Helper Ruiz", null, "Support", false, _adminId, Ct);
+
+        await issue.Should().ThrowAsync<InvalidOperationException>().WithMessage("Companion write failed");
+
+        _repo.Orders.Should().HaveCount(orders);
+        _repo.Tickets.Should().ContainSingle().Which.Id.Should().Be(adult.Id);
+    }
+
+    [HumansFact]
     public async Task A_companion_request_is_refused_for_someone_elses_ticket_without_a_note_or_without_a_live_account()
     {
         var adult = await PaidAdultAsync();
@@ -3180,9 +3250,15 @@ public sealed partial class TicketCheckoutServiceTests
         public Task<IReadOnlyList<TicketCheckoutOrder>> GetOpenOrdersAsync(CancellationToken ct = default) =>
             Task.FromResult<IReadOnlyList<TicketCheckoutOrder>>(Orders
                 .Where(o => o.IsOpen).ToList());
-        public Task AddOrderAsync(TicketCheckoutOrder order, CancellationToken ct = default)
+        public bool RejectCompanionWrites { get; set; }
+
+        public Task AddOrderAsync(TicketCheckoutOrder order, CancellationToken ct = default, TicketCheckoutTicket? ticket = null)
         {
+            if (RejectCompanionWrites && ticket is not null)
+                throw new InvalidOperationException("Companion write failed");
             Orders.Add(order);
+            if (ticket is not null)
+                Tickets.Add(ticket);
             return Task.CompletedTask;
         }
         public List<(Guid OrderId, string? PaymentMethod)> OrderWrites { get; } = [];
@@ -3229,6 +3305,8 @@ public sealed partial class TicketCheckoutServiceTests
 
         public Task<bool> AddTicketsAsync(IReadOnlyList<TicketCheckoutTicket> tickets, CancellationToken ct = default)
         {
+            if (RejectCompanionWrites && tickets.Any(t => t.Kind == TicketHolderKind.Companion))
+                throw new InvalidOperationException("Companion write failed");
             if (tickets.Any(n => Tickets.Any(t => t.OrderId == n.OrderId && t.LineIndex == n.LineIndex)))
                 return Task.FromResult(false);
             Tickets.AddRange(tickets);

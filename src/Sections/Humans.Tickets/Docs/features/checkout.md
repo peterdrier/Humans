@@ -262,7 +262,7 @@ not already holding a ticket) and a short note on why. One ask is pending at a t
 ticketing team answers from the event's Companions queue: approve rechecks the companion and issues the free ticket to
 their account (the usual ticket email; the holder gets the zero receipt), decline needs a note the holder sees on their
 ticket. Nobody's account is created and the companion is never mailed an invitation. The ask and the answer land on the
-order timeline and the answer is audited.
+order timeline and the answer is audited. Issuance saves the zero-total order and attached ticket together. If approval stops after issuance but before the request is finalized, a retry reuses only a valid companion matching the request's event, parent ticket and companion account; it completes the request without another ticket, order or delivery.
 
 ## The ticketing team
 

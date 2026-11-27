@@ -274,7 +274,6 @@ internal sealed partial class TicketCheckoutService
                 },
             ],
         };
-        await repository.AddOrderAsync(order, ct);
         var companion = new TicketCheckoutTicket
         {
             Id = Guid.NewGuid(),
@@ -290,7 +289,7 @@ internal sealed partial class TicketCheckoutService
             State = TicketCheckoutTicketState.Valid,
             IssuedAt = now,
         };
-        await repository.AddTicketsAsync([companion], ct);
+        await repository.AddOrderAsync(order, ct, ticket: companion);
         if (holderUserId is { } companionHolder)
             holdings.InvalidateHoldings(companionHolder);
 
