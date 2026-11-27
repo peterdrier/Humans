@@ -1,8 +1,8 @@
-using Humans.Base.Extensions;
 using Humans.Consent.Contracts;
+using Humans.Base.Extensions;
 using Microsoft.AspNetCore.Mvc;
 
-namespace Humans.Governance.ViewComponents;
+namespace Humans.Consent.ViewComponents;
 
 /// <summary>Renders nothing when no consents are pending.</summary>
 public sealed class PendingConsentsAlertViewComponent(

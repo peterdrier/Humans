@@ -1,4 +1,3 @@
-using Humans.Consent.Contracts;
 using System.Globalization;
 using System.Security.Claims;
 using Humans.Base;
@@ -232,7 +231,6 @@ public sealed class Section :
 
     IEnumerable<ChromeComponent> ISectionMemberDashboard.Components() =>
     [
-        new ChromeComponent(ChromeSlots.MemberDashboard, typeof(PendingConsentsAlertViewComponent), Weight: 5),
         new ChromeComponent(ChromeSlots.MemberDashboard, typeof(MemberTermStatusViewComponent), Weight: 10),
         new ChromeComponent(ChromeSlots.MemberDashboard, typeof(AssemblyVotesCardViewComponent), Weight: 15),
         new ChromeComponent(ChromeSlots.MemberDashboard, typeof(GovernanceApplicationsTileViewComponent), Weight: 40),
@@ -246,28 +244,8 @@ public sealed class Section :
             return [];
         }
 
-        var progress = await services.GetRequiredService<IConsentService>()
-            .GetConsentProgressAsync(userId, ct);
         var localizer = services.GetRequiredService<IStringLocalizer<SharedResource>>();
-        var complete = progress.PendingCount == 0;
-
-        List<ThingsToDoEntry> entries = [];
-
-        if (progress.RequiredCount > 0)
-        {
-            entries.Add(new ThingsToDoEntry("consents", localizer["Todo_Consents_Title"].Value,
-                "fa-solid fa-file-signature", Controller: "Consent", Action: "Index", Weight: 20)
-            {
-                Description = complete
-                    ? localizer["Todo_Consents_Done"].Value
-                    : localizer["Todo_Consents_Pending", progress.PendingCount, progress.RequiredCount],
-                IsDone = complete,
-                ActionText = localizer["Todo_Consents_Action"].Value,
-            });
-        }
-
-        entries.AddRange(await VoteEntriesAsync(services, userId, localizer, ct));
-        return entries;
+        return await VoteEntriesAsync(services, userId, localizer, ct);
     }
 
     /// <summary>

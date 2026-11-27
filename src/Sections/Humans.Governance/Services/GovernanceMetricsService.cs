@@ -1,9 +1,6 @@
-using Humans.Base.Constants;
-using Humans.Consent.Contracts;
 using System.Diagnostics.Metrics;
 using Humans.Base.Hosting;
 using Humans.Governance.Contracts;
-using Humans.Users.Contracts;
 using Microsoft.Extensions.DependencyInjection;
 using NodaTime;
 
@@ -27,16 +24,6 @@ internal sealed class GovernanceMetricsService : PolledGaugeService
             "humans.applications_pending",
             observeValues: ObserveApplicationsPending,
             description: "Pending applications by status");
-
-        HumansMeter.CreateObservableGauge(
-            "humans.pending_consents",
-            observeValue: () => _snapshot.PendingConsents,
-            description: "Users missing required consents");
-
-        HumansMeter.CreateObservableGauge(
-            "humans.consent_deadline_approaching",
-            observeValue: () => _snapshot.ConsentDeadlineApproaching,
-            description: "Users past grace period not yet suspended");
     }
 
     private IEnumerable<Measurement<int>> ObserveApplicationsPending()
@@ -48,18 +35,7 @@ internal sealed class GovernanceMetricsService : PolledGaugeService
     protected override async Task RefreshAsync()
     {
         using var scope = ScopeFactory.CreateScope();
-        var consentService = scope.ServiceProvider.GetRequiredService<IConsentService>();
         var applicationDecisionService = scope.ServiceProvider.GetRequiredService<IGovernanceManagement>();
-        var userService = scope.ServiceProvider.GetRequiredService<IUserService>();
-
-        var userInfos = await userService.GetAllUserInfosAsync().ConfigureAwait(false);
-        var allUserIds = userInfos.Select(u => u.Id).ToList();
-
-        var usersWithAllConsents = await consentService.GetConsentedUsersForTeamAsync(allUserIds, SystemTeamIds.Volunteers);
-        var pendingConsents = allUserIds.Count - usersWithAllConsents.Count;
-
-        var usersRequiringUpdate = await consentService.GetUsersPastConsentDeadlineAsync();
-        var consentDeadlineApproaching = usersRequiringUpdate.Count;
 
         var today = scope.ServiceProvider.GetRequiredService<IClock>().GetCurrentInstant().InUtc().Date;
         var asociados = await scope.ServiceProvider.GetRequiredService<IGovernanceService>().GetActiveApprovedTierUserIdsAsync(MembershipTier.Asociado, today);
@@ -68,9 +44,7 @@ internal sealed class GovernanceMetricsService : PolledGaugeService
         _snapshot = new GaugeSnapshot
         {
             Asociados = asociados.Count,
-            ApplicationsSubmitted = applicationsSubmitted,
-            PendingConsents = pendingConsents,
-            ConsentDeadlineApproaching = consentDeadlineApproaching
+            ApplicationsSubmitted = applicationsSubmitted
         };
     }
 
@@ -80,7 +54,5 @@ internal sealed class GovernanceMetricsService : PolledGaugeService
 
         public int Asociados { get; init; }
         public int ApplicationsSubmitted { get; init; }
-        public int PendingConsents { get; init; }
-        public int ConsentDeadlineApproaching { get; init; }
     }
 }

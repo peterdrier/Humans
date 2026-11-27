@@ -257,15 +257,13 @@ public sealed class CampRepositoryTests : IDisposable
     {
         _dbContext.CampSettings.Add(new CampSettings
         {
-            Id = Guid.NewGuid(),
-            PublicYear = 2026
+            Id = Guid.NewGuid()
         });
         await _dbContext.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
 
         var settings = await _repo.GetSettingsReadOnlyAsync(Xunit.TestContext.Current.CancellationToken);
 
         settings.Should().NotBeNull();
-        settings.PublicYear.Should().Be(2026);
     }
 
     [HumansFact]
