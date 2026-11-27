@@ -120,7 +120,7 @@ public class GdprServiceTests
     }
 
     [HumansFact]
-    public async Task ExportForUserAsync_RequestedUnderMergedAwayId_NamesTheSurvivorAndItsArchivedIds()
+    public async Task ExportForUserAsync_MergedAwayId_NamesSurvivor()
     {
         // Rows stay keyed to the archived id on purpose (audit entries, consent records, roster
         // rows, ballots); without the list the survivor's export shows rows carrying a stranger's id.
@@ -151,7 +151,7 @@ public class GdprServiceTests
     }
 
     [HumansFact]
-    public async Task ExportForUserAsync_UnknownUser_FallsBackToTheRequestedId()
+    public async Task ExportForUserAsync_UnknownUser_UsesRequestedId()
     {
         var userId = Guid.NewGuid();
         var service = CreateService(new FakeContributor("Profile", new { Name = "Jane" }));
@@ -195,7 +195,7 @@ public class GdprServiceTests
     [Xunit.InlineData(false, false)]
     [Xunit.InlineData(true, false)]
     [Xunit.InlineData(true, true)]
-    public async Task ExportForUserAsync_PassesUserIdAndCancellationTokenToEveryContributor(
+    public async Task ExportForUserAsync_PassesUserIdToEveryContributor(
         bool knownUser, bool requestArchivedId)
     {
         var userId = Guid.NewGuid();
@@ -227,7 +227,7 @@ public class GdprServiceTests
     }
 
     [HumansFact]
-    public async Task ExportForUserAsync_CallsTheChainMethodWithSurvivorFirstAndMergesItsSlices()
+    public async Task ExportForUserAsync_MergedChain_PassesSurvivorFirst()
     {
         var survivor = Guid.NewGuid();
         var archived = Guid.NewGuid();
@@ -244,7 +244,7 @@ public class GdprServiceTests
     }
 
     [HumansFact]
-    public async Task ExportForUserAsync_UnknownUser_PassesTheRequestedIdAsTheWholeChain()
+    public async Task ExportForUserAsync_UnknownUser_ChainIsRequestedId()
     {
         var userId = Guid.NewGuid();
         var contributor = new ChainContributor("Own", "Chain", new object());
@@ -257,7 +257,7 @@ public class GdprServiceTests
     }
 
     [HumansFact]
-    public async Task ExportForUserAsync_SameSectionFromBothMethods_FailsAsADuplicate()
+    public async Task ExportForUserAsync_SectionExportedTwice_Fails()
     {
         var service = CreateService(new ChainContributor("Outbox", "Outbox", new object()));
 
@@ -278,7 +278,7 @@ public class GdprServiceTests
     }
 
     [HumansFact]
-    public async Task ExportForUserAsync_LogsAndContinuesWhenExportedSectionHasNoErasureDeclaration()
+    public async Task ExportForUserAsync_NoErasureDeclaration_StillExports()
     {
         var logger = new CapturingLogger<GdprService>();
         var service = CreateService(
@@ -451,7 +451,7 @@ public class GdprServiceTests
     }
 
     [HumansFact]
-    public async Task EraseForUserAsync_PropagatesContributorFailureAndStopsBeforeAccount()
+    public async Task EraseForUserAsync_ContributorFails_KeepsAccount()
     {
         var boom = new RecordingContributor("Issues") { Throw = new InvalidOperationException("boom") };
         var account = new RecordingContributor("Account") { ErasesLast = true };

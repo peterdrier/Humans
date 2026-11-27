@@ -144,4 +144,6 @@
   <data name="Store_DownloadInvoice" xml:space="preserve"><value>Descargar factura {0}</value></data>
   <data name="Store_RecordPaymentProduct" xml:space="preserve"><value>Fianza de</value></data>
   <data name="Enum_PaymentMethod_WriteOff" xml:space="preserve"><value>Condonación</value></data>
+  <data name="Store_Permission_TeamOrders_Title" xml:space="preserve"><value>Hacer pedidos para el equipo</value></data>
+  <data name="Store_Permission_TeamOrders_Blurb" xml:space="preserve"><value>Crear y editar el pedido de la tienda del departamento.</value></data>
 </root>

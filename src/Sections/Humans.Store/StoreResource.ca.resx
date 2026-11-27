@@ -136,4 +136,6 @@
   <data name="Store_DownloadInvoice" xml:space="preserve"><value>Descarrega la factura {0}</value></data>
   <data name="Store_RecordPaymentProduct" xml:space="preserve"><value>Fiança de</value></data>
   <data name="Enum_PaymentMethod_WriteOff" xml:space="preserve"><value>Condonació</value></data>
+  <data name="Store_Permission_TeamOrders_Title" xml:space="preserve"><value>Fer comandes per a l'equip</value></data>
+  <data name="Store_Permission_TeamOrders_Blurb" xml:space="preserve"><value>Crear i editar la comanda de la botiga del departament.</value></data>
 </root>

@@ -67,12 +67,12 @@ public sealed class TicketDeliveryServiceTests
         Options.Create(new EmailSettings { BaseUrl = TestTicketsEmails.BaseUrl }), NullLogger<TicketDeliveryService>.Instance);
 
     private TicketCheckoutTicket Ticket(Guid? holderId, string name, string? email, TicketCheckoutTicketState state = TicketCheckoutTicketState.Valid,
-        TicketHolderKind kind = TicketHolderKind.Adult, Guid? parent = null, Instant? issuedAt = null) => new()
+        TicketHolderKind kind = TicketHolderKind.Adult, Guid? parent = null, Instant? issuedAt = null, Guid? orderId = null) => new()
         {
             Id = Guid.NewGuid(),
             ParentTicketId = parent,
             IssuedAt = issuedAt ?? Instant.MinValue,
-            OrderId = _order.Id,
+            OrderId = orderId ?? _order.Id,
             TicketingSettingsId = _ticketing.Id,
             HolderUserId = holderId,
             HolderName = name,
@@ -82,8 +82,11 @@ public sealed class TicketDeliveryServiceTests
             Barcode = "H" + Guid.NewGuid().ToString("N")[..16].ToUpperInvariant(),
         };
 
-    private void Tickets(params TicketCheckoutTicket[] tickets) =>
+    private void Tickets(params TicketCheckoutTicket[] tickets)
+    {
         _checkout.GetOrderDetailAsync(_order.Id, Arg.Any<CancellationToken>()).Returns(_ => new OrderDetail(_order, [], [], tickets));
+        _checkout.GetTicketsForSettingsAsync(_ticketing.Id, Arg.Any<CancellationToken>()).Returns(tickets);
+    }
 
     [HumansFact]
     public async Task Deliver_RendersTheHolderFirstAndDependentsByIssueTime()
@@ -122,6 +125,23 @@ public sealed class TicketDeliveryServiceTests
     }
 
     [HumansFact]
+    public async Task DeliverAsync_DonationOnly_SendsReceipt()
+    {
+        _order.Lines = [new TicketCheckoutOrderLine { Kind = OrderLineKind.Donation, AmountMinor = 45000 }];
+        Tickets();
+
+        await Create().DeliverAsync(_order.Id);
+
+        var receipt = _sent.Should().ContainSingle().Subject;
+        receipt.TemplateName.Should().Be("ticket_order_receipt");
+        receipt.RecipientEmail.Should().Be("ana@example.com");
+        receipt.DeliveryId.Should().Be(TicketDeliveryService.DeliveryIdFor("ticket_order_receipt", _order.Id));
+        _jobs.DidNotReceiveWithAnyArgs().Create(default!, default!);
+        await _audit.Received(1).LogAsync(TicketsAuditActions.TicketDeliverySent, Arg.Any<string>(), _order.Id,
+            Arg.Any<string>(), Arg.Any<string>(), Arg.Any<Guid?>(), Arg.Any<string?>());
+    }
+
+    [HumansFact]
     public async Task Deliver_PutsAChildWithoutEmailOnTheAdultsMail_AndInvitesOnlyTheAdult()
     {
         var adult = Ticket(BuyerId, "Ana Buyer", "ana@example.com");
@@ -133,6 +153,74 @@ public sealed class TicketDeliveryServiceTests
         var ticketMail = _sent.Where(m => string.Equals(m.TemplateName, "ticket_issued", StringComparison.Ordinal)).Should().ContainSingle().Subject;
         ticketMail.HtmlBody.Should().Contain(adult.Barcode).And.Contain(child.Barcode);
         _jobs.ReceivedWithAnyArgs(1).Create(default!, default!);
+    }
+
+    [HumansTheory]
+    [Xunit.InlineData(false)]
+    [Xunit.InlineData(true)]
+    public async Task DeliverAsync_SeparateDependent_IncludesBarcode(bool resend)
+    {
+        var adult = Ticket(BuyerId, "Ana Buyer", "ana@example.com");
+        var companion = Ticket(null, "Helper", null, kind: TicketHolderKind.Companion,
+            parent: adult.Id, orderId: Guid.NewGuid());
+        var retired = Ticket(null, "Retired", null, TicketCheckoutTicketState.Void,
+            TicketHolderKind.Companion, adult.Id, orderId: Guid.NewGuid());
+        var unrelated = Ticket(null, "Unrelated", null, kind: TicketHolderKind.Companion,
+            parent: Guid.NewGuid(), orderId: Guid.NewGuid());
+        Tickets(adult);
+        _checkout.GetTicketsForSettingsAsync(_ticketing.Id, Arg.Any<CancellationToken>())
+            .Returns([adult, companion, retired, unrelated]);
+
+        if (resend)
+            (await Create().ResendAsync(_order.Id, Guid.NewGuid())).Succeeded.Should().BeTrue();
+        else
+            await Create().DeliverAsync(_order.Id);
+
+        var ticketMail = _sent.Single(m => string.Equals(m.TemplateName, "ticket_issued", StringComparison.Ordinal));
+        ticketMail.RecipientEmail.Should().Be("ana@example.com");
+        ticketMail.HtmlBody.Should().Contain(adult.Barcode).And.Contain(companion.Barcode)
+            .And.NotContain(retired.Barcode).And.NotContain(unrelated.Barcode);
+    }
+
+    [HumansTheory]
+    [Xunit.InlineData(true)]
+    [Xunit.InlineData(false)]
+    public async Task DeliverAsync_UnaddressedCompanion_RequiresLiveParent(bool parentLive)
+    {
+        var adult = Ticket(BuyerId, "Ana Buyer", "ana@example.com",
+            parentLive ? TicketCheckoutTicketState.Valid : TicketCheckoutTicketState.Void);
+        var companion = Ticket(null, "Helper", null, kind: TicketHolderKind.Companion,
+            parent: adult.Id, orderId: Guid.NewGuid());
+        var order = new TicketCheckoutOrder
+        {
+            Id = companion.OrderId,
+            TicketingSettingsId = _ticketing.Id,
+            State = TicketCheckoutOrderState.Paid,
+            BuyerUserId = BuyerId,
+            BuyerName = "Ana Buyer",
+            BuyerEmail = "ana@example.com",
+            Culture = "es",
+            PaidAt = _order.PaidAt,
+            Lines = [new TicketCheckoutOrderLine { Kind = OrderLineKind.Ticket, HolderKind = TicketHolderKind.Companion }],
+        };
+        _checkout.GetOrderDetailAsync(order.Id, Arg.Any<CancellationToken>())
+            .Returns(new OrderDetail(order, [], [], [companion]));
+        _checkout.GetTicketsForSettingsAsync(_ticketing.Id, Arg.Any<CancellationToken>()).Returns([adult, companion]);
+
+        await Create().DeliverAsync(order.Id);
+
+        var ticketMails = _sent.Where(m => string.Equals(m.TemplateName, "ticket_issued", StringComparison.Ordinal)).ToList();
+        if (parentLive)
+        {
+            var mail = ticketMails.Should().ContainSingle().Subject;
+            mail.RecipientEmail.Should().Be("ana@example.com");
+            mail.HtmlBody.Should().Contain(companion.Barcode).And.NotContain(adult.Barcode);
+            mail.DeliveryId.Should().Be(TicketDeliveryService.DeliveryIdFor("ticket_issued", companion.Id));
+        }
+        else
+            ticketMails.Should().BeEmpty();
+        _sent.Should().ContainSingle(m => string.Equals(m.TemplateName, "ticket_order_receipt", StringComparison.Ordinal));
+        _jobs.DidNotReceiveWithAnyArgs().Create(default!, default!);
     }
 
     [HumansFact]
@@ -351,12 +439,17 @@ public sealed class TicketDeliveryServiceTests
         _sent[1].HtmlBody.Should().Contain("225,00 €");
     }
 
-    [HumansFact]
-    public async Task RenamedTicket_IsSentToTheNewHolder_WithTheChildrenRidingOnIt()
+    [HumansTheory]
+    [Xunit.InlineData(false)]
+    [Xunit.InlineData(true)]
+    public async Task SendRenamedTicketAsync_SeparateDependent_IncludesBarcode(bool separateOrder)
     {
         var adult = Ticket(PartnerId, "Ben Partner", "ben@example.com");
-        var child = Ticket(PartnerId, "Kid Partner", null, kind: TicketHolderKind.Child, parent: adult.Id);
-        Tickets(adult, child);
+        var child = Ticket(null, "Kid Partner", null,
+            kind: separateOrder ? TicketHolderKind.Companion : TicketHolderKind.Child, parent: adult.Id,
+            orderId: separateOrder ? Guid.NewGuid() : adult.OrderId);
+        Tickets(separateOrder ? [adult] : [adult, child]);
+        _checkout.GetTicketsForSettingsAsync(_ticketing.Id, Arg.Any<CancellationToken>()).Returns([adult, child]);
         _checkout.GetTicketAsync(adult.Id, Arg.Any<CancellationToken>()).Returns(adult);
         var deliveryId = Guid.NewGuid();
 

@@ -52,6 +52,7 @@ internal sealed class HelloTool(IUserService users, IHttpContextAccessor http, I
         user.Identity?.AuthenticationType switch
         {
             BackdoorApiKeyHandler.SchemeName => "API key",
+            BackdoorConnectionService.AuthenticationType => "Sign in with Humans",
             var other => other ?? "unknown",
         };
 }

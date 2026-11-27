@@ -21,7 +21,7 @@ Rules every platform follows:
 
 - **Exact price.** The buyer pays exactly the lines; no fee is added. `PlatformOrderStatus.FeeMinor` is only what the
   payment provider kept (processing cost), null when unknown.
-- **Late payments.** Tickets owns the hold. When `ExpiresAt` passes unpaid, Tickets calls `CancelAsync` (also when the
+- **Late payments.** Tickets owns the hold. When `ExpiresAt` passes unpaid, webhooks and background recovery call `CancelAsync` (also when the
   platform reports Expired or Failed, and the order stays open until that cancel succeeds) so the platform stops taking
   money. A payment that lands anyway is reported as
   `Paid`; the adapter never refunds or keeps it silently. Tickets issues the tickets, says so on the timeline and in the
@@ -37,8 +37,11 @@ Rules every platform follows:
 - **Chargebacks.** `ChargedBackMinor` is what the buyer's bank has taken back and the event has not won. Each change goes on
   the timeline and to the audit log as needing attention; tickets stay valid until the ticketing team decides. It comes
   off what can still be refunded, and the order's tickets cannot be offered for resale while it stands.
+- **Recovery cancellation.** A status read remains cancellable. Before closing a platform order, recovery checks cancellation; once that remote attempt starts, its local outcome finishes independently of job shutdown.
 - **Refund cancellation.** Cancellation is checked before each attempt. A started platform refund and its local completion finish independently of request abort or job shutdown. The initial read-only status fetch stays cancellable; settlement replays finish their saved outcome and timeline before cancellation stops the next refund.
-- **Refund outcome.** `RefundedMinor` moves only once money went back. On every status read Tickets settles its
+- **Donation receipts.** A donation-only order queues its buyer receipt as soon as it becomes paid, even though it issues no tickets. Missing delivery uses the same 30-minute grace, seven-day recovery window and timeline markers as ticket orders; no holder email or volunteer invitation is created.
+- **Order page reads.** Buyer/holder and admin GETs read status with the request token and apply local payment, fee, refund-total and chargeback changes, including ticket issuance for a new payment. They never cancel at the platform or replay refunds. An expired/failed status keeps an open order reserved until recovery confirms cancellation; visiting an overdue order cannot release capacity while the platform may still take payment.
+- **Refund outcome.** `RefundedMinor` moves only once money went back. Webhooks and background recovery settle Tickets'
   `Pending` and `ManualRequired` refunds, oldest first. A pending refund the platform knows by id is repeated under that
   id and takes the state the platform answers (`RefundFailed` may follow only the newest refund); one whose call got no
   answer waits for the reconcile job's resend. So a refund made in the platform's dashboard never settles one of Tickets'
@@ -90,9 +93,8 @@ difference everywhere.
 
 ### Fees and payouts
 
-Where Humans can read the platform's payment account (each platform's Stripe account through a read key: Box Office's
-`STRIPE_BOXOFFICE_KEY`; pretix's and Hi.Events' through the Stripe section, as the `Stripe:MirrorAccounts` entries
-`Pretix` and `HiEvents`), the page and the daily run
+Where Humans can read the platform's payment account (the shared Tickets Stripe account through the Stripe section's
+`Stripe:MirrorAccounts` entry `Tickets`), the page and the daily run
 also reconcile it by the day the money moved (`GetPaymentLedgerAsync`), so a refund months after the sale counts in the
 month it was made. Every balance movement is tied to its Humans order: Box Office's payments carry it in metadata; pretix's and Hi.Events'
 carry the platform's own order, whose Humans order the adapter reads back from the platform. A payment must
@@ -203,7 +205,9 @@ addresses were typed. Directed resale links buy only the buyer's own ticket.
 
 - `/Tickets/Buy/Mine` lists the member's live tickets with the valid child tickets under their adult. Its GET is
   open before the account is active, so someone bought for reaches their ticket from the email (name entry still comes first). A holder puts an adult ticket up for resale while the event is not
-  Closed; it joins `ticket_resale_offers` (oldest first) and the gate refuses it while it can still sell (the holder withdraws it to get in; once sales close it is valid again). They see their
+  Closed and before any configured `SalesCloseAt`; the exact close instant refuses new offers and invitations. The member controls
+  and admin selling status use the same time boundary. An offer may wait while resale is paused, but new invitations
+  require resale to be selling. It joins `ticket_resale_offers` (oldest first) and the gate refuses it while it can still sell (the holder withdraws it to get in; once sales close it is valid again). They see their
   queue position and can withdraw, except while a buyer's unpaid order holds it.
 - Resale opens by hand: the ticketing team presses Open resale on the resale queue page (`ResaleOpenedAt`, audited
   `TicketResaleOpenSet`) and can pause it again; `ResaleOnly` mode sells resale whatever the button. A buyer's ticket lines take
@@ -269,8 +273,8 @@ job then works the paid orders within a two minute budget per run: withdraw open
 ticket lines through the order's platform, timeline `EventCancelled`, email the buyer (donation only orders too; marked
 `CancellationEmailedAt`, sent under a fixed delivery id). A repeat is safe: void stays void,
 and a refund asked for since the cancellation is not asked again, so one the platform turns down (or that cannot start)
-stays failed, flagged `TicketCheckoutNeedsAttention`, for the team to do by hand. Donations are not refunded; the email asks buyers to reply if they want theirs back. When the refund failed, the email
-says the team will refund by hand instead of promising it is on its way. An order with
+stays failed, flagged `TicketCheckoutNeedsAttention`, for the team to do by hand. Donations are not refunded; the email asks buyers to reply if they want theirs back. When the refund failed or requires manual handling, the email
+says the team will refund by hand instead of promising it is on its way. Delivery retries use the saved refund state and the same delivery ID, without submitting another refund. An order with
 a ticket in resale that a buyer is paying for waits until that settles. The cancel page balances the ticket money: taken =
 chargebacks + refunded + in flight + still refundable; the platform side is on the reconciliation page.
 
@@ -292,7 +296,7 @@ tickets by itself (Peter, 2026-11-22).
 
 
 Gate looks codes up through `ITicketGateLookup.FindIssuedTicketAsync` (exact code, any event; Gate keeps only the
-active event's). `Valid` scans valid; `Offered` scans valid only once sales are closed, so a ticket can never admit its holder and then sell. A ticket the gate admitted (or whose child ticket it admitted) cannot be offered, and an admitted offer is never sold (`IGateAdmissions`, Gate's read). A child or companion ticket without an account carries the adult's
+active event's). `Valid` scans valid; `Offered` scans valid only once sales are closed, so a ticket can never admit its holder and then sell. A ticket the gate admitted (or whose valid child or companion ticket it admitted, including one on a separate order) cannot be offered or receive new resale invitations, and an admitted offer is never sold (`IGateAdmissions`, Gate's read). A child or companion ticket without an account carries the adult's A companion without an account or email is mailed to its live adult holder under the companion ticket’s delivery identity. Parent initial/resend and renamed-ticket mail include valid unaddressed dependents even on separate orders, and the private profile card lists those attached tickets too. Receipts and follow-up invitations remain scoped to their own order.
 user as `EntryUserId`, whose Early Entry applies. Nobody signs the ticket rules at the gate: the buyer's acceptance
 covers every ticket on the order (Peter, 2026-11-21). The gate's scan row is the only admission record; no platform is told.
 `GetIssuedTicketsForEventAsync` lists every ticket of one event in any state, for the gate's name search and

@@ -32,6 +32,13 @@ with `DateFormattingExtensions.Iso8601InstantPattern`, using the shared seconds-
   surveys, sign-in links, and the dates Humans reads from and writes to Holded): Base's
   `IOrgTimeZone`, served from the settings cache.
   Never hardcode a zone id.
+- **The retention period is global.** One `settings_system_values` key, `Retention:Days`
+  (absent means 365, one event cycle), is how long temporary data is kept. The daily
+  `RetentionPeriodJob` (03:40) asks every Base `IRetentionPeriodContributor` to delete
+  what is older and audits each deletion with its count (`RetentionPeriodDeleted`); one
+  contributor failing does not stop the others, and the run then reports as failed.
+  Contributors never read the period. An admin sets it on `/Settings#retention`
+  (`RetentionPeriodChanged`); below 1 day is refused.
 - **EventSettingsStatus** is `Active` (at most one row), `Inactive`, `Deleted`.
   Other sections store the id, so a cycle ends by going `Inactive`; nothing sets
   `Deleted` today, and no path removes a row.
@@ -103,7 +110,7 @@ named by `SectionMigrationsHistory.TableFor`.
 |-------|--------------|
 | Any section (code) | Read/write `settings_system_values` keys and read the timezone via `ISettingsService`; read `settings_events` via `GetActiveEventSettings` / `GetEventSettingsByIdAsync` / `GetAllEventSettingsAsync` |
 | Any authenticated member | Views the active event's values, read-only, on the `/Settings#event` tab |
-| Admin | Edits event rows, starts a new cycle, makes an event active and sets the timezone, from the `/Settings#event` tab (posts to `SettingsAdminController`) |
+| Admin | Edits event rows, starts a new cycle, makes an event active and sets the timezone, from the `/Settings#event` tab, and sets the retention period from the admin-only `/Settings#retention` tab (both post to `SettingsAdminController`) |
 
 `SettingsAdminController` is `PolicyNames.AdminOnly`, class-level (pinned in
 `tests/Humans.Settings.Tests/SettingsArchitectureTests.cs`; per-route detail in
@@ -190,8 +197,9 @@ too wide to keep in step by hand. Derive it from the call sites.
 | in | Monitor | `ISettingsService` (`DriveActivityMonitor:LastRunAt`) |
 | in (seam) | Camps, Events, Rideshare, Shifts | implement `IEventSettingsChangeListener`: Shifts' `CachingShiftViewService` (flushes every `ShiftUserView` and forwards the id to its dashboard aggregates), Events' `CachingEventService` (its guide settings carry the timezone), Camps' `CachingCampService` (open seasons derive from events), Rideshare's `CachingRideshareService` (clears its cache). Settings names no consumer and references no consuming section |
 | in (seam) | sections with settings | implement `ISectionSettings` to contribute a `/Settings` tab |
+| out (seam) | AuditLog (temporary side), CityPlanning (polygon history), Gate (scans), Google (sync log), Holded (API calls) | `IRetentionPeriodContributor` (Base): the retention job's fan-out. Settings names no contributor |
 
-- **Audit actions:** declared on `SettingsAuditActions` (`src/Sections/Humans.Settings/SettingsAuditActions.cs`), one `AuditActionDefinition` each, written through `IAuditLogService`: `EventSettingsUpdated`.
+- **Audit actions:** declared on `SettingsAuditActions` (`src/Sections/Humans.Settings/SettingsAuditActions.cs`), one `AuditActionDefinition` each, written through `IAuditLogService`: `EventSettingsUpdated`, `RetentionPeriodChanged`, `RetentionPeriodDeleted`.
 
 ## Architecture
 
@@ -206,7 +214,8 @@ every key, event or timezone write, before it tells the `IEventSettingsChangeLis
 `GetActiveEventSettings()` is synchronous: it only reads that copy, and the database-backed
 `Service` throws `NotSupportedException` for it.
 **Contributes:** through `Section`: `ISectionSettings` — the `/Settings#event`
-tab, rendered by `EventSettingsTabViewComponent`; `ISectionChrome` — the
+tab, rendered by `EventSettingsTabViewComponent`, and the admin-only `/Settings#retention`
+tab, rendered by `RetentionSettingsTabViewComponent`; `ISectionJobs` — `settings-retention-period`; `ISectionChrome` — the
 `/Settings` link in the signed-in user menu (`user-menu` slot); `ISectionAdminNav`
 — the admin shell's "Event settings" item.
 

@@ -59,6 +59,25 @@
         .RowCss(k => k.IsUsable ? null : "text-muted")
         .Css("align-middle")
         .Build();
+
+    Func<BackdoorConnectionListItem, IHtmlContent> connectedCell = @<text>@Stamp(item.CreatedAt)</text>;
+    Func<BackdoorConnectionListItem, IHtmlContent> connectionActionsCell = @<text>
+        @if (item.ViewerMayManage)
+        {
+            <form asp-action="RevokeConnection" asp-route-id="@item.Id" method="post" class="d-inline">
+                <button type="submit" class="btn btn-sm btn-outline-danger">@Localizer["Backdoor_Revoke"]</button>
+            </form>
+        }
+    </text>;
+    var connectionsBuilder = TableModel.For(Model.Connections);
+    if (Model.ShowsOwners)
+        connectionsBuilder = connectionsBuilder.Human("Owner", c => c.UserId);
+    var connectionsTable = connectionsBuilder
+        .Column(Localizer["Backdoor_Connections_App"], c => c.ClientName)
+        .Template(Localizer["Backdoor_Connections_Connected"], connectedCell, c => c.Css("text-nowrap"), sortBy: c => c.CreatedAt)
+        .Template(Localizer["Backdoor_Actions"], connectionActionsCell, o => o.NoSort().Css("text-end").HeaderCss("text-end"))
+        .Css("align-middle")
+        .Build();
 }
 
 <page-header title="@Localizer["Backdoor_Title"]" subtitle="@Localizer["Backdoor_Subtitle"]" />
@@ -110,6 +129,30 @@
 else
 {
     <partial name="_Table" model="keysTable" />
+}
+
+<h2 class="h5 mt-5">@Localizer["Backdoor_Connections_Title"]</h2>
+
+<div class="card mb-3">
+    <div class="card-header">@Localizer["Backdoor_Connect_Title"]</div>
+    <div class="card-body">
+        <p>@Localizer["Backdoor_Connect_Steps"]</p>
+        <dl class="row mb-0">
+            <dt class="col-sm-3">@Localizer["Backdoor_Connect_Address"]</dt>
+            <dd class="col-sm-9"><code class="user-select-all">@Model.McpAddress</code></dd>
+            <dt class="col-sm-3">@Localizer["Backdoor_Connect_ClientId"]</dt>
+            <dd class="col-sm-9 mb-0"><code class="user-select-all">@Model.ClaudeClientId</code></dd>
+        </dl>
+    </div>
+</div>
+
+@if (Model.Connections.Count == 0)
+{
+    <empty-state>@Localizer["Backdoor_Connections_Empty"]</empty-state>
+}
+else
+{
+    <partial name="_Table" model="connectionsTable" />
 }
 
 <p class="mt-3 text-muted small">

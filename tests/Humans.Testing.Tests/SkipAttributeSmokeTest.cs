@@ -7,26 +7,26 @@ namespace Humans.Testing.Tests;
 public class SkipAttributeSmokeTest
 {
     [HumansFact]
-    public void BrokenFact_rejects_null_reason()
+    public void BrokenFact_NullReason_IsRejected()
     {
         var ex = Assert.Throws<ArgumentException>(() => new BrokenFactAttribute(null!));
         Assert.Contains("non-empty reason", ex.Message, StringComparison.Ordinal);
     }
 
     [HumansFact]
-    public void BrokenFact_rejects_empty_reason()
+    public void BrokenFact_EmptyReason_IsRejected()
     {
         Assert.Throws<ArgumentException>(() => new BrokenFactAttribute(""));
     }
 
     [HumansFact]
-    public void BrokenFact_rejects_whitespace_reason()
+    public void BrokenFact_WhitespaceReason_IsRejected()
     {
         Assert.Throws<ArgumentException>(() => new BrokenFactAttribute("   "));
     }
 
     [HumansFact]
-    public void BrokenFact_stores_reason_as_skip_message()
+    public void BrokenFact_Reason_BecomesSkipMessage()
     {
         const string reason = "https://github.com/nobodies-collective/Humans/issues/999";
         var attr = new BrokenFactAttribute(reason);
@@ -35,40 +35,40 @@ public class SkipAttributeSmokeTest
 
     // The body would fail if run; the skip proves BrokenFact never runs it.
     [BrokenFact("Demo — body must never execute. Tracked at nobodies-collective/Humans#586.")]
-    public void BrokenFact_demo_never_executes()
+    public void BrokenFact_Demo_NeverRuns()
     {
         Assert.Fail("BrokenFact did not skip this test — the skip mechanism is broken.");
     }
 
     [HumansFact]
-    public void IntegrationTestGate_applies_to_integration_tests_sources()
+    public void IntegrationTestGate_IntegrationSources_Applies()
     {
         Assert.True(IntegrationTestGate.AppliesTo("/repo/tests/Humans.Integration.Tests/Foo.cs"));
     }
 
     [HumansFact]
-    public void IntegrationTestGate_ignores_other_test_projects()
+    public void IntegrationTestGate_OtherProjects_IsIgnored()
     {
         Assert.False(IntegrationTestGate.AppliesTo("/repo/tests/Humans.Testing.Tests/Foo.cs"));
         Assert.False(IntegrationTestGate.AppliesTo(null));
     }
 
     [HumansFact]
-    public void DebuggerOnlyFact_constructs_without_error()
+    public void DebuggerOnlyFact_Constructs()
     {
         var attr = new DebuggerOnlyFactAttribute();
         Assert.NotNull(attr);
     }
 
     [HumansFact]
-    public void DebuggerOnlyFact_has_non_empty_skip_message()
+    public void DebuggerOnlyFact_HasSkipMessage()
     {
         var attr = new DebuggerOnlyFactAttribute();
         Assert.False(string.IsNullOrWhiteSpace(attr.Skip));
     }
 
     [DebuggerOnlyFact]
-    public void DebuggerOnlyFact_demo_runs_only_under_debugger()
+    public void DebuggerOnlyFact_Demo_RunsOnlyUnderDebugger()
     {
         Assert.True(Debugger.IsAttached, "Expected a debugger to be attached.");
     }

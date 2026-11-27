@@ -22,6 +22,7 @@ internal sealed class SurveyQuestion
     public List<SurveyInformationImage>? InformationImages { get; set; } // jsonb; null for non-Information items
     public RankedQuestionSettings? RankedSettings { get; set; } // jsonb; null for non-RankedChoice questions
     public List<string>? RankedUnavailableOptionValues { get; set; } // jsonb; post-close availability
+    public SurveyCommentSettings? Comment { get; set; } // jsonb; null when the question asks for no comment
     public BranchCondition? ShowIf { get; set; }
     public Survey Survey { get; set; } = null!;
     public ICollection<SurveyQuestionOption> Options { get; set; } = new List<SurveyQuestionOption>();

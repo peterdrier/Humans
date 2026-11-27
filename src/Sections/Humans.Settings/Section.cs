@@ -4,6 +4,7 @@ using Humans.Base.Interfaces;
 using Humans.Base.Interfaces.Caching;
 using Humans.Settings.Contracts;
 using Humans.Settings.Data;
+using Humans.Settings.Jobs;
 using Humans.Settings.Services;
 using Humans.Settings.ViewComponents;
 using Microsoft.Extensions.Configuration;
@@ -15,7 +16,7 @@ using Humans.AuditLog.Contracts;
 
 namespace Humans.Settings;
 
-public sealed class Section : ISection, ISectionAdminNav, ISectionChrome, ISectionSettings
+public sealed class Section : ISection, ISectionAdminNav, ISectionChrome, ISectionSettings, ISectionJobs
 {
     public void Register(IServiceCollection services, IConfiguration configuration)
     {
@@ -34,6 +35,13 @@ public sealed class Section : ISection, ISectionAdminNav, ISectionChrome, ISecti
         services.AddSingleton<IOrgTimeZone>(sp => sp.GetRequiredService<CachingSettingsService>());
         services.AddSingleton<ICacheStats>(sp => sp.GetRequiredService<CachingSettingsService>());
         services.AddSingleton<IHostedService>(sp => sp.GetRequiredService<CachingSettingsService>());
+
+        services.AddScoped<RetentionPeriodJob>();
+    }
+
+    IEnumerable<RecurringJobDescriptor> ISectionJobs.Jobs(IServiceProvider services)
+    {
+        yield return new RecurringJobDescriptor("settings-retention-period", typeof(RetentionPeriodJob), "40 3 * * *");
     }
 
     IEnumerable<AdminNavGroup> ISectionAdminNav.Groups() =>
@@ -48,6 +56,7 @@ public sealed class Section : ISection, ISectionAdminNav, ISectionChrome, ISecti
 
     IEnumerable<SettingsTab> ISectionSettings.Tabs() =>
     [
-        new SettingsTab("event", "Settings_TabEvent", typeof(EventSettingsTabViewComponent), Weight: int.MinValue)
+        new SettingsTab("event", "Settings_TabEvent", typeof(EventSettingsTabViewComponent), Weight: int.MinValue),
+        new SettingsTab("retention", "Settings_TabRetention", typeof(RetentionSettingsTabViewComponent), PolicyNames.AdminOnly)
     ];
 }

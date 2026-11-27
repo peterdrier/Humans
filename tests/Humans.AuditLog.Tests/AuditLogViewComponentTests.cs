@@ -38,7 +38,8 @@ public class AuditLogViewComponentTests
         Id: Guid.NewGuid(), OccurredAt: occurredAt, Action: TestActions.StoreProductPriceChanged,
         ActorUserId: null, ActorDisplayName: null, EntityType: "StoreProduct", EntityId: Guid.NewGuid(),
         SubjectUserId: null, SubjectDisplayName: null, TargetTeamId: null, TargetTeamName: null,
-        TargetTeamSlug: null, RelatedEntityId: null, RelatedEntityType: null, Description: description);
+        TargetTeamSlug: null, RelatedEntityId: null, RelatedEntityType: null, Description: description,
+        Kept: AuditKept.Forever);
 
     private static (string? ViewName, AuditLogComponentViewModel Model) Unwrap(IViewComponentResult result)
     {
@@ -47,7 +48,7 @@ public class AuditLogViewComponentTests
     }
 
     [HumansFact]
-    public async Task Since_drops_events_recorded_before_the_cutoff()
+    public async Task Since_EventsBeforeCutoff_AreDropped()
     {
         var kept = Event(Noon.Plus(Duration.FromDays(2)), "after the cutoff");
         _viewer.GetFilteredAsync("StoreProduct", Arg.Any<Guid?>(), Arg.Any<Guid?>(),
@@ -61,7 +62,7 @@ public class AuditLogViewComponentTests
     }
 
     [HumansFact]
-    public async Task EntityIds_merges_one_query_per_id_newest_first_and_honours_the_limit()
+    public async Task EntityIds_SeveralIds_MergeNewestFirst()
     {
         var first = Guid.NewGuid();
         var second = Guid.NewGuid();
@@ -82,7 +83,7 @@ public class AuditLogViewComponentTests
     }
 
     [HumansFact]
-    public async Task An_empty_EntityIds_list_means_no_matches_not_an_unscoped_query()
+    public async Task Invoke_EmptyEntityIds_MatchesNothing()
     {
         // A zero-line Store order supplies an empty list. Falling through to GetFilteredAsync
         // with a null entityId would show every product's price changes on that order.
@@ -99,7 +100,7 @@ public class AuditLogViewComponentTests
     [InlineData("line", "Default")]
     [InlineData("table", "Table")]
     [InlineData("nonsense", "Default")]
-    public async Task Layout_selects_the_view(string? layout, string expected)
+    public async Task Layout_SelectsView(string? layout, string expected)
     {
         var result = await BuildSut().InvokeAsync(layout: layout ?? "line");
 
@@ -107,7 +108,7 @@ public class AuditLogViewComponentTests
     }
 
     [HumansFact]
-    public async Task Columns_keeps_canonical_order_and_ignores_unknown_names()
+    public async Task Columns_UnknownNames_AreIgnored()
     {
         var (_, model) = Unwrap(await BuildSut().InvokeAsync(
             layout: "table", columns: "description, WHEN , sideways"));
@@ -116,7 +117,7 @@ public class AuditLogViewComponentTests
     }
 
     [HumansFact]
-    public async Task Columns_omitted_renders_all_six()
+    public async Task Columns_Omitted_RendersAllSix()
     {
         var (_, model) = Unwrap(await BuildSut().InvokeAsync(layout: "table"));
 
@@ -124,7 +125,7 @@ public class AuditLogViewComponentTests
     }
 
     [HumansFact]
-    public async Task ColumnLabels_override_headers_by_key_not_by_position()
+    public async Task ColumnLabels_OverrideHeadersByKey()
     {
         // Keys deliberately out of order against `columns`: pairing positionally would
         // mis-header the table, which is the whole reason this is keyed.
@@ -144,7 +145,7 @@ public class AuditLogViewComponentTests
     [InlineData("when")]
     [InlineData(":Fecha")]
     [InlineData("when:")]
-    public async Task ColumnLabels_ignores_junk_and_falls_back_to_the_column_name(string? columnLabels)
+    public async Task ColumnLabels_Junk_UsesColumnName(string? columnLabels)
     {
         var (_, model) = Unwrap(await BuildSut().InvokeAsync(layout: "table", columnLabels: columnLabels));
 
@@ -152,7 +153,7 @@ public class AuditLogViewComponentTests
     }
 
     [HumansFact]
-    public async Task A_viewer_failure_renders_the_empty_state_rather_than_throwing()
+    public async Task Invoke_ViewerFails_RendersEmptyState()
     {
         _viewer.GetFilteredAsync(Arg.Any<string?>(), Arg.Any<Guid?>(), Arg.Any<Guid?>(),
                 Arg.Any<IReadOnlyList<string>?>(), Arg.Any<int>(), Arg.Any<bool>(), Arg.Any<CancellationToken>())
@@ -164,7 +165,7 @@ public class AuditLogViewComponentTests
     }
 
     [HumansFact]
-    public async Task A_cancelled_request_is_not_converted_to_an_empty_audit_history()
+    public async Task Invoke_RequestCancelled_Throws()
     {
         using var cancellation = new CancellationTokenSource();
         await cancellation.CancelAsync();

@@ -35,4 +35,9 @@ internal sealed class AuditLogController(
 
         return View(viewModel);
     }
+
+    /// <summary>Every declared action and the side its new entries go to.</summary>
+    [HttpGet("Actions")]
+    [Authorize(Policy = PolicyNames.BoardOrAdmin)]
+    public IActionResult Actions() => View(actions.All);
 }

@@ -15,10 +15,19 @@ public sealed class SectionSettingsTests
     {
         var tabs = ((ISectionSettings)new Section()).Tabs().ToList();
 
-        var tab = tabs.Should().ContainSingle().Which;
+        var tab = tabs.Should().ContainSingle(t => t.Key == "event").Which;
         tab.Key.Should().Be("event");
         tab.Label.Should().Be("Settings_TabEvent");
         tab.Policy.Should().BeNull();
         tab.Weight.Should().Be(int.MinValue);
+    }
+
+    [HumansFact]
+    public void Tabs_RetentionTab_AdminOnly()
+    {
+        var tabs = ((ISectionSettings)new Section()).Tabs().ToList();
+
+        tabs.Should().ContainSingle(t => t.Key == "retention").Which.Policy
+            .Should().Be(Humans.Base.Authorization.PolicyNames.AdminOnly);
     }
 }

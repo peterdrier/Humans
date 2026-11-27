@@ -122,6 +122,17 @@ internal sealed class GoogleSyncLogRepository(IDbContextFactory<GoogleIntegratio
         return rows.Count;
     }
 
+    public async Task<int> DeleteBeforeAsync(Instant cutoff, CancellationToken ct = default)
+    {
+        await using var ctx = await factory.CreateDbContextAsync(ct);
+        var rows = await ctx.GoogleSyncLog.Where(e => e.OccurredAt < cutoff).ToListAsync(ct);
+        if (rows.Count == 0) return 0;
+
+        ctx.GoogleSyncLog.RemoveRange(rows);
+        await ctx.SaveChangesAsync(ct);
+        return rows.Count;
+    }
+
     public async Task<IReadOnlyList<GoogleSyncLogEntry>> GetAllByUserIdsContributorAsync(
         IReadOnlyCollection<Guid> userIds, CancellationToken ct = default)
     {

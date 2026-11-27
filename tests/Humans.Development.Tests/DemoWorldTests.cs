@@ -13,7 +13,7 @@ public class DemoWorldTests
     private static readonly FakeClock Clock = new(Instant.FromUtc(2026, 11, 19, 12, 0));
 
     [HumansFact]
-    public void Order_puts_a_story_after_what_it_waits_for_and_refuses_gaps_and_cycles()
+    public void Order_StoryWithDependency_ComesAfterIt()
     {
         var cast = new Story("cast");
         var teams = new Story("teams", "cast");
@@ -30,7 +30,7 @@ public class DemoWorldTests
     }
 
     [HumansFact]
-    public async Task Ensure_creates_once_repairs_a_vanished_row_and_adopts_a_pending_one()
+    public async Task Ensure_RunTwice_CreatesOnce()
     {
         var repository = new MemoryLedger();
         var rows = new HashSet<Guid>();

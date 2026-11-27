@@ -137,7 +137,7 @@ public class StoreControllerTests(HumansTestDatabase database) : IntegrationTest
         {
             var auditLog = scope.ServiceProvider.GetRequiredService<IAuditLogService>();
             await auditLog.LogAsync(
-                new AuditActionDefinition("StoreProductPriceChanged"),
+                new AuditActionDefinition("StoreProductPriceChanged", AuditKept.Forever),
                 entityType: "StoreProduct",
                 entityId: productId,
                 description: marker,

@@ -14,7 +14,7 @@ account's ledger and the `/Stripe` pages over it (recon: find an order, match pa
 see reserve holds). Spec: [`features/stripe-mirror.md`](features/stripe-mirror.md).
 
 - **For:** the one place Humans talks to Stripe. Store gets hosted checkout and a verified
-  webhook; Tickets gets each payment's fee breakdown; the pretix and Hi.Events adapters read the
+  webhook; Tickets gets each payment's fee breakdown; the Box Office, pretix and Hi.Events adapters read the
   Stripe accounts those ticketing platforms charge into (ledger, fees, key check) for Tickets' reconciliation.
 - **Good looks like:** a thin, honest translator. Each call answers, returns `null` for a case
   it checked, or throws — never a silent failure, never a decision about what a payment means.
@@ -34,9 +34,9 @@ see reserve holds). Spec: [`features/stripe-mirror.md`](features/stripe-mirror.m
 - A **mirror account** is a `Stripe:MirrorAccounts` entry: a name, its `acct_` id, and a read key (its own
   through `KeyVariable`, or the org read key with `Stripe-Context`). Besides the nightly sweep, the
   **account reads** (`GetAccountLedgerAsync`, `GetAccountPaymentFeeAsync`, `FindAccountPaymentFeeAsync`,
-  `CheckAccountAsync`) read one by name, live: `Pretix` and `HiEvents` are the ticketing platforms'
-  accounts. A ledger refusal throws `InvalidOperationException`; a fee read never throws (unknown is null,
-  and logged), so a fee never holds up a paid order; the check never throws.
+  `CheckAccountAsync`) read one by name, live: `Tickets` serves Box Office, pretix and Hi.Events: all charge into that one account.
+  `CheckAccountAsync(includeCheckout: true)` also probes Checkout Sessions with `STRIPE_TICKETS_KEY`. A ledger refusal throws `InvalidOperationException`; a fee read never throws (unknown is null,
+  and logged), so a fee never holds up a paid order; checks propagate caller cancellation and turn vendor failures into findings.
 - A **Checkout Session** is a Stripe-hosted payment page created for one Store order.
   `humans_store_order_id` is stamped on both the session's and the PaymentIntent's
   metadata, which is how a payment is matched back to an order from the dashboard,
@@ -75,7 +75,7 @@ fee/payment-method fields on Tickets' `ticket_orders`, payment rows on Store's `
 
 | Variable | Account | Scopes used | Set where |
 |---|---|---|---|
-| `STRIPE_TICKETS_KEY` | Tickets | PaymentIntent read, BalanceTransaction read | QA, production |
+| `STRIPE_TICKETS_KEY` | Tickets | PaymentIntent, Charge and Dispute read, Checkout Session write, Refund write (Box Office) | QA, production |
 | `STRIPE_STORE_KEY` | Store | `checkout_session:write` (Write ⊇ Read, so it also lists) | QA, production |
 | `STRIPE_STORE_WEBHOOK_SECRET` | Store | — (signing secret) | QA, production; stamped in-memory in PR previews |
 | `STRIPE_STORE_WEBHOOK_REGISTRAR_KEY` | Store | `webhook_endpoint:read/write` | PR previews **only** |
@@ -108,7 +108,8 @@ integration uses — see [`memory/code/stripe-restricted-keys.md`](../../../../m
   (`StripeAccountLedger`, `StripeLedgerLine`, `StripeLedgerPayment`, `StripeLedgerPayout`, `StripeAccountCheck`) — verified by
   `StripeConnectorArchitectureTests.IStripeService_ExposesNoStripeSdkTypesOnItsPublicSurface`,
   which walks nested generics and arrays.
-- `Humans.Stripe` is the only production project with a `Stripe.net` package reference.
+- Box Office retains a Stripe.net client for its ticketing session/refund/webhook protocol. Its ledger, fee and account-check reads go through `IStripeService`.
+- Account ledger payment metadata combines PaymentIntent metadata with movement metadata; movement values take precedence. Tickets adapters share `PaymentLedgerEntry.KindOf` for reporting-category classification.
 - Everything but `Contracts/` and `Section` is `internal sealed` (HUM0034).
 - Webhook parsing rejects malformed JSON, unsupported payload shapes, missing event identity/type/data, and checkout events carrying a non-session object. These return null with a Warning, including when the signature is valid; diagnostics do not log payload contents. Signature verification still precedes deserialization, and unrelated well-formed event types remain ignorable.
 - Checkout Session creation is `[ExternalWrite]`; a state-changing caller detaches request

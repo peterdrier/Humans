@@ -117,7 +117,7 @@ All mutations route through `IVolunteerTrackingRepository`, and `VolunteerTracki
 
 ### VolunteerEventProfile
 
-Per-user shift-matching profile (1:1 with User) capturing `Skills`, `Quirks`, `Languages` (jsonb lists). Unique on `UserId`. The columns `DietaryPreference`, `Allergies`, `Intolerances`, `AllergyOtherText`, `IntoleranceOtherText`, `MedicalConditions` are unused (food answers live in Cantina, medical on `Profile`) and await a post-prod-soak drop.
+Per-user shift-matching profile (1:1 with User) capturing `Skills`, `Quirks`, `Languages` (jsonb lists). Unique on `UserId`. It holds no dietary or medical data: food answers live in Cantina, medical conditions on `Profile` (Users).
 
 **Table:** `shift_volunteer_event_profiles`
 

@@ -16,7 +16,7 @@ public class GuideShippedContentFilterTests
         TimeSpan.FromMilliseconds(250));
 
     [HumansFact]
-    public void Anonymous_ReceivesNoCoordinatorOrBoardHeading_AcrossTheWholeCorpus()
+    public void Apply_Anonymous_SeesNoRestrictedHeading()
     {
         var leaks = new List<string>();
 
@@ -40,7 +40,7 @@ public class GuideShippedContentFilterTests
     }
 
     [HumansFact]
-    public void Admin_ReceivesEveryFileWholeAndUnaltered()
+    public void Apply_Admin_ReceivesEveryFileWhole()
     {
         var context = new GuideRoleContext(
             IsTeamCoordinator: false,

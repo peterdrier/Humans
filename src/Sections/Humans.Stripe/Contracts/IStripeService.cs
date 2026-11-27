@@ -97,8 +97,13 @@ public interface IStripeService : IApplicationService
     Task<long?> FindAccountPaymentFeeAsync(
         string accountName, IReadOnlyDictionary<string, string> metadata, Instant createdSince, CancellationToken ct = default);
 
-    /// <summary>One finding per read scope <see cref="GetAccountLedgerAsync"/> needs on the named account. Never throws.</summary>
-    Task<IReadOnlyList<StripeAccountCheck>> CheckAccountAsync(string accountName, CancellationToken ct = default);
+    /// <summary>
+    /// One finding per read scope <see cref="GetAccountLedgerAsync"/> needs on the named account.
+    /// <paramref name="includeCheckout"/> also probes Checkout Sessions with the Tickets checkout key.
+    /// Caller cancellation propagates; vendor failures are findings.
+    /// </summary>
+    Task<IReadOnlyList<StripeAccountCheck>> CheckAccountAsync(
+        string accountName, CancellationToken ct = default, bool includeCheckout = false);
 }
 
 /// <summary>A Stripe account's movements and payouts for a period, all amounts in minor units.</summary>
@@ -113,7 +118,10 @@ public sealed record StripeLedgerLine(
     string Id, Instant CreatedAt, string ReportingCategory, long AmountMinor, long FeeMinor, string? Description,
     StripeLedgerPayment? Payment);
 
-/// <summary>A PaymentIntent's id, description and metadata: how a vendor names its own order on it.</summary>
+/// <summary>
+/// A PaymentIntent's id, description and metadata: how a vendor names its own order on it.
+/// Movement metadata overrides intent metadata where both name the same key.
+/// </summary>
 public sealed record StripeLedgerPayment(string PaymentIntentId, string? Description, IReadOnlyDictionary<string, string> Metadata);
 
 /// <summary>

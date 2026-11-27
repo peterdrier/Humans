@@ -9,7 +9,7 @@ namespace Humans.Testing.Tests;
 public class GlobalTimeoutDemoTest
 {
     [DebuggerOnlyFact(Timeout = 500)]
-    public async Task Cooperative_loop_exceeding_timeout_is_cancelled()
+    public async Task CooperativeLoop_ExceedsTimeout_IsCancelled()
     {
         // Timeout fires before the 5s delay, cancelling it; xUnit reports that as a timeout failure.
         var cancellationToken = TestContext.Current.CancellationToken;

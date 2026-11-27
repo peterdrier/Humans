@@ -27,11 +27,11 @@ public sealed class PretixStripeTests
         payments: [new { local_id = 1, state = "confirmed", amount = "1000.00", provider = "stripe", payment_date = "2027-01-02T09:59:00Z", details }]);
 
     [HumansFact]
-    public async Task Ledger_finds_each_payment_s_pretix_order_and_its_Humans_order()
+    public async Task Ledger_EachPayment_NamesHumansOrder()
     {
         var paid = Guid.NewGuid();
         var refunded = Guid.NewGuid();
-        _stripe.GetAccountLedgerAsync("Pretix", Now - Duration.FromDays(1), Now, Arg.Any<CancellationToken>()).Returns(new StripeAccountLedger(
+        _stripe.GetAccountLedgerAsync("Tickets", Now - Duration.FromDays(1), Now, Arg.Any<CancellationToken>()).Returns(new StripeAccountLedger(
             [
                 Line("txn_c", "charge", 100000, 1440, "pi_new", $"NOWHERE2027-{Code}", Code),
                 Line("txn_r", "refund", -22500, 0, "pi_old", "NOWHERE2027-OLDCODE", "OLDCODE"),
@@ -55,23 +55,23 @@ public sealed class PretixStripeTests
     }
 
     [HumansFact]
-    public async Task Without_the_Stripe_account_there_is_no_ledger_and_Check_says_so()
+    public async Task Ledger_NoStripeAccount_IsEmpty()
     {
-        _stripe.CheckAccountAsync("Pretix", Arg.Any<CancellationToken>())
-            .Returns([new StripeAccountCheck(false, "Stripe:MirrorAccounts has no Pretix entry")]);
+        _stripe.CheckAccountAsync("Tickets", Arg.Any<CancellationToken>())
+            .Returns([new StripeAccountCheck(false, "Stripe:MirrorAccounts has no Tickets entry")]);
         var pretix = new FakePretix()
             .On("GET", "/api/v1/organizers/nobodies/events/", HttpStatusCode.OK, new { results = Array.Empty<object>() });
         var platform = Create(pretix, stripe: _stripe);
 
         (await platform.GetPaymentLedgerAsync(Now - Duration.FromDays(1), Now, Ct)).Should().BeNull();
-        (await platform.CheckAsync(null, Ct)).Should().Contain(new PlatformFinding(false, "Stripe:MirrorAccounts has no Pretix entry"));
+        (await platform.CheckAsync(null, Ct)).Should().Contain(new PlatformFinding(false, "Stripe:MirrorAccounts has no Tickets entry"));
     }
 
     [HumansFact]
-    public async Task A_paid_order_reports_the_fee_Stripe_kept_on_its_PaymentIntent()
+    public async Task Status_PaidOrder_ReportsStripeFee()
     {
         var pretix = new FakePretix().On("GET", $"{Api}orders/{Code}/", HttpStatusCode.OK, PaidWithStripe(new { id = "pi_1", payment_method = "pm_1" }));
-        _stripe.GetAccountPaymentFeeAsync("Pretix", "pi_1", Arg.Any<CancellationToken>()).Returns(1440L);
+        _stripe.GetAccountPaymentFeeAsync("Tickets", "pi_1", Arg.Any<CancellationToken>()).Returns(1440L);
 
         var status = await Create(pretix, stripe: _stripe).GetStatusAsync($"nowhere2027/{Code}", Ct);
 
@@ -80,7 +80,7 @@ public sealed class PretixStripeTests
     }
 
     [HumansFact]
-    public async Task A_payment_without_a_PaymentIntent_never_asks_Stripe()
+    public async Task Status_NoPaymentIntent_SkipsStripe()
     {
         var pretix = new FakePretix().On("GET", $"{Api}orders/{Code}/", HttpStatusCode.OK, PaidWithStripe(new { }));
 

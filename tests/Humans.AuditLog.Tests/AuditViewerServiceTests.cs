@@ -13,7 +13,7 @@ public class AuditViewerServiceTests
     private static readonly AuditActionRegistry Registry = new([new TestActions()]);
 
     [HumansFact]
-    public async Task GetForUserAsync_ResolvesActorAndSubjectDisplayNames()
+    public async Task GetForUserAsync_ResolvesDisplayNames()
     {
         var viewer = Guid.NewGuid();
         var actor = Guid.NewGuid();
@@ -62,7 +62,7 @@ public class AuditViewerServiceTests
     }
 
     [HumansFact]
-    public async Task GetForUserAsync_RoundTripsToRenderPlainText_WithViewerSubstitution()
+    public async Task GetForUserAsync_ViewerIsActor_RendersYou()
     {
         var viewer = Guid.NewGuid();
         var actor = Guid.NewGuid();
@@ -91,7 +91,7 @@ public class AuditViewerServiceTests
     }
 
     [HumansFact]
-    public async Task GetForUserAsync_ResolvesTeamNameAndSlugFromTheTeamContributor()
+    public async Task GetForUserAsync_TeamRow_ResolvesTeamName()
     {
         var viewer = Guid.NewGuid();
         var teamId = Guid.NewGuid();
@@ -124,7 +124,7 @@ public class AuditViewerServiceTests
     }
 
     [HumansFact]
-    public async Task GetPageAsync_ResolvesNamesAndRewrapsIntoEvents()
+    public async Task GetPageAsync_ResolvesNames()
     {
         var actor = Guid.NewGuid();
         var entry = MakeEntry(
@@ -153,7 +153,7 @@ public class AuditViewerServiceTests
     public async Task UndeclaredStoredName_StillRendersAsABareAction()
     {
         var entry = new AuditLogEntrySnapshot(
-            Guid.NewGuid(), "RetiredLongAgo", "User", Guid.NewGuid(), "kept", FixedAt, null, null, null);
+            Guid.NewGuid(), "RetiredLongAgo", "User", Guid.NewGuid(), "kept", FixedAt, null, null, null, AuditKept.Forever);
         var auditLog = Substitute.For<IAuditLogReader>();
         auditLog.GetByUserAsync(Arg.Any<Guid>(), Arg.Any<int>(), Arg.Any<CancellationToken>())
             .Returns([entry]);
@@ -162,7 +162,7 @@ public class AuditViewerServiceTests
 
         var events = await service.GetForUserAsync(Guid.NewGuid(), 10, Xunit.TestContext.Current.CancellationToken);
 
-        events.Single().Action.Should().Be(new AuditActionDefinition("RetiredLongAgo"));
+        events.Single().Action.Should().Be(new AuditActionDefinition("RetiredLongAgo", AuditKept.Forever));
     }
 
     private static IEntityNameContributor StubContributor(
@@ -192,5 +192,6 @@ public class AuditViewerServiceTests
             FixedAt,
             actorId,
             relatedEntityId,
-            relatedEntityType);
+            relatedEntityType,
+            action.Kept);
 }

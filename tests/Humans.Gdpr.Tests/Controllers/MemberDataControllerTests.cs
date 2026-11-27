@@ -38,7 +38,7 @@ public class MemberDataControllerTests
     }
 
     [HumansFact]
-    public async Task Deletion_stops_before_mutation_when_account_lookup_is_cancelled()
+    public async Task Deletion_LookupCancelled_ChangesNothing()
     {
         var ctrl = Create();
         using var request = new CancellationTokenSource();
@@ -56,7 +56,7 @@ public class MemberDataControllerTests
     }
 
     [HumansFact]
-    public async Task DownloadData_returns_the_json_export_of_the_signed_in_member_only()
+    public async Task DownloadData_SignedIn_ReturnsOwnExport()
     {
         _gdpr.ExportForUserAsync(_userId, Arg.Any<CancellationToken>())
             .Returns(new GdprExport("2026-10-03T00:00:00Z", _userId, [], new Dictionary<string, object?>(StringComparer.Ordinal)));
@@ -70,7 +70,7 @@ public class MemberDataControllerTests
     }
 
     [HumansFact]
-    public async Task DownloadData_without_a_signed_in_member_is_not_found_and_exports_nothing()
+    public async Task DownloadData_NoSignedInMember_IsNotFound()
     {
         var result = await Create(signedIn: false).DownloadData(TestContext.Current.CancellationToken);
 
@@ -79,7 +79,7 @@ public class MemberDataControllerTests
     }
 
     [HumansFact]
-    public async Task DownloadData_ExportFailure_ShowsErrorAndReturnsToPrivacy()
+    public async Task DownloadData_ExportFails_ShowsError()
     {
         _gdpr.ExportForUserAsync(_userId, Arg.Any<CancellationToken>())
             .Returns(Task.FromException<GdprExport>(new InvalidOperationException("contributor failed")));
@@ -108,7 +108,7 @@ public class MemberDataControllerTests
     }
 
     [HumansFact]
-    public async Task RequestDeletion_success_flashes_the_effective_date_and_returns_to_privacy()
+    public async Task RequestDeletion_Success_ShowsEffectiveDate()
     {
         _deletion.RequestDeletionAsync(_userId, Arg.Any<CancellationToken>())
             .Returns(new DeletionRequestResult(true, EffectiveDeletionDate: Instant.FromUtc(2026, 11, 2, 0, 0)));
@@ -134,7 +134,7 @@ public class MemberDataControllerTests
     }
 
     [HumansFact]
-    public async Task RequestDeletion_held_for_a_ticket_flashes_the_hold()
+    public async Task RequestDeletion_HeldForTicket_ShowsHold()
     {
         _deletion.RequestDeletionAsync(_userId, Arg.Any<CancellationToken>())
             .Returns(new DeletionRequestResult(true, EffectiveDeletionDate: Instant.FromUtc(2026, 11, 2, 0, 0), IsHeldForTicket: true));
@@ -148,7 +148,7 @@ public class MemberDataControllerTests
     [HumansTheory]
     [InlineData(false)]
     [InlineData(true)]
-    public async Task RequestDeletion_any_other_failure_flashes_an_error_and_returns_to_privacy(bool throws)
+    public async Task RequestDeletion_OtherFailure_ShowsError(bool throws)
     {
         if (throws)
             _deletion.RequestDeletionAsync(_userId, Arg.Any<CancellationToken>())
@@ -165,7 +165,7 @@ public class MemberDataControllerTests
     }
 
     [HumansFact]
-    public async Task RequestDeletion_without_a_signed_in_member_is_not_found_and_requests_nothing()
+    public async Task RequestDeletion_NoSignedInMember_IsNotFound()
     {
         var result = await Create(signedIn: false).RequestDeletion();
 
@@ -174,7 +174,7 @@ public class MemberDataControllerTests
     }
 
     [HumansFact]
-    public void Every_action_requires_sign_in_and_the_deletion_post_is_antiforgery_protected()
+    public void Actions_RequireSignIn()
     {
         typeof(MemberDataController).Should().BeDecoratedWith<AuthorizeAttribute>();
         typeof(MemberDataController).GetMethod(nameof(MemberDataController.RequestDeletion))!

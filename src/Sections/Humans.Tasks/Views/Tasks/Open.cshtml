@@ -1,25 +1,8 @@
 @model OpenBoardViewModel
-@using Microsoft.AspNetCore.Html
 
 @{
     ViewData["Title"] = Localizer["Tasks_Open_Title"].Value;
-    var returnUrl = Url.Action("Open", "Tasks")!;
-    Func<TaskInfo, IHtmlContent> titleCell = @<text><a href="@Url.Action("Details", "Tasks", new { id = item.Id })">@item.Title</a>@if (item.NeedsApproval) { <span class="text-muted small ms-2"><i class="fa-solid fa-user-check" aria-hidden="true"></i> @Localizer["Tasks_Open_NeedsApproval"]</span> }@if (item.IsWaiting) { <span class="text-muted small ms-2"><i class="fa-solid fa-hourglass-half" aria-hidden="true"></i> @Localizer["Tasks_WaitingOn"]</span> }</text>;
-    Func<TaskInfo, IHtmlContent> priorityCell = @<text>@if (item.Priority != SlotPriority.None) { <status-badge value="@item.Priority" /> }</text>;
-    Func<TaskInfo, IHtmlContent> claimCell = @<text>@if (Model.Places.TryGetValue(item.Id, out var place))
-        {
-            <partial name="_ClaimButton" model="new ClaimButtonModel(item, returnUrl, Small: true, Primary: false, place)" />
-        }</text>;
-    var table = TableModel.For(Model.Tasks)
-        .Template(Localizer["Tasks_Col_Task"].Value, titleCell, null, t => t.Title)
-        .Link(Localizer["Tasks_Col_Team"].Value, t => t.TeamName,
-            t => t.TeamSlug.Length > 0 ? Url.Action("Team", "Tasks", new { slug = t.TeamSlug }) : null, c => c.SelectFilter())
-        .Template(Localizer["Tasks_Col_Priority"].Value, priorityCell, c => c.SelectFilter(), t => TaskPriorityOrder.Rank(t.Priority))
-        .Column(Localizer["Tasks_Col_Due"].Value, t => t.Due?.Resolved, c => c.Date())
-        .Column(Localizer["Tasks_Col_Free"].Value, t => Localizer["Tasks_Task_SlotsOf", t.OpenSlots, t.SlotCount].Value, c => c.End().NoSort().Css("text-nowrap"))
-        .Template(Localizer["Tasks_Col_Join"].Value, claimCell, c => c.End().NoSort())
-        .Empty(Localizer["Tasks_Open_Empty"].Value)
-        .Build();
+    var here = Url.Action("Open", "Tasks") + Context.Request.QueryString;
 }
 
 @section Crumbs {
@@ -37,4 +20,5 @@
     <partial name="_StatTile" model='new StatTileViewModel(Localizer["Tasks_Open_Critical"].Value, Model.CriticalCount.ToString(), Severity: Model.CriticalCount > 0 ? Humans.Base.Interfaces.TileSeverity.Critical : Humans.Base.Interfaces.TileSeverity.Normal)' />
 </div>
 
-<partial name="_Table" model="table" />
+<partial name="_Filter" model="new TaskFilterViewModel(Model.Filter, null, Model.Teams)" />
+<partial name="_TaskRows" model='new TaskRowsModel(Model.Tasks, ShowTeam: true, ShowStatus: false, Model.Places, Model.Blockers, here, Localizer["Tasks_Open_Empty"].Value)' />
