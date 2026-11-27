@@ -21,7 +21,8 @@ public sealed record EventSettingsInfo(
     Instant? EarlyEntryClose,
     EventSettingsStatus Status = EventSettingsStatus.Active,
     int? EarlyEntryStartOffset = null,
-    bool IsOffSeason = false) : IEventSettingsInfo
+    bool IsOffSeason = false,
+    IReadOnlyList<string>? SwitchedOffSections = null) : IEventSettingsInfo
 {
     /// <inheritdoc cref="IEventSettingsInfo.TimeZone" />
     public DateTimeZone TimeZone => ((IEventSettingsInfo)this).TimeZone;

@@ -2,6 +2,8 @@ using Humans.Notifications.Data;
 using Humans.Notifications.Services;
 using Humans.Base.Attributes;
 using Humans.Base.Controllers;
+using Humans.Base.Hosting;
+using Humans.Base.Interfaces;
 using Humans.Notifications.Models;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -146,7 +148,7 @@ internal sealed class NotificationsController(
         Request.Headers.XRequestedWith == "XMLHttpRequest" ? Ok() : RedirectToAction(nameof(Index));
 
     [HttpGet("ClickThrough/{id}")]
-    public async Task<IActionResult> ClickThrough(Guid id)
+    public async Task<IActionResult> ClickThrough(Guid id, [FromServices] SectionRoutes sectionRoutes)
     {
         var user = await GetCurrentUserInfoAsync(HttpContext.RequestAborted);
         if (user is null) return Unauthorized();
@@ -155,9 +157,14 @@ internal sealed class NotificationsController(
 
         if (url is null) return NotFound();
 
-        if (Url.IsLocalUrl(url))
-            return LocalRedirect(url);
+        // A notification sent before its section was switched off points at a page that now answers 404.
+        if (!Url.IsLocalUrl(url))
+            return RedirectToAction(nameof(Index));
 
-        return RedirectToAction(nameof(Index));
+        var section = sectionRoutes.SectionOfUrl(url, Request.PathBase);
+        if (section is not null && HttpContext.SwitchedOffSections().Contains(section))
+            return RedirectToAction(nameof(Index));
+
+        return LocalRedirect(url);
     }
 }

@@ -53,7 +53,7 @@
     <div class="col-md-4">
         <div class="card h-100"><div class="card-body">
             <div class="text-muted small text-uppercase">Holded @PleoBooking.PleoTreasury</div>
-            <div class="fs-3 fw-bold"><a href="/Holded/Accounts/@PleoBooking.PleoTreasury" class="text-reset">@Model.Holded.ToEuro()</a></div>
+            <div class="fs-3 fw-bold"><a href="/Holded/Accounts/@PleoBooking.PleoTreasury" class="text-reset" keep-text>@Model.Holded.ToEuro()</a></div>
         </div></div>
     </div>
     <div class="col-md-4">
@@ -73,12 +73,12 @@
             @foreach (var t in Model.View.TopUps)
             {
                 <tr class="@(t.HoldedEntry is null ? "table-danger" : "")">
-                    <td class="ps-3"><a href="/Pleo/Entries/@t.PleoId">@t.Date.ToDate()</a></td>
+                    <td class="ps-3"><a href="/Pleo/Entries/@t.PleoId" keep-text>@t.Date.ToDate()</a></td>
                     <td class="text-end">@t.Amount.ToEuro()</td>
                     <td class="pe-3">
                         @if (t.HoldedEntry is { } n)
                         {
-                            <span class="text-success">✓</span> <a href="/Holded/Entries/@n">entry @n</a>
+                            <span class="text-success">✓</span> <a href="/Holded/Entries/@n" keep-text>entry @n</a>
                         }
                         else
                         {
@@ -174,7 +174,7 @@ else if (Model.NotConfigured is { } why)
                     @foreach (var dup in Model.View.Duplicates)
                     {
                         <li>
-                            <a href="/Pleo/Entries/@dup.PleoId">Pleo @dup.PleoId</a>:
+                            <a href="/Pleo/Entries/@dup.PleoId" keep-text>Pleo @dup.PleoId</a>:
                             @foreach (var url in dup.HoldedUrls)
                             {
                                 <a href="@url" target="_blank" rel="noopener" class="me-1">purchase</a>
@@ -282,7 +282,7 @@ else if (Model.NotConfigured is { } why)
                     @foreach (var a in Model.ReadyByAccount.OrderBy(account => account.AccountNum))
                     {
                         <tr>
-                            <td class="ps-3"><a href="/Holded/Accounts/@a.AccountNum">@a.AccountNum</a> <span class="text-muted">@a.Name</span></td>
+                            <td class="ps-3"><a href="/Holded/Accounts/@a.AccountNum" keep-text>@a.AccountNum</a> <span class="text-muted">@a.Name</span></td>
                             <td class="text-end">@a.Count</td>
                             <td class="text-end pe-3">@a.Total.ToEuro()</td>
                         </tr>
@@ -336,7 +336,7 @@ else if (Model.NotConfigured is { } why)
                         <td class="ps-3"><a href="/Pleo/Entries/@w.Row.Entry.Id">@w.Row.Date.ToDate()</a></td>
                         <td>@w.Row.Entry.MerchantName</td>
                         <td class="text-end">@Signed(w.Row.Amount)</td>
-                        <td><a href="@w.Row.Purchase!.HoldedUrl" target="_blank" rel="noopener">@w.Row.Purchase.Number</a></td>
+                        <td><a href="@w.Row.Purchase!.HoldedUrl" target="_blank" rel="noopener">@w.Row.Purchase!.Number</a></td>
                         <td class="text-end pe-3">@w.ReceiptIds.Count</td>
                     </tr>
                 }

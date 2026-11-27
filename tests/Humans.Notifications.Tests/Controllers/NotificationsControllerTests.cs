@@ -95,7 +95,8 @@ public sealed class NotificationsControllerTests
             InboxAction.MarkAllRead => controller.MarkAllRead(),
             InboxAction.BulkResolve => controller.BulkResolve([id]),
             InboxAction.BulkDismiss => controller.BulkDismiss([id]),
-            InboxAction.ClickThrough => controller.ClickThrough(id),
+            InboxAction.ClickThrough => controller.ClickThrough(id,
+                new Humans.Base.Hosting.SectionRoutes(new Microsoft.AspNetCore.Routing.DefaultEndpointDataSource())),
             _ => throw new ArgumentOutOfRangeException(nameof(action), action, null)
         };
         if (account == AccountScenario.Cancelled)

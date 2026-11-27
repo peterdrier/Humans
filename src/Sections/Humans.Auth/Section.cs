@@ -33,6 +33,8 @@ public sealed class Section :
     ISectionRoles,
     IUserPart
 {
+    public bool CanBeSwitchedOff => false;
+
     IReadOnlyList<AccessMatrixData> ISectionAccessMatrix.AccessMatrices =>
     [
         new()

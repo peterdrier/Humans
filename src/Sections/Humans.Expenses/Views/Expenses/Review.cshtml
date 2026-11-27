@@ -56,7 +56,7 @@ else
     Func<ExpenseReportDto, IHtmlContent> creditorCell =
         @<text>@if (item.HoldedSupplierAccountNum is { } accountNum)
         {
-            <a href="/Finance/Creditors/@accountNum">@accountNum</a>
+            <a href="/Finance/Creditors/@accountNum" keep-text>@accountNum</a>
         }</text>;
     @* One table per status rather than one status column: the queue is read as three separate
        piles of work, and grouping leaves each pile independently sortable and filterable. *@

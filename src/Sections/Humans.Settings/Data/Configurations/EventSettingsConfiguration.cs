@@ -40,6 +40,15 @@ internal sealed class EventSettingsConfiguration : IEntityTypeConfiguration<Even
                 v => v == null ? null : JsonSerializer.Deserialize<Dictionary<int, int>>(v, (JsonSerializerOptions?)null),
                 nullableDictComparer);
 
+        builder.Property(e => e.SwitchedOffSections).HasColumnType("jsonb")
+            .HasConversion(
+                v => v == null ? null : JsonSerializer.Serialize(v, (JsonSerializerOptions?)null),
+                v => v == null ? null : JsonSerializer.Deserialize<List<string>>(v, (JsonSerializerOptions?)null),
+                new ValueComparer<List<string>?>(
+                    (a, b) => a == null || b == null ? a == b : a.SequenceEqual(b),
+                    v => v == null ? 0 : v.Aggregate(0, (hash, name) => HashCode.Combine(hash, name)),
+                    v => v == null ? null : new List<string>(v)));
+
         builder.HasIndex(e => e.Status);
     }
 

@@ -43,7 +43,7 @@
         .Build();
 
     Func<Humans.Expenses.Contracts.ExpenseReportDto, IHtmlContent> reportCell =
-        @<text><a href="/Expenses/@item.Id">@item.Id.ToString()[..8]…</a></text>;
+        @<text><a href="/Expenses/@item.Id" keep-text>@item.Id.ToString()[..8]…</a></text>;
     Func<Humans.Expenses.Contracts.ExpenseReportDto, IHtmlContent> payableCell = @<text>@item.Payable.ToEuro()</text>;
     var reportsTable = TableModel.For(Model.ExpenseReports)
         .Template("Report", reportCell, o => o.Css("text-nowrap"))

@@ -21,6 +21,7 @@ public sealed class SectionNavViewComponent(
     public async Task<IViewComponentResult> InvokeAsync()
     {
         var items = contributors
+            .SwitchedOn(HttpContext)
             .SelectMany(c => c.Items())
             .OrderBy(i => i.Weight)
             .ToList();

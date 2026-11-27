@@ -1,8 +1,10 @@
 using Humans.Agent.Services;
+using Humans.Base.Attributes;
 using Humans.Base.Interfaces;
 
 namespace Humans.Agent.Jobs;
 
+[StaysOnWhenSectionIsOff]
 internal sealed class AgentConversationRetentionJob(
     IAgentService retention,
     ILogger<AgentConversationRetentionJob> logger) : IRecurringJob

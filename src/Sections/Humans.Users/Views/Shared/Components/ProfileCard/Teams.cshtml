@@ -11,7 +11,7 @@
             @foreach (var team in Model.Teams)
             {
                 <li class="list-group-item py-1 d-flex justify-content-between align-items-center">
-                    <a asp-controller="Team" asp-action="Details" asp-route-slug="@team.TeamSlug">@team.TeamName</a>
+                    <a asp-controller="Team" asp-action="Details" asp-route-slug="@team.TeamSlug" keep-text>@team.TeamName</a>
                     @if (team.IsCoordinator)
                     {
                         @await Html.PartialAsync("_RoleBadge", TeamMemberRole.Coordinator)

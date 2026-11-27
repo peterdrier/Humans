@@ -313,7 +313,7 @@
                     <hr />
 
                     @* Dietary preference, allergies and intolerances are Cantina's, edited on /Cantina/Dietary. *@
-                    <div class="mb-3">
+                    <div class="mb-3" hide-with-links>
                         <a asp-controller="CantinaProfile" asp-action="Dietary" class="btn btn-outline-primary btn-sm"><i class="fa-solid fa-utensils me-1"></i> @Localizer["Users_Profile_DietaryLink"]</a>
                     </div>
                 </div>
@@ -384,7 +384,7 @@
                     </div>
 
                     <hr />
-                    <div class="mb-3">
+                    <div class="mb-3" hide-with-links>
                         <h6>@Localizer["Users_ProfileEdit_ShiftPreferences"]</h6>
                         <p class="text-muted small mb-2">@Localizer["Users_ProfileEdit_ShiftPreferencesHelp"] <i class="fa-solid fa-star text-warning"></i></p>
                         <a asp-controller="ShiftProfile" asp-action="ShiftInfo" class="btn btn-outline-primary btn-sm">@Localizer["Users_Profile_ShiftInfo"]</a>

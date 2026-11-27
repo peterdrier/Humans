@@ -20,7 +20,7 @@ public sealed class UserPartsViewComponent(
     public IViewComponentResult Invoke(string slot, Guid userId, ProfileCardViewMode viewMode)
     {
         var parts = new List<UserPart>();
-        foreach (var contributor in contributors)
+        foreach (var contributor in contributors.SwitchedOn(HttpContext))
         {
             try
             {

@@ -36,6 +36,14 @@ public class SectionCatalogTests
     }
 
     [HumansFact]
+    public void TryResolve_FormerName_AnswersTheCurrentName()
+    {
+        // Production stored "GoogleIntegration" in an event's switched-off list before the section became Google.
+        Build().TryResolve("GoogleIntegration", out var current).Should().BeTrue();
+        current.Should().Be("Google");
+    }
+
+    [HumansFact]
     public void A_Table_Owning_Section_Reports_Its_Context()
     {
         Build().Sections.Single(s => string.Equals(s.Name, "Issues", StringComparison.Ordinal))

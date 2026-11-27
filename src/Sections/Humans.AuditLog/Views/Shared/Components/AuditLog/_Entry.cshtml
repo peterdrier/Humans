@@ -38,7 +38,7 @@
         @if (Model.TargetTeamId.HasValue && !string.IsNullOrEmpty(Model.TargetTeamName))
         {
             <span class="text-muted">@Localizer["AuditLog_InTeam"]</span>
-            <a asp-controller="Team" asp-action="Details" asp-route-slug="@Model.TargetTeamSlug" class="text-decoration-none">@Model.TargetTeamName</a>
+            <a asp-controller="Team" asp-action="Details" asp-route-slug="@Model.TargetTeamSlug" class="text-decoration-none" keep-text>@Model.TargetTeamName</a>
         }
 
         @* Tail descriptions (ShiftSignup*); sentence-style (Team*, Role*, Member*) would be redundant. *@
@@ -68,7 +68,7 @@
         @if (Model.TargetTeamId.HasValue && !string.IsNullOrEmpty(Model.TargetTeamName))
         {
             <span class="text-muted">@Localizer["AuditLog_InTeam"]</span>
-            <a asp-controller="Team" asp-action="Details" asp-route-slug="@Model.TargetTeamSlug" class="text-decoration-none">@Model.TargetTeamName</a>
+            <a asp-controller="Team" asp-action="Details" asp-route-slug="@Model.TargetTeamSlug" class="text-decoration-none" keep-text>@Model.TargetTeamName</a>
         }
         @if (!string.IsNullOrWhiteSpace(Model.Description))
         {

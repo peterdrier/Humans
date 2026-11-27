@@ -19,6 +19,8 @@ public sealed class Section :
     IIssueQueueOwner,
     ISectionChrome
 {
+    public bool CanBeSwitchedOff => false;
+
     public void Register(IServiceCollection services, IConfiguration configuration)
     {
         services.AddSingleton<IAuditActionContributor, OnboardingAuditActions>();

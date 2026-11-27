@@ -1,11 +1,13 @@
 using Hangfire;
 using NodaTime;
+using Humans.Base.Attributes;
 using Humans.Base.Interfaces;
 using Humans.Consent.Services;
 
 namespace Humans.Consent.Jobs;
 
 [DisableConcurrentExecution(timeoutInSeconds: 300)]
+[StaysOnWhenSectionIsOff]
 internal sealed class SyncLegalDocumentsJob(
     ILegalDocumentSyncRunner runner,
     IHumansMetrics metrics,

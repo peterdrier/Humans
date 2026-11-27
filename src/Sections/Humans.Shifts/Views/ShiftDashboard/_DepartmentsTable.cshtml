@@ -40,7 +40,7 @@
                             @if (!string.IsNullOrEmpty(row.DepartmentSlug))
                             {
                                 <a asp-controller="Team" asp-action="Details" asp-route-slug="@row.DepartmentSlug"
-                                   data-dashboard-team-link="true">@row.DepartmentName</a>
+                                   data-dashboard-team-link="true" keep-text>@row.DepartmentName</a>
                             }
                             else
                             {
@@ -82,7 +82,7 @@
                                                     }
                                                     @if (!string.IsNullOrEmpty(sub.Slug))
                                                     {
-                                                        <a asp-controller="Team" asp-action="Details" asp-route-slug="@sub.Slug">@sub.Name</a>
+                                                        <a asp-controller="Team" asp-action="Details" asp-route-slug="@sub.Slug" keep-text>@sub.Name</a>
                                                     }
                                                     else
                                                     {
@@ -144,7 +144,7 @@
                         <td>
                             @if (!string.IsNullOrEmpty(row.DepartmentSlug))
                             {
-                                <a asp-controller="Team" asp-action="Details" asp-route-slug="@row.DepartmentSlug">@row.DepartmentName</a>
+                                <a asp-controller="Team" asp-action="Details" asp-route-slug="@row.DepartmentSlug" keep-text>@row.DepartmentName</a>
                             }
                             else
                             {

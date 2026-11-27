@@ -88,6 +88,7 @@ builder.Services.AddSingleton<GateSignInThrottle>();
 builder.Services.AddSingleton<SignInMethodCounter>();
 var shellChrome = new Humans.Web.ShellChrome();
 builder.Services.AddSingleton<ISectionChrome>(shellChrome);
+builder.Services.AddSingleton<Humans.Base.Hosting.SectionRoutes>();
 
 builder.Services.ConfigureHttpJsonOptions(options =>
 {
@@ -178,6 +179,8 @@ var hangfireServerEnabled = builder.Configuration.GetSettingValue(
     configRegistry, "Hangfire:ServerEnabled", "Hangfire", defaultValue: true);
 if (hangfireServerEnabled)
 {
+    // Ahead of the server, so a switched-off section's jobs are unscheduled before the first tick.
+    builder.Services.AddHostedService<SwitchedOffSectionJobs>();
     builder.Services.AddHangfireServer();
 }
 
@@ -387,6 +390,7 @@ var mvcBuilder = builder.Services.AddControllersWithViews(options =>
     {
         // Name-gate runs before the membership gate: a fresh OAuth or imported account with a blank BurnerName goes
         // to the name form before MembershipRequiredFilter routes it by state.
+        options.Filters.Add<Humans.Web.Filters.SectionSwitchFilter>();
         options.Filters.Add<NameRequiredFilter>();
         options.Filters.Add<MembershipRequiredFilter>();
         options.Filters.Add<Humans.Web.Filters.AuthorizationPillFilter>();

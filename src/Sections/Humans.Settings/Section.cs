@@ -18,8 +18,14 @@ namespace Humans.Settings;
 
 public sealed class Section : ISection, ISectionAdminNav, ISectionChrome, ISectionSettings, ISectionJobs
 {
+    public bool CanBeSwitchedOff => false;
+
     public void Register(IServiceCollection services, IConfiguration configuration)
     {
+        services.AddSingleton<SectionSwitches>();
+        services.AddSingleton<ISectionSwitches>(sp => sp.GetRequiredService<SectionSwitches>());
+        services.AddSingleton<IEventSettingsChangeListener>(sp => sp.GetRequiredService<SectionSwitches>());
+
         services.AddSingleton<IAuditActionContributor, SettingsAuditActions>();
         // Sentinel stays the pre-rename "system_settings": the history table was renamed too, so an existing database
         // reads an empty history. The sentinel must name a table that exists before this section's pending migrations.

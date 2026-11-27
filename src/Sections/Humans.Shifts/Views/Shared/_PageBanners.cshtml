@@ -1,6 +1,7 @@
 @model Guid
+@using Humans.Base.Interfaces
 @inject IEnumerable<IShiftsPageBanner> Banners
-@foreach (var banner in Banners)
+@foreach (var banner in Banners.SwitchedOn(Context))
 {
     @await Component.InvokeAsync(banner.Banner, new ShiftsPageBannerArgs(Model))
 }

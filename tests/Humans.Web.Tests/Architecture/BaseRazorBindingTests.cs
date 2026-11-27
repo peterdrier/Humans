@@ -28,6 +28,8 @@ public class BaseRazorBindingTests
         "<markdown-editor",
         "<page-header",
         "authorize-policy=",
+        " hide-with-links",
+        " keep-text",
     ];
 
     [HumansFact]

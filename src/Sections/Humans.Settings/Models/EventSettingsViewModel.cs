@@ -41,6 +41,9 @@ internal sealed class EventSettingsViewModel
     [BindRequired]
     public bool IsOffSeason { get; set; }
 
+    /// <summary>Not <c>BindRequired</c>: with no box ticked the browser posts nothing, which means none.</summary>
+    public List<string> SwitchedOffSections { get; set; } = [];
+
     /// <summary>Maps to Active/Inactive only; this form never withdraws a cycle.</summary>
     [BindRequired]
     public bool IsActive { get; set; }
@@ -74,6 +77,7 @@ internal static class EventSettingsFormMapper
         IsActive = src.Status == EventSettingsStatus.Active,
         EarlyEntryStartOffset = src.EarlyEntryStartOffset,
         IsOffSeason = src.IsOffSeason,
+        SwitchedOffSections = [.. src.SwitchedOffSections ?? []],
     };
 
     /// <summary>
@@ -149,7 +153,8 @@ internal static class EventSettingsFormMapper
                     ? EventSettingsStatus.Active
                     : EventSettingsStatus.Inactive,
                 EarlyEntryStartOffset: model.EarlyEntryStartOffset,
-                IsOffSeason: model.IsOffSeason),
+                IsOffSeason: model.IsOffSeason,
+                SwitchedOffSections: [.. model.SwitchedOffSections.Distinct(StringComparer.Ordinal).Order(StringComparer.Ordinal)]),
             []);
     }
 

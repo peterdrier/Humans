@@ -106,6 +106,7 @@ internal sealed class Repository(IDbContextFactory<SettingsDbContext> factory)
             existing.EarlyEntryClose = settings.EarlyEntryClose;
             existing.EarlyEntryStartOffset = settings.EarlyEntryStartOffset;
             existing.IsOffSeason = settings.IsOffSeason;
+            existing.SwitchedOffSections = settings.SwitchedOffSections;
             existing.Status = settings.Status;
             existing.UpdatedAt = now;
         }

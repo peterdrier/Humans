@@ -9,7 +9,7 @@
         (@(Model.LastSyncAt is { } at ? at.ToDateTime() : "never")). Notes are read one document at a time, up to
         50 a sync, newest first; "—" means not read yet. Which budget category a document counts toward is
         Finance's call, shown on the budget year and the
-        <a asp-controller="Finance" asp-action="HoldedUnmatched">unmatched documents</a> page.
+        <a asp-controller="Finance" asp-action="HoldedUnmatched" keep-text>unmatched documents</a> page.
     </page-header-subtitle>
 </page-header>
 

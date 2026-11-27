@@ -11,7 +11,8 @@ public sealed class SettingsTabsViewComponent(
 {
     public async Task<IViewComponentResult> InvokeAsync()
     {
-        var tabs = await SettingsTabComposition.ComposeAsync(contributors, authorization, HttpContext.User);
+        var tabs = await SettingsTabComposition.ComposeAsync(
+            Humans.Base.Interfaces.SectionSwitchboard.SwitchedOn(contributors, HttpContext), authorization, HttpContext.User);
         return View(tabs);
     }
 }

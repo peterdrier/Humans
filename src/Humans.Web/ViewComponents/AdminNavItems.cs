@@ -1,4 +1,4 @@
-using System.Security.Claims;
+using Humans.Base.Hosting;
 using Humans.Base.Interfaces;
 using Humans.Base.ViewComponents;
 using Microsoft.AspNetCore.Authorization;
@@ -31,7 +31,7 @@ internal static class AdminNavItems
         if (items.TryGetValue(RequestKey, out var cached) && cached is IReadOnlyList<AdminSidebarGroupViewModel> known)
             return known;
 
-        var groups = AdminNavComposition.Compose(navContributors);
+        var groups = AdminNavComposition.Compose(navContributors.SwitchedOn(component.HttpContext));
         var location = AdminNavComposition.Locate(groups,
             (string?)component.RouteData.Values["controller"], (string?)component.RouteData.Values["action"],
             component.ViewData[AdminNavComposition.ParentKey] as string, component.RouteData.Values);
@@ -39,7 +39,7 @@ internal static class AdminNavItems
         var rows = new List<AdminSidebarGroupViewModel>(groups.Count);
         foreach (var group in groups)
         {
-            var visible = await VisibleAsync(group, location?.Item, component.HttpContext.User,
+            var visible = await VisibleAsync(group, location?.Item, component.HttpContext,
                 authorization, environment, serviceProvider, logger);
             if (visible.Count > 0)
                 rows.Add(new AdminSidebarGroupViewModel(group.Label, visible, ReferenceEquals(group, location?.Group)));
@@ -52,16 +52,27 @@ internal static class AdminNavItems
     private static async Task<List<AdminSidebarItemViewModel>> VisibleAsync(
         AdminNavGroup group,
         AdminNavItem? activeItem,
-        ClaimsPrincipal user,
+        HttpContext context,
         IAuthorizationService authorization,
         IWebHostEnvironment environment,
         IServiceProvider serviceProvider,
         ILogger logger)
     {
+        var user = context.User;
+        var switchedOff = context.SwitchedOffSections();
+        var routes = switchedOff.Count == 0 ? null : serviceProvider.GetService<SectionRoutes>();
         var visible = new List<AdminSidebarItemViewModel>(group.Items.Count);
         foreach (var item in group.Items)
         {
             if (item.EnvironmentGate is not null && !item.EnvironmentGate(environment))
+                continue;
+
+            // A switched-on section's group can hold a page of a switched-off one (Gate's first tab is a Tickets page):
+            // drop that item, so the group keeps its row and heads it with a page that answers.
+            if (routes is not null
+                && (item.RawHref is { } href ? routes.SectionOfUrl(href, context.Request.PathBase)
+                    : item.Controller is { } controller ? routes.SectionOfController(controller) : null) is { } target
+                && switchedOff.Contains(target))
                 continue;
 
             if (item.Policy is not null)

@@ -1,4 +1,5 @@
 @model Humans.Settings.Models.EventSettingsViewModel
+@inject Humans.Base.Interfaces.ISectionCatalog SectionCatalog
 
 @* Rendered from /Settings, so it names the SettingsAdminController route explicitly. *@
 <div class="row">
@@ -82,6 +83,27 @@
                         <input asp-for="IsOffSeason" type="checkbox" class="form-check-input" />
                         <label asp-for="IsOffSeason" class="form-check-label">Off season</label>
                         <div class="form-text">The cycle is wrapped: the member dashboard hides ticket status and the shift callouts. Clear it when the next cycle's tickets or shifts open.</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card mb-4">
+                <div class="card-header"><h5 class="mb-0">Switched-off sections</h5></div>
+                <div class="card-body">
+                    <div class="form-text mb-3">A ticked section is off while this event is the active one: its pages answer "not found" for everyone, admins included, and its links, dashboard cards and admin entries disappear. Its data is kept and its background jobs keep running, so unticking brings it straight back.</div>
+                    <div class="row">
+                        @foreach (var name in SectionCatalog.Sections.Where(s => s.CanBeSwitchedOff).Select(s => s.Name))
+                        {
+                            var inputId = $"switched-off-{name}";
+                            <div class="col-md-4 col-6">
+                                <div class="form-check">
+                                    <input type="checkbox" class="form-check-input" id="@inputId"
+                                           name="@nameof(Model.SwitchedOffSections)" value="@name"
+                                           checked="@Model.SwitchedOffSections.Contains(name, StringComparer.Ordinal)" />
+                                    <label class="form-check-label" for="@inputId">@name</label>
+                                </div>
+                            </div>
+                        }
                     </div>
                 </div>
             </div>

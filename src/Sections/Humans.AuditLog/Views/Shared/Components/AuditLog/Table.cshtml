@@ -30,7 +30,7 @@
         Func<AuditEvent, IHtmlContent> targetCell = @<text>
             @if (item.TargetTeamId.HasValue && !string.IsNullOrEmpty(item.TargetTeamName))
             {
-                <a asp-controller="Team" asp-action="Details" asp-route-slug="@item.TargetTeamSlug" class="text-decoration-none">@item.TargetTeamName</a>
+                <a asp-controller="Team" asp-action="Details" asp-route-slug="@item.TargetTeamSlug" class="text-decoration-none" keep-text>@item.TargetTeamName</a>
             }
         </text>;
 

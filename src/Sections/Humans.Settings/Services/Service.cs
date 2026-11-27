@@ -1,5 +1,6 @@
 using System.Globalization;
 using Humans.AuditLog.Contracts;
+using Humans.Base.Interfaces;
 using Humans.Settings.Contracts;
 using Humans.Settings.Data;
 using Humans.Settings.Domain;
@@ -11,6 +12,7 @@ namespace Humans.Settings.Services;
 internal sealed class Service(
     ISettingsRepository repository,
     IAuditLogService auditLog,
+    ISectionCatalog sectionCatalog,
     IEnumerable<IEventSettingsChangeListener> changeListeners,
     CachingSettingsService cache,
     IClock clock,
@@ -112,6 +114,17 @@ internal sealed class Service(
             return new(false, "Early entry start offset must be between build start and 0 (exclusive).");
         }
 
+        var notSwitchable = (settings.SwitchedOffSections ?? [])
+            .Where(name => !sectionCatalog.Sections.Any(section =>
+                section.CanBeSwitchedOff && string.Equals(section.Name, name, StringComparison.Ordinal)))
+            .ToList();
+        if (notSwitchable.Count > 0)
+        {
+            logger.LogWarning("Rejected event settings {EventId}: sections {Sections} cannot be switched off",
+                settings.Id, notSwitchable);
+            return new(false, $"These sections cannot be switched off: {string.Join(", ", notSwitchable)}.");
+        }
+
         var overlapping = (await repository.GetAllEventSettingsAsync(cancellationToken))
             .FirstOrDefault(other => other.Id != settings.Id
                 && other.Status != EventSettingsStatus.Deleted
@@ -139,7 +152,8 @@ internal sealed class Service(
             $"Event settings saved for '{settings.EventName}' ({settings.Year}): "
             + $"gate opening {LocalDatePattern.Iso.Format(settings.GateOpeningDate)}, "
             + $"build starts day {settings.BuildStartOffset}, event ends day {settings.EventEndOffset}, "
-            + $"strike ends day {settings.StrikeEndOffset}, status {settings.Status}.";
+            + $"strike ends day {settings.StrikeEndOffset}, status {settings.Status}, "
+            + $"sections switched off: {(settings.SwitchedOffSections is { Count: > 0 } off ? string.Join(", ", off) : "none")}.";
         await auditLog.LogAsync(
             SettingsAuditActions.EventSettingsUpdated, AuditEntityTypes.EventSettings, settings.Id, description, actorUserId);
 
@@ -285,7 +299,13 @@ internal sealed class Service(
                 listener.EventSettingsChanged(id);
     }
 
-    private static EventSettingsInfo? ToDto(EventSettings? src, string timeZoneId) => src is null ? null : new EventSettingsInfo(
+    // A stored section name from before a rename reads as the section's current name, so the switch, the form and the
+    // next save all see the section that is meant. A name no section answers to stays as stored.
+    private IReadOnlyList<string> CurrentSectionNames(IEnumerable<string> stored) =>
+        [.. stored.Select(name => sectionCatalog.TryResolve(name, out var current) ? current : name)
+            .Distinct(StringComparer.Ordinal)];
+
+    private EventSettingsInfo? ToDto(EventSettings? src, string timeZoneId) => src is null ? null : new EventSettingsInfo(
         Id: src.Id,
         EventName: src.EventName,
         Year: src.Year,
@@ -300,7 +320,8 @@ internal sealed class Service(
         EarlyEntryClose: src.EarlyEntryClose,
         Status: src.Status,
         EarlyEntryStartOffset: src.EarlyEntryStartOffset,
-        IsOffSeason: src.IsOffSeason ?? false);
+        IsOffSeason: src.IsOffSeason ?? false,
+        SwitchedOffSections: src.SwitchedOffSections is null ? null : CurrentSectionNames(src.SwitchedOffSections));
 
     private static EventSettings ToEntity(EventSettingsInfo src) => new()
     {
@@ -319,5 +340,6 @@ internal sealed class Service(
         Status = src.Status,
         EarlyEntryStartOffset = src.EarlyEntryStartOffset,
         IsOffSeason = src.IsOffSeason,
+        SwitchedOffSections = src.SwitchedOffSections is { Count: > 0 } names ? [.. names] : null,
     };
 }

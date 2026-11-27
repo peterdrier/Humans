@@ -11,7 +11,7 @@
 }
 
 @{
-    Func<ExpenseReconLine, IHtmlContent> reportCell = @<text><a href="/Expenses/@item.ExpenseReportId">@item.ExpenseReportId.ToString()[..8]</a></text>;
+    Func<ExpenseReconLine, IHtmlContent> reportCell = @<text><a href="/Expenses/@item.ExpenseReportId" keep-text>@item.ExpenseReportId.ToString()[..8]</a></text>;
     Func<ExpenseReconLine, IHtmlContent> expectedCell = @<text>@item.ExpectedAmount.ToEuro()</text>;
     Func<ExpenseReconLine, IHtmlContent> entryCell = @<text>
         @if (item.LedgerEntryNumber is { } entry)
