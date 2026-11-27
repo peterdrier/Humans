@@ -118,7 +118,7 @@ public sealed class WorkgroupInputValidationTests : WorkgroupsTestHarness
     [InlineData(true, "1,234.56", "link", 62900170, false)]
     [InlineData(true, "-1", "create", null, false)]
     [InlineData(false, null, "link", null, true)]
-    public void BudgetForm_RequiresAmountAndLinkedAccountWhenBudgeted(
+    public void BudgetForm_Budgeted_RequiresAmountWithAccount(
         bool hasBudget, string? amount, string mode, int? account, bool valid)
     {
         var model = new WorkgroupBudgetFormViewModel
@@ -283,7 +283,7 @@ public sealed class WorkgroupInputValidationTests : WorkgroupsTestHarness
     [HumansTheory]
     [InlineData(false)]
     [InlineData(true)]
-    public async Task MeetingUrl_AcceptsTheStorageLimitAndRejectsOverflow(bool editing)
+    public async Task MeetingUrl_OverStorageLimit_IsRejected(bool editing)
     {
         var group = await SeedWorkgroupAsync();
         var service = NewService();

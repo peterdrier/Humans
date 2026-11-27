@@ -90,7 +90,7 @@ public sealed class EventRepositoryTests : IDisposable
     }
 
     [HumansFact]
-    public async Task GetApprovedEventsAsync_FiltersStatusCategoryVenueCampAndExcludedSlugs()
+    public async Task GetApprovedEventsAsync_Filters_AreApplied()
     {
         var includedCategory = SeedCategory("Music", "music", 1);
         var excludedCategory = SeedCategory("Adult", "adult", 2);
@@ -191,7 +191,7 @@ public sealed class EventRepositoryTests : IDisposable
     [Xunit.InlineData("23505", "IX_event_favourites_UserId_GuideEventId_DayOffset", true)]
     [Xunit.InlineData("23505", "PK_event_favourites", false)]
     [Xunit.InlineData("23503", "IX_event_favourites_UserId_GuideEventId_DayOffset", false)]
-    public async Task AddFavouriteIfAbsentAsync_OnlyTreatsTargetDuplicateAsAlreadyPresent(
+    public async Task AddFavouriteIfAbsentAsync_TargetDuplicate_IsAlreadyPresent(
         string sqlState, string constraint, bool isDuplicate)
     {
         var failure = new DbUpdateException("Save failed", new Npgsql.PostgresException(
@@ -265,7 +265,7 @@ public sealed class EventRepositoryTests : IDisposable
     }
 
     [HumansFact]
-    public async Task GetActiveCampEventsAsync_ReturnsOnlyPendingAndApprovedCampEvents()
+    public async Task GetActiveCampEventsAsync_PendingOrApproved_AreReturned()
     {
         var category = SeedCategory("Workshop", "workshop", 1);
         var pendingCamp = SeedEvent(category.Id, Guid.NewGuid(), EventStatus.Pending, _clock.GetCurrentInstant(), campId: Guid.NewGuid());
@@ -288,7 +288,7 @@ public sealed class EventRepositoryTests : IDisposable
     [HumansTheory]
     [Xunit.InlineData(false)]
     [Xunit.InlineData(true)]
-    public async Task EventScopedReads_ExcludeUnassignedAndOtherEvents(bool unscoped)
+    public async Task EventScopedReads_UnassignedOrOtherEvent_IsExcluded(bool unscoped)
     {
         var category = SeedCategory("Workshop", "workshop", 1);
         var thisEvent = Guid.NewGuid();
@@ -311,7 +311,7 @@ public sealed class EventRepositoryTests : IDisposable
     }
 
     [HumansFact]
-    public async Task PointReads_LoadCategoryVenueAndModerationHistory()
+    public async Task PointReads_Event_LoadRelatedRows()
     {
         var ct = Xunit.TestContext.Current.CancellationToken;
         var category = SeedCategory("Workshop", "workshop", 1);
@@ -362,7 +362,7 @@ public sealed class EventRepositoryTests : IDisposable
     }
 
     [HumansFact]
-    public async Task ReassignToUserAsync_MovesSubmissionsFavouritesAndPreferenceToTarget()
+    public async Task ReassignToUserAsync_SourceRows_MoveToTarget()
     {
         var ct = Xunit.TestContext.Current.CancellationToken;
         var category = SeedCategory("Workshop", "workshop", 1);
@@ -399,7 +399,7 @@ public sealed class EventRepositoryTests : IDisposable
     }
 
     [HumansFact]
-    public async Task ReassignToUserAsync_DropsFavouritesTheTargetCovers_AndKeepsTheTargetsPreference()
+    public async Task ReassignToUserAsync_TargetHasFavourite_DropsDuplicate()
     {
         var ct = Xunit.TestContext.Current.CancellationToken;
         var source = Guid.NewGuid();

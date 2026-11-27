@@ -81,7 +81,7 @@ public sealed class PlacementScheduleTests : CityPlanningTestBase
     [InlineData(2026, 6, 21, 22, 0, nameof(BarrioPlacementState.Changeable))]  // 22 Jun 00:00 Madrid: adjust only
     [InlineData(2026, 6, 26, 21, 59, nameof(BarrioPlacementState.Changeable))] // 26 Jun 23:59 Madrid: last adjust day
     [InlineData(2026, 6, 26, 22, 0, nameof(BarrioPlacementState.Closed))]      // 27 Jun 00:00 Madrid: locked
-    public async Task GetSettingsAsync_NoOverride_StateFollowsTheScheduleInTheEventTimeZone(
+    public async Task GetSettingsAsync_NoOverride_FollowsScheduleInEventZone(
         int year, int month, int day, int hour, int minute, string expected)
     {
         await SeedScheduleAsync();
@@ -104,7 +104,7 @@ public sealed class PlacementScheduleTests : CityPlanningTestBase
     }
 
     [HumansFact]
-    public async Task GetSettingsAsync_NoChangeableDay_GoesStraightFromOpenToClosed()
+    public async Task GetSettingsAsync_NoChangeableDay_OpenGoesToClosed()
     {
         await SeedScheduleAsync(changeableUntil: null);
         Clock.Reset(Instant.FromUtc(2026, 6, 21, 22, 0));
@@ -130,7 +130,7 @@ public sealed class PlacementScheduleTests : CityPlanningTestBase
     }
 
     [HumansFact]
-    public async Task GetSettingsAsync_YearOtherThanTheActiveEvents_HasNoScheduleAnchor()
+    public async Task GetSettingsAsync_NotActiveEventYear_HasNoScheduleAnchor()
     {
         await SeedScheduleAsync(year: 2025);
 
@@ -159,7 +159,7 @@ public sealed class PlacementScheduleTests : CityPlanningTestBase
 
     // A stored override reads as forced open/closed until Follow schedule clears it.
     [HumansFact]
-    public async Task GetSettingsAsync_ForcedOpenWithNoSchedule_IsOpen_AsTheOldFlagWas()
+    public async Task GetSettingsAsync_ForcedOpenNoSchedule_IsOpen()
     {
         await SeedScheduleAsync(placementOverride: true, opens: null, closes: null, changeableUntil: null);
 
@@ -167,7 +167,7 @@ public sealed class PlacementScheduleTests : CityPlanningTestBase
     }
 
     [HumansFact]
-    public async Task ClearPlacementOverrideAsync_HandsPlacementBackToTheSchedule_AndAudits()
+    public async Task ClearPlacementOverrideAsync_Override_ReturnsToSchedule()
     {
         await SeedScheduleAsync(placementOverride: false);
         var adminId = Guid.NewGuid();
@@ -218,7 +218,7 @@ public sealed class PlacementScheduleTests : CityPlanningTestBase
     }
 
     [HumansFact]
-    public async Task CanUserEditAsync_Locked_LeadMayNotTouchAnExistingPolygon()
+    public async Task CanUserEditAsync_LockedExistingPolygon_IsRefused()
     {
         var (leadId, seasonId) = SetUpLead();
         await SeedScheduleAsync();
@@ -229,7 +229,7 @@ public sealed class PlacementScheduleTests : CityPlanningTestBase
     }
 
     [HumansFact]
-    public async Task CanUserEditAsync_Changeable_SomeoneElsesCampsPolygon_IsRefused()
+    public async Task CanUserEditAsync_ChangeableOtherCampsPolygon_IsRefused()
     {
         var (_, otherSeasonId) = SetUpLead();
         var (leadId, _) = SetUpLead();
@@ -241,7 +241,7 @@ public sealed class PlacementScheduleTests : CityPlanningTestBase
     }
 
     [HumansFact]
-    public async Task UpdatePlacementScheduleAsync_PersistsTheOffsets_AndAuditsThem()
+    public async Task UpdatePlacementScheduleAsync_ValidOffsets_ArePersisted()
     {
         var adminId = Guid.NewGuid();
 
@@ -287,7 +287,7 @@ public sealed class PlacementScheduleTests : CityPlanningTestBase
     [InlineData(-400, -10, null, "OutOfRange")]
     [InlineData(int.MinValue, null, null, "OutOfRange")]
     [InlineData(null, int.MaxValue, null, "OutOfRange")]
-    public async Task UpdatePlacementScheduleAsync_InconsistentDays_AreRefusedWithoutWritingOrAuditing(
+    public async Task UpdatePlacementScheduleAsync_InconsistentDays_AreRefused(
         int? opens, int? closes, int? changeableUntil, string errorKey)
     {
         var result = await _sut.UpdatePlacementScheduleAsync(opens, closes, changeableUntil, Guid.NewGuid(), TestContext.Current.CancellationToken);
@@ -299,7 +299,7 @@ public sealed class PlacementScheduleTests : CityPlanningTestBase
     }
 
     [HumansFact]
-    public void PlacementOverride_IsStoredInTheOldIsPlacementOpenColumn_NowNullable()
+    public void PlacementOverride_Column_IsNullableIsPlacementOpen()
     {
         using var context = new CityPlanningDbContextFactory().CreateDbContext([]);
         var property = context.Model.FindEntityType(typeof(CityPlanningSettings))!

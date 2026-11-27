@@ -36,7 +36,7 @@ public sealed class ContainerPlacementPhaseTests : CityPlanningTestBase
     }
 
     [HumansFact]
-    public async Task OpenContainerPlacement_SetsIsOpenAndTimestamp()
+    public async Task ContainerPlacement_Open_SetsOpenTimestamp()
     {
         var userId = Guid.NewGuid();
 
@@ -49,7 +49,7 @@ public sealed class ContainerPlacementPhaseTests : CityPlanningTestBase
     }
 
     [HumansFact]
-    public async Task CloseContainerPlacement_SetsIsClosedAndTimestamp()
+    public async Task ContainerPlacement_Close_SetsClosedTimestamp()
     {
         var userId = Guid.NewGuid();
         await _sut.OpenContainerPlacementAsync(userId, Xunit.TestContext.Current.CancellationToken);

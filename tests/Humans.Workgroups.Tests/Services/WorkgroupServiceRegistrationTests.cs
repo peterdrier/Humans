@@ -138,7 +138,7 @@ public sealed class WorkgroupServiceRegistrationTests : WorkgroupsTestHarness
     }
 
     [HumansFact]
-    public async Task Register_WhenTheRootFolderIsUnset_RefusesAndLeavesTheGroupApplied()
+    public async Task Register_RootFolderUnset_IsRefused()
     {
         RootFolderId = null;
         var workgroup = await SeedWorkgroupAsync(status: WorkgroupStatus.Applied, driveFolderId: null);
@@ -166,7 +166,7 @@ public sealed class WorkgroupServiceRegistrationTests : WorkgroupsTestHarness
     }
 
     [HumansFact]
-    public async Task SetRootDriveFolderId_Unreachable_RefusesAndKeepsTheOldValue()
+    public async Task SetRootDriveFolderId_Unreachable_IsRefused()
     {
         GoogleSyncRead.IsFolderReachableAsync("gone-root", Arg.Any<CancellationToken>()).Returns(false);
         var service = NewService();
@@ -179,7 +179,7 @@ public sealed class WorkgroupServiceRegistrationTests : WorkgroupsTestHarness
     }
 
     [HumansFact]
-    public async Task RootDriveFolder_PreservesLegacyValueUntilAdminSavesSectionOwnedSetting()
+    public async Task RootDriveFolder_NoSavedSetting_UsesLegacyValue()
     {
         var actor = SeedUser();
         var service = NewService();
@@ -304,7 +304,7 @@ public sealed class WorkgroupServiceRegistrationTests : WorkgroupsTestHarness
     [InlineData("apply", "研究组")]
     [InlineData("existing", "é")]
     [InlineData("rename", "🛠️")]
-    public async Task NamesWithoutAsciiSlugCharacters_KeepTheirNameAndReserveAFallback(string path, string name)
+    public async Task Names_NoAsciiSlugCharacters_ReserveFallback(string path, string name)
     {
         await SeedWorkgroupAsync(name: "Workgroup"); // Occupies the fallback seed.
         var actor = SeedUser("Coordinator");
@@ -338,7 +338,7 @@ public sealed class WorkgroupServiceRegistrationTests : WorkgroupsTestHarness
     }
 
     [HumansFact]
-    public async Task Apply_WithAVeryLongName_TrimsTheSlugToItsColumn()
+    public async Task Apply_VeryLongName_TrimsSlug()
     {
         var name = new string('a', 200);
 

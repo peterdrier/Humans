@@ -46,7 +46,7 @@ public sealed class SendMessageViewModelTests
     }
 
     [HumansFact]
-    public void Message_TooLong_AfterNormalization_FailsValidation()
+    public void Message_TooLongAfterNormalization_FailsValidation()
     {
         var vm = new SendMessageViewModel { Message = new string('x', 2001) };
 

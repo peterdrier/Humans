@@ -66,7 +66,7 @@ public sealed class MemberOutboxControllerTests
     }
 
     [HumansFact]
-    public async Task MyOutbox_IsNotFound_WhenTheSignedInAccountIsUnknown()
+    public async Task MyOutbox_UnknownAccount_IsNotFound()
     {
         var result = await BuildController(UserId).MyOutbox();
 
@@ -102,7 +102,7 @@ public sealed class MemberOutboxControllerTests
     }
 
     [HumansFact]
-    public async Task MyOutbox_StopsLoading_WhenTheRequestIsAbandonedDuringTheViewerLookup()
+    public async Task MyOutbox_RequestAbandoned_StopsLoading()
     {
         using var request = new CancellationTokenSource();
         async ValueTask<UserInfo?> AbandonDuringLookupAsync(CancellationToken ct)
@@ -140,7 +140,7 @@ public sealed class MemberOutboxControllerTests
     }
 
     [HumansFact]
-    public void Authorization_AnyMemberForOwnPage_HumanAdminBoardOrAdminForTheAdminPage()
+    public void Authorization_OwnOrAdminPage_HasExpectedPolicy()
     {
         // Deny path: the admin page is policy-gated; the own-page action takes no id, so a member
         // cannot read another member's outbox through it.
