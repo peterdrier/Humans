@@ -39,11 +39,11 @@ internal partial interface IUserRepository
     /// <summary>
     /// Saves a profile from <see cref="GetByUserIdAsync"/> and the owning user's stored
     /// <see cref="UserState"/>, and its names when <paramref name="names"/> is given. A non-null CV
-    /// payload is reconciled by <see cref="CVEntry.Id"/>: known ids update in place, empty or unknown
+    /// payload is reconciled by <see cref="CvEntry.Id"/>: known ids update in place, empty or unknown
     /// ids insert, missing ids delete.
     /// </summary>
     Task UpdateAsync(
-        Profile profile, CancellationToken ct = default, IReadOnlyList<CVEntry>? volunteerHistory = null,
+        Profile profile, CancellationToken ct = default, IReadOnlyList<CvEntry>? volunteerHistory = null,
         UserNames? names = null);
 
     /// <summary>
