@@ -146,7 +146,7 @@ public sealed class ApplicationDecisionServiceTests : IDisposable
         _systemRoleService.GetActiveUserIdsInRoleAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
             .Returns(Task.FromResult<IReadOnlyList<Guid>>([]));
         _tierCache = new CachingGovernanceService(
-            Substitute.For<IServiceScopeFactory>(), _userService, NullLogger<CachingGovernanceService>.Instance);
+            Substitute.For<IServiceScopeFactory>(), NullLogger<CachingGovernanceService>.Instance);
 
         _service = CreateService();
     }

@@ -65,7 +65,7 @@ and term data for expiry). Both interfaces resolve to `ApplicationRepository`; i
 | Applications | R |
 
 Cached by `CachingGovernanceService` (Singleton `TrackedCache<Guid, MembershipTier>`, `Governance.MembershipTiers`),
-which wraps `IGovernanceService`: every non-Volunteer tier, warmed at startup. This service clears it after
+which wraps `IGovernanceService`: each looked-up member's tier, loaded on first read. This service clears it after
 an expiry downgrade or a merge; `ApplicationDecisionService` clears it when an approval grants a tier.
 
 Cross-section reads: `IUserService` resolves the merge chain for single-user reads and export.

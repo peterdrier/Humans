@@ -34,10 +34,9 @@ public sealed class MembershipTierExpiryJobTests
         _applications.GetOtherActiveTierAssignmentsAsync(Arg.Any<MembershipTier>(), Arg.Any<LocalDate>(), Arg.Any<CancellationToken>())
             .Returns(Task.FromResult<IReadOnlyDictionary<Guid, MembershipTier>>(new Dictionary<Guid, MembershipTier>()));
         _tiers.GetAllAsync(Arg.Any<CancellationToken>()).Returns(Task.FromResult<IReadOnlyList<MembershipTierRecord>>([]));
-        var users = Substitute.For<IUserService>();
-        _governance = new MembershipTierService(_tiers, _applications, users,
+        _governance = new MembershipTierService(_tiers, _applications, Substitute.For<IUserService>(),
             Substitute.For<IAuditLogService>(),
-            new CachingGovernanceService(Substitute.For<IServiceScopeFactory>(), users,
+            new CachingGovernanceService(Substitute.For<IServiceScopeFactory>(),
                 NullLogger<CachingGovernanceService>.Instance),
             new FakeClock(Instant.FromUtc(2028, 1, 1, 0, 5)));
         _job = new MembershipTierExpiryJob(_governance, Substitute.For<IHumansMetrics>(),

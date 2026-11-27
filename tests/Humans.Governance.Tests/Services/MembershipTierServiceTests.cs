@@ -37,7 +37,7 @@ public sealed class MembershipTierServiceTests : IDisposable
         var services = new ServiceCollection();
         services.AddKeyedScoped<IGovernanceService>(CachingGovernanceService.InnerServiceKey, (_, _) => _sut!);
         _cache = new CachingGovernanceService(
-            services.BuildServiceProvider().GetRequiredService<IServiceScopeFactory>(), _users,
+            services.BuildServiceProvider().GetRequiredService<IServiceScopeFactory>(),
             NullLogger<CachingGovernanceService>.Instance);
         _sut = new MembershipTierService(
             new ApplicationRepository(factory), new ApplicationRepository(factory), _users, _audit, _cache, _clock);

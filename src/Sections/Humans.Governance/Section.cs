@@ -74,7 +74,6 @@ public sealed class Section :
         services.AddSingleton<CachingGovernanceService>();
         services.AddSingleton<IGovernanceService>(sp => sp.GetRequiredService<CachingGovernanceService>());
         services.AddSingleton<ICacheStats>(sp => sp.GetRequiredService<CachingGovernanceService>());
-        services.AddHostedService(sp => sp.GetRequiredService<CachingGovernanceService>());
 
         services.AddScoped<ApplicationDecisionService>();
         services.AddKeyedScoped<IGovernanceManagement>(CachingGovernanceManagement.InnerServiceKey,
