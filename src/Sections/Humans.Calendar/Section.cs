@@ -16,12 +16,12 @@ using Humans.AuditLog.Contracts;
 namespace Humans.Calendar;
 
 /// <summary>The keyed inner service and the Singleton decorator move as a unit.</summary>
-public sealed class Section : ISection, ISectionChrome, ISectionNav, IUserPart
+public sealed class Section : SectionBase, ISectionChrome, ISectionNav, IUserPart
 {
     IEnumerable<ChromeComponent> ISectionChrome.Components() =>
         [new(ChromeSlots.WidgetGallery, typeof(CalendarGalleryViewComponent))];
 
-    public void Register(IServiceCollection services, IConfiguration configuration)
+    public override void Register(IServiceCollection services, IConfiguration configuration)
     {
         services.AddSingleton<IAuditActionContributor, CalendarAuditActions>();
         services.AddSectionDbContext<CalendarDbContext>(sentinelTable: "calendar_events");

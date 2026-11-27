@@ -9,6 +9,7 @@ using Humans.Stripe.Jobs;
 using Humans.Stripe.Services;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Humans.Stripe.Controllers;
 
 [assembly: Humans.Base.Demo.NoDemoStory("Vendor mirror: its data arrives through the Stripe sync, never from demo stories.")]
 
@@ -18,9 +19,9 @@ namespace Humans.Stripe;
 /// <c>Section</c> (as <c>ISectionConfiguration</c>) declares the same <c>STRIPE_*</c> variables to the settings inventory: rename both
 /// together.
 /// </summary>
-public sealed class Section : ISection, ISectionAdminNav, ISectionConfiguration, ISectionJobs
+public sealed class Section : SectionBase, ISectionAdminNav, ISectionConfiguration, ISectionJobs
 {
-    public void Register(IServiceCollection services, IConfiguration configuration)
+    public override void Register(IServiceCollection services, IConfiguration configuration)
     {
         services.Configure<StripeSettings>(opts =>
         {
@@ -49,8 +50,8 @@ public sealed class Section : ISection, ISectionAdminNav, ISectionConfiguration,
 
     IEnumerable<AdminNavGroup> ISectionAdminNav.Groups() =>
     [
-        new("Stripe", [
-            new("Stripe", "Stripe", "Index", null, null, "fa-brands fa-stripe-s", FinancePolicies.Read)
+        AdminGroup([
+            AdminLink<StripeController>("Stripe", nameof(StripeController.Index), "fa-brands fa-stripe-s", FinancePolicies.Read)
         ])
     ];
 

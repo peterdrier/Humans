@@ -15,13 +15,14 @@ using Microsoft.Extensions.DependencyInjection;
 using Humans.AuditLog.Contracts;
 using Humans.Permissions.Contracts;
 using Humans.Teams.Contracts;
+using Humans.Store.Controllers;
 
 [assembly: Humans.Base.Demo.NoDemoStory("No demo story written yet.")]
 
 namespace Humans.Store;
 
 public sealed class Section :
-    ISection,
+    SectionBase,
     ISectionRoles,
     ISectionAdminNav,
     ISectionAdminTiles,
@@ -36,7 +37,7 @@ public sealed class Section :
             "fa-solid fa-store"),
     ];
 
-    public void Register(IServiceCollection services, IConfiguration configuration)
+    public override void Register(IServiceCollection services, IConfiguration configuration)
     {
         services.AddSingleton<IAuditActionContributor, StoreAuditActions>();
 
@@ -54,13 +55,13 @@ public sealed class Section :
 
     IEnumerable<AdminNavGroup> ISectionAdminNav.Groups() =>
     [
-        new("Store", [
-            new("Catalog",     "StoreAdmin", "Catalog",    null, null, "fa-solid fa-tags",           StorePolicies.Read),
-            new("Summary",     "StoreAdmin", "Summary",    null, null, "fa-solid fa-chart-column",   StorePolicies.Read),
-            new("Payments",    "StoreAdmin", "Payments",   null, null, "fa-solid fa-credit-card",    StorePolicies.Read),
-            new("Team transfers", "StoreAdmin", "Transfers", null, null, "fa-solid fa-right-left",   StorePolicies.Read),
-            new("Order years", "StoreAdmin", "OrderYears", null, null, "fa-solid fa-calendar-check", StorePolicies.Read),
-            new("Payment methods", "StoreAdmin", "PaymentMethods", null, null, "fa-solid fa-wrench", StorePolicies.Read)
+        AdminGroup([
+            AdminLink<StoreAdminController>("Catalog", nameof(StoreAdminController.Catalog), "fa-solid fa-tags", StorePolicies.Read),
+            AdminLink<StoreAdminController>("Summary", nameof(StoreAdminController.Summary), "fa-solid fa-chart-column", StorePolicies.Read),
+            AdminLink<StoreAdminController>("Payments", nameof(StoreAdminController.Payments), "fa-solid fa-credit-card", StorePolicies.Read),
+            AdminLink<StoreAdminController>("Team transfers", nameof(StoreAdminController.Transfers), "fa-solid fa-right-left", StorePolicies.Read),
+            AdminLink<StoreAdminController>("Order years", nameof(StoreAdminController.OrderYears), "fa-solid fa-calendar-check", StorePolicies.Read),
+            AdminLink<StoreAdminController>("Payment methods", nameof(StoreAdminController.PaymentMethods), "fa-solid fa-wrench", StorePolicies.Read)
         ])
     ];
 

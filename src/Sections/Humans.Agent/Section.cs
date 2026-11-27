@@ -21,6 +21,7 @@ using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Humans.AuditLog.Contracts;
+using Humans.Agent.Controllers;
 
 [assembly: Humans.Base.Demo.NoDemoStory("No demo story written yet.")]
 
@@ -31,7 +32,7 @@ namespace Humans.Agent;
 /// <c>AgentTurnToken</c>.
 /// </summary>
 public sealed class Section :
-    ISection,
+    SectionBase,
     ISectionAdminNav,
     ISectionAnnotations,
     ISectionChrome,
@@ -40,7 +41,7 @@ public sealed class Section :
     ISectionJobs,
     ISectionSettings
 {
-    public void Register(IServiceCollection services, IConfiguration configuration)
+    public override void Register(IServiceCollection services, IConfiguration configuration)
     {
         services.AddSingleton<IAuditActionContributor, AgentAuditActions>();
         services.AddSectionDbContext<AgentDbContext>(sentinelTable: "agent_conversations");
@@ -90,9 +91,9 @@ public sealed class Section :
 
     IEnumerable<AdminNavGroup> ISectionAdminNav.Groups() =>
     [
-        new("Agent", [
-            new("Status",  "AdminAgent", "Status",        null, null, "fa-solid fa-gauge-high", PolicyNames.BoardOrAdmin),
-            new("History", "Agent",      "Conversations", null, null, "fa-solid fa-comments",   PolicyNames.BoardOrAdmin)
+        AdminGroup([
+            AdminLink<AdminAgentController>("Status", nameof(AdminAgentController.Status), "fa-solid fa-gauge-high", PolicyNames.BoardOrAdmin),
+            AdminLink<AgentController>("History", nameof(AgentController.Conversations), "fa-solid fa-comments", PolicyNames.BoardOrAdmin)
         ])
     ];
 

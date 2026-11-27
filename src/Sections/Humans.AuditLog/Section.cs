@@ -13,13 +13,16 @@ using Microsoft.Extensions.Hosting;
 using Humans.Base.Models;
 using static Humans.Base.Models.AccessLevel;
 using static Humans.Base.Models.AccessMatrixFeature;
+using Humans.AuditLog.Controllers;
 
 [assembly: Humans.Base.Demo.NoDemoStory("Crosscut: filled by the actions other sections' stories take.")]
 
 namespace Humans.AuditLog;
 
-public sealed class Section : ISection, ISectionAdminNav, ISectionAdminTiles, ISectionChrome, ISectionAccessMatrix
+public sealed class Section : SectionBase, ISectionAdminNav, ISectionAdminTiles, ISectionChrome, ISectionAccessMatrix
 {
+    public override string DisplayName => "Audit";
+
     IReadOnlyList<AccessMatrixData> ISectionAccessMatrix.AccessMatrices =>
     [
         new()
@@ -38,7 +41,7 @@ public sealed class Section : ISection, ISectionAdminNav, ISectionAdminTiles, IS
     IEnumerable<ChromeComponent> ISectionChrome.Components() =>
         [new(ChromeSlots.WidgetGallery, typeof(AuditLogGalleryViewComponent))];
 
-    public void Register(IServiceCollection services, IConfiguration configuration)
+    public override void Register(IServiceCollection services, IConfiguration configuration)
     {
         services.AddSectionDbContext<AuditLogDbContext>(sentinelTable: "audit_log");
 
@@ -62,8 +65,8 @@ public sealed class Section : ISection, ISectionAdminNav, ISectionAdminTiles, IS
 
     IEnumerable<AdminNavGroup> ISectionAdminNav.Groups() =>
     [
-        new("Audit", [
-            new("Audit log", "AuditLog", "Index", null, null, "fa-solid fa-book-open", PolicyNames.BoardOrAdmin)
+        AdminGroup([
+            AdminLink<AuditLogController>("Audit log", nameof(AuditLogController.Index), "fa-solid fa-book-open", PolicyNames.BoardOrAdmin)
         ])
     ];
 

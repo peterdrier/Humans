@@ -6,9 +6,9 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace Humans.Gdpr;
 
-public sealed class Section : ISection
+public sealed class Section : SectionBase
 {
-    public void Register(IServiceCollection services, IConfiguration configuration)
+    public override void Register(IServiceCollection services, IConfiguration configuration)
     {
         services.AddScoped<IGdprService, GdprService>();
     }

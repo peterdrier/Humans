@@ -16,6 +16,7 @@ using Microsoft.Extensions.Configuration;
 using Humans.Notifications.Contracts;
 using Microsoft.Extensions.DependencyInjection;
 using Humans.AuditLog.Contracts;
+using Humans.Issues.Controllers;
 
 [assembly: Humans.Base.Demo.NoDemoStory("No demo story written yet.")]
 
@@ -24,9 +25,9 @@ namespace Humans.Issues;
 /// <summary>
 /// Issue reads, including per-viewer actionable counts, query the repository directly.
 /// </summary>
-public sealed class Section : ISection, ISectionAdminNav, ISectionChrome, ISectionJobs
+public sealed class Section : SectionBase, ISectionAdminNav, ISectionChrome, ISectionJobs
 {
-    public void Register(IServiceCollection services, IConfiguration configuration)
+    public override void Register(IServiceCollection services, IConfiguration configuration)
     {
         EnumBadgeMap.Register(new Dictionary<Enum, string>
         {
@@ -60,8 +61,8 @@ public sealed class Section : ISection, ISectionAdminNav, ISectionChrome, ISecti
 
     IEnumerable<AdminNavGroup> ISectionAdminNav.Groups() =>
     [
-        new("Issues", [
-            new("Issues", "Issues", "Index", null, null, "fa-solid fa-bug", PolicyNames.AnyAdminRole, Weight: 0)
+        AdminGroup([
+            AdminLink<IssuesController>("Issues", nameof(IssuesController.Index), "fa-solid fa-bug", PolicyNames.AnyAdminRole, weight: 0)
         ])
     ];
 

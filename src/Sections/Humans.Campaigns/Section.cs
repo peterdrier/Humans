@@ -14,15 +14,16 @@ using Microsoft.Extensions.Configuration;
 using Humans.Notifications.Contracts;
 using Microsoft.Extensions.DependencyInjection;
 using Humans.AuditLog.Contracts;
+using Humans.Campaigns.Controllers;
 
 [assembly: Humans.Base.Demo.NoDemoStory("No demo story written yet.")]
 
 namespace Humans.Campaigns;
 
 /// <summary>No caching decorator: the admin pages are the only readers and they are not hot.</summary>
-public sealed class Section : ISection, ISectionAdminNav, IUserPart
+public sealed class Section : SectionBase, ISectionAdminNav, IUserPart
 {
-    public void Register(IServiceCollection services, IConfiguration configuration)
+    public override void Register(IServiceCollection services, IConfiguration configuration)
     {
         services.AddSingleton<IAuditActionContributor, CampaignsAuditActions>();
         services.AddSingleton<INotificationSourceContributor, CampaignsNotificationSources>();
@@ -50,8 +51,8 @@ public sealed class Section : ISection, ISectionAdminNav, IUserPart
 
     IEnumerable<AdminNavGroup> ISectionAdminNav.Groups() =>
     [
-        new("Campaigns", [
-            new("Campaigns", "Campaign", "Index", null, null, "fa-solid fa-bullhorn", PolicyNames.AdminOnly)
+        AdminGroup([
+            AdminLink<CampaignController>("Campaigns", nameof(CampaignController.Index), "fa-solid fa-bullhorn", PolicyNames.AdminOnly)
         ])
     ];
 

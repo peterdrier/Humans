@@ -25,13 +25,14 @@ using Humans.Notifications.Contracts;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Localization;
 using NodaTime;
+using Humans.Workgroups.Controllers;
 
 [assembly: Humans.Base.Demo.NoDemoStory("No demo story written yet.")]
 
 namespace Humans.Workgroups;
 
 public sealed class Section :
-    ISection,
+    SectionBase,
     ISectionAdminNav,
     ISectionAdminTiles,
     ISectionChrome,
@@ -41,13 +42,12 @@ public sealed class Section :
 {
     IEnumerable<AdminNavGroup> ISectionAdminNav.Groups() =>
     [
-        new("Workgroups", [
-            new("Workgroups", "WorkgroupsAdmin", "Index", null, null,
-                "fa-solid fa-people-group", PolicyNames.BoardOrAdmin)
+        AdminGroup([
+            AdminLink<WorkgroupsAdminController>("Workgroups", nameof(WorkgroupsAdminController.Index), "fa-solid fa-people-group", PolicyNames.BoardOrAdmin)
         ])
     ];
 
-    public void Register(IServiceCollection services, IConfiguration configuration)
+    public override void Register(IServiceCollection services, IConfiguration configuration)
     {
         services.AddSingleton<IAuditActionContributor, WorkgroupsAuditActions>();
         services.AddSingleton<INotificationSourceContributor, WorkgroupsNotificationSources>();

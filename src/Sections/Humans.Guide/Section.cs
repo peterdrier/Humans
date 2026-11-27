@@ -10,11 +10,11 @@ namespace Humans.Guide;
 /// <c>GuideSettings</c> and <c>IGuideContentSource</c> are registered in Shell, not here: Agent and Base read them too.
 /// </summary>
 public sealed class Section :
-    ISection,
+    SectionBase,
     ISectionAnnotations,
     ISectionConfiguration
 {
-    public void Register(IServiceCollection services, IConfiguration configuration)
+    public override void Register(IServiceCollection services, IConfiguration configuration)
     {
         services.AddSingleton<GuideHtmlPostprocessor>();
         services.AddSingleton<IGuideRenderer, GuideRenderer>();

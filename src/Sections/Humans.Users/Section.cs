@@ -32,13 +32,14 @@ using Microsoft.Extensions.Localization;
 using static Humans.Base.Models.AccessLevel;
 using static Humans.Base.Models.AccessMatrixFeature;
 using Humans.AuditLog.Contracts;
+using Humans.Users.Controllers;
 
 [assembly: Humans.Base.Demo.NoDemoStory("The demo cast is created through Users by Development's cast story.")]
 
 namespace Humans.Users;
 
 public sealed class Section :
-    ISection,
+    SectionBase,
     IIssueQueueOwner,
     ISectionRoles,
     ISectionAccessMatrix,
@@ -63,7 +64,7 @@ public sealed class Section :
             FormerNames: ["HumanAdmin"]),
     ];
 
-    public void Register(IServiceCollection services, IConfiguration configuration)
+    public override void Register(IServiceCollection services, IConfiguration configuration)
     {
         services.AddSingleton<IAuditActionContributor, UsersAuditActions>();
         services.AddSingleton<INotificationSourceContributor, UsersNotificationSources>();
@@ -194,11 +195,11 @@ public sealed class Section :
 
     IEnumerable<AdminNavGroup> ISectionAdminNav.Groups() =>
     [
-        new("Users", [
-            new("Humans", "UsersAdmin", "AdminList", null, null, "fa-solid fa-users",    UsersPolicies.Read, Weight: 0),
-            new("Account merges", "UsersAdminAccountMerges", "Index", null, null, "fa-solid fa-code-merge", PolicyNames.AdminOnly, Weight: 30),
-            new("Email problems", "ProfileAdmin", "EmailProblems", null, null, "fa-solid fa-envelope-circle-check", PolicyNames.AdminOnly, Weight: 40),
-            new("Audience segmentation", "UsersAdmin", "Audience", null, null, "fa-solid fa-chart-pie", PolicyNames.AdminOnly, Weight: 50)
+        AdminGroup([
+            AdminLink<UsersAdminController>("Humans", nameof(UsersAdminController.AdminList), "fa-solid fa-users", UsersPolicies.Read, weight: 0),
+            AdminLink<UsersAdminAccountMergesController>("Account merges", nameof(UsersAdminAccountMergesController.Index), "fa-solid fa-code-merge", PolicyNames.AdminOnly, weight: 30),
+            AdminLink<ProfileAdminController>("Email problems", nameof(ProfileAdminController.EmailProblems), "fa-solid fa-envelope-circle-check", PolicyNames.AdminOnly, weight: 40),
+            AdminLink<UsersAdminController>("Audience segmentation", nameof(UsersAdminController.Audience), "fa-solid fa-chart-pie", PolicyNames.AdminOnly, weight: 50)
         ])
     ];
 

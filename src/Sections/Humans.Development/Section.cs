@@ -6,6 +6,7 @@ using Humans.Development.Data;
 using Humans.Development.Jobs;
 using Humans.Development.Services;
 using Humans.Development.Services.Demo;
+using Humans.Development.Controllers;
 
 namespace Humans.Development;
 
@@ -14,9 +15,9 @@ namespace Humans.Development;
 /// nothing. <c>Register</c> gets no <see cref="IHostEnvironment"/>, so the name comes from
 /// <see cref="HostDefaults.EnvironmentKey"/> in configuration.
 /// </summary>
-public sealed class Section : ISection, ISectionAdminNav
+public sealed class Section : SectionBase, ISectionAdminNav
 {
-    public void Register(IServiceCollection services, IConfiguration configuration)
+    public override void Register(IServiceCollection services, IConfiguration configuration)
     {
         var environmentName = configuration[HostDefaults.EnvironmentKey];
 
@@ -40,9 +41,9 @@ public sealed class Section : ISection, ISectionAdminNav
 
     IEnumerable<AdminNavGroup> ISectionAdminNav.Groups() =>
     [
-        new("Development", [
-            new("Seed data", "DevSeed", "Index", null, null, "fa-solid fa-seedling", PolicyNames.AdminOnly,
-                 EnvironmentGate: env => !env.IsProduction())
+        AdminGroup([
+            AdminLink<DevSeedController>("Seed data", nameof(DevSeedController.Index), "fa-solid fa-seedling", PolicyNames.AdminOnly,
+                 environmentGate: env => !env.IsProduction())
         ])
     ];
 }

@@ -22,13 +22,14 @@ using Humans.AuditLog.Contracts;
 using Humans.Users.Contracts;
 using static Humans.Base.Models.AccessLevel;
 using static Humans.Base.Models.AccessMatrixFeature;
+using Humans.Consent.Controllers;
 
 [assembly: Humans.Base.Demo.NoDemoStory("No demo story written yet.")]
 
 namespace Humans.Consent;
 
 public sealed class Section :
-    ISection,
+    SectionBase,
     IIssueQueueOwner,
     ISectionRoles,
     ISectionAccessMatrix,
@@ -53,7 +54,7 @@ public sealed class Section :
             FormerNames: ["ConsentCoordinator"]),
     ];
 
-    public void Register(IServiceCollection services, IConfiguration configuration)
+    public override void Register(IServiceCollection services, IConfiguration configuration)
     {
         EnumBadgeMap.Register(new Dictionary<Enum, string>
         {
@@ -172,10 +173,10 @@ public sealed class Section :
 
     IEnumerable<AdminNavGroup> ISectionAdminNav.Groups() =>
     [
-        new("Consent", [
-            new("Review queue", "ConsentReviewQueue", "Index", null, null, "fa-solid fa-clipboard-check", PolicyNames.ReviewQueueAccess,
-                PillCount: ReviewQueuePillCountAsync),
-            new("Legal documents", "AdminLegalDocuments", "LegalDocuments", null, null, "fa-solid fa-scale-balanced", PolicyNames.BoardOrAdmin)
+        AdminGroup([
+            AdminLink<ConsentReviewQueueController>("Review queue", nameof(ConsentReviewQueueController.Index), "fa-solid fa-clipboard-check", PolicyNames.ReviewQueueAccess,
+                pillCount: ReviewQueuePillCountAsync),
+            AdminLink<AdminLegalDocumentsController>("Legal documents", nameof(AdminLegalDocumentsController.LegalDocuments), "fa-solid fa-scale-balanced", PolicyNames.BoardOrAdmin)
         ])
     ];
 

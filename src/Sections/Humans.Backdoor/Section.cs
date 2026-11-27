@@ -23,14 +23,15 @@ using Humans.Notifications.Contracts;
 using OpenIddict.Validation.AspNetCore;
 using static OpenIddict.Abstractions.OpenIddictConstants;
 using Humans.AuditLog.Contracts;
+using Humans.Backdoor.Controllers;
 
 [assembly: Humans.Base.Demo.NoDemoStory("No demo story written yet.")]
 
 namespace Humans.Backdoor;
 
-public sealed class Section : ISection, ISectionAdminNav, ISectionEndpoints, ISectionJobs
+public sealed class Section : SectionBase, ISectionAdminNav, ISectionEndpoints, ISectionJobs
 {
-    public void Register(IServiceCollection services, IConfiguration configuration)
+    public override void Register(IServiceCollection services, IConfiguration configuration)
     {
         services.AddSingleton<IAuditActionContributor, BackdoorAuditActions>();
         services.AddSectionDbContext<BackdoorDbContext>(sentinelTable: "backdoor_api_keys");
@@ -174,8 +175,8 @@ public sealed class Section : ISection, ISectionAdminNav, ISectionEndpoints, ISe
 
     IEnumerable<AdminNavGroup> ISectionAdminNav.Groups() =>
     [
-        new("Backdoor", [
-            new("API keys", "Backdoor", "Index", null, null, "fa-solid fa-key", PolicyNames.BoardOrAdmin)
+        AdminGroup([
+            AdminLink<BackdoorController>("API keys", nameof(BackdoorController.Index), "fa-solid fa-key", PolicyNames.BoardOrAdmin)
         ])
     ];
 

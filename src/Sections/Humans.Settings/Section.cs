@@ -11,14 +11,15 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Humans.AuditLog.Contracts;
+using Humans.Settings.Controllers;
 
 [assembly: Humans.Base.Demo.NoDemoStory("No demo story written yet.")]
 
 namespace Humans.Settings;
 
-public sealed class Section : ISection, ISectionAdminNav, ISectionChrome, ISectionSettings, ISectionJobs
+public sealed class Section : SectionBase, ISectionAdminNav, ISectionChrome, ISectionSettings, ISectionJobs
 {
-    public void Register(IServiceCollection services, IConfiguration configuration)
+    public override void Register(IServiceCollection services, IConfiguration configuration)
     {
         services.AddSingleton<IAuditActionContributor, SettingsAuditActions>();
         // Sentinel stays the pre-rename "system_settings": the history table was renamed too, so an existing database
@@ -46,8 +47,8 @@ public sealed class Section : ISection, ISectionAdminNav, ISectionChrome, ISecti
 
     IEnumerable<AdminNavGroup> ISectionAdminNav.Groups() =>
     [
-        new("Settings", [
-            new("Event settings", "Settings", "Index", null, null, "fa-solid fa-calendar-days", PolicyNames.AdminOnly, Weight: 0)
+        AdminGroup([
+            AdminLink<SettingsController>("Event settings", nameof(SettingsController.Index), "fa-solid fa-calendar-days", PolicyNames.AdminOnly, weight: 0)
         ])
     ];
 

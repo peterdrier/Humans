@@ -13,9 +13,9 @@ using Humans.AuditLog.Contracts;
 
 namespace Humans.Containers;
 
-public sealed class Section : ISection
+public sealed class Section : SectionBase
 {
-    public void Register(IServiceCollection services, IConfiguration configuration)
+    public override void Register(IServiceCollection services, IConfiguration configuration)
     {
         services.AddSingleton<IAuditActionContributor, ContainersAuditActions>();
         services.AddSectionDbContext<ContainersDbContext>(sentinelTable: "containers");

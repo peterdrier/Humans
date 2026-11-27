@@ -5,9 +5,9 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace Humans.Search;
 
-public sealed class Section : ISection, ISectionNav
+public sealed class Section : SectionBase, ISectionNav
 {
-    public void Register(IServiceCollection services, IConfiguration configuration)
+    public override void Register(IServiceCollection services, IConfiguration configuration)
     {
         services.AddScoped<ISearchService, SearchService>();
     }

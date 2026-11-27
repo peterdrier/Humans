@@ -11,12 +11,12 @@ namespace Humans.BoxOffice;
 /// Humans' own ticketing platform: Stripe hosted Checkout behind Tickets' <see cref="ITicketingPlatform"/>, key
 /// <c>boxoffice</c>, on the Tickets Stripe account with its own webhook signing secret.
 /// </summary>
-public sealed class Section : ISection, ISectionConfiguration, ISectionAdminNav
+public sealed class Section : SectionBase, ISectionConfiguration, ISectionAdminNav
 {
     internal const string KeyVariable = "STRIPE_TICKETS_KEY";
     internal const string WebhookSecretVariable = "STRIPE_BOXOFFICE_WEBHOOK_SECRET";
 
-    public void Register(IServiceCollection services, IConfiguration configuration)
+    public override void Register(IServiceCollection services, IConfiguration configuration)
     {
         services.Configure<BoxOfficeSettings>(opts =>
         {
