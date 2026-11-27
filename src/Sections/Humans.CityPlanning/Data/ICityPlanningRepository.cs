@@ -5,9 +5,8 @@ using NodaTime;
 namespace Humans.CityPlanning.Data;
 
 /// <summary>
-/// Reads are <c>AsNoTracking</c>. <see cref="CampPolygonHistory"/> is append-only: no update or delete of a single
-/// history row. <see cref="DeletePolygonsForCampSeasonsAsync"/> and <see cref="DeleteHistoryBeforeAsync"/> are the
-/// exceptions.
+/// Reads are <c>AsNoTracking</c>. <see cref="CampPolygonHistory"/> rows are never edited; they go only through
+/// <see cref="DeletePolygonsForCampSeasonsAsync"/> and the retention delete <see cref="DeleteHistoryBeforeAsync"/>.
 /// </summary>
 internal interface ICityPlanningRepository : IRepository
 {
