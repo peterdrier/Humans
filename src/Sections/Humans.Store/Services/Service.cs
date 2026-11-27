@@ -944,32 +944,24 @@ internal sealed class Service(
             errorKey = "Store_PaymentPositive";
         else if (decimal.Round(amountEur, 2) != amountEur)
             errorKey = "Store_PaymentPrecision";
-        else if (amountEur > order.BalanceEur)
-        {
-            errorKey = "Store_PaymentAboveBalance";
-            maximumAmount = order.BalanceEur;
-        }
         else if (amountEur > MaximumCheckoutAmountEur)
         {
             errorKey = "Store_PaymentAboveCheckoutLimit";
             maximumAmount = MaximumCheckoutAmountEur;
         }
-        else if (order.HasPendingSettlement)
-            errorKey = "Store_PaymentPending";
 
         if (errorKey is not null)
-        {
-            logger.LogWarning("Store checkout rejected for order {OrderId}: {ErrorKey}", order.Id, errorKey);
-            return new CheckoutSessionResult(null, errorKey, maximumAmount);
-        }
+            return RefuseCheckout(order.Id, errorKey, maximumAmount);
 
         var name = order.CounterpartyName ?? Resources.GetString("Store_CheckoutCampOrder", CultureInfo.CurrentUICulture)!;
         var description = $"Nobodies Collective - {name}";
-        var sessionUrl = await OpenCheckoutSessionAsync(
-            order.Id, amountEur, returnUrl, order.CounterpartyEmail, description, ct);
-        if (sessionUrl is null)
-            return new CheckoutSessionResult(null, "Store_PaymentPending");
-        return new CheckoutSessionResult(sessionUrl, null);
+        return await OpenCheckoutSessionAsync(order.Id, amountEur, returnUrl, order.CounterpartyEmail, description, ct);
+    }
+
+    private CheckoutSessionResult RefuseCheckout(Guid orderId, string key, decimal? maximumAmount = null)
+    {
+        logger.LogWarning("Store checkout rejected for order {OrderId}: {ErrorKey}", orderId, key);
+        return new CheckoutSessionResult(null, key, maximumAmount);
     }
 
     public async Task<StripeReconciliationReport> GetStripeReconciliationAsync(CancellationToken ct = default)
@@ -1217,12 +1209,17 @@ internal sealed class Service(
     /// Durably records the exact request before creating a payable session. Retries resolve that request before
     /// replacing it; known sessions are read without replaying an expiring idempotency key.
     /// </summary>
-    public async Task<string?> OpenCheckoutSessionAsync(
+    public async Task<CheckoutSessionResult> OpenCheckoutSessionAsync(
         Guid orderId, decimal amountEur, string returnUrl, string? customerEmail, string description, CancellationToken ct)
     {
         using var mutation = await StripePaymentLock.AcquireAsync(logger, ct);
-        var order = await repo.GetOrderByIdAsync(orderId, ct)
-            ?? throw new InvalidOperationException($"Store order {orderId} not found.");
+        var order = await repo.GetOrderWithLinesAsync(orderId, ct);
+        if (order is null) return RefuseCheckout(orderId, "Store_OrderMissing");
+        if (order.TeamId is not null) return RefuseCheckout(orderId, "Store_NonBillableText");
+        var balance = BalanceCalculator.Compute(order, await LoadCurrentPricesAsync(order.Year, ct)).BalanceEur;
+        if (amountEur > balance) return RefuseCheckout(orderId, "Store_PaymentAboveBalance", balance);
+        if (order.Payments.Any(p => p.Status == PaymentStatus.Pending && p.AmountEur > 0))
+            return RefuseCheckout(orderId, "Store_PaymentPending");
 
         var desired = new StoreCheckoutIntent(amountEur, returnUrl, customerEmail, description, null,
             clock.GetCurrentInstant().ToUnixTimeSeconds());
@@ -1234,15 +1231,16 @@ internal sealed class Service(
         {
             if (attemptId is null)
                 throw new InvalidOperationException("The saved checkout request has no attempt id.");
-            // Stripe may evict an idempotency key after 24 hours. Never recreate an unknown session past that window.
-            if (clock.GetCurrentInstant() - Instant.FromUnixTimeSeconds(intent.CreatedAtUnix) >= Duration.FromHours(23))
+            // Do not recreate an unknown session past key retention or with an amount the order no longer owes.
+            if (intent.AmountEur > balance
+                || clock.GetCurrentInstant() - Instant.FromUnixTimeSeconds(intent.CreatedAtUnix) >= Duration.FromHours(23))
             {
                 var inventory = await stripeService.ListStoreCheckoutSessionsAsync(ct);
                 var matches = inventory?.Where(s => s.OrderId == orderId && s.CheckoutAttemptId == attemptId).ToList();
                 if (matches is not { Count: 1 })
                 {
-                    logger.LogWarning("Checkout attempt {AttemptId} on order {OrderId} remains unresolved past its replay window", attemptId, orderId);
-                    return null;
+                    logger.LogWarning("Checkout attempt {AttemptId} on order {OrderId} cannot be safely replayed and remains unresolved", attemptId, orderId);
+                    return new CheckoutSessionResult(null, "Store_PaymentPending");
                 }
                 knownId = matches[0].SessionId;
             }
@@ -1262,10 +1260,10 @@ internal sealed class Service(
 
         if (session is not null)
         {
-            if (IsComplete(session)) return null;
+            if (IsComplete(session)) return new CheckoutSessionResult(null, "Store_PaymentPending");
             if (intent is not null && session is { Status: "open", Url: not null }
                 && intent with { SupersededSessionId = null, CreatedAtUnix = 0 } == desired with { CreatedAtUnix = 0 })
-                return session.Url;
+                return new CheckoutSessionResult(session.Url, null);
         }
 
         // Legacy attempts have no saved arguments. Supersede their known session rather than guessing its POST body.
@@ -1274,7 +1272,9 @@ internal sealed class Service(
         await WriteCheckoutAttemptAsync(orderId, nextAttempt, null, amountEur, ct, intent);
         session = await ReadIntentAsync(intent, nextAttempt, knownId: null);
         await RememberAsync(intent, nextAttempt, session);
-        return IsComplete(session) ? null : string.Equals(session.Status, "open", StringComparison.Ordinal) ? session.Url : null;
+        return !IsComplete(session) && string.Equals(session.Status, "open", StringComparison.Ordinal) && session.Url is not null
+            ? new CheckoutSessionResult(session.Url, null)
+            : new CheckoutSessionResult(null, "Store_PaymentPending");
 
         bool IsComplete(StoreCheckoutSessionData value)
         {
