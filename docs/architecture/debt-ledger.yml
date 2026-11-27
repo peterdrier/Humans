@@ -169,7 +169,3 @@ inbox:
     id: CENTRAL-114
     what: "src/Sections/Humans.Tickets: the 2027 ticketing types keep the TicketCheckout prefix (TicketCheckoutOrder, TicketCheckoutTicket, TicketCheckoutRefund, TicketCheckoutOrderEvent, TicketCheckoutService, TicketCheckoutRepository, ITicketCheckoutService, ITicketCheckoutRepository, TicketCheckoutConfiguration and their siblings) because TicketTailor's TicketOrder holds the plain name; the glossary words are order, ticket, refund (CONTEXT.md, Ticketing). Peter chose (2026-11-22) to rename them when the TicketTailor code retires, about January 2027. Table names stay through EF mapping."
     review: standard
-  - added: 2026-11-22
-    id: CENTRAL-113
-    what: "src/Sections/Humans.BoxOffice reads its Stripe account with its own Stripe.net client (GetPaymentLedgerAsync, fees, the checkout probe), against memory/architecture/vendor-connectors-own-sections.md. Hi.Events and pretix read theirs through IStripeService's account reads (GetAccountLedgerAsync and siblings); fold Box Office's reads into them too, and the Stripe reporting-category mapping each adapter repeats into one place. Peter decided (2026-11-26) that every ticketing provider, Box Office included, charges into the existing Tickets Stripe account (STRIPE_TICKETS_KEY), so Box Office needs no key of its own."
-    review: standard
