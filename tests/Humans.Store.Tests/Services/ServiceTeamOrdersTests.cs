@@ -1,3 +1,5 @@
+using Humans.Base.Authorization;
+using Humans.Permissions.Contracts;
 using AwesomeAssertions;
 using Humans.AuditLog.Contracts;
 using Humans.Camps.Contracts;
@@ -30,6 +32,7 @@ public class ServiceTeamOrdersTests
     private readonly IAuditLogService _audit = Substitute.For<IAuditLogService>();
     private readonly ICampService _campService = Substitute.For<ICampService>();
     private readonly ITeamService _teams = Substitute.For<ITeamService>();
+    private readonly IPermissionService _permissions = Substitute.For<IPermissionService>();
     private readonly ISettingsService _shifts = Substitute.For<ISettingsService>();
     private readonly IStripeService _stripe = Substitute.For<IStripeService>();
     private readonly FakeClock _clock = new(Instant.FromUtc(2026, 3, 14, 12, 0));
@@ -41,10 +44,12 @@ public class ServiceTeamOrdersTests
         _shifts.GetActiveEventSettings().Returns(BurnFixtures.Burn(year: 2026, timeZoneId: "Europe/Madrid"));
         _teams.GetTeamsAsync(Arg.Any<CancellationToken>())
             .Returns(new Dictionary<Guid, TeamInfo>());
+        _permissions.GetOwnersAsync(Arg.Any<Guid>(), StorePermissions.TeamOrders, Arg.Any<CancellationToken>())
+            .Returns([]);
         _campService.GetCampsForYearAsync(Arg.Any<int>(), Arg.Any<CancellationToken>())
             .Returns(new List<CampInfo>());
         _service = new Service(
-            _repo, _audit, Substitute.For<IAuditViewerService>(), _campService, _teams, _clock, _shifts, _stripe,
+            _repo, _audit, Substitute.For<IAuditViewerService>(), _campService, _teams, _permissions, _clock, _shifts, _stripe,
             new CatalogService(_repo, _audit, _clock, _holded, NullLogger<CatalogService>.Instance), NullLogger<Service>.Instance);
     }
 
@@ -227,6 +232,9 @@ public class ServiceTeamOrdersTests
                 // sub-team the user coordinates — must NOT appear in the index
                 [subteamId] = MakeDepartment(subteamId, "Build Sub", userId, parentTeamId: deptId),
             });
+        // A department holding reaches its sub-teams; the index still lists departments only.
+        _permissions.GetOwnersAsync(userId, StorePermissions.TeamOrders, Arg.Any<CancellationToken>())
+            .Returns([new Owner(TeamOwner.Kind, deptId), new Owner(TeamOwner.Kind, subteamId)]);
         var orderId = Guid.NewGuid();
         var productId = Guid.NewGuid();
         _repo.GetOrdersForTeamsAsync(
