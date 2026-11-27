@@ -6,7 +6,8 @@ namespace Humans.CityPlanning.Data;
 
 /// <summary>
 /// Reads are <c>AsNoTracking</c>. <see cref="CampPolygonHistory"/> is append-only: no update or delete of a single
-/// history row. <see cref="DeletePolygonsForCampSeasonsAsync"/> is the one exception.
+/// history row. <see cref="DeletePolygonsForCampSeasonsAsync"/> and <see cref="DeleteHistoryBeforeAsync"/> are the
+/// exceptions.
 /// </summary>
 internal interface ICityPlanningRepository : IRepository
 {
@@ -42,6 +43,9 @@ internal interface ICityPlanningRepository : IRepository
     /// </summary>
     Task<int> DeletePolygonsForCampSeasonsAsync(
         IReadOnlyCollection<Guid> campSeasonIds, CancellationToken ct = default);
+
+    /// <summary>History rows only: the current polygon of each season is the burn's final map and is kept.</summary>
+    Task<int> DeleteHistoryBeforeAsync(Instant cutoff, CancellationToken ct = default);
 
     /// <summary>Detached; null when none exists. Never writes: the read path's lookup.</summary>
     Task<CityPlanningSettings?> GetSettingsAsync(int year, CancellationToken ct = default);

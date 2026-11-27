@@ -35,7 +35,7 @@ Interactive map surface: a read-only overview, barrio polygon editing, and conta
 - `CityPlanningService.GetLeadCampsAsync` resolves year-scoped leadership through Camps for map pages, container exports, and the camp placement component. Map pages retain their first matching camp; exports include every matching camp.
 - **Container placement phase** gates whether barrio leads can place, annotate or clear containers for their camp. The container map page gate reads the route year’s settings, the same year its placement writes authorize against. Container CRUD uses the separate Manage operation and is not phase-gated; the admin create/edit/delete posts carry the route year and redirect back to that year’s list. Toggled by map admins from the containers admin sub-page. Placement save, notes/image update and clear share one container lookup and Place authorization gate against the route year’s settings and camp leads; the container list’s edit flags use the same year. Camp admins and city planning team members are always exempt.
 - **CampPolygon** is a single polygon per CampSeason representing the camp's placed area. Save and restore verify that the season exists through `ICampService` before writing placement or history, including for map admins. A missing season returns the existing HTTP 400 refusal without a broadcast; directory failures propagate before any write.
-- **CampPolygonHistory** is an append-only audit trail of polygon edits and restores.
+- **CampPolygonHistory** is an append-only audit trail of polygon edits and restores. It is seasonal: `CityPlanningService` is an `IRetentionPeriodContributor`, so Settings' daily retention job deletes history rows older than the app-wide retention period. `CampPolygon`, each season's current polygon and so the burn's final map, is never pruned.
 
 ## Data Model
 
@@ -267,10 +267,11 @@ Broadcasts `CampPolygonUpdated(campSeasonId, geoJson, areaSqm, soundZone, campNa
 - Polygon reads by camp season ids (`GetPolygonsByCampSeasonIdsAsync`, `GetCampSeasonIdsWithPolygonAsync`).
 - Polygon-history reads for a camp season (`GetHistoryForCampSeasonAsync`, `GetHistoryEntryAsync`).
 - Atomic "save polygon + append history" write (`SavePolygonAsync`). Returns the persisted `CampPolygon` only; the history row is a side effect readable via `GetHistoryForCampSeasonAsync`. Polygon upsert and history insert happen in one unit of work.
-- Season-scoped cascade delete (`DeletePolygonsForCampSeasonsAsync`) — removes a season's polygon and its history rows in one unit of work, and is the one exception to append-only. Reached through `ICampDeletionListener.CampSeasonsDeletingAsync` when a camp is deleted.
+- Season-scoped cascade delete (`DeletePolygonsForCampSeasonsAsync`) — removes a season's polygon and its history rows in one unit of work. Reached through `ICampDeletionListener.CampSeasonsDeletingAsync` when a camp is deleted.
+- Retention delete (`DeleteHistoryBeforeAsync`) — removes history rows older than a cutoff, never a `CampPolygon`. These two deletes are the only exceptions to append-only.
 - Settings read (`GetSettingsAsync` — null when the year has no row; never writes) and upsert (`GetOrCreateSettingsAsync`, `MutateSettingsAsync` — write paths only). All field-level mutations (barrio override, barrio schedule, container phase, limit zone, official zones) flow through `MutateSettingsAsync` at the service layer. It returns `Task`, so no EF entity leaves the repository.
 
-Per design-rules.md, *Append-only entities*, `city_camp_polygon_history` is append-only — the repository intentionally exposes no `UpdateHistoryAsync` / `RemoveHistoryAsync`.
+Per design-rules.md, *Append-only entities*, `city_camp_polygon_history` is append-only — the repository intentionally exposes no `UpdateHistoryAsync` / `RemoveHistoryAsync` for a single row.
 
 ## Issue queue
 

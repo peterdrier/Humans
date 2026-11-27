@@ -30,7 +30,7 @@ is exportable and erasable; account merges re-point their scans.
 | Staff PINs *(dormant)* | `GET /Gate/Admin`, `POST /Gate/Admin/SetPin`, `POST /Gate/Admin/ResetPin` | No nav entry; serves only the bypassed claim flow |
 | Recover missed vendor mirrors *(temporary)* | `GET/POST /Gate/Admin/VendorCheckInBackfill` (`RunOne`, `Run`) | Remove after use |
 | Who is scanning? *(retired)* | `Claim` GET/POST, `ClaimPin`, `EndShift`, `/Gate/Search` | Unreachable; kept, deletion shelved under nobodies-collective/Humans#933 for the 2027 rewrite |
-| Housekeeping | `GateRetentionJob`, `GateVendorCheckInJob`, `IUserDataContributor`, `IUserMerge` | Purge, mirror, GDPR, merge |
+| Housekeeping | `IRetentionPeriodContributor`, `GateVendorCheckInJob`, `IUserDataContributor`, `IUserMerge` | Purge, mirror, GDPR, merge |
 
 ### Structure
 
