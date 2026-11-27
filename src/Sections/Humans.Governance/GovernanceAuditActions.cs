@@ -9,6 +9,8 @@ internal sealed class GovernanceAuditActions : AuditActionContributor
 
     public static readonly AuditActionDefinition TierApplicationRejected = new("TierApplicationRejected", AuditKept.Forever, Verb: "rejected tier application for");
 
+    public static readonly AuditActionDefinition TierApplicationWithdrawn = new("TierApplicationWithdrawn", AuditKept.Forever);
+
     public static readonly AuditActionDefinition TierDowngraded = new("TierDowngraded", AuditKept.Forever);
 
     // From the temporary /Governance/Applications/Admin/TermExpiry screen.

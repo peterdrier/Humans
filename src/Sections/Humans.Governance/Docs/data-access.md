@@ -33,7 +33,7 @@ Repository: `IApplicationRepository`.
 | Table | R/W |
 |-------|-----|
 | Applications | R/W |
-| ApplicationStateHistories | R/W |
+| ApplicationStateHistories | R (retired; erasure nulls notes) |
 | BoardVotes | R/W (removed for GDPR after decision) |
 
 | Cache Key | TTL | Read | Write | Invalidate |

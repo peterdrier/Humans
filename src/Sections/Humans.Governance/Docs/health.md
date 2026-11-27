@@ -122,8 +122,8 @@ Each cites the line that enforces it.
 - A tier lapses only when no Approved application for it is still in term; the member drops to
   their other in-term tier, or to Volunteer, and each drop is audited
   (`Services/MembershipTierService.cs:47`).
-- `application_state_history` is append-only in normal operation: the repository offers no
-  update or delete for it. GDPR erasure is the one exception, nulling `Notes` on the rows of the
+- `application_state_history` is retired: nothing writes it, and the history line renders from
+  the application row. GDPR erasure still nulls `Notes` on the rows of the
   person's own applications and on the rows they authored as a Board member
   (`Data/ApplicationRepository.cs:317`, `:337`).
 - Casting a Board vote is Board-only and finalizing is Admin-only
