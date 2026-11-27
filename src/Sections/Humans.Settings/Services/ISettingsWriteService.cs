@@ -23,6 +23,11 @@ internal interface ISettingsWriteService : ISettingsService
     Task<EventSettingsSaveResult> SaveTimeZoneAsync(
         string timeZoneId, Guid actorUserId, CancellationToken cancellationToken = default);
 
+    /// <summary>Sets the app-wide retention period and audits it, naming <paramref name="actorUserId"/>.</summary>
+    /// <returns>An expected refusal when <paramref name="days"/> is below 1.</returns>
+    Task<EventSettingsSaveResult> SaveRetentionDaysAsync(
+        int days, Guid actorUserId, CancellationToken cancellationToken = default);
+
     /// <summary>
     /// Makes <paramref name="eventSettingsId"/> the active event and the previously active one Inactive, in one
     /// audited step naming <paramref name="actorUserId"/>.

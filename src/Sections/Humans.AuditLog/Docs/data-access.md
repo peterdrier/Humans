@@ -9,7 +9,7 @@ folder keeps `IAuditViewerService`, `AuditEvent` and `ILegacyGoogleSyncAuditRead
 **DbContext:** `AuditLogDbContext`.
 `AuditLogRepository` injects
 `IDbContextFactory<AuditLogDbContext>` directly. Owns
-`AuditLogEntries`.
+`AuditLogEntries` (permanent) and `TemporaryAuditLogEntries`.
 
 ### AuditLogService (Scoped)
 
@@ -17,10 +17,11 @@ Repository: `IAuditLogRepository`.
 
 | Table | R/W |
 |-------|-----|
-| AuditLogEntries | R/W |
+| AuditLogEntries | R/W (no update or delete) |
+| TemporaryAuditLogEntries | R/W/D (delete by age and by erasure only) |
 
 Cross-section calls via `IUserService` (migrated to the read-split
-surface). Implements `IUserDataContributor`, and — until the six Google
+surface). Implements `IUserDataContributor`, `IRetentionPeriodContributor` (Base; the temporary side), and — until the six Google
 columns are dropped — `ILegacyGoogleSyncAuditReader`, the read-only feed for
 Google's one-time history migration screen.
 No `IMemoryCache`.

@@ -1,0 +1,18 @@
+@using Humans.Settings.ViewComponents
+@model RetentionSettingsTabViewModel
+
+@* Admin-only, so not localized. *@
+<form method="post" asp-controller="SettingsAdmin" asp-action="Retention" class="row g-2 align-items-end mb-3">
+    @Html.AntiForgeryToken()
+    <div class="col-auto">
+        <label for="retentionDays" class="form-label">Retention period (days)</label>
+        <input id="retentionDays" name="days" type="number" min="1" step="1" value="@Model.Days" class="form-control" required />
+    </div>
+    <div class="col-auto">
+        <button type="submit" class="btn btn-outline-primary">Save retention period</button>
+    </div>
+</form>
+@if (Model.AppliesTo.Count > 0)
+{
+    <p class="small text-muted mb-0">Deleted daily once older than this: @string.Join(", ", Model.AppliesTo).</p>
+}

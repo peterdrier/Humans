@@ -6,9 +6,9 @@ namespace Humans.Gate;
 internal sealed class GateAuditActions : AuditActionContributor
 {
     // Retired with staff PINs: nothing writes these, declared so their stored rows keep resolving.
-    public static readonly AuditActionDefinition GateStaffPinSet = new("GateStaffPinSet");
+    public static readonly AuditActionDefinition GateStaffPinSet = new("GateStaffPinSet", AuditKept.Forever);
 
-    public static readonly AuditActionDefinition GateStaffPinReset = new("GateStaffPinReset");
+    public static readonly AuditActionDefinition GateStaffPinReset = new("GateStaffPinReset", AuditKept.Forever);
 
-    public static readonly AuditActionDefinition GateAdmitUndone = new("GateAdmitUndone");
+    public static readonly AuditActionDefinition GateAdmitUndone = new("GateAdmitUndone", AuditKept.Forever);
 }

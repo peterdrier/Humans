@@ -1,0 +1,26 @@
+@using Humans.Base.Models.Tables
+@model IReadOnlyList<AuditActionDefinition>
+@{
+    ViewData["Title"] = "Audit actions";
+    var table = TableModel.For(Model)
+        .Column("Action", a => a.Name, c => c.Code())
+        .Column("Kept", a => a.Kept == AuditKept.Forever ? "Forever" : "Retention period")
+        .Column("Verb", a => a.Verb ?? string.Empty)
+        .Build();
+}
+
+@* Admin-only, so not localized. *@
+<page-header title="Audit actions" />
+
+<div class="card">
+    <partial name="_Table" model="table" />
+</div>
+
+<p class="small text-muted mt-3 mb-0">
+    Forever entries can never be changed or deleted. Retention period entries are deleted once older than the retention
+    period set on Settings, or when the person they name is erased. Changing an action's side moves no existing entries.
+</p>
+
+<div class="mt-3">
+    <a asp-action="Index" class="btn btn-outline-secondary">Back to audit log</a>
+</div>
