@@ -268,6 +268,8 @@ addresses were typed. Directed resale links buy only the buyer's own ticket.
   Invitation, use and cancel are on the holder's order timeline; cancel
   clears every invitation, and the switch to `Queue`, a void or erasure clears them too.
 
+Paid orders whose ticket issuance was interrupted retain their fresh-stock capacity and holder reservations until recovery issues the tickets. Issued orders are counted through their tickets only, including after void or resale; fulfilment excludes its own order when checking for another held ticket.
+
 ## Companion tickets
 
 A holder of a valid adult ticket can ask, on `/Tickets/Buy/Mine`, for a free companion ticket for someone already in

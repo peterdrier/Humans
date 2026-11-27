@@ -1244,21 +1244,24 @@ internal sealed partial class TicketCheckoutService(
     private static bool IsDiscounted(BuyContext context) =>
         context.OwnPrice!.ClassPrice is not null || !ReferenceEquals(context.OwnPrice.Wave, context.PublicPrice!.Wave);
 
-    /// <summary>An adult ticket held, in resale, or on an unpaid order that has not lapsed.</summary>
-    private async Task<bool> HoldsTicketAsync(Guid settingsId, Guid userId, Instant now, CancellationToken ct)
+    /// <summary>An adult ticket held, in resale, or reserved by an order whose tickets have not yet been issued.</summary>
+    private async Task<bool> HoldsTicketAsync(
+        Guid settingsId, Guid userId, Instant now, CancellationToken ct, Guid? excludingOrderId = null)
     {
-        if ((await repository.GetTicketsForHolderAsync(userId, ct)).Any(t =>
-                t.TicketingSettingsId == settingsId && t.Kind != TicketHolderKind.Child
-                && t.IsHeld))
+        var tickets = await repository.GetTicketsForSettingsAsync(settingsId, ct);
+        if (tickets.Any(t => t.HolderUserId == userId && t.OrderId != excludingOrderId
+                && t.Kind != TicketHolderKind.Child && t.IsHeld))
             return true;
+        var issued = tickets.Select(t => t.OrderId).ToHashSet();
         return (await repository.GetOrdersForUserAsync(userId, ct)).Any(o =>
-            o.TicketingSettingsId == settingsId && o.State != TicketCheckoutOrderState.Paid && o.HoldsTickets(now)
+            o.TicketingSettingsId == settingsId && o.Id != excludingOrderId && o.HoldsTickets(now)
+            && (o.State != TicketCheckoutOrderState.Paid || !issued.Contains(o.Id))
             && o.Lines.Any(l => l.Kind == OrderLineKind.Ticket && l.HolderUserId == userId && l.HolderKind != TicketHolderKind.Child));
     }
 
     /// <summary>
     /// <paramref name="Held"/> counts against capacity: issued tickets still valid or in resale, and fresh-stock lines on
-    /// unpaid orders still holding capacity, including overdue remote checkouts awaiting closure.
+    /// orders still holding capacity before issuance, including paid orders awaiting recovery and overdue remote checkouts.
     /// A resold ticket replaces the one put up for resale, so it adds nothing.
     /// </summary>
     private sealed record Stock(int Held, bool ResaleOpen, IReadOnlyList<TicketResaleOffer> Offers);
@@ -1267,8 +1270,9 @@ internal sealed partial class TicketCheckoutService(
     {
         var tickets = await repository.GetTicketsForSettingsAsync(ticketing.Id, ct);
         var sold = tickets.Count(t => t.IsHeld);
+        var issued = tickets.Select(t => t.OrderId).ToHashSet();
         var pending = (await repository.GetOrdersForSettingsAsync(ticketing.Id, ct))
-            .Where(o => o.State != TicketCheckoutOrderState.Paid && o.HoldsTickets(now))
+            .Where(o => o.HoldsTickets(now) && (o.State != TicketCheckoutOrderState.Paid || !issued.Contains(o.Id)))
             .Sum(o => o.Lines.Count(l => l.Kind == OrderLineKind.Ticket && l.ResaleOfferId is null));
         var resaleOpen = ticketing.IsResaleSelling(now);
         // A ticket in resale whose holder was already admitted can never sell: the gate's admission is the only entry record.

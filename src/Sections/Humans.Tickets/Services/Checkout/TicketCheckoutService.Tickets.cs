@@ -448,7 +448,7 @@ internal sealed partial class TicketCheckoutService
         foreach (var (line, index) in order.Lines.Select((l, i) => (l, i + 1))
                      .Where(x => x.l is { Kind: OrderLineKind.Ticket, HolderUserId: not null } && x.l.HolderKind != TicketHolderKind.Child)
                      .DistinctBy(x => x.l.HolderUserId))
-            if (await HoldsTicketAsync(order.TicketingSettingsId, line.HolderUserId!.Value, now, ct))
+            if (await HoldsTicketAsync(order.TicketingSettingsId, line.HolderUserId!.Value, now, ct, order.Id))
                 await NeedsAttentionAsync(order.Id,
                     $"The holder of line {index} already held a ticket for this event; the ticketing team should refund one", ct);
     }

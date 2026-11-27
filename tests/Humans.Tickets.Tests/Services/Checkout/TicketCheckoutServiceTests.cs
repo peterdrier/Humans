@@ -653,13 +653,8 @@ public sealed partial class TicketCheckoutServiceTests
     [InlineData("Void", 0)]
     public async Task GetHeldTicketCountAsync_TicketState_MatchesBuyPage(string state, int count)
     {
-        _repo.Tickets.Add(new TicketCheckoutTicket
-        {
-            Id = Guid.NewGuid(),
-            TicketingSettingsId = _ticketing.Id,
-            HolderUserId = _buyerId,
-            State = Enum.Parse<TicketCheckoutTicketState>(state),
-        });
+        var ticket = await PaidAdultAsync();
+        ticket.State = Enum.Parse<TicketCheckoutTicketState>(state);
 
         (await _service.GetHeldTicketCountAsync(_buyerId, Ct)).Should().Be(count);
         (await _service.GetBuyPagesAsync(_buyerId, Ct)).Single().AlreadyHoldsTicket.Should().Be(count > 0);
@@ -3617,6 +3612,35 @@ public sealed partial class TicketCheckoutServiceTests
     }
 
     [HumansTheory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public async Task StartCheckoutAsync_PaidBeforeIssuance_KeepsReservations(bool sameHolder)
+    {
+        _ticketing.Capacity = 1;
+        await _service.StartCheckoutAsync(Buy(), _buyerId, Ct);
+        var order = _repo.Orders.Single();
+        _repo.RejectTicketIssuance = true;
+        var pay = () => PayAsync(order.PlatformOrderId!);
+        await pay.Should().ThrowAsync<InvalidOperationException>();
+        order.State.Should().Be(TicketCheckoutOrderState.Paid);
+        _repo.Tickets.Should().BeEmpty();
+
+        var next = await _service.StartCheckoutAsync(Buy(), sameHolder ? _buyerId : _otherBuyerId, Ct);
+
+        next.Refusal.Should().Be(sameHolder ? "Tickets_Buy_AlreadyHolds" : "Tickets_Buy_SoldOut");
+        _repo.Orders.Should().ContainSingle();
+        _repo.RejectTicketIssuance = false;
+        await _service.ReconcileOpenOrdersAsync(Ct);
+        _repo.Tickets.Should().ContainSingle(t => t.OrderId == order.Id);
+        await _audit.DidNotReceive().LogAsync(TicketsAuditActions.TicketCheckoutNeedsAttention,
+            Arg.Any<string>(), Arg.Any<Guid>(), Arg.Is<string>(d => d.Contains("already held a ticket", StringComparison.Ordinal)),
+            Arg.Any<string>(), Arg.Any<Guid?>(), Arg.Any<string?>());
+
+        _ticketing.Capacity = 2;
+        (await _service.StartCheckoutAsync(Buy(), _otherBuyerId, Ct)).Refusal.Should().BeNull();
+    }
+
+    [HumansTheory]
     [InlineData(false)]
     [InlineData(true)]
     public async Task StartCheckoutAsync_RemoteHoldPastDeadline_ReservesCapacity(bool recoveryFails)
@@ -4019,8 +4043,12 @@ public sealed partial class TicketCheckoutServiceTests
         public Task<bool> TryClaimPaidAsync(Guid orderId, Instant paidAt, CancellationToken ct = default) =>
             Task.FromResult(ClaimedPaid.Add(orderId));
 
+        public bool RejectTicketIssuance { get; set; }
+
         public Task<bool> AddTicketsAsync(IReadOnlyList<TicketCheckoutTicket> tickets, CancellationToken ct = default)
         {
+            if (RejectTicketIssuance)
+                throw new InvalidOperationException("Ticket issuance failed");
             if (RejectCompanionWrites && tickets.Any(t => t.Kind == TicketHolderKind.Companion))
                 throw new InvalidOperationException("Companion write failed");
             if (tickets.Any(n => Tickets.Any(t => t.OrderId == n.OrderId && t.LineIndex == n.LineIndex)))
