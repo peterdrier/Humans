@@ -1,0 +1,82 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="-2 -2 244 244" role="img" aria-label="Vitruvian Man">
+  <!-- Frame: Leonardo's circle (navel centre) and square (groin centre) -->
+  <circle cx="120" cy="120" r="120" fill="none" stroke="#c9a96e" stroke-width="2.6"/>
+  <rect x="23" y="46" width="194" height="194" fill="none" stroke="#c9a96e" stroke-width="2.6"/>
+  <!-- Faint construction: axes, head-height ticks, compass arcs -->
+  <g stroke="#c9a96e" stroke-width="0.4" fill="none" opacity="0.3">
+    <line x1="120" y1="46" x2="120" y2="240"/>
+    <line x1="23" y1="143" x2="217" y2="143"/>
+        <path d="M23 70h4M213 70h4M23 94h4M213 94h4M23 118h4M213 118h4M23 167h4M213 167h4M23 191h4M213 191h4M23 216h4M213 216h4"/>
+    <path d="M46 46v4M94 46v4M146 46v4M194 46v4M46 236v4M94 236v4M146 236v4M194 236v4"/>
+    <path d="M32 80a95 95 0 0 1 176 0"/>
+  </g>
+  <!-- Bold gold base: body, both arm poses, both leg poses -->
+  <g fill="#c9a96e">
+    <!-- head and neck -->
+    <ellipse cx="120" cy="58.5" rx="9.8" ry="12.5"/>
+    <path d="M114.5 68 L113.5 78 L126.5 78 L125.5 68 Z"/>
+    <!-- torso -->
+    <path d="M98 78 C104 75 136 75 142 78 C144 92 138 106 135 120 C134 132 131 142 128 150 L112 150 C109 142 106 132 105 120 C102 106 96 92 98 78 Z"/>
+    <!-- right side limbs, mirrored for left -->
+    <g id="limbs">
+      <!-- horizontal arm to the square edge -->
+      <path d="M138 77 C150 75 180 76 205 78 L217 79 L217 87 L205 87 C180 88 150 88 138 91 Z"/>
+      <!-- raised arm to the circle -->
+      <path d="M138 80 C148 72 182 56 206 48 L214 47 L217 52 L208 56 C184 66 152 82 141 92 Z"/>
+      <!-- leg together to the square bottom -->
+      <path d="M120 148 L132 150 C134 180 132 212 131 240 L115 240 C116 212 118 180 120 148 Z"/>
+      <!-- leg spread to the circle -->
+      <path d="M128 148 C140 170 160 200 172 226 L174 235 L166 240 L160 232 C146 210 130 184 118 160 Z"/>
+    </g>
+    <use href="#limbs" transform="translate(240,0) scale(-1,1)"/>
+  </g>
+  <!-- Tier 1 (2.0): main contours and pose separations -->
+  <g fill="none" stroke="#3d2b1f" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M110.5 56 C110 48 130 48 129.5 56"/>
+    <path d="M110.2 60 C111 72 129 72 129.8 60"/>
+    <path d="M97 78 C104 75 136 75 143 78"/>
+    <path d="M105 120 C106 132 109 142 112 150"/>
+    <path d="M135 120 C134 132 131 142 128 150"/>
+    <g id="t1">
+      <path d="M138 91 C150 88 180 88 205 87"/><path d="M172 78 C176 82 176 84 172 87"/>
+      <path d="M141 92 C152 82 184 66 208 56"/>
+      <path d="M132 150 C134 180 132 212 131 240"/>
+      <path d="M128 148 C140 170 160 200 172 226"/>
+      <path d="M120 148 C118 180 116 212 115 240"/>
+      <path d="M118 160 C130 184 146 210 160 232"/>
+    </g>
+    <use href="#t1" transform="translate(240,0) scale(-1,1)"/>
+  </g>
+  <!-- Tier 2 (1.4): muscle groups and hair -->
+  <g fill="none" stroke="#3d2b1f" stroke-width="1.4" stroke-linecap="round">
+    <path d="M110 54 C112 46 128 46 130 54 C128 50 126 49 124 50 C121 48 117 48 114 51 C112 51 111 52 110 54 Z" fill="#3d2b1f" opacity="0.8"/>
+    <path d="M113 78 L117 78 M123 78 L127 78"/>
+    <path d="M120 100 L120 115"/>
+    <path d="M108 104 C112 110 128 110 132 104"/>
+    <path d="M112 138 L128 138"/>
+    <g id="t2">
+      <path d="M160 79 L158 86 M182 79 L181 86"/>
+      <path d="M168 69 L172 75 M188 60 L191 65"/>
+      <path d="M121 192 C125 190 129 190 132 192"/>
+      <path d="M145 184 L140 190 M158 208 L153 212"/>
+    </g>
+    <use href="#t2" transform="translate(240,0) scale(-1,1)"/>
+  </g>
+  <!-- Tier 3 (0.9): face, fingers, toes, hatching -->
+  <g fill="none" stroke="#3d2b1f" stroke-width="0.9" stroke-linecap="round">
+    <path d="M115 58 L118 58 M122 58 L125 58"/>
+    <path d="M120 58 L119 63 L121 63"/>
+    <path d="M118.5 66 L121.5 66"/>
+    <path d="M104 84 L104 90 M136 84 L136 90"/>
+    <path d="M117 120 C118 121 122 121 123 120"/>
+    <g id="t3">
+      <path d="M205 80 L216 80.5 M205 82 L216 82.5 M205 84 L216 84.5 M205 86 L215 86.5"/>
+      <path d="M205 79 L207 77 L209 80"/>
+      <path d="M208 56 L215 48 M209 57.5 L216 50 M210 59 L217 52 M206 55 L209 50"/>
+      <path d="M120 240 L123 236 L127 236 L131 240"/>
+      <path d="M166 240 L168 234 L172 232 L174 235"/>
+      <path d="M140 100 L142 106 M142 112 L140 118 M100 100 L98 106"/>
+    </g>
+    <use href="#t3" transform="translate(240,0) scale(-1,1)"/>
+  </g>
+</svg>

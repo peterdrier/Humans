@@ -10,7 +10,7 @@ namespace Humans.Expenses.Tests;
 public class ExpensesArchitectureTests
 {
     [HumansFact]
-    public void ContractsDoNotReExposeTheHoldedConnector()
+    public void Contracts_HoldedConnector_IsNotExposed()
     {
         // ExpenseReportBackgroundProcessor uses the Holded connector types heavily. They belong
         // to Base's connector, and letting one into the contracts leaf creates a project cycle.

@@ -1,0 +1,280 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="-2 -2 244 244" role="img" aria-label="Vitruvian Man">
+  <defs>
+    <clipPath id="bounds">
+      <circle cx="120" cy="120" r="122"/>
+    </clipPath>
+  </defs>
+
+  <!-- Construction lines (faint gold, vanish small) -->
+  <g opacity="0.08" stroke="#c9a96e" fill="none" clip-path="url(#bounds)">
+    <line x1="120" y1="-2" x2="120" y2="242" stroke-width="0.4"/>
+    <line x1="-2" y1="120" x2="242" y2="120" stroke-width="0.4"/>
+    <path d="M55,16 A106,106 0 0,1 78,6" stroke-width="0.3"/>
+    <path d="M185,16 A106,106 0 0,0 162,6" stroke-width="0.3"/>
+    <line x1="23" y1="44" x2="23" y2="48" stroke-width="0.3"/>
+    <line x1="217" y1="44" x2="217" y2="48" stroke-width="0.3"/>
+    <line x1="21" y1="46" x2="25" y2="46" stroke-width="0.3"/>
+    <line x1="215" y1="46" x2="219" y2="46" stroke-width="0.3"/>
+  </g>
+
+  <!-- Frame -->
+  <circle cx="120" cy="120" r="120" fill="none" stroke="#c9a96e" stroke-width="1.6"/>
+  <rect x="23" y="46" width="194" height="194" fill="none" stroke="#c9a96e" stroke-width="1.6"/>
+
+  <!-- === SOLID GOLD BASE === -->
+  <g fill="#c9a96e" stroke="none">
+
+    <!-- Head -->
+    <ellipse cx="120" cy="57" rx="11.5" ry="13.5"/>
+
+    <!-- Neck -->
+    <path d="M113,69 Q113,73 111,78 L129,78 Q127,73 127,69 Z"/>
+
+    <!-- Torso — broad chest tapering to waist, slight hip flare -->
+    <path d="M98,78 Q95,82 94,90 L93,100 Q94,110 96,118
+             L99,126 Q101,133 104,138 L108,143
+             L132,143 L136,138 Q139,133 141,126
+             L144,118 Q146,110 147,100 L146,90
+             Q145,82 142,78 Z"/>
+
+    <!-- === HORIZONTAL ARMS === -->
+    <!-- Left upper arm — generous width -->
+    <path d="M98,78 L95,76 Q82,77 68,79 L64,76 L62,80
+             Q62,84 64,86 L68,85 Q82,84 95,83 L98,82 Z"/>
+    <!-- Left forearm -->
+    <path d="M68,79 L64,76 Q48,76 32,77 L28,76 L24,78
+             Q23,80 24,83 L28,84 Q48,83 64,82 L68,85 Z"/>
+    <!-- Left hand -->
+    <path d="M28,76 L25,75 L20,75 L17,77 L17,80 L20,82 L25,82 L28,84
+             Q29,80 28,76 Z"/>
+
+    <!-- Right upper arm -->
+    <path d="M142,78 L145,76 Q158,77 172,79 L176,76 L178,80
+             Q178,84 176,86 L172,85 Q158,84 145,83 L142,82 Z"/>
+    <!-- Right forearm -->
+    <path d="M172,79 L176,76 Q192,76 208,77 L212,76 L216,78
+             Q217,80 216,83 L212,84 Q192,83 176,82 L172,85 Z"/>
+    <!-- Right hand -->
+    <path d="M212,76 L215,75 L220,75 L223,77 L223,80 L220,82 L215,82 L212,84
+             Q211,80 212,76 Z"/>
+
+    <!-- === RAISED ARMS — connected to shoulder mass === -->
+    <!-- Left raised upper arm -->
+    <path d="M98,78 L95,74 Q86,64 78,54 L75,50 L72,52
+             Q72,56 74,58 L82,66 Q90,74 98,80 Z"/>
+    <!-- Left raised forearm -->
+    <path d="M78,54 L75,50 Q66,38 56,28 L52,22 L48,18
+             L44,20 L46,24 L50,26 Q60,36 72,52 L74,58 Z"/>
+    <!-- Left raised hand -->
+    <path d="M48,18 L44,14 L39,12 L36,15 L36,19 L39,22 L44,22 L48,22 Z"/>
+
+    <!-- Right raised upper arm -->
+    <path d="M142,78 L145,74 Q154,64 162,54 L165,50 L168,52
+             Q168,56 166,58 L158,66 Q150,74 142,80 Z"/>
+    <!-- Right raised forearm -->
+    <path d="M162,54 L165,50 Q174,38 184,28 L188,22 L192,18
+             L196,20 L194,24 L190,26 Q180,36 168,52 L166,58 Z"/>
+    <!-- Right raised hand -->
+    <path d="M192,18 L196,14 L201,12 L204,15 L204,19 L201,22 L196,22 L192,22 Z"/>
+
+    <!-- === LEGS TOGETHER — fuller thighs, defined gap === -->
+    <!-- Left leg -->
+    <path d="M113,143 L108,146 Q105,155 103,168 L102,180
+             Q102,192 103,204 L104,215 L105,226 L107,234
+             L115,240 L116,234 L115,226 Q114,215 114,204
+             L114,192 Q114,180 115,168 L117,155 L118,146 Z"/>
+    <!-- Left foot -->
+    <path d="M107,234 L103,236 L100,239 L104,242 L115,240 L116,234 Z"/>
+
+    <!-- Right leg -->
+    <path d="M127,143 L132,146 Q135,155 137,168 L138,180
+             Q138,192 137,204 L136,215 L135,226 L133,234
+             L125,240 L124,234 L125,226 Q126,215 126,204
+             L126,192 Q126,180 125,168 L123,155 L122,146 Z"/>
+    <!-- Right foot -->
+    <path d="M133,234 L137,236 L140,239 L136,242 L125,240 L124,234 Z"/>
+
+    <!-- === SPREAD LEGS — muscular, reaching circle === -->
+    <!-- Left spread leg -->
+    <path d="M115,143 L108,148 Q97,168 86,192 L80,208
+             Q76,218 72,228 L68,234 L64,236
+             L60,232 L62,228 L67,232 L72,224
+             Q78,212 86,196 L96,176 Q107,156 118,146 Z"/>
+    <!-- Left spread foot -->
+    <path d="M68,234 L63,235 L58,234 L57,231 L62,229 L67,232 Z"/>
+
+    <!-- Right spread leg -->
+    <path d="M125,143 L132,148 Q143,168 154,192 L160,208
+             Q164,218 168,228 L172,234 L176,236
+             L180,232 L178,228 L173,232 L168,224
+             Q162,212 154,196 L144,176 Q133,156 122,146 Z"/>
+    <!-- Right spread foot -->
+    <path d="M172,234 L177,235 L182,234 L183,231 L178,229 L173,232 Z"/>
+  </g>
+
+  <!-- === TIER 1 ETCH (stroke 2.0, from ~64px) === -->
+  <g fill="none" stroke="#3d2b1f" stroke-width="2.0" stroke-linecap="round" stroke-linejoin="round">
+    <!-- Head -->
+    <ellipse cx="120" cy="57" rx="11.5" ry="13.5"/>
+    <!-- Neck -->
+    <line x1="113" y1="69" x2="111" y2="78"/>
+    <line x1="127" y1="69" x2="129" y2="78"/>
+    <!-- Shoulder ridge -->
+    <path d="M95,82 Q107,76 120,76 Q133,76 145,82"/>
+    <!-- Torso contour -->
+    <path d="M94,90 L93,100 Q94,110 96,118 L99,126 Q101,133 104,138 L108,143"/>
+    <path d="M146,90 L147,100 Q146,110 144,118 L141,126 Q139,133 136,138 L132,143"/>
+    <!-- Pelvis -->
+    <path d="M108,143 Q114,148 120,149 Q126,148 132,143"/>
+    <!-- Pose separation: arms -->
+    <line x1="95" y1="76" x2="75" y2="50"/>
+    <line x1="145" y1="76" x2="165" y2="50"/>
+    <!-- Pose separation: legs -->
+    <line x1="113" y1="143" x2="86" y2="192"/>
+    <line x1="127" y1="143" x2="154" y2="192"/>
+  </g>
+
+  <!-- === TIER 2 ETCH (stroke 1.4, from ~96px) === -->
+  <g fill="none" stroke="#3d2b1f" stroke-width="1.4" stroke-linecap="round">
+    <!-- Pectorals -->
+    <path d="M102,89 Q111,94 120,95 Q129,94 138,89"/>
+    <!-- Sternum -->
+    <line x1="120" y1="83" x2="120" y2="96"/>
+    <!-- Linea alba -->
+    <line x1="120" y1="100" x2="120" y2="140"/>
+    <!-- Abdominal segments -->
+    <path d="M110,106 Q120,109 130,106"/>
+    <path d="M109,116 Q120,119 131,116"/>
+    <path d="M108,126 Q120,129 132,126"/>
+    <!-- Navel -->
+    <circle cx="120" cy="120" r="1.8"/>
+    <!-- Inguinal lines -->
+    <path d="M107,134 L114,143"/>
+    <path d="M133,134 L126,143"/>
+    <!-- Hair -->
+    <path d="M109,47 Q113,42 120,41 Q127,42 131,47"/>
+    <!-- Collarbone -->
+    <path d="M98,80 Q109,78 120,79 Q131,78 142,80"/>
+    <!-- Deltoids -->
+    <path d="M95,82 Q91,86 92,92"/>
+    <path d="M145,82 Q149,86 148,92"/>
+    <!-- Elbows (horizontal) -->
+    <circle cx="66" cy="81" r="2.5" stroke-width="1.0"/>
+    <circle cx="174" cy="81" r="2.5" stroke-width="1.0"/>
+    <!-- Elbows (raised) -->
+    <circle cx="76" cy="53" r="2.5" stroke-width="1.0"/>
+    <circle cx="164" cy="53" r="2.5" stroke-width="1.0"/>
+    <!-- Kneecaps (straight legs) -->
+    <path d="M105,190 Q110,186 115,190" stroke-width="1.2"/>
+    <path d="M125,190 Q130,186 135,190" stroke-width="1.2"/>
+    <!-- Kneecaps (spread legs) -->
+    <path d="M82,200 Q87,196 92,200" stroke-width="1.0"/>
+    <path d="M148,200 Q153,196 158,200" stroke-width="1.0"/>
+    <!-- Wrist creases -->
+    <line x1="30" y1="77" x2="30" y2="83"/>
+    <line x1="210" y1="77" x2="210" y2="83"/>
+    <!-- Ankles -->
+    <line x1="105" y1="226" x2="108" y2="232"/>
+    <line x1="135" y1="226" x2="132" y2="232"/>
+  </g>
+
+  <!-- === TIER 3 ETCH (stroke 0.9, from ~150px) === -->
+  <g fill="none" stroke="#3d2b1f" stroke-width="0.9" stroke-linecap="round">
+    <!-- Eyes -->
+    <path d="M115,54 Q116.5,52.5 118,54"/>
+    <path d="M122,54 Q123.5,52.5 125,54"/>
+    <!-- Brow -->
+    <path d="M113,52 L118,51"/>
+    <path d="M122,51 L127,52"/>
+    <!-- Nose -->
+    <line x1="120" y1="53" x2="119.5" y2="59"/>
+    <path d="M117.5,60 Q120,61.5 122.5,60"/>
+    <!-- Mouth — flat neutral line -->
+    <line x1="117" y1="64" x2="123" y2="64"/>
+    <!-- Chin -->
+    <path d="M116,67 Q120,69.5 124,67"/>
+    <!-- Ear hints -->
+    <path d="M108.5,55 Q107,57 108.5,60"/>
+    <path d="M131.5,55 Q133,57 131.5,60"/>
+
+    <!-- Fingers: horizontal left -->
+    <line x1="18" y1="74" x2="14" y2="72"/>
+    <line x1="16" y1="76" x2="11" y2="75"/>
+    <line x1="15" y1="78" x2="10" y2="78"/>
+    <line x1="15" y1="80" x2="11" y2="81"/>
+    <line x1="17" y1="82" x2="14" y2="84"/>
+
+    <!-- Fingers: horizontal right -->
+    <line x1="222" y1="74" x2="226" y2="72"/>
+    <line x1="224" y1="76" x2="229" y2="75"/>
+    <line x1="225" y1="78" x2="230" y2="78"/>
+    <line x1="225" y1="80" x2="229" y2="81"/>
+    <line x1="223" y1="82" x2="226" y2="84"/>
+
+    <!-- Fingers: raised left -->
+    <line x1="39" y1="12" x2="36" y2="9"/>
+    <line x1="37" y1="14" x2="32" y2="12"/>
+    <line x1="36" y1="17" x2="31" y2="16"/>
+    <line x1="37" y1="20" x2="34" y2="22"/>
+
+    <!-- Fingers: raised right -->
+    <line x1="201" y1="12" x2="204" y2="9"/>
+    <line x1="203" y1="14" x2="208" y2="12"/>
+    <line x1="204" y1="17" x2="209" y2="16"/>
+    <line x1="203" y1="20" x2="206" y2="22"/>
+
+    <!-- Toes: left foot -->
+    <line x1="103" y1="240" x2="101" y2="242"/>
+    <line x1="106" y1="241" x2="105" y2="243"/>
+    <line x1="109" y1="241" x2="109" y2="243"/>
+    <line x1="112" y1="240" x2="113" y2="242"/>
+
+    <!-- Toes: right foot -->
+    <line x1="137" y1="240" x2="139" y2="242"/>
+    <line x1="134" y1="241" x2="135" y2="243"/>
+    <line x1="131" y1="241" x2="131" y2="243"/>
+    <line x1="128" y1="240" x2="127" y2="242"/>
+
+    <!-- Pectoral hatching -->
+    <line x1="104" y1="87" x2="109" y2="93"/>
+    <line x1="112" y1="87" x2="116" y2="93"/>
+    <line x1="124" y1="93" x2="128" y2="87"/>
+    <line x1="131" y1="93" x2="136" y2="87"/>
+
+    <!-- Oblique hatching -->
+    <line x1="98" y1="106" x2="103" y2="118"/>
+    <line x1="137" y1="118" x2="142" y2="106"/>
+    <line x1="97" y1="118" x2="102" y2="130"/>
+    <line x1="138" y1="130" x2="143" y2="118"/>
+
+    <!-- Rib hints -->
+    <path d="M101,94 Q105,96 109,94"/>
+    <path d="M131,94 Q135,96 139,94"/>
+    <path d="M100,100 Q104,102 108,100"/>
+    <path d="M132,100 Q136,102 140,100"/>
+
+    <!-- Thigh contours -->
+    <path d="M107,152 Q104,165 103,178"/>
+    <path d="M133,152 Q136,165 137,178"/>
+    <!-- Calf contours -->
+    <path d="M103,196 Q102,208 104,218"/>
+    <path d="M137,196 Q138,208 136,218"/>
+
+    <!-- Forearm tendons -->
+    <line x1="46" y1="79" x2="38" y2="79"/>
+    <line x1="194" y1="79" x2="202" y2="79"/>
+    <!-- Bicep lines -->
+    <path d="M88,78 Q82,79 76,80"/>
+    <path d="M152,78 Q158,79 164,80"/>
+    <!-- Raised arm muscle separation -->
+    <line x1="88" y1="66" x2="82" y2="58"/>
+    <line x1="152" y1="66" x2="158" y2="58"/>
+
+    <!-- Spread leg thigh contours -->
+    <path d="M100,170 Q92,185 86,198"/>
+    <path d="M140,170 Q148,185 154,198"/>
+    <!-- Spread leg calf -->
+    <path d="M78,210 Q74,220 70,228"/>
+    <path d="M162,210 Q166,220 170,228"/>
+  </g>
+</svg>

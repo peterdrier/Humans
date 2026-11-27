@@ -1,0 +1,163 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="-2 -2 244 244" role="img" aria-label="Vitruvian Man">
+
+  <!-- Construction: circle, square, axes — faint gold, vanishes small -->
+  <g fill="none" stroke="#c9a96e" stroke-width="0.55" opacity="0.45">
+    <circle cx="120" cy="120" r="120"/>
+    <rect x="23" y="46" width="194" height="194"/>
+    <line x1="120" y1="-2" x2="120" y2="242"/>
+    <line x1="-2" y1="120" x2="242" y2="120"/>
+    <!-- Compass arc hint at navel -->
+    <path d="M60 120 A60 60 0 0 1 180 120" fill="none" opacity="0.5"/>
+  </g>
+
+  <!-- Bold gold base — survives at 38px -->
+  <g fill="#c9a96e">
+
+    <!-- Head -->
+    <ellipse cx="120" cy="57.5" rx="11.5" ry="12.5"/>
+
+    <!-- Neck -->
+    <path d="M114.5 69 L125.5 69 L126 79 L114 79 Z"/>
+
+    <!-- Torso: shoulder width ~97–143, waist ~108–132, hips ~100–140 -->
+    <path d="
+      M97 82
+      C90 90 88 103 91 115
+      C93 124 96 133 98 143
+      L142 143
+      C144 133 147 124 149 115
+      C152 103 150 90 143 82
+      C134 77 106 77 97 82 Z"/>
+
+    <!-- Horizontal arms: left shoulder to left hand -->
+    <path d="M99 82 L99 94 L23 93 L23 83 Z"/>
+    <!-- Horizontal arms: right shoulder to right hand -->
+    <path d="M141 82 L141 94 L217 93 L217 83 Z"/>
+
+    <!-- Raised arms: left arm up-left to circle ~(63,16) -->
+    <path d="M105 83 L100 92 L57 21 L64 13 Z"/>
+    <!-- Raised arms: right arm up-right to circle ~(177,16) -->
+    <path d="M135 83 L140 92 L183 21 L176 13 Z"/>
+
+    <!-- Legs together: left — taper slightly at ankle -->
+    <path d="M99 143 L118 143 L116 200 L118 240 L104 240 L106 200 Z"/>
+    <!-- Legs together: right -->
+    <path d="M122 143 L141 143 L134 200 L132 240 L118 240 L120 200 Z"/>
+
+    <!-- Legs spread: left (angled to circle ~79,234) — slightly curved thigh -->
+    <path d="M99 148 L112 150 L85 237 L73 234 Z"/>
+    <!-- Legs spread: right (angled to circle ~161,234) -->
+    <path d="M128 150 L141 148 L167 234 L155 237 Z"/>
+
+    <!-- Hands horizontal: flattened, natural -->
+    <path d="M15 83 Q20 82 27 84 Q28 88 27 93 Q22 94 15 92 Q13 88 15 83 Z"/>
+    <path d="M225 83 Q220 82 213 84 Q212 88 213 93 Q218 94 225 92 Q227 88 225 83 Z"/>
+
+    <!-- Hands raised -->
+    <ellipse cx="61" cy="17" rx="5.5" ry="5"/>
+    <ellipse cx="179" cy="17" rx="5.5" ry="5"/>
+
+    <!-- Feet together -->
+    <ellipse cx="109.5" cy="239" rx="7" ry="3.2"/>
+    <ellipse cx="130.5" cy="239" rx="7" ry="3.2"/>
+
+    <!-- Feet spread -->
+    <ellipse cx="78" cy="235" rx="7.5" ry="3" transform="rotate(-22 78 235)"/>
+    <ellipse cx="162" cy="235" rx="7.5" ry="3" transform="rotate(22 162 235)"/>
+
+  </g>
+
+  <!-- Tier 1 (~2.0): main contours and pose separations, from ~64px -->
+  <g fill="none" stroke="#3d2b1f" stroke-width="2.0" stroke-linecap="round" stroke-linejoin="round">
+    <!-- Horizontal arm / raised arm line -->
+    <line x1="27" y1="88" x2="213" y2="88"/>
+    <!-- Leg-spread vs leg-together separation -->
+    <line x1="100" y1="148" x2="140" y2="148"/>
+    <!-- Inner-leg join line -->
+    <line x1="116" y1="143" x2="124" y2="143"/>
+    <!-- Torso side contours -->
+    <path d="M97 82 C90 90 88 103 91 115 C93 124 96 133 98 143"/>
+    <path d="M143 82 C150 90 152 103 149 115 C147 124 144 133 142 143"/>
+    <!-- Neck -->
+    <line x1="114" y1="69" x2="114" y2="79"/>
+    <line x1="126" y1="69" x2="126" y2="79"/>
+  </g>
+
+  <!-- Tier 2 (~1.4): muscle groups and hair, from ~96px -->
+  <g fill="none" stroke="#3d2b1f" stroke-width="1.4" stroke-linecap="round" opacity="0.9">
+    <!-- Hairline -->
+    <path d="M109 48 Q120 44 131 48"/>
+    <!-- Collarbone -->
+    <path d="M108 82 Q120 79 132 82"/>
+    <!-- Pectoral line -->
+    <path d="M105 97 Q120 101 135 97"/>
+    <!-- Sternum -->
+    <line x1="120" y1="82" x2="120" y2="130"/>
+    <!-- Navel -->
+    <circle cx="120" cy="120" r="2.5"/>
+    <!-- Abdominal segments -->
+    <line x1="112" y1="108" x2="128" y2="108"/>
+    <line x1="111" y1="118" x2="129" y2="118"/>
+    <line x1="112" y1="128" x2="128" y2="128"/>
+    <!-- Iliac crest -->
+    <path d="M101 139 Q120 135 139 139"/>
+    <!-- Thigh muscle seams -->
+    <path d="M109 150 L106 192"/>
+    <path d="M131 150 L134 192"/>
+    <!-- Kneecaps: faint arc -->
+    <path d="M105 192 Q110 196 115 192" opacity="0.7"/>
+    <path d="M125 192 Q130 196 135 192" opacity="0.7"/>
+    <!-- Calf outline hints -->
+    <path d="M105 200 Q102 215 106 228"/>
+    <path d="M135 200 Q138 215 134 228"/>
+  </g>
+
+  <!-- Tier 3 (~0.9): face, fingers, toes, hatching, from ~150px -->
+  <g fill="none" stroke="#3d2b1f" stroke-width="0.9" stroke-linecap="round" opacity="0.85">
+    <!-- Eyes: almond-shaped, serious -->
+    <path d="M112 54.5 Q115 52.8 118 54.5 Q115 56.2 112 54.5"/>
+    <path d="M122 54.5 Q125 52.8 128 54.5 Q125 56.2 122 54.5"/>
+    <circle cx="115" cy="54.8" r="0.7" fill="#3d2b1f" stroke="none"/>
+    <circle cx="125" cy="54.8" r="0.7" fill="#3d2b1f" stroke="none"/>
+    <!-- Nose: bridge and nostrils -->
+    <path d="M119.5 58 L118.5 63 Q119 65 120 65 Q121 65 121.5 63 L120.5 58"/>
+    <path d="M117 65.5 Q120 67 123 65.5"/>
+    <!-- Mouth: closed, neutral -->
+    <line x1="116" y1="68" x2="124" y2="68"/>
+    <!-- Lower lip shadow -->
+    <path d="M116.5 69.5 Q120 70.5 123.5 69.5" opacity="0.6"/>
+    <!-- Chin structure -->
+    <path d="M117 70.5 Q120 72 123 70.5"/>
+    <!-- Ear hints -->
+    <path d="M108.5 54 Q107 58 108.5 62"/>
+    <path d="M131.5 54 Q133 58 131.5 62"/>
+
+    <!-- Fingers: horizontal left -->
+    <line x1="17" y1="84" x2="17" y2="92"/>
+    <line x1="19.5" y1="83" x2="19.5" y2="93"/>
+    <line x1="22" y1="83" x2="22" y2="93"/>
+    <!-- Fingers: horizontal right -->
+    <line x1="223" y1="84" x2="223" y2="92"/>
+    <line x1="220.5" y1="83" x2="220.5" y2="93"/>
+    <line x1="218" y1="83" x2="218" y2="93"/>
+
+    <!-- Fingers: raised left -->
+    <line x1="58" y1="13" x2="61" y2="22"/>
+    <line x1="61.5" y1="12" x2="64" y2="21"/>
+    <line x1="65" y1="13" x2="66.5" y2="21.5"/>
+    <!-- Fingers: raised right -->
+    <line x1="182" y1="13" x2="179" y2="22"/>
+    <line x1="178.5" y1="12" x2="176" y2="21"/>
+    <line x1="175" y1="13" x2="173.5" y2="21.5"/>
+
+    <!-- Toes: together left -->
+    <line x1="103" y1="241" x2="117" y2="241"/>
+    <!-- Toes: together right -->
+    <line x1="123" y1="241" x2="137" y2="241"/>
+
+    <!-- Torso hatching -->
+    <line x1="104" y1="90" x2="102" y2="110" opacity="0.6"/>
+    <line x1="136" y1="90" x2="138" y2="110" opacity="0.6"/>
+  </g>
+
+</svg>

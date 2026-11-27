@@ -1,0 +1,127 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="-2 -2 244 244" role="img" aria-label="Vitruvian Man">
+  <!-- Faint gold construction lines (vanish at small sizes) -->
+  <g stroke="#c9a96e" stroke-width="0.6" stroke-opacity="0.26" fill="none">
+    <line x1="120" y1="0" x2="120" y2="240"/>
+    <line x1="0" y1="120" x2="240" y2="120"/>
+    <!-- Eight-head proportion guides -->
+    <line x1="23" y1="70.25" x2="217" y2="70.25" stroke-dasharray="2 3"/>
+    <line x1="23" y1="94.5" x2="217" y2="94.5" stroke-dasharray="2 3"/>
+    <line x1="23" y1="143" x2="217" y2="143" stroke-dasharray="2 3"/>
+    <line x1="23" y1="191.5" x2="217" y2="191.5" stroke-dasharray="2 3"/>
+    <!-- Compass arc from navel -->
+    <circle cx="120" cy="120" r="97" stroke-dasharray="1.5 3.5"/>
+    <!-- Edge ticks on square -->
+    <line x1="23" y1="120" x2="27" y2="120"/>
+    <line x1="213" y1="120" x2="217" y2="120"/>
+    <line x1="120" y1="46" x2="120" y2="50"/>
+    <line x1="120" y1="236" x2="120" y2="240"/>
+  </g>
+
+  <!-- Frame: Circle (r=120, center 120,120) and Square (x=23, y=46, side=194) -->
+  <g stroke="#c9a96e" fill="none">
+    <circle cx="120" cy="120" r="120" stroke-width="2.2"/>
+    <rect x="23" y="46" width="194" height="194" stroke-width="2.0"/>
+  </g>
+
+  <!-- BASE SILHOUETTE IN GOLD (#c9a96e) -->
+  <g fill="#c9a96e">
+    <!-- Raised arms (reaching circle at ~ (25.5, 46) and (214.5, 46)) -->
+    <path d="M 103 80 C 90 73, 76 66, 63 60 C 51 55, 38 50, 26 46 C 24 46.5, 25 49, 28 51 C 37 55, 48 61, 60 67 C 73 74, 87 81, 99 88 Z"/>
+    <path d="M 137 80 C 150 73, 164 66, 177 60 C 189 55, 202 50, 214 46 C 216 46.5, 215 49, 212 51 C 203 55, 192 61, 180 67 C 167 74, 153 81, 141 88 Z"/>
+
+    <!-- Horizontal arms (spanning square x=23 to x=217) -->
+    <path d="M 101 80 C 86 79, 68 80, 52 81 C 39 82, 29 82, 23 83 C 23 85.5, 24 88, 28 88 C 37 88, 48 89, 60 89 C 75 89, 89 90, 101 91 Z"/>
+    <path d="M 139 80 C 154 79, 172 80, 188 81 C 201 82, 211 82, 217 83 C 217 85.5, 216 88, 212 88 C 203 88, 192 89, 180 89 C 165 89, 151 90, 139 91 Z"/>
+
+    <!-- Spread legs (reaching circle at ~ (60, 224) and (180, 224)) -->
+    <path d="M 108 139 C 100 156, 90 176, 80 194 C 72 208, 65 218, 60 224 C 62 226, 66 226, 69 223 C 76 215, 84 202, 93 187 C 102 172, 110 157, 117 144 Z"/>
+    <path d="M 132 139 C 140 156, 150 176, 160 194 C 168 208, 175 218, 180 224 C 178 226, 174 226, 171 223 C 164 215, 156 202, 147 187 C 138 172, 130 157, 123 144 Z"/>
+
+    <!-- Standing legs together (feet resting on y=240) -->
+    <path d="M 105 138 C 104 156, 105 176, 107 195 C 108 210, 109 226, 108 238 L 103 240 L 118 240 C 118 227, 117 210, 118 195 C 119 177, 119 158, 119 143 Z"/>
+    <path d="M 135 138 C 136 156, 135 176, 133 195 C 132 210, 131 226, 132 238 L 137 240 L 122 240 C 122 227, 123 210, 122 195 C 121 177, 121 158, 121 143 Z"/>
+
+    <!-- Head, Neck & Torso -->
+    <path d="M 120 46 C 111 46, 106 52, 107 60 C 108 66, 113 70, 120 70 C 127 70, 132 66, 133 60 C 134 52, 129 46, 120 46 Z"/>
+    <path d="M 114 68 L 112 78 L 128 78 L 126 68 Z"/>
+    <path d="M 112 77 C 105 78, 99 80, 99 87 C 99 95, 102 106, 105 117 C 107 125, 105 134, 105 140 C 110 144, 116 145, 120 145 C 124 145, 130 144, 135 140 C 135 134, 133 125, 135 117 C 138 106, 141 95, 141 87 C 141 80, 135 78, 128 77 Z"/>
+  </g>
+
+  <!-- TIER 1 ETCH (stroke-width ~ 1.9, main contours & pose separations) -->
+  <g stroke="#3d2b1f" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" fill="none">
+    <!-- Head & neck contour -->
+    <path d="M 113 69 C 109 66, 107 61, 108 56 C 109 50, 114 46.5, 120 46.5 C 126 46.5, 131 50, 132 56 C 133 61, 131 66, 127 69"/>
+    <path d="M 114 69 L 113 77"/>
+    <path d="M 126 69 L 127 77"/>
+
+    <!-- Torso outer contour -->
+    <path d="M 101 91 C 102 102, 104 112, 106 121 C 106 128, 105 135, 105 140"/>
+    <path d="M 139 91 C 138 102, 136 112, 134 121 C 134 128, 135 135, 135 140"/>
+
+    <!-- Horizontal arms contour (in front of raised arms) -->
+    <path d="M 101 80 C 85 79, 66 80, 48 81 C 38 82, 29 82, 23 83"/>
+    <path d="M 101 90 C 86 89, 68 89, 50 89 C 39 89, 30 88, 25 87"/>
+    <path d="M 139 80 C 155 79, 174 80, 192 81 C 202 82, 211 82, 217 83"/>
+    <path d="M 139 90 C 154 89, 172 89, 190 89 C 201 89, 210 88, 215 87"/>
+
+    <!-- Raised arms contour (stops cleanly at horizontal arm border) -->
+    <path d="M 99 79 C 87 72, 73 65, 59 58 C 48 53, 36 49, 26 46"/>
+    <path d="M 85 79 C 76 74, 67 70, 58 66 C 47 60, 36 55, 27 51"/>
+    <path d="M 141 79 C 153 72, 167 65, 181 58 C 192 53, 204 49, 214 46"/>
+    <path d="M 155 79 C 164 74, 173 70, 182 66 C 193 60, 204 55, 213 51"/>
+
+    <!-- Standing legs contour (in front of spread legs) -->
+    <path d="M 105 140 C 104 157, 105 176, 107 195 C 108 210, 109 226, 108 238"/>
+    <path d="M 119 144 C 119 162, 118 180, 118 197 C 117 212, 118 227, 118 239"/>
+    <path d="M 135 140 C 136 157, 135 176, 133 195 C 132 210, 131 226, 132 238"/>
+    <path d="M 121 144 C 121 162, 122 180, 122 197 C 123 212, 122 227, 122 239"/>
+
+    <!-- Spread legs contour -->
+    <path d="M 104 147 C 96 164, 88 180, 79 195 C 71 208, 65 218, 60 224"/>
+    <path d="M 107 161 C 100 175, 94 188, 88 199 C 80 211, 73 219, 69 223"/>
+    <path d="M 136 147 C 144 164, 152 180, 161 195 C 169 208, 175 218, 180 224"/>
+    <path d="M 133 161 C 140 175, 146 188, 152 199 C 160 211, 167 219, 171 223"/>
+  </g>
+
+  <!-- TIER 2 ETCH (stroke-width ~ 1.35, muscle groups & hair) -->
+  <g stroke="#3d2b1f" stroke-width="1.35" stroke-linecap="round" stroke-linejoin="round" fill="none">
+    <!-- Clavicle & pectorals -->
+    <path d="M 105 81 Q 113 83 120 82 Q 127 83 135 81"/>
+    <path d="M 103 93 Q 111 97 119 94"/>
+    <path d="M 137 93 Q 129 97 121 94"/>
+    <!-- Linea alba & navel -->
+    <path d="M 120 84 L 120 116"/>
+    <circle cx="120" cy="120" r="1.3" fill="#3d2b1f" stroke="none"/>
+    <!-- Abdominal & iliac lines -->
+    <path d="M 112 103 Q 116 105 119 104"/>
+    <path d="M 128 103 Q 124 105 121 104"/>
+    <path d="M 113 111 Q 116 113 119 112"/>
+    <path d="M 127 111 Q 124 113 121 112"/>
+    <path d="M 107 128 Q 113 136 119 141"/>
+    <path d="M 133 128 Q 127 136 121 141"/>
+    <!-- Knees -->
+    <path d="M 109 190 Q 113 188 116 190"/>
+    <path d="M 131 190 Q 127 188 124 190"/>
+    <!-- Hair curls -->
+    <path d="M 110 53 Q 114 48 120 48 Q 126 48 130 53"/>
+    <path d="M 108 58 Q 106 62 109 65"/>
+    <path d="M 132 58 Q 134 62 131 65"/>
+  </g>
+
+  <!-- TIER 3 ETCH (stroke-width ~ 0.85, face, fingers, subtle hatching) -->
+  <g stroke="#3d2b1f" stroke-width="0.85" stroke-linecap="round" stroke-linejoin="round" fill="none">
+    <!-- Face: brow, nose, mouth -->
+    <path d="M 113.5 56 Q 116 55 118.5 56"/>
+    <path d="M 121.5 56 Q 124 55 126.5 56"/>
+    <path d="M 120 56 L 119.5 61.5 L 121 62"/>
+    <path d="M 117 65 Q 120 65.5 123 65"/>
+    <!-- Rib hatching -->
+    <path d="M 106 98 L 110 99"/>
+    <path d="M 106 102 L 110 103"/>
+    <path d="M 134 98 L 130 99"/>
+    <path d="M 134 102 L 130 103"/>
+    <!-- Fingers on horizontal hands -->
+    <path d="M 27 83 L 23 83 M 27 85 L 23 85 M 27 87 L 24 87"/>
+    <path d="M 213 83 L 217 83 M 213 85 L 217 85 M 213 87 L 216 87"/>
+  </g>
+</svg>

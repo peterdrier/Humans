@@ -1,0 +1,368 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="-2 -2 244 244" role="img" aria-label="Vitruvian Man">
+  <defs>
+    <!-- Right half (x >= 120) of background pose: raised arm + spread leg -->
+    <g id="back-pose-half">
+      <!-- Raised arm: originates from shared shoulder/deltoid (135,77), wrist tapers to ~3.9, fingertip touches circle (206.5, 36.8) -->
+      <path d="M 135.0,77.0
+               C 139.5,73.8 144.2,70.2 149.2,66.8
+               C 155.5,62.5 161.2,59.5 167.0,55.8
+               C 173.2,51.6 179.8,48.2 186.6,45.6
+               C 188.6,44.8 190.2,44.0 191.2,43.2
+               C 193.5,41.6 195.8,38.4 197.8,37.2
+               C 198.9,36.6 199.6,37.2 198.8,38.3
+               C 197.8,39.6 196.8,40.3 196.3,40.7
+               C 199.7,39.0 203.4,37.3 205.2,36.8
+               C 206.2,36.5 206.7,36.8 206.5,37.4
+               C 206.1,38.1 203.6,39.6 201.4,40.9
+               C 203.6,40.0 205.4,39.4 205.9,39.9
+               C 206.3,40.4 204.3,41.7 201.8,42.9
+               C 203.4,42.5 204.4,42.5 204.5,43.1
+               C 204.5,43.7 202.2,44.7 199.4,45.7
+               C 196.4,46.7 193.5,47.6 191.4,48.6
+               C 189.2,49.6 186.8,51.2 184.0,53.0
+               C 178.0,56.8 172.5,60.4 168.5,62.8
+               C 162.0,66.6 154.5,72.2 145.0,79.2
+               Z"/>
+      <!-- Spread leg: anchored smoothly from hip joint (131.5,136), foot resting on circle (181.8, 222.9) -->
+      <path d="M 131.5,136.0
+               C 139.2,141.5 146.5,153.2 152.4,166.8
+               C 155.6,173.8 158.0,179.0 159.5,183.2
+               C 163.2,189.5 166.6,196.5 167.8,203.2
+               C 168.8,209.6 170.8,215.5 174.0,219.2
+               C 176.6,220.4 180.5,221.3 182.6,222.1
+               C 183.6,222.5 183.3,223.6 181.6,224.0
+               C 178.4,224.6 173.2,224.0 170.0,223.0
+               C 168.6,222.4 168.7,221.0 169.4,219.4
+               C 166.2,212.8 161.0,205.0 156.8,197.5
+               C 153.5,191.5 150.5,186.5 148.0,183.2
+               C 142.8,176.2 136.2,165.0 128.0,151.5
+               L 121.5,143.0
+               Z"/>
+    </g>
+
+    <!-- Background pose contours -->
+    <g id="back-pose-contour-half">
+      <path d="M 138.2,74.8
+               C 142.0,71.8 145.6,69.2 149.2,66.8
+               C 155.5,62.5 161.2,59.5 167.0,55.8
+               C 173.2,51.6 179.8,48.2 186.6,45.6
+               C 188.6,44.8 190.2,44.0 191.2,43.2
+               M 191.4,48.6
+               C 189.2,49.6 186.8,51.2 184.0,53.0
+               C 178.0,56.8 172.5,60.4 168.5,62.8
+               C 162.0,66.6 154.5,72.2 145.0,79.2"/>
+      <path d="M 137.0,141.2
+               C 142.8,147.8 148.0,156.8 152.4,166.8
+               C 155.6,173.8 158.0,179.0 159.5,183.2
+               C 163.2,189.5 166.6,196.5 167.8,203.2
+               C 168.8,209.6 170.8,215.5 174.0,219.2
+               M 169.4,219.4
+               C 166.2,212.8 161.0,205.0 156.8,197.5
+               C 153.5,191.5 150.5,186.5 148.0,183.2
+               C 142.8,176.2 137.0,166.5 131.0,156.0"/>
+    </g>
+
+    <!-- Background pose hand & foot fine outline -->
+    <g id="back-pose-ext-half">
+      <path d="M 191.2,43.2
+               C 193.5,41.6 195.8,38.4 197.8,37.2
+               C 198.9,36.6 199.6,37.2 198.8,38.3
+               C 197.8,39.6 196.8,40.3 196.3,40.7
+               C 199.7,39.0 203.4,37.3 205.2,36.8
+               C 206.2,36.5 206.7,36.8 206.5,37.4
+               C 206.1,38.1 203.6,39.6 201.4,40.9
+               C 203.6,40.0 205.4,39.4 205.9,39.9
+               C 206.3,40.4 204.3,41.7 201.8,42.9
+               C 203.4,42.5 204.4,42.5 204.5,43.1
+               C 204.5,43.7 202.2,44.7 199.4,45.7
+               C 196.4,46.7 193.5,47.6 191.4,48.6"/>
+      <path d="M 174.0,219.2
+               C 176.6,220.4 180.5,221.3 182.6,222.1
+               C 183.6,222.5 183.3,223.6 181.6,224.0
+               C 178.4,224.6 173.2,224.0 170.0,223.0
+               C 168.6,222.4 168.7,221.0 169.4,219.4"/>
+    </g>
+
+    <!-- Foreground pose right half: head/hair + torso + horizontal arm + standing leg -->
+    <g id="front-pose-half">
+      <!-- Head & organic wavy Renaissance hair -->
+      <path d="M 120,46.0
+               C 123.5,46.0 126.6,47.2 128.6,49.4
+               C 130.5,51.5 131.6,54.2 131.2,57.2
+               C 131.8,59.5 131.4,62.2 130.6,64.8
+               C 130.8,66.8 129.6,68.8 127.8,69.2
+               C 127.0,69.4 126.2,69.2 125.6,68.8
+               L 125.4,70.5
+               C 125.7,73.8 127.2,76.0 131.2,77.2
+               L 136.0,78.5
+               L 120,83.0
+               Z"/>
+      <!-- Torso, horizontal arm, standing leg -->
+      <path d="M 120,76.8
+               L 133.2,77.6
+               C 138.8,76.6 144.6,77.0 150.2,78.4
+               C 156.8,77.2 164.2,77.4 171.6,79.0
+               C 177.8,77.6 184.6,77.8 190.6,79.0
+               C 193.6,79.6 196.2,79.9 198.6,80.0
+               C 201.0,79.5 203.0,78.2 205.2,77.0
+               C 206.4,76.4 207.2,77.0 206.4,77.8
+               C 205.4,78.8 204.5,79.2 204.0,79.5
+               C 208.0,79.3 212.2,79.4 215.2,79.8
+               C 216.2,80.0 216.2,80.6 215.0,80.9
+               L 216.8,81.0
+               C 217.2,81.1 217.2,81.7 216.6,81.9
+               L 214.8,82.2
+               C 215.6,82.5 215.6,83.1 214.4,83.3
+               L 211.8,83.6
+               C 212.6,83.9 212.4,84.5 211.0,84.7
+               C 207.5,85.1 203.0,85.0 198.6,83.8
+               C 191.5,84.8 184.6,85.4 178.0,85.2
+               C 175.0,85.1 173.2,84.9 171.6,84.8
+               C 164.5,86.8 155.0,88.0 145.5,87.6
+               C 141.8,88.6 139.2,90.6 137.5,93.2
+               C 138.2,99.5 137.2,106.0 135.2,112.5
+               C 134.2,116.0 134.6,120.8 136.4,126.2
+               C 137.8,131.0 138.0,137.2 137.0,144.2
+               C 136.2,151.6 135.2,162.0 134.0,173.0
+               C 132.8,181.5 131.8,186.5 131.5,190.0
+               C 132.6,196.5 133.2,204.5 131.8,212.5
+               C 130.4,220.0 128.5,227.5 128.2,232.5
+               C 129.8,235.2 132.4,237.4 133.3,238.9
+               C 133.6,239.5 133.0,240.0 131.8,240.0
+               L 122.0,240.0
+               C 121.0,240.0 120.8,238.2 121.4,235.5
+               C 121.8,232.5 122.4,226.5 121.8,218.5
+               C 121.0,210.5 120.6,202.0 120.8,194.0
+               C 121.0,189.0 120.8,183.0 121.1,174.0
+               C 121.3,166.0 120.6,154.0 120.0,143.0
+               Z"/>
+    </g>
+
+    <!-- Tier 1 (≈1.6): main pose-separation contours ONLY -->
+    <g id="front-pose-tier1-half">
+      <!-- Neck & trapezius flowing seamlessly into raised shoulder top (138.2, 74.8) -->
+      <path d="M 125.4,69.6 C 125.7,73.8 127.2,76.0 131.2,77.2 C 133.8,77.0 136.2,76.0 138.2,74.8"/>
+      <!-- Horizontal arm upper contour starting cleanly at the V-fork between poses -->
+      <path d="M 145.0,79.2
+               C 146.8,78.6 148.5,78.4 150.2,78.4
+               C 156.8,77.2 164.2,77.4 171.6,79.0
+               C 177.8,77.6 184.6,77.8 190.6,79.0
+               C 193.6,79.6 196.2,79.9 198.6,80.0"/>
+      <!-- Horizontal arm lower contour, torso outer, standing leg outer -->
+      <path d="M 198.6,83.8
+               C 191.5,84.8 184.6,85.4 178.0,85.2
+               C 175.0,85.1 173.2,84.9 171.6,84.8
+               C 164.5,86.8 155.0,88.0 145.5,87.6
+               C 141.8,88.6 139.2,90.6 137.5,93.2
+               C 138.2,99.5 137.2,106.0 135.2,112.5
+               C 134.2,116.0 134.6,120.8 136.4,126.2
+               C 137.8,131.0 138.0,137.2 137.0,144.2
+               C 136.2,151.6 135.2,162.0 134.0,173.0
+               C 132.8,181.5 131.8,186.5 131.5,190.0
+               C 132.6,196.5 133.2,204.5 131.8,212.5
+               C 130.4,220.0 128.5,227.5 128.2,232.5"/>
+      <!-- Standing leg inner separation (softly rounded at groin) -->
+      <path d="M 121.4,235.5
+               C 121.8,232.5 122.4,226.5 121.8,218.5
+               C 121.0,210.5 120.6,202.0 120.8,194.0
+               C 121.0,189.0 120.8,183.0 121.1,174.0
+               C 121.3,166.0 120.6,154.0 120.2,144.5"/>
+      <!-- Deltoid-axilla overlap curve -->
+      <path d="M 137.5,93.2 C 138.2,89.0 140.5,85.2 144.2,83.0"/>
+    </g>
+
+    <!-- Foreground hand, foot, and head outer contour (finer stroke ~0.9) -->
+    <g id="front-pose-ext-half">
+      <!-- Organic hair outer edge -->
+      <path d="M 128.2,49.0
+               C 130.4,51.2 131.6,54.0 131.2,57.2
+               C 131.8,59.5 131.4,62.2 130.6,64.8
+               C 130.8,66.8 129.6,68.8 127.8,69.2
+               C 127.0,69.4 126.2,69.2 125.6,68.8"/>
+      <!-- Jawline & chin -->
+      <path d="M 120.0,70.2
+               C 123.0,70.2 125.2,68.4 126.4,64.8
+               C 127.1,62.5 127.2,59.5 127.0,57.2"/>
+      <!-- Horizontal hand outline -->
+      <path d="M 198.6,80.0
+               C 201.0,79.5 203.0,78.2 205.2,77.0
+               C 206.4,76.4 207.2,77.0 206.4,77.8
+               C 205.4,78.8 204.5,79.2 204.0,79.5
+               C 208.0,79.3 212.2,79.4 215.2,79.8
+               C 216.2,80.0 216.2,80.6 215.0,80.9
+               L 216.8,81.0
+               C 217.2,81.1 217.2,81.7 216.6,81.9
+               L 214.8,82.2
+               C 215.6,82.5 215.6,83.1 214.4,83.3
+               L 211.8,83.6
+               C 212.6,83.9 212.4,84.5 211.0,84.7
+               C 207.5,85.1 203.0,85.0 198.6,83.8"/>
+      <!-- Standing foot outline -->
+      <path d="M 128.2,232.5
+               C 129.8,235.2 132.4,237.4 133.3,238.9
+               C 133.6,239.5 133.0,240.0 131.8,240.0
+               L 122.0,240.0
+               C 121.0,240.0 120.8,238.2 121.4,235.5"/>
+    </g>
+
+    <!-- Tier 2 (≈0.92): subtle muscle groups & organic hair curls -->
+    <g id="tier2-half">
+      <!-- Organic hairline & varied curls -->
+      <path d="M 120.0,51.2 C 123.0,51.2 125.6,52.4 126.6,54.8 C 127.4,57.0 127.6,59.5 127.2,62.0" stroke-width="0.8" stroke-opacity="0.65"/>
+      <path d="M 127.6,52.8 C 129.2,54.5 129.8,56.8 128.8,59.2" stroke-width="0.72" stroke-opacity="0.5"/>
+      <path d="M 129.2,58.5 C 130.2,60.5 129.8,63.0 128.6,65.2" stroke-width="0.72" stroke-opacity="0.5"/>
+      <path d="M 127.8,64.2 C 129.0,65.8 129.0,67.4 127.5,68.4" stroke-width="0.68" stroke-opacity="0.45"/>
+      <!-- Clavicle (gentle S-curve) -->
+      <path d="M 121.2,79.8 C 125.0,80.2 130.2,79.2 136.2,78.5" stroke-opacity="0.76"/>
+      <!-- Pectoral lower contour -->
+      <path d="M 121.6,95.2 C 126.5,96.0 131.8,95.0 135.8,92.5 C 136.8,91.2 137.2,89.5 136.8,87.5" stroke-opacity="0.8"/>
+      <!-- Clean anterior deltoid curve flowing from V-fork without crossing -->
+      <path d="M 144.6,79.4 C 142.2,80.6 140.8,82.6 140.4,84.8" stroke-width="0.82" stroke-opacity="0.45"/>
+      <!-- Subtle iliac crest / hip turn -->
+      <path d="M 132.5,134.0 C 134.5,132.0 135.8,129.8 136.4,127.5" stroke-width="0.82" stroke-opacity="0.52"/>
+      <!-- Very delicate rib arch & rectus hint -->
+      <path d="M 122.5,100.5 C 125.8,101.4 128.6,103.4 130.2,106.5" stroke-width="0.65" stroke-opacity="0.32"/>
+      <path d="M 126.2,108.5 C 126.8,113.5 126.4,119.0 125.2,124.0" stroke-width="0.6" stroke-opacity="0.26"/>
+      <!-- Standing knee patella -->
+      <path d="M 125.0,186.6 C 126.2,186.0 127.6,186.2 128.4,187.2" stroke-width="0.75" stroke-opacity="0.52"/>
+      <path d="M 125.2,190.2 C 126.4,190.8 127.6,190.6 128.4,189.6" stroke-width="0.7" stroke-opacity="0.44"/>
+      <!-- Standing calf subtle gastrocnemius edge & ankle malleolus -->
+      <path d="M 129.0,200.5 C 129.8,204.2 129.4,208.5 127.8,212.5" stroke-width="0.7" stroke-opacity="0.4"/>
+      <path d="M 122.5,230.2 C 123.1,231.0 123.3,232.0 122.7,232.8" stroke-width="0.65" stroke-opacity="0.45"/>
+      <!-- Spread knee patella & calf edge -->
+      <path d="M 152.6,184.5 C 154.0,183.9 155.6,184.5 156.0,186.0" stroke-width="0.75" stroke-opacity="0.5"/>
+      <path d="M 162.5,199.5 C 164.0,203.0 165.0,206.5 165.8,210.0" stroke-width="0.7" stroke-opacity="0.4"/>
+    </g>
+
+    <!-- Tier 3 (≈0.65): fine face, fingers, toes -->
+    <g id="tier3-half">
+      <!-- Serene arched brow ridge -->
+      <path d="M 121.0,55.9 C 122.6,55.4 124.6,55.7 126.0,56.5"/>
+      <!-- Almond eye upper lid + tiny iris shadow -->
+      <path d="M 122.2,57.8 C 123.3,57.3 124.7,57.4 125.6,58.0"/>
+      <path d="M 123.4,58.1 C 123.8,58.3 124.2,58.3 124.5,58.1" stroke-width="0.8" stroke-opacity="0.72"/>
+      <!-- Neutral classical mouth -->
+      <path d="M 120.0,65.2 C 120.6,65.4 121.3,65.5 122.1,65.6"/>
+      <path d="M 120.0,66.4 C 120.6,66.4 121.1,66.3 121.4,66.2" stroke-opacity="0.5"/>
+      <!-- Ear -->
+      <path d="M 127.4,58.0 C 128.0,58.4 128.0,60.2 127.4,61.2" stroke-opacity="0.5"/>
+      <!-- Crown hair strands -->
+      <path d="M 121.8,47.5 C 124.8,48.0 127.2,49.6 128.4,51.8" stroke-opacity="0.48"/>
+      <!-- Horizontal hand finger separations & palm -->
+      <path d="M 205.2,80.8 L 214.8,80.9"/>
+      <path d="M 205.8,82.1 L 214.5,82.2"/>
+      <path d="M 205.8,83.4 L 211.8,83.6"/>
+      <path d="M 200.5,81.4 C 202.4,81.0 204.0,81.5 204.8,82.6" stroke-opacity="0.6"/>
+      <!-- Raised hand finger separations & palm -->
+      <path d="M 197.6,41.6 L 204.4,38.3"/>
+      <path d="M 198.4,42.8 L 204.0,40.3"/>
+      <path d="M 198.8,44.0 L 202.8,42.3"/>
+      <path d="M 193.5,44.0 C 195.4,42.6 197.0,42.4 198.0,43.0" stroke-opacity="0.6"/>
+      <!-- Standing toes (curved anatomical separations, big toe wider) -->
+      <path d="M 124.8,238.1 C 124.9,238.8 125.0,239.4 125.1,239.9"/>
+      <path d="M 126.9,238.2 C 127.1,238.8 127.3,239.4 127.4,239.9"/>
+      <path d="M 128.9,238.4 C 129.2,238.9 129.4,239.4 129.6,239.9"/>
+      <path d="M 130.7,238.7 C 131.0,239.1 131.2,239.5 131.4,239.9"/>
+      <!-- Spread toes -->
+      <path d="M 176.2,222.5 L 178.0,223.8"/>
+      <path d="M 178.0,222.2 L 179.8,223.6"/>
+      <path d="M 179.6,222.0 L 181.2,223.3"/>
+    </g>
+  </defs>
+
+  <!-- 1. Faint gold construction (axes, 8-head ticks, compass arcs, navel/groin rings) -->
+  <g fill="none" stroke="#c9a96e" stroke-width="0.6" stroke-opacity="0.26" stroke-linecap="round">
+    <line x1="120" y1="0" x2="120" y2="240" stroke-dasharray="2.5 2.5"/>
+    <line x1="0" y1="120" x2="240" y2="120" stroke-dasharray="2.5 2.5"/>
+    <line x1="23" y1="143" x2="217" y2="143" stroke-dasharray="2 3"/>
+    <line x1="94" y1="70.25" x2="146" y2="70.25" stroke-dasharray="1.5 2.5"/>
+    <path d="M 23,70.25 h 5 M 23,94.5 h 5 M 23,118.75 h 5 M 23,143 h 6 M 23,167.25 h 5 M 23,191.5 h 5 M 23,215.75 h 5"/>
+    <path d="M 212,70.25 h 5 M 212,94.5 h 5 M 212,118.75 h 5 M 211,143 h 6 M 212,167.25 h 5 M 212,191.5 h 5 M 212,215.75 h 5"/>
+    <path d="M 120,143 L 60,222.9 M 120,143 L 180,222.9 M 60,222.9 L 180,222.9" stroke-dasharray="2 3"/>
+    <path d="M 217,81 A 77,77 0 0 0 206.5,36.8" stroke-dasharray="2 2.5"/>
+    <path d="M 23,81 A 77,77 0 0 1 33.5,36.8" stroke-dasharray="2 2.5"/>
+    <circle cx="120" cy="120" r="3.2"/>
+    <circle cx="120" cy="143" r="2.2"/>
+  </g>
+
+  <!-- 2. Bold solid gold base: frame + dual-pose figure -->
+  <g fill="none" stroke="#c9a96e" stroke-linejoin="round">
+    <circle cx="120" cy="120" r="120" stroke-width="2.7"/>
+    <rect x="23" y="46" width="194" height="194" stroke-width="2.3"/>
+  </g>
+
+  <!-- Background pose (raised arms & spread legs) in solid gold -->
+  <g fill="#c9a96e">
+    <use href="#back-pose-half"/>
+    <use href="#back-pose-half" transform="translate(240,0) scale(-1,1)"/>
+  </g>
+
+  <!-- Background pose contours -->
+  <g fill="none" stroke="#3d2b1f" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round">
+    <use href="#back-pose-contour-half"/>
+    <use href="#back-pose-contour-half" transform="translate(240,0) scale(-1,1)"/>
+  </g>
+  <g fill="none" stroke="#3d2b1f" stroke-width="0.88" stroke-linecap="round" stroke-linejoin="round">
+    <use href="#back-pose-ext-half"/>
+    <use href="#back-pose-ext-half" transform="translate(240,0) scale(-1,1)"/>
+  </g>
+
+  <!-- Foreground pose (head, torso, horizontal arms, standing legs) in solid gold -->
+  <g fill="#c9a96e">
+    <use href="#front-pose-half"/>
+    <use href="#front-pose-half" transform="translate(240,0) scale(-1,1)"/>
+    <rect x="118.8" y="46.5" width="2.4" height="96.5" rx="0.5"/>
+  </g>
+
+  <!-- 3. Tier 1 aged-ink main contours & pose separations (≈1.6 units, shows from ~64px) -->
+  <g fill="none" stroke="#3d2b1f" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+    <use href="#front-pose-tier1-half"/>
+    <use href="#front-pose-tier1-half" transform="translate(240,0) scale(-1,1)"/>
+    <path d="M 118.8,142.8 C 119.5,143.3 120.5,143.3 121.2,142.8" stroke-width="1.05"/>
+  </g>
+
+  <!-- Finer outer contours on head, hands, feet -->
+  <g fill="none" stroke="#3d2b1f" stroke-width="0.9" stroke-linecap="round" stroke-linejoin="round">
+    <use href="#front-pose-ext-half"/>
+    <use href="#front-pose-ext-half" transform="translate(240,0) scale(-1,1)"/>
+  </g>
+
+  <!-- 4. Tier 2 aged-ink muscle groups & hair (≈0.92 units, shows from ~96px) -->
+  <g fill="none" stroke="#3d2b1f" stroke-width="0.92" stroke-opacity="0.78" stroke-linecap="round" stroke-linejoin="round">
+    <use href="#tier2-half"/>
+    <use href="#tier2-half" transform="translate(240,0) scale(-1,1)"/>
+    <path d="M 120,82.5 L 120,93" stroke-width="0.6" stroke-opacity="0.28"/>
+    <path d="M 120,104 L 120,113" stroke-width="0.55" stroke-opacity="0.25"/>
+    <!-- Delicate broken navel shadow -->
+    <path d="M 119.1,119.5 C 119.4,118.7 120.6,118.7 120.9,119.5" stroke-width="0.72" stroke-opacity="0.68"/>
+    <path d="M 119.3,120.8 C 119.7,121.2 120.3,121.2 120.7,120.8" stroke-width="0.55" stroke-opacity="0.45"/>
+  </g>
+
+  <!-- 5. Tier 3 aged-ink face, fingers, toes & Renaissance hatching (≈0.65 units, shows from ~150px) -->
+  <g fill="none" stroke="#3d2b1f" stroke-width="0.65" stroke-opacity="0.84" stroke-linecap="round" stroke-linejoin="round">
+    <use href="#tier3-half"/>
+    <use href="#tier3-half" transform="translate(240,0) scale(-1,1)"/>
+    <!-- Asymmetric nose bridge & subtle tip shadow (light from upper-left) -->
+    <path d="M 119.2,56.8 C 119.1,58.8 118.9,60.6 118.7,62.0 C 119.1,62.5 119.7,62.7 120.4,62.6"/>
+    <path d="M 120.7,62.0 C 121.1,62.1 121.3,62.3 121.2,62.5" stroke-opacity="0.45"/>
+  </g>
+
+  <!-- Delicate Renaissance 45-degree pen hatching hugging shadow edges (tier 3, 0.44 units) -->
+  <g fill="none" stroke="#3d2b1f" stroke-width="0.44" stroke-opacity="0.48" stroke-linecap="round">
+    <!-- Under chin & right neck -->
+    <path d="M 119.5,71.0 l 2.6,-1.0 M 120.8,72.3 l 3.2,-1.3 M 122.2,73.7 l 3.0,-1.2 M 123.5,75.1 l 2.6,-1.0 M 124.8,76.4 l 2.2,-0.9"/>
+    <!-- Right pectoral underside & right rib/flank edge -->
+    <path d="M 126.5,95.8 l 2.2,-1.2 M 129.0,95.4 l 2.2,-1.2 M 131.5,94.8 l 2.2,-1.2 M 134.0,93.8 l 2.0,-1.1"/>
+    <path d="M 133.5,99.5 l 2.4,-1.2 M 133.2,102.0 l 2.4,-1.2 M 132.8,104.5 l 2.4,-1.2 M 132.4,107.0 l 2.2,-1.1 M 132.2,109.5 l 2.0,-1.0"/>
+    <path d="M 133.2,122.0 l 2.2,-1.1 M 133.6,124.5 l 2.2,-1.1 M 134.0,127.0 l 2.2,-1.1 M 134.4,129.5 l 2.2,-1.1"/>
+    <!-- Subtle underside arm shadow -->
+    <path d="M 151,87.0 l 2.0,-1.0 M 154,86.8 l 2.0,-1.0 M 157,86.6 l 2.0,-1.0 M 160,86.4 l 2.0,-1.0"/>
+    <path d="M 153,71.8 l 1.8,-1.4 M 156,69.8 l 1.8,-1.4 M 159,67.8 l 1.8,-1.4 M 162,65.8 l 1.8,-1.4"/>
+    <!-- Right standing thigh & calf edge shadow -->
+    <path d="M 121.8,156 l 2.0,-1.0 M 122.0,159 l 2.0,-1.0 M 122.1,162 l 2.0,-1.0 M 122.2,165 l 1.8,-0.9 M 122.2,168 l 1.8,-0.9"/>
+    <path d="M 121.6,200 l 2.0,-1.0 M 121.7,203 l 2.0,-1.0 M 121.8,206 l 2.0,-1.0 M 122.0,209 l 1.8,-0.9 M 122.1,212 l 1.8,-0.9"/>
+    <!-- Right spread leg edge shadow -->
+    <path d="M 139.5,163 l 2.2,-1.3 M 141.2,166 l 2.2,-1.3 M 142.8,169 l 2.2,-1.3 M 144.4,172 l 2.2,-1.3 M 146.0,175 l 2.2,-1.3"/>
+    <path d="M 157.5,201 l 2.0,-1.2 M 159.0,204 l 2.0,-1.2 M 160.5,207 l 2.0,-1.2 M 162.0,210 l 2.0,-1.2"/>
+  </g>
+</svg>
