@@ -108,6 +108,7 @@ public sealed class Section :
         services.AddScoped<IGoogleSyncLogService>(sp => sp.GetRequiredService<GoogleSyncLogService>());
         services.AddScoped<IGoogleSyncLogViewer>(sp => sp.GetRequiredService<GoogleSyncLogService>());
         services.AddScoped<IUserDataContributor>(sp => sp.GetRequiredService<GoogleSyncLogService>());
+        services.AddScoped<IRetentionPeriodContributor>(sp => sp.GetRequiredService<GoogleSyncLogService>());
         // Temporary: backs /Google/Admin/SyncHistoryMigration; remove with the six Google columns on audit_log.
         services.AddScoped<IGoogleSyncHistoryMigrationService, GoogleSyncHistoryMigrationService>();
         services.AddKeyedScoped<ISyncSettingsService, SyncSettingsService>(CachingSyncSettingsService.InnerServiceKey);

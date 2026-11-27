@@ -744,7 +744,7 @@ public class GateServiceTests
         StubTicket(matchedUserId: GuestId);
         await RecordAsync(idConfirmed: true);
 
-        var removed = await _svc.PurgeScansBeforeAsync(_clock.GetCurrentInstant().Plus(Duration.FromMinutes(1)));
+        var removed = await _svc.DeleteOlderThanAsync(_clock.GetCurrentInstant().Plus(Duration.FromMinutes(1)));
 
         removed.Should().Be(1);
         SliceCount(await _svc.ContributeForUserAsync(GuestId, default)).Should().Be(0);

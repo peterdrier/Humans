@@ -109,6 +109,20 @@ internal sealed class CityPlanningRepository(IDbContextFactory<CityPlanningDbCon
         return polygon;
     }
 
+    public async Task<int> DeleteHistoryBeforeAsync(Instant cutoff, CancellationToken ct = default)
+    {
+        await using var ctx = await factory.CreateDbContextAsync(ct);
+        var rows = await ctx.CampPolygonHistories.Where(h => h.ModifiedAt < cutoff).ToListAsync(ct);
+        if (rows.Count == 0)
+        {
+            return 0;
+        }
+
+        ctx.CampPolygonHistories.RemoveRange(rows);
+        await ctx.SaveChangesAsync(ct);
+        return rows.Count;
+    }
+
     public async Task<int> DeletePolygonsForCampSeasonsAsync(
         IReadOnlyCollection<Guid> campSeasonIds, CancellationToken ct = default)
     {

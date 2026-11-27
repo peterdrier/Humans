@@ -52,6 +52,7 @@ public sealed class Section :
         services.AddScoped<CityPlanningService>();
         services.AddScoped<ICampDeletionListener>(sp => sp.GetRequiredService<CityPlanningService>());
         services.AddScoped<ICityPlanningService>(sp => sp.GetRequiredService<CityPlanningService>());
+        services.AddScoped<IRetentionPeriodContributor>(sp => sp.GetRequiredService<CityPlanningService>());
 
         services.AddScoped<IAuthorizationHandler, CityPlanningMapAdminHandler>();
     }

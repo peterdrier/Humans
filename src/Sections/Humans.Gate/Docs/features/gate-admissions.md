@@ -55,7 +55,7 @@ but the decision to admit-and-record from inside Humans is yours to bless.
   explicit pre-check.
 - **GDPR / data-lifecycle** — `GateService` implements `IUserDataContributor`
   (data-minimized DSAR export) and `IUserMerge` (re-FKs `GuestUserId`/`ScannedByUserId`
-  on account merge); `GateRetentionJob` purges scans older than `Gate:RetentionDays`.
+  on account merge); as an `IRetentionPeriodContributor` it deletes scans older than the app-wide retention period.
 - **Vendor check-in mirror** — `ITicketVendorMirror.CreateCheckInAsync`
   (+ `TicketTailorService` `POST /v1/check_ins` and `StubTicketVendorService` impls);
   `GateVendorCheckInJob` enqueued fire-and-forget on admit. `gate_scan_events` stays

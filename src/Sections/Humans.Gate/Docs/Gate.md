@@ -140,8 +140,9 @@ after the retention window.
 - **Vendor-checked-in dedupe signal** — `GateService.EvaluateAsync` treats either the synced
   `TicketAttendee.CheckedInAt` or legacy `Status == CheckedIn` as an existing vendor check-in. The
   gate's own unique index stays the authority.
-- **Retention** — `GateRetentionJob` purges `gate_scan_events` older than `Gate:RetentionDays`
-  (default 365) daily, because gate scans are attendance/movement data.
+- **Retention** — gate scans are attendance/movement data, so `GateService` is an
+  `IRetentionPeriodContributor`: Settings' daily retention job deletes `gate_scan_events` older than
+  the app-wide retention period (`/Settings#retention`, default 365 days).
 
 ## Data Model
 
@@ -277,8 +278,6 @@ no links and are shelved under nobodies-collective/Humans#933.
   unconfirmed-EE override and the child-without-ID waiver. **Unset → overrides fail closed**
   (refused with a "not configured" card); set it before doors open.
 - `Gate:VendorMirrorEnabled` — default off; gates the Ticket Tailor check-in mirror.
-- `Gate:RetentionDays` — retention window in days for `gate_scan_events` (default 365);
-  `<= 0` disables the purge.
 - `Gate:RosterTeamId` — optional GUID of the Shifts team that staffs the gate. When set, the dormant
   `/Gate/Claim` lists that team's volunteers whose gate shift starts within ±2 hours of now as
   one-tap picks (one per human; refused/bailed/cancelled/no-show signups excluded), using Shifts'
@@ -292,11 +291,9 @@ except `Section` and `Contracts/`: `IGateAdmissions` (Tickets' read of admits); 
 kiosk carries no resource keys (every string is inline English by design — a staff-facing,
 single-locale terminal).
 **Owning service:** `GateService` (`Humans.Gate.Services`) — also implements `IUserMerge`,
-`IUserDataContributor`.
+`IUserDataContributor`, `IRetentionPeriodContributor`.
 **Owned tables:** `gate_scan_events`, `gate_settings`, `gate_staff_pins` via `IGateRepository`.
-**Jobs:** both internal and owned by `Humans.Gate/Jobs/`. `GateRetentionJob` (recurring) is registered by the
-section's own `ISectionJobs` (`ISectionJobs`, discovered by Shell — cron `45 3 * * *`);
-`GateVendorCheckInJob` is enqueued fire-and-forget on admit (Hangfire serializes the method
+**Jobs:** `GateVendorCheckInJob` (`Humans.Gate/Jobs/`, internal) is enqueued fire-and-forget on admit (Hangfire serializes the method
 reference, so it needs no registration).
 **Decorator decision:** none — gate reads must be live (a stale verdict admits or blocks the wrong
 person), mirroring the read-through Scanner section.
