@@ -1976,6 +1976,95 @@ public class ServiceTests
             Arg.Any<CancellationToken>());
     }
 
+    [HumansTheory]
+    [InlineData(StoreCheckoutEventKind.CheckoutSessionAsyncPaymentSucceeded)]
+    [InlineData(StoreCheckoutEventKind.CheckoutSessionAsyncPaymentFailed)]
+    public async Task AsyncSettlement_BeforeCompleted_AllowsNextCheckout(StoreCheckoutEventKind kind)
+    {
+        var ct = TestContext.Current.CancellationToken;
+        var order = MakeOrderDto(balanceEur: 50m);
+        var attempt = Guid.NewGuid();
+        var row = new Order
+        {
+            Id = order.Id,
+            CheckoutAttemptId = attempt,
+            CheckoutSessionId = "cs_terminal",
+            CheckoutAmountEur = 20m,
+        };
+        _repo.GetOrderByIdAsync(order.Id, Arg.Any<CancellationToken>()).Returns(row);
+        _stripeService.IsStoreCheckoutConfigured.Returns(true);
+        var session = new StoreCheckoutSessionData("cs_terminal", order.Id, "pi_terminal", 20m,
+            PaymentStatus: kind == StoreCheckoutEventKind.CheckoutSessionAsyncPaymentSucceeded ? "paid" : "unpaid", Status: "complete");
+        _stripeService.CreateCheckoutSessionAsync(order.Id, 20m, Arg.Any<string>(), Arg.Any<string>(),
+                Arg.Any<string?>(), Arg.Any<string>(), Arg.Any<CancellationToken>(), attempt)
+            .Returns(session);
+        _stripeService.CreateCheckoutSessionAsync(order.Id, 20m, Arg.Any<string>(), Arg.Any<string>(),
+                Arg.Any<string?>(), Arg.Any<string>(), Arg.Any<CancellationToken>(),
+                Arg.Is<Guid?>(id => id != null && id != attempt), Arg.Is<string?>(id => id == null))
+            .Returns(OpenSession("cs_next", "https://stripe.test/next"));
+
+        await _service.HandleStripeCheckoutWebhookEventAsync(new StoreCheckoutWebhookEvent("evt_terminal", kind, session), ct);
+        var result = await _service.CreateStripeCheckoutSessionAsync(order, 20m, "https://humans.test/order", ct);
+
+        result.SessionUrl.Should().Be("https://stripe.test/next");
+        row.CheckoutSessionId.Should().Be("cs_next");
+    }
+
+    [HumansTheory]
+    [InlineData(StoreCheckoutEventKind.CheckoutSessionCompleted)]
+    [InlineData(StoreCheckoutEventKind.CheckoutSessionAsyncPaymentSucceeded)]
+    [InlineData(StoreCheckoutEventKind.CheckoutSessionAsyncPaymentFailed)]
+    public async Task CheckoutOutcome_MissingAmount_PreservesCurrentAttempt(StoreCheckoutEventKind kind)
+    {
+        var orderId = Guid.NewGuid();
+        var attempt = Guid.NewGuid();
+        var row = new Order
+        {
+            Id = orderId,
+            CheckoutAttemptId = attempt,
+            CheckoutSessionId = "cs_unreadable",
+            CheckoutAmountEur = 20m,
+        };
+        _repo.GetOrderByIdAsync(orderId, Arg.Any<CancellationToken>()).Returns(row);
+        var session = new StoreCheckoutSessionData("cs_unreadable", orderId, "pi_unreadable", null, PaymentStatus: "paid");
+
+        await _service.HandleStripeCheckoutWebhookEventAsync(new StoreCheckoutWebhookEvent("evt_unreadable", kind, session),
+            TestContext.Current.CancellationToken);
+
+        row.CheckoutAttemptId.Should().Be(attempt);
+        row.CheckoutSessionId.Should().Be("cs_unreadable");
+        row.CheckoutAmountEur.Should().Be(20m);
+        await _repo.DidNotReceiveWithAnyArgs().AddPaymentAsync(default!, default);
+        await _repo.DidNotReceiveWithAnyArgs().UpdateOrderAsync(default!, default);
+    }
+
+    [HumansTheory]
+    [InlineData(StoreCheckoutEventKind.CheckoutSessionAsyncPaymentSucceeded)]
+    [InlineData(StoreCheckoutEventKind.CheckoutSessionAsyncPaymentFailed)]
+    public async Task AsyncSettlement_SupersededSession_PreservesCurrentAttempt(StoreCheckoutEventKind kind)
+    {
+        var orderId = Guid.NewGuid();
+        var attempt = Guid.NewGuid();
+        var row = new Order
+        {
+            Id = orderId,
+            CheckoutAttemptId = attempt,
+            CheckoutSessionId = "cs_replacement",
+            CheckoutAmountEur = 30m,
+        };
+        _repo.GetOrderByIdAsync(orderId, Arg.Any<CancellationToken>()).Returns(row);
+        var session = new StoreCheckoutSessionData("cs_old", orderId, "pi_old", 20m,
+            PaymentStatus: kind == StoreCheckoutEventKind.CheckoutSessionAsyncPaymentSucceeded ? "paid" : "unpaid", Status: "complete");
+
+        await _service.HandleStripeCheckoutWebhookEventAsync(new StoreCheckoutWebhookEvent("evt_old", kind, session),
+            TestContext.Current.CancellationToken);
+
+        row.CheckoutAttemptId.Should().Be(attempt);
+        row.CheckoutSessionId.Should().Be("cs_replacement");
+        row.CheckoutAmountEur.Should().Be(30m);
+        await _repo.DidNotReceiveWithAnyArgs().UpdateOrderAsync(default!, default);
+    }
+
     [HumansFact]
     public async Task Reconciling_a_paid_session_whose_webhook_never_arrived_lets_the_next_checkout_open_a_new_session()
     {

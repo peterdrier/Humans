@@ -1306,16 +1306,18 @@ internal sealed class Service(
         switch (evt.Kind)
         {
             case StoreCheckoutEventKind.CheckoutSessionCompleted:
-                await HandleCheckoutSessionCompletedAsync(evt, ct);
-                await ClearCheckoutAttemptAsync(evt.Session, ct);
+                if (await HandleCheckoutSessionCompletedAsync(evt, ct))
+                    await ClearCheckoutAttemptAsync(evt.Session, ct);
                 break;
 
             case StoreCheckoutEventKind.CheckoutSessionAsyncPaymentSucceeded:
-                await TransitionAsyncPaymentAsync(evt, PaymentStatus.Paid, ct);
+                if (await TransitionAsyncPaymentAsync(evt, PaymentStatus.Paid, ct))
+                    await ClearCheckoutAttemptAsync(evt.Session, ct);
                 break;
 
             case StoreCheckoutEventKind.CheckoutSessionAsyncPaymentFailed:
-                await TransitionAsyncPaymentAsync(evt, PaymentStatus.Failed, ct);
+                if (await TransitionAsyncPaymentAsync(evt, PaymentStatus.Failed, ct))
+                    await ClearCheckoutAttemptAsync(evt.Session, ct);
                 break;
 
             case StoreCheckoutEventKind.CheckoutSessionExpired:
@@ -1329,12 +1331,12 @@ internal sealed class Service(
         }
     }
 
-    private async Task HandleCheckoutSessionCompletedAsync(StoreCheckoutWebhookEvent evt, CancellationToken ct)
+    private async Task<bool> HandleCheckoutSessionCompletedAsync(StoreCheckoutWebhookEvent evt, CancellationToken ct)
     {
         if (evt.Session is not { } session)
         {
             logger.LogWarning("checkout.session.completed event {EventId} did not contain a Session payload", evt.EventId);
-            return;
+            return false;
         }
 
         if (session.OrderId is not { } orderId)
@@ -1342,7 +1344,7 @@ internal sealed class Service(
             logger.LogWarning(
                 "Stripe Checkout Session {SessionId} has no humans_store_order_id metadata; skipping.",
                 session.SessionId);
-            return;
+            return false;
         }
 
         if (session.PaymentIntentId is not { } paymentIntentId)
@@ -1350,7 +1352,7 @@ internal sealed class Service(
             logger.LogWarning(
                 "Stripe Checkout Session {SessionId} has no PaymentIntentId; skipping.",
                 session.SessionId);
-            return;
+            return false;
         }
 
         if (session.AmountEur is not { } amountEur || amountEur <= 0)
@@ -1358,7 +1360,7 @@ internal sealed class Service(
             logger.LogWarning(
                 "Stripe Checkout Session {SessionId} has non-positive AmountTotal; skipping.",
                 session.SessionId);
-            return;
+            return false;
         }
 
         // "paid" is a settled sync payment; "unpaid" is an async method with only the debit mandate captured. A mandate
@@ -1373,6 +1375,7 @@ internal sealed class Service(
             logger.LogInformation(
                 "Recorded Stripe payment ({Status}) for order {OrderId} (session {SessionId}, PI {PaymentIntentId}, EUR {Amount})",
                 status, orderId, session.SessionId, paymentIntentId, amountEur);
+            return true;
         }
         catch (Exception ex)
         {
@@ -1415,18 +1418,18 @@ internal sealed class Service(
     /// before <c>completed</c> records the payment directly in its terminal state, so the later completed can neither
     /// lose settlement nor recreate a failed payment as Pending.
     /// </summary>
-    private async Task TransitionAsyncPaymentAsync(StoreCheckoutWebhookEvent evt, PaymentStatus target, CancellationToken ct)
+    private async Task<bool> TransitionAsyncPaymentAsync(StoreCheckoutWebhookEvent evt, PaymentStatus target, CancellationToken ct)
     {
         if (evt.Session is not { } session)
         {
             logger.LogWarning("{Kind} event {EventId} did not contain a Session payload", evt.Kind, evt.EventId);
-            return;
+            return false;
         }
 
         if (session.PaymentIntentId is not { } paymentIntentId)
         {
             logger.LogWarning("{Kind} session {SessionId} has no PaymentIntentId; skipping.", evt.Kind, session.SessionId);
-            return;
+            return false;
         }
 
         var existing = await repo.GetPaymentByIntentIdAsync(paymentIntentId, ct);
@@ -1439,6 +1442,7 @@ internal sealed class Service(
                 logger.LogInformation(
                     "Async {Kind} arrived before completed for order {OrderId} (PI {PaymentIntentId}); recorded {Status} payment directly.",
                     evt.Kind, orderId, paymentIntentId, target);
+                return true;
             }
             else
             {
@@ -1446,11 +1450,11 @@ internal sealed class Service(
                     "{Kind} for PI {PaymentIntentId} found no matching payment; nothing to transition.",
                     evt.Kind, paymentIntentId);
             }
-            return;
+            return false;
         }
 
         if (existing.Status == target)
-            return; // re-delivery of an already-applied transition
+            return true; // re-delivery of an already-applied transition
 
         if (existing.Status != PaymentStatus.Pending)
         {
@@ -1459,7 +1463,7 @@ internal sealed class Service(
             logger.LogWarning(
                 "{Kind} for PI {PaymentIntentId} found payment in unexpected state {Status}; leaving unchanged.",
                 evt.Kind, paymentIntentId, existing.Status);
-            return;
+            return false;
         }
 
         await repo.UpdatePaymentStatusAsync(existing.Id, target, ct);
@@ -1470,6 +1474,7 @@ internal sealed class Service(
             $"Stripe payment of EUR {existing.AmountEur:0.00} {verb} (PI {paymentIntentId})",
             "StripeWebhook",
             existing.OrderId, AuditEntityTypes.Order);
+        return true;
     }
 
     /// <summary>
