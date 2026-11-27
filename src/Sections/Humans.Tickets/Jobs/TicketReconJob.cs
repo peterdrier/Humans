@@ -17,6 +17,7 @@ namespace Humans.Tickets.Jobs;
 [DisableConcurrentExecution(timeoutInSeconds: 1800)]
 internal sealed class TicketReconJob(
     ITicketCheckoutService checkout,
+    ITicketReconService reconService,
     IEmailService email,
     TicketsEmails emails,
     IOrgTimeZone orgTimeZone,
@@ -34,13 +35,13 @@ internal sealed class TicketReconJob(
         var today = clock.GetCurrentInstant().InZone(zone).Date;
         var to = today.AtStartOfDayInZone(zone).ToInstant();
         var findings = new List<string>();
-        foreach (var key in await checkout.GetBackendsInUseAsync(cancellationToken))
+        foreach (var key in await reconService.GetBackendsInUseAsync(cancellationToken))
         {
-            if (await RunAsync(key, "orders", findings, () => checkout.ReconcileBackendAsync(key, from, to, cancellationToken),
+            if (await RunAsync(key, "orders", findings, () => reconService.ReconcileBackendAsync(key, from, to, cancellationToken),
                     cancellationToken) is { } recon && Finding(recon) is { } orderFinding)
                 findings.Add(orderFinding);
             if (await RunAsync(key, "payments and payouts", findings,
-                    () => checkout.ReconcilePaymentsAsync(key, from, to, cancellationToken), cancellationToken) is { } payments
+                    () => reconService.ReconcilePaymentsAsync(key, from, to, cancellationToken), cancellationToken) is { } payments
                 && Finding(payments) is { } paymentFinding)
                 findings.Add(paymentFinding);
         }

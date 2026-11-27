@@ -1,12 +1,32 @@
 using Humans.Tickets.Contracts;
+using Humans.Tickets.Data;
 using Humans.Tickets.Domain.Checkout;
 using Microsoft.Extensions.Hosting;
 using NodaTime;
 
 namespace Humans.Tickets.Services.Checkout;
 
-internal sealed partial class TicketCheckoutService
+internal sealed class TicketReconService(
+    ITicketCheckoutRepository repository,
+    IEnumerable<ITicketCheckoutBackend> backends,
+    IHostEnvironment environment,
+    IClock clock,
+    ILogger<TicketReconService> logger) : ITicketReconService
 {
+    private readonly IReadOnlyList<ITicketCheckoutBackend> _backends = backends.ToList();
+
+    public IReadOnlyList<CheckoutBackendInfo> Backends =>
+        _backends.Select(b => new CheckoutBackendInfo(b.Key, b.IsConfigured, b.Setup)).OrderBy(b => b.Key, StringComparer.Ordinal).ToList();
+
+    public async Task<IReadOnlyList<CheckoutBackendFinding>?> CheckBackendAsync(
+        string key, string? backendEventRef, CancellationToken ct = default) =>
+        BackendFor(key) is { } backend
+            ? await backend.CheckAsync(string.IsNullOrWhiteSpace(backendEventRef) ? null : backendEventRef.Trim(), ct)
+            : null;
+
+    private ITicketCheckoutBackend? BackendFor(string key) =>
+        _backends.FirstOrDefault(b => string.Equals(b.Key, key, StringComparison.Ordinal));
+
     public async Task<IReadOnlyList<string>> GetBackendsInUseAsync(CancellationToken ct = default)
     {
         // An order keeps its backend when its sales setup moves on, so a backend with orders stays in use.

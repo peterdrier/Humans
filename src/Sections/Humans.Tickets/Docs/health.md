@@ -111,6 +111,9 @@ The layout these shapes imply:
   while the services are Scoped.
 - **Contact import re-queries at apply time** rather than trusting the plan, because a sync can
   land between preview and apply.
+- **`TicketCheckoutService` stays one large class.** Ticket issuance, resale, refunds, companions, the team's
+  exceptions and event cancellation all write checkout tickets, which feed the holdings cache, and share one refund and
+  offer core; only the read-only gate lookup and backend reconciliation split out cleanly.
 - **The Scanner gate card builds `TicketStubInfo` itself** to show the scanned attendee's Early
   Entry, not the operator's; every holder-facing surface goes through `TicketStubInfo.From`.
 

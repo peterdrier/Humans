@@ -18,6 +18,7 @@ namespace Humans.Tickets.Controllers;
 [Route("Tickets/Admin/Backends/{key}")]
 internal sealed class TicketsBackendAdminController(
     ITicketCheckoutService checkout,
+    ITicketReconService reconService,
     ISettingsService settings,
     IOrgTimeZone orgTimeZone,
     IUserService userService) : HumansControllerBase(userService)
@@ -32,7 +33,7 @@ internal sealed class TicketsBackendAdminController(
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Check(string key, string? backendEventRef, CancellationToken ct)
     {
-        var findings = await checkout.CheckBackendAsync(key, backendEventRef, ct);
+        var findings = await reconService.CheckBackendAsync(key, backendEventRef, ct);
         if (findings is null)
             return NotFound();
         return await StatusAsync(key, new BackendCheckResult(key, backendEventRef, findings), ct);
@@ -40,7 +41,7 @@ internal sealed class TicketsBackendAdminController(
 
     private async Task<IActionResult> StatusAsync(string key, BackendCheckResult? check, CancellationToken ct)
     {
-        if (await checkout.GetBackendLedgerAsync(key, ct) is not { } ledger)
+        if (await reconService.GetBackendLedgerAsync(key, ct) is not { } ledger)
             return NotFound();
 
         return View("~/Views/Tickets/Admin/Backends/Index.cshtml", new BackendStatusViewModel(

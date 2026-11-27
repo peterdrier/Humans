@@ -21,6 +21,7 @@ namespace Humans.Tickets.Controllers;
 [Route("Tickets/Admin/Sales")]
 internal sealed class TicketsSalesAdminController(
     ITicketCheckoutService checkout,
+    ITicketReconService reconService,
     TicketDeliveryService delivery,
     ISettingsService settings,
     IGrantService grants,
@@ -34,7 +35,7 @@ internal sealed class TicketsSalesAdminController(
         var events = await settings.GetAllEventSettingsAsync(ct);
         var salesEvents = await checkout.GetSalesEventsAsync(ct);
         return View("~/Views/Tickets/Admin/Sales/Index.cshtml", new SalesAdminIndexViewModel(
-            salesEvents, events, checkout.Backends, clock.GetCurrentInstant().InZone(orgTimeZone.Zone).Date));
+            salesEvents, events, reconService.Backends, clock.GetCurrentInstant().InZone(orgTimeZone.Zone).Date));
     }
 
     [HttpGet("Backends")]
@@ -138,7 +139,7 @@ internal sealed class TicketsSalesAdminController(
         if (fromDate > toDate)
             (fromDate, toDate) = (toDate, fromDate);
 
-        var inUse = await checkout.GetBackendsInUseAsync(ct);
+        var inUse = await reconService.GetBackendsInUseAsync(ct);
         var keys = string.IsNullOrWhiteSpace(backend) ? inUse : [backend];
         var start = fromDate.AtStartOfDayInZone(zone).ToInstant();
         var end = toDate.PlusDays(1).AtStartOfDayInZone(zone).ToInstant();
@@ -146,10 +147,10 @@ internal sealed class TicketsSalesAdminController(
         var payments = new Dictionary<string, TicketPaymentRecon>(StringComparer.Ordinal);
         foreach (var key in keys)
         {
-            if (await checkout.ReconcileBackendAsync(key, start, end, ct) is not { } recon)
+            if (await reconService.ReconcileBackendAsync(key, start, end, ct) is not { } recon)
                 return NotFound();
             recons.Add(recon);
-            if (await checkout.ReconcilePaymentsAsync(key, start, end, ct) is { } payment)
+            if (await reconService.ReconcilePaymentsAsync(key, start, end, ct) is { } payment)
                 payments[key] = payment;
         }
 
@@ -161,10 +162,10 @@ internal sealed class TicketsSalesAdminController(
         value is not null && LocalDatePattern.Iso.Parse(value) is { Success: true } parsed ? parsed.Value : null;
 
     private async Task<BackendsViewModel> BackendsModelAsync(CancellationToken ct) =>
-        new(checkout.Backends, await checkout.GetSalesEventsAsync(ct), await settings.GetAllEventSettingsAsync(ct), null);
+        new(reconService.Backends, await checkout.GetSalesEventsAsync(ct), await settings.GetAllEventSettingsAsync(ct), null);
 
     private async Task<SalesEditViewModel> EditModelAsync(SalesEditForm form, string? error, CancellationToken ct) =>
-        new(form, error, await settings.GetAllEventSettingsAsync(ct), await grants.GetProgramSummariesAsync(ct), checkout.Backends,
+        new(form, error, await settings.GetAllEventSettingsAsync(ct), await grants.GetProgramSummariesAsync(ct), reconService.Backends,
             orgTimeZone.Zone);
 }
 

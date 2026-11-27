@@ -1,5 +1,7 @@
+using System.Diagnostics;
 using System.Globalization;
 using System.Security.Cryptography;
+using System.Text;
 using System.Text.RegularExpressions;
 using Humans.AuditLog.Contracts;
 using Humans.Base.Extensions;
@@ -13,7 +15,6 @@ using Humans.Tickets.Data;
 using Humans.Tickets.Domain.Checkout;
 using Humans.Tickets.Services.Stores;
 using Humans.Users.Contracts;
-using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Localization;
 using NodaTime;
 
@@ -36,7 +37,6 @@ internal sealed partial class TicketCheckoutService(
     ITicketRulesSource rulesSource,
     IStringLocalizer<TicketsResource> localizer,
     IAuditLogService auditLog,
-    IHostEnvironment environment,
     IClock clock,
     CachingTicketQueryService holdings,
     ILogger<TicketCheckoutService> logger) : ITicketCheckoutService, IUserDataContributor, IUserMerge
@@ -60,15 +60,6 @@ internal sealed partial class TicketCheckoutService(
 
     [GeneratedRegex(@"^[A-Za-z0-9][A-Za-z0-9_ ./-]*$", RegexOptions.None, 1000)]
     private static partial Regex TermsFolderPattern();
-
-    public IReadOnlyList<CheckoutBackendInfo> Backends =>
-        _backends.Select(b => new CheckoutBackendInfo(b.Key, b.IsConfigured, b.Setup)).OrderBy(b => b.Key, StringComparer.Ordinal).ToList();
-
-    public async Task<IReadOnlyList<CheckoutBackendFinding>?> CheckBackendAsync(
-        string key, string? backendEventRef, CancellationToken ct = default) =>
-        BackendFor(key) is { } backend
-            ? await backend.CheckAsync(string.IsNullOrWhiteSpace(backendEventRef) ? null : backendEventRef.Trim(), ct)
-            : null;
 
     private ITicketCheckoutBackend? BackendFor(string key) =>
         _backends.FirstOrDefault(b => string.Equals(b.Key, key, StringComparison.Ordinal));
@@ -1342,4 +1333,1398 @@ internal sealed partial class TicketCheckoutService(
     }
 
     private static string OnOff(bool on) => on ? "on" : "off";
+
+    /// <summary>Links a holder may send for one ticket over all its offers: enough for friends, too few to spam with.</summary>
+    internal const int MaxInvitesPerTicket = 10;
+
+    /// <summary>How long a resale buyer's payment must stand before the evening batch refunds the old holder.</summary>
+    internal static readonly Duration ResaleRefundHold = Duration.FromHours(12);
+
+    private const string RefundHeldBack = "Resale refund held back";
+    private static readonly Duration DeliveryGrace = Duration.FromMinutes(30);
+    private static readonly Duration DeliveryRepairWindow = Duration.FromDays(7);
+
+    public async Task<IReadOnlyList<TicketCheckoutTicket>> GetTicketsForOrderAsync(Guid orderId, CancellationToken ct = default) =>
+        (await repository.GetTicketsForOrderAsync(orderId, ct)).OrderBy(t => t.Kind).ThenBy(t => t.IssuedAt).ToList();
+
+    public Task<TicketCheckoutTicket?> GetTicketAsync(Guid id, CancellationToken ct = default) =>
+        repository.GetTicketAsync(id, ct);
+
+    public Task RecordDeliveryAsync(
+        Guid orderId, TicketCheckoutOrderEventKind kind, string detail, Guid? actorUserId, CancellationToken ct = default)
+    {
+        if (kind is not (TicketCheckoutOrderEventKind.TicketsEmailed or TicketCheckoutOrderEventKind.TicketsResent
+            or TicketCheckoutOrderEventKind.TicketMailSkipped))
+            throw new ArgumentOutOfRangeException(nameof(kind), kind, "Only delivery steps are recorded here.");
+        return TimelineAsync(orderId, kind, Truncate(detail), actorUserId, ct);
+    }
+
+    public async Task<IReadOnlyList<TicketCheckoutTicket>> GetTicketsForHolderAsync(Guid userId, CancellationToken ct = default) =>
+        (await repository.GetTicketsForHolderAsync(userId, ct)).OrderByDescending(t => t.IssuedAt).ToList();
+
+    public async Task<IReadOnlyList<TicketCheckoutTicket>> GetTicketsForSalesEventAsync(Guid salesEventId, CancellationToken ct = default) =>
+        (await repository.GetTicketsForSalesEventAsync(salesEventId, ct)).OrderBy(t => t.IssuedAt).ToList();
+
+    public async Task<IReadOnlyList<TicketResaleOffer>> GetOffersForSalesEventAsync(Guid salesEventId, CancellationToken ct = default) =>
+        (await repository.GetOffersForSalesEventAsync(salesEventId, ct)).OrderBy(o => o.OfferedAt).ToList();
+
+    public async Task<IReadOnlyList<TicketCheckoutRefund>> GetRefundsForSalesEventAsync(Guid salesEventId, CancellationToken ct = default) =>
+        (await repository.GetRefundsForSalesEventAsync(salesEventId, ct)).OrderBy(r => r.CreatedAt).ToList();
+
+    public async Task<IReadOnlyList<HeldTicket>> GetHeldTicketsAsync(Guid userId, CancellationToken ct = default)
+    {
+        var held = new List<HeldTicket>();
+        var now = clock.GetCurrentInstant();
+        foreach (var group in (await repository.GetTicketsForHolderAsync(userId, ct))
+                     .Where(t => t.State is TicketCheckoutTicketState.Valid or TicketCheckoutTicketState.Offered)
+                     .GroupBy(t => t.SalesEventId))
+        {
+            var salesEvent = await repository.GetSalesEventAsync(group.Key, ct);
+            var eventName = salesEvent is null ? string.Empty
+                : (await settings.GetEventSettingsByIdAsync(salesEvent.EventSettingsId, ct))?.EventName ?? string.Empty;
+            var offers = await repository.GetOffersForSalesEventAsync(group.Key, ct);
+            var queue = offers.Where(o => o.State is TicketResaleOfferState.Open or TicketResaleOfferState.Reserved).ToList();
+            var positions = TicketSupportReports.QueuePositions(offers);
+            var eventTickets = salesEvent is null ? [] : await repository.GetTicketsForSalesEventAsync(group.Key, ct);
+            var companionRequests = await repository.GetCompanionRequestsForSalesEventAsync(group.Key, ct);
+            foreach (var ticket in group.OrderBy(t => t.IssuedAt))
+            {
+                var offer = queue.FirstOrDefault(o => o.TicketId == ticket.Id);
+                var hasDependents = eventTickets.Any(t => t.ParentTicketId == ticket.Id && t.State == TicketCheckoutTicketState.Valid);
+                held.Add(new HeldTicket(ticket, eventName, offer, offer is null ? null : positions[offer.Id],
+                    CanOffer: salesEvent?.EffectiveSwitches.Resale is not (null or ResaleScheme.Off) && offer is null && ticket.Kind == TicketHolderKind.Adult && salesEvent is { Mode: not (TicketSalesMode.Closed or TicketSalesMode.InvitedOnly) },
+                    HasDependents: hasDependents,
+                    DirectedActive: offer?.HasLiveInvite == true)
+                {
+                    CanInvite = salesEvent?.EffectiveSwitches.Resale == ResaleScheme.QueueAndDirected,
+                    CompanionRequest = companionRequests.Where(r => r.TicketId == ticket.Id).MaxBy(r => r.RequestedAt),
+                    CanAskCompanion = CanAskCompanion(ticket, salesEvent, eventTickets, companionRequests),
+                });
+                // A child ticket has no account of its own: it shows under the adult who holds it.
+                foreach (var child in eventTickets.Where(t => t.ParentTicketId == ticket.Id && t.State == TicketCheckoutTicketState.Valid))
+                    held.Add(new HeldTicket(child, eventName, null, null, CanOffer: false, HasDependents: false, DirectedActive: false));
+            }
+        }
+        return held;
+    }
+
+    public async Task<CheckoutMutationResult> OfferForResaleAsync(Guid ticketId, Guid userId, CancellationToken ct = default)
+    {
+        var ticket = await repository.GetTicketAsync(ticketId, ct);
+        if (ticket is null || ticket.HolderUserId != userId)
+            return new("Tickets_Resale_NotFound");
+        if (ticket.State != TicketCheckoutTicketState.Valid || ticket.Kind != TicketHolderKind.Adult)
+            return new("Tickets_Resale_NotOfferable");
+        var salesEvent = await repository.GetSalesEventAsync(ticket.SalesEventId, ct);
+        if (salesEvent is null || salesEvent.Mode is TicketSalesMode.Closed or TicketSalesMode.InvitedOnly
+            || salesEvent.EffectiveSwitches.Resale == ResaleScheme.Off)
+            return new("Tickets_Resale_Closed");
+        // The bank already took this order's money back: a resale would owe a refund of money Humans no longer holds.
+        if (await repository.GetOrderAsync(ticket.OrderId, ct) is { DisputedMinor: > 0 })
+            return new("Tickets_Resale_NotOfferable");
+
+        // Children go wherever their adult goes: returned with the adult and refunded with it when it sells.
+        // Event-wide: an admin-issued companion lives on its own order.
+        var dependents = (await repository.GetTicketsForSalesEventAsync(ticket.SalesEventId, ct))
+            .Where(t => t.ParentTicketId == ticket.Id && t.State == TicketCheckoutTicketState.Valid)
+            .ToList();
+        if (await IsAdmittedAsync(ticket, ct))
+            return new("Tickets_Resale_NotOfferable");
+        var now = clock.GetCurrentInstant();
+        var offer = new TicketResaleOffer
+        {
+            Id = Guid.NewGuid(),
+            SalesEventId = ticket.SalesEventId,
+            TicketId = ticket.Id,
+            HolderUserId = userId,
+            OfferedAt = now,
+            State = TicketResaleOfferState.Open,
+            RefundOwedMinor = ticket.PricePaidMinor + dependents.Sum(d => d.PricePaidMinor),
+        };
+        await repository.AddOfferAsync(offer, ct);
+        ticket.State = TicketCheckoutTicketState.Offered;
+        await repository.UpdateTicketAsync(ticket, ct);
+        await TimelineAsync(ticket.OrderId, TicketCheckoutOrderEventKind.ResaleOffered,
+            $"Ticket {ticket.Barcode} returned to the resale queue; {FormatMinor(offer.RefundOwedMinor)} owed if it sells" +
+            (dependents.Count > 0 ? $", with {dependents.Count} child ticket(s)" : string.Empty), userId, ct);
+        await auditLog.LogAsync(TicketsAuditActions.TicketResaleOffered, AuditEntityType, ticket.OrderId,
+            $"Ticket {ticket.Barcode} offered for resale", userId);
+        return CheckoutMutationResult.Ok;
+    }
+
+    public async Task<CheckoutMutationResult> WithdrawOfferAsync(Guid ticketId, Guid userId, CancellationToken ct = default)
+    {
+        var (ticket, offer) = await OwnOfferAsync(ticketId, userId, ct);
+        if (ticket is null || offer is null)
+            return new("Tickets_Resale_NotFound");
+        if (offer.State == TicketResaleOfferState.Reserved)
+            return new("Tickets_Resale_InCheckout");
+
+        offer.State = TicketResaleOfferState.Withdrawn;
+        offer.WithdrawnAt = clock.GetCurrentInstant();
+        await repository.UpdateOfferAsync(offer, ct);
+        ticket.State = TicketCheckoutTicketState.Valid;
+        await repository.UpdateTicketAsync(ticket, ct);
+        await TimelineAsync(ticket.OrderId, TicketCheckoutOrderEventKind.ResaleWithdrawn,
+            $"Ticket {ticket.Barcode} taken back out of the resale queue", userId, ct);
+        await auditLog.LogAsync(TicketsAuditActions.TicketResaleWithdrawn, AuditEntityType, ticket.OrderId,
+            $"Ticket {ticket.Barcode} withdrawn from resale", userId);
+        return CheckoutMutationResult.Ok;
+    }
+
+    /// <summary>
+    /// Emails the link to each new address. Every link sells this one ticket to whoever buys first; anyone later buys the
+    /// next ticket in the queue. An address already sent this offer's link is skipped.
+    /// </summary>
+    public async Task<CheckoutMutationResult> InviteBuyersAsync(
+        Guid ticketId, Guid userId, IReadOnlyList<string> inviteeEmails, Uri claimUrlBase, string culture, CancellationToken ct = default)
+    {
+        var (ticket, offer) = await OwnOfferAsync(ticketId, userId, ct);
+        var salesEvent = ticket is null ? null : await repository.GetSalesEventAsync(ticket.SalesEventId, ct);
+        if (ticket is null || offer is null || salesEvent?.EffectiveSwitches.Resale != ResaleScheme.QueueAndDirected)
+            return new("Tickets_Resale_NotFound");
+        if (offer.State != TicketResaleOfferState.Open)
+            return new("Tickets_Resale_InCheckout");
+        if (await IsAdmittedAsync(ticket, ct))
+            return new("Tickets_Resale_NotOfferable");
+        var addresses = inviteeEmails.Select(e => e.Trim()).Where(e => e.Length > 0).Distinct(StringComparer.OrdinalIgnoreCase).ToList();
+        if (addresses.Count == 0 || addresses.Any(e => !LooksLikeEmail(e) || string.Equals(e, ticket.HolderEmail, StringComparison.OrdinalIgnoreCase)))
+            return new("Tickets_Resale_InviteEmailInvalid");
+        addresses.RemoveAll(e => offer.Invites.Any(i => string.Equals(i.Email, e, StringComparison.OrdinalIgnoreCase)));
+        if (addresses.Count == 0)
+            return new("Tickets_Resale_InviteAlready");
+        // Counted over all of the ticket's offers, so withdrawing and offering again does not start a fresh allowance.
+        if ((await repository.GetOffersForSalesEventAsync(ticket.SalesEventId, ct))
+                .Where(o => o.TicketId == ticket.Id).Sum(o => o.DirectedInviteCount) + addresses.Count > MaxInvitesPerTicket)
+            return new("Tickets_Resale_InviteLimit");
+        var now = clock.GetCurrentInstant();
+        if (!(await LoadStockAsync(salesEvent, now, ct)).ResaleOpen)
+            return new("Tickets_Resale_NotOpenYet");
+
+        var links = addresses.Select(address =>
+        {
+            var token = Convert.ToBase64String(RandomNumberGenerator.GetBytes(32)).TrimEnd('=').Replace('+', '-').Replace('/', '_');
+            return (Address: address, Token: token);
+        }).ToList();
+        offer.Invites = [.. offer.Invites, .. links.Select(l => new TicketResaleInvite { Email = l.Address, TokenHash = HashToken(l.Token), SentAt = now })];
+        offer.DirectedInviteCount += links.Count;
+        await repository.UpdateOfferAsync(offer, ct);
+
+        var eventName = (await settings.GetEventSettingsByIdAsync(salesEvent.EventSettingsId, ct))?.EventName ?? string.Empty;
+        foreach (var (address, token) in links)
+            await email.SendAsync(emails.ResaleInvitation(
+                address, ticket.HolderName, eventName, new Uri(claimUrlBase, token).ToString(), culture), ct);
+        await TimelineAsync(ticket.OrderId, TicketCheckoutOrderEventKind.ResaleInvited,
+            $"Holder sent the link for ticket {ticket.Barcode} to {links.Count} more person(s), {offer.Invites.Count} in all; " +
+            "the ticket stays in the queue meanwhile", userId, ct);
+        return CheckoutMutationResult.Ok;
+    }
+
+    public async Task<CheckoutMutationResult> CancelInviteAsync(Guid ticketId, Guid userId, CancellationToken ct = default)
+    {
+        var (ticket, offer) = await OwnOfferAsync(ticketId, userId, ct);
+        if (ticket is null || offer is null || offer.Invites.Count == 0)
+            return new("Tickets_Resale_NotFound");
+        if (offer.State == TicketResaleOfferState.Reserved)
+            return new("Tickets_Resale_InCheckout");
+        offer.Invites = [];
+        await repository.UpdateOfferAsync(offer, ct);
+        await TimelineAsync(ticket.OrderId, TicketCheckoutOrderEventKind.ResaleInviteCancelled,
+            $"Invitations for ticket {ticket.Barcode} cancelled; it keeps its place in the queue", userId, ct);
+        return CheckoutMutationResult.Ok;
+    }
+
+    /// <summary>The ticket or a valid child riding on it was admitted: selling it would void someone already inside.</summary>
+    private async Task<bool> IsAdmittedAsync(TicketCheckoutTicket ticket, CancellationToken ct)
+    {
+        var dependents = (await repository.GetTicketsForOrderAsync(ticket.OrderId, ct))
+            .Where(t => t.ParentTicketId == ticket.Id && t.State == TicketCheckoutTicketState.Valid)
+            .Select(t => t.Barcode);
+        return (await gateAdmissions.GetAdmittedAsync([ticket.Barcode, .. dependents], ct)).Count > 0;
+    }
+
+    private async Task<bool> IsAdmittedAsync(Guid ticketId, CancellationToken ct) =>
+        await repository.GetTicketAsync(ticketId, ct) is { } ticket && await IsAdmittedAsync(ticket, ct);
+
+    private async Task<(TicketCheckoutTicket? Ticket, TicketResaleOffer? Offer)> OwnOfferAsync(
+        Guid ticketId, Guid userId, CancellationToken ct)
+    {
+        var ticket = await repository.GetTicketAsync(ticketId, ct);
+        if (ticket is null || ticket.HolderUserId != userId || ticket.State != TicketCheckoutTicketState.Offered)
+            return (null, null);
+        var offer = (await repository.GetOffersForSalesEventAsync(ticket.SalesEventId, ct))
+            .FirstOrDefault(o => o.TicketId == ticket.Id && o.State is TicketResaleOfferState.Open or TicketResaleOfferState.Reserved);
+        return (ticket, offer);
+    }
+
+    /// <summary>The link was sent to the signed-in buyer's email, for this sales event.</summary>
+    private static bool InviteIsFor(TicketResaleOffer offer, string tokenHash, BuyContext context) =>
+        offer.SalesEventId == context.SalesEvent.Id && offer.InviteFor(tokenHash) is { } invite
+        && string.Equals(invite.Email, context.Buyer?.Email, StringComparison.OrdinalIgnoreCase);
+
+    /// <summary>The linked offer while it can still sell to this buyer: the link is theirs and the queue is open.</summary>
+    private static TicketResaleOffer? DirectedOfferFor(TicketResaleOffer offer, string tokenHash, BuyContext context) =>
+        context.SalesEvent.ResaleSelling && offer.State == TicketResaleOfferState.Open && InviteIsFor(offer, tokenHash, context)
+            ? offer
+            : null;
+
+    internal static string HashToken(string token) =>
+        Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(token)));
+
+    private async Task ReserveOfferAsync(TicketResaleOffer offer, Guid orderId, CancellationToken ct)
+    {
+        offer.State = TicketResaleOfferState.Reserved;
+        offer.ReservedByOrderId = orderId;
+        await repository.UpdateOfferAsync(offer, ct);
+    }
+
+    /// <summary>The order will never pay: its reserved offers go back to the queue, keeping their place.</summary>
+    private async Task ReleaseOffersAsync(TicketCheckoutOrder order, CancellationToken ct)
+    {
+        foreach (var offerId in order.Lines.Select(l => l.ResaleOfferId).OfType<Guid>())
+        {
+            var offer = await repository.GetOfferAsync(offerId, ct);
+            if (offer is not { State: TicketResaleOfferState.Reserved } || offer.ReservedByOrderId != order.Id)
+                continue;
+            if ((await repository.GetSalesEventAsync(offer.SalesEventId, ct))?.EffectiveSwitches.Resale == ResaleScheme.Off)
+            {
+                await WithdrawSwitchedOffAsync(offer, null, ct);
+                continue;
+            }
+            offer.State = TicketResaleOfferState.Open;
+            offer.ReservedByOrderId = null;
+            await repository.UpdateOfferAsync(offer, ct);
+        }
+    }
+
+    /// <summary>
+    /// Issues the paid order's tickets (once: the unique line index turns a second caller away), completes any resale
+    /// it bought, and tells delivery. Safe to repeat: the reconcile job calls it again for a paid order a crash left
+    /// without tickets or with a resale unfinished.
+    /// </summary>
+    private async Task CompletePaidAsync(TicketCheckoutOrder order, CancellationToken ct)
+    {
+        var issuedNow = false;
+        if ((await repository.GetTicketsForOrderAsync(order.Id, ct)).Count == 0
+            && order.Lines.Any(l => l.Kind == CheckoutLineKind.Ticket))
+        {
+            await FlagDoubleHoldersAsync(order, ct);
+            var now = clock.GetCurrentInstant();
+            var ids = order.Lines.Select(_ => Guid.NewGuid()).ToList();
+            var tickets = order.Lines
+                .Select((line, index) => (line, index))
+                .Where(x => x.line.Kind == CheckoutLineKind.Ticket)
+                .Select(x => new TicketCheckoutTicket
+                {
+                    Id = ids[x.index],
+                    SalesEventId = order.SalesEventId,
+                    OrderId = order.Id,
+                    LineIndex = x.index,
+                    Kind = x.line.HolderKind ?? TicketHolderKind.Adult,
+                    ParentTicketId = x.line.ParentLineIndex is { } parent ? ids[parent] : null,
+                    HolderUserId = x.line.AttendeeUserId,
+                    HolderName = x.line.AttendeeName ?? string.Empty,
+                    HolderEmail = x.line.AttendeeEmail,
+                    Barcode = NewBarcode(),
+                    PricePaidMinor = x.line.AmountMinor,
+                    WaveName = x.line.WaveName ?? string.Empty,
+                    ClassProgramId = x.line.ClassProgramId,
+                    ClassLabel = x.line.ClassLabel,
+                    CreditsMinor = x.line.CreditsMinor,
+                    State = TicketCheckoutTicketState.Valid,
+                    IssuedAt = now,
+                })
+                .ToList();
+            if (!await repository.AddTicketsAsync(tickets, ct))
+                return;
+            foreach (var holder in tickets.Select(t => t.HolderUserId).OfType<Guid>().Distinct())
+                holdings.InvalidateHoldings(holder);
+            issuedNow = true;
+            await TimelineAsync(order.Id, TicketCheckoutOrderEventKind.TicketsIssued,
+                $"{tickets.Count} ticket(s) issued: {string.Join(", ", tickets.Select(t => t.Barcode))}", null, ct);
+        }
+
+        foreach (var offerId in order.Lines.Select(l => l.ResaleOfferId).OfType<Guid>())
+            await CompleteResaleAsync(offerId, order, ct);
+
+        if (issuedNow)
+            await HandOffToDeliveryAsync(order.Id, ct);
+    }
+
+    private Task HandOffToDeliveryAsync(Guid orderId, CancellationToken ct) =>
+        TellDeliveryAsync(d => d.TicketsIssuedAsync(orderId, ct), orderId);
+
+    /// <summary>A mail that cannot be queued is logged and never undoes the change it reports. False when one failed.</summary>
+    private async Task<bool> TellDeliveryAsync(Func<ITicketDelivery, Task> tell, Guid subjectId)
+    {
+        var queued = true;
+        foreach (var delivery in deliveries)
+        {
+            try
+            {
+                await tell(delivery);
+            }
+            catch (Exception ex) when (ex is not OperationCanceledException)
+            {
+                logger.LogError(ex, "Ticket delivery for {SubjectId} failed", subjectId);
+                queued = false;
+            }
+        }
+        return queued;
+    }
+
+    /// <summary>
+    /// Holding a ticket is checked before payment, but a lapsed checkout can still pay late after the person bought
+    /// one of their own: the team then refunds one of the two.
+    /// </summary>
+    private async Task FlagDoubleHoldersAsync(TicketCheckoutOrder order, CancellationToken ct)
+    {
+        var now = clock.GetCurrentInstant();
+        foreach (var (line, index) in order.Lines.Select((l, i) => (l, i + 1))
+                     .Where(x => x.l is { Kind: CheckoutLineKind.Ticket, AttendeeUserId: not null } && x.l.HolderKind != TicketHolderKind.Child)
+                     .DistinctBy(x => x.l.AttendeeUserId))
+            if (await HoldsTicketAsync(order.SalesEventId, line.AttendeeUserId!.Value, now, ct))
+                await NeedsAttentionAsync(order.Id,
+                    $"The holder of line {index} already held a ticket for this event; the ticketing team should refund one", ct);
+    }
+
+    /// <summary>
+    /// The account a ticket for <paramref name="email"/> belongs to. Only a verified address attaches a ticket to an
+    /// existing account; a single unverified row is replaced by a new account, as the attendee import does; an
+    /// ambiguous address gives no account and the reason. The legal name stays on the line and ticket: as a display
+    /// name it would become the account's public burner name.
+    /// </summary>
+    private async Task<(Guid? UserId, string? Problem)> ResolveAccountAsync(string email, CancellationToken ct)
+    {
+        var verified = (await userEmails.FindByAddressAsync(email, aliased: true, verifiedOnly: true, ct))
+            .Select(r => r.UserId).Distinct().ToList();
+        if (verified.Count == 1)
+            return ((await users.GetUserInfoAsync(verified[0], ct))?.Id ?? verified[0], null);
+        if (verified.Count > 1)
+            return (null, "the address is verified on more than one account");
+        var rows = await userEmails.FindByAddressAsync(email, aliased: true, verifiedOnly: false, ct);
+        if (rows.Count > 1)
+            return (null, "the address is unverified on more than one account");
+        var provisioned = rows.Count == 1
+            ? await provisioning.ReplaceUnverifiedEmailAndProvisionAsync(rows[0].UserId, rows[0].Id, email, displayName: null, ContactSource.Manual, ct)
+            : await provisioning.FindOrCreateUserByEmailAsync(email, displayName: null, ContactSource.Manual, ct);
+        return (provisioned.UserId, null);
+    }
+
+    /// <summary>On the order's timeline and in the audit log, where the ticketing team reviews what automation left them.</summary>
+    private async Task NeedsAttentionAsync(Guid orderId, string detail, CancellationToken ct)
+    {
+        await TimelineAsync(orderId, TicketCheckoutOrderEventKind.TicketsIssued, detail, null, ct);
+        await auditLog.LogAsync(TicketsAuditActions.TicketCheckoutNeedsAttention, AuditEntityType, orderId, detail, JobName);
+    }
+
+    private async Task CompleteResaleAsync(Guid offerId, TicketCheckoutOrder buyerOrder, CancellationToken ct)
+    {
+        var offer = await repository.GetOfferAsync(offerId, ct);
+        if (offer is null)
+            return;
+        if (offer.State == TicketResaleOfferState.Sold)
+        {
+            // A repeat after a crash finishes whatever the first run left: the old ticket and its children. The refund
+            // is the evening batch's.
+            if (offer.SoldToOrderId == buyerOrder.Id)
+                await RetireResoldTicketAsync(offer, offer.DirectedUsedAt is not null, ct);
+            return;
+        }
+        // A late payment finds its offer released, maybe taken by another checkout or withdrawn: its ticket is then fresh stock.
+        if (offer.State == TicketResaleOfferState.Withdrawn
+            || (offer.State == TicketResaleOfferState.Reserved && offer.ReservedByOrderId != buyerOrder.Id))
+            return;
+
+        var now = clock.GetCurrentInstant();
+        // The queue also sells an invited ticket, so only an invited buyer's own purchase counts as using the invitation.
+        var directed = offer.HasLiveInvite
+            && offer.Invites.Any(i => string.Equals(i.Email, buyerOrder.BuyerEmail, StringComparison.OrdinalIgnoreCase));
+        offer.State = TicketResaleOfferState.Sold;
+        offer.SoldAt = now;
+        offer.SoldToOrderId = buyerOrder.Id;
+        offer.ReservedByOrderId = null;
+        if (directed)
+            offer.DirectedUsedAt = now;
+        await repository.UpdateOfferAsync(offer, ct);
+
+        await RetireResoldTicketAsync(offer, directed, ct);
+        if (directed)
+            await TimelineAsync(buyerOrder.Id, TicketCheckoutOrderEventKind.ResaleInviteUsed,
+                "Bought through a resale invitation", buyerOrder.BuyerUserId, ct);
+        await TellDeliveryAsync(d => d.ResaleSoldAsync(offer.TicketId, offer.RefundOwedMinor, ct), offer.TicketId);
+    }
+
+    /// <summary>Marks a sold offer's ticket <c>Resold</c> and voids its children; each step is skipped once done.</summary>
+    private async Task RetireResoldTicketAsync(TicketResaleOffer offer, bool directed, CancellationToken ct)
+    {
+        if (await repository.GetTicketAsync(offer.TicketId, ct) is not { } old)
+            return;
+        var now = clock.GetCurrentInstant();
+        if (old.State != TicketCheckoutTicketState.Resold)
+        {
+            old.State = TicketCheckoutTicketState.Resold;
+            await repository.UpdateTicketAsync(old, ct);
+            await TimelineAsync(old.OrderId, TicketCheckoutOrderEventKind.ResaleSold,
+                $"Ticket {old.Barcode} resold" + (directed ? " to the invited buyer" : string.Empty) +
+                $"; {FormatMinor(offer.RefundOwedMinor)} goes back in the evening refund batch once the buyer's payment holds", null, ct);
+        }
+        foreach (var child in (await repository.GetTicketsForSalesEventAsync(old.SalesEventId, ct))
+                     .Where(t => t.ParentTicketId == old.Id && t.State == TicketCheckoutTicketState.Valid))
+        {
+            child.State = TicketCheckoutTicketState.Void;
+            child.VoidedAt = now;
+            child.VoidReason = "Returned with the adult's ticket";
+            await repository.UpdateTicketAsync(child, ct);
+            if (child.OrderId != old.OrderId)
+                await TimelineAsync(child.OrderId, TicketCheckoutOrderEventKind.Voided,
+                    $"Ticket {child.Barcode} voided: its adult's ticket {old.Barcode} was resold", null, ct);
+        }
+    }
+
+    /// <summary>
+    /// Refunds the holder what they paid, under the offer's own id so a repeat finds the same refund and retries a
+    /// backend call that threw. A refund that cannot even start is written as a failed refund on the holder's order,
+    /// so the ticketing team sees what is owed. True when the refund started.
+    /// </summary>
+    private async Task<bool> SettleResaleRefundAsync(TicketResaleOffer offer, CancellationToken ct)
+    {
+        if (offer.RefundOwedMinor <= 0 || await repository.GetTicketAsync(offer.TicketId, ct) is not { } old)
+            return false;
+
+        var (result, refundId) = await RefundCoreAsync(old.OrderId, offer.RefundOwedMinor, "Ticket resold", null, ct, offer.Id);
+        if (refundId is null)
+        {
+            logger.LogError("Resale refund for ticket {TicketId} could not start: {Refusal}", old.Id, result.Refusal);
+            var why = Truncate(result.Refusal ?? "refused");
+            await RecordResaleRefundNotSentAsync(offer, old, why,
+                $"Resale refund of {FormatMinor(offer.RefundOwedMinor)} could not start ({why}); the ticketing team must refund it by hand", ct);
+            return false;
+        }
+        if (offer.RefundId is null)
+        {
+            offer.RefundId = offer.Id;
+            await repository.UpdateOfferAsync(offer, ct);
+        }
+        return true;
+    }
+
+    /// <summary>
+    /// A failed refund under the offer's id: the batch never sends it later, and it stays among the failed refunds the
+    /// reconciliation lists until the team settles it.
+    /// </summary>
+    private async Task RecordResaleRefundNotSentAsync(
+        TicketResaleOffer offer, TicketCheckoutTicket old, string failureReason, string detail, CancellationToken ct)
+    {
+        await repository.AddRefundAsync(new TicketCheckoutRefund
+        {
+            Id = offer.Id,
+            OrderId = old.OrderId,
+            AmountMinor = offer.RefundOwedMinor,
+            Reason = "Ticket resold",
+            State = RefundState.Failed,
+            FailureReason = Truncate(failureReason),
+            CreatedAt = clock.GetCurrentInstant(),
+        }, ct);
+        await auditLog.LogAsync(TicketsAuditActions.TicketCheckoutNeedsAttention, AuditEntityType, old.OrderId, detail, JobName);
+        await TimelineAsync(old.OrderId, TicketCheckoutOrderEventKind.RefundSettled, detail, null, ct);
+        offer.RefundId = offer.Id;
+        await repository.UpdateOfferAsync(offer, ct);
+    }
+
+    /// <summary>
+    /// The evening batch: refunds each holder whose returned ticket sold at least <see cref="ResaleRefundHold"/> ago to
+    /// a buyer whose order is still paid with nothing refunded, being refunded or charged back. A sale that did not hold is left for
+    /// the ticketing team as a failed refund. One audit row per sales event carries the batch's count and total.
+    /// </summary>
+    public async Task<ResaleRefundBatch> RunResaleRefundBatchAsync(CancellationToken ct = default)
+    {
+        var cutoff = clock.GetCurrentInstant() - ResaleRefundHold;
+        var batch = new ResaleRefundBatch(0, 0, 0, 0);
+        // A cancelled event refunds both the seller's and the buyer's order in full, so a resale refund would pay twice.
+        foreach (var salesEvent in (await repository.GetSalesEventsAsync(ct)).Where(e => e.CancelledAt is null))
+        {
+            var (started, startedMinor, heldBack, waiting) = (0, 0L, 0, 0);
+            foreach (var offer in (await repository.GetOffersForSalesEventAsync(salesEvent.Id, ct))
+                         .Where(o => o is { State: TicketResaleOfferState.Sold, RefundId: null, RefundOwedMinor: > 0 })
+                         .OrderBy(o => o.SoldAt))
+            {
+                if (offer.SoldAt > cutoff)
+                {
+                    waiting++;
+                    continue;
+                }
+                var buyerOrder = offer.SoldToOrderId is { } buyerOrderId ? await repository.GetOrderAsync(buyerOrderId, ct) : null;
+                try
+                {
+                    // A missed webhook must not pay out: both orders are read from their backend first, so a refund or
+                    // chargeback only the backend knows of still holds the refund back or lowers what can be refunded.
+                    if (buyerOrder is not null)
+                        await RefreshAsync(buyerOrder, ct);
+                    if (await repository.GetTicketAsync(offer.TicketId, ct) is { } old
+                        && await repository.GetOrderAsync(old.OrderId, ct) is { } holderOrder)
+                        await RefreshAsync(holderOrder, ct);
+                }
+                catch (Exception ex) when (ex is not OperationCanceledException)
+                {
+                    logger.LogWarning(ex, "Resale refund for offer {OfferId} waits: its orders could not be read from the backend", offer.Id);
+                    waiting++;
+                    continue;
+                }
+                if (buyerOrder is not { State: TicketCheckoutOrderState.Paid, RefundedMinor: 0, DisputedMinor: 0 }
+                    || (await repository.GetRefundsAsync(buyerOrder.Id, ct)).Any(r => r.State != RefundState.Failed))
+                {
+                    if (await HoldBackResaleRefundAsync(offer, buyerOrder, ct))
+                        heldBack++;
+                    continue;
+                }
+                try
+                {
+                    if (await SettleResaleRefundAsync(offer, ct))
+                    {
+                        started++;
+                        startedMinor += offer.RefundOwedMinor;
+                    }
+                }
+                catch (Exception ex) when (ex is not OperationCanceledException)
+                {
+                    logger.LogWarning(ex, "Resale refund for offer {OfferId} failed; the next batch retries", offer.Id);
+                }
+            }
+            if (started + heldBack > 0)
+                await auditLog.LogAsync(TicketsAuditActions.TicketResaleRefundBatch, SalesEventAuditEntityType, salesEvent.Id,
+                    $"Evening resale refund batch: {started} refund(s) started, {FormatMinor(startedMinor)} in total; " +
+                    $"{heldBack} held back because the buyer's order was refunded or charged back; " +
+                    $"{waiting} left for a later batch", JobName);
+            batch = new(batch.Started + started, batch.StartedMinor + startedMinor, batch.HeldBack + heldBack, batch.Waiting + waiting);
+        }
+        return batch;
+    }
+
+    /// <summary>Held back for good: the ticketing team decides, and a later batch never pays it on its own.</summary>
+    private async Task<bool> HoldBackResaleRefundAsync(TicketResaleOffer offer, TicketCheckoutOrder? buyerOrder, CancellationToken ct)
+    {
+        if (await repository.GetTicketAsync(offer.TicketId, ct) is not { } old)
+            return false;
+        if ((await repository.GetRefundsAsync(old.OrderId, ct)).Any(r => r.Id == offer.Id))
+        {
+            // Asked for before a crash kept the offer from recording it: that refund is already on its way.
+            offer.RefundId = offer.Id;
+            await repository.UpdateOfferAsync(offer, ct);
+            return false;
+        }
+        var why = $"{RefundHeldBack}: the buyer's order {buyerOrder?.Reference ?? "unknown"} is " +
+            (buyerOrder is null ? "gone" : $"{buyerOrder.State} with {FormatMinor(buyerOrder.RefundedMinor)} refunded and {FormatMinor(buyerOrder.DisputedMinor)} charged back");
+        await RecordResaleRefundNotSentAsync(offer, old, why,
+            $"{why}; the ticketing team decides on the {FormatMinor(offer.RefundOwedMinor)} owed for ticket {old.Barcode}", ct);
+        return true;
+    }
+
+    /// <summary>Finishes what a crash left behind: paid orders without their tickets, resale refund or delivery, and refunds that never reached the backend.</summary>
+    private async Task<int> RepairPaidAsync(CancellationToken ct)
+    {
+        var repaired = 0;
+        foreach (var salesEvent in await repository.GetSalesEventsAsync(ct))
+        {
+            var eventTickets = await repository.GetTicketsForSalesEventAsync(salesEvent.Id, ct);
+            var issued = eventTickets.Select(t => t.OrderId).ToHashSet();
+            var orders = await repository.GetOrdersForSalesEventAsync(salesEvent.Id, ct);
+            // A sold offer whose old ticket or a child riding on it is still live: the resale stopped halfway.
+            var unfinished = (await repository.GetOffersForSalesEventAsync(salesEvent.Id, ct))
+                .Where(o => o.State == TicketResaleOfferState.Sold && eventTickets.Any(t =>
+                    (t.Id == o.TicketId && t.State != TicketCheckoutTicketState.Resold)
+                    || (t.ParentTicketId == o.TicketId && t.State == TicketCheckoutTicketState.Valid)))
+                .Select(o => o.SoldToOrderId)
+                .ToHashSet();
+            foreach (var order in orders.Where(o => o.State == TicketCheckoutOrderState.Paid
+                         && ((!issued.Contains(o.Id) && o.Lines.Any(l => l.Kind == CheckoutLineKind.Ticket)) || unfinished.Contains(o.Id))))
+            {
+                try
+                {
+                    await CompletePaidAsync(order, ct);
+                    repaired++;
+                }
+                catch (Exception ex) when (ex is not OperationCanceledException)
+                {
+                    logger.LogWarning(ex, "Finishing paid checkout order {OrderId} failed; next run retries", order.Id);
+                }
+            }
+
+            // Tickets issued but never handed to delivery (the process stopped in between). Delivery dedupes a repeat;
+            // the wait lets a first hand-off still in its queue finish, and the window keeps old orders out.
+            var now = clock.GetCurrentInstant();
+            foreach (var order in orders.Where(o => deliveries.Any() && o is { State: TicketCheckoutOrderState.Paid, PaidAt: { } paidAt }
+                         && issued.Contains(o.Id) && paidAt <= now - DeliveryGrace && paidAt > now - DeliveryRepairWindow))
+            {
+                if ((await repository.GetOrderEventsAsync(order.Id, ct)).Any(e =>
+                        e.Kind is TicketCheckoutOrderEventKind.TicketsEmailed or TicketCheckoutOrderEventKind.TicketMailSkipped))
+                    continue;
+                await HandOffToDeliveryAsync(order.Id, ct);
+            }
+
+            // A refund whose backend call threw may or may not exist there; repeating it under its id settles which.
+            foreach (var unsent in (await repository.GetRefundsForSalesEventAsync(salesEvent.Id, ct))
+                         .Where(r => r is { State: RefundState.Pending, BackendRefundId: null }))
+            {
+                try
+                {
+                    await RefundCoreAsync(unsent.OrderId, unsent.AmountMinor, unsent.Reason, null, ct, unsent.Id);
+                    if ((await repository.GetRefundsAsync(unsent.OrderId, ct)).FirstOrDefault(r => r.Id == unsent.Id)
+                        is not { State: RefundState.Pending, BackendRefundId: null })
+                        repaired++;
+                }
+                catch (Exception ex) when (ex is not OperationCanceledException)
+                {
+                    logger.LogWarning(ex, "Resending refund {RefundId} failed; next run retries", unsent.Id);
+                }
+            }
+        }
+        return repaired;
+    }
+
+    /// <summary>
+    /// Repairs offers held by a checkout that will never pay or already paid, and tells each holder whose ticket is
+    /// still offered once sales have closed. Returns how many changed.
+    /// </summary>
+    private async Task<int> SweepOffersAsync(CancellationToken ct)
+    {
+        var changed = 0;
+        var now = clock.GetCurrentInstant();
+        foreach (var salesEvent in await repository.GetSalesEventsAsync(ct))
+        {
+            var closed = salesEvent.Mode == TicketSalesMode.Closed || (salesEvent.SalesCloseAt is { } close && now >= close);
+            foreach (var offer in await repository.GetOffersForSalesEventAsync(salesEvent.Id, ct))
+            {
+                if (closed && offer is { State: TicketResaleOfferState.Open, UnsoldNotifiedAt: null }
+                    && await NotifyUnsoldAsync(offer, now, ct))
+                    changed++;
+                if (offer is { State: TicketResaleOfferState.Reserved, ReservedByOrderId: { } orderId }
+                         && await repository.GetOrderAsync(orderId, ct) is { } holder
+                         && !holder.IsOpen)
+                {
+                    if (holder.State == TicketCheckoutOrderState.Paid)
+                        await CompletePaidAsync(holder, ct);
+                    else
+                        await ReleaseOffersAsync(holder, ct);
+                    changed++;
+                }
+            }
+        }
+        return changed;
+    }
+
+    /// <summary>The offer stays in the queue (sales may reopen); the ticket admits its holder once sales are closed.</summary>
+    private async Task<bool> NotifyUnsoldAsync(TicketResaleOffer offer, Instant now, CancellationToken ct)
+    {
+        // Marked only once the mail is queued, so a failed hand-off is tried again by the next sweep; the delivery id
+        // keeps a repeat from mailing twice.
+        if (!await TellDeliveryAsync(d => d.ResaleUnsoldAsync(offer.TicketId, ct), offer.TicketId))
+            return false;
+        offer.UnsoldNotifiedAt = now;
+        await repository.UpdateOfferAsync(offer, ct);
+        if (await repository.GetTicketAsync(offer.TicketId, ct) is { } ticket)
+            await TimelineAsync(ticket.OrderId, TicketCheckoutOrderEventKind.ResaleUnsold,
+                $"Sales closed with ticket {ticket.Barcode} unsold in the resale queue: the holder is told there is no refund and the ticket still admits them",
+                null, ct);
+        return true;
+    }
+
+    internal const int MaxReasonLength = 500;
+
+    public async Task<CheckoutMutationResult> RenameTicketAsync(
+        Guid ticketId, string holderName, string holderEmail, string reason, bool overrideRules, Guid actorUserId, CancellationToken ct = default)
+    {
+        holderName = holderName.Trim();
+        holderEmail = holderEmail.Trim();
+        if (ReasonRefusal(reason) is { } refusal)
+            return refusal;
+        if (holderName.Length == 0 || !LooksLikeEmail(holderEmail))
+            return new("A rename needs the holder's legal name and email.");
+        var ticket = await repository.GetTicketAsync(ticketId, ct);
+        if (ticket is null)
+            return new("That ticket does not exist.");
+        if (ticket.State != TicketCheckoutTicketState.Valid || ticket.Kind != TicketHolderKind.Adult)
+            return new("Only a valid adult ticket can be renamed.");
+
+        var fromUserId = ticket.HolderUserId;
+        var existing = await users.GetByEmailOrAlternateAsync(holderEmail, ct);
+        var samePerson = existing is not null && existing.Id == fromUserId;
+        // Correcting the same person's legal name is always allowed; moving the ticket to someone else is the exception.
+        if (!samePerson)
+        {
+            if (!overrideRules && (ticket.ClassLabel is not null || ticket.CreditsMinor > 0))
+                return new("Only a full price ticket can move to another person; this one was bought at a class price or with credits.");
+            if ((await repository.GetTicketsForSalesEventAsync(ticket.SalesEventId, ct))
+                .Any(t => t.ParentTicketId == ticket.Id && t.State == TicketCheckoutTicketState.Valid))
+                return new("Void this ticket's child and companion tickets before moving it to another person.");
+            if (existing is not null && await HoldsTicketAsync(ticket.SalesEventId, existing.Id, clock.GetCurrentInstant(), ct))
+                return new("That person already holds a ticket for this event.");
+        }
+        // Only once the rename is allowed, so a refused move leaves no account behind.
+        var holderUserId = existing?.Id ?? Guid.Empty;
+        if (existing is null)
+        {
+            var (resolved, problem) = await ResolveAccountAsync(holderEmail, ct);
+            if (resolved is not { } resolvedId)
+                return new($"That email cannot take the ticket: {problem}.");
+            holderUserId = resolvedId;
+            // The resolver also matches aliases, which the lookup above may not.
+            if (holderUserId != fromUserId && await HoldsTicketAsync(ticket.SalesEventId, holderUserId, clock.GetCurrentInstant(), ct))
+                return new("That person already holds a ticket for this event.");
+            samePerson = holderUserId == fromUserId;
+        }
+
+        ticket.HolderUserId = holderUserId;
+        ticket.HolderName = holderName;
+        ticket.HolderEmail = holderEmail;
+        await repository.UpdateTicketAsync(ticket, ct);
+        holdings.InvalidateHoldings(holderUserId);
+        // The order line follows the ticket, so the new holder can open the order and the old one no longer can.
+        var order = await repository.GetOrderAsync(ticket.OrderId, ct);
+        var line = order?.Lines.FirstOrDefault(l =>
+            l.Kind == CheckoutLineKind.Ticket && l.HolderKind is null or TicketHolderKind.Adult && l.AttendeeUserId == fromUserId);
+        if (order is not null && line is not null)
+        {
+            line.AttendeeUserId = holderUserId;
+            line.AttendeeName = holderName;
+            line.AttendeeEmail = holderEmail;
+            await repository.UpdateOrderAsync(order, ct);
+        }
+
+        var why = reason.Trim();
+        // Only a move of a reduced price ticket steps past a rule; anything else is a plain rename.
+        var overridden = overrideRules && !samePerson && (ticket.ClassLabel is not null || ticket.CreditsMinor > 0);
+        var what = (samePerson ? "name corrected" : "moved to another person") + (overridden ? " by an override" : string.Empty);
+        // Names stay out of the timeline (erasure leaves it); the audit rows link the people by id.
+        await TimelineAsync(ticket.OrderId, TicketCheckoutOrderEventKind.Renamed,
+            $"Ticket {ticket.Barcode} {what} by the ticketing team: {why}", actorUserId, ct);
+        var description = (overridden ? "Override: " : string.Empty) + $"Ticket {ticket.Barcode} {what}" +
+            (samePerson ? string.Empty : $" (from user {fromUserId?.ToString() ?? "none"} to user {holderUserId})") + $": {why}";
+        var action = overridden ? TicketsAuditActions.TicketOverride : TicketsAuditActions.TicketCheckoutTicketRenamed;
+        await auditLog.LogAsync(action, AuditEntityType, ticket.OrderId,
+            description, actorUserId, holderUserId, AuditSubjectTypes.User);
+        if (!samePerson && fromUserId is { } previous)
+            await auditLog.LogAsync(action, AuditEntityType, ticket.OrderId,
+                description, actorUserId, previous, AuditSubjectTypes.User);
+        await TellDeliveryAsync(d => d.TicketRenamedAsync(ticket.Id, ct), ticket.Id);
+        return CheckoutMutationResult.Ok;
+    }
+
+    public async Task<CheckoutMutationResult> VoidTicketAsync(
+        Guid ticketId, string reason, long refundMinor, Guid actorUserId, CancellationToken ct = default)
+    {
+        if (ReasonRefusal(reason) is { } refusal)
+            return refusal;
+        if (refundMinor < 0)
+            return new("The refund cannot be negative.");
+        var ticket = await repository.GetTicketAsync(ticketId, ct);
+        if (ticket is null)
+            return new("That ticket does not exist.");
+        if (ticket.State is not (TicketCheckoutTicketState.Valid or TicketCheckoutTicketState.Offered))
+            return new($"The ticket is already {ticket.State}.");
+        if (ticket.ParentTicketId is { } parentId && (await repository.GetTicketAsync(parentId, ct))?.State == TicketCheckoutTicketState.Offered)
+            return new("The adult's ticket is in the resale queue and its refund includes this one: withdraw it from the queue first.");
+
+        var offer = (await repository.GetOffersForSalesEventAsync(ticket.SalesEventId, ct))
+            .FirstOrDefault(o => o.TicketId == ticket.Id && o.State is TicketResaleOfferState.Open or TicketResaleOfferState.Reserved);
+        if (offer?.State == TicketResaleOfferState.Reserved)
+            return new("A buyer's checkout is paying for this ticket right now; try again once it settles.");
+
+        var why = reason.Trim();
+        // Refund first: a refund the backend turns down leaves the ticket working, so the team can try again.
+        if (refundMinor > 0)
+        {
+            var (refunded, _) = await RefundCoreAsync(ticket.OrderId, refundMinor, $"Ticket {ticket.Barcode} voided: {why}", actorUserId, ct);
+            if (!refunded.Succeeded)
+                return new($"{refunded.Refusal} Nothing was voided.");
+        }
+
+        var dependents = await VoidWithDependentsAsync(ticket, offer, why, actorUserId,
+            refundMinor > 0 ? $"; {FormatMinor(refundMinor)} refunded" : "; no refund: no money goes back", ct);
+        await auditLog.LogAsync(TicketsAuditActions.TicketCheckoutTicketVoided, AuditEntityType, ticket.OrderId,
+            $"Ticket {ticket.Barcode} voided" + (dependents > 0 ? $" with {dependents} dependent ticket(s)" : string.Empty) +
+            (offer is not null ? ", withdrawing its resale offer" : string.Empty) +
+            (refundMinor > 0 ? $", refunding {FormatMinor(refundMinor)}" : ", with no refund") + $": {why}",
+            actorUserId, ticket.HolderUserId, ticket.HolderUserId is null ? null : AuditSubjectTypes.User);
+        return CheckoutMutationResult.Ok;
+    }
+
+    /// <summary>Voids the ticket and its valid dependents and withdraws <paramref name="offer"/>; returns how many dependents went with it.</summary>
+    private async Task<int> VoidWithDependentsAsync(
+        TicketCheckoutTicket ticket, TicketResaleOffer? offer, string why, Guid? actorUserId, string note, CancellationToken ct)
+    {
+        var now = clock.GetCurrentInstant();
+        if (offer is not null)
+        {
+            offer.State = TicketResaleOfferState.Withdrawn;
+            offer.WithdrawnAt = now;
+            offer.Invites = [];
+            await repository.UpdateOfferAsync(offer, ct);
+        }
+
+        var dependents = (await repository.GetTicketsForSalesEventAsync(ticket.SalesEventId, ct))
+            .Where(t => t.ParentTicketId == ticket.Id && t.State == TicketCheckoutTicketState.Valid)
+            .ToList();
+        foreach (var voided in dependents.Prepend(ticket))
+        {
+            voided.State = TicketCheckoutTicketState.Void;
+            voided.VoidedAt = now;
+            voided.VoidReason = voided == ticket ? why : "Voided with the adult's ticket";
+            await repository.UpdateTicketAsync(voided, ct);
+            await TimelineAsync(voided.OrderId, TicketCheckoutOrderEventKind.Voided,
+                $"Ticket {voided.Barcode} voided: {voided.VoidReason}" +
+                (voided == ticket ? note + (offer is not null ? "; taken out of the resale queue" : string.Empty) : string.Empty),
+                actorUserId, ct);
+        }
+        return dependents.Count;
+    }
+
+    /// <summary>The override for a ticket voided by mistake: it works again, whatever was refunded for it.</summary>
+    public async Task<CheckoutMutationResult> RestoreTicketAsync(
+        Guid ticketId, string reason, Guid actorUserId, CancellationToken ct = default)
+    {
+        if (ReasonRefusal(reason) is { } refusal)
+            return refusal;
+        var ticket = await repository.GetTicketAsync(ticketId, ct);
+        if (ticket is null)
+            return new("That ticket does not exist.");
+        if (ticket.State != TicketCheckoutTicketState.Void)
+            return new("Only a voided ticket can be restored.");
+        if ((await repository.GetSalesEventAsync(ticket.SalesEventId, ct))?.CancelledAt is not null)
+            return new("The event is cancelled; its tickets stay void.");
+        if (ticket.ParentTicketId is { } parentId && (await repository.GetTicketAsync(parentId, ct))?.State != TicketCheckoutTicketState.Valid)
+            return new("Restore the adult's ticket first.");
+        if (ticket.HolderUserId is { } holder && await HoldsTicketAsync(ticket.SalesEventId, holder, clock.GetCurrentInstant(), ct))
+            return new("The holder already holds another ticket for this event.");
+
+        var why = reason.Trim();
+        var wasVoided = ticket.VoidReason;
+        ticket.State = TicketCheckoutTicketState.Valid;
+        ticket.VoidedAt = null;
+        ticket.VoidReason = null;
+        await repository.UpdateTicketAsync(ticket, ct);
+        if (ticket.HolderUserId is { } holderId)
+            holdings.InvalidateHoldings(holderId);
+        await TimelineAsync(ticket.OrderId, TicketCheckoutOrderEventKind.Restored,
+            $"Ticket {ticket.Barcode} restored by an override: {why} (it was voided: {wasVoided})", actorUserId, ct);
+        await auditLog.LogAsync(TicketsAuditActions.TicketOverride, AuditEntityType, ticket.OrderId,
+            $"Override: ticket {ticket.Barcode} restored after it was voided ({wasVoided}): {why}",
+            actorUserId, ticket.HolderUserId, ticket.HolderUserId is null ? null : AuditSubjectTypes.User);
+        return CheckoutMutationResult.Ok;
+    }
+
+    public async Task<CheckoutMutationResult> IssueCompanionAsync(
+        Guid parentTicketId, string holderName, string? holderEmail, string reason, bool overrideCapacity, Guid actorUserId, CancellationToken ct = default)
+    {
+        holderName = holderName.Trim();
+        holderEmail = string.IsNullOrWhiteSpace(holderEmail) ? null : holderEmail.Trim();
+        if (ReasonRefusal(reason) is { } refusal)
+            return refusal;
+        if (holderName.Length == 0 || (holderEmail is not null && !LooksLikeEmail(holderEmail)))
+            return new("A companion needs a legal name; the email is optional but must be valid.");
+        return (await IssueCompanionCoreAsync(parentTicketId, holderName, holderEmail, async c =>
+        {
+            if (holderEmail is null)
+                return (null, null);
+            var (resolved, problem) = await ResolveAccountAsync(holderEmail, c);
+            return resolved is null
+                ? (null, $"That email cannot take the ticket: {problem}. Leave it empty to issue the companion without an account.")
+                : (resolved, null);
+        }, reason.Trim(), overrideCapacity, actorUserId, ct)).Result;
+    }
+
+    /// <summary>
+    /// Every check that needs no companion account runs before <paramref name="holder"/> is asked for one, so a refused
+    /// issue leaves no account behind.
+    /// </summary>
+    private async Task<(CheckoutMutationResult Result, TicketCheckoutTicket? Companion)> IssueCompanionCoreAsync(
+        Guid parentTicketId, string holderName, string? holderEmail,
+        Func<CancellationToken, Task<(Guid? UserId, string? Refusal)>> holder, string why, bool overrideCapacity, Guid actorUserId,
+        CancellationToken ct)
+    {
+        var parent = await repository.GetTicketAsync(parentTicketId, ct);
+        if (parent is null)
+            return (new("That ticket does not exist."), null);
+        if (parent.State != TicketCheckoutTicketState.Valid || parent.Kind != TicketHolderKind.Adult || parent.HolderUserId is not { } parentHolderId)
+            return (new("A companion attaches to a valid adult ticket with a holder."), null);
+        var salesEvent = await repository.GetSalesEventAsync(parent.SalesEventId, ct);
+        if (salesEvent is null)
+            return (new("That ticket's sales event no longer exists."), null);
+        var now = clock.GetCurrentInstant();
+        var eventTickets = await repository.GetTicketsForSalesEventAsync(parent.SalesEventId, ct);
+        if (eventTickets.Any(t => t.ParentTicketId == parent.Id && t.Kind == TicketHolderKind.Companion && t.State == TicketCheckoutTicketState.Valid))
+            return (new("This ticket already has a companion."), null);
+        if (salesEvent.CancelledAt is not null)
+            return (new("The event is cancelled."), null);
+        var overCapacity = (await LoadStockAsync(salesEvent, now, ct)).Held >= salesEvent.Capacity;
+        if (overCapacity && !overrideCapacity)
+            return (new("The event is at capacity."), null);
+
+        var (holderUserId, holderRefusal) = await holder(ct);
+        if (holderRefusal is not null)
+            return (new(holderRefusal), null);
+        if (holderUserId is { } companionId && (companionId == parentHolderId || eventTickets.Any(t =>
+                t.HolderUserId == companionId && t.State is TicketCheckoutTicketState.Valid or TicketCheckoutTicketState.Offered)))
+            return (new("That person already holds a ticket for this event."), null);
+        var parentOrder = await repository.GetOrderAsync(parent.OrderId, ct);
+        var order = new TicketCheckoutOrder
+        {
+            Id = Guid.NewGuid(),
+            SalesEventId = salesEvent.Id,
+            BuyerUserId = parentHolderId,
+            BuyerName = parent.HolderName,
+            BuyerEmail = parent.HolderEmail ?? parentOrder?.BuyerEmail ?? string.Empty,
+            BackendKey = salesEvent.BackendKey,
+            State = TicketCheckoutOrderState.Paid,
+            Culture = parentOrder?.Culture ?? "en",
+            TotalMinor = 0,
+            PaidAt = now,
+            CreatedAt = now,
+            ExpiresAt = now,
+            UpdatedAt = now,
+            Lines =
+            [
+                new TicketCheckoutOrderLine
+                {
+                    Kind = CheckoutLineKind.Ticket,
+                    HolderKind = TicketHolderKind.Companion,
+                    Description = "Companion ticket",
+                    AttendeeName = holderName,
+                    AttendeeEmail = holderEmail,
+                    AttendeeUserId = holderUserId,
+                    WaveName = parent.WaveName,
+                },
+            ],
+        };
+        await repository.AddOrderAsync(order, ct);
+        var companion = new TicketCheckoutTicket
+        {
+            Id = Guid.NewGuid(),
+            SalesEventId = salesEvent.Id,
+            OrderId = order.Id,
+            Kind = TicketHolderKind.Companion,
+            ParentTicketId = parent.Id,
+            HolderUserId = holderUserId,
+            HolderName = holderName,
+            HolderEmail = holderEmail,
+            Barcode = NewBarcode(),
+            WaveName = parent.WaveName,
+            State = TicketCheckoutTicketState.Valid,
+            IssuedAt = now,
+        };
+        await repository.AddTicketsAsync([companion], ct);
+        if (holderUserId is { } companionHolder)
+            holdings.InvalidateHoldings(companionHolder);
+
+        await TimelineAsync(order.Id, TicketCheckoutOrderEventKind.CompanionIssued,
+            $"Free companion ticket {companion.Barcode} for ticket {parent.Barcode}: {why}", actorUserId, ct);
+        await TimelineAsync(parent.OrderId, TicketCheckoutOrderEventKind.CompanionIssued,
+            $"Free companion ticket {companion.Barcode} attached to ticket {parent.Barcode}", actorUserId, ct);
+        var overridden = overCapacity && overrideCapacity;
+        await auditLog.LogAsync(overridden ? TicketsAuditActions.TicketOverride : TicketsAuditActions.TicketCompanionIssued, AuditEntityType, order.Id,
+            (overridden ? "Override: past capacity, c" : "C") + $"ompanion ticket {companion.Barcode} issued for ticket {parent.Barcode}: {why}",
+            actorUserId, parentHolderId, AuditSubjectTypes.User);
+        await HandOffToDeliveryAsync(order.Id, ct);
+        return (CheckoutMutationResult.Ok, companion);
+    }
+
+    private static CheckoutMutationResult? ReasonRefusal(string reason) =>
+        string.IsNullOrWhiteSpace(reason) ? new("Give a reason; it goes on the order's timeline and the audit log.")
+        : reason.Trim().Length > MaxReasonLength ? new($"Keep the reason under {MaxReasonLength} characters.")
+        : null;
+
+    // Companion requests: the holder's note never goes on the timeline or the audit log, which many people read; it
+    // stays on the request.
+
+    private const int MaxCompanionNoteLength = 500;
+
+    public async Task<CheckoutMutationResult> RequestCompanionAsync(
+        Guid ticketId, Guid holderUserId, string companionEmail, string note, CancellationToken ct = default)
+    {
+        var ticket = await repository.GetTicketAsync(ticketId, ct);
+        if (ticket is null || ticket.HolderUserId != holderUserId)
+            return new("Tickets_Resale_NotFound");
+        var salesEvent = await repository.GetSalesEventAsync(ticket.SalesEventId, ct);
+        var requests = await repository.GetCompanionRequestsForSalesEventAsync(ticket.SalesEventId, ct);
+        if (!CanAskCompanion(ticket, salesEvent, await repository.GetTicketsForSalesEventAsync(ticket.SalesEventId, ct), requests))
+            return new("Tickets_Companion_NotAllowed");
+        note = note.Trim();
+        if (note.Length == 0 || note.Length > MaxCompanionNoteLength)
+            return new("Tickets_Companion_NoteRequired");
+        var now = clock.GetCurrentInstant();
+        var (companion, problem) = await FindOtherAsync(companionEmail.Trim(), holderUserId, ticket.SalesEventId, now, ct);
+        if (problem is not null)
+            return new("Tickets_Companion_" + problem);
+
+        var request = new TicketCompanionRequest
+        {
+            Id = Guid.NewGuid(),
+            SalesEventId = ticket.SalesEventId,
+            TicketId = ticket.Id,
+            HolderUserId = holderUserId,
+            CompanionUserId = companion!.Id,
+            Note = note,
+            State = TicketCompanionRequestState.Pending,
+            RequestedAt = now,
+        };
+        await repository.AddCompanionRequestAsync(request, ct);
+        await TimelineAsync(ticket.OrderId, TicketCheckoutOrderEventKind.CompanionRequested,
+            $"Holder asked for a companion on ticket {ticket.Barcode}; waiting for the ticketing team", holderUserId, ct);
+        return CheckoutMutationResult.Ok;
+    }
+
+    public async Task<CheckoutMutationResult> WithdrawCompanionRequestAsync(Guid ticketId, Guid holderUserId, CancellationToken ct = default)
+    {
+        var ticket = await repository.GetTicketAsync(ticketId, ct);
+        if (ticket is null || ticket.HolderUserId != holderUserId)
+            return new("Tickets_Resale_NotFound");
+        var pending = (await repository.GetCompanionRequestsForSalesEventAsync(ticket.SalesEventId, ct))
+            .FirstOrDefault(r => r.TicketId == ticketId && r.State == TicketCompanionRequestState.Pending);
+        if (pending is null)
+            return new("Tickets_Companion_NothingPending");
+        pending.State = TicketCompanionRequestState.Withdrawn;
+        pending.DecidedAt = clock.GetCurrentInstant();
+        await repository.UpdateCompanionRequestAsync(pending, ct);
+        await TimelineAsync(ticket.OrderId, TicketCheckoutOrderEventKind.CompanionRequestDecided,
+            $"Holder withdrew the companion request on ticket {ticket.Barcode}", holderUserId, ct);
+        return CheckoutMutationResult.Ok;
+    }
+
+    public async Task<IReadOnlyList<CompanionRequestRow>> GetCompanionRequestsAsync(Guid salesEventId, CancellationToken ct = default)
+    {
+        var tickets = (await repository.GetTicketsForSalesEventAsync(salesEventId, ct)).ToDictionary(t => t.Id);
+        var rows = new List<CompanionRequestRow>();
+        foreach (var request in (await repository.GetCompanionRequestsForSalesEventAsync(salesEventId, ct))
+                     .OrderBy(r => r.State != TicketCompanionRequestState.Pending).ThenByDescending(r => r.RequestedAt))
+        {
+            tickets.TryGetValue(request.TicketId, out var ticket);
+            var companion = await users.GetUserInfoAsync(request.CompanionUserId, ct);
+            rows.Add(new CompanionRequestRow(request, ticket?.HolderName ?? string.Empty,
+                companion?.FullName ?? string.Empty, ticket?.Barcode ?? string.Empty, ticket?.OrderId ?? Guid.Empty));
+        }
+        return rows;
+    }
+
+    public async Task<CheckoutMutationResult> DecideCompanionRequestAsync(
+        Guid requestId, bool approve, string? note, Guid actorUserId, CancellationToken ct = default)
+    {
+        var request = await repository.GetCompanionRequestAsync(requestId, ct);
+        if (request is null)
+            return new("That request does not exist.");
+        if (request.State != TicketCompanionRequestState.Pending)
+            return new("That request was already answered or withdrawn.");
+        note = string.IsNullOrWhiteSpace(note) ? null : note.Trim();
+        if (note?.Length > MaxCompanionNoteLength)
+            return new($"Keep the note under {MaxCompanionNoteLength} characters.");
+        if (!approve && note is null)
+            return new("Say why it is declined; the holder sees it.");
+
+        TicketCheckoutTicket? companionTicket = null;
+        if (approve)
+        {
+            var (companion, problem) = await CheckOtherAsync(
+                request.CompanionUserId, request.HolderUserId, request.SalesEventId, clock.GetCurrentInstant(), ct);
+            if (problem is not null)
+                return new(problem switch
+                {
+                    "Holds" => "The companion now holds a ticket of their own; decline the request.",
+                    "NeedsName" => "The companion has no legal name in Humans yet; ask them to add it, then approve.",
+                    _ => "The companion's account is gone; decline the request.",
+                });
+            var (result, issued) = await IssueCompanionCoreAsync(request.TicketId, companion!.FullName, companion.Email,
+                _ => Task.FromResult<(Guid?, string?)>((companion.Id, null)),
+                "approved companion request" + (note is null ? string.Empty : $": {note}"), overrideCapacity: false, actorUserId, ct);
+            if (!result.Succeeded)
+                return result;
+            companionTicket = issued;
+        }
+
+        request.State = approve ? TicketCompanionRequestState.Approved : TicketCompanionRequestState.Declined;
+        request.DecidedAt = clock.GetCurrentInstant();
+        request.DecidedByUserId = actorUserId;
+        request.DecisionNote = note;
+        request.CompanionTicketId = companionTicket?.Id;
+        await repository.UpdateCompanionRequestAsync(request, ct);
+
+        var parent = await repository.GetTicketAsync(request.TicketId, ct);
+        var summary = $"Companion request on ticket {parent?.Barcode} {(approve ? "approved" : "declined")}" +
+            (note is null ? string.Empty : $": {note}");
+        if (parent is not null)
+            await TimelineAsync(parent.OrderId, TicketCheckoutOrderEventKind.CompanionRequestDecided, summary, actorUserId, ct);
+        await auditLog.LogAsync(TicketsAuditActions.TicketCompanionRequestDecided, CompanionRequestAuditEntityType, request.Id,
+            summary, actorUserId, request.HolderUserId, AuditSubjectTypes.User);
+        return CheckoutMutationResult.Ok;
+    }
+
+    internal const string CompanionRequestAuditEntityType = "TicketCompanionRequest";
+
+    private static bool CanAskCompanion(
+        TicketCheckoutTicket ticket, TicketSalesEvent? salesEvent,
+        IReadOnlyList<TicketCheckoutTicket> eventTickets, IReadOnlyList<TicketCompanionRequest> requests) =>
+        ticket is { State: TicketCheckoutTicketState.Valid, Kind: TicketHolderKind.Adult, HolderUserId: not null }
+        && salesEvent is { Mode: not TicketSalesMode.Closed, EffectiveSwitches.CompanionTicketsOn: true }
+        && !eventTickets.Any(t => t.ParentTicketId == ticket.Id && t.Kind == TicketHolderKind.Companion && t.State == TicketCheckoutTicketState.Valid)
+        && !requests.Any(r => r.TicketId == ticket.Id && r.State == TicketCompanionRequestState.Pending);
+
+    /// <summary>Kept under the reconcile job's four minute lock, leaving room for its other work.</summary>
+    private static readonly TimeSpan CancelSweepBudget = TimeSpan.FromMinutes(2);
+
+    public async Task<CheckoutMutationResult> WithdrawOfferForHolderAsync(
+        Guid offerId, string reason, Guid actorUserId, CancellationToken ct = default)
+    {
+        if (ReasonRefusal(reason) is { } refusal)
+            return refusal;
+        var offer = await repository.GetOfferAsync(offerId, ct);
+        if (offer is null || offer.State is not (TicketResaleOfferState.Open or TicketResaleOfferState.Reserved))
+            return new("That ticket is not waiting in the resale queue.");
+        if (offer.State == TicketResaleOfferState.Reserved)
+            return new("A buyer's checkout is paying for this ticket right now; try again once it settles.");
+
+        offer.State = TicketResaleOfferState.Withdrawn;
+        offer.WithdrawnAt = clock.GetCurrentInstant();
+        offer.Invites = [];
+        await repository.UpdateOfferAsync(offer, ct);
+        var ticket = await repository.GetTicketAsync(offer.TicketId, ct);
+        if (ticket?.State == TicketCheckoutTicketState.Offered)
+        {
+            ticket.State = TicketCheckoutTicketState.Valid;
+            await repository.UpdateTicketAsync(ticket, ct);
+        }
+
+        var why = reason.Trim();
+        var barcode = ticket?.Barcode ?? offer.TicketId.ToString();
+        if (ticket is not null)
+            await TimelineAsync(ticket.OrderId, TicketCheckoutOrderEventKind.ResaleWithdrawn,
+                $"Ticket {barcode} taken out of the resale queue by the ticketing team: {why}", actorUserId, ct);
+        await auditLog.LogAsync(TicketsAuditActions.TicketResaleWithdrawnByTeam, AuditEntityType, ticket?.OrderId ?? offer.Id,
+            $"Ticket {barcode} taken out of the resale queue for its holder: {why}",
+            actorUserId, offer.HolderUserId, AuditSubjectTypes.User);
+        return CheckoutMutationResult.Ok;
+    }
+
+    public async Task<CheckoutMutationResult> CancelSalesEventAsync(
+        Guid salesEventId, string reason, Guid actorUserId, CancellationToken ct = default)
+    {
+        if (ReasonRefusal(reason) is { } refusal)
+            return refusal;
+        var salesEvent = await repository.GetSalesEventAsync(salesEventId, ct);
+        if (salesEvent is null)
+            return new("That sales event no longer exists.");
+        if (salesEvent.CancelledAt is not null)
+            return new("The event is already cancelled.");
+
+        var now = clock.GetCurrentInstant();
+        var before = salesEvent.Mode;
+        salesEvent.Mode = TicketSalesMode.Closed;
+        salesEvent.ResaleOpenedAt = null;
+        salesEvent.CancelledAt = now;
+        salesEvent.CancelledByUserId = actorUserId;
+        salesEvent.CancelReason = reason.Trim();
+        salesEvent.UpdatedAt = now;
+        await repository.SaveSalesEventAsync(salesEvent, ct);
+        await auditLog.LogAsync(TicketsAuditActions.TicketSalesEventCancelled, SalesEventAuditEntityType, salesEvent.Id,
+            $"Event cancelled (sales were {before}): every ticket is voided and every paid order refunded what its tickets cost. " +
+            $"Reason: {salesEvent.CancelReason}", actorUserId);
+        return CheckoutMutationResult.Ok;
+    }
+
+    public async Task<CancellationProgress?> GetCancellationProgressAsync(Guid salesEventId, CancellationToken ct = default)
+    {
+        var salesEvent = await repository.GetSalesEventAsync(salesEventId, ct);
+        return salesEvent is null ? null : (await LoadCancellationAsync(salesEvent, ct)).Progress;
+    }
+
+    /// <summary>
+    /// Works the cancelled events' orders until the budget runs out; the next run carries on. Each order is safe to
+    /// repeat: what is already void stays void, and the cancellation's own refund is asked for once.
+    /// </summary>
+    private async Task<int> SweepCancelledEventsAsync(CancellationToken ct)
+    {
+        var watch = Stopwatch.StartNew();
+        var changed = 0;
+        foreach (var salesEvent in (await repository.GetSalesEventsAsync(ct)).Where(e => e.CancelledAt is not null))
+        {
+            var state = await LoadCancellationAsync(salesEvent, ct);
+            foreach (var order in state.ToDo)
+            {
+                if (watch.Elapsed > CancelSweepBudget)
+                    return changed;
+                try
+                {
+                    if (await CancelOrderAsync(salesEvent, order, state, ct))
+                        changed++;
+                }
+                catch (Exception ex) when (ex is not OperationCanceledException)
+                {
+                    logger.LogWarning(ex, "Cancelling checkout order {OrderId} of cancelled event {SalesEventId} failed; next run retries",
+                        order.Id, salesEvent.Id);
+                }
+            }
+        }
+        return changed;
+    }
+
+    /// <summary>False while a buyer's checkout holds one of the order's returned tickets: it waits for that to settle.</summary>
+    private async Task<bool> CancelOrderAsync(
+        TicketSalesEvent salesEvent, TicketCheckoutOrder order, CancellationState state, CancellationToken ct)
+    {
+        var live = state.Tickets[order.Id].Where(IsLive).ToList();
+        var offers = state.Offers.Where(o => live.Any(t => t.Id == o.TicketId)
+            && o.State is TicketResaleOfferState.Open or TicketResaleOfferState.Reserved).ToList();
+        if (offers.Any(o => o.State == TicketResaleOfferState.Reserved))
+            return false;
+
+        var why = $"Event cancelled: {salesEvent.CancelReason}";
+        var now = clock.GetCurrentInstant();
+        foreach (var offer in offers)
+        {
+            offer.State = TicketResaleOfferState.Withdrawn;
+            offer.WithdrawnAt = now;
+            offer.Invites = [];
+            await repository.UpdateOfferAsync(offer, ct);
+        }
+        foreach (var ticket in live)
+        {
+            ticket.State = TicketCheckoutTicketState.Void;
+            ticket.VoidedAt = now;
+            ticket.VoidReason = Truncate(why);
+            await repository.UpdateTicketAsync(ticket, ct);
+            if (ticket.HolderUserId is { } holder)
+                holdings.InvalidateHoldings(holder);
+        }
+
+        // A repeat after a stop part way finds the refund already asked for, so the email still names it.
+        var (refundMinor, refundFailed) = state.CancelRefund(order) is { } asked
+            ? (asked.AmountMinor, asked.State == RefundState.Failed)
+            : (state.Refundable(order), false);
+        var refundNote = refundMinor > 0 ? $", {FormatMinor(refundMinor)} {order.Currency} refund asked for" : ", nothing to refund";
+        if (refundMinor > 0 && !state.HasCancelRefund(order))
+        {
+            var cancelRefundId = CancellationState.CancelRefundId(salesEvent.Id, order.Id);
+            var (result, refundId) = await RefundCoreAsync(order.Id, refundMinor, Truncate(why), null, ct, cancelRefundId);
+            if (!result.Succeeded)
+            {
+                refundFailed = true;
+                logger.LogError("Cancellation refund of checkout order {OrderId} failed: {Refusal}", order.Id, result.Refusal);
+                // Written as failed so it is not asked again and the team sees what is owed.
+                if (refundId is null)
+                    await repository.AddRefundAsync(new TicketCheckoutRefund
+                    {
+                        Id = cancelRefundId,
+                        OrderId = order.Id,
+                        AmountMinor = refundMinor,
+                        Reason = Truncate(why),
+                        State = RefundState.Failed,
+                        FailureReason = Truncate(result.Refusal ?? "Refused"),
+                        CreatedAt = now,
+                    }, ct);
+                refundNote = $"; the {FormatMinor(refundMinor)} {order.Currency} refund failed " +
+                    $"({Truncate(result.Refusal ?? "refused")}): the ticketing team must refund it by hand";
+                await auditLog.LogAsync(TicketsAuditActions.TicketCheckoutNeedsAttention, AuditEntityType, order.Id,
+                    $"Cancellation refund{refundNote[1..]}", JobName);
+            }
+        }
+
+        await TimelineAsync(order.Id, TicketCheckoutOrderEventKind.EventCancelled,
+            $"{why}. {live.Count} ticket(s) voided" + (offers.Count > 0 ? $", {offers.Count} taken out of the resale queue" : string.Empty) +
+            refundNote, null, ct);
+        var eventName = (await settings.GetEventSettingsByIdAsync(salesEvent.EventSettingsId, ct))?.EventName ?? string.Empty;
+        if (!string.IsNullOrWhiteSpace(order.BuyerEmail))
+        {
+            var notice = emails.EventCancelled(order.BuyerUserId, order.BuyerEmail, order.BuyerName, eventName, refundMinor,
+                refundFailed, order.Lines.Any(l => l.Kind == CheckoutLineKind.Donation), order.Culture);
+            await email.SendAsync(notice with { DeliveryId = CancellationState.CancelNoticeId(salesEvent.Id, order.Id) }, ct);
+        }
+        order.CancellationEmailedAt = clock.GetCurrentInstant();
+        await repository.UpdateOrderAsync(order, ct);
+        return true;
+    }
+
+    private static bool IsLive(TicketCheckoutTicket t) =>
+        t.State is TicketCheckoutTicketState.Valid or TicketCheckoutTicketState.Offered;
+
+    private async Task<CancellationState> LoadCancellationAsync(TicketSalesEvent salesEvent, CancellationToken ct) =>
+        new(salesEvent,
+            await repository.GetOrdersForSalesEventAsync(salesEvent.Id, ct),
+            (await repository.GetTicketsForSalesEventAsync(salesEvent.Id, ct)).ToLookup(t => t.OrderId),
+            (await repository.GetRefundsForSalesEventAsync(salesEvent.Id, ct)).ToLookup(r => r.OrderId),
+            await repository.GetOffersForSalesEventAsync(salesEvent.Id, ct),
+            clock.GetCurrentInstant());
+
+    /// <summary>
+    /// One cancelled event as it stands. Before it is cancelled, <see cref="Since"/> is now, so the progress reads as
+    /// what a cancellation would do.
+    /// </summary>
+    private sealed class CancellationState(
+        TicketSalesEvent salesEvent,
+        IReadOnlyList<TicketCheckoutOrder> orders,
+        ILookup<Guid, TicketCheckoutTicket> tickets,
+        ILookup<Guid, TicketCheckoutRefund> refunds,
+        IReadOnlyList<TicketResaleOffer> offers,
+        Instant now)
+    {
+        public ILookup<Guid, TicketCheckoutTicket> Tickets => tickets;
+
+        public IReadOnlyList<TicketResaleOffer> Offers => offers;
+
+        private Instant Since => salesEvent.CancelledAt ?? now;
+
+        private List<TicketCheckoutOrder> Paid => orders.Where(o => o.State == TicketCheckoutOrderState.Paid).ToList();
+
+        public long Refundable(TicketCheckoutOrder order) =>
+            new CheckoutOrderDetail(order, refunds[order.Id].ToList(), [], tickets[order.Id].ToList()).RefundableMinor;
+
+        /// <summary>
+        /// The cancellation's own refund of an order has a fixed id, so a refund the team makes meanwhile never stands in for
+        /// it, and a repeat finds the one already asked for (a declined one is not tried again).
+        /// </summary>
+        public static Guid CancelRefundId(Guid salesEventId, Guid orderId)
+        {
+            Span<byte> both = stackalloc byte[32];
+            salesEventId.TryWriteBytes(both[..16]);
+            orderId.TryWriteBytes(both[16..]);
+            return new Guid(SHA256.HashData(both)[..16]);
+        }
+
+        /// <summary>The cancellation email's delivery id: a repeat after a stop before the order was marked emailed reuses it.</summary>
+        public static Guid CancelNoticeId(Guid salesEventId, Guid orderId) =>
+            new(SHA256.HashData(CancelRefundId(salesEventId, orderId).ToByteArray())[..16]);
+
+        public TicketCheckoutRefund? CancelRefund(TicketCheckoutOrder order) =>
+            refunds[order.Id].FirstOrDefault(r => r.Id == CancelRefundId(salesEvent.Id, order.Id));
+
+        public bool HasCancelRefund(TicketCheckoutOrder order) => CancelRefund(order) is not null;
+
+        /// <summary>
+        /// Paid orders not yet emailed (donation only orders too), with a ticket still working, or with money still owed
+        /// that the cancellation has not asked for.
+        /// </summary>
+        public IReadOnlyList<TicketCheckoutOrder> ToDo => Paid
+            .Where(o => o.CancellationEmailedAt is null || tickets[o.Id].Any(IsLive) || (Refundable(o) > 0 && !HasCancelRefund(o)))
+            .OrderBy(o => o.PaidAt)
+            .ToList();
+
+        public CancellationProgress Progress
+        {
+            get
+            {
+                var paid = Paid;
+                var since = paid.SelectMany(o => refunds[o.Id]).Where(r => r.CreatedAt >= Since).ToList();
+                return new CancellationProgress(
+                    salesEvent.CancelledAt, salesEvent.CancelledByUserId, salesEvent.CancelReason,
+                    PaidOrders: paid.Count,
+                    ToDo: ToDo.Count,
+                    LiveTickets: paid.Sum(o => tickets[o.Id].Count(IsLive)),
+                    TicketMoneyMinor: paid.Sum(o => o.TicketTotalMinor),
+                    DisputedMinor: paid.Sum(o => o.DisputedMinor),
+                    RefundedMinor: paid.Sum(o => Math.Max(o.RefundedMinor,
+                        refunds[o.Id].Where(r => r.State == RefundState.Succeeded).Sum(r => r.AmountMinor))),
+                    InFlightMinor: paid.Sum(o => refunds[o.Id].Where(r => r.State is RefundState.Pending or RefundState.ManualRequired).Sum(r => r.AmountMinor)),
+                    StillRefundableMinor: paid.Sum(Refundable),
+                    DonationsMinor: paid.Sum(o => o.TotalMinor - o.TicketTotalMinor),
+                    RefundsSince: since.GroupBy(r => r.State).OrderBy(g => g.Key)
+                        .Select(g => new RefundStateRow(g.Key, g.Count(), g.Sum(r => r.AmountMinor))).ToList());
+            }
+        }
+    }
 }
