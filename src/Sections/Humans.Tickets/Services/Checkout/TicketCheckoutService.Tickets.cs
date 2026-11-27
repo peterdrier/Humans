@@ -490,31 +490,33 @@ internal sealed partial class TicketCheckoutService
         await TellDeliveryAsync(d => d.ResaleSoldAsync(offer.TicketId, offer.RefundOwedMinor, ct), offer.TicketId);
     }
 
-    /// <summary>Marks a sold offer's ticket <c>Resold</c> and voids its children; each step is skipped once done.</summary>
+    /// <summary>Retires a sold adult and its valid dependents in one commit; repeats finish older partial retirements.</summary>
     private async Task RetireResoldTicketAsync(TicketResaleOffer offer, bool directed, CancellationToken ct)
     {
         if (await repository.GetTicketAsync(offer.TicketId, ct) is not { } old)
             return;
+        var retireAdult = old.State != TicketCheckoutTicketState.Resold;
+        var dependents = (await repository.GetTicketsForSettingsAsync(old.TicketingSettingsId, ct))
+            .Where(t => t.ParentTicketId == old.Id && t.State == TicketCheckoutTicketState.Valid)
+            .ToList();
+        if (!retireAdult && dependents.Count == 0)
+            return;
         var now = clock.GetCurrentInstant();
-        if (old.State != TicketCheckoutTicketState.Resold)
-        {
-            old.State = TicketCheckoutTicketState.Resold;
-            await repository.UpdateTicketAsync(old, ct);
-            await TimelineAsync(old.OrderId, TicketCheckoutOrderEventKind.ResaleSold,
-                $"Ticket {old.Barcode} resold" + (directed ? " to the invited buyer" : string.Empty) +
-                $"; {FormatMinor(offer.RefundOwedMinor)} goes back in the evening refund batch once the buyer's payment holds", null, ct);
-        }
-        foreach (var child in (await repository.GetTicketsForSettingsAsync(old.TicketingSettingsId, ct))
-                     .Where(t => t.ParentTicketId == old.Id && t.State == TicketCheckoutTicketState.Valid))
+        old.State = TicketCheckoutTicketState.Resold;
+        foreach (var child in dependents)
         {
             child.State = TicketCheckoutTicketState.Void;
             child.VoidedAt = now;
             child.VoidReason = "Resold with the adult's ticket";
-            await repository.UpdateTicketAsync(child, ct);
-            if (child.OrderId != old.OrderId)
-                await TimelineAsync(child.OrderId, TicketCheckoutOrderEventKind.Voided,
-                    $"Ticket {child.Barcode} voided: its adult's ticket {old.Barcode} was resold", null, ct);
         }
+        await repository.UpdateTicketAsync(old, ct, dependents);
+        if (retireAdult)
+            await TimelineAsync(old.OrderId, TicketCheckoutOrderEventKind.ResaleSold,
+                $"Ticket {old.Barcode} resold" + (directed ? " to the invited buyer" : string.Empty) +
+                $"; {FormatMinor(offer.RefundOwedMinor)} goes back in the evening refund batch once the buyer's payment holds", null, ct);
+        foreach (var child in dependents.Where(c => c.OrderId != old.OrderId))
+            await TimelineAsync(child.OrderId, TicketCheckoutOrderEventKind.Voided,
+                $"Ticket {child.Barcode} voided: its adult's ticket {old.Barcode} was resold", null, ct);
     }
 
     /// <summary>

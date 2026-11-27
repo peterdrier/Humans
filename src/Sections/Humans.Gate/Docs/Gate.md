@@ -46,8 +46,9 @@ after the retention window.
   (`ITicketGateLookup.FindIssuedTicketAsync`, live), accepted only when the ticket's event is the
   active event. Checkout tickets: `Valid` scans valid; `Offered` (resale queue) STOPs with
   "withdraw it first" while it can still sell, and is valid once sales close; `Resold` and `Void`
-  STOP. Tickets reads `IGateAdmissions` (`GateAdmissionReads`, live) so an admitted ticket is never
-  offered or sold. A checkout scan row carries `CheckoutTicketId` instead of `TicketAttendeeId`, is
+  STOP. Tickets also marks a child or companion invalid if its adult is missing, void or resold, even when
+  the dependent still says `Valid` after an interrupted retirement. Tickets reads `IGateAdmissions`
+  (`GateAdmissionReads`, live) so an admitted ticket is never offered or sold. A checkout scan row carries `CheckoutTicketId` instead of `TicketAttendeeId`, is
   never mirrored to a vendor and never appears in the vendor backfill: the gate row is its only
   check-in record. A child or companion ticket without an account takes the Early Entry of the
   adult it belongs to (`IssuedTicketInfo.EntryUserId`) and STOPs while that adult's ticket is on

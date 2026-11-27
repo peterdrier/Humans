@@ -225,7 +225,7 @@ addresses were typed. Directed resale links buy only the buyer's own ticket.
 - Only adult tickets can be offered. Child and companion tickets go with their adult ticket: voided and refunded with it,
   never resold alone (Peter, 2026-11-22).
 - When the buyer's order is paid, the offer is sold, the old ticket becomes `Resold`, the old adult's children are
-  voided, the buyer gets a new ticket, and the holder is told it sold (`ticket_resale_sold`).
+  voided in the same repository commit, the buyer gets a new ticket, and the holder is told it sold (`ticket_resale_sold`).
 - **Evening refund batch** (`TicketResaleRefundJob`, daily 19:00 UTC, H11): the holder is refunded what they paid
   (adult plus children) through the original order's platform, once the buyer's order has held for 12 hours, under the
   offer's id so a repeat finds the same refund and a call that threw is retried. Both orders are read from their
@@ -313,7 +313,8 @@ tickets by itself (Peter, 2026-11-22).
 
 Gate looks codes up through `ITicketGateLookup.FindIssuedTicketAsync` (exact code, any event; Gate keeps only the
 active event's). `Valid` scans valid; `Offered` scans valid only once sales are closed, so a ticket can never admit its holder and then sell. A ticket the gate admitted (or whose valid child or companion ticket it admitted, including one on a separate order) cannot be offered or receive new resale invitations, and an admitted offer is never sold (`IGateAdmissions`, Gate's read). A child or companion ticket without an account carries the adult's
-user as `EntryUserId`, whose Early Entry applies. Nobody signs the ticket rules at the gate: the buyer's acceptance
+user as `EntryUserId`, whose Early Entry applies. Both gate lookup and event lists refuse a dependent whose adult is
+missing, void or resold, even if an interrupted older retirement left the dependent marked `Valid`. Nobody signs the ticket rules at the gate: the buyer's acceptance
 covers every ticket on the order (Peter, 2026-11-21). The gate's scan row is the only admission record; no platform is told.
 `GetIssuedTicketsForEventAsync` lists every ticket of one event in any state, for the gate's name search and
 arrivals report. The holder sees the date their Early Entry starts on My tickets.

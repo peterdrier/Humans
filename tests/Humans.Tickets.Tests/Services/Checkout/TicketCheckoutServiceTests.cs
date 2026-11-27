@@ -3275,6 +3275,24 @@ public sealed partial class TicketCheckoutServiceTests
     }
 
     [HumansFact]
+    public async Task PlatformOrderChangedAsync_DependentWriteFails_WritesNoPartialRetirement()
+    {
+        _ticketing.ChildTypes = [new TicketChildType { Name = "Child", UnderAge = 13, PriceMinor = 5000 }];
+        await OfferedTicketAsync(Buy() with { Children = [new("Kid García", null)] });
+        var child = _repo.Tickets.Single(t => t.Kind == TicketHolderKind.Child);
+        var started = await _service.StartCheckoutAsync(Buy(), _otherBuyerId, Ct);
+        var order = _repo.Orders.Single(o => o.Id == started.OrderId);
+        _platform.GetStatusAsync(order.PlatformOrderId!, Arg.Any<CancellationToken>())
+            .Returns(new PlatformOrderStatus(PlatformOrderState.Paid, 0, "card", Now));
+        _repo.RejectTicketWrites.Add(child.Id);
+        _repo.TicketWrites.Clear();
+        var complete = () => _service.PlatformOrderChangedAsync("test", order.PlatformOrderId!, Ct);
+
+        await complete.Should().ThrowAsync<InvalidOperationException>().WithMessage("Ticket write failed");
+        _repo.TicketWrites.Should().BeEmpty();
+    }
+
+    [HumansFact]
     public async Task A_resale_repeated_after_a_crash_finishes_retiring_the_old_ticket_and_its_children()
     {
         _ticketing.ChildTypes = [new TicketChildType { Name = "Child", UnderAge = 13, PriceMinor = 5000 }];
@@ -3449,6 +3467,22 @@ public sealed partial class TicketCheckoutServiceTests
         _admitted.Add(_repo.Tickets.Single(t => t.OrderId == old.OrderId && t.Kind == TicketHolderKind.Child).Barcode);
 
         (await _service.StartCheckoutAsync(Buy(), _otherBuyerId, Ct)).Refusal.Should().Be("Tickets_Buy_ResaleOnly");
+    }
+
+    [HumansTheory]
+    [InlineData((int)TicketHolderKind.Child, (int)TicketCheckoutTicketState.Resold)]
+    [InlineData((int)TicketHolderKind.Child, (int)TicketCheckoutTicketState.Void)]
+    [InlineData((int)TicketHolderKind.Companion, (int)TicketCheckoutTicketState.Resold)]
+    [InlineData((int)TicketHolderKind.Companion, (int)TicketCheckoutTicketState.Void)]
+    [InlineData((int)TicketHolderKind.Child, -1)]
+    [InlineData((int)TicketHolderKind.Companion, -1)]
+    public async Task FindIssuedTicketAsync_RetiredParent_RefusesDependent(int kind, int state)
+    {
+        var parentId = state < 0 ? Guid.NewGuid() : AddTicket(holder: _buyerId, state: (TicketCheckoutTicketState)state).Id;
+        var dependent = AddTicket((TicketHolderKind)kind, parent: parentId);
+
+        (await _service.FindIssuedTicketAsync(dependent.Barcode, Ct))!.IsValid.Should().BeFalse();
+        (await _service.GetIssuedTicketsForEventAsync(_event.Id, Ct)).Single(t => t.Id == dependent.Id).IsValid.Should().BeFalse();
     }
 
     [HumansFact]

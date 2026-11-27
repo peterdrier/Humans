@@ -1,5 +1,9 @@
 # Section debt ledger for Humans.Tickets. Shape + routing: memory/process/debt-ledger-additions.md.
 # /debt-sweep pools every src/Sections/*/Docs/debt.yml into the same inbox as the central ledger.
 version: 1
-next_id: 21
-inbox: []
+next_id: 22
+inbox:
+  - added: 2026-11-27
+    id: TICKETS-21
+    what: "TicketCheckoutService.CompleteResaleAsync saves Sold before ResaleSoldAsync is handed to delivery; a crash or enqueue failure loses the holder notification because the Sold retry branch returns after ticket retirement and RepairPaidAsync does not retry that delivery. Found tracing dependent retirement failures."
+    review: panel
