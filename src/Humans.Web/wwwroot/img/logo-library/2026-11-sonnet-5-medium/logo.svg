@@ -1,0 +1,110 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="-2 -2 244 244" role="img" aria-label="Vitruvian Man">
+  <defs>
+    <g id="construction">
+      <circle cx="120" cy="120" r="120" fill="none" stroke="#c9a96e" stroke-width="0.4" opacity="0.35"/>
+      <line x1="120" y1="0" x2="120" y2="240" stroke="#c9a96e" stroke-width="0.4" opacity="0.3"/>
+      <line x1="0" y1="120" x2="240" y2="120" stroke="#c9a96e" stroke-width="0.4" opacity="0.3"/>
+    </g>
+  </defs>
+
+  <!-- faint gold construction: compass arcs + ticks, vanish small -->
+  <g class="construction">
+    <use href="#construction"/>
+    <circle cx="120" cy="120" r="4" fill="none" stroke="#c9a96e" stroke-width="0.4" opacity="0.3"/>
+    <g stroke="#c9a96e" stroke-width="0.4" opacity="0.25">
+      <line x1="120" y1="2" x2="120" y2="8"/>
+      <line x1="120" y1="232" x2="120" y2="238"/>
+      <line x1="2" y1="120" x2="8" y2="120"/>
+      <line x1="232" y1="120" x2="238" y2="120"/>
+    </g>
+  </g>
+
+  <!-- bold solid base: frame -->
+  <rect x="23" y="46" width="194" height="194" fill="none" stroke="#c9a96e" stroke-width="2.2"/>
+  <circle cx="120" cy="120" r="120" fill="none" stroke="#c9a96e" stroke-width="2.2"/>
+
+  <!-- SPREAD legs (diagonal, feet on circle) -->
+  <g fill="#c9a96e">
+    <path d="M101,146 L55,206 Q50,213 44,217 L39,213 Q46,206 52,198 L94,143 Z"/>
+    <path d="M139,146 L185,206 Q190,213 196,217 L201,213 Q194,206 188,198 L146,143 Z"/>
+  </g>
+
+  <!-- HORIZONTAL arms (span the square) -->
+  <g fill="#c9a96e">
+    <path d="M97,80 L25,84 Q22,84 22,86 L22,90 Q22,92 25,92 L99,90 Z"/>
+    <path d="M143,80 L215,84 Q218,84 218,86 L218,90 Q218,92 215,92 L141,90 Z"/>
+  </g>
+
+  <!-- RAISED arms (diagonal, fingertips on circle) -->
+  <g fill="#c9a96e">
+    <path d="M100,86 L48,32 Q44,28 44,24 L48,21 Q52,25 56,29 L106,80 Z"/>
+    <path d="M140,86 L192,32 Q196,28 196,24 L192,21 Q188,25 184,29 L134,80 Z"/>
+  </g>
+
+  <!-- TOGETHER legs (vertical, feet at bottom of square) -->
+  <g fill="#c9a96e">
+    <path d="M110,146 L107,230 Q107,236 110,238 L115,238 Q117,230 118,210 L118,146 Z"/>
+    <path d="M130,146 L133,230 Q133,236 130,238 L125,238 Q123,230 122,210 L122,146 Z"/>
+  </g>
+
+  <!-- torso -->
+  <path fill="#c9a96e" d="M95,82
+    Q92,100 93,120
+    Q94,135 101,146
+    L139,146
+    Q146,135 147,120
+    Q148,100 145,82
+    Q133,88 120,88
+    Q107,88 95,82 Z"/>
+
+  <!-- neck -->
+  <path fill="#c9a96e" d="M114,70 L112,82 L128,82 L126,70 Z"/>
+
+  <!-- head -->
+  <ellipse cx="120" cy="58" rx="12" ry="13" fill="#c9a96e"/>
+
+  <!-- tier 1 (~2.0): main contours, pose separations, from ~64px -->
+  <g fill="none" stroke="#3d2b1f" stroke-width="2.0" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M101,146 L55,206 M139,146 L185,206"/>
+    <path d="M110,146 L108,210 M130,146 L132,210"/>
+    <path d="M97,80 L30,85 M143,80 L210,85"/>
+    <path d="M100,86 L50,30 M140,86 L190,30"/>
+    <path d="M95,82 Q92,100 93,120 Q94,135 101,146 M145,82 Q148,100 147,120 Q146,135 139,146"/>
+    <path d="M120,88 L120,146"/>
+    <path d="M112,72 L128,72"/>
+  </g>
+
+  <!-- tier 2 (~1.4): muscle groups, hair, from ~96px -->
+  <g fill="none" stroke="#3d2b1f" stroke-width="1.4" stroke-linecap="round">
+    <path d="M110,200 Q106,215 106,230"/>
+    <path d="M130,200 Q134,215 134,230"/>
+    <path d="M60,200 Q56,208 50,214"/>
+    <path d="M180,200 Q184,208 190,214"/>
+    <path d="M55,38 Q50,32 46,27"/>
+    <path d="M185,38 Q190,32 194,27"/>
+    <path d="M40,90 L36,88 M200,90 L204,88"/>
+    <path d="M105,98 Q101,110 102,122"/>
+    <path d="M135,98 Q139,110 138,122"/>
+  </g>
+
+  <!-- tier 3 (~0.9): fingers, toes, face, hatching, from ~150px -->
+  <g fill="none" stroke="#3d2b1f" stroke-width="0.9" stroke-linecap="round">
+    <path d="M22,86 L18,84 M22,88 L17,88 M22,90 L18,92"/>
+    <path d="M218,86 L222,84 M218,88 L223,88 M218,90 L222,92"/>
+    <path d="M44,24 L41,20 M48,21 L46,17 M52,25 L50,21"/>
+    <path d="M196,24 L199,20 M192,21 L194,17 M188,25 L190,21"/>
+    <path d="M44,217 L40,220 M39,213 L35,215 M44,217 L42,221"/>
+    <path d="M196,217 L200,220 M201,213 L205,215 M196,217 L198,221"/>
+    <path d="M106,239 L104,241 M111,239 L111,241 M116,239 L118,241"/>
+    <path d="M134,239 L136,241 M129,239 L129,241 M124,239 L122,241"/>
+    <path d="M100,92 L98,96 M140,92 L142,96"/>
+    <path d="M98,105 L101,106 M142,105 L139,106"/>
+    <path d="M98,115 L101,115 M142,115 L139,115"/>
+  </g>
+
+  <!-- face: understated, study-like -->
+  <g fill="none" stroke="#3d2b1f" stroke-width="0.8" stroke-linecap="round">
+    <path d="M114,60 L116,60.5 M126,60 L124,60.5"/>
+    <path d="M120,62 Q120.5,64 120,65.5"/>
+  </g>
+</svg>
