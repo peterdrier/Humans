@@ -1,5 +1,4 @@
 using Humans.AuditLog.Contracts;
-using Humans.Tickets.Data;
 using Humans.Tickets.Domain.Checkout;
 
 namespace Humans.Tickets.Services.Checkout;
@@ -53,7 +52,7 @@ internal sealed partial class TicketCheckoutService
         if (ticket is null || ticket.HolderUserId != holderUserId)
             return new("Tickets_Resale_NotFound");
         var pending = (await repository.GetCompanionRequestsForSettingsAsync(ticket.TicketingSettingsId, ct))
-            .FirstOrDefault(r => r.TicketId == ticketId && r.HolderUserId == holderUserId && r.State == TicketCompanionRequestState.Pending);
+            .FirstOrDefault(r => r.TicketId == ticketId && r.State == TicketCompanionRequestState.Pending);
         if (pending is null)
             return new("Tickets_Companion_NothingPending");
         pending.State = TicketCompanionRequestState.Withdrawn;
@@ -72,11 +71,7 @@ internal sealed partial class TicketCheckoutService
         {
             tickets.TryGetValue(request.TicketId, out var ticket);
             var companion = await users.GetUserInfoAsync(request.CompanionUserId, ct);
-            var holderName = ticket?.HolderName ?? string.Empty;
-            if (ticket?.HolderUserId != request.HolderUserId)
-                holderName = await users.GetUserInfoAsync(request.HolderUserId, ct) is { IsTombstone: false } holder
-                    ? holder.FullName : string.Empty;
-            rows.Add(new CompanionRequestRow(request, holderName,
+            rows.Add(new CompanionRequestRow(request, ticket?.HolderName ?? string.Empty,
                 companion?.FullName ?? string.Empty, ticket?.Barcode ?? string.Empty, ticket?.OrderId ?? Guid.Empty));
         }
         return rows;
@@ -101,32 +96,21 @@ internal sealed partial class TicketCheckoutService
         TicketCheckoutTicket? companionTicket = null;
         if (approve)
         {
-            var parentTicket = await repository.GetTicketAsync(request.TicketId, ct);
-            if (parentTicket is null || parentTicket.HolderUserId != request.HolderUserId)
-                return new("The ticket no longer belongs to the requesting holder; decline the request.");
-            if (TicketPiiTombstone.IsTombstoned(parentTicket.HolderName, parentTicket.HolderEmail))
-                return new("Erased adult ticket data cannot receive a companion.");
-            companionTicket = (await repository.GetTicketsForSettingsAsync(request.TicketingSettingsId, ct))
-                .FirstOrDefault(t => t.ParentTicketId == request.TicketId && t.HolderUserId == request.CompanionUserId
-                    && t.Kind == TicketHolderKind.Companion && t.State == TicketCheckoutTicketState.Valid);
-            if (companionTicket is null)
-            {
-                var (companion, problem) = await CheckOtherAsync(
-                    request.CompanionUserId, request.HolderUserId, request.TicketingSettingsId, clock.GetCurrentInstant(), ct);
-                if (problem is not null)
-                    return new(problem switch
-                    {
-                        "Holds" => "The companion now holds a ticket of their own; decline the request.",
-                        "NeedsName" => "The companion has no legal name in Humans yet; ask them to add it, then approve.",
-                        _ => "The companion's account is gone; decline the request.",
-                    });
-                var (result, issued) = await IssueCompanionCoreAsync(request.TicketId, companion!.FullName, companion.Email,
-                    _ => Task.FromResult<(Guid?, string?)>((companion.Id, null)),
-                    "approved companion request" + (note is null ? string.Empty : $": {note}"), overrideCapacity: false, actorUserId, ct);
-                if (!result.Succeeded)
-                    return result;
-                companionTicket = issued;
-            }
+            var (companion, problem) = await CheckOtherAsync(
+                request.CompanionUserId, request.HolderUserId, request.TicketingSettingsId, clock.GetCurrentInstant(), ct);
+            if (problem is not null)
+                return new(problem switch
+                {
+                    "Holds" => "The companion now holds a ticket of their own; decline the request.",
+                    "NeedsName" => "The companion has no legal name in Humans yet; ask them to add it, then approve.",
+                    _ => "The companion's account is gone; decline the request.",
+                });
+            var (result, issued) = await IssueCompanionCoreAsync(request.TicketId, companion!.FullName, companion.Email,
+                _ => Task.FromResult<(Guid?, string?)>((companion.Id, null)),
+                "approved companion request" + (note is null ? string.Empty : $": {note}"), overrideCapacity: false, actorUserId, ct);
+            if (!result.Succeeded)
+                return result;
+            companionTicket = issued;
         }
 
         request.State = approve ? TicketCompanionRequestState.Approved : TicketCompanionRequestState.Declined;
@@ -152,8 +136,7 @@ internal sealed partial class TicketCheckoutService
         TicketCheckoutTicket ticket, TicketingSettings? ticketing,
         IReadOnlyList<TicketCheckoutTicket> eventTickets, IReadOnlyList<TicketCompanionRequest> requests) =>
         ticket is { State: TicketCheckoutTicketState.Valid, Kind: TicketHolderKind.Adult, HolderUserId: not null }
-        && !TicketPiiTombstone.IsTombstoned(ticket.HolderName, ticket.HolderEmail)
         && ticketing is { Mode: not TicketSalesMode.Closed, EffectiveSwitches.CompanionTicketsOn: true }
         && !eventTickets.Any(t => t.ParentTicketId == ticket.Id && t.Kind == TicketHolderKind.Companion && t.State == TicketCheckoutTicketState.Valid)
-        && !requests.Any(r => r.TicketId == ticket.Id && r.HolderUserId == ticket.HolderUserId && r.State == TicketCompanionRequestState.Pending);
+        && !requests.Any(r => r.TicketId == ticket.Id && r.State == TicketCompanionRequestState.Pending);
 }

@@ -97,7 +97,7 @@ internal sealed partial class TaskService
             $"Approved a request to join task '{task.Title}' on {TeamName(task, snapshot)} ({confirmed} of {task.SlotCount})",
             actorUserId, relatedEntityId: userId, relatedEntityType: AuditSubjectTypes.User);
 
-        await SendAnswerAsync(approved: true, task, snapshot, userId, reason: null);
+        await SendAnswerAsync(approved: true, task, snapshot, userId, reason: null, ct);
         return new(ToInfo(task, snapshot));
     }
 
@@ -122,32 +122,28 @@ internal sealed partial class TaskService
             $"Declined a request to join task '{task.Title}' on {TeamName(task, snapshot)}{(reason is null ? string.Empty : $": {reason}")}",
             actorUserId, relatedEntityId: userId, relatedEntityType: AuditSubjectTypes.User);
 
-        await SendAnswerAsync(approved: false, task, snapshot, userId, reason);
+        await SendAnswerAsync(approved: false, task, snapshot, userId, reason, ct);
         return new(ToInfo(task, snapshot));
     }
 
     private static TaskAssignment? RequestOf(TaskItem task, Guid userId) =>
         task.Assignments.FirstOrDefault(a => a.UserId == userId && a.State == TaskAssignmentState.Requested);
 
-    /// <summary>The answer is committed: finish its mail after browser cancellation; other failures are logged.</summary>
+    /// <summary>The answer is already saved and audited: a failed email is logged, never undoes it.</summary>
     private async Task SendAnswerAsync(
-        bool approved, TaskItem task, Snapshot snapshot, Guid userId, string? reason)
+        bool approved, TaskItem task, Snapshot snapshot, Guid userId, string? reason, CancellationToken ct)
     {
         try
         {
-            var person = await users.GetUserInfoAsync(userId, CancellationToken.None);
-            if (person is not { IsTombstone: false })
-            {
-                logger.LogWarning("Task request answer email skipped: recipient {UserId} on task {TaskId} is unavailable", userId, task.Id);
-                return;
-            }
+            var person = await users.GetUserInfoAsync(userId, ct)
+                ?? throw new InvalidOperationException($"No user {userId} for a request on task {task.Id}");
 
             var request = new TaskAnswerEmail(
                 person.Id, person.Email!, person.BurnerName, task.Id, task.Title, TeamName(task, snapshot), reason,
                 person.PreferredLanguage.IsSupportedCultureCode() ? person.PreferredLanguage : CultureCatalog.DefaultCultureCode);
-            await email.SendAsync(approved ? emails.RequestApproved(request) : emails.RequestDeclined(request), CancellationToken.None);
+            await email.SendAsync(approved ? emails.RequestApproved(request) : emails.RequestDeclined(request), ct);
         }
-        catch (Exception ex)
+        catch (Exception ex) when (ex is not OperationCanceledException || !ct.IsCancellationRequested)
         {
             logger.LogError(ex, "Failed to queue the task request answer email for {UserId} on task {TaskId}", userId, task.Id);
         }

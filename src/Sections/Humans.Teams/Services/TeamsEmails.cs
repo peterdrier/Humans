@@ -20,7 +20,7 @@ internal sealed class TeamsEmails(
             userEmail, userName, userId,
             localizer["Teams_Email_AddedToTeam_Subject", teamName],
             localizer["Teams_Email_AddedToTeam_Body", Encode(userName), Encode(teamName),
-                ResourcesSection(resources), Encode($"{_settings.BaseUrl.TrimEnd('/')}/Teams/{teamSlug}")],
+                ResourcesSection(resources), Encode($"{_settings.BaseUrl}/Teams/{teamSlug}")],
             "added_to_team", MessageCategory.TeamUpdates));
 
     /// <summary>Omitted entirely rather than rendered as an empty list.</summary>

@@ -53,12 +53,6 @@ internal sealed class TicketCheckoutTicket
     public Instant? VoidedAt { get; set; }
 
     public string? VoidReason { get; set; }
-
-    public Guid? VoidRefundId { get; set; }
-
-    public long? VoidRefundMinor { get; set; }
-
-    public string? VoidRequestedReason { get; set; }
 }
 
 internal enum TicketHolderKind
@@ -109,9 +103,6 @@ internal sealed class TicketResaleOffer
 
     public Instant? SoldAt { get; set; }
 
-    /// <summary>True until the sold notice reaches the email outbox; null for legacy offers without a delivery intent.</summary>
-    public bool? SoldNotificationPending { get; set; }
-
     public Instant? WithdrawnAt { get; set; }
 
     /// <summary>The holder's refund once the evening batch requested it.</summary>
@@ -137,7 +128,7 @@ internal sealed class TicketResaleOffer
         Invites.FirstOrDefault(i => string.Equals(i.TokenHash, tokenHash, StringComparison.Ordinal));
 }
 
-/// <summary>One address-bound invitation. Raw link tokens are never stored here.</summary>
+/// <summary>One emailed link: bound to the address it went to. The token itself is never stored.</summary>
 internal sealed class TicketResaleInvite
 {
     public string Email { get; set; } = string.Empty;
@@ -146,10 +137,6 @@ internal sealed class TicketResaleInvite
     public string TokenHash { get; set; } = string.Empty;
 
     public Instant SentAt { get; set; }
-
-    public Guid? DeliveryId { get; set; }
-
-    public bool? DeliveryPending { get; set; }
 }
 
 internal enum TicketResaleOfferState

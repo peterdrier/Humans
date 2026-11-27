@@ -24,7 +24,7 @@ internal sealed class GovernanceEmails(
         => Localized(culture, () => new EmailMessage(
             userEmail, userName, userId,
             L("Governance_Email_ApplicationApproved_Subject"),
-            localizer["Governance_Email_ApplicationApproved_Body", Encode(userName), tier, _settings.BaseUrl.TrimEnd('/')],
+            localizer["Governance_Email_ApplicationApproved_Body", Encode(userName), tier, _settings.BaseUrl],
             "application_approved", MessageCategory.Governance));
 
     public EmailMessage ApplicationRejected(Guid userId, string userEmail, string userName, MembershipTier tier, string reason, string? culture = null)
@@ -38,7 +38,7 @@ internal sealed class GovernanceEmails(
         => Localized(culture, () => new EmailMessage(
             userEmail, userName, userId,
             localizer["Governance_Email_TermRenewalReminder_Subject", tierName],
-            localizer["Governance_Email_TermRenewalReminder_Body", Encode(userName), Encode(tierName), Encode(expiresAt.ToDate()), _settings.BaseUrl.TrimEnd('/')],
+            localizer["Governance_Email_TermRenewalReminder_Body", Encode(userName), Encode(tierName), Encode(expiresAt.ToDate()), _settings.BaseUrl],
             "term_renewal_reminder", MessageCategory.Governance));
 
     public EmailMessage AssemblyVoteOpened(Guid userId, string toEmail, string userName, string voteTitle, LocalDateTime closesAt, bool isOfficial, string voteUrl, string? culture = null)

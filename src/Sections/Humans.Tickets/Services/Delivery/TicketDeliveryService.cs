@@ -7,7 +7,6 @@ using Humans.Base.Extensions;
 using Humans.Email.Contracts;
 using Humans.Settings.Contracts;
 using Humans.Tickets.Domain.Checkout;
-using Humans.Tickets.Data;
 using Humans.Tickets.Services.Checkout;
 using Humans.Users.Contracts;
 using Microsoft.Extensions.Options;
@@ -81,15 +80,12 @@ internal sealed class TicketDeliveryService(
         if (sent is null)
             return;
 
-        if (sent.HasMail)
-        {
-            foreach (var ticket in sent.Tickets.Where(t => t.HolderUserId is not null && t.Kind != TicketHolderKind.Child))
-                jobs.Schedule<TicketDeliveryService>(
-                    d => d.SendJoinInvitationAsync(orderId, ticket.Id, CancellationToken.None), JoinInvitationDelay);
+        foreach (var ticket in sent.Tickets.Where(t => t.HolderUserId is not null && t.Kind != TicketHolderKind.Child))
+            jobs.Schedule<TicketDeliveryService>(
+                d => d.SendJoinInvitationAsync(orderId, ticket.Id, CancellationToken.None), JoinInvitationDelay);
 
-            await auditLog.LogAsync(TicketsAuditActions.TicketDeliverySent, TicketCheckoutService.AuditEntityType, orderId,
-                sent.Describe(), JobName);
-        }
+        await auditLog.LogAsync(TicketsAuditActions.TicketDeliverySent, TicketCheckoutService.AuditEntityType, orderId,
+            sent.Describe(), JobName);
         await RecordOnTimelineAsync(orderId, TicketCheckoutOrderEventKind.TicketsEmailed, sent, null, ct);
     }
 
@@ -103,12 +99,10 @@ internal sealed class TicketDeliveryService(
         if (sent is null)
             return new("Only a paid order with a live ticket can be resent.");
 
-        if (sent.HasMail)
-            await auditLog.LogAsync(TicketsAuditActions.TicketDeliveryResent, TicketCheckoutService.AuditEntityType, orderId,
-                sent.Describe(), actorUserId);
+        await auditLog.LogAsync(TicketsAuditActions.TicketDeliveryResent, TicketCheckoutService.AuditEntityType, orderId,
+            sent.Describe(), actorUserId);
         await RecordOnTimelineAsync(orderId, TicketCheckoutOrderEventKind.TicketsResent, sent, actorUserId, ct);
-        return sent.HasMail ? CheckoutMutationResult.Ok
-            : new("No ticket mail could be queued; the recipients are unavailable. See the order timeline.");
+        return CheckoutMutationResult.Ok;
     }
 
     /// <summary>The scheduled follow-up; skipped once the ticket is no longer valid.</summary>
@@ -117,7 +111,7 @@ internal sealed class TicketDeliveryService(
         var detail = await checkout.GetOrderDetailAsync(orderId, ct);
         var ticket = detail?.Tickets.FirstOrDefault(t => t.Id == ticketId);
         if (detail is null || ticket is null || ticket.State != TicketCheckoutTicketState.Valid
-            || ticket.HolderUserId is not { } holderId || TicketPiiTombstone.IsTombstoned(ticket.HolderName, ticket.HolderEmail))
+            || ticket.HolderUserId is not { } holderId)
             return;
         var eventName = await EventNameAsync(ticket.TicketingSettingsId, ct);
         if (eventName is null)
@@ -144,11 +138,9 @@ internal sealed class TicketDeliveryService(
             || await EventNameAsync(order.TicketingSettingsId, ct) is not { } eventName)
             return;
         var buyer = await users.GetUserInfoAsync(order.BuyerUserId, ct);
-        if (buyer is not { IsTombstone: false } || TicketPiiTombstone.IsTombstoned(order.BuyerName, order.BuyerEmail))
-            return;
         var failed = order.State == TicketCheckoutOrderState.Failed;
         await email.SendAsync(emails.PaymentEnded(
-            buyer.Id, buyer.Email!, order.BuyerName, eventName, order.Reference, failed,
+            order.BuyerUserId, buyer?.Email ?? order.BuyerEmail, order.BuyerName, eventName, order.Reference, failed,
             new Uri($"{BaseUrl}/Tickets/Buy"), DeliveryIdFor("ticket_payment_ended", order.Id), CultureOf(buyer, order)), ct);
         await auditLog.LogAsync(TicketsAuditActions.TicketHolderNotified, TicketCheckoutService.AuditEntityType, orderId,
             failed ? "Told the buyer the payment failed" : "Told the buyer the order lapsed unpaid", JobName);
@@ -159,19 +151,12 @@ internal sealed class TicketDeliveryService(
     {
         if (await HolderMailAsync(ticketId, TicketCheckoutTicketState.Resold, ct) is not { } to)
             return;
-        var offer = (await checkout.GetOffersForSettingsAsync(to.Ticket.TicketingSettingsId, ct))
-            .FirstOrDefault(o => o.TicketId == ticketId && o.State == TicketResaleOfferState.Sold);
-        if (offer?.SoldNotificationPending == false)
-            return;
         await email.SendAsync(emails.ResaleSold(
             to.UserId, to.Email, to.Ticket.HolderName, to.EventName, refundMinor, new Uri($"{BaseUrl}/Tickets/Buy/Mine"),
             DeliveryIdFor("ticket_resale_sold", ticketId), to.Culture), ct);
         await auditLog.LogAsync(TicketsAuditActions.TicketHolderNotified, TicketCheckoutService.AuditEntityType, to.Ticket.OrderId,
             $"Told the holder ticket {to.Ticket.Barcode} was resold and its refund follows in the evening batch", JobName,
             to.UserId, AuditSubjectTypes.User);
-        if (offer is not null)
-            await checkout.RecordDeliveryAsync(to.Ticket.OrderId, TicketCheckoutOrderEventKind.ResaleSold,
-                $"Resale sold notice queued for ticket {to.Ticket.Barcode}", null, ct, offer.Id);
     }
 
     /// <summary>The holder whose ticket was still in the resale queue at sales close.</summary>
@@ -179,20 +164,12 @@ internal sealed class TicketDeliveryService(
     {
         if (await HolderMailAsync(ticketId, TicketCheckoutTicketState.Offered, ct) is not { } to)
             return;
-        var offer = (await checkout.GetOffersForSettingsAsync(to.Ticket.TicketingSettingsId, ct))
-            .FirstOrDefault(o => o.TicketId == ticketId && o.State == TicketResaleOfferState.Open);
-        if (offer?.UnsoldNotifiedAt is not null)
-            return;
         await email.SendAsync(emails.ResaleUnsold(
             to.UserId, to.Email, to.Ticket.HolderName, to.EventName, new Uri($"{BaseUrl}/Tickets/Buy/Mine"),
             DeliveryIdFor("ticket_resale_unsold", ticketId), to.Culture), ct);
         await auditLog.LogAsync(TicketsAuditActions.TicketHolderNotified, TicketCheckoutService.AuditEntityType, to.Ticket.OrderId,
             $"Told the holder ticket {to.Ticket.Barcode} did not sell before sales closed: no refund, the ticket stays valid", JobName,
             to.UserId, AuditSubjectTypes.User);
-        if (offer is not null)
-            await checkout.RecordDeliveryAsync(to.Ticket.OrderId, TicketCheckoutOrderEventKind.ResaleUnsold,
-                $"Sales closed with ticket {to.Ticket.Barcode} unsold: no refund; its notice is queued and the ticket still admits its holder",
-                null, ct, offer.Id);
     }
 
     /// <summary>A renamed ticket goes to its holder again under the new name, with any children riding on it.</summary>
@@ -200,9 +177,8 @@ internal sealed class TicketDeliveryService(
     {
         if (await HolderMailAsync(ticketId, TicketCheckoutTicketState.Valid, ct) is not { } to)
             return;
-        var family = (await checkout.GetTicketsForSettingsAsync(to.Ticket.TicketingSettingsId, ct))
-            .Append(to.Ticket).DistinctBy(t => t.Id).ToList();
-        var riders = await RidersAsync(to.Ticket, family, ct);
+        var riders = (await checkout.GetTicketsForSettingsAsync(to.Ticket.TicketingSettingsId, ct))
+            .Where(t => t.ParentTicketId == ticketId && t.State == TicketCheckoutTicketState.Valid && string.IsNullOrWhiteSpace(t.HolderEmail));
         await email.SendAsync(emails.TicketIssued(new IssuedTicketMail(
             to.UserId, to.Email, to.Ticket.HolderName, to.EventName, [Card(to.Ticket), .. riders.Select(Card)],
             new Uri($"{BaseUrl}/Tickets/Buy/Mine"), null, deliveryId), to.Culture), ct);
@@ -216,14 +192,13 @@ internal sealed class TicketDeliveryService(
     private async Task<HolderMail?> HolderMailAsync(Guid ticketId, TicketCheckoutTicketState state, CancellationToken ct)
     {
         if (await checkout.GetTicketAsync(ticketId, ct) is not { HolderUserId: { } holderId } ticket || ticket.State != state
-            || TicketPiiTombstone.IsTombstoned(ticket.HolderName, ticket.HolderEmail)
             || await EventNameAsync(ticket.TicketingSettingsId, ct) is not { } eventName)
             return null;
         var holder = await users.GetUserInfoAsync(holderId, ct);
-        if (holder is not { IsTombstone: false } || (holder.Email ?? ticket.HolderEmail) is not { } address)
+        if ((holder?.Email ?? ticket.HolderEmail) is not { } address)
             return null;
         var order = (await checkout.GetOrderDetailAsync(ticket.OrderId, ct))?.Order;
-        return new HolderMail(ticket, holder.Id, address, eventName,
+        return new HolderMail(ticket, holderId, address, eventName,
             order is null ? SupportedOr(holder?.PreferredLanguage) : CultureOf(holder, order));
     }
 
@@ -245,112 +220,79 @@ internal sealed class TicketDeliveryService(
             return null;
         }
 
-        var candidates = detail.Tickets.Where(t => ticketing.CancelledAt is null && t.IsHeld).ToList();
-        var family = (await checkout.GetTicketsForSettingsAsync(ticketing.Id, ct))
-            .Concat(candidates).DistinctBy(t => t.Id).ToList();
-        var tickets = new List<TicketCheckoutTicket>();
-        var skipped = 0;
-        foreach (var ticket in candidates)
-        {
-            if (await CanMailAsync(ticket, family, ct))
-                tickets.Add(ticket);
-            else
-                skipped++;
-        }
+        var tickets = detail.Tickets
+            .Where(t => t.IsHeld)
+            .ToList();
         var baseUrl = BaseUrl;
         var buyer = await users.GetUserInfoAsync(order.BuyerUserId, ct);
-        if (buyer?.IsTombstone == true || TicketPiiTombstone.IsTombstoned(order.BuyerName, order.BuyerEmail))
-            buyer = null;
 
+        var family = (await checkout.GetTicketsForSettingsAsync(ticketing.Id, ct))
+            .Concat(tickets).DistinctBy(t => t.Id).ToList();
         var orderTicketIds = tickets.Select(t => t.Id).ToHashSet();
         // A separate-order companion needs its own handoff to the adult; an in-order child rides on the adult's mail.
         var mailed = tickets.Where(t => !string.IsNullOrWhiteSpace(t.HolderEmail)
             || t.ParentTicketId is not { } parentId || !orderTicketIds.Contains(parentId)).ToList();
-        var ticketMails = 0;
+        int ticketMails = 0, skipped = 0;
         foreach (var ticket in mailed)
         {
             var recipient = ticket;
             if (ticket.HolderUserId is null && string.IsNullOrWhiteSpace(ticket.HolderEmail) && ticket.ParentTicketId is { } parentId)
-                recipient = family.First(t => t.Id == parentId);
+            {
+                if (family.FirstOrDefault(t => t.Id == parentId && t.IsHeld) is not { } parent)
+                {
+                    logger.LogWarning("Ticket {TicketId} on order {OrderId} has no live adult recipient; its ticket email was not sent", ticket.Id, orderId);
+                    skipped++;
+                    continue;
+                }
+                recipient = parent;
+            }
             var holder = recipient.HolderUserId is { } holderId ? await users.GetUserInfoAsync(holderId, ct) : null;
-            if (recipient.HolderUserId is not null && holder is not { IsTombstone: false })
+            if ((holder?.Email ?? recipient.HolderEmail ?? (recipient.HolderUserId == order.BuyerUserId ? buyer?.Email ?? order.BuyerEmail : null)) is not { } address)
             {
+                logger.LogWarning("Ticket {TicketId} on order {OrderId} has no address; its ticket email was not sent", ticket.Id, orderId);
                 skipped++;
                 continue;
             }
-            var address = holder?.Email ?? recipient.HolderEmail
-                ?? (holder is not null && buyer is not null && holder.Id == buyer.Id ? buyer.Email ?? order.BuyerEmail : null);
-            if (string.IsNullOrWhiteSpace(address))
-            {
-                logger.LogWarning("Ticket {TicketId} on order {OrderId} has no available recipient address; its ticket email was not sent", ticket.Id, orderId);
-                skipped++;
-                continue;
-            }
-            var riders = await RidersAsync(ticket, family, ct);
-            var recipientId = holder?.Id ?? recipient.HolderUserId;
+            var riders = family.Where(t => t.ParentTicketId == ticket.Id
+                && t.State == TicketCheckoutTicketState.Valid && string.IsNullOrWhiteSpace(t.HolderEmail));
             await email.SendAsync(emails.TicketIssued(new IssuedTicketMail(
-                recipientId,
+                recipient.HolderUserId,
                 address,
                 recipient.HolderName,
                 eventSettings.EventName,
                 [Card(ticket), .. riders.Select(Card)],
                 new Uri($"{baseUrl}/Tickets/Buy/Mine"),
-                buyer is not null && recipientId != buyer.Id ? order.BuyerName : null,
+                recipient.HolderUserId != order.BuyerUserId ? order.BuyerName : null,
                 fresh ? null : DeliveryIdFor("ticket_issued", ticket.Id)), CultureOf(holder, order)), ct);
             ticketMails++;
         }
 
-        var receiptSent = false;
-        if (buyer is not null)
-        {
-            var paidOn = (order.PaidAt ?? order.UpdatedAt).InZone(eventSettings.TimeZone).Date;
-            await email.SendAsync(emails.OrderReceipt(new OrderReceiptMail(
-                buyer.Id, buyer.Email!, order.BuyerName, eventSettings.EventName, order.Reference, paidOn,
-                order.PaymentMethod, order.Lines, order.TotalMinor, order.RefundedMinor,
-                new Uri($"{baseUrl}/Tickets/Buy/Order/{order.Id}"),
-                fresh ? null : DeliveryIdFor("ticket_order_receipt", order.Id)), SupportedOr(order.Culture)), ct);
-            receiptSent = true;
-        }
-        return new DeliveryOutcome(tickets, ticketMails, skipped, receiptSent);
-    }
+        var paidOn = (order.PaidAt ?? order.UpdatedAt).InZone(eventSettings.TimeZone).Date;
+        await email.SendAsync(emails.OrderReceipt(new OrderReceiptMail(
+            order.BuyerUserId,
+            buyer?.Email ?? order.BuyerEmail,
+            order.BuyerName,
+            eventSettings.EventName,
+            order.Reference,
+            paidOn,
+            order.PaymentMethod,
+            order.Lines,
+            order.TotalMinor,
+            order.RefundedMinor,
+            new Uri($"{baseUrl}/Tickets/Buy/Order/{order.Id}"),
+            fresh ? null : DeliveryIdFor("ticket_order_receipt", order.Id)), SupportedOr(order.Culture)), ct);
 
-    private async Task<bool> CanMailAsync(TicketCheckoutTicket ticket, IReadOnlyList<TicketCheckoutTicket> family, CancellationToken ct)
-    {
-        if (!ticket.IsHeld || TicketPiiTombstone.IsTombstoned(ticket.HolderName, ticket.HolderEmail))
-            return false;
-        if (ticket.HolderUserId is { } holder && await users.GetUserInfoAsync(holder, ct) is not { IsTombstone: false })
-            return false;
-        if (ticket.ParentTicketId is { } parentId)
-        {
-            if (family.FirstOrDefault(t => t.Id == parentId) is not { IsHeld: true } parent
-                || TicketPiiTombstone.IsTombstoned(parent.HolderName, parent.HolderEmail))
-                return false;
-            if (parent.HolderUserId is { } adult && await users.GetUserInfoAsync(adult, ct) is not { IsTombstone: false })
-                return false;
-        }
-        return true;
-    }
-
-    private async Task<IReadOnlyList<TicketCheckoutTicket>> RidersAsync(
-        TicketCheckoutTicket ticket, IReadOnlyList<TicketCheckoutTicket> family, CancellationToken ct)
-    {
-        var riders = new List<TicketCheckoutTicket>();
-        foreach (var rider in family.Where(t => t.ParentTicketId == ticket.Id
-                     && t.State == TicketCheckoutTicketState.Valid && string.IsNullOrWhiteSpace(t.HolderEmail)))
-            if (await CanMailAsync(rider, family, ct))
-                riders.Add(rider);
-        return riders;
+        return new DeliveryOutcome(tickets, ticketMails, skipped);
     }
 
     /// <summary>The order timeline is where the ticketing team looks when a ticket "never arrived".</summary>
     private async Task RecordOnTimelineAsync(
         Guid orderId, TicketCheckoutOrderEventKind kind, DeliveryOutcome sent, Guid? actorUserId, CancellationToken ct)
     {
-        if (sent.HasMail)
-            await checkout.RecordDeliveryAsync(orderId, kind, sent.Describe(), actorUserId, ct);
-        if (sent.Skipped > 0 || !sent.ReceiptSent)
+        await checkout.RecordDeliveryAsync(orderId, kind, sent.Describe(), actorUserId, ct);
+        if (sent.Skipped > 0)
             await checkout.RecordDeliveryAsync(orderId, TicketCheckoutOrderEventKind.TicketMailSkipped,
-                sent.Describe(), actorUserId, ct);
+                $"{sent.Skipped} ticket(s) have no email address, so their ticket email was not sent", actorUserId, ct);
     }
 
     /// <summary>Stable per mail and subject, so a repeated hand-off reuses the outbox row instead of mailing twice.</summary>
@@ -368,7 +310,7 @@ internal sealed class TicketDeliveryService(
     private async Task<string?> EventNameAsync(Guid settingsId, CancellationToken ct)
     {
         var ticketing = await checkout.GetTicketingSettingsAsync(settingsId, ct);
-        return ticketing is not { CancelledAt: null } ? null : (await settings.GetEventSettingsByIdAsync(ticketing.EventSettingsId, ct))?.EventName;
+        return ticketing is null ? null : (await settings.GetEventSettingsByIdAsync(ticketing.EventSettingsId, ct))?.EventName;
     }
 
     /// <summary>
@@ -381,13 +323,10 @@ internal sealed class TicketDeliveryService(
     private static string SupportedOr(string? language) =>
         language is not null && language.IsSupportedCultureCode() ? language : CultureCatalog.DefaultCultureCode;
 
-    private sealed record DeliveryOutcome(IReadOnlyList<TicketCheckoutTicket> Tickets, int TicketMails, int Skipped, bool ReceiptSent)
+    private sealed record DeliveryOutcome(IReadOnlyList<TicketCheckoutTicket> Tickets, int TicketMails, int Skipped)
     {
-        public bool HasMail => TicketMails > 0 || ReceiptSent;
-
         public string Describe() =>
-            $"Handed {TicketMails} ticket email(s) for {Tickets.Count} eligible ticket(s)"
-            + (ReceiptSent ? " and the receipt to Email" : " to Email; receipt skipped because the buyer account was unavailable")
-            + (Skipped > 0 ? $"; {Skipped} skipped for lack of an available recipient" : "");
+            $"Handed {TicketMails} ticket email(s) for {Tickets.Count} live ticket(s) and the receipt to Email"
+            + (Skipped > 0 ? $"; {Skipped} skipped for lack of an address" : "");
     }
 }

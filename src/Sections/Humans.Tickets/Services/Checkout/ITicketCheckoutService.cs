@@ -61,9 +61,8 @@ internal interface ITicketCheckoutService : ITicketingPlatformEvents
 
     Task<TicketCheckoutTicket?> GetTicketAsync(Guid id, CancellationToken ct = default);
 
-    /// <summary>Appends a delivery step; a resale offer is marked notified only after its email reaches the outbox.</summary>
-    Task RecordDeliveryAsync(Guid orderId, TicketCheckoutOrderEventKind kind, string detail, Guid? actorUserId,
-        CancellationToken ct = default, Guid? resaleOfferId = null);
+    /// <summary>Appends a ticket delivery step (emailed, resent, skipped) to the order's timeline.</summary>
+    Task RecordDeliveryAsync(Guid orderId, TicketCheckoutOrderEventKind kind, string detail, Guid? actorUserId, CancellationToken ct = default);
 
     /// <summary>Every ticket the person holds or held, any event and state, newest first.</summary>
     Task<IReadOnlyList<TicketCheckoutTicket>> GetTicketsForHolderAsync(Guid userId, CancellationToken ct = default);
@@ -113,7 +112,7 @@ internal interface ITicketCheckoutService : ITicketingPlatformEvents
     Task<CheckoutMutationResult> VoidTicketAsync(
         Guid ticketId, string reason, long refundMinor, Guid actorUserId, CancellationToken ct = default);
 
-    /// <summary>Admin override for a voided ticket: erased identities, unavailable holders, another held ticket and cancelled events refuse restoration.</summary>
+    /// <summary>Admin override: a voided ticket works again, unless its holder holds another or the event is cancelled.</summary>
     Task<CheckoutMutationResult> RestoreTicketAsync(Guid ticketId, string reason, Guid actorUserId, CancellationToken ct = default);
 
     /// <summary>The ticketing team takes a holder's ticket out of the resale queue; the holder keeps it.</summary>

@@ -45,41 +45,13 @@ public sealed class PretixStripeTests
 
         var ledger = await Create(pretix, stripe: _stripe).GetPaymentLedgerAsync(Now - Duration.FromDays(1), Now, Ct);
 
-        ledger!.AccountKey.Should().Be("stripe:Tickets");
-        ledger.Entries.Select(e => (e.Id, e.Kind, e.AmountMinor, e.FeeMinor, e.HumansOrderId)).Should().Equal(
+        ledger!.Entries.Select(e => (e.Id, e.Kind, e.AmountMinor, e.FeeMinor, e.HumansOrderId)).Should().Equal(
             ("txn_c", PaymentLedgerEntryKind.Charge, 100000L, 1440L, paid),
             ("txn_r", PaymentLedgerEntryKind.Refund, -22500L, 0L, refunded),
             ("txn_x", PaymentLedgerEntryKind.Charge, 500L, 30L, null));
         ledger.Payouts.Should().ContainSingle().Which.ContentsNetMinor.Should().BeNull();
         pretix.Requests.Should().OnlyContain(r => r.Route.StartsWith("GET ", StringComparison.Ordinal))
             .And.ContainSingle(r => r.Route.EndsWith("/events/", StringComparison.Ordinal));
-    }
-
-    [HumansTheory]
-    [InlineData(true, 1, "*repeated*")]
-    [InlineData(false, 500, "*500-page*")]
-    public async Task GetPaymentLedgerAsync_UnboundedEvents_RefusesIncompleteTraversal(
-        bool repeated, int requests, string message)
-    {
-        const string eventsPath = "/api/v1/organizers/nobodies/events/";
-        _stripe.GetAccountLedgerAsync("Tickets", Now - Duration.FromDays(1), Now, Arg.Any<CancellationToken>())
-            .Returns(new StripeAccountLedger(
-                [Line("txn_c", "charge", 100000, 1440, "pi_new", $"NOWHERE2027-{Code}", Code)], []));
-        var pretix = new FakePretix();
-        var pages = repeated ? 2 : 501;
-        for (var page = 1; page <= pages; page++)
-            pretix.On("GET", eventsPath, HttpStatusCode.OK, new
-            {
-                results = Array.Empty<object>(),
-                next = page == pages ? null
-                    : repeated ? $"https://pretix.test{eventsPath}" : $"{eventsPath}?page={page + 1}",
-            });
-
-        var read = () => Create(pretix, stripe: _stripe)
-            .GetPaymentLedgerAsync(Now - Duration.FromDays(1), Now, Ct);
-
-        (await read.Should().ThrowAsync<HttpRequestException>()).WithMessage(message);
-        pretix.Requests.Should().HaveCount(requests);
     }
 
     [HumansFact]
@@ -98,7 +70,7 @@ public sealed class PretixStripeTests
     [HumansFact]
     public async Task A_paid_order_reports_the_fee_Stripe_kept_on_its_PaymentIntent()
     {
-        var pretix = EurEvent().On("GET", $"{Api}orders/{Code}/", HttpStatusCode.OK, PaidWithStripe(new { id = "pi_1", payment_method = "pm_1" }));
+        var pretix = new FakePretix().On("GET", $"{Api}orders/{Code}/", HttpStatusCode.OK, PaidWithStripe(new { id = "pi_1", payment_method = "pm_1" }));
         _stripe.GetAccountPaymentFeeAsync("Tickets", "pi_1", Arg.Any<CancellationToken>()).Returns(1440L);
 
         var status = await Create(pretix, stripe: _stripe).GetStatusAsync($"nowhere2027/{Code}", Ct);
@@ -110,7 +82,7 @@ public sealed class PretixStripeTests
     [HumansFact]
     public async Task A_payment_without_a_PaymentIntent_never_asks_Stripe()
     {
-        var pretix = EurEvent().On("GET", $"{Api}orders/{Code}/", HttpStatusCode.OK, PaidWithStripe(new { }));
+        var pretix = new FakePretix().On("GET", $"{Api}orders/{Code}/", HttpStatusCode.OK, PaidWithStripe(new { }));
 
         (await Create(pretix, stripe: _stripe).GetStatusAsync($"nowhere2027/{Code}", Ct)).FeeMinor.Should().BeNull();
 

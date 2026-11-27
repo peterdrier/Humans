@@ -99,14 +99,7 @@ public interface ITicketingPlatform : IApplicationService
 /// The payment account for a period: <paramref name="Entries"/> is every balance movement in it, payouts included;
 /// <paramref name="Payouts"/> every payout to the bank created in it.
 /// </summary>
-public sealed record PaymentLedger(IReadOnlyList<PaymentLedgerEntry> Entries, IReadOnlyList<PaymentPayout> Payouts)
-{
-    /// <summary>
-    /// A provider-qualified account identity. Adapters naming the same nonblank key contribute order attribution,
-    /// and local orders across platforms are checked together. Null retains platform-scoped reconciliation.
-    /// </summary>
-    public string? AccountKey { get; init; }
-}
+public sealed record PaymentLedger(IReadOnlyList<PaymentLedgerEntry> Entries, IReadOnlyList<PaymentPayout> Payouts);
 
 /// <summary>
 /// One balance movement. <paramref name="AmountMinor"/> is signed, money into the account positive (a charge, a
@@ -248,10 +241,9 @@ public sealed record PlatformOrderSession(string PlatformOrderId, Uri PaymentUrl
 /// <para>
 /// <paramref name="RefundedMinor"/> is everything refunded against the order so far, however it was issued, so a
 /// refund made in the platform's own dashboard is still seen; it moves only once money has actually gone back. Tickets
-/// repeats each <see cref="RefundState.Pending"/> refund under its own id to learn its outcome. Succeeded and
-/// unresolved automated amounts are accounted for before <see cref="RefundState.ManualRequired"/> refunds settle
-/// oldest-first from the remaining total. <paramref name="RefundFailed"/> (a refund the platform accepted has since
-/// failed) is informational.
+/// settles its <see cref="RefundState.Pending"/> and <see cref="RefundState.ManualRequired"/> refunds from it, oldest
+/// first, and repeats each pending refund <paramref name="RefundedMinor"/> does not cover, under its own id, to learn
+/// whether it failed. <paramref name="RefundFailed"/> (a refund the platform accepted has since failed) is informational.
 /// </para>
 /// <para>
 /// <paramref name="ChargedBackMinor"/> is what the buyer's bank has taken back in a chargeback that the event has not won;
@@ -282,9 +274,7 @@ public enum PlatformOrderState
     Processing,
 }
 
-/// <summary><paramref name="CreatedAt"/> is the persisted refund request time, unchanged on every replay.
-/// A platform may require it before starting a refund when its idempotency guarantee expires.</summary>
-public sealed record RefundRequest(Guid RefundId, string PlatformOrderId, long AmountMinor, string Reason, Instant? CreatedAt = null);
+public sealed record RefundRequest(Guid RefundId, string PlatformOrderId, long AmountMinor, string Reason);
 
 /// <summary>
 /// <paramref name="PlatformRefundId"/> is required whenever the platform accepted the refund

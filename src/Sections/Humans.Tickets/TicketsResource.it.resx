@@ -170,9 +170,6 @@
   <data name="Tickets_Buy_Empty" xml:space="preserve">
     <value>Scegli almeno un biglietto o una donazione.</value>
   </data>
-  <data name="Tickets_Buy_CancelUnavailable" xml:space="preserve">
-    <value>Non è possibile annullare questo ordine perché il fornitore di pagamenti non è disponibile. Contatta il team della biglietteria.</value>
-  </data>
   <data name="Tickets_Buy_PlatformFailed" xml:space="preserve">
     <value>Non è stato possibile aprire la pagina di pagamento. Riprova tra poco.</value>
   </data>

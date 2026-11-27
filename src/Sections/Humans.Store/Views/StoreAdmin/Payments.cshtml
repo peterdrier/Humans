@@ -10,7 +10,6 @@
     {
         StripeReconciliationStatus.Recorded => ("bg-success", "Recorded"),
         StripeReconciliationStatus.RecordedFailed => ("bg-danger", "Recorded as failed — review required"),
-        StripeReconciliationStatus.RecordedConflict => ("bg-danger", "Recorded payment differs — review required"),
         StripeReconciliationStatus.RecordedPending => ("bg-warning text-dark", "Recorded (pending settlement)"),
         StripeReconciliationStatus.Missing => ("bg-danger", "Missing"),
         StripeReconciliationStatus.Unmatched => ("bg-warning text-dark", "Unmatched"),
@@ -69,14 +68,13 @@ else if (!report.StripeQueried)
             <span class="badge bg-warning text-dark">@report.UnmatchedCount unmatched</span>
         </div>
         <div class="ms-auto d-flex align-items-center gap-3">
-            @if (report.RecoverableCount > 0)
+            @if (report.MissingCount > 0)
             {
-                <span class="text-danger fw-semibold">@report.RecoverableTotalEur.ToEuro() collected but not accounted for</span>
+                <span class="text-danger fw-semibold">@report.MissingTotalEur.ToEuro() collected but unrecorded</span>
                 <form authorize-policy="@StorePolicies.Manage" asp-action="RecordMissingPayments" method="post" class="mb-0">
                     @Html.AntiForgeryToken()
-                    <button type="submit" class="btn btn-primary"
-                            data-confirm="Record @report.MissingCount missing payment(s) and settle @report.RecordedPendingCount pending payment(s) confirmed paid by Stripe?">
-                        <i class="fa-solid fa-rotate me-1"></i>Reconcile @report.RecoverableCount payment(s)
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fa-solid fa-rotate me-1"></i>Record @report.MissingCount missing payment(s)
                     </button>
                 </form>
             }

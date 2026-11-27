@@ -122,32 +122,16 @@ integration uses — see [`memory/code/stripe-restricted-keys.md`](../../../../m
   cancellation — and `ParseStoreCheckoutEvent` never throws. An empty list means Stripe answered
   with nothing, so reconciliation cannot mistake an unreadable account for one with no sessions
   and false-flag recorded payments as orphans.
-- Complete live-account and Store inventories use the mirror's validated pager: every page requires an explicit
-  boolean `has_more` and data array, every item a nonblank unique ID. Empty continuation pages and the 500-page cap
-  fail the whole read rather than publishing partial reconciliation data. Read filters, account contexts and order
-  are preserved. Mirror pages retain their single paced rate-limit retry; live-account and Store reads retain their
-  existing error propagation. Access probes and first-match fee lookup do not require a full inventory.
-- Store refund and charge reads require an explicit nonblank ID and integer amount and creation timestamp in the
-  raw response. Incomplete objects fail before returning financial data; SDK defaults cannot become booked amounts
-  or invoice-matching dates. A refund's nullable status retains its pending/unknown handling.
-- A missing balance transaction never becomes an explicit zero. Fee-detail reads require an explicit total fee,
-  fee-details array, and each entry's type and integer amount. An explicit empty array still reports zero.
-  Account-fee reads return logged unknown for an absent fee amount; an explicit zero remains zero on direct,
-  search and fallback reads. Missing Store session timestamps remain null rather than becoming default dates.
-- Live ledger movements require explicit amount, fee, creation time and reporting category. Payouts require amount,
-  creation/arrival times, status, reconciliation status and an automatic flag. Payout contents require a type and,
-  except for the excluded payout movement itself, an explicit net amount. Missing consumed fields reject the
-  whole ledger; optional descriptions, metadata and source links remain optional.
+- A missing balance transaction never becomes an explicit zero; a present transaction with no
+  fee entries reports zero.
 - `CreateCheckoutSessionAsync` rejects a non-positive amount and an unconfigured Store key
   before any network call, and throws (rather than returning a sentinel) on Stripe failure.
-- A checkout attempt id is stamped as `humans_store_checkout_attempt_id` and projected in sessions, including signed webhooks and complete inventories. It becomes the Stripe idempotency key, so repeating an attempt replays its
+- A checkout attempt id becomes the Stripe idempotency key, so repeating an attempt replays its
   session; the session is then re-read so its live status (not the cached `open`) comes back. A
   superseded session is expired before its replacement is created; when it has already completed,
   no replacement is created and the completed session comes back (Status `complete`, no Url).
-  An optional known session ID performs only a GET, ignoring replacement inputs: callers can recover its live state without replaying a POST key beyond Stripe's retention window. Session projection requires a nonblank ID as well as EUR.
 - EUR → minor units rounds half away from zero; minor units → EUR is exact. Both conversions
   live only in `ToStripeMinorUnits` / `FromStripeMinorUnits`.
-- Live account reads also require explicit EUR, case-insensitively: a non-EUR or missing currency on any movement, payout or summed payout-content movement rejects the whole ledger. Direct, search and search-fallback fee reads return logged unknown (null) when the balance transaction lacks EUR; they never reinterpret another currency as EUR cents. The mirror still retains and flags non-EUR rows with their currencies.
 - Every amount read requires explicit EUR, case-insensitively. Ticket fee reads require it on
   the balance transaction and every fee entry — the charge's currency cannot establish the
   settlement currency — and throw before returning any amount. Store session reads require it

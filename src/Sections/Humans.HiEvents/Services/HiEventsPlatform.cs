@@ -144,7 +144,6 @@ internal sealed class HiEventsPlatform : ITicketingPlatform
         EnsureConfigured();
         var (eventId, orderId) = ParsePlatformOrderId(platformOrderId);
         var order = await GetOrderAsync(eventId, orderId, ct);
-        RequireEur(order);
         var state = ToState(order);
 
         return new PlatformOrderStatus(
@@ -394,8 +393,7 @@ internal sealed class HiEventsPlatform : ITicketingPlatform
         }
 
         return new PaymentLedger(entries, stripe.Payouts.Select(p => new PaymentPayout(
-            p.Id, p.CreatedAt, p.ArrivalAt, p.AmountMinor, p.Status, p.ContentsNetMinor, p.ContentsCount)).ToList())
-        { AccountKey = $"stripe:{StripeAccountName}" };
+            p.Id, p.CreatedAt, p.ArrivalAt, p.AmountMinor, p.Status, p.ContentsNetMinor, p.ContentsCount)).ToList());
     }
 
     private async Task<Guid?> HumansOrderOfAsync(IReadOnlyDictionary<string, string> metadata, CancellationToken ct)
@@ -432,22 +430,19 @@ internal sealed class HiEventsPlatform : ITicketingPlatform
                 $"events/{eventId}/orders?per_page={ListPageSize}&page={page}&sort_by=created_at&sort_direction=asc&{range}"), ct);
             var read = await ReadAsync<OrderPage>(response, ct);
             var meta = read.Meta ?? throw new HttpRequestException("Hi.Events answered an order page without its paging.");
-            if (meta.LastPage < 1 || meta.Total is null or < 0)
+            if (meta.LastPage < 1)
                 throw new HttpRequestException("Hi.Events answered an order page with invalid paging.");
-            foreach (var order in read.Data ?? throw new HttpRequestException("Hi.Events answered an order page without data."))
-            {
-                RequireEur(order);
+            foreach (var order in read.Data ?? [])
                 orders[order.Id] = new PlatformOrderSummary(
-                    ToPlatformOrderId(eventId, order.Id),
-                    Guid.TryParseExact(order.ExternalReference, "N", out var humansOrderId) ? humansOrderId : null,
-                    ParseCreatedAt(order.CreatedAt)
-                        ?? throw new HttpRequestException($"Hi.Events order {order.Id} has an unreadable created_at '{order.CreatedAt}'."),
-                    ToState(order),
-                    ToMinor(order.TotalGross),
-                    order.Attendees?.Count,
-                    ToMinor(order.TotalRefunded ?? 0m),
-                    ToMinor(order.TotalDisputed ?? 0m));
-            }
+                ToPlatformOrderId(eventId, order.Id),
+                Guid.TryParseExact(order.ExternalReference, "N", out var humansOrderId) ? humansOrderId : null,
+                ParseCreatedAt(order.CreatedAt)
+                    ?? throw new HttpRequestException($"Hi.Events order {order.Id} has an unreadable created_at '{order.CreatedAt}'."),
+                ToState(order),
+                ToMinor(order.TotalGross),
+                order.Attendees?.Count,
+                ToMinor(order.TotalRefunded ?? 0m),
+                ToMinor(order.TotalDisputed ?? 0m));
             if (page < meta.LastPage)
                 continue;
             // Orders sharing a created_at second may change places between pages; one skipped shows here.
@@ -509,14 +504,11 @@ internal sealed class HiEventsPlatform : ITicketingPlatform
                 $"events/{eventId}/products?per_page={ListPageSize}&page={page}"), ct);
             var read = await ReadAsync<ProductPage>(response, ct);
             var meta = read.Meta ?? throw new HttpRequestException("Hi.Events answered a product page without its paging.");
-            if (meta.LastPage < 1 || meta.Total is null or < 0)
+            if (meta.LastPage < 1)
                 throw new HttpRequestException("Hi.Events answered a product page with invalid paging.");
             products.AddRange(read.Data ?? throw new HttpRequestException("Hi.Events answered a product page without data."));
-            if (page < meta.LastPage)
-                continue;
-            if (products.Select(p => p.Id).Distinct().Count() != meta.Total)
-                throw new HttpRequestException($"Hi.Events listed an incomplete product catalogue of the {meta.Total} it counts; read again.");
-            return products;
+            if (page >= meta.LastPage)
+                return products;
         }
         throw new HttpRequestException($"Hi.Events products hit the {PageSafetyCap}-page safety cap.");
     }
@@ -606,12 +598,6 @@ internal sealed class HiEventsPlatform : ITicketingPlatform
 
     private const int BuyerNamePartLength = 50;
 
-    private static void RequireEur(HiEventsOrder order)
-    {
-        if (!string.Equals(order.Currency, "EUR", StringComparison.OrdinalIgnoreCase))
-            throw new TicketingPlatformException($"Hi.Events order {order.Id} does not declare EUR currency.");
-    }
-
     private static long ToMinor(decimal amount) => (long)decimal.Round(amount * 100m, MidpointRounding.AwayFromZero);
 
     internal static string ToPlatformOrderId(int eventId, int orderId) =>
@@ -661,7 +647,7 @@ internal sealed class HiEventsPlatform : ITicketingPlatform
 
     private sealed record OrderPage(List<HiEventsOrder>? Data, PageMeta? Meta);
 
-    private sealed record PageMeta(int LastPage, int? Total);
+    private sealed record PageMeta(int LastPage, int Total);
 
     private sealed record HiEventsAttendee(int Id);
 

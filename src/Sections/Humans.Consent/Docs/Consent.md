@@ -175,8 +175,6 @@ Document archival uses the shared `data-confirm` handler: each click prompts onc
 
 ## Invariants
 
-- Required re-consent notices and reminders trim trailing slashes from `Email:BaseUrl`, retaining any application subpath and one separator before `/Consent`.
-
 - Consent registers the external `github` health check for the legal-document repository in `GitHubSettings`. It reports repository access, authentication and rate limits; it does not probe Guide's source. Configured probes observe the framework timeout/abort token, and caller cancellation propagates without logging an availability failure or starting an already-canceled request.
 
 - Legal-content and single/bulk consent-set reads check caller cancellation after fetching and before cache publication. A fetch that returns data after cancellation cannot populate those caches; the next read retries. Successful consent submissions still finish their detached cache refresh.

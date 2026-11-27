@@ -30,28 +30,26 @@ internal sealed partial class StripeService
         try
         {
             var period = new DateRangeOptions { GreaterThanOrEqual = from.ToDateTimeUtc(), LessThan = to.ToDateTimeUtc() };
-            var transactionService = new BalanceTransactionService(client);
-            var transactions = await StripeMirrorClient.AllPagesAsync(
-                after => transactionService.ListAsync(new BalanceTransactionListOptions
-                { Created = period, Limit = 100, StartingAfter = after, Expand = ["data.source"] }, request, ct),
-                transaction => transaction.Id, $"{accountName} balance transactions", ct,
-                item => StripeMirrorClient.RequireFields(item, "ledger movement", ["reporting_category"], ["amount", "fee", "created"]));
-            foreach (var transaction in transactions)
-                RequireEur(transaction.Currency, $"balance transaction {transaction.Id}");
+            var transactions = new List<BalanceTransaction>();
+            await foreach (var t in new BalanceTransactionService(client).ListAutoPagingAsync(
+                               new BalanceTransactionListOptions { Created = period, Limit = 100, Expand = ["data.source"] },
+                               request, ct))
+                transactions.Add(t);
 
             // A refund or dispute usually names an intent from before the period: list from a day earlier, read the rest.
-            var intents = (await StripeMirrorClient.AllPagesAsync(
-                after => new PaymentIntentService(client).ListAsync(new PaymentIntentListOptions
-                {
-                    Created = new DateRangeOptions
-                    {
-                        GreaterThanOrEqual = (from - Duration.FromDays(1)).ToDateTimeUtc(),
-                        LessThan = to.ToDateTimeUtc(),
-                    },
-                    Limit = 100,
-                    StartingAfter = after,
-                }, request, ct), intent => intent.Id, $"{accountName} payment intents", ct))
-                .ToDictionary(intent => intent.Id, StringComparer.Ordinal);
+            var intents = new Dictionary<string, PaymentIntent>(StringComparer.Ordinal);
+            await foreach (var intent in new PaymentIntentService(client).ListAutoPagingAsync(
+                               new PaymentIntentListOptions
+                               {
+                                   Created = new DateRangeOptions
+                                   {
+                                       GreaterThanOrEqual = (from - Duration.FromDays(1)).ToDateTimeUtc(),
+                                       LessThan = to.ToDateTimeUtc(),
+                                   },
+                                   Limit = 100,
+                               },
+                               request, ct))
+                intents[intent.Id] = intent;
 
             var lines = new List<StripeLedgerLine>();
             foreach (var t in transactions)
@@ -81,14 +79,9 @@ internal sealed partial class StripeService
             }
 
             var payouts = new List<StripeLedgerPayout>();
-            foreach (var payout in await StripeMirrorClient.AllPagesAsync(
-                         after => new PayoutService(client).ListAsync(new PayoutListOptions
-                         { Created = period, Limit = 100, StartingAfter = after }, request, ct),
-                         payout => payout.Id, $"{accountName} payouts", ct,
-                         item => StripeMirrorClient.RequireFields(item, "ledger payout", ["status", "reconciliation_status"],
-                             ["amount", "created", "arrival_date"], ["automatic"])))
+            await foreach (var payout in new PayoutService(client).ListAutoPagingAsync(
+                               new PayoutListOptions { Created = period, Limit = 100 }, request, ct))
             {
-                RequireEur(payout.Currency, $"payout {payout.Id}");
                 long? contentsNet = null;
                 var contentsCount = 0;
                 // Stripe lists a payout's contents only for automatic payouts, and in full only once it has finished
@@ -96,19 +89,11 @@ internal sealed partial class StripeService
                 if (payout.Automatic && string.Equals(payout.ReconciliationStatus, "completed", StringComparison.Ordinal))
                 {
                     contentsNet = 0;
-                    foreach (var t in await StripeMirrorClient.AllPagesAsync(
-                                 after => transactionService.ListAsync(new BalanceTransactionListOptions
-                                 { Payout = payout.Id, Limit = 100, StartingAfter = after }, request, ct),
-                                 transaction => transaction.Id, $"payout {payout.Id} contents", ct, item =>
-                                 {
-                                     StripeMirrorClient.RequireFields(item, "payout movement", ["type"], []);
-                                     if (!string.Equals(item.GetProperty("type").GetString(), "payout", StringComparison.Ordinal))
-                                         StripeMirrorClient.RequireFields(item, "payout movement", [], ["net"]);
-                                 }))
+                    await foreach (var t in new BalanceTransactionService(client).ListAutoPagingAsync(
+                                       new BalanceTransactionListOptions { Payout = payout.Id, Limit = 100 }, request, ct))
                     {
                         if (string.Equals(t.Type, "payout", StringComparison.Ordinal))
                             continue;
-                        RequireEur(t.Currency, $"payout movement {t.Id}");
                         contentsNet += t.Net;
                         contentsCount++;
                     }
@@ -168,25 +153,7 @@ internal sealed partial class StripeService
             return null;
         try
         {
-            var transaction = (await read(client, request))?.LatestCharge?.BalanceTransaction;
-            if (transaction is null)
-                return null;
-            if (!string.Equals(transaction.Currency, "eur", StringComparison.OrdinalIgnoreCase))
-            {
-                logger.LogWarning("Stripe fee of {What} on {Account} has currency {Currency}; EUR is required",
-                    what, accountName, transaction.Currency);
-                return null;
-            }
-            try
-            {
-                StripeMirrorClient.RequireFields(transaction.RawJsonElement ?? default, "payment fee", [], ["fee"]);
-            }
-            catch (InvalidOperationException ex)
-            {
-                logger.LogWarning(ex, "Stripe fee of {What} on the {Account} account has incomplete data", what, accountName);
-                return null;
-            }
-            return transaction.Fee;
+            return (await read(client, request))?.LatestCharge?.BalanceTransaction?.Fee;
         }
         catch (Exception ex) when (ex is StripeException or HttpRequestException
                                        || (ex is TaskCanceledException && !ct.IsCancellationRequested))
@@ -257,12 +224,6 @@ internal sealed partial class StripeService
         {
             return new(false, $"Stripe could not be reached: {ex.Message}");
         }
-    }
-
-    private static void RequireEur(string? currency, string source)
-    {
-        if (!string.Equals(currency, "eur", StringComparison.OrdinalIgnoreCase))
-            throw new InvalidOperationException($"Stripe {source} does not declare EUR currency.");
     }
 
     private static string Quoted(string value) => value.Replace("\\", "\\\\", StringComparison.Ordinal).Replace("'", "\\'", StringComparison.Ordinal);

@@ -29,8 +29,7 @@ public interface IStripeService : IApplicationService
     /// non-null
     /// <paramref name="supersededSessionId"/> is expired first; when that session has already completed, no new session
     /// is created and the completed one is returned (Status <c>complete</c>, no Url). Throws on Stripe failure; a null
-    /// <paramref name="customerEmail"/> lets Stripe collect it. A non-null <paramref name="knownSessionId"/> reads
-    /// that session without creating or expiring anything, including after the idempotency key's lifetime.
+    /// <paramref name="customerEmail"/> lets Stripe collect it.
     /// </summary>
     [ExternalWrite]
     Task<StoreCheckoutSessionData> CreateCheckoutSessionAsync(
@@ -42,12 +41,11 @@ public interface IStripeService : IApplicationService
         string lineItemDescription,
         CancellationToken ct = default,
         Guid? checkoutAttemptId = null,
-        string? supersededSessionId = null,
-        string? knownSessionId = null);
+        string? supersededSessionId = null);
 
     /// <summary>
     /// <paramref name="body"/> must be the raw request body. Null when the signing secret is unset, the signature
-    /// is invalid, the payload is malformed or incomplete, or a session lacks identity or EUR currency; never throws.
+    /// is invalid, the payload is malformed or incomplete, or a session lacks EUR currency; never throws.
     /// </summary>
     StoreCheckoutWebhookEvent? ParseStoreCheckoutEvent(string body, string signature);
 
@@ -79,15 +77,13 @@ public interface IStripeService : IApplicationService
     /// Every balance movement and payout created in [<paramref name="from"/>, <paramref name="to"/>) on the
     /// <c>Stripe:MirrorAccounts</c> entry named <paramref name="accountName"/>, read live, each movement with the
     /// PaymentIntent behind it. Null when that account or its key is not configured. A Stripe refusal throws
-    /// <see cref="InvalidOperationException"/>; movements, payouts or payout contents without explicit EUR reject the
-    /// whole ledger with the same exception. An unreachable Stripe throws <see cref="HttpRequestException"/>.
+    /// <see cref="InvalidOperationException"/>; an unreachable Stripe throws <see cref="HttpRequestException"/>.
     /// </summary>
     Task<StripeAccountLedger?> GetAccountLedgerAsync(string accountName, Instant from, Instant to, CancellationToken ct = default);
 
     /// <summary>
     /// What Stripe kept, in minor units, on a PaymentIntent of the named account. Null when unknown: the account is
-    /// not configured, the charge has no balance transaction yet, or Stripe could not be read (logged). A balance
-    /// transaction without explicit EUR also returns null and is logged. Never throws
+    /// not configured, the charge has no balance transaction yet, or Stripe could not be read (logged). Never throws
     /// but on cancellation, so a fee lookup never holds up a paid order.
     /// </summary>
     Task<long?> GetAccountPaymentFeeAsync(string accountName, string paymentIntentId, CancellationToken ct = default);
@@ -193,5 +189,4 @@ public sealed record StoreCheckoutSessionData(
     string? PaymentStatus = null,
     Instant? CreatedAt = null,
     string? Status = null,
-    string? Url = null,
-    Guid? CheckoutAttemptId = null);
+    string? Url = null);

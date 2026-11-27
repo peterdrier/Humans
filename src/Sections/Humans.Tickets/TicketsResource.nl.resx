@@ -170,9 +170,6 @@
   <data name="Tickets_Buy_Empty" xml:space="preserve">
     <value>Kies minstens één ticket of een donatie.</value>
   </data>
-  <data name="Tickets_Buy_CancelUnavailable" xml:space="preserve">
-    <value>Deze bestelling kan niet worden geannuleerd omdat de betalingsprovider niet beschikbaar is. Neem contact op met het ticketteam.</value>
-  </data>
   <data name="Tickets_Buy_PlatformFailed" xml:space="preserve">
     <value>De betaalpagina kon niet worden geopend. Probeer het zo meteen opnieuw.</value>
   </data>

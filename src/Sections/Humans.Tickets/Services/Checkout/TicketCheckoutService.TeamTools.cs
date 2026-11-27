@@ -2,7 +2,6 @@ using System.Diagnostics;
 using System.Security.Cryptography;
 using Humans.AuditLog.Contracts;
 using Humans.Tickets.Contracts;
-using Humans.Tickets.Data;
 using Humans.Tickets.Domain.Checkout;
 using NodaTime;
 
@@ -28,14 +27,13 @@ internal sealed partial class TicketCheckoutService
         offer.State = TicketResaleOfferState.Withdrawn;
         offer.WithdrawnAt = clock.GetCurrentInstant();
         offer.Invites = [];
+        await repository.UpdateOfferAsync(offer, ct);
         var ticket = await repository.GetTicketAsync(offer.TicketId, ct);
         if (ticket?.State == TicketCheckoutTicketState.Offered)
         {
             ticket.State = TicketCheckoutTicketState.Valid;
-            await repository.UpdateTicketAsync(ticket, ct, offer: offer);
+            await repository.UpdateTicketAsync(ticket, ct);
         }
-        else
-            await repository.UpdateOfferAsync(offer, ct);
 
         var why = reason.Trim();
         var barcode = ticket?.Barcode ?? offer.TicketId.ToString();
@@ -180,35 +178,25 @@ internal sealed partial class TicketCheckoutService
         await TimelineAsync(order.Id, TicketCheckoutOrderEventKind.EventCancelled,
             $"{why}. {live.Count} ticket(s) voided" + (offers.Count > 0 ? $", {offers.Count} taken out of the resale queue" : string.Empty) +
             refundNote, null, ct);
-        var buyer = await users.GetUserInfoAsync(order.BuyerUserId, ct);
-        if (buyer is not { IsTombstone: false } || TicketPiiTombstone.IsTombstoned(order.BuyerName, order.BuyerEmail))
-        {
-            if (!state.HasSkippedNotice(order))
-                await TimelineAsync(order.Id, TicketCheckoutOrderEventKind.CancellationNoticeSkipped,
-                    "Cancellation notice not sent: buyer account is unavailable", null, ct);
-            return true;
-        }
         var eventName = (await settings.GetEventSettingsByIdAsync(ticketing.EventSettingsId, ct))?.EventName ?? string.Empty;
-        var notice = emails.EventCancelled(buyer.Id, buyer.Email!, order.BuyerName, eventName, refundMinor,
-            refundByHand, order.Lines.Any(l => l.Kind == OrderLineKind.Donation), order.Culture);
-        await email.SendAsync(notice with { DeliveryId = CancellationState.CancelNoticeId(ticketing.Id, order.Id) }, ct);
-        await repository.MarkCancellationEmailedAsync(order.Id, clock.GetCurrentInstant(), ct);
+        if (!string.IsNullOrWhiteSpace(order.BuyerEmail))
+        {
+            var notice = emails.EventCancelled(order.BuyerUserId, order.BuyerEmail, order.BuyerName, eventName, refundMinor,
+                refundByHand, order.Lines.Any(l => l.Kind == OrderLineKind.Donation), order.Culture);
+            await email.SendAsync(notice with { DeliveryId = CancellationState.CancelNoticeId(ticketing.Id, order.Id) }, ct);
+        }
+        order.CancellationEmailedAt = clock.GetCurrentInstant();
+        await repository.UpdateOrderAsync(order, ct);
         return true;
     }
 
-    private async Task<CancellationState> LoadCancellationAsync(TicketingSettings ticketing, CancellationToken ct)
-    {
-        var orders = await repository.GetOrdersForSettingsAsync(ticketing.Id, ct);
-        var noticeOrders = orders.Where(o => o.State == TicketCheckoutOrderState.Paid && o.CancellationEmailedAt is null)
-            .Select(o => o.Id).ToList();
-        var skipped = (await repository.GetOrderEventsAsync(noticeOrders, ct))
-            .Where(e => e.Kind == TicketCheckoutOrderEventKind.CancellationNoticeSkipped).Select(e => e.OrderId).ToHashSet();
-        return new CancellationState(ticketing, orders,
+    private async Task<CancellationState> LoadCancellationAsync(TicketingSettings ticketing, CancellationToken ct) =>
+        new(ticketing,
+            await repository.GetOrdersForSettingsAsync(ticketing.Id, ct),
             (await repository.GetTicketsForSettingsAsync(ticketing.Id, ct)).ToLookup(t => t.OrderId),
             (await repository.GetRefundsForSettingsAsync(ticketing.Id, ct)).ToLookup(r => r.OrderId),
-            await repository.GetOffersForSettingsAsync(ticketing.Id, ct), skipped,
+            await repository.GetOffersForSettingsAsync(ticketing.Id, ct),
             clock.GetCurrentInstant());
-    }
 
     /// <summary>
     /// One cancelled event as it stands. Before it is cancelled, <see cref="Since"/> is now, so the progress reads as
@@ -220,7 +208,6 @@ internal sealed partial class TicketCheckoutService
         ILookup<Guid, TicketCheckoutTicket> tickets,
         ILookup<Guid, TicketCheckoutRefund> refunds,
         IReadOnlyList<TicketResaleOffer> offers,
-        IReadOnlySet<Guid> skippedNotices,
         Instant now)
     {
         public ILookup<Guid, TicketCheckoutTicket> Tickets => tickets;
@@ -255,15 +242,12 @@ internal sealed partial class TicketCheckoutService
 
         public bool HasCancelRefund(TicketCheckoutOrder order) => CancelRefund(order) is not null;
 
-        public bool HasSkippedNotice(TicketCheckoutOrder order) => skippedNotices.Contains(order.Id);
-
         /// <summary>
-        /// Paid orders awaiting notice processing (email or explicit skip), with a ticket still working, or with money still owed
+        /// Paid orders not yet emailed (donation only orders too), with a ticket still working, or with money still owed
         /// that the cancellation has not asked for.
         /// </summary>
         public IReadOnlyList<TicketCheckoutOrder> ToDo => Paid
-            .Where(o => (o.CancellationEmailedAt is null && !HasSkippedNotice(o))
-                || tickets[o.Id].Any(t => t.IsHeld) || (Refundable(o) > 0 && !HasCancelRefund(o)))
+            .Where(o => o.CancellationEmailedAt is null || tickets[o.Id].Any(t => t.IsHeld) || (Refundable(o) > 0 && !HasCancelRefund(o)))
             .OrderBy(o => o.PaidAt)
             .ToList();
 

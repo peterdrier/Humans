@@ -21,14 +21,12 @@ Rules every platform follows:
 
 - **Exact price.** The buyer pays exactly the lines; no fee is added. `PlatformOrderStatus.FeeMinor` is only what the
   payment provider kept (processing cost), null when unknown.
-- **Payment metadata.** A newly reported payment method is saved independently of changes to state, fees, refunds or chargebacks, with the order's update time. A missing method in a later status does not clear the known one.
-- **Remote holds.** An open order with a platform order ID keeps its capacity and holder reservation past `ExpiresAt` until recovery confirms closure. Stock checks, duplicate-holder checks, the buy-page order link and resale diagnostics use this same predicate. An order without a remote ID still lapses by local time.
 - **Late payments.** Tickets owns the hold. When `ExpiresAt` passes unpaid, webhooks and background recovery call `CancelAsync` (also when the
   platform reports Expired or Failed, and the order stays open until that cancel succeeds) so the platform stops taking
   money. A payment that lands anyway is reported as
   `Paid`; the adapter never refunds or keeps it silently. Tickets issues the tickets, says so on the timeline and in the
   audit log ("after the order was Expired") and logs a warning; a released resale offer another order took stays
-  with that order, so the late ticket is fresh stock and may put the event one over capacity for the team to settle. Fulfilment also rechecks admission before completing a resale: if the old adult, child or companion has entered, it withdraws the offer and retains their tickets, issues fresh stock to the paid buyer and flags that outcome for the team. The old holder receives no resale refund or sold notice.
+  with that order, so the late ticket is fresh stock and may put the event one over capacity for the team to settle.
 - **Stuck order.** While a buyer's own unpaid order still holds their ticket, the buy page links to it and offers
   "cancel and start again", so a dropped connection never locks them out until `ExpiresAt`. Starting checkout runs to
   the end even if the buyer's request is aborted, so a half-made order always has its platform session.
@@ -39,19 +37,15 @@ Rules every platform follows:
 - **Chargebacks.** `ChargedBackMinor` is what the buyer's bank has taken back and the event has not won. Each change goes on
   the timeline and to the audit log as needing attention; tickets stay valid until the ticketing team decides. It comes
   off what can still be refunded, and the order's tickets cannot be offered for resale while it stands.
-- **Unavailable cancellation.** An open order with a remote order ID cannot be cancelled locally while its platform adapter is unregistered: the payment may still be payable. Buyer cancellation returns a localized refusal and keeps state, timeline and resale reservation unchanged. An order that never received a remote ID may still be cancelled locally.
 - **Recovery cancellation.** A status read remains cancellable. Before closing a platform order, recovery checks cancellation; once that remote attempt starts, its local outcome finishes independently of job shutdown.
 - **Refund cancellation.** Cancellation is checked before each attempt. A started platform refund and its local completion finish independently of request abort or job shutdown. The initial read-only status fetch stays cancellable; settlement replays finish their saved outcome and timeline before cancellation stops the next refund.
 - **Donation receipts.** A donation-only order queues its buyer receipt as soon as it becomes paid, even though it issues no tickets. Missing delivery uses the same 30-minute grace, seven-day recovery window and timeline markers as ticket orders; no holder email or volunteer invitation is created.
-- **Checkout acceptance.** Once the platform returns a session, a local save or timeline failure does not fail the order or release its reservations. The service retries an unconfirmed local save with the accepted session, keeps it pending, and propagates the recording error. It never opens another platform session for that retry; a later status nudge can fulfil or close the original order.
 - **Order page reads.** Buyer/holder and admin GETs read status with the request token and apply local payment, fee, refund-total and chargeback changes, including ticket issuance for a new payment. They never cancel at the platform or replay refunds. An expired/failed status keeps an open order reserved until recovery confirms cancellation; visiting an overdue order cannot release capacity while the platform may still take payment.
-- **Refund diagnostics.** Initial calls, unanswered retries and named-refund settlement share outcome application. Changed failure text or manual instructions persist even when state and platform ID are unchanged; transport failures on a named refund preserve its ID and pending reservation. Failure text fits the existing 1,000-character column without splitting surrogate pairs. Success clears errors and manual-payment links. Identical normalized outcomes add no writes or timeline entries.
-- **Refund retry age.** Every platform attempt carries the refund row's original `CreatedAt`. BoxOffice checks for an existing refund first at any age, but never POSTs an unseen refund with a missing, future or at-least-24-hour-old timestamp: Stripe can forget the idempotency key after that window. The row stays pending for operator reconciliation; neither a new key nor a refreshed timestamp bypasses the guard.
 - **Refund outcome.** `RefundedMinor` moves only once money went back. Webhooks and background recovery settle Tickets'
-  automated `Pending` refunds before `ManualRequired` refunds, oldest first within each group. A pending refund the platform knows by id is repeated under that
+  `Pending` and `ManualRequired` refunds, oldest first. A pending refund the platform knows by id is repeated under that
   id and takes the state the platform answers (`RefundFailed` may follow only the newest refund); one whose call got no
   answer waits for the reconcile job's resend. So a refund made in the platform's dashboard never settles one of Tickets'
-  own. Only `ManualRequired` refunds settle from the part of `RefundedMinor` left after succeeded refunds and unresolved automated amounts are accounted for. Refund attempts return the persisted outcome after recovery, including retries: a pending answer that recovery marks failed refuses the mutation, so a declined refunded void keeps its ticket valid and clears the failed intent. The same money cannot settle both an automated and a manual refund. Failed refunds stop counting against what can still be refunded. The reconcile job re-reads paid orders with
+  own. Only `ManualRequired` refunds settle from the part of `RefundedMinor` that Tickets' succeeded refunds do not explain. Failed refunds stop counting against what can still be refunded. The reconcile job re-reads paid orders with
   unsettled refunds and resends any refund whose platform call threw.
 - **Erasure.** A deletion waits while the member holds a valid or offered ticket, until 30 days after that event's strike
   (Users re-checks when the deletion falls due), so erasure normally runs after the event. It then calls `ErasePersonalDataAsync` for each of their orders before Tickets tombstones its
@@ -60,11 +54,9 @@ Rules every platform follows:
   it never blocks a deletion: a platform's data is exported or erased before its adapter is removed. Tickets then voids
   the member's live tickets and their children's, withdraws their offers, tombstones their names and emails (children's
   names included) clears any resale invitation sent to one of their addresses, and tombstones lines and tickets without an
-  account that carry one of those addresses. Export and erasure share ownership discovery: account ID, the account's
-  primary address and addresses on ID-owned order lines or tickets; email matches apply only to unbound holders.
-  Unbound dependent tickets and their order lines are included across orders. Their platform copies are erased first,
-  and every matching live barcode is voided before local identity erasure. Export hides other buyers' identity and totals;
-  another account's bound holder is never claimed by email alone.
+  account that carry one of those addresses (the account's primary address and those on the member's own orders; such
+  a ticket is tombstoned but left valid, and one issued to another of their addresses is missed). Someone bought for is
+  always an existing account, so their line is erased with that account.
 
 ## Reconciliation
 
@@ -101,18 +93,15 @@ difference everywhere.
 
 ### Fees and payouts
 
-All three platforms also require explicit EUR on native status and order-list amounts (pretix reads currency from the parent event); an unsupported or missing currency rejects the read instead of being counted as EUR cents.
-
-Stripe account ledger reads require explicit EUR on every amount they return or sum. Unknown or other currencies reject the ledger; fee lookups leave the fee unknown, so foreign minor units never enter EUR reconciliation totals.
-
 Where Humans can read the platform's payment account (the shared Tickets Stripe account through the Stripe section's
 `Stripe:MirrorAccounts` entry `Tickets`), the page and the daily run
 also reconcile it by the day the money moved (`GetPaymentLedgerAsync`), so a refund months after the sale counts in the
-month it was made. The three adapters name the same `stripe:Tickets` account. Their order attributions are combined by movement ID across configured platforms, even when an adapter has no local orders, without adding secondary movements or replacing the primary snapshot's amounts, fees or payouts. Orders on those matching platforms are checked together. Unknown movements and other-account orders remain differences; conflicting attribution or an unreadable participating adapter fails the report. Later failed-debit returns use the same combined attribution. Every balance movement is tied to its Humans order: Box Office's payments carry it in metadata; pretix's and Hi.Events'
+month it was made. Every balance movement is tied to its Humans order: Box Office's payments carry it in metadata; pretix's and Hi.Events'
 carry the platform's own order, whose Humans order the adapter reads back from the platform. A payment must
-name a paid (or settling) order on one of the account's platforms, for the order's total, with the fee Humans recorded on the order (a
+name a paid (or settling) order on that platform, for the order's total, with the fee Humans recorded on the order (a
 failed delayed debit whose payment came back, in the period or any time after it, may be Failed); a refund or chargeback must name an order; a payout must
-send exactly the net of the movements Stripe says it contains. Failed and cancelled payouts remain visible as failed but skip contents-mismatch checks and never unbalance: the funds remain in, or return to, the account for a later payout. Otherwise they could hold the nightly alert forever. Balance-movement totals still include every payout and reversal. Totals show charged, refunded, chargebacks, fees, net into the balance and paid out to the
+send exactly the net of the movements Stripe says it contains. A failed payout is shown but does not unbalance: Stripe
+returns the money and pays it out again, and it would otherwise hold the nightly alert forever. Totals show charged, refunded, chargebacks, fees, net into the balance and paid out to the
 bank, and the fees on order payments Humans against Stripe. Fees not on a payment (Stripe's own billing, a chargeback
 fee) name no order: they are listed and counted, not a difference. A manual payout's contents cannot be listed, nor an
 automatic one's until Stripe has finished reconciling it, so only its status is checked. pretix and Hi.Events record the fee on a paid order from
@@ -218,12 +207,8 @@ addresses were typed. Directed resale links buy only the buyer's own ticket.
   open before the account is active, so someone bought for reaches their ticket from the email (name entry still comes first). A holder puts an adult ticket up for resale while the event is not
   Closed and before any configured `SalesCloseAt`; the exact close instant refuses new offers and invitations. The member controls
   and admin selling status use the same time boundary. An offer may wait while resale is paused, but new invitations
-  require resale to be selling. It joins `ticket_resale_offers` (oldest first) and the gate refuses it while it can still sell (the holder withdraws it to get in; once sales close and no buyer reservation still holds it, it is valid again). They see their
+  require resale to be selling. It joins `ticket_resale_offers` (oldest first) and the gate refuses it while it can still sell (the holder withdraws it to get in; once sales close it is valid again). They see their
   queue position and can withdraw, except while a buyer's unpaid order holds it.
-- Creating an offer saves the row and its ticket's `Offered` state in one commit. Another open or reserved offer
-  refuses creation. Checkout and the directed-link page use the same eligibility: an offered adult ticket with one
-  active offer. Invalid or ambiguous offers stay available for operator review but cannot sell; eligible offers
-  keep their oldest-first order.
 - Resale opens by hand: the ticketing team presses Open resale on the resale queue page (`ResaleOpenedAt`, audited
   `TicketResaleOpenSet`) and can pause it again; `ResaleOnly` mode sells resale whatever the button. A buyer's ticket lines take
   the queue head before fresh stock; in `ResaleOnly` mode only queue tickets sell. A resale offer sells only at the
@@ -232,13 +217,8 @@ addresses were typed. Directed resale links buy only the buyer's own ticket.
   queue ticket in `ResaleOnly` mode or through an invitation.
 - Only adult tickets can be offered. Child and companion tickets go with their adult ticket: voided and refunded with it,
   never resold alone (Peter, 2026-11-22).
-- An adult with erased identity markers cannot be offered or receive invitations; queue and directed checkout exclude its existing offers. If fulfilment observes the erasure after the buyer paid, it withdraws the unsold offer, issues fresh stock and flags possible excess capacity, without a seller refund or sold notice. An already committed sale retains its refund obligation. Stored erased rows and capacity counts are not rewritten by these eligibility checks; withdrawal and invitation cancellation remain available.
 - When the buyer's order is paid, the offer is sold, the old ticket becomes `Resold`, the old adult's children are
-  voided in the same repository commit, the buyer gets a new ticket, and the holder is told it sold (`ticket_resale_sold`).
-  A nullable pending intent is saved with each new sale. Reconciliation retries the notice until the email reaches
-  the outbox and its audit entry is written, using the same delivery ID throughout. A failed enqueue or interrupted
-  delivery job leaves the intent pending. Legacy sold offers without an intent are not backfilled. Unsold notices
-  use the same outbox completion boundary before setting `UnsoldNotifiedAt`.
+  voided, the buyer gets a new ticket, and the holder is told it sold (`ticket_resale_sold`).
 - **Evening refund batch** (`TicketResaleRefundJob`, daily 19:00 UTC, H11): the holder is refunded what they paid
   (adult plus children) through the original order's platform, once the buyer's order has held for 12 hours, under the
   offer's id so a repeat finds the same refund and a call that threw is retried. Both orders are read from their
@@ -257,31 +237,25 @@ addresses were typed. Directed resale links buy only the buyer's own ticket.
   no refund, and the ticket admits them. It is marked only once the mail is queued, so a failed hand-off is retried
   by the next sweep. The offer stays open in case sales reopen.
 - While fresh stock is sold out, a class-price buyer in `Open` mode takes a queue ticket at the resale price.
-- Holder, staff and resale-switch withdrawals save an offered ticket's return to `Valid` and the withdrawn offer
-  together. Reconciliation retries open-offer cleanup while resale is `Off`, preserving `Void` and `Resold` tickets.
-  Reserved offers keep their current buyer until that order ends.
 - An order that fails, expires or is cancelled releases its offers to their original place.
 - **Directed resale** (H10): a holder whose offer is open emails one or more people each their own link
-  (`/Tickets/Buy/Resale/{token}`). New links protect the offer and stable delivery IDs under the `TicketResaleInvitation` Data Protection purpose; raw tokens are never stored in Tickets. Each invitation stores its initial SHA-256, nullable delivery ID and nullable pending flag in `directed_invites`. Legacy hash-only links still resolve as before.
+  (`/Tickets/Buy/Resale/{token}`, one token per address, only its SHA-256 is stored in the offer's `directed_invites`).
   Only a signed-in buyer with that address can use a link, for themselves, and only while resale is open. The links
   have no expiry and the offer stays in the public queue meanwhile, so whoever buys first gets it; a later invitee's
   link then sells the next ticket in the queue at the resale price, even to a buyer with a class price or pinned wave
   while fresh stock is on sale ("someone else bought it first"); only an empty queue sells fresh stock. A ticket gets at most ten invitations
-  over all its offers, each address once. New invitation intent and its allowance are saved before Email is called; each successful enqueue clears that invitation's pending flag. Retrying pending addresses reuses the same invitation and Email delivery ID, costs no allowance, and skips completed addresses. A retry can encode the same authenticated IDs differently; both its original and retried links remain valid, including the outbox's first payload. Cancellation or erasure removes the invitation row and invalidates all its encodings. Existing legacy records have no retry metadata and are not rewritten. Pending invitation addresses are included in the holder's GDPR export.
-  Invitation, use and cancel are on the holder's order timeline; cancel
+  over all its offers, each address once. Invitation, use and cancel are on the holder's order timeline; cancel
   clears every invitation, and the switch to `Queue`, a void or erasure clears them too.
-
-Paid orders whose ticket issuance was interrupted retain their fresh-stock capacity and holder reservations until recovery issues the tickets. Issued orders are counted through their tickets only, including after void or resale; fulfilment excludes its own order when checking for another held ticket.
 
 ## Companion tickets
 
 A holder of a valid adult ticket can ask, on `/Tickets/Buy/Mine`, for a free companion ticket for someone already in
 Humans: their email (the same lookup as buying for others: one live verified account with a legal name, not the holder,
-not already holding a ticket) and a short note on why. One ask per current holder and ticket is pending at a time; the holder can withdraw only their own request. After transfer, the new holder sees none of the previous holder's requests or decision notes and may ask independently. Old requests remain in the staff queue under their original requester; approval refuses if the ticket has changed holder, including interrupted-issuance recovery, while staff may still decline them. The
+not already holding a ticket) and a short note on why. One ask is pending at a time; the holder can withdraw it. The
 ticketing team answers from the event's Companions queue: approve rechecks the companion and issues the free ticket to
 their account (the usual ticket email; the holder gets the zero receipt), decline needs a note the holder sees on their
 ticket. Nobody's account is created and the companion is never mailed an invitation. The ask and the answer land on the
-order timeline and the answer is audited. Issuance saves the zero-total order and attached ticket together. A companion without an account or email is mailed to its live adult holder under the companion ticket’s delivery identity. Parent initial/resend and renamed-ticket mail include valid unaddressed dependents even on separate orders, and the private profile card lists those attached tickets too. Receipts and follow-up invitations remain scoped to their own order. The delivery service requires bound recipients to resolve to an available account; outgoing mail uses the canonical Users ID after merges. Missing or tombstoned holders and erased identity markers are skipped, including dependent cards whose adult is unavailable. Anonymous email-only holders remain supported. An unavailable buyer does not block another live holder’s ticket, but receives no receipt and is not named as the buyer on that holder’s mail. Financial records are unchanged. Partial delivery records the actual ticket/receipt handoffs and skipped recipients; when nothing can be queued, only the skipped marker is recorded and an operator resend refuses. User-service and outbox failures still throw for retry. Direct staff issuance applies the same pending-purchase hold check as member requests: live local, unresolved remote and processing orders prevent a second ticket, including when another buyer placed the order for the companion. Expired local and definitively closed orders release the hold. If approval stops after issuance but before the request is finalized, a retry reuses only a valid companion matching the request's event, parent ticket and companion account; it completes the request without another ticket, order or delivery.
+order timeline and the answer is audited.
 
 ## The ticketing team
 
@@ -291,21 +265,13 @@ page, reached from its order, with the three exceptions: rename (full price adul
 with no refund, said plainly), and a free companion ticket. The resale queue marks a reserved offer Stuck once its
 buyer's order closed or expired, and the team can take an open offer out for its holder.
 
-Rename updates the ticket and its original order line in one commit, selecting by `LineIndex` even after an account
-merge. Missing or invalid adult lines refuse the rename before any account is provisioned. Normal and override rename also refuse erased ticket identity markers, including legacy tickets still marked `Valid`. Rename and direct staff companion issuance attach a verified address only to one available account, following a merge to its live survivor. Missing or tombstoned owners and ambiguous verified addresses refuse without writes, delivery or provisioning. Rename reads that ownership before checking transfer eligibility, and only an allowed change may provision an unverified address.
-
-A void with a refund saves its original amount, reason and refund identity before the external call. Retrying an interrupted
-void resumes those details without issuing a second refund; the form shows the saved values. Rename and resale wait
-while the intent is unfinished. Ticket, valid dependents and offer withdrawal save together. A declined refund clears
-the intent and leaves the tickets usable; a pending refund remains recorded for reconciliation.
-
 Overrides (Admin only) repair what the rules miss: restore a voided ticket, move a class priced
-ticket, a companion past capacity. Each needs a reason and is audited `TicketOverride`. Restore refuses erased ticket identity markers and unavailable holders before changing anything; a live merge survivor remains eligible. Anonymous dependents still require a valid adult ticket.
+ticket, a companion past capacity. Each needs a reason and is audited `TicketOverride`.
 
-Cancelling an event (Admin only, `/Tickets/Admin/Sales/{id}/Cancel`) closes sales and resale for good. Gate barcode lookup and event lists immediately mark all its tickets invalid, including dependents, before reconciliation voids them. Initial delivery and eligible resends still send the financial receipt, but no QR cards or new join jobs. Already queued renamed-ticket, join, payment-ended and resale notices stop at execution: their admission, late-issuance or evening-refund promises no longer apply. Reconciliation does not retry a sold notice for a cancelled event and leaves its pending flag unchanged, since suppression is not outbox acceptance. Dedicated cancellation notices still run through the cancellation workflow. Closing sales without cancelling the event keeps otherwise valid tickets admissible. The reconcile
+Cancelling an event (Admin only, `/Tickets/Admin/Sales/{id}/Cancel`) closes sales and resale for good. The reconcile
 job then works the paid orders within a two minute budget per run: withdraw open offers, void live tickets, refund the
 ticket lines through the order's platform, timeline `EventCancelled`, email the buyer (donation only orders too; marked
-`CancellationEmailedAt`, sent under a fixed delivery id). The buyer is resolved through Users at send time, using the live canonical ID and address. Missing/tombstoned buyers, erased snapshots and unavailable contacts get one `CancellationNoticeSkipped` timeline event instead; they do not get a false email timestamp or keep cancellation pending forever. Refunds and ticket retirement still run. A successful handoff stamps only the email timestamp, preserving financial values refreshed during the refund. Lookup or outbox failures leave notification pending for retry. A repeat is safe: void stays void,
+`CancellationEmailedAt`, sent under a fixed delivery id). A repeat is safe: void stays void,
 and a refund asked for since the cancellation is not asked again, so one the platform turns down (or that cannot start)
 stays failed, flagged `TicketCheckoutNeedsAttention`, for the team to do by hand. Donations are not refunded; the email asks buyers to reply if they want theirs back. When the refund failed or requires manual handling, the email
 says the team will refund by hand instead of promising it is on its way. Delivery retries use the saved refund state and the same delivery ID, without submitting another refund. An order with
@@ -330,9 +296,8 @@ tickets by itself (Peter, 2026-11-22).
 
 
 Gate looks codes up through `ITicketGateLookup.FindIssuedTicketAsync` (exact code, any event; Gate keeps only the
-active event's). `Valid` scans valid only without erased identity markers on it or its adult. This read does not change the retained accounting rows; `Offered` scans valid only once sales are closed and no reserved order still holds it. Overdue remote, processing and paid reservations keep the adult and its dependents blocked; missing reservation owners also block until recovery resolves them. Definitively closed orders and expired local orders release that hold. A sold offer invalidates the old adult and its dependents even if retirement was interrupted. A ticket the gate admitted (or whose valid child or companion ticket it admitted, including one on a separate order) cannot be offered or receive new resale invitations, and an admitted offer is never sold (`IGateAdmissions`, Gate's read). A child or companion ticket without an account carries the adult's
-user as `EntryUserId`, whose Early Entry applies. Both gate lookup and event lists refuse a dependent whose adult is
-missing, void or resold, even if an interrupted older retirement left the dependent marked `Valid`. Nobody signs the ticket rules at the gate: the buyer's acceptance
+active event's). `Valid` scans valid; `Offered` scans valid only once sales are closed, so a ticket can never admit its holder and then sell. A ticket the gate admitted (or whose valid child or companion ticket it admitted, including one on a separate order) cannot be offered or receive new resale invitations, and an admitted offer is never sold (`IGateAdmissions`, Gate's read). A child or companion ticket without an account carries the adult's A companion without an account or email is mailed to its live adult holder under the companion ticket’s delivery identity. Parent initial/resend and renamed-ticket mail include valid unaddressed dependents even on separate orders, and the private profile card lists those attached tickets too. Receipts and follow-up invitations remain scoped to their own order.
+user as `EntryUserId`, whose Early Entry applies. Nobody signs the ticket rules at the gate: the buyer's acceptance
 covers every ticket on the order (Peter, 2026-11-21). The gate's scan row is the only admission record; no platform is told.
 `GetIssuedTicketsForEventAsync` lists every ticket of one event in any state, for the gate's name search and
 arrivals report. The holder sees the date their Early Entry starts on My tickets.
@@ -343,8 +308,8 @@ People bought for do not sign the ticket rules: the buyer accepts for the whole 
 
 The rules are markdown in the legal GitHub repo (`GitHubSettings`, the repo the legal pages read), in the folder the
 ticketing settings name: `name.md` is Spanish, `name-en.md` English, more languages optional (`name-de.md`). Spanish and
-English are required: Spanish must be the unsuffixed base, not a `name-es.md` substitute. Saving the settings refuses a new folder without both, with a second markdown file lacking a language
-suffix (a README beside the rules), or with duplicate languages in the base's file set, including case variants of a suffix. Unrelated translated files are ignored. Display only (Peter, 2026-11-21): nothing is signed
+English are required: saving the settings refuses a new folder without both, or with a second markdown file lacking a language
+suffix (a README beside the rules), since that one would read as Spanish. Display only (Peter, 2026-11-21): nothing is signed
 and nothing goes to Consent.
 
 - The version is the last commit changing the folder; the text is read at that commit, so the text shown and the version
@@ -377,5 +342,5 @@ and nothing goes to Consent.
 - Renaming a ticket to another person moves its order line, so the order is no longer the previous holder's and erasing them
   never asks the platform to erase its copy of that order (pretix, Hi.Events; Box Office keeps none).
 - Matching a payout to the bank statement.
-- Reconciliation follow-ups: signing off a difference (an unresolved one is mailed every night); a platform admin link on extra rows; comparing
+- Reconciliation follow-ups: signing off a difference (an unresolved one is mailed every night); a platform admin link on extra rows; currency on platform rows (all are summed as EUR cents); comparing
   refunds with Humans' own refund records rather than the platform's copy.

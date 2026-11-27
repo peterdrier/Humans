@@ -150,8 +150,6 @@ Any provider with an ASP.NET Core authentication handler works (Facebook, Micros
 
 ## Invariants
 
-- Sign-in and signup links trim trailing slashes from `Email:BaseUrl`, retaining any application subpath and one separator before their account routes.
-
 - System-role assignment checks the exact requested account through `GetRawUserInfoAsync` after role/name validation and before overlap checks or writes. Missing and tombstoned targets return `UserUnavailable` with a Warning, without an assignment, audit or notice. Archived IDs are refused rather than retargeted to a survivor; the admin POST returns 404 for that refusal.
 
 - Invalid, expired or replayed sign-in-link tokens and throttled login/signup sends log at Warning without exception stacks, making these expected refusals visible in the production log viewer. Successful sends retain their informational logs. Request-cancelled sign-in-link signup also logs Warning without a stack after releasing the token reservation, then propagates cancellation.

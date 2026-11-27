@@ -19,8 +19,6 @@ internal enum StripeReconciliationStatus
     Unpaid,
     /// <summary>The local payment is Failed: a conflicting terminal outcome needing review.</summary>
     RecordedFailed,
-    /// <summary>The recorded owner or amount differs from Stripe; never repair automatically.</summary>
-    RecordedConflict,
 }
 
 internal sealed record StripeReconciliationRow(
@@ -59,15 +57,15 @@ internal sealed record StripeReconciliationReport(
     public bool IsReconciled => StripeQueried && Orphans.Count == 0 && Rows.All(r => !r.RequiresReview);
 
     public int RecordedPendingCount => Rows.Count(r => r.Status == StripeReconciliationStatus.RecordedPending);
-    public int RecoverableCount => MissingCount + RecordedPendingCount;
-    public decimal RecoverableTotalEur => Rows
-        .Where(r => r.Status is StripeReconciliationStatus.Missing or StripeReconciliationStatus.RecordedPending)
-        .Sum(r => r.AmountEur ?? 0m);
     public int MissingCount => Rows.Count(r => r.Status == StripeReconciliationStatus.Missing);
     public int UnmatchedCount => Rows.Count(r => r.Status == StripeReconciliationStatus.Unmatched);
+
+    public decimal MissingTotalEur => Rows
+        .Where(r => r.Status == StripeReconciliationStatus.Missing)
+        .Sum(r => r.AmountEur ?? 0m);
 }
 
-internal sealed record StripeReconciliationResult(int RecordedCount, decimal TotalEur, int SettledCount);
+internal sealed record StripeReconciliationResult(int RecordedCount, decimal TotalEur);
 
 /// <summary>
 /// <paramref name="Refusal"/> is set when nothing could be checked. <paramref name="PendingCount"/> is how many of the

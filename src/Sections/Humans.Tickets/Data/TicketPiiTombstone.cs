@@ -10,8 +10,8 @@ internal static class TicketPiiTombstone
     public static string EmailFor(Guid userId) => $"deleted-{userId:N}{EmailDomain}";
 
     /// <summary>
-    /// Catches legacy erased rows even without <c>PiiErasedAt</c>. The email sentinel marks erased contact details;
-    /// the name sentinel also covers unaddressed dependents.
+    /// Catches rows erased before <c>PiiErasedAt</c> existed. The email arm is conclusive (a sentinel domain no vendor
+    /// returns); the name arm only catches a blank email. A false positive just stops one name syncing: the safe side.
     /// </summary>
     public static bool IsTombstoned(string? name, string? email) =>
         string.Equals(name, Name, StringComparison.Ordinal)

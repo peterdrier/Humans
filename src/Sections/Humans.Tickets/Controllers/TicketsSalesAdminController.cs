@@ -146,7 +146,7 @@ internal sealed class TicketsSalesAdminController(
 
         var result = await delivery.ResendAsync(id, user.Id, ct);
         if (result.Succeeded)
-            SetSuccess("Available ticket mail is queued again; check the timeline for skipped recipients.");
+            SetSuccess("Ticket emails and the receipt are queued again.");
         else
             SetError(result.Refusal!);
         return RedirectToAction(nameof(Order), new { id });

@@ -138,41 +138,30 @@
                     {
                         <details>
                             <summary class="fw-semibold text-danger">Void and refund</summary>
-                            @if (t.VoidRefundId is not null)
-                            {
-                                <p class="small text-muted mt-2">This void is unfinished. Submit again to complete the original request using the same refund.</p>
-                            }
-                            else
-                            {
-                                <p class="small text-muted mt-2">
-                                    The ticket stops working at the gate, with its child and companion tickets. The refund goes first, back to how
-                                    the order was paid; if the ticketing platform turns it down, nothing is voided. This order can still refund
-                                    @((Model.RefundableMinor / 100m).ToEuro()).
-                                </p>
-                            }
+                            <p class="small text-muted mt-2">
+                                The ticket stops working at the gate, with its child and companion tickets. The refund goes first, back to how
+                                the order was paid; if the ticketing platform turns it down, nothing is voided. This order can still refund
+                                @((Model.RefundableMinor / 100m).ToEuro()).
+                            </p>
                             <form asp-action="Void" asp-route-orderId="@Model.Order.Id" asp-route-ticketId="@t.Id" method="post"
                                   data-confirm="Void ticket @t.Barcode@(Model.Dependents.Any(d => d.State == TicketCheckoutTicketState.Valid) ? " and its dependent tickets" : "")? This cannot be undone.">
                                 @Html.AntiForgeryToken()
-                                @if (t.VoidRefundId is not null)
-                                {
-                                    <input type="hidden" name="noRefund" value="false" />
-                                }
                                 <div class="form-check">
-                                    <input class="form-check-input" type="radio" name="noRefund" id="void-refund" value="false" checked="@(Model.SuggestedRefundMinor > 0)" disabled="@(t.VoidRefundId is not null)" />
+                                    <input class="form-check-input" type="radio" name="noRefund" id="void-refund" value="false" checked="@(Model.SuggestedRefundMinor > 0)" />
                                     <label class="form-check-label" for="void-refund">Refund</label>
                                 </div>
                                 <div class="input-group input-group-sm mb-2 ms-4 w-auto">
                                     <input class="form-control" id="void-amount" name="refund" type="number" step="0.01" min="0.01"
                                            max="@((Model.RefundableMinor / 100m).ToString("0.00", System.Globalization.CultureInfo.InvariantCulture))"
                                            value="@(Model.SuggestedRefundMinor > 0 ? (Model.SuggestedRefundMinor / 100m).ToString("0.00", System.Globalization.CultureInfo.InvariantCulture) : "")"
-                                           aria-label="Refund in euros" readonly="@(t.VoidRefundId is not null)" />
+                                           aria-label="Refund in euros" />
                                     <span class="input-group-text">€</span>
                                 </div>
                                 <div class="form-check mb-2">
-                                    <input class="form-check-input" type="radio" name="noRefund" id="void-norefund" value="true" checked="@(Model.SuggestedRefundMinor <= 0)" disabled="@(t.VoidRefundId is not null)" />
+                                    <input class="form-check-input" type="radio" name="noRefund" id="void-norefund" value="true" checked="@(Model.SuggestedRefundMinor <= 0)" />
                                     <label class="form-check-label" for="void-norefund">No refund: no money goes back to the buyer</label>
                                 </div>
-                                <div class="mb-2"><label class="form-label" for="void-reason">Reason</label><input class="form-control" id="void-reason" name="reason" maxlength="500" value="@t.VoidRequestedReason" readonly="@(t.VoidRefundId is not null)" required /></div>
+                                <div class="mb-2"><label class="form-label" for="void-reason">Reason</label><input class="form-control" id="void-reason" name="reason" maxlength="500" required /></div>
                                 <button type="submit" class="btn btn-outline-danger btn-sm">Void ticket</button>
                             </form>
                         </details>

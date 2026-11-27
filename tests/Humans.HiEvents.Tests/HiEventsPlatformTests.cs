@@ -665,39 +665,6 @@ public class HiEventsPlatformTests
         setup.WebhookPath.Should().Be("/HiEvents/Webhook");
     }
 
-    [HumansTheory]
-    [InlineData(null)]
-    [InlineData("")]
-    [InlineData("USD")]
-    public async Task GetStatus_UnsupportedCurrency_RejectsAmounts(string? currency)
-    {
-        _handler.Enqueue(HttpStatusCode.OK, Order(42, 225m, status: "COMPLETED",
-            paymentStatus: "PAYMENT_RECEIVED", currency: currency));
-
-        var read = () => Platform().GetStatusAsync("7:42", Ct);
-
-        await read.Should().ThrowAsync<TicketingPlatformException>().WithMessage("*EUR*");
-    }
-
-    [HumansTheory]
-    [InlineData(null)]
-    [InlineData("")]
-    [InlineData("USD")]
-    public async Task ListOrders_UnsupportedCurrency_RejectsList(string? currency)
-    {
-        var order = ListedOrder(42, null, tickets: 1);
-        order["currency"] = currency;
-        _handler.Enqueue(HttpStatusCode.OK, new
-        {
-            data = new[] { ListedOrder(41, null, tickets: 1), order },
-            meta = new { last_page = 1, total = 2 },
-        });
-
-        var read = () => Platform().ListOrdersAsync("7", Now, Now, Ct);
-
-        await read.Should().ThrowAsync<TicketingPlatformException>().WithMessage("*EUR*");
-    }
-
     [HumansFact]
     public async Task ListOrders_PagesThroughThePeriodAndReadsHumansIdsAndTickets()
     {
@@ -733,54 +700,6 @@ public class HiEventsPlatformTests
         var act = () => Platform().ListOrdersAsync("7", Instant.FromUtc(2027, 1, 1, 0, 0), Instant.FromUtc(2027, 2, 1, 0, 0), Ct);
 
         await act.Should().ThrowAsync<HttpRequestException>();
-    }
-
-    [HumansTheory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public async Task ListOrders_IncompletePage_Throws(bool missingData)
-    {
-        _handler.Enqueue(HttpStatusCode.OK, missingData
-            ? new { data = (object?)null, meta = new Dictionary<string, int>(StringComparer.Ordinal) { ["last_page"] = 1, ["total"] = 0 } }
-            : new { data = (object?)Array.Empty<object>(), meta = new Dictionary<string, int>(StringComparer.Ordinal) { ["last_page"] = 1 } });
-
-        var read = () => Platform().ListOrdersAsync("7", Now, Now + Duration.FromDays(1), Ct);
-
-        await read.Should().ThrowAsync<HttpRequestException>();
-    }
-
-    [HumansTheory]
-    [InlineData(false, false)]
-    [InlineData(false, true)]
-    [InlineData(true, false)]
-    [InlineData(true, true)]
-    public async Task GetProducts_IncompletePage_RefusesCheckout(bool check, bool missingTotal)
-    {
-        if (check)
-        {
-            _handler.Enqueue(HttpStatusCode.OK, new { data = new { id = 1 } });
-            _handler.Enqueue(HttpStatusCode.OK, new { data = new { id = 7, status = "LIVE" } });
-        }
-        var paging = new Dictionary<string, int>(StringComparer.Ordinal) { ["last_page"] = 1 };
-        if (!missingTotal)
-            paging["total"] = 2;
-        _handler.Enqueue(HttpStatusCode.OK, new
-        {
-            data = new[] { new { id = 100, product_type = "TICKET", is_hidden = true } },
-            meta = paging,
-        });
-        // A missing second carrier must stop both the real checkout and the setup probe before POST.
-        _handler.Enqueue(HttpStatusCode.Created, Order(id: 42, total: 225m, paymentLink: "https://tickets.example/pay/42"));
-
-        if (check)
-            (await Platform().CheckAsync("7", Ct)).Should().Contain(f => !f.Ok && f.Text.Contains("could not be read", StringComparison.Ordinal));
-        else
-        {
-            var create = () => Platform().CreateOrderAsync(Request(
-                new PlatformOrderLine(OrderLineKind.Ticket, "General", 22500, 0.10m, "Ana")), Ct);
-            await create.Should().ThrowAsync<HttpRequestException>();
-        }
-        _handler.Requests.Should().OnlyContain(r => r.Request.Method == HttpMethod.Get);
     }
 
     [HumansTheory]
@@ -903,7 +822,7 @@ public class HiEventsPlatformTests
         string? refundStatus = null,
         decimal chargedBack = 0m,
         string? processingAt = null,
-        string? currency = "EUR") => new
+        string currency = "EUR") => new
         {
             data = new Dictionary<string, object?>(StringComparer.Ordinal)
             {

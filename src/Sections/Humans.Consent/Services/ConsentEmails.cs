@@ -29,7 +29,7 @@ internal sealed class ConsentEmails(
             var docsHtml = string.Join("\n", documentNames.Select(d => $"<li><strong>{Encode(d)}</strong></li>"));
             return new EmailMessage(userEmail, userName, userId,
                 subject,
-                localizer["Consent_Email_ReConsentsRequired_Body", Encode(userName), docsHtml, _settings.BaseUrl.TrimEnd('/')],
+                localizer["Consent_Email_ReConsentsRequired_Body", Encode(userName), docsHtml, _settings.BaseUrl],
                 "reconsents_required");
         });
 
@@ -40,7 +40,7 @@ internal sealed class ConsentEmails(
             var docsHtml = string.Join("\n", documentNames.Select(d => $"<li>{Encode(d)}</li>"));
             return new EmailMessage(userEmail, userName, userId,
                 localizer["Consent_Email_ReConsentReminder_Subject", daysRemaining],
-                localizer["Consent_Email_ReConsentReminder_Body", Encode(userName), daysRemaining, docsHtml, _settings.BaseUrl.TrimEnd('/')],
+                localizer["Consent_Email_ReConsentReminder_Body", Encode(userName), daysRemaining, docsHtml, _settings.BaseUrl],
                 "reconsent_reminder");
         });
 

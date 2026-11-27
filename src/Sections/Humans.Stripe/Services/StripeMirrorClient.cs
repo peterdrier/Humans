@@ -63,18 +63,17 @@ internal sealed class StripeMirrorClient(IHttpClient? httpClient = null) : IStri
         RequestOptions Request() => account.UsesOrgKey ? new RequestOptions { StripeContext = account.Id } : new RequestOptions();
 
         var transactionService = new BalanceTransactionService(client);
-        var listed = await AllPagesAsync(after => RetryOnceOnRateLimitAsync(() =>
+        var listed = await AllPagesAsync(after =>
         {
             var options = new BalanceTransactionListOptions { Limit = PageLimit, StartingAfter = after };
             options.AddExpand("data.source");
             return transactionService.ListAsync(options, Request(), ct);
-        }, ct), t => t.Id, "balance transactions", ct, item => RequireFields(item, "balance transaction",
+        }, t => t.Id, "balance transactions", ct, item => RequireMirrorFields(item, "balance transaction",
             ["type", "status", "currency", "reporting_category"], ["amount", "fee", "net", "created", "available_on"]));
 
         var payouts = await AllPagesAsync(
-            after => RetryOnceOnRateLimitAsync(() => new PayoutService(client).ListAsync(
-                new PayoutListOptions { Limit = PageLimit, StartingAfter = after }, Request(), ct), ct),
-            p => p.Id, "payouts", ct, item => RequireFields(item, "payout",
+            after => new PayoutService(client).ListAsync(new PayoutListOptions { Limit = PageLimit, StartingAfter = after }, Request(), ct),
+            p => p.Id, "payouts", ct, item => RequireMirrorFields(item, "payout",
                 ["currency", "status"], ["amount", "created", "arrival_date"], ["automatic"]));
 
         // Stripe links transactions only to reconcilable automatic payouts; asking for a split payout's secondary part
@@ -84,8 +83,8 @@ internal sealed class StripeMirrorClient(IHttpClient? httpClient = null) : IStri
                      .Where(p => p.Automatic && !string.Equals(p.ReconciliationStatus, "not_applicable", StringComparison.Ordinal))
                      .OrderBy(p => string.Equals(p.Status, "paid", StringComparison.Ordinal)))
         {
-            var ids = await AllPagesAsync(after => RetryOnceOnRateLimitAsync(() => transactionService.ListAsync(
-                new BalanceTransactionListOptions { Payout = payout.Id, Limit = PageLimit, StartingAfter = after }, Request(), ct), ct),
+            var ids = await AllPagesAsync(after => transactionService.ListAsync(
+                new BalanceTransactionListOptions { Payout = payout.Id, Limit = PageLimit, StartingAfter = after }, Request(), ct),
                 t => t.Id, $"payout {payout.Id} transactions", ct);
             foreach (var t in ids) payoutOf[t.Id] = payout.Id;
         }
@@ -98,7 +97,7 @@ internal sealed class StripeMirrorClient(IHttpClient? httpClient = null) : IStri
             ToBalances(account.Id, balance));
     }
 
-    internal static async Task<List<T>> AllPagesAsync<T>(
+    private static async Task<List<T>> AllPagesAsync<T>(
         Func<string?, Task<StripeList<T>>> page, Func<T, string> id, string what, CancellationToken ct,
         Action<JsonElement>? validateItem = null)
     {
@@ -107,8 +106,7 @@ internal sealed class StripeMirrorClient(IHttpClient? httpClient = null) : IStri
         string? after = null;
         for (var n = 1; n <= PageSafetyCap; n++)
         {
-            var list = await page(after);
-            ct.ThrowIfCancellationRequested();
+            var list = await RetryOnceOnRateLimitAsync(() => page(after), ct);
             if (list?.Data is null) throw new InvalidOperationException($"Stripe {what}: a page without data.");
             // The SDK bool defaults to false when absent; inspect the retained response before completing a sweep.
             using var body = JsonDocument.Parse(list.StripeResponse.Content);
@@ -119,7 +117,7 @@ internal sealed class StripeMirrorClient(IHttpClient? httpClient = null) : IStri
                 throw new InvalidOperationException($"Stripe {what}: a page without a data array.");
             foreach (var item in data.EnumerateArray())
             {
-                RequireFields(item, what, ["id"], []);
+                RequireMirrorFields(item, what, ["id"], []);
                 if (!seenIds.Add(item.GetProperty("id").GetString()!))
                     throw new InvalidOperationException($"Stripe {what}: repeated item id.");
                 validateItem?.Invoke(item);
@@ -148,7 +146,7 @@ internal sealed class StripeMirrorClient(IHttpClient? httpClient = null) : IStri
         }
     }
 
-    internal static void RequireFields(
+    private static void RequireMirrorFields(
         JsonElement item, string what, IReadOnlyList<string> textFields, IReadOnlyList<string> integerFields,
         IReadOnlyList<string>? booleanFields = null)
     {

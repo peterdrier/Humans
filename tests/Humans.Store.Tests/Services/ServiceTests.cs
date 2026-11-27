@@ -1590,143 +1590,6 @@ public class ServiceTests
         }
     }
 
-    [HumansTheory]
-    [InlineData("en")]
-    [InlineData("es")]
-    [InlineData("de")]
-    [InlineData("it")]
-    [InlineData("fr")]
-    [InlineData("ca")]
-    [InlineData("nl")]
-    public async Task StoreNumbers_RequestCulture_PreservesAmounts(string culture)
-    {
-        using var scope = new CultureScope(culture);
-        var registrations = new ServiceCollection().AddLogging();
-        registrations.AddControllers();
-        using var services = registrations.BuildServiceProvider();
-        var catalog = NumberFormController(services);
-        var product = await BindNumberFormAsync<ProductInputModel>(catalog, CatalogNumberFields());
-
-        catalog.ModelState.IsValid.Should().BeTrue();
-        (await catalog.Save(product, TestContext.Current.CancellationToken)).Should().BeOfType<RedirectToActionResult>();
-        await _repo.Received(1).AddProductAsync(Arg.Is<Product>(p => p.UnitPriceEur == 12.50m
-            && p.VatRatePercent == 21m && p.DepositAmountEur == 1.25m), Arg.Any<CancellationToken>());
-
-        var settings = NumberFormController(services);
-        var input = await BindNumberFormAsync<StoreSettingsViewModel>(settings, new Dictionary<string, StringValues>(StringComparer.Ordinal)
-        {
-            [nameof(StoreSettingsViewModel.SimplifiedInvoiceThresholdEur)] = "750.50"
-        });
-        settings.ModelState.IsValid.Should().BeTrue();
-        await settings.SaveSettings(input, TestContext.Current.CancellationToken);
-        await _repo.Received(1).SaveSettingsAsync(Arg.Is<StoreSettings>(s => s.SimplifiedInvoiceThresholdEur == 750.50m),
-            Arg.Any<CancellationToken>());
-    }
-
-    [HumansTheory]
-    [InlineData("UnitPriceEur")]
-    [InlineData("VatRatePercent")]
-    [InlineData("DepositAmountEur")]
-    [InlineData("SimplifiedInvoiceThresholdEur")]
-    public async Task StoreNumbers_GroupingSeparator_RejectsWrite(string field)
-    {
-        using var scope = new CultureScope("es");
-        var registrations = new ServiceCollection().AddLogging();
-        registrations.AddControllers();
-        using var services = registrations.BuildServiceProvider();
-        var controller = NumberFormController(services);
-        if (field is nameof(StoreSettingsViewModel.SimplifiedInvoiceThresholdEur))
-        {
-            var input = await BindNumberFormAsync<StoreSettingsViewModel>(controller,
-                new Dictionary<string, StringValues>(StringComparer.Ordinal) { [field] = "1,25" });
-            await controller.SaveSettings(input, TestContext.Current.CancellationToken);
-        }
-        else
-        {
-            var fields = CatalogNumberFields();
-            fields[field] = "1,25";
-            var input = await BindNumberFormAsync<ProductInputModel>(controller, fields);
-            await controller.Save(input, TestContext.Current.CancellationToken);
-        }
-
-        controller.ModelState.IsValid.Should().BeFalse();
-        controller.ModelState[field]!.AttemptedValue.Should().Be("1,25");
-        controller.ModelState[field]!.Errors.Should().HaveCount(field is nameof(ProductInputModel.DepositAmountEur) ? 1 : 2);
-        await _repo.DidNotReceiveWithAnyArgs().AddProductAsync(default!);
-        await _repo.DidNotReceiveWithAnyArgs().UpdateProductAsync(default!);
-        await _repo.DidNotReceiveWithAnyArgs().SaveSettingsAsync(default!);
-        _audit.ReceivedCalls().Should().BeEmpty();
-    }
-
-    [HumansFact]
-    public async Task StoreNumbers_EmptyDeposit_PreservesNull()
-    {
-        using var scope = new CultureScope("es");
-        var registrations = new ServiceCollection().AddLogging();
-        registrations.AddControllers();
-        using var services = registrations.BuildServiceProvider();
-        var controller = NumberFormController(services);
-        var fields = CatalogNumberFields();
-        fields[nameof(ProductInputModel.DepositAmountEur)] = "";
-        var input = await BindNumberFormAsync<ProductInputModel>(controller, fields);
-
-        controller.ModelState.IsValid.Should().BeTrue();
-        await controller.Save(input, TestContext.Current.CancellationToken);
-
-        await _repo.Received(1).AddProductAsync(Arg.Is<Product>(p => p.UnitPriceEur == 12.50m && p.DepositAmountEur == null),
-            Arg.Any<CancellationToken>());
-    }
-
-    private StoreAdminController NumberFormController(IServiceProvider services)
-    {
-        var actor = Guid.NewGuid();
-        var users = Substitute.For<IUserService>();
-        users.GetUserInfoAsync(actor, Arg.Any<CancellationToken>()).Returns(
-            UserInfo.Create(new User { Id = actor }, [], [], null));
-        var http = new DefaultHttpContext
-        {
-            RequestServices = services,
-            User = new ClaimsPrincipal(new ClaimsIdentity([new Claim(ClaimTypes.NameIdentifier, actor.ToString())], "test"))
-        };
-        return new StoreAdminController(_service, _catalog, users)
-        {
-            ControllerContext = new ControllerContext { HttpContext = http },
-            TempData = new TempDataDictionary(http, Substitute.For<ITempDataProvider>()),
-            Url = Substitute.For<IUrlHelper>()
-        };
-    }
-
-    private static Dictionary<string, StringValues> CatalogNumberFields() => new(StringComparer.Ordinal)
-    {
-        [nameof(ProductInputModel.Year)] = "2026",
-        [nameof(ProductInputModel.Name)] = "Number test",
-        [nameof(ProductInputModel.Description)] = "Catalog item",
-        [nameof(ProductInputModel.UnitPriceEur)] = "12.50",
-        [nameof(ProductInputModel.VatRatePercent)] = "2.1e1",
-        [nameof(ProductInputModel.DepositAmountEur)] = "1.25",
-        [nameof(ProductInputModel.IsActive)] = "true",
-        [nameof(ProductInputModel.OrderableUntil)] = "2026-12-31"
-    };
-
-    private static async Task<T> BindNumberFormAsync<T>(StoreAdminController controller, Dictionary<string, StringValues> fields)
-        where T : class
-    {
-        var services = controller.HttpContext.RequestServices;
-        var metadata = services.GetRequiredService<IModelMetadataProvider>().GetMetadataForType(typeof(T));
-        var binder = services.GetRequiredService<IModelBinderFactory>().CreateBinder(new ModelBinderFactoryContext
-        {
-            Metadata = metadata,
-            CacheToken = typeof(T)
-        });
-        var context = DefaultModelBindingContext.CreateBindingContext(controller.ControllerContext,
-            new FormValueProvider(BindingSource.Form, new FormCollection(fields), CultureInfo.CurrentCulture),
-            metadata, bindingInfo: null, modelName: "");
-        await binder.BindModelAsync(context);
-        var model = (T)context.Result.Model!;
-        services.GetRequiredService<IObjectModelValidator>().Validate(controller.ControllerContext, context.ValidationState, "", model);
-        return model;
-    }
-
     [HumansFact]
     public async Task GetActiveCatalogAsync_does_not_return_deactivated_products()
     {
@@ -1746,9 +1609,7 @@ public class ServiceTests
     {
         var order = MakeOrderDto(balanceEur: 50m, counterpartyName: "Camp Alpha", email: "camp@example.test");
         _stripeService.IsStoreCheckoutConfigured.Returns(true);
-        var stored = new Order { Id = order.Id };
-        SetCheckoutOrder(stored, order.BalanceEur);
-        _repo.GetOrderByIdAsync(order.Id, Arg.Any<CancellationToken>()).Returns(stored);
+        _repo.GetOrderByIdAsync(order.Id, Arg.Any<CancellationToken>()).Returns(new Order { Id = order.Id });
         _stripeService.CreateCheckoutSessionAsync(
                 order.Id,
                 42.50m,
@@ -1795,18 +1656,6 @@ public class ServiceTests
         var refundPage = await _service.GetOrderPageDataAsync(refundOnly, canEdit: false, canPayAuthorized: true, ct: TestContext.Current.CancellationToken);
         refundPage.CanPay.Should().BeTrue();
 
-        var stored = new Order { Id = order.Id };
-        SetCheckoutOrder(stored);
-        foreach (var payment in order.Payments)
-            stored.Payments.Add(new Payment
-            {
-                Id = Guid.NewGuid(),
-                OrderId = stored.Id,
-                AmountEur = payment.AmountEur,
-                Method = payment.Method,
-                Status = payment.Status
-            });
-
         var result = await _service.CreateStripeCheckoutSessionAsync(order, 20m, "https://humans.test/order", TestContext.Current.CancellationToken);
 
         result.ErrorKey.Should().Be("Store_PaymentPending");
@@ -1828,7 +1677,6 @@ public class ServiceTests
     {
         var order = MakeOrderDto(balanceEur: 10m);
         _stripeService.IsStoreCheckoutConfigured.Returns(true);
-        SetCheckoutOrder(new Order { Id = order.Id }, 10m);
 
         var result = await _service.CreateStripeCheckoutSessionAsync(order, 10.01m, "https://humans.test/order", TestContext.Current.CancellationToken);
 
@@ -1911,9 +1759,7 @@ public class ServiceTests
         var amount = decimal.Parse(text, CultureInfo.InvariantCulture);
         var order = MakeOrderDto(balanceEur: Math.Max(10m, amount));
         _stripeService.IsStoreCheckoutConfigured.Returns(true);
-        var stored = new Order { Id = order.Id };
-        SetCheckoutOrder(stored, order.BalanceEur);
-        _repo.GetOrderByIdAsync(order.Id, Arg.Any<CancellationToken>()).Returns(stored);
+        _repo.GetOrderByIdAsync(order.Id, Arg.Any<CancellationToken>()).Returns(new Order { Id = order.Id });
         _stripeService.CreateCheckoutSessionAsync(order.Id, amount, Arg.Any<string>(), Arg.Any<string>(),
             Arg.Any<string?>(), Arg.Any<string>(), Arg.Any<CancellationToken>(), Arg.Any<Guid?>(), Arg.Any<string?>())
             .Returns(OpenSession("cs_cents", "https://stripe.test/session"));
@@ -1928,310 +1774,21 @@ public class ServiceTests
             Arg.Any<Guid?>(), Arg.Any<string?>());
     }
 
-    [HumansTheory]
-    [InlineData(true)]
-    [InlineData(false)]
-    public async Task Checkout_WaitingForPayment_RechecksEligibility(bool paid)
-    {
-        var ct = TestContext.Current.CancellationToken;
-        var quote = MakeOrderDto(balanceEur: 50m);
-        var row = new Order { Id = quote.Id, Year = 2026 };
-        row.Lines.Add(new OrderLine { Id = Guid.NewGuid(), Qty = 1, UnitPriceSnapshot = 50m });
-        _repo.GetOrderByIdAsync(row.Id, Arg.Any<CancellationToken>()).Returns(row);
-        _repo.GetOrderWithLinesAsync(row.Id, Arg.Any<CancellationToken>()).Returns(row);
-        _repo.GetAllProductsForYearAsync(2026, Arg.Any<CancellationToken>()).Returns([]);
-        _stripeService.IsStoreCheckoutConfigured.Returns(true);
-        _stripeService.CreateCheckoutSessionAsync(row.Id, Arg.Any<decimal>(), Arg.Any<string>(), Arg.Any<string>(),
-                Arg.Any<string?>(), Arg.Any<string>(), Arg.Any<CancellationToken>(), Arg.Any<Guid?>(), Arg.Any<string?>())
-            .Returns(OpenSession("cs_stale", "https://stripe.test/stale"));
-        Task<CheckoutSessionResult> opening;
-        using (await Service.StripePaymentLock.AcquireAsync(NullLogger<Service>.Instance, ct))
-        {
-            opening = _service.CreateStripeCheckoutSessionAsync(quote, 20m, "https://humans.test/order", ct);
-            opening.IsCompleted.Should().BeFalse();
-            row.Payments.Add(new Payment
-            {
-                Id = Guid.NewGuid(),
-                OrderId = row.Id,
-                AmountEur = 40m,
-                Method = PaymentMethod.Stripe,
-                Status = paid ? PaymentStatus.Paid : PaymentStatus.Pending,
-                StripePaymentIntentId = "pi_prior"
-            });
-        }
-
-        var result = await opening;
-
-        result.ErrorKey.Should().Be(paid ? "Store_PaymentAboveBalance" : "Store_PaymentPending");
-        result.MaximumAmount.Should().Be(paid ? 10m : null);
-        result.SessionUrl.Should().BeNull();
-        await _stripeService.DidNotReceiveWithAnyArgs().CreateCheckoutSessionAsync(default, default, default!, default!, default, default!);
-        await _repo.DidNotReceiveWithAnyArgs().UpdateOrderAsync(default!);
-    }
-
-    [HumansTheory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public async Task Checkout_StaleQuote_AllowsEligibleOrder(bool pending)
-    {
-        var quote = MakeOrderDto(balanceEur: pending ? 50m : 10m);
-        if (pending)
-            quote = quote with
-            {
-                Payments = [new OrderPaymentDto(Guid.NewGuid(), 20m, PaymentMethod.Stripe,
-                PaymentStatus.Pending, "pi_old", null, default, null)]
-            };
-        var stored = new Order { Id = quote.Id };
-        SetCheckoutOrder(stored);
-        _repo.GetOrderByIdAsync(stored.Id, Arg.Any<CancellationToken>()).Returns(stored);
-        _stripeService.IsStoreCheckoutConfigured.Returns(true);
-        _stripeService.CreateCheckoutSessionAsync(stored.Id, 20m, Arg.Any<string>(), Arg.Any<string>(),
-                Arg.Any<string?>(), Arg.Any<string>(), Arg.Any<CancellationToken>(), Arg.Any<Guid?>(), Arg.Any<string?>())
-            .Returns(OpenSession("cs_current", "https://stripe.test/current"));
-
-        var result = await _service.CreateStripeCheckoutSessionAsync(quote, 20m, "https://humans.test/order", TestContext.Current.CancellationToken);
-
-        result.ErrorKey.Should().BeNull();
-        result.SessionUrl.Should().Be("https://stripe.test/current");
-        await _stripeService.Received(1).CreateCheckoutSessionAsync(stored.Id, 20m, Arg.Any<string>(), Arg.Any<string>(),
-            Arg.Any<string?>(), Arg.Any<string>(), Arg.Any<CancellationToken>(), Arg.Any<Guid?>(), Arg.Any<string?>());
-    }
-
-    [HumansTheory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public async Task Checkout_CurrentPrice_RespectsInvoiceSnapshot(bool issued)
-    {
-        var quote = MakeOrderDto(balanceEur: 50m);
-        var product = MakeProduct(price: 10m, vat: 0m);
-        var row = new Order { Id = quote.Id, Year = 2026, State = issued ? OrderState.InvoiceIssued : OrderState.Open };
-        row.Lines.Add(new OrderLine { Id = Guid.NewGuid(), ProductId = product.Id, Qty = 1, UnitPriceSnapshot = 50m });
-        _repo.GetOrderByIdAsync(row.Id, Arg.Any<CancellationToken>()).Returns(row);
-        _repo.GetOrderWithLinesAsync(row.Id, Arg.Any<CancellationToken>()).Returns(row);
-        _repo.GetAllProductsForYearAsync(2026, Arg.Any<CancellationToken>()).Returns([product]);
-        _stripeService.IsStoreCheckoutConfigured.Returns(true);
-        _stripeService.CreateCheckoutSessionAsync(row.Id, 20m, Arg.Any<string>(), Arg.Any<string>(),
-                Arg.Any<string?>(), Arg.Any<string>(), Arg.Any<CancellationToken>(), Arg.Any<Guid?>(), Arg.Any<string?>())
-            .Returns(OpenSession("cs_snapshot", "https://stripe.test/snapshot"));
-
-        var result = await _service.CreateStripeCheckoutSessionAsync(quote, 20m, "https://humans.test/order", TestContext.Current.CancellationToken);
-
-        result.ErrorKey.Should().Be(issued ? null : "Store_PaymentAboveBalance");
-        result.SessionUrl.Should().Be(issued ? "https://stripe.test/snapshot" : null);
-        if (!issued)
-            await _stripeService.DidNotReceiveWithAnyArgs().CreateCheckoutSessionAsync(default, default, default!, default!, default, default!);
-    }
-
-    [HumansFact]
-    public async Task Checkout_ReplyLost_ReusesAttempt()
-    {
-        var orderId = Guid.NewGuid();
-        var row = new Order { Id = orderId };
-        var attempts = new List<Guid?>();
-        SetCheckoutOrder(row);
-        _repo.GetOrderByIdAsync(orderId, Arg.Any<CancellationToken>()).Returns(row);
-        _stripeService.CreateCheckoutSessionAsync(orderId, 20m, Arg.Any<string>(), Arg.Any<string>(),
-                Arg.Any<string?>(), Arg.Any<string>(), Arg.Any<CancellationToken>(), Arg.Any<Guid?>(), Arg.Any<string?>())
-            .Returns(call =>
-            {
-                attempts.Add(call.ArgAt<Guid?>(7));
-                if (attempts.Count == 1) throw new HttpRequestException("Reply lost after creation");
-                return Task.FromResult(OpenSession("cs_recovered", "https://stripe.test/recovered"));
-            });
-        var first = () => _service.OpenCheckoutSessionAsync(orderId, 20m, "https://humans.test/order", null, "Order",
-            TestContext.Current.CancellationToken);
-
-        await first.Should().ThrowAsync<HttpRequestException>();
-        (await first()).SessionUrl.Should().Be("https://stripe.test/recovered");
-
-        attempts.Should().HaveCount(2).And.OnlyContain(id => id != null);
-        attempts.Distinct().Should().ContainSingle();
-    }
-
-    [HumansTheory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public async Task Checkout_SaveFailure_PreservesRecovery(bool acknowledgement)
-    {
-        var ct = TestContext.Current.CancellationToken;
-        var options = new DbContextOptionsBuilder<StoreDbContext>()
-            .UseInMemoryDatabase(Guid.NewGuid().ToString()).Options;
-        await using var db = new StoreDbContext(options);
-        var orderId = Guid.NewGuid();
-        var stored = new Order { Id = orderId };
-        SetCheckoutOrder(stored);
-        db.Orders.Add(stored);
-        await db.SaveChangesAsync(ct);
-        var real = new Repository(new TestDbContextFactory<StoreDbContext>(options));
-        _repo.GetOrderByIdAsync(orderId, Arg.Any<CancellationToken>())
-            .Returns(_ => real.GetOrderByIdAsync(orderId, ct));
-        _repo.GetOrderWithLinesAsync(orderId, Arg.Any<CancellationToken>())
-            .Returns(_ => real.GetOrderWithLinesAsync(orderId, ct));
-        var fail = true;
-        _repo.UpdateOrderAsync(Arg.Any<Order>(), Arg.Any<CancellationToken>()).Returns(async call =>
-        {
-            var row = call.Arg<Order>();
-            if (fail && (row.CheckoutSessionId != null) == acknowledgement)
-            {
-                fail = false;
-                throw new InvalidOperationException("Save unavailable");
-            }
-            await real.UpdateOrderAsync(row, ct);
-        });
-        var attempts = new List<Guid?>();
-        _stripeService.CreateCheckoutSessionAsync(orderId, 20m, Arg.Any<string>(), Arg.Any<string>(),
-                Arg.Any<string?>(), Arg.Any<string>(), Arg.Any<CancellationToken>(), Arg.Any<Guid?>(), Arg.Any<string?>())
-            .Returns(call =>
-            {
-                attempts.Add(call.ArgAt<Guid?>(7));
-                return OpenSession("cs_durable", "https://stripe.test/durable");
-            });
-        var open = () => _service.OpenCheckoutSessionAsync(orderId, 20m, "https://humans.test/order", "camp@test.org", "Camp", ct);
-
-        await open.Should().ThrowAsync<InvalidOperationException>().WithMessage("Save unavailable");
-        var saved = (await real.GetOrderByIdAsync(orderId, ct))!;
-        saved.CheckoutSessionId.Should().BeNull();
-        if (acknowledgement)
-        {
-            saved.CheckoutAttemptId.Should().Be(attempts.Single());
-            saved.CheckoutIntent.Should().NotBeNull();
-            var converter = db.Model.FindEntityType(typeof(Order))!.FindProperty(nameof(Order.CheckoutIntent))!.GetValueConverter()!;
-            converter.ConvertFromProvider(converter.ConvertToProvider(saved.CheckoutIntent)).Should().Be(saved.CheckoutIntent);
-        }
-        else
-        {
-            attempts.Should().BeEmpty();
-            saved.HasCheckoutAttempt.Should().BeFalse();
-        }
-        (await open()).SessionUrl.Should().Be("https://stripe.test/durable");
-        attempts.Should().HaveCount(acknowledgement ? 2 : 1);
-        attempts.Distinct().Should().ContainSingle();
-        (await real.GetOrderByIdAsync(orderId, ct))!.CheckoutSessionId.Should().Be("cs_durable");
-    }
-
-    [HumansFact]
-    public async Task Checkout_ChangedRequest_RecoversOriginal()
-    {
-        var orderId = Guid.NewGuid();
-        var row = new Order { Id = orderId };
-        SetCheckoutOrder(row);
-        _repo.GetOrderByIdAsync(orderId, Arg.Any<CancellationToken>()).Returns(row);
-        var calls = new List<(Guid? Attempt, decimal Amount, string ReturnUrl, string? Email, string Description, string? Superseded)>();
-        _stripeService.CreateCheckoutSessionAsync(orderId, Arg.Any<decimal>(), Arg.Any<string>(), Arg.Any<string>(),
-                Arg.Any<string?>(), Arg.Any<string>(), Arg.Any<CancellationToken>(), Arg.Any<Guid?>(), Arg.Any<string?>())
-            .Returns(call =>
-            {
-                calls.Add((call.ArgAt<Guid?>(7), call.ArgAt<decimal>(1), call.ArgAt<string>(2),
-                    call.ArgAt<string?>(4), call.ArgAt<string>(5), call.ArgAt<string?>(8)));
-                if (calls.Count == 1) throw new HttpRequestException("Reply lost");
-                return OpenSession(calls.Count == 2 ? "cs_original" : "cs_replacement", "https://stripe.test/pay");
-            });
-        var first = () => _service.OpenCheckoutSessionAsync(orderId, 20m, "https://old.test/store", "old@test.org", "Old camp", TestContext.Current.CancellationToken);
-        await first.Should().ThrowAsync<HttpRequestException>();
-
-        (await _service.OpenCheckoutSessionAsync(orderId, 30m, "https://new.test/store", "new@test.org", "New camp",
-            TestContext.Current.CancellationToken)).SessionUrl.Should().Be("https://stripe.test/pay");
-
-        calls.Should().HaveCount(3);
-        calls[1].Should().Be(calls[0]);
-        calls[2].Attempt.Should().NotBe(calls[0].Attempt!.Value);
-        calls[2].Should().Be((row.CheckoutAttemptId, 30m, "https://new.test/store", "new@test.org", "New camp", "cs_original"));
-        row.CheckoutIntent!.SupersededSessionId.Should().BeNull();
-    }
-
-    [HumansTheory]
-    [InlineData(-1, false)]
-    [InlineData(0, false)]
-    [InlineData(1, false)]
-    [InlineData(2, false)]
-    [InlineData(-1, true)]
-    [InlineData(0, true)]
-    [InlineData(1, true)]
-    [InlineData(2, true)]
-    public async Task Checkout_UnsafeReplay_RequiresExactMatch(int matches, bool excessive)
-    {
-        var orderId = Guid.NewGuid();
-        var attempt = Guid.NewGuid();
-        var intent = new StoreCheckoutIntent(excessive ? 30m : 20m, "https://humans.test/order", null, "Camp", null,
-            (_clock.GetCurrentInstant() - (excessive ? Duration.Zero : Duration.FromHours(24))).ToUnixTimeSeconds());
-        var row = new Order { Id = orderId, CheckoutAttemptId = attempt, CheckoutAmountEur = intent.AmountEur, CheckoutIntent = intent };
-        SetCheckoutOrder(row, excessive ? 25m : 50m);
-        _repo.GetOrderByIdAsync(orderId, Arg.Any<CancellationToken>()).Returns(row);
-        _stripeService.ListStoreCheckoutSessionsAsync(Arg.Any<CancellationToken>()).Returns(matches == -1 ? null :
-            Enumerable.Range(0, matches).Select(i => new StoreCheckoutSessionData($"cs_{i}", orderId, null, intent.AmountEur,
-                Status: "open", Url: "https://stripe.test/pay", CheckoutAttemptId: attempt))
-            .Append(new StoreCheckoutSessionData("cs_other", Guid.NewGuid(), null, 20m, CheckoutAttemptId: attempt))
-            .Append(new StoreCheckoutSessionData("cs_other_attempt", orderId, null, 20m, CheckoutAttemptId: Guid.NewGuid())).ToList());
-        _stripeService.CreateCheckoutSessionAsync(orderId, intent.AmountEur, intent.ReturnUrl, intent.ReturnUrl, null, "Camp",
-                Arg.Any<CancellationToken>(), attempt, null, "cs_0")
-            .Returns(OpenSession("cs_0", "https://stripe.test/pay"));
-
-        _stripeService.CreateCheckoutSessionAsync(orderId, 20m, intent.ReturnUrl, intent.ReturnUrl, null, "Camp",
-                Arg.Any<CancellationToken>(), Arg.Any<Guid?>(), "cs_0")
-            .Returns(OpenSession("cs_replacement", "https://stripe.test/pay"));
-
-        var result = await _service.OpenCheckoutSessionAsync(orderId, 20m, intent.ReturnUrl, null, "Camp", TestContext.Current.CancellationToken);
-
-        result.SessionUrl.Should().Be(matches == 1 ? "https://stripe.test/pay" : null);
-        if (matches == 1)
-        {
-            await _stripeService.Received(1).CreateCheckoutSessionAsync(orderId, intent.AmountEur, intent.ReturnUrl, intent.ReturnUrl,
-                null, "Camp", Arg.Any<CancellationToken>(), attempt, null, "cs_0");
-            row.CheckoutSessionId.Should().Be(excessive ? "cs_replacement" : "cs_0");
-            if (excessive)
-                await _stripeService.Received(1).CreateCheckoutSessionAsync(orderId, 20m, intent.ReturnUrl, intent.ReturnUrl,
-                    null, "Camp", Arg.Any<CancellationToken>(), Arg.Any<Guid?>(), "cs_0");
-        }
-        else
-        {
-            await _stripeService.DidNotReceiveWithAnyArgs().CreateCheckoutSessionAsync(default, default, default!, default!, default, default!);
-            row.CheckoutIntent.Should().Be(intent);
-            await _repo.DidNotReceiveWithAnyArgs().UpdateOrderAsync(default!);
-        }
-    }
-
-    [HumansTheory]
-    [InlineData(true)]
-    [InlineData(false)]
-    public async Task Checkout_EarlyExpiry_MatchesAttempt(bool current)
-    {
-        var orderId = Guid.NewGuid();
-        var attempt = Guid.NewGuid();
-        var row = new Order
-        {
-            Id = orderId,
-            CheckoutAttemptId = attempt,
-            CheckoutAmountEur = 20m,
-            CheckoutIntent = new(20m, "https://humans.test/order", null, "Camp", "cs_old", _clock.GetCurrentInstant().ToUnixTimeSeconds())
-        };
-        _repo.GetOrderByIdAsync(orderId, Arg.Any<CancellationToken>()).Returns(row);
-        await _service.HandleStripeCheckoutWebhookEventAsync(new StoreCheckoutWebhookEvent("evt_expired",
-            StoreCheckoutEventKind.CheckoutSessionExpired, new StoreCheckoutSessionData(current ? "cs_new" : "cs_old",
-                orderId, null, 20m, Status: "expired", CheckoutAttemptId: current ? attempt : Guid.NewGuid())),
-            TestContext.Current.CancellationToken);
-
-        row.HasCheckoutAttempt.Should().Be(!current);
-        if (current) row.CheckoutIntent.Should().BeNull();
-    }
-
     [HumansFact]
     public async Task Checkout_with_an_unchanged_amount_replays_the_open_attempt()
     {
-        var order = MakeOrderDto(balanceEur: 50m, counterpartyName: "Camp");
+        var order = MakeOrderDto(balanceEur: 50m);
         var attemptId = Guid.NewGuid();
-        var stored = new Order
+        _repo.GetOrderByIdAsync(order.Id, Arg.Any<CancellationToken>()).Returns(new Order
         {
             Id = order.Id,
             CheckoutAttemptId = attemptId,
             CheckoutSessionId = "cs_open",
             CheckoutAmountEur = 20m,
-            CheckoutIntent = new(20m, "https://humans.test/order", null, "Nobodies Collective - Camp", null, _clock.GetCurrentInstant().ToUnixTimeSeconds()),
-        };
-        SetCheckoutOrder(stored);
-        _repo.GetOrderByIdAsync(order.Id, Arg.Any<CancellationToken>()).Returns(stored);
+        });
         _stripeService.IsStoreCheckoutConfigured.Returns(true);
         _stripeService.CreateCheckoutSessionAsync(order.Id, 20m, Arg.Any<string>(), Arg.Any<string>(),
-                Arg.Any<string?>(), Arg.Any<string>(), Arg.Any<CancellationToken>(), attemptId, Arg.Is<string?>(s => s == null), "cs_open")
+                Arg.Any<string?>(), Arg.Any<string>(), Arg.Any<CancellationToken>(), attemptId, Arg.Is<string?>(s => s == null))
             .Returns(OpenSession("cs_open", "https://stripe.test/open"));
 
         var result = await _service.CreateStripeCheckoutSessionAsync(order, 20m,
@@ -2240,7 +1797,7 @@ public class ServiceTests
         result.SessionUrl.Should().Be("https://stripe.test/open");
         await _stripeService.Received(1).CreateCheckoutSessionAsync(Arg.Any<Guid>(), Arg.Any<decimal>(),
             Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string?>(), Arg.Any<string>(), Arg.Any<CancellationToken>(),
-            Arg.Any<Guid?>(), Arg.Any<string?>(), "cs_open");
+            Arg.Any<Guid?>(), Arg.Any<string?>());
         await _repo.DidNotReceiveWithAnyArgs().UpdateOrderAsync(default!);
     }
 
@@ -2249,9 +1806,9 @@ public class ServiceTests
     {
         var order = MakeOrderDto(balanceEur: 50m);
         var oldAttempt = Guid.NewGuid();
-        SetCheckoutOrder(new Order { Id = order.Id, CheckoutAttemptId = oldAttempt, CheckoutSessionId = "cs_old", CheckoutAmountEur = 20m });
-        // The acknowledgement reads the row as a concurrent edit left it during the Stripe round trip.
+        // The second read is the row as a concurrent edit left it during the Stripe round trip.
         _repo.GetOrderByIdAsync(order.Id, Arg.Any<CancellationToken>()).Returns(
+            new Order { Id = order.Id, CheckoutAttemptId = oldAttempt, CheckoutSessionId = "cs_old", CheckoutAmountEur = 20m },
             new Order
             {
                 Id = order.Id,
@@ -2266,27 +1823,11 @@ public class ServiceTests
                 Arg.Is<Guid?>(id => id != null && id != oldAttempt), "cs_old")
             .Returns(OpenSession("cs_new", "https://stripe.test/new"));
 
-        _stripeService.CreateCheckoutSessionAsync(order.Id, 30m, Arg.Any<string>(), Arg.Any<string>(),
-                Arg.Any<string?>(), Arg.Any<string>(), Arg.Any<CancellationToken>(), oldAttempt, null, "cs_old")
-            .Returns(OpenSession("cs_old", "https://stripe.test/old"));
-        var writes = new List<(string? Name, string? Session, Guid? Attempt)>();
-        _repo.UpdateOrderAsync(Arg.Any<Order>(), Arg.Any<CancellationToken>()).Returns(call =>
-        {
-            var row = call.Arg<Order>();
-            writes.Add((row.CounterpartyName, row.CheckoutSessionId, row.CheckoutAttemptId));
-            return Task.CompletedTask;
-        });
-
         var result = await _service.CreateStripeCheckoutSessionAsync(order, 30m,
             "https://humans.test/order", TestContext.Current.CancellationToken);
 
         result.SessionUrl.Should().Be("https://stripe.test/new");
-        writes.Should().HaveCount(2);
-        writes.Should().OnlyContain(w => w.Name == "Edited meanwhile" && w.Attempt != null && w.Attempt != oldAttempt);
-        writes[0].Session.Should().BeNull();
-        writes[1].Session.Should().Be("cs_new");
-        writes.Select(w => w.Attempt).Distinct().Should().ContainSingle();
-        await _repo.Received(2).UpdateOrderAsync(Arg.Is<Order>(o =>
+        await _repo.Received(1).UpdateOrderAsync(Arg.Is<Order>(o =>
             o.CounterpartyName == "Edited meanwhile"
             && o.CheckoutSessionId == "cs_new" && o.CheckoutAmountEur == 30m
             && o.CheckoutAttemptId != null && o.CheckoutAttemptId != oldAttempt), Arg.Any<CancellationToken>());
@@ -2296,19 +1837,17 @@ public class ServiceTests
     public async Task Checkout_replaying_an_attempt_that_completed_opens_no_new_session()
     {
         var order = MakeOrderDto(balanceEur: 50m);
-        var stored = new Order
+        _repo.GetOrderByIdAsync(order.Id, Arg.Any<CancellationToken>()).Returns(new Order
         {
             Id = order.Id,
             CheckoutAttemptId = Guid.NewGuid(),
             CheckoutSessionId = "cs_done",
             CheckoutAmountEur = 20m,
-        };
-        SetCheckoutOrder(stored);
-        _repo.GetOrderByIdAsync(order.Id, Arg.Any<CancellationToken>()).Returns(stored);
+        });
         _stripeService.IsStoreCheckoutConfigured.Returns(true);
         _stripeService.CreateCheckoutSessionAsync(Arg.Any<Guid>(), Arg.Any<decimal>(), Arg.Any<string>(),
                 Arg.Any<string>(), Arg.Any<string?>(), Arg.Any<string>(), Arg.Any<CancellationToken>(),
-                Arg.Any<Guid?>(), Arg.Any<string?>(), "cs_done")
+                Arg.Any<Guid?>(), Arg.Any<string?>())
             .Returns(new StoreCheckoutSessionData("cs_done", order.Id, null, 20m, Status: "complete"));
 
         var result = await _service.CreateStripeCheckoutSessionAsync(order, 20m,
@@ -2317,7 +1856,7 @@ public class ServiceTests
         result.ErrorKey.Should().Be("Store_PaymentPending");
         await _stripeService.Received(1).CreateCheckoutSessionAsync(Arg.Any<Guid>(), Arg.Any<decimal>(),
             Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string?>(), Arg.Any<string>(), Arg.Any<CancellationToken>(),
-            Arg.Any<Guid?>(), Arg.Any<string?>(), "cs_done");
+            Arg.Any<Guid?>(), Arg.Any<string?>());
         await _repo.DidNotReceiveWithAnyArgs().UpdateOrderAsync(default!);
     }
 
@@ -2437,96 +1976,6 @@ public class ServiceTests
             Arg.Any<CancellationToken>());
     }
 
-    [HumansTheory]
-    [InlineData(StoreCheckoutEventKind.CheckoutSessionAsyncPaymentSucceeded)]
-    [InlineData(StoreCheckoutEventKind.CheckoutSessionAsyncPaymentFailed)]
-    public async Task AsyncSettlement_BeforeCompleted_AllowsNextCheckout(StoreCheckoutEventKind kind)
-    {
-        var ct = TestContext.Current.CancellationToken;
-        var order = MakeOrderDto(balanceEur: 50m);
-        var attempt = Guid.NewGuid();
-        var row = new Order
-        {
-            Id = order.Id,
-            CheckoutAttemptId = attempt,
-            CheckoutSessionId = "cs_terminal",
-            CheckoutAmountEur = 20m,
-        };
-        SetCheckoutOrder(row);
-        _repo.GetOrderByIdAsync(order.Id, Arg.Any<CancellationToken>()).Returns(row);
-        _stripeService.IsStoreCheckoutConfigured.Returns(true);
-        var session = new StoreCheckoutSessionData("cs_terminal", order.Id, "pi_terminal", 20m,
-            PaymentStatus: kind == StoreCheckoutEventKind.CheckoutSessionAsyncPaymentSucceeded ? "paid" : "unpaid", Status: "complete");
-        _stripeService.CreateCheckoutSessionAsync(order.Id, 20m, Arg.Any<string>(), Arg.Any<string>(),
-                Arg.Any<string?>(), Arg.Any<string>(), Arg.Any<CancellationToken>(), attempt)
-            .Returns(session);
-        _stripeService.CreateCheckoutSessionAsync(order.Id, 20m, Arg.Any<string>(), Arg.Any<string>(),
-                Arg.Any<string?>(), Arg.Any<string>(), Arg.Any<CancellationToken>(),
-                Arg.Is<Guid?>(id => id != null && id != attempt), Arg.Is<string?>(id => id == null))
-            .Returns(OpenSession("cs_next", "https://stripe.test/next"));
-
-        await _service.HandleStripeCheckoutWebhookEventAsync(new StoreCheckoutWebhookEvent("evt_terminal", kind, session), ct);
-        var result = await _service.CreateStripeCheckoutSessionAsync(order, 20m, "https://humans.test/order", ct);
-
-        result.SessionUrl.Should().Be("https://stripe.test/next");
-        row.CheckoutSessionId.Should().Be("cs_next");
-    }
-
-    [HumansTheory]
-    [InlineData(StoreCheckoutEventKind.CheckoutSessionCompleted)]
-    [InlineData(StoreCheckoutEventKind.CheckoutSessionAsyncPaymentSucceeded)]
-    [InlineData(StoreCheckoutEventKind.CheckoutSessionAsyncPaymentFailed)]
-    public async Task CheckoutOutcome_MissingAmount_PreservesCurrentAttempt(StoreCheckoutEventKind kind)
-    {
-        var orderId = Guid.NewGuid();
-        var attempt = Guid.NewGuid();
-        var row = new Order
-        {
-            Id = orderId,
-            CheckoutAttemptId = attempt,
-            CheckoutSessionId = "cs_unreadable",
-            CheckoutAmountEur = 20m,
-        };
-        _repo.GetOrderByIdAsync(orderId, Arg.Any<CancellationToken>()).Returns(row);
-        var session = new StoreCheckoutSessionData("cs_unreadable", orderId, "pi_unreadable", null, PaymentStatus: "paid");
-
-        await _service.HandleStripeCheckoutWebhookEventAsync(new StoreCheckoutWebhookEvent("evt_unreadable", kind, session),
-            TestContext.Current.CancellationToken);
-
-        row.CheckoutAttemptId.Should().Be(attempt);
-        row.CheckoutSessionId.Should().Be("cs_unreadable");
-        row.CheckoutAmountEur.Should().Be(20m);
-        await _repo.DidNotReceiveWithAnyArgs().AddPaymentAsync(default!, default);
-        await _repo.DidNotReceiveWithAnyArgs().UpdateOrderAsync(default!, default);
-    }
-
-    [HumansTheory]
-    [InlineData(StoreCheckoutEventKind.CheckoutSessionAsyncPaymentSucceeded)]
-    [InlineData(StoreCheckoutEventKind.CheckoutSessionAsyncPaymentFailed)]
-    public async Task AsyncSettlement_SupersededSession_PreservesCurrentAttempt(StoreCheckoutEventKind kind)
-    {
-        var orderId = Guid.NewGuid();
-        var attempt = Guid.NewGuid();
-        var row = new Order
-        {
-            Id = orderId,
-            CheckoutAttemptId = attempt,
-            CheckoutSessionId = "cs_replacement",
-            CheckoutAmountEur = 30m,
-        };
-        _repo.GetOrderByIdAsync(orderId, Arg.Any<CancellationToken>()).Returns(row);
-        var session = new StoreCheckoutSessionData("cs_old", orderId, "pi_old", 20m,
-            PaymentStatus: kind == StoreCheckoutEventKind.CheckoutSessionAsyncPaymentSucceeded ? "paid" : "unpaid", Status: "complete");
-
-        await _service.HandleStripeCheckoutWebhookEventAsync(new StoreCheckoutWebhookEvent("evt_old", kind, session),
-            TestContext.Current.CancellationToken);
-
-        row.CheckoutAttemptId.Should().Be(attempt);
-        row.CheckoutSessionId.Should().Be("cs_replacement");
-        row.CheckoutAmountEur.Should().Be(30m);
-        await _repo.DidNotReceiveWithAnyArgs().UpdateOrderAsync(default!, default);
-    }
-
     [HumansFact]
     public async Task Reconciling_a_paid_session_whose_webhook_never_arrived_lets_the_next_checkout_open_a_new_session()
     {
@@ -2539,7 +1988,6 @@ public class ServiceTests
             CheckoutSessionId = "cs_paid",
             CheckoutAmountEur = 20m,
         };
-        SetCheckoutOrder(row);
         _repo.GetOrderByIdAsync(order.Id, Arg.Any<CancellationToken>()).Returns(row);
         _repo.GetRecordedStripePaymentsAsync(Arg.Any<CancellationToken>()).Returns(new List<RecordedStripePayment>());
         _stripeService.ListStoreCheckoutSessionsAsync(Arg.Any<CancellationToken>()).Returns(new List<StoreCheckoutSessionData>
@@ -3468,21 +2916,6 @@ public class ServiceTests
         new(seasonId, Guid.NewGuid(), year, null, name, string.Empty, string.Empty, [],
             CampSeasonStatus.Active, YesNoMaybe.Yes, YesNoMaybe.No, AdultPlayspacePolicy.No,
             0, null, null, null, 0, null, null);
-
-    private void SetCheckoutOrder(Order row, decimal balanceEur = 50m)
-    {
-        row.Year = 2026;
-        row.Lines.Add(new OrderLine
-        {
-            Id = Guid.NewGuid(),
-            OrderId = row.Id,
-            ProductId = Guid.NewGuid(),
-            Qty = 1,
-            UnitPriceSnapshot = balanceEur
-        });
-        _repo.GetOrderWithLinesAsync(row.Id, Arg.Any<CancellationToken>()).Returns(row);
-        _repo.GetAllProductsForYearAsync(row.Year, Arg.Any<CancellationToken>()).Returns([]);
-    }
 
     private static StoreCheckoutSessionData OpenSession(string sessionId, string url) =>
         new(sessionId, null, null, null, Status: "open", Url: url);

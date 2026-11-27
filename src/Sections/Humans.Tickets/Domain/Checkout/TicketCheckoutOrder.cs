@@ -61,7 +61,7 @@ internal sealed class TicketCheckoutOrder
     /// <summary>The commit of <see cref="TermsFolder"/> whose text the buyer was shown and accepted.</summary>
     public string? TermsVersion { get; init; }
 
-    /// <summary>Set once after Email accepts the cancellation notice; explicit skips are recorded on the timeline.</summary>
+    /// <summary>When the buyer was emailed that the event is cancelled; set once, after the order's cancellation work.</summary>
     public Instant? CancellationEmailedAt { get; set; }
 
     public Instant CreatedAt { get; init; }
@@ -74,11 +74,10 @@ internal sealed class TicketCheckoutOrder
 
     public long TicketTotalMinor => Lines.Where(l => l.Kind == OrderLineKind.Ticket).Sum(l => l.AmountMinor);
 
-    /// <summary>A remote checkout holds capacity until explicitly closed; only a local order lapses by time.</summary>
+    /// <summary>Holds capacity: paid, a payment on its way, or still payable.</summary>
     public bool HoldsTickets(Instant now) =>
         State is TicketCheckoutOrderState.Paid or TicketCheckoutOrderState.Processing
-        || (State is TicketCheckoutOrderState.Created or TicketCheckoutOrderState.Pending
-            && (PlatformOrderId is not null || ExpiresAt > now));
+        || (State is TicketCheckoutOrderState.Created or TicketCheckoutOrderState.Pending && ExpiresAt > now);
 
     /// <summary>Not yet settled either way.</summary>
     public bool IsOpen => State is TicketCheckoutOrderState.Created or TicketCheckoutOrderState.Pending
@@ -210,7 +209,6 @@ internal enum TicketCheckoutOrderEventKind
     CompanionRequestDecided = 24,
     EventCancelled = 25,
     Restored = 26,
-    CancellationNoticeSkipped = 27,
     /// <summary>Sales closed with the ticket still in resale; its holder was told.</summary>
     ResaleUnsold = 40,
 }

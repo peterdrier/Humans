@@ -72,20 +72,11 @@ None. The section owns no tables. The Checkout Session is the record of the paym
 
 ## Invariants
 
-- Payment ledgers publish account key `stripe:Tickets`. Tickets combines attribution with configured adapters naming that account, even without local orders, preserving this read's monetary snapshot and checking orders across the matching platforms.
-
-- Refunds, disputes and webhook session lookups consume every Stripe page before returning. Later-page failures or cancellation reject the read without returning partial totals or session IDs; refund retries find their original refund beyond the first page.
-
-- Native status and order lists require explicit EUR on the session, expanded charge, refunds and money-holding disputes before using amounts. Unsupported or missing currency rejects the read, including the whole order list. Refunds validate the session and charge before issuing any remote mutation.
-
-- Stripe reporting accepts explicit EUR only. A movement, payout or summed payout content with another or missing currency rejects the ledger; an unverified fee remains unknown.
-
 - The checkout API key must be nonempty and contain no whitespace, matching Stripe.net client validation. An unusable key makes the platform unconfigured; order operations refuse through `TicketingPlatformException` before SDK construction, reporting returns null, and connection checks report configuration without Stripe calls or key text. Webhook signing secrets retain their separate validation.
 
 - Charges EUR only; a non-EUR request, a negative line or a non-positive total throws `TicketingPlatformException` before
   any Stripe call. The adapter never changes an amount.
 - Session expiry is clamped to 31 minutes .. 23 hours from now, inside Stripe's 30 minutes .. 24 hours.
-- A refund first searches every page for its Humans refund ID, regardless of age. If no matching refund exists, a new POST requires the persisted request time to be less than 24 hours old and not in the future. A missing or expired timestamp throws and keeps Tickets' refund pending for operator reconciliation; it never releases the reservation or reuses an expired key. [Stripe limits unresolved retries to 24 hours](https://docs.stripe.com/error-low-level#post-requests).
 - A refund error is final only for a recognized request, authentication, permission or card rejection with HTTP 400–404. Server, rate-limit, idempotency and unknown errors throw, leaving Tickets' refund pending and its amount reserved until reconciliation resolves the original refund ID.
 - A refund goes only against the session's own PaymentIntent, never above what the charge still holds (amount minus
   `amount_refunded`), with the idempotency key `humans_ticket_refund_<refund id>`. Tickets' own cap (ticket lines net of earlier

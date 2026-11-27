@@ -1,6 +1,5 @@
 using Humans.AuditLog.Contracts;
 using Humans.Tickets.Contracts;
-using Humans.Tickets.Data;
 using Humans.Tickets.Domain.Checkout;
 
 namespace Humans.Tickets.Services.Checkout;
@@ -17,28 +16,17 @@ internal sealed partial class TicketCheckoutService
         holderEmail = holderEmail.Trim();
         if (ReasonRefusal(reason) is { } refusal)
             return refusal;
-        if (holderName.Length is 0 or > MaxNameLength || !LooksLikeEmail(holderEmail))
-            return new($"A rename needs the holder's legal name of at most {MaxNameLength} characters and a valid email.");
+        if (holderName.Length == 0 || !LooksLikeEmail(holderEmail))
+            return new("A rename needs the holder's legal name and email.");
         var ticket = await repository.GetTicketAsync(ticketId, ct);
         if (ticket is null)
             return new("That ticket does not exist.");
-        if (ticket.VoidRefundId is not null)
-            return new("Complete the pending void before renaming this ticket.");
         if (ticket.State != TicketCheckoutTicketState.Valid || ticket.Kind != TicketHolderKind.Adult)
             return new("Only a valid adult ticket can be renamed.");
-        if (TicketPiiTombstone.IsTombstoned(ticket.HolderName, ticket.HolderEmail))
-            return new("Erased ticket data cannot be renamed.");
-
-        var order = await repository.GetOrderAsync(ticket.OrderId, ct);
-        var line = order?.Lines.ElementAtOrDefault(ticket.LineIndex);
-        if (line is null || line.Kind != OrderLineKind.Ticket || line.HolderKind is not (null or TicketHolderKind.Adult))
-            return new("The ticket's adult order line is missing; nothing was renamed.");
 
         var fromUserId = ticket.HolderUserId;
-        var (knownHolder, accountProblem) = await ResolveAccountAsync(holderEmail, ct, provision: false);
-        if (accountProblem is not null)
-            return new($"That email cannot take the ticket: {accountProblem}.");
-        var samePerson = knownHolder is not null && knownHolder == fromUserId;
+        var existing = await users.GetByEmailOrAlternateAsync(holderEmail, ct);
+        var samePerson = existing is not null && existing.Id == fromUserId;
         // Correcting the same person's legal name is always allowed; moving the ticket to someone else is the exception.
         if (!samePerson)
         {
@@ -47,17 +35,18 @@ internal sealed partial class TicketCheckoutService
             if ((await repository.GetTicketsForSettingsAsync(ticket.TicketingSettingsId, ct))
                 .Any(t => t.ParentTicketId == ticket.Id && t.State == TicketCheckoutTicketState.Valid))
                 return new("Void this ticket's child and companion tickets before moving it to another person.");
-            if (knownHolder is { } knownId && await HoldsTicketAsync(ticket.TicketingSettingsId, knownId, clock.GetCurrentInstant(), ct))
+            if (existing is not null && await HoldsTicketAsync(ticket.TicketingSettingsId, existing.Id, clock.GetCurrentInstant(), ct))
                 return new("That person already holds a ticket for this event.");
         }
         // Only once the rename is allowed, so a refused move leaves no account behind.
-        var holderUserId = knownHolder ?? Guid.Empty;
-        if (knownHolder is null)
+        var holderUserId = existing?.Id ?? Guid.Empty;
+        if (existing is null)
         {
             var (resolved, problem) = await ResolveAccountAsync(holderEmail, ct);
             if (resolved is not { } resolvedId)
                 return new($"That email cannot take the ticket: {problem}.");
             holderUserId = resolvedId;
+            // The resolver also matches aliases, which the lookup above may not.
             if (holderUserId != fromUserId && await HoldsTicketAsync(ticket.TicketingSettingsId, holderUserId, clock.GetCurrentInstant(), ct))
                 return new("That person already holds a ticket for this event.");
             samePerson = holderUserId == fromUserId;
@@ -66,11 +55,19 @@ internal sealed partial class TicketCheckoutService
         ticket.HolderUserId = holderUserId;
         ticket.HolderName = holderName;
         ticket.HolderEmail = holderEmail;
-        line.HolderUserId = holderUserId;
-        line.HolderName = holderName;
-        line.HolderEmail = holderEmail;
-        await repository.UpdateOrderAsync(order!, ct, ticket);
+        await repository.UpdateTicketAsync(ticket, ct);
         holdings.InvalidateHoldings(holderUserId);
+        // The order line follows the ticket, so the new holder can open the order and the old one no longer can.
+        var order = await repository.GetOrderAsync(ticket.OrderId, ct);
+        var line = order?.Lines.FirstOrDefault(l =>
+            l.Kind == OrderLineKind.Ticket && l.HolderKind is null or TicketHolderKind.Adult && l.HolderUserId == fromUserId);
+        if (order is not null && line is not null)
+        {
+            line.HolderUserId = holderUserId;
+            line.HolderName = holderName;
+            line.HolderEmail = holderEmail;
+            await repository.UpdateOrderAsync(order, ct);
+        }
 
         var why = reason.Trim();
         // Only a move of a reduced price ticket steps past a rule; anything else is a plain rename.
@@ -103,16 +100,8 @@ internal sealed partial class TicketCheckoutService
             return new("That ticket does not exist.");
         if (!ticket.IsHeld)
             return new($"The ticket is already {ticket.State}.");
-        if (ticket.ParentTicketId is { } parentId && await repository.GetTicketAsync(parentId, ct) is { } parent)
-        {
-            if (parent.State == TicketCheckoutTicketState.Offered)
-                return new("The adult's ticket is in the resale queue and its refund includes this one: withdraw it from the queue first.");
-            if (parent.VoidRefundId is not null)
-                return new("Complete the pending void of the adult ticket first.");
-        }
-        if ((await repository.GetTicketsForSettingsAsync(ticket.TicketingSettingsId, ct))
-            .Any(t => t.ParentTicketId == ticket.Id && t.VoidRefundId is not null))
-            return new("Complete the pending void of the dependent ticket first.");
+        if (ticket.ParentTicketId is { } parentId && (await repository.GetTicketAsync(parentId, ct))?.State == TicketCheckoutTicketState.Offered)
+            return new("The adult's ticket is in the resale queue and its refund includes this one: withdraw it from the queue first.");
 
         var offer = (await repository.GetOffersForSettingsAsync(ticket.TicketingSettingsId, ct))
             .FirstOrDefault(o => o.TicketId == ticket.Id && o.State is TicketResaleOfferState.Open or TicketResaleOfferState.Reserved);
@@ -120,45 +109,20 @@ internal sealed partial class TicketCheckoutService
             return new("A buyer's order is paying for this ticket right now; try again once it settles.");
 
         var why = reason.Trim();
-        if (ticket.VoidRefundId is not null)
-        {
-            if (ticket.VoidRefundMinor is not { } originalAmount || ticket.VoidRequestedReason is not { } originalReason)
-                return new("The pending void has incomplete details; the ticketing team must review it.");
-            refundMinor = originalAmount;
-            why = originalReason;
-        }
-        // The intent survives a stop after the refund, so a retry cannot request that money twice.
+        // Refund first: a refund the platform turns down leaves the ticket working, so the team can try again.
         if (refundMinor > 0)
         {
-            if (ticket.VoidRefundId is null)
-            {
-                ticket.VoidRefundId = Guid.NewGuid();
-                ticket.VoidRefundMinor = refundMinor;
-                ticket.VoidRequestedReason = why;
-                await repository.UpdateTicketAsync(ticket, ct);
-                await auditLog.LogAsync(TicketsAuditActions.TicketCheckoutVoidRequested, AuditEntityType, ticket.OrderId,
-                    $"Void requested for ticket {ticket.Barcode}, refund {FormatMinor(refundMinor)}: {why}", actorUserId);
-            }
-            var (refunded, _) = await RefundCoreAsync(ticket.OrderId, refundMinor,
-                Truncate($"Ticket {ticket.Barcode} voided: {why}"), actorUserId, ct, ticket.VoidRefundId);
+            var (refunded, _) = await RefundCoreAsync(ticket.OrderId, refundMinor, $"Ticket {ticket.Barcode} voided: {why}", actorUserId, ct);
             if (!refunded.Succeeded)
-            {
-                var saved = (await repository.GetRefundsAsync(ticket.OrderId, ct)).FirstOrDefault(r => r.Id == ticket.VoidRefundId);
-                if (saved is null || saved.State == RefundState.Failed)
-                {
-                    ClearVoidIntent(ticket);
-                    await repository.UpdateTicketAsync(ticket, ct);
-                }
                 return new($"{refunded.Refusal} Nothing was voided.");
-            }
         }
 
         var dependents = await VoidWithDependentsAsync(ticket, offer, why, actorUserId,
-            refundMinor > 0 ? $"; refund of {FormatMinor(refundMinor)} requested" : "; no refund: no money goes back", ct);
+            refundMinor > 0 ? $"; {FormatMinor(refundMinor)} refunded" : "; no refund: no money goes back", ct);
         await auditLog.LogAsync(TicketsAuditActions.TicketCheckoutTicketVoided, AuditEntityType, ticket.OrderId,
             $"Ticket {ticket.Barcode} voided" + (dependents > 0 ? $" with {dependents} dependent ticket(s)" : string.Empty) +
             (offer is not null ? ", withdrawing its resale offer" : string.Empty) +
-            (refundMinor > 0 ? $", refund of {FormatMinor(refundMinor)} requested" : ", with no refund") + $": {why}",
+            (refundMinor > 0 ? $", refunding {FormatMinor(refundMinor)}" : ", with no refund") + $": {why}",
             actorUserId, ticket.HolderUserId, ticket.HolderUserId is null ? null : AuditSubjectTypes.User);
         return CheckoutMutationResult.Ok;
     }
@@ -173,6 +137,7 @@ internal sealed partial class TicketCheckoutService
             offer.State = TicketResaleOfferState.Withdrawn;
             offer.WithdrawnAt = now;
             offer.Invites = [];
+            await repository.UpdateOfferAsync(offer, ct);
         }
 
         var dependents = (await repository.GetTicketsForSettingsAsync(ticket.TicketingSettingsId, ct))
@@ -183,24 +148,13 @@ internal sealed partial class TicketCheckoutService
             voided.State = TicketCheckoutTicketState.Void;
             voided.VoidedAt = now;
             voided.VoidReason = voided == ticket ? why : "Voided with the adult's ticket";
-        }
-        ClearVoidIntent(ticket);
-        await repository.UpdateTicketAsync(ticket, ct, dependents, offer);
-        foreach (var voided in dependents.Prepend(ticket))
-        {
+            await repository.UpdateTicketAsync(voided, ct);
             await TimelineAsync(voided.OrderId, TicketCheckoutOrderEventKind.Voided,
                 $"Ticket {voided.Barcode} voided: {voided.VoidReason}" +
                 (voided == ticket ? note + (offer is not null ? "; taken out of the resale queue" : string.Empty) : string.Empty),
                 actorUserId, ct);
         }
         return dependents.Count;
-    }
-
-    private static void ClearVoidIntent(TicketCheckoutTicket ticket)
-    {
-        ticket.VoidRefundId = null;
-        ticket.VoidRefundMinor = null;
-        ticket.VoidRequestedReason = null;
     }
 
     /// <summary>The override for a ticket voided by mistake: it works again, whatever was refunded for it.</summary>
@@ -214,32 +168,18 @@ internal sealed partial class TicketCheckoutService
             return new("That ticket does not exist.");
         if (ticket.State != TicketCheckoutTicketState.Void)
             return new("Only a voided ticket can be restored.");
-        if (TicketPiiTombstone.IsTombstoned(ticket.HolderName, ticket.HolderEmail))
-            return new("Erased ticket data cannot be restored.");
         if ((await repository.GetTicketingSettingsAsync(ticket.TicketingSettingsId, ct))?.CancelledAt is not null)
             return new("The event is cancelled; its tickets stay void.");
-        if (ticket.ParentTicketId is { } parentId)
-        {
-            var parent = await repository.GetTicketAsync(parentId, ct);
-            if (parent?.State != TicketCheckoutTicketState.Valid)
-                return new("Restore the adult's ticket first.");
-            if (TicketPiiTombstone.IsTombstoned(parent.HolderName, parent.HolderEmail))
-                return new("Erased adult ticket data cannot have dependents restored.");
-        }
-        if (ticket.HolderUserId is { } holder)
-        {
-            if (await users.GetUserInfoAsync(holder, ct) is not { IsTombstone: false })
-                return new("The holder's account is no longer available; this ticket cannot be restored.");
-            if (await HoldsTicketAsync(ticket.TicketingSettingsId, holder, clock.GetCurrentInstant(), ct))
-                return new("The holder already holds another ticket for this event.");
-        }
+        if (ticket.ParentTicketId is { } parentId && (await repository.GetTicketAsync(parentId, ct))?.State != TicketCheckoutTicketState.Valid)
+            return new("Restore the adult's ticket first.");
+        if (ticket.HolderUserId is { } holder && await HoldsTicketAsync(ticket.TicketingSettingsId, holder, clock.GetCurrentInstant(), ct))
+            return new("The holder already holds another ticket for this event.");
 
         var why = reason.Trim();
         var wasVoided = ticket.VoidReason;
         ticket.State = TicketCheckoutTicketState.Valid;
         ticket.VoidedAt = null;
         ticket.VoidReason = null;
-        ClearVoidIntent(ticket);
         await repository.UpdateTicketAsync(ticket, ct);
         if (ticket.HolderUserId is { } holderId)
             holdings.InvalidateHoldings(holderId);
@@ -258,8 +198,8 @@ internal sealed partial class TicketCheckoutService
         holderEmail = string.IsNullOrWhiteSpace(holderEmail) ? null : holderEmail.Trim();
         if (ReasonRefusal(reason) is { } refusal)
             return refusal;
-        if (holderName.Length is 0 or > MaxNameLength || (holderEmail is not null && !LooksLikeEmail(holderEmail)))
-            return new($"A companion needs a legal name of at most {MaxNameLength} characters; the email is optional but must be valid.");
+        if (holderName.Length == 0 || (holderEmail is not null && !LooksLikeEmail(holderEmail)))
+            return new("A companion needs a legal name; the email is optional but must be valid.");
         return (await IssueCompanionCoreAsync(parentTicketId, holderName, holderEmail, async c =>
         {
             if (holderEmail is null)
@@ -285,8 +225,6 @@ internal sealed partial class TicketCheckoutService
             return (new("That ticket does not exist."), null);
         if (parent.State != TicketCheckoutTicketState.Valid || parent.Kind != TicketHolderKind.Adult || parent.HolderUserId is not { } parentHolderId)
             return (new("A companion attaches to a valid adult ticket with a holder."), null);
-        if (TicketPiiTombstone.IsTombstoned(parent.HolderName, parent.HolderEmail))
-            return (new("Erased adult ticket data cannot receive a companion."), null);
         var ticketing = await repository.GetTicketingSettingsAsync(parent.TicketingSettingsId, ct);
         if (ticketing is null)
             return (new("That ticket's ticketing settings no longer exist."), null);
@@ -304,8 +242,7 @@ internal sealed partial class TicketCheckoutService
         if (holderRefusal is not null)
             return (new(holderRefusal), null);
         if (holderUserId is { } companionId && (companionId == parentHolderId || eventTickets.Any(t =>
-                t.HolderUserId == companionId && t.IsHeld)
-                || await HoldsTicketAsync(ticketing.Id, companionId, clock.GetCurrentInstant(), ct)))
+                t.HolderUserId == companionId && t.IsHeld)))
             return (new("That person already holds a ticket for this event."), null);
         var parentOrder = await repository.GetOrderAsync(parent.OrderId, ct);
         var order = new TicketCheckoutOrder
@@ -337,6 +274,7 @@ internal sealed partial class TicketCheckoutService
                 },
             ],
         };
+        await repository.AddOrderAsync(order, ct);
         var companion = new TicketCheckoutTicket
         {
             Id = Guid.NewGuid(),
@@ -352,7 +290,7 @@ internal sealed partial class TicketCheckoutService
             State = TicketCheckoutTicketState.Valid,
             IssuedAt = now,
         };
-        await repository.AddOrderAsync(order, ct, ticket: companion);
+        await repository.AddTicketsAsync([companion], ct);
         if (holderUserId is { } companionHolder)
             holdings.InvalidateHoldings(companionHolder);
 

@@ -4,7 +4,6 @@ using Humans.Tickets.Services.Checkout;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
-using Xunit;
 
 namespace Humans.Tickets.Tests.Services.Checkout;
 
@@ -13,7 +12,7 @@ public class TicketRulesSourceTests
     [HumansFact]
     public void The_suffix_less_file_is_spanish_and_names_the_set()
     {
-        GitHubTicketRulesSource.RulesFiles(["R/NORMAS.md", "R/NORMAS-en.md", "R/NORMAS-DE.md", "R/notes-en.md", "R/notes-es.md", "R/logo.png"]).Files
+        GitHubTicketRulesSource.RulesFiles(["R/NORMAS.md", "R/NORMAS-en.md", "R/NORMAS-DE.md", "R/notes-en.md", "R/logo.png"]).Files
             .Should().BeEquivalentTo([("R/NORMAS.md", "es"), ("R/NORMAS-en.md", "en"), ("R/NORMAS-DE.md", "de")]);
     }
 
@@ -26,39 +25,6 @@ public class TicketRulesSourceTests
             .Should().Be("It has no English file (NORMAS-en.md).");
         GitHubTicketRulesSource.RulesFiles(["R/NORMAS-en.md"]).Problem
             .Should().Be("It has no Spanish file (a .md without a language suffix).");
-    }
-
-    [HumansTheory]
-    [InlineData("es")]
-    [InlineData("ES")]
-    public void RulesFiles_SuffixedSpanish_RefusesFolder(string suffix)
-    {
-        var read = GitHubTicketRulesSource.RulesFiles([$"R/NORMAS-{suffix}.md", "R/NORMAS-en.md"]);
-
-        read.Files.Should().BeNull();
-        read.Problem.Should().Be("It has no Spanish file (a .md without a language suffix).");
-    }
-
-    [HumansTheory]
-    [InlineData("en")]
-    [InlineData("de")]
-    [InlineData("es")]
-    public void RulesFiles_DuplicateLanguage_RefusesFolder(string language)
-    {
-        var paths = new List<string> { "R/NORMAS.md", "R/NORMAS-en.md" };
-        if (string.Equals(language, "es", StringComparison.Ordinal))
-            paths.Add("R/NORMAS-es.md");
-        else
-        {
-            if (!string.Equals(language, "en", StringComparison.Ordinal))
-                paths.Add($"R/NORMAS-{language}.md");
-            paths.Add($"R/NORMAS-{language.ToUpperInvariant()}.md");
-        }
-
-        var read = GitHubTicketRulesSource.RulesFiles(paths);
-
-        read.Files.Should().BeNull();
-        read.Problem.Should().NotBeNullOrEmpty();
     }
 
     [HumansFact]

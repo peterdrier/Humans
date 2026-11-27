@@ -219,8 +219,8 @@ internal sealed class TicketsSupportAdminController(
             ticket.ParentTicketId is { } parentId ? eventTickets.FirstOrDefault(t => t.Id == parentId) : null,
             dependents,
             offer,
-            ticket.VoidRefundMinor ?? detail.VoidRefundMinor(ticket),
-            Math.Max(ticket.VoidRefundMinor ?? 0, detail.RefundableMinor)));
+            detail.VoidRefundMinor(ticket),
+            detail.RefundableMinor));
     }
 
     [HttpPost("Order/{orderId:guid}/Ticket/{ticketId:guid}/Rename")]

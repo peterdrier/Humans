@@ -80,7 +80,7 @@ public class StripeServiceContractTests
             {"id":"pi_async","object":"payment_intent","latest_charge":{
               "id":"ch_async","object":"charge","payment_method_details":{"type":"card","card":{"brand":"visa"}},
               "balance_transaction":{"id":"txn_async","object":"balance_transaction","currency":"eur",
-                "fee":168, "fee_details":[{"type":"stripe_fee","amount":123,"currency":"eur"},{"type":"application_fee","amount":45,"currency":"eur"}]}}}
+                "fee_details":[{"type":"stripe_fee","amount":123,"currency":"eur"},{"type":"application_fee","amount":45,"currency":"eur"}]}}}
             """;
         http.MakeRequestAsync(Arg.Any<StripeRequest>(), Arg.Any<CancellationToken>()).Returns(
             new StripeResponse(HttpStatusCode.OK, headers.Headers, pending),
@@ -98,40 +98,6 @@ public class StripeServiceContractTests
         available.PaymentMethodDetail.Should().Be("visa");
     }
 
-    [HumansTheory]
-    [InlineData("fee_details")]
-    [InlineData("fee")]
-    [InlineData("amount")]
-    [InlineData("type")]
-    public async Task PaymentDetails_MissingFeeField_RejectsResult(string field)
-    {
-        var payload = JsonNode.Parse("""{"id":"pi_fields","object":"payment_intent","latest_charge":{"id":"ch_fields","object":"charge","balance_transaction":{"id":"txn_fields","object":"balance_transaction","currency":"eur","fee":123, "fee_details":[{"currency":"eur","type":"stripe_fee","amount":123}]}}}""")!;
-        var transaction = payload["latest_charge"]!["balance_transaction"]!.AsObject();
-        if (field is "fee_details" or "fee") transaction.Remove(field);
-        else transaction["fee_details"]![0]!.AsObject().Remove(field);
-        var service = Answering(new StripeSettings { TicketsKey = "rk_test_fees" }, HttpStatusCode.OK, payload.ToJsonString());
-
-        var read = () => service.GetPaymentDetailsAsync("pi_fields", TestContext.Current.CancellationToken);
-
-        await read.Should().ThrowAsync<InvalidOperationException>().WithMessage("*fee*");
-    }
-
-    [HumansTheory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public async Task StoreSession_TimestampPresence_PreservesUnknown(bool present)
-    {
-        var session = JsonNode.Parse("""{"id":"cs_time","object":"checkout.session","currency":"eur","created":0}""")!.AsObject();
-        if (!present) session.Remove("created");
-        var body = $$"""{"object":"list","has_more":false,"data":[{{session.ToJsonString()}}]}""";
-        var service = Answering(new StripeSettings { StoreKey = "rk_test_store" }, HttpStatusCode.OK, body);
-
-        var result = await service.ListStoreCheckoutSessionsAsync(TestContext.Current.CancellationToken);
-
-        result.Should().ContainSingle().Which.CreatedAt.Should()
-            .Be(present ? NodaTime.Instant.FromUnixTimeSeconds(0) : null);
-    }
-
     [HumansFact]
     public async Task PaymentDetails_preserves_explicit_zero_fees_on_an_available_balance_transaction()
     {
@@ -140,7 +106,7 @@ public class StripeServiceContractTests
         const string payload = """
             {"id":"pi_zero","object":"payment_intent","latest_charge":{
               "id":"ch_zero","object":"charge","payment_method_details":{"type":"card"},
-              "balance_transaction":{"id":"txn_zero","object":"balance_transaction","currency":"eur","fee":0, "fee_details":[]}}}
+              "balance_transaction":{"id":"txn_zero","object":"balance_transaction","currency":"eur","fee_details":[]}}}
             """;
         http.MakeRequestAsync(Arg.Any<StripeRequest>(), Arg.Any<CancellationToken>())
             .Returns(new StripeResponse(HttpStatusCode.OK, headers.Headers, payload));
@@ -233,7 +199,7 @@ public class StripeServiceContractTests
             {"id":"pi_currency","object":"payment_intent","status":"succeeded","currency":"eur","latest_charge":{
               "id":"ch_currency","object":"charge","currency":"eur","payment_method_details":{"type":"card"},
               "balance_transaction":{"id":"txn_currency","object":"balance_transaction","currency":"eur",
-                "fee":168, "fee_details":[{"type":"stripe_fee","amount":123,"currency":"eur"},{"type":"application_fee","amount":45,"currency":"eur"}]}}}
+                "fee_details":[{"type":"stripe_fee","amount":123,"currency":"eur"},{"type":"application_fee","amount":45,"currency":"eur"}]}}}
             """)!;
         var transaction = payload["latest_charge"]!["balance_transaction"]!.AsObject();
         var fees = transaction["fee_details"]!.AsArray();
@@ -493,77 +459,6 @@ public class StripeServiceContractTests
         result.Status.Should().Be("complete");
         result.Url.Should().BeNull();
         await http.Received(2).MakeRequestAsync(Arg.Any<StripeRequest>(), Arg.Any<CancellationToken>());
-    }
-
-    [HumansFact]
-    public async Task Checkout_KnownSession_ReadsWithoutCreation()
-    {
-        var http = Substitute.For<IHttpClient>();
-        using var headers = new HttpResponseMessage();
-        var requests = new List<StripeRequest>();
-        var attempt = Guid.NewGuid();
-        var body = $$$"""{"id":"cs_known","object":"checkout.session","status":"complete","currency":"eur","metadata":{"humans_store_checkout_attempt_id":"{{{attempt}}}"}}""";
-        http.MakeRequestAsync(Arg.Do<StripeRequest>(requests.Add), Arg.Any<CancellationToken>())
-            .Returns(new StripeResponse(HttpStatusCode.OK, headers.Headers, body));
-        var service = new StripeService(Options.Create(new StripeSettings { StoreKey = "rk_test_store" }),
-            new CapturingLogger<StripeService>(), http);
-
-        var session = await service.CreateCheckoutSessionAsync(Guid.NewGuid(), 20m, "https://x/ok", "https://x/no", null,
-            "Camp", TestContext.Current.CancellationToken, attempt, "cs_previous", "cs_known");
-
-        session.Status.Should().Be("complete");
-        session.CheckoutAttemptId.Should().Be(attempt);
-        requests.Should().ContainSingle().Which.Method.Should().Be(HttpMethod.Get);
-    }
-
-    [HumansFact]
-    public async Task Checkout_NewAttempt_StampsRecoveryMetadata()
-    {
-        var http = Substitute.For<IHttpClient>();
-        using var headers = new HttpResponseMessage();
-        var requests = new List<StripeRequest>();
-        http.MakeRequestAsync(Arg.Do<StripeRequest>(requests.Add), Arg.Any<CancellationToken>())
-            .Returns(new StripeResponse(HttpStatusCode.OK, headers.Headers,
-                """{"id":"cs_created","object":"checkout.session","status":"open","currency":"eur"}"""));
-        var service = new StripeService(Options.Create(new StripeSettings { StoreKey = "rk_test_store" }),
-            new CapturingLogger<StripeService>(), http);
-        var attempt = Guid.NewGuid();
-        var order = Guid.NewGuid();
-
-        await service.CreateCheckoutSessionAsync(order, 20m, "https://x/ok", "https://x/no", null,
-            "Camp", TestContext.Current.CancellationToken, attempt);
-
-        requests.Should().HaveCount(2);
-        requests[0].Method.Should().Be(HttpMethod.Post);
-        requests[1].Method.Should().Be(HttpMethod.Get);
-        var form = Uri.UnescapeDataString(await requests[0].Content!.ReadAsStringAsync(TestContext.Current.CancellationToken));
-        form.Should().Contain($"metadata[humans_store_checkout_attempt_id]={attempt}")
-            .And.Contain($"metadata[humans_store_order_id]={order}");
-    }
-
-    [HumansTheory]
-    [InlineData(null)]
-    [InlineData("")]
-    public void Checkout_MissingIdentity_RejectsWebhook(string? id)
-    {
-        var payload = JsonNode.Parse(SessionPayload("checkout.session.expired"))!;
-        payload["data"]!["object"]!["id"] = id;
-        var text = payload.ToJsonString();
-        var (service, _) = Build(s => s.StoreWebhookSecret = TestWebhookSecret);
-
-        service.ParseStoreCheckoutEvent(text, Sign(text, TestWebhookSecret)).Should().BeNull();
-    }
-
-    [HumansFact]
-    public void Checkout_EarlyWebhook_ProjectsAttempt()
-    {
-        var attempt = Guid.NewGuid();
-        var metadata = $$"""{"humans_store_order_id":"{{Guid.NewGuid()}}","humans_store_checkout_attempt_id":"{{attempt}}"}""";
-        var payload = SessionPayload("checkout.session.expired", metadataJson: metadata);
-        var (service, _) = Build(s => s.StoreWebhookSecret = TestWebhookSecret);
-
-        service.ParseStoreCheckoutEvent(payload, Sign(payload, TestWebhookSecret))!
-            .Session!.CheckoutAttemptId.Should().Be(attempt);
     }
 
     [HumansFact]

@@ -137,7 +137,6 @@ internal sealed class TicketCheckoutTicketConfiguration : IEntityTypeConfigurati
         builder.Property(x => x.WaveName).IsRequired().HasMaxLength(128);
         builder.Property(x => x.ClassLabel).HasMaxLength(128);
         builder.Property(x => x.VoidReason).HasMaxLength(500);
-        builder.Property(x => x.VoidRequestedReason).HasMaxLength(500);
         builder.Property(x => x.DiscountsMinor).HasColumnName("CreditsMinor");
     }
 }

@@ -22,17 +22,15 @@ internal interface ITicketCheckoutRepository : IRepository
 
     Task<IReadOnlyList<TicketCheckoutOrder>> GetOrdersForSettingsAsync(Guid settingsId, CancellationToken ct = default);
 
-    /// <summary>Orders the person paid for or holds a ticket line in; optional emails also match unbound holders.</summary>
-    Task<IReadOnlyList<TicketCheckoutOrder>> GetOrdersForUserAsync(Guid userId, CancellationToken ct = default, IReadOnlyCollection<string>? emails = null);
+    /// <summary>Orders the person paid for or holds a ticket line in.</summary>
+    Task<IReadOnlyList<TicketCheckoutOrder>> GetOrdersForUserAsync(Guid userId, CancellationToken ct = default);
 
     /// <summary>Created, Pending or Processing orders on any event, for the reconcile poll.</summary>
     Task<IReadOnlyList<TicketCheckoutOrder>> GetOpenOrdersAsync(CancellationToken ct = default);
 
-    /// <summary>Saves the order and any initial ticket in one commit.</summary>
-    Task AddOrderAsync(TicketCheckoutOrder order, CancellationToken ct = default, TicketCheckoutTicket? ticket = null);
+    Task AddOrderAsync(TicketCheckoutOrder order, CancellationToken ct = default);
 
-    /// <summary>Saves the order and optional renamed ticket in one commit.</summary>
-    Task UpdateOrderAsync(TicketCheckoutOrder order, CancellationToken ct = default, TicketCheckoutTicket? ticket = null);
+    Task UpdateOrderAsync(TicketCheckoutOrder order, CancellationToken ct = default);
 
     Task<IReadOnlyList<TicketCheckoutRefund>> GetRefundsAsync(Guid orderId, CancellationToken ct = default);
 
@@ -45,11 +43,6 @@ internal interface ITicketCheckoutRepository : IRepository
 
     Task<IReadOnlyList<TicketCheckoutOrderEvent>> GetOrderEventsAsync(Guid orderId, CancellationToken ct = default);
 
-    Task<IReadOnlyList<TicketCheckoutOrderEvent>> GetOrderEventsAsync(IReadOnlyCollection<Guid> orderIds, CancellationToken ct = default);
-
-    /// <summary>Stamps only the accepted cancellation notice, preserving concurrent financial refreshes.</summary>
-    Task MarkCancellationEmailedAsync(Guid orderId, Instant at, CancellationToken ct = default);
-
     /// <summary>False when the order's tickets were already issued: another caller got there first.</summary>
     Task<bool> AddTicketsAsync(IReadOnlyList<TicketCheckoutTicket> tickets, CancellationToken ct = default);
 
@@ -59,9 +52,7 @@ internal interface ITicketCheckoutRepository : IRepository
     /// </summary>
     Task<bool> TryClaimPaidAsync(Guid orderId, Instant paidAt, CancellationToken ct = default);
 
-    /// <summary>Saves the ticket, optional dependents and resale offer in one commit.</summary>
-    Task UpdateTicketAsync(TicketCheckoutTicket ticket, CancellationToken ct = default,
-        IReadOnlyList<TicketCheckoutTicket>? dependents = null, TicketResaleOffer? offer = null);
+    Task UpdateTicketAsync(TicketCheckoutTicket ticket, CancellationToken ct = default);
 
     Task<TicketCheckoutTicket?> GetTicketAsync(Guid id, CancellationToken ct = default);
 
@@ -69,12 +60,11 @@ internal interface ITicketCheckoutRepository : IRepository
 
     Task<IReadOnlyList<TicketCheckoutTicket>> GetTicketsForOrderAsync(Guid orderId, CancellationToken ct = default);
 
-    Task<IReadOnlyList<TicketCheckoutTicket>> GetTicketsForHolderAsync(Guid userId, CancellationToken ct = default, IReadOnlyCollection<string>? emails = null);
+    Task<IReadOnlyList<TicketCheckoutTicket>> GetTicketsForHolderAsync(Guid userId, CancellationToken ct = default);
 
     Task<IReadOnlyList<TicketCheckoutTicket>> GetTicketsForSettingsAsync(Guid settingsId, CancellationToken ct = default);
 
-    /// <summary>Saves the new offer and optional offered ticket in one commit.</summary>
-    Task AddOfferAsync(TicketResaleOffer offer, CancellationToken ct = default, TicketCheckoutTicket? ticket = null);
+    Task AddOfferAsync(TicketResaleOffer offer, CancellationToken ct = default);
 
     Task UpdateOfferAsync(TicketResaleOffer offer, CancellationToken ct = default);
 

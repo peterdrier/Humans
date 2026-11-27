@@ -793,7 +793,6 @@ public sealed class TicketRepositoryTests : IDisposable
 
         var vendorPayload = new TicketOrder
         {
-            MatchedUserId = Guid.NewGuid(),
             Id = Guid.NewGuid(),
             VendorOrderId = "ord_erase",
             BuyerName = "Real Name",
@@ -810,7 +809,6 @@ public sealed class TicketRepositoryTests : IDisposable
             .SingleAsync(o => o.VendorOrderId == "ord_erase", Xunit.TestContext.Current.CancellationToken);
         reloaded.BuyerName.Should().Be(TicketPiiTombstone.Name);
         reloaded.BuyerEmail.Should().Be(TicketPiiTombstone.EmailFor(userId));
-        reloaded.MatchedUserId.Should().BeNull("erasure must also sever the member binding across sync");
         reloaded.PaymentStatus.Should().Be(TicketPaymentStatus.Refunded, "non-PII fields must keep syncing");
     }
 
@@ -849,7 +847,6 @@ public sealed class TicketRepositoryTests : IDisposable
 
         var vendorPayload = new TicketAttendee
         {
-            MatchedUserId = Guid.NewGuid(),
             Id = Guid.NewGuid(),
             VendorTicketId = "tkt_erase",
             TicketOrderId = orderId,
@@ -865,7 +862,6 @@ public sealed class TicketRepositoryTests : IDisposable
             .SingleAsync(a => a.VendorTicketId == "tkt_erase", Xunit.TestContext.Current.CancellationToken);
         reloaded.AttendeeName.Should().Be(TicketPiiTombstone.Name);
         reloaded.AttendeeEmail.Should().Be(TicketPiiTombstone.EmailFor(userId));
-        reloaded.MatchedUserId.Should().BeNull("erasure must also sever the member binding across sync");
         reloaded.Status.Should().Be(TicketAttendeeStatus.CheckedIn, "non-PII fields must keep syncing");
     }
 
@@ -889,7 +885,6 @@ public sealed class TicketRepositoryTests : IDisposable
 
         var vendorPayload = new TicketOrder
         {
-            MatchedUserId = Guid.NewGuid(),
             Id = Guid.NewGuid(),
             VendorOrderId = "ord_not_erased",
             BuyerName = "New Vendor Name",
@@ -906,7 +901,6 @@ public sealed class TicketRepositoryTests : IDisposable
             .SingleAsync(o => o.VendorOrderId == "ord_not_erased", Xunit.TestContext.Current.CancellationToken);
         reloaded.BuyerName.Should().Be("New Vendor Name");
         reloaded.BuyerEmail.Should().Be("newvendor@example.com");
-        reloaded.MatchedUserId.Should().Be(vendorPayload.MatchedUserId);
         reloaded.PiiErasedAt.Should().BeNull();
     }
 
@@ -934,7 +928,6 @@ public sealed class TicketRepositoryTests : IDisposable
 
         var vendorPayload = new TicketOrder
         {
-            MatchedUserId = Guid.NewGuid(),
             Id = Guid.NewGuid(),
             VendorOrderId = "ord_legacy_erased",
             BuyerName = "Real Vendor Name",
@@ -951,7 +944,6 @@ public sealed class TicketRepositoryTests : IDisposable
             .SingleAsync(o => o.VendorOrderId == "ord_legacy_erased", Xunit.TestContext.Current.CancellationToken);
         reloaded.BuyerName.Should().Be(TicketPiiTombstone.Name);
         reloaded.BuyerEmail.Should().Be(TicketPiiTombstone.EmailFor(userId));
-        reloaded.MatchedUserId.Should().BeNull("erasure must also sever the member binding across sync");
         reloaded.PiiErasedAt.Should().Be(_clock.GetCurrentInstant(), "the guard must self-heal the missing marker");
         reloaded.PaymentStatus.Should().Be(TicketPaymentStatus.Refunded, "non-PII fields must keep syncing");
     }
@@ -989,7 +981,6 @@ public sealed class TicketRepositoryTests : IDisposable
 
         var vendorPayload = new TicketAttendee
         {
-            MatchedUserId = Guid.NewGuid(),
             Id = Guid.NewGuid(),
             VendorTicketId = "tkt_legacy_erased",
             TicketOrderId = orderId,
@@ -1005,7 +996,6 @@ public sealed class TicketRepositoryTests : IDisposable
             .SingleAsync(a => a.VendorTicketId == "tkt_legacy_erased", Xunit.TestContext.Current.CancellationToken);
         reloaded.AttendeeName.Should().Be(TicketPiiTombstone.Name);
         reloaded.AttendeeEmail.Should().Be(TicketPiiTombstone.EmailFor(userId));
-        reloaded.MatchedUserId.Should().BeNull("erasure must also sever the member binding across sync");
         reloaded.PiiErasedAt.Should().Be(_clock.GetCurrentInstant(), "the guard must self-heal the missing marker");
         reloaded.Status.Should().Be(TicketAttendeeStatus.CheckedIn, "non-PII fields must keep syncing");
     }

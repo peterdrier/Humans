@@ -170,9 +170,6 @@
   <data name="Tickets_Buy_Empty" xml:space="preserve">
     <value>Wähle mindestens ein Ticket oder eine Spende.</value>
   </data>
-  <data name="Tickets_Buy_CancelUnavailable" xml:space="preserve">
-    <value>Diese Bestellung kann nicht storniert werden, da der Zahlungsanbieter nicht verfügbar ist. Bitte kontaktiere das Ticket-Team.</value>
-  </data>
   <data name="Tickets_Buy_PlatformFailed" xml:space="preserve">
     <value>Die Zahlungsseite konnte nicht geöffnet werden. Bitte versuch es gleich noch einmal.</value>
   </data>

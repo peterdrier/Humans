@@ -944,24 +944,32 @@ internal sealed class Service(
             errorKey = "Store_PaymentPositive";
         else if (decimal.Round(amountEur, 2) != amountEur)
             errorKey = "Store_PaymentPrecision";
+        else if (amountEur > order.BalanceEur)
+        {
+            errorKey = "Store_PaymentAboveBalance";
+            maximumAmount = order.BalanceEur;
+        }
         else if (amountEur > MaximumCheckoutAmountEur)
         {
             errorKey = "Store_PaymentAboveCheckoutLimit";
             maximumAmount = MaximumCheckoutAmountEur;
         }
+        else if (order.HasPendingSettlement)
+            errorKey = "Store_PaymentPending";
 
         if (errorKey is not null)
-            return RefuseCheckout(order.Id, errorKey, maximumAmount);
+        {
+            logger.LogWarning("Store checkout rejected for order {OrderId}: {ErrorKey}", order.Id, errorKey);
+            return new CheckoutSessionResult(null, errorKey, maximumAmount);
+        }
 
         var name = order.CounterpartyName ?? Resources.GetString("Store_CheckoutCampOrder", CultureInfo.CurrentUICulture)!;
         var description = $"Nobodies Collective - {name}";
-        return await OpenCheckoutSessionAsync(order.Id, amountEur, returnUrl, order.CounterpartyEmail, description, ct);
-    }
-
-    private CheckoutSessionResult RefuseCheckout(Guid orderId, string key, decimal? maximumAmount = null)
-    {
-        logger.LogWarning("Store checkout rejected for order {OrderId}: {ErrorKey}", orderId, key);
-        return new CheckoutSessionResult(null, key, maximumAmount);
+        var sessionUrl = await OpenCheckoutSessionAsync(
+            order.Id, amountEur, returnUrl, order.CounterpartyEmail, description, ct);
+        if (sessionUrl is null)
+            return new CheckoutSessionResult(null, "Store_PaymentPending");
+        return new CheckoutSessionResult(sessionUrl, null);
     }
 
     public async Task<StripeReconciliationReport> GetStripeReconciliationAsync(CancellationToken ct = default)
@@ -970,7 +978,7 @@ internal sealed class Service(
         var stripeQueried = sessionsOrNull is not null;
         var sessions = sessionsOrNull ?? [];
         var recorded = await repo.GetRecordedStripePaymentsAsync(ct);
-        var recordedByPi = recorded.ToDictionary(p => p.PaymentIntentId, StringComparer.Ordinal);
+        var recordedByPi = recorded.ToDictionary(p => p.PaymentIntentId, p => p.Status, StringComparer.Ordinal);
 
         var matchedIds = sessions.Where(s => s.OrderId is not null).Select(s => s.OrderId!.Value)
             .Concat(recorded.Select(p => p.OrderId))
@@ -1015,25 +1023,20 @@ internal sealed class Service(
     }
 
     private static StripeReconciliationStatus ClassifyStripeSession(
-        StoreCheckoutSessionData s, OrderDto? order, IReadOnlyDictionary<string, RecordedStripePayment> recordedByPi)
+        StoreCheckoutSessionData s, OrderDto? order, IReadOnlyDictionary<string, PaymentStatus> recordedByPi)
     {
         if (!string.Equals(s.PaymentStatus, "paid", StringComparison.Ordinal))
             return StripeReconciliationStatus.Unpaid;
-        if (s.PaymentIntentId is { } pi && recordedByPi.TryGetValue(pi, out var payment))
-        {
-            if (s.OrderId != payment.OrderId || s.AmountEur != payment.AmountEur || payment.AmountEur <= 0)
-                return StripeReconciliationStatus.RecordedConflict;
-            return payment.Status switch
+        if (s.PaymentIntentId is { } pi && recordedByPi.TryGetValue(pi, out var paymentStatus))
+            // Stripe says paid but the local row hasn't settled: the amount isn't in the balance yet, so it must not
+            // present as plain "Recorded".
+            return paymentStatus switch
             {
                 PaymentStatus.Paid => StripeReconciliationStatus.Recorded,
-                PaymentStatus.Pending when order is { CounterpartyType: OrderCounterpartyType.Camp }
-                    => StripeReconciliationStatus.RecordedPending,
-                PaymentStatus.Pending => StripeReconciliationStatus.Unmatched,
+                PaymentStatus.Pending => StripeReconciliationStatus.RecordedPending,
                 _ => StripeReconciliationStatus.RecordedFailed,
             };
-        }
-        if (order is null || string.IsNullOrWhiteSpace(s.PaymentIntentId) || s.AmountEur is null or <= 0
-            || order.CounterpartyType == OrderCounterpartyType.Team)
+        if (order is null || s.PaymentIntentId is null || order.CounterpartyType == OrderCounterpartyType.Team)
             return StripeReconciliationStatus.Unmatched;
         return StripeReconciliationStatus.Missing;
     }
@@ -1042,54 +1045,40 @@ internal sealed class Service(
         Guid actorUserId, CancellationToken ct = default)
     {
         var sessions = await stripeService.ListStoreCheckoutSessionsAsync(ct) ?? [];
+        var recorded = await repo.GetRecordedStripePaymentsAsync(ct);
+        var recordedPis = recorded.Select(p => p.PaymentIntentId).ToHashSet(StringComparer.Ordinal);
+
         var count = 0;
-        var settled = 0;
         var total = 0m;
         foreach (var s in sessions)
         {
             if (!string.Equals(s.PaymentStatus, "paid", StringComparison.Ordinal)) continue;
-            if (s.OrderId is not { } orderId || string.IsNullOrWhiteSpace(s.PaymentIntentId)
-                || s.AmountEur is not { } amount || amount <= 0) continue;
-            var pi = s.PaymentIntentId;
+            if (s.OrderId is not { } orderId || s.PaymentIntentId is not { } pi || s.AmountEur is not { } amount) continue;
+            if (amount <= 0 || recordedPis.Contains(pi)) continue;
 
-            using var mutation = await StripePaymentLock.AcquireAsync(logger, ct);
-            // Webhooks may have changed the ledger since the Stripe inventory was read.
+            // Never fabricate a payment on an unmatched or non-billable (Team) order.
             var order = await repo.GetOrderByIdAsync(orderId, ct);
             if (order is null || order.TeamId is not null) continue;
-            var existing = await repo.GetPaymentByIntentIdAsync(pi, ct);
-            if (existing is not null)
+
+            using (await StripePaymentLock.AcquireAsync(logger, ct))
             {
-                if (existing.OrderId != orderId || existing.AmountEur != amount
-                    || existing.Method != PaymentMethod.Stripe || existing.Status is not (PaymentStatus.Pending or PaymentStatus.Paid))
-                {
-                    logger.LogWarning("Stripe reconciliation left conflicting payment {PaymentIntentId} unchanged", pi);
-                    continue;
-                }
-                if (existing.Status == PaymentStatus.Pending)
-                {
-                    await SetStripePaymentStatusAsync(existing, PaymentStatus.Paid, ct, actorUserId);
-                    settled++;
-                    total += amount;
-                }
+                await RecordStripePaymentCoreAsync(orderId, pi, amount, PaymentStatus.Paid, ct); // idempotent on PI id
+                // Stands in for the undelivered completed webhook, so it releases the attempt the same way.
+                await ClearCheckoutAttemptAsync(s, ct);
             }
-            else
-            {
-                if (!await RecordStripePaymentCoreAsync(orderId, pi, amount, PaymentStatus.Paid, ct)) continue;
-                count++;
-                total += amount;
-            }
-            await ClearCheckoutAttemptAsync(s, ct);
+            count++;
+            total += amount;
         }
 
-        if (count + settled > 0)
+        if (count > 0)
         {
             await audit.LogAsync(
                 StoreAuditActions.StorePaymentsReconciled, "Store", Guid.Empty,
-                $"Reconciled {count} new Stripe payment(s) and {settled} settlement(s) totalling EUR {total:0.00} from the Store Stripe account",
+                $"Reconciled {count} Stripe payment(s) totalling EUR {total:0.00} from the Store Stripe account",
                 actorUserId);
         }
 
-        return new StripeReconciliationResult(count, total, settled);
+        return new StripeReconciliationResult(count, total);
     }
 
     /// <summary>
@@ -1206,104 +1195,70 @@ internal sealed class Service(
     }
 
     /// <summary>
-    /// Durably records the exact request before creating a payable session. Retries resolve that request before
-    /// replacing it; known sessions are read without replaying an expiring idempotency key.
+    /// One payable session per order: an unchanged amount replays the open attempt's session through its idempotency key;
+    /// a changed amount expires that session and opens a new attempt. Null when the superseded session had already been
+    /// paid, so no replacement exists.
     /// </summary>
-    public async Task<CheckoutSessionResult> OpenCheckoutSessionAsync(
+    public async Task<string?> OpenCheckoutSessionAsync(
         Guid orderId, decimal amountEur, string returnUrl, string? customerEmail, string description, CancellationToken ct)
     {
         using var mutation = await StripePaymentLock.AcquireAsync(logger, ct);
-        var order = await repo.GetOrderWithLinesAsync(orderId, ct);
-        if (order is null) return RefuseCheckout(orderId, "Store_OrderMissing");
-        if (order.TeamId is not null) return RefuseCheckout(orderId, "Store_NonBillableText");
-        var balance = BalanceCalculator.Compute(order, await LoadCurrentPricesAsync(order.Year, ct)).BalanceEur;
-        if (amountEur > balance) return RefuseCheckout(orderId, "Store_PaymentAboveBalance", balance);
-        if (order.Payments.Any(p => p.Status == PaymentStatus.Pending && p.AmountEur > 0))
-            return RefuseCheckout(orderId, "Store_PaymentPending");
+        var order = await repo.GetOrderByIdAsync(orderId, ct)
+            ?? throw new InvalidOperationException($"Store order {orderId} not found.");
 
-        var desired = new StoreCheckoutIntent(amountEur, returnUrl, customerEmail, description, null,
-            clock.GetCurrentInstant().ToUnixTimeSeconds());
-        StoreCheckoutSessionData? session = null;
-        var intent = order.CheckoutIntent;
+        var session = order is { CheckoutAttemptId: { } openAttempt } && order.CheckoutAmountEur == amountEur
+            ? await TryReplayAsync(openAttempt)
+            : null;
+        if (IsComplete(session))
+            return null;
+
         var attemptId = order.CheckoutAttemptId;
-        var knownId = order.CheckoutSessionId;
-        if (knownId is null && intent is not null)
+        if (session is not { Status: "open", Url: not null })
         {
-            if (attemptId is null)
-                throw new InvalidOperationException("The saved checkout request has no attempt id.");
-            // Do not recreate an unknown session past key retention or with an amount the order no longer owes.
-            if (intent.AmountEur > balance
-                || clock.GetCurrentInstant() - Instant.FromUnixTimeSeconds(intent.CreatedAtUnix) >= Duration.FromHours(23))
-            {
-                var inventory = await stripeService.ListStoreCheckoutSessionsAsync(ct);
-                var matches = inventory?.Where(s => s.OrderId == orderId && s.CheckoutAttemptId == attemptId).ToList();
-                if (matches is not { Count: 1 })
-                {
-                    logger.LogWarning("Checkout attempt {AttemptId} on order {OrderId} cannot be safely replayed and remains unresolved", attemptId, orderId);
-                    return new CheckoutSessionResult(null, "Store_PaymentPending");
-                }
-                knownId = matches[0].SessionId;
-            }
-            session = await ReadIntentAsync(intent, attemptId.Value, knownId);
-            await RememberAsync(intent, attemptId.Value, session);
-        }
-        else if (knownId is not null)
-        {
-            // Known sessions are read by id: replaying an old POST key could create a second session after 24 hours.
-            session = await stripeService.CreateCheckoutSessionAsync(orderId, intent?.AmountEur ?? amountEur,
-                intent?.ReturnUrl ?? returnUrl, intent?.ReturnUrl ?? returnUrl, intent?.CustomerEmail ?? customerEmail,
-                intent?.Description ?? description, ct, attemptId, knownSessionId: knownId);
-            ValidateSession(session);
-        }
-        else if (order.HasCheckoutAttempt)
-            throw new InvalidOperationException("The checkout attempt has no recoverable request or session.");
-
-        if (session is not null)
-        {
-            if (IsComplete(session)) return new CheckoutSessionResult(null, "Store_PaymentPending");
-            if (intent is not null && session is { Status: "open", Url: not null }
-                && intent with { SupersededSessionId = null, CreatedAtUnix = 0 } == desired with { CreatedAtUnix = 0 })
-                return new CheckoutSessionResult(session.Url, null);
+            attemptId = Guid.NewGuid();
+            session = await stripeService.CreateCheckoutSessionAsync(
+                orderId, amountEur, returnUrl, returnUrl, customerEmail, description, ct,
+                checkoutAttemptId: attemptId, supersededSessionId: order.CheckoutSessionId);
+            if (IsComplete(session) || session.Url is null)
+                return null;
         }
 
-        // Legacy attempts have no saved arguments. Supersede their known session rather than guessing its POST body.
-        intent = desired with { SupersededSessionId = session?.SessionId };
-        var nextAttempt = Guid.NewGuid();
-        await WriteCheckoutAttemptAsync(orderId, nextAttempt, null, amountEur, ct, intent);
-        session = await ReadIntentAsync(intent, nextAttempt, knownId: null);
-        await RememberAsync(intent, nextAttempt, session);
-        return !IsComplete(session) && string.Equals(session.Status, "open", StringComparison.Ordinal) && session.Url is not null
-            ? new CheckoutSessionResult(session.Url, null)
-            : new CheckoutSessionResult(null, "Store_PaymentPending");
-
-        bool IsComplete(StoreCheckoutSessionData value)
+        if (attemptId != order.CheckoutAttemptId
+            || !string.Equals(order.CheckoutSessionId, session.SessionId, StringComparison.Ordinal))
         {
-            if (!string.Equals(value.Status, "complete", StringComparison.Ordinal)) return false;
-            logger.LogWarning("Checkout session {SessionId} for order {OrderId} already completed; no new session opened.", value.SessionId, orderId);
+            await WriteCheckoutAttemptAsync(orderId, attemptId, session.SessionId, amountEur, ct);
+        }
+        return session.Url;
+
+        bool IsComplete(StoreCheckoutSessionData? s)
+        {
+            if (!string.Equals(s?.Status, "complete", StringComparison.Ordinal)) return false;
+            logger.LogWarning("Checkout session {SessionId} for order {OrderId} already completed; no new session opened.",
+                s!.SessionId, orderId);
             return true;
         }
 
-        Task<StoreCheckoutSessionData> ReadIntentAsync(StoreCheckoutIntent value, Guid id, string? knownId) =>
-            stripeService.CreateCheckoutSessionAsync(orderId, value.AmountEur, value.ReturnUrl, value.ReturnUrl,
-                value.CustomerEmail, value.Description, ct, id, value.SupersededSessionId, knownId);
-
-        async Task RememberAsync(StoreCheckoutIntent value, Guid id, StoreCheckoutSessionData response)
+        async Task<StoreCheckoutSessionData?> TryReplayAsync(Guid replayAttemptId)
         {
-            ValidateSession(response);
-            var saved = string.Equals(value.SupersededSessionId, response.SessionId, StringComparison.Ordinal)
-                ? value : value with { SupersededSessionId = null };
-            await WriteCheckoutAttemptAsync(orderId, id, response.SessionId, value.AmountEur, ct, saved);
-        }
-
-        static void ValidateSession(StoreCheckoutSessionData value)
-        {
-            if (string.IsNullOrWhiteSpace(value.SessionId) || value.Status is not ("open" or "complete" or "expired"))
-                throw new InvalidOperationException("Stripe returned an unidentified or indeterminate Checkout Session.");
+            try
+            {
+                return await stripeService.CreateCheckoutSessionAsync(
+                    orderId, amountEur, returnUrl, returnUrl, customerEmail, description, ct,
+                    checkoutAttemptId: replayAttemptId);
+            }
+            catch (Exception ex) when (ex is not OperationCanceledException)
+            {
+                // Stripe rejects a replay whose other arguments changed (a counterparty edit). Replacing the attempt
+                // expires its session first, so falling through never leaves two payable.
+                logger.LogWarning(ex, "Replaying checkout attempt {AttemptId} for order {OrderId} failed; replacing it.",
+                    replayAttemptId, orderId);
+                return null;
+            }
         }
     }
 
     // Called only while the ingestion lock is held, including from webhook state transitions.
-    private async Task<bool> RecordStripePaymentCoreAsync(
+    private async Task RecordStripePaymentCoreAsync(
         Guid orderId, string paymentIntentId, decimal amountEur, PaymentStatus status, CancellationToken ct)
     {
         if (amountEur <= 0)
@@ -1312,7 +1267,7 @@ internal sealed class Service(
             throw new ArgumentException("PaymentIntent id is required.", nameof(paymentIntentId));
 
         if (await repo.StripePaymentIntentExistsAsync(paymentIntentId, ct))
-            return false; // duplicate Stripe webhook delivery
+            return; // duplicate Stripe webhook delivery
 
         // Defense in depth: never record a payment on a team-owned order.
         var order = await repo.GetOrderByIdAsync(orderId, ct);
@@ -1343,7 +1298,6 @@ internal sealed class Service(
             $"{settlement} of EUR {amountEur:0.00} (PI {paymentIntentId})",
             "StripeWebhook",
             orderId, AuditEntityTypes.Order);
-        return true;
     }
 
     public async Task HandleStripeCheckoutWebhookEventAsync(StoreCheckoutWebhookEvent evt, CancellationToken ct = default)
@@ -1352,18 +1306,16 @@ internal sealed class Service(
         switch (evt.Kind)
         {
             case StoreCheckoutEventKind.CheckoutSessionCompleted:
-                if (await HandleCheckoutSessionCompletedAsync(evt, ct))
-                    await ClearCheckoutAttemptAsync(evt.Session, ct);
+                await HandleCheckoutSessionCompletedAsync(evt, ct);
+                await ClearCheckoutAttemptAsync(evt.Session, ct);
                 break;
 
             case StoreCheckoutEventKind.CheckoutSessionAsyncPaymentSucceeded:
-                if (await TransitionAsyncPaymentAsync(evt, PaymentStatus.Paid, ct))
-                    await ClearCheckoutAttemptAsync(evt.Session, ct);
+                await TransitionAsyncPaymentAsync(evt, PaymentStatus.Paid, ct);
                 break;
 
             case StoreCheckoutEventKind.CheckoutSessionAsyncPaymentFailed:
-                if (await TransitionAsyncPaymentAsync(evt, PaymentStatus.Failed, ct))
-                    await ClearCheckoutAttemptAsync(evt.Session, ct);
+                await TransitionAsyncPaymentAsync(evt, PaymentStatus.Failed, ct);
                 break;
 
             case StoreCheckoutEventKind.CheckoutSessionExpired:
@@ -1377,12 +1329,12 @@ internal sealed class Service(
         }
     }
 
-    private async Task<bool> HandleCheckoutSessionCompletedAsync(StoreCheckoutWebhookEvent evt, CancellationToken ct)
+    private async Task HandleCheckoutSessionCompletedAsync(StoreCheckoutWebhookEvent evt, CancellationToken ct)
     {
         if (evt.Session is not { } session)
         {
             logger.LogWarning("checkout.session.completed event {EventId} did not contain a Session payload", evt.EventId);
-            return false;
+            return;
         }
 
         if (session.OrderId is not { } orderId)
@@ -1390,7 +1342,7 @@ internal sealed class Service(
             logger.LogWarning(
                 "Stripe Checkout Session {SessionId} has no humans_store_order_id metadata; skipping.",
                 session.SessionId);
-            return false;
+            return;
         }
 
         if (session.PaymentIntentId is not { } paymentIntentId)
@@ -1398,7 +1350,7 @@ internal sealed class Service(
             logger.LogWarning(
                 "Stripe Checkout Session {SessionId} has no PaymentIntentId; skipping.",
                 session.SessionId);
-            return false;
+            return;
         }
 
         if (session.AmountEur is not { } amountEur || amountEur <= 0)
@@ -1406,7 +1358,7 @@ internal sealed class Service(
             logger.LogWarning(
                 "Stripe Checkout Session {SessionId} has non-positive AmountTotal; skipping.",
                 session.SessionId);
-            return false;
+            return;
         }
 
         // "paid" is a settled sync payment; "unpaid" is an async method with only the debit mandate captured. A mandate
@@ -1421,7 +1373,6 @@ internal sealed class Service(
             logger.LogInformation(
                 "Recorded Stripe payment ({Status}) for order {OrderId} (session {SessionId}, PI {PaymentIntentId}, EUR {Amount})",
                 status, orderId, session.SessionId, paymentIntentId, amountEur);
-            return true;
         }
         catch (Exception ex)
         {
@@ -1433,18 +1384,13 @@ internal sealed class Service(
         }
     }
 
-    /// <summary>Superseded expiry cannot clear a replacement; completed payment can prevent an unacknowledged one.</summary>
+    /// <summary>Only the order's current attempt is cleared; a superseded session's event leaves its replacement open.</summary>
     private async Task ClearCheckoutAttemptAsync(StoreCheckoutSessionData? session, CancellationToken ct)
     {
-        if (session is not { OrderId: { } orderId } || string.IsNullOrWhiteSpace(session.SessionId)) return;
+        if (session is not { OrderId: { } orderId }) return;
         var order = await repo.GetOrderByIdAsync(orderId, ct);
-        if (order is null) return;
-        var matchesSession = string.Equals(order.CheckoutSessionId, session.SessionId, StringComparison.Ordinal);
-        var matchesAttempt = session.CheckoutAttemptId is { } attempt && attempt == order.CheckoutAttemptId;
-        // A completed superseded session prevents Stripe from creating this replacement; expiry does not.
-        var supersededCompleted = order.CheckoutSessionId is null && string.Equals(session.Status, "complete", StringComparison.Ordinal)
-            && string.Equals(order.CheckoutIntent?.SupersededSessionId, session.SessionId, StringComparison.Ordinal);
-        if (!matchesSession && !matchesAttempt && !supersededCompleted) return;
+        if (order is null || !string.Equals(order.CheckoutSessionId, session.SessionId, StringComparison.Ordinal))
+            return;
 
         await WriteCheckoutAttemptAsync(orderId, null, null, null, ct);
     }
@@ -1454,17 +1400,13 @@ internal sealed class Service(
     /// trip would overwrite a concurrent order edit.
     /// </summary>
     private async Task WriteCheckoutAttemptAsync(
-        Guid orderId, Guid? attemptId, string? sessionId, decimal? amountEur, CancellationToken ct,
-        StoreCheckoutIntent? intent = null)
+        Guid orderId, Guid? attemptId, string? sessionId, decimal? amountEur, CancellationToken ct)
     {
         var order = await repo.GetOrderByIdAsync(orderId, ct);
-        if (order is null) throw new InvalidOperationException($"Store order {orderId} no longer exists.");
-        if (order.CheckoutAttemptId == attemptId && string.Equals(order.CheckoutSessionId, sessionId, StringComparison.Ordinal)
-            && order.CheckoutAmountEur == amountEur && order.CheckoutIntent == intent) return;
+        if (order is null) return;
         order.CheckoutAttemptId = attemptId;
         order.CheckoutSessionId = sessionId;
         order.CheckoutAmountEur = amountEur;
-        order.CheckoutIntent = intent;
         await repo.UpdateOrderAsync(order, ct);
     }
 
@@ -1473,18 +1415,18 @@ internal sealed class Service(
     /// before <c>completed</c> records the payment directly in its terminal state, so the later completed can neither
     /// lose settlement nor recreate a failed payment as Pending.
     /// </summary>
-    private async Task<bool> TransitionAsyncPaymentAsync(StoreCheckoutWebhookEvent evt, PaymentStatus target, CancellationToken ct)
+    private async Task TransitionAsyncPaymentAsync(StoreCheckoutWebhookEvent evt, PaymentStatus target, CancellationToken ct)
     {
         if (evt.Session is not { } session)
         {
             logger.LogWarning("{Kind} event {EventId} did not contain a Session payload", evt.Kind, evt.EventId);
-            return false;
+            return;
         }
 
         if (session.PaymentIntentId is not { } paymentIntentId)
         {
             logger.LogWarning("{Kind} session {SessionId} has no PaymentIntentId; skipping.", evt.Kind, session.SessionId);
-            return false;
+            return;
         }
 
         var existing = await repo.GetPaymentByIntentIdAsync(paymentIntentId, ct);
@@ -1497,7 +1439,6 @@ internal sealed class Service(
                 logger.LogInformation(
                     "Async {Kind} arrived before completed for order {OrderId} (PI {PaymentIntentId}); recorded {Status} payment directly.",
                     evt.Kind, orderId, paymentIntentId, target);
-                return true;
             }
             else
             {
@@ -1505,11 +1446,11 @@ internal sealed class Service(
                     "{Kind} for PI {PaymentIntentId} found no matching payment; nothing to transition.",
                     evt.Kind, paymentIntentId);
             }
-            return false;
+            return;
         }
 
         if (existing.Status == target)
-            return true; // re-delivery of an already-applied transition
+            return; // re-delivery of an already-applied transition
 
         if (existing.Status != PaymentStatus.Pending)
         {
@@ -1518,26 +1459,17 @@ internal sealed class Service(
             logger.LogWarning(
                 "{Kind} for PI {PaymentIntentId} found payment in unexpected state {Status}; leaving unchanged.",
                 evt.Kind, paymentIntentId, existing.Status);
-            return false;
+            return;
         }
 
-        await SetStripePaymentStatusAsync(existing, target, ct);
-        return true;
-    }
-
-    private async Task SetStripePaymentStatusAsync(
-        Payment payment, PaymentStatus target, CancellationToken ct, Guid? actorUserId = null)
-    {
-        await repo.UpdatePaymentStatusAsync(payment.Id, target, ct);
+        await repo.UpdatePaymentStatusAsync(existing.Id, target, ct);
         var action = target == PaymentStatus.Paid ? StoreAuditActions.StorePaymentSettled : StoreAuditActions.StorePaymentFailed;
         var verb = target == PaymentStatus.Paid ? "settled" : "failed";
-        var description = $"Stripe payment of EUR {payment.AmountEur:0.00} {verb} (PI {payment.StripePaymentIntentId})";
-        if (actorUserId is { } actor)
-            await audit.LogAsync(action, AuditEntityTypes.Payment, payment.Id, description,
-                actor, payment.OrderId, AuditEntityTypes.Order);
-        else
-            await audit.LogAsync(action, AuditEntityTypes.Payment, payment.Id, description,
-                "StripeWebhook", payment.OrderId, AuditEntityTypes.Order);
+        await audit.LogAsync(
+            action, AuditEntityTypes.Payment, existing.Id,
+            $"Stripe payment of EUR {existing.AmountEur:0.00} {verb} (PI {paymentIntentId})",
+            "StripeWebhook",
+            existing.OrderId, AuditEntityTypes.Order);
     }
 
     /// <summary>

@@ -86,14 +86,13 @@ internal sealed class TicketCheckoutRepository(IDbContextFactory<TicketsDbContex
             .ToListAsync(ct);
     }
 
-    public async Task<IReadOnlyList<TicketCheckoutOrder>> GetOrdersForUserAsync(Guid userId, CancellationToken ct = default, IReadOnlyCollection<string>? emails = null)
+    public async Task<IReadOnlyList<TicketCheckoutOrder>> GetOrdersForUserAsync(Guid userId, CancellationToken ct = default)
     {
         await using var ctx = await factory.CreateDbContextAsync(ct);
         // Ticket lines live in a JSON column; the whole table fits in memory, so filter holders there.
         var orders = await ctx.TicketCheckoutOrders.AsNoTracking().ToListAsync(ct);
         return orders
-            .Where(o => o.BuyerUserId == userId || o.Lines.Any(l => l.HolderUserId == userId
-                || (l.HolderUserId is null && l.HolderEmail is { } email && emails?.Contains(email, StringComparer.OrdinalIgnoreCase) == true)))
+            .Where(o => o.BuyerUserId == userId || o.Lines.Any(l => l.HolderUserId == userId))
             .ToList();
     }
 
@@ -106,24 +105,20 @@ internal sealed class TicketCheckoutRepository(IDbContextFactory<TicketsDbContex
             .ToListAsync(ct);
     }
 
-    public async Task AddOrderAsync(TicketCheckoutOrder order, CancellationToken ct = default, TicketCheckoutTicket? ticket = null)
+    public async Task AddOrderAsync(TicketCheckoutOrder order, CancellationToken ct = default)
     {
         await using var ctx = await factory.CreateDbContextAsync(ct);
         ctx.TicketCheckoutOrders.Add(order);
-        if (ticket is not null)
-            ctx.TicketCheckoutTickets.Add(ticket);
         await ctx.SaveChangesAsync(ct);
     }
 
-    public async Task UpdateOrderAsync(TicketCheckoutOrder order, CancellationToken ct = default, TicketCheckoutTicket? ticket = null)
+    public async Task UpdateOrderAsync(TicketCheckoutOrder order, CancellationToken ct = default)
     {
         await using var ctx = await factory.CreateDbContextAsync(ct);
         var tracked = await ctx.TicketCheckoutOrders.FirstAsync(o => o.Id == order.Id, ct);
         // Owned JSON lines carry shadow ordinal keys, so a detached graph cannot be attached with Update().
         ctx.Entry(tracked).CurrentValues.SetValues(order);
         tracked.Lines = order.Lines.Select(CopyLine).ToList();
-        if (ticket is not null)
-            ctx.TicketCheckoutTickets.Update(ticket);
         await ctx.SaveChangesAsync(ct);
     }
 
@@ -156,26 +151,12 @@ internal sealed class TicketCheckoutRepository(IDbContextFactory<TicketsDbContex
         await ctx.SaveChangesAsync(ct);
     }
 
-    public Task<IReadOnlyList<TicketCheckoutOrderEvent>> GetOrderEventsAsync(Guid orderId, CancellationToken ct = default) =>
-        GetOrderEventsAsync([orderId], ct);
-
-    public async Task<IReadOnlyList<TicketCheckoutOrderEvent>> GetOrderEventsAsync(
-        IReadOnlyCollection<Guid> orderIds, CancellationToken ct = default)
+    public async Task<IReadOnlyList<TicketCheckoutOrderEvent>> GetOrderEventsAsync(Guid orderId, CancellationToken ct = default)
     {
-        if (orderIds.Count == 0)
-            return [];
         await using var ctx = await factory.CreateDbContextAsync(ct);
         return await ctx.TicketCheckoutOrderEvents.AsNoTracking()
-            .Where(e => orderIds.Contains(e.OrderId))
+            .Where(e => e.OrderId == orderId)
             .ToListAsync(ct);
-    }
-
-    public async Task MarkCancellationEmailedAsync(Guid orderId, Instant at, CancellationToken ct = default)
-    {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
-        var order = await ctx.TicketCheckoutOrders.SingleAsync(o => o.Id == orderId, ct);
-        order.CancellationEmailedAt ??= at;
-        await ctx.SaveChangesAsync(ct);
     }
 
     public async Task<bool> AddTicketsAsync(IReadOnlyList<TicketCheckoutTicket> tickets, CancellationToken ct = default)
@@ -204,15 +185,10 @@ internal sealed class TicketCheckoutRepository(IDbContextFactory<TicketsDbContex
         return claimed == 1;
     }
 
-    public async Task UpdateTicketAsync(TicketCheckoutTicket ticket, CancellationToken ct = default,
-        IReadOnlyList<TicketCheckoutTicket>? dependents = null, TicketResaleOffer? offer = null)
+    public async Task UpdateTicketAsync(TicketCheckoutTicket ticket, CancellationToken ct = default)
     {
         await using var ctx = await factory.CreateDbContextAsync(ct);
         ctx.TicketCheckoutTickets.Update(ticket);
-        if (dependents is not null)
-            ctx.TicketCheckoutTickets.UpdateRange(dependents);
-        if (offer is not null)
-            CopyOffer(ctx, await ctx.TicketResaleOffers.FirstAsync(o => o.Id == offer.Id, ct), offer);
         await ctx.SaveChangesAsync(ct);
     }
 
@@ -234,14 +210,10 @@ internal sealed class TicketCheckoutRepository(IDbContextFactory<TicketsDbContex
         return await ctx.TicketCheckoutTickets.AsNoTracking().Where(t => t.OrderId == orderId).ToListAsync(ct);
     }
 
-    public async Task<IReadOnlyList<TicketCheckoutTicket>> GetTicketsForHolderAsync(Guid userId, CancellationToken ct = default, IReadOnlyCollection<string>? emails = null)
+    public async Task<IReadOnlyList<TicketCheckoutTicket>> GetTicketsForHolderAsync(Guid userId, CancellationToken ct = default)
     {
         await using var ctx = await factory.CreateDbContextAsync(ct);
-        var candidates = await ctx.TicketCheckoutTickets.AsNoTracking()
-            .Where(t => t.HolderUserId == userId || (emails != null && t.HolderUserId == null && t.HolderEmail != null))
-            .ToListAsync(ct);
-        return candidates.Where(t => t.HolderUserId == userId
-            || (t.HolderEmail is { } email && emails?.Contains(email, StringComparer.OrdinalIgnoreCase) == true)).ToList();
+        return await ctx.TicketCheckoutTickets.AsNoTracking().Where(t => t.HolderUserId == userId).ToListAsync(ct);
     }
 
     public async Task<IReadOnlyList<TicketCheckoutTicket>> GetTicketsForSettingsAsync(Guid settingsId, CancellationToken ct = default)
@@ -250,12 +222,10 @@ internal sealed class TicketCheckoutRepository(IDbContextFactory<TicketsDbContex
         return await ctx.TicketCheckoutTickets.AsNoTracking().Where(t => t.TicketingSettingsId == settingsId).ToListAsync(ct);
     }
 
-    public async Task AddOfferAsync(TicketResaleOffer offer, CancellationToken ct = default, TicketCheckoutTicket? ticket = null)
+    public async Task AddOfferAsync(TicketResaleOffer offer, CancellationToken ct = default)
     {
         await using var ctx = await factory.CreateDbContextAsync(ct);
         ctx.TicketResaleOffers.Add(offer);
-        if (ticket is not null)
-            ctx.TicketCheckoutTickets.Update(ticket);
         await ctx.SaveChangesAsync(ct);
     }
 
@@ -263,23 +233,11 @@ internal sealed class TicketCheckoutRepository(IDbContextFactory<TicketsDbContex
     {
         await using var ctx = await factory.CreateDbContextAsync(ct);
         var tracked = await ctx.TicketResaleOffers.FirstAsync(o => o.Id == offer.Id, ct);
-        CopyOffer(ctx, tracked, offer);
-        await ctx.SaveChangesAsync(ct);
-    }
-
-    private static void CopyOffer(TicketsDbContext ctx, TicketResaleOffer tracked, TicketResaleOffer offer)
-    {
         // Owned JSON invites carry shadow ordinal keys, so a detached graph cannot be attached with Update().
         ctx.Entry(tracked).CurrentValues.SetValues(offer);
         tracked.Invites = offer.Invites
-            .Select(i => new TicketResaleInvite
-            {
-                Email = i.Email,
-                TokenHash = i.TokenHash,
-                SentAt = i.SentAt,
-                DeliveryId = i.DeliveryId,
-                DeliveryPending = i.DeliveryPending,
-            }).ToList();
+            .Select(i => new TicketResaleInvite { Email = i.Email, TokenHash = i.TokenHash, SentAt = i.SentAt }).ToList();
+        await ctx.SaveChangesAsync(ct);
     }
 
     public async Task<TicketResaleOffer?> GetOfferAsync(Guid id, CancellationToken ct = default)
@@ -387,18 +345,13 @@ internal sealed class TicketCheckoutRepository(IDbContextFactory<TicketsDbContex
         {
             ticket.HolderName = TicketPiiTombstone.Name;
             ticket.HolderEmail = ticket.HolderEmail is null ? null : TicketPiiTombstone.EmailFor(userId);
-            ticket.VoidRefundId = null;
-            ticket.VoidRefundMinor = null;
-            ticket.VoidRequestedReason = null;
             changed++;
         }
         foreach (var offer in (await ctx.TicketResaleOffers.ToListAsync(ct))
-                     .Where(o => (o.HolderUserId == userId && (o.Invites.Count > 0 || o.SoldNotificationPending is not null))
-                                 || o.Invites.Any(i => addresses.Contains(i.Email))))
+                     .Where(o => o.Invites.Count > 0
+                                 && (o.HolderUserId == userId || o.Invites.Any(i => addresses.Contains(i.Email)))))
         {
             offer.Invites = offer.HolderUserId == userId ? [] : offer.Invites.Where(i => !addresses.Contains(i.Email)).ToList();
-            if (offer.HolderUserId == userId)
-                offer.SoldNotificationPending = null;
             ctx.TicketResaleOffers.Update(offer);
             changed++;
         }

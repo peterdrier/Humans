@@ -48,7 +48,7 @@ internal sealed class TasksEmails(
     private string ReasonLine(string? reason) =>
         string.IsNullOrWhiteSpace(reason) ? string.Empty : Lf("Tasks_Email_ReasonLine", Encode(reason));
 
-    private string TaskUrl(TaskAnswerEmail request) => $"{_settings.BaseUrl.TrimEnd('/')}/Tasks/{request.TaskId}";
+    private string TaskUrl(TaskAnswerEmail request) => $"{_settings.BaseUrl}/Tasks/{request.TaskId}";
 
     private string Lf(string key, params object[] args) =>
         localizer[key, args].Value;

@@ -49,8 +49,6 @@ internal sealed class TicketsAuditActions : AuditActionContributor
 
     public static readonly AuditActionDefinition TicketCheckoutTicketRenamed = new("TicketCheckoutTicketRenamed");
 
-    public static readonly AuditActionDefinition TicketCheckoutVoidRequested = new("TicketCheckoutVoidRequested");
-
     public static readonly AuditActionDefinition TicketCheckoutTicketVoided = new("TicketCheckoutTicketVoided");
 
     public static readonly AuditActionDefinition TicketCompanionIssued = new("TicketCompanionIssued");

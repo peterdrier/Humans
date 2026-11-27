@@ -46,7 +46,7 @@ internal sealed class UsersEmails(
         => Localized(culture, () => new EmailMessage(
             userEmail, userName, userId,
             L("Users_Email_DeletionRequested_Subject"),
-            localizer["Users_Email_AccountDeletionRequested_Body", Encode(userName), deletionDate.InUtc().Date.ToDate(), _settings.BaseUrl.TrimEnd('/')],
+            localizer["Users_Email_AccountDeletionRequested_Body", Encode(userName), deletionDate.InUtc().Date.ToDate(), _settings.BaseUrl],
             "deletion_requested"));
 
     /// <summary>
@@ -64,7 +64,7 @@ internal sealed class UsersEmails(
         => Localized(culture, () => new EmailMessage(
             userEmail, userName, userId,
             L("Users_Email_AccessSuspended_Subject"),
-            localizer["Users_Email_AccessSuspended_Body", Encode(userName), Encode(reason), _settings.BaseUrl.TrimEnd('/'), _settings.AdminAddress],
+            localizer["Users_Email_AccessSuspended_Body", Encode(userName), Encode(reason), _settings.BaseUrl, _settings.AdminAddress],
             "access_suspended"));
 
     private string L(string key) => localizer[key].Value;

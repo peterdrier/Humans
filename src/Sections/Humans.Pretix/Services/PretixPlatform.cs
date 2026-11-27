@@ -74,7 +74,10 @@ internal sealed partial class PretixPlatform(
             throw new TicketingPlatformException("pretix needs the event's slug as PlatformEventRef.");
         Validate(request);
 
-        await RequireEurAsync(eventSlug, ct);
+        var ev = await SendAsync<PretixEvent>(HttpMethod.Get, EventPath(eventSlug), body: null, ct);
+        if (!string.Equals(ev.Currency, request.Currency, StringComparison.OrdinalIgnoreCase))
+            throw new TicketingPlatformException(
+                $"pretix event {eventSlug} sells in {ev.Currency}, not {request.Currency}.");
 
         var items = await ReadAllPagesAsync<PretixItem>($"{EventPath(eventSlug)}items/?active=true", ct);
         var code = OrderCode(request.OrderId);
@@ -132,7 +135,6 @@ internal sealed partial class PretixPlatform(
     {
         EnsureConfigured();
         var (eventSlug, code) = ParsePlatformOrderId(platformOrderId);
-        await RequireEurAsync(eventSlug, ct);
         var order = await SendAsync<PretixOrder>(HttpMethod.Get, OrderPath(eventSlug, code), body: null, ct);
         var status = MapStatus(order, logger);
         return status.State == PlatformOrderState.Paid && await FeeAsync(order, ct) is { } fee ? status with { FeeMinor = fee } : status;
@@ -157,7 +159,6 @@ internal sealed partial class PretixPlatform(
         if (request.AmountMinor <= 0)
             return new RefundResult(RefundState.Failed, null, "A refund must be a positive amount.");
 
-        await RequireEurAsync(eventSlug, ct);
         var order = await SendAsync<PretixOrder>(HttpMethod.Get, OrderPath(eventSlug, code), body: null, ct);
         var comment = RefundCommentPrefix + request.RefundId.ToString("D");
 
@@ -191,11 +192,11 @@ internal sealed partial class PretixPlatform(
             ["comment"] = $"{comment} {request.Reason}".Trim(),
             ["mark_canceled"] = false,
         };
-        // No answer, a retryable HTTP refusal or a pretix 5xx keeps the intent pending under the same id;
+        // No answer, or a pretix 5xx, throws: Tickets keeps the refund pending and retries it under the same id, and
         // the marker on the fee and the refund makes that retry safe whether or not this one went through.
         var response = await SendRawAsync(
             HttpMethod.Post, $"{OrderPath(eventSlug, code)}payments/{payment.LocalId}/refund/", body, ct);
-        if ((int)response.Status >= 500 || response.Status is HttpStatusCode.RequestTimeout or HttpStatusCode.TooManyRequests)
+        if ((int)response.Status >= 500)
             EnsureSuccess(response, "refund");
 
         if ((int)response.Status is < 200 or > 299 && response.Status != HttpStatusCode.BadRequest)
@@ -236,7 +237,6 @@ internal sealed partial class PretixPlatform(
     {
         EnsureConfigured();
         var (eventSlug, code) = ParsePlatformOrderId(platformOrderId);
-        await RequireEurAsync(eventSlug, ct);
         var order = await SendAsync<PretixOrder>(HttpMethod.Get, OrderPath(eventSlug, code), body: null, ct);
         var state = MapStatus(order, logger).State;
         if (state is PlatformOrderState.Paid or PlatformOrderState.Processing)
@@ -412,8 +412,7 @@ internal sealed partial class PretixPlatform(
         }
 
         return new PaymentLedger(entries, account.Payouts.Select(p => new PaymentPayout(
-            p.Id, p.CreatedAt, p.ArrivalAt, p.AmountMinor, p.Status, p.ContentsNetMinor, p.ContentsCount)).ToList())
-        { AccountKey = $"stripe:{StripeAccountName}" };
+            p.Id, p.CreatedAt, p.ArrivalAt, p.AmountMinor, p.Status, p.ContentsNetMinor, p.ContentsCount)).ToList());
     }
 
     private async Task<Guid?> HumansOrderOfAsync(
@@ -454,8 +453,6 @@ internal sealed partial class PretixPlatform(
         EnsureConfigured();
         if (string.IsNullOrWhiteSpace(platformEventRef))
             throw new TicketingPlatformException("pretix needs the event's slug to list its orders.");
-
-        await RequireEurAsync(platformEventRef, ct);
 
         // Inactive carriers too: an order keeps its item after the item is switched off.
         var items = await ReadAllPagesAsync<PretixItem>($"{EventPath(platformEventRef)}items/", ct);
@@ -665,8 +662,6 @@ internal sealed partial class PretixPlatform(
 
     private static void Validate(PlatformOrderRequest request)
     {
-        if (!string.Equals(request.Currency, "EUR", StringComparison.OrdinalIgnoreCase))
-            throw new TicketingPlatformException("pretix charges EUR only.");
         if (request.Lines.Count == 0)
             throw new TicketingPlatformException("An order needs at least one line.");
         if (request.Lines.Any(l => l.AmountMinor < 0))
@@ -729,11 +724,8 @@ internal sealed partial class PretixPlatform(
             RefundState.ManualRequired, refund.LocalId.ToString(CultureInfo.InvariantCulture), null, manualUrl),
         "created" or "transit" or "external" => new RefundResult(
             RefundState.Pending, refund.LocalId.ToString(CultureInfo.InvariantCulture), null),
-        "failed" or "canceled" => new RefundResult(
-            RefundState.Failed, refund.LocalId.ToString(CultureInfo.InvariantCulture), $"pretix refund {refund.State}"),
         _ => new RefundResult(
-            RefundState.Pending, refund.LocalId.ToString(CultureInfo.InvariantCulture),
-            $"Unknown pretix refund state '{refund.State ?? "(missing)"}'."),
+            RefundState.Failed, refund.LocalId.ToString(CultureInfo.InvariantCulture), $"pretix refund {refund.State}"),
     };
 
     /// <summary>pretix's 400 for a provider that cannot refund this amount itself; every other 400 is a decline.</summary>
@@ -768,7 +760,8 @@ internal sealed partial class PretixPlatform(
             ["cancel_fees"] = new JsonArray(new JsonObject { ["fee"] = feeId }),
         };
         var response = await SendRawAsync(HttpMethod.Post, $"{OrderPath(eventSlug, code)}change/", body, ct);
-        EnsureSuccess(response, $"remove refund fee {feeId} from order {code}");
+        if ((int)response.Status is < 200 or > 299)
+            logger.LogError("Could not take refund fee {FeeId} off pretix order {Code}: {Body}", feeId, code, response.Body);
     }
 
     private Uri AdminOrderUrl(string eventSlug, string code) =>
@@ -783,14 +776,6 @@ internal sealed partial class PretixPlatform(
 
     private Task<RawResponse> PostOrderAsync(string eventSlug, JsonObject body, CancellationToken ct) =>
         SendRawAsync(HttpMethod.Post, $"{EventPath(eventSlug)}orders/", body, ct);
-
-    private async Task RequireEurAsync(string eventSlug, CancellationToken ct)
-    {
-        var details = await SendAsync<PretixEvent>(HttpMethod.Get, EventPath(eventSlug), body: null, ct);
-        if (!string.Equals(details.Currency, "EUR", StringComparison.OrdinalIgnoreCase))
-            throw new TicketingPlatformException(
-                $"pretix event {eventSlug} declares currency '{details.Currency ?? "(missing)"}'; EUR is required.");
-    }
 
     private string EventPath(string eventSlug) =>
         $"api/v1/organizers/{Uri.EscapeDataString(Settings.Organizer)}/events/{Uri.EscapeDataString(eventSlug)}/";

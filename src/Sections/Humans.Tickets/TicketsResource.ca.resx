@@ -170,9 +170,6 @@
   <data name="Tickets_Buy_Empty" xml:space="preserve">
     <value>Tria almenys una entrada o una donació.</value>
   </data>
-  <data name="Tickets_Buy_CancelUnavailable" xml:space="preserve">
-    <value>No es pot cancel·lar aquesta comanda perquè el proveïdor de pagaments no està disponible. Contacta amb l’equip d’entrades.</value>
-  </data>
   <data name="Tickets_Buy_PlatformFailed" xml:space="preserve">
     <value>No s'ha pogut obrir la pàgina de pagament. Torna-ho a provar d'aquí a un moment.</value>
   </data>

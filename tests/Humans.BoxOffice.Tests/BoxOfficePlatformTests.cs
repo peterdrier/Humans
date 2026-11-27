@@ -2,7 +2,6 @@ using System.Globalization;
 using System.Net;
 using System.Security.Cryptography;
 using System.Text;
-using System.Text.Json.Nodes;
 using AwesomeAssertions;
 using Humans.BoxOffice.Controllers;
 using Humans.BoxOffice.Services;
@@ -41,7 +40,7 @@ public sealed class BoxOfficePlatformTests
             () => platform.CreateOrderAsync(Order(Now + Duration.FromHours(1), new PlatformOrderLine(OrderLineKind.Ticket, "Entry", 1000, 0.21m, "Ana")), ct),
             () => platform.GetStatusAsync("cs_test_config", ct),
             () => platform.ListOrdersAsync(null, Now - Duration.FromDays(1), Now, ct),
-            () => platform.RefundAsync(new RefundRequest(Guid.NewGuid(), "cs_test_config", 1000, "Resold", Now), ct),
+            () => platform.RefundAsync(new RefundRequest(Guid.NewGuid(), "cs_test_config", 1000, "Resold"), ct),
             () => platform.CancelAsync("cs_test_config", ct),
         ];
         foreach (var operation in operations)
@@ -86,7 +85,7 @@ public sealed class BoxOfficePlatformTests
     }
 
     private static string Session(string status, string paymentStatus, string charge = "null", string intent = "succeeded") => $$$"""
-        {"id":"cs_test_1","object":"checkout.session","currency":"eur","status":"{{{status}}}","payment_status":"{{{paymentStatus}}}",
+        {"id":"cs_test_1","object":"checkout.session","status":"{{{status}}}","payment_status":"{{{paymentStatus}}}",
          "url":"https://checkout.stripe.com/c/pay/cs_test_1","client_reference_id":"order-1",
          "payment_intent":{"id":"pi_1","object":"payment_intent","status":"{{{intent}}}","latest_charge":{{{charge}}}}}
         """;
@@ -100,7 +99,7 @@ public sealed class BoxOfficePlatformTests
         """;
 
     private const string PaidCharge = """
-        {"id":"ch_1","object":"charge","currency":"eur","paid":true,"amount":25000,"amount_refunded":5000,"created":1799582400,
+        {"id":"ch_1","object":"charge","paid":true,"amount":25000,"amount_refunded":5000,"created":1799582400,
          "payment_method_details":{"type":"ideal"},
          "balance_transaction":{"id":"txn_1","object":"balance_transaction","fee":29,"currency":"eur"}}
         """;
@@ -178,74 +177,6 @@ public sealed class BoxOfficePlatformTests
             .And.Contain("metadata[humans_ticket_count]=1");
     }
 
-    public enum MoneySource { Session, Charge, Refund, Dispute }
-
-    [HumansTheory]
-    [InlineData(MoneySource.Session, null)]
-    [InlineData(MoneySource.Session, "")]
-    [InlineData(MoneySource.Session, "usd")]
-    [InlineData(MoneySource.Charge, null)]
-    [InlineData(MoneySource.Charge, "")]
-    [InlineData(MoneySource.Charge, "usd")]
-    [InlineData(MoneySource.Refund, null)]
-    [InlineData(MoneySource.Refund, "")]
-    [InlineData(MoneySource.Refund, "usd")]
-    [InlineData(MoneySource.Dispute, null)]
-    [InlineData(MoneySource.Dispute, "")]
-    [InlineData(MoneySource.Dispute, "usd")]
-    public async Task GetStatusAsync_UnsupportedCurrency_RejectsAmounts(MoneySource source, string? currency)
-    {
-        var session = JsonNode.Parse(Session("complete", "paid", PaidCharge))!;
-        var charge = session["payment_intent"]!["latest_charge"]!;
-        if (source == MoneySource.Session) session["currency"] = currency;
-        if (source == MoneySource.Charge) charge["currency"] = currency;
-        if (source == MoneySource.Dispute) charge["disputed"] = true;
-        var refund = JsonNode.Parse(Refund("re_1", "succeeded", 5000))!;
-        if (source == MoneySource.Refund) refund["currency"] = currency;
-        Respond(session.ToJsonString(), RefundList(refund.ToJsonString()),
-            $$"""{"object":"list","url":"/v1/disputes","has_more":false,"data":[{"id":"dp_1","object":"dispute","amount":1000,"status":"lost","currency":{{System.Text.Json.JsonSerializer.Serialize(currency)}}}]}""");
-
-        var read = () => Platform().GetStatusAsync("cs_test_1", TestContext.Current.CancellationToken);
-
-        await read.Should().ThrowAsync<TicketingPlatformException>().WithMessage("*EUR*");
-    }
-
-    [HumansTheory]
-    [InlineData(null)]
-    [InlineData("")]
-    [InlineData("usd")]
-    public async Task ListOrdersAsync_UnsupportedCurrency_RejectsList(string? currency)
-    {
-        var session = JsonNode.Parse(Session("complete", "paid", PaidCharge))!;
-        session["currency"] = currency;
-        Respond($$"""{"object":"list","url":"/v1/checkout/sessions","has_more":false,"data":[{{session.ToJsonString()}}]}""", RefundList());
-
-        var read = () => Platform().ListOrdersAsync(null, Now, Now, TestContext.Current.CancellationToken);
-
-        await read.Should().ThrowAsync<TicketingPlatformException>().WithMessage("*EUR*");
-    }
-
-    [HumansTheory]
-    [InlineData(MoneySource.Session, null)]
-    [InlineData(MoneySource.Session, "")]
-    [InlineData(MoneySource.Session, "usd")]
-    [InlineData(MoneySource.Charge, null)]
-    [InlineData(MoneySource.Charge, "")]
-    [InlineData(MoneySource.Charge, "usd")]
-    public async Task RefundAsync_UnsupportedCurrency_DoesNotMutate(MoneySource source, string? currency)
-    {
-        var session = JsonNode.Parse(Session("complete", "paid", PaidCharge))!;
-        if (source == MoneySource.Session) session["currency"] = currency;
-        else session["payment_intent"]!["latest_charge"]!["currency"] = currency;
-        Respond(session.ToJsonString(), RefundList(), Refund("re_new", "succeeded", 1000));
-
-        var refund = () => Platform().RefundAsync(
-            new RefundRequest(Guid.NewGuid(), "cs_test_1", 1000, "Returned", Now), TestContext.Current.CancellationToken);
-
-        await refund.Should().ThrowAsync<TicketingPlatformException>().WithMessage("*EUR*");
-        _requests.Should().OnlyContain(r => r.Method == HttpMethod.Get);
-    }
-
     [HumansFact]
     public async Task List_reads_every_session_of_the_period_and_refunds_only_where_the_charge_shows_some()
     {
@@ -253,12 +184,12 @@ public sealed class BoxOfficePlatformTests
         Respond(
             """
             {"object":"list","url":"/v1/checkout/sessions","has_more":false,"data":[
-             {"id":"cs_1","object":"checkout.session","currency":"eur","status":"complete","payment_status":"paid","amount_total":30000,"created":1799582400,
+             {"id":"cs_1","object":"checkout.session","status":"complete","payment_status":"paid","amount_total":30000,"created":1799582400,
               "metadata":{"humans_ticket_order_id":"ORDER_ID","humans_ticket_count":"2"},"payment_intent":{"id":"pi_1","object":"payment_intent","status":"succeeded",
-              "latest_charge":{"id":"ch_1","object":"charge","currency":"eur","paid":true,"amount":30000,"amount_refunded":0,"created":1799582400}}},
-             {"id":"cs_2","object":"checkout.session","currency":"eur","status":"complete","payment_status":"paid","amount_total":25000,"created":1799586000,
+              "latest_charge":{"id":"ch_1","object":"charge","paid":true,"amount":30000,"amount_refunded":0,"created":1799582400}}},
+             {"id":"cs_2","object":"checkout.session","status":"complete","payment_status":"paid","amount_total":25000,"created":1799586000,
               "metadata":{},"payment_intent":{"id":"pi_2","object":"payment_intent","status":"succeeded",
-              "latest_charge":{"id":"ch_2","object":"charge","currency":"eur","paid":true,"amount":25000,"amount_refunded":5000,"created":1799586000}}}]}
+              "latest_charge":{"id":"ch_2","object":"charge","paid":true,"amount":25000,"amount_refunded":5000,"created":1799586000}}}]}
             """.Replace("ORDER_ID", orderId.ToString(), StringComparison.Ordinal),
             RefundList(Refund("re_1", "succeeded", 5000)));
 
@@ -315,131 +246,6 @@ public sealed class BoxOfficePlatformTests
         (await Platform().GetStatusAsync("cs_test_1", TestContext.Current.CancellationToken)).State.Should().Be(expected);
     }
 
-    private static string Page(string path, bool more, params string[] rows) =>
-        $$"""{"object":"list","url":"{{path}}","has_more":{{(more ? "true" : "false")}},"data":[{{string.Join(",", rows)}}]}""";
-
-    private static string Dispute(string id, long amount) =>
-        $$"""{"id":"{{id}}","object":"dispute","currency":"eur","amount":{{amount}},"status":"lost","charge":"ch_1"}""";
-
-    public enum PageRead { Refunds, Disputes, Sessions }
-
-    private static string[] FirstPages(PageRead source) => source switch
-    {
-        PageRead.Refunds => [Session("complete", "paid", PaidCharge),
-            Page("/v1/refunds", true, Refund("re_1", "succeeded", 1000))],
-        PageRead.Disputes => [Session("complete", "paid", PaidCharge.Replace("\"paid\":true", "\"paid\":true,\"disputed\":true", StringComparison.Ordinal)),
-            RefundList(), Page("/v1/disputes", true, Dispute("dp_1", 1000))],
-        PageRead.Sessions => [Page("/v1/checkout/sessions", true, """{"id":"cs_1","object":"checkout.session"}""")],
-        _ => throw new ArgumentOutOfRangeException(nameof(source)),
-    };
-
-    private Task ReadPagesAsync(PageRead source, CancellationToken ct)
-    {
-        var body = Event("charge.refunded", """{"id":"ch_1","object":"charge","payment_intent":"pi_1"}""");
-        return source == PageRead.Sessions
-            ? Platform(WebhookSecret).ParseWebhookAsync(body, Sign(body), ct)
-            : Platform().GetStatusAsync("cs_test_1", ct);
-    }
-
-    [HumansFact]
-    public async Task GetStatusAsync_PagedRefunds_SumsEveryPage()
-    {
-        Respond([.. FirstPages(PageRead.Refunds), Page("/v1/refunds", false, Refund("re_2", "succeeded", 2000))]);
-
-        var status = await Platform().GetStatusAsync("cs_test_1", TestContext.Current.CancellationToken);
-
-        status.RefundedMinor.Should().Be(3000);
-        _requests[^1].Uri.Query.Should().Contain("starting_after=re_1");
-    }
-
-    [HumansFact]
-    public async Task RefundAsync_PriorRefundOnLaterPage_ReturnsItsOutcome()
-    {
-        var refundId = Guid.NewGuid();
-        var charge = PaidCharge.Replace("\"amount_refunded\":5000", "\"amount_refunded\":25000", StringComparison.Ordinal);
-        Respond(Session("complete", "paid", charge),
-            Page("/v1/refunds", true, Refund("re_other", "succeeded", 1000)),
-            Page("/v1/refunds", false, Refund("re_ours", "succeeded", 24000, refundId)));
-
-        var result = await Platform().RefundAsync(new RefundRequest(refundId, "cs_test_1", 24000, "Returned", Now),
-            TestContext.Current.CancellationToken);
-
-        result.State.Should().Be(RefundState.Succeeded);
-        result.PlatformRefundId.Should().Be("re_ours");
-        _requests.Should().HaveCount(3).And.OnlyContain(r => r.Method == HttpMethod.Get);
-    }
-
-    [HumansFact]
-    public async Task GetStatusAsync_PagedDisputes_SumsEveryPage()
-    {
-        Respond([.. FirstPages(PageRead.Disputes), Page("/v1/disputes", false, Dispute("dp_2", 2000))]);
-
-        var status = await Platform().GetStatusAsync("cs_test_1", TestContext.Current.CancellationToken);
-
-        status.ChargedBackMinor.Should().Be(3000);
-        _requests[^1].Uri.Query.Should().Contain("starting_after=dp_1");
-    }
-
-    [HumansFact]
-    public async Task ParseWebhookAsync_PagedSessions_NamesEverySession()
-    {
-        Respond([.. FirstPages(PageRead.Sessions), Page("/v1/checkout/sessions", false,
-            """{"id":"cs_2","object":"checkout.session"}""")]);
-        var body = Event("charge.refunded", """{"id":"ch_1","object":"charge","payment_intent":"pi_1"}""");
-
-        var sessions = await Platform(WebhookSecret).ParseWebhookAsync(body, Sign(body), TestContext.Current.CancellationToken);
-
-        sessions.Should().Equal("cs_1", "cs_2");
-        _requests[^1].Uri.Query.Should().Contain("starting_after=cs_1");
-    }
-
-    [HumansTheory]
-    [InlineData(PageRead.Refunds)]
-    [InlineData(PageRead.Disputes)]
-    [InlineData(PageRead.Sessions)]
-    public async Task ListReads_LaterPageFails_RejectsPartialResult(PageRead source)
-    {
-        using var headers = new HttpResponseMessage();
-        var responses = FirstPages(source).Select(b => new StripeResponse(HttpStatusCode.OK, headers.Headers, b))
-            .Append(new StripeResponse(HttpStatusCode.Forbidden, headers.Headers,
-                """{"error":{"type":"invalid_request_error","message":"page-two-denied"}}""")).ToArray();
-        _http.MakeRequestAsync(Arg.Do<StripeRequest>(_requests.Add), Arg.Any<CancellationToken>())
-            .Returns(responses[0], responses.Skip(1).ToArray());
-
-        var read = () => ReadPagesAsync(source, TestContext.Current.CancellationToken);
-
-        await read.Should().ThrowAsync<Exception>().WithMessage("*page-two-denied*");
-        _requests[^1].Uri.Query.Should().Contain("starting_after=");
-    }
-
-    [HumansTheory]
-    [InlineData(PageRead.Refunds)]
-    [InlineData(PageRead.Disputes)]
-    [InlineData(PageRead.Sessions)]
-    public async Task ListReads_LaterPageCancelled_PropagatesCancellation(PageRead source)
-    {
-        using var caller = new CancellationTokenSource();
-        var bodies = FirstPages(source);
-        _http.MakeRequestAsync(Arg.Any<StripeRequest>(), Arg.Any<CancellationToken>()).Returns(async call =>
-        {
-            var index = _requests.Count;
-            _requests.Add(call.Arg<StripeRequest>());
-            if (index < bodies.Length)
-            {
-                using var headers = new HttpResponseMessage();
-                return new StripeResponse(HttpStatusCode.OK, headers.Headers, bodies[index]);
-            }
-            await caller.CancelAsync();
-            throw new OperationCanceledException(caller.Token);
-        });
-
-        var read = () => ReadPagesAsync(source, caller.Token);
-
-        await read.Should().ThrowAsync<OperationCanceledException>();
-        caller.IsCancellationRequested.Should().BeTrue();
-        _requests[^1].Uri.Query.Should().Contain("starting_after=");
-    }
-
     [HumansFact]
     public async Task A_chargeback_counts_what_open_and_lost_disputes_hold_but_not_inquiries_or_won_ones()
     {
@@ -447,9 +253,9 @@ public sealed class BoxOfficePlatformTests
         Respond(Session("complete", "paid", chargedBack), RefundList(),
             """
             {"object":"list","url":"/v1/disputes","has_more":false,"data":[
-             {"id":"dp_1","object":"dispute","currency":"eur","amount":25000,"status":"lost","charge":"ch_1"},
-             {"id":"dp_2","object":"dispute","currency":"eur","amount":1000,"status":"won","charge":"ch_1"},
-             {"id":"dp_3","object":"dispute","currency":"eur","amount":2000,"status":"warning_needs_response","charge":"ch_1"}]}
+             {"id":"dp_1","object":"dispute","amount":25000,"status":"lost","charge":"ch_1"},
+             {"id":"dp_2","object":"dispute","amount":1000,"status":"won","charge":"ch_1"},
+             {"id":"dp_3","object":"dispute","amount":2000,"status":"warning_needs_response","charge":"ch_1"}]}
             """);
 
         var status = await Platform().GetStatusAsync("cs_test_1", TestContext.Current.CancellationToken);
@@ -481,7 +287,7 @@ public sealed class BoxOfficePlatformTests
         Respond(Session("complete", "paid", PaidCharge), RefundList());
 
         var result = await Platform().RefundAsync(
-            new RefundRequest(Guid.NewGuid(), "cs_test_1", 20001, "too much", Now), TestContext.Current.CancellationToken);
+            new RefundRequest(Guid.NewGuid(), "cs_test_1", 20001, "too much"), TestContext.Current.CancellationToken);
 
         result.State.Should().Be(RefundState.Failed);
         _requests.Should().HaveCount(2).And.OnlyContain(r => r.Method == HttpMethod.Get);
@@ -495,7 +301,7 @@ public sealed class BoxOfficePlatformTests
         var refundId = Guid.NewGuid();
 
         var result = await Platform().RefundAsync(
-            new RefundRequest(refundId, "cs_test_1", 12000, "resale", Now), TestContext.Current.CancellationToken);
+            new RefundRequest(refundId, "cs_test_1", 12000, "resale"), TestContext.Current.CancellationToken);
 
         result.State.Should().Be(RefundState.Succeeded);
         result.PlatformRefundId.Should().Be("re_1");
@@ -512,7 +318,7 @@ public sealed class BoxOfficePlatformTests
         Respond(Session("complete", "paid", PaidCharge), RefundList(Refund("re_7", "pending", 30000, refundId)));
 
         var result = await Platform().RefundAsync(
-            new RefundRequest(refundId, "cs_test_1", 30000, "resale", Now), TestContext.Current.CancellationToken);
+            new RefundRequest(refundId, "cs_test_1", 30000, "resale"), TestContext.Current.CancellationToken);
 
         result.State.Should().Be(RefundState.Pending);
         result.PlatformRefundId.Should().Be("re_7");
@@ -533,7 +339,7 @@ public sealed class BoxOfficePlatformTests
     {
         RefundError(status, type);
         var refund = () => Platform().RefundAsync(
-            new RefundRequest(Guid.NewGuid(), "cs_test_1", 12000, "Returned", Now), TestContext.Current.CancellationToken);
+            new RefundRequest(Guid.NewGuid(), "cs_test_1", 12000, "Returned"), TestContext.Current.CancellationToken);
 
         await refund.Should().ThrowAsync<TicketingPlatformException>().WithMessage("*refund-unresolved*");
         _requests.Should().HaveCount(3);
@@ -551,7 +357,7 @@ public sealed class BoxOfficePlatformTests
         RefundError(status, type);
 
         var result = await Platform().RefundAsync(
-            new RefundRequest(Guid.NewGuid(), "cs_test_1", 12000, "Returned", Now), TestContext.Current.CancellationToken);
+            new RefundRequest(Guid.NewGuid(), "cs_test_1", 12000, "Returned"), TestContext.Current.CancellationToken);
 
         result.State.Should().Be(RefundState.Failed);
         result.PlatformRefundId.Should().BeNull();
@@ -568,56 +374,6 @@ public sealed class BoxOfficePlatformTests
             $$$"""{"error":{"type":"{{{type}}}","message":"refund-unresolved"}}""");
         _http.MakeRequestAsync(Arg.Do<StripeRequest>(_requests.Add), Arg.Any<CancellationToken>())
             .Returns(session, refunds, error);
-    }
-
-    [HumansTheory]
-    [InlineData(null)]
-    [InlineData(86400)]
-    [InlineData(172800)]
-    [InlineData(-60)]
-    public async Task RefundAsync_UntrustedRetryWindow_RequiresReconciliation(int? ageSeconds)
-    {
-        Respond(Session("complete", "paid", PaidCharge), RefundList(), Refund("re_new", "succeeded", 1000));
-        var createdAt = ageSeconds is { } age ? Now - Duration.FromSeconds(age) : (Instant?)null;
-        var refund = () => Platform().RefundAsync(
-            new RefundRequest(Guid.NewGuid(), "cs_test_1", 1000, "Returned", createdAt), TestContext.Current.CancellationToken);
-
-        await refund.Should().ThrowAsync<TicketingPlatformException>().WithMessage("*reconcil*");
-        _requests.Should().HaveCount(2).And.OnlyContain(r => r.Method == HttpMethod.Get);
-    }
-
-    [HumansTheory]
-    [InlineData(0)]
-    [InlineData(86399)]
-    public async Task RefundAsync_WithinRetryWindow_CreatesRefund(int ageSeconds)
-    {
-        Respond(Session("complete", "paid", PaidCharge), RefundList(), Refund("re_new", "succeeded", 1000));
-
-        var result = await Platform().RefundAsync(
-            new RefundRequest(Guid.NewGuid(), "cs_test_1", 1000, "Returned", Now - Duration.FromSeconds(ageSeconds)),
-            TestContext.Current.CancellationToken);
-
-        result.State.Should().Be(RefundState.Succeeded);
-        _requests.Should().HaveCount(3);
-        _requests[^1].Method.Should().Be(HttpMethod.Post);
-    }
-
-    [HumansTheory]
-    [InlineData("succeeded", RefundState.Succeeded)]
-    [InlineData("pending", RefundState.Pending)]
-    [InlineData("failed", RefundState.Failed)]
-    public async Task RefundAsync_ExistingOldRefund_ReturnsItsOutcome(string status, RefundState expected)
-    {
-        var refundId = Guid.NewGuid();
-        Respond(Session("complete", "paid", PaidCharge), RefundList(Refund("re_old", status, 1000, refundId)));
-
-        var result = await Platform().RefundAsync(
-            new RefundRequest(refundId, "cs_test_1", 1000, "Returned", Now - Duration.FromDays(7)),
-            TestContext.Current.CancellationToken);
-
-        result.State.Should().Be(expected);
-        result.PlatformRefundId.Should().Be("re_old");
-        _requests.Should().HaveCount(2).And.OnlyContain(r => r.Method == HttpMethod.Get);
     }
 
     [HumansFact]
@@ -655,8 +411,7 @@ public sealed class BoxOfficePlatformTests
 
         var ledger = await Platform().GetPaymentLedgerAsync(Now - Duration.FromDays(1), Now, TestContext.Current.CancellationToken);
 
-        ledger!.AccountKey.Should().Be("stripe:Tickets");
-        ledger.Entries.Select(e => (e.Id, e.Kind, e.AmountMinor, e.FeeMinor, e.HumansOrderId)).Should().Equal(
+        ledger!.Entries.Select(e => (e.Id, e.Kind, e.AmountMinor, e.FeeMinor, e.HumansOrderId)).Should().Equal(
             ("txn_c", PaymentLedgerEntryKind.Charge, 30000L, 450L, paidHere),
             ("txn_r", PaymentLedgerEntryKind.Refund, -5000L, 0L, refundedLater),
             ("txn_f", PaymentLedgerEntryKind.Fee, -200L, 0L, null),
@@ -737,7 +492,7 @@ public sealed class BoxOfficePlatformTests
         Respond(Session("complete", "unpaid", PaidCharge.Replace("\"paid\":true", "\"paid\":false", StringComparison.Ordinal)));
 
         var result = await Platform().RefundAsync(
-            new RefundRequest(Guid.NewGuid(), "cs_test_1", 1000, "resale", Now), TestContext.Current.CancellationToken);
+            new RefundRequest(Guid.NewGuid(), "cs_test_1", 1000, "resale"), TestContext.Current.CancellationToken);
 
         result.State.Should().Be(RefundState.Failed);
         _requests.Should().ContainSingle().Which.Method.Should().Be(HttpMethod.Get);
@@ -754,7 +509,7 @@ public sealed class BoxOfficePlatformTests
                 """{"error":{"type":"invalid_request_error","message":"Charge ch_1 has been disputed."}}"""));
 
         var result = await Platform().RefundAsync(
-            new RefundRequest(Guid.NewGuid(), "cs_test_1", 1000, "resale", Now), TestContext.Current.CancellationToken);
+            new RefundRequest(Guid.NewGuid(), "cs_test_1", 1000, "resale"), TestContext.Current.CancellationToken);
 
         result.State.Should().Be(RefundState.Failed);
         result.FailureReason.Should().Be("Charge ch_1 has been disputed.");
@@ -770,7 +525,7 @@ public sealed class BoxOfficePlatformTests
             _ => throw new StripeException("no answer"));
 
         var act = () => Platform().RefundAsync(
-            new RefundRequest(Guid.NewGuid(), "cs_test_1", 1000, "resale", Now), TestContext.Current.CancellationToken);
+            new RefundRequest(Guid.NewGuid(), "cs_test_1", 1000, "resale"), TestContext.Current.CancellationToken);
 
         await act.Should().ThrowAsync<TicketingPlatformException>();
     }

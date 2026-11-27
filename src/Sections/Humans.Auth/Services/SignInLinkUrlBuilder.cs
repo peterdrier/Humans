@@ -32,7 +32,7 @@ internal sealed class SignInLinkUrlBuilder(
 
     private readonly IDataProtector _signInProtector = dataProtection.CreateProtector(SignInProtectorPurpose, TimeLimitedPurpose);
     private readonly IDataProtector _signupProtector = dataProtection.CreateProtector(SignupProtectorPurpose, TimeLimitedPurpose);
-    private readonly string _baseUrl = emailSettings.Value.BaseUrl.TrimEnd('/');
+    private readonly string _baseUrl = emailSettings.Value.BaseUrl;
 
     public string BuildSignInUrl(Guid userId, string? returnUrl)
     {

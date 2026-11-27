@@ -1,8 +1,3 @@
-using Xunit;
-using Microsoft.Extensions.Options;
-using Microsoft.Extensions.Logging.Abstractions;
-using Microsoft.Extensions.Localization;
-using Humans.Base.Configuration;
 using System.Reflection;
 using AwesomeAssertions;
 using Humans.Base.Extensions;
@@ -20,23 +15,6 @@ namespace Humans.Workgroups.Tests.Services;
 public sealed class WorkgroupsEmailsTests
 {
     private static readonly EmailPreviewPersona Persona = new("en", "Sally Smith", "sally@example.com");
-
-    [HumansTheory]
-    [InlineData("https://humans.test/", "https://humans.test")]
-    [InlineData("https://humans.test/portal/", "https://humans.test/portal")]
-    public void WorkgroupNotices_TrailingBaseSlash_PreservePath(string baseUrl, string prefix)
-    {
-        var factory = new ResourceManagerStringLocalizerFactory(
-            Options.Create(new LocalizationOptions()), NullLoggerFactory.Instance);
-        var emails = new WorkgroupsEmails(Options.Create(new EmailSettings { BaseUrl = baseUrl }),
-            new StringLocalizer<WorkgroupsResource>(factory), NullLogger<WorkgroupsEmails>.Instance);
-        foreach (var kind in Enum.GetValues<WorkgroupNoticeKind>())
-        {
-            var mail = emails.WorkgroupNotice(new WorkgroupNoticeRequest(Guid.NewGuid(), "a@x.com", "Alice",
-                kind, "Safety", "safety", Culture: "en"));
-            mail.HtmlBody.Should().Contain($"href=\"{prefix}/Workgroups/safety\"");
-        }
-    }
 
     [HumansFact]
     public void WorkgroupNotice_EveryKindEveryCulture_RendersNonEmptyContentWithNoRawKeyLeak()

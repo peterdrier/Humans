@@ -6,7 +6,7 @@ namespace Humans.Tickets.Services.Checkout;
 
 internal enum TicketPaymentIssue
 {
-    /// <summary>A payment, refund or chargeback that names no Humans order on a reconciled platform.</summary>
+    /// <summary>A payment, refund or chargeback that names no Humans order on this platform.</summary>
     NoOrder,
     /// <summary>A payment for an order Humans holds as neither paid nor settling.</summary>
     NotPaidInHumans,
@@ -82,7 +82,7 @@ internal sealed record TicketPaymentRecon(
 /// day the money moved, so a refund months after the sale counts in the period it was made.
 /// </para>
 /// <para>
-/// A payment must name an order on a reconciled platform that Humans holds as paid (or settling), for the order's total, with
+/// A payment must name an order on this platform that Humans holds as paid (or settling), for the order's total, with
 /// the fee Humans recorded (a failed delayed debit, whose payment came back, may be Failed). A refund or chargeback must name an order. A payout must send what it contains; a failed
 /// one is shown, not counted, since it stays failed forever. A fee on its own (Stripe's own billing, a chargeback fee) names no order and is listed, not a problem.
 /// </para>
@@ -93,8 +93,7 @@ internal static class TicketPaymentReconBuilder
     /// Checks the period's ledger against the orders. <paramref name="returnedLater"/> holds orders whose failed delayed
     /// debit came back after the period, so a period that holds only the payment balances. With
     /// <paramref name="sharedAccount"/> (outside production) a movement naming a Humans order this database never held is
-    /// another instance's, set apart rather than a difference. <paramref name="accountPlatforms"/> identifies the adapters
-    /// sharing the account; null checks only <paramref name="platformKey"/>.
+    /// another instance's, set apart rather than a difference.
     /// </summary>
     public static TicketPaymentRecon Build(
         string platformKey,
@@ -103,10 +102,9 @@ internal static class TicketPaymentReconBuilder
         PaymentLedger ledger,
         IReadOnlyCollection<TicketCheckoutOrder> orders,
         IReadOnlyCollection<Guid>? returnedLater = null,
-        bool sharedAccount = false,
-        IReadOnlyCollection<string>? accountPlatforms = null)
+        bool sharedAccount = false)
     {
-        var mine = Mine(orders, platformKey, accountPlatforms);
+        var mine = Mine(orders, platformKey);
         var known = orders.Select(o => o.Id).ToHashSet();
         var returned = Returned(ledger);
         returned.UnionWith(returnedLater ?? []);
@@ -150,10 +148,9 @@ internal static class TicketPaymentReconBuilder
     /// Whether a payment in the ledger is on a failed order whose return is not in it, so the return must be looked for
     /// after the period.
     /// </summary>
-    public static bool AwaitsReturn(PaymentLedger ledger, IReadOnlyCollection<TicketCheckoutOrder> orders, string platformKey,
-        IReadOnlyCollection<string>? accountPlatforms = null)
+    public static bool AwaitsReturn(PaymentLedger ledger, IReadOnlyCollection<TicketCheckoutOrder> orders, string platformKey)
     {
-        var mine = Mine(orders, platformKey, accountPlatforms);
+        var mine = Mine(orders, platformKey);
         var returned = Returned(ledger);
         return ledger.Entries.Any(e => IsPayment(e) && e.HumansOrderId is { } id && !returned.Contains(id)
             && mine.TryGetValue(id, out var order) && order.State == TicketCheckoutOrderState.Failed);
@@ -164,10 +161,8 @@ internal static class TicketPaymentReconBuilder
         .Where(e => e is { Kind: PaymentLedgerEntryKind.Charge, AmountMinor: < 0, HumansOrderId: not null })
         .Select(e => e.HumansOrderId!.Value).ToHashSet();
 
-    private static Dictionary<Guid, TicketCheckoutOrder> Mine(IReadOnlyCollection<TicketCheckoutOrder> orders, string platformKey,
-        IReadOnlyCollection<string>? accountPlatforms) =>
-        orders.Where(o => accountPlatforms is null ? string.Equals(o.PlatformKey, platformKey, StringComparison.Ordinal)
-            : accountPlatforms.Contains(o.PlatformKey, StringComparer.Ordinal)).ToDictionary(o => o.Id);
+    private static Dictionary<Guid, TicketCheckoutOrder> Mine(IReadOnlyCollection<TicketCheckoutOrder> orders, string platformKey) =>
+        orders.Where(o => string.Equals(o.PlatformKey, platformKey, StringComparison.Ordinal)).ToDictionary(o => o.Id);
 
     /// <summary>Money in from a buyer; a failed debit's reversal is a charge too, but negative.</summary>
     private static bool IsPayment(PaymentLedgerEntry entry) => entry is { Kind: PaymentLedgerEntryKind.Charge, AmountMinor: > 0 };
@@ -197,9 +192,11 @@ internal static class TicketPaymentReconBuilder
 
     private static IReadOnlyList<TicketPayoutIssue> Check(PaymentPayout payout)
     {
+        var issues = new List<TicketPayoutIssue>();
+        if (payout.ContentsNetMinor is { } net && net != payout.AmountMinor)
+            issues.Add(TicketPayoutIssue.ContentsMismatch);
         if (payout.Status is "failed" or "canceled")
-            return [TicketPayoutIssue.Failed];
-        return payout.ContentsNetMinor is { } net && net != payout.AmountMinor
-            ? [TicketPayoutIssue.ContentsMismatch] : [];
+            issues.Add(TicketPayoutIssue.Failed);
+        return issues;
     }
 }

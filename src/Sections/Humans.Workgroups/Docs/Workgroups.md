@@ -299,8 +299,6 @@ Settings and Register an existing group on first setup or after clearing the que
 
 ## Invariants
 
-- Every working-group notice trims trailing slashes from `Email:BaseUrl`, retaining any application subpath and one separator before the workgroup route.
-
 - Meeting saves require explicit recurrence and public-visibility values. Omitted flags redisplay field errors before any create/update call, with a Warning after member authorization; explicit false choices remain valid. Meetings stay timed-only.
 - Approving, declining and directly adding members use the same `ManageMembership` resource authorization in the controller and form visibility: active-group coordinators or Board/Admin. The services trust the authorized caller, accept no privilege flag, and require an existing Active group before request/target validation or mutation. Board/Admin authorization does not bypass that Active requirement.
 - Register edits, member forms and member mutations share one controller resolver: resolve the actor, find the group, then check member-work permission before nested IDs or submitted values. Join, leave, status requests and commenting retain their existing exceptions to the member-work check and their route policies.
@@ -333,9 +331,7 @@ Settings and Register an existing group on first setup or after clearing the que
   notifies the coordinators; nothing else changes. `ApproveMemberAsync` and `AddMemberAsync`
   are the only ways a person becomes a member (`AdmitAsync`): their controller requires a current
   coordinator or Board/Admin, and both write `MemberJoined`, audit, notify the person and request a Drive
-  sync. Approval rechecks that the pending request's account is available, as direct addition does;
-  a missing or tombstoned account leaves the request pending without a joined log, audit, notice or Drive sync.
-  `DeclineMemberAsync` sets `LeftAt` on the pending row, audits and notifies without a
+  sync. `DeclineMemberAsync` sets `LeftAt` on the pending row, audits and notifies without a
   reason. A plain member is forbidden by the controller. Neither coordinator-change command nor a
   last-coordinator handover in `LeaveAsync` ever promotes a pending row. Ending or
   withdrawing the group closes its pending requests (`ClosePendingRequests`), so

@@ -82,21 +82,13 @@ internal sealed partial class StripeService(
         string lineItemDescription,
         CancellationToken ct = default,
         Guid? checkoutAttemptId = null,
-        string? supersededSessionId = null,
-        string? knownSessionId = null)
+        string? supersededSessionId = null)
     {
         using var _ = logger.TimeOperation();
         if (amountEur <= 0)
             throw new ArgumentOutOfRangeException(nameof(amountEur), "Checkout amount must be positive.");
         if (!_settings.IsStoreCheckoutConfigured)
             throw new InvalidOperationException("Stripe Store key is not configured.");
-
-        if (knownSessionId is not null)
-        {
-            var known = await new SessionService(new StripeClient(_settings.StoreKey, httpClient: httpClient))
-                .GetAsync(knownSessionId, cancellationToken: ct);
-            return MapSession(known) ?? throw new InvalidOperationException("Stripe returned an unreadable Store Checkout Session.");
-        }
 
         if (supersededSessionId is not null)
         {
@@ -145,9 +137,6 @@ internal sealed partial class StripeService(
                 },
             },
         };
-
-        if (checkoutAttemptId is { } checkoutId)
-            options.Metadata["humans_store_checkout_attempt_id"] = checkoutId.ToString();
 
         try
         {
@@ -238,13 +227,6 @@ internal sealed partial class StripeService(
         }
         if (!string.Equals(bt.Currency, "eur", StringComparison.OrdinalIgnoreCase))
             throw new InvalidOperationException("Stripe balance transaction does not declare EUR currency.");
-
-        StripeMirrorClient.RequireFields(bt.RawJsonElement ?? default, "balance transaction", [], ["fee"]);
-        if (bt.RawJsonElement is not { } raw || !raw.TryGetProperty("fee_details", out var fees)
-            || fees.ValueKind != JsonValueKind.Array)
-            throw new InvalidOperationException("Stripe balance transaction has no fee_details array.");
-        foreach (var fee in fees.EnumerateArray())
-            StripeMirrorClient.RequireFields(fee, "fee", ["type"], ["amount"]);
 
         var pmd = charge.PaymentMethodDetails;
         var methodType = pmd?.Type ?? "unknown";
@@ -375,9 +357,7 @@ internal sealed partial class StripeService(
         var results = new List<StoreCheckoutSessionData>();
         try
         {
-            foreach (var s in await StripeMirrorClient.AllPagesAsync(
-                         after => sessions.ListAsync(new SessionListOptions { Limit = 100, StartingAfter = after }, cancellationToken: ct),
-                         session => session.Id, "Store Checkout sessions", ct))
+            await foreach (var s in sessions.ListAutoPagingAsync(new SessionListOptions { Limit = 100 }, cancellationToken: ct))
             {
                 results.Add(MapSession(s) ?? throw new InvalidOperationException(
                     "Stripe Store Checkout list contains a session without explicit EUR currency."));
@@ -410,14 +390,11 @@ internal sealed partial class StripeService(
         var results = new List<StoreRefundData>();
         try
         {
-            foreach (var r in await StripeMirrorClient.AllPagesAsync(
-                         after => new RefundService(client).ListAsync(new RefundListOptions
-                         { PaymentIntent = paymentIntentId, Limit = 100, StartingAfter = after }, request, ct),
-                         refund => refund.Id, "Store refunds", ct))
+            await foreach (var r in new RefundService(client).ListAutoPagingAsync(
+                               new RefundListOptions { PaymentIntent = paymentIntentId, Limit = 100 }, request, ct))
             {
                 if (!string.Equals(r.Currency, "eur", StringComparison.OrdinalIgnoreCase))
                     throw new InvalidOperationException($"Stripe refund {r.Id} does not declare EUR currency.");
-                StripeMirrorClient.RequireFields(r.RawJsonElement ?? default, "Store refund", ["id"], ["amount", "created"]);
                 results.Add(new StoreRefundData(
                     r.Id,
                     paymentIntentId,
@@ -456,7 +433,6 @@ internal sealed partial class StripeService(
             if (pi.LatestCharge is not { } charge) return null;
             if (!string.Equals(charge.Currency, "eur", StringComparison.OrdinalIgnoreCase))
                 throw new InvalidOperationException($"Stripe charge {charge.Id} does not declare EUR currency.");
-            StripeMirrorClient.RequireFields(charge.RawJsonElement ?? default, "Store charge", ["id"], ["amount", "created"]);
             return new StoreChargeData(
                 FromStripeMinorUnits(charge.Amount),
                 Instant.FromDateTimeUtc(DateTime.SpecifyKind(charge.Created, DateTimeKind.Utc)));
@@ -481,11 +457,6 @@ internal sealed partial class StripeService(
     /// <summary>Shared by the webhook and reconciliation paths so both read a session identically.</summary>
     private StoreCheckoutSessionData? MapSession(Session s)
     {
-        if (string.IsNullOrWhiteSpace(s.Id))
-        {
-            logger.LogWarning("Rejected Stripe Checkout session without an identity");
-            return null;
-        }
         if (!string.Equals(s.Currency, "eur", StringComparison.OrdinalIgnoreCase))
         {
             logger.LogWarning(
@@ -502,25 +473,14 @@ internal sealed partial class StripeService(
             orderId = parsed;
         }
 
-        Guid? checkoutAttemptId = null;
-        if (s.Metadata is not null && s.Metadata.TryGetValue("humans_store_checkout_attempt_id", out var attemptText)
-            && Guid.TryParse(attemptText, out var attempt))
-            checkoutAttemptId = attempt;
-
-        Instant? createdAt = null;
-        if (s.RawJsonElement is { } raw && raw.TryGetProperty("created", out var created)
-            && created.ValueKind == JsonValueKind.Number && created.TryGetInt64(out _))
-            createdAt = Instant.FromDateTimeUtc(DateTime.SpecifyKind(s.Created, DateTimeKind.Utc));
-
         return new StoreCheckoutSessionData(
             SessionId: s.Id,
             OrderId: orderId,
             PaymentIntentId: string.IsNullOrEmpty(s.PaymentIntentId) ? null : s.PaymentIntentId,
             AmountEur: s.AmountTotal.HasValue ? FromStripeMinorUnits(s.AmountTotal.Value) : null,
             PaymentStatus: s.PaymentStatus,
-            CreatedAt: createdAt,
+            CreatedAt: Instant.FromDateTimeUtc(DateTime.SpecifyKind(s.Created, DateTimeKind.Utc)),
             Status: s.Status,
-            Url: string.IsNullOrEmpty(s.Url) ? null : s.Url,
-            CheckoutAttemptId: checkoutAttemptId);
+            Url: string.IsNullOrEmpty(s.Url) ? null : s.Url);
     }
 }

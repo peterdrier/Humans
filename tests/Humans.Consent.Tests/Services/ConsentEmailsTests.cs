@@ -1,8 +1,3 @@
-using Xunit;
-using Microsoft.Extensions.Options;
-using Microsoft.Extensions.Logging.Abstractions;
-using Microsoft.Extensions.Localization;
-using Humans.Base.Configuration;
 using System.Reflection;
 using AwesomeAssertions;
 using Humans.Consent.Services;
@@ -17,23 +12,6 @@ namespace Humans.Consent.Tests.Services;
 public sealed class ConsentEmailsTests
 {
     private static ConsentEmails Create() => TestConsentEmails.Create();
-
-    [HumansTheory]
-    [InlineData("https://humans.test/", "https://humans.test")]
-    [InlineData("https://humans.test/portal/", "https://humans.test/portal")]
-    public void ConsentNotices_TrailingBaseSlash_PreservePath(string baseUrl, string prefix)
-    {
-        var factory = new ResourceManagerStringLocalizerFactory(
-            Options.Create(new LocalizationOptions()), NullLoggerFactory.Instance);
-        var emails = new ConsentEmails(Options.Create(new EmailSettings { BaseUrl = baseUrl }),
-            new StringLocalizer<ConsentResource>(factory), NullLogger<ConsentEmails>.Instance);
-        var messages = new[]
-        {
-            emails.ReConsentsRequired(Guid.NewGuid(), "a@x.com", "Alice", ["Agreement"], "en"),
-            emails.ReConsentReminder(Guid.NewGuid(), "a@x.com", "Alice", ["Agreement"], 14, "en"),
-        };
-        messages.Should().AllSatisfy(mail => mail.HtmlBody.Should().Contain($"href=\"{prefix}/Consent\""));
-    }
 
     [HumansFact]
     public void ReConsentsRequired_IsAlwaysSend_NullCategory()

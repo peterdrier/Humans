@@ -1,4 +1,3 @@
-using System.Text.Json;
 using Humans.Store.Domain;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
@@ -20,9 +19,6 @@ internal sealed class OrderConfiguration : IEntityTypeConfiguration<Order>
         b.Property(x => x.CounterpartyEmail).HasMaxLength(320);
         b.Property(x => x.CheckoutSessionId).HasMaxLength(255);
         b.Property(x => x.CheckoutAmountEur).HasColumnType("numeric(12,2)");
-        b.Property(x => x.CheckoutIntent).HasColumnType("jsonb").HasConversion(
-            intent => JsonSerializer.Serialize(intent, (JsonSerializerOptions?)null),
-            json => JsonSerializer.Deserialize<StoreCheckoutIntent>(json, (JsonSerializerOptions?)null));
         b.Property(x => x.State).HasConversion<int>();
         b.Property(x => x.Year).IsRequired();
         b.HasIndex(x => x.State);
