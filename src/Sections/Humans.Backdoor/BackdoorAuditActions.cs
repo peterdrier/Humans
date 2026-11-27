@@ -10,6 +10,10 @@ internal sealed class BackdoorAuditActions : AuditActionContributor
 
     public static readonly AuditActionDefinition BackdoorApiKeyRevoked = new("BackdoorApiKeyRevoked", AuditKept.Forever);
 
+    public static readonly AuditActionDefinition BackdoorConnectionApproved = new("BackdoorConnectionApproved");
+
+    public static readonly AuditActionDefinition BackdoorConnectionRevoked = new("BackdoorConnectionRevoked");
+
     /// <summary>The old name of <see cref="BackdoorApiKeyCreated"/>. Nothing writes it; declared so rows stored under it
     /// still resolve.</summary>
     public static readonly AuditActionDefinition BackdoorApiKeyIssued = new("BackdoorApiKeyIssued", AuditKept.Forever);

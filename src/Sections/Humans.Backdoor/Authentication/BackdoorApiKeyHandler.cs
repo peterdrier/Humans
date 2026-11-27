@@ -31,6 +31,10 @@ internal sealed class BackdoorApiKeyHandler(
         if (!Request.Headers.TryGetValue(HeaderName, out var presented))
             return AuthenticateResult.NoResult();
 
+        // A key and a sign-in token may belong to different people; acting as either would be a guess.
+        if (Request.Headers.Authorization.Count > 0)
+            return AuthenticateResult.Fail("Send an API key or a sign-in token, not both.");
+
         var owner = await keys.ResolveOwnerAsync(presented.ToString(), Context.RequestAborted);
         if (owner is null)
             return AuthenticateResult.Fail("API key refused.");
