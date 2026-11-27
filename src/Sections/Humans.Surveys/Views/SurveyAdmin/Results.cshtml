@@ -88,6 +88,20 @@ else
     var questionsById = Model.QuestionsById;
     string PromptOf(SurveyResultsQuestionViewModel q) => string.IsNullOrWhiteSpace(q.Prompt) ? untitledQuestion : q.Prompt;
 
+    void RenderTextGroups(IReadOnlyList<FreeTextGroup> groups)
+    {
+        foreach (var group in groups)
+        {
+            <div class="small text-muted mb-1">@group.Label (@group.Texts.Count)</div>
+            <ul class="list-group list-group-flush mb-3">
+                @foreach (var t in group.Texts)
+                {
+                    <li class="list-group-item">@t</li>
+                }
+            </ul>
+        }
+    }
+
     async Task RenderAnswers(SurveyResultsQuestionViewModel q)
     {
             @switch (q.Type)
@@ -258,6 +272,11 @@ else
                             .Build();
                         <partial name="_Table" model="optionTable" />
                     }
+                    @if (q.FreeTextByParentChoice.Count > 0)
+                    {
+                        <h4 class="h6 mt-3">@Localizer["Surveys_Admin_Results_Comments"]</h4>
+                        RenderTextGroups(q.FreeTextByParentChoice);
+                    }
                     break;
 
                 case SurveyQuestionType.Rating:
@@ -319,16 +338,7 @@ else
                 default:
                     @if (q.FreeTextByParentChoice.Count > 0)
                     {
-                        foreach (var group in q.FreeTextByParentChoice)
-                        {
-                            <div class="small text-muted mb-1">@group.Label (@group.Texts.Count)</div>
-                            <ul class="list-group list-group-flush mb-3">
-                                @foreach (var t in group.Texts)
-                                {
-                                    <li class="list-group-item">@t</li>
-                                }
-                            </ul>
-                        }
+                        RenderTextGroups(q.FreeTextByParentChoice);
                     }
                     else if (q.FreeTextAnswers.Count == 0)
                     {
