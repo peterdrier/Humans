@@ -1,0 +1,11 @@
+{
+  "date": "2026-11",
+  "family": "Claude",
+  "model": "Fable",
+  "version": "5.1",
+  "effort": "medium",
+  "brief": "v1",
+  "notes": {
+    "en": "Aimed for a figure that keeps Leonardo's geometry exactly: the horizontal hands touch the square, the raised hands and spread feet sit on the circle, and the overlay is kept legible by drawing each limb back to front with its own contour so the front pose hides the lines of the one behind. A single reusable arm and leg, mirrored and rotated, keep the base generous enough to survive 24px, with the hair, muscle lines, hatching and face only in finer ink that fades out as the mark shrinks. Still weak: the hands are mittens with faint finger lines rather than real hands, the face is schematic, and the outlined limbs read a little more like a clean glyph than an engraved study."
+  }
+}
