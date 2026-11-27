@@ -38,7 +38,7 @@ internal static class HoldedDocumentPayment
         HoldedTransientException? refused = null;
         try
         {
-            using var resp = await transport.SendAsync(req, ct);
+            using var resp = await transport.SendWithRetryAsync(req, ct);
         }
         catch (HoldedTransientException ex)
         {

@@ -201,6 +201,10 @@ public async Task SuspendAsync(Guid userId, Guid actorId, string reason, Cancell
 
 Which fan-outs exist is each hub's business: the hub's `Docs/<Section>.md` names its contributor interface and what it merges.
 
+## Vendor API clients
+
+A section that calls its vendor's HTTP API directly derives its typed client from `ApiClientBase` (`Humans.Base.Http`): it supplies the vendor name, its own transient/permanent exceptions and credentials, and inherits the base-URL check, transport-failure mapping and cursor paging with its safety cap. Credentials go on only for requests aimed under the base address, so a signed download URL never carries the key. Retry a write only where the vendor documents it as safe; the base never retries.
+
 ## Section contributions to the Shell
 
 **A section plugs into the Shell through a seam, never through a by-name edit.** The seams are the `ISectionContribution`-derived interfaces in `Humans.Base/Interfaces` (`ISectionNav`, `ISectionJobs`, `ISectionPolicies`, …); a section implements the ones it needs on its `Section` class as explicit interface implementations, keeps the class parameterless and its contributions stateless, and keeps file-local helpers in `Section.cs` beside it ([`section-contribution-seams`](../../memory/architecture/section-contribution-seams.md)). Discovery finds every implementation by the same dependency walk that finds `ISection` and registers it as a singleton against every seam it implements, so implementing an existing seam needs no Shell edit. *Why:* a composition class that names sections is a dependency from the Shell into every section, and a merge conflict on every feature. The catalog of seams and their composers is in [`Shell.md`](../../src/Humans.Web/Docs/Shell.md).

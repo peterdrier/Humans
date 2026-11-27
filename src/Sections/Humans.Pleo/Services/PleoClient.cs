@@ -1,6 +1,5 @@
-using Humans.Base.Extensions;
+using Humans.Base.Http;
 using Humans.Pleo.Contracts;
-using System.Globalization;
 using System.Net;
 using System.Net.Http.Headers;
 using System.Text;
@@ -18,7 +17,8 @@ internal sealed class PleoClientOptions
     public string BaseUrl { get; set; } = "https://external.pleo.io";
 }
 
-internal sealed class PleoClient : IPleoClient
+internal sealed class PleoClient(HttpClient http, IOptions<PleoClientOptions> options)
+    : ApiClientBase(http, options.Value.BaseUrl), IPleoClient
 {
     private const int PageLimit = 100;
 
@@ -27,22 +27,23 @@ internal sealed class PleoClient : IPleoClient
 
     private static readonly JsonSerializerOptions Json = new(JsonSerializerDefaults.Web);
 
-    private readonly HttpClient _http;
-    private readonly PleoClientOptions _options;
+    private readonly PleoClientOptions _options = options.Value;
 
-    public PleoClient(HttpClient http, IOptions<PleoClientOptions> options)
-    {
-        _http = http;
-        _options = options.Value;
-        // Endpoint mistakes must not stop DI; operations fail at the send boundary.
-        if (_http.BaseAddress is null && Uri.TryCreate(_options.BaseUrl, UriKind.Absolute, out var baseAddress)
-            && baseAddress.Scheme is "http" or "https")
-            _http.BaseAddress = baseAddress;
-    }
+    protected override string ApiName => "Pleo";
+
+    protected override int ErrorBodyLength => 300;
+
+    protected override Exception Transient(string message, Exception? inner = null) =>
+        inner is null ? new PleoTransientException(message) : new PleoTransientException(message, inner);
+
+    protected override Exception Permanent(string message, HttpStatusCode? status = null, string? body = null) =>
+        status is { } code ? new PleoPermanentException(message, (int)code) : new PleoPermanentException(message);
+
+    protected override void Authorize(HttpRequestMessage request) =>
+        request.Headers.Authorization = new AuthenticationHeaderValue("Basic",
+            Convert.ToBase64String(Encoding.UTF8.GetBytes(_options.ApiKey + ":")));
 
     public bool IsConfigured => HasBaseAddress && MissingSettings is null;
-
-    private bool HasBaseAddress => _http.BaseAddress is { Scheme: "http" or "https" };
 
     public string? MissingSettings =>
         (string.IsNullOrWhiteSpace(_options.ApiKey), string.IsNullOrWhiteSpace(_options.CompanyId)) switch
@@ -86,8 +87,8 @@ internal sealed class PleoClient : IPleoClient
 
     public async Task<PleoBalanceWire> GetBalanceAsync(CancellationToken ct = default)
     {
-        var root = await SendAsync("balance",
-            () => new HttpRequestMessage(HttpMethod.Get, $"/v1/companies/{Company}/balance"), ct);
+        var root = await SendJsonAsync("balance",
+            new HttpRequestMessage(HttpMethod.Get, $"/v1/companies/{Company}/balance"), ct);
         try
         {
             var accounts = root.GetProperty("data").GetProperty("accounts").EnumerateArray().ToList();
@@ -131,7 +132,7 @@ internal sealed class PleoClient : IPleoClient
 
         // No Authorization header: the URL is signed, and the key must never leave external.pleo.io.
         using var req = new HttpRequestMessage(HttpMethod.Get, url);
-        using var resp = await SendRawAsync("receipt file", req, ct);
+        using var resp = await SendAsync(req, ct, "receipt file");
         var content = await resp.Content.ReadAsByteArrayAsync(ct);
         var type = resp.Content.Headers.ContentType?.MediaType ?? receipt.MimeType ?? "";
         // Served from our own origin: anything but an image or a PDF goes out as an opaque download.
@@ -168,45 +169,42 @@ internal sealed class PleoClient : IPleoClient
         string endpoint, Func<string?, HttpRequestMessage> request, CancellationToken ct)
     {
         var items = new List<JsonElement>();
-        var seenCursors = new HashSet<string>(StringComparer.Ordinal);
-        string? after = null;
-        for (var page = 1; page <= PageSafetyCap; page++)
-        {
-            var cursor = after;
-            var root = await SendAsync(endpoint, () => request(cursor), ct);
-
-            // Strict: a body without data would read as an empty page, and an empty sweep deletes the mirror.
-            if (!root.TryGetProperty("data", out var data) || data.ValueKind != JsonValueKind.Array)
-                throw new PleoTransientException($"Pleo {endpoint}: a 200 without a data array.");
-            items.AddRange(data.EnumerateArray());
-
-            if (!root.TryGetProperty("pagination", out var pagination)
-                || pagination.ValueKind != JsonValueKind.Object
-                || !pagination.TryGetProperty("hasNextPage", out var next)
-                || next.ValueKind is not (JsonValueKind.True or JsonValueKind.False))
-                throw new PleoTransientException($"Pleo {endpoint}: a page without a boolean hasNextPage.");
-            if (next.ValueKind == JsonValueKind.False) return items;
-
-            after = pagination.TryGetProperty("endCursor", out var end) && end.ValueKind == JsonValueKind.String
-                ? end.GetString()
-                : null;
-            if (string.IsNullOrEmpty(after))
-                throw new PleoTransientException($"Pleo {endpoint}: hasNextPage without an endCursor.");
-            if (!seenCursors.Add(after))
-                throw new PleoTransientException($"Pleo {endpoint}: a repeated cursor.");
-        }
-        throw new PleoTransientException($"Pleo {endpoint}: hit the {PageSafetyCap}-page safety cap.");
+        await foreach (var page in GetPagesAsync(endpoint, cursor => ReadPageAsync(endpoint, request(cursor), ct), PageSafetyCap, ct))
+            items.AddRange(page);
+        return items;
     }
 
-    private async Task<JsonElement> SendAsync(string endpoint, Func<HttpRequestMessage> make, CancellationToken ct)
+    private async Task<(IEnumerable<JsonElement> Page, string? Next)> ReadPageAsync(
+        string endpoint, HttpRequestMessage request, CancellationToken ct)
     {
+        var root = await SendJsonAsync(endpoint, request, ct);
+
+        // Strict: a body without data would read as an empty page, and an empty sweep deletes the mirror.
+        if (!root.TryGetProperty("data", out var data) || data.ValueKind != JsonValueKind.Array)
+            throw new PleoTransientException($"Pleo {endpoint}: a 200 without a data array.");
+
+        if (!root.TryGetProperty("pagination", out var pagination)
+            || pagination.ValueKind != JsonValueKind.Object
+            || !pagination.TryGetProperty("hasNextPage", out var next)
+            || next.ValueKind is not (JsonValueKind.True or JsonValueKind.False))
+            throw new PleoTransientException($"Pleo {endpoint}: a page without a boolean hasNextPage.");
+        if (next.ValueKind == JsonValueKind.False) return (data.EnumerateArray().ToList(), null);
+
+        var after = pagination.TryGetProperty("endCursor", out var end) && end.ValueKind == JsonValueKind.String
+            ? end.GetString()
+            : null;
+        if (string.IsNullOrEmpty(after))
+            throw new PleoTransientException($"Pleo {endpoint}: hasNextPage without an endCursor.");
+        return (data.EnumerateArray().ToList(), after);
+    }
+
+    private async Task<JsonElement> SendJsonAsync(string endpoint, HttpRequestMessage request, CancellationToken ct)
+    {
+        using var req = request;
         if (MissingSettings is { } missing)
             throw new PleoPermanentException($"{missing} not set.");
 
-        using var req = make();
-        req.Headers.Authorization = new AuthenticationHeaderValue("Basic",
-            Convert.ToBase64String(Encoding.UTF8.GetBytes(_options.ApiKey + ":")));
-        using var resp = await SendRawAsync(endpoint, req, ct);
+        using var resp = await SendAsync(req, ct, endpoint);
         var body = await resp.Content.ReadAsStringAsync(ct);
         try
         {
@@ -218,40 +216,6 @@ internal sealed class PleoClient : IPleoClient
         catch (JsonException ex)
         {
             throw new PleoPermanentException($"Pleo {endpoint}: unreadable body.", ex);
-        }
-    }
-
-    /// <summary>Returns only a success; the caller disposes it.</summary>
-    private async Task<HttpResponseMessage> SendRawAsync(string endpoint, HttpRequestMessage req, CancellationToken ct)
-    {
-        var destination = req.RequestUri is { IsAbsoluteUri: true } ? req.RequestUri : _http.BaseAddress;
-        if (destination is null || destination.Scheme is not ("http" or "https"))
-            throw new PleoPermanentException("Pleo:BaseUrl must be an absolute HTTP(S) URL.");
-
-        HttpResponseMessage resp;
-        try
-        {
-            resp = await _http.SendAsync(req, ct);
-        }
-        catch (HttpRequestException ex)
-        {
-            throw new PleoTransientException($"Pleo {endpoint}: send failed.", ex);
-        }
-        catch (TaskCanceledException ex) when (!ct.IsCancellationRequested)
-        {
-            throw new PleoTransientException($"Pleo {endpoint}: timed out.", ex);
-        }
-
-        if (resp.IsSuccessStatusCode) return resp;
-
-        using (resp)
-        {
-            var status = (int)resp.StatusCode;
-            var label = $"Pleo {endpoint}: {status.ToString(CultureInfo.InvariantCulture)} {resp.ReasonPhrase}";
-            if (status >= 500 || resp.StatusCode == HttpStatusCode.TooManyRequests)
-                throw new PleoTransientException(label);
-            var body = await resp.Content.ReadAsStringAsync(ct);
-            throw new PleoPermanentException($"{label}: {body.Truncate(300)}", status);
         }
     }
 }
