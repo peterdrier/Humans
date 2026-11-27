@@ -16,7 +16,7 @@ know you are and ask for the effort — it is not recoverable afterwards.
 ## The entry
 `<slug>` = `<yyyy-mm>-<model>-<effort>`, all lowercase, spaces to `-`, the vendor prefix dropped:
 `2026-11-opus-5.5-high`, `2026-11-gemini-4-neon-high`. The folder is
-`src/Humans.Web/wwwroot/img/logo-library/<slug>/` and holds exactly two files:
+`src/Humans.Web/wwwroot/img/logo-library/<slug>/` and holds two files from the drawing run (plus `stats.json`, see below):
 
 - `logo.svg` — your drawing.
 - `entry.json`:
@@ -28,14 +28,11 @@ know you are and ask for the effort — it is not recoverable afterwards.
     "version": "5.5",
     "effort": "high",
     "brief": "v1",
-    "notes": {
-      "en": "One short paragraph: what you aimed for, what is still weak.",
-      "es": "...", "de": "...", "it": "...", "fr": "...", "ca": "...", "nl": "..."
-    }
+    "notes": { "en": "One short paragraph: what you aimed for, what is still weak." }
   }
   ```
-  `notes` is shown on the public page, so it needs all seven cultures (a test enforces it); plain
-  prose, no markdown. The terms: **family** `Claude` / `GPT` / `Gemini`, **model** `Opus` / `Sol` / `Neon`,
+  `notes` is English only (Peter's call: model commentary, not UI text; other cultures fall back to
+  it); plain prose, no markdown. The terms: **family** `Claude` / `GPT` / `Gemini`, **model** `Opus` / `Sol` / `Neon`,
   **version** the number alone (`5.5`, `6.2`, `4`), **effort** the level. The gallery groups by
   family, then model, then version. Save the
   file as UTF-8 without a BOM. `effort` is one of `low` / `medium` / `high` / `xhigh` / `max` — the page
@@ -46,7 +43,7 @@ If the folder already exists, stop and say so — the entry has been drawn.
 ## Steps
 1. **Branch.** Off `origin/main`, branch `logo/<slug>`, in your own worktree. Parallel runs are
    expected; you touch only your own folder, so they never conflict.
-2. **Read the brief: `.claude/skills/redraw-logo/brief-v1.md`, and only that.** It is frozen and it is
+2. **Read the brief: `src/Humans.Web/wwwroot/img/logo-library/brief-v1.md`, and only that.** It is frozen and it is
    the whole input. Do not open other library entries, `wwwroot/img/logo.svg`, `logo.md` or git
    history of the mark — the comparison only works if every model starts from the same text.
 3. **Draw and iterate** per the brief, rendering every pass with
@@ -57,6 +54,16 @@ If the folder already exists, stop and say so — the entry has been drawn.
    preview deploy, `https://<pr-number>.n.burn.camp/About/Logos`. Don't commit the render sheets.
    Before pushing, run `dotnet test tests/Humans.Web.Tests -v quiet --filter LogoLibrary`.
 6. **Tend the PR** per `.claude/steward.md`, or stop.
+
+## Recording time and cost
+After a drawing run ends, the orchestrator (never the run itself) runs
+`python .claude/skills/redraw-logo/stats.py <slug>` and commits the resulting `<entry>/stats.json`
+on the entry's branch or in a follow-up PR. It finds the run's Claude Code or Codex transcripts by
+the branch `logo/<slug>`, sums re-runs, and records working minutes, tokens and, for models priced in
+the script's table, estimated cost; the page shows it on the card. Unpriced models record
+`costUsd: null`. Gemini runs leave no transcripts to read and get no `stats.json`. When the drawing
+came from a retry on another branch (e.g. after an account hit its usage limit), pass
+`<slug>@<that branch>` so the failed attempt isn't counted instead.
 
 ## Promoting an entry to the live logo — only when Peter asks
 This is the old "round": the chosen entry becomes the site's mark.
