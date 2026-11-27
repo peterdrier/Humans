@@ -26,7 +26,7 @@ namespace Humans.Backdoor.Tests.Controllers;
 public sealed class BackdoorIdentityViewTests
 {
     [HumansFact]
-    public async Task KeyOwners_RenderCanonicalIdentity_AndPreserveKeyStatus()
+    public async Task KeyOwners_Rendered_ShowCanonicalIdentity()
     {
         using var culture = new CultureScope("en");
         var known = Guid.NewGuid();

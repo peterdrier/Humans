@@ -38,7 +38,7 @@ public class AgentSectionDocReaderTests
     [InlineData("Shifts")]
     [InlineData("shifts")]
     [InlineData("SHIFTS")]
-    public async Task ReadAsync_resolves_any_casing_to_the_canonical_section_file(string key)
+    public async Task ReadAsync_AnyCasing_ResolvesCanonicalFile(string key)
     {
         var source = new FakeSource();
         var reader = MakeReader(source);
@@ -57,7 +57,7 @@ public class AgentSectionDocReaderTests
     /// source these docs are served from, so the local tree is the authority.
     /// </summary>
     [HumansFact]
-    public void Every_whitelisted_section_has_a_matching_doc_file()
+    public void WhitelistedSections_Each_HasDocFile()
     {
         var root = LocateRepoRoot();
 
@@ -87,7 +87,7 @@ public class AgentSectionDocReaderTests
     [InlineData("LegalDocuments", "Consent")]
     [InlineData("GoogleSync", "Google")]
     [InlineData("LegalAndConsent", "Consent")]
-    public async Task ReadAsync_resolves_the_aliases_the_agent_reads_out_of_its_own_prompt(string key, string expectedStem)
+    public async Task ReadAsync_PromptAlias_ResolvesSection(string key, string expectedStem)
     {
         var source = new FakeSource();
         var reader = MakeReader(source);
@@ -115,14 +115,14 @@ public class AgentSectionDocReaderTests
     [InlineData("LegalDocuments")]
     [InlineData("GoogleSync")]
     [InlineData("LegalAndConsent")]
-    public void Every_alias_target_is_a_whitelisted_section(string alias)
+    public void AliasTargets_Each_IsWhitelistedSection(string alias)
     {
         AgentSectionKeys.TryResolve(alias, out var target).Should().BeTrue();
         MakeReader(new FakeSource()).KnownSections.Should().Contain(target!);
     }
 
     [HumansFact]
-    public async Task ReadAsync_returns_null_for_non_whitelisted_key()
+    public async Task ReadAsync_NonWhitelistedKey_ReturnsNull()
     {
         var reader = MakeReader(new FakeSource());
 
@@ -132,7 +132,7 @@ public class AgentSectionDocReaderTests
     }
 
     [HumansFact]
-    public async Task ReadAsync_returns_null_when_github_returns_not_found()
+    public async Task ReadAsync_GithubNotFound_ReturnsNull()
     {
         var source = new FakeSource { FailWith = new NotFoundException("missing", System.Net.HttpStatusCode.NotFound) };
         var reader = MakeReader(source);
@@ -145,7 +145,7 @@ public class AgentSectionDocReaderTests
     [HumansTheory]
     [InlineData(false)]
     [InlineData(true)]
-    public async Task ReadAsync_classifies_github_failures_and_preserves_the_null_fallback(bool unexpected)
+    public async Task ReadAsync_GithubFailure_ReturnsNull(bool unexpected)
     {
         Exception failure = unexpected ? new InvalidOperationException("Unexpected fetch failure")
             : new ApiException("GitHub unavailable", System.Net.HttpStatusCode.ServiceUnavailable);
@@ -164,7 +164,7 @@ public class AgentSectionDocReaderTests
     }
 
     [HumansFact]
-    public async Task ReadAsync_caches_successful_fetch()
+    public async Task ReadAsync_SuccessfulFetch_IsCached()
     {
         var source = new FakeSource();
         var reader = MakeReader(source);

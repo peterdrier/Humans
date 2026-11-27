@@ -52,7 +52,7 @@ public class BackdoorSurveysControllerTests
     }
 
     [HumansFact]
-    public async Task Definition_returns_NotFound_for_missing_survey()
+    public async Task Definition_MissingSurvey_IsNotFound()
     {
         var id = Guid.NewGuid();
         _surveys.GetDefinitionAsync(id, Arg.Any<CancellationToken>()).Returns((SurveyDefinitionSnapshot?)null);
@@ -63,7 +63,7 @@ public class BackdoorSurveysControllerTests
     }
 
     [HumansFact]
-    public async Task Definition_serialises_enums_as_strings_and_projects_the_question_graph()
+    public async Task Definition_Enums_SerialiseAsStrings()
     {
         var id = Guid.NewGuid();
         var questionId = Guid.NewGuid();
@@ -91,7 +91,7 @@ public class BackdoorSurveysControllerTests
     }
 
     [HumansFact]
-    public async Task Definition_carries_information_markdown_and_images()
+    public async Task Definition_InformationBlock_CarriesMarkdownWithImages()
     {
         var id = Guid.NewGuid();
         _surveys.GetDefinitionAsync(id, Arg.Any<CancellationToken>()).Returns(new SurveyDefinitionSnapshot(
@@ -114,7 +114,7 @@ public class BackdoorSurveysControllerTests
     }
 
     [HumansFact]
-    public async Task Responses_returns_NotFound_for_missing_survey()
+    public async Task Responses_MissingSurvey_IsNotFound()
     {
         var id = Guid.NewGuid();
         _surveys.GetResponseExportAsync(id, Arg.Any<Guid>(), Arg.Any<CancellationToken>()).Returns((SurveyResponseExport?)null);
@@ -126,7 +126,7 @@ public class BackdoorSurveysControllerTests
     }
 
     [HumansFact]
-    public async Task Responses_without_actor_does_not_read_export()
+    public async Task Responses_NoActor_DoesNotReadExport()
     {
         _sut.HttpContext.User = new System.Security.Claims.ClaimsPrincipal();
 
@@ -137,7 +137,7 @@ public class BackdoorSurveysControllerTests
     }
 
     [HumansFact]
-    public async Task Responses_filters_by_anonymity()
+    public async Task Responses_AnonymityFilter_IsApplied()
     {
         var id = Guid.NewGuid();
         _surveys.GetResponseExportAsync(id, Arg.Any<Guid>(), Arg.Any<CancellationToken>()).Returns(new SurveyResponseExport(
@@ -156,7 +156,7 @@ public class BackdoorSurveysControllerTests
     }
 
     [HumansFact]
-    public async Task Responses_carries_the_identity_columns_only_the_export_populated()
+    public async Task Responses_ExportIdentityColumns_AreCarried()
     {
         var id = Guid.NewGuid();
         var userId = Guid.NewGuid();
@@ -175,7 +175,7 @@ public class BackdoorSurveysControllerTests
     }
 
     [HumansFact]
-    public async Task Responses_filters_by_since_instant()
+    public async Task Responses_SinceFilter_IsApplied()
     {
         var id = Guid.NewGuid();
         _surveys.GetResponseExportAsync(id, Arg.Any<Guid>(), Arg.Any<CancellationToken>()).Returns(new SurveyResponseExport(
@@ -192,7 +192,7 @@ public class BackdoorSurveysControllerTests
     }
 
     [HumansFact]
-    public async Task Responses_rejects_malformed_since()
+    public async Task Responses_MalformedSince_IsRejected()
     {
         var id = Guid.NewGuid();
         _surveys.GetResponseExportAsync(id, Arg.Any<Guid>(), Arg.Any<CancellationToken>())
@@ -204,7 +204,7 @@ public class BackdoorSurveysControllerTests
     }
 
     [HumansFact]
-    public async Task Responses_pages_with_cursor()
+    public async Task Responses_Cursor_PagesResults()
     {
         var id = Guid.NewGuid();
         _surveys.GetResponseExportAsync(id, Arg.Any<Guid>(), Arg.Any<CancellationToken>()).Returns(new SurveyResponseExport(
@@ -226,7 +226,7 @@ public class BackdoorSurveysControllerTests
     }
 
     [HumansFact]
-    public async Task Responses_format_md_returns_markdown_content()
+    public async Task Responses_MarkdownFormat_ReturnsMarkdown()
     {
         var id = Guid.NewGuid();
         var questionId = Guid.NewGuid();
@@ -245,7 +245,7 @@ public class BackdoorSurveysControllerTests
     }
 
     [HumansFact]
-    public async Task Responses_projects_resolved_grid_selections()
+    public async Task Responses_GridSelections_AreResolved()
     {
         var id = Guid.NewGuid();
         var questionId = Guid.NewGuid();
@@ -275,7 +275,7 @@ public class BackdoorSurveysControllerTests
     }
 
     [HumansFact]
-    public async Task Aggregates_returns_NotFound_for_missing_survey()
+    public async Task Aggregates_MissingSurvey_IsNotFound()
     {
         var id = Guid.NewGuid();
         _surveys.GetResultsAsync(id, Arg.Any<CancellationToken>()).Returns((SurveyResultsView?)null);
@@ -286,7 +286,7 @@ public class BackdoorSurveysControllerTests
     }
 
     [HumansFact]
-    public async Task Aggregates_projects_funnel_and_status_as_string()
+    public async Task Aggregates_ExistingSurvey_ProjectsFunnel()
     {
         var id = Guid.NewGuid();
         _surveys.GetResultsAsync(id, Arg.Any<CancellationToken>()).Returns(new SurveyResultsView(

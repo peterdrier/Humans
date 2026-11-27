@@ -18,7 +18,7 @@ public sealed class CalendarServiceAllDayWindowTests
     [InlineData(2026, 3, 28, 2026, 3, 30)]
     // Across the autumn transition (25 October 2026), where it is 25 hours long.
     [InlineData(2026, 10, 24, 2026, 10, 26)]
-    public void AllDayWindow_round_trips_through_its_inverse(
+    public void AllDayWindow_ThenInverse_RoundTrips(
         int startYear, int startMonth, int startDay,
         int endYear, int endMonth, int endDay)
     {
@@ -35,7 +35,7 @@ public sealed class CalendarServiceAllDayWindowTests
     }
 
     [HumansFact]
-    public void AllDayInclusiveEndDate_collapses_an_exclusive_midnight_to_the_previous_day()
+    public void AllDayInclusiveEndDate_ExclusiveMidnight_IsPreviousDay()
     {
         // The off-by-one this guards: 11 June 00:00 stored means the event's last day is the 10th.
         var exclusiveEnd = new LocalDate(2026, 6, 11);

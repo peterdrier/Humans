@@ -23,7 +23,7 @@ public sealed class BackdoorApiKeyRepositoryTests : IDisposable
     public void Dispose() => _db.Dispose();
 
     [HumansFact]
-    public async Task FindActiveByHashAsync_excludes_revoked_keys()
+    public async Task FindActiveByHashAsync_RevokedKey_IsExcluded()
     {
         var active = Key("active");
         var revoked = Key("revoked");
@@ -38,7 +38,7 @@ public sealed class BackdoorApiKeyRepositoryTests : IDisposable
     }
 
     [HumansFact]
-    public async Task RevokeAsync_stamps_once_and_is_idempotent()
+    public async Task RevokeAsync_CalledTwice_StampsOnce()
     {
         var key = Key("revoke");
         var revokedBy = Guid.NewGuid();
@@ -58,7 +58,7 @@ public sealed class BackdoorApiKeyRepositoryTests : IDisposable
     }
 
     [HumansFact]
-    public async Task RotateAsync_revokes_and_replaces_an_active_key()
+    public async Task RotateAsync_ActiveKey_IsReplaced()
     {
         var oldKey = Key("old");
         var replacement = Key("replacement");
@@ -79,7 +79,7 @@ public sealed class BackdoorApiKeyRepositoryTests : IDisposable
     }
 
     [HumansFact]
-    public async Task RotateAsync_on_a_revoked_or_missing_key_writes_neither_row()
+    public async Task RotateAsync_RevokedOrMissingKey_WritesNothing()
     {
         var revoked = Key("revoked");
         var firstRevokedAt = Instant.FromUtc(2026, 9, 21, 6, 0);
