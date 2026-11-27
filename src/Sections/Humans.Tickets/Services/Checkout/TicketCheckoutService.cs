@@ -245,9 +245,9 @@ internal sealed partial class TicketCheckoutService(
         var rules = await RulesForAsync(context.Ticketing, ct);
         if (InviteRefusal(offer, tokenHash, context) is { } refusal)
             return ToBuyPage(context, rules, refusal, directed: true);
-        if (DirectedOfferFor(offer, tokenHash, context) is not null)
-            return ToBuyPage(context, rules, null, directed: true);
         var stock = await LoadStockAsync(context.Ticketing, context.Now, ct);
+        if (DirectedOfferFor(offer, tokenHash, context) is { } linked && stock.Offers.Any(o => o.Id == linked.Id))
+            return ToBuyPage(context, rules, null, directed: true);
         var queued = stock.ResaleOpen && stock.Offers.Any(o => o.State == TicketResaleOfferState.Open && o.HolderUserId != userId);
         return ToBuyPage(context, rules, null, directed: queued) with { InviteTaken = true };
     }
@@ -1273,17 +1273,20 @@ internal sealed partial class TicketCheckoutService(
             .Sum(o => o.Lines.Count(l => l.Kind == OrderLineKind.Ticket && l.ResaleOfferId is null));
         var resaleOpen = ticketing.ResaleSelling;
         // A ticket in resale whose holder was already admitted can never sell: the gate's admission is the only entry record.
-        var offers = await repository.GetOffersForSettingsAsync(ticketing.Id, ct);
+        var offers = (await repository.GetOffersForSettingsAsync(ticketing.Id, ct))
+            .Where(o => o.State is TicketResaleOfferState.Open or TicketResaleOfferState.Reserved).ToList();
+        var offerCounts = offers.GroupBy(o => o.TicketId).ToDictionary(g => g.Key, g => g.Count());
         var offeredCodes = tickets
-            .Where(t => t.State == TicketCheckoutTicketState.Offered)
+            .Where(t => t.State == TicketCheckoutTicketState.Offered && t.Kind == TicketHolderKind.Adult)
             .ToDictionary(t => t.Id, t => tickets
                 .Where(c => c.Id == t.Id || (c.ParentTicketId == t.Id && c.State == TicketCheckoutTicketState.Valid))
                 .Select(c => c.Barcode)
                 .ToList());
         var admitted = await gateAdmissions.GetAdmittedAsync(offeredCodes.Values.SelectMany(c => c).ToList(), ct);
         return new Stock(sold + pending, resaleOpen,
-            offers.Where(o => !tickets.Any(t => (t.Id == o.TicketId || t.ParentTicketId == o.TicketId) && t.VoidRefundId is not null))
-                .Where(o => !(offeredCodes.TryGetValue(o.TicketId, out var codes) && codes.Any(admitted.Contains))).ToList());
+            offers.Where(o => offerCounts[o.TicketId] == 1
+                    && offeredCodes.TryGetValue(o.TicketId, out var codes) && !codes.Any(admitted.Contains))
+                .Where(o => !tickets.Any(t => (t.Id == o.TicketId || t.ParentTicketId == o.TicketId) && t.VoidRefundId is not null)).ToList());
     }
 
     private static TicketCheckoutOrderLine TicketLine(

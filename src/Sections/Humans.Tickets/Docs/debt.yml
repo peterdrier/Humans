@@ -2,8 +2,4 @@
 # /debt-sweep pools every src/Sections/*/Docs/debt.yml into the same inbox as the central ledger.
 version: 1
 next_id: 23
-inbox:
-  - added: 2026-11-27
-    id: TICKETS-22
-    what: "TicketCheckoutService.OfferForResaleAsync saves an Open offer before marking its ticket Offered; a failed ticket write leaves an offer against a Valid ticket and retry can create another active offer. LoadStockAsync also accepts open offers without requiring an Offered ticket. Found tracing withdrawal persistence."
-    review: panel
+inbox: []

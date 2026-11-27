@@ -68,7 +68,8 @@ internal interface ITicketCheckoutRepository : IRepository
 
     Task<IReadOnlyList<TicketCheckoutTicket>> GetTicketsForSettingsAsync(Guid settingsId, CancellationToken ct = default);
 
-    Task AddOfferAsync(TicketResaleOffer offer, CancellationToken ct = default);
+    /// <summary>Saves the new offer and optional offered ticket in one commit.</summary>
+    Task AddOfferAsync(TicketResaleOffer offer, CancellationToken ct = default, TicketCheckoutTicket? ticket = null);
 
     Task UpdateOfferAsync(TicketResaleOffer offer, CancellationToken ct = default);
 

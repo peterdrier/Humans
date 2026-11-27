@@ -188,6 +188,40 @@ public sealed class TicketCheckoutRepositoryTests
         (await repository.GetOfferAsync(offer.Id, Xunit.TestContext.Current.CancellationToken))!.SoldNotificationPending.Should().BeNull();
     }
 
+    [HumansTheory]
+    [Xunit.InlineData(false)]
+    [Xunit.InlineData(true)]
+    public async Task AddOfferAsync_OfferedTicket_CommitsTogether(bool reject)
+    {
+        var interceptor = new RejectTicketUpdate();
+        var options = new DbContextOptionsBuilder<TicketsDbContext>()
+            .UseInMemoryDatabase(Guid.NewGuid().ToString()).AddInterceptors(interceptor).Options;
+        var repository = new TicketCheckoutRepository(new TestDbContextFactory<TicketsDbContext>(options));
+        var ticket = new TicketCheckoutTicket
+        {
+            Id = Guid.NewGuid(),
+            Barcode = "HOFFER",
+            State = TicketCheckoutTicketState.Valid,
+        };
+        await using (var db = new TicketsDbContext(options))
+        {
+            db.TicketCheckoutTickets.Add(ticket);
+            await db.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
+        }
+        var offer = new TicketResaleOffer { Id = Guid.NewGuid(), TicketId = ticket.Id, State = TicketResaleOfferState.Open };
+        ticket.State = TicketCheckoutTicketState.Offered;
+        interceptor.Reject = reject;
+        var save = () => repository.AddOfferAsync(offer, Xunit.TestContext.Current.CancellationToken, ticket);
+        if (reject)
+            await save.Should().ThrowAsync<InvalidOperationException>().WithMessage("Ticket update failed");
+        else
+            await save();
+
+        (await repository.GetOfferAsync(offer.Id, Xunit.TestContext.Current.CancellationToken) is not null).Should().Be(!reject);
+        (await repository.GetTicketAsync(ticket.Id, Xunit.TestContext.Current.CancellationToken))!.State
+            .Should().Be(reject ? TicketCheckoutTicketState.Valid : TicketCheckoutTicketState.Offered);
+    }
+
     private sealed class RejectTicketUpdate : SaveChangesInterceptor
     {
         public bool Reject { get; set; }

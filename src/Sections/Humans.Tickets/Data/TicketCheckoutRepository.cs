@@ -231,10 +231,12 @@ internal sealed class TicketCheckoutRepository(IDbContextFactory<TicketsDbContex
         return await ctx.TicketCheckoutTickets.AsNoTracking().Where(t => t.TicketingSettingsId == settingsId).ToListAsync(ct);
     }
 
-    public async Task AddOfferAsync(TicketResaleOffer offer, CancellationToken ct = default)
+    public async Task AddOfferAsync(TicketResaleOffer offer, CancellationToken ct = default, TicketCheckoutTicket? ticket = null)
     {
         await using var ctx = await factory.CreateDbContextAsync(ct);
         ctx.TicketResaleOffers.Add(offer);
+        if (ticket is not null)
+            ctx.TicketCheckoutTickets.Update(ticket);
         await ctx.SaveChangesAsync(ct);
     }
 

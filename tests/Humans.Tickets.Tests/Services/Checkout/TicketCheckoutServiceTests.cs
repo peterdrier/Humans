@@ -1259,6 +1259,86 @@ public sealed partial class TicketCheckoutServiceTests
         await _rules.Received().GetAsync("TicketRules/2027", true, Arg.Any<CancellationToken>());
     }
 
+    [HumansFact]
+    public async Task OfferForResaleAsync_TicketWriteFails_WritesNoOffer()
+    {
+        var ticket = await PaidAdultAsync();
+        _repo.RejectTicketWrites.Add(ticket.Id);
+        var offer = () => _service.OfferForResaleAsync(ticket.Id, _buyerId, Ct);
+
+        await offer.Should().ThrowAsync<InvalidOperationException>().WithMessage("Ticket write failed");
+
+        _repo.Offers.Should().BeEmpty();
+    }
+
+    [HumansTheory]
+    [InlineData((int)TicketResaleOfferState.Open)]
+    [InlineData((int)TicketResaleOfferState.Reserved)]
+    public async Task OfferForResaleAsync_ActiveOffer_RefusesDuplicate(int state)
+    {
+        var ticket = await PaidAdultAsync();
+        _repo.Offers.Add(new TicketResaleOffer
+        {
+            Id = Guid.NewGuid(),
+            TicketId = ticket.Id,
+            TicketingSettingsId = _ticketing.Id,
+            HolderUserId = _buyerId,
+            State = (TicketResaleOfferState)state,
+        });
+
+        (await _service.OfferForResaleAsync(ticket.Id, _buyerId, Ct)).Refusal.Should().Be("Tickets_Resale_NotOfferable");
+        _repo.Offers.Should().ContainSingle();
+    }
+
+    [HumansTheory]
+    [InlineData((int)TicketCheckoutTicketState.Valid)]
+    [InlineData((int)TicketCheckoutTicketState.Void)]
+    [InlineData((int)TicketCheckoutTicketState.Resold)]
+    [InlineData(-1)]
+    public async Task StartCheckoutAsync_InvalidOfferedTicket_RefusesResale(int state)
+    {
+        var ticket = await OfferedTicketAsync();
+        if (state < 0)
+            _repo.Tickets.Remove(ticket);
+        else
+            ticket.State = (TicketCheckoutTicketState)state;
+
+        (await _service.StartCheckoutAsync(Buy(), _otherBuyerId, Ct)).Refusal.Should().Be("Tickets_Buy_ResaleOnly");
+        _repo.Offers.Single().State.Should().Be(TicketResaleOfferState.Open);
+    }
+
+    [HumansFact]
+    public async Task StartCheckoutAsync_DuplicateActiveOffers_RefusesResale()
+    {
+        var ticket = await OfferedTicketAsync();
+        _repo.Offers.Add(new TicketResaleOffer
+        {
+            Id = Guid.NewGuid(),
+            TicketId = ticket.Id,
+            TicketingSettingsId = _ticketing.Id,
+            HolderUserId = _buyerId,
+            State = TicketResaleOfferState.Open,
+        });
+
+        (await _service.StartCheckoutAsync(Buy(), _otherBuyerId, Ct)).Refusal.Should().Be("Tickets_Buy_ResaleOnly");
+        _repo.Offers.Should().OnlyContain(o => o.State == TicketResaleOfferState.Open);
+    }
+
+    [HumansFact]
+    public async Task GetDirectedBuyPageAsync_InvalidOfferedTicket_ShowsTakenLink()
+    {
+        var ticket = await OfferedTicketAsync();
+        _repo.Offers.Single().Invites = [new TicketResaleInvite
+        {
+            Email = "bo@example.com", TokenHash = TicketCheckoutService.HashToken("legacy-token"), SentAt = Now,
+        }];
+        ticket.State = TicketCheckoutTicketState.Valid;
+
+        (await _service.GetDirectedBuyPageAsync("legacy-token", _otherBuyerId, Ct))!.InviteTaken.Should().BeTrue();
+        (await _service.StartCheckoutAsync(Buy() with { DirectedToken = "legacy-token" }, _otherBuyerId, Ct))
+            .Refusal.Should().Be("Tickets_Buy_ResaleOnly");
+    }
+
     [HumansTheory]
     [InlineData(0)]
     [InlineData(1)]
@@ -3771,9 +3851,13 @@ public sealed partial class TicketCheckoutServiceTests
             Task.FromResult<IReadOnlyList<TicketCheckoutTicket>>(Tickets.Where(t => t.HolderUserId == userId).ToList());
         public Task<IReadOnlyList<TicketCheckoutTicket>> GetTicketsForSettingsAsync(Guid settingsId, CancellationToken ct = default) =>
             Task.FromResult<IReadOnlyList<TicketCheckoutTicket>>(Tickets.Where(t => t.TicketingSettingsId == settingsId).ToList());
-        public Task AddOfferAsync(TicketResaleOffer offer, CancellationToken ct = default)
+        public Task AddOfferAsync(TicketResaleOffer offer, CancellationToken ct = default, TicketCheckoutTicket? ticket = null)
         {
+            if (ticket is not null && RejectTicketWrites.Contains(ticket.Id))
+                throw new InvalidOperationException("Ticket write failed");
             Offers.Add(offer);
+            if (ticket is not null)
+                TicketWrites.Add((ticket.Id, ticket.State));
             return Task.CompletedTask;
         }
         public List<(Guid Id, TicketResaleOfferState State)> OfferWrites { get; } = [];

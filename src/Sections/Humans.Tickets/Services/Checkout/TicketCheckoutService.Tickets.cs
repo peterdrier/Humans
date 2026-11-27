@@ -121,6 +121,9 @@ internal sealed partial class TicketCheckoutService
             return new("Tickets_Resale_NotFound");
         if (ticket.State != TicketCheckoutTicketState.Valid || ticket.Kind != TicketHolderKind.Adult || ticket.VoidRefundId is not null)
             return new("Tickets_Resale_NotOfferable");
+        if ((await repository.GetOffersForSettingsAsync(ticket.TicketingSettingsId, ct))
+            .Any(o => o.TicketId == ticket.Id && o.State is TicketResaleOfferState.Open or TicketResaleOfferState.Reserved))
+            return new("Tickets_Resale_NotOfferable");
         var ticketing = await repository.GetTicketingSettingsAsync(ticket.TicketingSettingsId, ct);
         if (ticketing is null || ticketing.Mode is TicketSalesMode.Closed or TicketSalesMode.InvitedOnly
             || ticketing.EffectiveSwitches.Resale == ResaleScheme.Off)
@@ -147,9 +150,8 @@ internal sealed partial class TicketCheckoutService
             State = TicketResaleOfferState.Open,
             RefundOwedMinor = ticket.PricePaidMinor + dependents.Sum(d => d.PricePaidMinor),
         };
-        await repository.AddOfferAsync(offer, ct);
         ticket.State = TicketCheckoutTicketState.Offered;
-        await repository.UpdateTicketAsync(ticket, ct);
+        await repository.AddOfferAsync(offer, ct, ticket);
         await TimelineAsync(ticket.OrderId, TicketCheckoutOrderEventKind.ResaleOffered,
             $"Ticket {ticket.Barcode} put up for resale; {FormatMinor(offer.RefundOwedMinor)} owed if it sells" +
             (dependents.Count > 0 ? $", with {dependents.Count} child ticket(s)" : string.Empty), userId, ct);
