@@ -37,7 +37,7 @@ internal sealed partial class PretixPlatform(
 {
     public const string PlatformKey = "pretix";
     /// <summary>The <c>Stripe:MirrorAccounts</c> entry for the account pretix's Stripe settings charge into.</summary>
-    internal const string StripeAccountName = "Pretix";
+    internal const string StripeAccountName = "Tickets";
 
     /// <summary>
     /// Internal names of the carrier items every pretix event needs: one admission item taxed like a ticket, one
@@ -294,7 +294,7 @@ internal sealed partial class PretixPlatform(
                 ? "pretix Hosted gives no shell for deploy/pretix/bootstrap.py: make the same settings by hand in the pretix control panel, following what bootstrap.py does."
                 : "deploy/pretix/bootstrap.py, run in the pretix container, sets this up.",
             "The webhook goes on the order actions; the event id in the ticketing settings is the pretix event slug.",
-            $"Fees and payouts reconcile from the Stripe account set in pretix's Stripe settings: a Stripe:MirrorAccounts entry named {StripeAccountName} with that account's id and a read-only key (Balance, Balance transactions, Payouts, PaymentIntents, Charges, Refunds, Disputes read).",
+            $"Fees and payouts reconcile from the Stripe account set in pretix's Stripe settings: the shared Tickets Stripe:MirrorAccounts entry named {StripeAccountName} with that account's id and a read-only key (Balance, Balance transactions, Payouts, PaymentIntents, Charges, Refunds, Disputes read).",
         ]);
 
     private bool IsHosted => Uri.TryCreate(Settings.BaseUrl, UriKind.Absolute, out var root)
@@ -407,7 +407,7 @@ internal sealed partial class PretixPlatform(
                 slugs ??= await EventSlugsAsync(ct);
                 orderOf[payment.PaymentIntentId] = humansOrderId = await HumansOrderOfAsync(payment, slugs, ct);
             }
-            entries.Add(new PaymentLedgerEntry(line.Id, line.CreatedAt, KindOf(line.ReportingCategory),
+            entries.Add(new PaymentLedgerEntry(line.Id, line.CreatedAt, PaymentLedgerEntry.KindOf(line.ReportingCategory),
                 line.AmountMinor, line.FeeMinor, humansOrderId, line.Description));
         }
 
@@ -428,17 +428,6 @@ internal sealed partial class PretixPlatform(
         EnsureSuccess(response, "read order");
         return HumansOrderId(Deserialize<PretixOrder>(response.Body));
     }
-
-    /// <summary>By Stripe's reporting category, as Box Office reads its own account.</summary>
-    private static PaymentLedgerEntryKind KindOf(string reportingCategory) => reportingCategory switch
-    {
-        "charge" or "charge_failure" or "partial_capture_reversal" => PaymentLedgerEntryKind.Charge,
-        "refund" or "refund_failure" => PaymentLedgerEntryKind.Refund,
-        "dispute" or "dispute_reversal" => PaymentLedgerEntryKind.Chargeback,
-        "fee" => PaymentLedgerEntryKind.Fee,
-        "payout" or "payout_reversal" => PaymentLedgerEntryKind.Payout,
-        _ => PaymentLedgerEntryKind.Other,
-    };
 
     /// <summary>The organizer's event slugs, by the capitalised form pretix writes on a payment.</summary>
     private async Task<Dictionary<string, string>> EventSlugsAsync(CancellationToken ct)

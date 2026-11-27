@@ -81,7 +81,7 @@ has; the wire records stay private inside the adapter so the Hi.Events payload s
 ## Seams
 
 - **Paid time.** The port carries `PaidAt`; Hi.Events does not expose it, so it stays null until the
-  fork does. The fee comes from Stripe (the `HiEvents` mirror account), not from Hi.Events.
+  fork does. The fee comes from Stripe (the shared `Tickets` mirror account), not from Hi.Events.
 - **Stripe reads.** Through `IStripeService`'s account reads, as pretix's are; the adapter only maps a
   PaymentIntent's metadata to the Hi.Events order. Box Office still reads its own account (CENTRAL-113).
 - **Unpaid orders in reconciliation.** Hi.Events' order list leaves out `RESERVED` and `ABANDONED`

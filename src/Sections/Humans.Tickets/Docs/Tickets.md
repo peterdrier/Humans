@@ -181,6 +181,8 @@ Lifecycle: `Attended` is permanent (only a missing `CheckedInAt` may be filled);
 
 ## Invariants
 
+- Ticketing adapters classify Stripe reporting categories through `PaymentLedgerEntry.KindOf` on the existing ledger contract.
+
 - Ticketing settings require explicit event, platform, sales mode, capacity, VAT, resale scheme, checkout switches and each posted price-rule kind. Binding errors return 400 with a Warning after actor resolution and before conversion or saving; missing values never apply form defaults. Explicit zero/false values, optional text, wholly blank spare rows and disabled wave-pin amounts retain their existing meanings.
 - Admin refund and ticket-void forms reuse the bounded invariant-culture euro parser used for ticket prices. The parser accepts invariant dot decimals and exponent notation, rejecting grouping separators rather than treating a comma decimal as a larger refund. Amounts round to cents away from zero before range checking and conversion, so malformed, nonpositive or unrepresentable refunds never reach checkout. Binding failures return 400 with a Warning; semantic amount refusals warn and show operator feedback. Refund requires an amount and voiding requires an explicit refund/no-refund choice. Explicit no-refund voids ignore the unused amount. The service still enforces the order's refundable cap.
 - Resale open/pause and companion decisions require an explicit true/false command. These actions and the scheduled-sync setting return 400 with a Warning before mutation when binding fails. A missing scheduled-sync checkbox still means off; missing resale or companion commands never become an implicit pause or decline.

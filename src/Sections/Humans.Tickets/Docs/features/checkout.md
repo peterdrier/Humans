@@ -90,9 +90,8 @@ difference everywhere.
 
 ### Fees and payouts
 
-Where Humans can read the platform's payment account (each platform's Stripe account through a read key: Box Office's
-`STRIPE_BOXOFFICE_KEY`; pretix's and Hi.Events' through the Stripe section, as the `Stripe:MirrorAccounts` entries
-`Pretix` and `HiEvents`), the page and the daily run
+Where Humans can read the platform's payment account (the shared Tickets Stripe account through the Stripe section's
+`Stripe:MirrorAccounts` entry `Tickets`), the page and the daily run
 also reconcile it by the day the money moved (`GetPaymentLedgerAsync`), so a refund months after the sale counts in the
 month it was made. Every balance movement is tied to its Humans order: Box Office's payments carry it in metadata; pretix's and Hi.Events'
 carry the platform's own order, whose Humans order the adapter reads back from the platform. A payment must
