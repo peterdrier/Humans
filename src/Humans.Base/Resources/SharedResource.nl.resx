@@ -1327,6 +1327,17 @@
   <data name="About_MadeByTail" xml:space="preserve"><value>met liefde voor de Nobodies-community.</value></data>
   <data name="About_MailKitDesc" xml:space="preserve"><value>Transactionele e-mail voor meldingen en onboarding. De enige bibliotheek waardoor SMTP bijna prettig aanvoelt.</value></data>
   <data name="About_MeetTheStaff" xml:space="preserve"><value>Maak kennis met de medewerkers</value></data>
+  <data name="About_Logos_Title" xml:space="preserve"><value>De logobibliotheek</value></data>
+  <data name="About_Logos_Intro" xml:space="preserve"><value>Elk model dat aan Humans heeft meegebouwd, tekende vanuit dezelfde opdracht zijn eigen Vitruviusman. Hier staan ze allemaal, de oudste eerst.</value></data>
+  <data name="About_Logos_Empty" xml:space="preserve"><value>Nog geen tekeningen.</value></data>
+  <data name="About_Logos_EffortUnrecorded" xml:space="preserve"><value>inspanning niet vastgelegd</value></data>
+  <data name="About_Logos_Effort_low" xml:space="preserve"><value>laag</value></data>
+  <data name="About_Logos_Effort_medium" xml:space="preserve"><value>gemiddeld</value></data>
+  <data name="About_Logos_Effort_high" xml:space="preserve"><value>hoog</value></data>
+  <data name="About_Logos_Effort_xhigh" xml:space="preserve"><value>zeer hoog</value></data>
+  <data name="About_Logos_Effort_max" xml:space="preserve"><value>maximaal</value></data>
+  <data name="About_Logos_Link" xml:space="preserve"><value>Bekijk alle versies van het logo</value></data>
+  <data name="About_Logos_Back" xml:space="preserve"><value>Terug naar Over</value></data>
   <data name="About_NeedHelp" xml:space="preserve"><value>Hulp nodig?</value></data>
   <data name="About_NuGetPackagesHeading" xml:space="preserve"><value>NuGet-pakketten</value></data>
   <data name="About_OpenSourceLicensesHeading" xml:space="preserve"><value>Opensourcelicenties</value></data>
