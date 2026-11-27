@@ -1,3 +1,7 @@
+using Microsoft.Extensions.Options;
+using Microsoft.Extensions.Logging.Abstractions;
+using Microsoft.Extensions.Localization;
+using Humans.Base.Configuration;
 using Xunit;
 using System.Reflection;
 using AwesomeAssertions;
@@ -14,6 +18,19 @@ namespace Humans.Teams.Tests.Services;
 public sealed class TeamsEmailsTests
 {
     private static TeamsEmails Create() => TestTeamsEmails.Create();
+
+    [HumansTheory]
+    [InlineData("https://humans.test/", "https://humans.test")]
+    [InlineData("https://humans.test/portal/", "https://humans.test/portal")]
+    public void AddedToTeam_TrailingBaseSlash_PreservesPath(string baseUrl, string prefix)
+    {
+        var factory = new ResourceManagerStringLocalizerFactory(
+            Options.Create(new LocalizationOptions()), NullLoggerFactory.Instance);
+        var emails = new TeamsEmails(Options.Create(new EmailSettings { BaseUrl = baseUrl }),
+            new StringLocalizer<TeamsResource>(factory), NullLogger<TeamsEmails>.Instance);
+        var mail = emails.AddedToTeam(Guid.NewGuid(), "a@x.com", "Alice", "Alpha", "alpha", [], "en");
+        mail.HtmlBody.Should().Contain($"href=\"{prefix}/Teams/alpha\"");
+    }
 
     [HumansTheory]
     [MemberData(nameof(SupportedCultures.All), MemberType = typeof(SupportedCultures))]

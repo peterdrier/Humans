@@ -181,6 +181,8 @@ Authentication routes are served by `AccountController`, which lives in `Humans.
 
 ## Invariants
 
+- Deletion-cancellation and suspended-access email links trim trailing slashes from `Email:BaseUrl` while retaining any application subpath. Verification gallery links follow the same rule as production verification.
+
 - Signup rejection reports Consent's `ReviewTextTooLong` refusal on the admin detail page instead of a missing-user response. The operator form shows the 4,000-character reason limit.
 
 

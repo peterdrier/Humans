@@ -23,6 +23,25 @@ public sealed class UsersEmailsTests
 
     private static UsersEmails Create() => TestUsersEmails.Create();
 
+    [HumansTheory]
+    [InlineData("https://humans.test/", "https://humans.test")]
+    [InlineData("https://humans.test/portal/", "https://humans.test/portal")]
+    public void AccountNotices_TrailingBaseSlash_PreservePaths(string baseUrl, string prefix)
+    {
+        var factory = new ResourceManagerStringLocalizerFactory(
+            Options.Create(new LocalizationOptions()), NullLoggerFactory.Instance);
+        var emails = new UsersEmails(Options.Create(new EmailSettings { BaseUrl = baseUrl }),
+            new StringLocalizer<UsersResource>(factory), NullLogger<UsersEmails>.Instance);
+        emails.AccountDeletionRequested(Guid.NewGuid(), "a@x.com", "Alice", DeletionDate, "en")
+            .HtmlBody.Should().Contain($"href=\"{prefix}/Gdpr/Deletion\"");
+        emails.AccessSuspended(Guid.NewGuid(), "a@x.com", "Alice", "Consent", "en")
+            .HtmlBody.Should().Contain($"href=\"{prefix}/Consent\"");
+        var preview = new UsersEmailPreviews(emails, Options.Create(new EmailSettings { BaseUrl = baseUrl }))
+            .Samples(new EmailPreviewPersona("en", "Alice", "a@x.com"));
+        preview.Single(s => string.Equals(s.Id, "email-verification", StringComparison.Ordinal)).Message.HtmlBody.Should()
+            .Contain($"{prefix}/Users/Emails/Confirm?token=sample-token");
+    }
+
     [HumansFact]
     public void EmailVerification_IsAlwaysSend_NullCategory_AndTimeSensitive()
     {

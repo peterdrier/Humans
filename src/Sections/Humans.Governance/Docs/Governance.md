@@ -319,6 +319,8 @@ The Consent Admin review queue (`GET /Consent/ReviewQueue`, `POST /Consent/Revie
 
 ## Invariants
 
+- Tier-approval and term-renewal emails trim trailing slashes from `Email:BaseUrl`, retaining any application subpath and one separator before their member routes.
+
 - Adding a Board seat resolves an active member, then asks Auth to grant that exact account. Auth's `UserUnavailable` refusal maps to the existing inactive-account result and HTTP 404; it never triggers a body sync.
 
 - The internal `AssemblyVotePresentation` owns the plain-text acta and the Madrid closing-time conversion shared with roster emails. Result loading, embargo/disclosure decisions and audits remain in `AssemblyVoteService`; the internal result reader resolves closer names.

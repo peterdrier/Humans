@@ -32,6 +32,23 @@ public sealed class SignInLinkUrlBuilderTests
     private static string TokenOf(string url) => QueryHelpers.ParseQuery(new Uri(url).Query)["token"].ToString();
 
     [HumansTheory]
+    [InlineData("https://humans.test/", "https://humans.test")]
+    [InlineData("https://humans.test/portal/", "https://humans.test/portal")]
+    public void SignInLinks_TrailingBaseSlash_PreservePaths(string baseUrl, string prefix)
+    {
+        var builder = new SignInLinkUrlBuilder(new EphemeralDataProtectionProvider(), Substitute.For<IKeyManager>(),
+            Options.Create(new EmailSettings { BaseUrl = baseUrl }), _clock);
+        var userId = Guid.NewGuid();
+        var login = builder.BuildSignInUrl(userId, "/Profile");
+        var signup = builder.BuildSignupUrl("member@example.com", "/Profile");
+
+        login.Should().StartWith($"{prefix}/Account/SignInLinkConfirm?");
+        signup.Should().StartWith($"{prefix}/Account/SignInLinkSignup?");
+        builder.UnprotectSignInToken(TokenOf(login)).Token!.Payload.Should().Be(userId.ToString());
+        builder.UnprotectSignupToken(TokenOf(signup)).Token!.Payload.Should().Be("member@example.com");
+    }
+
+    [HumansTheory]
     [InlineData(true, null)]
     [InlineData(false, null)]
     [InlineData(true, "")]

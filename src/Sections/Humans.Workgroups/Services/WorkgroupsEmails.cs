@@ -27,7 +27,7 @@ internal sealed class WorkgroupsEmails(
             // Subjects are plain text, bodies HTML: encoding once for both would put "Health &amp; Safety" in the subject.
             var name = request.WorkgroupName;
             var nameHtml = Encode(request.WorkgroupName);
-            var url = $"{_settings.BaseUrl}/Workgroups/{request.WorkgroupSlug}";
+            var url = $"{_settings.BaseUrl.TrimEnd('/')}/Workgroups/{request.WorkgroupSlug}";
             var detail = Encode(request.Detail ?? "");
 
             string ReasonLine() => string.IsNullOrEmpty(request.Detail)

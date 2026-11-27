@@ -1,3 +1,7 @@
+using Microsoft.Extensions.Options;
+using Microsoft.Extensions.Logging.Abstractions;
+using Microsoft.Extensions.Localization;
+using Humans.Base.Configuration;
 using Humans.Governance.Contracts;
 using Xunit;
 using System.Net;
@@ -19,6 +23,21 @@ public sealed class GovernanceEmailsTests
     private static readonly LocalDateTime ClosesAt = new(2026, 4, 1, 18, 0);
 
     private static GovernanceEmails Create() => TestGovernanceEmails.Create();
+
+    [HumansTheory]
+    [InlineData("https://humans.test/", "https://humans.test")]
+    [InlineData("https://humans.test/portal/", "https://humans.test/portal")]
+    public void MembershipNotices_TrailingBaseSlash_PreservePaths(string baseUrl, string prefix)
+    {
+        var factory = new ResourceManagerStringLocalizerFactory(
+            Options.Create(new LocalizationOptions()), NullLoggerFactory.Instance);
+        var emails = new GovernanceEmails(Options.Create(new EmailSettings { BaseUrl = baseUrl }),
+            new StringLocalizer<GovernanceResource>(factory), NullLogger<GovernanceEmails>.Instance);
+        emails.ApplicationApproved(Guid.NewGuid(), "a@x.com", "Alice", MembershipTier.Colaborador, "en")
+            .HtmlBody.Should().Contain($"href=\"{prefix}/Profile\"");
+        emails.TermRenewalReminder(Guid.NewGuid(), "a@x.com", "Alice", "Colaborador", new LocalDate(2027, 6, 1), "en")
+            .HtmlBody.Should().Contain($"href=\"{prefix}/Governance/Applications/Create\"");
+    }
 
     [HumansTheory]
     [MemberData(nameof(SupportedCultures.All), MemberType = typeof(SupportedCultures))]

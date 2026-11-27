@@ -20,7 +20,7 @@ internal sealed class UsersEmailPreviews(UsersEmails emails, IOptions<EmailSetti
     {
         ArgumentNullException.ThrowIfNull(persona);
         var (culture, name, email) = (persona.Culture, persona.Name, persona.Email);
-        var verificationUrl = $"{_settings.BaseUrl}/Users/Emails/Confirm?token=sample-token";
+        var verificationUrl = $"{_settings.BaseUrl.TrimEnd('/')}/Users/Emails/Confirm?token=sample-token";
 
         return
         [
