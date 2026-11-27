@@ -2,6 +2,7 @@ using System.Globalization;
 using System.Net;
 using System.Security.Cryptography;
 using System.Text;
+using System.Text.Json.Nodes;
 using AwesomeAssertions;
 using Humans.BoxOffice.Controllers;
 using Humans.BoxOffice.Services;
@@ -85,7 +86,7 @@ public sealed class BoxOfficePlatformTests
     }
 
     private static string Session(string status, string paymentStatus, string charge = "null", string intent = "succeeded") => $$$"""
-        {"id":"cs_test_1","object":"checkout.session","status":"{{{status}}}","payment_status":"{{{paymentStatus}}}",
+        {"id":"cs_test_1","object":"checkout.session","currency":"eur","status":"{{{status}}}","payment_status":"{{{paymentStatus}}}",
          "url":"https://checkout.stripe.com/c/pay/cs_test_1","client_reference_id":"order-1",
          "payment_intent":{"id":"pi_1","object":"payment_intent","status":"{{{intent}}}","latest_charge":{{{charge}}}}}
         """;
@@ -99,7 +100,7 @@ public sealed class BoxOfficePlatformTests
         """;
 
     private const string PaidCharge = """
-        {"id":"ch_1","object":"charge","paid":true,"amount":25000,"amount_refunded":5000,"created":1799582400,
+        {"id":"ch_1","object":"charge","currency":"eur","paid":true,"amount":25000,"amount_refunded":5000,"created":1799582400,
          "payment_method_details":{"type":"ideal"},
          "balance_transaction":{"id":"txn_1","object":"balance_transaction","fee":29,"currency":"eur"}}
         """;
@@ -177,6 +178,74 @@ public sealed class BoxOfficePlatformTests
             .And.Contain("metadata[humans_ticket_count]=1");
     }
 
+    public enum MoneySource { Session, Charge, Refund, Dispute }
+
+    [HumansTheory]
+    [InlineData(MoneySource.Session, null)]
+    [InlineData(MoneySource.Session, "")]
+    [InlineData(MoneySource.Session, "usd")]
+    [InlineData(MoneySource.Charge, null)]
+    [InlineData(MoneySource.Charge, "")]
+    [InlineData(MoneySource.Charge, "usd")]
+    [InlineData(MoneySource.Refund, null)]
+    [InlineData(MoneySource.Refund, "")]
+    [InlineData(MoneySource.Refund, "usd")]
+    [InlineData(MoneySource.Dispute, null)]
+    [InlineData(MoneySource.Dispute, "")]
+    [InlineData(MoneySource.Dispute, "usd")]
+    public async Task GetStatusAsync_UnsupportedCurrency_RejectsAmounts(MoneySource source, string? currency)
+    {
+        var session = JsonNode.Parse(Session("complete", "paid", PaidCharge))!;
+        var charge = session["payment_intent"]!["latest_charge"]!;
+        if (source == MoneySource.Session) session["currency"] = currency;
+        if (source == MoneySource.Charge) charge["currency"] = currency;
+        if (source == MoneySource.Dispute) charge["disputed"] = true;
+        var refund = JsonNode.Parse(Refund("re_1", "succeeded", 5000))!;
+        if (source == MoneySource.Refund) refund["currency"] = currency;
+        Respond(session.ToJsonString(), RefundList(refund.ToJsonString()),
+            $$"""{"object":"list","url":"/v1/disputes","has_more":false,"data":[{"id":"dp_1","object":"dispute","amount":1000,"status":"lost","currency":{{System.Text.Json.JsonSerializer.Serialize(currency)}}}]}""");
+
+        var read = () => Platform().GetStatusAsync("cs_test_1", TestContext.Current.CancellationToken);
+
+        await read.Should().ThrowAsync<TicketingPlatformException>().WithMessage("*EUR*");
+    }
+
+    [HumansTheory]
+    [InlineData(null)]
+    [InlineData("")]
+    [InlineData("usd")]
+    public async Task ListOrdersAsync_UnsupportedCurrency_RejectsList(string? currency)
+    {
+        var session = JsonNode.Parse(Session("complete", "paid", PaidCharge))!;
+        session["currency"] = currency;
+        Respond($$"""{"object":"list","url":"/v1/checkout/sessions","has_more":false,"data":[{{session.ToJsonString()}}]}""", RefundList());
+
+        var read = () => Platform().ListOrdersAsync(null, Now, Now, TestContext.Current.CancellationToken);
+
+        await read.Should().ThrowAsync<TicketingPlatformException>().WithMessage("*EUR*");
+    }
+
+    [HumansTheory]
+    [InlineData(MoneySource.Session, null)]
+    [InlineData(MoneySource.Session, "")]
+    [InlineData(MoneySource.Session, "usd")]
+    [InlineData(MoneySource.Charge, null)]
+    [InlineData(MoneySource.Charge, "")]
+    [InlineData(MoneySource.Charge, "usd")]
+    public async Task RefundAsync_UnsupportedCurrency_DoesNotMutate(MoneySource source, string? currency)
+    {
+        var session = JsonNode.Parse(Session("complete", "paid", PaidCharge))!;
+        if (source == MoneySource.Session) session["currency"] = currency;
+        else session["payment_intent"]!["latest_charge"]!["currency"] = currency;
+        Respond(session.ToJsonString(), RefundList(), Refund("re_new", "succeeded", 1000));
+
+        var refund = () => Platform().RefundAsync(
+            new RefundRequest(Guid.NewGuid(), "cs_test_1", 1000, "Returned"), TestContext.Current.CancellationToken);
+
+        await refund.Should().ThrowAsync<TicketingPlatformException>().WithMessage("*EUR*");
+        _requests.Should().OnlyContain(r => r.Method == HttpMethod.Get);
+    }
+
     [HumansFact]
     public async Task List_reads_every_session_of_the_period_and_refunds_only_where_the_charge_shows_some()
     {
@@ -184,12 +253,12 @@ public sealed class BoxOfficePlatformTests
         Respond(
             """
             {"object":"list","url":"/v1/checkout/sessions","has_more":false,"data":[
-             {"id":"cs_1","object":"checkout.session","status":"complete","payment_status":"paid","amount_total":30000,"created":1799582400,
+             {"id":"cs_1","object":"checkout.session","currency":"eur","status":"complete","payment_status":"paid","amount_total":30000,"created":1799582400,
               "metadata":{"humans_ticket_order_id":"ORDER_ID","humans_ticket_count":"2"},"payment_intent":{"id":"pi_1","object":"payment_intent","status":"succeeded",
-              "latest_charge":{"id":"ch_1","object":"charge","paid":true,"amount":30000,"amount_refunded":0,"created":1799582400}}},
-             {"id":"cs_2","object":"checkout.session","status":"complete","payment_status":"paid","amount_total":25000,"created":1799586000,
+              "latest_charge":{"id":"ch_1","object":"charge","currency":"eur","paid":true,"amount":30000,"amount_refunded":0,"created":1799582400}}},
+             {"id":"cs_2","object":"checkout.session","currency":"eur","status":"complete","payment_status":"paid","amount_total":25000,"created":1799586000,
               "metadata":{},"payment_intent":{"id":"pi_2","object":"payment_intent","status":"succeeded",
-              "latest_charge":{"id":"ch_2","object":"charge","paid":true,"amount":25000,"amount_refunded":5000,"created":1799586000}}}]}
+              "latest_charge":{"id":"ch_2","object":"charge","currency":"eur","paid":true,"amount":25000,"amount_refunded":5000,"created":1799586000}}}]}
             """.Replace("ORDER_ID", orderId.ToString(), StringComparison.Ordinal),
             RefundList(Refund("re_1", "succeeded", 5000)));
 
@@ -253,9 +322,9 @@ public sealed class BoxOfficePlatformTests
         Respond(Session("complete", "paid", chargedBack), RefundList(),
             """
             {"object":"list","url":"/v1/disputes","has_more":false,"data":[
-             {"id":"dp_1","object":"dispute","amount":25000,"status":"lost","charge":"ch_1"},
-             {"id":"dp_2","object":"dispute","amount":1000,"status":"won","charge":"ch_1"},
-             {"id":"dp_3","object":"dispute","amount":2000,"status":"warning_needs_response","charge":"ch_1"}]}
+             {"id":"dp_1","object":"dispute","currency":"eur","amount":25000,"status":"lost","charge":"ch_1"},
+             {"id":"dp_2","object":"dispute","currency":"eur","amount":1000,"status":"won","charge":"ch_1"},
+             {"id":"dp_3","object":"dispute","currency":"eur","amount":2000,"status":"warning_needs_response","charge":"ch_1"}]}
             """);
 
         var status = await Platform().GetStatusAsync("cs_test_1", TestContext.Current.CancellationToken);

@@ -135,6 +135,7 @@ internal sealed class BoxOfficePlatform(
     /// </summary>
     private async Task<PlatformOrderStatus> StatusOfAsync(Session session, bool everyRefund, CancellationToken ct)
     {
+        ValidateSessionCurrency(session);
         var intent = session.PaymentIntent;
         var charge = intent?.LatestCharge;
 
@@ -237,8 +238,11 @@ internal sealed class BoxOfficePlatform(
     {
         try
         {
-            return (await new DisputeService(Client()).ListAsync(new DisputeListOptions { Charge = chargeId, Limit = 100 },
-                cancellationToken: ct)).Data.Where(TakesMoney).Sum(d => d.Amount);
+            var disputes = (await new DisputeService(Client()).ListAsync(new DisputeListOptions { Charge = chargeId, Limit = 100 },
+                cancellationToken: ct)).Data.Where(TakesMoney).ToList();
+            foreach (var dispute in disputes)
+                RequireEur(dispute.Currency, $"dispute {dispute.Id}");
+            return disputes.Sum(d => d.Amount);
         }
         catch (StripeException ex)
         {
@@ -256,8 +260,11 @@ internal sealed class BoxOfficePlatform(
     {
         try
         {
-            return (await new RefundService(Client()).ListAsync(
+            var refunds = (await new RefundService(Client()).ListAsync(
                 new RefundListOptions { PaymentIntent = paymentIntentId, Limit = 100 }, cancellationToken: ct)).Data;
+            foreach (var refund in refunds)
+                RequireEur(refund.Currency, $"refund {refund.Id}");
+            return refunds;
         }
         catch (StripeException ex)
         {
@@ -421,12 +428,27 @@ internal sealed class BoxOfficePlatform(
         (await new SessionService(Client()).ListAsync(
             new SessionListOptions { PaymentIntent = paymentIntentId, Limit = 10 }, cancellationToken: ct)).Data.Select(s => s.Id).ToList();
 
+    private static void ValidateSessionCurrency(Session session)
+    {
+        RequireEur(session.Currency, $"session {session.Id}");
+        if (session.PaymentIntent?.LatestCharge is { } charge)
+            RequireEur(charge.Currency, $"charge {charge.Id}");
+    }
+
+    private static void RequireEur(string? currency, string source)
+    {
+        if (!string.Equals(currency, "eur", StringComparison.OrdinalIgnoreCase))
+            throw new TicketingPlatformException($"Stripe {source} does not declare EUR currency.");
+    }
+
     private async Task<Session> GetSessionAsync(string sessionId, CancellationToken ct)
     {
         try
         {
-            return await new SessionService(Client()).GetAsync(sessionId,
+            var session = await new SessionService(Client()).GetAsync(sessionId,
                 new SessionGetOptions { Expand = ["payment_intent.latest_charge"] }, cancellationToken: ct);
+            ValidateSessionCurrency(session);
+            return session;
         }
         catch (StripeException ex)
         {

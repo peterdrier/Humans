@@ -144,6 +144,7 @@ internal sealed class HiEventsPlatform : ITicketingPlatform
         EnsureConfigured();
         var (eventId, orderId) = ParsePlatformOrderId(platformOrderId);
         var order = await GetOrderAsync(eventId, orderId, ct);
+        RequireEur(order);
         var state = ToState(order);
 
         return new PlatformOrderStatus(
@@ -433,16 +434,19 @@ internal sealed class HiEventsPlatform : ITicketingPlatform
             if (meta.LastPage < 1)
                 throw new HttpRequestException("Hi.Events answered an order page with invalid paging.");
             foreach (var order in read.Data ?? [])
+            {
+                RequireEur(order);
                 orders[order.Id] = new PlatformOrderSummary(
-                ToPlatformOrderId(eventId, order.Id),
-                Guid.TryParseExact(order.ExternalReference, "N", out var humansOrderId) ? humansOrderId : null,
-                ParseCreatedAt(order.CreatedAt)
-                    ?? throw new HttpRequestException($"Hi.Events order {order.Id} has an unreadable created_at '{order.CreatedAt}'."),
-                ToState(order),
-                ToMinor(order.TotalGross),
-                order.Attendees?.Count,
-                ToMinor(order.TotalRefunded ?? 0m),
-                ToMinor(order.TotalDisputed ?? 0m));
+                    ToPlatformOrderId(eventId, order.Id),
+                    Guid.TryParseExact(order.ExternalReference, "N", out var humansOrderId) ? humansOrderId : null,
+                    ParseCreatedAt(order.CreatedAt)
+                        ?? throw new HttpRequestException($"Hi.Events order {order.Id} has an unreadable created_at '{order.CreatedAt}'."),
+                    ToState(order),
+                    ToMinor(order.TotalGross),
+                    order.Attendees?.Count,
+                    ToMinor(order.TotalRefunded ?? 0m),
+                    ToMinor(order.TotalDisputed ?? 0m));
+            }
             if (page < meta.LastPage)
                 continue;
             // Orders sharing a created_at second may change places between pages; one skipped shows here.
@@ -597,6 +601,12 @@ internal sealed class HiEventsPlatform : ITicketingPlatform
     }
 
     private const int BuyerNamePartLength = 50;
+
+    private static void RequireEur(HiEventsOrder order)
+    {
+        if (!string.Equals(order.Currency, "EUR", StringComparison.OrdinalIgnoreCase))
+            throw new TicketingPlatformException($"Hi.Events order {order.Id} does not declare EUR currency.");
+    }
 
     private static long ToMinor(decimal amount) => (long)decimal.Round(amount * 100m, MidpointRounding.AwayFromZero);
 

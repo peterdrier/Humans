@@ -665,6 +665,39 @@ public class HiEventsPlatformTests
         setup.WebhookPath.Should().Be("/HiEvents/Webhook");
     }
 
+    [HumansTheory]
+    [InlineData(null)]
+    [InlineData("")]
+    [InlineData("USD")]
+    public async Task GetStatus_UnsupportedCurrency_RejectsAmounts(string? currency)
+    {
+        _handler.Enqueue(HttpStatusCode.OK, Order(42, 225m, status: "COMPLETED",
+            paymentStatus: "PAYMENT_RECEIVED", currency: currency));
+
+        var read = () => Platform().GetStatusAsync("7:42", Ct);
+
+        await read.Should().ThrowAsync<TicketingPlatformException>().WithMessage("*EUR*");
+    }
+
+    [HumansTheory]
+    [InlineData(null)]
+    [InlineData("")]
+    [InlineData("USD")]
+    public async Task ListOrders_UnsupportedCurrency_RejectsList(string? currency)
+    {
+        var order = ListedOrder(42, null, tickets: 1);
+        order["currency"] = currency;
+        _handler.Enqueue(HttpStatusCode.OK, new
+        {
+            data = new[] { ListedOrder(41, null, tickets: 1), order },
+            meta = new { last_page = 1, total = 2 },
+        });
+
+        var read = () => Platform().ListOrdersAsync("7", Now, Now, Ct);
+
+        await read.Should().ThrowAsync<TicketingPlatformException>().WithMessage("*EUR*");
+    }
+
     [HumansFact]
     public async Task ListOrders_PagesThroughThePeriodAndReadsHumansIdsAndTickets()
     {
@@ -822,7 +855,7 @@ public class HiEventsPlatformTests
         string? refundStatus = null,
         decimal chargedBack = 0m,
         string? processingAt = null,
-        string currency = "EUR") => new
+        string? currency = "EUR") => new
         {
             data = new Dictionary<string, object?>(StringComparer.Ordinal)
             {

@@ -60,6 +60,8 @@ None — the section owns no tables.
 
 ## Invariants
 
+- Native status and order-list reads require explicit EUR on each order before converting totals, refunds or chargebacks to minor units. Unsupported or missing currency rejects the whole read rather than contributing foreign amounts to EUR reconciliation.
+
 - Stripe reporting accepts explicit EUR only. A movement, payout or summed payout content with another or missing currency rejects the ledger; an unverified fee remains unknown.
 
 - Reporting-category classification uses `PaymentLedgerEntry.KindOf`, shared by all three ticketing adapters.
