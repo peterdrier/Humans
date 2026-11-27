@@ -1259,6 +1259,57 @@ public sealed partial class TicketCheckoutServiceTests
         await _rules.Received().GetAsync("TicketRules/2027", true, Arg.Any<CancellationToken>());
     }
 
+    [HumansTheory]
+    [InlineData(0)]
+    [InlineData(1)]
+    [InlineData(2)]
+    public async Task WithdrawOfferAsync_TicketWriteFails_WritesNoOffer(int action)
+    {
+        var ticket = await OfferedTicketAsync();
+        var offer = _repo.Offers.Single();
+        _repo.RejectTicketWrites.Add(ticket.Id);
+        _repo.OfferWrites.Clear();
+        Func<Task> withdraw = action switch
+        {
+            0 => () => _service.WithdrawOfferAsync(ticket.Id, _buyerId, Ct),
+            1 => () => _service.WithdrawOfferForHolderAsync(offer.Id, "Holder asked", _adminId, Ct),
+            _ => SaveResaleOffAsync,
+        };
+
+        await withdraw.Should().ThrowAsync<InvalidOperationException>().WithMessage("Ticket write failed");
+
+        _repo.OfferWrites.Should().BeEmpty();
+    }
+
+    [HumansFact]
+    public async Task ReconcileOpenOrdersAsync_ResaleOff_WithdrawsOpenOffer()
+    {
+        var ticket = await OfferedTicketAsync();
+        _ticketing.Mode = TicketSalesMode.Open;
+        _ticketing.Switches = new TicketingSwitches { Resale = ResaleScheme.Off };
+
+        await _service.ReconcileOpenOrdersAsync(Ct);
+
+        _repo.Offers.Single().State.Should().Be(TicketResaleOfferState.Withdrawn);
+        ticket.State.Should().Be(TicketCheckoutTicketState.Valid);
+    }
+
+    [HumansTheory]
+    [InlineData((int)TicketCheckoutTicketState.Void)]
+    [InlineData((int)TicketCheckoutTicketState.Resold)]
+    public async Task ReconcileOpenOrdersAsync_RetiredTicket_KeepsRetiredState(int state)
+    {
+        var ticket = await OfferedTicketAsync();
+        ticket.State = (TicketCheckoutTicketState)state;
+        _ticketing.Mode = TicketSalesMode.Open;
+        _ticketing.Switches = new TicketingSwitches { Resale = ResaleScheme.Off };
+
+        await _service.ReconcileOpenOrdersAsync(Ct);
+
+        _repo.Offers.Single().State.Should().Be(TicketResaleOfferState.Withdrawn);
+        ticket.State.Should().Be((TicketCheckoutTicketState)state);
+    }
+
     [HumansFact]
     public async Task Switching_resale_off_withdraws_open_offers_and_hands_the_tickets_back()
     {
@@ -3706,6 +3757,8 @@ public sealed partial class TicketCheckoutServiceTests
             if (changed.Any(t => RejectTicketWrites.Contains(t.Id)))
                 throw new InvalidOperationException("Ticket write failed");
             TicketWrites.AddRange(changed.Select(t => (t.Id, t.State)));
+            if (offer is not null)
+                OfferWrites.Add((offer.Id, offer.State));
             return Task.CompletedTask;
         }
         public Task<TicketCheckoutTicket?> GetTicketAsync(Guid id, CancellationToken ct = default) =>
@@ -3723,7 +3776,13 @@ public sealed partial class TicketCheckoutServiceTests
             Offers.Add(offer);
             return Task.CompletedTask;
         }
-        public Task UpdateOfferAsync(TicketResaleOffer offer, CancellationToken ct = default) => Task.CompletedTask;
+        public List<(Guid Id, TicketResaleOfferState State)> OfferWrites { get; } = [];
+
+        public Task UpdateOfferAsync(TicketResaleOffer offer, CancellationToken ct = default)
+        {
+            OfferWrites.Add((offer.Id, offer.State));
+            return Task.CompletedTask;
+        }
         public Task<TicketResaleOffer?> GetOfferAsync(Guid id, CancellationToken ct = default) =>
             Task.FromResult(Offers.FirstOrDefault(o => o.Id == id));
         public Task<TicketResaleOffer?> GetOfferByTokenHashAsync(string tokenHash, CancellationToken ct = default) =>

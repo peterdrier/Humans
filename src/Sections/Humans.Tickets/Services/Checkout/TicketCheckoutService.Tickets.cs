@@ -168,9 +168,8 @@ internal sealed partial class TicketCheckoutService
 
         offer.State = TicketResaleOfferState.Withdrawn;
         offer.WithdrawnAt = clock.GetCurrentInstant();
-        await repository.UpdateOfferAsync(offer, ct);
         ticket.State = TicketCheckoutTicketState.Valid;
-        await repository.UpdateTicketAsync(ticket, ct);
+        await repository.UpdateTicketAsync(ticket, ct, offer: offer);
         await TimelineAsync(ticket.OrderId, TicketCheckoutOrderEventKind.ResaleWithdrawn,
             $"Ticket {ticket.Barcode} taken back out of the resale queue", userId, ct);
         await auditLog.LogAsync(TicketsAuditActions.TicketResaleWithdrawn, AuditEntityType, ticket.OrderId,
@@ -756,6 +755,12 @@ internal sealed partial class TicketCheckoutService
                 && (ticketing.Mode == TicketSalesMode.Closed || (ticketing.SalesCloseAt is { } close && now >= close));
             foreach (var offer in await repository.GetOffersForSettingsAsync(ticketing.Id, ct))
             {
+                if (ticketing.EffectiveSwitches.Resale == ResaleScheme.Off && offer.State == TicketResaleOfferState.Open)
+                {
+                    await WithdrawSwitchedOffAsync(offer, null, ct);
+                    changed++;
+                    continue;
+                }
                 if (offer is { State: TicketResaleOfferState.Sold, SoldNotificationPending: true }
                     && (await repository.GetTicketAsync(offer.TicketId, ct))?.State == TicketCheckoutTicketState.Resold
                     && await TellDeliveryAsync(d => d.ResaleSoldAsync(offer.TicketId, offer.RefundOwedMinor, ct), offer.TicketId))

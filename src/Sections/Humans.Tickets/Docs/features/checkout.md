@@ -248,6 +248,9 @@ addresses were typed. Directed resale links buy only the buyer's own ticket.
   no refund, and the ticket admits them. It is marked only once the mail is queued, so a failed hand-off is retried
   by the next sweep. The offer stays open in case sales reopen.
 - While fresh stock is sold out, a class-price buyer in `Open` mode takes a queue ticket at the resale price.
+- Holder, staff and resale-switch withdrawals save an offered ticket's return to `Valid` and the withdrawn offer
+  together. Reconciliation retries open-offer cleanup while resale is `Off`, preserving `Void` and `Resold` tickets.
+  Reserved offers keep their current buyer until that order ends.
 - An order that fails, expires or is cancelled releases its offers to their original place.
 - **Directed resale** (H10): a holder whose offer is open emails one or more people each their own link
   (`/Tickets/Buy/Resale/{token}`). New links protect the offer and stable delivery IDs under the `TicketResaleInvitation` Data Protection purpose; raw tokens are never stored in Tickets. Each invitation stores its initial SHA-256, nullable delivery ID and nullable pending flag in `directed_invites`. Legacy hash-only links still resolve as before.

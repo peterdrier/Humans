@@ -1412,11 +1412,16 @@ internal sealed partial class TicketCheckoutService(
         offer.WithdrawnAt = clock.GetCurrentInstant();
         offer.ReservedByOrderId = null;
         offer.Invites = [];
-        await repository.UpdateOfferAsync(offer, ct);
-        if (await repository.GetTicketAsync(offer.TicketId, ct) is not { } ticket)
+        var ticket = await repository.GetTicketAsync(offer.TicketId, ct);
+        if (ticket?.State == TicketCheckoutTicketState.Offered)
+        {
+            ticket.State = TicketCheckoutTicketState.Valid;
+            await repository.UpdateTicketAsync(ticket, ct, offer: offer);
+        }
+        else
+            await repository.UpdateOfferAsync(offer, ct);
+        if (ticket is null)
             return;
-        ticket.State = TicketCheckoutTicketState.Valid;
-        await repository.UpdateTicketAsync(ticket, ct);
         await TimelineAsync(ticket.OrderId, TicketCheckoutOrderEventKind.ResaleWithdrawn,
             $"Ticket {ticket.Barcode} taken back out of the resale queue: resale switched off for this event", actorUserId, ct);
         const string detail = "withdrawn from resale: resale switched off for this event";

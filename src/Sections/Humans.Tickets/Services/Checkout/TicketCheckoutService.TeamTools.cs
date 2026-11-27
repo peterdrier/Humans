@@ -27,13 +27,14 @@ internal sealed partial class TicketCheckoutService
         offer.State = TicketResaleOfferState.Withdrawn;
         offer.WithdrawnAt = clock.GetCurrentInstant();
         offer.Invites = [];
-        await repository.UpdateOfferAsync(offer, ct);
         var ticket = await repository.GetTicketAsync(offer.TicketId, ct);
         if (ticket?.State == TicketCheckoutTicketState.Offered)
         {
             ticket.State = TicketCheckoutTicketState.Valid;
-            await repository.UpdateTicketAsync(ticket, ct);
+            await repository.UpdateTicketAsync(ticket, ct, offer: offer);
         }
+        else
+            await repository.UpdateOfferAsync(offer, ct);
 
         var why = reason.Trim();
         var barcode = ticket?.Barcode ?? offer.TicketId.ToString();
