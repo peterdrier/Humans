@@ -191,11 +191,11 @@ internal sealed partial class PretixPlatform(
             ["comment"] = $"{comment} {request.Reason}".Trim(),
             ["mark_canceled"] = false,
         };
-        // No answer, or a pretix 5xx, throws: Tickets keeps the refund pending and retries it under the same id, and
+        // No answer, a retryable HTTP refusal or a pretix 5xx keeps the intent pending under the same id;
         // the marker on the fee and the refund makes that retry safe whether or not this one went through.
         var response = await SendRawAsync(
             HttpMethod.Post, $"{OrderPath(eventSlug, code)}payments/{payment.LocalId}/refund/", body, ct);
-        if ((int)response.Status >= 500)
+        if ((int)response.Status >= 500 || response.Status is HttpStatusCode.RequestTimeout or HttpStatusCode.TooManyRequests)
             EnsureSuccess(response, "refund");
 
         if ((int)response.Status is < 200 or > 299 && response.Status != HttpStatusCode.BadRequest)
@@ -764,8 +764,7 @@ internal sealed partial class PretixPlatform(
             ["cancel_fees"] = new JsonArray(new JsonObject { ["fee"] = feeId }),
         };
         var response = await SendRawAsync(HttpMethod.Post, $"{OrderPath(eventSlug, code)}change/", body, ct);
-        if ((int)response.Status is < 200 or > 299)
-            logger.LogError("Could not take refund fee {FeeId} off pretix order {Code}: {Body}", feeId, code, response.Body);
+        EnsureSuccess(response, $"remove refund fee {feeId} from order {code}");
     }
 
     private Uri AdminOrderUrl(string eventSlug, string code) =>

@@ -605,12 +605,15 @@ public class PretixPlatformTests
         pretix.BodiesFor("POST", $"{OrderPath}change/").Should().BeEmpty();
     }
 
-    [HumansFact]
-    public async Task Refund_PretixServerError_ThrowsAndTheRetryReusesTheFee()
+    [HumansTheory]
+    [InlineData(HttpStatusCode.BadGateway)]
+    [InlineData(HttpStatusCode.RequestTimeout)]
+    [InlineData(HttpStatusCode.TooManyRequests)]
+    public async Task Refund_UnresolvedResponse_RetryReusesFee(HttpStatusCode status)
     {
         var refundId = Guid.NewGuid();
         var pretix = RefundablePretix(refundId)
-            .On("POST", $"{OrderPath}payments/1/refund/", HttpStatusCode.BadGateway, "");
+            .On("POST", $"{OrderPath}payments/1/refund/", status, "");
 
         var first = () => Create(pretix).RefundAsync(
             new RefundRequest(refundId, $"nowhere2027/{Code}", 22500, "Resold"), TestContext.Current.CancellationToken);
@@ -626,6 +629,39 @@ public class PretixPlatformTests
 
         result.State.Should().Be(RefundState.Succeeded);
         retry.BodiesFor("POST", $"{OrderPath}change/").Should().BeEmpty();
+    }
+
+    [HumansTheory]
+    [InlineData(false, HttpStatusCode.BadRequest)]
+    [InlineData(false, HttpStatusCode.Forbidden)]
+    [InlineData(true, HttpStatusCode.BadRequest)]
+    public async Task Refund_FeeCleanupFailure_RetriesBeforeFinalFailure(bool recorded, HttpStatusCode status)
+    {
+        var refundId = Guid.NewGuid();
+        var order = Order(Code, status: "p", total: 775m,
+            fees: [RefundFee(refundId)],
+            payments: [new { local_id = 1, state = "confirmed", amount = "1000.00", provider = "stripe" }],
+            refunds: recorded
+                ? [new { local_id = 3, state = "failed", amount = "225.00", payment = 1,
+                    comment = $"humans-refund:{refundId} Resold", provider = "stripe" }]
+                : []);
+        var pretix = EurEvent()
+            .On("GET", OrderPath, HttpStatusCode.OK, order)
+            .On("POST", $"{OrderPath}payments/1/refund/", status, new { detail = "refund declined" })
+            .On("POST", $"{OrderPath}change/", HttpStatusCode.BadGateway, "")
+            .On("POST", $"{OrderPath}change/", HttpStatusCode.OK, PaidOrder());
+        var platform = Create(pretix);
+        var refund = () => platform.RefundAsync(
+            new RefundRequest(refundId, $"nowhere2027/{Code}", 22500, "Resold"), TestContext.Current.CancellationToken);
+
+        await refund.Should().ThrowAsync<HttpRequestException>();
+        (await refund()).State.Should().Be(RefundState.Failed);
+
+        var changes = pretix.BodiesFor("POST", $"{OrderPath}change/").Select(body => JsonNode.Parse(body!)!).ToList();
+        changes.Should().HaveCount(2);
+        changes.Should().OnlyContain(body => body["cancel_fees"]![0]!["fee"]!.GetValue<int>() == 7);
+        changes.Should().OnlyContain(body => body["create_fees"] == null);
+        pretix.BodiesFor("POST", $"{OrderPath}payments/1/refund/").Should().HaveCount(recorded ? 0 : 2);
     }
 
     [HumansFact]
