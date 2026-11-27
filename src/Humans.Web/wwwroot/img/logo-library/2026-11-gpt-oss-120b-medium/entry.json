@@ -1,0 +1,11 @@
+{
+  "date": "2026-11",
+  "family": "GPT-OSS",
+  "model": "120B",
+  "version": "1",
+  "effort": "medium",
+  "brief": "v1",
+  "notes": {
+    "en": "Created a medium‑effort SVG of the Vitruvian Man using GPT‑OSS 120B. The drawing captures the intended geometry but finer details are still rough."
+  }
+}
