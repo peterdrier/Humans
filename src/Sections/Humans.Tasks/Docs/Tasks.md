@@ -23,15 +23,21 @@ Pieces of work with an end, hanging on a team. A task is to a role (standing res
 
 | Route | What | Who |
 |---|---|---|
-| `GET /Tasks` | All tasks the viewer may see, filters; listed tasks by default. Links a manager to each team they manage. In the main nav. | Signed-in members |
-| `GET /Tasks/Team/{slug}` | A team's tasks; add form for managers, starting on the active event | Signed-in members |
+| `GET /Tasks` | All tasks the viewer may see as rows, filters (event, team, priority, include finished); listed tasks by default. Links a manager to each team they manage. In the main nav. | Signed-in members |
+| `GET /Tasks/Team/{slug}` | A team's tasks as rows, with priority and finished filters; add form for managers, starting on the active event | Signed-in members |
 | `GET /Tasks/{id}` | One task: description, dates, people, waiting-on, the viewer's claim state; managers edit, assign, link, delete and see the requests card | Anyone who can see it; 404 otherwise |
-| `GET /Tasks/Open` | The open-tasks board: every listed task the viewer can see with a free slot, most needed first, then title; open-slot and critical tiles; each row shows the viewer's place (claim button, waiting, or on it). Linked from `/Tasks` and team pages | Signed-in members |
+| `GET /Tasks/Open` | The open-tasks board: every listed task the viewer can see with a free slot, most needed first (see Task rows); team and priority filters; open-slot and critical tiles (of the whole board, not the filtered rows); each row shows the viewer's place (claim button, waiting, or on it). Linked from `/Tasks` and team pages | Signed-in members |
 | `POST /Tasks/{id}/Claim`, `/Release`, `/Withdraw` | The caller's own claim (or request), release, withdrawal. The controller checks only that the task is visible (404 otherwise); the service refuses every state case in words | Anyone who can see the task |
 | `POST /Tasks/{id}/Approve`, `/Decline` (`userId`, decline `reason`) | Answer a request | `Tasks.Manage` on the task's team; 403 otherwise, 404 first when hidden |
 | `GET /Tasks/Admin` | Read-only per-team counts and every blocked task with its note. The admin sidebar's Tasks group. English only (admin page). | TasksAdmin, Board, Admin (`TasksPolicies.Read`) |
 
-`POST /api/backdoor/tasks/bulk` (Backdoor's key-authed API) loads a whole set of tasks; see Bulk load below. Every claiming POST takes an optional `returnUrl`, followed only when `Url.IsLocalUrl` accepts it (else back to the task page). The team-page card and the timeline arrive in later PRs.
+`POST /api/backdoor/tasks/bulk` (Backdoor's key-authed API) loads a whole set of tasks; see Bulk load below. Every claiming POST takes an optional `returnUrl`, followed only when `Url.IsLocalUrl` accepts it (else back to the task page). The timeline arrives in a later PR.
+
+The team page (`/Teams/{slug}`, Teams) carries a **Tasks card** through Teams' `ITeamTasksPart` slot: the team's listed tasks the viewer may see as the same rows, five at most with a "see all" link to `/Tasks/Team/{slug}`, an empty state, for a manager the count of waiting requests (linking to `#requests`) and an Add link. It renders nothing in a hidden team the viewer cannot see, and nothing on a system or inactive team with no tasks.
+
+### Task rows
+
+Every list (`/Tasks`, a team's page, the board, the team-page card) shows one row per task (`_TaskRows`), ordered by priority (critical first, none last), then due date (undated last), then title (`TaskRowOrder`). A row has the title (link), tags (priority, status, understaffed for a critical task with open slots, blocked-by-wait "Waiting on <title>" or "a hidden task" when the viewer cannot see the blocker, needs approval with its reason, hidden), a line of slot dots with "n of m · needs k", the due date and, on lists spanning teams, the team, and on the right the claim control. The status shows always on `/Tasks` and team pages, and on the board and the card only when it is not to do. The row's left edge is coloured by priority. Filters are query parameters (`Event`, `Team`, `Priority`, `Finished`) of a GET form; a claim's `returnUrl` carries the whole query string back.
 
 ## Bulk load
 
@@ -61,7 +67,7 @@ Pieces of work with an end, hanging on a team. A task is to a role (standing res
 
 ### Claim states on the pages
 
-`TasksAccess.PlaceOn(task)` gives the viewer's state (`MyPlace`): **CanClaim** shows "I'll do this", or "Ask to join" with the approval reason when the task needs approval (on list rows too); **Requested** shows "waiting for approval" and Withdraw; **Confirmed** shows "you're on this task" and Leave. No state (full, finished, or not visible) shows nothing: no disabled button. The task page has the card; `/Tasks`, team pages and the board have a Join column. Leaving a hidden task goes back to `/Tasks`, since the task may drop out of sight.
+`TasksAccess.PlaceOn(task)` gives the viewer's state (`MyPlace`): **CanClaim** shows "I'll do this", or "Ask to join" when the task needs approval (on list rows the approval reason is in the row's tags, not on the button); **Requested** shows "waiting for approval" and Withdraw; **Confirmed** shows "you're on this task" and Leave. No state (full, finished, or not visible) shows nothing: no disabled button. The task page has the card; every task row carries the same control on its right. Leaving a hidden task goes back to `/Tasks`, since the task may drop out of sight.
 
 ### The requests card
 
@@ -145,6 +151,7 @@ The waiting requests (state Requested, `TaskInfo.WaitingRequests`), oldest first
 - **Users**: `IUserService.GetUserInfoAsync`, to check a person exists before assigning, and for the address and language of an answer email.
 - **Email**: `IEmailService.SendAsync` and `EmailMessage`/`MessageCategory` from `Humans.Email.Contracts`; `IEmailPreviewContributor` for the gallery.
 - **Home**: `ISectionThingsToDo`, the waiting-requests entries.
+- **Teams** (through a slot): Tasks implements `ITeamTasksPart` (declared in `Teams.Contracts`) with a view component, the tasks card on the team page. Teams calls no Tasks code.
 - **Permissions**: declares `Tasks.Manage` (`ISectionPermissions`, owner kind `Team`); `IPermissionService.GetOwnersAsync` in `TasksAccess`.
 - **Teams.Contracts**: `ITeamService` for team names, slugs, hidden and active flags; `TeamOwner`, `SlotPriority`.
 - **Backdoor** (consumer): calls `ITaskWrite.BulkLoadAsync` from its bulk-load controller.
@@ -156,7 +163,7 @@ The waiting requests (state Requested, `TaskInfo.WaitingRequests`), oldest first
 
 **Owning services:** `TaskService`
 **Owned tables:** `task_items`, `task_assignments`, `task_dependencies`
-**Status:** (A) Migrated: new section, 2026-11-22; bulk load; claiming, requests, emails, Home entries and the open-tasks board.
+**Status:** (A) Migrated: new section, 2026-11-22; bulk load; claiming, requests, emails, Home entries and the open-tasks board; task rows and the team-page card.
 
 ### Public contract
 
@@ -166,7 +173,7 @@ The waiting requests (state Requested, `TaskInfo.WaitingRequests`), oldest first
 | `TasksSystemRoles`, `TasksPermissions` | — | The `TasksAdmin` role and the `Tasks.Manage` key |
 | `ITaskWrite` | 1 | `BulkLoadAsync`, with `BulkLoadRequest`, `BulkLoadTask`, `BulkLoadDate`, `BulkLoadResult`, `BulkLoadProblem`, `BulkLoadedTask`. Consumed by Backdoor only |
 
-Nothing else is public: `ITaskService` (including claim, release, withdraw, approve and decline), `TasksEmails`, its DTOs and the entities are internal. Claiming adds no public surface.
+Nothing else is public: `ITaskService` (including claim, release, withdraw, approve and decline), `TasksEmails`, its DTOs and the entities are internal. Claiming adds no public surface; the team-page card is Tasks implementing Teams' `ITeamTasksPart`, which adds none here.
 
 - No caching decorator: low traffic; the dataset loads whole per request.
 - `TaskService` is the only repository caller (`ITaskRepository`, `Data/`) and never imports `Microsoft.EntityFrameworkCore`.

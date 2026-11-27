@@ -26,8 +26,8 @@ Hidden tasks (and every task of a hidden team) show only to managers, people on 
 
 | Route | PR | What |
 |---|---|---|
-| `/Tasks` | 1 | All tasks, filters; active event plus event-less, open only by default |
-| `/Tasks/Team/{slug}` | 1 | A team's tasks; add form for managers |
+| `/Tasks` | 1 | All tasks as rows, filters (event, team, priority, finished); active event plus event-less, open only by default |
+| `/Tasks/Team/{slug}` | 1 | A team's tasks as rows; add form for managers |
 | `/Tasks/{id}` | 1 | One task: description, dates, people, waiting-on |
 | `/Tasks/Admin` | 1 | Read-only per-team counts and every blocked task with its note |
 | `/Tasks/Open` | 3 | Open-tasks board: free slots, most needed first, claim per row |
@@ -38,7 +38,7 @@ Hidden tasks (and every task of a hidden team) show only to managers, people on 
 
 - **PR 2, bulk load** (built): `POST /api/backdoor/tasks/bulk` takes a set of tasks (payload-local keys, dependencies by key, dates fixed, a day number, or a date Tasks converts). All or nothing, dry-run flag, every problem listed, caller needs `Tasks.Manage` on every team. No people, no status. Loading a payload twice makes the tasks twice. The Backdoor opening-up (keys for people with `Tasks.Manage` or `TasksAdmin`) is Peter's and had not landed when this was built.
 - **PR 3, claiming** (built): claim/release; without approval a claim confirms at once, with it a request (takes no slot) a manager approves or declines (optional reason). Overfilling is allowed. Approved/declined emails (`VolunteerUpdates`); waiting requests in Home's things to do. Being on a task never adds team membership. The open-tasks board `/Tasks/Open` lists every visible task with a free slot, each row showing the viewer's place; the task page shows the viewer's state (claim, waiting with withdraw, on it with leave); managers answer requests in a requests card on the task and team pages, which only they see.
-- **PR 4**: tasks card on the team page via a named slot in `Humans.Teams.Contracts` (copied from `ITeamRolesPart`).
+- **PR 4** (built): tasks card on the team page via `ITeamTasksPart` in `Humans.Teams.Contracts` (copied from `ITeamRolesPart`): the team's open tasks the viewer may see as rows (five, then a link to `/Tasks/Team/{slug}`), a manager's waiting-requests count and Add link, an empty state. Every task list now shows card-style rows (title, priority/status/understaffed/waiting/needs-approval tags, slot dots and "n of m · needs k", due date, team, claim control, left edge coloured by priority) in place of tables, ordered by priority then due date then title; team and priority filters are query parameters. No new fields: no estimates, skills or standing tasks.
 - **PR 5**: timeline and dependency graph.
 
 ## Cancel and delete (PR 1)
