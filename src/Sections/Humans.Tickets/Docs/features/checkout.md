@@ -42,10 +42,10 @@ Rules every platform follows:
 - **Refund cancellation.** Cancellation is checked before each attempt. A started platform refund and its local completion finish independently of request abort or job shutdown. The initial read-only status fetch stays cancellable; settlement replays finish their saved outcome and timeline before cancellation stops the next refund.
 - **Order page reads.** Buyer/holder and admin GETs read status with the request token and apply local payment, fee, refund-total and chargeback changes, including ticket issuance for a new payment. They never cancel at the platform or replay refunds. An expired/failed status keeps an open order reserved until recovery confirms cancellation; visiting an overdue order cannot release capacity while the platform may still take payment.
 - **Refund outcome.** `RefundedMinor` moves only once money went back. Webhooks and background recovery settle Tickets'
-  `Pending` and `ManualRequired` refunds, oldest first. A pending refund the platform knows by id is repeated under that
+  automated `Pending` refunds before `ManualRequired` refunds, oldest first within each group. A pending refund the platform knows by id is repeated under that
   id and takes the state the platform answers (`RefundFailed` may follow only the newest refund); one whose call got no
   answer waits for the reconcile job's resend. So a refund made in the platform's dashboard never settles one of Tickets'
-  own. Only `ManualRequired` refunds settle from the part of `RefundedMinor` that Tickets' succeeded refunds do not explain. Failed refunds stop counting against what can still be refunded. The reconcile job re-reads paid orders with
+  own. Only `ManualRequired` refunds settle from the part of `RefundedMinor` left after succeeded refunds and unresolved automated amounts are accounted for. The same money cannot settle both an automated and a manual refund. Failed refunds stop counting against what can still be refunded. The reconcile job re-reads paid orders with
   unsettled refunds and resends any refund whose platform call threw.
 - **Erasure.** A deletion waits while the member holds a valid or offered ticket, until 30 days after that event's strike
   (Users re-checks when the deletion falls due), so erasure normally runs after the event. It then calls `ErasePersonalDataAsync` for each of their orders before Tickets tombstones its

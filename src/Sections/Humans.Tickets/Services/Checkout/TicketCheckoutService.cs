@@ -741,14 +741,16 @@ internal sealed partial class TicketCheckoutService(
     }
 
     /// <summary>
-    /// Settles open refunds, oldest first. A pending refund waits for its own answer: the state the platform gives for its
+    /// Settles automated refunds before allocating the remainder to manual refunds, oldest first within each group.
+    /// A pending refund waits for its own answer: the state the platform gives for its
     /// id, or the resend in <c>RepairPaidAsync</c> when the call that made it never got one, so a refund made in the
     /// platform's dashboard never settles one of Tickets' own. Only manual refunds settle from what the refunded total
     /// does not already explain.
     /// </summary>
     private async Task<bool> SettleRefundsAsync(TicketCheckoutOrder order, PlatformOrderStatus status, CancellationToken ct)
     {
-        var refunds = (await repository.GetRefundsAsync(order.Id, ct)).OrderBy(r => r.CreatedAt).ToList();
+        var refunds = (await repository.GetRefundsAsync(order.Id, ct))
+            .OrderBy(r => r.State == RefundState.ManualRequired).ThenBy(r => r.CreatedAt).ToList();
         var covered = status.RefundedMinor - refunds.Where(r => r.State == RefundState.Succeeded).Sum(r => r.AmountMinor);
         var changed = false;
         foreach (var refund in refunds.Where(r => r.State is RefundState.Pending or RefundState.ManualRequired))
@@ -772,6 +774,9 @@ internal sealed partial class TicketCheckoutService(
             }
             else
             {
+                // The total may include this refund before its own answer arrives; manual refunds cannot claim it.
+                if (refund.State == RefundState.Pending)
+                    covered -= refund.AmountMinor;
                 continue;
             }
             await repository.UpdateRefundAsync(refund, CancellationToken.None);

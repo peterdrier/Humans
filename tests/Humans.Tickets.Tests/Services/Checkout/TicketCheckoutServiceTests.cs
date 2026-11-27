@@ -2043,6 +2043,104 @@ public sealed partial class TicketCheckoutServiceTests
         _repo.Refunds.Single().Refund.State.Should().Be(RefundState.Pending);
     }
 
+    public enum RefundOutcome { Succeeded, Failed, Pending, Unavailable, Unsent }
+
+    [HumansTheory]
+    [InlineData(true, RefundOutcome.Succeeded, 5000, RefundState.ManualRequired)]
+    [InlineData(false, RefundOutcome.Succeeded, 5000, RefundState.ManualRequired)]
+    [InlineData(true, RefundOutcome.Pending, 5000, RefundState.ManualRequired)]
+    [InlineData(false, RefundOutcome.Pending, 5000, RefundState.ManualRequired)]
+    [InlineData(true, RefundOutcome.Failed, 5000, RefundState.Succeeded)]
+    [InlineData(false, RefundOutcome.Failed, 5000, RefundState.Succeeded)]
+    [InlineData(true, RefundOutcome.Unavailable, 5000, RefundState.ManualRequired)]
+    [InlineData(false, RefundOutcome.Unavailable, 5000, RefundState.ManualRequired)]
+    [InlineData(true, RefundOutcome.Unsent, 5000, RefundState.ManualRequired)]
+    [InlineData(false, RefundOutcome.Unsent, 5000, RefundState.ManualRequired)]
+    [InlineData(true, RefundOutcome.Pending, 10000, RefundState.Succeeded)]
+    [InlineData(false, RefundOutcome.Pending, 10000, RefundState.Succeeded)]
+    public async Task PlatformOrderChangedAsync_MixedRefunds_AllocatesOnce(
+        bool manualFirst, RefundOutcome outcome, long refundedMinor, RefundState manualState)
+    {
+        var order = await BuyAndPayAsync(Buy(), _buyerId);
+        var manual = new TicketCheckoutRefund
+        {
+            Id = Guid.NewGuid(),
+            OrderId = order.Id,
+            AmountMinor = 5000,
+            Reason = "Manual",
+            State = RefundState.ManualRequired,
+            CreatedAt = Now + Duration.FromMinutes(manualFirst ? 0 : 1),
+        };
+        var automated = new TicketCheckoutRefund
+        {
+            Id = Guid.NewGuid(),
+            OrderId = order.Id,
+            AmountMinor = 5000,
+            Reason = "Automated",
+            State = RefundState.Pending,
+            PlatformRefundId = outcome == RefundOutcome.Unsent ? null : "re_ours",
+            CreatedAt = Now + Duration.FromMinutes(manualFirst ? 1 : 0),
+        };
+        _repo.Refunds.Add((manual.Id, manual));
+        _repo.Refunds.Add((automated.Id, automated));
+        _platform.GetStatusAsync(order.PlatformOrderId!, Arg.Any<CancellationToken>())
+            .Returns(new PlatformOrderStatus(PlatformOrderState.Paid, 0, "card", Now, RefundedMinor: refundedMinor));
+        _platform.RefundAsync(Arg.Is<RefundRequest>(r => r.RefundId == automated.Id), Arg.Any<CancellationToken>())
+            .Returns<RefundResult>(_ => outcome switch
+            {
+                RefundOutcome.Succeeded => new(RefundState.Succeeded, "re_ours", null),
+                RefundOutcome.Failed => new(RefundState.Failed, "re_ours", "Declined"),
+                RefundOutcome.Pending => new(RefundState.Pending, "re_ours", null),
+                _ => throw new TicketingPlatformException("Outcome unavailable"),
+            });
+
+        await _service.PlatformOrderChangedAsync("test", order.PlatformOrderId!, Ct);
+
+        manual.State.Should().Be(manualState);
+        automated.State.Should().Be(outcome switch
+        {
+            RefundOutcome.Succeeded => RefundState.Succeeded,
+            RefundOutcome.Failed => RefundState.Failed,
+            _ => RefundState.Pending,
+        });
+        _repo.Refunds.Where(r => r.Refund.State == RefundState.Succeeded).Sum(r => r.Refund.AmountMinor)
+            .Should().BeLessThanOrEqualTo(refundedMinor);
+    }
+
+    [HumansFact]
+    public async Task PlatformOrderChangedAsync_ManualRefunds_SettlesOldestFirst()
+    {
+        var order = await BuyAndPayAsync(Buy(), _buyerId);
+        var older = new TicketCheckoutRefund
+        {
+            Id = Guid.NewGuid(),
+            OrderId = order.Id,
+            AmountMinor = 3000,
+            Reason = "Older",
+            State = RefundState.ManualRequired,
+            CreatedAt = Now,
+        };
+        var newer = new TicketCheckoutRefund
+        {
+            Id = Guid.NewGuid(),
+            OrderId = order.Id,
+            AmountMinor = 2000,
+            Reason = "Newer",
+            State = RefundState.ManualRequired,
+            CreatedAt = Now + Duration.FromMinutes(1),
+        };
+        _repo.Refunds.Add((newer.Id, newer));
+        _repo.Refunds.Add((older.Id, older));
+        _platform.GetStatusAsync(order.PlatformOrderId!, Arg.Any<CancellationToken>())
+            .Returns(new PlatformOrderStatus(PlatformOrderState.Paid, 0, "card", Now, RefundedMinor: 3000));
+
+        await _service.PlatformOrderChangedAsync("test", order.PlatformOrderId!, Ct);
+
+        older.State.Should().Be(RefundState.Succeeded);
+        newer.State.Should().Be(RefundState.ManualRequired);
+        await _platform.DidNotReceive().RefundAsync(Arg.Any<RefundRequest>(), Arg.Any<CancellationToken>());
+    }
+
     [HumansFact]
     public async Task A_chargeback_lowers_what_can_be_refunded_and_keeps_the_ticket_out_of_resale()
     {

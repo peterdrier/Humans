@@ -241,9 +241,10 @@ public sealed record PlatformOrderSession(string PlatformOrderId, Uri PaymentUrl
 /// <para>
 /// <paramref name="RefundedMinor"/> is everything refunded against the order so far, however it was issued, so a
 /// refund made in the platform's own dashboard is still seen; it moves only once money has actually gone back. Tickets
-/// settles its <see cref="RefundState.Pending"/> and <see cref="RefundState.ManualRequired"/> refunds from it, oldest
-/// first, and repeats each pending refund <paramref name="RefundedMinor"/> does not cover, under its own id, to learn
-/// whether it failed. <paramref name="RefundFailed"/> (a refund the platform accepted has since failed) is informational.
+/// repeats each <see cref="RefundState.Pending"/> refund under its own id to learn its outcome. Succeeded and
+/// unresolved automated amounts are accounted for before <see cref="RefundState.ManualRequired"/> refunds settle
+/// oldest-first from the remaining total. <paramref name="RefundFailed"/> (a refund the platform accepted has since
+/// failed) is informational.
 /// </para>
 /// <para>
 /// <paramref name="ChargedBackMinor"/> is what the buyer's bank has taken back in a chargeback that the event has not won;
