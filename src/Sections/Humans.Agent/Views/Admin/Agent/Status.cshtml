@@ -9,11 +9,7 @@
 
 <page-header title="Agent Status">
     <div class="d-flex align-items-center">
-        <div class="btn-group btn-group-sm" role="group" aria-label="Agent admin nav">
-            <a href="/Settings#agent" class="btn btn-outline-secondary">Settings</a>
-            <a asp-controller="Agent" asp-action="Conversations" class="btn btn-outline-secondary">Conversations</a>
-        </div>
-        <form asp-action="ReloadCommunityFaq" method="post" class="ms-2 d-inline" authorize-policy="AdminOnly">
+        <form asp-action="ReloadCommunityFaq" method="post" class="d-inline" authorize-policy="AdminOnly">
             @Html.AntiForgeryToken()
             <button type="submit" class="btn btn-outline-warning btn-sm"
                     title="Re-fetch the Community FAQ from GitHub and rebuild the Assistant's in-memory index (no restart needed).">

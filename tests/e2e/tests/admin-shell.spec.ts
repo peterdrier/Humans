@@ -62,13 +62,13 @@ const sidebarMatrix: SidebarExpectation[] = [
       { label: 'Hi.Events', items: ['Hi.Events'] },
       { label: 'Holded', items: ['Summary', 'Accounts', 'Purchases', 'API calls'] },
       { label: 'Issues', items: ['Issues'] },
-      { label: 'Pleo', items: ['Pleo'] },
+      { label: 'Pleo', items: ['Summary', 'Entries', 'Categories'] },
       { label: 'pretix', items: ['pretix'] },
       { label: 'Rideshare', items: ['Settings & stats', 'Day roster'] },
       { label: 'Roles', items: ['Roles'] },
       { label: 'Scanner', items: ['Scanner'] },
       { label: 'Store', items: ['Catalog', 'Summary', 'Payments', 'Team transfers', 'Order years', 'Payment methods'] },
-      { label: 'Stripe', items: ['Stripe'] },
+      { label: 'Stripe', items: ['Accounts', 'Transactions', 'Payouts', 'Reserves'] },
       // Board also sees Approvals, but the Surveys index is app-access and renders outside the admin
       // shell, so its page has no tab strip to assert against.
       { label: 'Surveys', items: ['Surveys'] },
@@ -137,9 +137,9 @@ const sidebarMatrix: SidebarExpectation[] = [
       },
       { label: 'Holded', items: ['Summary', 'Accounts', 'Purchases', 'API calls'] },
       { label: 'Issues', items: ['Issues'] },
-      { label: 'Pleo', items: ['Pleo'] },
+      { label: 'Pleo', items: ['Summary', 'Entries', 'Categories'] },
       { label: 'Store', items: ['Catalog', 'Summary', 'Payments', 'Team transfers', 'Order years', 'Payment methods'] },
-      { label: 'Stripe', items: ['Stripe'] },
+      { label: 'Stripe', items: ['Accounts', 'Transactions', 'Payouts', 'Reserves'] },
       { label: 'Surveys', items: ['Surveys'] },
     ],
   },
@@ -195,7 +195,7 @@ test.describe('Admin shell — rows and tabs', () => {
 
     await expect(sidebar.locator('nav.sidebar-rows a.active')).toHaveAttribute('data-group', 'Users');
     await expect(page.locator('nav.admin-tabs a[aria-current="page"]')).toHaveText(/Humans/);
-    await expect(page.locator('.crumb')).toContainText('Users');
+    await expect(page.locator('.m-nav .section-name')).toHaveText('Users');
   });
 });
 

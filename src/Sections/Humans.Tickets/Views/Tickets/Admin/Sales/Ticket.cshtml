@@ -10,13 +10,9 @@
         && !Model.Dependents.Any(d => d.Kind == TicketHolderKind.Companion && d.State == TicketCheckoutTicketState.Valid);
 }
 
-@section Crumbs {
-    <a asp-controller="TicketsSalesAdmin" asp-action="Orders" asp-route-id="@t.TicketingSettingsId">Orders</a>
-    <a asp-controller="TicketsSalesAdmin" asp-action="Order" asp-route-id="@Model.Order.Id">@Model.Order.Reference</a>
-    <span>@t.Barcode</span>
-}
 
-<page-header title="Ticket @t.Barcode" subtitle="@t.HolderName">
+<page-header title="Ticket @t.Barcode">
+    <page-header-subtitle>@t.HolderName · <a asp-controller="TicketsSalesAdmin" asp-action="Order" asp-route-id="@Model.Order.Id">Order @Model.Order.Reference</a></page-header-subtitle>
     <page-header-badge><status-badge value="@t.State" /></page-header-badge>
     <a class="btn btn-outline-secondary btn-sm" asp-controller="TicketsSalesAdmin" asp-action="Order" asp-route-id="@Model.Order.Id">Order @Model.Order.Reference</a>
 </page-header>

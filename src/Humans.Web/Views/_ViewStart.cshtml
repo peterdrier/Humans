@@ -1,10 +1,21 @@
+@using Humans.Base.Authorization
 @using Humans.Base.ViewComponents
+@using Microsoft.AspNetCore.Authorization
 @inject IEnumerable<Humans.Base.Interfaces.ISectionAdminNav> AdminNav
+@inject IAuthorizationService Authorization
 @{
     // A page gated by an admin-shaped policy, on the dashboard or an admin nav controller, gets the
-    // admin shell; every other page gets the member layout (docs/sections/admin-shell.md).
-    Layout = AdminNavComposition.IsAdminPage(AdminNav, Context.GetEndpoint(),
-        ViewContext.RouteData.Values["controller"] as string, ViewContext.RouteData.Values["action"] as string)
-        ? "_AdminLayout"
-        : "_Layout";
+    // admin shell; so does a page members share when it is itself an admin nav item this user may
+    // open (an admin on /Issues). Every other page gets the member layout (docs/sections/admin-shell.md).
+    var controller = ViewContext.RouteData.Values["controller"] as string;
+    var action = ViewContext.RouteData.Values["action"] as string;
+    var inShell = AdminNavComposition.IsAdminPage(AdminNav, Context.GetEndpoint(), controller, action);
+    if (!inShell
+        && AdminNavComposition.Locate(AdminNavComposition.Compose(AdminNav), controller, action, parent: null, ViewContext.RouteData.Values)
+            is { IsExact: true, Item.Policy: { } policy }
+        && !string.Equals(policy, PolicyNames.AppAccess, StringComparison.Ordinal))
+    {
+        inShell = (await Authorization.AuthorizeAsync(User, policy)).Succeeded;
+    }
+    Layout = inShell ? "_AdminLayout" : "_Layout";
 }
