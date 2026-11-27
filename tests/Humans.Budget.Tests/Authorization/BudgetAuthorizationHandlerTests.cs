@@ -40,7 +40,7 @@ public sealed class BudgetAuthorizationHandlerTests
     [InlineData(true, true, true)]
     [InlineData(true, false, true)]
     [InlineData(false, false, true)]
-    public async Task MembershipAccess_UsesResolvedAccountAndDeniesMissingAccounts(
+    public async Task MembershipAccess_MissingAccount_IsDenied(
         bool accountExists, bool survivorAuthorized, bool viewing)
     {
         var cookieId = survivorAuthorized ? Guid.NewGuid() : UserId;
@@ -121,7 +121,7 @@ public sealed class BudgetAuthorizationHandlerTests
 
     [HumansTheory]
     [MemberData(nameof(BudgetAuthorizationCases))]
-    public async Task Budget_edit_authorization_matches_expected_scenarios(
+    public async Task BudgetEdit_Scenarios_MatchExpected(
         string userKind,
         string teamKind,
         bool isRestricted,

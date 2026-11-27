@@ -151,6 +151,17 @@ internal sealed class Repository(IDbContextFactory<HoldedDbContext> factory)
         return await ctx.HoldedApiCalls.AsNoTracking().ToListAsync(ct);
     }
 
+    public async Task<int> DeleteApiCallsBeforeAsync(Instant cutoff, CancellationToken ct = default)
+    {
+        await using var ctx = await factory.CreateDbContextAsync(ct);
+        var rows = await ctx.HoldedApiCalls.Where(c => c.CalledAt < cutoff).ToListAsync(ct);
+        if (rows.Count == 0) return 0;
+
+        ctx.HoldedApiCalls.RemoveRange(rows);
+        await ctx.SaveChangesAsync(ct);
+        return rows.Count;
+    }
+
     public async Task SetPurchaseDocNotesAsync(
         IReadOnlyDictionary<string, string> notesById, CancellationToken ct = default)
     {

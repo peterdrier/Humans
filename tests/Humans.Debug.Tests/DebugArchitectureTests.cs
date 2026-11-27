@@ -17,7 +17,7 @@ namespace Humans.Debug.Tests;
 public class DebugArchitectureTests
 {
     [HumansFact]
-    public void AdminSurfacesAreBoardReadable_AndEveryWriteIsAdminOnly_ExceptTheDeliberateAnonymousOnes()
+    public void Writes_AreAdminOnly()
     {
         // Discovered from the assembly, not listed: a controller added later enters this
         // assertion by existing, which is the only way the invariant survives new surfaces.
@@ -62,7 +62,7 @@ public class DebugArchitectureTests
     }
 
     [HumansFact]
-    public void OnlyLocalizerBoundIsSharedResource()
+    public void Localizers_BindOnlySharedResource()
     {
         // Debug carries no resource set: every string is English developer copy, and the one
         // localizer it touches is the shared set read as data by /Debug/Translations.

@@ -30,7 +30,7 @@ public sealed class RepositoryTests : IDisposable
     [HumansTheory]
     [Xunit.InlineData(nameof(EventSettings.EarlyEntryCapacity))]
     [Xunit.InlineData(nameof(EventSettings.BarriosEarlyEntryAllocation))]
-    public void EventDictionaryComparer_EqualMapsHaveEqualHashesRegardlessOfInsertionOrder(string propertyName)
+    public void EventDictionaryComparer_EqualMaps_HaveEqualHashes(string propertyName)
     {
         var comparer = _seedContext.Model.FindEntityType(typeof(EventSettings))!
             .FindProperty(propertyName)!.GetValueComparer();
@@ -173,7 +173,7 @@ public sealed class RepositoryTests : IDisposable
     }
 
     [HumansFact]
-    public async Task AnyOtherActiveEventSettingsAsync_IgnoresInactiveAndDeletedRows()
+    public async Task AnyOtherActiveEventSettingsAsync_InactiveOrDeletedRows_Ignored()
     {
         _seedContext.EventSettings.Add(MakeEvent(Guid.NewGuid(), EventSettingsStatus.Inactive));
         _seedContext.EventSettings.Add(MakeEvent(Guid.NewGuid(), EventSettingsStatus.Deleted));
@@ -186,7 +186,7 @@ public sealed class RepositoryTests : IDisposable
     }
 
     [HumansFact]
-    public async Task UpsertEventSettingsAsync_UpdatesEarlyEntryStartOffsetOnAnExistingRow()
+    public async Task UpsertEventSettingsAsync_ExistingRow_UpdatesEarlyEntryOffset()
     {
         var id = Guid.NewGuid();
         _seedContext.EventSettings.Add(MakeEvent(id, EventSettingsStatus.Active));
@@ -207,7 +207,7 @@ public sealed class RepositoryTests : IDisposable
     }
 
     [HumansFact]
-    public async Task UpsertEventSettingsAsync_UpdatesIsOffSeasonOnAnExistingRow()
+    public async Task UpsertEventSettingsAsync_ExistingRow_UpdatesIsOffSeason()
     {
         var id = Guid.NewGuid();
         _seedContext.EventSettings.Add(MakeEvent(id, EventSettingsStatus.Active));
@@ -225,7 +225,7 @@ public sealed class RepositoryTests : IDisposable
     }
 
     [HumansFact]
-    public async Task SetActiveEventSettingsAsync_SwapsTheActiveRowInOneSave()
+    public async Task SetActiveEventSettingsAsync_NewRow_SwapsInOneSave()
     {
         var ct = Xunit.TestContext.Current.CancellationToken;
         var oldId = Guid.NewGuid();

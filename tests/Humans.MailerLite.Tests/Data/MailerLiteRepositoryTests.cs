@@ -40,7 +40,7 @@ public sealed class MailerLiteRepositoryTests
     }
 
     [HumansFact]
-    public async Task Upsert_KeepsTheRowId_AndOverwritesTheValues()
+    public async Task Upsert_ExistingRow_KeepsRowId()
     {
         var ct = Xunit.TestContext.Current.CancellationToken;
         var first = await _repo.UpsertSyncStateAsync(

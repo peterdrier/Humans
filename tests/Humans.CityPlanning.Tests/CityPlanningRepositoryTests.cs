@@ -17,7 +17,7 @@ public sealed class CityPlanningRepositoryTests : CityPlanningTestBase
     }
 
     [HumansFact]
-    public async Task SavePolygonAndAppendHistoryAsync_SecondCall_UpdatesPolygonAppendsHistory()
+    public async Task SavePolygonAndAppendHistoryAsync_SecondCall_AppendsHistory()
     {
         var campSeasonId = Guid.NewGuid();
         var userId = Guid.NewGuid();
@@ -78,7 +78,7 @@ public sealed class CityPlanningRepositoryTests : CityPlanningTestBase
     }
 
     [HumansFact(Timeout = 10000)]
-    public async Task GetHistoryForCampSeasonAsync_ReturnsAllEntriesForCampSeason()
+    public async Task GetHistoryForCampSeasonAsync_CampSeason_ReturnsAllEntries()
     {
         // Ordering is the controller's job, so the repository guarantees membership only.
         var campSeasonId = Guid.NewGuid();
@@ -113,7 +113,7 @@ public sealed class CityPlanningRepositoryTests : CityPlanningTestBase
     }
 
     [HumansFact]
-    public async Task DeletePolygonsForCampSeasonsAsync_RemovesPolygonAndHistory_ForNamedSeasonsOnly()
+    public async Task DeletePolygonsForCampSeasonsAsync_NamedSeasons_RemovesOnlyThose()
     {
         var deleted = Guid.NewGuid();
         var kept = Guid.NewGuid();
@@ -195,7 +195,7 @@ public sealed class CityPlanningRepositoryTests : CityPlanningTestBase
     }
 
     [HumansFact]
-    public async Task MutateSettingsAsync_AppliesChange_AndSetsUpdatedAt()
+    public async Task MutateSettingsAsync_Change_SetsUpdatedAt()
     {
         CityPlanningDb.CityPlanningSettings.Add(new CityPlanningSettings
         {
@@ -220,5 +220,20 @@ public sealed class CityPlanningRepositoryTests : CityPlanningTestBase
         result.PlacementOverride.Should().BeTrue();
         result.OpenedAt.Should().Be(now);
         result.UpdatedAt.Should().Be(now);
+    }
+
+    [HumansFact]
+    public async Task DeleteHistoryBeforeAsync_KeepsCurrentPolygon()
+    {
+        var ct = Xunit.TestContext.Current.CancellationToken;
+        var campSeasonId = Guid.NewGuid();
+        var oldSave = Clock.GetCurrentInstant();
+        await _repo.SavePolygonAsync(campSeasonId, """{"v":1}""", 100.0, Guid.NewGuid(), "Saved", oldSave, ct);
+
+        var removed = await _repo.DeleteHistoryBeforeAsync(oldSave.Plus(Duration.FromDays(1)), ct);
+
+        removed.Should().Be(1);
+        (await CityPlanningDb.CampPolygonHistories.AsNoTracking().CountAsync(ct)).Should().Be(0);
+        (await CityPlanningDb.CampPolygons.AsNoTracking().SingleAsync(ct)).CampSeasonId.Should().Be(campSeasonId);
     }
 }

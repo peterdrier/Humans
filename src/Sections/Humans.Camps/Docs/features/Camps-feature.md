@@ -271,9 +271,7 @@ CampSeason
 ### CampSettings (singleton)
 ```
 CampSettings
-├── Id: Guid
-├── PublicYear: int [dead column (nobodies-collective#1632); year now resolves from Settings' active event]
-└── EeStartDate: LocalDate? [dead column (nobodies-collective#1633); replaced by EventSettings.EarlyEntryStartOffset]
+└── Id: Guid
 ```
 
 ### CampEventSettings

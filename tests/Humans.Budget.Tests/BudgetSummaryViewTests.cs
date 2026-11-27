@@ -28,7 +28,7 @@ public class BudgetSummaryViewTests
 {
     [HumansTheory]
     [Xunit.MemberData(nameof(SupportedCultures.All), MemberType = typeof(SupportedCultures))]
-    public async Task BreakdownPercentages_UseUiCultureAndKeepChartNumbersInvariant(string language)
+    public async Task BreakdownPercentages_UiCulture_FormatsText(string language)
     {
         using var inputCulture = new CultureScope("en");
         CultureInfo.CurrentUICulture = CultureInfo.GetCultureInfo(language);
@@ -52,7 +52,7 @@ public class BudgetSummaryViewTests
 
     [HumansTheory]
     [Xunit.MemberData(nameof(SupportedCultures.All), MemberType = typeof(SupportedCultures))]
-    public async Task CategoryUtilization_UsesUiCultureAndKeepsProgressWidthNumeric(string language)
+    public async Task CategoryUtilization_UiCulture_FormatsText(string language)
     {
         using var inputCulture = new CultureScope("en");
         CultureInfo.CurrentUICulture = CultureInfo.GetCultureInfo(language);

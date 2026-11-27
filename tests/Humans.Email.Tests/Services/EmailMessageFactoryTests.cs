@@ -47,7 +47,7 @@ public sealed class EmailMessageFactoryTests
     [HumansTheory]
     [InlineData(true)]
     [InlineData(false)]
-    public void FacilitatedMessage_WithReplyTo_RoutesRepliesThereWhateverTheContactChoice(bool includeContactInfo)
+    public void FacilitatedMessage_WithReplyTo_RoutesRepliesThere(bool includeContactInfo)
     {
         var msg = _factory.FacilitatedMessage(
             Guid.NewGuid(), "rcpt@x.com", "Rcpt", "Sender", "Hi", includeContactInfo, senderEmail: "sender@x.com", "en",
@@ -57,7 +57,7 @@ public sealed class EmailMessageFactoryTests
     }
 
     [HumansFact]
-    public void FacilitatedMessage_renders_markdown_instead_of_html_encoded_plain_text()
+    public void FacilitatedMessage_MarkdownBody_RendersAsHtml()
     {
         var msg = _factory.FacilitatedMessage(
             Guid.NewGuid(), "rcpt@x.com", "Recipient", "Sender",

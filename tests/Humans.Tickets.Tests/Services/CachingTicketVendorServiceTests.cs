@@ -210,14 +210,4 @@ public sealed class CachingTicketVendorServiceTests
         await _inner.Received(1).IssueTicketAsync(request, Arg.Any<CancellationToken>());
     }
 
-    [HumansFact]
-    public async Task CreateCheckInAsync_ForwardsToInner()
-    {
-        var occurredAt = Instant.FromUtc(2026, 7, 8, 12, 0);
-        _inner.CreateCheckInAsync("tkt_1", occurredAt, Arg.Any<CancellationToken>()).Returns(Task.CompletedTask);
-
-        await _decorator.CreateCheckInAsync("tkt_1", occurredAt, Xunit.TestContext.Current.CancellationToken);
-
-        await _inner.Received(1).CreateCheckInAsync("tkt_1", occurredAt, Arg.Any<CancellationToken>());
-    }
 }

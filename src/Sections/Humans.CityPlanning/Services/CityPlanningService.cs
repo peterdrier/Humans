@@ -1,3 +1,4 @@
+using Humans.Base.Interfaces;
 using Humans.CityPlanning.Contracts;
 using Humans.AuditLog.Contracts;
 using Humans.Base.Extensions;
@@ -25,9 +26,14 @@ internal sealed class CityPlanningService(
     IUserService userService,
     IAuditLogService auditLog,
     ISettingsService settingsService,
-    IContainerService containerService) : ICityPlanningService, ICampDeletionListener
+    IContainerService containerService) : ICityPlanningService, ICampDeletionListener, IRetentionPeriodContributor
 {
     private const long MaxGeoJsonUploadBytes = 10 * 1024 * 1024;
+
+    public string Label => "camp polygon history entries";
+
+    public Task<int> DeleteOlderThanAsync(Instant cutoff, CancellationToken ct = default) =>
+        repo.DeleteHistoryBeforeAsync(cutoff, ct);
 
     private int RequireCurrentYear() =>
         GetCurrentYear()

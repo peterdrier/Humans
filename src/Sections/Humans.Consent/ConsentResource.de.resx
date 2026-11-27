@@ -377,4 +377,10 @@
   <data name="Consent_Meter_OnboardingProfilesPending" xml:space="preserve"><value>Ausstehende Anmeldeprofile</value></data>
   <data name="Consent_Meter_AudienceConsentAdmin" xml:space="preserve"><value>Einwilligungs-Admins</value></data>
   <data name="Consent_Meter_AudienceBoard" xml:space="preserve"><value>den Vorstand</value></data>
+  <data name="Consent_Dashboard_AgreementSingular" xml:space="preserve">
+    <value>Vereinbarung zu prüfen</value>
+  </data>
+  <data name="Consent_Dashboard_AgreementPlural" xml:space="preserve">
+    <value>Vereinbarungen zu prüfen</value>
+  </data>
 </root>

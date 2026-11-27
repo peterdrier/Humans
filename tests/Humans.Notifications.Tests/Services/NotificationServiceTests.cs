@@ -144,7 +144,7 @@ public class NotificationServiceTests : IDisposable
     }
 
     [HumansFact]
-    public async Task SendToRoleAsync_LongCopyFitsStorageAndKeepsOneSharedNotice()
+    public async Task SendToRoleAsync_LongCopy_FitsStorage()
     {
         var holders = new[] { Guid.NewGuid(), Guid.NewGuid() };
         _systemRoleService.GetActiveUserIdsInRoleAsync("Board", Arg.Any<CancellationToken>())

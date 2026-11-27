@@ -70,13 +70,12 @@ Name history for tracking renames.
 ### CampSettings
 
 Singleton settings; registration uses `CampEventSettings`. Per-season name-lock fields `NameLockDate` and `NameLockedAt`
-live on `CampSeason`. `PublicYear` and `EeStartDate` columns are **dead**
-(nobodies-collective#1632, #1633): no longer read or written, kept mapped only so the EF model
-matches the database until a Peter-approved follow-up drops them. The public year resolves
+live on `CampSeason`. The legacy `OpenSeasons`, `PublicYear` and `EeStartDate` columns are dropped. The public year resolves
 from `ISettingsService.GetActiveEventSettings().Year`, falling back to the clock's current
 year when no event is active; the EE start date resolves from
 `EventSettings.EarlyEntryStartOffset` (`GateOpeningDate.PlusDays(offset)`), both surfaced via
-`CampSettingsInfo` (a DTO, not the entity).
+`CampSettingsInfo` (a DTO, not the entity). The old `PublicYear` and `EeStartDate` columns were
+dropped in peterdrier/Humans#1761.
 
 **Table:** `camp_settings`
 
@@ -357,7 +356,7 @@ The admin summary projection supplies total reported members, joined members, gr
 - `CampContactService` has no owned DB tables and does not inject `HumansDbContext`; it retains its `IMemoryCache` rate-limit usage since that's a request-acceleration cache, not canonical domain data. Its member contact form requires a nonblank message of at most 2000 characters and an explicit contact-sharing choice, using shared annotation translations in all supported cultures. Missing or malformed choices log a Warning and redisplay validation errors before delivery or rate-limit reservation. Explicit true/false choices and the checked GET default are preserved.
 - `CampService` owns export shaping and keys, the erasure declaration and footprint deletion, and merge membership reassignment with source/target Barrio Leads reconciliation. Export shape, canonical-user resolution, erasure scope, merge idempotence/order and cancellation are unchanged. Cache invalidation remains in `CachingCampService`.
 - `CampRoleService` owns role-definition and assignment lookups, panel and directory summaries, compliance and drill-down projections, and expected Google group memberships. Event scoping, active-member filters, lead fallback, assignment chronology and cancellation are unchanged.
-- `CampRoleService` lives in `Humans.Camps.Services.CampRoleService` and goes through `ICampRepository` (`Humans.Camps.Data`) for all data access. The role-heavy methods are grouped in `CampRepository.Roles.cs`; `CampRepository` owns `camp_role_definitions` and `camp_role_assignments` alongside the rest of the Camps tables. Display-name stitching for `AssignedByUserId` routes through `IUserService.GetUserInfosAsync`. Plain pass-through (no caching decorator); add `IMemoryCache` later if list-of-definitions reads dominate.
+- `CampRoleService` lives in `Humans.Camps.Services.CampRoleService` and goes through `ICampRepository` (`Humans.Camps.Data`) for all data access. The role-heavy methods are grouped in `CampRepository.cs`; `CampRepository` owns `camp_role_definitions` and `camp_role_assignments` alongside the rest of the Camps tables. Display-name stitching for `AssignedByUserId` routes through `IUserService.GetUserInfosAsync`. Plain pass-through (no caching decorator); add `IMemoryCache` later if list-of-definitions reads dominate.
 - **Architecture test** — `tests/Humans.Camps.Tests/Architecture/CampsArchitectureTests.cs`.
 - `MyCampsViewComponent` stays public for Razor discovery from Users; its three models are internal to Camps. `CampOperationRequirement` is internal: external camp controllers inherit the existing public `HumansCampControllerBase`, whose methods retain the authorization checks. Membership rendering, cancellation and authorization behavior are unchanged.
 

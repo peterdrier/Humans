@@ -103,36 +103,9 @@ namespace Humans.Gate.Data.Migrations
                     b.Property<Instant>("GeneralEntryOpensAt")
                         .HasColumnType("timestamp with time zone");
 
-                    b.Property<int>("MinorAgeThresholdYears")
-                        .HasColumnType("integer");
-
                     b.HasKey("Id");
 
                     b.ToTable("gate_settings", (string)null);
-                });
-
-            modelBuilder.Entity("Humans.Gate.Domain.GateStaffPin", b =>
-                {
-                    b.Property<Guid>("UserId")
-                        .HasColumnType("uuid");
-
-                    b.Property<bool>("AdminEnrolled")
-                        .HasColumnType("boolean");
-
-                    b.Property<Instant>("CreatedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<string>("PinHash")
-                        .IsRequired()
-                        .HasMaxLength(256)
-                        .HasColumnType("character varying(256)");
-
-                    b.Property<Instant>("UpdatedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.HasKey("UserId");
-
-                    b.ToTable("gate_staff_pins", (string)null);
                 });
 #pragma warning restore 612, 618
         }

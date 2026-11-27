@@ -68,7 +68,7 @@ public sealed class GdprCoverageTests : GrantsTestHarness
     }
 
     [HumansFact]
-    public async Task EveryPersonalColumn_ReachesTheExport_AndActorsTheRetentionText()
+    public async Task PersonalColumns_Export_CoversEach()
     {
         var person = SeedUser("Person");
         var program = await SeedProgramAsync(expiresOn: Today.PlusDays(30), managers: person);

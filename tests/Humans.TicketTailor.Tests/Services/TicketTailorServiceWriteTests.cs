@@ -47,7 +47,7 @@ public class TicketTailorServiceWriteTests
     }
 
     [HumansFact]
-    public async Task VoidIssuedTicketAsync_VoidToHold_True_PostsCorrectFormBody()
+    public async Task VoidIssuedTicketAsync_VoidToHoldTrue_PostsTrue()
     {
         var handler = new RecordingHttpHandler();
         handler.EnqueueResponse(HttpStatusCode.OK, new
@@ -66,7 +66,7 @@ public class TicketTailorServiceWriteTests
     }
 
     [HumansFact]
-    public async Task VoidIssuedTicketAsync_VoidToHold_False_PostsFalseBody()
+    public async Task VoidIssuedTicketAsync_VoidToHoldFalse_PostsFalse()
     {
         var handler = new RecordingHttpHandler();
         handler.EnqueueResponse(HttpStatusCode.OK, new
@@ -83,7 +83,7 @@ public class TicketTailorServiceWriteTests
     }
 
     [HumansFact]
-    public async Task VoidIssuedTicketAsync_ResponseWithNoHoldId_ReturnsNullHoldId()
+    public async Task VoidIssuedTicketAsync_NoHoldIdInResponse_ReturnsNull()
     {
         var handler = new RecordingHttpHandler();
         handler.EnqueueResponse(HttpStatusCode.OK, new
@@ -151,7 +151,7 @@ public class TicketTailorServiceWriteTests
     }
 
     [HumansFact]
-    public async Task IssueTicketAsync_NeitherHoldNorEventAndType_ThrowsArgumentExceptionBeforeAnyCall()
+    public async Task IssueTicketAsync_NoHoldOrEventType_Throws()
     {
         var handler = new RecordingHttpHandler();
         var service = TicketTailorTestHost.CreateService(handler);
@@ -205,7 +205,7 @@ public class TicketTailorServiceWriteTests
     }
 
     [HumansFact]
-    public async Task IssueTicketAsync_WithEventAndType_PostsEventAndTypeFormKeys()
+    public async Task IssueTicketAsync_EventWithType_PostsBothKeys()
     {
         var handler = new RecordingHttpHandler();
         handler.EnqueueResponse(HttpStatusCode.OK, new
@@ -238,7 +238,7 @@ public class TicketTailorServiceWriteTests
     }
 
     [HumansFact]
-    public async Task IssueTicketAsync_SetsFullNameAndSendEmailInBody()
+    public async Task IssueTicketAsync_PostsFullName()
     {
         var handler = new RecordingHttpHandler();
         handler.EnqueueResponse(HttpStatusCode.OK, new
@@ -427,36 +427,6 @@ public class TicketTailorServiceWriteTests
         var ex = await act.Should().ThrowAsync<TicketVendorWriteException>();
         ex.Which.Kind.Should().Be(TicketVendorFailureKind.Transient);
         handler.Requests.Should().ContainSingle();
-    }
-
-    [HumansFact]
-    public async Task CreateCheckInAsync_PostsFormEncodedRequiredFields()
-    {
-        var handler = new RecordingHttpHandler();
-        handler.EnqueueResponse(HttpStatusCode.OK, new { id = "ci_1" });
-
-        var service = TicketTailorTestHost.CreateService(handler);
-        await service.CreateCheckInAsync("tt_1", Instant.FromUnixTimeSeconds(1751983320L), TestContext.Current.CancellationToken);
-
-        var (request, body) = handler.Requests.Single();
-        request.RequestUri!.ToString().Should().EndWith("/check_ins");
-        request.Content!.Headers.ContentType!.MediaType.Should().Be("application/x-www-form-urlencoded");
-        body.Should().Contain("issued_ticket_id=tt_1").And.Contain("quantity=1").And.Contain("check_in_at=1751983320");
-    }
-
-    [HumansTheory]
-    [InlineData(HttpStatusCode.Forbidden)]
-    [InlineData(HttpStatusCode.ServiceUnavailable)]
-    public async Task CreateCheckInAsync_ThrowsRawHttpRequestExceptionOnFailure(HttpStatusCode status)
-    {
-        var handler = new RecordingHttpHandler();
-        handler.EnqueueResponse(status, new { error = "check-in failed" });
-
-        var service = TicketTailorTestHost.CreateService(handler);
-        var act = () => service.CreateCheckInAsync("tt_1", Instant.FromUnixTimeSeconds(1751983320L), TestContext.Current.CancellationToken);
-
-        await act.Should().ThrowAsync<HttpRequestException>();
-        handler.RequestCount.Should().Be(1);
     }
 
     [HumansTheory]

@@ -133,8 +133,6 @@
   <data name="Governance_BoardVoting_AdditionalInfo" xml:space="preserve"><value>Additional Information</value></data>
   <data name="Governance_BoardVoting_NoVotes" xml:space="preserve"><value>Cannot finalize: at least one board vote is required.</value></data>
   <data name="Governance_BoardVoting_MeetingDateRequired" xml:space="preserve"><value>Cannot finalize: a board meeting date is required.</value></data>
-  <data name="Governance_Dashboard_AgreementSingular" xml:space="preserve"><value>agreement to review</value></data>
-  <data name="Governance_Dashboard_AgreementPlural" xml:space="preserve"><value>agreements to review</value></data>
   <data name="Governance_Dashboard_GovernanceCardDescription" xml:space="preserve"><value>Assemblies, elections, and the serious stuff.</value></data>
   <data name="Governance_Dashboard_AssemblyVotesCardDescription" xml:space="preserve"><value>See the association’s open votes and cast your ballot.</value></data>
   <data name="Governance_Votes_Title" xml:space="preserve"><value>Votes</value></data>

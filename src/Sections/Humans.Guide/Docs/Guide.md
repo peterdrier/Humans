@@ -83,7 +83,7 @@ Unknown stems return 404 (`NotFound.cshtml`). GitHub unavailability on cold cach
 
 - Non-Admin users **cannot** trigger `POST /Guide/Refresh`.
 - Anonymous users **cannot** see Coordinator-scoped or Board/Admin-scoped blocks.
-- A domain admin **cannot** see a Board/Admin block whose parenthetical does not name their role. Coordinator blocks are the exception: reaching any Board/Admin block on a page opens every Coordinator block on that page, by the within-file superset rule above (pinned by `GuideFilterTests.Apply_TeamsAdmin_SeesCoordinatorAndBoardOnTeamsFile`).
+- A domain admin **cannot** see a Board/Admin block whose parenthetical does not name their role. Coordinator blocks are the exception: reaching any Board/Admin block on a page opens every Coordinator block on that page, by the within-file superset rule above (pinned by `GuideFilterTests.Apply_TeamsAdminOnTeamsFile_SeesBoardBlock`).
 - A camp lead **cannot** see Coordinator blocks that do not name `Camp Lead` — leading a camp is not a general coordinator grant.
 - No user **can** author or edit guide content in-app; GitHub PR is the only authoring path.
 

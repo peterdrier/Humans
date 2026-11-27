@@ -10,7 +10,7 @@ namespace Humans.MailerLite.Tests.Audiences;
 public class MailerLiteAudienceBaseTests
 {
     [HumansFact]
-    public async Task ComputeMemberUserIdsAsync_ExcludesExplicitMarketingOptOuts_KeepsNullAndOptIn()
+    public async Task ComputeMemberUserIdsAsync_MarketingOptOut_IsExcluded()
     {
         var optedIn = Guid.NewGuid();   // Marketing OptedOut false → kept
         var noPref = Guid.NewGuid();    // no Marketing preference  → kept
@@ -29,7 +29,7 @@ public class MailerLiteAudienceBaseTests
     // only this test reaches is the no-copy one — with nothing to exclude, the base hands
     // back the subclass's own set rather than rebuilding it.
     [HumansFact]
-    public async Task ComputeMemberUserIdsAsync_NoOptOuts_ReturnsTheRawSetItself()
+    public async Task ComputeMemberUserIdsAsync_NoOptOuts_ReturnsRawSet()
     {
         var a = Guid.NewGuid();
         var b = Guid.NewGuid();

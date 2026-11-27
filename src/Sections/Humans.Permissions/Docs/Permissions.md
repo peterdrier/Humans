@@ -25,7 +25,7 @@ None. Nothing is stored: every answer is worked out from Auth's system roles and
 
 | Actor | Capabilities |
 |-------|--------------|
-| Any section | Declares permissions; asks `IPermissionService` or authorizes with `PermissionRequirement`. Shifts declares and checks `Shifts.Manage` and `Shifts.Approve`; Budget declares and checks `Budget.Edit`; Expenses declares and checks `Expenses.Endorse`; Google declares and checks `Google.ManageResources`; Store declares and checks `Store.TeamOrders` |
+| Any section | Declares permissions; asks `IPermissionService` or authorizes with `PermissionRequirement`. Shifts declares and checks `Shifts.Manage` and `Shifts.Approve`; Budget declares and checks `Budget.Edit`; Expenses declares and checks `Expenses.Endorse`; Google declares and checks `Google.ManageResources`; Store declares and checks `Store.TeamOrders`; Teams declares and checks `Teams.Manage` and `Teams.EarlyEntry` |
 | Owner sections (Teams) | Register an owner kind |
 | Roles, later Tasks; Teams for now | Register a permission source |
 
@@ -67,7 +67,7 @@ None. Permissions writes nothing; audit happens where a holding changes (Roles, 
 |---|---:|---|
 | `IPermissionService` | 3 | `Permissions`, `HasAsync`, `GetOwnersAsync` |
 | `ISectionPermissions`, `IOwnerKind`, `IPermissionSource` | — | Implemented by other sections |
-| `PermissionRequirement` | — | Resource-based requirement; the resource is the `Owner` |
+| `PermissionRequirement` | — | Resource-based requirement; the resource is the `Owner`. Its handler resolves the cookie id to the surviving account first, so a merged-away id still works and a missing account is denied |
 
 - No caching decorator: each check reads the sources' and Auth's caches.
 - Tests: `tests/Humans.Permissions.Tests/PermissionServiceTests.cs` (the rules, table-driven).

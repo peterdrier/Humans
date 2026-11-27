@@ -62,7 +62,7 @@ public class CommunicationPreferencesControllerTests
         new User { Id = _userId, DisplayName = "Human", PreferredLanguage = "en" }, [], [], profile: null);
 
     [HumansFact]
-    public void Routes_AreEmailUrls_AndRequireSignIn()
+    public void Routes_EmailUrls_RequireSignIn()
     {
         var type = typeof(CommunicationPreferencesController);
         type.GetCustomAttribute<AuthorizeAttribute>(inherit: false).Should().NotBeNull();

@@ -128,7 +128,7 @@ public class OnboardingWidgetControllerShiftsTests
     [HumansTheory]
     [InlineData(null)]
     [InlineData("localized early-entry capacity warning")]
-    public async Task SignUp_Post_CallsService_AndRedirectsToConsents(string? warning)
+    public async Task SignUpPost_Success_RedirectsToConsents(string? warning)
     {
         var userId = Guid.NewGuid();
         var shiftId = Guid.NewGuid();
@@ -145,7 +145,7 @@ public class OnboardingWidgetControllerShiftsTests
     }
 
     [HumansFact]
-    public async Task SignUp_Post_OnFailure_RedirectsToShifts_WithTempDataError()
+    public async Task SignUpPost_Failure_RedirectsToShifts()
     {
         var userId = Guid.NewGuid();
         var shiftId = Guid.NewGuid();
@@ -231,7 +231,7 @@ public class OnboardingWidgetControllerShiftsTests
     }
 
     [HumansFact]
-    public void Skip_Post_SetsSessionFlag_AndRedirectsToConsents()
+    public void SkipPost_SetsSessionFlag()
     {
         var userId = Guid.NewGuid();
         var ctrl = BuildSut(userId);

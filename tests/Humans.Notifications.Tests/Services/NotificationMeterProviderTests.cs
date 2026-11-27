@@ -38,7 +38,7 @@ public class NotificationMeterProviderTests
     }
 
     [HumansFact]
-    public async Task GetMetersForUserAsync_AsksContributorsForTheResolvedAccountOverTheClaim()
+    public async Task GetMetersForUserAsync_MergedAccount_UsesResolvedId()
     {
         var survivorId = Guid.NewGuid();
         var principal = CreatePrincipalWithId(Guid.NewGuid());
@@ -50,7 +50,7 @@ public class NotificationMeterProviderTests
     }
 
     [HumansFact]
-    public async Task GetMetersForUserAsync_WithoutAViewerId_AsksNoContributor()
+    public async Task GetMetersForUserAsync_NoViewerId_AsksNoContributor()
     {
         var meters = await _provider.GetMetersForUserAsync(
             new ClaimsPrincipal(new ClaimsIdentity()), TestContext.Current.CancellationToken);
@@ -62,7 +62,7 @@ public class NotificationMeterProviderTests
     [HumansTheory]
     [InlineData(false)]
     [InlineData(true)]
-    public async Task GetMetersForUserAsync_IsolatesContributorFailureButPropagatesCallerCancellation(bool callerCancelled)
+    public async Task GetMetersForUserAsync_ContributorFails_OthersStillReport(bool callerCancelled)
     {
         var viewerId = Guid.NewGuid();
         var principal = CreatePrincipalWithId(viewerId);

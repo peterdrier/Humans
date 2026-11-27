@@ -8,7 +8,7 @@ namespace Humans.Grants.Tests.Controllers;
 public sealed class SectionNavTests
 {
     [HumansFact]
-    public void AdminSidebar_PointsAtTheIndex_GatedByTheProgramPagesPolicy()
+    public void AdminSidebar_Link_PointsAtIndex()
     {
         ISectionAdminNav navigation = new Section();
         var item = navigation.Groups().SelectMany(g => g.Items).Single();

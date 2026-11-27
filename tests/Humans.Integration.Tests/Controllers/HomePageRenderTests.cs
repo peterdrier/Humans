@@ -12,10 +12,10 @@ namespace Humans.Integration.Tests.Controllers;
 /// </remarks>
 public class HomePageRenderTests(HumansTestDatabase database) : IntegrationTestBase(database)
 {
-    /// <summary>Prefixes that live in Shifts' and Governance's own sets, not <c>SharedResource</c>.</summary>
+    /// <summary>Prefixes that live in Shifts', Consent's and Governance's own sets, not <c>SharedResource</c>.</summary>
     private static readonly string[] CarvedPrefixes =
         ["GetInvolved_", "Shifts_Dashboard_SlotsSingular", "Shifts_Dashboard_SlotsPlural", "Shifts_Dashboard_GetInvolved",
-         "Governance_Dashboard_AgreementSingular", "Governance_Dashboard_AgreementPlural", "Governance_Dashboard_GovernanceCardDescription"];
+         "Consent_Dashboard_AgreementSingular", "Consent_Dashboard_AgreementPlural", "Governance_Dashboard_GovernanceCardDescription"];
 
     private static void AssertRenderedCleanly(string html, string what)
     {

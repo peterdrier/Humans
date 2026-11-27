@@ -30,7 +30,7 @@ public class GuideControllerTests
     };
 
     [HumansFact]
-    public async Task Document_LocalizesNavigationWhilePreservingContentAndRoutes()
+    public async Task Document_OtherCulture_LocalizesNavigation()
     {
         const string html = "<p>Original authored content</p>";
         _content.GetPageAsync(Arg.Any<string>(), Arg.Any<GuideRoleContext>(), Arg.Any<CancellationToken>()).Returns(html);
@@ -67,7 +67,7 @@ public class GuideControllerTests
     }
 
     [HumansFact]
-    public async Task Document_UnknownStem_Returns404AndTheNotFoundView()
+    public async Task Document_UnknownStem_Returns404()
     {
         var controller = CreateController();
 
@@ -79,7 +79,7 @@ public class GuideControllerTests
     }
 
     [HumansFact]
-    public async Task Document_ContentUnavailable_Returns503AndTheUnavailableView()
+    public async Task Document_ContentUnavailable_Returns503()
     {
         _roles.ResolveAsync(Arg.Any<System.Security.Claims.ClaimsPrincipal>(), Arg.Any<CancellationToken>())
             .Returns(GuideRoleContext.Anonymous);

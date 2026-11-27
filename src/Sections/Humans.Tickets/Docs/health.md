@@ -45,7 +45,7 @@ them.
 | Onsite and gate tooling | `/Tickets/Admin/Onsite`, `/Tickets/Admin/Gate` | One roster join, one credential rotation |
 | Contact import | `/Tickets/Admin/Contacts` | Plan/apply over unmatched attendees |
 | Event participation | `EventParticipationService`, `/Tickets/DeclareNotAttending`, `/Tickets/UndoNotAttending`, `<vc:onsite-chip>`, `/Tickets/Participation/Backfill` | One record per user and year |
-| Vendor access | `ITicketDiscountCodes`, `ITicketVendorMirror`, `ITicketVendorService` | Discount mapping stays at the boundary |
+| Vendor access | `ITicketDiscountCodes`, `ITicketVendorService` | Discount mapping stays at the boundary |
 | GDPR | `IUserDataContributor` on `TicketQueryService`, `EventParticipationService` and `TicketCheckoutService` | Export plus tombstone erasure; open offers and companion requests are withdrawn |
 | Caches | `CachingTicketQueryService`, `CachingTicketVendorService` | Two decorators, each evicting on its own writes |
 | Health | `TicketVendorHealthCheck` | Vendor reachability probe |
