@@ -42,6 +42,17 @@ public class ShiftGoogleGroupSourceTests
     }
 
     [HumansFact]
+    public async Task GetExpectedAsync_NoConfirmedSignups_ClaimsEmptyList()
+    {
+        var gate = Team("gate");
+        Arrange([gate], Row(_eventId, gate, Signup(Guid.NewGuid(), SignupStatus.Bailed)));
+
+        var lists = await Source().GetExpectedAsync(ct: Ct);
+
+        lists.Should().ContainKey($"gate-2026-shifts@{Domain}").WhoseValue.Should().BeEmpty();
+    }
+
+    [HumansFact]
     public async Task GetExpectedAsync_NoGroupPrefix_UsesSlug()
     {
         var gate = Team("gate-crew");

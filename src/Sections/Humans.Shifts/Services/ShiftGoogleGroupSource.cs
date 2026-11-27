@@ -25,13 +25,13 @@ internal sealed class ShiftGoogleGroupSource(
         var teamLookup = await teams.GetTeamsAsync(ct);
         return (await rotaRows.GetRotaRowsAsync(ct: ct))
             .Where(r => r.Rota.EventSettingsId == activeEvent.Id)
-            .SelectMany(r => r.Shifts
-                .SelectMany(s => s.Signups)
-                .Where(s => s.Status == SignupStatus.Confirmed)
-                .Select(s => (Department: ShiftStaffingAggregation.DepartmentIdOf(r.Rota.TeamId, teamLookup), s.UserId)))
-            .GroupBy(x => x.Department)
+            // Every department with a rota claims its list, even with nobody confirmed, so the last bail still removes.
+            .GroupBy(r => ShiftStaffingAggregation.DepartmentIdOf(r.Rota.TeamId, teamLookup))
             .Where(d => teamLookup.ContainsKey(d.Key))
-            .Select(d => (Key: ListEmail(teamLookup[d.Key], activeEvent.Year), UserIds: d.Select(x => x.UserId)))
+            .Select(d => (Key: ListEmail(teamLookup[d.Key], activeEvent.Year), UserIds: d
+                .SelectMany(r => r.Shifts.SelectMany(s => s.Signups))
+                .Where(s => s.Status == SignupStatus.Confirmed)
+                .Select(s => s.UserId)))
             // Two departments whose names give one address claim nothing, so neither list gets the other's people.
             .GroupBy(l => l.Key, StringComparer.OrdinalIgnoreCase)
             .Where(g => g.Count() == 1
