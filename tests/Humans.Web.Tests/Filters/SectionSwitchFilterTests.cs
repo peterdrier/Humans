@@ -53,7 +53,7 @@ public class SectionSwitchFilterTests
     }
 
     [HumansFact]
-    public async Task OtherSections_AndShellControllers_StillRun()
+    public async Task UnaffectedControllers_StillRun()
     {
         (await RunAsync(SectionController, "Cantina")).RanAction.Should().BeTrue();
         (await RunAsync(typeof(HomeController).GetTypeInfo(), "Teams")).Context.Result.Should().BeNull();
@@ -87,7 +87,7 @@ public class SectionSwitchFilterTests
 
     /// <summary>Consent can be switched off, but a member's own data export and deletion request cannot go with it.</summary>
     [HumansFact]
-    public async Task AControllerMarkedToStayOn_AnswersWhileItsSectionIsOff()
+    public async Task StaysOnController_AnswersWhileSectionIsOff()
     {
         var consent = typeof(Humans.Consent.Section).Assembly;
         var myData = consent.GetTypes().Single(t => string.Equals(t.Name, "MyDataController", StringComparison.Ordinal)).GetTypeInfo();

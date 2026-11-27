@@ -96,7 +96,7 @@ public class NotificationMeterProviderTests
     }
 
     [HumansFact]
-    public async Task GetMetersForUserAsync_SkipsASectionSwitchedOffForTheEvent()
+    public async Task GetMetersForUserAsync_SkipsSwitchedOffSections()
     {
         var viewerId = Guid.NewGuid();
         var principal = CreatePrincipalWithId(viewerId);

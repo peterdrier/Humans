@@ -37,7 +37,7 @@ public sealed class SectionLinkRenderingTests(NoDatabaseFactory factory) : IClas
     }
 
     [HumansFact]
-    public async Task ALayoutLinkIntoASwitchedOffSection_GoesWithItsListItem()
+    public async Task SwitchedOffLayoutLink_DropsItsListItem()
     {
         var before = await LoginPageAsync();
         var after = await LoginPageAsync(Consent);

@@ -32,8 +32,7 @@ internal sealed class SectionSwitches(IServiceScopeFactory scopeFactory, ILogger
         try
         {
             await using var scope = scopeFactory.CreateAsyncScope();
-            active = await scope.ServiceProvider.GetRequiredService<ISettingsService>()
-                .GetActiveEventSettingsAsync(cancellationToken);
+            active = scope.ServiceProvider.GetRequiredService<ISettingsService>().GetActiveEventSettings();
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {

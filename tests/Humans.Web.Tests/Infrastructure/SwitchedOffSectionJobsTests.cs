@@ -18,7 +18,7 @@ public sealed class SwitchedOffSectionJobsTests
     ];
 
     [HumansFact]
-    public void Changed_PausesASwitchedOffSectionsJobsAndResumesThemWhenItIsBack()
+    public void Changed_TogglesJobsWithTheirSectionsSwitch()
     {
         var none = Set();
         var off = Set(ThisSection);

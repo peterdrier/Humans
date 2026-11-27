@@ -12,7 +12,7 @@ namespace Humans.Settings.Data.Migrations
         {
             migrationBuilder.AddColumn<string>(
                 name: "SwitchedOffSections",
-                table: "settings_event",
+                table: "settings_events",
                 type: "jsonb",
                 nullable: true);
         }
@@ -22,7 +22,7 @@ namespace Humans.Settings.Data.Migrations
         {
             migrationBuilder.DropColumn(
                 name: "SwitchedOffSections",
-                table: "settings_event");
+                table: "settings_events");
         }
     }
 }

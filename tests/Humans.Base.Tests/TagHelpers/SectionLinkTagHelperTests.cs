@@ -47,7 +47,7 @@ public class SectionLinkTagHelperTests
         Endpoint("{controller}/{action=Index}/{id?}", "Home", OnController, new { controller = "Home", action = "Privacy" }));
 
     [HumansFact]
-    public void AControllerName_MapsToTheSectionItsTypeShipsIn()
+    public void ControllerName_MapsToItsAssemblySection()
     {
         Sample.SectionOfController("team").Should().Be(Off);
         Sample.SectionOfController("Profile").Should().Be(On);
@@ -139,7 +139,7 @@ public class SectionLinkTagHelperTests
     }
 
     [HumansFact]
-    public void ALinkIntoASwitchedOffSection_IsDropped_ByControllerOrByUrl()
+    public void SwitchedOffSectionLink_IsDropped_ByControllerOrUrl()
     {
         var byController = Link(View(Off), controller: "Team");
         var byUrl = Link(View(Off), href: "/Teams/kitchen");

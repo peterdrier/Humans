@@ -25,10 +25,10 @@ public sealed class SectionSwitchesTests
 
     /// <summary>Sign-in and the error pages ask too, and must render with the database down.</summary>
     [HumansFact]
-    public async Task AFailedRead_SwitchesNothingOff_AndIsNotCached()
+    public async Task FailedRead_SwitchesNothingOff()
     {
         var ct = TestContext.Current.CancellationToken;
-        _settings.GetActiveEventSettingsAsync(Arg.Any<CancellationToken>())
+        _settings.GetActiveEventSettings()
             .Returns<EventSettingsInfo?>(_ => throw new IOException("database down"), _ => Event("Cantina"));
         var sut = BuildSut();
 
@@ -38,7 +38,7 @@ public sealed class SectionSwitchesTests
 
     private static EventSettingsInfo Event(params string[] switchedOff) => new(
         Id: Guid.NewGuid(),
-        EventName: "Kiez Burn 2027",
+        EventName: "Burn 2027",
         Year: 2027,
         TimeZoneId: "Europe/Berlin",
         GateOpeningDate: new LocalDate(2027, 6, 22),
@@ -53,16 +53,16 @@ public sealed class SectionSwitchesTests
     [HumansFact]
     public async Task NoActiveEvent_SwitchesNothingOff()
     {
-        _settings.GetActiveEventSettingsAsync(Arg.Any<CancellationToken>()).Returns((EventSettingsInfo?)null);
+        _settings.GetActiveEventSettings().Returns((EventSettingsInfo?)null);
 
         (await BuildSut().GetSwitchedOffAsync(TestContext.Current.CancellationToken)).Should().BeEmpty();
     }
 
     [HumansFact]
-    public async Task TheActiveEventsList_IsReadOnceAndMatchedIgnoringCase()
+    public async Task ActiveEventsList_IsMatchedIgnoringCase()
     {
         var ct = TestContext.Current.CancellationToken;
-        _settings.GetActiveEventSettingsAsync(Arg.Any<CancellationToken>()).Returns(Event("Cantina", "Rideshare"));
+        _settings.GetActiveEventSettings().Returns(Event("Cantina", "Rideshare"));
         var sut = BuildSut();
 
         var first = await sut.GetSwitchedOffAsync(ct);
@@ -70,7 +70,7 @@ public sealed class SectionSwitchesTests
 
         first.Should().BeEquivalentTo(["Cantina", "Rideshare"]);
         first.Contains("cantina").Should().BeTrue();
-        await _settings.Received(1).GetActiveEventSettingsAsync(Arg.Any<CancellationToken>());
+        _settings.Received(1).GetActiveEventSettings();
     }
 
     /// <summary>The flush is what makes a saved form, or a different event going active, take effect.</summary>
@@ -78,7 +78,7 @@ public sealed class SectionSwitchesTests
     public async Task AnEventSettingsWrite_FlushesTheList()
     {
         var ct = TestContext.Current.CancellationToken;
-        _settings.GetActiveEventSettingsAsync(Arg.Any<CancellationToken>()).Returns(Event("Cantina"), Event());
+        _settings.GetActiveEventSettings().Returns(Event("Cantina"), Event());
         var sut = BuildSut();
         (await sut.GetSwitchedOffAsync(ct)).Should().BeEquivalentTo(["Cantina"]);
 
@@ -88,7 +88,7 @@ public sealed class SectionSwitchesTests
     }
 
     [HumansFact]
-    public void TheForm_RoundTripsTheListSortedAndDeduplicated()
+    public void Form_RoundTripsListSortedDeduplicated()
     {
         var model = EventSettingsFormMapper.ToViewModel(Event("Rideshare", "Cantina"));
         model.SwitchedOffSections.Add("Cantina");

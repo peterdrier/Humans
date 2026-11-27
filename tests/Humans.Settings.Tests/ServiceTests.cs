@@ -565,7 +565,7 @@ public sealed class ServiceTests
     }
 
     [HumansFact]
-    public async Task SaveEventSettingsAsync_RefusesASectionThatCannotBeSwitchedOff()
+    public async Task SaveEventSettingsAsync_RefusesUnswitchableSection()
     {
         _sectionCatalog.Sections.Returns([
             new Humans.Base.Interfaces.SectionInfo("Cantina", IsActive: true) { CanBeSwitchedOff = true },
@@ -583,7 +583,7 @@ public sealed class ServiceTests
     }
 
     [HumansFact]
-    public async Task SaveEventSettingsAsync_StoresSwitchedOffSectionsAndAuditsThem()
+    public async Task SaveEventSettingsAsync_AuditsSwitchedOffSections()
     {
         _sectionCatalog.Sections.Returns([
             new Humans.Base.Interfaces.SectionInfo("Cantina", IsActive: true) { CanBeSwitchedOff = true },

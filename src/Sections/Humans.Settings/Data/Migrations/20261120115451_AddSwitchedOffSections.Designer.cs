@@ -21,7 +21,7 @@ namespace Humans.Settings.Data.Migrations
         {
 #pragma warning disable 612, 618
             modelBuilder
-                .HasAnnotation("ProductVersion", "10.0.13")
+                .HasAnnotation("ProductVersion", "10.0.15")
                 .HasAnnotation("Relational:MaxIdentifierLength", 63);
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
@@ -91,7 +91,7 @@ namespace Humans.Settings.Data.Migrations
 
                     b.HasIndex("Status");
 
-                    b.ToTable("settings_event", (string)null);
+                    b.ToTable("settings_events", (string)null);
                 });
 
             modelBuilder.Entity("Humans.Settings.Domain.Setting", b =>
@@ -107,7 +107,7 @@ namespace Humans.Settings.Data.Migrations
 
                     b.HasKey("Key");
 
-                    b.ToTable("system_settings", (string)null);
+                    b.ToTable("settings_system_values", (string)null);
 
                     b.HasData(
                         new
