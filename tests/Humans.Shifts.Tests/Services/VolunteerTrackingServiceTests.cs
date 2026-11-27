@@ -46,8 +46,7 @@ public class VolunteerTrackingServiceTests
         var es = MakeEvent();
         var userId = Guid.NewGuid();
         var targetId = Guid.NewGuid();
-        var options = new DbContextOptionsBuilder<ShiftsDbContext>()
-            .UseInMemoryDatabase(Guid.NewGuid().ToString()).Options;
+        var options = TestDbOptions.InMemory<ShiftsDbContext>();
         await using (var seed = new ShiftsDbContext(options))
         {
             seed.GeneralAvailability.Add(new GeneralAvailability

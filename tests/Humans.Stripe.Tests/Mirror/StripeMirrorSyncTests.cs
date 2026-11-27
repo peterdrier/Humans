@@ -26,7 +26,7 @@ public sealed class StripeMirrorSyncTests
 
     public StripeMirrorSyncTests()
     {
-        var options = new DbContextOptionsBuilder<StripeDbContext>().UseInMemoryDatabase(Guid.NewGuid().ToString()).Options;
+        var options = TestDbOptions.InMemory<StripeDbContext>();
         _repo = new Repository(new TestDbContextFactory<StripeDbContext>(options));
         var accounts = new StripeMirrorOptions
         {

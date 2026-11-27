@@ -150,8 +150,7 @@ public sealed class ServiceTests
         var previous = MakeEntity(Guid.NewGuid());
         var next = MakeEntity(Guid.NewGuid(), isActive: false);
         next.GateOpeningDate = new LocalDate(2027, 7, 9);
-        var options = new DbContextOptionsBuilder<SettingsDbContext>()
-            .UseInMemoryDatabase(Guid.NewGuid().ToString()).Options;
+        var options = TestDbOptions.InMemory<SettingsDbContext>();
         await using (var seed = new SettingsDbContext(options))
         {
             seed.EventSettings.AddRange(previous, next);

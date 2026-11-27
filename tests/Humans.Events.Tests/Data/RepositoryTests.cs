@@ -17,9 +17,7 @@ public sealed class EventRepositoryTests : IDisposable
 
     public EventRepositoryTests()
     {
-        var options = new DbContextOptionsBuilder<EventGuideDbContext>()
-            .UseInMemoryDatabase(Guid.NewGuid().ToString())
-            .Options;
+        var options = TestDbOptions.InMemory<EventGuideDbContext>();
 
         _db = new EventGuideDbContext(options);
         _repo = new EventRepository(new TestDbContextFactory<EventGuideDbContext>(options));

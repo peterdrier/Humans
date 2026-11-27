@@ -66,10 +66,7 @@ public class GateServiceTests
     // Owned rather than the shared UsersDbContext-based harness, which would grant this project
     // InternalsVisibleTo on it. Field initialisers run in declaration order; each test gets its own store.
     private readonly DbContextOptions<GateDbContext> _dbOptions =
-        new DbContextOptionsBuilder<GateDbContext>()
-            .UseInMemoryDatabase(Guid.NewGuid().ToString())
-            .ConfigureWarnings(w => w.Ignore(InMemoryEventId.TransactionIgnoredWarning))
-            .Options;
+        TestDbOptions.InMemory<GateDbContext>();
 
     private readonly FakeClock _clock = new(Instant.FromUtc(2026, 3, 1, 12, 0));
     private readonly GateDbContext _gateDb;

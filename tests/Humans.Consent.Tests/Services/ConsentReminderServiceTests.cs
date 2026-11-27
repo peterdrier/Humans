@@ -22,7 +22,7 @@ public sealed class ConsentReminderServiceTests : IDisposable
     public ConsentReminderServiceTests()
     {
         var factory = new TestDbContextFactory<LegalDbContext>(
-            new DbContextOptionsBuilder<LegalDbContext>().UseInMemoryDatabase(Guid.NewGuid().ToString()).Options);
+            TestDbOptions.InMemory<LegalDbContext>());
         _db = factory.CreateDbContext();
         _sut = new ConsentReminderService(new ConsentReminderRepository(factory), _users);
     }

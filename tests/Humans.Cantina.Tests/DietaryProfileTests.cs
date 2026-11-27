@@ -28,19 +28,13 @@ public class DietaryProfileTests
 
     public DietaryProfileTests()
     {
-        var options = new DbContextOptionsBuilder<CantinaDbContext>()
-            .UseInMemoryDatabase($"cantina-diet-{Guid.NewGuid():N}")
-            .Options;
-        _repo = new DietaryProfileRepository(new Factory(options));
+        var options = TestDbOptions.InMemory<CantinaDbContext>();
+        _repo = new DietaryProfileRepository(new TestDbContextFactory<CantinaDbContext>(options));
         _sut = new DietaryProfileService(_repo, _users, new FakeClock(Now));
         _users.GetUserInfosAsync(Arg.Any<IEnumerable<Guid>>(), Arg.Any<CancellationToken>())
             .Returns(new ValueTask<IReadOnlyDictionary<Guid, UserInfo>>(new Dictionary<Guid, UserInfo>()));
     }
 
-    private sealed class Factory(DbContextOptions<CantinaDbContext> options) : IDbContextFactory<CantinaDbContext>
-    {
-        public CantinaDbContext CreateDbContext() => new(options);
-    }
 
     private static CancellationToken Ct => Xunit.TestContext.Current.CancellationToken;
 

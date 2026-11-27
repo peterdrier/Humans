@@ -29,9 +29,7 @@ public sealed class HoldedLedgerSyncTests
 
     public HoldedLedgerSyncTests()
     {
-        var options = new DbContextOptionsBuilder<HoldedDbContext>()
-            .UseInMemoryDatabase(Guid.NewGuid().ToString())
-            .Options;
+        var options = TestDbOptions.InMemory<HoldedDbContext>();
         _repo = new Repository(new TestDbContextFactory<HoldedDbContext>(options));
         _callLog.DrainAll().Returns([]);
         _client.ListAccountingAccountsAsync(Arg.Any<CancellationToken>())

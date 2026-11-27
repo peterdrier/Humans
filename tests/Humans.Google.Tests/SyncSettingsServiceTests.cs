@@ -24,9 +24,7 @@ public class SyncSettingsServiceTests : IDisposable
 
     public SyncSettingsServiceTests()
     {
-        var options = new DbContextOptionsBuilder<GoogleIntegrationDbContext>()
-            .UseInMemoryDatabase(Guid.NewGuid().ToString())
-            .Options;
+        var options = TestDbOptions.InMemory<GoogleIntegrationDbContext>();
 
         _factory = new TestDbContextFactory<GoogleIntegrationDbContext>(options);
         _seedContext = _factory.CreateDbContext();

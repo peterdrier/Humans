@@ -18,9 +18,7 @@ public sealed class ConsentRepositoryTests : IDisposable
 
     public ConsentRepositoryTests()
     {
-        var options = new DbContextOptionsBuilder<LegalDbContext>()
-            .UseInMemoryDatabase(Guid.NewGuid().ToString())
-            .Options;
+        var options = TestDbOptions.InMemory<LegalDbContext>();
         _dbContext = new LegalDbContext(options);
         _clock = new FakeClock(Instant.FromUtc(2026, 3, 1, 12, 0));
         _repo = new ConsentRepository(new TestDbContextFactory<LegalDbContext>(options));

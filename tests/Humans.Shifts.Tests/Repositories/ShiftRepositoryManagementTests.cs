@@ -18,9 +18,7 @@ public sealed class ShiftRepositoryManagementTests : IDisposable
 
     public ShiftRepositoryManagementTests()
     {
-        var shiftsOptions = new DbContextOptionsBuilder<ShiftsDbContext>()
-            .UseInMemoryDatabase(Guid.NewGuid().ToString())
-            .Options;
+        var shiftsOptions = TestDbOptions.InMemory<ShiftsDbContext>();
         _shiftsDbContext = new ShiftsDbContext(shiftsOptions);
         _repo = new ShiftRepository(new TestDbContextFactory<ShiftsDbContext>(shiftsOptions), _shiftsDbContext, _clock);
     }

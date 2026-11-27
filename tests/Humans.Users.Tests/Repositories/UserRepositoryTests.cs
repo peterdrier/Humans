@@ -19,9 +19,7 @@ public sealed class UserRepositoryTests : IDisposable
 
     public UserRepositoryTests()
     {
-        var options = new DbContextOptionsBuilder<UsersDbContext>()
-            .UseInMemoryDatabase(Guid.NewGuid().ToString())
-            .Options;
+        var options = TestDbOptions.InMemory<UsersDbContext>();
         _dbContext = new UsersDbContext(options);
         _clock = new FakeClock(Instant.FromUtc(2026, 3, 1, 12, 0));
         _repo = new UserRepository(new TestDbContextFactory(options));

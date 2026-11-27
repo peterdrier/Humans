@@ -46,10 +46,7 @@ public sealed class BudgetServiceTests
     private readonly FakeClock _clock = new(Instant.FromUtc(2026, 3, 31, 12, 0));
 
     private readonly TestDbContextFactory<BudgetDbContext> _budgetDbFactory =
-        new(new DbContextOptionsBuilder<BudgetDbContext>()
-            .UseInMemoryDatabase(Guid.NewGuid().ToString())
-            .ConfigureWarnings(w => w.Ignore(InMemoryEventId.TransactionIgnoredWarning))
-            .Options);
+        new(TestDbOptions.InMemory<BudgetDbContext>());
 
     private readonly BudgetRepository _repository;
     private readonly ITeamService _teamService;

@@ -26,9 +26,7 @@ public sealed class ApplicationRepositoryTests : IDisposable
 
     public ApplicationRepositoryTests()
     {
-        var options = new DbContextOptionsBuilder<GovernanceDbContext>()
-            .UseInMemoryDatabase(Guid.NewGuid().ToString())
-            .Options;
+        var options = TestDbOptions.InMemory<GovernanceDbContext>();
         _options = options;
         _dbContext = new GovernanceDbContext(options);
         _repo = new ApplicationRepository(new TestDbContextFactory<GovernanceDbContext>(options));

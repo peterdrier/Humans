@@ -17,9 +17,7 @@ public sealed class TicketRepositoryTests : IDisposable
 
     public TicketRepositoryTests()
     {
-        var options = new DbContextOptionsBuilder<TicketsDbContext>()
-            .UseInMemoryDatabase(Guid.NewGuid().ToString())
-            .Options;
+        var options = TestDbOptions.InMemory<TicketsDbContext>();
         _dbContext = new TicketsDbContext(options);
         _clock = new FakeClock(Instant.FromUtc(2026, 3, 1, 12, 0));
         _repo = new TicketRepository(new TestDbContextFactory<TicketsDbContext>(options), _clock);

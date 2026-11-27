@@ -109,7 +109,7 @@ public sealed class IssuesServiceTests
         _notificationService = Substitute.For<INotificationEmitter>();
         _notificationInbox = Substitute.For<INotificationAutoResolve>();
 
-        var issuesDbOptions = NewSectionDbOptions<IssuesDbContext>();
+        var issuesDbOptions = TestDbOptions.InMemory<IssuesDbContext>();
         _issuesDb = new IssuesDbContext(issuesDbOptions);
         _repository = new IssuesRepository(new TestDbContextFactory<IssuesDbContext>(issuesDbOptions));
 
@@ -119,13 +119,6 @@ public sealed class IssuesServiceTests
             _clock, _inMemoryFileStorage, _sectionCatalog, Domain.TestIssueQueues.Shipped(),
             _logger);
     }
-
-    private static DbContextOptions<TContext> NewSectionDbOptions<TContext>()
-        where TContext : DbContext =>
-        new DbContextOptionsBuilder<TContext>()
-            .UseInMemoryDatabase(Guid.NewGuid().ToString())
-            .ConfigureWarnings(w => w.Ignore(InMemoryEventId.TransactionIgnoredWarning))
-            .Options;
 
     private IUserService NewRegistryBackedUserService()
     {
@@ -2549,7 +2542,7 @@ public sealed class IssuesServiceTests
     public async Task PurgeExpiredAsync_LostAcknowledgement_CleansOnlyConfirmedDeletedScreenshots(string failureStage)
     {
         var ct = TestContext.Current.CancellationToken;
-        var options = NewSectionDbOptions<IssuesDbContext>();
+        var options = TestDbOptions.InMemory<IssuesDbContext>();
         var first = Guid.NewGuid();
         var second = Guid.NewGuid();
         var live = Guid.NewGuid();

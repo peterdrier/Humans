@@ -36,7 +36,7 @@ public sealed class GovernanceIndexServiceTests
     private readonly ISystemRoleService _roles = Substitute.For<ISystemRoleService>();
     private readonly HashSet<Guid> _inactive = [];
     private readonly GovernanceBodyRepository _bodies = new(new TestDbContextFactory<GovernanceDbContext>(
-        new DbContextOptionsBuilder<GovernanceDbContext>().UseInMemoryDatabase(Guid.NewGuid().ToString()).Options));
+        TestDbOptions.InMemory<GovernanceDbContext>()));
 
     private GovernanceIndexService CreateService()
     {

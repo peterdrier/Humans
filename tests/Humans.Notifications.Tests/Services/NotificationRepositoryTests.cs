@@ -16,9 +16,7 @@ public class NotificationRepositoryTests : IDisposable
 
     public NotificationRepositoryTests()
     {
-        var options = new DbContextOptionsBuilder<NotificationsDbContext>()
-            .UseInMemoryDatabase(Guid.NewGuid().ToString())
-            .Options;
+        var options = TestDbOptions.InMemory<NotificationsDbContext>();
 
         _dbContext = new NotificationsDbContext(options);
         _repo = new NotificationRepository(new TestDbContextFactory<NotificationsDbContext>(options));

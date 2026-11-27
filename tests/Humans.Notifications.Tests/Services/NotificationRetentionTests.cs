@@ -26,9 +26,7 @@ public class NotificationRetentionTests : IDisposable
 
     public NotificationRetentionTests()
     {
-        var options = new DbContextOptionsBuilder<NotificationsDbContext>()
-            .UseInMemoryDatabase(Guid.NewGuid().ToString())
-            .Options;
+        var options = TestDbOptions.InMemory<NotificationsDbContext>();
 
         _dbContext = new NotificationsDbContext(options);
         _clock = new FakeClock(Instant.FromUtc(2026, 4, 10, 12, 0));

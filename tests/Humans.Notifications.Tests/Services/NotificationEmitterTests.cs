@@ -28,9 +28,7 @@ public class NotificationEmitterTests : IDisposable
 
     public NotificationEmitterTests()
     {
-        var notificationsOptions = new DbContextOptionsBuilder<NotificationsDbContext>()
-            .UseInMemoryDatabase(Guid.NewGuid().ToString())
-            .Options;
+        var notificationsOptions = TestDbOptions.InMemory<NotificationsDbContext>();
 
         _notificationsDb = new NotificationsDbContext(notificationsOptions);
         _clock = new FakeClock(Instant.FromUtc(2026, 4, 1, 12, 0));

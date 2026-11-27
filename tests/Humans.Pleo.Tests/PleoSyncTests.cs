@@ -35,9 +35,7 @@ public sealed class PleoSyncTests
 
     public PleoSyncTests()
     {
-        var options = new DbContextOptionsBuilder<PleoDbContext>()
-            .UseInMemoryDatabase(Guid.NewGuid().ToString())
-            .Options;
+        var options = TestDbOptions.InMemory<PleoDbContext>();
         using (var ctx = new PleoDbContext(options)) ctx.Database.EnsureCreated(); // applies the category seed
         _repo = new Repository(new TestDbContextFactory<PleoDbContext>(options));
 
