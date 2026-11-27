@@ -1403,9 +1403,9 @@ public sealed class IssuesServiceTests
             await _repository.SaveTrackedIssueAsync(issue, call.Arg<CancellationToken>());
             await request.CancelAsync();
         });
-        repo.AddCommentAndSaveIssueAsync(Arg.Any<IssueComment>(), issue, request.Token).Returns(async call =>
+        repo.AddCommentAsync(Arg.Any<IssueComment>(), issue, request.Token).Returns(async call =>
         {
-            await _repository.AddCommentAndSaveIssueAsync(call.Arg<IssueComment>(), issue, call.Arg<CancellationToken>());
+            await _repository.AddCommentAsync(call.Arg<IssueComment>(), issue, call.Arg<CancellationToken>());
             await request.CancelAsync();
         });
         _roleService.GetActiveUserIdsInRoleAsync(Arg.Any<string>(), Arg.Any<CancellationToken>()).Returns(call =>

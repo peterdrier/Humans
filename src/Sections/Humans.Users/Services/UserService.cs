@@ -130,7 +130,8 @@ internal sealed class UserService(
         var user = await repo.GetByIdAsync(userId, ct)
             ?? throw new InvalidOperationException("User not found.");
         if (UserStateEvaluator.IsTombstone(user))
-            throw new InvalidOperationException("Cannot reconcile email addresses for a deleted or merged account.");
+            throw new InvalidOperationException(
+                $"Cannot reconcile email addresses for a {(UserStateEvaluator.IsMergeTombstone(user) ? "merged" : "deleted")} account.");
 
         await repo.ApplyUserEmailReconcilePlanAsync(
             rowToDelete: command.RowToDelete,

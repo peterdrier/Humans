@@ -16,7 +16,7 @@ internal sealed class BudgetChangeConfiguration : IEntityTypeConfiguration<Budge
         builder.Property(a => a.Description).IsRequired();
         builder.Property(a => a.OccurredAt).IsRequired();
 
-        // GetChangesForUserIdsAsync filters this column alone.
+        // GetChangesForUsersAsync filters this column alone.
         builder.HasIndex(a => a.ActorUserId);
 
         builder.HasIndex(a => a.BudgetYearId);

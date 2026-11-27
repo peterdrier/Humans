@@ -18,7 +18,7 @@ namespace Humans.Tickets.Tests.Services;
 
 /// <summary>
 /// Tests for the null-VendorOrderId branch in
-/// <see cref="TicketSyncService.SyncOrdersAndAttendeesAsync"/>.
+/// <see cref="TicketSyncService.SyncAsync"/>.
 /// API-issued tickets (e.g. reissued transfers) arrive with no order_id from
 /// the vendor; the service must fall back to the existing local row's parent,
 /// or skip with a warning when no local row exists.
@@ -128,7 +128,7 @@ public sealed class TicketSyncServiceNullOrderTests : TicketsTestHarness
         _vendorService.GetIssuedTicketsAsync(Arg.Any<Instant?>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
             .Returns(new List<VendorTicketDto> { ticket });
 
-        var result = await _service.SyncOrdersAndAttendeesAsync(Xunit.TestContext.Current.CancellationToken);
+        var result = await _service.SyncAsync(Xunit.TestContext.Current.CancellationToken);
 
         result.AttendeesSynced.Should().Be(1);
 
@@ -162,7 +162,7 @@ public sealed class TicketSyncServiceNullOrderTests : TicketsTestHarness
         _vendorService.GetIssuedTicketsAsync(Arg.Any<Instant?>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
             .Returns(new List<VendorTicketDto> { ticket });
 
-        var result = await _service.SyncOrdersAndAttendeesAsync(Xunit.TestContext.Current.CancellationToken);
+        var result = await _service.SyncAsync(Xunit.TestContext.Current.CancellationToken);
 
         result.AttendeesSynced.Should().Be(0);
 
@@ -208,7 +208,7 @@ public sealed class TicketSyncServiceNullOrderTests : TicketsTestHarness
         _vendorService.GetIssuedTicketsAsync(Arg.Any<Instant?>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
             .Returns(tickets);
 
-        var result = await _service.SyncOrdersAndAttendeesAsync(Xunit.TestContext.Current.CancellationToken);
+        var result = await _service.SyncAsync(Xunit.TestContext.Current.CancellationToken);
 
         result.OrdersSynced.Should().Be(1);
         result.AttendeesSynced.Should().Be(1);
@@ -275,7 +275,7 @@ public sealed class TicketSyncServiceNullOrderTests : TicketsTestHarness
         _vendorService.GetIssuedTicketsAsync(Arg.Any<Instant?>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
             .Returns(new List<VendorTicketDto> { ticket });
 
-        await _service.SyncOrdersAndAttendeesAsync(Xunit.TestContext.Current.CancellationToken);
+        await _service.SyncAsync(Xunit.TestContext.Current.CancellationToken);
 
         var dbAttendee = await TicketsDb.TicketAttendees.AsNoTracking()
             .SingleAsync(Xunit.TestContext.Current.CancellationToken);

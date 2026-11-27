@@ -81,9 +81,9 @@ public sealed class SectionMigrationRunnerTests(HumansTestDatabase database)
             null),
         new(
             "Finance",
-            "holded_expense_docs",
+            "holded_category_map",
             CreateSectionContext<FinanceDbContext>,
-            // No seed probe: Holded's sync state and Finance's doc-sync state are lazy-created.
+            // No seed probe: Holded's sync state is lazy-created.
             null),
         new(
             // After Finance, as in production's name order: Finance drops holded_ledger_lines before this baseline

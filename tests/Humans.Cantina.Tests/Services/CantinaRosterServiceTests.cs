@@ -29,7 +29,7 @@ namespace Humans.Cantina.Tests.Services;
 /// <see cref="CantinaRosterService"/> "unique humans across the week" contract: a single
 /// human on-site multiple days contributes exactly once to every aggregate, while still
 /// showing up in the correct per-day counts. The on-site cohort comes from
-/// <see cref="IShiftService.GetOnSiteUserIdsForDayAsync"/>, names from
+/// <see cref="IShiftService.GetOnSiteUserIdsAsync"/>, names from
 /// <see cref="IUserService"/>, dietary from <c>ICantinaService</c>.
 /// </summary>
 public class CantinaRosterServiceTests
@@ -61,7 +61,7 @@ public class CantinaRosterServiceTests
         _dietary.GetDietaryProfilesAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
             .Returns(new Dictionary<Guid, DietaryProfileInfo>());
 
-        _shiftMgmt.GetOnSiteUserIdsForDayAsync(
+        _shiftMgmt.GetOnSiteUserIdsAsync(
                 Arg.Any<Guid>(), Arg.Any<int>(), Arg.Any<CancellationToken>())
             .Returns(Task.FromResult<IReadOnlyList<Guid>>(Array.Empty<Guid>()));
 
@@ -80,7 +80,7 @@ public class CantinaRosterServiceTests
         var personId = Guid.NewGuid();
         var burn = ActiveEvent();
         _burnSettings.GetActiveEventSettings().Returns(burn);
-        _shiftMgmt.GetOnSiteUserIdsForDayAsync(burn.Id, Arg.Any<int>(), ct)
+        _shiftMgmt.GetOnSiteUserIdsAsync(burn.Id, Arg.Any<int>(), ct)
             .Returns(populated ? new[] { personId } : Array.Empty<Guid>());
         SetupHumans(Human(personId, "Chef", dietary: "Vegan", allergies: ["Other"], allergyOther: "Peanuts"));
         var controller = Controller(actorId);
@@ -108,7 +108,7 @@ public class CantinaRosterServiceTests
         var personId = Guid.NewGuid();
         var burn = ActiveEvent();
         _burnSettings.GetActiveEventSettings().Returns(burn);
-        _shiftMgmt.GetOnSiteUserIdsForDayAsync(burn.Id, Arg.Any<int>(), ct).Returns(new[] { personId });
+        _shiftMgmt.GetOnSiteUserIdsAsync(burn.Id, Arg.Any<int>(), ct).Returns(new[] { personId });
         SetupHumans(Human(personId, "Chef", allergies: ["Other"], allergyOther: "Peanuts"));
         var controller = Controller(actorId);
 
@@ -140,7 +140,7 @@ public class CantinaRosterServiceTests
         var people = Enumerable.Range(0, 200).Select(_ => Guid.NewGuid()).ToArray();
         var burn = ActiveEvent();
         _burnSettings.GetActiveEventSettings().Returns(burn);
-        _shiftMgmt.GetOnSiteUserIdsForDayAsync(burn.Id, Arg.Any<int>(), ct).Returns(people);
+        _shiftMgmt.GetOnSiteUserIdsAsync(burn.Id, Arg.Any<int>(), ct).Returns(people);
         SetupHumans(people.Select((id, i) => Human(id, $"Cook {i}", allergies: ["Other"], allergyOther: "Peanuts")).ToArray());
 
         await _service.GetWeeklyRosterAsync(0, RosterDisclosure.HealthReveal(actorId), ct);
@@ -761,7 +761,7 @@ public class CantinaRosterServiceTests
         _burnSettings.GetActiveEventSettings().Returns(ev);
 
         var id = Guid.NewGuid();
-        _shiftMgmt.GetOnSiteUserIdsForDayAsync(ev.Id, 2, Arg.Any<CancellationToken>())
+        _shiftMgmt.GetOnSiteUserIdsAsync(ev.Id, 2, Arg.Any<CancellationToken>())
             .Returns(Task.FromResult<IReadOnlyList<Guid>>(new[] { id }));
         SetupHumans(Human(id, "Ash"));
 
@@ -789,7 +789,7 @@ public class CantinaRosterServiceTests
         _burnSettings.GetActiveEventSettings().Returns(ev);
 
         var id = Guid.NewGuid();
-        _shiftMgmt.GetOnSiteUserIdsForDayAsync(ev.Id, 7, Arg.Any<CancellationToken>())
+        _shiftMgmt.GetOnSiteUserIdsAsync(ev.Id, 7, Arg.Any<CancellationToken>())
             .Returns(Task.FromResult<IReadOnlyList<Guid>>(new[] { id }));
         SetupHumans(Human(id, "Bo"));
 
@@ -813,7 +813,7 @@ public class CantinaRosterServiceTests
         _burnSettings.GetActiveEventSettings().Returns(ev);
 
         var id = Guid.NewGuid();
-        _shiftMgmt.GetOnSiteUserIdsForDayAsync(ev.Id, 0, Arg.Any<CancellationToken>())
+        _shiftMgmt.GetOnSiteUserIdsAsync(ev.Id, 0, Arg.Any<CancellationToken>())
             .Returns(Task.FromResult<IReadOnlyList<Guid>>(new[] { id }));
         SetupHumans(Human(id, "Cy"));
 
@@ -833,9 +833,9 @@ public class CantinaRosterServiceTests
         _burnSettings.GetActiveEventSettings().Returns(ev);
 
         var id = Guid.NewGuid();
-        _shiftMgmt.GetOnSiteUserIdsForDayAsync(ev.Id, 2, Arg.Any<CancellationToken>())
+        _shiftMgmt.GetOnSiteUserIdsAsync(ev.Id, 2, Arg.Any<CancellationToken>())
             .Returns(Task.FromResult<IReadOnlyList<Guid>>(new[] { id }));
-        _shiftMgmt.GetOnSiteUserIdsForDayAsync(ev.Id, 8, Arg.Any<CancellationToken>())
+        _shiftMgmt.GetOnSiteUserIdsAsync(ev.Id, 8, Arg.Any<CancellationToken>())
             .Returns(Task.FromResult<IReadOnlyList<Guid>>(new[] { id }));
         SetupHumans(Human(id, "Di"));
 
@@ -848,7 +848,7 @@ public class CantinaRosterServiceTests
 
     /// <summary>Stubs the on-site cohort for a single day (dietary comes from SetupHumans).</summary>
     private void SetupDay(int dayOffset, params Guid[] onSiteIds) =>
-        _shiftMgmt.GetOnSiteUserIdsForDayAsync(
+        _shiftMgmt.GetOnSiteUserIdsAsync(
                 Arg.Any<Guid>(), dayOffset, Arg.Any<CancellationToken>())
             .Returns(Task.FromResult<IReadOnlyList<Guid>>(onSiteIds));
 

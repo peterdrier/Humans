@@ -451,7 +451,9 @@ public sealed class ServiceTests
             StrikeEndOffset = strikeEnd,
         };
         var sut = BuildSut();
-        const string error = "Event end must be on or after gate opening, and strike end must be on or after event end.";
+        var error = eventEnd < 0
+            ? "Event end must be on or after gate opening."
+            : "Strike end must be on or after event end.";
         if (seed)
         {
             var act = () => sut.CreateActiveEventAsync(settings, TestContext.Current.CancellationToken);

@@ -2870,7 +2870,7 @@ public sealed class TeamServiceTests : TeamsTestHarness
         var result = await _service.WithdrawJoinRequestAsync(request.Id, other.Id, TestContext.Current.CancellationToken);
 
         result.Succeeded.Should().BeFalse();
-        result.ErrorKey.Should().Be("Teams_RequestUnavailable");
+        result.ErrorKey.Should().Be("Teams_RequestNotFound");
         TeamsDb.ChangeTracker.Clear();
         (await TeamsDb.TeamJoinRequests.SingleAsync(r => r.Id == request.Id, TestContext.Current.CancellationToken))
             .Status.Should().Be(TeamJoinRequestStatus.Pending);
@@ -3172,13 +3172,19 @@ public sealed class TeamServiceTests : TeamsTestHarness
             target.MergedToUserId = string.Equals(kind, "merged", StringComparison.Ordinal) ? Guid.NewGuid() : null;
         }
         await SaveAllAsync(TestContext.Current.CancellationToken);
+        var expected = kind switch
+        {
+            "missing" => "does not exist",
+            "merged" => "merged into another",
+            _ => "deleted account"
+        };
 
         if (assignRole)
             (await _service.AssignToRoleAsync(definition.Id, targetId, actor.Id, TestContext.Current.CancellationToken))
-                .Refusal.Should().Contain("missing, deleted or merged");
+                .Refusal.Should().Contain(expected);
         else
             (await _service.AddMemberToTeamAsync(team.Id, targetId, actor.Id, TestContext.Current.CancellationToken))
-                .Refusal.Should().Contain("missing, deleted or merged");
+                .Refusal.Should().Contain(expected);
         (await TeamsDb.TeamMembers.CountAsync(TestContext.Current.CancellationToken)).Should().Be(0);
         (await GoogleDb.GoogleSyncOutboxEvents.CountAsync(TestContext.Current.CancellationToken)).Should().Be(0);
         (await TeamsDb.TeamRoleAssignments.CountAsync(TestContext.Current.CancellationToken)).Should().Be(0);

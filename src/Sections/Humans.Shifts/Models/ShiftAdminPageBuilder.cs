@@ -95,7 +95,7 @@ internal sealed class ShiftAdminPageBuilder(
         if (signups.Count == 0) return signups;
 
         var userIds = signups.Select(s => s.UserId).Distinct().ToList();
-        var withConsents = await consentService.GetUsersWithAllRequiredConsentsForTeamAsync(
+        var withConsents = await consentService.GetConsentedUsersForTeamAsync(
             userIds,
             SystemTeamIds.Volunteers, ct);
 

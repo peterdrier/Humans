@@ -8,5 +8,5 @@ internal interface ILegalDocumentSyncRunner : IApplicationService
     /// Syncs every document from GitHub and mails re-consent notices to affected members who haven't signed. Logs
     /// its own progress; the caller owns only the job metric.
     /// </summary>
-    Task SyncAndNotifyAsync(CancellationToken cancellationToken = default);
+    Task SyncAsync(CancellationToken cancellationToken = default);
 }

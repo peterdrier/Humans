@@ -66,10 +66,6 @@ public sealed class Section :
             "The welcoming committee and the rota keepers. They shepherd new humans through onboarding, run shift management system-wide, and make sure no one gets lost along the way.",
             "fa-solid fa-hand-holding-heart",
             FormerNames: ["VolunteerCoordinator"]),
-        new(ShiftsRoles.ShiftsNoInfo, "Shifts NoInfo",
-            "Shift approval specialists with access to sensitive volunteer data. They approve signups and handle the operational details that keep events running.",
-            "fa-solid fa-clipboard-check",
-            FormerNames: ["NoInfoAdmin"]),
     ];
 
     public void Register(IServiceCollection services, IConfiguration configuration)
@@ -174,7 +170,7 @@ public sealed class Section :
 
     IReadOnlyList<string> IIssueQueueOwner.PathSegments => ["shifts", "vol"];
 
-    IReadOnlyList<string> IIssueQueueOwner.OwningRoles => [ShiftsRoles.ShiftsNoInfo];
+    IReadOnlyList<string> IIssueQueueOwner.OwningRoles => [ShiftsRoles.ShiftsAdmin];
 
     IReadOnlyList<AccessMatrixData> ISectionAccessMatrix.AccessMatrices =>
     [
@@ -183,16 +179,16 @@ public sealed class Section :
             Key = "Shifts",
             SectionName = "Shifts",
             Order = 10,
-            Roles = ["Volunteer", "Coordinator", "ShiftsNoInfo", "ShiftsAdmin"],
+            Roles = ["Volunteer", "Coordinator", "ShiftsAdmin"],
             Features =
             [
-                Of("Browse shifts", ("Volunteer", Allowed), ("Coordinator", Allowed), ("ShiftsNoInfo", Allowed), ("ShiftsAdmin", Allowed)),
-                Of("Sign up for shifts", ("Volunteer", Allowed), ("Coordinator", Allowed), ("ShiftsNoInfo", Allowed), ("ShiftsAdmin", Allowed)),
-                Of("My Shifts & availability", ("Volunteer", Allowed), ("Coordinator", Allowed), ("ShiftsNoInfo", Allowed), ("ShiftsAdmin", Allowed)),
-                Of("Create/edit rotas & shifts", ("Volunteer", Denied), ("Coordinator", Allowed), ("ShiftsNoInfo", Denied), ("ShiftsAdmin", Allowed)),
-                Of("Approve/refuse signups", ("Volunteer", Denied), ("Coordinator", Allowed), ("ShiftsNoInfo", Allowed), ("ShiftsAdmin", Allowed)),
-                Of("Voluntell", ("Volunteer", Denied), ("Coordinator", Allowed), ("ShiftsNoInfo", Allowed), ("ShiftsAdmin", Allowed)),
-                Of("Staffing dashboard", ("Volunteer", Denied), ("Coordinator", Denied), ("ShiftsNoInfo", Allowed), ("ShiftsAdmin", Allowed)),
+                Of("Browse shifts", ("Volunteer", Allowed), ("Coordinator", Allowed), ("ShiftsAdmin", Allowed)),
+                Of("Sign up for shifts", ("Volunteer", Allowed), ("Coordinator", Allowed), ("ShiftsAdmin", Allowed)),
+                Of("My Shifts & availability", ("Volunteer", Allowed), ("Coordinator", Allowed), ("ShiftsAdmin", Allowed)),
+                Of("Create/edit rotas & shifts", ("Volunteer", Denied), ("Coordinator", Allowed), ("ShiftsAdmin", Allowed)),
+                Of("Approve/refuse signups", ("Volunteer", Denied), ("Coordinator", Allowed), ("ShiftsAdmin", Allowed)),
+                Of("Voluntell", ("Volunteer", Denied), ("Coordinator", Allowed), ("ShiftsAdmin", Allowed)),
+                Of("Staffing dashboard", ("Volunteer", Denied), ("Coordinator", Denied), ("ShiftsAdmin", Allowed)),
             ]
         }
     ];
@@ -267,7 +263,7 @@ public sealed class Section :
         new(ShiftsPermissions.Manage, "Shifts_Permission_Manage_Title", "Shifts_Permission_Manage_Blurb",
             [TeamOwner.Kind], TopLevelOnly: false, AdminRoles: [ShiftsRoles.ShiftsAdmin], typeof(ShiftsResource)),
         new(ShiftsPermissions.Approve, "Shifts_Permission_Approve_Title", "Shifts_Permission_Approve_Blurb",
-            [TeamOwner.Kind], TopLevelOnly: false, AdminRoles: [ShiftsRoles.ShiftsAdmin, ShiftsRoles.ShiftsNoInfo],
+            [TeamOwner.Kind], TopLevelOnly: false, AdminRoles: [ShiftsRoles.ShiftsAdmin],
             typeof(ShiftsResource)),
     ];
 
@@ -275,10 +271,10 @@ public sealed class Section :
     {
         // DepartmentRead below additionally admits any team coordinator.
         options.AddPolicy(ShiftsPolicies.Read, policy =>
-            policy.RequireRole(RoleNames.Admin, RoleNames.Board, ShiftsRoles.ShiftsNoInfo, ShiftsRoles.ShiftsAdmin));
+            policy.RequireRole(RoleNames.Admin, RoleNames.Board, ShiftsRoles.ShiftsAdmin));
 
         options.AddPolicy(ShiftsPolicies.Manage, policy =>
-            policy.RequireRole(RoleNames.Admin, ShiftsRoles.ShiftsNoInfo, ShiftsRoles.ShiftsAdmin));
+            policy.RequireRole(RoleNames.Admin, ShiftsRoles.ShiftsAdmin));
 
         options.AddPolicy(ShiftsPolicies.ManageVolunteers, policy =>
             policy.RequireRole(RoleNames.Admin, ShiftsRoles.ShiftsAdmin));
@@ -288,7 +284,7 @@ public sealed class Section :
             policy.AddRequirements(new IsAnyTeamManagerOrCoordinatorRequirement()));
 
         options.AddPolicy(ShiftsPolicies.PrivilegedSignupApprover, policy =>
-            policy.RequireRole(RoleNames.Admin, ShiftsRoles.ShiftsNoInfo));
+            policy.RequireRole(RoleNames.Admin, ShiftsRoles.ShiftsAdmin));
     }
 
     IEnumerable<SettingsTab> ISectionSettings.Tabs() =>

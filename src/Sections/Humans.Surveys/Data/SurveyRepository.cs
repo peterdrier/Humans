@@ -161,7 +161,7 @@ internal sealed class SurveyRepository(IDbContextFactory<SurveysDbContext> facto
             .ToListAsync(ct);
     }
 
-    public async Task AddInvitationAndSaveAsync(SurveyInvitation invitation, CancellationToken ct = default)
+    public async Task AddInvitationAsync(SurveyInvitation invitation, CancellationToken ct = default)
     {
         await using var ctx = await factory.CreateDbContextAsync(ct);
         ctx.SurveyInvitations.Add(invitation);
@@ -311,7 +311,7 @@ internal sealed class SurveyRepository(IDbContextFactory<SurveysDbContext> facto
         await ctx.SaveChangesAsync(ct);
     }
 
-    public async Task AddResponseWithAnswersAndSaveAsync(SurveyResponse response, CancellationToken ct = default)
+    public async Task AddFinalResponseAsync(SurveyResponse response, CancellationToken ct = default)
     {
         await using var ctx = await factory.CreateDbContextAsync(ct);
         ctx.SurveyResponses.Add(response);

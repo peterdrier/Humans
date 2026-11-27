@@ -36,7 +36,7 @@ public sealed class LegalDocumentSyncRunnerTests
         var failure = kind is SyncJobFailureKind.Fault ? (Exception)new IOException("Sync failed")
             : new OperationCanceledException(kind is SyncJobFailureKind.Shutdown ? shutdown.Token : new CancellationToken(true));
         var runner = Substitute.For<ILegalDocumentSyncRunner>();
-        runner.SyncAndNotifyAsync(shutdown.Token).Returns(async _ =>
+        runner.SyncAsync(shutdown.Token).Returns(async _ =>
         { if (kind is SyncJobFailureKind.Shutdown) await shutdown.CancelAsync(); throw failure; });
         var metrics = Substitute.For<IHumansMetrics>();
         var logger = new CapturingLogger<SyncLegalDocumentsJob>();
@@ -68,14 +68,14 @@ public sealed class LegalDocumentSyncRunnerTests
             call.Arg<CancellationToken>().ThrowIfCancellationRequested();
         });
 
-        var error = await Record.ExceptionAsync(() => run.Runner.SyncAndNotifyAsync(shutdown.Token));
+        var error = await Record.ExceptionAsync(() => run.Runner.SyncAsync(shutdown.Token));
 
         error.Should().BeAssignableTo<OperationCanceledException>();
         deliveries.Should().ContainSingle();
         await run.Email.Received(1).SendAsync(Arg.Any<EmailMessage>(), CancellationToken.None);
         await run.Documents.DidNotReceiveWithAnyArgs().CompleteReConsentBatchAsync(default);
         var firstId = deliveries[0].DeliveryId;
-        await run.Runner.SyncAndNotifyAsync(CancellationToken.None);
+        await run.Runner.SyncAsync(CancellationToken.None);
         deliveries.Should().HaveCount(3);
         deliveries[1].DeliveryId.Should().Be(firstId);
         deliveries.Select(m => m.DeliveryId).Distinct().Should().HaveCount(2);
@@ -95,7 +95,7 @@ public sealed class LegalDocumentSyncRunnerTests
         run.Documents.CompleteReConsentBatchAsync(run.BatchId, Arg.Any<CancellationToken>()).Returns(call =>
         { call.Arg<CancellationToken>().ThrowIfCancellationRequested(); return Task.CompletedTask; });
 
-        await run.Runner.SyncAndNotifyAsync(shutdown.Token);
+        await run.Runner.SyncAsync(shutdown.Token);
 
         await run.Documents.Received(1).CompleteReConsentBatchAsync(run.BatchId, CancellationToken.None);
     }
@@ -138,7 +138,7 @@ public sealed class LegalDocumentSyncRunnerTests
                 run.Documents.CompleteReConsentBatchAsync(run.BatchId, CancellationToken.None).Returns(Task.FromException(failure));
         }
 
-        var error = await Record.ExceptionAsync(() => run.Runner.SyncAndNotifyAsync(shutdown.Token));
+        var error = await Record.ExceptionAsync(() => run.Runner.SyncAsync(shutdown.Token));
 
         error.Should().BeOfType<AggregateException>().Which.InnerExceptions.Should().ContainSingle().Which.Should().BeSameAs(failure);
         if (boundary is SyncFailureBoundary.Completion) await run.Documents.Received(1).CompleteReConsentBatchAsync(run.BatchId, CancellationToken.None);
@@ -229,7 +229,7 @@ public sealed class LegalDocumentSyncRunnerTests
         var runner = new LegalDocumentSyncRunner(sync, email, emailMessages, teams, users,
             consents, repository, NullLogger<LegalDocumentSyncRunner>.Instance);
 
-        await runner.SyncAndNotifyAsync(TestContext.Current.CancellationToken);
+        await runner.SyncAsync(TestContext.Current.CancellationToken);
 
         var messages = email.ReceivedCalls().Where(c => string.Equals(c.GetMethodInfo().Name, nameof(IEmailService.SendAsync), StringComparison.Ordinal))
             .Select(c => (EmailMessage)c.GetArguments()[0]!).ToList();
@@ -259,7 +259,7 @@ public sealed class LegalDocumentSyncRunnerTests
             Substitute.For<IUserService>(), Substitute.For<IConsentManagement>(), Substitute.For<ILegalDocumentRepository>(),
             NullLogger<LegalDocumentSyncRunner>.Instance);
 
-        await runner.SyncAndNotifyAsync(TestContext.Current.CancellationToken);
+        await runner.SyncAsync(TestContext.Current.CancellationToken);
 
         await teams.DidNotReceive().GetTeamAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>());
         await email.DidNotReceive().SendAsync(Arg.Any<EmailMessage>(), Arg.Any<CancellationToken>());
@@ -293,7 +293,7 @@ public sealed class LegalDocumentSyncRunnerTests
             Substitute.For<IUserService>(), Substitute.For<IConsentManagement>(), documents,
             NullLogger<LegalDocumentSyncRunner>.Instance);
 
-        await runner.SyncAndNotifyAsync(TestContext.Current.CancellationToken);
+        await runner.SyncAsync(TestContext.Current.CancellationToken);
 
         await teams.DidNotReceive().GetTeamAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>());
         email.ReceivedCalls().Should().BeEmpty();

@@ -34,64 +34,61 @@ internal sealed class SignInLinkService(
         await SendSignupLinkAsync(email, returnUrl, ct);
     }
 
-    public async Task<bool> VerifySignInTokenAsync(Guid userId, string token, CancellationToken ct = default)
+    public async Task<SignInLinkFailure?> VerifySignInTokenAsync(Guid userId, string token, CancellationToken ct = default)
     {
         if (await userService.GetRawUserInfoAsync(userId, ct) is null)
         {
             logger.LogWarning("Sign-in link: user {UserId} not found", userId);
-            return false;
+            return SignInLinkFailure.AccountNotFound;
         }
 
-        var decoded = urlBuilder.UnprotectSignInToken(token);
-        if (decoded is null)
+        var read = urlBuilder.UnprotectSignInToken(token);
+        if (read.Token is not { } decoded)
         {
-            logger.LogWarning(
-                "Sign-in link: unreadable token for user {UserId} (malformed, tampered, or signed with a retired key)",
-                userId);
-            return false;
+            logger.LogWarning("Sign-in link: unreadable token for user {UserId}: {Problem}", userId, read.Problem);
+            return SignInLinkFailure.Unreadable;
         }
 
         if (!string.Equals(decoded.Payload, userId.ToString(), StringComparison.Ordinal))
         {
             logger.LogWarning("Sign-in link: token userId mismatch for {UserId}", userId);
-            return false;
+            return SignInLinkFailure.Unreadable;
         }
 
         if (MinutesSinceExpiry(decoded) is { } minutesAgo)
         {
             logger.LogWarning("Sign-in link: token for user {UserId} expired {MinutesAgo} minutes ago",
                 userId, minutesAgo);
-            return false;
+            return SignInLinkFailure.Expired;
         }
 
         if (!await rateLimiter.TryConsumeTokenAsync(token, TokenLifetime))
         {
             logger.LogWarning("Sign-in link: token already used for user {UserId}", userId);
-            return false;
+            return SignInLinkFailure.AlreadyUsed;
         }
 
-        return true;
+        return null;
     }
 
-    public string? VerifySignupToken(string token, string? expectedEmail = null)
+    public SignInLinkSignupCheck VerifySignupToken(string token, string? expectedEmail = null)
     {
-        var decoded = urlBuilder.UnprotectSignupToken(token);
-        if (decoded is null)
+        var read = urlBuilder.UnprotectSignupToken(token);
+        if (read.Token is not { } decoded)
         {
-            logger.LogWarning(
-                "Sign-in link signup: unreadable token for email {Email} (malformed, tampered, or signed with a retired key)",
-                expectedEmail ?? "unknown");
-            return null;
+            logger.LogWarning("Sign-in link signup: unreadable token for email {Email}: {Problem}",
+                expectedEmail ?? "unknown", read.Problem);
+            return new(null, SignInLinkFailure.Unreadable);
         }
 
         if (MinutesSinceExpiry(decoded) is { } minutesAgo)
         {
             logger.LogWarning("Sign-in link signup: token for email {Email} expired {MinutesAgo} minutes ago",
                 decoded.Payload, minutesAgo);
-            return null;
+            return new(null, SignInLinkFailure.Expired);
         }
 
-        return decoded.Payload;
+        return new(decoded.Payload, null);
     }
 
     private long? MinutesSinceExpiry(SignInLinkToken decoded)
@@ -100,21 +97,21 @@ internal sealed class SignInLinkService(
         return sinceExpiry < Duration.Zero ? null : (long)sinceExpiry.TotalMinutes;
     }
 
-    public async Task<string?> ConsumeSignupTokenAsync(
+    public async Task<SignInLinkSignupCheck> ConsumeSignupTokenAsync(
         string token, string? expectedEmail = null, CancellationToken ct = default)
     {
-        var payload = VerifySignupToken(token, expectedEmail);
-        if (payload is null)
-            return null;
+        var check = VerifySignupToken(token, expectedEmail);
+        if (check.Email is null)
+            return check;
 
         if (!await rateLimiter.TryConsumeTokenAsync(token, TokenLifetime))
         {
             logger.LogWarning("Sign-in link signup: token already used for email {Email}",
                 expectedEmail ?? "unknown");
-            return null;
+            return new(null, SignInLinkFailure.AlreadyUsed);
         }
 
-        return payload;
+        return check;
     }
 
     public void ReleaseSignupToken(string token) => rateLimiter.ReleaseTokenReservation(token);

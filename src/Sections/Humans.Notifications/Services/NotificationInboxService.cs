@@ -18,7 +18,7 @@ internal sealed class NotificationInboxService(
         Guid userId, string? search, string filter, string tab,
         CancellationToken ct = default)
     {
-        var (parsedFilter, effectiveTab) = ParseFilterAndTab(filter, tab);
+        var (parsedFilter, effectiveTab) = ParseQuery(filter, tab);
         var now = clock.GetCurrentInstant();
         var cutoff = now - Duration.FromDays(7);
 
@@ -194,7 +194,7 @@ internal sealed class NotificationInboxService(
         repo.EraseForUserAsync(userId, ct);
 
     private static (NotificationInboxFilter Filter, NotificationInboxTab Tab)
-        ParseFilterAndTab(string filter, string tab)
+        ParseQuery(string filter, string tab)
     {
         var parsedFilter = filter?.ToLowerInvariant() switch
         {

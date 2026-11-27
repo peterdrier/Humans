@@ -12,13 +12,24 @@ internal static class EventRecurrenceDays
     private static readonly string[] DayNames = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 
     /// <summary>Preserves the empty-selection fallback.</summary>
-    internal static bool HasOnlyEventOffsets(string? offsets, int eventEndOffset)
+    internal static bool HasOnlyEventOffsets(string? offsets, int eventEndOffset) =>
+        OffsetProblem(offsets, eventEndOffset) is null;
+
+    /// <summary>What is wrong with the first bad offset, or null when every one is a distinct day of the event.</summary>
+    internal static string? OffsetProblem(string? offsets, int eventEndOffset)
     {
-        if (string.IsNullOrWhiteSpace(offsets)) return true;
+        if (string.IsNullOrWhiteSpace(offsets)) return null;
         var seen = new HashSet<int>();
-        return offsets.Split(',', StringSplitOptions.TrimEntries)
-            .All(token => int.TryParse(token, NumberStyles.Integer, CultureInfo.InvariantCulture, out var day)
-                && day >= 0 && day <= eventEndOffset && seen.Add(day));
+        foreach (var token in offsets.Split(',', StringSplitOptions.TrimEntries))
+        {
+            if (!int.TryParse(token, NumberStyles.Integer, CultureInfo.InvariantCulture, out var day))
+                return $"'{token}' is not a day number";
+            if (day < 0 || day > eventEndOffset)
+                return $"day {day} is outside the event's days 0 to {eventEndOffset}";
+            if (!seen.Add(day))
+                return $"day {day} is listed twice";
+        }
+        return null;
     }
 
     internal static IReadOnlyList<Instant> GetOccurrenceInstants(

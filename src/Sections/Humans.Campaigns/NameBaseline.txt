@@ -1,4 +1,0 @@
-Humans.Campaigns.Data.ICampaignRepository.AddGrantAndSaveAsync
-Humans.Campaigns.Data.ICampaignRepository.GetActiveOrCompletedGrantsForUserAsync
-Humans.Campaigns.Services.CampaignService.GenerateAndImportDiscountCodesAsync
-Humans.Campaigns.Services.ICampaignManagement.GetActiveOrCompletedGrantsForUserAsync

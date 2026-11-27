@@ -278,7 +278,7 @@ public class ProfileEmailsControllerGridTests
         _userEmailService.DeleteEmailAsync(Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<CancellationToken>(), _userId)
             .Returns(new DeleteEmailResult(false, reason));
         _userEmailService.ClearPrimaryAsync(Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<CancellationToken>())
-            .Returns(false);
+            .Returns(new UpdateEmailResult(false, reason));
         _userEmailService.UnlinkAsync(Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<CancellationToken>())
             .Returns(new UnlinkEmailResult(false, reason));
         var emailId = Guid.NewGuid();
@@ -301,15 +301,12 @@ public class ProfileEmailsControllerGridTests
         };
 
         result.Should().BeOfType<RedirectToActionResult>();
-        var expectedError = action is "ClearPrimary" or "AdminClearPrimary"
-            ? "Users_EmailGrid_ClearPrimaryRejected"
-            : reason;
-        _controller.TempData["ErrorMessage"].Should().Be(expectedError);
+        _controller.TempData["ErrorMessage"].Should().Be(reason);
         var arguments = _logger.ReceivedCalls().Should().ContainSingle(call =>
             string.Equals(call.GetMethodInfo().Name, "Log", StringComparison.Ordinal)).Subject.GetArguments();
         arguments[0].Should().Be(LogLevel.Warning);
         arguments[3].Should().BeNull();
-        arguments[2]!.ToString().Should().Contain(expectedError).And.Contain(emailId.ToString());
+        arguments[2]!.ToString().Should().Contain(reason).And.Contain(emailId.ToString());
     }
 
     [HumansTheory]
@@ -686,7 +683,7 @@ public class ProfileEmailsControllerGridTests
         _userEmailService.SetVisibilityAsync(_userId, row, Arg.Any<ContactFieldVisibility?>(), Arg.Any<CancellationToken>(), _userId)
             .Returns(Task.FromException<UpdateEmailResult>(failure));
         _userEmailService.ClearPrimaryAsync(_userId, row, _userId, Arg.Any<CancellationToken>())
-            .Returns(Task.FromException<bool>(failure));
+            .Returns(Task.FromException<UpdateEmailResult>(failure));
         _userEmailService.DeleteEmailAsync(_userId, row, Arg.Any<CancellationToken>(), _userId)
             .Returns(Task.FromException<DeleteEmailResult>(failure));
         _userEmailService.UnlinkAsync(_userId, row, _userId, Arg.Any<CancellationToken>())

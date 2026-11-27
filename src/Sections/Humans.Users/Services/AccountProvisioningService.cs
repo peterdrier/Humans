@@ -26,7 +26,7 @@ internal sealed class AccountProvisioningService(
         return result;
     }
 
-    public async Task<AccountProvisioningResult> ReplaceUnverifiedEmailAndProvisionAsync(
+    public async Task<AccountProvisioningResult> ReplaceUnverifiedEmailAsync(
         Guid userId, Guid emailId, string email, string? displayName, ContactSource source,
         CancellationToken ct = default)
     {

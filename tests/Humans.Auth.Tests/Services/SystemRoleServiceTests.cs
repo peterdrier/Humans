@@ -637,6 +637,29 @@ public sealed class SystemRoleServiceTests : AuthTestHarness
         (await _service.RewriteFormerNamesAsync(TestContext.Current.CancellationToken)).Should().Be(0);
     }
 
+    [HumansFact]
+    public async Task EndRetiredRoles_ActiveRetiredRow_IsRevoked()
+    {
+        var ct = TestContext.Current.CancellationToken;
+        var retiredUser = Guid.NewGuid();
+        var boardUser = Guid.NewGuid();
+        var actorId = Guid.NewGuid();
+        var past = Clock.GetCurrentInstant() - Duration.FromDays(30);
+        var retired = await AddAssignmentAsync(retiredUser, "ShiftsNoInfo", past, null);
+        await AddAssignmentAsync(retiredUser, "ShiftsNoInfo", past, past + Duration.FromDays(1));
+        await AddAssignmentAsync(boardUser, RoleNames.Board, past, null);
+
+        (await _service.EndRetiredRolesAsync(actorId, ct)).Should().Be(1);
+
+        (await AuthDb.SystemRoles.AsNoTracking().SingleAsync(r => r.Id == retired.Id, ct)).ValidTo.Should().Be(Clock.GetCurrentInstant());
+        (await _service.GetActiveRowsUnderRetiredNamesAsync(ct)).Should().BeEmpty();
+        (await _repository.HasActiveRoleAsync(boardUser, [RoleNames.Board], Clock.GetCurrentInstant(), ct)).Should().BeTrue();
+        await AuditLog.Received(1).LogAsync(
+            AuthAuditActions.RoleRevoked, nameof(User), retiredUser,
+            Arg.Is<string>(d => d.Contains("ShiftsNoInfo", StringComparison.Ordinal)),
+            actorId, Arg.Any<Guid?>(), Arg.Any<string?>());
+    }
+
     private Task SeedUserAsync(Guid userId, string displayName)
     {
         SeedUser(userId, displayName);

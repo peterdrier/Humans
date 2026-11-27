@@ -120,11 +120,14 @@ internal sealed class SurveyResultsService(
             ? []
             : survey.Questions
                 .Where(q => q.Type != SurveyQuestionType.Information)
-                .Select(q => SurveyQuestionResults.BuildQuestionAggregate(q, selectedResponses, culture) with
-                {
-                    PageNumber = q.PageNumber,
-                    Order = q.Order,
-                })
+                .Select(q => SurveyQuestionResults.WithFollowUp(
+                    SurveyQuestionResults.BuildQuestionAggregate(q, selectedResponses, culture) with
+                    {
+                        PageNumber = q.PageNumber,
+                        Order = q.Order,
+                        HelpText = q.HelpText.Resolve(culture, culture),
+                    },
+                    q, survey.Questions, selectedResponses, culture))
                 .ToList();
 
         var funnel = new SurveyFunnel(

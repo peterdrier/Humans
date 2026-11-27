@@ -52,16 +52,15 @@ Sidebar groups, alphabetical: Agent, Audit, Backdoor, Barrios, Box Office, Budge
 | RideshareAdmin | Rideshare (Settings & stats, Day roster) |
 | GrantsAdmin | Grants (Programs) |
 | SurveysAdmin | Surveys (Surveys, Approvals) |
-| ConsentCoordinator | Onboarding (Review) |
+| ConsentAdmin | Onboarding (Review) |
 | EarlyEntryAdmin | Early Entry |
 | ShiftsAdmin | Shifts (Dashboard, Summary by camp, Volunteer tracking, Workload, Post-event stats) |
 | TeamsAdmin | Google (Resource sync) |
 | CampsAdmin | Barrios (Overview, Roles, Compliance), City Planning (Barrio map) |
-| ShiftsNoInfo | Early Entry, Shifts (Dashboard, Summary by camp, Volunteer tracking, Workload, Post-event stats) |
 
 ## Invariants
 
-- The `Admin` top-nav link and the `/Admin` dashboard are gated by `PolicyNames.AnyAdminRole`, derived from the sections' `ISectionRoles` — every role with `OpensAdminShell` (17 roles today: Admin, Board, UsersAdmin, TeamsAdmin, CampsAdmin, TicketsAdmin, EventsAdmin, FinanceAdmin, StoreAdmin, CantinaAdmin, RideshareAdmin, GrantsAdmin, SurveysAdmin, ShiftsNoInfo, ShiftsAdmin, ConsentCoordinator, EarlyEntryAdmin). Concrete admin tools are gated on their section controllers.
+- The `Admin` top-nav link and the `/Admin` dashboard are gated by `PolicyNames.AnyAdminRole`, derived from the sections' `ISectionRoles` — every role with `OpensAdminShell` (16 roles today: Admin, Board, UsersAdmin, TeamsAdmin, CampsAdmin, TicketsAdmin, EventsAdmin, FinanceAdmin, StoreAdmin, CantinaAdmin, RideshareAdmin, GrantsAdmin, SurveysAdmin, ShiftsAdmin, ConsentAdmin, EarlyEntryAdmin). Concrete admin tools are gated on their section controllers.
 - The Surveys group's "Surveys" item is gated by `PolicyNames.AppAccess` (any Active human), not a Board/Admin policy — every admin-shaped role's holder sees it once they reach the shell, not only Board. Only "Approvals" (the authoring approval queue) is `BoardOrAdmin`.
 - Sidebar items are filtered per-item by `IAuthorizationService.AuthorizeAsync`; an item the current user cannot access does not appear in the rendered HTML.
 - Sidebar groups whose entire visible-item list is empty do not render; the tab strip shows only the current group's visible items, under the same per-item gate.

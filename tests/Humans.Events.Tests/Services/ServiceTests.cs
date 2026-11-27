@@ -132,7 +132,7 @@ public sealed class EventServiceTests
         var ct = TestContext.Current.CancellationToken;
 
         var result = edit
-            ? await _service.UpdateAndResubmitAsync(guideEvent.Id, EditOf(guideEvent) with { VenueId = selectedId, Title = "Changed" }, ct)
+            ? await _service.ResubmitAsync(guideEvent.Id, EditOf(guideEvent) with { VenueId = selectedId, Title = "Changed" }, ct)
             : await _service.SubmitEventAsync(guideEvent, "https://x/events", ct);
 
         result.ErrorKey.Should().Be(active ? null : "Events_VenueUnavailable");
@@ -189,7 +189,7 @@ public sealed class EventServiceTests
         var ct = TestContext.Current.CancellationToken;
 
         var result = edit
-            ? await _service.UpdateAndResubmitAsync(guideEvent.Id, EditOf(guideEvent) with { CategoryId = category.Id, Title = "Changed" }, ct)
+            ? await _service.ResubmitAsync(guideEvent.Id, EditOf(guideEvent) with { CategoryId = category.Id, Title = "Changed" }, ct)
             : await _service.SubmitEventAsync(guideEvent, "https://x/events", ct);
         result.ErrorKey.Should().Be(category.IsActive ? null : "Events_CategoryUnavailable");
 
@@ -916,7 +916,7 @@ public sealed class EventServiceTests
         {
             await request.CancelAsync();
         });
-        repo.SaveEventAndModerationActionAsync(guideEvent, Arg.Any<EventModerationAction>(), request.Token).Returns(async _ =>
+        repo.SaveModeratedEventAsync(guideEvent, Arg.Any<EventModerationAction>(), request.Token).Returns(async _ =>
         {
             await request.CancelAsync();
         });
@@ -927,7 +927,7 @@ public sealed class EventServiceTests
         {
             (await service.ApplyModerationAsync(guideEvent.Id, Guid.NewGuid(), EventModerationActionType.Rejected,
                 "Too loud", "https://x/edit", request.Token)).Should().Be(ModerationOutcome.Applied);
-            await repo.Received(1).SaveEventAndModerationActionAsync(guideEvent,
+            await repo.Received(1).SaveModeratedEventAsync(guideEvent,
                 Arg.Is<EventModerationAction>(action => action.Action == EventModerationActionType.Rejected), request.Token);
         }
         else
@@ -1056,7 +1056,7 @@ public sealed class EventServiceTests
         _repo.Venues.Add(new EventVenue { Id = guideEvent.GuideSharedVenueId.Value });
         _repo.Events.Add(guideEvent);
 
-        await _service.UpdateAndResubmitAsync(guideEvent.Id, EditOf(guideEvent), TestContext.Current.CancellationToken);
+        await _service.ResubmitAsync(guideEvent.Id, EditOf(guideEvent), TestContext.Current.CancellationToken);
 
         guideEvent.Status.Should().Be(EventStatus.Pending);
         guideEvent.SubmittedAt.Should().Be(submittedAt);
@@ -1078,7 +1078,7 @@ public sealed class EventServiceTests
         _repo.Categories.Add(new EventCategory { Id = guideEvent.CategoryId });
         _repo.Events.Add(guideEvent);
 
-        await _service.UpdateAndResubmitAsync(
+        await _service.ResubmitAsync(
             guideEvent.Id, EditOf(guideEvent) with { Title = "Edited", PriorityRank = 3 },
             TestContext.Current.CancellationToken);
 
@@ -1287,7 +1287,7 @@ public sealed class EventServiceTests
         var guideEvent = new Event { Id = Guid.NewGuid(), CampId = Guid.NewGuid(), Status = EventStatus.Rejected };
         _repo.Events.Add(guideEvent);
 
-        var act = () => _service.UpdateAndResubmitAsync(
+        var act = () => _service.ResubmitAsync(
             guideEvent.Id, EditOf(guideEvent) with { IsRecurring = true, RecurrenceDays = "2,2" },
             TestContext.Current.CancellationToken);
 
@@ -1410,7 +1410,7 @@ public sealed class EventServiceTests
         if (moderator)
             await _service.AdminUpdateAsync(entry.Id, edit, Guid.NewGuid(), "Historic correction", TestContext.Current.CancellationToken);
         else
-            (await _service.UpdateAndResubmitAsync(entry.Id, edit, TestContext.Current.CancellationToken)).ErrorKey.Should().BeNull();
+            (await _service.ResubmitAsync(entry.Id, edit, TestContext.Current.CancellationToken)).ErrorKey.Should().BeNull();
 
         entry.Title.Should().Be("Edited");
         entry.EventSettingsId.Should().Be(original.Id);
@@ -2379,7 +2379,7 @@ public sealed class EventServiceTests
         public Task<IReadOnlyList<CampEventOverlap>> GetActiveCampEventsAsync(Guid? eventSettingsId, CancellationToken ct = default)
             => Task.FromResult(ActiveCampEvents);
 
-        public Task SaveEventAndModerationActionAsync(Event guideEvent, EventModerationAction action, CancellationToken ct = default)
+        public Task SaveModeratedEventAsync(Event guideEvent, EventModerationAction action, CancellationToken ct = default)
         {
             EventModerationActions.Add(action);
             SaveChangesCount++;
@@ -2444,7 +2444,7 @@ public sealed class EventServiceTests
             => Task.FromResult<IReadOnlyList<EventFavourite>>(
                 Favourites.Where(f => f.UserId == userId).ToList());
 
-        public Task<int> DeleteFavouritesAndPreferenceForUserAsync(Guid userId, CancellationToken ct = default)
+        public Task<int> DeleteForUserAsync(Guid userId, CancellationToken ct = default)
         {
             var removed = Favourites.RemoveAll(f => f.UserId == userId);
             if (Preference?.UserId == userId)

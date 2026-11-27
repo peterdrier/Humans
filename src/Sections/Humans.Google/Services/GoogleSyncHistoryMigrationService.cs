@@ -108,7 +108,12 @@ internal sealed class GoogleSyncHistoryMigrationService(
         !string.Equals(row.Action, GoogleAuditActions.GoogleResourceAccessGranted.Name, StringComparison.Ordinal)
         && !string.Equals(row.Action, GoogleAuditActions.GoogleResourceAccessRevoked.Name, StringComparison.Ordinal)
             ? $"{row.Action} has no google_sync_log action"
-            : "no sync payload — SyncSource or Success is null";
+            : (row.SyncSource, row.Success) switch
+            {
+                (null, null) => "no sync payload: SyncSource and Success are both null",
+                (null, _) => "no sync payload: SyncSource is null",
+                _ => "no sync payload: Success is null"
+            };
 
     private async Task<IReadOnlyList<GoogleSyncHistoryMovableRow>> ToDisplayRowsAsync(
         IReadOnlyList<GoogleSyncLogEntry> entries, CancellationToken ct)

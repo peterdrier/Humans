@@ -33,7 +33,7 @@ internal abstract class ApplicationDetailViewModelBase
     public MembershipTier MembershipTier { get; set; }
     public DateTime SubmittedAt { get; set; }
     public Guid? ReviewedByUserId { get; set; }
-    public string? ReviewNotes { get; set; }
+    public string? DecisionNote { get; set; }
     public List<ApplicationHistoryViewModel> History { get; set; } = [];
 }
 

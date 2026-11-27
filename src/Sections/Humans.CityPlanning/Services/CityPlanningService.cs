@@ -42,7 +42,7 @@ internal sealed class CityPlanningService(
     /// request aborted mid-<c>SaveChangesAsync</c> can commit the row while the await reports cancellation, landing the
     /// change without its actor. Rows are created on demand and never deleted, so the id read here is the one written.
     /// </remarks>
-    private async Task MutateSettingsAndAuditAsync(
+    private async Task ChangeSettingsAsync(
         Action<CityPlanningSettings, Instant> mutate,
         AuditActionDefinition action,
         string description,
@@ -77,7 +77,7 @@ internal sealed class CityPlanningService(
             return new(string.Empty, 0, Refusal: "Camp season not found.");
 
         var now = clock.GetCurrentInstant();
-        var polygon = await repo.SavePolygonAndAppendHistoryAsync(
+        var polygon = await repo.SavePolygonAsync(
             campSeasonId, geoJson, areaSqm, modifiedByUserId, note ?? "Saved", now, cancellationToken);
         return new CampPolygonSaveResult(polygon.GeoJson, polygon.AreaSqm);
     }
@@ -103,7 +103,7 @@ internal sealed class CityPlanningService(
 
 
     public Task OpenPlacementAsync(Guid userId, CancellationToken cancellationToken = default) =>
-        MutateSettingsAndAuditAsync(
+        ChangeSettingsAsync(
             (s, now) =>
             {
                 s.PlacementOverride = true;
@@ -115,7 +115,7 @@ internal sealed class CityPlanningService(
             cancellationToken);
 
     public Task ClosePlacementAsync(Guid userId, CancellationToken cancellationToken = default) =>
-        MutateSettingsAndAuditAsync(
+        ChangeSettingsAsync(
             (s, now) =>
             {
                 s.PlacementOverride = false;
@@ -127,7 +127,7 @@ internal sealed class CityPlanningService(
             cancellationToken);
 
     public Task ClearPlacementOverrideAsync(Guid userId, CancellationToken cancellationToken = default) =>
-        MutateSettingsAndAuditAsync(
+        ChangeSettingsAsync(
             (s, _) => s.PlacementOverride = null,
             CityPlanningAuditActions.CityPlanningPlacementOverrideCleared,
             "Cleared the barrio placement override — placement follows the schedule",
@@ -135,7 +135,7 @@ internal sealed class CityPlanningService(
             cancellationToken);
 
     public Task OpenContainerPlacementAsync(Guid userId, CancellationToken cancellationToken = default) =>
-        MutateSettingsAndAuditAsync(
+        ChangeSettingsAsync(
             (s, now) =>
             {
                 s.IsContainerPlacementOpen = true;
@@ -147,7 +147,7 @@ internal sealed class CityPlanningService(
             cancellationToken);
 
     public Task CloseContainerPlacementAsync(Guid userId, CancellationToken cancellationToken = default) =>
-        MutateSettingsAndAuditAsync(
+        ChangeSettingsAsync(
             (s, now) =>
             {
                 s.IsContainerPlacementOpen = false;
@@ -160,7 +160,7 @@ internal sealed class CityPlanningService(
 
     public Task UpdateLimitZoneAsync(
         string geoJson, Guid userId, CancellationToken cancellationToken = default) =>
-        MutateSettingsAndAuditAsync(
+        ChangeSettingsAsync(
             (s, _) => s.LimitZoneGeoJson = geoJson,
             CityPlanningAuditActions.CityPlanningLimitZoneUpdated,
             "Uploaded the site boundary",
@@ -195,7 +195,7 @@ internal sealed class CityPlanningService(
     }
 
     public Task DeleteLimitZoneAsync(Guid userId, CancellationToken cancellationToken = default) =>
-        MutateSettingsAndAuditAsync(
+        ChangeSettingsAsync(
             (s, _) => s.LimitZoneGeoJson = null,
             CityPlanningAuditActions.CityPlanningLimitZoneDeleted,
             "Deleted the site boundary",
@@ -204,7 +204,7 @@ internal sealed class CityPlanningService(
 
     public Task UpdateOfficialZonesAsync(
         string geoJson, Guid userId, CancellationToken cancellationToken = default) =>
-        MutateSettingsAndAuditAsync(
+        ChangeSettingsAsync(
             (s, _) => s.OfficialZonesGeoJson = geoJson,
             CityPlanningAuditActions.CityPlanningOfficialZonesUpdated,
             "Uploaded the official zones",
@@ -216,7 +216,7 @@ internal sealed class CityPlanningService(
         UploadGeoJsonAsync(file, userId, UpdateOfficialZonesAsync, cancellationToken);
 
     public Task DeleteOfficialZonesAsync(Guid userId, CancellationToken cancellationToken = default) =>
-        MutateSettingsAndAuditAsync(
+        ChangeSettingsAsync(
             (s, _) => s.OfficialZonesGeoJson = null,
             CityPlanningAuditActions.CityPlanningOfficialZonesDeleted,
             "Deleted the official zones",
@@ -247,7 +247,7 @@ internal sealed class CityPlanningService(
                 return new PlacementScheduleUpdateResult(false, "ChangeableBeforeCloses");
         }
 
-        await MutateSettingsAndAuditAsync(
+        await ChangeSettingsAsync(
             (s, _) =>
             {
                 s.PlacementOpensOffset = opensOffset;

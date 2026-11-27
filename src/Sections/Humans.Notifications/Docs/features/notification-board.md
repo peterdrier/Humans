@@ -168,14 +168,14 @@ Every source today, and what it becomes. Audience is who the entry is published 
 | Today | Owner | Entry | Audience | Retracted when |
 |-------|-------|-------|----------|----------------|
 | TeamJoinRequestSubmitted, join-requests meter | Teams | one per pending request | `TeamCoordinators:<teamId>`; a second entry per team for `Role:Admin` when the team has no coordinator | request decided or withdrawn |
-| ShiftCoverageGap | Shifts | one per upcoming shift with confirmed < minimum, same predicate `CheckAndNotifyCoverageGapAsync` uses | `TeamCoordinators:<rota's team>` | shift reaches minimum, is cancelled, or starts |
+| ShiftCoverageGap | Shifts | one per upcoming shift with confirmed < minimum, same predicate `NotifyCoverageGapAsync` uses | `TeamCoordinators:<rota's team>` | shift reaches minimum, is cancelled, or starts |
 | IssueSubmitted | Issues | one per open unassigned issue | one `Role:<name>` recipient set per routed role from `IssueSectionRouting.RolesFor`, plus `Role:Admin`, all on the one entry | assigned or terminal |
 | IssueAssigned | Issues | one per open issue assigned to you | `User` | reassigned or terminal |
 | TermRenewalReminder | Governance | one per term expiring within the job's window, excluding terms with a pending renewal application for the same tier (the predicate `TermRenewalReminderJob` uses) | `User` | renewed, expired, or a renewal application submitted |
 | Board-vote meter | Governance | one per (application, board member) still to vote, since "awaiting *your* vote" is per person | `Role:Board`, with a single-member recipient set on each entry, so a Board membership refresh attributes to the role | voted or decided |
 | AccessSuspended | Users | one while suspended | `User` | unsuspended |
 | ReConsentRequired, LegalDocumentPublished, consents things-to-do | Governance | one per required consent outstanding | `User` | consent signed |
-| Consent-review meter, onboarding-pending meter | Users | one per profile awaiting review | `Role:ConsentCoordinator`, `Role:Board`, `Role:ShiftsAdmin` | reviewed |
+| Consent-review meter, onboarding-pending meter | Users | one per profile awaiting review | `Role:ConsentAdmin`, `Role:Board`, `Role:ShiftsAdmin` | reviewed |
 | Pending-deletions meter | Users | one per pending deletion | `Role:Admin` | deletion executed or cancelled |
 | SyncError, failed-sync meter | Google | one per failed sync event | `Role:Admin` | retried or discarded |
 | Ticket-sync meter | Tickets | one while in error state | `Role:Admin` | sync recovers |

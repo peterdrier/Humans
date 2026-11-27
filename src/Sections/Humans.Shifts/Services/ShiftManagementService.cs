@@ -1394,7 +1394,7 @@ internal sealed class ShiftManagementService(
             && s.Shift.GetAbsoluteEnd(eventSettings) > now);
     }
 
-    public Task<IReadOnlyList<Guid>> GetOnSiteUserIdsForDayAsync(
+    public Task<IReadOnlyList<Guid>> GetOnSiteUserIdsAsync(
         Guid eventSettingsId, int dayOffset, CancellationToken ct = default) =>
         repo.GetUserIdsForDayAsync(
             eventSettingsId,
@@ -1405,7 +1405,7 @@ internal sealed class ShiftManagementService(
     public async Task ReassignAsync(Guid sourceUserId, Guid targetUserId, Guid actorUserId, Instant updatedAt,
         CancellationToken ct)
     {
-        await repo.ReassignProfilesAndTagPrefsToUserAsync(sourceUserId, targetUserId, updatedAt, ct);
+        await repo.ReassignProfilesToUserAsync(sourceUserId, targetUserId, updatedAt, ct);
     }
 
     public async Task<PostEventStats?> GetPostEventStatsAsync(

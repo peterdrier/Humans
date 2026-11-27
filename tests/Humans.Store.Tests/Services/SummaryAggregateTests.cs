@@ -110,7 +110,7 @@ public class SummaryAggregateTests
                 }
             }
         };
-        _repo.GetOrdersForCampSeasonsWithLinesAndPaymentsAsync(
+        _repo.GetOrdersForCampSeasonsAsync(
                 Arg.Is<IReadOnlyCollection<Guid>>(ids => ids.Contains(seasonId)),
                 Arg.Any<CancellationToken>())
             .Returns([order]);
@@ -182,7 +182,7 @@ public class SummaryAggregateTests
         var orderA = Order(Guid.NewGuid(), seasonA, (productX, 2, 5m), (productY, 1, 7m));
         var orderB = Order(Guid.NewGuid(), seasonB, (productX, 4, 5m));
 
-        _repo.GetOrdersForCampSeasonsWithLinesAndPaymentsAsync(
+        _repo.GetOrdersForCampSeasonsAsync(
                 Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
             .Returns([orderA, orderB]);
 
@@ -221,7 +221,7 @@ public class SummaryAggregateTests
             new Product { Id = deadProductId, Year = 2026, Name = "Retired", Description = "x",
                 UnitPriceEur = 1m, VatRatePercent = 0m, OrderableUntil = new LocalDate(2026,12,31), IsActive = false }
         ]);
-        _repo.GetOrdersForCampSeasonsWithLinesAndPaymentsAsync(
+        _repo.GetOrdersForCampSeasonsAsync(
                 Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
             .Returns([
                 new Order
@@ -286,7 +286,7 @@ public class SummaryAggregateTests
                 }
         };
 
-        _repo.GetOrdersForCampSeasonsWithLinesAndPaymentsAsync(
+        _repo.GetOrdersForCampSeasonsAsync(
                 Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
             .Returns([
                 Order(orderPaid, seasonPaid, qty: 2, paid: 20m),      // due 20, paid 20  → balance  0  (paid)
@@ -342,7 +342,7 @@ public class SummaryAggregateTests
                 }
             }
         };
-        _repo.GetOrdersForCampSeasonsWithLinesAndPaymentsAsync(
+        _repo.GetOrdersForCampSeasonsAsync(
                 Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
             .Returns([order]);
 
@@ -367,7 +367,7 @@ public class SummaryAggregateTests
         _camps.GetCampsForYearAsync(2026, Arg.Any<CancellationToken>())
             .Returns([MakeCampInfo(inYear, "InYear", "iy")]);
         _repo.GetAllProductsForYearAsync(2026, Arg.Any<CancellationToken>()).Returns([]);
-        _repo.GetOrdersForCampSeasonsWithLinesAndPaymentsAsync(
+        _repo.GetOrdersForCampSeasonsAsync(
                 Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
             .Returns([
                 new Order { Id = Guid.NewGuid(), CampSeasonId = outOfYear, State = OrderState.Open }
@@ -414,7 +414,7 @@ public class SummaryAggregateTests
                 Qty = int.MaxValue,
                 UnitPriceSnapshot = 1m
             });
-        _repo.GetOrdersForCampSeasonsWithLinesAndPaymentsAsync(
+        _repo.GetOrdersForCampSeasonsAsync(
             Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>()).Returns([order]);
 
         var result = await _service.GetStoreSummaryAsync(2026, Xunit.TestContext.Current.CancellationToken);

@@ -12,14 +12,14 @@
   src/Sections/Humans.Shifts/Contracts/ShiftsRoles.cs
 -->
 <!-- freshness:flag-on-change
-  ConsentCoordinator/ShiftsAdmin capabilities, review queue authorization, and role-management permissions — review when role names, ConsentReviewQueueController, or membership filter change.
+  ConsentAdmin/ShiftsAdmin capabilities, review queue authorization, and role-management permissions — review when role names, ConsentReviewQueueController, or membership filter change.
 -->
 
 # Coordinator Roles
 
 ## Business Context
 
-Two new coordinator roles add structured safety and facilitation gates to the onboarding pipeline. The **Consent Coordinator** performs safety checks on new humans; the review is an audit annotation and does not gate Volunteer access. The **Shifts Admin** serves as a facilitation contact for onboarding humans and can assist with the review process. Both roles authorize the onboarding-review tools after the user has passed the `UserState == Active` access gate.
+Two new coordinator roles add structured safety and facilitation gates to the onboarding pipeline. The **Consent Admin** performs safety checks on new humans; the review is an audit annotation and does not gate Volunteer access. The **Shifts Admin** serves as a facilitation contact for onboarding humans and can assist with the review process. Both roles authorize the onboarding-review tools after the user has passed the `UserState == Active` access gate.
 
 The consent check is purely a **Volunteer-level safety gate**. It is independent of tier applications — it does not evaluate whether someone should be a Colaborador or Asociado.
 
@@ -29,12 +29,12 @@ These roles complement the existing Board and Admin roles. Coordinators handle d
 
 | Role | Purpose | Key Responsibility |
 |------|---------|-------------------|
-| **ConsentCoordinator** | Safety gate | Reviews consent check submissions, clears or flags new humans |
+| **ConsentAdmin** | Safety gate | Reviews consent check submissions, clears or flags new humans |
 | **ShiftsAdmin** | Facilitation | Assists with onboarding, serves as point of contact for new humans |
 
 ### Role Comparison
 
-| Capability | Board | Admin | ConsentCoordinator | ShiftsAdmin |
+| Capability | Board | Admin | ConsentAdmin | ShiftsAdmin |
 |------------|-------|-------|-------------------|---------------------|
 | Requires `UserState == Active` access gate | Yes | Yes | Yes | Yes |
 | Access Admin area | Yes | Yes | No | No |
@@ -49,18 +49,18 @@ These roles complement the existing Board and Admin roles. Coordinators handle d
 ### US-17.1: Assign Coordinator Roles
 
 **As an** Admin or Users Admin
-**I want to** assign Consent Coordinator or Shifts Admin roles to humans
+**I want to** assign Consent Admin or Shifts Admin roles to humans
 **So that** onboarding responsibilities are delegated appropriately
 
 **Acceptance Criteria:**
-- Admin and Users Admin can assign/end ConsentCoordinator and ShiftsAdmin roles; Board cannot
+- Admin and Users Admin can assign/end ConsentAdmin and ShiftsAdmin roles; Board cannot
 - Assignment uses existing RoleAssignment entity with temporal validity
 - Coordinator roles appear in the available roles dropdown on HumanDetail
 - Audit log records role assignment
 
-### US-17.2: Consent Coordinator Reviews New Humans
+### US-17.2: Consent Admin Reviews New Humans
 
-**As a** Consent Coordinator
+**As a** Consent Admin
 **I want to** review new humans who have completed their profile and consents
 **So that** I can perform safety checks on them (an audit annotation; Volunteer admission does not wait on it)
 
@@ -87,14 +87,14 @@ These roles complement the existing Board and Admin roles. Coordinators handle d
 ## Data Model
 
 ### Role name constants
-`RoleNames` (Base) carries only `Admin` and `Board`. Each section owns its roles: `ConsentRoles.ConsentCoordinator` (Consent) and `ShiftsRoles.ShiftsAdmin` (Shifts).
+`RoleNames` (Base) carries only `Admin` and `Board`. Each section owns its roles: `ConsentRoles.ConsentAdmin` (Consent) and `ShiftsRoles.ShiftsAdmin` (Shifts).
 
 ### Role Assignment
 Uses existing `RoleAssignment` entity — no new tables needed:
 ```
 RoleAssignment
 ├── UserId → coordinator user
-├── Role → "ConsentCoordinator" or "ShiftsAdmin"
+├── Role → "ConsentAdmin" or "ShiftsAdmin"
 ├── ValidFrom → start date
 ├── ValidTo → end date (null = indefinite)
 ├── AssignedByUserId → admin/board who assigned
@@ -111,20 +111,20 @@ Coordinator roles do not bypass the global access filter. A coordinator must hav
 ```
 
 With action-level restrictions:
-- **View queue/details**: `ReviewQueueAccess` = ConsentCoordinator, Board, Admin. ShiftsAdmin has no access.
-- **Clear/Flag consent check, reject signup**: Board, Admin, ConsentCoordinator only (`PolicyNames.ConsentCoordinatorBoardOrAdmin`)
+- **View queue/details**: `ReviewQueueAccess` = ConsentAdmin, Board, Admin. ShiftsAdmin has no access.
+- **Clear/Flag consent check, reject signup**: Board, Admin, ConsentAdmin only (`PolicyNames.ConsentAdminBoardOrAdmin`)
 - **Vote on tier applications**: Board only (separate Board Voting dashboard)
 
 ### Role Assignment Authorization
 Role management lives on `SystemRolesController.AddRole`/`RevokeRole` (`Humans.Auth`) and is enforced by the resource-based `SystemRoleAuthorizationHandler` (`SystemRoleOperationRequirement.Manage`), not a `CanManageRole()` method:
 - **Admin** can assign any role
-- **UsersAdmin** can assign every role except Admin, including ConsentCoordinator and ShiftsAdmin; Board assigns no roles
+- **UsersAdmin** can assign every role except Admin, including ConsentAdmin and ShiftsAdmin; Board assigns no roles
 
 ## Consent Review Queue
 
 ### Access: `/Consent/ReviewQueue`
 
-The review queue is the primary workspace for Consent Coordinators:
+The review queue is the primary workspace for Consent Admins:
 
 ```
 ┌──────────────────────────────────────────────────────────────┐
@@ -172,7 +172,7 @@ Note: The review queue does NOT show tier application information. Consent check
 ## Business Rules
 
 1. **Consent check = Volunteer safety gate** — does not evaluate tier applications
-2. **ConsentCoordinator is the primary reviewer** — Board and Admin can also clear/flag as backup
+2. **ConsentAdmin is the primary reviewer** — Board and Admin can also clear/flag as backup
 3. **ShiftsAdmin is read-only** — cannot clear or flag, only view and assist
 4. **Clearing is an audit annotation** — sets `ConsentCheckStatus = Cleared` (and `IsApproved = true`) for the CC record only; it triggers no team provisioning and no access change. Volunteers admission (name + consents) is reconciled separately by `SystemTeamSyncJob`.
 5. **Flagging is annotation-only** — sets `ConsentCheckStatus = Flagged`; it does NOT block Volunteer admission or app access. Reject (sets `RejectedAt`) is the kick-out lever, not Flag.

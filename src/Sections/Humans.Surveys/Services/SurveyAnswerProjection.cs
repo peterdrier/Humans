@@ -29,6 +29,8 @@ internal sealed class SurveyAnswerProjection(Survey? survey, string culture)
 
     internal IReadOnlyList<RespondentAnswer> BuildRespondentAnswers(SurveyResponse response) =>
         response.Answers
+            .OrderBy(answer => _context.QuestionsById.TryGetValue(answer.QuestionId, out var q) ? q.PageNumber : int.MaxValue)
+            .ThenBy(answer => _context.QuestionsById.TryGetValue(answer.QuestionId, out var q) ? q.Order : int.MaxValue)
             .Select(answer => new RespondentAnswer(
                 answer.QuestionId,
                 _context.Prompts.GetValueOrDefault(answer.QuestionId, string.Empty),

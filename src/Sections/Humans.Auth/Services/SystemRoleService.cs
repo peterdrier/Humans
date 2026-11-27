@@ -323,6 +323,39 @@ internal sealed class SystemRoleService(
         return rows.Count;
     }
 
+    /// <summary>Active rows the <c>auth.end-retired-roles</c> data migration still has to end.</summary>
+    internal async Task<IReadOnlyList<SystemRole>> GetActiveRowsUnderRetiredNamesAsync(CancellationToken ct)
+    {
+        var now = clock.GetCurrentInstant();
+        var retired = (await repository.GetActiveCountsByRoleAsync(now, ct)).Keys
+            .Where(name => !catalog.Contains(catalog.Canonical(name)))
+            .ToList();
+        return [.. (await repository.GetByRoleNamesForMutationAsync(retired, ct)).Where(r => r.IsActive(now))];
+    }
+
+    /// <summary>
+    /// Ends every active row under a name no section declares any more, auditing each as revoked by
+    /// <paramref name="actorUserId"/>. Idempotent: a second run finds nothing active.
+    /// </summary>
+    internal async Task<int> EndRetiredRolesAsync(Guid actorUserId, CancellationToken ct)
+    {
+        var rows = await GetActiveRowsUnderRetiredNamesAsync(ct);
+        var now = clock.GetCurrentInstant();
+        foreach (var row in rows)
+            row.ValidTo = now;
+
+        await repository.UpdateManyAsync(rows, ct);
+        rowCache.Clear();
+
+        foreach (var row in rows)
+        {
+            await auditLogService.LogAsync(
+                AuthAuditActions.RoleRevoked, AuditSubjectTypes.User, row.UserId,
+                $"'{row.RoleName}' (retired role)", actorUserId);
+        }
+        return rows.Count;
+    }
+
     public async Task<IReadOnlyList<UserDataSlice>> ContributeForUserAsync(Guid userId, CancellationToken ct)
     {
         var assignments = await repository.GetByUserIdAsync(userId, ct);

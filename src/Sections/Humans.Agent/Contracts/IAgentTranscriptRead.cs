@@ -7,7 +7,7 @@ namespace Humans.Agent.Contracts;
 public interface IAgentTranscriptRead : IApplicationService
 {
     /// <summary>Messages eagerly loaded, so per-conversation aggregates need no N+1 round trips.</summary>
-    Task<IReadOnlyList<AgentConversationTranscriptSnapshot>> ListAllConversationsForAdminWithMessagesAsync(
+    Task<IReadOnlyList<AgentConversationTranscriptSnapshot>> ListConversationsWithMessagesAsync(
         bool unansweredOnly, bool handoffsOnly, Guid? userId, int take, int skip,
         CancellationToken cancellationToken);
 

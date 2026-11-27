@@ -31,7 +31,6 @@ public sealed class TeamResourceServiceDeactivateTests : Infrastructure.GoogleTe
             repository,
             googleClient: _googleClient,
             drivePermissions: _drivePermissions,
-            teamService: Substitute.For<ITeamService>(),
             serviceProvider: new ServiceLocatorBuilder().Build(),
             auditLogService: AuditLog,
             resourceOptions: new TeamResourceManagementOptions(),

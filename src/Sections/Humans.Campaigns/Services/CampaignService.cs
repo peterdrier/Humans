@@ -260,7 +260,7 @@ internal sealed class CampaignService(
     }
 
     [ExternalWrite]
-    public async Task<CampaignGenerateCodesResult> GenerateAndImportDiscountCodesAsync(
+    public async Task<CampaignGenerateCodesResult> GenerateDiscountCodesAsync(
         Guid actorUserId,
         Guid campaignId,
         int count,
@@ -299,10 +299,10 @@ internal sealed class CampaignService(
             : new CampaignGenerateCodesResult(false, imported.ErrorKey);
     }
 
-    public async Task<IReadOnlyList<CampaignGrantSummary>> GetActiveOrCompletedGrantsForUserAsync(
+    public async Task<IReadOnlyList<CampaignGrantSummary>> GetGrantsForUserAsync(
         Guid userId, CancellationToken ct = default)
     {
-        var grants = await repository.GetActiveOrCompletedGrantsForUserAsync(userId, ct);
+        var grants = await repository.GetGrantsForUserAsync(userId, ct);
         return grants.Select(ToSummary).ToList();
     }
 
@@ -514,7 +514,7 @@ internal sealed class CampaignService(
                 UserId = userId,
                 AssignedAt = now
             };
-            await repository.AddGrantAndSaveAsync(grant, ct);
+            await repository.AddGrantAsync(grant, ct);
             await audit.LogAsync(CampaignsAuditActions.CampaignWaveSent, "Campaign", campaignId,
                 $"Assigned grant {grant.Id} in wave to team {teamId}.", actorUserId,
                 targetId: userId, targetType: AuditSubjectTypes.User);

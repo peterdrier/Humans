@@ -354,7 +354,7 @@ internal sealed class ExpenseReviewService(
                     if (consumption.Refusal is { } refusal)
                     {
                         logger.LogWarning("Pre-approval {GrantId} refused consumption by report {ReportId}: {Reason}", consumedGrantId, reportId, refusal);
-                        return ExpenseMutationResult.OperatorFailure("The report's pre-approval was revoked or is no longer held by it; reject the report.");
+                        return ExpenseMutationResult.OperatorFailure($"{refusal} Reject the report.");
                     }
                     attempted = true;
                     ok = await repo.ApproveAsync(
@@ -393,18 +393,20 @@ internal sealed class ExpenseReviewService(
         {
             if (committed || (attempted && ok != false))
             {
+                var step = "verify the approval";
                 try
                 {
                     // The report and its push event commit atomically. Match this attempt's event before
                     // announcing an approval whose save acknowledgement failed.
                     if (!committed)
                         committed = (await repo.GetLatestOutboxForReportAsync(reportId, CancellationToken.None))?.Id == outboxEventId;
+                    step = "send the approval notification";
                     if (committed)
                         await SendApprovedEmailAsync(reportId, CancellationToken.None);
                 }
                 catch (Exception ex)
                 {
-                    logger.LogError(ex, "Could not verify approval or send its notification for expense report {ReportId}", reportId);
+                    logger.LogError(ex, "Could not {Step} for expense report {ReportId}", step, reportId);
                 }
             }
         }

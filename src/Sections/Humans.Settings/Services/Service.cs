@@ -222,11 +222,17 @@ internal sealed class Service(
 
     private string? ValidateEventDates(EventSettingsInfo settings)
     {
-        if (settings.EventEndOffset < 0 || settings.StrikeEndOffset < settings.EventEndOffset)
+        if (settings.EventEndOffset < 0)
         {
-            logger.LogWarning("Rejected event settings {EventId}: event end {EventEndOffset} or strike end {StrikeEndOffset} invert the event windows",
-                settings.Id, settings.EventEndOffset, settings.StrikeEndOffset);
-            return "Event end must be on or after gate opening, and strike end must be on or after event end.";
+            logger.LogWarning("Rejected event settings {EventId}: event end {EventEndOffset} is before gate opening",
+                settings.Id, settings.EventEndOffset);
+            return "Event end must be on or after gate opening.";
+        }
+        if (settings.StrikeEndOffset < settings.EventEndOffset)
+        {
+            logger.LogWarning("Rejected event settings {EventId}: strike end {StrikeEndOffset} is before event end {EventEndOffset}",
+                settings.Id, settings.StrikeEndOffset, settings.EventEndOffset);
+            return "Strike end must be on or after event end.";
         }
 
         int[] offsets = [0, settings.BuildStartOffset, settings.EventEndOffset, settings.StrikeEndOffset,

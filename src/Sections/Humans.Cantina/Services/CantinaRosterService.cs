@@ -75,7 +75,7 @@ internal sealed class CantinaRosterService : ICantinaRosterService
 
         var perDay = await LoadWeeklyOnSiteUsersAsync(burn, weekStartOffset, onSiteByOffset, ct).ConfigureAwait(false);
 
-        var daysOnSiteByUserId = BuildDaysOnSiteByUserId(perDay, weekStartOffset, weekStartDate);
+        var daysOnSiteByUserId = BuildDaysOnSite(perDay, weekStartOffset, weekStartDate);
 
         // Arrival day: the day before a human's FIRST confirmed shift of the whole event, not just this week, so scan
         // from build start. It is every cohort member's ArrivesOn, and is fed as an on-site day when it lands in the week.
@@ -312,7 +312,7 @@ internal sealed class CantinaRosterService : ICantinaRosterService
         if (onSiteByOffset.TryGetValue(dayOffset, out var cached))
             return cached;
 
-        var userIds = await _shiftMgmt.GetOnSiteUserIdsForDayAsync(burnId, dayOffset, ct).ConfigureAwait(false);
+        var userIds = await _shiftMgmt.GetOnSiteUserIdsAsync(burnId, dayOffset, ct).ConfigureAwait(false);
         onSiteByOffset[dayOffset] = userIds;
         return userIds;
     }

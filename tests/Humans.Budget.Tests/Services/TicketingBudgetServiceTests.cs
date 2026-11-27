@@ -513,7 +513,7 @@ public class TicketingBudgetServiceTests
                 [new BudgetGroupDetail(groupId, yearId, "Ticketing", 0, false, false, true, null, [])]));
         var sut = CreateSut();
 
-        var result = await sut.UpdateProjectionAndRefreshAsync(command, actorUserId, TestContext.Current.CancellationToken);
+        var result = await sut.UpdateProjectionAsync(command, actorUserId, TestContext.Current.CancellationToken);
 
         result.Should().Be(new TicketingProjectionSaveResult(4));
         await _budgetService.Received(1).UpdateTicketingProjectionAsync(groupId, command.StartDate, command.EventDate,

@@ -36,12 +36,12 @@ internal static class TestIssueQueues
         new TestQueueOwner("Governance", [RoleNames.Board]),
         // Users declares "Profiles" and Consent declares "Legal" — the spellings their rows
         // were stored under before those sections were renamed.
-        new TestQueueOwner("Legal", [ConsentRoles.ConsentCoordinator]),
+        new TestQueueOwner("Legal", [ConsentRoles.ConsentAdmin]),
         new TestQueueOwner("Onboarding",
-            [ConsentRoles.ConsentCoordinator, ShiftsRoles.ShiftsAdmin, UsersRoles.UsersAdmin]),
+            [ConsentRoles.ConsentAdmin, ShiftsRoles.ShiftsAdmin, UsersRoles.UsersAdmin]),
         new TestQueueOwner("Profiles", [UsersRoles.UsersAdmin]),
         new TestQueueOwner("Scanner", [TicketsRoles.TicketsAdmin, RoleNames.Board]),
-        new TestQueueOwner("Shifts", [ShiftsRoles.ShiftsNoInfo]),
+        new TestQueueOwner("Shifts", [ShiftsRoles.ShiftsAdmin]),
         new TestQueueOwner("Teams", [TeamsRoles.TeamsAdmin]),
         new TestQueueOwner("Tickets", [TicketsRoles.TicketsAdmin]));
 }

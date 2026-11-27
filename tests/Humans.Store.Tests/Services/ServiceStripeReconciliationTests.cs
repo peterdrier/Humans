@@ -87,9 +87,9 @@ public class ServiceStripeReconciliationTests
         {
             new("pi_recorded", recordedOrder, 100m, Instant.FromUtc(2026, 5, 1, 0, 0), PaymentStatus.Paid),
         });
-        _repo.GetOrderWithLinesAndPaymentsAsync(recordedOrder, Arg.Any<CancellationToken>()).Returns(CampOrder(recordedOrder));
-        _repo.GetOrderWithLinesAndPaymentsAsync(missingOrder, Arg.Any<CancellationToken>()).Returns(CampOrder(missingOrder));
-        _repo.GetOrderWithLinesAndPaymentsAsync(teamOrder, Arg.Any<CancellationToken>()).Returns(TeamOrder(teamOrder));
+        _repo.GetOrderWithLinesAsync(recordedOrder, Arg.Any<CancellationToken>()).Returns(CampOrder(recordedOrder));
+        _repo.GetOrderWithLinesAsync(missingOrder, Arg.Any<CancellationToken>()).Returns(CampOrder(missingOrder));
+        _repo.GetOrderWithLinesAsync(teamOrder, Arg.Any<CancellationToken>()).Returns(TeamOrder(teamOrder));
 
         var report = await _service.GetStripeReconciliationAsync(Xunit.TestContext.Current.CancellationToken);
 
@@ -116,7 +116,7 @@ public class ServiceStripeReconciliationTests
         {
             new("pi_pending", order, 100m, Instant.FromUtc(2026, 5, 1, 0, 0), PaymentStatus.Pending),
         });
-        _repo.GetOrderWithLinesAndPaymentsAsync(order, Arg.Any<CancellationToken>()).Returns(CampOrder(order));
+        _repo.GetOrderWithLinesAsync(order, Arg.Any<CancellationToken>()).Returns(CampOrder(order));
 
         var report = await _service.GetStripeReconciliationAsync(Xunit.TestContext.Current.CancellationToken);
 
@@ -139,7 +139,7 @@ public class ServiceStripeReconciliationTests
         {
             new("pi_failed", order, 100m, Instant.FromUtc(2026, 5, 1, 0, 0), PaymentStatus.Failed),
         });
-        _repo.GetOrderWithLinesAndPaymentsAsync(order, Arg.Any<CancellationToken>()).Returns(CampOrder(order));
+        _repo.GetOrderWithLinesAsync(order, Arg.Any<CancellationToken>()).Returns(CampOrder(order));
 
         var report = await _service.GetStripeReconciliationAsync(Xunit.TestContext.Current.CancellationToken);
 
@@ -158,7 +158,7 @@ public class ServiceStripeReconciliationTests
         {
             new("pi_orphan", order, 500m, Instant.FromUtc(2026, 5, 1, 0, 0), PaymentStatus.Paid),
         });
-        _repo.GetOrderWithLinesAndPaymentsAsync(order, Arg.Any<CancellationToken>()).Returns(CampOrder(order));
+        _repo.GetOrderWithLinesAsync(order, Arg.Any<CancellationToken>()).Returns(CampOrder(order));
 
         var report = await _service.GetStripeReconciliationAsync(Xunit.TestContext.Current.CancellationToken);
 

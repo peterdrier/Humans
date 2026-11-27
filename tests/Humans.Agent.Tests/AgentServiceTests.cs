@@ -577,7 +577,7 @@ public class AgentServiceTests
             if (t.Finalizer is { } f) handoffConversationId = f.ConversationId;
         }
 
-        var rows = await svc.ListAllConversationsForAdminWithMessagesAsync(
+        var rows = await svc.ListConversationsWithMessagesAsync(
             unansweredOnly: false, handoffsOnly: true, userId: null, take: 50, skip: 0,
             Xunit.TestContext.Current.CancellationToken);
 
@@ -617,13 +617,13 @@ public class AgentServiceTests
         {
         }
 
-        var rows = await svc.ListAllConversationsForAdminWithMessagesAsync(
+        var rows = await svc.ListConversationsWithMessagesAsync(
             unansweredOnly: false, handoffsOnly: true, userId: null, take: 50, skip: 0,
             Xunit.TestContext.Current.CancellationToken);
         rows.Should().BeEmpty("a failed handoff dispatch never showed the user the Issues modal");
 
         // Same predicate the API uses for HandoffCount — must stay at zero.
-        var all = await svc.ListAllConversationsForAdminWithMessagesAsync(
+        var all = await svc.ListConversationsWithMessagesAsync(
             unansweredOnly: false, handoffsOnly: false, userId: null, take: 50, skip: 0,
             Xunit.TestContext.Current.CancellationToken);
         all.Should().ContainSingle().Which.Messages
@@ -863,7 +863,7 @@ public class AgentServiceTests
         // Dispatching the truncated call must not inflate the admin "Top fetched docs" panel:
         // NormalizeFetchedDocSlug can't parse the truncated args, so it would fall back to the
         // bare tool name and record a lookup that never returned a document.
-        var rows = await svc.ListAllConversationsForAdminWithMessagesAsync(
+        var rows = await svc.ListConversationsWithMessagesAsync(
             unansweredOnly: false, handoffsOnly: false, userId: userId, take: 50, skip: 0,
             Xunit.TestContext.Current.CancellationToken);
         rows.SelectMany(r => r.Messages).SelectMany(m => m.FetchedDocs)
@@ -1038,7 +1038,7 @@ public class AgentServiceTests
             // Drain; the assertions below read the persisted transcript.
         }
 
-        var rows = await svc.ListAllConversationsForAdminWithMessagesAsync(
+        var rows = await svc.ListConversationsWithMessagesAsync(
             unansweredOnly: false, handoffsOnly: false, userId: userId, take: 50, skip: 0,
             Xunit.TestContext.Current.CancellationToken);
         var conversation = rows.Should().ContainSingle().Subject;
@@ -1085,7 +1085,7 @@ public class AgentServiceTests
             }
         }
 
-        var rows = await svc.ListAllConversationsForAdminWithMessagesAsync(
+        var rows = await svc.ListConversationsWithMessagesAsync(
             unansweredOnly: false, handoffsOnly: false, userId: userId, take: 50, skip: 0,
             Xunit.TestContext.Current.CancellationToken);
         var messages = rows.SelectMany(r => r.Messages).ToList();
@@ -1126,7 +1126,7 @@ public class AgentServiceTests
                 break;
         }
 
-        var rows = await svc.ListAllConversationsForAdminWithMessagesAsync(
+        var rows = await svc.ListConversationsWithMessagesAsync(
             unansweredOnly: false, handoffsOnly: false, userId: userId, take: 50, skip: 0,
             Xunit.TestContext.Current.CancellationToken);
         var assistant = rows.SelectMany(r => r.Messages).Should()
@@ -1162,7 +1162,7 @@ public class AgentServiceTests
         {
         }
 
-        var rows = await svc.ListAllConversationsForAdminWithMessagesAsync(
+        var rows = await svc.ListConversationsWithMessagesAsync(
             unansweredOnly: true, handoffsOnly: false, userId: null, take: 50, skip: 0,
             Xunit.TestContext.Current.CancellationToken);
 

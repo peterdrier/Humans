@@ -22,6 +22,7 @@ using Humans.Users.Contracts;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.Extensions.Configuration;
 using Humans.Notifications.Contracts;
+using Humans.Permissions.Contracts;
 using Microsoft.Extensions.DependencyInjection;
 using Humans.Audit.Contracts;
 using Humans.Base.Models;
@@ -40,6 +41,7 @@ public sealed class Section :
     ISectionConfiguration,
     ISectionHealthChecks,
     ISectionJobs,
+    ISectionPermissions,
     ISectionSettings,
     IUserPart
 {
@@ -245,4 +247,11 @@ public sealed class Section :
 
     IEnumerable<UserPart> IUserPart.Parts() =>
         [new(UserPartSlots.AdminDetailSidebar, typeof(WorkspaceIdentityCardViewComponent), Weight: 110)];
+
+    IReadOnlyList<Permission> ISectionPermissions.Permissions { get; } =
+    [
+        new(GooglePermissions.ManageResources, "Google_Permission_ManageResources_Title",
+            "Google_Permission_ManageResources_Blurb", [TeamOwner.Kind], TopLevelOnly: true,
+            AdminRoles: [TeamsRoles.TeamsAdmin], typeof(GoogleResource)),
+    ];
 }

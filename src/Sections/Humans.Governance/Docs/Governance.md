@@ -66,10 +66,10 @@ Tier application entity with state machine workflow. Used for Colaborador and As
 | UpdatedAt | Instant | Last update |
 | ResolvedAt | Instant? | When resolved (approved/rejected/withdrawn) |
 | ReviewedByUserId | Guid? | Reviewer ID — **FK only**, no nav |
-| ReviewNotes | string? (4000) | Reviewer notes / rejection reason |
+| ReviewNotes | string? (4000) | Retired: no longer written, still erased; `DecisionNote` holds the decision text. Dropped later (peterdrier/Humans#2417). |
 | TermExpiresAt | LocalDate? | Term expiry (Dec 31 of the current cycle's odd year), set on approval |
 | BoardMeetingDate | LocalDate? | Date of Board meeting where decision was made. Always set on finalize: `ApproveAsync`/`RejectAsync` require an explicit `LocalDate`; the finalize form refuses missing or invalid dates. |
-| DecisionNote | string? (4000) | Board's collective decision note (only record after vote deletion) |
+| DecisionNote | string? (4000) | Board's collective decision note (only record after vote deletion); set by `Approve`/`Reject` and shown on the member and admin detail pages |
 | RenewalReminderSentAt | Instant? | When renewal reminder was last sent |
 
 **Aggregate-local navs:** `Application.StateHistory`, `Application.BoardVotes`.
@@ -301,7 +301,7 @@ These controllers serve this section.
 
 The member dashboard's Applications tile links to `/Governance/Applications` and uses the section's **My Applications** label; the generic Governance navigation label consistently links to `/Governance`.
 
-The Consent Coordinator review queue (`GET /Consent/ReviewQueue`, `POST /Consent/ReviewQueue/{id}/Clear`, etc.) belongs to the Consent section's `ConsentReviewQueueController`, not Governance.
+The Consent Admin review queue (`GET /Consent/ReviewQueue`, `POST /Consent/ReviewQueue/{id}/Clear`, etc.) belongs to the Consent section's `ConsentReviewQueueController`, not Governance.
 
 `/Governance` renders the `ChromeSlots.GovernanceDashboard` chrome slot (`src/Humans.Base/Interfaces/ISectionChrome.cs`) — other sections contribute tiles by implementing `ISectionChrome` against that slot name; Governance names none of them and renders whatever components register. Workgroups is the first contributor (its "Active workgroups" tile). The alternative considered was a dedicated `ISectionDashboardTiles` seam; the existing chrome-slot mechanism already covered the need, so a new slot name was used instead of a new interface.
 
@@ -327,7 +327,7 @@ The Consent Coordinator review queue (`GET /Consent/ReviewQueue`, `POST /Consent
 
 - Bulk membership partitions (used by the Users language card) prioritize pending deletion, suspension, then incomplete/non-active accounts, before separating active accounts by required consents. Uncleared and flagged consent reviews do not exclude an active account; explicit rejection still does.
 
-- Membership status uses account state, active affiliations and consent deadlines; the Consent Coordinator review is an independent annotation. Bare accounts are pending, suspended accounts remain suspended, and other non-active states cannot become active through stale affiliations.
+- Membership status uses account state, active affiliations and consent deadlines; the Consent Admin review is an independent annotation. Bare accounts are pending, suspended accounts remain suspended, and other non-active states cannot become active through stale affiliations.
 
 - The section’s things-to-do contribution forwards caller cancellation through all data reads. Aborted reads propagate instead of being logged or converted into missing prompts.
 

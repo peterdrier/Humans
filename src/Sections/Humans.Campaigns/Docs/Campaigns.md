@@ -125,7 +125,7 @@ Stored as string (`HasConversion<string>()`, max length 20).
 - TicketsAdmin **cannot** create, edit, activate, or complete campaigns. They can only view details and generate codes.
 - Board **cannot** generate codes or take any other campaign action; its access is the read-only detail page.
 - Regular humans and other roles have no access to campaign management.
-- Humans see only their own grants on `/Profile/Me` (the "My Codes" card, `MyCodesViewComponent`, sourced from `ICampaignService.GetActiveOrCompletedGrantsForUserAsync`). The card renders only for the `Self` view mode and only when the signed-in user is the profile's owner, so it is absent on another member's profile for every role. No human can see another human's grants outside the admin card.
+- Humans see only their own grants on `/Profile/Me` (the "My Codes" card, `MyCodesViewComponent`, sourced from `ICampaignService.GetGrantsForUserAsync`). The card renders only for the `Self` view mode and only when the signed-in user is the profile's owner, so it is absent on another member's profile for every role. No human can see another human's grants outside the admin card.
 - The "Campaign Codes" card (`CampaignCodesViewComponent`, every grant whatever the campaign's status) renders only in the `Admin` view mode for a viewer passing `UsersPolicies.Read`, the same policy as the host page; any other viewer or audience gets nothing.
 
 ## Triggers

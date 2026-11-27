@@ -304,8 +304,8 @@ public sealed class CommunicationPreferenceServiceTests : IDisposable
         var shadowed = Guid.NewGuid();
         await SeedRowAsync(shadowed, MessageCategory.Marketing, optedOut: null);
 
-        (await _service.GetCountByCategoryAndStateAsync(MessageCategory.Marketing, optedOut: false, Ct)).Should().Be(3);
-        (await _service.GetCountByCategoryAndStateAsync(MessageCategory.Marketing, optedOut: true, Ct)).Should().Be(2);
+        (await _service.GetCountAsync(MessageCategory.Marketing, optedOut: false, Ct)).Should().Be(3);
+        (await _service.GetCountAsync(MessageCategory.Marketing, optedOut: true, Ct)).Should().Be(2);
     }
 
     [HumansFact]

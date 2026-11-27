@@ -28,7 +28,7 @@ internal sealed class VolunteerTrackingXlsxBuilder
         }
         else
         {
-            var nextRow = WriteGroupsAndHumans(sheet, model, startRow: 7);
+            var nextRow = WriteGroups(sheet, model, startRow: 7);
             WriteTotalsRow(sheet, model, totalsRow: nextRow);
         }
 
@@ -62,7 +62,7 @@ internal sealed class VolunteerTrackingXlsxBuilder
         }
     }
 
-    private static int WriteGroupsAndHumans(IXLWorksheet sheet, VolunteerExportModel model, int startRow)
+    private static int WriteGroups(IXLWorksheet sheet, VolunteerExportModel model, int startRow)
     {
         var dayCount = model.Days.Count;
         var lastCol = dayCount + 1;

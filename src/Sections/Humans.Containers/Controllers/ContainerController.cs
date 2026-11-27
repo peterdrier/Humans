@@ -110,7 +110,7 @@ internal sealed class ContainerController(
         var (userError, user) = await RequireCurrentUserAsync(ct);
         if (userError is not null) return userError;
 
-        var (notFound, container) = await ResolveAndAuthorizeAsync(id, ContainerOperationRequirement.Manage, ct);
+        var (notFound, container) = await GetAuthorizedContainerAsync(id, ContainerOperationRequirement.Manage, ct);
         if (notFound is not null) return notFound;
 
         if (!ModelState.IsValid)
@@ -132,7 +132,7 @@ internal sealed class ContainerController(
         var (userError, user) = await RequireCurrentUserAsync(ct);
         if (userError is not null) return userError;
 
-        var (notFound, _) = await ResolveAndAuthorizeAsync(id, ContainerOperationRequirement.Manage, ct);
+        var (notFound, _) = await GetAuthorizedContainerAsync(id, ContainerOperationRequirement.Manage, ct);
         if (notFound is not null) return notFound;
 
         await containerService.DeleteAsync(id, user.Id, ct);
@@ -140,7 +140,7 @@ internal sealed class ContainerController(
         return RedirectToAction(nameof(Index), new { slug });
     }
 
-    private async Task<(IActionResult? Error, ContainerDto? Container)> ResolveAndAuthorizeAsync(
+    private async Task<(IActionResult? Error, ContainerDto? Container)> GetAuthorizedContainerAsync(
         Guid id, ContainerOperationRequirement requirement, CancellationToken ct)
     {
         var dto = await containerService.GetByIdAsync(id, ct);

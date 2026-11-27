@@ -705,7 +705,7 @@ public sealed class BudgetServiceTests
         var command = new TicketingProjectionUpdateCommand(seeded.GroupId, _yearId,
             new LocalDate(2026, 4, 1), new LocalDate(2026, 4, 7), 10, 5m, 120m, 21, 1.5m, 0.3m, 0.5m);
 
-        Func<Task> save = async () => { await ticketing.UpdateProjectionAndRefreshAsync(command, Guid.NewGuid(), TestContext.Current.CancellationToken); };
+        Func<Task> save = async () => { await ticketing.UpdateProjectionAsync(command, Guid.NewGuid(), TestContext.Current.CancellationToken); };
 
         await save.Should().ThrowAsync<InvalidOperationException>().WithMessage("Projected row save failed");
         await using var verify = await factory.CreateDbContextAsync(TestContext.Current.CancellationToken);

@@ -172,7 +172,7 @@ internal sealed class SystemTeamSyncJob(
             .Select(u => u.Id)
             .ToList();
 
-        var eligibleSet = await ConsentService.GetUsersWithAllRequiredConsentsForTeamAsync(
+        var eligibleSet = await ConsentService.GetConsentedUsersForTeamAsync(
             candidateIds, SystemTeamIds.Volunteers, cancellationToken);
 
         await SyncTeamMembershipAsync(team, eligibleSet.ToList(), cancellationToken, step: step);
@@ -199,7 +199,7 @@ internal sealed class SystemTeamSyncJob(
             .Distinct()
             .ToList();
 
-        var eligibleSet = await ConsentService.GetUsersWithAllRequiredConsentsForTeamAsync(
+        var eligibleSet = await ConsentService.GetConsentedUsersForTeamAsync(
             leadUserIds, SystemTeamIds.Coordinators, cancellationToken);
 
         await SyncTeamMembershipAsync(team, eligibleSet.ToList(), cancellationToken, step: step);

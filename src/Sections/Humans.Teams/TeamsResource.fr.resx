@@ -215,9 +215,10 @@
   <data name="Teams_NotMember" xml:space="preserve">
     <value>Vous n’êtes pas membre de cette équipe.</value>
   </data>
-  <data name="Teams_RequestUnavailable" xml:space="preserve">
-    <value>Cette demande d’adhésion n’est pas disponible ou n’est plus en attente.</value>
-  </data>
+  <data name="Teams_RequestNotFound" xml:space="preserve"><value>Vous n'avez pas cette demande d'adhésion.</value></data>
+  <data name="Teams_RequestApproved" xml:space="preserve"><value>Cette demande d'adhésion a déjà été approuvée.</value></data>
+  <data name="Teams_RequestRejected" xml:space="preserve"><value>Cette demande d'adhésion a déjà été refusée.</value></data>
+  <data name="Teams_RequestWithdrawn" xml:space="preserve"><value>Vous avez déjà retiré cette demande d'adhésion.</value></data>
   <data name="Teams_ActionFailed" xml:space="preserve">
     <value>Impossible de terminer cette action sur l’équipe. Veuillez réessayer.</value>
   </data>

@@ -229,7 +229,7 @@ public class BackdoorApiKeyServiceTests
         _repository.GetByIdAsync(key.Id, Arg.Any<CancellationToken>()).Returns(key);
         _repository.RevokeAsync(key.Id, _actor, Now, Arg.Any<CancellationToken>()).Returns(true);
 
-        (await _sut.RevokeAsync(key.Id, _actor)).Should().BeTrue();
+        (await _sut.RevokeAsync(key.Id, _actor)).Should().BeNull();
 
         await _audit.Received(1).LogAsync(
             BackdoorAuditActions.BackdoorApiKeyRevoked, BackdoorAuditSubjectTypes.BackdoorApiKey, key.Id,
@@ -243,7 +243,7 @@ public class BackdoorApiKeyServiceTests
         key.RevokedAt = Now;
         _repository.GetByIdAsync(key.Id, Arg.Any<CancellationToken>()).Returns(key);
 
-        (await _sut.RevokeAsync(key.Id, _actor)).Should().BeFalse();
+        (await _sut.RevokeAsync(key.Id, _actor)).Should().Be(BackdoorKeyError.AlreadyRevoked);
 
         await _repository.DidNotReceiveWithAnyArgs().RevokeAsync(default, default, default);
     }

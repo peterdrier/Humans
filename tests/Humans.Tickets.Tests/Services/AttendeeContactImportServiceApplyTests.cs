@@ -184,7 +184,7 @@ public class AttendeeContactImportServiceApplyTests
         };
         harness.WithUnmatched(attendee);
         harness.WithActiveYear(2026);
-        harness.Provisioning.ReplaceUnverifiedEmailAndProvisionAsync(
+        harness.Provisioning.ReplaceUnverifiedEmailAsync(
                 squatterId, squatterEmailId, "victim@x.com", "Victim", ContactSource.TicketTailor, Arg.Any<CancellationToken>())
             .Returns(new AccountProvisioningResult(newUserId, true));
 
@@ -205,7 +205,7 @@ public class AttendeeContactImportServiceApplyTests
         result.UsersCreated.Should().Be(1);
         attendee.MatchedUserId.Should().Be(newUserId);
 
-        await harness.Provisioning.Received(1).ReplaceUnverifiedEmailAndProvisionAsync(
+        await harness.Provisioning.Received(1).ReplaceUnverifiedEmailAsync(
             squatterId, squatterEmailId, "victim@x.com", "Victim", ContactSource.TicketTailor, Arg.Any<CancellationToken>());
         await harness.UserEmails.DidNotReceiveWithAnyArgs().DeleteEmailAsync(default, default);
     }

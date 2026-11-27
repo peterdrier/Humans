@@ -192,7 +192,7 @@ Here is what a new person goes through:
 
 After that they become a **Volunteer**, which is the standard member, and nearly everyone in the system is one. There is no approval queue. The Volunteers team works out its own membership every hour: people who have entered their name, are not suspended or rejected, and have signed the required consents.
 
-There is a role called Consent Coordinator whose holder can review new people and mark them clear or flagged. That review is a note in the audit trail. It does not hold anyone up. The one exception is an outright reject, which does remove the person.
+There is a role called Consent Admin whose holder can review new people and mark them clear or flagged. That review is a note in the audit trail. It does not hold anyone up. The one exception is an outright reject, which does remove the person.
 
 **What you set up.** Nothing beyond the modules above.
 
@@ -220,7 +220,7 @@ Permissions is the companion. It stores nothing. It simply answers the question 
 
 These three come along for free. You set nothing up, but you should know they are there.
 
-- **AuditLog** is a who-did-what-when trail that can only be added to. Every admin action and every automated action on a member leaves an entry, so your Board can see what happened and what the automation did.
+- **Audit** is a who-did-what-when trail that can only be added to. Every admin action and every automated action on a member leaves an entry, so your Board can see what happened and what the automation did.
 - **Gdpr** gives every member a self-service download of all their personal data, handles deletion requests, and puts up the right wall when an account is suspended or waiting to be deleted.
 - **Notifications** is the in-app inbox and the little live counters in the header.
 
@@ -230,7 +230,7 @@ With these in place you have a working membership system: people can sign up, si
 
 Every section ships in every build. If you do not set an optional one up, it simply sits unused, and the ones that talk to an outside service have nothing to sync without credentials. Pick what your burn needs.
 
-**Shifts.** Event shifts, rotas, signups, build and strike date ranges, availability, and a volunteer's event profile (which can include medical details, kept restricted). Most burns will want this one. The section roles are `ShiftsAdmin`, for your volunteer coordinator, and `ShiftsNoInfo`, for people who approve signups or assign volunteers to shifts.
+**Shifts.** Event shifts, rotas, signups, build and strike date ranges, availability, and a volunteer's event profile (which can include medical details, kept restricted). Most burns will want this one. The section roles are `ShiftsAdmin`, for your volunteer coordinator, and for people who approve signups or assign volunteers to shifts.
 
 **Tickets.** Two flavours. Humans can sync from an outside ticket vendor (there is a TicketTailor adapter today, set with `TicketVendor:Provider`, `TicketVendor:EventId` and the `TICKET_VENDOR_API_KEY` key) and match tickets to members by email. Or you can sell through Humans using one of the ticketing platform sections: BoxOffice (Stripe direct), Pretix or HiEvents. A Grants section ties into price rules, for things like a cheaper ticket or early access. The section role is `TicketsAdmin`.
 

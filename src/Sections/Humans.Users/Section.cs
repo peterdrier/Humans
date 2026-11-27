@@ -316,7 +316,7 @@ public sealed class Section :
             policy.RequireRole(UsersRoles.UsersAdmin, RoleNames.Admin));
 
         options.AddPolicy(UsersPolicies.MedicalDataViewer, policy =>
-            policy.RequireRole(RoleNames.Admin, RoleNames.Board, ShiftsRoles.ShiftsNoInfo));
+            policy.RequireRole(RoleNames.Admin, RoleNames.Board));
     }
 
     async ValueTask<IEnumerable<ThingsToDoEntry>> ISectionThingsToDo.EntriesAsync(

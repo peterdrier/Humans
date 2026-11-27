@@ -245,7 +245,7 @@ Settled decisions that look wrong until you know why. Do not re-litigate these.
   The property is init-only and non-nullable, so erasure and merge set it via
   `ctx.Entry(...).Property(...).CurrentValue` rather than an assignment. An unattributed survey
   carries the same value, so "erased author" and "never had one" are deliberately the same state.
-- **`ApproveAndSendAsync` validates the audience *configuration* before it persists the approval,**
+- **`ApproveAsync` validates the audience *configuration* before it persists the approval,**
   and then sends with `CancellationToken.None`. A misconfigured audience fails while the survey is
   still pending, where a Surveys Admin can reject it back to the author; a half-sent batch is worse than
   a slow request. Configuration is all that is checked — recipients are resolved later, inside

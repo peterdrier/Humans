@@ -375,7 +375,7 @@ public class AccountProvisioningServiceTests
         _userInfoRefresher.RefreshAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>(), Arg.Any<string>(), Arg.Any<string>())
             .Returns(_ => { Transaction.Current.Should().BeNull(); return Task.CompletedTask; });
 
-        Func<Task> act = () => _service.ReplaceUnverifiedEmailAndProvisionAsync(
+        Func<Task> act = () => _service.ReplaceUnverifiedEmailAsync(
             row.UserId, row.Id, row.Email, "Victim", ContactSource.TicketTailor, Xunit.TestContext.Current.CancellationToken);
         await act.Should().ThrowAsync<InvalidOperationException>();
 
@@ -400,7 +400,7 @@ public class AccountProvisioningServiceTests
                 && transaction?.TransactionInformation.Status == TransactionStatus.Committed));
             return Task.CompletedTask;
         });
-        var result = await _service.ReplaceUnverifiedEmailAndProvisionAsync(
+        var result = await _service.ReplaceUnverifiedEmailAsync(
             row.UserId, row.Id, row.Email, "Victim", ContactSource.MailerLite, Xunit.TestContext.Current.CancellationToken);
 
         using (transaction)
@@ -426,7 +426,7 @@ public class AccountProvisioningServiceTests
         var row = SeedPendingReplacement();
         _userManager.When(manager => manager.CreateAsync(Arg.Any<User>())).Do(_ =>
             Transaction.Current!.EnlistVolatile(new RejectCommit(), EnlistmentOptions.None));
-        var act = () => _service.ReplaceUnverifiedEmailAndProvisionAsync(
+        var act = () => _service.ReplaceUnverifiedEmailAsync(
             row.UserId, row.Id, row.Email, "Victim", ContactSource.MailerLite, Xunit.TestContext.Current.CancellationToken);
 
         await act.Should().ThrowAsync<TransactionAbortedException>();
@@ -463,7 +463,7 @@ public class AccountProvisioningServiceTests
             IsVerified = false
         });
         var plannedEmailId = string.Equals(change, "Missing", StringComparison.Ordinal) ? Guid.NewGuid() : row.Id;
-        Func<Task> act = () => _service.ReplaceUnverifiedEmailAndProvisionAsync(
+        Func<Task> act = () => _service.ReplaceUnverifiedEmailAsync(
             row.UserId, plannedEmailId, row.Email, "Victim", ContactSource.MailerLite, Xunit.TestContext.Current.CancellationToken);
         await act.Should().ThrowAsync<InvalidOperationException>();
         _userEmailFake.All.Should().Contain(row);

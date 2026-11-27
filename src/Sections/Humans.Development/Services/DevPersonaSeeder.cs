@@ -436,7 +436,7 @@ internal sealed class DevPersonaSeeder(
             return false;
         }
 
-        await campSeeding.AddMemberAndAssignRoleInActiveSeasonAsync(
+        await campSeeding.AddMemberWithRoleAsync(
             camp.Id, leadDefId.Value, leadUserId, leadUserId);
         return true;
     }

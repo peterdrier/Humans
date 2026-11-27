@@ -15,7 +15,7 @@ internal sealed class MyCodesViewComponent(ICampaignManagement campaigns) : View
             || viewerId != userId)
             return Content(string.Empty);
 
-        var grants = await campaigns.GetActiveOrCompletedGrantsForUserAsync(userId, HttpContext.RequestAborted);
+        var grants = await campaigns.GetGrantsForUserAsync(userId, HttpContext.RequestAborted);
         if (grants.Count == 0) return Content(string.Empty);
 
         return View(grants);

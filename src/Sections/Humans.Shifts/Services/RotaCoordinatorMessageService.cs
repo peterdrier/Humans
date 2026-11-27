@@ -268,18 +268,40 @@ internal sealed class RotaCoordinatorMessageService(
         }
 
         if (byUser.Count == 0)
-            return new DispatchSummary(0, 0, 0);
+            return new DispatchSummary(0, 0, 0, 0, 0);
 
         var recipientIds = byUser.Keys;
-        var recipientInfos = GetAvailableRecipients(recipientIds, await userService.GetUserInfosAsync(recipientIds, ct));
+        var infos = await userService.GetUserInfosAsync(recipientIds, ct);
+        var recipientInfos = GetAvailableRecipients(recipientIds, infos);
 
         var requested = 0;
-        var skipped = byUser.Count - recipientInfos.Count;
+        var notFound = 0;
+        var deleted = 0;
+        var noEmail = 0;
         var failed = 0;
-        if (skipped > 0)
+        foreach (var userId in recipientIds.Where(id => !recipientInfos.ContainsKey(id)))
+        {
+            string reason;
+            if (!infos.TryGetValue(userId, out var user))
+            {
+                reason = "user not found";
+                notFound++;
+            }
+            else if (user.IsTombstone)
+            {
+                reason = "user deleted";
+                deleted++;
+            }
+            else
+            {
+                reason = "no email address";
+                noEmail++;
+            }
+
             logger.LogWarning(
-                "Skipping {SkippedCount} coordinator-message recipients on {ScopeType} {ScopeId}: unavailable user or no email address",
-                skipped, logScope.Type, logScope.Id);
+                "Skipping coordinator-message recipient {UserId} on {ScopeType} {ScopeId}: {Reason}",
+                userId, logScope.Type, logScope.Id, reason);
+        }
 
         foreach (var recipientEntries in byUser.Where(entry => recipientInfos.ContainsKey(entry.Key))
             .GroupBy(entry => recipientInfos[entry.Key].Id))
@@ -324,7 +346,7 @@ internal sealed class RotaCoordinatorMessageService(
             }
         }
 
-        return new DispatchSummary(requested, skipped, failed);
+        return new DispatchSummary(requested, notFound, deleted, noEmail, failed);
     }
 
     private static string Truncate(string text, int max)
@@ -346,11 +368,15 @@ internal sealed class RotaCoordinatorMessageService(
 
     private sealed record DispatchSummary(
         int Requested,
-        int Skipped,
+        int UserNotFound,
+        int UserDeleted,
+        int NoEmail,
         int Failed)
     {
         public string AuditSuffix =>
-            (Skipped > 0 ? $" ({Skipped} skipped: unavailable user or no email)" : string.Empty)
+            (UserNotFound > 0 ? $" ({UserNotFound} skipped: user not found)" : string.Empty)
+            + (UserDeleted > 0 ? $" ({UserDeleted} skipped: user deleted)" : string.Empty)
+            + (NoEmail > 0 ? $" ({NoEmail} skipped: no email address)" : string.Empty)
             + (Failed > 0 ? $" ({Failed} failed: enqueue error)" : string.Empty);
 
         // A partial dispatch succeeded; only an all-failed dispatch must suppress the success toast.

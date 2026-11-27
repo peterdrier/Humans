@@ -64,5 +64,6 @@
   <data name="Backdoor_Error_LabelTooLong" xml:space="preserve"><value>A label must be 100 characters or fewer.</value></data>
   <data name="Backdoor_Error_NotEligible" xml:space="preserve"><value>This account cannot hold a key.</value></data>
   <data name="Backdoor_Error_NotAllowed" xml:space="preserve"><value>You can only create and change your own keys.</value></data>
-  <data name="Backdoor_Error_NotFound" xml:space="preserve"><value>That key no longer exists or is already revoked.</value></data>
+  <data name="Backdoor_Error_NotFound" xml:space="preserve"><value>That key no longer exists.</value></data>
+  <data name="Backdoor_Error_AlreadyRevoked" xml:space="preserve"><value>That key is already revoked.</value></data>
 </root>

@@ -173,7 +173,7 @@ internal sealed class Service(
 
     public async Task<MutationResult> RemoveLineAsync(Guid orderId, Guid lineId, Guid actorUserId, CancellationToken ct = default)
     {
-        var ctx = await repo.GetLineWithOrderAndProductAsync(lineId, ct);
+        var ctx = await repo.GetLineAsync(lineId, ct);
         if (ctx is null) return RefuseMutation("Store_LineMissing", orderId, actorUserId, lineId);
 
         if (ctx.OrderId != orderId)
@@ -323,7 +323,7 @@ internal sealed class Service(
     {
         // Checkout creation and webhook recording must finish before deletion checks their retained state.
         using var mutation = await StripePaymentLock.AcquireAsync(logger, ct);
-        var order = await repo.GetOrderWithLinesAndPaymentsAsync(orderId, ct);
+        var order = await repo.GetOrderWithLinesAsync(orderId, ct);
         if (order is null) return RefuseAdminMutation(orderId, actorUserId, "Order not found.");
 
         // An issued order is held by a restrictive FK from store_invoices, and a paid one reads zero-balance; without
@@ -392,7 +392,7 @@ internal sealed class Service(
         if (method == PaymentMethod.WriteOff && string.IsNullOrWhiteSpace(notes))
             return RefuseAdminMutation(orderId, actorUserId, "A write-off needs a reason.");
 
-        var order = await repo.GetOrderWithLinesAndPaymentsAsync(orderId, ct);
+        var order = await repo.GetOrderWithLinesAsync(orderId, ct);
         if (order is null) return RefuseAdminMutation(orderId, actorUserId, "Order not found.");
         if (order.TeamId is not null)
             return RefuseAdminMutation(orderId, actorUserId, "Team orders are non-billable.");
@@ -465,7 +465,7 @@ internal sealed class Service(
     public async Task<AdminMutationResult> DeletePaymentAsync(
         Guid orderId, Guid paymentId, Guid actorUserId, CancellationToken ct = default)
     {
-        var order = await repo.GetOrderWithLinesAndPaymentsAsync(orderId, ct);
+        var order = await repo.GetOrderWithLinesAsync(orderId, ct);
         if (order is null) return RefuseAdminMutation(orderId, actorUserId, "Order not found.");
         var payment = order.Payments.FirstOrDefault(p => p.Id == paymentId);
         if (payment is null) return RefuseAdminMutation(orderId, actorUserId, "Payment not found on this order.");
@@ -499,7 +499,7 @@ internal sealed class Service(
 
     public async Task<OrderDto?> GetOrderAsync(Guid orderId, CancellationToken ct = default)
     {
-        var o = await repo.GetOrderWithLinesAndPaymentsAsync(orderId, ct);
+        var o = await repo.GetOrderWithLinesAsync(orderId, ct);
         if (o is null) return null;
         var productIds = o.Lines.Select(l => l.ProductId).Distinct().ToList();
         var productNames = await LoadProductNamesAsync(productIds, ct);
@@ -536,9 +536,9 @@ internal sealed class Service(
                             || (t.ManagementRoleHolderUserIds is not null
                                 && t.ManagementRoleHolderUserIds.Contains(userId))))
             .ToList();
-        var campOrders = await repo.GetOrdersForCampSeasonsWithLinesAndPaymentsAsync(
+        var campOrders = await repo.GetOrdersForCampSeasonsAsync(
             campSeasons.Select(s => s.Id).ToList(), ct);
-        var teamOrders = await repo.GetOrdersForTeamsWithLinesAndPaymentsAsync(
+        var teamOrders = await repo.GetOrdersForTeamsAsync(
             teams.Select(t => t.Id).ToList(), year, ct);
         var productIds = campOrders.Concat(teamOrders)
             .SelectMany(o => o.Lines).Select(l => l.ProductId).Distinct().ToList();
@@ -714,13 +714,13 @@ internal sealed class Service(
 
         var campOrders = seasonsForYear.Count == 0
             ? Array.Empty<Order>()
-            : await repo.GetOrdersForCampSeasonsWithLinesAndPaymentsAsync(
+            : await repo.GetOrdersForCampSeasonsAsync(
                 seasonsForYear.Keys.ToList(), ct);
 
         var campOrdersInYear = campOrders
             .Where(o => o.CampSeasonId is { } sid && seasonsForYear.ContainsKey(sid))
             .ToList();
-        var teamOrders = await repo.GetOrdersForTeamsWithLinesAndPaymentsAsync(departmentIds, year, ct);
+        var teamOrders = await repo.GetOrdersForTeamsAsync(departmentIds, year, ct);
         var counterparties = campOrdersInYear
             .Select(o => (Order: o, Type: OrderCounterpartyType.Camp,
                 Id: o.CampSeasonId!.Value, seasonsForYear[o.CampSeasonId.Value].Name))
@@ -789,7 +789,7 @@ internal sealed class Service(
         int year, CancellationToken ct)
     {
         var context = await LoadYearContextAsync(year, ct);
-        var orders = await repo.GetOrdersForYearWithLinesAndPaymentsAsync(
+        var orders = await repo.GetOrdersForYearAsync(
             year, context.SeasonsForYear.Keys.ToList(), ct);
         return (orders, context);
     }
@@ -1090,7 +1090,7 @@ internal sealed class Service(
     public async Task<StripeRefundCheckResult> RecordStripeRefundsAsync(
         Guid orderId, Guid actorUserId, CancellationToken ct = default)
     {
-        var order = await repo.GetOrderWithLinesAndPaymentsAsync(orderId, ct);
+        var order = await repo.GetOrderWithLinesAsync(orderId, ct);
         if (order is null) return RefuseRefundCheck(orderId, "Order not found.");
         if (order.TeamId is not null) return RefuseRefundCheck(orderId, "Team orders are non-billable.");
 
@@ -1107,13 +1107,13 @@ internal sealed class Service(
             var listed = await stripeService.ListStoreRefundsAsync(pi, ct);
             if (listed is null)
                 return RefuseRefundCheck(orderId,
-                    "Couldn't read refunds from Stripe: the Store account's read key is missing or lacks refund read access.");
+                    "Couldn't read refunds from Stripe with the Store account's read key. The Stripe warning in the log says why.");
             refunds.AddRange(listed);
         }
 
         using var mutation = await StripePaymentLock.AcquireAsync(logger, ct);
         // Reread under the lock so a concurrent check can't book the same refund twice.
-        order = await repo.GetOrderWithLinesAndPaymentsAsync(orderId, ct);
+        order = await repo.GetOrderWithLinesAsync(orderId, ct);
         if (order is null) return RefuseRefundCheck(orderId, "Order not found.");
         var booked = order.Payments
             .Where(p => p.Method == PaymentMethod.Refund && p.ExternalRef is not null)
@@ -1124,7 +1124,8 @@ internal sealed class Service(
         var total = 0m;
         var pending = 0;
         var settled = 0;
-        var cancelled = 0;
+        var failed = 0;
+        var canceled = 0;
         foreach (var refund in refunds.OrderBy(r => r.CreatedAt))
         {
             var status = RefundStatusOf(refund.Status);
@@ -1142,7 +1143,8 @@ internal sealed class Service(
                     $"Stripe refund {refund.RefundId} of EUR {existing.AmountEur:0.00} {verb}",
                     actorUserId, orderId, StoreAuditSubjectTypes.Order);
                 if (status == PaymentStatus.Paid) settled++;
-                else cancelled++;
+                else if (string.Equals(refund.Status, "canceled", StringComparison.Ordinal)) canceled++;
+                else failed++;
                 continue;
             }
 
@@ -1172,7 +1174,7 @@ internal sealed class Service(
             if (status == PaymentStatus.Pending) pending++;
         }
 
-        return new StripeRefundCheckResult(recorded, total, pending, settled, cancelled);
+        return new StripeRefundCheckResult(recorded, total, pending, settled, failed, canceled);
     }
 
     /// <summary>Stripe's <c>pending</c> and <c>requires_action</c> are money on its way out; <c>failed</c> and
@@ -1189,7 +1191,7 @@ internal sealed class Service(
     private StripeRefundCheckResult RefuseRefundCheck(Guid orderId, string reason)
     {
         logger.LogWarning("Stripe refund check refused for order {OrderId}: {Reason}", orderId, reason);
-        return new StripeRefundCheckResult(0, 0m, 0, 0, 0, reason);
+        return new StripeRefundCheckResult(0, 0m, 0, 0, 0, 0, reason);
     }
 
     /// <summary>
@@ -1427,7 +1429,7 @@ internal sealed class Service(
             return;
         }
 
-        var existing = await repo.GetPaymentByStripePaymentIntentIdAsync(paymentIntentId, ct);
+        var existing = await repo.GetPaymentByIntentIdAsync(paymentIntentId, ct);
         if (existing is null)
         {
             if (session.OrderId is { } orderId
@@ -1482,7 +1484,7 @@ internal sealed class Service(
             return;
         }
 
-        var existing = await repo.GetPaymentByStripePaymentIntentIdAsync(paymentIntentId, ct);
+        var existing = await repo.GetPaymentByIntentIdAsync(paymentIntentId, ct);
         if (existing is null || existing.Status != PaymentStatus.Pending)
             return;
 

@@ -642,7 +642,7 @@ public class GoogleAdminServiceTests
                 "alice@nobodies.team", Arg.Any<CancellationToken>())
             .Returns(issued);
 
-        var result = await _service.ResetPasswordAndGenerate2FaAsync(
+        var result = await _service.IssueRecoveryCredentialsAsync(
             "alice@nobodies.team", _actorUserId, Xunit.TestContext.Current.CancellationToken);
 
         result.Success.Should().BeTrue();
@@ -667,7 +667,7 @@ public class GoogleAdminServiceTests
                 Arg.Any<string>(), Arg.Any<CancellationToken>())
             .Returns([]);
 
-        var result = await _service.ResetPasswordAndGenerate2FaAsync(
+        var result = await _service.IssueRecoveryCredentialsAsync(
             "alice@nobodies.team", _actorUserId, Xunit.TestContext.Current.CancellationToken);
 
         // Combined method returns Success=true with password-only on backup-code failure.
@@ -689,7 +689,7 @@ public class GoogleAdminServiceTests
                 Arg.Any<string>(), Arg.Any<CancellationToken>())
             .ThrowsAsync(new InvalidOperationException("Google API error"));
 
-        var result = await _service.ResetPasswordAndGenerate2FaAsync(
+        var result = await _service.IssueRecoveryCredentialsAsync(
             "alice@nobodies.team", _actorUserId, Xunit.TestContext.Current.CancellationToken);
 
         // Combined method surfaces backup-code failure as Success=true, BackupCode=null.
@@ -723,7 +723,7 @@ public class GoogleAdminServiceTests
                 Arg.Any<Guid?>(), Arg.Any<string?>())
             .ThrowsAsync(new InvalidOperationException("Audit DB unavailable"));
 
-        var result = await _service.ResetPasswordAndGenerate2FaAsync(
+        var result = await _service.IssueRecoveryCredentialsAsync(
             "alice@nobodies.team", _actorUserId, Xunit.TestContext.Current.CancellationToken);
 
         result.Success.Should().BeTrue();
@@ -738,7 +738,7 @@ public class GoogleAdminServiceTests
                 "alice@nobodies.team", Arg.Any<CancellationToken>())
             .Returns(issued);
 
-        var result = await _service.ResetPasswordAndGenerate2FaAsync(
+        var result = await _service.IssueRecoveryCredentialsAsync(
             "alice@nobodies.team", _actorUserId, Xunit.TestContext.Current.CancellationToken);
 
         result.Success.Should().BeTrue();
@@ -770,7 +770,7 @@ public class GoogleAdminServiceTests
                 Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
             .ThrowsAsync(new InvalidOperationException("Google API error"));
 
-        var result = await _service.ResetPasswordAndGenerate2FaAsync(
+        var result = await _service.IssueRecoveryCredentialsAsync(
             "alice@nobodies.team", _actorUserId, Xunit.TestContext.Current.CancellationToken);
 
         result.Success.Should().BeFalse();
@@ -793,7 +793,7 @@ public class GoogleAdminServiceTests
                 Arg.Any<string>(), Arg.Any<CancellationToken>())
             .ThrowsAsync(new InvalidOperationException("Google API error"));
 
-        var result = await _service.ResetPasswordAndGenerate2FaAsync(
+        var result = await _service.IssueRecoveryCredentialsAsync(
             "alice@nobodies.team", _actorUserId, Xunit.TestContext.Current.CancellationToken);
 
         result.Success.Should().BeTrue();
@@ -816,7 +816,7 @@ public class GoogleAdminServiceTests
                 CreationTime: DateTime.UtcNow, LastLoginTime: null,
                 IsEnrolledIn2Sv: true));
 
-        var result = await _service.ResetPasswordAndGenerate2FaAsync(
+        var result = await _service.IssueRecoveryCredentialsAsync(
             "alice@nobodies.team", _actorUserId, Xunit.TestContext.Current.CancellationToken);
 
         result.Success.Should().BeFalse();
@@ -858,7 +858,7 @@ public class GoogleAdminServiceTests
                 Arg.Any<Guid?>(), Arg.Any<string?>())
             .ThrowsAsync(new InvalidOperationException("Audit DB unavailable"));
 
-        var result = await _service.ResetPasswordAndGenerate2FaAsync(
+        var result = await _service.IssueRecoveryCredentialsAsync(
             "alice@nobodies.team", _actorUserId, Xunit.TestContext.Current.CancellationToken);
 
         result.Success.Should().BeFalse();
@@ -877,7 +877,7 @@ public class GoogleAdminServiceTests
                 "ghost@nobodies.team", Arg.Any<CancellationToken>())
             .Returns((WorkspaceUserAccount?)null);
 
-        var result = await _service.ResetPasswordAndGenerate2FaAsync(
+        var result = await _service.IssueRecoveryCredentialsAsync(
             "ghost@nobodies.team", _actorUserId, Xunit.TestContext.Current.CancellationToken);
 
         result.Success.Should().BeFalse();
@@ -890,7 +890,7 @@ public class GoogleAdminServiceTests
     [HumansFact]
     public async Task ResetPasswordAndGenerate2FaAsync_ReturnsErrorForMissingEmail()
     {
-        var result = await _service.ResetPasswordAndGenerate2FaAsync("", _actorUserId, Xunit.TestContext.Current.CancellationToken);
+        var result = await _service.IssueRecoveryCredentialsAsync("", _actorUserId, Xunit.TestContext.Current.CancellationToken);
 
         result.Success.Should().BeFalse();
         result.ErrorMessage.Should().Be("Email is required.");

@@ -56,7 +56,7 @@ Terminology matters here — the full ubiquitous language lives in [`CONTEXT.md`
 - **you** means the agent reading this file and changing Humans.
 - **Peter / maintainer** means who you are talking to now.
 - **member** means a person in the system. Nearly all are **Volunteers**.
-- **Volunteer** means the standard member: sign up → complete profile → sign the required consents → auto-admitted to the Volunteers team. Admission is name + required consents; the Consent Coordinator's clear/flag review is an independent audit annotation that does not gate admission (reject and suspend are the kick-out levers). Volunteers never go through the `Application` entity.
+- **Volunteer** means the standard member: sign up → complete profile → sign the required consents → auto-admitted to the Volunteers team. Admission is name + required consents; the Consent Admin's clear/flag review is an independent audit annotation that does not gate admission (reject and suspend are the kick-out levers). Volunteers never go through the `Application` entity.
 - **Colaborador** means an active contributor; application plus Board vote; 2-year term.
 - **Asociado** means a voting member (assemblies, elections); application plus Board vote; 2-year term.
 - **Application** means the entity for Colaborador/Asociado tier applications *only* (`Submitted → Approved/Rejected/Withdrawn`). Volunteer access runs in parallel and is never blocked by it.

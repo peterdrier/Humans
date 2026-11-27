@@ -70,7 +70,7 @@ The layout matches.
 
 - **On site** = a Confirmed shift signup on a shift whose `DayOffset` is that day. Pending,
   Refused, Bailed, NoShow and Cancelled never count. The roster reads the cohort only through
-  `IShiftService.GetOnSiteUserIdsForDayAsync`, which asks for confirmed signups only
+  `IShiftService.GetOnSiteUserIdsAsync`, which asks for confirmed signups only
   (`src/Sections/Humans.Shifts/Services/ShiftManagementService.cs:2066`).
 - **Arrival day** = the day before a human's first confirmed shift of the whole event. It is every
   roster person's `ArrivesOn`, even when it falls before the visible week. Inside the week it
@@ -148,7 +148,7 @@ The layout matches.
 
 ## Load-bearing weirdness
 
-- **`GetOnSiteUserIdsForDayAsync` is confirmed-only, and Cantina is its only production caller.**
+- **`GetOnSiteUserIdsAsync` is confirmed-only, and Cantina is its only production caller.**
   The Shifts method was narrowed from Pending-or-Confirmed *for* the cantina. A second caller
   expecting pending signups back would be silently wrong: that is a landmine, not a preference.
 - **The first-confirmed-shift scan is deliberately separate from the visible-week load.** They

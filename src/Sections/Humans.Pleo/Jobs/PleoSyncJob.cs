@@ -27,8 +27,8 @@ internal sealed class PleoSyncJob(IPleoAdminService pleo, ILogger<PleoSyncJob> l
         switch (outcome)
         {
             // PR previews and local dev carry no key: skip rather than fail nightly.
+            // SyncAsync logs which setting is missing.
             case PleoSyncOutcome.NotConfigured:
-                logger.LogInformation("PLEO_API_KEY or PLEO_COMPANY_ID not configured — skipping Pleo sync.");
                 break;
             case PleoSyncOutcome.Busy:
                 logger.LogWarning("Nightly Pleo sweep skipped — a sweep was already running.");

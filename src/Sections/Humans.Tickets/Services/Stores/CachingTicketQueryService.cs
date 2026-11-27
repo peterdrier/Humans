@@ -139,8 +139,8 @@ internal sealed class CachingTicketQueryService
         MutateAsync<ITicketManagement>(inner => inner.EraseForUserAsync(userId, ct), ClearAll);
 
     // A later sync stage can fail after orders/attendees have committed.
-    public Task<TicketSyncResult> SyncOrdersAndAttendeesAsync(CancellationToken ct = default) =>
-        MutateAsync<ITicketSyncService, TicketSyncResult>(inner => inner.SyncOrdersAndAttendeesAsync(ct), ClearAll);
+    public Task<TicketSyncResult> SyncAsync(CancellationToken ct = default) =>
+        MutateAsync<ITicketSyncService, TicketSyncResult>(inner => inner.SyncAsync(ct), ClearAll);
 
     public Task<bool> IsInErrorStateAsync(CancellationToken ct = default) =>
         WithInnerAsync<ITicketSyncService, bool>(inner => inner.IsInErrorStateAsync(ct));

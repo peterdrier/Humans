@@ -256,7 +256,7 @@ public sealed class LegalDocumentSyncServiceTests : ConsentTestHarness
         var runner = new LegalDocumentSyncRunner(_service, email, Infrastructure.TestConsentEmails.Create(),
             _teamService, _userService, consents, pendingRepository, NullLogger<LegalDocumentSyncRunner>.Instance);
 
-        var failedRun = () => runner.SyncAndNotifyAsync(ct);
+        var failedRun = () => runner.SyncAsync(ct);
         await failedRun.Should().ThrowAsync<AggregateException>();
         var firstMessages = email.ReceivedCalls().Select(call => (EmailMessage)call.GetArguments()[0]!).ToList();
         firstMessages.Select(message => message.UserId).Should().BeEquivalentTo(new Guid?[] { person.Id, reached.Id });
@@ -271,7 +271,7 @@ public sealed class LegalDocumentSyncServiceTests : ConsentTestHarness
 
         runner = new LegalDocumentSyncRunner(_service, email, Infrastructure.TestConsentEmails.Create(),
             _teamService, _userService, consents, pendingRepository, NullLogger<LegalDocumentSyncRunner>.Instance);
-        await runner.SyncAndNotifyAsync(ct);
+        await runner.SyncAsync(ct);
 
         var retried = email.ReceivedCalls().Select(call => (EmailMessage)call.GetArguments()[0]!).ToList();
         retried.Should().HaveCount(2);
@@ -283,7 +283,7 @@ public sealed class LegalDocumentSyncServiceTests : ConsentTestHarness
         (await _repository.GetDocumentsAsync(null, ct)).SelectMany(document => document.Versions)
             .Should().OnlyContain(version => version.PendingReConsentBatchId == null);
         email.ClearReceivedCalls();
-        await runner.SyncAndNotifyAsync(ct);
+        await runner.SyncAsync(ct);
         email.ReceivedCalls().Should().BeEmpty();
     }
 

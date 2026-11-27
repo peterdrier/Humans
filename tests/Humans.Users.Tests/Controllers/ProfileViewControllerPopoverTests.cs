@@ -103,7 +103,7 @@ public class ProfileViewControllerPopoverTests
         _shiftManagement.CanManageOrApproveAnyShiftsAsync(_viewerId, Arg.Any<CancellationToken>()).Returns(false);
         if (privileged)
         {
-            ((ClaimsIdentity)_controller.User.Identity!).AddClaim(new Claim(ClaimTypes.Role, ShiftsRoles.ShiftsNoInfo));
+            ((ClaimsIdentity)_controller.User.Identity!).AddClaim(new Claim(ClaimTypes.Role, ShiftsRoles.ShiftsAdmin));
             _authorizationService.AuthorizeAsync(Arg.Any<ClaimsPrincipal>(), Arg.Any<object?>(),
                 ShiftsPolicies.PrivilegedSignupApprover).Returns(AuthorizationResult.Success());
         }

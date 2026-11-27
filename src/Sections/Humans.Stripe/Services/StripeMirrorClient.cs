@@ -153,17 +153,32 @@ internal sealed class StripeMirrorClient(IHttpClient? httpClient = null) : IStri
         if (item.ValueKind != JsonValueKind.Object)
             throw new InvalidOperationException($"Stripe {what}: expected an object.");
         foreach (var field in textFields)
-            if (!item.TryGetProperty(field, out var value) || value.ValueKind != JsonValueKind.String
-                || string.IsNullOrWhiteSpace(value.GetString()))
-                throw new InvalidOperationException($"Stripe {what}: missing or invalid {field}.");
+        {
+            var value = Field(item, what, field);
+            if (value.ValueKind != JsonValueKind.String)
+                throw new InvalidOperationException($"Stripe {what}: {field} is {Describe(value)}, not text.");
+            if (string.IsNullOrWhiteSpace(value.GetString()))
+                throw new InvalidOperationException($"Stripe {what}: {field} is blank.");
+        }
         foreach (var field in integerFields)
-            if (!item.TryGetProperty(field, out var value) || value.ValueKind != JsonValueKind.Number
-                || !value.TryGetInt64(out _))
-                throw new InvalidOperationException($"Stripe {what}: missing or invalid {field}.");
+            if (Field(item, what, field) is var value && (value.ValueKind != JsonValueKind.Number || !value.TryGetInt64(out _)))
+                throw new InvalidOperationException($"Stripe {what}: {field} is {Describe(value)}, not a whole number.");
         foreach (var field in booleanFields ?? [])
-            if (!item.TryGetProperty(field, out var value) || value.ValueKind is not (JsonValueKind.True or JsonValueKind.False))
-                throw new InvalidOperationException($"Stripe {what}: missing or invalid {field}.");
+            if (Field(item, what, field) is var value && value.ValueKind is not (JsonValueKind.True or JsonValueKind.False))
+                throw new InvalidOperationException($"Stripe {what}: {field} is {Describe(value)}, not true or false.");
     }
+
+    private static JsonElement Field(JsonElement item, string what, string field) =>
+        item.TryGetProperty(field, out var value)
+            ? value
+            : throw new InvalidOperationException($"Stripe {what}: {field} is missing.");
+
+    private static string Describe(JsonElement value) => value.ValueKind switch
+    {
+        JsonValueKind.String => $"'{value.GetString()}'",
+        JsonValueKind.Number => value.GetRawText(),
+        _ => value.ValueKind.ToString().ToLowerInvariant(),
+    };
 
     internal static StripeBalanceTransaction ToTransaction(string accountId, BalanceTransaction t, string? payoutId)
     {

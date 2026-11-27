@@ -75,7 +75,7 @@ public sealed class ShiftAdminPageBuilderTests
         var userId = Guid.NewGuid();
         _shiftManagement.GetRotasByDepartmentAsync(Department.Id, Event.Id, Arg.Any<CancellationToken>())
             .Returns([MakeRota(MakeShift(MakePending(userId)))]);
-        _membership.GetUsersWithAllRequiredConsentsForTeamAsync(
+        _membership.GetConsentedUsersForTeamAsync(
                 Arg.Any<IEnumerable<Guid>>(), SystemTeamIds.Volunteers, Arg.Any<CancellationToken>())
             .Returns(new HashSet<Guid>());
         var builder = new ShiftAdminPageBuilder(_shiftManagement, _membership, _userService, _teamService);
@@ -84,7 +84,7 @@ public sealed class ShiftAdminPageBuilderTests
             Department, Event, true, true, true, TestNow), cancellation.Token);
 
         await _shiftManagement.Received(1).GetRotasByDepartmentAsync(Department.Id, Event.Id, cancellation.Token);
-        await _membership.Received(1).GetUsersWithAllRequiredConsentsForTeamAsync(
+        await _membership.Received(1).GetConsentedUsersForTeamAsync(
             Arg.Any<IEnumerable<Guid>>(), SystemTeamIds.Volunteers, cancellation.Token);
         await _userService.Received(1).GetUserInfosAsync(Arg.Any<IEnumerable<Guid>>(), cancellation.Token);
         await _shiftManagement.Received(1).GetShiftProfileAsync(userId, cancellation.Token);
@@ -104,7 +104,7 @@ public sealed class ShiftAdminPageBuilderTests
 
         vm.PendingSignups.Should().BeEmpty();
         await _membership.DidNotReceiveWithAnyArgs()
-            .GetUsersWithAllRequiredConsentsForTeamAsync(null!, Guid.Empty, Arg.Any<CancellationToken>());
+            .GetConsentedUsersForTeamAsync(null!, Guid.Empty, Arg.Any<CancellationToken>());
     }
 
     [HumansFact]
@@ -116,7 +116,7 @@ public sealed class ShiftAdminPageBuilderTests
         var shift = MakeShift(MakePending(withConsents), MakePending(withoutConsents));
         StubRotas(MakeRota(shift));
 
-        _membership.GetUsersWithAllRequiredConsentsForTeamAsync(
+        _membership.GetConsentedUsersForTeamAsync(
                 Arg.Any<IEnumerable<Guid>>(), SystemTeamIds.Volunteers, Arg.Any<CancellationToken>())
             .Returns(new HashSet<Guid> { withConsents });
 
@@ -135,7 +135,7 @@ public sealed class ShiftAdminPageBuilderTests
         var shift = MakeShift(MakePending(u1), MakePending(u2));
         StubRotas(MakeRota(shift));
 
-        _membership.GetUsersWithAllRequiredConsentsForTeamAsync(
+        _membership.GetConsentedUsersForTeamAsync(
                 Arg.Any<IEnumerable<Guid>>(), SystemTeamIds.Volunteers, Arg.Any<CancellationToken>())
             .Returns(new HashSet<Guid> { u1, u2 });
 
@@ -153,7 +153,7 @@ public sealed class ShiftAdminPageBuilderTests
         var shift = MakeShift(MakePending(u1), MakePending(u2));
         StubRotas(MakeRota(shift));
 
-        _membership.GetUsersWithAllRequiredConsentsForTeamAsync(
+        _membership.GetConsentedUsersForTeamAsync(
                 Arg.Any<IEnumerable<Guid>>(), SystemTeamIds.Volunteers, Arg.Any<CancellationToken>())
             .Returns(new HashSet<Guid>());
 
@@ -174,13 +174,13 @@ public sealed class ShiftAdminPageBuilderTests
             MakePending(otherUser));
         StubRotas(MakeRota(shift));
 
-        _membership.GetUsersWithAllRequiredConsentsForTeamAsync(
+        _membership.GetConsentedUsersForTeamAsync(
                 Arg.Any<IEnumerable<Guid>>(), SystemTeamIds.Volunteers, Arg.Any<CancellationToken>())
             .Returns(new HashSet<Guid>());
 
         await BuildAsync();
 
-        await _membership.Received(1).GetUsersWithAllRequiredConsentsForTeamAsync(
+        await _membership.Received(1).GetConsentedUsersForTeamAsync(
             Arg.Is<IEnumerable<Guid>>(ids => ids.Order().SequenceEqual(new[] { sharedUser, otherUser }.Order())),
             SystemTeamIds.Volunteers,
             Arg.Any<CancellationToken>());

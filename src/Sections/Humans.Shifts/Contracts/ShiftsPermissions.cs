@@ -8,6 +8,6 @@ public static class ShiftsPermissions
     /// <summary>Create and edit the team's rotas and shifts, and email its volunteers. Shifts Admin holds it everywhere.</summary>
     public const string Manage = "Shifts.Manage";
 
-    /// <summary>Approve, refuse and voluntell the team's signups. Shifts Admin and Shifts NoInfo hold it everywhere.</summary>
+    /// <summary>Approve, refuse and voluntell the team's signups. Shifts Admin holds it everywhere.</summary>
     public const string Approve = "Shifts.Approve";
 }

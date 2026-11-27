@@ -118,7 +118,7 @@ Detail row within a category.
 
 ### BudgetChange
 
-Append-only per design-rules.md, *Append-only entities*. `IBudgetRepository` exposes no add/update/delete surface for audit rows — each mutation method writes its own audit rows inside the same `SaveChanges` (the ticketing sync paths write one summary row per run that changed anything) — plus the reads: `GetChangesAsync`, `GetChangesForUserIdsAsync`.
+Append-only per design-rules.md, *Append-only entities*. `IBudgetRepository` exposes no add/update/delete surface for audit rows — each mutation method writes its own audit rows inside the same `SaveChanges` (the ticketing sync paths write one summary row per run that changed anything) — plus the reads: `GetChangesAsync`, `GetChangesForUsersAsync`.
 
 **Table:** `budget_audit_logs`
 

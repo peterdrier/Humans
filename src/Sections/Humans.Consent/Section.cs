@@ -47,9 +47,10 @@ public sealed class Section :
 
     IReadOnlyList<RoleDefinition> ISectionRoles.Roles { get; } =
     [
-        new(ConsentRoles.ConsentCoordinator, "Consent Coordinator",
+        new(ConsentRoles.ConsentAdmin, "Consent Admin",
             "Guardians of trust and safety. They review every new human's consent journey, ensuring our community standards are understood and upheld from day one.",
-            "fa-solid fa-shield-heart"),
+            "fa-solid fa-shield-heart",
+            FormerNames: ["ConsentCoordinator"]),
     ];
 
     public void Register(IServiceCollection services, IConfiguration configuration)
@@ -138,7 +139,7 @@ public sealed class Section :
 
     IReadOnlyList<string> IIssueQueueOwner.PathSegments => ["legal", "consent"];
 
-    IReadOnlyList<string> IIssueQueueOwner.OwningRoles => [ConsentRoles.ConsentCoordinator];
+    IReadOnlyList<string> IIssueQueueOwner.OwningRoles => [ConsentRoles.ConsentAdmin];
 
     IReadOnlyList<AccessMatrixData> ISectionAccessMatrix.AccessMatrices =>
     [
@@ -147,13 +148,13 @@ public sealed class Section :
             Key = "ConsentReview",
             SectionName = "Consent Review",
             Order = 50,
-            Roles = ["ConsentCoordinator", "Board"],
+            Roles = ["ConsentAdmin", "Board"],
             Features =
             [
-                Of("View review queue", ("ConsentCoordinator", Allowed), ("Board", Allowed)),
-                Of("Clear consent checks", ("ConsentCoordinator", Allowed), ("Board", Allowed)),
-                Of("Flag / reject signup", ("ConsentCoordinator", Allowed), ("Board", Allowed)),
-                Of("Board voting", ("ConsentCoordinator", Denied), ("Board", Allowed)),
+                Of("View review queue", ("ConsentAdmin", Allowed), ("Board", Allowed)),
+                Of("Clear consent checks", ("ConsentAdmin", Allowed), ("Board", Allowed)),
+                Of("Flag / reject signup", ("ConsentAdmin", Allowed), ("Board", Allowed)),
+                Of("Board voting", ("ConsentAdmin", Denied), ("Board", Allowed)),
             ]
         },
         new()
@@ -207,11 +208,11 @@ public sealed class Section :
 
     void ISectionPolicies.AddPolicies(AuthorizationOptions options)
     {
-        options.AddPolicy(PolicyNames.ConsentCoordinatorBoardOrAdmin, policy =>
-            policy.RequireRole(ConsentRoles.ConsentCoordinator, RoleNames.Board, RoleNames.Admin));
+        options.AddPolicy(PolicyNames.ConsentAdminBoardOrAdmin, policy =>
+            policy.RequireRole(ConsentRoles.ConsentAdmin, RoleNames.Board, RoleNames.Admin));
 
         options.AddPolicy(PolicyNames.ReviewQueueAccess, policy =>
-            policy.RequireRole(ConsentRoles.ConsentCoordinator, RoleNames.Board, RoleNames.Admin));
+            policy.RequireRole(ConsentRoles.ConsentAdmin, RoleNames.Board, RoleNames.Admin));
     }
 
     IEnumerable<UserPart> IUserPart.Parts() =>

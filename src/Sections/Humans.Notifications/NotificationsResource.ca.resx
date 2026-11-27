@@ -150,8 +150,8 @@
   <data name="Notifications_Audience_Board" xml:space="preserve">
     <value>la Junta</value>
   </data>
-  <data name="Notifications_Audience_ConsentCoordinator" xml:space="preserve">
-    <value>coordinadors de consentiment</value>
+  <data name="Notifications_Audience_ConsentAdmin" xml:space="preserve">
+    <value>administradors de consentiment</value>
   </data>
   <data name="Notifications_Audience_ShiftsAdmin" xml:space="preserve">
     <value>administradors de torns</value>
