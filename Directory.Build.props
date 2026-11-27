@@ -105,6 +105,9 @@
 
   <!-- Analyzers -->
   <ItemGroup>
+    <!-- [UsedImplicitly] and friends for code only reflection or serialization reaches; compile-time only. -->
+    <PackageReference Include="JetBrains.Annotations" PrivateAssets="all" />
+
     <PackageReference Include="Roslynator.Analyzers">
       <PrivateAssets>all</PrivateAssets>
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>

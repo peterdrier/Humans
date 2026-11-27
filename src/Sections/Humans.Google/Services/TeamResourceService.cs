@@ -1,5 +1,6 @@
 using Humans.Google.Contracts;
 using Humans.Auth.Contracts;
+using JetBrains.Annotations;
 using System.Text.RegularExpressions;
 using Humans.AuditLog.Contracts;
 using Humans.Base.Authorization;
@@ -646,6 +647,7 @@ internal sealed partial class TeamResourceService(
             resource.RestrictInheritedAccess);
 }
 
+[UsedImplicitly(ImplicitUseKindFlags.Assign, ImplicitUseTargetFlags.WithMembers)]
 internal sealed class TeamResourceManagementOptions
 {
     public const string SectionName = "TeamResourceManagement";
