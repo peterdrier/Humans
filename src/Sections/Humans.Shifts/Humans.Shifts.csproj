@@ -29,7 +29,6 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\Humans.Base\Humans.Base.csproj" />
-    <!-- IIssueQueueOwner: this section declares the issue queue it owns. -->
     <!--
       Humans.Base above carries the shared enums whose persisted strings this section reads;
       the section's own persisted-string enums (SignupStatus, ShiftPriority, SignupPolicy,
