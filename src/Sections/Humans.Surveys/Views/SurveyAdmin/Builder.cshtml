@@ -20,7 +20,7 @@
 }
 
 @section Crumbs {
-    <span authorize-policy="@Humans.Surveys.Contracts.SurveysPolicies.Read"><a asp-controller="Admin" asp-action="Index">@Localizer["Surveys_Admin_Common_AdminBreadcrumb"]</a></span>
+    <span authorize-policy="@SurveysPolicies.Read"><a asp-controller="Admin" asp-action="Index">@Localizer["Surveys_Admin_Common_AdminBreadcrumb"]</a></span>
     <a asp-controller="SurveyAdmin" asp-action="Index">@Localizer["Surveys_Admin_Index_Title"]</a>
     <span>@ViewData["Title"]</span>
 }
@@ -52,6 +52,10 @@
                                 : Localizer["Surveys_Admin_Builder_ConfirmOpenSurvey"].Value)">@Localizer["Surveys_Admin_Builder_Open"]</button>
                 </form>
             }
+            @if (Model.Status == SurveyStatus.PendingApproval)
+            {
+                <partial name="_SurveyReviewActions" model="@Model.Id!.Value" view-data="@(new ViewDataDictionary(ViewData) { ["ReviewReturnUrl"] = Url.Action("Edit", "SurveyAdmin", new { id = Model.Id }) })" />
+            }
             @if (Model.ManagesEverySurvey && Model.Status == SurveyStatus.Open)
             {
                 <form asp-controller="SurveyAdmin" asp-action="Close" asp-route-id="@Model.Id" method="post" class="d-inline">
@@ -66,7 +70,7 @@
 @if (Model.Status == SurveyStatus.Draft && !string.IsNullOrWhiteSpace(Model.RejectionNote))
 {
     <div class="alert alert-danger" role="alert">
-        @string.Format(Localizer["Surveys_Admin_Index_RejectionNote"].Value, Model.RejectionNote)
+        @Localizer["Surveys_Admin_Index_RejectionNote", Model.RejectionNote]
     </div>
 }
 

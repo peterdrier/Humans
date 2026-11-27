@@ -41,7 +41,7 @@ public class OrderAuthorizationHandlerTests
         _shifts.GetActiveEventSettings().Returns(BurnFixtures.Burn(year: 2026, timeZoneId: "Europe/Madrid"));
         _users.GetUserInfoAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
             .Returns(call => UserInfo.Create(new User { Id = call.Arg<Guid>() }, [], [], null));
-        _handler = new OrderAuthorizationHandler(_campService, _teamService, _users, _shifts, _clock, new Microsoft.AspNetCore.Http.HttpContextAccessor());
+        _handler = new OrderAuthorizationHandler(_campService, _teamService, _users, _shifts, _clock, new HttpContextAccessor());
     }
 
     [HumansTheory]
@@ -441,7 +441,6 @@ public class OrderAuthorizationHandlerTests
                 new CampSeasonInfo(
                     seasonId,
                     campId,
-                    "camp-alpha",
                     2026,
                     null,
                     "Camp Alpha",

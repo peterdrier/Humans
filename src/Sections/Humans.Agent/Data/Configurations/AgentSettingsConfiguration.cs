@@ -17,7 +17,6 @@ internal sealed class AgentSettingsConfiguration : IEntityTypeConfiguration<Agen
         builder.Property(s => s.Id).ValueGeneratedNever();
 
         builder.Property(s => s.Model).HasMaxLength(64).IsRequired();
-        builder.Property(s => s.PreloadConfig).HasConversion<string>().HasMaxLength(16).IsRequired();
         builder.Property(s => s.UpdatedAt).IsRequired();
 
         // Seed the singleton row with disabled defaults so the app is always queryable.
@@ -26,7 +25,6 @@ internal sealed class AgentSettingsConfiguration : IEntityTypeConfiguration<Agen
             Id = 1,
             Enabled = false,
             Model = "claude-sonnet-4-6",
-            PreloadConfig = AgentPreloadConfig.Tier1,
             DailyMessageCap = 30,
             HourlyMessageCap = 10,
             DailyTokenCap = 50000,

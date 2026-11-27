@@ -20,7 +20,7 @@ namespace Humans.Pretix.Controllers;
 [AllowAnonymous]
 [Route("Pretix/Webhook")]
 internal sealed class PretixWebhookController(
-    ITicketCheckoutEvents checkoutEvents,
+    ITicketingPlatformEvents platformEvents,
     IOptions<PretixSettings> options,
     ILogger<PretixWebhookController> logger) : ControllerBase
 {
@@ -44,10 +44,11 @@ internal sealed class PretixWebhookController(
             || string.IsNullOrEmpty(notification.Event) || string.IsNullOrEmpty(notification.Code))
             return Ok();
 
-        await checkoutEvents.CheckoutChangedAsync(
-            PretixCheckoutBackend.BackendKey,
-            PretixCheckoutBackend.FormatBackendOrderId(notification.Event, notification.Code),
-            ct);
+        // Applying an order change can write to the platform; a sender that hangs up must not tear it.
+        await platformEvents.PlatformOrderChangedAsync(
+            PretixPlatform.PlatformKey,
+            PretixPlatform.FormatPlatformOrderId(notification.Event, notification.Code),
+            CancellationToken.None);
         return Ok();
     }
 

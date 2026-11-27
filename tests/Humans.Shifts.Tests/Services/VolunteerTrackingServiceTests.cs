@@ -7,7 +7,6 @@ using AwesomeAssertions;
 using Humans.Settings.Contracts;
 using Humans.Shifts.Contracts;
 using Humans.Shifts.Services;
-using Humans.Shifts.Tests.Infrastructure;
 using NodaTime;
 using NodaTime.Testing;
 using NSubstitute;
@@ -157,7 +156,7 @@ public class VolunteerTrackingServiceTests
             .Returns(Task.FromCanceled<IReadOnlyList<GeneralAvailability>>(cancellation.Token));
         var service = new VolunteerTrackingService(
             repo, Substitute.For<IShiftManagementRepository>(),
-            new EventCalendarResolver(Substitute.For<ISettingsService>(), Substitute.For<Humans.Shifts.Data.IShiftManagementRepository>()),
+            new EventCalendarResolver(Substitute.For<ISettingsService>(), Substitute.For<IShiftManagementRepository>()),
             Substitute.For<IUserService>(), Substitute.For<ITicketService>(),
             new FakeClock(TestNow), Substitute.For<IAuditLogService>());
 
@@ -979,7 +978,7 @@ public class VolunteerTrackingServiceTests
         settingsService.GetActiveEventSettings().Returns(calendar);
         settingsService.GetEventSettingsByIdAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
             .Returns(ci => calendar is not null && calendar.Id == ci.Arg<Guid>() ? calendar : null);
-        var calendarResolver = new EventCalendarResolver(settingsService, Substitute.For<Humans.Shifts.Data.IShiftManagementRepository>());
+        var calendarResolver = new EventCalendarResolver(settingsService, Substitute.For<IShiftManagementRepository>());
 
         var userService = Substitute.For<IUserService>();
         userService.GetAllUserInfosAsync(Arg.Any<CancellationToken>())
@@ -1042,7 +1041,6 @@ public class VolunteerTrackingServiceTests
         public List<(Guid UserId, Guid EventSettingsId, LocalDate? Date, string? Notes, Guid? SetByUserId, Instant? SetAt)> UpsertCalls { get; } =
             [];
         public List<(Guid UserId, Guid EventSettingsId, DayOffEntry Entry)> UpsertDayOffCalls { get; } = [];
-        public List<(Guid UserId, Guid EventSettingsId, int DayOffset)> RemoveDayOffCalls { get; } = [];
 
         public Task<IReadOnlyList<VolunteerBuildStatus>> GetBuildStatusesForEventAsync(
             Guid? eventSettingsId,
@@ -1176,7 +1174,6 @@ public class VolunteerTrackingServiceTests
         public Task<bool> RemoveDayOffAsync(
             Guid userId, Guid eventSettingsId, int dayOffset, CancellationToken ct = default)
         {
-            RemoveDayOffCalls.Add((userId, eventSettingsId, dayOffset));
             var existing = BuildStatuses.FirstOrDefault(b => b.UserId == userId && b.EventSettingsId == eventSettingsId);
             if (existing is null) return Task.FromResult(false);
             var removed = existing.DayOffs.RemoveAll(d => d.DayOffset == dayOffset) > 0;

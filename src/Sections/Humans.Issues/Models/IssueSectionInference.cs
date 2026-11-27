@@ -12,7 +12,7 @@ internal static class IssueSectionInference
         if (!Uri.TryCreate(path, UriKind.RelativeOrAbsolute, out var uri))
             return null;
 
-        var p = uri.IsAbsoluteUri ? uri.AbsolutePath : StripQueryAndFragment(path);
+        var p = uri.IsAbsoluteUri ? uri.AbsolutePath : StripQuery(path);
         var trimmed = p.Trim('/');
         if (trimmed.Length == 0) return null;
 
@@ -20,7 +20,7 @@ internal static class IssueSectionInference
         return routing.ResolvePathSegment(first);
     }
 
-    private static string StripQueryAndFragment(string path)
+    private static string StripQuery(string path)
     {
         var qIdx = path.IndexOfAny(['?', '#']);
         return qIdx < 0 ? path : path[..qIdx];

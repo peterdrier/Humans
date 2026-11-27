@@ -2,13 +2,10 @@ using Humans.Users.Services;
 // @e2e: board.spec.ts
 // @e2e: profile.spec.ts
 using Humans.Base.Controllers;
-using Humans.Base.Extensions;
 using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Net.Http.Headers;
 using Microsoft.Extensions.Localization;
-using Humans.Base.Enums;
 using Humans.Users.Models;
 using Humans.Camps.Contracts;
 using Humans.Shifts.Contracts;
@@ -16,9 +13,7 @@ using Humans.Teams.Contracts;
 using Humans.Governance.Contracts;
 using Humans.Users.Contracts;
 using Humans.Auth.Contracts;
-using NodaTime;
 using Humans.Base;
-using Humans.Base.Authorization;
 
 namespace Humans.Users.Controllers;
 
@@ -32,7 +27,7 @@ internal sealed class ProfileViewController(
     ITeamService teamService,
     ICampService campService,
     IGovernanceService governanceService,
-    IRoleAssignmentService roleAssignments,
+    ISystemRoleService roleAssignments,
     IAuthorizationService authorizationService,
     MedicalConditionsService medicalConditions) : HumansControllerBase(userService)
 {

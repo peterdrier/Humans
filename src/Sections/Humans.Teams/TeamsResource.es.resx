@@ -215,9 +215,10 @@
   <data name="Teams_NotMember" xml:space="preserve">
     <value>No formas parte de este equipo.</value>
   </data>
-  <data name="Teams_RequestUnavailable" xml:space="preserve">
-    <value>Esta solicitud para unirte no está disponible o ya no está pendiente.</value>
-  </data>
+  <data name="Teams_RequestNotFound" xml:space="preserve"><value>No tienes esa solicitud para unirte.</value></data>
+  <data name="Teams_RequestApproved" xml:space="preserve"><value>Esa solicitud para unirse ya fue aprobada.</value></data>
+  <data name="Teams_RequestRejected" xml:space="preserve"><value>Esa solicitud para unirse ya fue rechazada.</value></data>
+  <data name="Teams_RequestWithdrawn" xml:space="preserve"><value>Ya retiraste esa solicitud para unirte.</value></data>
   <data name="Teams_ActionFailed" xml:space="preserve">
     <value>No se pudo completar esta acción del equipo. Inténtalo de nuevo.</value>
   </data>

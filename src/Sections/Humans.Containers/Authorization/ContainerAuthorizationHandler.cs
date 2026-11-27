@@ -1,12 +1,10 @@
 using Humans.Containers.Contracts;
 using Humans.Users.Contracts;
-using Humans.Base.Authorization;
 using System.Security.Claims;
 using Humans.Camps.Contracts;
 using Humans.CityPlanning.Contracts;
 using Humans.Settings.Contracts;
 using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Http;
 
 namespace Humans.Containers.Authorization;
 

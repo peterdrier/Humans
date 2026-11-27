@@ -32,7 +32,7 @@ public class AttendeeContactImportServiceSquatterTests
         harness.UserEmails.FindByAddressAsync(Arg.Any<string>(), true, false, Arg.Any<CancellationToken>())
             .Returns([UserEmailFixtures.Row(ownerId, "victim@gmail.com", verified: false, id: emailId)]);
         var replacements = 0;
-        harness.Provisioning.ReplaceUnverifiedEmailAndProvisionAsync(ownerId, emailId, Arg.Any<string>(),
+        harness.Provisioning.ReplaceUnverifiedEmailAsync(ownerId, emailId, Arg.Any<string>(),
                 Arg.Any<string?>(), ContactSource.TicketTailor, Arg.Any<CancellationToken>())
             .Returns(_ => ++replacements == 1
                 ? new AccountProvisioningResult(newUserId, Created: true)
@@ -73,7 +73,7 @@ public class AttendeeContactImportServiceSquatterTests
         };
         harness.WithUnmatched(attendee);
         harness.WithActiveYear(2026);
-        var replacement = harness.Provisioning.ReplaceUnverifiedEmailAndProvisionAsync(
+        var replacement = harness.Provisioning.ReplaceUnverifiedEmailAsync(
             squatterUserId, squatterRowId, "victim@x.com", Arg.Any<string?>(), ContactSource.TicketTailor, Arg.Any<CancellationToken>());
         if (fails) replacement.ThrowsAsync(new InvalidOperationException("Provisioning failed"));
         else replacement.Returns(new AccountProvisioningResult(newVictimUserId, Created: true));
@@ -92,7 +92,7 @@ public class AttendeeContactImportServiceSquatterTests
         result.UsersCreated.Should().Be(fails ? 0 : 1);
         result.UnverifiedRowsDeletedAndUserCreated.Should().Be(fails ? 0 : 1);
         attendee.MatchedUserId.Should().NotBe(squatterUserId);
-        await harness.Provisioning.Received(1).ReplaceUnverifiedEmailAndProvisionAsync(
+        await harness.Provisioning.Received(1).ReplaceUnverifiedEmailAsync(
             squatterUserId, squatterRowId, "victim@x.com", "Victim", ContactSource.TicketTailor, Arg.Any<CancellationToken>());
         await harness.UserEmails.DidNotReceiveWithAnyArgs().DeleteEmailAsync(default, default);
     }

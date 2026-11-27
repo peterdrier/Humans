@@ -1,3 +1,4 @@
+using Humans.Testing;
 using Microsoft.AspNetCore.Mvc.ModelBinding;
 using Microsoft.AspNetCore.Mvc.ModelBinding.Validation;
 using Microsoft.Extensions.DependencyInjection;
@@ -118,6 +119,107 @@ public sealed class SurveyAdminControllerTests
         }
     }
 
+    public enum QuestionField { Complete, PageNumber, Type, ShowIfCombine, RankedAllowEqualRanks, RankedAllowReject, Operator }
+
+    [HumansTheory]
+    [Xunit.InlineData(false, QuestionField.Complete)]
+    [Xunit.InlineData(false, QuestionField.PageNumber)]
+    [Xunit.InlineData(false, QuestionField.Type)]
+    [Xunit.InlineData(false, QuestionField.ShowIfCombine)]
+    [Xunit.InlineData(false, QuestionField.RankedAllowEqualRanks)]
+    [Xunit.InlineData(false, QuestionField.RankedAllowReject)]
+    [Xunit.InlineData(false, QuestionField.Operator)]
+    [Xunit.InlineData(true, QuestionField.Complete)]
+    [Xunit.InlineData(true, QuestionField.PageNumber)]
+    [Xunit.InlineData(true, QuestionField.Type)]
+    [Xunit.InlineData(true, QuestionField.ShowIfCombine)]
+    [Xunit.InlineData(true, QuestionField.RankedAllowEqualRanks)]
+    [Xunit.InlineData(true, QuestionField.RankedAllowReject)]
+    [Xunit.InlineData(true, QuestionField.Operator)]
+    public async Task Save_MissingQuestionField_RefusesBeforePersistence(bool existing, QuestionField field)
+    {
+        var actorId = Guid.NewGuid();
+        var surveyId = Guid.NewGuid();
+        var sourceId = Guid.NewGuid();
+        var surveys = Substitute.For<ISurveyService>();
+        surveys.CreateAsync(Arg.Any<SurveyEditInput>(), actorId, Arg.Any<CancellationToken>()).Returns(new SurveySaveResult(surveyId));
+        surveys.UpdateAsync(surveyId, Arg.Any<SurveyEditInput>(), Arg.Any<SurveyViewer>(), Arg.Any<CancellationToken>())
+            .Returns(new SurveySaveResult(surveyId));
+        surveys.GetForEditAsync(surveyId, Arg.Any<CancellationToken>())
+            .Returns(new SurveyDetail(surveyId, SurveyStatus.Draft, Editable("Existing"), actorId));
+        var sut = CreateController(surveys, authorizationService: RealAuthorizationService(), userId: actorId);
+        using var services = new ServiceCollection().AddLogging().AddControllers().Services.BuildServiceProvider();
+        sut.HttpContext.RequestServices = services;
+        sut.Url = Substitute.For<IUrlHelper>();
+        var fields = new Dictionary<string, StringValues>(StringComparer.OrdinalIgnoreCase)
+        {
+            ["Title[en]"] = "Changed",
+            ["AllowAnonymous"] = "false",
+            ["IsAsociadoVote"] = "false",
+            ["Questions.Index"] = new StringValues(["source", "target"]),
+            ["Questions[source].Id"] = sourceId.ToString(),
+            ["Questions[source].PageNumber"] = "1",
+            ["Questions[source].Type"] = "SingleChoice",
+            ["Questions[source].ShowIfCombine"] = "All",
+            ["Questions[source].RankedAllowEqualRanks"] = "false",
+            ["Questions[source].RankedAllowReject"] = "false",
+            ["Questions[source].Prompt[en]"] = "Choose",
+            ["Questions[source].Options[0].Value"] = "yes",
+            ["Questions[source].Options[0].Label[en]"] = "Yes",
+            ["Questions[target].PageNumber"] = "2",
+            ["Questions[target].Type"] = "RankedChoice",
+            ["Questions[target].ShowIfCombine"] = "Any",
+            ["Questions[target].RankedAllowEqualRanks"] = "false",
+            ["Questions[target].RankedAllowReject"] = "true",
+            ["Questions[target].Prompt[en]"] = "Rank",
+            ["Questions[target].Options[0].Value"] = "a",
+            ["Questions[target].Options[0].Label[en]"] = "A",
+            ["Questions[target].Options[1].Value"] = "b",
+            ["Questions[target].Options[1].Label[en]"] = "B",
+            ["Questions[target].ShowIfClauses[0].QuestionId"] = sourceId.ToString(),
+            ["Questions[target].ShowIfClauses[0].Operator"] = "IsNot",
+            ["Questions[target].ShowIfClauses[0].OptionValues"] = "yes"
+        };
+        if (existing) fields["Id"] = surveyId.ToString();
+        var missingKey = field == QuestionField.Operator
+            ? "Questions[target].ShowIfClauses[0].Operator" : $"Questions[target].{field}";
+        if (field != QuestionField.Complete) fields.Remove(missingKey);
+        var metadata = services.GetRequiredService<IModelMetadataProvider>().GetMetadataForType(typeof(SurveyBuilderViewModel));
+        var binder = services.GetRequiredService<IModelBinderFactory>().CreateBinder(new ModelBinderFactoryContext { Metadata = metadata });
+        var binding = DefaultModelBindingContext.CreateBindingContext(sut.ControllerContext,
+            new FormValueProvider(BindingSource.Form, new FormCollection(fields), CultureInfo.InvariantCulture),
+            metadata, bindingInfo: null, modelName: "");
+        await binder.BindModelAsync(binding);
+        var model = (SurveyBuilderViewModel)binding.Result.Model!;
+        services.GetRequiredService<IObjectModelValidator>().Validate(sut.ControllerContext, binding.ValidationState, "", model);
+        var ct = Xunit.TestContext.Current.CancellationToken;
+
+        var result = await sut.Save(model, null, ct);
+
+        if (field != QuestionField.Complete)
+        {
+            result.Should().BeOfType<ViewResult>();
+            sut.ModelState[missingKey]!.Errors.Should().NotBeEmpty();
+            await surveys.DidNotReceiveWithAnyArgs().CreateAsync(default!, default);
+            await surveys.DidNotReceiveWithAnyArgs().UpdateAsync(default, default!, default!);
+        }
+        else
+        {
+            sut.ModelState.IsValid.Should().BeTrue();
+            result.Should().BeOfType<RedirectToActionResult>();
+            var input = (SurveyEditInput)surveys.ReceivedCalls().Single(call =>
+                string.Equals(call.GetMethodInfo().Name, existing ? nameof(ISurveyService.UpdateAsync) : nameof(ISurveyService.CreateAsync), StringComparison.Ordinal))
+                .GetArguments()[existing ? 1 : 0]!;
+            var question = input.Questions.Last();
+            question.PageNumber.Should().Be(2);
+            question.Type.Should().Be(SurveyQuestionType.RankedChoice);
+            question.RankedSettings!.AllowEqualRanks.Should().BeFalse();
+            question.RankedSettings.AllowReject.Should().BeTrue();
+            question.ShowIf!.Combine.Should().Be(BranchCombine.Any);
+            question.ShowIf.Clauses.Single().Operator.Should().Be(BranchOperator.IsNot);
+        }
+    }
+
     [HumansTheory]
     [Xunit.InlineData(AuthoringAction.Index, AccountScenario.Merged)]
     [Xunit.InlineData(AuthoringAction.Index, AccountScenario.Missing)]
@@ -182,7 +284,7 @@ public sealed class SurveyAdminControllerTests
         var invitations = Substitute.For<ISurveyInvitations>();
         surveys.GetForEditAsync(id, Arg.Any<CancellationToken>()).Returns(new SurveyDetail(id, SurveyStatus.Draft, Editable("Mine"), actorId));
         surveys.GetAdminSummariesAsync(Arg.Any<SurveyViewer>(), Arg.Any<CancellationToken>()).Returns(Array.Empty<SurveyAdminSummary>());
-        surveys.ApproveAndSendAsync(id, Arg.Any<SurveyViewer>(), Arg.Any<CancellationToken>()).Returns(new SurveyReviewResult(new SendResult(0, 0, 0)));
+        surveys.ApproveAsync(id, Arg.Any<SurveyViewer>(), Arg.Any<CancellationToken>()).Returns(new SurveyReviewResult(new SendResult(0, 0, 0)));
         surveys.RejectAsync(id, Arg.Any<SurveyViewer>(), Arg.Any<string>(), Arg.Any<CancellationToken>()).Returns(new SurveyReviewResult());
         surveys.SubmitForApprovalAsync(id, Arg.Any<Guid>(), Arg.Any<CancellationToken>()).Returns(new SurveySubmitResult(true));
         surveys.GetOfficialLinkAsync(id, Arg.Any<Guid>(), Arg.Any<CancellationToken>()).Returns((SurveyOfficialLink?)null);
@@ -200,7 +302,7 @@ public sealed class SurveyAdminControllerTests
         var authorization = Substitute.For<IAuthorizationService>();
         authorization.AuthorizeAsync(Arg.Any<ClaimsPrincipal>(), Arg.Any<object>(), Arg.Any<IEnumerable<IAuthorizationRequirement>>())
             .Returns(AuthorizationResult.Success());
-        var localizer = Substitute.For<IStringLocalizer<SurveysResource>>();
+        var localizer = Substitute.For<IStringLocalizer<SurveysResource>>().AddFormatting();
         localizer[Arg.Any<string>()].Returns(call => new LocalizedString(call.Arg<string>(), call.Arg<string>()));
         localizer[Arg.Any<string>(), Arg.Any<object[]>()].Returns(call => new LocalizedString(call.Arg<string>(), call.Arg<string>()));
         var http = new DefaultHttpContext
@@ -219,8 +321,8 @@ public sealed class SurveyAdminControllerTests
         Func<Task<IActionResult>> run = () => action switch
         {
             AuthoringAction.Index => controller.Index(request.Token),
-            AuthoringAction.Approve => controller.Approve(id, request.Token),
-            AuthoringAction.Reject => controller.Reject(id, "Reason", request.Token),
+            AuthoringAction.Approve => controller.Approve(id, null, request.Token),
+            AuthoringAction.Reject => controller.Reject(id, "Reason", null, request.Token),
             AuthoringAction.Submit => controller.Submit(id, request.Token),
             AuthoringAction.Official => controller.Official(id, request.Token),
             AuthoringAction.SendPreviewEmail => controller.SendPreviewEmail(id, previews, request.Token),
@@ -462,7 +564,7 @@ public sealed class SurveyAdminControllerTests
         var surveys = Substitute.For<ISurveyService>();
         var failure = new InvalidOperationException("Unexpected persistence failure.");
         if (approve)
-            surveys.ApproveAndSendAsync(id, Arg.Any<SurveyViewer>(), Arg.Any<CancellationToken>())
+            surveys.ApproveAsync(id, Arg.Any<SurveyViewer>(), Arg.Any<CancellationToken>())
                 .Returns(Task.FromException<SurveyReviewResult>(failure));
         else
             surveys.RejectAsync(id, Arg.Any<SurveyViewer>(), "note", Arg.Any<CancellationToken>())
@@ -470,8 +572,8 @@ public sealed class SurveyAdminControllerTests
         var sut = CreateController(surveys, role: SurveysRoles.SurveysAdmin);
 
         var act = async () => approve
-            ? await sut.Approve(id, Xunit.TestContext.Current.CancellationToken)
-            : await sut.Reject(id, "note", Xunit.TestContext.Current.CancellationToken);
+            ? await sut.Approve(id, null, Xunit.TestContext.Current.CancellationToken)
+            : await sut.Reject(id, "note", null, Xunit.TestContext.Current.CancellationToken);
 
         (await act.Should().ThrowAsync<InvalidOperationException>()).Which.Should().BeSameAs(failure);
         sut.TempData.Should().BeEmpty();
@@ -585,12 +687,12 @@ public sealed class SurveyAdminControllerTests
     {
         var id = Guid.NewGuid();
         var surveys = Substitute.For<ISurveyService>();
-        surveys.ApproveAndSendAsync(id, Arg.Any<SurveyViewer>(), Arg.Any<CancellationToken>())
+        surveys.ApproveAsync(id, Arg.Any<SurveyViewer>(), Arg.Any<CancellationToken>())
             .Returns(new SurveyReviewResult(new SendResult(3, 3 - failed, failed)));
         var localizer = SpanishLocalizer();
         var sut = CreateController(surveys, role: SurveysRoles.SurveysAdmin, localizer: localizer);
 
-        var result = await sut.Approve(id, Xunit.TestContext.Current.CancellationToken);
+        var result = await sut.Approve(id, null, Xunit.TestContext.Current.CancellationToken);
 
         result.Should().BeOfType<RedirectToActionResult>().Which.ActionName.Should().Be(nameof(SurveyAdminController.Queue));
         var noticeKey = failed > 0 ? TempDataKeys.ErrorMessage : TempDataKeys.SuccessMessage;
@@ -600,16 +702,33 @@ public sealed class SurveyAdminControllerTests
     }
 
     [HumansFact]
+    public async Task Approve_from_a_survey_page_returns_to_that_page()
+    {
+        var id = Guid.NewGuid();
+        var surveys = Substitute.For<ISurveyService>();
+        surveys.ApproveAsync(id, Arg.Any<SurveyViewer>(), Arg.Any<CancellationToken>())
+            .Returns(new SurveyReviewResult(new SendResult(1, 1, 0)));
+        var sut = CreateController(surveys, role: SurveysRoles.SurveysAdmin);
+        sut.Url = Substitute.For<IUrlHelper>();
+        var returnUrl = $"/Survey/Admin/Send/{id}";
+        sut.Url.IsLocalUrl(returnUrl).Returns(true);
+
+        var result = await sut.Approve(id, returnUrl, Xunit.TestContext.Current.CancellationToken);
+
+        result.Should().BeOfType<LocalRedirectResult>().Which.Url.Should().Be(returnUrl);
+    }
+
+    [HumansFact]
     public async Task Approve_refusal_returns_to_queue_with_the_reason()
     {
         var id = Guid.NewGuid();
         var surveys = Substitute.For<ISurveyService>();
         const string reason = "This survey's audience resolves to nobody to invite.";
-        surveys.ApproveAndSendAsync(id, Arg.Any<SurveyViewer>(), Arg.Any<CancellationToken>())
+        surveys.ApproveAsync(id, Arg.Any<SurveyViewer>(), Arg.Any<CancellationToken>())
             .Returns(new SurveyReviewResult(Refusal: reason));
         var sut = CreateController(surveys, role: SurveysRoles.SurveysAdmin);
 
-        var result = await sut.Approve(id, Xunit.TestContext.Current.CancellationToken);
+        var result = await sut.Approve(id, null, Xunit.TestContext.Current.CancellationToken);
 
         result.Should().BeOfType<RedirectToActionResult>().Which.ActionName.Should().Be(nameof(SurveyAdminController.Queue));
         sut.TempData[TempDataKeys.ErrorMessage].Should().Be(reason);
@@ -634,7 +753,7 @@ public sealed class SurveyAdminControllerTests
             .Returns(new SurveyReviewResult(Refusal: "A rejection note must be 4000 characters or fewer."));
         var sut = CreateController(surveys, role: SurveysRoles.SurveysAdmin);
 
-        var result = await sut.Reject(surveyId, note, Xunit.TestContext.Current.CancellationToken);
+        var result = await sut.Reject(surveyId, note, null, Xunit.TestContext.Current.CancellationToken);
 
         var view = result.Should().BeOfType<ViewResult>().Subject;
         view.ViewName.Should().Be(nameof(SurveyAdminController.Queue));
@@ -814,7 +933,7 @@ public sealed class SurveyAdminControllerTests
             Substitute.For<ITeamService>(),
             users,
             Substitute.For<IAuthorizationService>(),
-            Substitute.For<IStringLocalizer<SurveysResource>>(),
+            Substitute.For<IStringLocalizer<SurveysResource>>().AddFormatting(),
             logger)
         {
             ControllerContext = new ControllerContext { HttpContext = http },
@@ -906,7 +1025,7 @@ public sealed class SurveyAdminControllerTests
 
     private static IStringLocalizer<SurveysResource> SpanishLocalizer()
     {
-        var localizer = Substitute.For<IStringLocalizer<SurveysResource>>();
+        var localizer = Substitute.For<IStringLocalizer<SurveysResource>>().AddFormatting();
         var resources = new ResourceManager(typeof(SurveysResource));
         var culture = CultureInfo.GetCultureInfo("es");
         localizer[Arg.Any<string>()].Returns(ci => new LocalizedString(ci.Arg<string>(), resources.GetString(ci.Arg<string>(), culture)!));
@@ -940,7 +1059,7 @@ public sealed class SurveyAdminControllerTests
             teams ?? Substitute.For<ITeamService>(),
             users,
             authorizationService ?? Substitute.For<IAuthorizationService>(),
-            localizer ?? Substitute.For<IStringLocalizer<SurveysResource>>(),
+            localizer ?? Substitute.For<IStringLocalizer<SurveysResource>>().AddFormatting(),
             NullLogger<SurveyAdminController>.Instance)
         {
             ControllerContext = new ControllerContext { HttpContext = http },
@@ -1001,7 +1120,7 @@ public sealed class SurveyAdminControllerTests
         surveys.GetAdminSummariesAsync(Arg.Any<SurveyViewer>(), Arg.Any<CancellationToken>())
             .Returns(new List<SurveyAdminSummary>
             {
-                new(Guid.NewGuid(), "Mine", SurveyStatus.Draft, 0, 0, authorId, null, null),
+                new(Guid.NewGuid(), "Mine", SurveyStatus.Draft, 0, 0, authorId, null),
             });
         var sut = CreateController(surveys, userId: authorId);
 

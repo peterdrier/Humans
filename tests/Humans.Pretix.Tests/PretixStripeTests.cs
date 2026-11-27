@@ -46,9 +46,9 @@ public sealed class PretixStripeTests
         var ledger = await Create(pretix, stripe: _stripe).GetPaymentLedgerAsync(Now - Duration.FromDays(1), Now, Ct);
 
         ledger!.Entries.Select(e => (e.Id, e.Kind, e.AmountMinor, e.FeeMinor, e.HumansOrderId)).Should().Equal(
-            ("txn_c", PaymentLedgerEntryKind.Charge, 100000L, 1440L, (Guid?)paid),
-            ("txn_r", PaymentLedgerEntryKind.Refund, -22500L, 0L, (Guid?)refunded),
-            ("txn_x", PaymentLedgerEntryKind.Charge, 500L, 30L, (Guid?)null));
+            ("txn_c", PaymentLedgerEntryKind.Charge, 100000L, 1440L, paid),
+            ("txn_r", PaymentLedgerEntryKind.Refund, -22500L, 0L, refunded),
+            ("txn_x", PaymentLedgerEntryKind.Charge, 500L, 30L, null));
         ledger.Payouts.Should().ContainSingle().Which.ContentsNetMinor.Should().BeNull();
         pretix.Requests.Should().OnlyContain(r => r.Route.StartsWith("GET ", StringComparison.Ordinal))
             .And.ContainSingle(r => r.Route.EndsWith("/events/", StringComparison.Ordinal));
@@ -61,10 +61,10 @@ public sealed class PretixStripeTests
             .Returns([new StripeAccountCheck(false, "Stripe:MirrorAccounts has no Pretix entry")]);
         var pretix = new FakePretix()
             .On("GET", "/api/v1/organizers/nobodies/events/", HttpStatusCode.OK, new { results = Array.Empty<object>() });
-        var backend = Create(pretix, stripe: _stripe);
+        var platform = Create(pretix, stripe: _stripe);
 
-        (await backend.GetPaymentLedgerAsync(Now - Duration.FromDays(1), Now, Ct)).Should().BeNull();
-        (await backend.CheckAsync(null, Ct)).Should().Contain(new CheckoutBackendFinding(false, "Stripe:MirrorAccounts has no Pretix entry"));
+        (await platform.GetPaymentLedgerAsync(Now - Duration.FromDays(1), Now, Ct)).Should().BeNull();
+        (await platform.CheckAsync(null, Ct)).Should().Contain(new PlatformFinding(false, "Stripe:MirrorAccounts has no Pretix entry"));
     }
 
     [HumansFact]
@@ -75,7 +75,7 @@ public sealed class PretixStripeTests
 
         var status = await Create(pretix, stripe: _stripe).GetStatusAsync($"nowhere2027/{Code}", Ct);
 
-        status.State.Should().Be(CheckoutState.Paid);
+        status.State.Should().Be(PlatformOrderState.Paid);
         status.FeeMinor.Should().Be(1440);
     }
 
@@ -86,6 +86,6 @@ public sealed class PretixStripeTests
 
         (await Create(pretix, stripe: _stripe).GetStatusAsync($"nowhere2027/{Code}", Ct)).FeeMinor.Should().BeNull();
 
-        await _stripe.DidNotReceiveWithAnyArgs().GetAccountPaymentFeeAsync(default!, default!, default);
+        await _stripe.DidNotReceiveWithAnyArgs().GetAccountPaymentFeeAsync(default!, default!);
     }
 }

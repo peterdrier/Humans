@@ -29,6 +29,7 @@ Volunteers browsing `/Shifts` see a long flat list of shifts grouped by departme
 - Hover tooltip shows `Name — N h / M h (P%)`
 - ARIA label reads `Name: P% covered, N of M hours` for screen readers
 - A tip pill above the row reads `Tip — click a chart to filter to that department; click it again to clear.`
+- The tip can be dismissed even when browser storage is blocked. Dismissal is remembered across visits when local storage is available; otherwise it lasts for the current page.
 
 ### US-Pie.2: Click a Pie to Filter; Click Again to Clear
 **As a** volunteer

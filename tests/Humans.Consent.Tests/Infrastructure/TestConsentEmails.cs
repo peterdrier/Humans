@@ -1,3 +1,4 @@
+using Humans.Testing;
 using System.Globalization;
 using Humans.Base.Configuration;
 using Humans.Consent.Services;
@@ -29,7 +30,7 @@ internal static class TestConsentEmails
 
     public static ConsentEmails Create()
     {
-        var localizer = Substitute.For<IStringLocalizer<ConsentResource>>();
+        var localizer = Substitute.For<IStringLocalizer<ConsentResource>>().AddFormatting();
         localizer[Arg.Any<string>()].Returns(call =>
         {
             var key = call.Arg<string>();

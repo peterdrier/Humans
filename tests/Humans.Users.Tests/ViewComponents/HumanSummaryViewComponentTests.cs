@@ -65,8 +65,8 @@ public sealed class HumanSummaryViewComponentTests
         teams.GetUserTeamMembershipsAsync(userId, Arg.Any<CancellationToken>()).Returns(
             new[] { Team("Zulu"), Team("Hidden", hidden: true), Team("Alpha"),
                 Team("Inactive", active: false), Team("Volunteers", system: SystemTeamType.Volunteers) }
-                .Select(t => new UserTeamMembershipInfo(t.Members[0].TeamMemberId, t.Id, t.Name, t.Slug,
-                    t.IsSystemTeam, t.Members[0].Role, at)
+                .Select(t => new UserTeamMembershipInfo(t.Id, t.Name, t.Slug,
+                    t.Members[0].Role)
                 {
                     IsActive = t.IsActive,
                     IsHidden = t.IsHidden,
@@ -74,7 +74,7 @@ public sealed class HumanSummaryViewComponentTests
                 }).ToList());
         var governance = Substitute.For<IGovernanceService>();
         governance.GetMembershipTierAsync(userId, Arg.Any<CancellationToken>()).Returns(MembershipTier.Asociado);
-        var component = new HumanSummaryViewComponent(users, teams, governance, Substitute.For<Humans.Auth.Contracts.IRoleAssignmentService>())
+        var component = new HumanSummaryViewComponent(users, teams, governance, Substitute.For<Humans.Auth.Contracts.ISystemRoleService>())
         {
             ViewComponentContext = new ViewComponentContext
             {
@@ -106,7 +106,7 @@ public sealed class HumanSummaryViewComponentTests
         var info = UserInfoFixtures.FromUser(new User { Id = userId }) with { IdentityEmailColumn = "canonical@example.com" };
         var users = Substitute.For<IUserService>();
         users.GetUserInfoAsync(userId, Arg.Any<CancellationToken>()).Returns(info);
-        var component = new HumanSummaryViewComponent(users, Substitute.For<ITeamService>(), Substitute.For<IGovernanceService>(), Substitute.For<Humans.Auth.Contracts.IRoleAssignmentService>())
+        var component = new HumanSummaryViewComponent(users, Substitute.For<ITeamService>(), Substitute.For<IGovernanceService>(), Substitute.For<Humans.Auth.Contracts.ISystemRoleService>())
         {
             ViewComponentContext = new ViewComponentContext
             {
@@ -132,7 +132,7 @@ public sealed class HumanSummaryViewComponentTests
         var users = Substitute.For<IUserService>();
         users.GetUserInfoAsync(Arg.Any<Guid>(), aborted.Token)
             .Returns(_ => ValueTask.FromException<UserInfo?>(new OperationCanceledException(aborted.Token)));
-        var component = new HumanSummaryViewComponent(users, Substitute.For<ITeamService>(), Substitute.For<IGovernanceService>(), Substitute.For<Humans.Auth.Contracts.IRoleAssignmentService>())
+        var component = new HumanSummaryViewComponent(users, Substitute.For<ITeamService>(), Substitute.For<IGovernanceService>(), Substitute.For<Humans.Auth.Contracts.ISystemRoleService>())
         {
             ViewComponentContext = new ViewComponentContext
             {

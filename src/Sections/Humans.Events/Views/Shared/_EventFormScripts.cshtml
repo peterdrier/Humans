@@ -1,0 +1,63 @@
+<script>
+    (function () {
+        [['Title', 'titleCounter'], ['Description', 'descriptionCounter']].forEach(function (ids) {
+            var input = document.getElementById(ids[0]);
+            var counter = document.getElementById(ids[1]);
+            if (input && counter) {
+                input.addEventListener('input', function () {
+                    counter.textContent = input.maxLength - input.value.length;
+                });
+            }
+        });
+
+        var allDayCheck = document.getElementById('IsAllDay');
+        var startTimeField = document.getElementById('startTimeField');
+        var durationField = document.getElementById('durationField');
+
+        function applyAllDay() {
+            if (!allDayCheck) return;
+            var allDay = allDayCheck.checked;
+            if (startTimeField) startTimeField.style.display = allDay ? 'none' : '';
+            if (durationField) durationField.style.display = allDay ? 'none' : '';
+        }
+
+        if (allDayCheck) {
+            allDayCheck.addEventListener('change', applyAllDay);
+            applyAllDay();
+        }
+
+        var recurringCheck = document.getElementById('IsRecurring');
+        var recSection = document.getElementById('recurrence-days-section');
+        var recHidden = document.getElementById('RecurrenceDaysHidden');
+        var dayCheckboxes = document.querySelectorAll('.recurrence-day-check');
+
+        function syncRecurrenceDays() {
+            var selected = [];
+            dayCheckboxes.forEach(function (cb) {
+                if (cb.checked) selected.push(cb.value);
+            });
+            if (recHidden) recHidden.value = selected.join(',');
+        }
+
+        function toggleRecurrence() {
+            if (!recurringCheck || !recSection) return;
+            recSection.style.display = recurringCheck.checked ? 'block' : 'none';
+        }
+
+        if (recurringCheck) {
+            toggleRecurrence();
+            recurringCheck.addEventListener('change', toggleRecurrence);
+        }
+
+        dayCheckboxes.forEach(function (cb) {
+            cb.addEventListener('change', syncRecurrenceDays);
+        });
+
+        var form = document.querySelector('form[method="post"]');
+        if (form) {
+            form.addEventListener('submit', syncRecurrenceDays);
+        }
+
+        syncRecurrenceDays();
+    })();
+</script>

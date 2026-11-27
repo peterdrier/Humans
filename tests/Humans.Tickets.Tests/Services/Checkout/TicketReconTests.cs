@@ -1,5 +1,4 @@
 using AwesomeAssertions;
-using Humans.Testing;
 using Humans.Tickets.Contracts;
 using Humans.Tickets.Domain.Checkout;
 using Humans.Tickets.Services.Checkout;
@@ -16,7 +15,7 @@ public sealed class TicketReconTests
     private static readonly Instant Mid = Instant.FromUtc(2027, 1, 15, 12, 0);
 
     private readonly List<TicketCheckoutOrder> _orders = [];
-    private readonly List<BackendOrderSummary> _backend = [];
+    private readonly List<PlatformOrderSummary> _platform = [];
     private readonly List<TicketCheckoutTicket> _tickets = [];
 
     private TicketCheckoutOrder Order(
@@ -25,40 +24,40 @@ public sealed class TicketReconTests
         long total = 30000,
         long refunded = 0,
         int tickets = 1,
-        bool atBackend = true,
+        bool atPlatform = true,
         bool issue = true,
-        string backendKey = Key)
+        string platformKey = Key)
     {
         var id = Guid.NewGuid();
         var order = new TicketCheckoutOrder
         {
             Id = id,
-            SalesEventId = Guid.NewGuid(),
-            BackendKey = backendKey,
-            BackendOrderId = $"ev/{id:N}",
+            TicketingSettingsId = Guid.NewGuid(),
+            PlatformKey = platformKey,
+            PlatformOrderId = $"ev/{id:N}",
             State = state,
             TotalMinor = total,
             RefundedMinor = refunded,
             CreatedAt = createdAt ?? Mid,
-            Lines = Enumerable.Range(0, tickets).Select(_ => new TicketCheckoutOrderLine { Kind = CheckoutLineKind.Ticket, AmountMinor = total / tickets })
-                .Append(new TicketCheckoutOrderLine { Kind = CheckoutLineKind.Donation })
+            Lines = Enumerable.Range(0, tickets).Select(_ => new TicketCheckoutOrderLine { Kind = OrderLineKind.Ticket, AmountMinor = total / tickets })
+                .Append(new TicketCheckoutOrderLine { Kind = OrderLineKind.Donation })
                 .ToList(),
         };
         _orders.Add(order);
-        if (atBackend)
-            _backend.Add(Mirror(order));
+        if (atPlatform)
+            _platform.Add(Mirror(order));
         if (issue && state == TicketCheckoutOrderState.Paid)
             _tickets.AddRange(Enumerable.Range(0, tickets).Select(i => new TicketCheckoutTicket { OrderId = id, LineIndex = i }));
         return order;
     }
 
-    private static BackendOrderSummary Mirror(TicketCheckoutOrder order) => new(
-        order.BackendOrderId!, order.Id, order.CreatedAt + Duration.FromSeconds(1),
-        order.State == TicketCheckoutOrderState.Paid ? CheckoutState.Paid : CheckoutState.Expired,
-        order.TotalMinor, order.Lines.Count(l => l.Kind == CheckoutLineKind.Ticket), order.RefundedMinor, 0);
+    private static PlatformOrderSummary Mirror(TicketCheckoutOrder order) => new(
+        order.PlatformOrderId!, order.Id, order.CreatedAt + Duration.FromSeconds(1),
+        order.State == TicketCheckoutOrderState.Paid ? PlatformOrderState.Paid : PlatformOrderState.Expired,
+        order.TotalMinor, order.Lines.Count(l => l.Kind == OrderLineKind.Ticket), order.RefundedMinor, 0);
 
     private TicketRecon Build(bool sharedAccount = false) =>
-        TicketReconBuilder.Build(Key, From, To, _orders, _backend, _tickets, sharedAccount);
+        TicketReconBuilder.Build(Key, From, To, _orders, _platform, _tickets, sharedAccount);
 
     [HumansTheory]
     [InlineData(false)]
@@ -66,24 +65,24 @@ public sealed class TicketReconTests
     public void Outside_production_an_order_this_database_never_held_is_another_instances(bool sharedAccount)
     {
         Order();
-        var elsewhere = Order(backendKey: "boxoffice", atBackend: false);
-        _backend.Add(new BackendOrderSummary("ev/foreign", Guid.NewGuid(), Mid, CheckoutState.Paid, 5000, 1, 0, 0));
-        _backend.Add(new BackendOrderSummary("ev/unnamed", null, Mid, CheckoutState.Paid, 4000, 1, 0, 0));
-        _backend.Add(new BackendOrderSummary("ev/other-backend", elsewhere.Id, Mid, CheckoutState.Paid, 3000, 1, 0, 0));
+        var elsewhere = Order(platformKey: "boxoffice", atPlatform: false);
+        _platform.Add(new PlatformOrderSummary("ev/foreign", Guid.NewGuid(), Mid, PlatformOrderState.Paid, 5000, 1, 0, 0));
+        _platform.Add(new PlatformOrderSummary("ev/unnamed", null, Mid, PlatformOrderState.Paid, 4000, 1, 0, 0));
+        _platform.Add(new PlatformOrderSummary("ev/other-platform", elsewhere.Id, Mid, PlatformOrderState.Paid, 3000, 1, 0, 0));
 
         var recon = Build(sharedAccount);
 
-        var extra = recon.Problems.Where(r => r.Issues.Contains(TicketReconIssue.ExtraAtBackend)).Select(r => r.Backend!.BackendOrderId);
+        var extra = recon.Problems.Where(r => r.Issues.Contains(TicketReconIssue.ExtraAtPlatform)).Select(r => r.Platform!.PlatformOrderId);
         if (sharedAccount)
         {
-            recon.OtherInstance.Select(b => b.BackendOrderId).Should().Equal("ev/foreign");
-            extra.Should().BeEquivalentTo("ev/unnamed", "ev/other-backend");
-            recon.Backend.GrossMinor.Should().Be(30000 + 4000 + 3000);
+            recon.OtherInstance.Select(b => b.PlatformOrderId).Should().Equal("ev/foreign");
+            extra.Should().BeEquivalentTo("ev/unnamed", "ev/other-platform");
+            recon.Platform.GrossMinor.Should().Be(30000 + 4000 + 3000);
         }
         else
         {
             recon.OtherInstance.Should().BeEmpty();
-            extra.Should().BeEquivalentTo("ev/foreign", "ev/unnamed", "ev/other-backend");
+            extra.Should().BeEquivalentTo("ev/foreign", "ev/unnamed", "ev/other-platform");
         }
     }
 
@@ -91,7 +90,7 @@ public sealed class TicketReconTests
     public void Another_instances_orders_alone_balance_outside_production()
     {
         Order();
-        _backend.Add(new BackendOrderSummary("ev/foreign", Guid.NewGuid(), Mid, CheckoutState.Paid, 5000, 1, 0, 0));
+        _platform.Add(new PlatformOrderSummary("ev/foreign", Guid.NewGuid(), Mid, PlatformOrderState.Paid, 5000, 1, 0, 0));
 
         Build(sharedAccount: true).Balanced.Should().BeTrue();
         Build().Balanced.Should().BeFalse();
@@ -108,56 +107,56 @@ public sealed class TicketReconTests
 
         recon.Balanced.Should().BeTrue();
         recon.Humans.Should().Be(new TicketReconTotals(2, 3, 60000, 5000, 0));
-        recon.Backend.Should().Be(recon.Humans);
+        recon.Platform.Should().Be(recon.Humans);
         recon.TicketsIssued.Should().Be(3);
         recon.Rows.Should().HaveCount(3);
     }
 
     [HumansFact]
-    public void Order_the_backend_no_longer_lists_is_missing()
+    public void Order_the_platform_no_longer_lists_is_missing()
     {
-        Order(atBackend: false);
+        Order(atPlatform: false);
 
         var recon = Build();
 
         recon.Balanced.Should().BeFalse();
-        recon.Problems.Single().Issues.Should().Equal(TicketReconIssue.MissingAtBackend);
-        recon.Backend.Orders.Should().Be(0);
+        recon.Problems.Single().Issues.Should().Equal(TicketReconIssue.MissingAtPlatform);
+        recon.Platform.Orders.Should().Be(0);
     }
 
     [HumansFact]
-    public void Order_only_the_backend_holds_is_extra_and_counts_on_its_side()
+    public void Order_only_the_platform_holds_is_extra_and_counts_on_its_side()
     {
         Order();
-        _backend.Add(new BackendOrderSummary("ev/MANUAL", null, Mid, CheckoutState.Paid, 25000, 1, 0, 0));
+        _platform.Add(new PlatformOrderSummary("ev/MANUAL", null, Mid, PlatformOrderState.Paid, 25000, 1, 0, 0));
 
         var recon = Build();
 
-        recon.Problems.Single().Issues.Should().Equal(TicketReconIssue.ExtraAtBackend);
-        recon.Backend.Should().Be(new TicketReconTotals(2, 2, 55000, 0, 0));
+        recon.Problems.Single().Issues.Should().Equal(TicketReconIssue.ExtraAtPlatform);
+        recon.Platform.Should().Be(new TicketReconTotals(2, 2, 55000, 0, 0));
         recon.Humans.Orders.Should().Be(1);
     }
 
     [HumansFact]
-    public void Second_backend_order_for_one_humans_order_is_a_duplicate()
+    public void Second_platform_order_for_one_humans_order_is_a_duplicate()
     {
         var order = Order();
-        _backend.Add(Mirror(order) with { BackendOrderId = "ev/AGAIN" });
+        _platform.Add(Mirror(order) with { PlatformOrderId = "ev/AGAIN" });
 
         var recon = Build();
 
         recon.Problems.Should().ContainSingle().Which.Should().Match<TicketReconRow>(r =>
-            r.Backend!.BackendOrderId == "ev/AGAIN" && r.Issues.Single() == TicketReconIssue.Duplicate);
-        recon.Backend.Orders.Should().Be(2);
-        recon.Backend.GrossMinor.Should().Be(60000);
+            r.Platform!.PlatformOrderId == "ev/AGAIN" && r.Issues.Single() == TicketReconIssue.Duplicate);
+        recon.Platform.Orders.Should().Be(2);
+        recon.Platform.GrossMinor.Should().Be(60000);
     }
 
     [HumansFact]
-    public void Backend_order_humans_never_recorded_is_flagged_and_still_paired()
+    public void Platform_order_humans_never_recorded_is_flagged_and_still_paired()
     {
         var order = Order(state: TicketCheckoutOrderState.Created);
-        _backend[0] = _backend[0] with { State = CheckoutState.Paid };
-        order.BackendOrderId = null;
+        _platform[0] = _platform[0] with { State = PlatformOrderState.Paid };
+        order.PlatformOrderId = null;
 
         var issues = Build().Problems.Single().Issues;
 
@@ -165,9 +164,9 @@ public sealed class TicketReconTests
     }
 
     [HumansFact]
-    public void Unopened_order_the_backend_never_took_is_left_out()
+    public void Unopened_order_the_platform_never_took_is_left_out()
     {
-        Order(state: TicketCheckoutOrderState.Created, atBackend: false).BackendOrderId = null;
+        Order(state: TicketCheckoutOrderState.Created, atPlatform: false).PlatformOrderId = null;
 
         var recon = Build();
 
@@ -176,10 +175,10 @@ public sealed class TicketReconTests
     }
 
     [HumansFact]
-    public void Free_order_no_backend_took_stays_out_of_the_totals()
+    public void Free_order_no_platform_took_stays_out_of_the_totals()
     {
         Order();
-        Order(total: 0, atBackend: false).BackendOrderId = null;
+        Order(total: 0, atPlatform: false).PlatformOrderId = null;
 
         var recon = Build();
 
@@ -189,42 +188,42 @@ public sealed class TicketReconTests
     }
 
     [HumansFact]
-    public void Charged_paid_order_no_backend_holds_is_missing_not_free()
+    public void Charged_paid_order_no_platform_holds_is_missing_not_free()
     {
-        Order(atBackend: false).BackendOrderId = null;
+        Order(atPlatform: false).PlatformOrderId = null;
 
         var recon = Build();
 
-        recon.Problems.Single().Issues.Should().Equal(TicketReconIssue.MissingAtBackend);
+        recon.Problems.Single().Issues.Should().Equal(TicketReconIssue.MissingAtPlatform);
     }
 
     [HumansFact]
     public void Free_order_without_its_tickets_is_flagged()
     {
-        Order(total: 0, atBackend: false, issue: false).BackendOrderId = null;
+        Order(total: 0, atPlatform: false, issue: false).PlatformOrderId = null;
 
         Build().Problems.Single().Issues.Should().Equal(TicketReconIssue.TicketsNotIssued);
     }
 
     [HumansFact]
-    public void Recorded_backend_order_replaced_by_another_names_both()
+    public void Recorded_platform_order_replaced_by_another_names_both()
     {
         Order();
-        _backend[0] = _backend[0] with { BackendOrderId = "ev/OTHER" };
+        _platform[0] = _platform[0] with { PlatformOrderId = "ev/OTHER" };
 
         var recon = Build();
 
         recon.Balanced.Should().BeFalse();
-        recon.Problems.Select(r => (r.Backend?.BackendOrderId, r.Issues.Single())).Should().BeEquivalentTo([
-            ((string?)null, TicketReconIssue.MissingAtBackend), ("ev/OTHER", TicketReconIssue.NotRecorded),
+        recon.Problems.Select(r => (r.Platform?.PlatformOrderId, r.Issues.Single())).Should().BeEquivalentTo([
+            ((string?)null, TicketReconIssue.MissingAtPlatform), ("ev/OTHER", TicketReconIssue.NotRecorded),
         ]);
     }
 
     [HumansFact]
     public void Difference_where_no_money_moved_is_listed_and_balanced()
     {
-        Order(state: TicketCheckoutOrderState.Pending, atBackend: false);
-        _backend.Add(new BackendOrderSummary("ev/LEFTOVER", null, Mid, CheckoutState.Expired, 25000, 1, 0, 0));
+        Order(state: TicketCheckoutOrderState.Pending, atPlatform: false);
+        _platform.Add(new PlatformOrderSummary("ev/LEFTOVER", null, Mid, PlatformOrderState.Expired, 25000, 1, 0, 0));
 
         var recon = Build();
 
@@ -236,10 +235,10 @@ public sealed class TicketReconTests
     public void Differences_in_money_and_tickets_are_named_per_order()
     {
         Order();
-        _backend[0] = _backend[0] with { TotalMinor = 29000, RefundedMinor = 1000, DisputedMinor = 500, TicketCount = 2 };
+        _platform[0] = _platform[0] with { TotalMinor = 29000, RefundedMinor = 1000, ChargedBackMinor = 500, TicketCount = 2 };
 
         Build().Problems.Single().Issues.Should().BeEquivalentTo([
-            TicketReconIssue.TotalMismatch, TicketReconIssue.RefundMismatch, TicketReconIssue.DisputeMismatch,
+            TicketReconIssue.TotalMismatch, TicketReconIssue.RefundMismatch, TicketReconIssue.ChargebackMismatch,
             TicketReconIssue.TicketCountMismatch,
         ]);
     }
@@ -260,9 +259,9 @@ public sealed class TicketReconTests
     public void Pair_split_by_the_period_edge_belongs_to_the_humans_order()
     {
         var late = Order(createdAt: To - Duration.FromMilliseconds(200));
-        _backend[0] = _backend[0] with { CreatedAt = To + Duration.FromMilliseconds(300) };
+        _platform[0] = _platform[0] with { CreatedAt = To + Duration.FromMilliseconds(300) };
         var early = Order(createdAt: From - Duration.FromSeconds(1));
-        _backend[1] = _backend[1] with { CreatedAt = From + Duration.FromMilliseconds(100) };
+        _platform[1] = _platform[1] with { CreatedAt = From + Duration.FromMilliseconds(100) };
 
         var recon = Build();
 
@@ -272,30 +271,30 @@ public sealed class TicketReconTests
     }
 
     [HumansFact]
-    public void Backend_that_cannot_count_tickets_takes_humans_count()
+    public void Platform_that_cannot_count_tickets_takes_humans_count()
     {
         Order(tickets: 3);
-        _backend[0] = _backend[0] with { TicketCount = null };
+        _platform[0] = _platform[0] with { TicketCount = null };
 
         var recon = Build();
 
         recon.Balanced.Should().BeTrue();
-        recon.Backend.Tickets.Should().Be(3);
+        recon.Platform.Tickets.Should().Be(3);
     }
 
     [HumansFact]
-    public void Order_of_another_backend_is_not_this_ones_and_its_backend_twin_is_extra()
+    public void Order_of_another_platform_is_not_this_ones_and_its_platform_twin_is_extra()
     {
-        Order(backendKey: "boxoffice");
+        Order(platformKey: "boxoffice");
 
         var recon = Build();
 
         recon.Humans.Orders.Should().Be(0);
-        recon.Problems.Single().Issues.Should().Equal(TicketReconIssue.ExtraAtBackend);
+        recon.Problems.Single().Issues.Should().Equal(TicketReconIssue.ExtraAtPlatform);
     }
 
     [HumansFact]
-    public void Unreadable_backend_is_never_balanced()
+    public void Unreadable_platform_is_never_balanced()
     {
         TicketReconBuilder.Unreadable(Key, From, To, "down").Balanced.Should().BeFalse();
     }

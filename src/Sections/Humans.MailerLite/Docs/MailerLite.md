@@ -46,6 +46,10 @@ The section owns `mailerlite_sync_states` (`MailerLiteDbContext`, nobodies-colle
 
 All routes are `AdminOnly`.
 
+An invalid `MailerLite:BaseUrl` does not prevent client resolution. Reads and writes reject missing or non-HTTP(S) endpoints with `HttpRequestException` before sending a request, so the dashboard uses its existing API-unavailable handling. Failed reads publish no cache snapshot; writes report failure.
+
+Malformed `MailerLite:ApiKey` or `MailerLite:ApiVersion` headers also fail at the API-call boundary with `HttpRequestException`, before any request. The diagnostic names the settings and omits the raw parsing exception and header values, so a failed dashboard read reports unavailable without exposing credentials.
+
 ## Actors & Roles
 
 | Actor | Capabilities |
@@ -55,7 +59,7 @@ All routes are `AdminOnly`.
 
 ## Invariants
 
-- Subscriber subscription, unsubscription and opt-in timestamps reject supplied non-string values before cache replacement. Missing, null and empty-string timestamps remain absent; malformed date strings still fail the read. A failed refresh preserves the previous snapshot and fetch timestamp.
+- Subscriber subscription, unsubscription and opt-in timestamps reject supplied non-string values before cache replacement. Missing, null and empty-string timestamps remain absent; malformed date strings still fail the read. A failed snapshot refresh discards cached subscribers, groups, status totals and the fetch timestamp; subsequent reads must refresh successfully before import or audience decisions can use account data.
 
 - Account status totals compare subscriber statuses case-insensitively, matching import classification. Unknown statuses remain in the subscriber snapshot, are excluded from named counters, and log Warning with their value. Refresh and deletion use the same summary calculation.
 
@@ -86,7 +90,7 @@ All routes are `AdminOnly`.
 - New-contact and unverified-replacement decisions also apply once per equivalent address (trim/case and `gmail.com`/`googlemail.com`, matching Users). Their governing subscriber uses the same whole-plan opt-out precedence, including throttled aliases; unconfirmed decisions remain excluded. This prevents a duplicate replacement or an active alias overriding an opt-out. Preview rows/counts and per-outcome throttle accounting remain per subscriber. Import apply isolates each decision failure, including dependency cancellation while its caller token is live: it counts the error, attempts later decisions and persists the sync summary and completion audit. Requested caller cancellation still propagates.
 - The scheduled audience sync attempts every audience unless requested cancellation stops the run, then fails the job if any registered audience has no result or any result contains subscriber-operation errors. Hangfire can retry the incomplete run; the admin Push All action keeps its partial-result banner and counts.
 - Audience membership, address and MailerLite snapshot reads retain caller cancellation. After preflight, one audience's remote writes, sync-state summary and completion audit finish independently of shutdown; cancellation stops the next audience. Requested preflight cancellation propagates. Cancellation from detached group creation or summary persistence remains a genuine failure when shutdown is also active; with a live token, dependency timeouts retain the existing admin feedback. Interrupted all-audience sweeps retain earlier audience exceptions and subscriber-operation error counts instead of reporting shutdown alone. Completed audience summaries and audits remain intact. Preview and statistics reads stay cancellable.
-- GDPR erasure keeps the exact raw-account lookup cancellable and checks cancellation before each address. A started subscriber delete finishes independently of shutdown; cancellation stops the next address. Address selection, Gmail aliases, tombstone isolation and idempotent 404 handling are unchanged.
+- GDPR erasure keeps the exact raw-account lookup cancellable and checks cancellation before each address. A started subscriber erasure request finishes independently of shutdown; cancellation stops the next address. Address selection, Gmail aliases, tombstone isolation and idempotent 404 handling are unchanged.
 - Audience sync queues one import per address under the existing trim/case normalization and one group assignment per subscriber ID, even when several candidate IDs resolve to the same destination. Successful-operation and failure counts reflect those unique writes; candidate, suppression and already-assigned accounting retain their per-candidate meaning.
 - `SyncAsync` is idempotent: a second run against unchanged audience+ML state writes zero ML mutations and exactly one `MailerLiteAudienceSyncCompleted` summary entry whose counts are all zero.
 - Bounced/junk subscribers always set `OptedOut = true` regardless of any Humans-side timestamp. Delivery facts override preferences.
@@ -95,10 +99,10 @@ All routes are `AdminOnly`.
 - Audience sync excludes ML subscribers with `status ∈ {unsubscribed, bounced, junk}` from group assignment — delivery/consent state overrides audience membership.
 - Audience candidates without a notification-target email are omitted before the diff. Their count and audience key are logged at Warning so the production log viewer shows the omission; no address or member identity is logged.
 - `MailerLiteClient` retries a `429` response up to twice more (3 attempts total), honouring the response's `Retry-After` header (clamped to 0–90s; defaults to 60s when the header is absent or unparsable) before giving up (nobodies-collective/Humans#1103).
-- Successful subscriber erasure (including a remote 404) removes the address from the cached subscriber list and recomputes account status totals from the remaining snapshot. A failed remote deletion retains both.
+- Subscriber erasure resolves the exact email through MailerLite's subscriber lookup, verifies the returned address, then calls `POST /api/subscribers/{id}/forget`. MailerLite schedules permanent removal within 30 days; ordinary `DELETE` retains history and is not used. A lookup or forget 404 is idempotent success. Successful requests remove the address from the cached subscriber list and recompute status totals; malformed/mismatched lookups and failed requests retain both.
 - Group reads require nonblank IDs and names. Group creation also requires the returned name to match the requested name exactly before appending to the cached snapshot; incomplete or mismatched response data fails without poisoning the existing group list or selecting another audience for writes.
 - Subscriber IDs, emails and statuses must be nonblank strings. Omitted group lists remain valid; a supplied group list must be an array of nonblank string IDs or objects with nonblank string IDs. Malformed identity or membership metadata fails decoding rather than publishing an incomplete snapshot.
-- Cache refresh replaces the subscriber/group snapshot only after both page walks succeed. Missing page data or metadata, null subscriber/group items, repeated subscriber cursors, and inconsistent group page numbers throw and retain the last successful snapshot. Group reads follow pagination metadata even across empty intermediate pages. Subscriber metadata must explicitly include `next_cursor`, including a terminal null; an omitted cursor cannot complete a refresh. Subscriber/group page decoding reports `HttpRequestException` with the original parse failure retained, so admin API-error handling applies without replacing the last successful snapshot.
+- Cache refresh replaces the subscriber/group snapshot only after both page walks succeed. Missing page data or metadata, null subscriber/group items, repeated subscriber or group IDs within or across pages, repeated subscriber cursors, and inconsistent group page numbers throw and discard the cached snapshot. Group reads follow pagination metadata even across empty intermediate pages. Subscriber and group walks stop at 500 pages; exceeding that limit fails the refresh and discards the snapshot instead of publishing a partial list. Subscriber metadata must explicitly include `next_cursor`, including a terminal null; an omitted cursor cannot complete a refresh. Subscriber/group page decoding reports `HttpRequestException` with the original parse failure retained, so admin API-error handling applies while discarding the cached snapshot.
 
 ## Negative Access Rules
 
@@ -132,11 +136,11 @@ communication-preference interfaces live in `Humans.Email.Contracts` (Users deco
   distinct owners, the unverified pass picks the row to replace).
 - **Email — preferences**: `ICommunicationPreferenceService.IsOptedOutAsync`,
   `GetPreferenceOrNullAsync`, `GetPreferencesForCategoryAsync` (the bulk Marketing map every
-  audience and the reset pass read), `GetCountByCategoryAndStateAsync` (reads) and
+  audience and the reset pass read), `GetCountAsync` (reads) and
   `ICommunicationPreferenceWrite.UpdatePreferenceAsync` / `ResetPreferenceAsync` (writes, from
   the import apply).
 - **Users — provisioning**: `IAccountProvisioningService.FindOrCreateUserByEmailAsync` for creation and
-  `ReplaceUnverifiedEmailAndProvisionAsync` for atomic replacement.
+  `ReplaceUnverifiedEmailAsync` for atomic replacement.
 - **Tickets**: `ITicketService.GetTicketOrdersAsync`, called once from
   `CurrentEventTicketHolders.ForCurrentEventAsync` — the single definition of the
   current-event ticket-holder set that `HasTicketAudience`, `MarketingNoTicketAudience` and
@@ -146,7 +150,7 @@ communication-preference interfaces live in `Humans.Email.Contracts` (Users deco
   predicate they apply to `ShiftUserSummary` (`HasShift`, or `HasShiftInPeriod` for Build /
   Event / Strike; Setup = Build). `TicketNoShiftsAudience` reads the same view directly.
 - **AuditLog**: writes via `IAuditLogService.LogAsync` (job overload).
-- **GDPR**: `MailerLiteGdprContributor` implements `IUserDataContributor` — Article 15 export contributes nothing (the subscriber list mirrors state already exported by the sections that generate it); Article 17 erasure reads the exact raw account and deletes subscribers under its owned verified addresses plus a live account’s canonical/legacy email fallback, including both Gmail/Googlemail domain spellings recognized by import matching, via `IMailerLiteService.DeleteSubscriberAsync`. An archived id never resolves forward to the survivor; tombstone identity-column fallbacks are excluded because that address may now belong to the living survivor. Verified rows still owned by the archived id remain erasable.
+- **GDPR**: `MailerLiteGdprContributor` implements `IUserDataContributor` — Article 15 export contributes nothing (the subscriber list mirrors state already exported by the sections that generate it); Article 17 erasure reads the exact raw account and requests permanent forgetting of subscribers under its owned verified addresses plus a live account’s canonical/legacy email fallback, including both Gmail/Googlemail domain spellings recognized by import matching, via `IMailerLiteService.DeleteSubscriberAsync`. An archived id never resolves forward to the survivor; tombstone identity-column fallbacks are excluded because that address may now belong to the living survivor. Verified rows still owned by the archived id remain erasable.
 
 ## Architecture
 

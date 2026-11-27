@@ -30,14 +30,13 @@ public class AssemblyBallotFormViewModelTests
     private static AssemblyVoteDetail Detail(AssemblyBallotChoice stored) =>
         new(
             Guid.NewGuid(), "Amend Art. 10", "text", "es", false, null,
-            AssemblyVoteKind.RankedChoice, RequiredMajority.Simple, IndicativeAudience.None,
-            BallotDisclosure.BoardOnly, AssemblyVoteStatus.Open,
-            Instant.FromUtc(2026, 9, 20, 12, 0), null, null, null,
+            AssemblyVoteKind.RankedChoice, RequiredMajority.Simple, AssemblyVoteStatus.Open,
+            Instant.FromUtc(2026, 9, 20, 12, 0), null, null,
             IsOnRoster: true, IsOfficial: true, CanCastBallot: true,
             Options: [],
             OwnBallot: new AssemblyBallotView(
                 stored, null, 1,
-                Instant.FromUtc(2026, 9, 14, 12, 0), Instant.FromUtc(2026, 9, 14, 12, 0), []),
+                Instant.FromUtc(2026, 9, 14, 12, 0), []),
             Participation: new AssemblyVoteParticipation(1, 0, 1, 0, 0, 1, null));
 
     [HumansFact]

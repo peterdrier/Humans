@@ -22,6 +22,15 @@ internal sealed class TaskRepository(IDbContextFactory<TasksDbContext> factory, 
         await db.SaveChangesAsync(ct);
     }
 
+    public async Task AddManyAsync(
+        IReadOnlyList<TaskItem> tasks, IReadOnlyList<TaskDependency> dependencies, CancellationToken ct = default)
+    {
+        await using var db = await factory.CreateDbContextAsync(ct);
+        db.TaskItems.AddRange(tasks);
+        db.TaskDependencies.AddRange(dependencies);
+        await db.SaveChangesAsync(ct);
+    }
+
     public async Task UpdateAsync(TaskItem task, CancellationToken ct = default)
     {
         await using var db = await factory.CreateDbContextAsync(ct);
@@ -48,6 +57,30 @@ internal sealed class TaskRepository(IDbContextFactory<TasksDbContext> factory, 
         return await db.TaskAssignments
             .Where(a => a.TaskItemId == taskId && a.UserId == userId)
             .ExecuteDeleteAsync(ct) > 0;
+    }
+
+    public async Task<bool> ConfirmRequestAsync(Guid taskId, Guid userId, CancellationToken ct = default)
+    {
+        await using var db = await factory.CreateDbContextAsync(ct);
+        var request = await RequestAsync(db, taskId, userId, ct);
+        if (request is null)
+            return false;
+
+        request.State = TaskAssignmentState.Confirmed;
+        await db.SaveChangesAsync(ct);
+        return true;
+    }
+
+    public async Task<bool> RemoveRequestAsync(Guid taskId, Guid userId, CancellationToken ct = default)
+    {
+        await using var db = await factory.CreateDbContextAsync(ct);
+        var request = await RequestAsync(db, taskId, userId, ct);
+        if (request is null)
+            return false;
+
+        db.TaskAssignments.Remove(request);
+        await db.SaveChangesAsync(ct);
+        return true;
     }
 
     public async Task<bool> AddDependencyAsync(TaskDependency dependency, CancellationToken ct = default)
@@ -99,6 +132,10 @@ internal sealed class TaskRepository(IDbContextFactory<TasksDbContext> factory, 
         await db.SaveChangesAsync(ct);
         return rows.Count;
     }
+
+    private static Task<TaskAssignment?> RequestAsync(TasksDbContext db, Guid taskId, Guid userId, CancellationToken ct) =>
+        db.TaskAssignments.FirstOrDefaultAsync(
+            a => a.TaskItemId == taskId && a.UserId == userId && a.State == TaskAssignmentState.Requested, ct);
 
     /// <summary>False, logged, when the row already exists.</summary>
     private async Task<bool> TrySaveAsync(TasksDbContext db, string what, Guid taskId, Guid otherId, CancellationToken ct)

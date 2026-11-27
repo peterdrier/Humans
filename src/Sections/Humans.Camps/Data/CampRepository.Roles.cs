@@ -101,7 +101,7 @@ internal sealed partial class CampRepository
             .FirstOrDefaultAsync(a => a.Id == assignmentId, ct);
     }
 
-    public async Task<int> CountAssignmentsForSeasonAndDefinitionAsync(Guid campSeasonId, Guid definitionId, CancellationToken ct = default)
+    public async Task<int> CountRoleAssignmentsAsync(Guid campSeasonId, Guid definitionId, CancellationToken ct = default)
     {
         await using var ctx = await _factory.CreateDbContextAsync(ct);
         return await ctx.CampRoleAssignments.AsNoTracking()

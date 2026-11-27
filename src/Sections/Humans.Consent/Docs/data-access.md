@@ -121,7 +121,7 @@ Repository: `IConsentRepository`.
 
 Cross-section calls via `ILegalDocumentSyncManagement`,
 `IHumanLifecycleService`, `IUserService`, `IHumansMetrics`, and, for the required-consent
-checks in `ConsentService`, `ITeamService` and `IRoleAssignmentService`. Implements
+checks in `ConsentService`, `ITeamService` and `ISystemRoleService`. Implements
 `IUserDataContributor`. The inner service has no `IMemoryCache`; caching
 lives in the decorator.
 
@@ -145,7 +145,7 @@ Repository: `IConsentReviewRepository` (Singleton, `IDbContextFactory<LegalDbCon
 |-------|-----|
 | consent_reviews | R/W |
 
-The Consent Coordinator review (Users decomposition commit 12). Serves
+The Consent Admin review (Users decomposition commit 12). Serves
 `IConsentService.GetConsentReviewAsync` / `GetConsentReviewsAsync` (forwarded
 by `ConsentService`, passed through `CachingConsentService` uncached), the
 `IConsentWrite` pending/rejection writes, internal clear/flag annotations and the
@@ -156,7 +156,7 @@ for writes. No cache.
 
 ### ConsentReviewQueueService (Scoped, internal; implements `IConsentReviewQueueService`)
 
-No repository. The Consent Coordinator review queue: reads reviews through `IConsentService`, people
+No repository. The Consent Admin review queue: reads reviews through `IConsentService`, people
 through `IUserService`, tiers through `IGovernanceService`, signed/required counts
 through `IConsentService.GetConsentProgressAsync`, and clears or flags through the section's internal `ConsentReviewService`. No cache.
 

@@ -439,7 +439,7 @@ public class MembershipRequiredFilterTests
             var claims = new List<Claim> { new(ClaimTypes.NameIdentifier, Guid.NewGuid().ToString()) };
             if (state is { } s)
             {
-                claims.Add(new Claim(RoleAssignmentClaimsTransformation.UserStateClaimType, s.ToString()));
+                claims.Add(new Claim(SystemRoleClaimsTransformation.UserStateClaimType, s.ToString()));
             }
             if (role is not null)
             {

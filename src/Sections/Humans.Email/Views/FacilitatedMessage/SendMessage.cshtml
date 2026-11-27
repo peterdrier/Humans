@@ -2,13 +2,13 @@
 @model Humans.Email.Models.SendMessageViewModel
 @{
     ViewData["Title"] = Model.PageTitle;
-    var recipient = await Component.InvokeAsync(typeof(Humans.Base.ViewComponents.HumanViewComponent), new
+    var recipient = await Component.InvokeAsync(typeof(HumanViewComponent), new
     {
         userId = Model.RecipientId,
     });
-    using var recipientWriter = new System.IO.StringWriter();
+    using var recipientWriter = new StringWriter();
     recipient.WriteTo(recipientWriter, System.Text.Encodings.Web.HtmlEncoder.Default);
-    var recipientHtml = new Microsoft.AspNetCore.Html.HtmlString(recipientWriter.ToString().Trim());
+    var recipientHtml = new HtmlString(recipientWriter.ToString().Trim());
 }
 
 @section Crumbs {
@@ -51,6 +51,7 @@
                     }
                 </label>
                 <div class="form-text">@Localizer["Email_SendMessage_IncludeContactInfoHelp"]</div>
+                <span asp-validation-for="IncludeContactInfo" class="text-danger"></span>
             </div>
 
             <div class="d-flex gap-2">

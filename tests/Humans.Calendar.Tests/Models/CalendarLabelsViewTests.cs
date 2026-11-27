@@ -83,7 +83,7 @@ public class CalendarLabelsViewTests
         sourceLabel.Should().NotBe("Workgroups");
         var start = Instant.FromUtc(2026, 7, 6, 10, 0);
         var single = new CalendarOccurrence(Guid.Empty, start, start + Duration.FromHours(1), false,
-            "Meeting", null, null, null, Guid.Empty, "", false, null, Source: "Workgroups");
+            "Meeting", null, null, null, "", false, null, Source: "Workgroups");
         var banner = single with { Title = "Workshop", OccurrenceEndUtc = start + Duration.FromDays(2) };
         var unknown = single with { Title = "Other", Source = "New contributor" };
         CalendarOccurrence[] items = [single, banner, unknown];

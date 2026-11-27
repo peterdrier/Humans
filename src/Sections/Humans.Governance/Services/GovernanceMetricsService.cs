@@ -55,7 +55,7 @@ internal sealed class GovernanceMetricsService : PolledGaugeService
         var userInfos = await userService.GetAllUserInfosAsync().ConfigureAwait(false);
         var allUserIds = userInfos.Select(u => u.Id).ToList();
 
-        var usersWithAllConsents = await consentService.GetUsersWithAllRequiredConsentsForTeamAsync(allUserIds, SystemTeamIds.Volunteers);
+        var usersWithAllConsents = await consentService.GetConsentedUsersForTeamAsync(allUserIds, SystemTeamIds.Volunteers);
         var pendingConsents = allUserIds.Count - usersWithAllConsents.Count;
 
         var usersRequiringUpdate = await consentService.GetUsersPastConsentDeadlineAsync();

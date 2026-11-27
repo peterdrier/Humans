@@ -1,4 +1,5 @@
 using Humans.Backdoor.Filters;
+using Humans.Backdoor.Services;
 using Humans.Base.Controllers;
 using Humans.Notifications.Contracts;
 using Humans.Users.Contracts;
@@ -14,6 +15,7 @@ namespace Humans.Backdoor.Controllers;
 [ApiController]
 [Route("api/backdoor/notifications")]
 [ServiceFilter(typeof(BackdoorApiKeyAuthFilter))]
+[BackdoorScope(BackdoorScope.AdminAndBoard)]
 [AllowAnonymous]
 internal sealed class BackdoorNotificationsController(INotificationInboxRead inbox, IUserService users)
     : ApiControllerBase(users)

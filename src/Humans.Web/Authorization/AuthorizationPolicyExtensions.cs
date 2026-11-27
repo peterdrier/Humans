@@ -4,7 +4,6 @@ using Humans.Web.Extensions;
 using Humans.Base.Constants;
 using Humans.Base.Authorization;
 using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Authorization.Infrastructure;
 
 namespace Humans.Web.Authorization;
 
@@ -34,12 +33,12 @@ public static class AuthorizationPolicyExtensions
             // Single nav-visibility gate: only Active users see app navigation.
             options.AddPolicy(PolicyNames.AppAccess, policy =>
                 policy.RequireAssertion(ctx =>
-                    RoleAssignmentClaimsTransformation.IsActive(ctx.User)));
+                    SystemRoleClaimsTransformation.IsActive(ctx.User)));
 
             // Resource-based (the resource is the target role-name string). Registered here so Humans.Users reaches
             // the gate through the policy name alone, and Auth's Contracts leaf never carries an IAuthorizationRequirement.
-            options.AddPolicy(PolicyNames.RoleAssignmentManage, policy =>
-                policy.AddRequirements(RoleAssignmentOperationRequirement.Manage));
+            options.AddPolicy(PolicyNames.SystemRoleManage, policy =>
+                policy.AddRequirements(SystemRoleOperationRequirement.Manage));
         });
 
         // The admin-shell entry gate (the ADMIN link, /Admin): every catalogued role that opens the shell. Derived

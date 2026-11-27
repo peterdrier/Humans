@@ -32,14 +32,14 @@ internal sealed class FacilitatedMessageController(
     public async Task<IActionResult> SendMessage(Guid id, CancellationToken ct)
     {
         var currentUser = await GetCurrentUserInfoAsync(ct);
-        if (currentUser is null)
+        if (currentUser is null || currentUser.IsTombstone)
             return NotFound();
 
         if (currentUser.Id == id)
             return RedirectToProfile(id);
 
         var targetInfo = await UserService.GetUserInfoAsync(id, ct);
-        if (targetInfo is null)
+        if (targetInfo is null || targetInfo.IsTombstone)
             return NotFound();
         id = targetInfo.Id;
         if (currentUser.Id == id)
@@ -54,7 +54,7 @@ internal sealed class FacilitatedMessageController(
         var viewModel = new SendMessageViewModel
         {
             RecipientId = id,
-            PageTitle = string.Format(localizer["Email_SendMessage_Title"].Value, targetInfo.BurnerName),
+            PageTitle = localizer["Email_SendMessage_Title", targetInfo.BurnerName],
             SenderEmail = currentUser.Email ?? string.Empty,
         };
 
@@ -66,14 +66,15 @@ internal sealed class FacilitatedMessageController(
     public async Task<IActionResult> SendMessage(Guid id, SendMessageViewModel model, CancellationToken ct)
     {
         var currentUser = await GetCurrentUserInfoAsync(ct);
-        if (currentUser is null)
+        if (currentUser is null || currentUser.IsTombstone)
             return NotFound();
 
         if (currentUser.Id == id)
             return RedirectToProfile(id);
 
         var participants = await UserService.GetUserInfosAsync([id, currentUser.Id], ct);
-        if (!participants.TryGetValue(id, out var targetUser))
+        if (!participants.TryGetValue(id, out var targetUser) || targetUser.IsTombstone
+            || !participants.TryGetValue(currentUser.Id, out var sender) || sender.IsTombstone)
             return NotFound();
         id = targetUser.Id;
         if (currentUser.Id == id)
@@ -86,14 +87,15 @@ internal sealed class FacilitatedMessageController(
         }
 
         model.RecipientId = id;
-        model.PageTitle = string.Format(localizer["Email_SendMessage_Title"].Value, targetUser.BurnerName);
+        model.PageTitle = localizer["Email_SendMessage_Title", targetUser.BurnerName];
         model.SenderEmail = currentUser.Email ?? string.Empty;
 
         if (!ModelState.IsValid)
+        {
+            logger.LogWarning("Rejected invalid facilitated-message form from user {UserId} to user {RecipientId}",
+                currentUser.Id, targetUser.Id);
             return View(model);
-
-        if (!participants.TryGetValue(currentUser.Id, out var sender))
-            return NotFound();
+        }
 
         var request = FacilitatedMessageRequestBuilder.TryBuild(sender, targetUser, model);
         if (request is null)
@@ -130,9 +132,7 @@ internal sealed class FacilitatedMessageController(
                 targetUser.Id, currentUser.Id, model.IncludeContactInfo);
         }
 
-        SetSuccess(string.Format(
-            localizer["Email_SendMessage_Success"].Value,
-            targetUser.BurnerName));
+        SetSuccess(localizer["Email_SendMessage_Success", targetUser.BurnerName]);
 
         return RedirectToProfile(id);
     }

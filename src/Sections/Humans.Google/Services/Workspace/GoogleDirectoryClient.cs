@@ -23,6 +23,7 @@ internal sealed class GoogleDirectoryClient(
             var groups = new List<DirectoryGroup>();
             string? pageToken = null;
             var seenPageTokens = new HashSet<string>(StringComparer.Ordinal);
+            var pagesRead = 0;
 
             do
             {
@@ -37,6 +38,13 @@ internal sealed class GoogleDirectoryClient(
                 var response = await request.ExecuteAsync(ct);
 
                 pageToken = response.NextPageToken;
+                if (++pagesRead >= 500 && !string.IsNullOrEmpty(pageToken))
+                {
+                    logger.LogWarning("Google domain groups exceeded the page limit.");
+                    return new DirectoryGroupListResult(Groups: null,
+                        Error: new GoogleClientError(502, "Google domain groups exceeded the page limit."));
+                }
+
                 if (!string.IsNullOrEmpty(pageToken) && !seenPageTokens.Add(pageToken))
                 {
                     logger.LogWarning("Google domain groups returned a repeated page token.");

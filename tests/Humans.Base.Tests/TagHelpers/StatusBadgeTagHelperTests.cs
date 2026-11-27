@@ -8,7 +8,6 @@ using Microsoft.AspNetCore.Razor.TagHelpers;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Localization;
 using NSubstitute;
-using Xunit;
 
 namespace Humans.Base.Tests.TagHelpers;
 

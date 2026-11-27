@@ -1,7 +1,6 @@
 using Xunit;
 using System.Security.Cryptography;
 using Humans.Consent.Services;
-using Humans.Consent.Contracts;
 using Microsoft.Extensions.DependencyInjection;
 using System.Text;
 using AwesomeAssertions;
@@ -12,10 +11,8 @@ using NSubstitute;
 using Humans.Base.Interfaces;
 using Humans.Consent.Domain;
 using ConsentService = Humans.Consent.Services.ConsentService;
-using Humans.Notifications.Contracts;
 using Humans.Auth.Contracts;
 using Humans.Base.Constants;
-using Humans.Base.Enums;
 using Humans.Teams.Contracts;
 using Humans.Consent.Data;
 using Humans.Users.Contracts;
@@ -28,7 +25,7 @@ public sealed class ConsentServiceTests : ConsentTestHarness
     // The real decorator over _service: the inner submit evicts it before its membership check.
     private readonly CachingConsentService _cache;
     private readonly ITeamService _teamService = Substitute.For<ITeamService>();
-    private readonly IRoleAssignmentService _roleAssignments = Substitute.For<IRoleAssignmentService>();
+    private readonly ISystemRoleService _roleAssignments = Substitute.For<ISystemRoleService>();
     private readonly List<(Guid UserId, Guid TeamId)> _memberships = [];
     private readonly ILegalDocumentSyncManagement _legalDocumentSyncService = Substitute.For<ILegalDocumentSyncManagement>();
     private readonly IHumanLifecycleService _humanLifecycleService = Substitute.For<IHumanLifecycleService>();
@@ -58,14 +55,11 @@ public sealed class ConsentServiceTests : ConsentTestHarness
                 .Where(v => v.Id == callInfo.ArgAt<Guid>(0))
                 .Select(v => new LegalDocumentVersionSnapshot(
                     v.Id,
-                    v.LegalDocumentId,
                     v.LegalDocument.Name,
                     v.LegalDocument.GracePeriodDays,
                     v.VersionNumber,
                     v.Content,
                     v.EffectiveFrom,
-                    v.RequiresReConsent,
-                    v.CreatedAt,
                     v.ChangesSummary))
                 .FirstOrDefaultAsync(TestContext.Current.CancellationToken));
 
@@ -135,7 +129,7 @@ public sealed class ConsentServiceTests : ConsentTestHarness
         _legalDocumentSyncService
             .GetRequiredDocumentVersionsForTeamAsync(SystemTeamIds.Volunteers, Arg.Any<CancellationToken>())
             .Returns([new RequiredDocumentVersionSnapshot(
-                versionId, Guid.NewGuid(), "Doc", 7, "v1.0", Clock.GetCurrentInstant(), false, null)]);
+                versionId, "Doc", 7, Clock.GetCurrentInstant())]);
 
     private async ValueTask<IReadOnlyDictionary<Guid, UserInfo>> ResolveUserInfosAsync(
         IReadOnlyCollection<Guid> ids, CancellationToken ct)
@@ -221,8 +215,8 @@ public sealed class ConsentServiceTests : ConsentTestHarness
         new(Guid.NewGuid(), name, Guid.NewGuid(), "Volunteers", Clock.GetCurrentInstant(), versions);
 
     private static LegalDocumentVersionSnapshot Version(Instant effectiveFrom) =>
-        new(Guid.NewGuid(), Guid.NewGuid(), "Doc", 7, "v1.0",
-            new Dictionary<string, string>(StringComparer.Ordinal), effectiveFrom, false, effectiveFrom, null);
+        new(Guid.NewGuid(), "Doc", 7, "v1.0",
+            new Dictionary<string, string>(StringComparer.Ordinal), effectiveFrom, null);
 
     [HumansFact]
     public async Task SubmitConsentAsync_FinalSignature_RestoresSuspensionWithAWarmConsentCache()
@@ -460,14 +454,11 @@ public sealed class ConsentServiceTests : ConsentTestHarness
             document.LastSyncedAt,
             document.Versions.Select(v => new LegalDocumentVersionSnapshot(
                 v.Id,
-                v.LegalDocumentId,
                 document.Name,
                 document.GracePeriodDays,
                 v.VersionNumber,
                 v.Content,
                 v.EffectiveFrom,
-                v.RequiresReConsent,
-                v.CreatedAt,
                 v.ChangesSummary)).ToList());
 
     [HumansFact]
@@ -513,7 +504,7 @@ public sealed class ConsentServiceTests : ConsentTestHarness
             .Returns(call =>
             {
                 call.ArgAt<CancellationToken>(1).ThrowIfCancellationRequested();
-                return (IReadOnlyList<RequiredDocumentVersionSnapshot>)[];
+                return [];
             });
 
         var result = await _service.SubmitConsentAsync(userId, versionId, true, "127.0.0.1", "Agent", cancellation.Token);

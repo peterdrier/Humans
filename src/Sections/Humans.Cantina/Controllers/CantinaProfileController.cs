@@ -1,5 +1,4 @@
 using Humans.Base.Attributes;
-using Humans.Base.Authorization;
 using Humans.Base.Controllers;
 using Humans.Cantina.Models;
 using Humans.Cantina.Services;
@@ -101,8 +100,11 @@ internal sealed class CantinaProfileController(
 
         try
         {
-            await dietary.DeclineAsync(user.Id);
-            SetSuccess(localizer["Cantina_Dietary_Declined"].Value);
+            var errorKey = await dietary.DeclineAsync(user.Id);
+            if (errorKey is not null)
+                SetError(localizer[errorKey].Value);
+            else
+                SetSuccess(localizer["Cantina_Dietary_Declined"].Value);
         }
         catch (Exception ex)
         {

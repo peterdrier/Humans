@@ -75,22 +75,24 @@ test('cleared or invalid coordinates remove the pin, and valid coordinates resto
     assert.equal(ui.elements.Longitude.value, '181');
 });
 
-test('changing the place label still clears coordinates and removes the pin', () => {
-    const ui = picker('40', '-3');
-    ui.elements.Place.value = 'Barcelona';
-    ui.elements.Place.change();
-    assert.equal(ui.elements.Latitude.value, '');
-    assert.equal(ui.elements.Longitude.value, '');
-    assert.equal(ui.markers[0].removed, true);
-});
-
-for (const failure of ['library', 'webgl']) {
-    test(`changing the place label clears stale coordinates when ${failure} fails`, () => {
-        const ui = picker('40', '-3', failure);
+for (const event of ['input', 'change']) {
+    test(`${event} on the place label clears coordinates and removes the pin`, () => {
+        const ui = picker('40', '-3');
         ui.elements.Place.value = 'Barcelona';
-        ui.elements.Place.change();
+        ui.elements.Place[event]?.();
         assert.equal(ui.elements.Latitude.value, '');
         assert.equal(ui.elements.Longitude.value, '');
-        assert.equal(ui.markers.length, 0);
+        assert.equal(ui.markers[0].removed, true);
     });
+
+    for (const failure of ['library', 'webgl']) {
+        test(`${event} on the place label clears stale coordinates when ${failure} fails`, () => {
+            const ui = picker('40', '-3', failure);
+            ui.elements.Place.value = 'Barcelona';
+            ui.elements.Place[event]?.();
+            assert.equal(ui.elements.Latitude.value, '');
+            assert.equal(ui.elements.Longitude.value, '');
+            assert.equal(ui.markers.length, 0);
+        });
+    }
 }

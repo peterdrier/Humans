@@ -53,7 +53,7 @@ public class DemoStoryCoverageTests
             var ready = remaining.FirstOrDefault(s => s.After.All(done.Contains));
             ready.Should().NotBeNull(
                 $"these stories wait for one that is missing or for each other: {string.Join(", ", remaining.Select(s => s.Key))}");
-            done.Add(ready!.Key);
+            done.Add(ready.Key);
             remaining.Remove(ready);
         }
     }

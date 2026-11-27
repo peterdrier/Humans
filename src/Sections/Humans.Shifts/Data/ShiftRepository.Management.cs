@@ -1,4 +1,3 @@
-using Humans.Shifts.Services.Dtos;
 using Humans.Shifts.Domain;
 using Microsoft.EntityFrameworkCore;
 using NodaTime;
@@ -368,7 +367,7 @@ internal sealed partial class ShiftRepository : IShiftManagementRepository
             .FirstOrDefaultAsync(p => p.UserId == userId, ct);
     }
 
-    public async Task<IReadOnlyList<VolunteerEventProfile>> GetVolunteerEventProfilesByUserIdsAsync(
+    public async Task<IReadOnlyList<VolunteerEventProfile>> GetVolunteerProfilesAsync(
         IReadOnlyCollection<Guid> userIds, CancellationToken ct = default)
     {
         if (userIds.Count == 0) return [];
@@ -411,7 +410,7 @@ internal sealed partial class ShiftRepository : IShiftManagementRepository
         return profiles.Count;
     }
 
-    public async Task ReassignProfilesAndTagPrefsToUserAsync(
+    public async Task ReassignProfilesToUserAsync(
         Guid sourceUserId, Guid targetUserId, Instant updatedAt,
         CancellationToken ct = default)
     {

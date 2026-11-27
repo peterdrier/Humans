@@ -48,7 +48,7 @@ internal interface ISurveyService : IApplicationService
     Task<SurveySubmitResult> SubmitForApprovalAsync(Guid surveyId, Guid actorUserId, CancellationToken ct = default);
 
     /// <summary>Transitions PendingApproval → Open and sends the invitation wave in the same step. Surveys Admin/Admin only, enforced here.</summary>
-    Task<SurveyReviewResult> ApproveAndSendAsync(Guid surveyId, SurveyViewer viewer, CancellationToken ct = default);
+    Task<SurveyReviewResult> ApproveAsync(Guid surveyId, SurveyViewer viewer, CancellationToken ct = default);
 
     /// <summary>Transitions PendingApproval → Draft, recording the reviewer's note. Surveys Admin/Admin only, enforced here.</summary>
     Task<SurveyReviewResult> RejectAsync(Guid surveyId, SurveyViewer viewer, string note, CancellationToken ct = default);
@@ -102,9 +102,9 @@ internal interface ISurveyResponses : IApplicationService
 {
     /// <summary>
     /// Resolves a tokenised invite link into the answering context (survey definition + any resumable
-    /// Identified draft), or null when the token is invalid/expired or the invitation/survey is gone.
+    /// Identified draft), or the one reason it cannot.
     /// </summary>
-    Task<SurveyAnswerContext?> ResolveAnswerContextAsync(string token, CancellationToken ct = default);
+    Task<SurveyAnswerLink> ResolveAnswerContextAsync(string token, CancellationToken ct = default);
 
     /// <summary>
     /// Creates (or, idempotently, returns the existing) Identified in-progress draft response for the
@@ -210,8 +210,7 @@ internal sealed record RankedQuestionResult(
     IReadOnlyList<RankedMethodResult> Methods,
     IReadOnlyList<PairwiseContest> Pairwise,
     IReadOnlyList<string> OriginalPreferenceCycle,
-    IReadOnlyList<string> CurrentPreferenceCycle,
-    IReadOnlyList<string> UnavailableValues);
+    IReadOnlyList<string> CurrentPreferenceCycle);
 
 internal sealed record RankedCandidateResult(
     string Value,
@@ -252,7 +251,6 @@ internal sealed record SurveyAdminSummary(
     int InvitedCount,
     int ResponseCount,
     Guid CreatedByUserId,
-    Instant? SubmittedAt,
     string? RejectionNote);
 
 internal sealed record SurveyPendingApprovalItem(
@@ -344,6 +342,23 @@ internal sealed record SurveyInviteStatus(
     bool Started,
     Instant? SentAt,
     Instant? ReminderSentAt);
+
+/// <summary>Why an invite link does not open the survey.</summary>
+internal enum SurveyLinkFailure
+{
+    NoToken,
+    Unreadable,
+    Expired,
+    InvitationNotFound,
+    AlreadyAnswered,
+    SurveyNotFound,
+}
+
+/// <summary>An invite link resolved: exactly one of <see cref="Context"/> and <see cref="Failure"/> is set.</summary>
+internal sealed record SurveyAnswerLink(SurveyAnswerContext? Context, SurveyLinkFailure? Failure)
+{
+    public static SurveyAnswerLink Failed(SurveyLinkFailure failure) => new(null, failure);
+}
 
 /// <summary>
 /// Everything the wizard entry needs for one invited person: the survey definition (reused

@@ -146,10 +146,10 @@ public class CalendarControllerICalTests
                     await _calendar.Received(1).DeleteEventAsync(id, survivor, ct);
                     break;
                 case CalendarEventMutation.CancelOccurrence:
-                    await _calendar.Received(1).CancelOccurrenceAsync(id, start, survivor, ct, null);
+                    await _calendar.Received(1).CancelOccurrenceAsync(id, start, survivor, ct);
                     break;
                 default:
-                    await _calendar.Received(1).OverrideOccurrenceAsync(id, start, Arg.Any<OverrideOccurrenceDto>(), survivor, ct, null);
+                    await _calendar.Received(1).OverrideOccurrenceAsync(id, start, Arg.Any<OverrideOccurrenceDto>(), survivor, ct);
                     break;
             }
         }
@@ -621,10 +621,10 @@ public class CalendarControllerICalTests
     {
         _session.SetString(DateTimeDisplayExtensions.SessionKey, timezone);
         var allDay = new CalendarOccurrence(Guid.NewGuid(), null, null, true, "All-day", null, null, null,
-            Guid.NewGuid(), "Team", false, null, new LocalDate(2026, 6, 6), new LocalDate(2026, 6, 7));
+            "Team", false, null, new LocalDate(2026, 6, 6), new LocalDate(2026, 6, 7));
         var start = Instant.FromUtc(2026, 6, contributedDay, 0, 0);
         var contributed = new CalendarOccurrence(Guid.Empty, start, start.Plus(Duration.FromHours(1)), false,
-            "Contributed", null, null, null, Guid.Empty, "", false, start, Source: "Workgroups");
+            "Contributed", null, null, null, "", false, start, Source: "Workgroups");
         IReadOnlyList<CalendarOccurrence> unordered = contributionFirst ? [allDay, contributed] : [contributed, allDay];
         _calendarRead.GetOccurrencesInWindowAsync(Arg.Any<Instant>(), Arg.Any<Instant>(),
             Arg.Any<DateTimeZone>(), Arg.Any<Guid?>(), Arg.Any<CancellationToken>())
@@ -649,7 +649,7 @@ public class CalendarControllerICalTests
         {
             var start = _now.Plus(Duration.FromDays(day));
             return new CalendarOccurrence(id, start, start.Plus(Duration.FromHours(1)), false,
-                "Recurring", null, null, null, teamId, "Team", true, start);
+                "Recurring", null, null, null, "Team", true, start);
         }).ToList();
         _calendarRead.GetOccurrencesInWindowAsync(Arg.Any<Instant>(), Arg.Any<Instant>(),
             Arg.Any<DateTimeZone>(), teamId, Arg.Any<CancellationToken>()).Returns(occurrences);
@@ -814,6 +814,38 @@ public class CalendarControllerICalTests
         }
         await _calendar.Received(2).OverrideOccurrenceAsync(id, original,
             Arg.Any<OverrideOccurrenceDto>(), _viewer, Arg.Any<CancellationToken>());
+    }
+
+    public enum PersonalFeedAction { View, Create, Rotate }
+
+    [HumansTheory]
+    [Xunit.InlineData(UserState.Deleted, PersonalFeedAction.View)]
+    [Xunit.InlineData(UserState.Merged, PersonalFeedAction.View)]
+    [Xunit.InlineData(UserState.Deleted, PersonalFeedAction.Create)]
+    [Xunit.InlineData(UserState.Merged, PersonalFeedAction.Create)]
+    [Xunit.InlineData(UserState.Deleted, PersonalFeedAction.Rotate)]
+    [Xunit.InlineData(UserState.Merged, PersonalFeedAction.Rotate)]
+    public async Task PersonalFeed_TombstoneViewer_DoesNotAccessToken(UserState state, PersonalFeedAction action)
+    {
+        _users.GetUserInfoAsync(_viewer, Arg.Any<CancellationToken>()).Returns(UserInfo.Create(
+            new User { Id = _viewer, State = state, PreferredLanguage = "en" }, [], [], null));
+        _feedTokens.GetAsync(_viewer, Arg.Any<CancellationToken>()).Returns(Guid.NewGuid());
+
+        if (action == PersonalFeedAction.View)
+        {
+            var model = await IndexModelAsync();
+            model.ICalUrl.Should().BeNull();
+            model.CanCreateICal.Should().BeFalse();
+        }
+        else
+        {
+            var controller = CreateController();
+            var result = action == PersonalFeedAction.Create
+                ? await controller.CreateIcal(Xunit.TestContext.Current.CancellationToken)
+                : await controller.RegenerateIcal(Xunit.TestContext.Current.CancellationToken);
+            result.Should().BeOfType<ChallengeResult>();
+        }
+        _feedTokens.ReceivedCalls().Should().BeEmpty();
     }
 
     [HumansFact]

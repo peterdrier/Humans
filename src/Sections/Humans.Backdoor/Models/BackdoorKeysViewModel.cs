@@ -4,13 +4,19 @@ namespace Humans.Backdoor.Models;
 
 internal sealed class BackdoorKeysViewModel
 {
+    /// <summary>Every key for Admin and Board; only the viewer's own for anyone else.</summary>
     public IReadOnlyList<BackdoorKeyListItem> Keys { get; init; } = [];
 
-    /// <summary>Full Admins and Board members — the only people who may hold a key.</summary>
+    /// <summary>Who an Admin may create a key for. Empty for anyone else, who only makes their own.</summary>
     public IReadOnlyList<BackdoorKeyCandidate> EligibleUsers { get; init; } = [];
 
     /// <summary>Shown once: survives exactly one redirect, in TempData. Null on a plain page load.</summary>
     public string? NewPlaintextKey { get; init; }
+
+    public int ShortKeyLifetimeDays { get; init; }
+
+    /// <summary>Admin and Board read every key, so the list names each owner.</summary>
+    public bool ShowsOwners { get; init; }
 }
 
 internal sealed record BackdoorKeyListItem(
@@ -21,15 +27,21 @@ internal sealed record BackdoorKeyListItem(
     Instant CreatedAt,
     Instant? LastUsedAt,
     Instant? RevokedAt,
-    bool OwnerEligible)
+    Instant? ExpiresAt,
+    bool OwnerEligible,
+    bool IsExpired,
+    bool ViewerMayManage)
 {
     public bool IsRevoked => RevokedAt is not null;
 
     /// <summary>
     /// Not the same as unrevoked: eligibility is re-checked on every request, so a key whose owner was suspended or lost
-    /// Admin/Board is refused with no <c>RevokedAt</c>.
+    /// every scope is refused with no <c>RevokedAt</c>, and so is one past its expiry.
     /// </summary>
-    public bool IsUsable => RevokedAt is null && OwnerEligible;
+    public bool IsUsable => RevokedAt is null && OwnerEligible && !IsExpired;
+
+    /// <summary>Rotating an expired key is how it is renewed, so only revocation or a lost scope withholds it.</summary>
+    public bool IsRotatable => ViewerMayManage && RevokedAt is null && OwnerEligible;
 }
 
 internal sealed record BackdoorKeyCandidate(Guid UserId, string DisplayName);

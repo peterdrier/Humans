@@ -15,7 +15,7 @@ public class OnsiteRosterServiceTests
     private readonly ITicketService _users = Substitute.For<ITicketService>();
     private readonly ICampService _camps = Substitute.For<ICampService>();
     private readonly ITeamService _teams = Substitute.For<ITeamService>();
-    private readonly IRoleAssignmentService _roles = Substitute.For<IRoleAssignmentService>();
+    private readonly ISystemRoleService _roles = Substitute.For<ISystemRoleService>();
 
     private OnsiteRosterService NewService() =>
         new(_users, _camps, _teams, _roles);
@@ -64,9 +64,9 @@ public class OnsiteRosterServiceTests
         _teams.GetTeamsAsync(Arg.Any<CancellationToken>())
             .Returns(new Dictionary<Guid, TeamInfo>());
         _roles.GetActiveForUserAsync(aliceId, Arg.Any<CancellationToken>())
-            .Returns(new List<RoleAssignmentSnapshot> { new("Board", ValidTo: null) });
+            .Returns(new List<SystemRoleSnapshot> { new("Board", ValidTo: null) });
         _roles.GetActiveForUserAsync(bobId, Arg.Any<CancellationToken>())
-            .Returns(new List<RoleAssignmentSnapshot>());
+            .Returns(new List<SystemRoleSnapshot>());
 
         var service = NewService();
         var result = await service.GetRosterAsync(2026, null, null, null, Xunit.TestContext.Current.CancellationToken);
@@ -95,9 +95,9 @@ public class OnsiteRosterServiceTests
         _teams.GetTeamsAsync(Arg.Any<CancellationToken>())
             .Returns(new Dictionary<Guid, TeamInfo>());
         _roles.GetActiveForUserAsync(aliceId, Arg.Any<CancellationToken>())
-            .Returns(new List<RoleAssignmentSnapshot> { new("Board", ValidTo: null) });
+            .Returns(new List<SystemRoleSnapshot> { new("Board", ValidTo: null) });
         _roles.GetActiveForUserAsync(bobId, Arg.Any<CancellationToken>())
-            .Returns(new List<RoleAssignmentSnapshot>());
+            .Returns(new List<SystemRoleSnapshot>());
 
         var service = NewService();
         var result = await service.GetRosterAsync(2026, null, null, "Board", Xunit.TestContext.Current.CancellationToken);
@@ -126,7 +126,7 @@ public class OnsiteRosterServiceTests
         _teams.GetTeamsAsync(Arg.Any<CancellationToken>())
             .Returns(new Dictionary<Guid, TeamInfo>());
         _roles.GetActiveForUserAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
-            .Returns(new List<RoleAssignmentSnapshot>());
+            .Returns(new List<SystemRoleSnapshot>());
 
         var service = NewService();
         var result = await service.GetRosterAsync(2026, null, null, null, Xunit.TestContext.Current.CancellationToken);
@@ -152,7 +152,7 @@ public class OnsiteRosterServiceTests
                 new(campId, "thunderdome", "x@y", "p", false, 0,
                     new List<CampSeasonInfo>
                     {
-                        new(seasonId, campId, "thunderdome", 2026, null, "Thunderdome 2026",
+                        new(seasonId, campId, 2026, null, "Thunderdome 2026",
                             "", "", new List<CampVibe>(),
                             CampSeasonStatus.Active,
                             YesNoMaybe.Yes, YesNoMaybe.No,
@@ -161,7 +161,7 @@ public class OnsiteRosterServiceTests
                         {
                             Members =
                             [
-                                new(Guid.NewGuid(), aliceId, CampMemberStatus.Active, ts, ts, false),
+                                new(Guid.NewGuid(), aliceId, CampMemberStatus.Active, ts, false),
                             ],
                         },
                     }),
@@ -170,7 +170,7 @@ public class OnsiteRosterServiceTests
         _teams.GetTeamsAsync(Arg.Any<CancellationToken>())
             .Returns(new Dictionary<Guid, TeamInfo>());
         _roles.GetActiveForUserAsync(aliceId, Arg.Any<CancellationToken>())
-            .Returns(new List<RoleAssignmentSnapshot>());
+            .Returns(new List<SystemRoleSnapshot>());
 
         var service = NewService();
         var result = await service.GetRosterAsync(2026, null, null, null, Xunit.TestContext.Current.CancellationToken);

@@ -5,7 +5,7 @@ using Humans.Expenses.Models;
 namespace Humans.Expenses.Tests.Models;
 
 /// <summary>
-/// A report awaiting payment still needs an IBAN, so <c>SaveSubmitterIbanWithResultAsync</c>
+/// A report awaiting payment still needs an IBAN, so <c>SaveSubmitterIbanAsync</c>
 /// refuses to clear one. The form must not offer what the service will refuse.
 /// </summary>
 public class ExpenseIbanViewModelTests

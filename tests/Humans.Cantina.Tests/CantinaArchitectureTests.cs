@@ -1,5 +1,4 @@
 using AwesomeAssertions;
-using Humans.Base.Authorization;
 using Humans.Cantina.Controllers;
 using Humans.Shifts.Contracts;
 using Humans.Cantina.Contracts;

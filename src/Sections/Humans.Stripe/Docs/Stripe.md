@@ -15,11 +15,11 @@ see reserve holds). Spec: [`features/stripe-mirror.md`](features/stripe-mirror.m
 
 - **For:** the one place Humans talks to Stripe. Store gets hosted checkout and a verified
   webhook; Tickets gets each payment's fee breakdown; the pretix and Hi.Events adapters read the
-  Stripe accounts those vendors charge into (ledger, fees, key check) for Tickets' reconciliation.
+  Stripe accounts those ticketing platforms charge into (ledger, fees, key check) for Tickets' reconciliation.
 - **Good looks like:** a thin, honest translator. Each call answers, returns `null` for a case
   it checked, or throws — never a silent failure, never a decision about what a payment means.
-- **Deliberate choices:** two Stripe accounts on least-privilege restricted keys; no retries, no
-  cache; the webhook registrar exists only for PR previews.
+- **Deliberate choices:** two Stripe accounts on least-privilege restricted keys; no retries (except one
+  paced retry of a mirror read on a 429), no cache; the webhook registrar exists only for PR previews.
 - **Out of scope:** issuing payouts and chargebacks (dashboard-manual; the mirror only reads
   them), invoicing (Store/Holded), payment bookkeeping (Store) and booking the mirror into
   Holded (a later step, after Peter has reviewed the mirror). Refunds are issued on the dashboard too; this
@@ -34,7 +34,7 @@ see reserve holds). Spec: [`features/stripe-mirror.md`](features/stripe-mirror.m
 - A **mirror account** is a `Stripe:MirrorAccounts` entry: a name, its `acct_` id, and a read key (its own
   through `KeyVariable`, or the org read key with `Stripe-Context`). Besides the nightly sweep, the
   **account reads** (`GetAccountLedgerAsync`, `GetAccountPaymentFeeAsync`, `FindAccountPaymentFeeAsync`,
-  `CheckAccountAsync`) read one by name, live: `Pretix` and `HiEvents` are the ticket vendors'
+  `CheckAccountAsync`) read one by name, live: `Pretix` and `HiEvents` are the ticketing platforms'
   accounts. A ledger refusal throws `InvalidOperationException`; a fee read never throws (unknown is null,
   and logged), so a fee never holds up a paid order; the check never throws.
 - A **Checkout Session** is a Stripe-hosted payment page created for one Store order.
@@ -101,6 +101,8 @@ integration uses — see [`memory/code/stripe-restricted-keys.md`](../../../../m
 
 ## Invariants
 
+- Ticket, Store, webhook-registrar and mirror API keys must be nonempty and contain no whitespace, matching Stripe.net client validation. Unusable keys use the existing unconfigured paths before constructing an SDK client; direct mirror fetches refuse with `InvalidOperationException`. An unusable optional checkout-probe key adds a failure finding while preserving valid reporting probes, without a checkout request or key text in diagnostics. Webhook signing secrets retain their separate validation.
+
 - No Stripe.NET SDK type appears on `Contracts/`; consumers see only `StripePaymentDetails`,
   `StoreCheckoutWebhookEvent`, `StoreCheckoutSessionData`, `StripeAccountBalance` and the account-read records
   (`StripeAccountLedger`, `StripeLedgerLine`, `StripeLedgerPayment`, `StripeLedgerPayout`, `StripeAccountCheck`) — verified by
@@ -111,7 +113,7 @@ integration uses — see [`memory/code/stripe-restricted-keys.md`](../../../../m
 - Webhook parsing rejects malformed JSON, unsupported payload shapes, missing event identity/type/data, and checkout events carrying a non-session object. These return null with a Warning, including when the signature is valid; diagnostics do not log payload contents. Signature verification still precedes deserialization, and unrelated well-formed event types remain ignorable.
 - Checkout Session creation is `[ExternalWrite]`; a state-changing caller detaches request
   cancellation at the call boundary.
-- Reads return `null` only for what the section checks: the key is unset or lacks its scope
+- Reads return `null` only for what the section checks: the key is unset, contains whitespace or lacks its scope
   (`permission_error`); for `ParseStoreCheckoutEvent`, the signing secret is unset, the signature
   is invalid, its payload is malformed/incomplete, or the session lacks EUR; for `GetPaymentDetailsAsync` alone, the PaymentIntent has
   no charge or its balance transaction is not available yet after asynchronous capture. **Every
@@ -148,8 +150,9 @@ integration uses — see [`memory/code/stripe-restricted-keys.md`](../../../../m
   the others still sweep. A failed diagnostic save logs its exception and account ID without stopping healthy
   accounts or replacing caller cancellation; the sync gate is still released. The shared transaction, payout
   and automatic-payout breakdown pager requires an explicit boolean `has_more` in the raw response; the SDK's
-  default `false` cannot complete a sweep when the field is missing. Only an explicit `false` completes a list. Every list item requires a nonblank ID. Full transaction records additionally require type, status, currency, reporting category, integer amount/fee/net and creation/availability timestamps; full payout records require currency, status, integer amount and creation/arrival timestamps, plus an explicit automatic flag. Missing fields fail the fetch rather than accepting SDK defaults. Payout-breakdown reads consume and validate IDs only; optional metadata remains optional.
-  The pager also fails closed on `has_more` on an empty page or a 500-page cap. One sweep at a time: an in-process gate shared by
+  default `false` cannot complete a sweep when the field is missing. Only an explicit `false` completes a list. Every list item requires a nonblank ID, unique within its page walk; a repeat within or across pages fails the fetch before mirror replacement. IDs may still recur in separate transaction and payout-breakdown walks. Full transaction records additionally require type, status, currency, reporting category, integer amount/fee/net and creation/availability timestamps; full payout records require currency, status, integer amount and creation/arrival timestamps, plus an explicit automatic flag. Missing fields fail the fetch rather than accepting SDK defaults. Payout-breakdown reads consume and validate IDs only; optional metadata remains optional.
+  The pager also fails closed on `has_more` on an empty page or a 500-page cap. A 429 on a mirror read waits for `Retry-After` (2 s
+  without one, 60 s at most) and retries once; a second 429 fails the account. One sweep at a time: an in-process gate shared by
   the job and Sync now.
 - Account startup saves are covered by account failure handling, so one failed `Running` save does not stop
   healthy accounts. Preparation shutdown restores `Idle` with the previous summary and diagnostic. Reads and
@@ -214,7 +217,7 @@ integration uses — see [`memory/code/stripe-restricted-keys.md`](../../../../m
 - Inbound: **Finance** injects `IStripeMirrorService` for the Stripe rows of /Finance's Cash on hand. **Store** injects `IStripeService` for checkout creation, webhook parsing,
   reconciliation and refund read-back with dashboard links (`Service`, `StoreStripeWebhookController`). **Tickets** injects it for
   fee enrichment on `TicketOrder` (`TicketSyncService`). **Pretix** and **HiEvents** inject it for their
-  account reads (`PretixCheckoutBackend`, `HiEventsCheckoutBackend`).
+  account reads (`PretixPlatform`, `HiEventsPlatform`).
 
 ## Architecture
 
@@ -241,7 +244,7 @@ integration uses — see [`memory/code/stripe-restricted-keys.md`](../../../../m
 ## GDPR
 
 The mirror holds buyer names and emails as Stripe records them (billing details, receipt email,
-the ticket vendor's charge metadata). A member's data export includes every row whose buyer email
+the ticket vendor's or ticketing platform's charge metadata). A member's data export includes every row whose buyer email
 is one of their verified addresses (`StripePayments`, from `StripeMirrorService`). Erasure keeps
 them: they are financial records, retained on the fiscal basis in the `ErasureDeclaration`. No
 bulk export of them exists.

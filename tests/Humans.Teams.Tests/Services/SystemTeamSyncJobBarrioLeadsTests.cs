@@ -8,7 +8,6 @@ using AwesomeAssertions;
 using Humans.Base.Interfaces;
 using Humans.AuditLog.Contracts;
 using Humans.Email.Contracts;
-using Humans.Governance.Contracts;
 using Humans.Teams.Contracts;
 using Humans.Base.Enums;
 using Humans.Teams.Services;
@@ -115,7 +114,7 @@ public class SystemTeamSyncJobBarrioLeadsTests
         _userService.GetUserInfosAsync(Arg.Any<IEnumerable<Guid>>(), Arg.Any<CancellationToken>())
             .Returns(new ValueTask<IReadOnlyDictionary<Guid, UserInfo>>(new Dictionary<Guid, UserInfo> { [user.Id] = user }));
         var calculator = Substitute.For<IConsentService>();
-        calculator.GetUsersWithAllRequiredConsentsForTeamAsync(
+        calculator.GetConsentedUsersForTeamAsync(
             Arg.Is<IEnumerable<Guid>>(ids => ids.Contains(user.Id)), team.Id, Arg.Any<CancellationToken>())
             .Returns(new HashSet<Guid> { user.Id });
         var resources = Substitute.For<ITeamResourceService>();
@@ -135,6 +134,40 @@ public class SystemTeamSyncJobBarrioLeadsTests
         System.Globalization.CultureInfo.CurrentUICulture.Name.Should().Be("fr");
     }
 
+    [HumansTheory]
+    [Xunit.InlineData(false)]
+    [Xunit.InlineData(true)]
+    public async Task SyncBarrioLeadsTeam_Tombstone_SkipsWelcome(bool legacy)
+    {
+        var erasedId = Guid.NewGuid();
+        var liveId = Guid.NewGuid();
+        var erased = UserInfo.Create(new User { Id = erasedId, Email = legacy ? "erased@deleted.local" : "erased@example.org" },
+            [new UserEmail { UserId = erasedId, Email = "erased@example.org", IsVerified = true, IsPrimary = true }], [], null);
+        if (!legacy) erased = erased with { State = UserState.Deleted };
+        var live = UserInfo.Create(new User { Id = liveId, BurnerName = "Live", PreferredLanguage = "es" },
+            [new UserEmail { UserId = liveId, Email = "live@example.org", IsVerified = true, IsPrimary = true }], [], null);
+        var team = new TeamInfo(Guid.NewGuid(), "Barrio Leads", null, "barrio-leads",
+            true, true, SystemTeamType.BarrioLeads, false, false, false, false, default, []);
+        _teamService.GetTeamsAsync(Arg.Any<CancellationToken>())
+            .Returns(new Dictionary<Guid, TeamInfo> { [team.Id] = team });
+        _campRepository.GetActiveLeadUserIdsAsync(Arg.Any<CancellationToken>()).Returns(new[] { erasedId, liveId });
+        _userService.GetUserInfosAsync(Arg.Any<IEnumerable<Guid>>(), Arg.Any<CancellationToken>())
+            .Returns(new Dictionary<Guid, UserInfo> { [erasedId] = erased, [liveId] = live });
+
+        await CreateJob().SyncBarrioLeadsTeamAsync(cancellationToken: Xunit.TestContext.Current.CancellationToken);
+
+        var message = _emailService.ReceivedCalls().Should().ContainSingle().Which.GetArguments()[0]
+            .Should().BeOfType<EmailMessage>().Subject;
+        message.UserId.Should().Be(liveId);
+        message.Subject.Should().EndWith("#es");
+        await _teamService.Received(1).ApplySystemTeamMembershipDeltaAsync(team.Id,
+            Arg.Is<IReadOnlyCollection<Guid>>(ids => ids.Count == 2 && ids.Contains(erasedId) && ids.Contains(liveId)),
+            Arg.Is<IReadOnlyCollection<Guid>>(ids => ids.Count == 0), Arg.Any<Instant>(), Arg.Any<CancellationToken>());
+        foreach (var id in new[] { erasedId, liveId })
+            await _auditLogService.Received(1).LogAsync(TeamsAuditActions.TeamMemberAdded, "Team", team.Id,
+                Arg.Any<string>(), nameof(SystemTeamSyncJob), id, nameof(User));
+    }
+
     private SystemTeamMembershipSnapshot StubBarrioLeadsTeam(IEnumerable<TeamMember>? activeMembers = null)
     {
         var teamId = Guid.NewGuid();
@@ -143,7 +176,6 @@ public class SystemTeamSyncJobBarrioLeadsTests
             "Barrio Leads",
             "barrio-leads",
             IsHidden: true,
-            SystemTeamType.BarrioLeads,
             activeMembers?
                 .Where(member => member.LeftAt is null)
                 .Select(member => member.UserId)
@@ -274,7 +306,7 @@ public class SystemTeamSyncJobBarrioLeadsTests
         var saved = false;
         _teamService.ApplyMemberRoleChangesAsync(
                 Arg.Any<IReadOnlyCollection<(Guid TeamMemberId, TeamMemberRole Role)>>(), Arg.Any<CancellationToken>())
-            .Returns(_ => { saved = true; return (IReadOnlyList<Guid>)new[] { promote.TeamMemberId, demote.TeamMemberId }; });
+            .Returns(_ => { saved = true; return new[] { promote.TeamMemberId, demote.TeamMemberId }; });
         _auditLogService.LogAsync(TeamsAuditActions.TeamMemberRoleChanged, "Team", promote.TeamId,
                 Arg.Any<string>(), nameof(SystemTeamSyncJob), promote.UserId, nameof(User))
             .Returns(_ =>

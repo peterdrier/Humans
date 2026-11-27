@@ -11,12 +11,13 @@ using Humans.Tickets.Services.Delivery;
 using Humans.Users.Contracts;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc.ModelBinding;
 using NodaTime;
 using NodaTime.Text;
 
 namespace Humans.Tickets.Controllers;
 
-/// <summary>Per-event sales setup (backend, mode, waves, price rules) and the orders it took. English only.</summary>
+/// <summary>Per-event ticketing settings (ticketing platform, sales mode, waves, price rules) and the orders they took. English only.</summary>
 [Authorize(Policy = TicketsPolicies.Read)]
 [Route("Tickets/Admin/Sales")]
 internal sealed class TicketsSalesAdminController(
@@ -26,29 +27,30 @@ internal sealed class TicketsSalesAdminController(
     IGrantService grants,
     IOrgTimeZone orgTimeZone,
     IClock clock,
-    IUserService userService) : HumansControllerBase(userService)
+    IUserService userService,
+    ILogger<TicketsSalesAdminController> logger) : HumansControllerBase(userService)
 {
     [HttpGet("")]
     public async Task<IActionResult> Index(CancellationToken ct)
     {
         var events = await settings.GetAllEventSettingsAsync(ct);
-        var salesEvents = await checkout.GetSalesEventsAsync(ct);
+        var allSettings = await checkout.ListTicketingSettingsAsync(ct);
         return View("~/Views/Tickets/Admin/Sales/Index.cshtml", new SalesAdminIndexViewModel(
-            salesEvents, events, checkout.Backends, clock.GetCurrentInstant().InZone(orgTimeZone.Zone).Date));
+            allSettings, events, PlatformsForDisplay, clock.GetCurrentInstant().InZone(orgTimeZone.Zone).Date));
     }
 
-    [HttpGet("Backends")]
-    public async Task<IActionResult> Backends(CancellationToken ct) =>
-        View("~/Views/Tickets/Admin/Sales/Backends.cshtml", await BackendsModelAsync(ct));
+    [HttpGet("Platforms")]
+    public async Task<IActionResult> Platforms(CancellationToken ct) =>
+        View("~/Views/Tickets/Admin/Sales/Platforms.cshtml", await PlatformsModelAsync(ct));
 
     [HttpGet("Edit/{id:guid?}")]
     public async Task<IActionResult> Edit(Guid? id, CancellationToken ct)
     {
-        var salesEvent = id is { } existing ? await checkout.GetSalesEventAsync(existing, ct) : null;
-        if (id is not null && salesEvent is null)
+        var ticketing = id is { } existing ? await checkout.GetTicketingSettingsAsync(existing, ct) : null;
+        if (id is not null && ticketing is null)
             return NotFound();
         return View("~/Views/Tickets/Admin/Sales/Edit.cshtml",
-            await EditModelAsync(SalesEditForm.From(salesEvent, orgTimeZone.Zone), null, ct));
+            await EditModelAsync(SalesEditForm.From(ticketing, orgTimeZone.Zone), null, ct));
     }
 
     [HttpPost("Edit/{id:guid?}")]
@@ -59,47 +61,73 @@ internal sealed class TicketsSalesAdminController(
         var (errorResult, user) = await RequireCurrentUserAsync(ct);
         if (errorResult is not null) return errorResult;
 
+        if (!ModelState.IsValid)
+        {
+            logger.LogWarning("Rejected malformed ticketing settings form for {SettingsId} by {UserId}", id, user.Id);
+            return BadRequest(ModelState);
+        }
+
         var (save, parseError) = form.ToSave(id, orgTimeZone.Zone);
-        var result = save is null ? new CheckoutMutationResult(parseError) : await checkout.SaveSalesEventAsync(save, user.Id, ct);
+        if (parseError is not null)
+            logger.LogWarning("Rejected ticketing settings form for {SettingsId} by {UserId}: {Refusal}", id, user.Id, parseError);
+        var result = save is null ? new CheckoutMutationResult(parseError) : await checkout.SaveTicketingSettingsAsync(save, user.Id, ct);
         if (!result.Succeeded)
             return View("~/Views/Tickets/Admin/Sales/Edit.cshtml", await EditModelAsync(form, result.Refusal, ct));
 
-        SetSuccess("Sales setup saved.");
+        SetSuccess("Ticketing settings saved.");
         return RedirectToAction(nameof(Index));
     }
 
     [HttpGet("{id:guid}/Orders")]
     public async Task<IActionResult> Orders(Guid id, CancellationToken ct)
     {
-        var salesEvent = await checkout.GetSalesEventAsync(id, ct);
-        if (salesEvent is null)
+        var ticketing = await checkout.GetTicketingSettingsAsync(id, ct);
+        if (ticketing is null)
             return NotFound();
-        var orders = await checkout.GetOrdersForSalesEventAsync(id, ct);
-        var eventName = (await settings.GetEventSettingsByIdAsync(salesEvent.EventSettingsId, ct))?.EventName
-            ?? salesEvent.EventSettingsId.ToString();
-        return View("~/Views/Tickets/Admin/Sales/Orders.cshtml", (salesEvent, eventName, orders));
+        IReadOnlyList<TicketCheckoutOrder> orders = (await checkout.GetOrdersForSettingsAsync(id, ct))
+            .OrderByDescending(order => order.CreatedAt).ToList();
+        var eventName = (await settings.GetEventSettingsByIdAsync(ticketing.EventSettingsId, ct))?.EventName
+            ?? ticketing.EventSettingsId.ToString();
+        return View("~/Views/Tickets/Admin/Sales/Orders.cshtml", (ticketing, eventName, orders));
     }
 
     [HttpGet("Order/{id:guid}")]
     public async Task<IActionResult> Order(Guid id, CancellationToken ct)
     {
-        // Picks up refunds made in the backend's own dashboard.
+        // Picks up refunds made in the platform's own dashboard.
         if (await checkout.RefreshOrderAsync(id, ct) is null)
             return NotFound();
         var detail = await checkout.GetOrderDetailAsync(id, ct);
-        return View("~/Views/Tickets/Admin/Sales/Order.cshtml", detail!);
+        if (detail is null)
+            return NotFound();
+        return View("~/Views/Tickets/Admin/Sales/Order.cshtml", detail with
+        {
+            Tickets = detail.Tickets.OrderBy(ticket => ticket.Kind).ThenBy(ticket => ticket.IssuedAt).ToList(),
+            Refunds = detail.Refunds.OrderBy(refund => refund.CreatedAt).ToList(),
+        });
     }
 
     [HttpPost("Order/{id:guid}/Refund")]
     [Authorize(Policy = TicketsPolicies.Manage)]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> Refund(Guid id, decimal amount, string? reason, CancellationToken ct)
+    public async Task<IActionResult> Refund(Guid id, [BindRequired] string? amount, string? reason, CancellationToken ct)
     {
         var (errorResult, user) = await RequireCurrentUserAsync(ct);
         if (errorResult is not null) return errorResult;
 
-        var result = await checkout.RefundAsync(
-            id, (long)Math.Round(amount * 100m, MidpointRounding.AwayFromZero), reason ?? string.Empty, user.Id, ct);
+        if (!ModelState.IsValid)
+        {
+            logger.LogWarning("Rejected malformed refund form for order {OrderId} by {UserId}", id, user.Id);
+            return BadRequest(ModelState);
+        }
+        if (!SalesEditForm.TryMinor(amount, out var amountMinor) || amountMinor <= 0)
+        {
+            logger.LogWarning("Rejected refund amount for order {OrderId} by {UserId}", id, user.Id);
+            SetError("Enter a valid positive refund amount. Nothing was refunded.");
+            return RedirectToAction(nameof(Order), new { id });
+        }
+
+        var result = await checkout.RefundAsync(id, amountMinor, reason ?? string.Empty, user.Id, CancellationToken.None); // a refund sent must be recorded even after a disconnect
         if (result.Succeeded)
             SetSuccess("Refund sent.");
         else
@@ -129,7 +157,7 @@ internal sealed class TicketsSalesAdminController(
     /// organisation's time zone, <paramref name="to"/> included; the default is the last 30 days.
     /// </summary>
     [HttpGet("Recon")]
-    public async Task<IActionResult> Recon(string? backend, string? from, string? to, bool all, CancellationToken ct)
+    public async Task<IActionResult> Recon(string? platform, string? from, string? to, bool all, CancellationToken ct)
     {
         var zone = orgTimeZone.Zone;
         var today = clock.GetCurrentInstant().InZone(zone).Date;
@@ -138,15 +166,15 @@ internal sealed class TicketsSalesAdminController(
         if (fromDate > toDate)
             (fromDate, toDate) = (toDate, fromDate);
 
-        var inUse = await checkout.GetBackendsInUseAsync(ct);
-        var keys = string.IsNullOrWhiteSpace(backend) ? inUse : [backend];
+        var inUse = await checkout.GetPlatformsInUseAsync(ct);
+        var keys = string.IsNullOrWhiteSpace(platform) ? inUse : [platform];
         var start = fromDate.AtStartOfDayInZone(zone).ToInstant();
         var end = toDate.PlusDays(1).AtStartOfDayInZone(zone).ToInstant();
         var recons = new List<TicketRecon>();
         var payments = new Dictionary<string, TicketPaymentRecon>(StringComparer.Ordinal);
         foreach (var key in keys)
         {
-            if (await checkout.ReconcileBackendAsync(key, start, end, ct) is not { } recon)
+            if (await checkout.ReconcilePlatformAsync(key, start, end, ct) is not { } recon)
                 return NotFound();
             recons.Add(recon);
             if (await checkout.ReconcilePaymentsAsync(key, start, end, ct) is { } payment)
@@ -154,57 +182,60 @@ internal sealed class TicketsSalesAdminController(
         }
 
         return View("~/Views/Tickets/Admin/Sales/Recon.cshtml",
-            new ReconViewModel(recons, payments, inUse, backend, fromDate, toDate, all, zone));
+            new ReconViewModel(recons, payments, inUse, platform, fromDate, toDate, all, zone));
     }
 
     private static LocalDate? ReconDate(string? value) =>
         value is not null && LocalDatePattern.Iso.Parse(value) is { Success: true } parsed ? parsed.Value : null;
 
-    private async Task<BackendsViewModel> BackendsModelAsync(CancellationToken ct) =>
-        new(checkout.Backends, await checkout.GetSalesEventsAsync(ct), await settings.GetAllEventSettingsAsync(ct), null);
+    private IReadOnlyList<PlatformInfo> PlatformsForDisplay =>
+        checkout.Platforms.OrderBy(platform => platform.Key, StringComparer.Ordinal).ToList();
+
+    private async Task<PlatformsViewModel> PlatformsModelAsync(CancellationToken ct) =>
+        new(PlatformsForDisplay, await checkout.ListTicketingSettingsAsync(ct), await settings.GetAllEventSettingsAsync(ct), null);
 
     private async Task<SalesEditViewModel> EditModelAsync(SalesEditForm form, string? error, CancellationToken ct) =>
-        new(form, error, await settings.GetAllEventSettingsAsync(ct), await grants.GetProgramSummariesAsync(ct), checkout.Backends,
+        new(form, error, await settings.GetAllEventSettingsAsync(ct), await grants.GetProgramSummariesAsync(ct), PlatformsForDisplay,
             orgTimeZone.Zone);
 }
 
 internal sealed record SalesAdminIndexViewModel(
-    IReadOnlyList<TicketSalesEvent> SalesEvents,
+    IReadOnlyList<TicketingSettings> AllSettings,
     IReadOnlyList<EventSettingsInfo> Events,
-    IReadOnlyList<CheckoutBackendInfo> Backends,
+    IReadOnlyList<PlatformInfo> Platforms,
     LocalDate Today)
 {
     public string EventName(Guid id) => Events.FirstOrDefault(e => e.Id == id)?.EventName ?? id.ToString();
 }
 
-internal sealed record BackendsViewModel(
-    IReadOnlyList<CheckoutBackendInfo> Backends,
-    IReadOnlyList<TicketSalesEvent> SalesEvents,
+internal sealed record PlatformsViewModel(
+    IReadOnlyList<PlatformInfo> Platforms,
+    IReadOnlyList<TicketingSettings> AllSettings,
     IReadOnlyList<EventSettingsInfo> Events,
-    BackendCheckResult? Check)
+    PlatformCheckResult? Check)
 {
     public string EventName(Guid id) => Events.FirstOrDefault(e => e.Id == id)?.EventName ?? id.ToString();
 }
 
-/// <summary><c>Payments</c> holds a backend only where Humans can read its payment account.</summary>
+/// <summary><c>Payments</c> holds a platform only where Humans can read its payment account.</summary>
 internal sealed record ReconViewModel(
     IReadOnlyList<TicketRecon> Recons,
     IReadOnlyDictionary<string, TicketPaymentRecon> Payments,
-    IReadOnlyList<string> BackendsInUse,
-    string? Backend,
+    IReadOnlyList<string> PlatformsInUse,
+    string? Platform,
     LocalDate From,
     LocalDate To,
     bool All,
     DateTimeZone Zone);
 
-internal sealed record BackendCheckResult(string Key, string? BackendEventRef, IReadOnlyList<CheckoutBackendFinding> Findings);
+internal sealed record PlatformCheckResult(string Key, string? PlatformEventRef, IReadOnlyList<PlatformFinding> Findings);
 
 internal sealed record SalesEditViewModel(
     SalesEditForm Form,
     string? Error,
     IReadOnlyList<EventSettingsInfo> Events,
     IReadOnlyList<GrantProgramSummary> Programs,
-    IReadOnlyList<CheckoutBackendInfo> Backends,
+    IReadOnlyList<PlatformInfo> Platforms,
     DateTimeZone Zone);
 
 /// <summary>
@@ -213,25 +244,35 @@ internal sealed record SalesEditViewModel(
 /// </summary>
 internal sealed class SalesEditForm
 {
+    [BindRequired]
     public Guid EventSettingsId { get; set; }
-    public string BackendKey { get; set; } = string.Empty;
-    public string? BackendEventRef { get; set; }
+    [BindRequired]
+    public string PlatformKey { get; set; } = string.Empty;
+    public string? PlatformEventRef { get; set; }
+    [BindRequired]
     public TicketSalesMode Mode { get; set; }
 
     /// <summary>Local date and time in the organisation's time zone, as a datetime-local input posts it.</summary>
     public string? SalesCloseAt { get; set; }
 
+    [BindRequired]
     public int Capacity { get; set; } = 3000;
+    [BindRequired]
     public string? TicketVatPercent { get; set; } = "10";
     public List<WaveRow> Waves { get; set; } = [];
-    public List<SupporterRow> SupporterLevels { get; set; } = [];
+    public List<VipRow> VipLevels { get; set; } = [];
     public List<PriceRuleRow> PriceRules { get; set; } = [];
     public List<ChildTypeRow> ChildTypes { get; set; } = [];
     public List<DonationPurposeRow> DonationPurposes { get; set; } = [];
+    [BindRequired]
     public ResaleScheme Resale { get; set; } = ResaleScheme.QueueAndDirected;
+    [BindRequired]
     public bool PartnerTickets { get; set; } = true;
+    [BindRequired]
     public bool Donations { get; set; } = true;
+    [BindRequired]
     public bool MailingListOptIn { get; set; } = true;
+    [BindRequired]
     public bool CompanionTickets { get; set; } = true;
     public string? TermsFolder { get; set; }
 
@@ -242,7 +283,7 @@ internal sealed class SalesEditForm
         public string? Price { get; set; }
     }
 
-    internal sealed class SupporterRow
+    internal sealed class VipRow
     {
         public string? Total { get; set; }
     }
@@ -262,6 +303,7 @@ internal sealed class SalesEditForm
     internal sealed class PriceRuleRow
     {
         public Guid? GrantProgramId { get; set; }
+        [BindRequired]
         public TicketPriceRuleKind Kind { get; set; }
         public string? Amount { get; set; }
         public string? Label { get; set; }
@@ -270,17 +312,17 @@ internal sealed class SalesEditForm
     private static readonly LocalDatePattern DatePattern = LocalDatePattern.Iso;
     private static readonly LocalDateTimePattern CloseAtPattern = DateFormattingExtensions.PlacementDateTimePattern;
 
-    public static SalesEditForm From(TicketSalesEvent? e, DateTimeZone zone) => e is null ? new() : new()
+    public static SalesEditForm From(TicketingSettings? e, DateTimeZone zone) => e is null ? new() : new()
     {
         EventSettingsId = e.EventSettingsId,
-        BackendKey = e.BackendKey,
-        BackendEventRef = e.BackendEventRef,
+        PlatformKey = e.PlatformKey,
+        PlatformEventRef = e.PlatformEventRef,
         Mode = e.Mode,
         SalesCloseAt = e.SalesCloseAt is { } close ? CloseAtPattern.Format(close.InZone(zone).LocalDateTime) : null,
         Capacity = e.Capacity,
         TicketVatPercent = (e.TicketVatRate * 100m).ToString("0.##", CultureInfo.InvariantCulture),
         Waves = e.Waves.Select(w => new WaveRow { Name = w.Name, EndsOn = DatePattern.Format(w.EndsOn), Price = Eur(w.PriceMinor) }).ToList(),
-        SupporterLevels = e.SupporterTotalsMinor.Select(t => new SupporterRow { Total = Eur(t) }).ToList(),
+        VipLevels = e.VipTotalsMinor.Select(t => new VipRow { Total = Eur(t) }).ToList(),
         PriceRules = e.PriceRules.Select(r => new PriceRuleRow
         {
             GrantProgramId = r.GrantProgramId,
@@ -298,7 +340,7 @@ internal sealed class SalesEditForm
         TermsFolder = e.TermsFolder,
     };
 
-    public (SalesEventSave? Save, string? Error) ToSave(Guid? id, DateTimeZone zone)
+    public (TicketingSettingsSave? Save, string? Error) ToSave(Guid? id, DateTimeZone zone)
     {
         Instant? close = null;
         if (!string.IsNullOrWhiteSpace(SalesCloseAt))
@@ -308,7 +350,7 @@ internal sealed class SalesEditForm
             close = parsed.Value.InZoneLeniently(zone).ToInstant();
         }
 
-        if (!decimal.TryParse(TicketVatPercent, NumberStyles.Number, CultureInfo.InvariantCulture, out var vatPercent))
+        if (!decimal.TryParse(TicketVatPercent, NumberStyles.Float, CultureInfo.InvariantCulture, out var vatPercent))
             return (null, "Ticket VAT is a percentage, e.g. 10.");
 
         var waves = new List<TicketSalesWave>();
@@ -323,9 +365,9 @@ internal sealed class SalesEditForm
         }
 
         var totals = new List<long>();
-        foreach (var row in SupporterLevels.Where(r => !Blank(r.Total)))
+        foreach (var row in VipLevels.Where(r => !Blank(r.Total)))
         {
-            if (!TryMinor(row.Total, out var total)) return (null, $"Supporter total '{row.Total}' is not an amount.");
+            if (!TryMinor(row.Total, out var total)) return (null, $"VIP total '{row.Total}' is not an amount.");
             totals.Add(total);
         }
 
@@ -354,12 +396,12 @@ internal sealed class SalesEditForm
 
         var purposes = DonationPurposes.Where(r => !Blank(r.Name)).Select(r => r.Name!.Trim()).ToList();
 
-        return (new SalesEventSave(id, EventSettingsId, BackendKey.Trim(), BackendEventRef, Mode, close, Capacity,
+        return (new TicketingSettingsSave(id, EventSettingsId, PlatformKey.Trim(), PlatformEventRef, Mode, close, Capacity,
             vatPercent / 100m, waves, totals, rules)
         {
             ChildTypes = childTypes,
             DonationPurposes = purposes,
-            Switches = new TicketSalesSwitches
+            Switches = new TicketingSwitches
             {
                 Resale = Resale,
                 PartnerTickets = PartnerTickets,
@@ -373,11 +415,13 @@ internal sealed class SalesEditForm
 
     private static bool Blank(params string?[] values) => values.All(string.IsNullOrWhiteSpace);
 
-    private static bool TryMinor(string? text, out long minor)
+    internal static bool TryMinor(string? text, out long minor)
     {
         minor = 0;
-        if (!decimal.TryParse(text?.Trim(), NumberStyles.Number, CultureInfo.InvariantCulture, out var eur)) return false;
-        minor = (long)Math.Round(eur * 100m, MidpointRounding.AwayFromZero);
+        if (!decimal.TryParse(text?.Trim(), NumberStyles.Float, CultureInfo.InvariantCulture, out var eur)) return false;
+        var rounded = Math.Round(eur, 2, MidpointRounding.AwayFromZero);
+        if (rounded < long.MinValue / 100m || rounded > long.MaxValue / 100m) return false;
+        minor = (long)(rounded * 100m);
         return true;
     }
 

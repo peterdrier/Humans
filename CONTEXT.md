@@ -31,6 +31,17 @@ _Avoid_: director
 **Homed** vs **Owns**:
 *Homed* is where a service's code lives (namespace / controller proximity); *owns* is table ownership. An Orchestrator may be **homed** in a section's lane for controller-wiring convenience while **owning** no lane. "Which lane is X in?" must be answered as homed-or-owns, never conflated.
 
+## Section glossaries
+
+Words that belong to one section live in that section's own glossary. Words used across sections stay in this file.
+
+- [Agent](src/Sections/Humans.Agent/Docs/CONTEXT.md): the member help chat (Assistant)
+- [Audit](src/Sections/Humans.AuditLog/Docs/CONTEXT.md): the audit log, its entries and the history shown on pages
+- [Auth](src/Sections/Humans.Auth/Docs/CONTEXT.md): signing in, signing up and system roles
+- [Backdoor](src/Sections/Humans.Backdoor/Docs/CONTEXT.md): personal API keys and the Backdoor API
+- [BoxOffice](src/Sections/Humans.BoxOffice/Docs/CONTEXT.md): Humans' own ticketing platform on Stripe
+- [Budget](src/Sections/Humans.Budget/Docs/CONTEXT.md): budget years, categories, line items and what's available
+
 ## Finance
 
 **Reconciliation** (recon):
@@ -111,28 +122,28 @@ One fixed price that replaces the wave price for a group (low income, student, l
 
 **Discount**:
 A fixed amount off (such as 25, 50 or 100) that stacks on any price. Comes from the person's grants and never travels with the ticket.
-_Avoid_: credit (implies something given in trade, which is a tax problem; the code still says `Credit`)
+_Avoid_: credit (implies something given in trade, which is a tax problem). The database still stores the rule kind as `Credit`.
 
 **Grant** (in ticketing):
 A discount program's statement that a person qualifies (low income, student, local, early access). Ticketing acts on the grant alone; how the program checked the person is its own business, and ticketing never sees the evidence.
 
 **VIP ticket** ("Very Unimportant Person"):
 A shortcut that buys a ticket at the current wave price plus a large donation, at a fixed total (such as 400, 500 or 1,000). It carries no privileges; the name is an inside joke.
-_Avoid_: supporter total (the code's name for the configured totals), upgrade, premium
+_Avoid_: supporter total (the configured totals' old name), upgrade, premium
 
 **Event**:
 The burn people attend, one system-wide record. Everything in ticketing hangs off an event; today one event sells at a time, but nothing may assume that, since other groups using Humans run overlapping events.
 
 **Ticketing settings**:
 One event's ticketing configuration: its ticketing platform, sales mode, waves, prices and switches.
-_Avoid_: sales event, sales setup (the code's `TicketSalesEvent`); not the older TicketTailor sync settings
+_Avoid_: sales event, sales setup (the old names; the table is still `ticket_sales_events`); not the older TicketTailor sync settings
 
 **Sales mode**:
 Where an event's sales stand: **Closed**; **Invited only** (early sales and test purchases, only for people with an early access grant); **Open**; **Resale only** (fresh stock stops and only resale offers sell).
 
 **Ticketing platform**:
 The system that takes payment for an event's orders at the price Humans sets. Each event uses one: **Box Office** (Humans' own, on Stripe), **pretix** or **Hi.Events**.
-_Avoid_: backend, checkout backend (the code's names), vendor (TicketTailor only)
+_Avoid_: backend, checkout backend (the old names), vendor (TicketTailor only)
 
 **Void**:
 A ticket stops admitting anyone. No money moves; a refund is its own step.
@@ -224,7 +235,6 @@ Anyone who holds `Tasks.Manage` for the task's team. Not Teams' sub-team manager
   - **Crosscut** ← "horizontal" (hard-rules), "cross-cutting service" (design-rules), "leaf" (memory atoms).
   - **Section** ← "vertical" / "vertical slice" (hard-rules), "section" (design-rules / atoms).
   - **Orchestrator** ← "director" (memory atoms).
-- `AgentService` is labelled "orchestrator" in `Agent.md` but owns `agent_*` tables → by this glossary it is a **Section**, not an Orchestrator. The label is wrong.
 - **EventParticipation** reads as an Events concept but its EF config lives in `Configurations/Shifts/` → the `event_participations` table is owned by the **Shifts** Lane. Name is a smell; ownership follows the config. (Surfaced 2026-05-25 grill — confirm the true owner with Peter.)
 - Headwords above are the grill's opinionated picks; final naming is Peter's (hand-edit).
 - **Orphan** is *not* a role. It named the instinct "this could stand alone instead of being bolted onto User" (the merge-id mistake). Resolved: cross-lane needs go to an **Orchestrator** (e.g. an Audit orchestrator that gathers merged ids and calls Audit *with* the list), keeping the Crosscut pure. Don't re-introduce "orphan" as a role.

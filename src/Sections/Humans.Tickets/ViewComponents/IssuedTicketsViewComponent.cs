@@ -25,17 +25,18 @@ public sealed class IssuedTicketsViewComponent(ISettingsService settings) : View
         var tickets = held.ToList();
         foreach (var orderId in held.Select(t => t.OrderId).Distinct())
             tickets.AddRange((await checkout.GetTicketsForOrderAsync(orderId, ct))
-                .Where(c => c.HolderUserId is null && held.Any(a => a.Id == c.ParentTicketId)));
+                .Where(c => c.HolderUserId is null && held.Any(a => a.Id == c.ParentTicketId))
+                .OrderBy(ticket => ticket.Kind).ThenBy(ticket => ticket.IssuedAt));
         if (tickets.Count == 0)
             return Content(string.Empty);
 
         var events = (await settings.GetAllEventSettingsAsync(ct)).ToDictionary(e => e.Id, e => e.EventName);
-        var eventNames = (await checkout.GetSalesEventsAsync(ct))
+        var eventNames = (await checkout.ListTicketingSettingsAsync(ct))
             .ToDictionary(s => s.Id, s => events.GetValueOrDefault(s.EventSettingsId, string.Empty));
         var rows = tickets
             .OrderByDescending(t => t.IssuedAt).ThenBy(t => t.ParentTicketId is not null)
             .Select(t => new IssuedTicketRow(
-                eventNames.GetValueOrDefault(t.SalesEventId, string.Empty), t.Kind.ToString(), t.State.ToString(), t.Barcode,
+                eventNames.GetValueOrDefault(t.TicketingSettingsId, string.Empty), t.Kind.ToString(), t.State.ToString(), t.Barcode,
                 t.HolderUserId is null ? t.HolderName : null))
             .ToList();
         return View(new IssuedTicketsViewModel(viewMode, rows));

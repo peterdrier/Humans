@@ -1,4 +1,3 @@
-using Humans.Shifts.Contracts;
 using Humans.Shifts.Services.Dtos;
 using Humans.Shifts.Domain;
 using Humans.Shifts.Data;
@@ -39,7 +38,7 @@ internal sealed class ShiftViewService : IShiftRowView
 
         var activeEvent = await _calendarResolver.GetActiveAsync(ct).ConfigureAwait(false);
 
-        var profiles = await _management.GetVolunteerEventProfilesByUserIdsAsync(ids, ct).ConfigureAwait(false);
+        var profiles = await _management.GetVolunteerProfilesAsync(ids, ct).ConfigureAwait(false);
         var profileByUser = profiles.ToDictionary(p => p.UserId);
 
         var tagPrefs = await _management.GetVolunteerTagPreferencesForUsersAsync(ids, ct).ConfigureAwait(false);

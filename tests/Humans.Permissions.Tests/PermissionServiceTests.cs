@@ -98,7 +98,7 @@ public sealed class PermissionServiceTests
     public void Permissions_RefusesAKeyDeclaredTwice()
     {
         var service = new PermissionService(
-            [new Declares(ShiftsManage), new Declares(ShiftsManage)], [], [], Substitute.For<IRoleAssignmentService>());
+            [new Declares(ShiftsManage), new Declares(ShiftsManage)], [], [], Substitute.For<ISystemRoleService>());
 
         var act = () => service.Permissions;
 
@@ -107,20 +107,20 @@ public sealed class PermissionServiceTests
 
     private PermissionService Build(string holding)
     {
-        var roles = Substitute.For<IRoleAssignmentService>();
+        var roles = Substitute.For<ISystemRoleService>();
         var holdings = new List<Holding>();
         var parts = holding.Split(':');
 
         if (string.Equals(parts[0], "role", StringComparison.Ordinal))
             roles.GetActiveForUserAsync(_userId, Arg.Any<CancellationToken>())
-                .Returns([new RoleAssignmentSnapshot(parts[1], null)]);
+                .Returns([new SystemRoleSnapshot(parts[1], null)]);
         else
             roles.GetActiveForUserAsync(_userId, Arg.Any<CancellationToken>()).Returns([]);
 
         if (string.Equals(parts[0], "coordinator", StringComparison.Ordinal))
-            holdings.Add(new Holding(new Owner(Team, Id(parts[1])), IsCoordinator: true, [], "coordinator"));
+            holdings.Add(new Holding(new Owner(Team, Id(parts[1])), IsCoordinator: true, []));
         else if (parts[0].Contains('.', StringComparison.Ordinal))
-            holdings.Add(new Holding(new Owner(Team, Id(parts[1])), IsCoordinator: false, [parts[0]], "narrow role"));
+            holdings.Add(new Holding(new Owner(Team, Id(parts[1])), IsCoordinator: false, [parts[0]]));
 
         return new PermissionService(
             [new Declares(ShiftsManage, TeamsManage, BudgetEdit)],

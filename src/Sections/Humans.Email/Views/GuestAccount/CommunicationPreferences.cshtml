@@ -27,11 +27,11 @@
                  class="alert alert-warning d-flex align-items-center justify-content-between gap-3 mb-4"
                  data-category="@highlight">
                 <div>
-                    <strong>@string.Format(Localizer["Email_CommPrefs_OneClick_Prompt"].Value, highlightName)</strong>
+                    <strong>@Localizer["Email_CommPrefs_OneClick_Prompt", highlightName]</strong>
                     <div class="form-text mb-0">@Localizer["Email_CommPrefs_OneClick_Hint"]</div>
                 </div>
                 <button type="button" id="oneClickUnsubscribe" class="btn btn-warning text-nowrap">
-                    @string.Format(Localizer["Email_CommPrefs_OneClick_Button"].Value, highlightName)
+                    @Localizer["Email_CommPrefs_OneClick_Button", highlightName]
                 </button>
             </div>
         }

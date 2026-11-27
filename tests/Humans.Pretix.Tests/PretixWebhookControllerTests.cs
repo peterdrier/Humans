@@ -11,7 +11,7 @@ namespace Humans.Pretix.Tests;
 
 public class PretixWebhookControllerTests
 {
-    private readonly ITicketCheckoutEvents _events = Substitute.For<ITicketCheckoutEvents>();
+    private readonly ITicketingPlatformEvents _events = Substitute.For<ITicketingPlatformEvents>();
 
     private PretixWebhookController Controller(string secret = "s3cret")
     {
@@ -24,12 +24,12 @@ public class PretixWebhookControllerTests
         new(organizer, "nowhere2027", "ABC23");
 
     [HumansFact]
-    public async Task MatchingSecret_NudgesTicketsWithTheBackendOrderId()
+    public async Task MatchingSecret_NudgesTicketsWithThePlatformOrderId()
     {
         var result = await Controller().Receive("s3cret", Paid(), TestContext.Current.CancellationToken);
 
         result.Should().BeOfType<OkResult>();
-        await _events.Received(1).CheckoutChangedAsync("pretix", "nowhere2027/ABC23", Arg.Any<CancellationToken>());
+        await _events.Received(1).PlatformOrderChangedAsync("pretix", "nowhere2027/ABC23", Arg.Any<CancellationToken>());
     }
 
     [HumansFact]
@@ -38,7 +38,7 @@ public class PretixWebhookControllerTests
         var result = await Controller().Receive("guess", Paid(), TestContext.Current.CancellationToken);
 
         result.Should().BeOfType<NotFoundResult>();
-        await _events.DidNotReceiveWithAnyArgs().CheckoutChangedAsync(default!, default!, default);
+        await _events.DidNotReceiveWithAnyArgs().PlatformOrderChangedAsync(default!, default!);
     }
 
     [HumansFact]
@@ -47,7 +47,7 @@ public class PretixWebhookControllerTests
         var result = await Controller(secret: "").Receive("", Paid(), TestContext.Current.CancellationToken);
 
         result.Should().BeOfType<StatusCodeResult>().Which.StatusCode.Should().Be(503);
-        await _events.DidNotReceiveWithAnyArgs().CheckoutChangedAsync(default!, default!, default);
+        await _events.DidNotReceiveWithAnyArgs().PlatformOrderChangedAsync(default!, default!);
     }
 
     [HumansFact]
@@ -56,7 +56,7 @@ public class PretixWebhookControllerTests
         var result = await Controller().Receive("s3cret", Paid("someone-else"), TestContext.Current.CancellationToken);
 
         result.Should().BeOfType<OkResult>();
-        await _events.DidNotReceiveWithAnyArgs().CheckoutChangedAsync(default!, default!, default);
+        await _events.DidNotReceiveWithAnyArgs().PlatformOrderChangedAsync(default!, default!);
     }
 
     [HumansFact]
@@ -66,6 +66,6 @@ public class PretixWebhookControllerTests
             "s3cret", new("nobodies", "nowhere2027", null), TestContext.Current.CancellationToken);
 
         result.Should().BeOfType<OkResult>();
-        await _events.DidNotReceiveWithAnyArgs().CheckoutChangedAsync(default!, default!, default);
+        await _events.DidNotReceiveWithAnyArgs().PlatformOrderChangedAsync(default!, default!);
     }
 }

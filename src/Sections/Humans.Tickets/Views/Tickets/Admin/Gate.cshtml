@@ -11,7 +11,7 @@
     It holds no admin roles. It can scan tickets and record admission decisions;
     the kiosk is restricted to the Gate terminal and its sign-in/sign-out pages.
     Set the password here, then sign the laptop in at
-    <a asp-controller="Account" asp-action="GateLogin">/Account/GateLogin</a>
+    <a asp-controller="Account" asp-action="GateSignIn">/Account/GateSignIn</a>
     with username <code>@Humans.Base.Constants.SystemUserIds.GateTerminalLoginName</code>.
     The session sticks across restarts; rotating the password signs out any
     existing gate sessions within half an hour.
@@ -47,11 +47,11 @@
                             <span>No password set</span>
                         }
                     </li>
-                    @if (Model.LastLoginAt is { } lastLogin)
+                    @if (Model.LastSignInAt is { } lastSignIn)
                     {
                         <li>
                             <i class="fa-solid fa-clock text-muted me-1"></i>
-                            <span>Last signed in @lastLogin.ToInvariantTimestamp() UTC</span>
+                            <span>Last signed in @lastSignIn.ToInvariantTimestamp() UTC</span>
                         </li>
                     }
                 </ul>
@@ -61,7 +61,7 @@
         <div class="card">
             <div class="card-header">@(Model.HasPassword ? "Rotate password" : "Set password")</div>
             <div class="card-body">
-                <form authorize-policy="@Humans.Tickets.Contracts.TicketsPolicies.Manage" asp-controller="TicketsGateAdmin" asp-action="SetPassword" method="post"
+                <form authorize-policy="@TicketsPolicies.Manage" asp-controller="TicketsGateAdmin" asp-action="SetPassword" method="post"
                       class="d-flex gap-2">
                     <input type="password" name="password" class="form-control" style="max-width: 280px;"
                            placeholder="New password" autocomplete="new-password" required />

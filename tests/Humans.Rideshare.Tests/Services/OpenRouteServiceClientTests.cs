@@ -3,6 +3,8 @@ using System.Text;
 using System.Text.Json;
 using AwesomeAssertions;
 using Humans.Rideshare.Services.Routing;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
@@ -34,6 +36,44 @@ public sealed class OpenRouteServiceClientTests
             new HttpClient(handler) { BaseAddress = new Uri("https://ors.example/") },
             Options.Create(new RouteProviderOptions { ApiKey = apiKey, BaseUrl = "https://ors.example" }),
             _logger);
+    }
+
+    [HumansTheory]
+    [Xunit.InlineData("not a URI", false)]
+    [Xunit.InlineData("", false)]
+    [Xunit.InlineData("/relative", false)]
+    [Xunit.InlineData("ftp://ors.example", false)]
+    [Xunit.InlineData("https://ors.example/api", true)]
+    [Xunit.InlineData("http://ors.example/", true)]
+    public async Task Register_ProviderUrl_ResolvesWithoutBlockingRoutingFallback(string baseUrl, bool available)
+    {
+        var services = new ServiceCollection();
+        new Section().Register(services, new ConfigurationBuilder().AddInMemoryCollection(
+            new Dictionary<string, string?>(StringComparer.Ordinal) { ["Rideshare:RouteProvider:BaseUrl"] = baseUrl }).Build());
+        services.Configure<RouteProviderOptions>(o => o.ApiKey = Key);
+        services.AddSingleton<ILogger<OpenRouteServiceClient>>(_logger);
+        services.AddHttpClient<IRouteProvider, OpenRouteServiceClient>().ConfigurePrimaryHttpMessageHandler(() =>
+            new StubHandler(request =>
+            {
+                _calls.Add((request, null));
+                return Task.FromResult(Json(HttpStatusCode.OK, request.Method == HttpMethod.Get
+                    ? """{"features":[{"geometry":{"type":"Point","coordinates":[2.35,48.85]}}]}"""
+                    : """{"features":[{"geometry":{"type":"LineString","coordinates":[[2.35,48.85],[-2.4,43.2]]}}]}"""));
+            }));
+        using var provider = services.BuildServiceProvider();
+
+        var routing = provider.GetRequiredService<IRouteProvider>();
+        var point = await routing.GeocodeAsync("Paris", Ct);
+        var route = await routing.GetRouteGeoJsonAsync(TwoPoints, Ct);
+
+        point.HasValue.Should().Be(available);
+        (route is not null).Should().Be(available);
+        _calls.Should().HaveCount(available ? 2 : 0);
+        if (available)
+            _calls.First().Request.RequestUri!.AbsolutePath.Should().Be(
+                baseUrl.EndsWith("/api", StringComparison.Ordinal) ? "/api/geocode/search" : "/geocode/search");
+        else
+            _logger.Entries.Should().HaveCount(2).And.OnlyContain(e => e.Level == LogLevel.Warning);
     }
 
     [HumansFact]

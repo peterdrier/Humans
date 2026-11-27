@@ -29,17 +29,17 @@ internal sealed class EmailProblemsService(
 
             if (emails.Count(e => e.IsPrimary) > 1)
                 problems.Add(new EmailProblem(
-                    EmailProblemKind.MultipleIsPrimary, p.Id, null, null, null, null));
+                    EmailProblemKind.MultipleIsPrimary, p.Id, null, null, null));
 
             if (emails.Any(e => e.IsVerified) && !emails.Any(e => e.IsPrimary))
                 problems.Add(new EmailProblem(
-                    EmailProblemKind.ZeroIsPrimary, p.Id, null, null, null, null));
+                    EmailProblemKind.ZeroIsPrimary, p.Id, null, null, null));
 
             foreach (var unverified in emails.Where(e => !e.IsVerified))
             {
                 problems.Add(new EmailProblem(
                     EmailProblemKind.Unverified, p.Id, null,
-                    unverified.Id, unverified.Email, null));
+                    unverified.Id, unverified.Email));
             }
         }
 
@@ -47,21 +47,21 @@ internal sealed class EmailProblemsService(
         foreach (var o in orphans)
         {
             problems.Add(new EmailProblem(
-                EmailProblemKind.OrphanUserEmail, o.UserId, null, o.EmailId, o.Email, null));
+                EmailProblemKind.OrphanUserEmail, o.UserId, null, o.EmailId, o.Email));
         }
 
-        var ghosts = await userService.GetUsersWithLoginsButNoEmailsAsync(ct);
+        var ghosts = await userService.GetLoginUsersWithoutEmailsAsync(ct);
         foreach (var ghostId in ghosts)
         {
             problems.Add(new EmailProblem(
-                EmailProblemKind.GhostExternalLogins, ghostId, null, null, null, null));
+                EmailProblemKind.GhostExternalLogins, ghostId, null, null, null));
         }
 
         foreach (var (info, legacy) in GetUnmatchedLegacyEmails(allInfos))
         {
             problems.Add(new EmailProblem(
                 EmailProblemKind.LegacyIdentityEmailNotInUserEmails,
-                info.Id, null, null, legacy, null));
+                info.Id, null, null, legacy));
         }
 
         return new EmailProblemsReport(clock.GetCurrentInstant(), problems);

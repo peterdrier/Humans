@@ -35,13 +35,15 @@ public sealed class MemberTermStatusViewComponentTests
         var tierReads = Substitute.For<IGovernanceService>();
         tierReads.GetMembershipTierAsync(userId, Arg.Any<CancellationToken>()).Returns(MembershipTier.Colaborador);
         var application = new UserApplicationSnapshot(Guid.NewGuid(), userId, ApplicationStatus.Approved,
-            MembershipTier.Colaborador, now, now, expiry, "Motivation", null, null, null);
+            MembershipTier.Colaborador, now, now, expiry);
         governance.GetUserApplicationsAsync(userId, Arg.Any<CancellationToken>()).Returns(
         [
             application with { Id = Guid.NewGuid(), TermExpiresAt = expiry.PlusDays(-100) },
             application,
             application with { Id = Guid.NewGuid(), MembershipTier = MembershipTier.Asociado, TermExpiresAt = expiry.PlusDays(100) },
-            application with { Id = Guid.NewGuid(), Status = ApplicationStatus.Submitted, SubmittedAt = now.Plus(Duration.FromDays(1)), TermExpiresAt = null }
+            // Merging accounts keeps both histories, including an older still-pending application.
+            application with { Id = Guid.NewGuid(), Status = ApplicationStatus.Submitted, SubmittedAt = now.Minus(Duration.FromDays(1)), TermExpiresAt = null },
+            application with { Id = Guid.NewGuid(), Status = ApplicationStatus.Rejected, SubmittedAt = now.Plus(Duration.FromDays(1)), TermExpiresAt = null }
         ]);
         var teams = Substitute.For<ITeamService>();
         teams.GetTeamAsync(SystemTeamIds.Volunteers, Arg.Any<CancellationToken>()).Returns(new TeamInfo(

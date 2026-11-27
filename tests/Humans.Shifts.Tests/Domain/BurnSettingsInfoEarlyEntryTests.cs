@@ -44,14 +44,14 @@ public class BurnSettingsInfoEarlyEntryTests
     }
 
     [HumansFact]
-    public void IsEarlyEntrySignupsClosedFor_NonPrivileged_AfterClose_ReturnsTrue()
+    public void IsEarlyEntrySignupsClosedFor_MemberAfterClose_True()
     {
         EventWithClose(Close).IsEarlyEntrySignupsClosedFor(isPrivileged: false, Close.Plus(Duration.FromHours(1)))
             .Should().BeTrue();
     }
 
     [HumansFact]
-    public void IsEarlyEntrySignupsClosedFor_NonPrivileged_AtCloseInstant_ReturnsTrue()
+    public void IsEarlyEntrySignupsClosedFor_MemberAtClose_True()
     {
         // Boundary mirrors the server gate: the close instant itself locks (>=).
         EventWithClose(Close).IsEarlyEntrySignupsClosedFor(isPrivileged: false, Close)
@@ -59,14 +59,14 @@ public class BurnSettingsInfoEarlyEntryTests
     }
 
     [HumansFact]
-    public void IsEarlyEntrySignupsClosedFor_NonPrivileged_BeforeClose_ReturnsFalse()
+    public void IsEarlyEntrySignupsClosedFor_MemberBeforeClose_False()
     {
         EventWithClose(Close).IsEarlyEntrySignupsClosedFor(isPrivileged: false, Close.Minus(Duration.FromHours(1)))
             .Should().BeFalse();
     }
 
     [HumansFact]
-    public void IsEarlyEntrySignupsClosedFor_Privileged_AfterClose_ReturnsFalse()
+    public void IsEarlyEntrySignupsClosedFor_PrivilegedAfterClose_False()
     {
         // Admins/coordinators bypass the lock exactly as the server gate does.
         EventWithClose(Close).IsEarlyEntrySignupsClosedFor(isPrivileged: true, Close.Plus(Duration.FromHours(1)))
@@ -74,7 +74,7 @@ public class BurnSettingsInfoEarlyEntryTests
     }
 
     [HumansFact]
-    public void IsEarlyEntrySignupsClosedFor_NoCloseConfigured_ReturnsFalse()
+    public void IsEarlyEntrySignupsClosedFor_NoClose_False()
     {
         // Privilege OR an unset close short-circuits to false regardless of the clock.
         EventWithClose(null).IsEarlyEntrySignupsClosedFor(isPrivileged: false, Close.Plus(Duration.FromDays(1)))

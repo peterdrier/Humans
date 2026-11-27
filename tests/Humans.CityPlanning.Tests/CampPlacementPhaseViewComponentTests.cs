@@ -88,7 +88,7 @@ public sealed class CampPlacementPhaseViewComponentTests : CityPlanningTestBase
     private static CampInfo Camp(IReadOnlyList<Guid> leadUserIds) =>
         new(CampId, "camp", string.Empty, string.Empty, false, 0,
         [
-            new CampSeasonInfo(Guid.NewGuid(), CampId, "camp", 2026, null, "Camp", string.Empty, string.Empty,
+            new CampSeasonInfo(Guid.NewGuid(), CampId, 2026, null, "Camp", string.Empty, string.Empty,
                 [], CampSeasonStatus.Active, YesNoMaybe.No, YesNoMaybe.No, AdultPlayspacePolicy.No,
                 0, null, null, null, 0, null, null) { LeadUserIds = leadUserIds },
         ]);

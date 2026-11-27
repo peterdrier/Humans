@@ -4,21 +4,21 @@
     var categoryName = Localizer["Email_CommPrefs_Name_Marketing"].Value;
 }
 
-<page-header title="@(string.Format(Localizer["Email_Unsubscribe_Heading"].Value, categoryName))" />
+<page-header title="@(Localizer["Email_Unsubscribe_Heading", categoryName])" />
 
 @if (ViewData["UserId"] is Guid userId)
 {
-    var human = await Component.InvokeAsync(typeof(Humans.Base.ViewComponents.HumanViewComponent), new
+    var human = await Component.InvokeAsync(typeof(HumanViewComponent), new
     {
         userId,
     });
-    using var humanWriter = new System.IO.StringWriter();
+    using var humanWriter = new StringWriter();
     human.WriteTo(humanWriter, System.Text.Encodings.Web.HtmlEncoder.Default);
-    var humanHtml = new Microsoft.AspNetCore.Html.HtmlString($"<strong>{humanWriter.ToString().Trim()}</strong>");
+    var humanHtml = new HtmlString($"<strong>{humanWriter.ToString().Trim()}</strong>");
     <p>@HtmlLocalizer["Email_Unsubscribe_Greeting", humanHtml]</p>
 }
 
-<p>@Html.Raw(string.Format(Localizer["Email_Unsubscribe_ConfirmMessage"].Value, Html.Encode(categoryName)))</p>
+<p>@Html.Raw(Localizer["Email_Unsubscribe_ConfirmMessage", Html.Encode(categoryName)])</p>
 
 <form method="post">
     @Html.AntiForgeryToken()

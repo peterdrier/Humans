@@ -112,23 +112,23 @@ public class SectionSeamTests
             .Item.Label.Should().Be("Voting");
     }
 
-    /// <summary>One page per backend key: each sidebar row owns the page for its own key.</summary>
+    /// <summary>One page per ticketing platform key: each sidebar row owns the page for its own key.</summary>
     [HumansFact]
     public void Locate_Items_Sharing_An_Action_Are_Told_Apart_By_Route_Values()
     {
         var tree = AdminNavComposition.Compose(
         [
-            new Nav(new AdminNavGroup("Box Office", [new AdminNavItem("Box Office", "Backend", "Index", new { key = "boxoffice" }, null, "icon", null)])),
-            new Nav(new AdminNavGroup("pretix", [new AdminNavItem("pretix", "Backend", "Index", new { key = "pretix" }, null, "icon", null)]))
+            new Nav(new AdminNavGroup("Box Office", [new AdminNavItem("Box Office", "Platform", "Index", new { key = "boxoffice" }, null, "icon", null)])),
+            new Nav(new AdminNavGroup("pretix", [new AdminNavItem("pretix", "Platform", "Index", new { key = "pretix" }, null, "icon", null)]))
         ]);
 
-        AdminNavComposition.Locate(tree, "Backend", "Index", parent: null,
+        AdminNavComposition.Locate(tree, "Platform", "Index", parent: null,
                 new Microsoft.AspNetCore.Routing.RouteValueDictionary { ["key"] = "pretix" })!
             .Group.Label.Should().Be("pretix");
-        AdminNavComposition.Locate(tree, "Backend", "Check", parent: null,
+        AdminNavComposition.Locate(tree, "Platform", "Check", parent: null,
                 new Microsoft.AspNetCore.Routing.RouteValueDictionary { ["key"] = "pretix" })!
             .Group.Label.Should().Be("pretix");
-        AdminNavComposition.Locate(tree, "Backend", "Check", parent: null)!
+        AdminNavComposition.Locate(tree, "Platform", "Check", parent: null)!
             .Group.Label.Should().Be("Box Office");
     }
 

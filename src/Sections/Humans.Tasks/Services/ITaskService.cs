@@ -45,6 +45,31 @@ internal interface ITaskService : IApplicationService
 
     Task<TaskResult> UnassignAsync(Guid taskId, Guid userId, Guid actorUserId, CancellationToken ct = default);
 
+    /// <summary>
+    /// The actor takes a free slot. Confirms at once, or makes a request (no slot taken) when the task needs approval.
+    /// Refused on a full, done or cancelled task and when the actor is already on it. Needs only a signed-in human who
+    /// can see the task. Never adds team membership.
+    /// </summary>
+    Task<TaskResult> ClaimAsync(Guid taskId, Guid actorUserId, CancellationToken ct = default);
+
+    /// <summary>The actor gives back their own confirmed place. Needs only that place.</summary>
+    Task<TaskResult> ReleaseAsync(Guid taskId, Guid actorUserId, CancellationToken ct = default);
+
+    /// <summary>The actor takes back their own request. Needs only that request.</summary>
+    Task<TaskResult> WithdrawRequestAsync(Guid taskId, Guid actorUserId, CancellationToken ct = default);
+
+    /// <summary>
+    /// Confirms <paramref name="userId"/>'s request, overfilling a task that has since filled up, and emails them.
+    /// Needs <c>Tasks.Manage</c> on the task's team.
+    /// </summary>
+    Task<TaskResult> ApproveRequestAsync(Guid taskId, Guid userId, Guid actorUserId, CancellationToken ct = default);
+
+    /// <summary>
+    /// Removes <paramref name="userId"/>'s request and emails them; they may ask again. The optional reason (200
+    /// characters at most) goes only to the email and the audit entry. Needs <c>Tasks.Manage</c> on the task's team.
+    /// </summary>
+    Task<TaskResult> DeclineRequestAsync(Guid taskId, Guid userId, string? reason, Guid actorUserId, CancellationToken ct = default);
+
     /// <summary>"<paramref name="taskId"/> waits on <paramref name="dependsOnTaskId"/>". Needs <c>Tasks.Manage</c> on the waiting task's team.</summary>
     Task<TaskResult> AddDependencyAsync(Guid taskId, Guid dependsOnTaskId, Guid actorUserId, CancellationToken ct = default);
 
@@ -132,6 +157,9 @@ internal sealed record TaskInfo(
 
     /// <summary>Slots minus confirmed people, never below zero. Requests take no slot.</summary>
     public int OpenSlots => Math.Max(0, SlotCount - ConfirmedCount);
+
+    /// <summary>Requests waiting for a manager's answer, oldest first, on a finished task too: it still owes an answer.</summary>
+    public IEnumerable<TaskAssignmentInfo> WaitingRequests => Assignments.Where(a => !a.IsConfirmed).OrderBy(a => a.CreatedAt);
 
     /// <summary>An unfinished task with something it waits on not finished. A cancelled task holds nothing up.</summary>
     public bool IsWaiting => !IsFinished && WaitingOn.Any(l => l.Status is not (TaskItemStatus.Done or TaskItemStatus.Cancelled));

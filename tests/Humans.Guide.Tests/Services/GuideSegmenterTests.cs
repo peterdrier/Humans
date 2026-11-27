@@ -96,7 +96,7 @@ public class GuideSegmenterTests
     public void Segment_CoordinatorWithParenthetical_CapturesRoles()
     {
         const string input = """
-            ## As a Coordinator (Consent Coordinator)
+            ## As a Coordinator (Consent Admin)
 
             Do consent-coordinator things.
 
@@ -104,7 +104,7 @@ public class GuideSegmenterTests
             """;
 
         Scoped(input, GuideDocument.Coordinator)
-            .Privileges.Should().ContainSingle().Which.Should().Be("ConsentCoordinator");
+            .Privileges.Should().ContainSingle().Which.Should().Be("ConsentAdmin");
     }
 
     [HumansFact]
@@ -329,7 +329,7 @@ public class GuideSegmenterTests
             Scope a section to a role by opening it with a heading like this:
 
             ```markdown
-            ## As a Coordinator (Consent Coordinator)
+            ## As a Coordinator (Consent Admin)
             ```
 
             The parenthetical must name a mapped privilege.

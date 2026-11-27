@@ -7,8 +7,6 @@ using Humans.Surveys.Data;
 using Humans.Surveys.Contracts;
 using Humans.Base.Interfaces;
 using NodaTime;
-using Humans.Base.Threading;
-using Humans.Base.Enums;
 using Humans.Surveys.Domain;
 
 namespace Humans.Surveys.Services;
@@ -133,7 +131,7 @@ internal sealed class SurveyService(
         if (status is null)
             return new(Refusal: "Survey not found.");
         if (status == SurveyStatus.Open) return new();
-        // A submission pending approval can only become Open via ApproveAndSendAsync — that is
+        // A submission pending approval can only become Open via ApproveAsync — that is
         // the one step that also sends invitations and records the approval (Workgroups §11).
         if (status == SurveyStatus.PendingApproval)
             return new(Refusal: "A survey pending approval must be approved or rejected, not opened directly.");
@@ -185,7 +183,7 @@ internal sealed class SurveyService(
         return new SurveySubmitResult(true);
     }
 
-    public async Task<SurveyReviewResult> ApproveAndSendAsync(Guid surveyId, SurveyViewer viewer, CancellationToken ct = default)
+    public async Task<SurveyReviewResult> ApproveAsync(Guid surveyId, SurveyViewer viewer, CancellationToken ct = default)
     {
         if (!viewer.ManagesEverySurvey)
             return new(Refusal: "Only Surveys Admin or Admin may approve a survey.");
@@ -264,7 +262,6 @@ internal sealed class SurveyService(
             invited.GetValueOrDefault(s.Id),
             responses.GetValueOrDefault(s.Id),
             s.CreatedByUserId,
-            s.SubmittedAt,
             s.RejectionNote)).ToList();
     }
 

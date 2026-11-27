@@ -1,20 +1,17 @@
 using Humans.Camps.Contracts;
 using Humans.Tickets.Contracts;
-using Humans.Shifts.Helpers;
 using Humans.Auth.Contracts;
 using Humans.Shifts.Services.Dtos;
 using Humans.Base.Extensions;
 using Humans.AuditLog.Contracts;
 using Humans.Shifts.Contracts;
 using Humans.Teams.Contracts;
-using Humans.Base.Constants;
 using Humans.Shifts.Domain;
 using Humans.Settings.Contracts;
 using Humans.Base.Enums;
 using Microsoft.Extensions.DependencyInjection;
 using NodaTime;
 using Humans.Shifts.Data;
-using Humans.Base.Caching;
 using Humans.Users.Contracts;
 using Humans.Permissions.Contracts;
 using Humans.Base.Authorization;
@@ -871,7 +868,6 @@ internal sealed class ShiftManagementService(
             .Select(t => new DepartmentCoveragePie(
                 TeamId: t.Id,
                 TeamName: t.Name,
-                TeamSlug: t.Slug,
                 IsSubTeam: t.ParentTeamId is not null,
                 ParentTeamId: t.ParentTeamId,
                 ParentTeamName: t.ParentTeamId is { } pid && teamLookup.TryGetValue(pid, out var parent)
@@ -1017,7 +1013,7 @@ internal sealed class ShiftManagementService(
                         userLookup.TryGetValue(c.UserId, out var user);
                         return new CoordinatorLogin(
                             c.UserId,
-                            user?.LastLoginAt);
+                            user?.LastSignInAt);
                     })
                     .ToList());
 
@@ -1095,8 +1091,8 @@ internal sealed class ShiftManagementService(
             .Select(o => o.PurchasedAt)
             .ToList();
         var loginsInWindow = (await UserService.GetAllUserInfosAsync(ct).ConfigureAwait(false))
-            .Where(u => u.LastLoginAt >= startInstant && u.LastLoginAt < endInstant)
-            .Select(u => u.LastLoginAt!.Value)
+            .Where(u => u.LastSignInAt >= startInstant && u.LastSignInAt < endInstant)
+            .Select(u => u.LastSignInAt!.Value)
             .ToList();
 
         LocalDate ToLocalDate(Instant i) => i.InZone(tz).Date;
@@ -1262,7 +1258,6 @@ internal sealed class ShiftManagementService(
                 : team.Name;
 
             rows.Add(new CoverageHeatmapRotaRow(
-                team.Id,
                 team.Name,
                 departmentName,
                 cells));
@@ -1399,7 +1394,7 @@ internal sealed class ShiftManagementService(
             && s.Shift.GetAbsoluteEnd(eventSettings) > now);
     }
 
-    public Task<IReadOnlyList<Guid>> GetOnSiteUserIdsForDayAsync(
+    public Task<IReadOnlyList<Guid>> GetOnSiteUserIdsAsync(
         Guid eventSettingsId, int dayOffset, CancellationToken ct = default) =>
         repo.GetUserIdsForDayAsync(
             eventSettingsId,
@@ -1410,7 +1405,7 @@ internal sealed class ShiftManagementService(
     public async Task ReassignAsync(Guid sourceUserId, Guid targetUserId, Guid actorUserId, Instant updatedAt,
         CancellationToken ct)
     {
-        await repo.ReassignProfilesAndTagPrefsToUserAsync(sourceUserId, targetUserId, updatedAt, ct);
+        await repo.ReassignProfilesToUserAsync(sourceUserId, targetUserId, updatedAt, ct);
     }
 
     public async Task<PostEventStats?> GetPostEventStatsAsync(
@@ -1476,7 +1471,6 @@ internal sealed class ShiftManagementService(
 
         var departments = deptBuckets
             .Select(kvp => new PostEventDepartmentRow(
-                DepartmentId: kvp.Key,
                 DepartmentName: DeptNameOf(kvp.Key),
                 DepartmentSlug: DeptSlugOf(kvp.Key),
                 TotalConfirmed: kvp.Value.Values.Sum(v => v.Confirmed),
@@ -1714,7 +1708,7 @@ internal sealed class ShiftManagementService(
 
         return departmentIds
             .Select(id => teams[id])
-            .Select(t => new ShiftSummaryTeamLink(t.Id, t.Name, t.Slug))
+            .Select(t => new ShiftSummaryTeamLink(t.Name, t.Slug))
             .ToList();
     }
 

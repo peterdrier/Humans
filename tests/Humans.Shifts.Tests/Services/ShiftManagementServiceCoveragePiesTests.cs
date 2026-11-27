@@ -40,7 +40,7 @@ public sealed class ShiftManagementServiceCoveragePiesTests : ShiftsTestHarness
 
         var serviceProvider = new ServiceLocatorBuilder()
             .With(teamService)
-            .With<IRoleAssignmentService>()
+            .With<ISystemRoleService>()
             .With<IUserService>()
             .Build();
 
@@ -163,8 +163,7 @@ public sealed class ShiftManagementServiceCoveragePiesTests : ShiftsTestHarness
     public async Task FillPercent_NoRequestedHours_ReturnsZero()
     {
         var pie = new DepartmentCoveragePie(
-            TeamId: Guid.NewGuid(), TeamName: "X", TeamSlug: "x",
-            IsSubTeam: false, ParentTeamId: null, ParentTeamName: null,
+            TeamId: Guid.NewGuid(), TeamName: "X", IsSubTeam: false, ParentTeamId: null, ParentTeamName: null,
             RequestedHours: 0m, FilledHours: 0m);
 
         await Task.CompletedTask;

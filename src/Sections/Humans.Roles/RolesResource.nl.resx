@@ -106,4 +106,8 @@
   <data name="Roles_Role_Unassign" xml:space="preserve"><value>Weghalen</value></data>
   <data name="Roles_Saved" xml:space="preserve"><value>{0} opgeslagen.</value></data>
   <data name="Roles_Unassigned" xml:space="preserve"><value>Persoon uit {0} gehaald.</value></data>
+  <data name="Roles_Refusal_LinkTooLong" xml:space="preserve"><value>Een aangepaste link mag niet langer zijn dan 100 tekens.</value></data>
+  <data name="Roles_Refusal_DescriptionTooLong" xml:space="preserve"><value>Een rolbeschrijving mag niet langer zijn dan 2000 tekens.</value></data>
+  <data name="Roles_Refusal_PrioritiesTooLong" xml:space="preserve"><value>Er zijn te veel plaatsen met deze prioriteiten. Verminder het aantal plaatsen.</value></data>
+  <data name="Roles_Refusal_NoPerson" xml:space="preserve"><value>Kies een persoon uit de lijst.</value></data>
 </root>

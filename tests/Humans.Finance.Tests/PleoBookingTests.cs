@@ -37,9 +37,9 @@ public class PleoBookingTests
     private static readonly IReadOnlySet<int> Open = new HashSet<int> { Food, Geeks, PleoBooking.PleoTreasury };
     private static readonly HoldedChartAccountInfo[] Chart =
     [
-        new(Food, "Comida", null, null, false, 0m),
-        new(Geeks, "Geeks", null, null, false, 0m),
-        new(PleoBooking.PleoTreasury, "Pleo", null, null, false, 0m),
+        new(Food, "Comida", null, false, 0m),
+        new(Geeks, "Geeks", null, false, 0m),
+        new(PleoBooking.PleoTreasury, "Pleo", null, false, 0m),
     ];
 
     private readonly IPleoService _pleo = Substitute.For<IPleoService>();
@@ -58,9 +58,9 @@ public class PleoBookingTests
     public PleoBookingTests()
     {
         _holded.IsConfigured.Returns(true);
-        _holded.SyncAccountLedgerAsync(default, default).ReturnsForAnyArgs(true);
-        _holded.SyncPurchaseDocumentsAsync(default).ReturnsForAnyArgs(true);
-        _holded.SyncLedgerAsync(default, default).ReturnsForAnyArgs(true);
+        _holded.SyncAccountLedgerAsync(default).ReturnsForAnyArgs(true);
+        _holded.SyncPurchaseDocumentsAsync().ReturnsForAnyArgs(true);
+        _holded.SyncLedgerAsync().ReturnsForAnyArgs(true);
         _holded.GetLedgerLinesAsync(PleoBooking.PleoTreasury, Arg.Any<CancellationToken>()).Returns(_ => _ledger.ToList());
         _holded.GetLedgerLinesAsync(PleoBooking.SabadellTreasury, Arg.Any<CancellationToken>()).Returns([]);
         _holded.GetLedgerLinesAsync(Arg.Is<int>(n => n == Food || n == Geeks), Arg.Any<CancellationToken>())
@@ -71,30 +71,30 @@ public class PleoBookingTests
         _holded.GetContactsAsync(Arg.Any<CancellationToken>())
             .Returns(new HoldedContactMirror(null, [new HoldedContactDto { Id = Contact, Name = "Pleo card purchases" }]));
 
-        _repo.GetSettingsAsync(default).ReturnsForAnyArgs(new FinanceSettings
+        _repo.GetSettingsAsync().ReturnsForAnyArgs(new FinanceSettings
         {
             PleoHoldedContactId = Contact,
             PleoHoldedTreasuryId = Treasury,
         });
-        _repo.GetPleoBookingClaimsAsync(default).ReturnsForAnyArgs(_ => _claims.ToHashSet(StringComparer.Ordinal));
-        _repo.TryClaimPleoBookingAsync(default!, default, default).ReturnsForAnyArgs(c => _claims.Add(c.Arg<string>()));
-        _repo.ReleasePleoBookingClaimAsync(default!, default)
+        _repo.GetPleoBookingClaimsAsync().ReturnsForAnyArgs(_ => _claims.ToHashSet(StringComparer.Ordinal));
+        _repo.TryClaimPleoBookingAsync(default!, default).ReturnsForAnyArgs(c => _claims.Add(c.Arg<string>()));
+        _repo.ReleasePleoBookingClaimAsync(default!)
             .ReturnsForAnyArgs(c => { _claims.Remove(c.Arg<string>()); return Task.CompletedTask; });
-        _repo.GetPleoReceiptUploadsAsync(default).ReturnsForAnyArgs(_ => _uploads.ToList());
-        _repo.AddPleoReceiptUploadAsync(default!, default)
+        _repo.GetPleoReceiptUploadsAsync().ReturnsForAnyArgs(_ => _uploads.ToList());
+        _repo.AddPleoReceiptUploadAsync(default!)
             .ReturnsForAnyArgs(c => { _uploads.Add(c.Arg<PleoReceiptUpload>()); return Task.CompletedTask; });
 
-        _write.EnsureExpenseAccountAsync(default, default!, default)
+        _write.EnsureExpenseAccountAsync(default, default!)
             .ReturnsForAnyArgs(c => new HoldedExpenseAccountOutcome("acc-" + c.Arg<int>(), false));
-        _write.CreatePurchaseDocumentAsync(default!, default).ReturnsForAnyArgs(c =>
+        _write.CreatePurchaseDocumentAsync(default!).ReturnsForAnyArgs(c =>
         {
             _created.Add(c.Arg<HoldedPurchaseDocumentInput>());
             return "doc-" + ++_docSeq;
         });
-        _write.PayPurchaseDocumentAsync(default!, default, default, default, default, default).ReturnsForAnyArgs("pay-1");
-        _write.PostJournalEntryAsync(default, default, default, default, default!, default)
+        _write.PayPurchaseDocumentAsync(default!, default, default, default, default).ReturnsForAnyArgs("pay-1");
+        _write.PostJournalEntryAsync(default, default, default, default, default!)
             .ReturnsForAnyArgs(new HoldedJournalEntryOutcome(true));
-        _pleo.GetReceiptFileAsync(default!, default!, default)
+        _pleo.GetReceiptFileAsync(default!, default!)
             .ReturnsForAnyArgs(new PleoReceiptFile([1, 2, 3], "application/pdf"));
     }
 
@@ -102,15 +102,14 @@ public class PleoBookingTests
         new FakeClock(Instant.FromUtc(2026, 11, 5, 12, 0)), NullLogger<PleoBooking>.Instance);
 
     private void GivenEntries(params PleoEntryInfo[] entries) =>
-        _pleo.GetSettledEntriesAsync(default, default, default).ReturnsForAnyArgs(entries);
+        _pleo.GetSettledEntriesAsync(default, default).ReturnsForAnyArgs(entries);
 
     private static Instant Day(int month, int day) => new LocalDate(2026, month, day).AtStartOfDayInZone(Madrid).ToInstant();
 
     private static PleoEntryInfo Entry(
         string id, decimal? amount, int day = 10, string? category = "cat", string? code = "62900001",
         string family = "CARD_PURCHASE", string status = "COMPLETED", string merchant = "MAKRO", params string[] receipts) =>
-        new(id, family, null, status, Day(6, day).Plus(Duration.FromHours(12)), "EUR", 0, amount, merchant,
-            null, category, category is null ? null : code, receipts.Length > 0, null, null, receipts);
+        new(id, family, status, Day(6, day).Plus(Duration.FromHours(12)), amount, merchant, category, category is null ? null : code, receipts.Length > 0, null, null, receipts);
 
     private static HoldedLedgerLineInfo Line(int entry, int day, decimal debit, decimal credit, string? description,
         int account = PleoBooking.PleoTreasury) =>
@@ -118,7 +117,7 @@ public class PleoBookingTests
 
     private void GivenPurchase(string pleoId, decimal total, bool approved = true, decimal? pending = 0m) =>
         _docs.Add(new HoldedPurchaseDocInfo("doc-" + pleoId, PleoBooking.Number(pleoId), "Pleo card purchases", Contact,
-            null, new LocalDate(2026, 6, 10), total, 0m, total, "EUR", approved, null, [], null,
+            null, new LocalDate(2026, 6, 10), total, total, approved, null, [], null,
             "https://app.holded.com/doc-" + pleoId, pending));
 
     private PleoSnapshot Snapshot(params PleoEntryInfo[] entries) =>
@@ -163,6 +162,8 @@ public class PleoBookingTests
     {
         var view = PleoBooking.Classify(Snapshot(
             Entry("charge", -90.27m, day: 3, category: "food"),
+            Entry("earlier-charge", -90.27m, day: 2, category: "food"),
+            Entry("tied-charge", -90.27m, day: 3, category: "food"),
             Entry("refund", 90.27m, day: 3, category: "geeks", code: "62900002")), Madrid);
 
         view.RefundOrigins.Should().ContainSingle().Which.Should().Match<PleoRefundOrigin>(o =>
@@ -174,7 +175,7 @@ public class PleoBookingTests
     {
         GivenEntries(Entry("new", -10m, day: 20), Entry("old", -12.5m, day: 2, receipts: ["r1", "r2"]));
 
-        var run = await Booking().BookAsync(1, null);
+        var run = await Booking().RunAsync(PleoRunKind.Book, 1, null, CancellationToken.None);
 
         run.Lines.Should().ContainSingle().Which.Should().Match<PleoBookingLine>(l =>
             l.PleoId == "old" && l.Outcome == PleoBookingOutcome.Posted && l.Receipts == 2);
@@ -200,7 +201,7 @@ public class PleoBookingTests
             Entry("charge", -90.27m, day: 3, merchant: "DIA"),
             Entry("refund", 90.27m, day: 3, merchant: "DIA", receipts: ["abono"]));
 
-        await Booking().BookAsync(null, null);
+        await Booking().RunAsync(PleoRunKind.Book, null, null, CancellationToken.None);
 
         _created.Select(d => d.Number).Should().Equal("Pleo-charge", "Pleo-refund");
         var refund = _created[1].Lines.Single();
@@ -211,7 +212,7 @@ public class PleoBookingTests
             Arg.Any<string?>(), CancellationToken.None);
         await _write.DidNotReceive().PayPurchaseDocumentAsync("doc-1", -90.27m, Arg.Any<string?>(), Arg.Any<LocalDate>(),
             Arg.Any<string?>(), Arg.Any<CancellationToken>());
-        await _write.DidNotReceiveWithAnyArgs().PostJournalEntryAsync(default, default, default, default, default!, default);
+        await _write.DidNotReceiveWithAnyArgs().PostJournalEntryAsync(default, default, default, default, default!);
     }
 
     [HumansFact]
@@ -222,7 +223,7 @@ public class PleoBookingTests
         _ledger.Add(Line(4700, 1, 0m, 12m, "Purchase Pleo-paid"));
         GivenEntries(Entry("done", -30m, day: 1), Entry("paid", -12m, day: 1), Entry("half", -40m, day: 2));
 
-        var run = await Booking().BookAsync(null, null);
+        var run = await Booking().RunAsync(PleoRunKind.Book, null, null, CancellationToken.None);
 
         run.Lines.Select(l => l.PleoId).Should().Equal("half");
         _created.Should().BeEmpty();
@@ -242,7 +243,7 @@ public class PleoBookingTests
         GivenPurchase("draft", -amount, approved: false, pending: mirrorPending);
         GivenEntries(Entry("draft", amount));
 
-        var run = await Booking().BookAsync(null, null);
+        var run = await Booking().RunAsync(PleoRunKind.Book, null, null, CancellationToken.None);
 
         run.Lines.Should().ContainSingle().Which.Outcome.Should().Be(PleoBookingOutcome.Posted);
         _created.Should().BeEmpty();
@@ -257,7 +258,7 @@ public class PleoBookingTests
         _claims.Add("lost");
         GivenEntries(Entry("lost", -10m));
 
-        var run = await Booking().BookAsync(null, null);
+        var run = await Booking().RunAsync(PleoRunKind.Book, null, null, CancellationToken.None);
 
         run.Lines.Should().BeEmpty();
         _created.Should().BeEmpty();
@@ -268,12 +269,12 @@ public class PleoBookingTests
     public async Task Book_RefusedCreateReleasesTheClaim_AnUnreadableOrTimedOutCreateKeepsIt()
     {
         GivenEntries(Entry("a", -10m, day: 1), Entry("b", -11m, day: 2), Entry("c", -12m, day: 3), Entry("d", -13m, day: 4));
-        _write.CreatePurchaseDocumentAsync(default!, default).ReturnsForAnyArgs(
+        _write.CreatePurchaseDocumentAsync(default!).ReturnsForAnyArgs(
             Task.FromException<string>(new HoldedPermanentException(400, null, "400")),
             Task.FromException<string>(new HoldedPermanentException("created, no id in the answer")),
             Task.FromException<string>(new HoldedTransientException("timeout")));
 
-        var run = await Booking().BookAsync(null, null);
+        var run = await Booking().RunAsync(PleoRunKind.Book, null, null, CancellationToken.None);
 
         run.Lines.Select(l => (l.PleoId, l.Outcome)).Should().Equal(
             ("a", PleoBookingOutcome.Failed), ("b", PleoBookingOutcome.Failed), ("c", PleoBookingOutcome.Failed));
@@ -286,25 +287,25 @@ public class PleoBookingTests
     {
         GivenEntries(Entry("a", -10m));
         using var release = new SemaphoreSlim(0);
-        _write.CreatePurchaseDocumentAsync(default!, default)
+        _write.CreatePurchaseDocumentAsync(default!)
             .ReturnsForAnyArgs(async _ => { await release.WaitAsync(); return "doc-1"; });
 
-        var first = Booking().BookAsync(1, null);
-        var second = await Booking().PostCorrectionsAsync(1, null);
+        var first = Booking().RunAsync(PleoRunKind.Book, 1, null, CancellationToken.None);
+        var second = await Booking().RunAsync(PleoRunKind.Corrections, 1, null, CancellationToken.None);
         release.Release();
         await first;
 
         second.Refused.Should().Contain("Another Pleo run");
-        await _write.ReceivedWithAnyArgs(1).CreatePurchaseDocumentAsync(default!, default);
+        await _write.ReceivedWithAnyArgs(1).CreatePurchaseDocumentAsync(default!);
     }
 
     [HumansFact]
     public async Task Book_RefusedWithoutTheContactAndTreasurySettings()
     {
-        _repo.GetSettingsAsync(default).ReturnsForAnyArgs(new FinanceSettings());
+        _repo.GetSettingsAsync().ReturnsForAnyArgs(new FinanceSettings());
         GivenEntries(Entry("a", -10m));
 
-        var run = await Booking().BookAsync(null, null);
+        var run = await Booking().RunAsync(PleoRunKind.Book, null, null, CancellationToken.None);
 
         run.Refused.Should().Contain("/Settings");
         _created.Should().BeEmpty();
@@ -317,13 +318,33 @@ public class PleoBookingTests
         _uploads.Add(new PleoReceiptUpload { PleoEntryId = "a", ReceiptId = "r1", Confirmed = true });
         GivenEntries(Entry("a", -10m, receipts: ["r1", "r2"]));
 
-        var run = await Booking().AttachReceiptsAsync(null);
-        await Booking().AttachReceiptsAsync(null);
+        var run = await Booking().RunAsync(PleoRunKind.Receipts, null, null, CancellationToken.None);
+        await Booking().RunAsync(PleoRunKind.Receipts, null, null, CancellationToken.None);
 
         run.Lines.Single().Receipts.Should().Be(1);
         await _write.Received(1).UploadPurchaseAttachmentAsync("doc-a",
             Arg.Is<HoldedAttachmentInput>(a => a.FileName == "pleo-r2.pdf"), CancellationToken.None);
-        await _write.ReceivedWithAnyArgs(1).UploadPurchaseAttachmentAsync(default!, default!, default);
+        await _write.ReceivedWithAnyArgs(1).UploadPurchaseAttachmentAsync(default!, default!);
+    }
+
+    [HumansTheory]
+    [InlineData(1)]
+    [InlineData(null)]
+    public async Task Corrections_SelectOldestSettledEntriesBeforeApplyingTheLimit(int? limit)
+    {
+        GivenPurchase("a-new", 20m);
+        GivenPurchase("z-old", 20m);
+        GivenPurchase("b-old", 20m);
+        _expenseLines.Add(Line(10, 1, 20m, 0m, "Purchase Pleo-a-new", Food));
+        _expenseLines.Add(Line(11, 1, 20m, 0m, "Purchase Pleo-z-old", Food));
+        _expenseLines.Add(Line(12, 1, 20m, 0m, "Purchase Pleo-b-old", Food));
+        GivenEntries(Entry("a-new", -25m, day: 20), Entry("z-old", -25m, day: 2), Entry("b-old", -25m, day: 2));
+
+        var run = await Booking().RunAsync(PleoRunKind.Corrections, limit, null, CancellationToken.None);
+
+        var expected = new[] { "b-old", "z-old", "a-new" }.Take(limit ?? int.MaxValue);
+        run.Lines.Select(l => l.PleoId).Should().Equal(expected);
+        run.Lines.Should().OnlyContain(l => l.Outcome == PleoBookingOutcome.Posted);
     }
 
     [HumansFact]
@@ -335,7 +356,7 @@ public class PleoBookingTests
         _expenseLines.Add(Line(11, 2, 20m, 0m, "Purchase Pleo-repriced", Food));
         GivenEntries(Entry("moved", -50m, day: 1, code: "62900002"), Entry("repriced", -25m, day: 2));
 
-        var run = await Booking().PostCorrectionsAsync(null, null);
+        var run = await Booking().RunAsync(PleoRunKind.Corrections, null, null, CancellationToken.None);
 
         run.Lines.Should().HaveCount(2);
         await _write.Received(1).PostJournalEntryAsync(new LocalDate(2026, 11, 5), Geeks, Food, 50m,
@@ -346,10 +367,10 @@ public class PleoBookingTests
         _expenseLines.Add(Line(20, 5, 50m, 0m, "Pleo moved: recategorizado / recategorised", Geeks));
         _expenseLines.Add(Line(20, 5, 0m, 50m, "Pleo moved: recategorizado / recategorised", Food));
         _expenseLines.Add(Line(21, 5, 5m, 0m, "Pleo repriced: importe cambiado / amount changed", Food));
-        var again = await Booking().PostCorrectionsAsync(null, null);
+        var again = await Booking().RunAsync(PleoRunKind.Corrections, null, null, CancellationToken.None);
 
         again.Lines.Should().BeEmpty();
-        await _write.ReceivedWithAnyArgs(2).PostJournalEntryAsync(default, default, default, default, default!, default);
+        await _write.ReceivedWithAnyArgs(2).PostJournalEntryAsync(default, default, default, default, default!);
     }
 
     [HumansFact]

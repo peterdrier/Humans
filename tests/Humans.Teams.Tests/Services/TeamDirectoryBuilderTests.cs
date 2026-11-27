@@ -17,7 +17,7 @@ namespace Humans.Teams.Tests.Services;
 public sealed class TeamDirectoryBuilderTests
 {
     private static readonly Instant Now = Instant.FromUtc(2026, 9, 5, 12, 0);
-    private readonly IRoleAssignmentService _roles = Substitute.For<IRoleAssignmentService>();
+    private readonly ISystemRoleService _roles = Substitute.For<ISystemRoleService>();
 
     private static TeamInfo Team(
         string name,

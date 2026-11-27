@@ -1,13 +1,12 @@
-using Humans.Base.Interfaces;
 using Humans.Campaigns.Contracts;
 using Humans.Campaigns.Services.Dtos;
 
 namespace Humans.Campaigns.Services;
 
-internal interface ICampaignManagement : ICampaignService, ICampaignWrite, IApplicationService
+internal interface ICampaignManagement : ICampaignService, ICampaignWrite
 {
-    /// <summary>Unordered.</summary>
-    Task<IReadOnlyList<CampaignGrantSummary>> GetActiveOrCompletedGrantsForUserAsync(
+    /// <summary>Grants in Active or Completed campaigns only. Unordered.</summary>
+    Task<IReadOnlyList<CampaignGrantSummary>> GetGrantsForUserAsync(
         Guid userId, CancellationToken ct = default);
 
     /// <summary>Any campaign status. Unordered.</summary>

@@ -16,8 +16,8 @@
     <form method="get" class="row g-2 mb-3">
         <div class="col-auto">
             <div class="form-check form-check-inline">
-                <input class="form-check-input" type="checkbox" name="refusalsOnly" value="true" @(Context.Request.Query["refusalsOnly"] == "true" ? "checked" : null) id="refusalsOnly" />
-                <label class="form-check-label" for="refusalsOnly">Refusals only</label>
+                <input class="form-check-input" type="checkbox" name="unansweredOnly" value="true" @(Context.Request.Query["unansweredOnly"] == "true" ? "checked" : null) id="unansweredOnly" />
+                <label class="form-check-label" for="unansweredOnly">Unanswered only</label>
             </div>
         </div>
         <div class="col-auto">
@@ -59,7 +59,7 @@ else
 
 @if (Model.IsAdminView && (Model.Page > 0 || Model.HasNext))
 {
-    // Older/Newer paging, preserving the filter query params (refusalsOnly, userId).
+    // Older/Newer paging, preserving the filter query params (unansweredOnly, userId).
     var baseRoute = new Dictionary<string, string?>(StringComparer.OrdinalIgnoreCase);
     foreach (var pair in Context.Request.Query)
     {

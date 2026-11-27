@@ -22,7 +22,7 @@
     </div>
 </page-header>
 
-@if (Model.DepartmentAccountsUnavailable is { } reason)
+@if (Model.Unavailable is { } reason)
 {
     <div class="alert alert-warning"><i class="fa-solid fa-triangle-exclamation me-1"></i>@reason</div>
 }
@@ -36,7 +36,7 @@
                 <span class="badge bg-warning text-dark">@Model.BlockedCount blocked · @Model.BlockedAmount.ToEuro()</span>
             }
         </div>
-        <div class="small text-muted">Months closed through @(Model.LastClosedMonth?.ToString("yyyy-MM", CultureInfo.InvariantCulture) ?? "—")</div>
+        <div class="small text-muted">Months closed through @(Model.LastClosedMonth?.ToInvariantYearMonth() ?? "—")</div>
         @if (Model.Ready.Count > 0)
         {
             <form authorize-policy="@StorePolicies.Manage" asp-action="BookTransfers" method="post" class="ms-auto">

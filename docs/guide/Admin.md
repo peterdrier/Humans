@@ -16,7 +16,7 @@
   src/Sections/Humans.Notifications/Services/**
   src/Sections/Humans.Users/Services/AccountMergeService.cs
   src/Sections/Humans.Users/Services/DuplicateAccountService.cs
-  src/Sections/Humans.Auth/Services/RoleAssignmentService.cs
+  src/Sections/Humans.Auth/Services/SystemRoleService.cs
   src/Sections/Humans.Users/Services/AccountProvisioningService.cs
   src/Sections/Humans.Google/Services/SyncSettingsService.cs
 -->
@@ -79,7 +79,7 @@ Suspend, unsuspend, reject, and role changes are for UsersAdmin and Admin; Board
 
 ### Triage the notification inbox
 
-`/Notifications` is your shared "what needs my attention" view. Actionable notifications targeted at you personally appear under **Needs your attention**; work-queue counts (consent reviews pending, applications awaiting your vote, failed Google sync events, and similar) appear as **Work queues** meters below. When a group notification targets all Admins or all Coordinators of a team, **any recipient can resolve it for all** — the resolver's name is shown so no one duplicates work. Informational notifications (team changes, workspace credentials ready, drift fixes) fall under **Informational** (**Recent** in the bell popup). Each row and meter says who it is for ("For the Board", "For Consent Coordinators"). Opening an item marks it read and takes it off the bell. The bell icon shows a red count for unread actionable items and a green dot for informational-only.
+`/Notifications` is your shared "what needs my attention" view. Actionable notifications targeted at you personally appear under **Needs your attention**; work-queue counts (consent reviews pending, applications awaiting your vote, failed Google sync events, and similar) appear as **Work queues** meters below. When a group notification targets all Admins or all Coordinators of a team, **any recipient can resolve it for all** — the resolver's name is shown so no one duplicates work. Informational notifications (team changes, workspace credentials ready, drift fixes) fall under **Informational** (**Recent** in the bell popup). Each row and meter says who it is for ("For the Board", "For Consent Admins"). Opening an item marks it read and takes it off the bell. The bell icon shows a red count for unread actionable items and a green dot for informational-only.
 
 ### Configure Google sync
 
@@ -94,7 +94,7 @@ See [Google](Google.md) for the full Google surface.
 Board can open these pages and read them; every action on them is **Admin only**.
 
 - **Configuration** (`/Debug/Configuration`) lists every auto-discovered setting, classified as critical, recommended, or optional, with sensitive values masked.
-- **API keys** (`/Backdoor`) allocates, rotates and revokes the personal keys that open the `/api/backdoor/*` machine APIs — the log, agent-transcript, issue and survey surfaces. A key goes to one human (a full Admin or a Board member), authenticates as them, and is shown in plaintext exactly once. Board sees the key list; only Admin allocates, rotates and revokes.
+- **API keys** (`/Backdoor`) allocates, rotates and revokes the personal keys that open the `/api/backdoor/*` machine APIs — the log, agent-transcript, issue and survey surfaces. A key goes to one human, authenticates as them, reaches only what they can reach, and is shown in plaintext exactly once. Anyone a Backdoor scope admits makes their own keys there (today that is Admin and Board); keys below Admin and Board expire after 30 days. Board sees every key; only Admin allocates, rotates and revokes someone else's.
 - **Logs** (`/Debug/Logs`) shows recent in-memory Serilog entries for quick triage without shelling in.
 - **HTTP errors** (`/Debug/HttpErrors`) shows recent HTTP error responses for quick diagnosis.
 - **Database** (`/Debug/Database`) shows the database server's version, size, connections and settings, plus per-table row counts, sizes and activity and per-index size and scans.

@@ -1,5 +1,4 @@
 @using Humans.Base.Interfaces
-@using Humans.Base.Models
 @model (DashboardOverview Overview, ShiftPeriod? SelectedPeriod)
 
 @{
@@ -27,7 +26,7 @@
         ? new StatTileViewModel(Localizer["Shifts_ShiftDash_Overview_TicketHolders"].Value, o.TicketHolderCount.ToString(), Subline: Localizer["Shifts_ShiftDash_Overview_TicketHoldersSubline"].Value)
         : new StatTileViewModel(Localizer["Shifts_ShiftDash_Overview_TicketHolders"].Value, notAvailable, Subline: ticketDataHidden);
     var engaged = showTicketData
-        ? new StatTileViewModel(Localizer["Shifts_ShiftDash_Overview_TicketHoldersEngaged"].Value, o.TicketHoldersEngaged.ToString(), $"/ {o.TicketHolderCount} ({engagedPct:0}%)", string.Format(Localizer["Shifts_ShiftDash_Overview_EngagedSubline"].Value, unreached))
+        ? new StatTileViewModel(Localizer["Shifts_ShiftDash_Overview_TicketHoldersEngaged"].Value, o.TicketHoldersEngaged.ToString(), $"/ {o.TicketHolderCount} ({engagedPct:0}%)", Localizer["Shifts_ShiftDash_Overview_EngagedSubline", unreached].Value)
         : new StatTileViewModel(Localizer["Shifts_ShiftDash_Overview_TicketHoldersEngaged"].Value, notAvailable, Subline: ticketDataHidden);
     var nonTicket = showTicketData
         ? new StatTileViewModel(Localizer["Shifts_ShiftDash_Overview_NonTicketSignups"].Value, o.NonTicketSignups.ToString(), Subline: Localizer["Shifts_ShiftDash_Overview_NonTicketSubline"].Value)

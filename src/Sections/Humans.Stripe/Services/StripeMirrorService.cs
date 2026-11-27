@@ -280,7 +280,7 @@ internal sealed class StripeMirrorService(
         var rows = payouts
             .Where(p => string.IsNullOrEmpty(account) || string.Equals(p.AccountId, account, StringComparison.Ordinal))
             .Select(p => new StripePayoutRow(p.Id, NameOf(p.AccountId), p.Created, p.ArrivalDate.InUtc().Date,
-                Eur(p.Amount), p.Currency, p.Status, p.Automatic, p.Method, p.FailureMessage,
+                Eur(p.Amount), p.Currency, p.Status, p.Automatic, p.FailureMessage,
                 linked[p.Id].Count(), Eur(linked[p.Id].Sum(t => t.Net))))
             .ToList();
 

@@ -19,7 +19,7 @@ public class ShiftViewServiceTests
 
     public ShiftViewServiceTests()
     {
-        _calendarResolver = new(_settingsService, Substitute.For<Humans.Shifts.Data.IShiftManagementRepository>());
+        _calendarResolver = new(_settingsService, Substitute.For<IShiftManagementRepository>());
         _rotaRows.GetRotaRowsAsync(Arg.Any<IReadOnlyCollection<Guid>?>(), Arg.Any<CancellationToken>()).Returns([]);
     }
 
@@ -41,7 +41,7 @@ public class ShiftViewServiceTests
     {
         var userId = Guid.NewGuid();
         StubActiveCalendar(null);
-        _management.GetVolunteerEventProfilesByUserIdsAsync(
+        _management.GetVolunteerProfilesAsync(
                 Arg.Is<IReadOnlyCollection<Guid>>(ids => ids.Contains(userId)),
                 Arg.Any<CancellationToken>())
             .Returns([]);
@@ -72,7 +72,7 @@ public class ShiftViewServiceTests
         var buildStatus = new VolunteerBuildStatus { UserId = userId, EventSettingsId = eventId };
 
         StubActiveCalendar(Calendar(eventId));
-        _management.GetVolunteerEventProfilesByUserIdsAsync(
+        _management.GetVolunteerProfilesAsync(
                 Arg.Is<IReadOnlyCollection<Guid>>(ids => ids.Contains(userId)),
                 Arg.Any<CancellationToken>())
             .Returns([profile]);
@@ -105,7 +105,7 @@ public class ShiftViewServiceTests
     {
         var userId = Guid.NewGuid();
         StubActiveCalendar(null);
-        _management.GetVolunteerEventProfilesByUserIdsAsync(
+        _management.GetVolunteerProfilesAsync(
                 Arg.Is<IReadOnlyCollection<Guid>>(ids => ids.Contains(userId)),
                 Arg.Any<CancellationToken>())
             .Returns([]);
@@ -137,7 +137,7 @@ public class ShiftViewServiceTests
         ]);
 
         StubActiveCalendar(Calendar(eventId));
-        _management.GetVolunteerEventProfilesByUserIdsAsync(
+        _management.GetVolunteerProfilesAsync(
                 Arg.Is<IReadOnlyCollection<Guid>>(ids => ids.Contains(userId)),
                 Arg.Any<CancellationToken>())
             .Returns([]);

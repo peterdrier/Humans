@@ -246,7 +246,7 @@ public sealed class MembershipTierServiceTests : IDisposable
 
         var row = await RowAsync(target);
         row.Should().NotBeNull();
-        row!.Tier.Should().Be(sourceDowngraded || survivorDowngraded
+        row.Tier.Should().Be(sourceDowngraded || survivorDowngraded
             ? MembershipTier.Volunteer : MembershipTier.Asociado);
         if (!sourceDowngraded && !survivorDowngraded)
         {

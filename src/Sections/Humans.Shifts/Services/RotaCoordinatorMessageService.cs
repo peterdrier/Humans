@@ -5,7 +5,6 @@ using Humans.Shifts.Contracts;
 using Humans.Teams.Contracts;
 using Humans.Shifts.Domain;
 using NodaTime;
-using Humans.Shifts.Helpers;
 using Humans.Shifts.Services.Dtos;
 using Humans.Users.Contracts;
 
@@ -66,7 +65,7 @@ internal sealed class RotaCoordinatorMessageService(
                 RotaName: rota.Name,
                 MessageText: messageText,
                 // One rota, so exactly one group, or none when the coordinator left the shift list out.
-                ShiftLines: shiftGroups.Count == 0 ? [] : shiftGroups[0].ShiftLines,
+                Shifts: shiftGroups.Count == 0 ? [] : shiftGroups[0].Shifts,
                 IncludeShifts: includeShifts,
                 Culture: language),
             enqueue: (req, token) => emailService.SendAsync(emailMessages.CoordinatorRotaMessage(req), token),
@@ -180,15 +179,23 @@ internal sealed class RotaCoordinatorMessageService(
         if (recipientIds.Count == 0)
             return new TeamRotasRecipientPreview(groups.Count, []);
 
-        var infos = await userService.GetUserInfosAsync(recipientIds, ct);
-        var names = recipientIds
-            .Select(id => infos.TryGetValue(id, out var u) ? u.BurnerName : null)
+        var infos = GetAvailableRecipients(recipientIds, await userService.GetUserInfosAsync(recipientIds, ct));
+        var names = infos.Values
+            .DistinctBy(user => user.Id)
+            .Select(user => user.BurnerName)
             .Where(n => !string.IsNullOrWhiteSpace(n))
             .Select(n => n!)
             .ToList();
 
         return new TeamRotasRecipientPreview(groups.Count, names);
     }
+
+    internal static IReadOnlyDictionary<Guid, UserInfo> GetAvailableRecipients(
+        IEnumerable<Guid> userIds, IReadOnlyDictionary<Guid, UserInfo> infos) =>
+        userIds.Distinct()
+            .Where(id => infos.TryGetValue(id, out var user) && !user.IsTombstone
+                && !string.IsNullOrWhiteSpace(user.Email))
+            .ToDictionary(id => id, id => infos[id]);
 
     /// <summary>
     /// Under the default upcoming filter a rota counts while any of its shifts has not ended, so events mid-flight
@@ -204,7 +211,6 @@ internal sealed class RotaCoordinatorMessageService(
 
         var rotas = (await rotaRows.GetRotaRowsAsync(ct: ct))
             .Where(r => r.Rota.EventSettingsId == calendar.Id && r.Rota.TeamId == teamId)
-            .OrderBy(r => r.Rota.Name, StringComparer.Ordinal)
             .ToList();
         if (rotas.Count == 0) return [];
 
@@ -236,7 +242,7 @@ internal sealed class RotaCoordinatorMessageService(
             .ToList();
 
     /// <summary>
-    /// Shared by the per-rota and team paths: dedupes signups by user across rotas, formats each rota in its own
+    /// Shared by the per-rota and team paths: dedupes signups by live user across rotas, resolves starts in each rota's own
     /// timezone, and isolates per-recipient failures.
     /// </summary>
     private async Task<DispatchSummary> DispatchToRecipientsAsync<TRequest>(
@@ -262,35 +268,47 @@ internal sealed class RotaCoordinatorMessageService(
         }
 
         if (byUser.Count == 0)
-            return new DispatchSummary(0, 0, 0);
+            return new DispatchSummary(0, 0, 0, 0, 0);
 
         var recipientIds = byUser.Keys;
-        var recipientInfos = await userService.GetUserInfosAsync(recipientIds, ct);
+        var infos = await userService.GetUserInfosAsync(recipientIds, ct);
+        var recipientInfos = GetAvailableRecipients(recipientIds, infos);
 
         var requested = 0;
-        var skipped = 0;
+        var notFound = 0;
+        var deleted = 0;
+        var noEmail = 0;
         var failed = 0;
-
-        foreach (var (userId, entries) in byUser)
+        foreach (var userId in recipientIds.Where(id => !recipientInfos.ContainsKey(id)))
         {
-            if (!recipientInfos.TryGetValue(userId, out var recipient))
+            string reason;
+            if (!infos.TryGetValue(userId, out var user))
             {
-                logger.LogWarning(
-                    "Skipping coordinator-message recipient {UserId} on {ScopeType} {ScopeId}: user not found",
-                    userId, logScope.Type, logScope.Id);
-                skipped++;
-                continue;
+                reason = "user not found";
+                notFound++;
+            }
+            else if (user.IsTombstone)
+            {
+                reason = "user deleted";
+                deleted++;
+            }
+            else
+            {
+                reason = "no email address";
+                noEmail++;
             }
 
-            var email = recipient.Email;
-            if (string.IsNullOrWhiteSpace(email))
-            {
-                logger.LogWarning(
-                    "Skipping coordinator-message recipient {UserId} on {ScopeType} {ScopeId}: no email address",
-                    userId, logScope.Type, logScope.Id);
-                skipped++;
-                continue;
-            }
+            logger.LogWarning(
+                "Skipping coordinator-message recipient {UserId} on {ScopeType} {ScopeId}: {Reason}",
+                userId, logScope.Type, logScope.Id, reason);
+        }
+
+        foreach (var recipientEntries in byUser.Where(entry => recipientInfos.ContainsKey(entry.Key))
+            .GroupBy(entry => recipientInfos[entry.Key].Id))
+        {
+            var userId = recipientEntries.Key;
+            var recipient = recipientInfos[recipientEntries.First().Key];
+            var entries = recipientEntries.SelectMany(entry => entry.Value);
 
             // The template drops the whole section rather than print a lead-in over an empty list.
             IReadOnlyList<CoordinatorRotaShiftGroup> shiftGroups = includeShifts
@@ -299,12 +317,11 @@ internal sealed class RotaCoordinatorMessageService(
                     .Select(g =>
                     {
                         var group = g.First().Group;
-                        var lines = BuildShiftLines(
-                            g.Select(e => e.Signup).ToList(),
-                            group.EventSettings);
-                        return new CoordinatorRotaShiftGroup(group.RotaName, lines);
+                        var shifts = g.DistinctBy(e => e.Signup.Shift.Id).Select(e => (
+                            Start: e.Signup.Shift.GetAbsoluteStart(group.EventSettings).InZone(group.EventSettings.TimeZone),
+                            e.Signup.Shift.IsAllDay)).ToList();
+                        return new CoordinatorRotaShiftGroup(group.RotaName, shifts);
                     })
-                    .OrderBy(g => g.RotaName, StringComparer.OrdinalIgnoreCase)
                     .ToList()
                 : [];
 
@@ -329,33 +346,7 @@ internal sealed class RotaCoordinatorMessageService(
             }
         }
 
-        return new DispatchSummary(requested, skipped, failed);
-    }
-
-    // Chronological, in the rota's timezone.
-    private static IReadOnlyList<string> BuildShiftLines(
-        IReadOnlyList<ActiveSignup> userSignups,
-        BurnSettingsInfo eventSettings)
-    {
-        var tz = eventSettings.TimeZone;
-        return userSignups
-            .Select(s => new
-            {
-                s.Shift.IsAllDay,
-                ZonedStart = s.Shift.GetAbsoluteStart(eventSettings).InZone(tz)
-            })
-            .OrderBy(x => x.ZonedStart.ToInstant())
-            .Select(x => FormatShiftLine(x.ZonedStart, x.IsAllDay))
-            .ToList();
-    }
-
-    private static string FormatShiftLine(ZonedDateTime zoned, bool isAllDay)
-    {
-        var local = zoned.LocalDateTime;
-        // Invariant culture: stable parseable shape for short ops notices.
-        return isAllDay
-            ? DateFormattingExtensions.OpsNoticeDatePattern.Format(local.Date)
-            : $"{DateFormattingExtensions.OpsNoticeDatePattern.Format(local.Date)} @ {DateFormattingExtensions.TimeOfDayPattern.Format(local.TimeOfDay)}";
+        return new DispatchSummary(requested, notFound, deleted, noEmail, failed);
     }
 
     private static string Truncate(string text, int max)
@@ -377,11 +368,15 @@ internal sealed class RotaCoordinatorMessageService(
 
     private sealed record DispatchSummary(
         int Requested,
-        int Skipped,
+        int UserNotFound,
+        int UserDeleted,
+        int NoEmail,
         int Failed)
     {
         public string AuditSuffix =>
-            (Skipped > 0 ? $" ({Skipped} skipped: no email or missing user)" : string.Empty)
+            (UserNotFound > 0 ? $" ({UserNotFound} skipped: user not found)" : string.Empty)
+            + (UserDeleted > 0 ? $" ({UserDeleted} skipped: user deleted)" : string.Empty)
+            + (NoEmail > 0 ? $" ({NoEmail} skipped: no email address)" : string.Empty)
             + (Failed > 0 ? $" ({Failed} failed: enqueue error)" : string.Empty);
 
         // A partial dispatch succeeded; only an all-failed dispatch must suppress the success toast.

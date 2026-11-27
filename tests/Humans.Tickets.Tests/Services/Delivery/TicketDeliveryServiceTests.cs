@@ -29,7 +29,7 @@ public sealed class TicketDeliveryServiceTests
 
     private static readonly Guid BuyerId = Guid.NewGuid();
     private static readonly Guid PartnerId = Guid.NewGuid();
-    private readonly TicketSalesEvent _salesEvent = new() { Id = Guid.NewGuid(), EventSettingsId = Guid.NewGuid() };
+    private readonly TicketingSettings _ticketing = new() { Id = Guid.NewGuid(), EventSettingsId = Guid.NewGuid() };
     private readonly TicketCheckoutOrder _order;
 
     public TicketDeliveryServiceTests()
@@ -37,7 +37,7 @@ public sealed class TicketDeliveryServiceTests
         _order = new TicketCheckoutOrder
         {
             Id = Guid.NewGuid(),
-            SalesEventId = _salesEvent.Id,
+            TicketingSettingsId = _ticketing.Id,
             BuyerUserId = BuyerId,
             BuyerName = "Ana Buyer",
             BuyerEmail = "ana@example.com",
@@ -46,15 +46,15 @@ public sealed class TicketDeliveryServiceTests
             TotalMinor = 45000,
             Lines =
             [
-                new TicketCheckoutOrderLine { Kind = CheckoutLineKind.Ticket, AmountMinor = 22500, VatRate = 0.10m, AttendeeName = "Ana Buyer" },
-                new TicketCheckoutOrderLine { Kind = CheckoutLineKind.Ticket, AmountMinor = 22500, VatRate = 0.10m, AttendeeName = "Ben Partner" },
+                new TicketCheckoutOrderLine { Kind = OrderLineKind.Ticket, AmountMinor = 22500, VatRate = 0.10m, HolderName = "Ana Buyer" },
+                new TicketCheckoutOrderLine { Kind = OrderLineKind.Ticket, AmountMinor = 22500, VatRate = 0.10m, HolderName = "Ben Partner" },
             ],
             Culture = "es",
         };
         Tickets();
-        _checkout.GetSalesEventAsync(_salesEvent.Id, Arg.Any<CancellationToken>()).Returns(_salesEvent);
-        _settings.GetEventSettingsByIdAsync(_salesEvent.EventSettingsId, Arg.Any<CancellationToken>())
-            .Returns(new EventSettingsInfo(_salesEvent.EventSettingsId, "Nowhere 2027", 2027, "Europe/Madrid",
+        _checkout.GetTicketingSettingsAsync(_ticketing.Id, Arg.Any<CancellationToken>()).Returns(_ticketing);
+        _settings.GetEventSettingsByIdAsync(_ticketing.EventSettingsId, Arg.Any<CancellationToken>())
+            .Returns(new EventSettingsInfo(_ticketing.EventSettingsId, "Nowhere 2027", 2027, "Europe/Madrid",
                 new LocalDate(2027, 6, 1), 0, 5, 7, new Dictionary<int, int>(), null, null));
         _users.GetUserInfoAsync(PartnerId, Arg.Any<CancellationToken>()).Returns(new ValueTask<UserInfo?>(
             new UserInfo(PartnerId, "Ben", false, "de", null, Instant.MinValue, Instant.MinValue, null, null, null, null, null, null, null,
@@ -67,12 +67,13 @@ public sealed class TicketDeliveryServiceTests
         Options.Create(new EmailSettings { BaseUrl = TestTicketsEmails.BaseUrl }), NullLogger<TicketDeliveryService>.Instance);
 
     private TicketCheckoutTicket Ticket(Guid? holderId, string name, string? email, TicketCheckoutTicketState state = TicketCheckoutTicketState.Valid,
-        TicketHolderKind kind = TicketHolderKind.Adult, Guid? parent = null) => new()
+        TicketHolderKind kind = TicketHolderKind.Adult, Guid? parent = null, Instant? issuedAt = null) => new()
         {
             Id = Guid.NewGuid(),
             ParentTicketId = parent,
+            IssuedAt = issuedAt ?? Instant.MinValue,
             OrderId = _order.Id,
-            SalesEventId = _salesEvent.Id,
+            TicketingSettingsId = _ticketing.Id,
             HolderUserId = holderId,
             HolderName = name,
             HolderEmail = email,
@@ -82,10 +83,26 @@ public sealed class TicketDeliveryServiceTests
         };
 
     private void Tickets(params TicketCheckoutTicket[] tickets) =>
-        _checkout.GetOrderDetailAsync(_order.Id, Arg.Any<CancellationToken>()).Returns(_ => new CheckoutOrderDetail(_order, [], [], tickets));
+        _checkout.GetOrderDetailAsync(_order.Id, Arg.Any<CancellationToken>()).Returns(_ => new OrderDetail(_order, [], [], tickets));
 
     [HumansFact]
-    public async Task Deliver_SendsOneTicketPerHolder_AndOneReceiptToThePayer()
+    public async Task Deliver_RendersTheHolderFirstAndDependentsByIssueTime()
+    {
+        var now = Instant.FromUtc(2027, 1, 1, 12, 0);
+        var adult = Ticket(BuyerId, "Ana Buyer", "ana@example.com", issuedAt: now + Duration.FromDays(2));
+        var older = Ticket(null, "Older child", null, kind: TicketHolderKind.Child, parent: adult.Id, issuedAt: now);
+        var newer = Ticket(null, "Newer child", null, kind: TicketHolderKind.Child, parent: adult.Id, issuedAt: now + Duration.FromDays(1));
+        Tickets(newer, adult, older);
+
+        await Create().DeliverAsync(_order.Id);
+
+        var html = _sent.Single(mail => string.Equals(mail.TemplateName, "ticket_issued", StringComparison.Ordinal)).HtmlBody;
+        html.IndexOf(adult.Barcode, StringComparison.Ordinal).Should().BeLessThan(html.IndexOf(older.Barcode, StringComparison.Ordinal));
+        html.IndexOf(older.Barcode, StringComparison.Ordinal).Should().BeLessThan(html.IndexOf(newer.Barcode, StringComparison.Ordinal));
+    }
+
+    [HumansFact]
+    public async Task Deliver_SendsOneTicketPerHolder_AndOneReceiptToTheBuyer()
     {
         var own = Ticket(BuyerId, "Ana Buyer", "ana@example.com");
         var partner = Ticket(PartnerId, "Ben Partner", "ben@example.com");
@@ -244,6 +261,45 @@ public sealed class TicketDeliveryServiceTests
         msg.TemplateName.Should().Be("ticket_join_invitation");
         msg.UserId.Should().Be(PartnerId);
         msg.Category.Should().Be(MessageCategory.VolunteerUpdates, "Ticketing is locked on for ticket holders");
+    }
+
+    [HumansTheory]
+    [Xunit.InlineData(null)]
+    [Xunit.InlineData(UserState.Deleted)]
+    [Xunit.InlineData(UserState.Merged)]
+    public async Task JoinInvitation_UnavailableHolder_SkipsStoredAddress(UserState? state)
+    {
+        var ticket = Ticket(PartnerId, "Ben Partner", "snapshot@example.com");
+        Tickets(ticket);
+        var holder = Xunit.Assert.IsType<UserInfo>(await _users.GetUserInfoAsync(PartnerId));
+        _users.GetUserInfoAsync(PartnerId, Arg.Any<CancellationToken>())
+            .Returns(state is { } value ? holder with { State = value } : null);
+
+        await Create().SendJoinInvitationAsync(_order.Id, ticket.Id);
+
+        _sent.Should().BeEmpty();
+        _audit.ReceivedCalls().Should().BeEmpty();
+    }
+
+    [HumansFact]
+    public async Task JoinInvitation_MergedHolder_UsesSurvivorIdentity()
+    {
+        var ticket = Ticket(PartnerId, "Ben Partner", "snapshot@example.com");
+        Tickets(ticket);
+        var holder = Xunit.Assert.IsType<UserInfo>(await _users.GetUserInfoAsync(PartnerId));
+        var survivorId = Guid.NewGuid();
+        _users.GetUserInfoAsync(PartnerId, Arg.Any<CancellationToken>())
+            .Returns(holder with { Id = survivorId, MergedUserIds = [PartnerId] });
+
+        await Create().SendJoinInvitationAsync(_order.Id, ticket.Id);
+
+        var message = _sent.Should().ContainSingle().Subject;
+        message.UserId.Should().Be(survivorId);
+        message.RecipientEmail.Should().Be(holder.Email);
+        message.Category.Should().Be(MessageCategory.VolunteerUpdates);
+        message.DeliveryId.Should().Be(TicketDeliveryService.DeliveryIdFor("ticket_join_invitation", ticket.Id));
+        await _audit.Received(1).LogAsync(TicketsAuditActions.TicketJoinInvitationSent, Arg.Any<string>(), _order.Id,
+            Arg.Any<string>(), Arg.Any<string>(), ticket.Id, "TicketCheckoutTicket");
     }
 
     [HumansTheory]

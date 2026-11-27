@@ -7,7 +7,7 @@ Written fresh each section-doctor run (Phase 3c), before any scan. History rows 
 Members ask questions in a floating help widget; a Claude-backed assistant answers them,
 grounded in the org's own documentation and the member's live state (roles, teams, shifts,
 tickets, consents). When it cannot answer, it drafts an issue for the member to review and
-submit — it never files anything itself. Admins watch usage, spend, refusals and latency,
+submit — it never files anything itself. Admins watch usage, spend, unanswered turns and latency,
 tune caps and the model from the shared settings page, and read any transcript.
 Conversations expire on a retention clock; members' transcripts ride along in their GDPR
 export and are erased with their account.
@@ -19,9 +19,9 @@ export and are erased with their account.
 | Ask a question, stream an answer | `POST /Agent/Ask` (SSE) | One question-shape: gate → ownership → rate-limit → converse with provider in a bounded tool loop → persist both sides |
 | Read my own history | `/Agent/Conversations`, `/Agent/Conversation/{id}` | Own rows only; cross-user is 404 |
 | Admin transcript review | `/Agent/Conversations` (admin mode), `/Agent/Conversations/{id}`, `/Agent/Admin/Conversations/{id}/Prompt` | Same list route, admin flag widens it |
-| Admin operations | `/Agent/Admin/Status`, the `/Settings#agent` tab (posts to `/Agent/Admin/Settings`), `POST …/ReloadKnowledgeBase` | One status report, one settings form, one all-or-nothing cache reload |
+| Admin operations | `/Agent/Admin/Status`, the `/Settings#agent` tab (posts to `/Agent/Admin/Settings`), `POST …/ReloadCommunityFaq` | One status report, one settings form, one all-or-nothing cache reload |
 | Machine transcript read | `IAgentTranscriptRead` (endpoint lives in Backdoor) | Same data, key-authed, read-only |
-| Grounding lookups (model-facing) | Doc fetches (section / feature spec / community FAQ), live-state reads (audit history, shift details), a handoff (`route_to_issue`) | Whitelist is closed (`AgentToolNames.All`); misses name the valid keys |
+| Grounding lookups (model-facing) | Doc fetches (section / feature spec / community FAQ), live-state reads (audit history, shift details), a handoff (`handoff`) | Whitelist is closed (`AgentToolNames.All`); misses name the valid keys |
 | Retention | `agent-conversation-retention` job, daily | Hard delete + last-run record |
 | GDPR | `IUserDataContributor` export + erase | Full transcript both ways |
 
@@ -34,7 +34,7 @@ The layout those shapes imply — and the section already has, near enough:
   back to the admin controller.
 - `AgentService` as the single orchestrator of the turn loop; provider access behind
   `IAnthropicClient`; doc access behind the cached readers; live-state access behind
-  `IAgentUserSnapshotProvider` and the tool dispatcher; prompt text in one assembler.
+  `IAgentUserContextProvider` and the tool dispatcher; prompt text in one assembler.
 - Singleton in-memory stores (settings mirror, rate-limit counters, retention last-run)
   with warmup hosted services; one repository over the section's own tables.
 - Preload corpus = index-only routing layer; bodies always fetched by tool. One builder, one
@@ -49,10 +49,10 @@ that enforces each:
 - Widget hidden when disabled (`src/Sections/Humans.Agent/Views/Shared/Components/HelpWidget/Default.cshtml:35`);
   `/Agent/Ask` answers 503 when disabled (`src/Sections/Humans.Agent/Controllers/AgentController.cs:51`).
 - Over any cap is 429 before the provider (`src/Sections/Humans.Agent/Controllers/AgentController.cs:60`),
-  and the service persists the refusal (`src/Sections/Humans.Agent/Services/AgentService.cs:101`).
-- Every refused turn persists a message with `RefusalReason`
+  and the service persists the limit-reached outcome (`src/Sections/Humans.Agent/Services/AgentService.cs:101`).
+- Every unanswered turn persists a message with `Outcome`
   (`src/Sections/Humans.Agent/Services/AgentService.cs:803`, `src/Sections/Humans.Agent/Services/AgentService.cs:835`); a failed or disconnected turn
-  persists an error trace and is billed for what it consumed
+  persists a failed trace and is billed for what it consumed
   (`src/Sections/Humans.Agent/Services/AgentService.cs:227`, `src/Sections/Humans.Agent/Services/AgentService.cs:232`).
 - A member reads only their own conversations; mismatch is 404
   (`src/Sections/Humans.Agent/Services/AgentService.cs:525`, `src/Sections/Humans.Agent/Controllers/AgentController.cs:123`).
@@ -66,7 +66,7 @@ that enforces each:
   forces synthesis (`src/Sections/Humans.Agent/Services/AgentService.cs:415`).
 - A turn never ends with an empty assistant bubble, streamed or stored
   (`src/Sections/Humans.Agent/Services/AgentService.cs:425`).
-- `route_to_issue` never writes server-side (`src/Sections/Humans.Agent/Services/AgentToolDispatcher.cs:110`).
+- `handoff` never writes server-side (`src/Sections/Humans.Agent/Services/AgentToolDispatcher.cs:110`).
 - An incomplete preload corpus or community index is served but never cached, and a reload
   publishes nothing unless every fetch succeeded
   (`src/Sections/Humans.Agent/Services/Preload/AgentPreloadCorpusBuilder.cs:55`,
@@ -86,9 +86,9 @@ that enforces each:
   intentionally not used.
 - No named authorization policy for rate limiting — the requirement is instantiated at its one
   call site (Store/Expenses/Containers shape).
-- No `AgentFaq` table/service — the community-KB repo + `fetch_community_faq` replaced that
+- No `AgentFaq` table/service — the Community FAQ repo + `fetch_community_faq` replaced that
   design entirely.
-- No per-file keyword extraction in-app — the KB generator pipeline owns keyword quality.
+- No per-file keyword extraction in-app — the FAQ generator pipeline owns keyword quality.
 - No `ExecuteDeleteAsync` in purge paths — load+remove keeps the in-memory test provider viable
   at this scale.
 - No standalone settings page — `Views/Admin/Agent/Settings.cshtml` renders only when the
@@ -100,24 +100,24 @@ that enforces each:
   the manual loop is what lets a thrown turn or client disconnect still persist a billed error
   trace. The `finally` also catches disposal-without-exception (disconnect at a `yield return`).
 - **Caps are checked twice** — resource-based authorization in the controller (429 before SSE
-  starts) and again inside `AskAsync` (persists the refusal per invariant 6). Both matter: the
+  starts) and again inside `AskAsync` (persists the outcome per invariant 6). Both matter: the
   handler can't persist, the service can't set a status code.
 - **`max_tokens` continues the tool loop** and truncated tool-call JSON is replayed as `{}`
   (`ReplayableToolCalls`) while the dispatcher still sees the raw payload — API rejects
   unmatched `tool_use` blocks otherwise.
 - **`AgentRepository.AppendMessageAsync` clears the change tracker on failure** so the
   follow-up error-trace append doesn't flush the half-written first append.
-- **Preload is index-only by ITPM design.** Tier1/Tier2 exist because Anthropic ITPM counts
-  cache reads; section bodies route through tools so both tiers fit the caps.
+- **Preload is index-only by ITPM design.** Anthropic ITPM counts cache reads, so section
+  bodies route through tools and the one-size index stays far under the caps.
 - **The section fetches its own repo's docs from GitHub at runtime** (not from disk): the
-  deployed app has no source tree, and the KB lives in a separate repo. Caches are
-  `NeverRemove`; the admin reload refreshes the community KB and rebuilds the assembled
-  corpus, while the section-guide and feature-spec reader caches refresh only on restart
+  deployed app has no source tree, and the Community FAQ lives in a separate repo. Caches are
+  `NeverRemove`; the admin reload refreshes the Community FAQ and rebuilds the assembled
+  corpus, while the section-doc and feature-spec reader caches refresh only on restart
   (the rebuilt corpus re-reads section taglines through those still-warm caches).
 - **Streamed and persisted replies read `AgentResource` through a `ResourceManager`**
   (`LocalizedReply`), not `IStringLocalizer`: the culture is the conversation's stored locale,
-  not the request's. The route_to_issue fallback is persisted only, and uses the same
-  `Agent_IssueProposed` key the widget renders live.
+  not the request's. The handoff fallback is persisted only, and uses the same
+  `Agent_HandoffDrafted` key the widget renders live.
 - **`AgentDocsHealthCheck` bypasses the cached readers** so the probe genuinely re-tests GitHub
   each call; its section canary is this section's own `Agent.md`, which moves only with the
   section.

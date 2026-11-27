@@ -29,9 +29,7 @@ using MemberApplication = Humans.Governance.Domain.Application;
 using Humans.Users.Contracts;
 using Humans.Users.Data;
 using Humans.Users.Domain;
-using Humans.Teams.Contracts;
 using Humans.Shifts.Contracts;
-using Humans.AuditLog.Contracts;
 
 namespace Humans.Integration.Tests.AccountMerge;
 
@@ -203,7 +201,7 @@ public sealed class MergeFixtureBuilder
 
     private MergeFixtureBuilder AddCommPref(Guid userId, MessageCategory category, bool optedOut, Instant? updatedAt)
     {
-        _pendingEmail.Add(db => db.CommunicationPreferences.Add(new Humans.Email.Domain.CommunicationPreference
+        _pendingEmail.Add(db => db.CommunicationPreferences.Add(new Email.Domain.CommunicationPreference
         {
             Id = Guid.NewGuid(),
             UserId = userId,
@@ -242,7 +240,7 @@ public sealed class MergeFixtureBuilder
 
     private MergeFixtureBuilder AddEventParticipation(Guid userId, int year, ParticipationStatus status)
     {
-        _pendingTickets.Add(db => db.EventParticipations.Add(new Humans.Tickets.Domain.EventParticipation
+        _pendingTickets.Add(db => db.EventParticipations.Add(new Tickets.Domain.EventParticipation
         {
             Id = Guid.NewGuid(),
             UserId = userId,
@@ -328,18 +326,18 @@ public sealed class MergeFixtureBuilder
         return this;
     }
 
-    public MergeFixtureBuilder WithSourceRoleAssignment(
+    public MergeFixtureBuilder WithSourceSystemRole(
         string roleName, Instant? validFrom = null, Instant? validTo = null)
-        => AddRoleAssignment(SourceUserId, roleName, validFrom, validTo);
+        => AddSystemRole(SourceUserId, roleName, validFrom, validTo);
 
-    public MergeFixtureBuilder WithTargetRoleAssignment(
+    public MergeFixtureBuilder WithTargetSystemRole(
         string roleName, Instant? validFrom = null, Instant? validTo = null)
-        => AddRoleAssignment(TargetUserId, roleName, validFrom, validTo);
+        => AddSystemRole(TargetUserId, roleName, validFrom, validTo);
 
-    private MergeFixtureBuilder AddRoleAssignment(
+    private MergeFixtureBuilder AddSystemRole(
         Guid userId, string roleName, Instant? validFrom, Instant? validTo)
     {
-        _pendingAuth.Add(db => db.RoleAssignments.Add(new RoleAssignment
+        _pendingAuth.Add(db => db.SystemRoles.Add(new SystemRole
         {
             Id = Guid.NewGuid(),
             UserId = userId,

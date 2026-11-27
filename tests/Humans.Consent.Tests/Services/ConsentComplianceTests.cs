@@ -3,7 +3,6 @@ using AwesomeAssertions;
 using Humans.Auth.Contracts;
 using Humans.Base.Constants;
 using Humans.Base.Enums;
-using Humans.Consent.Contracts;
 using Humans.Consent.Data;
 using Humans.Consent.Services;
 using Humans.Base.Interfaces;
@@ -24,7 +23,7 @@ public sealed class ConsentComplianceTests
     private readonly IConsentManagement _consents = Substitute.For<IConsentManagement>();
     private readonly ILegalDocumentSyncManagement _legalDocuments = Substitute.For<ILegalDocumentSyncManagement>();
     private readonly ITeamService _teams = Substitute.For<ITeamService>();
-    private readonly IRoleAssignmentService _roleAssignments = Substitute.For<IRoleAssignmentService>();
+    private readonly ISystemRoleService _roleAssignments = Substitute.For<ISystemRoleService>();
     private readonly Dictionary<Guid, IReadOnlySet<Guid>> _signed = [];
     private readonly ConsentService _sut;
 
@@ -54,7 +53,7 @@ public sealed class ConsentComplianceTests
     private Guid Require(Guid teamId, Instant? effectiveFrom = null, int graceDays = 7)
     {
         var version = new RequiredDocumentVersionSnapshot(
-            Guid.NewGuid(), Guid.NewGuid(), "Doc", graceDays, "v1", effectiveFrom ?? Now, false, null);
+            Guid.NewGuid(), "Doc", graceDays, effectiveFrom ?? Now);
         _legalDocuments.GetRequiredDocumentVersionsForTeamAsync(teamId, Arg.Any<CancellationToken>())
             .Returns([version]);
         return version.Id;
@@ -74,9 +73,9 @@ public sealed class ConsentComplianceTests
         var other = Guid.NewGuid();
         _signed[signer] = new HashSet<Guid> { Require(teamId) };
 
-        (await _sut.GetUsersWithAllRequiredConsentsForTeamAsync([signer, other], teamId, ct))
+        (await _sut.GetConsentedUsersForTeamAsync([signer, other], teamId, ct))
             .Should().BeEquivalentTo([signer]);
-        (await _sut.GetUsersWithAllRequiredConsentsForTeamAsync([signer, other], Guid.NewGuid(), ct))
+        (await _sut.GetConsentedUsersForTeamAsync([signer, other], Guid.NewGuid(), ct))
             .Should().BeEquivalentTo([signer, other], "a team with no required documents admits everyone");
     }
 

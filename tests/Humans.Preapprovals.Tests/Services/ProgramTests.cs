@@ -1,5 +1,4 @@
 using AwesomeAssertions;
-using Humans.Base.Enums;
 using Humans.Users.Contracts;
 using Humans.AuditLog.Contracts;
 using Humans.Notifications.Contracts;
@@ -8,7 +7,6 @@ using Humans.Preapprovals.Data;
 using Humans.Preapprovals.Domain;
 using Humans.Preapprovals.Services;
 using Humans.Preapprovals.Tests.Infrastructure;
-using Humans.Testing;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Diagnostics;
 using Microsoft.EntityFrameworkCore.Infrastructure;

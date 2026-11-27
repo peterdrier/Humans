@@ -1,8 +1,6 @@
 using Humans.Shifts.Services.Dtos;
 using Humans.Shifts.Domain;
 using Humans.Shifts.Contracts;
-using Humans.Settings.Contracts;
-using Humans.Shifts.Helpers;
 
 namespace Humans.Shifts.Services;
 
@@ -30,7 +28,6 @@ internal static class ShiftUserSummaryProjection
             ShiftId: signup.ShiftId,
             SignupBlockId: signup.SignupBlockId,
             Status: signup.Status,
-            RotaId: rota.Id,
             RotaName: rota.Name,
             RotaDescription: rota.Description,
             RotaPracticalInfo: rota.PracticalInfo,

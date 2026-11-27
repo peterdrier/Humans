@@ -56,6 +56,7 @@
   <!-- Board -->
   <data name="Rideshare_Title" xml:space="preserve"><value>Covoiturage</value></data>
   <data name="Rideshare_BoardIntro" xml:space="preserve"><value>Les conducteurs publient le trajet qu'ils font ; les passagers posent une épingle là où ils veulent être pris. Repérez-vous sur la carte et dites bonjour.</value></data>
+  <data name="Rideshare_MapLoadFailed" xml:space="preserve"><value>La carte des trajets n’a pas pu être chargée. Vous pouvez toujours utiliser la liste ci-dessous.</value></data>
   <data name="Rideshare_BackToBoard" xml:space="preserve"><value>Retour au tableau</value></data>
   <data name="Rideshare_OfferARide" xml:space="preserve"><value>Proposer un trajet</value></data>
   <data name="Rideshare_RequestARide" xml:space="preserve"><value>Demander un trajet</value></data>

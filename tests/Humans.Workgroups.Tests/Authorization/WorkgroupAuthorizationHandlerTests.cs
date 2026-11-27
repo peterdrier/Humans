@@ -199,7 +199,7 @@ public sealed class WorkgroupAuthorizationHandlerTests
         status == WorkgroupStatus.Dormant ? WorkgroupDormantReason.Quiet : null,
         null, null, null, Instant.FromUtc(2026, 1, 1, 0, 0),
         Instant.FromUtc(2026, 1, 1, 0, 0), null,
-        [new WorkgroupMemberInfo(Guid.NewGuid(), MemberId, WorkgroupMemberRole.Coordinator,
+        [new WorkgroupMemberInfo(MemberId, WorkgroupMemberRole.Coordinator,
             Instant.FromUtc(2026, 1, 1, 0, 0), null)],
         [], [], [], null, null, null);
 

@@ -43,7 +43,7 @@ public interface IShiftService : IApplicationService
         CancellationToken ct = default);
 
     /// <summary>Users with a Confirmed signup on a shift that day: the Cantina roster.</summary>
-    Task<IReadOnlyList<Guid>> GetOnSiteUserIdsForDayAsync(
+    Task<IReadOnlyList<Guid>> GetOnSiteUserIdsAsync(
         Guid eventSettingsId,
         int dayOffset,
         CancellationToken ct = default);

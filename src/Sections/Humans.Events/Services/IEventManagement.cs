@@ -3,12 +3,11 @@ using Humans.Settings.Contracts;
 using Humans.Events.Domain;
 using NodaTime;
 using Humans.Events.Contracts;
-using Humans.Base.Interfaces;
 using Humans.Gdpr.Contracts;
 
 namespace Humans.Events.Services;
 
-internal interface IEventManagement : IApplicationService, IEventService
+internal interface IEventManagement : IEventService
 {
     /// <summary>Carries <c>TimeZoneId</c> for rendering start times in the burn's local zone.</summary>
     Task<EventGuideSettingsView?> GetGuideSettingsAsync(CancellationToken ct = default);
@@ -52,7 +51,7 @@ internal interface IEventManagement : IApplicationService, IEventService
     /// A null <paramref name="lifecycleActionUrl"/> skips the submitter's confirmation email.</summary>
     Task<EventSaveResult> SubmitEventAsync(Event guideEvent, string? lifecycleActionUrl = null, CancellationToken ct = default);
     /// <summary>Re-queues for moderation; the event's own <c>CampId</c> picks the field set.</summary>
-    Task<EventSaveResult> UpdateAndResubmitAsync(Guid eventId, EventEdit edit, CancellationToken ct = default);
+    Task<EventSaveResult> ResubmitAsync(Guid eventId, EventEdit edit, CancellationToken ct = default);
     Task WithdrawEventAsync(Guid eventId, CancellationToken ct = default);
 
     /// <summary>
@@ -63,7 +62,7 @@ internal interface IEventManagement : IApplicationService, IEventService
 
     /// <summary>
     /// Leaves <see cref="Event.Status"/> untouched (an Approved event stays published), unlike
-    /// <see cref="UpdateAndResubmitAsync"/>. Appends an <see cref="EventModerationActionType.Edited"/> row with
+    /// <see cref="ResubmitAsync"/>. Appends an <see cref="EventModerationActionType.Edited"/> row with
     /// <paramref name="note"/> as its reason.
     /// </summary>
     Task AdminUpdateAsync(Guid eventId, EventEdit edit, Guid actorUserId, string? note, CancellationToken ct = default);

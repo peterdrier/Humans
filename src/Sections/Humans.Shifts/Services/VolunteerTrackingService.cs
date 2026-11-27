@@ -2,7 +2,6 @@ using Humans.Base.Extensions;
 using Humans.Shifts.Contracts;
 using Humans.AuditLog.Contracts;
 using Humans.Shifts.Domain;
-using Humans.Settings.Contracts;
 using NodaTime;
 using NodaTime.Text;
 using Humans.Shifts.Data;
@@ -46,9 +45,7 @@ internal sealed class VolunteerTrackingService(
         return all
             .Where(g => g.AvailableDayOffsets.Contains(dayOffset))
             .Select(availability => new GeneralAvailabilitySnapshot(
-                availability.UserId,
-                availability.EventSettingsId,
-                availability.AvailableDayOffsets))
+                availability.UserId))
             .ToList();
     }
 

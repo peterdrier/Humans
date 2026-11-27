@@ -115,9 +115,10 @@
   <data name="Google_Identity_Updated" xml:space="preserve">
     <value>Correo de servicio de Google actualizado. La sincronización se reintentará con el nuevo correo.</value>
   </data>
-  <data name="Google_Identity_SetRejected" xml:space="preserve">
-    <value>No se pudo establecer el correo de servicio de Google: la fila es desconocida o no está verificada.</value>
-  </data>
+  <data name="Google_Identity_Refused_AccountNotFound" xml:space="preserve"><value>No se pudo establecer el correo de servicio de Google: esa cuenta ya no existe.</value></data>
+  <data name="Google_Identity_Refused_NotTheirEmail" xml:space="preserve"><value>No se pudo establecer el correo de servicio de Google: esa dirección no está en esta cuenta.</value></data>
+  <data name="Google_Identity_Refused_Unverified" xml:space="preserve"><value>No se pudo establecer el correo de servicio de Google: primero verifica esa dirección.</value></data>
+  <data name="Google_Identity_Refused_NobodiesAddressWins" xml:space="preserve"><value>No se pudo establecer el correo de servicio de Google: una dirección @nobodies.team verificada siempre es la identidad de Google.</value></data>
   <data name="Google_Identity_Google" xml:space="preserve">
     <value>Google</value>
   </data>
@@ -156,4 +157,6 @@
   <data name="Google_TeamResources_ServiceAccount" xml:space="preserve"><value>Cuenta de servicio: {0}</value><comment>{0} = service account email</comment></data>
   <data name="Google_Meter_FailedSyncEvents" xml:space="preserve"><value>Sincronizaciones de Google fallidas</value></data>
   <data name="Google_Meter_AudienceAdmin" xml:space="preserve"><value>administradores</value></data>
+  <data name="Google_Permission_ManageResources_Title" xml:space="preserve"><value>Gestionar recursos de Google</value></data>
+  <data name="Google_Permission_ManageResources_Blurb" xml:space="preserve"><value>Vincular y desvincular las carpetas de Drive y los Grupos de Google del departamento.</value></data>
 </root>

@@ -4,7 +4,7 @@ namespace Humans.Tickets.Contracts;
 public static class TicketsRoles
 {
     /// <summary>
-    /// Tickets Admin: manages the ticket vendor integration, triggers syncs, generates discount codes and exports
+    /// Tickets Admin: manages the ticketing platforms and the TicketTailor integration, triggers syncs, generates discount codes and exports
     /// ticket data. Stored as <c>TicketAdmin</c> before 2026-10.
     /// </summary>
     public const string TicketsAdmin = "TicketsAdmin";

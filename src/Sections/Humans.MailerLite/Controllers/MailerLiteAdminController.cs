@@ -53,8 +53,8 @@ internal sealed class MailerLiteAdminController(
 
         var mlContacts = (await _users.GetAllUserInfosAsync(ct).ConfigureAwait(false))
             .Count(u => u.ContactSource == ContactSource.MailerLite);
-        var optedIn = await prefs.GetCountByCategoryAndStateAsync(MessageCategory.Marketing, optedOut: false, ct);
-        var optedOut = await prefs.GetCountByCategoryAndStateAsync(MessageCategory.Marketing, optedOut: true, ct);
+        var optedIn = await prefs.GetCountAsync(MessageCategory.Marketing, optedOut: false, ct);
+        var optedOut = await prefs.GetCountAsync(MessageCategory.Marketing, optedOut: true, ct);
 
         var last = await import.GetLastReconciliationAsync(ct);
 

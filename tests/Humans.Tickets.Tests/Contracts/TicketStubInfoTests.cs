@@ -15,8 +15,6 @@ public class TicketStubInfoTests
         AttendeeId: Guid.NewGuid(),
         AttendeeName: "Ada Lovelace",
         AttendeeEmail: "ada@example.com",
-        VendorTicketId: "TKT-001",
-        TicketTypeName: "GA",
         Status: TicketAttendeeStatus.Valid);
 
     [HumansFact]

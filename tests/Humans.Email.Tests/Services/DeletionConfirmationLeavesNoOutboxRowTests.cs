@@ -1,3 +1,4 @@
+using Humans.Testing;
 using Humans.Users.Data;
 using Humans.Auth.Contracts;
 using Humans.Gdpr.Contracts;
@@ -7,7 +8,6 @@ using Microsoft.Extensions.Hosting;
 using AwesomeAssertions;
 using Humans.AuditLog.Contracts;
 using Humans.Base.Interfaces;
-using Humans.Email.Contracts;
 using Humans.Email.Data;
 using Humans.Email.Services;
 using Humans.Base.Configuration;
@@ -54,7 +54,7 @@ public sealed class DeletionConfirmationLeavesNoOutboxRowTests : IDisposable
         _emailDb = new EmailDbContext(options);
 
         // The builder is sealed, so it is built for real over a stub localizer rather than mocked.
-        var localizer = Substitute.For<IStringLocalizer<UsersResource>>();
+        var localizer = Substitute.For<IStringLocalizer<UsersResource>>().AddFormatting();
         localizer[Arg.Any<string>()].Returns(ci =>
             new LocalizedString(ci.Arg<string>(), ci.Arg<string>() + " {0}"));
         var usersEmails = new UsersEmails(
@@ -87,7 +87,7 @@ public sealed class DeletionConfirmationLeavesNoOutboxRowTests : IDisposable
         userService.GetRawUserInfoAsync(_userId, Arg.Any<CancellationToken>()).Returns(user);
         var deletionService = new AccountDeletionService(
             userService, Substitute.For<IUserEmailService>(), Substitute.For<ITeamWrite>(),
-            Substitute.For<IRoleAssignmentWrite>(), Substitute.For<IGdprService>(), Substitute.For<ITicketService>(),
+            Substitute.For<ISystemRoleWrite>(), Substitute.For<IGdprService>(), Substitute.For<ITicketService>(),
             Substitute.For<IUserInfoSliceRefresher>(), Substitute.For<IAuditLogService>(), emailService,
             usersEmails, new FakeClock(Now), Substitute.For<IHostEnvironment>(), NullLogger<AccountDeletionService>.Instance);
 

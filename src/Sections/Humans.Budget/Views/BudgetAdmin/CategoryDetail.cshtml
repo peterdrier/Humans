@@ -1,9 +1,10 @@
+@using System.Globalization
 @model Humans.Budget.Contracts.BudgetCategorySnapshot
 @{
-    ViewData["Title"] = $"Finance - {Model.Name}";
+    ViewData["Title"] = $"Budget - {Model.Name}";
     var teams = ViewBag.Teams as IEnumerable<dynamic> ?? [];
     var lineItemTotal = Model.LineItemTotal;
-    var unallocated = Model.UnallocatedAmount;
+    var available = Model.AvailableAmount;
     var group = Model.BudgetGroup;
     var year = group?.BudgetYear;
 
@@ -46,7 +47,7 @@
     <div class="col-md-4">
         <div class="card text-center">
             <div class="card-body">
-                <h6 class="card-subtitle mb-2 text-muted">Total in Line Items</h6>
+                <h6 class="card-subtitle mb-2 text-muted">Planned</h6>
                 <h3 class="card-title mb-0">@lineItemTotal.ToEuro()</h3>
             </div>
         </div>
@@ -54,9 +55,9 @@
     <div class="col-md-4">
         <div class="card text-center">
             <div class="card-body">
-                <h6 class="card-subtitle mb-2 text-muted">Unallocated</h6>
-                <h3 class="card-title mb-0 @(unallocated < 0 ? "text-danger" : "")">
-                    @unallocated.ToEuro()
+                <h6 class="card-subtitle mb-2 text-muted">Available</h6>
+                <h3 class="card-title mb-0 @(available < 0 ? "text-danger" : "")">
+                    @available.ToEuro()
                 </h3>
             </div>
         </div>
@@ -77,7 +78,8 @@
                 </div>
                 <div class="col-md-3">
                     <label class="form-label">Allocated Amount (&euro;, incl. VAT/IVA)</label>
-                    <input type="number" name="allocatedAmount" class="form-control" step="0.01" value="@Model.AllocatedAmount" required />
+                    <input type="hidden" name="__Invariant" value="allocatedAmount" />
+                    <input type="number" name="allocatedAmount" class="form-control" step="0.01" value="@Model.AllocatedAmount.ToString(CultureInfo.InvariantCulture)" required />
                 </div>
                 <div class="col-md-3">
                     <label class="form-label">Expenditure Type</label>
@@ -188,7 +190,8 @@
                                     </div>
                                     <div class="col-md-2">
                                         <label class="form-label form-label-sm">Amount (&euro;, incl. VAT/IVA)</label>
-                                        <input type="number" name="amount" class="form-control form-control-sm" step="0.01" value="@item.Amount" required />
+                                        <input type="hidden" name="__Invariant" value="amount" />
+                                        <input type="number" name="amount" class="form-control form-control-sm" step="0.01" value="@item.Amount.ToString(CultureInfo.InvariantCulture)" required />
                                     </div>
                                     <div class="col-md-1">
                                         <label class="form-label form-label-sm">VAT %</label>
@@ -261,6 +264,7 @@
             </div>
             <div class="col-md-2">
                 <label class="form-label form-label-sm">Amount (&euro;, incl. VAT/IVA)</label>
+                <input type="hidden" name="__Invariant" value="amount" />
                 <input type="number" name="amount" class="form-control form-control-sm" step="0.01" value="0" required />
             </div>
             <div class="col-md-1">

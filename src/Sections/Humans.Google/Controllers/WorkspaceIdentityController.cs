@@ -1,5 +1,4 @@
 using Humans.Base.Attributes;
-using Humans.Base.Authorization;
 using Humans.Base.Controllers;
 using Humans.Google.Services;
 using Humans.Users.Contracts;
@@ -54,14 +53,17 @@ internal sealed class WorkspaceIdentityController(
     private async Task SetAsync(UserInfo target, Guid emailId, Guid actorId, CancellationToken ct)
     {
         var address = target.UserEmails.FirstOrDefault(e => e.Id == emailId)?.Email;
-        var ok = address is not null && await identities.SetAsync(target.Id, address, actorId, ct);
-        if (ok)
+        var refusal = address is null
+            ? WorkspaceIdentityRefusal.NotTheirEmail
+            : await identities.SetAsync(target.Id, address, actorId, ct);
+        if (refusal is null)
         {
             SetSuccess(localizer["Google_Identity_Updated"].Value);
             return;
         }
 
-        logger.LogWarning("Google identity not set to email {EmailId} for user {UserId}", emailId, target.Id);
-        SetError(localizer["Google_Identity_SetRejected"].Value);
+        logger.LogWarning("Google identity not set to email {EmailId} for user {UserId}: {Refusal}",
+            emailId, target.Id, refusal);
+        SetError(localizer[$"Google_Identity_Refused_{refusal}"].Value);
     }
 }

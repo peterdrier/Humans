@@ -1,11 +1,10 @@
 using NodaTime;
-using Humans.Base.Interfaces;
 using Humans.Issues.Contracts;
 using Humans.Issues.Domain;
 
 namespace Humans.Issues.Services;
 
-internal interface IIssuesService : IApplicationService, IIssueTriage
+internal interface IIssuesService : IIssueTriage
 {
     /// <summary>
     /// Deletes issues terminal for at least 6 months, with their screenshot files. Returns rows removed.

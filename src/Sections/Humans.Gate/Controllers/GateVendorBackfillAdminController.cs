@@ -33,7 +33,7 @@ internal sealed class GateVendorBackfillAdminController(
                        "Verify it on the TicketTailor dashboard, then send the rest.");
         }
         else
-            SetError("That ticket is no longer pending — already sent, checked in at the vendor, or unknown.");
+            SetError(result.NotPending ?? "That ticket was not enqueued.");
         return RedirectToAction(nameof(Index));
     }
 

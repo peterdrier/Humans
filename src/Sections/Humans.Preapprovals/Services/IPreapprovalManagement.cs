@@ -1,10 +1,9 @@
-using Humans.Base.Interfaces;
 using Humans.Preapprovals.Contracts;
 
 namespace Humans.Preapprovals.Services;
 
 /// <summary>Authorization is the controllers' job: every method trusts its actor. Grant mutations validate the supplied program.</summary>
-internal interface IPreapprovalManagement : IPreapprovalService, IPreapprovalWrite, IApplicationService
+internal interface IPreapprovalManagement : IPreapprovalService, IPreapprovalWrite
 {
     Task<IReadOnlyList<ProgramInfo>> GetProgramsAsync(CancellationToken ct = default);
     Task<ProgramInfo?> GetProgramAsync(Guid programId, CancellationToken ct = default);

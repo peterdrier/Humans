@@ -57,12 +57,9 @@ internal sealed record AdminLegalDocumentEditDetail(
 internal sealed record AdminLegalDocumentVersionDetail(
     Guid Id,
     string VersionNumber,
-    string CommitSha,
     Instant EffectiveFrom,
-    Instant CreatedAt,
     string? ChangesSummary,
     bool RequiresReConsent,
-    int LanguageCount,
     IReadOnlyList<string> Languages);
 
 internal sealed record AdminLegalDocumentCreateResult(

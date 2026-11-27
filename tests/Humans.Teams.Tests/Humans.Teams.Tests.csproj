@@ -2,7 +2,7 @@
 
   <ItemGroup>
     <!--
-      Teams' TeamRoleServiceTests/TeamServiceTests build the real RoleAssignmentService over a
+      Teams' TeamRoleServiceTests/TeamServiceTests build the real SystemRoleService over a
       real AuthDbContext, and TeamsTestHarness seeds auth_role_assignments rows. Temporary, and the
       mirror of Humans.Auth's InternalsVisibleTo("Humans.Teams.Tests").
     -->

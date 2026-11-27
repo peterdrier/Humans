@@ -25,7 +25,7 @@ None. Nothing is stored: every answer is worked out from Auth's system roles and
 
 | Actor | Capabilities |
 |-------|--------------|
-| Any section | Declares permissions; asks `IPermissionService` or authorizes with `PermissionRequirement`. Shifts declares and checks `Shifts.Manage` and `Shifts.Approve`; Budget declares and checks `Budget.Edit` |
+| Any section | Declares permissions; asks `IPermissionService` or authorizes with `PermissionRequirement`. Shifts declares and checks `Shifts.Manage` and `Shifts.Approve`; Budget declares and checks `Budget.Edit`; Expenses declares and checks `Expenses.Endorse`; Google declares and checks `Google.ManageResources` |
 | Owner sections (Teams) | Register an owner kind |
 | Roles, later Tasks; Teams for now | Register a permission source |
 
@@ -52,7 +52,7 @@ None. Permissions writes nothing; audit happens where a holding changes (Roles, 
 
 ## Cross-Section Dependencies
 
-- **Auth**: `IRoleAssignmentService.GetActiveForUserAsync` for the person's system roles.
+- **Auth**: `ISystemRoleService.GetActiveForUserAsync` for the person's system roles.
 - **Owner sections and sources**: found at runtime through DI (`IOwnerKind`, `IPermissionSource`); Permissions references none of them.
 
 ## Architecture

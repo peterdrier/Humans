@@ -15,7 +15,7 @@ internal static class TicketSupportReports
     public const int MaxHits = 100;
 
     /// <summary>
-    /// Matches an order id, its short reference or backend reference exactly, a ticket code exactly, or part of a buyer or holder name or
+    /// Matches an order id, its short reference or platform reference exactly, a ticket code exactly, or part of a buyer or holder name or
     /// email. Case and surrounding spaces are ignored. <paramref name="tickets"/> are the order's own.
     /// </summary>
     public static bool Matches(TicketCheckoutOrder order, IEnumerable<TicketCheckoutTicket> tickets, string query)
@@ -27,11 +27,11 @@ internal static class TicketSupportReports
         if (Guid.TryParse(q, out var id))
             return order.Id == id;
         var own = tickets.ToList();
-        if (Same(order.Reference, q) || Same(order.BackendOrderId, q) || own.Any(t => Same(t.Barcode, q)))
+        if (Same(order.Reference, q) || Same(order.PlatformOrderId, q) || own.Any(t => Same(t.Barcode, q)))
             return true;
 
         return Contains(order.BuyerName, q) || Contains(order.BuyerEmail, q)
-            || order.Lines.Any(l => Contains(l.AttendeeName, q) || Contains(l.AttendeeEmail, q))
+            || order.Lines.Any(l => Contains(l.HolderName, q) || Contains(l.HolderEmail, q))
             || own.Any(t => Contains(t.HolderName, q) || Contains(t.HolderEmail, q));
     }
 
@@ -42,7 +42,6 @@ internal static class TicketSupportReports
         return refunds
             .Where(r => state is null || r.State == state)
             .Where(r => byId.ContainsKey(r.OrderId))
-            .OrderByDescending(r => r.CreatedAt)
             .Select(r => new RefundListRow(r, byId[r.OrderId]))
             .ToList();
     }
@@ -54,11 +53,11 @@ internal static class TicketSupportReports
     public static IReadOnlyDictionary<Guid, int> QueuePositions(IEnumerable<TicketResaleOffer> offers) =>
         offers
             .Where(o => o.State is TicketResaleOfferState.Open or TicketResaleOfferState.Reserved)
-            .OrderBy(o => o.OfferedAt)
+            .OrderBy(o => o.OfferedAt) // arch:db-sort-ok Selling order defines each offer's queue position.
             .Select((o, i) => (o.Id, Position: i + 1))
             .ToDictionary(p => p.Id, p => p.Position);
 
-    /// <summary>Waiting offers in selling order, then sold and withdrawn offers, newest first.</summary>
+    /// <summary>Waiting offers with their queue positions, plus sold and withdrawn offers and their refunds.</summary>
     public static IReadOnlyList<ResaleQueueRow> ResaleQueue(
         IReadOnlyList<TicketResaleOffer> offers,
         IReadOnlyList<TicketCheckoutTicket> tickets,
@@ -69,11 +68,9 @@ internal static class TicketSupportReports
         var positions = QueuePositions(offers);
         var waiting = offers
             .Where(o => positions.ContainsKey(o.Id))
-            .OrderBy(o => o.OfferedAt)
             .Select(o => new ResaleQueueRow(o, byId.GetValueOrDefault(o.TicketId), positions[o.Id], o.HasLiveInvite, null));
         var closed = offers
             .Where(o => o.State is TicketResaleOfferState.Sold or TicketResaleOfferState.Withdrawn)
-            .OrderByDescending(o => o.SoldAt ?? o.WithdrawnAt ?? o.OfferedAt)
             .Select(o => new ResaleQueueRow(o, byId.GetValueOrDefault(o.TicketId), null, false,
                 o.RefundId is { } refundId ? refundsById.GetValueOrDefault(refundId) : null));
         return waiting.Concat(closed).ToList();
@@ -89,27 +86,25 @@ internal static class TicketSupportReports
         var paid = orders.Where(o => o.State == TicketCheckoutOrderState.Paid).ToList();
         var paidIds = paid.Select(o => o.Id).ToHashSet();
         var issued = tickets.Where(t => paidIds.Contains(t.OrderId)).ToList();
-        var donations = paid.SelectMany(o => o.Lines.Where(l => l.Kind == CheckoutLineKind.Donation)).ToList();
+        var donations = paid.SelectMany(o => o.Lines.Where(l => l.Kind == OrderLineKind.Donation)).ToList();
 
         var byPrice = issued
             .GroupBy(PriceLabel, StringComparer.Ordinal)
             .Select(g => new SalesRow(g.Key, g.Count(), g.Sum(t => t.PricePaidMinor)))
-            .OrderByDescending(r => r.Count).ThenBy(r => r.Label, StringComparer.Ordinal)
             .ToList();
 
         var byDay = paid
             .GroupBy(o => o.PaidAt!.Value.InZone(zone).Date)
-            .OrderBy(g => g.Key)
+            .OrderBy(g => g.Key) // arch:db-sort-ok Chronology feeds the running ticket total.
             .Select(g => new DayRow(
                 g.Key,
-                g.Sum(o => o.Lines.Count(l => l.Kind == CheckoutLineKind.Ticket)),
+                g.Sum(o => o.Lines.Count(l => l.Kind == OrderLineKind.Ticket)),
                 g.Sum(o => o.TicketTotalMinor),
                 g.Sum(o => o.TotalMinor - o.TicketTotalMinor)))
             .ToList();
 
         var byPurpose = donations
             .GroupBy(l => l.DonationPurpose, StringComparer.Ordinal)
-            .OrderBy(g => g.Key, StringComparer.Ordinal)
             .Select(g => new DonationRow(g.Key, g.Count(), g.Sum(l => l.AmountMinor)))
             .ToList();
 
@@ -117,24 +112,22 @@ internal static class TicketSupportReports
         var refundsByState = refunds
             .Where(r => orderIds.Contains(r.OrderId))
             .GroupBy(r => r.State)
-            .OrderBy(g => g.Key)
             .Select(g => new RefundStateRow(g.Key, g.Count(), g.Sum(r => r.AmountMinor)))
             .ToList();
 
         var resaleByState = offers
             .GroupBy(o => o.State)
-            .OrderBy(g => g.Key)
             .Select(g => new ResaleStateRow(g.Key, g.Count(), g.Sum(o => o.RefundOwedMinor)))
             .ToList();
 
         return new SalesReport(
             issued.Count,
-            issued.Count(t => t.State is TicketCheckoutTicketState.Valid or TicketCheckoutTicketState.Offered),
+            issued.Count(t => t.IsHeld),
             paid.Sum(o => o.TicketTotalMinor),
             donations.Sum(l => l.AmountMinor),
             paid.Sum(o => o.FeeMinor ?? 0),
             paid.Sum(o => o.RefundedMinor),
-            paid.Sum(o => o.DisputedMinor),
+            paid.Sum(o => o.ChargedBackMinor),
             byPrice, byDay, byPurpose, refundsByState, resaleByState);
     }
 
@@ -166,8 +159,8 @@ internal sealed record ResaleQueueRow(
 
 /// <summary>
 /// Totals over paid orders. <paramref name="TicketsIssued"/> counts every ticket ever issued (a resale issues a new
-/// one); <paramref name="TicketsLive"/> only those still valid or offered. <paramref name="RefundedMinor"/> is what the
-/// backends report as refunded, <paramref name="DisputedMinor"/> what buyers charged back; <paramref name="RefundsByState"/> is every refund Humans asked for.
+/// one); <paramref name="TicketsLive"/> only those still valid or in resale. <paramref name="RefundedMinor"/> is what the
+/// platforms report as refunded, <paramref name="ChargedBackMinor"/> what buyers' banks took back in chargebacks; <paramref name="RefundsByState"/> is every refund Humans asked for.
 /// </summary>
 internal sealed record SalesReport(
     int TicketsIssued,
@@ -176,7 +169,7 @@ internal sealed record SalesReport(
     long DonationsMinor,
     long FeesMinor,
     long RefundedMinor,
-    long DisputedMinor,
+    long ChargedBackMinor,
     IReadOnlyList<SalesRow> ByPrice,
     IReadOnlyList<DayRow> ByDay,
     IReadOnlyList<DonationRow> DonationsByPurpose,

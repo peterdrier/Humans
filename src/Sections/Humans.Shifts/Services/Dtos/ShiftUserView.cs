@@ -1,6 +1,5 @@
 using Humans.Shifts.Contracts;
 using Humans.Shifts.Domain;
-using Humans.Settings.Contracts;
 namespace Humans.Shifts.Services.Dtos;
 
 /// <summary>
@@ -17,9 +16,8 @@ internal sealed record ShiftUserView(
     BurnSettingsInfo? Calendar = null)
 {
     internal ShiftUserSummary ToSummary() => new(
-        UserId,
         [.. TagPreferences.Select(p =>
-            new ShiftTagPreferenceInfo(p.ShiftTagId, p.ShiftTag?.Name ?? string.Empty))],
+            new ShiftTagPreferenceInfo(p.ShiftTagId))],
         Calendar is null
             ? []
             : [.. Signups.Select(s => ShiftUserSummaryProjection.ToSummary(s, Calendar))]);

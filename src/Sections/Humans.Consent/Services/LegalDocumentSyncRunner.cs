@@ -3,7 +3,6 @@ using System.Security.Cryptography;
 using System.Text;
 using Humans.Base.Extensions;
 using Humans.Teams.Contracts;
-using Humans.Consent.Contracts;
 using Humans.Consent.Data;
 using Humans.Consent.Domain;
 using Humans.Email.Contracts;
@@ -21,14 +20,23 @@ internal sealed class LegalDocumentSyncRunner(
     ILegalDocumentRepository documents,
     ILogger<LegalDocumentSyncRunner> logger) : ILegalDocumentSyncRunner
 {
-    private const string FailureMessage = "Failed to complete legal document sync or notification batches.";
+    private static AggregateException Failed(int syncFailures, List<Exception> failures) => new(
+        (syncFailures, failures.Count - syncFailures) switch
+        {
+            (_, 0) => $"Legal document sync failed for {syncFailures} document(s).",
+            (0, var batches) => $"{batches} legal document notification batch step(s) failed.",
+            var (sync, batches) => $"Legal document sync failed for {sync} document(s), and {batches} notification batch step(s) failed."
+        },
+        failures);
 
-    public async Task SyncAndNotifyAsync(CancellationToken cancellationToken = default)
+    public async Task SyncAsync(CancellationToken cancellationToken = default)
     {
         var failures = new List<Exception>();
+        int? syncFailures = null;
         try
         {
             var updatedDocs = await syncService.SyncAllDocumentsAsync(cancellationToken, failures);
+            syncFailures = failures.Count;
             logger.LogInformation("Synced {Count} updated legal documents", updatedDocs.Count);
 
             // The version and its marker commit together, so a crash or a later unchanged sync cannot lose this work.
@@ -79,11 +87,11 @@ internal sealed class LegalDocumentSyncRunner(
         {
             // Batch failures are copied during finally, after exception filters run.
             if (failures.Count > 0)
-                throw new AggregateException(FailureMessage, failures);
+                throw Failed(syncFailures ?? failures.Count, failures);
             throw;
         }
         if (failures.Count > 0)
-            throw new AggregateException(FailureMessage, failures);
+            throw Failed(syncFailures ?? failures.Count, failures);
     }
 
     private async Task SendReConsentNotificationsAsync(

@@ -2,7 +2,6 @@ using Humans.Base.Interfaces;
 using Humans.Users.Contracts;
 using System.Security.Claims;
 using AwesomeAssertions;
-using Humans.Base.Authorization;
 using Humans.Base.Constants;
 using Humans.Base.Enums;
 using Humans.Grants.Authorization;
@@ -76,8 +75,8 @@ public sealed class UserGrantsViewComponentTests : GrantsTestHarness
                 options.AddPolicy(UsersPolicies.Read, policy =>
                     policy.RequireRole(UsersRoles.UsersAdmin, RoleNames.Board, RoleNames.Admin));
             })
-            .AddSingleton<IAuthorizationHandler>(new GrantsPolicyHandler(service, Users, new Microsoft.AspNetCore.Http.HttpContextAccessor()))
-            .AddSingleton<IAuthorizationHandler>(new ProgramAuthorizationHandler(Users, new Microsoft.AspNetCore.Http.HttpContextAccessor()))
+            .AddSingleton<IAuthorizationHandler>(new GrantsPolicyHandler(service, Users, new HttpContextAccessor()))
+            .AddSingleton<IAuthorizationHandler>(new ProgramAuthorizationHandler(Users, new HttpContextAccessor()))
             .BuildServiceProvider();
 
         var http = new DefaultHttpContext

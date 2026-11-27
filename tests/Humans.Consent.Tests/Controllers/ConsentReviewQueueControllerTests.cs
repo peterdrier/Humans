@@ -1,3 +1,4 @@
+using Humans.Testing;
 using System.Reflection;
 using System.Security.Claims;
 using AwesomeAssertions;
@@ -32,9 +33,9 @@ public class ConsentReviewQueueControllerTests
     private readonly IOnboardingIntake _onboarding = Substitute.For<IOnboardingIntake>();
     private readonly IUserService _userService = Substitute.For<IUserService>();
     private readonly IStringLocalizer<ConsentResource> _localizer =
-        Substitute.For<IStringLocalizer<ConsentResource>>();
+        Substitute.For<IStringLocalizer<ConsentResource>>().AddFormatting();
     private readonly IStringLocalizer<SharedResource> _sharedLocalizer =
-        Substitute.For<IStringLocalizer<SharedResource>>();
+        Substitute.For<IStringLocalizer<SharedResource>>().AddFormatting();
 
     private readonly Guid _reviewerId = Guid.NewGuid();
     private readonly Guid _subjectId = Guid.NewGuid();
@@ -52,15 +53,15 @@ public class ConsentReviewQueueControllerTests
 
     /// <summary>
     /// <c>ReviewQueueAccess</c> lets a Volunteer Coordinator see the queue.
-    /// Everything that writes must re-gate on <c>ConsentCoordinatorBoardOrAdmin</c>, or the
+    /// Everything that writes must re-gate on <c>ConsentAdminBoardOrAdmin</c>, or the
     /// class-level read policy is all that stands between a VC and a rejected signup.
     /// </summary>
     [HumansFact]
-    public void EveryMutatingActionRegatesOnTheConsentCoordinatorPolicy()
+    public void MutatingActions_Always_RequireConsentAdminPolicy()
     {
         var unguarded = MutatingActions()
             .Where(m => m.GetCustomAttributes<AuthorizeAttribute>()
-                .All(a => !string.Equals(a.Policy, PolicyNames.ConsentCoordinatorBoardOrAdmin, StringComparison.Ordinal)))
+                .All(a => !string.Equals(a.Policy, PolicyNames.ConsentAdminBoardOrAdmin, StringComparison.Ordinal)))
             .Select(m => m.Name)
             .ToList();
 

@@ -1,6 +1,5 @@
 using Humans.Google.Domain;
 using AwesomeAssertions;
-using Humans.Google.Contracts;
 using Humans.Google.Models;
 using Humans.Google.Services;
 using Humans.Google.ViewComponents;
@@ -46,7 +45,7 @@ public sealed class GoogleSyncSettingsTabViewComponentTests
         var settings = Substitute.For<ISyncSettingsService>();
         settings.GetAllAsync(Arg.Any<CancellationToken>()).Returns(new List<SyncServiceSettingsInfo>
         {
-            new(Guid.NewGuid(), SyncServiceType.GoogleDrive, SyncMode.AddOnly,
+            new(SyncServiceType.GoogleDrive, SyncMode.AddOnly,
                 Instant.FromUtc(2026, 1, 1, 0, 0), updaterId),
         });
 

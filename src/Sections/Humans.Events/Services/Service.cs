@@ -12,8 +12,6 @@ using NodaTime;
 using Humans.Events.Contracts;
 using Humans.Events.Data;
 using Humans.Users.Contracts;
-using Humans.Base.Constants;
-using Humans.Base.Interfaces;
 using static Humans.Events.Helpers.EventsTimeHelpers;
 using System.Globalization;
 using Humans.Base.Csv;
@@ -159,9 +157,7 @@ internal sealed class EventService(
         DurationMinutes: e.DurationMinutes,
         IsRecurring: e.IsRecurring,
         RecurrenceDays: e.RecurrenceDays,
-        PriorityRank: e.PriorityRank,
-        SubmittedAt: e.SubmittedAt,
-        LastUpdatedAt: e.LastUpdatedAt);
+        PriorityRank: e.PriorityRank);
 
     // Nothing public to contribute to the community calendar yet.
     public Task<IReadOnlyList<CalendarFeedItem>> GetPublicItemsForWindowAsync(Instant from, Instant to, CancellationToken ct) =>
@@ -186,7 +182,7 @@ internal sealed class EventService(
     /// <summary>Submitted events stay, with the person's <c>Host</c> cleared; see <see cref="Erasure"/> for why.</summary>
     public async Task EraseForUserAsync(Guid userId, CancellationToken ct)
     {
-        await repo.DeleteFavouritesAndPreferenceForUserAsync(userId, ct);
+        await repo.DeleteForUserAsync(userId, ct);
         await repo.ClearSubmitterHostForUserAsync(userId, ct);
     }
 
@@ -221,10 +217,10 @@ internal sealed class EventService(
         try
         {
             var submitter = await userService.GetUserInfoAsync(guideEvent.SubmitterUserId, CancellationToken.None);
-            if (string.IsNullOrWhiteSpace(submitter?.Email))
+            if (submitter is null || submitter.IsTombstone || string.IsNullOrWhiteSpace(submitter.Email))
             {
                 logger.LogWarning(
-                    "Skipping lifecycle email for event {EventId}: submitter {SubmitterId} has no notification email",
+                    "Skipping lifecycle email for event {EventId}: submitter {SubmitterId} is unavailable or has no notification email",
                     guideEvent.Id, guideEvent.SubmitterUserId);
                 return;
             }
@@ -251,7 +247,7 @@ internal sealed class EventService(
         }
     }
 
-    public async Task<EventSaveResult> UpdateAndResubmitAsync(Guid eventId, EventEdit edit, CancellationToken ct = default)
+    public async Task<EventSaveResult> ResubmitAsync(Guid eventId, EventEdit edit, CancellationToken ct = default)
     {
         var guideEvent = await LoadEventAsync(eventId, ct);
         await EnsureValidRecurrenceDaysAsync(edit.IsRecurring, edit.RecurrenceDays, ct, guideEvent.EventSettingsId);
@@ -290,7 +286,7 @@ internal sealed class EventService(
             CreatedAt = guideEvent.LastUpdatedAt
         };
 
-        await repo.SaveEventAndModerationActionAsync(guideEvent, action, ct);
+        await repo.SaveModeratedEventAsync(guideEvent, action, ct);
         return true;
     }
 
@@ -312,15 +308,22 @@ internal sealed class EventService(
             CreatedAt = now
         };
 
-        await repo.SaveEventAndModerationActionAsync(guideEvent, action, ct);
+        await repo.SaveModeratedEventAsync(guideEvent, action, ct);
     }
 
-    /// <summary>Null when the submission window is closed or not configured.</summary>
+    /// <summary>Null, with the reason logged, when submissions are not open.</summary>
     private async Task<EventGuideSettings?> GetOpenSubmissionSettingsAsync(CancellationToken ct)
     {
         var settings = await repo.GetGuideSettingsAsync(ct);
-        if (settings is not null && settings.IsSubmissionOpenAt(clock.GetCurrentInstant())) return settings;
-        logger.LogWarning("Event submission refused: the submission window is closed or not configured");
+        var now = clock.GetCurrentInstant();
+        if (settings is null)
+            logger.LogWarning("Event submission refused: the guide settings have no submission window");
+        else if (now < settings.SubmissionOpenAt)
+            logger.LogWarning("Event submission refused: the submission window opens at {OpensAt}", settings.SubmissionOpenAt);
+        else if (now > settings.SubmissionCloseAt)
+            logger.LogWarning("Event submission refused: the submission window closed at {ClosedAt}", settings.SubmissionCloseAt);
+        else
+            return settings;
         return null;
     }
 
@@ -397,7 +400,7 @@ internal sealed class EventService(
             CreatedAt = clock.GetCurrentInstant()
         };
 
-        await repo.SaveEventAndModerationActionAsync(guideEvent, action, ct);
+        await repo.SaveModeratedEventAsync(guideEvent, action, ct);
 
         if (submitterEditUrl is not null)
         {
@@ -431,9 +434,7 @@ internal sealed class EventService(
             SubmissionCloseAt: settings.SubmissionCloseAt,
             GuidePublishAt: settings.GuidePublishAt,
             MaxPrintSlots: settings.MaxPrintSlots,
-            TimeZoneId: burn?.TimeZoneId,
-            CreatedAt: settings.CreatedAt,
-            UpdatedAt: settings.UpdatedAt);
+            TimeZoneId: burn?.TimeZoneId);
     }
 
     public IReadOnlyList<EventSettingsInfo> GetEventSettingsOptions()
@@ -643,7 +644,7 @@ internal sealed class EventService(
         // An unknown zone id must not expand recurrences in UTC, so this checks the raw id, not TimeZone.
         var canExpand = eventSettings is not null && DateTimeZoneProviders.Tzdb.GetZoneOrNull(eventSettings.TimeZoneId) is not null;
         var projected = favourites.Where(f => f.Event.IsInEvent(guideEventId)).Select(f => new EventFavouriteInfo(
-                f.Id, f.UserId, f.GuideEventId, f.DayOffset, f.CreatedAt, EventInfo.FromEvent(f.Event)))
+                f.GuideEventId, f.DayOffset, EventInfo.FromEvent(f.Event)))
             .GroupBy(f => f.GuideEventId)
             .SelectMany(group =>
             {

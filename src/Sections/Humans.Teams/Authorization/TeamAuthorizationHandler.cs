@@ -3,9 +3,7 @@ using Humans.EarlyEntry.Contracts;
 using Humans.Base.Authorization;
 using System.Security.Claims;
 using Humans.Teams.Contracts;
-using Humans.Base.Constants;
 using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Http;
 
 namespace Humans.Teams.Authorization;
 

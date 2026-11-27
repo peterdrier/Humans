@@ -1,4 +1,3 @@
-using Humans.Camps.Contracts;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.ModelBinding;
@@ -288,7 +287,7 @@ internal sealed class CampAdminController(
         var settings = await campService.GetSettingsAsync(ct);
         var year = settings.PublicYear;
         CampRoleDefinitionListRowViewModel MapRow(CampRoleDefinitionInfo d) =>
-            new(d.Id, d.Name, d.Slug, d.Description, d.SlotCount, d.MinimumRequired, d.SortOrder, d.IsActive,
+            new(d.Id, d.Name, d.Slug, d.Description, d.SlotCount, d.MinimumRequired, d.SortOrder,
                 string.IsNullOrWhiteSpace(d.Slug) ? null : campRoleService.BuildGroupKey(year, d.Slug));
         var active = defs.Where(d => d.IsActive).Select(MapRow).ToList();
         var deactivated = defs.Where(d => !d.IsActive).Select(MapRow).ToList();
@@ -312,9 +311,10 @@ internal sealed class CampAdminController(
         if (info is null) return NotFound();
 
         var settings = await campService.GetSettingsAsync(ct);
+        var events = settings.Events.OrderByDescending(e => e.GateOpeningDate).ToList();
         var resolvedEventId = eventSettingsId
             ?? settings.ActiveEventSettingsId
-            ?? settings.Events.FirstOrDefault()?.EventSettingsId;
+            ?? events.FirstOrDefault()?.EventSettingsId;
         if (resolvedEventId is null) return NotFound();
 
         var data = await campRoleService.BuildDrillDownAsync(info.Id, resolvedEventId.Value, ct);
@@ -332,12 +332,11 @@ internal sealed class CampAdminController(
             MinimumRequired = data.Definition.MinimumRequired,
             Event = data.Event,
             GroupEmail = data.GroupEmail,
-            EventOptions = settings.Events,
+            EventOptions = events,
             Camps = data.Rows
                 .OrderBy(r => r.CampName, StringComparer.OrdinalIgnoreCase)
                 .Select(r => new CampRoleDrillDownCampRowViewModel(
-                    r.CampId, r.CampName, r.CampSlug, r.CampSeasonId,
-                    r.Assignees
+                    r.CampName, r.CampSlug, r.Assignees
                         .OrderBy(a => a.AssignedAt)
                         .Select(a => new CampRoleDrillDownAssigneeViewModel(a.UserId))
                         .ToList()))

@@ -110,10 +110,8 @@ internal sealed class CampSeasonDetailViewModel
     public Guid Id { get; set; }
     public int Year { get; set; }
     public Guid? EventSettingsId { get; set; }
-    public string Name { get; set; } = string.Empty;
     public CampSeasonStatus Status { get; set; }
     public string BlurbLong { get; set; } = string.Empty;
-    public string BlurbShort { get; set; } = string.Empty;
     public string Languages { get; set; } = string.Empty;
     public YesNoMaybe AcceptingMembers { get; set; }
     public YesNoMaybe KidsWelcome { get; set; }
@@ -127,7 +125,6 @@ internal sealed class CampSeasonDetailViewModel
     public SpaceSize? SpaceRequirement { get; set; }
     public SoundZone? SoundZone { get; set; }
     public ElectricalGrid? ElectricalGrid { get; set; }
-    public bool IsNameLocked { get; set; }
 }
 
 internal class CampRegisterViewModel
@@ -142,8 +139,9 @@ internal class CampRegisterViewModel
     [StringLength(64, ErrorMessage = "Validation_MaxLength")]
     public string ContactPhone { get; set; } = string.Empty;
     public List<string> Links { get; set; } = [];
+    [BindRequired]
     public bool IsSwissCamp { get; set; }
-    public bool HideHistoricalNames { get; set; }
+    [BindRequired]
     [Range(0, int.MaxValue, ErrorMessage = "Validation_Range")]
     public int TimesAtNowhere { get; set; }
     public string? HistoricalNames { get; set; }
@@ -183,6 +181,9 @@ internal class CampRegisterViewModel
 
 internal sealed class CampEditViewModel : CampRegisterViewModel
 {
+    [BindRequired]
+    public bool HideHistoricalNames { get; set; }
+
     public Guid CampId { get; set; }
     public string Slug { get; set; } = string.Empty;
     public Guid SeasonId { get; set; }
@@ -250,6 +251,7 @@ internal sealed class CampContactViewModel
     [StringLength(2000, ErrorMessage = "Validation_MaxLength")]
     public string Message { get; set; } = string.Empty;
 
+    [BindRequired]
     public bool IncludeContactInfo { get; set; } = true;
 }
 

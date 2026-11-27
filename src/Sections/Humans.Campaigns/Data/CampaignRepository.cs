@@ -2,7 +2,6 @@ using Microsoft.EntityFrameworkCore;
 using NodaTime;
 using Humans.Campaigns.Contracts;
 using Humans.Campaigns.Domain;
-using Humans.Base.Enums;
 
 namespace Humans.Campaigns.Data;
 
@@ -67,7 +66,6 @@ internal sealed class CampaignRepository(IDbContextFactory<CampaignsDbContext> f
             .Select(g => new CampaignCodeTrackingGrantRow(
                 g.CampaignId,
                 g.Campaign.Title,
-                g.Id,
                 g.UserId,
                 g.Code.Code,
                 g.RedeemedAt))
@@ -120,7 +118,7 @@ internal sealed class CampaignRepository(IDbContextFactory<CampaignsDbContext> f
             .CountAsync(ct);
     }
 
-    public async Task<IReadOnlyList<CampaignGrant>> GetActiveOrCompletedGrantsForUserAsync(
+    public async Task<IReadOnlyList<CampaignGrant>> GetGrantsForUserAsync(
         Guid userId, CancellationToken ct = default)
     {
         await using var ctx = await factory.CreateDbContextAsync(ct);
@@ -153,7 +151,6 @@ internal sealed class CampaignRepository(IDbContextFactory<CampaignsDbContext> f
             .AsNoTracking()
             .Where(g => g.Id == grantId)
             .Select(g => new GrantWithSendContext(
-                g.Id,
                 g.UserId,
                 g.CampaignId,
                 g.Code.Code,
@@ -187,7 +184,7 @@ internal sealed class CampaignRepository(IDbContextFactory<CampaignsDbContext> f
         return list.ToHashSet();
     }
 
-    public async Task AddGrantAndSaveAsync(CampaignGrant grant, CancellationToken ct = default)
+    public async Task AddGrantAsync(CampaignGrant grant, CancellationToken ct = default)
     {
         await using var ctx = await factory.CreateDbContextAsync(ct);
         ctx.CampaignGrants.Add(grant);

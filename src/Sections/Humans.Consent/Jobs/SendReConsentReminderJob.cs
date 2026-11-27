@@ -52,23 +52,23 @@ internal sealed class SendReConsentReminderJob(
 
             var userIds = usersNeedingReminder.ToList();
             var users = await userService.GetUserInfosAsync(userIds, cancellationToken);
-            var lastSent = await reminders.GetLastSentAsync(users.Values, cancellationToken);
+            var recipients = userIds.Select(id => users.GetValueOrDefault(id))
+                .OfType<UserInfo>()
+                .Where(user => !user.IsTombstone)
+                .DistinctBy(user => user.Id)
+                .ToList();
+            var lastSent = await reminders.GetLastSentAsync(recipients, cancellationToken);
 
             var now = clock.GetCurrentInstant();
             var cooldown = Duration.FromDays(cooldownDays);
             var sentCount = 0;
 
-            foreach (var userId in userIds)
+            foreach (var user in recipients)
             {
                 // Keep earlier delivery failures visible if shutdown stops later recipients.
                 if (failures.Count > 0 && cancellationToken.IsCancellationRequested)
                     break;
                 cancellationToken.ThrowIfCancellationRequested();
-
-                if (!users.TryGetValue(userId, out var user))
-                {
-                    continue;
-                }
 
                 var previouslySent = lastSent.TryGetValue(user.Id, out var sentAt);
                 if (previouslySent && now - sentAt < cooldown)

@@ -178,7 +178,7 @@ public sealed class CachingConsentServiceTests
     [InlineData(true)]
     public async Task Reads_AfterMergeChangesUserIds_RebuildEntries(bool bulk)
     {
-        var ct = Xunit.TestContext.Current.CancellationToken;
+        var ct = TestContext.Current.CancellationToken;
         var survivorId = Guid.NewGuid();
         var archivedId = Guid.NewGuid();
         var survivorVersion = Guid.NewGuid();
@@ -278,6 +278,43 @@ public sealed class CachingConsentServiceTests
             map[id].Should().Contain(versionId);
         await _inner.DidNotReceive().GetConsentMapForUsersAsync(
             Arg.Any<IReadOnlyList<Guid>>(), Arg.Any<CancellationToken>());
+    }
+
+    [HumansTheory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task Cancelled_reads_do_not_publish_returned_consent_sets(bool bulk)
+    {
+        using var cancellation = new CancellationTokenSource();
+        var userId = Guid.NewGuid();
+        var oldVersion = Guid.NewGuid();
+        var freshVersion = Guid.NewGuid();
+        IReadOnlySet<Guid> Fetch(CancellationToken ct)
+        {
+            if (ct != cancellation.Token) return new HashSet<Guid> { freshVersion };
+            cancellation.Cancel();
+            return new HashSet<Guid> { oldVersion };
+        }
+        _inner.GetConsentedVersionIdsAsync(userId, Arg.Any<CancellationToken>())
+            .Returns(call => Fetch(call.ArgAt<CancellationToken>(1)));
+        _inner.GetConsentMapForUsersAsync(Arg.Any<IReadOnlyList<Guid>>(), Arg.Any<CancellationToken>())
+            .Returns(call => new Dictionary<Guid, IReadOnlySet<Guid>>
+            {
+                [userId] = Fetch(call.ArgAt<CancellationToken>(1))
+            });
+        var sut = CreateSut();
+        async Task<IReadOnlySet<Guid>> ReadAsync(CancellationToken ct) => bulk
+            ? (await sut.GetConsentMapForUsersAsync([userId], ct))[userId]
+            : await sut.GetConsentedVersionIdsAsync(userId, ct);
+
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(() => ReadAsync(cancellation.Token));
+
+        var retried = await ReadAsync(TestContext.Current.CancellationToken);
+        retried.Should().BeEquivalentTo(new[] { freshVersion });
+        if (bulk)
+            await _inner.Received(2).GetConsentMapForUsersAsync(Arg.Any<IReadOnlyList<Guid>>(), Arg.Any<CancellationToken>());
+        else
+            await _inner.Received(2).GetConsentedVersionIdsAsync(userId, Arg.Any<CancellationToken>());
     }
 
     [HumansFact]

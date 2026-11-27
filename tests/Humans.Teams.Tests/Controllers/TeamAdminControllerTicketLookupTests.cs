@@ -17,7 +17,6 @@ public class TeamAdminControllerTicketLookupTests
             AttendeeName: "Ada Lovelace",
             AttendeeEmail: "ada@example.com",
             TicketTypeName: "General Admission",
-            Price: 10m,
             Status: TicketAttendeeStatus.Valid,
             MatchedUserId: matchedUserId,
             Barcode: barcode);

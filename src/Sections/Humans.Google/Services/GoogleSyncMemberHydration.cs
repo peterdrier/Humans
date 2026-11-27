@@ -43,8 +43,15 @@ internal static class GoogleSyncMemberHydration
     }
 
     internal static bool CanReceiveAccess(UserInfo user, WorkspaceIdentity identity) =>
-        user.State != UserState.Rejected && !user.IsSuspended
-        && !user.IsDeletionPending && identity.Status != GoogleEmailStatus.Rejected;
+        AccessBlocker(user, identity) is null;
+
+    /// <summary>The first reason the member may not hold Google access, or null when they may.</summary>
+    internal static string? AccessBlocker(UserInfo user, WorkspaceIdentity identity) =>
+        user.State == UserState.Rejected ? "their signup was rejected"
+        : user.IsSuspended ? "they are suspended"
+        : user.IsDeletionPending ? "their account deletion is pending"
+        : identity.Status == GoogleEmailStatus.Rejected ? "Google rejected their email"
+        : null;
 }
 
 /// <summary>One member a Google fan-out grants access to. <c>Email</c> is the Gmail-canonical form

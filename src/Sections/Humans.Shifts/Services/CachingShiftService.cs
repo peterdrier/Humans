@@ -284,9 +284,9 @@ internal sealed class CachingShiftService(
     public Task<bool> HasQualifyingCantinaSignupAsync(Guid userId, CancellationToken ct = default) =>
         MgmtAsync(m => m.HasQualifyingCantinaSignupAsync(userId, ct));
 
-    public Task<IReadOnlyList<Guid>> GetOnSiteUserIdsForDayAsync(
+    public Task<IReadOnlyList<Guid>> GetOnSiteUserIdsAsync(
         Guid eventSettingsId, int dayOffset, CancellationToken ct = default) =>
-        MgmtAsync(m => m.GetOnSiteUserIdsForDayAsync(eventSettingsId, dayOffset, ct));
+        MgmtAsync(m => m.GetOnSiteUserIdsAsync(eventSettingsId, dayOffset, ct));
 
     public Task<ShiftVolunteerProfileInfo?> GetShiftProfileAsync(Guid userId, CancellationToken ct = default) =>
         MgmtAsync(m => m.GetShiftProfileAsync(userId, ct));
@@ -377,13 +377,13 @@ internal sealed class CachingShiftService(
 
     // ── Inner access ────────────────────────────────────────────────────
 
-    private Task<T> MgmtAsync<T>(Func<IShiftManagement, Task<T>> call) => WithInnerAsync<IShiftManagement, T>(call);
+    private Task<T> MgmtAsync<T>(Func<IShiftManagement, Task<T>> call) => WithInnerAsync(call);
 
-    private Task MgmtAsync(Func<IShiftManagement, Task> call) => WithInnerAsync<IShiftManagement>(call);
+    private Task MgmtAsync(Func<IShiftManagement, Task> call) => WithInnerAsync(call);
 
-    private Task<T> SignupsAsync<T>(Func<IShiftSignupService, Task<T>> call) => WithInnerAsync<IShiftSignupService, T>(call);
+    private Task<T> SignupsAsync<T>(Func<IShiftSignupService, Task<T>> call) => WithInnerAsync(call);
 
-    private Task<T> RowsAsync<T>(Func<IShiftRotaRows, Task<T>> call) => WithInnerAsync<IShiftRotaRows, T>(call);
+    private Task<T> RowsAsync<T>(Func<IShiftRotaRows, Task<T>> call) => WithInnerAsync(call);
 
     private async Task WithInnerAsync<TInner>(Func<TInner, Task> call) where TInner : notnull
     {

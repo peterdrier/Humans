@@ -70,7 +70,7 @@ internal sealed class CommunicationPreferenceService(
             .ToHashSet();
     }
 
-    public async Task<int> GetCountByCategoryAndStateAsync(
+    public async Task<int> GetCountAsync(
         MessageCategory category, bool optedOut, CancellationToken cancellationToken = default) =>
         (await GetPreferencesForCategoryAsync(category, cancellationToken)).Values.Count(p => p.OptedOut == optedOut);
 
@@ -86,20 +86,10 @@ internal sealed class CommunicationPreferenceService(
         UpdatePreferenceCoreAsync(userId, category, optedOut, inboxEnabled: null, source,
             actorUserId: null, cancellationToken);
 
-    public async Task<bool> UpdatePreferenceAsync(
+    public Task<PreferenceUpdateOutcome> UpdatePreferenceAsync(
         Guid userId, MessageCategory category, bool optedOut, bool inboxEnabled, string source,
-        Guid? actorUserId = null, CancellationToken cancellationToken = default)
-    {
-        if ((await GetLockedCategoriesAsync(locks, userId, cancellationToken)).Contains(category))
-        {
-            logger.LogWarning("Attempted to change locked preference {Category} for user {UserId} — refused", category, userId);
-            return false;
-        }
-
-        await UpdatePreferenceCoreAsync(userId, category, optedOut, inboxEnabled, source,
-            actorUserId, cancellationToken);
-        return true;
-    }
+        Guid? actorUserId = null, CancellationToken cancellationToken = default) =>
+        UpdatePreferenceCoreAsync(userId, category, optedOut, inboxEnabled, source, actorUserId, cancellationToken);
 
     /// <summary>Shared with the preference pages, which render a locked row read-only.</summary>
     internal static async Task<IReadOnlySet<MessageCategory>> GetLockedCategoriesAsync(
@@ -111,21 +101,35 @@ internal sealed class CommunicationPreferenceService(
         return locked;
     }
 
-    private async Task UpdatePreferenceCoreAsync(
+    private async Task<PreferenceUpdateOutcome> UpdatePreferenceCoreAsync(
         Guid userId, MessageCategory category, bool optedOut, bool? inboxEnabled, string source,
         Guid? actorUserId, CancellationToken cancellationToken)
     {
         if (category.IsAlwaysOn())
         {
             logger.LogWarning("Attempted to change always-on preference {Category} for user {UserId} — ignored", category, userId);
-            return;
+            return PreferenceUpdateOutcome.Success;
+        }
+
+        var user = await userService.GetUserInfoAsync(userId, cancellationToken);
+        if (user is null || user.IsTombstone)
+        {
+            logger.LogWarning("Communication preference write refused for unavailable user {UserId}", userId);
+            return PreferenceUpdateOutcome.UserUnavailable;
+        }
+        userId = user.Id;
+
+        if (inboxEnabled.HasValue && (await GetLockedCategoriesAsync(locks, userId, cancellationToken)).Contains(category))
+        {
+            logger.LogWarning("Attempted to change locked preference {Category} for user {UserId} — refused", category, userId);
+            return PreferenceUpdateOutcome.Locked;
         }
 
         var now = clock.GetCurrentInstant();
         var current = await CurrentAsync(userId, category, cancellationToken);
         var nextInbox = inboxEnabled ?? current?.InboxEnabled ?? true;
         if (current is not null && current.OptedOut == optedOut && current.InboxEnabled == nextInbox)
-            return;
+            return PreferenceUpdateOutcome.Success;
 
         var next = new CommunicationPreference
         {
@@ -157,6 +161,7 @@ internal sealed class CommunicationPreferenceService(
                 "User {UserId} communication preference {Category} set to OptedOut={OptedOut} via {Source}",
                 userId, category, optedOut, source);
         }
+        return PreferenceUpdateOutcome.Success;
     }
 
     public async Task ResetPreferenceAsync(

@@ -14,7 +14,7 @@ body.gate-kiosk { margin: 0; min-height: 100vh; background: #f4ede1; }
     font-size: 1rem; color: #5f6b76; margin-bottom: .75rem;
 }
 .gate-topbar-link { margin-left: auto; font-weight: 600; }
-/* Freshness indicator — readable contrast; reddens once the terminal's been open a while. */
+/* Reddens once the terminal's been open a while. */
 .gate-asof { color: #2b3440; font-weight: 600; }
 .gate-asof-stale { color: #B11217; }
 
@@ -37,7 +37,6 @@ body.gate-kiosk { margin: 0; min-height: 100vh; background: #f4ede1; }
     border: 2px solid #c9d2da;
 }
 #gate-scan-input:focus { outline: none; border-color: #1e2a33; box-shadow: 0 0 0 4px rgba(30,42,51,.15); }
-/* Manual-entry toggle — brings the touch keyboard up for typing a damaged/unreadable code. */
 .gate-manual-toggle {
     flex: none; font-size: 1.4rem; color: #5f6b76; background: transparent; cursor: pointer;
     border: 2px solid #c9d2da; border-radius: 12px; padding: .5rem .9rem; min-width: 64px;
@@ -165,12 +164,9 @@ body.gate-kiosk { margin: 0; min-height: 100vh; background: #f4ede1; }
 }
 .gate-override-prompt { font-size: 1.25rem; font-weight: 600; color: #1e2a33; text-align: center; margin: 0 0 .5rem; }
 .gate-override-hint { font-size: 1.05rem; color: #5a6672; text-align: center; margin: 0 0 1rem; }
-/* The supervisor-override affordance on a too-early / failed-override card. */
 .gate-override-btn { display: block; width: 100%; margin-top: 1rem; background: #3a4753; font-size: 1.15rem; }
 
-/* "Next ticket" — appears on a terminal result card; clears the screen back to Ready (also auto-
-   fires after a countdown). SOLID near-black (not a translucent wash) so it stays legible on any
-   verdict colour in direct sun — outline/translucent buttons wash out (see the roster-pick note). */
+/* Solid near-black so it stays legible on any verdict colour in direct sun. */
 .gate-next {
     display: block; width: 100%; margin-top: 1.5rem; padding: 1rem;
     background: #11181d; color: #fff; border: none;
@@ -180,23 +176,20 @@ body.gate-kiosk { margin: 0; min-height: 100vh; background: #f4ede1; }
 
 /* Operator controls ---------------------------------------------------- */
 
-/* Big return-to-scanning control (Leaderboard has no browser back on the chromeless kiosk). */
+/* The chromeless kiosk has no browser back. */
 .gate-back {
     display: inline-block; margin-bottom: 1rem; padding: .8rem 1.25rem;
     background: #2b3440; color: #fff; border-radius: 12px; font-size: 1.2rem; font-weight: 700;
 }
 .gate-back:hover, .gate-back:focus { background: #1e2a33; color: #fff; }
 
-/* Imperative "what to do" line on a STOP card — full-opacity white, sits under the reason. */
 .gate-action { font-size: 1.35rem; font-weight: 700; margin-top: .75rem; line-height: 1.3; }
 
-/* Lower-prominence "wrong ticket — scan again" escape on the ID-confirm card. */
 .gate-cancel-scan { display: block; width: 100%; margin-top: 1rem; background: #5a6672; font-size: 1.05rem; }
 
-/* ID-confirm visible countdown hint — non-silent safety net so the card can't vanish unannounced. */
+/* Visible so the card can't vanish unannounced. */
 .gate-idhint { margin-top: 1.1rem; font-size: 1.05rem; color: rgba(255, 255, 255, .85); }
 
-/* The freshness line doubles as the reload control on the chromeless kiosk. */
 .gate-asof { cursor: pointer; }
 
 /* Always-available help cheat-sheet — fixed "?" button bottom-left + a centred card (native <details>). */

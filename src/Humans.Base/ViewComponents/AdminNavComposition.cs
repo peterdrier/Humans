@@ -1,7 +1,6 @@
 using Humans.Base.Authorization;
 using Humans.Base.Interfaces;
 using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Routing;
 
 namespace Humans.Base.ViewComponents;
 
@@ -67,7 +66,7 @@ public static class AdminNavComposition
     /// <remarks>
     /// Given <paramref name="routeValues"/>, an item whose own route values agree wins, in the exact
     /// match and the same-controller fallback alike, so items that share one controller (one page
-    /// per backend key) each own their page and its subpages.
+    /// per ticketing platform key) each own their page and its subpages.
     /// </remarks>
     public static AdminNavLocation? Locate(
         IReadOnlyList<AdminNavGroup> groups, string? controller, string? action, string? parent,

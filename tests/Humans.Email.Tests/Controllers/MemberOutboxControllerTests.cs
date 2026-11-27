@@ -1,7 +1,6 @@
 using System.Reflection;
 using System.Security.Claims;
 using AwesomeAssertions;
-using Humans.Base.Authorization;
 using Humans.Email.Services;
 using Humans.Email.Controllers;
 using Humans.Users.Contracts;
@@ -48,7 +47,7 @@ public sealed class MemberOutboxControllerTests
 
     private static EmailOutboxMessageDto Message(Guid userId) => new(
         Guid.NewGuid(), "m@example.org", "Member", "Hello", "<p>Hi</p>", "welcome", userId,
-        Humans.Base.Enums.EmailOutboxStatus.Sent, Instant.FromUnixTimeSeconds(1), null, 0, null);
+        Base.Enums.EmailOutboxStatus.Sent, Instant.FromUnixTimeSeconds(1), null, 0, null);
 
     [HumansFact]
     public async Task MyOutbox_ShowsOnlyTheSignedInMembersMessages()

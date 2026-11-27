@@ -20,14 +20,13 @@ public class BudgetAdminControllerTests
     [HumansTheory]
     [Xunit.InlineData(false)]
     [Xunit.InlineData(true)]
-    public async Task Ticket_target_keeps_actual_sales_when_the_forecast_is_empty(bool activeYear)
+    public async Task TicketTarget_EmptyProjection_PreservesActualSales(bool activeYear)
     {
         var clock = new FakeClock(Instant.FromUtc(2026, 11, 20, 0, 0));
         var budgets = Substitute.For<IBudgetManagement>();
         var groupId = Guid.NewGuid();
-        var projection = new TicketingProjectionSnapshot(Guid.NewGuid(), groupId,
-            new LocalDate(2026, 3, 1), new LocalDate(2026, 8, 1), 0, 5m, 100m, 10,
-            1.5m, 0.25m, 3m, default, default);
+        var projection = new TicketingProjectionSnapshot(new LocalDate(2026, 3, 1), new LocalDate(2026, 8, 1), 0, 5m, 100m, 10,
+            1.5m, 0.25m, 3m);
         var group = new BudgetGroupDetail(groupId, Guid.NewGuid(), "Tickets", 0,
             false, false, true, projection, []);
         var year = new BudgetYearDetail(group.BudgetYearId, "2026", "Budget", BudgetYearStatus.Active, false, [group]);
@@ -36,7 +35,7 @@ public class BudgetAdminControllerTests
         budgets.GetAllYearsAsync(ct: Arg.Any<CancellationToken>()).Returns([]);
         budgets.GetActualTicketsSold(group).Returns(50);
         budgets.GetProjectedRemainingTicketsAsync(group.Id, Arg.Any<CancellationToken>()).Returns(0);
-        budgets.ComputeBudgetSummaryWithBuffers(Arg.Any<IReadOnlyList<BudgetGroupDetail>>())
+        budgets.ComputeBudgetSummaryWithAvailable(Arg.Any<IReadOnlyList<BudgetGroupDetail>>())
             .Returns(new BudgetSummaryResult { IncomeSlices = [], ExpenseSlices = [] });
         var finance = Substitute.For<IFinanceService>();
         finance.GetActualsForYearAsync(2026, Arg.Any<CancellationToken>()).Returns([]);

@@ -2,10 +2,12 @@
 
 @{
     ViewData["Title"] = Localizer["Tasks_List_Title"].Value;
+    var here = Url.Action("Index", "Tasks") + Context.Request.QueryString;
 }
 
 <page-header title="@(Localizer["Tasks_List_Title"].Value)">
     <page-header-subtitle>@Localizer["Tasks_List_Subtitle"]</page-header-subtitle>
+    <a href="@Url.Action("Open", "Tasks")" class="btn btn-outline-secondary">@Localizer["Tasks_List_Open"]</a>
     <a authorize-policy="@TasksPolicies.Read" href="@Url.Action("Index", "TasksAdmin")" class="btn btn-outline-secondary">@Localizer["Tasks_List_Admin"]</a>
 </page-header>
 
@@ -21,4 +23,4 @@
 }
 
 <partial name="_Filter" model="new TaskFilterViewModel(Model.Filter, Model.Events)" />
-<partial name="_TaskTable" model="new TaskTableModel(Model.Tasks, ShowTeam: true)" />
+<partial name="_TaskTable" model="new TaskTableModel(Model.Tasks, ShowTeam: true, Places: Model.Places, ReturnUrl: here)" />

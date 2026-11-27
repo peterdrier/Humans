@@ -18,7 +18,7 @@
   src/Sections/Humans.Consent/Data/LegalDocumentConfiguration.cs
 -->
 <!-- freshness:flag-on-change
-  Consent signing flow, document versioning, Consent Coordinator queue, immutability of consent records, and GDPR data export/deletion. Review when consent/legal views, services, or entities change.
+  Consent signing flow, document versioning, Consent Admin queue, immutability of consent records, and GDPR data export/deletion. Review when consent/legal views, services, or entities change.
 -->
 
 # Legal & Consent
@@ -36,7 +36,7 @@ This section also surfaces your two core GDPR rights: a copy of everything the o
 - **Your consents** (`/Consent`) — any signed-in human reviews documents they've signed and re-signs when versions change.
 - **My Data** (`/Consent/MyData`) — Download my Data (Article 15) and Account Deletion (Article 17).
 - **Statutes** (`/Legal`) — anyone, including signed-out visitors, reads the association's current statutes (pulled directly from GitHub).
-- **Consent review queue** (`/Consent/ReviewQueue`) — [Consent Coordinator](Glossary.md#consent-coordinator), [Shifts Admin](Glossary.md#shifts-admin), [Board](Glossary.md#board), and [Admin](Glossary.md#admin) view new signups; only Consent Coordinator, Board, and Admin can clear, flag, or reject.
+- **Consent review queue** (`/Consent/ReviewQueue`) — [Consent Admin](Glossary.md#consent-admin), [Shifts Admin](Glossary.md#shifts-admin), [Board](Glossary.md#board), and [Admin](Glossary.md#admin) view new signups; only Consent Admin, Board, and Admin can clear, flag, or reject.
 - **Manage documents** (`/Legal/Admin/Documents`) — Board and Admin create, edit, archive, and publish legal documents.
 
 ## As a [Volunteer](Glossary.md#volunteer)
@@ -51,9 +51,9 @@ This section also surfaces your two core GDPR rights: a copy of everything the o
 
 **Requesting account deletion (Article 17).** On the same My Data page, use "Delete my account." Your team memberships are revoked immediately, so you stop showing up in rosters and Google Groups. The data purge runs as a background job once the 30-day grace period ends — or, if you hold a ticket for the current event, once its post-event hold date passes, whichever is later. A few records are kept as required by law (consent records, append-only audit entries), but personal identifiers on those are scrubbed or rewritten to a placeholder.
 
-## As a Coordinator (Consent Coordinator)
+## As a Coordinator (Consent Admin)
 
-Consent Coordinators review signed paperwork and keep an audit record of whether each human's consents look right. App access and Volunteers membership do not wait on this review — a human gets into the app once they've entered their legal name, and is admitted to the Volunteers team automatically once they've entered their name and signed all required documents.
+Consent Admins review signed paperwork and keep an audit record of whether each human's consents look right. App access and Volunteers membership do not wait on this review — a human gets into the app once they've entered their legal name, and is admitted to the Volunteers team automatically once they've entered their name and signed all required documents.
 
 **Reviewing the queue.** Open `/Consent/ReviewQueue`. Every human who has entered their legal name and hasn't yet been cleared lands here in Pending state — including people who haven't finished signing their documents yet; a badge on each row shows how many of the required documents they've signed. Open a record to see their signed documents, versions, and timestamps.
 
@@ -71,7 +71,7 @@ Coordinators cannot edit legal documents or publish new versions — that's a Bo
 
 **Publishing a new version.** When the canonical Spanish file's commit SHA changes in GitHub, the next sync job (or a manual sync from the document's edit page) creates a new version automatically. Every non-initial version is flagged as requiring re-consent — humans on the affected team are notified and their consent status returns to "action required" until they sign. Old consent entries stay in the audit trail forever.
 
-**Flagged queue.** Flagged checks from Consent Coordinators land back in the same `/Consent/ReviewQueue` queue. Resolve by clearing the human or rejecting their signup.
+**Flagged queue.** Flagged checks from Consent Admins land back in the same `/Consent/ReviewQueue` queue. Resolve by clearing the human or rejecting their signup.
 
 ## Related sections
 

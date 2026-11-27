@@ -1,3 +1,4 @@
+using Humans.Testing;
 using Microsoft.Extensions.Logging;
 using Humans.Base.Configuration;
 using Microsoft.Extensions.Hosting;
@@ -102,7 +103,7 @@ public sealed class OutboxEmailServiceTests : IDisposable
     {
         var ct = TestContext.Current.CancellationToken;
         var userId = Guid.NewGuid();
-        var localizer = Substitute.For<IStringLocalizer<EmailResource>>();
+        var localizer = Substitute.For<IStringLocalizer<EmailResource>>().AddFormatting();
         localizer["Email_ComposerSelfTest_Subject"].Returns(new LocalizedString("subject", "[Test] {0}"));
         var users = Substitute.For<IUserService>();
         users.GetUserInfoAsync(userId, Arg.Any<CancellationToken>())
@@ -274,7 +275,7 @@ public sealed class OutboxEmailServiceTests : IDisposable
     {
         var expected = new System.Resources.ResourceManager(typeof(EmailResource))
             .GetString("Email_UnsubscribeFooter", System.Globalization.CultureInfo.GetCultureInfo(expectedCulture))!;
-        using var ambientCulture = new Humans.Base.Extensions.CultureScope("de");
+        using var ambientCulture = new CultureScope("de");
         var environment = Substitute.For<IHostEnvironment>();
         environment.EnvironmentName.Returns(Environments.Production);
         var composer = new BrandedEmailBodyComposer(

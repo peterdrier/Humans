@@ -1,6 +1,5 @@
 using Humans.Base.Authorization;
 using Humans.Base.Configuration;
-using Humans.Base.Constants;
 using Humans.Base.Hosting;
 using Humans.Base.Interfaces;
 using Humans.Base.Models;

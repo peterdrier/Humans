@@ -1,5 +1,4 @@
 using Humans.Settings.Contracts;
-using Humans.Base.Interfaces;
 using AwesomeAssertions;
 using Humans.Base.Authorization;
 using Humans.Base.Configuration;

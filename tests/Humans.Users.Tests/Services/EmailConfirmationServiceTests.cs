@@ -1,7 +1,6 @@
 using AwesomeAssertions;
 using Humans.Email.Contracts;
 using Humans.Users.Contracts;
-using Humans.Users.Domain;
 using Humans.Users.Data.Repositories;
 using Humans.Users.Services;
 using Humans.Users.Tests.Infrastructure;
@@ -40,7 +39,7 @@ public class EmailConfirmationServiceTests
             NullLogger<EmailConfirmationService>.Instance);
 
         _pending = new UserEmail { Id = _emailId, UserId = _me, Email = Address };
-        _repository.GetUserEmailByIdAndUserIdAsync(_emailId, _me, Arg.Any<CancellationToken>()).Returns(_pending);
+        _repository.GetUserEmailForUserAsync(_emailId, _me, Arg.Any<CancellationToken>()).Returns(_pending);
         _repository.GetUserEmailsByAddressAsync(Arg.Any<string>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
             .Returns([_pending]);
         _userService.UpdateUserEmailAsync(_me, _emailId, Arg.Any<UserEmailUpdateCommand>(), Arg.Any<CancellationToken>())
@@ -106,7 +105,7 @@ public class EmailConfirmationServiceTests
             _ => Token,
         };
         if (kind == BadLink.RowGone)
-            _repository.GetUserEmailByIdAndUserIdAsync(_emailId, _me, Arg.Any<CancellationToken>()).Returns((UserEmail?)null);
+            _repository.GetUserEmailForUserAsync(_emailId, _me, Arg.Any<CancellationToken>()).Returns((UserEmail?)null);
         if (kind == BadLink.AlreadyConfirmed) _pending.IsVerified = true;
         if (kind == BadLink.GoogleRow) _pending.Provider = "Google";
         if (kind == BadLink.AskingAccountMerged)

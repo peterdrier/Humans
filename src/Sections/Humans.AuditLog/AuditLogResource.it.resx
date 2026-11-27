@@ -38,7 +38,8 @@
   <data name="Enum_AuditAction_MemberUnsuspended" xml:space="preserve"><value>Sospensione del membro revocata</value></data>
   <data name="Enum_AuditAction_AccountAnonymized" xml:space="preserve"><value>Account anonimizzato</value></data>
   <data name="Enum_AuditAction_RoleAssigned" xml:space="preserve"><value>Ruolo assegnato</value></data>
-  <data name="Enum_AuditAction_RoleEnded" xml:space="preserve"><value>Ruolo terminato</value></data>
+  <data name="Enum_AuditAction_RoleEnded" xml:space="preserve"><value>Ruolo revocato</value></data>
+  <data name="Enum_AuditAction_RoleRevoked" xml:space="preserve"><value>Ruolo revocato</value></data>
   <data name="Enum_AuditAction_VolunteerApproved" xml:space="preserve"><value>Volontario approvato</value></data>
   <data name="Enum_AuditAction_GoogleResourceAccessGranted" xml:space="preserve"><value>Accesso alle risorse Google concesso</value></data>
   <data name="Enum_AuditAction_GoogleResourceAccessRevoked" xml:space="preserve"><value>Accesso alle risorse Google revocato</value></data>
@@ -239,6 +240,7 @@
   <data name="Enum_AuditAction_HoldedExpenseAccountCreated" xml:space="preserve"><value>Conto spese Holded creato</value></data>
   <data name="Enum_AuditAction_HoldedExpenseAccountLinked" xml:space="preserve"><value>Conto spese Holded collegato</value></data>
   <data name="Enum_AuditAction_HoldedExpenseAccountActiveChanged" xml:space="preserve"><value>Stato di attivazione del conto spese Holded modificato</value></data>
+  <data name="Enum_AuditAction_BackdoorApiKeyCreated" xml:space="preserve"><value>Chiave API backdoor creata</value></data>
   <data name="Enum_AuditAction_BackdoorApiKeyIssued" xml:space="preserve"><value>Chiave API backdoor rilasciata</value></data>
   <data name="Enum_AuditAction_BackdoorApiKeyRevoked" xml:space="preserve"><value>Chiave API backdoor revocata</value></data>
   <data name="Enum_AuditAction_FeedbackGitHubLinked" xml:space="preserve"><value>Feedback collegato a GitHub</value></data>
@@ -337,8 +339,10 @@
   <data name="AuditLog_NoSubjectVerb_VolunteerApproved" xml:space="preserve"><value>ha approvato</value></data>
   <data name="AuditLog_Verb_RoleAssigned" xml:space="preserve"><value>ha assegnato un ruolo a</value></data>
   <data name="AuditLog_NoSubjectVerb_RoleAssigned" xml:space="preserve"><value>ha assegnato un ruolo</value></data>
-  <data name="AuditLog_Verb_RoleEnded" xml:space="preserve"><value>ha terminato il ruolo di</value></data>
-  <data name="AuditLog_NoSubjectVerb_RoleEnded" xml:space="preserve"><value>ha terminato il ruolo</value></data>
+  <data name="AuditLog_Verb_RoleEnded" xml:space="preserve"><value>ha revocato il ruolo di</value></data>
+  <data name="AuditLog_Verb_RoleRevoked" xml:space="preserve"><value>ha revocato il ruolo di</value></data>
+  <data name="AuditLog_NoSubjectVerb_RoleEnded" xml:space="preserve"><value>ha revocato un ruolo</value></data>
+  <data name="AuditLog_NoSubjectVerb_RoleRevoked" xml:space="preserve"><value>ha revocato un ruolo</value></data>
   <data name="AuditLog_Verb_WorkspaceAccountPasswordReset" xml:space="preserve"><value>ha reimpostato la password Workspace per</value></data>
   <data name="AuditLog_NoSubjectVerb_WorkspaceAccountPasswordReset" xml:space="preserve"><value>ha reimpostato la password Workspace</value></data>
   <data name="AuditLog_Verb_WorkspaceAccountBackupCodesGenerated" xml:space="preserve"><value>ha generato i codici di recupero Workspace per</value></data>

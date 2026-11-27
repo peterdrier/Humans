@@ -34,6 +34,7 @@ The association hands individual people entitlements: a cheaper ticket, early en
 - The revoked row stays (who, when, why); it cannot be resent or revoked again.
 
 **As a grant holder, I am told and can look it up.**
+- Resending to a known missing or tombstoned holder is refused without changing the notification timestamp or audit. Issue and revoke emails skip tombstones while retaining the grant change; live merge survivors still receive notices.
 - On issue, resend and revoke I get an email in my language and an in-app notice; a failure in one channel does not stop the other or the write.
 - My profile's "My grants" card lists my active grants and those that ended this year or later. Nobody else sees it.
 

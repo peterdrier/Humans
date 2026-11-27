@@ -53,6 +53,7 @@ else
     <div class="position-relative mb-3">
         <div id="map" style="height: 65vh; min-height: 360px;" class="rounded border"
              data-board-url="@Url.Action("Board", "RideshareApi", new { date = Model.Date.ToInvariantDate(), direction = Model.Direction })"
+             data-map-load-failed="@Localizer["Rideshare_MapLoadFailed"]"
              data-date="@Model.Date.ToInvariantDate()"
              data-direction="@Model.Direction"
              data-current-user-id="@Model.CurrentUserId"

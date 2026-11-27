@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Reflection;
 using System.Security.Claims;
 using AwesomeAssertions;
@@ -15,8 +16,12 @@ using Humans.Users.Contracts;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc.Controllers;
+using Microsoft.AspNetCore.Mvc.ModelBinding;
 using Microsoft.AspNetCore.Mvc.ViewFeatures;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging.Abstractions;
+using Microsoft.Extensions.Primitives;
 using NSubstitute;
 using Xunit;
 
@@ -48,11 +53,21 @@ public sealed class TasksControllerTests
             [new Claim(ClaimTypes.NameIdentifier, _me.ToString()), .. roles.Select(r => new Claim(ClaimTypes.Role, r))], "test");
         var http = new DefaultHttpContext { User = new ClaimsPrincipal(identity) };
         return new TasksController(
-            _kit.Service, permissions, _kit.Teams, _kit.Settings, Substitute.For<IUserService>(), Authorization, new TaskTestKit.KeyLocalizer())
+            _kit.Service, permissions, _kit.Teams, _kit.Settings, Substitute.For<IUserService>(), Authorization, new TaskTestKit.KeyLocalizer(), NullLogger<TasksController>.Instance)
         {
             ControllerContext = new ControllerContext { HttpContext = http },
             TempData = new TempDataDictionary(http, Substitute.For<ITempDataProvider>()),
+            Url = LocalUrls(),
         };
+    }
+
+    /// <summary>A url helper that tells local paths from off-site ones, as the real one does.</summary>
+    private static IUrlHelper LocalUrls()
+    {
+        var url = Substitute.For<IUrlHelper>();
+        url.IsLocalUrl(Arg.Any<string?>()).Returns(call =>
+            call.Arg<string?>() is { Length: > 0 } u && u[0] == '/' && (u.Length == 1 || (u[1] != '/' && u[1] != '\\')));
+        return url;
     }
 
     private TasksController Human() => As([]);
@@ -68,6 +83,124 @@ public sealed class TasksControllerTests
     }
 
     private static TaskForm FormFor(Guid team, string title = "Paint the gate") => new() { TeamId = team, Title = title };
+
+    public static IEnumerable<object?[]> GetRequiredFieldCases()
+    {
+        foreach (var editing in new[] { false, true })
+        {
+            foreach (var field in new[] { "Priority", "SlotCount", "StartRelative", "DueRelative", "NeedsApproval", "IsHidden" })
+            {
+                yield return [editing, field, null];
+                yield return [editing, field, "bad"];
+            }
+            yield return [editing, null, null];
+        }
+    }
+
+    [HumansTheory]
+    [MemberData(nameof(GetRequiredFieldCases))]
+    public async Task TaskForms_IncompleteFields_RefuseWrites(bool editing, string? field, string? value)
+    {
+        var existing = editing ? await _kit.CreateAsync(TaskTestKit.Input(slots: 3, needsApproval: true,
+            reason: "Training", hidden: true)) : null;
+        var controller = ManagerOfProduction();
+        var fields = new Dictionary<string, StringValues>(StringComparer.Ordinal)
+        {
+            ["TeamId"] = TaskTestKit.Production.ToString(),
+            ["Title"] = "Paint the gate",
+            ["EventId"] = TaskTestKit.Spring.ToString(),
+            ["StartDate"] = "2027-03-10",
+            ["DueDate"] = "2027-03-11",
+            ["StartRelative"] = "false",
+            ["DueRelative"] = "false",
+            ["Priority"] = "None",
+            ["SlotCount"] = "4",
+            ["NeedsApproval"] = "false",
+            ["IsHidden"] = "false",
+        };
+        if (field is not null)
+        {
+            if (value is null) fields.Remove(field);
+            else fields[field] = value;
+        }
+        var action = editing ? nameof(TasksController.Edit) : nameof(TasksController.Add);
+        var form = await BindAsync<TaskForm>(controller, action, fields);
+        _kit.Audit.ClearReceivedCalls();
+
+        var result = editing
+            ? await controller.Edit(existing!.Id, form, Ct)
+            : await controller.Add("production", form, Ct);
+
+        if (field is not null)
+        {
+            result.Should().BeOfType<ViewResult>();
+            _kit.Audit.ReceivedCalls().Should().BeEmpty();
+            var saved = await _kit.Service.GetTasksAsync(Ct);
+            if (editing) saved.Should().ContainSingle().Which.Should().BeEquivalentTo(existing);
+            else saved.Should().BeEmpty();
+        }
+        else
+        {
+            result.Should().BeOfType<RedirectToActionResult>();
+            var saved = (await _kit.Service.GetTasksAsync(Ct)).Should().ContainSingle().Which;
+            saved.Priority.Should().Be(SlotPriority.None);
+            saved.SlotCount.Should().Be(4);
+            saved.NeedsApproval.Should().BeFalse();
+            saved.IsHidden.Should().BeFalse();
+            saved.Start!.IsRelative.Should().BeFalse();
+            saved.Due!.IsRelative.Should().BeFalse();
+        }
+    }
+
+    [HumansTheory]
+    [InlineData(null)]
+    [InlineData("bad")]
+    [InlineData("Todo")]
+    public async Task SetStatus_IncompleteField_PreservesBlockedTask(string? status)
+    {
+        var task = await TaskOnAsync(TaskTestKit.Production);
+        await _kit.SetStatusAsync(task.Id, TaskItemStatus.Blocked, "Waiting on supplies");
+        var controller = ManagerOfProduction();
+        var fields = new Dictionary<string, StringValues>(StringComparer.Ordinal);
+        if (status is not null) fields["Status"] = status;
+        var form = await BindAsync<StatusForm>(controller, nameof(TasksController.SetStatus), fields);
+        _kit.Audit.ClearReceivedCalls();
+
+        var result = await controller.SetStatus(task.Id, form, Ct);
+
+        var saved = (await _kit.Service.GetTaskAsync(task.Id, Ct))!;
+        if (string.Equals(status, "Todo", StringComparison.Ordinal))
+        {
+            result.Should().BeOfType<RedirectToActionResult>();
+            saved.Status.Should().Be(TaskItemStatus.Todo);
+            saved.BlockedNote.Should().BeNull();
+        }
+        else
+        {
+            result.Should().BeOfType<ViewResult>();
+            saved.Status.Should().Be(TaskItemStatus.Blocked);
+            saved.BlockedNote.Should().Be("Waiting on supplies");
+            _kit.Audit.ReceivedCalls().Should().BeEmpty();
+        }
+    }
+
+    private static async Task<T> BindAsync<T>(TasksController controller, string action, Dictionary<string, StringValues> fields)
+    {
+        var registrations = new ServiceCollection().AddLogging();
+        registrations.AddControllers();
+        using var services = registrations.BuildServiceProvider();
+        var previousServices = controller.HttpContext.RequestServices;
+        controller.HttpContext.RequestServices = services;
+        var parameter = typeof(TasksController).GetMethod(action)!.GetParameters()
+            .Single(p => string.Equals(p.Name, "form", StringComparison.Ordinal));
+        var metadata = ((ModelMetadataProvider)services.GetRequiredService<IModelMetadataProvider>()).GetMetadataForParameter(parameter);
+        var binder = services.GetRequiredService<IModelBinderFactory>().CreateBinder(new ModelBinderFactoryContext { Metadata = metadata });
+        var descriptor = new ControllerParameterDescriptor { Name = parameter.Name!, ParameterType = parameter.ParameterType, ParameterInfo = parameter };
+        var binding = await services.GetRequiredService<ParameterBinder>().BindModelAsync(controller.ControllerContext, binder,
+            new FormValueProvider(BindingSource.Form, new FormCollection(fields), CultureInfo.InvariantCulture), descriptor, metadata, value: null);
+        controller.HttpContext.RequestServices = previousServices;
+        return (T)binding.Model!;
+    }
 
     [HumansFact]
     public async Task Index_ListsTasksButNotHiddenOnesToAPlainHuman()
@@ -413,6 +546,284 @@ public sealed class TasksControllerTests
 
         await ManagerOfProduction().RemoveDependency(waiting.Id, other.Id, Ct);
         (await _kit.Service.GetTaskAsync(waiting.Id, Ct))!.WaitingOn.Should().BeEmpty();
+    }
+
+    private static async Task<(TasksController Controller, TaskPageViewModel Page)> PageAsync(TasksController controller, Guid id)
+    {
+        var page = (await controller.Details(id, Ct)).Should().BeOfType<ViewResult>().Which.Model.Should().BeOfType<TaskPageViewModel>().Which;
+        return (controller, page);
+    }
+
+    private async Task<TaskInfo> RequestedAsync(Guid asker, int slots = 1)
+    {
+        var task = await _kit.CreateAsync(TaskTestKit.Input(slots: slots, needsApproval: true));
+        (await _kit.Service.ClaimAsync(task.Id, asker, Ct)).Succeeded.Should().BeTrue();
+        return task;
+    }
+
+    private async Task<TaskInfo> ReloadAsync(Guid id) => (await _kit.Service.GetTaskAsync(id, Ct))!;
+
+    [HumansFact]
+    public async Task Details_OffersTheRightButtonToTheRightPerson()
+    {
+        var free = await TaskOnAsync(TaskTestKit.Production);
+        var full = await TaskOnAsync(TaskTestKit.Production, confirmed: Guid.NewGuid());
+        var mine = await TaskOnAsync(TaskTestKit.Production, confirmed: _me);
+        var asked = await RequestedAsync(_me);
+        var finished = await TaskOnAsync(TaskTestKit.Production);
+        await _kit.SetStatusAsync(finished.Id, TaskItemStatus.Done);
+
+        (await PageAsync(Human(), free.Id)).Page.Place.Should().Be(MyPlace.CanClaim);
+        (await PageAsync(Human(), full.Id)).Page.Place.Should().BeNull("a full task shows no claim button, not a disabled one");
+        (await PageAsync(Human(), mine.Id)).Page.Place.Should().Be(MyPlace.Confirmed);
+        (await PageAsync(Human(), asked.Id)).Page.Place.Should().Be(MyPlace.Requested);
+        (await PageAsync(Human(), finished.Id)).Page.Place.Should().BeNull();
+    }
+
+    [HumansFact]
+    public async Task Details_ShowsWaitingRequestsOnlyToManagers()
+    {
+        var task = await RequestedAsync(Guid.NewGuid());
+
+        (await PageAsync(ManagerOfProduction(), task.Id)).Page.Requests.Should().ContainSingle();
+        (await PageAsync(As([], RoleNames.Admin), task.Id)).Page.Requests.Should().BeEmpty("Admin without Tasks.Manage here is a plain viewer");
+        (await PageAsync(As([], RoleNames.Board), task.Id)).Page.Requests.Should().BeEmpty();
+        (await PageAsync(Human(), task.Id)).Page.Requests.Should().BeEmpty();
+        (await PageAsync(As([TaskTestKit.Art]), task.Id)).Page.Requests.Should().BeEmpty();
+    }
+
+    [HumansFact]
+    public async Task Team_ListsRequestsOnlyToManagers()
+    {
+        static IReadOnlyList<RequestRow> Requests(IActionResult r) =>
+            r.Should().BeOfType<ViewResult>().Which.Model.Should().BeOfType<TeamPageViewModel>().Which.Requests;
+
+        var live = await RequestedAsync(Guid.NewGuid());
+        var dead = await RequestedAsync(Guid.NewGuid());
+        await _kit.SetStatusAsync(dead.Id, TaskItemStatus.Cancelled);
+
+        Requests(await ManagerOfProduction().Team("production", new TaskListFilter(), Ct)).Select(r => r.Task.Id).Should().Equal(live.Id, dead.Id);
+        (await PageAsync(ManagerOfProduction(), dead.Id)).Page.Requests.Should().ContainSingle("a cancelled task still owes the asker an answer");
+        Requests(await Human().Team("production", new TaskListFilter(), Ct)).Should().BeEmpty();
+        Requests(await As([], RoleNames.Board).Team("production", new TaskListFilter(), Ct)).Should().BeEmpty();
+        Requests(await As([TaskTestKit.Art]).Team("production", new TaskListFilter(), Ct)).Should().BeEmpty();
+    }
+
+    [HumansFact]
+    public async Task Open_ListsFreeTasks_MostNeededFirst()
+    {
+        var hidden = await TaskOnAsync(TaskTestKit.Production, hidden: true);
+        var full = await TaskOnAsync(TaskTestKit.Production, confirmed: Guid.NewGuid());
+        var mine = await _kit.CreateAsync(TaskTestKit.Input(title: "Mine", slots: 2));
+        (await _kit.Service.AssignAsync(mine.Id, _me, _kit.Actor, Ct)).Succeeded.Should().BeTrue();
+        var asked = await RequestedAsync(_me);
+        var finished = await TaskOnAsync(TaskTestKit.Production);
+        await _kit.SetStatusAsync(finished.Id, TaskItemStatus.Done);
+        var important = await _kit.CreateAsync(TaskTestKit.Input(title: "Important one"));
+        var critical = await _kit.CreateAsync(TaskTestKit.Input(title: "Critical one") with { Priority = SlotPriority.Critical });
+
+        var model = (await Human().Open(Ct)).Should().BeOfType<ViewResult>().Which.Model.Should().BeOfType<OpenBoardViewModel>().Which;
+
+        model.Tasks.Select(t => t.Id).Should().Equal(critical.Id, asked.Id, important.Id, mine.Id);
+        model.OpenSlots.Should().Be(4);
+        model.CriticalCount.Should().Be(1);
+        model.Places[mine.Id].Should().Be(MyPlace.Confirmed);
+        model.Places[asked.Id].Should().Be(MyPlace.Requested);
+        new[] { hidden.Id, full.Id, finished.Id }.Should().NotIntersectWith(model.Tasks.Select(t => t.Id));
+        var asSeeAll = (await As([], RoleNames.Board).Open(Ct)).Should().BeOfType<ViewResult>().Which.Model.Should().BeOfType<OpenBoardViewModel>().Which;
+        asSeeAll.Tasks.Select(t => t.Id).Should().Contain(hidden.Id);
+    }
+
+    [HumansFact]
+    public async Task Claim_TakesSlotOrMakesRequest()
+    {
+        var plain = await TaskOnAsync(TaskTestKit.Production);
+        var guarded = await _kit.CreateAsync(TaskTestKit.Input(needsApproval: true));
+        var human = Human();
+
+        (await human.Claim(plain.Id, null, Ct)).Should().BeOfType<RedirectToActionResult>();
+        human.TempData[TempDataKeys.SuccessMessage].Should().Be("Tasks_Claimed");
+        (await Human().Claim(guarded.Id, null, Ct)).Should().BeOfType<RedirectToActionResult>();
+
+        (await ReloadAsync(plain.Id)).Assignments.Should().ContainSingle().Which.Should().Match<TaskAssignmentInfo>(a => a.UserId == _me && a.IsConfirmed);
+        (await ReloadAsync(guarded.Id)).Assignments.Should().ContainSingle().Which.IsConfirmed.Should().BeFalse();
+    }
+
+    [HumansFact]
+    public async Task Claim_HiddenTask_IsNotFound()
+    {
+        var hidden = await TaskOnAsync(TaskTestKit.Production, hidden: true);
+        var full = await TaskOnAsync(TaskTestKit.Production, confirmed: Guid.NewGuid());
+        var finished = await TaskOnAsync(TaskTestKit.Production);
+        await _kit.SetStatusAsync(finished.Id, TaskItemStatus.Done);
+
+        (await Human().Claim(hidden.Id, null, Ct)).Should().BeOfType<NotFoundResult>();
+        (await Human().Claim(Guid.NewGuid(), null, Ct)).Should().BeOfType<NotFoundResult>();
+        foreach (var task in new[] { full, finished })
+        {
+            var controller = Human();
+            (await controller.Claim(task.Id, null, Ct)).Should().BeOfType<RedirectToActionResult>();
+            controller.TempData.ContainsKey(TempDataKeys.ErrorMessage).Should().BeTrue();
+        }
+
+        (await ReloadAsync(hidden.Id)).Assignments.Should().BeEmpty();
+        (await ReloadAsync(full.Id)).Assignments.Should().ContainSingle();
+        (await ReloadAsync(finished.Id)).Assignments.Should().BeEmpty();
+    }
+
+    [HumansFact]
+    public async Task Claim_ReturnUrl_StaysOnThisSite()
+    {
+        var first = await TaskOnAsync(TaskTestKit.Production);
+        var second = await TaskOnAsync(TaskTestKit.Production);
+
+        (await Human().Claim(first.Id, "/Tasks/Open", Ct)).Should().BeOfType<LocalRedirectResult>().Which.Url.Should().Be("/Tasks/Open");
+        (await Human().Claim(second.Id, "https://evil.example/x", Ct)).Should().BeOfType<RedirectToActionResult>();
+    }
+
+    [HumansFact]
+    public async Task Release_GivesBackOnlyTheCallersOwnPlace()
+    {
+        var mine = await TaskOnAsync(TaskTestKit.Production, confirmed: _me);
+        var other = Guid.NewGuid();
+        var theirs = await TaskOnAsync(TaskTestKit.Production, confirmed: other);
+
+        var stranger = Human();
+        (await stranger.Release(theirs.Id, null, Ct)).Should().BeOfType<RedirectToActionResult>();
+        stranger.TempData.ContainsKey(TempDataKeys.ErrorMessage).Should().BeTrue();
+        (await ReloadAsync(theirs.Id)).Assignments.Should().ContainSingle(a => a.UserId == other);
+
+        (await Human().Release(mine.Id, null, Ct)).Should().BeOfType<RedirectToActionResult>();
+        (await ReloadAsync(mine.Id)).Assignments.Should().BeEmpty();
+    }
+
+    [HumansFact]
+    public async Task Release_HiddenTask_IsNotFound()
+    {
+        var hidden = await TaskOnAsync(TaskTestKit.Production, hidden: true, confirmed: Guid.NewGuid());
+
+        (await Human().Release(hidden.Id, null, Ct)).Should().BeOfType<NotFoundResult>();
+    }
+
+    [HumansFact]
+    public async Task Withdraw_TakesBackOnlyTheCallersOwnRequest()
+    {
+        var other = Guid.NewGuid();
+        var theirs = await RequestedAsync(other);
+        var mine = await RequestedAsync(_me);
+
+        var stranger = Human();
+        (await stranger.Withdraw(theirs.Id, null, Ct)).Should().BeOfType<RedirectToActionResult>();
+        stranger.TempData.ContainsKey(TempDataKeys.ErrorMessage).Should().BeTrue();
+        (await ReloadAsync(theirs.Id)).Assignments.Should().ContainSingle(a => a.UserId == other);
+
+        (await Human().Withdraw(mine.Id, null, Ct)).Should().BeOfType<RedirectToActionResult>();
+        (await ReloadAsync(mine.Id)).Assignments.Should().BeEmpty();
+    }
+
+    [HumansFact]
+    public async Task Withdraw_WorksOnATaskHiddenAfterTheyAsked()
+    {
+        var task = await _kit.CreateAsync(TaskTestKit.Input(needsApproval: true, hidden: true));
+        (await _kit.Service.ClaimAsync(task.Id, _me, Ct)).Succeeded.Should().BeTrue();
+
+        (await PageAsync(Human(), task.Id)).Page.Place.Should().Be(MyPlace.Requested);
+        (await Human().Withdraw(task.Id, null, Ct)).Should().BeOfType<RedirectToActionResult>();
+
+        (await ReloadAsync(task.Id)).Assignments.Should().BeEmpty();
+        (await Human().Details(task.Id, Ct)).Should().BeOfType<NotFoundResult>();
+    }
+
+    [HumansFact]
+    public async Task Withdraw_DoesNotTouchAConfirmedPlace()
+    {
+        var mine = await TaskOnAsync(TaskTestKit.Production, confirmed: _me);
+
+        await Human().Withdraw(mine.Id, null, Ct);
+
+        (await ReloadAsync(mine.Id)).Assignments.Should().ContainSingle().Which.IsConfirmed.Should().BeTrue();
+    }
+
+    [HumansFact]
+    public async Task Approve_NeedsManageOnTheTasksTeam()
+    {
+        var asker = Guid.NewGuid();
+        var task = await RequestedAsync(asker);
+
+        (await Human().Approve(task.Id, asker, null, Ct)).Should().BeOfType<ForbidResult>();
+        (await As([], RoleNames.Board).Approve(task.Id, asker, null, Ct)).Should().BeOfType<ForbidResult>();
+        (await As([], RoleNames.Admin).Approve(task.Id, asker, null, Ct)).Should().BeOfType<ForbidResult>();
+        (await As([TaskTestKit.Art]).Approve(task.Id, asker, null, Ct)).Should().BeOfType<ForbidResult>();
+        (await ReloadAsync(task.Id)).Assignments.Should().ContainSingle().Which.IsConfirmed.Should().BeFalse();
+
+        (await ManagerOfProduction().Approve(task.Id, asker, null, Ct)).Should().BeOfType<RedirectToActionResult>();
+        (await ReloadAsync(task.Id)).Assignments.Should().ContainSingle().Which.IsConfirmed.Should().BeTrue();
+    }
+
+    [HumansFact]
+    public async Task Approve_OtherTeamsTask_IsNotFound()
+    {
+        var asker = Guid.NewGuid();
+        var task = await _kit.CreateAsync(TaskTestKit.Input(hidden: true, needsApproval: true));
+        (await _kit.Service.ClaimAsync(task.Id, asker, Ct)).Succeeded.Should().BeTrue();
+
+        (await As([TaskTestKit.Art]).Approve(task.Id, asker, null, Ct)).Should().BeOfType<NotFoundResult>();
+    }
+
+    [HumansFact]
+    public async Task Decline_WithoutManage_IsForbidden()
+    {
+        var asker = Guid.NewGuid();
+        _kit.GiveEmail(asker, "asker@example.org");
+        var task = await RequestedAsync(asker);
+
+        (await Human().Decline(task.Id, asker, "no", null, Ct)).Should().BeOfType<ForbidResult>();
+        (await As([], RoleNames.Board).Decline(task.Id, asker, "no", null, Ct)).Should().BeOfType<ForbidResult>();
+        (await As([TaskTestKit.Art]).Decline(task.Id, asker, "no", null, Ct)).Should().BeOfType<ForbidResult>();
+        (await ReloadAsync(task.Id)).Assignments.Should().ContainSingle();
+        _kit.SentEmails.Should().BeEmpty();
+
+        (await ManagerOfProduction().Decline(task.Id, asker, "needs the licence", "/Tasks/Team/production", Ct)).Should().BeOfType<LocalRedirectResult>();
+        (await ReloadAsync(task.Id)).Assignments.Should().BeEmpty();
+        _kit.SentEmails.Should().ContainSingle();
+    }
+
+    [HumansFact]
+    public async Task Decline_TooLongReason_KeepsRequest()
+    {
+        var asker = Guid.NewGuid();
+        var task = await RequestedAsync(asker);
+        var manager = ManagerOfProduction();
+
+        await manager.Decline(task.Id, asker, new string('x', 201), null, Ct);
+
+        manager.TempData.ContainsKey(TempDataKeys.ErrorMessage).Should().BeTrue();
+        (await ReloadAsync(task.Id)).Assignments.Should().ContainSingle();
+    }
+
+    [HumansFact]
+    public async Task Assign_IsNotOfferedForSomeoneWhoAlreadyAsked()
+    {
+        var asker = Guid.NewGuid();
+        var task = await RequestedAsync(asker);
+
+        var manager = ManagerOfProduction();
+        await manager.Assign(task.Id, asker, Ct);
+
+        manager.TempData.ContainsKey(TempDataKeys.ErrorMessage).Should().BeTrue();
+        (await ReloadAsync(task.Id)).Assignments.Should().ContainSingle().Which.IsConfirmed.Should().BeFalse();
+    }
+
+    [HumansFact]
+    public async Task Index_MarksTheViewersPlaceOnEachTask()
+    {
+        var free = await TaskOnAsync(TaskTestKit.Production);
+        var asked = await RequestedAsync(_me);
+
+        var model = (await Human().Index(new TaskListFilter(), Ct)).Should().BeOfType<ViewResult>().Which.Model.Should().BeOfType<TaskListViewModel>().Which;
+
+        model.Places[free.Id].Should().Be(MyPlace.CanClaim);
+        model.Places[asked.Id].Should().Be(MyPlace.Requested);
     }
 
     [HumansFact]

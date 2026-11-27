@@ -129,7 +129,7 @@ public sealed class TicketQueryServiceTests : TicketsTestHarness
             .Returns(call => ReadAsync<BudgetYearDetail?>(TicketDashboardRead.Budget, call.Arg<CancellationToken>(), null));
         var vendor = Substitute.For<ITicketVendorService>();
         vendor.GetEventSummaryAsync("event", Arg.Any<CancellationToken>())
-            .Returns(call => ReadAsync(TicketDashboardRead.Vendor, call.Arg<CancellationToken>(), new VendorEventSummaryDto("event", "Event", 100, 1, 99)));
+            .Returns(call => ReadAsync(TicketDashboardRead.Vendor, call.Arg<CancellationToken>(), new VendorEventSummaryDto("Event", 100, 1, 99)));
         var service = new TicketQueryService(FixedOrgTimeZone.Madrid, repository, _transferRepo, _budgetService, _campaignService,
             _userService, _userEmailService, _teamService, Substitute.For<IGovernanceService>(),
             _shiftManagementService, _auditLog, Clock, _participations, _checkout);
@@ -138,7 +138,7 @@ public sealed class TicketQueryServiceTests : TicketsTestHarness
         await using var provider = services.BuildServiceProvider();
         var decorator = new CachingTicketQueryService(provider.GetRequiredService<IServiceScopeFactory>(),
             Clock, NullLogger<CachingTicketQueryService>.Instance);
-        var logger = new Humans.Testing.CapturingLogger<TicketDashboardPageBuilder>();
+        var logger = new CapturingLogger<TicketDashboardPageBuilder>();
         var dashboard = new TicketDashboardPageBuilder(vendor,
             Options.Create(new TicketVendorSettings { EventId = "event", ApiKey = "key" }), decorator, logger);
         var controller = new TicketController(decorator, Substitute.For<ITicketSyncService>(),
@@ -276,14 +276,14 @@ public sealed class TicketQueryServiceTests : TicketsTestHarness
     public async Task Holdings_HumansIssuedTicket_HoldsDeletionUntil30DaysAfterStrike(string state, int year, bool held)
     {
         var userId = Guid.NewGuid();
-        var salesEvent = new TicketSalesEvent { Id = Guid.NewGuid(), EventSettingsId = Guid.NewGuid() };
+        var ticketing = new TicketingSettings { Id = Guid.NewGuid(), EventSettingsId = Guid.NewGuid() };
         _checkout.GetTicketsForHolderAsync(userId, Arg.Any<CancellationToken>()).Returns(
         [
-            new TicketCheckoutTicket { Id = Guid.NewGuid(), SalesEventId = salesEvent.Id, HolderUserId = userId, State = Enum.Parse<TicketCheckoutTicketState>(state) },
+            new TicketCheckoutTicket { Id = Guid.NewGuid(), TicketingSettingsId = ticketing.Id, HolderUserId = userId, State = Enum.Parse<TicketCheckoutTicketState>(state) },
         ]);
-        _checkout.GetSalesEventAsync(salesEvent.Id, Arg.Any<CancellationToken>()).Returns(salesEvent);
-        _shiftManagementService.GetEventSettingsByIdAsync(salesEvent.EventSettingsId, Arg.Any<CancellationToken>())
-            .Returns(new EventSettingsInfo(salesEvent.EventSettingsId, "Nowhere", year, "Europe/Madrid",
+        _checkout.GetTicketingSettingsAsync(ticketing.Id, Arg.Any<CancellationToken>()).Returns(ticketing);
+        _shiftManagementService.GetEventSettingsByIdAsync(ticketing.EventSettingsId, Arg.Any<CancellationToken>())
+            .Returns(new EventSettingsInfo(ticketing.EventSettingsId, "Nowhere", year, "Europe/Madrid",
                 new LocalDate(year, 7, 1), -10, 5, 9, new Dictionary<int, int>(), null, null));
         var service = new TicketQueryService(FixedOrgTimeZone.Madrid, _repo, _transferRepo, _budgetService, _campaignService,
             _userService, _userEmailService, _teamService, Substitute.For<IGovernanceService>(), _shiftManagementService,
@@ -602,8 +602,8 @@ public sealed class TicketQueryServiceTests : TicketsTestHarness
         order.ApplicationFee = 2m;
         order.FeeTax = 1.05m;
         order.WithheldTax = 0.50m;
-        await TicketsDb.TicketOrders.AddAsync(order, Xunit.TestContext.Current.CancellationToken);
-        await SaveAllAsync(Xunit.TestContext.Current.CancellationToken);
+        await TicketsDb.TicketOrders.AddAsync(order, TestContext.Current.CancellationToken);
+        await SaveAllAsync(TestContext.Current.CancellationToken);
 
         var stats = await _service.GetDashboardStatsAsync();
 
@@ -890,7 +890,7 @@ public sealed class TicketQueryServiceTests : TicketsTestHarness
     {
         var grantRows = grants
             .Select(g => new CampaignCodeTrackingGrant(
-                Guid.NewGuid(), g.CampaignId, summary.CampaignTitle, Guid.NewGuid(),
+                g.CampaignId, summary.CampaignTitle, Guid.NewGuid(),
                 "Recipient", g.Code, RedeemedAt: null))
             .ToList();
 
@@ -1026,13 +1026,13 @@ public sealed class TicketQueryServiceTests : TicketsTestHarness
                 Instant.FromUtc(2026, 3, 1, 10, 0), 100m, 0m, 0m, 1, 0m, id);
             TicketsDb.TicketOrders.Add(order);
         }
-        await SaveAllAsync(Xunit.TestContext.Current.CancellationToken);
+        await SaveAllAsync(TestContext.Current.CancellationToken);
 
         var paged = new List<Guid>();
         for (var page = 1; page <= ids.Length; page++)
         {
             var result = await _service.GetOrdersPageAsync(
-                null, "amount", false, page, 1, null, null, null, Xunit.TestContext.Current.CancellationToken);
+                null, "amount", false, page, 1, null, null, null, TestContext.Current.CancellationToken);
             paged.Add(result.Rows.Single().Id);
         }
 
@@ -1047,13 +1047,13 @@ public sealed class TicketQueryServiceTests : TicketsTestHarness
             Instant.FromUtc(2026, 3, 1, 10, 0), 300m, 0m, 0m, 3, 0m,
             attendeeId: i => new Guid($"00000000-0000-0000-0000-00000000000{4 - i}"));
         TicketsDb.TicketOrders.Add(order);
-        await SaveAllAsync(Xunit.TestContext.Current.CancellationToken);
+        await SaveAllAsync(TestContext.Current.CancellationToken);
 
         var paged = new List<Guid>();
         for (var page = 1; page <= 3; page++)
         {
             var result = await _service.GetAttendeesPageAsync(
-                null, "price", false, page, 1, null, null, null, null, ct: Xunit.TestContext.Current.CancellationToken);
+                null, "price", false, page, 1, null, null, null, null, ct: TestContext.Current.CancellationToken);
             paged.Add(result.Rows.Single().Id);
         }
 
@@ -1388,29 +1388,29 @@ public sealed class TicketQueryServiceTests : TicketsTestHarness
     }
 
     [HumansFact]
-    public async Task GetDonationExportDataAsync_IncludesDonationLinesOfPaidCheckoutOrders()
+    public async Task GetDonationExportDataAsync_IncludesDonationLinesOfPaidHumansOrders()
     {
-        var salesEvent = new TicketSalesEvent { Id = Guid.NewGuid() };
+        var ticketing = new TicketingSettings { Id = Guid.NewGuid() };
         TicketCheckoutOrder Order(TicketCheckoutOrderState state, Instant paidAt, params (long Minor, string? Purpose)[] gifts) => new()
         {
             Id = Guid.NewGuid(),
-            SalesEventId = salesEvent.Id,
+            TicketingSettingsId = ticketing.Id,
             BuyerName = "Ana Buyer",
             BuyerEmail = "ana@example.com",
             State = state,
             PaidAt = paidAt,
             Lines =
             [
-                new TicketCheckoutOrderLine { Kind = CheckoutLineKind.Ticket, AmountMinor = 22500, AttendeeName = "Ana Buyer" },
+                new TicketCheckoutOrderLine { Kind = OrderLineKind.Ticket, AmountMinor = 22500, HolderName = "Ana Buyer" },
                 .. gifts.Select(g => new TicketCheckoutOrderLine
-                    { Kind = CheckoutLineKind.Donation, AmountMinor = g.Minor, DonationPurpose = g.Purpose }),
+                    { Kind = OrderLineKind.Donation, AmountMinor = g.Minor, DonationPurpose = g.Purpose }),
             ],
         };
         var paid = Order(TicketCheckoutOrderState.Paid, Instant.FromUtc(2027, 1, 2, 9, 0),
             (17500, null), (2000, "Low income pool"));
         var unpaid = Order(TicketCheckoutOrderState.Pending, Instant.FromUtc(2027, 1, 2, 9, 0), (5000, null));
-        _checkout.GetSalesEventsAsync(Arg.Any<CancellationToken>()).Returns([salesEvent]);
-        _checkout.GetOrdersForSalesEventAsync(salesEvent.Id, Arg.Any<CancellationToken>()).Returns([paid, unpaid]);
+        _checkout.ListTicketingSettingsAsync(Arg.Any<CancellationToken>()).Returns([ticketing]);
+        _checkout.GetOrdersForSettingsAsync(ticketing.Id, Arg.Any<CancellationToken>()).Returns([paid, unpaid]);
 
         var rows = await _service.GetDonationExportDataAsync(Guid.NewGuid());
 

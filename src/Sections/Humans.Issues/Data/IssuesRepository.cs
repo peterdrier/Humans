@@ -77,7 +77,7 @@ internal sealed class IssuesRepository(IDbContextFactory<IssuesDbContext> factor
         await db.SaveChangesAsync(ct);
     }
 
-    public async Task AddCommentAndSaveIssueAsync(IssueComment comment, Issue issue, CancellationToken ct = default)
+    public async Task AddCommentAsync(IssueComment comment, Issue issue, CancellationToken ct = default)
     {
         await using var db = await factory.CreateDbContextAsync(ct);
         // The comment insert and the caller's issue mutation must commit in one SaveChanges.

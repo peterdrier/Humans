@@ -2,9 +2,7 @@ using Humans.Users.Contracts;
 using System.Security.Claims;
 using Humans.Shifts.Contracts;
 using Humans.Base.Constants;
-using Humans.Base.Authorization;
 using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Http;
 
 namespace Humans.Shifts.Authorization;
 
@@ -25,7 +23,6 @@ internal sealed class IsAnyTeamManagerOrCoordinatorHandler(
         // Same role list as ShiftsPolicies.Read; spares the common admin path a service call.
         if (user.IsInRole(RoleNames.Admin)
             || user.IsInRole(RoleNames.Board)
-            || user.IsInRole(ShiftsRoles.ShiftsNoInfo)
             || user.IsInRole(ShiftsRoles.ShiftsAdmin))
         {
             context.Succeed(requirement);

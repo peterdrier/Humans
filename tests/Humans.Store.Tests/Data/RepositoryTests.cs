@@ -89,7 +89,7 @@ public sealed class RepositoryTests
 
         await _repo.AddOrderAsync(order, Xunit.TestContext.Current.CancellationToken);
 
-        var fetched = await _repo.GetOrderWithLinesAndPaymentsAsync(orderId, Xunit.TestContext.Current.CancellationToken);
+        var fetched = await _repo.GetOrderWithLinesAsync(orderId, Xunit.TestContext.Current.CancellationToken);
         fetched.Should().NotBeNull();
         fetched.Id.Should().Be(orderId);
         fetched.Lines.Should().BeEmpty();
@@ -162,7 +162,7 @@ public sealed class RepositoryTests
         }, ct);
 
         // Issuance reads the order — with the payment still Pending.
-        var stale = await _repo.GetOrderWithLinesAndPaymentsAsync(orderId, ct);
+        var stale = await _repo.GetOrderWithLinesAsync(orderId, ct);
         stale.Should().NotBeNull();
 
         // …and while Holded is being called, the webhook settles it.
@@ -182,7 +182,7 @@ public sealed class RepositoryTests
         stale.IssuedInvoiceId = invoice.Id;
         await _repo.SaveIssuedInvoiceAsync(invoice, stale, ct);
 
-        var reloaded = await _repo.GetOrderWithLinesAndPaymentsAsync(orderId, ct);
+        var reloaded = await _repo.GetOrderWithLinesAsync(orderId, ct);
         reloaded!.Payments.Single().Status.Should().Be(PaymentStatus.Paid);
         // The columns issuance does own still land.
         reloaded.State.Should().Be(OrderState.InvoiceIssued);

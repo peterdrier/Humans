@@ -89,9 +89,11 @@ internal sealed class GuideContentService(
 
         foreach (var stem in GuideFiles.All)
         {
+            var step = "fetch";
             try
             {
                 var markdown = await source.GetMarkdownAsync(stem, cancellationToken);
+                step = "segment";
                 newEntries[stem] = segmenter.Segment(markdown);
             }
             catch (Exception ex) when (!cancellationToken.IsCancellationRequested)
@@ -99,8 +101,8 @@ internal sealed class GuideContentService(
                 failed.Add(stem);
                 var expected = ex is ApiException or HttpRequestException or IOException or TimeoutException or OperationCanceledException;
                 logger.Log(expected ? LogLevel.Warning : LogLevel.Error, expected ? null : ex,
-                    "Failed to fetch or segment guide file {FileStem}; {Outcome}: {Reason}",
-                    stem,
+                    "Failed to {Step} guide file {FileStem}; {Outcome}: {Reason}",
+                    step, stem,
                     hasStale ? "keeping stale cached copy" : "no stale copy available", ex.Message);
             }
         }

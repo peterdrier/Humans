@@ -2,8 +2,6 @@ using Humans.Users.Controllers;
 using System.Security.Claims;
 using AwesomeAssertions;
 using Humans.Users.Contracts;
-using Humans.Users.Tests.Infrastructure;
-using Humans.AuditLog.Contracts;
 using Humans.Base.Authorization;
 using Humans.Users.Models.EmailProblems;
 using Humans.Users.Services;

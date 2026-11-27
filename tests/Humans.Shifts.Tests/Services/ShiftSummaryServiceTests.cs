@@ -133,7 +133,7 @@ public sealed class ShiftSummaryServiceTests : ShiftsTestHarness
     public async Task BuildSummaryAsync_RotaScope_PreservesCancellationInScopeReads()
     {
         using var cancellation = new CancellationTokenSource();
-        var seeded = await ((IShiftRotaRows)_service).GetRotaRowsAsync(ct: Xunit.TestContext.Current.CancellationToken);
+        var seeded = await _service.GetRotaRowsAsync(ct: Xunit.TestContext.Current.CancellationToken);
         var rows = Substitute.For<IShiftRotaRows>();
         rows.GetRotaRowsAsync(Arg.Any<IReadOnlyCollection<Guid>?>(), Arg.Any<CancellationToken>()).Returns(seeded);
         var services = new ServiceLocatorBuilder()
@@ -215,7 +215,7 @@ public sealed class ShiftSummaryServiceTests : ShiftsTestHarness
         {
             EventSettingsId = _event.Id,
             Members = new[] { _userA, _userB }.Select(id => new CampSeasonMemberInfo(
-                Guid.NewGuid(), id, CampMemberStatus.Active, TestNow, TestNow, false)).ToList()
+                Guid.NewGuid(), id, CampMemberStatus.Active, TestNow, false)).ToList()
         };
         var prior = MakeSeason(_fuego, "fuego", "Other event camp") with { EventSettingsId = otherEventId };
         var camp = MakeCamp(_fuego, "fuego", "Unused") with { Seasons = [prior, current] };
@@ -405,7 +405,7 @@ public sealed class ShiftSummaryServiceTests : ShiftsTestHarness
             ParentTeamId: team.ParentTeamId);
 
     private CampSeasonInfo MakeSeason(Guid campId, string slug, string name) =>
-        new(Guid.NewGuid(), campId, slug, PublicYear, null,
+        new(Guid.NewGuid(), campId, PublicYear, null,
             name, string.Empty, string.Empty, [], CampSeasonStatus.Active,
             YesNoMaybe.No, YesNoMaybe.No, AdultPlayspacePolicy.No,
             0, null, null, null, 0, null, null)
@@ -416,6 +416,6 @@ public sealed class ShiftSummaryServiceTests : ShiftsTestHarness
             [MakeSeason(campId, slug, name) with
             {
                 Members = memberIds.Select(id => new CampSeasonMemberInfo(
-                    Guid.NewGuid(), id, CampMemberStatus.Active, TestNow, TestNow, false)).ToList()
+                    Guid.NewGuid(), id, CampMemberStatus.Active, TestNow, false)).ToList()
             }]);
 }

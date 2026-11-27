@@ -22,7 +22,7 @@
 {
     <div class="card">
         <div class="card-header">
-            @string.Format(Localizer[Model.Birthdays.Count == 1 ? "Users_Birthdays_Count_One" : "Users_Birthdays_Count"].Value, Model.Birthdays.Count, Model.CurrentMonthName)
+            @Localizer[Model.Birthdays.Count == 1 ? "Users_Birthdays_Count_One" : "Users_Birthdays_Count", Model.Birthdays.Count, Model.CurrentMonthName]
         </div>
         <ul class="list-group list-group-flush">
             @foreach (var group in Model.Birthdays.GroupBy(b => b.DayOfMonth).OrderBy(g => g.Key))
@@ -54,7 +54,7 @@ else
 {
     <div class="card">
         <div class="card-body text-center text-muted py-5">
-            @string.Format(Localizer["Users_Birthdays_None"].Value, Model.CurrentMonthName)
+            @Localizer["Users_Birthdays_None", Model.CurrentMonthName]
         </div>
     </div>
 }

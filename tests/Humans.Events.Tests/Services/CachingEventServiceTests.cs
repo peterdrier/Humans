@@ -4,7 +4,6 @@ using Humans.Events.Contracts;
 using Humans.Events.Domain;
 using Humans.Events.Services;
 using Humans.Events.Services.Dtos;
-using Humans.Settings.Contracts;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
 using NodaTime;
@@ -60,9 +59,9 @@ public sealed class CachingEventServiceTests
             ? _service.EraseForUserAsync(Guid.NewGuid(), ct)
             : _service.WarmAllAsync(ct);
         await started.Task.WaitAsync(ct);
-        _inner.UpdateAndResubmitAsync(before.Id, Arg.Any<EventEdit>(), ct).Returns(new EventSaveResult());
+        _inner.ResubmitAsync(before.Id, Arg.Any<EventEdit>(), ct).Returns(new EventSaveResult());
         Task change = resubmit
-            ? _service.UpdateAndResubmitAsync(before.Id,
+            ? _service.ResubmitAsync(before.Id,
                 new EventEdit(before.CategoryId, null, "Edited", "Description", before.StartAt, 60, null, null, false, null, null), ct)
             : _service.WithdrawEventAsync(before.Id, ct);
         pending.SetResult([before]);
@@ -101,7 +100,7 @@ public sealed class CachingEventServiceTests
         _inner.GetAllCategoriesAsync(ct).Returns(Task.FromException<IReadOnlyList<EventCategoryManageInfo>>(failure));
         var read = () => _service.GetActiveCategoriesAsync(ct);
         (await read.Should().ThrowAsync<IOException>()).Which.Should().BeSameAs(failure);
-        _inner.GetAllCategoriesAsync(ct).Returns((IReadOnlyList<EventCategoryManageInfo>)[]);
+        _inner.GetAllCategoriesAsync(ct).Returns([]);
         var fresh = Approved("Recovered");
         SeedApproved(fresh);
 
@@ -118,9 +117,9 @@ public sealed class CachingEventServiceTests
         var ct = TestContext.Current.CancellationToken;
         await _service.GetApprovedEventsAsync(null, null, null, null, [], ct);
         var expected = new EventSaveResult(refused ? "Events_CategoryUnavailable" : null);
-        _inner.UpdateAndResubmitAsync(approved.Id, Arg.Any<EventEdit>(), ct).Returns(expected);
+        _inner.ResubmitAsync(approved.Id, Arg.Any<EventEdit>(), ct).Returns(expected);
 
-        var result = await _service.UpdateAndResubmitAsync(approved.Id,
+        var result = await _service.ResubmitAsync(approved.Id,
             new EventEdit(Guid.NewGuid(), null, "Edited", "Description", default, 60, null, null, false, null, null), ct);
 
         result.Should().BeSameAs(expected);
@@ -350,7 +349,7 @@ public sealed class CachingEventServiceTests
         CategoryId: Guid.NewGuid(), CategorySlug: "music", CategoryName: "Music", CategoryIsSensitive: false,
         VenueName: null, Title: title, Description: description, LocationNote: null, Host: null,
         StartAt: Instant.FromUtc(2026, 8, 1, 10, 0), DurationMinutes: 60, IsRecurring: false, RecurrenceDays: null,
-        PriorityRank: 0, SubmittedAt: Instant.FromUtc(2026, 8, 1, 10, 0), LastUpdatedAt: Instant.FromUtc(2026, 8, 1, 10, 0));
+        PriorityRank: 0);
 
     [HumansFact]
     public async Task EventSettingsChanged_ReloadsTheGuideSettingsProjection()
@@ -441,7 +440,5 @@ public sealed class CachingEventServiceTests
         SubmissionCloseAt: Instant.FromUtc(2026, 2, 1, 0, 0),
         GuidePublishAt: Instant.FromUtc(2026, 3, 1, 0, 0),
         MaxPrintSlots: 3,
-        TimeZoneId: timeZoneId,
-        CreatedAt: Instant.FromUtc(2026, 1, 1, 0, 0),
-        UpdatedAt: Instant.FromUtc(2026, 1, 1, 0, 0));
+        TimeZoneId: timeZoneId);
 }

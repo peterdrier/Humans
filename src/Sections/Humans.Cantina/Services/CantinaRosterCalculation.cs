@@ -13,7 +13,7 @@ internal static class CantinaRosterCalculation
     // Must match the last entry of Roster.cshtml's dietaryOrder; the service tests pin the literal.
     private static readonly string UnansweredKey = "Unanswered";
 
-    public static Dictionary<Guid, List<LocalDate>> BuildDaysOnSiteByUserId(
+    public static Dictionary<Guid, List<LocalDate>> BuildDaysOnSite(
         IReadOnlyList<(int DayOffset, IReadOnlyList<Guid> UserIds)> perDay,
         int weekStartOffset,
         LocalDate? weekStartDate)
@@ -110,12 +110,11 @@ internal static class CantinaRosterCalculation
             userInfoById.TryGetValue(id, out var info);
             dietById.TryGetValue(id, out var profile);
             var daysList = daysOnSiteByUserId[id];
-            daysList.Sort();
 
             people.Add(new RosterPersonDto(
                 UserId: id,
                 BurnerName: ResolveBurnerName(info),
-                ArrivesOn: arrivesOnByUser.GetValueOrDefault(id, daysList[0]),
+                ArrivesOn: arrivesOnByUser.GetValueOrDefault(id, daysList.Min()),
                 NoShift: BuildNoShiftDays(daysList, weekDays),
                 DietaryPreference: profile?.DietaryPreference,
                 Allergies: profile?.Allergies ?? [],

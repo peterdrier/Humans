@@ -1042,9 +1042,7 @@ body.page-wide .main-content {
 }
 
 .form-text {
-    font-family: var(--h-font-display);
-    font-style: italic;
-    font-size: 0.78rem;
+    font-size: 0.875rem;
     color: var(--h-umber);
 }
 
@@ -1329,6 +1327,12 @@ footer {
 
 .progress-bar {
     background-color: var(--h-gold);
+}
+
+/* A count's share beside it in a table row, where a full-width bar would overstate a handful of answers. */
+.progress.progress-mini {
+    width: 8rem;
+    height: .6rem;
 }
 
 .spinner-border,

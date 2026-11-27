@@ -1,7 +1,7 @@
+using Humans.Users.Contracts;
 using Humans.Email.Contracts;
 using Humans.Notifications.Contracts;
 using Humans.Notifications.Services;
-using Humans.Users.Contracts;
 using NSubstitute;
 
 namespace Humans.Notifications.Tests;
@@ -13,6 +13,15 @@ namespace Humans.Notifications.Tests;
 /// </summary>
 internal static class NotificationTestFixtures
 {
+    internal static IUserService StubUsers()
+    {
+        var users = Substitute.For<IUserService>();
+        users.GetUserInfosAsync(Arg.Any<IEnumerable<Guid>>(), Arg.Any<CancellationToken>())
+            .Returns(call => new ValueTask<IReadOnlyDictionary<Guid, UserInfo>>(
+                call.Arg<IEnumerable<Guid>>().Distinct().ToDictionary(id => id, id => UserFixtures.MakeUserInfo(id))));
+        return users;
+    }
+
     /// <summary>
     /// Holds the <c>email_communication_preferences</c> rows the emitter tests seed, behind
     /// <c>.CommunicationPreferences.Add(…)</c> and <c>.SaveChangesAsync(ct)</c>.

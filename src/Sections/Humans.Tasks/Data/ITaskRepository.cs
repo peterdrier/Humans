@@ -10,6 +10,9 @@ internal interface ITaskRepository : IRepository
 
     Task AddAsync(TaskItem task, CancellationToken ct = default);
 
+    /// <summary>Saves all the tasks and links in one transaction: every one lands, or none.</summary>
+    Task AddManyAsync(IReadOnlyList<TaskItem> tasks, IReadOnlyList<TaskDependency> dependencies, CancellationToken ct = default);
+
     /// <summary>Saves the task's own fields; assignments and links are untouched.</summary>
     Task UpdateAsync(TaskItem task, CancellationToken ct = default);
 
@@ -20,6 +23,12 @@ internal interface ITaskRepository : IRepository
     Task<bool> AddAssignmentAsync(TaskAssignment assignment, CancellationToken ct = default);
 
     Task<bool> RemoveAssignmentAsync(Guid taskId, Guid userId, CancellationToken ct = default);
+
+    /// <summary>Turns the person's request into a confirmed place. False when they have no request on that task.</summary>
+    Task<bool> ConfirmRequestAsync(Guid taskId, Guid userId, CancellationToken ct = default);
+
+    /// <summary>Deletes the person's request, never a confirmed place. False when they have no request on that task.</summary>
+    Task<bool> RemoveRequestAsync(Guid taskId, Guid userId, CancellationToken ct = default);
 
     /// <summary>False when the link already exists.</summary>
     Task<bool> AddDependencyAsync(TaskDependency dependency, CancellationToken ct = default);

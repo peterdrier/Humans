@@ -35,6 +35,8 @@ internal sealed class Application
 
     public Guid? ReviewedByUserId { get; private set; }
 
+    /// <summary>Retired: no longer written; <see cref="DecisionNote"/> holds the decision text. Kept until
+    /// peterdrier/Humans#2417 drops the column after a production check.</summary>
     public string? ReviewNotes { get; private set; }
 
     /// <summary>Dec 31 of the cycle's odd year; set on approval.</summary>
@@ -90,7 +92,7 @@ internal sealed class Application
     {
         StateMachine.Fire(ApplicationTrigger.Approve);
         ReviewedByUserId = reviewerUserId;
-        ReviewNotes = notes;
+        DecisionNote = notes;
         RecordResolution(ApplicationStatus.Approved, reviewerUserId, clock, notes);
     }
 
@@ -98,7 +100,7 @@ internal sealed class Application
     {
         StateMachine.Fire(ApplicationTrigger.Reject);
         ReviewedByUserId = reviewerUserId;
-        ReviewNotes = reason;
+        DecisionNote = reason;
         RecordResolution(ApplicationStatus.Rejected, reviewerUserId, clock, reason);
     }
 

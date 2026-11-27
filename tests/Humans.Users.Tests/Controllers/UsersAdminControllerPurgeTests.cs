@@ -1,3 +1,4 @@
+using Humans.Testing;
 using Xunit;
 using System.Security.Claims;
 using AwesomeAssertions;
@@ -9,7 +10,6 @@ using Humans.Users.Contracts;
 using Humans.Users.Controllers;
 using Humans.Users.Models;
 using Humans.Users.Services;
-using Humans.Users.Tests.Infrastructure;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
@@ -36,7 +36,7 @@ public class UsersAdminControllerPurgeTests
     private readonly IOnboardingIntake _onboarding = Substitute.For<IOnboardingIntake>();
     private readonly IUsersAudienceService _audience = Substitute.For<IUsersAudienceService>();
     private readonly IWebHostEnvironment _environment = Substitute.For<IWebHostEnvironment>();
-    private readonly IStringLocalizer<SharedResource> _localizer = Substitute.For<IStringLocalizer<SharedResource>>();
+    private readonly IStringLocalizer<SharedResource> _localizer = Substitute.For<IStringLocalizer<SharedResource>>().AddFormatting();
     private readonly Guid _adminUserId = Guid.NewGuid();
 
     public UsersAdminControllerPurgeTests()

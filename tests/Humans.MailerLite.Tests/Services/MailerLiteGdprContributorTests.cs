@@ -1,6 +1,5 @@
 using Humans.MailerLite.Services;
 using Humans.Users.Contracts;
-using Humans.MailerLite.Tests.Infrastructure;
 using AwesomeAssertions;
 using NSubstitute;
 using Xunit;
@@ -15,7 +14,7 @@ namespace Humans.MailerLite.Tests.Services;
 /// </summary>
 public class MailerLiteGdprContributorTests
 {
-    private static CancellationToken Ct => Xunit.TestContext.Current.CancellationToken;
+    private static CancellationToken Ct => TestContext.Current.CancellationToken;
 
     private readonly IMailerLiteService _mailerLite = Substitute.For<IMailerLiteService>();
     private readonly IUserService _users = Substitute.For<IUserService>();
@@ -72,7 +71,7 @@ public class MailerLiteGdprContributorTests
 
         await EraseAsync();
 
-        await _mailerLite.DidNotReceiveWithAnyArgs().DeleteSubscriberAsync(default!, default);
+        await _mailerLite.DidNotReceiveWithAnyArgs().DeleteSubscriberAsync(default!);
     }
 
     [HumansFact]

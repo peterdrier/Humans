@@ -66,7 +66,7 @@ Repository: `IUserRepository` (profile and contact-field methods).
 | Profiles | R |
 
 Cross-section reads via `IUserService`, `ITeamService`,
-`IRoleAssignmentService` (visibility / coordinator-team lookups). Implements
+`ISystemRoleService` (visibility / coordinator-team lookups). Implements
 `IUserMerge`. Refreshes the User+Profile read-model via the section-internal
 `IUserInfoSliceRefresher`. No `IMemoryCache`.
 
@@ -93,7 +93,7 @@ section — see [Users](#users) below.
 ### AdminHumanListAssembler / PersonSearchFields / PersonSearchMatcher
 
 Read-only DTO assemblers — no repository, no cache. Fan out over
-`IUserService`, `IUserEmailService`, `IRoleAssignmentService`,
+`IUserService`, `IUserEmailService`, `ISystemRoleService`,
 `ITeamService`.
 
 `PersonSearchMatcher` is a pure static matcher (no DI, no repository, no
@@ -212,7 +212,7 @@ Cross-section calls via `IAdminAuthorizationService` and `IAuditLogService` (adm
 Implements `IUserManagement` (hence `IUserService`, `IUserWrite`, `IUserMerge`)
 and the section-internal
 `IUserInfoSliceRefresher` (consumed by `UserInfoSaveChangesInterceptor` to
-catch OAuth/`UpdateAsync`/`LastLoginAt` writes that bypass the service
+catch OAuth/`UpdateAsync`/`LastSignInAt` writes that bypass the service
 surface, and by Users' own services that write past the decorator). Surfaced on `/Debug/CacheStats`.
 
 The decorator also owns the **merge index**: a `Dictionary<Guid, Guid[]>` built over
@@ -250,7 +250,7 @@ account with a fixed id. Uses ASP.NET `UserManager<User>`
 for password / identity primitives. Cross-section calls via
 `IUserEmailService`, `IUserService`, `IAuditLogService`. No cache.
 Results carry the user id, never the `User` entity: `AccountProvisioningResult(Guid UserId, bool Created)`
-and `MagicLinkSignupCompletionResult(Outcome, Guid? UserId)`.
+and `SignInLinkSignupResult(Outcome, Guid? UserId)`.
 
 New import account creation wraps User, provisioned UserEmail and Profile in one transaction, audits after local commit, then refreshes UserInfo after commit/rollback. Unverified replacements retain their existing outer transaction and refresh.
 
@@ -262,7 +262,7 @@ Unverified import replacements run deletion and provisioning in one serializable
 
 No repository. GDPR right-to-deletion orchestrator. Fans out over
 `IUserManagement`, `IUserEmailService`, `ITeamWrite`,
-`IRoleAssignmentWrite`, `IGdprService` (runs every section's
+`ISystemRoleWrite`, `IGdprService` (runs every section's
 `IUserDataContributor` erasure), `ITicketService`, `IAuditLogService`,
 `IEmailService` (messages built by `UsersEmails`). Refreshes `UserInfo` via
 `IUserInfoSliceRefresher`. No cache, no
@@ -304,7 +304,7 @@ Detection-only: loads the cached `UserInfo` read-model via
 gmail/googlemail equivalence), then counts active teams / role assignments
 per involved user, with each user's membership tier and consent review. Resolution is delegated to
 `AccountMergeService.MergeAsync`. **No DB access.** Cross-section calls via
-`IUserService` (in-section, through the internal `IUserManagement`), `ITeamService`, `IRoleAssignmentService`,
+`IUserService` (in-section, through the internal `IUserManagement`), `ITeamService`, `ISystemRoleService`,
 `IGovernanceService`, `IConsentService`, `IAuditLogService` and `IAuditViewerService` (the
 already-flagged `DuplicateAccountFlagged` entries). No cache.
 

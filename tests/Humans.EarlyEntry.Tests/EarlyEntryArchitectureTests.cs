@@ -1,6 +1,5 @@
 using System.Reflection;
 using AwesomeAssertions;
-using Humans.Base.Authorization;
 using Humans.Base.Constants;
 using Humans.Base.Interfaces;
 using Humans.EarlyEntry.Contracts;

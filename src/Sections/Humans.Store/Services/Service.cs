@@ -1,10 +1,7 @@
 using Humans.Base.Extensions;
 using Humans.AuditLog.Contracts;
 using Humans.Base.Attributes;
-using Humans.Base.Interfaces;
 using Humans.Camps.Contracts;
-using Humans.Finance.Contracts;
-using Humans.Holded.Contracts;
 using Humans.Settings.Contracts;
 using Humans.Store.Contracts;
 using Humans.Store.Data;
@@ -15,7 +12,6 @@ using Humans.Store.Services.Dtos;
 using Humans.Stripe.Contracts;
 using NodaTime;
 using System.Globalization;
-using System.Text.Json;
 using System.Resources;
 using Humans.Base.Threading;
 
@@ -177,7 +173,7 @@ internal sealed class Service(
 
     public async Task<MutationResult> RemoveLineAsync(Guid orderId, Guid lineId, Guid actorUserId, CancellationToken ct = default)
     {
-        var ctx = await repo.GetLineWithOrderAndProductAsync(lineId, ct);
+        var ctx = await repo.GetLineAsync(lineId, ct);
         if (ctx is null) return RefuseMutation("Store_LineMissing", orderId, actorUserId, lineId);
 
         if (ctx.OrderId != orderId)
@@ -271,7 +267,7 @@ internal sealed class Service(
     {
         var payments = await repo.GetPaymentsMissingMethodNameAsync(ct);
         return payments
-            .Select(p => new PaymentMethodRepairRow(p.Id, p.OrderId, p.Method, p.AmountEur, p.ReceivedAt))
+            .Select(p => new PaymentMethodRepairRow(p.OrderId, p.Method, p.AmountEur, p.ReceivedAt))
             .ToList();
     }
 
@@ -327,7 +323,7 @@ internal sealed class Service(
     {
         // Checkout creation and webhook recording must finish before deletion checks their retained state.
         using var mutation = await StripePaymentLock.AcquireAsync(logger, ct);
-        var order = await repo.GetOrderWithLinesAndPaymentsAsync(orderId, ct);
+        var order = await repo.GetOrderWithLinesAsync(orderId, ct);
         if (order is null) return RefuseAdminMutation(orderId, actorUserId, "Order not found.");
 
         // An issued order is held by a restrictive FK from store_invoices, and a paid one reads zero-balance; without
@@ -396,7 +392,7 @@ internal sealed class Service(
         if (method == PaymentMethod.WriteOff && string.IsNullOrWhiteSpace(notes))
             return RefuseAdminMutation(orderId, actorUserId, "A write-off needs a reason.");
 
-        var order = await repo.GetOrderWithLinesAndPaymentsAsync(orderId, ct);
+        var order = await repo.GetOrderWithLinesAsync(orderId, ct);
         if (order is null) return RefuseAdminMutation(orderId, actorUserId, "Order not found.");
         if (order.TeamId is not null)
             return RefuseAdminMutation(orderId, actorUserId, "Team orders are non-billable.");
@@ -469,7 +465,7 @@ internal sealed class Service(
     public async Task<AdminMutationResult> DeletePaymentAsync(
         Guid orderId, Guid paymentId, Guid actorUserId, CancellationToken ct = default)
     {
-        var order = await repo.GetOrderWithLinesAndPaymentsAsync(orderId, ct);
+        var order = await repo.GetOrderWithLinesAsync(orderId, ct);
         if (order is null) return RefuseAdminMutation(orderId, actorUserId, "Order not found.");
         var payment = order.Payments.FirstOrDefault(p => p.Id == paymentId);
         if (payment is null) return RefuseAdminMutation(orderId, actorUserId, "Payment not found on this order.");
@@ -503,7 +499,7 @@ internal sealed class Service(
 
     public async Task<OrderDto?> GetOrderAsync(Guid orderId, CancellationToken ct = default)
     {
-        var o = await repo.GetOrderWithLinesAndPaymentsAsync(orderId, ct);
+        var o = await repo.GetOrderWithLinesAsync(orderId, ct);
         if (o is null) return null;
         var productIds = o.Lines.Select(l => l.ProductId).Distinct().ToList();
         var productNames = await LoadProductNamesAsync(productIds, ct);
@@ -540,9 +536,9 @@ internal sealed class Service(
                             || (t.ManagementRoleHolderUserIds is not null
                                 && t.ManagementRoleHolderUserIds.Contains(userId))))
             .ToList();
-        var campOrders = await repo.GetOrdersForCampSeasonsWithLinesAndPaymentsAsync(
+        var campOrders = await repo.GetOrdersForCampSeasonsAsync(
             campSeasons.Select(s => s.Id).ToList(), ct);
-        var teamOrders = await repo.GetOrdersForTeamsWithLinesAndPaymentsAsync(
+        var teamOrders = await repo.GetOrdersForTeamsAsync(
             teams.Select(t => t.Id).ToList(), year, ct);
         var productIds = campOrders.Concat(teamOrders)
             .SelectMany(o => o.Lines).Select(l => l.ProductId).Distinct().ToList();
@@ -557,15 +553,12 @@ internal sealed class Service(
             var allOrders = new List<OrderDto>();
             foreach (var order in campOrdersBySeason[season.Id])
                 allOrders.Add(await MapOrderAsync(order, productNames, currentPrices, ct, season.Name));
-            var primary = allOrders
-                .OrderByDescending(o => o.BalanceEur)
-                .FirstOrDefault();
+            var primary = allOrders.MaxBy(o => o.BalanceEur);
             IReadOnlyList<OrderDto> orders = primary is null ? [] : [primary];
             counterparties.Add(new CounterpartyOrders(
                 OrderCounterpartyType.Camp,
                 season.Id,
                 season.Name,
-                year,
                 orders));
         }
 
@@ -579,7 +572,6 @@ internal sealed class Service(
                 OrderCounterpartyType.Team,
                 team.Id,
                 team.Name,
-                year,
                 orders));
         }
 
@@ -630,10 +622,9 @@ internal sealed class Service(
         {
             var t = totalsByLine[l.Id];
             return new OrderLineDto(
-                l.Id, l.OrderId, l.ProductId,
+                l.Id, l.ProductId,
                 productNames.GetValueOrDefault(l.ProductId, Resources.GetString("Store_UnknownProduct", CultureInfo.CurrentUICulture)!),
-                l.Qty, t.EffectiveUnitPrice, t.EffectiveVatRate, t.EffectiveDeposit, l.AddedAt,
-                t.SubtotalEur, t.VatEur, t.DepositEur, t.TotalEur);
+                l.Qty, t.EffectiveUnitPrice, t.EffectiveVatRate, t.EffectiveDeposit, t.DepositEur, t.TotalEur);
         }).ToList();
 
         var payments = o.Payments
@@ -723,16 +714,16 @@ internal sealed class Service(
 
         var campOrders = seasonsForYear.Count == 0
             ? Array.Empty<Order>()
-            : await repo.GetOrdersForCampSeasonsWithLinesAndPaymentsAsync(
+            : await repo.GetOrdersForCampSeasonsAsync(
                 seasonsForYear.Keys.ToList(), ct);
 
         var campOrdersInYear = campOrders
             .Where(o => o.CampSeasonId is { } sid && seasonsForYear.ContainsKey(sid))
             .ToList();
-        var teamOrders = await repo.GetOrdersForTeamsWithLinesAndPaymentsAsync(departmentIds, year, ct);
+        var teamOrders = await repo.GetOrdersForTeamsAsync(departmentIds, year, ct);
         var counterparties = campOrdersInYear
             .Select(o => (Order: o, Type: OrderCounterpartyType.Camp,
-                Id: o.CampSeasonId!.Value, Name: seasonsForYear[o.CampSeasonId.Value].Name))
+                Id: o.CampSeasonId!.Value, seasonsForYear[o.CampSeasonId.Value].Name))
             .Concat(teamOrders.Select(o => (Order: o, Type: OrderCounterpartyType.Team,
                 Id: o.TeamId!.Value, Name: teamNames.GetValueOrDefault(o.TeamId.Value, "(unknown team)"))))
             .ToList();
@@ -744,7 +735,7 @@ internal sealed class Service(
             var totals = totalsByOrder[c.Order.Id];
             var billable = c.Type == OrderCounterpartyType.Camp;
             return new OrderSummaryDto(
-                c.Order.Id, c.Type, c.Id, c.Name, c.Order.State,
+                c.Order.Id, c.Type, c.Name, c.Order.State,
                 totals.TotalDueEur,
                 billable ? totals.PaymentsTotalEur : 0m,
                 billable ? totals.BalanceEur : 0m);
@@ -781,7 +772,7 @@ internal sealed class Service(
                     .GroupBy(l => l.ProductId)
                     .ToDictionary(lg => lg.Key, lg => lg.Sum(l => (long)l.Qty));
                 return new CrossTabRow(
-                    g.Key.Type, g.Key.Id, g.First().Name, perProduct.Values.Sum(), perProduct);
+                    g.Key.Type, g.First().Name, perProduct.Values.Sum(), perProduct);
             }).ToList();
         return new SummaryDto(
             year,
@@ -798,7 +789,7 @@ internal sealed class Service(
         int year, CancellationToken ct)
     {
         var context = await LoadYearContextAsync(year, ct);
-        var orders = await repo.GetOrdersForYearWithLinesAndPaymentsAsync(
+        var orders = await repo.GetOrdersForYearAsync(
             year, context.SeasonsForYear.Keys.ToList(), ct);
         return (orders, context);
     }
@@ -1004,7 +995,7 @@ internal sealed class Service(
         {
             OrderDto? order = s.OrderId is { } oid && orders.TryGetValue(oid, out var o) ? o : null;
             rows.Add(new StripeReconciliationRow(
-                s.SessionId, s.PaymentIntentId, s.AmountEur, s.PaymentStatus, s.CreatedAt,
+                s.SessionId, s.PaymentIntentId, s.AmountEur, s.CreatedAt,
                 s.OrderId, order?.CounterpartyDisplayName,
                 ClassifyStripeSession(s, order, recordedByPi)));
         }
@@ -1099,7 +1090,7 @@ internal sealed class Service(
     public async Task<StripeRefundCheckResult> RecordStripeRefundsAsync(
         Guid orderId, Guid actorUserId, CancellationToken ct = default)
     {
-        var order = await repo.GetOrderWithLinesAndPaymentsAsync(orderId, ct);
+        var order = await repo.GetOrderWithLinesAsync(orderId, ct);
         if (order is null) return RefuseRefundCheck(orderId, "Order not found.");
         if (order.TeamId is not null) return RefuseRefundCheck(orderId, "Team orders are non-billable.");
 
@@ -1116,13 +1107,13 @@ internal sealed class Service(
             var listed = await stripeService.ListStoreRefundsAsync(pi, ct);
             if (listed is null)
                 return RefuseRefundCheck(orderId,
-                    "Couldn't read refunds from Stripe: the Store account's read key is missing or lacks refund read access.");
+                    "Couldn't read refunds from Stripe with the Store account's read key. The Stripe warning in the log says why.");
             refunds.AddRange(listed);
         }
 
         using var mutation = await StripePaymentLock.AcquireAsync(logger, ct);
         // Reread under the lock so a concurrent check can't book the same refund twice.
-        order = await repo.GetOrderWithLinesAndPaymentsAsync(orderId, ct);
+        order = await repo.GetOrderWithLinesAsync(orderId, ct);
         if (order is null) return RefuseRefundCheck(orderId, "Order not found.");
         var booked = order.Payments
             .Where(p => p.Method == PaymentMethod.Refund && p.ExternalRef is not null)
@@ -1133,7 +1124,8 @@ internal sealed class Service(
         var total = 0m;
         var pending = 0;
         var settled = 0;
-        var cancelled = 0;
+        var failed = 0;
+        var canceled = 0;
         foreach (var refund in refunds.OrderBy(r => r.CreatedAt))
         {
             var status = RefundStatusOf(refund.Status);
@@ -1151,7 +1143,8 @@ internal sealed class Service(
                     $"Stripe refund {refund.RefundId} of EUR {existing.AmountEur:0.00} {verb}",
                     actorUserId, orderId, AuditEntityTypes.Order);
                 if (status == PaymentStatus.Paid) settled++;
-                else cancelled++;
+                else if (string.Equals(refund.Status, "canceled", StringComparison.Ordinal)) canceled++;
+                else failed++;
                 continue;
             }
 
@@ -1181,7 +1174,7 @@ internal sealed class Service(
             if (status == PaymentStatus.Pending) pending++;
         }
 
-        return new StripeRefundCheckResult(recorded, total, pending, settled, cancelled);
+        return new StripeRefundCheckResult(recorded, total, pending, settled, failed, canceled);
     }
 
     /// <summary>Stripe's <c>pending</c> and <c>requires_action</c> are money on its way out; <c>failed</c> and
@@ -1198,7 +1191,7 @@ internal sealed class Service(
     private StripeRefundCheckResult RefuseRefundCheck(Guid orderId, string reason)
     {
         logger.LogWarning("Stripe refund check refused for order {OrderId}: {Reason}", orderId, reason);
-        return new StripeRefundCheckResult(0, 0m, 0, 0, 0, reason);
+        return new StripeRefundCheckResult(0, 0m, 0, 0, 0, 0, reason);
     }
 
     /// <summary>
@@ -1262,17 +1255,6 @@ internal sealed class Service(
                 return null;
             }
         }
-    }
-
-    public async Task RecordStripePaymentAsync(
-        Guid orderId,
-        string paymentIntentId,
-        decimal amountEur,
-        PaymentStatus status = PaymentStatus.Paid,
-        CancellationToken ct = default)
-    {
-        using var mutation = await StripePaymentLock.AcquireAsync(logger, ct);
-        await RecordStripePaymentCoreAsync(orderId, paymentIntentId, amountEur, status, ct);
     }
 
     // Called only while the ingestion lock is held, including from webhook state transitions.
@@ -1447,7 +1429,7 @@ internal sealed class Service(
             return;
         }
 
-        var existing = await repo.GetPaymentByStripePaymentIntentIdAsync(paymentIntentId, ct);
+        var existing = await repo.GetPaymentByIntentIdAsync(paymentIntentId, ct);
         if (existing is null)
         {
             if (session.OrderId is { } orderId
@@ -1502,7 +1484,7 @@ internal sealed class Service(
             return;
         }
 
-        var existing = await repo.GetPaymentByStripePaymentIntentIdAsync(paymentIntentId, ct);
+        var existing = await repo.GetPaymentByIntentIdAsync(paymentIntentId, ct);
         if (existing is null || existing.Status != PaymentStatus.Pending)
             return;
 

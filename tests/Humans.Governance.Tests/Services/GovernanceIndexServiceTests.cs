@@ -1,6 +1,5 @@
 using System.Security.Claims;
 using Humans.Governance.Controllers;
-using Humans.Governance.Tests.Infrastructure;
 using Microsoft.AspNetCore.Authorization;
 using Humans.Base.Authorization;
 using Humans.Governance.Models;
@@ -34,7 +33,7 @@ public sealed class GovernanceIndexServiceTests
     private readonly ILegalDocumentService _legalDocuments = Substitute.For<ILegalDocumentService>();
     private readonly IUserService _users = Substitute.For<IUserService>();
     private readonly IAssemblyVoteService _votes = Substitute.For<IAssemblyVoteService>();
-    private readonly IRoleAssignmentService _roles = Substitute.For<IRoleAssignmentService>();
+    private readonly ISystemRoleService _roles = Substitute.For<ISystemRoleService>();
     private readonly HashSet<Guid> _inactive = [];
     private readonly GovernanceBodyRepository _bodies = new(new TestDbContextFactory<GovernanceDbContext>(
         new DbContextOptionsBuilder<GovernanceDbContext>().UseInMemoryDatabase(Guid.NewGuid().ToString()).Options));
@@ -116,13 +115,13 @@ public sealed class GovernanceIndexServiceTests
         var seated = Instant.FromUtc(2024, 3, 1, 0, 0);
         _applications.GetUserApplicationsAsync(viewer, Arg.Any<CancellationToken>()).Returns([
             new UserApplicationSnapshot(Guid.NewGuid(), viewer, ApplicationStatus.Approved, MembershipTier.Asociado,
-                approved, approved, new LocalDate(2027, 12, 31), "m", null, null, null)]);
+                approved, approved, new LocalDate(2027, 12, 31))]);
         _tierApplications.GetActiveApprovedTierUserIdsAsync(MembershipTier.Asociado, Arg.Any<LocalDate>(), Arg.Any<CancellationToken>())
             .Returns([viewer]);
         _roles.GetActiveUserIdsInRoleAsync(RoleNames.Board, Arg.Any<CancellationToken>()).Returns([viewer]);
         _roles.GetByUserIdAsync(viewer, Arg.Any<CancellationToken>()).Returns([
-            new RoleAssignmentSummarySnapshot(Guid.NewGuid(), viewer, null, "Viewer", RoleNames.Board, seated, null, null,
-                Guid.NewGuid(), null, seated)]);
+            new SystemRoleSummarySnapshot(Guid.NewGuid(), viewer, null, "Viewer", RoleNames.Board, seated, null, null,
+                Guid.NewGuid(), null)]);
 
         var data = await CreateService().GetIndexDataAsync(viewer);
 
@@ -220,7 +219,7 @@ public sealed class GovernanceIndexServiceTests
     private static UserApplicationSnapshot Approved(Guid userId, LocalDate? termExpiresAt) =>
         new(Guid.NewGuid(), userId, ApplicationStatus.Approved, MembershipTier.Colaborador,
             Instant.FromUtc(2026, 3, 1, 12, 0), Instant.FromUtc(2026, 3, 8, 12, 0),
-            termExpiresAt, "motivation", null, null, null);
+            termExpiresAt);
 
     [HumansFact]
     public async Task GetIndexDataAsync_carries_the_stored_term_expiry()
@@ -279,14 +278,14 @@ public sealed class GovernanceIndexServiceTests
     private GovernanceBodyLinksService BodyLinks() =>
         new(_bodies, Substitute.For<ITeamService>(), Substitute.For<ITeamResourceService>(), Substitute.For<IAuditLogService>(),
             new GovernanceBodySync(_bodies, Substitute.For<IGoogleGroupSync>(), Substitute.For<IGoogleSyncWrite>()),
-            NodaTime.SystemClock.Instance);
+            SystemClock.Instance);
 
     private GovernanceController CreateController(Guid userId, IAuthorizationService authorization, CancellationToken ct = default) =>
         new(_users, CreateService(),
-            new GovernanceBoardSeats(_roles, Substitute.For<IRoleAssignmentWrite>(), _users, _bodies,
+            new GovernanceBoardSeats(_roles, Substitute.For<ISystemRoleWrite>(), _users, _bodies,
                 Substitute.For<IAuditLogService>(),
                 new GovernanceBodySync(_bodies, Substitute.For<IGoogleGroupSync>(), Substitute.For<IGoogleSyncWrite>()),
-                NodaTime.SystemClock.Instance),
+                SystemClock.Instance),
             BodyLinks(),
             authorization,
             Substitute.For<Microsoft.Extensions.Localization.IStringLocalizer<GovernanceResource>>())

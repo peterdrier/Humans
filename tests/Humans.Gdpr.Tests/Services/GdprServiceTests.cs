@@ -51,7 +51,7 @@ public class GdprServiceTests
         PreferredLanguage: "en",
         FallbackPictureUrl: null,
         CreatedAt: FixedNow,
-        LastLoginAt: null,
+        LastSignInAt: null,
         DeletionRequestedAt: null,
         DeletionScheduledFor: null,
         DeletionEligibleAfter: null,
@@ -122,9 +122,8 @@ public class GdprServiceTests
     [HumansFact]
     public async Task ExportForUserAsync_RequestedUnderMergedAwayId_NamesTheSurvivorAndItsArchivedIds()
     {
-        // The key that makes the section slices legible: rows stay keyed to the archived id on
-        // purpose (audit entries, consent records, roster rows, ballots), so without this the
-        // reader of an export for the survivor sees rows carrying a stranger's id.
+        // Rows stay keyed to the archived id on purpose (audit entries, consent records, roster
+        // rows, ballots); without the list the survivor's export shows rows carrying a stranger's id.
         var survivor = Guid.NewGuid();
         var archived = Guid.NewGuid();
         var service = CreateService(
@@ -454,7 +453,6 @@ public class GdprServiceTests
     [HumansFact]
     public async Task EraseForUserAsync_PropagatesContributorFailureAndStopsBeforeAccount()
     {
-        // A throwing contributor aborts the run before the identity collapse.
         var boom = new RecordingContributor("Issues") { Throw = new InvalidOperationException("boom") };
         var account = new RecordingContributor("Account") { ErasesLast = true };
         var logger = new CapturingLogger<GdprService>();

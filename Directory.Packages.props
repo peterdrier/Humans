@@ -14,6 +14,8 @@
     <PackageVersion Include="HtmlSanitizer" Version="11.0.26" />
     <PackageVersion Include="Ical.Net" Version="5.2.4" />
     <PackageVersion Include="Markdig" Version="1.6.0" />
+    <!-- The Backdoor MCP endpoint (src/Sections/Humans.Backdoor/Docs/features/mcp.md). Apache-2.0. -->
+    <PackageVersion Include="ModelContextProtocol.AspNetCore" Version="2.4.0" />
     <!-- User-Agent parsing for /Admin/ClientStats (code-based, no regex DB; library telemetry left off) -->
     <PackageVersion Include="MyCSharp.HttpUserAgentParser" Version="3.1.6" />
     <PackageVersion Include="Microsoft.AspNetCore.Identity.EntityFrameworkCore" Version="10.0.15" />
@@ -75,7 +77,7 @@
     <!-- 14.15.0 patches GHSA-422r-8c97-xcg4 / GHSA-56m6-8q75-f2rw -->
     <PackageVersion Include="Magick.NET-Q8-AnyCPU" Version="15.1.0" />
     <!-- Ticket QR codes: managed PNG encoder, no System.Drawing -->
-    <PackageVersion Include="QRCoder" Version="1.8.1" />
+    <PackageVersion Include="QRCoder" Version="1.9.0" />
     <!-- Transitive pin: patches GHSA-37gx-xxp4-5rgx / GHSA-w3x6-4m5h-cxqf / GHSA-9mv3-2cwr-p262;
          10.0.10 patches GHSA-23rf-6693-g89p / GHSA-8q5v-6pqq-x66h / GHSA-cvvh-rhrc-wg4q /
          GHSA-g8r8-53c2-pm3f / GHSA-mmjf-rqrv-855v -->

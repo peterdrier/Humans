@@ -2,6 +2,7 @@ using System.Text;
 using AwesomeAssertions;
 using CsvHelper;
 using Humans.Base.Csv;
+using Humans.Base.Extensions;
 using Xunit;
 
 namespace Humans.Base.Tests.Csv;
@@ -26,6 +27,18 @@ public sealed class HumansCsvTests
     public void WriteRow_NullBecomesEmptyCell_AndNumbersFormatInvariant()
     {
         Text(csv => csv.WriteRow("x", null, 1234.5m, 60)).Should().Be("x,,1234.5,60\r\n");
+    }
+
+    [HumansFact]
+    public void WriteRow_EveryCulture_FormatsValuesInvariant()
+    {
+        foreach (var culture in CultureCatalog.SupportedCultureCodes)
+        {
+            using var scope = new CultureScope(culture);
+
+            Text(csv => csv.WriteRow(1234.5m, 40.4168, new DateTime(2026, 6, 5, 12, 34, 0, DateTimeKind.Unspecified)))
+                .Should().Be("1234.5,40.4168,2026-06-05T12:34:00.0000000\r\n", "culture {0}", culture);
+        }
     }
 
     [HumansFact]

@@ -1,7 +1,6 @@
 using Humans.Users.Services;
 using AwesomeAssertions;
 using Humans.Base.Interfaces;
-using Humans.Users.Contracts;
 using Microsoft.Extensions.DependencyInjection;
 using NodaTime;
 using NSubstitute;
@@ -54,8 +53,8 @@ public class SectionDataMigrationsTests
         _emailProblems.ScanAsync(Arg.Any<CancellationToken>()).Returns(new EmailProblemsReport(
             Instant.FromUtc(2026, 1, 1, 0, 0),
             [
-                new EmailProblem(EmailProblemKind.LegacyIdentityEmailNotInUserEmails, legacyUser, null, null, "old@x.com", null),
-                new EmailProblem(EmailProblemKind.MultipleIsPrimary, Guid.NewGuid(), null, null, null, null),
+                new EmailProblem(EmailProblemKind.LegacyIdentityEmailNotInUserEmails, legacyUser, null, null, "old@x.com"),
+                new EmailProblem(EmailProblemKind.MultipleIsPrimary, Guid.NewGuid(), null, null, null),
             ]));
         _emailProblems.BackfillLegacyIdentityEmailsAsync(_actorId, Arg.Any<CancellationToken>())
             .Returns([(legacyUser, "old@x.com")]);
@@ -72,10 +71,10 @@ public class SectionDataMigrationsTests
     [HumansFact]
     public async Task Leftover_merge_requests_are_listed_and_dismissed_with_the_actor()
     {
-        var asked = new AccountMergeUserSnapshot(Guid.NewGuid(), null, null, null);
-        var holder = new AccountMergeUserSnapshot(Guid.NewGuid(), null, null, null);
+        var asked = new AccountMergeUserSnapshot(Guid.NewGuid());
+        var holder = new AccountMergeUserSnapshot(Guid.NewGuid());
         var request = new AccountMergeRequestSnapshot(Guid.NewGuid(), "shared@x.com", asked, holder,
-            AccountMergeRequestStatus.Pending, Instant.FromUtc(2026, 1, 1, 0, 0), null, null, null);
+            Instant.FromUtc(2026, 1, 1, 0, 0));
         _merges.GetPendingRequestsAsync(Arg.Any<CancellationToken>()).Returns([request]);
         _merges.RejectAsync(request.Id, _actorId, Arg.Any<string?>(), Arg.Any<CancellationToken>())
             .Returns(new AccountMergeResult());

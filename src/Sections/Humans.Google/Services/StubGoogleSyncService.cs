@@ -1,5 +1,5 @@
-using Humans.Google.Contracts;
 using Humans.Google.Data;
+using Humans.Google.Contracts;
 using Humans.Google.Services.Workspace;
 using Humans.Base.Enums;
 using Humans.AuditLog.Contracts;
@@ -144,11 +144,11 @@ internal sealed class StubGoogleSyncService(
         return Task.FromResult<IReadOnlyList<GoogleSyncOutboxEventSnapshot>>([]);
     }
 
-    public Task<bool> RequeueOutboxEventAsync(Guid id, Guid actorUserId, CancellationToken cancellationToken = default)
+    public Task<OutboxRequeue> RequeueOutboxEventAsync(Guid id, Guid actorUserId, CancellationToken cancellationToken = default)
     {
         // Nothing is requeued, so nothing is audited (as in the real service).
         logger.LogInformation("[STUB] Would requeue Google sync outbox event {Id}", id);
-        return Task.FromResult(false);
+        return Task.FromResult(OutboxRequeue.NotFound);
     }
 
     public async Task<int> RequeueAllFailedOutboxEventsAsync(Guid actorUserId, CancellationToken cancellationToken = default)

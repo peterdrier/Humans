@@ -63,7 +63,6 @@ public class AgentSettingsServiceTests
             Id = 1,
             Enabled = false,
             Model = "claude-sonnet-4-6",
-            PreloadConfig = AgentPreloadConfig.Tier1,
             DailyMessageCap = 30,
             HourlyMessageCap = 10,
             DailyTokenCap = 50000,
@@ -143,7 +142,7 @@ public class AgentSettingsServiceTests
         var anthropic = Substitute.For<IAnthropicClient>();
         anthropic.ListModelsAsync(Arg.Any<CancellationToken>())
             .Returns<IReadOnlyList<AnthropicModelInfo>>(_ => throw failure);
-        var logger = new Humans.Testing.CapturingLogger<AgentSettingsService>();
+        var logger = new CapturingLogger<AgentSettingsService>();
         var service = CreateModelOptionsService(anthropic, savedModel: "claude-sonnet-4-6", logger);
 
         var options = await service.GetModelOptionsAsync(Xunit.TestContext.Current.CancellationToken);

@@ -35,6 +35,7 @@ internal sealed class GoogleDrivePermissionsClient(
             var permissions = new List<DrivePermission>();
             string? pageToken = null;
             var seenPageTokens = new HashSet<string>(StringComparer.Ordinal);
+            var pagesRead = 0;
 
             do
             {
@@ -49,6 +50,13 @@ internal sealed class GoogleDrivePermissionsClient(
                 var response = await request.ExecuteAsync(ct);
 
                 pageToken = response.NextPageToken;
+                if (++pagesRead >= 500 && !string.IsNullOrEmpty(pageToken))
+                {
+                    logger.LogWarning("Google Drive permissions exceeded the page limit.");
+                    return new DrivePermissionListResult(Permissions: null,
+                        Error: new GoogleClientError(502, "Google Drive permissions exceeded the page limit."));
+                }
+
                 if (!string.IsNullOrEmpty(pageToken) && !seenPageTokens.Add(pageToken))
                 {
                     logger.LogWarning("Google Drive permissions returned a repeated page token for {FileId}.", fileId);
@@ -282,7 +290,7 @@ internal sealed class GoogleDrivePermissionsClient(
         {
             var info = await drive.Drives.Get(driveId).ExecuteAsync(ct);
             return new SharedDriveMetadataResult(
-                new SharedDriveMetadata(info.Id, info.Name),
+                new SharedDriveMetadata(info.Name),
                 Error: null);
         }
         catch (global::Google.GoogleApiException ex)

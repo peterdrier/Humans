@@ -1,5 +1,4 @@
 using AwesomeAssertions;
-using Humans.Events.Contracts;
 using Humans.Events.Data;
 using Humans.Events.Domain;
 using Humans.Events.Services;
@@ -346,11 +345,11 @@ public sealed class EventRepositoryTests : IDisposable
         var moderatorId = Guid.NewGuid();
 
         guideEvent.Status = EventStatus.ResubmitRequested;
-        await _repo.SaveEventAndModerationActionAsync(
+        await _repo.SaveModeratedEventAsync(
             guideEvent, BuildModerationAction(guideEvent.Id, moderatorId, EventModerationActionType.ResubmitRequested),
             Xunit.TestContext.Current.CancellationToken);
         guideEvent.Status = EventStatus.Approved;
-        await _repo.SaveEventAndModerationActionAsync(
+        await _repo.SaveModeratedEventAsync(
             guideEvent, BuildModerationAction(guideEvent.Id, moderatorId, EventModerationActionType.Approved),
             Xunit.TestContext.Current.CancellationToken);
 

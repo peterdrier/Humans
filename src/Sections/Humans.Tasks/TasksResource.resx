@@ -129,10 +129,54 @@
   <data name="Tasks_DependencyAdded" xml:space="preserve"><value>Now waiting on that task.</value></data>
   <data name="Tasks_DependencyRemoved" xml:space="preserve"><value>No longer waiting on that task.</value></data>
   <data name="Tasks_Refusal_NoPerson" xml:space="preserve"><value>Pick a person from the list.</value></data>
-  <data name="Tasks_Refusal_Unreadable" xml:space="preserve"><value>A date or event could not be read. Check them and try again.</value></data>
+  <data name="Tasks_Refusal_Unreadable" xml:space="preserve"><value>Could not read: {0}. Check and try again.</value></data>
   <data name="Enum_TaskItemStatus_Todo" xml:space="preserve"><value>To do</value></data>
   <data name="Enum_TaskItemStatus_InProgress" xml:space="preserve"><value>In progress</value></data>
   <data name="Enum_TaskItemStatus_Blocked" xml:space="preserve"><value>Blocked</value></data>
   <data name="Enum_TaskItemStatus_Done" xml:space="preserve"><value>Done</value></data>
   <data name="Enum_TaskItemStatus_Cancelled" xml:space="preserve"><value>Cancelled</value></data>
+  <data name="Tasks_Refusal_Finished" xml:space="preserve"><value>This task is done or cancelled, so it can't be claimed.</value></data>
+  <data name="Tasks_Refusal_Full" xml:space="preserve"><value>Every slot on this task is taken.</value></data>
+  <data name="Tasks_Refusal_YouAreOn" xml:space="preserve"><value>You are already on this task.</value></data>
+  <data name="Tasks_Refusal_YouRequested" xml:space="preserve"><value>You have already asked to join this task.</value></data>
+  <data name="Tasks_Refusal_YouAreNotOn" xml:space="preserve"><value>You don't have a place on this task.</value></data>
+  <data name="Tasks_Refusal_NoYourRequest" xml:space="preserve"><value>You have no request on this task.</value></data>
+  <data name="Tasks_Refusal_NoRequest" xml:space="preserve"><value>That person has no request waiting on this task.</value></data>
+  <data name="Tasks_Email_Greeting" xml:space="preserve"><value>&lt;p&gt;Hi {0},&lt;/p&gt;</value><comment>{0} = recipient name</comment></data>
+  <data name="Tasks_Email_ReasonLine" xml:space="preserve"><value>&lt;p&gt;Reason: {0}&lt;/p&gt;</value><comment>{0} = the manager's reason, free text</comment></data>
+  <data name="Tasks_Email_RequestApproved_Subject" xml:space="preserve"><value>You're on the task: {0}</value><comment>{0} = task title</comment></data>
+  <data name="Tasks_Email_RequestApproved_Body" xml:space="preserve"><value>&lt;h2&gt;Request approved&lt;/h2&gt;{0}&lt;p&gt;Your request to join &lt;strong&gt;{1}&lt;/strong&gt; ({2}) was approved. You now have a place on it.&lt;/p&gt;&lt;p&gt;&lt;a href="{3}"&gt;View the task&lt;/a&gt;&lt;/p&gt;</value><comment>{0} = greeting HTML, {1} = task title, {2} = team name, {3} = task URL</comment></data>
+  <data name="Tasks_Email_RequestDeclined_Subject" xml:space="preserve"><value>Your request to join: {0}</value><comment>{0} = task title</comment></data>
+  <data name="Tasks_Email_RequestDeclined_Body" xml:space="preserve"><value>&lt;h2&gt;Request not approved&lt;/h2&gt;{0}&lt;p&gt;Your request to join &lt;strong&gt;{1}&lt;/strong&gt; ({2}) was not approved this time.&lt;/p&gt;{3}&lt;p&gt;You can ask again if the task still has a free slot.&lt;/p&gt;&lt;p&gt;&lt;a href="{4}"&gt;View the task&lt;/a&gt;&lt;/p&gt;</value><comment>{0} = greeting HTML, {1} = task title, {2} = team name, {3} = reason line HTML (may be empty), {4} = task URL</comment></data>
+  <data name="Tasks_Todo_Requests_Title" xml:space="preserve"><value>Task requests waiting</value></data>
+  <data name="Tasks_Todo_Requests_Description" xml:space="preserve"><value>{0} has {1} request(s) waiting for your answer.</value><comment>{0} = team name, {1} = number of waiting requests</comment></data>
+  <data name="Tasks_Todo_Requests_Action" xml:space="preserve"><value>Answer requests</value></data>
+  <data name="Tasks_Claim" xml:space="preserve"><value>I'll do this</value></data>
+  <data name="Tasks_AskToJoin" xml:space="preserve"><value>Ask to join</value></data>
+  <data name="Tasks_Release" xml:space="preserve"><value>Leave this task</value></data>
+  <data name="Tasks_Withdraw" xml:space="preserve"><value>Withdraw request</value></data>
+  <data name="Tasks_RequestWaiting" xml:space="preserve"><value>Waiting for approval</value></data>
+  <data name="Tasks_YouAreOn" xml:space="preserve"><value>You're on this task</value></data>
+  <data name="Tasks_Claim_Approval" xml:space="preserve"><value>A manager approves who takes this task.</value></data>
+  <data name="Tasks_Claim_FreeSlot" xml:space="preserve"><value>This task has a free slot.</value></data>
+  <data name="Tasks_Claim_Waiting" xml:space="preserve"><value>Your request is waiting for a manager's answer. You'll get an email.</value></data>
+  <data name="Tasks_Requests_Title" xml:space="preserve"><value>Waiting for approval</value></data>
+  <data name="Tasks_Requests_Approve" xml:space="preserve"><value>Approve</value></data>
+  <data name="Tasks_Requests_Decline" xml:space="preserve"><value>Decline</value></data>
+  <data name="Tasks_Requests_Reason" xml:space="preserve"><value>Reason, sent in the email (optional)</value></data>
+  <data name="Tasks_Col_Join" xml:space="preserve"><value>Join</value></data>
+  <data name="Tasks_Col_Free" xml:space="preserve"><value>Free</value></data>
+  <data name="Tasks_List_Open" xml:space="preserve"><value>Open tasks</value></data>
+  <data name="Tasks_Open_Title" xml:space="preserve"><value>Open tasks</value></data>
+  <data name="Tasks_Open_Subtitle" xml:space="preserve"><value>Tasks that still need people, most needed first.</value></data>
+  <data name="Tasks_Open_Slots" xml:space="preserve"><value>Open slots</value></data>
+  <data name="Tasks_Open_Critical" xml:space="preserve"><value>Critical</value></data>
+  <data name="Tasks_Open_Empty" xml:space="preserve"><value>Every task has its people for now.</value></data>
+  <data name="Tasks_Open_NeedsApproval" xml:space="preserve"><value>Needs approval</value></data>
+  <data name="Tasks_Claimed" xml:space="preserve"><value>You're on {0}.</value></data>
+  <data name="Tasks_Requested" xml:space="preserve"><value>You asked to join {0}. A manager will answer.</value></data>
+  <data name="Tasks_Released" xml:space="preserve"><value>You left {0}.</value></data>
+  <data name="Tasks_Withdrawn" xml:space="preserve"><value>Request withdrawn.</value></data>
+  <data name="Tasks_Approved" xml:space="preserve"><value>Request approved.</value></data>
+  <data name="Tasks_Declined" xml:space="preserve"><value>Request declined.</value></data>
 </root>

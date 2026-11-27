@@ -16,7 +16,7 @@
 @if (Model.DayGroups.Count == 0)
 {
     <div class="alert alert-secondary">
-        @Html.Raw(string.Format(Localizer["Events_ScheduleEmpty"].Value, "<a href=\"" + Url.Action("Browse", "Events") + "\">" + Localizer["Events_ScheduleEmptyLink"].Value + "</a>"))
+        @Html.Raw(Localizer["Events_ScheduleEmpty", "<a href=\"" + Url.Action("Browse", "Events") + "\">" + Localizer["Events_ScheduleEmptyLink"].Value + "</a>"])
     </div>
 }
 else

@@ -1,5 +1,5 @@
-using Humans.Email.Contracts;
 using Humans.Users.Contracts;
+using Humans.Email.Contracts;
 using Humans.Notifications.Domain;
 using Xunit;
 using Humans.Notifications.Data;
@@ -24,6 +24,7 @@ public class NotificationEmitterTests : IDisposable
     private readonly NotificationRepository _repo;
     private readonly ICommunicationPreferenceService _preferenceService = Substitute.For<ICommunicationPreferenceService>();
     private readonly NotificationEmitter _emitter;
+    private readonly IUserService _users = StubUsers();
 
     public NotificationEmitterTests()
     {
@@ -38,7 +39,7 @@ public class NotificationEmitterTests : IDisposable
         _preferenceService.StubInboxDisabledFrom(_dbContext);
 
         _emitter = new NotificationEmitter(
-            _repo, _preferenceService, _clock,
+            _repo, _preferenceService, _users, _clock,
             NullLogger<NotificationEmitter>.Instance);
     }
 
@@ -46,6 +47,78 @@ public class NotificationEmitterTests : IDisposable
     {
         _notificationsDb.Dispose();
         GC.SuppressFinalize(this);
+    }
+
+    [HumansTheory]
+    [InlineData(null, null)]
+    [InlineData(UserState.Deleted, null)]
+    [InlineData(UserState.Merged, null)]
+    [InlineData(UserState.Bare, "erased@gdpr.local")]
+    [InlineData(UserState.Bare, "erased@deleted.local")]
+    public async Task Send_UnavailableRecipients_SkipsThem(UserState? state, string? identityEmail)
+    {
+        var availableId = Guid.NewGuid();
+        var unavailableId = Guid.NewGuid();
+        var people = new Dictionary<Guid, UserInfo> { [availableId] = UserFixtures.MakeUserInfo(availableId) };
+        if (state is not null)
+            people[unavailableId] = UserFixtures.MakeUserInfo(unavailableId) with { State = state.Value, IdentityEmailColumn = identityEmail };
+        _users.GetUserInfosAsync(Arg.Any<IEnumerable<Guid>>(), Arg.Any<CancellationToken>()).Returns(people);
+
+        await _emitter.SendAsync(TestSources.TeamUpdate, NotificationClass.Informational, NotificationPriority.Normal,
+            "Update", [availableId, unavailableId], cancellationToken: TestContext.Current.CancellationToken);
+
+        var rows = await _notificationsDb.NotificationRecipients.AsNoTracking().ToListAsync(TestContext.Current.CancellationToken);
+        rows.Should().ContainSingle().Which.UserId.Should().Be(availableId);
+    }
+
+    [HumansTheory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task Send_MergedRecipients_UsesSurvivorPreferences(bool suppressed)
+    {
+        var archivedId = Guid.NewGuid();
+        var survivorId = Guid.NewGuid();
+        var person = UserFixtures.MakeUserInfo(survivorId) with { MergedUserIds = [archivedId] };
+        _users.GetUserInfosAsync(Arg.Any<IEnumerable<Guid>>(), Arg.Any<CancellationToken>())
+            .Returns(new Dictionary<Guid, UserInfo> { [archivedId] = person, [survivorId] = person });
+        _dbContext.CommunicationPreferences.Add(new() { UserId = survivorId, Category = TestSources.TeamUpdate.Category, InboxEnabled = !suppressed });
+
+        await _emitter.SendAsync(TestSources.TeamUpdate, NotificationClass.Informational, NotificationPriority.Normal,
+            "Update", [archivedId, survivorId, archivedId], cancellationToken: TestContext.Current.CancellationToken);
+
+        var rows = await _notificationsDb.NotificationRecipients.AsNoTracking().ToListAsync(TestContext.Current.CancellationToken);
+        if (suppressed) rows.Should().BeEmpty();
+        else rows.Should().ContainSingle().Which.UserId.Should().Be(survivorId);
+        await _preferenceService.Received(1).GetUsersWithInboxDisabledAsync(
+            Arg.Is<IReadOnlyList<Guid>>(ids => ids.Count == 1 && ids[0] == survivorId),
+            TestSources.TeamUpdate.Category, TestContext.Current.CancellationToken);
+    }
+
+    [HumansFact]
+    public async Task Send_AllMissingRecipients_WritesNothing()
+    {
+        _users.GetUserInfosAsync(Arg.Any<IEnumerable<Guid>>(), Arg.Any<CancellationToken>())
+            .Returns(new Dictionary<Guid, UserInfo>());
+
+        await _emitter.SendAsync(TestSources.TeamUpdate, NotificationClass.Informational, NotificationPriority.Normal,
+            "Update", [Guid.NewGuid()], cancellationToken: TestContext.Current.CancellationToken);
+
+        (await _notificationsDb.Notifications.CountAsync(TestContext.Current.CancellationToken)).Should().Be(0);
+        _preferenceService.ReceivedCalls().Should().BeEmpty();
+    }
+
+    [HumansFact]
+    public async Task Send_UserLookupFailure_WritesNothing()
+    {
+        var failure = new IOException("Users unavailable");
+        _users.GetUserInfosAsync(Arg.Any<IEnumerable<Guid>>(), Arg.Any<CancellationToken>())
+            .Returns(_ => ValueTask.FromException<IReadOnlyDictionary<Guid, UserInfo>>(failure));
+
+        var send = () => _emitter.SendAsync(TestSources.Plain, NotificationClass.Actionable, NotificationPriority.Normal,
+            "Update", [Guid.NewGuid()], cancellationToken: TestContext.Current.CancellationToken);
+
+        (await send.Should().ThrowAsync<IOException>()).Which.Should().BeSameAs(failure);
+        (await _notificationsDb.Notifications.CountAsync(TestContext.Current.CancellationToken)).Should().Be(0);
     }
 
     [HumansFact]

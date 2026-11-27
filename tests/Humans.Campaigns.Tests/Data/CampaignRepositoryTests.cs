@@ -200,7 +200,7 @@ public sealed class CampaignRepositoryTests
         var completedGrant = await SeedGrantAsync(completed, "C", userId: userId);
         await SeedGrantAsync(active, "OTHER", userId: Guid.NewGuid());
 
-        var grants = await _repository.GetActiveOrCompletedGrantsForUserAsync(
+        var grants = await _repository.GetGrantsForUserAsync(
             userId, Xunit.TestContext.Current.CancellationToken);
 
         grants.Select(g => g.Id).Should().BeEquivalentTo([activeGrant.Id, completedGrant.Id]);

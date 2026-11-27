@@ -1,4 +1,3 @@
-using Humans.Users.Contracts;
 using NodaTime;
 using Humans.Base.Interfaces;
 
@@ -34,16 +33,9 @@ internal sealed record AccountMergeRequestSnapshot(
     string Email,
     AccountMergeUserSnapshot TargetUser,
     AccountMergeUserSnapshot SourceUser,
-    AccountMergeRequestStatus Status,
-    Instant CreatedAt,
-    Instant? ResolvedAt,
-    string? ResolvedByDisplayName,
-    string? AdminNotes);
+    Instant CreatedAt);
 
 internal sealed record AccountMergeUserSnapshot(
-    Guid Id,
-    string? Email,
-    string? PreferredLanguage,
-    Instant? LastLoginAt);
+    Guid Id);
 
 internal sealed record AccountMergeResult(string? Refusal = null);

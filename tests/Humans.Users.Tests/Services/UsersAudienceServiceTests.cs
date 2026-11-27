@@ -25,12 +25,12 @@ public class UsersAudienceServiceTests
         var tickets = Substitute.For<ITicketService>();
         tickets.GetTicketOrdersAsync(Arg.Any<CancellationToken>()).Returns(new List<TicketOrderInfo>
         {
-            new(Guid.NewGuid(), "attendee-only", null, null, 100m, "EUR", null,
+            new(Guid.NewGuid(), null, 100m,
                 TicketPaymentStatus.Paid, "event", Instant.FromUtc(2025, 1, 1, 0, 0), null, false,
-                [new(Guid.NewGuid(), "ticket", null, null, null, 100m, TicketAttendeeStatus.Valid, attendeeId)]),
-            new(Guid.NewGuid(), "buyer", null, null, 100m, "EUR", null,
+                [new(Guid.NewGuid(), "ticket", null, null, null, TicketAttendeeStatus.Valid, attendeeId)]),
+            new(Guid.NewGuid(), null, 100m,
                 TicketPaymentStatus.Paid, "event", Instant.FromUtc(2026, 1, 1, 0, 0), buyerId, true, []),
-            new(Guid.NewGuid(), "unmatched", null, null, 100m, "EUR", null,
+            new(Guid.NewGuid(), null, 100m,
                 TicketPaymentStatus.Paid, "event", Instant.FromUtc(2024, 1, 1, 0, 0), null, false, []),
         });
         var service = new UsersAudienceService(users, tickets);

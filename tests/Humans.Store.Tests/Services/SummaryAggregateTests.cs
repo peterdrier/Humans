@@ -11,7 +11,6 @@ using Humans.Stripe.Contracts;
 using Humans.Base.Enums;
 using Humans.Holded.Contracts;
 using Microsoft.Extensions.Logging.Abstractions;
-using Microsoft.Extensions.Options;
 using NodaTime;
 using NodaTime.Testing;
 using NSubstitute;
@@ -111,7 +110,7 @@ public class SummaryAggregateTests
                 }
             }
         };
-        _repo.GetOrdersForCampSeasonsWithLinesAndPaymentsAsync(
+        _repo.GetOrdersForCampSeasonsAsync(
                 Arg.Is<IReadOnlyCollection<Guid>>(ids => ids.Contains(seasonId)),
                 Arg.Any<CancellationToken>())
             .Returns([order]);
@@ -183,7 +182,7 @@ public class SummaryAggregateTests
         var orderA = Order(Guid.NewGuid(), seasonA, (productX, 2, 5m), (productY, 1, 7m));
         var orderB = Order(Guid.NewGuid(), seasonB, (productX, 4, 5m));
 
-        _repo.GetOrdersForCampSeasonsWithLinesAndPaymentsAsync(
+        _repo.GetOrdersForCampSeasonsAsync(
                 Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
             .Returns([orderA, orderB]);
 
@@ -222,7 +221,7 @@ public class SummaryAggregateTests
             new Product { Id = deadProductId, Year = 2026, Name = "Retired", Description = "x",
                 UnitPriceEur = 1m, VatRatePercent = 0m, OrderableUntil = new LocalDate(2026,12,31), IsActive = false }
         ]);
-        _repo.GetOrdersForCampSeasonsWithLinesAndPaymentsAsync(
+        _repo.GetOrdersForCampSeasonsAsync(
                 Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
             .Returns([
                 new Order
@@ -287,7 +286,7 @@ public class SummaryAggregateTests
                 }
         };
 
-        _repo.GetOrdersForCampSeasonsWithLinesAndPaymentsAsync(
+        _repo.GetOrdersForCampSeasonsAsync(
                 Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
             .Returns([
                 Order(orderPaid, seasonPaid, qty: 2, paid: 20m),      // due 20, paid 20  → balance  0  (paid)
@@ -343,7 +342,7 @@ public class SummaryAggregateTests
                 }
             }
         };
-        _repo.GetOrdersForCampSeasonsWithLinesAndPaymentsAsync(
+        _repo.GetOrdersForCampSeasonsAsync(
                 Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
             .Returns([order]);
 
@@ -368,7 +367,7 @@ public class SummaryAggregateTests
         _camps.GetCampsForYearAsync(2026, Arg.Any<CancellationToken>())
             .Returns([MakeCampInfo(inYear, "InYear", "iy")]);
         _repo.GetAllProductsForYearAsync(2026, Arg.Any<CancellationToken>()).Returns([]);
-        _repo.GetOrdersForCampSeasonsWithLinesAndPaymentsAsync(
+        _repo.GetOrdersForCampSeasonsAsync(
                 Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
             .Returns([
                 new Order { Id = Guid.NewGuid(), CampSeasonId = outOfYear, State = OrderState.Open }
@@ -415,24 +414,24 @@ public class SummaryAggregateTests
                 Qty = int.MaxValue,
                 UnitPriceSnapshot = 1m
             });
-        _repo.GetOrdersForCampSeasonsWithLinesAndPaymentsAsync(
+        _repo.GetOrdersForCampSeasonsAsync(
             Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>()).Returns([order]);
 
         var result = await _service.GetStoreSummaryAsync(2026, Xunit.TestContext.Current.CancellationToken);
 
         const long expected = 2L * int.MaxValue;
-        result.ByItem.Sum(item => (long)item.TotalQty).Should().Be(expected);
-        result.CrossTab.Products.Sum(column => (long)column.TotalQty).Should().Be(expected);
+        result.ByItem.Sum(item => item.TotalQty).Should().Be(expected);
+        result.CrossTab.Products.Sum(column => column.TotalQty).Should().Be(expected);
         var row = result.CrossTab.Counterparties.Should().ContainSingle().Subject;
-        ((long)row.TotalQty).Should().Be(expected);
+        row.TotalQty.Should().Be(expected);
         foreach (var product in products)
         {
             var quantity = sameProduct ? expected : int.MaxValue;
-            ((long)result.ByItem.Single(item => item.ProductId == product.Id).TotalQty).Should().Be(quantity);
-            ((long)result.CrossTab.Products.Single(column => column.ProductId == product.Id).TotalQty).Should().Be(quantity);
-            ((long)row.QtyByProduct[product.Id]).Should().Be(quantity);
+            result.ByItem.Single(item => item.ProductId == product.Id).TotalQty.Should().Be(quantity);
+            result.CrossTab.Products.Single(column => column.ProductId == product.Id).TotalQty.Should().Be(quantity);
+            row.QtyByProduct[product.Id].Should().Be(quantity);
         }
-        result.ByCounterparty.Should().ContainSingle().Which.TotalDueEur.Should().Be((decimal)expected);
+        result.ByCounterparty.Should().ContainSingle().Which.TotalDueEur.Should().Be(expected);
     }
 
     private static CampInfo MakeCampInfo(Guid seasonId, string name, string slug)
@@ -448,7 +447,7 @@ public class SummaryAggregateTests
             Seasons:
             [
                 new CampSeasonInfo(
-                    seasonId, campId, slug, 2026, null, name, string.Empty, string.Empty, [],
+                    seasonId, campId, 2026, null, name, string.Empty, string.Empty, [],
                     CampSeasonStatus.Active, YesNoMaybe.No, YesNoMaybe.No, AdultPlayspacePolicy.No,
                     0, null, null, null, 0, null, null)
             ]);

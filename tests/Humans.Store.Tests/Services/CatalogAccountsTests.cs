@@ -112,7 +112,7 @@ public class CatalogAccountsTests
         ], Guid.NewGuid(), TestContext.Current.CancellationToken);
 
         result.Succeeded.Should().BeFalse();
-        result.Refusal.Should().Be("Ice: Cost account 62990001 is no longer in the Holded chart (removed or archived). Pick another.");
+        result.Refusal.Should().Be("Ice: Cost account 62990001 is no longer in the Holded chart. Pick another.");
         await _repo.DidNotReceive().UpdateProductAsync(Arg.Any<Product>(), Arg.Any<CancellationToken>());
     }
 
@@ -133,7 +133,7 @@ public class CatalogAccountsTests
     }
 
     private static HoldedChartAccountInfo Account(int number, string name, bool archived = false) =>
-        new(number, name, null, null, archived, 0m);
+        new(number, name, null, archived, 0m);
 
     private static Product MakeProduct(string name, int? income = null) => new()
     {

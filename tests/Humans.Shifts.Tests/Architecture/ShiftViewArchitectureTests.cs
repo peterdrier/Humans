@@ -1,8 +1,6 @@
 using AwesomeAssertions;
 using Humans.Shifts.Services.Dtos;
-using Humans.Shifts.Services;
 using Humans.Shifts.Contracts;
-using Xunit;
 
 namespace Humans.Shifts.Tests.Architecture;
 

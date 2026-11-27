@@ -1,4 +1,5 @@
 using Humans.Backdoor.Filters;
+using Humans.Backdoor.Services;
 using Humans.Base.Controllers;
 using Humans.Base.Extensions;
 using Humans.Store.Contracts;
@@ -12,6 +13,7 @@ namespace Humans.Backdoor.Controllers;
 [ApiController]
 [Route("api/backdoor/store")]
 [ServiceFilter(typeof(BackdoorApiKeyAuthFilter))]
+[BackdoorScope(BackdoorScope.AdminAndBoard)]
 [AllowAnonymous]
 internal sealed class BackdoorStoreController(IStoreAccountingRead store, IUserService users)
     : ApiControllerBase(users)
@@ -84,7 +86,7 @@ internal sealed class BackdoorStoreController(IStoreAccountingRead store, IUserS
     /// <summary>
     /// One object per audit entry about an order of <paramref name="year"/>: lines added and removed, payments, refunds,
     /// deposit returns, invoice issuance and catalog price changes to its products. Oldest first within an order. It carries
-    /// the admin-only entries the order page shows Store admins, so the key's holder must be one.
+    /// the admin-only entries the order page shows Store admins, so the key's owner must be one.
     /// </summary>
     [HttpGet("order-history")]
     public async Task<IActionResult> OrderHistory([FromQuery] int? year, CancellationToken ct)

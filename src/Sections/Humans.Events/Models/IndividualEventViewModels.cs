@@ -1,7 +1,6 @@
 using Humans.Events.Domain;
 using Microsoft.AspNetCore.Mvc.ModelBinding;
 using System.ComponentModel.DataAnnotations;
-using Humans.Events.Contracts;
 
 namespace Humans.Events.Models;
 
@@ -47,10 +46,8 @@ internal sealed class IndividualEventRowViewModel
 {
     public Guid Id { get; set; }
     public string Title { get; set; } = string.Empty;
-    public string VenueName { get; set; } = string.Empty;
     public string CategoryName { get; set; } = string.Empty;
     public DateTime StartAt { get; set; }
-    public int DurationMinutes { get; set; }
     public EventStatus Status { get; set; }
     public bool CanEdit { get; set; }
     public bool CanWithdraw { get; set; }
@@ -178,7 +175,6 @@ internal sealed class BrowseViewModel
 
 internal sealed class BrowseDayGroup
 {
-    public int DayOffset { get; set; }
     public string DayLabel { get; set; } = string.Empty;
     public List<BrowseEventItem> Items { get; set; } = [];
 }

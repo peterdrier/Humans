@@ -10,7 +10,6 @@ using Humans.Users.Contracts;
 using Humans.Users.Domain;
 using Humans.Users.Services;
 using Microsoft.AspNetCore.Http;
-using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.AspNetCore.Mvc.ViewComponents;
 using NodaTime;
@@ -80,7 +79,7 @@ public sealed class ProfileShiftsViewComponentTests
     private ProfileShiftsViewComponent Build(bool privileged)
     {
         var claims = new List<Claim> { new(ClaimTypes.NameIdentifier, _viewerId.ToString()) };
-        if (privileged) claims.Add(new Claim(ClaimTypes.Role, ShiftsRoles.ShiftsNoInfo));
+        if (privileged) claims.Add(new Claim(ClaimTypes.Role, ShiftsRoles.ShiftsAdmin));
         var http = new DefaultHttpContext { User = new ClaimsPrincipal(new ClaimsIdentity(claims, "Test")) };
         return new ProfileShiftsViewComponent(_signups, _shifts, _teams, _users)
         {

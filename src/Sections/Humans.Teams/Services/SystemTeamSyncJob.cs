@@ -172,7 +172,7 @@ internal sealed class SystemTeamSyncJob(
             .Select(u => u.Id)
             .ToList();
 
-        var eligibleSet = await ConsentService.GetUsersWithAllRequiredConsentsForTeamAsync(
+        var eligibleSet = await ConsentService.GetConsentedUsersForTeamAsync(
             candidateIds, SystemTeamIds.Volunteers, cancellationToken);
 
         await SyncTeamMembershipAsync(team, eligibleSet.ToList(), cancellationToken, step: step);
@@ -199,7 +199,7 @@ internal sealed class SystemTeamSyncJob(
             .Distinct()
             .ToList();
 
-        var eligibleSet = await ConsentService.GetUsersWithAllRequiredConsentsForTeamAsync(
+        var eligibleSet = await ConsentService.GetConsentedUsersForTeamAsync(
             leadUserIds, SystemTeamIds.Coordinators, cancellationToken);
 
         await SyncTeamMembershipAsync(team, eligibleSet.ToList(), cancellationToken, step: step);
@@ -317,8 +317,7 @@ internal sealed class SystemTeamSyncJob(
         (await teamService.GetTeamsAsync(cancellationToken)).Values
             .Where(t => t.SystemTeamType == teamType)
             .Select(t => new SystemTeamMembershipSnapshot(
-                t.Id, t.Name, t.Slug, t.IsHidden, t.SystemTeamType,
-                t.Members.Select(m => m.UserId).ToList()))
+                t.Id, t.Name, t.Slug, t.IsHidden, t.Members.Select(m => m.UserId).ToList()))
             .FirstOrDefault();
 
     private async Task SyncTeamMembershipAsync(SystemTeamMembershipSnapshot team, List<Guid> eligibleUserIds,
@@ -397,6 +396,11 @@ internal sealed class SystemTeamSyncJob(
             {
                 if (!addedUsersWithEmails.TryGetValue(userId, out var user))
                     continue;
+                if (user.IsTombstone)
+                {
+                    logger.LogWarning("Skipping added-to-team welcome for unavailable user {UserId} team {TeamId}", userId, team.Id);
+                    continue;
+                }
 
                 try
                 {
@@ -422,5 +426,4 @@ internal sealed record SystemTeamMembershipSnapshot(
     string Name,
     string Slug,
     bool IsHidden,
-    SystemTeamType SystemTeamType,
     IReadOnlyList<Guid> ActiveMemberUserIds);

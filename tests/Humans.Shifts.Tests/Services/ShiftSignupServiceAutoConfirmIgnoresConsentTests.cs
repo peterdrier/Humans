@@ -1,10 +1,10 @@
+using Humans.Testing;
 using Humans.Permissions.Contracts;
 using System.Globalization;
 using System.Resources;
 using Humans.Shifts.Domain;
 using Humans.Auth.Contracts;
 using Humans.Teams.Domain;
-using Humans.EarlyEntry.Contracts;
 using Humans.Notifications.Contracts;
 using Humans.Shifts.Contracts;
 using Humans.Teams.Contracts;
@@ -14,7 +14,6 @@ using Humans.Base.Enums;
 using Humans.Shifts.Data;
 using Humans.Users.Contracts;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Logging.Abstractions;
 using NodaTime;
 using NSubstitute;
@@ -50,11 +49,11 @@ public sealed class ShiftSignupServiceAutoConfirmIgnoresConsentTests : ShiftsTes
         };
         _users.GetUserInfoAsync(_userId, Arg.Any<CancellationToken>()).Returns(_userInfo);
         var teamService = Substitute.For<ITeamService>();
-        var roleAssignmentService = Substitute.For<IRoleAssignmentService>();
+        var systemRoleService = Substitute.For<ISystemRoleService>();
         var serviceProvider = new ServiceLocatorBuilder()
             .With(teamService)
             .With(teamService)
-            .With(roleAssignmentService)
+            .With(systemRoleService)
             .With(_users)
             .With<IPermissionService>()
             .Build();
@@ -70,7 +69,7 @@ public sealed class ShiftSignupServiceAutoConfirmIgnoresConsentTests : ShiftsTes
             NullLogger<ShiftManagementService>.Instance);
 
         var repo = new ShiftRepository(ShiftsDbFactory, ShiftsDb, Clock);
-        var localizer = Substitute.For<IStringLocalizer<ShiftsResource>>();
+        var localizer = Substitute.For<IStringLocalizer<ShiftsResource>>().AddFormatting();
         const string warningKey = "Shifts_Signup_RangeEarlyEntryCapacityDays";
         localizer[warningKey, Arg.Any<object[]>()].Returns(call => new LocalizedString(warningKey,
             string.Format(CultureInfo.InvariantCulture,

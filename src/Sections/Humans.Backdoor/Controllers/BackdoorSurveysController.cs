@@ -1,6 +1,7 @@
 using System.Globalization;
 using System.Text;
 using Humans.Backdoor.Filters;
+using Humans.Backdoor.Services;
 using Humans.Base.Extensions;
 using Humans.Base.Controllers;
 using Humans.Surveys.Contracts;
@@ -18,6 +19,7 @@ namespace Humans.Backdoor.Controllers;
 [ApiController]
 [Route("api/backdoor/surveys")]
 [ServiceFilter(typeof(BackdoorApiKeyAuthFilter))]
+[BackdoorScope(BackdoorScope.AdminAndBoard)]
 [AllowAnonymous]
 internal sealed class BackdoorSurveysController(ISurveyAnalysisRead surveys, IUserService users)
     : ApiControllerBase(users)

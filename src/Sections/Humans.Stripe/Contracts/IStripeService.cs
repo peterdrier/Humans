@@ -123,7 +123,7 @@ public sealed record StripeLedgerPayment(string PaymentIntentId, string? Descrip
 public sealed record StripeLedgerPayout(
     string Id, Instant CreatedAt, Instant ArrivalAt, long AmountMinor, string Status, long? ContentsNetMinor, int ContentsCount);
 
-/// <summary>One line of a key check, for a backends page.</summary>
+/// <summary>One line of a key check, for a ticketing platform page.</summary>
 public sealed record StripeAccountCheck(bool Ok, string Text);
 
 /// <summary>
@@ -133,7 +133,7 @@ public sealed record StripeAccountCheck(bool Ok, string Text);
 public sealed record StoreRefundData(string RefundId, string PaymentIntentId, decimal AmountEur, string Status, Instant CreatedAt);
 
 /// <summary><paramref name="AmountEur"/> is the gross charge, positive, converted from minor units.</summary>
-public sealed record StoreChargeData(string ChargeId, string PaymentIntentId, decimal AmountEur, Instant CreatedAt);
+public sealed record StoreChargeData(decimal AmountEur, Instant CreatedAt);
 
 /// <summary>One amount per Stripe balance-transaction fee bucket, in EUR.</summary>
 /// <remarks>

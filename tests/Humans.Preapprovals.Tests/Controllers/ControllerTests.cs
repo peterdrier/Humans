@@ -448,7 +448,7 @@ public sealed class ControllerTests : PreapprovalsTestHarness
                 policy => policy.RequireRole(FinanceRoles.FinanceAdmin, RoleNames.Admin));
         });
         services.AddScoped<IAuthorizationHandler, ProgramAuthorizationHandler>();
-        services.AddScoped<IAuthorizationHandler>(_ => new PreapprovalsPolicyHandler(NewService(), new Microsoft.AspNetCore.Http.HttpContextAccessor()));
+        services.AddScoped<IAuthorizationHandler>(_ => new PreapprovalsPolicyHandler(NewService(), new HttpContextAccessor()));
         var provider = services.BuildServiceProvider();
         _localizer[Arg.Any<string>(), Arg.Any<object[]>()]
             .Returns(call => new LocalizedString(call.ArgAt<string>(0), call.ArgAt<string>(0)));

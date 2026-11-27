@@ -5,12 +5,13 @@
     ViewData["Title"] = Localizer["Surveys_Admin_Results_Title"].Value;
 
     var untitled = Localizer["Surveys_Admin_Results_Untitled"].Value;
+    var untitledQuestion = Localizer["Surveys_Admin_Results_UntitledQuestion"].Value;
 }
 
 @section Crumbs {
-    <span authorize-policy="@Humans.Surveys.Contracts.SurveysPolicies.Read"><a asp-controller="Admin" asp-action="Index">@Localizer["Surveys_Admin_Common_AdminBreadcrumb"]</a></span>
+    <span authorize-policy="@SurveysPolicies.Read"><a asp-controller="Admin" asp-action="Index">@Localizer["Surveys_Admin_Common_AdminBreadcrumb"]</a></span>
     <a asp-controller="SurveyAdmin" asp-action="Index">@Localizer["Surveys_Admin_Index_Title"]</a>
-    <span authorize-policy="@Humans.Surveys.Contracts.SurveysPolicies.Manage"><a asp-controller="SurveyAdmin" asp-action="Edit" asp-route-id="@Model.SurveyId">@(string.IsNullOrWhiteSpace(Model.Title) ? untitled : Model.Title)</a></span>
+    <span authorize-policy="@SurveysPolicies.Manage"><a asp-controller="SurveyAdmin" asp-action="Edit" asp-route-id="@Model.SurveyId">@(string.IsNullOrWhiteSpace(Model.Title) ? untitled : Model.Title)</a></span>
     <span>@Localizer["Surveys_Admin_Results_Breadcrumb"]</span>
 }
 
@@ -34,7 +35,7 @@ else
 <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-4">
     <div>
         <strong>@Localizer["Surveys_Admin_Results_QuestionResultsLabel"]</strong>
-        <span class="text-muted">@string.Format(Localizer["Surveys_Admin_Results_ResponseCount"].Value, Model.SelectedResponseCount)</span>
+        <span class="text-muted">@Localizer["Surveys_Admin_Results_ResponseCount", Model.SelectedResponseCount]</span>
     </div>
     <div class="btn-group" role="group" aria-label="@Localizer["Surveys_Admin_Results_FilterAriaLabel"]">
         <a asp-action="Results" asp-route-id="@Model.SurveyId" asp-route-scope="@SurveyResultsScope.Unique"
@@ -84,11 +85,11 @@ else
 {
     <empty-state>@Localizer["Surveys_Admin_Results_NoQuestions"]</empty-state>
 }
-@foreach (var q in Model.Questions)
-{
-    <div class="card mb-3">
-        <div class="card-header">@q.Prompt</div>
-        <div class="card-body">
+    var questionsById = Model.QuestionsById;
+    string PromptOf(SurveyResultsQuestionViewModel q) => string.IsNullOrWhiteSpace(q.Prompt) ? untitledQuestion : q.Prompt;
+
+    async Task RenderAnswers(SurveyResultsQuestionViewModel q)
+    {
             @switch (q.Type)
             {
                 case SurveyQuestionType.RankedChoice:
@@ -215,7 +216,7 @@ else
                         @if (Model.Status == SurveyStatus.Closed)
                         {
                             <form asp-action="RankedAvailability" asp-route-id="@Model.SurveyId" method="post"
-                                  authorize-policy="@Humans.Surveys.Contracts.SurveysPolicies.Manage">
+                                  authorize-policy="@SurveysPolicies.Manage">
                                 @Html.AntiForgeryToken()
                                 <input type="hidden" name="questionId" value="@q.QuestionId" />
                                 <fieldset>
@@ -246,19 +247,16 @@ else
                     }
                     else
                     {
-                        foreach (var o in q.OptionCounts)
-                        {
-                            var pct = (int)Math.Round(o.Percent);
-                            <div class="mb-2">
-                                <div class="d-flex justify-content-between">
-                                    <span>@o.Label</span>
-                                    <span class="text-muted">@o.Count (@pct%)</span>
-                                </div>
-                                <div class="progress" role="progressbar" aria-valuenow="@pct" aria-valuemin="0" aria-valuemax="100" style="height: .75rem;">
-                                    <div class="progress-bar" style="width: @pct%;"></div>
-                                </div>
-                            </div>
-                        }
+                        Func<OptionCount, IHtmlContent> barCell =
+                            @<text><div class="progress progress-mini" role="progressbar" aria-valuenow="@((int)Math.Round(item.Percent))" aria-valuemin="0" aria-valuemax="100"><div class="progress-bar" style="width: @((int)Math.Round(item.Percent))%;"></div></div></text>;
+                        var optionTable = TableModel.For(q.OptionCounts)
+                            .Column(Localizer["Surveys_Admin_Results_ColumnOption"].Value, o => o.Label)
+                            .Column(Localizer["Surveys_Admin_Results_ColumnCount"].Value, o => o.Count, c => c.Number().End())
+                            .Column(Localizer["Surveys_Admin_Results_ColumnShare"].Value, o => $"{(int)Math.Round(o.Percent)}%", c => c.End())
+                            .Template("", barCell, c => c.NoSort())
+                            .Css("w-auto")
+                            .Build();
+                        <partial name="_Table" model="optionTable" />
                     }
                     break;
 
@@ -319,7 +317,20 @@ else
                     break;
 
                 default:
-                    @if (q.FreeTextAnswers.Count == 0)
+                    @if (q.FreeTextByParentChoice.Count > 0)
+                    {
+                        foreach (var group in q.FreeTextByParentChoice)
+                        {
+                            <div class="small text-muted mb-1">@group.Label (@group.Texts.Count)</div>
+                            <ul class="list-group list-group-flush mb-3">
+                                @foreach (var t in group.Texts)
+                                {
+                                    <li class="list-group-item">@t</li>
+                                }
+                            </ul>
+                        }
+                    }
+                    else if (q.FreeTextAnswers.Count == 0)
                     {
                         <empty-state class="mb-0">@Localizer["Surveys_Admin_Results_NoFreeTextAnswers"]</empty-state>
                     }
@@ -333,6 +344,40 @@ else
                         </ul>
                     }
                     break;
+            }
+    }
+@foreach (var q in Model.Questions)
+{
+    <div class="card mb-3">
+        <div class="card-header"><span class="text-muted small me-2">Q@(q.Number)</span>@PromptOf(q)</div>
+        <div class="card-body">
+            @if (!string.IsNullOrWhiteSpace(q.HelpText))
+            {
+                <div class="text-muted mb-3">@Html.SanitizedMarkdown(q.HelpText)</div>
+            }
+            @if (q.FollowUps.Count == 0)
+            {
+                await RenderAnswers(q);
+            }
+            else
+            {
+                <div class="row g-4">
+                    <div class="col-lg-5">@{ await RenderAnswers(q); }</div>
+                    <div class="col-lg-7">
+                        @foreach (var f in q.FollowUps)
+                        {
+                            <h3 class="h6">
+                                <span class="text-muted small me-2">Q@(f.Number)</span>@PromptOf(f)
+                                <span class="text-muted small fw-normal ms-1">@Localizer["Surveys_Admin_Results_AskedWhen", string.Join(", ", f.AskedWhen)]</span>
+                            </h3>
+                            @if (!string.IsNullOrWhiteSpace(f.HelpText))
+                            {
+                                <div class="text-muted small mb-2">@Html.SanitizedMarkdown(f.HelpText)</div>
+                            }
+                            <div class="mb-3">@{ await RenderAnswers(f); }</div>
+                        }
+                    </div>
+                </div>
             }
         </div>
     </div>
@@ -354,15 +399,15 @@ else
                 var headingId = $"respondent-heading-{i}";
                 var collapseId = $"respondent-collapse-{i}";
                 <div class="accordion-item">
-                    <h3 class="accordion-header d-flex align-items-center" id="@headingId">
-                        <span class="ps-3 text-nowrap"><vc:human user-id="@r.UserId" /></span>
+                    <h3 class="accordion-header" id="@headingId">
                         <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#@collapseId" aria-expanded="false" aria-controls="@collapseId">
+                            <span class="text-nowrap me-3"><vc:human user-id="@r.UserId" link="InsideControl" /></span>
                             <span class="text-muted small">@r.SubmittedAt</span>
                         </button>
                     </h3>
                     <div id="@collapseId" class="accordion-collapse collapse" aria-labelledby="@headingId" data-bs-parent="#respondents">
                         <div class="accordion-body">
-                            <partial name="_RespondentAnswers" model="r.Answers" />
+                            <partial name="_RespondentAnswers" model="new SurveyRespondentAnswersViewModel(r.Answers, questionsById)" />
                         </div>
                     </div>
                 </div>
@@ -392,12 +437,12 @@ else
                 <div class="accordion-item">
                     <h3 class="accordion-header" id="@headingId">
                         <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#@collapseId" aria-expanded="false" aria-controls="@collapseId">
-                            @string.Format(Localizer["Surveys_Admin_Results_BallotLabel"].Value, i + 1)
+                            @Localizer["Surveys_Admin_Results_BallotLabel", i + 1]
                         </button>
                     </h3>
                     <div id="@collapseId" class="accordion-collapse collapse" aria-labelledby="@headingId" data-bs-parent="#unattributed-ballots">
                         <div class="accordion-body">
-                            <partial name="_RespondentAnswers" model="ballot.Answers" />
+                            <partial name="_RespondentAnswers" model="new SurveyRespondentAnswersViewModel(ballot.Answers, questionsById)" />
                         </div>
                     </div>
                 </div>

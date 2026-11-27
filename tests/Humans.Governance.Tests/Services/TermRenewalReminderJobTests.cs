@@ -21,6 +21,29 @@ namespace Humans.Governance.Tests.Services;
 public sealed class TermRenewalReminderJobTests
 {
     [HumansTheory]
+    [Xunit.InlineData(UserState.Deleted)]
+    [Xunit.InlineData(UserState.Merged)]
+    public async Task ExecuteAsync_TombstoneApplicant_LeavesReminderUnstamped(UserState state)
+    {
+        var ct = Xunit.TestContext.Current.CancellationToken;
+        var run = new ReminderRun();
+        var people = (await run.Users.GetUserInfosAsync([run.First.UserId, run.Next.UserId], ct))
+            .ToDictionary(pair => pair.Key, pair => pair.Value);
+        people[run.First.UserId] = people[run.First.UserId] with { State = state };
+        run.Users.GetUserInfosAsync(Arg.Any<IEnumerable<Guid>>(), Arg.Any<CancellationToken>()).Returns(people);
+
+        await run.Job.ExecuteAsync(ct);
+
+        var message = (EmailMessage)run.Email.ReceivedCalls().Should().ContainSingle().Subject.GetArguments()[0]!;
+        message.UserId.Should().Be(run.Next.UserId);
+        await run.Applications.DidNotReceive().MarkRenewalReminderSentAsync(run.First.Id,
+            Arg.Any<Instant>(), Arg.Any<CancellationToken>());
+        await run.Applications.Received(1).MarkRenewalReminderSentAsync(run.Next.Id, run.Now, CancellationToken.None);
+        ((IReadOnlyList<Guid>)run.Notices.ReceivedCalls().Should().ContainSingle().Subject.GetArguments()[4]!)
+            .Should().Equal(run.Next.UserId);
+    }
+
+    [HumansTheory]
     [Xunit.InlineData(ReminderReadBoundary.Applications)]
     [Xunit.InlineData(ReminderReadBoundary.Pending)]
     [Xunit.InlineData(ReminderReadBoundary.Applicants)]
@@ -130,7 +153,7 @@ public sealed class TermRenewalReminderJobTests
 
         public ReminderRun()
         {
-            First = new(Guid.NewGuid(), Guid.NewGuid(), MembershipTier.Colaborador, Now, new LocalDate(2026, 5, 20));
+            First = new(Guid.NewGuid(), Guid.NewGuid(), MembershipTier.Colaborador, new LocalDate(2026, 5, 20));
             Next = First with { Id = Guid.NewGuid(), UserId = Guid.NewGuid() };
             Applications.GetExpiringApplicationsNeedingReminderAsync(Arg.Any<LocalDate>(), Arg.Any<LocalDate>(), Arg.Any<CancellationToken>())
                 .Returns(Task.FromResult<IReadOnlyList<ApplicationRenewalReminderCandidate>>([First, Next]));
@@ -155,7 +178,7 @@ public sealed class TermRenewalReminderJobTests
         var notifications = Substitute.For<INotificationEmitter>();
         var clock = new FakeClock(Instant.FromUtc(2026, 3, 1, 12, 0));
         var candidate = new ApplicationRenewalReminderCandidate(Guid.NewGuid(), Guid.NewGuid(),
-            MembershipTier.Colaborador, clock.GetCurrentInstant(), new LocalDate(2026, 5, 20));
+            MembershipTier.Colaborador, new LocalDate(2026, 5, 20));
         var liveId = Guid.NewGuid();
         applications.GetExpiringApplicationsNeedingReminderAsync(Arg.Any<LocalDate>(), Arg.Any<LocalDate>(), Arg.Any<CancellationToken>())
             .Returns(Task.FromResult<IReadOnlyList<ApplicationRenewalReminderCandidate>>([candidate]));
@@ -193,7 +216,7 @@ public sealed class TermRenewalReminderJobTests
         var notifications = Substitute.For<INotificationEmitter>();
         var clock = new FakeClock(Instant.FromUtc(2026, 3, 1, 12, 0));
         var candidate = new ApplicationRenewalReminderCandidate(Guid.NewGuid(), Guid.NewGuid(),
-            MembershipTier.Colaborador, clock.GetCurrentInstant(), new LocalDate(2026, 5, 20));
+            MembershipTier.Colaborador, new LocalDate(2026, 5, 20));
         applications.GetExpiringApplicationsNeedingReminderAsync(Arg.Any<LocalDate>(), Arg.Any<LocalDate>(), Arg.Any<CancellationToken>())
             .Returns(Task.FromResult<IReadOnlyList<ApplicationRenewalReminderCandidate>>([candidate]));
         applications.GetPendingApplicationUserTiersAsync(Arg.Any<CancellationToken>())
@@ -232,7 +255,7 @@ public sealed class TermRenewalReminderJobTests
         var metrics = Substitute.For<IHumansMetrics>();
         var clock = new FakeClock(Instant.FromUtc(2026, 3, 1, 12, 0));
         var first = new ApplicationRenewalReminderCandidate(Guid.NewGuid(), Guid.NewGuid(),
-            MembershipTier.Colaborador, clock.GetCurrentInstant(), new LocalDate(2026, 5, 20));
+            MembershipTier.Colaborador, new LocalDate(2026, 5, 20));
         var next = first with { Id = Guid.NewGuid(), UserId = Guid.NewGuid() };
         applications.GetExpiringApplicationsNeedingReminderAsync(Arg.Any<LocalDate>(), Arg.Any<LocalDate>(), Arg.Any<CancellationToken>())
             .Returns(Task.FromResult<IReadOnlyList<ApplicationRenewalReminderCandidate>>([first, next]));
@@ -315,7 +338,7 @@ public sealed class TermRenewalReminderJobTests
         var userId = Guid.NewGuid();
         var expiry = new LocalDate(2026, 5, 20);
         var candidate = new ApplicationRenewalReminderCandidate(Guid.NewGuid(), userId,
-            MembershipTier.Colaborador, clock.GetCurrentInstant(), expiry);
+            MembershipTier.Colaborador, expiry);
         applications.GetExpiringApplicationsNeedingReminderAsync(Arg.Any<LocalDate>(), Arg.Any<LocalDate>(), Arg.Any<CancellationToken>())
             .Returns(Task.FromResult<IReadOnlyList<ApplicationRenewalReminderCandidate>>([candidate]));
         applications.GetPendingApplicationUserTiersAsync(Arg.Any<CancellationToken>())

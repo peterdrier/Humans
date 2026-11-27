@@ -3,7 +3,6 @@ using Humans.Auth.Data;
 using Humans.Auth.Domain;
 using AwesomeAssertions;
 using Humans.Consent.Services;
-using Humans.AuditLog.Contracts;
 using Humans.AuditLog.Services;
 using Humans.Budget.Contracts;
 using Humans.Gdpr.Contracts;
@@ -145,7 +144,7 @@ public class ChainFollowReadTests(HumansTestDatabase database) : IntegrationTest
                 + string.Join("; ", result.Errors.Select(e => e.Description)));
         }
 
-        authDb.RoleAssignments.Add(new RoleAssignment
+        authDb.SystemRoles.Add(new SystemRole
         {
             Id = Guid.NewGuid(),
             UserId = adminId,
