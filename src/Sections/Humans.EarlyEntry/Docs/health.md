@@ -5,15 +5,14 @@
   src/Sections/Humans.Camps/Services/CachingCampService.cs
   src/Sections/Humans.Camps/Services/CampService.cs
   src/Sections/Humans.Shifts/Section.cs
-  src/Sections/Humans.Shifts/Section.cs
   src/Sections/Humans.Shifts/Services/VolunteerTrackingExportService.cs
   src/Sections/Humans.Shifts/Services/ShiftEarlyEntryProjection.cs
   src/Sections/Humans.Teams/Section.cs
   src/Sections/Humans.Teams/Services/TeamService.cs
-  src/Sections/Humans.Teams/Services/TeamEarlyEntryProjection.cs
   src/Sections/Humans.Gate/Services/GateService.cs
   src/Sections/Humans.Scanner/Controllers/ScannerController.cs
   src/Sections/Humans.Tickets.Contracts/TicketStubInfo.cs
+  src/Sections/Humans.Tickets/Controllers/TicketBuyController.cs
   src/Sections/Humans.Tickets/ViewComponents/MyTicketStubsViewComponent.cs
   src/Sections/Humans.Tickets/ViewComponents/TicketHoldingsViewComponent.cs
   tests/Humans.Integration.Tests/Controllers/EarlyEntryPageRenderTests.cs
@@ -32,17 +31,17 @@ for the volunteer, a team coordinator grants it for a project — and this secti
 place those answers are added up. A person with early entry from two places gets the earliest
 of their dates and both reasons listed; a person with none gets nothing.
 
-The person themself sees their own date beside their ticket, and
-gate staff see the scanned attendee's date on the gate card. A volunteer coordinator sees the
-whole list at once, with the people who hold early entry from more than one place marked, so a
-redundant slot can be given to someone else.
+The person themself sees their own date beside their tickets, and gate staff see the scanned
+attendee's date on the gate card. The admins who run early entry see the whole list at once,
+with the people who hold early entry from more than one place marked, so a redundant slot can
+be given to someone else.
 
 ## 2. The shapes
 
 | Shape | The question | Surfaces |
 |---|---|---|
 | **Everyone's early entry** | Who holds early entry, from when, and why — all of them, live? | `GET /Shifts/Admin/EarlyEntry`; `IEarlyEntryService.GetRosterAsync` |
-| **One person's early entry** | Does this person hold early entry, from when, and why? | `IEarlyEntryService.GetForUserAsync` (Gate card, Scanner card, the ticket-stub surfaces) |
+| **One person's early entry** | Does this person hold early entry, from when, and why? | `IEarlyEntryService.GetForUserAsync` (Gate card, Scanner card, the ticket-stub surfaces, the my-tickets page) |
 | **Here is what I grant** | A contributing section's grants for the active event. | `IEarlyEntryProvider.GetEarlyEntriesAsync` (Camps, Shifts, Teams) |
 
 The first two are the same collapse — earliest date, distinct reasons — applied to all
@@ -53,14 +52,15 @@ supply grants.
 
 A read-side aggregator with no storage of its own. Written fresh:
 
-- **The contracts in one folder.** The read service and the provider, in `Contracts/`, with
-  the two records they carry: a grant, and a roster row that answers both reads. Everything
-  outside `Contracts/` is internal.
+- **The contracts in one folder.** The read service, the provider and the grantable role, in
+  `Contracts/`, with the two records the interfaces carry: a grant, and a roster row that
+  answers both reads. Everything outside `Contracts/` is internal.
 - **An orchestrator** holding the whole business rule: gather every registered provider's
   grants once per request, collapse per person. Both read methods are the same collapse over a
   different subset. It injects the providers and nothing else.
 - **A controller and an admin view**: sort the roster, stitch the legal name from Users,
   render a table. No business rule.
+- **The registration** declares the role, the roster policy and the admin nav entry.
 
 The layout matches this.
 
@@ -73,23 +73,24 @@ The layout matches this.
   (`src/Sections/Humans.EarlyEntry/Services/EarlyEntryService.cs:28`); reasons are **distinct,
   ordinal-compared**, in provider order
   (`src/Sections/Humans.EarlyEntry/Services/EarlyEntryService.cs:27`; pinned:
-  `EarlyEntryServiceTests.GetForUserAsync_LabelsDifferByCase_AreTwoSources`); **more than
+  `EarlyEntryServiceTests.GetRosterAsync_LabelsDifferByCase_AreTwoSources`); **more than
   one reason** is what "multiple" means
   (`src/Sections/Humans.EarlyEntry/Services/EarlyEntryService.cs:28`).
 - **Nothing outlives the request.** The providers are read at most once per request scope
   (`src/Sections/Humans.EarlyEntry/Services/EarlyEntryService.cs:35`) and the orchestrator is
-  scoped (`src/Sections/Humans.EarlyEntry/Section.cs:14`), so a write in any contributing
+  scoped (`src/Sections/Humans.EarlyEntry/Section.cs:24`), so a write in any contributing
   section shows on the next request and never has to signal this one (pinned:
   `EarlyEntryArchitectureTests.Section_RegistersOrchestratorPerRequest`,
   `EarlyEntryServiceTests.GetForUserAsync_SameScope_GathersOnce`).
 - The gate card asks for the scanned attendee's (`src/Sections/Humans.Gate/Services/GateService.cs:73`). The stub
   and holdings view components answer for the user they are invoked with, so who sees that
   answer is the invoking page's gate, not this section's.
-- The roster needs `ShiftsPolicies.Manage` (Admin, NoInfoAdmin, VolunteerCoordinator)
-  (`src/Sections/Humans.EarlyEntry/Controllers/EarlyEntryRosterController.cs:12`; pinned:
-  `EarlyEntryArchitectureTests.RosterRequiresShiftDashboardAccess`).
+- The roster needs `EarlyEntryPolicies.Roster`: Admin, Board or Early Entry Admin
+  (`src/Sections/Humans.EarlyEntry/Section.cs:29`, applied at
+  `src/Sections/Humans.EarlyEntry/Controllers/EarlyEntryRosterController.cs:11`; pinned:
+  `EarlyEntryArchitectureTests.Roster_IsGatedByOwnRoles`).
 - The section exposes no write: the roster controller serves GET only
-  (`src/Sections/Humans.EarlyEntry/Controllers/EarlyEntryRosterController.cs:17`).
+  (`src/Sections/Humans.EarlyEntry/Controllers/EarlyEntryRosterController.cs:16`).
 
 ## 5. Seams
 
@@ -125,9 +126,13 @@ None.
   = that shift's local day minus one, so a shift-derived date is never later than the day
   before the person's first shift. Camps grants a single global date, resolved from
   `EventSettings.EarlyEntryStartOffset` (nobodies-collective/Humans#1633), per member; Teams
-  grants a per-grant date.
+  grants a per-grant date, counting only grants bound to the active event.
+- **`HasMultiple` travels on the shared row** though it is `Sources.Count > 1` and only the
+  roster reads it: Peter kept the field when the per-user record was folded into the roster
+  row ([2026-09-05 run](../../../../docs/health/runs/2026-09-05-EarlyEntry.md), finding 11).
 - **`Views/_ViewImports.cshtml` is not inherited from the Shell.** A missing `@using` there
-  ships broken markup with a green build.
+  ships broken markup with a green build; only the integration suite's
+  `EarlyEntryPageRenderTests` catches it.
 
 ## History
 
