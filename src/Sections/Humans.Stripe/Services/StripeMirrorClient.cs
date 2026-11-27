@@ -1,3 +1,4 @@
+using System.Net;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 using Humans.Stripe.Domain;
@@ -48,6 +49,9 @@ internal sealed class StripeMirrorClient(IHttpClient? httpClient = null) : IStri
     /// <summary>Throws rather than returning a prefix. 500 pages is 50,000 rows, ten times Tickets 2026.</summary>
     private const int PageSafetyCap = 500;
 
+    private static readonly TimeSpan DefaultRetryAfter = TimeSpan.FromSeconds(2);
+    private static readonly TimeSpan MaxRetryAfter = TimeSpan.FromSeconds(60);
+
     public async Task<StripeAccountFetch> FetchAsync(StripeMirrorAccount account, CancellationToken ct = default)
     {
         if (!account.IsConfigured)
@@ -64,12 +68,12 @@ internal sealed class StripeMirrorClient(IHttpClient? httpClient = null) : IStri
             var options = new BalanceTransactionListOptions { Limit = PageLimit, StartingAfter = after };
             options.AddExpand("data.source");
             return transactionService.ListAsync(options, Request(), ct);
-        }, t => t.Id, "balance transactions", item => RequireMirrorFields(item, "balance transaction",
+        }, t => t.Id, "balance transactions", ct, item => RequireMirrorFields(item, "balance transaction",
             ["type", "status", "currency", "reporting_category"], ["amount", "fee", "net", "created", "available_on"]));
 
         var payouts = await AllPagesAsync(
             after => new PayoutService(client).ListAsync(new PayoutListOptions { Limit = PageLimit, StartingAfter = after }, Request(), ct),
-            p => p.Id, "payouts", item => RequireMirrorFields(item, "payout",
+            p => p.Id, "payouts", ct, item => RequireMirrorFields(item, "payout",
                 ["currency", "status"], ["amount", "created", "arrival_date"], ["automatic"]));
 
         // Stripe links transactions only to reconcilable automatic payouts; asking for a split payout's secondary part
@@ -81,11 +85,11 @@ internal sealed class StripeMirrorClient(IHttpClient? httpClient = null) : IStri
         {
             var ids = await AllPagesAsync(after => transactionService.ListAsync(
                 new BalanceTransactionListOptions { Payout = payout.Id, Limit = PageLimit, StartingAfter = after }, Request(), ct),
-                t => t.Id, $"payout {payout.Id} transactions");
+                t => t.Id, $"payout {payout.Id} transactions", ct);
             foreach (var t in ids) payoutOf[t.Id] = payout.Id;
         }
 
-        var balance = await new BalanceService(client).GetAsync(Request(), ct);
+        var balance = await RetryOnceOnRateLimitAsync(() => new BalanceService(client).GetAsync(Request(), ct), ct);
 
         return new StripeAccountFetch(
             listed.Select(t => ToTransaction(account.Id, t, payoutOf.GetValueOrDefault(t.Id))).ToList(),
@@ -94,7 +98,7 @@ internal sealed class StripeMirrorClient(IHttpClient? httpClient = null) : IStri
     }
 
     private static async Task<List<T>> AllPagesAsync<T>(
-        Func<string?, Task<StripeList<T>>> page, Func<T, string> id, string what,
+        Func<string?, Task<StripeList<T>>> page, Func<T, string> id, string what, CancellationToken ct,
         Action<JsonElement>? validateItem = null)
     {
         var items = new List<T>();
@@ -102,7 +106,7 @@ internal sealed class StripeMirrorClient(IHttpClient? httpClient = null) : IStri
         string? after = null;
         for (var n = 1; n <= PageSafetyCap; n++)
         {
-            var list = await page(after);
+            var list = await RetryOnceOnRateLimitAsync(() => page(after), ct);
             if (list?.Data is null) throw new InvalidOperationException($"Stripe {what}: a page without data.");
             // The SDK bool defaults to false when absent; inspect the retained response before completing a sweep.
             using var body = JsonDocument.Parse(list.StripeResponse.Content);
@@ -126,6 +130,22 @@ internal sealed class StripeMirrorClient(IHttpClient? httpClient = null) : IStri
         throw new InvalidOperationException($"Stripe {what}: hit the {PageSafetyCap}-page safety cap.");
     }
 
+    /// <summary>The SDK does not retry a 429. These are all reads, so one paced retry is safe; a second 429 throws
+    /// and the job's own retry takes over.</summary>
+    private static async Task<T> RetryOnceOnRateLimitAsync<T>(Func<Task<T>> call, CancellationToken ct)
+    {
+        try
+        {
+            return await call();
+        }
+        catch (StripeException ex) when (ex.HttpStatusCode == HttpStatusCode.TooManyRequests)
+        {
+            var wait = ex.StripeResponse?.Headers?.RetryAfter?.Delta ?? DefaultRetryAfter;
+            await Task.Delay(wait > MaxRetryAfter ? MaxRetryAfter : wait, ct);
+            return await call();
+        }
+    }
+
     private static void RequireMirrorFields(
         JsonElement item, string what, IReadOnlyList<string> textFields, IReadOnlyList<string> integerFields,
         IReadOnlyList<string>? booleanFields = null)
@@ -133,17 +153,32 @@ internal sealed class StripeMirrorClient(IHttpClient? httpClient = null) : IStri
         if (item.ValueKind != JsonValueKind.Object)
             throw new InvalidOperationException($"Stripe {what}: expected an object.");
         foreach (var field in textFields)
-            if (!item.TryGetProperty(field, out var value) || value.ValueKind != JsonValueKind.String
-                || string.IsNullOrWhiteSpace(value.GetString()))
-                throw new InvalidOperationException($"Stripe {what}: missing or invalid {field}.");
+        {
+            var value = Field(item, what, field);
+            if (value.ValueKind != JsonValueKind.String)
+                throw new InvalidOperationException($"Stripe {what}: {field} is {Describe(value)}, not text.");
+            if (string.IsNullOrWhiteSpace(value.GetString()))
+                throw new InvalidOperationException($"Stripe {what}: {field} is blank.");
+        }
         foreach (var field in integerFields)
-            if (!item.TryGetProperty(field, out var value) || value.ValueKind != JsonValueKind.Number
-                || !value.TryGetInt64(out _))
-                throw new InvalidOperationException($"Stripe {what}: missing or invalid {field}.");
+            if (Field(item, what, field) is var value && (value.ValueKind != JsonValueKind.Number || !value.TryGetInt64(out _)))
+                throw new InvalidOperationException($"Stripe {what}: {field} is {Describe(value)}, not a whole number.");
         foreach (var field in booleanFields ?? [])
-            if (!item.TryGetProperty(field, out var value) || value.ValueKind is not (JsonValueKind.True or JsonValueKind.False))
-                throw new InvalidOperationException($"Stripe {what}: missing or invalid {field}.");
+            if (Field(item, what, field) is var value && value.ValueKind is not (JsonValueKind.True or JsonValueKind.False))
+                throw new InvalidOperationException($"Stripe {what}: {field} is {Describe(value)}, not true or false.");
     }
+
+    private static JsonElement Field(JsonElement item, string what, string field) =>
+        item.TryGetProperty(field, out var value)
+            ? value
+            : throw new InvalidOperationException($"Stripe {what}: {field} is missing.");
+
+    private static string Describe(JsonElement value) => value.ValueKind switch
+    {
+        JsonValueKind.String => $"'{value.GetString()}'",
+        JsonValueKind.Number => value.GetRawText(),
+        _ => value.ValueKind.ToString().ToLowerInvariant(),
+    };
 
     internal static StripeBalanceTransaction ToTransaction(string accountId, BalanceTransaction t, string? payoutId)
     {

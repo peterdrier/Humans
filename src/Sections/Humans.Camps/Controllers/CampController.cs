@@ -31,6 +31,7 @@ internal sealed class CampController(
     private readonly ICampManagement _campService = campService;
     private readonly IUserService _userService = userService;
     private readonly IClock _clock = clock;
+    private readonly IAuthorizationService _authorizationService = authorizationService;
 
     [AllowAnonymous]
     [HttpGet("")]
@@ -41,6 +42,13 @@ internal sealed class CampController(
         if (!ModelState.IsValid)
         {
             ModelState.Clear();
+        }
+
+        // Lead-position coverage is a Barrios-admin check on which barrios still have open slots.
+        if (filters is { ShowLeadPositions: true }
+            && !(await _authorizationService.AuthorizeAsync(User, CampsPolicies.Read)).Succeeded)
+        {
+            filters.ShowLeadPositions = false;
         }
 
         var user = await GetCurrentUserInfoAsync(ct);
@@ -993,7 +1001,7 @@ internal sealed class CampController(
         AssignCampRoleOutcome outcome;
         try
         {
-            outcome = await _campService.AddMemberAndAssignRoleInActiveSeasonAsync(
+            outcome = await _campService.AddMemberWithRoleAsync(
                 camp.Id, roleDefinitionId, userId, user.Id, ct, eventSettingsId);
         }
         catch (OperationCanceledException) when (ct.IsCancellationRequested)

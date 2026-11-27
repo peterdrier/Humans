@@ -1084,6 +1084,8 @@ public class CampControllerTests
                     new("Priority", 1, 1) { SortOrder = -1 },
                 ],
             });
+        _authorization.AuthorizeAsync(Arg.Any<ClaimsPrincipal>(), Arg.Any<object?>(), CampsPolicies.Read)
+            .Returns(AuthorizationResult.Success());
         var controller = BuildController();
 
         var result = await controller.Index(new CampFilterViewModel { KidsFriendly = true, ShowLeadPositions = true }, TestContext.Current.CancellationToken);
@@ -1103,6 +1105,20 @@ public class CampControllerTests
         var apiResult = await new CampApiController(_camps).GetCamps(2026, TestContext.Current.CancellationToken);
         apiResult.Should().BeOfType<OkObjectResult>().Which.Value.Should()
             .BeAssignableTo<IReadOnlyList<CampPublicSummary>>().Which.Single().ImageUrl.Should().Be("/cover.jpg");
+    }
+
+    [HumansFact]
+    public async Task Index_NonAdmin_IgnoresShowLeadPositions()
+    {
+        StubCampReadModel([MakeCamp("alpha", "Alpha Camp", CampSeasonStatus.Active)]);
+        _authorization.AuthorizeAsync(Arg.Any<ClaimsPrincipal>(), Arg.Any<object?>(), CampsPolicies.Read)
+            .Returns(AuthorizationResult.Failed());
+
+        var result = await BuildController().Index(new CampFilterViewModel { ShowLeadPositions = true }, TestContext.Current.CancellationToken);
+
+        result.Should().BeOfType<ViewResult>().Which.Model.Should().BeOfType<CampIndexViewModel>()
+            .Which.Camps.Single().LeadPositionPills.Should().BeEmpty();
+        await _roles.DidNotReceiveWithAnyArgs().GetDirectoryRoleSummariesAsync(default, default);
     }
 
     [HumansFact]
@@ -1251,7 +1267,7 @@ public class CampControllerTests
         else
             result.Should().BeOfType<ForbidResult>();
         await _camps.DidNotReceiveWithAnyArgs().AddCampMemberToActiveSeasonAsync(default, default, default);
-        await _camps.DidNotReceiveWithAnyArgs().AddMemberAndAssignRoleInActiveSeasonAsync(default, default, default, default);
+        await _camps.DidNotReceiveWithAnyArgs().AddMemberWithRoleAsync(default, default, default, default);
     }
 
     [HumansTheory]
@@ -1280,7 +1296,7 @@ public class CampControllerTests
 
         result.Should().BeOfType<RedirectToActionResult>().Which.RouteValues!["eventSettingsId"].Should().Be(eventSettingsId);
         if (assignRole)
-            await _camps.Received(1).AddMemberAndAssignRoleInActiveSeasonAsync(camp.Id, roleId, userId, actorId, ct, eventSettingsId);
+            await _camps.Received(1).AddMemberWithRoleAsync(camp.Id, roleId, userId, actorId, ct, eventSettingsId);
         else
             await _camps.Received(1).AddCampMemberToActiveSeasonAsync(camp.Id, userId, actorId, ct, eventSettingsId);
     }

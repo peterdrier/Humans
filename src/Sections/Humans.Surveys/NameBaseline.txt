@@ -1,3 +1,0 @@
-Humans.Surveys.Data.ISurveyRepository.AddInvitationAndSaveAsync
-Humans.Surveys.Data.ISurveyRepository.AddResponseWithAnswersAndSaveAsync
-Humans.Surveys.Services.ISurveyService.ApproveAndSendAsync

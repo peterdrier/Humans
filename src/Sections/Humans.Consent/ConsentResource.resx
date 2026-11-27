@@ -161,6 +161,6 @@
   <data name="Consent_Queue_SelectRowLabel" xml:space="preserve"><value>Select {0}</value></data>
   <data name="Consent_Meter_ReviewsPending" xml:space="preserve"><value>Consent reviews pending</value></data>
   <data name="Consent_Meter_OnboardingProfilesPending" xml:space="preserve"><value>Onboarding profiles pending</value></data>
-  <data name="Consent_Meter_AudienceConsentCoordinator" xml:space="preserve"><value>Consent Coordinators</value></data>
+  <data name="Consent_Meter_AudienceConsentAdmin" xml:space="preserve"><value>Consent Admins</value></data>
   <data name="Consent_Meter_AudienceBoard" xml:space="preserve"><value>the Board</value></data>
 </root>

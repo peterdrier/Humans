@@ -39,7 +39,8 @@ internal sealed class GoogleGroupSyncService(
     {
         if (string.IsNullOrWhiteSpace(groupKey))
         {
-            logger.LogWarning("RequestSyncAsync called with null/empty group key; skipping");
+            logger.LogWarning("RequestSyncAsync called with {Key} group key; skipping",
+                groupKey is null ? "no" : "a blank");
             return Task.CompletedTask;
         }
 

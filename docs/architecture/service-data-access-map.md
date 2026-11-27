@@ -46,7 +46,7 @@ The goal is to identify cross-section table overlap, duplicated caching, and cac
 > | `RolesDbContext` | `role_definitions`, `role_assignments` (own project, `src/Sections/Humans.Roles/`) |
 > | `TasksDbContext` | `task_items`, `task_assignments`, `task_dependencies` (own project, `src/Sections/Humans.Tasks/`) |
 > | `ExpensesDbContext` | `ExpenseReports`, `ExpenseLines`, `ExpenseAttachments`, `HoldedExpenseOutboxEvents` (own project, `src/Sections/Humans.Expenses/`) |
-> | `FinanceDbContext` | `HoldedExpenseDocs`, `HoldedCategoryMap`, `HoldedCreditorContacts`, `HoldedDocSyncStates`, `HoldedManagedAccounts`, `SepaPayoutFiles`, `SepaPayoutTransfers`, `finance_payment_details` (own project, `src/Sections/Humans.Finance/`). The ledger mirror (`HoldedLedgerLines`, its sync state, the chart-of-accounts cache, and the API call log) lives in the separate `HoldedDbContext` below. |
+> | `FinanceDbContext` | `HoldedCategoryMap`, `HoldedCreditorContacts`, `HoldedManagedAccounts`, `SepaPayoutFiles`, `SepaPayoutTransfers`, `finance_payment_details` (own project, `src/Sections/Humans.Finance/`). The ledger mirror (`HoldedLedgerLines`, its sync state, the chart-of-accounts cache, and the API call log) lives in the separate `HoldedDbContext` below. |
 > | `HoldedDbContext` | `HoldedLedgerLines`, `HoldedSyncStates`, `HoldedAccounts`, `HoldedApiCalls`, `HoldedPurchaseDocs` (own project, `src/Sections/Humans.Holded/`). The daybook-journal ledger mirror, purchase-document mirror, chart-of-accounts cache, and Holded API call-log/metering — split out of Finance so the two sections that both touch Holded data stay structurally isolated from each other. |
 > | `PleoDbContext` | `PleoEntries`, `PleoEmployees`, `PleoAccounts`, `PleoBalances`, `PleoSyncStates`, `PleoCategories` (own project, `src/Sections/Humans.Pleo/`). The read-only Pleo mirror plus the hand-linked category → Holded account mapping. |
 > | `StripeDbContext` | `StripeBalanceTransactions`, `StripePayouts`, `StripeBalances`, `StripeSyncStates` (own project, `src/Sections/Humans.Stripe/`). The read-only Stripe mirror across every configured account. |
@@ -154,7 +154,7 @@ Every table is owned by exactly one repository; there are no HUM0025
    section's service implementing `IUserMerge` to reassign its own owned
    rows. `DuplicateAccountService` is **detection-only** (no
    repository, no DB access) — it reads through `IUserService` /
-   `ITeamService` / `IRoleAssignmentService` / `IGovernanceService` /
+   `ITeamService` / `ISystemRoleService` / `IGovernanceService` /
    `IConsentService` only, and writes one audit entry through `IAuditLogService`. The three Profiles
    repositories are collapsed into `IUserRepository`, so what looked like
    cross-section reads/writes between the Profiles and Users sections is
@@ -163,8 +163,8 @@ Every table is owned by exactly one repository; there are no HUM0025
 2. **Read/write surface split (read-split interfaces).** Several sections
    now expose a budgeted cross-section read interface that external sections
    inject instead of the full service: `IUserService` (writes other sections
-   need: `IUserWrite`), `ITeamService` (`ITeamWrite`), `IRoleAssignmentService`
-   (`IRoleAssignmentWrite`), `IConsentService`,
+   need: `IUserWrite`), `ITeamService` (`ITeamWrite`), `ISystemRoleService`
+   (`ISystemRoleWrite`), `IConsentService`,
    `ICampService`, `ITicketService`, `IGoogleSyncService`
    (foreign writes go through `IGoogleSyncWrite`), `ITeamResourceService`, `IFinanceService`
    (writes via `IFinanceWrite`),
@@ -248,7 +248,7 @@ Every table is owned by exactly one repository; there are no HUM0025
      snapshots.
    - `CachingConsentService` → `UserConsentInfo` per user.
    - `CachingLegalDocumentSyncService` → `LegalDocumentInfo` per document.
-   - `CachingRoleAssignmentService` → `RoleAssignmentRow` set.
+   - `CachingSystemRoleService` → `SystemRoleRow` set.
    All are surfaced on `/Debug/CacheStats` via `ICacheStats` and evicted
    by their owning decorator on its own writes (or EF
    `SaveChangesInterceptor`s for Legal / User-Identity writes) — no direct
@@ -305,7 +305,7 @@ Every table is owned by exactly one repository; there are no HUM0025
     the cached `ITicketService.GetTicketOrdersAsync` projection in
     memory (no new interface method), checks early entry via
     `IEarlyEntryService`, verifies supervisor roles via
-    `IRoleAssignmentService`, and pulls the gate-crew roster via
+    `ISystemRoleService`, and pulls the gate-crew roster via
     `IShiftManagement` — all contract-compliant service-interface calls.
     Its one cross-section **write** — projecting an admit onto the guest's
     participation record as `Attended` — goes through the
@@ -365,13 +365,13 @@ separately below the key table.
 | `NavBadge:Voting:{userId}` | 2 min | Per-User | **ApplicationDecisionService** (`GetUnvotedApplicationCountAsync`) | ApplicationDecisionService (evicts its own key) |
 | `Legal:{slug}` | 1 hr | Per-Entity | LegalDocumentService (GitHub-source read-through) | LegalDocumentService |
 | `CampContactRateLimit:{userId}:{campId}` | 10 min | Rate Limit | CampContactService | CampContactService |
-| `magic_link_used:{tokenDigest}` | 15 min | Rate Limit | MagicLinkRateLimiter (`Humans.Auth`) | MagicLinkRateLimiter |
-| `magic_link_signup:{normalizedEmail}` | 60 sec | Rate Limit | MagicLinkRateLimiter (`Humans.Auth`) | MagicLinkRateLimiter |
-| `GateLoginFailures:{sourceIp}` | 1 min window | Rate Limit | GateLoginThrottle (Web) | GateLoginThrottle (reset on success) |
+| `magic_link_used:{tokenDigest}` | 15 min | Rate Limit | SignInLinkRateLimiter (`Humans.Auth`) | SignInLinkRateLimiter |
+| `magic_link_signup:{normalizedEmail}` | 60 sec | Rate Limit | SignInLinkRateLimiter (`Humans.Auth`) | SignInLinkRateLimiter |
+| `GateLoginFailures:{sourceIp}` | 1 min window | Rate Limit | GateSignInThrottle (Web) | GateSignInThrottle (reset on success) |
 | `GatePinFailures:{key}` | 15 min lockout after 5 failures | Rate Limit | GatePinThrottle (`Humans.Gate`) | GatePinThrottle (only a correct PIN clears it) |
 | `GateVendorMirrorSent:{vendorTicketId}` | 24 hr | Dedupe claim | GateVendorMirrorLedger (`Humans.Gate`) | expiry only |
 
-> The three `Gate*` keys are held by helper singletons (`GateLoginThrottle` in
+> The three `Gate*` keys are held by helper singletons (`GateSignInThrottle` in
 > `src/Humans.Web/Services/`, the other two in `src/Sections/Humans.Gate/Services/Stores/`),
 > not `CacheKeys.cs` /
 > `CacheKeys.Metadata` — they never appear on `/Debug/CacheStats`.
@@ -391,7 +391,7 @@ separately below the key table.
 | `TrackedCache<Guid, ApprovedEventView>` + category/venue/settings snapshots | Events | `Event.ApprovedEventView` | Per-Entity / Static | CachingEventService warmup + lazy load | inline per write |
 | `TrackedCache<Guid, UserConsentInfo>` | Consent | `Consent.UserConsentInfo` | Per-User | CachingConsentService lazy load | synchronous per-user evict on submit; merge reloads via `UserInfo.AllUserIds` |
 | `TrackedCache<Guid, ActiveRequiredLegalDocumentSnapshot>` | Legal | `Legal.LegalDocumentInfo` | Per-Entity | CachingLegalDocumentSyncService warmup + lazy load | `CachingLegalDocumentSyncService.InvalidateAll` (called directly by `LegalDocumentSyncService` after each write) |
-| `TrackedCache<Guid, RoleAssignmentRow>` | Auth | `Auth.RoleAssignmentRow` | Per-Entity | CachingRoleAssignmentService warmup + lazy load | wholesale `Clear()` by the inner `RoleAssignmentService` after each repository write |
+| `TrackedCache<Guid, SystemRoleRow>` | Auth | `Auth.SystemRoleRow` | Per-Entity | CachingSystemRoleService warmup + lazy load | wholesale `Clear()` by the inner `SystemRoleService` after each repository write |
 | `TrackedCache<Guid, RideshareSnapshot>` | Rideshare | `Rideshare.Snapshot` | Per-Event | CachingRideshareService lazy load | full `Clear()` after every delegated write |
 | `TrackedCache<byte, IReadOnlyList<WorkgroupInfo>>` | Workgroups | `Workgroups.Register` | Single entry | CachingWorkgroupService lazy load | full `Clear()` after every delegated write |
 | `TrackedCache<string, CachedVendorEventSummary>` | Tickets | `Tickets.VendorEventSummary` | Per-Entity (15-min freshness in value) | CachingTicketVendorService lazy load | own `GetOrdersAsync` pass-through (per event, after a successful pull) |
@@ -437,7 +437,7 @@ system-team membership, dev barrio camp/season/lead via `ICampSeeding` /
 `ICampRoleSeeding`, city-planning team, role assignments, contact fields)
 goes through the owning section's service interface per design-rules.md, *Service ownership*.
 `DevLoginController` injects `IUserSignInService`,
-`IUserEmailService`, `IRoleAssignmentService`, and `DevPersonaSeeder`
+`IUserEmailService`, `ISystemRoleService`, and `DevPersonaSeeder`
 (`src/Sections/Humans.Development/Services/DevPersonaSeeder.cs`, which
 itself owns no DbContext). `AdminController`'s direct DB reads go behind
 `IAdminDatabaseDiagnosticsService`. All web
@@ -469,7 +469,7 @@ Controllers and components that touch `IMemoryCache` directly.
 
 | Controller / Component | Cache Operation | Key |
 |------------------------|-----------------|-----|
-| **GateLoginThrottle** (Web infrastructure, used by the gate-terminal sign-in) | TryGetValue / Set / Remove | `GateLoginFailures:{sourceIp}` |
+| **GateSignInThrottle** (Web infrastructure, used by the gate-terminal sign-in) | TryGetValue / Set / Remove | `GateLoginFailures:{sourceIp}` |
 | **GatePinThrottle** (`Humans.Gate/Services/Stores/`; used by `GateController` PIN claim / override) | TryGetValue / Set / Remove | `GatePinFailures:{key}` |
 | **GateVendorMirrorLedger** (`Humans.Gate/Services/Stores/`; used by `GateController` and `GateVendorBackfillAdminController`) | TryGetValue / Set (atomic claim) | `GateVendorMirrorSent:{vendorTicketId}` |
 

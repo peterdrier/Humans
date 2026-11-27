@@ -221,7 +221,7 @@ No repository. Parses the `/Tickets/Participation/Backfill` CSV and calls
 No repository. "Who's onsite" roster orchestrator. Pure read
 orchestration over `ITicketService` (this year's onsite
 participations), `IUserService`, `ICampService`, `ITeamService`,
-`IRoleAssignmentService` (the controller resolves the active year via
+`ISystemRoleService` (the controller resolves the active year via
 `ISettingsService`). Implements
 `IOnsiteRosterService`, `IApplicationService`. No direct DB access, no cache.
 
@@ -238,7 +238,7 @@ a person) the first time a ticket admin sets its password from
 via `IAccountProvisioningService.CreateAccountAsync`, sets the password through
 `IUserSignInService`, saves its profile through Users' canonical
 `IProfileEditorService.SaveProfileAsync`, marks it fake via Users'
-`IUserWrite.MarkFakeAsync` (keeping it out of the Consent Coordinator review
+`IUserWrite.MarkFakeAsync` (keeping it out of the Consent Admin review
 queue), and logs via `IAuditLogService`. Users refreshes its own `UserInfo`
 entry on the create and the profile save. No direct
 DB or cache access of its own — every mutation goes through another

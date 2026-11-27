@@ -118,7 +118,7 @@ internal sealed class CampaignRepository(IDbContextFactory<CampaignsDbContext> f
             .CountAsync(ct);
     }
 
-    public async Task<IReadOnlyList<CampaignGrant>> GetActiveOrCompletedGrantsForUserAsync(
+    public async Task<IReadOnlyList<CampaignGrant>> GetGrantsForUserAsync(
         Guid userId, CancellationToken ct = default)
     {
         await using var ctx = await factory.CreateDbContextAsync(ct);
@@ -184,7 +184,7 @@ internal sealed class CampaignRepository(IDbContextFactory<CampaignsDbContext> f
         return list.ToHashSet();
     }
 
-    public async Task AddGrantAndSaveAsync(CampaignGrant grant, CancellationToken ct = default)
+    public async Task AddGrantAsync(CampaignGrant grant, CancellationToken ct = default)
     {
         await using var ctx = await factory.CreateDbContextAsync(ct);
         ctx.CampaignGrants.Add(grant);

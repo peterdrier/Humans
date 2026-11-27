@@ -150,8 +150,8 @@
   <data name="Notifications_Audience_Board" xml:space="preserve">
     <value>den Vorstand</value>
   </data>
-  <data name="Notifications_Audience_ConsentCoordinator" xml:space="preserve">
-    <value>Einwilligungskoordination</value>
+  <data name="Notifications_Audience_ConsentAdmin" xml:space="preserve">
+    <value>Einwilligungs-Admins</value>
   </data>
   <data name="Notifications_Audience_ShiftsAdmin" xml:space="preserve">
     <value>Schicht-Admins</value>

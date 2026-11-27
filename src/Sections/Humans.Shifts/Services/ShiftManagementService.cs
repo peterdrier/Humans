@@ -1013,7 +1013,7 @@ internal sealed class ShiftManagementService(
                         userLookup.TryGetValue(c.UserId, out var user);
                         return new CoordinatorLogin(
                             c.UserId,
-                            user?.LastLoginAt);
+                            user?.LastSignInAt);
                     })
                     .ToList());
 
@@ -1091,8 +1091,8 @@ internal sealed class ShiftManagementService(
             .Select(o => o.PurchasedAt)
             .ToList();
         var loginsInWindow = (await UserService.GetAllUserInfosAsync(ct).ConfigureAwait(false))
-            .Where(u => u.LastLoginAt >= startInstant && u.LastLoginAt < endInstant)
-            .Select(u => u.LastLoginAt!.Value)
+            .Where(u => u.LastSignInAt >= startInstant && u.LastSignInAt < endInstant)
+            .Select(u => u.LastSignInAt!.Value)
             .ToList();
 
         LocalDate ToLocalDate(Instant i) => i.InZone(tz).Date;
@@ -1394,7 +1394,7 @@ internal sealed class ShiftManagementService(
             && s.Shift.GetAbsoluteEnd(eventSettings) > now);
     }
 
-    public Task<IReadOnlyList<Guid>> GetOnSiteUserIdsForDayAsync(
+    public Task<IReadOnlyList<Guid>> GetOnSiteUserIdsAsync(
         Guid eventSettingsId, int dayOffset, CancellationToken ct = default) =>
         repo.GetUserIdsForDayAsync(
             eventSettingsId,
@@ -1405,7 +1405,7 @@ internal sealed class ShiftManagementService(
     public async Task ReassignAsync(Guid sourceUserId, Guid targetUserId, Guid actorUserId, Instant updatedAt,
         CancellationToken ct)
     {
-        await repo.ReassignProfilesAndTagPrefsToUserAsync(sourceUserId, targetUserId, updatedAt, ct);
+        await repo.ReassignProfilesToUserAsync(sourceUserId, targetUserId, updatedAt, ct);
     }
 
     public async Task<PostEventStats?> GetPostEventStatsAsync(

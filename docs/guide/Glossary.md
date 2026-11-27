@@ -56,7 +56,7 @@ requires an approved season for the current year. See [Camps](Camps.md).
 An active contributor with project or event responsibilities. Requires an
 application and a Board vote. 2-year term. See [Governance](Governance.md).
 
-## Consent Coordinator
+## Consent Admin
 
 The coordinator role that reviews a new human's signed consents and records a
 clear or a flag. The review is an audit annotation — it does not gate Volunteer
@@ -164,5 +164,5 @@ documents; admission is automatic. See [Onboarding](Onboarding.md).
 ## Shifts Admin
 
 The role that runs shift management app-wide and acts as the facilitation
-contact for onboarding, with read-only access to the onboarding review queue. Distinct from the Consent Coordinator,
+contact for onboarding, with read-only access to the onboarding review queue. Distinct from the Consent Admin,
 who reviews consents. See [Onboarding](Onboarding.md).

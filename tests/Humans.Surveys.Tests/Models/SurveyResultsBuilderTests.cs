@@ -59,4 +59,24 @@ public sealed class SurveyResultsBuilderTests
         model.Questions[1].RatingAverage.Should().Be(expected);
         model.Questions[2].RatingAverage.Should().BeNull();
     }
+
+    [HumansFact]
+    public void Build_FollowUp_NestsUnderParentWithSurveyNumber()
+    {
+        var parentId = Guid.NewGuid();
+        var followUpId = Guid.NewGuid();
+        var results = new SurveyResultsView(Guid.NewGuid(), "Results", SurveyStatus.Closed, 1, 1, 1,
+            new SurveyFunnel(1, 1, 0, 0),
+            [
+                new QuestionAggregate(followUpId, "Why?", SurveyQuestionType.ShortText, [], [], null, []) { PageNumber = 1, Order = 2, FollowUpOf = parentId },
+                new QuestionAggregate(parentId, "Price", SurveyQuestionType.SingleChoice, [], [], null, []) { PageNumber = 1, Order = 1 },
+                new QuestionAggregate(Guid.NewGuid(), "Else", SurveyQuestionType.LongText, [], [], null, []) { PageNumber = 1, Order = 3 },
+            ], []);
+
+        var model = SurveyResultsBuilder.Build(new SurveyScopedResults(results, 1, SurveyResultsScope.Combined), FixedOrgTimeZone.Madrid.Zone);
+
+        model.Questions.Select(q => (q.Prompt, q.Number)).Should().Equal(("Price", 1), ("Else", 3));
+        model.Questions[0].FollowUps.Should().ContainSingle().Which.Number.Should().Be(2);
+        model.QuestionsById.Keys.Should().Contain(followUpId);
+    }
 }

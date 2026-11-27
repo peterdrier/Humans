@@ -97,7 +97,7 @@ internal sealed class DemoCastStory(
             var errors = await accountProvisioning.CreateAccountAsync(
                 userId, burnerName,
                 createdAt: now.Minus(Duration.FromDays(n * 3 % 700)),
-                lastLoginAt: now.Minus(Duration.FromDays(n % 60)));
+                lastSignInAt: now.Minus(Duration.FromDays(n % 60)));
             if (errors.Count > 0)
                 throw new InvalidOperationException($"Could not create demo human {n}: {string.Join(", ", errors)}");
         }

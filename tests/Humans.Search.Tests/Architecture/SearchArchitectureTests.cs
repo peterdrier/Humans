@@ -6,7 +6,7 @@ namespace Humans.Search.Tests.Architecture;
 
 /// <summary>
 /// Search owns no tables and fans out to the sections' contributed categories, so
-/// its service carries the <see cref="IOrchestrator"/> marker — the thing HUM0026/HUM0027
+/// <see cref="ISearchService"/> carries the <see cref="IOrchestrator"/> marker — the thing HUM0026/HUM0027
 /// police.
 /// </summary>
 public class SearchArchitectureTests

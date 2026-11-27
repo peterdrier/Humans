@@ -19,7 +19,7 @@ namespace Humans.Issues.Services;
 internal sealed class IssuesService(
     IIssuesRepository repo,
     IUserService users,
-    IRoleAssignmentService roles,
+    ISystemRoleService roles,
     IEmailService email,
     IssuesEmails emailMessages,
     INotificationEmitter notifications,
@@ -154,15 +154,19 @@ internal sealed class IssuesService(
         }
         catch when (issue.ScreenshotStoragePath is not null)
         {
+            var step = "check whether the save committed";
             try
             {
                 // A failed acknowledgement may follow a committed save; only remove an unreferenced upload.
                 if (await repo.GetByIdAsync(issueId, CancellationToken.None) is null)
+                {
+                    step = "delete the screenshot";
                     await fileStorage.DeleteAsync(issue.ScreenshotStoragePath, CancellationToken.None);
+                }
             }
             catch (Exception cleanupError)
             {
-                logger.LogWarning(cleanupError, "Failed to verify or clean up screenshot after issue {IssueId} submission failed", issueId);
+                logger.LogWarning(cleanupError, "Failed to {Step} after issue {IssueId} submission failed", step, issueId);
             }
             throw;
         }
@@ -238,7 +242,7 @@ internal sealed class IssuesService(
             SetStatusFields(issue, IssueStatus.Resolved, senderUserId, now);
 
         issue.UpdatedAt = now;
-        await repo.AddCommentAndSaveIssueAsync(comment, issue, ct);
+        await repo.AddCommentAsync(comment, issue, ct);
         // The reply and any status change are committed; finish their follow-up work.
         ct = CancellationToken.None;
 
@@ -609,14 +613,16 @@ internal sealed class IssuesService(
         foreach (var issue in issues)
         {
             if (issue.ScreenshotStoragePath is not { } key) continue;
+            var step = "check the issue row of";
             try
             {
                 if (await repo.GetByIdAsync(issue.Id, CancellationToken.None) is not null) continue;
+                step = "delete";
                 await fileStorage.DeleteAsync(key, CancellationToken.None);
             }
             catch (Exception ex)
             {
-                logger.LogWarning(ex, "Failed to verify or delete issue screenshot {Key}", key);
+                logger.LogWarning(ex, "Failed to {Step} issue screenshot {Key}", step, key);
             }
         }
     }

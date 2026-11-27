@@ -270,7 +270,7 @@ internal sealed class EventsController(
         var (startTime, durationMinutes) = Event.ResolveAllDaySchedule(
             model.IsAllDay, model.StartTime.ToTimeSpan(), model.DurationMinutes);
 
-        var result = await guide.UpdateAndResubmitAsync(eventId, new EventEdit(
+        var result = await guide.ResubmitAsync(eventId, new EventEdit(
             model.CategoryId, model.VenueId, model.Title, model.Description,
             ToInstant(model.StartDate.ToDateTime(TimeOnly.FromTimeSpan(startTime)), tz), durationMinutes,
             model.LocationNote, model.Host, model.IsRecurring, model.RecurrenceDays, PriorityRank: null));
@@ -367,8 +367,8 @@ internal sealed class EventsController(
 
     private void ValidateRecurrenceDays(bool isRecurring, string? days, EventSettingsInfo settings)
     {
-        if (!isRecurring || EventRecurrenceDays.HasOnlyEventOffsets(days, settings.EventEndOffset)) return;
-        logger.LogWarning("Event form rejected: recurrence days are outside the configured calendar or invalid");
+        if (!isRecurring || EventRecurrenceDays.OffsetProblem(days, settings.EventEndOffset) is not { } problem) return;
+        logger.LogWarning("Event form rejected: recurrence {Problem}", problem);
         ModelState.AddModelError(nameof(IndividualEventFormViewModel.RecurrenceDays),
             localizer["Events_RecurrenceDaysInvalid"].Value);
     }
@@ -572,7 +572,7 @@ internal sealed class EventsController(
         }
 
         var tz = eventSettings.TimeZone;
-        var result = await guide.UpdateAndResubmitAsync(eventId, new EventEdit(
+        var result = await guide.ResubmitAsync(eventId, new EventEdit(
             model.CategoryId, VenueId: null, model.Title, model.Description,
             ToInstant(model.StartDate.ToDateTime(model.StartTime), tz), model.DurationMinutes,
             model.LocationNote, model.Host, model.IsRecurring, model.RecurrenceDays, model.PriorityRank));

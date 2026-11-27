@@ -146,6 +146,19 @@ public sealed class HoldedRepositoryTests
     }
 
     [HumansFact]
+    public async Task ReplaceLedgerWindow_RepeatedLine_StoresOne()
+    {
+        var ct = Xunit.TestContext.Current.CancellationToken;
+
+        var first = Line(1, 1, 40000004, Instant.FromUtc(2026, 6, 5, 0, 0), credit: 100m);
+        var repeat = Line(1, 1, 40000004, first.Date, credit: 100m);
+        await _repo.ReplaceLedgerWindowAsync(WindowFrom, WindowTo, null, [first, repeat], Now, ct);
+
+        var lines = await AllLinesAsync(ct);
+        lines.Should().ContainSingle();
+    }
+
+    [HumansFact]
     public async Task HasAnyLedgerLines_is_false_on_a_cold_cache()
     {
         var ct = Xunit.TestContext.Current.CancellationToken;

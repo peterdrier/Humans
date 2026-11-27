@@ -26,11 +26,18 @@ internal sealed class HoldedMirrorCatchUp(
         {
             using var scope = scopes.CreateScope();
             var holded = scope.ServiceProvider.GetRequiredService<IHoldedService>();
-            if ((await holded.GetPurchaseDocumentsAsync(cancellationToken)).LastSyncAt is not null
-                && (await holded.GetContactsAsync(cancellationToken)).LastSyncAt is not null) return;
+            var documentsNeverSynced = (await holded.GetPurchaseDocumentsAsync(cancellationToken)).LastSyncAt is null;
+            var contactsNeverSynced = (await holded.GetContactsAsync(cancellationToken)).LastSyncAt is null;
+            if (!documentsNeverSynced && !contactsNeverSynced) return;
 
             jobs.Enqueue<HoldedSyncJob>(job => job.ExecuteAsync(CancellationToken.None));
-            logger.LogInformation("Holded purchase-document or contact mirror has never synced; queued a sync");
+            logger.LogInformation("Holded {Mirror} never synced; queued a sync",
+                (documentsNeverSynced, contactsNeverSynced) switch
+                {
+                    (true, true) => "purchase-document and contact mirrors have",
+                    (true, false) => "purchase-document mirror has",
+                    _ => "contact mirror has"
+                });
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
         {

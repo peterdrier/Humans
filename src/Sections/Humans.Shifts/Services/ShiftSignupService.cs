@@ -467,7 +467,7 @@ internal sealed class ShiftSignupService(
         await NotifyGroupChangeAsync(group, "Shifts_Notification_ChangeBailed");
 
         foreach (var signup in confirmed)
-            await CheckAndNotifyCoverageGapAsync(signup, signup.Shift);
+            await NotifyCoverageGapAsync(signup, signup.Shift);
         return null;
     }
 
@@ -542,7 +542,7 @@ internal sealed class ShiftSignupService(
 
         await DispatchSignupChangeNotificationAsync(signup, signup.Shift,
             "Shifts_Notification_ChangeRemoved", signup.Shift.Rota.Name, signup.Shift.DayOffset);
-        await CheckAndNotifyCoverageGapAsync(signup, signup.Shift);
+        await NotifyCoverageGapAsync(signup, signup.Shift);
 
         return SignupResult.Ok(signup.Id);
     }
@@ -748,7 +748,7 @@ internal sealed class ShiftSignupService(
         }
     }
 
-    internal async Task CheckAndNotifyCoverageGapAsync(ShiftSignup signup, Shift shift)
+    internal async Task NotifyCoverageGapAsync(ShiftSignup signup, Shift shift)
     {
         try
         {

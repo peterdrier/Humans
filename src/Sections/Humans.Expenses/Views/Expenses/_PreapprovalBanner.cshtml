@@ -20,7 +20,7 @@
             }
             else if (g.Status != GrantStatus.Open)
             {
-                @Localizer["Expenses_Validation_PreapprovalUnavailable"]
+                @Localizer[Humans.Expenses.Services.PreapprovalGrantQueries.UnavailableKey(g)]
             }
             else if (Model.DaysLeft < 0)
             {

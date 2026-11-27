@@ -28,7 +28,7 @@ internal sealed class ExpenseRepository(IDbContextFactory<ExpensesDbContext> fac
         return entities.Select(ExpenseReportMapper.ToDto).ToList();
     }
 
-    public async Task<IReadOnlyList<ExpenseReportDto>> GetByCategoryIdsAndStatusAsync(
+    public async Task<IReadOnlyList<ExpenseReportDto>> GetByCategoriesAsync(
         IReadOnlyCollection<Guid> categoryIds,
         ExpenseReportStatus status,
         CancellationToken ct = default)

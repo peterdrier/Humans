@@ -26,7 +26,7 @@ internal sealed record PleoReconciliation(
 }
 
 /// <summary>Spend is positive (money out), net of refunds.</summary>
-internal sealed record PleoSpendTotal(string Key, string Label, int Count, decimal Spend, bool Flagged = false);
+internal sealed record PleoSpendTotal(string Key, string Label, int Count, decimal Spend, string? Problem = null);
 
 internal sealed record PleoSummary(
     bool IsConfigured,

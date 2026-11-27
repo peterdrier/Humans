@@ -669,7 +669,7 @@ internal sealed class AgentService : IAgentService
         return conversations.Select(ToListSnapshot).ToList();
     }
 
-    public async Task<IReadOnlyList<AgentConversationTranscriptSnapshot>> ListAllConversationsForAdminWithMessagesAsync(
+    public async Task<IReadOnlyList<AgentConversationTranscriptSnapshot>> ListConversationsWithMessagesAsync(
         bool unansweredOnly, bool handoffsOnly, Guid? userId, int take, int skip,
         CancellationToken ct)
     {

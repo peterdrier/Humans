@@ -633,7 +633,7 @@ public sealed class CachingCampServiceTests : CampsTestHarness
         { nameof(ICampManagement.RejectCampMemberAsync), (t, c, _, ct) => t._service.RejectCampMemberAsync(c, Guid.NewGuid(), Guid.NewGuid(), ct) },
         { nameof(ICampManagement.RemoveCampMemberAsync), (t, c, _, ct) => t._service.RemoveCampMemberAsync(c, Guid.NewGuid(), Guid.NewGuid(), ct) },
         { nameof(ICampManagement.AddCampMemberToActiveSeasonAsync), (t, c, _, ct) => t._service.AddCampMemberToActiveSeasonAsync(c, Guid.NewGuid(), Guid.NewGuid(), ct) },
-        { nameof(ICampManagement.AddMemberAndAssignRoleInActiveSeasonAsync), (t, c, _, ct) => t._service.AddMemberAndAssignRoleInActiveSeasonAsync(c, Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid(), ct) },
+        { nameof(ICampManagement.AddMemberWithRoleAsync), (t, c, _, ct) => t._service.AddMemberWithRoleAsync(c, Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid(), ct) },
         { nameof(ICampManagement.WithdrawCampMembershipRequestAsync), (t, _, _, ct) => t._service.WithdrawCampMembershipRequestAsync(Guid.NewGuid(), Guid.NewGuid(), ct) },
         { nameof(ICampManagement.LeaveCampAsync), (t, _, _, ct) => t._service.LeaveCampAsync(Guid.NewGuid(), Guid.NewGuid(), ct) },
         { nameof(ICampManagement.SetEarlyEntryAsync), (t, c, _, ct) => t._service.SetEarlyEntryAsync(c, Guid.NewGuid(), true, Guid.NewGuid(), ct) },

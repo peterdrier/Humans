@@ -260,9 +260,10 @@
   <data name="Tickets_Buy_TermsUnavailable" xml:space="preserve">
     <value>Die Ticketregeln können gerade nicht geladen werden, daher können keine Tickets gekauft werden. Bitte versuche es in ein paar Minuten erneut.</value>
   </data>
-  <data name="Tickets_Resale_InviteInvalid" xml:space="preserve">
-    <value>Dieser Einladungslink ist nicht mehr gültig oder wurde an eine andere E-Mail-Adresse als deine geschickt.</value>
-  </data>
+  <data name="Tickets_Resale_InviteNotFound" xml:space="preserve"><value>Keine Einladung für diese Veranstaltung passt zu diesem Link.</value></data>
+  <data name="Tickets_Resale_InviteOtherEmail" xml:space="preserve"><value>Diese Einladung wurde an eine andere E-Mail-Adresse als deine geschickt.</value></data>
+  <data name="Tickets_Resale_NotSelling" xml:space="preserve"><value>Wiederverkaufstickets sind für diese Veranstaltung gerade nicht im Verkauf.</value></data>
+  <data name="Tickets_Resale_InviteSelfOnly" xml:space="preserve"><value>Ein Einladungslink kauft nur ein Ticket für dich selbst.</value></data>
   <data name="Tickets_Resale_NotFound" xml:space="preserve">
     <value>Ticket nicht gefunden.</value>
   </data>

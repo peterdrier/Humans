@@ -112,7 +112,7 @@ The section invariant doc is [`Store.md`](../Store.md).
   - **By-item** — one row per product (qty, revenue €), including deactivated products that still have lines in the year. Amounts use effective pricing (live catalog for Open orders).
   - **Cross-tab** — camps × products matrix with qty cells (blank for 0) and a per-product column-totals footer row. Both axes alphabetical. Column totals are consistent with by-item totals.
 - Service surface: `Service.GetStoreSummaryAsync(int year, CancellationToken)` returns a `SummaryDto` composing the three projections.
-- Single repository round-trip via `Repository.GetOrdersForCampSeasonsWithLinesAndPaymentsAsync` (orders with `Lines + Payments` eager-loaded), plus one camp-name batch via `ICampService.GetCampsForYearAsync` (projecting each camp's seasons for the year) and one product fetch via `GetAllProductsForYearAsync`. All aggregation is in-memory per the §Scale-and-Deployment rule in `CLAUDE.md`.
+- Single repository round-trip via `Repository.GetOrdersForCampSeasonsAsync` (orders with `Lines + Payments` eager-loaded), plus one camp-name batch via `ICampService.GetCampsForYearAsync` (projecting each camp's seasons for the year) and one product fetch via `GetAllProductsForYearAsync`. All aggregation is in-memory per the §Scale-and-Deployment rule in `CLAUDE.md`.
 - Reachable from the admin nav under Store → "Summary" (gated by the same policy so it stays hidden for non-admins).
 
 ### US-30.8: Repair Legacy Rows (Store admin)

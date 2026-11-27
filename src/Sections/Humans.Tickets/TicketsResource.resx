@@ -251,9 +251,10 @@
   <data name="Tickets_Buy_TermsUnavailable" xml:space="preserve">
     <value>The ticket rules cannot be loaded right now, so tickets cannot be bought. Please try again in a few minutes.</value>
   </data>
-  <data name="Tickets_Resale_InviteInvalid" xml:space="preserve">
-    <value>This invitation link is no longer valid, or it was sent to a different email address than the one you are signed in with.</value>
-  </data>
+  <data name="Tickets_Resale_InviteNotFound" xml:space="preserve"><value>No invitation for this event matches this link.</value></data>
+  <data name="Tickets_Resale_InviteOtherEmail" xml:space="preserve"><value>This invitation was sent to a different email address than the one you are signed in with.</value></data>
+  <data name="Tickets_Resale_NotSelling" xml:space="preserve"><value>Resale tickets are not on sale for this event right now.</value></data>
+  <data name="Tickets_Resale_InviteSelfOnly" xml:space="preserve"><value>An invitation link buys one ticket for you only.</value></data>
   <data name="Tickets_Resale_NotFound" xml:space="preserve">
     <value>Ticket not found.</value>
   </data>

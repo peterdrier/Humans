@@ -226,7 +226,7 @@ public sealed class ExpensesControllerTests
         var reports = Substitute.For<IExpenseReportManagement>();
         var review = Substitute.For<IExpenseReview>();
         reports.GetAsync(reportId).Returns(report);
-        reports.WithdrawWithResultAsync(reportId, actorId).Returns(ExpenseMutationResult.Success);
+        reports.WithdrawAsync(reportId, actorId).Returns(ExpenseMutationResult.Success);
         var handler = new ExpenseReportAuthorizationHandler(
             Substitute.For<IBudgetService>(), Substitute.For<IPermissionService>(), users,
             Substitute.For<IPreapprovalService>(), new HttpContextAccessor());
@@ -261,12 +261,12 @@ public sealed class ExpensesControllerTests
         if (allowed)
         {
             result.Should().BeOfType<RedirectToActionResult>();
-            await reports.Received(1).WithdrawWithResultAsync(reportId, actorId);
+            await reports.Received(1).WithdrawAsync(reportId, actorId);
         }
         else
         {
             result.Should().BeOfType<ForbidResult>();
-            await reports.DidNotReceive().WithdrawWithResultAsync(reportId, actorId);
+            await reports.DidNotReceive().WithdrawAsync(reportId, actorId);
         }
     }
 
@@ -299,7 +299,7 @@ public sealed class ExpensesControllerTests
             UpdatedAt = default,
             Lines = []
         });
-        reports.SaveSubmitterIbanWithResultAsync(reportId, actorId, Arg.Any<string?>())
+        reports.SaveSubmitterIbanAsync(reportId, actorId, Arg.Any<string?>())
             .Returns(new ExpenseIbanSaveResult(succeeded, validationError, messageKey));
         var localizer = Substitute.For<IStringLocalizer<ExpensesResource>>().AddFormatting();
         localizer[messageKey].Returns(new LocalizedString(messageKey, translated));
@@ -364,7 +364,7 @@ public sealed class ExpensesControllerTests
             Lines = [],
         });
         const string messageKey = "Expenses_Iban_InvalidFormat";
-        reports.SaveSubmitterIbanWithResultAsync(reportId, actorId, Arg.Any<string?>())
+        reports.SaveSubmitterIbanAsync(reportId, actorId, Arg.Any<string?>())
             .Returns(new ExpenseIbanSaveResult(false, true, messageKey));
         var localizer = Substitute.For<IStringLocalizer<ExpensesResource>>().AddFormatting();
         localizer[messageKey].Returns(new LocalizedString(messageKey, "Invalid IBAN"));

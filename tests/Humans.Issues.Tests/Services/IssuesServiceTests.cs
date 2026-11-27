@@ -72,7 +72,7 @@ public sealed class IssuesServiceTests
     private readonly IssuesEmails _emailMessages;
     private readonly List<string> _renderedEmailCultures = [];
     private readonly IUserService _userService;
-    private readonly IRoleAssignmentService _roleService;
+    private readonly ISystemRoleService _roleService;
     private readonly INotificationEmitter _notificationService;
     private readonly INotificationAutoResolve _notificationInbox;
     private readonly IIssuesRepository _repository;
@@ -101,7 +101,7 @@ public sealed class IssuesServiceTests
 
         _userService = NewRegistryBackedUserService();
 
-        _roleService = Substitute.For<IRoleAssignmentService>();
+        _roleService = Substitute.For<ISystemRoleService>();
         _roleService
             .GetActiveUserIdsInRoleAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
             .Returns(Task.FromResult<IReadOnlyList<Guid>>([]));
@@ -1403,9 +1403,9 @@ public sealed class IssuesServiceTests
             await _repository.SaveTrackedIssueAsync(issue, call.Arg<CancellationToken>());
             await request.CancelAsync();
         });
-        repo.AddCommentAndSaveIssueAsync(Arg.Any<IssueComment>(), issue, request.Token).Returns(async call =>
+        repo.AddCommentAsync(Arg.Any<IssueComment>(), issue, request.Token).Returns(async call =>
         {
-            await _repository.AddCommentAndSaveIssueAsync(call.Arg<IssueComment>(), issue, call.Arg<CancellationToken>());
+            await _repository.AddCommentAsync(call.Arg<IssueComment>(), issue, call.Arg<CancellationToken>());
             await request.CancelAsync();
         });
         _roleService.GetActiveUserIdsInRoleAsync(Arg.Any<string>(), Arg.Any<CancellationToken>()).Returns(call =>

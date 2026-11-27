@@ -79,9 +79,9 @@
   <data name="Users_Profile_BoardNotes" xml:space="preserve"><value>Notes for the Board</value></data>
   <data name="Users_Profile_BoardInformation" xml:space="preserve"><value>Board &amp; Private Information</value></data>
   <data name="Users_Profile_WhatsApp" xml:space="preserve"><value>WhatsApp</value></data>
-  <data name="Users_Profile_DietaryMedical_MedicalConditions_Hint" xml:space="preserve"><value>Visible to you, the Shifts NoInfo admins and the Board; every time one of them opens it, that is recorded and listed below. Anything coordinators should know — diabetes, epilepsy, severe injuries, etc.</value></data>
+  <data name="Users_Profile_DietaryMedical_MedicalConditions_Hint" xml:space="preserve"><value>Visible to you, the admins and the Board; every time one of them opens it, that is recorded and listed below. Anything coordinators should know — diabetes, epilepsy, severe injuries, etc.</value></data>
   <data name="Users_Profile_DietaryMedical_MedicalConditions_Title" xml:space="preserve"><value>Medical conditions</value></data>
-  <data name="Users_Profile_DietaryMedical_MedicalConditions_VisibilityNote" xml:space="preserve"><value>Optional. Visible to you, the Shifts NoInfo admins and the Board, and every look is recorded.</value></data>
+  <data name="Users_Profile_DietaryMedical_MedicalConditions_VisibilityNote" xml:space="preserve"><value>Optional. Visible to you, the admins and the Board, and every look is recorded.</value></data>
   <data name="Users_Profile_MyEmails" xml:space="preserve"><value>My Emails</value></data>
   <data name="Users_Profile_NoSentMessages" xml:space="preserve"><value>No in-platform messages on record.</value></data>
   <data name="Users_Profile_SentMessages" xml:space="preserve"><value>Sent messages</value></data>
@@ -140,7 +140,7 @@
   <data name="Users_ProfileCard_PendingBadge" xml:space="preserve"><value>Pending</value></data>
   <data name="Users_ProfileCard_Teams" xml:space="preserve"><value>Teams:</value></data>
   <data name="Users_ProfileCard_Joined" xml:space="preserve"><value>Joined {0}</value><comment>{0} = date</comment></data>
-  <data name="Users_ProfileCard_LastLogin" xml:space="preserve"><value>Last sign-in {0}</value><comment>{0} = date</comment></data>
+  <data name="Users_ProfileCard_LastSignIn" xml:space="preserve"><value>Last sign-in {0}</value><comment>{0} = date</comment></data>
 
   <!-- ======================== -->
   <!-- Privacy / My Data        -->
@@ -195,15 +195,21 @@
   <data name="Users_EmailGrid_Actions" xml:space="preserve"><value>Actions</value></data>
   <data name="Users_EmailGrid_StatusVerified" xml:space="preserve"><value>Verified</value></data>
   <data name="Users_EmailGrid_StatusPending" xml:space="preserve"><value>Pending</value></data>
-  <data name="Users_EmailGrid_LinkGoogleAccount" xml:space="preserve"><value>Link Google account</value></data>
-  <data name="Users_EmailGrid_LinkGoogleHelp" xml:space="preserve"><value>Sign in with Google to attach an additional Google account to your profile.</value></data>
+  <data name="Users_EmailGrid_LinkProviderAccount" xml:space="preserve"><value>Link {0} account</value></data>
+  <data name="Users_EmailGrid_LinkProviderHelp" xml:space="preserve"><value>Sign in with {0} to attach an additional {0} account to your profile.</value></data>
   <data name="Users_EmailGrid_BackToAdminDetail" xml:space="preserve"><value>Back to user detail</value></data>
   <data name="Users_EmailGrid_Unlink" xml:space="preserve"><value>Unlink</value></data>
   <data name="Users_EmailGrid_ConfirmUnlink" xml:space="preserve"><value>Unlink this Google account?</value></data>
-  <data name="Users_EmailGrid_UnlinkRejected" xml:space="preserve"><value>Could not unlink — the row is unknown or has no sign-in provider.</value></data>
+  <data name="Users_EmailGrid_ClearPrimaryNotPrimary" xml:space="preserve"><value>Could not clear the primary flag: this email is not flagged primary.</value></data>
+  <data name="Users_EmailGrid_ClearPrimaryOnlyOne" xml:space="preserve"><value>Could not clear the primary flag: this is the only verified primary email.</value></data>
+  <data name="Users_EmailGrid_ClearPrimaryChanged" xml:space="preserve"><value>Could not clear the primary flag: this email changed meanwhile. Reload and check.</value></data>
+  <data name="Users_EmailGrid_UnlinkNoProvider" xml:space="preserve"><value>Could not unlink: there is no sign-in provider on this email.</value></data>
+  <data name="Users_EmailGrid_UnlinkAccountNotFound" xml:space="preserve"><value>Could not unlink: the account no longer exists.</value></data>
+  <data name="Users_EmailGrid_UnlinkLoginNotFound" xml:space="preserve"><value>Could not unlink: this sign-in is no longer linked to the account.</value></data>
+  <data name="Users_EmailGrid_UnlinkLoginRemovalFailed" xml:space="preserve"><value>Could not unlink: removing the sign-in failed. Nothing was changed.</value></data>
+  <data name="Users_EmailGrid_UnlinkRowNotRemoved" xml:space="preserve"><value>The sign-in was unlinked, but its email row could not be removed.</value></data>
   <data name="Users_EmailGrid_SetPrimary" xml:space="preserve"><value>Set primary</value></data>
   <data name="Users_EmailGrid_PrimaryFlagCleared" xml:space="preserve"><value>Primary flag cleared from that row.</value></data>
-  <data name="Users_EmailGrid_ClearPrimaryRejected" xml:space="preserve"><value>Could not clear primary flag — the row is unknown or not currently flagged.</value></data>
   <data name="Users_EmailGrid_Clear" xml:space="preserve"><value>Clear</value></data>
   <data name="Users_EmailGrid_ConfirmClearPrimary" xml:space="preserve"><value>Clear the primary flag from this email row?</value></data>
   <data name="Users_EmailGrid_UnlinkSuccess" xml:space="preserve"><value>Sign-in provider unlinked.</value></data>

@@ -26,7 +26,7 @@ namespace Humans.Governance.Services;
 internal sealed class AssemblyVoteService(
     IAssemblyVoteRepository repository,
     IApplicationRepository applications,
-    IRoleAssignmentService roleAssignments,
+    ISystemRoleService roleAssignments,
     ITeamService teams,
     IUserService users,
     IEmailService email,
@@ -182,7 +182,7 @@ internal sealed class AssemblyVoteService(
         return await DisclosureRowsAsync(voteId, ct);
     }
 
-    public async Task<int> RunLapseAndReminderSweepAsync(CancellationToken ct = default)
+    public async Task<int> RunSweepAsync(CancellationToken ct = default)
     {
         var now = clock.GetCurrentInstant();
 

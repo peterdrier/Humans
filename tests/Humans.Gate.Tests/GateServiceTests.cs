@@ -84,7 +84,7 @@ public class GateServiceTests
     private readonly IEarlyEntryService _earlyEntry = Substitute.For<IEarlyEntryService>();
     private readonly ISettingsService _burn = Substitute.For<ISettingsService>();
     private readonly IShiftService _shifts = Substitute.For<IShiftService>();
-    private readonly IRoleAssignmentService _roles = Substitute.For<IRoleAssignmentService>();
+    private readonly ISystemRoleService _roles = Substitute.For<ISystemRoleService>();
     private readonly IPasswordHasher<GateStaffPin> _pinHasher = new PasswordHasher<GateStaffPin>();
     private readonly IAuditLogService _auditLog = Substitute.For<IAuditLogService>();
     private readonly ITicketWrite _users = Substitute.For<ITicketWrite>();

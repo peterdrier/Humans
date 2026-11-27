@@ -53,7 +53,7 @@ public class ProfileViewControllerPopoverTests
             _teamService,
             _campService,
             Substitute.For<IGovernanceService>(),
-            Substitute.For<Humans.Auth.Contracts.IRoleAssignmentService>(),
+            Substitute.For<Humans.Auth.Contracts.ISystemRoleService>(),
             _authorizationService,
             new MedicalConditionsService(
                 Substitute.For<Humans.Users.Data.Repositories.IUserRepository>(), _userService,
@@ -103,7 +103,7 @@ public class ProfileViewControllerPopoverTests
         _shiftManagement.CanManageOrApproveAnyShiftsAsync(_viewerId, Arg.Any<CancellationToken>()).Returns(false);
         if (privileged)
         {
-            ((ClaimsIdentity)_controller.User.Identity!).AddClaim(new Claim(ClaimTypes.Role, ShiftsRoles.ShiftsNoInfo));
+            ((ClaimsIdentity)_controller.User.Identity!).AddClaim(new Claim(ClaimTypes.Role, ShiftsRoles.ShiftsAdmin));
             _authorizationService.AuthorizeAsync(Arg.Any<ClaimsPrincipal>(), Arg.Any<object?>(),
                 ShiftsPolicies.PrivilegedSignupApprover).Returns(AuthorizationResult.Success());
         }

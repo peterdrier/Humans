@@ -44,10 +44,11 @@ internal sealed class PretixWebhookController(
             || string.IsNullOrEmpty(notification.Event) || string.IsNullOrEmpty(notification.Code))
             return Ok();
 
+        // Applying an order change can write to the platform; a sender that hangs up must not tear it.
         await platformEvents.PlatformOrderChangedAsync(
             PretixPlatform.PlatformKey,
             PretixPlatform.FormatPlatformOrderId(notification.Event, notification.Code),
-            ct);
+            CancellationToken.None);
         return Ok();
     }
 

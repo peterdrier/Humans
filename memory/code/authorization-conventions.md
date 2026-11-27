@@ -24,7 +24,7 @@ Authorization is policy-based end to end; `IAuthorizationService` is the single 
   One exception: full-Admin destructive deletes may add
   `IAdminAuthorizationService.RequireCurrentUserIsAdminAsync` inside the service as belt and braces; the
   route still carries `AdminOnly`.
-- **Roles are already claims.** `RoleAssignmentClaimsTransformation` turns active role assignments into
+- **Roles are already claims.** `SystemRoleClaimsTransformation` turns active role assignments into
   claims on every request from memory; don't query the DB for them.
 
 **Where policies live:** a section's own names in `<Section>Policies` (its Contracts), registered by its

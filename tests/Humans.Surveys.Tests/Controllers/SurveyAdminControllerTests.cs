@@ -284,7 +284,7 @@ public sealed class SurveyAdminControllerTests
         var invitations = Substitute.For<ISurveyInvitations>();
         surveys.GetForEditAsync(id, Arg.Any<CancellationToken>()).Returns(new SurveyDetail(id, SurveyStatus.Draft, Editable("Mine"), actorId));
         surveys.GetAdminSummariesAsync(Arg.Any<SurveyViewer>(), Arg.Any<CancellationToken>()).Returns(Array.Empty<SurveyAdminSummary>());
-        surveys.ApproveAndSendAsync(id, Arg.Any<SurveyViewer>(), Arg.Any<CancellationToken>()).Returns(new SurveyReviewResult(new SendResult(0, 0, 0)));
+        surveys.ApproveAsync(id, Arg.Any<SurveyViewer>(), Arg.Any<CancellationToken>()).Returns(new SurveyReviewResult(new SendResult(0, 0, 0)));
         surveys.RejectAsync(id, Arg.Any<SurveyViewer>(), Arg.Any<string>(), Arg.Any<CancellationToken>()).Returns(new SurveyReviewResult());
         surveys.SubmitForApprovalAsync(id, Arg.Any<Guid>(), Arg.Any<CancellationToken>()).Returns(new SurveySubmitResult(true));
         surveys.GetOfficialLinkAsync(id, Arg.Any<Guid>(), Arg.Any<CancellationToken>()).Returns((SurveyOfficialLink?)null);
@@ -564,7 +564,7 @@ public sealed class SurveyAdminControllerTests
         var surveys = Substitute.For<ISurveyService>();
         var failure = new InvalidOperationException("Unexpected persistence failure.");
         if (approve)
-            surveys.ApproveAndSendAsync(id, Arg.Any<SurveyViewer>(), Arg.Any<CancellationToken>())
+            surveys.ApproveAsync(id, Arg.Any<SurveyViewer>(), Arg.Any<CancellationToken>())
                 .Returns(Task.FromException<SurveyReviewResult>(failure));
         else
             surveys.RejectAsync(id, Arg.Any<SurveyViewer>(), "note", Arg.Any<CancellationToken>())
@@ -687,7 +687,7 @@ public sealed class SurveyAdminControllerTests
     {
         var id = Guid.NewGuid();
         var surveys = Substitute.For<ISurveyService>();
-        surveys.ApproveAndSendAsync(id, Arg.Any<SurveyViewer>(), Arg.Any<CancellationToken>())
+        surveys.ApproveAsync(id, Arg.Any<SurveyViewer>(), Arg.Any<CancellationToken>())
             .Returns(new SurveyReviewResult(new SendResult(3, 3 - failed, failed)));
         var localizer = SpanishLocalizer();
         var sut = CreateController(surveys, role: SurveysRoles.SurveysAdmin, localizer: localizer);
@@ -706,7 +706,7 @@ public sealed class SurveyAdminControllerTests
     {
         var id = Guid.NewGuid();
         var surveys = Substitute.For<ISurveyService>();
-        surveys.ApproveAndSendAsync(id, Arg.Any<SurveyViewer>(), Arg.Any<CancellationToken>())
+        surveys.ApproveAsync(id, Arg.Any<SurveyViewer>(), Arg.Any<CancellationToken>())
             .Returns(new SurveyReviewResult(new SendResult(1, 1, 0)));
         var sut = CreateController(surveys, role: SurveysRoles.SurveysAdmin);
         sut.Url = Substitute.For<IUrlHelper>();
@@ -724,7 +724,7 @@ public sealed class SurveyAdminControllerTests
         var id = Guid.NewGuid();
         var surveys = Substitute.For<ISurveyService>();
         const string reason = "This survey's audience resolves to nobody to invite.";
-        surveys.ApproveAndSendAsync(id, Arg.Any<SurveyViewer>(), Arg.Any<CancellationToken>())
+        surveys.ApproveAsync(id, Arg.Any<SurveyViewer>(), Arg.Any<CancellationToken>())
             .Returns(new SurveyReviewResult(Refusal: reason));
         var sut = CreateController(surveys, role: SurveysRoles.SurveysAdmin);
 

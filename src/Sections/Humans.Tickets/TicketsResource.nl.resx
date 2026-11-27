@@ -260,9 +260,10 @@
   <data name="Tickets_Buy_TermsUnavailable" xml:space="preserve">
     <value>De ticketregels kunnen nu niet worden geladen, dus er kunnen geen tickets worden gekocht. Probeer het over een paar minuten opnieuw.</value>
   </data>
-  <data name="Tickets_Resale_InviteInvalid" xml:space="preserve">
-    <value>Deze uitnodigingslink is niet meer geldig, of hij is naar een ander e-mailadres gestuurd dan waarmee je bent ingelogd.</value>
-  </data>
+  <data name="Tickets_Resale_InviteNotFound" xml:space="preserve"><value>Geen uitnodiging voor dit evenement hoort bij deze link.</value></data>
+  <data name="Tickets_Resale_InviteOtherEmail" xml:space="preserve"><value>Deze uitnodiging is naar een ander e-mailadres gestuurd dan waarmee je bent ingelogd.</value></data>
+  <data name="Tickets_Resale_NotSelling" xml:space="preserve"><value>Doorverkoopkaarten zijn voor dit evenement nu niet te koop.</value></data>
+  <data name="Tickets_Resale_InviteSelfOnly" xml:space="preserve"><value>Met een uitnodigingslink koop je alleen één kaart voor jezelf.</value></data>
   <data name="Tickets_Resale_NotFound" xml:space="preserve">
     <value>Ticket niet gevonden.</value>
   </data>

@@ -254,7 +254,8 @@ internal sealed class TicketsSupportAdminController(
         }
         return await ActAsync(orderId, ticketId,
             noRefund ? "Ticket voided with no refund." : "Ticket voided and the refund sent; it shows on the order and the refund list.",
-            (actor, c) => checkout.VoidTicketAsync(ticketId, reason ?? string.Empty, refundMinor, actor, c), ct);
+            // Voiding can refund at the platform; a disconnect must not leave the refund unrecorded.
+            (actor, _) => checkout.VoidTicketAsync(ticketId, reason ?? string.Empty, refundMinor, actor, CancellationToken.None), ct);
     }
 
     [HttpPost("Order/{orderId:guid}/Ticket/{ticketId:guid}/Restore")]

@@ -19,7 +19,7 @@ Repository: `IIssuesRepository`.
 Actionable badge counts query the repository directly for the viewer’s queues and own reports; no count cache or invalidation is needed.
 
 Cross-section calls via `IUserService` (canonical reporter email, names and cultures),
-`IRoleAssignmentService`, `IEmailService`,
+`ISystemRoleService`, `IEmailService`,
 the section's own `IssuesEmails` builder, `INotificationEmitter`, `INotificationAutoResolve`,
 `IAuditLogService`, `IAuditViewerService` (the `IssueCreated` entry naming who actually filed a machine-created issue),
 `ISectionCatalog`, `IFileStorage` (screenshot bytes; the row keeps only the key; atomic uploads and failed-submission cleanup). Routes through `IssueSectionRouting`

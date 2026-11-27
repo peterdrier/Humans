@@ -15,19 +15,11 @@ public static class ShiftsRoles
     /// </summary>
     public const string ShiftsAdmin = "ShiftsAdmin";
 
-    /// <summary>
-    /// Shifts NoInfo: approves and voluntells shift signups but does not create or edit shifts.
-    /// Stored as <c>NoInfoAdmin</c> before 2026-10.
-    /// </summary>
-    public const string ShiftsNoInfo = "ShiftsNoInfo";
-
     public static bool IsPrivilegedSignupApprover(ClaimsPrincipal user) =>
-        RoleChecks.IsAdmin(user) || user.IsInRole(ShiftsNoInfo);
+        RoleChecks.IsAdmin(user) || user.IsInRole(ShiftsAdmin);
 
-    public static bool CanManageDepartment(ClaimsPrincipal user) =>
-        IsPrivilegedSignupApprover(user) || user.IsInRole(ShiftsAdmin);
+    public static bool CanManageDepartment(ClaimsPrincipal user) => IsPrivilegedSignupApprover(user);
 
-    /// <summary>Admin or Shifts Admin; deliberately excludes Shifts NoInfo, who approves signups but manages no rotas.</summary>
     public static bool IsVolunteerManager(ClaimsPrincipal user) =>
         RoleChecks.IsAdmin(user) || user.IsInRole(ShiftsAdmin);
 }

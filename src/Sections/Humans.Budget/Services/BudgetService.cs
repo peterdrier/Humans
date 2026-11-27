@@ -328,7 +328,7 @@ internal sealed class BudgetService(
         // Include audit rows left on accounts merged into this one. Asked with an archived id, the survivor's rows
         // count too.
         var allIds = (await userService.GetUserInfoAsync(userId, ct))?.AllUserIds ?? [userId];
-        var entries = await repository.GetAuditLogEntriesForUserIdsAsync(allIds, ct);
+        var entries = await repository.GetAuditEntriesForUsersAsync(allIds, ct);
 
         var shaped = entries.Select(bal => new
         {

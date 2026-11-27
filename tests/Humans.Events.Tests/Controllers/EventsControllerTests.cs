@@ -49,7 +49,7 @@ public class EventsControllerTests
     public EventsControllerTests()
     {
         _guide.SubmitEventAsync(Arg.Any<Event>(), Arg.Any<string?>(), Arg.Any<CancellationToken>()).Returns(new EventSaveResult());
-        _guide.UpdateAndResubmitAsync(Arg.Any<Guid>(), Arg.Any<EventEdit>(), Arg.Any<CancellationToken>()).Returns(new EventSaveResult());
+        _guide.ResubmitAsync(Arg.Any<Guid>(), Arg.Any<EventEdit>(), Arg.Any<CancellationToken>()).Returns(new EventSaveResult());
     }
 
     [HumansTheory]
@@ -473,7 +473,7 @@ public class EventsControllerTests
             _ => await ((EventsModerationController)controller).Update(existing.Id, (AdminEventFormViewModel)model)
         };
         var writes = _guide.ReceivedCalls().Where(call => call.GetMethodInfo().Name is
-            nameof(IEventManagement.SubmitEventAsync) or nameof(IEventManagement.UpdateAndResubmitAsync) or nameof(IEventManagement.AdminUpdateAsync)).ToList();
+            nameof(IEventManagement.SubmitEventAsync) or nameof(IEventManagement.ResubmitAsync) or nameof(IEventManagement.AdminUpdateAsync)).ToList();
         if (!valid)
         {
             result.Should().BeOfType<ViewResult>().Which.Model.Should().BeSameAs(model);
@@ -578,7 +578,7 @@ public class EventsControllerTests
         controller.ModelState[nameof(individual.RecurrenceDays)]!.Errors.Should().ContainSingle();
         _guide.ReceivedCalls().Should().NotContain(call =>
             call.GetMethodInfo().Name == nameof(IEventManagement.SubmitEventAsync)
-            || call.GetMethodInfo().Name == nameof(IEventManagement.UpdateAndResubmitAsync));
+            || call.GetMethodInfo().Name == nameof(IEventManagement.ResubmitAsync));
     }
 
     [HumansTheory]
@@ -777,7 +777,7 @@ public class EventsControllerTests
         await load.Should().ThrowAsync<OperationCanceledException>();
         _guide.ReceivedCalls().Select(call => call.GetMethodInfo().Name).Should()
             .NotContain(nameof(IEventManagement.SubmitEventAsync))
-            .And.NotContain(nameof(IEventManagement.UpdateAndResubmitAsync))
+            .And.NotContain(nameof(IEventManagement.ResubmitAsync))
             .And.NotContain(nameof(IEventManagement.WithdrawEventAsync))
             .And.NotContain(nameof(IEventManagement.BulkImportAsync));
     }
@@ -1223,7 +1223,7 @@ public class EventsControllerTests
         _guide.GetCampEventAsync(existing.Id, camp.Id, Arg.Any<CancellationToken>()).Returns(existing);
         StubEditableGuideSettings();
         _guide.SubmitEventAsync(Arg.Any<Event>(), Arg.Any<string?>(), Arg.Any<CancellationToken>()).Returns(new EventSaveResult(refusalKey, field));
-        _guide.UpdateAndResubmitAsync(existing.Id, Arg.Any<EventEdit>(), Arg.Any<CancellationToken>()).Returns(new EventSaveResult(refusalKey, field));
+        _guide.ResubmitAsync(existing.Id, Arg.Any<EventEdit>(), Arg.Any<CancellationToken>()).Returns(new EventSaveResult(refusalKey, field));
         _localizer[Arg.Any<string>()].Returns(call => new LocalizedString(call.Arg<string>(), call.Arg<string>()));
         var controller = BuildController(userId);
         controller.TempData = new TempDataDictionary(controller.HttpContext, Substitute.For<ITempDataProvider>());
@@ -1275,7 +1275,7 @@ public class EventsControllerTests
                 .Where(error => error.CancellationToken == request.Token);
             var mutation = _guide.ReceivedCalls().Single(call =>
                 string.Equals(call.GetMethodInfo().Name, nameof(IEventManagement.SubmitEventAsync), StringComparison.Ordinal)
-                || string.Equals(call.GetMethodInfo().Name, nameof(IEventManagement.UpdateAndResubmitAsync), StringComparison.Ordinal));
+                || string.Equals(call.GetMethodInfo().Name, nameof(IEventManagement.ResubmitAsync), StringComparison.Ordinal));
             mutation.GetArguments()[^1].Should().Be(CancellationToken.None);
             return;
         }
@@ -1358,7 +1358,7 @@ public class EventsControllerTests
                 ? await controller.BarrioUpdate("camp", entry.Id, (CampEventFormViewModel)model)
                 : await controller.Update(entry.Id, (IndividualEventFormViewModel)model);
             result.Should().BeOfType<RedirectToActionResult>();
-            await _guide.Received(1).UpdateAndResubmitAsync(entry.Id,
+            await _guide.Received(1).ResubmitAsync(entry.Id,
                 Arg.Is<EventEdit>(edit => edit.StartAt == start && string.Equals(edit.RecurrenceDays, "0,6", StringComparison.Ordinal)), Arg.Any<CancellationToken>());
         }
     }

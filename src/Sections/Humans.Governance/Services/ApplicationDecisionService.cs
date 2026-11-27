@@ -24,7 +24,7 @@ namespace Humans.Governance.Services;
 internal sealed class ApplicationDecisionService(
     IApplicationRepository repository,
     IUserService userService,
-    IRoleAssignmentService roleAssignmentService,
+    ISystemRoleService systemRoleService,
     IAuditLogService auditLogService,
     IEmailService emailService,
     GovernanceEmails emailMessages,
@@ -61,7 +61,6 @@ internal sealed class ApplicationDecisionService(
         var today = clock.GetCurrentInstant().InUtc().Date;
         application.Approve(reviewerUserId, notes, clock);
         application.BoardMeetingDate = boardMeetingDate;
-        application.DecisionNote = notes;
 
         application.TermExpiresAt = TermExpiryCalculator.ComputeTermExpiry(today);
 
@@ -99,7 +98,6 @@ internal sealed class ApplicationDecisionService(
 
         application.Reject(reviewerUserId, reason, clock);
         application.BoardMeetingDate = boardMeetingDate;
-        application.DecisionNote = reason;
 
         await FinalizeDecisionAsync(application, reviewerUserId, cancellationToken);
 
@@ -346,7 +344,7 @@ internal sealed class ApplicationDecisionService(
         });
 
     private Task<IReadOnlyList<Guid>> GetBoardMemberIdsAsync(CancellationToken ct) =>
-        roleAssignmentService.GetActiveUserIdsInRoleAsync(RoleNames.Board, ct);
+        systemRoleService.GetActiveUserIdsInRoleAsync(RoleNames.Board, ct);
 
     private void InvalidateVotingBadges(IReadOnlyList<Guid> boardMemberIds)
     {
@@ -595,7 +593,7 @@ internal sealed class ApplicationDecisionService(
             SubmittedAt: application.SubmittedAt,
             ResolvedAt: application.ResolvedAt,
             ReviewedByUserId: application.ReviewedByUserId,
-            ReviewNotes: application.ReviewNotes,
+            DecisionNote: application.DecisionNote,
             History: historyDtos);
     }
 
@@ -664,7 +662,7 @@ internal sealed class ApplicationDecisionService(
             Language: application.Language,
             SubmittedAt: application.SubmittedAt,
             ReviewedByUserId: application.ReviewedByUserId,
-            ReviewNotes: application.ReviewNotes,
+            DecisionNote: application.DecisionNote,
             History: history);
     }
 
@@ -692,7 +690,7 @@ internal sealed class ApplicationDecisionService(
             SubmittedAt: a.SubmittedAt,
             Votes: ProjectBoardVotes(a))).ToList();
 
-        var boardMemberIds = await roleAssignmentService.GetActiveUserIdsInRoleAsync(
+        var boardMemberIds = await systemRoleService.GetActiveUserIdsInRoleAsync(
             RoleNames.Board, ct);
         var boardUsersById = await userService.GetUserInfosAsync(boardMemberIds, ct);
         var boardMembers = boardUsersById.Values

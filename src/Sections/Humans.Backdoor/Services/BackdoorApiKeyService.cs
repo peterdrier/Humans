@@ -16,7 +16,7 @@ namespace Humans.Backdoor.Services;
 
 internal sealed class BackdoorApiKeyService(
     IBackdoorApiKeyRepository repository,
-    IRoleAssignmentService roles,
+    ISystemRoleService roles,
     IPermissionService permissions,
     IUserService users,
     IAuditLogService audit,
@@ -66,31 +66,41 @@ internal sealed class BackdoorApiKeyService(
         return BackdoorKeyCreateResult.Success(plaintext);
     }
 
-    public async Task<bool> RevokeAsync(Guid keyId, Guid actorUserId, CancellationToken ct = default)
+    public async Task<BackdoorKeyError?> RevokeAsync(Guid keyId, Guid actorUserId, CancellationToken ct = default)
+    {
+        var (key, error) = await ActiveKeyAsync(keyId, "revocable", ct);
+        if (key is null)
+            return error;
+
+        if (!await repository.RevokeAsync(keyId, actorUserId, clock.GetCurrentInstant(), ct))
+            return BackdoorKeyError.AlreadyRevoked;
+
+        await AuditAsync(BackdoorAuditActions.BackdoorApiKeyRevoked, key, actorUserId, "revoked");
+        return null;
+    }
+
+    private async Task<(BackdoorApiKey? Key, BackdoorKeyError? Error)> ActiveKeyAsync(Guid keyId, string action, CancellationToken ct)
     {
         var key = await repository.GetByIdAsync(keyId, ct);
-        if (key is null || !key.IsActive)
+        if (key is null)
         {
-            logger.LogWarning("Backdoor key {KeyId} not revocable: missing or already revoked", keyId);
-            return false;
+            logger.LogWarning("Backdoor key {KeyId} not {Action}: no such key", keyId, action);
+            return (null, BackdoorKeyError.NotFound);
         }
-
-        var revoked = await repository.RevokeAsync(keyId, actorUserId, clock.GetCurrentInstant(), ct);
-        if (revoked)
-            await AuditAsync(BackdoorAuditActions.BackdoorApiKeyRevoked, key, actorUserId, "revoked");
-
-        return revoked;
+        if (!key.IsActive)
+        {
+            logger.LogWarning("Backdoor key {KeyId} not {Action}: already revoked", keyId, action);
+            return (null, BackdoorKeyError.AlreadyRevoked);
+        }
+        return (key, null);
     }
 
     public async Task<BackdoorKeyCreateResult> RotateAsync(
         Guid keyId, Guid actorUserId, CancellationToken ct = default)
     {
-        var key = await repository.GetByIdAsync(keyId, ct);
-        if (key is null || !key.IsActive)
-        {
-            logger.LogWarning("Backdoor key {KeyId} not rotatable: missing or already revoked", keyId);
-            return BackdoorKeyCreateResult.Failed(BackdoorKeyError.NotFound);
-        }
+        var (key, error) = await ActiveKeyAsync(keyId, "rotatable", ct);
+        if (key is null)
+            return BackdoorKeyCreateResult.Failed(error!.Value);
 
         // Eligibility is re-checked on rotation, not just at creation: an owner who has since lost every scope, or
         // been suspended, does not get a fresh credential out of a rotate. The expiry is worked out afresh too.
@@ -101,7 +111,7 @@ internal sealed class BackdoorApiKeyService(
         var plaintext = NewPlaintext();
         var replacement = NewKey(key.UserId, key.Label, actorUserId, plaintext, await ExpiryForAsync(owner, ct));
         if (!await repository.RotateAsync(keyId, actorUserId, clock.GetCurrentInstant(), replacement, ct))
-            return BackdoorKeyCreateResult.Failed(BackdoorKeyError.NotFound);
+            return BackdoorKeyCreateResult.Failed(BackdoorKeyError.AlreadyRevoked);
 
         await AuditAsync(BackdoorAuditActions.BackdoorApiKeyRevoked, key, actorUserId, "rotated out");
         await AuditAsync(BackdoorAuditActions.BackdoorApiKeyCreated, replacement, actorUserId, "created");
@@ -164,7 +174,10 @@ internal sealed class BackdoorApiKeyService(
         return owner;
     }
 
-    public async Task<bool> AdmitsAsync(BackdoorKeyOwner owner, BackdoorScope scope, CancellationToken ct = default) =>
+    public async Task<bool> AdmitsAsync(Guid userId, BackdoorScope scope, CancellationToken ct = default) =>
+        await AdmitsAsync(new BackdoorKeyOwner(userId, await roles.GetActiveForUserAsync(userId, ct)), scope, ct);
+
+    private async Task<bool> AdmitsAsync(BackdoorKeyOwner owner, BackdoorScope scope, CancellationToken ct) =>
         scope switch
         {
             BackdoorScope.AdminAndBoard => owner.Roles.Any(a => a.RoleName is RoleNames.Admin or RoleNames.Board),

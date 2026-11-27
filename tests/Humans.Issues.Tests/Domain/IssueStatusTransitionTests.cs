@@ -71,7 +71,7 @@ public class IssueStatusTransitionTests
     /// </summary>
     [HumansTheory]
     [InlineData("Profiles", UsersRoles.UsersAdmin)]
-    [InlineData("Legal", ConsentRoles.ConsentCoordinator)]
+    [InlineData("Legal", ConsentRoles.ConsentAdmin)]
     public void Renamed_sections_keep_routing_their_stored_queue_key(string section, string role)
     {
         _routing.RolesFor(section).Should().Equal(role);

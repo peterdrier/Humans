@@ -87,7 +87,7 @@ public sealed class DeletionConfirmationLeavesNoOutboxRowTests : IDisposable
         userService.GetRawUserInfoAsync(_userId, Arg.Any<CancellationToken>()).Returns(user);
         var deletionService = new AccountDeletionService(
             userService, Substitute.For<IUserEmailService>(), Substitute.For<ITeamWrite>(),
-            Substitute.For<IRoleAssignmentWrite>(), Substitute.For<IGdprService>(), Substitute.For<ITicketService>(),
+            Substitute.For<ISystemRoleWrite>(), Substitute.For<IGdprService>(), Substitute.For<ITicketService>(),
             Substitute.For<IUserInfoSliceRefresher>(), Substitute.For<IAuditLogService>(), emailService,
             usersEmails, new FakeClock(Now), Substitute.For<IHostEnvironment>(), NullLogger<AccountDeletionService>.Instance);
 

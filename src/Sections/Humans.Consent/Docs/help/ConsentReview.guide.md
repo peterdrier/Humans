@@ -5,7 +5,7 @@ The consent review queue shows new humans who have signed up and need their cons
 ### Review Process
 
 1. New humans sign up, complete their profile, and consent to legal documents
-2. A **Consent Coordinator** reviews the consent submissions
+2. A **Consent Admin** reviews the consent submissions
 3. If everything is in order, the coordinator **clears** the human
 4. The human automatically becomes active and is added to the Volunteers team
 

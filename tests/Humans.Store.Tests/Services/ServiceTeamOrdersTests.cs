@@ -229,7 +229,7 @@ public class ServiceTeamOrdersTests
             });
         var orderId = Guid.NewGuid();
         var productId = Guid.NewGuid();
-        _repo.GetOrdersForTeamsWithLinesAndPaymentsAsync(
+        _repo.GetOrdersForTeamsAsync(
                 Arg.Is<IReadOnlyCollection<Guid>>(ids => ids.SequenceEqual(new[] { deptId })),
                 2026, Arg.Any<CancellationToken>())
             .Returns([new Order
@@ -308,7 +308,7 @@ public class ServiceTeamOrdersTests
                 UnitPriceEur = 10m, VatRatePercent = 0m,
                 OrderableUntil = new LocalDate(2026,12,31), IsActive = true }
         ]);
-        _repo.GetOrdersForTeamsWithLinesAndPaymentsAsync(
+        _repo.GetOrdersForTeamsAsync(
                 Arg.Is<IReadOnlyCollection<Guid>>(ids => ids.Contains(deptId)),
                 2026, Arg.Any<CancellationToken>())
             .Returns([new Order {
@@ -361,7 +361,7 @@ public class ServiceTeamOrdersTests
     {
         var orderId = Guid.NewGuid();
         var actor = Guid.NewGuid();
-        _repo.GetOrderWithLinesAndPaymentsAsync(orderId, Arg.Any<CancellationToken>())
+        _repo.GetOrderWithLinesAsync(orderId, Arg.Any<CancellationToken>())
             .Returns(new Order { Id = orderId, CampSeasonId = Guid.NewGuid(), Year = 2026 });
 
         await _service.DeleteOrderAsync(orderId, actor, TestContext.Current.CancellationToken);
@@ -388,7 +388,7 @@ public class ServiceTeamOrdersTests
                         Qty = 1, UnitPriceSnapshot = 10m, VatRateSnapshot = 0m }
             }
         };
-        _repo.GetOrderWithLinesAndPaymentsAsync(orderId, Arg.Any<CancellationToken>()).Returns(order);
+        _repo.GetOrderWithLinesAsync(orderId, Arg.Any<CancellationToken>()).Returns(order);
 
         var refusal = await _service.DeleteOrderAsync(orderId, Guid.NewGuid(), TestContext.Current.CancellationToken);
         refusal.Succeeded.Should().BeFalse();
@@ -418,7 +418,7 @@ public class ServiceTeamOrdersTests
                         Method = PaymentMethod.Stripe, Status = PaymentStatus.Paid, StripePaymentIntentId = "pi_paid" }
             }
         };
-        _repo.GetOrderWithLinesAndPaymentsAsync(orderId, Arg.Any<CancellationToken>()).Returns(order);
+        _repo.GetOrderWithLinesAsync(orderId, Arg.Any<CancellationToken>()).Returns(order);
 
         var refusal = await _service.DeleteOrderAsync(orderId, Guid.NewGuid(), TestContext.Current.CancellationToken);
         refusal.Succeeded.Should().BeFalse();
@@ -451,7 +451,7 @@ public class ServiceTeamOrdersTests
                         Method = PaymentMethod.Stripe, Status = status, StripePaymentIntentId = "pi_x" }
             }
         };
-        _repo.GetOrderWithLinesAndPaymentsAsync(orderId, Arg.Any<CancellationToken>()).Returns(order);
+        _repo.GetOrderWithLinesAsync(orderId, Arg.Any<CancellationToken>()).Returns(order);
 
         var refusal = await _service.DeleteOrderAsync(orderId, Guid.NewGuid(), TestContext.Current.CancellationToken);
         refusal.Succeeded.Should().BeFalse();
@@ -466,7 +466,7 @@ public class ServiceTeamOrdersTests
         // A paid, issued order reads zero-balance, but its store_invoices row references it under a
         // restrictive foreign key — the delete has to be refused here, not at the database.
         var orderId = Guid.NewGuid();
-        _repo.GetOrderWithLinesAndPaymentsAsync(orderId, Arg.Any<CancellationToken>())
+        _repo.GetOrderWithLinesAsync(orderId, Arg.Any<CancellationToken>())
             .Returns(new Order
             {
                 Id = orderId,
@@ -487,7 +487,7 @@ public class ServiceTeamOrdersTests
     public async Task DeleteOrderAsync_refuses_when_order_not_found()
     {
         var orderId = Guid.NewGuid();
-        _repo.GetOrderWithLinesAndPaymentsAsync(orderId, Arg.Any<CancellationToken>())
+        _repo.GetOrderWithLinesAsync(orderId, Arg.Any<CancellationToken>())
             .Returns((Order?)null);
 
         var refusal = await _service.DeleteOrderAsync(orderId, Guid.NewGuid(), TestContext.Current.CancellationToken);

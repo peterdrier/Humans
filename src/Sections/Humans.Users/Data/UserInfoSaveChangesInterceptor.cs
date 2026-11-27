@@ -149,7 +149,7 @@ internal sealed class UserInfoSaveChangesInterceptor(
             PreferredLanguage = user.PreferredLanguage,
             ProfilePictureUrl = user.ProfilePictureUrl,
             CreatedAt = user.CreatedAt,
-            LastLoginAt = user.LastLoginAt,
+            LastSignInAt = user.LastSignInAt,
             DeletionRequestedAt = user.DeletionRequestedAt,
             DeletionScheduledFor = user.DeletionScheduledFor,
             DeletionEligibleAfter = user.DeletionEligibleAfter,

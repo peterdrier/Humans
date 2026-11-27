@@ -560,7 +560,7 @@ public class TeamControllerPageContentTests
         teams.LeaveTeamAsync(team.Id, userId, Arg.Any<CancellationToken>())
             .Returns(new TeamMembershipMutationResult(false, "Teams_NotMember"));
         teams.WithdrawJoinRequestAsync(Arg.Any<Guid>(), userId, Arg.Any<CancellationToken>())
-            .Returns(new TeamMembershipMutationResult(false, "Teams_RequestUnavailable"));
+            .Returns(new TeamMembershipMutationResult(false, "Teams_RequestNotFound"));
         teams.DeleteTeamAsync(team.Id, userId, Arg.Any<CancellationToken>())
             .Returns(new TeamDeactivationResult("Cannot deactivate"));
         var http = new DefaultHttpContext
@@ -630,7 +630,7 @@ public class TeamControllerPageContentTests
             {
                 "Join" => "Teams_Team_AlreadyPendingRequest",
                 "Leave" => "Teams_NotMember",
-                _ => "Teams_RequestUnavailable"
+                _ => "Teams_RequestNotFound"
             };
             teams.JoinTeamAsync(team.Id, userId, Arg.Any<string?>(), Arg.Any<CancellationToken>())
                 .Returns(unknown

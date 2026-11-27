@@ -176,7 +176,6 @@ Pending --> Cancelled   (system: shift deleted, account deletion)
 | Role | Permissions |
 |------|------------|
 | Admin | Full access: manage shifts, approve signups, bypass all restrictions |
-| ShiftsNoInfo | Approve/refuse signups, voluntell; cannot create/edit shifts or rotas |
 | Dept Coordinator | Manage rotas/shifts for own department, approve/refuse signups |
 | Volunteer | Browse shifts, sign up, bail, view own schedule |
 
@@ -207,7 +206,7 @@ Pending --> Cancelled   (system: shift deleted, account deletion)
 
 ## Coordinator Dashboard
 
-**Purpose:** Give Shifts Admins, Shifts NoInfo holders, and Admins a single cross-department view that answers the weekly coordination questions: is overall staffing tracking toward the event, which departments are behind, which coordinator teams have stale pending signups, and are new signups / ticket sales trending.
+**Purpose:** Give Shifts Admins holders, and Admins a single cross-department view that answers the weekly coordination questions: is overall staffing tracking toward the event, which departments are behind, which coordinator teams have stale pending signups, and are new signups / ticket sales trending.
 
 **Route:** `/Shifts/Dashboard` — the four dashboard panels render above the urgent-shifts filter.
 
@@ -240,7 +239,7 @@ Pending --> Cancelled   (system: shift deleted, account deletion)
 - **Subgroup aggregate invariant** — department totals equal the sum of subgroup totals (including the synthetic "Direct" row for rotas whose team is the parent itself).
 - **DAU** — distinct humans whose last login falls on the bucket date in the event timezone. Limitation: the system stores only the most recent login per human, so older buckets are biased low.
 
-**Authorization:** The controller is gated by `[Authorize(Policy = ShiftsPolicies.DepartmentRead)]`; `PostEventStats` narrows to `ShiftsPolicies.Read` (Admin, Board, ShiftsNoInfo, ShiftsAdmin); `SearchVolunteers` and `Voluntell` narrow to `ShiftsPolicies.Manage` → Admin, ShiftsNoInfo, ShiftsAdmin. The service (`IShiftManagement`) is auth-free per `design-rules.md`.
+**Authorization:** The controller is gated by `[Authorize(Policy = ShiftsPolicies.DepartmentRead)]`; `PostEventStats` narrows to `ShiftsPolicies.Read` (Admin, Board, ShiftsAdmin); `SearchVolunteers` and `Voluntell` narrow to `ShiftsPolicies.Manage` → Admin, ShiftsAdmin. The service (`IShiftManagement`) is auth-free per `design-rules.md`.
 
 **Caching:** Each dashboard query memoizes into `IMemoryCache` with a 5-minute sliding expiration. Keys:
 

@@ -70,7 +70,7 @@ internal sealed class CommunicationPreferenceService(
             .ToHashSet();
     }
 
-    public async Task<int> GetCountByCategoryAndStateAsync(
+    public async Task<int> GetCountAsync(
         MessageCategory category, bool optedOut, CancellationToken cancellationToken = default) =>
         (await GetPreferencesForCategoryAsync(category, cancellationToken)).Values.Count(p => p.OptedOut == optedOut);
 

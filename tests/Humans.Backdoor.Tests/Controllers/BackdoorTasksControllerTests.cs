@@ -1,3 +1,4 @@
+using Humans.Backdoor.Authentication;
 using System.Security.Claims;
 using System.Text.Json;
 using AwesomeAssertions;
@@ -54,7 +55,7 @@ public sealed class BackdoorTasksControllerTests
                 {
                     User = new ClaimsPrincipal(new ClaimsIdentity(
                         [new Claim(ClaimTypes.NameIdentifier, KeyOwnerId.ToString())],
-                        BackdoorApiKeyAuthFilter.AuthenticationScheme)),
+                        BackdoorApiKeyHandler.SchemeName)),
                 },
             },
         };

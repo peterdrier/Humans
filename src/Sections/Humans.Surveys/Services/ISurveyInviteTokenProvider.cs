@@ -5,6 +5,6 @@ internal interface ISurveyInviteTokenProvider
 {
     string Create(Guid invitationId);
 
-    /// <summary>Null if invalid, tampered or expired.</summary>
-    Guid? Resolve(string token);
+    /// <summary>The invitation id, or the reason the token yields none.</summary>
+    (Guid? InvitationId, SurveyLinkFailure? Failure) Resolve(string token);
 }
