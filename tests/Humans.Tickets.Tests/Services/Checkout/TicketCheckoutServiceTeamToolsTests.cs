@@ -5,6 +5,7 @@ using Humans.Grants.Contracts;
 using Humans.Tickets.Contracts;
 using Humans.Tickets.Controllers;
 using Humans.Tickets.Domain.Checkout;
+using Humans.Tickets.Data;
 using Humans.Tickets.Services.Checkout;
 using Humans.Users.Contracts;
 using NodaTime;
@@ -72,6 +73,69 @@ public sealed partial class TicketCheckoutServiceTests
         await _audit.Received(1).LogAsync(TicketsAuditActions.TicketOverride, Arg.Any<string>(), adult.OrderId,
             Arg.Is<string>(d => d.StartsWith("Override:", StringComparison.Ordinal)), _adminId, _buyerId, AuditSubjectTypes.User);
         (await _service.RestoreTicketAsync(adult.Id, "Again", _adminId, Ct)).Refusal.Should().Be("Only a voided ticket can be restored.");
+    }
+
+    [HumansTheory]
+    [InlineData(null)]
+    [InlineData(UserState.Deleted)]
+    [InlineData(UserState.Merged)]
+    public async Task RestoreTicketAsync_UnavailableHolder_Refuses(UserState? state)
+    {
+        var ticket = await PaidAdultAsync();
+        await _service.VoidTicketAsync(ticket.Id, "Wrong ticket", 0, _adminId, Ct);
+        var holder = Assert.IsType<UserInfo>(await _users.GetUserInfoAsync(_buyerId, Ct));
+        _users.GetUserInfoAsync(_buyerId, Arg.Any<CancellationToken>())
+            .Returns(state is { } value ? holder with { State = value } : null);
+        _repo.TicketWrites.Clear();
+        _repo.Events.Clear();
+        _audit.ClearReceivedCalls();
+
+        var result = await _service.RestoreTicketAsync(ticket.Id, "Restore", _adminId, Ct);
+
+        result.Succeeded.Should().BeFalse();
+        ticket.State.Should().Be(TicketCheckoutTicketState.Void);
+        ticket.VoidReason.Should().Be("Wrong ticket");
+        _repo.TicketWrites.Should().BeEmpty();
+        _repo.Events.Should().BeEmpty();
+        _audit.ReceivedCalls().Should().BeEmpty();
+    }
+
+    [HumansTheory]
+    [InlineData(false, false)]
+    [InlineData(false, true)]
+    [InlineData(true, false)]
+    public async Task RestoreTicketAsync_ErasedIdentity_Refuses(bool anonymous, bool emailOnly)
+    {
+        var adult = await PaidAdultAsync();
+        var ticket = anonymous ? AddTicket(TicketHolderKind.Child, parent: adult.Id) : adult;
+        await _service.VoidTicketAsync(ticket.Id, "Erased", 0, _adminId, Ct);
+        ticket.HolderName = emailOnly ? "Original name" : TicketPiiTombstone.Name;
+        ticket.HolderEmail = anonymous ? null : emailOnly ? TicketPiiTombstone.EmailFor(_buyerId) : "ana@example.com";
+        _repo.TicketWrites.Clear();
+        _repo.Events.Clear();
+        _audit.ClearReceivedCalls();
+
+        var result = await _service.RestoreTicketAsync(ticket.Id, "Restore", _adminId, Ct);
+
+        result.Succeeded.Should().BeFalse();
+        ticket.State.Should().Be(TicketCheckoutTicketState.Void);
+        _repo.TicketWrites.Should().BeEmpty();
+        _repo.Events.Should().BeEmpty();
+        _audit.ReceivedCalls().Should().BeEmpty();
+    }
+
+    [HumansFact]
+    public async Task RestoreTicketAsync_LiveMergeSurvivor_Restores()
+    {
+        var ticket = await PaidAdultAsync();
+        await _service.VoidTicketAsync(ticket.Id, "Wrong ticket", 0, _adminId, Ct);
+        var holder = Assert.IsType<UserInfo>(await _users.GetUserInfoAsync(_buyerId, Ct));
+        _users.GetUserInfoAsync(_buyerId, Arg.Any<CancellationToken>())
+            .Returns(holder with { Id = Guid.NewGuid() });
+
+        (await _service.RestoreTicketAsync(ticket.Id, "Restore", _adminId, Ct)).Succeeded.Should().BeTrue();
+
+        ticket.State.Should().Be(TicketCheckoutTicketState.Valid);
     }
 
     [HumansFact]

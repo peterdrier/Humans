@@ -1,5 +1,6 @@
 using Humans.AuditLog.Contracts;
 using Humans.Tickets.Contracts;
+using Humans.Tickets.Data;
 using Humans.Tickets.Domain.Checkout;
 
 namespace Humans.Tickets.Services.Checkout;
@@ -210,12 +211,19 @@ internal sealed partial class TicketCheckoutService
             return new("That ticket does not exist.");
         if (ticket.State != TicketCheckoutTicketState.Void)
             return new("Only a voided ticket can be restored.");
+        if (TicketPiiTombstone.IsTombstoned(ticket.HolderName, ticket.HolderEmail))
+            return new("Erased ticket data cannot be restored.");
         if ((await repository.GetTicketingSettingsAsync(ticket.TicketingSettingsId, ct))?.CancelledAt is not null)
             return new("The event is cancelled; its tickets stay void.");
         if (ticket.ParentTicketId is { } parentId && (await repository.GetTicketAsync(parentId, ct))?.State != TicketCheckoutTicketState.Valid)
             return new("Restore the adult's ticket first.");
-        if (ticket.HolderUserId is { } holder && await HoldsTicketAsync(ticket.TicketingSettingsId, holder, clock.GetCurrentInstant(), ct))
-            return new("The holder already holds another ticket for this event.");
+        if (ticket.HolderUserId is { } holder)
+        {
+            if (await users.GetUserInfoAsync(holder, ct) is not { IsTombstone: false })
+                return new("The holder's account is no longer available; this ticket cannot be restored.");
+            if (await HoldsTicketAsync(ticket.TicketingSettingsId, holder, clock.GetCurrentInstant(), ct))
+                return new("The holder already holds another ticket for this event.");
+        }
 
         var why = reason.Trim();
         var wasVoided = ticket.VoidReason;

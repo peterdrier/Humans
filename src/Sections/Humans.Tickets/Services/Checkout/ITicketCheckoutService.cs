@@ -113,7 +113,7 @@ internal interface ITicketCheckoutService : ITicketingPlatformEvents
     Task<CheckoutMutationResult> VoidTicketAsync(
         Guid ticketId, string reason, long refundMinor, Guid actorUserId, CancellationToken ct = default);
 
-    /// <summary>Admin override: a voided ticket works again, unless its holder holds another or the event is cancelled.</summary>
+    /// <summary>Admin override for a voided ticket: erased identities, unavailable holders, another held ticket and cancelled events refuse restoration.</summary>
     Task<CheckoutMutationResult> RestoreTicketAsync(Guid ticketId, string reason, Guid actorUserId, CancellationToken ct = default);
 
     /// <summary>The ticketing team takes a holder's ticket out of the resale queue; the holder keeps it.</summary>

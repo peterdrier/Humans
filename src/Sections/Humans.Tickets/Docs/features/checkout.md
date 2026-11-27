@@ -297,7 +297,7 @@ while the intent is unfinished. Ticket, valid dependents and offer withdrawal sa
 the intent and leaves the tickets usable; a pending refund remains recorded for reconciliation.
 
 Overrides (Admin only) repair what the rules miss: restore a voided ticket, move a class priced
-ticket, a companion past capacity. Each needs a reason and is audited `TicketOverride`.
+ticket, a companion past capacity. Each needs a reason and is audited `TicketOverride`. Restore refuses erased ticket identity markers and unavailable holders before changing anything; a live merge survivor remains eligible. Anonymous dependents still require a valid adult ticket.
 
 Cancelling an event (Admin only, `/Tickets/Admin/Sales/{id}/Cancel`) closes sales and resale for good. The reconcile
 job then works the paid orders within a two minute budget per run: withdraw open offers, void live tickets, refund the
