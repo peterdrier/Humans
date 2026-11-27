@@ -338,7 +338,7 @@ internal sealed partial class TicketCheckoutService
         foreach (var offerId in order.Lines.Select(l => l.ResaleOfferId).OfType<Guid>())
             await CompleteResaleAsync(offerId, order, ct);
 
-        if (issuedNow)
+        if (issuedNow || !order.Lines.Any(l => l.Kind == OrderLineKind.Ticket))
             await HandOffToDeliveryAsync(order.Id, ct);
     }
 
@@ -641,11 +641,12 @@ internal sealed partial class TicketCheckoutService
                 }
             }
 
-            // Tickets issued but never handed to delivery (the process stopped in between). Delivery dedupes a repeat;
+            // Tickets or a donation receipt never handed to delivery. Delivery dedupes a repeat;
             // the wait lets a first hand-off still in its queue finish, and the window keeps old orders out.
             var now = clock.GetCurrentInstant();
             foreach (var order in orders.Where(o => deliveries.Any() && o is { State: TicketCheckoutOrderState.Paid, PaidAt: { } paidAt }
-                         && issued.Contains(o.Id) && paidAt <= now - DeliveryGrace && paidAt > now - DeliveryRepairWindow))
+                         && (issued.Contains(o.Id) || !o.Lines.Any(l => l.Kind == OrderLineKind.Ticket))
+                         && paidAt <= now - DeliveryGrace && paidAt > now - DeliveryRepairWindow))
             {
                 if ((await repository.GetOrderEventsAsync(order.Id, ct)).Any(e =>
                         e.Kind is TicketCheckoutOrderEventKind.TicketsEmailed or TicketCheckoutOrderEventKind.TicketMailSkipped))

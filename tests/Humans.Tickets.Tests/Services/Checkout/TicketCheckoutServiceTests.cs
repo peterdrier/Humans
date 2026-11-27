@@ -2313,6 +2313,56 @@ public sealed partial class TicketCheckoutServiceTests
     }
 
     [HumansFact]
+    public async Task PlatformOrderChangedAsync_DonationPaid_QueuesReceiptOnce()
+    {
+        var order = await BuyAndPayAsync(Buy(forSelf: false, donation: 5000), _buyerId);
+
+        order.State.Should().Be(TicketCheckoutOrderState.Paid);
+        _repo.Tickets.Should().BeEmpty();
+        await _delivery.Received(1).TicketsIssuedAsync(order.Id, Arg.Any<CancellationToken>());
+        await _service.PlatformOrderChangedAsync("test", order.PlatformOrderId!, Ct);
+        await _delivery.Received(1).TicketsIssuedAsync(order.Id, Arg.Any<CancellationToken>());
+    }
+
+    [HumansTheory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task ReconcileOpenOrdersAsync_DonationReceiptMissing_Requeues(bool initialQueueFails)
+    {
+        if (initialQueueFails)
+            _delivery.TicketsIssuedAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
+                .Returns(_ => throw new InvalidOperationException("Queue unavailable"));
+        var order = await BuyAndPayAsync(Buy(forSelf: false, donation: 5000), _buyerId);
+        order.State.Should().Be(TicketCheckoutOrderState.Paid);
+        _repo.Tickets.Should().BeEmpty();
+        _delivery.TicketsIssuedAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>()).Returns(Task.CompletedTask);
+        _delivery.ClearReceivedCalls();
+
+        await _service.ReconcileOpenOrdersAsync(Ct);
+        await _delivery.DidNotReceiveWithAnyArgs().TicketsIssuedAsync(default);
+        _clock.Advance(Duration.FromMinutes(31));
+        await _service.ReconcileOpenOrdersAsync(Ct);
+
+        await _delivery.Received(1).TicketsIssuedAsync(order.Id, Arg.Any<CancellationToken>());
+        await _service.RecordDeliveryAsync(order.Id, TicketCheckoutOrderEventKind.TicketsEmailed, "receipt sent", null, Ct);
+        _delivery.ClearReceivedCalls();
+        await _service.ReconcileOpenOrdersAsync(Ct);
+        await _delivery.DidNotReceiveWithAnyArgs().TicketsIssuedAsync(default);
+    }
+
+    [HumansFact]
+    public async Task ReconcileOpenOrdersAsync_OldDonation_DoesNotRequeue()
+    {
+        await BuyAndPayAsync(Buy(forSelf: false, donation: 5000), _buyerId);
+        _delivery.ClearReceivedCalls();
+        _clock.Advance(Duration.FromDays(8));
+
+        await _service.ReconcileOpenOrdersAsync(Ct);
+
+        await _delivery.DidNotReceiveWithAnyArgs().TicketsIssuedAsync(default);
+    }
+
+    [HumansFact]
     public async Task Reconcile_hands_tickets_to_delivery_again_when_no_email_was_recorded()
     {
         var order = await BuyAndPayAsync(Buy(), _buyerId);

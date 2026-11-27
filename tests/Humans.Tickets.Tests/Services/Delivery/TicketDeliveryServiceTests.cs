@@ -122,6 +122,23 @@ public sealed class TicketDeliveryServiceTests
     }
 
     [HumansFact]
+    public async Task DeliverAsync_DonationOnly_SendsReceipt()
+    {
+        _order.Lines = [new TicketCheckoutOrderLine { Kind = OrderLineKind.Donation, AmountMinor = 45000 }];
+        Tickets();
+
+        await Create().DeliverAsync(_order.Id);
+
+        var receipt = _sent.Should().ContainSingle().Subject;
+        receipt.TemplateName.Should().Be("ticket_order_receipt");
+        receipt.RecipientEmail.Should().Be("ana@example.com");
+        receipt.DeliveryId.Should().Be(TicketDeliveryService.DeliveryIdFor("ticket_order_receipt", _order.Id));
+        _jobs.DidNotReceiveWithAnyArgs().Create(default!, default!);
+        await _audit.Received(1).LogAsync(TicketsAuditActions.TicketDeliverySent, Arg.Any<string>(), _order.Id,
+            Arg.Any<string>(), Arg.Any<string>(), Arg.Any<Guid?>(), Arg.Any<string?>());
+    }
+
+    [HumansFact]
     public async Task Deliver_PutsAChildWithoutEmailOnTheAdultsMail_AndInvitesOnlyTheAdult()
     {
         var adult = Ticket(BuyerId, "Ana Buyer", "ana@example.com");
