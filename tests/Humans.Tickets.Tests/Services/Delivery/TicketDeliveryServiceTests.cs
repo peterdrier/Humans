@@ -5,6 +5,7 @@ using Humans.Base.Configuration;
 using Humans.Email.Contracts;
 using Humans.Settings.Contracts;
 using Humans.Tickets.Contracts;
+using Humans.Tickets.Data;
 using Humans.Tickets.Domain.Checkout;
 using Humans.Tickets.Services.Checkout;
 using Humans.Tickets.Services.Delivery;
@@ -59,6 +60,9 @@ public sealed class TicketDeliveryServiceTests
         _users.GetUserInfoAsync(PartnerId, Arg.Any<CancellationToken>()).Returns(new ValueTask<UserInfo?>(
             new UserInfo(PartnerId, "Ben", false, "de", null, Instant.MinValue, Instant.MinValue, null, null, null, null, null, null, null,
                 "ben@example.com", [], [], null)));
+        _users.GetUserInfoAsync(BuyerId, Arg.Any<CancellationToken>()).Returns(new ValueTask<UserInfo?>(
+            new UserInfo(BuyerId, "Ana", false, "es", null, Instant.MinValue, Instant.MinValue, null, null, null, null, null, null, null,
+                "ana@example.com", [], [], null)));
         _email.SendAsync(Arg.Do<EmailMessage>(_sent.Add), Arg.Any<CancellationToken>()).Returns(Task.CompletedTask);
     }
 
@@ -86,6 +90,213 @@ public sealed class TicketDeliveryServiceTests
     {
         _checkout.GetOrderDetailAsync(_order.Id, Arg.Any<CancellationToken>()).Returns(_ => new OrderDetail(_order, [], [], tickets));
         _checkout.GetTicketsForSettingsAsync(_ticketing.Id, Arg.Any<CancellationToken>()).Returns(tickets);
+    }
+
+    [HumansTheory]
+    [Xunit.InlineData("rename", null)]
+    [Xunit.InlineData("rename", UserState.Deleted)]
+    [Xunit.InlineData("rename", UserState.Merged)]
+    [Xunit.InlineData("sold", UserState.Deleted)]
+    [Xunit.InlineData("unsold", UserState.Deleted)]
+    public async Task SendHolderNoticeAsync_UnavailableHolder_Skips(string kind, UserState? state)
+    {
+        var ticket = Ticket(PartnerId, "Ben Partner", "snapshot@example.com",
+            string.Equals(kind, "sold", StringComparison.Ordinal) ? TicketCheckoutTicketState.Resold
+                : string.Equals(kind, "unsold", StringComparison.Ordinal) ? TicketCheckoutTicketState.Offered : TicketCheckoutTicketState.Valid);
+        Tickets(ticket);
+        _checkout.GetTicketAsync(ticket.Id, Arg.Any<CancellationToken>()).Returns(ticket);
+        var holder = Xunit.Assert.IsType<UserInfo>(await _users.GetUserInfoAsync(PartnerId));
+        _users.GetUserInfoAsync(PartnerId, Arg.Any<CancellationToken>()).Returns(state is { } value ? holder with { State = value } : null);
+        var service = Create();
+
+        await (kind switch
+        {
+            "rename" => service.SendRenamedTicketAsync(ticket.Id, Guid.NewGuid()),
+            "sold" => service.SendResaleSoldAsync(ticket.Id, 22500),
+            "unsold" => service.SendResaleUnsoldAsync(ticket.Id),
+            _ => throw new ArgumentOutOfRangeException(nameof(kind)),
+        });
+
+        _sent.Should().BeEmpty();
+        _audit.ReceivedCalls().Should().BeEmpty();
+    }
+
+    [HumansTheory]
+    [Xunit.InlineData(null)]
+    [Xunit.InlineData(UserState.Deleted)]
+    [Xunit.InlineData(UserState.Merged)]
+    public async Task DeliverAsync_UnavailableHolder_StillSendsReceipt(UserState? state)
+    {
+        var adult = Ticket(PartnerId, "Ben Partner", "snapshot@example.com");
+        Tickets(adult, Ticket(null, "Dependent", null, kind: TicketHolderKind.Child, parent: adult.Id));
+        var holder = Xunit.Assert.IsType<UserInfo>(await _users.GetUserInfoAsync(PartnerId));
+        _users.GetUserInfoAsync(PartnerId, Arg.Any<CancellationToken>()).Returns(state is { } value ? holder with { State = value } : null);
+
+        await Create().DeliverAsync(_order.Id);
+
+        _sent.Should().ContainSingle().Which.TemplateName.Should().Be("ticket_order_receipt");
+        _jobs.DidNotReceiveWithAnyArgs().Create(default!, default!);
+        await _checkout.Received(1).RecordDeliveryAsync(_order.Id, TicketCheckoutOrderEventKind.TicketMailSkipped,
+            Arg.Any<string>(), null, Arg.Any<CancellationToken>());
+    }
+
+    [HumansTheory]
+    [Xunit.InlineData(null)]
+    [Xunit.InlineData(UserState.Deleted)]
+    [Xunit.InlineData(UserState.Merged)]
+    public async Task DeliverAsync_UnavailableBuyer_StillSendsOtherHolderTicket(UserState? state)
+    {
+        Tickets(Ticket(BuyerId, "Ana Buyer", "snapshot@example.com"), Ticket(PartnerId, "Ben Partner", "ben@example.com"));
+        var buyer = Xunit.Assert.IsType<UserInfo>(await _users.GetUserInfoAsync(BuyerId));
+        _users.GetUserInfoAsync(BuyerId, Arg.Any<CancellationToken>()).Returns(state is { } value ? buyer with { State = value } : null);
+
+        await Create().DeliverAsync(_order.Id);
+
+        var mail = _sent.Should().ContainSingle().Which;
+        mail.TemplateName.Should().Be("ticket_issued");
+        mail.UserId.Should().Be(PartnerId);
+        mail.HtmlBody.Should().NotContain("Ana Buyer");
+        _jobs.ReceivedWithAnyArgs(1).Create(default!, default!);
+        await _checkout.Received(1).RecordDeliveryAsync(_order.Id, TicketCheckoutOrderEventKind.TicketMailSkipped,
+            Arg.Any<string>(), null, Arg.Any<CancellationToken>());
+    }
+
+    [HumansTheory]
+    [Xunit.InlineData(false)]
+    [Xunit.InlineData(true)]
+    public async Task DeliverAsync_NoAvailableRecipient_RecordsSkip(bool resend)
+    {
+        Tickets(Ticket(BuyerId, "Ana Buyer", "snapshot@example.com"));
+        _users.GetUserInfoAsync(BuyerId, Arg.Any<CancellationToken>()).Returns((UserInfo?)null);
+        var service = Create();
+
+        if (resend)
+            (await service.ResendAsync(_order.Id, Guid.NewGuid())).Succeeded.Should().BeFalse();
+        else
+            await service.DeliverAsync(_order.Id);
+
+        _sent.Should().BeEmpty();
+        _jobs.DidNotReceiveWithAnyArgs().Create(default!, default!);
+        _audit.ReceivedCalls().Should().BeEmpty();
+        await _checkout.Received(1).RecordDeliveryAsync(_order.Id, TicketCheckoutOrderEventKind.TicketMailSkipped,
+            Arg.Any<string>(), Arg.Any<Guid?>(), Arg.Any<CancellationToken>());
+        await _checkout.DidNotReceive().RecordDeliveryAsync(_order.Id, TicketCheckoutOrderEventKind.TicketsEmailed,
+            Arg.Any<string>(), Arg.Any<Guid?>(), Arg.Any<CancellationToken>());
+    }
+
+    [HumansTheory]
+    [Xunit.InlineData(false)]
+    [Xunit.InlineData(true)]
+    public async Task SendNoticeAsync_MergedRecipient_UsesCanonicalIdentity(bool payment)
+    {
+        var id = payment ? BuyerId : PartnerId;
+        var holder = Xunit.Assert.IsType<UserInfo>(await _users.GetUserInfoAsync(id));
+        var canonical = Guid.NewGuid();
+        _users.GetUserInfoAsync(id, Arg.Any<CancellationToken>()).Returns(holder with { Id = canonical, IdentityEmailColumn = "survivor@example.com" });
+        var ticket = Ticket(PartnerId, "Ben Partner", "snapshot@example.com");
+        Tickets(ticket);
+        _checkout.GetTicketAsync(ticket.Id, Arg.Any<CancellationToken>()).Returns(ticket);
+        var service = Create();
+        if (payment)
+        {
+            _order.State = TicketCheckoutOrderState.Failed;
+            await service.SendPaymentEndedAsync(_order.Id);
+        }
+        else
+            await service.SendRenamedTicketAsync(ticket.Id, Guid.NewGuid());
+
+        var mail = _sent.Should().ContainSingle().Which;
+        mail.UserId.Should().Be(canonical);
+        mail.RecipientEmail.Should().Be("survivor@example.com");
+    }
+
+    [HumansFact]
+    public async Task SendPaymentEndedAsync_UnavailableBuyer_Skips()
+    {
+        var buyer = Xunit.Assert.IsType<UserInfo>(await _users.GetUserInfoAsync(BuyerId));
+        _users.GetUserInfoAsync(BuyerId, Arg.Any<CancellationToken>()).Returns(buyer with { State = UserState.Deleted });
+        _order.State = TicketCheckoutOrderState.Failed;
+
+        await Create().SendPaymentEndedAsync(_order.Id);
+
+        _sent.Should().BeEmpty();
+        _audit.ReceivedCalls().Should().BeEmpty();
+    }
+
+    [HumansFact]
+    public async Task DeliverAsync_MergedRecipients_UsesCanonicalIdentity()
+    {
+        var buyer = Xunit.Assert.IsType<UserInfo>(await _users.GetUserInfoAsync(BuyerId));
+        var holder = Xunit.Assert.IsType<UserInfo>(await _users.GetUserInfoAsync(PartnerId));
+        var buyerId = Guid.NewGuid();
+        var holderId = Guid.NewGuid();
+        _users.GetUserInfoAsync(BuyerId, Arg.Any<CancellationToken>()).Returns(buyer with { Id = buyerId });
+        _users.GetUserInfoAsync(PartnerId, Arg.Any<CancellationToken>()).Returns(holder with { Id = holderId });
+        Tickets(Ticket(BuyerId, "Ana Buyer", "ana@example.com"), Ticket(PartnerId, "Ben Partner", "ben@example.com"));
+
+        await Create().DeliverAsync(_order.Id);
+
+        _sent.Should().HaveCount(3);
+        _sent.Where(m => string.Equals(m.RecipientEmail, "ana@example.com", StringComparison.Ordinal)).Should().OnlyContain(m => m.UserId == buyerId);
+        _sent.Single(m => string.Equals(m.RecipientEmail, "ben@example.com", StringComparison.Ordinal)).UserId.Should().Be(holderId);
+    }
+
+    [HumansTheory]
+    [Xunit.InlineData(false)]
+    [Xunit.InlineData(true)]
+    public async Task SendNoticeAsync_ErasedTicket_Skips(bool rename)
+    {
+        var ticket = Ticket(PartnerId, TicketPiiTombstone.Name, "ben@example.com");
+        Tickets(ticket);
+        _checkout.GetTicketAsync(ticket.Id, Arg.Any<CancellationToken>()).Returns(ticket);
+        var service = Create();
+
+        if (rename)
+            await service.SendRenamedTicketAsync(ticket.Id, Guid.NewGuid());
+        else
+            await service.SendJoinInvitationAsync(_order.Id, ticket.Id);
+
+        _sent.Should().BeEmpty();
+        _audit.ReceivedCalls().Should().BeEmpty();
+    }
+
+    [HumansFact]
+    public async Task DeliverAsync_ErasedAdult_SkipsFamily()
+    {
+        var adult = Ticket(PartnerId, TicketPiiTombstone.Name, "ben@example.com");
+        Tickets(adult, Ticket(null, "Child", null, kind: TicketHolderKind.Child, parent: adult.Id));
+
+        await Create().DeliverAsync(_order.Id);
+
+        _sent.Should().ContainSingle().Which.TemplateName.Should().Be("ticket_order_receipt");
+        _jobs.DidNotReceiveWithAnyArgs().Create(default!, default!);
+    }
+
+    [HumansFact]
+    public async Task DeliverAsync_AnonymousEmailOnly_SendsTicket()
+    {
+        Tickets(Ticket(null, "Guest", "guest@example.com"));
+
+        await Create().DeliverAsync(_order.Id);
+
+        _sent.Should().HaveCount(2);
+        var mail = _sent.Single(m => string.Equals(m.TemplateName, "ticket_issued", StringComparison.Ordinal));
+        mail.UserId.Should().BeNull();
+        mail.RecipientEmail.Should().Be("guest@example.com");
+    }
+
+    [HumansFact]
+    public async Task DeliverAsync_ErasedBuyerSnapshot_StillSendsOtherHolderTicket()
+    {
+        Tickets(Ticket(PartnerId, "Ben Partner", "ben@example.com"));
+        _order.BuyerName = TicketPiiTombstone.Name;
+        _order.BuyerEmail = TicketPiiTombstone.EmailFor(BuyerId);
+
+        await Create().DeliverAsync(_order.Id);
+
+        var mail = _sent.Should().ContainSingle().Which;
+        mail.TemplateName.Should().Be("ticket_issued");
+        mail.HtmlBody.Should().NotContain(TicketPiiTombstone.Name);
     }
 
     [HumansTheory]
@@ -365,7 +576,7 @@ public sealed class TicketDeliveryServiceTests
         await Create().DeliverAsync(_order.Id);
 
         await _audit.Received(1).LogAsync(TicketsAuditActions.TicketDeliverySent, Arg.Any<string>(), _order.Id,
-            "Handed 1 ticket email(s) for 3 live ticket(s) and the receipt to Email; 1 skipped for lack of an address",
+            "Handed 1 ticket email(s) for 2 eligible ticket(s) and the receipt to Email; 1 skipped for lack of an available recipient",
             Arg.Any<string>(), Arg.Any<Guid?>(), Arg.Any<string?>());
         await _checkout.Received(1).RecordDeliveryAsync(_order.Id, TicketCheckoutOrderEventKind.TicketsEmailed,
             Arg.Any<string>(), null, Arg.Any<CancellationToken>());
