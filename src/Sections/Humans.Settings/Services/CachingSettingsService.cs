@@ -63,6 +63,10 @@ internal sealed class CachingSettingsService(
         string timeZoneId, Guid actorUserId, CancellationToken cancellationToken = default) =>
         WithInnerAsync(inner => inner.SaveTimeZoneAsync(timeZoneId, actorUserId, cancellationToken));
 
+    public Task<EventSettingsSaveResult> SaveRetentionDaysAsync(
+        int days, Guid actorUserId, CancellationToken cancellationToken = default) =>
+        WithInnerAsync(inner => inner.SaveRetentionDaysAsync(days, actorUserId, cancellationToken));
+
     public Task<EventSettingsSaveResult> ActivateEventSettingsAsync(
         Guid eventSettingsId, Guid actorUserId, CancellationToken cancellationToken = default) =>
         WithInnerAsync(inner => inner.ActivateEventSettingsAsync(eventSettingsId, actorUserId, cancellationToken));

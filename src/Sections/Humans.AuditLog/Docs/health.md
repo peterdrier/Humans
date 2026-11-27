@@ -23,8 +23,9 @@ irreversible action; it writes into no other section. Two faces:
   through one shared component, and a plain-text feed for the agent's personal-history tool. Every shown entry names people and teams, never
   raw ids, and the section names none of the sections whose ids it shows.
 
-It also contributes each person's slice to the GDPR export, and keeps everything: there is no
-prune or delete path, by design (Art. 30 / Art. 17(3)(b)).
+It also contributes each person's slice to the GDPR export, and keeps every permanent entry: there is
+no prune or delete path on that side, by design (Art. 30 / Art. 17(3)(b)). Temporary entries go after the
+retention period, or on erasure.
 
 ## 2. The shapes
 

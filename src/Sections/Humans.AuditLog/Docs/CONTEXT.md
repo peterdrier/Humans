@@ -8,8 +8,14 @@ The record of who did what to whom, kept for the Board. Settled in the 2026-11-2
 The section that keeps the audit log.
 
 **Audit log**:
-The whole record of what people and automation did to members and the association's data. Nothing in it is ever changed or removed.
+The whole record of what people and automation did to members and the association's data, in two sides shown together. Nothing in it is ever changed.
 _Avoid_: audit trail
+
+**Permanent side**:
+The entries kept forever. Nothing on it is ever removed.
+
+**Temporary side**:
+The entries of actions marked "kept for the retention period" (one app-wide setting, a year by default). Removed once older than that, or when the person they name is erased. Shown with a "temporary" marker.
 
 **Entry**:
 One row of the audit log: one action, done once, at one moment.
@@ -42,5 +48,5 @@ _Avoid_: related entity
 ## Not the audit log
 
 **Budget changes**:
-Budget's own record of field changes, kept apart from the audit log. Whether it and the other per-section change records should become audit log entries is an open question.
+Budget's own record of field changes, kept apart from the audit log until it moves to the temporary side (decided 2026-11-26).
 _Avoid_: budget audit log

@@ -70,7 +70,7 @@ public class AuditLogPageRenderTests(HumansTestDatabase database) : IntegrationT
         {
             var auditLog = scope.ServiceProvider.GetRequiredService<IAuditLogService>();
             await auditLog.LogAsync(
-                new AuditActionDefinition("ShiftSignupBailed"),
+                new AuditActionDefinition("ShiftSignupBailed", AuditKept.Forever),
                 entityType: "User",
                 entityId: adminId,
                 description: marker,
@@ -107,7 +107,7 @@ public class AuditLogPageRenderTests(HumansTestDatabase database) : IntegrationT
         {
             var auditLog = scope.ServiceProvider.GetRequiredService<IAuditLogService>();
             await auditLog.LogAsync(
-                new AuditActionDefinition("FacilitatedMessageSent"),
+                new AuditActionDefinition("FacilitatedMessageSent", AuditKept.Forever),
                 entityType: "User",
                 entityId: volunteerId,
                 description: marker,
@@ -139,7 +139,7 @@ public class AuditLogPageRenderTests(HumansTestDatabase database) : IntegrationT
         {
             var auditLog = scope.ServiceProvider.GetRequiredService<IAuditLogService>();
             await auditLog.LogAsync(
-                new AuditActionDefinition("FacilitatedMessageSent"),
+                new AuditActionDefinition("FacilitatedMessageSent", AuditKept.Forever),
                 entityType: "User",
                 entityId: volunteerId,
                 description: $"header-localization-probe-{Guid.NewGuid():N}",

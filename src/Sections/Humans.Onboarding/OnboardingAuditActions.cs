@@ -6,7 +6,7 @@ namespace Humans.Onboarding;
 internal sealed class OnboardingAuditActions : AuditActionContributor
 {
     // Retired: nothing writes it since admission became automatic; declared so stored rows keep their verb.
-    public static readonly AuditActionDefinition VolunteerApproved = new("VolunteerApproved", Verb: "approved");
+    public static readonly AuditActionDefinition VolunteerApproved = new("VolunteerApproved", AuditKept.Forever, Verb: "approved");
 
-    public static readonly AuditActionDefinition SignupRejected = new("SignupRejected", Verb: "rejected signup for");
+    public static readonly AuditActionDefinition SignupRejected = new("SignupRejected", AuditKept.Forever, Verb: "rejected signup for");
 }

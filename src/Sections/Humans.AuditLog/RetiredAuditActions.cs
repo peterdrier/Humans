@@ -9,11 +9,11 @@ namespace Humans.AuditLog;
 internal sealed class RetiredAuditActions : AuditActionContributor
 {
     // Feedback, removed in favour of Issues.
-    public static readonly AuditActionDefinition FeedbackResponseSent = new("FeedbackResponseSent");
+    public static readonly AuditActionDefinition FeedbackResponseSent = new("FeedbackResponseSent", AuditKept.Forever);
 
-    public static readonly AuditActionDefinition FeedbackStatusChanged = new("FeedbackStatusChanged");
+    public static readonly AuditActionDefinition FeedbackStatusChanged = new("FeedbackStatusChanged", AuditKept.Forever);
 
-    public static readonly AuditActionDefinition FeedbackAssignmentChanged = new("FeedbackAssignmentChanged");
+    public static readonly AuditActionDefinition FeedbackAssignmentChanged = new("FeedbackAssignmentChanged", AuditKept.Forever);
 
-    public static readonly AuditActionDefinition FeedbackGitHubLinked = new("FeedbackGitHubLinked");
+    public static readonly AuditActionDefinition FeedbackGitHubLinked = new("FeedbackGitHubLinked", AuditKept.Forever);
 }
