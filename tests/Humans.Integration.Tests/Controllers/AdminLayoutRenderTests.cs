@@ -21,7 +21,8 @@ namespace Humans.Integration.Tests.Controllers;
 /// </remarks>
 public partial class AdminLayoutRenderTests(HumansTestDatabase database) : IntegrationTestBase(database)
 {
-    [GeneratedRegex("Layout\\s*=.*\"_AdminLayout\"", RegexOptions.ExplicitCapture, matchTimeoutMilliseconds: 1000)]
+    // [^;]* spans lines: the Shell's _ViewStart picks the layout in a multi-line conditional.
+    [GeneratedRegex("Layout\\s*=[^;]*\"_AdminLayout\"", RegexOptions.ExplicitCapture, matchTimeoutMilliseconds: 1000)]
     private static partial Regex AdminLayoutAssignment();
 
     [GeneratedRegex("<partial\\s+name=\"(?<name>[^\"]+)\"", RegexOptions.ExplicitCapture, matchTimeoutMilliseconds: 1000)]
