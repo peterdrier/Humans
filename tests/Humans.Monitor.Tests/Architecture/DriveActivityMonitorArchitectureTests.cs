@@ -48,7 +48,7 @@ public class DriveActivityMonitorArchitectureTests
     }
 
     [HumansFact]
-    public void IGoogleDriveActivityClient_HasNoGoogleSdkTypesInSignatures()
+    public void DriveActivityClient_ExposesNoGoogleSdkTypes()
     {
         // Parameters and return types must be BCL or Humans.Google.Contracts types,
         // never Google.Apis.*.

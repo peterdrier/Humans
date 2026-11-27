@@ -122,7 +122,7 @@ public sealed class LowIncomeAdminControllerTests
     }
 
     [HumansFact]
-    public async Task UnavailableRecipient_IsShownAsAnError_AndLogged()
+    public async Task Refuse_UnavailableRecipient_ShowsError()
     {
         _grants.IssueAsync(Arg.Any<string>(), Arg.Any<Guid>(), Arg.Any<string?>(), Arg.Any<Guid>(), Arg.Any<CancellationToken>())
             .Returns(new GrantIssueResult(Guid.Empty, GrantWriteRefusal.RecipientUnavailable));
@@ -136,7 +136,7 @@ public sealed class LowIncomeAdminControllerTests
     }
 
     [HumansFact]
-    public async Task TooLongReason_IsShownAsAnError_AndLogged()
+    public async Task Refuse_TooLongReason_ShowsError()
     {
         var person = Guid.NewGuid();
         _grants.RevokeAsync(Arg.Any<string>(), Arg.Any<Guid>(), Arg.Any<string?>(), Arg.Any<Guid>(), Arg.Any<CancellationToken>())
@@ -154,7 +154,7 @@ public sealed class LowIncomeAdminControllerTests
     [Xunit.InlineData(false, true)]
     [Xunit.InlineData(true, false)]
     [Xunit.InlineData(true, true)]
-    public async Task SourceDependencyFailurePropagatesWithoutRefusalFeedback(bool revoke, bool argumentFailure)
+    public async Task Refuse_SourceFails_Propagates(bool revoke, bool argumentFailure)
     {
         Exception failure = argumentFailure ? new ArgumentException("Private dependency diagnostic", nameof(argumentFailure))
             : new InvalidOperationException("Private dependency diagnostic");

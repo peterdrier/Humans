@@ -50,7 +50,7 @@ public class DevLoginControllerTests
     }
 
     [HumansFact]
-    public async Task SignIn_AdminPersona_OutsideDevelopment_ReturnsNotFoundBeforeSeeding()
+    public async Task SignIn_AdminPersonaOutsideDevelopment_ReturnsNotFound()
     {
         // QA's exact shape: Staging + DevAuth on. The refusal must land before the seeder
         // touches anything — an Admin user seeded into QA outlives the request.
@@ -65,7 +65,7 @@ public class DevLoginControllerTests
     }
 
     [HumansFact]
-    public async Task SignIn_AdminPersona_InDevelopment_StillSignsIn()
+    public async Task SignIn_AdminPersonaInDevelopment_SignsIn()
     {
         _environment.EnvironmentName.Returns("Development");
         SetDevAuthEnabled(true);
@@ -78,7 +78,7 @@ public class DevLoginControllerTests
     }
 
     [HumansFact]
-    public async Task SignIn_NonAdminPersona_OutsideDevelopment_StillSignsIn()
+    public async Task SignIn_NonAdminPersonaOutsideDevelopment_SignsIn()
     {
         // The gate is Admin-only: dev login remains the way into QA for every other persona.
         _environment.EnvironmentName.Returns("Staging");
@@ -92,7 +92,7 @@ public class DevLoginControllerTests
     }
 
     [HumansFact]
-    public async Task SignIn_AdminPersona_PreviewWithAllowAdmin_SignsIn()
+    public async Task SignIn_AdminPersonaInPreviewAllowed_SignsIn()
     {
         // A per-PR preview: Staging like QA, but docker-entrypoint.sh set DevAuth:AllowAdmin
         // because the container holds a throwaway cloned database and no real credentials.
@@ -108,7 +108,7 @@ public class DevLoginControllerTests
     }
 
     [HumansFact]
-    public async Task SignInAsUser_ActiveAdminAssignment_PreviewWithAllowAdmin_SignsIn()
+    public async Task SignInAsUser_AdminInPreviewAllowed_SignsIn()
     {
         // The chooser follows the same predicate, so a preview can also impersonate a real Admin.
         _environment.EnvironmentName.Returns("Staging");
@@ -124,7 +124,7 @@ public class DevLoginControllerTests
     }
 
     [HumansFact]
-    public async Task SignInAsUser_ActiveAdminAssignment_OutsideDevelopment_ReturnsNotFound()
+    public async Task SignInAsUser_AdminOutsideDevelopment_ReturnsNotFound()
     {
         // The chooser's second hole: any real Admin is reachable by id without the persona route.
         _environment.EnvironmentName.Returns("Staging");
@@ -139,7 +139,7 @@ public class DevLoginControllerTests
     }
 
     [HumansFact]
-    public async Task SignInAsUser_NonAdmin_OutsideDevelopment_StillSignsIn()
+    public async Task SignInAsUser_NonAdminOutsideDevelopment_SignsIn()
     {
         _environment.EnvironmentName.Returns("Staging");
         SetDevAuthEnabled(true);
