@@ -67,7 +67,7 @@ None. Permissions writes nothing; audit happens where a holding changes (Roles, 
 |---|---:|---|
 | `IPermissionService` | 3 | `Permissions`, `HasAsync`, `GetOwnersAsync` |
 | `ISectionPermissions`, `IOwnerKind`, `IPermissionSource` | — | Implemented by other sections |
-| `PermissionRequirement` | — | Resource-based requirement; the resource is the `Owner` |
+| `PermissionRequirement` | — | Resource-based requirement; the resource is the `Owner`. Its handler resolves the cookie id to the surviving account first, so a merged-away id still works and a missing account is denied |
 
 - No caching decorator: each check reads the sources' and Auth's caches.
 - Tests: `tests/Humans.Permissions.Tests/PermissionServiceTests.cs` (the rules, table-driven).
