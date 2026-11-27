@@ -344,8 +344,8 @@ People bought for do not sign the ticket rules: the buyer accepts for the whole 
 
 The rules are markdown in the legal GitHub repo (`GitHubSettings`, the repo the legal pages read), in the folder the
 ticketing settings name: `name.md` is Spanish, `name-en.md` English, more languages optional (`name-de.md`). Spanish and
-English are required: saving the settings refuses a new folder without both, or with a second markdown file lacking a language
-suffix (a README beside the rules), since that one would read as Spanish. Display only (Peter, 2026-11-21): nothing is signed
+English are required: Spanish must be the unsuffixed base, not a `name-es.md` substitute. Saving the settings refuses a new folder without both, with a second markdown file lacking a language
+suffix (a README beside the rules), or with duplicate languages in the base's file set, including case variants of a suffix. Unrelated translated files are ignored. Display only (Peter, 2026-11-21): nothing is signed
 and nothing goes to Consent.
 
 - The version is the last commit changing the folder; the text is read at that commit, so the text shown and the version

@@ -138,20 +138,23 @@ internal partial class GitHubTicketRulesSource : ITicketRulesSource
             .Select(path => (Path: path, Match: LanguageFile().Match(path[(path.LastIndexOf('/') + 1)..])))
             .Where(c => c.Match.Success)
             .Select(c => (c.Path, Name: c.Match.Groups["name"].Value,
-                Lang: c.Match.Groups["lang"].Success ? c.Match.Groups["lang"].Value.ToLowerInvariant() : "es"))
+                Lang: c.Match.Groups["lang"].Success ? c.Match.Groups["lang"].Value.ToLowerInvariant() : "es",
+                HasSuffix: c.Match.Groups["lang"].Success))
             .ToList();
-        var spanish = candidates.Where(c => string.Equals(c.Lang, "es", StringComparison.Ordinal)).ToList();
+        var spanish = candidates.Where(c => !c.HasSuffix).ToList();
         if (spanish.Count == 0)
             return (null, "It has no Spanish file (a .md without a language suffix).");
         if (spanish.Count > 1)
             return (null, $"It has more than one .md without a language suffix: {string.Join(", ", spanish.Select(c => c.Path))}.");
         var set = candidates
             .Where(c => string.Equals(c.Name, spanish[0].Name, StringComparison.Ordinal))
-            .DistinctBy(c => c.Lang, StringComparer.Ordinal)
-            .Select(c => (c.Path, c.Lang))
             .ToList();
-        return set.Exists(c => string.Equals(c.Lang, "en", StringComparison.Ordinal))
-            ? (set, null)
+        var duplicate = set.GroupBy(c => c.Lang, StringComparer.Ordinal).FirstOrDefault(g => g.Count() > 1);
+        if (duplicate is not null)
+            return (null, $"It has more than one file for language {duplicate.Key}: {string.Join(", ", duplicate.Select(c => c.Path))}.");
+        var files = set.Select(c => (c.Path, c.Lang)).ToList();
+        return files.Exists(c => string.Equals(c.Lang, "en", StringComparison.Ordinal))
+            ? (files, null)
             : (null, $"It has no English file ({spanish[0].Name}-en.md).");
     }
 }
