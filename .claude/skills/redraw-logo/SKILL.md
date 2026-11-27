@@ -9,7 +9,7 @@ argument-hint: "<model, e.g. 'Claude Opus 5.5'> <effort, e.g. high>"
 The logo library is a timeline of how each model, at each effort level, draws the same mark from the
 same brief. One run of this skill adds **one entry**, nothing else. It never changes the live logo.
 
-`$ARGUMENTS`: the model's display name with version (`Claude Opus 5.5`, `Gemini 4 Neon`) and the
+`$ARGUMENTS`: family, model and version (`Claude Opus 5.5`, `Gemini Neon 4`) and the
 effort level the session runs at (`low` / `medium` / `high` / ...). If either is missing, use what you
 know you are and ask for the effort — it is not recoverable afterwards.
 
@@ -23,7 +23,9 @@ know you are and ask for the effort — it is not recoverable afterwards.
   ```json
   {
     "date": "2026-11",
-    "model": "Claude Opus 5.5",
+    "family": "Claude",
+    "model": "Opus",
+    "version": "5.5",
     "effort": "high",
     "brief": "v1",
     "notes": {
@@ -33,7 +35,10 @@ know you are and ask for the effort — it is not recoverable afterwards.
   }
   ```
   `notes` is shown on the public page, so it needs all seven cultures (a test enforces it); plain
-  prose, no markdown. `effort` is one of `low` / `medium` / `high` / `xhigh` / `max` — the page
+  prose, no markdown. The terms: **family** `Claude` / `GPT` / `Gemini`, **model** `Opus` / `Sol` / `Neon`,
+  **version** the number alone (`5.5`, `6.2`, `4`), **effort** the level. The gallery groups by
+  family, then model, then version. Save the
+  file as UTF-8 without a BOM. `effort` is one of `low` / `medium` / `high` / `xhigh` / `max` — the page
   translates those labels.
 
 If the folder already exists, stop and say so — the entry has been drawn.

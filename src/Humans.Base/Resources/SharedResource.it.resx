@@ -1328,7 +1328,7 @@
   <data name="About_MailKitDesc" xml:space="preserve"><value>Email transazionali per notifiche e onboarding. L'unica libreria che rende SMTP quasi piacevole.</value></data>
   <data name="About_MeetTheStaff" xml:space="preserve"><value>Conosci lo staff</value></data>
   <data name="About_Logos_Title" xml:space="preserve"><value>La biblioteca dei loghi</value></data>
-  <data name="About_Logos_Intro" xml:space="preserve"><value>Ogni modello che ha aiutato a costruire Humans ha disegnato il proprio Uomo vitruviano a partire dalla stessa consegna. Eccoli tutti, dal più vecchio.</value></data>
+  <data name="About_Logos_Intro" xml:space="preserve"><value>Ogni modello che ha aiutato a costruire Humans ha disegnato il proprio Uomo vitruviano a partire dalla stessa consegna. Eccoli, per famiglia di modelli e versione, dall’impegno più basso al più alto.</value></data>
   <data name="About_Logos_Empty" xml:space="preserve"><value>Ancora nessun disegno.</value></data>
   <data name="About_Logos_EffortUnrecorded" xml:space="preserve"><value>impegno non registrato</value></data>
   <data name="About_Logos_Effort_low" xml:space="preserve"><value>basso</value></data>
