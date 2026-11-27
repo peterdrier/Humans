@@ -46,7 +46,7 @@ after the retention window.
   (`ITicketGateLookup.FindIssuedTicketAsync`, live), accepted only when the ticket's event is the
   active event. Checkout tickets: `Valid` scans valid; `Offered` (resale queue) STOPs with
   "withdraw it first" while it can still sell, and is valid once sales close only if no reserved buyer order still holds it. Remote, processing, paid or indeterminate reservations continue to block the adult and its dependents. A sold offer invalidates them even before ticket retirement completes; `Resold` and `Void`
-  STOP. Tickets also marks a child or companion invalid if its adult is missing, void or resold, even when
+  STOP. A cancelled checkout event immediately makes every ticket invalid, including dependents, before background retirement and refunds finish. Closing sales alone does not invalidate tickets. Tickets also marks a child or companion invalid if its adult is missing, void or resold, even when
   the dependent still says `Valid` after an interrupted retirement. Tickets reads `IGateAdmissions`
   (`GateAdmissionReads`, live) so an admitted ticket is never offered or sold. Payment fulfilment rechecks the adult and its valid dependents; a late payment after admission receives fresh stock and an attention audit, leaving the admitted family valid and withdrawing its offer. A checkout scan row carries `CheckoutTicketId` instead of `TicketAttendeeId`, is
   never mirrored to a vendor and never appears in the vendor backfill: the gate row is its only

@@ -256,6 +256,40 @@ public sealed partial class TicketCheckoutServiceTests
             Arg.Any<string>(), _adminId, _buyerId, AuditSubjectTypes.User);
     }
 
+    [HumansTheory]
+    [InlineData(false, false)]
+    [InlineData(false, true)]
+    [InlineData(true, false)]
+    [InlineData(true, true)]
+    public async Task CancelEventAsync_BeforeReconciliation_StopsAdmission(bool offered, bool cancelled)
+    {
+        var adult = await PaidAdultAsync();
+        var child = AddTicket(TicketHolderKind.Child, parent: adult.Id);
+        var companion = AddTicket(TicketHolderKind.Companion, parent: adult.Id);
+        if (offered)
+            (await _service.OfferForResaleAsync(adult.Id, _buyerId, Ct)).Succeeded.Should().BeTrue();
+        if (cancelled)
+            (await _service.CancelEventAsync(_ticketing.Id, "Storm", _adminId, Ct)).Succeeded.Should().BeTrue();
+        else
+            _ticketing.Mode = TicketSalesMode.Closed;
+        _repo.TicketWrites.Clear();
+
+        foreach (var ticket in new[] { adult, child, companion })
+        {
+            var scanned = await _service.FindIssuedTicketAsync(ticket.Barcode, Ct);
+            scanned.Should().NotBeNull();
+            scanned!.IsValid.Should().Be(!cancelled);
+            scanned.InResaleQueue.Should().BeFalse();
+        }
+        var listed = await _service.GetIssuedTicketsForEventAsync(_event.Id, Ct);
+        listed.Should().HaveCount(3);
+        listed.Should().OnlyContain(t => t.IsValid == !cancelled && !t.InResaleQueue);
+        adult.State.Should().Be(offered ? TicketCheckoutTicketState.Offered : TicketCheckoutTicketState.Valid);
+        child.State.Should().Be(TicketCheckoutTicketState.Valid);
+        companion.State.Should().Be(TicketCheckoutTicketState.Valid);
+        _repo.TicketWrites.Should().BeEmpty();
+    }
+
     [HumansFact]
     public async Task Cancelling_the_event_voids_refunds_and_emails_every_paid_order_once()
     {

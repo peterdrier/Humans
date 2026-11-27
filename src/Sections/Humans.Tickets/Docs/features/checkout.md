@@ -301,7 +301,7 @@ the intent and leaves the tickets usable; a pending refund remains recorded for 
 Overrides (Admin only) repair what the rules miss: restore a voided ticket, move a class priced
 ticket, a companion past capacity. Each needs a reason and is audited `TicketOverride`. Restore refuses erased ticket identity markers and unavailable holders before changing anything; a live merge survivor remains eligible. Anonymous dependents still require a valid adult ticket.
 
-Cancelling an event (Admin only, `/Tickets/Admin/Sales/{id}/Cancel`) closes sales and resale for good. The reconcile
+Cancelling an event (Admin only, `/Tickets/Admin/Sales/{id}/Cancel`) closes sales and resale for good. Gate barcode lookup and event lists immediately mark all its tickets invalid, including dependents, before reconciliation voids them. Closing sales without cancelling the event keeps otherwise valid tickets admissible. The reconcile
 job then works the paid orders within a two minute budget per run: withdraw open offers, void live tickets, refund the
 ticket lines through the order's platform, timeline `EventCancelled`, email the buyer (donation only orders too; marked
 `CancellationEmailedAt`, sent under a fixed delivery id). A repeat is safe: void stays void,
