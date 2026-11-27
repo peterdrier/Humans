@@ -141,4 +141,4 @@ None.
 | 2026-09-05 | [run](../../../../docs/health/runs/2026-09-05-EarlyEntry.md) | First doctor pass. peterdrier/Humans#1593 |
 | 2026-10-06 | [run](../../../../docs/health/runs/2026-10-06-EarlyEntry.md) | Docs describe the settings-listener eviction and the section's own nav group. peterdrier/Humans#1915 |
 | 2026-10-25 | [run](../../../../docs/health/runs/2026-10-25-EarlyEntry.md) | Docs describe the once-per-request gather; the Contracts folder is no longer called debt. peterdrier/Humans#2158 |
-| 2026-11-27 | [run](../../../../docs/health/runs/2026-11-27-EarlyEntry.md) | Docs follow the roster onto its own policy; the section doc names every caller. peterdrier/Humans#pending |
+| 2026-11-27 | [run](../../../../docs/health/runs/2026-11-27-EarlyEntry.md) | Docs follow the roster onto its own policy; the section doc names every caller. peterdrier/Humans#2661 |

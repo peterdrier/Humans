@@ -3,7 +3,7 @@
 - Invocation: unattended (scheduled daily run via project coordinator)
 - Anchor commit: `b01f4012f` (origin/main at branch point); branch `section-doctor/2026-11-27T060926Z`.
 - Budget: 2.5h.
-- PR: pending
+- PR: peterdrier/Humans#2661
 
 ## Assessment summary
 
@@ -72,7 +72,7 @@ Independence check: pass. Findings 2 and 3 came from the target: the shapes tabl
 
 ## Needs Peter
 
-- None this run. Finding 16 stays open in the 2026-10-25 run file.
+- None this run. Finding 16 stays open in the 2026-10-25 run file. Section review posted on the PR.
 
 ## File coverage
 
