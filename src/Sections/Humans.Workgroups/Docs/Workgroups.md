@@ -333,7 +333,9 @@ Settings and Register an existing group on first setup or after clearing the que
   notifies the coordinators; nothing else changes. `ApproveMemberAsync` and `AddMemberAsync`
   are the only ways a person becomes a member (`AdmitAsync`): their controller requires a current
   coordinator or Board/Admin, and both write `MemberJoined`, audit, notify the person and request a Drive
-  sync. `DeclineMemberAsync` sets `LeftAt` on the pending row, audits and notifies without a
+  sync. Approval rechecks that the pending request's account is available, as direct addition does;
+  a missing or tombstoned account leaves the request pending without a joined log, audit, notice or Drive sync.
+  `DeclineMemberAsync` sets `LeftAt` on the pending row, audits and notifies without a
   reason. A plain member is forbidden by the controller. Neither coordinator-change command nor a
   last-coordinator handover in `LeaveAsync` ever promotes a pending row. Ending or
   withdrawing the group closes its pending requests (`ClosePendingRequests`), so

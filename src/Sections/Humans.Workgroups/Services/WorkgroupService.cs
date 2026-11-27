@@ -1208,6 +1208,8 @@ internal sealed partial class WorkgroupService(
 
         var pending = workgroup.Members.FirstOrDefault(m => m.UserId == userId && m.LeftAt is null && m.IsPending == true);
         if (pending is null) return new(Refusal: new(WorkgroupErrorKeys.NoPendingRequest));
+        if (await ResolveMemberTargetAsync(userId, ct) is null)
+            return new(Refusal: new(WorkgroupErrorKeys.NotFound));
 
         return await AdmitAsync(workgroup, pending, actorUserId, WorkgroupsAuditActions.WorkgroupMembershipApproved,
             "Workgroups_Notice_MembershipApproved", ct);

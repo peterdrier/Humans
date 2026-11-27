@@ -467,6 +467,31 @@ public sealed class WorkgroupServiceMembershipTests : WorkgroupsTestHarness
     }
 
     [HumansTheory]
+    [InlineData(null)]
+    [InlineData(UserState.Deleted)]
+    [InlineData(UserState.Merged)]
+    public async Task ApproveMember_UnavailableAccount_LeavesRequestPending(UserState? state)
+    {
+        var group = await SeedWorkgroupAsync();
+        var coordinator = group.Members.Single().UserId;
+        var requester = SeedUser("Requester");
+        await AddMemberAsync(group.Id, requester, isPending: true);
+        var person = (await Users.GetUserInfoAsync(requester, Ct))!;
+        Users.GetUserInfoAsync(requester, Arg.Any<CancellationToken>())
+            .Returns(new ValueTask<UserInfo?>(state is { } value ? person with { State = value } : null));
+
+        var result = await NewService().ApproveMemberAsync(group.Id, coordinator, requester, Ct);
+
+        result.Refusal!.Key.Should().Be(WorkgroupErrorKeys.NotFound);
+        await using var db = OpenContext();
+        (await db.Members.SingleAsync(m => m.UserId == requester, Ct)).IsPending.Should().BeTrue();
+        (await db.LogEntries.AnyAsync(e => e.WorkgroupId == group.Id, Ct)).Should().BeFalse();
+        AuditLog.ReceivedCalls().Should().BeEmpty();
+        NotificationCalls().Should().BeEmpty();
+        await GoogleSync.DidNotReceiveWithAnyArgs().RequestSyncAsync(default!, default);
+    }
+
+    [HumansTheory]
     [InlineData(UserState.Deleted)]
     [InlineData(UserState.Merged)]
     public async Task AddMember_TerminalAccount_DoesNotCreateMembership(UserState state)
