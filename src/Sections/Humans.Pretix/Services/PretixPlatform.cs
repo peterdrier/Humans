@@ -433,13 +433,10 @@ internal sealed partial class PretixPlatform(
     private async Task<Dictionary<string, string>> EventSlugsAsync(CancellationToken ct)
     {
         var slugs = new Dictionary<string, string>(StringComparer.Ordinal);
-        for (string? next = $"api/v1/organizers/{Uri.EscapeDataString(Settings.Organizer)}/events/"; next is not null;)
-        {
-            var page = await SendAsync<PretixPage<PretixEventSlug>>(HttpMethod.Get, next, body: null, ct);
-            foreach (var ev in page.Results)
-                slugs[ev.Slug.ToUpperInvariant()] = ev.Slug;
-            next = page.Next;
-        }
+        var events = await ReadAllPagesAsync<PretixEventSlug>(
+            $"api/v1/organizers/{Uri.EscapeDataString(Settings.Organizer)}/events/", ct);
+        foreach (var ev in events)
+            slugs[ev.Slug.ToUpperInvariant()] = ev.Slug;
 
         return slugs;
     }

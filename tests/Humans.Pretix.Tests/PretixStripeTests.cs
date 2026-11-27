@@ -54,6 +54,33 @@ public sealed class PretixStripeTests
             .And.ContainSingle(r => r.Route.EndsWith("/events/", StringComparison.Ordinal));
     }
 
+    [HumansTheory]
+    [InlineData(true, 1, "*repeated*")]
+    [InlineData(false, 500, "*500-page*")]
+    public async Task GetPaymentLedgerAsync_UnboundedEvents_RefusesIncompleteTraversal(
+        bool repeated, int requests, string message)
+    {
+        const string eventsPath = "/api/v1/organizers/nobodies/events/";
+        _stripe.GetAccountLedgerAsync("Tickets", Now - Duration.FromDays(1), Now, Arg.Any<CancellationToken>())
+            .Returns(new StripeAccountLedger(
+                [Line("txn_c", "charge", 100000, 1440, "pi_new", $"NOWHERE2027-{Code}", Code)], []));
+        var pretix = new FakePretix();
+        var pages = repeated ? 2 : 501;
+        for (var page = 1; page <= pages; page++)
+            pretix.On("GET", eventsPath, HttpStatusCode.OK, new
+            {
+                results = Array.Empty<object>(),
+                next = page == pages ? null
+                    : repeated ? $"https://pretix.test{eventsPath}" : $"{eventsPath}?page={page + 1}",
+            });
+
+        var read = () => Create(pretix, stripe: _stripe)
+            .GetPaymentLedgerAsync(Now - Duration.FromDays(1), Now, Ct);
+
+        (await read.Should().ThrowAsync<HttpRequestException>()).WithMessage(message);
+        pretix.Requests.Should().HaveCount(requests);
+    }
+
     [HumansFact]
     public async Task Without_the_Stripe_account_there_is_no_ledger_and_Check_says_so()
     {
