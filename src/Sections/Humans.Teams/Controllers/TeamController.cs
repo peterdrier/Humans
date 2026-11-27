@@ -151,7 +151,7 @@ internal sealed class TeamController(
         var teamInfo = await teamService.GetTeamAsync(team.Id, ct);
         viewModel.CanManageEarlyEntry = teamInfo is { EarlyEntryEnabled: true }
             && (await authorizationService.AuthorizeAsync(
-                User, teamInfo, TeamOperationRequirement.ManageEarlyEntry)).Succeeded;
+                User, TeamOwner.Of(teamInfo.Id), TeamPermissionRequirements.EarlyEntry)).Succeeded;
 
         viewModel.SubteamLeads = teamPage.SubteamLeads.Select(MapChildTeamMember).ToList();
         viewModel.ChildTeamMembers = teamPage.SubteamMembers.Select(MapChildTeamMember).ToList();

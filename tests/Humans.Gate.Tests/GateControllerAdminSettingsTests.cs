@@ -2,13 +2,10 @@ using AwesomeAssertions;
 using Humans.Gate.Controllers;
 using Humans.Gate.Models;
 using Humans.Gate.Services;
-using Humans.Gate.Services.Stores;
 using Humans.Users.Contracts;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.ViewFeatures;
-using Microsoft.Extensions.Caching.Memory;
-using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging.Abstractions;
 using NodaTime;
 using NodaTime.Testing;
@@ -17,9 +14,7 @@ using NSubstitute;
 namespace Humans.Gate.Tests;
 
 /// <summary>
-/// Gate settings (general-entry instant, minor age threshold) live on /Settings#gate; Staff
-/// PINs stay on <c>/Gate/Admin</c>, so the save action
-/// redirects to the tab rather than back to that page.
+/// The gate setting (general-entry instant) lives on /Settings#gate, so the save action redirects to that tab.
 /// </summary>
 public sealed class GateControllerAdminSettingsTests
 {
@@ -30,8 +25,7 @@ public sealed class GateControllerAdminSettingsTests
     public GateControllerAdminSettingsTests()
     {
         _controller = new GateController(
-            _gate, Substitute.For<IUserService>(), new ConfigurationBuilder().Build(),
-            new GatePinThrottle(new MemoryCache(new MemoryCacheOptions()), _clock), _clock, NullLogger<GateController>.Instance);
+            _gate, Substitute.For<IUserService>(), _clock, NullLogger<GateController>.Instance);
 
         var http = new DefaultHttpContext();
         _controller.ControllerContext = new ControllerContext { HttpContext = http };
@@ -41,7 +35,7 @@ public sealed class GateControllerAdminSettingsTests
     [HumansFact]
     public async Task AdminPost_ValidModel_RedirectsToGateTab()
     {
-        var model = new GateSettingsViewModel("2026-07-06T10:00:00Z", 16);
+        var model = new GateSettingsViewModel("2026-07-06T10:00:00Z");
 
         var result = await _controller.Admin(model, Xunit.TestContext.Current.CancellationToken);
 
@@ -52,7 +46,7 @@ public sealed class GateControllerAdminSettingsTests
     [HumansFact]
     public async Task AdminPost_InvalidInstant_RedirectsWithoutSaving()
     {
-        var model = new GateSettingsViewModel("not-an-instant", 16);
+        var model = new GateSettingsViewModel("not-an-instant");
 
         var result = await _controller.Admin(model, Xunit.TestContext.Current.CancellationToken);
 

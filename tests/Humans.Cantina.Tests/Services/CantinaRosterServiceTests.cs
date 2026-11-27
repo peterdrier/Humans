@@ -73,7 +73,7 @@ public class CantinaRosterServiceTests
     [Xunit.InlineData(false, true)]
     [Xunit.InlineData(true, false)]
     [Xunit.InlineData(true, true)]
-    public async Task CsvDownloads_AuditActorAndPersonalRows_WithoutAuditingPageReads(bool daily, bool populated)
+    public async Task CsvDownloads_Actor_IsAudited(bool daily, bool populated)
     {
         var ct = Xunit.TestContext.Current.CancellationToken;
         var actorId = Guid.NewGuid();
@@ -101,7 +101,7 @@ public class CantinaRosterServiceTests
     [HumansTheory]
     [Xunit.InlineData(false)]
     [Xunit.InlineData(true)]
-    public async Task HealthReveal_IsAudited_AndUnlocksOnlyThePageItWasPostedFor(bool daily)
+    public async Task HealthReveal_Posted_UnlocksOnlyThatPage(bool daily)
     {
         var ct = Xunit.TestContext.Current.CancellationToken;
         var actorId = Guid.NewGuid();
@@ -175,7 +175,7 @@ public class CantinaRosterServiceTests
     [Xunit.InlineData(true, false, int.MaxValue)]
     [Xunit.InlineData(false, false, int.MinValue)]
     [Xunit.InlineData(false, false, int.MaxValue)]
-    public async Task InvalidRosterWindow_ReturnsNoRosterAndDisclosesNothing(bool weekly, bool activeEvent, int offset)
+    public async Task Roster_InvalidWindow_ReturnsNothing(bool weekly, bool activeEvent, int offset)
     {
         _burnSettings.GetActiveEventSettings()
             .Returns(activeEvent ? ActiveEvent() : null);
@@ -258,7 +258,7 @@ public class CantinaRosterServiceTests
     [Xunit.InlineData(nameof(CantinaController.RevealDayHealth), true)]
     [Xunit.InlineData(nameof(CantinaController.Csv), true)]
     [Xunit.InlineData(nameof(CantinaController.DayCsv), true)]
-    public async Task RosterActions_RejectInvalidOffsetsInsteadOfDefaultingToTheCurrentPeriod(string action, bool numeric)
+    public async Task RosterActions_InvalidOffset_IsRejected(string action, bool numeric)
     {
         var controller = Controller(Guid.NewGuid());
         var ct = Xunit.TestContext.Current.CancellationToken;
@@ -315,7 +315,7 @@ public class CantinaRosterServiceTests
     [Xunit.InlineData(CantinaDisclosure.DayCsv, AccountScenario.Merged)]
     [Xunit.InlineData(CantinaDisclosure.DayCsv, AccountScenario.Missing)]
     [Xunit.InlineData(CantinaDisclosure.DayCsv, AccountScenario.Cancelled)]
-    public async Task Disclosure_resolves_actor_before_loading_personal_rows(CantinaDisclosure action, AccountScenario account)
+    public async Task Disclosure_Actor_ResolvedBeforeRows(CantinaDisclosure action, AccountScenario account)
     {
         var archivedId = Guid.NewGuid();
         var survivorId = Guid.NewGuid();
@@ -413,7 +413,7 @@ public class CantinaRosterServiceTests
         ActiveEvent() with { BuildStartOffset = buildStart, StrikeEndOffset = strikeEnd };
 
     [HumansFact]
-    public async Task GetWeeklyRoster_NoOffset_DefaultsToTheWeekContainingToday()
+    public async Task GetWeeklyRoster_NoOffset_DefaultsToThisWeek()
     {
         // Clock is Tue 7 Jul 2026 12:00 UTC — 14:00 in Madrid, same calendar
         // day — and GateOpening is Tue 7 Jul, so the Monday of this week is
@@ -426,7 +426,7 @@ public class CantinaRosterServiceTests
     }
 
     [HumansFact]
-    public async Task GetWeeklyRoster_NoOffsetAndNoActiveEvent_DefaultsToZero()
+    public async Task GetWeeklyRoster_NoOffsetNoEvent_DefaultsToZero()
     {
         _burnSettings.GetActiveEventSettings().Returns((EventSettingsInfo?)null);
 
@@ -436,7 +436,7 @@ public class CantinaRosterServiceTests
     }
 
     [HumansFact]
-    public async Task GetWeeklyRoster_NoActiveEventSettings_ReturnsDtoWithNullDatesAndNoPeople()
+    public async Task GetWeeklyRoster_NoActiveEvent_ReturnsNullDates()
     {
         _burnSettings.GetActiveEventSettings().Returns((EventSettingsInfo?)null);
 
@@ -470,7 +470,7 @@ public class CantinaRosterServiceTests
     }
 
     [HumansFact]
-    public async Task GetWeeklyRoster_NoOnSiteUsers_AnyDay_ReturnsZeroState()
+    public async Task GetWeeklyRoster_NoOnSiteUsers_ReturnsZeroState()
     {
         var es = ActiveEvent();
         _burnSettings.GetActiveEventSettings().Returns(es);
@@ -571,7 +571,7 @@ public class CantinaRosterServiceTests
     }
 
     [HumansFact]
-    public async Task GetWeeklyRoster_VolunteerWithoutDietary_CountsAsUnanswered_Once()
+    public async Task GetWeeklyRoster_VolunteerWithoutDietary_CountsUnansweredOnce()
     {
         var es = ActiveEvent();
         _burnSettings.GetActiveEventSettings().Returns(es);
@@ -717,7 +717,7 @@ public class CantinaRosterServiceTests
     }
 
     [HumansFact]
-    public async Task GetWeeklyRoster_ArrivesOn_IsTheDayBeforeTheFirstShift_AndNoShift_IsComplement()
+    public async Task GetWeeklyRoster_FirstShift_ArrivesDayBefore()
     {
         // Single human on-site Mon + Wed + Sat (days 0, 2, 5).
         // Also verifies the cohort-exclusion invariant: a known human with NO
@@ -825,7 +825,7 @@ public class CantinaRosterServiceTests
     }
 
     [HumansFact]
-    public async Task GetWeeklyRoster_FirstShiftInPriorWeek_ArrivesOnIsTheTrueArrival_AndNoArrivalFedThisWeek()
+    public async Task GetWeeklyRoster_ShiftInPriorWeek_KeepsTrueArrival()
     {
         // Confirmed shifts on offset 2 (a prior week) and offset 8 (the viewed week, offsets 7..13). The arrival is
         // offset 1, outside the viewed week: ArrivesOn still reports it, but no arrival day is fed this week.

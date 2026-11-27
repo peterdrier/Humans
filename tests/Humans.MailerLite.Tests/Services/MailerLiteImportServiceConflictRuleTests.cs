@@ -39,7 +39,7 @@ public class MailerLiteImportServiceConflictRuleTests
 
     // (b) Keeps Humans state when user-action AND newer.
     [HumansFact]
-    public async Task Apply_UserActionAndNewer_PreservesHumansState()
+    public async Task Apply_NewerUserAction_KeepsHumansState()
     {
         var userId = Guid.NewGuid();
         var harness = new ApplyHarness();

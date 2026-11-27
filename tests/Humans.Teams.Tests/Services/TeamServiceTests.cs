@@ -149,7 +149,9 @@ public sealed class TeamServiceTests : TeamsTestHarness
         var userService = _userService = NewDbBackedUserService();
         var googleOutboxService = new GoogleSyncOutboxService(
             new GoogleSyncOutboxRepository(GoogleDbFactory));
+        var permissions = TestTeamPermissions.Create(systemRoleService, () => _service!);
         var serviceProvider = new ServiceLocatorBuilder()
+            .With(permissions)
             .With<ITeamManagement>()
             .With(_teamCache)
             .With<ISystemRoleService>(systemRoleService)
@@ -174,7 +176,7 @@ public sealed class TeamServiceTests : TeamsTestHarness
             Clock,
             NullLogger<TeamService>.Instance);
         _pages = new TeamPageService(
-            _service, _teamResourceService, systemRoleService);
+            _service, _teamResourceService, systemRoleService, permissions);
     }
 
     [HumansTheory]

@@ -54,7 +54,7 @@ public class MailerLiteAudienceDebugSnapshotBuilderTests
     }
 
     [HumansFact]
-    public async Task Build_NoDbQueries_OnlyCachedUserInfoAndMlReads()
+    public async Task Build_Snapshot_MakesNoDbQueries()
     {
         // Sanity: the builder only takes IMailerLiteAudience / IMailerLiteService /
         // IUserService — no DB context, no email service, no preference service.
@@ -270,7 +270,7 @@ public class MailerLiteAudienceDebugSnapshotBuilderTests
     [Xunit.InlineData("expected", 0)]
     [Xunit.InlineData("ml", 0)]
     [Xunit.InlineData("non-primary", 0)]
-    public void Paging_ExtremePage_KeepsRowsAndStateOnLastAvailablePage(string section, int count)
+    public void Paging_ExtremePage_ShowsLastPage(string section, int count)
     {
         var options = new DebugTableOptions([50], 50);
         var state = new DebugTableState(section, int.MaxValue, 50, DebugSortColumn.Name, false);

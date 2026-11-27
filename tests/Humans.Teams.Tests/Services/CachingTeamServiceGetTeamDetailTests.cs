@@ -64,7 +64,8 @@ public sealed class CachingTeamServiceGetTeamDetailTests : IDisposable
         _pages = new TeamPageService(
             service,
             Substitute.For<Humans.Google.Contracts.ITeamResourceService>(),
-            _systemRoleService);
+            _systemRoleService,
+            Substitute.For<Humans.Permissions.Contracts.IPermissionService>());
     }
 
     [HumansTheory]

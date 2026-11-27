@@ -184,7 +184,7 @@ public sealed class CampaignServiceTests
     }
 
     [HumansFact]
-    public async Task AdminMutations_record_the_actor_and_committed_changes()
+    public async Task AdminMutations_Committed_AuditActor()
     {
         var ct = Xunit.TestContext.Current.CancellationToken;
         _audit.LogAsync(CampaignsAuditActions.CampaignCreated, "Campaign", Arg.Any<Guid>(),
@@ -223,7 +223,7 @@ public sealed class CampaignServiceTests
     }
 
     [HumansFact]
-    public async Task RefusedMutations_do_not_record_successful_audit_actions()
+    public async Task RefusedMutations_Audit_RecordsNothing()
     {
         var ct = Xunit.TestContext.Current.CancellationToken;
         (await _service.CreateAsync("", null, "Code", "{{Code}}", null, _actorId, ct)).Success.Should().BeFalse();
@@ -232,7 +232,7 @@ public sealed class CampaignServiceTests
     }
 
     [HumansFact]
-    public async Task AdminMutationActions_without_a_current_actor_do_not_change_data()
+    public async Task AdminMutations_NoActor_ChangeNothing()
     {
         var controller = new CampaignController(_service, Substitute.For<IUserService>(), NullLogger<CampaignController>.Instance)
         {
@@ -341,7 +341,7 @@ public sealed class CampaignServiceTests
     [Xunit.InlineData(null)]
     [Xunit.InlineData("invalid")]
     [Xunit.InlineData("0")]
-    public async Task GenerateCodes_requires_submitted_discount_value_before_vendor_write(string? submittedValue)
+    public async Task GenerateCodes_NoDiscountValue_IsRefused(string? submittedValue)
     {
         var campaign = await SeedCampaignAsync();
         var controller = CreateImportController();
@@ -401,7 +401,7 @@ public sealed class CampaignServiceTests
     [Xunit.InlineData("Percentage", "0", true)]
     [Xunit.InlineData("Percentage", "100", true)]
     [Xunit.InlineData("Fixed", "0.01", true)]
-    public async Task GenerateCodes_validates_numeric_discount_before_generation_or_import(
+    public async Task GenerateCodes_NonNumericDiscount_IsRefused(
         string kind, string text, bool valid)
     {
         var campaign = await SeedCampaignAsync();
@@ -519,7 +519,7 @@ public sealed class CampaignServiceTests
     [Xunit.InlineData("EmailSubjectTooLong", "emailSubject")]
     [Xunit.InlineData("ReplyToAddressTooLong", "replyToAddress")]
     [Xunit.InlineData("ReplyToAddressInvalid", "replyToAddress")]
-    public async Task CampaignForms_RejectInvalidTextWithoutCreatingOrChangingStoredCampaign(string errorKey, string field)
+    public async Task CampaignForms_InvalidText_AreRejected(string errorKey, string field)
     {
         var viewer = SeedUser();
         var existing = await SeedCampaignAsync();
@@ -590,7 +590,7 @@ public sealed class CampaignServiceTests
     }
 
     [HumansFact]
-    public async Task CampaignForms_AllowStoredLimitsAndTrimOptionalFields()
+    public async Task CampaignForms_ValidInput_TrimOptionalFields()
     {
         var title = new string('x', 200);
         var description = new string('x', 2000);
@@ -620,7 +620,7 @@ public sealed class CampaignServiceTests
     }
 
     [HumansFact]
-    public async Task ImportCodesAsync_IntoActiveCampaign_AppendsInOrderAndSkipsDuplicates()
+    public async Task ImportCodesAsync_ActiveCampaign_AppendsInOrder()
     {
         var campaign = await SeedCampaignAsync(CampaignStatus.Active);
 
@@ -637,7 +637,7 @@ public sealed class CampaignServiceTests
     }
 
     [HumansFact]
-    public async Task GenerateAndImportDiscountCodesAsync_DraftCampaign_GeneratesAndImportsCodes()
+    public async Task GenerateAndImportDiscountCodesAsync_DraftCampaign_ImportsCodes()
     {
         var campaign = await SeedCampaignAsync();
         _ticketDiscountCodes
@@ -664,7 +664,7 @@ public sealed class CampaignServiceTests
     }
 
     [HumansFact]
-    public async Task GenerateAndImportDiscountCodesAsync_CodeAlreadyInCampaign_IsSkippedAndNotCounted()
+    public async Task GenerateAndImportDiscountCodesAsync_CodeAlreadyInCampaign_Skipped()
     {
         var campaign = await SeedCampaignAsync();
         await _service.ImportCodesAsync(_actorId, campaign.Id, ["CODE-A"], Xunit.TestContext.Current.CancellationToken);
@@ -686,7 +686,7 @@ public sealed class CampaignServiceTests
     }
 
     [HumansFact]
-    public async Task GenerateAndImportDiscountCodesAsync_NonDraftCampaign_ReturnsNotDraft()
+    public async Task GenerateAndImportDiscountCodesAsync_NonDraftCampaign_IsRefused()
     {
         var campaign = await SeedCampaignAsync(CampaignStatus.Active);
 
@@ -704,7 +704,7 @@ public sealed class CampaignServiceTests
     [Xunit.InlineData("99")]
     [Xunit.InlineData("-1")]
     [Xunit.InlineData("unknown")]
-    public async Task GenerateAndImportDiscountCodesAsync_InvalidKind_DoesNotGenerateOrImport(string discountType)
+    public async Task GenerateAndImportDiscountCodesAsync_InvalidKind_DoesNothing(string discountType)
     {
         var campaign = await SeedCampaignAsync();
 
@@ -828,7 +828,7 @@ public sealed class CampaignServiceTests
     }
 
     [HumansFact]
-    public async Task GetSendWavePageAsync_ReturnsTeamsAndSelectedPreview()
+    public async Task GetSendWavePageAsync_TeamSelected_ReturnsPreview()
     {
         var campaign = await SeedActiveCampaignWithCodesAsync(["A1", "A2"]);
         var user = SeedUser(displayName: "Wave User");
@@ -902,7 +902,7 @@ public sealed class CampaignServiceTests
     }
 
     [HumansFact]
-    public async Task SendWaveAsync_AssignsCodeToTeamMember_CreatesGrantAndEnqueuesEmail()
+    public async Task SendWaveAsync_TeamMember_GetsGrant()
     {
         var campaign = await SeedActiveCampaignWithCodesAsync(["CODE-A", "CODE-B"],
             emailSubject: "Hi {{Name}}, here is your code",
@@ -965,7 +965,7 @@ public sealed class CampaignServiceTests
     }
 
     [HumansFact]
-    public async Task SendWaveAsync_GroupsRecipientsByLanguageWithEnglishFallbackAndIsolatesDispatchFailures()
+    public async Task SendWaveAsync_MixedLanguages_GroupsByLanguage()
     {
         var ct = Xunit.TestContext.Current.CancellationToken;
         var cultures = CultureCatalog.SupportedCultureCodes;
@@ -1048,7 +1048,7 @@ public sealed class CampaignServiceTests
     }
 
     [HumansFact]
-    public async Task SendWaveAsync_EnqueueThrowsForOneGrant_KeepsEveryGrantAndContinues()
+    public async Task SendWaveAsync_OneEnqueueThrows_Continues()
     {
         var campaign = await SeedActiveCampaignWithCodesAsync(["ISO-1", "ISO-2"]);
 
@@ -1119,7 +1119,7 @@ public sealed class CampaignServiceTests
     }
 
     [HumansFact]
-    public async Task SendWaveAsync_CanceledEnqueue_PropagatesAndKeepsTheAuditedGrant()
+    public async Task SendWaveAsync_CanceledEnqueue_KeepsGrant()
     {
         var campaign = await SeedActiveCampaignWithCodesAsync(["CANCEL-1"]);
         var user = SeedUser(displayName: "Canceled");
@@ -1187,7 +1187,7 @@ public sealed class CampaignServiceTests
 
 
     [HumansFact]
-    public async Task ResendToGrantAsync_EnqueuesNewEmailAndAudits()
+    public async Task ResendToGrantAsync_ExistingGrant_EnqueuesEmail()
     {
         var campaign = await SeedActiveCampaignWithCodesAsync(["RESEND-CODE"]);
 
@@ -1214,7 +1214,7 @@ public sealed class CampaignServiceTests
     [Xunit.InlineData("user")]
     [Xunit.InlineData("address")]
     [Xunit.InlineData("enqueue")]
-    public async Task ResendToGrantAsync_FailurePropagatesAndKeepsTheGrant(string failure)
+    public async Task ResendToGrantAsync_EnqueueFails_KeepsGrant(string failure)
     {
         var campaign = await SeedActiveCampaignWithCodesAsync(["RESEND-FAILED"]);
         var user = SeedUser();
@@ -1475,7 +1475,7 @@ public sealed class CampaignServiceTests
     }
 
     [HumansFact]
-    public async Task GetCodeTrackingAsync_combines_grant_redemption_with_recipient_display_data()
+    public async Task GetCodeTrackingAsync_RedeemedGrant_ShowsRecipient()
     {
         var campaign = await SeedActiveCampaignWithCodesAsync(["TRACK-CODE"]);
         var recipient = SeedUser(displayName: "Tracker");

@@ -815,3 +815,14 @@ src/Sections/Humans.Shifts/Data/Migrations/20261126232724_DropVolunteerProfileDi
 src/Sections/Humans.Shifts/Data/Migrations/20261126232724_DropVolunteerProfileDietaryMedicalColumns.cs:DropColumn(name=IntoleranceOtherText,table=shift_volunteer_event_profiles)#1
 src/Sections/Humans.Shifts/Data/Migrations/20261126232724_DropVolunteerProfileDietaryMedicalColumns.cs:DropColumn(name=Intolerances,table=shift_volunteer_event_profiles)#1
 src/Sections/Humans.Shifts/Data/Migrations/20261126232724_DropVolunteerProfileDietaryMedicalColumns.cs:DropColumn(name=MedicalConditions,table=shift_volunteer_event_profiles)#1
+
+# Gate simplify: drops gate_staff_pins (per-staffer gate PINs) and gate_settings.MinorAgeThresholdYears.
+# Evidence: the staff PIN table served only the per-person claim flow, unreachable since the shared
+# gate account shipped (health runs 2026-08-31 and 2026-10-27); MinorAgeThresholdYears was stored and
+# edited but read by nothing (health run 2026-10-27). This PR deletes the last readers and writers of
+# both: claim screen, Staff PINs page, PIN service methods, the settings field.
+# Approval: Peter, 2026-11-27, in the Gate simplify thread: "You can get rid of leaderboard, staff,
+# login, minor age, and sending the check-ins back to Tickettailor, though. Those are all things that
+# should go."
+src/Sections/Humans.Gate/Data/Migrations/20261127002352_GateSimplify.cs:DropTable(name=gate_staff_pins)#1
+src/Sections/Humans.Gate/Data/Migrations/20261127002352_GateSimplify.cs:DropColumn(name=MinorAgeThresholdYears,table=gate_settings)#1

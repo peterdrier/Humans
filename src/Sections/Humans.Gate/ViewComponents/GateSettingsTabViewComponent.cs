@@ -12,6 +12,6 @@ internal sealed class GateSettingsTabViewComponent(IGateService gate) : ViewComp
     {
         var s = await gate.GetSettingsAsync(HttpContext.RequestAborted);
         return View(new GateSettingsViewModel(
-            InstantPattern.ExtendedIso.Format(s.GeneralEntryOpensAt), s.MinorAgeThresholdYears));
+            InstantPattern.ExtendedIso.Format(s.GeneralEntryOpensAt)));
     }
 }

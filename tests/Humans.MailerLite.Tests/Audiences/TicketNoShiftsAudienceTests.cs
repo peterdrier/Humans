@@ -60,7 +60,7 @@ public class TicketNoShiftsAudienceTests
     [InlineData(SignupStatus.Bailed)]
     [InlineData(SignupStatus.Cancelled)]
     [InlineData(SignupStatus.NoShow)]
-    public async Task ComputeMemberUserIdsAsync_TicketWithOnlyUncommittedSignups_IncludesUser(
+    public async Task ComputeMemberUserIdsAsync_OnlyUncommittedSignups_IncludesUser(
         SignupStatus status)
     {
         var userA = Guid.NewGuid();

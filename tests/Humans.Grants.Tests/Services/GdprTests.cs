@@ -71,7 +71,7 @@ public sealed class GdprTests : GrantsTestHarness
     }
 
     [HumansFact]
-    public async Task Export_DecisionsSlice_ForManagerAndIssuer()
+    public async Task Export_ManagerOrIssuer_GetsDecisions()
     {
         var manager = SeedUser("Manager");
         var program = await SeedProgramAsync(managers: manager);
@@ -84,7 +84,7 @@ public sealed class GdprTests : GrantsTestHarness
     }
 
     [HumansFact]
-    public async Task Export_DecisionsSlice_ListsManagersTheyNamed_ErasureKeepsTheActorId()
+    public async Task Export_NamedManagers_AreListed()
     {
         var program = await SeedProgramAsync(managers: SeedUser("Manager"));
         Guid namer;
@@ -102,7 +102,7 @@ public sealed class GdprTests : GrantsTestHarness
     }
 
     [HumansFact]
-    public async Task Erase_DeletesTheirGrantsAndManagerRows_KeepsGrantsTheyIssued()
+    public async Task Erase_OwnRows_AreDeleted()
     {
         var person = SeedUser("Person");
         var program = await SeedProgramAsync(managers: person);
@@ -123,7 +123,7 @@ public sealed class GdprTests : GrantsTestHarness
     }
 
     [HumansFact]
-    public async Task Merge_ReKeysAManagerRowTheMergedAccountBothHoldsAndAdded()
+    public async Task Merge_ManagerRow_IsReKeyed()
     {
         var from = SeedUser("From");
         var to = SeedUser("To");
@@ -145,7 +145,7 @@ public sealed class GdprTests : GrantsTestHarness
     [HumansTheory]
     [Xunit.InlineData(false)]
     [Xunit.InlineData(true)]
-    public async Task Merge_StagesShareATransaction_ThatCommitsOnlyWhenBothSucceed(bool failSecondSave)
+    public async Task Merge_OneStageFails_CommitsNothing(bool failSecondSave)
     {
         var from = SeedUser("From");
         var to = SeedUser("To");
@@ -198,7 +198,7 @@ public sealed class GdprTests : GrantsTestHarness
     }
 
     [HumansFact]
-    public async Task Merge_ReKeysGrants_RevokesTheDuplicateLiveGrant_Audits()
+    public async Task Merge_DuplicateLiveGrant_IsRevoked()
     {
         var from = SeedUser("From");
         var to = SeedUser("To");

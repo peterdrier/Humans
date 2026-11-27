@@ -15,7 +15,7 @@ namespace Humans.MailerLite.Tests.Services;
 public class MailerLiteImportServiceThrottleTests
 {
     [HumansFact]
-    public async Task ApplyAsync_WithMaxPerOutcome_ProcessesAtMostNPerBucket()
+    public async Task ApplyAsync_MaxPerOutcome_CapsEachBucket()
     {
         var harness = new ThrottleHarness();
         harness.SetMlSubscribers(
@@ -71,7 +71,7 @@ public class MailerLiteImportServiceThrottleTests
     }
 
     [HumansFact]
-    public async Task ApplyAsync_SkipBuckets_DoNotConsumeThrottleSlot_OrInflateThrottled()
+    public async Task ApplyAsync_SkipBuckets_UseNoThrottleSlot()
     {
         // Ambiguous, Unconfirmed, and VerifiedPrefsAlreadyMatch never write —
         // the first two are unconditional skips in ApplyAsync and the third

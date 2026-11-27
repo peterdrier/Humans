@@ -23,7 +23,7 @@ public class MailerLiteImportServiceIdempotencyTests
     /// Both runs each emit one summary audit entry → SummaryCount==2.
     /// </summary>
     [HumansFact]
-    public async Task ApplyAsync_RunTwice_ProducesZeroPerRowEntries_AndOneSummary()
+    public async Task ApplyAsync_RunTwice_AddsNoRowEntries()
     {
         var harness = new IdempotencyHarness();
         var actorUserId = Guid.NewGuid();

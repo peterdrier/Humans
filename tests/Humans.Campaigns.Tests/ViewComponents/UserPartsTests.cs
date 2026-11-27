@@ -29,7 +29,7 @@ public class UserPartsTests
         Instant.FromUtc(2026, 1, 1, 0, 0), null);
 
     [HumansFact]
-    public void Parts_ContributeMyCodesToProfile_AndCampaignCodesToAdminDetail()
+    public void Parts_Profile_GetsMyCodes()
     {
         IUserPart contribution = new Section();
 
@@ -76,7 +76,7 @@ public class UserPartsTests
     }
 
     [HumansFact]
-    public async Task MyCodes_RendersNothing_WhenTheViewerIsNotTheTarget()
+    public async Task MyCodes_ViewerIsNotTarget_RendersNothing()
     {
         var result = await BuildMyCodes(viewerId: Guid.NewGuid()).InvokeAsync(_userId, ProfileCardViewMode.Self);
 
@@ -110,7 +110,7 @@ public class UserPartsTests
     [Xunit.InlineData(true, ProfileCardViewMode.Self)]
     [Xunit.InlineData(true, ProfileCardViewMode.Public)]
     [Xunit.InlineData(false, ProfileCardViewMode.Admin)]
-    public async Task CampaignCodes_RendersNothing_ForANonAdminViewerOrAudience(bool authorized, ProfileCardViewMode mode)
+    public async Task CampaignCodes_NonAdminViewer_RendersNothing(bool authorized, ProfileCardViewMode mode)
     {
         var result = await BuildCampaignCodes(authorized).InvokeAsync(_userId, mode);
 
