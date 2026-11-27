@@ -250,6 +250,7 @@ graph LR
     Shifts --> Calendar
     Shifts --> Consent
     Shifts --> EarlyEntry
+    Shifts --> Google
     Shifts --> Issues
     Shifts --> Permissions
     Shifts --> Settings

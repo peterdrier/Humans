@@ -76,6 +76,8 @@
     <ProjectReference Include="..\Humans.Teams.Contracts\Humans.Teams.Contracts.csproj" />
     <ProjectReference Include="..\Humans.Tickets.Contracts\Humans.Tickets.Contracts.csproj" />
     <ProjectReference Include="..\Humans.EarlyEntry\Humans.EarlyEntry.csproj" />
+    <!-- Fills Google's IGoogleGroupMembershipSource slot for the department shift lists. -->
+    <ProjectReference Include="..\Humans.Google\Humans.Google.csproj" />
   </ItemGroup>
 
   <ItemGroup>
