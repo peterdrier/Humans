@@ -71,7 +71,8 @@ public sealed class HiEventsStripeTests
 
         var ledger = await Platform().GetPaymentLedgerAsync(Now - Duration.FromDays(1), Now, Ct);
 
-        ledger!.Entries.Select(e => (e.Id, e.Kind, e.AmountMinor, e.FeeMinor, e.HumansOrderId)).Should().Equal(
+        ledger!.AccountKey.Should().Be("stripe:Tickets");
+        ledger.Entries.Select(e => (e.Id, e.Kind, e.AmountMinor, e.FeeMinor, e.HumansOrderId)).Should().Equal(
             ("txn_c", PaymentLedgerEntryKind.Charge, 22500L, 340L, HumansOrder),
             ("txn_r", PaymentLedgerEntryKind.Refund, -5000L, 0L, refundedOrder),
             ("txn_r2", PaymentLedgerEntryKind.Refund, -1000L, 0L, refundedOrder),

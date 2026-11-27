@@ -655,7 +655,8 @@ public sealed class BoxOfficePlatformTests
 
         var ledger = await Platform().GetPaymentLedgerAsync(Now - Duration.FromDays(1), Now, TestContext.Current.CancellationToken);
 
-        ledger!.Entries.Select(e => (e.Id, e.Kind, e.AmountMinor, e.FeeMinor, e.HumansOrderId)).Should().Equal(
+        ledger!.AccountKey.Should().Be("stripe:Tickets");
+        ledger.Entries.Select(e => (e.Id, e.Kind, e.AmountMinor, e.FeeMinor, e.HumansOrderId)).Should().Equal(
             ("txn_c", PaymentLedgerEntryKind.Charge, 30000L, 450L, paidHere),
             ("txn_r", PaymentLedgerEntryKind.Refund, -5000L, 0L, refundedLater),
             ("txn_f", PaymentLedgerEntryKind.Fee, -200L, 0L, null),

@@ -72,6 +72,8 @@ None. The section owns no tables. The Checkout Session is the record of the paym
 
 ## Invariants
 
+- Payment ledgers publish account key `stripe:Tickets`. Tickets combines attribution with configured adapters naming that account, even without local orders, preserving this read's monetary snapshot and checking orders across the matching platforms.
+
 - Refunds, disputes and webhook session lookups consume every Stripe page before returning. Later-page failures or cancellation reject the read without returning partial totals or session IDs; refund retries find their original refund beyond the first page.
 
 - Native status and order lists require explicit EUR on the session, expanded charge, refunds and money-holding disputes before using amounts. Unsupported or missing currency rejects the read, including the whole order list. Refunds validate the session and charge before issuing any remote mutation.

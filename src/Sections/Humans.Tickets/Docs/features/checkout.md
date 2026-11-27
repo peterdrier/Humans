@@ -108,9 +108,9 @@ Stripe account ledger reads require explicit EUR on every amount they return or 
 Where Humans can read the platform's payment account (the shared Tickets Stripe account through the Stripe section's
 `Stripe:MirrorAccounts` entry `Tickets`), the page and the daily run
 also reconcile it by the day the money moved (`GetPaymentLedgerAsync`), so a refund months after the sale counts in the
-month it was made. Every balance movement is tied to its Humans order: Box Office's payments carry it in metadata; pretix's and Hi.Events'
+month it was made. The three adapters name the same `stripe:Tickets` account. Their order attributions are combined by movement ID across configured platforms, even when an adapter has no local orders, without adding secondary movements or replacing the primary snapshot's amounts, fees or payouts. Orders on those matching platforms are checked together. Unknown movements and other-account orders remain differences; conflicting attribution or an unreadable participating adapter fails the report. Later failed-debit returns use the same combined attribution. Every balance movement is tied to its Humans order: Box Office's payments carry it in metadata; pretix's and Hi.Events'
 carry the platform's own order, whose Humans order the adapter reads back from the platform. A payment must
-name a paid (or settling) order on that platform, for the order's total, with the fee Humans recorded on the order (a
+name a paid (or settling) order on one of the account's platforms, for the order's total, with the fee Humans recorded on the order (a
 failed delayed debit whose payment came back, in the period or any time after it, may be Failed); a refund or chargeback must name an order; a payout must
 send exactly the net of the movements Stripe says it contains. Failed and cancelled payouts remain visible as failed but skip contents-mismatch checks and never unbalance: the funds remain in, or return to, the account for a later payout. Otherwise they could hold the nightly alert forever. Balance-movement totals still include every payout and reversal. Totals show charged, refunded, chargebacks, fees, net into the balance and paid out to the
 bank, and the fees on order payments Humans against Stripe. Fees not on a payment (Stripe's own billing, a chargeback

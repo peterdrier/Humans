@@ -118,14 +118,14 @@ public sealed partial class TicketCheckoutServiceTests
         _service = CreateService(_repo);
     }
 
-    private TicketCheckoutService CreateService(ITicketCheckoutRepository repository)
+    private TicketCheckoutService CreateService(ITicketCheckoutRepository repository, IEnumerable<ITicketingPlatform>? platforms = null)
     {
         var localizer = Substitute.For<IStringLocalizer<TicketsResource>>().AddFormatting();
         localizer[Arg.Any<string>()].Returns(ci => new LocalizedString(ci.Arg<string>(), ci.Arg<string>()));
         localizer["Tickets_Resale_Email_Invite_Body"].Returns(new LocalizedString("body", "{2}"));
         var emails = new TicketsEmails(Options.Create(new EmailSettings()), localizer, NullLogger<TicketsEmails>.Instance);
 
-        return new TicketCheckoutService(repository, [_platform], _grants, _settings, _users, _provisioning, _userEmails,
+        return new TicketCheckoutService(repository, platforms ?? [_platform], _grants, _settings, _users, _provisioning, _userEmails,
             _preferenceReads, _preferences, _email, emails, [_delivery], _gate, _rules, localizer, _audit, _environment,
             _clock, _holdings, NullLogger<TicketCheckoutService>.Instance, _resaleProtection);
     }

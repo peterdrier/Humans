@@ -99,7 +99,14 @@ public interface ITicketingPlatform : IApplicationService
 /// The payment account for a period: <paramref name="Entries"/> is every balance movement in it, payouts included;
 /// <paramref name="Payouts"/> every payout to the bank created in it.
 /// </summary>
-public sealed record PaymentLedger(IReadOnlyList<PaymentLedgerEntry> Entries, IReadOnlyList<PaymentPayout> Payouts);
+public sealed record PaymentLedger(IReadOnlyList<PaymentLedgerEntry> Entries, IReadOnlyList<PaymentPayout> Payouts)
+{
+    /// <summary>
+    /// A provider-qualified account identity. Adapters naming the same nonblank key contribute order attribution,
+    /// and local orders across platforms are checked together. Null retains platform-scoped reconciliation.
+    /// </summary>
+    public string? AccountKey { get; init; }
+}
 
 /// <summary>
 /// One balance movement. <paramref name="AmountMinor"/> is signed, money into the account positive (a charge, a

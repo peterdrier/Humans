@@ -76,16 +76,22 @@ internal sealed partial class TicketCheckoutService
 
         var orders = await AllOrdersAsync(await repository.ListTicketingSettingsAsync(ct), ct);
         PaymentLedger? ledger;
+        IReadOnlyCollection<string>? accountPlatforms = null;
         IReadOnlyCollection<Guid>? returnedLater = null;
         try
         {
-            ledger = await platform.GetPaymentLedgerAsync(from, to, ct);
+            var read = await ReadPaymentLedgerAsync(platform, from, to, ct);
+            ledger = read.Ledger;
+            accountPlatforms = read.Platforms;
             var now = clock.GetCurrentInstant();
-            if (ledger is not null && to < now && TicketPaymentReconBuilder.AwaitsReturn(ledger, orders, platformKey)
-                && await platform.GetPaymentLedgerAsync(to, now, ct) is { } later)
-                returnedLater = TicketPaymentReconBuilder.Returned(later);
+            if (ledger is not null && to < now && TicketPaymentReconBuilder.AwaitsReturn(ledger, orders, platformKey, accountPlatforms))
+            {
+                var later = await ReadPaymentLedgerAsync(platform, to, now, ct);
+                if (later.Ledger is not null)
+                    returnedLater = TicketPaymentReconBuilder.Returned(later.Ledger);
+            }
         }
-        catch (Exception ex) when (ex is TicketingPlatformException or HttpRequestException
+        catch (Exception ex) when (ex is TicketingPlatformException or HttpRequestException or System.Text.Json.JsonException
                                        || (ex is TaskCanceledException && !ct.IsCancellationRequested))
         {
             logger.LogWarning(ex, "Payment reconciliation could not read {Platform}", platformKey);
@@ -95,7 +101,44 @@ internal sealed partial class TicketCheckoutService
 
         if (ledger is null)
             return null;
-        return TicketPaymentReconBuilder.Build(platformKey, from, to, ledger, orders, returnedLater, SharedAccount);
+        return TicketPaymentReconBuilder.Build(platformKey, from, to, ledger, orders, returnedLater, SharedAccount, accountPlatforms);
+    }
+
+    private async Task<(PaymentLedger? Ledger, IReadOnlyCollection<string> Platforms)> ReadPaymentLedgerAsync(
+        ITicketingPlatform platform, Instant from, Instant to, CancellationToken ct)
+    {
+        var ledger = await platform.GetPaymentLedgerAsync(from, to, ct);
+        var accountPlatforms = new HashSet<string>(StringComparer.Ordinal) { platform.Key };
+        if (ledger is null || string.IsNullOrWhiteSpace(ledger.AccountKey)
+            || !ledger.Entries.Any(e => e.Kind is PaymentLedgerEntryKind.Charge or PaymentLedgerEntryKind.Refund or PaymentLedgerEntryKind.Chargeback))
+            return (ledger, accountPlatforms);
+
+        var sources = new List<PaymentLedger> { ledger };
+        foreach (var other in _platforms.Where(p => p.IsConfigured && !string.Equals(p.Key, platform.Key, StringComparison.Ordinal)))
+        {
+            var source = await other.GetPaymentLedgerAsync(from, to, ct);
+            if (source is null || !string.Equals(source.AccountKey, ledger.AccountKey, StringComparison.Ordinal))
+                continue;
+            accountPlatforms.Add(other.Key);
+            sources.Add(source);
+        }
+
+        var ids = ledger.Entries.Select(e => e.Id).ToHashSet(StringComparer.Ordinal);
+        var attribution = new Dictionary<string, Guid>(StringComparer.Ordinal);
+        foreach (var entry in sources.SelectMany(s => s.Entries))
+        {
+            if (!ids.Contains(entry.Id) || entry.HumansOrderId is not { } orderId)
+                continue;
+            if (attribution.TryGetValue(entry.Id, out var previous) && previous != orderId)
+                throw new TicketingPlatformException($"Payment movement {entry.Id} has conflicting order attribution in account {ledger.AccountKey}.");
+            attribution[entry.Id] = orderId;
+        }
+        // Only attribution crosses reads: amounts, fees, payouts and membership stay on the primary snapshot.
+        return (ledger with
+        {
+            Entries = ledger.Entries.Select(e => attribution.TryGetValue(e.Id, out var orderId)
+                ? e with { HumansOrderId = orderId } : e).ToList(),
+        }, accountPlatforms);
     }
 
     /// <summary>Three reconcile runs past expiry: by then the reconcile should have settled the order either way.</summary>

@@ -394,7 +394,8 @@ internal sealed class HiEventsPlatform : ITicketingPlatform
         }
 
         return new PaymentLedger(entries, stripe.Payouts.Select(p => new PaymentPayout(
-            p.Id, p.CreatedAt, p.ArrivalAt, p.AmountMinor, p.Status, p.ContentsNetMinor, p.ContentsCount)).ToList());
+            p.Id, p.CreatedAt, p.ArrivalAt, p.AmountMinor, p.Status, p.ContentsNetMinor, p.ContentsCount)).ToList())
+        { AccountKey = $"stripe:{StripeAccountName}" };
     }
 
     private async Task<Guid?> HumansOrderOfAsync(IReadOnlyDictionary<string, string> metadata, CancellationToken ct)

@@ -229,7 +229,8 @@ internal sealed class BoxOfficePlatform(
             line.Payment is { } payment && payment.Metadata.TryGetValue(OrderMetadataKey, out var value)
                 && Guid.TryParse(value, out var id) ? id : null,
             line.Description)).ToList(), account.Payouts.Select(p => new PaymentPayout(
-                p.Id, p.CreatedAt, p.ArrivalAt, p.AmountMinor, p.Status, p.ContentsNetMinor, p.ContentsCount)).ToList());
+                p.Id, p.CreatedAt, p.ArrivalAt, p.AmountMinor, p.Status, p.ContentsNetMinor, p.ContentsCount)).ToList())
+        { AccountKey = "stripe:Tickets" };
     }
 
     private static Instant InstantOf(DateTime utc) => Instant.FromDateTimeUtc(DateTime.SpecifyKind(utc, DateTimeKind.Utc));

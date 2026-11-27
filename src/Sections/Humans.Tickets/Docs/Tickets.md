@@ -55,6 +55,8 @@ Refund audit entries record human refund and refunded-void callers in `ActorUser
 
 Payment reconciliation shows failed and cancelled payouts as failed, without testing their uncompleted contents or unbalancing the report. Other payout statuses still compare known contents totals. Balance-movement totals retain every payout and reversal.
 
+Payment ledgers may identify their account through optional `AccountKey`. BoxOffice, Hi.Events and Pretix publish `stripe:Tickets`. Reconciliation combines order attribution from configured adapters with that same key, including adapters with no local orders, while retaining the primary read's movement IDs, amounts, fees and payouts. It checks local orders across the matching account's platforms; another account's orders and unresolved movements remain problems. Conflicting attribution, failed reads and malformed responses make the report unreadable, and caller cancellation propagates. Failed debits' later returns use the same account-wide lookup. Fee/payout-only snapshots need no secondary attribution reads. Untagged ledgers retain platform-scoped behavior; QA's other-instance handling is unchanged.
+
 Ticket rules require one unsuffixed Spanish base file and a matching English translation. A suffixed Spanish file cannot replace the base. Duplicate languages within that base's file set, including suffix-case variants and explicit Spanish copies, make the folder unavailable rather than choosing one text. Unrelated translated files are ignored.
 
 Operator controllers order companion requests pending-first/newest-first, cancellation refund groups by state,

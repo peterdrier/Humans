@@ -60,6 +60,8 @@ None — the section owns no tables.
 
 ## Invariants
 
+- Payment ledgers publish account key `stripe:Tickets`. Tickets combines attribution with configured adapters naming that account, even without local orders, preserving this read's monetary snapshot and checking orders across the matching platforms.
+
 - Native status and order-list reads require explicit EUR on each order before converting totals, refunds or chargebacks to minor units. Unsupported or missing currency rejects the whole read rather than contributing foreign amounts to EUR reconciliation.
 
 - Stripe reporting accepts explicit EUR only. A movement, payout or summed payout content with another or missing currency rejects the ledger; an unverified fee remains unknown.

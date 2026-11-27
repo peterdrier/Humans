@@ -18,6 +18,220 @@ namespace Humans.Tickets.Tests.Services.Checkout;
 
 public sealed partial class TicketCheckoutServiceTests
 {
+    private (TicketCheckoutService Service, ITicketingPlatform Other, PaymentLedger Primary, PaymentLedger Secondary,
+        TicketCheckoutOrder Foreign) CreateSharedRecon()
+    {
+        var native = new TicketCheckoutOrder
+        {
+            Id = Guid.NewGuid(),
+            TicketingSettingsId = _ticketing.Id,
+            PlatformKey = "test",
+            State = TicketCheckoutOrderState.Paid,
+            TotalMinor = 10000,
+            FeeMinor = 100,
+            CreatedAt = Now,
+        };
+        var foreign = new TicketCheckoutOrder
+        {
+            Id = Guid.NewGuid(),
+            TicketingSettingsId = _ticketing.Id,
+            PlatformKey = "other",
+            State = TicketCheckoutOrderState.Paid,
+            TotalMinor = 20000,
+            FeeMinor = 200,
+            CreatedAt = Now,
+        };
+        _repo.Orders.AddRange([native, foreign]);
+        var primary = new PaymentLedger(
+            [new("txn_a", Now, PaymentLedgerEntryKind.Charge, 10000, 100, native.Id, "original a"),
+                new("txn_b", Now, PaymentLedgerEntryKind.Charge, 20000, 200, null, "original b")],
+            [new("po_primary", Now, Now, 29700, "paid", 29700, 2)])
+        { AccountKey = "stripe:Tickets" };
+        var secondary = primary with
+        {
+            Entries = [primary.Entries[0] with { HumansOrderId = null }, primary.Entries[1] with { HumansOrderId = foreign.Id }],
+        };
+        var other = Substitute.For<ITicketingPlatform>();
+        other.Key.Returns("other");
+        other.IsConfigured.Returns(true);
+        _platform.GetPaymentLedgerAsync(Now - Duration.FromDays(1), Now, Arg.Any<CancellationToken>()).Returns(primary);
+        other.GetPaymentLedgerAsync(Now - Duration.FromDays(1), Now, Arg.Any<CancellationToken>()).Returns(secondary);
+        return (CreateService(_repo, [_platform, other]), other, primary, secondary, foreign);
+    }
+
+    [HumansFact]
+    public async Task ReconcilePayments_SharedAccount_PreservesSnapshot()
+    {
+        var setup = CreateSharedRecon();
+        setup.Other.GetPaymentLedgerAsync(Now - Duration.FromDays(1), Now, Arg.Any<CancellationToken>()).Returns(setup.Secondary with
+        {
+            Entries = [setup.Secondary.Entries[0], setup.Secondary.Entries[1] with { AmountMinor = 999, FeeMinor = 999 },
+                new("txn_new", Now, PaymentLedgerEntryKind.Charge, 700, 0, setup.Foreign.Id, null)],
+            Payouts = [new("po_later", Now, Now, 1, "paid", 1, 1)],
+        });
+
+        var result = (await setup.Service.ReconcilePaymentsAsync("test", Now - Duration.FromDays(1), Now, Ct))!;
+
+        result.Balanced.Should().BeTrue();
+        result.Rows.Select(r => r.Entry).Should().Equal(setup.Primary.Entries[0], setup.Primary.Entries[1] with { HumansOrderId = setup.Foreign.Id });
+        result.Payouts.Select(p => p.Payout).Should().Equal(setup.Primary.Payouts);
+        result.Totals.ChargedMinor.Should().Be(30000);
+        result.PaymentFeesMinor.Should().Be(300);
+        result.HumansPaymentFeesMinor.Should().Be(300);
+    }
+
+    [HumansTheory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task ReconcilePayments_UnmatchedAttribution_RemainsUnbalanced(bool differentAccount)
+    {
+        var setup = CreateSharedRecon();
+        if (differentAccount)
+            _platform.GetPaymentLedgerAsync(Now - Duration.FromDays(1), Now, Arg.Any<CancellationToken>()).Returns(setup.Primary with
+            { Entries = [setup.Primary.Entries[0], setup.Primary.Entries[1] with { HumansOrderId = setup.Foreign.Id }] });
+        setup.Other.GetPaymentLedgerAsync(Now - Duration.FromDays(1), Now, Arg.Any<CancellationToken>()).Returns(setup.Secondary with
+        {
+            AccountKey = differentAccount ? "stripe:Other" : setup.Secondary.AccountKey,
+            Entries = [setup.Secondary.Entries[1] with { HumansOrderId = differentAccount ? setup.Foreign.Id : null }],
+        });
+
+        var result = (await setup.Service.ReconcilePaymentsAsync("test", Now - Duration.FromDays(1), Now, Ct))!;
+
+        result.Balanced.Should().BeFalse();
+        result.Problems.Should().ContainSingle().Which.Issues.Should().Equal(TicketPaymentIssue.NoOrder);
+    }
+
+    [HumansFact]
+    public async Task ReconcilePayments_UntaggedAccount_RemainsScoped()
+    {
+        var setup = CreateSharedRecon();
+        _platform.GetPaymentLedgerAsync(Now - Duration.FromDays(1), Now, Arg.Any<CancellationToken>()).Returns(setup.Secondary with { AccountKey = null });
+
+        var result = (await setup.Service.ReconcilePaymentsAsync("test", Now - Duration.FromDays(1), Now, Ct))!;
+
+        result.Balanced.Should().BeFalse();
+        await setup.Other.DidNotReceiveWithAnyArgs().GetPaymentLedgerAsync(default, default);
+    }
+
+    [HumansFact]
+    public async Task ReconcilePayments_UnusedConfiguredAdapter_AttributesOtherInstance()
+    {
+        var setup = CreateSharedRecon();
+        _repo.Orders.Remove(setup.Foreign);
+        _environment.EnvironmentName.Returns(Microsoft.Extensions.Hosting.Environments.Development);
+
+        var result = (await setup.Service.ReconcilePaymentsAsync("test", Now - Duration.FromDays(1), Now, Ct))!;
+
+        result.Balanced.Should().BeTrue();
+        result.OtherInstance.Should().ContainSingle().Which.HumansOrderId.Should().Be(setup.Foreign.Id);
+        result.Totals.ChargedMinor.Should().Be(30000);
+    }
+
+    [HumansFact]
+    public async Task ReconcilePayments_NoOrderMovements_SkipsAttribution()
+    {
+        var setup = CreateSharedRecon();
+        _platform.GetPaymentLedgerAsync(Now - Duration.FromDays(1), Now, Arg.Any<CancellationToken>()).Returns(setup.Primary with
+        { Entries = [new("txn_fee", Now, PaymentLedgerEntryKind.Fee, -50, 0, null, "billing")] });
+        setup.Other.GetPaymentLedgerAsync(Now - Duration.FromDays(1), Now, Arg.Any<CancellationToken>())
+            .Returns(Task.FromException<PaymentLedger?>(new HttpRequestException("unused")));
+
+        var result = (await setup.Service.ReconcilePaymentsAsync("test", Now - Duration.FromDays(1), Now, Ct))!;
+
+        result.Balanced.Should().BeTrue();
+        result.Totals.FeesMinor.Should().Be(50);
+        await setup.Other.DidNotReceiveWithAnyArgs().GetPaymentLedgerAsync(default, default);
+    }
+
+    [HumansFact]
+    public async Task ReconcilePayments_ConflictingAttribution_RefusesRead()
+    {
+        var setup = CreateSharedRecon();
+        setup.Other.GetPaymentLedgerAsync(Now - Duration.FromDays(1), Now, Arg.Any<CancellationToken>()).Returns(setup.Secondary with
+        { Entries = [setup.Secondary.Entries[0] with { HumansOrderId = setup.Foreign.Id }] });
+
+        var result = (await setup.Service.ReconcilePaymentsAsync("test", Now - Duration.FromDays(1), Now, Ct))!;
+
+        result.Balanced.Should().BeFalse();
+        result.Error.Should().Contain("conflicting");
+        result.Rows.Should().BeEmpty();
+    }
+
+    [HumansTheory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task ReconcilePayments_AttributionReadFails_RefusesRead(bool malformed)
+    {
+        var setup = CreateSharedRecon();
+        setup.Other.GetPaymentLedgerAsync(Now - Duration.FromDays(1), Now, Arg.Any<CancellationToken>())
+            .Returns(Task.FromException<PaymentLedger?>(malformed
+                ? new System.Text.Json.JsonException("attribution down") : new HttpRequestException("attribution down")));
+
+        var result = (await setup.Service.ReconcilePaymentsAsync("test", Now - Duration.FromDays(1), Now, Ct))!;
+
+        result.Error.Should().Contain("attribution down");
+        result.Rows.Should().BeEmpty();
+    }
+
+    [HumansFact]
+    public async Task ReconcilePayments_CallerCancelled_Propagates()
+    {
+        var setup = CreateSharedRecon();
+        using var caller = new CancellationTokenSource();
+        setup.Other.GetPaymentLedgerAsync(Now - Duration.FromDays(1), Now, Arg.Any<CancellationToken>()).Returns(async _ =>
+        {
+            await caller.CancelAsync();
+            return await Task.FromCanceled<PaymentLedger?>(caller.Token);
+        });
+
+        var read = () => setup.Service.ReconcilePaymentsAsync("test", Now - Duration.FromDays(1), Now, caller.Token);
+
+        await read.Should().ThrowAsync<OperationCanceledException>();
+        await setup.Other.Received(1).GetPaymentLedgerAsync(Now - Duration.FromDays(1), Now, caller.Token);
+    }
+
+    [HumansTheory]
+    [InlineData((int)TicketPaymentIssue.FeeMismatch)]
+    [InlineData((int)TicketPaymentIssue.AmountMismatch)]
+    [InlineData((int)TicketPaymentIssue.NotPaidInHumans)]
+    public async Task ReconcilePayments_SharedAccount_ChecksForeignOrder(int issue)
+    {
+        var setup = CreateSharedRecon();
+        var expected = (TicketPaymentIssue)issue;
+        if (expected == TicketPaymentIssue.FeeMismatch)
+            setup.Foreign.FeeMinor = 201;
+        else if (expected == TicketPaymentIssue.NotPaidInHumans)
+            setup.Foreign.State = TicketCheckoutOrderState.Created;
+        else
+            _platform.GetPaymentLedgerAsync(Now - Duration.FromDays(1), Now, Arg.Any<CancellationToken>()).Returns(setup.Primary with
+            { Entries = [setup.Primary.Entries[0], setup.Primary.Entries[1] with { AmountMinor = 20001 }] });
+
+        var result = (await setup.Service.ReconcilePaymentsAsync("test", Now - Duration.FromDays(1), Now, Ct))!;
+
+        result.Problems.Should().ContainSingle().Which.Issues.Should().Equal(expected);
+    }
+
+    [HumansFact]
+    public async Task ReconcilePayments_SharedAccount_FindsLaterReturn()
+    {
+        var setup = CreateSharedRecon();
+        setup.Foreign.State = TicketCheckoutOrderState.Failed;
+        var from = Now - Duration.FromDays(30);
+        var to = Now - Duration.FromDays(10);
+        var payment = setup.Primary.Entries[1] with { CreatedAt = Now - Duration.FromDays(20) };
+        var returned = payment with { Id = "txn_return", CreatedAt = Now - Duration.FromDays(5), AmountMinor = -20000, FeeMinor = 0 };
+        _platform.GetPaymentLedgerAsync(from, to, Arg.Any<CancellationToken>()).Returns(new PaymentLedger([payment], []) { AccountKey = "stripe:Tickets" });
+        setup.Other.GetPaymentLedgerAsync(from, to, Arg.Any<CancellationToken>()).Returns(new PaymentLedger([payment with { HumansOrderId = setup.Foreign.Id }], []) { AccountKey = "stripe:Tickets" });
+        _platform.GetPaymentLedgerAsync(to, Now, Arg.Any<CancellationToken>()).Returns(new PaymentLedger([returned], []) { AccountKey = "stripe:Tickets" });
+        setup.Other.GetPaymentLedgerAsync(to, Now, Arg.Any<CancellationToken>()).Returns(new PaymentLedger([returned with { HumansOrderId = setup.Foreign.Id }], []) { AccountKey = "stripe:Tickets" });
+
+        var result = (await setup.Service.ReconcilePaymentsAsync("test", from, to, Ct))!;
+
+        result.Balanced.Should().BeTrue();
+        result.Totals.ChargedMinor.Should().Be(20000);
+        await setup.Other.Received(1).GetPaymentLedgerAsync(to, Now, Ct);
+    }
+
     [HumansTheory]
     [InlineData(false)]
     [InlineData(true)]

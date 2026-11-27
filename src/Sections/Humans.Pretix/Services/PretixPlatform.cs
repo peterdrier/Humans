@@ -412,7 +412,8 @@ internal sealed partial class PretixPlatform(
         }
 
         return new PaymentLedger(entries, account.Payouts.Select(p => new PaymentPayout(
-            p.Id, p.CreatedAt, p.ArrivalAt, p.AmountMinor, p.Status, p.ContentsNetMinor, p.ContentsCount)).ToList());
+            p.Id, p.CreatedAt, p.ArrivalAt, p.AmountMinor, p.Status, p.ContentsNetMinor, p.ContentsCount)).ToList())
+        { AccountKey = $"stripe:{StripeAccountName}" };
     }
 
     private async Task<Guid?> HumansOrderOfAsync(
