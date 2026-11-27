@@ -327,15 +327,16 @@ internal sealed class BoxOfficePlatform(
             var state = StateOf(refund);
             return new RefundResult(state, refund.Id, state == RefundState.Failed ? refund.FailureReason : null);
         }
-        catch (StripeException ex) when (ex.StripeError is not null)
+        catch (StripeException ex) when ((int)ex.HttpStatusCode is 400 or 401 or 402 or 403 or 404
+            && ex.StripeError?.Type is "invalid_request_error" or "authentication_error" or "permission_error" or "card_error")
         {
             logger.LogWarning("Stripe refused refund {RefundId}: {Message}", request.RefundId, ex.Message);
             return new RefundResult(RefundState.Failed, null, ex.StripeError.Message ?? ex.Message);
         }
         catch (StripeException ex)
         {
-            // No answer from Stripe: the refund may exist, so Tickets keeps it pending and the repeat finds it.
-            throw new TicketingPlatformException($"Stripe did not answer refund {request.RefundId}: {ex.Message}", ex);
+            // Server and idempotency errors can hide an accepted refund; only a conclusive rejection releases its hold.
+            throw new TicketingPlatformException($"Stripe did not resolve refund {request.RefundId}: {ex.Message}", ex);
         }
     }
 

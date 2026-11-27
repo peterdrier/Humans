@@ -519,6 +519,57 @@ public sealed class BoxOfficePlatformTests
         _requests.Should().HaveCount(2).And.OnlyContain(r => r.Method == HttpMethod.Get);
     }
 
+    [HumansTheory]
+    [InlineData(500, "api_error")]
+    [InlineData(502, "api_error")]
+    [InlineData(503, "api_error")]
+    [InlineData(504, "api_error")]
+    [InlineData(409, "invalid_request_error")]
+    [InlineData(409, "idempotency_error")]
+    [InlineData(400, "idempotency_error")]
+    [InlineData(400, "api_error")]
+    [InlineData(429, "rate_limit_error")]
+    public async Task RefundAsync_UnresolvedError_Throws(int status, string type)
+    {
+        RefundError(status, type);
+        var refund = () => Platform().RefundAsync(
+            new RefundRequest(Guid.NewGuid(), "cs_test_1", 12000, "Returned"), TestContext.Current.CancellationToken);
+
+        await refund.Should().ThrowAsync<TicketingPlatformException>().WithMessage("*refund-unresolved*");
+        _requests.Should().HaveCount(3);
+        _requests[^1].Method.Should().Be(HttpMethod.Post);
+    }
+
+    [HumansTheory]
+    [InlineData(400, "invalid_request_error")]
+    [InlineData(401, "authentication_error")]
+    [InlineData(402, "card_error")]
+    [InlineData(403, "invalid_request_error")]
+    [InlineData(404, "invalid_request_error")]
+    public async Task RefundAsync_DefinitiveRejection_ReturnsFailed(int status, string type)
+    {
+        RefundError(status, type);
+
+        var result = await Platform().RefundAsync(
+            new RefundRequest(Guid.NewGuid(), "cs_test_1", 12000, "Returned"), TestContext.Current.CancellationToken);
+
+        result.State.Should().Be(RefundState.Failed);
+        result.PlatformRefundId.Should().BeNull();
+        result.FailureReason.Should().Be("refund-unresolved");
+        _requests.Should().HaveCount(3);
+    }
+
+    private void RefundError(int status, string type)
+    {
+        using var headers = new HttpResponseMessage();
+        var session = new StripeResponse(HttpStatusCode.OK, headers.Headers, Session("complete", "paid", PaidCharge));
+        var refunds = new StripeResponse(HttpStatusCode.OK, headers.Headers, RefundList());
+        var error = new StripeResponse((HttpStatusCode)status, headers.Headers,
+            $$$"""{"error":{"type":"{{{type}}}","message":"refund-unresolved"}}""");
+        _http.MakeRequestAsync(Arg.Do<StripeRequest>(_requests.Add), Arg.Any<CancellationToken>())
+            .Returns(session, refunds, error);
+    }
+
     [HumansFact]
     public async Task A_webhook_with_a_bad_signature_is_rejected()
     {

@@ -83,6 +83,7 @@ None. The section owns no tables. The Checkout Session is the record of the paym
 - Charges EUR only; a non-EUR request, a negative line or a non-positive total throws `TicketingPlatformException` before
   any Stripe call. The adapter never changes an amount.
 - Session expiry is clamped to 31 minutes .. 23 hours from now, inside Stripe's 30 minutes .. 24 hours.
+- A refund error is final only for a recognized request, authentication, permission or card rejection with HTTP 400–404. Server, rate-limit, idempotency and unknown errors throw, leaving Tickets' refund pending and its amount reserved until reconciliation resolves the original refund ID.
 - A refund goes only against the session's own PaymentIntent, never above what the charge still holds (amount minus
   `amount_refunded`), with the idempotency key `humans_ticket_refund_<refund id>`. Tickets' own cap (ticket lines net of earlier
   refunds) sits in front. This is the one money-out exception in `memory/architecture/stripe-money-out.md`.
