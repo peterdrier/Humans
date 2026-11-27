@@ -70,7 +70,7 @@ public sealed class PretixStripeTests
     [HumansFact]
     public async Task A_paid_order_reports_the_fee_Stripe_kept_on_its_PaymentIntent()
     {
-        var pretix = new FakePretix().On("GET", $"{Api}orders/{Code}/", HttpStatusCode.OK, PaidWithStripe(new { id = "pi_1", payment_method = "pm_1" }));
+        var pretix = EurEvent().On("GET", $"{Api}orders/{Code}/", HttpStatusCode.OK, PaidWithStripe(new { id = "pi_1", payment_method = "pm_1" }));
         _stripe.GetAccountPaymentFeeAsync("Tickets", "pi_1", Arg.Any<CancellationToken>()).Returns(1440L);
 
         var status = await Create(pretix, stripe: _stripe).GetStatusAsync($"nowhere2027/{Code}", Ct);
@@ -82,7 +82,7 @@ public sealed class PretixStripeTests
     [HumansFact]
     public async Task A_payment_without_a_PaymentIntent_never_asks_Stripe()
     {
-        var pretix = new FakePretix().On("GET", $"{Api}orders/{Code}/", HttpStatusCode.OK, PaidWithStripe(new { }));
+        var pretix = EurEvent().On("GET", $"{Api}orders/{Code}/", HttpStatusCode.OK, PaidWithStripe(new { }));
 
         (await Create(pretix, stripe: _stripe).GetStatusAsync($"nowhere2027/{Code}", Ct)).FeeMinor.Should().BeNull();
 

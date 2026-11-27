@@ -39,6 +39,89 @@ public class PretixPlatformTests
                 },
             });
 
+    public enum CurrencyOperation { Status, List, Refund, Cancel }
+
+    private static Task ReadCurrencyAsync(PretixPlatform platform, CurrencyOperation operation) => operation switch
+    {
+        CurrencyOperation.Status => platform.GetStatusAsync($"nowhere2027/{Code}", TestContext.Current.CancellationToken),
+        CurrencyOperation.List => platform.ListOrdersAsync("nowhere2027", Instant.FromUtc(2027, 1, 1, 0, 0),
+            Instant.FromUtc(2027, 2, 1, 0, 0), TestContext.Current.CancellationToken),
+        CurrencyOperation.Refund => platform.RefundAsync(new RefundRequest(Guid.NewGuid(), $"nowhere2027/{Code}", 100, "Returned"),
+            TestContext.Current.CancellationToken),
+        CurrencyOperation.Cancel => platform.CancelAsync($"nowhere2027/{Code}", TestContext.Current.CancellationToken),
+        _ => throw new ArgumentOutOfRangeException(nameof(operation)),
+    };
+
+    private static FakePretix CurrencyResponses(HttpStatusCode status, object body) => new FakePretix()
+        .On("GET", Api, status, body)
+        .On("GET", OrderPath, HttpStatusCode.OK, Order(Code))
+        .On("GET", Api + "items/", HttpStatusCode.OK, new { results = Array.Empty<object>() })
+        .On("GET", Api + "orders/", HttpStatusCode.OK, new { results = Array.Empty<object>() })
+        .On("POST", OrderPath + "mark_canceled/", HttpStatusCode.OK, new { });
+
+    [HumansTheory]
+    [InlineData(CurrencyOperation.Status, null)]
+    [InlineData(CurrencyOperation.Status, "")]
+    [InlineData(CurrencyOperation.Status, "USD")]
+    [InlineData(CurrencyOperation.List, null)]
+    [InlineData(CurrencyOperation.List, "")]
+    [InlineData(CurrencyOperation.List, "USD")]
+    [InlineData(CurrencyOperation.Refund, null)]
+    [InlineData(CurrencyOperation.Refund, "")]
+    [InlineData(CurrencyOperation.Refund, "USD")]
+    [InlineData(CurrencyOperation.Cancel, null)]
+    [InlineData(CurrencyOperation.Cancel, "")]
+    [InlineData(CurrencyOperation.Cancel, "USD")]
+    public async Task OrderMoney_UnsupportedEventCurrency_RefusesBeforeOrder(CurrencyOperation operation, string? currency)
+    {
+        var pretix = CurrencyResponses(HttpStatusCode.OK, new { currency });
+
+        var read = () => ReadCurrencyAsync(Create(pretix), operation);
+
+        await read.Should().ThrowAsync<TicketingPlatformException>().WithMessage("*EUR*");
+        pretix.Requests.Should().ContainSingle().Which.Route.Should().Be("GET " + Api);
+    }
+
+    [HumansTheory]
+    [InlineData(CurrencyOperation.Status)]
+    [InlineData(CurrencyOperation.List)]
+    [InlineData(CurrencyOperation.Refund)]
+    [InlineData(CurrencyOperation.Cancel)]
+    public async Task OrderMoney_EventReadFails_PropagatesFailure(CurrencyOperation operation)
+    {
+        var pretix = CurrencyResponses(HttpStatusCode.ServiceUnavailable, new { detail = "unavailable" });
+
+        var read = () => ReadCurrencyAsync(Create(pretix), operation);
+
+        await read.Should().ThrowAsync<HttpRequestException>().WithMessage("*503*");
+        pretix.Requests.Should().ContainSingle().Which.Route.Should().Be("GET " + Api);
+    }
+
+    [HumansFact]
+    public async Task GetStatus_EventCurrencyChanges_ReadsLiveCurrency()
+    {
+        var pretix = CurrencyResponses(HttpStatusCode.OK, new { currency = "eur" })
+            .On("GET", Api, HttpStatusCode.OK, new { currency = "USD" });
+        var platform = Create(pretix);
+        await platform.GetStatusAsync($"nowhere2027/{Code}", TestContext.Current.CancellationToken);
+
+        var read = () => platform.GetStatusAsync($"nowhere2027/{Code}", TestContext.Current.CancellationToken);
+
+        await read.Should().ThrowAsync<TicketingPlatformException>().WithMessage("*EUR*");
+        pretix.Requests.Count(r => string.Equals(r.Route, "GET " + Api, StringComparison.Ordinal)).Should().Be(2);
+    }
+
+    [HumansFact]
+    public async Task Create_NonEurRequest_RefusesBeforeHttp()
+    {
+        var pretix = new FakePretix();
+
+        var create = () => Create(pretix).CreateOrderAsync(Request(currency: "USD"), TestContext.Current.CancellationToken);
+
+        await create.Should().ThrowAsync<TicketingPlatformException>().WithMessage("*EUR*");
+        pretix.Requests.Should().BeEmpty();
+    }
+
     [HumansFact]
     public async Task Create_PostsHumansPricesAndReturnsPayLinkBackToHumans()
     {
@@ -183,7 +266,7 @@ public class PretixPlatformTests
         var settings = PretixTestHost.Settings();
         settings.BaseUrl = baseUrl;
         settings.ApiToken = token;
-        var pretix = new FakePretix();
+        var pretix = EurEvent();
         var stripe = NoStripeAccount();
         var platform = Create(pretix, settings, stripe);
         var ct = TestContext.Current.CancellationToken;
@@ -240,7 +323,7 @@ public class PretixPlatformTests
     [HumansFact]
     public async Task Status_PaidOrder_ReportsMethodAndCompletedRefunds()
     {
-        var pretix = new FakePretix().On("GET", OrderPath, HttpStatusCode.OK, Order(
+        var pretix = EurEvent().On("GET", OrderPath, HttpStatusCode.OK, Order(
             Code, status: "p", total: 1015.52m,
             fees: [new { fee_type = "payment", value = "15.52", canceled = false }],
             payments: [new { local_id = 1, state = "confirmed", amount = "1015.52", provider = "stripe_ideal", payment_date = "2026-11-21T00:09:33.022364Z" }],
@@ -264,7 +347,7 @@ public class PretixPlatformTests
     [HumansFact]
     public async Task Status_UnreadablePaymentDate_ThrowsSoTicketsRetries()
     {
-        var pretix = new FakePretix().On("GET", OrderPath, HttpStatusCode.OK, Order(
+        var pretix = EurEvent().On("GET", OrderPath, HttpStatusCode.OK, Order(
             Code, status: "p", total: 1000m,
             payments: [new { local_id = 1, state = "confirmed", amount = "1000.00", provider = "stripe_ideal", payment_date = "21/11/2026" }]));
 
@@ -279,7 +362,7 @@ public class PretixPlatformTests
     [InlineData("c", PlatformOrderState.Cancelled)]
     public async Task Status_MapsPretixOrderStates(string pretixStatus, PlatformOrderState expected)
     {
-        var pretix = new FakePretix().On("GET", OrderPath, HttpStatusCode.OK, Order(Code, status: pretixStatus));
+        var pretix = EurEvent().On("GET", OrderPath, HttpStatusCode.OK, Order(Code, status: pretixStatus));
 
         var status = await Create(pretix).GetStatusAsync($"nowhere2027/{Code}", TestContext.Current.CancellationToken);
 
@@ -291,7 +374,7 @@ public class PretixPlatformTests
     [HumansFact]
     public async Task Status_AfterAFullRefund_KeepsTheRealPaymentMethod()
     {
-        var pretix = new FakePretix().On("GET", OrderPath, HttpStatusCode.OK, Order(
+        var pretix = EurEvent().On("GET", OrderPath, HttpStatusCode.OK, Order(
             Code, status: "p", total: 0m,
             payments:
             [
@@ -312,7 +395,7 @@ public class PretixPlatformTests
     public async Task Status_OrderItsPaymentsCover_IsPaid(string pretixStatus)
     {
         // A payment confirmed after expiry, or an order a refund made in pretix reopened.
-        var pretix = new FakePretix().On("GET", OrderPath, HttpStatusCode.OK, Order(
+        var pretix = EurEvent().On("GET", OrderPath, HttpStatusCode.OK, Order(
             Code, status: pretixStatus, total: 1000m,
             payments: [new { local_id = 1, state = "confirmed", amount = "1000.00", provider = "stripe_ideal", payment_date = "2026-11-21T00:09:33Z" }]));
 
@@ -325,7 +408,7 @@ public class PretixPlatformTests
     [HumansFact]
     public async Task Status_RetryAfterAFailedRefund_IsNotReportedFailed()
     {
-        var pretix = new FakePretix().On("GET", OrderPath, HttpStatusCode.OK, PaidOrder(
+        var pretix = EurEvent().On("GET", OrderPath, HttpStatusCode.OK, PaidOrder(
             new { local_id = 1, state = "failed", amount = "225.00", payment = 1, comment = "", provider = "stripe" },
             new { local_id = 2, state = "transit", amount = "225.00", payment = 1, comment = "", provider = "stripe" }));
 
@@ -338,7 +421,7 @@ public class PretixPlatformTests
     [HumansFact]
     public async Task Status_RefundMadeInTheStripeDashboard_CountsAsRefundedBeforeAnyoneProcessesIt()
     {
-        var pretix = new FakePretix().On("GET", OrderPath, HttpStatusCode.OK, PaidOrder(
+        var pretix = EurEvent().On("GET", OrderPath, HttpStatusCode.OK, PaidOrder(
             new { local_id = 1, state = "external", source = "external", amount = "40.00", payment = 1, comment = (string?)null, provider = "stripe", details = new { id = "re_3Q" } }));
 
         var status = await Create(pretix).GetStatusAsync($"nowhere2027/{Code}", TestContext.Current.CancellationToken);
@@ -351,7 +434,7 @@ public class PretixPlatformTests
     [HumansFact]
     public async Task Status_Chargeback_IsChargedBackNotRefundedUntilCancelledInPretix()
     {
-        var pretix = new FakePretix().On("GET", OrderPath, HttpStatusCode.OK, PaidOrder(
+        var pretix = EurEvent().On("GET", OrderPath, HttpStatusCode.OK, PaidOrder(
             new { local_id = 1, state = "done", source = "admin", amount = "100.00", payment = 1, comment = "humans-refund:x", provider = "stripe", details = new { id = "re_1" } },
             new { local_id = 2, state = "external", source = "external", amount = "300.00", payment = 1, comment = (string?)null, provider = "stripe", details = new { id = "du_1" } },
             new { local_id = 3, state = "done", source = "external", amount = "200.00", payment = 1, comment = (string?)null, provider = "stripe", details = new { id = "dp_2" } },
@@ -367,7 +450,7 @@ public class PretixPlatformTests
     [HumansFact]
     public async Task Status_CancelledOrderRefundedInTheStripeDashboard_StaysCancelled()
     {
-        var pretix = new FakePretix().On("GET", OrderPath, HttpStatusCode.OK, Order(
+        var pretix = EurEvent().On("GET", OrderPath, HttpStatusCode.OK, Order(
             Code, status: "c", total: 1000m,
             payments: [new { local_id = 1, state = "confirmed", amount = "1000.00", provider = "stripe", payment_date = "2026-11-21T00:09:33Z" }],
             refunds: [new { local_id = 1, state = "external", source = "external", amount = "1000.00", payment = 1, comment = (string?)null, provider = "stripe", details = new { id = "re_1" } }]));
@@ -381,7 +464,7 @@ public class PretixPlatformTests
     [HumansFact]
     public async Task Status_CancelledOrderHoldingMoney_IsPaid()
     {
-        var pretix = new FakePretix().On("GET", OrderPath, HttpStatusCode.OK, Order(
+        var pretix = EurEvent().On("GET", OrderPath, HttpStatusCode.OK, Order(
             Code, status: "c", total: 1000m,
             payments: [new { local_id = 1, state = "confirmed", amount = "1000.00", provider = "stripe_klarna", payment_date = "2026-11-21T00:09:33Z" }]));
 
@@ -393,14 +476,14 @@ public class PretixPlatformTests
     [HumansFact]
     public async Task Cancel_ExpiredOrderALatePaymentCovers_Throws()
     {
-        var pretix = new FakePretix().On("GET", OrderPath, HttpStatusCode.OK, Order(
+        var pretix = EurEvent().On("GET", OrderPath, HttpStatusCode.OK, Order(
             Code, status: "e", total: 1000m,
             payments: [new { local_id = 1, state = "confirmed", amount = "1000.00", provider = "stripe_ideal" }]));
 
         var cancel = () => Create(pretix).CancelAsync($"nowhere2027/{Code}", TestContext.Current.CancellationToken);
 
         await cancel.Should().ThrowAsync<TicketingPlatformException>();
-        pretix.Requests.Should().ContainSingle();
+        pretix.Requests.Select(r => r.Route).Should().Equal("GET " + Api, "GET " + OrderPath);
     }
 
     [HumansFact]
@@ -459,7 +542,7 @@ public class PretixPlatformTests
         fees: [RefundFee(refundId)],
         payments: [new { local_id = 1, state = "confirmed", amount = "1000.00", provider = "stripe" }]);
 
-    private static FakePretix RefundablePretix(Guid refundId) => new FakePretix()
+    private static FakePretix RefundablePretix(Guid refundId) => EurEvent()
         .On("GET", OrderPath, HttpStatusCode.OK, PaidOrder())
         .On("POST", $"{OrderPath}change/", HttpStatusCode.OK, PaidOrderWithFee(refundId));
 
@@ -510,7 +593,7 @@ public class PretixPlatformTests
     public async Task Refund_RetryAfterTheFeeWasAdded_DoesNotLowerTheTotalTwice()
     {
         var refundId = Guid.NewGuid();
-        var pretix = new FakePretix()
+        var pretix = EurEvent()
             .On("GET", OrderPath, HttpStatusCode.OK, PaidOrderWithFee(refundId))
             .On("POST", $"{OrderPath}payments/1/refund/", HttpStatusCode.OK,
                 new { local_id = 3, state = "done", amount = "225.00", payment = 1, comment = "", provider = "stripe" });
@@ -534,7 +617,7 @@ public class PretixPlatformTests
         await first.Should().ThrowAsync<HttpRequestException>();
 
         // Tickets retries under the same id: the fee is found, not added again, and the refund goes through.
-        var retry = new FakePretix()
+        var retry = EurEvent()
             .On("GET", OrderPath, HttpStatusCode.OK, PaidOrderWithFee(refundId))
             .On("POST", $"{OrderPath}payments/1/refund/", HttpStatusCode.OK,
                 new { local_id = 3, state = "done", amount = "225.00", payment = 1, comment = "", provider = "stripe" });
@@ -582,7 +665,7 @@ public class PretixPlatformTests
     public async Task Refund_RetryDeclinedAfterAnUnansweredAttempt_RestoresTheTotal()
     {
         var refundId = Guid.NewGuid();
-        var pretix = new FakePretix()
+        var pretix = EurEvent()
             .On("GET", OrderPath, HttpStatusCode.OK, PaidOrderWithFee(refundId))
             .On("POST", $"{OrderPath}payments/1/refund/", HttpStatusCode.BadRequest, "{\"detail\": \"External error: card_declined\"}")
             .On("POST", $"{OrderPath}change/", HttpStatusCode.OK, PaidOrder());
@@ -599,7 +682,7 @@ public class PretixPlatformTests
     public async Task Refund_DeclinedAfterARefundByHand_KeepsTheFee()
     {
         var refundId = Guid.NewGuid();
-        var pretix = new FakePretix()
+        var pretix = EurEvent()
             .On("GET", OrderPath, HttpStatusCode.OK, Order(
                 Code, status: "p", total: 775m,
                 fees: [RefundFee(refundId)],
@@ -618,7 +701,7 @@ public class PretixPlatformTests
     public async Task Refund_RepeatedRefundId_DoesNotRefundTwice()
     {
         var refundId = Guid.NewGuid();
-        var pretix = new FakePretix().On("GET", OrderPath, HttpStatusCode.OK, PaidOrder(
+        var pretix = EurEvent().On("GET", OrderPath, HttpStatusCode.OK, PaidOrder(
             new { local_id = 3, state = "done", amount = "225.00", payment = 1, comment = $"humans-refund:{refundId} Resold", provider = "stripe" }));
 
         var result = await Create(pretix).RefundAsync(
@@ -626,14 +709,14 @@ public class PretixPlatformTests
 
         result.State.Should().Be(RefundState.Succeeded);
         result.PlatformRefundId.Should().Be("3");
-        pretix.Requests.Should().ContainSingle();
+        pretix.Requests.Select(r => r.Route).Should().Equal("GET " + Api, "GET " + OrderPath);
     }
 
     [HumansFact]
     public async Task Refund_RepeatAfterTheRefundFailed_AnswersFailedAndNeverRefundsAgain()
     {
         var refundId = Guid.NewGuid();
-        var pretix = new FakePretix()
+        var pretix = EurEvent()
             .On("GET", OrderPath, HttpStatusCode.OK, Order(
                 Code, status: "p", total: 775m,
                 fees: [RefundFee(refundId)],
@@ -670,20 +753,20 @@ public class PretixPlatformTests
     [HumansFact]
     public async Task Refund_MoreThanIsLeftOnThePayment_FailsWithoutCallingPretix()
     {
-        var pretix = new FakePretix().On("GET", OrderPath, HttpStatusCode.OK, PaidOrder(
+        var pretix = EurEvent().On("GET", OrderPath, HttpStatusCode.OK, PaidOrder(
             new { local_id = 3, state = "done", amount = "900.00", payment = 1, comment = "", provider = "stripe" }));
 
         var result = await Create(pretix).RefundAsync(
             new RefundRequest(Guid.NewGuid(), $"nowhere2027/{Code}", 22500, "Resold"), TestContext.Current.CancellationToken);
 
         result.State.Should().Be(RefundState.Failed);
-        pretix.Requests.Should().ContainSingle();
+        pretix.Requests.Select(r => r.Route).Should().Equal("GET " + Api, "GET " + OrderPath);
     }
 
     [HumansFact]
     public async Task Status_PendingOrderWithASettlingPayment_IsProcessingAndCannotBeCancelled()
     {
-        var pretix = new FakePretix().On("GET", OrderPath, HttpStatusCode.OK, Order(
+        var pretix = EurEvent().On("GET", OrderPath, HttpStatusCode.OK, Order(
             Code, status: "n", total: 1000m,
             payments:
             [
@@ -703,7 +786,7 @@ public class PretixPlatformTests
     [HumansFact]
     public async Task Cancel_PaidOrder_Throws()
     {
-        var pretix = new FakePretix().On("GET", OrderPath, HttpStatusCode.OK, Order(Code, status: "p"));
+        var pretix = EurEvent().On("GET", OrderPath, HttpStatusCode.OK, Order(Code, status: "p"));
 
         var act = () => Create(pretix).CancelAsync($"nowhere2027/{Code}", TestContext.Current.CancellationToken);
 
@@ -713,11 +796,11 @@ public class PretixPlatformTests
     [HumansFact]
     public async Task Cancel_CancelledOrder_IsANoOp()
     {
-        var pretix = new FakePretix().On("GET", OrderPath, HttpStatusCode.OK, Order(Code, status: "c"));
+        var pretix = EurEvent().On("GET", OrderPath, HttpStatusCode.OK, Order(Code, status: "c"));
 
         await Create(pretix).CancelAsync($"nowhere2027/{Code}", TestContext.Current.CancellationToken);
 
-        pretix.Requests.Should().ContainSingle();
+        pretix.Requests.Select(r => r.Route).Should().Equal("GET " + Api, "GET " + OrderPath);
     }
 
     [HumansTheory]
@@ -725,7 +808,7 @@ public class PretixPlatformTests
     [InlineData("e")]
     public async Task Cancel_PendingOrExpiredOrder_IsCancelledInPretix(string status)
     {
-        var pretix = new FakePretix()
+        var pretix = EurEvent()
             .On("GET", OrderPath, HttpStatusCode.OK, Order(Code, status: status))
             .On("POST", $"{OrderPath}mark_canceled/", HttpStatusCode.OK, Order(Code, status: "c"));
 
@@ -753,7 +836,7 @@ public class PretixPlatformTests
         var repeated = $"https://pretix.test{Api}{collection}/";
         if (string.Equals(collection, "orders", StringComparison.Ordinal))
             repeated += "?created_since=2027-01-01T00%3A00%3A00Z&created_before=2027-02-01T00%3A00%3A00Z&ordering=datetime";
-        var pretix = new FakePretix();
+        var pretix = EurEvent();
         if (string.Equals(collection, "orders", StringComparison.Ordinal))
             pretix.On("GET", Api + "items/", HttpStatusCode.OK, new { results = Array.Empty<object>() });
         pretix.On("GET", Api + collection + "/", HttpStatusCode.OK,
@@ -773,7 +856,7 @@ public class PretixPlatformTests
     [HumansFact]
     public async Task ListOrders_RefusesAnUnboundedPageSequence()
     {
-        var pretix = new FakePretix();
+        var pretix = EurEvent();
         for (var page = 1; page <= 501; page++)
             pretix.On("GET", Api + "items/", HttpStatusCode.OK, new
             {
@@ -786,7 +869,7 @@ public class PretixPlatformTests
             Instant.FromUtc(2027, 1, 1, 0, 0), Instant.FromUtc(2027, 2, 1, 0, 0), TestContext.Current.CancellationToken);
 
         (await act.Should().ThrowAsync<HttpRequestException>()).WithMessage("*500-page*");
-        pretix.Requests.Should().HaveCount(500);
+        pretix.Requests.Should().HaveCount(501);
     }
 
     [HumansTheory]
@@ -800,7 +883,7 @@ public class PretixPlatformTests
     [InlineData("orders", "https://pretix.test:444/outside/")]
     public async Task ListOrders_RejectsPaginationOutsideTheConfiguredOrigin(string collection, string nextUrl)
     {
-        var pretix = new FakePretix()
+        var pretix = EurEvent()
             .On("GET", Api + "items/", HttpStatusCode.OK,
                 new { results = Array.Empty<object>(), next = string.Equals(collection, "items", StringComparison.Ordinal) ? nextUrl : null })
             .On("GET", Api + "orders/", HttpStatusCode.OK,
@@ -811,7 +894,7 @@ public class PretixPlatformTests
             Instant.FromUtc(2027, 1, 1, 0, 0), Instant.FromUtc(2027, 2, 1, 0, 0), TestContext.Current.CancellationToken);
 
         await act.Should().ThrowAsync<HttpRequestException>();
-        pretix.Requests.Should().HaveCount(string.Equals(collection, "items", StringComparison.Ordinal) ? 1 : 2);
+        pretix.Requests.Should().HaveCount(string.Equals(collection, "items", StringComparison.Ordinal) ? 2 : 3);
     }
 
     [HumansTheory]
@@ -837,7 +920,7 @@ public class PretixPlatformTests
             refunds,
             api_meta = apiMeta,
         };
-        var pretix = new FakePretix()
+        var pretix = EurEvent()
             .On("GET", $"{Api}items/", HttpStatusCode.OK, new
             {
                 results = new object[] { new { id = 7, internal_name = "humans-ticket" }, new { id = 8, internal_name = "humans-donation" } },
@@ -874,7 +957,7 @@ public class PretixPlatformTests
     [HumansFact]
     public async Task ListOrders_ChargesWhatWasReceivedAndCountsExternalRefundsAndChargebacks()
     {
-        var pretix = new FakePretix()
+        var pretix = EurEvent()
             .On("GET", $"{Api}items/", HttpStatusCode.OK, new { results = new object[] { new { id = 7, internal_name = "humans-ticket" } } })
             .On("GET", $"{Api}orders/", HttpStatusCode.OK, new
             {
@@ -923,7 +1006,7 @@ public class PretixPlatformTests
     {
         // Processing a refund in pretix cancels or reopens the order; a late payment leaves it expired. Tickets keeps
         // all of these Paid, so the list must too or reconciliation never ties out.
-        var pretix = new FakePretix()
+        var pretix = EurEvent()
             .On("GET", $"{Api}items/", HttpStatusCode.OK, new { results = new object[] { new { id = 7, internal_name = "humans-ticket" } } })
             .On("GET", $"{Api}orders/", HttpStatusCode.OK, new
             {
@@ -957,7 +1040,7 @@ public class PretixPlatformTests
     [HumansFact]
     public async Task ListOrders_PendingOrderPaidShort_IsNotPaid()
     {
-        var pretix = new FakePretix()
+        var pretix = EurEvent()
             .On("GET", $"{Api}items/", HttpStatusCode.OK, new { results = Array.Empty<object>() })
             .On("GET", $"{Api}orders/", HttpStatusCode.OK, new
             {
@@ -988,7 +1071,7 @@ public class PretixPlatformTests
     [HumansFact]
     public async Task ListOrders_WithoutAnEventSlug_Throws()
     {
-        var act = () => Create(new FakePretix()).ListOrdersAsync(
+        var act = () => Create(EurEvent()).ListOrdersAsync(
             null, Instant.FromUtc(2027, 1, 1, 0, 0), Instant.FromUtc(2027, 2, 1, 0, 0), TestContext.Current.CancellationToken);
 
         await act.Should().ThrowAsync<TicketingPlatformException>();

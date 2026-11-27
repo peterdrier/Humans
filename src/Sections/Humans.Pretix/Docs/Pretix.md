@@ -47,6 +47,8 @@ None. The section owns no tables. pretix's order is the record of the payment; T
 
 ## Invariants
 
+- Creation accepts EUR requests only. Creation, status, order lists, refund attempts and cancellation checks read the parent event live and require explicit EUR before interpreting order money or mutating the platform. Orders carry no currency themselves. A missing/unsupported currency or failed event read stops the operation before the order read; no cached currency or fallback is used. Erasure and ledger identity lookups remain independent of currency because they do not consume native order amounts.
+
 - Stripe reporting accepts explicit EUR only. A movement, payout or summed payout content with another or missing currency rejects the ledger; an unverified fee remains unknown.
 
 - Reporting-category classification uses `PaymentLedgerEntry.KindOf`, shared by all three ticketing adapters.

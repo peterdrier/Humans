@@ -74,10 +74,7 @@ internal sealed partial class PretixPlatform(
             throw new TicketingPlatformException("pretix needs the event's slug as PlatformEventRef.");
         Validate(request);
 
-        var ev = await SendAsync<PretixEvent>(HttpMethod.Get, EventPath(eventSlug), body: null, ct);
-        if (!string.Equals(ev.Currency, request.Currency, StringComparison.OrdinalIgnoreCase))
-            throw new TicketingPlatformException(
-                $"pretix event {eventSlug} sells in {ev.Currency}, not {request.Currency}.");
+        await RequireEurAsync(eventSlug, ct);
 
         var items = await ReadAllPagesAsync<PretixItem>($"{EventPath(eventSlug)}items/?active=true", ct);
         var code = OrderCode(request.OrderId);
@@ -135,6 +132,7 @@ internal sealed partial class PretixPlatform(
     {
         EnsureConfigured();
         var (eventSlug, code) = ParsePlatformOrderId(platformOrderId);
+        await RequireEurAsync(eventSlug, ct);
         var order = await SendAsync<PretixOrder>(HttpMethod.Get, OrderPath(eventSlug, code), body: null, ct);
         var status = MapStatus(order, logger);
         return status.State == PlatformOrderState.Paid && await FeeAsync(order, ct) is { } fee ? status with { FeeMinor = fee } : status;
@@ -159,6 +157,7 @@ internal sealed partial class PretixPlatform(
         if (request.AmountMinor <= 0)
             return new RefundResult(RefundState.Failed, null, "A refund must be a positive amount.");
 
+        await RequireEurAsync(eventSlug, ct);
         var order = await SendAsync<PretixOrder>(HttpMethod.Get, OrderPath(eventSlug, code), body: null, ct);
         var comment = RefundCommentPrefix + request.RefundId.ToString("D");
 
@@ -237,6 +236,7 @@ internal sealed partial class PretixPlatform(
     {
         EnsureConfigured();
         var (eventSlug, code) = ParsePlatformOrderId(platformOrderId);
+        await RequireEurAsync(eventSlug, ct);
         var order = await SendAsync<PretixOrder>(HttpMethod.Get, OrderPath(eventSlug, code), body: null, ct);
         var state = MapStatus(order, logger).State;
         if (state is PlatformOrderState.Paid or PlatformOrderState.Processing)
@@ -457,6 +457,8 @@ internal sealed partial class PretixPlatform(
         if (string.IsNullOrWhiteSpace(platformEventRef))
             throw new TicketingPlatformException("pretix needs the event's slug to list its orders.");
 
+        await RequireEurAsync(platformEventRef, ct);
+
         // Inactive carriers too: an order keeps its item after the item is switched off.
         var items = await ReadAllPagesAsync<PretixItem>($"{EventPath(platformEventRef)}items/", ct);
         var ticketItems = items
@@ -665,6 +667,8 @@ internal sealed partial class PretixPlatform(
 
     private static void Validate(PlatformOrderRequest request)
     {
+        if (!string.Equals(request.Currency, "EUR", StringComparison.OrdinalIgnoreCase))
+            throw new TicketingPlatformException("pretix charges EUR only.");
         if (request.Lines.Count == 0)
             throw new TicketingPlatformException("An order needs at least one line.");
         if (request.Lines.Any(l => l.AmountMinor < 0))
@@ -779,6 +783,14 @@ internal sealed partial class PretixPlatform(
 
     private Task<RawResponse> PostOrderAsync(string eventSlug, JsonObject body, CancellationToken ct) =>
         SendRawAsync(HttpMethod.Post, $"{EventPath(eventSlug)}orders/", body, ct);
+
+    private async Task RequireEurAsync(string eventSlug, CancellationToken ct)
+    {
+        var details = await SendAsync<PretixEvent>(HttpMethod.Get, EventPath(eventSlug), body: null, ct);
+        if (!string.Equals(details.Currency, "EUR", StringComparison.OrdinalIgnoreCase))
+            throw new TicketingPlatformException(
+                $"pretix event {eventSlug} declares currency '{details.Currency ?? "(missing)"}'; EUR is required.");
+    }
 
     private string EventPath(string eventSlug) =>
         $"api/v1/organizers/{Uri.EscapeDataString(Settings.Organizer)}/events/{Uri.EscapeDataString(eventSlug)}/";

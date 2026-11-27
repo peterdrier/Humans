@@ -93,7 +93,7 @@ difference everywhere.
 
 ### Fees and payouts
 
-Box Office and Hi.Events also require explicit EUR on native status and order-list amounts; an unsupported or missing currency rejects the read instead of being counted as EUR cents.
+All three platforms also require explicit EUR on native status and order-list amounts (pretix reads currency from the parent event); an unsupported or missing currency rejects the read instead of being counted as EUR cents.
 
 Stripe account ledger reads require explicit EUR on every amount they return or sum. Unknown or other currencies reject the ledger; fee lookups leave the fee unknown, so foreign minor units never enter EUR reconciliation totals.
 
@@ -344,5 +344,5 @@ and nothing goes to Consent.
 - Renaming a ticket to another person moves its order line, so the order is no longer the previous holder's and erasing them
   never asks the platform to erase its copy of that order (pretix, Hi.Events; Box Office keeps none).
 - Matching a payout to the bank statement.
-- Reconciliation follow-ups: signing off a difference (an unresolved one is mailed every night); a platform admin link on extra rows; currency validation for pretix order reads (currency is on the parent event); comparing
+- Reconciliation follow-ups: signing off a difference (an unresolved one is mailed every night); a platform admin link on extra rows; comparing
   refunds with Humans' own refund records rather than the platform's copy.

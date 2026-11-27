@@ -13,6 +13,9 @@ internal static class PretixTestHost
 {
     public const string Api = "/api/v1/organizers/nobodies/events/nowhere2027/";
 
+    public static FakePretix EurEvent() => new FakePretix()
+        .On("GET", Api, HttpStatusCode.OK, new { currency = "EUR" });
+
     public static PretixSettings Settings() => new()
     {
         BaseUrl = "https://pretix.test/",
