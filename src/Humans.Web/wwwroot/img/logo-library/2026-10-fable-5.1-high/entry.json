@@ -1,7 +1,7 @@
 {
   "date": "2026-10",
-  "model": "Claude Fable 5.1",
-  "family": "Claude Fable",
+  "family": "Claude",
+  "model": "Fable",
   "version": "5.1",
   "effort": "high",
   "brief": null,

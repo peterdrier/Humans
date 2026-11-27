@@ -1,7 +1,7 @@
 {
   "date": "2026-11",
-  "model": "Claude Haiku 5.5",
-  "family": "Claude Haiku",
+  "family": "Claude",
+  "model": "Haiku",
   "version": "5.5",
   "effort": "medium",
   "brief": "v1",

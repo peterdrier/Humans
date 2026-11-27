@@ -82,6 +82,7 @@ public class AboutController(
 
         var ordered = entries
             .OrderBy(e => e.Family, StringComparer.OrdinalIgnoreCase)
+            .ThenBy(e => e.Model, StringComparer.OrdinalIgnoreCase)
             .ThenBy(e => VersionKey(e.Version))
             .ThenBy(e => Array.IndexOf(EffortOrder, e.Effort?.ToLowerInvariant()))
             .ThenBy(e => e.Date, StringComparer.Ordinal)

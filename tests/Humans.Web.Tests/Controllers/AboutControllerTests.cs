@@ -104,7 +104,7 @@ public class AboutControllerTests
     }
 
     [HumansFact]
-    public void Logos_OrdersEntriesByFamilyVersionThenEffort()
+    public void Logos_OrdersByFamilyModelVersionThenEffort()
     {
         var root = Directory.CreateTempSubdirectory();
         try
@@ -117,12 +117,12 @@ public class AboutControllerTests
                     File.WriteAllText(Path.Combine(dir.FullName, "entry.json"), json);
                 }
             }
-            Entry("2026-11-opus-5.5-high", """{"date":"2026-11","family":"Claude Opus","version":"5.5","effort":"high"}""");
-            Entry("2026-11-opus-5.5-low", """{"date":"2026-11","family":"Claude Opus","version":"5.5","effort":"low"}""");
-            Entry("2026-11-haiku-5.5-medium", """{"date":"2026-11","family":"Claude Haiku","version":"5.5","effort":"medium"}""");
-            Entry("2026-02-opus-4.6-unrecorded", """{"date":"2026-02","family":"Claude Opus","version":"4.6","effort":null}""");
-            Entry("2026-11-gpt-6-luna-low", """{"date":"2026-11","family":"GPT Luna","version":"6","effort":"low"}""");
-            Entry("2026-11-opus-10.0-low", """{"date":"2026-11","family":"Claude Opus","version":"10.0","effort":"low"}""");
+            Entry("2026-11-opus-5.5-high", """{"date":"2026-11","family":"Claude","model":"Opus","version":"5.5","effort":"high"}""");
+            Entry("2026-11-opus-5.5-low", """{"date":"2026-11","family":"Claude","model":"Opus","version":"5.5","effort":"low"}""");
+            Entry("2026-11-haiku-5.5-medium", """{"date":"2026-11","family":"Claude","model":"Haiku","version":"5.5","effort":"medium"}""");
+            Entry("2026-02-opus-4.6-unrecorded", """{"date":"2026-02","family":"Claude","model":"Opus","version":"4.6","effort":null}""");
+            Entry("2026-11-gpt-6-luna-low", """{"date":"2026-11","family":"GPT","model":"Luna","version":"6","effort":"low"}""");
+            Entry("2026-11-opus-10.0-low", """{"date":"2026-11","family":"Claude","model":"Opus","version":"10.0","effort":"low"}""");
             Entry("2026-11-broken", "{not json");
             Entry("2026-11-unfinished", null);
             using var files = new PhysicalFileProvider(root.FullName);
@@ -158,9 +158,9 @@ public class AboutControllerTests
             problems.AddRange(CultureCatalog.SupportedCultureCodes
                 .Where(c => string.IsNullOrWhiteSpace(entry.Notes.GetValueOrDefault(c)))
                 .Select(c => $"{slug}: notes missing '{c}'"));
-            if (string.IsNullOrWhiteSpace(entry.Family) || string.IsNullOrWhiteSpace(entry.Version))
+            if (new[] { entry.Family, entry.Model, entry.Version }.Any(string.IsNullOrWhiteSpace))
             {
-                problems.Add($"{slug}: family or version missing");
+                problems.Add($"{slug}: family, model or version missing");
             }
             if (!efforts.Contains(entry.Effort, StringComparer.Ordinal))
             {

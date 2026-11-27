@@ -1,7 +1,7 @@
 {
   "date": "2026-11",
-  "model": "GPT-6 Luna",
-  "family": "GPT Luna",
+  "family": "GPT",
+  "model": "Luna",
   "version": "6",
   "effort": "low",
   "brief": "v1",

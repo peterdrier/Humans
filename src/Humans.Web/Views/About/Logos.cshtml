@@ -12,8 +12,11 @@
 @foreach (var family in Model.GroupBy(e => e.Family))
 {
     <section class="mb-5">
-        <h2 class="h4 mb-3">@family.Key</h2>
-        @foreach (var version in family.GroupBy(e => e.Version))
+        <h2 class="h3 mb-3">@family.Key</h2>
+        @foreach (var byModel in family.GroupBy(e => e.Model))
+        {
+        <h3 class="h5 mb-3">@byModel.Key</h3>
+        @foreach (var version in byModel.GroupBy(e => e.Version))
         {
         <div class="logo-library mb-4">
             @foreach (var entry in version)
@@ -23,7 +26,7 @@
                     <div class="d-flex align-items-center justify-content-center gap-2 mb-2">
                         <span class="logo-entry-small"><img src="~/img/logo-library/@entry.Slug/logo.svg" alt="" aria-hidden="true" /></span>
                         <span>
-                            <strong>@entry.Model</strong><br />
+                            <strong>@entry.Family @entry.Model @entry.Version</strong><br />
                             <span class="text-muted small">@(entry.Effort is null ? Localizer["About_Logos_EffortUnrecorded"].Value : Localizer[$"About_Logos_Effort_{entry.Effort}"].Value) · @entry.Date</span>
                         </span>
                     </div>
@@ -31,6 +34,7 @@
                 </div>
             }
         </div>
+        }
         }
     </section>
 }

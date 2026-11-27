@@ -1,7 +1,7 @@
 {
   "date": "2026-11",
-  "model": "Gemini 4 Neon",
-  "family": "Gemini Neon",
+  "family": "Gemini",
+  "model": "Neon",
   "version": "4",
   "effort": "high",
   "brief": "v1",
