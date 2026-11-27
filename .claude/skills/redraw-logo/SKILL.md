@@ -61,7 +61,9 @@ After a drawing run ends, the orchestrator (never the run itself) runs
 on the entry's branch or in a follow-up PR. It finds the run's Claude Code or Codex transcripts by
 the branch `logo/<slug>`, sums re-runs, and records working minutes, tokens and, for models priced in
 the script's table, estimated cost; the page shows it on the card. Unpriced models record
-`costUsd: null`. Gemini runs leave no transcripts to read and get no `stats.json`.
+`costUsd: null`. Gemini runs leave no transcripts to read and get no `stats.json`. When the drawing
+came from a retry on another branch (e.g. after an account hit its usage limit), pass
+`<slug>@<that branch>` so the failed attempt isn't counted instead.
 
 ## Promoting an entry to the live logo — only when Peter asks
 This is the old "round": the chosen entry becomes the site's mark.

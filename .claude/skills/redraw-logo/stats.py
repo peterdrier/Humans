@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
 """Record wall time, tokens and estimated cost of logo-library drawing runs.
 
-Usage: python .claude/skills/redraw-logo/stats.py [slug ...]
-No slugs: every 2026-11-* entry that has no stats.json yet.
+Usage: python .claude/skills/redraw-logo/stats.py [slug[@branch] ...]
+No slugs: every 2026-11-* entry that has no stats.json yet. `@branch` names the branch of the run
+that produced the drawing when it is not `logo/<slug>` (a retry on another account).
 
 Finds each run's session transcripts by the git branch `logo/<slug>` they were started on
 (Claude Code JSONL under ~/.claude*/projects, Codex rollouts under ~/.codex/sessions), sums
@@ -168,12 +169,13 @@ def codex_stats(paths):
 def main(argv):
     slugs = argv or sorted(d.name for d in LIBRARY.glob("2026-11-*") if not (d / "stats.json").exists())
     claude, codex = index_claude(), index_codex()
-    for slug in slugs:
+    for arg in slugs:
+        slug, _, branch_override = arg.partition("@")
         entry = LIBRARY / slug
         if not (entry / "entry.json").exists():
             print(f"{slug}: skipped, no entry.json")
             continue
-        branch = f"logo/{slug}"
+        branch = branch_override or f"logo/{slug}"
         if branch in claude:
             source, (minutes, totals, cost) = "claude", claude_stats(claude[branch])
         elif branch in codex:
