@@ -437,13 +437,19 @@ public class AuditLogServiceTests : IDisposable
             Id = Guid.NewGuid(), Action = TestActions.BudgetLineChanged.Name, EntityType = "BudgetLine",
             EntityId = Guid.NewGuid(), Description = "line moved", OccurredAt = now, ActorUserId = userId
         });
+        _dbContext.TemporaryAuditLogEntries.Add(new TemporaryAuditLogEntry
+        {
+            Id = Guid.NewGuid(), Action = TestActions.BudgetLineChanged.Name, EntityType = "User",
+            EntityId = userId, Description = "about you", OccurredAt = now - Duration.FromHours(1)
+        });
         await _dbContext.SaveChangesAsync(TestContext.Current.CancellationToken);
 
         var slices = await _service.ContributeForUserAsync(userId, TestContext.Current.CancellationToken);
         var slice = slices.Single(s => string.Equals(s.SectionName, AuditLogService.AuditLog, StringComparison.Ordinal));
         using (var temporary = System.Text.Json.JsonDocument.Parse(System.Text.Json.JsonSerializer.Serialize(
             slices.Single(s => string.Equals(s.SectionName, AuditLogService.AuditLogTemporary, StringComparison.Ordinal)).Data)))
-            temporary.RootElement.EnumerateArray().Single().GetProperty("Description").GetString().Should().Be("line moved");
+            temporary.RootElement.EnumerateArray().Select(r => r.GetProperty("Description").GetString())
+                .Should().Equal(null, "about you");
 
         using var json = System.Text.Json.JsonDocument.Parse(System.Text.Json.JsonSerializer.Serialize(slice.Data));
         var rows = json.RootElement.EnumerateArray()

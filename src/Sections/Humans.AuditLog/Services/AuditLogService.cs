@@ -124,20 +124,28 @@ internal sealed class AuditLogService(
         var allIds = (await userService.GetUserInfoAsync(userId, ct))?.AllUserIds ?? [userId];
         var entries = await repo.GetAllForUserIdsContributorAsync(allIds, ct);
 
-        object Shape(AuditLogEntrySnapshot a) => new
+        bool IsActor(AuditLogEntrySnapshot a) => a.ActorUserId is { } actor && allIds.Contains(actor);
+
+        // The description of an action this person took on someone else may quote that other person's data
+        // (an email verified, a name on a merge), so only rows about this person carry it, and only on the
+        // temporary side; the permanent slice keeps its pre-existing shape.
+        var permanent = entries.Where(e => e.Kept == AuditKept.Forever).Select(a => new
         {
             a.Action,
             a.EntityType,
-            a.Description,
             OccurredAt = a.OccurredAt.ToIso8601(),
-            Role = a.ActorUserId is { } actor && allIds.Contains(actor) ? "Actor" : "Subject"
-        };
+            Role = IsActor(a) ? "Actor" : "Subject"
+        }).ToList();
+        var temporary = entries.Where(e => e.Kept == AuditKept.RetentionPeriod).Select(a => new
+        {
+            a.Action,
+            a.EntityType,
+            Description = IsActor(a) ? null : a.Description,
+            OccurredAt = a.OccurredAt.ToIso8601(),
+            Role = IsActor(a) ? "Actor" : "Subject"
+        }).ToList();
 
-        return
-        [
-            new UserDataSlice(AuditLog, entries.Where(e => e.Kept == AuditKept.Forever).Select(Shape).ToList()),
-            new UserDataSlice(AuditLogTemporary, entries.Where(e => e.Kept == AuditKept.RetentionPeriod).Select(Shape).ToList())
-        ];
+        return [new UserDataSlice(AuditLog, permanent), new UserDataSlice(AuditLogTemporary, temporary)];
     }
 
     private static readonly IReadOnlyDictionary<string, string?> Erasure =
