@@ -1,6 +1,9 @@
 using System.Reflection;
 using AwesomeAssertions;
 using Humans.Email.Contracts;
+using Humans.Base.Configuration;
+using Microsoft.Extensions.Logging.Abstractions;
+using Microsoft.Extensions.Options;
 using Humans.Tasks.Services;
 using Humans.Testing;
 using Xunit;
@@ -15,6 +18,20 @@ public sealed class TasksEmailsTests
 
     private static TaskAnswerEmail Request(string culture, string? reason = null) => new(
         Guid.NewGuid(), "sam@example.com", "Sam <Spark>", Guid.NewGuid(), "Fix the <gate> & sign", "Gate & Co", reason, culture);
+
+    [HumansTheory]
+    [InlineData("https://humans.test/", "https://humans.test")]
+    [InlineData("https://humans.test/portal/", "https://humans.test/portal")]
+    public void AnswerEmails_TrailingBaseSlash_PreserveTaskPath(string baseUrl, string prefix)
+    {
+        var emails = new TasksEmails(Options.Create(new EmailSettings { BaseUrl = baseUrl }),
+            new ResourceLocalizer(), NullLogger<TasksEmails>.Instance);
+        var request = Request("en");
+
+        var messages = new[] { emails.RequestApproved(request), emails.RequestDeclined(request) };
+
+        messages.Should().AllSatisfy(mail => mail.HtmlBody.Should().Contain($"href=\"{prefix}/Tasks/{request.TaskId}\""));
+    }
 
     [HumansTheory]
     [MemberData(nameof(SupportedCultures.All), MemberType = typeof(SupportedCultures))]
