@@ -1,3 +1,4 @@
+using System.Security.Claims;
 using Humans.Base.Authorization;
 using Humans.Base.Interfaces;
 using Microsoft.AspNetCore.Authorization;
@@ -30,11 +31,31 @@ public static class AdminNavComposition
     public const string DashboardController = "Admin";
 
     /// <summary>
-    /// Whether a page renders in the admin shell: its endpoint is restricted by a policy beyond
+    /// The one layout rule every page follows (the root <c>_ViewStart</c>): the page is an
+    /// <see cref="IsAdminPage">admin page</see>, or a page members share that is itself an admin nav
+    /// item, gated beyond <see cref="PolicyNames.AppAccess"/>, which <paramref name="user"/> may open
+    /// (an admin on <c>/Issues</c>). Everything else keeps the member layout.
+    /// </summary>
+    public static async Task<bool> IsShellPageAsync(
+        IEnumerable<ISectionAdminNav> contributors, Endpoint? endpoint, RouteValueDictionary routeValues,
+        IAuthorizationService authorization, ClaimsPrincipal user)
+    {
+        var controller = routeValues["controller"] as string;
+        var action = routeValues["action"] as string;
+        if (IsAdminPage(contributors, endpoint, controller, action))
+            return true;
+
+        return Locate(Compose(contributors), controller, action, parent: null, routeValues)
+                is { IsExact: true, Item.Policy: { } policy }
+            && !string.Equals(policy, PolicyNames.AppAccess, StringComparison.Ordinal)
+            && (await authorization.AuthorizeAsync(user, policy)).Succeeded;
+    }
+
+    /// <summary>
+    /// Whether a page is an admin page: its endpoint is restricted by a policy beyond
     /// <see cref="PolicyNames.AppAccess"/>, and it is the dashboard or sits on a controller in the
-    /// admin nav. A page members share (an imperative check, or none) keeps the member layout. It is
-    /// the one rule every page follows (the root <c>_ViewStart</c>); whoever reached a restricted page
-    /// passed its gate, so the sidebar and tabs then filter to what that user may see.
+    /// admin nav. Whoever reached a restricted page passed its gate, so the sidebar and tabs then
+    /// filter to what that user may see.
     /// </summary>
     /// <remarks>
     /// <c>_ViewStart</c> runs before the view names its <see cref="ParentKey"/>, so the controller

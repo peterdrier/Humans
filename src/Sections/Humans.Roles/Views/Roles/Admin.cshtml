@@ -15,10 +15,6 @@
         .Build();
 }
 
-<page-header title="Roles">
-    <page-header-subtitle>Every team's roles and who coordinates it.</page-header-subtitle>
-</page-header>
-
 <div class="stats">
     <partial name="_StatTile" model='new StatTileViewModel("Teams", Model.Count.ToString())' />
     <partial name="_StatTile" model='new StatTileViewModel("Without a coordinator", missing.ToString(), Severity: missing > 0 ? Humans.Base.Interfaces.TileSeverity.Warning : Humans.Base.Interfaces.TileSeverity.Normal)' />
