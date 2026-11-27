@@ -20,6 +20,37 @@ public sealed partial class TicketCheckoutServiceTests
 {
     [HumansTheory]
     [InlineData(false, false)]
+    [InlineData(true, true)]
+    public async Task RenameTicketAsync_ErasedIdentity_Refuses(bool emailOnly, bool overrideRules)
+    {
+        var ticket = await PaidAdultAsync();
+        Human("next@example.com", "Next", "Holder");
+        ticket.HolderName = emailOnly ? "Original name" : TicketPiiTombstone.Name;
+        ticket.HolderEmail = emailOnly ? TicketPiiTombstone.EmailFor(_buyerId) : "old@example.com";
+        var name = ticket.HolderName;
+        var address = ticket.HolderEmail;
+        _repo.OrderWrites.Clear();
+        _repo.TicketWrites.Clear();
+        _repo.Events.Clear();
+        _audit.ClearReceivedCalls();
+        _delivery.ClearReceivedCalls();
+
+        var result = await _service.RenameTicketAsync(
+            ticket.Id, "Next Holder", "next@example.com", "Move", overrideRules, _adminId, Ct);
+
+        result.Succeeded.Should().BeFalse();
+        ticket.HolderName.Should().Be(name);
+        ticket.HolderEmail.Should().Be(address);
+        ticket.State.Should().Be(TicketCheckoutTicketState.Valid);
+        _repo.OrderWrites.Should().BeEmpty();
+        _repo.TicketWrites.Should().BeEmpty();
+        _repo.Events.Should().BeEmpty();
+        _audit.ReceivedCalls().Should().BeEmpty();
+        _delivery.ReceivedCalls().Should().BeEmpty();
+    }
+
+    [HumansTheory]
+    [InlineData(false, false)]
     [InlineData(true, false)]
     [InlineData(true, true)]
     public async Task RefundAsync_RecoveryDeclines_ReturnsFailure(bool voidTicket, bool retry)

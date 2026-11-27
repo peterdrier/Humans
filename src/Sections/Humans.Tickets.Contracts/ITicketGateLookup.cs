@@ -20,6 +20,7 @@ public interface ITicketGateLookup : IApplicationService
 /// sell, so it is not valid until the holder withdraws it (else it could admit someone and then sell or be voided);
 /// an unresolved reservation keeps it blocked after sales close.
 /// <paramref name="IsValid"/> is false immediately when the event is cancelled, before background retirement finishes.
+/// Erased identity markers on the ticket or its adult also make it invalid, including legacy rows still marked valid.
 /// <paramref name="EntryUserId"/> is the holder, or for a child or companion ticket without an account the adult it
 /// belongs to: whose Early Entry applies. Both null is an adult ticket whose holder has no account.
 /// </summary>

@@ -1,5 +1,9 @@
 # Section debt ledger for Humans.Tickets. Shape + routing: memory/process/debt-ledger-additions.md.
 # /debt-sweep pools every src/Sections/*/Docs/debt.yml into the same inbox as the central ledger.
 version: 1
-next_id: 27
-inbox: []
+next_id: 28
+inbox:
+  - added: 2026-11-27
+    id: TICKETS-27
+    what: "TicketDeliveryService's HolderMailAsync and SendAsync do not reject unavailable bound holders: missing Users lookups fall back to snapshot addresses, tombstoned accounts remain eligible, and canonical lookups still use stored IDs. Buyer receipt/payment-ended resolution also uses stored IDs and fallback addresses. Align recipient eligibility and canonical identity across those paths while preserving anonymous email-only dependents, partial-delivery bookkeeping and valid financial receipts. Join invitations already guard unavailable holders. Found tracing queued delivery; separate from the legacy-erasure admission fix."
+    review: panel

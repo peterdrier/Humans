@@ -1,4 +1,5 @@
 using Humans.Tickets.Contracts;
+using Humans.Tickets.Data;
 using Humans.Tickets.Domain.Checkout;
 using NodaTime;
 
@@ -63,7 +64,10 @@ internal sealed partial class TicketCheckoutService : ITicketGateLookup
         var label = ticket.ClassLabel ?? ticket.WaveName;
         var adultId = ticket.ParentTicketId ?? ticket.Id;
         var sold = holds.Sold.Contains(adultId);
-        var held = ticketing.CancelledAt is null && ticket.IsHeld && (ticket.ParentTicketId is null || parent?.IsHeld == true);
+        var held = ticketing.CancelledAt is null && ticket.IsHeld
+            && !TicketPiiTombstone.IsTombstoned(ticket.HolderName, ticket.HolderEmail)
+            && (ticket.ParentTicketId is null || (parent is { IsHeld: true }
+                && !TicketPiiTombstone.IsTombstoned(parent.HolderName, parent.HolderEmail)));
         // Sales closing does not cancel a reserved checkout or finish an interrupted sale.
         var inResaleQueue = held && !sold && (holds.Reserved.Contains(adultId)
             || (!ticketing.IsClosed(now)

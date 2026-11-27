@@ -26,6 +26,8 @@ internal sealed partial class TicketCheckoutService
             return new("Complete the pending void before renaming this ticket.");
         if (ticket.State != TicketCheckoutTicketState.Valid || ticket.Kind != TicketHolderKind.Adult)
             return new("Only a valid adult ticket can be renamed.");
+        if (TicketPiiTombstone.IsTombstoned(ticket.HolderName, ticket.HolderEmail))
+            return new("Erased ticket data cannot be renamed.");
 
         var order = await repository.GetOrderAsync(ticket.OrderId, ct);
         var line = order?.Lines.ElementAtOrDefault(ticket.LineIndex);

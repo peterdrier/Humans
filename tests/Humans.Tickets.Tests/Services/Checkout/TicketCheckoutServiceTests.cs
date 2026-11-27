@@ -4031,6 +4031,34 @@ public sealed partial class TicketCheckoutServiceTests
         return ticket;
     }
 
+    [HumansTheory]
+    [InlineData((int)TicketHolderKind.Adult, false, false)]
+    [InlineData((int)TicketHolderKind.Adult, false, true)]
+    [InlineData((int)TicketHolderKind.Child, false, false)]
+    [InlineData((int)TicketHolderKind.Child, true, false)]
+    [InlineData((int)TicketHolderKind.Companion, false, true)]
+    [InlineData((int)TicketHolderKind.Companion, true, true)]
+    public async Task FindIssuedTicketAsync_ErasedIdentity_RefusesAdmission(int holderKind, bool erasedParent, bool emailOnly)
+    {
+        var kind = (TicketHolderKind)holderKind;
+        var adult = AddTicket(holder: _buyerId);
+        var ticket = kind == TicketHolderKind.Adult ? adult : AddTicket(kind, parent: adult.Id);
+        var erased = erasedParent ? adult : ticket;
+        erased.HolderName = emailOnly ? "Original name" : TicketPiiTombstone.Name;
+        erased.HolderEmail = emailOnly ? TicketPiiTombstone.EmailFor(_buyerId) : "old@example.com";
+
+        var scanned = (await _service.FindIssuedTicketAsync(ticket.Barcode, Ct))!;
+        var listed = (await _service.GetIssuedTicketsForEventAsync(_event.Id, Ct)).Single(t => t.Id == ticket.Id);
+
+        scanned.IsValid.Should().BeFalse();
+        scanned.InResaleQueue.Should().BeFalse();
+        listed.IsValid.Should().BeFalse();
+        listed.InResaleQueue.Should().BeFalse();
+        ticket.State.Should().Be(TicketCheckoutTicketState.Valid);
+        adult.State.Should().Be(TicketCheckoutTicketState.Valid);
+        _repo.TicketWrites.Should().BeEmpty();
+    }
+
     [HumansFact]
     public async Task Gate_finds_an_issued_ticket_by_its_code_with_its_event_and_holder()
     {
