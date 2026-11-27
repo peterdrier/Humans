@@ -156,12 +156,26 @@ internal sealed class TicketCheckoutRepository(IDbContextFactory<TicketsDbContex
         await ctx.SaveChangesAsync(ct);
     }
 
-    public async Task<IReadOnlyList<TicketCheckoutOrderEvent>> GetOrderEventsAsync(Guid orderId, CancellationToken ct = default)
+    public Task<IReadOnlyList<TicketCheckoutOrderEvent>> GetOrderEventsAsync(Guid orderId, CancellationToken ct = default) =>
+        GetOrderEventsAsync([orderId], ct);
+
+    public async Task<IReadOnlyList<TicketCheckoutOrderEvent>> GetOrderEventsAsync(
+        IReadOnlyCollection<Guid> orderIds, CancellationToken ct = default)
     {
+        if (orderIds.Count == 0)
+            return [];
         await using var ctx = await factory.CreateDbContextAsync(ct);
         return await ctx.TicketCheckoutOrderEvents.AsNoTracking()
-            .Where(e => e.OrderId == orderId)
+            .Where(e => orderIds.Contains(e.OrderId))
             .ToListAsync(ct);
+    }
+
+    public async Task MarkCancellationEmailedAsync(Guid orderId, Instant at, CancellationToken ct = default)
+    {
+        await using var ctx = await factory.CreateDbContextAsync(ct);
+        var order = await ctx.TicketCheckoutOrders.SingleAsync(o => o.Id == orderId, ct);
+        order.CancellationEmailedAt ??= at;
+        await ctx.SaveChangesAsync(ct);
     }
 
     public async Task<bool> AddTicketsAsync(IReadOnlyList<TicketCheckoutTicket> tickets, CancellationToken ct = default)

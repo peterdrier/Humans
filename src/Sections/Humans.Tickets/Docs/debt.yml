@@ -2,8 +2,4 @@
 # /debt-sweep pools every src/Sections/*/Docs/debt.yml into the same inbox as the central ledger.
 version: 1
 next_id: 29
-inbox:
-  - added: 2026-11-27
-    id: TICKETS-28
-    what: "CancelOrderAsync builds cancellation mail from stored BuyerUserId/BuyerEmail without resolving current Users availability or canonical identity. A queued cancellation can therefore target an old address/ID after merge or erasure. Align recipient resolution with delivery while keeping CancellationEmailedAt/ToDo completion truthful for skipped recipients and preserving fixed refund/delivery IDs. Found in the final section-wide recipient call-site check; the cancellation completion/refund loop needs its own batch."
-    review: panel
+inbox: []

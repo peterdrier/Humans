@@ -19,6 +19,139 @@ namespace Humans.Tickets.Tests.Services.Checkout;
 public sealed partial class TicketCheckoutServiceTests
 {
     [HumansTheory]
+    [InlineData(null)]
+    [InlineData(UserState.Deleted)]
+    [InlineData(UserState.Merged)]
+    public async Task CancelEventAsync_UnavailableBuyer_CompletesWithoutEmail(UserState? state)
+    {
+        var order = await BuyAndPayAsync(Buy(), _buyerId);
+        var buyer = Assert.IsType<UserInfo>(await _users.GetUserInfoAsync(_buyerId, Ct));
+        _users.GetUserInfoAsync(_buyerId, Arg.Any<CancellationToken>()).Returns(state is { } value ? buyer with { State = value } : null);
+        _email.ClearReceivedCalls();
+        await _service.CancelEventAsync(_ticketing.Id, "Storm", _adminId, Ct);
+
+        await _service.ReconcileOpenOrdersAsync(Ct);
+        await _service.ReconcileOpenOrdersAsync(Ct);
+        await _service.ReconcileOpenOrdersAsync(Ct);
+
+        _email.ReceivedCalls().Should().BeEmpty();
+        order.CancellationEmailedAt.Should().BeNull();
+        (await _service.GetCancellationProgressAsync(_ticketing.Id, Ct))!.ToDo.Should().Be(0);
+        _repo.Events.Should().ContainSingle(e => e.Kind == TicketCheckoutOrderEventKind.CancellationNoticeSkipped);
+        _repo.Tickets.Should().OnlyContain(t => t.State == TicketCheckoutTicketState.Void);
+        _repo.Refunds.Should().ContainSingle();
+        await _platform.Received(1).RefundAsync(Arg.Any<RefundRequest>(), Arg.Any<CancellationToken>());
+    }
+
+    [HumansTheory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task CancelEventAsync_MergedBuyer_UsesCanonicalRecipient(bool retry)
+    {
+        var order = await BuyAndPayAsync(Buy(), _buyerId);
+        var buyer = Assert.IsType<UserInfo>(await _users.GetUserInfoAsync(_buyerId, Ct));
+        var canonical = Guid.NewGuid();
+        _users.GetUserInfoAsync(_buyerId, Arg.Any<CancellationToken>())
+            .Returns(buyer with { Id = canonical, IdentityEmailColumn = "survivor@example.com" });
+        _email.ClearReceivedCalls();
+        if (retry)
+            _email.SendAsync(Arg.Any<EmailMessage>(), Arg.Any<CancellationToken>())
+                .Returns(Task.FromException(new InvalidOperationException("outbox down")), Task.CompletedTask);
+        await _service.CancelEventAsync(_ticketing.Id, "Storm", _adminId, Ct);
+
+        await _service.ReconcileOpenOrdersAsync(Ct);
+        await _service.ReconcileOpenOrdersAsync(Ct);
+        await _service.ReconcileOpenOrdersAsync(Ct);
+
+        var notices = _email.ReceivedCalls().Select(c => c.GetArguments()[0]).OfType<EmailMessage>().ToList();
+        notices.Should().HaveCount(retry ? 2 : 1);
+        notices.Should().OnlyContain(m => m.UserId == canonical && string.Equals(m.RecipientEmail, "survivor@example.com", StringComparison.Ordinal));
+        notices.Select(m => m.DeliveryId).Distinct().Should().ContainSingle();
+        order.CancellationEmailedAt.Should().NotBeNull();
+        await _platform.Received(1).RefundAsync(Arg.Any<RefundRequest>(), Arg.Any<CancellationToken>());
+    }
+
+    [HumansTheory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task CancelEventAsync_UnavailableContact_RecordsSkip(bool erased)
+    {
+        var order = await BuyAndPayAsync(Buy(), _buyerId);
+        if (erased)
+        {
+            order.BuyerName = TicketPiiTombstone.Name;
+            order.BuyerEmail = TicketPiiTombstone.EmailFor(_buyerId);
+        }
+        else
+        {
+            var buyer = Assert.IsType<UserInfo>(await _users.GetUserInfoAsync(_buyerId, Ct));
+            _users.GetUserInfoAsync(_buyerId, Arg.Any<CancellationToken>()).Returns(buyer with { IdentityEmailColumn = null });
+            order.BuyerEmail = string.Empty;
+        }
+        _email.ClearReceivedCalls();
+        await _service.CancelEventAsync(_ticketing.Id, "Storm", _adminId, Ct);
+
+        await _service.ReconcileOpenOrdersAsync(Ct);
+        await _service.ReconcileOpenOrdersAsync(Ct);
+
+        _email.ReceivedCalls().Should().BeEmpty();
+        order.CancellationEmailedAt.Should().BeNull();
+        (await _service.GetCancellationProgressAsync(_ticketing.Id, Ct))!.ToDo.Should().Be(0);
+        _repo.Events.Should().ContainSingle(e => e.Kind == TicketCheckoutOrderEventKind.CancellationNoticeSkipped);
+        await _platform.Received(1).RefundAsync(Arg.Any<RefundRequest>(), Arg.Any<CancellationToken>());
+    }
+
+    [HumansTheory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task CancelEventAsync_NoticeFinalized_PreservesRefreshedMoney(bool available)
+    {
+        var ticket = await PaidAdultAsync();
+        var order = _repo.Orders.Single();
+        var options = new DbContextOptionsBuilder<TicketsDbContext>().UseInMemoryDatabase(Guid.NewGuid().ToString()).Options;
+        var repository = new TicketCheckoutRepository(new TestDbContextFactory<TicketsDbContext>(options));
+        await repository.SaveTicketingSettingsAsync(_ticketing, Ct);
+        await repository.AddOrderAsync(order, Ct, ticket);
+        var service = CreateService(repository);
+        if (!available)
+            _users.GetUserInfoAsync(_buyerId, Arg.Any<CancellationToken>()).Returns((UserInfo?)null);
+        _platform.GetStatusAsync(order.PlatformOrderId!, Arg.Any<CancellationToken>())
+            .Returns(new PlatformOrderStatus(PlatformOrderState.Paid, 50, "sepa_debit", Now, RefundedMinor: 22500));
+        await service.CancelEventAsync(_ticketing.Id, "Storm", _adminId, Ct);
+
+        await service.ReconcileOpenOrdersAsync(Ct);
+        await service.ReconcileOpenOrdersAsync(Ct);
+
+        var saved = (await repository.GetOrderAsync(order.Id, Ct))!;
+        saved.RefundedMinor.Should().Be(22500);
+        saved.FeeMinor.Should().Be(50);
+        saved.PaymentMethod.Should().Be("sepa_debit");
+        (saved.CancellationEmailedAt is not null).Should().Be(available);
+        (await service.GetCancellationProgressAsync(_ticketing.Id, Ct))!.ToDo.Should().Be(0);
+        (await repository.GetRefundsAsync(order.Id, Ct)).Should().ContainSingle();
+        await _platform.Received(1).RefundAsync(Arg.Any<RefundRequest>(), Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
+    public async Task CancelEventAsync_RecipientLookupFails_RetriesNotice()
+    {
+        var order = await BuyAndPayAsync(Buy(), _buyerId);
+        var buyer = await _users.GetUserInfoAsync(_buyerId, Ct);
+        _users.GetUserInfoAsync(_buyerId, Arg.Any<CancellationToken>())
+            .Returns(_ => throw new InvalidOperationException("users down"), _ => new ValueTask<UserInfo?>(buyer));
+        await _service.CancelEventAsync(_ticketing.Id, "Storm", _adminId, Ct);
+
+        await _service.ReconcileOpenOrdersAsync(Ct);
+        order.CancellationEmailedAt.Should().BeNull();
+        (await _service.GetCancellationProgressAsync(_ticketing.Id, Ct))!.ToDo.Should().Be(1);
+        await _service.ReconcileOpenOrdersAsync(Ct);
+
+        order.CancellationEmailedAt.Should().NotBeNull();
+        await _email.Received(1).SendAsync(Arg.Is<EmailMessage>(m => m.TemplateName == "ticket_event_cancelled"), Arg.Any<CancellationToken>());
+        await _platform.Received(1).RefundAsync(Arg.Any<RefundRequest>(), Arg.Any<CancellationToken>());
+    }
+
+    [HumansTheory]
     [InlineData(false, false)]
     [InlineData(true, true)]
     public async Task RenameTicketAsync_ErasedIdentity_Refuses(bool emailOnly, bool overrideRules)

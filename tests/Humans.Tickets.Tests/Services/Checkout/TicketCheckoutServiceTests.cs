@@ -4252,7 +4252,15 @@ public sealed partial class TicketCheckoutServiceTests
         }
 
         public Task<IReadOnlyList<TicketCheckoutOrderEvent>> GetOrderEventsAsync(Guid orderId, CancellationToken ct = default) =>
-            Task.FromResult<IReadOnlyList<TicketCheckoutOrderEvent>>(Events.Where(e => e.OrderId == orderId).ToList());
+            GetOrderEventsAsync([orderId], ct);
+        public Task<IReadOnlyList<TicketCheckoutOrderEvent>> GetOrderEventsAsync(IReadOnlyCollection<Guid> orderIds, CancellationToken ct = default) =>
+            Task.FromResult<IReadOnlyList<TicketCheckoutOrderEvent>>(Events.Where(e => orderIds.Contains(e.OrderId)).ToList());
+        public Task MarkCancellationEmailedAsync(Guid orderId, Instant at, CancellationToken ct = default)
+        {
+            ct.ThrowIfCancellationRequested();
+            Orders.Single(o => o.Id == orderId).CancellationEmailedAt ??= at;
+            return Task.CompletedTask;
+        }
         public List<TicketCheckoutTicket> Tickets { get; } = [];
         public List<TicketResaleOffer> Offers { get; } = [];
 

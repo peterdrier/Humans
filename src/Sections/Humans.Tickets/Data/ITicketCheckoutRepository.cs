@@ -45,6 +45,11 @@ internal interface ITicketCheckoutRepository : IRepository
 
     Task<IReadOnlyList<TicketCheckoutOrderEvent>> GetOrderEventsAsync(Guid orderId, CancellationToken ct = default);
 
+    Task<IReadOnlyList<TicketCheckoutOrderEvent>> GetOrderEventsAsync(IReadOnlyCollection<Guid> orderIds, CancellationToken ct = default);
+
+    /// <summary>Stamps only the accepted cancellation notice, preserving concurrent financial refreshes.</summary>
+    Task MarkCancellationEmailedAsync(Guid orderId, Instant at, CancellationToken ct = default);
+
     /// <summary>False when the order's tickets were already issued: another caller got there first.</summary>
     Task<bool> AddTicketsAsync(IReadOnlyList<TicketCheckoutTicket> tickets, CancellationToken ct = default);
 

@@ -61,7 +61,7 @@ internal sealed class TicketCheckoutOrder
     /// <summary>The commit of <see cref="TermsFolder"/> whose text the buyer was shown and accepted.</summary>
     public string? TermsVersion { get; init; }
 
-    /// <summary>When the buyer was emailed that the event is cancelled; set once, after the order's cancellation work.</summary>
+    /// <summary>Set once after Email accepts the cancellation notice; explicit skips are recorded on the timeline.</summary>
     public Instant? CancellationEmailedAt { get; set; }
 
     public Instant CreatedAt { get; init; }
@@ -210,6 +210,7 @@ internal enum TicketCheckoutOrderEventKind
     CompanionRequestDecided = 24,
     EventCancelled = 25,
     Restored = 26,
+    CancellationNoticeSkipped = 27,
     /// <summary>Sales closed with the ticket still in resale; its holder was told.</summary>
     ResaleUnsold = 40,
 }
