@@ -12,9 +12,7 @@ Folder: `src/Sections/Humans.Finance/Services/` (namespace
 `HoldedCategoryMap`, `HoldedCreditorContacts`,
 `HoldedManagedAccounts`, `SepaPayoutFiles`, `SepaPayoutTransfers`, `StripeLedgerLinks` (`finance_stripe_ledger_links`),
 `Settings` (`finance_settings`), `PleoBookingClaims` (`finance_pleo_booking_claims`), `PleoReceiptUploads`
-(`finance_pleo_receipt_uploads`). `HoldedExpenseDocs` and
-`HoldedDocSyncStates` are still mapped but unread and unwritten since the purchase-document mirror
-moved to Holded; dropping them is its own PR (`destructive-drops-need-approval`).
+(`finance_pleo_receipt_uploads`).
 `PaymentDetailsRepository` (`Data/PaymentDetailsRepository.cs`, implements
 `IPaymentDetailsRepository`) owns `PaymentDetails` (`finance_payment_details`) on the same context.
 

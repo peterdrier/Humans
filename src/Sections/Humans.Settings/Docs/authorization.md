@@ -6,6 +6,7 @@
 | `SettingsAdminController` POST (`/Settings/Admin`) | Class | `Admin` | `PolicyNames.AdminOnly` — the app-wide event settings write, incl. minting a new cycle; no GET |
 | `SettingsAdminController` POST (`/Settings/Admin/Activate/{id}`) | Class | `Admin` | `PolicyNames.AdminOnly` — makes an event active and the previous one inactive |
 | `SettingsAdminController` POST (`/Settings/Admin/TimeZone`) | Class | `Admin` | `PolicyNames.AdminOnly` — sets the global event timezone |
+| `SettingsAdminController` POST (`/Settings/Admin/Retention`) | Class | `Admin` | `PolicyNames.AdminOnly` — sets the app-wide retention period |
 
 The Event tab's editable/read-only split is not a route gate: `EventSettingsTabViewComponent`
 calls `IAuthorizationService.AuthorizeAsync(user, null, PolicyNames.AdminOnly)` and renders

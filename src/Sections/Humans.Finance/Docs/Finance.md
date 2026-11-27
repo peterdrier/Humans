@@ -53,12 +53,6 @@ What lives here: attribution of the purchase documents the Holded section mirror
 
 ## Data Model
 
-### HoldedExpenseDoc, HoldedDocSyncState (retired)
-
-`finance_holded_expense_docs` and `finance_holded_doc_sync_states` held Finance's own copy of the purchase documents
-before the mirror moved to the Holded section. Still mapped, never read or written; dropped in their
-own PR once production is verified (`destructive-drops-need-approval`).
-
 ### HoldedCategoryMap
 
 **Table:** `finance_holded_category_maps`
@@ -527,7 +521,7 @@ on the next sync.
 
 ### Owned repository
 
-- **`IFinanceRepository`** — owns `finance_holded_category_maps`, `finance_holded_managed_accounts`, `finance_holded_creditor_contacts`, `finance_sepa_payout_files`, `finance_sepa_payout_transfers` (plus the retired `finance_holded_expense_docs` and `finance_holded_doc_sync_states`, mapped but untouched)
+- **`IFinanceRepository`** — owns `finance_holded_category_maps`, `finance_holded_managed_accounts`, `finance_holded_creditor_contacts`, `finance_sepa_payout_files`, `finance_sepa_payout_transfers`
   - No cross-domain navs: `BudgetCategoryId`, `HoldedCreditorContact.UserId`, `SepaPayoutFile.GeneratedByUserId` and `SepaPayoutTransfer.UserId` are FK-only, no navigation property
   - A payout file and its transfers are written in one `AddSepaPayoutAsync` save — one without the other is not a state this section wants to be in
   - `SaveSepaTransfersWithdrawnAsync` is the one update outside the booking columns: `WithdrawnAt`/`WithdrawnByUserId` only, for one transfer or a whole cancelled file in one save

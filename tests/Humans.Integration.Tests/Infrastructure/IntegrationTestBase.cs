@@ -19,7 +19,7 @@ public abstract class IntegrationTestBase(HumansTestDatabase database) : IAsyncL
         var ct = TestContext.Current.CancellationToken;
 
         var connectionString = await database.CloneTemplateAsync(_databaseName, ct);
-        Factory = new HumansWebApplicationFactory(connectionString);
+        Factory = CreateFactory(connectionString);
         await Factory.InitializeAsync();
 
         Client = Factory.CreateClient(new WebApplicationFactoryClientOptions
@@ -27,6 +27,9 @@ public abstract class IntegrationTestBase(HumansTestDatabase database) : IAsyncL
             AllowAutoRedirect = false
         });
     }
+
+    /// <summary>Override to host extra test-only parts on top of the real app.</summary>
+    protected virtual HumansWebApplicationFactory CreateFactory(string connectionString) => new(connectionString);
 
     public async ValueTask DisposeAsync()
     {

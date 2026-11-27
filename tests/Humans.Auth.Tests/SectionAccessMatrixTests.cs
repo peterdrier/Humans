@@ -6,7 +6,7 @@ namespace Humans.Auth.Tests;
 public class SectionAccessMatrixTests
 {
     [HumansFact]
-    public void Pins_the_RoleAssignments_matrix()
+    public void AccessMatrix_MatchesRoleAssignmentsPin()
     {
         var matrix = ((ISectionAccessMatrix)new Section()).AccessMatrices
             .Single(m => string.Equals(m.Key, "SystemRoles", StringComparison.Ordinal));

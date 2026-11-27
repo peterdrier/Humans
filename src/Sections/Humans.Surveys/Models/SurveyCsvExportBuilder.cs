@@ -20,7 +20,12 @@ internal static class SurveyCsvExportBuilder
         {
             var header = new List<object?> { "response_id", "anonymity", "input_method", "submitted_at", "user_id", "user_name" };
             var used = header.Cast<string>().Select(HeaderKey).ToHashSet(StringComparer.OrdinalIgnoreCase);
-            header.AddRange(export.Questions.Select(q => (object?)QuestionHeader(q, export.Questions, used)));
+            foreach (var q in export.Questions)
+            {
+                var questionHeader = QuestionHeader(q, export.Questions, used);
+                header.Add(questionHeader);
+                if (q.CommentPrompt is not null) header.Add(UniqueHeader($"{questionHeader} (comment)", used));
+            }
             csv.WriteRow(header.ToArray());
 
             foreach (var row in export.Rows)
@@ -39,7 +44,7 @@ internal static class SurveyCsvExportBuilder
 
                 foreach (var q in export.Questions)
                 {
-                    cells.Add(byQuestion.TryGetValue(q.QuestionId, out var answer) ? SurveyResponsesMarkdownBuilder.CellValue(q, answer) : string.Empty);
+                    cells.AddRange(SurveyResponsesMarkdownBuilder.Cells(q, byQuestion.GetValueOrDefault(q.QuestionId)));
                 }
 
                 csv.WriteRow(cells.ToArray());
@@ -55,7 +60,11 @@ internal static class SurveyCsvExportBuilder
         if (!duplicate && used.Add(key)) return question.Prompt;
 
         var shortId = question.QuestionId.ToString("N", CultureInfo.InvariantCulture)[..8];
-        var stem = $"{question.Prompt} ({shortId})";
+        return UniqueHeader($"{question.Prompt} ({shortId})", used);
+    }
+
+    private static string UniqueHeader(string stem, HashSet<string> used)
+    {
         var candidate = stem;
         for (var suffix = 2; !used.Add(HeaderKey(candidate)); suffix++)
             candidate = $"{stem} ({suffix.ToString(CultureInfo.InvariantCulture)})";

@@ -69,6 +69,7 @@ scheduled run lives here.
 - The `verify-migrations-apply` CI job is disabled and irrelevant: never a failure to fix, never
   a reason to wait.
 - The section review goes on the PR (Phase 7b), and the run stewards its own PR (Phase 9).
+- Never stall on a permission prompt: [`unattended-runs-never-prompt`](../../../memory/process/unattended-runs-never-prompt.md).
 
 ## Tooling
 
@@ -250,7 +251,8 @@ plus one sentence naming which items came from the target.
 
 Last, write everything to `$RUNDIR/assessment/`: `ranked-list.md` (number, one line, source
 thread, intended play), one findings file per thread, the inventory with dispositions so far, and
-the thread table. **From here disk is the authoritative state.** Every later statement about the
+the thread table. A thread's findings file is the text its Agent call returned, written with the
+Write tool; never copy or read the task's `.output` file (a protected transcript path that prompts). **From here disk is the authoritative state.** Every later statement about the
 run's own conduct — which threads ran on what model, counts, what was struck, whether a compaction
 happened — is read back from `$RUNDIR/assessment/`, the phase log or `git log`, never restated
 from a compaction summary. After any compaction, re-read this file's remaining phases.

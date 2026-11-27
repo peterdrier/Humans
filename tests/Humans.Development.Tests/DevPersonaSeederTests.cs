@@ -92,7 +92,7 @@ public class DevPersonaSeederTests
         new(missingVersionIds.Length, missingVersionIds);
 
     [HumansFact]
-    public async Task EnsureActiveAsync_MissingConsents_SubmitsEachThroughConsentServiceAndRestores()
+    public async Task EnsureActiveAsync_MissingConsents_SubmitsEach()
     {
         var userId = Guid.NewGuid();
         var v1 = Guid.NewGuid();
@@ -258,7 +258,7 @@ public class DevPersonaSeederTests
     }
 
     [HumansFact]
-    public async Task ResetLegalNamesAsync_BlanksLegalNamesAndKeepsBurnerName()
+    public async Task ResetLegalNamesAsync_KeepsBurnerName()
     {
         // The no-name persona must hit the onboarding name gate on every sign-in.
         var userId = DevPersonaSeeder.PersonaGuid("no-name");

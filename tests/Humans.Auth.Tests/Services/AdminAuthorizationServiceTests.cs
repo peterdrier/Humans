@@ -38,7 +38,7 @@ public sealed class AdminAuthorizationServiceTests
     }
 
     [HumansFact]
-    public async Task RequireCurrentUserIsAdminAsync_CurrentUserIsNotAdmin_Throws()
+    public async Task RequireCurrentUserIsAdminAsync_NotAdmin_Throws()
     {
         var currentUserId = Guid.NewGuid();
         _currentUser.UserId.Returns(currentUserId);

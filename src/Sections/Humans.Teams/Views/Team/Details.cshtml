@@ -1,6 +1,7 @@
 @inject IAuthorizationService AuthService
 @inject IEnumerable<ITeamShiftsParts> ShiftsParts
 @inject IEnumerable<ITeamRolesPart> RolesParts
+@inject IEnumerable<ITeamTasksPart> TasksParts
 @model Humans.Teams.Models.TeamDetailViewModel
 @{
     ViewData["Title"] = Model.Name;
@@ -130,6 +131,10 @@
             foreach (var part in RolesParts)
             {
                 @await Component.InvokeAsync(part.Card, new TeamRolesCardArgs(Model.Id))
+            }
+            foreach (var part in TasksParts)
+            {
+                @await Component.InvokeAsync(part.Card, new TeamTasksCardArgs(Model.Id))
             }
         }
 

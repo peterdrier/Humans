@@ -61,14 +61,10 @@
   <data name="Tasks_Filter_AnyEvent" xml:space="preserve"><value>Qualsevol esdeveniment</value></data>
   <data name="Tasks_Filter_Finished" xml:space="preserve"><value>Inclou les fetes i cancel·lades</value></data>
   <data name="Tasks_Filter_Apply" xml:space="preserve"><value>Mostra</value></data>
-  <data name="Tasks_Col_Task" xml:space="preserve"><value>Tasca</value></data>
   <data name="Tasks_Col_Team" xml:space="preserve"><value>Equip</value></data>
   <data name="Tasks_Col_Status" xml:space="preserve"><value>Estat</value></data>
   <data name="Tasks_Col_Priority" xml:space="preserve"><value>Prioritat</value></data>
-  <data name="Tasks_Col_Due" xml:space="preserve"><value>Venciment</value></data>
-  <data name="Tasks_Col_Slots" xml:space="preserve"><value>Persones</value></data>
   <data name="Tasks_Hidden" xml:space="preserve"><value>Amagada</value></data>
-  <data name="Tasks_WaitingOn" xml:space="preserve"><value>Esperant</value></data>
   <data name="Tasks_Yes" xml:space="preserve"><value>Sí</value></data>
   <data name="Tasks_No" xml:space="preserve"><value>No</value></data>
   <data name="Tasks_Team_Title" xml:space="preserve"><value>Tasques de {0}</value></data>
@@ -164,8 +160,6 @@
   <data name="Tasks_Requests_Approve" xml:space="preserve"><value>Aprova</value></data>
   <data name="Tasks_Requests_Decline" xml:space="preserve"><value>Rebutja</value></data>
   <data name="Tasks_Requests_Reason" xml:space="preserve"><value>Motiu, s'envia al correu (opcional)</value></data>
-  <data name="Tasks_Col_Join" xml:space="preserve"><value>Uneix-te</value></data>
-  <data name="Tasks_Col_Free" xml:space="preserve"><value>Lliures</value></data>
   <data name="Tasks_List_Open" xml:space="preserve"><value>Tasques obertes</value></data>
   <data name="Tasks_Open_Title" xml:space="preserve"><value>Tasques obertes</value></data>
   <data name="Tasks_Open_Subtitle" xml:space="preserve"><value>Tasques que encara necessiten gent, les més urgents primer.</value></data>
@@ -179,4 +173,15 @@
   <data name="Tasks_Withdrawn" xml:space="preserve"><value>Sol·licitud retirada.</value></data>
   <data name="Tasks_Approved" xml:space="preserve"><value>Sol·licitud aprovada.</value></data>
   <data name="Tasks_Declined" xml:space="preserve"><value>Sol·licitud rebutjada.</value></data>
+  <data name="Tasks_Row_Understaffed" xml:space="preserve"><value>Falta gent</value></data>
+  <data name="Tasks_Row_WaitingOnTask" xml:space="preserve"><value>Espera «{0}»</value></data>
+  <data name="Tasks_Row_WaitingOnHidden" xml:space="preserve"><value>Espera una tasca oculta</value></data>
+  <data name="Tasks_Row_Needs" xml:space="preserve"><value>en falten {0}</value></data>
+  <data name="Tasks_Filter_AnyTeam" xml:space="preserve"><value>Tots els equips</value></data>
+  <data name="Tasks_Filter_AnyPriority" xml:space="preserve"><value>Qualsevol prioritat</value></data>
+  <data name="Tasks_Filter_AnyStatus" xml:space="preserve"><value>Qualsevol estat</value></data>
+  <data name="Tasks_Card_Title" xml:space="preserve"><value>Tasques</value></data>
+  <data name="Tasks_Card_Empty" xml:space="preserve"><value>Ara mateix no hi ha tasques obertes.</value></data>
+  <data name="Tasks_Card_Requests" xml:space="preserve"><value>Sol·licituds pendents: {0}</value></data>
+  <data name="Tasks_Card_All" xml:space="preserve"><value>Veure totes les tasques ({0})</value></data>
 </root>

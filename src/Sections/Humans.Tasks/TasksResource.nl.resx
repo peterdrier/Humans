@@ -61,14 +61,10 @@
   <data name="Tasks_Filter_AnyEvent" xml:space="preserve"><value>Elk evenement</value></data>
   <data name="Tasks_Filter_Finished" xml:space="preserve"><value>Afgeronde en geannuleerde meenemen</value></data>
   <data name="Tasks_Filter_Apply" xml:space="preserve"><value>Tonen</value></data>
-  <data name="Tasks_Col_Task" xml:space="preserve"><value>Taak</value></data>
   <data name="Tasks_Col_Team" xml:space="preserve"><value>Team</value></data>
   <data name="Tasks_Col_Status" xml:space="preserve"><value>Status</value></data>
   <data name="Tasks_Col_Priority" xml:space="preserve"><value>Prioriteit</value></data>
-  <data name="Tasks_Col_Due" xml:space="preserve"><value>Deadline</value></data>
-  <data name="Tasks_Col_Slots" xml:space="preserve"><value>Mensen</value></data>
   <data name="Tasks_Hidden" xml:space="preserve"><value>Verborgen</value></data>
-  <data name="Tasks_WaitingOn" xml:space="preserve"><value>Wacht op</value></data>
   <data name="Tasks_Yes" xml:space="preserve"><value>Ja</value></data>
   <data name="Tasks_No" xml:space="preserve"><value>Nee</value></data>
   <data name="Tasks_Team_Title" xml:space="preserve"><value>Taken van {0}</value></data>
@@ -164,8 +160,6 @@
   <data name="Tasks_Requests_Approve" xml:space="preserve"><value>Goedkeuren</value></data>
   <data name="Tasks_Requests_Decline" xml:space="preserve"><value>Afwijzen</value></data>
   <data name="Tasks_Requests_Reason" xml:space="preserve"><value>Reden, wordt meegestuurd in de e-mail (optioneel)</value></data>
-  <data name="Tasks_Col_Join" xml:space="preserve"><value>Meedoen</value></data>
-  <data name="Tasks_Col_Free" xml:space="preserve"><value>Vrij</value></data>
   <data name="Tasks_List_Open" xml:space="preserve"><value>Open taken</value></data>
   <data name="Tasks_Open_Title" xml:space="preserve"><value>Open taken</value></data>
   <data name="Tasks_Open_Subtitle" xml:space="preserve"><value>Taken waar nog mensen voor nodig zijn, de dringendste eerst.</value></data>
@@ -179,4 +173,15 @@
   <data name="Tasks_Withdrawn" xml:space="preserve"><value>Verzoek ingetrokken.</value></data>
   <data name="Tasks_Approved" xml:space="preserve"><value>Verzoek goedgekeurd.</value></data>
   <data name="Tasks_Declined" xml:space="preserve"><value>Verzoek afgewezen.</value></data>
+  <data name="Tasks_Row_Understaffed" xml:space="preserve"><value>Te weinig mensen</value></data>
+  <data name="Tasks_Row_WaitingOnTask" xml:space="preserve"><value>Wacht op “{0}”</value></data>
+  <data name="Tasks_Row_WaitingOnHidden" xml:space="preserve"><value>Wacht op een verborgen taak</value></data>
+  <data name="Tasks_Row_Needs" xml:space="preserve"><value>nog {0} nodig</value></data>
+  <data name="Tasks_Filter_AnyTeam" xml:space="preserve"><value>Alle teams</value></data>
+  <data name="Tasks_Filter_AnyPriority" xml:space="preserve"><value>Elke prioriteit</value></data>
+  <data name="Tasks_Filter_AnyStatus" xml:space="preserve"><value>Elke status</value></data>
+  <data name="Tasks_Card_Title" xml:space="preserve"><value>Taken</value></data>
+  <data name="Tasks_Card_Empty" xml:space="preserve"><value>Op dit moment geen openstaande taken.</value></data>
+  <data name="Tasks_Card_Requests" xml:space="preserve"><value>Wachtende verzoeken: {0}</value></data>
+  <data name="Tasks_Card_All" xml:space="preserve"><value>Alle taken bekijken ({0})</value></data>
 </root>

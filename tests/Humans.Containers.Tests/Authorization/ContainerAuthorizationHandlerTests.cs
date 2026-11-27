@@ -197,7 +197,7 @@ public sealed class ContainerAuthorizationHandlerTests
     [InlineData(true, true, true)]
     [InlineData(false, true, false)]
     [InlineData(true, false, false)]
-    public async Task Place_ExplicitYear_UsesThatYearsPhaseAndLead(bool open, bool lead, bool allowed)
+    public async Task Place_ExplicitYear_UsesThatYearsPhase(bool open, bool lead, bool allowed)
     {
         _cityPlanningService.IsContainerPlacementOpenAsync(2027, Arg.Any<CancellationToken>()).Returns(true);
         _cityPlanningService.IsContainerPlacementOpenAsync(2026, Arg.Any<CancellationToken>()).Returns(open);
