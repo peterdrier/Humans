@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.DataProtection;
 using System.Security.Cryptography;
 using System.Text;
 using Humans.Tickets.Contracts;
+using Humans.Tickets.Data;
 using Humans.Users.Contracts;
 using Humans.Tickets.Domain.Checkout;
 using NodaTime;
@@ -94,14 +95,15 @@ internal sealed partial class TicketCheckoutService
             foreach (var ticket in group)
             {
                 var offer = queue.FirstOrDefault(o => o.TicketId == ticket.Id);
+                var erased = TicketPiiTombstone.IsTombstoned(ticket.HolderName, ticket.HolderEmail);
                 var hasDependents = eventTickets.Any(t => t.ParentTicketId == ticket.Id && t.State == TicketCheckoutTicketState.Valid);
                 held.Add(new HeldTicket(ticket, eventName, offer, offer is null ? null : positions[offer.Id],
-                    CanOffer: ticketing is { Mode: not TicketSalesMode.InvitedOnly } && !ticketing.IsClosed(now)
+                    CanOffer: !erased && ticketing is { Mode: not TicketSalesMode.InvitedOnly } && !ticketing.IsClosed(now)
                         && ticketing.EffectiveSwitches.Resale != ResaleScheme.Off && offer is null && ticket.Kind == TicketHolderKind.Adult,
                     HasDependents: hasDependents,
                     DirectedActive: offer?.HasLiveInvite == true)
                 {
-                    CanInvite = ticketing?.EffectiveSwitches.Resale == ResaleScheme.QueueAndDirected && ticketing.IsResaleSelling(now),
+                    CanInvite = !erased && ticketing?.EffectiveSwitches.Resale == ResaleScheme.QueueAndDirected && ticketing.IsResaleSelling(now),
                     CompanionRequest = companionRequests.Where(r => r.TicketId == ticket.Id && r.HolderUserId == ticket.HolderUserId)
                         .MaxBy(r => r.RequestedAt),
                     CanAskCompanion = CanAskCompanion(ticket, ticketing, eventTickets, companionRequests),
@@ -119,7 +121,8 @@ internal sealed partial class TicketCheckoutService
         var ticket = await repository.GetTicketAsync(ticketId, ct);
         if (ticket is null || ticket.HolderUserId != userId)
             return new("Tickets_Resale_NotFound");
-        if (ticket.State != TicketCheckoutTicketState.Valid || ticket.Kind != TicketHolderKind.Adult || ticket.VoidRefundId is not null)
+        if (ticket.State != TicketCheckoutTicketState.Valid || ticket.Kind != TicketHolderKind.Adult || ticket.VoidRefundId is not null
+            || TicketPiiTombstone.IsTombstoned(ticket.HolderName, ticket.HolderEmail))
             return new("Tickets_Resale_NotOfferable");
         if ((await repository.GetOffersForSettingsAsync(ticket.TicketingSettingsId, ct))
             .Any(o => o.TicketId == ticket.Id && o.State is TicketResaleOfferState.Open or TicketResaleOfferState.Reserved))
@@ -195,7 +198,7 @@ internal sealed partial class TicketCheckoutService
             return new("Tickets_Resale_NotFound");
         if (offer.State != TicketResaleOfferState.Open)
             return new("Tickets_Resale_InCheckout");
-        if (await IsAdmittedAsync(ticket, ct))
+        if (TicketPiiTombstone.IsTombstoned(ticket.HolderName, ticket.HolderEmail) || await IsAdmittedAsync(ticket, ct))
             return new("Tickets_Resale_NotOfferable");
         var addresses = inviteeEmails.Select(e => e.Trim()).Where(e => e.Length > 0).Distinct(StringComparer.OrdinalIgnoreCase).ToList();
         if (addresses.Count == 0 || addresses.Any(e => !LooksLikeEmail(e) || string.Equals(e, ticket.HolderEmail, StringComparison.OrdinalIgnoreCase)))
@@ -504,11 +507,15 @@ internal sealed partial class TicketCheckoutService
             || (offer.State == TicketResaleOfferState.Reserved && offer.ReservedByOrderId != buyerOrder.Id))
             return;
 
-        if (await IsAdmittedAsync(offer.TicketId, ct))
+        var old = await repository.GetTicketAsync(offer.TicketId, ct);
+        var erased = old is not null && TicketPiiTombstone.IsTombstoned(old.HolderName, old.HolderEmail);
+        if (erased || await IsAdmittedAsync(offer.TicketId, ct))
         {
-            await WithdrawResaleOfferAsync(offer, null, ct, "the holder or a dependent was already admitted");
-            await NeedsAttentionAsync(buyerOrder.Id,
-                "The resale ticket's holder or dependent was already admitted; the paid buyer received fresh stock instead, which may exceed capacity", ct);
+            await WithdrawResaleOfferAsync(offer, null, ct, erased
+                ? "the ticket holder's data was erased" : "the holder or a dependent was already admitted");
+            await NeedsAttentionAsync(buyerOrder.Id, erased
+                ? "The resale ticket's holder data was erased; the paid buyer received fresh stock instead, which may exceed capacity"
+                : "The resale ticket's holder or dependent was already admitted; the paid buyer received fresh stock instead, which may exceed capacity", ct);
             return;
         }
 

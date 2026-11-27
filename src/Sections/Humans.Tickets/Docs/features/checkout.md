@@ -233,6 +233,7 @@ addresses were typed. Directed resale links buy only the buyer's own ticket.
   queue ticket in `ResaleOnly` mode or through an invitation.
 - Only adult tickets can be offered. Child and companion tickets go with their adult ticket: voided and refunded with it,
   never resold alone (Peter, 2026-11-22).
+- An adult with erased identity markers cannot be offered or receive invitations; queue and directed checkout exclude its existing offers. If fulfilment observes the erasure after the buyer paid, it withdraws the unsold offer, issues fresh stock and flags possible excess capacity, without a seller refund or sold notice. An already committed sale retains its refund obligation. Stored erased rows and capacity counts are not rewritten by these eligibility checks; withdrawal and invitation cancellation remain available.
 - When the buyer's order is paid, the offer is sold, the old ticket becomes `Resold`, the old adult's children are
   voided in the same repository commit, the buyer gets a new ticket, and the holder is told it sold (`ticket_resale_sold`).
   A nullable pending intent is saved with each new sale. Reconciliation retries the notice until the email reaches

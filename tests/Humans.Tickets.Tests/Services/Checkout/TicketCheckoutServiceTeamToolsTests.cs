@@ -21,6 +21,127 @@ public sealed partial class TicketCheckoutServiceTests
     [HumansTheory]
     [InlineData(false)]
     [InlineData(true)]
+    public async Task OfferForResale_ErasedIdentity_Refuses(bool emailOnly)
+    {
+        var ticket = await PaidAdultAsync();
+        ticket.HolderName = emailOnly ? ticket.HolderName : TicketPiiTombstone.Name;
+        ticket.HolderEmail = emailOnly ? TicketPiiTombstone.EmailFor(_buyerId) : ticket.HolderEmail;
+        var events = _repo.Events.Count;
+        _audit.ClearReceivedCalls();
+
+        var held = (await _service.GetHeldTicketsAsync(_buyerId, Ct)).Single(t => t.Ticket.Id == ticket.Id);
+        var result = await _service.OfferForResaleAsync(ticket.Id, _buyerId, Ct);
+
+        held.CanOffer.Should().BeFalse();
+        result.Refusal.Should().Be("Tickets_Resale_NotOfferable");
+        ticket.State.Should().Be(TicketCheckoutTicketState.Valid);
+        _repo.Offers.Should().BeEmpty();
+        _repo.Events.Should().HaveCount(events);
+        _audit.ReceivedCalls().Should().BeEmpty();
+    }
+
+    [HumansFact]
+    public async Task InviteBuyers_ErasedIdentity_Refuses()
+    {
+        var ticket = await OfferedTicketAsync();
+        ticket.HolderName = TicketPiiTombstone.Name;
+        _email.ClearReceivedCalls();
+
+        var held = (await _service.GetHeldTicketsAsync(_buyerId, Ct)).Single(t => t.Ticket.Id == ticket.Id);
+        var result = await _service.InviteBuyersAsync(ticket.Id, _buyerId, ["bo@example.com"], new Uri("https://h.example/r/"), "en", Ct);
+
+        held.CanInvite.Should().BeFalse();
+        result.Refusal.Should().Be("Tickets_Resale_NotOfferable");
+        _repo.Offers.Single().Invites.Should().BeEmpty();
+        _repo.Offers.Single().DirectedInviteCount.Should().Be(0);
+        _email.ReceivedCalls().Should().BeEmpty();
+    }
+
+    [HumansTheory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task StartCheckout_ErasedResale_Refuses(bool directed)
+    {
+        var ticket = await OfferedTicketAsync();
+        var offer = _repo.Offers.Single();
+        offer.Invites = [new TicketResaleInvite { Email = "bo@example.com", TokenHash = TicketCheckoutService.HashToken("legacy-token") }];
+        ticket.HolderEmail = TicketPiiTombstone.EmailFor(_buyerId);
+        _platform.ClearReceivedCalls();
+        if (directed)
+            (await _service.GetDirectedBuyPageAsync("legacy-token", _otherBuyerId, Ct))!.InviteTaken.Should().BeTrue();
+
+        var result = await _service.StartCheckoutAsync(Buy() with { DirectedToken = directed ? "legacy-token" : null }, _otherBuyerId, Ct);
+
+        result.Refusal.Should().Be("Tickets_Buy_ResaleOnly");
+        _repo.Orders.Should().ContainSingle();
+        offer.State.Should().Be(TicketResaleOfferState.Open);
+        offer.ReservedByOrderId.Should().BeNull();
+        await _platform.DidNotReceiveWithAnyArgs().CreateOrderAsync(default!);
+    }
+
+    [HumansTheory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task PlatformOrderChanged_ErasedResale_IssuesFreshStock(bool released)
+    {
+        var old = await OfferedTicketAsync();
+        _ticketing.Capacity = 1;
+        var started = await _service.StartCheckoutAsync(Buy(), _otherBuyerId, Ct);
+        started.Refusal.Should().BeNull();
+        var buyer = _repo.Orders.Single(o => o.Id == started.OrderId);
+        if (released)
+        {
+            _platform.GetStatusAsync(buyer.PlatformOrderId!, Arg.Any<CancellationToken>())
+                .Returns(new PlatformOrderStatus(PlatformOrderState.Expired, null, null, null));
+            await _service.PlatformOrderChangedAsync("test", buyer.PlatformOrderId!, Ct);
+        }
+        old.HolderName = TicketPiiTombstone.Name;
+        var offer = _repo.Offers.Single();
+        _delivery.ClearReceivedCalls();
+
+        await PayAsync(buyer.PlatformOrderId!);
+        await _service.ReconcileOpenOrdersAsync(Ct);
+        await _service.ReconcileOpenOrdersAsync(Ct);
+        await RefundBatchAsync();
+
+        buyer.State.Should().Be(TicketCheckoutOrderState.Paid);
+        offer.State.Should().Be(TicketResaleOfferState.Withdrawn);
+        offer.ReservedByOrderId.Should().BeNull();
+        offer.SoldToOrderId.Should().BeNull();
+        offer.RefundId.Should().BeNull();
+        offer.SoldNotificationPending.Should().BeNull();
+        old.HolderName.Should().Be(TicketPiiTombstone.Name);
+        (await _service.FindIssuedTicketAsync(old.Barcode, Ct))!.IsValid.Should().BeFalse();
+        var issued = _repo.Tickets.Single(t => t.OrderId == buyer.Id);
+        (await _service.FindIssuedTicketAsync(issued.Barcode, Ct))!.IsValid.Should().BeTrue();
+        await _platform.DidNotReceive().RefundAsync(Arg.Any<RefundRequest>(), Arg.Any<CancellationToken>());
+        await _delivery.DidNotReceive().ResaleSoldAsync(Arg.Any<Guid>(), Arg.Any<long>(), Arg.Any<CancellationToken>());
+        await _audit.Received(1).LogAsync(TicketsAuditActions.TicketCheckoutNeedsAttention, Arg.Any<string>(), buyer.Id,
+            Arg.Is<string>(text => text.Contains("erased", StringComparison.Ordinal)), Arg.Any<string>(), Arg.Any<Guid?>(), Arg.Any<string?>());
+    }
+
+    [HumansFact]
+    public async Task RunResaleRefundBatch_ErasedSoldIdentity_PreservesRefund()
+    {
+        var old = await OfferedTicketAsync();
+        var buyer = await BuyAndPayAsync(Buy(), _otherBuyerId);
+        var offer = _repo.Offers.Single();
+        offer.State.Should().Be(TicketResaleOfferState.Sold);
+        old.HolderName = TicketPiiTombstone.Name;
+
+        await PayAsync(buyer.PlatformOrderId!);
+        var batch = await RefundBatchAsync();
+
+        batch.Started.Should().Be(1);
+        offer.State.Should().Be(TicketResaleOfferState.Sold);
+        offer.RefundId.Should().Be(offer.Id);
+        await _platform.Received(1).RefundAsync(Arg.Is<RefundRequest>(r => r.RefundId == offer.Id && r.AmountMinor == 22500),
+            Arg.Any<CancellationToken>());
+    }
+
+    [HumansTheory]
+    [InlineData(false)]
+    [InlineData(true)]
     public async Task IssueCompanion_ErasedParent_Refuses(bool overrideCapacity)
     {
         var adult = await PaidAdultAsync();

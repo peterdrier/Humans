@@ -1321,7 +1321,8 @@ internal sealed partial class TicketCheckoutService(
             .Where(o => o.State is TicketResaleOfferState.Open or TicketResaleOfferState.Reserved).ToList();
         var offerCounts = offers.GroupBy(o => o.TicketId).ToDictionary(g => g.Key, g => g.Count());
         var offeredCodes = tickets
-            .Where(t => t.State == TicketCheckoutTicketState.Offered && t.Kind == TicketHolderKind.Adult)
+            .Where(t => t.State == TicketCheckoutTicketState.Offered && t.Kind == TicketHolderKind.Adult
+                && !TicketPiiTombstone.IsTombstoned(t.HolderName, t.HolderEmail))
             .ToDictionary(t => t.Id, t => tickets
                 .Where(c => c.Id == t.Id || (c.ParentTicketId == t.Id && c.State == TicketCheckoutTicketState.Valid))
                 .Select(c => c.Barcode)

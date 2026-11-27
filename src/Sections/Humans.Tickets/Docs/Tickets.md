@@ -49,6 +49,8 @@ Companion requests stay with their requesting holder after ticket transfer. Memb
 
 An adult ticket with erased identity markers cannot receive new companion requests or tickets, including approval recovery and capacity overrides. A child or companion cannot be restored under an erased adult. These checks precede provisioning, mutation, delivery and audit, matching Gate's refusal of erased families even on legacy rows still marked `Valid`.
 
+Erased adults cannot be offered or receive resale invitations; their existing offers are excluded from queue and directed checkout without rewriting stored rows or capacity counts. Fulfilment rechecks unsold offers: if the adult identity was erased after reservation, it withdraws the offer and gives the paid buyer fresh stock with an attention audit, even past capacity. The erased identity stays unusable and no seller refund or sold notice is created. Already committed sales retain their refund obligations. Withdrawal and invitation cancellation remain available.
+
 Refund audit entries record human refund and refunded-void callers in `ActorUserId`; automated refund attempts use the `TicketCheckout` job identity.
 
 Operator controllers order companion requests pending-first/newest-first, cancellation refund groups by state,
