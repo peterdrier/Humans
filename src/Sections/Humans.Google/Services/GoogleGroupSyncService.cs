@@ -59,7 +59,7 @@ internal sealed class GoogleGroupSyncService(
         var expectedMembersByUserId = await GoogleSyncMemberHydration.LoadAsync(
             claims.SelectMany(c => c.UserIds).Distinct().ToList(), userService, workspaceIdentities, ct);
         var diffs = new List<ResourceSyncDiff>();
-        var emptiedGroupKeys = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        var emptiedGroups = new Dictionary<string, Guid?>(StringComparer.OrdinalIgnoreCase);
 
         foreach (var claim in claims)
         {
@@ -80,30 +80,31 @@ internal sealed class GoogleGroupSyncService(
                 ct);
             diffs.Add(diff);
             if (diff.ErrorMessage is null && claim.UserIds.Length == 0)
-                emptiedGroupKeys.Add(claim.GroupKey);
+                emptiedGroups[claim.GroupKey] = resourcesByGroup.GetValueOrDefault(claim.GroupKey)?.Id;
         }
 
         if (action == SyncAction.Execute
             && await syncSettingsService.GetModeAsync(SyncServiceType.GoogleGroups, ct) == SyncMode.AddAndRemove)
-            await UnlinkEmptiedRetiredTeamGroupsAsync(emptiedGroupKeys, ct);
+            await UnlinkEmptiedRetiredTeamGroupsAsync(emptiedGroups, ct);
 
         return new SyncPreviewResult { Diffs = diffs };
     }
 
     /// <summary>
-    /// A retired team's group is unlinked once a pass has emptied it without error: its resource rows are deactivated and
-    /// the team's prefix cleared, so nothing claims the group again. The group itself stays in Google, empty.
+    /// A retired team's group is unlinked once a pass has emptied it without error: its resource row is unlinked and the
+    /// team's prefix cleared, so nothing claims the group again. The group itself stays in Google, empty.
     /// </summary>
-    private async Task UnlinkEmptiedRetiredTeamGroupsAsync(IReadOnlySet<string> emptiedGroupKeys, CancellationToken ct)
+    private async Task UnlinkEmptiedRetiredTeamGroupsAsync(IReadOnlyDictionary<string, Guid?> emptiedGroups, CancellationToken ct)
     {
         var teams = await teamService.GetTeamsAsync(ct);
-        foreach (var team in teams.Values.Where(t => !t.IsActive && t.GoogleGroupEmail is { } key && emptiedGroupKeys.Contains(key)))
+        foreach (var team in teams.Values.Where(t => !t.IsActive && t.GoogleGroupEmail is { } key && emptiedGroups.ContainsKey(key)))
         {
-            await teamResourceService.DeactivateResourcesForTeamAsync(team.Id, GoogleResourceType.Group, ct);
+            if (emptiedGroups[team.GoogleGroupEmail!] is { } resourceId)
+                await teamResourceService.UnlinkResourceAsync(resourceId, ct: ct);
             await teamWrite.SetGoogleGroupPrefixAsync(team.Id, null, ct);
             await auditLogService.LogAsync(
                 GoogleAuditActions.GoogleResourceUnlinked, "Team", team.Id,
-                $"Unlinked the emptied group {team.GoogleGroupEmail} of retired team {team.Name}",
+                $"Cleared the group prefix of retired team {team.Name} after emptying {team.GoogleGroupEmail}",
                 nameof(GoogleGroupSyncService));
         }
     }
@@ -156,6 +157,18 @@ internal sealed class GoogleGroupSyncService(
         CancellationToken ct)
     {
         var (lookup, provisionAttempted) = await LookupOrProvisionGroupAsync(claim, action, ct);
+
+        // An empty claim (a retired team) never creates a group; a missing group is already empty.
+        if (lookup.GroupNumericId is null && claim.UserIds.Length == 0 && IsGroupNotFound(lookup.Error))
+        {
+            return new ResourceSyncDiff
+            {
+                ResourceId = resource?.Id ?? Guid.Empty,
+                ResourceName = resource?.Name ?? claim.GroupKey,
+                ResourceType = GoogleResourceType.Group.ToString(),
+                Url = resource?.Url
+            };
+        }
 
         if (lookup.GroupNumericId is null)
         {
@@ -225,7 +238,8 @@ internal sealed class GoogleGroupSyncService(
         CancellationToken ct)
     {
         var lookup = await provisioningClient.LookupGroupIdAsync(claim.GroupKey, ct);
-        if (lookup.GroupNumericId is not null || !IsGroupNotFound(lookup.Error) || action != SyncAction.Execute)
+        if (lookup.GroupNumericId is not null || !IsGroupNotFound(lookup.Error) || action != SyncAction.Execute
+            || claim.UserIds.Length == 0)
             return (lookup, false);
 
         return (await TryProvisionGroupAsync(claim.GroupKey, lookup, ct), true);

@@ -535,13 +535,4 @@
   <data name="Teams_Permission_Manage_Blurb" xml:space="preserve"><value>Leden, aanvragen om lid te worden, rollen en de teampagina beheren.</value></data>
   <data name="Teams_Permission_EarlyEntry_Title" xml:space="preserve"><value>Vroege toegang beheren</value></data>
   <data name="Teams_Permission_EarlyEntry_Blurb" xml:space="preserve"><value>Vroege toegang verlenen voor de projecten van het team.</value></data>
-  <data name="Teams_AdminTeams_EraseMembers" xml:space="preserve">
-    <value>Leden wissen</value>
-  </data>
-  <data name="Teams_AdminTeams_EraseMembersConfirm" xml:space="preserve">
-    <value>De lidmaatschapsgeschiedenis van iedereen in dit team wissen? Dit kan niet ongedaan worden gemaakt.</value>
-  </data>
-  <data name="Teams_AdminTeams_MembersErased" xml:space="preserve">
-    <value>Lidmaatschapsgeschiedenis gewist.</value>
-  </data>
 </root>

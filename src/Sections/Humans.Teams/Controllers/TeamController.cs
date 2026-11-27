@@ -685,7 +685,7 @@ internal sealed class TeamController(
         }
         else
         {
-            SetSuccess(localizer["Teams_AdminTeams_MembersErased"].Value);
+            SetSuccess("Membership history erased.");
         }
 
         return RedirectToAction(nameof(Summary));

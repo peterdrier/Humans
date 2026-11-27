@@ -94,7 +94,7 @@
                 {
                     <form asp-action="EraseMembers" asp-route-id="@Model.Id" method="post" class="d-inline" authorize-policy="AdminOnly">
                         @Html.AntiForgeryToken()
-                        <button type="submit" class="btn btn-sm btn-outline-danger" data-confirm="@Localizer["Teams_AdminTeams_EraseMembersConfirm"].Value">@Localizer["Teams_AdminTeams_EraseMembers"]</button>
+                        <button type="submit" class="btn btn-sm btn-outline-danger" data-confirm="Delete everyone's membership history on this team? This cannot be undone.">Erase members</button>
                     </form>
                 }
             </div>

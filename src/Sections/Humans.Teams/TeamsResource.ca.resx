@@ -535,13 +535,4 @@
   <data name="Teams_Permission_Manage_Blurb" xml:space="preserve"><value>Gestionar membres, sol·licituds d'ingrés, rols i la pàgina de l'equip.</value></data>
   <data name="Teams_Permission_EarlyEntry_Title" xml:space="preserve"><value>Gestionar l'entrada anticipada</value></data>
   <data name="Teams_Permission_EarlyEntry_Blurb" xml:space="preserve"><value>Concedir entrada anticipada als projectes de l'equip.</value></data>
-  <data name="Teams_AdminTeams_EraseMembers" xml:space="preserve">
-    <value>Esborrar membres</value>
-  </data>
-  <data name="Teams_AdminTeams_EraseMembersConfirm" xml:space="preserve">
-    <value>Esborrar l'historial de pertinença de totes les persones d'aquest equip? No es pot desfer.</value>
-  </data>
-  <data name="Teams_AdminTeams_MembersErased" xml:space="preserve">
-    <value>Historial de pertinença esborrat.</value>
-  </data>
 </root>

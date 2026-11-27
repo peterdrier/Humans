@@ -535,13 +535,4 @@
   <data name="Teams_Permission_Manage_Blurb" xml:space="preserve"><value>Gérer les membres, les demandes d'adhésion, les rôles et la page de l'équipe.</value></data>
   <data name="Teams_Permission_EarlyEntry_Title" xml:space="preserve"><value>Gérer l'entrée anticipée</value></data>
   <data name="Teams_Permission_EarlyEntry_Blurb" xml:space="preserve"><value>Accorder une entrée anticipée aux projets de l'équipe.</value></data>
-  <data name="Teams_AdminTeams_EraseMembers" xml:space="preserve">
-    <value>Effacer les membres</value>
-  </data>
-  <data name="Teams_AdminTeams_EraseMembersConfirm" xml:space="preserve">
-    <value>Effacer l'historique d'appartenance de toutes les personnes de cette équipe ? Action irréversible.</value>
-  </data>
-  <data name="Teams_AdminTeams_MembersErased" xml:space="preserve">
-    <value>Historique d'appartenance effacé.</value>
-  </data>
 </root>

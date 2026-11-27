@@ -535,13 +535,4 @@
   <data name="Teams_Permission_Manage_Blurb" xml:space="preserve"><value>Mitglieder, Beitrittsanfragen, Rollen und die Teamseite verwalten.</value></data>
   <data name="Teams_Permission_EarlyEntry_Title" xml:space="preserve"><value>Frühen Einlass verwalten</value></data>
   <data name="Teams_Permission_EarlyEntry_Blurb" xml:space="preserve"><value>Den Projekten des Teams frühen Einlass gewähren.</value></data>
-  <data name="Teams_AdminTeams_EraseMembers" xml:space="preserve">
-    <value>Mitglieder löschen</value>
-  </data>
-  <data name="Teams_AdminTeams_EraseMembersConfirm" xml:space="preserve">
-    <value>Den Mitgliedschaftsverlauf aller Personen in diesem Team löschen? Das kann nicht rückgängig gemacht werden.</value>
-  </data>
-  <data name="Teams_AdminTeams_MembersErased" xml:space="preserve">
-    <value>Mitgliedschaftsverlauf gelöscht.</value>
-  </data>
 </root>
