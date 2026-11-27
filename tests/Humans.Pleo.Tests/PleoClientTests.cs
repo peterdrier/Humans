@@ -83,7 +83,7 @@ public sealed class PleoClientTests
     }
 
     [HumansFact]
-    public async Task Entries_pager_follows_endCursor_across_pages()
+    public async Task SearchEntries_SeveralPages_FollowsEndCursor()
     {
         var urls = new List<string>();
         var client = Make(req =>
@@ -107,7 +107,7 @@ public sealed class PleoClientTests
     }
 
     [HumansFact]
-    public async Task Employee_history_includes_deleted_cardholders_across_pages()
+    public async Task ListEmployees_DeletedCardholders_AreIncluded()
     {
         const string active = """{"id":"active","firstName":"Ana","lastName":"Active","isDeleted":false}""";
         const string deleted = """{"id":"deleted","firstName":"Dee","lastName":"Departed","isDeleted":true}""";
@@ -130,7 +130,7 @@ public sealed class PleoClientTests
     }
 
     [HumansFact]
-    public async Task Pager_fails_closed_on_a_repeated_cursor()
+    public async Task Pager_RepeatedCursor_Fails()
     {
         var client = Make(_ => Json(Page("""{"id":"a"}""", true, "same")));
 
@@ -140,7 +140,7 @@ public sealed class PleoClientTests
     }
 
     [HumansFact]
-    public async Task Pager_fails_closed_on_a_body_without_data()
+    public async Task Pager_BodyWithoutData_Fails()
     {
         var client = Make(_ => Json("""{"error":"nope"}"""));
 
@@ -155,7 +155,7 @@ public sealed class PleoClientTests
     [Xunit.InlineData("employees", "null")]
     [Xunit.InlineData("receipts", """{"hasNextPage":null}""")]
     [Xunit.InlineData("entries", """{"hasNextPage":"false"}""")]
-    public async Task Pager_rejects_unknown_completion_instead_of_returning_a_partial_dataset(string consumer, string? pagination)
+    public async Task Pager_UnknownCompletion_Fails(string consumer, string? pagination)
     {
         var calls = 0;
         var client = Make(_ => ++calls == 1
@@ -181,7 +181,7 @@ public sealed class PleoClientTests
     [Xunit.InlineData("employees", "42")]
     [Xunit.InlineData("balance", "true")]
     [Xunit.InlineData("receipts", "\"unavailable\"")]
-    public async Task Non_object_responses_use_the_typed_provider_error_path(string consumer, string body)
+    public async Task Read_NonObjectResponse_ThrowsProviderError(string consumer, string body)
     {
         var client = Make(_ => Json(body));
         var ct = Xunit.TestContext.Current.CancellationToken;
@@ -206,7 +206,7 @@ public sealed class PleoClientTests
     [Xunit.InlineData(PleoTypedRead.Employees, "{\"id\":\" \"}")]
     [Xunit.InlineData(PleoTypedRead.Receipts, "{}")]
     [Xunit.InlineData(PleoTypedRead.Receipts, "{\"id\":\"\"}")]
-    public async Task Typed_reads_reject_items_without_usable_identities(PleoTypedRead consumer, string item)
+    public async Task TypedReads_ItemWithoutId_IsRejected(PleoTypedRead consumer, string item)
     {
         var client = Make(_ => Json(Page(item, false, null)));
         var ct = Xunit.TestContext.Current.CancellationToken;
@@ -225,7 +225,7 @@ public sealed class PleoClientTests
     [Xunit.InlineData(null)]
     [Xunit.InlineData("")]
     [Xunit.InlineData(" ")]
-    public async Task Balance_rejects_a_missing_currency_instead_of_replacing_the_reading(string? currency)
+    public async Task GetBalance_MissingCurrency_IsRejected(string? currency)
     {
         var body = System.Text.Json.JsonSerializer.Serialize(new
         {
@@ -251,7 +251,7 @@ public sealed class PleoClientTests
     }
 
     [HumansFact]
-    public async Task Balance_preserves_explicit_zero_and_a_foreign_currency()
+    public async Task GetBalance_ZeroForeignCurrency_IsPreserved()
     {
         var client = Make(_ => Json("""
             {"data":{"accounts":[{"isPrimary":true,"balance":{
@@ -265,7 +265,7 @@ public sealed class PleoClientTests
     }
 
     [HumansFact]
-    public async Task Sends_basic_auth_with_the_key_and_an_empty_password()
+    public async Task Request_BasicAuth_UsesKey()
     {
         HttpRequestMessage? captured = null;
         var client = Make(req =>
@@ -285,7 +285,7 @@ public sealed class PleoClientTests
     [HumansTheory]
     [Xunit.InlineData(298, "😀")]
     [Xunit.InlineData(299, "")]
-    public async Task Permanent_error_body_preview_preserves_unicode(int prefixLength, string suffix)
+    public async Task PermanentError_BodyPreview_KeepsUnicode(int prefixLength, string suffix)
     {
         var prefix = new string('e', prefixLength);
         var client = Make(_ => new HttpResponseMessage(HttpStatusCode.Forbidden)
@@ -303,7 +303,7 @@ public sealed class PleoClientTests
     }
 
     [HumansFact]
-    public async Task A_403_is_permanent_and_a_503_transient()
+    public async Task Read_403_IsPermanent()
     {
         var forbidden = Make(_ => new HttpResponseMessage(HttpStatusCode.Forbidden) { Content = new StringContent("RBAC") });
         var down = Make(_ => new HttpResponseMessage(HttpStatusCode.ServiceUnavailable));
@@ -315,7 +315,7 @@ public sealed class PleoClientTests
     }
 
     [HumansFact]
-    public async Task Receipt_file_is_downloaded_from_the_signed_url_without_the_key()
+    public async Task GetReceiptFile_SignedUrl_OmitsKey()
     {
         var requests = new List<HttpRequestMessage>();
         var client = Make(req =>
@@ -337,7 +337,7 @@ public sealed class PleoClientTests
     }
 
     [HumansFact]
-    public async Task Receipt_url_off_pleo_is_refused()
+    public async Task GetReceiptFile_UrlOffPleo_IsRefused()
     {
         var client = Make(_ =>
             Json("""{"data":[{"id":"r1","url":"https://evil.example/x"}],"pagination":{"hasNextPage":false}}"""));

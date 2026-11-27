@@ -34,7 +34,7 @@ public sealed class UserGrantsViewComponentTests : GrantsTestHarness
     }
 
     [HumansFact]
-    public async Task HumanAdminWhoManagesOneProgram_GetsALinkToThatProgramOnly()
+    public async Task Invoke_ManagerOfOneProgram_LinksOnlyIt()
     {
         var manager = SeedUser("Manager");
         var (holder, a, _) = await SeedTwoProgramsAsync(manager);

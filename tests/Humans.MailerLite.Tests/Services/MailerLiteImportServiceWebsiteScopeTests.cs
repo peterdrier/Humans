@@ -40,7 +40,7 @@ public class MailerLiteImportServiceWebsiteScopeTests
     }
 
     [HumansFact]
-    public async Task BuildPlan_AddsResetDecision_ForSyncOptInOutsideWebsite()
+    public async Task BuildPlan_OptInOutsideWebsite_AddsResetDecision()
     {
         var harness = new WebsiteScopeHarness();
         harness.SetSubscribers(WebsiteScopeHarness.Active("member@x.com", inWebsite: true));

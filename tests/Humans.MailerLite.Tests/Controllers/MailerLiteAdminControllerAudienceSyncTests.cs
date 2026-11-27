@@ -78,7 +78,7 @@ public class MailerLiteAdminControllerAudienceSyncTests
     }
 
     [HumansFact]
-    public async Task SyncAll_SummarizesCompletedAudiencesAndReportsFailures()
+    public async Task SyncAll_OneAudienceFails_ReportsFailure()
     {
         _audienceSync.SyncAllAsync(Arg.Any<Guid?>(), Arg.Any<CancellationToken>()).Returns(
         [

@@ -162,7 +162,7 @@ public class CantinaDailyRosterServiceTests
     }
 
     [HumansFact]
-    public async Task GetDailyRoster_PopulatedDay_BuildsAggregatesAndPeople()
+    public async Task GetDailyRoster_PopulatedDay_BuildsAggregates()
     {
         var es = ActiveEvent();
         _burnSettings.GetActiveEventSettings().Returns(es);
@@ -220,7 +220,7 @@ public class CantinaDailyRosterServiceTests
     }
 
     [HumansFact]
-    public async Task GetDailyRoster_BurnerName_ComesFromTheResolvedUserName()
+    public async Task GetDailyRoster_BurnerName_IsResolvedUserName()
     {
         // UserInfo.BurnerName is the resolved name (User.BurnerName → Profile.BurnerName → legacy
         // display name). Reading ProfileInfo.BurnerName instead renders "(unknown)" for a human
@@ -291,7 +291,7 @@ public class CantinaDailyRosterServiceTests
     }
 
     [HumansFact]
-    public async Task GetDailyRoster_NoOffset_DefaultsToTodayInEventTimezone()
+    public async Task GetDailyRoster_NoOffset_DefaultsToEventToday()
     {
         // Clock is 7 Jul 2026 12:00 UTC — 14:00 in Madrid, same calendar day —
         // and GateOpening is 7 Jul, so "today" is offset 0.
@@ -303,7 +303,7 @@ public class CantinaDailyRosterServiceTests
     }
 
     [HumansFact]
-    public async Task GetDailyRoster_NoOffsetAndNoActiveEvent_DefaultsToZero()
+    public async Task GetDailyRoster_NoOffsetNoEvent_DefaultsToZero()
     {
         _burnSettings.GetActiveEventSettings().Returns((EventSettingsInfo?)null);
 

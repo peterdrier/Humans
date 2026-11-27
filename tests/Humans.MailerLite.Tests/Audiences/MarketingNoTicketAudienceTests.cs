@@ -11,7 +11,7 @@ namespace Humans.MailerLite.Tests.Audiences;
 public class MarketingNoTicketAudienceTests
 {
     [HumansFact]
-    public async Task ComputeMemberUserIdsAsync_ExcludesTicketHolders_AndNonOptIns()
+    public async Task ComputeMemberUserIdsAsync_TicketHolder_IsExcluded()
     {
         var optInNoTicket = Guid.NewGuid();   // OptedOut=false, no ticket   → IN
         var optInWithTicket = Guid.NewGuid(); // OptedOut=false, has ticket  → OUT

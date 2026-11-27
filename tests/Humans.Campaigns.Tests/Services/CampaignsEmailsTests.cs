@@ -18,7 +18,7 @@ public sealed class CampaignsEmailsTests
         new(userId, campaignId, "zoe@x.com", "Zoe", subject, body, code, replyTo);
 
     [HumansFact]
-    public void CampaignCode_CarriesUserReplyToAndCampaignCategory()
+    public void CampaignCode_Headers_CarryReplyTo()
     {
         var userId = Guid.NewGuid();
         var campaignId = Guid.NewGuid();
@@ -36,7 +36,7 @@ public sealed class CampaignsEmailsTests
     }
 
     [HumansFact]
-    public void CampaignCode_renders_sanitized_markdown_with_https_images()
+    public void CampaignCode_Markdown_IsSanitized()
     {
         var msg = new CampaignsEmails().CampaignCode(new CampaignCodeEmailRequest(
             UserId: Guid.NewGuid(),
@@ -129,7 +129,7 @@ public sealed class CampaignsEmailsTests
     }
 
     [HumansFact]
-    public void EveryTemplateHasAPreviewSample()
+    public void Templates_EachHasPreviewSample()
     {
         var emails = new CampaignsEmails();
         var templates = TemplateNames(emails);
@@ -144,7 +144,7 @@ public sealed class CampaignsEmailsTests
     }
 
     [HumansFact]
-    public void PreviewSampleIdsAreUnique()
+    public void PreviewSampleIds_AreUnique()
     {
         var samples = new CampaignsEmailPreviews(new CampaignsEmails())
             .Samples(new EmailPreviewPersona("en", "Sally Smith", "sally@example.com"));
@@ -154,7 +154,7 @@ public sealed class CampaignsEmailsTests
 
     /// <summary>
     /// Every template the builder can produce, found by reflection rather than listed, so a
-    /// template added without a gallery sample fails <see cref="EveryTemplateHasAPreviewSample"/>.
+    /// template added without a gallery sample fails <see cref="Templates_EachHasPreviewSample"/>.
     /// </summary>
     private static IReadOnlyList<string> TemplateNames(CampaignsEmails emails) =>
     [

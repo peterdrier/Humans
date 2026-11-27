@@ -181,7 +181,7 @@ Admin pages live under the section's URL space, not `/Admin`; they are localizat
 - A program manager **cannot** create or edit a program, set its ceiling, name managers or
   close it (`ProgramOperationRequirement.Administer` is roles only).
 - A manager of program A **cannot** manage, issue under, or act on grants of program B
-  (`ProgramAuthorizationHandler`, `ControllerTests.GrantOfAnotherProgram_UnderMyProgramsUrl_IsNotFound_EvenWithMalformedInput`).
+  (`ProgramAuthorizationHandler`, `ControllerTests.Grant_UnderOtherProgramsUrl_IsNotFound`).
 - A member **cannot** apply to a Closed program, one not accepting applications, or one past
   its deadline.
 - Expenses **cannot** claim a grant that is Revoked, Consumed, Claimed by another report, or
