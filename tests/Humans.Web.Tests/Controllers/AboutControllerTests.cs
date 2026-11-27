@@ -1,5 +1,4 @@
 using Humans.Auth.Contracts;
-using Humans.Base.Extensions;
 using Humans.Base.Interfaces;
 using Humans.Users.Contracts;
 using Humans.Web.Tests.Architecture.Ratchet;
@@ -155,9 +154,10 @@ public class AboutControllerTests
             var entry = System.Text.Json.JsonSerializer.Deserialize<LogoLibraryEntry>(
                 File.ReadAllText(Path.Combine(dir, "entry.json")),
                 new System.Text.Json.JsonSerializerOptions { PropertyNameCaseInsensitive = true })!;
-            problems.AddRange(CultureCatalog.SupportedCultureCodes
-                .Where(c => string.IsNullOrWhiteSpace(entry.Notes.GetValueOrDefault(c)))
-                .Select(c => $"{slug}: notes missing '{c}'"));
+            if (string.IsNullOrWhiteSpace(entry.Notes.GetValueOrDefault("en")))
+            {
+                problems.Add($"{slug}: English notes missing");
+            }
             if (new[] { entry.Family, entry.Model, entry.Version }.Any(string.IsNullOrWhiteSpace))
             {
                 problems.Add($"{slug}: family, model or version missing");

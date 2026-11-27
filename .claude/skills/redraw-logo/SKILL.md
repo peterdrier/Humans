@@ -28,14 +28,11 @@ know you are and ask for the effort — it is not recoverable afterwards.
     "version": "5.5",
     "effort": "high",
     "brief": "v1",
-    "notes": {
-      "en": "One short paragraph: what you aimed for, what is still weak.",
-      "es": "...", "de": "...", "it": "...", "fr": "...", "ca": "...", "nl": "..."
-    }
+    "notes": { "en": "One short paragraph: what you aimed for, what is still weak." }
   }
   ```
-  `notes` is shown on the public page, so it needs all seven cultures (a test enforces it); plain
-  prose, no markdown. The terms: **family** `Claude` / `GPT` / `Gemini`, **model** `Opus` / `Sol` / `Neon`,
+  `notes` is English only (Peter's call: model commentary, not UI text; other cultures fall back to
+  it); plain prose, no markdown. The terms: **family** `Claude` / `GPT` / `Gemini`, **model** `Opus` / `Sol` / `Neon`,
   **version** the number alone (`5.5`, `6.2`, `4`), **effort** the level. The gallery groups by
   family, then model, then version. Save the
   file as UTF-8 without a BOM. `effort` is one of `low` / `medium` / `high` / `xhigh` / `max` — the page
