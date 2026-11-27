@@ -2,8 +2,4 @@
 # /debt-sweep pools every src/Sections/*/Docs/debt.yml into the same inbox as the central ledger.
 version: 1
 next_id: 21
-inbox:
-  - added: 2026-11-27
-    id: TICKETS-20
-    what: "TicketCheckoutService.RenameTicketAsync saves the ticket before its order line and matches that line by HolderUserId rather than LineIndex; interruption leaves stale order access, and merged holders can select another ticket line. Found while tracing interrupted ticket voids."
-    review: panel
+inbox: []

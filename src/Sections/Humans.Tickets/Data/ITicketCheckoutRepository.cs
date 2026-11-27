@@ -31,7 +31,8 @@ internal interface ITicketCheckoutRepository : IRepository
     /// <summary>Saves the order and any initial ticket in one commit.</summary>
     Task AddOrderAsync(TicketCheckoutOrder order, CancellationToken ct = default, TicketCheckoutTicket? ticket = null);
 
-    Task UpdateOrderAsync(TicketCheckoutOrder order, CancellationToken ct = default);
+    /// <summary>Saves the order and optional renamed ticket in one commit.</summary>
+    Task UpdateOrderAsync(TicketCheckoutOrder order, CancellationToken ct = default, TicketCheckoutTicket? ticket = null);
 
     Task<IReadOnlyList<TicketCheckoutRefund>> GetRefundsAsync(Guid orderId, CancellationToken ct = default);
 

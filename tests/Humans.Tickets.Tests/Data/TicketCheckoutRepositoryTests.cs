@@ -1,4 +1,5 @@
 using AwesomeAssertions;
+using Humans.Tickets.Contracts;
 using Humans.Tickets.Data;
 using Humans.Tickets.Domain.Checkout;
 using Microsoft.EntityFrameworkCore;
@@ -70,7 +71,7 @@ public sealed class TicketCheckoutRepositoryTests
     [Xunit.InlineData(true)]
     public async Task UpdateTicketAsync_VoidGraph_CommitsTogether(bool reject)
     {
-        var interceptor = new RejectVoidSave();
+        var interceptor = new RejectTicketUpdate();
         var options = new DbContextOptionsBuilder<TicketsDbContext>()
             .UseInMemoryDatabase(Guid.NewGuid().ToString()).AddInterceptors(interceptor).Options;
         var repository = new TicketCheckoutRepository(new TestDbContextFactory<TicketsDbContext>(options));
@@ -112,7 +113,7 @@ public sealed class TicketCheckoutRepositoryTests
         interceptor.Reject = reject;
         var save = () => repository.UpdateTicketAsync(adult, Xunit.TestContext.Current.CancellationToken, [child], offer);
         if (reject)
-            await save.Should().ThrowAsync<InvalidOperationException>().WithMessage("Void save failed");
+            await save.Should().ThrowAsync<InvalidOperationException>().WithMessage("Ticket update failed");
         else
             await save();
 
@@ -126,14 +127,56 @@ public sealed class TicketCheckoutRepositoryTests
         storedOffer.Invites.Should().HaveCount(reject ? 1 : 0);
     }
 
-    private sealed class RejectVoidSave : SaveChangesInterceptor
+    [HumansTheory]
+    [Xunit.InlineData(false)]
+    [Xunit.InlineData(true)]
+    public async Task UpdateOrderAsync_RenamedTicket_CommitsTogether(bool reject)
+    {
+        var interceptor = new RejectTicketUpdate();
+        var options = new DbContextOptionsBuilder<TicketsDbContext>()
+            .UseInMemoryDatabase(Guid.NewGuid().ToString()).AddInterceptors(interceptor).Options;
+        var repository = new TicketCheckoutRepository(new TestDbContextFactory<TicketsDbContext>(options));
+        var original = Guid.NewGuid();
+        var renamed = Guid.NewGuid();
+        var order = new TicketCheckoutOrder
+        {
+            Id = Guid.NewGuid(),
+            Lines = [new TicketCheckoutOrderLine { Kind = OrderLineKind.Ticket, HolderName = "Original", HolderUserId = original }],
+        };
+        var ticket = new TicketCheckoutTicket
+        {
+            Id = Guid.NewGuid(),
+            OrderId = order.Id,
+            Barcode = "RENAME",
+            HolderName = "Original",
+            HolderUserId = original,
+        };
+        await repository.AddOrderAsync(order, Xunit.TestContext.Current.CancellationToken, ticket);
+        ticket.HolderName = order.Lines[0].HolderName = "Renamed";
+        ticket.HolderUserId = order.Lines[0].HolderUserId = renamed;
+        interceptor.Reject = reject;
+        var save = () => repository.UpdateOrderAsync(order, Xunit.TestContext.Current.CancellationToken, ticket);
+        if (reject)
+            await save.Should().ThrowAsync<InvalidOperationException>().WithMessage("Ticket update failed");
+        else
+            await save();
+
+        var storedOrder = (await repository.GetOrderAsync(order.Id, Xunit.TestContext.Current.CancellationToken))!;
+        var storedTicket = (await repository.GetTicketAsync(ticket.Id, Xunit.TestContext.Current.CancellationToken))!;
+        storedTicket.HolderName.Should().Be(reject ? "Original" : "Renamed");
+        storedTicket.HolderUserId.Should().Be(reject ? original : renamed);
+        storedOrder.Lines[0].HolderName.Should().Be(storedTicket.HolderName);
+        storedOrder.Lines[0].HolderUserId.Should().Be(storedTicket.HolderUserId);
+    }
+
+    private sealed class RejectTicketUpdate : SaveChangesInterceptor
     {
         public bool Reject { get; set; }
         public override ValueTask<InterceptionResult<int>> SavingChangesAsync(
             DbContextEventData eventData, InterceptionResult<int> result, CancellationToken cancellationToken = default)
         {
             if (Reject && eventData.Context!.ChangeTracker.Entries<TicketCheckoutTicket>().Any(e => e.State == EntityState.Modified))
-                throw new InvalidOperationException("Void save failed");
+                throw new InvalidOperationException("Ticket update failed");
             return base.SavingChangesAsync(eventData, result, cancellationToken);
         }
     }

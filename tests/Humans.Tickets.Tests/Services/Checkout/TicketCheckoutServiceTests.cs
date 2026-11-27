@@ -1867,6 +1867,63 @@ public sealed partial class TicketCheckoutServiceTests
     }
 
     [HumansFact]
+    public async Task RenameTicketAsync_MergedHolder_UpdatesExactLine()
+    {
+        var other = Human("other@example.com", "Other", "Holder");
+        var order = await BuyAndPayAsync(Buy(others: ["other@example.com"]), _buyerId);
+        var ticket = _repo.Tickets.Single(t => t.HolderUserId == other);
+        ticket.HolderUserId = _buyerId;
+        order.Lines[ticket.LineIndex].HolderUserId = _buyerId;
+        var before = order.Lines[0].HolderName;
+        var next = Human("next@example.com", "Next", "Holder");
+        var nextInfo = await _users.GetUserInfoAsync(next, Ct);
+        _users.GetByEmailOrAlternateAsync("next@example.com", Arg.Any<CancellationToken>()).Returns(nextInfo);
+
+        (await _service.RenameTicketAsync(ticket.Id, "Next Holder", "next@example.com", "Move", false, _adminId, Ct))
+            .Succeeded.Should().BeTrue();
+
+        order.Lines[0].HolderName.Should().Be(before);
+        order.Lines[ticket.LineIndex].HolderName.Should().Be("Next Holder");
+        order.Lines[ticket.LineIndex].HolderUserId.Should().Be(ticket.HolderUserId);
+    }
+
+    [HumansFact]
+    public async Task RenameTicketAsync_OrderWriteFails_WritesNoTicket()
+    {
+        var ticket = await PaidAdultAsync();
+        var buyer = await _users.GetUserInfoAsync(_buyerId, Ct);
+        _users.GetByEmailOrAlternateAsync("ana@example.com", Arg.Any<CancellationToken>()).Returns(buyer);
+        _repo.RejectOrderWrites = true;
+        _repo.TicketWrites.Clear();
+        var rename = () => _service.RenameTicketAsync(ticket.Id, "Corrected Name", "ana@example.com", "Typo", false, _adminId, Ct);
+
+        await rename.Should().ThrowAsync<InvalidOperationException>().WithMessage("Order write failed");
+        _repo.TicketWrites.Should().BeEmpty();
+        await _delivery.DidNotReceive().TicketRenamedAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>());
+    }
+
+    [HumansTheory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task RenameTicketAsync_InvalidLine_LeavesHolder(bool missing)
+    {
+        var ticket = await PaidAdultAsync();
+        var order = _repo.Orders.Single(o => o.Id == ticket.OrderId);
+        if (missing)
+            order.Lines.Clear();
+        else
+            order.Lines[ticket.LineIndex].Kind = OrderLineKind.Donation;
+        _repo.TicketWrites.Clear();
+
+        (await _service.RenameTicketAsync(ticket.Id, "Other Holder", "other@example.com", "Move", false, _adminId, Ct))
+            .Succeeded.Should().BeFalse();
+
+        ticket.HolderUserId.Should().Be(_buyerId);
+        _repo.TicketWrites.Should().BeEmpty();
+        await _provisioning.DidNotReceiveWithAnyArgs().FindOrCreateUserByEmailAsync(default!, default!, default);
+    }
+
+    [HumansFact]
     public async Task Void_takes_an_offered_ticket_out_of_the_queue_with_its_dependents()
     {
         _ticketing.ChildTypes = [new TicketChildType { Name = "Child", UnderAge = 13, PriceMinor = 5000 }];
@@ -3465,9 +3522,17 @@ public sealed partial class TicketCheckoutServiceTests
         }
         public List<(Guid OrderId, string? PaymentMethod)> OrderWrites { get; } = [];
 
-        public Task UpdateOrderAsync(TicketCheckoutOrder order, CancellationToken ct = default)
+        public bool RejectOrderWrites { get; set; }
+
+        public Task UpdateOrderAsync(TicketCheckoutOrder order, CancellationToken ct = default, TicketCheckoutTicket? ticket = null)
         {
+            if (RejectOrderWrites)
+                throw new InvalidOperationException("Order write failed");
+            if (ticket is not null && RejectTicketWrites.Contains(ticket.Id))
+                throw new InvalidOperationException("Ticket write failed");
             OrderWrites.Add((order.Id, order.PaymentMethod));
+            if (ticket is not null)
+                TicketWrites.Add((ticket.Id, ticket.State));
             return Task.CompletedTask;
         }
         public Task<IReadOnlyList<TicketCheckoutRefund>> GetRefundsAsync(Guid orderId, CancellationToken ct = default) =>

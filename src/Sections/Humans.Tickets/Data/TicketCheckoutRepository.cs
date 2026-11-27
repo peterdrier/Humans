@@ -114,13 +114,15 @@ internal sealed class TicketCheckoutRepository(IDbContextFactory<TicketsDbContex
         await ctx.SaveChangesAsync(ct);
     }
 
-    public async Task UpdateOrderAsync(TicketCheckoutOrder order, CancellationToken ct = default)
+    public async Task UpdateOrderAsync(TicketCheckoutOrder order, CancellationToken ct = default, TicketCheckoutTicket? ticket = null)
     {
         await using var ctx = await factory.CreateDbContextAsync(ct);
         var tracked = await ctx.TicketCheckoutOrders.FirstAsync(o => o.Id == order.Id, ct);
         // Owned JSON lines carry shadow ordinal keys, so a detached graph cannot be attached with Update().
         ctx.Entry(tracked).CurrentValues.SetValues(order);
         tracked.Lines = order.Lines.Select(CopyLine).ToList();
+        if (ticket is not null)
+            ctx.TicketCheckoutTickets.Update(ticket);
         await ctx.SaveChangesAsync(ct);
     }
 

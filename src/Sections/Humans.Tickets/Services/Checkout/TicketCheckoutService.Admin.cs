@@ -26,6 +26,11 @@ internal sealed partial class TicketCheckoutService
         if (ticket.State != TicketCheckoutTicketState.Valid || ticket.Kind != TicketHolderKind.Adult)
             return new("Only a valid adult ticket can be renamed.");
 
+        var order = await repository.GetOrderAsync(ticket.OrderId, ct);
+        var line = order?.Lines.ElementAtOrDefault(ticket.LineIndex);
+        if (line is null || line.Kind != OrderLineKind.Ticket || line.HolderKind is not (null or TicketHolderKind.Adult))
+            return new("The ticket's adult order line is missing; nothing was renamed.");
+
         var fromUserId = ticket.HolderUserId;
         var existing = await users.GetByEmailOrAlternateAsync(holderEmail, ct);
         var samePerson = existing is not null && existing.Id == fromUserId;
@@ -57,19 +62,11 @@ internal sealed partial class TicketCheckoutService
         ticket.HolderUserId = holderUserId;
         ticket.HolderName = holderName;
         ticket.HolderEmail = holderEmail;
-        await repository.UpdateTicketAsync(ticket, ct);
+        line.HolderUserId = holderUserId;
+        line.HolderName = holderName;
+        line.HolderEmail = holderEmail;
+        await repository.UpdateOrderAsync(order!, ct, ticket);
         holdings.InvalidateHoldings(holderUserId);
-        // The order line follows the ticket, so the new holder can open the order and the old one no longer can.
-        var order = await repository.GetOrderAsync(ticket.OrderId, ct);
-        var line = order?.Lines.FirstOrDefault(l =>
-            l.Kind == OrderLineKind.Ticket && l.HolderKind is null or TicketHolderKind.Adult && l.HolderUserId == fromUserId);
-        if (order is not null && line is not null)
-        {
-            line.HolderUserId = holderUserId;
-            line.HolderName = holderName;
-            line.HolderEmail = holderEmail;
-            await repository.UpdateOrderAsync(order, ct);
-        }
 
         var why = reason.Trim();
         // Only a move of a reduced price ticket steps past a rule; anything else is a plain rename.

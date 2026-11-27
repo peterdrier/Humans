@@ -273,6 +273,9 @@ page, reached from its order, with the three exceptions: rename (full price adul
 with no refund, said plainly), and a free companion ticket. The resale queue marks a reserved offer Stuck once its
 buyer's order closed or expired, and the team can take an open offer out for its holder.
 
+Rename updates the ticket and its original order line in one commit, selecting by `LineIndex` even after an account
+merge. Missing or invalid adult lines refuse the rename before any account is provisioned.
+
 A void with a refund saves its original amount, reason and refund identity before the external call. Retrying an interrupted
 void resumes those details without issuing a second refund; the form shows the saved values. Rename and resale wait
 while the intent is unfinished. Ticket, valid dependents and offer withdrawal save together. A declined refund clears
