@@ -14,8 +14,8 @@ resharper_lambda_expression_can_be_made_static_highlighting = none
 [src/**/Controllers/**.cs]
 dotnet_diagnostic.VSTHRD200.severity = none
 
-# Humans.Analyzers reaches test projects for its naming rules only (category Humans.Naming);
-# the architecture rules are production-only.
+# Humans.Analyzers reaches test projects for its naming and structure rules only (categories
+# Humans.Naming, Humans.Structure); the architecture rules are production-only.
 [tests/**.cs]
 dotnet_analyzer_diagnostic.category-Humans.Architecture.severity = none
 

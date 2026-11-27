@@ -38,23 +38,23 @@ That is what is built.
 ## 4. Invariants
 
 - The ceiling holds: the open, claimed and consumed amounts of a program never sum past its
-  ceiling, checked before every write that adds money (`PreapprovalService.Grants.cs:301`) and
-  before a ceiling edit (`PreapprovalService.Programs.cs`).
+  ceiling, checked before every write that adds money (`PreapprovalService.cs:301`) and
+  before a ceiling edit (`PreapprovalService.cs`).
 - Status moves only along Applied → Open or Declined; Open → Claimed or Revoked; Claimed → Open,
   Consumed or Revoked. Each method checks the state it starts from
-  (`PreapprovalService.Grants.cs:160`, `PreapprovalService.Grants.cs:193`,
-  `PreapprovalService.Grants.cs:220`, `PreapprovalService.cs`, `PreapprovalService.cs`).
+  (`PreapprovalService.cs:160`, `PreapprovalService.cs:193`,
+  `PreapprovalService.cs:220`, `PreapprovalService.cs`, `PreapprovalService.cs`).
 - Money is committed only on an open program before its deadline
-  (`PreapprovalService.Grants.cs:277`); a member applies only while the program is open, accepting
+  (`PreapprovalService.cs:277`); a member applies only while the program is open, accepting
   and before the deadline (`Dtos.cs:42`).
 - A fixed-per-person program refuses an explicit amount on issue and approve
-  (`PreapprovalService.Grants.cs:286`) and ignores one on apply (`PreapprovalService.Grants.cs:108`).
-- A grant's kind cannot change once the program has a grant (`PreapprovalService.Programs.cs`).
+  (`PreapprovalService.cs:286`) and ignores one on apply (`PreapprovalService.cs:108`).
+- A grant's kind cannot change once the program has a grant (`PreapprovalService.cs`).
 - One pending application per person per program, across merged ids: the second submit edits the
-  first under a process-wide lock (`PreapprovalService.Grants.cs:95`,
-  `PreapprovalService.Grants.cs:124`).
+  first under a process-wide lock (`PreapprovalService.cs:95`,
+  `PreapprovalService.cs:124`).
 - A manager of one program never acts on another's grants: a grant route whose grant is not in the
-  route's program is refused by the service and answered 404 (`PreapprovalService.Grants.cs:159`).
+  route's program is refused by the service and answered 404 (`PreapprovalService.cs:159`).
 - Only Admin and FinanceAdmin create or edit a program (`ProgramOperationRequirement.cs:37`); Board
   sees every program and changes nothing (`ProgramOperationRequirement.cs:33`).
 - The reminder pass writes only its sent-markers and never a grant

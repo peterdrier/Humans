@@ -11,7 +11,7 @@
   src/Sections/Humans.Teams/Services/CachingTeamService.cs
   src/Sections/Humans.Camps/Services/CachingCampService.cs
   src/Sections/Humans.Shifts/Services/ShiftManagementService.cs
-  src/Sections/Humans.Shifts/Data/ShiftRepository.Management.cs
+  src/Sections/Humans.Shifts/Data/ShiftRepository.cs
   src/Sections/Humans.Shifts/Contracts/IShiftService.cs
   src/Sections/Humans.Users/Services/PersonSearchMatcher.cs
   src/Sections/Humans.Camps/Controllers/CampController.cs
@@ -33,7 +33,7 @@
   in that section's Section.cs (the field mask, the unbounded cap and the Events flag live there). The per-bucket visibility filters and GUID
   branches live in the four Caching*Service classes and ShiftManagementService (whose text branch
   delegates the active-event, IsVisibleToVolunteers and ILike predicates to
-  ShiftRepository.Management.cs). The Humans score tiers live in PersonSearchMatcher. The
+  ShiftRepository.cs). The Humans score tiers live in PersonSearchMatcher. The
   destination-page guarantee lives in CampController, TeamController and — because a rota hit links
   to /Shifts?departmentId=, not to the rota — ShiftsController plus ShiftBrowsePageBuilder. Events'
   Section.cs is listed because "four buckets never touch the DB" rests on IEventService being

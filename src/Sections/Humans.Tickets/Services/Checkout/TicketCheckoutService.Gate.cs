@@ -4,6 +4,7 @@ using Humans.Tickets.Domain.Checkout;
 namespace Humans.Tickets.Services.Checkout;
 
 /// <summary>What the gate reads: the scanned ticket, and the event's tickets for its name search and report.</summary>
+[Humans.Base.Attributes.Grandfathered("HUM0046", "Split along its jobs in its own PR.", "2026-11-27", "peterdrier/Humans#2675")]
 internal sealed partial class TicketCheckoutService : ITicketGateLookup
 {
     public async Task<IssuedTicketInfo?> FindIssuedTicketAsync(string? barcode, CancellationToken ct = default)
