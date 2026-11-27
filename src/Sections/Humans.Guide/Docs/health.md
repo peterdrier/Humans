@@ -69,8 +69,8 @@ derivation matches because each step of the pipeline has exactly one home.
 3. Only a line Markdig's block parse calls a level-2 heading can open or close a role segment, so
    `##` sample text inside fenced or indented code, HTML comments or raw HTML neither opens a
    block nor ends the one around it (`src/Sections/Humans.Guide/Services/GuideSegmenter.cs:34`, `:46`;
-   `GuideSegmenterTests.Segment_FencedH2InsideRoleBlock_DoesNotEndTheBlock`,
-   `GuideSegmenterTests.Segment_HeadingTextInsideHtmlBlock_DoesNotExposeRestrictedTail`).
+   `GuideSegmenterTests.Segment_FencedH2InRoleBlock_KeepsBlockOpen`,
+   `GuideSegmenterTests.Segment_HeadingInHtmlBlock_KeepsTailRestricted`).
 4. Anonymous sees Volunteer blocks and nothing else
    (`src/Sections/Humans.Guide/Services/GuideRoleResolver.cs:18`; `src/Sections/Humans.Guide/Services/GuideFilter.cs:46`).
 5. A team coordinator sees every Coordinator block; a camp lead sees only the Coordinator blocks
@@ -80,7 +80,7 @@ derivation matches because each step of the pipeline has exactly one home.
    (`src/Sections/Humans.Guide/Services/GuideFilter.cs:15`, `:39`).
 7. Refresh is admin-only and reading is anonymous
    (`src/Sections/Humans.Guide/Controllers/GuideController.cs:20`, `:25`, `:30`;
-   `GuideArchitectureTests.RefreshIsAdminOnly_AndReadingIsAnonymous`).
+   `GuideArchitectureTests.Refresh_IsAdminOnly`).
 8. A cached stem is served without touching GitHub, and only a successful fetch overwrites a
    cache entry, so a failed refresh keeps the copy already cached. A stem that is not cached and
    whose fetch fails is a 503, however many other stems are cached
@@ -89,7 +89,7 @@ derivation matches because each step of the pipeline has exactly one home.
 9. A page that cannot be rendered fails the same way as one that cannot be fetched: the 503 view,
    never a raw 500, and the cached segments stay
    (`src/Sections/Humans.Guide/Services/GuideContentService.cs:41`;
-   `GuideContentServiceTests.GetPageAsync_RenderTimesOut_SurfacesAsUnavailableNotAnUnhandledThrow`).
+   `GuideContentServiceTests.GetPageAsync_RenderTimesOut_IsUnavailable`).
 10. A cancelled request stops a fetch without publishing a partial refresh: the per-file catch
     lets cancellation through before any cache write
     (`src/Sections/Humans.Guide/Services/GuideContentService.cs:96`;
@@ -97,19 +97,19 @@ derivation matches because each step of the pipeline has exactly one home.
 11. `guide:<stem>` cache entries are written by `GuideContentService` and nothing else
     (`src/Sections/Humans.Guide/Services/GuideContentService.cs:18`).
 12. The stem set and the markdown folder match exactly in both directions
-    (`GuideArchitectureTests.EveryGuideMarkdownFileIsRegistered_AndEveryRegisteredStemExists`).
+    (`GuideArchitectureTests.GuideFiles_MatchRegisteredStems`).
 13. Every `## As a …` heading in the shipped corpus opens a scoped segment, and every
     parenthetical in it resolves to a privilege token: the ways a block fails open or fails
-    silent (`GuideSegmenterTests.Segment_EveryRoleHeadingInShippedContent_OpensAScopedSegment`,
-    `GuideArchitectureTests.EveryRoleHeadingParentheticalResolvesToAPrivilege`).
+    silent (`GuideSegmenterTests.Segment_ShippedRoleHeadings_OpenScopedSegments`,
+    `GuideArchitectureTests.RoleHeadings_ResolveToPrivilege`).
 14. Segmenting is lossless: a file's segments rejoin to the file exactly, so a reader who can see
     everything gets the file as written
     (`GuideSegmenterTests.Segment_EveryShippedFile_RejoinsToTheOriginal`,
-    `GuideShippedContentFilterTests.Admin_ReceivesEveryFileWholeAndUnaltered`).
+    `GuideShippedContentFilterTests.Apply_Admin_ReceivesEveryFileWhole`).
 15. Every sidebar entry has a localized name: a page name comes from a shared section label when
     one exists and from `Guide_Page_<stem>` otherwise
     (`src/Sections/Humans.Guide/Controllers/GuideController.cs:118`;
-    `GuideControllerTests.Document_LocalizesNavigationWhilePreservingContentAndRoutes`).
+    `GuideControllerTests.Document_OtherCulture_LocalizesNavigation`).
 
 ## 5. Seams
 

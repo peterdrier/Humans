@@ -14,7 +14,7 @@ public class FormatGalleryModelBuilderTests
         vm.CultureSensitive.Concat(vm.CultureStable).ToList();
 
     [HumansFact]
-    public void Build_collapses_overloads_to_one_card_per_method_name()
+    public void Build_Overloads_ShareOneCard()
     {
         var all = AllFormatters(FormatGalleryModelBuilder.Build());
 
@@ -23,7 +23,7 @@ public class FormatGalleryModelBuilderTests
     }
 
     [HumansFact]
-    public void Build_reads_pattern_text_and_renders_a_sample_for_each_pattern_field()
+    public void Build_PatternField_RendersSample()
     {
         var vm = FormatGalleryModelBuilder.Build();
 
@@ -32,7 +32,7 @@ public class FormatGalleryModelBuilderTests
     }
 
     [HumansFact]
-    public void Build_flags_formatters_with_identical_output_in_both_cultures()
+    public void Build_SameOutputInBothCultures_IsFlagged()
     {
         var all = AllFormatters(FormatGalleryModelBuilder.Build());
 
@@ -44,7 +44,7 @@ public class FormatGalleryModelBuilderTests
 
     [HumansTheory]
     [Xunit.MemberData(nameof(SupportedCultures.All), MemberType = typeof(SupportedCultures))]
-    public void Build_classifies_a_localized_formatter_as_culture_sensitive(string culture)
+    public void Build_LocalizedFormatter_IsCultureSensitive(string culture)
     {
         using var scope = new Base.Extensions.CultureScope(culture);
         System.Globalization.CultureInfo.CurrentCulture = System.Globalization.CultureInfo.GetCultureInfo("en");

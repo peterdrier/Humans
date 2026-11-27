@@ -256,7 +256,7 @@ public class NotificationEmitterTests : IDisposable
     [InlineData(201, 20)]
     [InlineData(40, 2001)]
     [InlineData(201, 2001)]
-    public async Task SendAsync_CopyFitsStorageWithoutSplittingUnicodeOrLosingTheFullTitle(
+    public async Task SendAsync_LongCopy_FitsStorage(
         int titleLength, int? bodyLength)
     {
         var title = string.Concat(Enumerable.Repeat("🚀", titleLength));

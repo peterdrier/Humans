@@ -45,7 +45,7 @@ public class UsersDebugControllerTests
     }
 
     [HumansFact]
-    public async Task Index_large_page_does_not_wrap_to_the_first_page()
+    public async Task Index_LargePage_DoesNotWrap()
     {
         var users = new[] { MakeUserInfo(Guid.NewGuid(), "Human", true, false) };
         var service = Substitute.For<IUserService>();
@@ -61,7 +61,7 @@ public class UsersDebugControllerTests
     }
 
     [HumansFact]
-    public async Task Index_returns_paged_rows_from_snapshot()
+    public async Task Index_ReturnsPagedRows()
     {
         var users = Enumerable.Range(0, 60)
             .Select(i => MakeUserInfo(Guid.NewGuid(), $"User {i:D3}", hasProfile: i % 2 == 0, hasTicket: i % 3 == 0))
@@ -84,7 +84,7 @@ public class UsersDebugControllerTests
     }
 
     [HumansFact]
-    public async Task Index_sort_displayName_descending_reverses_order()
+    public async Task Index_SortDisplayNameDescending_ReversesOrder()
     {
         var users = new[]
         {
@@ -105,7 +105,7 @@ public class UsersDebugControllerTests
     }
 
     [HumansFact]
-    public async Task Index_hasTicket_comes_from_Tickets_participations_any_year()
+    public async Task Index_HasTicket_ComesFromTicketsParticipations()
     {
         var holder = MakeUserInfo(Guid.NewGuid(), "Holder", hasProfile: true, hasTicket: true);
         var other = MakeUserInfo(Guid.NewGuid(), "Other", hasProfile: true, hasTicket: false);
@@ -122,7 +122,7 @@ public class UsersDebugControllerTests
     }
 
     [HumansFact]
-    public async Task Index_clamps_pageSize_outside_10_to_200_range()
+    public async Task Index_PageSizeOutOfRange_IsClamped()
     {
         var users = Enumerable.Range(0, 5)
             .Select(i => MakeUserInfo(Guid.NewGuid(), $"User {i}", true, false))

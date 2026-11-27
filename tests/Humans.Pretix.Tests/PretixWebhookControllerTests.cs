@@ -33,7 +33,7 @@ public class PretixWebhookControllerTests
     }
 
     [HumansFact]
-    public async Task WrongSecret_IsNotFoundAndNudgesNothing()
+    public async Task Receive_WrongSecret_IsNotFound()
     {
         var result = await Controller().Receive("guess", Paid(), TestContext.Current.CancellationToken);
 
@@ -51,7 +51,7 @@ public class PretixWebhookControllerTests
     }
 
     [HumansFact]
-    public async Task AnotherOrganizer_IsAcknowledgedAndIgnored()
+    public async Task Receive_AnotherOrganizer_IsIgnored()
     {
         var result = await Controller().Receive("s3cret", Paid("someone-else"), TestContext.Current.CancellationToken);
 
@@ -60,7 +60,7 @@ public class PretixWebhookControllerTests
     }
 
     [HumansFact]
-    public async Task OrderlessNotification_IsAcknowledgedAndIgnored()
+    public async Task Receive_OrderlessNotification_IsIgnored()
     {
         var result = await Controller().Receive(
             "s3cret", new("nobodies", "nowhere2027", null), TestContext.Current.CancellationToken);

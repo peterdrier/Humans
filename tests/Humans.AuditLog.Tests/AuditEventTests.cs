@@ -10,7 +10,7 @@ public class AuditEventTests
     private const string ExpectedDate = "2026-04-30";
 
     [HumansFact]
-    public void ActorIsViewer_RendersYouAndSelfVerb()
+    public void Render_ActorIsViewer_SaysYou()
     {
         var viewer = Guid.NewGuid();
         var ev = MakeEvent(
@@ -27,7 +27,7 @@ public class AuditEventTests
     }
 
     [HumansFact]
-    public void SubjectIsViewer_RendersOtherActorAndYouSubject()
+    public void Render_SubjectIsViewer_SaysYou()
     {
         var viewer = Guid.NewGuid();
         var actor = Guid.NewGuid();
@@ -164,7 +164,7 @@ public class AuditEventTests
     }
 
     [HumansFact]
-    public void TrimDanglingPreposition_DropsForAndTo_LeavesOtherVerbs()
+    public void TrimDanglingPreposition_ForOrTo_IsDropped()
     {
         AuditEvent.TrimDanglingPreposition("approved signup for").Should().Be("approved signup");
         AuditEvent.TrimDanglingPreposition("assigned role to").Should().Be("assigned role");
