@@ -4658,8 +4658,8 @@ public class SurveyServiceTests
     [HumansFact]
     public async Task CreateAsync_CommentOnUnknownOption_IsRejected()
     {
-        var question = Q("Agree?", SurveyQuestionType.SingleChoice, 1, 1, new OptionInput(null, 0, "yes", L("Yes")))
-            with { Comment = new SurveyCommentSettings(LocalizedText.Empty, ["no"]) };
+        var choice = Q("Agree?", SurveyQuestionType.SingleChoice, 1, 1, new OptionInput(null, 0, "yes", L("Yes")));
+        var question = choice with { Comment = new SurveyCommentSettings(LocalizedText.Empty, ["no"]) };
 
         var result = await CreateService().CreateAsync(Input(question), Guid.NewGuid(), TestContext.Current.CancellationToken);
 
