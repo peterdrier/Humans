@@ -47,9 +47,10 @@ complete the goal and end the cumulative report with the exact line
 `Stop: ledger drained`, plus the time used. The wrapper then stops, publishing
 any substantive fixes already committed. That is a
 successful run, not a failure, even hours before the deadline and even when it
-produces no PR. Never go looking for defects outside the ledger and the rungs' Finds
-to fill the window: that is how a sweep starts guarding states nothing produces
-and pinning plumbing with tests.
+produces no PR. Looking for unlisted problems is rung 12, one section a night, with
+its bar. Spare time goes to rung 13 (delete or merge code), which may fill the whole window;
+never look outside the rungs to fill it: that is how a sweep starts guarding states
+nothing produces and pinning plumbing with tests.
 
 **The ledger is the target; time and account quota bound the run.** The debt
 ledgers — `inbox:` in `docs/architecture/debt-ledger.yml` plus `inbox:` in every
@@ -63,9 +64,34 @@ the wrapper counts again at the end and reports both in the PR body.
 Fixing the code a ledger row describes and deleting that row is a
 substantive fix — the most valuable kind. Deleting a row whose defect the code
 already fixed shrinks the ledger but is hygiene, not a fix. Documentation,
-test-only work and splitting one fix across commits are not substantive fixes.
+test work that grows the suite, and splitting one fix across commits are not
+substantive fixes. Test work that shrinks the suite (rungs 9 and 10) is.
 There is no fix-count quota; never use a count to decide when to stop. Do not
 manufacture work, weaken validation, or make cosmetic edits to inflate the report.
+
+**What is worth a commit.** A change earns its place in one of four ways:
+1. it closes a ledger row or an open issue;
+2. it fixes something a member or admin actually hits today: you can name who, what they do, and what goes
+   wrong (`Scenario:` in the commit);
+3. it deletes or merges code with no change in behaviour (rung 13), or puts a rule back in the section that owns it;
+4. it shrinks the test suite without losing a rule (rungs 9 and 10).
+
+Everything else is made up, however correct. Out of 610 changes in seven sweep PRs (2026-11-10 to 11-25),
+about 25 closed a ledger row and about 30 deleted code; most of the rest were these shapes, and none of them
+counts as a fix:
+- **Guarding against input nobody sends:** rejecting malformed admin settings, vendor responses or posted
+  values a page never produces ("Reject grouped numbers in ticket prices", "Keep financial clients
+  resolvable with invalid URLs", "Refuse role notes over 2,000 characters"). About 100.
+- **Re-checking people who are gone:** an erased or merged account at yet another call site
+  ("Skip unavailable recipients in SEPA notices", "Reject tombstones on anonymous preference paths"). About 25.
+- **Cancellation and shutdown plumbing:** keeping reads alive or stopping them on cancel ("Preserve MailerLite
+  audience failures through shutdown"). About 40. A write that must finish is the one exception.
+- **Moving code around with nothing to show for it:** splitting, isolating or re-ordering code where the
+  result is no shorter and no rule moves to its owner ("Separate event browse and schedule page composition").
+  About 150.
+- **Tests that prove 2 + 2 = 4:** a test that only checks what the compiler, the framework or another test
+  already proves: a value passed straight through, a token reaching a call, one row per enum value or culture,
+  a mock called with the arguments the test just gave it.
 
 Do not sleep to consume the window. A rule-prescribed contract change is
 pre-approved (policy D1) and `internal` types are never public surface (D2) —
@@ -329,8 +355,9 @@ down it.
    question (D5): code gone; duplicate of a theme/row; the row is itself a
    CI/check/gate proposal; perf concern with no budget at this scale;
    Contracts-folder-vs-leaf preference. Merge symptom rows under `root:`.
-4. Only when no ledger row is actionable, work the rungs' Finds commands for
-   new debt. One available item is not a reason to stop for the night.
+4. Only when no ledger row is actionable, read tonight's rung-12 section, then work the
+   rungs' Finds commands top-down, with rung 13 (delete or merge) last. One available item
+   is not a reason to stop for the night.
 5. When no ledger row is actionable and the Finds return nothing workable,
    stop: complete the goal with the line `Stop: ledger drained` in the report.
 6. A rung's **Done-check** is the local validation gate. Run it once per
@@ -349,6 +376,7 @@ validation, and commit. Explain what changed in production code and why;
 do not present coverage additions as debt fixes. List hygiene separately,
 excluded from the substantive fix count. Include total work time, the actual substantive fix count
 (reporting only), and skipped candidates with reasons. There is no target
-count to reach. Do not include an unfilled PR template or JSON wrapper.
+count to reach. Name the **Discovery section** (rung 12) and the **Removal section** (the last section rung 13
+reached) on lines of their own, so the next night continues from there. Do not include an unfilled PR template or JSON wrapper.
 
 Never replace the cumulative report with only the last turn's progress.

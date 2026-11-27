@@ -53,7 +53,13 @@ commit shas, their PR-body lines, and this brief:
 > - tests that only pin wiring, such as cancelling a read to prove the token reaches it
 >   ([`cancellation-token-propagation`](../../../memory/architecture/cancellation-token-propagation.md));
 > - a commit that closes no ledger row and answers no rung's Finds, unless it fixes a bug
->   a member or admin could actually hit (say how).
+>   a member or admin could actually hit (say how);
+> - a rung-12 discovery fix whose `Scenario:` line is missing or isn't something a member
+>   or admin actually runs into;
+> - a rung-13 removal that adds more lines than it removes, changes behaviour, or removes
+>   something a person uses, a GDPR path, an audit entry or an authorization check;
+> - a test that proves 2 + 2 = 4 (`.codex/prompts/daily-debt.md`, **What is worth a commit**,
+>   lists the made-up shapes from past nights).
 > A commit that closes a ledger row, plainly and correctly, is GOOD; style is not a
 > defect. Return a table
 > `sha | claim | verdict | reason (≤20 words) | repair (if REPAIR)` and nothing else.

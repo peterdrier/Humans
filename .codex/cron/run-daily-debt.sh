@@ -868,7 +868,9 @@ has_substantive_changes() {
       *) return 0 ;;
     esac
   done < <(git diff --name-only -z "$1" "$2")
-  return 1
+  # Test work that shrinks the suite (renames off NameBaseline.txt, split or
+  # dropped theories) is a fix; test work that grows it is not.
+  git diff --numstat "$1" "$2" -- tests | awk '$1 != "-" {a += $1; d += $2} END {exit !(d > a)}'
 }
 
 # Retries a push up to $4 additional times (2s/4s/8s/16s backoff), but only

@@ -3,6 +3,8 @@
 A standing, top-down list of **work types**, not a nightly checklist. Open
 ledger rows come first: the rungs order and explain the work on them, and
 their Finds commands look for new debt only once no ledger row is actionable.
+Rung 12 (one section of discovery) runs right after the ledger rows, before rungs 9 to 11.
+Rung 13 (delete or merge code) comes last and may use whatever time is left.
 The ledger must end every run smaller than it started (`daily-debt.md`). Make a
 brief rung-1 hygiene pass, then work substantive rungs top-down. After every
 fix, continue with another candidate from the ledger or a rung's Finds. When
@@ -250,6 +252,121 @@ finds no new genuine compromise (a debug-screen "pending caching" comment
 etc. is not one — leave it).
 
 **Done-check:** `dotnet test tests/Humans.<Section>.Tests -v quiet -clp:ErrorsOnly` for whichever section changed.
+
+---
+
+## Rung 9 — Test name backlog
+
+**What:** test names still listed in a project's `NameBaseline.txt` (the HUM0043 name rule: `Method_Condition_Result`,
+at most 10 words, no "And"; [`test-names-one-rule`](../../memory/code/test-names-one-rule.md)). Rename them
+within one test project, trim the list, and delete a list that empties. A name that needs a split into two tests
+is split. Grep `docs/`, `memory/`, `src/**/Docs/` and `.github/workflows/` for the old names.
+
+**Never collide with the rename work Claude does by hand:** skip any test project whose `NameBaseline.txt`
+is changed on an open PR.
+```
+wc -l tests/*/NameBaseline.txt | sort -n
+gh pr list --repo peterdrier/Humans --state open --json number,files \
+  --jq '.[] | select(any(.files[]; .path | endswith("NameBaseline.txt"))) | .number'
+```
+
+**Drained when:** no `NameBaseline.txt` remains outside projects claimed by an open PR.
+
+**Done-check:** the touched test project's tests; the build shows no new HUM0043 warnings.
+
+---
+
+## Rung 10 — The sweep's own leftovers
+
+**What:** two shapes earlier nights added that the rules now rule out:
+- **Dispatcher theories:** a theory whose parameter picks the operation and whose body switches on it. Split it
+  into tests that each name their rule, and drop rows that prove nothing new.
+- **Read-side cancellation plumbing:** a test that cancels a read to prove the token reaches it
+  ([`cancellation-token-propagation`](../../memory/architecture/cancellation-token-propagation.md)), together
+  with the read-side `catch (OperationCanceledException` / `ThrowIfCancellationRequested` code it pins when a
+  plain token pass-through does the job. Keep everything that protects a write which must finish
+  (`CancellationToken.None`, jobs, a vendor call already made).
+
+One section per batch. This is production simplification plus its tests, so it counts as a substantive fix.
+
+**Finds:**
+```
+grep -rlE 'CancellationTokenSource' tests/ | xargs grep -lE 'Theory' | head -50
+grep -rnE 'catch \(OperationCanceledException' src/Sections --include=*.cs
+```
+
+**Drained when:** neither shape is left.
+
+**Done-check:** the section's tests.
+
+---
+
+## Rung 11 — Open issues
+
+**What:** open issues on `peterdrier/Humans` labelled `bug` or `tech-debt`, skipping any labelled `question`
+(waiting on Peter), `db:yes` or `db:Destructive`, and anything an open PR already names. Also the
+`[Grandfathered]` items whose ledger theme has no `parked:` key. One issue (or one slice of a large one,
+say which) per batch; put `Closes #N` in the commit only when the issue is fully done.
+```
+gh issue list --repo peterdrier/Humans --state open --limit 100 --json number,title,labels \
+  --jq '.[] | select(any(.labels[]; .name == "bug" or .name == "tech-debt"))
+             | select(all(.labels[]; .name != "question" and .name != "db:yes" and .name != "db:Destructive"))'
+grep -rn '\[Grandfathered(' src --include=*.cs
+```
+
+**Drained when:** the lists above are empty.
+
+**Done-check:** the touched sections' tests.
+
+---
+
+## Rung 12 — Find problems nobody has listed
+
+**What:** read one section's code for real defects nobody has found yet: wrong results, broken pages, an
+authorization gap, a GDPR export or deletion path that misses data, an automated action with no audit entry.
+Take the section after the one the previous night's PR named under **Discovery section** (alphabetical in
+`src/Sections`, wrapping around; start at the first section if none is named). Name tonight's section in the report.
+
+**The bar:** every fix states, in its commit message, a `Scenario:` line saying what a member or admin
+does today and what goes wrong. A real problem you can't fix tonight becomes a ledger row with the same line.
+What is not a find ([`no-invented-validation`](../../memory/code/no-invented-validation.md)):
+a guard for a state nothing produces, tolerance for a malformed admin setting, cancellation plumbing,
+or a test that only pins how things are wired.
+
+**When:** right after the open ledger rows, before rungs 9 to 11, so the long backlogs never crowd it out.
+
+**Drained when:** tonight's section has been read.
+
+**Done-check:** the section's tests.
+
+---
+
+## Rung 13 — Delete or merge code
+
+**What:** less code is better. Find something to remove or fold together, with no change in behaviour:
+- code with no caller, a setting nothing reads, a page or endpoint no link reaches (say how you checked);
+- two helpers, DTOs, view models or near-identical methods doing the same job: keep one in its owner;
+- a guard, retry or fallback for a state nothing produces ([`no-invented-validation`](../../memory/code/no-invented-validation.md));
+- tests that prove 2 + 2 = 4 (`daily-debt.md`, **What is worth a commit**), and theory rows that test nothing new;
+- an analyzer suppression, `[Obsolete]` member or baseline entry whose reason no longer holds.
+
+Never remove a feature a person uses, a GDPR export or deletion path, an audit entry, an authorization check,
+or anything protecting a write that must finish. Never delete a public Contracts member another section calls.
+A deletion that needs a judgment call goes under **Needs Peter** instead.
+
+**The bar:** every commit removes more lines than it adds (production and tests together), and its message says
+what was removed and why nothing depends on it. Work section by section, alphabetically after the previous PR's
+**Removal section**, and name the last section you reached in the report.
+
+**Finds:** start from the section's own files; tools that help:
+```
+dotnet build Humans.slnx -v quiet -warnaserror- 2>&1 | grep -E 'IDE0051|IDE0052|CS0169|CS0414'
+grep -rn 'Obsolete\|SuppressMessage\|#pragma warning disable' src/Sections/<Section> --include=*.cs
+```
+
+**Drained when:** a full pass over every section finds nothing that meets the bar.
+
+**Done-check:** the section's tests.
 
 ---
 

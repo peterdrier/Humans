@@ -2,7 +2,7 @@
 
 Unattended nightly native Codex goal against a **dedicated clone** of this
 repo — never your working checkout. Gates on build + test before publishing,
-opens one PR per run containing all substantive fixes. Ledger-only and test-only runs
+opens one PR per run containing all substantive fixes. Ledger-only runs, and test-only runs that grow the suite,
 fail without publishing. Scheduler: systemd user timer (the only one shipped here).
 
 A separate Claude cloud routine currently runs at 08:00 UTC using
@@ -22,7 +22,7 @@ The worker fixes production code and executable tooling. Standalone coverage
 work and test cleanup are not sweep objectives. Add or update focused tests
 when a code fix warrants them; prefer existing coverage when sufficient.
 Scoped tests validate each change; the wrapper runs the full non-integration
-suite once at the end. Test-only changes do not qualify a run for publication.
+suite once at the end. Test-only changes qualify only when they shrink the suite (more test lines deleted than added).
 
 ## Batching
 
