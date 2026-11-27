@@ -315,6 +315,131 @@ public sealed class BoxOfficePlatformTests
         (await Platform().GetStatusAsync("cs_test_1", TestContext.Current.CancellationToken)).State.Should().Be(expected);
     }
 
+    private static string Page(string path, bool more, params string[] rows) =>
+        $$"""{"object":"list","url":"{{path}}","has_more":{{(more ? "true" : "false")}},"data":[{{string.Join(",", rows)}}]}""";
+
+    private static string Dispute(string id, long amount) =>
+        $$"""{"id":"{{id}}","object":"dispute","currency":"eur","amount":{{amount}},"status":"lost","charge":"ch_1"}""";
+
+    public enum PageRead { Refunds, Disputes, Sessions }
+
+    private static string[] FirstPages(PageRead source) => source switch
+    {
+        PageRead.Refunds => [Session("complete", "paid", PaidCharge),
+            Page("/v1/refunds", true, Refund("re_1", "succeeded", 1000))],
+        PageRead.Disputes => [Session("complete", "paid", PaidCharge.Replace("\"paid\":true", "\"paid\":true,\"disputed\":true", StringComparison.Ordinal)),
+            RefundList(), Page("/v1/disputes", true, Dispute("dp_1", 1000))],
+        PageRead.Sessions => [Page("/v1/checkout/sessions", true, """{"id":"cs_1","object":"checkout.session"}""")],
+        _ => throw new ArgumentOutOfRangeException(nameof(source)),
+    };
+
+    private Task ReadPagesAsync(PageRead source, CancellationToken ct)
+    {
+        var body = Event("charge.refunded", """{"id":"ch_1","object":"charge","payment_intent":"pi_1"}""");
+        return source == PageRead.Sessions
+            ? Platform(WebhookSecret).ParseWebhookAsync(body, Sign(body), ct)
+            : Platform().GetStatusAsync("cs_test_1", ct);
+    }
+
+    [HumansFact]
+    public async Task GetStatusAsync_PagedRefunds_SumsEveryPage()
+    {
+        Respond([.. FirstPages(PageRead.Refunds), Page("/v1/refunds", false, Refund("re_2", "succeeded", 2000))]);
+
+        var status = await Platform().GetStatusAsync("cs_test_1", TestContext.Current.CancellationToken);
+
+        status.RefundedMinor.Should().Be(3000);
+        _requests[^1].Uri.Query.Should().Contain("starting_after=re_1");
+    }
+
+    [HumansFact]
+    public async Task RefundAsync_PriorRefundOnLaterPage_ReturnsItsOutcome()
+    {
+        var refundId = Guid.NewGuid();
+        var charge = PaidCharge.Replace("\"amount_refunded\":5000", "\"amount_refunded\":25000", StringComparison.Ordinal);
+        Respond(Session("complete", "paid", charge),
+            Page("/v1/refunds", true, Refund("re_other", "succeeded", 1000)),
+            Page("/v1/refunds", false, Refund("re_ours", "succeeded", 24000, refundId)));
+
+        var result = await Platform().RefundAsync(new RefundRequest(refundId, "cs_test_1", 24000, "Returned"),
+            TestContext.Current.CancellationToken);
+
+        result.State.Should().Be(RefundState.Succeeded);
+        result.PlatformRefundId.Should().Be("re_ours");
+        _requests.Should().HaveCount(3).And.OnlyContain(r => r.Method == HttpMethod.Get);
+    }
+
+    [HumansFact]
+    public async Task GetStatusAsync_PagedDisputes_SumsEveryPage()
+    {
+        Respond([.. FirstPages(PageRead.Disputes), Page("/v1/disputes", false, Dispute("dp_2", 2000))]);
+
+        var status = await Platform().GetStatusAsync("cs_test_1", TestContext.Current.CancellationToken);
+
+        status.ChargedBackMinor.Should().Be(3000);
+        _requests[^1].Uri.Query.Should().Contain("starting_after=dp_1");
+    }
+
+    [HumansFact]
+    public async Task ParseWebhookAsync_PagedSessions_NamesEverySession()
+    {
+        Respond([.. FirstPages(PageRead.Sessions), Page("/v1/checkout/sessions", false,
+            """{"id":"cs_2","object":"checkout.session"}""")]);
+        var body = Event("charge.refunded", """{"id":"ch_1","object":"charge","payment_intent":"pi_1"}""");
+
+        var sessions = await Platform(WebhookSecret).ParseWebhookAsync(body, Sign(body), TestContext.Current.CancellationToken);
+
+        sessions.Should().Equal("cs_1", "cs_2");
+        _requests[^1].Uri.Query.Should().Contain("starting_after=cs_1");
+    }
+
+    [HumansTheory]
+    [InlineData(PageRead.Refunds)]
+    [InlineData(PageRead.Disputes)]
+    [InlineData(PageRead.Sessions)]
+    public async Task ListReads_LaterPageFails_RejectsPartialResult(PageRead source)
+    {
+        using var headers = new HttpResponseMessage();
+        var responses = FirstPages(source).Select(b => new StripeResponse(HttpStatusCode.OK, headers.Headers, b))
+            .Append(new StripeResponse(HttpStatusCode.Forbidden, headers.Headers,
+                """{"error":{"type":"invalid_request_error","message":"page-two-denied"}}""")).ToArray();
+        _http.MakeRequestAsync(Arg.Do<StripeRequest>(_requests.Add), Arg.Any<CancellationToken>())
+            .Returns(responses[0], responses.Skip(1).ToArray());
+
+        var read = () => ReadPagesAsync(source, TestContext.Current.CancellationToken);
+
+        await read.Should().ThrowAsync<Exception>().WithMessage("*page-two-denied*");
+        _requests[^1].Uri.Query.Should().Contain("starting_after=");
+    }
+
+    [HumansTheory]
+    [InlineData(PageRead.Refunds)]
+    [InlineData(PageRead.Disputes)]
+    [InlineData(PageRead.Sessions)]
+    public async Task ListReads_LaterPageCancelled_PropagatesCancellation(PageRead source)
+    {
+        using var caller = new CancellationTokenSource();
+        var bodies = FirstPages(source);
+        _http.MakeRequestAsync(Arg.Any<StripeRequest>(), Arg.Any<CancellationToken>()).Returns(async call =>
+        {
+            var index = _requests.Count;
+            _requests.Add(call.Arg<StripeRequest>());
+            if (index < bodies.Length)
+            {
+                using var headers = new HttpResponseMessage();
+                return new StripeResponse(HttpStatusCode.OK, headers.Headers, bodies[index]);
+            }
+            await caller.CancelAsync();
+            throw new OperationCanceledException(caller.Token);
+        });
+
+        var read = () => ReadPagesAsync(source, caller.Token);
+
+        await read.Should().ThrowAsync<OperationCanceledException>();
+        caller.IsCancellationRequested.Should().BeTrue();
+        _requests[^1].Uri.Query.Should().Contain("starting_after=");
+    }
+
     [HumansFact]
     public async Task A_chargeback_counts_what_open_and_lost_disputes_hold_but_not_inquiries_or_won_ones()
     {

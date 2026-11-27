@@ -238,10 +238,15 @@ internal sealed class BoxOfficePlatform(
     {
         try
         {
-            var disputes = (await new DisputeService(Client()).ListAsync(new DisputeListOptions { Charge = chargeId, Limit = 100 },
-                cancellationToken: ct)).Data.Where(TakesMoney).ToList();
-            foreach (var dispute in disputes)
+            var disputes = new List<Dispute>();
+            await foreach (var dispute in new DisputeService(Client()).ListAutoPagingAsync(
+                new DisputeListOptions { Charge = chargeId, Limit = 100 }, cancellationToken: ct))
+            {
+                if (!TakesMoney(dispute))
+                    continue;
                 RequireEur(dispute.Currency, $"dispute {dispute.Id}");
+                disputes.Add(dispute);
+            }
             return disputes.Sum(d => d.Amount);
         }
         catch (StripeException ex)
@@ -260,10 +265,13 @@ internal sealed class BoxOfficePlatform(
     {
         try
         {
-            var refunds = (await new RefundService(Client()).ListAsync(
-                new RefundListOptions { PaymentIntent = paymentIntentId, Limit = 100 }, cancellationToken: ct)).Data;
-            foreach (var refund in refunds)
+            var refunds = new List<Refund>();
+            await foreach (var refund in new RefundService(Client()).ListAutoPagingAsync(
+                new RefundListOptions { PaymentIntent = paymentIntentId, Limit = 100 }, cancellationToken: ct))
+            {
                 RequireEur(refund.Currency, $"refund {refund.Id}");
+                refunds.Add(refund);
+            }
             return refunds;
         }
         catch (StripeException ex)
@@ -424,9 +432,14 @@ internal sealed class BoxOfficePlatform(
         }
     }
 
-    private async Task<IReadOnlyList<string>> SessionsForAsync(string paymentIntentId, CancellationToken ct) =>
-        (await new SessionService(Client()).ListAsync(
-            new SessionListOptions { PaymentIntent = paymentIntentId, Limit = 10 }, cancellationToken: ct)).Data.Select(s => s.Id).ToList();
+    private async Task<IReadOnlyList<string>> SessionsForAsync(string paymentIntentId, CancellationToken ct)
+    {
+        var ids = new List<string>();
+        await foreach (var session in new SessionService(Client()).ListAutoPagingAsync(
+            new SessionListOptions { PaymentIntent = paymentIntentId, Limit = 10 }, cancellationToken: ct))
+            ids.Add(session.Id);
+        return ids;
+    }
 
     private static void ValidateSessionCurrency(Session session)
     {
