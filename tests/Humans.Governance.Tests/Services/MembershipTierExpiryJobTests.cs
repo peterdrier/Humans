@@ -4,6 +4,7 @@ using Humans.Governance.Data;
 using Humans.Governance.Domain;
 using Humans.Users.Contracts;
 using MemberApplication = Humans.Governance.Domain.Application;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Humans.Base.Interfaces;
 using Humans.Governance.Contracts;
@@ -33,8 +34,12 @@ public sealed class MembershipTierExpiryJobTests
         _applications.GetOtherActiveTierAssignmentsAsync(Arg.Any<MembershipTier>(), Arg.Any<LocalDate>(), Arg.Any<CancellationToken>())
             .Returns(Task.FromResult<IReadOnlyDictionary<Guid, MembershipTier>>(new Dictionary<Guid, MembershipTier>()));
         _tiers.GetAllAsync(Arg.Any<CancellationToken>()).Returns(Task.FromResult<IReadOnlyList<MembershipTierRecord>>([]));
-        _governance = new MembershipTierService(_tiers, _applications, Substitute.For<IUserService>(),
-            Substitute.For<IAuditLogService>(), new FakeClock(Instant.FromUtc(2028, 1, 1, 0, 5)));
+        var users = Substitute.For<IUserService>();
+        _governance = new MembershipTierService(_tiers, _applications, users,
+            Substitute.For<IAuditLogService>(),
+            new CachingGovernanceService(Substitute.For<IServiceScopeFactory>(), users,
+                NullLogger<CachingGovernanceService>.Instance),
+            new FakeClock(Instant.FromUtc(2028, 1, 1, 0, 5)));
         _job = new MembershipTierExpiryJob(_governance, Substitute.For<IHumansMetrics>(),
             NullLogger<MembershipTierExpiryJob>.Instance, new FakeClock(Instant.FromUtc(2028, 1, 1, 0, 5)));
     }
