@@ -16,6 +16,63 @@ namespace Humans.Tickets.Tests.Services.Checkout;
 
 public sealed partial class TicketCheckoutServiceTests
 {
+    [HumansTheory]
+    [InlineData(false, null)]
+    [InlineData(false, UserState.Deleted)]
+    [InlineData(false, UserState.Merged)]
+    [InlineData(true, null)]
+    [InlineData(true, UserState.Deleted)]
+    [InlineData(true, UserState.Merged)]
+    public async Task ResolveAccountAsync_UnavailableOwner_Refuses(bool rename, UserState? state)
+    {
+        var adult = await PaidAdultAsync();
+        var owner = Assert.IsType<UserInfo>(await _users.GetUserInfoAsync(_otherBuyerId, Ct));
+        var unavailable = state is { } value ? owner with { State = value } : null;
+        _users.GetUserInfoAsync(_otherBuyerId, Arg.Any<CancellationToken>()).Returns(unavailable);
+        _users.GetByEmailOrAlternateAsync("bo@example.com", Arg.Any<CancellationToken>()).Returns(unavailable);
+        _userEmails.FindByAddressAsync("bo@example.com", true, true, Arg.Any<CancellationToken>())
+            .Returns([Row(_otherBuyerId, verified: true)]);
+        _repo.OrderWrites.Clear();
+        _repo.TicketWrites.Clear();
+        _repo.Events.Clear();
+        _audit.ClearReceivedCalls();
+        _delivery.ClearReceivedCalls();
+
+        var result = rename
+            ? await _service.RenameTicketAsync(adult.Id, "Bo Smith", "bo@example.com", "Move", false, _adminId, Ct)
+            : await _service.IssueCompanionAsync(adult.Id, "Bo Smith", "bo@example.com", "Support", false, _adminId, Ct);
+
+        result.Succeeded.Should().BeFalse();
+        adult.HolderUserId.Should().Be(_buyerId);
+        _repo.Orders.Should().ContainSingle();
+        _repo.Tickets.Should().ContainSingle();
+        _repo.OrderWrites.Should().BeEmpty();
+        _repo.TicketWrites.Should().BeEmpty();
+        _repo.Events.Should().BeEmpty();
+        _audit.ReceivedCalls().Should().BeEmpty();
+        _delivery.ReceivedCalls().Should().BeEmpty();
+        _provisioning.ReceivedCalls().Should().BeEmpty();
+    }
+
+    [HumansFact]
+    public async Task RenameTicketAsync_AmbiguousVerifiedAddress_Refuses()
+    {
+        var adult = await PaidAdultAsync();
+        var owner = await _users.GetUserInfoAsync(_otherBuyerId, Ct);
+        _users.GetByEmailOrAlternateAsync("bo@example.com", Arg.Any<CancellationToken>()).Returns(owner);
+        _userEmails.FindByAddressAsync("bo@example.com", true, true, Arg.Any<CancellationToken>())
+            .Returns([Row(_otherBuyerId, verified: true), Row(Guid.NewGuid(), verified: true)]);
+        _repo.OrderWrites.Clear();
+        _repo.TicketWrites.Clear();
+
+        var result = await _service.RenameTicketAsync(adult.Id, "Bo Smith", "bo@example.com", "Move", false, _adminId, Ct);
+
+        result.Succeeded.Should().BeFalse();
+        adult.HolderUserId.Should().Be(_buyerId);
+        _repo.OrderWrites.Should().BeEmpty();
+        _repo.TicketWrites.Should().BeEmpty();
+    }
+
     [HumansFact]
     public async Task Void_with_a_refund_refunds_first_then_voids_and_says_so()
     {

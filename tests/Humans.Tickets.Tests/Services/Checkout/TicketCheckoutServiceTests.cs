@@ -2211,8 +2211,8 @@ public sealed partial class TicketCheckoutServiceTests
         _grants.GetActiveGrantsAsync(_buyerId, Arg.Any<CancellationToken>())
             .Returns([new ActiveGrantInfo(LowIncomeProgram, _event.Id, Now)]);
         var ticket = await PaidAdultAsync();
-        var buyer = await _users.GetUserInfoAsync(_buyerId, Ct);
-        _users.GetByEmailOrAlternateAsync("ana@example.com", Arg.Any<CancellationToken>()).Returns(buyer);
+        _userEmails.FindByAddressAsync("ana@example.com", true, true, Arg.Any<CancellationToken>())
+            .Returns([Row(_buyerId, verified: true)]);
 
         (await _service.RenameTicketAsync(ticket.Id, "Cy", "cy@example.com", "Asked nicely", false, _adminId, Ct))
             .Refusal.Should().StartWith("Only a full price ticket");
@@ -2237,9 +2237,7 @@ public sealed partial class TicketCheckoutServiceTests
         ticket.HolderUserId = _buyerId;
         order.Lines[ticket.LineIndex].HolderUserId = _buyerId;
         var before = order.Lines[0].HolderName;
-        var next = Human("next@example.com", "Next", "Holder");
-        var nextInfo = await _users.GetUserInfoAsync(next, Ct);
-        _users.GetByEmailOrAlternateAsync("next@example.com", Arg.Any<CancellationToken>()).Returns(nextInfo);
+        Human("next@example.com", "Next", "Holder");
 
         (await _service.RenameTicketAsync(ticket.Id, "Next Holder", "next@example.com", "Move", false, _adminId, Ct))
             .Succeeded.Should().BeTrue();
@@ -2253,8 +2251,8 @@ public sealed partial class TicketCheckoutServiceTests
     public async Task RenameTicketAsync_OrderWriteFails_WritesNoTicket()
     {
         var ticket = await PaidAdultAsync();
-        var buyer = await _users.GetUserInfoAsync(_buyerId, Ct);
-        _users.GetByEmailOrAlternateAsync("ana@example.com", Arg.Any<CancellationToken>()).Returns(buyer);
+        _userEmails.FindByAddressAsync("ana@example.com", true, true, Arg.Any<CancellationToken>())
+            .Returns([Row(_buyerId, verified: true)]);
         _repo.RejectOrderWrites = true;
         _repo.TicketWrites.Clear();
         var rename = () => _service.RenameTicketAsync(ticket.Id, "Corrected Name", "ana@example.com", "Typo", false, _adminId, Ct);

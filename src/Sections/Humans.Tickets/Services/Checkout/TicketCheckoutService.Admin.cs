@@ -33,8 +33,10 @@ internal sealed partial class TicketCheckoutService
             return new("The ticket's adult order line is missing; nothing was renamed.");
 
         var fromUserId = ticket.HolderUserId;
-        var existing = await users.GetByEmailOrAlternateAsync(holderEmail, ct);
-        var samePerson = existing is not null && existing.Id == fromUserId;
+        var (knownHolder, accountProblem) = await ResolveAccountAsync(holderEmail, ct, provision: false);
+        if (accountProblem is not null)
+            return new($"That email cannot take the ticket: {accountProblem}.");
+        var samePerson = knownHolder is not null && knownHolder == fromUserId;
         // Correcting the same person's legal name is always allowed; moving the ticket to someone else is the exception.
         if (!samePerson)
         {
@@ -43,18 +45,17 @@ internal sealed partial class TicketCheckoutService
             if ((await repository.GetTicketsForSettingsAsync(ticket.TicketingSettingsId, ct))
                 .Any(t => t.ParentTicketId == ticket.Id && t.State == TicketCheckoutTicketState.Valid))
                 return new("Void this ticket's child and companion tickets before moving it to another person.");
-            if (existing is not null && await HoldsTicketAsync(ticket.TicketingSettingsId, existing.Id, clock.GetCurrentInstant(), ct))
+            if (knownHolder is { } knownId && await HoldsTicketAsync(ticket.TicketingSettingsId, knownId, clock.GetCurrentInstant(), ct))
                 return new("That person already holds a ticket for this event.");
         }
         // Only once the rename is allowed, so a refused move leaves no account behind.
-        var holderUserId = existing?.Id ?? Guid.Empty;
-        if (existing is null)
+        var holderUserId = knownHolder ?? Guid.Empty;
+        if (knownHolder is null)
         {
             var (resolved, problem) = await ResolveAccountAsync(holderEmail, ct);
             if (resolved is not { } resolvedId)
                 return new($"That email cannot take the ticket: {problem}.");
             holderUserId = resolvedId;
-            // The resolver also matches aliases, which the lookup above may not.
             if (holderUserId != fromUserId && await HoldsTicketAsync(ticket.TicketingSettingsId, holderUserId, clock.GetCurrentInstant(), ct))
                 return new("That person already holds a ticket for this event.");
             samePerson = holderUserId == fromUserId;

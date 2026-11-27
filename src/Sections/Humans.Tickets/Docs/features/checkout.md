@@ -291,7 +291,7 @@ with no refund, said plainly), and a free companion ticket. The resale queue mar
 buyer's order closed or expired, and the team can take an open offer out for its holder.
 
 Rename updates the ticket and its original order line in one commit, selecting by `LineIndex` even after an account
-merge. Missing or invalid adult lines refuse the rename before any account is provisioned.
+merge. Missing or invalid adult lines refuse the rename before any account is provisioned. Rename and direct staff companion issuance attach a verified address only to one available account, following a merge to its live survivor. Missing or tombstoned owners and ambiguous verified addresses refuse without writes, delivery or provisioning. Rename reads that ownership before checking transfer eligibility, and only an allowed change may provision an unverified address.
 
 A void with a refund saves its original amount, reason and refund identity before the external call. Retrying an interrupted
 void resumes those details without issuing a second refund; the form shows the saved values. Rename and resale wait

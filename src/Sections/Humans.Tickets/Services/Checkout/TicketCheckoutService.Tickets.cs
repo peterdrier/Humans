@@ -454,16 +454,21 @@ internal sealed partial class TicketCheckoutService
     /// The account a ticket for <paramref name="address"/> belongs to. Only a verified address attaches a ticket to an
     /// existing account; a single unverified row is replaced by a new account, as the attendee import does; an
     /// ambiguous address gives no account and the reason. The legal name stays on the line and ticket: as a display
-    /// name it would become the account's public burner name.
+    /// name it would become the account's public burner name. A read-only lookup lets rename check transfer rules
+    /// before it may provision an account.
     /// </summary>
-    private async Task<(Guid? UserId, string? Problem)> ResolveAccountAsync(string address, CancellationToken ct)
+    private async Task<(Guid? UserId, string? Problem)> ResolveAccountAsync(string address, CancellationToken ct, bool provision = true)
     {
         var verified = (await userEmails.FindByAddressAsync(address, aliased: true, verifiedOnly: true, ct))
             .Select(r => r.UserId).Distinct().ToList();
         if (verified.Count == 1)
-            return ((await users.GetUserInfoAsync(verified[0], ct))?.Id ?? verified[0], null);
+            return await users.GetUserInfoAsync(verified[0], ct) is { IsTombstone: false } person
+                ? (person.Id, null)
+                : (null, "the verified account is no longer available");
         if (verified.Count > 1)
             return (null, "the address is verified on more than one account");
+        if (!provision)
+            return (null, null);
         var rows = await userEmails.FindByAddressAsync(address, aliased: true, verifiedOnly: false, ct);
         if (rows.Count > 1)
             return (null, "the address is unverified on more than one account");
