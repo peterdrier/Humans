@@ -531,4 +531,8 @@
   <data name="Teams_Search_Category" xml:space="preserve"><value>Teams</value></data>
   <data name="Teams_Roles_SystemTeam" xml:space="preserve"><value>Systeemteams kunnen geen rollen hebben.</value></data>
   <data name="Teams_Roles_InactiveTeam" xml:space="preserve"><value>Dit team is niet actief.</value></data>
+  <data name="Teams_Permission_Manage_Title" xml:space="preserve"><value>Team beheren</value></data>
+  <data name="Teams_Permission_Manage_Blurb" xml:space="preserve"><value>Leden, aanvragen om lid te worden, rollen en de teampagina beheren.</value></data>
+  <data name="Teams_Permission_EarlyEntry_Title" xml:space="preserve"><value>Vroege toegang beheren</value></data>
+  <data name="Teams_Permission_EarlyEntry_Blurb" xml:space="preserve"><value>Vroege toegang verlenen voor de projecten van het team.</value></data>
 </root>

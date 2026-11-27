@@ -37,8 +37,8 @@ in `Section.cs`).
 The section exposes no entity-returning reads — external consumers call
 `GetTeamAsync` / `GetTeamBySlugAsync` (`TeamInfo`), `GetUserTeamMembershipsAsync`
 (`UserTeamMembershipInfo`), and `GetTeamsWithParentsAsync` (`TeamInfo`); no
-entity type crosses the section boundary. The `TeamAuthorizationHandler`
-registration lives in the section; its policies stay in Shell.
+entity type crosses the section boundary. Teams declares its
+`Teams.Manage` and `Teams.EarlyEntry` permissions in `Section.cs`; Permissions' handler checks them.
 
 Teams is an `IEarlyEntryProvider` (role-gated team early entry,
 cantina-style). `ITeamRepository` has an EE-grant surface

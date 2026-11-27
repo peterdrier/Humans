@@ -61,6 +61,7 @@ public sealed class TeamRoleServiceTests : TeamsTestHarness
         var serviceProvider = new ServiceLocatorBuilder()
             .With<ITeamManagement>()
             .With<ISystemRoleService>(systemRoleService)
+            .With(TestTeamPermissions.Create(systemRoleService, () => _service!))
             .With<IEmailService>()
             .With(_systemTeamSync)
             .With(_roleWrite)
