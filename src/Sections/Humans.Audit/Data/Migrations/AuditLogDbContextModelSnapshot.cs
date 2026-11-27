@@ -100,7 +100,7 @@ namespace Humans.AuditLog.Data.Migrations
                     b.ToTable("audit_log_entries", (string)null);
                 });
 
-            modelBuilder.Entity("Humans.AuditLog.Domain.TemporaryAuditLogEntry", b =>
+            modelBuilder.Entity("Humans.Audit.Domain.TemporaryAuditLogEntry", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
@@ -118,21 +118,25 @@ namespace Humans.AuditLog.Data.Migrations
                         .IsRequired()
                         .HasColumnType("text");
 
-                    b.Property<Guid>("EntityId")
-                        .HasColumnType("uuid");
-
-                    b.Property<string>("EntityType")
-                        .IsRequired()
+                    b.Property<string>("JobName")
                         .HasMaxLength(100)
                         .HasColumnType("character varying(100)");
 
                     b.Property<Instant>("OccurredAt")
                         .HasColumnType("timestamp with time zone");
 
-                    b.Property<Guid?>("RelatedEntityId")
+                    b.Property<Guid>("SubjectId")
                         .HasColumnType("uuid");
 
-                    b.Property<string>("RelatedEntityType")
+                    b.Property<string>("SubjectType")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<Guid?>("TargetId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("TargetType")
                         .HasMaxLength(100)
                         .HasColumnType("character varying(100)");
 
@@ -144,9 +148,9 @@ namespace Humans.AuditLog.Data.Migrations
 
                     b.HasIndex("OccurredAt");
 
-                    b.HasIndex("EntityType", "EntityId");
+                    b.HasIndex("SubjectType", "SubjectId");
 
-                    b.HasIndex("RelatedEntityType", "RelatedEntityId");
+                    b.HasIndex("TargetType", "TargetId");
 
                     b.ToTable("audit_log_temporary_entries", (string)null);
                 });

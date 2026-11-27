@@ -13,7 +13,7 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace Humans.Audit.Data.Migrations
 {
     [DbContext(typeof(AuditLogDbContext))]
-    [Migration("20261124133814_SubjectTargetJobName")]
+    [Migration("20261127005730_SubjectTargetJobName")]
     partial class SubjectTargetJobName
     {
         /// <inheritdoc />
@@ -101,6 +101,61 @@ namespace Humans.Audit.Data.Migrations
                     b.HasIndex("TargetType", "TargetId");
 
                     b.ToTable("audit_log_entries", (string)null);
+                });
+
+            modelBuilder.Entity("Humans.Audit.Domain.TemporaryAuditLogEntry", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Action")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<Guid?>("ActorUserId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Description")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("JobName")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<Instant>("OccurredAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("SubjectId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("SubjectType")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<Guid?>("TargetId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("TargetType")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Action");
+
+                    b.HasIndex("ActorUserId");
+
+                    b.HasIndex("OccurredAt");
+
+                    b.HasIndex("SubjectType", "SubjectId");
+
+                    b.HasIndex("TargetType", "TargetId");
+
+                    b.ToTable("audit_log_temporary_entries", (string)null);
                 });
 #pragma warning restore 612, 618
         }
