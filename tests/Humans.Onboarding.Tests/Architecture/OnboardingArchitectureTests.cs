@@ -15,7 +15,7 @@ public class OnboardingArchitectureTests
     /// <c>OnboardingLocalizerBindingTests</c> is the per-key half of the same guard.
     /// </summary>
     [HumansFact]
-    public void EveryLocalizerNamesOneOfTheSectionsTwoResourceSets()
+    public void Localizers_NameSectionResourceSets()
     {
         string[] allowed = ["OnboardingResource", "SharedResource"];
 

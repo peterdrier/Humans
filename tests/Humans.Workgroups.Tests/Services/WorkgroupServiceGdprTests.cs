@@ -20,7 +20,7 @@ namespace Humans.Workgroups.Tests.Services;
 public sealed class WorkgroupServiceGdprTests : WorkgroupsTestHarness
 {
     [HumansFact]
-    public async Task Export_ReturnsOneSlicePerRowType_NamedByContributorConstants()
+    public async Task Export_EachRowType_HasOneSlice()
     {
         var workgroup = await SeedWorkgroupAsync();
         var author = workgroup.Members.Single().UserId;
@@ -82,7 +82,7 @@ public sealed class WorkgroupServiceGdprTests : WorkgroupsTestHarness
     }
 
     [HumansFact]
-    public async Task Export_IncludesGroupsThisPersonAppliedFor_TheColumnTheErasureNulls()
+    public async Task Export_GroupsAppliedFor_AreIncluded()
     {
         // AppliedByUserId is attribution the register keeps on the group row itself. The
         // erasure nulls it, so Art. 15 has to disclose it — the pairing this test pins.
@@ -110,7 +110,7 @@ public sealed class WorkgroupServiceGdprTests : WorkgroupsTestHarness
     }
 
     [HumansFact]
-    public async Task Export_IncludesCommentsThisPersonRespondedToOrHid_NotOnlyTheirOwn()
+    public async Task Export_CommentsRespondedOrHidden_AreIncluded()
     {
         // The erasure nulls all three attribution columns, so the export has to show all three:
         // a responder or moderator's id is stored on somebody else's comment.
@@ -137,7 +137,7 @@ public sealed class WorkgroupServiceGdprTests : WorkgroupsTestHarness
     }
 
     [HumansFact]
-    public async Task Erase_NullsAttribution_ButKeepsCommentAndLogBodies()
+    public async Task Erase_Attribution_IsNulledBodiesKept()
     {
         var workgroup = await SeedWorkgroupAsync();
         // Read the seeded coordinator before adding the second: AddMemberAsync appends to the
@@ -169,7 +169,7 @@ public sealed class WorkgroupServiceGdprTests : WorkgroupsTestHarness
     }
 
     [HumansFact]
-    public async Task Erase_TheLastCoordinatorOfAnActiveGroup_NotifiesTheBoard()
+    public async Task Erase_LastCoordinator_NotifiesBoard()
     {
         var workgroup = await SeedWorkgroupAsync(status: WorkgroupStatus.Active);
         var onlyCoordinator = workgroup.Members.Single().UserId;
@@ -196,7 +196,7 @@ public sealed class WorkgroupServiceGdprTests : WorkgroupsTestHarness
     }
 
     [HumansFact]
-    public async Task Erase_WithASecondCoordinatorStillStanding_DoesNotNotifyTheBoard()
+    public async Task Erase_SecondCoordinatorRemains_DoesNotNotifyBoard()
     {
         var workgroup = await SeedWorkgroupAsync(status: WorkgroupStatus.Active);
         var first = workgroup.Members.Single().UserId;
@@ -214,7 +214,7 @@ public sealed class WorkgroupServiceGdprTests : WorkgroupsTestHarness
     }
 
     [HumansFact]
-    public async Task Reassign_RePointsAttribution_AndCollapsesDuplicateMemberships()
+    public async Task Reassign_DuplicateMemberships_AreCollapsed()
     {
         var workgroup = await SeedWorkgroupAsync();
         var source = SeedUser("Old account");

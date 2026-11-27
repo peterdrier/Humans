@@ -181,7 +181,7 @@ Admin pages live under the section's URL space, not `/Admin`; they are localizat
 - A program manager **cannot** create or edit a program, set its ceiling, name managers or
   close it (`ProgramOperationRequirement.Administer` is roles only).
 - A manager of program A **cannot** manage, issue under, or act on grants of program B
-  (`ProgramAuthorizationHandler`, `ControllerTests.GrantOfAnotherProgram_UnderMyProgramsUrl_IsNotFound_EvenWithMalformedInput`).
+  (`ProgramAuthorizationHandler`, `ControllerTests.Grant_UnderOtherProgramsUrl_IsNotFound`).
 - A member **cannot** apply to a Closed program, one not accepting applications, or one past
   its deadline.
 - Expenses **cannot** claim a grant that is Revoked, Consumed, Claimed by another report, or
@@ -236,7 +236,7 @@ Admin pages live under the section's URL space, not `/Admin`; they are localizat
 
 ## Architecture
 
-`PreapprovalService` is one class (partial files by area: grants, programs, GDPR) holding reads,
+`PreapprovalService` is one class in one file holding reads,
 the three Expenses transitions, program create and edit, export/erasure/merge and audit text.
 `PreapprovalInput` owns the money and text rules; grant and program mutations call it directly.
 `GetGrantsAsync` builds the public grant options directly from the repository, preserving all statuses,

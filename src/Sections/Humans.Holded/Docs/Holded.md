@@ -66,7 +66,7 @@ to this section too and has its own doc ([`Holded-connector.md`](Holded-connecto
 |---|---|
 | `holded_ledger_lines` | full daybook mirror, all accounts, unique `(EntryNumber, Line)` |
 | `holded_accounts` | chart-of-accounts cache with Holded's debit/credit/balance totals |
-| `holded_api_calls` | per-call metering (endpoint, status, rate-limit headers) |
+| `holded_api_calls` | per-call metering (endpoint, status, rate-limit headers); rows older than the app-wide retention period are deleted by Settings' daily retention job (`Service` is an `IRetentionPeriodContributor`) |
 | `holded_purchase_docs` | purchase-document mirror keyed on Holded's doc id: number, contact, description, Madrid date, amounts, approved (`draft == false`; absent reads as not approved), payments pending (null until re-synced, or when a draft omits it), notes, doc + line tags, first line's booked account |
 | `holded_bank_movements` | bank-feed mirror keyed on `(TreasuryAccountId, Id)`: date, `BookedAt` (`booking_date` to the second: a Stripe gateway line's only match key, with the amount), signed amount, description, status. Window replace: a sync is the truth for its date window plus any id it returned |
 | `holded_contacts` | contact mirror keyed on Holded's contact id: name, supplier account number, trade name, email, phone, mobile, IBAN, tax code, address. Full pull with replace semantics |

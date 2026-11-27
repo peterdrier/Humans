@@ -172,13 +172,13 @@ internal sealed class TicketsEmails(
     /// back, which is not optional mail.
     /// </summary>
     public EmailMessage EventCancelled(
-        Guid buyerUserId, string buyerEmail, string buyerName, string eventName, long refundMinor, bool refundFailed, bool hadDonation,
+        Guid buyerUserId, string buyerEmail, string buyerName, string eventName, long refundMinor, bool refundByHand, bool hadDonation,
         string? culture = null)
     {
         using (new CultureScope(culture, logger))
         {
             var refund = refundMinor > 0
-                ? $"<p>{localizer[refundFailed ? "Tickets_Cancel_Email_RefundByHand" : "Tickets_Cancel_Email_Refund", Money(refundMinor)]}</p>"
+                ? $"<p>{localizer[refundByHand ? "Tickets_Cancel_Email_RefundByHand" : "Tickets_Cancel_Email_Refund", Money(refundMinor)]}</p>"
                 : string.Empty;
             var donation = hadDonation ? $"<p>{localizer["Tickets_Cancel_Email_Donation"].Value}</p>" : string.Empty;
             var body = $"""

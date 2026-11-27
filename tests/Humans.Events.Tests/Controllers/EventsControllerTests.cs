@@ -59,7 +59,7 @@ public class EventsControllerTests
     [Xunit.InlineData("MaxPrintSlots", "0")]
     [Xunit.InlineData("", "0")]
     [Xunit.InlineData("", "10000")]
-    public async Task Guide_settings_require_posted_window_dates_and_print_limit(string omitted, string printLimit)
+    public async Task GuideSettings_MissingDatesOrLimit_AreRefused(string omitted, string printLimit)
     {
         var burn = MakeBurnSettings();
         _guide.GetEventSettingsByIdAsync(burn.Id, Arg.Any<CancellationToken>()).Returns(burn);
@@ -123,7 +123,7 @@ public class EventsControllerTests
     [Xunit.InlineData(AdminFormAction.EditCategory, AdminFormRead.Category)]
     [Xunit.InlineData(AdminFormAction.EditCategory, AdminFormRead.Slug)]
     [Xunit.InlineData(AdminFormAction.EditVenue, AdminFormRead.Venue)]
-    public async Task Admin_form_reads_observe_request_cancellation_before_writes(AdminFormAction action, AdminFormRead boundary)
+    public async Task AdminFormReads_RequestCancelled_StopBeforeWrites(AdminFormAction action, AdminFormRead boundary)
     {
         using var request = new CancellationTokenSource();
         var controller = new EventsAdminController(_guide,
@@ -187,7 +187,7 @@ public class EventsControllerTests
     [Xunit.InlineData("EditVenue", "DisplayOrder", false)]
     [Xunit.InlineData("EditVenue", "", false)]
     [Xunit.InlineData("EditVenue", "", true)]
-    public async Task Taxonomy_forms_require_explicit_metadata_before_saving(string action, string omitted, bool choice)
+    public async Task TaxonomyForms_MissingMetadata_SaveNothing(string action, string omitted, bool choice)
     {
         var id = Guid.NewGuid();
         _guide.GetCategoryAsync(id, Arg.Any<CancellationToken>())
@@ -364,7 +364,7 @@ public class EventsControllerTests
     [Xunit.InlineData("Create", "invalidScheduleAllDay")]
     [Xunit.InlineData("Update", "invalidScheduleAllDay")]
     [Xunit.InlineData("AdminIndividual", "invalidScheduleAllDay")]
-    public async Task Authoring_requires_explicit_schedule_fields_before_changing_events(string route, string scenario)
+    public async Task Authoring_MissingScheduleFields_ChangesNothing(string route, string scenario)
     {
         var userId = Guid.NewGuid();
         var campId = Guid.NewGuid();
@@ -1209,7 +1209,7 @@ public class EventsControllerTests
     [Xunit.InlineData(true, true, "Events_CategoryUnavailable", OptionsRead.Categories)]
     [Xunit.InlineData(false, false, "Events_VenueUnavailable", OptionsRead.Venues)]
     [Xunit.InlineData(true, false, "Events_VenueUnavailable", OptionsRead.Venues)]
-    public async Task SelectionRefusal_RedisplaysMemberForm_AndPreservesEnteredContent(
+    public async Task MemberForm_SelectionRefused_KeepsEnteredContent(
         bool edit, bool barrio, string refusalKey = "Events_CategoryUnavailable", OptionsRead? cancelAt = null)
     {
         var field = string.Equals(refusalKey, "Events_VenueUnavailable", StringComparison.Ordinal) ? "VenueId" : "CategoryId";
@@ -1296,7 +1296,7 @@ public class EventsControllerTests
     [Xunit.InlineData(false, true)]
     [Xunit.InlineData(true, false)]
     [Xunit.InlineData(true, true)]
-    public async Task ExistingEventEdits_UseTheRecordsCalendarAndTimezone(bool campEvent, bool post)
+    public async Task ExistingEventEdits_Schedule_UsesRecordsTimezone(bool campEvent, bool post)
     {
         var userId = Guid.NewGuid();
         StubEditableGuideSettings();

@@ -78,20 +78,23 @@ internal sealed class CachingCalendarService(
 
     public async Task DeleteEventAsync(Guid id, Guid deletedByUserId, CancellationToken ct = default)
     {
-        await WithInnerAsync(inner => inner.DeleteEventAsync(id, deletedByUserId, ct));
-        await ReplaceAsync(id, CancellationToken.None);
+        await MutateEventAsync(id, async inner =>
+        {
+            await inner.DeleteEventAsync(id, deletedByUserId, ct);
+            return true;
+        });
     }
 
     public Task<bool> CancelOccurrenceAsync(
         Guid eventId, Instant? originalOccurrenceStartUtc, Guid userId, CancellationToken ct = default, LocalDate? originalDate = null) =>
-        MutateOccurrenceAsync(eventId, inner => inner.CancelOccurrenceAsync(eventId, originalOccurrenceStartUtc, userId, ct, originalDate));
+        MutateEventAsync(eventId, inner => inner.CancelOccurrenceAsync(eventId, originalOccurrenceStartUtc, userId, ct, originalDate));
 
     public Task<bool> OverrideOccurrenceAsync(
         Guid eventId, Instant? originalOccurrenceStartUtc, OverrideOccurrenceDto dto,
         Guid userId, CancellationToken ct = default, LocalDate? originalDate = null) =>
-        MutateOccurrenceAsync(eventId, inner => inner.OverrideOccurrenceAsync(eventId, originalOccurrenceStartUtc, dto, userId, ct, originalDate));
+        MutateEventAsync(eventId, inner => inner.OverrideOccurrenceAsync(eventId, originalOccurrenceStartUtc, dto, userId, ct, originalDate));
 
-    private async Task<bool> MutateOccurrenceAsync(Guid eventId, Func<ICalendarService, Task<bool>> action)
+    private async Task<bool> MutateEventAsync(Guid eventId, Func<ICalendarService, Task<bool>> action)
     {
         var completed = false;
         try
@@ -143,19 +146,4 @@ internal sealed class CachingCalendarService(
         return await action(inner);
     }
 
-    private async Task WithInnerAsync(Func<ICalendarService, Task> action)
-    {
-        var clear = true;
-        try
-        {
-            await using var scope = scopeFactory.CreateAsyncScope();
-            var inner = scope.ServiceProvider.GetRequiredKeyedService<ICalendarService>(InnerServiceKey);
-            await action(inner);
-            clear = false;
-        }
-        finally
-        {
-            if (clear) Clear();
-        }
-    }
 }

@@ -70,7 +70,7 @@ public class GuideHtmlPostprocessorTests
     [HumansTheory]
     [InlineData("<a target=\"_blank\" rel=\"noreferrer\" href=\"https://example.com\">x</a>")]
     [InlineData("<a href=\"https://example.com\" target=\"_blank\" rel=\"noreferrer\">x</a>")]
-    public void Rewrite_ExternalBlankTarget_PreservesExistingRelAndAddsNoopener(string html)
+    public void Rewrite_ExternalBlankTarget_AddsNoopener(string html)
     {
         using var document = new HtmlParser().ParseDocument(Processor.Rewrite(html, Settings));
         var link = document.QuerySelector("a")!;
@@ -80,7 +80,7 @@ public class GuideHtmlPostprocessorTests
     }
 
     [HumansFact]
-    public void Rewrite_LinkInFragment_PreservesStylesCommentsAndAuthoredTarget()
+    public void Rewrite_LinkInFragment_KeepsAuthoredTarget()
     {
         const string html = """<style>.guide { color: red; }</style><!-- guide --><a target="_self" href="NonExistent.md">x</a>""";
 
@@ -122,7 +122,7 @@ public class GuideHtmlPostprocessorTests
     [HumansTheory]
     [InlineData("img/screenshot.png")]
     [InlineData("docs/guide/img/screenshot.png")]
-    public void Rewrite_ImageShortOrPrefixedPath_BecomesRawGitHubUrl(string src)
+    public void Rewrite_ImagePath_BecomesRawGitHubUrl(string src)
     {
         var html = $"""<img src="{src}" alt="x" />""";
 

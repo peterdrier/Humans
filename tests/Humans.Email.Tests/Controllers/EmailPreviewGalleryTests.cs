@@ -64,7 +64,7 @@ public sealed class EmailPreviewGalleryTests
     }
 
     [HumansFact]
-    public void ContributedSamples_RenderInEveryCulture_AskedWithThatCulturesPersona()
+    public void ContributedSamples_EveryCulture_Render()
     {
         var contributor = new StubContributor("assembly-vote-opened");
 

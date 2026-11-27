@@ -14,7 +14,7 @@ namespace Humans.Email.Tests;
 public class EmailArchitectureTests
 {
     [HumansFact]
-    public void OutboxEmailService_TakesOutboxRepositoryAndNoAddressLookup()
+    public void OutboxEmailService_Constructor_TakesNoAddressLookup()
     {
         var ctor = typeof(OutboxEmailService).GetConstructors().Single();
         var paramTypes = ctor.GetParameters().Select(p => p.ParameterType).ToList();

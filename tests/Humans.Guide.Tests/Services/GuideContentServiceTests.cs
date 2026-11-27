@@ -73,7 +73,7 @@ public class GuideContentServiceTests
     [Xunit.InlineData(GuideRefreshFailure.Timeout)]
     [Xunit.InlineData(GuideRefreshFailure.Cancelled)]
     [Xunit.InlineData(GuideRefreshFailure.Unexpected)]
-    public async Task Refresh_classifies_failures_while_preserving_the_cached_page(GuideRefreshFailure kind)
+    public async Task Refresh_Fails_KeepsCachedPage(GuideRefreshFailure kind)
     {
         var source = new FakeSource { MarkdownFor = _ => "# Original" };
         var logger = new CapturingLogger<GuideContentService>();
@@ -155,7 +155,7 @@ public class GuideContentServiceTests
     [HumansTheory]
     [Xunit.InlineData(false)]
     [Xunit.InlineData(true)]
-    public async Task QueuedColdPageRead_ReusesThePageLoadedByTheFirstRequest(bool otherFilesFail)
+    public async Task GetPageAsync_QueuedColdRead_ReusesFirstLoad(bool otherFilesFail)
     {
         var token = Xunit.TestContext.Current.CancellationToken;
         var started = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
@@ -243,7 +243,7 @@ public class GuideContentServiceTests
     }
 
     [HumansFact]
-    public async Task GetPageAsync_RequestedStemEvictedAndItsFetchFails_ThrowsEvenThoughOtherStemsAreCached()
+    public async Task GetPageAsync_EvictedStemFetchFails_Throws()
     {
         // The cache is per stem, so "something is cached" is not the fallback condition — the
         // requested stem's own copy is. PopulateAsync's hasStale flag only suppresses its own
@@ -264,7 +264,7 @@ public class GuideContentServiceTests
     }
 
     [HumansFact]
-    public async Task GetPageAsync_RenderTimesOut_SurfacesAsUnavailableNotAnUnhandledThrow()
+    public async Task GetPageAsync_RenderTimesOut_IsUnavailable()
     {
         // Rendering runs on the request path, so GuideHtmlPostprocessor's timeout-bounded regexes
         // must fail into the section's 503 view, not a raw 500.
@@ -281,7 +281,7 @@ public class GuideContentServiceTests
     }
 
     [HumansFact]
-    public async Task GetPageAsync_RenderTimesOut_LeavesTheCachedSegmentsInPlace()
+    public async Task GetPageAsync_RenderTimesOut_KeepsCachedSegments()
     {
         // The document is fine; one reader's filtered slice of it was not. Evicting here would
         // punish every other reader for that, and re-fetching the whole corpus on the next GET.

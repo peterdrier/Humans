@@ -54,7 +54,7 @@ public sealed class BoardFeatureCollectionTests
     [HumansTheory]
     [InlineData(StoredRoute)]
     [InlineData("""{"type":"LineString","coordinates":[[2.35,48.85,100],[-2.4,43.2,200]],"bbox":[-2.4,43.2,2.35,48.85]}""")]
-    public void Build_EmitsALineAndAStartPerJoinableTrip_APinPerActiveRequest_AndTheDestination(string route)
+    public void Build_TripsRequestsDestination_EmitsEachFeature(string route)
     {
         var me = Guid.NewGuid();
         var driver = Guid.NewGuid();
@@ -93,7 +93,7 @@ public sealed class BoardFeatureCollectionTests
     [HumansTheory]
     [InlineData(true)]
     [InlineData(false)]
-    public void Build_DrawsAStraightLineInTravelOrder_WhenNoRouteIsStored(bool inbound)
+    public void Build_NoStoredRoute_DrawsStraightLine(bool inbound)
     {
         var direction = inbound ? RideshareDirection.Inbound : RideshareDirection.Outbound;
         var trip = Trip(Guid.NewGuid(), direction, route: null, waypoints: [new Waypoint("Lyon", 45.76, 4.84)]);
@@ -119,7 +119,7 @@ public sealed class BoardFeatureCollectionTests
     [InlineData("""{"type":"LineString","coordinates":[]}""")]
     [InlineData("""{"type":"LineString","coordinates":[[2.35,48.85]]}""")]
     [InlineData("""{"type":"LineString","coordinates":[[1e400,48.85],[2.4,43.2]]}""")]
-    public void Build_FallsBackToOrigin_OnAMalformedRoute_AndOmitsTheDestinationWithoutSettings(string route)
+    public void Build_MalformedRoute_FallsBackToOrigin(string route)
     {
         var trip = Trip(Guid.NewGuid(), route: route);
         var snapshot = new RideshareSnapshot(Guid.NewGuid(), "Test Burn", null, [trip], [], []);

@@ -31,7 +31,7 @@ public sealed class ProgramViewTests
     [HumansTheory]
     [Xunit.InlineData(false)]
     [Xunit.InlineData(true)]
-    public async Task ProgramAndForm_RenderManagerIdsInOrder_AndPreserveAttributionAndPostedIds(bool form)
+    public async Task ProgramForm_Managers_RenderInOrder(bool form)
     {
         using var culture = new CultureScope("en");
         var first = Guid.NewGuid();

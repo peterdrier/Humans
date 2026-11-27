@@ -22,7 +22,7 @@ public class MailerLiteSubscriberConverterTests
     };
 
     [HumansFact]
-    public void Maps_TopLevelFields_From_V2_Response()
+    public void Read_V2Response_MapsTopLevelFields()
     {
         const string json = """
         {
@@ -47,7 +47,7 @@ public class MailerLiteSubscriberConverterTests
     }
 
     [HumansFact]
-    public void Maps_FirstName_LastName_From_Nested_Fields_Object()
+    public void Read_NestedFieldsObject_MapsNames()
     {
         const string json = """
         {
@@ -67,7 +67,7 @@ public class MailerLiteSubscriberConverterTests
     [Xunit.InlineData("[]", null)]
     [Xunit.InlineData("[\"42\"]", "42")]
     [Xunit.InlineData("[{\"id\":\"42\"}]", "42")]
-    public void Tolerates_Missing_Fields_Object_And_Maps_Optional_Groups(string? groupsJson, string? expectedGroupId)
+    public void Read_MissingFieldsObject_IsTolerated(string? groupsJson, string? expectedGroupId)
     {
         var json = "{\"id\":\"1\",\"email\":\"x@y.z\",\"status\":\"active\""
             + (groupsJson is null ? "" : ",\"groups\":" + groupsJson) + "}";

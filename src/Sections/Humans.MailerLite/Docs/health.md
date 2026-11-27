@@ -113,7 +113,7 @@ Reserve the places; don't build them.
 
 - **The debug screen resolves notification-target emails from cached `UserInfo` rather than
   calling `IUserEmailService`.** A deliberate duplication of that service's rule, pinned by
-  `MailerLiteAudienceDebugSnapshotBuilderTests.Build_NoDbQueries_OnlyCachedUserInfoAndMlReads`
+  `MailerLiteAudienceDebugSnapshotBuilderTests.Build_Snapshot_MakesNoDbQueries`
   — the screen must render without DB queries. Keep the two in step by hand.
 - **`BadImportCutoff` is a hardcoded instant.** One-time GDPR remediation for a specific bad
   import, not a policy knob.

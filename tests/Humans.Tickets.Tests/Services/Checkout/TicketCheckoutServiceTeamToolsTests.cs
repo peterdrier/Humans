@@ -13,6 +13,7 @@ using Xunit;
 
 namespace Humans.Tickets.Tests.Services.Checkout;
 
+[Humans.Base.Attributes.Grandfathered("HUM0046", "Splits with TicketCheckoutService.", "2026-11-27", "peterdrier/Humans#2675")]
 public sealed partial class TicketCheckoutServiceTests
 {
     [HumansFact]
@@ -226,6 +227,59 @@ public sealed partial class TicketCheckoutServiceTests
             && m.HtmlBody.Contains("Tickets_Cancel_Email_RefundByHand")), Arg.Any<CancellationToken>());
         await _audit.Received(1).LogAsync(TicketsAuditActions.TicketCheckoutNeedsAttention, Arg.Any<string>(), Arg.Any<Guid>(),
             Arg.Is<string>(d => d.Contains("card closed")), Arg.Any<string>());
+    }
+
+    [HumansFact]
+    public async Task CancelEventAsync_RefundFailsDuringRefresh_UsesManualNotice()
+    {
+        await BuyAndPayAsync(Buy(), _buyerId);
+        _platform.RefundAsync(Arg.Any<RefundRequest>(), Arg.Any<CancellationToken>())
+            .Returns(new RefundResult(RefundState.Pending, "re_1", null),
+                new RefundResult(RefundState.Failed, "re_1", "Card closed"));
+        _email.ClearReceivedCalls();
+        await _service.CancelEventAsync(_ticketing.Id, "Storm", _adminId, Ct);
+
+        await _service.ReconcileOpenOrdersAsync(Ct);
+        await _service.ReconcileOpenOrdersAsync(Ct);
+
+        _repo.Refunds.Should().ContainSingle().Which.Refund.State.Should().Be(RefundState.Failed);
+        await _email.Received(1).SendAsync(Arg.Is<EmailMessage>(m => m.TemplateName == "ticket_event_cancelled"
+            && m.HtmlBody.Contains("Tickets_Cancel_Email_RefundByHand")), Arg.Any<CancellationToken>());
+    }
+
+    [HumansTheory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task CancelEventAsync_ManualRefund_UsesManualNotice(bool retry)
+    {
+        var order = await BuyAndPayAsync(Buy(), _buyerId);
+        var manualUrl = new Uri("https://payments.example/refund");
+        _platform.RefundAsync(Arg.Any<RefundRequest>(), Arg.Any<CancellationToken>())
+            .Returns(new RefundResult(RefundState.ManualRequired, null, "Bank transfer", manualUrl));
+        _email.ClearReceivedCalls();
+        if (retry)
+            _email.SendAsync(Arg.Any<EmailMessage>(), Arg.Any<CancellationToken>())
+                .Returns(Task.FromException(new InvalidOperationException("outbox down")), Task.CompletedTask);
+        await _service.CancelEventAsync(_ticketing.Id, "Storm", _adminId, Ct);
+
+        await _service.ReconcileOpenOrdersAsync(Ct);
+        await _service.ReconcileOpenOrdersAsync(Ct);
+        await _service.ReconcileOpenOrdersAsync(Ct);
+
+        var notices = _email.ReceivedCalls().Select(c => c.GetArguments()[0]).OfType<EmailMessage>()
+            .Where(m => string.Equals(m.TemplateName, "ticket_event_cancelled", StringComparison.Ordinal)).ToList();
+        notices.Should().HaveCount(retry ? 2 : 1);
+        notices.Should().OnlyContain(m => m.HtmlBody.Contains("Tickets_Cancel_Email_RefundByHand"));
+        notices.Select(m => m.DeliveryId).Distinct().Should().ContainSingle();
+        _repo.Refunds.Should().ContainSingle().Which.Refund.State.Should().Be(RefundState.ManualRequired);
+        _repo.Refunds.Single().Refund.ManualRefundUrl.Should().Be(manualUrl.ToString());
+        await _platform.Received(1).RefundAsync(Arg.Any<RefundRequest>(), Arg.Any<CancellationToken>());
+        order.CancellationEmailedAt.Should().NotBeNull();
+        var progress = (await _service.GetCancellationProgressAsync(_ticketing.Id, Ct))!;
+        progress.ToDo.Should().Be(0);
+        progress.InFlightMinor.Should().Be(22500);
+        _repo.Events.Where(e => e.Kind == TicketCheckoutOrderEventKind.EventCancelled)
+            .Should().OnlyContain(e => e.Detail.Contains("by hand"));
     }
 
     [HumansFact]

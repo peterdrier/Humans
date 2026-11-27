@@ -26,7 +26,7 @@ public sealed class NotificationInboxReadTests
     }
 
     [HumansFact]
-    public async Task Rows_come_from_the_unread_tab_across_both_lists()
+    public async Task Read_Rows_ComeFromUnreadTab()
     {
         var userId = Guid.NewGuid();
         var older = new DateTime(2026, 4, 9, 9, 0, 0, DateTimeKind.Utc);
@@ -73,7 +73,7 @@ public sealed class NotificationInboxReadTests
     }
 
     [HumansFact]
-    public async Task Meters_are_the_viewers_contributed_ones_with_priority_metadata()
+    public async Task Read_Meters_AreViewersContributedOnes()
     {
         var userId = Guid.NewGuid();
         var principal = Principal(userId);
@@ -95,7 +95,7 @@ public sealed class NotificationInboxReadTests
     }
 
     [HumansFact]
-    public async Task A_principal_without_a_user_id_gets_no_rows_and_no_inbox_query()
+    public async Task Read_NoUserId_ReturnsNoRows()
     {
         var snapshot = await _sut.GetUnreadInboxAsync(new ClaimsPrincipal(new ClaimsIdentity()), Xunit.TestContext.Current.CancellationToken);
 

@@ -164,6 +164,9 @@ internal sealed class ProfileViewModel
 
     /// <summary>The viewer is a coordinator or holds a privileged shift-management role.</summary>
     public bool CanViewSentMessages { get; set; }
+
+    /// <summary>Null unless the viewer may reveal medical conditions; then whether any are on file.</summary>
+    public bool? HasMedicalConditions { get; set; }
 }
 
 internal sealed class TeamMembershipViewModel

@@ -58,7 +58,7 @@ public sealed class EventsEmailsTests
     }
 
     [HumansFact]
-    public void EventLifecycle_EncodesTheSubmitterNameAndTitle()
+    public void EventLifecycle_NameWithTitle_AreEncoded()
     {
         var msg = Create().EventLifecycle(
             Guid.NewGuid(),
@@ -71,7 +71,7 @@ public sealed class EventsEmailsTests
     }
 
     [HumansFact]
-    public void EveryTemplateHasAPreviewSample()
+    public void Templates_EachHasPreviewSample()
     {
         var emails = Create();
         var templates = TemplateNames(emails);
@@ -86,7 +86,7 @@ public sealed class EventsEmailsTests
     }
 
     [HumansFact]
-    public void PreviewSampleIdsAreUnique()
+    public void PreviewSampleIds_AreUnique()
     {
         var samples = new EventsEmailPreviews(Create())
             .Samples(new EmailPreviewPersona("en", "Sally Smith", "sally@example.com"));
@@ -96,7 +96,7 @@ public sealed class EventsEmailsTests
 
     /// <summary>
     /// Every template the builder can produce, found by reflection rather than listed, so a
-    /// template added without a gallery sample fails <see cref="EveryTemplateHasAPreviewSample"/>.
+    /// template added without a gallery sample fails <see cref="Templates_EachHasPreviewSample"/>.
     /// The lifecycle builder is one method over four statuses, so each status is sampled.
     /// </summary>
     private static IReadOnlyList<string> TemplateNames(EventsEmails emails) =>

@@ -126,7 +126,7 @@ none
   listed once, older ones read one by one.
 - **A payout's contents are read only when Stripe finished reconciling an automatic payout**;
   before that a partial list would read as a mismatch.
-- **Its own key and webhook**, apart from the Stripe section's Store integration, on a Stripe
+- **Shared Tickets key and its own webhook**, apart from the Stripe section's Store integration, on a Stripe
   account kept for tickets.
 
 ## History

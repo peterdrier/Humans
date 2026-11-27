@@ -52,7 +52,7 @@ public class MailerLiteGdprContributorTests
         new MailerLiteGdprContributor(_mailerLite, _users).EraseForUserAsync(_userId, Ct);
 
     [HumansFact]
-    public async Task EraseForUserAsync_ArchivedId_DoesNotDeleteTheLivingSurvivorsSubscriptions()
+    public async Task EraseForUserAsync_ArchivedId_KeepsSurvivorsSubscriptions()
     {
         var survivorId = Guid.NewGuid();
         const string address = "survivor@example.com";
@@ -75,7 +75,7 @@ public class MailerLiteGdprContributorTests
     }
 
     [HumansFact]
-    public async Task EraseForUserAsync_ArchivedId_StillDeletesItsOwnVerifiedRows()
+    public async Task EraseForUserAsync_ArchivedId_DeletesOwnVerifiedRows()
     {
         const string owned = "archived@example.com";
         const string survivor = "survivor@example.com";
@@ -109,7 +109,7 @@ public class MailerLiteGdprContributorTests
     }
 
     [HumansFact]
-    public async Task EraseForUserAsync_IncludesTheVerifiedPrimaryAlongsideOtherVerifiedAddresses()
+    public async Task EraseForUserAsync_VerifiedPrimary_IsIncluded()
     {
         Emails("frank@nobodies.team", "frank@gmail.com");
 
@@ -165,7 +165,7 @@ public class MailerLiteGdprContributorTests
     }
 
     [HumansFact]
-    public async Task EraseForUserAsync_CancellationDuringDelete_FinishesCurrentDeleteAndStopsBeforeNext()
+    public async Task EraseForUserAsync_CancelledDuringDelete_StopsBeforeNext()
     {
         using var cancellation = new CancellationTokenSource();
         var attemptedAddresses = new List<string>();

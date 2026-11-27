@@ -27,7 +27,7 @@ public abstract class HumansTeamControllerBase(
             async (team, _) =>
             {
                 var result = await authorizationService.AuthorizeAsync(
-                    User, team, TeamOperationRequirement.ManageCoordinators);
+                    User, TeamOwner.Of(team.Id), TeamPermissionRequirements.Manage);
                 return result.Succeeded;
             }, ct);
     }
@@ -43,7 +43,7 @@ public abstract class HumansTeamControllerBase(
             async (team, _) =>
             {
                 canManage = (await authorizationService.AuthorizeAsync(
-                    User, team, TeamOperationRequirement.ManageCoordinators)).Succeeded;
+                    User, TeamOwner.Of(team.Id), TeamPermissionRequirements.Manage)).Succeeded;
                 return canManage || (await authorizationService.AuthorizeAsync(User, TeamsPolicies.Read)).Succeeded;
             }, ct);
         return (error, user, team, canManage);
@@ -57,7 +57,7 @@ public abstract class HumansTeamControllerBase(
             async (team, _) =>
             {
                 var result = await authorizationService.AuthorizeAsync(
-                    User, team, TeamOperationRequirement.ManageEarlyEntry);
+                    User, TeamOwner.Of(team.Id), TeamPermissionRequirements.EarlyEntry);
                 return result.Succeeded;
             }, ct);
     }

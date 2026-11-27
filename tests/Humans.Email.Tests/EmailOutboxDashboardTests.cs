@@ -17,7 +17,7 @@ namespace Humans.Email.Tests;
 public sealed class EmailOutboxDashboardTests
 {
     [HumansFact]
-    public async Task EmailOutbox_UsesConfiguredBatchSizeAndOrdersDailyCounts()
+    public async Task EmailOutbox_Dashboard_UsesConfiguredBatchSize()
     {
         var outbox = Substitute.For<IEmailOutboxManagement>();
         outbox.GetOutboxStatsAsync(Arg.Any<int>(), Arg.Any<CancellationToken>())

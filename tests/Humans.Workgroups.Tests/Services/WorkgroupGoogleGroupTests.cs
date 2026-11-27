@@ -18,7 +18,7 @@ public sealed class WorkgroupGoogleGroupTests : WorkgroupsTestHarness
     private WorkgroupGoogleGroupSource NewSource() => new(NewService());
 
     [HumansFact]
-    public async Task Source_ClaimsCurrentMembersOfActiveAndDormantGroupsOnly()
+    public async Task Source_ActiveOrDormantGroups_ClaimCurrentMembers()
     {
         var active = await SeedWorkgroupAsync(name: "Active", googleGroupPrefix: "wg-active");
         var coordinator = active.Members.Single().UserId;
@@ -37,7 +37,7 @@ public sealed class WorkgroupGoogleGroupTests : WorkgroupsTestHarness
     }
 
     [HumansFact]
-    public async Task SetGoogleGroup_AcceptsAPastedAddress_AuditsAndRequestsSync()
+    public async Task SetGoogleGroup_PastedAddress_IsAccepted()
     {
         var group = await SeedWorkgroupAsync();
 
@@ -56,7 +56,7 @@ public sealed class WorkgroupGoogleGroupTests : WorkgroupsTestHarness
     [InlineData("wg@gmail.com")]
     [InlineData("not valid")]
     [InlineData("taken")]
-    public async Task SetGoogleGroup_RefusesForeignDomainsBadNamesAndAGroupAlreadyInUse(string prefix)
+    public async Task SetGoogleGroup_InvalidOrTakenAddress_IsRefused(string prefix)
     {
         await SeedWorkgroupAsync(name: "Other", googleGroupPrefix: "taken");
         var group = await SeedWorkgroupAsync();

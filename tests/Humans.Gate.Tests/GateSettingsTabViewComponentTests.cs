@@ -19,7 +19,7 @@ public sealed class GateSettingsTabViewComponentTests
         var gate = Substitute.For<IGateService>();
         var opensAt = Instant.FromUtc(2026, 7, 6, 10, 0);
         gate.GetSettingsAsync(Arg.Any<CancellationToken>())
-            .Returns(new GateSettingsDto(opensAt, 16));
+            .Returns(new GateSettingsDto(opensAt));
 
         var sut = new GateSettingsTabViewComponent(gate)
         {
@@ -31,7 +31,6 @@ public sealed class GateSettingsTabViewComponentTests
         var result = await sut.InvokeAsync();
         var model = (GateSettingsViewModel)((ViewViewComponentResult)result).ViewData!.Model!;
 
-        model.MinorAgeThresholdYears.Should().Be(16);
         model.GeneralEntryOpensAtUtc.Should().Be("2026-07-06T10:00:00Z");
     }
 }
