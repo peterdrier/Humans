@@ -287,6 +287,9 @@ internal sealed class SurveyQuestionBuilderViewModel
     public List<SurveyOptionBuilderViewModel> Options { get; set; } = [];
     public List<SurveyGridRowBuilderViewModel> GridRows { get; set; } = [];
     public List<SurveyInformationImageBuilderViewModel> InformationImages { get; set; } = [];
+    public bool CommentEnabled { get; set; }
+    public Dictionary<string, string> CommentPrompt { get; set; } = new(StringComparer.OrdinalIgnoreCase);
+    public List<string> CommentOptionValues { get; set; } = [];
 
     public QuestionInput ToInput(int order) => new(
         Id,
@@ -312,6 +315,11 @@ internal sealed class SurveyQuestionBuilderViewModel
                 RankedAllowEqualRanks,
                 RankedAllowReject,
                 RankedVotingMethod.RankedPairs)
+            : null,
+        Comment: CommentEnabled
+            ? new SurveyCommentSettings(
+                new LocalizedText(CommentPrompt),
+                CommentOptionValues.Where(v => !string.IsNullOrWhiteSpace(v)).Distinct(StringComparer.Ordinal).ToList())
             : null);
 
     public static SurveyQuestionBuilderViewModel FromInput(QuestionInput q) => new()
@@ -336,6 +344,9 @@ internal sealed class SurveyQuestionBuilderViewModel
             .ToList() ?? [],
         RankedAllowEqualRanks = q.RankedSettings?.AllowEqualRanks ?? true,
         RankedAllowReject = q.RankedSettings?.AllowReject ?? false,
+        CommentEnabled = q.Comment is not null,
+        CommentPrompt = q.Comment is { } comment ? SurveyBuilderViewModel.ToDict(comment.Prompt) : new(StringComparer.OrdinalIgnoreCase),
+        CommentOptionValues = q.Comment?.OptionValues.ToList() ?? [],
     };
 
     /// <summary>Clauses without a target question (never picked / target removed) are dropped; no clauses ⇒ always visible.</summary>

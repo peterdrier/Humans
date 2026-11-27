@@ -1,0 +1,30 @@
+@model BackdoorAuthorizeViewModel
+@{
+    ViewData["Title"] = Localizer["Backdoor_Authorize_Title", Model.ClientName];
+}
+
+<div class="row justify-content-center">
+    <div class="col-md-8 col-lg-6">
+        <div class="card">
+            <div class="card-body">
+                <h1 class="h4 mb-3"><i class="fa-solid fa-plug me-2"></i>@Localizer["Backdoor_Authorize_Title", Model.ClientName]</h1>
+                <p>@Localizer["Backdoor_Authorize_Body", Model.ClientName]</p>
+                <p class="mb-1 text-muted small">@Localizer["Backdoor_Authorize_ReturnsTo"]</p>
+                <p><code>@Model.ReturnHost</code></p>
+                <div class="alert alert-warning small" role="alert">
+                    <i class="fa-solid fa-triangle-exclamation me-1"></i>@Localizer["Backdoor_Authorize_Warning", Model.ClientName]
+                </div>
+                <form asp-action="Decide" method="post">
+                    @foreach (var parameter in Model.Parameters)
+                    {
+                        <input type="hidden" name="@parameter.Key" value="@parameter.Value" />
+                    }
+                    <div class="d-flex gap-2 justify-content-end">
+                        <button type="submit" name="decision" value="deny" class="btn btn-outline-secondary">@Localizer["Backdoor_Authorize_Deny"]</button>
+                        <button type="submit" name="decision" value="allow" class="btn btn-primary">@Localizer["Backdoor_Authorize_Allow"]</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>

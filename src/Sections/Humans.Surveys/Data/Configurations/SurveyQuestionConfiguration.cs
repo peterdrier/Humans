@@ -79,6 +79,16 @@ internal sealed class SurveyQuestionConfiguration : IEntityTypeConfiguration<Sur
                             JsonSerializer.Serialize(v, SurveyJson.Options),
                             SurveyJson.Options)));
 
+        b.Property(q => q.Comment)
+            .HasColumnType("jsonb")
+            .HasConversion(
+                v => SurveyJson.SerializeComment(v),
+                v => SurveyJson.DeserializeComment(v),
+                new ValueComparer<SurveyCommentSettings?>(
+                    (a, c) => Equals(a, c),
+                    v => v == null ? 0 : v.GetHashCode(),
+                    v => SurveyJson.DeserializeComment(SurveyJson.SerializeComment(v))));
+
         b.Property(q => q.ShowIf)
             .HasColumnType("jsonb")
             .HasConversion(

@@ -58,6 +58,11 @@ internal static class SurveyDefinitionValidation
                 return new("Surveys_Validation_ChoiceOptionEmpty",
                     $"Choice question {question.Id} must have at least one option.", question.Id);
 
+            if (question.Comment is { } comment
+                && comment.OptionValues.Any(value => question.Options.All(option => !string.Equals(option.Value, value, StringComparison.Ordinal))))
+                return new("Surveys_Validation_CommentOptionUnknown",
+                    $"Choice question {question.Id} asks for a comment on an option it does not have.", question.Id);
+
             return ValidateStableValues(question.Options.Select(option => option.Value),
                 $"Choice question {question.Id} option", question.Id, "Surveys_Validation_ChoiceOption");
         }

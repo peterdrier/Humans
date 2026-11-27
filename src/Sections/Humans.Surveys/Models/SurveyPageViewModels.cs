@@ -63,6 +63,11 @@ internal sealed class SurveyPageQuestion
     public GridSelectionMode? GridSelectionMode { get; init; }
     public IReadOnlyList<SurveyPageGridRow> GridRows { get; init; } = [];
     public IReadOnlyList<SurveyPageInformationImage> InformationImages { get; init; } = [];
+    public bool AsksForComment { get; init; }
+    public string CommentPrompt { get; init; } = string.Empty;
+
+    /// <summary>Options that show the comment box; empty means any option does.</summary>
+    public IReadOnlyList<string> CommentOptionValues { get; init; } = [];
 
     // Prior answer (for re-render after a validation failure or a Back navigation).
     public IReadOnlyList<string> SelectedOptionValues { get; init; } = [];
