@@ -303,7 +303,7 @@ tickets by itself (Peter, 2026-11-22).
 
 
 Gate looks codes up through `ITicketGateLookup.FindIssuedTicketAsync` (exact code, any event; Gate keeps only the
-active event's). `Valid` scans valid; `Offered` scans valid only once sales are closed, so a ticket can never admit its holder and then sell. A ticket the gate admitted (or whose child ticket it admitted) cannot be offered, and an admitted offer is never sold (`IGateAdmissions`, Gate's read). A child or companion ticket without an account carries the adult's
+active event's). `Valid` scans valid; `Offered` scans valid only once sales are closed, so a ticket can never admit its holder and then sell. A ticket the gate admitted (or whose valid child or companion ticket it admitted, including one on a separate order) cannot be offered or receive new resale invitations, and an admitted offer is never sold (`IGateAdmissions`, Gate's read). A child or companion ticket without an account carries the adult's
 user as `EntryUserId`, whose Early Entry applies. Nobody signs the ticket rules at the gate: the buyer's acceptance
 covers every ticket on the order (Peter, 2026-11-21). The gate's scan row is the only admission record; no platform is told.
 `GetIssuedTicketsForEventAsync` lists every ticket of one event in any state, for the gate's name search and

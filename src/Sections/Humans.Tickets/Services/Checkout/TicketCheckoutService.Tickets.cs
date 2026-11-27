@@ -219,10 +219,10 @@ internal sealed partial class TicketCheckoutService
         return CheckoutMutationResult.Ok;
     }
 
-    /// <summary>The ticket or a valid child riding on it was admitted: selling it would void someone already inside.</summary>
+    /// <summary>The ticket or a valid dependent was admitted: a companion can be on a separate order.</summary>
     private async Task<bool> IsAdmittedAsync(TicketCheckoutTicket ticket, CancellationToken ct)
     {
-        var dependents = (await repository.GetTicketsForOrderAsync(ticket.OrderId, ct))
+        var dependents = (await repository.GetTicketsForSettingsAsync(ticket.TicketingSettingsId, ct))
             .Where(t => t.ParentTicketId == ticket.Id && t.State == TicketCheckoutTicketState.Valid)
             .Select(t => t.Barcode);
         return (await gateAdmissions.GetAdmittedAsync([ticket.Barcode, .. dependents], ct)).Count > 0;

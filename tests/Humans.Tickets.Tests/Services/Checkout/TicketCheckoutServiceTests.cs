@@ -1319,6 +1319,60 @@ public sealed partial class TicketCheckoutServiceTests
     }
 
     [HumansFact]
+    public async Task OfferForResaleAsync_AdmittedCompanion_Refuses()
+    {
+        var adult = await PaidAdultAsync();
+        (await _service.IssueCompanionAsync(adult.Id, "Helper Ruiz", null, "Support", false, _adminId, Ct)).Succeeded.Should().BeTrue();
+        var companion = _repo.Tickets.Single(t => t.Kind == TicketHolderKind.Companion);
+        companion.OrderId.Should().NotBe(adult.OrderId);
+        _admitted.Add(companion.Barcode);
+
+        var result = await _service.OfferForResaleAsync(adult.Id, _buyerId, Ct);
+
+        result.Refusal.Should().Be("Tickets_Resale_NotOfferable");
+        adult.State.Should().Be(TicketCheckoutTicketState.Valid);
+        _repo.Offers.Should().BeEmpty();
+    }
+
+    [HumansFact]
+    public async Task InviteBuyersAsync_AdmittedCompanion_Refuses()
+    {
+        var adult = await PaidAdultAsync();
+        (await _service.IssueCompanionAsync(adult.Id, "Helper Ruiz", null, "Support", false, _adminId, Ct)).Succeeded.Should().BeTrue();
+        (await _service.OfferForResaleAsync(adult.Id, _buyerId, Ct)).Succeeded.Should().BeTrue();
+        _admitted.Add(_repo.Tickets.Single(t => t.Kind == TicketHolderKind.Companion).Barcode);
+
+        var result = await _service.InviteBuyersAsync(adult.Id, _buyerId, ["bo@example.com"],
+            new Uri("https://h.example/r/"), "en", Ct);
+
+        result.Refusal.Should().Be("Tickets_Resale_NotOfferable");
+        _repo.Offers.Single().Invites.Should().BeEmpty();
+        _repo.Offers.Single().DirectedInviteCount.Should().Be(0);
+    }
+
+    [HumansFact]
+    public async Task StartCheckoutAsync_DirectedAdmittedCompanion_Refuses()
+    {
+        var adult = await PaidAdultAsync();
+        (await _service.IssueCompanionAsync(adult.Id, "Helper Ruiz", null, "Support", false, _adminId, Ct)).Succeeded.Should().BeTrue();
+        (await _service.OfferForResaleAsync(adult.Id, _buyerId, Ct)).Succeeded.Should().BeTrue();
+        EmailMessage? sent = null;
+        _email.SendAsync(Arg.Do<EmailMessage>(m => sent = m), Arg.Any<CancellationToken>()).Returns(Task.CompletedTask);
+        var link = new Uri("https://h.example/Tickets/Buy/Resale/");
+        (await _service.InviteBuyersAsync(adult.Id, _buyerId, ["bo@example.com"], link, "en", Ct)).Succeeded.Should().BeTrue();
+        var token = sent!.HtmlBody[link.AbsoluteUri.Length..];
+        _ticketing.Mode = TicketSalesMode.ResaleOnly;
+        _admitted.Add(_repo.Tickets.Single(t => t.Kind == TicketHolderKind.Companion).Barcode);
+        var orders = _repo.Orders.Count;
+
+        var result = await _service.StartCheckoutAsync(Buy() with { DirectedToken = token }, _otherBuyerId, Ct);
+
+        result.Refusal.Should().Be("Tickets_Buy_ResaleOnly");
+        _repo.Orders.Should().HaveCount(orders);
+        _repo.Offers.Single().State.Should().Be(TicketResaleOfferState.Open);
+    }
+
+    [HumansFact]
     public async Task A_ticket_whose_child_was_used_at_the_gate_cannot_be_offered()
     {
         _ticketing.ChildTypes = [new TicketChildType { Name = "Child", UnderAge = 13, PriceMinor = 5000 }];
