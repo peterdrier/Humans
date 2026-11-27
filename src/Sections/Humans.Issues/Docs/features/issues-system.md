@@ -75,6 +75,7 @@ Issues is the only in-app reporting path.
 - When an issue is assigned, the new assignee is notified
 - Emails are queued via the email outbox (`OutboxEmailService`) and localized in the recipient's preferred language (en/es/de/fr/it/ca/nl)
 - Once a submission, comment, status or assignment change is saved, its notifications, email and submitted-alert resolution finish even if the browser disconnects. Reads and persistence before that save retain request cancellation. Cancellation exceptions from detached email follow-ups are logged without failing the saved reply or skipping inbox notices and resolution; a failed notification language group is logged while later groups continue. Actionable badge counts query current rows on each read, including after routing changes, retention or erasure.
+- Comment emails skip missing or tombstoned reporter accounts without undoing the saved reply or resolution. Live merge survivors remain deliverable.
 - Effective notification email comes from the resolved reporter’s `UserInfo.Email`, alongside the same snapshot’s name and culture, so verified-email and forwarding rules apply
 
 ### US-28.5: Conversation Thread
@@ -133,7 +134,7 @@ Direct screenshot reads reuse the viewer-scoped issue read before static-file se
 
 Two places read it, for different reasons:
 
-- **`IssuesService`** enforces it, on every per-item read and mutation, from the `IssueViewer` the caller passes. That is the only enforcement both doors share, so a Backdoor key reaches no further than its holder does in the browser. Out of reach reads as absent: `GetIssueByIdAsync` returns null, everything else throws the same "not found" a deleted issue throws, so an id is not an oracle.
+- **`IssuesService`** enforces it, on every per-item read and mutation, from the `IssueViewer` the caller passes. That is the only enforcement both doors share, so a Backdoor key reaches no further than its owner does in the browser. Out of reach reads as absent: `GetIssueByIdAsync` returns null, everything else throws the same "not found" a deleted issue throws, so an id is not an oracle.
 - **`IssuesAuthorizationHandler`** answers the same question from claims for the browser only — shaping the page (which controls render, whether a comment may resolve) and returning 403 where the service would return 404.
 
 `UpdateSectionAsync` authorizes against the section the issue is *in*, not the one it is going to, so a handler may route an issue out of their own queue.
@@ -169,7 +170,7 @@ The Issues API is the read/write surface Claude Code agents use to triage and fo
 - **API key:** a personal key allocated at `/Backdoor`. `BackdoorApiKeyAuthFilter` (in `Humans.Backdoor`) enforces the `X-Api-Key` header on every `/api/backdoor/*` route, resolves it to its owner and installs them as the request principal. 401 when the header is missing, or the key is unknown or revoked — the two are deliberately indistinguishable.
 - **Workflow:** an agent calls `GET /api/backdoor/issues?status=Triage` to pull the current triage queue, optionally narrowed by `section=` for per-section sweeps. For each issue it can `POST /api/backdoor/issues/{id}/comments` to ask a clarifying question, `PATCH /api/backdoor/issues/{id}/status` to advance through the lifecycle, `PATCH /api/backdoor/issues/{id}/assignee` to route the issue to a human, `PATCH /api/backdoor/issues/{id}/section` to re-route, or `PATCH /api/backdoor/issues/{id}/github-issue` to link a freshly-created GitHub issue.
 - **Audit:** API-initiated changes are audit-logged (`IssuesAuditActions.IssueStatusChanged`, etc.) with the key's owner as actor — never `null`.
-- **Local config:** `HUMANS_API_URL` / `HUMANS_API_KEY` go in `.claude/settings.local.json` (gitignored) so the agent picks them up without leaking the key into the repo. One key covers the whole machine surface.
+- **Local config:** `HUMANS_API_URL` / `HUMANS_API_KEY` go in `.claude/settings.local.json` (gitignored) so the agent picks them up without leaking the key into the repo. One key covers the whole Backdoor API.
 - **Admin visibility:** every issued key, its owner and its last-used time are listed at `/Backdoor`.
 
 ## Navigation
@@ -184,4 +185,4 @@ The Issues API is the read/write surface Claude Code agents use to triage and fo
 - Notifications (`src/Sections/Humans.Notifications/Docs/features/notification-inbox.md`) — `IssuesNotificationSources.IssueSubmitted`, `IssuesNotificationSources.IssueComment`, `IssuesNotificationSources.IssueStatusChanged`, `IssuesNotificationSources.IssueAssigned`.
 - Audit log — every issue mutation is recorded.
 - `IssuesUserMenuViewComponent` — the section's own chrome contribution for the actionable item count.
-- Role management — `TicketsAdmin`, `CampsAdmin`, `TeamsAdmin`, `Board`, `ConsentCoordinator`, `ShiftsAdmin`, `UsersAdmin`, `ShiftsNoInfo`, `FinanceAdmin` roles all gate section-specific issue queues per `IssueSectionRouting.RolesFor`.
+- Role management — `TicketsAdmin`, `CampsAdmin`, `TeamsAdmin`, `Board`, `ConsentAdmin`, `ShiftsAdmin`, `UsersAdmin`, `FinanceAdmin` roles all gate section-specific issue queues per `IssueSectionRouting.RolesFor`.

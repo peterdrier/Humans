@@ -38,7 +38,7 @@ public class MembershipRequiredFilter : IAsyncActionFilter
         // A lingering cookie must not turn an anonymized account into an editable profile.
         // Terminal accounts retain the status wall and session/language routes, but none
         // of the onboarding or self-service allowances for recoverable accounts.
-        var state = RoleAssignmentClaimsTransformation.GetUserState(user);
+        var state = SystemRoleClaimsTransformation.GetUserState(user);
         if (state is UserState.Deleted or UserState.Merged)
         {
             if (allowance is { Terminal: true })
@@ -56,7 +56,7 @@ public class MembershipRequiredFilter : IAsyncActionFilter
         }
 
         // Access is the stored UserState (stamped on the principal by
-        // RoleAssignmentClaimsTransformation). Only Active reaches the app.
+        // SystemRoleClaimsTransformation). Only Active reaches the app.
         if (state == UserState.Active)
         {
             return next();
@@ -65,7 +65,7 @@ public class MembershipRequiredFilter : IAsyncActionFilter
         context.Result = state switch
         {
             UserState.DeletePending => new RedirectToActionResult("Deletion", "User", null),
-            UserState walled when walled.IsWalled() => new RedirectToActionResult("Status", "User", null),
+            { } walled when walled.IsWalled() => new RedirectToActionResult("Status", "User", null),
             // Bare or null (not yet named / unseeded) → name entry.
             _ => new RedirectToActionResult("Index", "OnboardingWidget", null),
         };

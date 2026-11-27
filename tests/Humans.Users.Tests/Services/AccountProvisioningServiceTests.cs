@@ -1,4 +1,3 @@
-using Humans.Users.Domain;
 using System.Transactions;
 using Humans.Users.Data;
 using NSubstitute.ExceptionExtensions;
@@ -15,17 +14,6 @@ using NSubstitute;
 using Humans.Users.Data.Repositories;
 
 namespace Humans.Users.Tests.Services;
-
-file sealed class StubAuditLog : IAuditLogService
-{
-    public Task LogAsync(AuditActionDefinition action, string entityType, Guid entityId,
-        string description, string jobName,
-        Guid? relatedEntityId = null, string? relatedEntityType = null) => Task.CompletedTask;
-
-    public Task LogAsync(AuditActionDefinition action, string entityType, Guid entityId,
-        string description, Guid actorUserId,
-        Guid? relatedEntityId = null, string? relatedEntityType = null) => Task.CompletedTask;
-}
 
 /// <summary>
 /// Repositories are in-memory fakes because the real matching uses Npgsql <c>ILike</c>, which the
@@ -67,7 +55,7 @@ public class AccountProvisioningServiceTests
             throw new NotSupportedException();
         public Task<bool> SetPreferredLanguageAsync(Guid userId, string preferredLanguage, CancellationToken ct = default) =>
             throw new NotSupportedException();
-        public Task<bool> SetLastLoginAsync(Guid userId, Instant at, CancellationToken ct = default) =>
+        public Task<bool> SetLastSignInAsync(Guid userId, Instant at, CancellationToken ct = default) =>
             throw new NotSupportedException();
         public Task<bool> SetMarkedFakeAsync(Guid userId, Instant at, CancellationToken ct = default) =>
             throw new NotSupportedException();
@@ -89,17 +77,12 @@ public class AccountProvisioningServiceTests
             throw new NotSupportedException();
         public Task<IReadOnlyList<Guid>> GetUserIdsWithExternalLoginsAsync(CancellationToken ct = default) =>
             throw new NotSupportedException();
-        public Task<int> DeleteUsersAsync(IReadOnlyCollection<Guid> userIds, CancellationToken ct = default) =>
-            throw new NotSupportedException();
         public Task<IReadOnlyDictionary<Guid, IReadOnlyList<(string Provider, string ProviderKey)>>>
             GetExternalLoginsByUserIdsAsync(IReadOnlyCollection<Guid> userIds, CancellationToken ct = default) =>
             throw new NotSupportedException();
-        public Task<IReadOnlyList<ContactField>> GetContactFieldsByUserIdReadOnlyAsync(
-            Guid userId, CancellationToken ct = default) =>
-            throw new NotSupportedException();
         public Task<IReadOnlyList<ContactField>> GetAllContactFieldsAsync(CancellationToken ct = default) =>
             throw new NotSupportedException();
-        public Task<IReadOnlyList<ContactField>> GetContactFieldsByUserIdForMutationAsync(
+        public Task<IReadOnlyList<ContactField>> GetContactFieldsByUserIdAsync(
             Guid userId, CancellationToken ct = default) =>
             throw new NotSupportedException();
         public Task BatchSaveAsync(
@@ -146,16 +129,13 @@ public class AccountProvisioningServiceTests
             throw new NotSupportedException();
         public Task<bool> SetRejectedAsync(Guid userId, CancellationToken ct = default) =>
             throw new NotSupportedException();
-        public Task<IReadOnlyList<UserEmail>> GetUserEmailsByUserIdReadOnlyAsync(
+        public Task<IReadOnlyList<UserEmail>> GetUserEmailsByUserIdAsync(
             Guid userId, CancellationToken ct = default) =>
             throw new NotSupportedException();
-        public Task<IReadOnlyList<UserEmail>> GetUserEmailsByUserIdForMutationAsync(
-            Guid userId, CancellationToken ct = default) =>
-            throw new NotSupportedException();
-        public Task<UserEmail?> GetUserEmailByIdAndUserIdAsync(
+        public Task<UserEmail?> GetUserEmailForUserAsync(
             Guid emailId, Guid userId, CancellationToken ct = default) =>
             throw new NotSupportedException();
-        public Task<UserEmail?> GetUserEmailByIdReadOnlyAsync(Guid emailId, CancellationToken ct = default) =>
+        public Task<UserEmail?> GetUserEmailByIdAsync(Guid emailId, CancellationToken ct = default) =>
             throw new NotSupportedException();
         public Task<IReadOnlyList<UserEmail>> GetUserEmailsByAddressAsync(
             string normalizedEmail, string? alternateEmail, CancellationToken ct = default) =>
@@ -165,13 +145,10 @@ public class AccountProvisioningServiceTests
             throw new NotSupportedException();
         public Task<IReadOnlyList<UserEmail>> GetAllUserEmailsAsync(CancellationToken ct = default) =>
             throw new NotSupportedException();
-        public Task<IReadOnlyList<Guid>> GetUserIdsHavingAnyUserEmailAsync(
+        public Task<IReadOnlyList<Guid>> GetUserIdsWithEmailsAsync(
             IReadOnlyCollection<Guid> userIds, CancellationToken ct = default) =>
             throw new NotSupportedException();
-        public Task RemoveAllUserEmailsForUserAndSaveAsync(Guid userId, CancellationToken ct = default) =>
-            throw new NotSupportedException();
-        public Task RemoveAllUserEmailsForUsersAndSaveAsync(
-            IReadOnlyCollection<Guid> userIds, CancellationToken ct = default) =>
+        public Task RemoveUserEmailsAsync(Guid userId, CancellationToken ct = default) =>
             throw new NotSupportedException();
         public Task<bool> MarkUserEmailVerifiedAsync(
             Guid emailId, Instant now, CancellationToken ct = default) =>
@@ -181,17 +158,11 @@ public class AccountProvisioningServiceTests
         public Task<IReadOnlyList<UserEmail>> GetUserEmailsByEmailsAsync(
             IReadOnlyCollection<string> emails, CancellationToken ct = default) =>
             throw new NotSupportedException();
-        public Task<IReadOnlyList<Guid>> GetUserIdsByUserEmailPrefixAndSuffixAsync(
-            string prefix, string suffix, CancellationToken ct = default) =>
-            throw new NotSupportedException();
         public Task ApplyUserEmailReconcilePlanAsync(
             UserEmail? rowToDelete,
             UserEmail? rowToUpdate,
             UserEmail? rowToInsert,
             CancellationToken ct = default) =>
-            throw new NotSupportedException();
-        public Task SetUserEmailGoogleExclusiveAsync(
-            Guid userId, Guid userEmailId, Instant updatedAt, CancellationToken cancellationToken = default) =>
             throw new NotSupportedException();
         public Task AddUserEmailAsync(UserEmail email, CancellationToken ct = default) =>
             throw new NotSupportedException();
@@ -402,9 +373,9 @@ public class AccountProvisioningServiceTests
                 break;
         }
         _userInfoRefresher.RefreshAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>(), Arg.Any<string>(), Arg.Any<string>())
-            .Returns(call => { Transaction.Current.Should().BeNull(); return Task.CompletedTask; });
+            .Returns(_ => { Transaction.Current.Should().BeNull(); return Task.CompletedTask; });
 
-        Func<Task> act = () => _service.ReplaceUnverifiedEmailAndProvisionAsync(
+        Func<Task> act = () => _service.ReplaceUnverifiedEmailAsync(
             row.UserId, row.Id, row.Email, "Victim", ContactSource.TicketTailor, Xunit.TestContext.Current.CancellationToken);
         await act.Should().ThrowAsync<InvalidOperationException>();
 
@@ -429,7 +400,7 @@ public class AccountProvisioningServiceTests
                 && transaction?.TransactionInformation.Status == TransactionStatus.Committed));
             return Task.CompletedTask;
         });
-        var result = await _service.ReplaceUnverifiedEmailAndProvisionAsync(
+        var result = await _service.ReplaceUnverifiedEmailAsync(
             row.UserId, row.Id, row.Email, "Victim", ContactSource.MailerLite, Xunit.TestContext.Current.CancellationToken);
 
         using (transaction)
@@ -455,7 +426,7 @@ public class AccountProvisioningServiceTests
         var row = SeedPendingReplacement();
         _userManager.When(manager => manager.CreateAsync(Arg.Any<User>())).Do(_ =>
             Transaction.Current!.EnlistVolatile(new RejectCommit(), EnlistmentOptions.None));
-        var act = () => _service.ReplaceUnverifiedEmailAndProvisionAsync(
+        var act = () => _service.ReplaceUnverifiedEmailAsync(
             row.UserId, row.Id, row.Email, "Victim", ContactSource.MailerLite, Xunit.TestContext.Current.CancellationToken);
 
         await act.Should().ThrowAsync<TransactionAbortedException>();
@@ -492,7 +463,7 @@ public class AccountProvisioningServiceTests
             IsVerified = false
         });
         var plannedEmailId = string.Equals(change, "Missing", StringComparison.Ordinal) ? Guid.NewGuid() : row.Id;
-        Func<Task> act = () => _service.ReplaceUnverifiedEmailAndProvisionAsync(
+        Func<Task> act = () => _service.ReplaceUnverifiedEmailAsync(
             row.UserId, plannedEmailId, row.Email, "Victim", ContactSource.MailerLite, Xunit.TestContext.Current.CancellationToken);
         await act.Should().ThrowAsync<InvalidOperationException>();
         _userEmailFake.All.Should().Contain(row);
@@ -766,7 +737,7 @@ public class AccountProvisioningServiceTests
                 ? Task.FromException<bool>(new InvalidOperationException("profile save unavailable"))
                 : Task.FromResult(true));
         _userInfoRefresher.RefreshAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>(), Arg.Any<string>(), Arg.Any<string>())
-            .Returns(call => { Transaction.Current.Should().BeNull(); return Task.CompletedTask; });
+            .Returns(_ => { Transaction.Current.Should().BeNull(); return Task.CompletedTask; });
         _audit.LogAsync(UsersAuditActions.ContactCreated, nameof(User), Arg.Any<Guid>(), Arg.Any<string>(),
             nameof(AccountProvisioningService)).Returns(_ =>
             {
@@ -831,7 +802,7 @@ public class AccountProvisioningServiceTests
             if (imported)
                 await _service.FindOrCreateUserByEmailAsync("retry@example.org", "Retry Human", ContactSource.TicketTailor, ct);
             else
-                await _service.CompleteMagicLinkSignupAsync("retry@example.org", "Retry Human", "First", "Last", ct);
+                await _service.CompleteSignInLinkSignupAsync("retry@example.org", "Retry Human", "First", "Last", ct);
         }
 
         Func<Task> first = ProvisionAsync;
@@ -863,17 +834,17 @@ public class AccountProvisioningServiceTests
     [Xunit.InlineData(0, 257)]
     [Xunit.InlineData(1, 257)]
     [Xunit.InlineData(2, 257)]
-    public async Task CompleteMagicLinkSignupAsync_ValidatesNameLengthsBeforeCreatingAccount(int field, int length)
+    public async Task CompleteSignInLinkSignupAsync_ValidatesNameLengthsFirst(int field, int length)
     {
         string[] names = ["Burner", "First", "Last"];
         names[field] = " " + new string('x', length) + " ";
 
-        var result = await _service.CompleteMagicLinkSignupAsync(
+        var result = await _service.CompleteSignInLinkSignupAsync(
             "length@example.com", names[0], names[1], names[2], Xunit.TestContext.Current.CancellationToken);
 
         if (length > 256)
         {
-            result.Outcome.Should().Be(MagicLinkSignupCompletionOutcome.Failed);
+            result.Outcome.Should().Be(SignInLinkSignupOutcome.Failed);
             result.UserId.Should().BeNull();
             _userRepo.Count.Should().Be(0);
             _userEmailFake.All.Should().BeEmpty();
@@ -883,22 +854,22 @@ public class AccountProvisioningServiceTests
         }
         else
         {
-            result.Outcome.Should().Be(MagicLinkSignupCompletionOutcome.Created);
+            result.Outcome.Should().Be(SignInLinkSignupOutcome.Created);
             await _userService.Received(1).EnsureStubProfileAsync(
                 result.UserId!.Value, names[0].Trim(), names[1].Trim(), names[2].Trim(), Arg.Any<CancellationToken>());
         }
     }
 
     [HumansFact]
-    public async Task CompleteMagicLinkSignupAsync_CreatesUserEmailAndStubProfile()
+    public async Task CompleteSignInLinkSignup_CreatesStubProfile()
     {
-        var result = await _service.CompleteMagicLinkSignupAsync(
+        var result = await _service.CompleteSignInLinkSignupAsync(
             "magic@example.com", " Magic Human ", " Legal ", " Surname ", Xunit.TestContext.Current.CancellationToken);
 
-        result.Outcome.Should().Be(MagicLinkSignupCompletionOutcome.Created);
+        result.Outcome.Should().Be(SignInLinkSignupOutcome.Created);
         result.UserId.Should().NotBeNull();
         StoredUser(result.UserId!.Value).BurnerName.Should().Be("Magic Human");
-        StoredUser(result.UserId!.Value).LastLoginAt.Should().Be(_clock.GetCurrentInstant());
+        StoredUser(result.UserId!.Value).LastSignInAt.Should().Be(_clock.GetCurrentInstant());
         _userEmailFake.All.Should().ContainSingle(ue =>
             ue.UserId == result.UserId
             && ue.Email == "magic@example.com"
@@ -909,7 +880,7 @@ public class AccountProvisioningServiceTests
     }
 
     [HumansFact]
-    public async Task CompleteMagicLinkSignupAsync_ExistingVerifiedEmailUpdatesLastLogin()
+    public async Task CompleteSignInLinkSignupAsync_ExistingEmail_ReusesAccount()
     {
         var user = new User
         {
@@ -929,28 +900,28 @@ public class AccountProvisioningServiceTests
             UpdatedAt = _clock.GetCurrentInstant(),
         });
 
-        var result = await _service.CompleteMagicLinkSignupAsync(
+        var result = await _service.CompleteSignInLinkSignupAsync(
             "existing@example.com", "Ignored", "Ignored", "Ignored", Xunit.TestContext.Current.CancellationToken);
 
-        result.Outcome.Should().Be(MagicLinkSignupCompletionOutcome.ExistingUser);
+        result.Outcome.Should().Be(SignInLinkSignupOutcome.ExistingUser);
         result.UserId.Should().Be(user.Id);
         // The login stamp goes through the rule's single owner.
-        await _userService.Received(1).RecordLoginAsync(user.Id, Arg.Any<CancellationToken>());
+        await _userService.Received(1).RecordSignInAsync(user.Id, Arg.Any<CancellationToken>());
         await _userManager.DidNotReceive().CreateAsync(Arg.Any<User>());
     }
 
     [HumansTheory]
     [Xunit.InlineData(false)]
     [Xunit.InlineData(true)]
-    public async Task CompleteMagicLinkSignupAsync_AddVerifiedEmailFailureRollsBackUser(bool refusal)
+    public async Task CompleteSignInLinkSignup_EmailFailure_RollsBackUser(bool refusal)
     {
         _userEmailFake.ThrowOnAddVerified = !refusal;
         _userEmailFake.RefuseAddVerified = refusal;
 
-        var result = await _service.CompleteMagicLinkSignupAsync(
+        var result = await _service.CompleteSignInLinkSignupAsync(
             "rollback@example.com", "Rollback", "First", "Last", Xunit.TestContext.Current.CancellationToken);
 
-        result.Outcome.Should().Be(MagicLinkSignupCompletionOutcome.Failed);
+        result.Outcome.Should().Be(SignInLinkSignupOutcome.Failed);
         result.UserId.Should().BeNull();
         _userRepo.Count.Should().Be(0);
         await _userManager.Received(1).DeleteAsync(Arg.Any<User>());

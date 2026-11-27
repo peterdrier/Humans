@@ -1,3 +1,4 @@
+using Humans.Testing;
 using AwesomeAssertions;
 using Humans.Base;
 using Humans.Base.Constants;
@@ -25,7 +26,7 @@ public sealed class GuestDataControllerTests
     private readonly IUserService _users = Substitute.For<IUserService>();
     private readonly IGdprService _gdpr = Substitute.For<IGdprService>();
     private readonly IAccountDeletionService _deletion = Substitute.For<IAccountDeletionService>();
-    private readonly IStringLocalizer<GdprResource> _localizer = Substitute.For<IStringLocalizer<GdprResource>>();
+    private readonly IStringLocalizer<GdprResource> _localizer = Substitute.For<IStringLocalizer<GdprResource>>().AddFormatting();
     private readonly Guid _userId = Guid.NewGuid();
 
     private GuestDataController Sut(bool signedIn = true)
@@ -39,7 +40,7 @@ public sealed class GuestDataControllerTests
                 _ => key,
             });
         });
-        var shared = Substitute.For<IStringLocalizer<SharedResource>>();
+        var shared = Substitute.For<IStringLocalizer<SharedResource>>().AddFormatting();
         shared[Arg.Any<string>()].Returns(ci => new LocalizedString(ci.Arg<string>(), ci.Arg<string>()));
         _users.GetUserInfoAsync(_userId, Arg.Any<CancellationToken>())
             .Returns(new ValueTask<UserInfo?>(ControllerTestHost.Info(_userId)));
@@ -52,7 +53,7 @@ public sealed class GuestDataControllerTests
     [HumansTheory]
     [InlineData(false)]
     [InlineData(true)]
-    public async Task Deletion_stops_before_mutation_when_account_lookup_is_cancelled(bool cancel)
+    public async Task Deletion_LookupCancelled_ChangesNothing(bool cancel)
     {
         var ctrl = Sut();
         using var request = new CancellationTokenSource();
@@ -70,7 +71,7 @@ public sealed class GuestDataControllerTests
     }
 
     [HumansFact]
-    public async Task DownloadData_ReturnsTheJsonExportOfTheSignedInAccountOnly()
+    public async Task DownloadData_SignedIn_ReturnsOwnExport()
     {
         _gdpr.ExportForUserAsync(_userId, Arg.Any<CancellationToken>())
             .Returns(new GdprExport("2026-10-03T00:00:00Z", _userId, [], new Dictionary<string, object?>(StringComparer.Ordinal)));
@@ -84,7 +85,7 @@ public sealed class GuestDataControllerTests
     }
 
     [HumansFact]
-    public async Task DownloadData_ExportFailure_ShowsErrorAndReturnsToTheGuestDashboard()
+    public async Task DownloadData_ExportFails_ShowsError()
     {
         _gdpr.ExportForUserAsync(_userId, Arg.Any<CancellationToken>())
             .Returns(Task.FromException<GdprExport>(new InvalidOperationException("contributor failed")));
@@ -114,7 +115,7 @@ public sealed class GuestDataControllerTests
     [HumansTheory]
     [InlineData(nameof(GuestDataController.RequestDeletion), "Gdpr/Guest/RequestDeletion")]
     [InlineData(nameof(GuestDataController.CancelDeletion), "Gdpr/Guest/CancelDeletion")]
-    public void DeletionActions_UseGdprGuestUrls_AndRequireAntiForgery(string action, string route)
+    public void DeletionActions_RequireAntiForgery(string action, string route)
     {
         var method = typeof(GuestDataController).GetMethod(action)!;
         method.GetCustomAttributes(typeof(HttpPostAttribute), false).Cast<HttpPostAttribute>()
@@ -125,7 +126,7 @@ public sealed class GuestDataControllerTests
     }
 
     [HumansFact]
-    public async Task RequestDeletion_Success_RedirectsToTheGuestDashboardWithTheDate()
+    public async Task RequestDeletion_Success_RedirectsWithDate()
     {
         _deletion.RequestDeletionAsync(_userId, Arg.Any<CancellationToken>())
             .Returns(new DeletionRequestResult(true, EffectiveDeletionDate: Instant.FromUtc(2026, 6, 15, 0, 0)));
@@ -164,7 +165,7 @@ public sealed class GuestDataControllerTests
     }
 
     [HumansFact]
-    public async Task CancelDeletion_Success_ConfirmsAndRedirects()
+    public async Task CancelDeletion_Success_Redirects()
     {
         _deletion.CancelDeletionAsync(_userId, Arg.Any<CancellationToken>()).Returns(new OnboardingResult(true));
         var ctrl = Sut();
@@ -176,7 +177,7 @@ public sealed class GuestDataControllerTests
     }
 
     [HumansFact]
-    public async Task NoSignedInUser_IsChallenged_AndNothingIsExportedOrDeleted()
+    public async Task Actions_NoSignedInUser_AreChallenged()
     {
         var ctrl = Sut(signedIn: false);
 

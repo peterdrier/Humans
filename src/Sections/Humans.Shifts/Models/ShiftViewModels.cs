@@ -7,7 +7,6 @@ using Humans.Shifts.Services;
 using Humans.Shifts.Services.Dtos;
 using Humans.Shifts.Contracts;
 using Humans.Teams.Contracts;
-using Humans.Shifts.Domain;
 using NodaTime;
 using Humans.Users.Contracts;
 
@@ -210,7 +209,6 @@ internal sealed class DepartmentShiftGroup
     public Guid TeamId { get; set; }
     public string TeamName { get; set; } = string.Empty;
     public string? TeamDescription { get; set; }
-    public string TeamSlug { get; set; } = string.Empty;
     public List<RotaShiftGroup> Rotas { get; set; } = [];
 }
 
@@ -224,7 +222,6 @@ internal sealed class RotaShiftGroup
     /// <summary>Set only in the urgency view, where rotas are shown flat.</summary>
     public string? DepartmentName { get; set; }
 
-    public string? DepartmentSlug { get; set; }
 
     public double MaxUrgencyScore { get; set; }
 
@@ -497,7 +494,6 @@ internal sealed class ShiftDashboardViewModel
     public IReadOnlyList<ShiftDurationBreakdownRow> ShiftDurationBreakdown { get; set; } = [];
     public CoverageHeatmap CoverageHeatmap { get; set; } = new([], []);
     public TrendWindow TrendWindow { get; set; } = TrendWindow.Last30Days;
-    public bool IsDevelopment { get; set; }
     public BuildDayCountdown Countdown { get; set; } = new(0, LocalDate.MinIsoValue, 0, 0);
 }
 

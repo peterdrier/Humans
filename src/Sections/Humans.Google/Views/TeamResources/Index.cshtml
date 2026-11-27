@@ -1,7 +1,7 @@
 @model TeamResourcesViewModel
 @inject IStringLocalizer<SharedResource> SharedLocalizer
 @{
-    ViewData["Title"] = string.Format(Localizer["Google_TeamResources_Title"].Value, Model.TeamName);
+    ViewData["Title"] = Localizer["Google_TeamResources_Title", Model.TeamName].Value;
 }
 
 @section Crumbs {
@@ -35,7 +35,7 @@
     <div class="card mb-4">
         <div class="card-header">@Localizer["Google_TeamResources_LinkedResources"]</div>
         @{
-            Func<Humans.Google.Models.GoogleResourceViewModel, IHtmlContent> nameCell = @<text>
+            Func<GoogleResourceViewModel, IHtmlContent> nameCell = @<text>
                 @if (!string.IsNullOrEmpty(item.Url))
                 {
                     <a href="@item.Url" target="_blank" rel="noopener noreferrer">@item.Name</a>
@@ -46,7 +46,7 @@
                 }
 
             </text>;
-            Func<Humans.Google.Models.GoogleResourceViewModel, IHtmlContent> typeCell = @<text>
+            Func<GoogleResourceViewModel, IHtmlContent> typeCell = @<text>
                 @if (string.Equals(item.ResourceType, "Drive Folder", StringComparison.Ordinal))
                 {
                     <span class="badge bg-info">Drive Folder</span>
@@ -65,7 +65,7 @@
                 }
 
             </text>;
-            Func<Humans.Google.Models.GoogleResourceViewModel, IHtmlContent> permissionCell = @<text>
+            Func<GoogleResourceViewModel, IHtmlContent> permissionCell = @<text>
                 @if (item.IsDriveResource)
                 {
                     <form asp-action="UpdatePermissionLevel" asp-route-slug="@Model.TeamSlug" asp-route-resourceId="@item.Id" method="post" class="d-inline permission-form">
@@ -95,7 +95,7 @@
                 }
 
             </text>;
-            Func<Humans.Google.Models.GoogleResourceViewModel, IHtmlContent> restrictInheritanceCell = @<text>
+            Func<GoogleResourceViewModel, IHtmlContent> restrictInheritanceCell = @<text>
                 @if (item.IsDriveFolder && !Model.CanManage)
                 {
                     <span class="badge @(item.RestrictInheritedAccess ? "bg-warning text-dark" : "bg-secondary")">
@@ -131,7 +131,7 @@
                 }
 
             </text>;
-            Func<Humans.Google.Models.GoogleResourceViewModel, IHtmlContent> lastsyncedCell = @<text>
+            Func<GoogleResourceViewModel, IHtmlContent> lastsyncedCell = @<text>
                 @if (item.LastSyncedAt.HasValue)
                 {
                             @item.LastSyncedAt.Value.ToDateTime()
@@ -142,7 +142,7 @@
                 }
 
             </text>;
-            Func<Humans.Google.Models.GoogleResourceViewModel, IHtmlContent> statusCell = @<text>
+            Func<GoogleResourceViewModel, IHtmlContent> statusCell = @<text>
                 @if (!string.IsNullOrEmpty(item.ErrorMessage))
                 {
                     <span class="badge bg-danger" title="@item.ErrorMessage">Error</span>
@@ -153,7 +153,7 @@
                 }
 
             </text>;
-            Func<Humans.Google.Models.GoogleResourceViewModel, IHtmlContent> actionsCell = @<text>
+            Func<GoogleResourceViewModel, IHtmlContent> actionsCell = @<text>
                 @if (Model.CanManage)
                 {
                     <div class="d-flex gap-1" role="group">

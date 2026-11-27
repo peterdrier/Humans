@@ -17,7 +17,7 @@ namespace Humans.Teams.Tests.Services;
 public sealed class TeamDirectoryBuilderTests
 {
     private static readonly Instant Now = Instant.FromUtc(2026, 9, 5, 12, 0);
-    private readonly IRoleAssignmentService _roles = Substitute.For<IRoleAssignmentService>();
+    private readonly ISystemRoleService _roles = Substitute.For<ISystemRoleService>();
 
     private static TeamInfo Team(
         string name,
@@ -51,7 +51,8 @@ public sealed class TeamDirectoryBuilderTests
     {
         var teams = Substitute.For<ITeamManagementService>();
         teams.GetTeamsAsync(ct).Returns(graph);
-        var pages = new TeamPageService(teams, Substitute.For<ITeamResourceService>(), _roles);
+        var pages = new TeamPageService(teams, Substitute.For<ITeamResourceService>(), _roles,
+            Substitute.For<Humans.Permissions.Contracts.IPermissionService>());
         return await pages.GetTeamDirectoryAsync(userId, ct);
     }
 

@@ -1,13 +1,14 @@
 using System.Text;
 using AwesomeAssertions;
 using Humans.Gdpr.Contracts;
+using Humans.Gdpr.Services;
 
 namespace Humans.Gdpr.Tests;
 
 public class GdprExportSerializerTests
 {
     [HumansFact]
-    public void Serialize_preserves_download_document_format()
+    public void Serialize_KeepsDownloadFormat()
     {
         var export = new GdprExport(
             "2026-04-15T10:30:00Z",

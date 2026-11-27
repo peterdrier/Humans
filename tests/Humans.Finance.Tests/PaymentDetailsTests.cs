@@ -51,14 +51,13 @@ public class PaymentDetailsTests
 
     private static CancellationToken Ct => Xunit.TestContext.Current.CancellationToken;
 
-    private UserInfo SeedUser(Guid id, Guid? resolvesTo = null)
+    private void SeedUser(Guid id, Guid? resolvesTo = null)
     {
         var info = UserInfo.Create(
             new User { Id = resolvesTo ?? id, BurnerName = "Ana", CreatedAt = Now },
             [], [], UserFixtures.Profile());
         _users.GetUserInfoAsync(id, Arg.Any<CancellationToken>()).Returns(info);
         _users.GetRawUserInfoAsync(id, Arg.Any<CancellationToken>()).Returns(info);
-        return info;
     }
 
     [HumansTheory]
@@ -78,6 +77,27 @@ public class PaymentDetailsTests
         (await _repo.GetAsync(survivor, Ct))!.Iban.Should().Be(value);
         (await _sut.GetIbanAsync(source, Ct)).Should().Be(value);
         (await _sut.GetIbanAsync(survivor, Ct)).Should().Be(value);
+    }
+
+    [HumansTheory]
+    [Xunit.InlineData(false, false)]
+    [Xunit.InlineData(false, true)]
+    [Xunit.InlineData(true, false)]
+    [Xunit.InlineData(true, true)]
+    public async Task SetIban_Tombstone_DoesNotRecreateErasedDetails(bool legacy, bool clear)
+    {
+        var id = Guid.NewGuid();
+        SeedUser(id);
+        await _sut.SetIbanAsync(id, Iban, Ct);
+        await _sut.EraseForUserAsync(id, Ct);
+        var person = (await _users.GetUserInfoAsync(id, Ct))!;
+        person = legacy ? person with { IdentityEmailColumn = "erased@gdpr.local" } : person with { State = UserState.Deleted };
+        _users.GetUserInfoAsync(id, Arg.Any<CancellationToken>()).Returns(person);
+
+        var saved = await _sut.SetIbanAsync(id, clear ? null : OtherIban, Ct);
+
+        saved.Should().BeFalse();
+        (await _repo.GetAsync(id, Ct)).Should().BeNull();
     }
 
     [HumansFact]
@@ -323,7 +343,7 @@ public class PaymentDetailsTests
     [HumansFact]
     public void Parts_ContributeTheCardToTheAdminDetailSidebarOnly()
     {
-        IUserPart contribution = ((IUserPart)new Section());
+        IUserPart contribution = new Section();
 
         contribution.Parts().Should().ContainSingle()
             .Which.Should().Be(new UserPart(UserPartSlots.AdminDetailSidebar, typeof(PaymentDetailsViewComponent), 100));

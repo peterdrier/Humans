@@ -1,0 +1,88 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <xsd:schema id="root" xmlns="" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:msdata="urn:schemas-microsoft-com:xml-msdata">
+    <xsd:element name="root" msdata:IsDataSet="true">
+      <xsd:complexType>
+        <xsd:choice maxOccurs="unbounded">
+          <xsd:element name="data">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" msdata:Ordinal="1" />
+                <xsd:element name="comment" type="xsd:string" minOccurs="0" msdata:Ordinal="2" />
+              </xsd:sequence>
+              <xsd:attribute name="name" type="xsd:string" msdata:Ordinal="0" />
+              <xsd:attribute name="type" type="xsd:string" />
+              <xsd:attribute name="mimetype" type="xsd:string" />
+            </xsd:complexType>
+          </xsd:element>
+          <xsd:element name="resheader">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" msdata:Ordinal="1" />
+              </xsd:sequence>
+              <xsd:attribute name="name" type="xsd:string" use="required" />
+            </xsd:complexType>
+          </xsd:element>
+        </xsd:choice>
+      </xsd:complexType>
+    </xsd:element>
+  </xsd:schema>
+  <resheader name="resmimetype"><value>text/microsoft-resx</value></resheader>
+  <resheader name="version"><value>1.3</value></resheader>
+  <resheader name="reader"><value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=2.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value></resheader>
+  <resheader name="writer"><value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=2.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value></resheader>
+
+  <!-- Enums -->
+  <data name="Backdoor_Title" xml:space="preserve"><value>API-Schlüssel</value></data>
+  <data name="Backdoor_Subtitle" xml:space="preserve"><value>Persönliche Schlüssel für /api/backdoor/*</value></data>
+  <data name="Backdoor_CopyNow" xml:space="preserve"><value>Kopiere diesen Schlüssel jetzt</value></data>
+  <data name="Backdoor_CopyNowBody" xml:space="preserve"><value>Er wird nur als Hash gespeichert. Er wird nur dieses eine Mal angezeigt.</value></data>
+  <data name="Backdoor_NewKey" xml:space="preserve"><value>Schlüssel erstellen</value></data>
+  <data name="Backdoor_Label" xml:space="preserve"><value>Bezeichnung</value></data>
+  <data name="Backdoor_LabelPlaceholder" xml:space="preserve"><value>z. B. Laptop-Agent</value></data>
+  <data name="Backdoor_Create" xml:space="preserve"><value>Erstellen</value></data>
+  <data name="Backdoor_Key" xml:space="preserve"><value>Schlüssel</value></data>
+  <data name="Backdoor_Created" xml:space="preserve"><value>Erstellt</value></data>
+  <data name="Backdoor_LastUsed" xml:space="preserve"><value>Zuletzt benutzt</value></data>
+  <data name="Backdoor_Expires" xml:space="preserve"><value>Läuft ab</value></data>
+  <data name="Backdoor_Status" xml:space="preserve"><value>Status</value></data>
+  <data name="Backdoor_Actions" xml:space="preserve"><value>Aktionen</value></data>
+  <data name="Backdoor_Never" xml:space="preserve"><value>nie</value></data>
+  <data name="Backdoor_Status_Revoked" xml:space="preserve"><value>Widerrufen {0}</value></data>
+  <data name="Backdoor_Status_Expired" xml:space="preserve"><value>Abgelaufen</value></data>
+  <data name="Backdoor_Status_Disabled" xml:space="preserve"><value>Deaktiviert</value></data>
+  <data name="Backdoor_Status_DisabledHint" xml:space="preserve"><value>Sein Inhaber darf keinen Schlüssel mehr haben, daher wird jede Anfrage damit abgelehnt.</value></data>
+  <data name="Backdoor_Status_Active" xml:space="preserve"><value>Aktiv</value></data>
+  <data name="Backdoor_Rotate" xml:space="preserve"><value>Erneuern</value></data>
+  <data name="Backdoor_Revoke" xml:space="preserve"><value>Widerrufen</value></data>
+  <data name="Backdoor_Empty" xml:space="preserve"><value>Noch keine Schlüssel.</value></data>
+  <data name="Backdoor_About" xml:space="preserve"><value>Ein Schlüssel handelt als du: Jede Anfrage damit wird dir zugeordnet, und er erreicht nur, was du selbst erreichen kannst. Sende ihn im Header X-Api-Key.</value></data>
+  <data name="Backdoor_ShortLived" xml:space="preserve"><value>Schlüssel für alle außer Admin und Vorstand laufen nach {0} Tagen ab. Erneuere einen Schlüssel, um ihn zu verlängern.</value></data>
+  <data name="Backdoor_Created_Flash" xml:space="preserve"><value>Schlüssel erstellt. Kopiere ihn jetzt: Er wird nicht noch einmal angezeigt.</value></data>
+  <data name="Backdoor_Revoked" xml:space="preserve"><value>Schlüssel widerrufen.</value></data>
+  <data name="Backdoor_Error_LabelRequired" xml:space="preserve"><value>Eine Bezeichnung ist erforderlich.</value></data>
+  <data name="Backdoor_Error_LabelTooLong" xml:space="preserve"><value>Die Bezeichnung darf höchstens 100 Zeichen lang sein.</value></data>
+  <data name="Backdoor_Error_NotEligible" xml:space="preserve"><value>Dieses Konto darf keinen Schlüssel haben.</value></data>
+  <data name="Backdoor_Error_NotAllowed" xml:space="preserve"><value>Du kannst nur deine eigenen Schlüssel erstellen und ändern.</value></data>
+  <data name="Backdoor_Error_NotFound" xml:space="preserve"><value>Dieser Schlüssel existiert nicht mehr.</value></data>
+  <data name="Backdoor_Error_AlreadyRevoked" xml:space="preserve"><value>Dieser Schlüssel ist bereits widerrufen.</value></data>
+  <data name="Backdoor_Connections_Title" xml:space="preserve"><value>Verbundene Apps</value></data>
+  <data name="Backdoor_Connections_Empty" xml:space="preserve"><value>Keine verbundenen Apps.</value></data>
+  <data name="Backdoor_Connections_App" xml:space="preserve"><value>App</value></data>
+  <data name="Backdoor_Connections_Connected" xml:space="preserve"><value>Verbunden</value></data>
+  <data name="Backdoor_Connections_Revoked" xml:space="preserve"><value>Verbindung widerrufen.</value></data>
+  <data name="Backdoor_Connections_Error_NotFound" xml:space="preserve"><value>Diese Verbindung gibt es nicht mehr.</value></data>
+  <data name="Backdoor_Connect_Title" xml:space="preserve"><value>Claude verbinden</value></data>
+  <data name="Backdoor_Connect_Steps" xml:space="preserve"><value>Füge in Claude einen benutzerdefinierten Connector mit dieser Adresse hinzu. Gib unter Erweiterte Einstellungen die OAuth-Client-ID unten ein. Claude öffnet dann Humans, wo du dich anmeldest und den Zugriff erlaubst.</value></data>
+  <data name="Backdoor_Connect_Address" xml:space="preserve"><value>Adresse</value></data>
+  <data name="Backdoor_Connect_ClientId" xml:space="preserve"><value>OAuth-Client-ID</value></data>
+  <data name="Backdoor_Authorize_Title" xml:space="preserve"><value>{0} erlauben, Humans in deinem Namen zu nutzen?</value></data>
+  <data name="Backdoor_Authorize_Body" xml:space="preserve"><value>{0} kann die Humans-Werkzeuge nutzen, die du nutzen darfst, und handelt dabei in deinem Namen, bis du den Zugriff auf deiner API-Schlüssel-Seite widerrufst oder 30 Tage vergehen.</value></data>
+  <data name="Backdoor_Authorize_ReturnsTo" xml:space="preserve"><value>Nachdem du es erlaubst, wirst du zurückgeschickt zu:</value></data>
+  <data name="Backdoor_Authorize_Warning" xml:space="preserve"><value>Erlaube das nur, wenn du gerade selbst begonnen hast, {0} zu verbinden. Wenn nicht, klicke auf Ablehnen.</value></data>
+  <data name="Backdoor_Authorize_Allow" xml:space="preserve"><value>Erlauben</value></data>
+  <data name="Backdoor_Authorize_Deny" xml:space="preserve"><value>Ablehnen</value></data>
+  <data name="Backdoor_Connection_Notification_Title" xml:space="preserve"><value>{0} wurde mit deinem Humans-Konto verbunden</value></data>
+  <data name="Backdoor_Connection_Notification_Body" xml:space="preserve"><value>Wenn du das nicht warst, widerrufe es auf deiner API-Schlüssel-Seite.</value></data>
+  <data name="Backdoor_Connection_Notification_Action" xml:space="preserve"><value>Prüfen</value></data>
+</root>

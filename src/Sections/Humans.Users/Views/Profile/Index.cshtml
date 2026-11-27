@@ -18,7 +18,7 @@
                 }
             </page-header-title>
             <vc:access-matrix section="Profile" />
-            <a asp-controller="UsersAdmin" asp-action="AdminDetail" asp-route-id="@Model.UserId" class="btn btn-sm btn-outline-secondary" authorize-policy="@Humans.Users.Contracts.UsersPolicies.Read">
+            <a asp-controller="UsersAdmin" asp-action="AdminDetail" asp-route-id="@Model.UserId" class="btn btn-sm btn-outline-secondary" authorize-policy="@UsersPolicies.Read">
                 <i class="fa-solid fa-user-shield"></i> @SharedLocalizer["Common_Admin"] <i class="fa-solid fa-lock auth-lock-icon"></i>
             </a>
         </page-header>
@@ -36,18 +36,26 @@
 
         <vc:user-parts slot="@Humans.Base.Interfaces.UserPartSlots.Profile" user-id="@Model.UserId" view-mode="@cardViewMode" />
 
-        @if (!Model.IsOwnProfile && (await AuthService.AuthorizeAsync(User, Humans.Users.Contracts.UsersPolicies.MedicalDataViewer)).Succeeded)
+        @if (Model.HasMedicalConditions is { } hasMedical)
         {
-            @* Art. 9: the text is not in the page. Each click is one audited reveal, listed to the member. *@
+            @* Art. 9: the text is not in the page. Each click is one audited reveal, listed to the member;
+               an empty record shows as such, so nobody opens it to find out. *@
             <div class="card mb-4">
                 <div class="card-header"><i class="fa-solid fa-notes-medical me-1"></i> @Localizer["Users_Profile_DietaryMedical_MedicalConditions_Title"]</div>
                 <div class="card-body">
-                    <button type="button" class="btn btn-sm btn-outline-danger" id="medical-reveal"
-                            data-reveal-url="@Url.Action("RevealMedical", "ProfileView", new { id = Model.UserId })"
-                            data-none-text="@Localizer["Users_Medical_NoneOnFile"].Value"
-                            data-failed-text="@Localizer["Users_Medical_RevealFailed"].Value">
-                        <i class="fa-solid fa-eye me-1"></i>@Localizer["Users_Medical_RevealTitle"]
-                    </button>
+                    @if (hasMedical)
+                    {
+                        <button type="button" class="btn btn-sm btn-outline-danger" id="medical-reveal"
+                                data-reveal-url="@Url.Action("RevealMedical", "ProfileView", new { id = Model.UserId })"
+                                data-none-text="@Localizer["Users_Medical_NoneOnFile"].Value"
+                                data-failed-text="@Localizer["Users_Medical_RevealFailed"].Value">
+                            <i class="fa-solid fa-eye me-1"></i>@Localizer["Users_Medical_RevealTitle"]
+                        </button>
+                    }
+                    else
+                    {
+                        <p class="mb-0 text-muted">@Localizer["Users_Medical_NoneOnFile"]</p>
+                    }
                 </div>
             </div>
         }

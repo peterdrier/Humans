@@ -13,7 +13,7 @@ internal sealed record ShiftSummaryHumanRow(
 internal sealed record ShiftSummaryCampRow(
     Guid? CampId, string? CampName, int People, double Hours, int Count);
 
-internal sealed record ShiftSummaryTeamLink(Guid TeamId, string Name, string Slug);
+internal sealed record ShiftSummaryTeamLink(string Name, string Slug);
 
 internal sealed record ShiftSummaryRotaLink(Guid RotaId, string Name);
 

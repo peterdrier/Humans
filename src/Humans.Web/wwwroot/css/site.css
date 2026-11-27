@@ -1042,9 +1042,7 @@ body.page-wide .main-content {
 }
 
 .form-text {
-    font-family: var(--h-font-display);
-    font-style: italic;
-    font-size: 0.78rem;
+    font-size: 0.875rem;
     color: var(--h-umber);
 }
 
@@ -1329,6 +1327,12 @@ footer {
 
 .progress-bar {
     background-color: var(--h-gold);
+}
+
+/* A count's share beside it in a table row, where a full-width bar would overstate a handful of answers. */
+.progress.progress-mini {
+    width: 8rem;
+    height: .6rem;
 }
 
 .spinner-border,
@@ -3073,6 +3077,39 @@ body.city-map-fullscreen main {
 
 @media (max-width: 767.98px) {
     .stats { grid-template-columns: 1fr; }
+}
+
+/* Task rows (Tasks lists, the tasks card on a team page): a priority-coloured edge, slot dots in the meta line. */
+.task-row {
+    border-left: 4px solid var(--h-border);
+}
+
+.task-row--critical { border-left-color: var(--h-rust); }
+.task-row--important { border-left-color: var(--h-amber); }
+.task-row--nice { border-left-color: var(--h-sage); }
+
+.task-row-main {
+    min-width: 0;
+}
+
+.task-dots {
+    font-size: 0.6rem;
+    margin-right: 4px;
+    white-space: nowrap;
+}
+
+.task-dots .fa-circle {
+    color: var(--h-sage);
+}
+
+.task-dots .fa-circle + .fa-circle {
+    margin-left: 2px;
+}
+
+@media (max-width: 575.98px) {
+    .task-row-claim {
+        width: 100%;
+    }
 }
 
 /* Member checkout pages (/Tickets/Buy): the price summary beside the form, its lines, the pay button. */

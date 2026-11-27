@@ -161,8 +161,8 @@ internal sealed partial class PleoBooking(
             .ToDictionary(g => g.Key, g => g.ToList(), StringComparer.Ordinal);
         var purchases = docGroups.ToDictionary(g => g.Key, g =>
         {
-            var d = g.Value.OrderByDescending(x => x.IsApproved).First();
-            return new PleoPurchaseRef(d.Id, d.DocNumber, d.IsApproved, d.Total, d.PaymentsPending, d.HoldedUrl);
+            var d = g.Value.MaxBy(x => x.IsApproved)!;
+            return new PleoPurchaseRef(d.Id, d.DocNumber, d.IsApproved, d.PaymentsPending, d.HoldedUrl);
         }, StringComparer.Ordinal);
         var duplicates = docGroups.Where(g => g.Value.Count > 1)
             .Select(g => new PleoDuplicate(g.Key, g.Value.Select(d => d.HoldedUrl).ToList()))
@@ -221,10 +221,10 @@ internal sealed partial class PleoBooking(
 
         return new PleoLedgerView(
             topUps, spend, duplicates,
-            unattributed.OrderBy(l => l.Date).ThenBy(l => l.EntryNumber).ToList(),
+            unattributed,
             RefundOrigins(spendEntries),
             waiting,
-            Changes(s, spend, purchases, open, names),
+            Changes(s, spend, purchases, names),
             s.Uploads.Where(u => !u.Confirmed).Select(u => u.PleoEntryId).ToHashSet(StringComparer.Ordinal));
     }
 
@@ -241,8 +241,7 @@ internal sealed partial class PleoBooking(
                 .Where(c => string.Equals(c.MerchantName!.Trim(), r.MerchantName!.Trim(), StringComparison.OrdinalIgnoreCase)
                             && -c.AmountEur!.Value >= r.AmountEur!.Value
                             && c.SettledAt <= r.SettledAt && c.SettledAt >= from)
-                .OrderByDescending(c => c.SettledAt)
-                .FirstOrDefault();
+                .MaxBy(c => c.SettledAt);
             if (charge is not null)
                 origins.Add(new PleoRefundOrigin(r.Id, charge,
                     !string.Equals(charge.CategoryId, r.CategoryId, StringComparison.Ordinal)));
@@ -257,7 +256,7 @@ internal sealed partial class PleoBooking(
     /// </summary>
     private static List<PleoChangeRow> Changes(
         PleoSnapshot s, IReadOnlyList<PleoSpendRow> spend, IReadOnlyDictionary<string, PleoPurchaseRef> purchases,
-        IReadOnlySet<int> open, IReadOnlyDictionary<int, string> names)
+        IReadOnlyDictionary<int, string> names)
     {
         var holdedById = s.ExpenseLines
             .Select(l => (Id: PleoIdOf(l.Description), Line: l))
@@ -272,7 +271,7 @@ internal sealed partial class PleoBooking(
         var rows = spend.ToDictionary(r => r.Entry.Id, StringComparer.Ordinal);
         var changes = new List<PleoChangeRow>();
 
-        foreach (var id in purchases.Keys.Union(holdedById.Keys, StringComparer.Ordinal).Order(StringComparer.Ordinal))
+        foreach (var id in purchases.Keys.Union(holdedById.Keys, StringComparer.Ordinal))
         {
             var read = holdedById.TryGetValue(id, out var lines);
             var held = lines ?? new Dictionary<int, decimal>();
@@ -352,7 +351,6 @@ internal sealed partial class PleoBooking(
         var readyByAccount = view.Spend.Where(r => r.State == PleoSpendState.Ready)
             .GroupBy(r => r.Account!.Value)
             .Select(g => new PleoAccountTotalVm(g.Key, names.GetValueOrDefault(g.Key, ""), g.Count(), g.Sum(r => r.Amount)))
-            .OrderBy(a => a.AccountNum)
             .ToList();
 
         return new PleoReconcileVm(
@@ -414,28 +412,15 @@ internal sealed partial class PleoBooking(
 
     // ── Runs ───────────────────────────────────────────────────────────────────────────────────────────────
 
-    /// <summary>Books (or finishes) the oldest <paramref name="limit"/> entries (all when null). A job may call this
-    /// as the button does.</summary>
-    public Task<PleoBookingRunVm> BookAsync(int? limit, Guid? actorUserId, CancellationToken ct = default) =>
-        RunAsync(PleoRunKind.Book, limit, actorUserId, ct);
-
-    /// <summary>Attaches every receipt Pleo has for a booked entry that Holded has not been sent.</summary>
-    public Task<PleoBookingRunVm> AttachReceiptsAsync(Guid? actorUserId, CancellationToken ct = default) =>
-        RunAsync(PleoRunKind.Receipts, null, actorUserId, ct);
-
-    /// <summary>Posts the corrections of the oldest <paramref name="limit"/> changed entries (all when null).</summary>
-    public Task<PleoBookingRunVm> PostCorrectionsAsync(int? limit, Guid? actorUserId, CancellationToken ct = default) =>
-        RunAsync(PleoRunKind.Corrections, limit, actorUserId, ct);
-
     /// <summary>Refused, nothing posted, while another run of any kind holds the gate, the settings are missing, or
     /// a Holded sync is running.</summary>
     internal async Task<PleoBookingRunVm> RunAsync(PleoRunKind kind, int? limit, Guid? actorUserId, CancellationToken ct)
     {
         var started = clock.GetCurrentInstant();
         if (!await Gate.WaitAsync(0, ct))
-            return new PleoBookingRunVm(kind, started, started, limit, 0, [],
+            return new PleoBookingRunVm(kind, started, started, 0, [],
                 "Another Pleo run is going; nothing was done.");
-        var run = new PleoBookingRunVm(kind, started, null, limit, 0, [], null);
+        var run = new PleoBookingRunVm(kind, started, null, 0, [], null);
         var lines = new List<PleoBookingLine>();
         try
         {
@@ -724,7 +709,10 @@ internal sealed partial class PleoBooking(
     private async Task<string?> CorrectAsync(
         PleoLedgerView view, int? limit, Guid? actor, List<PleoBookingLine> lines, Action<int?> progress)
     {
-        var batch = view.Changes.Where(c => c.Corrections.Count > 0).Take(limit ?? int.MaxValue).ToList();
+        var batch = view.Changes.Where(c => c.Corrections.Count > 0)
+            // arch:db-sort-ok oldest-settled correction batch selector
+            .OrderBy(c => c.Entry!.SettledAt).ThenBy(c => c.PleoId, StringComparer.Ordinal)
+            .Take(limit ?? int.MaxValue).ToList();
         progress(batch.Count);
         var today = OrgDate(clock.GetCurrentInstant(), OrgZone);
         foreach (var change in batch)

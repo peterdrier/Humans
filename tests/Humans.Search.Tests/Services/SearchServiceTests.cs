@@ -7,7 +7,7 @@ using Xunit;
 namespace Humans.Search.Tests.Services;
 
 /// <summary>
-/// The orchestration only: the length gate, trimming, the filter, enablement and order. What each category searches
+/// The orchestration only: the length gate, trimming, the filter, enablement and category metadata. What each category searches
 /// (field masks, visibility, the unbounded cap) is pinned beside its contributor in the owning section's tests.
 /// </summary>
 public sealed class SearchServiceTests
@@ -21,18 +21,18 @@ public sealed class SearchServiceTests
     [InlineData(" ")]
     [InlineData("a")]
     [InlineData("  k  ")]
-    public async Task SearchAsync_QueryShorterThanTwoCharsAfterTrim_ListsEveryCategoryEmpty_AndSearchesNone(string query)
+    public async Task SearchAsync_ShortQuery_SearchesNoCategory(string query)
     {
         var results = await Build().SearchAsync(query, ct: TestContext.Current.CancellationToken);
 
         results.Query.Should().Be(query.Trim());
-        results.Buckets.Select(b => b.Key).Should().Equal("Human", "Team", "Event");
+        results.Buckets.Select(b => b.Key).Should().BeEquivalentTo(["Human", "Team", "Event"]);
         results.Buckets.Should().AllSatisfy(b => b.Hits.Should().BeEmpty());
         AllCalls().Should().BeEmpty();
     }
 
     [HumansFact]
-    public async Task SearchAsync_TwoCharQuery_IsAtTheGateBoundary_AndFansOut()
+    public async Task SearchAsync_TwoCharQuery_SearchesEveryCategory()
     {
         await Build().SearchAsync("ki", ct: TestContext.Current.CancellationToken);
 
@@ -40,7 +40,7 @@ public sealed class SearchServiceTests
     }
 
     [HumansFact]
-    public async Task SearchAsync_TrimsQuery_BeforeFanOut_AndEchoesTheTrimmedForm()
+    public async Task SearchAsync_PaddedQuery_TrimsBeforeFanOut()
     {
         var results = await Build().SearchAsync("  Kitchen  ", ct: TestContext.Current.CancellationToken);
 
@@ -51,7 +51,7 @@ public sealed class SearchServiceTests
     [HumansTheory]
     [InlineData("Team")]
     [InlineData("team")]
-    public async Task SearchAsync_Filter_SearchesOnlyThatCategory_AndStillListsTheOthers(string filter)
+    public async Task SearchAsync_Filter_SearchesOnlyThatCategory(string filter)
     {
         var results = await Build().SearchAsync("Kitchen", filter, TestContext.Current.CancellationToken);
 
@@ -71,28 +71,28 @@ public sealed class SearchServiceTests
     }
 
     [HumansFact]
-    public async Task SearchAsync_DisabledCategory_IsNeitherListedNorSearched_EvenWhenFiltered()
+    public async Task SearchAsync_DisabledCategory_IsExcluded()
     {
         _events.Enabled = false;
 
         var results = await Build().SearchAsync("Kitchen", "Event", TestContext.Current.CancellationToken);
 
         results.Filter.Should().BeNull();
-        results.Buckets.Select(b => b.Key).Should().Equal("Human", "Team");
-        _events.Calls.Should().BeEmpty();
+        results.Buckets.Select(b => b.Key).Should().BeEquivalentTo(["Human", "Team"]);
+        AllCalls().Should().Equal("Human:Kitchen", "Team:Kitchen");
     }
 
     [HumansFact]
-    public async Task SearchAsync_OrdersCategoriesByWeight_NotRegistrationOrder()
+    public async Task SearchAsync_CarriesCategoryWeightsWithoutChoosingDisplayOrder()
     {
         var results = await new SearchService([new FakeContributor(_events, _teams, _humans)], Services())
             .SearchAsync("Kitchen", ct: TestContext.Current.CancellationToken);
 
-        results.Buckets.Select(b => b.Key).Should().Equal("Human", "Team", "Event");
+        results.Buckets.Select(b => (b.Key, b.Weight)).Should().BeEquivalentTo([("Human", 0), ("Team", 10), ("Event", 40)]);
     }
 
     [HumansFact]
-    public async Task SearchAsync_PassesEachContributorsHitsAndLabelThrough_WithoutRescoring()
+    public async Task SearchAsync_Hits_PassThroughUnscored()
     {
         var hit = new SearchHit(Guid.NewGuid(), "Nothing Like The Query", 40, "Bio", "…kitchen…");
         _teams.Hits = [hit];

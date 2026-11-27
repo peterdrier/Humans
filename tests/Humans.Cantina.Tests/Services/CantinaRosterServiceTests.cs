@@ -29,7 +29,7 @@ namespace Humans.Cantina.Tests.Services;
 /// <see cref="CantinaRosterService"/> "unique humans across the week" contract: a single
 /// human on-site multiple days contributes exactly once to every aggregate, while still
 /// showing up in the correct per-day counts. The on-site cohort comes from
-/// <see cref="IShiftService.GetOnSiteUserIdsForDayAsync"/>, names from
+/// <see cref="IShiftService.GetOnSiteUserIdsAsync"/>, names from
 /// <see cref="IUserService"/>, dietary from <c>ICantinaService</c>.
 /// </summary>
 public class CantinaRosterServiceTests
@@ -38,7 +38,6 @@ public class CantinaRosterServiceTests
     private readonly ISettingsService _burnSettings;
     private readonly IUserService _userRead;
     private readonly ICantinaService _dietary = Substitute.For<ICantinaService>();
-    private readonly IClock _clock;
     private readonly IAuditLogService _audit = Substitute.For<IAuditLogService>();
     private readonly CantinaRosterService _service;
 
@@ -53,7 +52,7 @@ public class CantinaRosterServiceTests
         _userRead = Substitute.For<IUserService>();
         // Fixed clock pinned to noon UTC on the gate-opening day; tests that
         // care about EventTodayDate semantics override on a per-test basis.
-        _clock = new FakeClock(Instant.FromUtc(2026, 7, 7, 12, 0));
+        var clock = new FakeClock(Instant.FromUtc(2026, 7, 7, 12, 0));
 
         _userRead.GetUserInfosAsync(
                 Arg.Any<IEnumerable<Guid>>(), Arg.Any<CancellationToken>())
@@ -62,11 +61,11 @@ public class CantinaRosterServiceTests
         _dietary.GetDietaryProfilesAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
             .Returns(new Dictionary<Guid, DietaryProfileInfo>());
 
-        _shiftMgmt.GetOnSiteUserIdsForDayAsync(
+        _shiftMgmt.GetOnSiteUserIdsAsync(
                 Arg.Any<Guid>(), Arg.Any<int>(), Arg.Any<CancellationToken>())
             .Returns(Task.FromResult<IReadOnlyList<Guid>>(Array.Empty<Guid>()));
 
-        _service = new CantinaRosterService(_shiftMgmt, _burnSettings, _userRead, _dietary, _clock, _audit);
+        _service = new CantinaRosterService(_shiftMgmt, _burnSettings, _userRead, _dietary, clock, _audit);
     }
 
     [HumansTheory]
@@ -74,14 +73,14 @@ public class CantinaRosterServiceTests
     [Xunit.InlineData(false, true)]
     [Xunit.InlineData(true, false)]
     [Xunit.InlineData(true, true)]
-    public async Task CsvDownloads_AuditActorAndPersonalRows_WithoutAuditingPageReads(bool daily, bool populated)
+    public async Task CsvDownloads_Actor_IsAudited(bool daily, bool populated)
     {
         var ct = Xunit.TestContext.Current.CancellationToken;
         var actorId = Guid.NewGuid();
         var personId = Guid.NewGuid();
         var burn = ActiveEvent();
         _burnSettings.GetActiveEventSettings().Returns(burn);
-        _shiftMgmt.GetOnSiteUserIdsForDayAsync(burn.Id, Arg.Any<int>(), ct)
+        _shiftMgmt.GetOnSiteUserIdsAsync(burn.Id, Arg.Any<int>(), ct)
             .Returns(populated ? new[] { personId } : Array.Empty<Guid>());
         SetupHumans(Human(personId, "Chef", dietary: "Vegan", allergies: ["Other"], allergyOther: "Peanuts"));
         var controller = Controller(actorId);
@@ -102,14 +101,14 @@ public class CantinaRosterServiceTests
     [HumansTheory]
     [Xunit.InlineData(false)]
     [Xunit.InlineData(true)]
-    public async Task HealthReveal_IsAudited_AndUnlocksOnlyThePageItWasPostedFor(bool daily)
+    public async Task HealthReveal_Posted_UnlocksOnlyThatPage(bool daily)
     {
         var ct = Xunit.TestContext.Current.CancellationToken;
         var actorId = Guid.NewGuid();
         var personId = Guid.NewGuid();
         var burn = ActiveEvent();
         _burnSettings.GetActiveEventSettings().Returns(burn);
-        _shiftMgmt.GetOnSiteUserIdsForDayAsync(burn.Id, Arg.Any<int>(), ct).Returns(new[] { personId });
+        _shiftMgmt.GetOnSiteUserIdsAsync(burn.Id, Arg.Any<int>(), ct).Returns(new[] { personId });
         SetupHumans(Human(personId, "Chef", allergies: ["Other"], allergyOther: "Peanuts"));
         var controller = Controller(actorId);
 
@@ -141,7 +140,7 @@ public class CantinaRosterServiceTests
         var people = Enumerable.Range(0, 200).Select(_ => Guid.NewGuid()).ToArray();
         var burn = ActiveEvent();
         _burnSettings.GetActiveEventSettings().Returns(burn);
-        _shiftMgmt.GetOnSiteUserIdsForDayAsync(burn.Id, Arg.Any<int>(), ct).Returns(people);
+        _shiftMgmt.GetOnSiteUserIdsAsync(burn.Id, Arg.Any<int>(), ct).Returns(people);
         SetupHumans(people.Select((id, i) => Human(id, $"Cook {i}", allergies: ["Other"], allergyOther: "Peanuts")).ToArray());
 
         await _service.GetWeeklyRosterAsync(0, RosterDisclosure.HealthReveal(actorId), ct);
@@ -176,7 +175,7 @@ public class CantinaRosterServiceTests
     [Xunit.InlineData(true, false, int.MaxValue)]
     [Xunit.InlineData(false, false, int.MinValue)]
     [Xunit.InlineData(false, false, int.MaxValue)]
-    public async Task InvalidRosterWindow_ReturnsNoRosterAndDisclosesNothing(bool weekly, bool activeEvent, int offset)
+    public async Task Roster_InvalidWindow_ReturnsNothing(bool weekly, bool activeEvent, int offset)
     {
         _burnSettings.GetActiveEventSettings()
             .Returns(activeEvent ? ActiveEvent() : null);
@@ -259,7 +258,7 @@ public class CantinaRosterServiceTests
     [Xunit.InlineData(nameof(CantinaController.RevealDayHealth), true)]
     [Xunit.InlineData(nameof(CantinaController.Csv), true)]
     [Xunit.InlineData(nameof(CantinaController.DayCsv), true)]
-    public async Task RosterActions_RejectInvalidOffsetsInsteadOfDefaultingToTheCurrentPeriod(string action, bool numeric)
+    public async Task RosterActions_InvalidOffset_IsRejected(string action, bool numeric)
     {
         var controller = Controller(Guid.NewGuid());
         var ct = Xunit.TestContext.Current.CancellationToken;
@@ -316,7 +315,7 @@ public class CantinaRosterServiceTests
     [Xunit.InlineData(CantinaDisclosure.DayCsv, AccountScenario.Merged)]
     [Xunit.InlineData(CantinaDisclosure.DayCsv, AccountScenario.Missing)]
     [Xunit.InlineData(CantinaDisclosure.DayCsv, AccountScenario.Cancelled)]
-    public async Task Disclosure_resolves_actor_before_loading_personal_rows(CantinaDisclosure action, AccountScenario account)
+    public async Task Disclosure_Actor_ResolvedBeforeRows(CantinaDisclosure action, AccountScenario account)
     {
         var archivedId = Guid.NewGuid();
         var survivorId = Guid.NewGuid();
@@ -414,7 +413,7 @@ public class CantinaRosterServiceTests
         ActiveEvent() with { BuildStartOffset = buildStart, StrikeEndOffset = strikeEnd };
 
     [HumansFact]
-    public async Task GetWeeklyRoster_NoOffset_DefaultsToTheWeekContainingToday()
+    public async Task GetWeeklyRoster_NoOffset_DefaultsToThisWeek()
     {
         // Clock is Tue 7 Jul 2026 12:00 UTC — 14:00 in Madrid, same calendar
         // day — and GateOpening is Tue 7 Jul, so the Monday of this week is
@@ -427,7 +426,7 @@ public class CantinaRosterServiceTests
     }
 
     [HumansFact]
-    public async Task GetWeeklyRoster_NoOffsetAndNoActiveEvent_DefaultsToZero()
+    public async Task GetWeeklyRoster_NoOffsetNoEvent_DefaultsToZero()
     {
         _burnSettings.GetActiveEventSettings().Returns((EventSettingsInfo?)null);
 
@@ -437,7 +436,7 @@ public class CantinaRosterServiceTests
     }
 
     [HumansFact]
-    public async Task GetWeeklyRoster_NoActiveEventSettings_ReturnsDtoWithNullDatesAndNoPeople()
+    public async Task GetWeeklyRoster_NoActiveEvent_ReturnsNullDates()
     {
         _burnSettings.GetActiveEventSettings().Returns((EventSettingsInfo?)null);
 
@@ -471,7 +470,7 @@ public class CantinaRosterServiceTests
     }
 
     [HumansFact]
-    public async Task GetWeeklyRoster_NoOnSiteUsers_AnyDay_ReturnsZeroState()
+    public async Task GetWeeklyRoster_NoOnSiteUsers_ReturnsZeroState()
     {
         var es = ActiveEvent();
         _burnSettings.GetActiveEventSettings().Returns(es);
@@ -572,7 +571,7 @@ public class CantinaRosterServiceTests
     }
 
     [HumansFact]
-    public async Task GetWeeklyRoster_VolunteerWithoutDietary_CountsAsUnanswered_Once()
+    public async Task GetWeeklyRoster_VolunteerWithoutDietary_CountsUnansweredOnce()
     {
         var es = ActiveEvent();
         _burnSettings.GetActiveEventSettings().Returns(es);
@@ -698,7 +697,7 @@ public class CantinaRosterServiceTests
     {
         // The cantina output DTO must not expose MedicalConditions, even though
         // medical rides on the cached UserInfo (its Profile). GDPR Art.9 boundary.
-        typeof(Humans.Cantina.Services.Dtos.RosterPersonDto)
+        typeof(RosterPersonDto)
             .GetProperty("MedicalConditions").Should().BeNull(
             "RosterPersonDto must not expose MedicalConditions — GDPR Art.9 boundary.");
 
@@ -718,7 +717,7 @@ public class CantinaRosterServiceTests
     }
 
     [HumansFact]
-    public async Task GetWeeklyRoster_ArrivesOn_IsTheDayBeforeTheFirstShift_AndNoShift_IsComplement()
+    public async Task GetWeeklyRoster_FirstShift_ArrivesDayBefore()
     {
         // Single human on-site Mon + Wed + Sat (days 0, 2, 5).
         // Also verifies the cohort-exclusion invariant: a known human with NO
@@ -762,7 +761,7 @@ public class CantinaRosterServiceTests
         _burnSettings.GetActiveEventSettings().Returns(ev);
 
         var id = Guid.NewGuid();
-        _shiftMgmt.GetOnSiteUserIdsForDayAsync(ev.Id, 2, Arg.Any<CancellationToken>())
+        _shiftMgmt.GetOnSiteUserIdsAsync(ev.Id, 2, Arg.Any<CancellationToken>())
             .Returns(Task.FromResult<IReadOnlyList<Guid>>(new[] { id }));
         SetupHumans(Human(id, "Ash"));
 
@@ -790,7 +789,7 @@ public class CantinaRosterServiceTests
         _burnSettings.GetActiveEventSettings().Returns(ev);
 
         var id = Guid.NewGuid();
-        _shiftMgmt.GetOnSiteUserIdsForDayAsync(ev.Id, 7, Arg.Any<CancellationToken>())
+        _shiftMgmt.GetOnSiteUserIdsAsync(ev.Id, 7, Arg.Any<CancellationToken>())
             .Returns(Task.FromResult<IReadOnlyList<Guid>>(new[] { id }));
         SetupHumans(Human(id, "Bo"));
 
@@ -814,7 +813,7 @@ public class CantinaRosterServiceTests
         _burnSettings.GetActiveEventSettings().Returns(ev);
 
         var id = Guid.NewGuid();
-        _shiftMgmt.GetOnSiteUserIdsForDayAsync(ev.Id, 0, Arg.Any<CancellationToken>())
+        _shiftMgmt.GetOnSiteUserIdsAsync(ev.Id, 0, Arg.Any<CancellationToken>())
             .Returns(Task.FromResult<IReadOnlyList<Guid>>(new[] { id }));
         SetupHumans(Human(id, "Cy"));
 
@@ -826,7 +825,7 @@ public class CantinaRosterServiceTests
     }
 
     [HumansFact]
-    public async Task GetWeeklyRoster_FirstShiftInPriorWeek_ArrivesOnIsTheTrueArrival_AndNoArrivalFedThisWeek()
+    public async Task GetWeeklyRoster_ShiftInPriorWeek_KeepsTrueArrival()
     {
         // Confirmed shifts on offset 2 (a prior week) and offset 8 (the viewed week, offsets 7..13). The arrival is
         // offset 1, outside the viewed week: ArrivesOn still reports it, but no arrival day is fed this week.
@@ -834,9 +833,9 @@ public class CantinaRosterServiceTests
         _burnSettings.GetActiveEventSettings().Returns(ev);
 
         var id = Guid.NewGuid();
-        _shiftMgmt.GetOnSiteUserIdsForDayAsync(ev.Id, 2, Arg.Any<CancellationToken>())
+        _shiftMgmt.GetOnSiteUserIdsAsync(ev.Id, 2, Arg.Any<CancellationToken>())
             .Returns(Task.FromResult<IReadOnlyList<Guid>>(new[] { id }));
-        _shiftMgmt.GetOnSiteUserIdsForDayAsync(ev.Id, 8, Arg.Any<CancellationToken>())
+        _shiftMgmt.GetOnSiteUserIdsAsync(ev.Id, 8, Arg.Any<CancellationToken>())
             .Returns(Task.FromResult<IReadOnlyList<Guid>>(new[] { id }));
         SetupHumans(Human(id, "Di"));
 
@@ -849,7 +848,7 @@ public class CantinaRosterServiceTests
 
     /// <summary>Stubs the on-site cohort for a single day (dietary comes from SetupHumans).</summary>
     private void SetupDay(int dayOffset, params Guid[] onSiteIds) =>
-        _shiftMgmt.GetOnSiteUserIdsForDayAsync(
+        _shiftMgmt.GetOnSiteUserIdsAsync(
                 Arg.Any<Guid>(), dayOffset, Arg.Any<CancellationToken>())
             .Returns(Task.FromResult<IReadOnlyList<Guid>>(onSiteIds));
 

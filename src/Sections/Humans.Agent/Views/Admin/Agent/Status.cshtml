@@ -2,9 +2,9 @@
 @{
     ViewData["Title"] = "Agent — Status";
     var report = Model.Report;
-    string Pct(double r) => (r * 100).ToString("0.0") + "%";
+    string Pct(double r) => (r * 100).ToString("0.0", System.Globalization.CultureInfo.CurrentCulture) + "%";
     string Tokens(long t) => t.ToString("N0");
-    string Usd(decimal v) => "$" + v.ToString("N2");
+    string Usd(decimal v) => "$" + v.ToString("N2", System.Globalization.CultureInfo.CurrentCulture);
 }
 
 <page-header title="Agent Status">
@@ -13,11 +13,11 @@
             <a href="/Settings#agent" class="btn btn-outline-secondary">Settings</a>
             <a asp-controller="Agent" asp-action="Conversations" class="btn btn-outline-secondary">Conversations</a>
         </div>
-        <form asp-action="ReloadKnowledgeBase" method="post" class="ms-2 d-inline" authorize-policy="AdminOnly">
+        <form asp-action="ReloadCommunityFaq" method="post" class="ms-2 d-inline" authorize-policy="AdminOnly">
             @Html.AntiForgeryToken()
             <button type="submit" class="btn btn-outline-warning btn-sm"
-                    title="Re-fetch the community knowledge base from GitHub and rebuild the agent's in-memory index (no restart needed).">
-                Reload KB
+                    title="Re-fetch the Community FAQ from GitHub and rebuild the Assistant's in-memory index (no restart needed).">
+                Reload Community FAQ
             </button>
         </form>
     </div>
@@ -40,8 +40,6 @@
             </dd>
             <dt class="col-sm-3">Model</dt>
             <dd class="col-sm-9"><code>@Model.Model</code></dd>
-            <dt class="col-sm-3">Preload config</dt>
-            <dd class="col-sm-9">@Model.PreloadConfig</dd>
             <dt class="col-sm-3">Daily message cap</dt>
             <dd class="col-sm-9">@Model.Settings.DailyMessageCap</dd>
             <dt class="col-sm-3">Hourly message cap</dt>
@@ -88,9 +86,9 @@
             <tbody>
                 @foreach (var (label, u) in new[]
                 {
-                    ("24h", report.Usage24h),
-                    ("7d",  report.Usage7d),
-                    ("30d", report.Usage30d),
+                    ("24h", report.Usage24Hours),
+                    ("7d",  report.Usage7Days),
+                    ("30d", report.Usage30Days),
                 })
                 {
                     <tr>
@@ -127,9 +125,9 @@
             <tbody>
                 @foreach (var (label, s) in new[]
                 {
-                    ("24h", report.Spend24h),
-                    ("7d",  report.Spend7d),
-                    ("30d", report.Spend30d),
+                    ("24h", report.Spend24Hours),
+                    ("7d",  report.Spend7Days),
+                    ("30d", report.Spend30Days),
                     ("MTD", report.SpendMtd),
                 })
                 {
@@ -153,7 +151,7 @@
 <div class="card mb-3">
     <div class="card-header">Anthropic balance</div>
     <div class="card-body">
-        @if (report.Balance.BalanceUsd is decimal bal)
+        @if (report.Balance.BalanceUsd is { } bal)
         {
             <p class="mb-0 fs-4">@Usd(bal)</p>
         }
@@ -169,25 +167,25 @@
 
 <div class="card mb-3">
     <div class="card-header d-flex justify-content-between align-items-center">
-        <span>Refusals (last 7d)</span>
-        <a asp-controller="Agent" asp-action="Conversations" asp-route-refusalsOnly="true" class="btn btn-outline-secondary btn-sm">
-            View refusals
+        <span>Unanswered turns (last 7d)</span>
+        <a asp-controller="Agent" asp-action="Conversations" asp-route-unansweredOnly="true" class="btn btn-outline-secondary btn-sm">
+            View unanswered
         </a>
     </div>
     <div class="card-body">
-        @if (report.Refusals7dCount == 0)
+        @if (report.Unanswered7DaysCount == 0)
         {
-            <empty-state class="mb-0">No refusals in the last 7 days.</empty-state>
+            <empty-state class="mb-0">No unanswered turns in the last 7 days.</empty-state>
         }
         else
         {
-            <p class="mb-2"><strong>@report.Refusals7dCount</strong> refusals</p>
-            var refusalsTable = TableModel.For(report.Refusals7d.OrderByDescending(bucket => bucket.Count).ToList())
-                .Column("Reason", bucket => bucket.Reason, o => o.Code())
+            <p class="mb-2"><strong>@report.Unanswered7DaysCount</strong> unanswered</p>
+            var outcomesTable = TableModel.For(report.Outcomes7Days.OrderByDescending(bucket => bucket.Count).ToList())
+                .Column("Outcome", bucket => bucket.Outcome, o => o.Code())
                 .Column("Count", r => r.Count, o => o.Number().End())
                 .Css("w-auto")
                 .Build();
-            <partial name="_Table" model="refusalsTable" />
+            <partial name="_Table" model="outcomesTable" />
         }
     </div>
 </div>
@@ -195,13 +193,13 @@
 <div class="card mb-3">
     <div class="card-header">Top fetched docs (last 7d)</div>
     <div class="card-body">
-        @if (!report.TopDocs7d.Any())
+        @if (!report.TopDocs7Days.Any())
         {
             <empty-state class="mb-0">No tool fetches in the last 7 days.</empty-state>
         }
         else
         {
-            var docsTable = TableModel.For(report.TopDocs7d)
+            var docsTable = TableModel.For(report.TopDocs7Days)
                 .Column("Slug", d => d.Slug, o => o.Code())
                 .Column("Fetches", d => d.Count, o => o.Number().End())
                 .Css("w-auto")
@@ -214,13 +212,13 @@
 <div class="card mb-3">
     <div class="card-header">Top users (last 7d)</div>
     <div class="card-body">
-        @if (!report.TopUsers7d.Any())
+        @if (!report.TopUsers7Days.Any())
         {
             <empty-state class="mb-0">No activity in the last 7 days.</empty-state>
         }
         else
         {
-            var usersTable = TableModel.For(report.TopUsers7d)
+            var usersTable = TableModel.For(report.TopUsers7Days)
                 .Human("Human", u => u.UserId, HumanLink.Admin)
                 .Column("Messages (7d)", u => u.MessageCount, o => o.Number().End())
                 .Column("Daily remaining", u => u.MessagesTodayRemaining, o => o.Number().End())

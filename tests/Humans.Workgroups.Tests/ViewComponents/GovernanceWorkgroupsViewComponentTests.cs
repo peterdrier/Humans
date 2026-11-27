@@ -36,12 +36,12 @@ public sealed class GovernanceWorkgroupsViewComponentTests
         var now = Instant.FromUtc(2026, 3, 1, 12, 0);
         var meeting = new WorkgroupMeetingInfo(Guid.NewGuid(), "Private sync", now.Plus(Duration.FromDays(1)),
             now.Plus(Duration.FromDays(1)).Plus(Duration.FromHours(1)), null, null, true, null, null);
-        var document = new WorkgroupDocumentInfo(Guid.NewGuid(), Guid.NewGuid(), "Draft", Humans.Workgroups.Domain.WorkgroupDocumentKind.Other,
-            "Body", Humans.Workgroups.Domain.WorkgroupDocumentStatus.Published, ["Scope"], now.Minus(Duration.FromHours(1)),
-            now.Plus(Duration.FromDays(7)), null, null, null, null, null, null, null, now, now, []);
-        WorkgroupInfo Group(string name, bool sensitive) => new(Guid.NewGuid(), name.ToLowerInvariant(), name, "Purpose",
-            "A report", Humans.Workgroups.Domain.WorkgroupDeliverableKind.Report, Humans.Workgroups.Domain.WorkgroupAudience.Board,
-            null, Humans.Workgroups.Domain.WorkgroupStatus.Active, null, null, null, null, now, now, null,
+        var document = new WorkgroupDocumentInfo(Guid.NewGuid(), "Draft", WorkgroupDocumentKind.Other,
+            "Body", WorkgroupDocumentStatus.Published, ["Scope"], now.Minus(Duration.FromHours(1)),
+            now.Plus(Duration.FromDays(7)), null, null, null, null, null, now, now, []);
+        WorkgroupInfo NamedGroup(string name, bool sensitive) => new(Guid.NewGuid(), name.ToLowerInvariant(), name, "Purpose",
+            "A report", WorkgroupDeliverableKind.Report, WorkgroupAudience.Board,
+            null, WorkgroupStatus.Active, null, null, null, null, now, now, null,
             [],
             [
                 meeting with { Id = Guid.NewGuid(), StartUtc = now.Plus(Duration.FromDays(5)), EndUtc = now.Plus(Duration.FromDays(5)).Plus(Duration.FromHours(1)) },
@@ -50,7 +50,7 @@ public sealed class GovernanceWorkgroupsViewComponentTests
             ], [], [document], null, null, null, sensitive);
         var workgroups = Substitute.For<IWorkgroupService>();
         workgroups.GetRegisterAsync(Arg.Any<CancellationToken>())
-            .Returns([Group("Open", false), Group("Secret", true)]);
+            .Returns([NamedGroup("Open", false), NamedGroup("Secret", true)]);
         var component = new GovernanceWorkgroupsViewComponent(
             workgroups, new NodaTime.Testing.FakeClock(now))
         {
@@ -113,12 +113,12 @@ public sealed class GovernanceWorkgroupsViewComponentTests
         {
             Members =
             [
-                new(Guid.NewGuid(), secondId, WorkgroupMemberRole.Coordinator, now, null),
-                new(Guid.NewGuid(), firstId, WorkgroupMemberRole.Coordinator, now - Duration.FromDays(1), null),
-                new(Guid.NewGuid(), Guid.NewGuid(), WorkgroupMemberRole.Coordinator, now + Duration.FromDays(1), null),
-                new(Guid.NewGuid(), Guid.NewGuid(), WorkgroupMemberRole.Coordinator, now, now),
-                new(Guid.NewGuid(), Guid.NewGuid(), WorkgroupMemberRole.Coordinator, now, null, IsPending: true),
-                new(Guid.NewGuid(), Guid.NewGuid(), WorkgroupMemberRole.Member, now, null),
+                new(secondId, WorkgroupMemberRole.Coordinator, now, null),
+                new(firstId, WorkgroupMemberRole.Coordinator, now - Duration.FromDays(1), null),
+                new(Guid.NewGuid(), WorkgroupMemberRole.Coordinator, now + Duration.FromDays(1), null),
+                new(Guid.NewGuid(), WorkgroupMemberRole.Coordinator, now, now),
+                new(Guid.NewGuid(), WorkgroupMemberRole.Coordinator, now, null, IsPending: true),
+                new(Guid.NewGuid(), WorkgroupMemberRole.Member, now, null),
             ]
         };
 
@@ -147,11 +147,11 @@ public sealed class GovernanceWorkgroupsViewComponentTests
             .Returns(UserInfo.Create(new User { Id = authorId, BurnerName = author }, [], [], null));
         var group = Group(now);
         var documentId = Guid.NewGuid();
-        var document = new WorkgroupDocumentInfo(documentId, group.Id, "Document", WorkgroupDocumentKind.Other,
+        var document = new WorkgroupDocumentInfo(documentId, "Document", WorkgroupDocumentKind.Other,
             "Body", WorkgroupDocumentStatus.Published, ["Scope"], null, null,
-            null, null, null, null, null, Guid.NewGuid(), editorId, now, now,
-            [new(Guid.NewGuid(), documentId, "Scope", authorId, "Comment", now,
-                WorkgroupCommentDisposition.Pending, null, null, null, null, null, null)]);
+            null, null, null, Guid.NewGuid(), editorId, now, now,
+            [new(Guid.NewGuid(), "Scope", authorId, "Comment", now,
+                WorkgroupCommentDisposition.Pending, null, null, null)]);
         var model = new DocumentPageViewModel
         {
             Workgroup = group,

@@ -40,7 +40,7 @@ internal static partial class ExpenseRecon
     {
         var purchases = ledger.ToDictionary(
             kv => kv.Key,
-            kv => kv.Value.Where(IsPurchase).Select(l => new Purchase(l, Text(l.Description))).ToList());
+            kv => kv.Value.Where(IsPurchase).Select(l => new Purchase(l, MatchText(l.Description))).ToList());
 
         // Oldest first, so when twins differ only in date the earlier line claims the earlier ledger line.
         var ordered = expected.OrderBy(l => l.DocumentDate).ThenBy(l => l.ExpenseReportId).ThenBy(l => l.LineId).ToList();
@@ -107,7 +107,7 @@ internal static partial class ExpenseRecon
             MembersOff: members.Count(m => m.IsWarning));
 
         var years = allLines.Select(l => l.DocumentDate.Year).Concat(allOrphans.Select(o => o.Date.Year))
-            .Distinct().OrderDescending().ToList();
+            .Distinct().ToList();
 
         return new ExpenseReconReport(year, mirrorSyncedAt, null, years, lines, orphans, members, totals);
 
@@ -143,7 +143,7 @@ internal static partial class ExpenseRecon
     /// <summary>Holded writes a document's ledger line as <c>&lt;Purchase|Compra&gt;, &lt;contact&gt;, &lt;doc
     /// description&gt;, dd/mm/yyyy</c>, trimmed and with runs of spaces collapsed; this drops the date and does the
     /// same to both sides.</summary>
-    private static string Text(string? description) => TrailingDate().Replace(Normalize(description ?? ""), "");
+    private static string MatchText(string? description) => TrailingDate().Replace(Normalize(description ?? ""), "");
 
     private static string Normalize(string s) => Whitespace().Replace(s, " ").Trim();
 
@@ -239,7 +239,7 @@ internal static partial class ExpenseRecon
                     OtherMovements: other,
                     Status: status,
                     OpenTransfers: transfersByAccount[account].Where(t => !t.IsBooked)
-                        .OrderBy(t => t.GeneratedAt).Select(ToTransfer).ToList());
+                        .Select(ToTransfer).ToList());
             })
             .ToList();
     }

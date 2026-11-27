@@ -1,4 +1,4 @@
-using Humans.Teams;
+using Humans.Testing;
 using Microsoft.Extensions.Localization;
 using Humans.Base.Constants;
 using AwesomeAssertions;
@@ -26,7 +26,7 @@ public sealed class CachingTeamServiceTests : TeamsTestHarness
         ?? throw new InvalidOperationException("User.DisplayName property missing.");
 
     private readonly ServiceProvider _serviceProvider;
-    private readonly IRoleAssignmentService _roleAssignmentService;
+    private readonly ISystemRoleService _systemRoleService;
     private readonly ITeamManagementService _innerTeamService;
     private readonly CachingTeamService _service;
     private readonly TeamPageService _pages;
@@ -35,8 +35,8 @@ public sealed class CachingTeamServiceTests : TeamsTestHarness
     {
         var userService = NewDbBackedUserService();
 
-        _roleAssignmentService = Substitute.For<IRoleAssignmentService>();
-        _roleAssignmentService
+        _systemRoleService = Substitute.For<ISystemRoleService>();
+        _systemRoleService
             .IsUserBoardMemberAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
             .Returns(false);
         _innerTeamService = Substitute.For<ITeamManagementService>();
@@ -59,7 +59,7 @@ public sealed class CachingTeamServiceTests : TeamsTestHarness
         var services = new ServiceCollection();
         services.AddSingleton(userService);
         services.AddSingleton(userService);
-        services.AddSingleton(_roleAssignmentService);
+        services.AddSingleton(_systemRoleService);
         services.AddKeyedScoped<ITeamManagementService>(
             CachingTeamService.InnerServiceKey,
             (_, _) => _innerTeamService);
@@ -67,11 +67,12 @@ public sealed class CachingTeamServiceTests : TeamsTestHarness
 
         _service = new CachingTeamService(
             _serviceProvider.GetRequiredService<IServiceScopeFactory>(),
-            NullLogger<CachingTeamService>.Instance, Substitute.For<IStringLocalizer<TeamsResource>>());
+            NullLogger<CachingTeamService>.Instance, Substitute.For<IStringLocalizer<TeamsResource>>().AddFormatting());
         _pages = new TeamPageService(
             _service,
             Substitute.For<Humans.Google.Contracts.ITeamResourceService>(),
-            _roleAssignmentService);
+            _systemRoleService,
+            TestTeamPermissions.Create(_systemRoleService, () => _service));
     }
 
     [HumansFact]
@@ -84,7 +85,7 @@ public sealed class CachingTeamServiceTests : TeamsTestHarness
             [teamId] = MakeTeam(teamId, "Kitchen", parentTeamId: null, isActive: true,
                 members: [MakeMember(userId, TeamMemberRole.Member)]),
         });
-        (await _service.GetUserTeamMembershipsAsync(userId, Xunit.TestContext.Current.CancellationToken))
+        (await _service.GetUserTeamMembershipsAsync(userId, TestContext.Current.CancellationToken))
             .Should().HaveCount(1);
         // The inner erase ends the membership in the database.
         _innerTeamService.GetTeamsAsync(Arg.Any<CancellationToken>()).Returns(new Dictionary<Guid, TeamInfo>
@@ -92,10 +93,10 @@ public sealed class CachingTeamServiceTests : TeamsTestHarness
             [teamId] = MakeTeam(teamId, "Kitchen", parentTeamId: null, isActive: true),
         });
 
-        await _service.EraseForUserAsync(userId, Xunit.TestContext.Current.CancellationToken);
+        await _service.EraseForUserAsync(userId, TestContext.Current.CancellationToken);
 
         await _innerTeamService.Received(1).EraseForUserAsync(userId, Arg.Any<CancellationToken>());
-        (await _service.GetUserTeamMembershipsAsync(userId, Xunit.TestContext.Current.CancellationToken))
+        (await _service.GetUserTeamMembershipsAsync(userId, TestContext.Current.CancellationToken))
             .Should().BeEmpty();
     }
 
@@ -109,7 +110,7 @@ public sealed class CachingTeamServiceTests : TeamsTestHarness
             [teamId] = MakeTeam(teamId, "Kitchen", parentTeamId: null, isActive: true,
                 members: [MakeMember(userId, TeamMemberRole.Member)]),
         });
-        (await _service.GetUserTeamMembershipsAsync(userId, Xunit.TestContext.Current.CancellationToken))
+        (await _service.GetUserTeamMembershipsAsync(userId, TestContext.Current.CancellationToken))
             .Should().HaveCount(1);
         // Memberships ended and committed before a later erase step failed.
         _innerTeamService.GetTeamsAsync(Arg.Any<CancellationToken>()).Returns(new Dictionary<Guid, TeamInfo>
@@ -119,10 +120,10 @@ public sealed class CachingTeamServiceTests : TeamsTestHarness
         _innerTeamService.EraseForUserAsync(userId, Arg.Any<CancellationToken>())
             .Returns(Task.FromException(new InvalidOperationException("boom")));
 
-        var act = () => _service.EraseForUserAsync(userId, Xunit.TestContext.Current.CancellationToken);
+        var act = () => _service.EraseForUserAsync(userId, TestContext.Current.CancellationToken);
 
         await act.Should().ThrowAsync<InvalidOperationException>();
-        (await _service.GetUserTeamMembershipsAsync(userId, Xunit.TestContext.Current.CancellationToken))
+        (await _service.GetUserTeamMembershipsAsync(userId, TestContext.Current.CancellationToken))
             .Should().BeEmpty();
     }
 
@@ -492,11 +493,11 @@ public sealed class CachingTeamServiceTests : TeamsTestHarness
     public async Task MyTeams_HiddenMembershipNamesAndCounts_RequirePrivilegedRole(string? role)
     {
         var user = SeedUser("Coordinator");
-        _roleAssignmentService.IsUserAdminAsync(user.Id, Arg.Any<CancellationToken>())
+        _systemRoleService.IsUserAdminAsync(user.Id, Arg.Any<CancellationToken>())
             .Returns(string.Equals(role, RoleNames.Admin, StringComparison.Ordinal));
-        _roleAssignmentService.IsUserBoardMemberAsync(user.Id, Arg.Any<CancellationToken>())
+        _systemRoleService.IsUserBoardMemberAsync(user.Id, Arg.Any<CancellationToken>())
             .Returns(string.Equals(role, RoleNames.Board, StringComparison.Ordinal));
-        _roleAssignmentService.IsUserTeamsAdminAsync(user.Id, Arg.Any<CancellationToken>())
+        _systemRoleService.IsUserTeamsAdminAsync(user.Id, Arg.Any<CancellationToken>())
             .Returns(string.Equals(role, TeamsRoles.TeamsAdmin, StringComparison.Ordinal));
         var hiddenParent = SeedTeam("Private parent");
         hiddenParent.IsHidden = true;
@@ -549,7 +550,7 @@ public sealed class CachingTeamServiceTests : TeamsTestHarness
     public async Task GetMyTeamMembershipsAsync_BoardMember_GetsPendingCountsForRegularMemberships()
     {
         var user = SeedUser("Board Human");
-        _roleAssignmentService
+        _systemRoleService
             .IsUserBoardMemberAsync(user.Id, Arg.Any<CancellationToken>())
             .Returns(true);
         var team = SeedTeam("Alpha");
@@ -904,7 +905,7 @@ public sealed class CachingTeamServiceTests : TeamsTestHarness
         var hidden = SeedTeam("Kitchenette");
         hidden.IsHidden = true;
         await SaveAllAsync(TestContext.Current.CancellationToken);
-        _roleAssignmentService.IsUserTeamsAdminAsync(admin.Id, Arg.Any<CancellationToken>())
+        _systemRoleService.IsUserTeamsAdminAsync(admin.Id, Arg.Any<CancellationToken>())
             .Returns(true);
         _innerTeamService.GetPendingRequestsForTeamAsync(hidden.Id, Arg.Any<CancellationToken>())
             .Returns(Task.FromResult<IReadOnlyList<TeamJoinRequestSnapshot>>([]));

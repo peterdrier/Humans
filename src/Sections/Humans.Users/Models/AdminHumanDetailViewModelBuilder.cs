@@ -23,7 +23,7 @@ internal static class AdminHumanDetailViewModelBuilder
             Email = info.Email ?? string.Empty,
             DisplayName = info.BurnerName,
             CreatedAt = info.CreatedAt.ToDateTimeUtc(),
-            LastLoginAt = info.LastLoginAt?.ToDateTimeUtc(),
+            LastSignInAt = info.LastSignInAt?.ToDateTimeUtc(),
             State = info.State,
             AdminNotes = profile?.AdminNotes,
             PreferredLanguage = info.PreferredLanguage,
@@ -34,7 +34,6 @@ internal static class AdminHumanDetailViewModelBuilder
                 .ThenBy(pl => pl.LanguageCode, StringComparer.OrdinalIgnoreCase)
                 .Select(pl => new ProfileLanguageDisplayViewModel
                 {
-                    LanguageCode = pl.LanguageCode,
                     LanguageName = LanguageCatalog.GetDisplayName(pl.LanguageCode),
                     Proficiency = pl.Proficiency
                 }).ToList(),

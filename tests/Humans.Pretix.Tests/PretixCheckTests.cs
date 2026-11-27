@@ -12,14 +12,35 @@ public class PretixCheckTests
     private static FakePretix Organizer() => new FakePretix()
         .On("GET", "/api/v1/organizers/nobodies/events/", HttpStatusCode.OK, new { results = Array.Empty<object>() });
 
+    [HumansTheory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public async Task Check_CallerCancels_Propagates(bool cancelCaller)
+    {
+        using var caller = new CancellationTokenSource();
+        if (cancelCaller) await caller.CancelAsync();
+        var pretix = new FakePretix { Failure = new TaskCanceledException("probe cancelled", null, caller.Token) };
+        var check = () => Create(pretix).CheckAsync(null, caller.Token);
+
+        if (cancelCaller)
+            await check.Should().ThrowAsync<OperationCanceledException>();
+        else
+            (await check()).Should().Contain(f => !f.Ok && f.Text.Contains("could not be read"));
+    }
+
     [HumansFact]
-    public async Task A_ready_event_passes_with_reads_only()
+    public async Task Check_ReadyEvent_Passes()
     {
         var pretix = Organizer()
             .On("GET", Api, HttpStatusCode.OK, new { currency = "EUR", live = true, testmode = false })
             .On("GET", Api + "items/", HttpStatusCode.OK, new
             {
-                results = new[] { new { id = 1, internal_name = "humans-ticket" }, new { id = 2, internal_name = "humans-donation" } },
+                results = new[] { new { id = 1, internal_name = "humans-ticket" } },
+                next = $"https://pretix.test{Api}items/?page=2",
+            })
+            .On("GET", Api + "items/", HttpStatusCode.OK, new
+            {
+                results = new[] { new { id = 2, internal_name = "humans-donation" } },
             });
 
         var findings = await Create(pretix).CheckAsync("nowhere2027", Ct);
@@ -29,7 +50,7 @@ public class PretixCheckTests
     }
 
     [HumansFact]
-    public async Task An_offline_event_missing_a_carrier_says_both()
+    public async Task Check_OfflineEventNoCarrier_SaysBoth()
     {
         var pretix = Organizer()
             .On("GET", Api, HttpStatusCode.OK, new { currency = "EUR", live = false, testmode = true })
@@ -44,7 +65,7 @@ public class PretixCheckTests
     }
 
     [HumansFact]
-    public async Task A_rejected_token_stops_before_the_event()
+    public async Task Check_RejectedToken_StopsBeforeEvent()
     {
         var pretix = new FakePretix()
             .On("GET", "/api/v1/organizers/nobodies/events/", HttpStatusCode.Unauthorized, new { detail = "Invalid token." });
@@ -56,7 +77,7 @@ public class PretixCheckTests
     }
 
     [HumansFact]
-    public async Task A_refused_items_read_is_a_finding_not_a_throw()
+    public async Task Check_ItemsReadRefused_IsFinding()
     {
         var pretix = Organizer()
             .On("GET", Api, HttpStatusCode.OK, new { currency = "EUR", live = true, testmode = false })
@@ -68,7 +89,7 @@ public class PretixCheckTests
     }
 
     [HumansFact]
-    public async Task A_path_like_event_id_is_refused_before_any_event_call()
+    public async Task Check_PathLikeEventId_IsRefused()
     {
         var pretix = Organizer();
 
@@ -79,7 +100,7 @@ public class PretixCheckTests
     }
 
     [HumansFact]
-    public void Setup_labels_pretix_hosted_and_hides_secrets()
+    public void Setup_HidesSecrets()
     {
         var settings = PretixTestHost.Settings();
         settings.BaseUrl = "https://pretix.eu/";

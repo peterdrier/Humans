@@ -1,3 +1,4 @@
+using Humans.Testing;
 using AwesomeAssertions;
 using ImageMagick;
 using Humans.Auth.Contracts;
@@ -52,7 +53,6 @@ public sealed class ProfileServiceTests : ServiceTestHarness
         _userRepository = new UserRepository(DbFactory, Clock);
         _storageUserService = new UserService(
             _userRepository,
-            AdminAuthorization,
             _pictureStorage,
             Clock,
             NullLogger<UserService>.Instance, AuditLog);
@@ -87,9 +87,9 @@ public sealed class ProfileServiceTests : ServiceTestHarness
         var userId = Guid.NewGuid();
         await SeedUserAsync(userId);
         var contacts = new ContactFieldService(_userRepository, _userService,
-            Substitute.For<ITeamService>(), Substitute.For<IRoleAssignmentService>(),
+            Substitute.For<ITeamService>(), Substitute.For<ISystemRoleService>(),
             Substitute.For<IUserInfoSliceRefresher>(), Clock, NullLogger<ContactFieldService>.Instance,
-            Substitute.For<IStringLocalizer<UsersResource>>());
+            Substitute.For<IStringLocalizer<UsersResource>>().AddFormatting());
         var editor = new ProfileEditorService(_userService, contacts, NullLogger<ProfileEditorService>.Instance);
         _userService.SaveProfileLanguagesAsync(Arg.Any<Guid>(), Arg.Any<IReadOnlyList<ProfileLanguageInfo>>(), Arg.Any<CancellationToken>())
             .Returns(call => _storageUserService.SaveProfileLanguagesAsync(call.Arg<Guid>(),
@@ -163,6 +163,64 @@ public sealed class ProfileServiceTests : ServiceTestHarness
         profile.ProfilePictureContentType.Should().Be("image/jpeg");
         using var stored = new MagickImage(_fileStorage.Files[profile.ProfilePictureStorageKey!]);
         stored.Format.Should().Be(MagickFormat.Jpeg);
+    }
+
+    [HumansTheory]
+    [Xunit.InlineData("missing")]
+    [Xunit.InlineData("deleted")]
+    [Xunit.InlineData("local")]
+    public async Task SaveProfile_UnavailableAccount_RefusesCompleteEdit(string kind)
+    {
+        var ct = Xunit.TestContext.Current.CancellationToken;
+        _contactFields.SaveContactFieldsAsync(Arg.Any<Guid>(), Arg.Any<IReadOnlyList<ContactFieldEditDto>>(), ct, null)
+            .Returns(new ProfileEditResult(true));
+        var userId = Guid.NewGuid();
+        if (!string.Equals(kind, "missing", StringComparison.Ordinal))
+        {
+            await SeedUserAsync(userId);
+            var person = (await _userService.GetUserInfoAsync(userId, ct))!;
+            person = string.Equals(kind, "deleted", StringComparison.Ordinal)
+                ? person with { State = UserState.Deleted }
+                : person with { IdentityEmailColumn = "erased@gdpr.local" };
+            _userService.GetUserInfoAsync(userId, Arg.Any<CancellationToken>()).Returns(person);
+        }
+
+        var result = await _editor.SaveProfileAsync(userId, MakeRequest(), ct,
+            [new(null, ContactFieldType.Signal, null, "@human", ContactFieldVisibility.MyTeams, 0)],
+            [new(Guid.NewGuid(), "es", LanguageProficiency.Native)]);
+
+        result.Succeeded.Should().BeFalse();
+        (await Db.Profiles.AsNoTracking().AnyAsync(ct)).Should().BeFalse();
+        await _userService.DidNotReceiveWithAnyArgs().SaveProfileAsync(default, default!);
+        await _contactFields.DidNotReceiveWithAnyArgs().SaveContactFieldsAsync(default, default!);
+        await _userService.DidNotReceiveWithAnyArgs().SaveProfileLanguagesAsync(default, default!);
+    }
+
+    [HumansFact]
+    public async Task SaveProfile_ArchivedId_UsesSurvivorForEveryWrite()
+    {
+        var ct = Xunit.TestContext.Current.CancellationToken;
+        _contactFields.SaveContactFieldsAsync(Arg.Any<Guid>(), Arg.Any<IReadOnlyList<ContactFieldEditDto>>(), ct, null)
+            .Returns(new ProfileEditResult(true));
+        var archivedId = Guid.NewGuid();
+        var survivorId = Guid.NewGuid();
+        await SeedUserAsync(archivedId);
+        await SeedUserAsync(survivorId);
+        var survivor = (await _userService.GetUserInfoAsync(survivorId, ct))!;
+        _userService.GetUserInfoAsync(archivedId, Arg.Any<CancellationToken>())
+            .Returns(survivor);
+        var contacts = new List<ContactFieldEditDto>
+        {
+            new(null, ContactFieldType.Signal, null, "@human", ContactFieldVisibility.MyTeams, 0),
+        };
+        var languages = new List<ProfileLanguageInfo> { new(Guid.NewGuid(), "es", LanguageProficiency.Native) };
+
+        var result = await _editor.SaveProfileAsync(archivedId, MakeRequest(), ct, contacts, languages);
+
+        result.Succeeded.Should().BeTrue();
+        (await Db.Profiles.AsNoTracking().SingleAsync(ct)).UserId.Should().Be(survivorId);
+        await _contactFields.Received(1).SaveContactFieldsAsync(survivorId, contacts, ct, null);
+        await _userService.Received(1).SaveProfileLanguagesAsync(survivorId, languages, ct);
     }
 
     [HumansFact(Timeout = 10000)]
@@ -367,7 +425,7 @@ public sealed class ProfileServiceTests : ServiceTestHarness
         var options = new DbContextOptionsBuilder<UsersDbContext>(DbOptions)
             .AddInterceptors(new LoseProfileSaveAcknowledgement()).Options;
         var service = new UserService(
-            new UserRepository(new TestDbContextFactory(options), Clock), AdminAuthorization,
+            new UserRepository(new TestDbContextFactory(options), Clock),
             _pictureStorage, Clock, NullLogger<UserService>.Instance, AuditLog);
         var command = new UserProfileSaveCommand(
             "TestBurner", "Test", "User", null, null, null, null, null, null, null, null, null,
@@ -394,7 +452,7 @@ public sealed class ProfileServiceTests : ServiceTestHarness
         var profileId = await SeedUserWithProfileAsync(userId, withPicture: true);
         SaveChangesInterceptor interceptor = afterCommit ? new LoseProfileSaveAcknowledgement() : new RejectUserNameSave();
         var options = new DbContextOptionsBuilder<UsersDbContext>(DbOptions).AddInterceptors(interceptor).Options;
-        var service = new UserService(new UserRepository(new TestDbContextFactory(options), Clock), AdminAuthorization,
+        var service = new UserService(new UserRepository(new TestDbContextFactory(options), Clock),
             _pictureStorage, Clock, NullLogger<UserService>.Instance, AuditLog);
         var command = new UserProfileSaveCommand(
             "TestBurner", "Test", "User", null, null, null, null, null, null, null, null, null,
@@ -430,7 +488,7 @@ public sealed class ProfileServiceTests : ServiceTestHarness
         repo.GetProfilePictureLocationAsync(profileId, Arg.Any<CancellationToken>())
             .ThrowsAsync(new IOException("Could not verify the committed picture"));
         var service = new UserService(
-            repo, AdminAuthorization,
+            repo,
             _pictureStorage, Clock, NullLogger<UserService>.Instance, AuditLog);
         var command = new UserProfileSaveCommand(
             "TestBurner", "Test", "User", null, null, null, null, null, null, null, null, null,
@@ -453,13 +511,12 @@ public sealed class ProfileServiceTests : ServiceTestHarness
         var existing = await Db.Profiles.AsNoTracking().FirstAsync(p => p.Id == profileId, Xunit.TestContext.Current.CancellationToken);
         var failingRepo = Substitute.For<IUserRepository>();
         failingRepo.GetByUserIdAsync(userId, Arg.Any<CancellationToken>()).Returns(existing);
-        failingRepo.GetProfilePictureLocationAsync(profileId, Arg.Any<CancellationToken>()).Returns(("image/png", (string?)null));
+        failingRepo.GetProfilePictureLocationAsync(profileId, Arg.Any<CancellationToken>()).Returns(("image/png", null));
         failingRepo.UpdateAsync(
                 Arg.Any<Profile>(), Arg.Any<CancellationToken>(), Arg.Any<IReadOnlyList<CVEntry>?>(), Arg.Any<UserNames?>())
             .ThrowsAsync(new InvalidOperationException("Database unavailable"));
         var sut = new UserService(
             failingRepo,
-            AdminAuthorization,
             _pictureStorage,
             Clock,
             NullLogger<UserService>.Instance, AuditLog);
@@ -486,7 +543,7 @@ public sealed class ProfileServiceTests : ServiceTestHarness
         var options = new DbContextOptionsBuilder<UsersDbContext>(DbOptions)
             .AddInterceptors(new RejectUserNameSave()).Options;
         var sut = new UserService(
-            new UserRepository(new TestDbContextFactory(options), Clock), AdminAuthorization,
+            new UserRepository(new TestDbContextFactory(options), Clock),
             _pictureStorage, Clock, NullLogger<UserService>.Instance, AuditLog);
         var command = new UserProfileSaveCommand(
             "TestBurner", "Test", "User", null, null, null, null, null, null, null, null, null,
@@ -625,7 +682,6 @@ public sealed class ProfileServiceTests : ServiceTestHarness
     {
         var userId = Guid.NewGuid();
         await SeedUserWithProfileAsync(userId, withPicture: true);
-        var profile = await Db.Profiles.FirstAsync(p => p.UserId == userId, Xunit.TestContext.Current.CancellationToken);
 
         var result = await _service.GetProfilePictureAsync(userId, Xunit.TestContext.Current.CancellationToken);
 
@@ -639,7 +695,6 @@ public sealed class ProfileServiceTests : ServiceTestHarness
     {
         var userId = Guid.NewGuid();
         await SeedUserWithProfileAsync(userId, withPicture: false);
-        var profile = await Db.Profiles.FirstAsync(p => p.UserId == userId, Xunit.TestContext.Current.CancellationToken);
 
         var result = await _service.GetProfilePictureAsync(userId, Xunit.TestContext.Current.CancellationToken);
 
@@ -713,7 +768,6 @@ public sealed class ProfileServiceTests : ServiceTestHarness
 
     private UserService BuildUserServiceWith(IUserRepository userRepository) => new(
         userRepository,
-        AdminAuthorization,
         Substitute.For<IFileStorage>(),
         Clock,
         NullLogger<UserService>.Instance, AuditLog);
@@ -762,7 +816,7 @@ public sealed class ProfileServiceTests : ServiceTestHarness
         // Name-only saves (onboarding widget) pass no CV payload — they must not
         // be blocked by the completeness rule nor overwrite stored history.
         var userId = Guid.NewGuid();
-        var profileId = await SeedUserWithProfileAsync(userId);
+        await SeedUserWithProfileAsync(userId);
         Db.VolunteerHistoryEntries.Add(new VolunteerHistoryEntry
         {
             Id = Guid.NewGuid(),

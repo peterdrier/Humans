@@ -28,7 +28,6 @@ internal sealed class TeamController(
     IAuthorizationService authorizationService,
     ILogger<TeamController> logger) : HumansControllerBase(userService)
 {
-    private readonly IUserService _userService = userService;
 
     [AllowAnonymous]
     [HttpGet("")]
@@ -152,7 +151,7 @@ internal sealed class TeamController(
         var teamInfo = await teamService.GetTeamAsync(team.Id, ct);
         viewModel.CanManageEarlyEntry = teamInfo is { EarlyEntryEnabled: true }
             && (await authorizationService.AuthorizeAsync(
-                User, teamInfo, TeamOperationRequirement.ManageEarlyEntry)).Succeeded;
+                User, TeamOwner.Of(teamInfo.Id), TeamPermissionRequirements.EarlyEntry)).Succeeded;
 
         viewModel.SubteamLeads = teamPage.SubteamLeads.Select(MapChildTeamMember).ToList();
         viewModel.ChildTeamMembers = teamPage.SubteamMembers.Select(MapChildTeamMember).ToList();
@@ -164,8 +163,6 @@ internal sealed class TeamController(
     {
         UserId = member.UserId,
         ChildTeamName = member.ChildTeamName,
-        ChildTeamSlug = member.ChildTeamSlug,
-        IsCoordinator = member.IsCoordinator,
         RoleTitle = member.RoleTitle
     };
 
@@ -186,7 +183,6 @@ internal sealed class TeamController(
     private static TeamMemberViewModel MapTeamMember(TeamPageMemberSummary member) => new()
     {
         UserId = member.UserId,
-        Role = member.Role,
         IsCoordinator = member.Role == TeamMemberRole.Coordinator
     };
 
@@ -203,7 +199,7 @@ internal sealed class TeamController(
             .Where(slot => canSeeHiddenTeams
                 || (teamsBySlug.TryGetValue(slot.TeamSlug, out var team) && !team.IsHidden))
             .Where(slot => slot.IsPublic || canSeeHiddenTeams
-                || (viewerId is Guid userId && teamsBySlug.TryGetValue(slot.TeamSlug, out var team)
+                || (viewerId is { } userId && teamsBySlug.TryGetValue(slot.TeamSlug, out var team)
                     && TeamCoordinatorAccess.IsCoordinatorOfActiveTeam(teamsById, team.Id, userId)))
             .OrderBy(slot => slot.Priority switch
             {
@@ -246,11 +242,9 @@ internal sealed class TeamController(
         var membershipVMs = (await teamPageService.GetMyTeamMembershipsAsync(user.Id, ct))
             .Select(m => new MyTeamMembershipViewModel
             {
-                TeamId = m.TeamId,
                 TeamName = m.TeamName,
                 TeamSlug = m.TeamSlug,
                 IsSystemTeam = m.IsSystemTeam,
-                Role = m.Role,
                 IsCoordinator = m.Role == TeamMemberRole.Coordinator,
                 JoinedAt = m.JoinedAt.ToDateTimeUtc(),
                 CanLeave = m.CanLeave,
@@ -266,10 +260,8 @@ internal sealed class TeamController(
                 .Select(request => new TeamJoinRequestSummaryViewModel
                 {
                     Id = request.Id,
-                    TeamId = request.TeamId,
                     TeamName = request.TeamName ?? string.Empty,
                     TeamSlug = request.TeamSlug ?? string.Empty,
-                    Status = request.Status,
                     StatusBadgeClass = "bg-warning text-dark",
                     RequestedAt = request.RequestedAt.ToDateTimeUtc()
                 }).ToList()
@@ -535,7 +527,7 @@ internal sealed class TeamController(
                 var currentUser = await GetCurrentUserInfoAsync();
                 logger.LogInformation("Admin {AdminId} created team {TeamId} ({TeamName})", currentUser?.Id, result.Team!.Id, result.Team.Name);
 
-                SetSuccess(string.Format(sharedLocalizer["Admin_TeamCreated"].Value, result.Team.Name));
+                SetSuccess(sharedLocalizer["Admin_TeamCreated", result.Team.Name]);
                 if (result.GroupWarning is not null)
                     SetError(result.GroupWarning);
                 return RedirectToAction(nameof(Summary));
@@ -597,6 +589,7 @@ internal sealed class TeamController(
 
         if (!ModelState.IsValid)
         {
+            logger.LogWarning("Rejected malformed team update for team {TeamId}", id);
             await PopulateEligibleParentsAsync(model, id, HttpContext.RequestAborted);
             return View(model);
         }

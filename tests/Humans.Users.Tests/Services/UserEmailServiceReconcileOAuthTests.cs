@@ -25,7 +25,6 @@ public class UserEmailServiceReconcileOAuthTests
     private readonly IUserRepository _repository = Substitute.For<IUserRepository>();
     private readonly IUserEmailRemovalListener _googleIdentity = Substitute.For<IUserEmailRemovalListener>();
     private readonly IUserManagement _userService = Substitute.For<IUserManagement>();
-    private readonly UserManager<User> _userManager;
     private readonly FakeClock _clock = new(Instant.FromUtc(2026, 5, 11, 12, 0));
     private readonly IAuditLogService _auditLogService = Substitute.For<IAuditLogService>();
     private readonly UserEmailService _service;
@@ -36,12 +35,12 @@ public class UserEmailServiceReconcileOAuthTests
     public UserEmailServiceReconcileOAuthTests()
     {
         var store = Substitute.For<IUserStore<User>>();
-        _userManager = Substitute.For<UserManager<User>>(
+        var userManager = Substitute.For<UserManager<User>>(
             store, null, null, null, null, null, null, null, null);
         _service = new UserEmailService(
             _repository,
             _userService,
-            _userManager,
+            userManager,
             _clock,
             _auditLogService,
             [],
@@ -89,7 +88,7 @@ public class UserEmailServiceReconcileOAuthTests
                 IsVerified = true, IsPrimary = true, Provider = Provider, ProviderKey = ProviderKey,
             },
         };
-        _repository.GetUserEmailsByUserIdForMutationAsync(userId, Arg.Any<CancellationToken>())
+        _repository.GetUserEmailsByUserIdAsync(userId, Arg.Any<CancellationToken>())
             .Returns(rows);
 
         var result = await _service.ReconcileOAuthIdentityAsync(
@@ -122,7 +121,7 @@ public class UserEmailServiceReconcileOAuthTests
             Provider = Provider,
             ProviderKey = ProviderKey,
         };
-        _repository.GetUserEmailsByUserIdForMutationAsync(userId, Arg.Any<CancellationToken>())
+        _repository.GetUserEmailsByUserIdAsync(userId, Arg.Any<CancellationToken>())
             .Returns(new List<UserEmail> { tagged });
 
         var result = await _service.ReconcileOAuthIdentityAsync(
@@ -179,7 +178,7 @@ public class UserEmailServiceReconcileOAuthTests
             IsVerified = false,
             IsPrimary = false,
         };
-        _repository.GetUserEmailsByUserIdForMutationAsync(userId, Arg.Any<CancellationToken>())
+        _repository.GetUserEmailsByUserIdAsync(userId, Arg.Any<CancellationToken>())
             .Returns(new List<UserEmail> { oldRow, sibling });
 
         var result = await _service.ReconcileOAuthIdentityAsync(
@@ -227,7 +226,7 @@ public class UserEmailServiceReconcileOAuthTests
             IsVerified = true,
             IsPrimary = true,
         };
-        _repository.GetUserEmailsByUserIdForMutationAsync(userId, Arg.Any<CancellationToken>())
+        _repository.GetUserEmailsByUserIdAsync(userId, Arg.Any<CancellationToken>())
             .Returns(new List<UserEmail> { sibling });
 
         var result = await _service.ReconcileOAuthIdentityAsync(
@@ -252,7 +251,7 @@ public class UserEmailServiceReconcileOAuthTests
     public async Task NewRowCreated_NoTaggedRow_NoSibling_NoCrossUser_InsertsVerifiedTaggedRow()
     {
         var userId = Guid.NewGuid();
-        _repository.GetUserEmailsByUserIdForMutationAsync(userId, Arg.Any<CancellationToken>())
+        _repository.GetUserEmailsByUserIdAsync(userId, Arg.Any<CancellationToken>())
             .Returns(new List<UserEmail>());
 
         UserEmail? planned = null;
@@ -311,7 +310,7 @@ public class UserEmailServiceReconcileOAuthTests
             Provider = Provider,
             ProviderKey = ProviderKey,
         };
-        _repository.GetUserEmailsByUserIdForMutationAsync(signingUserId, Arg.Any<CancellationToken>())
+        _repository.GetUserEmailsByUserIdAsync(signingUserId, Arg.Any<CancellationToken>())
             .Returns(new List<UserEmail> { tagged });
         _repository.GetUserEmailsByAddressAsync(Arg.Any<string>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
             .Returns([blocker]);

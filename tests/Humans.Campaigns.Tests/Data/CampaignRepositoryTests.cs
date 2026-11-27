@@ -82,7 +82,7 @@ public sealed class CampaignRepositoryTests
     }
 
     [HumansFact]
-    public async Task MarkGrantsRedeemedAsync_SameCodeInTwoCampaigns_NewestCampaignWins()
+    public async Task MarkGrantsRedeemedAsync_CodeInTwoCampaigns_NewestWins()
     {
         var older = await SeedCampaignAsync(CampaignStatus.Active, Instant.FromUtc(2025, 1, 1, 0, 0));
         var newer = await SeedCampaignAsync(CampaignStatus.Active, Instant.FromUtc(2026, 1, 1, 0, 0));
@@ -99,7 +99,7 @@ public sealed class CampaignRepositoryTests
     }
 
     [HumansFact]
-    public async Task MarkGrantsRedeemedAsync_NRedemptionsOfSameCode_RedeemNDistinctGrants()
+    public async Task MarkGrantsRedeemedAsync_SameCodeRedeemedTwice_RedeemsTwoGrants()
     {
         var first = await SeedCampaignAsync(CampaignStatus.Active);
         var second = await SeedCampaignAsync(CampaignStatus.Active);
@@ -166,7 +166,7 @@ public sealed class CampaignRepositoryTests
     }
 
     [HumansFact]
-    public async Task ReassignGrantsToUserAsync_SecondSourceRowOnSameCampaign_Drops()
+    public async Task ReassignGrantsToUserAsync_SecondRowSameCampaign_Drops()
     {
         // Pre-index data could hold two source grants on one campaign; moving
         // both would violate the unique (CampaignId, UserId) index, so the
@@ -189,7 +189,7 @@ public sealed class CampaignRepositoryTests
     }
 
     [HumansFact]
-    public async Task GetActiveOrCompletedGrantsForUserAsync_ExcludesDraftCampaignGrants()
+    public async Task GetActiveOrCompletedGrantsForUserAsync_DraftCampaign_Excluded()
     {
         var userId = Guid.NewGuid();
         var draft = await SeedCampaignAsync(CampaignStatus.Draft);
@@ -200,14 +200,14 @@ public sealed class CampaignRepositoryTests
         var completedGrant = await SeedGrantAsync(completed, "C", userId: userId);
         await SeedGrantAsync(active, "OTHER", userId: Guid.NewGuid());
 
-        var grants = await _repository.GetActiveOrCompletedGrantsForUserAsync(
+        var grants = await _repository.GetGrantsForUserAsync(
             userId, Xunit.TestContext.Current.CancellationToken);
 
         grants.Select(g => g.Id).Should().BeEquivalentTo([activeGrant.Id, completedGrant.Id]);
     }
 
     [HumansFact]
-    public async Task GetAllGrantsForUserAsync_ReturnsAllStatuses_OnlyForThatUser()
+    public async Task GetAllGrantsForUserAsync_AnyStatus_ReturnsOwnGrants()
     {
         var userId = Guid.NewGuid();
         var draft = await SeedCampaignAsync(CampaignStatus.Draft);
@@ -223,7 +223,7 @@ public sealed class CampaignRepositoryTests
     }
 
     [HumansFact]
-    public async Task GetAvailableCodesAsync_AllocatesFreeCodesInImportOrder_NotInsertionOrder()
+    public async Task GetAvailableCodesAsync_FreeCodes_ComeInImportOrder()
     {
         var campaign = await SeedCampaignAsync(CampaignStatus.Active);
         var granted = await SeedGrantAsync(campaign, "GRANTED");

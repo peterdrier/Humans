@@ -1,5 +1,4 @@
 using Humans.Grants.Contracts;
-using Humans.Base.Enums;
 using Humans.Base.Extensions;
 using Humans.Users.Contracts;
 using AwesomeAssertions;
@@ -63,7 +62,7 @@ public sealed class GrantTests : GrantsTestHarness
             Arg.Any<string?>(), Arg.Any<CancellationToken>());
 
     [HumansFact]
-    public async Task IssueTo_SkipsLiveHolders_AuditsAndTellsEachNewHolder()
+    public async Task IssueTo_LiveHolder_IsSkipped()
     {
         var actor = SeedUser("Manager");
         var holder = SeedUser("Holder");
@@ -91,7 +90,7 @@ public sealed class GrantTests : GrantsTestHarness
     [Xunit.InlineData(true, true, 2028)]
     [Xunit.InlineData(false, false, 2027)]
     [Xunit.InlineData(true, false, 2027)]
-    public async Task GrantAudits_FollowTheProgramsEventYear_WithStoredYearFallback(
+    public async Task GrantAudits_ProgramHasEvent_UseEventYear(
         bool source, bool eventAvailable, int expectedYear)
     {
         var actor = SeedUser("Manager");
@@ -123,7 +122,7 @@ public sealed class GrantTests : GrantsTestHarness
     }
 
     [HumansFact]
-    public async Task IssueTo_RefusesClosedAndSourcePrograms()
+    public async Task IssueTo_ClosedOrSourceProgram_IsRefused()
     {
         var closed = await SeedProgramAsync(status: GrantProgramStatus.Closed);
         var source = await SeedProgramAsync(GrantIssuer.Source);
@@ -135,7 +134,7 @@ public sealed class GrantTests : GrantsTestHarness
     }
 
     [HumansFact]
-    public async Task IssueTo_MergedAliasesIssueOneGrantToTheSurvivor_AndRetriesSkipIt()
+    public async Task IssueTo_MergedAliases_IssueOneGrant()
     {
         var archived = SeedUser("Archived");
         var survivor = SeedUser("Survivor", mergedIds: [archived]);
@@ -155,7 +154,7 @@ public sealed class GrantTests : GrantsTestHarness
     }
 
     [HumansFact]
-    public async Task IssueTo_AnExistingGrantUnderAMergedIdCountsAsHeld()
+    public async Task IssueTo_GrantUnderMergedId_CountsAsHeld()
     {
         var archived = SeedUser("Archived");
         var survivor = SeedUser("Survivor", mergedIds: [archived]);
@@ -172,7 +171,7 @@ public sealed class GrantTests : GrantsTestHarness
     }
 
     [HumansFact]
-    public async Task SourceWrite_MergedAliasIssuesToTheSurvivor_RetriesReturnIt_AndAliasRevocationFindsIt()
+    public async Task SourceWrite_MergedAlias_IssuesToSurvivor()
     {
         var archived = SeedUser("Archived");
         var survivor = SeedUser("Survivor", mergedIds: [archived]);
@@ -194,7 +193,7 @@ public sealed class GrantTests : GrantsTestHarness
     }
 
     [HumansFact]
-    public async Task SourceWrite_FindsAnExistingGrantUnderAMergedId_ForIssueAndRevoke()
+    public async Task SourceWrite_GrantUnderMergedId_IsFound()
     {
         var archived = SeedUser("Archived");
         var survivor = SeedUser("Survivor", mergedIds: [archived]);
@@ -227,7 +226,7 @@ public sealed class GrantTests : GrantsTestHarness
     }
 
     [HumansFact]
-    public async Task Revoke_RecordsWhoWhenWhy_TellsThePerson_OnlyOnce()
+    public async Task Revoke_LiveGrant_RecordsWhoWhenWhy()
     {
         var actor = SeedUser("Manager");
         var person = SeedUser("Holder");
@@ -253,7 +252,7 @@ public sealed class GrantTests : GrantsTestHarness
     [Xunit.InlineData(false, true)]
     [Xunit.InlineData(true, false)]
     [Xunit.InlineData(true, true)]
-    public async Task ManualGrantMutation_RefusesMissingOrForeignGrant_BeforeAnySideEffects(bool resend, bool missingGrant)
+    public async Task ManualMutation_ForeignGrant_IsRefused(bool resend, bool missingGrant)
     {
         var actor = SeedUser("Manager");
         var routedProgram = await SeedProgramAsync(name: "A", managers: actor);
@@ -279,7 +278,7 @@ public sealed class GrantTests : GrantsTestHarness
     }
 
     [HumansFact]
-    public async Task Resend_StampsNotifiedAt_AuditsAndSendsAgain_RefusedWhenRevoked()
+    public async Task Resend_LiveGrant_SendsAgain()
     {
         var actor = SeedUser("Manager");
         var person = SeedUser();
@@ -298,8 +297,54 @@ public sealed class GrantTests : GrantsTestHarness
         await ReceivedNoticeAsync(GrantsNotificationSources.GrantReceived, person);
     }
 
+    [HumansTheory]
+    [Xunit.InlineData(null)]
+    [Xunit.InlineData(UserState.Deleted)]
+    [Xunit.InlineData(UserState.Merged)]
+    public async Task Resend_UnavailableRecipient_PreservesNotificationStamp(UserState? state)
+    {
+        var person = SeedUser();
+        var snapshot = Xunit.Assert.IsType<UserInfo>(await Users.GetUserInfoAsync(person, Ct));
+        var program = await SeedProgramAsync();
+        var grant = await SeedGrantAsync(program, person);
+        Users.GetUserInfoAsync(person, Arg.Any<CancellationToken>())
+            .Returns(state is { } value ? snapshot with { State = value } : null);
+        Clock.Advance(Duration.FromDays(2));
+
+        var result = await NewService().ResendNoticeAsync(program.Id, grant.Id, SeedUser("Manager"), Ct);
+
+        result.Refusal.Should().NotBeNull();
+        (await ReadGrantAsync(grant.Id)).NotifiedAt.Should().Be(grant.NotifiedAt);
+        AuditLog.ReceivedCalls().Should().BeEmpty();
+        Notifications.ReceivedCalls().Should().BeEmpty();
+        Email.ReceivedCalls().Should().BeEmpty();
+    }
+
+    [HumansTheory]
+    [Xunit.InlineData(UserState.Deleted)]
+    [Xunit.InlineData(UserState.Merged)]
+    public async Task Revoke_TombstoneRecipient_SavesWithoutEmail(UserState state)
+    {
+        var person = SeedUser();
+        var snapshot = Xunit.Assert.IsType<UserInfo>(await Users.GetUserInfoAsync(person, Ct));
+        var program = await SeedProgramAsync();
+        var grant = await SeedGrantAsync(program, person);
+        var actor = SeedUser("Manager");
+        Users.GetUserInfoAsync(person, Arg.Any<CancellationToken>()).Returns(snapshot with { State = state });
+
+        var result = await NewService().RevokeGrantAsync(program.Id, grant.Id, "No longer eligible", actor, Ct);
+
+        result.Refusal.Should().BeNull();
+        var saved = await ReadGrantAsync(grant.Id);
+        saved.RevokedAt.Should().Be(Clock.GetCurrentInstant());
+        saved.RevokedByUserId.Should().Be(actor);
+        Email.ReceivedCalls().Should().BeEmpty();
+        await AuditLog.Received(1).LogAsync(GrantsAuditActions.GrantRevoked, AuditEntityTypes.Grant, grant.Id,
+            Arg.Any<string>(), actor, person, AuditSubjectTypes.User);
+    }
+
     [HumansFact]
-    public async Task NoticeFailure_IsLogged_NotThrown_GrantStands()
+    public async Task IssueTo_NoticeFails_GrantStands()
     {
         var person = SeedUser();
         var program = await SeedProgramAsync();
@@ -375,7 +420,7 @@ public sealed class GrantTests : GrantsTestHarness
         Users.GetUserInfoAsync(person, Arg.Any<CancellationToken>()).Returns(_ =>
         {
             if (++lookups == 1) throw failure;
-            return new ValueTask<Humans.Users.Contracts.UserInfo?>(snapshot);
+            return new ValueTask<UserInfo?>(snapshot);
         });
 
         var result = await NewService().ResendNoticeAsync(program.Id, grant.Id, actor, Ct);
@@ -391,7 +436,7 @@ public sealed class GrantTests : GrantsTestHarness
     }
 
     [HumansFact]
-    public async Task SourceIssue_FindsTheOpenProgramByKey_IsIdempotentPerPerson()
+    public async Task SourceIssue_SamePersonTwice_IssuesOnce()
     {
         var person = SeedUser();
         var actor = SeedUser("Admin");

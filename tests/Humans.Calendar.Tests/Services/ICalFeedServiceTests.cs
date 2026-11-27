@@ -285,7 +285,7 @@ public class ICalFeedServiceTests
         var ics = await service.GetFeedIcsAsync(userId, token, TestContext.Current.CancellationToken);
 
         ics.Should().Contain($"X-GOOGLE-CONFERENCE:{url}");
-        var events = Ical.Net.Calendar.Load(ics!)!.Events;
+        var events = Ical.Net.Calendar.Load(ics)!.Events;
         events[0]!.Description.Should().Be($"{url}\n\nAgenda");
         events[0]!.Location.Should().Be("Room 1");
         events[1]!.Description.Should().Be(url);

@@ -2,7 +2,6 @@ using AwesomeAssertions;
 using Humans.Base.Configuration;
 using Humans.Email.Contracts;
 using Microsoft.Extensions.Options;
-using Humans.AuditLog.Contracts;
 using Humans.Base.Interfaces;
 using Humans.Base.Extensions;
 using Humans.Users.Services;
@@ -30,7 +29,6 @@ public sealed class UserServiceProfileOnboardingMutationTests : ServiceTestHarne
         var userRepository = new UserRepository(DbFactory, Clock);
         _service = new UserService(
             userRepository,
-            AdminAuthorization,
             _fileStorage,
             Clock,
             NullLogger<UserService>.Instance, AuditLog);
@@ -48,12 +46,12 @@ public sealed class UserServiceProfileOnboardingMutationTests : ServiceTestHarne
         var failure = cancelled
             ? (Exception)new OperationCanceledException(request.Token)
             : new IOException("Last-login write unavailable");
-        repository.SetLastLoginAsync(userId, Arg.Any<Instant>(), request.Token)
+        repository.SetLastSignInAsync(userId, Arg.Any<Instant>(), request.Token)
             .Returns(Task.FromException<bool>(failure));
-        var service = new UserService(repository, AdminAuthorization, _fileStorage, Clock,
+        var service = new UserService(repository, _fileStorage, Clock,
             NullLogger<UserService>.Instance, AuditLog);
 
-        var record = () => service.RecordLoginAsync(userId, request.Token);
+        var record = () => service.RecordSignInAsync(userId, request.Token);
 
         if (cancelled)
             await record.Should().ThrowAsync<OperationCanceledException>();
@@ -76,8 +74,7 @@ public sealed class UserServiceProfileOnboardingMutationTests : ServiceTestHarne
             .Returns(string.Equals(kind, "duplicate", StringComparison.Ordinal)
                 ? [new UserEmail { Id = Guid.NewGuid(), UserId = userId, Email = "held@example.com" }]
                 : []);
-        var service = new UserService(repository,
-            AdminAuthorization, _fileStorage, Clock, NullLogger<UserService>.Instance, AuditLog);
+        var service = new UserService(repository, _fileStorage, Clock, NullLogger<UserService>.Instance, AuditLog);
 
         var email = kind switch
         {
@@ -106,8 +103,7 @@ public sealed class UserServiceProfileOnboardingMutationTests : ServiceTestHarne
         repository.GetByIdAsync(userId, Arg.Any<CancellationToken>()).Returns(new User { Id = userId });
         repository.GetUserEmailsByAddressAsync(Arg.Any<string>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
             .Returns([new UserEmail { Id = Guid.NewGuid(), UserId = Guid.NewGuid(), Email = "held@example.com", IsVerified = true }]);
-        var service = new UserService(repository,
-            AdminAuthorization, _fileStorage, Clock, NullLogger<UserService>.Instance, AuditLog);
+        var service = new UserService(repository, _fileStorage, Clock, NullLogger<UserService>.Instance, AuditLog);
 
         var result = await service.AddUserEmailAsync(userId,
             new UserEmailAddCommand("held@example.com", IsVerified: verified),
@@ -208,8 +204,8 @@ public sealed class UserServiceProfileOnboardingMutationTests : ServiceTestHarne
         accountUser.State = hasDeletionHold ? UserState.DeletePending : UserState.Bare;
         var arrival = Clock.GetCurrentInstant();
         accountUser.DeletionRequestedAt = hasDeletionHold ? arrival : null;
-        accountUser.DeletionScheduledFor = hasDeletionHold ? arrival + NodaTime.Duration.FromDays(30) : null;
-        accountUser.DeletionEligibleAfter = hasDeletionHold ? arrival + NodaTime.Duration.FromDays(60) : null;
+        accountUser.DeletionScheduledFor = hasDeletionHold ? arrival + Duration.FromDays(30) : null;
+        accountUser.DeletionEligibleAfter = hasDeletionHold ? arrival + Duration.FromDays(60) : null;
         await Db.SaveChangesAsync(TestContext.Current.CancellationToken);
 
         var slices = await _service.ContributeForUserAsync(userId, TestContext.Current.CancellationToken);
@@ -301,8 +297,8 @@ public sealed class UserServiceProfileOnboardingMutationTests : ServiceTestHarne
             {
                 Id = Guid.NewGuid(), UserId = userId, Email = "google@example.com",
                 IsVerified = true, IsPrimary = true, CreatedAt = createdAt,
-                UpdatedAt = createdAt.Plus(NodaTime.Duration.FromHours(2)),
-                VerificationSentAt = createdAt.Plus(NodaTime.Duration.FromHours(1)),
+                UpdatedAt = createdAt.Plus(Duration.FromHours(2)),
+                VerificationSentAt = createdAt.Plus(Duration.FromHours(1)),
             },
             new UserEmail
             {
@@ -332,7 +328,7 @@ public sealed class UserServiceProfileOnboardingMutationTests : ServiceTestHarne
     }
 
     [HumansFact]
-    public async Task GetUsersWithLoginsButNoEmailsAsync_ComposesLoginAndUserEmailRepositories()
+    public async Task GetLoginUsersWithoutEmails_ReturnsUsersWithNoEmail()
     {
         var userWithEmail = SeedUser(Guid.NewGuid(), "Has Email");
         var userWithoutEmail = SeedUser(Guid.NewGuid(), "Ghost Login");
@@ -361,7 +357,7 @@ public sealed class UserServiceProfileOnboardingMutationTests : ServiceTestHarne
         });
         await Db.SaveChangesAsync(TestContext.Current.CancellationToken);
 
-        var result = await _service.GetUsersWithLoginsButNoEmailsAsync(TestContext.Current.CancellationToken);
+        var result = await _service.GetLoginUsersWithoutEmailsAsync(TestContext.Current.CancellationToken);
 
         result.Should().Equal([userWithoutEmail.Id]);
     }
@@ -499,7 +495,7 @@ public sealed class UserServiceProfileOnboardingMutationTests : ServiceTestHarne
         var result = await _service.SetDeletionPendingAsync(
             userId,
             now,
-            now.Plus(NodaTime.Duration.FromDays(30)),
+            now.Plus(Duration.FromDays(30)),
             eligibleAfter: null, ct: TestContext.Current.CancellationToken);
 
         result.Should().BeTrue();
@@ -515,7 +511,7 @@ public sealed class UserServiceProfileOnboardingMutationTests : ServiceTestHarne
         var user = await Db.Users.FirstAsync(u => u.Id == userId, TestContext.Current.CancellationToken);
         var now = Clock.GetCurrentInstant();
         user.DeletionRequestedAt = now;
-        user.DeletionScheduledFor = now.Plus(NodaTime.Duration.FromDays(30));
+        user.DeletionScheduledFor = now.Plus(Duration.FromDays(30));
         user.State = UserState.DeletePending;
         await Db.SaveChangesAsync(TestContext.Current.CancellationToken);
 
@@ -758,8 +754,8 @@ public sealed class UserServiceProfileOnboardingMutationTests : ServiceTestHarne
                 return (IReadOnlyList<UserEmail>)rows.Where(email => string.Equals(email.Email, call.ArgAt<string>(0), StringComparison.OrdinalIgnoreCase)
                     || string.Equals(email.Email, call.ArgAt<string?>(1), StringComparison.OrdinalIgnoreCase)).ToList();
             });
-        repository.GetUserEmailsByUserIdForMutationAsync(userId, Arg.Any<CancellationToken>())
-            .Returns(call => realRepository.GetUserEmailsByUserIdForMutationAsync(userId, call.Arg<CancellationToken>()));
+        repository.GetUserEmailsByUserIdAsync(userId, Arg.Any<CancellationToken>())
+            .Returns(call => realRepository.GetUserEmailsByUserIdAsync(userId, call.Arg<CancellationToken>()));
         var firstInsertReached = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
         var resumeFirstInsert = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
         var inserts = 0;
@@ -824,8 +820,8 @@ public sealed class UserServiceProfileOnboardingMutationTests : ServiceTestHarne
         repository.GetByIdAsync(userId, Arg.Any<CancellationToken>()).Returns(new User { Id = userId });
         repository.GetUserEmailsByAddressAsync(Arg.Any<string>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
             .Returns(Task.FromResult<IReadOnlyList<UserEmail>>([]));
-        repository.GetUserEmailByIdAndUserIdAsync(target.Id, userId, Arg.Any<CancellationToken>()).Returns(target);
-        repository.GetUserEmailsByUserIdForMutationAsync(userId, Arg.Any<CancellationToken>()).Returns(call =>
+        repository.GetUserEmailForUserAsync(target.Id, userId, Arg.Any<CancellationToken>()).Returns(target);
+        repository.GetUserEmailsByUserIdAsync(userId, Arg.Any<CancellationToken>()).Returns(call =>
         {
             call.Arg<CancellationToken>().ThrowIfCancellationRequested();
             return Task.FromResult<IReadOnlyList<UserEmail>>(rows.ToList());
@@ -993,7 +989,7 @@ public sealed class UserServiceProfileOnboardingMutationTests : ServiceTestHarne
                 ? Task.FromException<(string, string?)?>(new IOException("Verification unavailable"))
                 : inner.GetProfilePictureLocationAsync(sourceId, call.Arg<CancellationToken>());
         });
-        var service = new UserService(repo, AdminAuthorization, _fileStorage, Clock, NullLogger<UserService>.Instance, AuditLog);
+        var service = new UserService(repo, _fileStorage, Clock, NullLogger<UserService>.Instance, AuditLog);
 
         var merge = () => service.ReassignAsync(sourceUserId, targetUserId, Guid.NewGuid(), Clock.GetCurrentInstant(), ct);
         (await merge.Should().ThrowAsync<IOException>()).Which.Should().BeSameAs(failure);
@@ -1062,7 +1058,6 @@ public sealed class UserServiceProfileOnboardingMutationTests : ServiceTestHarne
     private UserService BuildWithUserRepository(IUserRepository userRepository) =>
         new(
             userRepository,
-            AdminAuthorization,
             Substitute.For<IFileStorage>(),
             Clock,
             NullLogger<UserService>.Instance, AuditLog);

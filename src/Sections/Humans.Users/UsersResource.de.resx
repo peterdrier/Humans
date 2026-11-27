@@ -181,9 +181,9 @@
   <data name="Users_Profile_WhatsApp" xml:space="preserve">
     <value>WhatsApp</value>
   </data>
-  <data name="Users_Profile_DietaryMedical_MedicalConditions_Hint" xml:space="preserve"><value>Sichtbar für dich, die Shifts-NoInfo-Admins und den Vorstand; jeder Aufruf durch sie wird festgehalten und unten aufgeführt. Alles, was Koordinator:innen wissen sollten — Diabetes, Epilepsie, schwere Verletzungen usw.</value></data>
+  <data name="Users_Profile_DietaryMedical_MedicalConditions_Hint" xml:space="preserve"><value>Sichtbar für dich, die Admins und den Vorstand; jeder Aufruf durch sie wird festgehalten und unten aufgeführt. Alles, was Koordinator:innen wissen sollten — Diabetes, Epilepsie, schwere Verletzungen usw.</value></data>
   <data name="Users_Profile_DietaryMedical_MedicalConditions_Title" xml:space="preserve"><value>Erkrankungen</value></data>
-  <data name="Users_Profile_DietaryMedical_MedicalConditions_VisibilityNote" xml:space="preserve"><value>Optional. Sichtbar für dich, die Shifts-NoInfo-Admins und den Vorstand; jeder Aufruf wird festgehalten.</value></data>
+  <data name="Users_Profile_DietaryMedical_MedicalConditions_VisibilityNote" xml:space="preserve"><value>Optional. Sichtbar für dich, die Admins und den Vorstand; jeder Aufruf wird festgehalten.</value></data>
   <data name="Users_Profile_MyEmails" xml:space="preserve"><value>Meine E-Mails</value></data>
   <data name="Users_Profile_NoSentMessages" xml:space="preserve"><value>Keine plattforminternen Nachrichten vorhanden.</value></data>
   <data name="Users_Profile_SentMessages" xml:space="preserve"><value>Gesendete Nachrichten</value></data>
@@ -301,7 +301,7 @@
     <value>Beigetreten {0}</value>
     <comment>{0} = date</comment>
   </data>
-  <data name="Users_ProfileCard_LastLogin" xml:space="preserve">
+  <data name="Users_ProfileCard_LastSignIn" xml:space="preserve">
     <value>Letzter Login {0}</value>
     <comment>{0} = date</comment>
   </data>
@@ -436,11 +436,11 @@
   <data name="Users_EmailGrid_StatusPending" xml:space="preserve">
     <value>Ausstehend</value>
   </data>
-  <data name="Users_EmailGrid_LinkGoogleAccount" xml:space="preserve">
-    <value>Google-Konto verknüpfen</value>
+  <data name="Users_EmailGrid_LinkProviderAccount" xml:space="preserve">
+    <value>{0}-Konto verknüpfen</value>
   </data>
-  <data name="Users_EmailGrid_LinkGoogleHelp" xml:space="preserve">
-    <value>Mit Google anmelden, um ein weiteres Google-Konto mit deinem Profil zu verknüpfen.</value>
+  <data name="Users_EmailGrid_LinkProviderHelp" xml:space="preserve">
+    <value>Mit {0} anmelden, um ein weiteres {0}-Konto mit deinem Profil zu verknüpfen.</value>
   </data>
   <data name="Users_EmailGrid_BackToAdminDetail" xml:space="preserve">
     <value>Zurück zur Benutzerübersicht</value>
@@ -451,17 +451,19 @@
   <data name="Users_EmailGrid_ConfirmUnlink" xml:space="preserve">
     <value>Dieses Google-Konto trennen?</value>
   </data>
-  <data name="Users_EmailGrid_UnlinkRejected" xml:space="preserve">
-    <value>Trennen nicht möglich — Zeile unbekannt oder ohne Anmeldeanbieter.</value>
-  </data>
+  <data name="Users_EmailGrid_ClearPrimaryNotPrimary" xml:space="preserve"><value>Primär-Kennzeichen konnte nicht entfernt werden: Diese E-Mail ist nicht als primär markiert.</value></data>
+  <data name="Users_EmailGrid_ClearPrimaryOnlyOne" xml:space="preserve"><value>Primär-Kennzeichen konnte nicht entfernt werden: Dies ist die einzige verifizierte primäre E-Mail.</value></data>
+  <data name="Users_EmailGrid_ClearPrimaryChanged" xml:space="preserve"><value>Primär-Kennzeichen konnte nicht entfernt werden: Diese E-Mail wurde zwischenzeitlich geändert. Neu laden und prüfen.</value></data>
+  <data name="Users_EmailGrid_UnlinkNoProvider" xml:space="preserve"><value>Trennen nicht möglich: Diese E-Mail hat keinen Anmeldeanbieter.</value></data>
+  <data name="Users_EmailGrid_UnlinkAccountNotFound" xml:space="preserve"><value>Trennen nicht möglich: Das Konto existiert nicht mehr.</value></data>
+  <data name="Users_EmailGrid_UnlinkLoginNotFound" xml:space="preserve"><value>Trennen nicht möglich: Diese Anmeldung ist nicht mehr mit dem Konto verknüpft.</value></data>
+  <data name="Users_EmailGrid_UnlinkLoginRemovalFailed" xml:space="preserve"><value>Trennen nicht möglich: Das Entfernen der Anmeldung ist fehlgeschlagen. Es wurde nichts geändert.</value></data>
+  <data name="Users_EmailGrid_UnlinkRowNotRemoved" xml:space="preserve"><value>Die Anmeldung wurde getrennt, aber ihre E-Mail-Zeile konnte nicht entfernt werden.</value></data>
   <data name="Users_EmailGrid_SetPrimary" xml:space="preserve">
     <value>Als primär festlegen</value>
   </data>
   <data name="Users_EmailGrid_PrimaryFlagCleared" xml:space="preserve">
     <value>Primär-Kennzeichen von dieser Zeile entfernt.</value>
-  </data>
-  <data name="Users_EmailGrid_ClearPrimaryRejected" xml:space="preserve">
-    <value>Konnte Primär-Kennzeichen nicht entfernen — Zeile unbekannt oder nicht markiert.</value>
   </data>
   <data name="Users_EmailGrid_Clear" xml:space="preserve">
     <value>Löschen</value>

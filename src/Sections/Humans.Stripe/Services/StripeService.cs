@@ -14,7 +14,7 @@ namespace Humans.Stripe.Services;
 
 internal sealed class StripeSettings
 {
-    /// <summary>STRIPE_TICKETS_KEY: PaymentIntent and BalanceTransaction reads.</summary>
+    /// <summary>STRIPE_TICKETS_KEY: fee reads and Box Office checkout/refunds.</summary>
     public string TicketsKey { get; set; } = string.Empty;
 
     /// <summary>STRIPE_STORE_KEY: <c>checkout_session:write</c>, which includes read, so it can also list sessions.</summary>
@@ -25,13 +25,16 @@ internal sealed class StripeSettings
     /// <summary>STRIPE_STORE_WEBHOOK_REGISTRAR_KEY (<c>webhook_endpoint:read/write</c>). PR previews only; never QA or production.</summary>
     public string WebhookRegistrarKey { get; set; } = string.Empty;
 
-    public bool IsConfigured => !string.IsNullOrEmpty(TicketsKey);
+    public bool IsConfigured => IsUsableApiKey(TicketsKey);
 
-    public bool IsStoreCheckoutConfigured => !string.IsNullOrEmpty(StoreKey);
+    public bool IsStoreCheckoutConfigured => IsUsableApiKey(StoreKey);
 
     public bool IsStoreWebhookConfigured => !string.IsNullOrEmpty(StoreWebhookSecret);
 
-    public bool IsWebhookRegistrarConfigured => !string.IsNullOrEmpty(WebhookRegistrarKey);
+    public bool IsWebhookRegistrarConfigured => IsUsableApiKey(WebhookRegistrarKey);
+
+    internal static bool IsUsableApiKey(string? key) =>
+        !string.IsNullOrEmpty(key) && !key.Any(char.IsWhiteSpace);
 
     /// <summary>GitHub owner whose open-PR list the registrar's sweep reads.</summary>
     public string WebhookCleanupGitHubOwner { get; set; } = string.Empty;
@@ -43,11 +46,12 @@ internal sealed class StripeSettings
 
 }
 
-internal sealed class StripeService(
+internal sealed partial class StripeService(
     IOptions<StripeSettings> settings,
     ILogger<StripeService> logger,
     IHttpClient? httpClient = null,
-    IOptions<StripeMirrorOptions>? mirrorOptions = null) : IStripeService
+    IOptions<StripeMirrorOptions>? mirrorOptions = null,
+    IClock? clock = null) : IStripeService
 {
     /// <summary>The <c>Stripe:MirrorAccounts</c> entry naming the Store account; refunds are read through its key.</summary>
     internal const string StoreAccountName = "Store";
@@ -430,8 +434,6 @@ internal sealed class StripeService(
             if (!string.Equals(charge.Currency, "eur", StringComparison.OrdinalIgnoreCase))
                 throw new InvalidOperationException($"Stripe charge {charge.Id} does not declare EUR currency.");
             return new StoreChargeData(
-                charge.Id,
-                paymentIntentId,
                 FromStripeMinorUnits(charge.Amount),
                 Instant.FromDateTimeUtc(DateTime.SpecifyKind(charge.Created, DateTimeKind.Utc)));
         }

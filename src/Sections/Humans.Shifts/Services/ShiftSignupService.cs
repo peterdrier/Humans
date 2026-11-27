@@ -1,6 +1,5 @@
 using System.Globalization;
 using System.Resources;
-using Humans.Auth.Contracts;
 using Humans.Base.Extensions;
 using Humans.Base.Threading;
 using Humans.AuditLog.Contracts;
@@ -27,7 +26,6 @@ internal sealed class ShiftSignupService(
     EventCalendarResolver calendarResolver,
     IAuditLogService auditLogService,
     INotificationEmitter notificationService,
-    IAdminAuthorizationService adminAuthorization,
     IServiceProvider serviceProvider,
     IClock clock,
     ILogger<ShiftSignupService> logger,
@@ -469,7 +467,7 @@ internal sealed class ShiftSignupService(
         await NotifyGroupChangeAsync(group, "Shifts_Notification_ChangeBailed");
 
         foreach (var signup in confirmed)
-            await CheckAndNotifyCoverageGapAsync(signup, signup.Shift);
+            await NotifyCoverageGapAsync(signup, signup.Shift);
         return null;
     }
 
@@ -544,7 +542,7 @@ internal sealed class ShiftSignupService(
 
         await DispatchSignupChangeNotificationAsync(signup, signup.Shift,
             "Shifts_Notification_ChangeRemoved", signup.Shift.Rota.Name, signup.Shift.DayOffset);
-        await CheckAndNotifyCoverageGapAsync(signup, signup.Shift);
+        await NotifyCoverageGapAsync(signup, signup.Shift);
 
         return SignupResult.Ok(signup.Id);
     }
@@ -604,7 +602,7 @@ internal sealed class ShiftSignupService(
         (await serviceProvider.GetRequiredService<IShiftRotaRows>().GetRotaRowsAsync(ct: ct))
             .SelectMany(r => r.Shifts.SelectMany(s => s.Signups
                 .Where(signup => scope == ShiftSignupTeamProbeScope.Signup ? signup.Id == id : signup.SignupBlockId == id)
-                .Select(signup => new ShiftSignupTeamProbe(signup.Id, s.Shift.Id, r.Rota.TeamId))))
+                .Select(signup => new ShiftSignupTeamProbe(r.Rota.TeamId))))
             .FirstOrDefault();
 
     private bool IsStatusReasonTooLong(string? reason, Guid signupId, Guid actorUserId)
@@ -660,14 +658,6 @@ internal sealed class ShiftSignupService(
         return await repo.CancelActiveSignupsForUserAsync(userId, reason, ct);
     }
 
-    public async Task<int> DeleteAllForUsersAsync(
-        IReadOnlyCollection<Guid> userIds,
-        CancellationToken ct = default)
-    {
-        await adminAuthorization.RequireCurrentUserIsAdminAsync(ct);
-        return await repo.DeleteAllForUsersAsync(userIds, ct);
-    }
-
     public async Task<ToggleDaySignupOutcome> ToggleDayAsync(
         Guid userId,
         Guid shiftId,
@@ -695,7 +685,7 @@ internal sealed class ShiftSignupService(
             signedUp = result.Success;
         }
 
-        var canViewRestricted = privileged || (await shiftMgmt.GetCoordinatorTeamIdsAsync(userId)).Count > 0;
+        var canViewRestricted = privileged || await shiftMgmt.CanManageOrApproveAnyShiftsAsync(userId, ct);
         var after = await repo.GetForUsersAsync([userId], eventSettingsId, ct);
 
         return new ToggleDaySignupOutcome(result, signedUp, canViewRestricted, after);
@@ -758,7 +748,7 @@ internal sealed class ShiftSignupService(
         }
     }
 
-    internal async Task CheckAndNotifyCoverageGapAsync(ShiftSignup signup, Shift shift)
+    internal async Task NotifyCoverageGapAsync(ShiftSignup signup, Shift shift)
     {
         try
         {
@@ -1087,7 +1077,6 @@ internal sealed class ShiftSignupService(
 
         return null;
     }
-
 
     private RangeSignupCandidateSelection PruneDuplicateRangeShifts(
         List<Shift> shiftsInRange,

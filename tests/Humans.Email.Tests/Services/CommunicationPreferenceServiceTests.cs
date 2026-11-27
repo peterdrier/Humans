@@ -83,6 +83,65 @@ public sealed class CommunicationPreferenceServiceTests : IDisposable
         _db.CommunicationPreferences.AsNoTracking().Where(r => r.UserId == userId).ToListAsync(Ct);
 
     [HumansTheory]
+    [InlineData(null, null)]
+    [InlineData(UserState.Deleted, null)]
+    [InlineData(UserState.Merged, null)]
+    [InlineData(UserState.Bare, "erased@gdpr.local")]
+    [InlineData(UserState.Bare, "erased@deleted.local")]
+    public async Task Update_UnavailableUser_WritesNothing(UserState? state, string? identityEmail)
+    {
+        var userId = Guid.NewGuid();
+        var person = state is null ? null : Info(userId) with { State = state.Value, IdentityEmailColumn = identityEmail };
+        _users.GetUserInfoAsync(userId, Arg.Any<CancellationToken>()).Returns(new ValueTask<UserInfo?>(person));
+
+        await _service.UpdatePreferenceAsync(userId, MessageCategory.Marketing, optedOut: true, source: "OneClick", cancellationToken: Ct);
+        var applied = await _service.UpdatePreferenceAsync(userId, MessageCategory.Marketing,
+            optedOut: true, inboxEnabled: false, source: "Guest", cancellationToken: Ct);
+
+        applied.Should().Be(PreferenceUpdateOutcome.UserUnavailable);
+        (await RowsAsync(userId)).Should().BeEmpty();
+        _audit.ReceivedCalls().Should().BeEmpty();
+    }
+
+    [HumansFact]
+    public async Task EmailOnly_ArchivedUser_UpdatesSurvivor()
+    {
+        var archivedId = Guid.NewGuid();
+        var survivorId = Guid.NewGuid();
+        _mergedTo[archivedId] = survivorId;
+        LockTicketing(survivorId, locked: true);
+        var subscribed = _clock.GetCurrentInstant() - Duration.FromDays(2);
+        await SeedRowAsync(survivorId, MessageCategory.Ticketing, optedOut: false, inboxEnabled: false, subscribedAt: subscribed);
+
+        await _service.UpdatePreferenceAsync(archivedId, MessageCategory.Ticketing,
+            optedOut: true, source: "OneClick", cancellationToken: Ct);
+
+        (await RowsAsync(archivedId)).Should().BeEmpty();
+        var row = (await RowsAsync(survivorId)).Should().ContainSingle().Subject;
+        row.OptedOut.Should().BeTrue();
+        row.InboxEnabled.Should().BeFalse();
+        row.SubscribedAt.Should().Be(subscribed);
+        _audit.ReceivedCalls().Should().ContainSingle().Subject.GetArguments()[2].Should().Be(survivorId);
+    }
+
+    [HumansFact]
+    public async Task MemberToggle_ArchivedUser_EnforcesSurvivorLock()
+    {
+        var archivedId = Guid.NewGuid();
+        var survivorId = Guid.NewGuid();
+        _mergedTo[archivedId] = survivorId;
+        LockTicketing(survivorId, locked: true);
+
+        var applied = await _service.UpdatePreferenceAsync(archivedId, MessageCategory.Ticketing,
+            optedOut: true, inboxEnabled: false, source: "Guest", cancellationToken: Ct);
+
+        applied.Should().Be(PreferenceUpdateOutcome.Locked);
+        (await RowsAsync(archivedId)).Should().BeEmpty();
+        (await RowsAsync(survivorId)).Should().BeEmpty();
+        _audit.ReceivedCalls().Should().BeEmpty();
+    }
+
+    [HumansTheory]
     [InlineData(true)]
     [InlineData(false)]
     public async Task FullPreferenceUpdate_UsesTheKnownActorOrKeepsAnonymousAttribution(bool authenticated)
@@ -177,7 +236,7 @@ public sealed class CommunicationPreferenceServiceTests : IDisposable
         var applied = await _service.UpdatePreferenceAsync(userId, MessageCategory.Ticketing,
             optedOut: true, inboxEnabled: false, source: "Guest", actorUserId: userId, cancellationToken: Ct);
 
-        applied.Should().Be(!locked);
+        applied.Should().Be(locked ? PreferenceUpdateOutcome.Locked : PreferenceUpdateOutcome.Success);
         (await RowsAsync(userId)).Should().HaveCount(locked ? 0 : 1);
         _audit.ReceivedCalls().Should().HaveCount(locked ? 0 : 1);
     }
@@ -190,7 +249,7 @@ public sealed class CommunicationPreferenceServiceTests : IDisposable
 
         (await _service.UpdatePreferenceAsync(userId, MessageCategory.Marketing,
             optedOut: true, inboxEnabled: false, source: "Guest", actorUserId: userId, cancellationToken: Ct))
-            .Should().BeTrue();
+            .Should().Be(PreferenceUpdateOutcome.Success);
     }
 
     private void LockTicketing(Guid userId, bool locked) =>
@@ -245,8 +304,8 @@ public sealed class CommunicationPreferenceServiceTests : IDisposable
         var shadowed = Guid.NewGuid();
         await SeedRowAsync(shadowed, MessageCategory.Marketing, optedOut: null);
 
-        (await _service.GetCountByCategoryAndStateAsync(MessageCategory.Marketing, optedOut: false, Ct)).Should().Be(3);
-        (await _service.GetCountByCategoryAndStateAsync(MessageCategory.Marketing, optedOut: true, Ct)).Should().Be(2);
+        (await _service.GetCountAsync(MessageCategory.Marketing, optedOut: false, Ct)).Should().Be(3);
+        (await _service.GetCountAsync(MessageCategory.Marketing, optedOut: true, Ct)).Should().Be(2);
     }
 
     [HumansFact]

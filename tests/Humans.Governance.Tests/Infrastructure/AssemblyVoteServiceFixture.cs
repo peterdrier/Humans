@@ -1,6 +1,5 @@
 using Humans.Governance.Contracts;
 using Humans.AuditLog.Contracts;
-using Humans.Base.Constants;
 using Humans.Email.Contracts;
 using Humans.Auth.Contracts;
 using Humans.Google.Contracts;
@@ -17,8 +16,8 @@ using Microsoft.Extensions.Logging.Abstractions;
 using NodaTime;
 using NodaTime.Testing;
 using NSubstitute;
-
 using Xunit;
+
 
 namespace Humans.Governance.Tests.Infrastructure;
 
@@ -31,7 +30,7 @@ internal sealed class AssemblyVoteServiceFixture : IDisposable
     public readonly FakeClock Clock = new(Instant.FromUtc(2026, 9, 1, 12, 0));
     public readonly IAuditLogService Audit = Substitute.For<IAuditLogService>();
     public readonly IApplicationRepository Applications = Substitute.For<IApplicationRepository>();
-    public readonly IRoleAssignmentService RoleAssignments = Substitute.For<IRoleAssignmentService>();
+    public readonly ISystemRoleService SystemRoles = Substitute.For<ISystemRoleService>();
     public readonly ITeamService Teams = Substitute.For<ITeamService>();
     public readonly IUserService Users = Substitute.For<IUserService>();
     public readonly IEmailService Email = Substitute.For<IEmailService>();
@@ -59,7 +58,7 @@ internal sealed class AssemblyVoteServiceFixture : IDisposable
         Applications.GetActiveApprovedTierUserIdsAsync(
                 Arg.Any<MembershipTier>(), Arg.Any<LocalDate>(), Arg.Any<CancellationToken>())
             .Returns(Task.FromResult<IReadOnlyList<Guid>>([]));
-        RoleAssignments.GetActiveUserIdsInRoleAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
+        SystemRoles.GetActiveUserIdsInRoleAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
             .Returns(Task.FromResult<IReadOnlyList<Guid>>([]));
         Users.GetUserInfosAsync(Arg.Any<IEnumerable<Guid>>(), Arg.Any<CancellationToken>())
             .Returns(new ValueTask<IReadOnlyDictionary<Guid, UserInfo>>(
@@ -68,7 +67,7 @@ internal sealed class AssemblyVoteServiceFixture : IDisposable
         Service = new AssemblyVoteService(
             Repository,
             Applications,
-            RoleAssignments,
+            SystemRoles,
             Teams,
             Users,
             Email,
@@ -187,7 +186,7 @@ internal sealed class AssemblyVoteServiceFixture : IDisposable
         }
 
         Db.AssemblyVotes.Add(vote);
-        await Db.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
+        await Db.SaveChangesAsync(TestContext.Current.CancellationToken);
         Db.ChangeTracker.Clear();
         return vote;
     }
@@ -236,7 +235,7 @@ internal sealed class AssemblyVoteServiceFixture : IDisposable
             NotifiedAt = notified ? Clock.GetCurrentInstant() : null
         };
         Db.AssemblyVoteRosterEntries.Add(roster);
-        await Db.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
+        await Db.SaveChangesAsync(TestContext.Current.CancellationToken);
         Db.ChangeTracker.Clear();
         return roster;
     }
@@ -258,7 +257,7 @@ internal sealed class AssemblyVoteServiceFixture : IDisposable
             UpdatedAt = now
         };
         Db.AssemblyBallots.Add(ballot);
-        await Db.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
+        await Db.SaveChangesAsync(TestContext.Current.CancellationToken);
         Db.ChangeTracker.Clear();
         return ballot;
     }

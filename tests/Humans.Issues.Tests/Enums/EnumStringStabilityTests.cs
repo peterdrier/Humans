@@ -16,7 +16,7 @@ public class EnumStringStabilityTests
             ["Triage", "Open", "InProgress", "Resolved", "WontFix", "Duplicate"]);
 
         // Also parsed by name across a section boundary (Humans.Agent's
-        // Enum.TryParse<IssueCategory> in AgentService.ParseIssueProposalArgs) — a rename
+        // Enum.TryParse<IssueCategory> in AgentService.ParseHandoffArgs) — a rename
         // here silently breaks that cross-section parse, not just stored history.
         AssertNames(typeof(IssueCategory), ["Bug", "Feature", "Question"]);
     }

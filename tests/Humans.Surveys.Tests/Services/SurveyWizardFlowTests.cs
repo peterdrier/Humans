@@ -208,7 +208,7 @@ public class SurveyWizardFlowTests
             Q(optionalText, 1, 2, SurveyQuestionType.ShortText),
         };
 
-        var answers = new Dictionary<Guid, AnswerState>();
+        IReadOnlyDictionary<Guid, AnswerState> answers = new Dictionary<Guid, AnswerState>();
         var missing = SurveyWizardFlow.RequiredUnanswered(visible, answers);
 
         missing.Should().ContainInOrder(requiredText);

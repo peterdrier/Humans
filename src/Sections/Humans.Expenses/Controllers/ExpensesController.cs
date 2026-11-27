@@ -1,5 +1,5 @@
+using Humans.Permissions.Contracts;
 using Humans.Base.Interfaces;
-using System.Globalization;
 using Humans.Base.Extensions;
 using Humans.Budget.Contracts;
 using Humans.Expenses.Authorization;
@@ -7,8 +7,6 @@ using Humans.Expenses.Contracts;
 using Humans.Expenses.Services;
 using Humans.Finance.Contracts;
 using Humans.Preapprovals.Contracts;
-using Humans.Base.Helpers;
-using Humans.Base.Authorization;
 using Humans.Base.Controllers;
 using Humans.Expenses.Models;
 using Microsoft.AspNetCore.Authorization;
@@ -23,7 +21,7 @@ namespace Humans.Expenses.Controllers;
 [Authorize]
 [Route("Expenses")]
 internal sealed class ExpensesController(
-    ITeamService teams,
+    IPermissionService permissions,
     IUserService userService,
     IExpenseReportManagement service,
     IExpenseReview review,
@@ -36,10 +34,10 @@ internal sealed class ExpensesController(
     ILogger<ExpensesController> logger,
     IStringLocalizer<ExpensesResource> localizer) : HumansControllerBase(userService)
 {
-    private readonly ExpensePageBuilder pageBuilder = new(teams, orgTimeZone, service, review, budgetService, finance, preapprovals, clock, localizer);
+    private readonly ExpensePageBuilder _pageBuilder = new(permissions, orgTimeZone, service, review, budgetService, finance, preapprovals, clock, localizer);
     private readonly IUserService _userService = userService;
 
-    private LocalDate Today => pageBuilder.Today;
+    private LocalDate Today => _pageBuilder.Today;
 
     [HttpGet("")]
     public async Task<IActionResult> Index()
@@ -49,7 +47,7 @@ internal sealed class ExpensesController(
             var (errorResult, user) = await RequireCurrentUserAsync(HttpContext.RequestAborted);
             if (errorResult is not null) return errorResult;
 
-            var model = await pageBuilder.BuildIndexAsync(user, HttpContext.RequestAborted);
+            var model = await _pageBuilder.BuildIndexAsync(user, HttpContext.RequestAborted);
             return View(model);
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
@@ -248,7 +246,7 @@ internal sealed class ExpensesController(
     {
         try
         {
-            var (errorResult, user, report) = await RequireReportAsync(id, ct: HttpContext.RequestAborted);
+            var (errorResult, _, report) = await RequireReportAsync(id, ct: HttpContext.RequestAborted);
             if (errorResult is not null) return errorResult;
             if (!await AllowsAsync(report, ExpenseReportOperation.Edit))
             {
@@ -289,11 +287,8 @@ internal sealed class ExpensesController(
             return View(model);
         }
 
-        var result = await IsFinanceAdminAsync()
-            ? await service.UpdateHeaderForFinanceCorrectionWithResultAsync(
-                id, user.Id, model.HoldedAccountNumber, model.Note, model.PreapprovalGrantId)
-            : await service.UpdateDraftWithResultAsync(
-                id, user.Id, model.HoldedAccountNumber, model.Note, model.PreapprovalGrantId);
+        var result = await service.UpdateHeaderAsync(
+            id, user.Id, model.HoldedAccountNumber, model.Note, model.PreapprovalGrantId);
         if (result.Succeeded)
         {
             SetSuccess(localizer["Expenses_Flash_ReportUpdated"]);
@@ -310,7 +305,7 @@ internal sealed class ExpensesController(
     [HttpGet("{id:guid}/Lines/New")]
     public async Task<IActionResult> NewLine(Guid id, ExpenseLineType? type = null)
     {
-        var (errorResult, user, report) = await RequireReportAsync(id, ct: HttpContext.RequestAborted);
+        var (errorResult, _, report) = await RequireReportAsync(id, ct: HttpContext.RequestAborted);
         if (errorResult is not null) return errorResult;
         if (!await AllowsAsync(report, ExpenseReportOperation.Edit))
         {
@@ -332,7 +327,7 @@ internal sealed class ExpensesController(
     [RequestSizeLimit(25 * 1024 * 1024)] // the service enforces 20 MB and the content type
     public async Task<IActionResult> AddLine(Guid id, AddLineInputModel input, IFormFile? file)
     {
-        var (errorResult, user, report) = await RequireReportAsync(id, ExpenseReportOperation.Edit, HttpContext.RequestAborted);
+        var (errorResult, user, _) = await RequireReportAsync(id, ExpenseReportOperation.Edit, HttpContext.RequestAborted);
         if (errorResult is not null) return errorResult;
 
         // Where the submitter came from, and returns to on a validation error.
@@ -351,13 +346,8 @@ internal sealed class ExpensesController(
             ? null
             : new ExpenseFileUpload(file.FileName, file.ContentType, stream);
 
-        var result = await IsFinanceAdminAsync()
-            ? await service.AddLineForFinanceCorrectionWithResultAsync(
-                id, user.Id,
-                input.Description, input.Amount, input.LineType, input.ParentLineId, upload)
-            : await service.AddLineWithResultAsync(
-                id, user.Id,
-                input.Description, input.Amount, input.LineType, input.ParentLineId, upload);
+        var result = await service.AddLineAsync(
+            id, user.Id, input.Description, input.Amount, input.LineType, input.ParentLineId, upload);
 
         if (!result.Succeeded)
         {
@@ -428,7 +418,7 @@ internal sealed class ExpensesController(
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> UpdateLine(Guid id, EditLineInputModel input)
     {
-        var (errorResult, user, report) = await RequireReportAsync(id, ExpenseReportOperation.Edit, HttpContext.RequestAborted);
+        var (errorResult, user, _) = await RequireReportAsync(id, ExpenseReportOperation.Edit, HttpContext.RequestAborted);
         if (errorResult is not null) return errorResult;
 
         if (!ModelState.IsValid)
@@ -437,11 +427,8 @@ internal sealed class ExpensesController(
             return RedirectToAction(nameof(LineEdit), new { id, lineId = input.LineId });
         }
 
-        var result = await IsFinanceAdminAsync()
-            ? await service.UpdateLineForFinanceCorrectionWithResultAsync(
-                id, user.Id, input.LineId, input.Description, input.Amount)
-            : await service.UpdateLineWithResultAsync(
-                id, user.Id, input.LineId, input.Description, input.Amount);
+        var result = await service.UpdateLineAsync(
+            id, user.Id, input.LineId, input.Description, input.Amount);
         SetMutationResultWithDetails(result, localizer["Expenses_Flash_LineUpdated"], localizer["Expenses_Flash_UpdateLineFailed"]);
 
         return RedirectToAction(nameof(LineEdit), new { id, lineId = input.LineId });
@@ -457,11 +444,8 @@ internal sealed class ExpensesController(
         // A removed proof row returns the submitter to its invoice's proofs page.
         var parentLineId = report.Lines.FirstOrDefault(l => l.Id == lineId)?.ParentLineId;
 
-        var result = await IsFinanceAdminAsync()
-            ? await service.RemoveLineForFinanceCorrectionWithResultAsync(
-                id, user.Id, lineId)
-            : await service.RemoveLineWithResultAsync(
-                id, user.Id, lineId);
+        var result = await service.RemoveLineAsync(
+            id, user.Id, lineId);
         SetMutationResultWithDetails(result, localizer["Expenses_Flash_LineRemoved"], localizer["Expenses_Flash_RemoveLineFailed"]);
 
         return parentLineId is { } parent
@@ -474,7 +458,7 @@ internal sealed class ExpensesController(
     [RequestSizeLimit(25 * 1024 * 1024)] // the service enforces 20 MB and the content type
     public async Task<IActionResult> AttachFile(Guid id, Guid lineId, IFormFile? file)
     {
-        var (errorResult, user, report) = await RequireReportAsync(id, ExpenseReportOperation.Edit, HttpContext.RequestAborted);
+        var (errorResult, user, _) = await RequireReportAsync(id, ExpenseReportOperation.Edit, HttpContext.RequestAborted);
         if (errorResult is not null) return errorResult;
 
         if (file is null || file.Length == 0)
@@ -484,11 +468,8 @@ internal sealed class ExpensesController(
         }
 
         await using var stream = file.OpenReadStream();
-        var result = await IsFinanceAdminAsync()
-            ? await service.AttachFileToLineForFinanceCorrectionWithResultAsync(
-                id, user.Id, lineId, file.FileName, file.ContentType, stream)
-            : await service.AttachFileToLineWithResultAsync(
-                id, user.Id, lineId, file.FileName, file.ContentType, stream);
+        var result = await service.AttachFileToLineAsync(
+            id, user.Id, lineId, file.FileName, file.ContentType, stream);
 
         SetMutationResult(result, localizer["Expenses_Flash_AttachmentUploaded"], localizer["Expenses_Flash_UploadAttachmentFailed"]);
 
@@ -499,12 +480,11 @@ internal sealed class ExpensesController(
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> RemoveAttachment(Guid id, Guid lineId)
     {
-        var (errorResult, user, report) = await RequireReportAsync(id, ExpenseReportOperation.Edit, HttpContext.RequestAborted);
+        var (errorResult, user, _) = await RequireReportAsync(id, ExpenseReportOperation.Edit, HttpContext.RequestAborted);
         if (errorResult is not null) return errorResult;
 
-        var result = await IsFinanceAdminAsync()
-            ? await service.RemoveAttachmentFromLineForFinanceCorrectionAsync(id, user.Id, lineId)
-            : await service.RemoveAttachmentFromLineAsync(id, user.Id, lineId);
+        var result = await service.RemoveAttachmentFromLineAsync(
+            id, user.Id, lineId);
         SetMutationResult(result, localizer["Expenses_Flash_AttachmentRemoved"], localizer["Expenses_Flash_RemoveAttachmentFailed"]);
         return RedirectToAction(nameof(LineEdit), new { id, lineId });
     }
@@ -513,10 +493,10 @@ internal sealed class ExpensesController(
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Submit(Guid id)
     {
-        var (errorResult, user, report) = await RequireReportAsync(id, ExpenseReportOperation.Submit, HttpContext.RequestAborted);
+        var (errorResult, user, _) = await RequireReportAsync(id, ExpenseReportOperation.Submit, HttpContext.RequestAborted);
         if (errorResult is not null) return errorResult;
 
-        var result = await service.SubmitWithResultAsync(id, user.Id);
+        var result = await service.SubmitAsync(id, user.Id);
         SetMutationResult(result, localizer["Expenses_Flash_ReportSubmitted"], localizer["Expenses_Flash_SubmitFailed"]);
 
         return RedirectToAction(nameof(Detail), new { id });
@@ -526,10 +506,10 @@ internal sealed class ExpensesController(
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Withdraw(Guid id)
     {
-        var (errorResult, user, report) = await RequireReportAsync(id, ExpenseReportOperation.Withdraw, HttpContext.RequestAborted);
+        var (errorResult, user, _) = await RequireReportAsync(id, ExpenseReportOperation.Withdraw, HttpContext.RequestAborted);
         if (errorResult is not null) return errorResult;
 
-        var result = await service.WithdrawWithResultAsync(id, user.Id);
+        var result = await service.WithdrawAsync(id, user.Id);
         SetMutationResult(result, localizer["Expenses_Flash_ReportWithdrawn"], localizer["Expenses_Flash_WithdrawFailed"]);
         return RedirectToAction(nameof(Detail), new { id });
     }
@@ -572,7 +552,7 @@ internal sealed class ExpensesController(
         if (errorResult is not null) return errorResult;
         if (!await CanSetReportIbanAsync(report, user)) return Forbid();
 
-        var result = await service.SaveSubmitterIbanWithResultAsync(
+        var result = await service.SaveSubmitterIbanAsync(
             id, user.Id, model.Iban);
         if (result.Succeeded)
         {
@@ -639,7 +619,7 @@ internal sealed class ExpensesController(
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Endorse(Guid id, EndorseInputModel input)
     {
-        var (errorResult, user, report) = await RequireReportAsync(id, ExpenseReportOperation.Endorse, HttpContext.RequestAborted);
+        var (errorResult, user, _) = await RequireReportAsync(id, ExpenseReportOperation.Endorse, HttpContext.RequestAborted);
         if (errorResult is not null) return errorResult;
 
         if (!ModelState.IsValid)
@@ -648,7 +628,7 @@ internal sealed class ExpensesController(
             return RedirectToAction(nameof(Detail), new { id });
         }
 
-        var result = await review.CoordinatorEndorseWithResultAsync(
+        var result = await review.CoordinatorEndorseAsync(
             id, user.Id, input.MaxAmount, auditReviewerLabel: await IsFinanceAdminAsync() ? "Finance admin" : null);
         SetMutationResult(result, localizer["Expenses_Flash_ReportEndorsed"], localizer["Expenses_Flash_EndorseFailed"]);
 
@@ -659,7 +639,7 @@ internal sealed class ExpensesController(
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> CoordinatorReject(Guid id, CoordinatorRejectInputModel input)
     {
-        var (errorResult, user, report) = await RequireReportAsync(id, ExpenseReportOperation.CoordinatorReject, HttpContext.RequestAborted);
+        var (errorResult, user, _) = await RequireReportAsync(id, ExpenseReportOperation.CoordinatorReject, HttpContext.RequestAborted);
         if (errorResult is not null) return errorResult;
 
         if (!ModelState.IsValid || string.IsNullOrWhiteSpace(input.Reason))
@@ -668,7 +648,7 @@ internal sealed class ExpensesController(
             return RedirectToAction(nameof(Detail), new { id });
         }
 
-        var result = await review.CoordinatorRejectWithResultAsync(
+        var result = await review.CoordinatorRejectAsync(
             id, user.Id, input.Reason, auditReviewerLabel: await IsFinanceAdminAsync() ? "Finance admin" : null);
         SetMutationResult(result, localizer["Expenses_Flash_ReportRejected"], localizer["Expenses_Flash_RejectFailed"]);
 
@@ -689,9 +669,8 @@ internal sealed class ExpensesController(
             return RedirectToAction(nameof(Detail), new { id });
         }
 
-        var result = await IsFinanceAdminAsync()
-            ? await review.DeclineLineForFinanceReviewWithResultAsync(id, user.Id, lineId, input.Reason)
-            : await review.DeclineLineWithResultAsync(id, user.Id, lineId, input.Reason);
+        var result = await review.DeclineLineAsync(
+            id, user.Id, lineId, input.Reason);
         SetMutationResult(result, "Line declined.", "Could not decline the line.");
 
         return RedirectToAction(nameof(Detail), new { id });
@@ -704,9 +683,8 @@ internal sealed class ExpensesController(
         var (errorResult, user, _) = await RequireReportAsync(id, ExpenseReportOperation.DeclineLine, HttpContext.RequestAborted);
         if (errorResult is not null) return errorResult;
 
-        var result = await IsFinanceAdminAsync()
-            ? await review.UndoDeclineLineForFinanceReviewWithResultAsync(id, user.Id, lineId)
-            : await review.UndoDeclineLineWithResultAsync(id, user.Id, lineId);
+        var result = await review.UndoDeclineLineAsync(
+            id, user.Id, lineId);
         SetMutationResult(result, "Decline undone.", "Could not undo the decline.");
 
         return RedirectToAction(nameof(Detail), new { id });
@@ -741,7 +719,7 @@ internal sealed class ExpensesController(
                 }
                 reports = visible;
             }
-            return View(await pageBuilder.BuildReviewAsync(reports, isFinanceAdmin, ct));
+            return View(await _pageBuilder.BuildReviewAsync(reports, isFinanceAdmin, ct));
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
@@ -756,7 +734,7 @@ internal sealed class ExpensesController(
     [Authorize(Policy = FinancePolicies.Manage)]
     public async Task<IActionResult> Approve(Guid id, ApproveInputModel input)
     {
-        var (errorResult, user, report) = await RequireReportAsync(id, ExpenseReportOperation.Approve, HttpContext.RequestAborted);
+        var (errorResult, user, _) = await RequireReportAsync(id, ExpenseReportOperation.Approve, HttpContext.RequestAborted);
         if (errorResult is not null) return errorResult;
 
         if (!ModelState.IsValid)
@@ -765,7 +743,7 @@ internal sealed class ExpensesController(
             return RedirectToAction(nameof(Detail), new { id });
         }
 
-        var result = await review.ApproveWithResultAsync(
+        var result = await review.ApproveAsync(
             id, user.Id, input.OverrideAccountNumber, input.MaxAmount);
         SetMutationResult(result, "Report approved.", "Could not approve the report.");
 
@@ -777,7 +755,7 @@ internal sealed class ExpensesController(
     [Authorize(Policy = FinancePolicies.Manage)]
     public async Task<IActionResult> Reject(Guid id, FinanceRejectInputModel input)
     {
-        var (errorResult, user, report) = await RequireReportAsync(id, ExpenseReportOperation.FinanceReject, HttpContext.RequestAborted);
+        var (errorResult, user, _) = await RequireReportAsync(id, ExpenseReportOperation.FinanceReject, HttpContext.RequestAborted);
         if (errorResult is not null) return errorResult;
 
         if (!ModelState.IsValid || string.IsNullOrWhiteSpace(input.Reason))
@@ -786,7 +764,7 @@ internal sealed class ExpensesController(
             return RedirectToAction(nameof(Detail), new { id });
         }
 
-        var result = await review.FinanceRejectWithResultAsync(id, user.Id, input.Reason);
+        var result = await review.FinanceRejectAsync(id, user.Id, input.Reason);
         SetMutationResult(result, "Report rejected.", "Could not reject the report.");
 
         return RedirectToAction(nameof(Detail), new { id });
@@ -797,10 +775,10 @@ internal sealed class ExpensesController(
     [Authorize(Policy = FinancePolicies.Manage)]
     public async Task<IActionResult> HoldedRetry(Guid id)
     {
-        var (errorResult, user, report) = await RequireReportAsync(id, ExpenseReportOperation.RequeueHoldedPush, HttpContext.RequestAborted);
+        var (errorResult, user, _) = await RequireReportAsync(id, ExpenseReportOperation.RequeueHoldedPush, HttpContext.RequestAborted);
         if (errorResult is not null) return errorResult;
 
-        var result = await review.RequeueHoldedPushWithResultAsync(id, user.Id);
+        var result = await review.RequeueHoldedPushAsync(id, user.Id);
         SetMutationResult(result,
             "Holded push re-queued — it runs on the next drain pass.",
             "Could not re-queue the Holded push.");
@@ -879,7 +857,7 @@ internal sealed class ExpensesController(
     /// predate the account column, their category in the booked year.</summary>
     private Task<IReadOnlyDictionary<Guid, string>> ResolveBookingLabelsAsync(
         IReadOnlyList<ExpenseReportDto> reports, CancellationToken ct) =>
-        pageBuilder.ResolveBookingLabelsAsync(reports, ct);
+        _pageBuilder.ResolveBookingLabelsAsync(reports, ct);
 
     private async Task PopulateEditModelAsync(ExpenseEditViewModel model, ExpenseReportDto report)
     {
@@ -939,6 +917,6 @@ internal sealed class ExpensesController(
     }
 
     private Task<(bool HasIban, string? MaskedIban)> GetIbanViewAsync(Guid userId, CancellationToken ct = default) =>
-        pageBuilder.GetIbanViewAsync(userId, ct);
+        _pageBuilder.GetIbanViewAsync(userId, ct);
 
 }

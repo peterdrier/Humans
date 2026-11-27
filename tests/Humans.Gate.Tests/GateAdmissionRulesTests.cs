@@ -6,11 +6,7 @@ using NodaTime;
 namespace Humans.Gate.Tests;
 
 /// <summary>
-/// Exhaustive coverage of <see cref="GateAdmissionRules.Evaluate"/> — the pure
-/// admission precedence at the heart of the gate. Each test pins one branch or
-/// boundary so a precedence regression (e.g. a duplicate leaking past the void
-/// check, or a too-early stop swallowing an unknown-Early-Entry case) fails
-/// loudly.
+/// Pins each branch and boundary of <see cref="GateAdmissionRules.Evaluate"/>'s precedence.
 /// </summary>
 public class GateAdmissionRulesTests
 {
@@ -80,7 +76,7 @@ public class GateAdmissionRulesTests
     }
 
     [HumansFact]
-    public void CutoffNotConfigured_StillYieldsToInvalidAndDuplicate()
+    public void CutoffNotConfigured_VoidOrUsedTicket_StillStops()
     {
         // Precedence: a void or already-used ticket still STOPs even with no cutoff set.
         GateAdmissionRules.Evaluate(Valid(isVoid: true, cutoffSet: false))
@@ -113,7 +109,7 @@ public class GateAdmissionRulesTests
     }
 
     [HumansFact]
-    public void BeforeCutoff_Matched_NoEarlyEntry_IsTooEarly()
+    public void BeforeCutoff_MatchedNoEarlyEntry_IsTooEarly()
     {
         GateAdmissionRules.Evaluate(Valid(now: Cutoff.Minus(Duration.FromHours(2)), earliest: null))
             .Should().Be(GatePreCheckOutcome.TooEarly);
@@ -127,7 +123,7 @@ public class GateAdmissionRulesTests
     }
 
     [HumansFact]
-    public void BeforeCutoff_EarlyEntryEarlierThanToday_NeedsIdCheckEarly()
+    public void BeforeCutoff_EarlyEntryPast_NeedsIdCheckEarly()
     {
         GateAdmissionRules.Evaluate(Valid(now: Cutoff.Minus(Duration.FromHours(2)), earliest: Today.PlusDays(-1)))
             .Should().Be(GatePreCheckOutcome.NeedsIdCheckEarly);

@@ -1,7 +1,6 @@
 using AwesomeAssertions;
 using Humans.AuditLog.Contracts;
 using Microsoft.Extensions.DependencyInjection;
-using Xunit;
 
 namespace Humans.Web.Tests.Infrastructure;
 
@@ -18,7 +17,8 @@ public sealed class AuditActionNameStabilityTests
         "AgentSettingsUpdated", "AnomalousPermissionDetected", "AssemblyBallotCast", "AssemblyBallotChanged",
         "AssemblyBallotsViewed", "AssemblyVoteCancelled", "AssemblyVoteClosed", "AssemblyVoteExtended",
         "AssemblyVoteOpened", "AssemblyVotePeeked", "AssemblyVoteRemindersSent", "AssemblyVoteRosterMerged",
-        "AssemblyVoteStopped", "BackdoorApiKeyIssued", "BackdoorApiKeyRevoked", "CalendarEventCreated",
+        "AssemblyVoteStopped", "BackdoorApiKeyCreated", "BackdoorApiKeyIssued", "BackdoorApiKeyRevoked",
+        "CalendarEventCreated",
         "CalendarEventDeleted", "CalendarEventUpdated", "CalendarFeedTokenCreated", "CalendarFeedTokenRotated",
         "CalendarOccurrenceCancelled", "CalendarOccurrenceOverridden", "CampCreated", "CampDeleted",
         "CampEarlyEntryGranted", "CampEarlyEntryRevoked", "CampImageDeleted", "CampImageUploaded",

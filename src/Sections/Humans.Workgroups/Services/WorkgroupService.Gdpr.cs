@@ -1,5 +1,3 @@
-using Humans.Gdpr.Contracts;
-using Humans.Notifications.Contracts;
 using Humans.Workgroups.Domain;
 using NodaTime;
 

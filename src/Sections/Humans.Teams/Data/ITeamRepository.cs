@@ -25,8 +25,8 @@ internal interface ITeamRepository : IRepository
     /// <summary>Active and inactive, with active members. Detached.</summary>
     Task<IReadOnlyList<Team>> GetAllWithMembersAsync(CancellationToken ct = default);
 
-    /// <summary>Teams with no management role holder are omitted.</summary>
-    Task<IReadOnlyDictionary<Guid, IReadOnlySet<Guid>>> GetActiveManagementRoleHolderUserIdsByTeamAsync(
+    /// <summary>Active holders only. Teams with no management role holder are omitted.</summary>
+    Task<IReadOnlyDictionary<Guid, IReadOnlySet<Guid>>> GetManagerUserIdsByTeamAsync(
         CancellationToken ct = default);
 
     /// <summary>
@@ -60,9 +60,6 @@ internal interface ITeamRepository : IRepository
 
     /// <summary>Closes every active membership and deactivates the team in one transaction. Returns the users removed.</summary>
     Task<IReadOnlyList<Guid>> DeactivateTeamAsync(Guid teamId, Instant now, CancellationToken ct = default);
-
-    /// <summary>Also deletes Teams-owned child rows. False when the team doesn't exist.</summary>
-    Task<bool> PermanentlyDeleteTeamAsync(Guid teamId, CancellationToken ct = default);
 
     Task<(bool Updated, string? PreviousPrefix)> SetGoogleGroupPrefixAsync(
         Guid teamId, string? prefix, CancellationToken ct = default);
@@ -106,8 +103,10 @@ internal interface ITeamRepository : IRepository
     Task<TeamMemberRole?> SetMemberRoleAsync(
         Guid teamId, Guid userId, TeamMemberRole role, CancellationToken ct = default);
 
-    /// <summary>False when no pending request was found.</summary>
-    Task<bool> WithdrawRequestAsync(
+    /// <summary>
+    /// The request's status before the call (Pending means it was withdrawn now), or null when the user has no such request.
+    /// </summary>
+    Task<TeamJoinRequestStatus?> WithdrawRequestAsync(
         Guid requestId, Guid userId, Instant now, CancellationToken ct = default);
 
     /// <summary>False when the request is missing or no longer pending.</summary>
@@ -180,7 +179,8 @@ internal interface ITeamRepository : IRepository
 
     Task RemoveRoleDefinitionAsync(TeamRoleDefinition definition, CancellationToken ct = default);
 
-    Task<IReadOnlyList<Guid>> GetActiveCoordinatorUserIdsForTeamAsync(
+    /// <summary>Active coordinators only.</summary>
+    Task<IReadOnlyList<Guid>> GetCoordinatorUserIdsAsync(
         Guid teamId, CancellationToken ct = default);
 
     /// <summary>Also removes their role assignments. Returns the number of memberships closed.</summary>
@@ -190,7 +190,7 @@ internal interface ITeamRepository : IRepository
         Guid userId, CancellationToken ct = default);
 
     /// <summary>Only teams with EarlyEntryEnabled. Detached.</summary>
-    Task<IReadOnlyList<TeamEarlyEntryGrant>> GetEarlyEntryGrantsForEnabledTeamsAsync(CancellationToken ct = default);
+    Task<IReadOnlyList<TeamEarlyEntryGrant>> GetEarlyEntryGrantsAsync(CancellationToken ct = default);
 
     /// <summary>Ordered by project then date. Detached.</summary>
     Task<IReadOnlyList<TeamEarlyEntryGrant>> GetEarlyEntryGrantsForTeamAsync(Guid teamId, CancellationToken ct = default);

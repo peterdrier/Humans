@@ -1,0 +1,187 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <xsd:schema id="root" xmlns="" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:msdata="urn:schemas-microsoft-com:xml-msdata">
+    <xsd:element name="root" msdata:IsDataSet="true">
+      <xsd:complexType>
+        <xsd:choice maxOccurs="unbounded">
+          <xsd:element name="data">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" msdata:Ordinal="1" />
+                <xsd:element name="comment" type="xsd:string" minOccurs="0" msdata:Ordinal="2" />
+              </xsd:sequence>
+              <xsd:attribute name="name" type="xsd:string" msdata:Ordinal="0" />
+              <xsd:attribute name="type" type="xsd:string" />
+              <xsd:attribute name="mimetype" type="xsd:string" />
+            </xsd:complexType>
+          </xsd:element>
+          <xsd:element name="resheader">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" msdata:Ordinal="1" />
+              </xsd:sequence>
+              <xsd:attribute name="name" type="xsd:string" use="required" />
+            </xsd:complexType>
+          </xsd:element>
+        </xsd:choice>
+      </xsd:complexType>
+    </xsd:element>
+  </xsd:schema>
+  <resheader name="resmimetype"><value>text/microsoft-resx</value></resheader>
+  <resheader name="version"><value>1.3</value></resheader>
+  <resheader name="reader"><value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=2.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value></resheader>
+  <resheader name="writer"><value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=2.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value></resheader>
+  <data name="Tasks_Permission_Manage_Title" xml:space="preserve"><value>Gestire le attività</value></data>
+  <data name="Tasks_Permission_Manage_Blurb" xml:space="preserve"><value>Creare, modificare, assegnare, nascondere, annullare ed eliminare le attività del team e indicare da cosa dipendono.</value></data>
+  <data name="Tasks_Refusal_NoTask" xml:space="preserve"><value>Quell'attività non esiste più.</value></data>
+  <data name="Tasks_Refusal_NoTeam" xml:space="preserve"><value>Scegli un team attivo che non sia un team di sistema.</value></data>
+  <data name="Tasks_Refusal_NoTitle" xml:space="preserve"><value>Dai un titolo all'attività.</value></data>
+  <data name="Tasks_Refusal_TitleTooLong" xml:space="preserve"><value>Il titolo è troppo lungo (al massimo 200 caratteri).</value></data>
+  <data name="Tasks_Refusal_DescriptionTooLong" xml:space="preserve"><value>La descrizione è troppo lunga (al massimo 4000 caratteri).</value></data>
+  <data name="Tasks_Refusal_NoSlots" xml:space="preserve"><value>Un'attività richiede almeno un posto.</value></data>
+  <data name="Tasks_Refusal_NoEvent" xml:space="preserve"><value>Quell'evento non può essere usato.</value></data>
+  <data name="Tasks_Refusal_EventNeededForRelative" xml:space="preserve"><value>Una data relativa all'evento richiede un evento.</value></data>
+  <data name="Tasks_Refusal_DueBeforeStart" xml:space="preserve"><value>La scadenza è precedente alla data di inizio.</value></data>
+  <data name="Tasks_Refusal_NoteNeeded" xml:space="preserve"><value>Indica cosa blocca l'attività.</value></data>
+  <data name="Tasks_Refusal_NoteTooLong" xml:space="preserve"><value>La nota è troppo lunga (al massimo 500 caratteri).</value></data>
+  <data name="Tasks_Refusal_ReasonTooLong" xml:space="preserve"><value>Il motivo è troppo lungo (al massimo 200 caratteri).</value></data>
+  <data name="Tasks_Refusal_AlreadyOn" xml:space="preserve"><value>Quella persona è già in questa attività.</value></data>
+  <data name="Tasks_Refusal_NotOn" xml:space="preserve"><value>Quella persona non è in questa attività.</value></data>
+  <data name="Tasks_Refusal_DependsOnSelf" xml:space="preserve"><value>Un'attività non può dipendere da sé stessa.</value></data>
+  <data name="Tasks_Refusal_DependencyExists" xml:space="preserve"><value>Questa attività dipende già da quella.</value></data>
+  <data name="Tasks_Refusal_DependencyCycle" xml:space="preserve"><value>Questo creerebbe un cerchio di attività che dipendono l'una dall'altra.</value></data>
+  <data name="Tasks_Refusal_NoDependency" xml:space="preserve"><value>Questa attività non dipende da quella.</value></data>
+  <data name="Tasks_List_Title" xml:space="preserve"><value>Attività</value></data>
+  <data name="Tasks_List_Subtitle" xml:space="preserve"><value>Cosa c'è da fare, team per team.</value></data>
+  <data name="Tasks_List_Admin" xml:space="preserve"><value>Amministrazione attività</value></data>
+  <data name="Tasks_List_YourTeams" xml:space="preserve"><value>I tuoi team:</value></data>
+  <data name="Tasks_List_Empty" xml:space="preserve"><value>Nessuna attività corrisponde.</value></data>
+  <data name="Tasks_Filter_Event" xml:space="preserve"><value>Evento</value></data>
+  <data name="Tasks_Filter_ActiveEvent" xml:space="preserve"><value>Evento attivo e senza evento</value></data>
+  <data name="Tasks_Filter_AnyEvent" xml:space="preserve"><value>Qualsiasi evento</value></data>
+  <data name="Tasks_Filter_Finished" xml:space="preserve"><value>Includi completate e annullate</value></data>
+  <data name="Tasks_Filter_Apply" xml:space="preserve"><value>Mostra</value></data>
+  <data name="Tasks_Col_Team" xml:space="preserve"><value>Team</value></data>
+  <data name="Tasks_Col_Status" xml:space="preserve"><value>Stato</value></data>
+  <data name="Tasks_Col_Priority" xml:space="preserve"><value>Priorità</value></data>
+  <data name="Tasks_Hidden" xml:space="preserve"><value>Nascosta</value></data>
+  <data name="Tasks_Yes" xml:space="preserve"><value>Sì</value></data>
+  <data name="Tasks_No" xml:space="preserve"><value>No</value></data>
+  <data name="Tasks_Team_Title" xml:space="preserve"><value>Attività di {0}</value></data>
+  <data name="Tasks_Team_TeamPage" xml:space="preserve"><value>Pagina del team</value></data>
+  <data name="Tasks_Team_All" xml:space="preserve"><value>Tutte le attività</value></data>
+  <data name="Tasks_Team_AddTitle" xml:space="preserve"><value>Aggiungi un'attività</value></data>
+  <data name="Tasks_Task_BlockedBy" xml:space="preserve"><value>Bloccata:</value></data>
+  <data name="Tasks_Task_WaitingNow" xml:space="preserve"><value>Questa attività attende altre attività non ancora concluse.</value></data>
+  <data name="Tasks_Task_People" xml:space="preserve"><value>Persone</value></data>
+  <data name="Tasks_Task_SlotsOf" xml:space="preserve"><value>{0} di {1}</value></data>
+  <data name="Tasks_Task_NoPeople" xml:space="preserve"><value>Nessuno è ancora su questa attività.</value></data>
+  <data name="Tasks_Task_Assign" xml:space="preserve"><value>Assegna</value></data>
+  <data name="Tasks_Task_Unassign" xml:space="preserve"><value>Rimuovi</value></data>
+  <data name="Tasks_Task_FindPerson" xml:space="preserve"><value>Cerca una persona</value></data>
+  <data name="Tasks_Task_StatusTitle" xml:space="preserve"><value>Stato</value></data>
+  <data name="Tasks_Task_StatusSave" xml:space="preserve"><value>Aggiorna stato</value></data>
+  <data name="Tasks_Task_BlockedNote" xml:space="preserve"><value>Cosa la ferma</value></data>
+  <data name="Tasks_Task_BlockedNoteHelp" xml:space="preserve"><value>Obbligatorio se lo stato è bloccata.</value></data>
+  <data name="Tasks_Task_Edit" xml:space="preserve"><value>Modifica attività</value></data>
+  <data name="Tasks_Task_Delete" xml:space="preserve"><value>Elimina attività</value></data>
+  <data name="Tasks_Task_DeleteConfirm" xml:space="preserve"><value>Eliminare definitivamente questa attività? Persone e collegamenti vanno con essa.</value></data>
+  <data name="Tasks_Task_Details" xml:space="preserve"><value>Dettagli</value></data>
+  <data name="Tasks_Task_Event" xml:space="preserve"><value>Evento</value></data>
+  <data name="Tasks_Task_NoEvent" xml:space="preserve"><value>Non legata a un evento</value></data>
+  <data name="Tasks_Task_RelativeDate" xml:space="preserve"><value>si sposta con l'evento</value></data>
+  <data name="Tasks_Task_NeedsApproval" xml:space="preserve"><value>Richiede approvazione</value></data>
+  <data name="Tasks_Task_WaitingOnTitle" xml:space="preserve"><value>In attesa di</value></data>
+  <data name="Tasks_Task_NoDependencies" xml:space="preserve"><value>Non attende nessuna attività.</value></data>
+  <data name="Tasks_Task_HiddenTask" xml:space="preserve"><value>un'attività nascosta</value></data>
+  <data name="Tasks_Task_RemoveDependency" xml:space="preserve"><value>Rimuovi</value></data>
+  <data name="Tasks_Task_AddDependency" xml:space="preserve"><value>Aggiungi</value></data>
+  <data name="Tasks_Task_DependencyPick" xml:space="preserve"><value>Attendi questa attività</value></data>
+  <data name="Tasks_Form_Title" xml:space="preserve"><value>Titolo</value></data>
+  <data name="Tasks_Form_Team" xml:space="preserve"><value>Team</value></data>
+  <data name="Tasks_Form_Description" xml:space="preserve"><value>Descrizione</value></data>
+  <data name="Tasks_Form_Event" xml:space="preserve"><value>Evento</value></data>
+  <data name="Tasks_Form_NoEvent" xml:space="preserve"><value>Nessun evento</value></data>
+  <data name="Tasks_Form_Priority" xml:space="preserve"><value>Priorità</value></data>
+  <data name="Tasks_Form_Slots" xml:space="preserve"><value>Posti</value></data>
+  <data name="Tasks_Form_Start" xml:space="preserve"><value>Inizio</value></data>
+  <data name="Tasks_Form_Due" xml:space="preserve"><value>Scadenza</value></data>
+  <data name="Tasks_Form_DateFixed" xml:space="preserve"><value>Data fissa</value></data>
+  <data name="Tasks_Form_DateRelative" xml:space="preserve"><value>Relativa all'evento</value></data>
+  <data name="Tasks_Form_DateHelp" xml:space="preserve"><value>Una data relativa si sposta con il giorno di apertura dei cancelli dell'evento.</value></data>
+  <data name="Tasks_Form_NeedsApproval" xml:space="preserve"><value>Un responsabile approva chi prende questa attività</value></data>
+  <data name="Tasks_Form_ApprovalReason" xml:space="preserve"><value>Perché serve l'approvazione</value></data>
+  <data name="Tasks_Form_ApprovalReasonHelp" xml:space="preserve"><value>Facoltativo. Mostrato accanto al pulsante per prenderla, ad esempio una licenza.</value></data>
+  <data name="Tasks_Form_Hidden" xml:space="preserve"><value>Nascosta</value></data>
+  <data name="Tasks_Form_HiddenHelp" xml:space="preserve"><value>Visibile solo ai responsabili del team e alle persone coinvolte.</value></data>
+  <data name="Tasks_Form_Add" xml:space="preserve"><value>Aggiungi attività</value></data>
+  <data name="Tasks_Form_Save" xml:space="preserve"><value>Salva modifiche</value></data>
+  <data name="Tasks_Added" xml:space="preserve"><value>{0} aggiunta.</value></data>
+  <data name="Tasks_Saved" xml:space="preserve"><value>{0} salvata.</value></data>
+  <data name="Tasks_Deleted" xml:space="preserve"><value>{0} eliminata.</value></data>
+  <data name="Tasks_StatusChanged" xml:space="preserve"><value>Stato aggiornato.</value></data>
+  <data name="Tasks_Assigned" xml:space="preserve"><value>Persona aggiunta all'attività.</value></data>
+  <data name="Tasks_Unassigned" xml:space="preserve"><value>Persona rimossa dall'attività.</value></data>
+  <data name="Tasks_DependencyAdded" xml:space="preserve"><value>Ora attende quell'attività.</value></data>
+  <data name="Tasks_DependencyRemoved" xml:space="preserve"><value>Non attende più quell'attività.</value></data>
+  <data name="Tasks_Refusal_NoPerson" xml:space="preserve"><value>Scegli una persona dall'elenco.</value></data>
+  <data name="Tasks_Refusal_Unreadable" xml:space="preserve"><value>Impossibile leggere: {0}. Controlla e riprova.</value></data>
+  <data name="Enum_TaskItemStatus_Todo" xml:space="preserve"><value>Da fare</value></data>
+  <data name="Enum_TaskItemStatus_InProgress" xml:space="preserve"><value>In corso</value></data>
+  <data name="Enum_TaskItemStatus_Blocked" xml:space="preserve"><value>Bloccata</value></data>
+  <data name="Enum_TaskItemStatus_Done" xml:space="preserve"><value>Completata</value></data>
+  <data name="Enum_TaskItemStatus_Cancelled" xml:space="preserve"><value>Annullata</value></data>
+  <data name="Tasks_Refusal_Finished" xml:space="preserve"><value>Questa attività è completata o annullata e non può più essere presa.</value></data>
+  <data name="Tasks_Refusal_Full" xml:space="preserve"><value>Tutti i posti di questa attività sono occupati.</value></data>
+  <data name="Tasks_Refusal_YouAreOn" xml:space="preserve"><value>Sei già in questa attività.</value></data>
+  <data name="Tasks_Refusal_YouRequested" xml:space="preserve"><value>Hai già chiesto di unirti a questa attività.</value></data>
+  <data name="Tasks_Refusal_YouAreNotOn" xml:space="preserve"><value>Non hai un posto in questa attività.</value></data>
+  <data name="Tasks_Refusal_NoYourRequest" xml:space="preserve"><value>Non hai nessuna richiesta in questa attività.</value></data>
+  <data name="Tasks_Refusal_NoRequest" xml:space="preserve"><value>Quella persona non ha nessuna richiesta in attesa su questa attività.</value></data>
+  <data name="Tasks_Email_Greeting" xml:space="preserve"><value>&lt;p&gt;Ciao {0},&lt;/p&gt;</value></data>
+  <data name="Tasks_Email_ReasonLine" xml:space="preserve"><value>&lt;p&gt;Motivo: {0}&lt;/p&gt;</value></data>
+  <data name="Tasks_Email_RequestApproved_Subject" xml:space="preserve"><value>Sei nell'attività: {0}</value></data>
+  <data name="Tasks_Email_RequestApproved_Body" xml:space="preserve"><value>&lt;h2&gt;Richiesta approvata&lt;/h2&gt;{0}&lt;p&gt;La tua richiesta di unirti a &lt;strong&gt;{1}&lt;/strong&gt; ({2}) è stata approvata. Ora hai un posto in questa attività.&lt;/p&gt;&lt;p&gt;&lt;a href="{3}"&gt;Vedi l'attività&lt;/a&gt;&lt;/p&gt;</value></data>
+  <data name="Tasks_Email_RequestDeclined_Subject" xml:space="preserve"><value>La tua richiesta per: {0}</value></data>
+  <data name="Tasks_Email_RequestDeclined_Body" xml:space="preserve"><value>&lt;h2&gt;Richiesta non approvata&lt;/h2&gt;{0}&lt;p&gt;La tua richiesta di unirti a &lt;strong&gt;{1}&lt;/strong&gt; ({2}) questa volta non è stata approvata.&lt;/p&gt;{3}&lt;p&gt;Puoi chiedere di nuovo se l'attività ha ancora un posto libero.&lt;/p&gt;&lt;p&gt;&lt;a href="{4}"&gt;Vedi l'attività&lt;/a&gt;&lt;/p&gt;</value></data>
+  <data name="Tasks_Todo_Requests_Title" xml:space="preserve"><value>Richieste per le attività in attesa</value></data>
+  <data name="Tasks_Todo_Requests_Description" xml:space="preserve"><value>{0} ha {1} richiesta/e in attesa della tua risposta.</value></data>
+  <data name="Tasks_Todo_Requests_Action" xml:space="preserve"><value>Rispondi alle richieste</value></data>
+  <data name="Tasks_Claim" xml:space="preserve"><value>Me ne occupo io</value></data>
+  <data name="Tasks_AskToJoin" xml:space="preserve"><value>Chiedi di unirti</value></data>
+  <data name="Tasks_Release" xml:space="preserve"><value>Lascia questo compito</value></data>
+  <data name="Tasks_Withdraw" xml:space="preserve"><value>Ritira la richiesta</value></data>
+  <data name="Tasks_RequestWaiting" xml:space="preserve"><value>In attesa di approvazione</value></data>
+  <data name="Tasks_YouAreOn" xml:space="preserve"><value>Sei su questo compito</value></data>
+  <data name="Tasks_Claim_Approval" xml:space="preserve"><value>Un responsabile approva chi si occupa di questo compito.</value></data>
+  <data name="Tasks_Claim_FreeSlot" xml:space="preserve"><value>Questo compito ha un posto libero.</value></data>
+  <data name="Tasks_Claim_Waiting" xml:space="preserve"><value>La tua richiesta attende la risposta di un responsabile. Riceverai un'email.</value></data>
+  <data name="Tasks_Requests_Title" xml:space="preserve"><value>In attesa di approvazione</value></data>
+  <data name="Tasks_Requests_Approve" xml:space="preserve"><value>Approva</value></data>
+  <data name="Tasks_Requests_Decline" xml:space="preserve"><value>Rifiuta</value></data>
+  <data name="Tasks_Requests_Reason" xml:space="preserve"><value>Motivo, inviato nell'email (facoltativo)</value></data>
+  <data name="Tasks_List_Open" xml:space="preserve"><value>Compiti aperti</value></data>
+  <data name="Tasks_Open_Title" xml:space="preserve"><value>Compiti aperti</value></data>
+  <data name="Tasks_Open_Subtitle" xml:space="preserve"><value>Compiti che hanno ancora bisogno di persone, i più urgenti per primi.</value></data>
+  <data name="Tasks_Open_Slots" xml:space="preserve"><value>Posti liberi</value></data>
+  <data name="Tasks_Open_Critical" xml:space="preserve"><value>Critici</value></data>
+  <data name="Tasks_Open_Empty" xml:space="preserve"><value>Per ora tutti i compiti hanno le loro persone.</value></data>
+  <data name="Tasks_Open_NeedsApproval" xml:space="preserve"><value>Richiede approvazione</value></data>
+  <data name="Tasks_Claimed" xml:space="preserve"><value>Sei su {0}.</value></data>
+  <data name="Tasks_Requested" xml:space="preserve"><value>Hai chiesto di unirti a {0}. Un responsabile ti risponderà.</value></data>
+  <data name="Tasks_Released" xml:space="preserve"><value>Hai lasciato {0}.</value></data>
+  <data name="Tasks_Withdrawn" xml:space="preserve"><value>Richiesta ritirata.</value></data>
+  <data name="Tasks_Approved" xml:space="preserve"><value>Richiesta approvata.</value></data>
+  <data name="Tasks_Declined" xml:space="preserve"><value>Richiesta rifiutata.</value></data>
+  <data name="Tasks_Row_Understaffed" xml:space="preserve"><value>Mancano persone</value></data>
+  <data name="Tasks_Row_WaitingOnTask" xml:space="preserve"><value>Aspetta «{0}»</value></data>
+  <data name="Tasks_Row_WaitingOnHidden" xml:space="preserve"><value>Aspetta un'attività nascosta</value></data>
+  <data name="Tasks_Row_Needs" xml:space="preserve"><value>ne mancano {0}</value></data>
+  <data name="Tasks_Filter_AnyTeam" xml:space="preserve"><value>Tutti i team</value></data>
+  <data name="Tasks_Filter_AnyPriority" xml:space="preserve"><value>Qualsiasi priorità</value></data>
+  <data name="Tasks_Filter_AnyStatus" xml:space="preserve"><value>Qualsiasi stato</value></data>
+  <data name="Tasks_Card_Title" xml:space="preserve"><value>Attività</value></data>
+  <data name="Tasks_Card_Empty" xml:space="preserve"><value>Nessuna attività aperta al momento.</value></data>
+  <data name="Tasks_Card_Requests" xml:space="preserve"><value>Richieste in attesa: {0}</value></data>
+  <data name="Tasks_Card_All" xml:space="preserve"><value>Vedi tutte le attività ({0})</value></data>
+</root>

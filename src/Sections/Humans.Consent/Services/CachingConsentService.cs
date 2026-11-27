@@ -68,6 +68,7 @@ internal sealed class CachingConsentService(
             var missList = misses.ToList();
             var publish = CreateLoadPublisher();
             var bulk = await inner.GetConsentMapForUsersAsync(missList, ct).ConfigureAwait(false);
+            ct.ThrowIfCancellationRequested();
 
             foreach (var userId in missList)
             {
@@ -75,7 +76,7 @@ internal sealed class CachingConsentService(
                     ? v
                     : new HashSet<Guid>();
                 var frozen = new HashSet<Guid>(versions);
-                publish(userId, new UserConsentInfo(userId, frozen, UserIdsOf(userId)));
+                publish(userId, new UserConsentInfo(frozen, UserIdsOf(userId)));
                 result[userId] = frozen;
             }
         }
@@ -101,9 +102,9 @@ internal sealed class CachingConsentService(
     public Task<bool> HasAllRequiredConsentsForTeamAsync(Guid userId, Guid teamId, CancellationToken ct = default) =>
         WithInnerAsync(inner => inner.HasAllRequiredConsentsForTeamAsync(userId, teamId, ct));
 
-    public Task<IReadOnlySet<Guid>> GetUsersWithAllRequiredConsentsForTeamAsync(
+    public Task<IReadOnlySet<Guid>> GetConsentedUsersForTeamAsync(
         IEnumerable<Guid> userIds, Guid teamId, CancellationToken ct = default) =>
-        WithInnerAsync(inner => inner.GetUsersWithAllRequiredConsentsForTeamAsync(userIds, teamId, ct));
+        WithInnerAsync(inner => inner.GetConsentedUsersForTeamAsync(userIds, teamId, ct));
 
     public Task<ConsentProgress> GetConsentProgressAsync(Guid userId, CancellationToken ct = default) =>
         WithInnerAsync(inner => inner.GetConsentProgressAsync(userId, ct));
@@ -180,7 +181,7 @@ internal sealed class CachingConsentService(
         var versions = await WithInnerAsync(inner => inner.GetConsentedVersionIdsAsync(userId, ct));
 
         var frozen = new HashSet<Guid>(versions);
-        return new UserConsentInfo(userId, frozen, userIds);
+        return new UserConsentInfo(frozen, userIds);
     }
 
     private async Task<IReadOnlyList<Guid>> GetUserIdsAsync(Guid userId, CancellationToken ct) =>

@@ -19,7 +19,6 @@ public sealed class UserServiceGetByEmailOrAlternateTests : ServiceTestHarness
     {
         _service = new UserService(
             _repo,
-            AdminAuthorization,
             Substitute.For<IFileStorage>(),
             Clock,
             NullLogger<UserService>.Instance, AuditLog);
@@ -30,7 +29,7 @@ public sealed class UserServiceGetByEmailOrAlternateTests : ServiceTestHarness
     {
         _repo.GetByIdAsync(userId, Arg.Any<CancellationToken>())
             .Returns(new User { Id = userId, DisplayName = "Test User", PreferredLanguage = "en" });
-        _repo.GetUserEmailsByUserIdReadOnlyAsync(userId, Arg.Any<CancellationToken>())
+        _repo.GetUserEmailsByUserIdAsync(userId, Arg.Any<CancellationToken>())
             .Returns([]);
         _repo.GetExternalLoginsByUserIdsAsync(
                 Arg.Is<IReadOnlyCollection<Guid>>(ids => ids.Contains(userId)), Arg.Any<CancellationToken>())

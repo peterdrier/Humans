@@ -1,13 +1,12 @@
 using AwesomeAssertions;
-using Humans.AuditLog.Contracts;
 using Humans.Governance.Domain;
 using Humans.Governance.Services.Dtos;
 using Humans.Governance.Tests.Infrastructure;
 using Humans.Notifications.Contracts;
 using Microsoft.EntityFrameworkCore;
 using NSubstitute;
-
 using Xunit;
+
 
 namespace Humans.Governance.Tests.Services;
 
@@ -31,10 +30,10 @@ public sealed class AssemblyVoteEmbargoTests : IDisposable
 
         var memberView = await _fx.Service.GetResultsAsync(
             vote.Id, Guid.NewGuid(), viewerIsBoardOrAdmin: false,
-            Xunit.TestContext.Current.CancellationToken);
+            TestContext.Current.CancellationToken);
         var boardView = await _fx.Service.GetResultsAsync(
             vote.Id, Guid.NewGuid(), viewerIsBoardOrAdmin: true,
-            Xunit.TestContext.Current.CancellationToken);
+            TestContext.Current.CancellationToken);
 
         memberView.Should().BeNull();
         boardView.Should().BeNull("Board and Admin get no exemption from the embargo either");
@@ -51,7 +50,7 @@ public sealed class AssemblyVoteEmbargoTests : IDisposable
         await _fx.AddBallotAsync(vote.Id, aliceRoster.Id, AssemblyBallotChoice.Yes);
 
         var bobsView = await _fx.Service.GetVoteForMemberAsync(
-            vote.Id, bob, Xunit.TestContext.Current.CancellationToken);
+            vote.Id, bob, TestContext.Current.CancellationToken);
 
         bobsView!.OwnBallot.Should().BeNull("Bob has not voted; Alice's ballot must not leak into his view");
     }
@@ -64,7 +63,7 @@ public sealed class AssemblyVoteEmbargoTests : IDisposable
         await _fx.AddBallotAsync(vote.Id, roster.Id, AssemblyBallotChoice.Yes);
 
         var result = await _fx.Service.GetBallotsForBoardAsync(
-            vote.Id, Guid.NewGuid(), Xunit.TestContext.Current.CancellationToken);
+            vote.Id, Guid.NewGuid(), TestContext.Current.CancellationToken);
 
         result.Should().BeNull();
     }
@@ -80,7 +79,7 @@ public sealed class AssemblyVoteEmbargoTests : IDisposable
         var adminId = Guid.NewGuid();
 
         var (tally, recorded) = await _fx.Service.PeekAsync(
-            vote.Id, adminId, Xunit.TestContext.Current.CancellationToken);
+            vote.Id, adminId, TestContext.Current.CancellationToken);
 
         tally.Should().NotBeNull();
         tally.Official.YesNo.Should().Be(new YesNoTally(1, 1, 0));
@@ -89,7 +88,7 @@ public sealed class AssemblyVoteEmbargoTests : IDisposable
         var peeks = await _fx.Db.AssemblyVotePeeks
             .AsNoTracking()
             .Where(p => p.VoteId == vote.Id)
-            .ToListAsync(Xunit.TestContext.Current.CancellationToken);
+            .ToListAsync(TestContext.Current.CancellationToken);
         peeks.Should().ContainSingle(p => p.AdminUserId == adminId);
 
         await _fx.Audit.Received(1).LogAsync(
@@ -101,16 +100,16 @@ public sealed class AssemblyVoteEmbargoTests : IDisposable
     public async Task PeekAsync_OnClosedVote_DoesNotWriteAnotherPeekRow()
     {
         var vote = await _fx.AddVoteAsync();
-        await _fx.Service.StopAsync(vote.Id, Guid.NewGuid(), Xunit.TestContext.Current.CancellationToken);
+        await _fx.Service.StopAsync(vote.Id, Guid.NewGuid(), TestContext.Current.CancellationToken);
 
         var (tally, recorded) = await _fx.Service.PeekAsync(
-            vote.Id, Guid.NewGuid(), Xunit.TestContext.Current.CancellationToken);
+            vote.Id, Guid.NewGuid(), TestContext.Current.CancellationToken);
 
         tally.Should().NotBeNull("a peek on a closed vote is just the results page");
         recorded.Should().BeFalse(
             "nothing was logged, so the caller must not render a page claiming a peek was recorded");
         (await _fx.Db.AssemblyVotePeeks
-            .CountAsync(p => p.VoteId == vote.Id, Xunit.TestContext.Current.CancellationToken))
+            .CountAsync(p => p.VoteId == vote.Id, TestContext.Current.CancellationToken))
             .Should().Be(0);
     }
 
@@ -119,11 +118,11 @@ public sealed class AssemblyVoteEmbargoTests : IDisposable
     {
         var vote = await _fx.AddVoteAsync();
         var r1 = await _fx.AddRosterRowAsync(vote.Id, Guid.NewGuid(), isOfficial: true);
-        var r2 = await _fx.AddRosterRowAsync(vote.Id, Guid.NewGuid(), isOfficial: true);
+        await _fx.AddRosterRowAsync(vote.Id, Guid.NewGuid(), isOfficial: true);
         await _fx.AddBallotAsync(vote.Id, r1.Id, AssemblyBallotChoice.Yes);
 
         var detail = await _fx.Service.GetVoteForMemberAsync(
-            vote.Id, Guid.NewGuid(), Xunit.TestContext.Current.CancellationToken);
+            vote.Id, Guid.NewGuid(), TestContext.Current.CancellationToken);
 
         detail!.Participation.OfficialRoster.Should().Be(2);
         detail.Participation.OfficialCast.Should().Be(1);
@@ -145,9 +144,9 @@ public sealed class AssemblyVoteEmbargoTests : IDisposable
         await _fx.AddBallotAsync(vote.Id, indicative1.Id, AssemblyBallotChoice.No);
         await _fx.AddBallotAsync(vote.Id, indicative2.Id, AssemblyBallotChoice.No);
 
-        await _fx.Service.StopAsync(vote.Id, Guid.NewGuid(), Xunit.TestContext.Current.CancellationToken);
+        await _fx.Service.StopAsync(vote.Id, Guid.NewGuid(), TestContext.Current.CancellationToken);
         var results = await _fx.Service.GetResultsAsync(
-            vote.Id, Guid.NewGuid(), viewerIsBoardOrAdmin: false, Xunit.TestContext.Current.CancellationToken);
+            vote.Id, Guid.NewGuid(), viewerIsBoardOrAdmin: false, TestContext.Current.CancellationToken);
 
         results.Should().NotBeNull();
         results.Result.Official.Verdict.Should().Be(AssemblyVoteVerdict.Passed);
@@ -164,9 +163,9 @@ public sealed class AssemblyVoteEmbargoTests : IDisposable
         var official = await _fx.AddRosterRowAsync(vote.Id, Guid.NewGuid(), isOfficial: true);
         await _fx.AddBallotAsync(vote.Id, official.Id, AssemblyBallotChoice.Yes);
 
-        await _fx.Service.StopAsync(vote.Id, Guid.NewGuid(), Xunit.TestContext.Current.CancellationToken);
+        await _fx.Service.StopAsync(vote.Id, Guid.NewGuid(), TestContext.Current.CancellationToken);
         var results = await _fx.Service.GetResultsAsync(
-            vote.Id, Guid.NewGuid(), viewerIsBoardOrAdmin: false, Xunit.TestContext.Current.CancellationToken);
+            vote.Id, Guid.NewGuid(), viewerIsBoardOrAdmin: false, TestContext.Current.CancellationToken);
 
         results!.Result.Indicative.Should().BeNull();
     }
@@ -177,11 +176,11 @@ public sealed class AssemblyVoteEmbargoTests : IDisposable
         var vote = await _fx.AddVoteAsync();
         var roster = await _fx.AddRosterRowAsync(vote.Id, Guid.NewGuid(), isOfficial: true);
         await _fx.AddBallotAsync(vote.Id, roster.Id, AssemblyBallotChoice.Yes);
-        await _fx.Service.StopAsync(vote.Id, Guid.NewGuid(), Xunit.TestContext.Current.CancellationToken);
+        await _fx.Service.StopAsync(vote.Id, Guid.NewGuid(), TestContext.Current.CancellationToken);
         var actorId = Guid.NewGuid();
 
         var rows = await _fx.Service.GetBallotsForBoardAsync(
-            vote.Id, actorId, Xunit.TestContext.Current.CancellationToken);
+            vote.Id, actorId, TestContext.Current.CancellationToken);
 
         rows.Should().ContainSingle();
         rows[0].Choice.Should().Be(AssemblyBallotChoice.Yes);
@@ -197,7 +196,7 @@ public sealed class AssemblyVoteEmbargoTests : IDisposable
         await _fx.AddVoteAsync();
 
         var list = await _fx.Service.GetVotesForMemberAsync(
-            Guid.NewGuid(), Xunit.TestContext.Current.CancellationToken);
+            Guid.NewGuid(), TestContext.Current.CancellationToken);
 
         list.Should().ContainSingle("a draft is the Board's authoring surface, not a vote members can see")
             .Which.Status.Should().Be(AssemblyVoteStatus.Open);
@@ -209,7 +208,7 @@ public sealed class AssemblyVoteEmbargoTests : IDisposable
         var draft = await _fx.AddVoteAsync(AssemblyVoteStatus.Draft);
 
         var view = await _fx.Service.GetVoteForMemberAsync(
-            draft.Id, Guid.NewGuid(), Xunit.TestContext.Current.CancellationToken);
+            draft.Id, Guid.NewGuid(), TestContext.Current.CancellationToken);
 
         view.Should().BeNull("knowing a draft's id must not serve its official text");
     }
@@ -222,7 +221,7 @@ public sealed class AssemblyVoteEmbargoTests : IDisposable
         await _fx.AddBallotAsync(vote.Id, roster.Id, AssemblyBallotChoice.Yes);
 
         var result = await _fx.Service.GetBallotsForBoardAsync(
-            vote.Id, Guid.NewGuid(), Xunit.TestContext.Current.CancellationToken);
+            vote.Id, Guid.NewGuid(), TestContext.Current.CancellationToken);
 
         result.Should().BeNull(
             "a cancelled vote's ballots are an abandoned record with no result — disclosure is for Closed only");
@@ -233,7 +232,7 @@ public sealed class AssemblyVoteEmbargoTests : IDisposable
     {
         await _fx.AddVoteAsync(AssemblyVoteStatus.Draft);
 
-        var list = await _fx.Service.GetAllForAdminAsync(Xunit.TestContext.Current.CancellationToken);
+        var list = await _fx.Service.GetAllForAdminAsync(TestContext.Current.CancellationToken);
 
         list.Should().ContainSingle(
                 "Create redirects here, and the Edit/Delete/Open controls are the only way "
@@ -249,11 +248,11 @@ public sealed class AssemblyVoteEmbargoTests : IDisposable
         var indicative = await _fx.AddRosterRowAsync(vote.Id, Guid.NewGuid(), isOfficial: false);
         await _fx.AddBallotAsync(vote.Id, official.Id, AssemblyBallotChoice.Yes);
         await _fx.AddBallotAsync(vote.Id, indicative.Id, AssemblyBallotChoice.No);
-        await _fx.Service.StopAsync(vote.Id, Guid.NewGuid(), Xunit.TestContext.Current.CancellationToken);
+        await _fx.Service.StopAsync(vote.Id, Guid.NewGuid(), TestContext.Current.CancellationToken);
 
         var results = await _fx.Service.GetResultsAsync(
             vote.Id, Guid.NewGuid(), viewerIsBoardOrAdmin: false,
-            Xunit.TestContext.Current.CancellationToken);
+            TestContext.Current.CancellationToken);
 
         results!.Result.Indicative.Should().NotBeNull("the results page still shows it separately");
         results.ActaText.Should().NotContain(
@@ -272,7 +271,7 @@ public sealed class AssemblyVoteEmbargoTests : IDisposable
             .Returns(_ => throw new InvalidOperationException("notifications are down"));
         var adminId = Guid.NewGuid();
 
-        await _fx.Service.StopAsync(vote.Id, adminId, Xunit.TestContext.Current.CancellationToken);
+        await _fx.Service.StopAsync(vote.Id, adminId, TestContext.Current.CancellationToken);
 
         await _fx.Audit.Received(1).LogAsync(
             GovernanceAuditActions.AssemblyVoteStopped, Arg.Any<string>(), vote.Id, Arg.Any<string>(), adminId,
@@ -291,7 +290,7 @@ public sealed class AssemblyVoteEmbargoTests : IDisposable
         var adminId = Guid.NewGuid();
 
         var result = await _fx.Service.CancelAsync(
-            vote.Id, "Called off", adminId, Xunit.TestContext.Current.CancellationToken);
+            vote.Id, "Called off", adminId, TestContext.Current.CancellationToken);
 
         result.Should().Be(AssemblyVoteActionResult.Ok);
         await _fx.Audit.Received(1).LogAsync(
@@ -308,10 +307,10 @@ public sealed class AssemblyVoteEmbargoTests : IDisposable
         await _fx.AddBallotAsync(vote.Id, r1.Id, AssemblyBallotChoice.Yes);
         await _fx.AddBallotAsync(vote.Id, r2.Id, AssemblyBallotChoice.Abstain);
 
-        await _fx.Service.StopAsync(vote.Id, Guid.NewGuid(), Xunit.TestContext.Current.CancellationToken);
+        await _fx.Service.StopAsync(vote.Id, Guid.NewGuid(), TestContext.Current.CancellationToken);
         var results = await _fx.Service.GetResultsAsync(
             vote.Id, Guid.NewGuid(), viewerIsBoardOrAdmin: false,
-            Xunit.TestContext.Current.CancellationToken);
+            TestContext.Current.CancellationToken);
 
         // Read back out of ResultJson, so every nested record bound through its constructor
         // rather than being materialised with default fields.
@@ -329,10 +328,10 @@ public sealed class AssemblyVoteEmbargoTests : IDisposable
         var adminId = Guid.NewGuid();
         _fx.StubActiveUsers(adminId);
 
-        await _fx.Service.StopAsync(vote.Id, adminId, Xunit.TestContext.Current.CancellationToken);
+        await _fx.Service.StopAsync(vote.Id, adminId, TestContext.Current.CancellationToken);
         var results = await _fx.Service.GetResultsAsync(
             vote.Id, Guid.NewGuid(), viewerIsBoardOrAdmin: false,
-            Xunit.TestContext.Current.CancellationToken);
+            TestContext.Current.CancellationToken);
 
         results!.ActaText.Should().Contain(
             "Member " + adminId,
@@ -346,7 +345,7 @@ public sealed class AssemblyVoteEmbargoTests : IDisposable
         var vote = await _fx.AddVoteAsync();
 
         var detail = await _fx.Service.GetVoteForMemberAsync(
-            vote.Id, Guid.NewGuid(), Xunit.TestContext.Current.CancellationToken);
+            vote.Id, Guid.NewGuid(), TestContext.Current.CancellationToken);
 
         detail!.IsTranslation.Should().BeFalse(
             "the viewer is being shown the binding official text, not a translation of it");
@@ -361,7 +360,7 @@ public sealed class AssemblyVoteEmbargoTests : IDisposable
         // The fixture labels an option with its own key; a real vote's labels are prose.
         foreach (var option in await _fx.Db.AssemblyVoteOptions
                      .Where(o => o.VoteId == vote.Id)
-                     .ToListAsync(Xunit.TestContext.Current.CancellationToken))
+                     .ToListAsync(TestContext.Current.CancellationToken))
         {
             option.Label = new GovernanceLocalizedText(
                 new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
@@ -370,16 +369,16 @@ public sealed class AssemblyVoteEmbargoTests : IDisposable
                 });
         }
 
-        await _fx.Db.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
+        await _fx.Db.SaveChangesAsync(TestContext.Current.CancellationToken);
         _fx.Db.ChangeTracker.Clear();
 
         var voter = await _fx.AddRosterRowAsync(vote.Id, Guid.NewGuid(), isOfficial: true);
         await _fx.AddBallotAsync(vote.Id, voter.Id, AssemblyBallotChoice.Ranked, ["motion-a", "motion-b"]);
-        await _fx.Service.StopAsync(vote.Id, Guid.NewGuid(), Xunit.TestContext.Current.CancellationToken);
+        await _fx.Service.StopAsync(vote.Id, Guid.NewGuid(), TestContext.Current.CancellationToken);
 
         var results = await _fx.Service.GetResultsAsync(
             vote.Id, Guid.NewGuid(), viewerIsBoardOrAdmin: false,
-            Xunit.TestContext.Current.CancellationToken);
+            TestContext.Current.CancellationToken);
 
         results!.ActaText.Should().Contain(
             "Move the assembly to motion-a",

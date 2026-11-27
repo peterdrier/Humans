@@ -52,6 +52,7 @@ public sealed class Section : ISection, ISectionAdminNav, ISectionAdminTiles, IS
         services.AddScoped<IAuditLogService>(sp => sp.GetRequiredService<AuditLogService>());
         services.AddScoped<IAuditLogReader>(sp => sp.GetRequiredService<AuditLogService>());
         services.AddScoped<IUserDataContributor>(sp => sp.GetRequiredService<AuditLogService>());
+        services.AddScoped<IRetentionPeriodContributor>(sp => sp.GetRequiredService<AuditLogService>());
         // Temporary: goes with the six Google columns.
         services.AddScoped<ILegacyGoogleSyncAuditReader>(sp => sp.GetRequiredService<AuditLogService>());
 
@@ -68,7 +69,7 @@ public sealed class Section : ISection, ISectionAdminNav, ISectionAdminTiles, IS
 
     IEnumerable<AdminTile> ISectionAdminTiles.Tiles() =>
     [
-        new AdminTile("auditlog.total", "Audit events", "fa-solid fa-list-check", TotalAsync, Weight: 100)
+        new AdminTile("auditlog.total", "Audit entries", "fa-solid fa-list-check", TotalAsync, Weight: 100)
     ];
 
     // Page size 1, no filter: TotalCount is the tile.

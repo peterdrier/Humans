@@ -4,7 +4,6 @@ using System.Text.Encodings.Web;
 using System.Text.RegularExpressions;
 using Humans.Base.Extensions;
 using Humans.Base.ViewComponents;
-using Humans.Onboarding;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Mvc.ModelBinding;
 using Microsoft.AspNetCore.Mvc.Razor;
@@ -63,7 +62,7 @@ public class GuestControllerTests
 
     [HumansTheory]
     [MemberData(nameof(SupportedCultures.All), MemberType = typeof(SupportedCultures))]
-    public async Task GuestGreeting_RendersTheCurrentEncodedIdentityInTheViewersCulture(string language)
+    public async Task GuestGreeting_RendersEncodedIdentity(string language)
     {
         using var culture = new CultureScope(language);
         var user = new User { Id = Guid.NewGuid(), BurnerName = "Original name" };

@@ -8,7 +8,6 @@ internal sealed record ReviewQueueData(
     List<UserInfo> Pending,
     List<UserInfo> Flagged,
     Dictionary<Guid, ConsentProgressInfo> ConsentProgress,
-    IReadOnlyDictionary<Guid, MembershipTier> Tiers,
-    IReadOnlyDictionary<Guid, ConsentReviewInfo> Reviews);
+    IReadOnlyDictionary<Guid, MembershipTier> Tiers);
 
 internal sealed record ConsentProgressInfo(int Signed, int Required);

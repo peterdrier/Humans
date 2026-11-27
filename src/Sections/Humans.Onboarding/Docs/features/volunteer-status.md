@@ -4,7 +4,7 @@
   src/Sections/Humans.Consent/Services/**
   src/Sections/Humans.Auth/**
   src/Humans.Web/Authorization/MembershipRequiredFilter.cs
-  src/Humans.Web/Authorization/RoleAssignmentClaimsTransformation.cs
+  src/Humans.Web/Authorization/SystemRoleClaimsTransformation.cs
   src/Humans.Web/Controllers/HomeController.cs
   src/Humans.Base/Constants/SystemTeamIds.cs
   src/Humans.Base/Constants/RoleNames.cs
@@ -22,7 +22,7 @@ App access is the stored **`UserState`**: a human reaches the full application t
 
 Volunteer access is the **universal baseline** for all membership tiers. Whether a human selects Volunteer, Colaborador, or Asociado tier, they all become Volunteers first. Tier applications (Colaborador/Asociado) proceed in parallel through the Board voting queue and do not block Volunteer access. See [Membership Tiers](../../../Humans.Governance/Docs/features/membership-tiers.md) and [Onboarding Pipeline](onboarding-pipeline.md).
 
-The consent check is a Consent Coordinator **audit annotation** on the Volunteer. It gates nothing and is independent of any tier application.
+The consent check is a Consent Admin **audit annotation** on the Volunteer. It gates nothing and is independent of any tier application.
 
 ## User Stories
 
@@ -65,7 +65,7 @@ Non-Active users are restricted from most of the application. A global action fi
 
 ### How It Works
 
-1. `RoleAssignmentClaimsTransformation` runs on each request and stamps the user's stored `UserState` as a claim
+1. `SystemRoleClaimsTransformation` runs on each request and stamps the user's stored `UserState` as a claim
 2. `MembershipRequiredFilter` (registered globally) reads it: only `UserState == Active` reaches the app
 3. Non-Active users are routed by state — `Bare` → name entry, `DeletePending` → cancel-deletion, `Suspended`/`Rejected`/`Deleted`/`Merged` → the account-status page
 
@@ -102,7 +102,7 @@ Sign Required Legal Documents (Volunteers team docs)
 Name + all consents → Volunteers team (Google Workspace), reconciled by SystemTeamSyncJob
 
 (parallel, non-gating audit track)
-[Auto] ConsentCheckStatus → Pending → Consent Coordinator reviews → Cleared (sets IsApproved = true — audit annotation only)
+[Auto] ConsentCheckStatus → Pending → Consent Admin reviews → Cleared (sets IsApproved = true — audit annotation only)
 ```
 
 Neither consent-check clearance nor consent submission triggers a per-user team sync any more — `SystemTeamSyncJob` reconciles Volunteers membership on **name + consents** (eventually consistent). App access is unaffected: it was granted at name entry (`UserState == Active`).
@@ -157,7 +157,7 @@ Triggered by:
 ### Becoming Rejected (Pending → Rejected)
 ```
 Triggered by:
-  - A ConsentCoordinator, Board member, or Admin rejects the signup
+  - A ConsentAdmin, Board member, or Admin rejects the signup
   - Consent's review records RejectionReason and RejectedAt; Users stores UserState.Rejected
   - Human is notified, cannot become Volunteer unless rejection is reversed
 ```
@@ -189,7 +189,7 @@ When a user signs the missing documents:
 
 - [Membership Tiers](../../../Humans.Governance/Docs/features/membership-tiers.md) — Tier definitions (Volunteer is baseline)
 - [Onboarding Pipeline](onboarding-pipeline.md) — Full onboarding flow
-- [Coordinator Roles](../../../Humans.Shifts/Docs/features/coordinator-roles.md) — Consent Coordinator performs consent reviews
+- [Coordinator Roles](../../../Humans.Shifts/Docs/features/coordinator-roles.md) — Consent Admin performs consent reviews
 - [Authentication](../../../Humans.Auth/Docs/features/authentication.md) — UserState access claim, role claims
 - [Legal Documents & Consent](../../../Humans.Consent/Docs/features/legal-documents-consent.md) — Consent completion contributes to Volunteers eligibility (name + consents)
 - [Teams](../../../Humans.Teams/Docs/features/Teams-feature.md) — Volunteers team is a Google Workspace provisioning group (name + consents), not the access gate

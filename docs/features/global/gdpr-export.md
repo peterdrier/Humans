@@ -2,12 +2,13 @@
   src/Sections/Humans.Governance/**
   src/Sections/Humans.Gdpr/**
   src/Sections/Humans.Gdpr/Contracts/**
+  src/Humans.Base/Gdpr/**
   src/Sections/Humans.Users/Services/AccountDeletionService.cs
   src/Sections/Humans.Users/Services/ProfileService.cs
   src/Sections/Humans.Users/Services/UserService.cs
   src/Sections/Humans.Consent/Services/ConsentService.cs
   src/Sections/Humans.Teams/**
-  src/Sections/Humans.Auth/Services/RoleAssignmentService.cs
+  src/Sections/Humans.Auth/Services/SystemRoleService.cs
   src/Sections/Humans.Shifts/Services/ShiftSignupService.cs
   src/Sections/Humans.Notifications/Services/NotificationInboxService.cs
   src/Sections/Humans.Tickets/Services/TicketQueryService.cs
@@ -30,6 +31,7 @@
   src/Sections/Humans.Rideshare/Services/**
   src/Sections/Humans.Workgroups/Services/**
   src/Sections/Humans.Roles/Services/**
+  src/Sections/Humans.Tasks/Services/**
   src/Sections/Humans.Preapprovals/Services/PreapprovalService.Gdpr.cs
   src/Sections/Humans.Grants/Services/GrantService.Gdpr.cs
   src/Sections/Humans.Calendar/Services/CalendarFeedTokenService.cs
@@ -170,11 +172,11 @@ archived account and the survivor.
 | `MembershipTier` | `MembershipTierService` | Single object `{ Tier, GrantedAt, ExpiresAt, GrantedByApplicationId }`; null for a Volunteer. Retained on erasure (register of members). |
 | `Consents` | `ConsentService` | Array of `{ DocumentName, DocumentVersion, ExplicitConsent, ConsentedAt, IpAddress, UserAgent }`. |
 | `ConsentReminder` | `ConsentReminderService` | Array of `{ UserId, LastSentAt }` — when the re-consent reminder email last went to each id in the merge chain (survivor first); null when none. Erased in full. |
-| `ConsentReview` | `ConsentReviewService` | Array of `{ UserId, Status, CheckedAt, Notes, IsApproved, RejectionReason, RejectedAt }` — the Consent Coordinator's review rows for every id in the merge chain (survivor first); null when none. Erasure keeps status, dates, approval and reviewer ids and erases the notes and the rejection reason. |
+| `ConsentReview` | `ConsentReviewService` | Array of `{ UserId, Status, CheckedAt, Notes, IsApproved, RejectionReason, RejectedAt }` — the Consent Admin's review rows for every id in the merge chain (survivor first); null when none. Erasure keeps status, dates, approval and reviewer ids and erases the notes and the rejection reason. |
 | `TeamMemberships` | `CachingTeamService` | Array of `{ TeamName, Role, JoinedAt, LeftAt, TeamRoles[] }`. |
 | `TeamJoinRequests` | `CachingTeamService` | Array of `{ TeamName, Status, Message, ReviewNotes, RequestedAt, ResolvedAt, StateHistory[] }` (`StateHistory` entries are `{ Status, ChangedAt, Notes }`). |
 | `TeamEarlyEntry` | `CachingTeamService` | Array of `{ EventSettingsId, TeamName, ProjectName, EntryDate, GrantedAt }` — the user's team early-entry grants. |
-| `RoleAssignments` | `RoleAssignmentService` | Array of `{ RoleName, ValidFrom, ValidTo }`. |
+| `RoleAssignments` | `SystemRoleService` | Array of `{ RoleName, ValidFrom, ValidTo }`. |
 | `ShiftSignups` | `ShiftSignupService` | Array of `{ EventName, Department, RotaName, DayOffset, IsAllDay, Status, Enrolled, StatusReason, CreatedAt, UpdatedAt, ReviewedAt }`. |
 | `VolunteerEventProfiles` | `ShiftSignupService` | Array of `{ Skills, Quirks, Languages, CreatedAt, UpdatedAt }` per-event profile records (dietary data is exported in `DietaryProfile`, medical in `Profile`). |
 | `GeneralAvailability` | `ShiftSignupService` | Array of `{ EventName, AvailableDayOffsets, UpdatedAt }`. |
@@ -222,6 +224,7 @@ archived account and the survivor.
 | `CalendarFeedToken` | `CalendarFeedTokenService` | `{ HasFeed }` — whether the human has ever minted a personal iCal feed. The token itself is never exported: it is a live credential and an export file gets forwarded; the human reads their URL off `/Calendar`, the one place it is shown. Erased in full: the row is deleted. |
 | `WorkgroupMeetings` | `CachingWorkgroupService` | Array of `{ Workgroup, Title, StartUtc, EndUtc, Location, IsPublic, Minutes, CreatedAt }`. Retained, creator attribution dropped. |
 | `Roles` | `CachingRoleService` | Array of `{ Owner, Role, AssignedAt }`: the roles the human holds, with owner names. Erased in full: they are unassigned everywhere. |
+| `Tasks` | `TaskService` | Array of `{ Task, State ("Requested"/"Confirmed"), Since }`: the tasks the human is on or has asked to join. Erased in full: places and requests are removed; task text is not tied to a person and stays. |
 | `WorkgroupDocuments` | `CachingWorkgroupService` | Array of `{ Workgroup, Title, Kind, Status, Authored, Edited, DispositionRecorded, CreatedAt, UpdatedAt }` — the three booleans say which attribution this row carries for this person. Retained, attributions dropped. |
 | `WorkgroupComments` | `CachingWorkgroupService` | Array of `{ Workgroup, Document, Category, Body, Authored, Responded, HiddenByThisPerson, Disposition, Response, Hidden, HiddenReason, CreatedAt }`. Retained, author attribution dropped: the record of what was heard and decided against. |
 | `AssemblyVotes` | `AssemblyVoteService` | Array of `{ Vote, Status, ClosesAt, Entitlement ("Official"/"Indicative"), Tier, IsBoardMember, Ballot: { Choice, Ranking[], Revision, CastAt, UpdatedAt, History: [{ Revision, Choice, Ranking[], RecordedAt }] }? }` — every assembly vote the human was on the roster for, with their current ballot and each revision of it; `Ballot` is null when they did not vote. Retained after erasure, unlinked: the vote is the association's record of a decision. |

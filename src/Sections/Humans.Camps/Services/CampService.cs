@@ -1,6 +1,5 @@
 using System.Globalization;
 using Humans.AuditLog.Contracts;
-using Humans.Base.Interfaces.Caching;
 using Humans.EarlyEntry.Contracts;
 using Humans.Gdpr.Contracts;
 using Humans.Notifications.Contracts;
@@ -11,8 +10,6 @@ using Humans.Tickets.Contracts;
 using Humans.Users.Contracts;
 
 using Humans.Teams.Contracts;
-using Humans.Base.Extensions;
-using Humans.Base.Interfaces;
 using System.Transactions;
 using System.Resources;
 
@@ -414,15 +411,19 @@ internal sealed class CampService : ICampManagement, ICampLeadDirectory, IUserMe
         }
         catch
         {
+            var step = "check whether the save committed for";
             try
             {
                 // A failed save may have committed: only remove an unreferenced file.
                 if (await _repo.GetImageForMutationAsync(image.Id, CancellationToken.None) is null)
+                {
+                    step = "delete the file of";
                     await _fileStorage.DeleteAsync(storageKey, CancellationToken.None);
+                }
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Failed to verify or clean up camp image upload {ImageId} at {StoragePath}", image.Id, storageKey);
+                _logger.LogError(ex, "Failed to {Step} camp image upload {ImageId} at {StoragePath}", step, image.Id, storageKey);
             }
             throw;
         }
@@ -465,16 +466,20 @@ internal sealed class CampService : ICampManagement, ICampLeadDirectory, IUserMe
         }
         finally
         {
+            var step = "check whether the row is gone for";
             try
             {
                 if (await _repo.GetImageForMutationAsync(imageId, CancellationToken.None) is null)
+                {
+                    step = "delete the file of";
                     await _fileStorage.DeleteAsync(deletedPath ?? image.StoragePath, CancellationToken.None);
+                }
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex,
-                    "Failed to verify or clean up camp image {ImageId} at {StoragePath}",
-                    imageId, deletedPath ?? image.StoragePath);
+                    "Failed to {Step} camp image {ImageId} at {StoragePath}",
+                    step, imageId, deletedPath ?? image.StoragePath);
             }
         }
     }
@@ -704,7 +709,7 @@ internal sealed class CampService : ICampManagement, ICampLeadDirectory, IUserMe
         return memberId is null ? AddCampMemberOutcome.InvalidUser : AddCampMemberOutcome.Added;
     }
 
-    public async Task<AssignCampRoleOutcome> AddMemberAndAssignRoleInActiveSeasonAsync(
+    public async Task<AssignCampRoleOutcome> AddMemberWithRoleAsync(
         Guid campId, Guid roleDefinitionId, Guid userId, Guid actorUserId,
         CancellationToken cancellationToken = default, Guid? eventSettingsId = null)
     {
@@ -816,11 +821,11 @@ internal sealed class CampService : ICampManagement, ICampLeadDirectory, IUserMe
     /// </summary>
     internal sealed record CampRoleProjection(
         IReadOnlyDictionary<(Guid CampSeasonId, CampSpecialRole Role), IReadOnlyList<Guid>> SpecialRoleUserIds,
-        IReadOnlyDictionary<Guid, IReadOnlyList<string>> MemberRoleNames)
+        IReadOnlyDictionary<Guid, IReadOnlyList<(string Name, int SortOrder)>> MemberRoles)
     {
         public static readonly CampRoleProjection Empty = new(
             new Dictionary<(Guid, CampSpecialRole), IReadOnlyList<Guid>>(),
-            new Dictionary<Guid, IReadOnlyList<string>>());
+            new Dictionary<Guid, IReadOnlyList<(string Name, int SortOrder)>>());
     }
 
     internal async Task<CampRoleProjection> GetRoleProjectionForYearsAsync(
@@ -840,17 +845,15 @@ internal sealed class CampService : ICampManagement, ICampLeadDirectory, IUserMe
                     .Distinct()
                     .ToList());
 
-        var memberRoleNames = assignments
+        var memberRoles = assignments
             .GroupBy(a => a.CampMemberId)
             .ToDictionary(
                 group => group.Key,
-                group => (IReadOnlyList<string>)group
-                    .OrderBy(a => a.Definition.SortOrder)
-                    .ThenBy(a => a.Definition.Name, StringComparer.OrdinalIgnoreCase)
-                    .Select(a => a.Definition.Name)
+                group => (IReadOnlyList<(string Name, int SortOrder)>)group
+                    .Select(a => (a.Definition.Name, a.Definition.SortOrder))
                     .ToList());
 
-        return new CampRoleProjection(specialRoleUserIds, memberRoleNames);
+        return new CampRoleProjection(specialRoleUserIds, memberRoles);
     }
 
     internal static CampInfo CreateCampInfo(
@@ -889,7 +892,6 @@ internal sealed class CampService : ICampManagement, ICampLeadDirectory, IUserMe
         return new CampSeasonInfo(
             season.Id,
             season.CampId,
-            campSlug,
             season.Year,
             season.NameLockDate,
             season.Name,
@@ -925,11 +927,10 @@ internal sealed class CampService : ICampManagement, ICampLeadDirectory, IUserMe
                     m.UserId,
                     m.Status,
                     m.RequestedAt,
-                    m.ConfirmedAt,
                     m.HasEarlyEntry)
                 {
-                    Roles = roles?.MemberRoleNames.TryGetValue(m.Id, out var names) == true
-                        ? names
+                    Roles = roles?.MemberRoles.TryGetValue(m.Id, out var memberRoles) == true
+                        ? memberRoles
                         : []
                 })
                 .ToList(),
@@ -1471,12 +1472,12 @@ internal sealed class CampService : ICampManagement, ICampLeadDirectory, IUserMe
         var rows = (await _repo.GetEventSettingsAsync(cancellationToken)).ToDictionary(r => r.EventSettingsId);
         return [.. (await _settingsService.GetAllEventSettingsAsync(cancellationToken))
             .Where(e => e.Status != EventSettingsStatus.Deleted)
-            .OrderByDescending(e => e.GateOpeningDate)
             .Select(e =>
             {
                 var row = rows.GetValueOrDefault(e.Id);
                 return new CampEventRegistration(e.Id, e.EventName, e.Year, row?.RegistrationOpen == true)
                 {
+                    GateOpeningDate = e.GateOpeningDate,
                     RegistrationInfo = row?.RegistrationInfo,
                 };
             })];
@@ -1761,7 +1762,7 @@ internal sealed class CampService : ICampManagement, ICampLeadDirectory, IUserMe
         // The season change is committed; finish its notifications independently of the request.
         try
         {
-            var pendingUserIds = await _repo.GetPendingRequesterUserIdsForSeasonAsync(seasonId, CancellationToken.None);
+            var pendingUserIds = await _repo.GetPendingRequesterIdsAsync(seasonId, CancellationToken.None);
             if (pendingUserIds.Count == 0) return;
 
             var camp = await _repo.GetByIdAsync(campId, CancellationToken.None);

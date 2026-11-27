@@ -1,6 +1,5 @@
 using Humans.Users.Models;
 using Microsoft.AspNetCore.Hosting;
-using Microsoft.Extensions.Hosting;
 // @e2e: board.spec.ts
 // @e2e: profile.spec.ts
 using Humans.Consent.Contracts;
@@ -15,7 +14,6 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Localization;
 using Humans.Users.Services;
-using Humans.Application.Services.Users.AccountLifecycle;
 
 namespace Humans.Users.Controllers;
 

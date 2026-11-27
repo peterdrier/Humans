@@ -1,5 +1,4 @@
 using Humans.Base.Caching;
-using Humans.Consent.Contracts;
 using Microsoft.Extensions.DependencyInjection;
 using NodaTime;
 using Humans.Consent.Domain;
@@ -124,13 +123,9 @@ internal sealed class CachingLegalDocumentSyncService(
         var version = document.CurrentVersionAt(now);
         return version is null ? null : new(
             version.Id,
-            document.Id,
             document.Name,
             version.LegalDocumentGracePeriodDays,
-            version.VersionNumber,
-            version.EffectiveFrom,
-            version.RequiresReConsent,
-            version.ChangesSummary);
+            version.EffectiveFrom);
     }
 
     private async Task<TResult> WithInnerAsync<TResult>(Func<ILegalDocumentSyncManagement, Task<TResult>> action)

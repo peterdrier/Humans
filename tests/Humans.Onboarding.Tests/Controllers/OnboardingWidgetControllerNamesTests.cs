@@ -1,11 +1,10 @@
+using Humans.Testing;
 using AwesomeAssertions;
 using Humans.Base;
 using Humans.Base.Extensions;
 using Microsoft.AspNetCore.Mvc.ModelBinding.Validation;
 using Microsoft.Extensions.DependencyInjection;
 using System.Security.Claims;
-using Humans.Consent;
-using Humans.Consent.Contracts;
 using Humans.Onboarding.Services;
 using Humans.Users.Contracts;
 using Humans.Settings.Contracts;
@@ -68,7 +67,7 @@ public class OnboardingWidgetControllerNamesTests
     private readonly IUserService _userService = Substitute.For<IUserService>();
 
     private readonly IStringLocalizer<OnboardingResource> _localizer =
-        Substitute.For<IStringLocalizer<OnboardingResource>>();
+        Substitute.For<IStringLocalizer<OnboardingResource>>().AddFormatting();
 
     public OnboardingWidgetControllerNamesTests()
     {
@@ -93,7 +92,7 @@ public class OnboardingWidgetControllerNamesTests
     }
 
     [HumansFact]
-    public async Task Names_Get_ReturnsBlankViewModel_IgnoringOauthClaims()
+    public async Task NamesGet_ReturnsBlankViewModel()
     {
         // OAuth-supplied names are unverified: the prefill reads the saved profile (none here), never claims.
         var userId = Guid.NewGuid();
@@ -139,7 +138,7 @@ public class OnboardingWidgetControllerNamesTests
     }
 
     [HumansFact]
-    public async Task Names_Post_SavesProfile_AndRedirectsToShifts()
+    public async Task NamesPost_ValidModel_RedirectsToShifts()
     {
         var userId = Guid.NewGuid();
         _profileEditor.SaveProfileAsync(
@@ -202,7 +201,7 @@ public class OnboardingWidgetControllerNamesTests
     }
 
     [HumansFact]
-    public async Task Names_Post_RedirectsToIndex_AndDoesNotSave_WhenUserAlreadyNamed()
+    public async Task NamesPost_AlreadyNamed_DoesNotSave()
     {
         // Already named: skip the save, so the full-field overwrite can't clobber the rest of the profile.
         var userId = Guid.NewGuid();
@@ -221,7 +220,7 @@ public class OnboardingWidgetControllerNamesTests
     }
 
     [HumansFact]
-    public async Task Names_Post_SavesProfile_EvenWhenConsentsVacuouslyComplete()
+    public async Task NamesPost_NoConsentsRequired_SavesProfile()
     {
         // Regression for the OnboardingWidget/Names redirect loop: when the
         // Volunteers team has no required+effective legal docs the dispatcher's
@@ -274,7 +273,7 @@ public class OnboardingWidgetControllerNamesTests
     [HumansTheory]
     [InlineData(false)]
     [InlineData(true)]
-    public async Task Names_Post_PreservesExistingProfileFields_WhenFixingDriftedName(bool mergedAlias)
+    public async Task NamesPost_DriftedName_KeepsOtherProfileFields(bool mergedAlias)
     {
         // A data-drifted profile (City/Bio on file but a blank required name) reaches
         // this POST via NameRequiredFilter. SaveProfileAsync is a full-field overwrite,
@@ -301,7 +300,7 @@ public class OnboardingWidgetControllerNamesTests
     }
 
     [HumansFact]
-    public async Task Names_Post_InvalidModel_ReturnsView()
+    public async Task NamesPost_InvalidModel_ReturnsView()
     {
         var ctrl = BuildSut(Guid.NewGuid());
         ctrl.ModelState.AddModelError(nameof(NamesViewModel.BurnerName), "required");

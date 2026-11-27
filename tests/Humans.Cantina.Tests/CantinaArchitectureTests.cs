@@ -1,5 +1,4 @@
 using AwesomeAssertions;
-using Humans.Base.Authorization;
 using Humans.Cantina.Controllers;
 using Humans.Shifts.Contracts;
 using Humans.Cantina.Contracts;
@@ -12,7 +11,7 @@ namespace Humans.Cantina.Tests;
 public class CantinaArchitectureTests
 {
     [HumansFact]
-    public void RosterServiceReadsOtherSectionsThroughPublicContracts()
+    public void RosterService_OtherSections_UsePublicContracts()
     {
         // The invariants doc's load-bearing claim: the cantina never touches the Shifts
         // repository; names come off the cached UserInfo and dietary through Cantina's own service.
@@ -25,7 +24,7 @@ public class CantinaArchitectureTests
     }
 
     [HumansFact]
-    public void RosterDtosCarryNoMedicalConditions()
+    public void RosterDtos_Fields_CarryNoMedicalConditions()
     {
         // GDPR Article 9 boundary, and the reason this section exists in the shape it does:
         // the cantina plans around food, not medical history. MedicalConditions rides on the
@@ -44,7 +43,7 @@ public class CantinaArchitectureTests
     }
 
     [HumansFact]
-    public void RosterIsGatedByTheCantinaAdminPolicyWithNoAnonymousHole()
+    public void Roster_Policy_IsCantinaAdmin()
     {
         // The roster names every on-site human with their allergies; the policy is the only
         // gate, and its role set is also what makes these pages localization-exempt.

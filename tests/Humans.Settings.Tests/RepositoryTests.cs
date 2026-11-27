@@ -9,7 +9,6 @@ namespace Humans.Settings.Tests;
 public sealed class RepositoryTests : IDisposable
 {
     private readonly SettingsDbContext _seedContext;
-    private readonly TestDbContextFactory<SettingsDbContext> _factory;
     private readonly Repository _repository;
 
     public RepositoryTests()
@@ -18,9 +17,9 @@ public sealed class RepositoryTests : IDisposable
             .UseInMemoryDatabase(Guid.NewGuid().ToString())
             .Options;
 
-        _factory = new TestDbContextFactory<SettingsDbContext>(options);
-        _seedContext = _factory.CreateDbContext();
-        _repository = new Repository(_factory);
+        var factory = new TestDbContextFactory<SettingsDbContext>(options);
+        _seedContext = factory.CreateDbContext();
+        _repository = new Repository(factory);
     }
 
     public void Dispose()
@@ -31,7 +30,7 @@ public sealed class RepositoryTests : IDisposable
     [HumansTheory]
     [Xunit.InlineData(nameof(EventSettings.EarlyEntryCapacity))]
     [Xunit.InlineData(nameof(EventSettings.BarriosEarlyEntryAllocation))]
-    public void EventDictionaryComparer_EqualMapsHaveEqualHashesRegardlessOfInsertionOrder(string propertyName)
+    public void EventDictionaryComparer_EqualMaps_HaveEqualHashes(string propertyName)
     {
         var comparer = _seedContext.Model.FindEntityType(typeof(EventSettings))!
             .FindProperty(propertyName)!.GetValueComparer();
@@ -174,7 +173,7 @@ public sealed class RepositoryTests : IDisposable
     }
 
     [HumansFact]
-    public async Task AnyOtherActiveEventSettingsAsync_IgnoresInactiveAndDeletedRows()
+    public async Task AnyOtherActiveEventSettingsAsync_InactiveOrDeletedRows_Ignored()
     {
         _seedContext.EventSettings.Add(MakeEvent(Guid.NewGuid(), EventSettingsStatus.Inactive));
         _seedContext.EventSettings.Add(MakeEvent(Guid.NewGuid(), EventSettingsStatus.Deleted));
@@ -187,30 +186,7 @@ public sealed class RepositoryTests : IDisposable
     }
 
     [HumansFact]
-    public async Task DeleteEventSettingsAsync_RemovesOnlyTheGivenRow()
-    {
-        var id = Guid.NewGuid();
-        var other = Guid.NewGuid();
-        _seedContext.EventSettings.Add(MakeEvent(id, EventSettingsStatus.Active));
-        _seedContext.EventSettings.Add(MakeEvent(other, EventSettingsStatus.Inactive));
-        _seedContext.Settings.Add(new Setting { Key = "Untouched", Value = "true" });
-        await _seedContext.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
-
-        var deleted = await _repository.DeleteEventSettingsAsync(
-            id, Xunit.TestContext.Current.CancellationToken);
-
-        deleted.Should().Be(1);
-        var remainingEvents = await _seedContext.EventSettings.AsNoTracking()
-            .Select(e => e.Id)
-            .ToListAsync(Xunit.TestContext.Current.CancellationToken);
-        remainingEvents.Should().ContainSingle().Which.Should().Be(other);
-        var remainingSetting = await _seedContext.Settings.AsNoTracking()
-            .SingleAsync(s => s.Key == "Untouched", Xunit.TestContext.Current.CancellationToken);
-        remainingSetting.Value.Should().Be("true");
-    }
-
-    [HumansFact]
-    public async Task UpsertEventSettingsAsync_UpdatesEarlyEntryStartOffsetOnAnExistingRow()
+    public async Task UpsertEventSettingsAsync_ExistingRow_UpdatesEarlyEntryOffset()
     {
         var id = Guid.NewGuid();
         _seedContext.EventSettings.Add(MakeEvent(id, EventSettingsStatus.Active));
@@ -231,7 +207,7 @@ public sealed class RepositoryTests : IDisposable
     }
 
     [HumansFact]
-    public async Task UpsertEventSettingsAsync_UpdatesIsOffSeasonOnAnExistingRow()
+    public async Task UpsertEventSettingsAsync_ExistingRow_UpdatesIsOffSeason()
     {
         var id = Guid.NewGuid();
         _seedContext.EventSettings.Add(MakeEvent(id, EventSettingsStatus.Active));
@@ -249,16 +225,7 @@ public sealed class RepositoryTests : IDisposable
     }
 
     [HumansFact]
-    public async Task DeleteEventSettingsAsync_ReturnsZeroWhenRowDoesNotExist()
-    {
-        var deleted = await _repository.DeleteEventSettingsAsync(
-            Guid.NewGuid(), Xunit.TestContext.Current.CancellationToken);
-
-        deleted.Should().Be(0);
-    }
-
-    [HumansFact]
-    public async Task SetActiveEventSettingsAsync_SwapsTheActiveRowInOneSave()
+    public async Task SetActiveEventSettingsAsync_NewRow_SwapsInOneSave()
     {
         var ct = Xunit.TestContext.Current.CancellationToken;
         var oldId = Guid.NewGuid();

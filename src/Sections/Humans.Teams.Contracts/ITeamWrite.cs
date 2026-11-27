@@ -25,14 +25,6 @@ public interface ITeamWrite : IApplicationService
     Task EnqueueGoogleResyncForUserTeamsAsync(
         Guid userId, CancellationToken cancellationToken = default);
 
-    /// <summary>
-    /// Requires the full Admin role. Unlink Google resources first: <c>TeamGoogleResource → Team</c> is
-    /// <c>OnDelete(Restrict)</c>.
-    /// </summary>
-    Task<bool> PermanentlyDeleteTeamAsync(
-        Guid teamId,
-        CancellationToken cancellationToken = default);
-
     /// <summary>Also removes their role assignments. Returns the number of memberships ended.</summary>
     Task<int> RevokeAllMembershipsAsync(Guid userId, CancellationToken cancellationToken = default);
 

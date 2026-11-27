@@ -205,7 +205,8 @@
   <data name="Expenses_SelectAccount" xml:space="preserve"><value>— Select an account —</value></data>
   <data name="Expenses_AccountGroupBudgetCategories" xml:space="preserve"><value>Budget categories</value></data>
   <data name="Expenses_AccountGroupOther" xml:space="preserve"><value>Other accounts</value></data>
-  <data name="Expenses_Validation_AccountNotFound" xml:space="preserve"><value>Account not found or no longer available.</value></data>
+  <data name="Expenses_Validation_AccountNotFound" xml:space="preserve"><value>That account does not exist.</value></data>
+  <data name="Expenses_Validation_AccountInactive" xml:space="preserve"><value>That account is no longer open for expenses.</value></data>
   <data name="Expenses_OptionalMaxChars" xml:space="preserve"><value>(optional, max 500 chars)</value></data>
   <data name="Expenses_SubjectPlaceholder" xml:space="preserve"><value>Describe the expense…</value></data>
   <data name="Expenses_CreateDraft" xml:space="preserve"><value>Create Draft</value></data>
@@ -304,11 +305,16 @@
   <data name="Expenses_Preapprovals_Revoked" xml:space="preserve"><value>This pre-approval was revoked. The report cannot be approved against it: once rejected, the pre-approval can be dropped or swapped on the draft.</value></data>
   <data name="Expenses_Preapprovals_Column" xml:space="preserve"><value>Pre-approval</value></data>
   <data name="Expenses_Preapprovals_RevokedBadge" xml:space="preserve"><value>revoked</value></data>
-  <data name="Expenses_Validation_PreapprovalNotClaimable" xml:space="preserve"><value>That pre-approval cannot be filed against: it is not the member’s, not open, or past its claim deadline.</value></data>
   <data name="Expenses_Validation_PreapprovalLocked" xml:space="preserve"><value>The pre-approval and account of a submitted report cannot be changed.</value></data>
   <data name="Expenses_Validation_PreapprovalRevoked" xml:space="preserve"><value>The pre-approval was revoked; this report cannot be submitted against it.</value></data>
   <data name="Expenses_Validation_PreapprovalDeadlinePassed" xml:space="preserve"><value>The claim deadline {0} has passed; this report can no longer be submitted against the pre-approval.</value></data>
-  <data name="Expenses_Validation_PreapprovalUnavailable" xml:space="preserve"><value>The pre-approval is no longer available: it was claimed by another report or already used.</value></data>
+  <data name="Expenses_Validation_PreapprovalNotFound" xml:space="preserve"><value>That pre-approval no longer exists.</value></data>
+  <data name="Expenses_Validation_PreapprovalNotTheirs" xml:space="preserve"><value>That pre-approval belongs to someone else.</value></data>
+  <data name="Expenses_Validation_PreapprovalNotGranted" xml:space="preserve"><value>That pre-approval has not been granted yet.</value></data>
+  <data name="Expenses_Validation_PreapprovalDeclined" xml:space="preserve"><value>That pre-approval was declined.</value></data>
+  <data name="Expenses_Validation_PreapprovalClaimedElsewhere" xml:space="preserve"><value>Another report already holds that pre-approval.</value></data>
+  <data name="Expenses_Validation_PreapprovalUsed" xml:space="preserve"><value>That pre-approval was already used by an approved report.</value></data>
+  <data name="Expenses_Validation_PreapprovalNotHeld" xml:space="preserve"><value>This report no longer holds that pre-approval.</value></data>
   <data name="Expenses_Detail_RejectedGuidance" xml:space="preserve"><value>You can fix this report without starting over: open any line below to edit it, replace its receipt or remove it, then submit again.</value></data>
   <data name="Expenses_Detail_RejectedGuidanceLink" xml:space="preserve"><value>Go to the lines</value></data>
   <data name="Expenses_Submitter" xml:space="preserve"><value>Submitter</value></data>
@@ -318,4 +324,7 @@
   <data name="Expenses_Validation_AmountPrecision" xml:space="preserve"><value>Enter an amount with no more than two decimal places.</value></data>
   <data name="Expenses_Flash_DraftSavedFollowupFailed" xml:space="preserve"><value>The draft was saved, but the request could not be completed. Review it before continuing.</value></data>
   <data name="Expenses_Flash_DraftOutcomeUnknown" xml:space="preserve"><value>We could not confirm whether the draft was saved. Check existing reports before creating another draft.</value></data>
+  <data name="Expenses_Permission_Endorse_Title" xml:space="preserve"><value>Endorse expense claims</value></data>
+  <data name="Expenses_Permission_Endorse_Blurb" xml:space="preserve"><value>Endorse, reject and decline lines on expense claims against the team's budget.</value></data>
+  <data name="Expenses_Validation_SubmitterUnavailable" xml:space="preserve"><value>The submitter is no longer available.</value></data>
 </root>

@@ -1,7 +1,6 @@
 using System.Text.RegularExpressions;
 using Humans.Base.Extensions;
 using Humans.Tickets.Contracts;
-using Humans.Tickets.Services;
 using Microsoft.EntityFrameworkCore;
 using NodaTime;
 using Humans.Tickets.Domain;
@@ -173,7 +172,7 @@ internal sealed class TicketRepository(IDbContextFactory<TicketsDbContext> facto
             .AsNoTracking()
             .Where(a => a.MatchedUserId != null && a.VendorEventId == vendorEventId)
             .Select(a => new MatchedAttendeeRow(
-                a.VendorTicketId, a.MatchedUserId!.Value, a.Status, a.CheckedInAt))
+                a.MatchedUserId!.Value, a.Status, a.CheckedInAt))
             .ToListAsync(ct);
     }
 
@@ -307,13 +306,15 @@ internal sealed class TicketRepository(IDbContextFactory<TicketsDbContext> facto
         string vendorEventId, CancellationToken ct = default)
     {
         await using var ctx = await factory.CreateDbContextAsync(ct);
-        return await ctx.TicketAttendees
+        var attendees = await ctx.TicketAttendees
             .Where(a =>
                 a.VendorEventId == vendorEventId &&
                 a.MatchedUserId == null &&
+                a.PiiErasedAt == null &&
                 !string.IsNullOrEmpty(a.AttendeeEmail) &&
                 ActiveAttendeeStatuses.Contains(a.Status))
             .ToListAsync(ct);
+        return attendees.Where(a => !TicketPiiTombstone.IsTombstoned(a.AttendeeName, a.AttendeeEmail)).ToList();
     }
 
     public async Task UpdateOrderVatAmountsAsync(
@@ -541,7 +542,6 @@ internal sealed class TicketRepository(IDbContextFactory<TicketsDbContext> facto
             .Take(count)
             .Select(o => new RecentOrder
             {
-                Id = o.Id,
                 BuyerName = o.BuyerName,
                 TicketCount = o.Attendees.Count,
                 Amount = o.TotalAmount,
@@ -693,7 +693,6 @@ internal sealed class TicketRepository(IDbContextFactory<TicketsDbContext> facto
                 BuyerEmail = o.BuyerEmail,
                 AttendeeCount = o.Attendees.Count,
                 TotalAmount = o.TotalAmount,
-                Currency = o.Currency,
                 DiscountCode = o.DiscountCode,
                 DiscountAmount = o.DiscountAmount,
                 DonationAmount = o.DonationAmount,
@@ -703,7 +702,6 @@ internal sealed class TicketRepository(IDbContextFactory<TicketsDbContext> facto
                 StripeFee = o.StripeFee,
                 ApplicationFee = o.ApplicationFee,
                 PaymentStatus = o.PaymentStatus,
-                VendorDashboardUrl = o.VendorDashboardUrl,
                 MatchedUserId = o.MatchedUserId,
             })
             .ToListAsync(ct);

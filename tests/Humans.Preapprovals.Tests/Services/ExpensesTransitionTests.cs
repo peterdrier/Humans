@@ -1,6 +1,5 @@
 using System.Transactions;
 using AwesomeAssertions;
-using Humans.AuditLog.Contracts;
 using Humans.Notifications.Contracts;
 using Humans.Preapprovals.Contracts;
 using Humans.Preapprovals.Domain;
@@ -63,7 +62,7 @@ public sealed class ExpensesTransitionTests : PreapprovalsTestHarness
     }
 
     [HumansFact]
-    public async Task GetGrants_CarriesProgramManagers_UnderTheIdsTheyWereNamedWith()
+    public async Task GetGrants_ProgramManagers_KeepNamedIds()
     {
         var archivedId = Guid.NewGuid();
         var mine = await SeedProgramAsync(status: ProgramStatus.Closed, managers: archivedId);
@@ -78,7 +77,7 @@ public sealed class ExpensesTransitionTests : PreapprovalsTestHarness
     }
 
     [HumansFact]
-    public async Task Claim_Open_StampsAndHolds_ResolvesFileBy_Audits()
+    public async Task Claim_OpenGrant_IsHeld()
     {
         var program = await SeedProgramAsync(perPerson: 300m);
         var person = SeedUser("Person");
@@ -97,7 +96,7 @@ public sealed class ExpensesTransitionTests : PreapprovalsTestHarness
     }
 
     [HumansFact]
-    public async Task Claim_ByHoldingReport_IsIdempotent_EvenAfterDeadline()
+    public async Task Claim_ByHoldingReport_IsIdempotent()
     {
         var program = await SeedProgramAsync(claimBy: Today.PlusDays(10));
         var person = SeedUser("Person");
@@ -130,7 +129,7 @@ public sealed class ExpensesTransitionTests : PreapprovalsTestHarness
     }
 
     [HumansFact]
-    public async Task Claim_AfterDeadline_ReturnsRefusal_AndGrantStaysOpen()
+    public async Task Claim_AfterDeadline_IsRefused()
     {
         var program = await SeedProgramAsync(claimBy: Today.PlusDays(-1));
         var grant = await SeedGrantAsync(program);
@@ -179,7 +178,7 @@ public sealed class ExpensesTransitionTests : PreapprovalsTestHarness
     }
 
     [HumansFact]
-    public async Task Release_ByHoldingReport_OpensAgain_KeepsReportId_Notifies_Audits()
+    public async Task Release_ByHoldingReport_OpensAgain()
     {
         var program = await SeedProgramAsync();
         var person = SeedUser("Person");
@@ -197,7 +196,7 @@ public sealed class ExpensesTransitionTests : PreapprovalsTestHarness
     }
 
     [HumansFact]
-    public async Task Consume_ByHoldingReport_Terminal_Audits()
+    public async Task Consume_ByHoldingReport_IsTerminal()
     {
         var program = await SeedProgramAsync();
         var person = SeedUser("Person");
@@ -235,7 +234,7 @@ public sealed class ExpensesTransitionTests : PreapprovalsTestHarness
     }
 
     [HumansFact]
-    public async Task RevokedWhileClaimed_RefusesClaimAndConsume_WithRevokedReason()
+    public async Task Claim_RevokedWhileClaimed_IsRefused()
     {
         var program = await SeedProgramAsync();
         var manager = SeedUser("Manager");

@@ -2,7 +2,8 @@
 @using Microsoft.AspNetCore.Html
 @model Humans.AuditLog.Models.AuditLogListViewModel
 
-<page-header title="Audit Log">
+<page-header title="Audit log">
+    <a asp-action="Actions" class="btn btn-outline-secondary">Actions</a>
     <form asp-controller="Monitor" asp-action="CheckDriveActivity" method="post" class="d-inline" id="checkForm"
           authorize-policy="@Humans.Base.Authorization.PolicyNames.AdminOnly">
         @Html.AntiForgeryToken()
@@ -50,7 +51,7 @@
 else
 {
     Func<AuditEvent, IHtmlContent> whenCell =
-        @<text><span class="text-nowrap">@item.OccurredAt.ToInvariantTimestamp()</span></text>;
+        @<text><span class="text-nowrap">@item.OccurredAt.ToInvariantTimestamp()</span>@if (item.Kept == AuditKept.RetentionPeriod) { <span class="badge text-bg-light border ms-1" title="Deleted once older than the retention period">temporary</span> }</text>;
     Func<AuditEvent, IHtmlContent> actorCell = @<text>
         @if (!item.ActorUserId.HasValue)
         {

@@ -164,6 +164,9 @@ internal sealed class ProfileViewModel
 
     /// <summary>The viewer is a coordinator or holds a privileged shift-management role.</summary>
     public bool CanViewSentMessages { get; set; }
+
+    /// <summary>Null unless the viewer may reveal medical conditions; then whether any are on file.</summary>
+    public bool? HasMedicalConditions { get; set; }
 }
 
 internal sealed class TeamMembershipViewModel
@@ -238,7 +241,6 @@ internal sealed class ContactFieldEditViewModel
     [BindRequired]
     public ContactFieldVisibility Visibility { get; set; } = ContactFieldVisibility.AllActiveProfiles;
 
-    public int DisplayOrder { get; set; }
 }
 
 internal sealed class VolunteerHistoryEntryViewModel
@@ -332,7 +334,6 @@ internal sealed class ProfileLanguageEditViewModel
 
 internal sealed class ProfileLanguageDisplayViewModel
 {
-    public string LanguageCode { get; set; } = string.Empty;
     public string LanguageName { get; set; } = string.Empty;
     public LanguageProficiency Proficiency { get; set; }
 

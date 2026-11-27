@@ -1,3 +1,4 @@
+using Humans.Testing;
 using Humans.Shifts.Domain;
 using AwesomeAssertions;
 using System.Security.Claims;
@@ -47,9 +48,8 @@ public class ShiftsControllerUserActiveSignupsTests
     private readonly IVolunteerTrackingManagement _volunteerTracking = Substitute.For<IVolunteerTrackingManagement>();
     private readonly IShiftRowView _shiftView = Substitute.For<IShiftRowView>();
     private readonly ITeamService _teamService = Substitute.For<ITeamService>();
-    private readonly IAuditLogService _auditLog = Substitute.For<IAuditLogService>();
     private readonly IUserService _userService = Substitute.For<IUserService>();
-    private readonly IStringLocalizer<ShiftsResource> _localizer = Substitute.For<IStringLocalizer<ShiftsResource>>();
+    private readonly IStringLocalizer<ShiftsResource> _localizer = Substitute.For<IStringLocalizer<ShiftsResource>>().AddFormatting();
     private readonly IClock _clock = Substitute.For<IClock>();
     private readonly Guid _userId = Guid.NewGuid();
 
@@ -62,7 +62,7 @@ public class ShiftsControllerUserActiveSignupsTests
         _burnSettings.GetByIdAsync(ActiveBurnId, Arg.Any<CancellationToken>()).Returns(ActiveBurn);
         _burnSettings.GetByIdAsync(PastBurnId, Arg.Any<CancellationToken>()).Returns(PastBurn);
 
-        _shiftMgmt.GetCoordinatorTeamIdsAsync(_userId, Arg.Any<CancellationToken>()).Returns([]);
+        _shiftMgmt.CanManageOrApproveAnyShiftsAsync(_userId, Arg.Any<CancellationToken>()).Returns(false);
         _shiftMgmt.GetBrowseShiftsAsync(Arg.Any<ShiftBrowseQuery>(), Arg.Any<CancellationToken>()).Returns([]);
         _shiftMgmt.GetTagsAsync().Returns([]);
         _shiftMgmt.GetDepartmentCoveragePiesAsync(
@@ -89,7 +89,11 @@ public class ShiftsControllerUserActiveSignupsTests
         _signupService.GetByUserAsync(_userId, ct: Arg.Any<CancellationToken>()).Returns([]);
 
         if (string.Equals(boundary, "coordinators", StringComparison.Ordinal))
-            _shiftMgmt.GetCoordinatorTeamIdsAsync(_userId, Arg.Any<CancellationToken>()).ReturnsForAnyArgs(ReadAsync<Guid>);
+            _shiftMgmt.CanManageOrApproveAnyShiftsAsync(_userId, Arg.Any<CancellationToken>()).ReturnsForAnyArgs(call =>
+            {
+                call.Arg<CancellationToken>().ThrowIfCancellationRequested();
+                return Task.FromResult(false);
+            });
         else if (string.Equals(boundary, "signups", StringComparison.Ordinal))
             _signupService.GetByUserAsync(_userId, ct: Arg.Any<CancellationToken>()).ReturnsForAnyArgs(ReadAsync<ShiftSignupSummary>);
         else if (string.Equals(boundary, "browse", StringComparison.Ordinal))
@@ -235,7 +239,7 @@ public class ShiftsControllerUserActiveSignupsTests
     public async Task BailRange_LocalizesRefusalKeysInTheMembersCulture()
     {
         const string key = "Shifts_BailRange_NotAuthorized";
-        using var scope = new Humans.Base.Extensions.CultureScope(Humans.Base.Extensions.CultureCatalog.DefaultCultureCode);
+        using var scope = new Base.Extensions.CultureScope(Base.Extensions.CultureCatalog.DefaultCultureCode);
         var resources = new System.Resources.ResourceManager(typeof(ShiftsResource));
         var translated = resources.GetString(key, System.Globalization.CultureInfo.CurrentUICulture)!;
         _localizer[key].Returns(new LocalizedString(key, translated));
@@ -306,7 +310,7 @@ public class ShiftsControllerUserActiveSignupsTests
         var shift = new Shift { Id = Guid.NewGuid(), DayOffset = dayOffset, StartTime = start, Duration = Duration.FromHours(4) };
         return new ShiftSignupSummary(
             Id: Guid.NewGuid(), ShiftId: shift.Id, SignupBlockId: null, Status: status,
-            RotaId: Guid.NewGuid(), RotaName: rotaName, RotaDescription: null, RotaPracticalInfo: null,
+            RotaName: rotaName, RotaDescription: null, RotaPracticalInfo: null,
             TeamId: Guid.NewGuid(), EventSettingsId: burnId,
             Date: burn.GateOpeningDate.PlusDays(dayOffset), Period: ShiftPeriod.Event,
             IsAllDay: false, WindowStart: start, WindowEnd: start.PlusHours(4), DurationHours: 4,

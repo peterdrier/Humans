@@ -1,8 +1,6 @@
 using Humans.Base.Extensions;
 using System.Globalization;
 using System.Security.Claims;
-using Humans.Application.Services.Users;
-using Humans.Application.Services.Users.AccountLifecycle;
 using Humans.Base;
 using Humans.Base.Authorization;
 using Humans.Base.Configuration;
@@ -144,8 +142,6 @@ public sealed class Section :
         services.AddScoped<IHumanLifecycleService, HumanLifecycleService>();
         services.AddScoped<INonCompliantMemberSuspension, NonCompliantMemberSuspension>();
 
-        // ExternalLoginService keeps its Humans.Application.Services.Users namespace: HUM0005
-        // names it by full name as the sole caller of ReconcileOAuthIdentityAsync.
         services.AddScoped<AccountDeletionService>();
         services.AddScoped<IAccountDeletionService>(sp => sp.GetRequiredService<AccountDeletionService>());
         services.AddScoped<IExternalLoginService, ExternalLoginService>();
@@ -320,7 +316,7 @@ public sealed class Section :
             policy.RequireRole(UsersRoles.UsersAdmin, RoleNames.Admin));
 
         options.AddPolicy(UsersPolicies.MedicalDataViewer, policy =>
-            policy.RequireRole(RoleNames.Admin, RoleNames.Board, ShiftsRoles.ShiftsNoInfo));
+            policy.RequireRole(RoleNames.Admin, RoleNames.Board));
     }
 
     async ValueTask<IEnumerable<ThingsToDoEntry>> ISectionThingsToDo.EntriesAsync(
@@ -364,8 +360,7 @@ public sealed class Section :
         {
             Description = complete
                 ? localizer["Todo_Profile_Done"].Value
-                : string.Format(CultureInfo.CurrentCulture,
-                    localizer["Dashboard_ProfileCompletionPercent"].Value, percent),
+                : localizer["Dashboard_ProfileCompletionPercent", percent],
             IsDone = complete,
             ActionText = localizer["Todo_Profile_Action"].Value,
             PercentComplete = complete ? null : percent,

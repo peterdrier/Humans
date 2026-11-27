@@ -1,4 +1,3 @@
-using Humans.Users.Domain;
 using Humans.Users.Contracts;
 using NodaTime;
 using Humans.Base.Interfaces.Repositories;
@@ -17,7 +16,7 @@ internal partial interface IUserRepository : IRepository
 
     Task<bool> SetPreferredLanguageAsync(Guid userId, string preferredLanguage, CancellationToken ct = default);
 
-    Task<bool> SetLastLoginAsync(Guid userId, Instant at, CancellationToken ct = default);
+    Task<bool> SetLastSignInAsync(Guid userId, Instant at, CancellationToken ct = default);
 
     /// <summary>True only when this call set the mark; false when already marked or the user doesn't exist.</summary>
     Task<bool> SetMarkedFakeAsync(Guid userId, Instant at, CancellationToken ct = default);
@@ -52,14 +51,6 @@ internal partial interface IUserRepository : IRepository
         CancellationToken ct = default);
 
     Task<IReadOnlyList<Guid>> GetUserIdsWithExternalLoginsAsync(CancellationToken ct = default);
-
-    /// <summary>
-    /// Deletes the users and their external logins. The caller must first clear cross-section
-    /// references and UserEmail rows.
-    /// </summary>
-    Task<int> DeleteUsersAsync(
-        IReadOnlyCollection<Guid> userIds,
-        CancellationToken ct = default);
 
     /// <summary>External logins per user; users without any are absent.</summary>
     Task<IReadOnlyDictionary<Guid, IReadOnlyList<(string Provider, string ProviderKey)>>>

@@ -1,5 +1,4 @@
 using Humans.Users.Data;
-using Humans.Application.Services.Users.AccountLifecycle;
 using Humans.Auth.Contracts;
 using Humans.Gdpr.Contracts;
 using Humans.Teams.Contracts;
@@ -50,7 +49,7 @@ public class ProcessAccountDeletionsJobTests : IDisposable
 
         _accountDeletionService = new AccountDeletionService(
             _userService, Substitute.For<IUserEmailService>(), Substitute.For<ITeamWrite>(),
-            Substitute.For<IRoleAssignmentWrite>(), _gdprService, _tickets,
+            Substitute.For<ISystemRoleWrite>(), _gdprService, _tickets,
             Substitute.For<IUserInfoSliceRefresher>(), _auditLogService, _emailService,
             _emailMessages, _clock, Substitute.For<IHostEnvironment>(), NullLogger<AccountDeletionService>.Instance);
 
@@ -164,7 +163,7 @@ public class ProcessAccountDeletionsJobTests : IDisposable
 
         var failure = await run.Should().ThrowAsync<OperationCanceledException>();
         failure.Which.CancellationToken.Should().Be(cancellation.Token);
-        await _emailService.DidNotReceiveWithAnyArgs().SendAsync(default!, default);
+        await _emailService.DidNotReceiveWithAnyArgs().SendAsync(default!);
     }
 
     [HumansFact]

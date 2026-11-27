@@ -2,7 +2,6 @@ using Humans.Containers;
 using Microsoft.Extensions.Localization;
 using Humans.Base.Authorization;
 using Humans.Camps.Contracts;
-using Humans.CityPlanning.Contracts;
 using Humans.CityPlanning.Services;
 using Humans.Containers.Contracts;
 using Humans.Base.Extensions;
@@ -94,7 +93,7 @@ internal sealed class CityPlanningApiController(
             return BadRequest();
         }
 
-        return await BroadcastAndReturnAsync(campSeasonId, saved, cancellationToken);
+        return await BroadcastAsync(campSeasonId, saved, cancellationToken);
     }
 
     /// <summary>Map admins only.</summary>
@@ -122,11 +121,11 @@ internal sealed class CityPlanningApiController(
             return BadRequest();
         }
 
-        return await BroadcastAndReturnAsync(campSeasonId, restored, cancellationToken);
+        return await BroadcastAsync(campSeasonId, restored, cancellationToken);
     }
 
     /// <summary>A broadcast failure is logged and never fails the save that already happened.</summary>
-    private async Task<IActionResult> BroadcastAndReturnAsync(
+    private async Task<IActionResult> BroadcastAsync(
         Guid campSeasonId, CampPolygonSaveResult polygon, CancellationToken cancellationToken)
     {
         try

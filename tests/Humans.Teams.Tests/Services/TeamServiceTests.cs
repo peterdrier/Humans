@@ -1,4 +1,4 @@
-using Humans.Teams;
+using Humans.Testing;
 using Microsoft.Extensions.Localization;
 using Humans.Roles.Contracts;
 using System.Globalization;
@@ -10,8 +10,6 @@ using Humans.Base.Extensions;
 // User.DisplayName is Obsolete; the seeders still set it.
 #pragma warning disable CS0618
 using AwesomeAssertions;
-using Humans.Base.Caching;
-using Humans.Base.Interfaces.Caching;
 using Humans.AuditLog.Contracts;
 using Humans.Auth.Contracts;
 using Humans.Auth.Data;
@@ -19,14 +17,11 @@ using Humans.Auth.Services;
 using Humans.Base.Constants;
 using Humans.Base.Enums;
 using Humans.Email.Contracts;
-using Humans.EarlyEntry.Contracts;
 using Humans.Notifications.Contracts;
 using Humans.Google.Contracts;
 using Humans.Google.Data;
 using Humans.Google.Services;
-using Humans.Settings.Contracts;
 using Humans.Teams.Contracts;
-using Humans.Teams.Models;
 using Humans.Teams.Data;
 using Humans.Teams.Domain;
 using Humans.Teams.Services;
@@ -34,19 +29,17 @@ using Humans.Teams.Tests.Infrastructure;
 using Humans.Users.Contracts;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Diagnostics;
-using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Logging.Abstractions;
 using NodaTime;
 using Microsoft.Extensions.DependencyInjection;
 using NSubstitute;
-using RoleAssignmentService = Humans.Auth.Services.RoleAssignmentService;
+using SystemRoleService = Humans.Auth.Services.SystemRoleService;
 using TeamService = Humans.Teams.Services.TeamService;
 
 namespace Humans.Teams.Tests.Services;
 
 public sealed class TeamServiceTests : TeamsTestHarness
 {
-
     public enum CanonicalNotice { JoinRequest, MemberJoined, Approved, Rejected, Added, Removed }
 
     [HumansTheory]
@@ -92,12 +85,36 @@ public sealed class TeamServiceTests : TeamsTestHarness
             ? new[] { live, other } : [live]);
     }
 
+    [HumansTheory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task SendAddedToTeamEmail_Tombstone_SkipsWelcome(bool legacy)
+    {
+        var id = Guid.NewGuid();
+        var user = UserInfo.Create(new User { Id = id, Email = legacy ? "erased@deleted.local" : "member@example.org" },
+            [new UserEmail { UserId = id, Email = "member@example.org", IsVerified = true, IsPrimary = true }], [], null);
+        if (!legacy) user = user with { State = UserState.Deleted };
+        var users = Substitute.For<IUserService>();
+        users.GetUserInfosAsync(Arg.Any<IEnumerable<Guid>>(), Arg.Any<CancellationToken>())
+            .Returns(new Dictionary<Guid, UserInfo> { [id] = user });
+        var provider = new ServiceLocatorBuilder().With(users).With<ITeamResourceService>(_teamResourceService)
+            .With(_emailService).With(TestTeamsEmails.Create()).Build();
+        var service = new TeamService(Substitute.For<ITeamRepository>(), AuditLog, Notifier,
+            AdminAuthorization, provider, Clock, NullLogger<TeamService>.Instance);
+        var team = new Team { Id = Guid.NewGuid(), Name = "Team", Slug = "team" };
+
+        await service.SendAddedToTeamEmailAsync(id, team, TestContext.Current.CancellationToken);
+
+        _emailService.ReceivedCalls().Should().BeEmpty();
+        Notifier.ReceivedCalls().Should().BeEmpty();
+        await _teamResourceService.DidNotReceiveWithAnyArgs().GetTeamResourcesAsync(default);
+    }
+
     private readonly TeamService _service;
     private readonly ITeamManagementService _teamCache = Substitute.For<ITeamManagementService>();
     private readonly TeamPageService _pages;
     private readonly IUserService _userService;
     private readonly IEmailService _emailService = Substitute.For<IEmailService>();
-    private readonly RoleAssignmentService _roleAssignmentService;
     private readonly ITeamResourceManagement _teamResourceService;
     private readonly IGoogleSyncWrite _googleSyncService = Substitute.For<IGoogleSyncWrite>();
     private readonly IGoogleService _googleIdentities = Substitute.For<IGoogleService>();
@@ -106,14 +123,14 @@ public sealed class TeamServiceTests : TeamsTestHarness
 
     public TeamServiceTests()
     {
-        _roleAssignmentService = new RoleAssignmentService(
-            new RoleAssignmentRepository(AuthDbFactory),
+        var systemRoleService = new SystemRoleService(
+            new SystemRoleRepository(AuthDbFactory),
             Substitute.For<IUserService>(),
             AuditLog,
             Notifier,
-            new CachingRoleAssignmentService(
+            new CachingSystemRoleService(
                 Substitute.For<IServiceScopeFactory>(), Clock,
-                NullLogger<CachingRoleAssignmentService>.Instance),
+                NullLogger<CachingSystemRoleService>.Instance),
             new RoleCatalog(new RoleDefinition[]
             {
                 new(RoleNames.Admin, "Admin", "", ""),
@@ -121,7 +138,7 @@ public sealed class TeamServiceTests : TeamsTestHarness
                 new(TeamsRoles.TeamsAdmin, "Teams Admin", "", ""),
             }),
             Clock,
-            NullLogger<RoleAssignmentService>.Instance);
+            NullLogger<SystemRoleService>.Instance);
         _teamResourceService = Substitute.For<ITeamResourceManagement>();
         _teamResourceService
             .GetTeamResourceSummariesAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
@@ -132,10 +149,12 @@ public sealed class TeamServiceTests : TeamsTestHarness
         var userService = _userService = NewDbBackedUserService();
         var googleOutboxService = new GoogleSyncOutboxService(
             new GoogleSyncOutboxRepository(GoogleDbFactory));
+        var permissions = TestTeamPermissions.Create(systemRoleService, () => _service!);
         var serviceProvider = new ServiceLocatorBuilder()
+            .With(permissions)
             .With<ITeamManagement>()
             .With(_teamCache)
-            .With<IRoleAssignmentService>(_roleAssignmentService)
+            .With<ISystemRoleService>(systemRoleService)
             .With(_emailService)
             .With(TestTeamsEmails.Create())
             .With(_systemTeamSync)
@@ -157,7 +176,7 @@ public sealed class TeamServiceTests : TeamsTestHarness
             Clock,
             NullLogger<TeamService>.Instance);
         _pages = new TeamPageService(
-            _service, _teamResourceService, _roleAssignmentService);
+            _service, _teamResourceService, systemRoleService, permissions);
     }
 
     [HumansTheory]
@@ -1284,7 +1303,7 @@ public sealed class TeamServiceTests : TeamsTestHarness
             .AddKeyedScoped<ITeamManagementService>(CachingTeamService.InnerServiceKey, (_, _) => _service)
             .BuildServiceProvider();
         var cached = new CachingTeamService(provider.GetRequiredService<IServiceScopeFactory>(),
-            NullLogger<CachingTeamService>.Instance, Substitute.For<IStringLocalizer<TeamsResource>>());
+            NullLogger<CachingTeamService>.Instance, Substitute.For<IStringLocalizer<TeamsResource>>().AddFormatting());
         await cached.GetTeamsAsync(TestContext.Current.CancellationToken);
         _teamCache.When(t => t.InvalidateActiveTeamsCache()).Do(_ => cached.InvalidateActiveTeamsCache());
         TeamInfo? observedTeam = null;
@@ -1777,7 +1796,7 @@ public sealed class TeamServiceTests : TeamsTestHarness
     public async Task RemoveMemberAsync_Coordinator_SyncsCoordinatorsSystemTeam()
     {
         var actor = SeedUser(displayName: "Actor");
-        SeedRoleAssignment(actor.Id, RoleNames.Admin,
+        SeedSystemRole(actor.Id, RoleNames.Admin,
             Clock.GetCurrentInstant() - Duration.FromDays(1));
         var target = SeedUser(displayName: "Target");
         var team = SeedTeam("Alpha");
@@ -1953,7 +1972,7 @@ public sealed class TeamServiceTests : TeamsTestHarness
             _teamResourceService.GetTeamResourcesAsync(team.Id, Arg.Any<CancellationToken>())
                 .Returns(Task.FromException<IReadOnlyList<GoogleResourceSnapshot>>(new IOException("Email resource lookup unavailable")));
         if (string.Equals(mode, "profile-lookup-failure", StringComparison.Ordinal))
-            _userService.GetUserInfosAsync(Arg.Is<IEnumerable<Guid>>(ids => ids.Distinct().Count() == 1 && ids.Contains(requester.Id)), Arg.Any<CancellationToken>())
+            _userService.GetUserInfosAsync(Arg.Is<IEnumerable<Guid>>(ids => ids.ToHashSet().SetEquals(new[] { requester.Id })), Arg.Any<CancellationToken>())
                 .Returns(ValueTask.FromException<IReadOnlyDictionary<Guid, UserInfo>>(new IOException("Profile lookup unavailable")));
 
         await _service.ApproveJoinRequestAsync(request.Id, coordinator.Id, null, ct);
@@ -1970,7 +1989,7 @@ public sealed class TeamServiceTests : TeamsTestHarness
                     && m.Subject.EndsWith($"#{expectedCulture}", StringComparison.Ordinal)),
                 Arg.Any<CancellationToken>());
         await _userService.Received(1).GetUserInfosAsync(
-            Arg.Is<IEnumerable<Guid>>(ids => ids.Distinct().Count() == 1 && ids.Contains(requester.Id)), Arg.Any<CancellationToken>());
+            Arg.Is<IEnumerable<Guid>>(ids => ids.ToHashSet().SetEquals(new[] { requester.Id })), Arg.Any<CancellationToken>());
     }
 
     [HumansTheory]
@@ -2214,7 +2233,7 @@ public sealed class TeamServiceTests : TeamsTestHarness
     public async Task CreateRoleDefinitionAsync_DuplicateName_ReturnsRefusal()
     {
         var actor = SeedUser(displayName: "Actor");
-        SeedRoleAssignment(actor.Id, RoleNames.Admin,
+        SeedSystemRole(actor.Id, RoleNames.Admin,
             Clock.GetCurrentInstant() - Duration.FromDays(1));
         var team = SeedTeam("Alpha");
         SeedTeamRoleDefinition(team.Id, isManagement: false);
@@ -2252,7 +2271,7 @@ public sealed class TeamServiceTests : TeamsTestHarness
     public async Task RoleDefinitionWrites_UndefinedPriority_RejectWithoutChangingDefinition(bool update, int priority)
     {
         var actor = SeedUser(displayName: "Actor");
-        SeedRoleAssignment(actor.Id, RoleNames.Admin,
+        SeedSystemRole(actor.Id, RoleNames.Admin,
             Clock.GetCurrentInstant() - Duration.FromDays(1));
         var team = SeedTeam("Alpha");
         var definition = SeedTeamRoleDefinition(team.Id, isManagement: false);
@@ -2283,7 +2302,7 @@ public sealed class TeamServiceTests : TeamsTestHarness
     public async Task CreateRoleDefinitionAsync_HappyPath_PersistsDefinition()
     {
         var actor = SeedUser(displayName: "Actor");
-        SeedRoleAssignment(actor.Id, RoleNames.Admin,
+        SeedSystemRole(actor.Id, RoleNames.Admin,
             Clock.GetCurrentInstant() - Duration.FromDays(1));
         var team = SeedTeam("Alpha");
         await SaveAllAsync(TestContext.Current.CancellationToken);
@@ -2336,7 +2355,7 @@ public sealed class TeamServiceTests : TeamsTestHarness
     public async Task UpdateRoleDefinitionAsync_RenamingToExistingName_ReturnsRefusal()
     {
         var actor = SeedUser(displayName: "Actor");
-        SeedRoleAssignment(actor.Id, RoleNames.Admin,
+        SeedSystemRole(actor.Id, RoleNames.Admin,
             Clock.GetCurrentInstant() - Duration.FromDays(1));
         var team = SeedTeam("Alpha");
         var first = SeedTeamRoleDefinition(team.Id, isManagement: false);
@@ -2357,7 +2376,7 @@ public sealed class TeamServiceTests : TeamsTestHarness
     public async Task UpdateRoleDefinitionAsync_OmittedManagementChange_PreservesExistingValue()
     {
         var actor = SeedUser(displayName: "Actor");
-        SeedRoleAssignment(actor.Id, RoleNames.Admin,
+        SeedSystemRole(actor.Id, RoleNames.Admin,
             Clock.GetCurrentInstant() - Duration.FromDays(1));
         var team = SeedTeam("Alpha");
         var def = SeedTeamRoleDefinition(team.Id, isManagement: true);
@@ -2377,7 +2396,7 @@ public sealed class TeamServiceTests : TeamsTestHarness
     public async Task UpdateRoleDefinitionAsync_HappyPath_UpdatesAllEditableFields()
     {
         var actor = SeedUser(displayName: "Actor");
-        SeedRoleAssignment(actor.Id, RoleNames.Admin,
+        SeedSystemRole(actor.Id, RoleNames.Admin,
             Clock.GetCurrentInstant() - Duration.FromDays(1));
         var team = SeedTeam("Alpha");
         var def = SeedTeamRoleDefinition(team.Id, isManagement: false);
@@ -2433,7 +2452,7 @@ public sealed class TeamServiceTests : TeamsTestHarness
     public async Task DeleteRoleDefinitionAsync_HappyPath_RemovesDefinition()
     {
         var actor = SeedUser(displayName: "Actor");
-        SeedRoleAssignment(actor.Id, RoleNames.Admin,
+        SeedSystemRole(actor.Id, RoleNames.Admin,
             Clock.GetCurrentInstant() - Duration.FromDays(1));
         var team = SeedTeam("Alpha");
         var def = SeedTeamRoleDefinition(team.Id, isManagement: false);
@@ -2478,7 +2497,7 @@ public sealed class TeamServiceTests : TeamsTestHarness
     public async Task ToggleRoleIsManagementAsync_PromotingWithAssignments_ReturnsRefusal()
     {
         var actor = SeedUser(displayName: "Actor");
-        SeedRoleAssignment(actor.Id, RoleNames.Admin,
+        SeedSystemRole(actor.Id, RoleNames.Admin,
             Clock.GetCurrentInstant() - Duration.FromDays(1));
         var team = SeedTeam("Alpha");
         var def = SeedTeamRoleDefinition(team.Id, isManagement: false);
@@ -2498,7 +2517,7 @@ public sealed class TeamServiceTests : TeamsTestHarness
     public async Task ToggleRoleIsManagementAsync_PromotingWhenAnotherManagementExists_ReturnsRefusal()
     {
         var actor = SeedUser(displayName: "Actor");
-        SeedRoleAssignment(actor.Id, RoleNames.Admin,
+        SeedSystemRole(actor.Id, RoleNames.Admin,
             Clock.GetCurrentInstant() - Duration.FromDays(1));
         var team = SeedTeam("Alpha");
         SeedTeamRoleDefinition(team.Id, isManagement: true);
@@ -2516,7 +2535,7 @@ public sealed class TeamServiceTests : TeamsTestHarness
     public async Task ToggleRoleIsManagementAsync_HappyPathPromote_FlipsIsManagement()
     {
         var actor = SeedUser(displayName: "Actor");
-        SeedRoleAssignment(actor.Id, RoleNames.Admin,
+        SeedSystemRole(actor.Id, RoleNames.Admin,
             Clock.GetCurrentInstant() - Duration.FromDays(1));
         var team = SeedTeam("Alpha");
         var def = SeedTeamRoleDefinition(team.Id, isManagement: false);
@@ -2534,7 +2553,7 @@ public sealed class TeamServiceTests : TeamsTestHarness
     public async Task ToggleRoleIsManagementAsync_HappyPathDemote_FlipsIsManagement()
     {
         var actor = SeedUser(displayName: "Actor");
-        SeedRoleAssignment(actor.Id, RoleNames.Admin,
+        SeedSystemRole(actor.Id, RoleNames.Admin,
             Clock.GetCurrentInstant() - Duration.FromDays(1));
         var team = SeedTeam("Alpha");
         var def = SeedTeamRoleDefinition(team.Id, isManagement: true);
@@ -2544,44 +2563,6 @@ public sealed class TeamServiceTests : TeamsTestHarness
 
         result.Definition!.IsManagement.Should().BeFalse();
     }
-
-    [HumansFact]
-    public async Task PermanentlyDeleteTeamAsync_TeamNotFound_Throws()
-    {
-        var act = () => _service.PermanentlyDeleteTeamAsync(Guid.NewGuid(), TestContext.Current.CancellationToken);
-
-        await act.Should().ThrowAsync<InvalidOperationException>()
-            .WithMessage("*not found*");
-    }
-
-    [HumansFact]
-    public async Task PermanentlyDeleteTeamAsync_SystemTeam_Throws()
-    {
-        var team = SeedTeam("Volunteers", type: SystemTeamType.Volunteers);
-        await SaveAllAsync(TestContext.Current.CancellationToken);
-
-        var act = () => _service.PermanentlyDeleteTeamAsync(team.Id, TestContext.Current.CancellationToken);
-
-        await act.Should().ThrowAsync<InvalidOperationException>()
-            .WithMessage("*system team*");
-    }
-
-    [HumansFact]
-    public async Task PermanentlyDeleteTeamAsync_HasActiveChildren_Throws()
-    {
-        var parent = SeedTeam("Parent");
-        var child = SeedTeam("Child");
-        child.ParentTeamId = parent.Id;
-        await SaveAllAsync(TestContext.Current.CancellationToken);
-
-        var act = () => _service.PermanentlyDeleteTeamAsync(parent.Id, TestContext.Current.CancellationToken);
-
-        await act.Should().ThrowAsync<InvalidOperationException>()
-            .WithMessage("*sub-teams*");
-    }
-
-    // Happy-path PermanentlyDeleteTeamAsync needs a real transactional store; the in-memory
-    // EF provider used in this harness does not support transactions. Cover it in Integration tests.
 
     [HumansFact]
     public async Task GetTeamBySlugAsync_ExistingSlug_ReturnsTeamWithActiveMembers()
@@ -2710,7 +2691,7 @@ public sealed class TeamServiceTests : TeamsTestHarness
     public async Task GetMyTeamMembershipsAsync_BoardMember_GetsPendingCountsForRegularMemberships()
     {
         var user = SeedUser(displayName: "Board Human");
-        SeedRoleAssignment(
+        SeedSystemRole(
             user.Id,
             RoleNames.Board,
             Clock.GetCurrentInstant() - Duration.FromDays(10));
@@ -2891,7 +2872,7 @@ public sealed class TeamServiceTests : TeamsTestHarness
         var result = await _service.WithdrawJoinRequestAsync(request.Id, other.Id, TestContext.Current.CancellationToken);
 
         result.Succeeded.Should().BeFalse();
-        result.ErrorKey.Should().Be("Teams_RequestUnavailable");
+        result.ErrorKey.Should().Be("Teams_RequestNotFound");
         TeamsDb.ChangeTracker.Clear();
         (await TeamsDb.TeamJoinRequests.SingleAsync(r => r.Id == request.Id, TestContext.Current.CancellationToken))
             .Status.Should().Be(TeamJoinRequestStatus.Pending);
@@ -3057,7 +3038,7 @@ public sealed class TeamServiceTests : TeamsTestHarness
             .AddKeyedScoped<ITeamManagementService>(CachingTeamService.InnerServiceKey, (_, _) => _service)
             .BuildServiceProvider();
         var cache = new CachingTeamService(provider.GetRequiredService<IServiceScopeFactory>(),
-            NullLogger<CachingTeamService>.Instance, Substitute.For<IStringLocalizer<TeamsResource>>());
+            NullLogger<CachingTeamService>.Instance, Substitute.For<IStringLocalizer<TeamsResource>>().AddFormatting());
         var before = await cache.GetTeamAsync(team.Id, ct);
         before!.Members.Should().ContainSingle().Which.DisplayName.Should().Be("Alice");
         var invalidations = cache.BulkInvalidations;
@@ -3180,7 +3161,7 @@ public sealed class TeamServiceTests : TeamsTestHarness
     public async Task MembershipGrant_InvalidPerson_DoesNotCreateFootprint(bool assignRole, string kind)
     {
         var actor = SeedUser(displayName: "Actor");
-        SeedRoleAssignment(actor.Id, RoleNames.Admin, Clock.GetCurrentInstant() - Duration.FromDays(1));
+        SeedSystemRole(actor.Id, RoleNames.Admin, Clock.GetCurrentInstant() - Duration.FromDays(1));
         var team = SeedTeam("Alpha");
         var definition = SeedTeamRoleDefinition(team.Id, isManagement: true);
         var targetId = Guid.NewGuid();
@@ -3193,13 +3174,19 @@ public sealed class TeamServiceTests : TeamsTestHarness
             target.MergedToUserId = string.Equals(kind, "merged", StringComparison.Ordinal) ? Guid.NewGuid() : null;
         }
         await SaveAllAsync(TestContext.Current.CancellationToken);
+        var expected = kind switch
+        {
+            "missing" => "does not exist",
+            "merged" => "merged into another",
+            _ => "deleted account"
+        };
 
         if (assignRole)
             (await _service.AssignToRoleAsync(definition.Id, targetId, actor.Id, TestContext.Current.CancellationToken))
-                .Refusal.Should().Contain("missing, deleted or merged");
+                .Refusal.Should().Contain(expected);
         else
             (await _service.AddMemberToTeamAsync(team.Id, targetId, actor.Id, TestContext.Current.CancellationToken))
-                .Refusal.Should().Contain("missing, deleted or merged");
+                .Refusal.Should().Contain(expected);
         (await TeamsDb.TeamMembers.CountAsync(TestContext.Current.CancellationToken)).Should().Be(0);
         (await GoogleDb.GoogleSyncOutboxEvents.CountAsync(TestContext.Current.CancellationToken)).Should().Be(0);
         (await TeamsDb.TeamRoleAssignments.CountAsync(TestContext.Current.CancellationToken)).Should().Be(0);
@@ -3246,7 +3233,7 @@ public sealed class TeamServiceTests : TeamsTestHarness
     public async Task AssignToRoleAsync_MergeAlias_UsesExistingSurvivorMembership()
     {
         var actor = SeedUser(displayName: "Actor");
-        SeedRoleAssignment(actor.Id, RoleNames.Admin, Clock.GetCurrentInstant() - Duration.FromDays(1));
+        SeedSystemRole(actor.Id, RoleNames.Admin, Clock.GetCurrentInstant() - Duration.FromDays(1));
         var target = SeedUser(displayName: "Survivor");
         var team = SeedTeam("Alpha");
         var member = SeedTeamMember(team.Id, target.Id);
@@ -3296,7 +3283,7 @@ public sealed class TeamServiceTests : TeamsTestHarness
         var team = SeedTeam("Alpha");
         await SaveAllAsync(TestContext.Current.CancellationToken);
         _googleIdentities.GetWorkspaceIdentityAsync(target.Id, Arg.Any<CancellationToken>())
-            .Returns(new WorkspaceIdentity(target.Id, "target@example.org", status));
+            .Returns(new WorkspaceIdentity("target@example.org", status));
 
         await _service.AddMemberToTeamAsync(team.Id, target.Id, actor.Id, TestContext.Current.CancellationToken);
 
@@ -3403,7 +3390,7 @@ public sealed class TeamServiceTests : TeamsTestHarness
 
         result.Succeeded.Should().BeTrue();
         result.WasCoordinator.Should().BeTrue();
-        (await _service.GetUserCoordinatedTeamIdsAsync(user.Id, Xunit.TestContext.Current.CancellationToken))
+        (await _service.GetUserCoordinatedTeamIdsAsync(user.Id, TestContext.Current.CancellationToken))
             .Should().NotContain(team.Id);
     }
 

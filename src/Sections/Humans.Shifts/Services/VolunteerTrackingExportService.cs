@@ -1,6 +1,7 @@
 using Humans.Shifts.Services.Dtos;
 using Humans.AuditLog.Contracts;
 using Humans.Base.Extensions;
+using Humans.Base.Helpers;
 using Humans.EarlyEntry.Contracts;
 using Humans.Shifts.Contracts;
 using NodaTime;
@@ -40,7 +41,7 @@ internal sealed class VolunteerTrackingExportService(
             .GroupBy(d => d.TeamId)
             .ToDictionary(g => g.Key, g => g.First().TeamName);
 
-        string? filteredTeamName = request.DepartmentId is Guid deptId
+        string? filteredTeamName = request.DepartmentId is { } deptId
             ? teamNames.GetValueOrDefault(deptId)
             : null;
 
@@ -82,10 +83,9 @@ internal sealed class VolunteerTrackingExportService(
                     cells[i] = CellState.Empty;
                 }
             }
-            rows[userId] = new HumanRow(userId, playaNames[userId], cells);
+            rows[userId] = new HumanRow(userId, playaNames[userId], cells) { FirstShiftDay = firstShiftDay[userId] };
         }
 
-        // By total team hours, ties alphabetical.
         var totalTeamHours = perUserPerDay
             .SelectMany(kvp => kvp.Value)
             .GroupBy(v => v.teamId)
@@ -96,14 +96,12 @@ internal sealed class VolunteerTrackingExportService(
             .Select(g =>
             {
                 var (teamId, teamName) = g.Key;
-                var humans = g.Select(r => r.Value)
-                    .OrderBy(h => firstShiftDay[h.UserId])
-                    .ThenBy(h => h.PlayaName, StringComparer.OrdinalIgnoreCase)
-                    .ToList();
-                return new DepartmentGroup(teamId, teamName, TeamPalette.ColorFor(teamId), humans);
+                var humans = g.Select(r => r.Value).ToList();
+                return new DepartmentGroup(teamId, teamName, TeamPalette.ColorFor(teamId), humans)
+                {
+                    TotalHours = totalTeamHours[teamId]
+                };
             })
-            .OrderByDescending(dg => totalTeamHours[dg.TeamId])
-            .ThenBy(dg => dg.TeamName, StringComparer.OrdinalIgnoreCase)
             .ToList();
 
         var totals = ComputeTotals(days, rows);
@@ -188,38 +186,17 @@ internal sealed class VolunteerTrackingExportService(
 
     private static string SlugifyTeamName(string teamName)
     {
-        // The spec's slug rule: lowercase, strip diacritics, non-[a-z0-9] to '-', collapse, trim, else "team".
-        var lower = teamName.ToLowerInvariant();
-        var nfd = lower.Normalize(System.Text.NormalizationForm.FormD);
+        // Decomposition can introduce uppercase ASCII (İ → I + dot), so lowercase afterward.
+        var nfd = teamName.Normalize(System.Text.NormalizationForm.FormD);
         var sb = new System.Text.StringBuilder(nfd.Length);
         foreach (var ch in nfd)
         {
             var cat = System.Globalization.CharUnicodeInfo.GetUnicodeCategory(ch);
             if (cat == System.Globalization.UnicodeCategory.NonSpacingMark) continue;
-            sb.Append(char.IsAsciiLetterOrDigit(ch) ? ch : '-');
+            sb.Append(ch);
         }
-        var collapsed = CollapseHyphens(sb.ToString()).Trim('-');
-        return collapsed.Length > 0 ? collapsed : "team";
-    }
-
-    private static string CollapseHyphens(string s)
-    {
-        var sb = new System.Text.StringBuilder(s.Length);
-        var lastWasHyphen = false;
-        foreach (var c in s)
-        {
-            if (c == '-')
-            {
-                if (!lastWasHyphen) sb.Append('-');
-                lastWasHyphen = true;
-            }
-            else
-            {
-                sb.Append(c);
-                lastWasHyphen = false;
-            }
-        }
-        return sb.ToString();
+        var slug = SlugHelper.GenerateSlug(sb.ToString());
+        return slug.Length > 0 ? slug : "team";
     }
 
     public async Task<IReadOnlyList<EarlyEntryGrant>> GetEarlyEntriesAsync(CancellationToken ct)

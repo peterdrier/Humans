@@ -437,13 +437,15 @@
   <data name="LinkPreview_Welcome_Description" xml:space="preserve">
     <value>Configura il tuo account su Humans.</value>
   </data>
-  <data name="Login_SignInWithGoogle" xml:space="preserve">
-    <value>Accedi con Google</value>
+  <data name="Login_SignInWithProvider" xml:space="preserve">
+    <value>Accedi con {0}</value>
   </data>
   <data name="Login_SetupFailed" xml:space="preserve"><value>Non siamo riusciti a completare la configurazione del tuo account. Riprova.</value></data>
   <data name="Login_SignInFailed" xml:space="preserve">
-    <value>Accesso non riuscito. Questo può accadere se hai impiegato troppo tempo o se il tuo browser ha bloccato i cookie. Per favore riprova.</value>
+    <value>Accesso non riuscito. Per favore riprova.</value>
   </data>
+  <data name="Login_Cancelled" xml:space="preserve"><value>L'accesso è stato annullato presso il provider di accesso.</value></data>
+  <data name="Login_CookieMissing" xml:space="preserve"><value>Accesso non riuscito: il tuo browser non ha rimandato il cookie di accesso al ritorno dal provider di accesso. Per favore riprova.</value></data>
   <data name="Login_LockedOut" xml:space="preserve"><value>Questo account è bloccato. Contatta un amministratore se hai bisogno di aiuto per accedere.</value></data>
   <data name="AccessDenied_Title" xml:space="preserve">
     <value>Accesso negato</value>
@@ -745,7 +747,7 @@
   <data name="Admin_RoleNotActive" xml:space="preserve">
     <value>Questa assegnazione di ruolo non è attualmente attiva.</value>
   </data>
-  <data name="Admin_RoleEnded" xml:space="preserve">
+  <data name="Admin_RoleRevoked" xml:space="preserve">
     <value>Ruolo "{0}" terminato per {1}.</value>
     <comment>{0} = role name, {1} = user display name</comment>
   </data>
@@ -828,7 +830,7 @@
   <data name="Admin_Joined" xml:space="preserve">
     <value>Iscritto</value>
   </data>
-  <data name="Admin_LastLogin" xml:space="preserve">
+  <data name="Admin_LastSignIn" xml:space="preserve">
     <value>Ultimo accesso</value>
   </data>
   <data name="Admin_Never" xml:space="preserve">
@@ -908,52 +910,56 @@
   <data name="Camp_Plural" xml:space="preserve">
     <value>Barrios</value>
   </data>
-  <data name="Login_MagicLink_Title" xml:space="preserve">
+  <data name="Login_SignInLink_Title" xml:space="preserve">
     <value>Oppure accedi con e-mail</value>
   </data>
-  <data name="Login_MagicLink_Placeholder" xml:space="preserve">
+  <data name="Login_SignInLink_Placeholder" xml:space="preserve">
     <value>tua@email.com</value>
   </data>
-  <data name="Login_MagicLink_Submit" xml:space="preserve">
+  <data name="Login_SignInLink_Submit" xml:space="preserve">
     <value>Inviami un link di accesso</value>
   </data>
-  <data name="GateLogin_Title" xml:space="preserve">
+  <data name="GateSignIn_Title" xml:space="preserve">
     <value>Terminale del gate</value>
   </data>
-  <data name="GateLogin_Description" xml:space="preserve">
+  <data name="GateSignIn_Description" xml:space="preserve">
     <value>Accedi al portatile condiviso del gate per consultare i biglietti. Chiedi le credenziali al team biglietti.</value>
   </data>
-  <data name="GateLogin_Username" xml:space="preserve">
+  <data name="GateSignIn_Username" xml:space="preserve">
     <value>Nome utente</value>
   </data>
-  <data name="GateLogin_Password" xml:space="preserve">
+  <data name="GateSignIn_Password" xml:space="preserve">
     <value>Password</value>
   </data>
-  <data name="GateLogin_SignIn" xml:space="preserve">
+  <data name="GateSignIn_SignIn" xml:space="preserve">
     <value>Accedi</value>
   </data>
-  <data name="GateLogin_Invalid" xml:space="preserve">
-    <value>Nome utente o password errati. Il nome utente è "gate"; la password è impostata dal team biglietti — chiedi a loro quella attuale.</value>
-  </data>
-  <data name="GateLogin_Throttled" xml:space="preserve">
+  <data name="GateSignIn_WrongUsername" xml:space="preserve"><value>Nome utente errato. Il nome utente è "gate".</value></data>
+  <data name="GateSignIn_NoPassword" xml:space="preserve"><value>Inserisci la password. La imposta il team biglietti; chiedi a loro quella attuale.</value></data>
+  <data name="GateSignIn_WrongPassword" xml:space="preserve"><value>Password errata. La imposta il team biglietti; chiedi a loro quella attuale.</value></data>
+  <data name="GateSignIn_Throttled" xml:space="preserve">
     <value>L'accesso da questa rete è sospeso per {0} secondi: da qui sono arrivati troppi tentativi con password sbagliata. Se non sei stato tu, qualcuno che condivide questa connessione sta provando password su questa pagina. Aspetta, poi inserisci la password corretta — chiedi al team biglietti se non ne sei sicuro. L'account NON è bloccato; gli amministratori biglietti possono verificare o cambiare la password in Tickets → Gate terminal.</value>
     <comment>{0}=seconds remaining</comment>
   </data>
-  <data name="MagicLinkSent_Title" xml:space="preserve">
+  <data name="SignInLinkSent_Title" xml:space="preserve">
     <value>Controlla la tua e-mail</value>
   </data>
-  <data name="MagicLinkSent_Message" xml:space="preserve">
+  <data name="SignInLinkSent_Message" xml:space="preserve">
     <value>Abbiamo inviato un link a quell'indirizzo email da humans@nobodies.team. Controlla la posta in arrivo (e la cartella spam).</value>
   </data>
-  <data name="MagicLinkError_Title" xml:space="preserve">
-    <value>Link scaduto o non valido</value>
-  </data>
-  <data name="MagicLinkError_Message" xml:space="preserve">
-    <value>Questo link di accesso è scaduto o è già stato utilizzato.</value>
-  </data>
-  <data name="MagicLinkError_RequestNew" xml:space="preserve">
+  <data name="SignInLinkError_RequestNew" xml:space="preserve">
     <value>Richiedi un nuovo link</value>
   </data>
+  <data name="SignInLinkError_Unreadable_Title" xml:space="preserve"><value>Questo link non funziona</value></data>
+  <data name="SignInLinkError_Unreadable_Message" xml:space="preserve"><value>Non è stato possibile leggere questo link. Apri il link completo dalla tua email.</value></data>
+  <data name="SignInLinkError_Expired_Title" xml:space="preserve"><value>Questo link è scaduto</value></data>
+  <data name="SignInLinkError_Expired_Message" xml:space="preserve"><value>I link funzionano per 15 minuti dall'invio.</value></data>
+  <data name="SignInLinkError_Used_Title" xml:space="preserve"><value>Questo link è già stato usato</value></data>
+  <data name="SignInLinkError_Used_Message" xml:space="preserve"><value>Ogni link funziona una sola volta.</value></data>
+  <data name="SignInLinkError_AccountNotFound_Title" xml:space="preserve"><value>Account non trovato</value></data>
+  <data name="SignInLinkError_AccountNotFound_Message" xml:space="preserve"><value>L'account per cui è stato inviato questo link non esiste più.</value></data>
+  <data name="SignInLinkError_SignupFailed_Title" xml:space="preserve"><value>Non siamo riusciti a creare il tuo account</value></data>
+  <data name="SignInLinkError_SignupFailed_Message" xml:space="preserve"><value>Non è stato salvato nulla. Apri di nuovo lo stesso link per riprovare.</value></data>
   <data name="CompleteSignup_Title" xml:space="preserve">
     <value>Completa la registrazione</value>
   </data>
@@ -981,19 +987,19 @@
   <data name="CompleteSignup_Submit" xml:space="preserve">
     <value>Crea account</value>
   </data>
-  <data name="MagicLinkSent_BackToLogin" xml:space="preserve">
+  <data name="SignInLinkSent_BackToLogin" xml:space="preserve">
     <value>Torna all'accesso</value>
   </data>
-  <data name="MagicLinkSent_Expiry" xml:space="preserve">
+  <data name="SignInLinkSent_Expiry" xml:space="preserve">
     <value>Il tuo link scade alle {0}.</value>
   </data>
-  <data name="MagicLinkConfirm_Title" xml:space="preserve">
+  <data name="SignInLinkConfirm_Title" xml:space="preserve">
     <value>Accedi</value>
   </data>
-  <data name="MagicLinkConfirm_Message" xml:space="preserve">
+  <data name="SignInLinkConfirm_Message" xml:space="preserve">
     <value>Fai clic sul pulsante qui sotto per accedere al tuo account.</value>
   </data>
-  <data name="MagicLinkConfirm_SignIn" xml:space="preserve">
+  <data name="SignInLinkConfirm_SignIn" xml:space="preserve">
     <value>Accedi</value>
   </data>
   <data name="Todo_Title" xml:space="preserve">
@@ -1453,6 +1459,9 @@
   <data name="Settings_TabEmail" xml:space="preserve">
     <value>Email</value>
   </data>
+  <data name="Settings_TabRetention" xml:space="preserve">
+    <value>Conservazione</value>
+  </data>
   <data name="Settings_TabCityPlanning" xml:space="preserve">
     <value>Mappa Barrios</value>
   </data>
@@ -1504,4 +1513,5 @@
   <data name="Todo_Medical_Title" xml:space="preserve"><value>C’è qualcosa sulla tua salute che i coordinatori dovrebbero sapere?</value></data>
   <data name="Todo_Medical_Pending" xml:space="preserve"><value>Facoltativo. Lo vedete solo tu e i No-Info Admin.</value></data>
   <data name="Nav_Roles" xml:space="preserve"><value>Ruoli</value></data>
+  <data name="Nav_Tasks" xml:space="preserve"><value>Attività</value></data>
 </root>

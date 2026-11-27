@@ -25,7 +25,7 @@ coordinators’ system-team membership. Google resources stay active until recon
 | Question shape | Asked by | Answered by |
 |---|---|---|
 | "Which teams exist / what is team X?" (whole graph, by id, by slug, with parents, name fan-out, search) | almost every section, Shell tiles, global search, the auth handler | `ITeamService.GetTeamsAsync` / `GetTeamAsync` / `GetTeamBySlugAsync` / `GetTeamsWithParentsAsync` / `SearchAsync`; `IEntityNameContributor` |
-| "What may this human do on this team?" (coordinator of, coordinated ids, budget-scoped ids) | Shifts, Expenses, Google, `TeamAuthorizationHandler` | `ITeamService.IsUserCoordinatorOfTeamAsync` / `GetUserCoordinatedTeamIdsAsync` / `GetEffectiveBudgetCoordinatorTeamIdsAsync`; `TeamCoordinatorAccess` |
+| "What may this human do on this team?" (coordinator of, coordinated ids, budget-scoped ids) | Teams' temporary permission source, the permission comparison tests | `ITeamService.IsUserCoordinatorOfTeamAsync` / `GetUserCoordinatedTeamIdsAsync` / `GetEffectiveBudgetCoordinatorTeamIdsAsync`; `TeamCoordinatorAccess` |
 | "Which teams is this human in?" | Users, Google, the profile card | `ITeamService.GetUserTeamMembershipsAsync` |
 | "Show me the directory / the tree / a team page / my teams / the roster / the summary" | the section's own controllers | `ITeamPageService.GetTeamDirectoryAsync` / `GetTeamPageDetailAsync` / `GetMyTeamMembershipsAsync` / `GetRosterAsync`; `ITeamManagementService.GetAdminTeamListAsync` |
 | "Send this member a message as my team" | coordinators, from another member's profile | `ITeamMessageOptionsProvider`; `TeamMessageController`; Email's facilitated-message factory |
@@ -95,7 +95,7 @@ The shapes imply:
 
 ## 5. Seams
 
-- **`IRoleAssignmentService` / `ITeamResourceService`** carry the reconciler's
+- **`ISystemRoleService` / `ITeamResourceService`** carry the reconciler's
   read-only cross-section calls; mutations go through each owner's `I<Section>Write`.
 - **Cross-camp / sub-team shift management** (guide: "the system is being updated to
   reflect this properly") — coordinator scoping for shifts is Shifts' call, shaped by

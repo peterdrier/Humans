@@ -1,7 +1,6 @@
 using Humans.AuditLog.Contracts;
 using Humans.Gdpr.Contracts;
 using Humans.Google.Contracts;
-using Humans.Google.Data;
 using Humans.Google.Domain;
 using Humans.Users.Contracts;
 using NodaTime;
@@ -42,15 +41,16 @@ internal sealed class WorkspaceIdentityService(
         return result;
     }
 
-    public async Task<bool> SetAsync(Guid userId, string email, Guid actorUserId, CancellationToken ct = default)
+    public async Task<WorkspaceIdentityRefusal?> SetAsync(Guid userId, string email, Guid actorUserId, CancellationToken ct = default)
     {
         var info = await users.GetUserInfoAsync(userId, ct);
-        if (info is null || info.Id != userId) return false;
+        if (info is null || info.Id != userId) return WorkspaceIdentityRefusal.AccountNotFound;
 
-        var target = info.UserEmails.FirstOrDefault(e => e.IsVerified && Same(e.Email, email));
-        if (target is null) return false;
+        var target = info.UserEmails.FirstOrDefault(e => Same(e.Email, email));
+        if (target is null) return WorkspaceIdentityRefusal.NotTheirEmail;
+        if (!target.IsVerified) return WorkspaceIdentityRefusal.Unverified;
         if (!IsNobodies(target.Email) && info.UserEmails.Any(e => e.IsVerified && IsNobodies(e.Email)))
-            return false;
+            return WorkspaceIdentityRefusal.NobodiesAddressWins;
 
         var row = await repo.GetAsync(userId, ct);
         var current = Resolve(info, row);
@@ -70,7 +70,7 @@ internal sealed class WorkspaceIdentityService(
                 : $"Set Google identity to {target.Email} (was {previous})",
             actorUserId,
             relatedEntityId: target.Id, relatedEntityType: AuditSubjectTypes.UserEmail);
-        return true;
+        return null;
     }
 
     public async Task<bool> SetStatusFromSyncAsync(
@@ -136,12 +136,12 @@ internal sealed class WorkspaceIdentityService(
             ? designatedRow
             : nobodies
                 ?? verified.FirstOrDefault(e => e.IsPrimary)
-                ?? verified.OrderBy(e => e.Email, StringComparer.OrdinalIgnoreCase).First();
+                ?? verified.MinBy(e => e.Email, StringComparer.OrdinalIgnoreCase)!;
 
         var status = row is not null
             ? (row.Email is not null && Same(row.Email, chosen.Email) ? row.Status : GoogleEmailStatus.Unknown)
             : GoogleEmailStatus.Unknown;
-        return new WorkspaceIdentity(info.Id, chosen.Email, status);
+        return new WorkspaceIdentity(chosen.Email, status);
     }
 
     private static bool Same(string a, string b) => string.Equals(a, b, StringComparison.OrdinalIgnoreCase);

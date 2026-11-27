@@ -4,16 +4,12 @@ namespace Humans.Store.Services.Dtos;
 
 internal sealed record OrderLineDto(
     Guid Id,
-    Guid OrderId,
     Guid ProductId,
     string ProductName,
     int Qty,
     decimal EffectiveUnitPrice,
     decimal EffectiveVatRate,
     decimal? EffectiveDeposit,
-    Instant AddedAt,
-    decimal SubtotalEur,
-    decimal VatEur,
     decimal DepositEur,
     decimal TotalEur)
 {

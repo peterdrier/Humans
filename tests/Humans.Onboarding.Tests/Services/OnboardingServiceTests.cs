@@ -4,7 +4,6 @@ using Humans.Consent.Contracts;
 using Humans.Base.Constants;
 using Humans.Base.Enums;
 using Humans.Email.Contracts;
-using Humans.Governance.Contracts;
 using Humans.Notifications.Contracts;
 using Humans.Onboarding.Contracts;
 using Humans.Onboarding.Services;
@@ -66,7 +65,7 @@ public sealed class OnboardingServiceTests
             NullLogger<OnboardingService>.Instance);
 
     [HumansFact]
-    public async Task RejectSignupAsync_WhenAlreadyRejectedInBothSections_SkipsAuditDeprovisionAndNotifications()
+    public async Task RejectSignupAsync_AlreadyRejected_DoesNothing()
     {
         var userId = Guid.NewGuid();
         var reviewerId = Guid.NewGuid();
@@ -101,7 +100,7 @@ public sealed class OnboardingServiceTests
     }
 
     [HumansFact]
-    public async Task RejectSignupAsync_RetryAfterConsentOnlyWrite_ReconcilesStateAuditAndDeprovisionWithRecordedReason()
+    public async Task RejectSignupAsync_RetryAfterPartialWrite_FinishesReject()
     {
         // The first attempt recorded Consent's rejection, then died before Users stored the state.
         // The retry gets AlreadyRejected from Consent and must still finish the job, once.
@@ -197,7 +196,7 @@ public sealed class OnboardingServiceTests
     [HumansTheory]
     [Xunit.InlineData("a")]
     [Xunit.InlineData("😀")]
-    public async Task RejectSignupAsync_LongReason_LeavesBoundingToNotificationsAndPreservesStoredReason(string character)
+    public async Task RejectSignupAsync_LongReason_StoresWholeReason(string character)
     {
         var userId = Guid.NewGuid();
         var reviewerId = Guid.NewGuid();
@@ -244,7 +243,7 @@ public sealed class OnboardingServiceTests
     }
 
     [HumansFact]
-    public async Task RejectSignupAsync_OnSuccess_AuditsDeprovisionsAllThreeTeamsAndNotifies()
+    public async Task RejectSignupAsync_Success_DeprovisionsTeams()
     {
         // Reject is the section's only coordinator action with consequences: dropping one of the
         // three approval-gated team syncs, or the ProfileRejected notification, must fail.
@@ -342,7 +341,7 @@ public sealed class OnboardingServiceTests
         if (expectCancel)
             await _accountDeletion.Received(1).CancelDeletionAsync(userId, Arg.Any<CancellationToken>());
         else
-            await _accountDeletion.DidNotReceiveWithAnyArgs().CancelDeletionAsync(default, default);
+            await _accountDeletion.DidNotReceiveWithAnyArgs().CancelDeletionAsync(default);
     }
 
     [HumansFact]
@@ -364,7 +363,7 @@ public sealed class OnboardingServiceTests
     }
 
     [HumansFact]
-    public async Task GetNextUnsignedConsent_AllSigned_SelfHealsSuspensionAndReturnsNullNext()
+    public async Task GetNextUnsignedConsent_AllSigned_LiftsSuspension()
     {
         var userId = Guid.NewGuid();
         _consentService.GetRequiredConsentRowsForUserAsync(userId, SystemTeamIds.Volunteers, Arg.Any<CancellationToken>())
@@ -381,7 +380,7 @@ public sealed class OnboardingServiceTests
     }
 
     [HumansFact]
-    public async Task GetNextUnsignedConsent_UnsignedRemaining_ReturnsDetailWithOrdinals_WithoutHealing()
+    public async Task GetNextUnsignedConsent_UnsignedRemaining_ReturnsDetail()
     {
         var userId = Guid.NewGuid();
         var unsignedVersionId = Guid.NewGuid();
@@ -408,7 +407,7 @@ public sealed class OnboardingServiceTests
     }
 
     [HumansFact]
-    public async Task GetNextUnsignedConsent_DetailMissing_ReturnsNullNext_WithoutHealing()
+    public async Task GetNextUnsignedConsent_DetailMissing_ReturnsNull()
     {
         var userId = Guid.NewGuid();
         var unsignedVersionId = Guid.NewGuid();

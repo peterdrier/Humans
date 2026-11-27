@@ -12,13 +12,8 @@
   </ItemGroup>
 
   <ItemGroup>
-    <!--
-      Adapter section: Humans' own ticket checkout, one implementation of Tickets' ITicketCheckoutBackend
-      port. It takes payment through Stripe hosted Checkout on its own key and webhook, so it owns its
-      Stripe settings rather than borrowing the Stripe section's Store or mirror keys. No tables.
-      Tickets names nothing here; the only edge is this section onto the Tickets.Contracts leaf.
-    -->
     <ProjectReference Include="..\..\Humans.Base\Humans.Base.csproj" />
+    <ProjectReference Include="..\Humans.Stripe\Humans.Stripe.csproj" />
     <ProjectReference Include="..\Humans.Tickets.Contracts\Humans.Tickets.Contracts.csproj" />
   </ItemGroup>
 

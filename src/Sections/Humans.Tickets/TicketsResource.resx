@@ -40,7 +40,7 @@
   <data name="Tickets_TicketHoldings_OrderPlural" xml:space="preserve"><value>orders</value></data>
   <data name="Tickets_TicketHoldings_Empty" xml:space="preserve"><value>No tickets.</value></data>
   <data name="Tickets_Onsite_Since" xml:space="preserve"><value>Onsite since {0}</value></data>
-  <data name="Tickets_Onsite_Title" xml:space="preserve"><value>Checked in at the gate</value></data>
+  <data name="Tickets_Onsite_Title" xml:space="preserve"><value>Admitted at the gate</value></data>
   <data name="Tickets_NotAttending_Declared" xml:space="preserve"><value>You've been marked as not attending this year.</value></data>
   <data name="Tickets_NotAttending_AlreadyAttended" xml:space="preserve"><value>Your attendance has already been recorded, so you cannot be marked as not attending.</value></data>
   <data name="Tickets_NotAttending_Failed" xml:space="preserve"><value>Something went wrong. Please try again.</value></data>
@@ -68,13 +68,13 @@
   <data name="Tickets_Buy_ForSelf" xml:space="preserve">
     <value>A ticket for me ({0})</value>
   </data>
-  <data name="Tickets_Buy_Supporter" xml:space="preserve">
-    <value>Supporter ticket</value>
+  <data name="Tickets_Buy_Vip" xml:space="preserve">
+    <value>VIP ticket</value>
   </data>
-  <data name="Tickets_Buy_SupporterNone" xml:space="preserve">
+  <data name="Tickets_Buy_VipNone" xml:space="preserve">
     <value>No, just my ticket</value>
   </data>
-  <data name="Tickets_Buy_SupporterOption" xml:space="preserve">
+  <data name="Tickets_Buy_VipOption" xml:space="preserve">
     <value>{0} in total: your ticket plus a {1} donation</value>
   </data>
   <data name="Tickets_Buy_Donation" xml:space="preserve">
@@ -144,7 +144,7 @@
     <value>Ticket sales are closed.</value>
   </data>
   <data name="Tickets_Buy_ResaleOnly" xml:space="preserve">
-    <value>New tickets are no longer on sale; only returned tickets are sold now.</value>
+    <value>New tickets are no longer on sale; only tickets in resale are sold now.</value>
   </data>
   <data name="Tickets_Buy_SoldOut" xml:space="preserve">
     <value>Sold out.</value>
@@ -161,7 +161,7 @@
   <data name="Tickets_Buy_Empty" xml:space="preserve">
     <value>Choose at least one ticket or a donation.</value>
   </data>
-  <data name="Tickets_Buy_BackendFailed" xml:space="preserve">
+  <data name="Tickets_Buy_PlatformFailed" xml:space="preserve">
     <value>The payment page could not be opened. Please try again in a moment.</value>
   </data>
   <data name="Tickets_Buy_OrderNotFound" xml:space="preserve">
@@ -213,7 +213,7 @@
     <value>You hold no tickets bought through Humans.</value>
   </data>
   <data name="Tickets_Resale_DirectedIntro" xml:space="preserve">
-    <value>You were invited to buy one specific returned ticket. You pay the current price to the association and get a new ticket in your own name.</value>
+    <value>You were invited to buy one specific ticket in resale. You pay the current price to the association and get a new ticket in your own name.</value>
   </data>
   <data name="Tickets_Buy_Children" xml:space="preserve">
     <value>Children coming with you</value>
@@ -230,8 +230,8 @@
   <data name="Tickets_Buy_ChildTypeLabel" xml:space="preserve">
     <value>Child {0}: ticket</value>
   </data>
-  <data name="Tickets_Buy_SupporterIntro" xml:space="preserve">
-    <value>Upgrade your experience and help us make the best event we can. Your ticket stays at your price; the rest is a donation to the association, with no VAT, and it is not refunded.</value>
+  <data name="Tickets_Buy_VipIntro" xml:space="preserve">
+    <value>VIP means Very Unimportant Person: it brings no extras, it just helps us make the best event we can. Your ticket stays at your price; the rest is a donation to the association, with no VAT, and it is not refunded.</value>
   </data>
   <data name="Tickets_Buy_Terms" xml:space="preserve">
     <value>Ticket rules</value>
@@ -251,9 +251,10 @@
   <data name="Tickets_Buy_TermsUnavailable" xml:space="preserve">
     <value>The ticket rules cannot be loaded right now, so tickets cannot be bought. Please try again in a few minutes.</value>
   </data>
-  <data name="Tickets_Resale_InviteInvalid" xml:space="preserve">
-    <value>This invitation link is no longer valid, or it was sent to a different email address than the one you are signed in with.</value>
-  </data>
+  <data name="Tickets_Resale_InviteNotFound" xml:space="preserve"><value>No invitation for this event matches this link.</value></data>
+  <data name="Tickets_Resale_InviteOtherEmail" xml:space="preserve"><value>This invitation was sent to a different email address than the one you are signed in with.</value></data>
+  <data name="Tickets_Resale_NotSelling" xml:space="preserve"><value>Resale tickets are not on sale for this event right now.</value></data>
+  <data name="Tickets_Resale_InviteSelfOnly" xml:space="preserve"><value>An invitation link buys one ticket for you only.</value></data>
   <data name="Tickets_Resale_NotFound" xml:space="preserve">
     <value>Ticket not found.</value>
   </data>
@@ -261,7 +262,7 @@
     <value>This ticket cannot be offered for resale.</value>
   </data>
   <data name="Tickets_Resale_Closed" xml:space="preserve">
-    <value>Returns are closed for this event.</value>
+    <value>Resale is closed for this event.</value>
   </data>
   <data name="Tickets_Resale_InCheckout" xml:space="preserve">
     <value>Someone is paying for this ticket right now. Try again in an hour.</value>
@@ -306,28 +307,28 @@
     <value>Invite a buyer</value>
   </data>
   <data name="Tickets_Resale_InviteHelp" xml:space="preserve">
-    <value>Know someone who wants your ticket? Invite them, or several people: each gets a link to buy it ahead of the queue, at the current price and in their own name. The first to buy gets it, and anyone later is offered the next returned ticket. You are refunded what you paid. No money changes hands between you. Until someone buys it, your ticket stays in the queue and may sell to someone else first.</value>
+    <value>Know someone who wants your ticket? Invite them, or several people: each gets a link to buy it ahead of the queue, at the current price and in their own name. The first to buy gets it, and anyone later is offered the next ticket in resale. You are refunded what you paid. No money changes hands between you. Until someone buys it, your ticket stays in the queue and may sell to someone else first.</value>
   </data>
   <data name="Tickets_Resale_OfferHelp" xml:space="preserve">
-    <value>Can't come? Return your ticket to the resale queue. When someone buys it you are refunded what you paid for the ticket (not donations or fees).</value>
+    <value>Can't come? Put your ticket up for resale. When someone buys it you are refunded what you paid for the ticket (not donations).</value>
   </data>
   <data name="Tickets_Resale_OfferWithChildren" xml:space="preserve">
-    <value>The child tickets on it are returned with it and refunded too.</value>
+    <value>The child tickets on it go with it and are refunded too.</value>
   </data>
   <data name="Tickets_Resale_Offer" xml:space="preserve">
-    <value>Return my ticket</value>
+    <value>Put my ticket up for resale</value>
   </data>
   <data name="Tickets_Resale_Email_Invite_Subject" xml:space="preserve">
     <value>A ticket for {0} is waiting for you</value>
   </data>
   <data name="Tickets_Resale_Email_Invite_Body" xml:space="preserve">
-    <value>&lt;p&gt;Hi,&lt;/p&gt;&lt;p&gt;{0} can't make it to &lt;strong&gt;{1}&lt;/strong&gt; and has invited you to buy their returned ticket ahead of the resale queue.&lt;/p&gt;&lt;p&gt;You pay the current ticket price to the association and get a new ticket in your own name: the name must match your ID at the gate. Sign in or create your Humans account with this email address, then use this link:&lt;/p&gt;&lt;p&gt;&lt;a href="{2}"&gt;{2}&lt;/a&gt;&lt;/p&gt;&lt;p&gt;The link works as long as the ticket is still for sale. If someone else buys it first, the link offers you the next returned ticket instead.&lt;/p&gt;</value>
+    <value>&lt;p&gt;Hi,&lt;/p&gt;&lt;p&gt;{0} can't make it to &lt;strong&gt;{1}&lt;/strong&gt; and has invited you to buy their ticket ahead of the resale queue.&lt;/p&gt;&lt;p&gt;You pay the current ticket price to the association and get a new ticket in your own name: the name must match your ID at the gate. Sign in or create your Humans account with this email address, then use this link:&lt;/p&gt;&lt;p&gt;&lt;a href="{2}"&gt;{2}&lt;/a&gt;&lt;/p&gt;&lt;p&gt;The link works as long as the ticket is still for sale. If someone else buys it first, the link offers you the next ticket in resale instead.&lt;/p&gt;</value>
   </data>
   <data name="Tickets_Public_PriceToday" xml:space="preserve">
     <value>{0} today</value>
   </data>
   <data name="Tickets_Public_ResaleOnly" xml:space="preserve">
-    <value>(returned tickets only)</value>
+    <value>(resale tickets only)</value>
   </data>
   <data name="Tickets_Public_Intro" xml:space="preserve">
     <value>Every ticket carries the holder's legal name and is bought from a Humans account. Enter your email: we send you a link to sign in, or to create your account with your legal name, and you land straight on the buy page.</value>
@@ -351,7 +352,7 @@
     <value>Order reference</value>
   </data>
   <data name="Tickets_Buy_OpenOrder" xml:space="preserve">
-    <value>You have a checkout in progress for this event. Finish paying, or cancel it to start again.</value>
+    <value>You have an unfinished order for this event. Finish paying, or cancel it to start again.</value>
   </data>
   <data name="Tickets_Buy_CancelAndRestart" xml:space="preserve">
     <value>Cancel and start again</value>
@@ -398,11 +399,11 @@
   <data name="Tickets_Delivery_Rules_Named" xml:space="preserve">
     <value>This ticket is personal and carries one legal name. The name must match your photo ID at the gate, or entry is refused.</value>
   </data>
-  <data name="Tickets_Delivery_Rules_NoTransfer" xml:space="preserve">
-    <value>Tickets cannot be transferred, given or sold to anyone else. A ticket bought from another person or on a resale site is not valid.</value>
+  <data name="Tickets_Delivery_Rules_NoPassingOn" xml:space="preserve">
+    <value>Tickets cannot be passed on, given or sold to anyone else. A ticket bought from another person or on a resale site is not valid.</value>
   </data>
-  <data name="Tickets_Delivery_Rules_Return" xml:space="preserve">
-    <value>If you cannot come, offer your ticket back through Humans. When someone else buys it, the ticket price is refunded to whoever paid for it; donations are not refunded.</value>
+  <data name="Tickets_Delivery_Rules_Resale" xml:space="preserve">
+    <value>If you cannot come, put your ticket up for resale in Humans. When someone else buys it, the ticket price is refunded to the buyer who paid for it; donations are not refunded.</value>
   </data>
   <data name="Tickets_Delivery_Rules_Private" xml:space="preserve">
     <value>The event is a private event of the association Nobodies Collective. By using this ticket you accept the ticket terms.</value>
@@ -573,19 +574,19 @@
     <value>Try again</value>
   </data>
   <data name="Tickets_Email_ResaleSold_Subject" xml:space="preserve">
-    <value>Your returned ticket for {0} sold</value>
+    <value>Your ticket for {0} sold in resale</value>
   </data>
   <data name="Tickets_Email_ResaleSold_Intro" xml:space="preserve">
-    <value>Hi {0}, someone else has bought your returned ticket for {1}, so it no longer admits you.</value>
+    <value>Hi {0}, someone else has bought your ticket for {1} in resale, so it no longer admits you.</value>
   </data>
   <data name="Tickets_Email_ResaleSold_Refund" xml:space="preserve">
     <value>We refund you {0} in our evening refund batch, once the new buyer's payment has settled. Your bank then usually takes a few working days.</value>
   </data>
   <data name="Tickets_Email_ResaleUnsold_Subject" xml:space="preserve">
-    <value>Your returned ticket for {0} did not sell</value>
+    <value>Your ticket for {0} did not sell in resale</value>
   </data>
   <data name="Tickets_Email_ResaleUnsold_Intro" xml:space="preserve">
-    <value>Hi {0}, sales for {1} have closed and nobody bought your returned ticket.</value>
+    <value>Hi {0}, sales for {1} have closed and nobody bought your ticket in resale.</value>
   </data>
   <data name="Tickets_Email_ResaleUnsold_NoRefund" xml:space="preserve">
     <value>There is no refund. Your ticket is still valid, so you are welcome to come.</value>
@@ -594,7 +595,7 @@
     <value>See your tickets</value>
   </data>
   <data name="Tickets_Resale_InviteTaken" xml:space="preserve">
-    <value>The ticket you were invited to buy has gone to someone else. You can buy the next returned ticket instead.</value>
+    <value>The ticket you were invited to buy has gone to someone else. You can buy the next ticket in resale instead.</value>
   </data>
   <data name="Tickets_Resale_InviteAlready" xml:space="preserve">
     <value>Everyone you entered has already been invited for this ticket.</value>

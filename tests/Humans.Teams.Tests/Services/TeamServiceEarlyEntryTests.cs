@@ -1,13 +1,10 @@
+using Humans.Teams.Tests.Infrastructure;
 using Humans.Roles.Contracts;
 using Humans.Users.Contracts;
 using Humans.Settings.Contracts;
 using AwesomeAssertions;
-using Humans.Base.Caching;
-using Microsoft.Extensions.Caching.Memory;
-using Humans.Base.Interfaces.Caching;
 using Humans.AuditLog.Contracts;
 using Humans.Auth.Contracts;
-using Humans.EarlyEntry.Contracts;
 using Humans.Google.Contracts;
 using Humans.Notifications.Contracts;
 using Humans.Teams.Data;
@@ -33,7 +30,7 @@ public sealed class TeamServiceEarlyEntryTests
     private readonly FakeClock _clock = new(Instant.FromUtc(2026, 3, 1, 12, 0));
     private readonly TeamService _service;
     private readonly ISystemTeamSync _systemTeamSync = Substitute.For<ISystemTeamSync>();
-    private readonly IRoleAssignmentService _roles = Substitute.For<IRoleAssignmentService>();
+    private readonly ISystemRoleService _roles = Substitute.For<ISystemRoleService>();
     private readonly IUserService _users = Substitute.For<IUserService>();
     private readonly ISettingsService _settings = Substitute.For<ISettingsService>();
     private readonly Guid _eventId = Guid.NewGuid();
@@ -58,6 +55,7 @@ public sealed class TeamServiceEarlyEntryTests
                 .With(_systemTeamSync)
                 .With<IRoleWrite>()
                 .With(_roles)
+                .With(TestTeamPermissions.Create(_roles, () => _service!))
                 .With(_settings)
                 .Build(),
             _clock,
@@ -124,7 +122,7 @@ public sealed class TeamServiceEarlyEntryTests
     {
         var teamId = Guid.NewGuid();
         var userId = Guid.NewGuid();
-        _repo.GetEarlyEntryGrantsForEnabledTeamsAsync(Arg.Any<CancellationToken>())
+        _repo.GetEarlyEntryGrantsAsync(Arg.Any<CancellationToken>())
             .Returns(new List<TeamEarlyEntryGrant>
             {
                 Grant(teamId, userId, "Flaming Lotus", new LocalDate(2026, 7, 5), teamName: "Pyro")
@@ -141,7 +139,7 @@ public sealed class TeamServiceEarlyEntryTests
     [HumansFact]
     public async Task GetEarlyEntriesAsync_NoGrants_ReturnsEmpty()
     {
-        _repo.GetEarlyEntryGrantsForEnabledTeamsAsync(Arg.Any<CancellationToken>())
+        _repo.GetEarlyEntryGrantsAsync(Arg.Any<CancellationToken>())
             .Returns(new List<TeamEarlyEntryGrant>());
 
         var entries = await _service.GetEarlyEntriesAsync(Xunit.TestContext.Current.CancellationToken);
@@ -159,7 +157,7 @@ public sealed class TeamServiceEarlyEntryTests
         other.EventSettingsId = Guid.NewGuid(); // Same entry date/year, different event.
         var legacy = Grant(Guid.NewGuid(), Guid.NewGuid());
         legacy.EventSettingsId = null;
-        _repo.GetEarlyEntryGrantsForEnabledTeamsAsync(Arg.Any<CancellationToken>()).Returns([current, other, legacy]);
+        _repo.GetEarlyEntryGrantsAsync(Arg.Any<CancellationToken>()).Returns([current, other, legacy]);
         if (noActiveEvent)
             _settings.GetActiveEventSettings().Returns((EventSettingsInfo?)null);
 
@@ -192,7 +190,7 @@ public sealed class TeamServiceEarlyEntryTests
         var first = Grant(Guid.NewGuid(), Guid.NewGuid());
         var second = Grant(Guid.NewGuid(), Guid.NewGuid());
         second.EventSettingsId = Guid.NewGuid();
-        _repo.GetEarlyEntryGrantsForEnabledTeamsAsync(Arg.Any<CancellationToken>()).Returns([first, second]);
+        _repo.GetEarlyEntryGrantsAsync(Arg.Any<CancellationToken>()).Returns([first, second]);
         var active = _settings.GetActiveEventSettings();
         _settings.GetActiveEventSettings()
             .Returns(active, active! with { Id = second.EventSettingsId.Value });
@@ -310,7 +308,12 @@ public sealed class TeamServiceEarlyEntryTests
             "Project", Guid.NewGuid(), _eventId, Xunit.TestContext.Current.CancellationToken);
 
         result.Succeeded.Should().BeFalse();
-        result.Refusal.Should().Contain("Cannot add a missing, deleted or merged account");
+        result.Refusal.Should().Contain(unavailable switch
+        {
+            "missing" => "does not exist",
+            "merged" => "merged into another",
+            _ => "deleted account"
+        });
         await _repo.DidNotReceive().AddEarlyEntryGrantAsync(Arg.Any<TeamEarlyEntryGrant>(), Arg.Any<CancellationToken>());
         _audit.ReceivedCalls().Should().BeEmpty();
     }

@@ -5,7 +5,6 @@ using Humans.Shifts.Services;
 using Humans.Shifts.Services.Dtos;
 using Humans.Shifts.Contracts;
 using Humans.Teams.Contracts;
-using Humans.Shifts.Domain;
 using Humans.Base.Authorization;
 using Humans.Shifts.Models;
 using Microsoft.AspNetCore.Authorization;
@@ -31,7 +30,6 @@ internal sealed class ShiftsController(
     ShiftBrowsePageBuilder browsePageBuilder,
     ILogger<ShiftsController> logger) : HumansControllerBase(userService)
 {
-    private readonly IUserService _userService = userService;
 
     [HttpGet("")]
     public async Task<IActionResult> Index(Guid? departmentId, string? fromDate, string? toDate, string? period, string? day = null, [FromQuery(Name = "tags")] List<Guid>? tagIds = null, string? sort = null, [FromQuery(Name = "periods")] List<string>? periods = null)
@@ -47,8 +45,7 @@ internal sealed class ShiftsController(
         var es = await burnSettings.GetActiveAsync(HttpContext.RequestAborted);
         if (es is null) return View("NoActiveEvent");
 
-        var isPrivileged = ShiftsRoles.IsPrivilegedSignupApprover(User) ||
-                           (await shiftMgmt.GetCoordinatorTeamIdsAsync(user.Id, HttpContext.RequestAborted)).Count > 0;
+        var isPrivileged = await shiftMgmt.CanManageOrApproveAnyShiftsAsync(user.Id, HttpContext.RequestAborted);
 
         var userView = await shiftView.GetUserAsync(user.Id, HttpContext.RequestAborted);
         var userSignups = userView.Signups;
@@ -60,7 +57,6 @@ internal sealed class ShiftsController(
 
         var model = await browsePageBuilder.BuildAsync(new ShiftBrowsePageRequest(
             es,
-            user.Id,
             userSignups,
             userView.TagPreferences,
             userActiveSignupsForUi,

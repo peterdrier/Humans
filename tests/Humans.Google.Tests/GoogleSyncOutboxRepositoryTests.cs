@@ -12,17 +12,16 @@ namespace Humans.Google.Tests;
 /// </summary>
 public sealed class GoogleSyncOutboxRepositoryTests : IDisposable
 {
-    private readonly DbContextOptions<GoogleIntegrationDbContext> _options;
     private readonly IGoogleSyncOutboxRepository _repository;
     private readonly GoogleIntegrationDbContext _seedContext;
 
     public GoogleSyncOutboxRepositoryTests()
     {
-        _options = new DbContextOptionsBuilder<GoogleIntegrationDbContext>()
+        var options = new DbContextOptionsBuilder<GoogleIntegrationDbContext>()
             .UseInMemoryDatabase(Guid.NewGuid().ToString())
             .Options;
-        _repository = new GoogleSyncOutboxRepository(new SingleContextFactory(_options));
-        _seedContext = new GoogleIntegrationDbContext(_options);
+        _repository = new GoogleSyncOutboxRepository(new SingleContextFactory(options));
+        _seedContext = new GoogleIntegrationDbContext(options);
     }
 
     public void Dispose()

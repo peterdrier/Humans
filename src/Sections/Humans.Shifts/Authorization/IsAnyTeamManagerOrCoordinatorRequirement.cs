@@ -11,5 +11,5 @@ namespace Humans.Shifts.Authorization;
 /// </summary>
 internal sealed class IsAnyTeamManagerOrCoordinatorRequirement : IAuthorizationRequirement, IDescribedRequirement
 {
-    public IReadOnlyList<string> Admits => [RoleNames.Admin, RoleNames.Board, ShiftsRoles.ShiftsNoInfo, ShiftsRoles.ShiftsAdmin, "Team Coordinator"];
+    public IReadOnlyList<string> Admits => [RoleNames.Admin, RoleNames.Board, ShiftsRoles.ShiftsAdmin, "Shift managers and approvers"];
 }

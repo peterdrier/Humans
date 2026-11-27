@@ -2,7 +2,6 @@ using Humans.Base.Extensions;
 using Humans.Base.Authorization;
 using Humans.Users.Contracts;
 using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Http;
 
 namespace Humans.Users.Authorization;
 

@@ -1288,31 +1288,35 @@
   <data name="Shifts_Profile_NoShowHistory" xml:space="preserve"><value>Historique des absences ({0})</value></data>
   <data name="Shifts_Profile_MarkedBy" xml:space="preserve"><value>Marqué par</value></data>
   <data name="Shifts_Profile_MarkedAt" xml:space="preserve"><value>Marqué le</value></data>
-  <data name="ShiftsSummary_Title" xml:space="preserve">
+  <data name="Shifts_Summary_Title" xml:space="preserve">
     <value>Quarts</value>
   </data>
-  <data name="ShiftsSummary_SlotsFilled" xml:space="preserve">
+  <data name="Shifts_Summary_SlotsFilled" xml:space="preserve">
     <value>{0} / {1} places remplies</value>
     <comment>{0} = filled, {1} = total</comment>
   </data>
-  <data name="ShiftsSummary_HumansSignedUp" xml:space="preserve">
+  <data name="Shifts_Summary_HumansSignedUp" xml:space="preserve">
     <value>{0} humans inscrits</value>
     <comment>{0} = count</comment>
   </data>
-  <data name="ShiftsSummary_PendingCount" xml:space="preserve">
+  <data name="Shifts_Summary_PendingCount" xml:space="preserve">
     <value>{0} en attente</value>
     <comment>{0} = count</comment>
   </data>
-  <data name="ShiftsSummary_NoShifts" xml:space="preserve">
+  <data name="Shifts_Summary_NoShifts" xml:space="preserve">
     <value>Aucun quart configuré pour le moment.</value>
   </data>
-  <data name="ShiftsSummary_IncludesSubTeams" xml:space="preserve">
+  <data name="Shifts_Summary_IncludesSubTeams" xml:space="preserve">
     <value>Inclut les quarts de {0} sous-équipe(s)</value>
     <comment>{0} = count</comment>
   </data>
-  <data name="ShiftsSummary_ManageShifts" xml:space="preserve">
+  <data name="Shifts_Summary_ManageShifts" xml:space="preserve">
     <value>Gérer les quarts</value>
   </data>
   <data name="Shifts_Search_Category" xml:space="preserve"><value>Quarts</value></data>
   <data name="Shifts_NameRequiredBeforeShifts" xml:space="preserve"><value>Ajoutez d'abord votre nom — nous en avons besoin avant que vous puissiez vous inscrire aux quarts.</value></data>
+  <data name="Shifts_Permission_Manage_Title" xml:space="preserve"><value>Gérer les quarts</value></data>
+  <data name="Shifts_Permission_Manage_Blurb" xml:space="preserve"><value>Créer et modifier les rotations et les quarts de l'équipe, et écrire à ses bénévoles.</value></data>
+  <data name="Shifts_Permission_Approve_Title" xml:space="preserve"><value>Approuver les inscriptions</value></data>
+  <data name="Shifts_Permission_Approve_Blurb" xml:space="preserve"><value>Approuver, refuser et affecter les inscriptions aux quarts de l'équipe.</value></data>
 </root>

@@ -20,7 +20,7 @@
 }
 
 @section Crumbs {
-    <span authorize-policy="@Humans.Surveys.Contracts.SurveysPolicies.Read"><a asp-controller="Admin" asp-action="Index">@Localizer["Surveys_Admin_Common_AdminBreadcrumb"]</a></span>
+    <span authorize-policy="@SurveysPolicies.Read"><a asp-controller="Admin" asp-action="Index">@Localizer["Surveys_Admin_Common_AdminBreadcrumb"]</a></span>
     <a asp-controller="SurveyAdmin" asp-action="Index">@Localizer["Surveys_Admin_Index_Title"]</a>
     <span>@ViewData["Title"]</span>
 }
@@ -52,6 +52,10 @@
                                 : Localizer["Surveys_Admin_Builder_ConfirmOpenSurvey"].Value)">@Localizer["Surveys_Admin_Builder_Open"]</button>
                 </form>
             }
+            @if (Model.Status == SurveyStatus.PendingApproval)
+            {
+                <partial name="_SurveyReviewActions" model="@Model.Id!.Value" view-data="@(new ViewDataDictionary(ViewData) { ["ReviewReturnUrl"] = Url.Action("Edit", "SurveyAdmin", new { id = Model.Id }) })" />
+            }
             @if (Model.ManagesEverySurvey && Model.Status == SurveyStatus.Open)
             {
                 <form asp-controller="SurveyAdmin" asp-action="Close" asp-route-id="@Model.Id" method="post" class="d-inline">
@@ -66,7 +70,7 @@
 @if (Model.Status == SurveyStatus.Draft && !string.IsNullOrWhiteSpace(Model.RejectionNote))
 {
     <div class="alert alert-danger" role="alert">
-        @string.Format(Localizer["Surveys_Admin_Index_RejectionNote"].Value, Model.RejectionNote)
+        @Localizer["Surveys_Admin_Index_RejectionNote", Model.RejectionNote]
     </div>
 }
 
@@ -389,6 +393,7 @@
                 const information = card.querySelector('.information-section');
                 const required = card.querySelector('.required-section');
                 const ranked = card.querySelector('.ranked-section');
+                const comment = card.querySelector('.comment-section');
                 const isRanked = type === 'RankedChoice';
                 const isChoice = type === 'SingleChoice' || type === 'MultiChoice' || isRanked;
                 const isGrid = type === 'Grid';
@@ -404,6 +409,7 @@
                 if (ratings) ratings.style.display = type === 'Rating' ? '' : 'none';
                 if (information) information.style.display = isInformation ? '' : 'none';
                 if (ranked) ranked.style.display = isRanked ? '' : 'none';
+                if (comment) comment.style.display = isChoice && !isRanked ? '' : 'none';
                 if (required) required.style.display = isInformation ? 'none' : '';
                 updateGridColumnLimit(card);
                 updateInformationImageLimit(card);
@@ -569,10 +575,14 @@
                 select.style.display = needsValues ? '' : 'none';
                 if (!needsValues) { Array.from(select.options).forEach(o => o.selected = false); return; }
 
+                const targetId = row.querySelector('.clause-question').value;
+                fillOptionSelect(select, questionCards().find(c => c.querySelector('.question-id')?.value === targetId));
+            }
+
+            // Lists a question card's live options in a multi-select, keeping the current selection.
+            function fillOptionSelect(select, target) {
                 const selected = new Set(Array.from(select.selectedOptions).map(o => o.value));
                 select.innerHTML = '';
-                const targetId = row.querySelector('.clause-question').value;
-                const target = questionCards().find(c => c.querySelector('.question-id')?.value === targetId);
                 if (!target) return;
                 target.querySelectorAll('.option-row').forEach(or => {
                     const value = or.querySelector('input[name$=".Value"]')?.value.trim();
@@ -617,6 +627,8 @@
                     populateQuestionSelect(row.querySelector('.clause-question'));
                     populateOptionValues(row);
                 });
+                const commentOptions = card.querySelector('.comment-options');
+                if (commentOptions) fillOptionSelect(commentOptions, card);
                 updateMoveButtons(card.querySelector('.options-container'), '.option-row', 'option');
                 updateMoveButtons(card.querySelector('.grid-rows-container'), '.grid-row', 'grid-row');
                 updateMoveButtons(
@@ -710,6 +722,10 @@
                         card.querySelectorAll('.clauses-container .clause-row').forEach(r => r.remove());
                         updateCombineVisibility(card);
                     }
+                } else if (e.target.classList.contains('comment-enabled')) {
+                    const card = e.target.closest('.question-card');
+                    card.querySelector('.comment-details').style.display = e.target.checked ? '' : 'none';
+                    fillOptionSelect(card.querySelector('.comment-options'), card);
                 } else if (e.target.classList.contains('clause-question') || e.target.classList.contains('clause-operator')) {
                     populateOptionValues(e.target.closest('.clause-row'));
                 }
@@ -719,6 +735,7 @@
             // newly added questions and removals are always reflected.
             container.addEventListener('focusin', function (e) {
                 if (e.target.classList.contains('clause-question')) populateQuestionSelect(e.target);
+                else if (e.target.classList.contains('comment-options')) fillOptionSelect(e.target, e.target.closest('.question-card'));
             });
 
             defaultCulture.addEventListener('change', updateMissingBadges);

@@ -1,5 +1,4 @@
 using AwesomeAssertions;
-using Humans.Base.Enums;
 using Humans.Users.Contracts;
 using Humans.AuditLog.Contracts;
 using Humans.Grants.Data;
@@ -7,7 +6,6 @@ using Humans.Grants.Domain;
 using Humans.Grants.Services;
 using Humans.Grants.Tests.Infrastructure;
 using Humans.Settings.Contracts;
-using Humans.Testing;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Diagnostics;
 using Microsoft.EntityFrameworkCore.Infrastructure;
@@ -65,7 +63,7 @@ public sealed class ProgramTests : GrantsTestHarness
     [HumansTheory]
     [Xunit.InlineData(false)]
     [Xunit.InlineData(true)]
-    public async Task ProgramSave_ResolvesAndDeduplicatesManagersBeforePersistingAndAuditing(bool update)
+    public async Task ProgramSave_DuplicateManagers_AreDeduplicated(bool update)
     {
         var actor = SeedUser();
         var archived = Guid.NewGuid();
@@ -87,7 +85,7 @@ public sealed class ProgramTests : GrantsTestHarness
     }
 
     [HumansFact]
-    public async Task Create_StoresProgramAndManagers_AuditsBoth()
+    public async Task Create_WithManagers_StoresBoth()
     {
         var actor = SeedUser("Board");
         var manager = SeedUser("Manager");
@@ -147,7 +145,7 @@ public sealed class ProgramTests : GrantsTestHarness
     }
 
     [HumansFact]
-    public async Task Update_SwapsManagers_AuditsEditAddAndRemove()
+    public async Task Update_ManagersSwapped_AuditsEach()
     {
         var actor = SeedUser("Board");
         var oldManager = SeedUser("Old");
@@ -170,7 +168,7 @@ public sealed class ProgramTests : GrantsTestHarness
     }
 
     [HumansFact]
-    public async Task Update_ManagerSaveFailure_DoesNotCommitProgramFieldsOrAudit()
+    public async Task Update_ManagerSaveFails_CommitsNothing()
     {
         var actor = SeedUser("Board");
         var oldManager = SeedUser("Old");
@@ -208,7 +206,7 @@ public sealed class ProgramTests : GrantsTestHarness
     }
 
     [HumansFact]
-    public async Task OneOpenProgramPerSourceKey_OnCreateAndOnReopen()
+    public async Task Create_SourceKeyAlreadyOpen_IsRefused()
     {
         var actor = SeedUser("Admin");
         await SeedProgramAsync(GrantIssuer.Source, "low-income");
@@ -251,7 +249,7 @@ public sealed class ProgramTests : GrantsTestHarness
     }
 
     [HumansFact]
-    public async Task Update_MovesTheProgramToAnotherEvent_AndAuditsIt()
+    public async Task Update_NewEvent_MovesProgram()
     {
         var autumn = BurnFixtures.Burn(eventName: "Autumn 2027", year: 2027, gateOpeningDate: new LocalDate(2027, 10, 1));
         Settings.GetAllEventSettingsAsync(Arg.Any<CancellationToken>()).Returns([Event2027, autumn]);
@@ -268,7 +266,7 @@ public sealed class ProgramTests : GrantsTestHarness
     }
 
     [HumansFact]
-    public async Task AnUnassignedProgram_DoesNotInferAnEventFromItsYear()
+    public async Task Program_NoEvent_InfersNone()
     {
         var autumn = BurnFixtures.Burn(eventName: "Autumn 2027", year: 2027, gateOpeningDate: new LocalDate(2027, 10, 1));
         Settings.GetAllEventSettingsAsync(Arg.Any<CancellationToken>()).Returns([autumn, Event2027]);
@@ -287,7 +285,7 @@ public sealed class ProgramTests : GrantsTestHarness
     }
 
     [HumansFact]
-    public async Task Update_AuditsAMoveBetweenTwoEventsOfTheSameName()
+    public async Task Update_MoveBetweenSameNameEvents_IsAudited()
     {
         var twin = BurnFixtures.Burn(eventName: Event2027.EventName, year: 2027, gateOpeningDate: new LocalDate(2027, 10, 1));
         Settings.GetAllEventSettingsAsync(Arg.Any<CancellationToken>()).Returns([Event2027, twin]);
@@ -301,7 +299,7 @@ public sealed class ProgramTests : GrantsTestHarness
     }
 
     [HumansFact]
-    public async Task TheYearFollowsTheEvent_WhenTheEventMovesToAnotherYear()
+    public async Task Year_EventMoves_FollowsEvent()
     {
         var program = await SeedProgramAsync();
         var moved = Event2027 with { Year = 2028, GateOpeningDate = new LocalDate(2028, 1, 5) };

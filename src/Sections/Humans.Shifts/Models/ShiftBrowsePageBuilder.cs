@@ -11,7 +11,6 @@ namespace Humans.Shifts.Models;
 /// <summary><see cref="UserTagPreferences"/> are the raw rows from the cached <c>ShiftUserView</c>.</summary>
 internal sealed record ShiftBrowsePageRequest(
     BurnSettingsInfo EventSettings,
-    Guid UserId,
     IReadOnlyList<ShiftUserSignup> UserSignups,
     IReadOnlyList<VolunteerTagPreference> UserTagPreferences,
     IReadOnlyList<UserSignupConflictItem> UserActiveSignups,
@@ -208,16 +207,14 @@ internal sealed class ShiftBrowsePageBuilder(
             .GroupBy(u => u.Rota.TeamId)
             .Select(deptGroup =>
             {
-                var firstRota = deptGroup.OrderBy(x => x.Shift.Id).First().Rota;
-                var team = teamsById.TryGetValue(firstRota.TeamId, out var t) ? t : null;
+                var team = teamsById.TryGetValue(deptGroup.Key, out var t) ? t : null;
                 var deptName = team?.Name ?? string.Empty;
                 var deptSlug = team?.Slug ?? string.Empty;
                 return new DepartmentShiftGroup
                 {
-                    TeamId = firstRota.TeamId,
+                    TeamId = deptGroup.Key,
                     TeamName = deptName,
                     TeamDescription = team?.Description,
-                    TeamSlug = deptSlug,
                     Rotas = deptGroup
                         .GroupBy(u => u.Shift.RotaId)
                         .Select(rg => ShiftBrowseMapper.BuildRotaGroup(rg, deptName, deptSlug))

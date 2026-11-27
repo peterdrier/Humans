@@ -7,7 +7,7 @@ namespace Humans.Users.Data.Repositories;
 
 internal sealed partial class UserRepository
 {
-    public async Task<IReadOnlyList<UserEmail>> GetUserEmailsByUserIdReadOnlyAsync(
+    public async Task<IReadOnlyList<UserEmail>> GetUserEmailsByUserIdAsync(
         Guid userId, CancellationToken ct = default)
     {
         await using var ctx = await _factory.CreateDbContextAsync(ct);
@@ -17,17 +17,7 @@ internal sealed partial class UserRepository
             .ToListAsync(ct);
     }
 
-    public async Task<IReadOnlyList<UserEmail>> GetUserEmailsByUserIdForMutationAsync(
-        Guid userId, CancellationToken ct = default)
-    {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
-        return await ctx.UserEmails
-            .AsNoTracking()
-            .Where(e => e.UserId == userId)
-            .ToListAsync(ct);
-    }
-
-    public async Task<UserEmail?> GetUserEmailByIdAndUserIdAsync(
+    public async Task<UserEmail?> GetUserEmailForUserAsync(
         Guid emailId, Guid userId, CancellationToken ct = default)
     {
         await using var ctx = await _factory.CreateDbContextAsync(ct);
@@ -35,7 +25,7 @@ internal sealed partial class UserRepository
             .FirstOrDefaultAsync(e => e.Id == emailId && e.UserId == userId, ct);
     }
 
-    public async Task<UserEmail?> GetUserEmailByIdReadOnlyAsync(Guid emailId, CancellationToken ct = default)
+    public async Task<UserEmail?> GetUserEmailByIdAsync(Guid emailId, CancellationToken ct = default)
     {
         await using var ctx = await _factory.CreateDbContextAsync(ct);
         return await ctx.UserEmails
@@ -68,7 +58,7 @@ internal sealed partial class UserRepository
             .ToListAsync(ct);
     }
 
-    public async Task<IReadOnlyList<Guid>> GetUserIdsHavingAnyUserEmailAsync(
+    public async Task<IReadOnlyList<Guid>> GetUserIdsWithEmailsAsync(
         IReadOnlyCollection<Guid> userIds, CancellationToken ct = default)
     {
         if (userIds.Count == 0)
@@ -83,7 +73,7 @@ internal sealed partial class UserRepository
             .ToListAsync(ct);
     }
 
-    public async Task RemoveAllUserEmailsForUserAndSaveAsync(Guid userId, CancellationToken ct = default)
+    public async Task RemoveUserEmailsAsync(Guid userId, CancellationToken ct = default)
     {
         await using var ctx = await _factory.CreateDbContextAsync(ct);
         var emails = await ctx.UserEmails
@@ -95,18 +85,6 @@ internal sealed partial class UserRepository
 
         ctx.UserEmails.RemoveRange(emails);
         await ctx.SaveChangesAsync(ct);
-    }
-
-    public async Task RemoveAllUserEmailsForUsersAndSaveAsync(
-        IReadOnlyCollection<Guid> userIds, CancellationToken ct = default)
-    {
-        if (userIds.Count == 0)
-            return;
-
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
-        await ctx.UserEmails
-            .Where(e => userIds.Contains(e.UserId))
-            .ExecuteDeleteAsync(ct);
     }
 
     public async Task ReassignUserEmailsToUserAsync(
@@ -195,20 +173,6 @@ internal sealed partial class UserRepository
                 aliases.Add(row);
         }
         return [.. exact, .. aliases];
-    }
-
-    public async Task<IReadOnlyList<Guid>> GetUserIdsByUserEmailPrefixAndSuffixAsync(
-        string prefix,
-        string suffix,
-        CancellationToken ct = default)
-    {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
-        return await ctx.UserEmails
-            .AsNoTracking()
-            .Where(ue => ue.Email.StartsWith(prefix) && ue.Email.EndsWith(suffix))
-            .Select(ue => ue.UserId)
-            .Distinct()
-            .ToListAsync(ct);
     }
 
     public async Task AddUserEmailAsync(UserEmail email, CancellationToken ct = default)

@@ -16,7 +16,6 @@ namespace Humans.Shifts.Tests.Services;
 
 public sealed class ShiftManagementServiceCoveragePiesTests : ShiftsTestHarness
 {
-    private readonly ITeamService _teamService;
     private readonly ShiftManagementService _service;
 
     private static readonly Instant TestNow = Instant.FromUtc(2026, 6, 15, 12, 0);
@@ -24,11 +23,11 @@ public sealed class ShiftManagementServiceCoveragePiesTests : ShiftsTestHarness
     public ShiftManagementServiceCoveragePiesTests()
         : base(TestNow)
     {
-        _teamService = Substitute.For<ITeamService>();
+        var teamService = Substitute.For<ITeamService>();
 
         // Resolve teams from the same in-memory DB as the repo; production reads
         // the cached TeamInfo projection and walks parents in memory.
-        _teamService.GetTeamsAsync(Arg.Any<CancellationToken>())
+        teamService.GetTeamsAsync(Arg.Any<CancellationToken>())
             .Returns(_ => Task.FromResult<IReadOnlyDictionary<Guid, TeamInfo>>(
                 TeamsDb.Teams.AsEnumerable().ToDictionary(
                     t => t.Id,
@@ -40,8 +39,8 @@ public sealed class ShiftManagementServiceCoveragePiesTests : ShiftsTestHarness
                         ParentTeamId: t.ParentTeamId))));
 
         var serviceProvider = new ServiceLocatorBuilder()
-            .With(_teamService)
-            .With<IRoleAssignmentService>()
+            .With(teamService)
+            .With<ISystemRoleService>()
             .With<IUserService>()
             .Build();
 
@@ -50,7 +49,6 @@ public sealed class ShiftManagementServiceCoveragePiesTests : ShiftsTestHarness
         _service = new ShiftManagementService(
             repo,
             AuditLog,
-            AdminAuthorization,
             serviceProvider,
             NewCalendarResolver(),
             Clock,
@@ -165,8 +163,7 @@ public sealed class ShiftManagementServiceCoveragePiesTests : ShiftsTestHarness
     public async Task FillPercent_NoRequestedHours_ReturnsZero()
     {
         var pie = new DepartmentCoveragePie(
-            TeamId: Guid.NewGuid(), TeamName: "X", TeamSlug: "x",
-            IsSubTeam: false, ParentTeamId: null, ParentTeamName: null,
+            TeamId: Guid.NewGuid(), TeamName: "X", IsSubTeam: false, ParentTeamId: null, ParentTeamName: null,
             RequestedHours: 0m, FilledHours: 0m);
 
         await Task.CompletedTask;

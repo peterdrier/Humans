@@ -27,9 +27,9 @@ public sealed record BudgetYearDetail(
     string Year,
     string Name,
     BudgetYearStatus Status,
-    bool IsDeleted,
+    bool IsArchived,
     IReadOnlyList<BudgetGroupDetail> Groups,
-    string? VendorEventId = null);
+    string? PlatformEventId = null);
 
 public sealed record BudgetGroupDetail(
     Guid Id,
@@ -44,12 +44,11 @@ public sealed record BudgetGroupDetail(
 {
     internal decimal AllocatedAmount => Categories.Sum(category => category.AllocatedAmount);
     internal decimal LineItemTotal => Categories.Sum(category => category.LineItemTotal);
-    internal decimal UnallocatedAmount => AllocatedAmount - LineItemTotal;
+    internal decimal AvailableAmount => AllocatedAmount - LineItemTotal;
 }
 
 public sealed record BudgetCategoryDetail(
     Guid Id,
-    Guid BudgetGroupId,
     string Name,
     decimal AllocatedAmount,
     ExpenditureType ExpenditureType,
@@ -58,12 +57,11 @@ public sealed record BudgetCategoryDetail(
     IReadOnlyList<BudgetLineItemDetail> LineItems)
 {
     internal decimal LineItemTotal => LineItems.Where(item => !item.IsCashflowOnly).Sum(item => item.Amount);
-    internal decimal UnallocatedAmount => AllocatedAmount - LineItemTotal;
+    internal decimal AvailableAmount => AllocatedAmount - LineItemTotal;
 }
 
 public sealed record BudgetLineItemDetail(
     Guid Id,
-    Guid BudgetCategoryId,
     string Description,
     decimal Amount,
     Guid? ResponsibleTeamId,
@@ -75,8 +73,6 @@ public sealed record BudgetLineItemDetail(
     int SortOrder);
 
 public sealed record TicketingProjectionSnapshot(
-    Guid Id,
-    Guid BudgetGroupId,
     LocalDate? StartDate,
     LocalDate? EventDate,
     int InitialSalesCount,
@@ -85,9 +81,7 @@ public sealed record TicketingProjectionSnapshot(
     int VatRate,
     decimal StripeFeePercent,
     decimal StripeFeeFixed,
-    decimal TicketTailorFeePercent,
-    Instant CreatedAt,
-    Instant UpdatedAt);
+    decimal PlatformFeePercent);
 
 public sealed record BudgetCategorySnapshot(
     Guid Id,
@@ -101,11 +95,10 @@ public sealed record BudgetCategorySnapshot(
     IReadOnlyList<BudgetCategoryLineItemSnapshot> LineItems)
 {
     internal decimal LineItemTotal => LineItems.Where(item => !item.IsCashflowOnly).Sum(item => item.Amount);
-    internal decimal UnallocatedAmount => AllocatedAmount - LineItemTotal;
+    internal decimal AvailableAmount => AllocatedAmount - LineItemTotal;
 }
 
 public sealed record BudgetCategoryGroupSnapshot(
-    Guid Id,
     Guid BudgetYearId,
     string Name,
     bool IsRestricted,
@@ -114,13 +107,11 @@ public sealed record BudgetCategoryGroupSnapshot(
 
 public sealed record BudgetCategoryYearSnapshot(
     Guid Id,
-    string Year,
     string Name,
-    bool IsDeleted);
+    bool IsArchived);
 
 public sealed record BudgetCategoryLineItemSnapshot(
     Guid Id,
-    Guid BudgetCategoryId,
     string Description,
     decimal Amount,
     Guid? ResponsibleTeamId,
@@ -145,7 +136,7 @@ public sealed class BudgetSummaryResult
 
 public sealed class BudgetSliceResult
 {
-    /// <summary>Null for synthesized VAT, reserves, taxes and group buffers.</summary>
+    /// <summary>Null for synthesized VAT, reserves, taxes and group available amounts.</summary>
     public Guid? BudgetCategoryId { get; init; }
     public required string Name { get; init; }
     public decimal Amount { get; init; }

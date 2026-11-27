@@ -5,20 +5,16 @@ namespace Humans.Users.Data.Repositories;
 
 internal partial interface IUserRepository
 {
-    /// <summary>Read-only, unordered.</summary>
-    Task<IReadOnlyList<UserEmail>> GetUserEmailsByUserIdReadOnlyAsync(
-        Guid userId, CancellationToken ct = default);
-
-    /// <summary>Detached: mutated entities must go back through a write method.</summary>
-    Task<IReadOnlyList<UserEmail>> GetUserEmailsByUserIdForMutationAsync(
+    /// <summary>Detached and unordered: mutated entities must go back through a write method.</summary>
+    Task<IReadOnlyList<UserEmail>> GetUserEmailsByUserIdAsync(
         Guid userId, CancellationToken ct = default);
 
     /// <summary>Tracked for modification.</summary>
-    Task<UserEmail?> GetUserEmailByIdAndUserIdAsync(
+    Task<UserEmail?> GetUserEmailForUserAsync(
         Guid emailId, Guid userId, CancellationToken ct = default);
 
     /// <summary>Read-only.</summary>
-    Task<UserEmail?> GetUserEmailByIdReadOnlyAsync(Guid emailId, CancellationToken ct = default);
+    Task<UserEmail?> GetUserEmailByIdAsync(Guid emailId, CancellationToken ct = default);
 
     /// <summary>
     /// The one address→rows read: every <see cref="UserEmail"/> row whose <c>Email</c>
@@ -40,13 +36,10 @@ internal partial interface IUserRepository
 
     Task<IReadOnlyList<UserEmail>> GetAllUserEmailsAsync(CancellationToken ct = default);
 
-    Task<IReadOnlyList<Guid>> GetUserIdsHavingAnyUserEmailAsync(
+    Task<IReadOnlyList<Guid>> GetUserIdsWithEmailsAsync(
         IReadOnlyCollection<Guid> userIds, CancellationToken ct = default);
 
-    Task RemoveAllUserEmailsForUserAndSaveAsync(Guid userId, CancellationToken ct = default);
-
-    Task RemoveAllUserEmailsForUsersAndSaveAsync(
-        IReadOnlyCollection<Guid> userIds, CancellationToken ct = default);
+    Task RemoveUserEmailsAsync(Guid userId, CancellationToken ct = default);
 
     Task<bool> MarkUserEmailVerifiedAsync(
         Guid emailId, Instant now, CancellationToken ct = default);
@@ -56,11 +49,6 @@ internal partial interface IUserRepository
     /// <summary>Rows matching any of <paramref name="emails"/>, case-insensitive, read-only.</summary>
     Task<IReadOnlyList<UserEmail>> GetUserEmailsByEmailsAsync(
         IReadOnlyCollection<string> emails, CancellationToken ct = default);
-
-    Task<IReadOnlyList<Guid>> GetUserIdsByUserEmailPrefixAndSuffixAsync(
-        string prefix,
-        string suffix,
-        CancellationToken ct = default);
 
     /// <summary>
     /// Applies an OAuth-reconcile plan in one transaction, so a tag-move never deletes the old row

@@ -1,4 +1,3 @@
-using Humans.Users.Domain;
 using AwesomeAssertions;
 using Humans.Users.Contracts;
 using Humans.Users.Services;

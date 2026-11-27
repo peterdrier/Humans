@@ -2,7 +2,6 @@ using System.Net;
 using AwesomeAssertions;
 using Humans.Camps.Contracts;
 using Humans.Base.Enums;
-using Humans.Events.Contracts;
 using Humans.Events.Domain;
 using Humans.Events.Services;
 using Humans.Integration.Tests.Infrastructure;
@@ -315,7 +314,7 @@ public class UsersPageRenderTests(HumansTestDatabase database) : IntegrationTest
         await roleSeeding.SeedSystemRolesAsync(userId, ct);
         var leadDefinitionId = await roleSeeding.GetDefinitionIdBySlugAsync(CampSeedRoles.CampLeadSlug, ct);
         leadDefinitionId.Should().NotBeNull("the Camp Lead role definition must exist after seeding system roles");
-        await seeding.AddMemberAndAssignRoleInActiveSeasonAsync(
+        await seeding.AddMemberWithRoleAsync(
             camp.Id, leadDefinitionId.Value, userId, userId, ct);
 
         return CampName;

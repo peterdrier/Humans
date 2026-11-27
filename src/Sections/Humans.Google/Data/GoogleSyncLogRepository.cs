@@ -1,6 +1,5 @@
 using System.Text.RegularExpressions;
 using Humans.Base.Enums;
-using Humans.Google.Contracts;
 using Humans.Google.Domain;
 using Microsoft.EntityFrameworkCore;
 using NodaTime;
@@ -116,6 +115,17 @@ internal sealed class GoogleSyncLogRepository(IDbContextFactory<GoogleIntegratio
         var rows = await ctx.GoogleSyncLog
             .Where(e => e.UserId.HasValue && userIds.Contains(e.UserId.Value))
             .ToListAsync(ct);
+        if (rows.Count == 0) return 0;
+
+        ctx.GoogleSyncLog.RemoveRange(rows);
+        await ctx.SaveChangesAsync(ct);
+        return rows.Count;
+    }
+
+    public async Task<int> DeleteBeforeAsync(Instant cutoff, CancellationToken ct = default)
+    {
+        await using var ctx = await factory.CreateDbContextAsync(ct);
+        var rows = await ctx.GoogleSyncLog.Where(e => e.OccurredAt < cutoff).ToListAsync(ct);
         if (rows.Count == 0) return 0;
 
         ctx.GoogleSyncLog.RemoveRange(rows);

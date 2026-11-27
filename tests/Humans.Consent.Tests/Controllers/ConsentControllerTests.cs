@@ -1,3 +1,4 @@
+using Humans.Testing;
 using System.Globalization;
 using Humans.Base.Extensions;
 using Microsoft.AspNetCore.Builder;
@@ -39,7 +40,7 @@ public sealed class ConsentControllerTests
     private readonly IOnboardingIntake _onboardingService = Substitute.For<IOnboardingIntake>();
     private readonly IUserService _userService = Substitute.For<IUserService>();
     private readonly IStringLocalizer<ConsentResource> _localizer =
-        Substitute.For<IStringLocalizer<ConsentResource>>();
+        Substitute.For<IStringLocalizer<ConsentResource>>().AddFormatting();
     private readonly DefaultHttpContext _http = new();
 
     public ConsentControllerTests()
@@ -94,7 +95,7 @@ public sealed class ConsentControllerTests
             DocumentVersionId = versionId,
             ExplicitConsent = true
         }));
-        Assert.Equal("Consent_SubmitError", controller.TempData[Humans.Base.Constants.TempDataKeys.ErrorMessage]);
+        Assert.Equal("Consent_SubmitError", controller.TempData[Base.Constants.TempDataKeys.ErrorMessage]);
         await _onboardingService.DidNotReceiveWithAnyArgs().ConsentSignedAsync(default);
     }
 
@@ -111,7 +112,7 @@ public sealed class ConsentControllerTests
 
         await controller.Submit(new ConsentSubmitModel { DocumentVersionId = versionId, ExplicitConsent = true });
 
-        Assert.Equal("Consent_SubmitError", controller.TempData[Humans.Base.Constants.TempDataKeys.ErrorMessage]);
+        Assert.Equal("Consent_SubmitError", controller.TempData[Base.Constants.TempDataKeys.ErrorMessage]);
     }
 
     [HumansFact]
@@ -129,8 +130,8 @@ public sealed class ConsentControllerTests
 
         await controller.Submit(new ConsentSubmitModel { DocumentVersionId = versionId, ExplicitConsent = true });
 
-        Assert.Equal("Consent_ThankYou", controller.TempData[Humans.Base.Constants.TempDataKeys.SuccessMessage]);
-        Assert.False(controller.TempData.ContainsKey(Humans.Base.Constants.TempDataKeys.ErrorMessage));
+        Assert.Equal("Consent_ThankYou", controller.TempData[Base.Constants.TempDataKeys.SuccessMessage]);
+        Assert.False(controller.TempData.ContainsKey(Base.Constants.TempDataKeys.ErrorMessage));
     }
 
     [HumansFact]
@@ -177,7 +178,7 @@ public sealed class ConsentControllerTests
         });
 
         Assert.Equal("/OnboardingWidget", Assert.IsType<LocalRedirectResult>(result).Url);
-        Assert.Equal("Consent_AlreadyConsented", controller.TempData[Humans.Base.Constants.TempDataKeys.InfoMessage]);
+        Assert.Equal("Consent_AlreadyConsented", controller.TempData[Base.Constants.TempDataKeys.InfoMessage]);
     }
 
     [HumansFact]
@@ -233,9 +234,9 @@ public sealed class ConsentControllerTests
             Guid.NewGuid(), name, "v1", stamp, signed, signed ? stamp : null, "Changes", stamp);
         _consentService.GetConsentDashboardAsync(userId, Arg.Any<CancellationToken>())
             .Returns(new ConsentDashboard([
-                new(Guid.NewGuid(), "Z-complete-team", [Document("Completed-document", true)]),
-                new(Guid.NewGuid(), "B-pending-team", [Document("Other-document", false)]),
-                new(Guid.NewGuid(), "A-pending-team", [Document("0-signed-document", true),
+                new("Z-complete-team", [Document("Completed-document", true)]),
+                new("B-pending-team", [Document("Other-document", false)]),
+                new("A-pending-team", [Document("0-signed-document", true),
                     Document("Zulu-pending-document", false), Document("Alpha-pending-document", false)])
             ], Enumerable.Range(0, 11).Select(i => new ConsentDashboardHistoryItem(
                 Guid.NewGuid(), $"History{i:D2}", "v1", stamp)).ToList()));
@@ -274,7 +275,7 @@ public sealed class ConsentControllerTests
         var services = scope.ServiceProvider;
         var engine = services.GetRequiredService<IRazorViewEngine>();
         var result = engine.GetView(null, "/Views/Consent/Index.cshtml", isMainPage: false);
-        Assert.True(result.Success, string.Join(", ", result.SearchedLocations ?? []));
+        Assert.True(result.Success, string.Join(", ", result.SearchedLocations));
         var http = new DefaultHttpContext { RequestServices = services };
         var route = new RouteData();
         route.Values["controller"] = "Consent";

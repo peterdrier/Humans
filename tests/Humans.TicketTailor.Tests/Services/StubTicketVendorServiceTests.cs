@@ -23,7 +23,7 @@ public class StubTicketVendorServiceTests
     }
 
     [HumansFact]
-    public async Task Dataset_Is450PaidOrdersOf600ValidTicketsPlusFourNonPaidOrders()
+    public async Task Dataset_HasExpectedOrderCounts()
     {
         var stub = new StubTicketVendorService();
         var orders = await stub.GetOrdersAsync(null, "stub-event", Ct);
@@ -37,7 +37,7 @@ public class StubTicketVendorServiceTests
     }
 
     [HumansFact]
-    public async Task CheckIns_FallOnTheGateDayAndReferenceValidTickets()
+    public async Task CheckIns_FallOnGateDay()
     {
         var stub = new StubTicketVendorService();
         var tickets = await stub.GetIssuedTicketsAsync(null, "stub-event", Ct);
@@ -50,7 +50,7 @@ public class StubTicketVendorServiceTests
     }
 
     [HumansFact]
-    public async Task IncrementalSync_ReturnsNoTicketsAndNoCheckIns()
+    public async Task IncrementalSync_ReturnsNothing()
     {
         var stub = new StubTicketVendorService();
         var since = Instant.FromUtc(2026, 1, 1, 0, 0);

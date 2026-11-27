@@ -92,7 +92,10 @@
   <data name="Teams_JoinPolicyChanged" xml:space="preserve"><value>The team’s joining requirements changed. Please try again.</value></data>
   <data name="Teams_CannotLeaveSystem" xml:space="preserve"><value>You cannot leave a system-managed team directly.</value></data>
   <data name="Teams_NotMember" xml:space="preserve"><value>You are not a member of this team.</value></data>
-  <data name="Teams_RequestUnavailable" xml:space="preserve"><value>This join request is unavailable or no longer pending.</value></data>
+  <data name="Teams_RequestNotFound" xml:space="preserve"><value>You have no such join request.</value></data>
+  <data name="Teams_RequestApproved" xml:space="preserve"><value>That join request was already approved.</value></data>
+  <data name="Teams_RequestRejected" xml:space="preserve"><value>That join request was already declined.</value></data>
+  <data name="Teams_RequestWithdrawn" xml:space="preserve"><value>You already withdrew that join request.</value></data>
   <data name="Teams_ActionFailed" xml:space="preserve"><value>Unable to complete this team action. Please try again.</value></data>
   <data name="Teams_TeamAdmin_RequestApproved" xml:space="preserve"><value>Request approved. The human is now part of the team.</value></data>
   <data name="Teams_TeamAdmin_ProvideRejectionReason" xml:space="preserve"><value>Please provide a reason for rejection.</value></data>
@@ -240,4 +243,8 @@
   <data name="Teams_Search_Category" xml:space="preserve"><value>Teams</value></data>
   <data name="Teams_Roles_SystemTeam" xml:space="preserve"><value>System teams can't hold roles.</value></data>
   <data name="Teams_Roles_InactiveTeam" xml:space="preserve"><value>This team isn't active.</value></data>
+  <data name="Teams_Permission_Manage_Title" xml:space="preserve"><value>Manage the team</value></data>
+  <data name="Teams_Permission_Manage_Blurb" xml:space="preserve"><value>Manage members, join requests, roles and the team page.</value></data>
+  <data name="Teams_Permission_EarlyEntry_Title" xml:space="preserve"><value>Manage early entry</value></data>
+  <data name="Teams_Permission_EarlyEntry_Blurb" xml:space="preserve"><value>Grant early entry for the team's projects.</value></data>
 </root>

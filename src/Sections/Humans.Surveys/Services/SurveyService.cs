@@ -7,8 +7,6 @@ using Humans.Surveys.Data;
 using Humans.Surveys.Contracts;
 using Humans.Base.Interfaces;
 using NodaTime;
-using Humans.Base.Threading;
-using Humans.Base.Enums;
 using Humans.Surveys.Domain;
 
 namespace Humans.Surveys.Services;
@@ -133,7 +131,7 @@ internal sealed class SurveyService(
         if (status is null)
             return new(Refusal: "Survey not found.");
         if (status == SurveyStatus.Open) return new();
-        // A submission pending approval can only become Open via ApproveAndSendAsync — that is
+        // A submission pending approval can only become Open via ApproveAsync — that is
         // the one step that also sends invitations and records the approval (Workgroups §11).
         if (status == SurveyStatus.PendingApproval)
             return new(Refusal: "A survey pending approval must be approved or rejected, not opened directly.");
@@ -185,7 +183,7 @@ internal sealed class SurveyService(
         return new SurveySubmitResult(true);
     }
 
-    public async Task<SurveyReviewResult> ApproveAndSendAsync(Guid surveyId, SurveyViewer viewer, CancellationToken ct = default)
+    public async Task<SurveyReviewResult> ApproveAsync(Guid surveyId, SurveyViewer viewer, CancellationToken ct = default)
     {
         if (!viewer.ManagesEverySurvey)
             return new(Refusal: "Only Surveys Admin or Admin may approve a survey.");
@@ -264,7 +262,6 @@ internal sealed class SurveyService(
             invited.GetValueOrDefault(s.Id),
             responses.GetValueOrDefault(s.Id),
             s.CreatedByUserId,
-            s.SubmittedAt,
             s.RejectionNote)).ToList();
     }
 
@@ -648,7 +645,7 @@ internal sealed class SurveyService(
                 var requestedImages = question.InformationImages ?? [];
                 if (requestedImages.Count > MaxInformationImages)
                 {
-                    return await RejectAsync(new("Surveys_Validation_ImagesLimit",
+                    return await RejectImagesAsync(new("Surveys_Validation_ImagesLimit",
                         $"An Information item can have at most {MaxInformationImages} images.", MaxInformationImages));
                 }
 
@@ -658,7 +655,7 @@ internal sealed class SurveyService(
                     if (requested.Upload is { } upload)
                     {
                         var imageError = ValidateInformationImage(upload);
-                        if (imageError is not null) return await RejectAsync(imageError);
+                        if (imageError is not null) return await RejectImagesAsync(imageError);
                         var fileName = DisplayFileName(upload.FileName);
                         // Replacements get a fresh key so a failed database save cannot delete or
                         // overwrite the still-authoritative existing file.
@@ -691,7 +688,7 @@ internal sealed class SurveyService(
                         continue;
                     }
 
-                    return await RejectAsync(new("Surveys_Validation_ImageRequired",
+                    return await RejectImagesAsync(new("Surveys_Validation_ImageRequired",
                         "Select an image file for every image row. " +
                         "If a previous save failed, select the file again."));
                 }
@@ -721,7 +718,7 @@ internal sealed class SurveyService(
             input with { Questions = preparedQuestions },
             newStoragePaths);
 
-        async Task<PreparedInformationImages> RejectAsync(SurveyAuthoringError error)
+        async Task<PreparedInformationImages> RejectImagesAsync(SurveyAuthoringError error)
         {
             await DeleteBestEffortAsync(newStoragePaths, CancellationToken.None);
             return new(input, [], error);
@@ -798,6 +795,7 @@ internal sealed class SurveyService(
             Help = Copy(q.HelpText),
             MinLabel = Copy(q.RatingMinLabel),
             MaxLabel = Copy(q.RatingMaxLabel),
+            CommentPrompt = Copy(q.Comment?.Prompt ?? LocalizedText.Empty),
             Options = q.Options.Select(o => new { Option = o, Label = Copy(o.Label) }).ToList(),
             GridRows = (q.GridRows ?? []).Select(row => new { Row = row, Label = Copy(row.Label) }).ToList(),
             InformationImages = (q.InformationImages ?? []).Select(image => new
@@ -818,7 +816,7 @@ internal sealed class SurveyService(
         };
         foreach (var q in questions)
         {
-            allTexts.AddRange([q.Prompt, q.Help, q.MinLabel, q.MaxLabel]);
+            allTexts.AddRange([q.Prompt, q.Help, q.MinLabel, q.MaxLabel, q.CommentPrompt]);
             allTexts.AddRange(q.Options.Select(o => o.Label));
             allTexts.AddRange(q.GridRows.Select(row => row.Label));
             allTexts.AddRange(q.InformationImages.Select(image => image.Label));
@@ -855,6 +853,9 @@ internal sealed class SurveyService(
                 HelpText = new LocalizedText(q.Help),
                 RatingMinLabel = new LocalizedText(q.MinLabel),
                 RatingMaxLabel = new LocalizedText(q.MaxLabel),
+                Comment = q.Question.Comment is { } comment
+                    ? new SurveyCommentSettings(new LocalizedText(q.CommentPrompt), comment.OptionValues)
+                    : null,
                 Options = q.Options.Select(o => o.Option with { Label = new LocalizedText(o.Label) }).ToList(),
                 GridRows = q.GridRows.Select(row => row.Row with { Label = new LocalizedText(row.Label) }).ToList(),
                 InformationImages = q.InformationImages.Select(image => image.Image with

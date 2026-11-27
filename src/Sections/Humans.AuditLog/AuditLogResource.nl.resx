@@ -38,7 +38,8 @@
   <data name="Enum_AuditAction_MemberUnsuspended" xml:space="preserve"><value>Schorsing van lid opgeheven</value></data>
   <data name="Enum_AuditAction_AccountAnonymized" xml:space="preserve"><value>Account geanonimiseerd</value></data>
   <data name="Enum_AuditAction_RoleAssigned" xml:space="preserve"><value>Rol toegewezen</value></data>
-  <data name="Enum_AuditAction_RoleEnded" xml:space="preserve"><value>Rol beëindigd</value></data>
+  <data name="Enum_AuditAction_RoleEnded" xml:space="preserve"><value>Rol ingetrokken</value></data>
+  <data name="Enum_AuditAction_RoleRevoked" xml:space="preserve"><value>Rol ingetrokken</value></data>
   <data name="Enum_AuditAction_VolunteerApproved" xml:space="preserve"><value>Vrijwilliger goedgekeurd</value></data>
   <data name="Enum_AuditAction_GoogleResourceAccessGranted" xml:space="preserve"><value>Toegang tot Google-resource verleend</value></data>
   <data name="Enum_AuditAction_GoogleResourceAccessRevoked" xml:space="preserve"><value>Toegang tot Google-resource ingetrokken</value></data>
@@ -239,6 +240,7 @@
   <data name="Enum_AuditAction_HoldedExpenseAccountCreated" xml:space="preserve"><value>Holded-kostenrekening aangemaakt</value></data>
   <data name="Enum_AuditAction_HoldedExpenseAccountLinked" xml:space="preserve"><value>Holded-kostenrekening gekoppeld</value></data>
   <data name="Enum_AuditAction_HoldedExpenseAccountActiveChanged" xml:space="preserve"><value>Actieve status van Holded-kostenrekening gewijzigd</value></data>
+  <data name="Enum_AuditAction_BackdoorApiKeyCreated" xml:space="preserve"><value>Backdoor-API-sleutel aangemaakt</value></data>
   <data name="Enum_AuditAction_BackdoorApiKeyIssued" xml:space="preserve"><value>Backdoor-API-sleutel uitgegeven</value></data>
   <data name="Enum_AuditAction_BackdoorApiKeyRevoked" xml:space="preserve"><value>Backdoor-API-sleutel ingetrokken</value></data>
   <data name="Enum_AuditAction_FeedbackGitHubLinked" xml:space="preserve"><value>Feedback gekoppeld aan GitHub</value></data>
@@ -337,8 +339,10 @@
   <data name="AuditLog_NoSubjectVerb_VolunteerApproved" xml:space="preserve"><value>keurde goed</value></data>
   <data name="AuditLog_Verb_RoleAssigned" xml:space="preserve"><value>wees een rol toe aan</value></data>
   <data name="AuditLog_NoSubjectVerb_RoleAssigned" xml:space="preserve"><value>wees een rol toe</value></data>
-  <data name="AuditLog_Verb_RoleEnded" xml:space="preserve"><value>beëindigde de rol van</value></data>
-  <data name="AuditLog_NoSubjectVerb_RoleEnded" xml:space="preserve"><value>beëindigde de rol</value></data>
+  <data name="AuditLog_Verb_RoleEnded" xml:space="preserve"><value>trok de rol in van</value></data>
+  <data name="AuditLog_Verb_RoleRevoked" xml:space="preserve"><value>trok de rol in van</value></data>
+  <data name="AuditLog_NoSubjectVerb_RoleEnded" xml:space="preserve"><value>trok een rol in</value></data>
+  <data name="AuditLog_NoSubjectVerb_RoleRevoked" xml:space="preserve"><value>trok een rol in</value></data>
   <data name="AuditLog_Verb_WorkspaceAccountPasswordReset" xml:space="preserve"><value>stelde het Workspace-wachtwoord opnieuw in voor</value></data>
   <data name="AuditLog_NoSubjectVerb_WorkspaceAccountPasswordReset" xml:space="preserve"><value>stelde het Workspace-wachtwoord opnieuw in</value></data>
   <data name="AuditLog_Verb_WorkspaceAccountBackupCodesGenerated" xml:space="preserve"><value>genereerde Workspace-back-upcodes voor</value></data>
@@ -421,4 +425,10 @@
   <data name="Enum_AuditAction_WorkgroupMemberAdded" xml:space="preserve"><value>Werkgroeplid toegevoegd</value></data>
   <data name="Enum_AuditAction_WorkgroupMembershipApproved" xml:space="preserve"><value>Werkgroeplidmaatschap goedgekeurd</value></data>
   <data name="Enum_AuditAction_WorkgroupMembershipDeclined" xml:space="preserve"><value>Werkgroeplidmaatschap afgewezen</value></data>
+  <data name="AuditLog_Temporary" xml:space="preserve">
+    <value>tijdelijk</value>
+  </data>
+  <data name="AuditLog_TemporaryHint" xml:space="preserve">
+    <value>Verwijderd zodra het ouder is dan de bewaartermijn</value>
+  </data>
 </root>

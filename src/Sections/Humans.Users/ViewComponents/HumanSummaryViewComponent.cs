@@ -1,7 +1,6 @@
 using Humans.Governance.Contracts;
 using Humans.Users.Models;
 using Humans.Teams.Contracts;
-using Humans.Base.Enums;
 using Microsoft.AspNetCore.Mvc;
 using Humans.Users.Contracts;
 using Humans.Auth.Contracts;
@@ -14,7 +13,7 @@ namespace Humans.Users.ViewComponents;
 /// </summary>
 public sealed class HumanSummaryViewComponent(
     IUserService userService, ITeamService teamService, IGovernanceService governanceService,
-    IRoleAssignmentService roleAssignments) : ViewComponent
+    ISystemRoleService roleAssignments) : ViewComponent
 {
     public async Task<IViewComponentResult> InvokeAsync(Guid userId)
     {

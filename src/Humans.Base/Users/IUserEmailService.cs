@@ -111,11 +111,6 @@ public interface IUserEmailService
         IReadOnlyCollection<Guid> userIds,
         CancellationToken cancellationToken = default);
 
-    Task<IReadOnlyList<Guid>> GetUserIdsByEmailPrefixAndSuffixAsync(
-        string prefix,
-        string suffix,
-        CancellationToken cancellationToken = default);
-
     /// <summary>Empty when the user has no emails.</summary>
     Task<IReadOnlyList<UserEmailRowSnapshot>> GetEntitiesByUserIdAsync(
         Guid userId,
@@ -133,9 +128,10 @@ public interface IUserEmailService
 
     /// <summary>
     /// Admin recovery: clears the flag without promoting a sibling, leaving the user without a primary until
-    /// <see cref="SetPrimaryAsync"/> or the next mutating path. False when not found or already cleared.
+    /// <see cref="SetPrimaryAsync"/> or the next mutating path. A refusal carries one key: not found, not primary,
+    /// or the only verified primary.
     /// </summary>
-    Task<bool> ClearPrimaryAsync(
+    Task<UpdateEmailResult> ClearPrimaryAsync(
         Guid userId, Guid userEmailId, Guid actorUserId,
         CancellationToken cancellationToken = default);
 

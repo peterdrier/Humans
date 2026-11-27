@@ -1,3 +1,20 @@
+using System.Globalization;
+using System.Security.Claims;
+using System.Text.RegularExpressions;
+using Humans.Base.Extensions;
+using Humans.Campaigns.Domain;
+using Humans.Campaigns.Services.Dtos;
+using Microsoft.AspNetCore.Builder;
+using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Mvc.ModelBinding;
+using Microsoft.AspNetCore.Mvc.Razor;
+using Microsoft.AspNetCore.Mvc.Rendering;
+using Microsoft.AspNetCore.Mvc.Routing;
+using Microsoft.AspNetCore.Mvc.ViewFeatures;
+using Microsoft.AspNetCore.Routing;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Primitives;
+using NSubstitute;
 using Humans.Tickets.Contracts;
 using System.Reflection;
 using AwesomeAssertions;
@@ -18,7 +35,7 @@ public class CampaignControllerTests
     }
 
     [HumansFact]
-    public void Class_has_expected_route_prefix()
+    public void Controller_RoutePrefix_IsExpected()
     {
         var routeAttr = typeof(CampaignController).GetCustomAttribute<RouteAttribute>();
         routeAttr.Should().NotBeNull();
@@ -26,19 +43,19 @@ public class CampaignControllerTests
     }
 
     [HumansFact]
-    public void Detail_Action_HasTicketsRead_Policy()
+    public void Detail_Policy_IsTicketsRead()
     {
         AssertActionPolicy(nameof(CampaignController.Detail), TicketsPolicies.Read, typeof(HttpGetAttribute));
     }
 
     [HumansFact]
-    public void GenerateCodes_Action_HasTicketsManage_Policy()
+    public void GenerateCodes_Policy_IsTicketsManage()
     {
         AssertActionPolicy(nameof(CampaignController.GenerateCodes), TicketsPolicies.Manage, typeof(HttpPostAttribute));
     }
 
     [HumansFact]
-    public void AdminOnlyActions_Have_AdminOnly_policy()
+    public void AdminActions_Policy_IsAdminOnly()
     {
         AssertActionPolicy(nameof(CampaignController.Index), PolicyNames.AdminOnly, typeof(HttpGetAttribute));
         AssertActionPolicy(nameof(CampaignController.Create), PolicyNames.AdminOnly, typeof(HttpGetAttribute));
@@ -54,7 +71,7 @@ public class CampaignControllerTests
     }
 
     [HumansFact]
-    public void PostActions_Have_AntiForgery_Validation()
+    public void PostActions_AntiForgery_IsValidated()
     {
         AssertActionHasValidateAntiForgery(nameof(CampaignController.Create), typeof(HttpPostAttribute));
         AssertActionHasValidateAntiForgery(nameof(CampaignController.Edit), typeof(HttpPostAttribute));
@@ -67,7 +84,7 @@ public class CampaignControllerTests
     }
 
     [HumansFact]
-    public void ImportCodes_caps_the_in_memory_csv_upload()
+    public void ImportCodes_CsvUpload_IsCapped()
     {
         var action = GetAction(nameof(CampaignController.ImportCodes), typeof(HttpPostAttribute));
 
@@ -75,6 +92,69 @@ public class CampaignControllerTests
             .GetField("_bytes", BindingFlags.NonPublic | BindingFlags.Instance)!
             .GetValue(action.GetCustomAttribute<RequestSizeLimitAttribute>())
             .Should().Be(1L * 1024 * 1024);
+    }
+
+    [HumansTheory]
+    [Xunit.MemberData(nameof(SupportedCultures.All), MemberType = typeof(SupportedCultures))]
+    public async Task GenerateCodes_FormValue_PreservesDiscount(string language)
+    {
+        using var culture = new CultureScope(language);
+        using var assertions = new AwesomeAssertions.Execution.AssertionScope();
+        var builder = WebApplication.CreateBuilder(new WebApplicationOptions
+        {
+            ApplicationName = typeof(CampaignControllerTests).Assembly.GetName().Name,
+            EnvironmentName = "Testing",
+        });
+        builder.Services.AddLocalization();
+        builder.Services.AddControllersWithViews().AddApplicationPart(typeof(CampaignsResource).Assembly);
+        var authorization = Substitute.For<IAuthorizationService>();
+        authorization.AuthorizeAsync(Arg.Any<ClaimsPrincipal>(), Arg.Any<object?>(), Arg.Any<string>())
+            .Returns(AuthorizationResult.Success());
+        builder.Services.AddSingleton(authorization);
+        var url = Substitute.For<IUrlHelper>();
+        url.Action(Arg.Any<UrlActionContext>()).Returns("/");
+        var urls = Substitute.For<IUrlHelperFactory>();
+        urls.GetUrlHelper(Arg.Any<ActionContext>()).Returns(url);
+        builder.Services.AddSingleton(urls);
+        await using var app = builder.Build();
+        using var scope = app.Services.CreateScope();
+        var services = scope.ServiceProvider;
+        var result = services.GetRequiredService<IRazorViewEngine>()
+            .GetView(null, "/Views/Campaign/Detail.cshtml", isMainPage: false);
+        result.Success.Should().BeTrue();
+        var http = new DefaultHttpContext { RequestServices = services };
+        var route = new RouteData();
+        route.Values["controller"] = "Campaign";
+        route.Values["action"] = "Detail";
+        var action = new ActionContext(http, route, new Microsoft.AspNetCore.Mvc.Abstractions.ActionDescriptor());
+        var data = new ViewDataDictionary(services.GetRequiredService<IModelMetadataProvider>(), new ModelStateDictionary())
+        {
+            Model = new CampaignDetailPageDto(new CampaignAdminSummary(Guid.NewGuid(), "Campaign", null, CampaignStatus.Draft, []),
+                new CampaignDetailStatsDto(0, 0, 0, 0)),
+        };
+        using var writer = new StringWriter(CultureInfo.InvariantCulture);
+        await result.View!.RenderAsync(new ViewContext(action, result.View!, data,
+            new TempDataDictionary(http, Substitute.For<ITempDataProvider>()), writer, new HtmlHelperOptions()));
+        var form = Regex.Matches(writer.ToString(), "<form\\b[^>]*>.*?</form>", RegexOptions.Singleline | RegexOptions.NonBacktracking)
+            .Cast<Match>().Single(f => f.Value.Contains("name=\"discountValue\"", StringComparison.Ordinal)).Value;
+        var invariantFields = Regex.Matches(form, "<input[^>]*name=\"__Invariant\"[^>]*value=\"(?<field>[^\"]+)\"[^>]*>", RegexOptions.NonBacktracking)
+            .Cast<Match>().Select(m => m.Groups["field"].Value).ToArray();
+        foreach (var (text, expected) in new[] { ("12.34", 12.34m), ("10", 10m), ("0", 0m) })
+        {
+            var fields = new Dictionary<string, StringValues>(StringComparer.Ordinal)
+            {
+                ["discountValue"] = text,
+                ["__Invariant"] = invariantFields,
+            };
+            var metadata = services.GetRequiredService<IModelMetadataProvider>().GetMetadataForType(typeof(decimal));
+            var binder = services.GetRequiredService<IModelBinderFactory>().CreateBinder(new ModelBinderFactoryContext { Metadata = metadata });
+            var binding = DefaultModelBindingContext.CreateBindingContext(action,
+                new FormValueProvider(BindingSource.Form, new FormCollection(fields), CultureInfo.CurrentCulture),
+                metadata, bindingInfo: null, modelName: "discountValue");
+            await binder.BindModelAsync(binding);
+            binding.Result.IsModelSet.Should().BeTrue();
+            binding.Result.Model.Should().Be(expected, $"a discount must keep its value in {language}");
+        }
     }
 
     private static MethodInfo GetAction(string actionName, Type httpMethodAttributeType)

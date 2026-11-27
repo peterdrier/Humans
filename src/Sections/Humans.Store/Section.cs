@@ -1,5 +1,4 @@
 using System.Globalization;
-using Humans.Base.Authorization;
 using Humans.Base.Constants;
 using Humans.Base.Hosting;
 using Humans.Base.Interfaces;
@@ -14,6 +13,8 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Humans.AuditLog.Contracts;
+using Humans.Permissions.Contracts;
+using Humans.Teams.Contracts;
 
 [assembly: Humans.Base.Demo.NoDemoStory("No demo story written yet.")]
 
@@ -24,6 +25,7 @@ public sealed class Section :
     ISectionRoles,
     ISectionAdminNav,
     ISectionAdminTiles,
+    ISectionPermissions,
     ISectionPolicies,
     ISectionSettings
 {
@@ -92,5 +94,12 @@ public sealed class Section :
     IEnumerable<SettingsTab> ISectionSettings.Tabs() =>
     [
         new SettingsTab("store", "Settings_TabStore", typeof(StoreSettingsTabViewComponent), StorePolicies.Manage)
+    ];
+
+    IReadOnlyList<Permission> ISectionPermissions.Permissions { get; } =
+    [
+        new(StorePermissions.TeamOrders, "Store_Permission_TeamOrders_Title", "Store_Permission_TeamOrders_Blurb",
+            [TeamOwner.Kind], TopLevelOnly: true, AdminRoles: [StoreRoles.StoreAdmin, TeamsRoles.TeamsAdmin],
+            typeof(StoreResource)),
     ];
 }

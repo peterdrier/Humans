@@ -2,7 +2,6 @@ using Humans.Permissions.Contracts;
 using Humans.Roles.Contracts;
 using System.Globalization;
 using Humans.Base.Models.Tables;
-using Humans.Base.Authorization;
 using Humans.Base.Constants;
 using Humans.Base.Hosting;
 using Humans.Base.Interfaces;
@@ -17,6 +16,8 @@ using Humans.Teams.Authorization;
 using Humans.Teams.Contracts;
 using Humans.Teams.Data;
 using Humans.Teams.Services;
+using Humans.Teams.Services.Demo;
+using Humans.Base.Demo;
 using Humans.Teams.ViewComponents;
 using Humans.Users.Contracts;
 using Microsoft.AspNetCore.Authorization;
@@ -27,8 +28,6 @@ using Microsoft.Extensions.Localization;
 using static Humans.Base.Models.AccessLevel;
 using static Humans.Base.Models.AccessMatrixFeature;
 using Humans.AuditLog.Contracts;
-
-[assembly: Humans.Base.Demo.NoDemoStory("No demo story written yet.")]
 
 namespace Humans.Teams;
 
@@ -43,6 +42,7 @@ public sealed class Section :
     ISectionHelp,
     ISectionJobs,
     ISectionNav,
+    ISectionPermissions,
     ISectionPolicies,
     ISearchContributor,
     IUserPart
@@ -106,6 +106,8 @@ public sealed class Section :
 
         services.AddScoped<ITeamPageService, TeamPageService>();
 
+        services.AddDemoStory<TeamsDemoStory>(configuration);
+
         services.AddScoped<ITeamMessageOptionsProvider, TeamMessageOptionsProvider>();
 
         services.AddScoped<TeamsEmails>();
@@ -113,7 +115,6 @@ public sealed class Section :
 
         services.AddScoped<ISystemTeamSync, SystemTeamSyncJob>();
 
-        services.AddScoped<IAuthorizationHandler, TeamAuthorizationHandler>();
 
         services.AddSingleton<TeamsMetricsService>();
         services.AddHostedService(sp => sp.GetRequiredService<TeamsMetricsService>());
@@ -209,6 +210,9 @@ public sealed class Section :
         options.AddPolicy(TeamsPolicies.Manage, policy =>
             policy.RequireRole(TeamsRoles.TeamsAdmin, RoleNames.Admin));
     }
+
+    IReadOnlyList<Permission> ISectionPermissions.Permissions { get; } =
+        [TeamPermissionRequirements.ManagePermission, TeamPermissionRequirements.EarlyEntryPermission];
 
     IEnumerable<UserPart> IUserPart.Parts() =>
     [

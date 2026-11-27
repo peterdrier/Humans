@@ -11,7 +11,7 @@ public static class CacheKeys
 
     // Magic link sentinel keys (rate limiting and replay prevention)
     public static string MagicLinkUsed(string tokenDigest) => $"magic_link_used:{tokenDigest}";
-    public static string MagicLinkSignupRateLimit(string normalizedEmail) => $"magic_link_signup:{normalizedEmail}";
+    public static string SignInLinkSignupRateLimit(string normalizedEmail) => $"magic_link_signup:{normalizedEmail}";
 
     /// <summary>Classification for the Admin Cache Stats page.</summary>
     public enum CacheKeyType

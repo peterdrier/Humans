@@ -1,10 +1,8 @@
-using Humans.EarlyEntry.Contracts;
 using Humans.AuditLog.Contracts;
 using Humans.Auth.Contracts;
 using Humans.Base.Enums;
 using Humans.Notifications.Contracts;
 using Humans.Settings.Contracts;
-using Humans.Shifts.Contracts;
 using Humans.Shifts.Data;
 using Humans.Shifts.Domain;
 using Humans.Shifts.Services;
@@ -34,7 +32,6 @@ public abstract class ShiftsTestHarness : IDisposable
 
     private protected DbContextOptions<UsersDbContext> DbOptions { get; }
     private protected UsersDbContext Db { get; }
-    private protected TestDbContextFactory<UsersDbContext> DbFactory { get; }
 
     // Every pair is built on first touch: eager construction gives each test its own EF
     // internal service provider, which alone pushed a 5s-budget test past its CI timeout.
@@ -62,7 +59,6 @@ public abstract class ShiftsTestHarness : IDisposable
             .ConfigureWarnings(w => w.Ignore(InMemoryEventId.TransactionIgnoredWarning))
             .Options;
         Db = new UsersDbContext(DbOptions);
-        DbFactory = new TestDbContextFactory<UsersDbContext>(DbOptions);
 
         _shiftsDb = RegisterSection<ShiftsDbContext>(o => new(o));
         _teamsDb = RegisterSection<TeamsDbContext>(o => new(o));
@@ -165,7 +161,7 @@ public abstract class ShiftsTestHarness : IDisposable
                 return local is null ? null : ToEventSettingsInfo(local);
             });
 
-        return new EventCalendarResolver(settingsService, new Humans.Shifts.Data.ShiftRepository(ShiftsDbFactory, ShiftsDb, Clock));
+        return new EventCalendarResolver(settingsService, new ShiftRepository(ShiftsDbFactory, ShiftsDb, Clock));
     }
 
     private static EventSettingsInfo ToEventSettingsInfo(EventSettings src) => new(

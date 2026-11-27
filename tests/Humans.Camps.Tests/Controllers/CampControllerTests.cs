@@ -50,6 +50,56 @@ public class CampControllerTests
     public enum ContactViewer { Other, Lead, CampsAdmin, Admin }
 
     [HumansTheory]
+    [InlineData(null)]
+    [InlineData("bad")]
+    [InlineData("true")]
+    [InlineData("false")]
+    public async Task Contact_ExplicitSharingChoice_ControlsDelivery(string? choice)
+    {
+        var registrations = new ServiceCollection().AddLogging();
+        registrations.AddControllers();
+        using var services = registrations.BuildServiceProvider();
+        var senderId = Guid.NewGuid();
+        var camp = MakeCamp("alpha", "Alpha Camp", CampSeasonStatus.Active, Guid.NewGuid());
+        _camps.GetCampBySlugAsync(camp.Slug, Arg.Any<CancellationToken>()).Returns(camp);
+        _camps.GetSettingsAsync(Arg.Any<CancellationToken>()).Returns(Settings2026());
+        _users.GetUserInfoAsync(senderId, Arg.Any<CancellationToken>()).Returns(UserInfo.Create(
+            new User { Id = senderId, Email = "sender@example.com", BurnerName = "Sender" }, [], [], null));
+        _campsLocalizer[Arg.Any<string>()].Returns(call => new LocalizedString(call.Arg<string>(), call.Arg<string>()));
+        _contacts.SendFacilitatedMessageAsync(Arg.Any<Guid>(), Arg.Any<string>(), Arg.Any<string>(),
+            Arg.Any<Guid>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<bool>(),
+            Arg.Any<IReadOnlyList<Guid>>(), Arg.Any<string>()).Returns(new CampContactResult(true, false));
+        var controller = BuildController(senderId);
+        controller.HttpContext.RequestServices = services;
+        var fields = new Dictionary<string, StringValues>(StringComparer.Ordinal) { ["Message"] = "Hello" };
+        if (choice is not null) fields["IncludeContactInfo"] = choice;
+        var metadata = services.GetRequiredService<IModelMetadataProvider>().GetMetadataForType(typeof(CampContactViewModel));
+        var binder = services.GetRequiredService<IModelBinderFactory>().CreateBinder(new ModelBinderFactoryContext { Metadata = metadata });
+        var binding = DefaultModelBindingContext.CreateBindingContext(controller.ControllerContext,
+            new FormValueProvider(BindingSource.Form, new FormCollection(fields), CultureInfo.InvariantCulture),
+            metadata, bindingInfo: null, modelName: "");
+        await binder.BindModelAsync(binding);
+        var model = (CampContactViewModel)binding.Result.Model!;
+        services.GetRequiredService<IObjectModelValidator>().Validate(controller.ControllerContext, null, "", model);
+
+        var result = await controller.Contact(camp.Slug, model);
+
+        if (bool.TryParse(choice, out var includeContactInfo))
+        {
+            result.Should().BeOfType<RedirectToActionResult>();
+            await _contacts.Received(1).SendFacilitatedMessageAsync(camp.Id, camp.ContactEmail, "Alpha Camp",
+                senderId, "Sender", "sender@example.com", "Hello", includeContactInfo,
+                Arg.Any<IReadOnlyList<Guid>>(), $"/Barrios/{camp.Slug}");
+        }
+        else
+        {
+            result.Should().BeOfType<ViewResult>().Which.Model.Should().BeSameAs(model);
+            controller.ModelState["IncludeContactInfo"]!.Errors.Should().HaveCount(choice is null ? 1 : 2);
+            _contacts.ReceivedCalls().Should().BeEmpty();
+        }
+    }
+
+    [HumansTheory]
     [InlineData(ContactSurface.Form)]
     [InlineData(ContactSurface.Redisplay)]
     [InlineData(ContactSurface.Send)]
@@ -181,6 +231,11 @@ public class CampControllerTests
     }
 
     [HumansTheory]
+    [InlineData(false, "IsSwissCamp")]
+    [InlineData(true, "IsSwissCamp")]
+    [InlineData(false, "TimesAtNowhere")]
+    [InlineData(true, "TimesAtNowhere")]
+    [InlineData(true, "HideHistoricalNames")]
     [InlineData(false, "AcceptingMembers")]
     [InlineData(false, "KidsWelcome")]
     [InlineData(false, "KidsVisiting")]
@@ -238,6 +293,7 @@ public class CampControllerTests
             ["Languages"] = "en",
             ["SeasonId"] = camp.Seasons[0].Id.ToString(),
             ["MemberCount"] = memberCount,
+            ["IsSwissCamp"] = "false",
             ["TimesAtNowhere"] = timesAtNowhere.ToString(CultureInfo.InvariantCulture),
             ["AcceptingMembers"] = "0",
             ["KidsWelcome"] = "0",
@@ -248,6 +304,7 @@ public class CampControllerTests
             ["SoundZone"] = "",
             ["ElectricalGrid"] = ""
         };
+        if (edit) fields["HideHistoricalNames"] = "false";
         if (omitted.Length > 0) fields.Remove(omitted);
         var type = edit ? typeof(CampEditViewModel) : typeof(CampRegisterViewModel);
         var metadata = services.GetRequiredService<IModelMetadataProvider>().GetMetadataForType(type);
@@ -278,12 +335,14 @@ public class CampControllerTests
             controller.ModelState.IsValid.Should().BeTrue();
             var arguments = writes.Should().ContainSingle().Which.GetArguments();
             (edit ? ((CampUpdateInput)arguments[0]!).TimesAtNowhere : (int)arguments[7]!).Should().Be(timesAtNowhere);
+            (edit ? ((CampUpdateInput)arguments[0]!).IsSwissCamp : (bool)arguments[6]!).Should().BeFalse();
+            if (edit) ((CampUpdateInput)arguments[0]!).HideHistoricalNames.Should().BeFalse();
             var data = edit ? ((CampUpdateInput)arguments[0]!).SeasonData : (CampSeasonData)arguments[8]!;
             data.AcceptingMembers.Should().Be(YesNoMaybe.Yes);
             data.KidsWelcome.Should().Be(YesNoMaybe.Yes);
-            data.KidsVisiting.Should().Be((KidsVisitingPolicy)0);
-            data.HasPerformanceSpace.Should().Be((PerformanceSpaceStatus)0);
-            data.AdultPlayspace.Should().Be((AdultPlayspacePolicy)0);
+            data.KidsVisiting.Should().Be(default(KidsVisitingPolicy));
+            data.HasPerformanceSpace.Should().Be(default(PerformanceSpaceStatus));
+            data.AdultPlayspace.Should().Be(default(AdultPlayspacePolicy));
             data.SpaceRequirement.Should().BeNull();
             data.SoundZone.Should().BeNull();
             data.ElectricalGrid.Should().BeNull();
@@ -609,7 +668,7 @@ public class CampControllerTests
             Arg.Any<ClaimsPrincipal>(), Arg.Any<object?>(), Arg.Any<IEnumerable<IAuthorizationRequirement>>())
             .Returns(AuthorizationResult.Success());
         _roles.BuildPanelAsync(season.Id, Arg.Any<CancellationToken>())
-            .Returns(new CampRolesPanelData(season.Id, []));
+            .Returns(new CampRolesPanelData([]));
         var controller = BuildController(userId);
         controller.HttpContext.RequestAborted = request.Token;
         Func<Task<IActionResult>> load = route switch
@@ -1025,6 +1084,8 @@ public class CampControllerTests
                     new("Priority", 1, 1) { SortOrder = -1 },
                 ],
             });
+        _authorization.AuthorizeAsync(Arg.Any<ClaimsPrincipal>(), Arg.Any<object?>(), CampsPolicies.Read)
+            .Returns(AuthorizationResult.Success());
         var controller = BuildController();
 
         var result = await controller.Index(new CampFilterViewModel { KidsFriendly = true, ShowLeadPositions = true }, TestContext.Current.CancellationToken);
@@ -1044,6 +1105,20 @@ public class CampControllerTests
         var apiResult = await new CampApiController(_camps).GetCamps(2026, TestContext.Current.CancellationToken);
         apiResult.Should().BeOfType<OkObjectResult>().Which.Value.Should()
             .BeAssignableTo<IReadOnlyList<CampPublicSummary>>().Which.Single().ImageUrl.Should().Be("/cover.jpg");
+    }
+
+    [HumansFact]
+    public async Task Index_NonAdmin_IgnoresShowLeadPositions()
+    {
+        StubCampReadModel([MakeCamp("alpha", "Alpha Camp", CampSeasonStatus.Active)]);
+        _authorization.AuthorizeAsync(Arg.Any<ClaimsPrincipal>(), Arg.Any<object?>(), CampsPolicies.Read)
+            .Returns(AuthorizationResult.Failed());
+
+        var result = await BuildController().Index(new CampFilterViewModel { ShowLeadPositions = true }, TestContext.Current.CancellationToken);
+
+        result.Should().BeOfType<ViewResult>().Which.Model.Should().BeOfType<CampIndexViewModel>()
+            .Which.Camps.Single().LeadPositionPills.Should().BeEmpty();
+        await _roles.DidNotReceiveWithAnyArgs().GetDirectoryRoleSummariesAsync(default, default);
     }
 
     [HumansFact]
@@ -1192,7 +1267,7 @@ public class CampControllerTests
         else
             result.Should().BeOfType<ForbidResult>();
         await _camps.DidNotReceiveWithAnyArgs().AddCampMemberToActiveSeasonAsync(default, default, default);
-        await _camps.DidNotReceiveWithAnyArgs().AddMemberAndAssignRoleInActiveSeasonAsync(default, default, default, default);
+        await _camps.DidNotReceiveWithAnyArgs().AddMemberWithRoleAsync(default, default, default, default);
     }
 
     [HumansTheory]
@@ -1221,7 +1296,7 @@ public class CampControllerTests
 
         result.Should().BeOfType<RedirectToActionResult>().Which.RouteValues!["eventSettingsId"].Should().Be(eventSettingsId);
         if (assignRole)
-            await _camps.Received(1).AddMemberAndAssignRoleInActiveSeasonAsync(camp.Id, roleId, userId, actorId, ct, eventSettingsId);
+            await _camps.Received(1).AddMemberWithRoleAsync(camp.Id, roleId, userId, actorId, ct, eventSettingsId);
         else
             await _camps.Received(1).AddCampMemberToActiveSeasonAsync(camp.Id, userId, actorId, ct, eventSettingsId);
     }
@@ -1402,7 +1477,7 @@ public class CampControllerTests
             .Returns(succeeded ? SetEarlyEntryOutcome.Success : SetEarlyEntryOutcome.SlotCapExceeded);
         var assignmentId = Guid.NewGuid();
         _roles.GetAssignmentByIdAsync(assignmentId, ct)
-            .Returns(new CampRoleAssignmentInfo(assignmentId, selected.Id, Guid.NewGuid(), member.Id));
+            .Returns(new CampRoleAssignmentInfo(selected.Id));
         _roles.UnassignAsync(assignmentId, actorId, ct).Returns(succeeded);
         var controller = BuildController(actorId);
 
@@ -1471,7 +1546,7 @@ public class CampControllerTests
         _authorization.AuthorizeAsync(Arg.Any<ClaimsPrincipal>(), Arg.Any<object?>(),
             Arg.Any<IEnumerable<IAuthorizationRequirement>>()).Returns(AuthorizationResult.Success());
         _roles.BuildPanelAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
-            .Returns(call => new CampRolesPanelData(call.ArgAt<Guid>(0), []));
+            .Returns(call => new CampRolesPanelData([]));
 
         var result = await BuildController(leadId).Members(camp.Slug, selected.EventSettingsId,
             TestContext.Current.CancellationToken);
@@ -1526,7 +1601,7 @@ public class CampControllerTests
                 Arg.Any<IEnumerable<IAuthorizationRequirement>>())
             .Returns(AuthorizationResult.Success());
         _roles.BuildPanelAsync(season.Id, Arg.Any<CancellationToken>())
-            .Returns(new CampRolesPanelData(season.Id, [
+            .Returns(new CampRolesPanelData([
                 new(new CampRoleDefinition { Id = Guid.NewGuid(), Name = "Zebra", SortOrder = 1 }, [
                     new CampRolesPanelSlot(Guid.NewGuid(), members[0].Id, zeroShiftMemberId)
                     { AssignedAt = earliest.Plus(Duration.FromDays(1)) },
@@ -1618,7 +1693,7 @@ public class CampControllerTests
         _users.GetUserInfoAsync(leadUserId, Arg.Any<CancellationToken>())
             .Returns(new ValueTask<UserInfo?>(MakeUserInfo(leadUserId)));
         _roles.BuildPanelAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
-            .Returns(call => Task.FromResult(new CampRolesPanelData(call.ArgAt<Guid>(0), [])));
+            .Returns(call => Task.FromResult(new CampRolesPanelData([])));
         _authorization.AuthorizeAsync(
                 Arg.Any<ClaimsPrincipal>(),
                 Arg.Any<object?>(),
@@ -1646,7 +1721,7 @@ public class CampControllerTests
         _users.GetUserInfoAsync(leadUserId, Arg.Any<CancellationToken>())
             .Returns(new ValueTask<UserInfo?>(MakeUserInfo(leadUserId)));
         _roles.BuildPanelAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
-            .Returns(call => Task.FromResult(new CampRolesPanelData(call.ArgAt<Guid>(0), [])));
+            .Returns(call => Task.FromResult(new CampRolesPanelData([])));
         // Succeed only for the loaded CampInfo resource — mirrors the real handler, which
         // sees the lead assignment on the camp itself but not through the id lookup.
         _authorization.AuthorizeAsync(
@@ -1690,7 +1765,7 @@ public class CampControllerTests
         _users.GetUserInfoAsync(leadUserId, Arg.Any<CancellationToken>())
             .Returns(new ValueTask<UserInfo?>(MakeUserInfo(leadUserId)));
         _roles.BuildPanelAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
-            .Returns(call => Task.FromResult(new CampRolesPanelData(call.ArgAt<Guid>(0), [])));
+            .Returns(call => Task.FromResult(new CampRolesPanelData([])));
         // Succeed only for the slug-loaded camp — the year projection cannot answer the
         // lead check, exactly as the real handler behaves.
         _authorization.AuthorizeAsync(
@@ -1720,8 +1795,7 @@ public class CampControllerTests
         var memberUserId = Guid.NewGuid();
         var member = new CampSeasonMemberInfo(
             Guid.NewGuid(), memberUserId, CampMemberStatus.Active,
-            Instant.FromUtc(2026, 1, 1, 0, 0), Instant.FromUtc(2026, 1, 2, 0, 0),
-            HasEarlyEntry: true);
+            Instant.FromUtc(2026, 1, 1, 0, 0), HasEarlyEntry: true);
         var camp = MakeCamp("alpha", "Alpha Camp", CampSeasonStatus.Active, members: [member]) with
         {
             Images = [new(Guid.NewGuid(), "/later.jpg", 3), new(Guid.NewGuid(), "/cover.jpg", 1)],
@@ -1786,6 +1860,30 @@ public class CampControllerTests
         {
             CollectLeaves(property.GetValue(obj), $"{path}.{property.Name}", leaves, seen);
         }
+    }
+
+    [HumansFact]
+    public async Task Register_get_and_post_choose_latest_gate_among_open_events()
+    {
+        var actor = Guid.NewGuid();
+        var older = Event2026 with { GateOpeningDate = new LocalDate(2026, 7, 1) };
+        var newer = Event2027 with { Year = 2026, RegistrationOpen = true, GateOpeningDate = new LocalDate(2026, 10, 1), RegistrationInfo = "Autumn" };
+        _camps.GetSettingsAsync(Arg.Any<CancellationToken>()).Returns(new CampSettingsInfo(2026, [2026])
+        {
+            Events = [older, newer, Event2029 with { GateOpeningDate = new LocalDate(2029, 7, 1) }]
+        });
+        _users.GetUserInfoAsync(actor, Arg.Any<CancellationToken>()).Returns(MakeUserInfo(actor));
+        _camps.CreateCampAsync(default, default!, default!, default!, null, null, false, 0, default!, null, Guid.Empty)
+            .ReturnsForAnyArgs(new CampWriteResult<Camp>(null, "Camps_Flash_SeasonNotOpen"));
+        _campsLocalizer["Camps_Flash_SeasonNotOpen", Arg.Any<object[]>()]
+            .Returns(new LocalizedString("Camps_Flash_SeasonNotOpen", "Registration closed"));
+        var controller = BuildController(actor);
+
+        (await controller.Register()).Should().BeOfType<ViewResult>().Which.ViewData["RegistrationInfo"].Should().Be("Autumn");
+        await controller.Register(new CampRegisterViewModel { Name = "Camp" });
+
+        var creation = _camps.ReceivedCalls().Should().ContainSingle(c => c.GetMethodInfo().Name == nameof(ICampManagement.CreateCampAsync)).Which;
+        creation.GetArguments()[10].Should().Be(newer.EventSettingsId);
     }
 
     private void StubCampReadModel(IReadOnlyList<CampInfo> camps)
@@ -1855,7 +1953,6 @@ public class CampControllerTests
         var season = new CampSeasonInfo(
             Guid.NewGuid(),
             campId,
-            slug,
             year,
             NameLockDate: null,
             name,
@@ -1894,7 +1991,6 @@ public class CampControllerTests
             Guid.NewGuid(),
             userId,
             CampMemberStatus.Active,
-            SystemClock.Instance.GetCurrentInstant(),
             SystemClock.Instance.GetCurrentInstant(),
             HasEarlyEntry: false);
 

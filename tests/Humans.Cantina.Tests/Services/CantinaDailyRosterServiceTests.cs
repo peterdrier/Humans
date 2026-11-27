@@ -24,7 +24,6 @@ public class CantinaDailyRosterServiceTests
     private readonly ISettingsService _burnSettings;
     private readonly IUserService _userRead;
     private readonly ICantinaService _dietary = Substitute.For<ICantinaService>();
-    private readonly IClock _clock;
     private readonly IAuditLogService _audit = Substitute.For<IAuditLogService>();
     private readonly CantinaRosterService _service;
 
@@ -36,7 +35,7 @@ public class CantinaDailyRosterServiceTests
         _shiftMgmt = Substitute.For<IShiftService>();
         _burnSettings = Substitute.For<ISettingsService>();
         _userRead = Substitute.For<IUserService>();
-        _clock = new FakeClock(Instant.FromUtc(2026, 7, 7, 12, 0));
+        var clock = new FakeClock(Instant.FromUtc(2026, 7, 7, 12, 0));
 
         _userRead.GetUserInfosAsync(
                 Arg.Any<IEnumerable<Guid>>(), Arg.Any<CancellationToken>())
@@ -45,11 +44,11 @@ public class CantinaDailyRosterServiceTests
         _dietary.GetDietaryProfilesAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
             .Returns(new Dictionary<Guid, DietaryProfileInfo>());
 
-        _shiftMgmt.GetOnSiteUserIdsForDayAsync(
+        _shiftMgmt.GetOnSiteUserIdsAsync(
                 Arg.Any<Guid>(), Arg.Any<int>(), Arg.Any<CancellationToken>())
             .Returns(Task.FromResult<IReadOnlyList<Guid>>(Array.Empty<Guid>()));
 
-        _service = new CantinaRosterService(_shiftMgmt, _burnSettings, _userRead, _dietary, _clock, _audit);
+        _service = new CantinaRosterService(_shiftMgmt, _burnSettings, _userRead, _dietary, clock, _audit);
     }
 
     /// <summary>Builds a human: burner name on the user, dietary as Cantina's own record.</summary>
@@ -163,7 +162,7 @@ public class CantinaDailyRosterServiceTests
     }
 
     [HumansFact]
-    public async Task GetDailyRoster_PopulatedDay_BuildsAggregatesAndPeople()
+    public async Task GetDailyRoster_PopulatedDay_BuildsAggregates()
     {
         var es = ActiveEvent();
         _burnSettings.GetActiveEventSettings().Returns(es);
@@ -221,7 +220,7 @@ public class CantinaDailyRosterServiceTests
     }
 
     [HumansFact]
-    public async Task GetDailyRoster_BurnerName_ComesFromTheResolvedUserName()
+    public async Task GetDailyRoster_BurnerName_IsResolvedUserName()
     {
         // UserInfo.BurnerName is the resolved name (User.BurnerName → Profile.BurnerName → legacy
         // display name). Reading ProfileInfo.BurnerName instead renders "(unknown)" for a human
@@ -258,7 +257,7 @@ public class CantinaDailyRosterServiceTests
     {
         // The cantina output DTO must not expose MedicalConditions, even though
         // medical rides on the cached UserInfo (its Profile). GDPR Art.9 boundary.
-        typeof(Humans.Cantina.Services.Dtos.DailyPersonRowDto)
+        typeof(DailyPersonRowDto)
             .GetProperty("MedicalConditions").Should().BeNull(
             "DailyPersonRowDto must not expose MedicalConditions — GDPR Art.9 boundary.");
 
@@ -292,7 +291,7 @@ public class CantinaDailyRosterServiceTests
     }
 
     [HumansFact]
-    public async Task GetDailyRoster_NoOffset_DefaultsToTodayInEventTimezone()
+    public async Task GetDailyRoster_NoOffset_DefaultsToEventToday()
     {
         // Clock is 7 Jul 2026 12:00 UTC — 14:00 in Madrid, same calendar day —
         // and GateOpening is 7 Jul, so "today" is offset 0.
@@ -304,7 +303,7 @@ public class CantinaDailyRosterServiceTests
     }
 
     [HumansFact]
-    public async Task GetDailyRoster_NoOffsetAndNoActiveEvent_DefaultsToZero()
+    public async Task GetDailyRoster_NoOffsetNoEvent_DefaultsToZero()
     {
         _burnSettings.GetActiveEventSettings().Returns((EventSettingsInfo?)null);
 
@@ -352,7 +351,7 @@ public class CantinaDailyRosterServiceTests
     }
 
     private void SetupDay(int dayOffset, params Guid[] onSiteIds) =>
-        _shiftMgmt.GetOnSiteUserIdsForDayAsync(
+        _shiftMgmt.GetOnSiteUserIdsAsync(
                 Arg.Any<Guid>(), dayOffset, Arg.Any<CancellationToken>())
             .Returns(Task.FromResult<IReadOnlyList<Guid>>(onSiteIds));
 

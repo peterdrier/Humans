@@ -1,5 +1,4 @@
 using Humans.Base.Extensions;
-using Humans.Budget.Contracts;
 using Humans.Budget.Data;
 using Humans.Tickets.Contracts;
 using NodaTime;
@@ -24,9 +23,9 @@ internal sealed class TicketingBudgetService(
         {
             var orders = await ticketService.GetTicketOrdersAsync(ct);
 
-            // No orders of any status for the year's event means a moved VendorEventId or missing
+            // No orders of any status for the year's event means a moved PlatformEventId or missing
             // sync state, not "everything refunded": write nothing rather than zero the year.
-            if (!orders.Any(o => o.IsForEvent(activeYear.VendorEventId)))
+            if (!orders.Any(o => o.IsForEvent(activeYear.PlatformEventId)))
             {
                 logger.LogWarning(
                     "Ticketing sync for budget year {YearId} found no orders for its event; stored actuals left untouched",
@@ -43,7 +42,7 @@ internal sealed class TicketingBudgetService(
             using (new CultureScope("en"))
             {
                 weeklyActuals = orders
-                    .Where(o => o.IsForEvent(activeYear.VendorEventId, paidOnly: true))
+                    .Where(o => o.IsForEvent(activeYear.PlatformEventId, paidOnly: true))
                     .GroupBy(o => GetIsoMonday(o.PurchasedAt.InUtc().Date))
                     .Where(g => g.Key < currentWeekMonday)
                     .OrderBy(g => g.Key)
@@ -59,7 +58,7 @@ internal sealed class TicketingBudgetService(
                                 a.Status == TicketAttendeeStatus.CheckedIn)),
                             Revenue: g.Sum(o => o.TotalAmount),
                             StripeFees: g.Sum(o => o.StripeFee ?? 0m),
-                            TicketTailorFees: g.Sum(o => o.ApplicationFee ?? 0m),
+                            PlatformFees: g.Sum(o => o.ApplicationFee ?? 0m),
                             StripeFeeTax: g.Sum(o => o.FeeTax ?? 0m),
                             // Null FeeTax = enriched before Stripe's tax bucket was captured: unknown, not zero.
                             StripeFeesTaxUnknown: g.Where(o => o.FeeTax is null).Sum(o => o.StripeFee ?? 0m),
@@ -83,7 +82,7 @@ internal sealed class TicketingBudgetService(
         }
     }
 
-    public async Task<TicketingProjectionSaveResult?> UpdateProjectionAndRefreshAsync(
+    public async Task<TicketingProjectionSaveResult?> UpdateProjectionAsync(
         TicketingProjectionUpdateCommand command,
         Guid actorUserId,
         CancellationToken ct = default)
@@ -106,7 +105,7 @@ internal sealed class TicketingBudgetService(
             command.VatRate,
             command.StripeFeePercent,
             command.StripeFeeFixed,
-            command.TicketTailorFeePercent,
+            command.PlatformFeePercent,
             actorUserId,
             refreshProjections: true,
             ct);

@@ -10,7 +10,7 @@ legal documents members must agree to, pulls their text from a GitHub repository
 team publishes a change (multi-language, Spanish legally binding), shows each member what they
 still owe, records each agreement as a permanent tamper-proof entry, and reminds the people
 affected when a document changes. Admins manage the document set from a GUI. Anyone, signed in
-or not, can read the association's statutes. It also keeps the Consent Coordinator's verdict on
+or not, can read the association's statutes. It also keeps the Consent Admin's verdict on
 each new member (cleared, flagged, rejected with a reason), shows the member their rejection
 reason, and runs the Coordinator's review queue: clear, bulk clear and flag are its own writes,
 while reject hands off to `IOnboardingIntake.RejectSignupAsync` because it also changes the
@@ -88,19 +88,19 @@ Three aggregates and one content proxy, each with a single writer:
   (`Jobs/SendReConsentReminderJob.cs:65`).
 - Auth: `/Consent` any signed-in human (`Controllers/ConsentController.cs:14`); `/Legal`
   anonymous (`Controllers/LegalController.cs:13`); `/Legal/Admin/*` Board or Admin only
-  (`Controllers/AdminLegalDocumentsController.cs:13`), so a Consent Coordinator cannot manage
-  documents; `/Consent/ReviewQueue` readable by ConsentCoordinator, Board, Admin, its
-  writes by ConsentCoordinator, Board, Admin only (`Controllers/ConsentReviewQueueController.cs`).
+  (`Controllers/AdminLegalDocumentsController.cs:13`), so a Consent Admin cannot manage
+  documents; `/Consent/ReviewQueue` readable by ConsentAdmin, Board, Admin, its
+  writes by ConsentAdmin, Board, Admin only (`Controllers/ConsentReviewQueueController.cs`).
 
 ## Seams
 
-- **The Consent Coordinator review queue** lives here (`/Consent/ReviewQueue`), next to the
+- **The Consent Admin review queue** lives here (`/Consent/ReviewQueue`), next to the
   verdicts it writes. Reject is Onboarding's orchestration (`IOnboardingIntake.RejectSignupAsync`),
   shared with Users' admin screen; Onboarding also sets `Pending` at the review threshold.
   Fake accounts (Users' `UserInfo.IsFake`) never count, through `ConsentReviewInfo.NeedsConsentReview` / `IsConsentCheckFlagged`.
 - **A cleared human can still be rejected; Flag stays withheld until a cross-section fix.**
   Settled by Peter on 2026-08-23: cause can surface after the fact, so Reject stays available, gated
-  by the `ConsentCoordinatorBoardOrAdmin` policy on the action, not the markup; add no service-side
+  by the `ConsentAdminBoardOrAdmin` policy on the action, not the markup; add no service-side
   refusal. Flag stays hidden for a cleared human because `Cleared → Flagged` clears `IsApproved`,
   which tier-team eligibility reads. Expose it once one of those two stops.
 - **Legacy review retirement:** production reported `consent.profile-review` done on 2026-11-03.

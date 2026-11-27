@@ -42,7 +42,7 @@ public class GuideRendererTests
     [HumansTheory]
     [InlineData("[`/Profile/Me`](Profiles.md)", "href=\"/Guide/Profiles\"")]
     [InlineData("<pre><code>/Profile/Me</code></pre>", "<pre><code>")]
-    public void Render_AppPathInLinkOrCodeBlock_IsNotAutolinked(string markdown, string expected)
+    public void Render_AppPathInLinkOrCode_IsNotAutolinked(string markdown, string expected)
     {
         var html = CreateRenderer().Render(markdown);
 
@@ -57,7 +57,7 @@ public class GuideRendererTests
         // The role model must not survive into the HTML as data-guide-* attributes; if one
         // ever comes back, the filter has grown a second home.
         const string markdown = """
-            ## As a Coordinator (Consent Coordinator)
+            ## As a Coordinator (Consent Admin)
 
             Coordinator stuff.
             """;

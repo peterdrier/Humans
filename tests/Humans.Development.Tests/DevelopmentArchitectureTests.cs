@@ -8,7 +8,7 @@ namespace Humans.Development.Tests;
 public class DevelopmentArchitectureTests
 {
     [HumansFact]
-    public void Register_binds_nothing_in_production_or_when_the_environment_is_unknown()
+    public void Register_ProductionOrUnknownEnvironment_BindsNothing()
     {
         // Register() must skip the seeders, which create real login accounts, outside a dev
         // environment — when in doubt, register nothing. Only this can check it: the test host

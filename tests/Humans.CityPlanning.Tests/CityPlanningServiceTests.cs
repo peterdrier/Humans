@@ -508,7 +508,7 @@ public sealed class CityPlanningServiceTests : CityPlanningTestBase
 
         var repo = Substitute.For<ICityPlanningRepository>();
         repo.GetOrCreateSettingsAsync(Arg.Any<int>(), Arg.Any<Instant>(), Arg.Any<CancellationToken>())
-            .Returns(async ci =>
+            .Returns(async _ =>
             {
                 // The abort arrives after the read and before the write — the window the
                 // production repository would carry into SaveChangesAsync.
@@ -718,7 +718,7 @@ public sealed class CityPlanningServiceTests : CityPlanningTestBase
         var settings = await _sut.GetSettingsAsync(TestContext.Current.CancellationToken);
 
         settings.Should().NotBeNull();
-        settings!.Id.Should().Be(Guid.Empty);
+        settings.Id.Should().Be(Guid.Empty);
         settings.Year.Should().Be(2026);
         settings.PlacementState.Should().Be(BarrioPlacementState.Closed);
         settings.PlacementOverride.Should().BeNull();
@@ -916,6 +916,28 @@ public sealed class CityPlanningServiceTests : CityPlanningTestBase
     }
 
     [HumansFact]
+    public async Task ExportAsGeoJsonAsync_EveryCulture_KeepsDotDecimals()
+    {
+        var campId = Guid.NewGuid();
+        var campSeasonId = Guid.NewGuid();
+        SetupExistingCampSeason(campSeasonId, 2026);
+        await _sut.SaveCampPolygonAsync(campSeasonId,
+            """{"type":"Polygon","coordinates":[[[-2.5,40.25],[-2.4,40.25],[-2.4,40.35],[-2.5,40.25]]]}""",
+            1234.5, NewUserId(), cancellationToken: TestContext.Current.CancellationToken);
+        _campService.GetCampsForYearAsync(2026, Arg.Any<CancellationToken>())
+            .Returns([MakeCampInfo(campId, "test-camp", [MakeCampSeasonInfo(campSeasonId, campId, 2026, "Test Camp")])]);
+
+        foreach (var culture in Base.Extensions.CultureCatalog.SupportedCultureCodes)
+        {
+            using var scope = new Base.Extensions.CultureScope(culture);
+
+            var result = await _sut.ExportAsGeoJsonAsync(2026, TestContext.Current.CancellationToken);
+
+            result.Should().Contain("-2.5").And.Contain("40.25").And.Contain("1234.5", "culture {0}", culture);
+        }
+    }
+
+    [HumansFact]
     public async Task GetCampPolygonHistoryAsync_ReturnsEntries_WithDisplayNamesFromUserService()
     {
         var campSeasonId = Guid.NewGuid();
@@ -1045,7 +1067,7 @@ public sealed class CityPlanningServiceTests : CityPlanningTestBase
             .Returns(MakeCampSeasonInfo(seasonId, Guid.NewGuid(), year, "Camp"));
 
     private static CampSeasonInfo MakeCampSeasonInfo(Guid id, Guid campId, int year, string name, SoundZone? soundZone = null) =>
-        new(id, campId, string.Empty, year, null, name, string.Empty, string.Empty,
+        new(id, campId, year, null, name, string.Empty, string.Empty,
             [], CampSeasonStatus.Pending, YesNoMaybe.No, YesNoMaybe.No, AdultPlayspacePolicy.No,
             0, soundZone, null, null, 0, null, null);
 

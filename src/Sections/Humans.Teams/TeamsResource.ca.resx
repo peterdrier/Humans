@@ -215,9 +215,10 @@
   <data name="Teams_NotMember" xml:space="preserve">
     <value>No formes part d’aquest equip.</value>
   </data>
-  <data name="Teams_RequestUnavailable" xml:space="preserve">
-    <value>Aquesta sol·licitud per unir-se a l’equip no està disponible o ja no està pendent.</value>
-  </data>
+  <data name="Teams_RequestNotFound" xml:space="preserve"><value>No tens aquesta sol·licitud per unir-te.</value></data>
+  <data name="Teams_RequestApproved" xml:space="preserve"><value>Aquesta sol·licitud per unir-se ja s'ha aprovat.</value></data>
+  <data name="Teams_RequestRejected" xml:space="preserve"><value>Aquesta sol·licitud per unir-se ja s'ha rebutjat.</value></data>
+  <data name="Teams_RequestWithdrawn" xml:space="preserve"><value>Ja has retirat aquesta sol·licitud per unir-te.</value></data>
   <data name="Teams_ActionFailed" xml:space="preserve">
     <value>No s’ha pogut completar aquesta acció de l’equip. Torna-ho a provar.</value>
   </data>
@@ -530,4 +531,8 @@
   <data name="Teams_Search_Category" xml:space="preserve"><value>Equips</value></data>
   <data name="Teams_Roles_SystemTeam" xml:space="preserve"><value>Els equips del sistema no poden tenir rols.</value></data>
   <data name="Teams_Roles_InactiveTeam" xml:space="preserve"><value>Aquest equip no està actiu.</value></data>
+  <data name="Teams_Permission_Manage_Title" xml:space="preserve"><value>Gestionar l'equip</value></data>
+  <data name="Teams_Permission_Manage_Blurb" xml:space="preserve"><value>Gestionar membres, sol·licituds d'ingrés, rols i la pàgina de l'equip.</value></data>
+  <data name="Teams_Permission_EarlyEntry_Title" xml:space="preserve"><value>Gestionar l'entrada anticipada</value></data>
+  <data name="Teams_Permission_EarlyEntry_Blurb" xml:space="preserve"><value>Concedir entrada anticipada als projectes de l'equip.</value></data>
 </root>

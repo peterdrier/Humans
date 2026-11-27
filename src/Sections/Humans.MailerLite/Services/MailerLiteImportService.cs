@@ -264,7 +264,7 @@ internal sealed class MailerLiteImportService(
                             var replacing = provisioningDecision.Outcome == SubscriberOutcome.ReplaceUnverifiedEmail;
                             // A replacement provisions a separate contact, so target its returned id, not TargetUserId.
                             var (provUserId, provCreated) = replacing
-                                ? await provisioning.ReplaceUnverifiedEmailAndProvisionAsync(
+                                ? await provisioning.ReplaceUnverifiedEmailAsync(
                                     provisioningDecision.TargetUserId!.Value, provisioningDecision.UnverifiedEmailIdToDelete!.Value,
                                     governing.Email, displayName: null, ContactSource.MailerLite, ct)
                                 : await provisioning.FindOrCreateUserByEmailAsync(
@@ -322,7 +322,7 @@ internal sealed class MailerLiteImportService(
     private static (IReadOnlyList<SubscriberDecision> ToProcess, int Throttled) ApplyThrottle(
         IReadOnlyList<SubscriberDecision> decisions, int? maxPerOutcome)
     {
-        if (maxPerOutcome is not int limit || limit <= 0)
+        if (maxPerOutcome is not { } limit || limit <= 0)
             return (decisions, 0);
 
         var counts = new Dictionary<SubscriberOutcome, int>();
@@ -376,12 +376,12 @@ internal sealed class MailerLiteImportService(
     private enum DeltaResult { NoChange, FlippedToOptIn, FlippedToOptOut, Preserved }
 
     private async Task<DeltaResult> ApplyMarketingDeltaAsync(
-        Guid userId, MailerLiteSubscriber ml, CancellationToken ct)
+        Guid userId, MailerLiteSubscriber subscriber, CancellationToken ct)
     {
-        var mlOptedOut = !string.Equals(ml.Status, "active", StringComparison.OrdinalIgnoreCase);
+        var mlOptedOut = !string.Equals(subscriber.Status, "active", StringComparison.OrdinalIgnoreCase);
         var marketing = await prefs.GetPreferenceOrNullAsync(userId, MessageCategory.Marketing, ct);
 
-        var outcome = ClassifyVerifiedMatch(ml, marketing);
+        var outcome = ClassifyVerifiedMatch(subscriber, marketing);
         switch (outcome)
         {
             case SubscriberOutcome.VerifiedKeepHumansPref:

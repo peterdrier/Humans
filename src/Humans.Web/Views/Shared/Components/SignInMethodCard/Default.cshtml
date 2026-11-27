@@ -1,0 +1,26 @@
+@model Humans.Web.ViewComponents.SignInMethodCardViewModel
+
+<div class="card mb-4">
+    <div class="card-header">Sign-in method <span class="text-muted small">since last restart</span></div>
+    <div class="card-body">
+        @if (Model.Total == 0)
+        {
+            <span class="text-muted">No sign-ins yet.</span>
+        }
+        else
+        {
+            <div class="d-flex align-items-center gap-3">
+                <div class="login-method-dial" style="--pct: @(Model.ProviderPercent)%;">
+                    <span>@Model.ProviderPercent%</span>
+                </div>
+                <div>
+                    @foreach (var (provider, count) in Model.Providers)
+                    {
+                        <div><i class="@(provider == "Google" ? "fa-brands fa-google" : "fa-solid fa-key") me-1"></i>@provider: <strong>@count</strong></div>
+                    }
+                    <div><i class="fa-solid fa-envelope me-1"></i>Email link: <strong>@Model.SignInLink</strong></div>
+                </div>
+            </div>
+        }
+    </div>
+</div>

@@ -1,5 +1,4 @@
 using Humans.Finance.Contracts;
-using Humans.Shifts.Contracts;
 using Humans.Camps.Contracts;
 using Humans.Base.Configuration;
 using Humans.Budget.Contracts;
@@ -143,69 +142,5 @@ internal sealed class DevSeedController(
 
         return configuration.GetSettingValue(
             configRegistry, "DevAuth:Enabled", "Development", defaultValue: false);
-    }
-
-    [Authorize(Policy = ShiftsPolicies.Manage)]
-    [HttpPost("dashboard")]
-    [ValidateAntiForgeryToken]
-    public async Task<IActionResult> SeedDashboard(CancellationToken cancellationToken)
-    {
-        return await SeedDashboardCoreAsync(reset: false, cancellationToken);
-    }
-
-    [Authorize(Policy = PolicyNames.AdminOnly)]
-    [HttpPost("dashboard/reset")]
-    [ValidateAntiForgeryToken]
-    public async Task<IActionResult> ResetDashboard(CancellationToken cancellationToken)
-    {
-        return await SeedDashboardCoreAsync(reset: true, cancellationToken);
-    }
-
-    private async Task<IActionResult> SeedDashboardCoreAsync(bool reset, CancellationToken cancellationToken)
-    {
-        // Stricter than IsDevSeedEnabled: dashboard seed runs only on local Development
-        // (ASPNETCORE_ENVIRONMENT=Development), never on QA / preview / prod.
-        if (!environment.IsDevelopment() || !IsDevSeedEnabled())
-        {
-            return NotFound();
-        }
-
-        var (errorResult, _) = await RequireCurrentUserAsync(cancellationToken);
-        if (errorResult is not null)
-        {
-            return errorResult;
-        }
-
-        try
-        {
-            var seeder = serviceProvider.GetRequiredService<DevelopmentDashboardSeeder>();
-
-            DashboardResetResult? resetResult = null;
-            if (reset)
-            {
-                resetResult = await seeder.ResetAsync(cancellationToken);
-            }
-
-            var result = await seeder.SeedAsync(cancellationToken);
-
-            if (result.AlreadySeeded)
-            {
-                SetSuccess("Dashboard demo data already present — no changes. Use reset to reseed.");
-            }
-            else
-            {
-                var resetNote = resetResult is null
-                    ? ""
-                    : $"Reset removed {resetResult.EventsDeleted} events, {resetResult.TeamsDeleted} teams, {resetResult.UsersDeleted} humans. ";
-                SetSuccess($"{resetNote}Dashboard demo seeded: {result.TeamsCreated} teams, {result.UsersCreated} humans, {result.ShiftsCreated} shifts, {result.SignupsCreated} signups.");
-            }
-        }
-        catch (Exception ex)
-        {
-            logger.LogError(ex, "Failed to seed dashboard demo data.");
-            SetError("Dashboard seeding failed. Check logs for details.");
-        }
-
-        return Redirect("/Shifts/Dashboard");
     }
 }

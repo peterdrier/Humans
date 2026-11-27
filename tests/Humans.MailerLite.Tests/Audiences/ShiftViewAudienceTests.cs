@@ -76,9 +76,9 @@ public class ShiftViewAudienceTests
     }
 
     [HumansFact]
-    public void Metadata_KeysGroupNamesAndPrefix()
+    public void Metadata_Keys_MatchExpected()
     {
-        var empty = new Dictionary<Guid, ShiftUserSummary>();
+        IReadOnlyDictionary<Guid, ShiftUserSummary> empty = new Dictionary<Guid, ShiftUserSummary>();
 
         var setup = NewAudience<HasShiftSetupAudience>(empty);
         setup.Key.Should().Be("has-shift-setup");

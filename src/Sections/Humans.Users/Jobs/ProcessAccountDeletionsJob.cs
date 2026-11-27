@@ -1,11 +1,9 @@
-using Humans.Application.Services.Users.AccountLifecycle;
 using Humans.Base.Extensions;
 using Hangfire;
 using NodaTime;
 using Humans.Base.Interfaces;
 using Humans.AuditLog.Contracts;
 using Humans.Email.Contracts;
-using Humans.Users.Contracts;
 using Humans.Users.Services;
 
 namespace Humans.Users.Jobs;

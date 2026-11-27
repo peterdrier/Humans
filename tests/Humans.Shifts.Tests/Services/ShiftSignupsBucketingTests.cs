@@ -1,7 +1,6 @@
 using Humans.Shifts.Services.Dtos;
 using Humans.Shifts.ViewComponents;
 using AwesomeAssertions;
-using Xunit;
 using Humans.Base.Extensions;
 using Humans.Shifts.Domain;
 using Humans.Shifts.Contracts;
@@ -63,7 +62,7 @@ public class ShiftSignupsBucketingTests
                 Rota = new Rota { TeamId = summary.TeamId }
             }
         };
-        var noTeams = new Dictionary<Guid, string>();
+        IReadOnlyDictionary<Guid, string> noTeams = new Dictionary<Guid, string>();
 
         var card = ShiftSignupSummaryBucketer.Build([summary], noTeams, TestNow);
         var mine = ShiftSignupBucketer.Build([ShiftUserSignup.From(signup)], TestEvent, noTeams, TestNow);

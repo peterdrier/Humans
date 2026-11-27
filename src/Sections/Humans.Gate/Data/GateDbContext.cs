@@ -9,7 +9,6 @@ internal sealed class GateDbContext(DbContextOptions<GateDbContext> options)
 {
     public DbSet<GateScanEvent> GateScanEvents => Set<GateScanEvent>();
     public DbSet<GateSettings> GateSettings => Set<GateSettings>();
-    public DbSet<GateStaffPin> GateStaffPins => Set<GateStaffPin>();
 
     protected override void OnModelCreating(ModelBuilder builder)
     {
@@ -17,6 +16,5 @@ internal sealed class GateDbContext(DbContextOptions<GateDbContext> options)
 
         builder.ApplyConfiguration(new GateScanEventConfiguration());
         builder.ApplyConfiguration(new GateSettingsConfiguration());
-        builder.ApplyConfiguration(new GateStaffPinConfiguration());
     }
 }

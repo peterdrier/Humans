@@ -1288,31 +1288,35 @@
   <data name="Shifts_Profile_NoShowHistory" xml:space="preserve"><value>Cronologia assenze ({0})</value></data>
   <data name="Shifts_Profile_MarkedBy" xml:space="preserve"><value>Segnato da</value></data>
   <data name="Shifts_Profile_MarkedAt" xml:space="preserve"><value>Segnato il</value></data>
-  <data name="ShiftsSummary_Title" xml:space="preserve">
+  <data name="Shifts_Summary_Title" xml:space="preserve">
     <value>Turni</value>
   </data>
-  <data name="ShiftsSummary_SlotsFilled" xml:space="preserve">
+  <data name="Shifts_Summary_SlotsFilled" xml:space="preserve">
     <value>{0} / {1} posti occupati</value>
     <comment>{0} = filled, {1} = total</comment>
   </data>
-  <data name="ShiftsSummary_HumansSignedUp" xml:space="preserve">
+  <data name="Shifts_Summary_HumansSignedUp" xml:space="preserve">
     <value>{0} humans iscritti</value>
     <comment>{0} = count</comment>
   </data>
-  <data name="ShiftsSummary_PendingCount" xml:space="preserve">
+  <data name="Shifts_Summary_PendingCount" xml:space="preserve">
     <value>{0} in sospeso</value>
     <comment>{0} = count</comment>
   </data>
-  <data name="ShiftsSummary_NoShifts" xml:space="preserve">
+  <data name="Shifts_Summary_NoShifts" xml:space="preserve">
     <value>Nessun turno configurato ancora.</value>
   </data>
-  <data name="ShiftsSummary_IncludesSubTeams" xml:space="preserve">
+  <data name="Shifts_Summary_IncludesSubTeams" xml:space="preserve">
     <value>Include turni da {0} sotto-team</value>
     <comment>{0} = count</comment>
   </data>
-  <data name="ShiftsSummary_ManageShifts" xml:space="preserve">
+  <data name="Shifts_Summary_ManageShifts" xml:space="preserve">
     <value>Gestisci turni</value>
   </data>
   <data name="Shifts_Search_Category" xml:space="preserve"><value>Turni</value></data>
   <data name="Shifts_NameRequiredBeforeShifts" xml:space="preserve"><value>Aggiungi prima il tuo nome — ci serve prima che tu possa iscriverti ai turni.</value></data>
+  <data name="Shifts_Permission_Manage_Title" xml:space="preserve"><value>Gestire i turni</value></data>
+  <data name="Shifts_Permission_Manage_Blurb" xml:space="preserve"><value>Creare e modificare le rotazioni e i turni del team e scrivere ai suoi volontari.</value></data>
+  <data name="Shifts_Permission_Approve_Title" xml:space="preserve"><value>Approvare le iscrizioni</value></data>
+  <data name="Shifts_Permission_Approve_Blurb" xml:space="preserve"><value>Approvare, rifiutare e assegnare le iscrizioni ai turni del team.</value></data>
 </root>

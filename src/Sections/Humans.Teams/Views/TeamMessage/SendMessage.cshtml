@@ -6,7 +6,7 @@
     {
         userId = Model.RecipientId,
     });
-    using var recipientWriter = new System.IO.StringWriter();
+    using var recipientWriter = new StringWriter();
     recipient.WriteTo(recipientWriter, System.Text.Encodings.Web.HtmlEncoder.Default);
     var recipientHtml = new HtmlString(recipientWriter.ToString().Trim());
 }
@@ -54,6 +54,7 @@
                     }
                 </label>
                 <div class="form-text">@Localizer["Teams_SendMessage_IncludeContactInfoHelp"]</div>
+                <span asp-validation-for="IncludeContactInfo" class="text-danger"></span>
             </div>
 
             <div class="d-flex gap-2">

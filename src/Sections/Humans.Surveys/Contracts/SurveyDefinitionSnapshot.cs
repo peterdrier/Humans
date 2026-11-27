@@ -30,7 +30,14 @@ public sealed record SurveyDefinitionQuestion(
     IReadOnlyList<SurveyDefinitionImage> Images,
     IReadOnlyList<SurveyExportOption> Options,
     SurveyRankedSettings? RankedSettings = null,
-    IReadOnlyList<string>? RankedUnavailableOptionValues = null);
+    IReadOnlyList<string>? RankedUnavailableOptionValues = null,
+    SurveyDefinitionComment? Comment = null);
+
+/// <summary>
+/// A choice question's comment box: shown when one of <see cref="OptionValues"/> is picked, or any option when the
+/// list is empty. The comment is stored as the choice answer's text.
+/// </summary>
+public sealed record SurveyDefinitionComment(string Prompt, IReadOnlyList<string> OptionValues);
 
 /// <summary>An app-relative URL plus resolved captions.</summary>
 public sealed record SurveyDefinitionImage(Guid Id, string Url, string Label, string AltText);

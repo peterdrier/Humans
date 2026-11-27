@@ -1,3 +1,4 @@
+using Humans.Google.Data;
 using Humans.Google.Domain;
 using Humans.Base.Enums;
 using Humans.Google.Contracts;
@@ -216,20 +217,20 @@ internal sealed class GoogleController(
                 return RedirectToAction(nameof(AllGroups));
             }
 
-            var fixed_ = 0;
+            var fixedCount = 0;
             var errors = new List<string>();
 
             foreach (var group in drifted)
             {
                 var remediation = await googleSyncService.RemediateGroupSettingsAsync(group.GroupEmail);
-                if (remediation.Succeeded) fixed_++;
+                if (remediation.Succeeded) fixedCount++;
                 else errors.Add($"{group.GroupEmail}: {remediation.ErrorMessage ?? "failed"}");
             }
 
             if (errors.Count > 0)
-                SetError($"Remediated {fixed_} group(s) with {errors.Count} error(s): {string.Join("; ", errors)}");
+                SetError($"Remediated {fixedCount} group(s) with {errors.Count} error(s): {string.Join("; ", errors)}");
             else
-                SetSuccess($"Remediated {fixed_} drifted group(s) successfully.");
+                SetSuccess($"Remediated {fixedCount} drifted group(s) successfully.");
         }
         catch (Exception ex)
         {
@@ -544,7 +545,7 @@ internal sealed class GoogleController(
         var currentUser = await GetCurrentUserInfoAsync(HttpContext.RequestAborted);
         if (currentUser is null) return Unauthorized();
 
-        var result = await googleAdminService.ResetPasswordAndGenerate2FaAsync(
+        var result = await googleAdminService.IssueRecoveryCredentialsAsync(
             email, currentUser.Id);
 
         if (result.Success && !string.IsNullOrEmpty(result.TempPassword))
@@ -649,10 +650,12 @@ internal sealed class GoogleController(
         var currentUser = await GetCurrentUserInfoAsync(HttpContext.RequestAborted);
         if (currentUser is null) return Unauthorized();
 
-        var requeued = await googleSyncService.RequeueOutboxEventAsync(id, currentUser.Id);
-        if (!requeued)
+        var requeue = await googleSyncService.RequeueOutboxEventAsync(id, currentUser.Id);
+        if (requeue != OutboxRequeue.Requeued)
         {
-            SetError("Event not found or not in a failed state.");
+            SetError(requeue == OutboxRequeue.NotFound
+                ? "That event no longer exists."
+                : "That event has not failed, so there is nothing to requeue.");
             return RedirectToAction(nameof(SyncOutbox));
         }
 

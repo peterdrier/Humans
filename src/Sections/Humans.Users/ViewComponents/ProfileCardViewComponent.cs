@@ -3,7 +3,6 @@ using Humans.Email.Contracts;
 using Humans.Users.Models;
 using Humans.Base.Helpers;
 using Humans.Auth.Contracts;
-using System.Security.Claims;
 using Microsoft.AspNetCore.Mvc;
 using Humans.Base.Enums;
 using Humans.Teams.Contracts;
@@ -18,7 +17,7 @@ public sealed class ProfileCardViewComponent(
     IContactFieldService contactFieldService,
     IUserEmailService userEmailService,
     ITeamService teamService,
-    IRoleAssignmentService roleAssignmentService,
+    ISystemRoleService systemRoleService,
     ICommunicationPreferenceService commPrefService) : ViewComponent
 {
     // Default is the whole card (/Profile/Me, /Profile/{id}); /Users/Me splits it into
@@ -48,7 +47,7 @@ public sealed class ProfileCardViewComponent(
             if (viewer is null) return Content(string.Empty);
 
             viewerUserId = viewer.Id;
-            canViewLegalName = await roleAssignmentService.IsUserBoardMemberAsync(viewerUserId, ct);
+            canViewLegalName = await systemRoleService.IsUserBoardMemberAsync(viewerUserId, ct);
         }
 
         var contactFields = profile is not null
@@ -126,15 +125,15 @@ public sealed class ProfileCardViewComponent(
                 .ThenBy(pl => pl.LanguageCode, StringComparer.OrdinalIgnoreCase)
                 .Select(pl => new ProfileLanguageDisplayViewModel
                 {
-                    LanguageCode = pl.LanguageCode,
                     LanguageName = LanguageCatalog.GetDisplayName(pl.LanguageCode),
                     Proficiency = pl.Proficiency
                 }).ToList(),
             PreferredLanguage = info.PreferredLanguage,
-            CanSendMessage = !isOwnProfile
-                && !visibleEmails.Any(e => e.Visibility >= ContactFieldVisibility.AllActiveProfiles)
-                && await commPrefService.AcceptsFacilitatedMessagesAsync(userId, ct)
         };
+        // The card offers one way to reach the member: the email it shows, or else the button.
+        model.CanSendMessage = !isOwnProfile
+            && model.PublicUserEmails.Count == 0
+            && await commPrefService.AcceptsFacilitatedMessagesAsync(userId, ct);
 
         return View(Layouts.Contains(layout) ? layout : "Default", model);
     }

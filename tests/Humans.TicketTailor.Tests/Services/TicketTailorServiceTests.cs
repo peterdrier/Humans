@@ -13,6 +13,34 @@ public class TicketTailorServiceTests
     [Xunit.InlineData("GetOrdersAsync")]
     [Xunit.InlineData("GetIssuedTicketsAsync")]
     [Xunit.InlineData("GetCheckInsAsync")]
+    public async Task PaginatedRead_SafetyCapReached_Throws(string operation)
+    {
+        var handler = new RecordingHttpHandler();
+        for (var page = 1; page <= 501; page++)
+            handler.EnqueueResponse(HttpStatusCode.OK, new
+            {
+                data = new[] { new { id = $"row_{page}", issued_ticket_id = $"ticket_{page}", quantity = 1,
+                    total = 100, currency = new { code = "eur" }, status = "completed", created_at = 1716811200L } },
+                links = new { next = page == 501 ? null : "more" },
+            });
+        var service = TicketTailorTestHost.CreateService(handler);
+        var ct = Xunit.TestContext.Current.CancellationToken;
+        Func<Task> read = operation switch
+        {
+            "GetOrdersAsync" => () => service.GetOrdersAsync(null, "ev_test", ct),
+            "GetIssuedTicketsAsync" => () => service.GetIssuedTicketsAsync(null, "ev_test", ct),
+            "GetCheckInsAsync" => () => service.GetCheckInsAsync(null, "ev_test", ct),
+            _ => throw new ArgumentOutOfRangeException(nameof(operation)),
+        };
+
+        (await read.Should().ThrowAsync<HttpRequestException>()).WithMessage("*500-page*");
+        handler.RequestCount.Should().Be(500);
+    }
+
+    [HumansTheory]
+    [Xunit.InlineData("GetOrdersAsync")]
+    [Xunit.InlineData("GetIssuedTicketsAsync")]
+    [Xunit.InlineData("GetCheckInsAsync")]
     public async Task PaginatedRead_TimesEachPageSeparately_NotTheWholeLoop(string operation)
     {
         // HttpClient.Timeout and the timing extension's Error
@@ -107,7 +135,7 @@ public class TicketTailorServiceTests
     [Xunit.InlineData("currency", "{\"code\":null}")]
     [Xunit.InlineData("currency", "{\"code\":\" \"}")]
     [Xunit.InlineData("currency", "{\"code\":\"usd\"}")]
-    public async Task GetOrdersAsync_RejectsIncompleteFinancialFieldsWithoutReturningAPartialList(string field, string? jsonValue)
+    public async Task GetOrdersAsync_IncompleteFinancialFields_Throws(string field, string? jsonValue)
     {
         const string validJson = """{"id":"ord_good","created_at":1716811200,"total":15000,"currency":{"code":"eur"},"status":"completed"}""";
         var document = JsonNode.Parse(validJson)!.AsObject();
@@ -128,7 +156,7 @@ public class TicketTailorServiceTests
     }
 
     [HumansFact]
-    public async Task GetOrdersAsync_PreservesExplicitZeroAndPendingStatus()
+    public async Task GetOrdersAsync_ZeroTotalPending_IsKept()
     {
         var handler = new RecordingHttpHandler();
         handler.EnqueueResponse(HttpStatusCode.OK, new
@@ -152,7 +180,7 @@ public class TicketTailorServiceTests
     [Xunit.InlineData("GetCheckInsAsync")]
     [Xunit.InlineData("GetEventSummaryAsync")]
     [Xunit.InlineData("GenerateDiscountCodesAsync")]
-    public async Task NonWriteMethods_ThrowRawHttpRequestExceptionOnApiError(string operation)
+    public async Task Reads_ApiError_ThrowHttpRequestException(string operation)
     {
         var handler = new RecordingHttpHandler();
         handler.EnqueueResponse(HttpStatusCode.Unauthorized, new { error = "Invalid API key" });
@@ -237,7 +265,7 @@ public class TicketTailorServiceTests
     }
 
     [HumansFact]
-    public async Task GetIssuedTicketsAsync_PrefersCustomQuestionEmailOverTopLevelEmail()
+    public async Task GetIssuedTicketsAsync_CustomAnswerSet_UsesCustomEmail()
     {
         // Real-world TT shape (order or_75997215, ticket it_124025964): the
         // top-level `email` is the buyer's account email replicated onto each
@@ -275,7 +303,7 @@ public class TicketTailorServiceTests
     }
 
     [HumansFact]
-    public async Task GetIssuedTicketsAsync_FallsBackToTopLevelEmailWhenCustomAnswerBlank()
+    public async Task GetIssuedTicketsAsync_BlankCustomAnswer_UsesTopLevelEmail()
     {
         var handler = new RecordingHttpHandler();
         handler.EnqueueResponse(HttpStatusCode.OK, new
@@ -383,7 +411,7 @@ public class TicketTailorServiceTests
     }
 
     [HumansFact]
-    public async Task GetEventSummaryAsync_RejectsMissingEventInsteadOfInventingAnEmptySummary()
+    public async Task GetEventSummaryAsync_MissingEvent_Throws()
     {
         var handler = new RecordingHttpHandler();
         var content = handler.EnqueueResponse(HttpStatusCode.OK, null);
@@ -418,7 +446,7 @@ public class TicketTailorServiceTests
     }
 
     [HumansFact]
-    public async Task GetEventSummaryAsync_FallsBackToTicketTypeTotalsWhenNoGroups()
+    public async Task GetEventSummaryAsync_NoGroups_UsesTicketTypeTotals()
     {
         var handler = new RecordingHttpHandler();
         handler.EnqueueResponse(HttpStatusCode.OK, new
@@ -467,7 +495,7 @@ public class TicketTailorServiceTests
     [HumansTheory]
     [Xunit.InlineData(false)]
     [Xunit.InlineData(true)]
-    public async Task GetCheckInsAsync_RejectsOutOfRangeTimestampsWithTheVendorReadException(bool scanTimestamp)
+    public async Task GetCheckInsAsync_TimestampOutOfRange_Throws(bool scanTimestamp)
     {
         var handler = new RecordingHttpHandler();
         handler.EnqueueResponse(HttpStatusCode.OK, new
@@ -487,7 +515,7 @@ public class TicketTailorServiceTests
     }
 
     [HumansFact]
-    public async Task GetCheckInsAsync_ReportsEarliestPositiveScan_FallingBackToCreatedAt()
+    public async Task GetCheckInsAsync_SeveralScans_ReportsEarliest()
     {
         var handler = new RecordingHttpHandler();
         handler.EnqueueResponse(HttpStatusCode.OK, new
@@ -509,7 +537,7 @@ public class TicketTailorServiceTests
     }
 
     [HumansFact]
-    public async Task Since_FiltersOrdersAndTicketsByUpdatedAtAndCheckInsByCreatedAt()
+    public async Task Reads_WithSince_SendDateFilter()
     {
         var handler = new RecordingHttpHandler();
         for (var i = 0; i < 3; i++)

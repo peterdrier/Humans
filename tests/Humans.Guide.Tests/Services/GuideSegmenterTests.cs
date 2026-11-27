@@ -38,7 +38,7 @@ public class GuideSegmenterTests
     [HumansTheory]
     [Xunit.InlineData('\u00a0')]
     [Xunit.InlineData('\u2003')]
-    public void Segment_NonAsciiSpaceAfterHashes_DoesNotEndTheRoleBlock(char separator)
+    public void Segment_NonAsciiSpaceAfterHashes_KeepsBlockOpen(char separator)
     {
         var input = $"## As a Board member / Admin\n\nRestricted guidance.\n\n##{separator}Example\n\nRestricted tail.";
         Markdig.Markdown.ToHtml(input).Should().Contain($"<p>##{separator}Example</p>");
@@ -58,7 +58,7 @@ public class GuideSegmenterTests
     }
 
     [HumansFact]
-    public void Segment_FourSpaceIndentedRoleText_IsAnUnscopedCodeExample()
+    public void Segment_IndentedRoleText_IsUnscopedCode()
     {
         const string input = "    ## As a Board member / Admin\n    Sample text.";
         Markdig.Markdown.ToHtml(input).Should().Contain("<pre><code>");
@@ -96,7 +96,7 @@ public class GuideSegmenterTests
     public void Segment_CoordinatorWithParenthetical_CapturesRoles()
     {
         const string input = """
-            ## As a Coordinator (Consent Coordinator)
+            ## As a Coordinator (Consent Admin)
 
             Do consent-coordinator things.
 
@@ -104,7 +104,7 @@ public class GuideSegmenterTests
             """;
 
         Scoped(input, GuideDocument.Coordinator)
-            .Privileges.Should().ContainSingle().Which.Should().Be("ConsentCoordinator");
+            .Privileges.Should().ContainSingle().Which.Should().Be("ConsentAdmin");
     }
 
     [HumansFact]
@@ -216,7 +216,7 @@ public class GuideSegmenterTests
     }
 
     [HumansFact]
-    public void Segment_HeadingWithGlossaryLinkAndRoleParenthetical_PreservesLink()
+    public void Segment_HeadingWithGlossaryLink_KeepsLink()
     {
         // The heading has a markdown link whose URL is parenthesised,
         // and a trailing role parenthetical. The segmenter must not mangle either — the
@@ -249,7 +249,7 @@ public class GuideSegmenterTests
     }
 
     [HumansFact]
-    public void Segment_EveryRoleHeadingInShippedContent_OpensAScopedSegment()
+    public void Segment_ShippedRoleHeadings_OpenScopedSegments()
     {
         var guideDir = Path.Combine(LocateRepoRoot(), "docs", "guide");
         var unscoped = new List<string>();
@@ -278,7 +278,7 @@ public class GuideSegmenterTests
     [Xunit.InlineData("<!--", "-->", "As a Volunteer")]
     [Xunit.InlineData("<pre>", "</pre>", "Example")]
     [Xunit.InlineData("<pre>", "</pre>", "As a Volunteer")]
-    public void Segment_HeadingTextInsideHtmlBlock_DoesNotExposeRestrictedTail(string open, string close, string sample)
+    public void Segment_HeadingInHtmlBlock_KeepsTailRestricted(string open, string close, string sample)
     {
         var input = $"## As a Board member / Admin\n\nRestricted intro.\n\n{open}\n## {sample}\n{close}\n\nRestricted tail.\n\n## Related\n\nPublic tail.";
         Markdig.Markdown.ToHtml(input).Should().NotContain($"<h2>{sample}</h2>").And.Contain("<h2>Related</h2>");
@@ -292,7 +292,7 @@ public class GuideSegmenterTests
     }
 
     [HumansFact]
-    public void Segment_FencedH2InsideRoleBlock_DoesNotEndTheBlock()
+    public void Segment_FencedH2InRoleBlock_KeepsBlockOpen()
     {
         // An untracked "## …" inside a fence must not close the Board/Admin block, or everything
         // after it goes out unscoped — to anonymous readers included.
@@ -329,7 +329,7 @@ public class GuideSegmenterTests
             Scope a section to a role by opening it with a heading like this:
 
             ```markdown
-            ## As a Coordinator (Consent Coordinator)
+            ## As a Coordinator (Consent Admin)
             ```
 
             The parenthetical must name a mapped privilege.
@@ -391,7 +391,7 @@ public class GuideSegmenterTests
     }
 
     [HumansFact]
-    public void Segment_BacktickOpenerWithABacktickInItsInfoString_IsNotAFence()
+    public void Segment_BacktickInBacktickInfoString_IsNotFence()
     {
         // CommonMark forbids a
         // backtick inside a backtick fence's info string, so this line opens no block and the
@@ -417,7 +417,7 @@ public class GuideSegmenterTests
     }
 
     [HumansFact]
-    public void Segment_TildeOpenerWithABacktickInItsInfoString_IsStillAFence()
+    public void Segment_BacktickInTildeInfoString_IsFence()
     {
         // The backtick restriction is backtick-fences-only; a tilde fence's info string may
         // carry one. Rejecting it here would let a fenced sample heading end a tilde block.

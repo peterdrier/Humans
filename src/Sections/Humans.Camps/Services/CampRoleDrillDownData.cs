@@ -7,13 +7,10 @@ internal sealed record CampRoleDrillDownData(
     IReadOnlyList<CampRoleDrillDownCampRow> Rows);
 
 internal sealed record CampRoleDrillDownCampRow(
-    Guid CampId,
     string CampName,
     string CampSlug,
-    Guid CampSeasonId,
     IReadOnlyList<CampRoleDrillDownAssignee> Assignees);
 
 internal sealed record CampRoleDrillDownAssignee(
     Guid UserId,
-    string? GoogleEmail,
     NodaTime.Instant AssignedAt);

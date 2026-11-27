@@ -58,6 +58,54 @@ public class DietaryProfileTests
         IReadOnlyList<string>? intolerances = null, string? intoleranceOther = null) =>
         new(id, preference, allergies ?? [], allergyOther, intolerances ?? [], intoleranceOther);
 
+    [HumansTheory]
+    [Xunit.InlineData("missing", false)]
+    [Xunit.InlineData("missing", true)]
+    [Xunit.InlineData("deleted", false)]
+    [Xunit.InlineData("deleted", true)]
+    [Xunit.InlineData("legacy", false)]
+    [Xunit.InlineData("legacy", true)]
+    public async Task Write_UnavailableAccount_DoesNotCreateProfile(string kind, bool decline)
+    {
+        var id = Guid.NewGuid();
+        if (!string.Equals(kind, "missing", StringComparison.Ordinal))
+        {
+            var person = SeedUser(id);
+            await _sut.SaveAsync(id, Answers(id), Ct);
+            await _sut.EraseForUserAsync(id, Ct);
+            person = string.Equals(kind, "legacy", StringComparison.Ordinal)
+                ? person with { IdentityEmailColumn = "erased@gdpr.local" }
+                : person with { State = UserState.Deleted };
+            _users.GetUserInfoAsync(id, Arg.Any<CancellationToken>()).Returns(person);
+        }
+
+        if (decline) (await _sut.DeclineAsync(id, Ct)).Should().Be("Cantina_Dietary_SaveFailed");
+        else (await _sut.SaveAsync(id, Answers(id), Ct)).Should().Be("Cantina_Dietary_SaveFailed");
+
+        (await _repo.GetAsync(id, Ct)).Should().BeNull();
+    }
+
+    [HumansTheory]
+    [Xunit.InlineData(false)]
+    [Xunit.InlineData(true)]
+    public async Task Write_ArchivedId_UpdatesSurvivor(bool decline)
+    {
+        var archived = Guid.NewGuid();
+        var survivor = Guid.NewGuid();
+        SeedUser(archived, resolvesTo: survivor);
+        SeedUser(survivor);
+        await _sut.SaveAsync(survivor, Answers(survivor), Ct);
+
+        if (decline) (await _sut.DeclineAsync(archived, Ct)).Should().BeNull();
+        else (await _sut.SaveAsync(archived, Answers(archived, "Vegetarian"), Ct)).Should().BeNull();
+
+        (await _repo.GetAsync(archived, Ct)).Should().BeNull();
+        var saved = (await _sut.GetDietaryProfileAsync(archived, Ct))!;
+        saved.UserId.Should().Be(survivor);
+        saved.DeclinedToAnswer.Should().Be(decline);
+        saved.DietaryPreference.Should().Be(decline ? null : "Vegetarian");
+    }
+
     [HumansFact]
     public async Task Read_ReturnsNullUntilAnswersAreSaved()
     {
@@ -120,7 +168,7 @@ public class DietaryProfileTests
     [HumansTheory]
     [Xunit.InlineData(false)]
     [Xunit.InlineData(true)]
-    public async Task Save_ExactStorageBounds_PreserveUnicodeAndTrimOtherText(bool supplementaryCharacters)
+    public async Task Save_AtStorageBounds_KeepsUnicode(bool supplementaryCharacters)
     {
         var id = Guid.NewGuid();
         SeedUser(id);
@@ -156,7 +204,7 @@ public class DietaryProfileTests
     }
 
     [HumansFact]
-    public async Task Save_Normalizes_UnknownChipsDropped_OtherTextOnlyWithOther()
+    public async Task Save_UnknownChips_AreDropped()
     {
         var id = Guid.NewGuid();
         SeedUser(id);
@@ -175,7 +223,7 @@ public class DietaryProfileTests
     [HumansTheory]
     [Xunit.InlineData(true)]
     [Xunit.InlineData(false)]
-    public async Task Save_OtherWithoutText_IsRefused_AndNothingIsWritten(bool allergy)
+    public async Task Save_OtherWithoutText_IsRefused(bool allergy)
     {
         var id = Guid.NewGuid();
         SeedUser(id);
@@ -201,7 +249,7 @@ public class DietaryProfileTests
     }
 
     [HumansFact]
-    public async Task BulkRead_ResolvesMergedIds_AndOmitsMembersWithoutRows()
+    public async Task BulkRead_MergedIds_AreResolved()
     {
         var withRow = Guid.NewGuid();
         var archived = Guid.NewGuid();
@@ -224,7 +272,7 @@ public class DietaryProfileTests
     }
 
     [HumansFact]
-    public async Task Decline_IsReadBackAsTheOptOutFact_WithNoPreference()
+    public async Task Decline_ReadBack_IsOptOut()
     {
         var id = Guid.NewGuid();
         SeedUser(id);
@@ -238,7 +286,7 @@ public class DietaryProfileTests
     }
 
     [HumansFact]
-    public async Task Decline_ClearsEveryAnswer_AndSavingAnswersLaterClearsTheDecline()
+    public async Task Decline_ExistingAnswers_AreCleared()
     {
         var id = Guid.NewGuid();
         SeedUser(id);
@@ -261,7 +309,7 @@ public class DietaryProfileTests
     }
 
     [HumansFact]
-    public async Task Merge_MovesTheSourceRow_WhenTheSurvivorHasNoAnswers()
+    public async Task Merge_SurvivorHasNoAnswers_MovesSourceRow()
     {
         var from = Guid.NewGuid();
         var to = Guid.NewGuid();
@@ -280,7 +328,7 @@ public class DietaryProfileTests
     [Xunit.InlineData(true, false)]
     [Xunit.InlineData(false, true)]
     [Xunit.InlineData(true, true)]
-    public async Task Merge_PreservesClearedOrDeclinedAnswers_AndIsIdempotent(bool survivorHasRow, bool declined)
+    public async Task Merge_SurvivorDeclined_KeepsDecline(bool survivorHasRow, bool declined)
     {
         var source = Guid.NewGuid();
         var target = Guid.NewGuid();
@@ -316,7 +364,7 @@ public class DietaryProfileTests
     }
 
     [HumansFact]
-    public async Task Export_CarriesTheFoodAnswers_AndEraseDeletesTheRow()
+    public async Task Export_FoodAnswers_AreIncluded()
     {
         var id = Guid.NewGuid();
         SeedUser(id);
@@ -382,7 +430,7 @@ public class DietaryProfileTests
     [HumansTheory]
     [Xunit.InlineData(false)]
     [Xunit.InlineData(true)]
-    public async Task Nudge_PropagatesCancellationFromDietaryAndSignupReads(bool signupRead)
+    public async Task Nudge_ReadCancelled_Propagates(bool signupRead)
     {
         var id = Guid.NewGuid();
         SeedUser(id);

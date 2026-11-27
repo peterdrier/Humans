@@ -1,4 +1,3 @@
-using Humans.Governance.Contracts;
 using NodaTime;
 
 namespace Humans.Governance.Domain;

@@ -6,7 +6,6 @@ using Humans.Shifts.Services;
 using Humans.Shifts.Contracts;
 using Humans.Teams.Contracts;
 using Humans.Shifts.Tests.Infrastructure;
-using Humans.Base.Constants;
 using Humans.Base.Enums;
 using Humans.Shifts.Data;
 using Microsoft.EntityFrameworkCore;
@@ -16,8 +15,9 @@ using NodaTime;
 using NSubstitute;
 using Xunit;
 using Humans.Users.Contracts;
-using Humans.AuditLog.Contracts;
 using Humans.Settings.Contracts;
+using Humans.Permissions.Contracts;
+using Humans.Base.Authorization;
 
 namespace Humans.Shifts.Tests.Services;
 
@@ -25,15 +25,15 @@ public sealed class ShiftManagementWriteGuardTests : ShiftsTestHarness
 {
     private static readonly Instant TestNow = Instant.FromUtc(2026, 6, 15, 12, 0);
 
+    private readonly IPermissionService _permissions = Substitute.For<IPermissionService>();
     private readonly ITeamService _teamService;
-    private readonly IRoleAssignmentService _roleAssignments;
     private readonly ShiftManagementService _service;
 
     public ShiftManagementWriteGuardTests()
         : base(TestNow)
     {
         _teamService = Substitute.For<ITeamService>();
-        _roleAssignments = Substitute.For<IRoleAssignmentService>();
+        var roleAssignments = Substitute.For<ISystemRoleService>();
         var userService = Substitute.For<IUserService>();
         userService.StubGetUserInfosFromContext(Db);
 
@@ -52,13 +52,13 @@ public sealed class ShiftManagementWriteGuardTests : ShiftsTestHarness
             .With(_teamService)
             .With(userService)
             .With(userService)
-            .With(_roleAssignments)
+            .With(roleAssignments)
+            .With(_permissions)
             .Build();
 
         _service = new ShiftManagementService(
             new ShiftRepository(ShiftsDbFactory, ShiftsDb, Clock),
             AuditLog,
-            AdminAuthorization,
             serviceProvider,
             NewCalendarResolver(),
             Clock,
@@ -117,46 +117,17 @@ public sealed class ShiftManagementWriteGuardTests : ShiftsTestHarness
     }
 
     [HumansTheory]
-    [InlineData(RoleNames.Admin)]
-    [InlineData(ShiftsRoles.ShiftsNoInfo)]
-    [InlineData(ShiftsRoles.ShiftsAdmin)]
-    public async Task CanApproveSignups_IsGrantedByAnyOneSystemWideRoleOnItsOwn(string roleName)
-    {
-        var userId = Guid.NewGuid();
-        _roleAssignments.HasActiveRoleAsync(userId, roleName).Returns(true);
-
-        (await _service.CanApproveSignupsAsync(userId, Guid.NewGuid())).Should().BeTrue();
-    }
-
-    [HumansFact]
-    public async Task CanApproveSignups_WithoutRoleOrCoordinator_PreservesReadCancellation()
+    [InlineData(true)]
+    [InlineData(false)]
+    public async Task CanApproveSignups_IsShiftsApproveOnTheTeam(bool holds)
     {
         using var cancellation = new CancellationTokenSource();
         var userId = Guid.NewGuid();
-        var departmentId = Guid.NewGuid();
-        _teamService.GetUserCoordinatedTeamIdsAsync(userId, Arg.Any<CancellationToken>())
-            .Returns([]);
+        var teamId = Guid.NewGuid();
+        _permissions.HasAsync(userId, ShiftsPermissions.Approve, new Owner(TeamOwner.Kind, teamId), cancellation.Token)
+            .Returns(holds);
 
-        (await _service.CanApproveSignupsAsync(userId, departmentId, cancellation.Token)).Should().BeFalse();
-        await _roleAssignments.Received(1).HasActiveRoleAsync(userId, RoleNames.Admin, cancellation.Token);
-        await _roleAssignments.Received(1).HasActiveRoleAsync(userId, ShiftsRoles.ShiftsNoInfo, cancellation.Token);
-        await _roleAssignments.Received(1).HasActiveRoleAsync(userId, ShiftsRoles.ShiftsAdmin, cancellation.Token);
-        await _teamService.Received(1).GetUserCoordinatedTeamIdsAsync(userId, cancellation.Token);
-        await _teamService.Received(1).GetTeamAsync(departmentId, cancellation.Token);
-    }
-
-    [HumansFact]
-    public async Task CanApproveSignups_FallsBackToDepartmentCoordinatorScope()
-    {
-        var userId = Guid.NewGuid();
-        var department = SeedDepartment("Gate");
-        var other = SeedDepartment("Sanctuary");
-        await SaveAllAsync(Ct);
-        _teamService.GetUserCoordinatedTeamIdsAsync(userId, Arg.Any<CancellationToken>())
-            .Returns([department.Id]);
-
-        (await _service.CanApproveSignupsAsync(userId, department.Id)).Should().BeTrue();
-        (await _service.CanApproveSignupsAsync(userId, other.Id)).Should().BeFalse();
+        (await _service.CanApproveSignupsAsync(userId, teamId, cancellation.Token)).Should().Be(holds);
     }
 
     [HumansFact]
@@ -230,9 +201,9 @@ public sealed class ShiftManagementWriteGuardTests : ShiftsTestHarness
 
         var service = new ShiftManagementService(
             new ShiftRepository(ShiftsDbFactory, ShiftsDb, Clock),
-            AuditLog, AdminAuthorization,
+            AuditLog,
             new ServiceLocatorBuilder().With(_teamService).Build(),
-            new EventCalendarResolver(settingsService, Substitute.For<Humans.Shifts.Data.IShiftManagementRepository>()), Clock,
+            new EventCalendarResolver(settingsService, Substitute.For<IShiftManagementRepository>()), Clock,
             Microsoft.Extensions.Logging.Abstractions.NullLogger<ShiftManagementService>.Instance);
 
         await service.CreateRotaAsync(NewRota(eventId, team.Id));
@@ -276,7 +247,7 @@ public sealed class ShiftManagementWriteGuardTests : ShiftsTestHarness
             .Options;
         var service = new ShiftManagementService(
             new ShiftRepository(new TestDbContextFactory<ShiftsDbContext>(options), ShiftsDb, Clock),
-            AuditLog, AdminAuthorization, new ServiceLocatorBuilder().With(_teamService).Build(),
+            AuditLog, new ServiceLocatorBuilder().With(_teamService).Build(),
             NewCalendarResolver(), Clock,
             Microsoft.Extensions.Logging.Abstractions.NullLogger<ShiftManagementService>.Instance);
 

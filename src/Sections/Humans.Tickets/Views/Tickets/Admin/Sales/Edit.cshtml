@@ -1,45 +1,45 @@
 @using Humans.Tickets.Domain.Checkout
 @model Humans.Tickets.Controllers.SalesEditViewModel
 @{
-    ViewData["Title"] = "Sales setup";
+    ViewData["Title"] = "Ticketing settings";
     var f = Model.Form;
     List<SalesEditForm.WaveRow> waves = f.Waves.Count > 0 ? f.Waves : [new()];
-    var supporterLevels = f.SupporterLevels;
+    var vipLevels = f.VipLevels;
     var priceRules = f.PriceRules;
     string ModeLabel(TicketSalesMode m) => m switch
     {
-        TicketSalesMode.ResaleOnly => "Resale only: fresh sales stopped, returned tickets still sell",
+        TicketSalesMode.ResaleOnly => "Resale only: fresh sales stopped, tickets in resale still sell",
         TicketSalesMode.Open => "Open",
         TicketSalesMode.InvitedOnly => "Invited only: early sales for the programs with an early access rule",
         _ => "Closed",
     };
     (ResaleScheme Scheme, string Label, string Help)[] schemes =
     [
-        (ResaleScheme.Off, "No resale", "Holders cannot hand a ticket back. The ticketing team refunds by hand when it agrees to."),
-        (ResaleScheme.Queue, "Resale queue", "A returned ticket waits in a queue and sells, oldest first, before fresh stock. The holder is refunded when it sells."),
+        (ResaleScheme.Off, "No resale", "Holders cannot put a ticket up for resale. The ticketing team refunds by hand when it agrees to."),
+        (ResaleScheme.Queue, "Resale queue", "A ticket put up for resale waits in the queue and sells, oldest first, before fresh stock. The holder is refunded when it sells."),
         (ResaleScheme.QueueAndDirected, "Resale queue and personal links", "The queue, plus a holder may send one person a link to buy their ticket. The ticket stays in the queue meanwhile; whoever buys first gets it."),
     ];
     (TicketPriceRuleKind Kind, string Label)[] ruleKinds =
     [
         (TicketPriceRuleKind.ClassPrice, "Fixed ticket price"),
-        (TicketPriceRuleKind.Credit, "Amount off"),
+        (TicketPriceRuleKind.Discount, "Amount off"),
         (TicketPriceRuleKind.WavePin, "Price of the wave on sale when the grant was given"),
         (TicketPriceRuleKind.EarlyAccess, "Early access: buys while sales are invited only"),
     ];
 }
 
-<page-header title="Sales setup" subtitle="Backend, prices and checkout options for one event" />
+<page-header title="Ticketing settings" subtitle="Ticketing platform, prices and checkout options for one event" />
 
 @if (Model.Error is not null)
 {
     <div class="alert alert-danger">@Model.Error</div>
 }
 
-<form method="post" id="salesSetupForm">
+<form method="post" id="ticketingSettingsForm">
     @Html.AntiForgeryToken()
 
     <div class="card mb-3">
-        <div class="card-header fw-semibold">Event and payment backend</div>
+        <div class="card-header fw-semibold">Event and ticketing platform</div>
         <div class="card-body">
             <div class="row g-3">
                 <div class="col-md-6">
@@ -52,18 +52,18 @@
                     </select>
                 </div>
                 <div class="col-md-3">
-                    <label class="form-label" for="BackendKey">Backend</label>
-                    <select class="form-select" id="BackendKey" name="BackendKey">
-                        @foreach (var b in Model.Backends)
+                    <label class="form-label" for="PlatformKey">Platform</label>
+                    <select class="form-select" id="PlatformKey" name="PlatformKey">
+                        @foreach (var p in Model.Platforms)
                         {
-                            <option value="@b.Key" selected="@(b.Key == f.BackendKey)">@b.Setup.DisplayName@(b.IsConfigured ? "" : " (not configured)")</option>
+                            <option value="@p.Key" selected="@(p.Key == f.PlatformKey)">@p.Setup.DisplayName@(p.IsConfigured ? "" : " (not configured)")</option>
                         }
                     </select>
                 </div>
                 <div class="col-md-3">
-                    <label class="form-label" for="BackendEventRef">Event id in the backend</label>
-                    <input class="form-control" id="BackendEventRef" name="BackendEventRef" value="@f.BackendEventRef" />
-                    <div class="form-text">The pretix event slug or Hi.Events event id. Leave empty for Box Office. <a asp-action="Backends">Check the backends</a></div>
+                    <label class="form-label" for="PlatformEventRef">Event id in the platform</label>
+                    <input class="form-control" id="PlatformEventRef" name="PlatformEventRef" value="@f.PlatformEventRef" />
+                    <div class="form-text">The pretix event slug or Hi.Events event id. Leave empty for Box Office. <a asp-action="Platforms">Check the platforms</a></div>
                 </div>
             </div>
         </div>
@@ -224,7 +224,7 @@
                 <div class="col-md-6">
                     @foreach (var (name, label, help, on) in new[]
                     {
-                        (nameof(f.Donations), "Donations", "Supporter tickets below, and a free donation field.", f.Donations),
+                        (nameof(f.Donations), "Donations", "VIP tickets below, and a free donation field.", f.Donations),
                         (nameof(f.PartnerTickets), "Tickets for others", "The buyer may add people already in Humans to the order; each gets an adult ticket at the public price.", f.PartnerTickets),
                         (nameof(f.MailingListOptIn), "Mailing list", "Buyers who have not chosen yet are asked to join the mailing list.", f.MailingListOptIn),
                     })
@@ -242,28 +242,28 @@
                 </div>
                 <div class="col-md-6">
                     <div class="d-flex justify-content-between align-items-center mb-1">
-                        <span class="form-label mb-0">Supporter tickets</span>
-                        <button type="button" class="btn btn-outline-primary btn-sm" data-add-row="supporters">Add level</button>
+                        <span class="form-label mb-0">VIP tickets</span>
+                        <button type="button" class="btn btn-outline-primary btn-sm" data-add-row="vip">Add total</button>
                     </div>
                     <div class="form-text mt-0 mb-2">Fixed totals offered as buttons. The ticket part is the buyer's own price; the rest is a donation without VAT.</div>
-                    <div data-rows="supporters">
-                        @foreach (var level in supporterLevels)
+                    <div data-rows="vip">
+                        @foreach (var level in vipLevels)
                         {
                             var key = Guid.NewGuid().ToString("N");
                             <div class="d-flex gap-2 align-items-center mb-2">
-                                <input type="hidden" name="SupporterLevels.Index" value="@key" />
-                                <div class="input-group input-group-sm" style="max-width:10rem"><span class="input-group-text">€</span><input class="form-control" type="number" min="0.01" step="0.01" name="SupporterLevels[@key].Total" value="@level.Total" data-supporter-total aria-label="Supporter total" /></div>
-                                <span class="form-text m-0 flex-grow-1" data-supporter-split></span>
-                                <button type="button" class="btn btn-outline-danger btn-sm" data-remove-row aria-label="Remove level">&times;</button>
+                                <input type="hidden" name="VipLevels.Index" value="@key" />
+                                <div class="input-group input-group-sm" style="max-width:10rem"><span class="input-group-text">€</span><input class="form-control" type="number" min="0.01" step="0.01" name="VipLevels[@key].Total" value="@level.Total" data-vip-total aria-label="VIP total" /></div>
+                                <span class="form-text m-0 flex-grow-1" data-vip-split></span>
+                                <button type="button" class="btn btn-outline-danger btn-sm" data-remove-row aria-label="Remove total">&times;</button>
                             </div>
                         }
                     </div>
-                    <template data-template="supporters">
+                    <template data-template="vip">
                         <div class="d-flex gap-2 align-items-center mb-2">
-                            <input type="hidden" name="SupporterLevels.Index" value="__KEY__" />
-                            <div class="input-group input-group-sm" style="max-width:10rem"><span class="input-group-text">€</span><input class="form-control" type="number" min="0.01" step="0.01" name="SupporterLevels[__KEY__].Total" data-supporter-total aria-label="Supporter total" /></div>
-                            <span class="form-text m-0 flex-grow-1" data-supporter-split></span>
-                            <button type="button" class="btn btn-outline-danger btn-sm" data-remove-row aria-label="Remove level">&times;</button>
+                            <input type="hidden" name="VipLevels.Index" value="__KEY__" />
+                            <div class="input-group input-group-sm" style="max-width:10rem"><span class="input-group-text">€</span><input class="form-control" type="number" min="0.01" step="0.01" name="VipLevels[__KEY__].Total" data-vip-total aria-label="VIP total" /></div>
+                            <span class="form-text m-0 flex-grow-1" data-vip-split></span>
+                            <button type="button" class="btn btn-outline-danger btn-sm" data-remove-row aria-label="Remove total">&times;</button>
                         </div>
                     </template>
 
@@ -356,7 +356,7 @@
                             <div class="form-text mt-0">@help</div>
                         </div>
                     }
-                    <div class="form-text">Returned tickets only start selling once the ticketing team opens resale on the event's resale queue page.</div>
+                    <div class="form-text">Tickets in resale only start selling once the ticketing team opens resale on the event's resale queue page.</div>
                 </div>
             </div>
         </div>
@@ -371,7 +371,7 @@
 @section Scripts {
     <script>
         (function () {
-            var form = document.getElementById('salesSetupForm');
+            var form = document.getElementById('ticketingSettingsForm');
             if (!form) return;
 
             function freshKey() {
@@ -392,8 +392,8 @@
 
                 var firstWave = form.querySelector('[data-wave-price]');
                 var price = firstWave ? parseFloat(firstWave.value) : NaN;
-                form.querySelectorAll('[data-supporter-total]').forEach(function (input) {
-                    var split = input.closest('div.d-flex').querySelector('[data-supporter-split]');
+                form.querySelectorAll('[data-vip-total]').forEach(function (input) {
+                    var split = input.closest('div.d-flex').querySelector('[data-vip-split]');
                     var total = parseFloat(input.value);
                     split.textContent = isNaN(price) || isNaN(total) ? ''
                         : total <= price ? 'Not above the first wave price'

@@ -2,7 +2,6 @@ using Humans.Base.Extensions;
 using Humans.Base.Constants;
 using Humans.Workgroups.Services;
 using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Http;
 using Humans.Users.Contracts;
 
 namespace Humans.Workgroups.Authorization;

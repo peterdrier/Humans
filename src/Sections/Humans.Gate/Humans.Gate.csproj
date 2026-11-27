@@ -1,7 +1,6 @@
 <Project Sdk="Microsoft.NET.Sdk.Razor">
 
   <PropertyGroup>
-    <!-- MVC views/controllers, not Blazor components. -->
     <AddRazorSupportForMvc>true</AddRazorSupportForMvc>
   </PropertyGroup>
 
@@ -19,14 +18,11 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\Humans.Auth\Humans.Auth.csproj" />
     <ProjectReference Include="..\..\Humans.Base\Humans.Base.csproj" />
-    <ProjectReference Include="..\Humans.Shifts\Humans.Shifts.csproj" />
     <ProjectReference Include="..\Humans.Settings\Humans.Settings.csproj" />
     <!--
-      Tickets' contracts leaf: GateVendorCheckInJob mirrors a gate admit back to the vendor
-      through ITicketVendorMirror rather than naming the vendor port. The leaf references
-      Humans.Base only, so it cannot cycle
+      Tickets' contracts leaf: ticket lookups, participation writes and Humans-issued tickets.
+      The leaf references Humans.Base only, so it cannot cycle
       (memory/architecture/section-project-cycle-fix.md).
     -->
     <ProjectReference Include="..\Humans.Tickets.Contracts\Humans.Tickets.Contracts.csproj" />
@@ -36,11 +32,8 @@
   <ItemGroup>
     <!--
       No AspNetCore package here: those ship with no PackageVersion on purpose and would fail
-      the build with NU1010 under Central Package Management. Identity's IPasswordHasher (the
-      staff-PIN hasher) and IMemoryCache arrive through the framework reference Sdk.Razor
-      already adds.
-      Hangfire covers the enqueue sites and the two jobs themselves
-      (Jobs/GateRetentionJob, Jobs/GateVendorCheckInJob).
+      the build with NU1010 under Central Package Management. IMemoryCache arrives through the
+      framework reference Sdk.Razor already adds.
     -->
     <PackageReference Include="Hangfire.Core" />
     <PackageReference Include="Microsoft.EntityFrameworkCore" />
@@ -50,7 +43,6 @@
   </ItemGroup>
 
   <ItemGroup>
-    <!-- The section owns its documentation; keep it visible in Solution Explorer. -->
     <None Include="**\*.md" />
   </ItemGroup>
 

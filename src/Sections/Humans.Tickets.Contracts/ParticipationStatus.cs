@@ -6,7 +6,7 @@ public enum ParticipationStatus
 
     Ticketed = 1,
 
-    /// <summary>Checked in at the gate.</summary>
+    /// <summary>Admitted at the gate.</summary>
     Attended = 2,
 
     /// <summary>Had a ticket but did not attend.</summary>

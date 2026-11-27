@@ -124,6 +124,7 @@ Admin pages live under the section's URL space, not `/Admin`; they are localizat
 
 ## Invariants
 
+- HTML number fields render and bind amounts invariantly in every supported culture. Raw issue, approval and amount-change forms carry MVC invariant-field metadata; member application prefills use the same dot-decimal format. Optional approval amounts still fall back only when blank, and service validation retains sizing, precision and ceiling rules.
 - Member application notes are optional and limited to 2,000 characters. A supplied requested amount must be between 0.01 and 1,000,000. Validation feedback uses the shared `Validation_MaxLength` and `Validation_Range` resources in the current supported UI culture.
 - Status follows: `Applied → Open | Declined`; `Open → Claimed | Revoked`; `Claimed → Open`
   (withdraw before approval) `| Consumed | Revoked`. Consumed, Declined and Revoked are
@@ -180,7 +181,7 @@ Admin pages live under the section's URL space, not `/Admin`; they are localizat
 - A program manager **cannot** create or edit a program, set its ceiling, name managers or
   close it (`ProgramOperationRequirement.Administer` is roles only).
 - A manager of program A **cannot** manage, issue under, or act on grants of program B
-  (`ProgramAuthorizationHandler`, `ControllerTests.GrantOfAnotherProgram_UnderMyProgramsUrl_IsNotFound_EvenWithMalformedInput`).
+  (`ProgramAuthorizationHandler`, `ControllerTests.Grant_UnderOtherProgramsUrl_IsNotFound`).
 - A member **cannot** apply to a Closed program, one not accepting applications, or one past
   its deadline.
 - Expenses **cannot** claim a grant that is Revoked, Consumed, Claimed by another report, or

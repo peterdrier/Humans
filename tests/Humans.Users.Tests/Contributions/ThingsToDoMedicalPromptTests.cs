@@ -1,3 +1,4 @@
+using Humans.Testing;
 using Humans.Base.Interfaces;
 using Humans.Users.Services;
 using Humans.AuditLog.Contracts;
@@ -22,7 +23,7 @@ public class ThingsToDoMedicalPromptTests
     private readonly IUserRepository _repo = Substitute.For<IUserRepository>();
     private readonly ICantinaService _cantina = Substitute.For<ICantinaService>();
     private readonly IShiftView _shiftView = Substitute.For<IShiftView>();
-    private readonly IStringLocalizer<SharedResource> _localizer = Substitute.For<IStringLocalizer<SharedResource>>();
+    private readonly IStringLocalizer<SharedResource> _localizer = Substitute.For<IStringLocalizer<SharedResource>>().AddFormatting();
     private readonly IServiceProvider _services;
     private readonly ISectionThingsToDo _sut = new Section();
 
@@ -136,7 +137,7 @@ public class ThingsToDoMedicalPromptTests
                 ? null
                 : new DietaryProfileInfo(userId, dietary, [], null, [], null, declined));
         _shiftView.GetUserAsync(userId, Arg.Any<CancellationToken>())
-            .Returns(new ValueTask<ShiftUserSummary>(new ShiftUserSummary(userId, [], [])));
+            .Returns(new ValueTask<ShiftUserSummary>(new ShiftUserSummary([], [])));
         return userId;
     }
 

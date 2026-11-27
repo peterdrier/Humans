@@ -1,6 +1,3 @@
-using Humans.Shifts.Services.Dtos;
-using Humans.Shifts.Services;
-using Humans.Shifts.Contracts;
 using Humans.Shifts.Domain;
 using NodaTime;
 using Humans.Base.Interfaces.Repositories;
@@ -15,9 +12,6 @@ internal partial interface IShiftManagementRepository : IRepository
     Task<IReadOnlyList<EventSettings>> GetAllEventSettingsAsync(CancellationToken ct = default);
 
     Task SaveEventSettingsAsync(EventSettings entity, EntityMutationMode mode, CancellationToken ct = default);
-
-    /// <summary>Also deletes every Shifts-owned row beneath it. Returns the number of event rows deleted.</summary>
-    Task<int> DeleteEventCascadeAsync(Guid eventSettingsId, CancellationToken ct = default);
 
     /// <summary>One save for rota fields and optional tag replacement. Null keeps tags; empty clears them; unknown ids are ignored.</summary>
     Task SaveRotaAsync(
@@ -84,7 +78,7 @@ internal partial interface IShiftManagementRepository : IRepository
     Task<VolunteerEventProfile?> GetVolunteerEventProfileAsync(
         Guid userId, CancellationToken ct = default);
 
-    Task<IReadOnlyList<VolunteerEventProfile>> GetVolunteerEventProfilesByUserIdsAsync(
+    Task<IReadOnlyList<VolunteerEventProfile>> GetVolunteerProfilesAsync(
         IReadOnlyCollection<Guid> userIds, CancellationToken ct = default);
 
     Task AddVolunteerEventProfileAsync(
@@ -101,7 +95,7 @@ internal partial interface IShiftManagementRepository : IRepository
     /// One save. Target wins on collision: the source's profile is removed when the target has one, and a source tag
     /// preference matching a target <c>(UserId, ShiftTagId)</c> is removed.
     /// </summary>
-    Task ReassignProfilesAndTagPrefsToUserAsync(
+    Task ReassignProfilesToUserAsync(
         Guid sourceUserId,
         Guid targetUserId,
         Instant updatedAt,

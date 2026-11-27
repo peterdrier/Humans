@@ -1,7 +1,6 @@
 using Humans.Base.Enums;
 using Humans.Google.Contracts;
 using Humans.Base.Interfaces;
-using Humans.Google.Data;
 using Humans.Teams.Contracts;
 using NodaTime;
 using Humans.Users.Contracts;
@@ -124,7 +123,7 @@ internal sealed class GoogleSyncOutboxProcessor(
                 {
                     throw;
                 }
-                catch (global::Google.GoogleApiException ex) when (ex.Error?.Code is int code && DrivePermissionErrorPolicy.IsPermanentFailure(code))
+                catch (global::Google.GoogleApiException ex) when (ex.Error?.Code is { } code && DrivePermissionErrorPolicy.IsPermanentFailure(code))
                 {
                     completingEvent = true;
                     metrics.RecordSyncOperation("permanent_failure");

@@ -5,7 +5,6 @@ using AwesomeAssertions;
 using Humans.AuditLog.Contracts;
 using Humans.Camps.Contracts;
 using Humans.Email.Contracts;
-using Humans.Events.Contracts;
 using Humans.Events.Data;
 using Humans.Events.Domain;
 using Humans.Events.Services;

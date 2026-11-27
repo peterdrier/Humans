@@ -1,5 +1,4 @@
 using AwesomeAssertions;
-using Humans.Testing;
 using Humans.Tickets.Contracts;
 using Humans.Tickets.Domain.Checkout;
 using Humans.Tickets.Services.Checkout;
@@ -10,6 +9,21 @@ namespace Humans.Tickets.Tests.Services.Checkout;
 
 public sealed class TicketPaymentReconTests
 {
+    [HumansTheory]
+    [InlineData("charge", PaymentLedgerEntryKind.Charge)]
+    [InlineData("charge_failure", PaymentLedgerEntryKind.Charge)]
+    [InlineData("partial_capture_reversal", PaymentLedgerEntryKind.Charge)]
+    [InlineData("refund", PaymentLedgerEntryKind.Refund)]
+    [InlineData("refund_failure", PaymentLedgerEntryKind.Refund)]
+    [InlineData("dispute", PaymentLedgerEntryKind.Chargeback)]
+    [InlineData("dispute_reversal", PaymentLedgerEntryKind.Chargeback)]
+    [InlineData("fee", PaymentLedgerEntryKind.Fee)]
+    [InlineData("payout", PaymentLedgerEntryKind.Payout)]
+    [InlineData("payout_reversal", PaymentLedgerEntryKind.Payout)]
+    [InlineData("adjustment", PaymentLedgerEntryKind.Other)]
+    public void KindOf_ReportingCategory_ClassifiesMovement(string category, PaymentLedgerEntryKind expected) =>
+        PaymentLedgerEntry.KindOf(category).Should().Be(expected);
+
     private const string Key = "boxoffice";
     private static readonly Instant From = Instant.FromUtc(2027, 1, 1, 0, 0);
     private static readonly Instant To = Instant.FromUtc(2027, 2, 1, 0, 0);
@@ -20,12 +34,12 @@ public sealed class TicketPaymentReconTests
     private readonly List<PaymentPayout> _payouts = [];
 
     private TicketCheckoutOrder Order(long total = 30000, long? fee = 450, TicketCheckoutOrderState state = TicketCheckoutOrderState.Paid,
-        string backendKey = Key)
+        string platformKey = Key)
     {
         var order = new TicketCheckoutOrder
         {
             Id = Guid.NewGuid(),
-            BackendKey = backendKey,
+            PlatformKey = platformKey,
             State = state,
             TotalMinor = total,
             FeeMinor = fee,
@@ -44,7 +58,7 @@ public sealed class TicketPaymentReconTests
     [HumansFact]
     public void Outside_production_a_movement_naming_an_order_this_database_never_held_is_set_apart_but_counted()
     {
-        var elsewhere = Order(backendKey: "pretix");
+        var elsewhere = Order(platformKey: "pretix");
         Entry(PaymentLedgerEntryKind.Charge, 30000, 450, Guid.NewGuid());
         Entry(PaymentLedgerEntryKind.Charge, 30000, 450);
         Entry(PaymentLedgerEntryKind.Refund, -5000, 0, elsewhere.Id);
@@ -117,12 +131,12 @@ public sealed class TicketPaymentReconTests
     }
 
     [HumansFact]
-    public void Money_naming_no_order_on_this_backend_unbalances()
+    public void Money_naming_no_order_on_this_platform_unbalances()
     {
-        var elsewhere = Order(backendKey: "pretix");
+        var elsewhere = Order(platformKey: "pretix");
         Entry(PaymentLedgerEntryKind.Charge, 30000, 450);
         Entry(PaymentLedgerEntryKind.Refund, -5000, 0, elsewhere.Id);
-        Entry(PaymentLedgerEntryKind.Dispute, -30000, 1500, Guid.NewGuid());
+        Entry(PaymentLedgerEntryKind.Chargeback, -30000, 1500, Guid.NewGuid());
 
         var recon = Build();
 
@@ -134,17 +148,17 @@ public sealed class TicketPaymentReconTests
     {
         var order = Order();
         Entry(PaymentLedgerEntryKind.Charge, 30000, 450, order.Id);
-        Entry(PaymentLedgerEntryKind.Dispute, -30000, 1500, order.Id);
+        Entry(PaymentLedgerEntryKind.Chargeback, -30000, 1500, order.Id);
         Entry(PaymentLedgerEntryKind.Fee, -200);
         Entry(PaymentLedgerEntryKind.Charge, -30000, 0, order.Id);
 
         var recon = Build();
 
         recon.Balanced.Should().BeTrue();
-        recon.OtherFees.Select(r => r.Entry.Kind).Should().Equal(PaymentLedgerEntryKind.Dispute, PaymentLedgerEntryKind.Fee);
+        recon.OtherFees.Select(r => r.Entry.Kind).Should().Equal(PaymentLedgerEntryKind.Chargeback, PaymentLedgerEntryKind.Fee);
         recon.Totals.FeesMinor.Should().Be(450 + 1500 + 200);
         recon.Totals.ChargedMinor.Should().Be(0);
-        recon.Totals.DisputedMinor.Should().Be(30000);
+        recon.Totals.ChargedBackMinor.Should().Be(30000);
     }
 
     [HumansFact]

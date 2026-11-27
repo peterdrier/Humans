@@ -32,11 +32,11 @@ public class GateArchitectureTests
     }
 
     [HumansFact]
-    public void ServiceImplementsTheUserLifecycleContracts()
+    public void GateService_ImplementsUserLifecycleContracts()
     {
         typeof(IUserDataContributor).IsAssignableFrom(typeof(GateService))
             .Should().BeTrue(
-                because: "Gate owns gate_scan_events and gate_staff_pins (user-scoped); it must "
+                because: "Gate owns gate_scan_events (user-scoped); it must "
                        + "contribute to the GDPR Article 15 export");
         typeof(IUserMerge).IsAssignableFrom(typeof(GateService))
             .Should().BeTrue(
@@ -44,7 +44,7 @@ public class GateArchitectureTests
     }
 
     [HumansFact]
-    public void WriteAndAdminActions_NeverRideOnTheClassLevelReadPolicy()
+    public void Posts_CarryOwnPolicy()
     {
         // The kiosk read surface is the class-level ScannerAccess policy…
         typeof(GateController).GetCustomAttribute<AuthorizeAttribute>(inherit: false)!
@@ -62,7 +62,6 @@ public class GateArchitectureTests
         foreach (var post in posts)
         {
             var expected = post.Name is nameof(GateController.Admin)
-                    or nameof(GateController.SetStaffPin) or nameof(GateController.ResetStaffPin)
                 ? TicketsPolicies.Manage
                 : PolicyNames.GateAdmit;
             var attribute = post.GetCustomAttribute<AuthorizeAttribute>(inherit: false);
@@ -72,13 +71,15 @@ public class GateArchitectureTests
                 because: $"POST {post.Name} must not inherit only the class-level read policy");
         }
 
-        // The one-off vendor backfill page is admin-only at the class level.
-        typeof(GateVendorBackfillAdminController).GetCustomAttribute<AuthorizeAttribute>(inherit: false)!
-            .Policy.Should().Be(PolicyNames.AdminOnly);
+        // The arrivals report reads under Tickets Read; its undo needs Manage.
+        typeof(GateReportController).GetCustomAttribute<AuthorizeAttribute>(inherit: false)!
+            .Policy.Should().Be(TicketsPolicies.Read);
+        typeof(GateReportController).GetMethod(nameof(GateReportController.Undo))!
+            .GetCustomAttribute<AuthorizeAttribute>(inherit: false)!.Policy.Should().Be(TicketsPolicies.Manage);
     }
 
     [HumansFact]
-    public void SectionRegistersTheUserMergeForwarder()
+    public void Section_RegistersUserMerge()
     {
         // When two accounts are merged, Gate has to move its scan rows over to the
         // surviving user. That only happens if this registration is present — drop it

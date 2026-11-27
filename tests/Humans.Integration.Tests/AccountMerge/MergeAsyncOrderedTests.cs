@@ -30,7 +30,7 @@ public class MergeAsyncOrderedTests(HumansTestDatabase database)
         {
             b.WithTargetEmail($"keep-{runTag}@example.com", verified: true, isPrimary: true);   // survivor
             b.WithSourceEmail($"dupe-{runTag}@example.com", verified: true, isPrimary: true);   // archived
-            b.WithSourceRoleAssignment($"role-{runTag}");
+            b.WithSourceSystemRole($"role-{runTag}");
         });
         var survivorId = targetId;
         var archivedId = sourceId;
@@ -105,7 +105,7 @@ public class MergeAsyncOrderedTests(HumansTestDatabase database)
                 + string.Join("; ", result.Errors.Select(e => e.Description)));
         }
 
-        authDb.RoleAssignments.Add(new RoleAssignment
+        authDb.SystemRoles.Add(new SystemRole
         {
             Id = Guid.NewGuid(),
             UserId = adminId,

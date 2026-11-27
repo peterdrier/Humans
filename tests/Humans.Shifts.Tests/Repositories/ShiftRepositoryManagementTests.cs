@@ -269,7 +269,7 @@ public sealed class ShiftRepositoryManagementTests : IDisposable
             new VolunteerTagPreference { Id = Guid.NewGuid(), UserId = targetUserId, ShiftTagId = tag.Id });
         await _shiftsDbContext.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
 
-        await _repo.ReassignProfilesAndTagPrefsToUserAsync(
+        await _repo.ReassignProfilesToUserAsync(
             sourceUserId, targetUserId, TestNow, Xunit.TestContext.Current.CancellationToken);
 
         _shiftsDbContext.ChangeTracker.Clear();

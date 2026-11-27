@@ -1,5 +1,4 @@
 using Humans.Base.Constants;
-using Humans.Camps.Contracts;
 using Humans.Base.Authorization;
 using Microsoft.AspNetCore.Authorization;
 
@@ -11,5 +10,5 @@ namespace Humans.Camps.Authorization;
 /// </summary>
 internal sealed class CampComplianceAccessRequirement : IAuthorizationRequirement, IDescribedRequirement
 {
-    public IReadOnlyList<string> Admits => [CampsRoles.CampsAdmin, RoleNames.Board, RoleNames.Admin, "Team Coordinator"];
+    public IReadOnlyList<string> Admits => [CampsRoles.CampsAdmin, RoleNames.Board, RoleNames.Admin, "Shift managers and approvers"];
 }

@@ -1,3 +1,10 @@
+using Humans.Testing;
+using System.Text.RegularExpressions;
+using Microsoft.AspNetCore.Builder;
+using Microsoft.AspNetCore.Mvc.Razor;
+using Microsoft.AspNetCore.Mvc.Rendering;
+using Microsoft.AspNetCore.Mvc.Routing;
+using Microsoft.AspNetCore.Routing;
 using Humans.Consent.Contracts;
 using Microsoft.Extensions.Primitives;
 using Microsoft.AspNetCore.Mvc.ModelBinding;
@@ -10,8 +17,6 @@ using Microsoft.Extensions.Options;
 using System.Security.Claims;
 using AwesomeAssertions;
 using Humans.Base.Enums;
-using Humans.Base.Constants;
-using Humans.Governance.Contracts;
 using Humans.Shifts.Contracts;
 using Humans.Shifts.Controllers;
 using Humans.Shifts.Domain;
@@ -21,6 +26,8 @@ using Humans.Shifts.Services;
 using Humans.Shifts.Services.Dtos;
 using Humans.Teams.Contracts;
 using Humans.Users.Contracts;
+using Humans.Permissions.Contracts;
+using Humans.Base.Authorization;
 using Humans.Users.Domain;
 using Humans.Users.Services;
 using Microsoft.AspNetCore.Authorization;
@@ -55,9 +62,12 @@ public class ShiftAdminControllerTests
     private readonly IShiftRowView _shiftView = Substitute.For<IShiftRowView>();
     private readonly IShiftRotaRows _rotaRows = Substitute.For<IShiftRotaRows>();
     private readonly IVolunteerTrackingManagement _tracking = Substitute.For<IVolunteerTrackingManagement>();
-    private readonly IStringLocalizer<ShiftsResource> _localizer = Substitute.For<IStringLocalizer<ShiftsResource>>();
+    private readonly IStringLocalizer<ShiftsResource> _localizer = Substitute.For<IStringLocalizer<ShiftsResource>>().AddFormatting();
     private readonly ILogger<ShiftAdminController> _logger = Substitute.For<ILogger<ShiftAdminController>>();
     private readonly IRotaCoordinatorMessageService _rotaMessenger = Substitute.For<IRotaCoordinatorMessageService>();
+    private readonly IPermissionService _permissions = Substitute.For<IPermissionService>();
+
+    private static Owner Team(Guid id) => new(TeamOwner.Kind, id);
 
     private static readonly BurnSettingsInfo Event = new(
         Id: Guid.NewGuid(),
@@ -86,9 +96,8 @@ public class ShiftAdminControllerTests
         _userService.GetUserInfoAsync(UserId, Arg.Any<CancellationToken>()).Returns(MakeUserInfo(UserId));
         _teamService.GetTeamsAsync(Arg.Any<CancellationToken>()).Returns(
             new Dictionary<Guid, TeamInfo> { [TeamId] = MakeTeam(TeamId, Slug) });
-        // The caller coordinates the URL's department and nothing else.
-        _shiftMgmt.IsDeptCoordinatorAsync(UserId, TeamId).Returns(true);
-        _shiftMgmt.IsDeptCoordinatorAsync(UserId, OtherTeamId).Returns(false);
+        // The caller manages and approves on the URL's department and nothing else.
+        _permissions.HasAsync(UserId, Arg.Any<string>(), Team(TeamId), Arg.Any<CancellationToken>()).Returns(true);
         _burnSettings.GetActiveAsync(Arg.Any<CancellationToken>()).Returns(Event);
         _teamService.GetTeamAsync(TeamId, Arg.Any<CancellationToken>()).Returns(MakeTeam(TeamId, Slug));
         _shiftMgmt.GetTagsAsync().Returns([]);
@@ -131,7 +140,7 @@ public class ShiftAdminControllerTests
             Check("teams", call.Arg<CancellationToken>());
             return Task.FromResult<IReadOnlyDictionary<Guid, TeamInfo>>(new Dictionary<Guid, TeamInfo> { [TeamId] = MakeTeam(TeamId, Slug) });
         });
-        _shiftMgmt.IsDeptCoordinatorAsync(UserId, TeamId, Arg.Any<CancellationToken>()).Returns(call =>
+        _permissions.HasAsync(UserId, Arg.Any<string>(), Team(TeamId), Arg.Any<CancellationToken>()).Returns(call =>
         {
             Check("coordinator", call.Arg<CancellationToken>());
             return Task.FromResult(true);
@@ -178,8 +187,7 @@ public class ShiftAdminControllerTests
             _ => controller.EmailTeamRotas(Slug, new EmailTeamRotasViewModel())
         };
         await read.Should().ThrowAsync<OperationCanceledException>();
-        _shiftMgmt.ReceivedCalls().Should().OnlyContain(call => call.GetMethodInfo().Name.StartsWith("Get", StringComparison.Ordinal)
-            || call.GetMethodInfo().Name == "IsDeptCoordinatorAsync");
+        _shiftMgmt.ReceivedCalls().Should().OnlyContain(call => call.GetMethodInfo().Name.StartsWith("Get", StringComparison.Ordinal));
         _signupService.ReceivedCalls().Should().OnlyContain(call => call.GetMethodInfo().Name == "GetTeamProbeAsync");
         _rotaMessenger.ReceivedCalls().Should().OnlyContain(call => call.GetMethodInfo().Name == "GetTeamRotasRecipientPreviewAsync");
     }
@@ -192,7 +200,7 @@ public class ShiftAdminControllerTests
         using var request = new CancellationTokenSource();
         var id = Guid.NewGuid();
         var scope = block ? ShiftSignupTeamProbeScope.SignupBlock : ShiftSignupTeamProbeScope.Signup;
-        _shiftMgmt.IsDeptCoordinatorAsync(UserId, TeamId, Arg.Any<CancellationToken>()).Returns(true);
+        _permissions.HasAsync(UserId, Arg.Any<string>(), Team(TeamId), Arg.Any<CancellationToken>()).Returns(true);
         _signupService.GetTeamProbeAsync(id, scope, Arg.Any<CancellationToken>()).Returns(call =>
         {
             call.Arg<CancellationToken>().ThrowIfCancellationRequested();
@@ -215,7 +223,7 @@ public class ShiftAdminControllerTests
         using var cancellation = new CancellationTokenSource();
         var controller = BuildSut();
         controller.HttpContext.RequestAborted = cancellation.Token;
-        _shiftMgmt.IsDeptCoordinatorAsync(UserId, TeamId, cancellation.Token).Returns(true);
+        _permissions.HasAsync(UserId, Arg.Any<string>(), Team(TeamId), cancellation.Token).Returns(true);
         _shiftMgmt.GetTagsAsync(ct: Arg.Any<CancellationToken>()).Returns([]);
         _shiftMgmt.GetRotasByDepartmentAsync(TeamId, Event.Id, Arg.Any<CancellationToken>()).Returns([]);
         _shiftMgmt.GetStaffingSnapshotAsync(Event.Id, TeamId, ct: Arg.Any<CancellationToken>())
@@ -226,28 +234,26 @@ public class ShiftAdminControllerTests
         result.Should().BeOfType<ViewResult>();
         await _userService.Received(1).GetUserInfoAsync(UserId, cancellation.Token);
         await _teamService.Received().GetTeamsAsync(cancellation.Token);
-        await _shiftMgmt.Received().IsDeptCoordinatorAsync(UserId, TeamId, cancellation.Token);
-        await _teamService.DidNotReceiveWithAnyArgs().GetTeamAsync(default, default);
+        await _permissions.Received().HasAsync(UserId, Arg.Any<string>(), Team(TeamId), cancellation.Token);
+        await _teamService.DidNotReceiveWithAnyArgs().GetTeamAsync(default);
         await _shiftMgmt.Received(1).GetRotasByDepartmentAsync(TeamId, Event.Id, cancellation.Token);
     }
 
     [HumansTheory]
-    [InlineData(null, false, true, false, false, 1)]
-    [InlineData(null, true, false, true, true, 1)]
-    [InlineData(null, false, false, null, null, 1)]
-    [InlineData(ShiftsRoles.ShiftsNoInfo, false, false, false, true, 1)]
-    [InlineData(ShiftsRoles.ShiftsAdmin, false, false, true, true, 0)]
-    [InlineData(RoleNames.Admin, false, false, true, true, 0)]
-    public async Task Index_ReusesOneCoordinatorDecisionForAccessAndControls(
-        string? role, bool coordinates, bool canRead, bool? canManage, bool? canApprove, int coordinatorReads)
+    [InlineData(false, false, true, false, false)]
+    [InlineData(true, true, false, true, true)]
+    [InlineData(false, false, false, null, null)]
+    [InlineData(false, true, false, false, true)]
+    [InlineData(true, false, false, true, false)]
+    public async Task Index_ControlsFollowThePermissionsOnTheTeam(
+        bool manage, bool approve, bool canRead, bool? canManage, bool? canApprove)
     {
-        _shiftMgmt.IsDeptCoordinatorAsync(UserId, TeamId, Arg.Any<CancellationToken>()).Returns(coordinates);
+        _permissions.HasAsync(UserId, ShiftsPermissions.Manage, Team(TeamId), Arg.Any<CancellationToken>()).Returns(manage);
+        _permissions.HasAsync(UserId, ShiftsPermissions.Approve, Team(TeamId), Arg.Any<CancellationToken>()).Returns(approve);
         var authorization = Substitute.For<IAuthorizationService>();
         authorization.AuthorizeAsync(Arg.Any<ClaimsPrincipal>(), Arg.Any<object?>(), ShiftsPolicies.Read)
             .Returns(canRead ? AuthorizationResult.Success() : AuthorizationResult.Failed());
         var controller = BuildSut(authorization: authorization);
-        if (role is not null)
-            ((ClaimsIdentity)controller.User.Identity!).AddClaim(new Claim(ClaimTypes.Role, role));
 
         var result = await controller.Index(Slug);
 
@@ -259,7 +265,6 @@ public class ShiftAdminControllerTests
             model.CanManageShifts.Should().Be(canManage.Value);
             model.CanApproveSignups.Should().Be(canApprove!.Value);
         }
-        await _shiftMgmt.Received(coordinatorReads).IsDeptCoordinatorAsync(UserId, TeamId, Arg.Any<CancellationToken>());
     }
 
     [HumansTheory]
@@ -272,7 +277,7 @@ public class ShiftAdminControllerTests
         using var cancellation = new CancellationTokenSource();
         var controller = BuildSut();
         controller.HttpContext.RequestAborted = cancellation.Token;
-        _shiftMgmt.IsDeptCoordinatorAsync(UserId, TeamId, Arg.Any<CancellationToken>()).Returns(true);
+        _permissions.HasAsync(UserId, Arg.Any<string>(), Team(TeamId), Arg.Any<CancellationToken>()).Returns(true);
         var rota = MakeRota(TeamId);
         var shift = MakeShift(rota);
         _shiftMgmt.GetRotaAsync(rota.Id, Arg.Any<CancellationToken>()).Returns(_ => ToInfo(rota));
@@ -296,7 +301,7 @@ public class ShiftAdminControllerTests
         Assert.NotNull(result);
         await _userService.Received(1).GetUserInfoAsync(UserId, cancellation.Token);
         await _teamService.Received(1).GetTeamsAsync(cancellation.Token);
-        await _shiftMgmt.Received(1).IsDeptCoordinatorAsync(UserId, TeamId, cancellation.Token);
+        await _permissions.Received(1).HasAsync(UserId, Arg.Any<string>(), Team(TeamId), cancellation.Token);
         switch (page)
         {
             case 0:
@@ -324,7 +329,7 @@ public class ShiftAdminControllerTests
         var rota = MakeRota(TeamId);
         rota.EventSettingsId = Event.Id;
         var shift = MakeShift(rota);
-        _shiftMgmt.IsDeptCoordinatorAsync(UserId, TeamId, Arg.Any<CancellationToken>()).Returns(true);
+        _permissions.HasAsync(UserId, Arg.Any<string>(), Team(TeamId), Arg.Any<CancellationToken>()).Returns(true);
         _shiftMgmt.GetShiftByIdAsync(shift.Id, Arg.Any<CancellationToken>()).Returns(_ => ToInfo(shift));
         _userService.SearchUsersAsync("ann", PersonSearchFields.Name, int.MaxValue, cancellation.Token)
             .Returns(async _ =>
@@ -460,7 +465,7 @@ public class ShiftAdminControllerTests
     public async Task Bulk_shift_forms_require_complete_days_slots_and_staffing(bool staffing, string omitted, bool zero, bool allowed)
     {
         var rotaId = Guid.NewGuid();
-        _shiftMgmt.IsDeptCoordinatorAsync(UserId, TeamId).Returns(allowed);
+        _permissions.HasAsync(UserId, Arg.Any<string>(), Team(TeamId), Arg.Any<CancellationToken>()).Returns(allowed);
         _shiftMgmt.CreateBuildStrikeShiftsAsync(Arg.Any<ConfigureBuildStrikeStaffingInput>())
             .Returns(ShiftGenerationResult.Success("Created", 2));
         _shiftMgmt.GenerateEventShiftsAsync(Arg.Any<GenerateEventShiftsInput>())
@@ -957,6 +962,38 @@ public class ShiftAdminControllerTests
     }
 
     [HumansFact]
+    public async Task EmailRota_ArchivedRecipients_PreviewsOneLiveHuman()
+    {
+        var ct = Xunit.TestContext.Current.CancellationToken;
+        var rota = MakeRota(TeamId);
+        var archivedId = Guid.NewGuid();
+        var survivorId = Guid.NewGuid();
+        var deletedId = Guid.NewGuid();
+        _shiftMgmt.GetRotaAsync(rota.Id, Arg.Any<CancellationToken>()).Returns(ToInfo(rota));
+        _rotaRows.GetRotaRowsAsync(Arg.Any<IReadOnlyCollection<Guid>?>(), Arg.Any<CancellationToken>())
+            .Returns([new ShiftAdminRota(ToInfo(rota), [new ShiftAdminShift(ToShiftInfo(MakeShift(rota)),
+                new[] { archivedId, survivorId, deletedId }.Select(id => new ShiftAdminSignup(Guid.NewGuid(), id, null,
+                    SignupStatus.Confirmed, Instant.MinValue)).ToList())])]);
+        var survivor = MakeUserInfo(survivorId) with { BurnerName = "Human", IdentityEmailColumn = "human@example.org" };
+        _userService.GetUserInfosAsync(Arg.Any<IEnumerable<Guid>>(), Arg.Any<CancellationToken>())
+            .Returns(new Dictionary<Guid, UserInfo>
+            {
+                [archivedId] = survivor,
+                [survivorId] = survivor,
+                [deletedId] = MakeUserInfo(deletedId) with { BurnerName = "Deleted", State = UserState.Deleted }
+            });
+        var controller = BuildSut();
+
+        var get = await controller.EmailRota(Slug, rota.Id, ct);
+        get.Should().BeOfType<ViewResult>().Which.Model.Should().BeOfType<EmailRotaViewModel>()
+            .Which.RecipientNames.Should().Equal("Human");
+        controller.ModelState.AddModelError(nameof(EmailRotaViewModel.Message), "required");
+        var post = await controller.EmailRota(Slug, rota.Id, new EmailRotaViewModel());
+        post.Should().BeOfType<ViewResult>().Which.Model.Should().BeOfType<EmailRotaViewModel>()
+            .Which.RecipientNames.Should().Equal("Human");
+    }
+
+    [HumansFact]
     public async Task EmailTeamRotas_RefreshIntent_RepreviewsSelection_WithoutSending()
     {
         _rotaMessenger.GetTeamRotasRecipientPreviewAsync(
@@ -1121,6 +1158,7 @@ public class ShiftAdminControllerTests
             new ShiftAdminPageBuilder(_shiftMgmt, Substitute.For<IConsentService>(), _userService, _teamService),
             new ShiftVolunteerSearchBuilder(_burnSettings, _userService, _shiftView, _signupService, _tracking),
             _rotaMessenger,
+            _permissions,
             _logger,
             localizer ?? _localizer);
 
@@ -1136,6 +1174,88 @@ public class ShiftAdminControllerTests
         ctrl.TempData = new TempDataDictionary(http, Substitute.For<ITempDataProvider>());
         ctrl.Url = Substitute.For<IUrlHelper>();
         return ctrl;
+    }
+
+    [HumansTheory]
+    [MemberData(nameof(SupportedCultures.All), MemberType = typeof(SupportedCultures))]
+    public async Task DurationForms_PostedValues_PreserveHours(string language)
+    {
+        using var culture = new CultureScope(language);
+        using var assertions = new AwesomeAssertions.Execution.AssertionScope();
+        var rota = MakeRota(TeamId);
+        var timed = MakeShift(rota);
+        timed.Duration = Duration.FromHours(4.5);
+        var allDay = MakeShift(rota);
+        allDay.IsAllDay = true;
+        allDay.Duration = Duration.FromHours(4.5);
+        var model = new ShiftAdminViewModel
+        {
+            Department = MakeTeam(TeamId, Slug),
+            EventSettings = Event,
+            CanManageShifts = true,
+            Rotas =
+            [
+                new(ToInfo(rota), [new(ToShiftInfo(timed), []), new(ToShiftInfo(allDay), [])]),
+                new(ToInfo(MakeRota(TeamId)), []),
+            ],
+        };
+        var builder = WebApplication.CreateBuilder(new WebApplicationOptions
+        {
+            ApplicationName = typeof(ShiftAdminControllerTests).Assembly.GetName().Name,
+            EnvironmentName = "Testing",
+        });
+        builder.Services.AddLocalization();
+        builder.Services.AddHttpContextAccessor();
+        builder.Services.AddControllersWithViews().AddApplicationPart(typeof(ShiftsResource).Assembly)
+            .AddApplicationPart(typeof(Humans.Base.ViewComponents.HumanViewComponent).Assembly);
+        var url = Substitute.For<IUrlHelper>();
+        url.Action(Arg.Any<UrlActionContext>()).Returns("/");
+        var urls = Substitute.For<IUrlHelperFactory>();
+        urls.GetUrlHelper(Arg.Any<ActionContext>()).Returns(url);
+        builder.Services.AddSingleton(urls);
+        await using var app = builder.Build();
+        using var scope = app.Services.CreateScope();
+        var services = scope.ServiceProvider;
+        var view = services.GetRequiredService<IRazorViewEngine>().GetView(null, "/Views/ShiftAdmin/Index.cshtml", isMainPage: false);
+        view.Success.Should().BeTrue();
+        var http = new DefaultHttpContext { RequestServices = services };
+        var route = new RouteData();
+        route.Values["controller"] = "ShiftAdmin";
+        route.Values["action"] = "Index";
+        var action = new ActionContext(http, route, new Microsoft.AspNetCore.Mvc.Abstractions.ActionDescriptor());
+        var data = new ViewDataDictionary(services.GetRequiredService<IModelMetadataProvider>(), new ModelStateDictionary()) { Model = model };
+        using var writer = new StringWriter(CultureInfo.InvariantCulture);
+        await view.View!.RenderAsync(new ViewContext(action, view.View!, data,
+            new TempDataDictionary(http, Substitute.For<ITempDataProvider>()), writer, new HtmlHelperOptions()));
+        var tested = 0;
+        foreach (Match form in Regex.Matches(writer.ToString(), "<form\\b[^>]*>.*?</form>", RegexOptions.Singleline | RegexOptions.NonBacktracking))
+        {
+            var inputs = Regex.Matches(form.Value, "<input\\b[^>]*>", RegexOptions.NonBacktracking)
+                .Cast<Match>().Select(input => Regex.Matches(input.Value, "(?<name>[\\w-]+)=\"(?<value>[^\"]*)\"", RegexOptions.NonBacktracking)
+                    .Cast<Match>().ToDictionary(a => a.Groups["name"].Value, a => a.Groups["value"].Value, StringComparer.Ordinal)).ToList();
+            var fields = new Dictionary<string, StringValues>(StringComparer.Ordinal);
+            foreach (var input in inputs.Where(i => i.ContainsKey("name")))
+            {
+                var name = input["name"];
+                fields[name] = StringValues.Concat(fields.GetValueOrDefault(name), input.GetValueOrDefault("value", ""));
+            }
+            foreach (var input in inputs.Where(i => i.GetValueOrDefault("name") is "DurationHours" or "TimeSlots[0].DurationHours"))
+            {
+                var name = input["name"];
+                input["value"].Should().BeOneOf("4", "4.5");
+                fields[name] = "4.5";
+                var metadata = services.GetRequiredService<IModelMetadataProvider>().GetMetadataForType(typeof(double));
+                var binder = services.GetRequiredService<IModelBinderFactory>().CreateBinder(new ModelBinderFactoryContext { Metadata = metadata });
+                var binding = DefaultModelBindingContext.CreateBindingContext(action,
+                    new FormValueProvider(BindingSource.Form, new FormCollection(fields), CultureInfo.CurrentCulture),
+                    metadata, bindingInfo: null, modelName: name);
+                await binder.BindModelAsync(binding);
+                binding.Result.IsModelSet.Should().BeTrue();
+                binding.Result.Model.Should().Be(4.5d, $"{name} must preserve fractional hours in {language}");
+                tested++;
+            }
+        }
+        tested.Should().Be(5);
     }
 
     private static Rota MakeRota(Guid teamId) => new()

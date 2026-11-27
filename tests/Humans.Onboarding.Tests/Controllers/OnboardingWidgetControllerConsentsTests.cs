@@ -1,5 +1,5 @@
+using Humans.Testing;
 using System.Security.Claims;
-using Humans.Consent;
 using Humans.Consent.Contracts;
 using Humans.Onboarding.Services;
 using Humans.Users.Contracts;
@@ -12,7 +12,6 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.ViewFeatures;
 using Microsoft.Extensions.Localization;
-using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using NodaTime;
 using NSubstitute;
@@ -35,7 +34,7 @@ public class OnboardingWidgetControllerConsentsTests
     private readonly IUserService _userService = Substitute.For<IUserService>();
 
     private readonly IStringLocalizer<OnboardingResource> _localizer =
-        Substitute.For<IStringLocalizer<OnboardingResource>>();
+        Substitute.For<IStringLocalizer<OnboardingResource>>().AddFormatting();
     private readonly DefaultHttpContext _http = new();
 
     public OnboardingWidgetControllerConsentsTests()
@@ -52,7 +51,7 @@ public class OnboardingWidgetControllerConsentsTests
         // doesn't divert tests that exercise the consent flow itself.
         _userService.GetUserInfoAsync(userId, Arg.Any<CancellationToken>())
             .Returns(isStub ? StubUserInfo(userId) : NonStubUserInfo(userId));
-        var ctrl = new OnboardingWidgetController(_userService, _state, _profileEditor, _signups, _shiftMgmt, _burnSettings, _onboardingService, _localizer, Microsoft.Extensions.Logging.Abstractions.NullLogger<OnboardingWidgetController>.Instance);
+        var ctrl = new OnboardingWidgetController(_userService, _state, _profileEditor, _signups, _shiftMgmt, _burnSettings, _onboardingService, _localizer, NullLogger<OnboardingWidgetController>.Instance);
         ctrl.ControllerContext = new ControllerContext
         {
             HttpContext = _http,
@@ -88,7 +87,7 @@ public class OnboardingWidgetControllerConsentsTests
         profile: profile);
 
     [HumansFact]
-    public async Task Consents_Get_StubProfile_RedirectsToNames_WithLocalizedInfo()
+    public async Task ConsentsGet_StubProfile_RedirectsToNames()
     {
         // A nameless user at the consent step would only get a refused form: bounce them to Names.
         var userId = Guid.NewGuid();
@@ -139,7 +138,7 @@ public class OnboardingWidgetControllerConsentsTests
     }
 
     [HumansFact]
-    public async Task Consents_Get_NothingLeftToSign_RedirectsThroughIndex()
+    public async Task ConsentsGet_NothingLeftToSign_RedirectsToIndex()
     {
         // Nothing left to sign → back through the Index dispatcher. The consent-suspension
         // self-heal for this case lives in IOnboardingService.GetNextUnsignedConsentAsync
@@ -156,7 +155,7 @@ public class OnboardingWidgetControllerConsentsTests
     }
 
     [HumansFact]
-    public async Task Consents_Get_DocumentUnavailable_StopsInsteadOfBouncingOffTheDispatcher()
+    public async Task ConsentsGet_DocumentUnavailable_Stops()
     {
         // Handing an unloadable unsigned document back to the dispatcher loops: it still answers "consents".
         var userId = Guid.NewGuid();

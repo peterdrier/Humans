@@ -205,7 +205,8 @@
   <data name="Expenses_SelectAccount" xml:space="preserve"><value>— Seleziona un conto —</value></data>
   <data name="Expenses_AccountGroupBudgetCategories" xml:space="preserve"><value>Categorie di bilancio</value></data>
   <data name="Expenses_AccountGroupOther" xml:space="preserve"><value>Altri conti</value></data>
-  <data name="Expenses_Validation_AccountNotFound" xml:space="preserve"><value>Conto non trovato o non più disponibile.</value></data>
+  <data name="Expenses_Validation_AccountNotFound" xml:space="preserve"><value>Quel conto non esiste.</value></data>
+  <data name="Expenses_Validation_AccountInactive" xml:space="preserve"><value>Quel conto non è più aperto alle spese.</value></data>
   <data name="Expenses_OptionalMaxChars" xml:space="preserve"><value>(facoltativo, max 500 caratteri)</value></data>
   <data name="Expenses_SubjectPlaceholder" xml:space="preserve"><value>Descrivi la spesa…</value></data>
   <data name="Expenses_CreateDraft" xml:space="preserve"><value>Crea bozza</value></data>
@@ -291,11 +292,16 @@
   <data name="Expenses_Preapprovals_Revoked" xml:space="preserve"><value>Questa preapprovazione è stata revocata. La nota non può essere approvata con essa: una volta respinta, la preapprovazione può essere rimossa o cambiata nella bozza.</value></data>
   <data name="Expenses_Preapprovals_Column" xml:space="preserve"><value>Preapprovazione</value></data>
   <data name="Expenses_Preapprovals_RevokedBadge" xml:space="preserve"><value>revocata</value></data>
-  <data name="Expenses_Validation_PreapprovalNotClaimable" xml:space="preserve"><value>Non è possibile presentare a fronte di quella preapprovazione: non è del membro, non è aperta o la scadenza è passata.</value></data>
   <data name="Expenses_Validation_PreapprovalLocked" xml:space="preserve"><value>La preapprovazione e il conto di un rapporto inviato non possono essere modificati.</value></data>
   <data name="Expenses_Validation_PreapprovalRevoked" xml:space="preserve"><value>La preapprovazione è stata revocata; questo rapporto non può essere inviato a fronte di essa.</value></data>
   <data name="Expenses_Validation_PreapprovalDeadlinePassed" xml:space="preserve"><value>La scadenza {0} è passata; questo rapporto non può più essere inviato a fronte della preapprovazione.</value></data>
-  <data name="Expenses_Validation_PreapprovalUnavailable" xml:space="preserve"><value>La preapprovazione non è più disponibile: è stata richiesta da un altro rapporto o già usata.</value></data>
+  <data name="Expenses_Validation_PreapprovalNotFound" xml:space="preserve"><value>Quella preapprovazione non esiste più.</value></data>
+  <data name="Expenses_Validation_PreapprovalNotTheirs" xml:space="preserve"><value>Quella preapprovazione appartiene a qualcun altro.</value></data>
+  <data name="Expenses_Validation_PreapprovalNotGranted" xml:space="preserve"><value>Quella preapprovazione non è ancora stata concessa.</value></data>
+  <data name="Expenses_Validation_PreapprovalDeclined" xml:space="preserve"><value>Quella preapprovazione è stata rifiutata.</value></data>
+  <data name="Expenses_Validation_PreapprovalClaimedElsewhere" xml:space="preserve"><value>Un altro rapporto detiene già quella preapprovazione.</value></data>
+  <data name="Expenses_Validation_PreapprovalUsed" xml:space="preserve"><value>Quella preapprovazione è già stata usata da un rapporto approvato.</value></data>
+  <data name="Expenses_Validation_PreapprovalNotHeld" xml:space="preserve"><value>Questo rapporto non detiene più quella preapprovazione.</value></data>
   <data name="Expenses_Detail_RejectedGuidance" xml:space="preserve"><value>Puoi correggere questo rendiconto senza ricominciare: apri una qualsiasi riga qui sotto per modificarla, sostituire la ricevuta o rimuoverla, poi invia di nuovo.</value></data>
   <data name="Expenses_Detail_RejectedGuidanceLink" xml:space="preserve"><value>Vai alle righe</value></data>
   <data name="Expenses_Submitter" xml:space="preserve"><value>Richiedente</value></data>
@@ -305,4 +311,7 @@
   <data name="Expenses_Validation_AmountPrecision" xml:space="preserve"><value>Inserisci un importo con al massimo due cifre decimali.</value></data>
   <data name="Expenses_Flash_DraftSavedFollowupFailed" xml:space="preserve"><value>La bozza è stata salvata, ma non è stato possibile completare la richiesta. Controllala prima di continuare.</value></data>
   <data name="Expenses_Flash_DraftOutcomeUnknown" xml:space="preserve"><value>Non è stato possibile confermare se la bozza è stata salvata. Controlla le note spese esistenti prima di creare un’altra bozza.</value></data>
+  <data name="Expenses_Permission_Endorse_Title" xml:space="preserve"><value>Approvare le spese</value></data>
+  <data name="Expenses_Permission_Endorse_Blurb" xml:space="preserve"><value>Approvare, respingere e rifiutare righe delle note spese sul budget del team.</value></data>
+  <data name="Expenses_Validation_SubmitterUnavailable" xml:space="preserve"><value>La persona richiedente non è più disponibile.</value></data>
 </root>

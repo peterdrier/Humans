@@ -1,3 +1,4 @@
+using Humans.Google.Data;
 using Humans.Google.Domain;
 using Humans.Google.Contracts;
 using Humans.AuditLog.Contracts;
@@ -7,9 +8,7 @@ using Humans.Base.Enums;
 using Humans.Base.Helpers;
 using Microsoft.Extensions.Options;
 using NodaTime;
-using Humans.Google.Data;
 using Humans.Google.Services.Workspace;
-using Humans.Base.Interfaces;
 
 namespace Humans.Google.Services;
 
@@ -178,11 +177,11 @@ internal sealed class GoogleWorkspaceSyncService(
                 ErrorMessage: "No eligible Google email for provisioning");
         }
         // An old outbox event must not restore access excluded by reconciliation.
-        if (!GoogleSyncMemberHydration.CanReceiveAccess(user!, target))
+        if (GoogleSyncMemberHydration.AccessBlocker(user!, target) is { } blocker)
         {
-            logger.LogDebug("Skipping AddUserToTeamResources for user {UserId} — signup rejected, suspended, deletion pending, or Google email rejected", userId);
+            logger.LogDebug("Skipping AddUserToTeamResources for user {UserId}: {Blocker}", userId, blocker);
             return new GoogleResourceGrantResult(GoogleResourceGrantOutcome.Failed, user!.Id, target.Email,
-                ErrorMessage: "Member is ineligible for Google access: signup rejected, suspended, deletion pending, or email rejected");
+                ErrorMessage: $"Member is ineligible for Google access: {blocker}");
         }
         var googleEmail = target.Email;
 
@@ -541,7 +540,6 @@ internal sealed class GoogleWorkspaceSyncService(
             {
                 reports.Add(new GroupSettingsDriftReport
                 {
-                    ResourceId = resource.Id,
                     GroupName = resource.Name,
                     Url = resource.Url,
                     ErrorMessage = "Cannot determine group email address"
@@ -574,7 +572,6 @@ internal sealed class GoogleWorkspaceSyncService(
                 logger.LogWarning("Cannot read settings for group '{GroupEmail}' (HTTP {Code})", groupEmail, code);
                 return new GroupSettingsDriftReport
                 {
-                    ResourceId = resource.Id,
                     GroupEmail = groupEmail,
                     GroupName = resource.Name,
                     Url = resource.Url,
@@ -586,7 +583,6 @@ internal sealed class GoogleWorkspaceSyncService(
                 groupEmail, code, getResult.Error?.RawMessage);
             return new GroupSettingsDriftReport
             {
-                ResourceId = resource.Id,
                 GroupEmail = groupEmail,
                 GroupName = resource.Name,
                 Url = resource.Url,
@@ -610,7 +606,6 @@ internal sealed class GoogleWorkspaceSyncService(
 
         return new GroupSettingsDriftReport
         {
-            ResourceId = resource.Id,
             GroupEmail = groupEmail,
             GroupName = resource.Name,
             Url = resource.Url,
@@ -729,7 +724,6 @@ internal sealed class GoogleWorkspaceSyncService(
                 {
                     GroupEmail = email,
                     DisplayName = group.DisplayName ?? email,
-                    GoogleId = group.Id,
                     MemberCount = (int)(group.DirectMembersCount ?? 0),
                     LinkedTeamName = linkedTeam?.Name,
                     LinkedTeamId = linkedTeam?.Id,
@@ -773,12 +767,12 @@ internal sealed class GoogleWorkspaceSyncService(
             .ToList();
     }
 
-    public async Task<bool> RequeueOutboxEventAsync(Guid id, Guid actorUserId, CancellationToken cancellationToken = default)
+    public async Task<OutboxRequeue> RequeueOutboxEventAsync(Guid id, Guid actorUserId, CancellationToken cancellationToken = default)
     {
-        var requeued = await googleSyncOutboxRepository.RequeueAsync(id, cancellationToken);
-        if (requeued)
+        var requeue = await googleSyncOutboxRepository.RequeueAsync(id, cancellationToken);
+        if (requeue == OutboxRequeue.Requeued)
             await AuditOutboxRequeueAsync(auditLogService, id, actorUserId);
-        return requeued;
+        return requeue;
     }
 
     public async Task<int> RequeueAllFailedOutboxEventsAsync(Guid actorUserId, CancellationToken cancellationToken = default)
@@ -866,8 +860,7 @@ internal sealed class GoogleWorkspaceSyncService(
         var activeResources = await resourceRepository.GetActiveByTeamIdAsync(teamId, cancellationToken);
         var existingGroup = activeResources
             .Where(r => r.ResourceType == GoogleResourceType.Group)
-            .OrderBy(r => r.ProvisionedAt)
-            .FirstOrDefault();
+            .MinBy(r => r.ProvisionedAt);
 
         if (team.GoogleGroupPrefix is null)
         {

@@ -1,3 +1,4 @@
+using System.Globalization;
 using Humans.AuditLog.Contracts;
 using Humans.Settings.Contracts;
 using Humans.Settings.Data;
@@ -40,7 +41,7 @@ internal sealed class Service(
     private const string DefaultTimeZoneId = "Europe/Madrid";
 
     /// <summary>Only the cache answers this: <see cref="CachingSettingsService"/> holds every event from startup.</summary>
-    public EventSettingsInfo? GetActiveEventSettings() =>
+    public EventSettingsInfo GetActiveEventSettings() =>
         throw new NotSupportedException("The active event is read from CachingSettingsService.");
 
     public async Task<EventSettingsInfo?> GetEventSettingsByIdAsync(
@@ -71,6 +72,21 @@ internal sealed class Service(
         await auditLog.LogAsync(
             SettingsAuditActions.EventSettingsUpdated, AuditEntityTypes.EventTimeZone, Guid.Empty,
             $"Event timezone changed from {previous} to {timeZoneId}.", actorUserId);
+
+        return new(true);
+    }
+
+    public async Task<EventSettingsSaveResult> SaveRetentionDaysAsync(
+        int days, Guid actorUserId, CancellationToken cancellationToken = default)
+    {
+        if (days < 1)
+            return new(false, "The retention period must be at least 1 day.");
+
+        var previous = RetentionPeriod.Parse(await repository.GetValueAsync(RetentionPeriod.Key, cancellationToken));
+        await SetValueAsync(RetentionPeriod.Key, days.ToString(CultureInfo.InvariantCulture), cancellationToken);
+        await auditLog.LogAsync(
+            SettingsAuditActions.RetentionPeriodChanged, AuditEntityTypes.RetentionPeriod, Guid.Empty,
+            $"Retention period changed from {previous} to {days} days.", actorUserId);
 
         return new(true);
     }
@@ -222,11 +238,17 @@ internal sealed class Service(
 
     private string? ValidateEventDates(EventSettingsInfo settings)
     {
-        if (settings.EventEndOffset < 0 || settings.StrikeEndOffset < settings.EventEndOffset)
+        if (settings.EventEndOffset < 0)
         {
-            logger.LogWarning("Rejected event settings {EventId}: event end {EventEndOffset} or strike end {StrikeEndOffset} invert the event windows",
-                settings.Id, settings.EventEndOffset, settings.StrikeEndOffset);
-            return "Event end must be on or after gate opening, and strike end must be on or after event end.";
+            logger.LogWarning("Rejected event settings {EventId}: event end {EventEndOffset} is before gate opening",
+                settings.Id, settings.EventEndOffset);
+            return "Event end must be on or after gate opening.";
+        }
+        if (settings.StrikeEndOffset < settings.EventEndOffset)
+        {
+            logger.LogWarning("Rejected event settings {EventId}: strike end {StrikeEndOffset} is before event end {EventEndOffset}",
+                settings.Id, settings.StrikeEndOffset, settings.EventEndOffset);
+            return "Strike end must be on or after event end.";
         }
 
         int[] offsets = [0, settings.BuildStartOffset, settings.EventEndOffset, settings.StrikeEndOffset,
@@ -248,22 +270,6 @@ internal sealed class Service(
             }
         }
         return null;
-    }
-
-    /// <inheritdoc />
-    public async Task<int> DeleteEventAsync(Guid id, CancellationToken cancellationToken = default)
-    {
-        int? deleted = null;
-        try
-        {
-            deleted = await repository.DeleteEventSettingsAsync(id, cancellationToken);
-            return deleted.Value;
-        }
-        finally
-        {
-            if (deleted is null or > 0)
-                await NotifyChangeListenersAsync([id]);
-        }
     }
 
     /// <summary>

@@ -7,7 +7,7 @@ namespace Humans.Agent.Contracts;
 /// </summary>
 public static class AgentSectionKeys
 {
-    // A section left off this list is unreachable: the agent refuses or answers from the community FAQ with an
+    // A section left off this list is unreachable: the agent declines or answers from the Community FAQ with an
     // "unofficial" disclaimer, even for a first-party feature. Operator-only sections stay off deliberately; add one
     // when triage shows users asking about it.
     private static readonly HashSet<string> Canonical =
@@ -38,7 +38,7 @@ public static class AgentSectionKeys
             ["LegalAndConsent"] = "Consent",
             ["Board"] = "Governance",
             ["UsersAdmin"] = "Users",
-            ["RoleAssignments"] = "Auth",
+            ["SystemRoles"] = "Auth",
             ["LegalDocuments"] = "Consent",
             ["GoogleSync"] = "Google",
             // A barrio is a camp — Camps.md defines them; CityPlanning.md only places them.
@@ -50,7 +50,7 @@ public static class AgentSectionKeys
             ["GoogleIntegration"] = "Google",
         };
 
-    /// <summary>Every key a section guide can be fetched under, in canonical casing.</summary>
+    /// <summary>Every key a section doc can be fetched under, in canonical casing.</summary>
     public static IReadOnlySet<string> All => Canonical;
 
     /// <summary>

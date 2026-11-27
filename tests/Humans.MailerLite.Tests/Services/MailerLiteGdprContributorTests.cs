@@ -1,6 +1,5 @@
 using Humans.MailerLite.Services;
 using Humans.Users.Contracts;
-using Humans.MailerLite.Tests.Infrastructure;
 using AwesomeAssertions;
 using NSubstitute;
 using Xunit;
@@ -15,7 +14,7 @@ namespace Humans.MailerLite.Tests.Services;
 /// </summary>
 public class MailerLiteGdprContributorTests
 {
-    private static CancellationToken Ct => Xunit.TestContext.Current.CancellationToken;
+    private static CancellationToken Ct => TestContext.Current.CancellationToken;
 
     private readonly IMailerLiteService _mailerLite = Substitute.For<IMailerLiteService>();
     private readonly IUserService _users = Substitute.For<IUserService>();
@@ -53,7 +52,7 @@ public class MailerLiteGdprContributorTests
         new MailerLiteGdprContributor(_mailerLite, _users).EraseForUserAsync(_userId, Ct);
 
     [HumansFact]
-    public async Task EraseForUserAsync_ArchivedId_DoesNotDeleteTheLivingSurvivorsSubscriptions()
+    public async Task EraseForUserAsync_ArchivedId_KeepsSurvivorsSubscriptions()
     {
         var survivorId = Guid.NewGuid();
         const string address = "survivor@example.com";
@@ -72,11 +71,11 @@ public class MailerLiteGdprContributorTests
 
         await EraseAsync();
 
-        await _mailerLite.DidNotReceiveWithAnyArgs().DeleteSubscriberAsync(default!, default);
+        await _mailerLite.DidNotReceiveWithAnyArgs().DeleteSubscriberAsync(default!);
     }
 
     [HumansFact]
-    public async Task EraseForUserAsync_ArchivedId_StillDeletesItsOwnVerifiedRows()
+    public async Task EraseForUserAsync_ArchivedId_DeletesOwnVerifiedRows()
     {
         const string owned = "archived@example.com";
         const string survivor = "survivor@example.com";
@@ -110,7 +109,7 @@ public class MailerLiteGdprContributorTests
     }
 
     [HumansFact]
-    public async Task EraseForUserAsync_IncludesTheVerifiedPrimaryAlongsideOtherVerifiedAddresses()
+    public async Task EraseForUserAsync_VerifiedPrimary_IsIncluded()
     {
         Emails("frank@nobodies.team", "frank@gmail.com");
 
@@ -166,7 +165,7 @@ public class MailerLiteGdprContributorTests
     }
 
     [HumansFact]
-    public async Task EraseForUserAsync_CancellationDuringDelete_FinishesCurrentDeleteAndStopsBeforeNext()
+    public async Task EraseForUserAsync_CancelledDuringDelete_StopsBeforeNext()
     {
         using var cancellation = new CancellationTokenSource();
         var attemptedAddresses = new List<string>();

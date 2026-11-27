@@ -1,23 +1,15 @@
-using Humans.Base.Extensions;
 using Humans.AuditLog.Contracts;
 using Humans.Base.Attributes;
 using Humans.Base.Interfaces;
-using Humans.Camps.Contracts;
 using Humans.Finance.Contracts;
 using Humans.Holded.Contracts;
-using Humans.Settings.Contracts;
 using Humans.Store.Contracts;
 using Humans.Store.Data;
 using Humans.Store.Domain;
-using NodaTime.Text;
-using Humans.Teams.Contracts;
-using Humans.Store.Services.Dtos;
 using Humans.Stripe.Contracts;
 using NodaTime;
 using System.Globalization;
 using System.Text.Json;
-using System.Resources;
-using Humans.Base.Threading;
 
 namespace Humans.Store.Services;
 
@@ -46,7 +38,7 @@ internal sealed class InvoiceService(
     /// <summary>What issuing would invoice, and why it may not yet; null for an order that can't be invoiced at all.</summary>
     public async Task<StoreInvoicePlan?> GetInvoicePlanAsync(Guid orderId, CancellationToken ct = default)
     {
-        var order = await repo.GetOrderWithLinesAndPaymentsAsync(orderId, ct);
+        var order = await repo.GetOrderWithLinesAsync(orderId, ct);
         if (order is null || order.TeamId is not null || order.State != OrderState.Open || order.Lines.Count == 0)
             return null;
         var totals = BalanceCalculator.Compute(order, await orders.LoadCurrentPricesAsync(order.Year, ct));
@@ -98,7 +90,7 @@ internal sealed class InvoiceService(
     [ExternalWrite]
     private async Task<AdminMutationResult> IssueInvoiceCoreAsync(Guid orderId, Guid actorUserId, CancellationToken ct = default)
     {
-        var order = await repo.GetOrderWithLinesAndPaymentsAsync(orderId, ct);
+        var order = await repo.GetOrderWithLinesAsync(orderId, ct);
         if (order is null)
             return Refuse(orderId, actorUserId, "Order not found.");
         if (order.TeamId is not null)
@@ -152,7 +144,7 @@ internal sealed class InvoiceService(
                     adoptedKind, adoptedDoc.Id, CancellationToken.None);
             }
             return await CommitInvoiceAsync(
-                order, adoptedKind, adoptedDoc, plan,
+                order, adoptedDoc, plan,
                 JsonSerializer.Serialize(new { kind = adoptedKind.ToString(), adopted = true, tag }),
                 actorUserId,
                 $"Adopted Holded {DocumentKindName(adoptedKind)} {adoptedDoc.DocNumber} "
@@ -221,7 +213,7 @@ internal sealed class InvoiceService(
         var document = await holdedWrite.IssueSalesDocumentAsync(kind, input, CancellationToken.None);
 
         return await CommitInvoiceAsync(
-            order, kind, document, plan,
+            order, document, plan,
             JsonSerializer.Serialize(new { kind = kind.ToString(), input }),
             actorUserId,
             $"Issued Holded {DocumentKindName(kind)} {document.DocNumber} "
@@ -266,12 +258,15 @@ internal sealed class InvoiceService(
     private static string? GetRecoveredLinesRefusal(
         Order order, HoldedSalesDocumentDto document, StoreInvoicePlan plan)
     {
-        if (LineSet(plan.Lines.Select(l => new SalesLine(l.Units, l.Price, l.VatRate))).SequenceEqual(
-                LineSet(document.Lines.Select(l => new SalesLine(l.Units, l.Price, l.TaxPercent)))))
+        var ordered = LineSet(plan.Lines.Select(l => new SalesLine(l.Units, l.Price, l.VatRate)));
+        var held = LineSet(document.Lines.Select(l => new SalesLine(l.Units, l.Price, l.TaxPercent)));
+        if (ordered.SequenceEqual(held))
             return null;
 
         return $"Holded already holds document {DocumentName(document)} for order {order.Id}, but its lines "
-            + (document.Lines.Count == 0 ? "could not be read" : "no longer match the order's quantities, unit prices or VAT rates")
+            + (document.Lines.Count == 0
+                ? "could not be read"
+                : $"({Describe(held)}) differ from the order's ({Describe(ordered)})")
             + ", though the totals agree. Resolve it by hand — correcting an issued document is a factura rectificativa, "
             + "and no second document will be issued in the meantime.";
     }
@@ -285,6 +280,9 @@ internal sealed class InvoiceService(
             .ToList();
 
     private sealed record SalesLine(decimal Units, decimal Price, decimal TaxPercent);
+
+    private static string Describe(IReadOnlyList<SalesLine> lines) => string.Join("; ", lines.Select(l =>
+        string.Create(CultureInfo.InvariantCulture, $"{l.Units:0.##} x EUR {l.Price:0.00} at {l.TaxPercent:0.##}% VAT")));
 
     /// <summary>Holded's list endpoints return <c>tags</c> but not <c>notes</c>, so the tag is what makes a document findable by its order.</summary>
     private static string OrderDocumentTag(Guid orderId) => $"humans-order-{orderId}";
@@ -316,7 +314,6 @@ internal sealed class InvoiceService(
     /// <summary>Shared by first issuance and adoption, which differ only in the request payload they can honestly record and the audit line.</summary>
     private async Task<AdminMutationResult> CommitInvoiceAsync(
         Order order,
-        HoldedSalesDocumentKind kind,
         HoldedSalesDocumentDto document,
         StoreInvoicePlan plan,
         string requestPayload,
@@ -328,7 +325,7 @@ internal sealed class InvoiceService(
             return Refuse(order.Id, actorUserId, totalsRefusal);
         if (document.IsDraft == true || string.IsNullOrWhiteSpace(document.DocNumber))
             return Refuse(order.Id, actorUserId,
-                $"Holded document {document.Id} is still a draft or has no issued document number. "
+                $"Holded document {document.Id} {(document.IsDraft == true ? "is still a draft" : "has no issued document number")}. "
                 + "The order remains open. Retry after Holded confirms issuance; the existing document will be recovered.");
 
         var invoice = new Invoice
@@ -439,7 +436,7 @@ internal sealed class InvoiceService(
     [ExternalWrite]
     public async Task<InvoiceBookingState> BookAsync(Guid orderId, Guid actorUserId, CancellationToken ct = default)
     {
-        var order = await repo.GetOrderWithLinesAndPaymentsAsync(orderId, ct);
+        var order = await repo.GetOrderWithLinesAsync(orderId, ct);
         var invoice = order?.IssuedInvoiceId is null ? null
             : (await repo.GetInvoicesForOrdersAsync([orderId], ct)).SingleOrDefault();
         if (order is null || invoice is null) return InvoiceBookingState.NotBooked;
@@ -626,7 +623,7 @@ internal sealed class InvoiceService(
             }
             else
             {
-                var (amount, created) = await StripeAmountAndCreatedAsync(p, legs.Select(l => l.Payment).ToList(), ct);
+                var (amount, created) = await GetStripePaymentAsync(p, legs.Select(l => l.Payment).ToList(), ct);
                 if (created is null)
                     return (lines, waiting, $"Stripe would not say when {Describe(p)} was made.");
                 if (amount != p.AmountEur)
@@ -649,7 +646,7 @@ internal sealed class InvoiceService(
 
     /// <summary>A charge's line is the charge's gross at its creation second; a refund's is the refund's, read from
     /// Stripe by its id, since a refund recorded by hand carries the entry time, not Stripe's.</summary>
-    private async Task<(decimal Amount, Instant? Created)> StripeAmountAndCreatedAsync(
+    private async Task<(decimal Amount, Instant? Created)> GetStripePaymentAsync(
         Payment p, IReadOnlyList<Payment> orderPayments, CancellationToken ct)
     {
         if (p.AmountEur < 0m)

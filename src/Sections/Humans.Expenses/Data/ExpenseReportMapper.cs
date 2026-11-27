@@ -36,7 +36,6 @@ internal static class ExpenseReportMapper
         Lines = r.Lines.Select(l => new ExpenseLineDto
         {
             Id = l.Id,
-            ExpenseReportId = l.ExpenseReportId,
             Description = l.Description,
             Amount = l.Amount,
             LineType = l.LineType,

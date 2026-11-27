@@ -9,7 +9,6 @@ using Humans.Expenses.Authorization;
 using Humans.Expenses.Contracts;
 using Humans.Expenses.Data;
 using Humans.Expenses.Jobs;
-using Humans.Expenses.Models;
 using Humans.Expenses.Services;
 using Humans.Expenses.Services.Dtos;
 using Humans.Gdpr.Contracts;
@@ -17,6 +16,8 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Humans.AuditLog.Contracts;
+using Humans.Permissions.Contracts;
+using Humans.Teams.Contracts;
 
 [assembly: Humans.Base.Demo.NoDemoStory("No demo story written yet.")]
 
@@ -27,6 +28,7 @@ public sealed class Section :
     ISectionAdminNav,
     ISectionAdminTiles,
     ISectionJobs,
+    ISectionPermissions,
     ISectionPolicies
 {
     public void Register(IServiceCollection services, IConfiguration configuration)
@@ -101,4 +103,10 @@ public sealed class Section :
         options.AddPolicy(PolicyNames.ExpenseReportView, policy =>
             policy.AddRequirements(new ExpenseReportOperationRequirement(ExpenseReportOperation.View)));
     }
+
+    IReadOnlyList<Permission> ISectionPermissions.Permissions { get; } =
+    [
+        new(ExpensesPermissions.Endorse, "Expenses_Permission_Endorse_Title", "Expenses_Permission_Endorse_Blurb",
+            [TeamOwner.Kind], TopLevelOnly: false, AdminRoles: [FinanceRoles.FinanceAdmin], typeof(ExpensesResource)),
+    ];
 }

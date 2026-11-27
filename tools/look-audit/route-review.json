@@ -21,7 +21,7 @@
       "safe": false,
       "reason": "Completes external login, signs in/links account, sets auth cookie (AccountController.cs:95)"
     },
-    "/Account/GateLogin": {
+    "/Account/GateSignIn": {
       "safe": true,
       "reason": "read-only login form view"
     },
@@ -29,11 +29,11 @@
       "safe": true,
       "reason": "read-only"
     },
-    "/Account/MagicLinkConfirm": {
+    "/Account/SignInLinkConfirm": {
       "safe": true,
       "reason": "read-only landing page; sign-in is POST"
     },
-    "/Account/MagicLinkSignup": {
+    "/Account/SignInLinkSignup": {
       "safe": true,
       "reason": "read-only; VerifySignupToken does not consume the token"
     },
@@ -625,29 +625,9 @@
       "safe": true,
       "reason": "read-only"
     },
-    "/Gate/Admin": {
-      "safe": true,
-      "reason": "read-only"
-    },
-    "/Gate/Admin/VendorCheckInBackfill": {
-      "safe": true,
-      "reason": "read-only preview; enqueueing is a separate POST (GateService.cs:310)"
-    },
-    "/Gate/Claim": {
-      "safe": true,
-      "reason": "read-only roster; PIN/stamp logic is POST-only"
-    },
     "/Gate/Evaluate": {
       "safe": true,
       "reason": "read-only pre-check; GateService.EvaluateAsync records nothing (GateService.cs:54)"
-    },
-    "/Gate/Leaderboard": {
-      "safe": true,
-      "reason": "read-only"
-    },
-    "/Gate/Search": {
-      "safe": true,
-      "reason": "read-only"
     },
     "/Gdpr/Deletion": {
       "safe": true,

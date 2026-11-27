@@ -357,16 +357,8 @@ namespace Humans.Tickets.Data.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
 
-                    b.Property<string>("DirectedEmail")
-                        .HasMaxLength(320)
-                        .HasColumnType("character varying(320)");
-
                     b.Property<int>("DirectedInviteCount")
                         .HasColumnType("integer");
-
-                    b.Property<string>("DirectedTokenHash")
-                        .HasMaxLength(64)
-                        .HasColumnType("character varying(64)");
 
                     b.Property<Instant?>("DirectedUsedAt")
                         .HasColumnType("timestamp with time zone");
@@ -410,8 +402,6 @@ namespace Humans.Tickets.Data.Migrations
                         .HasColumnType("timestamp with time zone");
 
                     b.HasKey("Id");
-
-                    b.HasIndex("DirectedTokenHash");
 
                     b.HasIndex("SalesEventId");
 

@@ -232,8 +232,7 @@ internal sealed class ExpenseReportBackgroundProcessor(
                 priorReports.AddRange(await repo.GetForSubmitterAsync(submitterId, ct));
             var priorLinked = priorReports
                 .Where(r => r.Id != report.Id && !string.IsNullOrEmpty(r.HoldedContactId))
-                .OrderByDescending(r => r.SubmittedAt ?? r.CreatedAt)
-                .FirstOrDefault();
+                .MaxBy(r => r.SubmittedAt ?? r.CreatedAt);
             seedContactId = priorLinked?.HoldedContactId;
             seedAccountNum = priorLinked?.HoldedSupplierAccountNum;
         }

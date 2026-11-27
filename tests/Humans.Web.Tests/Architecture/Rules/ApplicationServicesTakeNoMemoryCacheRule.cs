@@ -22,7 +22,7 @@ public class ApplicationServicesTakeNoMemoryCacheRule
         SectionType("Humans.Guide.Services.GuideContentService"),
         // Not a read cache: single-use login-token consumption and the signup-send cooldown, short-TTL state that
         // must survive between requests. Auth owns no table for it.
-        SectionType("Humans.Auth.Services.MagicLinkRateLimiter")
+        SectionType("Humans.Auth.Services.SignInLinkRateLimiter")
     ];
 
     /// <summary>Section services are internal, so they are named by string and resolved by reflection.</summary>

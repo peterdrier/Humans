@@ -6,7 +6,7 @@
   src/Sections/Humans.Users/Data/Configurations/UserConfiguration.cs
 -->
 <!-- freshness:flag-on-change
-  Contact identification (ContactSource/LastLoginAt), admin contact CRUD routes, or first-login claim flow may have changed.
+  Contact identification (ContactSource/LastSignInAt), admin contact CRUD routes, or first-login claim flow may have changed.
 -->
 
 # Feature 29: Contact Accounts
@@ -19,7 +19,7 @@ With magic link authentication (Feature 30) in place, contacts are **pre-provisi
 
 ## Design Principles
 
-1. **Contacts are just users who haven't logged in yet.** `LastLoginAt == null` and `ContactSource != null` identifies a contact. No `AccountType` enum, no lockout hacks.
+1. **Contacts are just users who haven't logged in yet.** `LastSignInAt == null` and `ContactSource != null` identifies a contact. No `AccountType` enum, no lockout hacks.
 2. **Work with Identity, not around it.** Contacts are created via `UserManager.CreateAsync` as normal users with `EmailConfirmed = true`.
 3. **No merge needed.** When a contact authenticates, they claim their existing row. Account linking (Feature 30) handles the case where they use Google OAuth.
 
@@ -34,7 +34,7 @@ With magic link authentication (Feature 30) in place, contacts are **pre-provisi
 **Acceptance criteria:**
 - Contact receives a magic link and clicks it → signs into existing account
 - Or authenticates via Google OAuth → account linking connects to existing user
-- `LastLoginAt` is set on first login
+- `LastSignInAt` is set on first login
 - Contact no longer appears in the Contacts list (they're now an active user)
 - Normal onboarding flow begins (profile completion, consent)
 
@@ -49,9 +49,9 @@ With magic link authentication (Feature 30) in place, contacts are **pre-provisi
 
 ### Contact identification
 
-A contact is identified by: `ContactSource != null && LastLoginAt == null`
+A contact is identified by: `ContactSource != null && LastSignInAt == null`
 
-When a contact authenticates, `LastLoginAt` is set, and they drop out of the contacts view — they're now a regular user.
+When a contact authenticates, `LastSignInAt` is set, and they drop out of the contacts view — they're now a regular user.
 
 ### ContactSource enum
 

@@ -130,9 +130,6 @@ internal sealed class CachingShiftService(
     public Task<ShiftDeletionResult> DeleteRotaAsync(Guid rotaId, Guid actorUserId) =>
         WriteAsync(() => MgmtAsync(m => m.DeleteRotaAsync(rotaId, actorUserId)), () => [rotaId]);
 
-    public Task<int> DeleteEventAsync(Guid eventSettingsId, CancellationToken cancellationToken = default) =>
-        WriteAsync(() => MgmtAsync(m => m.DeleteEventAsync(eventSettingsId, cancellationToken)), AllRotas);
-
     public Task<ShiftGenerationResult> CreateBuildStrikeShiftsAsync(ConfigureBuildStrikeStaffingInput input) =>
         WriteAsync(() => MgmtAsync(m => m.CreateBuildStrikeShiftsAsync(input)), () => [input.RotaId]);
 
@@ -212,9 +209,6 @@ internal sealed class CachingShiftService(
         Guid userId, string reason, CancellationToken ct = default) =>
         WriteAsync(() => SignupsAsync(s => s.CancelActiveSignupsForUserAsync(userId, reason, ct)), AllRotas);
 
-    public Task<int> DeleteAllForUsersAsync(IReadOnlyCollection<Guid> userIds, CancellationToken ct = default) =>
-        WriteAsync(() => SignupsAsync(s => s.DeleteAllForUsersAsync(userIds, ct)), AllRotas);
-
     public Task EraseForUserAsync(Guid userId, CancellationToken ct) =>
         WriteAsync(() => WithInnerAsync<ShiftSignupService>(s => s.EraseForUserAsync(userId, ct)), AllRotas);
 
@@ -267,14 +261,11 @@ internal sealed class CachingShiftService(
 
     // ── Reads, passed through until each moves onto the rows ────────────
 
-    public Task<bool> IsDeptCoordinatorAsync(Guid userId, Guid departmentTeamId, CancellationToken ct = default) =>
-        MgmtAsync(m => m.IsDeptCoordinatorAsync(userId, departmentTeamId, ct));
-
     public Task<bool> CanApproveSignupsAsync(Guid userId, Guid departmentTeamId, CancellationToken ct = default) =>
         MgmtAsync(m => m.CanApproveSignupsAsync(userId, departmentTeamId, ct));
 
-    public Task<IReadOnlyList<Guid>> GetCoordinatorTeamIdsAsync(Guid userId, CancellationToken ct = default) =>
-        MgmtAsync(m => m.GetCoordinatorTeamIdsAsync(userId, ct));
+    public Task<bool> CanManageOrApproveAnyShiftsAsync(Guid userId, CancellationToken ct = default) =>
+        MgmtAsync(m => m.CanManageOrApproveAnyShiftsAsync(userId, ct));
 
     public Task<IReadOnlyList<RotaSearchHit>> SearchAsync(
         string query, int max, CancellationToken cancellationToken = default) =>
@@ -293,9 +284,9 @@ internal sealed class CachingShiftService(
     public Task<bool> HasQualifyingCantinaSignupAsync(Guid userId, CancellationToken ct = default) =>
         MgmtAsync(m => m.HasQualifyingCantinaSignupAsync(userId, ct));
 
-    public Task<IReadOnlyList<Guid>> GetOnSiteUserIdsForDayAsync(
+    public Task<IReadOnlyList<Guid>> GetOnSiteUserIdsAsync(
         Guid eventSettingsId, int dayOffset, CancellationToken ct = default) =>
-        MgmtAsync(m => m.GetOnSiteUserIdsForDayAsync(eventSettingsId, dayOffset, ct));
+        MgmtAsync(m => m.GetOnSiteUserIdsAsync(eventSettingsId, dayOffset, ct));
 
     public Task<ShiftVolunteerProfileInfo?> GetShiftProfileAsync(Guid userId, CancellationToken ct = default) =>
         MgmtAsync(m => m.GetShiftProfileAsync(userId, ct));
@@ -386,13 +377,13 @@ internal sealed class CachingShiftService(
 
     // ── Inner access ────────────────────────────────────────────────────
 
-    private Task<T> MgmtAsync<T>(Func<IShiftManagement, Task<T>> call) => WithInnerAsync<IShiftManagement, T>(call);
+    private Task<T> MgmtAsync<T>(Func<IShiftManagement, Task<T>> call) => WithInnerAsync(call);
 
-    private Task MgmtAsync(Func<IShiftManagement, Task> call) => WithInnerAsync<IShiftManagement>(call);
+    private Task MgmtAsync(Func<IShiftManagement, Task> call) => WithInnerAsync(call);
 
-    private Task<T> SignupsAsync<T>(Func<IShiftSignupService, Task<T>> call) => WithInnerAsync<IShiftSignupService, T>(call);
+    private Task<T> SignupsAsync<T>(Func<IShiftSignupService, Task<T>> call) => WithInnerAsync(call);
 
-    private Task<T> RowsAsync<T>(Func<IShiftRotaRows, Task<T>> call) => WithInnerAsync<IShiftRotaRows, T>(call);
+    private Task<T> RowsAsync<T>(Func<IShiftRotaRows, Task<T>> call) => WithInnerAsync(call);
 
     private async Task WithInnerAsync<TInner>(Func<TInner, Task> call) where TInner : notnull
     {

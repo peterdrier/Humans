@@ -33,7 +33,7 @@ public class CantinaRosterAssemblerTests
             IntoleranceOtherText: intoleranceOther);
 
     [HumansFact]
-    public void SortForDisplay_OrderedByFirstArrivalThenAllergiesThenDietaryThenName()
+    public void SortForDisplay_MixedPeople_SortsByArrivalFirst()
     {
         // Fixture (week day 0 = Tue Jul 7 2026, day 1 = Wed Jul 8 2026):
         //   Alice   — day 0 (Tue), Vegan,      no allergies
@@ -60,7 +60,7 @@ public class CantinaRosterAssemblerTests
     }
 
     [HumansFact]
-    public void SortForDisplay_NameTiebreakWhenArrivalAllergyAndDietaryMatch()
+    public void SortForDisplay_AllElseEqual_SortsByName()
     {
         // Two humans, same arrival day, same dietary (Omnivore), no allergies.
         // BurnerName cultural-collation asc should be the final tiebreaker.
@@ -93,7 +93,7 @@ public class CantinaRosterAssemblerTests
     }
 
     [HumansFact]
-    public void SortForDisplay_BurnerNameTiebreaker_UsesCulturalCollation_NotOrdinal()
+    public void SortForDisplay_NameTie_UsesCulturalCollation()
     {
         // Cultural collation, not Ordinal: "alice" sorts before "Bob".
         var input = new List<RosterPersonDto>
@@ -124,7 +124,7 @@ public class CantinaRosterAssemblerTests
     }
 
     [HumansFact]
-    public void HasAnyAllergyOrIntolerance_TrueForChipsOrFreeText()
+    public void HasAnyAllergyOrIntolerance_ChipOrText_IsTrue()
     {
         CantinaRosterAssembler.HasAnyAllergyOrIntolerance(P("A", GateOpening, allergies: new[] { "Peanut" }))
             .Should().BeTrue();
@@ -151,7 +151,7 @@ public class CantinaRosterAssemblerTests
             CantinaRosterAssembler.DietaryPriority("Pescatarian"));
     }
 
-    private static DailyPersonRowDto DP(string burnerName) =>
+    private static DailyPersonRowDto Person(string burnerName) =>
         new(
             UserId: Guid.NewGuid(),
             BurnerName: burnerName,
@@ -175,7 +175,7 @@ public class CantinaRosterAssemblerTests
     [HumansFact]
     public void WithSortedPeople_Daily_AlphabeticalByBurnerName()
     {
-        var input = Matrix(new[] { DP("Charlie"), DP("Alice"), DP("Bob") });
+        var input = Matrix(new[] { Person("Charlie"), Person("Alice"), Person("Bob") });
 
         var sorted = CantinaRosterAssembler.WithSortedPeople(input);
 
@@ -185,10 +185,10 @@ public class CantinaRosterAssemblerTests
     }
 
     [HumansFact]
-    public void WithSortedPeople_Daily_CulturalCollation_CaseInsensitive()
+    public void WithSortedPeople_DailyMixedCase_IgnoresCase()
     {
         // Cultural collation, not Ordinal: "alice" sorts before "Bob".
-        var input = Matrix(new[] { DP("Bob"), DP("alice") });
+        var input = Matrix(new[] { Person("Bob"), Person("alice") });
 
         var sorted = CantinaRosterAssembler.WithSortedPeople(input);
 
@@ -196,12 +196,12 @@ public class CantinaRosterAssemblerTests
     }
 
     [HumansFact]
-    public void WithSortedPeople_Daily_EmptyAndSingle_ReturnAsIs()
+    public void WithSortedPeople_DailyEmptyOrSingle_ReturnsAsIs()
     {
         var empty = Matrix(Array.Empty<DailyPersonRowDto>());
         CantinaRosterAssembler.WithSortedPeople(empty).People.Should().BeEmpty();
 
-        var single = Matrix(new[] { DP("Solo") });
+        var single = Matrix(new[] { Person("Solo") });
         CantinaRosterAssembler.WithSortedPeople(single).People.Should().HaveCount(1);
     }
 }

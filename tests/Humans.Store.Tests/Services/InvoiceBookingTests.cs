@@ -5,7 +5,6 @@ using Humans.Holded.Contracts;
 using Humans.Store.Contracts;
 using Humans.Store.Data;
 using Humans.Store.Domain;
-using Humans.Store;
 using Humans.Store.Services;
 using Humans.Stripe.Contracts;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -50,11 +49,11 @@ public class InvoiceBookingTests
             HoldedDocNumber = "F260009",
             RequestPayload = """{"kind":"Invoice"}""",
         };
-        _repo.GetOrderWithLinesAndPaymentsAsync(_order.Id, Arg.Any<CancellationToken>()).Returns(_order);
+        _repo.GetOrderWithLinesAsync(_order.Id, Arg.Any<CancellationToken>()).Returns(_order);
         _repo.GetInvoicesForOrdersAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>()).Returns([_invoice]);
         _repo.GetSettingsAsync(Arg.Any<CancellationToken>()).Returns(new StoreSettings { StripeGatewayTreasuryId = Gateway });
         _holded.IsConfigured.Returns(true);
-        _holded.SyncBankMovementsAsync(default!, default, default, default, default).ReturnsForAnyArgs(true);
+        _holded.SyncBankMovementsAsync(default!, default, default).ReturnsForAnyArgs(true);
         _holded.GetBankMovementsAsync(Gateway, Arg.Any<LocalDate>(), Arg.Any<LocalDate>(), Arg.Any<CancellationToken>())
             .Returns(_ => new HoldedBankMovementMirror(null, _feed.ToList()));
         _holded.SyncAccountLedgerAsync(CampAccount, Arg.Any<CancellationToken>()).Returns(true);
@@ -82,7 +81,7 @@ public class InvoiceBookingTests
             return id;
         });
         _write.CreateTreasuryPaymentAsync(default, default!, default!, default, default, default).ReturnsForAnyArgs("collection-1");
-        _write.ReconcileBankMovementAsync(default!, default!, default!, default).ReturnsForAnyArgs(call =>
+        _write.ReconcileBankMovementAsync(default!, default!, default!).ReturnsForAnyArgs(call =>
         {
             var i = _feed.FindIndex(m => string.Equals(m.Id, call.ArgAt<string>(1), StringComparison.Ordinal));
             _feed[i] = _feed[i] with { Status = "reconciled" };
@@ -91,7 +90,7 @@ public class InvoiceBookingTests
 
         var clock = new FakeClock(Instant.FromUtc(2026, 9, 1, 10, 0));
         var orders = new Service(
-            _repo, _audit, Substitute.For<IAuditViewerService>(), Substitute.For<Humans.Camps.Contracts.ICampService>(), Substitute.For<Humans.Teams.Contracts.ITeamService>(), new FakeClock(Instant.FromUtc(2026, 9, 1, 10, 0)), Substitute.For<Humans.Settings.Contracts.ISettingsService>(), _stripe,
+            _repo, _audit, Substitute.For<IAuditViewerService>(), Substitute.For<Humans.Camps.Contracts.ICampService>(), Substitute.For<Humans.Teams.Contracts.ITeamService>(), Substitute.For<Humans.Permissions.Contracts.IPermissionService>(), new FakeClock(Instant.FromUtc(2026, 9, 1, 10, 0)), Substitute.For<Humans.Settings.Contracts.ISettingsService>(), _stripe,
             new CatalogService(_repo, _audit, new FakeClock(Instant.FromUtc(2026, 9, 1, 10, 0)), _holded, NullLogger<CatalogService>.Instance), NullLogger<Service>.Instance);
         _booking = new InvoiceService(_repo, _audit, clock, _holded, _write, _stripe, _finance, orders, NullLogger<InvoiceService>.Instance);
     }
@@ -108,7 +107,7 @@ public class InvoiceBookingTests
             StripePaymentIntentId = pi,
             ReceivedAt = created,
         });
-        _stripe.GetStoreChargeAsync(pi, Arg.Any<CancellationToken>()).Returns(new StoreChargeData("ch_" + pi, pi, amount, created));
+        _stripe.GetStoreChargeAsync(pi, Arg.Any<CancellationToken>()).Returns(new StoreChargeData(amount, created));
         if (fedToHolded)
             _feed.Add(new HoldedBankMovementDto
             {
@@ -154,8 +153,8 @@ public class InvoiceBookingTests
         state.Should().Be(InvoiceBookingState.WaitingForFeed);
         _invoice.BookingNote.Should().Contain("pi_2");
         await _write.DidNotReceiveWithAnyArgs().PaySalesDocumentAsync(default, default!, default, default!, default, default);
-        await _write.DidNotReceiveWithAnyArgs().ReconcileBankMovementAsync(default!, default!, default!, default);
-        await _write.DidNotReceiveWithAnyArgs().SendSalesDocumentAsync(default, default!, default, default);
+        await _write.DidNotReceiveWithAnyArgs().ReconcileBankMovementAsync(default!, default!, default!);
+        await _write.DidNotReceiveWithAnyArgs().SendSalesDocumentAsync(default, default!, default);
     }
 
     [HumansFact]
@@ -170,8 +169,8 @@ public class InvoiceBookingTests
         state.Should().Be(InvoiceBookingState.Booked);
         await _write.DidNotReceiveWithAnyArgs().PaySalesDocumentAsync(default, default!, default, default!, default, default);
         await _write.DidNotReceiveWithAnyArgs().CreateTreasuryPaymentAsync(default, default!, default!, default, default, default);
-        await _write.DidNotReceiveWithAnyArgs().ReconcileBankMovementAsync(default!, default!, default!, default);
-        await _write.DidNotReceiveWithAnyArgs().SendSalesDocumentAsync(default, default!, default, default);
+        await _write.DidNotReceiveWithAnyArgs().ReconcileBankMovementAsync(default!, default!, default!);
+        await _write.DidNotReceiveWithAnyArgs().SendSalesDocumentAsync(default, default!, default);
     }
 
     [HumansFact]
@@ -215,14 +214,14 @@ public class InvoiceBookingTests
 
         state.Should().Be(InvoiceBookingState.NeedsReview);
         _invoice.BookingNote.Should().Contain("12.50");
-        await _write.DidNotReceiveWithAnyArgs().SendSalesDocumentAsync(default, default!, default, default);
+        await _write.DidNotReceiveWithAnyArgs().SendSalesDocumentAsync(default, default!, default);
     }
 
     [HumansFact]
     public async Task A_step_failing_after_a_post_hands_the_order_over_and_a_rerun_posts_nothing()
     {
         Charge("pi_1", 110m, FirstCharge);
-        _write.WhenForAnyArgs(w => w.ReconcileBankMovementAsync(default!, default!, default!, default))
+        _write.WhenForAnyArgs(w => w.ReconcileBankMovementAsync(default!, default!, default!))
             .Do(_ => throw new InvalidOperationException("boom"));
 
         var state = await BookAsync();

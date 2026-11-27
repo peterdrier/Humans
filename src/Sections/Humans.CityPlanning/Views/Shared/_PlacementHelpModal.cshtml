@@ -39,7 +39,7 @@
                             <img src="~/_content/Humans.CityPlanning/img/city-planning/barrio-draw.png" class="card-img-top city-map-help-image" alt="@Localizer["CityPlanning_Help_PlacingImageAlt"]" />
                             <div class="card-body p-2">
                                 <h6 class="card-title mb-1">@Localizer["CityPlanning_Help_PlacingTitle"]</h6>
-                                <p class="card-text text-muted small mb-0">@Html.Raw(string.Format(Localizer["CityPlanning_Help_PlacingBody"].Value, $"<strong>{Localizer["CityPlanning_AddMyBarrioButton"]}</strong>"))</p>
+                                <p class="card-text text-muted small mb-0">@Html.Raw(Localizer["CityPlanning_Help_PlacingBody", $"<strong>{Localizer["CityPlanning_AddMyBarrioButton"]}</strong>"])</p>
                             </div>
                         </div>
                     </div>
@@ -86,7 +86,7 @@
                             <img src="~/_content/Humans.CityPlanning/img/city-planning/barrio-overlap.png" class="card-img-top city-map-help-image" alt="@Localizer["CityPlanning_Help_OverlapsImageAlt"]" />
                             <div class="card-body p-2">
                                 <h6 class="card-title mb-1">@Localizer["CityPlanning_Help_OverlapsTitle"]</h6>
-                                <p class="card-text text-muted small mb-0">@Html.Raw(string.Format(Localizer["CityPlanning_Help_OverlapsBody"].Value, $"<a href=\"https://discord.com/channels/1462886445583962245/1467793922074873896\" target=\"_blank\" class=\"text-decoration-none\">{Localizer["CityPlanning_Help_OverlapsDiscordChannel"]}</a>"))</p>
+                                <p class="card-text text-muted small mb-0">@Html.Raw(Localizer["CityPlanning_Help_OverlapsBody", $"<a href=\"https://discord.com/channels/1462886445583962245/1467793922074873896\" target=\"_blank\" class=\"text-decoration-none\">{Localizer["CityPlanning_Help_OverlapsDiscordChannel"]}</a>"])</p>
                             </div>
                         </div>
                     </div>

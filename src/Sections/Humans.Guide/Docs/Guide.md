@@ -83,7 +83,7 @@ Unknown stems return 404 (`NotFound.cshtml`). GitHub unavailability on cold cach
 
 - Non-Admin users **cannot** trigger `POST /Guide/Refresh`.
 - Anonymous users **cannot** see Coordinator-scoped or Board/Admin-scoped blocks.
-- A domain admin **cannot** see a Board/Admin block whose parenthetical does not name their role. Coordinator blocks are the exception: reaching any Board/Admin block on a page opens every Coordinator block on that page, by the within-file superset rule above (pinned by `GuideFilterTests.Apply_TeamsAdmin_SeesCoordinatorAndBoardOnTeamsFile`).
+- A domain admin **cannot** see a Board/Admin block whose parenthetical does not name their role. Coordinator blocks are the exception: reaching any Board/Admin block on a page opens every Coordinator block on that page, by the within-file superset rule above (pinned by `GuideFilterTests.Apply_TeamsAdminOnTeamsFile_SeesBoardBlock`).
 - A camp lead **cannot** see Coordinator blocks that do not name `Camp Lead` — leading a camp is not a general coordinator grant.
 - No user **can** author or edit guide content in-app; GitHub PR is the only authoring path.
 
@@ -103,7 +103,7 @@ Unknown stems return 404 (`NotFound.cshtml`). GitHub unavailability on cold cach
 - **Auth/Roles**: `GuideRoleResolver` reads `ClaimsPrincipal.IsInRole` against every role name in Auth's `RoleCatalog` (`GuideRolePrivilegeMap.MappedRoles`) to build the `SystemRoles` set.
 - **Base (inward, publishing)**: `Section`'s `ISectionAnnotations` publishes one "Guide page" annotation per `GuideFiles.Sections` stem into `ISectionCatalog`, so `/Debug/Sections` can show which sections have help written for them (nobodies-collective/Humans#1509). Guide names no other section and no other section names Guide. Some stems match no section on purpose — `Profiles` and `LegalAndConsent` are pre-rename spellings the `docs/guide/` corpus still uses, and `Admin` is a nav holder — so they show as unmatched annotations until the guide files are renamed.
 - **Shell (inward)**: Guide has no member top-nav link; signed-in members reach `/Guide` from the user menu in `_LoginPartial`, and anonymous readers only by URL.
-- **Base (inward)**: `IGuideContentSource` / `GitHubGuideContentSource` / `GuideSettings` stay in `Humans.Base`. Despite the name they are not Guide's: the interface is a GitHub-markdown fetcher whose signatures name only `string`, and its consumers are elsewhere — the Agent section's `AgentSectionDocReader` / `AgentFeatureSpecReader` / `CommunityFaqReader` / `AgentDocsHealthCheck`, and Base's `GitHubCommunityKbContentSource`. Shell registers both, and the section consumes the interface inward.
+- **Base (inward)**: `IGuideContentSource` / `GitHubGuideContentSource` / `GuideSettings` stay in `Humans.Base`. Despite the name they are not Guide's: the interface is a GitHub-markdown fetcher whose signatures name only `string`, and its consumers are elsewhere — the Agent section's `AgentSectionDocReader` / `AgentFeatureSpecReader` / `CommunityFaqReader` / `AgentDocsHealthCheck`, and Base's `GitHubCommunityFaqContentSource`. Shell registers both, and the section consumes the interface inward.
 
 ## Architecture
 

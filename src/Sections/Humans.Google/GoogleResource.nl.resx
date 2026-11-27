@@ -115,9 +115,10 @@
   <data name="Google_Identity_Updated" xml:space="preserve">
     <value>Google-service-e-mailadres bijgewerkt. De synchronisatie wordt opnieuw geprobeerd met het nieuwe e-mailadres.</value>
   </data>
-  <data name="Google_Identity_SetRejected" xml:space="preserve">
-    <value>Kon het Google-service-e-mailadres niet instellen — de rij is onbekend of niet geverifieerd.</value>
-  </data>
+  <data name="Google_Identity_Refused_AccountNotFound" xml:space="preserve"><value>Het Google-service-e-mailadres kon niet worden ingesteld: dat account bestaat niet meer.</value></data>
+  <data name="Google_Identity_Refused_NotTheirEmail" xml:space="preserve"><value>Het Google-service-e-mailadres kon niet worden ingesteld: dat adres staat niet op dit account.</value></data>
+  <data name="Google_Identity_Refused_Unverified" xml:space="preserve"><value>Het Google-service-e-mailadres kon niet worden ingesteld: verifieer dat adres eerst.</value></data>
+  <data name="Google_Identity_Refused_NobodiesAddressWins" xml:space="preserve"><value>Het Google-service-e-mailadres kon niet worden ingesteld: een geverifieerd @nobodies.team-adres is altijd de Google-identiteit.</value></data>
   <data name="Google_Identity_Google" xml:space="preserve">
     <value>Google</value>
   </data>
@@ -156,4 +157,6 @@
   <data name="Google_TeamResources_ServiceAccount" xml:space="preserve"><value>Serviceaccount: {0}</value><comment>{0} = service account email</comment></data>
   <data name="Google_Meter_FailedSyncEvents" xml:space="preserve"><value>Mislukte Google-synchronisaties</value></data>
   <data name="Google_Meter_AudienceAdmin" xml:space="preserve"><value>Beheerders</value></data>
+  <data name="Google_Permission_ManageResources_Title" xml:space="preserve"><value>Google-bronnen beheren</value></data>
+  <data name="Google_Permission_ManageResources_Blurb" xml:space="preserve"><value>Drive-mappen en Google-groepen van de afdeling koppelen en ontkoppelen.</value></data>
 </root>

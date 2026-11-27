@@ -1,5 +1,3 @@
-@using Humans.Tickets.Contracts
-@using Humans.Tickets.Domain.Checkout
 @using Humans.Tickets.Services.Checkout
 @model Humans.Tickets.Controllers.ReconViewModel
 @{
@@ -9,7 +7,7 @@
     {
         PaymentLedgerEntryKind.Charge => "payment",
         PaymentLedgerEntryKind.Refund => "refund",
-        PaymentLedgerEntryKind.Dispute => "chargeback",
+        PaymentLedgerEntryKind.Chargeback => "chargeback",
         PaymentLedgerEntryKind.Fee => "fee",
         PaymentLedgerEntryKind.Payout => "payout",
         _ => "other",
@@ -27,16 +25,16 @@
             <span class="text-muted">none</span>
         }
     </text>;
-    Func<TicketReconRow, IHtmlContent> backendCell = @<text>
-        @if (item.Backend is { } b)
+    Func<TicketReconRow, IHtmlContent> platformCell = @<text>
+        @if (item.Platform is { } po)
         {
-            @if (item.Order?.AdminUrl is { } adminUrl && b.BackendOrderId == item.Order.BackendOrderId)
+            @if (item.Order?.AdminUrl is { } adminUrl && po.PlatformOrderId == item.Order.PlatformOrderId)
             {
-                <a href="@adminUrl" target="_blank" rel="noopener"><code>@b.BackendOrderId</code></a>
+                <a href="@adminUrl" target="_blank" rel="noopener"><code>@po.PlatformOrderId</code></a>
             }
             else
             {
-                <code>@b.BackendOrderId</code>
+                <code>@po.PlatformOrderId</code>
             }
         }
         else
@@ -44,19 +42,19 @@
             <span class="text-muted">none</span>
         }
     </text>;
-    string Pair(string? humans, string? backend) => $"{humans ?? "–"} / {backend ?? "–"}";
+    string Pair(string? humans, string? platform) => $"{humans ?? "–"} / {platform ?? "–"}";
     string? Money(long? minor) => minor is { } m ? (m / 100m).ToEuro() : null;
 }
 
 <page-header title="Reconciliation" />
 
-<p class="text-muted mb-2">Humans' orders against each backend's own order list, by the day the order was created (@Model.Zone.Id).</p>
+<p class="text-muted mb-2">Humans' orders against each platform's own order list, by the day the order was created (@Model.Zone.Id).</p>
 <details class="small text-muted mb-3">
     <summary>How it is counted</summary>
     <p class="mt-2 mb-0">
         Totals count paid orders; every order is matched whatever its state, so a missing, extra or doubled one shows.
-        A difference where no money moved on either side is listed but leaves the backend balanced.
-        Where Humans can read the backend's payment account (Box Office), its payments, refunds, chargebacks, fees and payouts
+        A difference where no money moved on either side is listed but leaves the check balanced.
+        Where Humans can read the platform's payment account (Box Office), its payments, refunds, chargebacks, fees and payouts
         are checked too, by the day the money moved.
         A daily run checks the whole sale and mails the ticketing team (@TicketConstants.TicketsTeamEmail) whatever is out of balance.
     </p>
@@ -64,12 +62,12 @@
 
 <form method="get" class="row g-2 align-items-end mb-4">
     <div class="col-auto">
-        <label class="form-label" for="backend">Backend</label>
-        <select class="form-select" id="backend" name="backend">
+        <label class="form-label" for="platform">Platform</label>
+        <select class="form-select" id="platform" name="platform">
             <option value="">All in use</option>
-            @foreach (var key in Model.BackendsInUse)
+            @foreach (var key in Model.PlatformsInUse)
             {
-                @if (key == Model.Backend)
+                @if (key == Model.Platform)
                 {
                     <option value="@key" selected>@key</option>
                 }
@@ -82,11 +80,11 @@
     </div>
     <div class="col-auto">
         <label class="form-label" for="from">From</label>
-        <input class="form-control" type="date" id="from" name="from" value="@Model.From.ToString("yyyy-MM-dd", null)" />
+        <input class="form-control" type="date" id="from" name="from" value="@Model.From.ToInvariantDate()" />
     </div>
     <div class="col-auto">
         <label class="form-label" for="to">To (included)</label>
-        <input class="form-control" type="date" id="to" name="to" value="@Model.To.ToString("yyyy-MM-dd", null)" />
+        <input class="form-control" type="date" id="to" name="to" value="@Model.To.ToInvariantDate()" />
     </div>
     <div class="col-auto form-check mb-2 ms-2">
         @if (Model.All)
@@ -104,15 +102,15 @@
 
 @if (Model.Recons.Count == 0)
 {
-    <empty-state>No sales setup sells through a backend yet.</empty-state>
+    <empty-state>No event sells through a ticketing platform yet.</empty-state>
 }
 
 @foreach (var r in Model.Recons)
 {
     var rows = Model.All ? r.Rows : r.Problems.ToList();
-    <section class="card mb-4" id="recon-@r.BackendKey">
+    <section class="card mb-4" id="recon-@r.PlatformKey">
         <div class="card-header d-flex justify-content-between align-items-center">
-            <h2 class="h5 mb-0"><code>@r.BackendKey</code> <span class="small text-muted ms-2">@range</span></h2>
+            <h2 class="h5 mb-0"><code>@r.PlatformKey</code> <span class="small text-muted ms-2">@range</span></h2>
             @if (r.Error is not null)
             {
                 <span class="badge bg-secondary">Not checked</span>
@@ -129,28 +127,28 @@
             }
             else
             {
-                var netDiff = r.Backend.NetMinor - r.Humans.NetMinor;
+                var netDiff = r.Platform.NetMinor - r.Humans.NetMinor;
                 StatTileViewModel[] tiles =
                 [
                     new("Net in Humans", (r.Humans.NetMinor / 100m).ToEuro(), Subline: $"{r.Humans.Orders.ToString(culture)} paid orders"),
-                    new("Net at the backend", (r.Backend.NetMinor / 100m).ToEuro(), Subline: $"{r.Backend.Orders.ToString(culture)} paid orders"),
+                    new("Net at the platform", (r.Platform.NetMinor / 100m).ToEuro(), Subline: $"{r.Platform.Orders.ToString(culture)} paid orders"),
                     new("Difference", (netDiff / 100m).ToSignedEuro(),
-                        Subline: netDiff == 0 ? "backend minus Humans" : "backend minus Humans: check the rows below",
+                        Subline: netDiff == 0 ? "platform minus Humans" : "platform minus Humans: check the rows below",
                         Severity: netDiff == 0 ? TileSeverity.Normal : TileSeverity.Critical),
                 ];
                 ReconLine[] lines =
                 [
-                    new("Paid orders", r.Humans.Orders.ToString(culture), r.Backend.Orders.ToString(culture), r.Backend.Orders - r.Humans.Orders, false),
-                    new("Tickets sold", r.Humans.Tickets.ToString(culture), r.Backend.Tickets.ToString(culture), r.Backend.Tickets - r.Humans.Tickets, false),
-                    new("Charged", Money(r.Humans.GrossMinor)!, Money(r.Backend.GrossMinor)!, r.Backend.GrossMinor - r.Humans.GrossMinor, true),
-                    new("Refunded", Money(r.Humans.RefundedMinor)!, Money(r.Backend.RefundedMinor)!, r.Backend.RefundedMinor - r.Humans.RefundedMinor, true),
-                    new("Chargebacks", Money(r.Humans.DisputedMinor)!, Money(r.Backend.DisputedMinor)!, r.Backend.DisputedMinor - r.Humans.DisputedMinor, true),
+                    new("Paid orders", r.Humans.Orders.ToString(culture), r.Platform.Orders.ToString(culture), r.Platform.Orders - r.Humans.Orders, false),
+                    new("Tickets sold", r.Humans.Tickets.ToString(culture), r.Platform.Tickets.ToString(culture), r.Platform.Tickets - r.Humans.Tickets, false),
+                    new("Charged", Money(r.Humans.GrossMinor)!, Money(r.Platform.GrossMinor)!, r.Platform.GrossMinor - r.Humans.GrossMinor, true),
+                    new("Refunded", Money(r.Humans.RefundedMinor)!, Money(r.Platform.RefundedMinor)!, r.Platform.RefundedMinor - r.Humans.RefundedMinor, true),
+                    new("Chargebacks", Money(r.Humans.ChargedBackMinor)!, Money(r.Platform.ChargedBackMinor)!, r.Platform.ChargedBackMinor - r.Humans.ChargedBackMinor, true),
                     new("Tickets issued", r.TicketsIssued.ToString(culture), "", r.TicketsIssued - r.Humans.Tickets, false),
                 ];
                 var totals = TableModel.For(lines)
                     .Column("", l => l.Label, c => c.NoSort().Css("fw-semibold"))
                     .Column("Humans", l => l.Humans, c => c.NoSort().End())
-                    .Column("Backend", l => l.Backend, c => c.NoSort().End())
+                    .Column("Platform", l => l.Platform, c => c.NoSort().End())
                     .Column("Difference", l => l.Diff == 0 ? "" : l.IsMoney ? (l.Diff / 100m).ToSignedEuro() : l.Diff.ToString("+#;−#", culture), c => c.NoSort().End().Css("text-danger"))
                     .Build();
 
@@ -158,11 +156,11 @@
                 var table = TableModel.For(rows)
                     .Column("Created", x => x.CreatedAt.ToDateTime(Model.Zone), c => c.Css("text-nowrap"))
                     .Template("Humans order", humansCell, c => c.NoSort())
-                    .Template("Backend order", backendCell, c => c.NoSort())
-                    .Column("State", x => Pair(x.Order?.State.ToString(), x.Backend?.State.ToString()))
-                    .Column("Total", x => Pair(Money(x.Order?.TotalMinor), Money(x.Backend?.TotalMinor)), c => c.End().Css("text-nowrap"))
-                    .Column("Refunded", x => Pair(Money(x.Order?.RefundedMinor), Money(x.Backend?.RefundedMinor)), c => c.End().Css("text-nowrap"))
-                    .Column("Tickets", x => Pair(x.Order?.Lines.Count(l => l.Kind == CheckoutLineKind.Ticket).ToString(culture), x.Backend?.TicketCount?.ToString(culture))
+                    .Template("Platform order", platformCell, c => c.NoSort())
+                    .Column("State", x => Pair(x.Order?.State.ToString(), x.Platform?.State.ToString()))
+                    .Column("Total", x => Pair(Money(x.Order?.TotalMinor), Money(x.Platform?.TotalMinor)), c => c.End().Css("text-nowrap"))
+                    .Column("Refunded", x => Pair(Money(x.Order?.RefundedMinor), Money(x.Platform?.RefundedMinor)), c => c.End().Css("text-nowrap"))
+                    .Column("Tickets", x => Pair(x.Order?.Lines.Count(l => l.Kind == OrderLineKind.Ticket).ToString(culture), x.Platform?.TicketCount?.ToString(culture))
                         + (x.TicketsIssued is { } issued ? $", {issued.ToString(culture)} issued" : ""), c => c.End())
                     .Template("Issues", issuesCell, c => c.NoSort())
                     .RowCss(x => x.Issues.Count == 0 ? null : x.MoneyMoved ? "table-warning" : null)
@@ -186,7 +184,7 @@
                         <partial name="_Table" model="table" />
                         @if (rows.Count > 0)
                         {
-                            <p class="small text-muted mt-2 mb-0">Each pair reads Humans / backend. Highlighted rows moved money.</p>
+                            <p class="small text-muted mt-2 mb-0">Each pair reads Humans / platform. Highlighted rows moved money.</p>
                         }
                     </div>
                 </div>
@@ -195,7 +193,7 @@
                 {
                     var others = TableModel.For(r.OtherInstance)
                         .Column("Created", x => x.CreatedAt.ToDateTime(Model.Zone), c => c.Css("text-nowrap"))
-                        .Column("Backend order", x => x.BackendOrderId, c => c.Css("font-monospace"))
+                        .Column("Platform order", x => x.PlatformOrderId, c => c.Css("font-monospace"))
                         .Column("State", x => x.State.ToString())
                         .Column("Total", x => Eur(x.TotalMinor), c => c.End().Css("text-nowrap"))
                         .Build();
@@ -206,14 +204,14 @@
                 }
             }
 
-            @if (r.Error is not null && !Model.Payments.ContainsKey(r.BackendKey))
+            @if (r.Error is not null && !Model.Payments.ContainsKey(r.PlatformKey))
             {
                 // Unconfigured or unreachable: the error above already says so.
             }
-            else if (!Model.Payments.TryGetValue(r.BackendKey, out var p))
+            else if (!Model.Payments.TryGetValue(r.PlatformKey, out var p))
             {
                 <h3 class="h6 mt-4">Payments, fees and payouts</h3>
-                <p class="text-muted mb-0">This backend takes payments through its own payment account, which Humans cannot read.</p>
+                <p class="text-muted mb-0">This platform takes payments through its own payment account, which Humans cannot read.</p>
             }
             else if (p.Error is not null)
             {
@@ -236,7 +234,7 @@
                 [
                     ("Charged", p.Totals.ChargedMinor),
                     ("Refunded", p.Totals.RefundedMinor),
-                    ("Chargebacks", p.Totals.DisputedMinor),
+                    ("Chargebacks", p.Totals.ChargedBackMinor),
                     ("Fees", p.Totals.FeesMinor),
                     ("Other movements", p.Totals.OtherMinor),
                     ("Net into the balance", p.Totals.NetMinor),
@@ -281,7 +279,7 @@
 
                 var payoutTable = TableModel.For(p.Payouts)
                     .Column("Made", x => x.Payout.CreatedAt.ToDateTime(Model.Zone), c => c.Css("text-nowrap"))
-                    .Column("Arrives", x => x.Payout.ArrivalAt is { } arrives ? arrives.InZone(Model.Zone).Date.ToString("yyyy-MM-dd", null) : "–")
+                    .Column("Arrives", x => x.Payout.ArrivalAt is { } arrives ? arrives.InZone(Model.Zone).Date.ToInvariantDate() : "–")
                     .Column("Payout", x => x.Payout.Id, c => c.Css("font-monospace"))
                     .Column("Status", x => x.Payout.Status)
                     .Column("Amount", x => Eur(x.Payout.AmountMinor), c => c.End().Css("text-nowrap"))
@@ -344,6 +342,6 @@
 }
 
 @functions {
-    private sealed record ReconLine(string Label, string Humans, string Backend, long Diff, bool IsMoney);
+    private sealed record ReconLine(string Label, string Humans, string Platform, long Diff, bool IsMoney);
     private sealed record PayLine(string Label, string Amount);
 }

@@ -5,7 +5,7 @@ using Humans.Gdpr.Contracts;
 
 namespace Humans.Camps.Services;
 
-internal interface ICampManagement : ICampService, IApplicationService, IEarlyEntryProvider
+internal interface ICampManagement : ICampService, IEarlyEntryProvider
 {
     Task<CampWriteResult<Camp>> CreateCampAsync(
         Guid createdByUserId,
@@ -104,7 +104,7 @@ internal interface ICampManagement : ICampService, IApplicationService, IEarlyEn
         CancellationToken cancellationToken = default, Guid? eventSettingsId = null);
 
     /// <summary>Idempotent add as an active member, then the role assignment, in one operation. Caller authorizes.</summary>
-    Task<AssignCampRoleOutcome> AddMemberAndAssignRoleInActiveSeasonAsync(
+    Task<AssignCampRoleOutcome> AddMemberWithRoleAsync(
         Guid campId, Guid roleDefinitionId, Guid userId, Guid actorUserId,
         CancellationToken cancellationToken = default, Guid? eventSettingsId = null);
 

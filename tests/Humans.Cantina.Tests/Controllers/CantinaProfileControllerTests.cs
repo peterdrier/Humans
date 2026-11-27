@@ -1,5 +1,6 @@
 using System.Security.Claims;
 using AwesomeAssertions;
+using Humans.Base.Constants;
 using Humans.Cantina.Contracts;
 using Humans.Cantina.Controllers;
 using Humans.Cantina.Models;
@@ -63,7 +64,7 @@ public class CantinaProfileControllerTests
     }
 
     [HumansFact]
-    public void Controller_requires_sign_in_and_every_post_requires_antiforgery()
+    public void Controller_Anonymous_RequiresSignIn()
     {
         typeof(CantinaProfileController).GetCustomAttributes(typeof(AuthorizeAttribute), inherit: false)
             .Should().ContainSingle("the page is the signed-in member's own, never anonymous");
@@ -74,7 +75,7 @@ public class CantinaProfileControllerTests
     }
 
     [HumansFact]
-    public async Task Get_prefills_the_members_own_profile_and_carries_the_return_route()
+    public async Task Get_OwnProfile_IsPrefilled()
     {
         _dietary.GetDietaryProfileAsync(_userId, Arg.Any<CancellationToken>())
             .Returns(new DietaryProfileInfo(_userId, "Vegan", ["Peanut"], null, ["Other"], "Fructose"));
@@ -90,7 +91,7 @@ public class CantinaProfileControllerTests
     }
 
     [HumansFact]
-    public async Task Get_shows_a_prior_opt_out()
+    public async Task Get_PriorOptOut_IsShown()
     {
         _dietary.GetDietaryProfileAsync(_userId, Arg.Any<CancellationToken>())
             .Returns(new DietaryProfileInfo(_userId, null, [], null, [], null, DeclinedToAnswer: true));
@@ -102,7 +103,7 @@ public class CantinaProfileControllerTests
     }
 
     [HumansFact]
-    public async Task Post_ValidSave_ReturnActionShifts_RedirectsToShifts()
+    public async Task Post_ReturnActionShifts_RedirectsToShifts()
     {
         var model = MakeValidModel();
         model.ReturnAction = "shifts";
@@ -115,7 +116,7 @@ public class CantinaProfileControllerTests
     }
 
     [HumansFact]
-    public async Task Post_ValidSave_NoReturnAction_RedirectsToHome()
+    public async Task Post_NoReturnAction_RedirectsToHome()
     {
         var result = await _controller.Dietary(MakeValidModel());
 
@@ -137,7 +138,7 @@ public class CantinaProfileControllerTests
     [HumansTheory]
     [Xunit.InlineData(true)]
     [Xunit.InlineData(false)]
-    public async Task Post_OtherWithoutText_IsAFieldError_AndNothingIsSaved(bool allergy)
+    public async Task Post_OtherWithoutText_IsFieldError(bool allergy)
     {
         var model = MakeValidModel();
         if (allergy) model.Allergies = ["Other"]; else model.Intolerances = ["Other"];
@@ -168,7 +169,7 @@ public class CantinaProfileControllerTests
     [HumansTheory]
     [Xunit.InlineData("shifts", "Shifts")]
     [Xunit.InlineData(null, "Home")]
-    public async Task Post_DeclineToAnswer_RecordsTheOptOut_WithoutValidatingAnswers(string? returnAction, string controller)
+    public async Task Post_DeclineToAnswer_RecordsOptOut(string? returnAction, string controller)
     {
         // The banner posts only the choice: no preference, which the form would otherwise require.
         _controller.ModelState.AddModelError("DietaryPreference", "Required");
@@ -181,10 +182,22 @@ public class CantinaProfileControllerTests
         AssertRedirect(result, "Index", controller);
     }
 
+    [HumansFact]
+    public async Task Post_DeclineRefused_ReportsFailure()
+    {
+        _dietary.DeclineAsync(_userId, Arg.Any<CancellationToken>()).Returns("Cantina_Dietary_SaveFailed");
+
+        var result = await _controller.Dietary(new DietaryViewModel { DeclineToAnswer = true, ReturnAction = "shifts" });
+
+        AssertRedirect(result, "Index", "Shifts");
+        _controller.TempData[TempDataKeys.ErrorMessage].Should().Be("Cantina_Dietary_SaveFailed");
+        _controller.TempData.Should().NotContainKey(TempDataKeys.SuccessMessage);
+    }
+
     [HumansTheory]
     [Xunit.InlineData(false)]
     [Xunit.InlineData(true)]
-    public async Task Post_cancelled_account_lookup_does_not_save_or_decline(bool decline)
+    public async Task Post_AccountLookupCancelled_SavesNothing(bool decline)
     {
         using var request = new CancellationTokenSource();
         _controller.HttpContext.RequestAborted = request.Token;

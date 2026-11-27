@@ -22,10 +22,10 @@ public sealed class CityPlanningRepositoryTests : CityPlanningTestBase
         var campSeasonId = Guid.NewGuid();
         var userId = Guid.NewGuid();
 
-        await _repo.SavePolygonAndAppendHistoryAsync(
+        await _repo.SavePolygonAsync(
             campSeasonId, """{"type":"Feature","v":1}""", 100.0, userId, "Saved", Clock.GetCurrentInstant(), Xunit.TestContext.Current.CancellationToken);
         Clock.Advance(Duration.FromSeconds(1));
-        await _repo.SavePolygonAndAppendHistoryAsync(
+        await _repo.SavePolygonAsync(
             campSeasonId, """{"type":"Feature","v":2}""", 200.0, userId, "Saved", Clock.GetCurrentInstant(), Xunit.TestContext.Current.CancellationToken);
 
         (await CityPlanningDb.CampPolygons.AsNoTracking().CountAsync(p => p.CampSeasonId == campSeasonId, Xunit.TestContext.Current.CancellationToken))
@@ -44,9 +44,9 @@ public sealed class CityPlanningRepositoryTests : CityPlanningTestBase
         var other = Guid.NewGuid();
         var userId = Guid.NewGuid();
 
-        await _repo.SavePolygonAndAppendHistoryAsync(
+        await _repo.SavePolygonAsync(
             matching, """{}""", 100.0, userId, "Saved", Clock.GetCurrentInstant(), Xunit.TestContext.Current.CancellationToken);
-        await _repo.SavePolygonAndAppendHistoryAsync(
+        await _repo.SavePolygonAsync(
             other, """{}""", 200.0, userId, "Saved", Clock.GetCurrentInstant(), Xunit.TestContext.Current.CancellationToken);
 
         var result = await _repo.GetPolygonsByCampSeasonIdsAsync([matching], Xunit.TestContext.Current.CancellationToken);
@@ -69,7 +69,7 @@ public sealed class CityPlanningRepositoryTests : CityPlanningTestBase
         var withoutPolygon = Guid.NewGuid();
         var userId = Guid.NewGuid();
 
-        await _repo.SavePolygonAndAppendHistoryAsync(
+        await _repo.SavePolygonAsync(
             withPolygon, """{}""", 100.0, userId, "Saved", Clock.GetCurrentInstant(), Xunit.TestContext.Current.CancellationToken);
 
         var result = await _repo.GetCampSeasonIdsWithPolygonAsync([withPolygon, withoutPolygon], Xunit.TestContext.Current.CancellationToken);
@@ -84,10 +84,10 @@ public sealed class CityPlanningRepositoryTests : CityPlanningTestBase
         var campSeasonId = Guid.NewGuid();
         var userId = Guid.NewGuid();
 
-        await _repo.SavePolygonAndAppendHistoryAsync(
+        await _repo.SavePolygonAsync(
             campSeasonId, """{}""", 100.0, userId, "Saved", Clock.GetCurrentInstant(), Xunit.TestContext.Current.CancellationToken);
         Clock.Advance(Duration.FromSeconds(1));
-        await _repo.SavePolygonAndAppendHistoryAsync(
+        await _repo.SavePolygonAsync(
             campSeasonId, """{}""", 200.0, userId, "Saved", Clock.GetCurrentInstant(), Xunit.TestContext.Current.CancellationToken);
 
         var result = await _repo.GetHistoryForCampSeasonAsync(campSeasonId, Xunit.TestContext.Current.CancellationToken);
@@ -103,7 +103,7 @@ public sealed class CityPlanningRepositoryTests : CityPlanningTestBase
         var b = Guid.NewGuid();
         var userId = Guid.NewGuid();
 
-        await _repo.SavePolygonAndAppendHistoryAsync(
+        await _repo.SavePolygonAsync(
             a, """{}""", 100.0, userId, "Saved", Clock.GetCurrentInstant(), Xunit.TestContext.Current.CancellationToken);
         var historyA = (await _repo.GetHistoryForCampSeasonAsync(a, Xunit.TestContext.Current.CancellationToken)).Single();
 
@@ -119,12 +119,12 @@ public sealed class CityPlanningRepositoryTests : CityPlanningTestBase
         var kept = Guid.NewGuid();
         var userId = Guid.NewGuid();
 
-        await _repo.SavePolygonAndAppendHistoryAsync(
+        await _repo.SavePolygonAsync(
             deleted, """{}""", 100.0, userId, "Saved", Clock.GetCurrentInstant(), Xunit.TestContext.Current.CancellationToken);
         Clock.Advance(Duration.FromSeconds(1));
-        await _repo.SavePolygonAndAppendHistoryAsync(
+        await _repo.SavePolygonAsync(
             deleted, """{}""", 150.0, userId, "Saved", Clock.GetCurrentInstant(), Xunit.TestContext.Current.CancellationToken);
-        await _repo.SavePolygonAndAppendHistoryAsync(
+        await _repo.SavePolygonAsync(
             kept, """{}""", 200.0, userId, "Saved", Clock.GetCurrentInstant(), Xunit.TestContext.Current.CancellationToken);
 
         // One polygon plus its two history rows.
@@ -141,7 +141,7 @@ public sealed class CityPlanningRepositoryTests : CityPlanningTestBase
     public async Task DeletePolygonsForCampSeasonsAsync_EmptyInput_IsNoOp()
     {
         var campSeasonId = Guid.NewGuid();
-        await _repo.SavePolygonAndAppendHistoryAsync(
+        await _repo.SavePolygonAsync(
             campSeasonId, """{}""", 100.0, Guid.NewGuid(), "Saved", Clock.GetCurrentInstant(), Xunit.TestContext.Current.CancellationToken);
 
         var removed = await _repo.DeletePolygonsForCampSeasonsAsync([], Xunit.TestContext.Current.CancellationToken);
@@ -220,5 +220,20 @@ public sealed class CityPlanningRepositoryTests : CityPlanningTestBase
         result.PlacementOverride.Should().BeTrue();
         result.OpenedAt.Should().Be(now);
         result.UpdatedAt.Should().Be(now);
+    }
+
+    [HumansFact]
+    public async Task DeleteHistoryBeforeAsync_KeepsCurrentPolygon()
+    {
+        var ct = Xunit.TestContext.Current.CancellationToken;
+        var campSeasonId = Guid.NewGuid();
+        var oldSave = Clock.GetCurrentInstant();
+        await _repo.SavePolygonAsync(campSeasonId, """{"v":1}""", 100.0, Guid.NewGuid(), "Saved", oldSave, ct);
+
+        var removed = await _repo.DeleteHistoryBeforeAsync(oldSave.Plus(Duration.FromDays(1)), ct);
+
+        removed.Should().Be(1);
+        (await CityPlanningDb.CampPolygonHistories.AsNoTracking().CountAsync(ct)).Should().Be(0);
+        (await CityPlanningDb.CampPolygons.AsNoTracking().SingleAsync(ct)).CampSeasonId.Should().Be(campSeasonId);
     }
 }

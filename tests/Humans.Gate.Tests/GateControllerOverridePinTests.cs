@@ -4,12 +4,9 @@ using Humans.Gate.Controllers;
 using Humans.Gate.Domain;
 using Humans.Gate.Models;
 using Humans.Gate.Services;
-using Humans.Gate.Services.Stores;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.ViewFeatures;
-using Microsoft.Extensions.Caching.Memory;
-using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging.Abstractions;
 using NodaTime;
 using NodaTime.Testing;
@@ -34,32 +31,17 @@ public class GateControllerOverridePinTests
         _users.GetUserInfoAsync(_gateAccount, Arg.Any<CancellationToken>())
             .Returns(UserInfo.Create(new User { Id = _gateAccount }, [], [], null));
         _gate.RecordDecisionAsync(Arg.Any<GateDecisionInput>(), Arg.Any<Guid>(), Arg.Any<CancellationToken>())
-            .Returns(new GateDecisionResult(GateVerdict.AdmittedEarlyOverride, "Guest", null,
-                IsEarly: true, null, null));
-    }
-
-    public enum GateAction
-    {
-        Decision,
-        SetStaffPin,
-        ResetStaffPin
+            .Returns(new GateDecisionResult(GateVerdict.AdmittedEarlyOverride, "Guest", IsEarly: true, null));
     }
 
     [HumansTheory]
-    [InlineData(GateAction.Decision, AccountScenario.Merged)]
-    [InlineData(GateAction.Decision, AccountScenario.Missing)]
-    [InlineData(GateAction.Decision, AccountScenario.Cancelled)]
-    [InlineData(GateAction.SetStaffPin, AccountScenario.Merged)]
-    [InlineData(GateAction.SetStaffPin, AccountScenario.Missing)]
-    [InlineData(GateAction.SetStaffPin, AccountScenario.Cancelled)]
-    [InlineData(GateAction.ResetStaffPin, AccountScenario.Merged)]
-    [InlineData(GateAction.ResetStaffPin, AccountScenario.Missing)]
-    [InlineData(GateAction.ResetStaffPin, AccountScenario.Cancelled)]
-    public async Task Gate_actor_boundaries_resolve_surviving_accounts(GateAction action, AccountScenario account)
+    [InlineData(AccountScenario.Merged)]
+    [InlineData(AccountScenario.Missing)]
+    [InlineData(AccountScenario.Cancelled)]
+    public async Task Decision_Actor_ResolvesToSurvivingAccount(AccountScenario account)
     {
-        var controller = BuildController(Pin);
+        var controller = BuildController();
         var survivor = Guid.NewGuid();
-        var staffId = Guid.NewGuid();
         using var request = new CancellationTokenSource();
         controller.HttpContext.RequestAborted = request.Token;
         _users.GetUserInfoAsync(_gateAccount, Arg.Any<CancellationToken>()).Returns(call =>
@@ -69,15 +51,9 @@ public class GateControllerOverridePinTests
             return new ValueTask<UserInfo?>(account == AccountScenario.Missing ? null :
                 UserInfo.Create(new User { Id = survivor }, [], [], null));
         });
-        _gate.AdminSetPinAsync(staffId, Pin, Arg.Any<Guid>(), Arg.Any<CancellationToken>()).Returns(true);
         if (account == AccountScenario.Cancelled)
             await request.CancelAsync();
-        Func<Task<IActionResult>> invoke = action switch
-        {
-            GateAction.Decision => () => controller.Decision(Barcode, true, false, false, null, null, request.Token),
-            GateAction.SetStaffPin => () => controller.SetStaffPin(staffId, Pin, request.Token),
-            _ => () => controller.ResetStaffPin(staffId, request.Token),
-        };
+        Func<Task<IActionResult>> invoke = () => controller.Decision(Barcode, true, false, false, null, null, request.Token);
 
         if (account == AccountScenario.Cancelled)
             await invoke.Should().ThrowAsync<OperationCanceledException>();
@@ -87,7 +63,7 @@ public class GateControllerOverridePinTests
         {
             await invoke();
             var call = _gate.ReceivedCalls().Should().ContainSingle().Subject;
-            call.GetArguments()[action == GateAction.SetStaffPin ? 2 : 1].Should().Be(survivor);
+            call.GetArguments()[1].Should().Be(survivor);
             call.GetArguments()[^1].Should().Be(request.Token);
             return;
         }
@@ -96,14 +72,9 @@ public class GateControllerOverridePinTests
         controller.TempData.Should().BeEmpty();
     }
 
-    private GateController BuildController(string? configuredPin)
+    private GateController BuildController()
     {
-        Dictionary<string, string?> settings = new(StringComparer.OrdinalIgnoreCase);
-        if (configuredPin is not null)
-            settings["Gate:SupervisorPin"] = configuredPin;
-        var config = new ConfigurationBuilder().AddInMemoryCollection(settings).Build();
-        var throttle = new GatePinThrottle(new MemoryCache(new MemoryCacheOptions()), _clock);
-        var controller = new GateController(_gate, _users, config, throttle, _clock, NullLogger<GateController>.Instance);
+        var controller = new GateController(_gate, _users, _clock, NullLogger<GateController>.Instance);
 
         var http = new DefaultHttpContext
         {
@@ -129,10 +100,10 @@ public class GateControllerOverridePinTests
     [InlineData(true, "overrideEarly", true)]
     [InlineData(null, null, false)]
     [InlineData(null, "idConfirmed", false)]
-    public async Task Decision_MissingOrMalformedValues_DoNotRecordADefaultedVerdict(
+    public async Task Decision_MissingOrMalformedValues_RecordsNothing(
         bool? idConfirmed, string? invalidField, bool authenticated)
     {
-        var controller = BuildController(Pin);
+        var controller = BuildController();
         if (!authenticated) controller.HttpContext.User = new ClaimsPrincipal();
         if (invalidField is not null) controller.ModelState.AddModelError(invalidField, "Invalid boolean.");
 
@@ -149,8 +120,8 @@ public class GateControllerOverridePinTests
     public async Task Decision_OverlongInput_ReturnsBadRequest()
     {
         _gate.RecordDecisionAsync(Arg.Any<GateDecisionInput>(), Arg.Any<Guid>(), Arg.Any<CancellationToken>())
-            .Returns(new GateDecisionResult(GateVerdict.Unresolved, null, null, false, null, null, InputTooLong: true));
-        var controller = BuildController(Pin);
+            .Returns(new GateDecisionResult(GateVerdict.Unresolved, null, false, null, InputTooLong: true));
+        var controller = BuildController();
 
         var result = await controller.Decision(Barcode, true, false, false, null, null,
             TestContext.Current.CancellationToken);
@@ -161,7 +132,7 @@ public class GateControllerOverridePinTests
     [HumansFact]
     public async Task Decision_ExplicitIdConfirmation_RecordsTheDecision()
     {
-        var controller = BuildController(Pin);
+        var controller = BuildController();
 
         await controller.Decision(Barcode, idConfirmed: true, childWithAdult: false,
             overrideEarly: false, supervisorPin: null, laneId: null, TestContext.Current.CancellationToken);
@@ -173,9 +144,9 @@ public class GateControllerOverridePinTests
     [HumansTheory]
     [InlineData(true, false)]
     [InlineData(false, true)]
-    public async Task Override_ForwardsPinAndIntent_WithPrincipalAttribution(bool early, bool child)
+    public async Task Decision_WithOverride_ForwardsPinWithIntent(bool early, bool child)
     {
-        var controller = BuildController(Pin);
+        var controller = BuildController();
 
         await DecideAsync(controller, overrideEarly: early, child: child, pin: Pin);
 
@@ -194,10 +165,10 @@ public class GateControllerOverridePinTests
     {
         var failure = (GateOverrideFailure)failureValue;
         _gate.RecordDecisionAsync(Arg.Any<GateDecisionInput>(), Arg.Any<Guid>(), Arg.Any<CancellationToken>())
-            .Returns(new GateDecisionResult(GateVerdict.Unresolved, null, null, false, null, null,
+            .Returns(new GateDecisionResult(GateVerdict.Unresolved, null, false, null,
                 OverrideFailure: failure, RetryAfterSeconds: failure == GateOverrideFailure.LockedOut ? 60 : null));
 
-        var card = CardOf(await DecideAsync(BuildController(Pin), overrideEarly: !child, child: child, pin: "0000"));
+        var card = CardOf(await DecideAsync(BuildController(), overrideEarly: !child, child: child, pin: "0000"));
 
         card.Kind.Should().Be(GateCardKind.Amber);
         card.Reason.Should().Contain(reason);

@@ -57,7 +57,7 @@ internal sealed class CityPlanningRepository(IDbContextFactory<CityPlanningDbCon
             .FirstOrDefaultAsync(h => h.Id == historyId && h.CampSeasonId == campSeasonId, ct);
     }
 
-    public async Task<CampPolygon> SavePolygonAndAppendHistoryAsync(
+    public async Task<CampPolygon> SavePolygonAsync(
         Guid campSeasonId,
         string geoJson,
         double areaSqm,
@@ -107,6 +107,20 @@ internal sealed class CityPlanningRepository(IDbContextFactory<CityPlanningDbCon
         // Detach so callers cannot mutate through a disposed context.
         ctx.Entry(polygon).State = EntityState.Detached;
         return polygon;
+    }
+
+    public async Task<int> DeleteHistoryBeforeAsync(Instant cutoff, CancellationToken ct = default)
+    {
+        await using var ctx = await factory.CreateDbContextAsync(ct);
+        var rows = await ctx.CampPolygonHistories.Where(h => h.ModifiedAt < cutoff).ToListAsync(ct);
+        if (rows.Count == 0)
+        {
+            return 0;
+        }
+
+        ctx.CampPolygonHistories.RemoveRange(rows);
+        await ctx.SaveChangesAsync(ct);
+        return rows.Count;
     }
 
     public async Task<int> DeletePolygonsForCampSeasonsAsync(

@@ -1,6 +1,5 @@
 using Xunit;
 using AwesomeAssertions;
-using Humans.AuditLog.Contracts;
 using Humans.Workgroups.Domain;
 using Humans.Workgroups.Services;
 using Humans.Workgroups.Tests.Infrastructure;
@@ -65,7 +64,7 @@ public sealed class WorkgroupServiceMembershipTests : WorkgroupsTestHarness
         (await db.LogEntries.SingleAsync(e => e.WorkgroupId == group.Id, Ct)).Kind
             .Should().Be(statusRequest ? WorkgroupLogKind.StatusRequested : WorkgroupLogKind.ScopeChanged);
         if (statusRequest)
-            Notifications.ReceivedCalls().Should().ContainSingle().Which.GetArguments()
+            NotificationCalls().Should().ContainSingle().Which.GetArguments()
                 .OfType<CancellationToken>().Should().ContainSingle().Which.Should().Be(CancellationToken.None);
         else (await db.Workgroups.FindAsync([group.Id], Ct))!.Deliverable.Should().Be("Changed deliverable");
     }
@@ -109,7 +108,7 @@ public sealed class WorkgroupServiceMembershipTests : WorkgroupsTestHarness
         after.Should().BeEquivalentTo(before);
         (await afterDb.LogEntries.CountAsync(Ct)).Should().Be(0);
         AuditLog.ReceivedCalls().Should().BeEmpty();
-        Notifications.ReceivedCalls().Should().BeEmpty();
+        NotificationCalls().Should().BeEmpty();
     }
 
     private sealed class FailMembershipLogSave : SaveChangesInterceptor
@@ -177,14 +176,14 @@ public sealed class WorkgroupServiceMembershipTests : WorkgroupsTestHarness
         if (string.Equals(action, "join", StringComparison.Ordinal))
         {
             // A request is not membership yet: the coordinators are told, nothing else moves.
-            Notifications.ReceivedCalls().Should().ContainSingle().Which.GetArguments()
+            NotificationCalls().Should().ContainSingle().Which.GetArguments()
                 .OfType<CancellationToken>().Should().ContainSingle().Which.Should().Be(CancellationToken.None);
             await GoogleSync.DidNotReceive().RequestSyncAsync(Arg.Any<string>(), Arg.Any<CancellationToken>());
         }
         else if (action is "coordinators" or "appoint")
         {
             AuditLog.ReceivedCalls().Should().ContainSingle();
-            Notifications.ReceivedCalls().Should().ContainSingle().Which.GetArguments()
+            NotificationCalls().Should().ContainSingle().Which.GetArguments()
                 .OfType<CancellationToken>().Should().ContainSingle().Which.Should().Be(CancellationToken.None);
             Email.ReceivedCalls().Should().HaveCount(2);
             Email.ReceivedCalls().SelectMany(c => c.GetArguments().OfType<CancellationToken>())
@@ -390,9 +389,9 @@ public sealed class WorkgroupServiceMembershipTests : WorkgroupsTestHarness
         info.CurrentMemberUserIds().Should().NotContain(requester);
         (await OpenContext().LogEntries.AnyAsync(e => e.WorkgroupId == workgroup.Id, Ct)).Should().BeFalse();
         await Notifications.Received(1).SendAsync(
-            Humans.Workgroups.WorkgroupsNotificationSources.WorkgroupMembershipRequested,
-            Arg.Any<Humans.Notifications.Contracts.NotificationClass>(),
-            Arg.Any<Humans.Notifications.Contracts.NotificationPriority>(),
+            WorkgroupsNotificationSources.WorkgroupMembershipRequested,
+            Arg.Any<Notifications.Contracts.NotificationClass>(),
+            Arg.Any<Notifications.Contracts.NotificationPriority>(),
             Arg.Any<string>(),
             Arg.Is<IReadOnlyList<Guid>>(ids => ids.Single() == workgroup.Members.Single().UserId),
             Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>());
@@ -420,9 +419,9 @@ public sealed class WorkgroupServiceMembershipTests : WorkgroupsTestHarness
         await AuditLog.Received(1).LogAsync(WorkgroupsAuditActions.WorkgroupMembershipApproved, Arg.Any<string>(), workgroup.Id,
             Arg.Any<string>(), actor, requester, "User");
         await Notifications.Received(1).SendAsync(
-            Humans.Workgroups.WorkgroupsNotificationSources.WorkgroupMembershipDecided,
-            Arg.Any<Humans.Notifications.Contracts.NotificationClass>(),
-            Arg.Any<Humans.Notifications.Contracts.NotificationPriority>(),
+            WorkgroupsNotificationSources.WorkgroupMembershipDecided,
+            Arg.Any<Notifications.Contracts.NotificationClass>(),
+            Arg.Any<Notifications.Contracts.NotificationPriority>(),
             Arg.Any<string>(), Arg.Is<IReadOnlyList<Guid>>(ids => ids.Single() == requester),
             Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>());
         await GoogleSync.Received(1).RequestSyncAsync(workgroup.DriveFolderId!, CancellationToken.None);
@@ -446,9 +445,9 @@ public sealed class WorkgroupServiceMembershipTests : WorkgroupsTestHarness
         await AuditLog.Received(1).LogAsync(WorkgroupsAuditActions.WorkgroupMembershipDeclined, Arg.Any<string>(), workgroup.Id,
             Arg.Any<string>(), coordinator, requester, "User");
         await Notifications.Received(1).SendAsync(
-            Humans.Workgroups.WorkgroupsNotificationSources.WorkgroupMembershipDecided,
-            Arg.Any<Humans.Notifications.Contracts.NotificationClass>(),
-            Arg.Any<Humans.Notifications.Contracts.NotificationPriority>(),
+            WorkgroupsNotificationSources.WorkgroupMembershipDecided,
+            Arg.Any<Notifications.Contracts.NotificationClass>(),
+            Arg.Any<Notifications.Contracts.NotificationPriority>(),
             Arg.Any<string>(), Arg.Is<IReadOnlyList<Guid>>(ids => ids.Single() == requester),
             Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>());
         await GoogleSync.DidNotReceive().RequestSyncAsync(Arg.Any<string>(), Arg.Any<CancellationToken>());

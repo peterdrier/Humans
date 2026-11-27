@@ -20,6 +20,7 @@ namespace Humans.TicketTailor.Services;
 internal sealed class TicketTailorService : ITicketVendorService
 {
     private const string BaseUrl = "https://api.tickettailor.com/v1";
+    private const int PageSafetyCap = 500;
 
     private readonly HttpClient _httpClient;
     private readonly ILogger<TicketTailorService> _logger;
@@ -135,7 +136,7 @@ internal sealed class TicketTailorService : ITicketVendorService
     {
         string? cursor = null;
         var seenCursors = new HashSet<string>(StringComparer.Ordinal);
-        do
+        for (var page = 1; page <= PageSafetyCap; page++)
         {
             var url = $"{BaseUrl}/{resource}?event_id={eventId}";
             if (since.HasValue)
@@ -174,10 +175,12 @@ internal sealed class TicketTailorService : ITicketVendorService
 
             yield return body.Data;
             cursor = body.Links.Next is not null ? getId(body.Data[^1]) : null;
-            if (body.Links.Next is not null
-                && (string.IsNullOrWhiteSpace(cursor) || !seenCursors.Add(cursor)))
-                throw new HttpRequestException("TicketTailor pagination returned a missing or repeated cursor.");
-        } while (cursor is not null);
+            // Every item's id was checked above, so a next page always has a cursor.
+            if (cursor is null) yield break;
+            if (!seenCursors.Add(cursor))
+                throw new HttpRequestException($"TicketTailor pagination returned cursor {cursor} a second time.");
+        }
+        throw new HttpRequestException($"TicketTailor pagination hit the {PageSafetyCap}-page safety cap.");
     }
 
     public async Task<VendorEventSummaryDto> GetEventSummaryAsync(
@@ -216,7 +219,6 @@ internal sealed class TicketTailorService : ITicketVendorService
         if (totalCapacity == 0)
             totalCapacity = evt.TicketTypes?.Sum(tt => tt.QuantityTotal ?? 0) ?? 0;
         var summary = new VendorEventSummaryDto(
-            EventId: eventId,
             EventName: evt.Name,
             TotalCapacity: totalCapacity,
             TicketsSold: ticketsSold,
@@ -265,35 +267,6 @@ internal sealed class TicketTailorService : ITicketVendorService
 
         _logger.LogInformation("Generated {Count} discount codes via TicketTailor", codes.Count);
         return codes;
-    }
-
-    public async Task CreateCheckInAsync(
-        string vendorTicketId, Instant occurredAt, CancellationToken ct = default)
-    {
-        using var _ = _logger.TimeOperation();
-
-        // Form-encoded, not JSON — a JSON body silently 400s. issued_ticket_id and quantity are
-        // required; check_in_at is unix seconds. Not idempotent (each POST creates a record), so
-        // callers never retry. The key needs Event-manager scope; an Order-manager key 403s.
-        using var form = new FormUrlEncodedContent(new Dictionary<string, string>(StringComparer.Ordinal)
-        {
-            ["issued_ticket_id"] = vendorTicketId,
-            ["quantity"] = "1",
-            ["check_in_at"] = occurredAt.ToUnixTimeSeconds().ToString(CultureInfo.InvariantCulture),
-        });
-
-        using var response = await _httpClient.PostAsync($"{BaseUrl}/check_ins", form, ct);
-
-        if (!response.IsSuccessStatusCode)
-        {
-            _logger.LogWarning(
-                "TicketTailor check-in API returned {StatusCode} for issued ticket {VendorTicketId}",
-                (int)response.StatusCode, vendorTicketId);
-            response.EnsureSuccessStatusCode();
-        }
-
-        _logger.LogInformation(
-            "Recorded TicketTailor check-in for issued ticket {VendorTicketId}", vendorTicketId);
     }
 
     public async Task<VoidIssuedTicketResult> VoidIssuedTicketAsync(

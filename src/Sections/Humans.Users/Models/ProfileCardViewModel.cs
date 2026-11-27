@@ -54,7 +54,7 @@ internal sealed class ProfileCardViewModel
         }
     }
 
-    /// <summary>True when viewing another user's profile and no email is visible.</summary>
+    /// <summary>True when viewing another user's profile, the card shows no email, and the owner accepts facilitated messages.</summary>
     public bool CanSendMessage { get; set; }
 
     public IReadOnlyList<UserEmailDisplayViewModel> PublicUserEmails =>

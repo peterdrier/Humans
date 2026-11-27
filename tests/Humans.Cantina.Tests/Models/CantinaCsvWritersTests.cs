@@ -55,7 +55,7 @@ public sealed class CantinaCsvWritersTests
     }
 
     [HumansFact]
-    public void Roster_KeepsSectionLayout_BomAndCrlf()
+    public void Roster_Output_KeepsBomCrlf()
     {
         var bytes = CantinaRosterCsvWriter.Write(Roster(Person("Ana")));
 
@@ -71,7 +71,7 @@ public sealed class CantinaCsvWritersTests
     }
 
     [HumansFact]
-    public void Roster_QuotesMultiValueCells_AndEscapesFormulaPrefixedNames()
+    public void Roster_FormulaPrefixedName_IsEscaped()
     {
         var lines = RosterLines(Roster(
             Person("=SUM(A1)", allergies: ["Peanut", "Soy"], allergyOther: "@lookup")));
@@ -88,12 +88,11 @@ public sealed class CantinaCsvWritersTests
     /// must still appear in the CSV, with ArrivesOn set to the arrival date.
     /// </summary>
     [HumansFact]
-    public void WeeklyRoster_ArrivalDayHuman_AppearsInCsvWithArrivalDate()
+    public void WeeklyRoster_ArrivalDayHuman_HasArrivalDate()
     {
         // Human arrives on 2026-07-12 (day 5 of week), shifts only on 2026-07-13 (day 6).
         // NoShift covers the first 5 days of the week (Mon–Sat with no signup).
         var arrivalDay = WeekStart.PlusDays(5);
-        var shiftDay = WeekStart.PlusDays(6);
 
         var noShiftDays = Enumerable.Range(0, 5)
             .Select(i => WeekStart.PlusDays(i))
@@ -133,7 +132,7 @@ public sealed class CantinaCsvWritersTests
     }
 
     [HumansFact]
-    public void DailyMatrix_WritesHeaderPeopleAndTotals()
+    public void DailyMatrix_People_WritesTotals()
     {
         var dto = new DailyMatrixDto(
             DayOffset: 0,
@@ -164,7 +163,7 @@ public sealed class CantinaCsvWritersTests
     }
 
     [HumansFact]
-    public void DailyMatrix_Totals_each_chip_and_keeps_free_text_columns_unsummed()
+    public void DailyMatrix_FreeTextColumns_StayUnsummed()
     {
         var dto = new DailyMatrixDto(
             DayOffset: 0,

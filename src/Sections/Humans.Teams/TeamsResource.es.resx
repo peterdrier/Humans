@@ -215,9 +215,10 @@
   <data name="Teams_NotMember" xml:space="preserve">
     <value>No formas parte de este equipo.</value>
   </data>
-  <data name="Teams_RequestUnavailable" xml:space="preserve">
-    <value>Esta solicitud para unirte no está disponible o ya no está pendiente.</value>
-  </data>
+  <data name="Teams_RequestNotFound" xml:space="preserve"><value>No tienes esa solicitud para unirte.</value></data>
+  <data name="Teams_RequestApproved" xml:space="preserve"><value>Esa solicitud para unirse ya fue aprobada.</value></data>
+  <data name="Teams_RequestRejected" xml:space="preserve"><value>Esa solicitud para unirse ya fue rechazada.</value></data>
+  <data name="Teams_RequestWithdrawn" xml:space="preserve"><value>Ya retiraste esa solicitud para unirte.</value></data>
   <data name="Teams_ActionFailed" xml:space="preserve">
     <value>No se pudo completar esta acción del equipo. Inténtalo de nuevo.</value>
   </data>
@@ -530,4 +531,8 @@
   <data name="Teams_Search_Category" xml:space="preserve"><value>Equipos</value></data>
   <data name="Teams_Roles_SystemTeam" xml:space="preserve"><value>Los equipos del sistema no pueden tener roles.</value></data>
   <data name="Teams_Roles_InactiveTeam" xml:space="preserve"><value>Este equipo no está activo.</value></data>
+  <data name="Teams_Permission_Manage_Title" xml:space="preserve"><value>Gestionar el equipo</value></data>
+  <data name="Teams_Permission_Manage_Blurb" xml:space="preserve"><value>Gestionar miembros, solicitudes de ingreso, roles y la página del equipo.</value></data>
+  <data name="Teams_Permission_EarlyEntry_Title" xml:space="preserve"><value>Gestionar el acceso anticipado</value></data>
+  <data name="Teams_Permission_EarlyEntry_Blurb" xml:space="preserve"><value>Conceder acceso anticipado a los proyectos del equipo.</value></data>
 </root>

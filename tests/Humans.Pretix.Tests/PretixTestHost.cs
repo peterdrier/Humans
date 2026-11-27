@@ -4,6 +4,8 @@ using System.Text.Json;
 using Humans.Pretix.Services;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
+using Humans.Stripe.Contracts;
+using NSubstitute;
 
 namespace Humans.Pretix.Tests;
 
@@ -19,8 +21,17 @@ internal static class PretixTestHost
         WebhookSecret = "s3cret",
     };
 
-    public static PretixCheckoutBackend Create(FakePretix pretix, PretixSettings? settings = null) =>
-        new(new HttpClient(pretix), Options.Create(settings ?? Settings()), NullLogger<PretixCheckoutBackend>.Instance);
+    /// <summary>Over <paramref name="stripe"/>, or a Stripe section with no account configured for pretix.</summary>
+    public static PretixPlatform Create(FakePretix pretix, PretixSettings? settings = null, IStripeService? stripe = null) =>
+        new(new HttpClient(pretix), Options.Create(settings ?? Settings()), NullLogger<PretixPlatform>.Instance,
+            stripe ?? NoStripeAccount());
+
+    public static IStripeService NoStripeAccount()
+    {
+        var stripe = Substitute.For<IStripeService>();
+        stripe.CheckAccountAsync(Arg.Any<string>(), Arg.Any<CancellationToken>()).Returns([]);
+        return stripe;
+    }
 
     public static object Order(
         string code,
@@ -53,6 +64,7 @@ internal sealed class FakePretix : HttpMessageHandler
     private readonly Dictionary<string, Queue<(HttpStatusCode Status, string Body)>> _routes = new(StringComparer.Ordinal);
 
     public List<(string Route, string? Body)> Requests { get; } = [];
+    public Exception? Failure { get; init; }
 
     public FakePretix On(string method, string path, HttpStatusCode status, object body)
     {
@@ -68,6 +80,7 @@ internal sealed class FakePretix : HttpMessageHandler
 
     protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken ct)
     {
+        if (Failure is { } failure) throw failure;
         var route = $"{request.Method} {request.RequestUri!.AbsolutePath}";
         var body = request.Content is null ? null : await request.Content.ReadAsStringAsync(ct);
         Requests.Add((route, body));

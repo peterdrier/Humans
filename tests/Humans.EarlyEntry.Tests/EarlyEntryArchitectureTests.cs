@@ -1,6 +1,5 @@
 using System.Reflection;
 using AwesomeAssertions;
-using Humans.Base.Authorization;
 using Humans.Base.Constants;
 using Humans.Base.Interfaces;
 using Humans.EarlyEntry.Contracts;
@@ -17,7 +16,7 @@ namespace Humans.EarlyEntry.Tests;
 public class EarlyEntryArchitectureTests
 {
     [HumansFact]
-    public void OrchestratorInjectsOnlyTheProviderFanout()
+    public void Orchestrator_InjectsOnlyProviderFanout()
     {
         // Exact list, not a subset: a second constructor parameter is this section
         // growing a data path.
@@ -28,7 +27,7 @@ public class EarlyEntryArchitectureTests
     }
 
     [HumansFact]
-    public void SectionRegistersTheOrchestratorPerRequest()
+    public void Section_RegistersOrchestratorPerRequest()
     {
         // Scoped, so the once-per-request gather never outlives the request and writers
         // in other sections never have to call in here.
@@ -41,7 +40,7 @@ public class EarlyEntryArchitectureTests
     }
 
     [HumansFact]
-    public void RosterIsGatedByEarlyEntrysOwnRoles()
+    public void Roster_IsGatedByOwnRoles()
     {
         var authorize = typeof(EarlyEntryRosterController).GetCustomAttribute<AuthorizeAttribute>(inherit: false);
         var options = new AuthorizationOptions();

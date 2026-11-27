@@ -25,7 +25,6 @@ internal sealed record StripeReconciliationRow(
     string SessionId,
     string? PaymentIntentId,
     decimal? AmountEur,
-    string? PaymentStatus,
     Instant? CreatedAt,
     Guid? OrderId,
     string? OrderLabel,
@@ -70,8 +69,9 @@ internal sealed record StripeReconciliationResult(int RecordedCount, decimal Tot
 
 /// <summary>
 /// <paramref name="Refusal"/> is set when nothing could be checked. <paramref name="PendingCount"/> is how many of the
-/// newly recorded refunds Stripe is still sending; <paramref name="SettledCount"/> and <paramref name="CancelledCount"/>
-/// count earlier-booked refunds that Stripe has since completed or failed.
+/// newly recorded refunds Stripe is still sending; <paramref name="SettledCount"/>, <paramref name="FailedCount"/> and
+/// <paramref name="CanceledCount"/> count earlier-booked refunds that Stripe has since completed, failed or canceled.
 /// </summary>
 internal sealed record StripeRefundCheckResult(
-    int RecordedCount, decimal TotalEur, int PendingCount, int SettledCount, int CancelledCount, string? Refusal = null);
+    int RecordedCount, decimal TotalEur, int PendingCount, int SettledCount, int FailedCount, int CanceledCount,
+    string? Refusal = null);

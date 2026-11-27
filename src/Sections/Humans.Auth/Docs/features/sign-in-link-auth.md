@@ -1,0 +1,292 @@
+<!-- freshness:triggers
+  src/Sections/Humans.Auth/Services/SignInLinkService.cs
+  src/Sections/Humans.Auth/Services/SignInLinkUrlBuilder.cs
+  src/Sections/Humans.Auth/Services/SignInLinkRateLimiter.cs
+  src/Humans.Base/Extensions/MemoryCacheExtensions.cs
+  src/Sections/Humans.Auth/Contracts/ISignInLinkService.cs
+  src/Sections/Humans.Auth/AuthResource*.resx
+  src/Humans.Web/Controllers/AccountController.cs
+  src/Humans.Web/Views/Account/**
+  src/Sections/Humans.Users/Services/UserEmailService.cs
+  src/Humans.Base/Users/User.cs
+  src/Humans.Base/Users/UserEmail.cs
+-->
+<!-- freshness:flag-on-change
+  Sign-in link token strategy (Identity vs DataProtection), email-lookup order, single-use enforcement, account-linking on OAuth, or rate limiting may have changed.
+-->
+
+# Feature 30: Magic Link Authentication
+
+## Business Context
+
+The platform currently supports only Google OAuth for login. This limits flexibility:
+
+- **External contacts** (mailing list subscribers, ticket purchasers) can't be pre-provisioned as real Identity users because there's no way for them to authenticate without Google.
+- **Humans without Google accounts** (or who prefer not to use Google) have no way to access the platform.
+- **Future auth methods** (email/password, Apple, Microsoft) require the identity layer to support multiple credential types per user.
+
+Sign-in link authentication is the foundation: a human enters their email, receives a link, clicks it, and is signed in. No password, no third-party provider. This is the simplest second auth method and unlocks the contact import use case — imported contacts are just users who haven't clicked their first sign-in link yet.
+
+## Design Principles
+
+1. **One human, many ways in.** A User can have Google OAuth, a sign-in link, and (future) a password — all pointing at the same identity row.
+2. **Contacts are just pre-provisioned users.** A mailing list import creates a real Identity user with `EmailConfirmed = true` and no credentials. When they authenticate by any method, they claim their existing account.
+3. **Work with Identity, not around it.** Use ASP.NET Identity's token providers and `SignInManager` rather than custom auth schemes, lockout hacks, or merge flows.
+4. **`LastSignInAt == null` means "never authenticated."** No new enums needed to distinguish imported contacts from active humans.
+
+## User Stories
+
+### US-1: Login via sign-in link (existing user)
+
+**As** a human who already has an account,
+**I want** to log in by entering my email and clicking a link,
+**So that** I don't need to use Google OAuth.
+
+**Acceptance criteria:**
+- Login page shows an "Email me a login link" option alongside the Google button
+- Entering any verified email address associated with an account sends a sign-in link to **that specific address** (not the primary — the one they typed)
+- A user with 3 verified emails can enter any of them and get a sign-in link sent to that address, signing in as the same human
+- Entering an unknown or unverified email shows a generic "If that email exists, we've sent a link" message (no account enumeration)
+- The link signs the user in and redirects to the return URL (or home)
+- The link expires after 15 minutes
+- The link is single-use (consumed on first click)
+- If the link is expired or already used, show a clear message with a "Request new link" option
+
+### US-2: Signup via sign-in link (new user)
+
+**As** someone who wants to join the platform without Google,
+**I want** to enter my email, verify it via sign-in link, and create an account,
+**So that** I can participate without a Google account.
+
+**Acceptance criteria:**
+- If the email doesn't match any existing user, send a sign-in link that creates an account on click
+- On first login, the user is prompted for a burner name and their first and last (legal) name (email is pre-filled); all three are required
+- The new user follows the normal onboarding flow (profile completion, consent, etc.)
+- A `UserEmail` record is created (non-OAuth, verified, notification target)
+- The link is single-use: redeemed on the completion POST, so it cannot be replayed to sign a second holder into the new account
+
+### US-3: Claim a pre-provisioned account
+
+**As** a mailing list subscriber whose email was imported,
+**I want** to click a sign-in link and land in my existing account,
+**So that** my communication preferences and history are preserved.
+
+**Acceptance criteria:**
+- When a sign-in link is sent to an imported user (`LastSignInAt == null`), clicking it signs them into their existing account
+- `LastSignInAt` is set on first login
+- Communication preferences imported with the contact are preserved
+- The user proceeds to normal onboarding (profile completion, consent)
+- No merge flow needed — they're already in the system
+
+### US-4: Link Google to an existing sign-in-link account
+
+**As** a human who signed up via sign-in link,
+**I want** to connect my Google account later,
+**So that** I can use either method to log in.
+
+**Acceptance criteria:**
+- On Google OAuth callback, if no user is found by provider key but a user exists with the same verified email, link the Google login to the existing user via `AddLoginAsync`
+- The user is signed in to their existing account (not a new one)
+- All existing data (profile, preferences, teams) is preserved
+
+### US-5: Google OAuth user gets sign-in link fallback
+
+**As** a human who normally uses Google but can't right now,
+**I want** to log in via sign-in link using my Google email,
+**So that** I can still access the platform.
+
+**Acceptance criteria:**
+- Existing Google OAuth users can enter their email and receive a sign-in link
+- The link signs them into their existing account
+- No duplicate account is created
+
+## Workflows
+
+### Sign-in Link/Signup Flow
+
+```
+Human enters email on login page
+  │
+  ├── Email found in UserEmails (verified) → existing user
+  │     └── Send sign-in link to THAT address (the one they typed)
+  │           └── Human clicks link
+  │                 ├── Token valid → sign in, update LastSignInAt, redirect
+  │                 └── Token expired/used → show error + "Request new link"
+  │
+  └── Email does NOT match any User or UserEmail
+        └── Send sign-in link with signup token (DataProtection, not Identity)
+              └── Human clicks link
+                    └── Create User (email confirmed, no password)
+                          └── Create UserEmail (verified, notification target)
+                                └── Redirect to onboarding
+```
+
+**Email lookup order:** Check `UserEmails` via `IUserEmailService.FindByAddressAsync` (aliased, verified only). This ensures a user with 3 verified emails can log in with any of them.
+
+### Google OAuth with Account Linking
+
+```
+Google OAuth callback
+  │
+  ├── User found by provider key → sign in (existing flow)
+  │
+  └── No user by provider key
+        ├── User found by verified UserEmail match (IUserEmailService.FindByAddressAsync)
+        │     └── Link Google login (AddLoginAsync) → sign in
+        │
+        └── No user by email → create new user (existing flow)
+```
+
+**Note:** Account linking also checks `UserEmails`, not just `User.Email`. A human who signed up via sign-in link with email A, then added and verified email B, then does Google OAuth with email B — should still link to their existing account.
+
+## Technical Design
+
+### Token Strategy: Two Cases
+
+There are two distinct cases that need different token approaches:
+
+#### Case 1: Existing user login (DataProtection tokens)
+
+As shipped, login tokens use **DataProtection** — the same mechanism as signup (Case 2 below), not ASP.NET Identity's token provider. `SignInLinkUrlBuilder` protects the user id as the payload:
+
+```csharp
+// Generate — payload is the user id, encrypted with 15min expiry
+var token = protector.Protect(userId.ToString(), TimeSpan.FromMinutes(15));
+
+// Verify — returns the user id, throws CryptographicException if expired/tampered
+var userId = protector.Unprotect(token);
+```
+
+**Token lifetime: 15 minutes.** The token carries no server-side state; single-use is enforced separately (see "Single-Use Enforcement" below).
+
+**URL format:**
+```
+https://{baseUrl}/Account/SignInLinkConfirm?userId={userId}&token={urlEncodedToken}&returnUrl={returnUrl}
+```
+
+`SignInLinkConfirm` is a GET landing page — it defers token consumption to a user-clicked POST to `/Account/SignInLink` so automated email-security scanners can't "use up" the link before the human clicks it.
+
+#### Case 2: New user signup (DataProtection tokens)
+
+When the email doesn't match any existing user, there's no `User` row to generate an Identity token against. Use **DataProtection** instead — same pattern as the existing unsubscribe sign-in links in `CommunicationPreferenceService`:
+
+`SignInLinkUrlBuilder` writes the same purpose and layout as `ToTimeLimitedDataProtector` (expiry ticks, then the email) but decodes it itself, so an expired link still reveals whom it was for and logs differently from a tampered one.
+
+The token is self-contained (encrypted email + expiry). No database row needed.
+
+**URL format:**
+```
+https://{baseUrl}/Account/SignInLinkSignup?token={urlEncodedToken}&returnUrl={returnUrl}
+```
+
+No `userId` in the URL because the user doesn't exist yet. The encrypted email in the token is the identity claim.
+
+### Single-Use Enforcement
+
+The DataProtection token carries no server-side state, so single-use is enforced separately, and both link types enforce it the same way: at the moment of redemption, `ISignInLinkRateLimiter.TryConsumeTokenAsync` reserves the token (keyed on a SHA-256 digest of the complete token string) in `IMemoryCache` for the remainder of its 15-minute lifetime. A second attempt with the same token finds the reservation already held and fails. Login and signup tokens come from different protector purposes, so their strings never collide in that cache.
+
+**Login tokens (existing users):** consumed inside `VerifySignInTokenAsync`, on the POST to `/Account/SignInLink`. It returns `bool`, not the user; `AccountController` signs in by id through `IUserSignInService.SignInAsync`, as it does for the signup result's `UserId`.
+
+**Signup tokens (new users):** consumed inside `ConsumeSignupTokenAsync`, called from `AccountController.CompleteSignup`. Two placement rules matter:
+
+- The signup **GET** reads the token through `VerifySignupToken`, which does *not* consume — it only unprotects, to pre-fill the form. Consuming on a GET would let an email-security scanner burn the link, the same hazard `SignInLinkConfirm` exists to avoid on the login side.
+- The **POST** consumes *after* field validation, not before. The validation branch re-renders the form with the same token, so consuming first would lock out anyone who submitted with a field blank.
+- If provisioning then fails **or throws**, the reservation is **released** (`ISignInLinkService.ReleaseSignupToken`). `CompleteSignInLinkSignupAsync` rolls itself back on every returned failure — the Identity user is deleted or was never created — so a transient failure must not cost the person their link for the remaining 15 minutes; and if it throws part-way (a cancelled request, a database failure), the retry either signs them up or finds the account and signs them in. Mirrors `ReleaseSignupReservation` on the send side.
+
+The reservation has to be exclusive under concurrent requests, not just against a later replay, or two POSTs redeeming the same token together could both reach provisioning and the second would follow the existing-user path into an authenticated session. `IMemoryCache` has no atomic add and `GetOrCreateAsync` does not serialize its factory, so `MemoryCacheExtensions.TryReserveAsync` takes the read and the write under one process-wide lock. One lock is the whole of the coordination this needs — one server, and reservations are rare.
+
+A replayed POST therefore fails the reservation and renders `SignInLinkError` — except for a resubmit that carries the cookie the first POST set, which identifies the person that POST just signed in and is redirected onward. The exception is deliberately narrow: a *concurrent* double-click is issued before that cookie exists, so its losing half gets the error page even though the winning half created the account. That is accepted, not overlooked — nothing derived from the request distinguishes it from a replay (a replay carries the same body), and the session the winning half created stands, so the next navigation is signed in. This makes the shipped signup email's promise true: `Auth_Email_SignInLinkSignup_Body` (Auth's own `AuthResource*.resx`) says the link "can only be used once" in all supported cultures.
+
+Survey and unsubscribe links are a different mechanism (`SurveyPreviewTokenProvider`, `SurveyInviteTokenProvider`, `UnsubscribeTokenProvider`) and are deliberately reusable — nothing outside Auth redeems through `ISignInLinkRateLimiter`.
+
+### Email Lookup
+
+`SignInLinkService.SendSignInLinkAsync` resolves the address before choosing a link type:
+
+```csharp
+// 1. Check UserEmails (covers all verified addresses including non-primary)
+var userEmail = (await _userEmailService.FindByAddressAsync(email, aliased: true, verifiedOnly: true, ct))
+    .FirstOrDefault();
+
+if (userEmail is not null)
+{
+    // Generate login token for userEmail.UserId
+    // Send sign-in link to the specific address they typed (userEmail.Email)
+    return;
+}
+
+// 2. No match — send signup token
+```
+
+The same lookup pattern applies to the Google OAuth account linking in `ExternalLoginCallback`.
+
+### Account Linking (Google OAuth)
+
+The decision ladder now lives in `ExternalLoginService.CompleteExternalLoginAsync`; `AccountController.ExternalLoginCallback` only dispatches to it:
+
+```
+no user by provider key
+  → check UserEmails for verified match (IUserEmailService.FindByAddressAsync, aliased, verified-only)
+  → if found: AddLoginAsync + sign in (same user)
+  → else: create new user
+```
+
+The link attempt is wrapped in try-catch so a linking failure doesn't block the OAuth flow — it falls through to creating a new user with a logged warning.
+
+### Email Template
+
+Subject: `Your login link for Nobodies`
+
+Body (login — existing user):
+```
+Hi {DisplayName},
+
+Click the link below to sign in:
+
+{magic_link_url}
+
+This link expires in 15 minutes and can only be used once.
+
+If you didn't request this, you can ignore this email.
+```
+
+Body (signup — new user):
+```
+Welcome to Nobodies!
+
+Click the link below to create your account:
+
+{magic_link_url}
+
+This link expires in 15 minutes and can only be used once.
+
+If you didn't request this, you can ignore this email.
+```
+
+Category: `MessageCategory.System` (not opt-outable).
+
+Both login and signup token validation require the canonical Base64url spelling issued by the URL builder. Equivalent encodings (whitespace, padding or nonzero unused trailing bits) are rejected before redemption, preserving single-use enforcement by the token-text SHA-256 replay key.
+
+### Rate Limiting
+
+To prevent abuse of the sign-in link endpoint:
+- Login sends are cooled down per user: an exclusive 60-second reservation (`ISignInLinkRateLimiter.ReserveUserSendAsync`) is taken before the message is prepared, so overlapping requests cannot both enqueue, and a request inside the window is silently skipped. A preparation/send failure releases the reservation; a successful send keeps it and persists nothing (the cooldown does not survive a restart, by decision 2026-10-20). Signup sends use a separate per-inbox reservation in `ISignInLinkRateLimiter`: Gmail dots, plus-tags and googlemail aliases share the cooldown, while non-Gmail plus-addresses stay distinct. Normalization affects only the reservation key; the message and token retain the entered address.
+- Always show the same "If that email exists, we've sent a link" message regardless of whether the email exists (prevents account enumeration)
+- Log suspicious patterns (multiple requests for different emails from same IP) but don't block at this scale
+
+### Contact Import Implications
+
+With sign-in link auth in place, importing a contact from MailerLite/TicketTailor becomes:
+
+1. Create `User` via `UserManager.CreateAsync` — email, display name, `EmailConfirmed = true`
+2. Create `UserEmail` record (verified, notification target)
+3. Set `ContactSource` and `ExternalSourceId` on User (nullable fields; see [Contact Accounts](../../../Humans.Users/Docs/features/contact-accounts.md))
+4. Do NOT set lockout, do NOT create fake credentials
+
+The user sits with `LastSignInAt == null`. When they authenticate by any method (sign-in link, Google, future), they claim their account. No merge, no AccountType enum, no special handling.
+
+## Related Features
+
+- **Feature 28: Communication Preferences** — contacts imported with preferences; preserved on account claim
+- **Feature 29: Contact Accounts** — pre-provisioned users imported with `ContactSource`; they claim their account through this flow
+- **Future: Email/Password Auth** — sign-in link establishes the email-based auth pattern; password is an additive credential

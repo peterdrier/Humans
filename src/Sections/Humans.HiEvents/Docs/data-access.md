@@ -3,15 +3,15 @@
 ## HiEvents
 
 Project: `src/Sections/Humans.HiEvents` — services under `Services/`. **No DbContext, no repository, no tables:** the
-section is the Hi.Events adapter behind Tickets' `ITicketCheckoutBackend` port; Tickets owns every order and ticket.
+section is the Hi.Events adapter behind Tickets' `ITicketingPlatform` port; Tickets owns every order and ticket.
 Invariants: `Docs/HiEvents.md`.
 
-### HiEventsCheckoutBackend (typed HttpClient, Scoped)
+### HiEventsPlatform (typed HttpClient, transient; resolved as a scoped `ITicketingPlatform`)
 
-No repository. Implements `ITicketCheckoutBackend` against the Nobodies fork of the Hi.Events API.
+No repository. Implements `ITicketingPlatform` against the Nobodies fork of the Hi.Events API.
 
 ### HiEventsWebhookController
 
-No repository. Verifies the webhook signature and calls `ITicketCheckoutEvents`.
+No repository. Verifies the webhook signature and calls `ITicketingPlatformEvents`.
 
 ---

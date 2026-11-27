@@ -11,7 +11,7 @@ public class SectionNavTests
     private static readonly IServiceProvider Services = Substitute.For<IServiceProvider>();
 
     [HumansFact]
-    public void Contributes_one_link_to_the_Tour_page()
+    public void Nav_ContributesOneTourLink()
     {
         var item = ((ISectionNav)new Section()).Items().Should().ContainSingle().Subject;
 
@@ -20,7 +20,7 @@ public class SectionNavTests
     }
 
     [HumansFact]
-    public void Link_is_visible_to_anonymous_visitors()
+    public void Link_AnonymousVisitor_IsVisible()
     {
         var item = ((ISectionNav)new Section()).Items().Single();
         var anonymous = new ClaimsPrincipal(new ClaimsIdentity());
@@ -29,7 +29,7 @@ public class SectionNavTests
     }
 
     [HumansFact]
-    public void Link_is_hidden_from_signed_in_members()
+    public void Link_SignedInMember_IsHidden()
     {
         var item = ((ISectionNav)new Section()).Items().Single();
         var member = new ClaimsPrincipal(new ClaimsIdentity([new Claim(ClaimTypes.Name, "member")], "test"));

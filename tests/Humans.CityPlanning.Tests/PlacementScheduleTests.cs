@@ -326,7 +326,7 @@ public sealed class PlacementScheduleTests : CityPlanningTestBase
     private readonly List<CampInfo> _camps = [];
 
     private static CampSeasonInfo MakeCampSeasonInfo(Guid id, Guid campId, int year) =>
-        new(id, campId, string.Empty, year, null, "Camp", string.Empty, string.Empty,
+        new(id, campId, year, null, "Camp", string.Empty, string.Empty,
             [], CampSeasonStatus.Pending, YesNoMaybe.No, YesNoMaybe.No, AdultPlayspacePolicy.No,
             0, null, null, null, 0, null, null);
 }

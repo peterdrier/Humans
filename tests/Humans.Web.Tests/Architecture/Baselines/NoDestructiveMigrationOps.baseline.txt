@@ -768,3 +768,61 @@ src/Sections/Humans.Tickets/Data/Migrations/20261121183331_TicketRulesFromLegalR
 # treasuries have synced (or one has, beside the legacy unscoped row). Rolling back means deleting
 # the BankMovements rows first — safe, the state is re-derived by the next sync.
 src/Sections/Humans.Holded/Data/Migrations/20261121152423_HoldedSyncStateScope.cs:DropPrimaryKey(name=PK_holded_sync_states,table=holded_sync_states)#1
+
+# Tickets: ticket_resale_offers.DirectedEmail, DirectedTokenHash and IX_ticket_resale_offers_DirectedTokenHash
+# (the single directed-resale invitation: address and token hash, both nullable). Replaced by the
+# directed_invites jsonb list in peterdrier/Humans#2550, which has merged and carries every invitation.
+# Evidence: pickaxe git log -S 'DirectedTokenHash' and -S 'DirectedEmail =' over origin/main shows only
+# the 2027 checkout work (from cbc8d82c4 through #2550). After #2550 nothing reads them and nothing
+# writes them except erasure, which this PR also removes. There is no ticketing data in production yet.
+# Approval: Peter, 2026-11-21, chose "Yes, drop them in a follow-up" on the project thread's card
+# "Approve dropping the two retired resale invite columns in a separate PR?" (TICKETS-14).
+src/Sections/Humans.Tickets/Data/Migrations/20261121235220_DropRetiredResaleInviteColumns.cs:DropIndex(name=IX_ticket_resale_offers_DirectedTokenHash,table=ticket_resale_offers)#1
+src/Sections/Humans.Tickets/Data/Migrations/20261121235220_DropRetiredResaleInviteColumns.cs:DropColumn(name=DirectedEmail,table=ticket_resale_offers)#1
+src/Sections/Humans.Tickets/Data/Migrations/20261121235220_DropRetiredResaleInviteColumns.cs:DropColumn(name=DirectedTokenHash,table=ticket_resale_offers)#1
+
+# Agent: agent_settings.PreloadConfig (the Tier1/Tier2 preload size on the singleton settings row).
+# peterdrier/Humans#2610 made the preload one size and marked the property [Obsolete].
+# Evidence: pickaxe git log -S '.PreloadConfig' over origin/main ends at #2610; after it the only
+# references are the EF mapping and seed value, which this PR removes. Nothing reads or writes it.
+# Approval: Peter, 2026-11-24, in the Agent rename thread: "yes for preloadconfig drop".
+src/Sections/Humans.Agent/Data/Migrations/20261124151418_DropAgentSettingsPreloadConfig.cs:DropColumn(name=PreloadConfig,table=agent_settings)#1
+
+# Finance: finance_holded_expense_docs and finance_holded_doc_sync_states, Finance's old copy of Holded purchase
+# documents and its sync-state singleton (peterdrier/Humans#2323).
+# Evidence: pickaxe git log -S 'HoldedExpenseDocs' over origin/main: the last code that read or wrote either DbSet
+# was removed by #2273 (1ee4dafcd, 2026-11-04), when the purchase-document mirror moved to the Holded section; later
+# hits are docs. Holded is still the source of these facts and the Holded mirror refetches them on sync.
+# Approval: Peter, 2026-11-26, in the "Issue drain 2026-11-23" project thread: "Number three for 2323, destructive PR
+# is okay."
+src/Sections/Humans.Finance/Data/Migrations/20261126234254_DropRetiredHoldedExpenseDocTables.cs:DropTable(name=finance_holded_doc_sync_states)#1
+src/Sections/Humans.Finance/Data/Migrations/20261126234254_DropRetiredHoldedExpenseDocTables.cs:DropTable(name=finance_holded_expense_docs)#1
+
+# Shifts: shift_volunteer_event_profiles.DietaryPreference, Allergies, Intolerances, AllergyOtherText,
+# IntoleranceOtherText and MedicalConditions (the old dietary and medical answers on the shift profile).
+# Replaced by the Profile columns (Users) in #780, whose migration MoveDietaryMedicalToProfile
+# (2026-05-25) copied every row across; Cantina and the audited Users reveal read only the Profile copy.
+# Evidence: pickaxe git log -S 'MedicalConditions =', -S 'DietaryPreference =', -S 'AllergyOtherText =' and
+# -S 'IntoleranceOtherText =' over origin/main finds no write to VolunteerEventProfile after #780; later hits
+# are Profile, DTO or section-move commits. The entity carried a "do NOT read or write these" note since then.
+# Approval: Peter, 2026-11-27, in the role-retirement thread, chose "Yes, drop all six" on the card
+# "Approve dropping all six old Shifts dietary and medical columns?", which named all six columns above.
+# Rollback caveat: Down() re-adds Allergies and Intolerances as NOT NULL jsonb with default '', which
+# Postgres rejects; rolling back means re-adding those two columns by a new migration.
+src/Sections/Humans.Shifts/Data/Migrations/20261126232724_DropVolunteerProfileDietaryMedicalColumns.cs:DropColumn(name=Allergies,table=shift_volunteer_event_profiles)#1
+src/Sections/Humans.Shifts/Data/Migrations/20261126232724_DropVolunteerProfileDietaryMedicalColumns.cs:DropColumn(name=AllergyOtherText,table=shift_volunteer_event_profiles)#1
+src/Sections/Humans.Shifts/Data/Migrations/20261126232724_DropVolunteerProfileDietaryMedicalColumns.cs:DropColumn(name=DietaryPreference,table=shift_volunteer_event_profiles)#1
+src/Sections/Humans.Shifts/Data/Migrations/20261126232724_DropVolunteerProfileDietaryMedicalColumns.cs:DropColumn(name=IntoleranceOtherText,table=shift_volunteer_event_profiles)#1
+src/Sections/Humans.Shifts/Data/Migrations/20261126232724_DropVolunteerProfileDietaryMedicalColumns.cs:DropColumn(name=Intolerances,table=shift_volunteer_event_profiles)#1
+src/Sections/Humans.Shifts/Data/Migrations/20261126232724_DropVolunteerProfileDietaryMedicalColumns.cs:DropColumn(name=MedicalConditions,table=shift_volunteer_event_profiles)#1
+
+# Gate simplify: drops gate_staff_pins (per-staffer gate PINs) and gate_settings.MinorAgeThresholdYears.
+# Evidence: the staff PIN table served only the per-person claim flow, unreachable since the shared
+# gate account shipped (health runs 2026-08-31 and 2026-10-27); MinorAgeThresholdYears was stored and
+# edited but read by nothing (health run 2026-10-27). This PR deletes the last readers and writers of
+# both: claim screen, Staff PINs page, PIN service methods, the settings field.
+# Approval: Peter, 2026-11-27, in the Gate simplify thread: "You can get rid of leaderboard, staff,
+# login, minor age, and sending the check-ins back to Tickettailor, though. Those are all things that
+# should go."
+src/Sections/Humans.Gate/Data/Migrations/20261127002352_GateSimplify.cs:DropTable(name=gate_staff_pins)#1
+src/Sections/Humans.Gate/Data/Migrations/20261127002352_GateSimplify.cs:DropColumn(name=MinorAgeThresholdYears,table=gate_settings)#1

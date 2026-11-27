@@ -1,10 +1,11 @@
+using Humans.Testing;
+using Humans.Permissions.Contracts;
 using System.Globalization;
 using System.Resources;
 using Humans.Shifts.Domain;
 using Humans.Auth.Contracts;
 using Humans.Teams.Domain;
 using AwesomeAssertions;
-using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Logging.Abstractions;
 using NodaTime;
 using NSubstitute;
@@ -14,7 +15,6 @@ using Humans.Base.Enums;
 using ShiftSignupService = Humans.Shifts.Services.ShiftSignupService;
 using Humans.Teams.Contracts;
 using Humans.Notifications.Contracts;
-using Humans.EarlyEntry.Contracts;
 using Humans.Shifts.Contracts;
 using Humans.Shifts.Data;
 using Humans.Users.Contracts;
@@ -24,8 +24,6 @@ namespace Humans.Shifts.Tests.Services;
 
 public sealed class ShiftSignupServiceEarlyEntryTests : ShiftsTestHarness
 {
-    private readonly ShiftManagementService _shiftMgmt;
-    private readonly ShiftRepository _repo;
     private readonly ShiftSignupService _service;
 
     private static readonly Instant TestNow = Instant.FromUtc(2026, 6, 15, 12, 0);
@@ -34,42 +32,41 @@ public sealed class ShiftSignupServiceEarlyEntryTests : ShiftsTestHarness
         : base(TestNow)
     {
         var teamService = Substitute.For<ITeamService>();
-        var roleAssignmentService = Substitute.For<IRoleAssignmentService>();
+        var systemRoleService = Substitute.For<ISystemRoleService>();
         var serviceProvider = new ServiceLocatorBuilder()
             .With(teamService)
             .With(teamService)
-            .With(roleAssignmentService)
+            .With(systemRoleService)
+            .With<IPermissionService>()
             .Build();
 
         var shiftRepo = new ShiftRepository(ShiftsDbFactory, ShiftsDb, Clock);
 
-        _shiftMgmt = new ShiftManagementService(
+        var shiftMgmt = new ShiftManagementService(
             shiftRepo,
             AuditLog,
-            AdminAuthorization,
             serviceProvider,
             NewCalendarResolver(),
             Clock,
             NullLogger<ShiftManagementService>.Instance);
 
-        _repo = new ShiftRepository(ShiftsDbFactory, ShiftsDb, Clock);
+        var repo = new ShiftRepository(ShiftsDbFactory, ShiftsDb, Clock);
         var users = Substitute.For<IUserService>();
         users.GetUserInfoAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
             .Returns(call => UserFixtures.MakeUserInfo(call.Arg<Guid>()) with { State = UserState.Active });
-        var localizer = Substitute.For<IStringLocalizer<ShiftsResource>>();
+        var localizer = Substitute.For<IStringLocalizer<ShiftsResource>>().AddFormatting();
         const string warningKey = "Shifts_Signup_RangeEarlyEntryCapacityDays";
         localizer[warningKey, Arg.Any<object[]>()].Returns(call => new LocalizedString(warningKey,
             string.Format(CultureInfo.InvariantCulture,
                 new ResourceManager(typeof(ShiftsResource)).GetString(warningKey, CultureInfo.GetCultureInfo("en"))!,
                 call.Arg<object[]>())));
         _service = new ShiftSignupService(
-            _repo,
+            repo,
             Substitute.For<IVolunteerTrackingRepository>(),
-            _shiftMgmt,
+            shiftMgmt,
             NewCalendarResolver(),
             AuditLog,
             Substitute.For<INotificationEmitter>(),
-            AdminAuthorization,
             serviceProvider,
             Clock,
             NullLogger<ShiftSignupService>.Instance,

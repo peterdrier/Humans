@@ -1288,31 +1288,35 @@
   <data name="Shifts_Profile_NoShowHistory" xml:space="preserve"><value>No-Show-Verlauf ({0})</value></data>
   <data name="Shifts_Profile_MarkedBy" xml:space="preserve"><value>Markiert von</value></data>
   <data name="Shifts_Profile_MarkedAt" xml:space="preserve"><value>Markiert am</value></data>
-  <data name="ShiftsSummary_Title" xml:space="preserve">
+  <data name="Shifts_Summary_Title" xml:space="preserve">
     <value>Schichten</value>
   </data>
-  <data name="ShiftsSummary_SlotsFilled" xml:space="preserve">
+  <data name="Shifts_Summary_SlotsFilled" xml:space="preserve">
     <value>{0} / {1} Plätze belegt</value>
     <comment>{0} = filled, {1} = total</comment>
   </data>
-  <data name="ShiftsSummary_HumansSignedUp" xml:space="preserve">
+  <data name="Shifts_Summary_HumansSignedUp" xml:space="preserve">
     <value>{0} humans angemeldet</value>
     <comment>{0} = count</comment>
   </data>
-  <data name="ShiftsSummary_PendingCount" xml:space="preserve">
+  <data name="Shifts_Summary_PendingCount" xml:space="preserve">
     <value>{0} ausstehend</value>
     <comment>{0} = count</comment>
   </data>
-  <data name="ShiftsSummary_NoShifts" xml:space="preserve">
+  <data name="Shifts_Summary_NoShifts" xml:space="preserve">
     <value>Noch keine Schichten konfiguriert.</value>
   </data>
-  <data name="ShiftsSummary_IncludesSubTeams" xml:space="preserve">
+  <data name="Shifts_Summary_IncludesSubTeams" xml:space="preserve">
     <value>Enthält Schichten von {0} Sub-Team(s)</value>
     <comment>{0} = count</comment>
   </data>
-  <data name="ShiftsSummary_ManageShifts" xml:space="preserve">
+  <data name="Shifts_Summary_ManageShifts" xml:space="preserve">
     <value>Schichten verwalten</value>
   </data>
   <data name="Shifts_Search_Category" xml:space="preserve"><value>Schichten</value></data>
   <data name="Shifts_NameRequiredBeforeShifts" xml:space="preserve"><value>Füge zuerst deinen Namen hinzu — wir brauchen ihn, bevor du dich für Schichten anmelden kannst.</value></data>
+  <data name="Shifts_Permission_Manage_Title" xml:space="preserve"><value>Schichten verwalten</value></data>
+  <data name="Shifts_Permission_Manage_Blurb" xml:space="preserve"><value>Dienstpläne und Schichten des Teams anlegen und bearbeiten und seinen Freiwilligen schreiben.</value></data>
+  <data name="Shifts_Permission_Approve_Title" xml:space="preserve"><value>Anmeldungen freigeben</value></data>
+  <data name="Shifts_Permission_Approve_Blurb" xml:space="preserve"><value>Anmeldungen für die Schichten des Teams freigeben, ablehnen und Freiwillige einteilen.</value></data>
 </root>

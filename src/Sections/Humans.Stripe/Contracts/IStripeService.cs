@@ -72,7 +72,67 @@ public interface IStripeService : IApplicationService
 
     /// <summary>The Stripe dashboard page for a Store-account payment, where a person issues its refund.</summary>
     string StorePaymentDashboardUrl(string paymentIntentId);
+
+    /// <summary>
+    /// Every balance movement and payout created in [<paramref name="from"/>, <paramref name="to"/>) on the
+    /// <c>Stripe:MirrorAccounts</c> entry named <paramref name="accountName"/>, read live, each movement with the
+    /// PaymentIntent behind it. Null when that account or its key is not configured. A Stripe refusal throws
+    /// <see cref="InvalidOperationException"/>; an unreachable Stripe throws <see cref="HttpRequestException"/>.
+    /// </summary>
+    Task<StripeAccountLedger?> GetAccountLedgerAsync(string accountName, Instant from, Instant to, CancellationToken ct = default);
+
+    /// <summary>
+    /// What Stripe kept, in minor units, on a PaymentIntent of the named account. Null when unknown: the account is
+    /// not configured, the charge has no balance transaction yet, or Stripe could not be read (logged). Never throws
+    /// but on cancellation, so a fee lookup never holds up a paid order.
+    /// </summary>
+    Task<long?> GetAccountPaymentFeeAsync(string accountName, string paymentIntentId, CancellationToken ct = default);
+
+    /// <summary>
+    /// The fee, as <see cref="GetAccountPaymentFeeAsync"/>, of the succeeded PaymentIntent of the named account whose
+    /// metadata holds every pair in <paramref name="metadata"/>, for a vendor that does not expose the intent's id.
+    /// Stripe's search trails a new payment by up to a minute, so for a payment created since
+    /// <paramref name="createdSince"/> within the last two hours, the intents created since then are listed too.
+    /// </summary>
+    Task<long?> FindAccountPaymentFeeAsync(
+        string accountName, IReadOnlyDictionary<string, string> metadata, Instant createdSince, CancellationToken ct = default);
+
+    /// <summary>
+    /// One finding per read scope <see cref="GetAccountLedgerAsync"/> needs on the named account.
+    /// <paramref name="includeCheckout"/> also probes Checkout Sessions with the Tickets checkout key.
+    /// Caller cancellation propagates; vendor failures are findings.
+    /// </summary>
+    Task<IReadOnlyList<StripeAccountCheck>> CheckAccountAsync(
+        string accountName, CancellationToken ct = default, bool includeCheckout = false);
 }
+
+/// <summary>A Stripe account's movements and payouts for a period, all amounts in minor units.</summary>
+public sealed record StripeAccountLedger(IReadOnlyList<StripeLedgerLine> Lines, IReadOnlyList<StripeLedgerPayout> Payouts);
+
+/// <summary>
+/// One balance transaction. <paramref name="ReportingCategory"/> is Stripe's (<c>charge</c>, <c>refund</c>,
+/// <c>dispute</c>, <c>payout</c>, <c>fee</c>, …). <paramref name="AmountMinor"/> is signed; the balance moves by amount
+/// minus <paramref name="FeeMinor"/>. <paramref name="Payment"/> is the PaymentIntent behind a charge, refund or dispute.
+/// </summary>
+public sealed record StripeLedgerLine(
+    string Id, Instant CreatedAt, string ReportingCategory, long AmountMinor, long FeeMinor, string? Description,
+    StripeLedgerPayment? Payment);
+
+/// <summary>
+/// A PaymentIntent's id, description and metadata: how a vendor names its own order on it.
+/// Movement metadata overrides intent metadata where both name the same key.
+/// </summary>
+public sealed record StripeLedgerPayment(string PaymentIntentId, string? Description, IReadOnlyDictionary<string, string> Metadata);
+
+/// <summary>
+/// One payout to the bank. <paramref name="ContentsNetMinor"/> and <paramref name="ContentsCount"/> sum the movements
+/// it pays out; null and zero unless Stripe has finished reconciling an automatic payout.
+/// </summary>
+public sealed record StripeLedgerPayout(
+    string Id, Instant CreatedAt, Instant ArrivalAt, long AmountMinor, string Status, long? ContentsNetMinor, int ContentsCount);
+
+/// <summary>One line of a key check, for a ticketing platform page.</summary>
+public sealed record StripeAccountCheck(bool Ok, string Text);
 
 /// <summary>
 /// <paramref name="Status"/> is Stripe's refund status (<c>pending</c>, <c>requires_action</c>, <c>succeeded</c>,
@@ -81,7 +141,7 @@ public interface IStripeService : IApplicationService
 public sealed record StoreRefundData(string RefundId, string PaymentIntentId, decimal AmountEur, string Status, Instant CreatedAt);
 
 /// <summary><paramref name="AmountEur"/> is the gross charge, positive, converted from minor units.</summary>
-public sealed record StoreChargeData(string ChargeId, string PaymentIntentId, decimal AmountEur, Instant CreatedAt);
+public sealed record StoreChargeData(decimal AmountEur, Instant CreatedAt);
 
 /// <summary>One amount per Stripe balance-transaction fee bucket, in EUR.</summary>
 /// <remarks>

@@ -1,7 +1,6 @@
 using Humans.Tickets.Contracts;
 using CsvHelper;
 using Humans.Base.Csv;
-using Humans.Campaigns.Domain;
 using Humans.Campaigns.Models;
 using Humans.Campaigns.Services;
 using Humans.Base.Authorization;
@@ -221,7 +220,7 @@ internal sealed class CampaignController(
             return BadRequest(ModelState);
         }
 
-        var result = await campaignService.GenerateAndImportDiscountCodesAsync(
+        var result = await campaignService.GenerateDiscountCodesAsync(
             currentUser.Id,
             id, count, discountType, discountValue);
         if (string.Equals(result.ErrorKey, "NotFound", StringComparison.Ordinal))
@@ -234,7 +233,7 @@ internal sealed class CampaignController(
         else if (string.Equals(result.ErrorKey, "InvalidDiscountType", StringComparison.Ordinal))
             SetError("Invalid discount type.");
         else if (string.Equals(result.ErrorKey, "InvalidDiscountValue", StringComparison.Ordinal))
-            SetError("Discount value is invalid or too large. Use a whole percentage from 0 to 100, or a nonnegative fixed euro amount with at most two decimal places.");
+            SetError("The discount must be a whole percentage from 0 to 100, or a nonnegative fixed euro amount with at most two decimal places.");
         else if (string.Equals(result.ErrorKey, "CodeTooLong", StringComparison.Ordinal))
             SetError("Codes must be at most 200 characters. No codes were imported.");
         else if (!result.Success)

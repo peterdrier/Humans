@@ -3,7 +3,6 @@ using Humans.Shifts.Domain;
 using Humans.Shifts.Contracts;
 
 using NodaTime;
-using Humans.Base.Interfaces;
 
 using Humans.Shifts.Models;
 
@@ -15,11 +14,8 @@ namespace Humans.Shifts.Services;
 /// <see cref="IShiftVolunteerProfiles"/> and <see cref="IShiftSeeding"/>, which this inherits.
 /// </summary>
 internal interface IShiftManagement
-    : IShiftService, IShiftVolunteerProfiles, IShiftSeeding, IApplicationService
+    : IShiftService, IShiftVolunteerProfiles, IShiftSeeding
 {
-    /// <summary>Holds a management role on the team's parent.</summary>
-    Task<bool> IsDeptCoordinatorAsync(Guid userId, Guid departmentTeamId, CancellationToken ct = default);
-
     /// <summary>Null when the teams have no rotas. Pending counts a signup range once.</summary>
     Task<ShiftsSummaryData?> GetShiftsSummaryAsync(
         Guid eventSettingsId, IReadOnlyCollection<Guid> teamIds, CancellationToken ct = default);
@@ -61,7 +57,7 @@ internal interface IShiftManagement
     /// <summary>Validates that the team is a department and the event is active.</summary>
     Task CreateRotaAsync(Rota rota, IReadOnlyList<Guid>? tagIds = null);
 
-    /// <summary>Dept coordinators, Admin, NoInfoAdmin and VolunteerCoordinator.</summary>
+    /// <summary>Holds <see cref="ShiftsPermissions.Approve"/> on the team.</summary>
     Task<bool> CanApproveSignupsAsync(Guid userId, Guid departmentTeamId, CancellationToken ct = default);
 
     /// <summary>Tags change only when <see cref="UpdateRotaInput.TagIds"/> is non-null. False when the rota doesn't exist.</summary>
@@ -158,7 +154,6 @@ internal interface IShiftManagement
 internal sealed record DepartmentCoveragePie(
     Guid TeamId,
     string TeamName,
-    string TeamSlug,
     bool IsSubTeam,
     Guid? ParentTeamId,
     string? ParentTeamName,

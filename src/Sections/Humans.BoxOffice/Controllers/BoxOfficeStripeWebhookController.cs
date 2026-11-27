@@ -7,24 +7,24 @@ namespace Humans.BoxOffice.Controllers;
 
 /// <summary>
 /// Anonymous: authenticated by the Stripe signature. Only a nudge: Tickets reads the session's state back from Stripe,
-/// so a replay changes nothing. 503 while the signing secret is unset; 400 on a bad signature, so a wrong secret shows
-/// as failed deliveries in Stripe instead of green ones Humans ignores.
+/// so a replay changes nothing. 503 while the Tickets key or Box Office webhook secret is unset; 400 on a bad signature, so
+/// a wrong secret shows as failed deliveries in Stripe instead of green ones Humans ignores.
 /// </summary>
 [ApiController]
 [AllowAnonymous]
 [Route("BoxOffice/StripeWebhook")]
 internal sealed class BoxOfficeStripeWebhookController(
-    BoxOfficeCheckoutBackend backend,
-    ITicketCheckoutEvents checkoutEvents,
+    BoxOfficePlatform platform,
+    ITicketingPlatformEvents platformEvents,
     ILogger<BoxOfficeStripeWebhookController> logger) : ControllerBase
 {
     [HttpPost("")]
     [IgnoreAntiforgeryToken]
     public async Task<IActionResult> Receive(CancellationToken ct)
     {
-        if (!backend.IsWebhookConfigured || !backend.IsConfigured)
+        if (!platform.IsWebhookConfigured || !platform.IsConfigured)
         {
-            logger.LogWarning("Box Office webhook hit while STRIPE_BOXOFFICE_* is unset; rejecting.");
+            logger.LogWarning("Box Office webhook hit while the Tickets key or Box Office webhook secret is unset; rejecting.");
             return StatusCode(StatusCodes.Status503ServiceUnavailable);
         }
 
@@ -32,11 +32,12 @@ internal sealed class BoxOfficeStripeWebhookController(
         using (var reader = new StreamReader(Request.Body))
             body = await reader.ReadToEndAsync(ct);
 
-        var sessionIds = await backend.ParseWebhookAsync(body, Request.Headers["Stripe-Signature"].ToString(), ct);
+        var sessionIds = await platform.ParseWebhookAsync(body, Request.Headers["Stripe-Signature"].ToString(), ct);
         if (sessionIds is null)
             return BadRequest();
+        // Applying an order change can write to the platform; a sender that hangs up must not tear it.
         foreach (var sessionId in sessionIds)
-            await checkoutEvents.CheckoutChangedAsync(BoxOfficeCheckoutBackend.BackendKey, sessionId, ct);
+            await platformEvents.PlatformOrderChangedAsync(BoxOfficePlatform.PlatformKey, sessionId, CancellationToken.None);
 
         return Ok();
     }

@@ -1,3 +1,5 @@
+using Humans.Base.Authorization;
+using Humans.Permissions.Contracts;
 using Humans.Finance.Contracts;
 using System.Security.Claims;
 using AwesomeAssertions;
@@ -19,7 +21,7 @@ namespace Humans.Expenses.Tests.Authorization;
 public sealed class ExpenseReportAuthorizationHandlerTests
 {
     private readonly IBudgetService _budgetService = Substitute.For<IBudgetService>();
-    private readonly ITeamService _teamService = Substitute.For<ITeamService>();
+    private readonly IPermissionService _permissions = Substitute.For<IPermissionService>();
     private readonly IUserService _users = Substitute.For<IUserService>();
     private readonly IPreapprovalService _preapprovals = Substitute.For<IPreapprovalService>();
     private readonly ExpenseReportAuthorizationHandler _handler;
@@ -37,16 +39,15 @@ public sealed class ExpenseReportAuthorizationHandlerTests
     {
         _users.GetUserInfoAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
             .Returns(call => UserInfo.Create(new User { Id = call.Arg<Guid>() }, [], [], null));
-        _handler = new ExpenseReportAuthorizationHandler(_budgetService, _teamService, _users, _preapprovals, _httpContext);
+        _handler = new ExpenseReportAuthorizationHandler(_budgetService, _permissions, _users, _preapprovals, _httpContext);
 
         // Category is linked to TeamId
         _budgetService.GetCategoryByIdAsync(CategoryId, Arg.Any<CancellationToken>())
             .Returns(CreateCategorySnapshot(CategoryId, TeamId));
 
-        var teams = CreateTeamMap();
-        _teamService.IsUserCoordinatorOfTeamAsync(Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<CancellationToken>())
-            .Returns(call => TeamCoordinatorAccess.IsCoordinatorOfActiveTeam(
-                teams, call.ArgAt<Guid>(0), call.ArgAt<Guid>(1)));
+        _permissions.HasAsync(Arg.Any<Guid>(), ExpensesPermissions.Endorse, Arg.Any<Owner>(), Arg.Any<CancellationToken>())
+            .Returns(call => (call.ArgAt<Guid>(0), call.ArgAt<Owner>(2).Id) == (CoordinatorId, TeamId)
+                             || (call.ArgAt<Guid>(0), call.ArgAt<Owner>(2).Id) == (OtherCoordinatorId, OtherTeamId));
     }
 
     [HumansFact]
@@ -135,14 +136,14 @@ public sealed class ExpenseReportAuthorizationHandlerTests
         _preapprovals.GetGrantsAsync(Arg.Any<CancellationToken>()).Returns(call =>
         {
             Read("Grant", call.Arg<CancellationToken>());
-            return (IReadOnlyList<GrantOption>)[ManagedGrant(grantId, CoordinatorId)];
+            return [ManagedGrant(grantId, CoordinatorId)];
         });
         _budgetService.GetCategoryByIdAsync(CategoryId, Arg.Any<CancellationToken>()).Returns(call =>
         {
             Read("Category", call.Arg<CancellationToken>());
             return CreateCategorySnapshot(CategoryId, TeamId);
         });
-        _teamService.IsUserCoordinatorOfTeamAsync(TeamId, CoordinatorId, Arg.Any<CancellationToken>()).Returns(call =>
+        _permissions.HasAsync(CoordinatorId, ExpensesPermissions.Endorse, new Owner(TeamOwner.Kind, TeamId), Arg.Any<CancellationToken>()).Returns(call =>
         {
             Read("Team", call.Arg<CancellationToken>());
             return true;
@@ -648,36 +649,6 @@ public sealed class ExpenseReportAuthorizationHandlerTests
             null,
             []);
 
-    private static IReadOnlyDictionary<Guid, TeamInfo> CreateTeamMap()
-    {
-        var teams = new[]
-        {
-            CreateTeamInfo(TeamId, CoordinatorId),
-            CreateTeamInfo(OtherTeamId, OtherCoordinatorId),
-        };
-
-        return teams.ToDictionary(team => team.Id);
-    }
-
-    private static TeamInfo CreateTeamInfo(Guid teamId, Guid coordinatorId) =>
-        new(
-            Id: teamId,
-            Name: "Team",
-            Description: null,
-            Slug: "team",
-            IsActive: true,
-            IsSystemTeam: false,
-            SystemTeamType: SystemTeamType.None,
-            RequiresApproval: false,
-            IsPublicPage: false,
-            IsHidden: false,
-            IsPromotedToDirectory: false,
-            CreatedAt: Instant.MinValue,
-            Members:
-            [
-                new TeamMemberInfo(Guid.NewGuid(), coordinatorId, "Coordinator", null, null, TeamMemberRole.Coordinator, Instant.MinValue)
-            ]);
-
     private static ClaimsPrincipal CreateUser(Guid userId)
     {
         var claims = new List<Claim>
@@ -716,5 +687,5 @@ public sealed class ExpenseReportAuthorizationHandlerTests
 
     private void StubManagedGrant(Guid grantId, Guid manager) =>
         _preapprovals.GetGrantsAsync(Arg.Any<CancellationToken>())
-            .Returns((IReadOnlyList<GrantOption>)[ManagedGrant(grantId, manager)]);
+            .Returns([ManagedGrant(grantId, manager)]);
 }

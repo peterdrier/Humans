@@ -3,7 +3,7 @@ using Humans.Users.Contracts;
 using Microsoft.AspNetCore.Identity;
 using NodaTime;
 
-namespace Humans.Application.Services.Users;
+namespace Humans.Users.Services;
 
 // UserManager allowed per design-rules.md, *Service ownership*: AspNetUserLogins is the authoritative
 // (Provider, ProviderKey) → UserId store. HUM0005 pins ReconcileOAuthIdentityAsync to this class
@@ -53,7 +53,7 @@ internal sealed class ExternalLoginService(
             attempt.Login.ProviderKey);
         if (existingUser is not null)
         {
-            await userService.RecordLoginAsync(existingUser.Id, ct);
+            await userService.RecordSignInAsync(existingUser.Id, ct);
             await TryEnsureStubProfileAsync(existingUser.Id, actorUserId: existingUser.Id, ct);
             await TryReconcileAsync(existingUser.Id, attempt, ct);
         }
@@ -151,7 +151,7 @@ internal sealed class ExternalLoginService(
 
     private async Task FinishCurrentUserLinkAsync(Guid userId, ExternalLoginAttempt attempt, CancellationToken ct)
     {
-        await userService.RecordLoginAsync(userId, ct);
+        await userService.RecordSignInAsync(userId, ct);
         await TryEnsureStubProfileAsync(userId, actorUserId: userId, ct);
         await TryReconcileAsync(userId, attempt, ct);
     }
@@ -207,7 +207,7 @@ internal sealed class ExternalLoginService(
                 return null;
             }
 
-            await userService.RecordLoginAsync(activeTarget.Id, ct);
+            await userService.RecordSignInAsync(activeTarget.Id, ct);
             await TryEnsureStubProfileAsync(activeTarget.Id, actorUserId: activeTarget.Id, ct);
             await TryReconcileAsync(activeTarget.Id, attempt, ct);
 
@@ -256,7 +256,7 @@ internal sealed class ExternalLoginService(
             var linkResult = await userManager.AddLoginAsync(existingByEmail, attempt.Login);
             if (linkResult.Succeeded)
             {
-                await userService.RecordLoginAsync(existingByEmail.Id, ct);
+                await userService.RecordSignInAsync(existingByEmail.Id, ct);
                 await TryEnsureStubProfileAsync(existingByEmail.Id, actorUserId: existingByEmail.Id, ct);
                 await TryReconcileAsync(existingByEmail.Id, attempt, ct);
 
@@ -298,7 +298,7 @@ internal sealed class ExternalLoginService(
             Id = Guid.NewGuid(),
             BurnerName = attempt.DisplayName ?? attempt.Email,
             CreatedAt = now,
-            LastLoginAt = now
+            LastSignInAt = now
         };
 
         var createResult = await userManager.CreateAsync(user);

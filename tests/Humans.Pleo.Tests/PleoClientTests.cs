@@ -4,14 +4,73 @@ using AwesomeAssertions;
 using Humans.Pleo.Services;
 using Microsoft.Extensions.Options;
 using Microsoft.AspNetCore.WebUtilities;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace Humans.Pleo.Tests;
 
 public sealed class PleoClientTests
 {
-    private static PleoClient Make(Func<HttpRequestMessage, HttpResponseMessage> respond) =>
+    [HumansTheory]
+    [Xunit.InlineData("not a URI", false)]
+    [Xunit.InlineData("", false)]
+    [Xunit.InlineData("/relative", false)]
+    [Xunit.InlineData("ftp://pleo.example", false)]
+    [Xunit.InlineData("https://pleo.example", true)]
+    [Xunit.InlineData("http://pleo.example", true)]
+    public async Task Register_Endpoint_ResolvesBeforeValidation(string baseUrl, bool valid)
+    {
+        var services = new ServiceCollection();
+        new Section().Register(services, new ConfigurationBuilder().AddInMemoryCollection(
+            new Dictionary<string, string?>(StringComparer.Ordinal) { ["Pleo:BaseUrl"] = baseUrl }).Build());
+        services.Configure<PleoClientOptions>(o => { o.ApiKey = "test-key"; o.CompanyId = "company-1"; });
+        var calls = 0;
+        services.AddHttpClient<IPleoClient, PleoClient>().ConfigurePrimaryHttpMessageHandler(() => new StubHandler(request =>
+        {
+            calls++;
+            request.RequestUri!.Host.Should().Be("pleo.example");
+            return Json(Page("", false, null));
+        }));
+        using var provider = services.BuildServiceProvider();
+
+        var client = provider.GetRequiredService<IPleoClient>();
+        var read = () => client.SearchEntriesAsync(Xunit.TestContext.Current.CancellationToken);
+
+        client.IsConfigured.Should().Be(valid);
+        if (valid)
+            (await read()).Should().BeEmpty();
+        else
+            await read.Should().ThrowAsync<PleoPermanentException>().WithMessage("*absolute HTTP(S)*");
+        calls.Should().Be(valid ? 1 : 0);
+    }
+
+    private static PleoClient Make(Func<HttpRequestMessage, HttpResponseMessage> respond, string apiKey = "test-key", string companyId = "company-1") =>
         new(new HttpClient(new StubHandler(respond)) { BaseAddress = new Uri("https://external.pleo.io") },
-            Options.Create(new PleoClientOptions { ApiKey = "test-key", CompanyId = "company-1" }));
+            Options.Create(new PleoClientOptions { ApiKey = apiKey, CompanyId = companyId }));
+
+    [HumansTheory]
+    [Xunit.InlineData("", "company-1")]
+    [Xunit.InlineData(" \t", "company-1")]
+    [Xunit.InlineData("test-key", "")]
+    [Xunit.InlineData("test-key", " \t")]
+    public async Task Api_IncompleteConfiguration_RefusesBeforeHttp(string apiKey, string companyId)
+    {
+        using var assertions = new AwesomeAssertions.Execution.AssertionScope();
+        var calls = 0;
+        var client = Make(_ =>
+        {
+            calls++;
+            return Json(Page("", false, null));
+        }, apiKey, companyId);
+        client.IsConfigured.Should().BeFalse();
+        var ct = Xunit.TestContext.Current.CancellationToken;
+        Func<Task>[] operations = [() => client.SearchEntriesAsync(ct), () => client.GetBalanceAsync(ct)];
+
+        foreach (var operation in operations)
+            await operation.Should().ThrowAsync<PleoPermanentException>()
+                .WithMessage(apiKey.Trim().Length == 0 ? "PLEO_API_KEY not set." : "PLEO_COMPANY_ID not set.");
+        calls.Should().Be(0);
+    }
 
     private static HttpResponseMessage Json(string body) =>
         new(HttpStatusCode.OK) { Content = new StringContent(body, Encoding.UTF8, "application/json") };
@@ -24,7 +83,7 @@ public sealed class PleoClientTests
     }
 
     [HumansFact]
-    public async Task Entries_pager_follows_endCursor_across_pages()
+    public async Task SearchEntries_SeveralPages_FollowsEndCursor()
     {
         var urls = new List<string>();
         var client = Make(req =>
@@ -48,7 +107,7 @@ public sealed class PleoClientTests
     }
 
     [HumansFact]
-    public async Task Employee_history_includes_deleted_cardholders_across_pages()
+    public async Task ListEmployees_DeletedCardholders_AreIncluded()
     {
         const string active = """{"id":"active","firstName":"Ana","lastName":"Active","isDeleted":false}""";
         const string deleted = """{"id":"deleted","firstName":"Dee","lastName":"Departed","isDeleted":true}""";
@@ -71,7 +130,7 @@ public sealed class PleoClientTests
     }
 
     [HumansFact]
-    public async Task Pager_fails_closed_on_a_repeated_cursor()
+    public async Task Pager_RepeatedCursor_Fails()
     {
         var client = Make(_ => Json(Page("""{"id":"a"}""", true, "same")));
 
@@ -81,7 +140,7 @@ public sealed class PleoClientTests
     }
 
     [HumansFact]
-    public async Task Pager_fails_closed_on_a_body_without_data()
+    public async Task Pager_BodyWithoutData_Fails()
     {
         var client = Make(_ => Json("""{"error":"nope"}"""));
 
@@ -96,7 +155,7 @@ public sealed class PleoClientTests
     [Xunit.InlineData("employees", "null")]
     [Xunit.InlineData("receipts", """{"hasNextPage":null}""")]
     [Xunit.InlineData("entries", """{"hasNextPage":"false"}""")]
-    public async Task Pager_rejects_unknown_completion_instead_of_returning_a_partial_dataset(string consumer, string? pagination)
+    public async Task Pager_UnknownCompletion_Fails(string consumer, string? pagination)
     {
         var calls = 0;
         var client = Make(_ => ++calls == 1
@@ -122,7 +181,7 @@ public sealed class PleoClientTests
     [Xunit.InlineData("employees", "42")]
     [Xunit.InlineData("balance", "true")]
     [Xunit.InlineData("receipts", "\"unavailable\"")]
-    public async Task Non_object_responses_use_the_typed_provider_error_path(string consumer, string body)
+    public async Task Read_NonObjectResponse_ThrowsProviderError(string consumer, string body)
     {
         var client = Make(_ => Json(body));
         var ct = Xunit.TestContext.Current.CancellationToken;
@@ -147,7 +206,7 @@ public sealed class PleoClientTests
     [Xunit.InlineData(PleoTypedRead.Employees, "{\"id\":\" \"}")]
     [Xunit.InlineData(PleoTypedRead.Receipts, "{}")]
     [Xunit.InlineData(PleoTypedRead.Receipts, "{\"id\":\"\"}")]
-    public async Task Typed_reads_reject_items_without_usable_identities(PleoTypedRead consumer, string item)
+    public async Task TypedReads_ItemWithoutId_IsRejected(PleoTypedRead consumer, string item)
     {
         var client = Make(_ => Json(Page(item, false, null)));
         var ct = Xunit.TestContext.Current.CancellationToken;
@@ -166,7 +225,7 @@ public sealed class PleoClientTests
     [Xunit.InlineData(null)]
     [Xunit.InlineData("")]
     [Xunit.InlineData(" ")]
-    public async Task Balance_rejects_a_missing_currency_instead_of_replacing_the_reading(string? currency)
+    public async Task GetBalance_MissingCurrency_IsRejected(string? currency)
     {
         var body = System.Text.Json.JsonSerializer.Serialize(new
         {
@@ -192,7 +251,7 @@ public sealed class PleoClientTests
     }
 
     [HumansFact]
-    public async Task Balance_preserves_explicit_zero_and_a_foreign_currency()
+    public async Task GetBalance_ZeroForeignCurrency_IsPreserved()
     {
         var client = Make(_ => Json("""
             {"data":{"accounts":[{"isPrimary":true,"balance":{
@@ -206,7 +265,7 @@ public sealed class PleoClientTests
     }
 
     [HumansFact]
-    public async Task Sends_basic_auth_with_the_key_and_an_empty_password()
+    public async Task Request_BasicAuth_UsesKey()
     {
         HttpRequestMessage? captured = null;
         var client = Make(req =>
@@ -226,7 +285,7 @@ public sealed class PleoClientTests
     [HumansTheory]
     [Xunit.InlineData(298, "😀")]
     [Xunit.InlineData(299, "")]
-    public async Task Permanent_error_body_preview_preserves_unicode(int prefixLength, string suffix)
+    public async Task PermanentError_BodyPreview_KeepsUnicode(int prefixLength, string suffix)
     {
         var prefix = new string('e', prefixLength);
         var client = Make(_ => new HttpResponseMessage(HttpStatusCode.Forbidden)
@@ -244,7 +303,7 @@ public sealed class PleoClientTests
     }
 
     [HumansFact]
-    public async Task A_403_is_permanent_and_a_503_transient()
+    public async Task Read_403_IsPermanent()
     {
         var forbidden = Make(_ => new HttpResponseMessage(HttpStatusCode.Forbidden) { Content = new StringContent("RBAC") });
         var down = Make(_ => new HttpResponseMessage(HttpStatusCode.ServiceUnavailable));
@@ -256,7 +315,7 @@ public sealed class PleoClientTests
     }
 
     [HumansFact]
-    public async Task Receipt_file_is_downloaded_from_the_signed_url_without_the_key()
+    public async Task GetReceiptFile_SignedUrl_OmitsKey()
     {
         var requests = new List<HttpRequestMessage>();
         var client = Make(req =>
@@ -278,7 +337,7 @@ public sealed class PleoClientTests
     }
 
     [HumansFact]
-    public async Task Receipt_url_off_pleo_is_refused()
+    public async Task GetReceiptFile_UrlOffPleo_IsRefused()
     {
         var client = Make(_ =>
             Json("""{"data":[{"id":"r1","url":"https://evil.example/x"}],"pagination":{"hasNextPage":false}}"""));

@@ -8,7 +8,6 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using NodaTime;
 
-using Humans.Base.Authorization;
 using Humans.Users.Contracts;
 
 namespace Humans.Events.Controllers;
@@ -72,7 +71,6 @@ internal sealed class EventsAdminController(IEventManagement guide, ILogger<Even
                 Slug = c.Slug,
                 IsSensitive = c.IsSensitive,
                 IsActive = c.IsActive,
-                DisplayOrder = c.DisplayOrder,
                 EventCount = c.EventCount
             }).ToList();
 
@@ -225,7 +223,6 @@ internal sealed class EventsAdminController(IEventManagement guide, ILogger<Even
                 Name = v.Name,
                 LocationDescription = v.LocationDescription,
                 IsActive = v.IsActive,
-                DisplayOrder = v.DisplayOrder,
                 EventCount = v.EventCount
             }).ToList();
 

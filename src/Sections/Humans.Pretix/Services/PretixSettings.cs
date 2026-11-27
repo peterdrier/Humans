@@ -1,7 +1,9 @@
+using System.Net.Http.Headers;
+
 namespace Humans.Pretix.Services;
 
 /// <summary>
-/// One pretix organizer. The event slug comes per order from Tickets (<c>CheckoutRequest.BackendEventRef</c>), and
+/// One pretix organizer. The event slug comes per order from Tickets (<c>PlatformOrderRequest.PlatformEventRef</c>), and
 /// each event's carrier items are found by their internal names, so one set of settings serves every event.
 /// </summary>
 internal sealed class PretixSettings
@@ -20,7 +22,9 @@ internal sealed class PretixSettings
     public string WebhookSecret { get; set; } = string.Empty;
 
     public bool IsConfigured =>
-        Uri.TryCreate(BaseUrl, UriKind.Absolute, out _)
+        Uri.TryCreate(BaseUrl, UriKind.Absolute, out var root)
+        && root.Scheme is "http" or "https"
         && !string.IsNullOrWhiteSpace(Organizer)
-        && !string.IsNullOrWhiteSpace(ApiToken);
+        && !string.IsNullOrWhiteSpace(ApiToken)
+        && AuthenticationHeaderValue.TryParse($"Token {ApiToken}", out _);
 }

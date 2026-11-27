@@ -1,7 +1,5 @@
 using AwesomeAssertions;
-using Humans.Shifts.Contracts;
 using Humans.Shifts.Services;
-using Humans.Shifts.Services.Dtos;
 using NodaTime;
 using Microsoft.AspNetCore.Mvc.ModelBinding;
 using Microsoft.AspNetCore.Mvc.ViewFeatures;
@@ -56,7 +54,7 @@ public sealed class ShiftsGalleryViewComponentTests
             {
                 await aborted.CancelAsync();
                 call.Arg<CancellationToken>().ThrowIfCancellationRequested();
-                return (IReadOnlyList<ShiftAdminRota>)[];
+                return [];
             });
         var component = new ShiftsGalleryViewComponent(shifts, settings, NullLogger<ShiftsGalleryViewComponent>.Instance)
         {

@@ -1,13 +1,11 @@
 using System.Security.Claims;
 using Humans.Shifts.Contracts;
 using Humans.Shifts.Controllers;
-using Humans.Shifts.Domain;
 using Humans.Shifts.Helpers;
 using Humans.Shifts.Models;
 using Humans.Shifts.Services;
 using Humans.Shifts.Services.Dtos;
 using Humans.Users.Contracts;
-using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -81,7 +79,7 @@ public class ShiftDashboardControllerTests
         var settings = Event;
         var empty = new PeriodStaffing(0, 0, 0, 0, 0);
         SubgroupStaffingRow Subgroup(string name, bool direct, int total, int filled) =>
-            new(Guid.NewGuid(), name, null, direct, 0, 0, total, filled, total - filled,
+            new(name, null, direct, 0, 0, total, filled, total - filled,
                 empty, empty, empty);
         DepartmentStaffingRow Department(string name, int total, int filled,
             IReadOnlyList<SubgroupStaffingRow> subgroups) =>
@@ -144,7 +142,7 @@ public class ShiftDashboardControllerTests
             model.ShiftDurationBreakdown.Select(r => (r.IsAllDay, r.DurationHours)));
         var parent = model.CoordinatorActivity[2];
         Assert.Equal(new[] { "Old child", "Recent child" }, parent.Subgroups.Select(r => r.TeamName), StringComparer.Ordinal);
-        Assert.Equal(new[] { older, recent }, parent.Subgroups[0].Coordinators.Select(c => c.LastLoginAt!.Value));
+        Assert.Equal(new[] { older, recent }, parent.Subgroups[0].Coordinators.Select(c => c.LastSignInAt!.Value));
         Assert.Equal(activity[1].AggregatePendingCount, parent.AggregatePendingCount);
         Assert.Equal(new[] { "Recent", "Parent", "Z Never", "A Empty" },
             activity.Select(r => r.TeamName), StringComparer.Ordinal);
@@ -172,7 +170,7 @@ public class ShiftDashboardControllerTests
 
     private ShiftDashboardController Controller() => new(
         _settings, _management, _signups, _users,
-        new ShiftDashboardPageBuilder(_management, Substitute.For<IWebHostEnvironment>(), SystemClock.Instance),
+        new ShiftDashboardPageBuilder(_management, SystemClock.Instance),
         new ShiftVolunteerSearchBuilder(_settings, _users,
             Substitute.For<IShiftRowView>(), _signups, Substitute.For<IVolunteerTrackingManagement>()),
         NullLogger<ShiftDashboardController>.Instance)

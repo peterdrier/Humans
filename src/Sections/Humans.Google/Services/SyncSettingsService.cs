@@ -2,7 +2,6 @@ using Humans.Google.Domain;
 using Humans.Google.Contracts;
 using Humans.AuditLog.Contracts;
 using NodaTime;
-using Humans.Google.Data;
 
 namespace Humans.Google.Services;
 
@@ -13,7 +12,6 @@ internal sealed class SyncSettingsService(ISyncSettingsRepository repository, IC
         var rows = await repository.GetAllAsync(ct);
         return rows
             .Select(settings => new SyncServiceSettingsInfo(
-                settings.Id,
                 settings.ServiceType,
                 settings.SyncMode,
                 settings.UpdatedAt,

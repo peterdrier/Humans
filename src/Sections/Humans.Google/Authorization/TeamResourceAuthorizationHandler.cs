@@ -4,7 +4,6 @@ using Humans.Base.Authorization;
 using Humans.Google.Services;
 using Humans.Teams.Contracts;
 using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Http;
 
 namespace Humans.Google.Authorization;
 

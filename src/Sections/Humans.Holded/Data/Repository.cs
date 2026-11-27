@@ -46,6 +46,8 @@ internal sealed class Repository(IDbContextFactory<HoldedDbContext> factory)
             {
                 r.LastSyncedAt = now;
                 ctx.HoldedLedgerLines.Add(r);
+                // Paged fetches can repeat a line across a page boundary; the repeat must update, not re-insert.
+                existing[(r.EntryNumber, r.Line)] = r;
             }
         }
 
@@ -147,6 +149,17 @@ internal sealed class Repository(IDbContextFactory<HoldedDbContext> factory)
     {
         await using var ctx = await factory.CreateDbContextAsync(ct);
         return await ctx.HoldedApiCalls.AsNoTracking().ToListAsync(ct);
+    }
+
+    public async Task<int> DeleteApiCallsBeforeAsync(Instant cutoff, CancellationToken ct = default)
+    {
+        await using var ctx = await factory.CreateDbContextAsync(ct);
+        var rows = await ctx.HoldedApiCalls.Where(c => c.CalledAt < cutoff).ToListAsync(ct);
+        if (rows.Count == 0) return 0;
+
+        ctx.HoldedApiCalls.RemoveRange(rows);
+        await ctx.SaveChangesAsync(ct);
+        return rows.Count;
     }
 
     public async Task SetPurchaseDocNotesAsync(

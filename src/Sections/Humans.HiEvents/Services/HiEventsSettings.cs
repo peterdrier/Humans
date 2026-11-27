@@ -1,3 +1,5 @@
+using System.Net.Http.Headers;
+
 namespace Humans.HiEvents.Services;
 
 /// <summary>
@@ -19,8 +21,10 @@ internal sealed class HiEventsSettings
     /// <summary>From <c>HIEVENTS_WEBHOOK_SECRET</c>, never appsettings.</summary>
     public string WebhookSecret { get; set; } = string.Empty;
 
-    /// <summary>Both URLs must be absolute http(s), so a typo stops checkout before any order is made in Hi.Events.</summary>
-    public bool IsConfigured => ApiBaseUri is not null && AppBaseUri is not null && !string.IsNullOrEmpty(ApiKey);
+    /// <summary>Both URLs must be absolute http(s) and the key usable as a header, before any order is made.</summary>
+    public bool IsConfigured => ApiBaseUri is not null && AppBaseUri is not null
+        && !string.IsNullOrWhiteSpace(ApiKey)
+        && AuthenticationHeaderValue.TryParse($"Bearer {ApiKey}", out _);
 
     /// <summary>Null when <c>ApiUrl</c> is unset or not an absolute http(s) address.</summary>
     public Uri? ApiBaseUri => HttpUri(ApiUrl.TrimEnd('/') + "/");

@@ -51,7 +51,6 @@ internal sealed record OrderYearRepairRow(
     int? ResolvedYear);
 
 internal sealed record PaymentMethodRepairRow(
-    Guid PaymentId,
     Guid OrderId,
     PaymentMethod Method,
     decimal AmountEur,

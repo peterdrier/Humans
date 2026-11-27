@@ -15,9 +15,6 @@ internal interface IGateService : IApplicationService
     /// </summary>
     Task<GateDecisionResult> RecordDecisionAsync(GateDecisionInput input, Guid scannedByUserId, CancellationToken ct = default);
 
-    /// <summary>Unordered; the controller sorts for display.</summary>
-    Task<GateLeaderboard> GetLeaderboardAsync(Instant since, CancellationToken ct = default);
-
     /// <summary>
     /// The current event's tickets, Ticket Tailor and Humans-issued, whose ticket name contains <paramref name="query"/>
     /// or whose holder's burner or legal name matches it; never email. Void and resold tickets are left out. Empty under
@@ -38,63 +35,12 @@ internal interface IGateService : IApplicationService
 
     /// <summary>Authorized at the controller.</summary>
     Task SaveSettingsAsync(GateSettingsDto settings, CancellationToken ct = default);
-
-    Task<int> PurgeScansBeforeAsync(Instant cutoff, CancellationToken ct = default);
-
-    /// <summary>Local admits against the vendor's check-in status as of the last ticket sync.</summary>
-    Task<GateVendorBackfillSnapshot> GetVendorCheckInBackfillAsync(CancellationToken ct = default);
-
-    /// <summary>Rechecks pending admits and claims each ticket before enqueueing. Null selects all pending tickets;
-    /// an empty or unknown id selects none. Disabled mirroring enqueues nothing.</summary>
-    Task<GateVendorBackfillResult> EnqueueVendorCheckInBackfillAsync(string? vendorTicketId, CancellationToken ct = default);
-
-    /// <summary>
-    /// De-duplicated signups whose gate shift starts within ±2 hours of now, event-local. Empty with no active event.
-    /// </summary>
-    Task<IReadOnlyList<Guid>> GetShiftRosterAsync(Guid rosterTeamId, CancellationToken ct = default);
-
-    // Personal device PINs: the claim flow has no reachable page since peterdrier/Humans#1075; deletion is tracked in
-    // nobodies-collective/Humans#933. Kiosk overrides verify the shared Gate:SupervisorPin inside RecordDecisionAsync.
-
-    Task<GatePinStatus> GetPinStatusAsync(Guid userId, CancellationToken ct = default);
-
-    /// <summary>
-    /// Stores <c>AdminEnrolled = false</c>, which <c>AuthorizeOverrideAsync</c> never accepts. Rejects trivial PINs.
-    /// </summary>
-    Task<GatePinSetResult> SetOwnPinAsync(Guid userId, string pin, CancellationToken ct = default);
-
-    /// <summary>Returns false when the PIN is invalid.</summary>
-    Task<bool> AdminSetPinAsync(Guid userId, string pin, Guid actorUserId, CancellationToken ct = default);
-
-    /// <summary>Timing-safe. False when no PIN is set or it doesn't match.</summary>
-    Task<bool> VerifyPinAsync(Guid userId, string pin, CancellationToken ct = default);
-
-    /// <summary>
-    /// True only for an admin-enrolled PIN that matches, held by a current gate-supervisor role holder. Verify only:
-    /// never enrols. No production caller (dormant with the claim flow, nobodies-collective/Humans#933).
-    /// </summary>
-    Task<bool> AuthorizeOverrideAsync(Guid supervisorUserId, string pin, CancellationToken ct = default);
-
-    /// <summary>They re-enrol on the next claim.</summary>
-    Task ClearPinAsync(Guid userId, Guid actorUserId, CancellationToken ct = default);
-}
-
-
-internal sealed record GatePinStatus(bool HasPin, bool IsSupervisor);
-
-internal enum GatePinSetResult
-{
-    Ok,
-
-    /// <summary>Not exactly four digits, or too easily guessed (0000, 1234, repeats).</summary>
-    InvalidPin,
 }
 
 /// <summary>Write-free result of evaluating a scan, before the agent's ID decision.</summary>
 /// <remarks>
-/// <paramref name="EarlyEntrySource"/> stays server-side for privacy; the card shows only
-/// <paramref name="EarliestEntryDate"/>, a date. <paramref name="Today"/> is null when not computed (e.g. an invalid
-/// barcode); <paramref name="GeneralEntryDate"/> is null while the cutoff is unconfigured.
+/// The card shows only <paramref name="EarliestEntryDate"/>, a date. <paramref name="Today"/> is null when not
+/// computed (e.g. an invalid barcode); <paramref name="GeneralEntryDate"/> is null while the cutoff is unconfigured.
 /// </remarks>
 internal sealed record GateScanResult(
     GatePreCheckOutcome Outcome,
@@ -102,12 +48,9 @@ internal sealed record GateScanResult(
     string? GuestName,
     string? TicketTypeName,
     bool IsEarly,
-    string? EarlyEntrySource,
     Guid? TicketAttendeeId,
     Guid? GuestUserId,
-    Instant? PreviousAdmitAt,
     Guid? PreviousAdmitByUserId,
-    string? VendorTicketId = null,
     LocalDate? EarliestEntryDate = null,
     LocalDate? Today = null,
     LocalDate? GeneralEntryDate = null)
@@ -135,11 +78,8 @@ internal sealed record GateDecisionInput(
 internal sealed record GateDecisionResult(
     GateVerdict Verdict,
     string? GuestName,
-    string? TicketTypeName,
     bool IsEarly,
-    Instant? PreviousAdmitAt,
     Guid? PreviousAdmitByUserId,
-    string? VendorTicketId = null,
     GateOverrideFailure? OverrideFailure = null,
     int? RetryAfterSeconds = null,
     bool InputTooLong = false);
@@ -165,7 +105,7 @@ internal enum GateUndoOutcome
 
     ReasonRequired,
 
-    /// <summary>A Ticket Tailor check-in already went (or may still go) to the vendor, which has no undo; the ticket sync would bring it back.</summary>
+    /// <summary>Ticket Tailor's own scanner checked the ticket in; it has no undo, and the ticket sync would bring it back.</summary>
     VendorCheckedIn,
 }
 
@@ -200,31 +140,8 @@ internal sealed record GateArrival(
     Guid? UndoneByUserId,
     string? UndoReason);
 
-internal sealed record GateLeaderboardRow(Guid ScannedByUserId, int Admitted, int Rejected, int Total);
-
-internal sealed record GateLeaderboard(int TotalAdmitted, int TotalScanned, IReadOnlyList<GateLeaderboardRow> Rows);
-
 /// <summary>
 /// <paramref name="CutoffConfigured"/> is a read-only projection, ignored on save.
 /// </summary>
 internal sealed record GateSettingsDto(
-    Instant GeneralEntryOpensAt, int MinorAgeThresholdYears, bool CutoffConfigured = false);
-
-/// <summary>
-/// <paramref name="VendorTicketId"/> is null for unmirrorable rows (no matched attendee or no vendor ticket id).
-/// </summary>
-internal sealed record GateVendorBackfillRow(
-    string Barcode, string? AttendeeName, Instant AdmittedAt, string? VendorTicketId);
-
-/// <summary>
-/// <paramref name="Pending"/> can be mirrored; <paramref name="Unmirrorable"/> can only be fixed on the vendor dashboard.
-/// </summary>
-internal sealed record GateVendorBackfillSnapshot(
-    int AdmitCount,
-    int AlreadyCheckedInCount,
-    IReadOnlyList<GateVendorBackfillRow> Pending,
-    IReadOnlyList<GateVendorBackfillRow> Unmirrorable,
-    IReadOnlyList<GateVendorBackfillRow> SentAwaitingSync,
-    bool MirrorEnabled);
-
-internal sealed record GateVendorBackfillResult(bool MirrorEnabled, IReadOnlyList<GateVendorBackfillRow> Enqueued);
+    Instant GeneralEntryOpensAt, bool CutoffConfigured = false);

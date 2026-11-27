@@ -30,7 +30,7 @@ public class GuideControllerTests
     };
 
     [HumansFact]
-    public async Task Document_LocalizesNavigationWhilePreservingContentAndRoutes()
+    public async Task Document_OtherCulture_LocalizesNavigation()
     {
         const string html = "<p>Original authored content</p>";
         _content.GetPageAsync(Arg.Any<string>(), Arg.Any<GuideRoleContext>(), Arg.Any<CancellationToken>()).Returns(html);
@@ -39,7 +39,7 @@ public class GuideControllerTests
         var controller = CreateController();
 
         using var scope = new CultureScope("en");
-        var result = await controller.Document("teAMs", Xunit.TestContext.Current.CancellationToken);
+        var result = await controller.Document("teAMs", TestContext.Current.CancellationToken);
 
         var model = result.Should().BeOfType<ViewResult>().Which.Model.Should().BeOfType<GuideViewModel>().Subject;
         model.Title.Should().Be("Teams");
@@ -60,18 +60,18 @@ public class GuideControllerTests
         controller.TempData = new Microsoft.AspNetCore.Mvc.ViewFeatures.TempDataDictionary(
             controller.HttpContext, Substitute.For<Microsoft.AspNetCore.Mvc.ViewFeatures.ITempDataProvider>());
 
-        await controller.Refresh(Xunit.TestContext.Current.CancellationToken);
+        await controller.Refresh(TestContext.Current.CancellationToken);
 
         controller.TempData["GuideRefreshStatus"].Should().BeOfType<string>().Which.Should().Contain("Teams")
             .And.NotContain("refreshed from GitHub");
     }
 
     [HumansFact]
-    public async Task Document_UnknownStem_Returns404AndTheNotFoundView()
+    public async Task Document_UnknownStem_Returns404()
     {
         var controller = CreateController();
 
-        var result = await controller.Document("NoSuchPage", Xunit.TestContext.Current.CancellationToken);
+        var result = await controller.Document("NoSuchPage", TestContext.Current.CancellationToken);
 
         controller.Response.StatusCode.Should().Be(StatusCodes.Status404NotFound);
         result.Should().BeOfType<ViewResult>().Which.ViewName.Should().Be("NotFound");
@@ -79,7 +79,7 @@ public class GuideControllerTests
     }
 
     [HumansFact]
-    public async Task Document_ContentUnavailable_Returns503AndTheUnavailableView()
+    public async Task Document_ContentUnavailable_Returns503()
     {
         _roles.ResolveAsync(Arg.Any<System.Security.Claims.ClaimsPrincipal>(), Arg.Any<CancellationToken>())
             .Returns(GuideRoleContext.Anonymous);
@@ -87,7 +87,7 @@ public class GuideControllerTests
             .Throws(new GuideContentUnavailableException("cache is cold and GitHub is unreachable"));
         var controller = CreateController();
 
-        var result = await controller.Document("Teams", Xunit.TestContext.Current.CancellationToken);
+        var result = await controller.Document("Teams", TestContext.Current.CancellationToken);
 
         controller.Response.StatusCode.Should().Be(StatusCodes.Status503ServiceUnavailable);
         result.Should().BeOfType<ViewResult>().Which.ViewName.Should().Be("Unavailable");
@@ -101,7 +101,7 @@ public class GuideControllerTests
             .Returns(GuideRoleContext.Anonymous);
         var controller = CreateController();
 
-        await controller.Document("teAMs", Xunit.TestContext.Current.CancellationToken);
+        await controller.Document("teAMs", TestContext.Current.CancellationToken);
 
         // The canonical spelling is what reaches the cache key and the GitHub path.
         await _content.Received().GetPageAsync("Teams", Arg.Any<GuideRoleContext>(), Arg.Any<CancellationToken>());

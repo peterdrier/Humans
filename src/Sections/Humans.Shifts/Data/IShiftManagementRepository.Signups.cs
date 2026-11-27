@@ -1,6 +1,5 @@
 using Humans.Shifts.Services.Dtos;
 using Humans.Shifts.Domain;
-using Humans.Shifts.Services;
 using Humans.Shifts.Contracts;
 using Humans.Settings.Contracts;
 using NodaTime;
@@ -57,10 +56,6 @@ internal partial interface IShiftManagementRepository
     /// <summary>Returns each cancelled signup so the caller can audit them one by one.</summary>
     Task<IReadOnlyList<(Guid SignupId, Guid ShiftId)>> CancelActiveSignupsForUserAsync(
         Guid userId, string reason, CancellationToken ct = default);
-
-    Task<int> DeleteAllForUsersAsync(
-        IReadOnlyCollection<Guid> userIds,
-        CancellationToken ct = default);
 
     /// <summary>
     /// Account-merge fold of volunteer, enrolled-by and reviewed-by references in one save. A source-owned row for a

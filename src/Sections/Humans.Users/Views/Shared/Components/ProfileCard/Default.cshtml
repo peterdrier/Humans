@@ -3,14 +3,23 @@
 @inject IAuthorizationService AuthService
 @inject Microsoft.AspNetCore.Mvc.Localization.IHtmlLocalizer<UsersResource> HtmlLocalizer
 @{
-    var human = await Component.InvokeAsync(typeof(Humans.Base.ViewComponents.HumanViewComponent), new
+    var human = await Component.InvokeAsync(typeof(HumanViewComponent), new
     {
         userId = Model.UserId,
     });
-    using var humanWriter = new System.IO.StringWriter();
+    using var humanWriter = new StringWriter();
     human.WriteTo(humanWriter, System.Text.Encodings.Web.HtmlEncoder.Default);
     // The same encoded name fits the heading and localized sentence without template indentation.
-    var humanHtml = new Microsoft.AspNetCore.Html.HtmlString(humanWriter.ToString().Trim());
+    var humanHtml = new HtmlString(humanWriter.ToString().Trim());
+    // The button is a link, so its name renders without one.
+    var plainHuman = await Component.InvokeAsync(typeof(HumanViewComponent), new
+    {
+        userId = Model.UserId,
+        link = HumanLink.InsideControl,
+    });
+    using var plainWriter = new StringWriter();
+    plainHuman.WriteTo(plainWriter, System.Text.Encodings.Web.HtmlEncoder.Default);
+    var plainHumanHtml = new HtmlString(plainWriter.ToString().Trim());
 }
 
 <div class="card mb-4">
@@ -157,7 +166,7 @@
             <a asp-controller="FacilitatedMessage" asp-action="SendMessage" asp-route-id="@Model.UserId"
                class="btn btn-outline-primary">
                 <i class="fa-solid fa-envelope me-1"></i>
-                @HtmlLocalizer["Users_SendMessage_Button", humanHtml]
+                @HtmlLocalizer["Users_SendMessage_Button", plainHumanHtml]
             </a>
         }
 

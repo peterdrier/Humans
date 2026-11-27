@@ -1,6 +1,5 @@
 using Humans.Base.Authorization;
 using Humans.Base.Configuration;
-using Humans.Base.Constants;
 using Humans.Base.Hosting;
 using Humans.Base.Interfaces;
 using Humans.Base.Models;
@@ -53,6 +52,7 @@ public sealed class Section :
         services.AddScoped<CityPlanningService>();
         services.AddScoped<ICampDeletionListener>(sp => sp.GetRequiredService<CityPlanningService>());
         services.AddScoped<ICityPlanningService>(sp => sp.GetRequiredService<CityPlanningService>());
+        services.AddScoped<IRetentionPeriodContributor>(sp => sp.GetRequiredService<CityPlanningService>());
 
         services.AddScoped<IAuthorizationHandler, CityPlanningMapAdminHandler>();
     }

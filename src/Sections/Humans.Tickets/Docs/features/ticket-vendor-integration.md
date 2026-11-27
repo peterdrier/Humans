@@ -16,7 +16,7 @@
 
 ## Business Context
 
-Nobodies Collective sells event tickets through external vendors (currently TicketTailor). Discount codes are distributed to humans via the campaign system. This feature creates a dedicated Tickets section giving the ticketing team (TicketsAdmin role) a dashboard with sales data, revenue metrics, attendee tracking, and operational tools.
+Nobodies Collective sold event tickets through an external vendor, TicketTailor, up to 2026. From 2027 Humans sells them itself through a ticketing platform ([checkout.md](checkout.md)); this feature covers the TicketTailor mirror. Discount codes are distributed to humans via the campaign system. This feature creates a dedicated Tickets section giving the ticketing team (TicketsAdmin role) a dashboard with sales data, revenue metrics, attendee tracking, and operational tools.
 
 ## Data Model
 
@@ -33,7 +33,7 @@ Nobodies Collective sells event tickets through external vendors (currently Tick
 ## Architecture
 
 - **ITicketVendorService** — vendor-agnostic interface, owned by `Humans.Tickets` (`Contracts/` folder)
-- **TicketTailorService** — TicketTailor API client, the vendor adapter implementation of `ITicketVendorService` (`src/Sections/Humans.TicketTailor`, its own project — the only vendor adapter behind the port, beside its non-Production stub and Tickets' caching decorator; a future vendor swap adds `Humans.<NewVendor>` and deletes this one, per `TicketVendorPortArchitectureTests`). Basic Auth, cursor-based pagination. Captures `txn_id` (Stripe PaymentIntent ID), discount amounts from line items, and the per-ticket `barcode` from issued tickets. Also implements the check-in and write surface: `GET /check_ins` (gate check-in sync — checkout/undo records with quantity −1 are netted out), `POST /check_ins` (best-effort mirror of Humans gate admits), `POST /issued_tickets/{id}/void` (void-to-hold for transfers), and `POST /issued_tickets` (reissue from a hold).
+- **TicketTailorService** — TicketTailor API client, the vendor adapter implementation of `ITicketVendorService` (`src/Sections/Humans.TicketTailor`, its own project — the only vendor adapter behind the port, beside its non-Production stub and Tickets' caching decorator; retiring TicketTailor deletes this project without touching Tickets, per `TicketVendorPortArchitectureTests`; 2027 sales use the separate `ITicketingPlatform` port, not this one). Basic Auth, cursor-based pagination. Captures `txn_id` (Stripe PaymentIntent ID), discount amounts from line items, and the per-ticket `barcode` from issued tickets. Also implements the check-in and write surface: `GET /check_ins` (gate check-in sync — checkout/undo records with quantity −1 are netted out), `POST /check_ins` (best-effort mirror of Humans gate admits), `POST /issued_tickets/{id}/void` (void-to-hold for transfers), and `POST /issued_tickets` (reissue from a hold).
 - **IStripeService / StripeService** — Stripe connector (`Humans.Stripe`); Tickets uses only its read side. Looks up PaymentIntent → Charge → BalanceTransaction to get payment method type and fee breakdown (Stripe processing fee, TT application fee, Stripe's VAT on its fees, withheld tax).
 - **ITicketSyncService / TicketSyncService** — sync orchestration: fetch orders/attendees/check-ins, upsert, apply gate check-ins onto attendee rows (write-once `CheckedInAt`), email-match to users, match discount codes to campaign grants, enrich orders with Stripe fee data, compute VAT using VIP split logic
 - Local order and holdings snapshots are cleared when a configured sync attempt exits, including failures after partial writes, so readers see the committed rows.
@@ -105,7 +105,7 @@ The TicketTailor "after checkout" redirect URL points at this route.
 
 - **Your Ticket** card in sidebar — shows ticket status for the current user:
   - **Has ticket(s)**: confirmation message with count when multiple
-  - **No ticket**: CTA button linking to `tickets.nobodies.team`
+  - **No ticket**: CTA button linking to `tickets.nobodies.team`, or to the Humans buy page (`/Tickets/Buy`) while any event's sales mode is not Closed
   - **Not configured**: warning message
 - Matching checks attendee records via `MatchedUserId`, then falls back to all verified user emails against `TicketAttendee.AttendeeEmail` (case-insensitive). A buyer who purchased tickets for others does NOT count as having a ticket.
 

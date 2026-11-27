@@ -29,7 +29,7 @@
     </div>
     <div class="stat">
         <div class="label">Overall Hit Rate</div>
-        <div class="value">@Model.OverallHitRatePercent.ToString("F1")<em>%</em></div>
+        <div class="value">@Model.OverallHitRatePercent.ToString("F1", System.Globalization.CultureInfo.CurrentCulture)<em>%</em></div>
     </div>
     <div class="stat">
         <div class="label">Active Entries</div>

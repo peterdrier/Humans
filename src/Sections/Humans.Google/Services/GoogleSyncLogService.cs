@@ -1,8 +1,7 @@
+using Humans.Base.Interfaces;
 using Humans.Base.Enums;
 using Humans.Base.Extensions;
 using Humans.Gdpr.Contracts;
-using Humans.Google.Contracts;
-using Humans.Google.Data;
 using Humans.Google.Domain;
 using Humans.Users.Contracts;
 using Microsoft.Extensions.DependencyInjection;
@@ -10,7 +9,7 @@ using NodaTime;
 
 namespace Humans.Google.Services;
 
-/// <summary>Write and read sides of <c>google_sync_log_entries</c>; one class, three interfaces.</summary>
+/// <summary>Write and read sides of <c>google_sync_log_entries</c>, its GDPR paths and its retention cleanup.</summary>
 internal sealed class GoogleSyncLogService(
     IGoogleSyncLogRepository repo,
     ITeamResourceManagement teamResourceService,
@@ -18,7 +17,7 @@ internal sealed class GoogleSyncLogService(
     IServiceProvider serviceProvider,
     IClock clock,
     ILogger<GoogleSyncLogService> logger)
-    : IGoogleSyncLogService, IGoogleSyncLogViewer, IUserDataContributor
+    : IGoogleSyncLogService, IGoogleSyncLogViewer, IUserDataContributor, IRetentionPeriodContributor
 {
     internal const string GoogleSyncLog = "GoogleSyncLog";
     private const int MaxRecentRows = 500;
@@ -171,6 +170,11 @@ internal sealed class GoogleSyncLogService(
         // fanning out would resolve a tombstone forward and purge the living survivor's trail.
         await repo.DeleteByUserIdsAsync([userId], ct);
     }
+
+    public string Label => "Google sync log entries";
+
+    public Task<int> DeleteOlderThanAsync(Instant cutoff, CancellationToken ct = default) =>
+        repo.DeleteBeforeAsync(cutoff, ct);
 
     /// <summary>
     /// Every id the human behind <paramref name="userId"/> has held, from the resolved

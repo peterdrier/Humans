@@ -4,12 +4,13 @@ using Microsoft.CodeAnalysis;
 namespace Humans.Analyzers.Internal;
 
 /// <summary>
-/// What a symbol belongs to. Which assemblies get analyzed at all is decided by <c>src/Directory.Build.props</c>,
-/// which attaches the analyzers to every <c>src/</c> project and nothing else; no rule re-derives that.
+/// What a symbol belongs to. Which assemblies a rule runs on is decided by the build: the architecture rules reach
+/// <c>src/</c> projects only (the root <c>.editorconfig</c> switches their category off under <c>tests/</c>); no rule
+/// re-derives that.
 /// </summary>
 internal static class AssemblyScope
 {
-    private const string ISectionFullName = "Humans.Base.Interfaces.ISection";
+    private const string SectionInterfaceFullName = "Humans.Base.Interfaces.ISection";
     private const string SectionEntryPointTypeName = "Section";
 
     /// <summary>
@@ -27,7 +28,7 @@ internal static class AssemblyScope
             return false;
 
         return entryPoint.AllInterfaces.Any(i =>
-            string.Equals(i.ToDisplayString(), ISectionFullName, StringComparison.Ordinal));
+            string.Equals(i.ToDisplayString(), SectionInterfaceFullName, StringComparison.Ordinal));
     }
 
     /// <summary>

@@ -16,7 +16,7 @@ public class NotificationMeterProviderTests
 
     public NotificationMeterProviderTests()
     {
-        _meterContributor.GetMetersAsync(default!, default, default).ReturnsForAnyArgs([]);
+        _meterContributor.GetMetersAsync(default!, default).ReturnsForAnyArgs([]);
         _contributors = [_meterContributor];
         _provider = new NotificationMeterProvider(_contributors, NullLogger<NotificationMeterProvider>.Instance);
     }
@@ -38,7 +38,7 @@ public class NotificationMeterProviderTests
     }
 
     [HumansFact]
-    public async Task GetMetersForUserAsync_AsksContributorsForTheResolvedAccountOverTheClaim()
+    public async Task GetMetersForUserAsync_MergedAccount_UsesResolvedId()
     {
         var survivorId = Guid.NewGuid();
         var principal = CreatePrincipalWithId(Guid.NewGuid());
@@ -50,19 +50,19 @@ public class NotificationMeterProviderTests
     }
 
     [HumansFact]
-    public async Task GetMetersForUserAsync_WithoutAViewerId_AsksNoContributor()
+    public async Task GetMetersForUserAsync_NoViewerId_AsksNoContributor()
     {
         var meters = await _provider.GetMetersForUserAsync(
             new ClaimsPrincipal(new ClaimsIdentity()), TestContext.Current.CancellationToken);
 
         meters.Should().BeEmpty();
-        await _meterContributor.DidNotReceiveWithAnyArgs().GetMetersAsync(default!, default, default);
+        await _meterContributor.DidNotReceiveWithAnyArgs().GetMetersAsync(default!, default);
     }
 
     [HumansTheory]
     [InlineData(false)]
     [InlineData(true)]
-    public async Task GetMetersForUserAsync_IsolatesContributorFailureButPropagatesCallerCancellation(bool callerCancelled)
+    public async Task GetMetersForUserAsync_ContributorFails_OthersStillReport(bool callerCancelled)
     {
         var viewerId = Guid.NewGuid();
         var principal = CreatePrincipalWithId(viewerId);
@@ -85,7 +85,7 @@ public class NotificationMeterProviderTests
         if (callerCancelled)
         {
             await read.Should().ThrowAsync<OperationCanceledException>();
-            await healthy.DidNotReceiveWithAnyArgs().GetMetersAsync(default!, default, default);
+            await healthy.DidNotReceiveWithAnyArgs().GetMetersAsync(default!, default);
         }
         else
         {

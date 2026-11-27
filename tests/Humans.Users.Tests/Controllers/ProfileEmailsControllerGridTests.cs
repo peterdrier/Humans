@@ -1,4 +1,4 @@
-using Humans.Base.Extensions;
+using Humans.Testing;
 using System.ComponentModel.DataAnnotations;
 using Microsoft.Extensions.Logging;
 using Xunit;
@@ -7,11 +7,8 @@ using Humans.Users.Models;
 using Humans.Users.Controllers;
 using System.Security.Claims;
 using AwesomeAssertions;
-using Humans.AuditLog.Contracts;
-using Humans.Email.Contracts;
 using Humans.Users.Contracts;
 
-using Humans.Users.Tests.Infrastructure;
 using Humans.Base;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authorization;
@@ -39,7 +36,7 @@ public class ProfileEmailsControllerGridTests
     private readonly UserManager<User> _userManager;
     private readonly SignInManager<User> _signInManager;
     private readonly ProfileEmailsController _controller;
-    private readonly IStringLocalizer<SharedResource> _sharedLocalizer = Substitute.For<IStringLocalizer<SharedResource>>();
+    private readonly IStringLocalizer<SharedResource> _sharedLocalizer = Substitute.For<IStringLocalizer<SharedResource>>().AddFormatting();
     private readonly Guid _userId = Guid.NewGuid();
 
     public ProfileEmailsControllerGridTests()
@@ -61,8 +58,10 @@ public class ProfileEmailsControllerGridTests
         _signInManager = Substitute.For<SignInManager<User>>(
             _userManager, contextAccessor, claimsFactory, identityOptions,
             NullLogger<SignInManager<User>>.Instance, schemeProvider, userConfirmation);
+        _signInManager.GetExternalAuthenticationSchemesAsync()
+            .Returns([new AuthenticationScheme("Google", "Google", typeof(IAuthenticationHandler))]);
 
-        var localizer = Substitute.For<IStringLocalizer<UsersResource>>();
+        var localizer = Substitute.For<IStringLocalizer<UsersResource>>().AddFormatting();
         localizer[Arg.Any<string>()].Returns(ci => new LocalizedString(ci.Arg<string>(), ci.Arg<string>()));
 
         localizer["Validation_EmailAddress"].Returns(new LocalizedString("Validation_EmailAddress", "Validation_EmailAddress", resourceNotFound: true));
@@ -126,9 +125,9 @@ public class ProfileEmailsControllerGridTests
     }
 
     [HumansTheory]
-    [Xunit.InlineData(EmailMutation.SetEmailVisibility)]
-    [Xunit.InlineData(EmailMutation.DeleteEmail)]
-    [Xunit.InlineData(EmailMutation.LinkGoogle)]
+    [InlineData(EmailMutation.SetEmailVisibility)]
+    [InlineData(EmailMutation.DeleteEmail)]
+    [InlineData(EmailMutation.LinkGoogle)]
     public async Task Email_mutation_account_preflight_observes_cancellation(EmailMutation action)
     {
         using var request = new CancellationTokenSource();
@@ -178,7 +177,7 @@ public class ProfileEmailsControllerGridTests
         if (serviceRefused)
             await _userEmailService.Received(1).AddEmailAsync(_userId, address, CancellationToken.None, _userId);
         else
-            await _userEmailService.DidNotReceiveWithAnyArgs().AddEmailAsync(default, default!, default, default);
+            await _userEmailService.DidNotReceiveWithAnyArgs().AddEmailAsync(default, default!);
     }
 
     public enum AdminVerificationOutcome { NoPending, Refused, Verified }
@@ -279,7 +278,7 @@ public class ProfileEmailsControllerGridTests
         _userEmailService.DeleteEmailAsync(Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<CancellationToken>(), _userId)
             .Returns(new DeleteEmailResult(false, reason));
         _userEmailService.ClearPrimaryAsync(Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<CancellationToken>())
-            .Returns(false);
+            .Returns(new UpdateEmailResult(false, reason));
         _userEmailService.UnlinkAsync(Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<CancellationToken>())
             .Returns(new UnlinkEmailResult(false, reason));
         var emailId = Guid.NewGuid();
@@ -302,15 +301,12 @@ public class ProfileEmailsControllerGridTests
         };
 
         result.Should().BeOfType<RedirectToActionResult>();
-        var expectedError = action is "ClearPrimary" or "AdminClearPrimary"
-            ? "Users_EmailGrid_ClearPrimaryRejected"
-            : reason;
-        _controller.TempData["ErrorMessage"].Should().Be(expectedError);
+        _controller.TempData["ErrorMessage"].Should().Be(reason);
         var arguments = _logger.ReceivedCalls().Should().ContainSingle(call =>
             string.Equals(call.GetMethodInfo().Name, "Log", StringComparison.Ordinal)).Subject.GetArguments();
         arguments[0].Should().Be(LogLevel.Warning);
         arguments[3].Should().BeNull();
-        arguments[2]!.ToString().Should().Contain(expectedError).And.Contain(emailId.ToString());
+        arguments[2]!.ToString().Should().Contain(reason).And.Contain(emailId.ToString());
     }
 
     [HumansTheory]
@@ -381,6 +377,16 @@ public class ProfileEmailsControllerGridTests
         // Going straight to /Profile/Me/Emails would skip that branch.
         capturedProps.Should().NotBeNull();
         capturedProps!.RedirectUri.Should().Contain("ExternalLoginCallback");
+    }
+
+    [HumansFact]
+    public async Task Link_ProviderNotConfigured_ReturnsNotFound()
+    {
+        _signInManager.GetExternalAuthenticationSchemesAsync().Returns([]);
+
+        var result = await _controller.Link("Google", returnUrl: null);
+
+        result.Should().BeOfType<NotFoundResult>();
     }
 
     [HumansFact]
@@ -677,7 +683,7 @@ public class ProfileEmailsControllerGridTests
         _userEmailService.SetVisibilityAsync(_userId, row, Arg.Any<ContactFieldVisibility?>(), Arg.Any<CancellationToken>(), _userId)
             .Returns(Task.FromException<UpdateEmailResult>(failure));
         _userEmailService.ClearPrimaryAsync(_userId, row, _userId, Arg.Any<CancellationToken>())
-            .Returns(Task.FromException<bool>(failure));
+            .Returns(Task.FromException<UpdateEmailResult>(failure));
         _userEmailService.DeleteEmailAsync(_userId, row, Arg.Any<CancellationToken>(), _userId)
             .Returns(Task.FromException<DeleteEmailResult>(failure));
         _userEmailService.UnlinkAsync(_userId, row, _userId, Arg.Any<CancellationToken>())
@@ -775,22 +781,6 @@ public class ProfileEmailsControllerGridTests
 
     // Linked OAuth accounts: unlink is keyed by (Provider, ProviderKey), and is refused when no
     // verified UserEmail row would remain (that row is what keeps magic-link sign-in working).
-
-    private static UserEmailRowSnapshot Snapshot(
-        Guid userId, Guid id, string email, bool isVerified,
-        string? provider, string? providerKey)
-        => new(
-            Id: id,
-            UserId: userId,
-            Email: email,
-            IsVerified: isVerified,
-            Provider: provider,
-            ProviderKey: providerKey,
-            IsPrimary: false,
-            Visibility: null,
-            VerificationSentAt: null,
-            CreatedAt: Instant.FromUtc(2026, 1, 1, 0, 0),
-            UpdatedAt: Instant.FromUtc(2026, 1, 1, 0, 0));
 
     [HumansTheory]
     [InlineData(true)]

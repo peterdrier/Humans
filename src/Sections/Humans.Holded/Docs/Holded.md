@@ -6,6 +6,10 @@
 
 # Holded (section) — Section Invariants
 
+Malformed or non-HTTP(S) API base URLs and missing or malformed API keys do not prevent client construction.
+`IsConfigured` requires a usable effective HTTP(S) base address and authorization header, so financial consumers retain their existing defer behavior for invalid configuration. Direct reads and writes fail as `HoldedPermanentException` before HTTP, retry delays or call logging when either is unusable; key refusals include no key value. The transport owns validation, including a supplied HttpClient base-address override.
+Invalid configuration never returns empty data, reports a successful write, or selects a fallback endpoint. Valid endpoints and keys retain their behavior.
+
 ## Purpose
 
 Holded (the company) is a SaaS vendor that holds the association's accounting books and records.
@@ -62,7 +66,7 @@ to this section too and has its own doc ([`Holded-connector.md`](Holded-connecto
 |---|---|
 | `holded_ledger_lines` | full daybook mirror, all accounts, unique `(EntryNumber, Line)` |
 | `holded_accounts` | chart-of-accounts cache with Holded's debit/credit/balance totals |
-| `holded_api_calls` | per-call metering (endpoint, status, rate-limit headers) |
+| `holded_api_calls` | per-call metering (endpoint, status, rate-limit headers); rows older than the app-wide retention period are deleted by Settings' daily retention job (`Service` is an `IRetentionPeriodContributor`) |
 | `holded_purchase_docs` | purchase-document mirror keyed on Holded's doc id: number, contact, description, Madrid date, amounts, approved (`draft == false`; absent reads as not approved), payments pending (null until re-synced, or when a draft omits it), notes, doc + line tags, first line's booked account |
 | `holded_bank_movements` | bank-feed mirror keyed on `(TreasuryAccountId, Id)`: date, `BookedAt` (`booking_date` to the second: a Stripe gateway line's only match key, with the amount), signed amount, description, status. Window replace: a sync is the truth for its date window plus any id it returned |
 | `holded_contacts` | contact mirror keyed on Holded's contact id: name, supplier account number, trade name, email, phone, mobile, IBAN, tax code, address. Full pull with replace semantics |
@@ -129,14 +133,18 @@ group (the number's leading digit): groups 1–5 (equity, assets, banks, debtors
 different section and stays in the *user's* POV (+ means the user is owed money); it is
 untouched by this convention.
 
+Account statements render in date, entry-number and line-number order; entry details render in line-number order. The service returns both line lists unordered and carries their line numbers. Entry links use the first nonempty Holded ID by line number.
+
 ### Counterparty
 
-Each ledger row's counterparty is resolved from the entry's *other* legs posted to the opposite
-raw side (a debit line's counterparties are the entry's credit lines) — Holded's API does not
+Each ledger row's counterparty is resolved from the entry's *other* legs on the opposite side by
+the sign of `Debit − Credit` (a debit line's counterparties are the entry's credit lines). Holded
+posts a negative amount on its normal side (a negative purchase is Dr 629 −x / Cr 400 −x), so the
+raw column alone would pair nothing. Holded's API does not
 return a contra account, so this is derived by grouping the mirror's lines on `EntryNumber`.
 Exactly one opposing line shows that account, linked; more than one (e.g. a purchase invoice:
 expense + VAT + creditor) shows the largest by absolute amount plus "+N more", linked to the
-entry page instead.
+entry page instead. The maximum is selected directly, retaining the first source leg on equal amounts.
 
 **Not this section:** budget attribution. Finance's account map (`/Finance/HoldedAccounts`) and
 unmatched queue (`/Finance/HoldedUnmatched`) read the purchase mirror through `IHoldedService` and

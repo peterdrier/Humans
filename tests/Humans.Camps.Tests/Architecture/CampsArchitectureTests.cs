@@ -95,11 +95,11 @@ public class CampsArchitectureTests
     public void CampInfo_Active_ReturnsLatestSeasonByYear()
     {
         // Smoke test: CampInfo.Active picks the highest-year season.
-        var season2024 = new CampSeasonInfo(Guid.NewGuid(), Guid.NewGuid(), "slug", 2024, null,
+        var season2024 = new CampSeasonInfo(Guid.NewGuid(), Guid.NewGuid(), 2024, null,
             "Camp 2024", string.Empty, string.Empty, [], CampSeasonStatus.Pending,
             YesNoMaybe.No, YesNoMaybe.No, AdultPlayspacePolicy.No,
             0, null, null, null, 0, null, null);
-        var season2026 = new CampSeasonInfo(Guid.NewGuid(), Guid.NewGuid(), "slug", 2026, null,
+        var season2026 = new CampSeasonInfo(Guid.NewGuid(), Guid.NewGuid(), 2026, null,
             "Camp 2026", string.Empty, string.Empty, [], CampSeasonStatus.Pending,
             YesNoMaybe.No, YesNoMaybe.No, AdultPlayspacePolicy.No,
             0, null, null, null, 0, null, null);

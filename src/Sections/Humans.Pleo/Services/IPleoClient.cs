@@ -6,8 +6,11 @@ namespace Humans.Pleo.Services;
 /// <summary>Read-only: GETs and the <c>:search</c> POSTs. The key carries write scopes; nothing here uses them.</summary>
 internal interface IPleoClient
 {
-    /// <summary>False without <c>PLEO_API_KEY</c> or <c>PLEO_COMPANY_ID</c>.</summary>
+    /// <summary>Requires a usable HTTP(S) base address, <c>PLEO_API_KEY</c> and <c>PLEO_COMPANY_ID</c>.</summary>
     bool IsConfigured { get; }
+
+    /// <summary>Which of <c>PLEO_API_KEY</c> and <c>PLEO_COMPANY_ID</c> are unset, or null when both are set.</summary>
+    string? MissingSettings { get; }
 
     /// <summary>Every accounting entry, raw, across all pages.</summary>
     Task<IReadOnlyList<JsonElement>> SearchEntriesAsync(CancellationToken ct = default);

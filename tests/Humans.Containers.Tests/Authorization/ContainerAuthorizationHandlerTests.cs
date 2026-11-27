@@ -4,7 +4,6 @@ using Humans.Camps.Contracts;
 using Humans.CityPlanning.Contracts;
 using Humans.Containers.Authorization;
 using Humans.Containers.Contracts;
-using Humans.Base.Constants;
 using Humans.Base.Enums;
 using Humans.Settings.Contracts;
 using Microsoft.AspNetCore.Authorization;
@@ -198,7 +197,7 @@ public sealed class ContainerAuthorizationHandlerTests
     [InlineData(true, true, true)]
     [InlineData(false, true, false)]
     [InlineData(true, false, false)]
-    public async Task Place_ExplicitYear_UsesThatYearsPhaseAndLead(bool open, bool lead, bool allowed)
+    public async Task Place_ExplicitYear_UsesThatYearsPhase(bool open, bool lead, bool allowed)
     {
         _cityPlanningService.IsContainerPlacementOpenAsync(2027, Arg.Any<CancellationToken>()).Returns(true);
         _cityPlanningService.IsContainerPlacementOpenAsync(2026, Arg.Any<CancellationToken>()).Returns(open);
@@ -276,7 +275,6 @@ public sealed class ContainerAuthorizationHandlerTests
                 new CampSeasonInfo(
                     Guid.NewGuid(),
                     CampId,
-                    "lead-camp",
                     year,
                     null,
                     "Lead Camp",

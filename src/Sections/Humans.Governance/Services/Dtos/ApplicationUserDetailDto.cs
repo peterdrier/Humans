@@ -15,7 +15,7 @@ internal sealed record ApplicationUserDetailDto(
     Instant SubmittedAt,
     Instant? ResolvedAt,
     Guid? ReviewedByUserId,
-    string? ReviewNotes,
+    string? DecisionNote,
     IReadOnlyList<ApplicationStateHistoryDto> History)
 {
     /// <summary>Only a Submitted application can be withdrawn — the rule <c>WithdrawAsync</c> enforces.</summary>

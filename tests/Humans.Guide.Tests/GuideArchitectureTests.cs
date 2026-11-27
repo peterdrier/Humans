@@ -12,7 +12,7 @@ namespace Humans.Guide.Tests;
 public class GuideArchitectureTests
 {
     [HumansFact]
-    public void RoleResolverReadsTeamsViaTheReadInterface()
+    public void RoleResolver_ReadsTeamsViaReadInterface()
     {
         var paramTypes = typeof(GuideRoleResolver).GetConstructors().Single()
             .GetParameters().Select(p => p.ParameterType).ToList();
@@ -21,7 +21,7 @@ public class GuideArchitectureTests
     }
 
     [HumansFact]
-    public void ContentSourceStaysABaseAbstraction()
+    public void ContentSource_StaysBaseAbstraction()
     {
         // IGuideContentSource carries the section's name but is not the section's: its consumers
         // are elsewhere (Agent, Base). Pinning the namespace stops a later pass "tidying" it into
@@ -31,7 +31,7 @@ public class GuideArchitectureTests
     }
 
     [HumansFact]
-    public void RefreshIsAdminOnly_AndReadingIsAnonymous()
+    public void Refresh_IsAdminOnly()
     {
         // The section doc's routing table and its "non-Admin users cannot trigger
         // POST /Guide/Refresh" negative access rule, pinned. Nothing else exercises the
@@ -53,7 +53,7 @@ public class GuideArchitectureTests
         ?? throw new InvalidOperationException($"GuideController.{name} not found.");
 
     [HumansFact]
-    public void EveryGuideMarkdownFileIsRegistered_AndEveryRegisteredStemExists()
+    public void GuideFiles_MatchRegisteredStems()
     {
         // GuideFiles is the whole routing and fetch surface: a page added to docs/guide
         // without an entry 404s in-app, and an entry with no file fails its GitHub fetch on
@@ -67,7 +67,7 @@ public class GuideArchitectureTests
     }
 
     [HumansFact]
-    public void EveryRoleHeadingParentheticalResolvesToAPrivilege()
+    public void RoleHeadings_ResolveToPrivilege()
     {
         // An unmapped parenthetical is silent: the segment carries no privilege and reaches
         // nobody it was written for.

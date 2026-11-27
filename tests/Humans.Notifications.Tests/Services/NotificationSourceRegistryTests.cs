@@ -2,7 +2,6 @@ using AwesomeAssertions;
 using Humans.Email.Contracts;
 using Humans.Notifications.Contracts;
 using Humans.Notifications.Services;
-using Xunit;
 
 namespace Humans.Notifications.Tests.Services;
 
@@ -19,7 +18,7 @@ public class NotificationSourceRegistryTests
     }
 
     [HumansFact]
-    public void GroupsAndRetiredComeFromTheDefinitions()
+    public void Registry_Groups_ComeFromDefinitions()
     {
         var registry = TestSources.Registry;
 
@@ -30,13 +29,13 @@ public class NotificationSourceRegistryTests
     }
 
     [HumansFact]
-    public void TheContributedListIsTheStaticFields()
+    public void Registry_ContributedList_IsStaticFields()
     {
         new TestSources().Sources.Should().HaveCount(6).And.Contain(TestSources.RetiredToo);
     }
 
     [HumansFact]
-    public void ANameDeclaredTwiceFailsStartup()
+    public void Registry_NameDeclaredTwice_FailsStartup()
     {
         var act = () => new NotificationSourceRegistry([new TestSources(), new Stray()]);
 
@@ -44,7 +43,7 @@ public class NotificationSourceRegistryTests
     }
 
     [HumansFact]
-    public void ANameLongerThanTheColumnFailsStartup()
+    public void Registry_NameTooLong_FailsStartup()
     {
         var act = () => new NotificationSourceRegistry([new TooLong()]);
 

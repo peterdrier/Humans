@@ -157,7 +157,7 @@ public sealed class ServiceImageTests
     [HumansFact]
     public async Task CreateAsync_ImageRuleMessage_CarriesTheImageLimit()
     {
-        using var culture = new Humans.Base.Extensions.CultureScope("en");
+        using var culture = new Base.Extensions.CultureScope("en");
         var refusal = await _sut.CreateAsync(actorUserId: Guid.NewGuid(), data: new ContainerData(
             CampId: CampId,
             Name: "Test",
@@ -262,7 +262,7 @@ public sealed class ServiceImageTests
     [InlineData(true, 1)]
     [InlineData(false, 2)]
     [InlineData(true, 2)]
-    public async Task UpdateAsync_FailedUploadPreservesGalleryAndMetadata(bool legacy, int failedUpload)
+    public async Task UpdateAsync_UploadFails_KeepsGallery(bool legacy, int failedUpload)
     {
         var container = await SeedContainerAsync(legacy ? "uploads/containers/legacy.jpg" : null, galleryImages: 2);
         var before = await _sut.GetByIdAsync(container.Id, TestContext.Current.CancellationToken);
@@ -370,7 +370,7 @@ public sealed class ServiceImageTests
     [HumansTheory]
     [InlineData(false)]
     [InlineData(true)]
-    public async Task UnverifiableMetadataFailure_RetainsNewFilesAndOriginalFailure(bool placement)
+    public async Task ImageWrite_MetadataUnverifiable_KeepsNewFiles(bool placement)
     {
         var id = Guid.NewGuid();
         var failure = new IOException("Metadata write failed");
@@ -400,10 +400,7 @@ public sealed class ServiceImageTests
     {
         public override ValueTask<InterceptionResult<int>> SavingChangesAsync(
             DbContextEventData eventData, InterceptionResult<int> result, CancellationToken cancellationToken = default)
-        {
-            if (!afterCommit) throw failure;
-            return base.SavingChangesAsync(eventData, result, cancellationToken);
-        }
+            => afterCommit ? base.SavingChangesAsync(eventData, result, cancellationToken) : throw failure;
 
         public override ValueTask<int> SavedChangesAsync(
             SaveChangesCompletedEventData eventData, int result, CancellationToken cancellationToken = default)
@@ -411,7 +408,7 @@ public sealed class ServiceImageTests
     }
 
     [HumansFact]
-    public async Task UpdateAsync_CleanupFailurePreservesCommittedGalleryAndAttemptsEveryFile()
+    public async Task UpdateAsync_CleanupFails_KeepsCommittedGallery()
     {
         var container = await SeedContainerAsync("uploads/containers/legacy.jpg", galleryImages: 2);
         var before = await _sut.GetByIdAsync(container.Id, TestContext.Current.CancellationToken);
@@ -433,7 +430,7 @@ public sealed class ServiceImageTests
     }
 
     [HumansFact]
-    public async Task UpdateAsync_RemovesOneImageAndItsFile()
+    public async Task UpdateAsync_RemoveOneImage_DeletesItsFile()
     {
         var container = await SeedContainerAsync(galleryImages: 3);
         var existing = await _sut.GetByIdAsync(container.Id, TestContext.Current.CancellationToken);
@@ -453,7 +450,7 @@ public sealed class ServiceImageTests
     }
 
     [HumansFact]
-    public async Task GetByIdAsync_SurfacesLegacyIdentityAndGalleryPositions()
+    public async Task GetByIdAsync_LegacyImage_KeepsGalleryPositions()
     {
         var container = await SeedContainerAsync(
             legacyImagePath: "uploads/containers/id/main.jpg", galleryImages: 2);
@@ -500,7 +497,7 @@ public sealed class ServiceImageTests
     [InlineData("replace-placement", "after")]
     [InlineData("replace-placement", "audit")]
     [InlineData("replace-placement", "verification")]
-    public async Task Image_mutation_failures_clean_only_confirmed_unreferenced_files(string operation, string failureStage)
+    public async Task ImageWrite_Fails_CleansOnlyUnreferencedFiles(string operation, string failureStage)
     {
         var ct = TestContext.Current.CancellationToken;
         var container = await SeedContainerAsync("uploads/containers/legacy.jpg", galleryImages: 2);
@@ -596,7 +593,7 @@ public sealed class ServiceImageTests
     }
 
     [HumansFact]
-    public async Task DeleteAsync_preserves_image_files_when_the_database_delete_fails()
+    public async Task DeleteAsync_DatabaseDeleteFails_KeepsImageFiles()
     {
         var ct = TestContext.Current.CancellationToken;
         var container = await SeedContainerAsync(legacyImagePath: "uploads/containers/legacy.jpg");
@@ -616,7 +613,7 @@ public sealed class ServiceImageTests
     }
 
     [HumansFact]
-    public async Task DeleteAsync_commits_and_audits_before_attempting_every_image_cleanup()
+    public async Task DeleteAsync_CleanupFails_StillCommitsWithAudit()
     {
         var ct = TestContext.Current.CancellationToken;
         var container = await SeedContainerAsync(legacyImagePath: "uploads/containers/legacy.jpg", galleryImages: 2);
@@ -740,7 +737,7 @@ public sealed class ServiceImageTests
     }
 
     [HumansFact]
-    public async Task CreateAsync_RejectsNonImageContentTypeEvenWithAnImageExtension()
+    public async Task CreateAsync_NonImageContentType_IsRejected()
     {
         var act = async () => await _sut.CreateAsync(actorUserId: Guid.NewGuid(), data: new ContainerData(
             CampId: CampId,

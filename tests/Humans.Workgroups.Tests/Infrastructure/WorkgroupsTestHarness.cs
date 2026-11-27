@@ -18,6 +18,7 @@ using Microsoft.EntityFrameworkCore.Diagnostics;
 using NodaTime;
 using NodaTime.Testing;
 using NSubstitute;
+using NSubstitute.Core;
 
 namespace Humans.Workgroups.Tests.Infrastructure;
 
@@ -68,7 +69,7 @@ public abstract class WorkgroupsTestHarness : IDisposable
         Surveys.GetSummariesAsync(Arg.Any<CancellationToken>())
             .Returns(_ => Task.FromResult<IReadOnlyList<SurveySummary>>(_surveys.Values.ToList()));
 
-        Roles = Substitute.For<IRoleAssignmentService>();
+        Roles = Substitute.For<ISystemRoleService>();
         Roles.GetActiveUserIdsInRoleAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
             .Returns([]);
 
@@ -98,8 +99,8 @@ public abstract class WorkgroupsTestHarness : IDisposable
                 call.Arg<int?>() ?? 62900150, $"acc-{call.Arg<int?>() ?? 62900150}", call.Arg<string>(),
                 Created: call.Arg<int?>() is null));
 
-        Notifications = Substitute.For<INotificationEmitter, INotificationService>();
-        RoleNotifications = (INotificationService)Notifications;
+        Notifications = Substitute.For<INotificationEmitter>();
+        RoleNotifications = Substitute.For<INotificationService>();
         Email = Substitute.For<IEmailService>();
         EmailFactory = TestWorkgroupsEmails.Create();
 
@@ -119,7 +120,7 @@ public abstract class WorkgroupsTestHarness : IDisposable
     private protected FakeClock Clock { get; }
     private protected IUserService Users { get; }
     private protected ISurveyAnalysisRead Surveys { get; }
-    private protected IRoleAssignmentService Roles { get; }
+    private protected ISystemRoleService Roles { get; }
     private protected ITeamService Teams { get; }
     private protected IGovernanceService Governance { get; }
     private protected ISettingsService Settings { get; }
@@ -130,6 +131,10 @@ public abstract class WorkgroupsTestHarness : IDisposable
     private protected IHoldedService Holded { get; }
     private protected INotificationEmitter Notifications { get; }
     private protected INotificationService RoleNotifications { get; }
+
+    /// <summary>Every notification the service sent, personal and role-addressed.</summary>
+    private protected IEnumerable<ICall> NotificationCalls() =>
+        Notifications.ReceivedCalls().Concat(RoleNotifications.ReceivedCalls());
     private protected IEmailService Email { get; }
     private protected WorkgroupsEmails EmailFactory { get; }
     private protected IAuditLogService AuditLog { get; }
@@ -181,7 +186,7 @@ public abstract class WorkgroupsTestHarness : IDisposable
         {
             Id = Guid.NewGuid(),
             Name = name,
-            Slug = Humans.Base.Helpers.SlugHelper.GenerateSlug(name),
+            Slug = Base.Helpers.SlugHelper.GenerateSlug(name),
             Purpose = "Purpose",
             Deliverable = "A report",
             DeliverableKind = WorkgroupDeliverableKind.Report,

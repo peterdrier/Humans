@@ -1,4 +1,4 @@
-using Humans.Consent.Contracts;
+using Humans.Testing;
 using Humans.Users.Tests.Infrastructure;
 using Humans.Users.Controllers;
 using Humans.Users.Services;
@@ -31,36 +31,20 @@ namespace Humans.Users.Tests.Controllers;
 
 public class ProfileViewControllerPopoverTests
 {
-    private readonly Dictionary<Guid, ConsentReviewInfo> _reviews = [];
-    private readonly IConsentService _consentService;
     private readonly IUserManagement _userService = Substitute.For<IUserManagement>();
-    private readonly IUserEmailService _userEmailService = Substitute.For<IUserEmailService>();
     private readonly IProfilePictureService _profilePictureService = Substitute.For<IProfilePictureService>();
     private readonly ITeamService _teamService = Substitute.For<ITeamService>();
     private readonly IShiftService _shiftManagement = Substitute.For<IShiftService>();
     private readonly IAuthorizationService _authorizationService = Substitute.For<IAuthorizationService>();
     private readonly ICampService _campService = Substitute.For<ICampService>();
-    private readonly IStringLocalizer<SharedResource> _sharedLocalizer = Substitute.For<IStringLocalizer<SharedResource>>();
+    private readonly IStringLocalizer<SharedResource> _sharedLocalizer = Substitute.For<IStringLocalizer<SharedResource>>().AddFormatting();
+    private readonly Humans.Users.Data.Repositories.IUserRepository _userRepo = Substitute.For<Humans.Users.Data.Repositories.IUserRepository>();
+    private readonly Humans.AuditLog.Contracts.IAuditLogService _audit = Substitute.For<Humans.AuditLog.Contracts.IAuditLogService>();
     private readonly ProfileViewController _controller;
     private readonly Guid _viewerId = Guid.NewGuid();
 
     public ProfileViewControllerPopoverTests()
     {
-        _consentService = ConsentReviewStubs.Create(_reviews);
-        var userStore = Substitute.For<IUserStore<User>>();
-        var userManager = Substitute.For<UserManager<User>>(
-            userStore, null, null, null, null, null, null, null, null);
-
-        var contextAccessor = Substitute.For<IHttpContextAccessor>();
-        var claimsFactory = Substitute.For<IUserClaimsPrincipalFactory<User>>();
-        var identityOptions = Substitute.For<IOptions<IdentityOptions>>();
-        identityOptions.Value.Returns(new IdentityOptions());
-        var schemeProvider = Substitute.For<IAuthenticationSchemeProvider>();
-        var userConfirmation = Substitute.For<IUserConfirmation<User>>();
-        var signInManager = Substitute.For<SignInManager<User>>(
-            userManager, contextAccessor, claimsFactory, identityOptions,
-            NullLogger<SignInManager<User>>.Instance, schemeProvider, userConfirmation);
-
         _sharedLocalizer[Arg.Any<string>()].Returns(ci => new LocalizedString(ci.Arg<string>(), ci.Arg<string>()));
 
         _controller = new ProfileViewController(
@@ -71,11 +55,9 @@ public class ProfileViewControllerPopoverTests
             _teamService,
             _campService,
             Substitute.For<IGovernanceService>(),
-            Substitute.For<Humans.Auth.Contracts.IRoleAssignmentService>(),
+            Substitute.For<Humans.Auth.Contracts.ISystemRoleService>(),
             _authorizationService,
-            new MedicalConditionsService(
-                Substitute.For<Humans.Users.Data.Repositories.IUserRepository>(), _userService,
-                Substitute.For<Humans.AuditLog.Contracts.IAuditLogService>()));
+            new MedicalConditionsService(_userRepo, _userService, _audit));
 
         var identity = new ClaimsIdentity([
             new Claim(ClaimTypes.NameIdentifier, _viewerId.ToString()),
@@ -99,7 +81,7 @@ public class ProfileViewControllerPopoverTests
     {
         var userId = Guid.NewGuid();
         _profilePictureService.GetProfilePictureAsync(userId, Arg.Any<CancellationToken>())
-            .Returns(((byte[] Data, string ContentType)?)(new byte[] { 1, 2, 3 }, "image/jpeg"));
+            .Returns((new byte[] { 1, 2, 3 }, "image/jpeg"));
 
         await _controller.Picture(userId, version, TestContext.Current.CancellationToken);
 
@@ -118,10 +100,10 @@ public class ProfileViewControllerPopoverTests
             .Returns(BuildActiveUserInfo(_viewerId, "Viewer", "viewer@example.com"));
         _userService.GetUserInfoAsync(targetId, Arg.Any<CancellationToken>())
             .Returns(BuildActiveUserInfo(targetId, "Target", "target@example.com"));
-        _shiftManagement.GetCoordinatorTeamIdsAsync(_viewerId, Arg.Any<CancellationToken>()).Returns([]);
+        _shiftManagement.CanManageOrApproveAnyShiftsAsync(_viewerId, Arg.Any<CancellationToken>()).Returns(false);
         if (privileged)
         {
-            ((ClaimsIdentity)_controller.User.Identity!).AddClaim(new Claim(ClaimTypes.Role, ShiftsRoles.ShiftsNoInfo));
+            ((ClaimsIdentity)_controller.User.Identity!).AddClaim(new Claim(ClaimTypes.Role, ShiftsRoles.ShiftsAdmin));
             _authorizationService.AuthorizeAsync(Arg.Any<ClaimsPrincipal>(), Arg.Any<object?>(),
                 ShiftsPolicies.PrivilegedSignupApprover).Returns(AuthorizationResult.Success());
         }
@@ -130,7 +112,7 @@ public class ProfileViewControllerPopoverTests
 
         var model = result.Should().BeOfType<ViewResult>().Which.Model.Should().BeOfType<ProfileViewModel>().Which;
         model.CanViewSentMessages.Should().Be(!ownProfile && privileged);
-        await _shiftManagement.Received(ownProfile ? 0 : 1).GetCoordinatorTeamIdsAsync(_viewerId, ct);
+        await _shiftManagement.Received(ownProfile ? 0 : 1).CanManageOrApproveAnyShiftsAsync(_viewerId, ct);
     }
 
     [HumansFact]
@@ -234,19 +216,19 @@ public class ProfileViewControllerPopoverTests
             .Returns(BuildUserInfo(user, profile, userEmails: null));
 
         var season = new CampSeasonInfo(
-            Guid.NewGuid(), Guid.NewGuid(), "camp-funhouse", 2026, null,
+            Guid.NewGuid(), Guid.NewGuid(), 2026, null,
             "Camp Funhouse", "", "", [],
             CampSeasonStatus.Active, YesNoMaybe.Yes, YesNoMaybe.No,
             AdultPlayspacePolicy.No, 0, null, null, null, 0, null, null);
         _campService.GetCampUserInfoAsync(id, Arg.Any<CancellationToken>())
-            .Returns(new CampUserInfo(season, ["Camp Lead", "Greeter"]));
+            .Returns(new CampUserInfo(season, [("Zulu", 2), ("Greeter", 1), ("alpha", 2), ("Camp Lead", 0), ("Greeter", 3)]));
 
         var result = await _controller.Popover(id, TestContext.Current.CancellationToken);
 
         var vm = result.Should().BeOfType<PartialViewResult>().Subject
             .Model.Should().BeOfType<ProfileSummaryViewModel>().Subject;
         vm.CampName.Should().Be("Camp Funhouse");
-        vm.CampRoles.Should().Equal("Camp Lead", "Greeter");
+        vm.CampRoles.Should().Equal("Camp Lead", "Greeter", "alpha", "Zulu", "Greeter");
     }
 
     [HumansTheory]
@@ -272,6 +254,31 @@ public class ProfileViewControllerPopoverTests
             .Model.Should().BeOfType<ProfileSummaryViewModel>().Subject;
         vm.City.Should().Be("Madrid");
         vm.IsSuspended.Should().BeTrue();
+    }
+
+    [HumansTheory]
+    [InlineData(true, "Asthma", true)]
+    [InlineData(true, null, false)]
+    [InlineData(false, "Asthma", null)]
+    public async Task ViewProfile_MedicalViewer_SeesWhetherAnythingIsOnFile(bool viewer, string? onFile, bool? expected)
+    {
+        var targetId = Guid.NewGuid();
+        var ct = TestContext.Current.CancellationToken;
+        _userService.GetUserInfoAsync(_viewerId, Arg.Any<CancellationToken>())
+            .Returns(BuildActiveUserInfo(_viewerId, "Viewer", "viewer@example.com"));
+        _userService.GetUserInfoAsync(targetId, Arg.Any<CancellationToken>())
+            .Returns(BuildActiveUserInfo(targetId, "Target", "target@example.com"));
+        _userRepo.GetByUserIdReadOnlyAsync(targetId, Arg.Any<CancellationToken>())
+            .Returns(new Profile { UserId = targetId, MedicalConditions = onFile });
+        if (viewer)
+            _authorizationService.AuthorizeAsync(Arg.Any<ClaimsPrincipal>(), Arg.Any<object?>(),
+                UsersPolicies.MedicalDataViewer).Returns(AuthorizationResult.Success());
+
+        var result = await _controller.ViewProfile(targetId, ct);
+
+        result.Should().BeOfType<ViewResult>().Which.Model.Should().BeOfType<ProfileViewModel>()
+            .Which.HasMedicalConditions.Should().Be(expected);
+        await _audit.DidNotReceiveWithAnyArgs().LogAsync(default!, default!, default, default!, default(Guid));
     }
 
     [HumansFact]

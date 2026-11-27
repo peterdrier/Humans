@@ -1,5 +1,4 @@
 using AwesomeAssertions;
-using Humans.Base.Enums;
 using Humans.Users.Contracts;
 using Humans.AuditLog.Contracts;
 using Humans.Notifications.Contracts;
@@ -8,7 +7,6 @@ using Humans.Preapprovals.Data;
 using Humans.Preapprovals.Domain;
 using Humans.Preapprovals.Services;
 using Humans.Preapprovals.Tests.Infrastructure;
-using Humans.Testing;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Diagnostics;
 using Microsoft.EntityFrameworkCore.Infrastructure;
@@ -66,7 +64,7 @@ public sealed class ProgramTests : PreapprovalsTestHarness
     [HumansTheory]
     [Xunit.InlineData(false)]
     [Xunit.InlineData(true)]
-    public async Task ProgramSave_ResolvesAndDeduplicatesManagersBeforePersistingAndAuditing(bool update)
+    public async Task ProgramSave_DuplicateManagers_AreDeduplicated(bool update)
     {
         var actor = SeedUser();
         var archived = Guid.NewGuid();
@@ -89,7 +87,7 @@ public sealed class ProgramTests : PreapprovalsTestHarness
     }
 
     [HumansFact]
-    public async Task Create_StoresProgramManagersAndAccountId_AndAudits()
+    public async Task Create_WithManagers_StoresAccountId()
     {
         var actor = SeedUser("Board");
         var manager = SeedUser("Manager");
@@ -117,7 +115,7 @@ public sealed class ProgramTests : PreapprovalsTestHarness
     }
 
     [HumansFact]
-    public async Task Create_FixedWithoutPerPerson_AndPerGrantWithPerPerson_Refused()
+    public async Task Create_FixedWithoutPerPerson_IsRefused()
     {
         var service = NewService();
         (await service.CreateProgramAsync(Save(perPerson: null), SeedUser(), Ct)).Refusal!.Key
@@ -149,7 +147,7 @@ public sealed class ProgramTests : PreapprovalsTestHarness
     [HumansTheory]
     [Xunit.InlineData(false)]
     [Xunit.InlineData(true)]
-    public async Task Edit_KindChange_AuditsOldAndNewSizingRules(bool toFixed)
+    public async Task Edit_KindChange_AuditsSizingRules(bool toFixed)
     {
         var before = toFixed ? ProgramKind.PerGrantAmount : ProgramKind.FixedPerPerson;
         var after = toFixed ? ProgramKind.FixedPerPerson : ProgramKind.PerGrantAmount;
@@ -181,7 +179,7 @@ public sealed class ProgramTests : PreapprovalsTestHarness
     }
 
     [HumansFact]
-    public async Task Edit_ChangesManagers_AuditsEachAddAndRemove()
+    public async Task Edit_ManagersChanged_AuditsEach()
     {
         var old = SeedUser("Old"); var kept = SeedUser("Kept"); var added = SeedUser("Added");
         var program = await SeedProgramAsync(managers: [old, kept]);
@@ -198,7 +196,7 @@ public sealed class ProgramTests : PreapprovalsTestHarness
     }
 
     [HumansFact]
-    public async Task Edit_ManagerSaveFailure_PreservesFieldsAndManagersWithoutNoticesOrAudit()
+    public async Task Edit_ManagerSaveFails_CommitsNothing()
     {
         var actor = SeedUser("Board");
         var oldManager = SeedUser("Old");
@@ -241,7 +239,7 @@ public sealed class ProgramTests : PreapprovalsTestHarness
     }
 
     [HumansFact]
-    public async Task Edit_MaxAmountEditsAreAuditedWithOldAndNew()
+    public async Task Edit_MaxAmountChanged_AuditsOldNew()
     {
         var program = await SeedProgramAsync(ceiling: 1000m);
         var actor = SeedUser("Board");
@@ -253,7 +251,7 @@ public sealed class ProgramTests : PreapprovalsTestHarness
     }
 
     [HumansFact]
-    public async Task Edit_Close_AuditsAsClosed_LeavesGrantsUntouched()
+    public async Task Edit_Close_LeavesGrantsUntouched()
     {
         var program = await SeedProgramAsync();
         var grant = await SeedGrantAsync(program, amount: 300m);
@@ -270,7 +268,7 @@ public sealed class ProgramTests : PreapprovalsTestHarness
     [HumansTheory]
     [Xunit.InlineData(false)]
     [Xunit.InlineData(true)]
-    public async Task Edit_ClaimByMoved_ResolvesOldPrompt_NotifiesAndEmailsEveryOpenHolder(bool cancelAfterSave)
+    public async Task Edit_ClaimByMoved_NotifiesOpenHolders(bool cancelAfterSave)
     {
         var program = await SeedProgramAsync();
         var open = await SeedGrantAsync(program, beneficiary: SeedUser("Open", language: "es"));
@@ -300,7 +298,7 @@ public sealed class ProgramTests : PreapprovalsTestHarness
     }
 
     [HumansFact]
-    public async Task Edit_UnchangedAccountNumber_KeepsIdEvenWhenFinanceNoLongerListsIt()
+    public async Task Edit_UnchangedAccountNumber_KeepsId()
     {
         var program = await SeedProgramAsync();
         await using (var db = OpenContext())

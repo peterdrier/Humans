@@ -60,8 +60,8 @@ internal sealed class HoldedClient : IHoldedClient
             },
         };
 
-        using var req = new HttpRequestMessage(HttpMethod.Post, "/api/v2/ledger-entries")
-        { Content = JsonContent.Create(payload, options: OmitNulls) };
+        using var req = new HttpRequestMessage(HttpMethod.Post, "/api/v2/ledger-entries");
+        req.Content = JsonContent.Create(payload, options: OmitNulls);
 
         using var resp = await _transport.SendAsync(req, ct);
         string? id = null;
@@ -111,8 +111,8 @@ internal sealed class HoldedClient : IHoldedClient
         int accountNum, string name, CancellationToken ct = default)
     {
         var payload = new { name, account_num = accountNum };
-        using var req = new HttpRequestMessage(HttpMethod.Post, "/api/v2/expenses-accounts")
-        { Content = JsonContent.Create(payload, options: OmitNulls) };
+        using var req = new HttpRequestMessage(HttpMethod.Post, "/api/v2/expenses-accounts");
+        req.Content = JsonContent.Create(payload, options: OmitNulls);
         using var resp = await _transport.SendAsync(req, ct);
         try
         {
@@ -248,8 +248,8 @@ internal sealed class HoldedClient : IHoldedClient
             email = input.Email,
             bill_address = billAddress,
         };
-        using var req = new HttpRequestMessage(HttpMethod.Post, "/api/v2/contacts")
-        { Content = JsonContent.Create(payload, options: OmitNulls) };
+        using var req = new HttpRequestMessage(HttpMethod.Post, "/api/v2/contacts");
+        req.Content = JsonContent.Create(payload, options: OmitNulls);
 
         using var resp = await _transport.SendAsync(req, ct);
         try
@@ -389,8 +389,8 @@ internal sealed class HoldedClient : IHoldedClient
             })
         };
 
-        using var req = new HttpRequestMessage(HttpMethod.Post, "/api/v2/purchases")
-        { Content = JsonContent.Create(payload, options: OmitNulls) };
+        using var req = new HttpRequestMessage(HttpMethod.Post, "/api/v2/purchases");
+        req.Content = JsonContent.Create(payload, options: OmitNulls);
 
         using var resp = await _transport.SendAsync(req, ct);
         // A successful create may already be persisted remotely; an unreadable response cannot be retried safely.
@@ -422,8 +422,8 @@ internal sealed class HoldedClient : IHoldedClient
         content.Add(streamContent, "file", attachment.FileName);
 
         using var req = new HttpRequestMessage(HttpMethod.Post,
-            $"/api/v2/purchases/{documentId}/attachments")
-        { Content = content };
+            $"/api/v2/purchases/{documentId}/attachments");
+        req.Content = content;
 
         using var resp = await _transport.SendAsync(req, ct);
     }
@@ -465,8 +465,8 @@ internal sealed class HoldedClient : IHoldedClient
     {
         // A bodyless POST 411s through Holded's proxy without an explicit Content-Length; empty content sets one.
         using var req = new HttpRequestMessage(
-            HttpMethod.Post, $"/api/v2/{segment}/{documentId}/approve")
-        { Content = new ByteArrayContent([]) };
+            HttpMethod.Post, $"/api/v2/{segment}/{documentId}/approve");
+        req.Content = new ByteArrayContent([]);
         try
         {
             using var resp = await _transport.SendAsync(req, ct);
@@ -566,8 +566,8 @@ internal sealed class HoldedClient : IHoldedClient
         HoldedSalesDocumentKind kind, HoldedSalesDocumentInput input, CancellationToken ct = default)
     {
         using var req = new HttpRequestMessage(
-            HttpMethod.Post, $"/api/v2/{SalesSegment(kind)}")
-        { Content = JsonContent.Create(BuildSalesDocumentPayload(input), options: OmitNulls) };
+            HttpMethod.Post, $"/api/v2/{SalesSegment(kind)}");
+        req.Content = JsonContent.Create(BuildSalesDocumentPayload(input), options: OmitNulls);
 
         using var resp = await _transport.SendAsync(req, ct);
         try
@@ -675,8 +675,8 @@ internal sealed class HoldedClient : IHoldedClient
     public async Task SendSalesDocumentAsync(
         HoldedSalesDocumentKind kind, string documentId, IReadOnlyList<string>? emails, CancellationToken ct = default)
     {
-        using var req = new HttpRequestMessage(HttpMethod.Post, $"/api/v2/{SalesSegment(kind)}/{documentId}/send")
-        { Content = JsonContent.Create(new { emails }, options: OmitNulls) };
+        using var req = new HttpRequestMessage(HttpMethod.Post, $"/api/v2/{SalesSegment(kind)}/{documentId}/send");
+        req.Content = JsonContent.Create(new { emails }, options: OmitNulls);
         using var resp = await _transport.SendAsync(req, ct);
     }
 
@@ -698,17 +698,20 @@ internal sealed class HoldedClient : IHoldedClient
         var lines = new List<HoldedSalesDocumentLineDto>();
         foreach (var l in Arr(Prop(node, "lines")))
         {
-            if (ReadOptionalDecimal(Prop(l, "units")) is not { } units
-                || ReadOptionalDecimal(Prop(l, "price")) is not { } price
-                || ReadOptionalDecimal(Prop(l, "tax")) is not { } taxPercent)
+            var units = ReadOptionalDecimal(Prop(l, "units"));
+            var price = ReadOptionalDecimal(Prop(l, "price"));
+            var taxPercent = ReadOptionalDecimal(Prop(l, "tax"));
+            if (units is null || price is null || taxPercent is null)
             {
+                var unreadable = string.Join(", ", new[] { ("units", units), ("price", price), ("tax", taxPercent) }
+                    .Where(f => f.Item2 is null).Select(f => f.Item1));
                 _logger.LogWarning(
-                    "Holded {Kind} document {DocumentId} has a line without a readable units, price or tax; " +
-                    "its lines read as none", kind, documentId);
+                    "Holded {Kind} document {DocumentId} has a line whose {Unreadable} could not be read; " +
+                    "its lines read as none", kind, documentId, unreadable);
                 return [];
             }
             var name = Prop(l, "name") is JsonValue v && v.TryGetValue<string>(out var n) ? n : "";
-            lines.Add(new HoldedSalesDocumentLineDto(name, units, price, taxPercent));
+            lines.Add(new HoldedSalesDocumentLineDto(units.Value, price.Value, taxPercent.Value));
         }
         return lines;
     }
@@ -839,8 +842,8 @@ internal sealed class HoldedClient : IHoldedClient
         using var req = new HttpRequestMessage(
             HttpMethod.Post,
             $"/api/v2/treasury/accounts/{Uri.EscapeDataString(treasuryAccountId)}" +
-            $"/bank-movements/{Uri.EscapeDataString(movementId)}/reconcile")
-        { Content = JsonContent.Create(payload, options: OmitNulls) };
+            $"/bank-movements/{Uri.EscapeDataString(movementId)}/reconcile");
+        req.Content = JsonContent.Create(payload, options: OmitNulls);
 
         using var resp = await _transport.SendAsync(req, ct);
     }
@@ -858,13 +861,13 @@ internal sealed class HoldedClient : IHoldedClient
             contact_id = contactId,
             bank_account_id = treasuryId,
             // v2 takes amounts as decimal strings, as on document payments.
-            amount = amount.ToString("F2", System.Globalization.CultureInfo.InvariantCulture),
+            amount = amount.ToString("F2", CultureInfo.InvariantCulture),
             date = LocalDatePattern.Iso.Format(date),
             description,
         };
 
-        using var req = new HttpRequestMessage(HttpMethod.Post, "/api/v2/payments")
-        { Content = JsonContent.Create(payload, options: OmitNulls) };
+        using var req = new HttpRequestMessage(HttpMethod.Post, "/api/v2/payments");
+        req.Content = JsonContent.Create(payload, options: OmitNulls);
         using var resp = await _transport.SendAsync(req, ct);
         try
         {

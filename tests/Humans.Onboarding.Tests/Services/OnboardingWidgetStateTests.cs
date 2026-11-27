@@ -1,6 +1,5 @@
 using Humans.Consent.Contracts;
 using Humans.Base.Constants;
-using Humans.Governance.Contracts;
 using Humans.Onboarding.Services;
 using Humans.Settings.Contracts;
 using Humans.Shifts.Contracts;
@@ -60,7 +59,7 @@ public class OnboardingWidgetStateTests
     [InlineData(true, false)]
     [InlineData(false, true)]
     [InlineData(true, true)]
-    public async Task Completion_RequiresNamesAndChecksTheSurvivingUser(bool mergedAlias, bool missingNames)
+    public async Task Completion_MergedUser_ChecksSurvivingUser(bool mergedAlias, bool missingNames)
     {
         var userId = Guid.NewGuid();
         var inputId = mergedAlias ? Guid.NewGuid() : userId;
@@ -173,7 +172,7 @@ public class OnboardingWidgetStateTests
     [HumansTheory]
     [InlineData(false)]
     [InlineData(true)]
-    public async Task PriorSignatureOnReplacedVersion_ReturnsConsents_ForTheSurvivingUser(bool mergedAlias)
+    public async Task Resolve_SignedReplacedVersion_ReturnsConsents(bool mergedAlias)
     {
         var userId = Guid.NewGuid();
         var inputId = mergedAlias ? Guid.NewGuid() : userId;

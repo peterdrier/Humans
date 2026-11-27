@@ -1,9 +1,7 @@
 using Humans.Base.Extensions;
 using System.Security.Claims;
-using Humans.Base.Authorization;
 using Humans.Issues.Contracts;
 using Microsoft.AspNetCore.Authentication;
-using Microsoft.AspNetCore.Authorization;
 
 namespace Humans.Web.Middleware;
 

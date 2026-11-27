@@ -1,4 +1,3 @@
-using Humans.Base.Extensions;
 using Humans.Google.Contracts;
 using Humans.Teams.Contracts;
 using Humans.Teams.Services;
@@ -39,8 +38,6 @@ internal sealed class TeamMembersPageBuilder(
                 return new TeamMemberViewModel
                 {
                     UserId = m.UserId,
-                    Email = m.Email ?? "",
-                    Role = m.Role,
                     JoinedAt = m.JoinedAt.ToDateTimeUtc(),
                     IsCoordinator = m.Role == TeamMemberRole.Coordinator,
                     NobodiesTeamEmail = nobodiesEmail,

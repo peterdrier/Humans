@@ -58,7 +58,7 @@ Six months after an issue is finally closed, it and its attachment are deleted f
 
 Other people's issues. You see exactly the ones you reported — no more, in any area — unless you hold a role that owns a queue.
 
-## As a Coordinator (Tickets Admin, Camps Admin, Teams Admin, Shifts NoInfo, Consent Coordinator, Shifts Admin, Users Admin, Finance Admin, Board)
+## As a Coordinator (Tickets Admin, Camps Admin, Teams Admin, Consent Admin, Shifts Admin, Users Admin, Finance Admin, Board)
 
 If you hold a role that owns an area, that area's queue is yours. You see it at `/Issues` alongside your own reports, and the badge in your user menu counts everything in it still needing attention — issues in **Triage** or **Open**.
 
@@ -67,12 +67,12 @@ If you hold a role that owns an area, that area's queue is yours. You see it at 
 | Tickets | Tickets Admin |
 | Camps | Camps Admin |
 | Teams | Teams Admin |
-| Shifts | Shifts NoInfo |
-| Onboarding | Consent Coordinator, Shifts Admin, Users Admin |
+| Shifts | Shifts Admin |
+| Onboarding | Consent Admin, Shifts Admin, Users Admin |
 | Profiles | Users Admin |
 | Budget | Finance Admin |
 | Governance | Board |
-| Legal | Consent Coordinator |
+| Legal | Consent Admin |
 | City Planning | Camps Admin |
 | Scanner | Tickets Admin, Board |
 | *(no area set)* | Admin only |

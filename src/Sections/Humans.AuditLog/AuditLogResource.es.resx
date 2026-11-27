@@ -38,7 +38,8 @@
   <data name="Enum_AuditAction_MemberUnsuspended" xml:space="preserve"><value>Miembro reactivado</value></data>
   <data name="Enum_AuditAction_AccountAnonymized" xml:space="preserve"><value>Cuenta anonimizada</value></data>
   <data name="Enum_AuditAction_RoleAssigned" xml:space="preserve"><value>Rol asignado</value></data>
-  <data name="Enum_AuditAction_RoleEnded" xml:space="preserve"><value>Rol finalizado</value></data>
+  <data name="Enum_AuditAction_RoleEnded" xml:space="preserve"><value>Rol revocado</value></data>
+  <data name="Enum_AuditAction_RoleRevoked" xml:space="preserve"><value>Rol revocado</value></data>
   <data name="Enum_AuditAction_VolunteerApproved" xml:space="preserve"><value>Voluntario aprobado</value></data>
   <data name="Enum_AuditAction_GoogleResourceAccessGranted" xml:space="preserve"><value>Acceso a recursos de Google concedido</value></data>
   <data name="Enum_AuditAction_GoogleResourceAccessRevoked" xml:space="preserve"><value>Acceso a recursos de Google revocado</value></data>
@@ -239,6 +240,7 @@
   <data name="Enum_AuditAction_HoldedExpenseAccountCreated" xml:space="preserve"><value>Cuenta de gastos de Holded creada</value></data>
   <data name="Enum_AuditAction_HoldedExpenseAccountLinked" xml:space="preserve"><value>Cuenta de gastos de Holded vinculada</value></data>
   <data name="Enum_AuditAction_HoldedExpenseAccountActiveChanged" xml:space="preserve"><value>Estado activo de la cuenta de gastos de Holded cambiado</value></data>
+  <data name="Enum_AuditAction_BackdoorApiKeyCreated" xml:space="preserve"><value>Clave de API interna creada</value></data>
   <data name="Enum_AuditAction_BackdoorApiKeyIssued" xml:space="preserve"><value>Clave de API interna emitida</value></data>
   <data name="Enum_AuditAction_BackdoorApiKeyRevoked" xml:space="preserve"><value>Clave de API interna revocada</value></data>
   <data name="Enum_AuditAction_FeedbackGitHubLinked" xml:space="preserve"><value>Comentarios vinculados a GitHub</value></data>
@@ -337,8 +339,10 @@
   <data name="AuditLog_NoSubjectVerb_VolunteerApproved" xml:space="preserve"><value>aprobó</value></data>
   <data name="AuditLog_Verb_RoleAssigned" xml:space="preserve"><value>asignó un rol a</value></data>
   <data name="AuditLog_NoSubjectVerb_RoleAssigned" xml:space="preserve"><value>asignó un rol</value></data>
-  <data name="AuditLog_Verb_RoleEnded" xml:space="preserve"><value>finalizó el rol de</value></data>
-  <data name="AuditLog_NoSubjectVerb_RoleEnded" xml:space="preserve"><value>finalizó un rol</value></data>
+  <data name="AuditLog_Verb_RoleEnded" xml:space="preserve"><value>revocó el rol de</value></data>
+  <data name="AuditLog_Verb_RoleRevoked" xml:space="preserve"><value>revocó el rol de</value></data>
+  <data name="AuditLog_NoSubjectVerb_RoleEnded" xml:space="preserve"><value>revocó un rol</value></data>
+  <data name="AuditLog_NoSubjectVerb_RoleRevoked" xml:space="preserve"><value>revocó un rol</value></data>
   <data name="AuditLog_Verb_WorkspaceAccountPasswordReset" xml:space="preserve"><value>restableció la contraseña de Workspace de</value></data>
   <data name="AuditLog_NoSubjectVerb_WorkspaceAccountPasswordReset" xml:space="preserve"><value>restableció la contraseña de Workspace</value></data>
   <data name="AuditLog_Verb_WorkspaceAccountBackupCodesGenerated" xml:space="preserve"><value>generó códigos de respaldo de Workspace para</value></data>
@@ -421,4 +425,10 @@
   <data name="Enum_AuditAction_WorkgroupMemberAdded" xml:space="preserve"><value>Miembro del grupo de trabajo añadido</value></data>
   <data name="Enum_AuditAction_WorkgroupMembershipApproved" xml:space="preserve"><value>Pertenencia al grupo de trabajo aprobada</value></data>
   <data name="Enum_AuditAction_WorkgroupMembershipDeclined" xml:space="preserve"><value>Pertenencia al grupo de trabajo rechazada</value></data>
+  <data name="AuditLog_Temporary" xml:space="preserve">
+    <value>temporal</value>
+  </data>
+  <data name="AuditLog_TemporaryHint" xml:space="preserve">
+    <value>Se borra cuando supera el periodo de conservación</value>
+  </data>
 </root>

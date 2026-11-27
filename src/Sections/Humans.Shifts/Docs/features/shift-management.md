@@ -154,7 +154,7 @@ Browse signup display ordering is shared by the browse page, row refresh, onboar
 | `Shift` | Single work slot: day offset, time, duration, volunteer min/max; IsAllDay flag for build/strike shifts |
 | `ShiftSignup` | User-to-shift link with state machine; SignupBlockId groups range signups |
 | `GeneralAvailability` | Per-user per-event day availability (general volunteer pool) |
-| `VolunteerEventProfile` | Per-event skills (`Skills[]`), work-style quirks (`Quirks[]`), and languages (`Languages[]`). Dietary answers live in Cantina and medical conditions on `Profile` (Users section); the unused VEP columns await a post-prod-soak drop |
+| `VolunteerEventProfile` | Per-event skills (`Skills[]`), work-style quirks (`Quirks[]`), and languages (`Languages[]`). Dietary answers live in Cantina and medical conditions on `Profile` (Users section) |
 | `ShiftTag` | Descriptive label for rotas (Id, Name); shared across all teams |
 | `RotaShiftTag` | Join table: Rota ↔ ShiftTag many-to-many |
 | `VolunteerTagPreference` | Links a volunteer to preferred tags for personalized recommendations |
@@ -176,7 +176,6 @@ Pending --> Cancelled   (system: shift deleted, account deletion)
 | Role | Permissions |
 |------|------------|
 | Admin | Full access: manage shifts, approve signups, bypass all restrictions |
-| ShiftsNoInfo | Approve/refuse signups, voluntell; cannot create/edit shifts or rotas |
 | Dept Coordinator | Manage rotas/shifts for own department, approve/refuse signups |
 | Volunteer | Browse shifts, sign up, bail, view own schedule |
 
@@ -207,7 +206,7 @@ Pending --> Cancelled   (system: shift deleted, account deletion)
 
 ## Coordinator Dashboard
 
-**Purpose:** Give Shifts Admins, Shifts NoInfo holders, and Admins a single cross-department view that answers the weekly coordination questions: is overall staffing tracking toward the event, which departments are behind, which coordinator teams have stale pending signups, and are new signups / ticket sales trending.
+**Purpose:** Give Shifts Admins holders, and Admins a single cross-department view that answers the weekly coordination questions: is overall staffing tracking toward the event, which departments are behind, which coordinator teams have stale pending signups, and are new signups / ticket sales trending.
 
 **Route:** `/Shifts/Dashboard` — the four dashboard panels render above the urgent-shifts filter.
 
@@ -240,7 +239,7 @@ Pending --> Cancelled   (system: shift deleted, account deletion)
 - **Subgroup aggregate invariant** — department totals equal the sum of subgroup totals (including the synthetic "Direct" row for rotas whose team is the parent itself).
 - **DAU** — distinct humans whose last login falls on the bucket date in the event timezone. Limitation: the system stores only the most recent login per human, so older buckets are biased low.
 
-**Authorization:** The controller is gated by `[Authorize(Policy = ShiftsPolicies.DepartmentRead)]`; `PostEventStats` narrows to `ShiftsPolicies.Read` (Admin, Board, ShiftsNoInfo, ShiftsAdmin); `SearchVolunteers` and `Voluntell` narrow to `ShiftsPolicies.Manage` → Admin, ShiftsNoInfo, ShiftsAdmin. The service (`IShiftManagement`) is auth-free per `design-rules.md`.
+**Authorization:** The controller is gated by `[Authorize(Policy = ShiftsPolicies.DepartmentRead)]`; `PostEventStats` narrows to `ShiftsPolicies.Read` (Admin, Board, ShiftsAdmin); `SearchVolunteers` and `Voluntell` narrow to `ShiftsPolicies.Manage` → Admin, ShiftsAdmin. The service (`IShiftManagement`) is auth-free per `design-rules.md`.
 
 **Caching:** Each dashboard query memoizes into `IMemoryCache` with a 5-minute sliding expiration. Keys:
 
@@ -250,7 +249,7 @@ Pending --> Cancelled   (system: shift deleted, account deletion)
 
 At our small scale, the dashboard view hits the cache on most loads and the underlying aggregation queries only run on first visit per coordinator per 5 minutes. Signup mutations evict the event's dashboard aggregates after a successful save, so approving, refusing, bailing, or creating signups is reflected on the next dashboard read.
 
-**Development seeder:** `DevelopmentDashboardSeeder` populates a realistic demo dataset (one event, several departments including one with subteams, ticket holders with mixed signup states, pending signups of varying ages, and ~85 days of spread signup/ticket/login activity for the trend chart). Exposed at `POST /dev/seed/dashboard`, button rendered on `/Shifts/Dashboard` only when the app is running in the Development environment. Not reachable in QA / preview / production regardless of role.
+**Demo data:** the demo world (`/dev/seed`, outside Production) fills the dashboard: `ShiftsDemoStory` adds rotas, shifts and signups for the demo departments on the active event.
 
 ## Related Features
 

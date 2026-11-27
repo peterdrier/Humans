@@ -77,13 +77,13 @@ public sealed class GoogleGroupSyncServiceTests
 
         diff.ErrorMessage.Should().Contain(failure.Message);
         await _teamResourceService.Received(1).RecordResourceErrorAsync(resource.Id, diff.ErrorMessage!, CancellationToken.None);
-        await _teamResourceService.DidNotReceiveWithAnyArgs().MarkResourceSyncedAsync(default, default, default);
+        await _teamResourceService.DidNotReceiveWithAnyArgs().MarkResourceSyncedAsync(default, default);
         _syncScheduler.Scheduled.Should().ContainSingle().Which.GroupKey.Should().Be(groupKey);
         await _googleSyncLog.Received(1).LogAsync(Arg.Any<GoogleSyncLogAction>(), resource.Id, Arg.Any<string>(),
             nameof(GoogleGroupSyncService), Arg.Any<string>(), "MEMBER", GoogleSyncSource.ScheduledSync,
             success: false, errorMessage: diff.ErrorMessage, userId: Arg.Any<Guid?>(), ct: CancellationToken.None);
-        await _identities.DidNotReceiveWithAnyArgs().SetStatusFromSyncAsync(default, default!, default, default);
-        await _removalNotifications.DidNotReceiveWithAnyArgs().NotifyRemovalAsync(default!, default, default!, default!, default, default);
+        await _identities.DidNotReceiveWithAnyArgs().SetStatusFromSyncAsync(default, default!, default);
+        await _removalNotifications.DidNotReceiveWithAnyArgs().NotifyRemovalAsync(default!, default, default!, default!, default);
     }
 
     [HumansTheory]
@@ -122,7 +122,7 @@ public sealed class GoogleGroupSyncServiceTests
         var error = await Xunit.Record.ExceptionAsync(() => service.ReconcileOneAsync(groupKey, SyncAction.Execute, shutdown.Token));
 
         error.Should().BeOfType<InvalidOperationException>().Which.InnerException.Should().BeSameAs(failure);
-        await _teamResourceService.DidNotReceiveWithAnyArgs().MarkResourceSyncedAsync(default, default, default);
+        await _teamResourceService.DidNotReceiveWithAnyArgs().MarkResourceSyncedAsync(default, default);
     }
 
     [HumansFact]
@@ -152,7 +152,7 @@ public sealed class GoogleGroupSyncServiceTests
             .Returns(new GroupLookupIdResult(null, new GoogleClientError(404, "not found")),
                 new GroupLookupIdResult("group-new", null));
         _provisioningClient.CreateGroupAsync("new-group@nobodies.team", Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
-            .Returns(call =>
+            .Returns(_ =>
             {
                 cancellation.Cancel();
                 return new GroupCreateResult("group-new", null);
@@ -213,7 +213,7 @@ public sealed class GoogleGroupSyncServiceTests
         StubUsers((alice, "Alice", "alice@nobodies.team"), (bob, "Bob", "bob@nobodies.team"));
         StubGroup("team@nobodies.team", "group-1");
         _membershipClient.CreateMembershipAsync("group-1", "alice@nobodies.team", Arg.Any<CancellationToken>())
-            .Returns(call =>
+            .Returns(_ =>
             {
                 cancellation.Cancel();
                 return new GroupMembershipMutationResult(GroupMembershipMutationOutcome.Added, null);
@@ -246,7 +246,7 @@ public sealed class GoogleGroupSyncServiceTests
         _userEmailService.MatchByEmailsAsync(Arg.Any<IReadOnlyCollection<string>>(), Arg.Any<CancellationToken>())
             .Returns(Array.Empty<UserEmailMatch>());
         _membershipClient.DeleteMembershipAsync("groups/group-1/memberships/old", Arg.Any<CancellationToken>())
-            .Returns(call =>
+            .Returns(_ =>
             {
                 cancellation.Cancel();
                 return (GoogleClientError?)null;
@@ -489,7 +489,7 @@ public sealed class GoogleGroupSyncServiceTests
 
         _syncScheduler.Enqueued.Should().BeEmpty();
         _logger.Messages.Should().Contain(m =>
-            m.Contains("RequestSyncAsync called with null/empty group key", StringComparison.Ordinal));
+            m.Contains("RequestSyncAsync called with a blank group key", StringComparison.Ordinal));
     }
 
     [HumansFact]

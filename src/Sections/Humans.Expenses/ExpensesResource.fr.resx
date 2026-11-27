@@ -205,7 +205,8 @@
   <data name="Expenses_SelectAccount" xml:space="preserve"><value>— Sélectionnez un compte —</value></data>
   <data name="Expenses_AccountGroupBudgetCategories" xml:space="preserve"><value>Catégories budgétaires</value></data>
   <data name="Expenses_AccountGroupOther" xml:space="preserve"><value>Autres comptes</value></data>
-  <data name="Expenses_Validation_AccountNotFound" xml:space="preserve"><value>Compte introuvable ou plus disponible.</value></data>
+  <data name="Expenses_Validation_AccountNotFound" xml:space="preserve"><value>Ce compte n'existe pas.</value></data>
+  <data name="Expenses_Validation_AccountInactive" xml:space="preserve"><value>Ce compte n'est plus ouvert aux dépenses.</value></data>
   <data name="Expenses_OptionalMaxChars" xml:space="preserve"><value>(facultatif, 500 caractères max.)</value></data>
   <data name="Expenses_SubjectPlaceholder" xml:space="preserve"><value>Décrivez la dépense…</value></data>
   <data name="Expenses_CreateDraft" xml:space="preserve"><value>Créer un brouillon</value></data>
@@ -291,11 +292,16 @@
   <data name="Expenses_Preapprovals_Revoked" xml:space="preserve"><value>Cette préapprobation a été révoquée. La note ne peut pas être approuvée avec elle : une fois rejetée, la préapprobation peut être retirée ou remplacée dans le brouillon.</value></data>
   <data name="Expenses_Preapprovals_Column" xml:space="preserve"><value>Préapprobation</value></data>
   <data name="Expenses_Preapprovals_RevokedBadge" xml:space="preserve"><value>révoquée</value></data>
-  <data name="Expenses_Validation_PreapprovalNotClaimable" xml:space="preserve"><value>Impossible de déclarer au titre de cette préapprobation : elle n’appartient pas au membre, n’est pas ouverte ou sa date limite est dépassée.</value></data>
   <data name="Expenses_Validation_PreapprovalLocked" xml:space="preserve"><value>La préapprobation et le compte d’une note soumise ne peuvent pas être modifiés.</value></data>
   <data name="Expenses_Validation_PreapprovalRevoked" xml:space="preserve"><value>La préapprobation a été révoquée ; cette note ne peut pas être soumise à son titre.</value></data>
   <data name="Expenses_Validation_PreapprovalDeadlinePassed" xml:space="preserve"><value>La date limite {0} est dépassée ; cette note ne peut plus être soumise au titre de la préapprobation.</value></data>
-  <data name="Expenses_Validation_PreapprovalUnavailable" xml:space="preserve"><value>La préapprobation n’est plus disponible : elle a été réclamée par une autre note ou déjà utilisée.</value></data>
+  <data name="Expenses_Validation_PreapprovalNotFound" xml:space="preserve"><value>Cette préapprobation n'existe plus.</value></data>
+  <data name="Expenses_Validation_PreapprovalNotTheirs" xml:space="preserve"><value>Cette préapprobation appartient à quelqu'un d'autre.</value></data>
+  <data name="Expenses_Validation_PreapprovalNotGranted" xml:space="preserve"><value>Cette préapprobation n'a pas encore été accordée.</value></data>
+  <data name="Expenses_Validation_PreapprovalDeclined" xml:space="preserve"><value>Cette préapprobation a été refusée.</value></data>
+  <data name="Expenses_Validation_PreapprovalClaimedElsewhere" xml:space="preserve"><value>Une autre note détient déjà cette préapprobation.</value></data>
+  <data name="Expenses_Validation_PreapprovalUsed" xml:space="preserve"><value>Cette préapprobation a déjà été utilisée par une note approuvée.</value></data>
+  <data name="Expenses_Validation_PreapprovalNotHeld" xml:space="preserve"><value>Cette note ne détient plus cette préapprobation.</value></data>
   <data name="Expenses_Detail_RejectedGuidance" xml:space="preserve"><value>Vous pouvez corriger ce rapport sans repartir de zéro : ouvrez n’importe quelle ligne ci-dessous pour la modifier, remplacer son justificatif ou la supprimer, puis soumettez à nouveau.</value></data>
   <data name="Expenses_Detail_RejectedGuidanceLink" xml:space="preserve"><value>Aller aux lignes</value></data>
   <data name="Expenses_Submitter" xml:space="preserve"><value>Demandeur</value></data>
@@ -305,4 +311,7 @@
   <data name="Expenses_Validation_AmountPrecision" xml:space="preserve"><value>Saisissez un montant avec au maximum deux décimales.</value></data>
   <data name="Expenses_Flash_DraftSavedFollowupFailed" xml:space="preserve"><value>Le brouillon a été enregistré, mais la demande n’a pas pu être terminée. Vérifiez-le avant de continuer.</value></data>
   <data name="Expenses_Flash_DraftOutcomeUnknown" xml:space="preserve"><value>Nous n’avons pas pu confirmer si le brouillon a été enregistré. Vérifiez les notes de frais existantes avant de créer un autre brouillon.</value></data>
+  <data name="Expenses_Permission_Endorse_Title" xml:space="preserve"><value>Valider les notes de frais</value></data>
+  <data name="Expenses_Permission_Endorse_Blurb" xml:space="preserve"><value>Valider, refuser et rejeter des lignes des notes de frais imputées au budget de l’équipe.</value></data>
+  <data name="Expenses_Validation_SubmitterUnavailable" xml:space="preserve"><value>La personne demandeuse n’est plus disponible.</value></data>
 </root>

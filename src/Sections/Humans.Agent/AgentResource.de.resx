@@ -59,31 +59,31 @@
     <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a2c561934e089</value>
   </resheader>
   <data name="Agent_ConversationBackToHistory" xml:space="preserve">
-    <value>Zurück zum Verlauf</value>
+    <value>Zurück zu meinen Gesprächen</value>
   </data>
   <data name="Agent_ConversationEmpty" xml:space="preserve">
     <value>Keine Nachrichten in diesem Gespräch.</value>
   </data>
-  <data name="Agent_ConversationRefusedLabel" xml:space="preserve">
-    <value>Der Assistent hat es abgelehnt, in dieser Runde zu antworten.</value>
+  <data name="Agent_ConversationUnansweredLabel" xml:space="preserve">
+    <value>Der Assistent hat diese Frage nicht beantwortet.</value>
   </data>
   <data name="Agent_ConversationTitle" xml:space="preserve">
-    <value>Assistenten-Gespräch</value>
+    <value>Gespräch mit dem Assistenten</value>
   </data>
   <data name="Agent_ConversationToolCallsSummary" xml:space="preserve">
     <value>{0} Werkzeugaufruf(e)</value>
   </data>
   <data name="Agent_ConversationTranscript" xml:space="preserve">
-    <value>Transkript</value>
+    <value>Nachrichten</value>
   </data>
   <data name="Agent_ContextCardCaveat" xml:space="preserve">
-    <value>Dies ist dein aktueller Kontext. Wenn sich deine Rollen oder Teams seit diesem Gespräch geändert haben, sah der Assistent damals eine andere Version.</value>
+    <value>Das weiß der Assistent jetzt über dich. Wenn sich deine Rollen oder Teams seit diesem Gespräch geändert haben, wusste er damals etwas anderes.</value>
   </data>
   <data name="Agent_ContextCardEmpty" xml:space="preserve">
-    <value>Derzeit wird kein persönlicher Kontext an den Assistenten gesendet.</value>
+    <value>Der Assistent weiß derzeit nichts über dich.</value>
   </data>
   <data name="Agent_ContextCardSummary" xml:space="preserve">
-    <value>Dein Kontext (wie der Assistent dich jetzt sieht)</value>
+    <value>Was der Assistent über dich weiß</value>
   </data>
   <data name="Agent_DetailId" xml:space="preserve">
     <value>ID</value>
@@ -91,8 +91,8 @@
   <data name="Agent_DetailLocale" xml:space="preserve">
     <value>Sprache</value>
   </data>
-  <data name="Agent_DetailRefusal" xml:space="preserve">
-    <value>Ablehnung: {0}</value>
+  <data name="Agent_DetailOutcome" xml:space="preserve">
+    <value>Ergebnis: {0}</value>
   </data>
   <data name="Agent_HistoryEmpty" xml:space="preserve">
     <value>Noch keine Gespräche.</value>
@@ -107,7 +107,7 @@
     <value>Gestartet</value>
   </data>
   <data name="Agent_HistoryTitle" xml:space="preserve">
-    <value>Assistent — Meine Gespräche</value>
+    <value>Meine Gespräche</value>
   </data>
   <data name="Agent_InputPlaceholder" xml:space="preserve">
     <value>Frage, wie das System funktioniert…</value>
@@ -122,7 +122,7 @@
     <value>Senden</value>
   </data>
   <data name="Agent_ViewHistory" xml:space="preserve">
-    <value>Verlauf</value>
+    <value>Meine Gespräche</value>
   </data>
   <data name="Agent_Help_WidgetButton" xml:space="preserve">
     <value>Hilfe</value>
@@ -133,11 +133,11 @@
   <data name="Agent_Help_Menu_CreateIssue" xml:space="preserve">
     <value>Problem melden</value>
   </data>
-  <data name="Agent_IssueProposed" xml:space="preserve">
+  <data name="Agent_HandoffDrafted" xml:space="preserve">
     <value>Das kann ich selbst nicht beantworten. Ich habe einen Vorgang für das Team entworfen — bitte prüfe und sende ihn ab.</value>
   </data>
   <data name="Agent_SilentTurnFallback" xml:space="preserve"><value>Ich konnte dazu keine Antwort zusammenstellen — kannst du die Frage umformulieren oder es noch einmal versuchen?</value></data>
-  <data name="Agent_AbuseRefusal" xml:space="preserve"><value>Dabei kann ich dir nicht helfen. Wenn du in einer Notlage bist, wende dich bitte an eine koordinierende Person oder den Rettungsdienst.</value></data>
+  <data name="Agent_DistressReply" xml:space="preserve"><value>Dabei kann ich dir nicht helfen. Wenn du in einer Notlage bist, wende dich bitte an eine koordinierende Person oder den Rettungsdienst.</value></data>
   <data name="Agent_HttpError" xml:space="preserve"><value>Fehler: {0}</value></data>
   <data name="Agent_NetworkError" xml:space="preserve"><value>Netzwerkfehler.</value></data>
   <data name="Agent_DisabledReply" xml:space="preserve"><value>(Der Assistent ist derzeit deaktiviert.)</value></data>

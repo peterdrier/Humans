@@ -47,11 +47,11 @@ else
         {
             var isUser = msg.Role == AgentRole.User;
             var isAssistant = msg.Role == AgentRole.Assistant;
-            var isRefusal = !string.IsNullOrEmpty(msg.RefusalReason);
+            var isUnanswered = !string.IsNullOrEmpty(msg.Outcome);
 
             <div class="agent-transcript-row @(isUser ? "agent-transcript-row-user" : "agent-transcript-row-assistant")">
-                <div class="agent-msg @(isUser ? "agent-msg-user" : "agent-msg-assistant") @(isRefusal ? "agent-msg-refusal" : "")">
-                    @if (isAssistant && !isRefusal)
+                <div class="agent-msg @(isUser ? "agent-msg-user" : "agent-msg-assistant") @(isUnanswered ? "agent-msg-unanswered" : "")">
+                    @if (isAssistant && !isUnanswered)
                     {
                         <div class="agent-assistant-content">@Html.SanitizedMarkdown(msg.Content)</div>
                     }
@@ -60,13 +60,13 @@ else
                         @* SanitizedMarkdown for autolink + HTML-strip. *@
                         <div class="agent-user-content">@Html.SanitizedMarkdown(msg.Content)</div>
                     }
-                    else if (isRefusal)
+                    else if (isUnanswered)
                     {
-                        <div class="agent-refusal text-muted small">
-                            <em>@Localizer["Agent_ConversationRefusedLabel"]</em>
-                            @if (!string.IsNullOrEmpty(msg.RefusalReason))
+                        <div class="agent-unanswered text-muted small">
+                            <em>@Localizer["Agent_ConversationUnansweredLabel"]</em>
+                            @if (!string.IsNullOrEmpty(msg.Outcome))
                             {
-                                <span> — @msg.RefusalReason</span>
+                                <span> — @msg.Outcome</span>
                             }
                         </div>
                     }
@@ -82,9 +82,7 @@ else
                     @if (isAssistant && msg.FetchedDocs is { Length: > 0 })
                     {
                         @* Collapsed when >1 call. `open` is boolean, so emit it conditionally. *@
-                        var toolSummary = string.Format(System.Globalization.CultureInfo.CurrentCulture,
-                            Localizer["Agent_ConversationToolCallsSummary"].Value,
-                            msg.FetchedDocs.Length);
+                        var toolSummary = Localizer["Agent_ConversationToolCallsSummary", msg.FetchedDocs.Length].Value;
                         if (msg.FetchedDocs.Length == 1)
                         {
                             <details class="agent-tool-calls mt-2" open>

@@ -36,7 +36,7 @@ public class TranslationsPageModelBuilderTests
     }
 
     [HumansFact]
-    public void Build_puts_Shared_first_then_every_section_with_a_resource_set_by_name()
+    public void Build_Sets_ListSharedFirst()
     {
         var model = Build(
             new SectionInfo("Shifts", IsActive: true) { ResourceType = typeof(ShiftsResource) },
@@ -49,7 +49,7 @@ public class TranslationsPageModelBuilderTests
     }
 
     [HumansFact]
-    public void TotalKeys_is_the_sum_of_every_set()
+    public void TotalKeys_IsSumOfEverySet()
     {
         var model = Build(
             new SectionInfo("Camps", IsActive: true) { ResourceType = typeof(CampsResource) },
@@ -60,7 +60,7 @@ public class TranslationsPageModelBuilderTests
     }
 
     [HumansFact]
-    public void Without_a_search_only_the_chosen_set_is_listed_and_an_unknown_set_falls_back_to_Shared()
+    public void Build_UnknownSet_UsesShared()
     {
         var camps = Build(CampsAndShifts, "camps", null);
         camps.SelectedSet.Should().Be("Camps");
@@ -70,7 +70,7 @@ public class TranslationsPageModelBuilderTests
     }
 
     [HumansFact]
-    public void A_search_is_scoped_to_the_chosen_set_and_All_spans_every_set()
+    public void Build_SearchWithChosenSet_SearchesThatSet()
     {
         var shiftsKey = Build(CampsAndShifts).Sets.Single(s => string.Equals(s.Name, "Shifts", StringComparison.Ordinal)).Gallery.Groups[0].Rows[0].Key;
 

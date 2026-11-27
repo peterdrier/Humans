@@ -437,13 +437,15 @@
   <data name="LinkPreview_Welcome_Description" xml:space="preserve">
     <value>Configurez votre compte sur Humans.</value>
   </data>
-  <data name="Login_SignInWithGoogle" xml:space="preserve">
-    <value>Se connecter avec Google</value>
+  <data name="Login_SignInWithProvider" xml:space="preserve">
+    <value>Se connecter avec {0}</value>
   </data>
   <data name="Login_SetupFailed" xml:space="preserve"><value>Nous n’avons pas pu terminer la configuration de votre compte. Veuillez réessayer.</value></data>
   <data name="Login_SignInFailed" xml:space="preserve">
-    <value>Échec de la connexion. Cela peut se produire si vous avez mis trop de temps ou si votre navigateur a bloqué les cookies. Veuillez réessayer.</value>
+    <value>Échec de la connexion. Veuillez réessayer.</value>
   </data>
+  <data name="Login_Cancelled" xml:space="preserve"><value>La connexion a été annulée chez le fournisseur de connexion.</value></data>
+  <data name="Login_CookieMissing" xml:space="preserve"><value>Échec de la connexion : votre navigateur n'a pas renvoyé son cookie de connexion au retour du fournisseur de connexion. Veuillez réessayer.</value></data>
   <data name="Login_LockedOut" xml:space="preserve"><value>Ce compte est verrouillé. Contactez un administrateur si vous avez besoin d’aide pour vous connecter.</value></data>
   <data name="AccessDenied_Title" xml:space="preserve">
     <value>Accès refusé</value>
@@ -745,7 +747,7 @@
   <data name="Admin_RoleNotActive" xml:space="preserve">
     <value>Cette attribution de rôle n'est pas actuellement active.</value>
   </data>
-  <data name="Admin_RoleEnded" xml:space="preserve">
+  <data name="Admin_RoleRevoked" xml:space="preserve">
     <value>Rôle « {0} » terminé pour {1}.</value>
     <comment>{0} = role name, {1} = user display name</comment>
   </data>
@@ -828,7 +830,7 @@
   <data name="Admin_Joined" xml:space="preserve">
     <value>Inscription</value>
   </data>
-  <data name="Admin_LastLogin" xml:space="preserve">
+  <data name="Admin_LastSignIn" xml:space="preserve">
     <value>Dernière connexion</value>
   </data>
   <data name="Admin_Never" xml:space="preserve">
@@ -908,52 +910,56 @@
   <data name="Camp_Plural" xml:space="preserve">
     <value>Barrios</value>
   </data>
-  <data name="Login_MagicLink_Title" xml:space="preserve">
+  <data name="Login_SignInLink_Title" xml:space="preserve">
     <value>Ou se connecter par e-mail</value>
   </data>
-  <data name="Login_MagicLink_Placeholder" xml:space="preserve">
+  <data name="Login_SignInLink_Placeholder" xml:space="preserve">
     <value>votre@email.com</value>
   </data>
-  <data name="Login_MagicLink_Submit" xml:space="preserve">
+  <data name="Login_SignInLink_Submit" xml:space="preserve">
     <value>M'envoyer un lien de connexion</value>
   </data>
-  <data name="GateLogin_Title" xml:space="preserve">
+  <data name="GateSignIn_Title" xml:space="preserve">
     <value>Terminal de la porte</value>
   </data>
-  <data name="GateLogin_Description" xml:space="preserve">
+  <data name="GateSignIn_Description" xml:space="preserve">
     <value>Connecte l'ordinateur partagé de la porte pour consulter les billets. Demande les identifiants à l'équipe billetterie.</value>
   </data>
-  <data name="GateLogin_Username" xml:space="preserve">
+  <data name="GateSignIn_Username" xml:space="preserve">
     <value>Nom d'utilisateur</value>
   </data>
-  <data name="GateLogin_Password" xml:space="preserve">
+  <data name="GateSignIn_Password" xml:space="preserve">
     <value>Mot de passe</value>
   </data>
-  <data name="GateLogin_SignIn" xml:space="preserve">
+  <data name="GateSignIn_SignIn" xml:space="preserve">
     <value>Se connecter</value>
   </data>
-  <data name="GateLogin_Invalid" xml:space="preserve">
-    <value>Nom d'utilisateur ou mot de passe incorrect. Le nom d'utilisateur est "gate" ; le mot de passe est défini par l'équipe billetterie — demande-leur le mot de passe actuel.</value>
-  </data>
-  <data name="GateLogin_Throttled" xml:space="preserve">
+  <data name="GateSignIn_WrongUsername" xml:space="preserve"><value>Nom d'utilisateur incorrect. Le nom d'utilisateur est "gate".</value></data>
+  <data name="GateSignIn_NoPassword" xml:space="preserve"><value>Saisis le mot de passe. L'équipe billetterie le définit ; demande-leur le mot de passe actuel.</value></data>
+  <data name="GateSignIn_WrongPassword" xml:space="preserve"><value>Mot de passe incorrect. L'équipe billetterie le définit ; demande-leur le mot de passe actuel.</value></data>
+  <data name="GateSignIn_Throttled" xml:space="preserve">
     <value>La connexion depuis ce réseau est suspendue pendant {0} secondes : trop de tentatives avec un mauvais mot de passe sont venues d'ici. Si ce n'était pas toi, quelqu'un partageant cette connexion essaie des mots de passe sur cette page. Patiente, puis saisis le bon mot de passe — demande à l'équipe billetterie en cas de doute. Le compte n'est PAS bloqué ; les admins billetterie peuvent vérifier ou changer le mot de passe dans Tickets → Gate terminal.</value>
     <comment>{0}=seconds remaining</comment>
   </data>
-  <data name="MagicLinkSent_Title" xml:space="preserve">
+  <data name="SignInLinkSent_Title" xml:space="preserve">
     <value>Vérifiez vos e-mails</value>
   </data>
-  <data name="MagicLinkSent_Message" xml:space="preserve">
+  <data name="SignInLinkSent_Message" xml:space="preserve">
     <value>Nous avons envoyé un lien à cette adresse e-mail depuis humans@nobodies.team. Vérifiez votre boîte de réception (et le dossier spam).</value>
   </data>
-  <data name="MagicLinkError_Title" xml:space="preserve">
-    <value>Lien expiré ou invalide</value>
-  </data>
-  <data name="MagicLinkError_Message" xml:space="preserve">
-    <value>Ce lien de connexion a expiré ou a déjà été utilisé.</value>
-  </data>
-  <data name="MagicLinkError_RequestNew" xml:space="preserve">
+  <data name="SignInLinkError_RequestNew" xml:space="preserve">
     <value>Demander un nouveau lien</value>
   </data>
+  <data name="SignInLinkError_Unreadable_Title" xml:space="preserve"><value>Ce lien ne fonctionne pas</value></data>
+  <data name="SignInLinkError_Unreadable_Message" xml:space="preserve"><value>Ce lien n'a pas pu être lu. Ouvrez le lien complet depuis votre e-mail.</value></data>
+  <data name="SignInLinkError_Expired_Title" xml:space="preserve"><value>Ce lien a expiré</value></data>
+  <data name="SignInLinkError_Expired_Message" xml:space="preserve"><value>Les liens fonctionnent pendant 15 minutes après leur envoi.</value></data>
+  <data name="SignInLinkError_Used_Title" xml:space="preserve"><value>Ce lien a déjà été utilisé</value></data>
+  <data name="SignInLinkError_Used_Message" xml:space="preserve"><value>Chaque lien ne fonctionne qu'une fois.</value></data>
+  <data name="SignInLinkError_AccountNotFound_Title" xml:space="preserve"><value>Compte introuvable</value></data>
+  <data name="SignInLinkError_AccountNotFound_Message" xml:space="preserve"><value>Le compte pour lequel ce lien a été envoyé n'existe plus.</value></data>
+  <data name="SignInLinkError_SignupFailed_Title" xml:space="preserve"><value>Nous n'avons pas pu créer votre compte</value></data>
+  <data name="SignInLinkError_SignupFailed_Message" xml:space="preserve"><value>Rien n'a été enregistré. Ouvrez à nouveau le même lien pour réessayer.</value></data>
   <data name="CompleteSignup_Title" xml:space="preserve">
     <value>Finaliser votre inscription</value>
   </data>
@@ -981,19 +987,19 @@
   <data name="CompleteSignup_Submit" xml:space="preserve">
     <value>Créer un compte</value>
   </data>
-  <data name="MagicLinkSent_BackToLogin" xml:space="preserve">
+  <data name="SignInLinkSent_BackToLogin" xml:space="preserve">
     <value>Retour à la connexion</value>
   </data>
-  <data name="MagicLinkSent_Expiry" xml:space="preserve">
+  <data name="SignInLinkSent_Expiry" xml:space="preserve">
     <value>Votre lien expire à {0}.</value>
   </data>
-  <data name="MagicLinkConfirm_Title" xml:space="preserve">
+  <data name="SignInLinkConfirm_Title" xml:space="preserve">
     <value>Se connecter</value>
   </data>
-  <data name="MagicLinkConfirm_Message" xml:space="preserve">
+  <data name="SignInLinkConfirm_Message" xml:space="preserve">
     <value>Cliquez sur le bouton ci-dessous pour vous connecter à votre compte.</value>
   </data>
-  <data name="MagicLinkConfirm_SignIn" xml:space="preserve">
+  <data name="SignInLinkConfirm_SignIn" xml:space="preserve">
     <value>Se connecter</value>
   </data>
   <data name="Todo_Title" xml:space="preserve">
@@ -1453,6 +1459,9 @@
   <data name="Settings_TabEmail" xml:space="preserve">
     <value>E-mail</value>
   </data>
+  <data name="Settings_TabRetention" xml:space="preserve">
+    <value>Conservation</value>
+  </data>
   <data name="Settings_TabCityPlanning" xml:space="preserve">
     <value>Carte des Barrios</value>
   </data>
@@ -1504,4 +1513,5 @@
   <data name="Todo_Medical_Title" xml:space="preserve"><value>Les coordinateurs doivent-ils savoir quelque chose sur ta santé ?</value></data>
   <data name="Todo_Medical_Pending" xml:space="preserve"><value>Facultatif. Seuls toi et les No-Info Admins pouvez le voir.</value></data>
   <data name="Nav_Roles" xml:space="preserve"><value>Rôles</value></data>
+  <data name="Nav_Tasks" xml:space="preserve"><value>Tâches</value></data>
 </root>

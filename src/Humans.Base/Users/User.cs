@@ -34,7 +34,7 @@ public class User : IdentityUser<Guid>
 
     public Instant CreatedAt { get; init; }
 
-    public Instant? LastLoginAt { get; set; }
+    public Instant? LastSignInAt { get; set; }
 
     /// <summary>Owned by Users; the Email override needs this navigation.</summary>
     internal ICollection<UserEmail> UserEmails { get; } = new List<UserEmail>();
@@ -52,9 +52,7 @@ public class User : IdentityUser<Guid>
 
             return UserEmails
                 .Where(e => e.IsVerified)
-                .OrderByDescending(e => e.IsPrimary)
-                .Select(e => e.Email)
-                .FirstOrDefault() ?? base.Email;
+                .MaxBy(e => e.IsPrimary)?.Email ?? base.Email;
         }
         set => base.Email = value;
     }

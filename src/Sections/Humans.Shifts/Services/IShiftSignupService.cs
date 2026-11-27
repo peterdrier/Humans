@@ -1,7 +1,6 @@
 using Humans.Shifts.Domain;
 using Humans.Shifts.Contracts;
 
-using NodaTime;
 using Humans.Base.Interfaces;
 
 namespace Humans.Shifts.Services;
@@ -70,8 +69,6 @@ internal sealed record ToggleDaySignupOutcome(
 }
 
 internal sealed record ShiftSignupTeamProbe(
-    Guid Id,
-    Guid ShiftId,
     Guid TeamId);
 
 internal enum ShiftSignupTeamProbeScope

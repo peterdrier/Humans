@@ -81,17 +81,17 @@ public class FinanceOverviewServiceTests
     }
 
     private readonly IHoldedService _holded = Substitute.For<IHoldedService>();
-    private readonly Humans.Finance.Data.IFinanceRepository _repo = Substitute.For<Humans.Finance.Data.IFinanceRepository>();
+    private readonly Data.IFinanceRepository _repo = Substitute.For<Data.IFinanceRepository>();
     private readonly IStripeMirrorService _stripe = Substitute.For<IStripeMirrorService>();
     private readonly Humans.AuditLog.Contracts.IAuditLogService _audit = Substitute.For<Humans.AuditLog.Contracts.IAuditLogService>();
 
     private FinanceOverviewService LinkService()
     {
         _holded.GetChartAsync(Arg.Any<CancellationToken>()).Returns([
-            new HoldedChartAccountInfo(44100001, "Open", null, null, false, 0m),
-            new HoldedChartAccountInfo(44100002, "Archived, holds money", null, null, true, 0m),
-            new HoldedChartAccountInfo(44100003, "Archived, linked", null, null, true, 0m),
-            new HoldedChartAccountInfo(44100004, "Archived, empty", null, null, true, 0m),
+            new HoldedChartAccountInfo(44100001, "Open", null, false, 0m),
+            new HoldedChartAccountInfo(44100002, "Archived, holds money", null, true, 0m),
+            new HoldedChartAccountInfo(44100003, "Archived, linked", null, true, 0m),
+            new HoldedChartAccountInfo(44100004, "Archived, empty", null, true, 0m),
         ]);
         _holded.GetAccountBalancesAsync(Arg.Any<CancellationToken>())
             .Returns(new Dictionary<int, decimal> { [44100002] = 12m });
@@ -101,9 +101,9 @@ public class FinanceOverviewServiceTests
             .Returns([new StripeAccountBalance("acct_store", 1m, 0m, Instant.FromUtc(2026, 11, 1, 0, 0))]);
         return new FinanceOverviewService(FixedOrgTimeZone.Madrid, _holded, Substitute.For<IFinanceService>(),
             Substitute.For<IFinanceAdminService>(), Substitute.For<Humans.Expenses.Contracts.IExpenseReportService>(),
-            Substitute.For<IBudgetService>(), null!, Substitute.For<Humans.Pleo.Contracts.IPleoService>(),
+            Substitute.For<IBudgetService>(), null!, Substitute.For<IPleoService>(),
             _stripe, Microsoft.Extensions.Options.Options.Create(new SepaOptions()),
-            _repo, _audit, NodaTime.SystemClock.Instance);
+            _repo, _audit, SystemClock.Instance);
     }
 
     [HumansFact]
@@ -140,6 +140,27 @@ public class FinanceOverviewServiceTests
             Arg.Any<Guid?>(), Arg.Any<string?>());
     }
 
+    [HumansTheory]
+    [InlineData(null, false)]
+    [InlineData("acct_store", false)]
+    [InlineData("acct_typo", false)]
+    [InlineData(null, true)]
+    [InlineData("acct_store", true)]
+    [InlineData("acct_typo", true)]
+    public async Task SaveStripeLinks_ZeroAccount_RefusesBeforeReplacingLinks(string? account, bool includeOtherInvalid)
+    {
+        var service = LinkService();
+        var links = new Dictionary<int, string?> { [0] = account, [44100001] = "acct_store" };
+        if (includeOtherInvalid) links[44100004] = "acct_store";
+
+        var refusal = await service.SaveStripeLinksAsync(links, Guid.NewGuid(), TestContext.Current.CancellationToken);
+
+        refusal.Should().NotBeNull();
+        await _repo.DidNotReceive().ReplaceStripeLedgerLinksAsync(
+            Arg.Any<IReadOnlyDictionary<int, string>>(), Arg.Any<CancellationToken>());
+        _audit.ReceivedCalls().Should().BeEmpty();
+    }
+
     [HumansFact]
     public void CashAccounts_SortsEachGroupWithBanksBeforeStripe()
     {
@@ -152,13 +173,27 @@ public class FinanceOverviewServiceTests
     }
 
     [HumansFact]
+    public void StripeReadAt_SeveralLinkedAccounts_IsTheOldestRead()
+    {
+        var older = Instant.FromUtc(2026, 11, 26, 3, 0);
+        var cards = new FinanceLedgerCardsVm([],
+            [
+                new(44100001, "Stripe A", 1m, new FinanceAccountSourceVm(1m, "/Stripe", ReadAt: older.Plus(Duration.FromDays(1)))),
+                new(44100002, "Stripe B", 1m, new FinanceAccountSourceVm(1m, "/Stripe", ReadAt: older)),
+                new(44100003, "Unlinked", 1m, new FinanceAccountSourceVm(null, "/Settings#finance", "unlinked")),
+            ], [], 0m, []);
+
+        cards.StripeReadAt.Should().Be(older);
+    }
+
+    [HumansFact]
     public async Task StripeLinkSettingsComponent_SortsBeforeAssigningFormIndices()
     {
         var overview = LinkService();
         _holded.GetChartAsync(Arg.Any<CancellationToken>()).Returns([
-            new HoldedChartAccountInfo(44100003, "Archived, linked", null, null, true, 0m),
-            new HoldedChartAccountInfo(44100002, "Archived, holding money", null, null, true, 0m),
-            new HoldedChartAccountInfo(44100001, "Active", null, null, false, 0m),
+            new HoldedChartAccountInfo(44100003, "Archived, linked", null, true, 0m),
+            new HoldedChartAccountInfo(44100002, "Archived, holding money", null, true, 0m),
+            new HoldedChartAccountInfo(44100001, "Active", null, false, 0m),
         ]);
         var syncedAt = Instant.FromUtc(2026, 11, 1, 0, 0);
         _stripe.GetEurBalancesAsync(Arg.Any<CancellationToken>()).Returns([
@@ -186,7 +221,7 @@ public class FinanceOverviewServiceTests
 
         var viewData = result.Should().BeOfType<ViewViewComponentResult>().Which.ViewData;
         viewData.Should().NotBeNull();
-        var model = viewData!.Model.Should().BeOfType<FinanceSettingsViewModel>().Subject;
+        var model = viewData.Model.Should().BeOfType<FinanceSettingsViewModel>().Subject;
         model.Rows.Select(r => r.LedgerAccountNum).Should().Equal(44100001, 44100002, 44100003);
         model.Rows.Select(r => r.Index).Should().Equal(0, 1, 2);
         model.Rows.Last().StripeAccountId.Should().Be("acct_old");
@@ -196,7 +231,7 @@ public class FinanceOverviewServiceTests
     [HumansFact]
     public void BuildLedgerCards_GroupsCashAndReceivables_AndFlipsTaxes()
     {
-        HoldedChartAccountInfo Account(int n, bool archived = false) => new(n, $"A{n}", null, null, archived, 0m);
+        HoldedChartAccountInfo Account(int n, bool archived = false) => new(n, $"A{n}", null, archived, 0m);
         var chart = new[]
         {
             Account(57200001), Account(57200002, archived: true), Account(57200003, archived: true),
@@ -229,7 +264,7 @@ public class FinanceOverviewServiceTests
     }
 
     [HumansFact]
-    public void BuildSepaInProgress_KeepsUnbookedUnwithdrawn_OldestFirst()
+    public void BuildSepaInProgress_KeepsUnbookedUnwithdrawn()
     {
         static SepaPayoutTransferRow Transfer(decimal amount, long sentAt, Instant? booked = null, Instant? withdrawn = null) =>
             new(Guid.NewGuid(), Guid.NewGuid(), "f.xml", Instant.FromUnixTimeSeconds(sentAt), Guid.NewGuid(),
@@ -240,7 +275,7 @@ public class FinanceOverviewServiceTests
         var open = FinanceOverviewService.BuildSepaInProgress(
             [Transfer(1m, 2), Transfer(2m, 1), Transfer(3m, 0, booked: now), Transfer(4m, 0, withdrawn: now)]);
 
-        open.Select(t => t.Amount).Should().Equal(2m, 1m);
+        open.Select(t => t.Amount).Should().BeEquivalentTo(new[] { 2m, 1m });
     }
 
     [HumansFact]
@@ -366,5 +401,5 @@ public class FinanceOverviewServiceTests
         { NotPayableReason = reason };
 
     private static BudgetCategoryDetail Category(Guid yearId, string name, decimal allocated) =>
-        new(Guid.NewGuid(), yearId, name, allocated, ExpenditureType.OpEx, null, 0, []);
+        new(Guid.NewGuid(), name, allocated, ExpenditureType.OpEx, null, 0, []);
 }

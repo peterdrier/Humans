@@ -144,4 +144,6 @@
   <data name="Store_DownloadInvoice" xml:space="preserve"><value>Factuur {0} downloaden</value></data>
   <data name="Store_RecordPaymentProduct" xml:space="preserve"><value>Borg voor</value></data>
   <data name="Enum_PaymentMethod_WriteOff" xml:space="preserve"><value>Afschrijving</value></data>
+  <data name="Store_Permission_TeamOrders_Title" xml:space="preserve"><value>Bestellen voor het team</value></data>
+  <data name="Store_Permission_TeamOrders_Blurb" xml:space="preserve"><value>De winkelbestelling van de afdeling aanmaken en bewerken.</value></data>
 </root>

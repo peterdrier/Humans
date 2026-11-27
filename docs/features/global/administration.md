@@ -6,7 +6,7 @@
   src/Sections/Humans.Google/Controllers/GoogleController.cs
   src/Humans.Base/Authorization/PolicyNames.cs
   src/Humans.Web/Authorization/AuthorizationPolicyExtensions.cs
-  src/Humans.Web/Authorization/RoleAssignmentClaimsTransformation.cs
+  src/Humans.Web/Authorization/SystemRoleClaimsTransformation.cs
   src/Humans.Web/Views/Admin/**
   src/Sections/Humans.Governance/Views/Governance/**
   src/Humans.Base/Constants/RoleNames.cs
@@ -106,9 +106,9 @@ Human management is now on `UsersAdminController` under `/Users/Admin`: readable
 | `/Users/Admin/{id}/Suspend` | SuspendHuman | POST: UsersAdmin, Admin |
 | `/Users/Admin/{id}/Unsuspend` | UnsuspendHuman | POST: UsersAdmin, Admin |
 | `/Users/Admin/{id}/Reject` | RejectSignup | POST: UsersAdmin, Admin |
-| `/Auth/Admin/{id}/Roles/Add` | AddRole (Auth's `RoleAssignmentsController`) | GET/POST: UsersAdmin, Admin |
-| `/Auth/Admin/{id}/Roles/{roleId}/End` | EndRole (Auth's `RoleAssignmentsController`) | POST: UsersAdmin, Admin |
-| `/Auth/Admin/Roles` | Roles (Auth's `RoleAssignmentsController`) | UsersAdmin, Board, Admin — role assignments across members |
+| `/Auth/Admin/{id}/Roles/Add` | AddRole (Auth's `SystemRolesController`) | GET/POST: UsersAdmin, Admin |
+| `/Auth/Admin/{id}/Roles/{roleId}/Revoke` | RevokeRole (Auth's `SystemRolesController`) | POST: UsersAdmin, Admin |
+| `/Auth/Admin/Roles` | Roles (Auth's `SystemRolesController`) | UsersAdmin, Board, Admin — role assignments across members |
 | `/Users/Admin/Audience` | Audience | Admin only — audience segmentation (accounts with a ticket / a profile / both / neither) for a year |
 
 ### GoogleController (`/Google/`) — Admin (mostly)
@@ -348,7 +348,6 @@ A user can hold both roles simultaneously. Admin is a superset for role assignme
 | **TeamsAdmin** | System-wide team management (edit teams, approve joins, assign coordinators, configure Google Group prefixes). Can view sync status at `/Google/Sync` but cannot execute sync actions. |
 | **CampsAdmin** | Manage camps, approve/reject season registrations, configure camp settings system-wide. |
 | **TicketsAdmin** | Manage ticket vendor integration, trigger syncs, generate discount codes, export ticket data. |
-| **ShiftsNoInfo** | Approve/voluntell shift signups (cannot create/edit shifts). Access to volunteer event profile medical data. |
 | **EventsAdmin** | Event Guide dashboard, moderation, settings, categories, venues, and export. |
 | **FinanceAdmin** | Manage budgets, budget years, groups, categories, and line items. Full Finance section access. |
 | **StoreAdmin** | Store catalog, summary, and payments. |
@@ -356,7 +355,7 @@ A user can hold both roles simultaneously. Admin is a superset for role assignme
 | **RideshareAdmin** | Rideshare settings (year's destination, travel windows), season statistics, and the day roster. |
 | **GrantsAdmin** | Grant programs: create and edit them, name their managers, issue, revoke and resend grants. |
 | **SurveysAdmin** | Surveys: approve or reject submissions, edit any survey, open, close, send invitations and download results. |
-| **ConsentCoordinator** | Safety checks on new humans during onboarding. Can clear or flag consent checks. |
+| **ConsentAdmin** | Safety checks on new humans during onboarding. Can clear or flag consent checks. |
 | **ShiftsAdmin** | Onboarding review queue plus system-wide shift management (volunteer tracking, workload, post-event stats). |
 | **EarlyEntryAdmin** | Cross-team Early-Entry administrator — grant/edit/revoke early-entry grants on any team that has early entry enabled. Confers nothing else; team coordinators manage EE on their own team without this role. |
 
@@ -364,12 +363,12 @@ A user can hold both roles simultaneously. Admin is a superset for role assignme
 
 Access is policy-based end to end: controllers use `[Authorize(Policy = "...")]`, views and tag helpers use `authorize-policy`. Cross-section policies are defined in `AuthorizationPolicyExtensions` with names in `PolicyNames`; each section registers its own (`<Section>Policies.Read` / `Manage`) from its `Section.cs`.
 
-Role claims are synced from the `RoleAssignment` table to Identity claims via `RoleAssignmentClaimsTransformation` (an `IClaimsTransformation`). This makes `User.IsInRole()` and the role-based policies work correctly based on temporal role assignments.
+Role claims are synced from the `RoleAssignment` table to Identity claims via `SystemRoleClaimsTransformation` (an `IClaimsTransformation`). This makes `User.IsInRole()` and the role-based policies work correctly based on temporal role assignments.
 
 ### Role Assignment Authorization
-Resource-based: `RoleAssignmentsController.AddRole`/`EndRole` (`Humans.Auth`) call `IAuthorizationService.AuthorizeAsync(User, roleName, PolicyNames.RoleAssignmentManage)`, evaluated by `RoleAssignmentAuthorizationHandler` (`Humans.Auth`) against the target role name (the resource):
+Resource-based: `SystemRolesController.AddRole`/`RevokeRole` (`Humans.Auth`) call `IAuthorizationService.AuthorizeAsync(User, roleName, PolicyNames.SystemRoleManage)`, evaluated by `SystemRoleAuthorizationHandler` (`Humans.Auth`) against the target role name (the resource):
 - **Admin** can assign/end any role
-- **UsersAdmin** can assign/end any role but `Admin` (`RoleAssignmentRules` in Auth)
+- **UsersAdmin** can assign/end any role but `Admin` (`SystemRoleRules` in Auth)
 - **Board** cannot assign or end roles; it sees the roster
 - Everyone else is denied
 - Attempting to assign a role outside your permissions returns 403 Forbidden; ending one outside your permissions returns 404 (the row is treated as not found rather than as a permissions error)

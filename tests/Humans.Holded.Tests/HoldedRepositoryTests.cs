@@ -146,6 +146,19 @@ public sealed class HoldedRepositoryTests
     }
 
     [HumansFact]
+    public async Task ReplaceLedgerWindow_RepeatedLine_StoresOne()
+    {
+        var ct = Xunit.TestContext.Current.CancellationToken;
+
+        var first = Line(1, 1, 40000004, Instant.FromUtc(2026, 6, 5, 0, 0), credit: 100m);
+        var repeat = Line(1, 1, 40000004, first.Date, credit: 100m);
+        await _repo.ReplaceLedgerWindowAsync(WindowFrom, WindowTo, null, [first, repeat], Now, ct);
+
+        var lines = await AllLinesAsync(ct);
+        lines.Should().ContainSingle();
+    }
+
+    [HumansFact]
     public async Task HasAnyLedgerLines_is_false_on_a_cold_cache()
     {
         var ct = Xunit.TestContext.Current.CancellationToken;
@@ -206,5 +219,21 @@ public sealed class HoldedRepositoryTests
         calls.Should().ContainSingle();
         calls[0].Endpoint.Should().Be("ListLedgerEntriesAsync");
         calls[0].RateLimitRemaining.Should().Be(42);
+    }
+
+    [HumansFact]
+    public async Task DeleteApiCallsBeforeAsync_KeepsCallsAtOrAfterCutoff()
+    {
+        var ct = Xunit.TestContext.Current.CancellationToken;
+        await _repo.AddApiCallsAsync(
+        [
+            new HoldedApiCall { Id = Guid.NewGuid(), CalledAt = Now.Minus(Duration.FromDays(1)), Endpoint = "old" },
+            new HoldedApiCall { Id = Guid.NewGuid(), CalledAt = Now, Endpoint = "new" },
+        ], ct);
+
+        var removed = await _repo.DeleteApiCallsBeforeAsync(Now, ct);
+
+        removed.Should().Be(1);
+        (await _repo.GetApiCallsAsync(ct)).Select(c => c.Endpoint).Should().Equal("new");
     }
 }

@@ -1,5 +1,7 @@
 # Nobodies Humans — Documentation
 
+Running Humans for another burn? Start with [Running Humans for your burn](adopting-humans.md).
+
 ## Feature Specifications
 
 Business requirements, user stories, data model, and workflows for each feature area.
@@ -53,7 +55,7 @@ Business requirements, user stories, data model, and workflows for each feature 
 | [Notification Inbox](../src/Sections/Humans.Notifications/Docs/features/notification-inbox.md) | Central "what needs my attention" view with shared resolution for group-targeted notifications |
 | [Notification Board](../src/Sections/Humans.Notifications/Docs/features/notification-board.md) | In-RAM, rebuilt-from-source notification board superseding the stored inbox — a notification is only something to do now, closed by resolving the underlying condition |
 | [Notifications Machine API](../src/Sections/Humans.Notifications/Docs/features/notification-api.md) | `GET /api/backdoor/notifications` — read-only key-authed access to a key owner's unread inbox and live meters |
-| [Onboarding Pipeline](../src/Sections/Humans.Onboarding/Docs/features/onboarding-pipeline.md) | End-to-end signup-to-active-membership journey with parallel legal-consent and Consent Coordinator review tracks |
+| [Onboarding Pipeline](../src/Sections/Humans.Onboarding/Docs/features/onboarding-pipeline.md) | End-to-end signup-to-active-membership journey with parallel legal-consent and Consent Admin review tracks |
 | [Volunteer Status](../src/Sections/Humans.Onboarding/Docs/features/volunteer-status.md) | App access is the stored `UserState` (set by entering a legal name); the system-managed Volunteers team is reconciled separately on name + consents, with the consent check an audit annotation, not an access gate |
 | [Rideshare Board](../src/Sections/Humans.Rideshare/Docs/features/rideshare-board.md) | Members-only map board of real road-route ride offers and requests to and from the burn — no booking, no payment, no auto-matching |
 | [Burner-Name Collision Warning](../src/Sections/Humans.Users/Docs/features/burner-name-collision-warning.md) | Live edit-profile warning telling a user how many other humans already use the burner name they are typing, so they can pick a more distinguishable one |
@@ -68,7 +70,7 @@ Business requirements, user stories, data model, and workflows for each feature 
 | [Public Coordinator Popover](../src/Sections/Humans.Users/Docs/features/public-coordinator-popover.md) | Anonymous-visible reduced popover on public team pages surfacing only avatar, BurnerName, and coordinator role labels via an `AllowAnonymous` `/Profile/{id}/PublicPopover` endpoint |
 | [Scanner — Barcode](../src/Sections/Humans.Scanner/Docs/features/scanner-barcode.md) | Camera-based in-app barcode/QR decoder for staff to inspect TicketTailor ticket stubs (decode only, no check-in) |
 | [Scanner — Gate Terminal Login](../src/Sections/Humans.Scanner/Docs/features/gate-terminal-login.md) | Shared gate-terminal account (well-known GUID, no email or roles) so any shift volunteer can operate the gate kiosk without tying the device to a personal login or granting admin powers |
-| [Coordinator Roles](../src/Sections/Humans.Shifts/Docs/features/coordinator-roles.md) | Consent Coordinator and Volunteer Coordinator roles adding structured safety and facilitation gates to onboarding |
+| [Coordinator Roles](../src/Sections/Humans.Shifts/Docs/features/coordinator-roles.md) | Consent Admin and Volunteer Coordinator roles adding structured safety and facilitation gates to onboarding |
 | [Day Filter](../src/Sections/Humans.Shifts/Docs/features/day-filter.md) | Dropdown on `/Shifts` letting volunteers jump to a specific calendar day, filtering the shift list and surfacing open shifts first |
 | [Department Coverage Pies](../src/Sections/Humans.Shifts/Docs/features/department-coverage-pies.md) | A row of conic-gradient discs above `/Shifts`, one per department, showing percentage-filled and acting as a clickable department filter |
 | [Email a Rota](../src/Sections/Humans.Shifts/Docs/features/email-a-rota.md) | Bulk-to-rota coordinator messaging that preserves per-recipient personalization (each recipient's own shift list on the rota) over the existing outbox/audit/opt-out infrastructure |
@@ -102,7 +104,7 @@ Terse, authoritative invariant docs for each major section: concepts, data model
 | [Agent](../src/Sections/Humans.Agent/Docs/Agent.md) | Conversational helper backed by Anthropic Claude, available to authenticated consented users when `AgentSettings.Enabled = true` |
 | [Audit Log](../src/Sections/Humans.AuditLog/Docs/AuditLog.md) | Append-only system audit trail capturing actor, action, entity, and timestamp; enforced append-only per design-rules.md, *Append-only entities* |
 | [Auth](../src/Sections/Humans.Auth/Docs/Auth.md) | Temporal role assignments, magic-link login/signup, and claims transformation |
-| [Backdoor](../src/Sections/Humans.Backdoor/Docs/Backdoor.md) | The machine surface — every key-authed API an agent talks to, under `/api/backdoor/*`, gated by one personal key per human |
+| [Backdoor](../src/Sections/Humans.Backdoor/Docs/Backdoor.md) | The Backdoor API — every key-authed API an agent talks to, under `/api/backdoor/*`, gated by one personal key per human |
 | [Budget](../src/Sections/Humans.Budget/Docs/Budget.md) | Fiscal-year budgets (Draft/Active/Closed) with groups, categories, line items, and an append-only audit log |
 | [Calendar](../src/Sections/Humans.Calendar/Docs/Calendar.md) | Per-team community calendar with one-off and recurring events plus per-occurrence overrides and cancellations |
 | [Campaigns](../src/Sections/Humans.Campaigns/Docs/Campaigns.md) | Bulk code-distribution campaigns: codes imported or generated, assigned to humans, delivered via email waves |
@@ -126,7 +128,7 @@ Terse, authoritative invariant docs for each major section: concepts, data model
 | [Holded Connector](../src/Sections/Humans.Holded/Docs/Holded-connector.md) | Thin typed-`HttpClient` surface to the Holded accounting API, shared by Expenses (purchase documents), Finance (provisioning, document sync, SEPA booking), Store (sales documents) and Workgroups (expense accounts). Owned by the Holded section; owns no tables |
 | [Holded](../src/Sections/Humans.Holded/Docs/Holded.md) | The ledger mirror: a local, re-derivable copy of Holded's daybook and chart of accounts, plus the sync that maintains it and the `/Holded` admin screen |
 | [Issues](../src/Sections/Humans.Issues/Docs/Issues.md) | In-app issue tracker (bugs, features, questions) with screenshots, role-routed triage, and a reporter↔handler conversation thread |
-| [Consent](../src/Sections/Humans.Consent/Docs/Consent.md) | GitHub-synced legal documents, per-version append-only consent records, and the Consent Coordinator audit/review queue |
+| [Consent](../src/Sections/Humans.Consent/Docs/Consent.md) | GitHub-synced legal documents, per-version append-only consent records, and the Consent Admin audit/review queue |
 | [Low Income](../src/Sections/Humans.LowIncome/Docs/LowIncome.md) | Stub for the future Low Income process: one Admin-only page that gives or removes a person's Low Income grant, which lives in Grants |
 | [MailerLite](../src/Sections/Humans.MailerLite/Docs/MailerLite.md) | Humans ↔ MailerLite synchronisation: inbound import and outbound audience management |
 | [Monitor](../src/Sections/Humans.Monitor/Docs/Monitor.md) | Operator-facing monitoring of the Google Workspace estate: detect unrequested permission changes, and show the Google-sync audit trail for one resource or one human |
@@ -134,6 +136,7 @@ Terse, authoritative invariant docs for each major section: concepts, data model
 | [Onboarding](../src/Sections/Humans.Onboarding/Docs/Onboarding.md) | Pure orchestrator over Profiles, Consent, Teams, and Governance — owns no tables |
 | [Permissions](../src/Sections/Humans.Permissions/Docs/Permissions.md) | May this person do this on this owner: permissions declared by sections, granted by roles (later tasks) and system roles; stores nothing |
 | [Roles](../src/Sections/Humans.Roles/Docs/Roles.md) | Standing responsibilities on an owner (a team today, camps next): slots, holders, and the permission keys they carry |
+| [Tasks](../src/Sections/Humans.Tasks/Docs/Tasks.md) | Pieces of work with an end, hanging on a team: slots, people, dependencies, an optional event |
 | [Pleo](../src/Sections/Humans.Pleo/Docs/Pleo.md) | Read-only mirror of the Pleo card wallet (entries, chart, cardholders, balance), the category → Holded account mapping, and the `/Pleo` admin pages with the wallet reconciliation |
 | [Rideshare](../src/Sections/Humans.Rideshare/Docs/Rideshare.md) | Members-only map board for organizing rides to and from the burn — offers, requests, and a lightweight interest lifecycle, no booking or payment |
 | [Scanner](../src/Sections/Humans.Scanner/Docs/Scanner.md) | In-browser camera tools for barcode decode (`/Scanner/Barcode`) and read-only ticket lookup (`/Scanner/Tickets`); no owned tables |

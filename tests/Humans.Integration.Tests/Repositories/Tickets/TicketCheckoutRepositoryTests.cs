@@ -19,69 +19,69 @@ public class TicketCheckoutRepositoryTests(HumansTestDatabase database) : Integr
     private static readonly Instant Now = Instant.FromUtc(2027, 1, 10, 12, 0);
 
     [HumansFact]
-    public async Task Detached_order_and_sales_event_round_trip_their_json_lists()
+    public async Task Detached_order_and_ticketing_settings_round_trip_their_json_lists()
     {
         var ct = TestContext.Current.CancellationToken;
         await using var scope = Factory.Services.CreateAsyncScope();
         var repo = scope.ServiceProvider.GetRequiredService<ITicketCheckoutRepository>();
         var holder = Guid.NewGuid();
 
-        var salesEvent = new TicketSalesEvent
+        var ticketing = new TicketingSettings
         {
             Id = Guid.NewGuid(),
             EventSettingsId = Guid.NewGuid(),
-            BackendKey = "boxoffice",
+            PlatformKey = "boxoffice",
             Capacity = 10,
             Waves = [new TicketSalesWave { Name = "Wave 1", EndsOn = new LocalDate(2027, 1, 31), PriceMinor = 22500 }],
-            SupporterTotalsMinor = [40000],
+            VipTotalsMinor = [40000],
             CreatedAt = Now,
             UpdatedAt = Now,
         };
-        await repo.SaveSalesEventAsync(salesEvent, ct);
-        var loadedEvent = (await repo.GetSalesEventAsync(salesEvent.Id, ct))!;
-        loadedEvent.Waves.Add(new TicketSalesWave { Name = "Wave 2", EndsOn = new LocalDate(2027, 2, 28), PriceMinor = 25000 });
-        loadedEvent.PriceRules.Add(new TicketPriceRule { GrantProgramId = Guid.NewGuid(), Kind = TicketPriceRuleKind.Credit, AmountMinor = 5000, Label = "Credit" });
-        loadedEvent.Switches.Should().BeNull();
-        loadedEvent.Switches = new TicketSalesSwitches { Resale = ResaleScheme.Queue, Donations = false };
-        await repo.SaveSalesEventAsync(loadedEvent, ct);
-        var switches = (await repo.GetSalesEventAsync(salesEvent.Id, ct))!.Switches;
-        switches.Should().BeEquivalentTo(new TicketSalesSwitches { Resale = ResaleScheme.Queue, Donations = false });
-        switches!.CompanionTicketsOn.Should().BeTrue("a switch saved before companion tickets had one means on");
+        await repo.SaveTicketingSettingsAsync(ticketing, ct);
+        var loadedSettings = (await repo.GetTicketingSettingsAsync(ticketing.Id, ct))!;
+        loadedSettings.Waves.Add(new TicketSalesWave { Name = "Wave 2", EndsOn = new LocalDate(2027, 2, 28), PriceMinor = 25000 });
+        loadedSettings.PriceRules.Add(new TicketPriceRule { GrantProgramId = Guid.NewGuid(), Kind = TicketPriceRuleKind.Discount, AmountMinor = 5000, Label = "Discount" });
+        loadedSettings.Switches.Should().BeNull();
+        loadedSettings.Switches = new TicketingSwitches { Resale = ResaleScheme.Queue, Donations = false };
+        await repo.SaveTicketingSettingsAsync(loadedSettings, ct);
+        var switches = (await repo.GetTicketingSettingsAsync(ticketing.Id, ct))!.Switches;
+        switches.Should().BeEquivalentTo(new TicketingSwitches { Resale = ResaleScheme.Queue, Donations = false });
+        switches.CompanionTicketsOn.Should().BeTrue("a switch saved before companion tickets had one means on");
 
-        // A setup saved before child types existed has no child_types JSON at all.
+        // Ticketing settings saved before child types existed have no child_types JSON at all.
         var contexts = scope.ServiceProvider.GetRequiredService<IDbContextFactory<TicketsDbContext>>();
         await using (var db = await contexts.CreateDbContextAsync(ct))
-            await db.Database.ExecuteSqlAsync($"UPDATE ticket_sales_events SET child_types = NULL WHERE \"Id\" = {salesEvent.Id}", ct);
-        loadedEvent = (await repo.GetSalesEventAsync(salesEvent.Id, ct))!;
-        loadedEvent.ChildTypes.Should().BeEmpty();
-        loadedEvent.DonationPurposes.Should().BeNull();
-        loadedEvent.ChildTypes = [new TicketChildType { Name = "Under 13", UnderAge = 13, PriceMinor = 5000 }];
-        loadedEvent.DonationPurposes = ["Art"];
-        await repo.SaveSalesEventAsync(loadedEvent, ct);
-        var typed = (await repo.GetSalesEventAsync(salesEvent.Id, ct))!;
+            await db.Database.ExecuteSqlAsync($"UPDATE ticket_sales_events SET child_types = NULL WHERE \"Id\" = {ticketing.Id}", ct);
+        loadedSettings = (await repo.GetTicketingSettingsAsync(ticketing.Id, ct))!;
+        loadedSettings.ChildTypes.Should().BeEmpty();
+        loadedSettings.DonationPurposes.Should().BeNull();
+        loadedSettings.ChildTypes = [new TicketChildType { Name = "Under 13", UnderAge = 13, PriceMinor = 5000 }];
+        loadedSettings.DonationPurposes = ["Art"];
+        await repo.SaveTicketingSettingsAsync(loadedSettings, ct);
+        var typed = (await repo.GetTicketingSettingsAsync(ticketing.Id, ct))!;
         typed.ChildTypes.Should().BeEquivalentTo([new TicketChildType { Name = "Under 13", UnderAge = 13, PriceMinor = 5000 }]);
         typed.DonationPurposes.Should().Equal("Art");
 
         var order = new TicketCheckoutOrder
         {
             Id = Guid.NewGuid(),
-            SalesEventId = salesEvent.Id,
+            TicketingSettingsId = ticketing.Id,
             BuyerUserId = holder,
             BuyerName = "Ana",
             BuyerEmail = "ana@example.com",
-            BackendKey = "boxoffice",
+            PlatformKey = "boxoffice",
             TotalMinor = 22500,
             CreatedAt = Now,
             ExpiresAt = Now + Duration.FromHours(1),
             UpdatedAt = Now,
-            Lines = [new TicketCheckoutOrderLine { Kind = CheckoutLineKind.Ticket, Description = "Ticket", AmountMinor = 22500, AttendeeUserId = holder }],
+            Lines = [new TicketCheckoutOrderLine { Kind = OrderLineKind.Ticket, Description = "Ticket", AmountMinor = 22500, HolderUserId = holder }],
         };
         await repo.AddOrderAsync(order, ct);
         (await repo.TryClaimPaidAsync(order.Id, Now, ct)).Should().BeTrue();
         (await repo.TryClaimPaidAsync(order.Id, Now, ct)).Should().BeFalse();
         var loaded = (await repo.GetOrderAsync(order.Id, ct))!;
         loaded.State.Should().Be(TicketCheckoutOrderState.Paid);
-        loaded.BackendOrderId = "cs_1";
+        loaded.PlatformOrderId = "cs_1";
         loaded.Lines[0].WaveName = "Wave 1";
         await repo.UpdateOrderAsync(loaded, ct);
         await repo.UpdateOrderAsync(loaded, ct);
@@ -90,14 +90,72 @@ public class TicketCheckoutRepositoryTests(HumansTestDatabase database) : Integr
         await repo.ReassignAsync(holder, Guid.NewGuid(), ct);
 
         var stored = (await repo.GetOrderAsync(order.Id, ct))!;
-        stored.BackendOrderId.Should().Be("cs_1");
+        stored.PlatformOrderId.Should().Be("cs_1");
         stored.State.Should().Be(TicketCheckoutOrderState.Paid);
         stored.Lines.Should().ContainSingle().Which.WaveName.Should().Be("Wave 1");
-        stored.Lines[0].AttendeeUserId.Should().NotBe(holder);
+        stored.Lines[0].HolderUserId.Should().NotBe(holder);
         stored.BuyerName.Should().NotBe("Ana");
-        var storedEvent = (await repo.GetSalesEventAsync(salesEvent.Id, ct))!;
-        storedEvent.Waves.Select(w => w.Name).Should().Equal("Wave 1", "Wave 2");
-        storedEvent.PriceRules.Should().ContainSingle();
+        var storedSettings = (await repo.GetTicketingSettingsAsync(ticketing.Id, ct))!;
+        storedSettings.Waves.Select(w => w.Name).Should().Equal("Wave 1", "Wave 2");
+        storedSettings.PriceRules.Should().ContainSingle();
+    }
+
+    [HumansFact]
+    public async Task Renamed_members_keep_their_stored_names_so_older_rows_still_read()
+    {
+        var ct = TestContext.Current.CancellationToken;
+        await using var scope = Factory.Services.CreateAsyncScope();
+        var repo = scope.ServiceProvider.GetRequiredService<ITicketCheckoutRepository>();
+        var ticketing = new TicketingSettings
+        {
+            Id = Guid.NewGuid(),
+            EventSettingsId = Guid.NewGuid(),
+            PlatformKey = "boxoffice",
+            PriceRules = [new TicketPriceRule { GrantProgramId = Guid.NewGuid(), Kind = TicketPriceRuleKind.Discount, AmountMinor = 5000 }],
+            CreatedAt = Now,
+            UpdatedAt = Now,
+        };
+        await repo.SaveTicketingSettingsAsync(ticketing, ct);
+        var order = new TicketCheckoutOrder
+        {
+            Id = Guid.NewGuid(),
+            TicketingSettingsId = ticketing.Id,
+            BuyerUserId = Guid.NewGuid(),
+            BuyerName = "Ana",
+            BuyerEmail = "ana@example.com",
+            PlatformKey = "boxoffice",
+            TotalMinor = 17500,
+            CreatedAt = Now,
+            ExpiresAt = Now + Duration.FromHours(1),
+            UpdatedAt = Now,
+            Lines = [new TicketCheckoutOrderLine { Kind = OrderLineKind.Ticket, AmountMinor = 17500, HolderName = "Ana", DiscountsMinor = 5000 }],
+        };
+        await repo.AddOrderAsync(order, ct);
+        await repo.AddOrderEventAsync(new TicketCheckoutOrderEvent
+        {
+            Id = Guid.NewGuid(),
+            OrderId = order.Id,
+            At = Now,
+            Kind = TicketCheckoutOrderEventKind.PlatformRefused,
+            Detail = "no",
+        }, ct);
+
+        var contexts = scope.ServiceProvider.GetRequiredService<IDbContextFactory<TicketsDbContext>>();
+        await using (var db = await contexts.CreateDbContextAsync(ct))
+        {
+            (await db.Database.SqlQuery<string>($"SELECT price_rules::text AS \"Value\" FROM ticket_sales_events WHERE \"Id\" = {ticketing.Id}").SingleAsync(ct))
+                .Should().Contain("\"Credit\"");
+            (await db.Database.SqlQuery<string>($"SELECT lines::text AS \"Value\" FROM ticket_checkout_orders WHERE \"Id\" = {order.Id}").SingleAsync(ct))
+                .Should().Contain("\"AttendeeName\"").And.Contain("\"CreditsMinor\"");
+            (await db.Database.SqlQuery<string>($"SELECT \"Kind\" AS \"Value\" FROM ticket_checkout_order_events WHERE \"OrderId\" = {order.Id}").SingleAsync(ct))
+                .Should().Be("BackendRefused");
+        }
+
+        (await repo.GetTicketingSettingsAsync(ticketing.Id, ct))!.PriceRules.Single().Kind.Should().Be(TicketPriceRuleKind.Discount);
+        var line = (await repo.GetOrderAsync(order.Id, ct))!.Lines.Single();
+        line.HolderName.Should().Be("Ana");
+        line.DiscountsMinor.Should().Be(5000);
+        (await repo.GetOrderEventsAsync(order.Id, ct)).Single().Kind.Should().Be(TicketCheckoutOrderEventKind.PlatformRefused);
     }
 
     [HumansFact]
@@ -107,11 +165,11 @@ public class TicketCheckoutRepositoryTests(HumansTestDatabase database) : Integr
         await using var scope = Factory.Services.CreateAsyncScope();
         var repo = scope.ServiceProvider.GetRequiredService<ITicketCheckoutRepository>();
         var holder = Guid.NewGuid();
-        var salesEventId = Guid.NewGuid();
+        var settingsId = Guid.NewGuid();
         var adult = new TicketCheckoutTicket
         {
             Id = Guid.NewGuid(),
-            SalesEventId = salesEventId,
+            TicketingSettingsId = settingsId,
             OrderId = Guid.NewGuid(),
             HolderUserId = holder,
             HolderName = "Ana García",
@@ -124,7 +182,7 @@ public class TicketCheckoutRepositoryTests(HumansTestDatabase database) : Integr
         var child = new TicketCheckoutTicket
         {
             Id = Guid.NewGuid(),
-            SalesEventId = salesEventId,
+            TicketingSettingsId = settingsId,
             OrderId = adult.OrderId,
             Kind = TicketHolderKind.Child,
             ParentTicketId = adult.Id,
@@ -137,13 +195,13 @@ public class TicketCheckoutRepositoryTests(HumansTestDatabase database) : Integr
         (await repo.AddTicketsAsync([adult, child], ct)).Should().BeTrue();
         (await repo.AddTicketsAsync([new TicketCheckoutTicket
         {
-            Id = Guid.NewGuid(), SalesEventId = salesEventId, OrderId = adult.OrderId, HolderName = "Twice",
+            Id = Guid.NewGuid(), TicketingSettingsId = settingsId, OrderId = adult.OrderId, HolderName = "Twice",
             Barcode = "H" + Guid.NewGuid().ToString("N")[..16], IssuedAt = Now,
         }], ct)).Should().BeFalse();
         var invitedElsewhere = new TicketResaleOffer
         {
             Id = Guid.NewGuid(),
-            SalesEventId = salesEventId,
+            TicketingSettingsId = settingsId,
             TicketId = Guid.NewGuid(),
             HolderUserId = Guid.NewGuid(),
             OfferedAt = Now,
@@ -152,14 +210,12 @@ public class TicketCheckoutRepositoryTests(HumansTestDatabase database) : Integr
                 new TicketResaleInvite { Email = "Ana@Example.com", TokenHash = "DEF", SentAt = Now },
                 new TicketResaleInvite { Email = "cy@example.com", TokenHash = "GHI", SentAt = Now },
             ],
-            DirectedEmail = "ana@example.com",
-            DirectedTokenHash = "OLD",
         };
         await repo.AddOfferAsync(invitedElsewhere, ct);
         var unattached = new TicketCheckoutTicket
         {
             Id = Guid.NewGuid(),
-            SalesEventId = salesEventId,
+            TicketingSettingsId = settingsId,
             OrderId = Guid.NewGuid(),
             HolderName = "Ana García",
             HolderEmail = "ANA@example.com",
@@ -170,7 +226,7 @@ public class TicketCheckoutRepositoryTests(HumansTestDatabase database) : Integr
         var offer = new TicketResaleOffer
         {
             Id = Guid.NewGuid(),
-            SalesEventId = salesEventId,
+            TicketingSettingsId = settingsId,
             TicketId = adult.Id,
             HolderUserId = holder,
             OfferedAt = Now,
@@ -191,7 +247,6 @@ public class TicketCheckoutRepositoryTests(HumansTestDatabase database) : Integr
         (await repo.GetTicketAsync(child.Id, ct))!.HolderName.Should().NotBe("Kid García");
         var storedElsewhere = (await repo.GetOfferAsync(invitedElsewhere.Id, ct))!;
         storedElsewhere.Invites.Select(i => i.Email).Should().Equal("cy@example.com");
-        storedElsewhere.DirectedEmail.Should().BeNull("a row written before the invitation list still loses the address");
         (await repo.GetTicketAsync(unattached.Id, ct))!.HolderName.Should().NotBe("Ana García");
         var stored = (await repo.GetTicketAsync(adult.Id, ct))!;
         stored.HolderName.Should().NotBe("Ana García");
@@ -211,7 +266,7 @@ public class TicketCheckoutRepositoryTests(HumansTestDatabase database) : Integr
         var offer = new TicketResaleOffer
         {
             Id = Guid.NewGuid(),
-            SalesEventId = Guid.NewGuid(),
+            TicketingSettingsId = Guid.NewGuid(),
             TicketId = Guid.NewGuid(),
             HolderUserId = Guid.NewGuid(),
             OfferedAt = Now,
@@ -244,11 +299,11 @@ public class TicketCheckoutRepositoryTests(HumansTestDatabase database) : Integr
         await using var scope = Factory.Services.CreateAsyncScope();
         var repo = scope.ServiceProvider.GetRequiredService<ITicketCheckoutRepository>();
         var holder = Guid.NewGuid();
-        var salesEventId = Guid.NewGuid();
+        var settingsId = Guid.NewGuid();
         var adult = new TicketCheckoutTicket
         {
             Id = Guid.NewGuid(),
-            SalesEventId = salesEventId,
+            TicketingSettingsId = settingsId,
             OrderId = Guid.NewGuid(),
             HolderUserId = holder,
             HolderName = "Ana García",
@@ -258,24 +313,24 @@ public class TicketCheckoutRepositoryTests(HumansTestDatabase database) : Integr
         var order = new TicketCheckoutOrder
         {
             Id = Guid.NewGuid(),
-            SalesEventId = salesEventId,
+            TicketingSettingsId = settingsId,
             BuyerUserId = holder,
             BuyerName = "Ana García",
             BuyerEmail = "ana@example.com",
-            BackendKey = "boxoffice",
+            PlatformKey = "boxoffice",
             CreatedAt = Now,
             ExpiresAt = Now,
             UpdatedAt = Now,
             Lines = [new TicketCheckoutOrderLine
             {
-                Kind = CheckoutLineKind.Ticket, HolderKind = TicketHolderKind.Companion, Description = "Companion ticket", AttendeeName = "Helper Ruiz",
+                Kind = OrderLineKind.Ticket, HolderKind = TicketHolderKind.Companion, Description = "Companion ticket", HolderName = "Helper Ruiz",
             }],
         };
         await repo.AddOrderAsync(order, ct);
         var companion = new TicketCheckoutTicket
         {
             Id = Guid.NewGuid(),
-            SalesEventId = salesEventId,
+            TicketingSettingsId = settingsId,
             OrderId = order.Id,
             Kind = TicketHolderKind.Companion,
             ParentTicketId = adult.Id,
@@ -287,7 +342,7 @@ public class TicketCheckoutRepositoryTests(HumansTestDatabase database) : Integr
 
         await repo.ErasePiiForUserAsync(holder, ["ana@example.com"], ct);
 
-        (await repo.GetOrderAsync(order.Id, ct))!.Lines.Should().ContainSingle().Which.AttendeeName.Should().NotBe("Helper Ruiz");
+        (await repo.GetOrderAsync(order.Id, ct))!.Lines.Should().ContainSingle().Which.HolderName.Should().NotBe("Helper Ruiz");
         (await repo.GetTicketAsync(companion.Id, ct))!.HolderName.Should().NotBe("Helper Ruiz");
     }
 
@@ -302,7 +357,7 @@ public class TicketCheckoutRepositoryTests(HumansTestDatabase database) : Integr
         var request = new TicketCompanionRequest
         {
             Id = Guid.NewGuid(),
-            SalesEventId = Guid.NewGuid(),
+            TicketingSettingsId = Guid.NewGuid(),
             TicketId = Guid.NewGuid(),
             HolderUserId = holder,
             CompanionUserId = companion,

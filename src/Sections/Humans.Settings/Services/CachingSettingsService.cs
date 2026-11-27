@@ -63,6 +63,10 @@ internal sealed class CachingSettingsService(
         string timeZoneId, Guid actorUserId, CancellationToken cancellationToken = default) =>
         WithInnerAsync(inner => inner.SaveTimeZoneAsync(timeZoneId, actorUserId, cancellationToken));
 
+    public Task<EventSettingsSaveResult> SaveRetentionDaysAsync(
+        int days, Guid actorUserId, CancellationToken cancellationToken = default) =>
+        WithInnerAsync(inner => inner.SaveRetentionDaysAsync(days, actorUserId, cancellationToken));
+
     public Task<EventSettingsSaveResult> ActivateEventSettingsAsync(
         Guid eventSettingsId, Guid actorUserId, CancellationToken cancellationToken = default) =>
         WithInnerAsync(inner => inner.ActivateEventSettingsAsync(eventSettingsId, actorUserId, cancellationToken));
@@ -73,9 +77,6 @@ internal sealed class CachingSettingsService(
             await ((IEventSettingsSeeding)inner).CreateActiveEventAsync(settings, cancellationToken);
             return true;
         });
-
-    public Task<int> DeleteEventAsync(Guid id, CancellationToken cancellationToken = default) =>
-        WithInnerAsync(inner => ((IEventSettingsSeeding)inner).DeleteEventAsync(id, cancellationToken));
 
     /// <summary>Called by every save before it notifies listeners, so the plain reads never see an empty cache.</summary>
     public Task ReloadAsync() => ReplaceAsync(SnapshotKey, CancellationToken.None);

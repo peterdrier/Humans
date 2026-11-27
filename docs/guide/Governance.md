@@ -6,7 +6,7 @@
   src/Sections/Humans.Governance/Controllers/GovernanceVotesController.cs
   src/Sections/Humans.Governance/Controllers/GovernanceVotesAdminController.cs
   src/Sections/Humans.Governance/Services/**
-  src/Sections/Humans.Auth/Services/RoleAssignmentService.cs
+  src/Sections/Humans.Auth/Services/SystemRoleService.cs
   src/Sections/Humans.Governance/Domain/Application.cs
   src/Sections/Humans.Governance/Domain/ApplicationStateHistory.cs
   src/Sections/Humans.Governance/Domain/BoardVote.cs
@@ -44,7 +44,7 @@ Both tiers run on synchronized 2-year terms that expire on December 31 of the cu
 - `/Governance/Votes/{id}/Results` — the result, once the vote has closed. `Results.csv` is the same numbers as a download.
 - `/Governance/Votes/Admin` — every vote in every state, including drafts (Board and Admin).
 - `/Auth/Admin/Roles` — paginated list of all role assignments, filterable by role (Users Admin, Board or Admin).
-- `/Auth/Admin/{id}/Roles/Add` and `/Auth/Admin/{id}/Roles/{roleId}/End` — assign and end role assignments on a specific human (Users Admin and Admin).
+- `/Auth/Admin/{id}/Roles/Add` and `/Auth/Admin/{id}/Roles/{roleId}/Revoke` — assign and end role assignments on a specific human (Users Admin and Admin).
 
 ## As a Volunteer
 
@@ -133,8 +133,8 @@ Role assignments live on each human's detail page under the Admin area (`/Users/
 
 - **Admin** can assign and revoke any role, including Admin itself.
 - **UsersAdmin** can assign and revoke any role **except** Admin.
-- Board sees the role roster but does not assign or end roles. The full set of roles Users Admin can manage is every catalogued role but Admin: Board, UsersAdmin, TeamsAdmin, CampsAdmin, TicketsAdmin, ShiftsNoInfo, FinanceAdmin, EventsAdmin, StoreAdmin, CantinaAdmin, EarlyEntryAdmin, RideshareAdmin, GrantsAdmin, SurveysAdmin, ConsentCoordinator, ShiftsAdmin.
-- Coordinator roles (Consent Coordinator, Shifts Admin) are assigned here too; what those coordinators actually do is described in [LegalAndConsent.md](LegalAndConsent.md) and [Onboarding.md](Onboarding.md).
+- Board sees the role roster but does not assign or end roles. The full set of roles Users Admin can manage is every catalogued role but Admin: Board, UsersAdmin, TeamsAdmin, CampsAdmin, TicketsAdmin, FinanceAdmin, EventsAdmin, StoreAdmin, CantinaAdmin, EarlyEntryAdmin, RideshareAdmin, GrantsAdmin, SurveysAdmin, ConsentAdmin, ShiftsAdmin.
+- Coordinator roles (Consent Admin, Shifts Admin) are assigned here too; what those coordinators actually do is described in [LegalAndConsent.md](LegalAndConsent.md) and [Onboarding.md](Onboarding.md).
 
 To end a role, set the **valid to** date. Historical assignments remain on the profile for the audit trail.
 

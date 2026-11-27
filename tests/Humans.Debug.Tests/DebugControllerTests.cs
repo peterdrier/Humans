@@ -42,7 +42,7 @@ public class DebugControllerTests
     }
 
     [HumansFact]
-    public void Configuration_masks_sensitive_values_to_a_four_char_prefix()
+    public void Configuration_SensitiveValue_IsMasked()
     {
         _configuration.Register(Entry("Email:Password", isSensitive: true, value: "abcdefgh"));
         _configuration.Register(Entry("Email:Pin", isSensitive: true, value: "abcd"));
@@ -62,7 +62,7 @@ public class DebugControllerTests
     }
 
     [HumansFact]
-    public void HttpErrors_clamps_count_into_one_to_one_thousand()
+    public void HttpErrors_CountOutOfRange_IsClamped()
     {
         var sut = BuildSut();
 
@@ -74,7 +74,7 @@ public class DebugControllerTests
     }
 
     [HumansFact]
-    public void Logs_clamps_count_into_one_to_one_thousand()
+    public void Logs_CountOutOfRange_IsClamped()
     {
         for (var i = 0; i < 3; i++)
             _logSink.Emit(new LogEvent(DateTimeOffset.UtcNow.AddSeconds(i), LogEventLevel.Warning, null,
@@ -92,7 +92,7 @@ public class DebugControllerTests
     }
 
     [HumansFact]
-    public async Task ClearHangfireLocks_logs_at_warning_and_returns_to_maintenance()
+    public async Task ClearHangfireLocks_LogsWarning()
     {
         _diagnostics.ClearHangfireLocksAsync(Arg.Any<CancellationToken>()).Returns(3);
 
@@ -105,11 +105,11 @@ public class DebugControllerTests
     }
 
     [HumansFact]
-    public void Translations_renders_one_gallery_per_catalogued_resource_set()
+    public void Translations_RendersGalleryPerResourceSet()
     {
         _sectionCatalog.Sections.Returns(
         [
-            new SectionInfo("Shifts", IsActive: true) { ResourceType = typeof(Humans.Shifts.ShiftsResource) },
+            new SectionInfo("Shifts", IsActive: true) { ResourceType = typeof(Shifts.ShiftsResource) },
             new SectionInfo("Debug", IsActive: true),
         ]);
         var factory = new ResourceManagerStringLocalizerFactory(

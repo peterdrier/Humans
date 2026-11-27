@@ -1,4 +1,3 @@
-using System.Text;
 using NodaTime;
 using Humans.Surveys.Contracts;
 using Humans.Surveys.Domain;
@@ -29,6 +28,11 @@ internal static class SurveyDefinitionValidation
                 return new("Surveys_Validation_DuplicateItem",
                     $"Survey definition repeats a question, option or image identity near question {question.Id}.");
 
+            if (question.Type != SurveyQuestionType.Information
+                && !question.Prompt.Values.Values.Any(value => !string.IsNullOrWhiteSpace(value)))
+                return new("Surveys_Validation_PromptRequired",
+                    $"Question {question.Id} must have a prompt.", question.Id);
+
             if (question.Options.Any(option => option.Value.Length > 100))
                 return new("Surveys_Validation_OptionValueLength",
                     $"Option values for question {question.Id} must be 100 characters or fewer.", 100);
@@ -53,6 +57,11 @@ internal static class SurveyDefinitionValidation
             if (question.Options.Count == 0)
                 return new("Surveys_Validation_ChoiceOptionEmpty",
                     $"Choice question {question.Id} must have at least one option.", question.Id);
+
+            if (question.Comment is { } comment
+                && comment.OptionValues.Any(value => question.Options.All(option => !string.Equals(option.Value, value, StringComparison.Ordinal))))
+                return new("Surveys_Validation_CommentOptionUnknown",
+                    $"Choice question {question.Id} asks for a comment on an option it does not have.", question.Id);
 
             return ValidateStableValues(question.Options.Select(option => option.Value),
                 $"Choice question {question.Id} option", question.Id, "Surveys_Validation_ChoiceOption");

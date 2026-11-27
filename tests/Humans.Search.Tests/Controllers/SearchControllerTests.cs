@@ -32,7 +32,7 @@ public sealed class SearchControllerTests
     [InlineData("")]
     [InlineData(" ")]
     [InlineData("a")]
-    public async Task Index_QueryShorterThanTwoChars_KeepsTheRawQuery_AndListsTheCategoriesForTheHint(string? query)
+    public async Task Index_ShortQuery_KeepsRawQuery(string? query)
     {
         StubResults(new GlobalSearchResults((query ?? string.Empty).Trim(), null, [Bucket("Human")]));
 
@@ -44,7 +44,7 @@ public sealed class SearchControllerTests
     }
 
     [HumansFact]
-    public async Task Index_TrimsTheQuery_ForwardsTheFilter_AndShowsTheServicesMatchedKey()
+    public async Task Index_Filter_ShowsServiceMatchedKey()
     {
         StubResults(new GlobalSearchResults("Kitchen", "Team", [Bucket("Team")]));
 
@@ -57,22 +57,23 @@ public sealed class SearchControllerTests
     }
 
     [HumansFact]
-    public async Task Index_SortsEveryBucket_ByScoreDescendingThenSortKeyAscending_KeepingCategoryOrder()
+    public async Task Index_Results_SortedForDisplay()
     {
         SearchHit[] hits = [Hit("beta", 60), Hit("Alpha", 60), Hit("Zulu", 100)];
-        StubResults(new GlobalSearchResults("q", null, [Bucket("Human", hits), Bucket("Team", hits)]));
+        StubResults(new GlobalSearchResults("q", null,
+            [Bucket("Team", hits) with { Weight = 10 }, Bucket("human", hits), Bucket("Human", hits)]));
 
         var vm = await IndexAsync("query", filter: null);
 
-        vm.Buckets.Select(b => b.Key).Should().Equal("Human", "Team");
+        vm.Buckets.Select(b => b.Key).Should().Equal("Human", "human", "Team");
         // SortKey tiebreak is case-insensitive: "Alpha" must beat "beta" despite the lowercase b.
         vm.Buckets.Should().AllSatisfy(b =>
             b.Hits.Select(h => h.SortKey).Should().Equal("Zulu", "Alpha", "beta"));
-        vm.TotalCount.Should().Be(6);
+        vm.TotalCount.Should().Be(9);
     }
 
     [HumansFact]
-    public async Task Index_PassesTheMatchContext_ThroughToTheView_Untouched()
+    public async Task Index_MatchContext_PassesThroughUntouched()
     {
         var hit = new SearchHit(Guid.NewGuid(), "Sparkle", 60, "Bio", "…builds <em>kitchens</em>…");
         StubResults(new GlobalSearchResults("kitchen", null, [Bucket("Human", hit)]));
@@ -85,7 +86,7 @@ public sealed class SearchControllerTests
     [HumansTheory]
     [InlineData(false)]
     [InlineData(true)]
-    public async Task Index_SearchThrows_RendersTheShellWithTheQueryPreserved_InsteadOfA500(bool dependencyCancelled)
+    public async Task Index_SearchThrows_RendersFailedShell(bool dependencyCancelled)
     {
         Exception failure = dependencyCancelled
             ? new OperationCanceledException("section timed out")
@@ -147,7 +148,7 @@ public sealed class SearchControllerTests
     }
 
     private static SearchBucket Bucket(string key, params SearchHit[] hits) =>
-        new(key, $"{key} label", "icon", typeof(object), hits);
+        new(key, 0, $"{key} label", "icon", typeof(object), hits);
 
     private static SearchHit Hit(string sortKey, int score) => new(Guid.NewGuid(), sortKey, score);
 }

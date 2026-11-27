@@ -1,5 +1,6 @@
 using Humans.Agent.Contracts;
 using Humans.Backdoor.Filters;
+using Humans.Backdoor.Services;
 using Humans.Base.Extensions;
 using Humans.Users.Contracts;
 using Microsoft.AspNetCore.Mvc;
@@ -11,13 +12,14 @@ namespace Humans.Backdoor.Controllers;
 [ApiController]
 [Route("api/backdoor/agent")]
 [ServiceFilter(typeof(BackdoorApiKeyAuthFilter))]
+[BackdoorScope(BackdoorScope.AdminAndBoard)]
 [AllowAnonymous]
 internal sealed class BackdoorAgentController(IAgentTranscriptRead agent, IUserService users)
     : ControllerBase
 {
     [HttpGet("conversations")]
     public async Task<IActionResult> List(
-        [FromQuery] bool refusalsOnly = false,
+        [FromQuery] bool unansweredOnly = false,
         [FromQuery] bool handoffsOnly = false,
         [FromQuery] Guid? userId = null,
         [FromQuery] int take = 50,
@@ -27,8 +29,8 @@ internal sealed class BackdoorAgentController(IAgentTranscriptRead agent, IUserS
         take = take.ClampPageSize(max: 200);
         if (skip < 0) skip = 0;
 
-        var rows = await agent.ListAllConversationsForAdminWithMessagesAsync(
-            refusalsOnly, handoffsOnly, userId, take, skip, ct);
+        var rows = await agent.ListConversationsWithMessagesAsync(
+            unansweredOnly, handoffsOnly, userId, take, skip, ct);
         var resolved = await ResolveUsersAsync(rows.Select(c => c.UserId), ct);
         return Ok(rows.Select(r => ToSummary(r, resolved)));
     }
@@ -51,7 +53,7 @@ internal sealed class BackdoorAgentController(IAgentTranscriptRead agent, IUserS
             StartedAt = conv.StartedAt.ToDateTimeUtc(),
             LastMessageAt = conv.LastMessageAt.ToDateTimeUtc(),
             conv.MessageCount,
-            RefusalCount = conv.Messages.Count(m => m.RefusalReason is not null),
+            UnansweredCount = conv.Messages.Count(m => m.Outcome is not null),
             HandoffCount = conv.Messages.Count(m => m.IsHandoff),
             Messages = conv.Messages.OrderBy(m => m.CreatedAt).Select(ToMessageDto)
         });
@@ -80,8 +82,7 @@ internal sealed class BackdoorAgentController(IAgentTranscriptRead agent, IUserS
     {
         var lastUserMessage = c.Messages
             .Where(m => m.Role == AgentRole.User && !string.IsNullOrEmpty(m.Content))
-            .OrderByDescending(m => m.CreatedAt)
-            .FirstOrDefault();
+            .MaxBy(m => m.CreatedAt);
         var preview = lastUserMessage?.Content;
         if (preview is { Length: > 200 })
         {
@@ -100,7 +101,7 @@ internal sealed class BackdoorAgentController(IAgentTranscriptRead agent, IUserS
             StartedAt = c.StartedAt.ToDateTimeUtc(),
             LastMessageAt = c.LastMessageAt.ToDateTimeUtc(),
             c.MessageCount,
-            RefusalCount = c.Messages.Count(m => m.RefusalReason is not null),
+            UnansweredCount = c.Messages.Count(m => m.Outcome is not null),
             HandoffCount = c.Messages.Count(m => m.IsHandoff),
             LastUserMessagePreview = preview
         };
@@ -113,7 +114,7 @@ internal sealed class BackdoorAgentController(IAgentTranscriptRead agent, IUserS
         m.Content,
         CreatedAt = m.CreatedAt.ToDateTimeUtc(),
         m.Model,
-        m.RefusalReason,
+        m.Outcome,
         m.HandedOffToFeedbackId,
         m.FetchedDocs
     };

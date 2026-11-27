@@ -11,7 +11,7 @@ public static class PolicyNames
     public const string BoardOrAdmin = nameof(BoardOrAdmin);
 
     public const string ReviewQueueAccess = nameof(ReviewQueueAccess);
-    public const string ConsentCoordinatorBoardOrAdmin = nameof(ConsentCoordinatorBoardOrAdmin);
+    public const string ConsentAdminBoardOrAdmin = nameof(ConsentAdminBoardOrAdmin);
 
     /// <summary>
     /// Scanner tools (/Scanner/*): TicketsAdmin, Board, or Admin — plus the shared
@@ -21,8 +21,8 @@ public static class PolicyNames
     public const string ScannerAccess = nameof(ScannerAccess);
 
     /// <summary>
-    /// Gate <em>write</em> actions (/Gate/Decision, /Gate/Claim POST): records a
-    /// durable admission or claims the scanning session. TicketsAdmin, Admin, or the
+    /// Gate <em>write</em> actions (/Gate/Decision, /Gate/Undo): records or undoes a
+    /// durable admission. TicketsAdmin, Admin, or the
     /// shared gate-terminal account; Board reads the gate through
     /// <see cref="ScannerAccess"/> and admits no one. Composite assertion policy.
     /// </summary>
@@ -56,12 +56,12 @@ public static class PolicyNames
 
     /// <summary>
     /// May assign or end the role passed as the authorization <em>resource</em> (a role-name
-    /// string): <c>AuthorizeAsync(User, roleName, PolicyNames.RoleAssignmentManage)</c>.
-    /// Backed by Auth's resource-based <c>RoleAssignmentAuthorizationHandler</c>. The name
+    /// string): <c>AuthorizeAsync(User, roleName, PolicyNames.SystemRoleManage)</c>.
+    /// Backed by Auth's resource-based <c>SystemRoleAuthorizationHandler</c>. The name
     /// exists so callers outside <c>Humans.Auth</c> — <c>UsersAdminController</c> — can reach
     /// the gate without naming the requirement type, which lives inside the section.
     /// </summary>
-    public const string RoleAssignmentManage = nameof(RoleAssignmentManage);
+    public const string SystemRoleManage = nameof(SystemRoleManage);
 
     /// <summary>
     /// May view an expense report (the resource): submitter, its budget category's coordinator, or FinanceAdmin/Admin.

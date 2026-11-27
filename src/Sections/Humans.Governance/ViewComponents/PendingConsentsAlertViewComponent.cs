@@ -1,6 +1,5 @@
 using Humans.Base.Extensions;
 using Humans.Consent.Contracts;
-using System.Security.Claims;
 using Microsoft.AspNetCore.Mvc;
 
 namespace Humans.Governance.ViewComponents;

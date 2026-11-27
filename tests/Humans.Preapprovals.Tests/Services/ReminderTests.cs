@@ -1,6 +1,5 @@
 using System.Transactions;
 using AwesomeAssertions;
-using Humans.AuditLog.Contracts;
 using Humans.Email.Contracts;
 using Humans.Notifications.Contracts;
 using Humans.Preapprovals.Contracts;
@@ -23,7 +22,7 @@ public sealed class ReminderTests : PreapprovalsTestHarness
     [Xunit.InlineData(ShutdownBoundary.LaterRead)]
     [Xunit.InlineData(ShutdownBoundary.BetweenGrants)]
     [Xunit.InlineData(ShutdownBoundary.NoEarlierFailure)]
-    public async Task Shutdown_preserves_prior_failures_and_stops_before_later_grants(ShutdownBoundary boundary)
+    public async Task Run_Shutdown_StopsBeforeLaterGrants(ShutdownBoundary boundary)
     {
         using var shutdown = new CancellationTokenSource();
         var program = await SeedProgramAsync(claimBy: Today.PlusDays(5));
@@ -74,7 +73,7 @@ public sealed class ReminderTests : PreapprovalsTestHarness
     }
 
     [HumansFact]
-    public async Task Cancellation_after_selection_does_not_start_a_reminder_transaction()
+    public async Task Run_CancelledAfterSelection_StartsNoTransaction()
     {
         using var shutdown = new CancellationTokenSource();
         var program = await SeedProgramAsync(claimBy: Today.PlusDays(5));
@@ -105,7 +104,7 @@ public sealed class ReminderTests : PreapprovalsTestHarness
     }
 
     [HumansFact]
-    public async Task Run_SendsD14Once_RecordsMarker_AuditsAsJob_LeavesGrantAlone()
+    public async Task Run_D14Due_SendsOnce()
     {
         var program = await SeedProgramAsync(claimBy: Today.PlusDays(10));
         var person = SeedUser("Person", language: "fr");
@@ -142,14 +141,14 @@ public sealed class ReminderTests : PreapprovalsTestHarness
         }
         await using var db = OpenContext();
         var markers = await db.RemindersSent.ToListAsync(Ct);
-        markers.Should().ContainSingle().Which.Should().BeEquivalentTo(new { GrantId = grant.Id, Kind = ReminderKind.D14, ClaimBy = program.ClaimBy });
+        markers.Should().ContainSingle().Which.Should().BeEquivalentTo(new { GrantId = grant.Id, Kind = ReminderKind.D14, program.ClaimBy });
         var stored = await ReadGrantAsync(grant.Id);
         stored.Status.Should().Be(GrantStatus.Open);
         stored.UpdatedAt.Should().Be(grant.UpdatedAt);
     }
 
     [HumansFact]
-    public async Task Run_D3AfterD14_HighPriority_BothRecorded()
+    public async Task Run_D3AfterD14_RecordsBoth()
     {
         var program = await SeedProgramAsync(claimBy: Today.PlusDays(10));
         var grant = await SeedGrantAsync(program);
@@ -167,7 +166,7 @@ public sealed class ReminderTests : PreapprovalsTestHarness
     }
 
     [HumansFact]
-    public async Task Run_SkipsNotOpen_PastDeadline_AndFarAway()
+    public async Task Run_NotOpenOrNotDue_IsSkipped()
     {
         var soon = await SeedProgramAsync(claimBy: Today.PlusDays(2));
         var past = await SeedProgramAsync(claimBy: Today.PlusDays(-1));
@@ -211,7 +210,7 @@ public sealed class ReminderTests : PreapprovalsTestHarness
     [HumansTheory]
     [Xunit.InlineData(true)]
     [Xunit.InlineData(false)]
-    public async Task Run_DeliveryFailure_LeavesNoMarker_ContinuesThenFails(bool notificationFails)
+    public async Task Run_DeliveryFails_LeavesNoMarker(bool notificationFails)
     {
         var program = await SeedProgramAsync(claimBy: Today.PlusDays(5));
         var broken = SeedUser("Broken");

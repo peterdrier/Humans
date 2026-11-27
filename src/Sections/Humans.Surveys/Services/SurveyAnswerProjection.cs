@@ -5,9 +5,9 @@ namespace Humans.Surveys.Services;
 
 internal sealed class SurveyAnswerProjection(Survey? survey, string culture)
 {
-    private readonly RespondentAnswerContext context = BuildRespondentAnswerContext(survey, culture);
+    private readonly RespondentAnswerContext _context = BuildRespondentAnswerContext(survey, culture);
 
-    internal string PromptFor(SurveyAnswer answer) => context.Prompts.GetValueOrDefault(answer.QuestionId, string.Empty);
+    internal string PromptFor(SurveyAnswer answer) => _context.Prompts.GetValueOrDefault(answer.QuestionId, string.Empty);
 
     private static RespondentAnswerContext BuildRespondentAnswerContext(Survey? survey, string culture)
     {
@@ -29,9 +29,11 @@ internal sealed class SurveyAnswerProjection(Survey? survey, string culture)
 
     internal IReadOnlyList<RespondentAnswer> BuildRespondentAnswers(SurveyResponse response) =>
         response.Answers
+            .OrderBy(answer => _context.QuestionsById.TryGetValue(answer.QuestionId, out var q) ? q.PageNumber : int.MaxValue)
+            .ThenBy(answer => _context.QuestionsById.TryGetValue(answer.QuestionId, out var q) ? q.Order : int.MaxValue)
             .Select(answer => new RespondentAnswer(
                 answer.QuestionId,
-                context.Prompts.GetValueOrDefault(answer.QuestionId, string.Empty),
+                _context.Prompts.GetValueOrDefault(answer.QuestionId, string.Empty),
                 ResolveSelectedLabels(answer),
                 answer.TextValue,
                 answer.RatingValue,
@@ -42,7 +44,7 @@ internal sealed class SurveyAnswerProjection(Survey? survey, string culture)
     internal IReadOnlyList<string> ResolveSelectedLabels(SurveyAnswer answer)
     {
         if (answer.SelectedOptionValues.Count == 0) return [];
-        var labels = context.OptionLabels.GetValueOrDefault(answer.QuestionId);
+        var labels = _context.OptionLabels.GetValueOrDefault(answer.QuestionId);
         return answer.SelectedOptionValues
             .Select(v => labels is not null && labels.TryGetValue(v, out var label) ? label : v)
             .ToList();
@@ -51,13 +53,13 @@ internal sealed class SurveyAnswerProjection(Survey? survey, string culture)
     internal IReadOnlyList<ResolvedGridSelection> ResolveGridSelections(SurveyAnswer answer)
     {
         if (answer.GridSelections is null
-            || !context.QuestionsById.TryGetValue(answer.QuestionId, out var question)) return [];
+            || !_context.QuestionsById.TryGetValue(answer.QuestionId, out var question)) return [];
 
         var rows = (question.GridRows ?? []).ToDictionary(
             row => row.Value,
-            row => row.Label.Resolve(culture, context.DefaultCulture),
+            row => row.Label.Resolve(culture, _context.DefaultCulture),
             StringComparer.Ordinal);
-        var columns = context.OptionLabels[answer.QuestionId];
+        var columns = _context.OptionLabels[answer.QuestionId];
         return answer.GridSelections
             .Where(selection => selection.Value.Count > 0)
             .Select(selection => new ResolvedGridSelection(
@@ -87,7 +89,7 @@ internal sealed class SurveyAnswerProjection(Survey? survey, string culture)
     {
         if (answer.RankedValue is null) return null;
 
-        var labels = context.OptionLabels.GetValueOrDefault(answer.QuestionId);
+        var labels = _context.OptionLabels.GetValueOrDefault(answer.QuestionId);
         string Resolve(string value) =>
             labels is not null && labels.TryGetValue(value, out var label) ? label : value;
 

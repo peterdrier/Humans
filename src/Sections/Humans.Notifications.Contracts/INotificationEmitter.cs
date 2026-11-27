@@ -1,8 +1,8 @@
 namespace Humans.Notifications.Contracts;
 
 /// <summary>
-/// Separate from <see cref="INotificationService"/>, which injects <c>IRoleAssignmentService</c>, so that
-/// <c>TeamService</c> and <c>RoleAssignmentService</c> can depend on this without a DI cycle.
+/// Separate from <see cref="INotificationService"/>, which injects <c>ISystemRoleService</c>, so that
+/// <c>TeamService</c> and <c>SystemRoleService</c> can depend on this without a DI cycle.
 /// </summary>
 public interface INotificationEmitter
 {

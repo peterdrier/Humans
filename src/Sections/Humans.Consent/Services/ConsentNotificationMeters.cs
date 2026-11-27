@@ -19,7 +19,7 @@ internal sealed class ConsentNotificationMeters(
     public async Task<IReadOnlyList<NotificationMeter>> GetMetersAsync(
         ClaimsPrincipal viewer, Guid viewerId, CancellationToken ct = default)
     {
-        var isReviewer = viewer.IsInRole(RoleNames.Admin) || viewer.IsInRole(ConsentRoles.ConsentCoordinator);
+        var isReviewer = viewer.IsInRole(RoleNames.Admin) || viewer.IsInRole(ConsentRoles.ConsentAdmin);
         var isBoard = viewer.IsInRole(RoleNames.Board);
         if (!isReviewer && !isBoard)
             return [];
@@ -38,7 +38,7 @@ internal sealed class ConsentNotificationMeters(
                 Title = localizer["Consent_Meter_ReviewsPending"],
                 Count = pending,
                 ActionUrl = "/Consent/ReviewQueue",
-                Audience = localizer["Consent_Meter_AudienceConsentCoordinator"],
+                Audience = localizer["Consent_Meter_AudienceConsentAdmin"],
                 Priority = 10,
             });
         }

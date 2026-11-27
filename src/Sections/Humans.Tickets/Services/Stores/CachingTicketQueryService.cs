@@ -2,7 +2,6 @@ using Humans.Base.Caching;
 using Humans.Base.Interfaces.Caching;
 using Humans.Gdpr.Contracts;
 using Humans.Tickets.Contracts;
-using Humans.Tickets.Domain;
 using Humans.Users.Contracts;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
@@ -140,8 +139,8 @@ internal sealed class CachingTicketQueryService
         MutateAsync<ITicketManagement>(inner => inner.EraseForUserAsync(userId, ct), ClearAll);
 
     // A later sync stage can fail after orders/attendees have committed.
-    public Task<TicketSyncResult> SyncOrdersAndAttendeesAsync(CancellationToken ct = default) =>
-        MutateAsync<ITicketSyncService, TicketSyncResult>(inner => inner.SyncOrdersAndAttendeesAsync(ct), ClearAll);
+    public Task<TicketSyncResult> SyncAsync(CancellationToken ct = default) =>
+        MutateAsync<ITicketSyncService, TicketSyncResult>(inner => inner.SyncAsync(ct), ClearAll);
 
     public Task<bool> IsInErrorStateAsync(CancellationToken ct = default) =>
         WithInnerAsync<ITicketSyncService, bool>(inner => inner.IsInErrorStateAsync(ct));
@@ -204,7 +203,7 @@ internal sealed class CachingTicketQueryService
     {
         try
         {
-            return await WithInnerAsync<TInner, TResult>(work);
+            return await WithInnerAsync(work);
         }
         finally
         {

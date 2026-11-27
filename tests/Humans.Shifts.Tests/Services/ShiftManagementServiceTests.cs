@@ -11,13 +11,11 @@ using Humans.Base.Enums;
 using Humans.Base.Extensions;
 using Humans.Shifts.Data;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.EntityFrameworkCore.Infrastructure;
-using Microsoft.EntityFrameworkCore.Diagnostics;
-using Microsoft.Extensions.Caching.Memory;
 using NodaTime;
 using NSubstitute;
+using Humans.Permissions.Contracts;
+using Humans.Base.Authorization;
 using Humans.Users.Contracts;
-using Humans.AuditLog.Contracts;
 
 using Humans.Shifts.Models;
 
@@ -26,8 +24,7 @@ namespace Humans.Shifts.Tests.Services;
 public sealed class ShiftManagementServiceTests : ShiftsTestHarness
 {
     private readonly ITeamService _teamService;
-    private readonly IUserService _userService;
-    private readonly IRoleAssignmentService _roleAssignmentService;
+    private readonly IPermissionService _permissions = Substitute.For<IPermissionService>();
     private readonly Humans.Settings.Contracts.ISettingsService _settingsService = Substitute.For<Humans.Settings.Contracts.ISettingsService>();
     private readonly ShiftManagementService _service;
 
@@ -37,13 +34,13 @@ public sealed class ShiftManagementServiceTests : ShiftsTestHarness
         : base(TestNow)
     {
         _teamService = Substitute.For<ITeamService>();
-        _userService = Substitute.For<IUserService>();
-        _roleAssignmentService = Substitute.For<IRoleAssignmentService>();
+        var userService = Substitute.For<IUserService>();
+        var systemRoleService = Substitute.For<ISystemRoleService>();
 
         // Default: users looked up by id resolve to the entities seeded in Db
         // so the cross-section signup stitching in GetBrowseShiftsAsync returns the
         // correct DisplayName.
-        _userService.StubGetUserInfosFromContext(Db);
+        userService.StubGetUserInfosFromContext(Db);
 
         _teamService.GetTeamsAsync(Arg.Any<CancellationToken>())
             .Returns(_ => Task.FromResult<IReadOnlyDictionary<Guid, TeamInfo>>(
@@ -60,9 +57,10 @@ public sealed class ShiftManagementServiceTests : ShiftsTestHarness
 
         var serviceProvider = new ServiceLocatorBuilder()
             .With(_teamService)
-            .With(_userService)
-            .With(_userService)
-            .With(_roleAssignmentService)
+            .With(userService)
+            .With(userService)
+            .With(systemRoleService)
+            .With(_permissions)
             .With(_settingsService)
             .Build();
 
@@ -71,7 +69,6 @@ public sealed class ShiftManagementServiceTests : ShiftsTestHarness
         _service = new ShiftManagementService(
             repo,
             AuditLog,
-            AdminAuthorization,
             serviceProvider,
             NewCalendarResolver(),
             Clock,
@@ -87,29 +84,6 @@ public sealed class ShiftManagementServiceTests : ShiftsTestHarness
             team.IsPublicPage, team.IsHidden, team.IsPromotedToDirectory, team.CreatedAt,
             Members: [],
             ParentTeamId: team.ParentTeamId);
-
-    [HumansFact]
-    public async Task DeleteEventAsync_RequiresAdmin()
-    {
-        var eventId = Guid.NewGuid();
-        var repo = Substitute.For<IShiftManagementRepository>();
-        repo.DeleteEventCascadeAsync(eventId, Arg.Any<CancellationToken>())
-            .Returns(1);
-        var service = new ShiftManagementService(
-            repo,
-            AuditLog,
-            AdminAuthorization,
-            new ServiceLocatorBuilder().Build(),
-            NewCalendarResolver(),
-            Clock,
-            Microsoft.Extensions.Logging.Abstractions.NullLogger<ShiftManagementService>.Instance);
-
-        var deleted = await service.DeleteEventAsync(eventId, Xunit.TestContext.Current.CancellationToken);
-
-        deleted.Should().Be(1);
-        await AdminAuthorization.Received(1)
-            .RequireCurrentUserIsAdminAsync(Arg.Any<CancellationToken>());
-    }
 
     [HumansFact]
     public async Task CreateBuildStrikeShifts_CreatesOneAllDayShiftPerDay()
@@ -381,7 +355,6 @@ public sealed class ShiftManagementServiceTests : ShiftsTestHarness
     }
 
     [HumansTheory]
-    [Xunit.InlineData("coordinators")]
     [Xunit.InlineData("browse")]
     [Xunit.InlineData("departments")]
     [Xunit.InlineData("admin-rotas")]
@@ -396,12 +369,9 @@ public sealed class ShiftManagementServiceTests : ShiftsTestHarness
         await SaveAllAsync(Xunit.TestContext.Current.CancellationToken);
         using var aborted = new CancellationTokenSource();
         await aborted.CancelAsync();
-        _teamService.GetUserCoordinatedTeamIdsAsync(Arg.Any<Guid>(), aborted.Token)
-            .Returns(Task.FromCanceled<IReadOnlyList<Guid>>(aborted.Token));
 
         Func<Task> read = boundary switch
         {
-            "coordinators" => () => _service.GetCoordinatorTeamIdsAsync(Guid.NewGuid(), aborted.Token),
             "browse" => () => _service.GetBrowseShiftsAsync(new ShiftBrowseQuery(es.Id), aborted.Token),
             "admin-rotas" => () => _service.GetRotasByDepartmentAsync(rota.TeamId, es.Id, aborted.Token),
             "admin-staffing" => () => _service.GetStaffingSnapshotAsync(es.Id, ct: aborted.Token),
@@ -424,15 +394,15 @@ public sealed class ShiftManagementServiceTests : ShiftsTestHarness
         await SaveAllAsync(Xunit.TestContext.Current.CancellationToken);
         var locator = Substitute.For<IServiceProvider>();
         var service = new ShiftManagementService(
-            new ShiftRepository(ShiftsDbFactory, ShiftsDb, Clock), AuditLog, AdminAuthorization,
-            locator, new EventCalendarResolver(Substitute.For<Humans.Settings.Contracts.ISettingsService>(), Substitute.For<Humans.Shifts.Data.IShiftManagementRepository>()), Clock,
+            new ShiftRepository(ShiftsDbFactory, ShiftsDb, Clock), AuditLog,
+            locator, new EventCalendarResolver(Substitute.For<Humans.Settings.Contracts.ISettingsService>(), Substitute.For<IShiftManagementRepository>()), Clock,
             Microsoft.Extensions.Logging.Abstractions.NullLogger<ShiftManagementService>.Instance);
         locator.GetService(typeof(IShiftRotaRows)).Returns(service);
 
         var found = await service.GetShiftByIdAsync(shift.Id, Xunit.TestContext.Current.CancellationToken);
 
         found.Should().NotBeNull();
-        found!.Shift.Id.Should().Be(shift.Id);
+        found.Shift.Id.Should().Be(shift.Id);
         found.Shift.DayOffset.Should().Be(2);
         found.Rota.Id.Should().Be(rota.Id);
         found.Rota.TeamId.Should().Be(rota.TeamId);
@@ -479,7 +449,6 @@ public sealed class ShiftManagementServiceTests : ShiftsTestHarness
     [Xunit.InlineData(true, "member")]
     [Xunit.InlineData(false, "coordinator")]
     [Xunit.InlineData(true, "coordinator")]
-    [Xunit.InlineData(true, "parent-coordinator")]
     [Xunit.InlineData(true, "admin")]
     [Xunit.InlineData(true, "unscoped")]
     public async Task GetBrowseShifts_EarlyEntryLockUsesViewerPrivilegeForEachTeam(bool closed, string viewerKind)
@@ -492,19 +461,11 @@ public sealed class ShiftManagementServiceTests : ShiftsTestHarness
         SeedShift(rota, dayOffset: -1);
         SeedShift(otherRota, dayOffset: -1);
         var viewer = Guid.NewGuid();
-        if (viewerKind is "coordinator" or "parent-coordinator")
-        {
-            var coordinatedTeamId = rota.TeamId;
-            if (viewerKind is "parent-coordinator")
-            {
-                coordinatedTeamId = Guid.NewGuid();
-                TeamsDb.Teams.Local.Single(t => t.Id == rota.TeamId).ParentTeamId = coordinatedTeamId;
-            }
-            _teamService.GetUserCoordinatedTeamIdsAsync(viewer, Arg.Any<CancellationToken>())
-                .Returns(new List<Guid> { coordinatedTeamId });
-        }
+        if (viewerKind is "coordinator")
+            _permissions.HasAsync(viewer, ShiftsPermissions.Approve, new Owner(TeamOwner.Kind, rota.TeamId), Arg.Any<CancellationToken>())
+                .Returns(true);
         if (viewerKind is "admin")
-            _roleAssignmentService.HasActiveRoleAsync(viewer, Humans.Base.Constants.RoleNames.Admin, Arg.Any<CancellationToken>())
+            _permissions.HasAsync(viewer, ShiftsPermissions.Approve, Arg.Any<Owner>(), Arg.Any<CancellationToken>())
                 .Returns(true);
         await SaveAllAsync(Xunit.TestContext.Current.CancellationToken);
 
@@ -826,7 +787,7 @@ public sealed class ShiftManagementServiceTests : ShiftsTestHarness
         var repo = Substitute.For<IShiftManagementRepository>();
         repo.SearchVolunteerVisibleRotasAsync("Kitchen", settings.Id, Arg.Any<CancellationToken>())
             .Returns(candidates);
-        var service = new ShiftManagementService(repo, AuditLog, AdminAuthorization,
+        var service = new ShiftManagementService(repo, AuditLog,
             new ServiceLocatorBuilder().Build(), NewCalendarResolver(),
             Clock, Microsoft.Extensions.Logging.Abstractions.NullLogger<ShiftManagementService>.Instance);
 
@@ -954,141 +915,6 @@ public sealed class ShiftManagementServiceTests : ShiftsTestHarness
         rota.EventSettings = es;
 
         return (es, rota);
-    }
-
-    [HumansTheory]
-    [Xunit.InlineData("coordinated-teams")]
-    [Xunit.InlineData("team")]
-    public async Task IsDeptCoordinatorAsync_Reads_HonourCallerCancellation(string boundary)
-    {
-        using var request = new CancellationTokenSource();
-        await request.CancelAsync();
-        var userId = Guid.NewGuid();
-        var departmentId = Guid.NewGuid();
-        _teamService.GetUserCoordinatedTeamIdsAsync(userId, Arg.Any<CancellationToken>())
-            .Returns(call =>
-            {
-                if (string.Equals(boundary, "coordinated-teams", StringComparison.Ordinal))
-                    call.Arg<CancellationToken>().ThrowIfCancellationRequested();
-                return Task.FromResult<IReadOnlyList<Guid>>([]);
-            });
-        _teamService.GetTeamAsync(departmentId, Arg.Any<CancellationToken>())
-            .Returns(call =>
-            {
-                if (string.Equals(boundary, "team", StringComparison.Ordinal))
-                    call.Arg<CancellationToken>().ThrowIfCancellationRequested();
-                return Task.FromResult<TeamInfo?>(null);
-            });
-
-        var read = () => _service.IsDeptCoordinatorAsync(userId, departmentId, request.Token);
-
-        await read.Should().ThrowAsync<OperationCanceledException>();
-    }
-
-    [HumansFact]
-    public async Task GetCoordinatorTeamIdsAsync_ReadsTeamsEveryCall_SoACoordinatorChangeShowsImmediately()
-    {
-        // No Shifts-side cache: Teams' in-RAM read model answers and Teams keeps it current
-        // on its own writes, so no other section has to evict anything in Shifts.
-        var userId = Guid.NewGuid();
-        var teamId = Guid.NewGuid();
-        _teamService.GetUserCoordinatedTeamIdsAsync(userId, Arg.Any<CancellationToken>())
-            .Returns(
-                Task.FromResult<IReadOnlyList<Guid>>([teamId]),
-                Task.FromResult<IReadOnlyList<Guid>>([]));
-
-        (await _service.GetCoordinatorTeamIdsAsync(userId)).Should().Equal(teamId);
-        (await _service.GetCoordinatorTeamIdsAsync(userId)).Should().BeEmpty();
-    }
-
-    [HumansFact]
-    public async Task IsDeptCoordinatorAsync_SubTeamManager_ReturnsTrue_ForOwnSubTeam()
-    {
-        var userId = Guid.NewGuid();
-        var subTeamId = Guid.NewGuid();
-
-        // User coordinates subTeam
-        _teamService.GetUserCoordinatedTeamIdsAsync(userId, Arg.Any<CancellationToken>())
-            .Returns(new List<Guid> { subTeamId });
-
-        var result = await _service.IsDeptCoordinatorAsync(userId, subTeamId);
-
-        result.Should().BeTrue();
-    }
-
-    [HumansFact]
-    public async Task IsDeptCoordinatorAsync_SubTeamManager_ReturnsFalse_ForSiblingSubTeam()
-    {
-        var userId = Guid.NewGuid();
-        var subTeamAId = Guid.NewGuid();
-        var subTeamBId = Guid.NewGuid();
-        var departmentId = Guid.NewGuid();
-
-        // User coordinates subTeamA only
-        _teamService.GetUserCoordinatedTeamIdsAsync(userId, Arg.Any<CancellationToken>())
-            .Returns(new List<Guid> { subTeamAId });
-
-        // subTeamB's parent is department (not in coordinated list)
-        _teamService.GetTeamAsync(subTeamBId, Arg.Any<CancellationToken>())
-            .Returns(new TeamInfo(
-                subTeamBId, "SubTeamB", null, "subteam-b",
-                IsActive: true, IsSystemTeam: false, SystemTeamType.None, RequiresApproval: false,
-                IsPublicPage: true, IsHidden: false, IsPromotedToDirectory: false,
-                CreatedAt: TestNow, Members: [],
-                ParentTeamId: departmentId));
-
-        var result = await _service.IsDeptCoordinatorAsync(userId, subTeamBId);
-
-        result.Should().BeFalse();
-    }
-
-    [HumansFact]
-    public async Task IsDeptCoordinatorAsync_SubTeamManager_ReturnsFalse_ForParentDepartment()
-    {
-        var userId = Guid.NewGuid();
-        var subTeamId = Guid.NewGuid();
-        var departmentId = Guid.NewGuid();
-
-        // User coordinates subTeam only
-        _teamService.GetUserCoordinatedTeamIdsAsync(userId, Arg.Any<CancellationToken>())
-            .Returns(new List<Guid> { subTeamId });
-
-        // Department has no parent
-        _teamService.GetTeamAsync(departmentId, Arg.Any<CancellationToken>())
-            .Returns(new TeamInfo(
-                departmentId, "Department", null, "department",
-                IsActive: true, IsSystemTeam: false, SystemTeamType.None, RequiresApproval: false,
-                IsPublicPage: true, IsHidden: false, IsPromotedToDirectory: false,
-                CreatedAt: TestNow, Members: []));
-
-        var result = await _service.IsDeptCoordinatorAsync(userId, departmentId);
-
-        result.Should().BeFalse();
-    }
-
-    [HumansFact]
-    public async Task IsDeptCoordinatorAsync_DepartmentCoordinator_ReturnsTrue_ForChildSubTeam()
-    {
-        var userId = Guid.NewGuid();
-        var departmentId = Guid.NewGuid();
-        var subTeamId = Guid.NewGuid();
-
-        // User coordinates department
-        _teamService.GetUserCoordinatedTeamIdsAsync(userId, Arg.Any<CancellationToken>())
-            .Returns(new List<Guid> { departmentId });
-
-        // subTeam's parent is department
-        _teamService.GetTeamAsync(subTeamId, Arg.Any<CancellationToken>())
-            .Returns(new TeamInfo(
-                subTeamId, "SubTeam", null, "subteam",
-                IsActive: true, IsSystemTeam: false, SystemTeamType.None, RequiresApproval: false,
-                IsPublicPage: true, IsHidden: false, IsPromotedToDirectory: false,
-                CreatedAt: TestNow, Members: [],
-                ParentTeamId: departmentId));
-
-        var result = await _service.IsDeptCoordinatorAsync(userId, subTeamId);
-
-        result.Should().BeTrue();
     }
 
     [HumansFact]

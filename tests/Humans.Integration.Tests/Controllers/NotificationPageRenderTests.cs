@@ -55,11 +55,10 @@ public class NotificationPageRenderTests(HumansTestDatabase database) : Integrat
         await db.SaveChangesAsync(ct);
     }
 
-    private async Task<Guid> SignInAndSeedAsync(CancellationToken ct)
+    private async Task SignInAndSeedAsync(CancellationToken ct)
     {
         var userId = await Factory.SignInAsFullyOnboardedAsync(Client, DevPersona.Admin);
         await SeedNotificationsAsync(userId, ct);
-        return userId;
     }
 
     [HumansFact(Timeout = 120000)]

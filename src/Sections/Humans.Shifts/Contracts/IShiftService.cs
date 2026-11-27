@@ -11,8 +11,11 @@ namespace Humans.Shifts.Contracts;
 /// </summary>
 public interface IShiftService : IApplicationService
 {
-    /// <summary>Departments and sub-teams the user coordinates or manages.</summary>
-    Task<IReadOnlyList<Guid>> GetCoordinatorTeamIdsAsync(Guid userId, CancellationToken ct = default);
+    /// <summary>
+    /// Holds <see cref="ShiftsPermissions.Manage"/> or <see cref="ShiftsPermissions.Approve"/> on at least one team:
+    /// the gate for the shift pages that aren't about one team.
+    /// </summary>
+    Task<bool> CanManageOrApproveAnyShiftsAsync(Guid userId, CancellationToken ct = default);
 
     /// <summary>
     /// At most <paramref name="max"/> highest-scoring volunteer-visible rotas in the active event, matched by name.
@@ -40,7 +43,7 @@ public interface IShiftService : IApplicationService
         CancellationToken ct = default);
 
     /// <summary>Users with a Confirmed signup on a shift that day: the Cantina roster.</summary>
-    Task<IReadOnlyList<Guid>> GetOnSiteUserIdsForDayAsync(
+    Task<IReadOnlyList<Guid>> GetOnSiteUserIdsAsync(
         Guid eventSettingsId,
         int dayOffset,
         CancellationToken ct = default);

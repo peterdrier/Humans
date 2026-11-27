@@ -124,7 +124,7 @@ Application
 ├── ResolvedAt: Instant?
 ├── RenewalReminderSentAt: Instant?
 ├── ReviewedByUserId: Guid?
-├── ReviewNotes: string? (4000)
+├── ReviewNotes: string? (4000) [retired, no longer written; dropped by peterdrier/Humans#2417]
 ├── TermExpiresAt: LocalDate? [set on approval: Dec 31 of odd year]
 ├── BoardMeetingDate: LocalDate? [date Board finalized decision]
 ├── DecisionNote: string? (4000) [Board's collective decision note]
@@ -237,7 +237,7 @@ When an Application is approved:
 5. Membership tier row (`governance_membership_tiers`) → Application's tier
 6. The Colaboradores or Asociados body's Google group and files are synced
 7. Individual BoardVote records deleted
-8. Approval email attempted best-effort, including recipient lookup; email failure does not skip the in-app notice.
+8. Approval email attempted best-effort, including recipient lookup; missing or tombstoned recipients are skipped. Email failure does not skip the in-app notice.
 
 Steps 1–5 and 7 commit together before team sync, audit and notices. A failed tier grant leaves the application Submitted and retains its Board votes.
 
@@ -266,11 +266,11 @@ Steps 1–5 and 7 commit together before team sync, audit and notices. A failed 
 ## Volunteer Access vs Tier Application
 
 ### Volunteer Access (Name + Consents → Team Sync)
-- **Gate**: Required name fields + all required consents → `SystemTeamSyncJob` adds to Volunteers team. The Consent Coordinator review's `IsApproved` (Consent) is not consulted for Volunteers.
+- **Gate**: Required name fields + all required consents → `SystemTeamSyncJob` adds to Volunteers team. The Consent Admin review's `IsApproved` (Consent) is not consulted for Volunteers.
 - **Applies to**: All new humans — the universal onboarding gate
 - **No Application needed**
 - **Independent of tier applications** — the gate does not evaluate tier suitability
-- The Consent Coordinator's clear/flag review is an independent audit annotation and does not gate Volunteer admission; reject and suspend are the kick-out levers
+- The Consent Admin's clear/flag review is an independent audit annotation and does not gate Volunteer admission; reject and suspend are the kick-out levers
 
 ### Tier Application (Board Voting → Tier Enrollment)
 - **Gate**: Board votes on Application → Approve/Reject
@@ -282,6 +282,6 @@ Steps 1–5 and 7 commit together before team sync, audit and notices. A failed 
 - [Membership Tiers](membership-tiers.md) — Tier definitions and lifecycle
 - [Onboarding Pipeline](../../../Humans.Onboarding/Docs/features/onboarding-pipeline.md) — End-to-end onboarding flow
 - [Board Voting](board-voting.md) — Board voting process
-- [Coordinator Roles](../../../Humans.Shifts/Docs/features/coordinator-roles.md) — Consent Coordinator review (audit annotation, separate from applications)
+- [Coordinator Roles](../../../Humans.Shifts/Docs/features/coordinator-roles.md) — Consent Admin review (audit annotation, separate from applications)
 - [Profiles](../../../Humans.Users/Docs/features/profiles.md) — Profile data
 - [Administration](../../../../../docs/features/global/administration.md) — Application management

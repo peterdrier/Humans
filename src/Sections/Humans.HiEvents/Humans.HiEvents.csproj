@@ -8,12 +8,13 @@
 
   <ItemGroup>
     <!--
-      Adapter section: the Hi.Events implementation of Tickets' ITicketCheckoutBackend port, plus the webhook that
-      nudges Tickets. No tables and no views, so plain Microsoft.NET.Sdk; the port lives in the
-      Humans.Tickets.Contracts leaf, so this section references nothing else.
+      Adapter section: the Hi.Events implementation of Tickets' ITicketingPlatform port. No tables and no
+      views, so plain Microsoft.NET.Sdk.
     -->
     <ProjectReference Include="..\..\Humans.Base\Humans.Base.csproj" />
     <ProjectReference Include="..\Humans.Tickets.Contracts\Humans.Tickets.Contracts.csproj" />
+    <!-- IStripeService reads the Stripe account Hi.Events charges into. Acyclic: Humans.Stripe references no section. -->
+    <ProjectReference Include="..\Humans.Stripe\Humans.Stripe.csproj" />
   </ItemGroup>
 
   <ItemGroup>

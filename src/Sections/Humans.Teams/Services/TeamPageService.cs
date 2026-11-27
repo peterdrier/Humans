@@ -1,3 +1,4 @@
+using Humans.Permissions.Contracts;
 using Humans.Auth.Contracts;
 using Humans.Google.Contracts;
 using Humans.Teams.Contracts;
@@ -8,7 +9,8 @@ namespace Humans.Teams.Services;
 internal sealed class TeamPageService(
     ITeamManagementService teamService,
     ITeamResourceService teamResourceService,
-    IRoleAssignmentService roleAssignmentService) : ITeamPageService
+    ISystemRoleService systemRoleService,
+    IPermissionService permissions) : ITeamPageService
 {
     public async Task<TeamDirectoryResult> GetTeamDirectoryAsync(
         Guid? userId,
@@ -34,9 +36,9 @@ internal sealed class TeamPageService(
                 HiddenTeams: []);
         }
 
-        var isBoardMember = await roleAssignmentService.IsUserBoardMemberAsync(userId.Value, cancellationToken);
-        var isAdmin = await roleAssignmentService.IsUserAdminAsync(userId.Value, cancellationToken);
-        var isTeamsAdmin = await roleAssignmentService.IsUserTeamsAdminAsync(userId.Value, cancellationToken);
+        var isBoardMember = await systemRoleService.IsUserBoardMemberAsync(userId.Value, cancellationToken);
+        var isAdmin = await systemRoleService.IsUserAdminAsync(userId.Value, cancellationToken);
+        var isTeamsAdmin = await systemRoleService.IsUserTeamsAdminAsync(userId.Value, cancellationToken);
         var canCreateTeam = isAdmin || isTeamsAdmin;
         var canSeeHiddenTeams = canCreateTeam || isBoardMember;
 
@@ -221,10 +223,10 @@ internal sealed class TeamPageService(
             .ToList();
         if (teamIds.Count == 0) return [];
 
-        var isBoardMember = await roleAssignmentService.IsUserBoardMemberAsync(userId, cancellationToken);
+        var isBoardMember = await systemRoleService.IsUserBoardMemberAsync(userId, cancellationToken);
         var canSeeHiddenTeams = isBoardMember
-            || await roleAssignmentService.IsUserAdminAsync(userId, cancellationToken)
-            || await roleAssignmentService.IsUserTeamsAdminAsync(userId, cancellationToken);
+            || await systemRoleService.IsUserAdminAsync(userId, cancellationToken)
+            || await systemRoleService.IsUserTeamsAdminAsync(userId, cancellationToken);
 
         var result = new List<MyTeamMembershipSummary>(teamIds.Count);
         foreach (var teamId in teamIds)
@@ -236,10 +238,8 @@ internal sealed class TeamPageService(
             if (membership is null)
                 continue;
 
-            // A direct Coordinator, a board member, or the parent's coordinator: same rule as CanUserApproveRequestsForTeamAsync.
-            var canManage =
-                (isBoardMember || TeamCoordinatorAccess.IsCoordinatorOfActiveTeam(teamsById, team.Id, userId))
-                && !team.IsSystemTeam;
+            var canManage = !team.IsSystemTeam && (isBoardMember
+                || await permissions.HasAsync(userId, TeamsPermissions.Manage, TeamOwner.Of(team.Id), cancellationToken));
 
             var pendingCount = 0;
             if (canManage)
@@ -328,12 +328,12 @@ internal sealed class TeamPageService(
         var isCurrentUserMember = team.Members.Any(m => m.UserId == currentUserId);
         var isCurrentUserCoordinator = TeamCoordinatorAccess.IsCoordinatorOfActiveTeam(teamsById, team.Id, currentUserId);
 
-        var isBoardMember = await roleAssignmentService.IsUserBoardMemberAsync(currentUserId, cancellationToken);
-        var isAdmin = await roleAssignmentService.IsUserAdminAsync(currentUserId, cancellationToken);
-        var isTeamsAdmin = await roleAssignmentService.IsUserTeamsAdminAsync(currentUserId, cancellationToken);
+        var isBoardMember = await systemRoleService.IsUserBoardMemberAsync(currentUserId, cancellationToken);
+        var isAdmin = await systemRoleService.IsUserAdminAsync(currentUserId, cancellationToken);
+        var isTeamsAdmin = await systemRoleService.IsUserTeamsAdminAsync(currentUserId, cancellationToken);
         var canSeeHiddenTeams = isBoardMember || isAdmin || isTeamsAdmin;
         // Board reads every team's admin pages and changes nothing.
-        var canManage = isCurrentUserCoordinator || isAdmin || isTeamsAdmin;
+        var canManage = await permissions.HasAsync(currentUserId, TeamsPermissions.Manage, TeamOwner.Of(team.Id), cancellationToken);
 
         if (team.IsHidden && !canSeeHiddenTeams)
             return null;

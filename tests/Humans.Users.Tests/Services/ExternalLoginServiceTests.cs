@@ -1,6 +1,5 @@
 using System.Security.Claims;
 using AwesomeAssertions;
-using Humans.Application.Services.Users;
 using Humans.Users.Contracts;
 using Humans.Users.Data;
 using Humans.Users.Services;
@@ -17,7 +16,6 @@ public sealed class ExternalLoginServiceTests : ServiceTestHarness
 {
     private const string Provider = "Google";
 
-    private readonly UserStore<User, IdentityRole<Guid>, UsersDbContext, Guid> _userStore;
     private readonly UserManager<User> _userManager;
     private readonly IUserManagement _userService = Substitute.For<IUserManagement>();
     private readonly IUserEmailService _userEmailService = Substitute.For<IUserEmailService>();
@@ -25,9 +23,9 @@ public sealed class ExternalLoginServiceTests : ServiceTestHarness
 
     public ExternalLoginServiceTests()
     {
-        _userStore = new UserStore<User, IdentityRole<Guid>, UsersDbContext, Guid>(Db);
+        var userStore = new UserStore<User, IdentityRole<Guid>, UsersDbContext, Guid>(Db);
         _userManager = new UserManager<User>(
-            _userStore,
+            userStore,
             Options.Create(new IdentityOptions
             {
                 User = { RequireUniqueEmail = false },
@@ -136,7 +134,7 @@ public sealed class ExternalLoginServiceTests : ServiceTestHarness
 
         (await _userManager.FindByLoginAsync(Provider, providerKey))!.Id.Should().Be(userB.Id);
         (await _userManager.GetLoginsAsync(userA)).Should().BeEmpty();
-        await _userService.DidNotReceiveWithAnyArgs().RecordLoginAsync(default, default);
+        await _userService.DidNotReceiveWithAnyArgs().RecordSignInAsync(default);
         await _userEmailService.DidNotReceiveWithAnyArgs()
             .ReconcileOAuthIdentityAsync(default, default!, default!, default!, default);
     }
@@ -165,7 +163,7 @@ public sealed class ExternalLoginServiceTests : ServiceTestHarness
 
         (await _userManager.GetLoginsAsync(userA))
             .Should().ContainSingle(l => l.LoginProvider == Provider && l.ProviderKey == providerKey);
-        await _userService.Received(1).RecordLoginAsync(userA.Id, Arg.Any<CancellationToken>());
+        await _userService.Received(1).RecordSignInAsync(userA.Id, Arg.Any<CancellationToken>());
         await _userService.Received(1).EnsureStubProfileAsync(
             userA.Id, null, null, null, Arg.Any<CancellationToken>(), userA.Id);
         await _userEmailService.Received(1).ReconcileOAuthIdentityAsync(
@@ -193,7 +191,7 @@ public sealed class ExternalLoginServiceTests : ServiceTestHarness
         result.SignInUserId.Should().BeNull();
 
         (await _userManager.FindByLoginAsync(Provider, providerKey))!.Id.Should().Be(userA.Id);
-        await _userService.Received(1).RecordLoginAsync(userA.Id, Arg.Any<CancellationToken>());
+        await _userService.Received(1).RecordSignInAsync(userA.Id, Arg.Any<CancellationToken>());
         await _userService.Received(1).EnsureStubProfileAsync(
             userA.Id, null, null, null, Arg.Any<CancellationToken>(), userA.Id);
         await _userEmailService.Received(1).ReconcileOAuthIdentityAsync(
@@ -277,7 +275,7 @@ public sealed class ExternalLoginServiceTests : ServiceTestHarness
         result.Outcome.Should().Be(ExternalLoginOutcome.SignedIn);
         result.SignInUserId.Should().BeNull();
 
-        await _userService.Received(1).RecordLoginAsync(userA.Id, Arg.Any<CancellationToken>());
+        await _userService.Received(1).RecordSignInAsync(userA.Id, Arg.Any<CancellationToken>());
         await _userEmailService.Received(1).ReconcileOAuthIdentityAsync(
             userA.Id, Provider, providerKey, "a@example.com", true, Arg.Any<CancellationToken>());
     }

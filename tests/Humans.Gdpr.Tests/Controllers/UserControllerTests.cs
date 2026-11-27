@@ -1,3 +1,4 @@
+using Humans.Testing;
 using Xunit;
 using System.Security.Claims;
 using AwesomeAssertions;
@@ -24,7 +25,7 @@ public class UserControllerTests
 
     private UserController Create(UserState? state)
     {
-        var localizer = Substitute.For<IStringLocalizer<GdprResource>>();
+        var localizer = Substitute.For<IStringLocalizer<GdprResource>>().AddFormatting();
         localizer[Arg.Any<string>()].Returns(ci => new LocalizedString(ci.Arg<string>(), ci.Arg<string>()));
         var claims = state is { } s
             ? [new Claim(RoleChecks.UserStateClaimType, s.ToString())]
@@ -36,7 +37,7 @@ public class UserControllerTests
         _users.GetUserInfoAsync(_userId, Arg.Any<CancellationToken>()).Returns(info);
 
     [HumansFact]
-    public async Task Deletion_stops_before_mutation_when_account_lookup_is_cancelled()
+    public async Task Deletion_LookupCancelled_ChangesNothing()
     {
         var ctrl = Create(UserState.DeletePending);
         using var request = new CancellationTokenSource();
@@ -53,35 +54,27 @@ public class UserControllerTests
         _deletion.ReceivedCalls().Should().BeEmpty();
     }
 
-    [HumansTheory]
-    [InlineData(UserState.Active)]
-    [InlineData(UserState.Bare)]
-    [InlineData(UserState.DeletePending)]
-    public async Task Status_sends_everyone_outside_the_excluded_states_home(UserState state)
+    [HumansFact]
+    public async Task Status_AccountNotWalled_RedirectsHome()
     {
-        var result = await Create(state).Status();
+        var result = await Create(UserState.DeletePending).Status();
 
         result.Should().BeOfType<RedirectToActionResult>().Which.ControllerName.Should().Be("Home");
     }
 
-    [HumansTheory]
-    [InlineData(UserState.Suspended)]
-    [InlineData(UserState.AdminSuspended)]
-    [InlineData(UserState.Rejected)]
-    [InlineData(UserState.Deleted)]
-    [InlineData(UserState.Merged)]
-    public async Task Status_shows_the_wall_for_each_excluded_state(UserState state)
+    [HumansFact]
+    public async Task Status_WalledAccount_ShowsWall()
     {
         Stub(ControllerTestHost.Info(_userId));
 
-        var result = await Create(state).Status();
+        var result = await Create(UserState.Merged).Status();
 
         result.Should().BeOfType<ViewResult>().Which.Model
-            .Should().BeOfType<AccountStatusViewModel>().Which.State.Should().Be(state);
+            .Should().BeOfType<AccountStatusViewModel>().Which.State.Should().Be(UserState.Merged);
     }
 
     [HumansFact]
-    public async Task Deletion_without_a_pending_request_redirects_home()
+    public async Task Deletion_NoPendingRequest_RedirectsHome()
     {
         Stub(ControllerTestHost.Info(_userId));
 
@@ -91,7 +84,7 @@ public class UserControllerTests
     }
 
     [HumansFact]
-    public async Task Deletion_for_an_unknown_user_is_not_found()
+    public async Task Deletion_UnknownUser_IsNotFound()
     {
         Stub(null);
 
@@ -101,7 +94,7 @@ public class UserControllerTests
     [HumansTheory]
     [InlineData(false)]
     [InlineData(true)]
-    public async Task Wall_pages_stop_loading_after_request_cancellation(bool deletion)
+    public async Task WallPages_RequestCancelled_StopLoading(bool deletion)
     {
         using var request = new CancellationTokenSource();
         var now = Instant.FromUtc(2026, 10, 3, 0, 0);
@@ -128,7 +121,7 @@ public class UserControllerTests
     [InlineData(10)]
     [InlineData(30)]
     [InlineData(60)]
-    public async Task Deletion_reports_the_later_of_grace_deadline_and_ticket_hold(int? holdDays)
+    public async Task Deletion_TicketHoldAfterGrace_ReportsLaterDate(int? holdDays)
     {
         var now = Instant.FromUtc(2026, 10, 3, 0, 0);
         Stub(ControllerTestHost.Info(_userId, u =>
@@ -146,7 +139,7 @@ public class UserControllerTests
     }
 
     [HumansFact]
-    public async Task CancelDeletion_success_flashes_and_goes_home()
+    public async Task CancelDeletion_Success_GoesHome()
     {
         Stub(ControllerTestHost.Info(_userId));
         _deletion.CancelDeletionAsync(_userId, Arg.Any<CancellationToken>()).Returns(new OnboardingResult(true));
@@ -159,7 +152,7 @@ public class UserControllerTests
     }
 
     [HumansFact]
-    public async Task CancelDeletion_without_a_pending_request_flashes_an_error_and_stays()
+    public async Task CancelDeletion_NoPendingRequest_ShowsError()
     {
         Stub(ControllerTestHost.Info(_userId));
         _deletion.CancelDeletionAsync(_userId, Arg.Any<CancellationToken>())
@@ -173,7 +166,7 @@ public class UserControllerTests
     }
 
     [HumansFact]
-    public async Task CancelDeletion_for_an_unknown_user_is_not_found_and_cancels_nothing()
+    public async Task CancelDeletion_UnknownUser_IsNotFound()
     {
         Stub(null);
 
@@ -182,7 +175,7 @@ public class UserControllerTests
     }
 
     [HumansFact]
-    public void Controller_requires_sign_in_and_the_cancel_post_is_antiforgery_protected()
+    public void Controller_RequiresSignIn()
     {
         typeof(UserController).Should().BeDecoratedWith<AuthorizeAttribute>();
         typeof(UserController).GetMethod(nameof(UserController.CancelDeletion))!

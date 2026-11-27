@@ -7,7 +7,6 @@ internal sealed class GroupSettingsDriftReport
     public string GroupEmail { get; init; } = string.Empty;
     public string GroupName { get; init; } = string.Empty;
     public string? Url { get; init; }
-    public Guid ResourceId { get; init; }
     public string? ErrorMessage { get; init; }
     public List<GroupSettingDrift> Drifts { get; init; } = [];
 

@@ -59,4 +59,44 @@ public sealed class SurveyResultsBuilderTests
         model.Questions[1].RatingAverage.Should().Be(expected);
         model.Questions[2].RatingAverage.Should().BeNull();
     }
+
+    [HumansFact]
+    public void Build_FollowUp_NestsUnderParentWithSurveyNumber()
+    {
+        var parentId = Guid.NewGuid();
+        var followUpId = Guid.NewGuid();
+        var results = new SurveyResultsView(Guid.NewGuid(), "Results", SurveyStatus.Closed, 1, 1, 1,
+            new SurveyFunnel(1, 1, 0, 0),
+            [
+                new QuestionAggregate(followUpId, "Why?", SurveyQuestionType.ShortText, [], [], null, []) { PageNumber = 1, Order = 2, FollowUpOf = parentId },
+                new QuestionAggregate(parentId, "Price", SurveyQuestionType.SingleChoice, [], [], null, []) { PageNumber = 1, Order = 1 },
+                new QuestionAggregate(Guid.NewGuid(), "Else", SurveyQuestionType.LongText, [], [], null, []) { PageNumber = 1, Order = 3 },
+            ], []);
+
+        var model = SurveyResultsBuilder.Build(new SurveyScopedResults(results, 1, SurveyResultsScope.Combined), FixedOrgTimeZone.Madrid.Zone);
+
+        model.Questions.Select(q => (q.Prompt, q.Number)).Should().Equal(("Price", 1), ("Else", 3));
+        model.Questions[0].FollowUps.Should().ContainSingle().Which.Number.Should().Be(2);
+        model.QuestionsById.Keys.Should().Contain(followUpId);
+    }
+    [HumansFact]
+    public void NestedUnder_FollowUpOfFollowUp_KeepsOwnRow()
+    {
+        var a = Guid.NewGuid();
+        var b = Guid.NewGuid();
+        var c = Guid.NewGuid();
+        var results = new SurveyResultsView(Guid.NewGuid(), "Results", SurveyStatus.Closed, 1, 1, 1,
+            new SurveyFunnel(1, 1, 0, 0),
+            [
+                new QuestionAggregate(a, "A", SurveyQuestionType.SingleChoice, [], [], null, []) { PageNumber = 1, Order = 1 },
+                new QuestionAggregate(b, "B", SurveyQuestionType.SingleChoice, [], [], null, []) { PageNumber = 1, Order = 2, FollowUpOf = a },
+                new QuestionAggregate(c, "C", SurveyQuestionType.ShortText, [], [], null, []) { PageNumber = 1, Order = 3, FollowUpOf = b },
+            ], []);
+        var model = SurveyResultsBuilder.Build(new SurveyScopedResults(results, 1, SurveyResultsScope.Combined), FixedOrgTimeZone.Madrid.Zone);
+        RespondentAnswer Answer(Guid id) => new(id, "", ["x"], null, null);
+        var answers = new SurveyRespondentAnswersViewModel([Answer(a), Answer(b), Answer(c)], model.QuestionsById);
+
+        answers.NestedUnder(answers.Answers[1]).Should().Be(a);
+        answers.NestedUnder(answers.Answers[2]).Should().BeNull();
+    }
 }

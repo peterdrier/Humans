@@ -34,7 +34,7 @@ public class AgentPageRenderTests(HumansTestDatabase database) : IntegrationTest
         response.StatusCode.Should().Be(HttpStatusCode.OK);
         var html = await response.Content.ReadAsStringAsync(ct);
 
-        html.Should().Contain("My Conversations");      // Agent_HistoryTitle
+        html.Should().Contain("My conversations");      // Agent_HistoryTitle
         html.Should().Contain("No conversations yet.");  // Agent_HistoryEmpty
         html.Should().NotContain("Agent_",
             because: "an unresolved key renders as its own literal name and survives an "
@@ -73,10 +73,10 @@ public class AgentPageRenderTests(HumansTestDatabase database) : IntegrationTest
         response.StatusCode.Should().Be(HttpStatusCode.OK);
         var html = await response.Content.ReadAsStringAsync(ct);
 
-        html.Should().Contain("Agent conversation");                      // Agent_ConversationTitle
-        html.Should().Contain("Transcript");                              // Agent_ConversationTranscript
-        html.Should().Contain("Your context (as the agent sees you now)"); // Agent_ContextCardSummary
-        html.Should().Contain("Back to history");                         // Agent_ConversationBackToHistory
+        html.Should().Contain("Conversation with the Assistant");         // Agent_ConversationTitle
+        html.Should().Contain("<h4>Messages</h4>");                      // Agent_ConversationTranscript
+        html.Should().Contain("What the Assistant knows about you");       // Agent_ContextCardSummary
+        html.Should().Contain("Back to my conversations");                // Agent_ConversationBackToHistory
         html.Should().Contain("hello from the render test");
         html.Should().NotContain("Agent_");
     }

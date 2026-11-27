@@ -71,7 +71,7 @@ public sealed class EventSettingsViewModelTests
     }
 
     [HumansFact]
-    public void ASavedRow_PreservesGlobalBuildStartAcrossAnUnrelatedEdit()
+    public void SavedRow_UnrelatedEdit_KeepsBuildStart()
     {
         var saved = SavedRow();
         var form = EventSettingsFormMapper.ToViewModel(saved);

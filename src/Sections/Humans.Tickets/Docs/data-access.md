@@ -13,7 +13,7 @@ Project: `src/Sections/Humans.Tickets` spans these projects: `src/Sections/Human
 sync orchestration, the admin surface — everything `internal
 sealed`), `src/Sections/Humans.Tickets.Contracts` (the leaf:
 `ITicketService`, `ITicketDiscountCodes`,
-`ITicketVendorMirror`, `ITicketWrite`), and
+`ITicketWrite`), and
 `src/Sections/Humans.TicketTailor` (the vendor adapter — the sole
 implementation of the vendor port; owns no tables, publishes nothing, and
 references `Humans.Tickets` directly to name the port).
@@ -26,12 +26,10 @@ references `Humans.Tickets` directly to name the port).
 
 The section's public surface is small: `ITicketService` (no `SurfaceBudget` pinned; adds
 `GetParticipationsAsync` / `GetAllParticipationsAsync`), `ITicketDiscountCodes`,
-`ITicketVendorMirror`, `ITicketWrite` (`RecordParticipationAsync`, Gate's admit; `UndoCheckInAsync`, Gate's undo). `TicketDashboardDtos` is `internal`. Campaigns' grant waves call `ITicketDiscountCodes.GenerateAsync`
+`ITicketWrite` (`RecordParticipationAsync`, Gate's admit; `UndoCheckInAsync`, Gate's undo). `TicketDashboardDtos` is `internal`. Campaigns' grant waves call `ITicketDiscountCodes.GenerateAsync`
 (in the application's own `TicketDiscountCodeRequest`/`TicketDiscountKind`
 vocabulary — `TicketVendorGateway` in `Humans.Tickets` maps that to the
-port's `DiscountCodeSpec`/`DiscountType` at the edge), and
-`GateVendorCheckInJob` mirrors a gate admission through
-`ITicketVendorMirror` instead of the port. `TicketVendorPortArchitectureTests`
+port's `DiscountCodeSpec`/`DiscountType` at the edge). `TicketVendorPortArchitectureTests`
 pins that only `Humans.Tickets` may inject `ITicketVendorService`,
 its own `TicketVendorHealthCheck` included. `TicketStubViewComponent` lives in the
 section's own `Contracts/` folder — its model names Tickets DTOs, so it
@@ -221,7 +219,7 @@ No repository. Parses the `/Tickets/Participation/Backfill` CSV and calls
 No repository. "Who's onsite" roster orchestrator. Pure read
 orchestration over `ITicketService` (this year's onsite
 participations), `IUserService`, `ICampService`, `ITeamService`,
-`IRoleAssignmentService` (the controller resolves the active year via
+`ISystemRoleService` (the controller resolves the active year via
 `ISettingsService`). Implements
 `IOnsiteRosterService`, `IApplicationService`. No direct DB access, no cache.
 
@@ -238,7 +236,7 @@ a person) the first time a ticket admin sets its password from
 via `IAccountProvisioningService.CreateAccountAsync`, sets the password through
 `IUserSignInService`, saves its profile through Users' canonical
 `IProfileEditorService.SaveProfileAsync`, marks it fake via Users'
-`IUserWrite.MarkFakeAsync` (keeping it out of the Consent Coordinator review
+`IUserWrite.MarkFakeAsync` (keeping it out of the Consent Admin review
 queue), and logs via `IAuditLogService`. Users refreshes its own `UserInfo`
 entry on the create and the profile save. No direct
 DB or cache access of its own — every mutation goes through another
@@ -249,14 +247,12 @@ section's public service surface.
 No repository. Thin design-rules-compliant facade over `ITicketVendorService` (the
 vendor port, `src/Sections/Humans.Tickets/Contracts/`). Implements `ITicketDiscountCodes` (`Humans.Tickets.Contracts`) so cross-section callers
 (`CampaignService`'s discount-code grant waves) depend on the section's own
-leaf rather than the raw vendor port. Gate's `ITicketVendorMirror` resolves directly to the
-existing `CachingTicketVendorService`; check-in writes keep its keyed inner vendor path
-without passing through the discount mapper. No DB access, no cache in this gateway.
+leaf rather than the raw vendor port. No DB access, no cache in this gateway.
 
 ---
 ### TicketCheckoutRepository (Singleton)
 
 `ITicketCheckoutRepository` over `IDbContextFactory<TicketsDbContext>`: `ticket_sales_events`,
 `ticket_checkout_orders`, `ticket_checkout_refunds`, `ticket_checkout_order_events` (append-only), `ticket_checkout_tickets`, `ticket_resale_offers`, `ticket_companion_requests`. Updates load the
-tracked row and copy values in, because the jsonb owned lists cannot be attached detached. `TryClaimPaidAsync` is a conditional `ExecuteUpdate`, and `AddTicketsAsync` returns false on the (`OrderId`, `LineIndex`) unique violation, so concurrent fulfilment issues once. `TicketCheckoutService` is its only writer; `TicketReconService` and `TicketGateLookup` read it. Delivery and the donor list read through `ITicketCheckoutService`. Holder lookups load the
+tracked row and copy values in, because the jsonb owned lists cannot be attached detached. `TryClaimPaidAsync` is a conditional `ExecuteUpdate`, and `AddTicketsAsync` returns false on the (`OrderId`, `LineIndex`) unique violation, so concurrent fulfilment issues once. Only `TicketCheckoutService` calls it; Delivery and the donor list read through `ITicketCheckoutService`. Holder lookups load the
 whole orders table and filter the jsonb lines in memory.

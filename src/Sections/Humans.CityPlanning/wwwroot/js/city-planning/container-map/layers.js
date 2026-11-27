@@ -1,4 +1,5 @@
 // addBackgroundLayers mirrors the read-only styling from city-planning/barrio-map/layers.js.
+import { parseCampFeature } from '../shared/camp-geometry.js';
 import { addOfficialZonesLayers } from '../shared/official-zones-layer.js';
 import { SOUND_ZONE_FILL_EXPR, SOUND_ZONE_LINE_EXPR } from '../shared/sound-zone-colors.js';
 
@@ -10,7 +11,7 @@ export function addBackgroundLayers(map, stateData) {
     const campFeatures = (stateData.campPolygons || [])
         .filter(p => p.geoJson)
         .map(p => {
-            const f = JSON.parse(p.geoJson);
+            const f = parseCampFeature(p.geoJson);
             if (!f.properties) f.properties = {};
             f.properties.campName  = p.campName;
             f.properties.soundZone = p.soundZone;

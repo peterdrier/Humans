@@ -29,7 +29,7 @@ public class UserSetMembershipCalculatorTests
     }
 
     [HumansFact]
-    public async Task BuildAsync_places_each_user_in_exactly_one_bucket_by_bit_mask()
+    public async Task BuildAsync_EachUser_LandsInOneBucket()
     {
         // u1: profile + ticket (mask 3). u2: shift only (mask 4). u3: nothing (mask 0).
         var u1 = MakeUserInfo(hasProfile: true, ticketYear: 2026, marketingOptedOut: null);
@@ -49,7 +49,7 @@ public class UserSetMembershipCalculatorTests
     }
 
     [HumansFact]
-    public async Task BuildAsync_explicit_opt_in_only_sets_marketing_bit()
+    public async Task BuildAsync_ExplicitOptIn_SetsMarketingBit()
     {
         // Tri-state: null (no preference row) and true (opted out) must NOT set the bit;
         // only explicit false (opted in) does.
@@ -67,7 +67,7 @@ public class UserSetMembershipCalculatorTests
     }
 
     [HumansFact]
-    public async Task BuildAsync_marginal_and_intersection_counts_sum_across_buckets()
+    public async Task BuildAsync_Counts_SumAcrossBuckets()
     {
         var profileTicketShift = MakeUserInfo(hasProfile: true, ticketYear: 2026, marketingOptedOut: null);
         var profileOnly = MakeUserInfo(hasProfile: true, ticketYear: null, marketingOptedOut: null);
@@ -92,7 +92,7 @@ public class UserSetMembershipCalculatorTests
                 IReadOnlyDictionary<Guid, ShiftUserSummary> dict = ids.ToDictionary(
                     id => id,
                     id => hasShift.Contains(id)
-                        ? new ShiftUserSummary(id, [], [MakeActiveSignup()])
+                        ? new ShiftUserSummary([], [MakeActiveSignup()])
                         : ShiftUserSummary.Empty(id));
                 return new ValueTask<IReadOnlyDictionary<Guid, ShiftUserSummary>>(dict);
             });
@@ -102,7 +102,6 @@ public class UserSetMembershipCalculatorTests
         ShiftId: Guid.NewGuid(),
         SignupBlockId: null,
         Status: SignupStatus.Confirmed,
-        RotaId: Guid.NewGuid(),
         RotaName: "Rota",
         RotaDescription: null,
         RotaPracticalInfo: null,

@@ -1,3 +1,6 @@
+using Humans.Testing;
+using Humans.Base.Authorization;
+using Humans.Permissions.Contracts;
 using System.Security.Claims;
 using AwesomeAssertions;
 using Humans.Budget.Contracts;
@@ -25,7 +28,7 @@ namespace Humans.Expenses.Tests.Controllers;
 
 public sealed class ExpensesControllerTests
 {
-    private readonly ITeamService _teams = Substitute.For<ITeamService>();
+    private readonly IPermissionService _permissions = Substitute.For<IPermissionService>();
     private static readonly FakeClock TestClock = new(Instant.FromUtc(2026, 5, 10, 12, 0));
 
     [HumansTheory]
@@ -64,7 +67,7 @@ public sealed class ExpensesControllerTests
             UpdatedAt = default,
             Lines = [new ExpenseLineDto
             {
-                Id = lineId, ExpenseReportId = reportId, Description = "Invoice", Amount = 10m,
+                Id = lineId, Description = "Invoice", Amount = 10m,
                 LineType = ExpenseLineType.Invoice, SortOrder = 0
             }]
         });
@@ -75,9 +78,9 @@ public sealed class ExpensesControllerTests
         {
             User = new ClaimsPrincipal(new ClaimsIdentity([new Claim(ClaimTypes.NameIdentifier, actorId.ToString())], "test"))
         };
-        var controller = new ExpensesController(_teams, users, reports, review, Substitute.For<IBudgetService>(),
+        var controller = new ExpensesController(_permissions, users, reports, review, Substitute.For<IBudgetService>(),
             Substitute.For<IFinanceService>(), Substitute.For<IPreapprovalService>(), authorization,
-            TestClock, FixedOrgTimeZone.Madrid, NullLogger<ExpensesController>.Instance, Substitute.For<IStringLocalizer<ExpensesResource>>())
+            TestClock, FixedOrgTimeZone.Madrid, NullLogger<ExpensesController>.Instance, Substitute.For<IStringLocalizer<ExpensesResource>>().AddFormatting())
         {
             ControllerContext = new ControllerContext { HttpContext = http },
             TempData = new TempDataDictionary(http, Substitute.For<ITempDataProvider>())
@@ -134,10 +137,10 @@ public sealed class ExpensesControllerTests
         authorization.AuthorizeAsync(Arg.Any<ClaimsPrincipal>(), Arg.Any<object?>(),
                 Arg.Any<IEnumerable<IAuthorizationRequirement>>())
             .Returns(AuthorizationResult.Failed());
-        var controller = new ExpensesController(_teams, users, reports, review,
+        var controller = new ExpensesController(_permissions, users, reports, review,
             Substitute.For<IBudgetService>(), Substitute.For<IFinanceService>(),
             Substitute.For<IPreapprovalService>(), authorization, TestClock, FixedOrgTimeZone.Madrid,
-            NullLogger<ExpensesController>.Instance, Substitute.For<IStringLocalizer<ExpensesResource>>())
+            NullLogger<ExpensesController>.Instance, Substitute.For<IStringLocalizer<ExpensesResource>>().AddFormatting())
         {
             ControllerContext = new ControllerContext
             {
@@ -223,9 +226,9 @@ public sealed class ExpensesControllerTests
         var reports = Substitute.For<IExpenseReportManagement>();
         var review = Substitute.For<IExpenseReview>();
         reports.GetAsync(reportId).Returns(report);
-        reports.WithdrawWithResultAsync(reportId, actorId).Returns(ExpenseMutationResult.Success);
+        reports.WithdrawAsync(reportId, actorId).Returns(ExpenseMutationResult.Success);
         var handler = new ExpenseReportAuthorizationHandler(
-            Substitute.For<IBudgetService>(), Substitute.For<Humans.Teams.Contracts.ITeamService>(), users,
+            Substitute.For<IBudgetService>(), Substitute.For<IPermissionService>(), users,
             Substitute.For<IPreapprovalService>(), new HttpContextAccessor());
         var authorization = Substitute.For<IAuthorizationService>();
         authorization.AuthorizeAsync(Arg.Any<ClaimsPrincipal>(), report,
@@ -243,9 +246,9 @@ public sealed class ExpensesControllerTests
                 new Claim(ClaimTypes.NameIdentifier, actorId.ToString()),
                 new Claim(ClaimTypes.Role, FinanceRoles.FinanceAdmin)], "test"))
         };
-        var localizer = Substitute.For<IStringLocalizer<ExpensesResource>>();
+        var localizer = Substitute.For<IStringLocalizer<ExpensesResource>>().AddFormatting();
         localizer[Arg.Any<string>()].Returns(call => new LocalizedString(call.Arg<string>(), call.Arg<string>()));
-        var controller = new ExpensesController(_teams, users, reports, review, Substitute.For<IBudgetService>(),
+        var controller = new ExpensesController(_permissions, users, reports, review, Substitute.For<IBudgetService>(),
             Substitute.For<IFinanceService>(), Substitute.For<IPreapprovalService>(), authorization,
             TestClock, FixedOrgTimeZone.Madrid, NullLogger<ExpensesController>.Instance, localizer)
         {
@@ -258,12 +261,12 @@ public sealed class ExpensesControllerTests
         if (allowed)
         {
             result.Should().BeOfType<RedirectToActionResult>();
-            await reports.Received(1).WithdrawWithResultAsync(reportId, actorId);
+            await reports.Received(1).WithdrawAsync(reportId, actorId);
         }
         else
         {
             result.Should().BeOfType<ForbidResult>();
-            await reports.DidNotReceive().WithdrawWithResultAsync(reportId, actorId);
+            await reports.DidNotReceive().WithdrawAsync(reportId, actorId);
         }
     }
 
@@ -296,16 +299,16 @@ public sealed class ExpensesControllerTests
             UpdatedAt = default,
             Lines = []
         });
-        reports.SaveSubmitterIbanWithResultAsync(reportId, actorId, Arg.Any<string?>())
+        reports.SaveSubmitterIbanAsync(reportId, actorId, Arg.Any<string?>())
             .Returns(new ExpenseIbanSaveResult(succeeded, validationError, messageKey));
-        var localizer = Substitute.For<IStringLocalizer<ExpensesResource>>();
+        var localizer = Substitute.For<IStringLocalizer<ExpensesResource>>().AddFormatting();
         localizer[messageKey].Returns(new LocalizedString(messageKey, translated));
         var context = new DefaultHttpContext
         {
             User = new ClaimsPrincipal(new ClaimsIdentity(
                 [new Claim(ClaimTypes.NameIdentifier, actorId.ToString())], "test"))
         };
-        var controller = new ExpensesController(_teams, users, reports, review,
+        var controller = new ExpensesController(_permissions, users, reports, review,
             Substitute.For<IBudgetService>(), Substitute.For<IFinanceService>(),
             Substitute.For<IPreapprovalService>(), Substitute.For<IAuthorizationService>(), TestClock, FixedOrgTimeZone.Madrid,
             NullLogger<ExpensesController>.Instance, localizer)
@@ -361,9 +364,9 @@ public sealed class ExpensesControllerTests
             Lines = [],
         });
         const string messageKey = "Expenses_Iban_InvalidFormat";
-        reports.SaveSubmitterIbanWithResultAsync(reportId, actorId, Arg.Any<string?>())
+        reports.SaveSubmitterIbanAsync(reportId, actorId, Arg.Any<string?>())
             .Returns(new ExpenseIbanSaveResult(false, true, messageKey));
-        var localizer = Substitute.For<IStringLocalizer<ExpensesResource>>();
+        var localizer = Substitute.For<IStringLocalizer<ExpensesResource>>().AddFormatting();
         localizer[messageKey].Returns(new LocalizedString(messageKey, "Invalid IBAN"));
         var authorization = Substitute.For<IAuthorizationService>();
         authorization.AuthorizeAsync(Arg.Any<ClaimsPrincipal>(), Arg.Any<object?>(), Arg.Any<IEnumerable<IAuthorizationRequirement>>())
@@ -372,7 +375,7 @@ public sealed class ExpensesControllerTests
         {
             User = new ClaimsPrincipal(new ClaimsIdentity([new Claim(ClaimTypes.NameIdentifier, actorId.ToString())], "test")),
         };
-        var controller = new ExpensesController(_teams, users, reports, review, Substitute.For<IBudgetService>(),
+        var controller = new ExpensesController(_permissions, users, reports, review, Substitute.For<IBudgetService>(),
             Substitute.For<IFinanceService>(), Substitute.For<IPreapprovalService>(),
             authorization, TestClock, FixedOrgTimeZone.Madrid, NullLogger<ExpensesController>.Instance, localizer)
         {
@@ -415,16 +418,16 @@ public sealed class ExpensesControllerTests
             Lines = []
         }]);
         var budget = Substitute.For<IBudgetService>();
-        _teams.GetEffectiveBudgetCoordinatorTeamIdsAsync(actorId, Arg.Any<CancellationToken>()).Returns(new HashSet<Guid>());
+        _permissions.GetOwnersAsync(actorId, ExpensesPermissions.Endorse, Arg.Any<CancellationToken>()).Returns([]);
         var context = new DefaultHttpContext
         {
             User = new ClaimsPrincipal(new ClaimsIdentity(
                 [new Claim(ClaimTypes.NameIdentifier, actorId.ToString())], "test"))
         };
-        var controller = new ExpensesController(_teams, users, reports, review, budget,
+        var controller = new ExpensesController(_permissions, users, reports, review, budget,
             Substitute.For<IFinanceService>(), Substitute.For<IPreapprovalService>(),
             Substitute.For<IAuthorizationService>(), TestClock, FixedOrgTimeZone.Madrid,
-            NullLogger<ExpensesController>.Instance, Substitute.For<IStringLocalizer<ExpensesResource>>())
+            NullLogger<ExpensesController>.Instance, Substitute.For<IStringLocalizer<ExpensesResource>>().AddFormatting())
         {
             ControllerContext = new ControllerContext { HttpContext = context },
             TempData = new TempDataDictionary(context, Substitute.For<ITempDataProvider>())
@@ -472,9 +475,9 @@ public sealed class ExpensesControllerTests
             .Returns(new BudgetYearDetail(Guid.NewGuid(), "2026", "Current", BudgetYearStatus.Active, false, []));
         budget.GetYearByIdAsync(yearId, Arg.Any<CancellationToken>()).Returns(new BudgetYearDetail(yearId, "2025", "Old", BudgetYearStatus.Closed, false,
             [new BudgetGroupDetail(groupId, yearId, "Old group", 0, false, false, false, null,
-                [new BudgetCategoryDetail(categoryId, groupId, "Old category", 0, ExpenditureType.OpEx, null, 0, [])])]));
-        _teams.GetEffectiveBudgetCoordinatorTeamIdsAsync(actorId, Arg.Any<CancellationToken>()).Returns(new HashSet<Guid>());
-        var localizer = Substitute.For<IStringLocalizer<ExpensesResource>>();
+                [new BudgetCategoryDetail(categoryId, "Old category", 0, ExpenditureType.OpEx, null, 0, [])])]));
+        _permissions.GetOwnersAsync(actorId, ExpensesPermissions.Endorse, Arg.Any<CancellationToken>()).Returns([]);
+        var localizer = Substitute.For<IStringLocalizer<ExpensesResource>>().AddFormatting();
         localizer[Arg.Any<string>()].Returns(call => new LocalizedString(call.Arg<string>(), call.Arg<string>()));
         using var request = new CancellationTokenSource();
         var context = new DefaultHttpContext
@@ -483,7 +486,7 @@ public sealed class ExpensesControllerTests
             User = new ClaimsPrincipal(new ClaimsIdentity(
                 [new Claim(ClaimTypes.NameIdentifier, actorId.ToString())], "test"))
         };
-        var controller = new ExpensesController(_teams, users, reports, review, budget,
+        var controller = new ExpensesController(_permissions, users, reports, review, budget,
             Substitute.For<IFinanceService>(), Substitute.For<IPreapprovalService>(),
             Substitute.For<IAuthorizationService>(), TestClock, FixedOrgTimeZone.Madrid,
             NullLogger<ExpensesController>.Instance, localizer)
@@ -498,7 +501,7 @@ public sealed class ExpensesControllerTests
         model.BookingLabels[first.Id].Should().Be("Old group / Old category");
         model.BookingLabels[second.Id].Should().Be("Old group / Old category");
         await budget.Received(1).GetYearByIdAsync(yearId, context.RequestAborted);
-        await _teams.Received(1).GetEffectiveBudgetCoordinatorTeamIdsAsync(actorId, context.RequestAborted);
+        await _permissions.Received(1).GetOwnersAsync(actorId, ExpensesPermissions.Endorse, context.RequestAborted);
     }
 
     private static Task<IActionResult> InvokeAsync(ExpensesController controller, string action, Guid id) =>

@@ -5,6 +5,7 @@ The one scheduled task for Humans maintenance. It runs in the Humans Development
 ## Rules
 
 - **Read, decide, exit.** No builds, no checkouts, no code reading.
+- **Every job it starts runs unattended** and must never stall on a permission prompt: [`unattended-runs-never-prompt`](../../memory/process/unattended-runs-never-prompt.md).
 - **Start a job** by asking the coordinator (`message_coordinator`) for a thread with exactly this text: `Start a thread titled "<Job> YYYY-MM-DD" with this instruction: follow docs/maintenance/<doc> as an unattended run.` The thread does the work on the project's default model.
 - **Started today** means `list_threads` (since 00:00 Madrid today) shows a thread titled `<Job> YYYY-MM-DD` for today's date. Never start a job twice in one day; two ticks in a row must make the same decision.
 - **Clean up after yourself.** Post nothing in the project unless something needs Peter. End with at most 5 summary lines, then archive this run's own session (`get_session` with no id, then `archive_session`).

@@ -105,7 +105,7 @@ visibility flip in one diff is unreviewable.
       leaf too, and therefore concluded that a horizontal service injecting another section's
       `I<Section>ServiceRead` "cannot move into the horizontal's project". Peter's Base-floor
       decision makes a leaf referenceable from anywhere, and the two services that reading had
-      stranded in `Humans.Application` — `AuditViewerService` and `MagicLinkService` — moved
+      stranded in `Humans.Application` — `AuditViewerService` and `SignInLinkService` — moved
       into AuditLog and Auth on exactly that basis.
 
       So still grep the section's services for `I*ServiceRead` and `Humans.*.Contracts`, but
@@ -115,14 +115,14 @@ visibility flip in one diff is unreviewable.
       - **"Is an orchestrator" is not "can't move".** That a service injects no
         `I*Repository` is a statement about the hard rules' orchestrator/service split, not
         about where the class may live. An orchestrator may live in the section it
-        orchestrates for (proven: Auth, AuditLog — lane 4b-2i moved `MagicLinkService` into
+        orchestrates for (proven: Auth, AuditLog — lane 4b-2i moved `SignInLinkService` into
         `Humans.Auth`).
       - **A controller does not follow its section's service, and a service coming home does
         not pull its controller in either.** `AccountController` is Auth's by every doc; run
         the "read the controller" test below and every one of its actions writes Users' or
         Profiles' tables through their services and injects nothing the move internalises. It
-        stayed in Shell with its seven views and 35 resource keys when `MagicLinkService` was
-        in Base, and it stayed there when `MagicLinkService` moved into `Humans.Auth`, so step
+        stayed in Shell with its seven views and 35 resource keys when `SignInLinkService` was
+        in Base, and it stayed there when `SignInLinkService` moved into `Humans.Auth`, so step
         3b still stops at its first question and step 12 still falls back to Gdpr's
         DI-registration check. A section that ships no controller, no view and no resource set
         is not an incomplete move (proven: Auth, twice).
@@ -298,7 +298,7 @@ Git Bash.)
    `Localizer[…]` call and no `<Section>_*` key in `SharedResource` ships **no resource set
    and no `<Section>Resource`** — `SectionResourceTypes()` simply returns one fewer
    marker and the boot diagnostic is happy (proven both ways: Finance and Gate ship none; the
-   `GateLogin_*` keys that look like Gate's belong to Shell's `/Account/GateLogin` page and stay).
+   `GateSignIn_*` keys that look like Gate's belong to Shell's `/Account/GateSignIn` page and stay).
    Assert it structurally instead: *no* type in the section may take `IStringLocalizer<T>` for
    any `T` (`GateArchitectureTests.SectionTypesTakeNoStringLocalizer`), so the day someone adds
    copy the build tells them to carve a resource set first. Skip the rest of this step.
@@ -561,7 +561,7 @@ Git Bash.)
      section that owns the *line* (proven: Governance).
    - **A configuration type named after the section can still be Base's, and
      `Section.Register` cannot see `IHostEnvironment`.** `EmailSettings` binds `Email:*`, lives
-     in `Humans.Infrastructure/Configuration`, and is read by Auth's `MagicLinkUrlBuilder`,
+     in `Humans.Infrastructure/Configuration`, and is read by Auth's `SignInLinkUrlBuilder`,
      Profiles' `UnsubscribeTokenProvider`, `SendReConsentReminderJob` and Email's
      own `SmtpHealthCheck` — so its `services.Configure<…>` call stayed in Shell (Governance's
      rule: the section that owns the file is not always the section that owns the line). The
@@ -671,7 +671,7 @@ Git Bash.)
      (proven: Teams, reversed by 4b-2k).
    - **Decide the leaf-vs-`Domain/` question per enum, not per section.** Budget moved both of
      its enums because both appeared in contract signatures. Issues' two split: `IssueCategory`
-     is named by `Humans.Agent`'s `route_to_issue` proposal, so it went to the leaf;
+     is named by `Humans.Agent`'s `handoff` draft, so it went to the leaf;
      `IssueStatus` has no consumer outside the section and turned `internal` in `Domain/`
      beside the entities. Grep each enum's out-of-section references separately (proven:
      Issues).
@@ -740,7 +740,7 @@ Git Bash.)
    - **…and the horizontal rule bites a second time at the *type* level, which is not the same
      search as the reference one.** The bullet above asks what a horizontal's services
      *inject*. This asks what its leaf's signatures *name*:
-     `IRoleAssignmentService.AssignRoleAsync`/`EndRoleAsync` returned
+     `ISystemRoleService.AssignRoleAsync`/`RevokeRoleAsync` returned
      `Humans.Onboarding.Contracts.OnboardingResult` — a `(bool Success, string? ErrorKey)` record
      a *vertical* section owns — so the leaf could not compile without the forbidden reference.
      Moving the record down to `Humans.Interfaces` edits another section's leaf to fix yours and
@@ -925,7 +925,7 @@ Git Bash.)
      whole connector (interface, DTOs, options, client, balance provider, NuGet reference) moves
      in. The test is not "is it an external API" but **whose types are in its signatures** — a
      connector serving one section and shaped by that section's model belongs to it (proven:
-     Agent; contrast Stripe, which Store left behind, and `GitHubCommunityKbContentSource`, whose
+     Agent; contrast Stripe, which Store left behind, and `GitHubCommunityFaqContentSource`, whose
      signatures name only `string`).
      - **…and check what the connector uses *from Base*, not only what it exposes.** The
        instinct after deciding the connector moves in is that the section must therefore
@@ -966,7 +966,7 @@ Git Bash.)
      are not Guide's: the signatures name only `string`, and the consumers are
      elsewhere (the Agent section's `AgentSectionDocReader` / `AgentFeatureSpecReader` /
      `CommunityFaqReader` over `docs/sections`, the section `Docs/features/` spec corpus and `docs/community-kb`,
-     its `AgentDocsHealthCheck`, and Base's `GitHubCommunityKbContentSource`, which
+     its `AgentDocsHealthCheck`, and Base's `GitHubCommunityFaqContentSource`, which
      *implements* the same interface against a different repo). Taking it in would have forced
      a contracts leaf, made Base and another section consume a section's contracts for a plain
      string fetch, and split `GuideSettings` from the type binding it. Left in
@@ -1255,7 +1255,7 @@ Git Bash.)
    lands in `Humans.<Section>.Services`. Agent's `Services/Stores/` is the shape and the sweep's
    predicate does not match it, which is the honest classification rather than a dodge: these
    types *are* the cache, where the rule is about a service that has acquired one. Gate's
-   `GatePinThrottle` and `GateVendorMirrorLedger` moved there (proven: Gate).
+   `GatePinThrottle` moved there (proven: Gate).
    - **When the offender is the section's actual service, the answer is the allowlist, not
      `Stores/`.** `GuideContentService` is `IGuideContentService`, the type the controller
      injects; relocating it to dodge the sweep's namespace predicate would be the dodge step 6a

@@ -141,7 +141,6 @@ public sealed class CalendarOccurrenceDisplayTests
         Description: null,
         Location: null,
         LocationUrl: null,
-        OwningTeamId: Guid.NewGuid(),
         OwningTeamName: "Calendar team",
         IsRecurring: false,
         OriginalOccurrenceStartUtc: null);

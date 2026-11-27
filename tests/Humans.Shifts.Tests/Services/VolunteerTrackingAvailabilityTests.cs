@@ -1,7 +1,6 @@
 using Humans.Shifts.Domain;
 using Humans.AuditLog.Contracts;
 using AwesomeAssertions;
-using Humans.Shifts.Contracts;
 using Humans.Shifts.Services;
 using Humans.Shifts.Tests.Infrastructure;
 using Humans.Shifts.Data;

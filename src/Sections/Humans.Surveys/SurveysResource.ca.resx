@@ -71,8 +71,16 @@
   <data name="Surveys_Ineligible_Body" xml:space="preserve"><value>Actualment no formes part del públic destinatari d'aquesta enquesta.</value></data>
   <data name="Surveys_NothingToAnswer_Heading" xml:space="preserve"><value>No hi ha res a respondre</value></data>
   <data name="Surveys_NothingToAnswer_Body" xml:space="preserve"><value>Aquesta enquesta no té preguntes per a tu, així que no s'ha enviat res. Si esperaves veure-hi preguntes, digues-nos-ho.</value></data>
-  <data name="Surveys_InvalidLink_Heading" xml:space="preserve"><value>Aquest enllaç ja no és vàlid</value></data>
-  <data name="Surveys_InvalidLink_Body" xml:space="preserve"><value>L'enllaç de l'enquesta no és vàlid o ha caducat. Si creus que és un error, demana un enllaç nou.</value></data>
+  <data name="Surveys_InvalidLink_Heading" xml:space="preserve"><value>Aquest enllaç no funciona</value></data>
+  <data name="Surveys_InvalidLink_Body" xml:space="preserve"><value>No s'ha pogut llegir aquest enllaç de l'enquesta. Obre l'enllaç complet del teu correu d'invitació.</value></data>
+  <data name="Surveys_ExpiredLink_Heading" xml:space="preserve"><value>Aquest enllaç ha caducat</value></data>
+  <data name="Surveys_ExpiredLink_Body" xml:space="preserve"><value>Els enllaços de les enquestes caduquen 60 dies després d'enviar-se. Demana un enllaç nou.</value></data>
+  <data name="Surveys_AnsweredLink_Heading" xml:space="preserve"><value>Ja has respost</value></data>
+  <data name="Surveys_AnsweredLink_Body" xml:space="preserve"><value>Aquesta invitació ja s'ha fet servir per respondre l'enquesta.</value></data>
+  <data name="Surveys_InvitationRemoved_Heading" xml:space="preserve"><value>Aquesta invitació ja no existeix</value></data>
+  <data name="Surveys_InvitationRemoved_Body" xml:space="preserve"><value>La teva invitació a aquesta enquesta s'ha eliminat.</value></data>
+  <data name="Surveys_SurveyRemoved_Heading" xml:space="preserve"><value>Aquesta enquesta ja no existeix</value></data>
+  <data name="Surveys_SurveyRemoved_Body" xml:space="preserve"><value>L'enquesta s'ha eliminat.</value></data>
   <data name="Surveys_ThankYou_Heading" xml:space="preserve"><value>Gràcies</value></data>
   <data name="Surveys_ThankYouFallback" xml:space="preserve"><value>Gràcies per la teva resposta.</value></data>
   <data name="Surveys_Ranked_Option" xml:space="preserve"><value>Opció</value></data>
@@ -402,4 +410,16 @@
   <data name="Surveys_Validation_ChoiceOptionUnique" xml:space="preserve"><value>Els valors de les opcions de cada pregunta de selecció han de ser únics.</value></data>
   <data name="Surveys_Validation_DuplicateItem" xml:space="preserve"><value>Cada pregunta, opció de resposta i imatge només pot aparèixer una vegada en una enquesta.</value></data>
   <data name="Surveys_Validation_RatingBounds" xml:space="preserve"><value>El mínim de la valoració no pot superar el màxim.</value></data>
+  <data name="Surveys_Admin_Results_UntitledQuestion" xml:space="preserve"><value>Pregunta sense títol</value></data>
+  <data name="Surveys_Admin_Results_ColumnCount" xml:space="preserve"><value>Recompte</value></data>
+  <data name="Surveys_Admin_Results_ColumnShare" xml:space="preserve"><value>Percentatge</value></data>
+  <data name="Surveys_Admin_Results_AskedWhen" xml:space="preserve"><value>es pregunta si {0}</value></data>
+  <data name="Surveys_Validation_PromptRequired" xml:space="preserve"><value>Cada pregunta necessita un títol.</value></data>
+  <data name="Surveys_Admin_Builder_AskForComment" xml:space="preserve"><value>Demanar un comentari</value></data>
+  <data name="Surveys_Admin_Builder_Field_CommentPrompt" xml:space="preserve"><value>Text del comentari</value></data>
+  <data name="Surveys_Admin_Builder_CommentOptions" xml:space="preserve"><value>Demanar quan triïn</value></data>
+  <data name="Surveys_Admin_Builder_CommentOptionsHelp" xml:space="preserve"><value>No en triïs cap per demanar-ho després de qualsevol opció.</value></data>
+  <data name="Surveys_Answer_CommentDefault" xml:space="preserve"><value>Alguna cosa a afegir?</value></data>
+  <data name="Surveys_Validation_CommentOptionUnknown" xml:space="preserve"><value>Només es pot demanar un comentari sobre les opcions de la mateixa pregunta.</value></data>
+  <data name="Surveys_Admin_Results_Comments" xml:space="preserve"><value>Comentaris</value></data>
 </root>

@@ -2,13 +2,10 @@ using Humans.Users.Services;
 // @e2e: board.spec.ts
 // @e2e: profile.spec.ts
 using Humans.Base.Controllers;
-using Humans.Base.Extensions;
 using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Net.Http.Headers;
 using Microsoft.Extensions.Localization;
-using Humans.Base.Enums;
 using Humans.Users.Models;
 using Humans.Camps.Contracts;
 using Humans.Shifts.Contracts;
@@ -16,9 +13,7 @@ using Humans.Teams.Contracts;
 using Humans.Governance.Contracts;
 using Humans.Users.Contracts;
 using Humans.Auth.Contracts;
-using NodaTime;
 using Humans.Base;
-using Humans.Base.Authorization;
 
 namespace Humans.Users.Controllers;
 
@@ -32,7 +27,7 @@ internal sealed class ProfileViewController(
     ITeamService teamService,
     ICampService campService,
     IGovernanceService governanceService,
-    IRoleAssignmentService roleAssignments,
+    ISystemRoleService roleAssignments,
     IAuthorizationService authorizationService,
     MedicalConditionsService medicalConditions) : HumansControllerBase(userService)
 {
@@ -82,10 +77,14 @@ internal sealed class ProfileViewController(
         }
 
         var isOwnProfile = viewer.Id == id;
-        var viewerIsCoordinator = !isOwnProfile
-            && (await shiftMgmt.GetCoordinatorTeamIdsAsync(viewer.Id, ct)).Count > 0;
+        var viewerRunsShifts = !isOwnProfile
+            && await shiftMgmt.CanManageOrApproveAnyShiftsAsync(viewer.Id, ct);
 
-        var canViewSentMessages = await CanViewSentMessagesAsync(isOwnProfile, viewerIsCoordinator);
+        var canViewSentMessages = await CanViewSentMessagesAsync(isOwnProfile, viewerRunsShifts);
+        bool? hasMedicalConditions = !isOwnProfile
+            && (await authorizationService.AuthorizeAsync(User, UsersPolicies.MedicalDataViewer)).Succeeded
+                ? await medicalConditions.IsOnFileAsync(id, ct)
+                : null;
 
         var viewModel = new ProfileViewModel
         {
@@ -94,6 +93,7 @@ internal sealed class ProfileViewController(
             PageTitle = profileInfo.BurnerName,
             IsOwnProfile = isOwnProfile,
             CanViewSentMessages = canViewSentMessages,
+            HasMedicalConditions = hasMedicalConditions,
         };
 
         return View("~/Views/Profile/Index.cshtml", viewModel);
@@ -103,13 +103,13 @@ internal sealed class ProfileViewController(
     /// A coordinator or privileged shift role, never on one's own profile: the same audience as Shifts' profile
     /// card.
     /// </summary>
-    private async Task<bool> CanViewSentMessagesAsync(bool isOwnProfile, bool viewerIsCoordinator)
+    private async Task<bool> CanViewSentMessagesAsync(bool isOwnProfile, bool viewerRunsShifts)
     {
         if (isOwnProfile)
             return false;
 
         var isPrivilegedApprover = (await authorizationService.AuthorizeAsync(User, ShiftsPolicies.PrivilegedSignupApprover)).Succeeded;
-        return viewerIsCoordinator || isPrivilegedApprover;
+        return viewerRunsShifts || isPrivilegedApprover;
     }
 
     [HttpGet("{id:guid}/Popover")]
@@ -175,8 +175,7 @@ internal sealed class ProfileViewController(
         // Resolved, so a merged-away session audits the survivor and a gone account reads nothing.
         if (await GetCurrentUserInfoAsync(ct) is not { } actor) return Forbid();
 
-        // Null text is "nothing on file": the button shows for every viewer the policy admits, because no
-        // other section may know whether a member has conditions.
+        // The page offers the button only when something is on file; null text still answers a stale page.
         var text = await medicalConditions.RevealAsync(id, actor.Id, ct);
         return Json(new { text });
     }

@@ -49,7 +49,7 @@
   <data name="Tickets_TicketHoldings_OrderPlural" xml:space="preserve"><value>pedidos</value></data>
   <data name="Tickets_TicketHoldings_Empty" xml:space="preserve"><value>No hay entradas.</value></data>
   <data name="Tickets_Onsite_Since" xml:space="preserve"><value>En el sitio desde {0}</value></data>
-  <data name="Tickets_Onsite_Title" xml:space="preserve"><value>Check-in en la puerta realizado</value></data>
+  <data name="Tickets_Onsite_Title" xml:space="preserve"><value>Admitido en la puerta</value></data>
   <data name="Tickets_NotAttending_Declared" xml:space="preserve"><value>Se te ha marcado como no asistente este año.</value></data>
   <data name="Tickets_NotAttending_AlreadyAttended" xml:space="preserve"><value>Tu asistencia ya está registrada, por lo que no puedes indicar que no asistirás.</value></data>
   <data name="Tickets_NotAttending_Failed" xml:space="preserve"><value>Algo ha salido mal. Inténtalo de nuevo.</value></data>
@@ -77,13 +77,13 @@
   <data name="Tickets_Buy_ForSelf" xml:space="preserve">
     <value>Una entrada para mí ({0})</value>
   </data>
-  <data name="Tickets_Buy_Supporter" xml:space="preserve">
-    <value>Entrada de apoyo</value>
+  <data name="Tickets_Buy_Vip" xml:space="preserve">
+    <value>Entrada VIP</value>
   </data>
-  <data name="Tickets_Buy_SupporterNone" xml:space="preserve">
+  <data name="Tickets_Buy_VipNone" xml:space="preserve">
     <value>No, solo mi entrada</value>
   </data>
-  <data name="Tickets_Buy_SupporterOption" xml:space="preserve">
+  <data name="Tickets_Buy_VipOption" xml:space="preserve">
     <value>{0} en total: tu entrada más una donación de {1}</value>
   </data>
   <data name="Tickets_Buy_Donation" xml:space="preserve">
@@ -153,7 +153,7 @@
     <value>La venta de entradas está cerrada.</value>
   </data>
   <data name="Tickets_Buy_ResaleOnly" xml:space="preserve">
-    <value>Ya no se venden entradas nuevas; ahora solo se venden entradas devueltas.</value>
+    <value>Ya no se venden entradas nuevas; ahora solo se venden entradas en reventa.</value>
   </data>
   <data name="Tickets_Buy_SoldOut" xml:space="preserve">
     <value>Agotadas.</value>
@@ -170,7 +170,7 @@
   <data name="Tickets_Buy_Empty" xml:space="preserve">
     <value>Elige al menos una entrada o una donación.</value>
   </data>
-  <data name="Tickets_Buy_BackendFailed" xml:space="preserve">
+  <data name="Tickets_Buy_PlatformFailed" xml:space="preserve">
     <value>No se pudo abrir la página de pago. Inténtalo de nuevo en un momento.</value>
   </data>
   <data name="Tickets_Buy_OrderNotFound" xml:space="preserve">
@@ -222,7 +222,7 @@
     <value>No tienes entradas compradas a través de Humans.</value>
   </data>
   <data name="Tickets_Resale_DirectedIntro" xml:space="preserve">
-    <value>Te han invitado a comprar una entrada devuelta concreta. Pagas el precio actual a la asociación y recibes una entrada nueva a tu nombre.</value>
+    <value>Te han invitado a comprar una entrada concreta en reventa. Pagas el precio actual a la asociación y recibes una entrada nueva a tu nombre.</value>
   </data>
   <data name="Tickets_Buy_Children" xml:space="preserve">
     <value>Menores que vienen contigo</value>
@@ -239,8 +239,8 @@
   <data name="Tickets_Buy_ChildTypeLabel" xml:space="preserve">
     <value>Menor {0}: entrada</value>
   </data>
-  <data name="Tickets_Buy_SupporterIntro" xml:space="preserve">
-    <value>Mejora tu experiencia y ayúdanos a hacer el mejor evento posible. Tu entrada mantiene tu precio; el resto es una donación a la asociación, sin IVA y no reembolsable.</value>
+  <data name="Tickets_Buy_VipIntro" xml:space="preserve">
+    <value>VIP significa Very Unimportant Person: no trae extras, solo nos ayuda a hacer el mejor evento posible. Tu entrada mantiene tu precio; el resto es una donación a la asociación, sin IVA y no reembolsable.</value>
   </data>
   <data name="Tickets_Buy_Terms" xml:space="preserve">
     <value>Normas de las entradas</value>
@@ -260,9 +260,10 @@
   <data name="Tickets_Buy_TermsUnavailable" xml:space="preserve">
     <value>Ahora mismo no se pueden cargar las normas de las entradas, así que no se pueden comprar entradas. Inténtalo de nuevo en unos minutos.</value>
   </data>
-  <data name="Tickets_Resale_InviteInvalid" xml:space="preserve">
-    <value>Este enlace de invitación ya no es válido, o se envió a otro correo distinto del de tu sesión.</value>
-  </data>
+  <data name="Tickets_Resale_InviteNotFound" xml:space="preserve"><value>Ninguna invitación para este evento coincide con este enlace.</value></data>
+  <data name="Tickets_Resale_InviteOtherEmail" xml:space="preserve"><value>Esta invitación se envió a otro correo distinto del de tu sesión.</value></data>
+  <data name="Tickets_Resale_NotSelling" xml:space="preserve"><value>Las entradas de reventa no están a la venta para este evento ahora mismo.</value></data>
+  <data name="Tickets_Resale_InviteSelfOnly" xml:space="preserve"><value>Un enlace de invitación compra una sola entrada, solo para ti.</value></data>
   <data name="Tickets_Resale_NotFound" xml:space="preserve">
     <value>Entrada no encontrada.</value>
   </data>
@@ -270,7 +271,7 @@
     <value>Esta entrada no se puede poner en reventa.</value>
   </data>
   <data name="Tickets_Resale_Closed" xml:space="preserve">
-    <value>Las devoluciones están cerradas para este evento.</value>
+    <value>La reventa está cerrada para este evento.</value>
   </data>
   <data name="Tickets_Resale_InCheckout" xml:space="preserve">
     <value>Alguien está pagando esta entrada ahora mismo. Vuelve a intentarlo en una hora.</value>
@@ -315,28 +316,28 @@
     <value>Invitar a alguien</value>
   </data>
   <data name="Tickets_Resale_InviteHelp" xml:space="preserve">
-    <value>¿Conoces a alguien que quiera tu entrada? Invítale, o a varias personas: cada una recibe un enlace para comprarla antes que la cola, al precio actual y a su nombre. Se la queda quien compre primero, y a quien llegue después se le ofrece la siguiente entrada devuelta. Te devolvemos lo que pagaste. Entre vosotros no se mueve dinero. Hasta que alguien la compre, tu entrada sigue en la cola y puede venderse antes a otra persona.</value>
+    <value>¿Conoces a alguien que quiera tu entrada? Invítale, o a varias personas: cada una recibe un enlace para comprarla antes que la cola, al precio actual y a su nombre. Se la queda quien compre primero, y a quien llegue después se le ofrece la siguiente entrada en reventa. Te devolvemos lo que pagaste. Entre vosotros no se mueve dinero. Hasta que alguien la compre, tu entrada sigue en la cola y puede venderse antes a otra persona.</value>
   </data>
   <data name="Tickets_Resale_OfferHelp" xml:space="preserve">
-    <value>¿No puedes venir? Devuelve tu entrada a la cola de reventa. Cuando alguien la compre se te reembolsará lo que pagaste por la entrada (no las donaciones ni las comisiones).</value>
+    <value>¿No puedes venir? Pon tu entrada en reventa. Cuando alguien la compre se te reembolsará lo que pagaste por la entrada (no las donaciones).</value>
   </data>
   <data name="Tickets_Resale_OfferWithChildren" xml:space="preserve">
-    <value>Las entradas infantiles asociadas se devuelven con ella y también se reembolsan.</value>
+    <value>Las entradas infantiles asociadas van con ella y también se reembolsan.</value>
   </data>
   <data name="Tickets_Resale_Offer" xml:space="preserve">
-    <value>Devolver mi entrada</value>
+    <value>Poner mi entrada en reventa</value>
   </data>
   <data name="Tickets_Resale_Email_Invite_Subject" xml:space="preserve">
     <value>Una entrada para {0} te está esperando</value>
   </data>
   <data name="Tickets_Resale_Email_Invite_Body" xml:space="preserve">
-    <value>&lt;p&gt;Hola,&lt;/p&gt;&lt;p&gt;{0} no puede ir a &lt;strong&gt;{1}&lt;/strong&gt; y te ha invitado a comprar su entrada devuelta antes que la cola de reventa.&lt;/p&gt;&lt;p&gt;Pagas el precio actual de la entrada a la asociación y recibes una entrada nueva a tu nombre: el nombre debe coincidir con tu documento en la puerta. Inicia sesión o crea tu cuenta de Humans con este correo y usa este enlace:&lt;/p&gt;&lt;p&gt;&lt;a href="{2}"&gt;{2}&lt;/a&gt;&lt;/p&gt;&lt;p&gt;El enlace funciona mientras la entrada siga a la venta. Si otra persona la compra antes, el enlace te ofrece la siguiente entrada devuelta.&lt;/p&gt;</value>
+    <value>&lt;p&gt;Hola,&lt;/p&gt;&lt;p&gt;{0} no puede ir a &lt;strong&gt;{1}&lt;/strong&gt; y te ha invitado a comprar su entrada antes que la cola de reventa.&lt;/p&gt;&lt;p&gt;Pagas el precio actual de la entrada a la asociación y recibes una entrada nueva a tu nombre: el nombre debe coincidir con tu documento en la puerta. Inicia sesión o crea tu cuenta de Humans con este correo y usa este enlace:&lt;/p&gt;&lt;p&gt;&lt;a href="{2}"&gt;{2}&lt;/a&gt;&lt;/p&gt;&lt;p&gt;El enlace funciona mientras la entrada siga a la venta. Si otra persona la compra antes, el enlace te ofrece la siguiente entrada en reventa.&lt;/p&gt;</value>
   </data>
   <data name="Tickets_Public_PriceToday" xml:space="preserve">
     <value>{0} hoy</value>
   </data>
   <data name="Tickets_Public_ResaleOnly" xml:space="preserve">
-    <value>(solo entradas devueltas)</value>
+    <value>(solo entradas en reventa)</value>
   </data>
   <data name="Tickets_Public_Intro" xml:space="preserve">
     <value>Cada entrada lleva el nombre legal de quien la usa y se compra desde una cuenta de Humans. Escribe tu correo: te enviamos un enlace para iniciar sesión, o para crear tu cuenta con tu nombre legal, y llegas directamente a la página de compra.</value>
@@ -360,7 +361,7 @@
     <value>Referencia del pedido</value>
   </data>
   <data name="Tickets_Buy_OpenOrder" xml:space="preserve">
-    <value>Tienes un pago en curso para este evento. Termina de pagar o cancélalo para empezar de nuevo.</value>
+    <value>Tienes un pedido sin terminar para este evento. Termina de pagar o cancélalo para empezar de nuevo.</value>
   </data>
   <data name="Tickets_Buy_CancelAndRestart" xml:space="preserve">
     <value>Cancelar y empezar de nuevo</value>
@@ -407,11 +408,11 @@
   <data name="Tickets_Delivery_Rules_Named" xml:space="preserve">
     <value>Esta entrada es personal y lleva un único nombre legal. El nombre debe coincidir con tu documento de identidad en la puerta; si no, se deniega el acceso.</value>
   </data>
-  <data name="Tickets_Delivery_Rules_NoTransfer" xml:space="preserve">
-    <value>Las entradas no se pueden transferir, regalar ni vender a otra persona. Una entrada comprada a otra persona o en una web de reventa no es válida.</value>
+  <data name="Tickets_Delivery_Rules_NoPassingOn" xml:space="preserve">
+    <value>Las entradas no se pueden ceder, regalar ni vender a otra persona. Una entrada comprada a otra persona o en una web de reventa no es válida.</value>
   </data>
-  <data name="Tickets_Delivery_Rules_Return" xml:space="preserve">
-    <value>Si no puedes venir, devuelve tu entrada a través de Humans. Cuando otra persona la compre, el precio de la entrada se reembolsa a quien la pagó; las donaciones no se reembolsan.</value>
+  <data name="Tickets_Delivery_Rules_Resale" xml:space="preserve">
+    <value>Si no puedes venir, pon tu entrada en reventa en Humans. Cuando otra persona la compre, el precio de la entrada se reembolsa a quien la pagó; las donaciones no se reembolsan.</value>
   </data>
   <data name="Tickets_Delivery_Rules_Private" xml:space="preserve">
     <value>El evento es un evento privado de la asociación Nobodies Collective. Al usar esta entrada aceptas sus condiciones.</value>
@@ -582,19 +583,19 @@
     <value>Volver a intentarlo</value>
   </data>
   <data name="Tickets_Email_ResaleSold_Subject" xml:space="preserve">
-    <value>Tu entrada devuelta para {0} se ha vendido</value>
+    <value>Tu entrada para {0} se ha vendido en reventa</value>
   </data>
   <data name="Tickets_Email_ResaleSold_Intro" xml:space="preserve">
-    <value>Hola {0}: otra persona ha comprado la entrada que devolviste para {1}, así que ya no te da acceso.</value>
+    <value>Hola {0}: otra persona ha comprado en reventa tu entrada para {1}, así que ya no te da acceso.</value>
   </data>
   <data name="Tickets_Email_ResaleSold_Refund" xml:space="preserve">
     <value>Te devolveremos {0} en nuestra tanda de reembolsos de la tarde, cuando el pago del nuevo comprador se haya consolidado. Después, tu banco suele tardar unos días laborables.</value>
   </data>
   <data name="Tickets_Email_ResaleUnsold_Subject" xml:space="preserve">
-    <value>Tu entrada devuelta para {0} no se ha vendido</value>
+    <value>Tu entrada para {0} no se ha vendido en reventa</value>
   </data>
   <data name="Tickets_Email_ResaleUnsold_Intro" xml:space="preserve">
-    <value>Hola {0}: la venta para {1} ha cerrado y nadie ha comprado la entrada que devolviste.</value>
+    <value>Hola {0}: la venta para {1} ha cerrado y nadie ha comprado tu entrada en reventa.</value>
   </data>
   <data name="Tickets_Email_ResaleUnsold_NoRefund" xml:space="preserve">
     <value>No hay reembolso. Tu entrada sigue siendo válida, así que puedes venir.</value>
@@ -603,7 +604,7 @@
     <value>Ver tus entradas</value>
   </data>
   <data name="Tickets_Resale_InviteTaken" xml:space="preserve">
-    <value>La entrada que te invitaron a comprar se la ha llevado otra persona. Puedes comprar la siguiente entrada devuelta.</value>
+    <value>La entrada que te invitaron a comprar se la ha llevado otra persona. Puedes comprar la siguiente entrada en reventa.</value>
   </data>
   <data name="Tickets_Resale_InviteAlready" xml:space="preserve">
     <value>Todas las personas que has indicado ya están invitadas para esta entrada.</value>

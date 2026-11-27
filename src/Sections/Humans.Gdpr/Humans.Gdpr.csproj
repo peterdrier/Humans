@@ -26,9 +26,6 @@
       No Humans.Infrastructure and no Humans.UI reference: Gdpr owns no tables, so there is
       no DbContext, no repository and no AddSectionDbContext call. Its views (the
       account-status wall, the pending-deletion landing) render over Base's shared view layer.
-      The orchestrator injects IEnumerable<IUserDataContributor> from its own Contracts/ folder, IUserService
-      for the merge lineage the export envelope carries, IClock and ILogger. The controllers add
-      Users.Contracts' IAccountDeletionService for the member's own deletion request and cancel.
     -->
     <ProjectReference Include="..\..\Humans.Base\Humans.Base.csproj" />
     <ProjectReference Include="..\Humans.Users.Contracts\Humans.Users.Contracts.csproj" />

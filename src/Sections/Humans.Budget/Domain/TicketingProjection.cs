@@ -33,14 +33,14 @@ internal sealed class TicketingProjection
     public decimal StripeFeeFixed { get; set; }
 
     /// <summary>3.0 means 3%.</summary>
-    public decimal TicketTailorFeePercent { get; set; }
+    public decimal PlatformFeePercent { get; set; }
 
     public Instant CreatedAt { get; init; }
     public Instant UpdatedAt { get; set; }
 
     // Previews and persisted lines both use this, so they share one sales and fee policy.
     internal IEnumerable<(LocalDate Start, LocalDate End, int Tickets, decimal Revenue,
-        decimal StripeFees, decimal TicketTailorFees)> CalculateWeeks(LocalDate today)
+        decimal StripeFees, decimal PlatformFees)> CalculateWeeks(LocalDate today)
     {
         if (StartDate is null || EventDate is null || StartDate.Value > EventDate.Value
             || AverageTicketPrice == 0 || today > EventDate.Value)
@@ -67,7 +67,7 @@ internal sealed class TicketingProjection
             var revenue = tickets * AverageTicketPrice;
             yield return (weekStart, weekEnd, tickets, revenue,
                 revenue * StripeFeePercent / 100m + tickets * StripeFeeFixed,
-                revenue * TicketTailorFeePercent / 100m);
+                revenue * PlatformFeePercent / 100m);
 
             if (weekEnd == EventDate.Value) yield break;
             weekStart = weekEnd.PlusDays(1);

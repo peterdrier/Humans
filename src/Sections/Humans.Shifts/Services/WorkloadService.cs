@@ -3,7 +3,6 @@ using Humans.Shifts.Contracts;
 using Humans.Teams.Contracts;
 using Humans.Shifts.Domain;
 using Humans.Shifts.Data;
-using Humans.Shifts.Helpers;
 using Humans.Users.Contracts;
 
 namespace Humans.Shifts.Services;
@@ -84,7 +83,6 @@ internal sealed class WorkloadService(
                 return new WorkloadByRotaRow(
                     RotaId: rota.Id,
                     RotaName: rota.Name,
-                    TeamId: rota.TeamId,
                     TeamName: teamName,
                     ShiftCount: g.Count(),
                     PlannedSlots: totals.PlannedSlots,

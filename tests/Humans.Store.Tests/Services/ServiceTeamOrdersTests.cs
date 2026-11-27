@@ -1,3 +1,5 @@
+using Humans.Base.Authorization;
+using Humans.Permissions.Contracts;
 using AwesomeAssertions;
 using Humans.AuditLog.Contracts;
 using Humans.Camps.Contracts;
@@ -12,7 +14,6 @@ using Humans.Stripe.Contracts;
 using Humans.Base.Enums;
 using Humans.Holded.Contracts;
 using Microsoft.Extensions.Logging.Abstractions;
-using Microsoft.Extensions.Options;
 using NodaTime;
 using NodaTime.Testing;
 using NSubstitute;
@@ -31,11 +32,11 @@ public class ServiceTeamOrdersTests
     private readonly IAuditLogService _audit = Substitute.For<IAuditLogService>();
     private readonly ICampService _campService = Substitute.For<ICampService>();
     private readonly ITeamService _teams = Substitute.For<ITeamService>();
+    private readonly IPermissionService _permissions = Substitute.For<IPermissionService>();
     private readonly ISettingsService _shifts = Substitute.For<ISettingsService>();
     private readonly IStripeService _stripe = Substitute.For<IStripeService>();
     private readonly FakeClock _clock = new(Instant.FromUtc(2026, 3, 14, 12, 0));
     private readonly IHoldedService _holded = Substitute.For<IHoldedService>();
-    private readonly IHoldedWrite _holdedWrite = Substitute.For<IHoldedWrite>();
     private readonly Service _service;
 
     public ServiceTeamOrdersTests()
@@ -43,10 +44,12 @@ public class ServiceTeamOrdersTests
         _shifts.GetActiveEventSettings().Returns(BurnFixtures.Burn(year: 2026, timeZoneId: "Europe/Madrid"));
         _teams.GetTeamsAsync(Arg.Any<CancellationToken>())
             .Returns(new Dictionary<Guid, TeamInfo>());
+        _permissions.GetOwnersAsync(Arg.Any<Guid>(), StorePermissions.TeamOrders, Arg.Any<CancellationToken>())
+            .Returns([]);
         _campService.GetCampsForYearAsync(Arg.Any<int>(), Arg.Any<CancellationToken>())
             .Returns(new List<CampInfo>());
         _service = new Service(
-            _repo, _audit, Substitute.For<IAuditViewerService>(), _campService, _teams, _clock, _shifts, _stripe,
+            _repo, _audit, Substitute.For<IAuditViewerService>(), _campService, _teams, _permissions, _clock, _shifts, _stripe,
             new CatalogService(_repo, _audit, _clock, _holded, NullLogger<CatalogService>.Instance), NullLogger<Service>.Instance);
     }
 
@@ -151,7 +154,7 @@ public class ServiceTeamOrdersTests
     }
 
     [HumansFact]
-    public async Task RecordStripePaymentAsync_throws_on_team_order()
+    public async Task CompletedCheckout_throws_on_team_order()
     {
         var orderId = Guid.NewGuid();
         var teamOrder = new Order { Id = orderId, TeamId = Guid.NewGuid(), CampSeasonId = null, Year = 2026 };
@@ -159,7 +162,10 @@ public class ServiceTeamOrdersTests
         _repo.StripePaymentIntentExistsAsync("pi_x", Arg.Any<CancellationToken>()).Returns(false);
 
         await Assert.ThrowsAsync<InvalidOperationException>(() =>
-            _service.RecordStripePaymentAsync(orderId, "pi_x", 10m, ct: TestContext.Current.CancellationToken));
+            _service.HandleStripeCheckoutWebhookEventAsync(new StoreCheckoutWebhookEvent(
+                "evt_team", StoreCheckoutEventKind.CheckoutSessionCompleted,
+                new StoreCheckoutSessionData("cs_team", orderId, "pi_x", 10m, PaymentStatus: "paid")),
+                TestContext.Current.CancellationToken));
     }
 
     [HumansFact]
@@ -187,7 +193,7 @@ public class ServiceTeamOrdersTests
         _repo.GetOrderByIdAsync(orderId, Arg.Any<CancellationToken>()).Returns(order);
         _repo.GetProductByIdAsync(product.Id, Arg.Any<CancellationToken>()).Returns(product);
         _campService.GetCampSeasonByIdAsync(seasonId, Arg.Any<CancellationToken>())
-            .Returns(new CampSeasonInfo(seasonId, Guid.NewGuid(), "alpha", 2025, null,
+            .Returns(new CampSeasonInfo(seasonId, Guid.NewGuid(), 2025, null,
                 "Camp X", string.Empty, string.Empty, [], CampSeasonStatus.Pending,
                 YesNoMaybe.No, YesNoMaybe.No, AdultPlayspacePolicy.No, 0, null, null, null, 0, null, null));
 
@@ -226,9 +232,12 @@ public class ServiceTeamOrdersTests
                 // sub-team the user coordinates — must NOT appear in the index
                 [subteamId] = MakeDepartment(subteamId, "Build Sub", userId, parentTeamId: deptId),
             });
+        // A department holding reaches its sub-teams; the index still lists departments only.
+        _permissions.GetOwnersAsync(userId, StorePermissions.TeamOrders, Arg.Any<CancellationToken>())
+            .Returns([new Owner(TeamOwner.Kind, deptId), new Owner(TeamOwner.Kind, subteamId)]);
         var orderId = Guid.NewGuid();
         var productId = Guid.NewGuid();
-        _repo.GetOrdersForTeamsWithLinesAndPaymentsAsync(
+        _repo.GetOrdersForTeamsAsync(
                 Arg.Is<IReadOnlyCollection<Guid>>(ids => ids.SequenceEqual(new[] { deptId })),
                 2026, Arg.Any<CancellationToken>())
             .Returns([new Order
@@ -271,7 +280,6 @@ public class ServiceTeamOrdersTests
     [HumansFact]
     public async Task GetIndexDataAsync_privileged_reader_lists_departments_it_does_not_coordinate()
     {
-        var viewerId = Guid.NewGuid();
         var otherDeptId = Guid.NewGuid();
         _teams.GetTeamsAsync(Arg.Any<CancellationToken>())
             .Returns(new Dictionary<Guid, TeamInfo>
@@ -308,7 +316,7 @@ public class ServiceTeamOrdersTests
                 UnitPriceEur = 10m, VatRatePercent = 0m,
                 OrderableUntil = new LocalDate(2026,12,31), IsActive = true }
         ]);
-        _repo.GetOrdersForTeamsWithLinesAndPaymentsAsync(
+        _repo.GetOrdersForTeamsAsync(
                 Arg.Is<IReadOnlyCollection<Guid>>(ids => ids.Contains(deptId)),
                 2026, Arg.Any<CancellationToken>())
             .Returns([new Order {
@@ -361,7 +369,7 @@ public class ServiceTeamOrdersTests
     {
         var orderId = Guid.NewGuid();
         var actor = Guid.NewGuid();
-        _repo.GetOrderWithLinesAndPaymentsAsync(orderId, Arg.Any<CancellationToken>())
+        _repo.GetOrderWithLinesAsync(orderId, Arg.Any<CancellationToken>())
             .Returns(new Order { Id = orderId, CampSeasonId = Guid.NewGuid(), Year = 2026 });
 
         await _service.DeleteOrderAsync(orderId, actor, TestContext.Current.CancellationToken);
@@ -388,7 +396,7 @@ public class ServiceTeamOrdersTests
                         Qty = 1, UnitPriceSnapshot = 10m, VatRateSnapshot = 0m }
             }
         };
-        _repo.GetOrderWithLinesAndPaymentsAsync(orderId, Arg.Any<CancellationToken>()).Returns(order);
+        _repo.GetOrderWithLinesAsync(orderId, Arg.Any<CancellationToken>()).Returns(order);
 
         var refusal = await _service.DeleteOrderAsync(orderId, Guid.NewGuid(), TestContext.Current.CancellationToken);
         refusal.Succeeded.Should().BeFalse();
@@ -418,7 +426,7 @@ public class ServiceTeamOrdersTests
                         Method = PaymentMethod.Stripe, Status = PaymentStatus.Paid, StripePaymentIntentId = "pi_paid" }
             }
         };
-        _repo.GetOrderWithLinesAndPaymentsAsync(orderId, Arg.Any<CancellationToken>()).Returns(order);
+        _repo.GetOrderWithLinesAsync(orderId, Arg.Any<CancellationToken>()).Returns(order);
 
         var refusal = await _service.DeleteOrderAsync(orderId, Guid.NewGuid(), TestContext.Current.CancellationToken);
         refusal.Succeeded.Should().BeFalse();
@@ -451,7 +459,7 @@ public class ServiceTeamOrdersTests
                         Method = PaymentMethod.Stripe, Status = status, StripePaymentIntentId = "pi_x" }
             }
         };
-        _repo.GetOrderWithLinesAndPaymentsAsync(orderId, Arg.Any<CancellationToken>()).Returns(order);
+        _repo.GetOrderWithLinesAsync(orderId, Arg.Any<CancellationToken>()).Returns(order);
 
         var refusal = await _service.DeleteOrderAsync(orderId, Guid.NewGuid(), TestContext.Current.CancellationToken);
         refusal.Succeeded.Should().BeFalse();
@@ -466,7 +474,7 @@ public class ServiceTeamOrdersTests
         // A paid, issued order reads zero-balance, but its store_invoices row references it under a
         // restrictive foreign key — the delete has to be refused here, not at the database.
         var orderId = Guid.NewGuid();
-        _repo.GetOrderWithLinesAndPaymentsAsync(orderId, Arg.Any<CancellationToken>())
+        _repo.GetOrderWithLinesAsync(orderId, Arg.Any<CancellationToken>())
             .Returns(new Order
             {
                 Id = orderId,
@@ -487,7 +495,7 @@ public class ServiceTeamOrdersTests
     public async Task DeleteOrderAsync_refuses_when_order_not_found()
     {
         var orderId = Guid.NewGuid();
-        _repo.GetOrderWithLinesAndPaymentsAsync(orderId, Arg.Any<CancellationToken>())
+        _repo.GetOrderWithLinesAsync(orderId, Arg.Any<CancellationToken>())
             .Returns((Order?)null);
 
         var refusal = await _service.DeleteOrderAsync(orderId, Guid.NewGuid(), TestContext.Current.CancellationToken);
@@ -500,7 +508,7 @@ public class ServiceTeamOrdersTests
     {
         var seasonId = Guid.NewGuid();
         _campService.GetCampSeasonByIdAsync(seasonId, Arg.Any<CancellationToken>())
-            .Returns(new CampSeasonInfo(seasonId, Guid.NewGuid(), "alpha", 2026, null,
+            .Returns(new CampSeasonInfo(seasonId, Guid.NewGuid(), 2026, null,
                 "Camp X", string.Empty, string.Empty, [], CampSeasonStatus.Pending,
                 YesNoMaybe.No, YesNoMaybe.No, AdultPlayspacePolicy.No, 0, null, null, null, 0, null, null));
         _repo.GetOrdersForCampSeasonAsync(seasonId, Arg.Any<CancellationToken>())
@@ -524,7 +532,7 @@ public class ServiceTeamOrdersTests
         // stays at 0 forever, and the create guard must not hand its season a second order.
         var seasonId = Guid.NewGuid();
         _campService.GetCampSeasonByIdAsync(seasonId, Arg.Any<CancellationToken>())
-            .Returns(new CampSeasonInfo(seasonId, Guid.NewGuid(), "alpha", 2026, null,
+            .Returns(new CampSeasonInfo(seasonId, Guid.NewGuid(), 2026, null,
                 "Camp X", string.Empty, string.Empty, [], CampSeasonStatus.Pending,
                 YesNoMaybe.No, YesNoMaybe.No, AdultPlayspacePolicy.No, 0, null, null, null, 0, null, null));
         _repo.GetOrdersForCampSeasonAsync(seasonId, Arg.Any<CancellationToken>())

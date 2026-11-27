@@ -38,7 +38,7 @@ public class MailerLiteAudienceSyncServiceTests
     [InlineData(DetachedFailure.CreateGroup, true)]
     [InlineData(DetachedFailure.Summary, false)]
     [InlineData(DetachedFailure.Summary, true)]
-    public async Task Detached_timeouts_remain_failures_when_shutdown_also_begins(DetachedFailure stage, bool shutdownRequested)
+    public async Task SyncAllAsync_TimeoutDuringShutdown_StaysFailure(DetachedFailure stage, bool shutdownRequested)
     {
         using var shutdown = new CancellationTokenSource();
         var audience = NewAudience("a-aud", "Humans - A", []);
@@ -74,7 +74,7 @@ public class MailerLiteAudienceSyncServiceTests
     [InlineData(PriorFailure.Preflight)]
     [InlineData(PriorFailure.Operation)]
     [InlineData(PriorFailure.OperationAtBoundary)]
-    public async Task Interrupted_sweep_keeps_prior_audience_and_operation_failures(PriorFailure stage)
+    public async Task SyncAllAsync_Interrupted_KeepsPriorFailures(PriorFailure stage)
     {
         using var shutdown = new CancellationTokenSource();
         var user = Guid.NewGuid();
@@ -117,7 +117,7 @@ public class MailerLiteAudienceSyncServiceTests
     [InlineData(AudienceWrite.BulkImport)]
     [InlineData(AudienceWrite.Assign)]
     [InlineData(AudienceWrite.Unassign)]
-    public async Task SyncAllAsync_CancelledDuringWrites_FinishesAudienceStateAndAuditBeforeStopping(
+    public async Task SyncAllAsync_CancelledDuringWrites_FinishesAudience(
         AudienceWrite cancelledDuring)
     {
         using var shutdown = new CancellationTokenSource();
@@ -147,7 +147,7 @@ public class MailerLiteAudienceSyncServiceTests
             .Returns(async call =>
             {
                 await ObserveWriteAsync(AudienceWrite.BulkImport, call.ArgAt<CancellationToken>(2));
-                return new BulkImportResult(1, 0, 0, 0);
+                return new BulkImportResult(1, 0);
             });
         _ml.AssignSubscriberToGroupAsync("existing", "g1", Arg.Any<CancellationToken>()).Returns(async call =>
             await ObserveWriteAsync(AudienceWrite.Assign, call.ArgAt<CancellationToken>(2)));
@@ -159,7 +159,7 @@ public class MailerLiteAudienceSyncServiceTests
         await act.Should().ThrowAsync<OperationCanceledException>();
         var state = await _repository.GetSyncStateAsync(audience.Key, TestContext.Current.CancellationToken);
         state.Should().NotBeNull();
-        state!.Created.Should().Be(1);
+        state.Created.Should().Be(1);
         state.Assigned.Should().Be(1);
         state.Unassigned.Should().Be(createsGroup ? 0 : 1);
         state.Errors.Should().Be(0);
@@ -175,7 +175,7 @@ public class MailerLiteAudienceSyncServiceTests
     }
 
     [HumansFact]
-    public async Task SyncAllAsync_CancelledAtEndOfPreflight_DoesNotStartWrites()
+    public async Task SyncAllAsync_CancelledAfterPreflight_StartsNoWrites()
     {
         using var shutdown = new CancellationTokenSource();
         var user = Guid.NewGuid();
@@ -185,7 +185,7 @@ public class MailerLiteAudienceSyncServiceTests
         _ml.ListGroupsAsync(shutdown.Token).Returns(async _ =>
         {
             await shutdown.CancelAsync();
-            return (IReadOnlyList<MailerLiteGroup>)[];
+            return [];
         });
 
         var act = () => NewService(audience).SyncAllAsync(ct: shutdown.Token);
@@ -216,7 +216,7 @@ public class MailerLiteAudienceSyncServiceTests
     }
 
     [HumansFact]
-    public async Task SyncAsync_NewUserNotInML_BulkImportsAndAssigns()
+    public async Task SyncAsync_NewUser_BulkImports()
     {
         var userA = Guid.NewGuid();
         var audience = NewAudience("a-aud", "Humans - A", [userA]);
@@ -227,7 +227,7 @@ public class MailerLiteAudienceSyncServiceTests
                 "g1",
                 Arg.Is<IReadOnlyList<string>>(l => l.Single() == "a@example.com"),
                 Arg.Any<CancellationToken>())
-            .Returns(new BulkImportResult(1, 0, 0, 0));
+            .Returns(new BulkImportResult(1, 0));
 
         var result = await NewService(audience).SyncAsync(audience, ct: TestContext.Current.CancellationToken);
 
@@ -252,7 +252,7 @@ public class MailerLiteAudienceSyncServiceTests
         SetupGroups(Group("g1", "Humans - A"));
         SetupSubscribers(existingSubscriber ? [Subscriber("s1", "duplicate@example.com", "active")] : []);
         _ml.BulkImportSubscribersToGroupAsync("g1", Arg.Any<IReadOnlyList<string>>(), Arg.Any<CancellationToken>())
-            .Returns(new BulkImportResult(1, 0, 0, 0));
+            .Returns(new BulkImportResult(1, 0));
 
         var result = await NewService(audience).SyncAsync(audience, ct: TestContext.Current.CancellationToken);
 
@@ -340,7 +340,7 @@ public class MailerLiteAudienceSyncServiceTests
         SetupSubscribers();
         _ml.BulkImportSubscribersToGroupAsync(
                 "g1", Arg.Any<IReadOnlyList<string>>(), Arg.Any<CancellationToken>())
-            .Returns(new BulkImportResult(1, 0, 0, 0));
+            .Returns(new BulkImportResult(1, 0));
 
         await NewService(audience).SyncAsync(audience, ct: TestContext.Current.CancellationToken);
 
@@ -371,7 +371,7 @@ public class MailerLiteAudienceSyncServiceTests
     }
 
     [HumansFact]
-    public async Task SyncAsync_AssignFails_CountedInErrorsAndSyncContinues()
+    public async Task SyncAsync_AssignFails_Continues()
     {
         var userA = Guid.NewGuid();
         var userB = Guid.NewGuid();
@@ -404,7 +404,7 @@ public class MailerLiteAudienceSyncServiceTests
     }
 
     [HumansFact]
-    public async Task SyncAsync_PersistsSyncStateAndAuditsInProse()
+    public async Task SyncAsync_Completed_PersistsSyncState()
     {
         var ct = TestContext.Current.CancellationToken;
         var userA = Guid.NewGuid();
@@ -458,7 +458,7 @@ public class MailerLiteAudienceSyncServiceTests
     }
 
     [HumansFact]
-    public async Task ComputeAllStatsAsync_ReadsLastSyncFromTheSyncStateTable()
+    public async Task ComputeAllStatsAsync_LastSync_ComesFromSyncState()
     {
         var ct = TestContext.Current.CancellationToken;
         var userA = Guid.NewGuid();

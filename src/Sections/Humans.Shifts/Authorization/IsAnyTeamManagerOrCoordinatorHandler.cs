@@ -2,15 +2,13 @@ using Humans.Users.Contracts;
 using System.Security.Claims;
 using Humans.Shifts.Contracts;
 using Humans.Base.Constants;
-using Humans.Base.Authorization;
 using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Http;
 
 namespace Humans.Shifts.Authorization;
 
 /// <summary>
-/// A privileged dashboard role OR coordinator of any team, in one handler because a policy's requirements AND.
-/// Coordinator team ids come from Teams' in-RAM model, so no request hits the DB.
+/// A privileged dashboard role OR <see cref="ShiftsPermissions.Manage"/> or <see cref="ShiftsPermissions.Approve"/>
+/// on any team, in one handler because a policy's requirements AND.
 /// </summary>
 internal sealed class IsAnyTeamManagerOrCoordinatorHandler(
     IShiftService shiftManagement, IUserService users, IHttpContextAccessor httpContextAccessor)
@@ -25,7 +23,6 @@ internal sealed class IsAnyTeamManagerOrCoordinatorHandler(
         // Same role list as ShiftsPolicies.Read; spares the common admin path a service call.
         if (user.IsInRole(RoleNames.Admin)
             || user.IsInRole(RoleNames.Board)
-            || user.IsInRole(ShiftsRoles.ShiftsNoInfo)
             || user.IsInRole(ShiftsRoles.ShiftsAdmin))
         {
             context.Succeed(requirement);
@@ -39,8 +36,7 @@ internal sealed class IsAnyTeamManagerOrCoordinatorHandler(
         var ct = httpContextAccessor.HttpContext?.RequestAborted ?? CancellationToken.None;
         var viewer = await users.GetUserInfoAsync(userId, ct);
         if (viewer is null) return;
-        var coordinatedTeamIds = await shiftManagement.GetCoordinatorTeamIdsAsync(viewer.Id, ct);
-        if (coordinatedTeamIds.Count > 0)
+        if (await shiftManagement.CanManageOrApproveAnyShiftsAsync(viewer.Id, ct))
             context.Succeed(requirement);
     }
 }

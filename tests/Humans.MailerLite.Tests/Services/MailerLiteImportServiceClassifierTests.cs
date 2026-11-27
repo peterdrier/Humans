@@ -23,7 +23,7 @@ public class MailerLiteImportServiceClassifierTests
     [Xunit.InlineData(ApplyFailure.Fault)]
     [Xunit.InlineData(ApplyFailure.DependencyCancellation)]
     [Xunit.InlineData(ApplyFailure.CallerCancellation)]
-    public async Task Apply_IsolatesDecisionFaultsAndPublishesSummary_ButPropagatesCallerCancellation(ApplyFailure failure)
+    public async Task Apply_DecisionFaults_AreIsolated(ApplyFailure failure)
     {
         var harness = new ClassifierHarness();
         harness.MlReturns(
@@ -72,7 +72,7 @@ public class MailerLiteImportServiceClassifierTests
         var state = await harness.Repository.GetSyncStateAsync(MailerLiteSyncKeys.Reconciliation,
             Xunit.TestContext.Current.CancellationToken);
         state.Should().NotBeNull();
-        state!.Summary.Should().Be(result.FormatSummary());
+        state.Summary.Should().Be(result.FormatSummary());
         await harness.Audit.Received(1).LogAsync(
             MailerLiteAuditActions.MailerLiteReconciliationCompleted, "MailerLite", state.Id,
             result.FormatSummary(), actorUserId: actor);
@@ -87,7 +87,7 @@ public class MailerLiteImportServiceClassifierTests
     [Xunit.InlineData(false, false, null)]
     [Xunit.InlineData(false, true, 1)]
     [Xunit.InlineData(false, false, 1)]
-    public async Task AliasEquivalentSubscribers_ProvisionOnceAndKeepTheOptOut(
+    public async Task AliasEquivalentSubscribers_Apply_ProvisionOnce(
         bool replacing, bool activeFirst, int? maxPerOutcome)
     {
         var harness = new ClassifierHarness();
@@ -104,7 +104,7 @@ public class MailerLiteImportServiceClassifierTests
             harness.AnyEmailRows[unsubscribed.Email] = [row];
         }
         var calls = 0;
-        harness.Provisioning.ReplaceUnverifiedEmailAndProvisionAsync(ownerId, emailId, Arg.Any<string>(),
+        harness.Provisioning.ReplaceUnverifiedEmailAsync(ownerId, emailId, Arg.Any<string>(),
                 Arg.Any<string?>(), ContactSource.MailerLite, Arg.Any<CancellationToken>())
             .Returns(_ => ++calls == 1
                 ? new AccountProvisioningResult(provisionedId, Created: true)
@@ -155,7 +155,7 @@ public class MailerLiteImportServiceClassifierTests
     }
 
     [HumansFact]
-    public async Task Classifies_VerifiedMatch_NoExistingPref_AsFlipToOptIn()
+    public async Task Classify_NoPref_FlipsToOptIn()
     {
         // ML active + no Marketing pref row → falls through to "flip to opt-in"
         // (which is functionally "first-time set to opt-in" since no row exists).
@@ -172,7 +172,7 @@ public class MailerLiteImportServiceClassifierTests
     }
 
     [HumansFact]
-    public async Task Classifies_VerifiedMatch_PrefsAlreadyMatch_AsNoOp()
+    public async Task Classify_PrefsMatch_IsNoOp()
     {
         // ML active + Humans pref says opted-IN (OptedOut=false) → no-op.
         var harness = new ClassifierHarness();
@@ -188,7 +188,7 @@ public class MailerLiteImportServiceClassifierTests
     }
 
     [HumansFact]
-    public async Task Classifies_VerifiedMatch_HumansOptedOutAndMlActive_AsFlipToOptIn()
+    public async Task Classify_OptedOutMlActive_FlipsToOptIn()
     {
         // Humans opted-out (sync source, no recency conflict) + ML active → flip to opt-in.
         var harness = new ClassifierHarness();
@@ -204,7 +204,7 @@ public class MailerLiteImportServiceClassifierTests
     }
 
     [HumansFact]
-    public async Task Classifies_VerifiedMatch_HumansOptedInAndMlUnsubscribed_AsFlipToOptOut()
+    public async Task Classify_OptedInMlUnsubscribed_FlipsToOptOut()
     {
         // Humans opted-in (sync source, no recency conflict) + ML unsubscribed → flip to opt-out.
         var harness = new ClassifierHarness();
@@ -220,7 +220,7 @@ public class MailerLiteImportServiceClassifierTests
     }
 
     [HumansFact]
-    public async Task Classifies_VerifiedMatch_NoExistingPref_MlOptedOut_AsNoOp()
+    public async Task Classify_NoPrefMlOptedOut_IsNoOp()
     {
         // No Marketing pref row + ML unsubscribed: Marketing defaults to
         // opted-out for users without a row, so this is already effectively
@@ -236,7 +236,7 @@ public class MailerLiteImportServiceClassifierTests
     }
 
     [HumansFact]
-    public async Task Classifies_VerifiedMatch_UserActionNewerThanMl_AsKeepHumansPref()
+    public async Task Classify_UserActionNewer_KeepsHumansPref()
     {
         // Humans opted-in via Profile (user action) AND Humans.UpdatedAt > ML.UnsubscribedAt
         // → keep Humans state.
@@ -288,7 +288,7 @@ public class MailerLiteImportServiceClassifierTests
     [HumansTheory]
     [Xunit.InlineData(false)]
     [Xunit.InlineData(true)]
-    public async Task ApplyReplacement_UsesOwnerOperationAndCountsOnlySuccessfulProvisioning(bool fails)
+    public async Task ApplyReplacement_Provisioning_CountsOnlySuccesses(bool fails)
     {
         var ct = Xunit.TestContext.Current.CancellationToken;
         var harness = new ClassifierHarness();
@@ -297,7 +297,7 @@ public class MailerLiteImportServiceClassifierTests
         harness.MlReturns(Active("pending@x.com"));
         harness.AnyEmailRows["pending@x.com"] =
             [UserEmailFixtures.Row(oldUserId, "pending@x.com", verified: false, id: oldEmailId)];
-        var replacement = harness.Provisioning.ReplaceUnverifiedEmailAndProvisionAsync(
+        var replacement = harness.Provisioning.ReplaceUnverifiedEmailAsync(
             oldUserId, oldEmailId, "pending@x.com", null, ContactSource.MailerLite, ct);
         if (fails) replacement.ThrowsAsync(new InvalidOperationException("Provisioning failed"));
         else replacement.Returns(new AccountProvisioningResult(Guid.NewGuid(), Created: true));
@@ -309,7 +309,7 @@ public class MailerLiteImportServiceClassifierTests
         result.UnverifiedEmailsReplaced.Should().Be(fails ? 0 : 1);
         result.Errors.Should().Be(fails ? 1 : 0);
         await harness.UserEmails.DidNotReceiveWithAnyArgs().DeleteEmailAsync(default, default);
-        await harness.Provisioning.Received(1).ReplaceUnverifiedEmailAndProvisionAsync(
+        await harness.Provisioning.Received(1).ReplaceUnverifiedEmailAsync(
             oldUserId, oldEmailId, "pending@x.com", null, ContactSource.MailerLite, ct);
     }
 

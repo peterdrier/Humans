@@ -77,7 +77,6 @@ internal sealed class StubTicketVendorService : ITicketVendorService
             string.Equals(t.Status, "valid", StringComparison.Ordinal));
 
         return Task.FromResult(new VendorEventSummaryDto(
-            EventId: eventId,
             EventName: "Demo Event (Stub)",
             TotalCapacity: 2000,
             TicketsSold: ticketsSold,
@@ -93,9 +92,6 @@ internal sealed class StubTicketVendorService : ITicketVendorService
             .ToList();
         return Task.FromResult(codes);
     }
-
-    public Task CreateCheckInAsync(string vendorTicketId, Instant occurredAt, CancellationToken ct = default) =>
-        Task.CompletedTask;
 
     public Task<VoidIssuedTicketResult> VoidIssuedTicketAsync(
         string vendorTicketId, bool voidToHold, CancellationToken ct = default)

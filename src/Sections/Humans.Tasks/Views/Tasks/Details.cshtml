@@ -1,0 +1,281 @@
+@model TaskPageViewModel
+
+@{
+    var task = Model.Task;
+    ViewData["Title"] = task.Title;
+    var teamUrl = task.TeamSlug.Length > 0 ? Url.Action("Team", "Tasks", new { slug = task.TeamSlug }) : null;
+    var route = new { id = task.Id };
+    var taskUrl = Url.Action("Details", "Tasks", route)!;
+    string? DateText(TaskDateInfo? date) => date?.Resolved?.ToDate();
+}
+
+@section Crumbs {
+    <a href="@Url.Action("Index", "Tasks")">@SharedLocalizer["Nav_Tasks"]</a>
+    @if (teamUrl is not null)
+    {
+        <a href="@teamUrl">@task.TeamName</a>
+    }
+    <span>@task.Title</span>
+}
+
+<page-header title="@task.Title">
+    <page-header-subtitle>
+        @if (teamUrl is not null)
+        {
+            <a href="@teamUrl">@task.TeamName</a>
+        }
+        @if (task.EventName is not null)
+        {
+            <text> · @task.EventName</text>
+        }
+    </page-header-subtitle>
+    <page-header-badge><status-badge value="@task.Status" localizer="@Localizer" /></page-header-badge>
+    <a href="@Url.Action("Index", "Tasks")" class="btn btn-outline-secondary">@Localizer["Tasks_Team_All"]</a>
+</page-header>
+
+<div class="row g-4">
+    <div class="col-lg-8">
+        @if (Model.Place is { } place)
+        {
+            <div class="card mb-4">
+                <div class="card-body d-flex flex-wrap align-items-center gap-3">
+                    @if (place == MyPlace.CanClaim)
+                    {
+                        <div>
+                            @if (task.NeedsApproval)
+                            {
+                                <div>@Localizer["Tasks_Claim_Approval"]</div>
+                                @if (!string.IsNullOrWhiteSpace(task.ApprovalReason))
+                                {
+                                    <div class="text-muted small">@task.ApprovalReason</div>
+                                }
+                            }
+                            else
+                            {
+                                <div>@Localizer["Tasks_Claim_FreeSlot"]</div>
+                            }
+                        </div>
+                        <div class="ms-sm-auto">
+                            <partial name="_ClaimButton" model="new ClaimButtonModel(task, taskUrl, Small: false, Primary: true)" />
+                        </div>
+                    }
+                    else
+                    {
+                        var requested = place == MyPlace.Requested;
+                        @* Leaving a hidden task can take it out of sight, so that leads back to the list, not a 404. *@
+                        var backTo = task.IsEffectivelyHidden ? Url.Action("Index", "Tasks")! : taskUrl;
+                        <div>
+                            <i class="fa-solid @(requested ? "fa-hourglass-half" : "fa-check") me-2" aria-hidden="true"></i>@(requested ? Localizer["Tasks_Claim_Waiting"] : Localizer["Tasks_YouAreOn"])
+                        </div>
+                        <form action="@Url.Action(requested ? "Withdraw" : "Release", route)" method="post" class="ms-sm-auto">
+                            @Html.AntiForgeryToken()
+                            <input type="hidden" name="returnUrl" value="@backTo" />
+                            <button type="submit" class="btn btn-outline-secondary">@(requested ? Localizer["Tasks_Withdraw"] : Localizer["Tasks_Release"])</button>
+                        </form>
+                    }
+                </div>
+            </div>
+        }
+        @if (task.Status == TaskItemStatus.Blocked && !string.IsNullOrWhiteSpace(task.BlockedNote))
+        {
+            <div class="alert alert-warning" role="status"><strong>@Localizer["Tasks_Task_BlockedBy"]</strong> @task.BlockedNote</div>
+        }
+        @if (task.IsWaiting)
+        {
+            <div class="alert alert-secondary" role="status"><i class="fa-solid fa-hourglass-half me-2" aria-hidden="true"></i>@Localizer["Tasks_Task_WaitingNow"]</div>
+        }
+        @if (!string.IsNullOrWhiteSpace(task.Description))
+        {
+            <div class="mb-4">@Html.SanitizedMarkdown(task.Description)</div>
+        }
+
+        @if (Model.Requests.Count > 0)
+        {
+            <div class="card mb-4" id="requests">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h2 class="h5 mb-0">@Localizer["Tasks_Requests_Title"]</h2>
+                    <span class="text-muted small">@Model.Requests.Count</span>
+                </div>
+                <partial name="_Requests" model="new RequestsViewModel(Model.Requests, ShowTask: false, ReturnUrl: taskUrl)" />
+            </div>
+        }
+
+        <div class="card mb-4">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h2 class="h5 mb-0">@Localizer["Tasks_Task_People"]</h2>
+                <span class="text-muted small">@Localizer["Tasks_Task_SlotsOf", task.ConfirmedCount, task.SlotCount]</span>
+            </div>
+            @if (task.ConfirmedCount == 0)
+            {
+                <div class="card-body"><empty-state>@Localizer["Tasks_Task_NoPeople"]</empty-state></div>
+            }
+            else
+            {
+                <ul class="list-group list-group-flush">
+                    @foreach (var person in task.Assignments.Where(a => a.IsConfirmed))
+                    {
+                        <li class="list-group-item d-flex flex-wrap align-items-center gap-2">
+                            <vc:human user-id="@person.UserId" />
+                            @if (Model.CanManage)
+                            {
+                                <form action="@Url.Action("Unassign", route)" method="post" class="ms-auto">
+                                    @Html.AntiForgeryToken()
+                                    <input type="hidden" name="userId" value="@person.UserId" />
+                                    <button type="submit" class="btn btn-sm btn-outline-danger">@Localizer["Tasks_Task_Unassign"]</button>
+                                </form>
+                            }
+                        </li>
+                    }
+                </ul>
+            }
+            @if (Model.CanManage)
+            {
+                <div class="card-body">
+                    <form action="@Url.Action("Assign", route)" method="post" class="d-flex flex-wrap gap-2">
+                        @Html.AntiForgeryToken()
+                        <div class="flex-grow-1">
+                            <vc:human-search field-name="userId" scope="Name" exclude-user-ids="task.Assignments.Select(a => a.UserId).ToList()" placeholder="@Localizer["Tasks_Task_FindPerson"].Value" />
+                        </div>
+                        <button type="submit" class="btn btn-outline-secondary">@Localizer["Tasks_Task_Assign"]</button>
+                    </form>
+                </div>
+            }
+        </div>
+
+        @if (Model.StatusChoices.Count > 0)
+        {
+            <div class="card mb-4">
+                <div class="card-header"><h2 class="h5 mb-0">@Localizer["Tasks_Task_StatusTitle"]</h2></div>
+                <div class="card-body">
+                    <form action="@Url.Action("SetStatus", route)" method="post" class="row g-3 align-items-end">
+                        @Html.AntiForgeryToken()
+                        <div class="col-sm-4">
+                            <label class="form-label" for="status-select">@Localizer["Tasks_Col_Status"]</label>
+                            <select class="form-select" id="status-select" name="Status">
+                                @foreach (var status in Model.StatusChoices)
+                                {
+                                    <option value="@status" selected="@(Model.StatusForm.Status == status)">@Localizer[$"Enum_TaskItemStatus_{status}"]</option>
+                                }
+                            </select>
+                        </div>
+                        <div class="col-sm-5">
+                            <label class="form-label" for="status-note">@Localizer["Tasks_Task_BlockedNote"]</label>
+                            <input type="text" class="form-control" id="status-note" name="BlockedNote" value="@Model.StatusForm.BlockedNote" maxlength="500" />
+                        </div>
+                        <div class="col-sm-3">
+                            <button type="submit" class="btn btn-outline-secondary w-100">@Localizer["Tasks_Task_StatusSave"]</button>
+                        </div>
+                        <div class="col-12"><div class="form-text mt-0">@Localizer["Tasks_Task_BlockedNoteHelp"]</div></div>
+                    </form>
+                </div>
+            </div>
+        }
+
+        @if (Model.CanManage)
+        {
+            <details class="card mb-4" open="@Model.EditOpen">
+                <summary class="card-header h5 mb-0">@Localizer["Tasks_Task_Edit"]</summary>
+                <div class="card-body">
+                    <partial name="_TaskForm" model='new TaskFormViewModel(Model.EditForm, task.Id.ToString("N"), false, Url.Action("Edit", route)!, Model.Teams, Model.Events)' />
+                </div>
+                <div class="card-footer">
+                    <form action="@Url.Action("Delete", route)" method="post" data-confirm="@Localizer["Tasks_Task_DeleteConfirm"]">
+                        @Html.AntiForgeryToken()
+                        <button type="submit" class="btn btn-sm btn-outline-danger">@Localizer["Tasks_Task_Delete"]</button>
+                    </form>
+                </div>
+            </details>
+        }
+    </div>
+
+    <div class="col-lg-4">
+        <div class="card mb-4">
+            <div class="card-header"><h2 class="h5 mb-0">@Localizer["Tasks_Task_Details"]</h2></div>
+            <dl class="list-group list-group-flush mb-0">
+                @if (task.Priority != SlotPriority.None)
+                {
+                    <div class="list-group-item"><dt class="text-muted fw-normal">@Localizer["Tasks_Col_Priority"]</dt><dd class="mb-0"><status-badge value="@task.Priority" /></dd></div>
+                }
+                <div class="list-group-item">
+                    <dt class="text-muted fw-normal">@Localizer["Tasks_Task_Event"]</dt>
+                    <dd class="mb-0">@(task.EventName ?? Localizer["Tasks_Task_NoEvent"].Value)</dd>
+                </div>
+                <div class="list-group-item">
+                    <dt class="text-muted fw-normal">@Localizer["Tasks_Form_Start"]</dt>
+                    <dd class="mb-0">@(DateText(task.Start) ?? "—")@if (task.Start?.IsRelative == true) { <span class="text-muted small"> · @Localizer["Tasks_Task_RelativeDate"]</span> }</dd>
+                </div>
+                <div class="list-group-item">
+                    <dt class="text-muted fw-normal">@Localizer["Tasks_Form_Due"]</dt>
+                    <dd class="mb-0">@(DateText(task.Due) ?? "—")@if (task.Due?.IsRelative == true) { <span class="text-muted small"> · @Localizer["Tasks_Task_RelativeDate"]</span> }</dd>
+                </div>
+                <div class="list-group-item">
+                    <dt class="text-muted fw-normal">@Localizer["Tasks_Task_NeedsApproval"]</dt>
+                    <dd class="mb-0">
+                        @(task.NeedsApproval ? Localizer["Tasks_Yes"].Value : Localizer["Tasks_No"].Value)
+                        @if (task.NeedsApproval && !string.IsNullOrWhiteSpace(task.ApprovalReason))
+                        {
+                            <span class="text-muted small"> · @task.ApprovalReason</span>
+                        }
+                    </dd>
+                </div>
+                @if (task.IsEffectivelyHidden)
+                {
+                    <div class="list-group-item"><dt class="text-muted fw-normal">@Localizer["Tasks_Hidden"]</dt><dd class="mb-0">@Localizer["Tasks_Yes"]</dd></div>
+                }
+            </dl>
+        </div>
+
+        <div class="card">
+            <div class="card-header"><h2 class="h5 mb-0">@Localizer["Tasks_Task_WaitingOnTitle"]</h2></div>
+            @if (Model.WaitingOn.Count == 0)
+            {
+                <div class="card-body"><empty-state>@Localizer["Tasks_Task_NoDependencies"]</empty-state></div>
+            }
+            else
+            {
+                <ul class="list-group list-group-flush">
+                    @foreach (var link in Model.WaitingOn)
+                    {
+                        <li class="list-group-item d-flex flex-wrap align-items-center gap-2">
+                            @if (link.Title is not null)
+                            {
+                                <a href="@Url.Action("Details", new { id = link.Id })">@link.Title</a>
+                            }
+                            else
+                            {
+                                <span class="text-muted fst-italic">@Localizer["Tasks_Task_HiddenTask"]</span>
+                            }
+                            @if (link.Status is { } linkStatus)
+                            {
+                                <status-badge value="@linkStatus" localizer="@Localizer" />
+                            }
+                            @if (Model.CanManage)
+                            {
+                                <form action="@Url.Action("RemoveDependency", route)" method="post" class="ms-auto">
+                                    @Html.AntiForgeryToken()
+                                    <input type="hidden" name="dependsOn" value="@link.Id" />
+                                    <button type="submit" class="btn btn-sm btn-outline-danger">@Localizer["Tasks_Task_RemoveDependency"]</button>
+                                </form>
+                            }
+                        </li>
+                    }
+                </ul>
+            }
+            @if (Model.CanManage && Model.DependencyChoices.Count > 0)
+            {
+                <div class="card-body">
+                    <form action="@Url.Action("AddDependency", route)" method="post" class="d-flex flex-wrap gap-2">
+                        @Html.AntiForgeryToken()
+                        <select class="form-select flex-grow-1 w-auto mw-100" name="dependsOn" aria-label="@Localizer["Tasks_Task_DependencyPick"]">
+                            @foreach (var choice in Model.DependencyChoices)
+                            {
+                                <option value="@choice.Id">@choice.Label</option>
+                            }
+                        </select>
+                        <button type="submit" class="btn btn-outline-secondary">@Localizer["Tasks_Task_AddDependency"]</button>
+                    </form>
+                </div>
+            }
+        </div>
+    </div>
+</div>

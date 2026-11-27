@@ -136,4 +136,6 @@
   <data name="Store_DownloadInvoice" xml:space="preserve"><value>Rechnung {0} herunterladen</value></data>
   <data name="Store_RecordPaymentProduct" xml:space="preserve"><value>Kaution für</value></data>
   <data name="Enum_PaymentMethod_WriteOff" xml:space="preserve"><value>Abschreibung</value></data>
+  <data name="Store_Permission_TeamOrders_Title" xml:space="preserve"><value>Für das Team bestellen</value></data>
+  <data name="Store_Permission_TeamOrders_Blurb" xml:space="preserve"><value>Die Shop-Bestellung der Abteilung anlegen und bearbeiten.</value></data>
 </root>

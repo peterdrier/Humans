@@ -1,3 +1,4 @@
+using Humans.Testing;
 using Microsoft.Extensions.Logging;
 using Humans.Base.Configuration;
 using Microsoft.Extensions.Hosting;
@@ -39,7 +40,7 @@ public sealed class OutboxEmailServiceTests : IDisposable
     // A clock and a DbContext-options factory, owned here rather than shared: a harness
     // built around an in-memory UsersDbContext would grant this project
     // InternalsVisibleTo on it.
-    private readonly FakeClock Clock = new(Instant.FromUtc(2026, 3, 1, 12, 0));
+    private readonly FakeClock _clock = new(Instant.FromUtc(2026, 3, 1, 12, 0));
 
     private static DbContextOptions<TContext> NewSectionDbOptions<TContext>()
         where TContext : DbContext =>
@@ -75,7 +76,7 @@ public sealed class OutboxEmailServiceTests : IDisposable
             _immediate,
             _transport,
             _metrics,
-            Clock,
+            _clock,
             _commPrefService,
             NullLogger<OutboxEmailService>.Instance);
     }
@@ -102,7 +103,7 @@ public sealed class OutboxEmailServiceTests : IDisposable
     {
         var ct = TestContext.Current.CancellationToken;
         var userId = Guid.NewGuid();
-        var localizer = Substitute.For<IStringLocalizer<EmailResource>>();
+        var localizer = Substitute.For<IStringLocalizer<EmailResource>>().AddFormatting();
         localizer["Email_ComposerSelfTest_Subject"].Returns(new LocalizedString("subject", "[Test] {0}"));
         var users = Substitute.For<IUserService>();
         users.GetUserInfoAsync(userId, Arg.Any<CancellationToken>())
@@ -274,7 +275,7 @@ public sealed class OutboxEmailServiceTests : IDisposable
     {
         var expected = new System.Resources.ResourceManager(typeof(EmailResource))
             .GetString("Email_UnsubscribeFooter", System.Globalization.CultureInfo.GetCultureInfo(expectedCulture))!;
-        using var ambientCulture = new Humans.Base.Extensions.CultureScope("de");
+        using var ambientCulture = new CultureScope("de");
         var environment = Substitute.For<IHostEnvironment>();
         environment.EnvironmentName.Returns(Environments.Production);
         var composer = new BrandedEmailBodyComposer(
@@ -313,7 +314,7 @@ public sealed class OutboxEmailServiceTests : IDisposable
         msg.PlainTextBody.Should().Be("plain-text-stub");
         msg.TemplateName.Should().Be("access_suspended");
         msg.Status.Should().Be(EmailOutboxStatus.Queued);
-        msg.CreatedAt.Should().Be(Clock.GetCurrentInstant());
+        msg.CreatedAt.Should().Be(_clock.GetCurrentInstant());
     }
 
     [HumansFact]

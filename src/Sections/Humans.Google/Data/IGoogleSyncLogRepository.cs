@@ -1,12 +1,11 @@
 using Humans.Base.Interfaces.Repositories;
 using Humans.Base.Enums;
-using Humans.Google.Contracts;
 using Humans.Google.Domain;
 using NodaTime;
 
 namespace Humans.Google.Data;
 
-/// <summary>Append-only: no update or delete path.</summary>
+/// <summary>No update path. Rows go only on erasure or once older than the retention period.</summary>
 internal interface IGoogleSyncLogRepository : IRepository
 {
     Task AddAsync(GoogleSyncLogEntry entry, CancellationToken ct = default);
@@ -33,6 +32,8 @@ internal interface IGoogleSyncLogRepository : IRepository
         IReadOnlyCollection<Guid> userIds, CancellationToken ct = default);
 
     Task<int> DeleteByUserIdsAsync(IReadOnlyCollection<Guid> userIds, CancellationToken ct = default);
+
+    Task<int> DeleteBeforeAsync(Instant cutoff, CancellationToken ct = default);
 
     /// <summary>For the GDPR export: uncapped, unlike the display reads.</summary>
     Task<IReadOnlyList<GoogleSyncLogEntry>> GetAllByUserIdsContributorAsync(

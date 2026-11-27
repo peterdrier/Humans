@@ -1,7 +1,6 @@
 using Humans.Google.Domain;
 using Humans.Base.Enums;
 using Humans.Base.Interfaces;
-using Humans.Google.Contracts;
 using NodaTime;
 
 namespace Humans.Google.Services;
@@ -39,7 +38,6 @@ internal sealed record GoogleSyncHistoryMigrationReport(
 
 /// <summary>An audit row as it will land in <c>google_sync_log_entries</c>.</summary>
 internal sealed record GoogleSyncHistoryMovableRow(
-    Guid AuditId,
     Instant OccurredAt,
     GoogleSyncLogAction Action,
     string? ResourceName,

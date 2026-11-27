@@ -1,0 +1,34 @@
+@* Requests waiting for a manager: who asked, and approve or decline. Decline may carry a reason that goes in the email. *@
+@model RequestsViewModel
+
+<ul class="list-group list-group-flush">
+    @foreach (var row in Model.Rows)
+    {
+        <li class="list-group-item">
+            <div class="d-flex flex-wrap align-items-center gap-2 mb-2">
+                <vc:human user-id="@row.UserId" />
+                @if (Model.ShowTask)
+                {
+                    <span class="text-muted" aria-hidden="true"><i class="fa-solid fa-arrow-right"></i></span>
+                    <a href="@Url.Action("Details", "Tasks", new { id = row.Task.Id })">@row.Task.Title</a>
+                }
+            </div>
+            <div class="row g-2">
+                <form action="@Url.Action("Approve", "Tasks", new { id = row.Task.Id })" method="post" class="col-auto">
+                    @Html.AntiForgeryToken()
+                    <input type="hidden" name="userId" value="@row.UserId" />
+                    <input type="hidden" name="returnUrl" value="@Model.ReturnUrl" />
+                    <button type="submit" class="btn btn-sm btn-outline-success">@Localizer["Tasks_Requests_Approve"]</button>
+                </form>
+                <form action="@Url.Action("Decline", "Tasks", new { id = row.Task.Id })" method="post" class="col-12 col-sm d-flex gap-2">
+                    @Html.AntiForgeryToken()
+                    <input type="hidden" name="userId" value="@row.UserId" />
+                    <input type="hidden" name="returnUrl" value="@Model.ReturnUrl" />
+                    <input type="text" name="reason" maxlength="200" class="form-control form-control-sm"
+                           placeholder="@Localizer["Tasks_Requests_Reason"]" aria-label="@Localizer["Tasks_Requests_Reason"]" />
+                    <button type="submit" class="btn btn-sm btn-outline-danger">@Localizer["Tasks_Requests_Decline"]</button>
+                </form>
+            </div>
+        </li>
+    }
+</ul>

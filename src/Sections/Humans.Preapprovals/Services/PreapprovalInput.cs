@@ -1,5 +1,3 @@
-using Humans.Preapprovals.Contracts;
-
 namespace Humans.Preapprovals.Services;
 
 internal static class PreapprovalInput
