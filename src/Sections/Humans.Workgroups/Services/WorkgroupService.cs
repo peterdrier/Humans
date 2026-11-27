@@ -18,10 +18,11 @@ using Humans.Calendar.Contracts;
 using System.Globalization;
 using Humans.Gdpr.Contracts;
 using Humans.Workgroups.Services.Contributors;
+using Humans.Base.Helpers;
 
 namespace Humans.Workgroups.Services;
 
-internal sealed partial class WorkgroupService(
+internal sealed class WorkgroupService(
     IWorkgroupRepository repository,
     IUserService users,
     ISurveyAnalysisRead surveys,
@@ -1776,4 +1777,438 @@ internal sealed partial class WorkgroupService(
     }
 
     internal const string WorkgroupRhythmJobName = "WorkgroupRhythmJob";
+
+    public async Task<WorkgroupMutationResult> RegisterAsync(Guid workgroupId, Guid actorUserId, CancellationToken ct = default)
+    {
+        // Registration completes even if the initiating request disconnects.
+        ct = CancellationToken.None;
+        var workgroupResult = await RequireAsync(workgroupId, ct);
+        if (workgroupResult.Refusal is { } workgroupRefusal) return new(Refusal: workgroupRefusal);
+        var workgroup = workgroupResult.Value!;
+        if (RequireStatus(workgroup, WorkgroupStatus.Applied, WorkgroupStatus.Referred) is { } statusRefusal) return new(Refusal: statusRefusal);
+
+        // The folder comes first: a failure here leaves the row as it was, so the Secretary can retry.
+        if (workgroup.DriveFolderId is null)
+        {
+            var folderResult = await CreateGroupFolderAsync(workgroup, ct);
+            if (folderResult.Refusal is { } folderRefusal) return new(Refusal: folderRefusal);
+            workgroup.DriveFolderId = folderResult.Value!;
+        }
+
+        var now = clock.GetCurrentInstant();
+        workgroup.Status = WorkgroupStatus.Active;
+        workgroup.RegisteredAt = now;
+        workgroup.Reasons = null;
+        workgroup.UpdatedAt = now;
+        await repository.UpdateWorkgroupAsync(workgroup, ct,
+            [SystemEntry(workgroup.Id, WorkgroupLogKind.Registered, now, body: null)]);
+
+        await AuditAsync(WorkgroupsAuditActions.WorkgroupRegistered, workgroup,
+            $"Registered '{workgroup.Name}' with Drive folder {workgroup.DriveFolderId}", actorUserId);
+        await AnnounceDecisionAsync(workgroup, WorkgroupNoticeKind.Registered, detail: null, ct);
+        await RequestGoogleSyncAsync(workgroup, ct);
+        return new();
+    }
+
+    public async Task<WorkgroupMutationResult> ReferAsync(
+        Guid workgroupId, Guid actorUserId, string? note, CancellationToken ct = default)
+    {
+        var workgroupResult = await RequireAsync(workgroupId, ct);
+        if (workgroupResult.Refusal is { } workgroupRefusal) return new(Refusal: workgroupRefusal);
+        var workgroup = workgroupResult.Value!;
+        if (RequireStatus(workgroup, WorkgroupStatus.Applied) is { } statusRefusal) return new(Refusal: statusRefusal);
+
+        var now = clock.GetCurrentInstant();
+        workgroup.Status = WorkgroupStatus.Referred;
+        workgroup.UpdatedAt = now;
+        await repository.UpdateWorkgroupAsync(workgroup, ct,
+            [SystemEntry(workgroup.Id, WorkgroupLogKind.Referred, now, Trimmed(note))]);
+        ct = CancellationToken.None;
+
+        await AuditAsync(WorkgroupsAuditActions.WorkgroupReferred, workgroup,
+            $"Referred '{workgroup.Name}' to the Board{(Trimmed(note) is { } n ? $": {n}" : "")}",
+            actorUserId);
+
+        var info = ToInfo(workgroup);
+        await NotifyBoardAsync(WorkgroupsNotificationSources.WorkgroupRegistrationPending,
+            $"Referred to the Board: {workgroup.Name}", info,
+            Trimmed(note) ?? "A refusal ground may apply; the Board decides at its next meeting.", ct);
+        await EmailBoardAsync(WorkgroupNoticeKind.Referred, info, Trimmed(note), ct);
+        return new();
+    }
+
+    public async Task<WorkgroupMutationResult> RefuseAsync(
+        Guid workgroupId, Guid actorUserId, string reasons, CancellationToken ct = default)
+    {
+        if (RequireReasons(reasons) is { } reasonsRefusal) return new(Refusal: reasonsRefusal);
+        var workgroupResult = await RequireAsync(workgroupId, ct);
+        if (workgroupResult.Refusal is { } workgroupRefusal) return new(Refusal: workgroupRefusal);
+        var workgroup = workgroupResult.Value!;
+        if (RequireStatus(workgroup, WorkgroupStatus.Applied, WorkgroupStatus.Referred) is { } statusRefusal) return new(Refusal: statusRefusal);
+
+        var now = clock.GetCurrentInstant();
+        workgroup.Status = WorkgroupStatus.Refused;
+        workgroup.Reasons = reasons.Trim();
+        workgroup.UpdatedAt = now;
+        await repository.UpdateWorkgroupAsync(workgroup, ct,
+            [SystemEntry(workgroup.Id, WorkgroupLogKind.Refused, now, reasons.Trim())]);
+        ct = CancellationToken.None;
+
+        await AuditAsync(WorkgroupsAuditActions.WorkgroupRefused, workgroup,
+            $"Refused '{workgroup.Name}': {reasons.Trim()}", actorUserId);
+        await AnnounceDecisionAsync(workgroup, WorkgroupNoticeKind.Refused, reasons.Trim(), ct);
+        return new();
+    }
+
+    public async Task<WorkgroupMutationResult> WithdrawAsync(
+        Guid workgroupId, Guid actorUserId, string reasons, CancellationToken ct = default)
+    {
+        if (RequireReasons(reasons) is { } reasonsRefusal) return new(Refusal: reasonsRefusal);
+        var workgroupResult = await RequireAsync(workgroupId, ct);
+        if (workgroupResult.Refusal is { } workgroupRefusal) return new(Refusal: workgroupRefusal);
+        var workgroup = workgroupResult.Value!;
+        if (RequireStatus(workgroup, WorkgroupStatus.Active, WorkgroupStatus.Dormant) is { } statusRefusal) return new(Refusal: statusRefusal);
+
+        var now = clock.GetCurrentInstant();
+        workgroup.Status = WorkgroupStatus.Withdrawn;
+        workgroup.DormantReason = null;
+        workgroup.Reasons = reasons.Trim();
+        workgroup.EndedAt = now;
+        workgroup.UpdatedAt = now;
+        await repository.UpdateWorkgroupAsync(workgroup, ct,
+            [SystemEntry(workgroup.Id, WorkgroupLogKind.Withdrawn, now, reasons.Trim())],
+            ClosePendingRequests(workgroup, now));
+        ct = CancellationToken.None;
+        await AuditAsync(WorkgroupsAuditActions.WorkgroupWithdrawn, workgroup,
+            $"Withdrew registration of '{workgroup.Name}': {reasons.Trim()}", actorUserId);
+        await AnnounceDecisionAsync(workgroup, WorkgroupNoticeKind.Withdrawn, reasons.Trim(), ct);
+        // Withdrawn isn't Active, so the source stops claiming write 
+        await RequestGoogleSyncAsync(workgroup, ct);
+        await SetAccountActiveAsync(workgroup, isActive: false, ct);
+        return new();
+    }
+
+    public async Task<WorkgroupMutationResult> CloseAsync(
+        Guid workgroupId, Guid actorUserId, string reasons, CancellationToken ct = default)
+    {
+        if (RequireReasons(reasons) is { } reasonsRefusal) return new(Refusal: reasonsRefusal);
+        var workgroupResult = await RequireAsync(workgroupId, ct);
+        if (workgroupResult.Refusal is { } workgroupRefusal) return new(Refusal: workgroupRefusal);
+        var workgroup = workgroupResult.Value!;
+        if (RequireStatus(workgroup, WorkgroupStatus.Active) is { } statusRefusal) return new(Refusal: statusRefusal);
+
+        // The member's own ending is MarkDoneAsync, which can't reach the Quiet reason.
+        await EndAsync(workgroup, actorUserId, WorkgroupDormantReason.Quiet, reasons, ct);
+        return new();
+    }
+
+    public async Task<WorkgroupMutationResult> ReactivateAsync(Guid workgroupId, Guid actorUserId, CancellationToken ct = default)
+    {
+        var workgroupResult = await RequireAsync(workgroupId, ct);
+        if (workgroupResult.Refusal is { } workgroupRefusal) return new(Refusal: workgroupRefusal);
+        var workgroup = workgroupResult.Value!;
+        if (RequireStatus(workgroup, WorkgroupStatus.Dormant) is { } statusRefusal) return new(Refusal: statusRefusal);
+
+        var now = clock.GetCurrentInstant();
+        workgroup.Status = WorkgroupStatus.Active;
+        workgroup.DormantReason = null;
+        workgroup.EndedAt = null;
+        workgroup.Reasons = null;
+        workgroup.UpdatedAt = now;
+        await repository.UpdateWorkgroupAsync(workgroup, ct,
+            [SystemEntry(workgroup.Id, WorkgroupLogKind.Reactivated, now, body: null)]);
+        ct = CancellationToken.None;
+
+        await AuditAsync(WorkgroupsAuditActions.WorkgroupReactivated, workgroup,
+            $"Reactivated '{workgroup.Name}'", actorUserId);
+        await AnnounceDecisionAsync(workgroup, WorkgroupNoticeKind.Reactivated, detail: null, ct);
+        await RequestGoogleSyncAsync(workgroup, ct);
+        await SetAccountActiveAsync(workgroup, isActive: true, ct);
+        return new();
+    }
+
+    public async Task<WorkgroupMutationResult<Guid>> RegisterExistingAsync(
+        Guid actorUserId, WorkgroupBootstrap bootstrap, CancellationToken ct = default)
+    {
+        ct = CancellationToken.None;
+        ArgumentNullException.ThrowIfNull(bootstrap);
+        var validation = await ValidateApplicationAsync(bootstrap.Application, ct);
+        if (validation.Refusal is { } applicationRefusal) return new(Refusal: applicationRefusal);
+        var application = validation.Value!;
+        if (await ResolveMemberTargetAsync(bootstrap.CoordinatorUserId, ct) is not { } coordinatorId)
+            return new(Refusal: new(WorkgroupErrorKeys.NotFound));
+
+        var now = clock.GetCurrentInstant();
+        var slugResult = await ReserveSlugAsync(bootstrap.Application.Name, null, ct);
+        if (slugResult.Refusal is { } slugRefusal) return new(Refusal: slugRefusal);
+        var slug = slugResult.Value!;
+        var workgroup = new Workgroup
+        {
+            Id = Guid.NewGuid(),
+            Slug = slug,
+            // The application it never filed takes the same backdated date.
+            Status = WorkgroupStatus.Active,
+            AppliedByUserId = coordinatorId,
+            AppliedAt = bootstrap.RegisteredAt,
+            RegisteredAt = bootstrap.RegisteredAt,
+            CreatedAt = now,
+            UpdatedAt = now
+        };
+        ApplyFields(workgroup, application.Name, application.Purpose, application.Deliverable,
+            application.DeliverableKind, application.Audience, application.TargetDate,
+            application.DiscordChannelUrl, application.IsSensitive);
+
+        workgroup.Members.Add(NewMember(workgroup.Id, coordinatorId,
+            WorkgroupMemberRole.Coordinator, bootstrap.RegisteredAt));
+        if (application.SecondCoordinatorUserId is { } second && second != coordinatorId)
+        {
+            workgroup.Members.Add(NewMember(workgroup.Id, second,
+                WorkgroupMemberRole.Coordinator, bootstrap.RegisteredAt));
+        }
+
+        workgroup.LogEntries.Add(SystemEntry(workgroup.Id, WorkgroupLogKind.Registered,
+            bootstrap.RegisteredAt, body: null));
+
+        // Finance before anything durable: otherwise a Holded failure reports an error for a group that exists,
+        // and a retry registers it twice.
+        var budget = bootstrap.Budget is { Amount: not null } b ? b : null;
+        if (budget is not null)
+        {
+            if (ValidateBudgetAmount(budget.Amount) is { } budgetRefusal)
+                return new(Refusal: budgetRefusal);
+            var accountResult = await ResolveBudgetAccountAsync(workgroup, budget.ExistingAccountNum, ct);
+            if (accountResult.Refusal is { } accountRefusal) return new(Refusal: accountRefusal);
+            var account = accountResult.Value!;
+            workgroup.BudgetAmount = budget.Amount;
+            workgroup.HoldedAccountNumber = account.AccountNum;
+            workgroup.HoldedAccountId = account.AccountId;
+            workgroup.LogEntries.Add(SystemEntry(workgroup.Id, WorkgroupLogKind.BudgetSet, now,
+                BudgetLogBody(workgroup), actorUserId));
+        }
+
+        var folderResult = await CreateGroupFolderAsync(workgroup, ct);
+        if (folderResult.Refusal is { } folderRefusal) return new(Refusal: folderRefusal);
+        workgroup.DriveFolderId = folderResult.Value!;
+        await repository.AddWorkgroupAsync(workgroup, ct);
+
+        await AuditAsync(WorkgroupsAuditActions.WorkgroupRegisteredExisting, workgroup,
+            $"Registered the existing group '{workgroup.Name}', backdated to "
+                + $"{bootstrap.RegisteredAt.InUtc().Date.ToInvariantDate()}",
+            actorUserId);
+        await AnnounceDecisionAsync(workgroup, WorkgroupNoticeKind.Registered, detail: null, ct);
+        await RequestGoogleSyncAsync(workgroup, ct);
+        if (budget is not null)
+            await AuditAsync(WorkgroupsAuditActions.WorkgroupBudgetSet, workgroup, BudgetAuditSummary(workgroup), actorUserId);
+
+        return new(workgroup.Id);
+    }
+
+    public async Task<WorkgroupMutationResult> RecordDispositionAsync(
+        Guid documentId,
+        Guid actorUserId,
+        WorkgroupDisposition disposition,
+        string note,
+        CancellationToken ct = default)
+    {
+        if (RequireReasons(note) is { } noteRefusal)
+            return new(Refusal: noteRefusal);
+
+        var documentResult = await RequireDocumentAsync(documentId, ct, requireActive: false);
+        if (documentResult.Refusal is { } documentRefusal) return new(Refusal: documentRefusal);
+        var (workgroup, document) = documentResult.Value;
+        if (document.Status != WorkgroupDocumentStatus.Delivered)
+            return new(Refusal: new(WorkgroupErrorKeys.NotDelivered));
+
+        var now = clock.GetCurrentInstant();
+        document.Disposition = disposition;
+        document.DispositionNote = note.Trim();
+        document.DispositionAt = now;
+        document.DispositionByUserId = actorUserId;
+        document.UpdatedAt = now;
+        await repository.UpdateDocumentAsync(document, ct,
+            [SystemEntry(workgroup.Id, WorkgroupLogKind.DispositionRecorded, now,
+                $"{disposition}: {note.Trim()}", documentId: document.Id)]);
+        ct = CancellationToken.None;
+        await AuditAsync(WorkgroupsAuditActions.WorkgroupDispositionRecorded, workgroup,
+            $"Recorded {disposition} on '{document.Title}': {note.Trim()}", actorUserId,
+            AuditEntityTypes.WorkgroupDocument, document.Id);
+
+        var info = ToInfo(workgroup);
+        await NotifyAsync(info.CurrentMemberUserIds(), WorkgroupsNotificationSources.WorkgroupDispositionRecorded,
+            $"Enum_WorkgroupDisposition_{disposition}", info, $"{document.Title}: {note.Trim()}", ct);
+        // The coordinators owe the follow-up, so they also get the email.
+        await EmailAsync(info.CoordinatorUserIds(), WorkgroupNoticeKind.DispositionRecorded, info,
+            $"{disposition}: {note.Trim()}", ct);
+        return new();
+    }
+
+    private async Task AnnounceDecisionAsync(
+        Workgroup workgroup,
+        WorkgroupNoticeKind kind,
+        string? detail,
+        CancellationToken ct)
+    {
+        var info = ToInfo(workgroup);
+        var coordinators = info.CoordinatorUserIds();
+        await NotifyAsync(coordinators, WorkgroupsNotificationSources.WorkgroupRegistrationDecided, $"Enum_WorkgroupLogKind_{kind}", info, detail, ct);
+        await EmailAsync(coordinators, kind, info, detail, ct);
+    }
+
+    private static WorkgroupRefusal? RequireReasons(string? reasons)
+    {
+        if (string.IsNullOrWhiteSpace(reasons))
+            return new(WorkgroupErrorKeys.ReasonsRequired);
+        if (reasons.Trim().Length > 4000)
+            return new(WorkgroupErrorKeys.TextTooLong, 4000);
+        return null;
+    }
+
+    private async Task<WorkgroupMutationResult<WorkgroupApplication>> ValidateApplicationAsync(
+        WorkgroupApplication application, CancellationToken ct)
+    {
+        if (ValidateRegisterFields(application.Name, application.Purpose, application.Deliverable, application.DiscordChannelUrl) is { } refusal)
+            return new(Refusal: refusal);
+        if (application.SecondCoordinatorUserId is not { } second)
+            return new(application);
+        var coordinator = await ResolveMemberTargetAsync(second, ct);
+        return coordinator is null
+            ? new(Refusal: new(WorkgroupErrorKeys.NotFound))
+            : new(application with { SecondCoordinatorUserId = coordinator.Value });
+    }
+
+    private static WorkgroupRefusal? ValidateRegisterFields(string name, string purpose, string deliverable, string? discordChannelUrl)
+    {
+        if (string.IsNullOrWhiteSpace(name))
+            return new(WorkgroupErrorKeys.NameRequired);
+        if (string.IsNullOrWhiteSpace(purpose))
+            return new(WorkgroupErrorKeys.PurposeRequired);
+        if (string.IsNullOrWhiteSpace(deliverable))
+            return new(WorkgroupErrorKeys.DeliverableRequired);
+        if (!string.IsNullOrWhiteSpace(discordChannelUrl) && SafeHttpLink(discordChannelUrl) is null)
+            return new(WorkgroupErrorKeys.DiscordUrlInvalid);
+        return null;
+    }
+
+    private static void ApplyFields(
+        Workgroup w,
+        string name,
+        string purpose,
+        string deliverable,
+        WorkgroupDeliverableKind kind,
+        WorkgroupAudience audience,
+        LocalDate? targetDate,
+        string? discordChannelUrl,
+        bool isSensitive)
+    {
+        w.Name = name.Trim();
+        w.Purpose = purpose.Trim();
+        w.Deliverable = deliverable.Trim();
+        w.DeliverableKind = kind;
+        w.Audience = audience;
+        w.TargetDate = targetDate;
+        w.DiscordChannelUrl = Trimmed(discordChannelUrl);
+        w.IsSensitive = isSensitive ? true : null;
+    }
+
+    /// <summary>
+    /// Suffixed until free. Reserved route segments count as taken, so a group called "Apply" gets <c>apply-2</c>
+    /// rather than shadowing the form.
+    /// </summary>
+    private async Task<WorkgroupMutationResult<string>> ReserveSlugAsync(string name, Guid? exceptId, CancellationToken ct)
+    {
+        var baseSlug = SlugHelper.GenerateSlug(name);
+        if (string.IsNullOrEmpty(baseSlug))
+            baseSlug = "workgroup";
+
+        // Name allows 200 characters but Slug holds 100, with room for a "-100" suffix: trim rather than fail on insert.
+        if (baseSlug.Length > SlugBudget)
+            baseSlug = baseSlug[..SlugBudget].TrimEnd('-');
+
+        var candidate = baseSlug;
+        for (var suffix = 2; ; suffix++)
+        {
+            if (!ReservedSlugs.Contains(candidate, StringComparer.Ordinal)
+                && !await repository.SlugTakenAsync(candidate, exceptId, ct))
+            {
+                return new(candidate);
+            }
+
+            // A hundred groups sharing one name is a data problem, not a naming problem.
+            if (suffix > 100)
+                return new(Refusal: new(WorkgroupErrorKeys.NameTaken));
+
+            candidate = $"{baseSlug}-{suffix}";
+        }
+    }
+
+    private const int SlugBudget = 96;
+
+    /// <summary>A group that stops being Active has nobody left to decide its join requests. Nothing is logged.</summary>
+    private static IReadOnlyList<WorkgroupMember> ClosePendingRequests(Workgroup w, Instant now)
+    {
+        var pending = w.Members.Where(m => m.LeftAt is null && m.IsPending == true).ToList();
+        foreach (var m in pending) m.LeftAt = now;
+        return pending;
+    }
+
+    /// <summary>The one place a group ends, whether a member marked it done or the Secretary closed it.</summary>
+    private async Task EndAsync(
+        Workgroup w,
+        Guid actorUserId,
+        WorkgroupDormantReason reason,
+        string? reasons,
+        CancellationToken ct)
+    {
+        var now = clock.GetCurrentInstant();
+        w.Status = WorkgroupStatus.Dormant;
+        w.DormantReason = reason;
+        w.Reasons = Trimmed(reasons) ?? w.Reasons;
+        w.EndedAt = now;
+        w.UpdatedAt = now;
+        await repository.UpdateWorkgroupAsync(w, ct,
+            [SystemEntry(w.Id, WorkgroupLogKind.Ended, now, Trimmed(reasons) ?? reason.ToString(),
+                authorUserId: reason == WorkgroupDormantReason.Quiet ? null : actorUserId)],
+            ClosePendingRequests(w, now));
+        ct = CancellationToken.None;
+
+        await AuditAsync(WorkgroupsAuditActions.WorkgroupClosed, w, $"Group ended ({reason})", actorUserId);
+
+        var info = ToInfo(w);
+        var coordinators = info.CoordinatorUserIds();
+        await NotifyAsync(coordinators, WorkgroupsNotificationSources.WorkgroupRegistrationDecided,
+            "Enum_WorkgroupLogKind_Ended", info, Trimmed(reasons), ct);
+        await EmailAsync(coordinators, WorkgroupNoticeKind.Ended, info, Trimmed(reasons), ct);
+
+        // Dormant: the access source now returns Viewer.
+        await RequestGoogleSyncAsync(w, ct);
+        await SetAccountActiveAsync(w, isActive: false, ct);
+    }
+
+    // Erasure keeps the content: comments, log bodies, minutes and documents are the association's record of what it
+    // decided and why, under Art. 17(3)(b).
+    public async Task EraseForUserAsync(Guid userId, CancellationToken ct)
+    {
+        var now = clock.GetCurrentInstant();
+
+        // Read before the row is gone: the Board must know when a group's only coordinator is erased.
+        var graph = await repository.GetGraphAsync(ct);
+        var orphaned = graph.Workgroups
+            .Where(w => w.Status == WorkgroupStatus.Active)
+            .Select(ToInfo)
+            .Where(w => w.CoordinatorUserIds() is [var only] && only == userId)
+            .ToList();
+
+        await repository.EraseUserAsync(userId, now, ct);
+
+        foreach (var info in orphaned)
+        {
+            await NotifyBoardAsync(WorkgroupsNotificationSources.WorkgroupRegistrationPending,
+                $"No coordinator: {info.Name}", info,
+                "The group's only coordinator was erased under GDPR. Name a coordinator from its members.", ct);
+        }
+    }
+
+    public Task ReassignAsync(
+        Guid mergedFromUserId, Guid mergedToUserId, Guid actorUserId, Instant now, CancellationToken ct) =>
+        repository.ReassignToUserAsync(mergedFromUserId, mergedToUserId, now, ct);
 }

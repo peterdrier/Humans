@@ -16,7 +16,7 @@ Team create/edit form redisplays use request cancellation for parent-team picker
 ## Concepts
 
 - A **Department** is a team with no parent. A **Sub-Team** sits under exactly one department; only one level of nesting is allowed.
-- **System teams** (Volunteers, Coordinators, Barrio Leads) are computed by the system-team sync; nobody adds or removes their members by hand. The Board, Asociados and Colaboradors teams now belong to Governance's bodies: Teams no longer syncs them or claims their Google group and files (`TeamService.GovernanceBodyTeamIds`), and the `teams.retire-governance-bodies` data migration deactivates them, ending their memberships with an audit entry per member.
+- **System teams** (Volunteers, Coordinators, Barrio Leads) are computed by the system-team sync; nobody adds or removes their members by hand. The Board, Asociados and Colaboradors teams now belong to Governance's bodies: Teams no longer syncs them or claims their Google group and files (`TeamService.GovernanceBodyTeamIds`), and the `teams.retire-governance-bodies` data migration deactivates them, ending their memberships with an audit entry per member. The `teams.remove-governance-body-roles` data migration then deletes any role slots left on them, with an audit entry per holder, because a filled slot blocks deleting the team row.
 - A **Coordinator** holds the management role on a department: full authority over the department and its sub-teams, including Google resources. Coordinators are members of the Coordinators system team.
 - A **Sub-team Manager** holds the management role on a sub-team: members, join requests, roles, shifts and the page of that sub-team only. Managers have no authority over Google resources, the parent department or sibling sub-teams, and are not added to the Coordinators system team.
 - A **Team Page** is the Markdown page of a department, public or member-facing, with up to three calls to action.
@@ -120,7 +120,7 @@ One event-scoped early-entry grant: a human may enter on a date for a named proj
 | `POST /Teams/{slug}/EarlyEntry/Remove` | `RemoveEarlyEntry` | `TeamAdminController` | `ResolveEarlyEntryManagementAsync` |
 | `GET /Teams/{slug}/EarlyEntry/LookupTicket` | `LookupTicket` | `TeamAdminController` | `ResolveEarlyEntryManagementAsync` |
 
-`ResolveTeamManagementAsync` checks `TeamAuthorizationHandler` with `TeamOperationRequirement.ManageCoordinators`; `ResolveTeamViewAsync` admits the same, or a `TeamsPolicies.Read` holder (Board) with every form hidden; `ResolveEarlyEntryManagementAsync` checks `TeamOperationRequirement.ManageEarlyEntry`. `tree` and the other route words in `TeamService.ReservedTeamSlugs` can never be team slugs.
+`ResolveTeamManagementAsync` checks the `Teams.Manage` permission on the team; `ResolveTeamViewAsync` admits the same, or a `TeamsPolicies.Read` holder (Board) with every form hidden; `ResolveEarlyEntryManagementAsync` checks `Teams.EarlyEntry`. Both are declared in `Section.cs` and reach sub-teams; Teams Admin holds both everywhere, Early Entry Admin holds only `Teams.EarlyEntry`. Join-request approval, member and role changes, and the team page's manage flag ask the same `Teams.Manage` check. `tree` and the other route words in `TeamService.ReservedTeamSlugs` can never be team slugs.
 
 ## Actors & Roles
 

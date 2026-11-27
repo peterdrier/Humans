@@ -60,7 +60,7 @@ public sealed class ComposerSelfSendTests
     [HumansTheory]
     [Xunit.InlineData(false)]
     [Xunit.InlineData(true)]
-    public async Task SendMarkdownToSelf_QueuesOneSystemEmailToTheCallerAndAudits(bool mergedAlias)
+    public async Task SendMarkdownToSelf_SignedIn_QueuesOneEmail(bool mergedAlias)
     {
         var resolvedId = mergedAlias ? Guid.NewGuid() : UserId;
         GivenAddress("me@example.com", resolvedId);
@@ -125,7 +125,7 @@ public sealed class ComposerSelfSendTests
     }
 
     [HumansFact]
-    public async Task SendMarkdownToSelf_AuditFailureAfterQueueing_KeepsSuccessAndLogsCritical()
+    public async Task SendMarkdownToSelf_AuditFailsAfterQueueing_KeepsSuccess()
     {
         GivenAddress("me@example.com");
         var failure = new InvalidOperationException("Audit unavailable");
@@ -163,7 +163,7 @@ public sealed class ComposerSelfSendTests
     }
 
     [HumansFact]
-    public async Task SendMarkdownToSelf_WithoutSubject_UsesTheDefaultTestSubject()
+    public async Task SendMarkdownToSelf_NoSubject_UsesDefaultSubject()
     {
         GivenAddress("me@example.com");
 
@@ -174,7 +174,7 @@ public sealed class ComposerSelfSendTests
     }
 
     [HumansFact]
-    public async Task SendMarkdownToSelf_WhenSignedOut_IsUnauthorizedAndSendsNothing()
+    public async Task SendMarkdownToSelf_SignedOut_IsUnauthorized()
     {
         var result = await BuildController(signedIn: false)
             .SendMarkdownToSelf("Hello", "Body", CancellationToken.None);
@@ -208,7 +208,7 @@ public sealed class ComposerSelfSendTests
     }
 
     [HumansFact]
-    public async Task SendMarkdownToSelf_WithNoAddress_Is422AndSendsNothing()
+    public async Task SendMarkdownToSelf_NoAddress_Is422()
     {
         GivenAddress(null);
 
@@ -220,7 +220,7 @@ public sealed class ComposerSelfSendTests
     }
 
     [HumansFact]
-    public void SendMarkdownToSelf_RequiresAuthenticationAndIsRateLimited()
+    public void SendMarkdownToSelf_Action_IsRateLimited()
     {
         typeof(EmailPreviewController).GetCustomAttribute<AuthorizeAttribute>(inherit: false).Should().NotBeNull();
         typeof(EmailPreviewController).GetMethod(nameof(EmailPreviewController.SendMarkdownToSelf))!

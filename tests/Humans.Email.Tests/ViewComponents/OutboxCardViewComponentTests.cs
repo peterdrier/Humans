@@ -34,7 +34,7 @@ public sealed class OutboxCardViewComponentTests
     [HumansTheory]
     [Xunit.InlineData(0)]
     [Xunit.InlineData(7)]
-    public async Task ShowsTheMessageCount_ToAnAuthorizedAdminView_EvenAtZero(int count)
+    public async Task Invoke_AuthorizedAdminZeroMessages_ShowsCount(int count)
     {
         _outbox.GetMessageCountForUserAsync(_userId, Arg.Any<CancellationToken>()).Returns(count);
 

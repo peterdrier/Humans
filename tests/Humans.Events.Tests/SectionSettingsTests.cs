@@ -21,7 +21,7 @@ public sealed class SectionSettingsTests
     [InlineData(1, true)]
     [InlineData(10000, true)]
     [InlineData(10001, false)]
-    public void PrintSlotLimit_AcceptsUnlimitedAndRejectsOutOfRangeValues(int limit, bool expectedValid)
+    public void PrintSlotLimit_OutOfRange_IsRejected(int limit, bool expectedValid)
     {
         var model = new GuideSettingsViewModel { MaxPrintSlots = limit };
         var context = new ValidationContext(model) { MemberName = nameof(model.MaxPrintSlots) };
@@ -30,7 +30,7 @@ public sealed class SectionSettingsTests
     }
 
     [HumansFact]
-    public void Tabs_ReturnsTheEventGuideTabGatedOnEventsAdminOrAdmin()
+    public void Tabs_EventGuideTab_NeedsEventsAdminOrAdmin()
     {
         var tabs = ((ISectionSettings)new Section()).Tabs().ToList();
 

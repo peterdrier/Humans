@@ -76,7 +76,7 @@ public sealed class EventSettingsTabViewComponentTests
     }
 
     [HumansFact]
-    public async Task InvokeAsync_Admin_WithEventQuery_ReturnsTheNamedRow()
+    public async Task InvokeAsync_AdminQueriesEvent_GetsNamedRow()
     {
         var namedId = Guid.NewGuid();
         var namedRow = MakeInfo() with { Id = namedId, EventName = "Named row" };
@@ -89,7 +89,7 @@ public sealed class EventSettingsTabViewComponentTests
     }
 
     [HumansFact]
-    public async Task InvokeAsync_NonAdmin_WithEventQuery_StillGetsTheActiveRow()
+    public async Task InvokeAsync_NonAdminQueriesEvent_GetsActiveRow()
     {
         // A non-admin must never see anything other than the active row, even if
         // they carry the same ?event= a link gave an admin.
@@ -105,7 +105,7 @@ public sealed class EventSettingsTabViewComponentTests
     }
 
     [HumansFact]
-    public async Task InvokeAsync_Admin_WithEventQueryNamingAMissingRow_FallsBackToTheActiveRow()
+    public async Task InvokeAsync_AdminQueriesMissingRow_GetsActiveRow()
     {
         var missingId = Guid.NewGuid();
         var active = MakeInfo();
@@ -135,7 +135,7 @@ public sealed class EventSettingsTabViewComponentTests
     }
 
     [HumansFact]
-    public async Task InvokeAsync_NoActiveEvent_NonAdmin_ReturnsANullSettingsModel()
+    public async Task InvokeAsync_NonAdminNoActiveEvent_GetsNullModel()
     {
         var model = await InvokeWithNoActiveEventAsync(authorized: false);
 
@@ -143,7 +143,7 @@ public sealed class EventSettingsTabViewComponentTests
     }
 
     [HumansFact]
-    public async Task InvokeAsync_NoActiveEvent_Admin_ReturnsABlankFormToStartACycle()
+    public async Task InvokeAsync_AdminNoActiveEvent_GetsBlankForm()
     {
         // Settings mints event ids, so an admin with nothing configured gets a blank form, not
         // a dead end.
@@ -154,7 +154,7 @@ public sealed class EventSettingsTabViewComponentTests
     }
 
     [HumansFact]
-    public async Task InvokeAsync_Admin_AskingForANewEvent_GetsTheLatestEventOneYearOn()
+    public async Task InvokeAsync_AdminAsksNewEvent_GetsNextYear()
     {
         var latest = MakeInfo() with { Status = EventSettingsStatus.Inactive, EarlyEntryClose = Instant.FromUtc(2026, 7, 4, 12, 0) };
         _settings.GetAllEventSettingsAsync(Arg.Any<CancellationToken>()).Returns([latest]);

@@ -96,8 +96,8 @@ graph LR
     Backdoor -.-> Finance
     Backdoor -.-> Notifications
     Backdoor -.-> Teams
+    BoxOffice --> Stripe
     BoxOffice -.-> Tickets
-    Budget --> Issues
     Budget --> Permissions
     Budget -.-> Camps
     Budget -.-> Finance
@@ -112,7 +112,6 @@ graph LR
     Campaigns -.-> Users
     Camps --> EarlyEntry
     Camps --> Google
-    Camps --> Issues
     Camps --> Settings
     Camps --> Shifts
     Camps -.-> CityPlanning
@@ -123,12 +122,10 @@ graph LR
     Cantina --> Settings
     Cantina --> Shifts
     CityPlanning --> Containers
-    CityPlanning --> Issues
     CityPlanning --> Settings
     CityPlanning -.-> Camps
     CityPlanning -.-> Teams
     Consent --> Auth
-    Consent --> Issues
     Consent -.-> Email
     Consent -.-> Governance
     Consent -.-> Notifications
@@ -190,7 +187,6 @@ graph LR
     Governance --> Auth
     Governance --> Consent
     Governance --> Google
-    Governance --> Issues
     Governance --> Onboarding
     Governance -.-> Email
     Governance -.-> Notifications
@@ -219,7 +215,6 @@ graph LR
     Notifications --> Auth
     Notifications -.-> Email
     Onboarding --> Consent
-    Onboarding --> Issues
     Onboarding --> Settings
     Onboarding --> Shifts
     Onboarding -.-> Email
@@ -243,14 +238,12 @@ graph LR
     Scanner --> Consent
     Scanner --> EarlyEntry
     Scanner --> Events
-    Scanner --> Issues
     Scanner --> Settings
     Scanner --> Tickets
     Shifts --> Auth
     Shifts --> Calendar
     Shifts --> Consent
     Shifts --> EarlyEntry
-    Shifts --> Issues
     Shifts --> Permissions
     Shifts --> Settings
     Shifts --> Teams
@@ -284,7 +277,6 @@ graph LR
     Teams --> Consent
     Teams --> EarlyEntry
     Teams --> Google
-    Teams --> Issues
     Teams --> Permissions
     Teams --> Roles
     Teams --> Settings
@@ -301,7 +293,6 @@ graph LR
     Tickets --> EarlyEntry
     Tickets --> Gate
     Tickets --> Grants
-    Tickets --> Issues
     Tickets --> Settings
     Tickets --> Stripe
     Tickets -.-> Camps
@@ -317,7 +308,6 @@ graph LR
     Users --> Consent
     Users --> Gdpr
     Users --> Google
-    Users --> Issues
     Users --> Shifts
     Users -.-> Camps
     Users -.-> Email

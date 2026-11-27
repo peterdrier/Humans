@@ -274,7 +274,7 @@ public sealed class WorkgroupServiceDocumentTests : WorkgroupsTestHarness
     }
 
     [HumansFact]
-    public async Task OpenComments_WithACategoryLongerThanItsColumn_ReturnsARefusal()
+    public async Task OpenComments_TooLongCategory_IsRefused()
     {
         // The window would open, then every comment filed under that category would fail to
         // persist against the 100-character Category column.
@@ -354,7 +354,7 @@ public sealed class WorkgroupServiceDocumentTests : WorkgroupsTestHarness
     }
 
     [HumansFact]
-    public async Task Deliver_WhileTheCommentWindowIsStillOpen_ReturnsARefusal()
+    public async Task Deliver_CommentWindowOpen_IsRefused()
     {
         // "A comment window ... must end before Delivered" (design §7): delivering mid-window
         // would freeze the body and cut a promised public comment period short.
@@ -389,7 +389,7 @@ public sealed class WorkgroupServiceDocumentTests : WorkgroupsTestHarness
     }
 
     [HumansFact]
-    public async Task RecordDisposition_OnAPublishedButNotDeliveredDocument_ReturnsARefusal()
+    public async Task RecordDisposition_NotDelivered_IsRefused()
     {
         var workgroup = await SeedWorkgroupAsync();
         var document = await AddDocumentAsync(workgroup.Id, WorkgroupDocumentStatus.Published, body: "Body");
@@ -467,7 +467,7 @@ public sealed class WorkgroupServiceDocumentTests : WorkgroupsTestHarness
     }
 
     [HumansFact]
-    public async Task AddComment_OnASensitiveGroup_ByANonMember_ReturnsARefusal()
+    public async Task AddComment_NonMemberSensitiveGroup_IsRefused()
     {
         var workgroup = await SeedWorkgroupAsync(isSensitive: true);
         var now = Clock.GetCurrentInstant();
@@ -557,7 +557,7 @@ public sealed class WorkgroupServiceDocumentTests : WorkgroupsTestHarness
     }
 
     [HumansFact]
-    public async Task CloseComments_BeforeTheWindowEnds_EndsItNowAndKeepsTheComments()
+    public async Task CloseComments_WindowOpen_EndsItNow()
     {
         var workgroup = await SeedWorkgroupAsync();
         var member = workgroup.Members.Single().UserId;

@@ -151,7 +151,7 @@ public sealed class FacilitatedMessageControllerTests
     }
 
     [HumansFact]
-    public async Task Post_AuditFailureAfterQueueing_KeepsSuccessAndLogsCritical()
+    public async Task Post_AuditFailsAfterQueueing_KeepsSuccess()
     {
         var failure = new InvalidOperationException("Audit unavailable");
         _audit.LogAsync(Arg.Any<AuditActionDefinition>(), Arg.Any<string>(), Arg.Any<Guid>(),
@@ -337,7 +337,7 @@ public sealed class FacilitatedMessageControllerTests
     }
 
     [HumansFact]
-    public async Task Post_PersonalSend_RelaysWithoutReplyToAndAudits()
+    public async Task Post_PersonalSend_RelaysWithoutReplyTo()
     {
         var result = await _controller.SendMessage(_targetId, new SendMessageViewModel { Message = "Hello" }, Ct);
 
@@ -375,7 +375,7 @@ public sealed class FacilitatedMessageControllerTests
     }
 
     [HumansFact]
-    public void Controller_IsAuthorizedAndUsesTheEmailRoute()
+    public void Controller_Route_IsAuthorizedEmailRoute()
     {
         typeof(FacilitatedMessageController).GetCustomAttribute<AuthorizeAttribute>(inherit: false).Should().NotBeNull();
         foreach (var method in typeof(FacilitatedMessageController).GetMethods()

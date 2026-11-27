@@ -53,7 +53,7 @@ public class EventsCardViewComponentTests
     [Xunit.InlineData(AccountScenario.Merged)]
     [Xunit.InlineData(AccountScenario.Missing)]
     [Xunit.InlineData(AccountScenario.Cancelled)]
-    public async Task Favourite_viewer_resolves_before_loading_the_card(AccountScenario account)
+    public async Task FavouriteViewer_CardLoad_ResolvesFirst(AccountScenario account)
     {
         var cookieId = Guid.NewGuid();
         var survivor = Guid.NewGuid();
@@ -105,7 +105,7 @@ public class EventsCardViewComponentTests
                 GuidePublishAt: Instant.MaxValue, MaxPrintSlots: 0, TimeZoneId: "Europe/Madrid"));
 
     [HumansFact]
-    public async Task CampScope_Renders_OrderedRows_WithFavouritesMarked()
+    public async Task CampScope_Favourites_AreMarkedInOrder()
     {
         var viewerId = Guid.NewGuid();
         var campId = Guid.NewGuid();

@@ -14,7 +14,7 @@ public sealed class EventTests
     [InlineData((int)EventStatus.Draft)]
     [InlineData((int)EventStatus.Rejected)]
     [InlineData((int)EventStatus.ResubmitRequested)]
-    public void Submit_FromValidState_SetsPendingAndTimestamps(int sourceValue)
+    public void Submit_ValidState_SetsPending(int sourceValue)
     {
         var source = (EventStatus)sourceValue;
         var guideEvent = CreateEvent(source);
@@ -55,7 +55,7 @@ public sealed class EventTests
     [InlineData((int)EventStatus.Draft)]
     [InlineData((int)EventStatus.Pending)]
     [InlineData((int)EventStatus.Approved)]
-    public void Withdraw_FromValidState_SetsWithdrawnAndLastUpdated(int sourceValue)
+    public void Withdraw_ValidState_SetsWithdrawn(int sourceValue)
     {
         var source = (EventStatus)sourceValue;
         var guideEvent = CreateEvent(source);
@@ -106,7 +106,7 @@ public sealed class EventTests
     [InlineData((int)EventStatus.ResubmitRequested, true, true)]
     [InlineData((int)EventStatus.Approved, false, false)]
     [InlineData((int)EventStatus.Withdrawn, false, false)]
-    public void IsEditableBySubmitter_CoversStatusAndCampAsymmetry(
+    public void IsEditableBySubmitter_EachStatus_MatchesRule(
         int statusValue, bool isCampEvent, bool expected)
     {
         var status = (EventStatus)statusValue;
@@ -122,7 +122,7 @@ public sealed class EventTests
     [InlineData((int)EventStatus.Approved, true, true)]
     [InlineData((int)EventStatus.Rejected, false, false)]
     [InlineData((int)EventStatus.Withdrawn, false, false)]
-    public void IsWithdrawableBySubmitter_CoversStatusAndCampAsymmetry(
+    public void IsWithdrawableBySubmitter_EachStatus_MatchesRule(
         int statusValue, bool isCampEvent, bool expected)
     {
         var status = (EventStatus)statusValue;
@@ -132,7 +132,7 @@ public sealed class EventTests
     [HumansTheory]
     [InlineData(true, 90, 1440)]
     [InlineData(false, 90, 90)]
-    public void ResolveAllDaySchedule_AllDayMeansMidnightStartFullDay(
+    public void ResolveAllDaySchedule_AllDay_StartsAtMidnight(
         bool isAllDay, int requestedMinutes, int expectedMinutes)
     {
         var (startTime, durationMinutes) = Event.ResolveAllDaySchedule(
@@ -144,15 +144,15 @@ public sealed class EventTests
 
     // Keep the internal moderation-action type out of public test signatures.
     [HumansFact]
-    public void ApplyModerationAction_Approved_FromPending_TransitionsToApproved() =>
+    public void ApplyModerationAction_ApprovedFromPending_BecomesApproved() =>
         AssertModerationTransition(EventModerationActionType.Approved, EventStatus.Approved);
 
     [HumansFact]
-    public void ApplyModerationAction_Rejected_FromPending_TransitionsToRejected() =>
+    public void ApplyModerationAction_RejectedFromPending_BecomesRejected() =>
         AssertModerationTransition(EventModerationActionType.Rejected, EventStatus.Rejected);
 
     [HumansFact]
-    public void ApplyModerationAction_ResubmitRequested_FromPending_TransitionsToResubmitRequested() =>
+    public void ApplyModerationAction_ResubmitRequestedFromPending_BecomesResubmitRequested() =>
         AssertModerationTransition(
             EventModerationActionType.ResubmitRequested, EventStatus.ResubmitRequested);
 
@@ -224,7 +224,7 @@ public sealed class EventTests
     [InlineData(false, true)]
     [InlineData(true, false)]
     [InlineData(false, false)]
-    public void GetOccurrenceInstants_MissingContext_ReturnsStartAtDespiteDayFilter(bool hasGateDate, bool hasZone)
+    public void GetOccurrenceInstants_MissingContext_ReturnsStartAt(bool hasGateDate, bool hasZone)
     {
         var guideEvent = CreateEvent(EventStatus.Approved);
         guideEvent.IsRecurring = true;
@@ -261,7 +261,7 @@ public sealed class EventTests
     }
 
     [HumansFact]
-    public void ApplyIndividualEdit_SetsFieldsAndClearsRecurrenceDaysWhenNotRecurring()
+    public void ApplyIndividualEdit_NotRecurring_ClearsRecurrenceDays()
     {
         var guideEvent = CreateEvent(EventStatus.Pending);
         var categoryId = Guid.NewGuid();
@@ -300,7 +300,7 @@ public sealed class EventTests
     }
 
     [HumansFact]
-    public void ApplyBarrioEdit_SetsFieldsIncludingPriorityRankAndClearsRecurrenceDaysWhenNotRecurring()
+    public void ApplyBarrioEdit_NotRecurring_ClearsRecurrenceDays()
     {
         var guideEvent = CreateEvent(EventStatus.Pending);
         guideEvent.CampId = Guid.NewGuid();

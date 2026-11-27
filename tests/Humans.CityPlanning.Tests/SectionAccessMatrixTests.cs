@@ -15,7 +15,7 @@ public class SectionAccessMatrixTests
         ((ISectionAccessMatrix)new Section()).AccessMatrices.Single(m => string.Equals(m.Key, key, StringComparison.Ordinal));
 
     [HumansFact]
-    public void Contributes_the_three_map_matrices_in_that_order()
+    public void AccessMatrix_ThreeMaps_AreInOrder()
     {
         ((ISectionAccessMatrix)new Section()).AccessMatrices
             .Select(m => (m.Key, m.SectionName, m.Order))
@@ -26,7 +26,7 @@ public class SectionAccessMatrixTests
     }
 
     [HumansFact]
-    public void Pins_the_overview_feature_rows()
+    public void AccessMatrix_MatchesOverviewPin()
     {
         var matrix = Matrix("CityPlanningOverview");
         matrix.Roles.Should().Equal("Volunteer", "Barrio Lead", "Map Admin");
@@ -41,7 +41,7 @@ public class SectionAccessMatrixTests
     }
 
     [HumansFact]
-    public void Pins_the_barrio_map_feature_rows()
+    public void AccessMatrix_MatchesBarrioMapPin()
     {
         var matrix = Matrix("CityPlanningBarrioMap");
         matrix.Roles.Should().Equal("Barrio Lead", "Map Admin");
@@ -61,7 +61,7 @@ public class SectionAccessMatrixTests
     }
 
     [HumansFact]
-    public void Pins_the_container_map_feature_rows()
+    public void AccessMatrix_MatchesContainerMapPin()
     {
         var matrix = Matrix("ContainerMap");
         matrix.Roles.Should().Equal("Barrio Lead", "Map Admin");

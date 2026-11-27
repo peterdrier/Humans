@@ -6,7 +6,7 @@ namespace Humans.Settings.Tests;
 public sealed class SectionChromeTests
 {
     [HumansFact]
-    public void Components_ReturnsTheSettingsUserMenuLinkInTheUserMenuSlot()
+    public void Components_UserMenuSlot_HasSettingsLink()
     {
         var components = ((ISectionChrome)new Section()).Components().ToList();
 
