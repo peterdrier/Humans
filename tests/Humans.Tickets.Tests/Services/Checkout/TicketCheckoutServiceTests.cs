@@ -2463,6 +2463,50 @@ public sealed partial class TicketCheckoutServiceTests
             .Refusal.Should().Be("That person already holds a ticket for this event.");
     }
 
+    [HumansTheory]
+    [InlineData((int)TicketCheckoutOrderState.Pending, true, true, true)]
+    [InlineData((int)TicketCheckoutOrderState.Processing, false, true, true)]
+    [InlineData((int)TicketCheckoutOrderState.Created, false, false, true)]
+    [InlineData((int)TicketCheckoutOrderState.Pending, false, true, false)]
+    [InlineData((int)TicketCheckoutOrderState.Cancelled, true, false, false)]
+    public async Task IssueCompanionAsync_UnissuedPurchase_RespectsHolderReservation(
+        int state, bool remote, bool expired, bool refused)
+    {
+        var adult = await PaidAdultAsync();
+        var companionId = Human("helper@example.com", "Helper", "Ruiz");
+        _repo.Orders.Add(new TicketCheckoutOrder
+        {
+            Id = Guid.NewGuid(),
+            TicketingSettingsId = _ticketing.Id,
+            BuyerUserId = Guid.NewGuid(),
+            State = (TicketCheckoutOrderState)state,
+            PlatformOrderId = remote ? "remote" : null,
+            ExpiresAt = Now + Duration.FromHours(expired ? -1 : 1),
+            Lines = [new TicketCheckoutOrderLine
+            {
+                Kind = OrderLineKind.Ticket,
+                HolderKind = TicketHolderKind.Adult,
+                HolderUserId = companionId,
+            }],
+        });
+        var ordersBefore = _repo.Orders.Count;
+        _delivery.ClearReceivedCalls();
+
+        var result = await _service.IssueCompanionAsync(
+            adult.Id, "Helper Ruiz", "helper@example.com", "Support", false, _adminId, Ct);
+
+        result.Succeeded.Should().Be(!refused);
+        if (refused)
+        {
+            result.Refusal.Should().Be("That person already holds a ticket for this event.");
+            _repo.Orders.Should().HaveCount(ordersBefore);
+            _repo.Tickets.Should().NotContain(t => t.Kind == TicketHolderKind.Companion);
+            await _delivery.DidNotReceive().TicketsIssuedAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>());
+        }
+        else
+            _repo.Tickets.Should().ContainSingle(t => t.Kind == TicketHolderKind.Companion && t.HolderUserId == companionId);
+    }
+
     [HumansFact]
     public async Task Companion_refuses_an_ambiguous_email()
     {

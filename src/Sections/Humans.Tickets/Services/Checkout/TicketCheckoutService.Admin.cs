@@ -285,7 +285,8 @@ internal sealed partial class TicketCheckoutService
         if (holderRefusal is not null)
             return (new(holderRefusal), null);
         if (holderUserId is { } companionId && (companionId == parentHolderId || eventTickets.Any(t =>
-                t.HolderUserId == companionId && t.IsHeld)))
+                t.HolderUserId == companionId && t.IsHeld)
+                || await HoldsTicketAsync(ticketing.Id, companionId, clock.GetCurrentInstant(), ct)))
             return (new("That person already holds a ticket for this event."), null);
         var parentOrder = await repository.GetOrderAsync(parent.OrderId, ct);
         var order = new TicketCheckoutOrder
