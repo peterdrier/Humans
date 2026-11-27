@@ -805,8 +805,8 @@ src/Sections/Humans.Finance/Data/Migrations/20261126234254_DropRetiredHoldedExpe
 # Evidence: pickaxe git log -S 'MedicalConditions =', -S 'DietaryPreference =', -S 'AllergyOtherText =' and
 # -S 'IntoleranceOtherText =' over origin/main finds no write to VolunteerEventProfile after #780; later hits
 # are Profile, DTO or section-move commits. The entity carried a "do NOT read or write these" note since then.
-# Approval: Peter, 2026-11-26, in the role-retirement thread: "let's get rid of those two medical conditions
-# and the dietary columns that are in shifts ... Yes, drop the two columns".
+# Approval: Peter, 2026-11-27, in the role-retirement thread, chose "Yes, drop all six" on the card
+# "Approve dropping all six old Shifts dietary and medical columns?", which named all six columns above.
 # Rollback caveat: Down() re-adds Allergies and Intolerances as NOT NULL jsonb with default '', which
 # Postgres rejects; rolling back means re-adding those two columns by a new migration.
 src/Sections/Humans.Shifts/Data/Migrations/20261126232724_DropVolunteerProfileDietaryMedicalColumns.cs:DropColumn(name=Allergies,table=shift_volunteer_event_profiles)#1
