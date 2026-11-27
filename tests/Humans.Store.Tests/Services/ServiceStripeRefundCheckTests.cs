@@ -46,7 +46,7 @@ public class ServiceStripeRefundCheckTests
             Lines = [],
             Payments = payments.ToList(),
         };
-        _repo.GetOrderWithLinesAndPaymentsAsync(order.Id, Arg.Any<CancellationToken>()).Returns(order);
+        _repo.GetOrderWithLinesAsync(order.Id, Arg.Any<CancellationToken>()).Returns(order);
         return order;
     }
 
@@ -85,7 +85,7 @@ public class ServiceStripeRefundCheckTests
 
         var result = await _service.RecordStripeRefundsAsync(order.Id, actor, TestContext.Current.CancellationToken);
 
-        result.Should().Be(new StripeRefundCheckResult(2, 130.50m, 1, 0, 0));
+        result.Should().Be(new StripeRefundCheckResult(2, 130.50m, 1, 0, 0, 0));
         await _repo.Received(2).AddPaymentAsync(Arg.Any<Payment>(), Arg.Any<CancellationToken>());
         await _repo.Received(1).AddPaymentAsync(Arg.Is<Payment>(p =>
             p.OrderId == order.Id && p.AmountEur == -120.50m && p.Method == PaymentMethod.Refund
@@ -126,7 +126,7 @@ public class ServiceStripeRefundCheckTests
 
         var result = await _service.RecordStripeRefundsAsync(order.Id, Guid.NewGuid(), TestContext.Current.CancellationToken);
 
-        result.Should().Be(new StripeRefundCheckResult(0, 0m, 0, 1, 2));
+        result.Should().Be(new StripeRefundCheckResult(0, 0m, 0, 1, 1, 1));
         await _repo.Received(1).UpdatePaymentStatusAsync(settles.Id, PaymentStatus.Paid, Arg.Any<CancellationToken>());
         await _repo.Received(1).UpdatePaymentStatusAsync(fails.Id, PaymentStatus.Failed, Arg.Any<CancellationToken>());
         await _repo.Received(1).UpdatePaymentStatusAsync(reversed.Id, PaymentStatus.Failed, Arg.Any<CancellationToken>());

@@ -64,5 +64,6 @@
   <data name="Backdoor_Error_LabelTooLong" xml:space="preserve"><value>Een label mag hoogstens 100 tekens lang zijn.</value></data>
   <data name="Backdoor_Error_NotEligible" xml:space="preserve"><value>Dit account mag geen sleutel hebben.</value></data>
   <data name="Backdoor_Error_NotAllowed" xml:space="preserve"><value>Je kunt alleen je eigen sleutels maken en wijzigen.</value></data>
-  <data name="Backdoor_Error_NotFound" xml:space="preserve"><value>Die sleutel bestaat niet meer of is al ingetrokken.</value></data>
+  <data name="Backdoor_Error_NotFound" xml:space="preserve"><value>Die sleutel bestaat niet meer.</value></data>
+  <data name="Backdoor_Error_AlreadyRevoked" xml:space="preserve"><value>Die sleutel is al ingetrokken.</value></data>
 </root>

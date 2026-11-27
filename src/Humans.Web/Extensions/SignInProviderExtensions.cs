@@ -57,25 +57,28 @@ public static class SignInProviderExtensions
         var failureMessage = context.Failure?.Message ?? string.Empty;
         var clientIp = context.HttpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown";
 
+        string error;
         if (failureMessage.Contains("access_denied", StringComparison.OrdinalIgnoreCase)
             || failureMessage.Contains("denied by the resource owner", StringComparison.OrdinalIgnoreCase))
         {
+            error = "cancelled";
             logger.LogWarning("{Provider} sign-in cancelled by user (access_denied) from {ClientIp}", provider, clientIp);
         }
         else if (failureMessage.Contains("Correlation", StringComparison.OrdinalIgnoreCase))
         {
-            logger.LogWarning(
-                "{Provider} sign-in correlation cookie missing from {ClientIp} (stale or duplicate request)",
-                provider, clientIp);
+            error = "cookie-missing";
+            logger.LogWarning("{Provider} sign-in correlation cookie missing from {ClientIp}", provider, clientIp);
         }
-        else if (context.Failure is not OperationCanceledException)
+        else
         {
+            error = "sign-in-failed";
             // OperationCanceledException: the user closed the tab or the network dropped mid-callback.
-            logger.LogWarning(context.Failure, "{Provider} sign-in failed from {ClientIp}: {Error}",
-                provider, clientIp, failureMessage);
+            if (context.Failure is not OperationCanceledException)
+                logger.LogWarning(context.Failure, "{Provider} sign-in failed from {ClientIp}: {Error}",
+                    provider, clientIp, failureMessage);
         }
 
-        context.Response.Redirect("/Account/Login?error=sign-in-failed");
+        context.Response.Redirect($"/Account/Login?error={error}");
         context.HandleResponse();
         return Task.CompletedTask;
     }

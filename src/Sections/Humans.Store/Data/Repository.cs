@@ -66,7 +66,7 @@ internal sealed class Repository(IDbContextFactory<StoreDbContext> factory) : IS
         return await ctx.Orders.AsNoTracking().FirstOrDefaultAsync(o => o.Id == orderId, ct);
     }
 
-    public async Task<Order?> GetOrderWithLinesAndPaymentsAsync(Guid orderId, CancellationToken ct = default)
+    public async Task<Order?> GetOrderWithLinesAsync(Guid orderId, CancellationToken ct = default)
     {
         await using var ctx = await factory.CreateDbContextAsync(ct);
         return await ctx.Orders.AsNoTracking()
@@ -83,7 +83,7 @@ internal sealed class Repository(IDbContextFactory<StoreDbContext> factory) : IS
             .ToListAsync(ct);
     }
 
-    public async Task<IReadOnlyList<Order>> GetOrdersForCampSeasonsWithLinesAndPaymentsAsync(
+    public async Task<IReadOnlyList<Order>> GetOrdersForCampSeasonsAsync(
         IReadOnlyCollection<Guid> campSeasonIds,
         CancellationToken ct = default)
     {
@@ -108,7 +108,7 @@ internal sealed class Repository(IDbContextFactory<StoreDbContext> factory) : IS
             .FirstOrDefaultAsync(ct);
     }
 
-    public async Task<IReadOnlyList<Order>> GetOrdersForTeamsWithLinesAndPaymentsAsync(
+    public async Task<IReadOnlyList<Order>> GetOrdersForTeamsAsync(
         IReadOnlyCollection<Guid> teamIds,
         int year,
         CancellationToken ct = default)
@@ -124,7 +124,7 @@ internal sealed class Repository(IDbContextFactory<StoreDbContext> factory) : IS
             .ToListAsync(ct);
     }
 
-    public async Task<IReadOnlyList<Order>> GetOrdersForYearWithLinesAndPaymentsAsync(
+    public async Task<IReadOnlyList<Order>> GetOrdersForYearAsync(
         int year,
         IReadOnlyCollection<Guid> campSeasonIds,
         CancellationToken ct = default)
@@ -177,7 +177,7 @@ internal sealed class Repository(IDbContextFactory<StoreDbContext> factory) : IS
         await ctx.SaveChangesAsync(ct);
     }
 
-    public async Task<LineContext?> GetLineWithOrderAndProductAsync(Guid lineId, CancellationToken ct = default)
+    public async Task<LineContext?> GetLineAsync(Guid lineId, CancellationToken ct = default)
     {
         await using var ctx = await factory.CreateDbContextAsync(ct);
         var row = await ctx.OrderLines.AsNoTracking()
@@ -207,7 +207,7 @@ internal sealed class Repository(IDbContextFactory<StoreDbContext> factory) : IS
         return await ctx.Payments.AnyAsync(p => p.StripePaymentIntentId == paymentIntentId, ct);
     }
 
-    public async Task<Payment?> GetPaymentByStripePaymentIntentIdAsync(string paymentIntentId, CancellationToken ct = default)
+    public async Task<Payment?> GetPaymentByIntentIdAsync(string paymentIntentId, CancellationToken ct = default)
     {
         await using var ctx = await factory.CreateDbContextAsync(ct);
         return await ctx.Payments.AsNoTracking()

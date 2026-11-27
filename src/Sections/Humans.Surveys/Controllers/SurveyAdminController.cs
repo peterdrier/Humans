@@ -80,7 +80,7 @@ internal sealed class SurveyAdminController(
         if (actor is null) return Forbid();
 
         var viewer = CurrentViewer(actor.Id);
-        var result = await surveyService.ApproveAndSendAsync(id, viewer, ct);
+        var result = await surveyService.ApproveAsync(id, viewer, ct);
         if (result.Succeeded)
         {
             var message = localizer["Surveys_Admin_Queue_Approved", result.Send!.EmailsQueued, result.Send.Failed];

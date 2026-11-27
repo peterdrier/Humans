@@ -19,7 +19,7 @@ public interface IConsentService : IApplicationService
     Task<bool> HasAllRequiredConsentsForTeamAsync(Guid userId, Guid teamId, CancellationToken ct = default);
 
     /// <summary>The subset of <paramref name="userIds"/> with all of the team's required consents, in one batch.</summary>
-    Task<IReadOnlySet<Guid>> GetUsersWithAllRequiredConsentsForTeamAsync(
+    Task<IReadOnlySet<Guid>> GetConsentedUsersForTeamAsync(
         IEnumerable<Guid> userIds, Guid teamId, CancellationToken ct = default);
 
     /// <summary>

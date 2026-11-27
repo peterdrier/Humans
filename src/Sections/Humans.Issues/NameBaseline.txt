@@ -1,2 +1,0 @@
-Humans.Issues.Data.IIssuesRepository.AddCommentAndSaveIssueAsync
-Humans.Issues.Models.IssueSectionInference.StripQueryAndFragment

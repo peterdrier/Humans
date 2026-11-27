@@ -25,6 +25,7 @@ public sealed class HoldedMirrorCatchUpTests
         var holded = Substitute.For<IHoldedService>();
         holded.GetPurchaseDocumentsAsync(Arg.Any<CancellationToken>()).Returns(
             new HoldedPurchaseDocMirror(null, "Idle", null, 0, null, []));
+        holded.GetContactsAsync(Arg.Any<CancellationToken>()).Returns(new HoldedContactMirror(null, []));
         var jobs = Substitute.For<IBackgroundJobClient>();
         if (stage == CatchUpFailure.MirrorRead)
             holded.GetPurchaseDocumentsAsync(Arg.Any<CancellationToken>())

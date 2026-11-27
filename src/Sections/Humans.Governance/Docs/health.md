@@ -59,7 +59,7 @@ The external surface, grouped by the question each group answers.
 | S8 | *Record what I choose, and let me change it* | own pages only | `CastBallotAsync`; `POST /Governance/Votes/{id}/Ballot` |
 | S9 | *Author a motion and run its lifecycle* | own admin pages only | `GetAllForAdminAsync`, `GetDraftAsync`, `CreateDraftAsync`, `UpdateDraftAsync`, `PreFillTranslationsAsync`, `DeleteDraftAsync`, `OpenAsync`, `StopAsync`, `ExtendAsync`, `CancelAsync`; `GET /Governance/Votes/Admin`, `GET/POST /Governance/Votes/Admin/Create`, `GET/POST /Governance/Votes/Admin/{id}/Edit`, `POST /Governance/Votes/Admin/{id}/Delete`, `POST /Governance/Votes/Admin/{id}/Open`, `POST /Governance/Votes/Admin/{id}/Stop`, `POST /Governance/Votes/Admin/{id}/Extend`, `POST /Governance/Votes/Admin/{id}/Cancel` |
 | S10 | *What did the vote decide, and who looked early?* | own pages only | `GetResultsAsync`, `PeekAsync`, `GetBallotsForBoardAsync`; `GET /Governance/Votes/{id}/Results`, `GET /Governance/Votes/{id}/Results.csv`, `GET /Governance/Votes/Admin/{id}/Peek`, `GET /Governance/Votes/Admin/{id}/Ballots` |
-| S11 | *Keep the automation honest while nobody is looking* | job-only | `RunLapseAndReminderSweepAsync`; `AssemblyVoteLapseJob` |
+| S11 | *Keep the automation honest while nobody is looking* | job-only | `RunSweepAsync`; `AssemblyVoteLapseJob` |
 | S12 | *GDPR and identity plumbing* | crosscut contracts | three `IUserDataContributor` export and erasure declarations (applications, membership tier, assembly votes), three `IUserMerge` re-FK paths |
 
 Load-bearing consequences of the grouping:

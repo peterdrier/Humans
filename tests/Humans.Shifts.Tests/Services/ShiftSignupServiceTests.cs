@@ -56,7 +56,7 @@ public sealed class ShiftSignupServiceTests : ShiftsTestHarness
         if (notice == CanonicalNotice.Assignment)
             await _service.SendAssignmentNoticeAsync(source, Guid.NewGuid(), "Shifts_Notification_AssignedDay", "Rota", 1);
         else
-            await _service.CheckAndNotifyCoverageGapAsync(new ShiftSignup { Id = Guid.NewGuid() },
+            await _service.NotifyCoverageGapAsync(new ShiftSignup { Id = Guid.NewGuid() },
                 new Shift { Id = Guid.NewGuid(), MinVolunteers = 1, Rota = new Rota { Id = Guid.NewGuid(), TeamId = team.Id, Name = "Rota" } });
 
         var recipients = Notifier.ReceivedCalls().SelectMany(call => (IReadOnlyList<Guid>)call.GetArguments()[4]!).ToList();

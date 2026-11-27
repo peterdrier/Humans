@@ -129,5 +129,5 @@ internal interface IAssemblyVoteService : IApplicationService
     /// The hourly sweep: closes votes whose deadline has passed and sends the T-24h
     /// reminder to roster members who have not voted. Returns how many votes it closed.
     /// </summary>
-    Task<int> RunLapseAndReminderSweepAsync(CancellationToken ct = default);
+    Task<int> RunSweepAsync(CancellationToken ct = default);
 }

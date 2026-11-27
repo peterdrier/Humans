@@ -13,7 +13,7 @@ internal sealed class AssemblyVoteLapseJob(
 {
     public async Task ExecuteAsync(CancellationToken ct = default)
     {
-        var closed = await votes.RunLapseAndReminderSweepAsync(ct);
+        var closed = await votes.RunSweepAsync(ct);
         logger.LogInformation(
             "Assembly vote sweep finished; closed {Closed} lapsed vote(s).", closed);
     }

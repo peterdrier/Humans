@@ -80,7 +80,7 @@ One polygon per CampSeason representing the camp's placed barrio area.
 
 ### CampPolygonHistory
 
-Append-only per design-rules.md, *Append-only entities*. The repository exposes no `UpdateAsync` / `RemoveAsync` — restores call `SavePolygonAndAppendHistoryAsync` with a `"Restored from ..."` note, which both updates the polygon and appends a new history row.
+Append-only per design-rules.md, *Append-only entities*. The repository exposes no `UpdateAsync` / `RemoveAsync` — restores call `SavePolygonAsync` with a `"Restored from ..."` note, which both updates the polygon and appends a new history row.
 
 **Table:** `city_camp_polygon_history`
 
@@ -266,7 +266,7 @@ Broadcasts `CampPolygonUpdated(campSeasonId, geoJson, areaSqm, soundZone, campNa
 
 - Polygon reads by camp season ids (`GetPolygonsByCampSeasonIdsAsync`, `GetCampSeasonIdsWithPolygonAsync`).
 - Polygon-history reads for a camp season (`GetHistoryForCampSeasonAsync`, `GetHistoryEntryAsync`).
-- Atomic "save polygon + append history" write (`SavePolygonAndAppendHistoryAsync`). Returns the persisted `CampPolygon` only; the history row is a side effect readable via `GetHistoryForCampSeasonAsync`. Polygon upsert and history insert happen in one unit of work.
+- Atomic "save polygon + append history" write (`SavePolygonAsync`). Returns the persisted `CampPolygon` only; the history row is a side effect readable via `GetHistoryForCampSeasonAsync`. Polygon upsert and history insert happen in one unit of work.
 - Season-scoped cascade delete (`DeletePolygonsForCampSeasonsAsync`) — removes a season's polygon and its history rows in one unit of work, and is the one exception to append-only. Reached through `ICampDeletionListener.CampSeasonsDeletingAsync` when a camp is deleted.
 - Settings read (`GetSettingsAsync` — null when the year has no row; never writes) and upsert (`GetOrCreateSettingsAsync`, `MutateSettingsAsync` — write paths only). All field-level mutations (barrio override, barrio schedule, container phase, limit zone, official zones) flow through `MutateSettingsAsync` at the service layer. It returns `Task`, so no EF entity leaves the repository.
 

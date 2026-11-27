@@ -34,7 +34,7 @@ public sealed class BackdoorAgentControllerTests
             [Message(AgentRole.User, "Earlier", now),
              Message(AgentRole.User, content, now + Duration.FromSeconds(1)),
              Message(AgentRole.Assistant, "Later assistant", now + Duration.FromSeconds(2))]);
-        agent.ListAllConversationsForAdminWithMessagesAsync(
+        agent.ListConversationsWithMessagesAsync(
                 false, false, null, 50, 0, Arg.Any<CancellationToken>())
             .Returns(Task.FromResult<IReadOnlyList<AgentConversationTranscriptSnapshot>>([conversation]));
         var controller = new BackdoorAgentController(agent, users);

@@ -284,9 +284,9 @@ internal sealed class CachingShiftService(
     public Task<bool> HasQualifyingCantinaSignupAsync(Guid userId, CancellationToken ct = default) =>
         MgmtAsync(m => m.HasQualifyingCantinaSignupAsync(userId, ct));
 
-    public Task<IReadOnlyList<Guid>> GetOnSiteUserIdsForDayAsync(
+    public Task<IReadOnlyList<Guid>> GetOnSiteUserIdsAsync(
         Guid eventSettingsId, int dayOffset, CancellationToken ct = default) =>
-        MgmtAsync(m => m.GetOnSiteUserIdsForDayAsync(eventSettingsId, dayOffset, ct));
+        MgmtAsync(m => m.GetOnSiteUserIdsAsync(eventSettingsId, dayOffset, ct));
 
     public Task<ShiftVolunteerProfileInfo?> GetShiftProfileAsync(Guid userId, CancellationToken ct = default) =>
         MgmtAsync(m => m.GetShiftProfileAsync(userId, ct));

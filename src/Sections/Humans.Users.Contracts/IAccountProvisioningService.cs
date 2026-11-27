@@ -17,7 +17,7 @@ public interface IAccountProvisioningService
     /// Replaces the planned unverified, unlinked email row and provisions its contact account atomically. Refuses
     /// stale plans; a metadata or commit failure keeps the original row. Best-effort success audits follow the commit.
     /// </summary>
-    Task<AccountProvisioningResult> ReplaceUnverifiedEmailAndProvisionAsync(
+    Task<AccountProvisioningResult> ReplaceUnverifiedEmailAsync(
         Guid userId, Guid emailId, string email, string? displayName, ContactSource source,
         CancellationToken ct = default);
 

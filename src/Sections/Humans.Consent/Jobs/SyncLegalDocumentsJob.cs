@@ -18,7 +18,7 @@ internal sealed class SyncLegalDocumentsJob(
 
         try
         {
-            await runner.SyncAndNotifyAsync(cancellationToken);
+            await runner.SyncAsync(cancellationToken);
 
             metrics.RecordJobRun("sync_legal_documents", "success");
         }

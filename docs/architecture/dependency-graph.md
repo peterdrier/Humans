@@ -181,6 +181,7 @@ graph LR
     Gdpr -.-> Users
     Google --> AuditLog
     Google --> Auth
+    Google --> Permissions
     Google --> Settings
     Google -.-> Email
     Google -.-> Notifications
@@ -275,6 +276,7 @@ graph LR
     Surveys -.-> Tickets
     Tasks --> Permissions
     Tasks --> Settings
+    Tasks -.-> Email
     Tasks -.-> Teams
     Teams --> AuditLog
     Teams --> Auth

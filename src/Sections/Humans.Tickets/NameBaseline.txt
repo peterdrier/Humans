@@ -1,2 +1,0 @@
-Humans.Tickets.Controllers.TicketParticipationController.GetActiveEventYearOrSetError
-Humans.Tickets.Services.ITicketSyncService.SyncOrdersAndAttendeesAsync

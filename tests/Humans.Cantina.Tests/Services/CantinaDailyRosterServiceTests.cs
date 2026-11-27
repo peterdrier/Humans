@@ -44,7 +44,7 @@ public class CantinaDailyRosterServiceTests
         _dietary.GetDietaryProfilesAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
             .Returns(new Dictionary<Guid, DietaryProfileInfo>());
 
-        _shiftMgmt.GetOnSiteUserIdsForDayAsync(
+        _shiftMgmt.GetOnSiteUserIdsAsync(
                 Arg.Any<Guid>(), Arg.Any<int>(), Arg.Any<CancellationToken>())
             .Returns(Task.FromResult<IReadOnlyList<Guid>>(Array.Empty<Guid>()));
 
@@ -351,7 +351,7 @@ public class CantinaDailyRosterServiceTests
     }
 
     private void SetupDay(int dayOffset, params Guid[] onSiteIds) =>
-        _shiftMgmt.GetOnSiteUserIdsForDayAsync(
+        _shiftMgmt.GetOnSiteUserIdsAsync(
                 Arg.Any<Guid>(), dayOffset, Arg.Any<CancellationToken>())
             .Returns(Task.FromResult<IReadOnlyList<Guid>>(onSiteIds));
 

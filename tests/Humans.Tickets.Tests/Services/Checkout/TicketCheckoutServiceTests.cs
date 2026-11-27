@@ -337,7 +337,7 @@ public sealed partial class TicketCheckoutServiceTests
 
         _repo.Tickets.Select(t => t.HolderUserId).Should().BeEquivalentTo(new Guid?[] { _buyerId, katie, sarah });
         await _provisioning.DidNotReceiveWithAnyArgs().FindOrCreateUserByEmailAsync(default!, default, default);
-        await _provisioning.DidNotReceiveWithAnyArgs().ReplaceUnverifiedEmailAndProvisionAsync(default, default, default!, default, default);
+        await _provisioning.DidNotReceiveWithAnyArgs().ReplaceUnverifiedEmailAsync(default, default, default!, default, default);
     }
 
     [HumansFact]
@@ -766,7 +766,7 @@ public sealed partial class TicketCheckoutServiceTests
         var cyToken = TokenFor("cy@example.com");
 
         (await _service.StartCheckoutAsync(Buy() with { DirectedToken = boToken }, cy, Ct))
-            .Refusal.Should().Be("Tickets_Resale_InviteInvalid", "a link works only for the address it was sent to");
+            .Refusal.Should().Be("Tickets_Resale_InviteOtherEmail", "a link works only for the address it was sent to");
         var cysOrder = await BuyAndPayAsync(Buy() with { DirectedToken = cyToken }, cy);
 
         cysOrder.Lines.Single().ResaleOfferId.Should().Be(_repo.Offers.Single(o => o.TicketId == mine.Id).Id);
@@ -1010,8 +1010,8 @@ public sealed partial class TicketCheckoutServiceTests
         child.PricePaidMinor.Should().Be(5000);
     }
 
-    private TicketRules RulesAt(string version) =>
-        new("TicketRules/2027", version, new Dictionary<string, string>(StringComparer.Ordinal) { ["es"] = "# Normas", ["en"] = "# Rules" });
+    private static TicketRulesRead RulesAt(string version) =>
+        new(new TicketRules("TicketRules/2027", version, new Dictionary<string, string>(StringComparer.Ordinal) { ["es"] = "# Normas", ["en"] = "# Rules" }), null);
 
     [HumansFact]
     public async Task Ticket_rules_from_the_legal_repo_are_shown_accepted_on_every_checkout_and_their_version_kept_on_the_order()
@@ -1047,7 +1047,7 @@ public sealed partial class TicketCheckoutServiceTests
         (await _service.StartCheckoutAsync(Buy() with { AcceptTerms = true, TermsFolder = "TicketRules/2026", TermsVersion = "abc123" }, _buyerId, Ct))
             .Refusal.Should().Be("Tickets_Buy_TermsChanged");
 
-        _rules.GetAsync("TicketRules/2027", Arg.Any<bool>(), Arg.Any<CancellationToken>()).Returns((TicketRules?)null);
+        _rules.GetAsync("TicketRules/2027", Arg.Any<bool>(), Arg.Any<CancellationToken>()).Returns(TicketRulesRead.Failed("GitHub could not be reached."));
         (await _service.GetBuyPagesAsync(_buyerId, Ct)).Single().Unavailable.Should().Be("Tickets_Buy_TermsUnavailable");
         (await _service.StartCheckoutAsync(Buy() with { AcceptTerms = true, TermsFolder = "TicketRules/2027", TermsVersion = "abc123" }, _buyerId, Ct))
             .Refusal.Should().Be("Tickets_Buy_TermsUnavailable");
@@ -1121,7 +1121,9 @@ public sealed partial class TicketCheckoutServiceTests
         { TermsFolder = folder };
 
         (await _service.SaveTicketingSettingsAsync(Save("../secrets"), _buyerId, Ct)).Refusal.Should().Contain("path in the legal repo");
-        (await _service.SaveTicketingSettingsAsync(Save("TicketRules/2027"), _buyerId, Ct)).Refusal.Should().Contain("no Spanish and English");
+        _rules.GetAsync("TicketRules/2027", Arg.Any<bool>(), Arg.Any<CancellationToken>())
+            .Returns(TicketRulesRead.Failed("It has no English file (NORMAS-en.md)."));
+        (await _service.SaveTicketingSettingsAsync(Save("TicketRules/2027"), _buyerId, Ct)).Refusal.Should().Contain("It has no English file");
 
         _rules.GetAsync("TicketRules/2027", Arg.Any<bool>(), Arg.Any<CancellationToken>()).Returns(RulesAt("abc123"));
         (await _service.SaveTicketingSettingsAsync(Save("TicketRules/2027"), _buyerId, Ct)).Refusal.Should().BeNull();
@@ -1196,7 +1198,7 @@ public sealed partial class TicketCheckoutServiceTests
             .Refusal.Should().Be("Tickets_Resale_NotFound");
         (await _service.GetDirectedBuyPageAsync(token, _otherBuyerId, Ct)).Should().BeNull();
         (await _service.StartCheckoutAsync(Buy() with { DirectedToken = token }, _otherBuyerId, Ct))
-            .Refusal.Should().Be("Tickets_Resale_InviteInvalid");
+            .Refusal.Should().Be("Tickets_Resale_InviteNotFound");
 
         var queued = await BuyAndPayAsync(Buy(), _otherBuyerId);
         queued.Lines.Single().ResaleOfferId.Should().Be(_repo.Offers.Single().Id);
@@ -1334,7 +1336,7 @@ public sealed partial class TicketCheckoutServiceTests
         var token = sent.HtmlBody["https://h.example/Tickets/Buy/Resale/".Length..];
         _repo.Offers.Single().Invites.Single().TokenHash.Should().Be(TicketCheckoutService.HashToken(token)).And.NotBe(token);
         (await _service.StartCheckoutAsync(Buy() with { DirectedToken = "wrong" }, _otherBuyerId, Ct))
-            .Refusal.Should().Be("Tickets_Resale_InviteInvalid");
+            .Refusal.Should().Be("Tickets_Resale_InviteNotFound");
 
         var order = await BuyAndPayAsync(Buy() with { DirectedToken = token }, _otherBuyerId);
 
@@ -1362,7 +1364,7 @@ public sealed partial class TicketCheckoutServiceTests
         queued.Lines.Single().ResaleOfferId.Should().Be(_repo.Offers.Single().Id);
         _repo.Offers.Single().DirectedUsedAt.Should().BeNull();
         _repo.Events.Should().NotContain(e => e.Kind == TicketCheckoutOrderEventKind.ResaleInviteUsed);
-        (await _service.GetDirectedBuyPageAsync(token, _otherBuyerId, Ct))!.Unavailable.Should().Be("Tickets_Resale_InviteInvalid");
+        (await _service.GetDirectedBuyPageAsync(token, _otherBuyerId, Ct))!.Unavailable.Should().Be("Tickets_Resale_InviteOtherEmail");
     }
 
     [HumansFact]
@@ -1378,8 +1380,8 @@ public sealed partial class TicketCheckoutServiceTests
         await _service.SetResaleOpenAsync(_ticketing.Id, false, _buyerId, Ct);
 
         (await _service.StartCheckoutAsync(Buy() with { DirectedToken = token }, _otherBuyerId, Ct))
-            .Refusal.Should().Be("Tickets_Resale_InviteInvalid");
-        (await _service.GetDirectedBuyPageAsync(token, _otherBuyerId, Ct))!.Unavailable.Should().Be("Tickets_Resale_InviteInvalid");
+            .Refusal.Should().Be("Tickets_Resale_NotSelling");
+        (await _service.GetDirectedBuyPageAsync(token, _otherBuyerId, Ct))!.Unavailable.Should().Be("Tickets_Resale_NotSelling");
     }
 
     [HumansFact]
@@ -1598,7 +1600,7 @@ public sealed partial class TicketCheckoutServiceTests
         var row = Row(_otherBuyerId, verified: false);
         var fresh = Guid.NewGuid();
         _userEmails.FindByAddressAsync("bo@example.com", true, false, Arg.Any<CancellationToken>()).Returns([row]);
-        _provisioning.ReplaceUnverifiedEmailAndProvisionAsync(_otherBuyerId, row.Id, "bo@example.com", null, ContactSource.Manual,
+        _provisioning.ReplaceUnverifiedEmailAsync(_otherBuyerId, row.Id, "bo@example.com", null, ContactSource.Manual,
                 Arg.Any<CancellationToken>())
             .Returns(new AccountProvisioningResult(fresh, Created: true));
 

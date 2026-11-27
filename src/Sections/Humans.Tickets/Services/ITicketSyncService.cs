@@ -5,7 +5,7 @@ namespace Humans.Tickets.Services;
 
 internal interface ITicketSyncService : IApplicationService
 {
-    Task<TicketSyncResult> SyncOrdersAndAttendeesAsync(CancellationToken ct = default);
+    Task<TicketSyncResult> SyncAsync(CancellationToken ct = default);
 
     /// <summary>True when the singleton sync state is <c>Error</c>.</summary>
     Task<bool> IsInErrorStateAsync(CancellationToken ct = default);

@@ -42,7 +42,7 @@ registration lives in the section; its policies stay in Shell.
 
 Teams is an `IEarlyEntryProvider` (role-gated team early entry,
 cantina-style). `ITeamRepository` has an EE-grant surface
-(`GetEarlyEntryGrantsForEnabledTeamsAsync`,
+(`GetEarlyEntryGrantsAsync`,
 `GetEarlyEntryGrantsForTeamAsync`, `GetEarlyEntryGrantsForUserAsync`,
 `FindEarlyEntryGrantForMutationAsync`, `Add/Update/RemoveEarlyEntryGrantAsync`,
 `ReassignEarlyEntryGrantsAsync`, `RemoveEarlyEntryGrantsForUserAsync`),

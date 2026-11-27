@@ -136,7 +136,7 @@ All roles are stored as temporal `RoleAssignment` records. Role claims are added
 
 | Role | Description |
 |------|-------------|
-| **ConsentCoordinator** | Safety checks on new humans (clear/flag consent checks) |
+| **ConsentAdmin** | Safety checks on new humans (clear/flag consent checks) |
 | **ShiftsAdmin** | Assists new humans |
 
 ### Section Admin Roles (scoped to one functional area)
@@ -155,7 +155,6 @@ All roles are stored as temporal `RoleAssignment` records. Role claims are added
 | **GrantsAdmin** | Grant programs: create, edit, name managers, issue, revoke and resend; confers nothing outside Grants |
 | **SurveysAdmin** | Surveys: approve or reject, edit any survey, open, close, send invitations, download results; confers nothing outside Surveys |
 | **EarlyEntryAdmin** | Cross-team Early-Entry administrator — grant/edit/revoke early-entry on any team with `EarlyEntryEnabled`, and reads the Early entry roster; confers nothing else |
-| **ShiftsNoInfo** | Approve/voluntell shift signups; access volunteer medical data |
 
 ### UserState Access Claim
 

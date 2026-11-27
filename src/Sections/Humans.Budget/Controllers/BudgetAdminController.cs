@@ -588,7 +588,7 @@ internal sealed class BudgetAdminController(
 
         try
         {
-            var result = await ticketingBudgetService.UpdateProjectionAndRefreshAsync(
+            var result = await ticketingBudgetService.UpdateProjectionAsync(
                 new TicketingProjectionUpdateCommand(
                     groupId,
                     form.BudgetYearId,

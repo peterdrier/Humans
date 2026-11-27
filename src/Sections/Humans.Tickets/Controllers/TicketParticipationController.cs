@@ -29,7 +29,7 @@ internal sealed class TicketParticipationController(
 
         try
         {
-            var eventYear = GetActiveEventYearOrSetError();
+            var eventYear = GetActiveEventYear();
             if (eventYear is null)
             {
                 return Redirect("/");
@@ -59,7 +59,7 @@ internal sealed class TicketParticipationController(
 
         try
         {
-            var eventYear = GetActiveEventYearOrSetError();
+            var eventYear = GetActiveEventYear();
             if (eventYear is null)
             {
                 return Redirect("/");
@@ -79,7 +79,7 @@ internal sealed class TicketParticipationController(
         return Redirect("/");
     }
 
-    private int? GetActiveEventYearOrSetError()
+    private int? GetActiveEventYear()
     {
         var activeEvent = settingsService.GetActiveEventSettings();
         if (activeEvent is not null && activeEvent.Year > 0)

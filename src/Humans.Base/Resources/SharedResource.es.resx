@@ -442,8 +442,10 @@
   </data>
   <data name="Login_SetupFailed" xml:space="preserve"><value>No hemos podido terminar de configurar tu cuenta. Inténtalo de nuevo.</value></data>
   <data name="Login_SignInFailed" xml:space="preserve">
-    <value>Error de inicio de sesión. Esto puede ocurrir si tardaste demasiado o tu navegador bloqueó las cookies. Por favor, inténtalo de nuevo.</value>
+    <value>Error de inicio de sesión. Por favor, inténtalo de nuevo.</value>
   </data>
+  <data name="Login_Cancelled" xml:space="preserve"><value>El inicio de sesión se canceló en el proveedor de inicio de sesión.</value></data>
+  <data name="Login_CookieMissing" xml:space="preserve"><value>Error de inicio de sesión: tu navegador no devolvió su cookie de inicio de sesión al volver del proveedor de inicio de sesión. Por favor, inténtalo de nuevo.</value></data>
   <data name="Login_LockedOut" xml:space="preserve"><value>Esta cuenta está bloqueada. Contacta con un administrador si necesitas ayuda para iniciar sesión.</value></data>
   <data name="AccessDenied_Title" xml:space="preserve">
     <value>Acceso denegado</value>
@@ -932,9 +934,9 @@
   <data name="GateSignIn_SignIn" xml:space="preserve">
     <value>Iniciar sesión</value>
   </data>
-  <data name="GateSignIn_Invalid" xml:space="preserve">
-    <value>Nombre de usuario o contraseña incorrectos. El nombre de usuario es "gate"; la contraseña la establece el equipo de entradas — pídeles la actual.</value>
-  </data>
+  <data name="GateSignIn_WrongUsername" xml:space="preserve"><value>Nombre de usuario incorrecto. El nombre de usuario es "gate".</value></data>
+  <data name="GateSignIn_NoPassword" xml:space="preserve"><value>Introduce la contraseña. La establece el equipo de entradas; pídeles la actual.</value></data>
+  <data name="GateSignIn_WrongPassword" xml:space="preserve"><value>Contraseña incorrecta. La establece el equipo de entradas; pídeles la actual.</value></data>
   <data name="GateSignIn_Throttled" xml:space="preserve">
     <value>El inicio de sesión desde esta red está pausado durante {0} segundos: se hicieron demasiados intentos con contraseña incorrecta desde aquí. Si no fuiste tú, alguien que comparte esta conexión está probando contraseñas en esta página. Espera, y luego introduce la contraseña correcta — pregunta al equipo de entradas si no estás seguro. La cuenta NO está bloqueada; los administradores de entradas pueden comprobar o cambiar la contraseña en Tickets → Gate terminal.</value>
     <comment>{0}=seconds remaining</comment>
@@ -945,15 +947,19 @@
   <data name="SignInLinkSent_Message" xml:space="preserve">
     <value>Hemos enviado un enlace a esa dirección de correo desde humans@nobodies.team. Revisa tu bandeja de entrada (y la carpeta de spam).</value>
   </data>
-  <data name="SignInLinkError_Title" xml:space="preserve">
-    <value>Enlace expirado o inválido</value>
-  </data>
-  <data name="SignInLinkError_Message" xml:space="preserve">
-    <value>Este enlace de inicio de sesión ha expirado o ya ha sido utilizado.</value>
-  </data>
   <data name="SignInLinkError_RequestNew" xml:space="preserve">
     <value>Solicitar un nuevo enlace</value>
   </data>
+  <data name="SignInLinkError_Unreadable_Title" xml:space="preserve"><value>Este enlace no funciona</value></data>
+  <data name="SignInLinkError_Unreadable_Message" xml:space="preserve"><value>No se ha podido leer este enlace. Abre el enlace completo de tu correo.</value></data>
+  <data name="SignInLinkError_Expired_Title" xml:space="preserve"><value>Este enlace ha caducado</value></data>
+  <data name="SignInLinkError_Expired_Message" xml:space="preserve"><value>Los enlaces funcionan durante 15 minutos después de enviarse.</value></data>
+  <data name="SignInLinkError_Used_Title" xml:space="preserve"><value>Este enlace ya se ha usado</value></data>
+  <data name="SignInLinkError_Used_Message" xml:space="preserve"><value>Cada enlace funciona una sola vez.</value></data>
+  <data name="SignInLinkError_AccountNotFound_Title" xml:space="preserve"><value>Cuenta no encontrada</value></data>
+  <data name="SignInLinkError_AccountNotFound_Message" xml:space="preserve"><value>La cuenta para la que se envió este enlace ya no existe.</value></data>
+  <data name="SignInLinkError_SignupFailed_Title" xml:space="preserve"><value>No hemos podido crear tu cuenta</value></data>
+  <data name="SignInLinkError_SignupFailed_Message" xml:space="preserve"><value>No se ha guardado nada. Abre el mismo enlace otra vez para volver a intentarlo.</value></data>
   <data name="CompleteSignup_Title" xml:space="preserve">
     <value>Completa tu registro</value>
   </data>

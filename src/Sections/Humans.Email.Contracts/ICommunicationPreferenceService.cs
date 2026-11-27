@@ -31,7 +31,7 @@ public interface ICommunicationPreferenceService : IApplicationService
         CancellationToken cancellationToken = default);
 
     /// <summary>Counts recorded rows only.</summary>
-    Task<int> GetCountByCategoryAndStateAsync(
+    Task<int> GetCountAsync(
         MessageCategory category, bool optedOut, CancellationToken cancellationToken = default);
 }
 

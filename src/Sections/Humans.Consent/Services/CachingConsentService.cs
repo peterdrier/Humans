@@ -102,9 +102,9 @@ internal sealed class CachingConsentService(
     public Task<bool> HasAllRequiredConsentsForTeamAsync(Guid userId, Guid teamId, CancellationToken ct = default) =>
         WithInnerAsync(inner => inner.HasAllRequiredConsentsForTeamAsync(userId, teamId, ct));
 
-    public Task<IReadOnlySet<Guid>> GetUsersWithAllRequiredConsentsForTeamAsync(
+    public Task<IReadOnlySet<Guid>> GetConsentedUsersForTeamAsync(
         IEnumerable<Guid> userIds, Guid teamId, CancellationToken ct = default) =>
-        WithInnerAsync(inner => inner.GetUsersWithAllRequiredConsentsForTeamAsync(userIds, teamId, ct));
+        WithInnerAsync(inner => inner.GetConsentedUsersForTeamAsync(userIds, teamId, ct));
 
     public Task<ConsentProgress> GetConsentProgressAsync(Guid userId, CancellationToken ct = default) =>
         WithInnerAsync(inner => inner.GetConsentProgressAsync(userId, ct));

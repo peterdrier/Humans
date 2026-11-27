@@ -11,7 +11,7 @@ public static class PolicyNames
     public const string BoardOrAdmin = nameof(BoardOrAdmin);
 
     public const string ReviewQueueAccess = nameof(ReviewQueueAccess);
-    public const string ConsentCoordinatorBoardOrAdmin = nameof(ConsentCoordinatorBoardOrAdmin);
+    public const string ConsentAdminBoardOrAdmin = nameof(ConsentAdminBoardOrAdmin);
 
     /// <summary>
     /// Scanner tools (/Scanner/*): TicketsAdmin, Board, or Admin — plus the shared

@@ -17,7 +17,7 @@ internal sealed record ApplicationAdminDetailDto(
     string? Language,
     Instant SubmittedAt,
     Guid? ReviewedByUserId,
-    string? ReviewNotes,
+    string? DecisionNote,
     IReadOnlyList<ApplicationStateHistoryDto> History)
 {
     /// <summary>Only a Submitted application can be approved or rejected — the status rule

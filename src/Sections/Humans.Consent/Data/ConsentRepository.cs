@@ -12,7 +12,7 @@ internal sealed class ConsentRepository(IDbContextFactory<LegalDbContext> factor
         await ctx.SaveChangesAsync(ct);
     }
 
-    public async Task<bool> ExistsForUserIdsAndVersionAsync(
+    public async Task<bool> ExistsForVersionAsync(
         IReadOnlyCollection<Guid> userIds, Guid documentVersionId, CancellationToken ct = default)
     {
         if (userIds.Count == 0)
@@ -24,7 +24,7 @@ internal sealed class ConsentRepository(IDbContextFactory<LegalDbContext> factor
             .AnyAsync(c => userIds.Contains(c.UserId) && c.DocumentVersionId == documentVersionId, ct);
     }
 
-    public async Task<ConsentRecord?> GetByUserIdsAndVersionAsync(
+    public async Task<ConsentRecord?> GetForVersionAsync(
         IReadOnlyCollection<Guid> userIds, Guid documentVersionId, CancellationToken ct = default)
     {
         if (userIds.Count == 0)
@@ -65,7 +65,7 @@ internal sealed class ConsentRepository(IDbContextFactory<LegalDbContext> factor
             .CountAsync(c => userIds.Contains(c.UserId), ct);
     }
 
-    public async Task<IReadOnlySet<Guid>> GetExplicitlyConsentedVersionIdsForUserIdsAsync(
+    public async Task<IReadOnlySet<Guid>> GetConsentedVersionIdsAsync(
         IReadOnlyCollection<Guid> userIds, CancellationToken ct = default)
     {
         if (userIds.Count == 0)
@@ -81,7 +81,7 @@ internal sealed class ConsentRepository(IDbContextFactory<LegalDbContext> factor
         return ids.ToHashSet();
     }
 
-    public async Task<IReadOnlyDictionary<Guid, IReadOnlySet<Guid>>> GetExplicitlyConsentedVersionIdsForUsersAsync(
+    public async Task<IReadOnlyDictionary<Guid, IReadOnlySet<Guid>>> GetConsentedVersionIdsByUserAsync(
         IReadOnlyList<Guid> userIds, CancellationToken ct = default)
     {
         var result = userIds.ToDictionary(

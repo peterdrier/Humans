@@ -73,9 +73,9 @@ public sealed class ConsentComplianceTests
         var other = Guid.NewGuid();
         _signed[signer] = new HashSet<Guid> { Require(teamId) };
 
-        (await _sut.GetUsersWithAllRequiredConsentsForTeamAsync([signer, other], teamId, ct))
+        (await _sut.GetConsentedUsersForTeamAsync([signer, other], teamId, ct))
             .Should().BeEquivalentTo([signer]);
-        (await _sut.GetUsersWithAllRequiredConsentsForTeamAsync([signer, other], Guid.NewGuid(), ct))
+        (await _sut.GetConsentedUsersForTeamAsync([signer, other], Guid.NewGuid(), ct))
             .Should().BeEquivalentTo([signer, other], "a team with no required documents admits everyone");
     }
 

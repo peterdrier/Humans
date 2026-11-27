@@ -344,7 +344,6 @@ internal sealed class ShiftAdminController(
         return RedirectToAction(nameof(Index), new { slug });
     }
 
-    // Management scope, so NoInfoAdmin is excluded.
     [HttpGet("Rotas/{rotaId}/Email")]
     public async Task<IActionResult> EmailRota(string slug, Guid rotaId, CancellationToken ct = default)
     {

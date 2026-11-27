@@ -114,7 +114,7 @@ public class SystemTeamSyncJobBarrioLeadsTests
         _userService.GetUserInfosAsync(Arg.Any<IEnumerable<Guid>>(), Arg.Any<CancellationToken>())
             .Returns(new ValueTask<IReadOnlyDictionary<Guid, UserInfo>>(new Dictionary<Guid, UserInfo> { [user.Id] = user }));
         var calculator = Substitute.For<IConsentService>();
-        calculator.GetUsersWithAllRequiredConsentsForTeamAsync(
+        calculator.GetConsentedUsersForTeamAsync(
             Arg.Is<IEnumerable<Guid>>(ids => ids.Contains(user.Id)), team.Id, Arg.Any<CancellationToken>())
             .Returns(new HashSet<Guid> { user.Id });
         var resources = Substitute.For<ITeamResourceService>();

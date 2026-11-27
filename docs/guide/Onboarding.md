@@ -21,7 +21,7 @@
   src/Humans.Web/Authorization/MembershipRequiredFilter.cs
 -->
 <!-- freshness:flag-on-change
-  Sign-up paths (Google OAuth, magic link), profile setup wizard, consent gate, Consent Coordinator clearance, and Volunteer activation. Review when onboarding services, account views, or membership filter change.
+  Sign-up paths (Google OAuth, magic link), profile setup wizard, consent gate, Consent Admin clearance, and Volunteer activation. Review when onboarding services, account views, or membership filter change.
 -->
 
 # Onboarding
@@ -110,13 +110,13 @@ Until you enter that name the app stays shut: every page sends you back to the n
 
 ## As a [Coordinator](Glossary.md#coordinator)
 
-If you hold the **Consent Coordinator** role, your work in onboarding is reviewing the queue at `/Consent/ReviewQueue` — clearing, flagging, or rejecting new humans. Rejection records a reason and timestamp and notifies the human. That flow is documented in [LegalAndConsent.md](LegalAndConsent.md).
+If you hold the **Consent Admin** role, your work in onboarding is reviewing the queue at `/Consent/ReviewQueue` — clearing, flagging, or rejecting new humans. Rejection records a reason and timestamp and notifies the human. That flow is documented in [LegalAndConsent.md](LegalAndConsent.md).
 
-If you hold the **Shifts Admin** role, you have read-only access to the same queue so you can assist new humans, but you cannot clear, flag, or reject — those actions all require Consent Coordinator (or Board / Admin).
+If you hold the **Shifts Admin** role, you have read-only access to the same queue so you can assist new humans, but you cannot clear, flag, or reject — those actions all require Consent Admin (or Board / Admin).
 
 ## As a Board member / Admin (Users Admin)
 
-Board members and Admins can do everything a Consent Coordinator can, plus:
+Board members and Admins can do everything a Consent Admin can, plus:
 
 - **Resolve flagged profiles.** Board/Admin can clear or reject flagged reviews from `/Consent/ReviewQueue`; human admins can reject a signup from `/Users/Admin/{id}`.
 - **Vote on tier applications.** Board votes on Colaborador / Asociado applications at `/Governance/BoardVoting`; Admin can finalize a vote, set the meeting date, and override.
@@ -127,6 +127,6 @@ Roles do not bypass the `UserState` access gate. Staff roles authorize staff too
 ## Related sections
 
 - [Profiles](Profiles.md) — what you fill in during step 2, and how it is used afterwards.
-- [Legal and Consent](LegalAndConsent.md) — the documents you sign and the Consent Coordinator review flow.
+- [Legal and Consent](LegalAndConsent.md) — the documents you sign and the Consent Admin review flow.
 - [Teams](Teams.md) — the Volunteers system team that makes you an active human.
 - [Getting Started](GettingStarted.md) — a first-time walkthrough.

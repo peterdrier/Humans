@@ -74,7 +74,10 @@
   <data name="Google_Identity_Retry" xml:space="preserve"><value>Retry</value></data>
   <data name="Google_Identity_Set" xml:space="preserve"><value>Set Google</value></data>
   <data name="Google_Identity_Updated" xml:space="preserve"><value>Google service email updated. Sync will be retried with the new email.</value></data>
-  <data name="Google_Identity_SetRejected" xml:space="preserve"><value>Could not set Google service email — the row is unknown or not verified.</value></data>
+  <data name="Google_Identity_Refused_AccountNotFound" xml:space="preserve"><value>Could not set the Google service email: that account no longer exists.</value></data>
+  <data name="Google_Identity_Refused_NotTheirEmail" xml:space="preserve"><value>Could not set the Google service email: that address is not on this account.</value></data>
+  <data name="Google_Identity_Refused_Unverified" xml:space="preserve"><value>Could not set the Google service email: verify that address first.</value></data>
+  <data name="Google_Identity_Refused_NobodiesAddressWins" xml:space="preserve"><value>Could not set the Google service email: a verified @nobodies.team address always serves as the Google identity.</value></data>
   <data name="Google_Identity_Google" xml:space="preserve"><value>Google</value></data>
   <data name="Google_Identity_VerifyFirst" xml:space="preserve"><value>Verify first</value></data>
   <data name="Google_Identity_Locked" xml:space="preserve"><value>Locked by the Workspace email row</value></data>
@@ -109,4 +112,6 @@
   <data name="Google_TeamResources_ServiceAccount" xml:space="preserve"><value>Service account: {0}</value><comment>{0} = service account email</comment></data>
   <data name="Google_Meter_FailedSyncEvents" xml:space="preserve"><value>Failed Google sync events</value></data>
   <data name="Google_Meter_AudienceAdmin" xml:space="preserve"><value>Admins</value></data>
+  <data name="Google_Permission_ManageResources_Title" xml:space="preserve"><value>Manage Google resources</value></data>
+  <data name="Google_Permission_ManageResources_Blurb" xml:space="preserve"><value>Link and unlink the department's Drive folders and Google Groups.</value></data>
 </root>

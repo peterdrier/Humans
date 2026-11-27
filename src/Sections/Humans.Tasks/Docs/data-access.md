@@ -18,9 +18,15 @@ Repository: `ITaskRepository`. No caching decorator.
 
 Also implements the public `ITaskWrite` (bulk load), whose tasks and links save in one transaction through `ITaskRepository.AddManyAsync`.
 
+Claim, release, withdraw, approve and decline write `task_assignments` through `AddAssignmentAsync`, `RemoveAssignmentAsync`, `ConfirmRequestAsync` and `RemoveRequestAsync` (the last two touch only a Requested row).
+
 Cross-section calls via `ITeamService` (team names, slugs, flags), `ISettingsService` (events, gate day),
-`IAuditLogService`. Also the section's `IUserDataContributor` and `IUserMerge`.
+`IAuditLogService`, `IEmailService` (the approved and declined emails, built by `TasksEmails`) and `IUserService` (address, language). Also the section's `IUserDataContributor` and `IUserMerge`.
+
+### Section (ISectionThingsToDo)
+
+No repository. Reads `ITaskService.GetTasksAsync` and `IPermissionService.GetOwnersAsync` to build the Home entries for waiting requests.
 
 ### TasksDemoStory (Scoped, non-production only)
 
-No repository. Writes through `ITaskService` as the admin who started the run.
+No repository. Writes through `ITaskService` as the admin who started the run; the waiting requests are made as the demo people themselves.

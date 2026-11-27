@@ -24,7 +24,7 @@ merge chain through
 ### CantinaRosterService (Scoped)
 
 No repository. Cross-section reads via `IShiftService`
-(on-site cohort per day, via `GetOnSiteUserIdsForDayAsync`), `ISettingsService`
+(on-site cohort per day, via `GetOnSiteUserIdsAsync`), `ISettingsService`
 (active-burn metadata — `GetActiveEventSettings` returning `EventSettingsInfo`, for
 the gate-opening/strike-end date range and event timezone),
 `IUserService` (cached `UserInfo` for burner names) and `ICantinaService`

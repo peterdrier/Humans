@@ -181,23 +181,25 @@ internal sealed class UserEmailService(
     }
 
     /// <inheritdoc />
-    public async Task<bool> ClearPrimaryAsync(
+    public async Task<UpdateEmailResult> ClearPrimaryAsync(
         Guid userId, Guid userEmailId, Guid actorUserId,
         CancellationToken cancellationToken = default)
     {
         var row = await repository.GetUserEmailForUserAsync(userEmailId, userId, cancellationToken);
-        if (row is null || !row.IsPrimary) return false;
+        if (row is null) return new(false, "Users_EmailUpdate_NotFound");
+        if (!row.IsPrimary) return new(false, "Users_EmailGrid_ClearPrimaryNotPrimary");
 
         // Duplicate verified rows only, mirroring the scanner's filter, so this can't cause ZeroIsPrimary.
         var allEmails = await repository.GetUserEmailsByUserIdAsync(userId, cancellationToken);
-        if (allEmails.Count(e => e.IsPrimary && e.IsVerified) <= 1) return false;
+        if (allEmails.Count(e => e.IsPrimary && e.IsVerified) <= 1)
+            return new(false, "Users_EmailGrid_ClearPrimaryOnlyOne");
 
         var updated = await userService.UpdateUserEmailAsync(
             userId,
             row.Id,
             new UserEmailUpdateCommand(Primary: UserEmailPrimaryChange.ClearDuplicatePrimary),
             cancellationToken);
-        if (!updated.Succeeded) return false;
+        if (!updated.Succeeded) return new(false, updated.ErrorKey ?? "Users_EmailGrid_ClearPrimaryChanged");
         // No auto-promote: the admin picks the new primary deliberately.
         await auditLogService.LogAsync(
             UsersAuditActions.UserEmailPrimaryCleared,
@@ -206,7 +208,7 @@ internal sealed class UserEmailService(
             actorUserId,
             relatedEntityId: row.Id, relatedEntityType: AuditSubjectTypes.UserEmail);
 
-        return true;
+        return new(true);
     }
 
     /// <inheritdoc />
@@ -249,7 +251,7 @@ internal sealed class UserEmailService(
         if (userEmailId.HasValue)
         {
             row = await repository.GetUserEmailForUserAsync(userEmailId.Value, userId, cancellationToken);
-            if (row is null) return new(false);
+            if (row is null) return new(false, "Users_EmailUpdate_NotFound");
             provider = row.Provider;
             providerKey = row.ProviderKey;
         }
@@ -260,7 +262,7 @@ internal sealed class UserEmailService(
                 && string.Equals(e.ProviderKey, providerKey, StringComparison.Ordinal));
         }
         if (string.IsNullOrWhiteSpace(provider) || string.IsNullOrWhiteSpace(providerKey))
-            return new(false);
+            return new(false, "Users_EmailGrid_UnlinkNoProvider");
 
         // An orphan or unverified row can still carry the only OAuth login; magic link needs a verified email.
         if (!CanUnlink(allEmails.Count(e => e.IsVerified), row?.IsVerified == true))
@@ -272,13 +274,13 @@ internal sealed class UserEmailService(
         }
 
         var user = await userManager.FindByIdAsync(userId.ToString());
-        if (user is null) return new(false);
+        if (user is null) return new(false, "Users_EmailGrid_UnlinkAccountNotFound");
         if (!userEmailId.HasValue)
         {
             var logins = await userManager.GetLoginsAsync(user);
             if (!logins.Any(l => string.Equals(l.LoginProvider, provider, StringComparison.Ordinal)
                 && string.Equals(l.ProviderKey, providerKey, StringComparison.Ordinal)))
-                return new(false);
+                return new(false, "Users_EmailGrid_UnlinkLoginNotFound");
         }
 
         var removeLogin = await userManager.RemoveLoginAsync(user, provider, providerKey);
@@ -288,7 +290,7 @@ internal sealed class UserEmailService(
                 "UnlinkAsync: UserManager.RemoveLoginAsync failed for user {UserId} provider {Provider}; aborting unlink to preserve consistency between AspNetUserLogins and user_emails. Errors: {Errors}",
                 userId, provider,
                 string.Join("; ", removeLogin.Errors.Select(e => $"{e.Code}:{e.Description}")));
-            return new(false);
+            return new(false, "Users_EmailGrid_UnlinkLoginRemovalFailed");
         }
 
         // Identity removal committed; finish row, invariants, cache and audit even after a disconnect.
@@ -302,7 +304,7 @@ internal sealed class UserEmailService(
                     UserEmailRemovalMode.ProviderLinkedEmail,
                     PreserveLastVerifiedEmail: false),
                 cancellationToken);
-            if (!removed) return new(false);
+            if (!removed) return new(false, "Users_EmailGrid_UnlinkRowNotRemoved");
             await AddressRemovedAsync(userId, row.Email, cancellationToken);
         }
 

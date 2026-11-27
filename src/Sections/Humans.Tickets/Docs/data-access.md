@@ -236,7 +236,7 @@ a person) the first time a ticket admin sets its password from
 via `IAccountProvisioningService.CreateAccountAsync`, sets the password through
 `IUserSignInService`, saves its profile through Users' canonical
 `IProfileEditorService.SaveProfileAsync`, marks it fake via Users'
-`IUserWrite.MarkFakeAsync` (keeping it out of the Consent Coordinator review
+`IUserWrite.MarkFakeAsync` (keeping it out of the Consent Admin review
 queue), and logs via `IAuditLogService`. Users refreshes its own `UserInfo`
 entry on the create and the profile save. No direct
 DB or cache access of its own — every mutation goes through another

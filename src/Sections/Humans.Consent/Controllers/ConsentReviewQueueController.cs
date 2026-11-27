@@ -77,7 +77,7 @@ internal sealed class ConsentReviewQueueController(
 
     [HttpPost("{userId:guid}/Clear")]
     [ValidateAntiForgeryToken]
-    [Authorize(Policy = PolicyNames.ConsentCoordinatorBoardOrAdmin)]
+    [Authorize(Policy = PolicyNames.ConsentAdminBoardOrAdmin)]
     public async Task<IActionResult> Clear(Guid userId, string? notes)
     {
         var currentUser = await GetCurrentUserInfoAsync(HttpContext.RequestAborted);
@@ -112,7 +112,7 @@ internal sealed class ConsentReviewQueueController(
 
     [HttpPost("BulkClear")]
     [ValidateAntiForgeryToken]
-    [Authorize(Policy = PolicyNames.ConsentCoordinatorBoardOrAdmin)]
+    [Authorize(Policy = PolicyNames.ConsentAdminBoardOrAdmin)]
     public async Task<IActionResult> BulkClear([FromForm] List<Guid> selectedUserIds, CancellationToken ct)
     {
         var currentUser = await GetCurrentUserInfoAsync(ct);
@@ -159,7 +159,7 @@ internal sealed class ConsentReviewQueueController(
 
     [HttpPost("{userId:guid}/Flag")]
     [ValidateAntiForgeryToken]
-    [Authorize(Policy = PolicyNames.ConsentCoordinatorBoardOrAdmin)]
+    [Authorize(Policy = PolicyNames.ConsentAdminBoardOrAdmin)]
     public async Task<IActionResult> Flag(Guid userId, string? notes)
     {
         var currentUser = await GetCurrentUserInfoAsync(HttpContext.RequestAborted);
@@ -191,7 +191,7 @@ internal sealed class ConsentReviewQueueController(
 
     [HttpPost("{userId:guid}/Reject")]
     [ValidateAntiForgeryToken]
-    [Authorize(Policy = PolicyNames.ConsentCoordinatorBoardOrAdmin)]
+    [Authorize(Policy = PolicyNames.ConsentAdminBoardOrAdmin)]
     public async Task<IActionResult> Reject(Guid userId, string? reason)
     {
         var currentUser = await GetCurrentUserInfoAsync(HttpContext.RequestAborted);

@@ -1,6 +1,6 @@
 # Weekly dependency upgrades
 
-The Sunday slot of the [maintenance dispatcher](dispatcher.md) follows this doc to land one PR with every safe upgrade, so Monday's Dependabot run finds little or nothing. Dependabot stays on as the backstop (`.github/dependabot.yml`). Anyone can also run it by hand: "follow docs/maintenance/dependency-upgrades.md".
+The Sunday slot of the [maintenance dispatcher](dispatcher.md) follows this doc to land one PR with every safe upgrade, so Monday's Dependabot run finds little or nothing. Dependabot stays on as the backstop (`.github/dependabot.yml`). Anyone can also run it by hand: "follow docs/maintenance/dependency-upgrades.md". A scheduled run never stalls on a permission prompt: [`unattended-runs-never-prompt`](../../memory/process/unattended-runs-never-prompt.md).
 
 ## Scope
 

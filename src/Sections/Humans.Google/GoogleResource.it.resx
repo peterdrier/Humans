@@ -115,9 +115,10 @@
   <data name="Google_Identity_Updated" xml:space="preserve">
     <value>Email di servizio Google aggiornata. La sincronizzazione verrà riprovata con la nuova email.</value>
   </data>
-  <data name="Google_Identity_SetRejected" xml:space="preserve">
-    <value>Impossibile impostare l'email di servizio Google — riga sconosciuta o non verificata.</value>
-  </data>
+  <data name="Google_Identity_Refused_AccountNotFound" xml:space="preserve"><value>Impossibile impostare l'email del servizio Google: quell'account non esiste più.</value></data>
+  <data name="Google_Identity_Refused_NotTheirEmail" xml:space="preserve"><value>Impossibile impostare l'email del servizio Google: quell'indirizzo non è su questo account.</value></data>
+  <data name="Google_Identity_Refused_Unverified" xml:space="preserve"><value>Impossibile impostare l'email del servizio Google: verifica prima quell'indirizzo.</value></data>
+  <data name="Google_Identity_Refused_NobodiesAddressWins" xml:space="preserve"><value>Impossibile impostare l'email del servizio Google: un indirizzo @nobodies.team verificato è sempre l'identità Google.</value></data>
   <data name="Google_Identity_Google" xml:space="preserve">
     <value>Google</value>
   </data>
@@ -156,4 +157,6 @@
   <data name="Google_TeamResources_ServiceAccount" xml:space="preserve"><value>Account di servizio: {0}</value><comment>{0} = service account email</comment></data>
   <data name="Google_Meter_FailedSyncEvents" xml:space="preserve"><value>Sincronizzazioni Google non riuscite</value></data>
   <data name="Google_Meter_AudienceAdmin" xml:space="preserve"><value>amministratori</value></data>
+  <data name="Google_Permission_ManageResources_Title" xml:space="preserve"><value>Gestire le risorse Google</value></data>
+  <data name="Google_Permission_ManageResources_Blurb" xml:space="preserve"><value>Collegare e scollegare le cartelle Drive e i Gruppi Google del dipartimento.</value></data>
 </root>

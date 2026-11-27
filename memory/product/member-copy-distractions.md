@@ -1,12 +1,12 @@
 ---
-name: Member-facing copy — no Google avatars, no Consent Coordinator narrative
-description: Member-facing copy (guide/UI) must not mention Google-provided avatars (unused) or the Consent Coordinator review (gates nothing in the member journey).
+name: Member-facing copy — no Google avatars, no Consent Admin narrative
+description: Member-facing copy (guide/UI) must not mention Google-provided avatars (unused) or the Consent Admin review (gates nothing in the member journey).
 ---
 
 Two things must stay out of **member-facing** copy (guide docs, onboarding views, emails):
 
 1. **Google-provided avatars.** The app doesn't use them. Don't write "your picture comes across from Google" or "revert to your Google avatar" — just talk about the profile picture you upload.
-2. **The Consent Coordinator review.** From the member's perspective it isn't in line for anything — admission to Volunteers is automatic on legal name + consents, and only a rejected signup changes anything. Mentioning the review in the volunteer journey is a distraction. The role's own documentation (Onboarding/LegalAndConsent "As a Coordinator" sections, Glossary entry) is the right place for it.
+2. **The Consent Admin review.** From the member's perspective it isn't in line for anything — admission to Volunteers is automatic on legal name + consents, and only a rejected signup changes anything. Mentioning the review in the volunteer journey is a distraction. The role's own documentation (Onboarding/LegalAndConsent "As a Coordinator" sections, Glossary entry) is the right place for it.
 
 **Why:** Peter, 2026-06-11 (guide accuracy review): «we don't use google provided avatars, mention of them is a distraction» · «consent coordinator stuff is not in line for anything at the moment unless the person is rejected.. so it shouldn't be even mentioned in these documents, it's a distraction».
 

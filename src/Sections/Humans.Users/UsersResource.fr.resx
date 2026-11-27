@@ -181,9 +181,9 @@
   <data name="Users_Profile_WhatsApp" xml:space="preserve">
     <value>WhatsApp</value>
   </data>
-  <data name="Users_Profile_DietaryMedical_MedicalConditions_Hint" xml:space="preserve"><value>Visible par toi, les Shifts NoInfo admins et le Conseil ; chaque fois que l'un d'eux l'ouvre, c'est enregistré et listé ci-dessous. Tout ce que les coordinateurs devraient savoir — diabète, épilepsie, blessures graves, etc.</value></data>
+  <data name="Users_Profile_DietaryMedical_MedicalConditions_Hint" xml:space="preserve"><value>Visible par toi, les administrateurs et le Conseil ; chaque fois que l'un d'eux l'ouvre, c'est enregistré et listé ci-dessous. Tout ce que les coordinateurs devraient savoir — diabète, épilepsie, blessures graves, etc.</value></data>
   <data name="Users_Profile_DietaryMedical_MedicalConditions_Title" xml:space="preserve"><value>Problèmes de santé</value></data>
-  <data name="Users_Profile_DietaryMedical_MedicalConditions_VisibilityNote" xml:space="preserve"><value>Facultatif. Visible par toi, les Shifts NoInfo admins et le Conseil ; chaque consultation est enregistrée.</value></data>
+  <data name="Users_Profile_DietaryMedical_MedicalConditions_VisibilityNote" xml:space="preserve"><value>Facultatif. Visible par toi, les administrateurs et le Conseil ; chaque consultation est enregistrée.</value></data>
   <data name="Users_Profile_MyEmails" xml:space="preserve"><value>Mes e-mails</value></data>
   <data name="Users_Profile_NoSentMessages" xml:space="preserve"><value>Aucun message enregistré sur la plateforme.</value></data>
   <data name="Users_Profile_SentMessages" xml:space="preserve"><value>Messages envoyés</value></data>
@@ -451,17 +451,19 @@
   <data name="Users_EmailGrid_ConfirmUnlink" xml:space="preserve">
     <value>Dissocier ce compte Google ?</value>
   </data>
-  <data name="Users_EmailGrid_UnlinkRejected" xml:space="preserve">
-    <value>Impossible de dissocier — ligne inconnue ou sans fournisseur de connexion.</value>
-  </data>
+  <data name="Users_EmailGrid_ClearPrimaryNotPrimary" xml:space="preserve"><value>Impossible d'effacer l'indicateur principal : cette adresse n'est pas marquée comme principale.</value></data>
+  <data name="Users_EmailGrid_ClearPrimaryOnlyOne" xml:space="preserve"><value>Impossible d'effacer l'indicateur principal : c'est la seule adresse principale vérifiée.</value></data>
+  <data name="Users_EmailGrid_ClearPrimaryChanged" xml:space="preserve"><value>Impossible d'effacer l'indicateur principal : cette adresse a changé entre-temps. Rechargez et vérifiez.</value></data>
+  <data name="Users_EmailGrid_UnlinkNoProvider" xml:space="preserve"><value>Impossible de dissocier : cette adresse n'a pas de fournisseur de connexion.</value></data>
+  <data name="Users_EmailGrid_UnlinkAccountNotFound" xml:space="preserve"><value>Impossible de dissocier : le compte n'existe plus.</value></data>
+  <data name="Users_EmailGrid_UnlinkLoginNotFound" xml:space="preserve"><value>Impossible de dissocier : cette connexion n'est plus liée au compte.</value></data>
+  <data name="Users_EmailGrid_UnlinkLoginRemovalFailed" xml:space="preserve"><value>Impossible de dissocier : la suppression de la connexion a échoué. Rien n'a été modifié.</value></data>
+  <data name="Users_EmailGrid_UnlinkRowNotRemoved" xml:space="preserve"><value>La connexion a été dissociée, mais sa ligne d'adresse n'a pas pu être supprimée.</value></data>
   <data name="Users_EmailGrid_SetPrimary" xml:space="preserve">
     <value>Définir comme principal</value>
   </data>
   <data name="Users_EmailGrid_PrimaryFlagCleared" xml:space="preserve">
     <value>Indicateur principal effacé de cette ligne.</value>
-  </data>
-  <data name="Users_EmailGrid_ClearPrimaryRejected" xml:space="preserve">
-    <value>Impossible d'effacer l'indicateur principal — la ligne est inconnue ou non marquée actuellement.</value>
   </data>
   <data name="Users_EmailGrid_Clear" xml:space="preserve">
     <value>Effacer</value>

@@ -182,7 +182,7 @@ Reads:
 | `UserInfo.BurnerName` | Row label on the drill-down matrix and in both CSVs | Already resolved by Users (`User.BurnerName` → `Profile.BurnerName` → legacy display name, nobodies-collective/Humans#1097); `"(unknown)"` covers a user id the cohort read did not return |
 | `EventSettingsInfo.GateOpeningDate`, `EventSettingsInfo.TimeZoneId` | Compute calendar dates for each day in the week + default week | Existing, via `ISettingsService` |
 
-At our small scale, the service issues 7 sequential per-day cohort queries (`GetOnSiteUserIdsForDayAsync`, one per day) plus a single batched `IUserService.GetUserInfosAsync` (names) and `ICantinaService.GetDietaryProfilesAsync` (answers) for the week's unique cohort. For the arrival-day rule it additionally scans per-day cohorts from build start up to the window's end (capped at strike end) to find each human's first confirmed shift.
+At our small scale, the service issues 7 sequential per-day cohort queries (`GetOnSiteUserIdsAsync`, one per day) plus a single batched `IUserService.GetUserInfosAsync` (names) and `ICantinaService.GetDietaryProfilesAsync` (answers) for the week's unique cohort. For the arrival-day rule it additionally scans per-day cohorts from build start up to the window's end (capped at strike end) to find each human's first confirmed shift.
 
 Explicitly **excluded** at the DTO boundary regardless of viewer role:
 
@@ -235,7 +235,7 @@ The day matrix has its own export at `GET /Cantina/Roster/Day/Csv`, filename `ca
 
 This feature lives in the `Cantina/` section and reads **only through section services** — it never touches a repository.
 
-- **Shifts (read, on-site cohort):** `IShiftService.GetOnSiteUserIdsForDayAsync`, called in a 7-day loop and unioned into the unique-humans cohort.
+- **Shifts (read, on-site cohort):** `IShiftService.GetOnSiteUserIdsAsync`, called in a 7-day loop and unioned into the unique-humans cohort.
 - **Cantina (read, dietary):** `ICantinaService.GetDietaryProfilesAsync` — batched; the DTO has no medical field, so `CantinaRosterService` never sees `MedicalConditions`.
 - **Users/Identity (read, burner names):** `IUserService.GetUserInfosAsync` — batched, cached `UserInfo`. No entity reads, no new surface.
 - **Event settings:** `ISettingsService.GetActiveEventSettings` for `GateOpeningDate` / `TimeZoneId` (week-boundary computation and per-day calendar labels).

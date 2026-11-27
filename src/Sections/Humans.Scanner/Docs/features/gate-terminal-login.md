@@ -47,7 +47,7 @@ cannot be opened by the kiosk account.
   Profile ("Gate Terminal", legal name Gate/Terminal) created through the canonical
   `SaveProfileAsync` path so `UserStateClassifier` yields `Active` (the membership
   filter requires it). The account is marked fake in Users (on every password set) so it never sits in
-  the Consent Coordinator review queue. If setup fails after creating the user,
+  the Consent Admin review queue. If setup fails after creating the user,
   another password-set attempt resumes setup on that row. Until a password exists,
   account creation and the profile save must both succeed before a password is set.
   Credential writes reload the user in a fresh Identity scope after setup, preserving

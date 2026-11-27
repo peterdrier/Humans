@@ -12,6 +12,21 @@ internal static class PreapprovalGrantQueries
         IPreapprovalService preapprovals, Guid grantId, CancellationToken ct) =>
         (await preapprovals.GetGrantsAsync(ct)).FirstOrDefault(g => g.Id == grantId);
 
+    /// <summary>
+    /// The validation key saying why a grant cannot be filed against now, for one that is not the person's
+    /// claimable or held grant. The deadline key takes the claim-by date.
+    /// </summary>
+    internal static string UnavailableKey(GrantOption? grant) => grant?.Status switch
+    {
+        null => "Expenses_Validation_PreapprovalNotFound",
+        GrantStatus.Revoked => "Expenses_Validation_PreapprovalRevoked",
+        GrantStatus.Claimed => "Expenses_Validation_PreapprovalClaimedElsewhere",
+        GrantStatus.Consumed => "Expenses_Validation_PreapprovalUsed",
+        GrantStatus.Applied => "Expenses_Validation_PreapprovalNotGranted",
+        GrantStatus.Declined => "Expenses_Validation_PreapprovalDeclined",
+        _ => grant.ClaimableToday ? "Expenses_Validation_PreapprovalNotHeld" : "Expenses_Validation_PreapprovalDeadlinePassed"
+    };
+
     /// <summary>The grants this person may file an expense against today.</summary>
     internal static async Task<IReadOnlyList<GrantOption>> ListClaimableAsync(
         IPreapprovalService preapprovals, IReadOnlyCollection<Guid> personIds, CancellationToken ct) =>

@@ -30,8 +30,27 @@ internal sealed record EventOption(Guid Id, string Name);
 
 internal sealed record TeamChoice(Guid Id, string Name, string Slug);
 
-/// <summary>The rows of a task table, with or without the team column.</summary>
-internal sealed record TaskTableModel(IReadOnlyList<TaskInfo> Tasks, bool ShowTeam);
+/// <summary>Where the viewer stands on a task. A task the viewer has no part in and cannot claim has no place.</summary>
+internal enum MyPlace { CanClaim, Requested, Confirmed }
+
+/// <summary>
+/// The rows of a task table, with or without the team column. <paramref name="Places"/> lists the viewer's place on
+/// the tasks that have one; <paramref name="ReturnUrl"/> is the local page a claim posted from a row comes back to.
+/// </summary>
+internal sealed record TaskTableModel(
+    IReadOnlyList<TaskInfo> Tasks, bool ShowTeam, IReadOnlyDictionary<Guid, MyPlace> Places, string ReturnUrl);
+
+/// <summary>
+/// A claim form for one task, or the viewer's <paramref name="Place"/> on it when that is not
+/// <see cref="MyPlace.CanClaim"/>. <paramref name="Primary"/> marks the page's main action; the rest recede.
+/// </summary>
+internal sealed record ClaimButtonModel(TaskInfo Task, string ReturnUrl, bool Small, bool Primary, MyPlace Place = MyPlace.CanClaim);
+
+/// <summary>A request waiting for a manager's answer, with the task it is on.</summary>
+internal sealed record RequestRow(TaskInfo Task, Guid UserId);
+
+/// <summary>The waiting requests with their answer buttons. <paramref name="ShowTask"/> names the task on each row.</summary>
+internal sealed record RequestsViewModel(IReadOnlyList<RequestRow> Rows, bool ShowTask, string ReturnUrl);
 
 /// <summary>Most needed first: critical, then important, nice to have, unset last.</summary>
 internal static class TaskPriorityOrder
@@ -53,7 +72,12 @@ internal sealed record TaskListViewModel(
     IReadOnlyList<TaskInfo> Tasks,
     IReadOnlyList<EventOption> Events,
     TaskListFilter Filter,
-    IReadOnlyList<TeamChoice> ManagedTeams);
+    IReadOnlyList<TeamChoice> ManagedTeams,
+    IReadOnlyDictionary<Guid, MyPlace> Places);
+
+/// <summary>The open-tasks board: every task the viewer can see with a free slot, most needed first.</summary>
+internal sealed record OpenBoardViewModel(
+    IReadOnlyList<TaskInfo> Tasks, int OpenSlots, int CriticalCount, IReadOnlyDictionary<Guid, MyPlace> Places);
 
 internal sealed record TeamPageViewModel(
     Guid TeamId,
@@ -63,7 +87,9 @@ internal sealed record TeamPageViewModel(
     TaskListFilter Filter,
     bool CanAdd,
     TaskForm AddForm,
-    IReadOnlyList<EventOption> Events);
+    IReadOnlyList<EventOption> Events,
+    IReadOnlyDictionary<Guid, MyPlace> Places,
+    IReadOnlyList<RequestRow> Requests);
 
 /// <summary>A task this one waits on. <see cref="Title"/> and <see cref="Status"/> are null when the viewer cannot see it.</summary>
 internal sealed record DependencyRow(Guid Id, string? Title, TaskItemStatus? Status);
@@ -81,7 +107,9 @@ internal sealed record TaskPageViewModel(
     bool EditOpen,
     IReadOnlyList<TeamChoice> Teams,
     IReadOnlyList<EventOption> Events,
-    StatusForm StatusForm);
+    StatusForm StatusForm,
+    MyPlace? Place,
+    IReadOnlyList<RequestRow> Requests);
 
 /// <summary>What the status form posts.</summary>
 internal sealed class StatusForm
