@@ -170,6 +170,9 @@
   <data name="Tickets_Buy_Empty" xml:space="preserve">
     <value>Choisis au moins un billet ou un don.</value>
   </data>
+  <data name="Tickets_Buy_CancelUnavailable" xml:space="preserve">
+    <value>Cette commande ne peut pas être annulée car son prestataire de paiement est indisponible. Contacte l’équipe billetterie.</value>
+  </data>
   <data name="Tickets_Buy_PlatformFailed" xml:space="preserve">
     <value>La page de paiement n'a pas pu s'ouvrir. Réessaie dans un instant.</value>
   </data>

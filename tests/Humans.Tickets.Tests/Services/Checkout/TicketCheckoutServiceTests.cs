@@ -502,6 +502,47 @@ public sealed partial class TicketCheckoutServiceTests
         _repo.Refunds.Select(r => r.RefundId).Should().OnlyHaveUniqueItems();
     }
 
+    [HumansTheory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task CancelAsync_MissingPlatform_KeepsRemoteReservation(bool pending)
+    {
+        var state = pending ? TicketCheckoutOrderState.Pending : TicketCheckoutOrderState.Created;
+        var old = await OfferedTicketAsync();
+        var started = await _service.StartCheckoutAsync(Buy(), _otherBuyerId, Ct);
+        var order = _repo.Orders.Single(o => o.Id == started.OrderId);
+        order.State = state;
+        _platform.Key.Returns("replacement");
+        var writes = _repo.OrderWrites.Count;
+        var events = _repo.Events.Count;
+
+        var result = await _service.CancelAsync(order.Id, _otherBuyerId, Ct);
+
+        result.Refusal.Should().Be("Tickets_Buy_CancelUnavailable");
+        order.State.Should().Be(state);
+        _repo.Offers.Should().ContainSingle().Which.ReservedByOrderId.Should().Be(order.Id);
+        old.State.Should().Be(TicketCheckoutTicketState.Offered);
+        _repo.OrderWrites.Should().HaveCount(writes);
+        _repo.Events.Should().HaveCount(events);
+        await _platform.DidNotReceive().CancelAsync(Arg.Any<string>(), Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
+    public async Task CancelAsync_NoRemoteOrder_CancelsLocally()
+    {
+        var started = await _service.StartCheckoutAsync(Buy(), _buyerId, Ct);
+        var order = _repo.Orders.Single(o => o.Id == started.OrderId);
+        order.PlatformOrderId = null;
+        order.State = TicketCheckoutOrderState.Created;
+        _platform.Key.Returns("replacement");
+
+        var result = await _service.CancelAsync(order.Id, _buyerId, Ct);
+
+        result.Succeeded.Should().BeTrue();
+        order.State.Should().Be(TicketCheckoutOrderState.Cancelled);
+        await _platform.DidNotReceive().CancelAsync(Arg.Any<string>(), Arg.Any<CancellationToken>());
+    }
+
     [HumansFact]
     public async Task A_stuck_unpaid_order_shows_on_the_buy_page_and_cancelling_it_frees_the_buyer_to_start_again()
     {

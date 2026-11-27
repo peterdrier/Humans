@@ -930,8 +930,13 @@ internal sealed partial class TicketCheckoutService(
         if (!order.IsOpen)
             return CheckoutMutationResult.Ok;
 
-        if (order.PlatformOrderId is not null && PlatformFor(order.PlatformKey) is { } platform)
+        if (order.PlatformOrderId is not null)
         {
+            if (PlatformFor(order.PlatformKey) is not { } platform)
+            {
+                logger.LogWarning("Order {OrderId} cannot be cancelled: platform {Platform} is not registered", order.Id, order.PlatformKey);
+                return new("Tickets_Buy_CancelUnavailable");
+            }
             // Paid in the meantime: the refresh records it instead of cancelling.
             await RecoverAsync(order, ct);
             if (order.State == TicketCheckoutOrderState.Paid)

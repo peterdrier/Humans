@@ -161,6 +161,9 @@
   <data name="Tickets_Buy_Empty" xml:space="preserve">
     <value>Choose at least one ticket or a donation.</value>
   </data>
+  <data name="Tickets_Buy_CancelUnavailable" xml:space="preserve">
+    <value>This order cannot be cancelled because its payment provider is unavailable. Please contact the ticketing team.</value>
+  </data>
   <data name="Tickets_Buy_PlatformFailed" xml:space="preserve">
     <value>The payment page could not be opened. Please try again in a moment.</value>
   </data>
