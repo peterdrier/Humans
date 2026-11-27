@@ -2,6 +2,7 @@ using System.Globalization;
 using System.Security.Cryptography;
 using System.Text.RegularExpressions;
 using Humans.AuditLog.Contracts;
+using Humans.Base.Attributes;
 using Humans.Base.Extensions;
 using Humans.Email.Contracts;
 using Humans.Gate.Contracts;
@@ -522,7 +523,7 @@ internal sealed partial class TicketCheckoutService(
             logger.LogInformation("Order change for unknown {Platform} order {PlatformOrderId}", platformKey, platformOrderId);
             return;
         }
-        await RefreshAsync(order, ct);
+        await RecoverAsync(order, ct);
     }
 
     public async Task<TicketCheckoutOrder?> RefreshOrderAsync(Guid orderId, CancellationToken ct = default)
@@ -541,7 +542,7 @@ internal sealed partial class TicketCheckoutService(
         {
             try
             {
-                if (await RefreshAsync(order, ct))
+                if (await RecoverAsync(order, ct))
                     changed++;
             }
             catch (Exception ex) when (ex is not OperationCanceledException)
@@ -553,7 +554,7 @@ internal sealed partial class TicketCheckoutService(
         {
             try
             {
-                if (await repository.GetOrderAsync(orderId, ct) is { } paid && await RefreshAsync(paid, ct))
+                if (await repository.GetOrderAsync(orderId, ct) is { } paid && await RecoverAsync(paid, ct))
                     changed++;
             }
             catch (Exception ex) when (ex is not OperationCanceledException)
@@ -577,7 +578,31 @@ internal sealed partial class TicketCheckoutService(
         return ids.ToList();
     }
 
-    /// <summary>True when the state moved or a refund settled.</summary>
+    [ExternalWrite]
+    private async Task<bool> RecoverAsync(TicketCheckoutOrder order, CancellationToken ct)
+    {
+        if (order.PlatformOrderId is null || PlatformFor(order.PlatformKey) is not { } platform)
+            return await RefreshAsync(order, ct);
+
+        var status = await platform.GetStatusAsync(order.PlatformOrderId, ct);
+        var close = order.IsOpen && (status.State is PlatformOrderState.Expired or PlatformOrderState.Failed
+            || (status.State == PlatformOrderState.Pending && order.ExpiresAt <= clock.GetCurrentInstant()));
+        var closed = false;
+        if (close)
+        {
+            ct.ThrowIfCancellationRequested();
+            // Once cancellation reaches the platform, finish recording its outcome even during job shutdown.
+            ct = CancellationToken.None;
+            closed = await TryCancelAtPlatformAsync(platform, order, ct);
+            if (closed && status.State == PlatformOrderState.Pending)
+                status = status with { State = PlatformOrderState.Expired };
+        }
+
+        var changed = await ApplyStatusAsync(order, status, closed, ct);
+        var settled = order.State == TicketCheckoutOrderState.Paid && await SettleRefundsAsync(order, status, ct);
+        return changed || settled;
+    }
+
     private async Task<bool> RefreshAsync(TicketCheckoutOrder order, CancellationToken ct)
     {
         var now = clock.GetCurrentInstant();
@@ -602,6 +627,13 @@ internal sealed partial class TicketCheckoutService(
         }
 
         var status = await platform.GetStatusAsync(order.PlatformOrderId, ct);
+        return await ApplyStatusAsync(order, status, closureConfirmed: false, ct);
+    }
+
+    private async Task<bool> ApplyStatusAsync(
+        TicketCheckoutOrder order, PlatformOrderStatus status, bool closureConfirmed, CancellationToken ct)
+    {
+        var now = clock.GetCurrentInstant();
         var before = (order.State, order.RefundedMinor, order.FeeMinor, order.ChargedBackMinor);
         var newState = status.State switch
         {
@@ -618,18 +650,9 @@ internal sealed partial class TicketCheckoutService(
             newState = TicketCheckoutOrderState.Paid;
 
         var wasOpen = order.IsOpen;
-        if (wasOpen && newState == TicketCheckoutOrderState.Pending && order.ExpiresAt <= now)
-        {
-            // Tickets owns the hold: once it lapses the platform must stop taking money for it.
-            if (await TryCancelAtPlatformAsync(platform, order, ct))
-                newState = TicketCheckoutOrderState.Expired;
-        }
-        else if (wasOpen && newState is TicketCheckoutOrderState.Expired or TicketCheckoutOrderState.Failed
-                 && !await TryCancelAtPlatformAsync(platform, order, ct))
-        {
-            // Some platforms still take payment on an order they call expired: it stays open until the cancel lands.
+        // An expired/failed platform order may still take money until recovery confirms its cancellation.
+        if (wasOpen && !closureConfirmed && newState is TicketCheckoutOrderState.Expired or TicketCheckoutOrderState.Failed)
             newState = order.State;
-        }
 
         var becamePaid = newState == TicketCheckoutOrderState.Paid && order.State != TicketCheckoutOrderState.Paid;
         var late = becamePaid && !wasOpen;
@@ -651,13 +674,12 @@ internal sealed partial class TicketCheckoutService(
         order.RefundedMinor = status.RefundedMinor;
         order.ChargedBackMinor = status.ChargedBackMinor;
 
-        var refundsSettled = order.State == TicketCheckoutOrderState.Paid && await SettleRefundsAsync(order, status, ct);
         if (order.State == TicketCheckoutOrderState.Processing && now - order.CreatedAt >= ProcessingAttention
             && !(await repository.GetOrderEventsAsync(order.Id, ct)).Any(e => e.Detail.StartsWith(ProcessingStuck, StringComparison.Ordinal)))
             await NeedsAttentionAsync(order.Id,
                 $"{ProcessingStuck} for {ProcessingAttention.Days} days; it holds its tickets until {order.PlatformKey} settles it", ct);
         if (before == (order.State, order.RefundedMinor, order.FeeMinor, order.ChargedBackMinor))
-            return refundsSettled;
+            return false;
 
         order.UpdatedAt = now;
         await repository.UpdateOrderAsync(order, ct);
@@ -878,7 +900,7 @@ internal sealed partial class TicketCheckoutService(
             actorUserId?.ToString() ?? JobName);
 
         if (result.State is RefundState.Succeeded or RefundState.Pending)
-            await RefreshAsync(order, ct);
+            await RecoverAsync(order, ct);
         return result;
     }
 
@@ -895,7 +917,7 @@ internal sealed partial class TicketCheckoutService(
         if (order.PlatformOrderId is not null && PlatformFor(order.PlatformKey) is { } platform)
         {
             // Paid in the meantime: the refresh records it instead of cancelling.
-            await RefreshAsync(order, ct);
+            await RecoverAsync(order, ct);
             if (order.State == TicketCheckoutOrderState.Paid)
                 return new("Tickets_Buy_AlreadyPaid");
             if (order.State == TicketCheckoutOrderState.Processing)

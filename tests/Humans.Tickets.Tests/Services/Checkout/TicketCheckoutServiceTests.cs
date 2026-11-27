@@ -1973,7 +1973,7 @@ public sealed partial class TicketCheckoutServiceTests
 
         if (replay)
         {
-            var refresh = () => _service.RefreshOrderAsync(order.Id, caller.Token);
+            var refresh = () => _service.PlatformOrderChangedAsync("test", order.PlatformOrderId!, caller.Token);
             await refresh.Should().ThrowAsync<OperationCanceledException>();
             _repo.Refunds[1].Refund.State.Should().Be(RefundState.Pending);
             await _platform.Received(1).GetStatusAsync(order.PlatformOrderId!, caller.Token);
@@ -2396,6 +2396,101 @@ public sealed partial class TicketCheckoutServiceTests
             .Returns([new ActiveGrantInfo(LowIncomeProgram, _event.Id, Now)]);
 
         (await _service.GetBuyPagesAsync(_otherBuyerId, Ct)).Single().OwnPrice!.AmountMinor.Should().Be(22500);
+    }
+
+    public enum OrderRead { Buyer, Holder, Admin }
+
+    private async Task ReadOrderAsync(TicketCheckoutOrder order, OrderRead reader, CancellationToken ct)
+    {
+        if (reader == OrderRead.Admin)
+            await _service.RefreshOrderAsync(order.Id, ct);
+        else
+            await _service.GetBuyOrderAsync(order.Id, reader == OrderRead.Buyer ? order.BuyerUserId
+                : order.Lines.First(l => l.HolderUserId is not null && l.HolderUserId != order.BuyerUserId).HolderUserId!.Value, ct);
+    }
+
+    [HumansTheory]
+    [InlineData(OrderRead.Buyer, PlatformOrderState.Pending)]
+    [InlineData(OrderRead.Holder, PlatformOrderState.Pending)]
+    [InlineData(OrderRead.Admin, PlatformOrderState.Pending)]
+    [InlineData(OrderRead.Buyer, PlatformOrderState.Expired)]
+    [InlineData(OrderRead.Holder, PlatformOrderState.Expired)]
+    [InlineData(OrderRead.Admin, PlatformOrderState.Expired)]
+    [InlineData(OrderRead.Buyer, PlatformOrderState.Failed)]
+    [InlineData(OrderRead.Holder, PlatformOrderState.Failed)]
+    [InlineData(OrderRead.Admin, PlatformOrderState.Failed)]
+    public async Task RefreshOrderAsync_UnconfirmedClosure_KeepsReservation(OrderRead reader, PlatformOrderState state)
+    {
+        var offered = await OfferedTicketAsync();
+        var started = await _service.StartCheckoutAsync(Buy(), _otherBuyerId, Ct);
+        var order = _repo.Orders.Single(o => o.Id == started.OrderId);
+        order.Lines.Add(new TicketCheckoutOrderLine { Kind = OrderLineKind.Ticket, HolderUserId = _buyerId });
+        _clock.Advance(Duration.FromHours(2));
+        _platform.GetStatusAsync(order.PlatformOrderId!, Arg.Any<CancellationToken>())
+            .Returns(new PlatformOrderStatus(state, 50, "card", null));
+
+        await ReadOrderAsync(order, reader, Ct);
+
+        await _platform.DidNotReceive().CancelAsync(Arg.Any<string>(), Arg.Any<CancellationToken>());
+        order.State.Should().Be(TicketCheckoutOrderState.Pending);
+        order.FeeMinor.Should().Be(50);
+        _repo.Offers.Single().ReservedByOrderId.Should().Be(order.Id);
+        offered.State.Should().Be(TicketCheckoutTicketState.Offered);
+    }
+
+    [HumansTheory]
+    [InlineData(OrderRead.Buyer)]
+    [InlineData(OrderRead.Holder)]
+    [InlineData(OrderRead.Admin)]
+    public async Task RefreshOrderAsync_PendingRefund_DoesNotReplay(OrderRead reader)
+    {
+        var order = await BuyAndPayAsync(Buy(), _buyerId);
+        order.Lines.Add(new TicketCheckoutOrderLine { Kind = OrderLineKind.Ticket, HolderUserId = _otherBuyerId });
+        var refund = new TicketCheckoutRefund
+        {
+            Id = Guid.NewGuid(),
+            OrderId = order.Id,
+            AmountMinor = 5000,
+            Reason = "Returned",
+            State = RefundState.Pending,
+            PlatformRefundId = "re_pending",
+            CreatedAt = Now,
+        };
+        _repo.Refunds.Add((refund.Id, refund));
+        _platform.GetStatusAsync(order.PlatformOrderId!, Arg.Any<CancellationToken>())
+            .Returns(new PlatformOrderStatus(PlatformOrderState.Paid, 30, "card", Now, RefundedMinor: 5000));
+        _platform.RefundAsync(Arg.Any<RefundRequest>(), Arg.Any<CancellationToken>())
+            .Returns(new RefundResult(RefundState.Succeeded, "re_pending", null));
+        _platform.ClearReceivedCalls();
+
+        await ReadOrderAsync(order, reader, Ct);
+
+        await _platform.DidNotReceive().RefundAsync(Arg.Any<RefundRequest>(), Arg.Any<CancellationToken>());
+        refund.State.Should().Be(RefundState.Pending);
+        order.RefundedMinor.Should().Be(5000);
+        await _platform.Received(1).GetStatusAsync(order.PlatformOrderId!, Ct);
+    }
+
+    [HumansFact]
+    public async Task ReconcileOpenOrdersAsync_CancellationDuringClose_FinishesClosure()
+    {
+        await _service.StartCheckoutAsync(Buy(), _buyerId, Ct);
+        var order = _repo.Orders.Single();
+        _clock.Advance(Duration.FromHours(2));
+        using var caller = new CancellationTokenSource();
+        _platform.GetStatusAsync(order.PlatformOrderId!, caller.Token)
+            .Returns(new PlatformOrderStatus(PlatformOrderState.Pending, null, null, null));
+        _platform.CancelAsync(order.PlatformOrderId!, Arg.Any<CancellationToken>()).Returns(async call =>
+        {
+            await caller.CancelAsync();
+            call.ArgAt<CancellationToken>(1).ThrowIfCancellationRequested();
+        });
+
+        await _service.ReconcileOpenOrdersAsync(caller.Token);
+
+        await _platform.Received(1).CancelAsync(order.PlatformOrderId!, CancellationToken.None);
+        order.State.Should().Be(TicketCheckoutOrderState.Expired);
+        _repo.Events.Should().Contain(e => e.OrderId == order.Id && e.Kind == TicketCheckoutOrderEventKind.StateChanged);
     }
 
     [HumansFact]

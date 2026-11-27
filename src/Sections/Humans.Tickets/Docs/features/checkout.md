@@ -21,7 +21,7 @@ Rules every platform follows:
 
 - **Exact price.** The buyer pays exactly the lines; no fee is added. `PlatformOrderStatus.FeeMinor` is only what the
   payment provider kept (processing cost), null when unknown.
-- **Late payments.** Tickets owns the hold. When `ExpiresAt` passes unpaid, Tickets calls `CancelAsync` (also when the
+- **Late payments.** Tickets owns the hold. When `ExpiresAt` passes unpaid, webhooks and background recovery call `CancelAsync` (also when the
   platform reports Expired or Failed, and the order stays open until that cancel succeeds) so the platform stops taking
   money. A payment that lands anyway is reported as
   `Paid`; the adapter never refunds or keeps it silently. Tickets issues the tickets, says so on the timeline and in the
@@ -37,8 +37,10 @@ Rules every platform follows:
 - **Chargebacks.** `ChargedBackMinor` is what the buyer's bank has taken back and the event has not won. Each change goes on
   the timeline and to the audit log as needing attention; tickets stay valid until the ticketing team decides. It comes
   off what can still be refunded, and the order's tickets cannot be offered for resale while it stands.
+- **Recovery cancellation.** A status read remains cancellable. Before closing a platform order, recovery checks cancellation; once that remote attempt starts, its local outcome finishes independently of job shutdown.
 - **Refund cancellation.** Cancellation is checked before each attempt. A started platform refund and its local completion finish independently of request abort or job shutdown. The initial read-only status fetch stays cancellable; settlement replays finish their saved outcome and timeline before cancellation stops the next refund.
-- **Refund outcome.** `RefundedMinor` moves only once money went back. On every status read Tickets settles its
+- **Order page reads.** Buyer/holder and admin GETs read status with the request token and apply local payment, fee, refund-total and chargeback changes, including ticket issuance for a new payment. They never cancel at the platform or replay refunds. An expired/failed status keeps an open order reserved until recovery confirms cancellation; visiting an overdue order cannot release capacity while the platform may still take payment.
+- **Refund outcome.** `RefundedMinor` moves only once money went back. Webhooks and background recovery settle Tickets'
   `Pending` and `ManualRequired` refunds, oldest first. A pending refund the platform knows by id is repeated under that
   id and takes the state the platform answers (`RefundFailed` may follow only the newest refund); one whose call got no
   answer waits for the reconcile job's resend. So a refund made in the platform's dashboard never settles one of Tickets'

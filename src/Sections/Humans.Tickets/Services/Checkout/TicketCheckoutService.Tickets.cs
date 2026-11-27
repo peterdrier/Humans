@@ -551,10 +551,10 @@ internal sealed partial class TicketCheckoutService
                     // A missed webhook must not pay out: both orders are read from their platform first, so a refund or
                     // chargeback only the platform knows of still holds the refund back or lowers what can be refunded.
                     if (buyerOrder is not null)
-                        await RefreshAsync(buyerOrder, ct);
+                        await RecoverAsync(buyerOrder, ct);
                     if (await repository.GetTicketAsync(offer.TicketId, ct) is { } old
                         && await repository.GetOrderAsync(old.OrderId, ct) is { } holderOrder)
-                        await RefreshAsync(holderOrder, ct);
+                        await RecoverAsync(holderOrder, ct);
                 }
                 catch (Exception ex) when (ex is not OperationCanceledException)
                 {

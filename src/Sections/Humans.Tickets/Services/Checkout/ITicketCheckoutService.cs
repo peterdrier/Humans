@@ -41,10 +41,10 @@ internal interface ITicketCheckoutService : ITicketingPlatformEvents
 
     Task<OrderDetail?> GetOrderDetailAsync(Guid orderId, CancellationToken ct = default);
 
-    /// <summary>Refreshes an order only for its buyer or a holder, returning only what that viewer may see.</summary>
+    /// <summary>Reads platform status only for the buyer or a holder, returning only what that viewer may see. Never cancels or replays refunds.</summary>
     Task<BuyOrder?> GetBuyOrderAsync(Guid orderId, Guid viewerId, CancellationToken ct = default);
 
-    /// <summary>Asks the order's platform for its state and applies it. Null when the order does not exist.</summary>
+    /// <summary>Reads and applies platform status without cancelling or replaying refunds. Null when the order does not exist.</summary>
     Task<TicketCheckoutOrder?> RefreshOrderAsync(Guid orderId, CancellationToken ct = default);
 
     /// <summary>
