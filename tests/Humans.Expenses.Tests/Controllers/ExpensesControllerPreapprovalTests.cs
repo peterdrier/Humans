@@ -63,7 +63,7 @@ public sealed class ExpensesControllerPreapprovalTests
     }
 
     [HumansFact]
-    public async Task Review_AuthorizesCandidatesAndPreservesTheActiveYearScope()
+    public async Task Review_Candidates_AreAuthorizedInActiveYear()
     {
         using var request = new CancellationTokenSource();
         var archived = Guid.NewGuid();
@@ -281,7 +281,7 @@ public sealed class ExpensesControllerPreapprovalTests
     [Xunit.InlineData(ExpenseMutation.HoldedRetry, false)]
     [Xunit.InlineData(ExpenseMutation.HoldedRetry, true)]
     [Xunit.InlineData(ExpenseMutation.New, true)]
-    public async Task Mutation_preflight_observes_request_cancellation(ExpenseMutation action, bool actorLookup)
+    public async Task MutationPreflight_AbandonedRequest_Cancels(ExpenseMutation action, bool actorLookup)
     {
         var report = ReviewRow(null) with { Status = ExpenseReportStatus.Draft };
         using var request = new CancellationTokenSource();
@@ -338,7 +338,7 @@ public sealed class ExpensesControllerPreapprovalTests
     [Xunit.InlineData(NewFormLookup.ExpenseAccounts)]
     [Xunit.InlineData(NewFormLookup.ClaimableGrants)]
     [Xunit.InlineData(NewFormLookup.PreapprovalGrant)]
-    public async Task Invalid_new_form_preflight_observes_request_cancellation(NewFormLookup lookup)
+    public async Task NewPost_InvalidFormAbandoned_Cancels(NewFormLookup lookup)
     {
         using var request = new CancellationTokenSource();
         var grantId = Guid.NewGuid();
@@ -376,7 +376,7 @@ public sealed class ExpensesControllerPreapprovalTests
     [Xunit.InlineData(true, NewFormLookup.ClaimableGrants)]
     [Xunit.InlineData(false, NewFormLookup.PreapprovalGrant)]
     [Xunit.InlineData(true, NewFormLookup.PreapprovalGrant)]
-    public async Task New_redisplay_cancels_reads_without_reporting_a_creation_failure(
+    public async Task NewPost_RedisplayAbandoned_CancelsReads(
         bool writeFails, NewFormLookup lookup)
     {
         using var request = new CancellationTokenSource();
@@ -472,7 +472,7 @@ public sealed class ExpensesControllerPreapprovalTests
     }
 
     [HumansFact]
-    public async Task NewGet_PreselectsTheQueriedGrant_EvenWhenItIsNotTheViewers()
+    public async Task NewGet_QueriedGrant_IsPreselected()
     {
         // A finance admin filing on a member's behalf arrives from /Preapprovals with that member's
         // grant; the form must show it even though it is not in the viewer's own list.
@@ -489,7 +489,7 @@ public sealed class ExpensesControllerPreapprovalTests
     }
 
     [HumansFact]
-    public async Task NewGet_WithAGrant_PrefillsTheSubjectFromItsLabel()
+    public async Task NewGet_WithGrant_PrefillsSubject()
     {
         // The grant's label is the project name, which is what the required Subject asks for.
         var labelled = Grant("Art", Today.PlusDays(10)) with { Label = "Giant Duck" };
@@ -502,7 +502,7 @@ public sealed class ExpensesControllerPreapprovalTests
     }
 
     [HumansFact]
-    public async Task NewGet_WithoutAGrant_OffersOnlyTheViewersClaimableGrants()
+    public async Task NewGet_NoGrant_OffersViewersClaimableGrants()
     {
         var own = Grant("Own", Today.PlusDays(10));
         StubClaimable(_actorId, own);
@@ -522,7 +522,7 @@ public sealed class ExpensesControllerPreapprovalTests
     }
 
     [HumansFact]
-    public async Task NewPost_WithAGrant_CreatesWithoutAnAccount_AndOpensTheDraft()
+    public async Task NewPost_WithGrant_CreatesThenOpensDraft()
     {
         var grant = Grant("Own", Today.PlusDays(10));
         var reportId = Guid.NewGuid();
@@ -571,7 +571,7 @@ public sealed class ExpensesControllerPreapprovalTests
     }
 
     [HumansFact]
-    public async Task NewPost_ShowsTheServicesRefusal_AndKeepsTheGrantSelected()
+    public async Task NewPost_ServiceRefuses_ShowsRefusalKeepsGrant()
     {
         var grant = Grant("Own", Today.PlusDays(10));
         _reports.CreateDraftAsync(_actorId, _actorId, 0, null, grant.Id, Arg.Any<CancellationToken>())
@@ -634,7 +634,7 @@ public sealed class ExpensesControllerPreapprovalTests
     [Xunit.InlineData("Reject", true, true)]
     [Xunit.InlineData("Endorse", false, false)]
     [Xunit.InlineData("Reject", false, false)]
-    public async Task FirstReview_AuthorizesBeforeMutation_AndPassesFinanceContextOnlyForAudit(
+    public async Task FirstReview_Unauthorized_ChangesNothing(
         string action, bool financeAccess, bool permitted)
     {
         var report = ReviewRow(null) with { SubmitterUserId = Guid.NewGuid() };
@@ -699,7 +699,7 @@ public sealed class ExpensesControllerPreapprovalTests
     }
 
     [HumansFact]
-    public async Task Review_NamesEachPreapprovedReportsGrant_AndFlagsARevokedOne()
+    public async Task Review_PreapprovedReports_NameGrantFlagRevoked()
     {
         var revoked = Grant("Bus", Today.PlusDays(10), GrantStatus.Revoked);
         var held = Grant("Art", Today.PlusDays(10), GrantStatus.Claimed);
@@ -727,7 +727,7 @@ public sealed class ExpensesControllerPreapprovalTests
     }
 
     [HumansFact]
-    public void Banner_ShowsRevoked_AtEveryStatus_AndReadsAsUrgent()
+    public void Banner_RevokedGrant_ShowsUrgentAtEveryStatus()
     {
         var revoked = new PreapprovalBannerModel(Grant("Bus", Today.PlusDays(30), GrantStatus.Revoked), Today, ShowDeadline: false);
         var open = new PreapprovalBannerModel(Grant("Bus", Today.PlusDays(30)), Today, ShowDeadline: false);

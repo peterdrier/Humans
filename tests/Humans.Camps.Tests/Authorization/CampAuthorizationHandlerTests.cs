@@ -48,7 +48,7 @@ public sealed class CampAuthorizationHandlerTests
     [InlineData(true, true, true)]
     [InlineData(true, true, false)]
     [InlineData(true, false, false)]
-    public async Task MembershipAccess_UsesResolvedAccountAndDeniesMissingAccounts(
+    public async Task MembershipAccess_MissingAccount_IsDenied(
         bool eventManager, bool accountExists, bool survivorAuthorized)
     {
         var roleHolderId = eventManager ? WorkshopUserId : UserId;
@@ -117,7 +117,7 @@ public sealed class CampAuthorizationHandlerTests
 
     [HumansTheory]
     [MemberData(nameof(CampAuthorizationCases))]
-    public async Task Camp_authorization_matches_expected_scenarios(
+    public async Task CampAuthorization_Scenarios_MatchExpected(
         string userKind,
         string campKind,
         bool expected)
@@ -152,7 +152,7 @@ public sealed class CampAuthorizationHandlerTests
 
     [HumansTheory]
     [MemberData(nameof(SubmitEventCases))]
-    public async Task SubmitEvent_authorization_matches_expected_scenarios(
+    public async Task SubmitEvent_Scenarios_MatchExpected(
         string userKind,
         string campKind,
         bool expected)

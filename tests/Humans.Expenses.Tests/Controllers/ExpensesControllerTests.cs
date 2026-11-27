@@ -38,7 +38,7 @@ public sealed class ExpensesControllerTests
     [Xunit.InlineData("LineEdit", false)]
     [Xunit.InlineData("LineProofs", true)]
     [Xunit.InlineData("LineProofs", false)]
-    public async Task Historical_report_owner_pages_follow_the_merge_chain(string page, bool isMergedSubmitter)
+    public async Task OwnerPages_MergedSubmitter_FollowMergeChain(string page, bool isMergedSubmitter)
     {
         var actorId = Guid.NewGuid();
         var sourceId = Guid.NewGuid();
@@ -125,7 +125,7 @@ public sealed class ExpensesControllerTests
     [Xunit.InlineData("Approve", "Approve")]
     [Xunit.InlineData("Reject", "FinanceReject")]
     [Xunit.InlineData("HoldedRetry", "RequeueHoldedPush")]
-    public async Task Report_actions_stop_on_missing_actor_missing_report_and_denied_access(
+    public async Task ReportActions_MissingOrDenied_Stop(
         string action, string expectedOperation)
     {
         var actorId = Guid.NewGuid();
@@ -274,7 +274,7 @@ public sealed class ExpensesControllerTests
     [Xunit.InlineData(true, false, "Expenses_Iban_Saved", "IBAN guardado.")]
     [Xunit.InlineData(false, true, "Expenses_Iban_InvalidFormat", "Formato de IBAN no válido.")]
     [Xunit.InlineData(false, false, "Expenses_Iban_SaveFailed", "No se pudo guardar el IBAN.")]
-    public async Task IbanPost_LocalizesSuccessValidationAndFailureMessages(
+    public async Task IbanPost_Messages_AreLocalized(
         bool succeeded, bool validationError, string messageKey, string translated)
     {
         var actorId = Guid.NewGuid();
@@ -392,7 +392,7 @@ public sealed class ExpensesControllerTests
     }
 
     [HumansFact]
-    public async Task Index_ShowsTheReviewLink_ToAnyoneWithAClaimToSignOff()
+    public async Task Index_CanSignOff_ShowsReviewLink()
     {
         // A child-team coordinator holds no department, yet can endorse; the link must follow.
         var actorId = Guid.NewGuid();
