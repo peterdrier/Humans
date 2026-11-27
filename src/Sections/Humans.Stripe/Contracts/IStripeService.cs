@@ -77,13 +77,15 @@ public interface IStripeService : IApplicationService
     /// Every balance movement and payout created in [<paramref name="from"/>, <paramref name="to"/>) on the
     /// <c>Stripe:MirrorAccounts</c> entry named <paramref name="accountName"/>, read live, each movement with the
     /// PaymentIntent behind it. Null when that account or its key is not configured. A Stripe refusal throws
-    /// <see cref="InvalidOperationException"/>; an unreachable Stripe throws <see cref="HttpRequestException"/>.
+    /// <see cref="InvalidOperationException"/>; movements, payouts or payout contents without explicit EUR reject the
+    /// whole ledger with the same exception. An unreachable Stripe throws <see cref="HttpRequestException"/>.
     /// </summary>
     Task<StripeAccountLedger?> GetAccountLedgerAsync(string accountName, Instant from, Instant to, CancellationToken ct = default);
 
     /// <summary>
     /// What Stripe kept, in minor units, on a PaymentIntent of the named account. Null when unknown: the account is
-    /// not configured, the charge has no balance transaction yet, or Stripe could not be read (logged). Never throws
+    /// not configured, the charge has no balance transaction yet, or Stripe could not be read (logged). A balance
+    /// transaction without explicit EUR also returns null and is logged. Never throws
     /// but on cancellation, so a fee lookup never holds up a paid order.
     /// </summary>
     Task<long?> GetAccountPaymentFeeAsync(string accountName, string paymentIntentId, CancellationToken ct = default);

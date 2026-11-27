@@ -34,7 +34,10 @@ internal sealed partial class StripeService
             await foreach (var t in new BalanceTransactionService(client).ListAutoPagingAsync(
                                new BalanceTransactionListOptions { Created = period, Limit = 100, Expand = ["data.source"] },
                                request, ct))
+            {
+                RequireEur(t.Currency, $"balance transaction {t.Id}");
                 transactions.Add(t);
+            }
 
             // A refund or dispute usually names an intent from before the period: list from a day earlier, read the rest.
             var intents = new Dictionary<string, PaymentIntent>(StringComparer.Ordinal);
@@ -82,6 +85,7 @@ internal sealed partial class StripeService
             await foreach (var payout in new PayoutService(client).ListAutoPagingAsync(
                                new PayoutListOptions { Created = period, Limit = 100 }, request, ct))
             {
+                RequireEur(payout.Currency, $"payout {payout.Id}");
                 long? contentsNet = null;
                 var contentsCount = 0;
                 // Stripe lists a payout's contents only for automatic payouts, and in full only once it has finished
@@ -94,6 +98,7 @@ internal sealed partial class StripeService
                     {
                         if (string.Equals(t.Type, "payout", StringComparison.Ordinal))
                             continue;
+                        RequireEur(t.Currency, $"payout movement {t.Id}");
                         contentsNet += t.Net;
                         contentsCount++;
                     }
@@ -153,7 +158,16 @@ internal sealed partial class StripeService
             return null;
         try
         {
-            return (await read(client, request))?.LatestCharge?.BalanceTransaction?.Fee;
+            var transaction = (await read(client, request))?.LatestCharge?.BalanceTransaction;
+            if (transaction is null)
+                return null;
+            if (!string.Equals(transaction.Currency, "eur", StringComparison.OrdinalIgnoreCase))
+            {
+                logger.LogWarning("Stripe fee of {What} on {Account} has currency {Currency}; EUR is required",
+                    what, accountName, transaction.Currency);
+                return null;
+            }
+            return transaction.Fee;
         }
         catch (Exception ex) when (ex is StripeException or HttpRequestException
                                        || (ex is TaskCanceledException && !ct.IsCancellationRequested))
@@ -224,6 +238,12 @@ internal sealed partial class StripeService
         {
             return new(false, $"Stripe could not be reached: {ex.Message}");
         }
+    }
+
+    private static void RequireEur(string? currency, string source)
+    {
+        if (!string.Equals(currency, "eur", StringComparison.OrdinalIgnoreCase))
+            throw new InvalidOperationException($"Stripe {source} does not declare EUR currency.");
     }
 
     private static string Quoted(string value) => value.Replace("\\", "\\\\", StringComparison.Ordinal).Replace("'", "\\'", StringComparison.Ordinal);

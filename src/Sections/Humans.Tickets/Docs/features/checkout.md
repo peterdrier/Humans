@@ -93,6 +93,8 @@ difference everywhere.
 
 ### Fees and payouts
 
+Stripe account ledger reads require explicit EUR on every amount they return or sum. Unknown or other currencies reject the ledger; fee lookups leave the fee unknown, so foreign minor units never enter EUR reconciliation totals.
+
 Where Humans can read the platform's payment account (the shared Tickets Stripe account through the Stripe section's
 `Stripe:MirrorAccounts` entry `Tickets`), the page and the daily run
 also reconcile it by the day the money moved (`GetPaymentLedgerAsync`), so a refund months after the sale counts in the

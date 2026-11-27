@@ -77,10 +77,10 @@ public sealed class StripeAccountReadTests
     private static string List(string url, params string[] items) =>
         $$"""{"object":"list","url":"{{url}}","has_more":false,"data":[{{string.Join(",", items)}}]}""";
 
-    private static string Intent(string id, string orderId, long? fee = null, string status = "succeeded")
+    private static string Intent(string id, string orderId, long? fee = null, string status = "succeeded", string? currency = "EUR")
     {
         var charge = fee is { } f
-            ? $$$"""{"id":"ch_{{{id}}}","object":"charge","balance_transaction":{"id":"txn_{{{id}}}","object":"balance_transaction","fee":{{{f}}}}}"""
+            ? $$$"""{"id":"ch_{{{id}}}","object":"charge","balance_transaction":{"id":"txn_{{{id}}}","object":"balance_transaction","currency":{{{System.Text.Json.JsonSerializer.Serialize(currency)}}},"fee":{{{f}}}}}"""
             : "null";
         return $$"""
             {"id":"{{id}}","object":"payment_intent","status":"{{status}}","description":"D-{{orderId}}",
@@ -90,31 +90,94 @@ public sealed class StripeAccountReadTests
 
     private static readonly Dictionary<string, string> Order42 = new(StringComparer.Ordinal) { ["event_id"] = "7", ["order_id"] = "42" };
 
+    public enum LedgerAmount { Movement, Payout, PayoutContents }
+    public enum FeeRead { Direct, Search, Fallback }
+
+    [HumansTheory]
+    [InlineData(LedgerAmount.Movement, null)]
+    [InlineData(LedgerAmount.Movement, "")]
+    [InlineData(LedgerAmount.Movement, "usd")]
+    [InlineData(LedgerAmount.Payout, null)]
+    [InlineData(LedgerAmount.Payout, "")]
+    [InlineData(LedgerAmount.Payout, "usd")]
+    [InlineData(LedgerAmount.PayoutContents, null)]
+    [InlineData(LedgerAmount.PayoutContents, "")]
+    [InlineData(LedgerAmount.PayoutContents, "usd")]
+    public async Task Ledger_UnsupportedCurrency_RejectsAmounts(LedgerAmount source, string? currency)
+    {
+        var currencyJson = System.Text.Json.JsonSerializer.Serialize(currency);
+        var transaction = $$"""{"id":"txn_1","object":"balance_transaction","currency":{{currencyJson}},"type":"charge","amount":100,"fee":10,"net":90,"created":1798884000}""";
+        Answer("/v1/balance_transactions", source == LedgerAmount.Movement
+            ? List("/v1/balance_transactions", transaction) : List("/v1/balance_transactions"));
+        Answer("/v1/payment_intents", List("/v1/payment_intents"));
+        var payoutCurrency = source == LedgerAmount.Payout ? currencyJson : "\"eur\"";
+        var automatic = source == LedgerAmount.PayoutContents ? "true" : "false";
+        Answer("/v1/payouts", source == LedgerAmount.Movement ? List("/v1/payouts")
+            : List("/v1/payouts", $$"""{"id":"po_1","object":"payout","currency":{{payoutCurrency}},"amount":90,"automatic":{{automatic}},"status":"paid","reconciliation_status":"completed","created":1798884000,"arrival_date":1798884000}"""));
+        if (source == LedgerAmount.PayoutContents)
+            Answer("/v1/balance_transactions", List("/v1/balance_transactions", transaction));
+
+        var read = () => Service(OwnKey()).GetAccountLedgerAsync("HiEvents", Now, Now, Ct);
+
+        await read.Should().ThrowAsync<InvalidOperationException>().WithMessage("*EUR*");
+    }
+
+    [HumansTheory]
+    [InlineData(FeeRead.Direct, null)]
+    [InlineData(FeeRead.Direct, "")]
+    [InlineData(FeeRead.Direct, "usd")]
+    [InlineData(FeeRead.Search, null)]
+    [InlineData(FeeRead.Search, "")]
+    [InlineData(FeeRead.Search, "usd")]
+    [InlineData(FeeRead.Fallback, null)]
+    [InlineData(FeeRead.Fallback, "")]
+    [InlineData(FeeRead.Fallback, "usd")]
+    public async Task Fee_UnsupportedCurrency_ReturnsUnknown(FeeRead source, string? currency)
+    {
+        var intent = Intent("pi_1", "42", fee: 100, currency: currency);
+        if (source == FeeRead.Direct)
+            Answer("/v1/payment_intents/pi_1", intent);
+        else
+        {
+            Answer("/v1/payment_intents/search", source == FeeRead.Search
+                ? List("/v1/payment_intents/search", intent) : List("/v1/payment_intents/search"));
+            if (source == FeeRead.Fallback)
+                Answer("/v1/payment_intents", List("/v1/payment_intents", intent));
+        }
+        var service = Service(OwnKey());
+
+        var fee = source == FeeRead.Direct
+            ? await service.GetAccountPaymentFeeAsync("HiEvents", "pi_1", Ct)
+            : await service.FindAccountPaymentFeeAsync("HiEvents", Order42, Now, Ct);
+
+        fee.Should().BeNull();
+    }
+
     [HumansFact]
     public async Task Ledger_carries_each_movement_s_PaymentIntent_and_each_settled_payout_s_contents()
     {
         Answer("/v1/balance_transactions", List("/v1/balance_transactions",
             """
-            {"id":"txn_c","object":"balance_transaction","type":"charge","reporting_category":"charge","amount":22500,"fee":340,"net":22160,"created":1798884000,
+            {"id":"txn_c","object":"balance_transaction","currency":"eur","type":"charge","reporting_category":"charge","amount":22500,"fee":340,"net":22160,"created":1798884000,
              "source":{"id":"ch_1","object":"charge","payment_intent":"pi_new","metadata":{}}}
             """,
             """
-            {"id":"txn_r","object":"balance_transaction","type":"refund","reporting_category":"refund","amount":-5000,"fee":0,"net":-5000,"created":1798884100,
+            {"id":"txn_r","object":"balance_transaction","currency":"eur","type":"refund","reporting_category":"refund","amount":-5000,"fee":0,"net":-5000,"created":1798884100,
              "source":{"id":"re_1","object":"refund","payment_intent":"pi_old","metadata":{}}}
             """,
             """
-            {"id":"txn_p","object":"balance_transaction","type":"payout","reporting_category":"payout","amount":-17160,"fee":0,"net":-17160,"created":1798884300,
+            {"id":"txn_p","object":"balance_transaction","currency":"eur","type":"payout","reporting_category":"payout","amount":-17160,"fee":0,"net":-17160,"created":1798884300,
              "source":{"id":"po_1","object":"payout"}}
             """));
         Answer("/v1/payment_intents", List("/v1/payment_intents", Intent("pi_new", "42")));
         Answer("/v1/payment_intents/pi_old", Intent("pi_old", "41"));
         Answer("/v1/payouts", List("/v1/payouts",
-            """{"id":"po_1","object":"payout","amount":17160,"arrival_date":1798934400,"automatic":true,"status":"paid","reconciliation_status":"completed","created":1798884300}""",
-            """{"id":"po_2","object":"payout","amount":900,"arrival_date":1798934400,"automatic":true,"status":"in_transit","reconciliation_status":"in_progress","created":1798884400}"""));
+            """{"id":"po_1","object":"payout","currency":"eur","amount":17160,"arrival_date":1798934400,"automatic":true,"status":"paid","reconciliation_status":"completed","created":1798884300}""",
+            """{"id":"po_2","object":"payout","currency":"eur","amount":900,"arrival_date":1798934400,"automatic":true,"status":"in_transit","reconciliation_status":"in_progress","created":1798884400}"""));
         Answer("/v1/balance_transactions", List("/v1/balance_transactions",
-            """{"id":"txn_c","object":"balance_transaction","type":"charge","net":22160}""",
-            """{"id":"txn_r","object":"balance_transaction","type":"refund","net":-5000}""",
-            """{"id":"txn_p","object":"balance_transaction","type":"payout","net":-17160}"""));
+            """{"id":"txn_c","object":"balance_transaction","currency":"eur","type":"charge","net":22160}""",
+            """{"id":"txn_r","object":"balance_transaction","currency":"eur","type":"refund","net":-5000}""",
+            """{"id":"txn_p","object":"balance_transaction","currency":"eur","type":"payout","net":-17160}"""));
 
         var ledger = await Service(OwnKey()).GetAccountLedgerAsync("HiEvents", Now - Duration.FromDays(1), Now, Ct);
 
@@ -133,7 +196,7 @@ public sealed class StripeAccountReadTests
     public async Task Ledger_MovementMetadata_PreservesOrderReference()
     {
         Answer("/v1/balance_transactions", List("/v1/balance_transactions",
-            """{"id":"txn_r","object":"balance_transaction","reporting_category":"refund","source":{"id":"re_1","object":"refund","payment_intent":"pi_1","metadata":{"order_id":"older-order"}}}"""));
+            """{"id":"txn_r","object":"balance_transaction","currency":"eur","reporting_category":"refund","source":{"id":"re_1","object":"refund","payment_intent":"pi_1","metadata":{"order_id":"older-order"}}}"""));
         Answer("/v1/payment_intents", List("/v1/payment_intents", Intent("pi_1", "42")));
         Answer("/v1/payouts", List("/v1/payouts"));
 

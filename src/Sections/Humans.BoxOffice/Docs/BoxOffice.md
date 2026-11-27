@@ -72,6 +72,8 @@ None. The section owns no tables. The Checkout Session is the record of the paym
 
 ## Invariants
 
+- Stripe reporting accepts explicit EUR only. A movement, payout or summed payout content with another or missing currency rejects the ledger; an unverified fee remains unknown.
+
 - The checkout API key must be nonempty and contain no whitespace, matching Stripe.net client validation. An unusable key makes the platform unconfigured; order operations refuse through `TicketingPlatformException` before SDK construction, reporting returns null, and connection checks report configuration without Stripe calls or key text. Webhook signing secrets retain their separate validation.
 
 - Charges EUR only; a non-EUR request, a negative line or a non-positive total throws `TicketingPlatformException` before

@@ -132,6 +132,7 @@ integration uses — see [`memory/code/stripe-restricted-keys.md`](../../../../m
   no replacement is created and the completed session comes back (Status `complete`, no Url).
 - EUR → minor units rounds half away from zero; minor units → EUR is exact. Both conversions
   live only in `ToStripeMinorUnits` / `FromStripeMinorUnits`.
+- Live account reads also require explicit EUR, case-insensitively: a non-EUR or missing currency on any movement, payout or summed payout-content movement rejects the whole ledger. Direct, search and search-fallback fee reads return logged unknown (null) when the balance transaction lacks EUR; they never reinterpret another currency as EUR cents. The mirror still retains and flags non-EUR rows with their currencies.
 - Every amount read requires explicit EUR, case-insensitively. Ticket fee reads require it on
   the balance transaction and every fee entry — the charge's currency cannot establish the
   settlement currency — and throw before returning any amount. Store session reads require it

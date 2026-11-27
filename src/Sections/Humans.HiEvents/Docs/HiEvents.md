@@ -60,6 +60,8 @@ None — the section owns no tables.
 
 ## Invariants
 
+- Stripe reporting accepts explicit EUR only. A movement, payout or summed payout content with another or missing currency rejects the ledger; an unverified fee remains unknown.
+
 - Reporting-category classification uses `PaymentLedgerEntry.KindOf`, shared by all three ticketing adapters.
 
 - `IsConfigured` requires absolute HTTP(S) API/app URLs and a nonblank API key that can form an HTTP authorization header.

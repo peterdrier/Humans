@@ -47,6 +47,8 @@ None. The section owns no tables. pretix's order is the record of the payment; T
 
 ## Invariants
 
+- Stripe reporting accepts explicit EUR only. A movement, payout or summed payout content with another or missing currency rejects the ledger; an unverified fee remains unknown.
+
 - Reporting-category classification uses `PaymentLedgerEntry.KindOf`, shared by all three ticketing adapters.
 
 - `CreateOrderAsync` creates the order through `POST .../orders/` with `force` (Humans owns capacity), `send_email: false` (Humans sends the ticket mail), `expires` set to `ExpiresAt`, the Humans order id in `api_meta.humans_order_id`, and one position per line at the line's exact price.
