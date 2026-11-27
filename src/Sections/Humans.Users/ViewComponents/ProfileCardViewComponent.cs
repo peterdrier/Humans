@@ -51,6 +51,14 @@ public sealed class ProfileCardViewComponent(
 
         var visibility = await contactFieldService.GetProfileCardVisibilityAsync(userId, viewerUserId, ct);
         var canViewLegalName = visibility.CanViewLegalName;
+        // Admin mode shows the card at the owner's level, but the message button is about the
+        // signed-in viewer: Board and admins can message a member they are looking at.
+        var canSendMessage = visibility.CanSendMessage;
+        if (viewMode == ProfileCardViewMode.Admin
+            && UserClaimsPrincipal.GetUserId() is { } adminViewerId && adminViewerId != userId)
+        {
+            canSendMessage = (await contactFieldService.GetProfileCardVisibilityAsync(userId, adminViewerId, ct)).CanSendMessage;
+        }
         var visibleEmails = await userEmailService.GetVisibleEmailsAsync(userId, visibility.AccessLevel, ct);
 
         var teamsById = await teamService.GetTeamsAsync(ct);
@@ -125,7 +133,7 @@ public sealed class ProfileCardViewComponent(
                     Proficiency = pl.Proficiency
                 }).ToList(),
             PreferredLanguage = info.PreferredLanguage,
-            CanSendMessage = visibility.CanSendMessage
+            CanSendMessage = canSendMessage
         };
 
         return View(Layouts.Contains(layout) ? layout : "Default", model);

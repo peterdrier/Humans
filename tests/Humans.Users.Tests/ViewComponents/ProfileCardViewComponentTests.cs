@@ -161,6 +161,45 @@ public sealed class ProfileCardViewComponentTests
     }
 
     [HumansFact]
+    public async Task AdminCard_ViewerNotOwner_UsesViewerForMessage()
+    {
+        var ownerId = Guid.NewGuid();
+        var adminId = Guid.NewGuid();
+        var users = Substitute.For<IUserService>();
+        users.GetUserInfoAsync(ownerId, Arg.Any<CancellationToken>()).Returns(
+            UserInfo.Create(new User { Id = ownerId, BurnerName = "Ada" }, [], [], UserFixtures.Profile()));
+        var teams = Substitute.For<ITeamService>();
+        teams.GetTeamsAsync(Arg.Any<CancellationToken>()).Returns(new Dictionary<Guid, TeamInfo>());
+        var contacts = Substitute.For<IContactFieldService>();
+        contacts.GetProfileCardVisibilityAsync(ownerId, ownerId, Arg.Any<CancellationToken>())
+            .Returns(new ProfileCardVisibility(true, ContactFieldVisibility.BoardOnly, false));
+        contacts.GetProfileCardVisibilityAsync(ownerId, adminId, Arg.Any<CancellationToken>())
+            .Returns(new ProfileCardVisibility(true, ContactFieldVisibility.BoardOnly, true));
+        var component = new ProfileCardViewComponent(users, contacts, Substitute.For<IUserEmailService>(), teams)
+        {
+            ViewComponentContext = new ViewComponentContext
+            {
+                ViewContext = new ViewContext
+                {
+                    HttpContext = new DefaultHttpContext
+                    {
+                        User = new ClaimsPrincipal(new ClaimsIdentity(
+                            [new Claim(ClaimTypes.NameIdentifier, adminId.ToString())], "test"))
+                    },
+                    ViewData = new ViewDataDictionary(new EmptyModelMetadataProvider(), new ModelStateDictionary())
+                }
+            }
+        };
+
+        var result = await component.InvokeAsync(ownerId, ProfileCardViewMode.Admin);
+
+        var model = result.Should().BeOfType<ViewViewComponentResult>().Which.ViewData!.Model
+            .Should().BeOfType<ProfileCardViewModel>().Which;
+        model.CanSendMessage.Should().BeTrue();
+        await contacts.Received(1).GetVisibleContactFieldsAsync(ownerId, ownerId, Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
     public async Task InvokeAsync_RequestAborted_PropagatesCancellation()
     {
         using var aborted = new CancellationTokenSource();
