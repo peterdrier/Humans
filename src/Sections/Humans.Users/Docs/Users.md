@@ -564,7 +564,7 @@ Self-service profile functionality lives under `/Profile`, split by shape across
 | `/Gdpr/RequestDeletion` | POST — start the 30-day deletion countdown — served by Gdpr's `MemberDataController`; the My Data page's form posts to it |
 | `/Gdpr/DownloadData` | GDPR Article 15 JSON export download — served by Gdpr's `MemberDataController`; linked from the My Data page |
 | `/Email/Outbox` | Own email outbox — served by Email's `MemberOutboxController`, linked from the Profile page |
-| `/Profile/{id}` | View another human's profile; `UsersPolicies.MedicalDataViewer` holders also get a medical-conditions card whose button calls the audited reveal |
+| `/Profile/{id}` | View another human's profile; `UsersPolicies.MedicalDataViewer` holders also get a medical-conditions card: the button that calls the audited reveal when something is on file, otherwise "No medical conditions on file." with no button. Whether something is on file is not audited; only the reveal is |
 | `/Profile/{id}/Popover` | Quick profile popup |
 | `/Profile/{id}/Medical/Reveal` | POST (`UsersPolicies.MedicalDataViewer`: Admin, Board) — audited reveal of one member's medical conditions as JSON (`{ text }`, null when nothing is on file, then nothing is audited); a merged-away id resolves to the survivor. The actor is resolved first: a merged session audits the survivor, a missing account gets Forbid with no medical read. The button is a card on `/Profile/{id}` for policy holders, never on the member's own view |
 | `/Profile/{id}/PublicPopover` | `[AllowAnonymous]` — public-page coordinator popover; 404 unless the target coordinates a public-page team ([spec](features/public-coordinator-popover.md)) |
