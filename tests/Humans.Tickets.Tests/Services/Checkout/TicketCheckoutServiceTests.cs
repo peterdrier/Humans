@@ -2398,6 +2398,115 @@ public sealed partial class TicketCheckoutServiceTests
             Arg.Is<RefundRequest>(r => r.RefundId == _repo.Refunds[0].RefundId && r.CreatedAt == Now), Arg.Any<CancellationToken>());
     }
 
+    [HumansTheory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task ReconcileOpenOrdersAsync_NewRefundError_PersistsOnce(bool named)
+    {
+        var order = await BuyAndPayAsync(Buy(), _buyerId);
+        var refund = new TicketCheckoutRefund
+        {
+            Id = Guid.NewGuid(),
+            OrderId = order.Id,
+            AmountMinor = 5000,
+            State = RefundState.Pending,
+            PlatformRefundId = named ? "re_ours" : null,
+            FailureReason = "timeout",
+            CreatedAt = Now,
+        };
+        _repo.Refunds.Add((refund.Id, refund));
+        _platform.RefundAsync(Arg.Any<RefundRequest>(), Arg.Any<CancellationToken>())
+            .Returns<RefundResult>(_ => throw new TicketingPlatformException("Retry window expired"));
+
+        await _service.ReconcileOpenOrdersAsync(Ct);
+
+        refund.State.Should().Be(RefundState.Pending);
+        _repo.RefundWrites.Should().ContainSingle().Which.FailureReason.Should().Be("Retry window expired");
+        var events = _repo.Events.Count;
+        await _service.ReconcileOpenOrdersAsync(Ct);
+        _repo.RefundWrites.Should().ContainSingle();
+        _repo.Events.Should().HaveCount(events);
+    }
+
+    [HumansTheory]
+    [InlineData(RefundState.Pending)]
+    [InlineData(RefundState.Succeeded)]
+    [InlineData(RefundState.Failed)]
+    [InlineData(RefundState.ManualRequired)]
+    public async Task PlatformOrderChangedAsync_RefundOutcome_PersistsPayload(RefundState state)
+    {
+        var order = await BuyAndPayAsync(Buy(), _buyerId);
+        var refund = new TicketCheckoutRefund
+        {
+            Id = Guid.NewGuid(),
+            OrderId = order.Id,
+            AmountMinor = 5000,
+            State = RefundState.Pending,
+            PlatformRefundId = "re_ours",
+            FailureReason = "old error",
+            CreatedAt = Now,
+        };
+        _repo.Refunds.Add((refund.Id, refund));
+        var reason = state is RefundState.Failed or RefundState.ManualRequired ? "Provider instructions" : null;
+        var manualUrl = state == RefundState.ManualRequired ? new Uri("https://platform.example/manual") : null;
+        _platform.RefundAsync(Arg.Any<RefundRequest>(), Arg.Any<CancellationToken>())
+            .Returns(new RefundResult(state, "re_ours", reason, manualUrl));
+
+        await _service.PlatformOrderChangedAsync("test", order.PlatformOrderId!, Ct);
+
+        var saved = _repo.RefundWrites.Should().ContainSingle().Subject;
+        saved.State.Should().Be(state);
+        saved.FailureReason.Should().Be(reason);
+        saved.ManualRefundUrl.Should().Be(manualUrl?.ToString());
+    }
+
+    [HumansFact]
+    public async Task PlatformOrderChangedAsync_ManualRefundPaid_ClearsInstructions()
+    {
+        var order = await BuyAndPayAsync(Buy(), _buyerId);
+        var refund = new TicketCheckoutRefund
+        {
+            Id = Guid.NewGuid(),
+            OrderId = order.Id,
+            AmountMinor = 5000,
+            State = RefundState.ManualRequired,
+            FailureReason = "Pay by hand",
+            ManualRefundUrl = "https://platform.example/manual",
+            CreatedAt = Now,
+        };
+        _repo.Refunds.Add((refund.Id, refund));
+        _platform.GetStatusAsync(order.PlatformOrderId!, Arg.Any<CancellationToken>())
+            .Returns(new PlatformOrderStatus(PlatformOrderState.Paid, 0, "card", Now, RefundedMinor: 5000));
+
+        await _service.PlatformOrderChangedAsync("test", order.PlatformOrderId!, Ct);
+
+        var saved = _repo.RefundWrites.Should().ContainSingle().Subject;
+        saved.State.Should().Be(RefundState.Succeeded);
+        saved.FailureReason.Should().BeNull();
+        saved.ManualRefundUrl.Should().BeNull();
+    }
+
+    [HumansTheory]
+    [InlineData(998, true)]
+    [InlineData(999, false)]
+    public async Task RefundAsync_LongFailure_BoundsStoredReason(int prefixLength, bool keepsEmoji)
+    {
+        var order = await BuyAndPayAsync(Buy(), _buyerId);
+        var prefix = new string('x', prefixLength);
+        _platform.RefundAsync(Arg.Any<RefundRequest>(), Arg.Any<CancellationToken>())
+            .Returns<RefundResult>(_ => throw new TicketingPlatformException(prefix + "😀tail"));
+
+        await _service.RefundAsync(order.Id, 5000, "Returned", _buyerId, Ct);
+
+        var saved = _repo.RefundWrites.Should().ContainSingle().Subject;
+        saved.FailureReason.Should().Be(prefix + (keepsEmoji ? "😀" : string.Empty));
+        saved.State.Should().Be(RefundState.Pending);
+        var events = _repo.Events.Count;
+        await _service.ReconcileOpenOrdersAsync(Ct);
+        _repo.RefundWrites.Should().ContainSingle();
+        _repo.Events.Should().HaveCount(events);
+    }
+
     [HumansFact]
     public async Task An_earlier_failed_refund_does_not_fail_a_later_one_still_in_flight()
     {
@@ -2887,9 +2996,12 @@ public sealed partial class TicketCheckoutServiceTests
             Refunds.Add((refund.Id, refund));
             return Task.CompletedTask;
         }
+        public List<(Guid RefundId, RefundState State, string? FailureReason, string? ManualRefundUrl)> RefundWrites { get; } = [];
+
         public Task UpdateRefundAsync(TicketCheckoutRefund refund, CancellationToken ct = default)
         {
             ct.ThrowIfCancellationRequested();
+            RefundWrites.Add((refund.Id, refund.State, refund.FailureReason, refund.ManualRefundUrl));
             return Task.CompletedTask;
         }
 

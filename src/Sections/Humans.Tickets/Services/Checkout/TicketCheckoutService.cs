@@ -761,16 +761,19 @@ internal sealed partial class TicketCheckoutService(
                 && order.PlatformOrderId is not null && PlatformFor(order.PlatformKey) is { } platform
                 ? await OwnRefundStateAsync(platform, order, refund, CancellationToken.None)
                 : null;
-            if (own is { State: RefundState.Succeeded }
-                || (refund.State == RefundState.ManualRequired && refund.AmountMinor <= covered))
+            if (own is not null)
+            {
+                if (own.State != RefundState.Failed)
+                    covered -= refund.AmountMinor;
+                if (own is { State: RefundState.Failed, FailureReason: null })
+                    own = own with { FailureReason = $"{order.PlatformKey} reports the refund failed" };
+                if (!ApplyRefundResult(refund, own))
+                    continue;
+            }
+            else if (refund.State == RefundState.ManualRequired && refund.AmountMinor <= covered)
             {
                 covered -= refund.AmountMinor;
-                refund.State = RefundState.Succeeded;
-            }
-            else if (own is { State: RefundState.Failed })
-            {
-                refund.State = RefundState.Failed;
-                refund.FailureReason = Truncate(own.FailureReason ?? $"{order.PlatformKey} reports the refund failed");
+                ApplyRefundResult(refund, new RefundResult(RefundState.Succeeded, refund.PlatformRefundId, null));
             }
             else
             {
@@ -787,7 +790,7 @@ internal sealed partial class TicketCheckoutService(
         return changed;
     }
 
-    private async Task<RefundResult?> OwnRefundStateAsync(
+    private async Task<RefundResult> OwnRefundStateAsync(
         ITicketingPlatform platform, TicketCheckoutOrder order, TicketCheckoutRefund refund, CancellationToken ct)
     {
         try
@@ -797,7 +800,7 @@ internal sealed partial class TicketCheckoutService(
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
             logger.LogWarning(ex, "State of refund {RefundId} could not be read from {Platform}", refund.Id, order.PlatformKey);
-            return null;
+            return new RefundResult(RefundState.Pending, refund.PlatformRefundId, ex.Message);
         }
     }
 
@@ -884,16 +887,13 @@ internal sealed partial class TicketCheckoutService(
             result = new RefundResult(RefundState.Pending, null, ex.Message);
         }
 
-        if (resend && result.State == refund.State && string.Equals(result.PlatformRefundId, refund.PlatformRefundId, StringComparison.Ordinal))
+        var changed = ApplyRefundResult(refund, result);
+        if (resend && !changed)
         {
             logger.LogInformation("Resent refund {RefundId} of order {OrderId} is still {State}", refund.Id, order.Id, result.State);
             return result;
         }
 
-        refund.State = result.State;
-        refund.PlatformRefundId = result.PlatformRefundId;
-        refund.FailureReason = result.FailureReason;
-        refund.ManualRefundUrl = result.ManualRefundUrl?.ToString();
         await repository.UpdateRefundAsync(refund, ct);
         await TimelineAsync(order.Id, TicketCheckoutOrderEventKind.RefundSettled,
             $"{order.PlatformKey} answered {result.State}" + (result.PlatformRefundId is { } refundRef ? $" ({refundRef})" : string.Empty) +
@@ -907,6 +907,17 @@ internal sealed partial class TicketCheckoutService(
         if (result.State is RefundState.Succeeded or RefundState.Pending)
             await RecoverAsync(order, ct);
         return result;
+    }
+
+    private static bool ApplyRefundResult(TicketCheckoutRefund refund, RefundResult result)
+    {
+        var before = (refund.State, refund.PlatformRefundId, refund.FailureReason, refund.ManualRefundUrl);
+        refund.State = result.State;
+        refund.PlatformRefundId = result.PlatformRefundId;
+        refund.FailureReason = result.State != RefundState.Succeeded && result.FailureReason is { } failure
+            ? Truncate(failure, 1000) : null;
+        refund.ManualRefundUrl = result.State == RefundState.ManualRequired ? result.ManualRefundUrl?.ToString() : null;
+        return before != (refund.State, refund.PlatformRefundId, refund.FailureReason, refund.ManualRefundUrl);
     }
 
     public async Task<CheckoutMutationResult> CancelAsync(Guid orderId, Guid userId, CancellationToken ct = default)
