@@ -13,7 +13,7 @@ public class AuditViewerServiceTests
     private static readonly AuditActionRegistry Registry = new([new TestActions()]);
 
     [HumansFact]
-    public async Task GetForUserAsync_ResolvesActorAndSubjectDisplayNames()
+    public async Task GetForUserAsync_ResolvesDisplayNames()
     {
         var viewer = Guid.NewGuid();
         var actor = Guid.NewGuid();
@@ -62,7 +62,7 @@ public class AuditViewerServiceTests
     }
 
     [HumansFact]
-    public async Task GetForUserAsync_RoundTripsToRenderPlainText_WithViewerSubstitution()
+    public async Task GetForUserAsync_ViewerIsActor_RendersYou()
     {
         var viewer = Guid.NewGuid();
         var actor = Guid.NewGuid();
@@ -91,7 +91,7 @@ public class AuditViewerServiceTests
     }
 
     [HumansFact]
-    public async Task GetForUserAsync_ResolvesTeamNameAndSlugFromTheTeamContributor()
+    public async Task GetForUserAsync_TeamRow_ResolvesTeamName()
     {
         var viewer = Guid.NewGuid();
         var teamId = Guid.NewGuid();
@@ -124,7 +124,7 @@ public class AuditViewerServiceTests
     }
 
     [HumansFact]
-    public async Task GetPageAsync_ResolvesNamesIntoEntries()
+    public async Task GetPageAsync_ResolvesNames()
     {
         var actor = Guid.NewGuid();
         var entry = MakeEntry(

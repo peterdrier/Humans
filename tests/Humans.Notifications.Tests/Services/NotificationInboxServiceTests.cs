@@ -68,7 +68,7 @@ public class NotificationInboxServiceTests : IDisposable
     }
 
     [HumansFact]
-    public async Task ContributeForUserAsync_ExportsOnlyTheUsersOwnRows_WithoutTheActionLabel()
+    public async Task ContributeForUserAsync_ExportsOnlyOwnRows()
     {
         var own = await CreateNotificationAsync();
         var other = new Notification
@@ -121,7 +121,7 @@ public class NotificationInboxServiceTests : IDisposable
     }
 
     [HumansFact]
-    public async Task BadgeReadStartedBeforeMarkAllRead_CannotRepublishStaleCounts()
+    public async Task GetBadgeCounts_ReadRacesMarkAllRead_StaysFresh()
     {
         var ct = Xunit.TestContext.Current.CancellationToken;
         var snapshot = new TaskCompletionSource<(int Actionable, int Informational)>(TaskCreationOptions.RunContinuationsAsynchronously);
@@ -139,7 +139,7 @@ public class NotificationInboxServiceTests : IDisposable
     }
 
     [HumansFact]
-    public async Task PurgeExpiredAsync_UpdatesBadgesForAllRecipientsOfStaleAndRetiredNotifications()
+    public async Task PurgeExpiredAsync_PurgedRows_UpdateRecipientBadges()
     {
         var ct = Xunit.TestContext.Current.CancellationToken;
         var otherUserId = Guid.NewGuid();
@@ -216,7 +216,7 @@ public class NotificationInboxServiceTests : IDisposable
     }
 
     [HumansFact]
-    public async Task ResolveAsync_LeavesReadAtAlone_ButStillClearsTheUnreadCount()
+    public async Task ResolveAsync_Unread_ClearsUnreadCount()
     {
         // Resolve leaves ReadAt alone: unread queries also filter ResolvedAt == null.
         var notification = await CreateNotificationAsync(NotificationClass.Actionable);
@@ -234,7 +234,7 @@ public class NotificationInboxServiceTests : IDisposable
     }
 
     [HumansFact]
-    public async Task GetInboxAsync_ResolvedFilter_ReportsTheAllTab_NotTheOneAskedFor()
+    public async Task GetInboxAsync_ResolvedFilter_ReportsAllTab()
     {
         await CreateNotificationAsync(resolvedAt: _clock.GetCurrentInstant(), resolvedByUserId: _userId);
 
@@ -469,7 +469,7 @@ public class NotificationInboxServiceTests : IDisposable
     }
 
     [HumansFact]
-    public async Task ClickThroughAsync_MarksReadAndReturnsUrl()
+    public async Task ClickThroughAsync_Unread_MarksRead()
     {
         var notification = await CreateNotificationAsync();
 

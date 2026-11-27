@@ -89,7 +89,7 @@ Base's.
   (Consent) and `UserState.Rejected` (Users), de-provisions the approval-gated system teams
   (Volunteers, Colaboradors, Asociados), and notifies the person.
   (`Services/OnboardingService.cs:35`; pinned on the success path by
-  `RejectSignupAsync_OnSuccess_AuditsDeprovisionsAllThreeTeamsAndNotifies` in
+  `RejectSignupAsync_Success_DeprovisionsTeams` in
   `tests/Humans.Onboarding.Tests/Services/OnboardingServiceTests.cs`, which fails if a team sync
   or the notification is dropped.)
 - **Nothing in the funnel notifies a coordinator.** The threshold check writes the status and

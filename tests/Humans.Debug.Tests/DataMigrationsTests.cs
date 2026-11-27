@@ -51,7 +51,7 @@ public class DataMigrationsTests
     private DataMigrationService Service => _services.GetRequiredService<DataMigrationService>();
 
     [HumansFact]
-    public async Task Reports_carry_the_pending_count_and_every_pending_row()
+    public async Task Reports_CarryEveryPendingRow()
     {
         var report = (await Service.GetReportsAsync(Ct)).Should().ContainSingle().Subject;
 
@@ -62,7 +62,7 @@ public class DataMigrationsTests
     }
 
     [HumansFact]
-    public async Task Apply_runs_the_owner_delegate_for_the_actor_and_audits_key_actor_and_rows()
+    public async Task Apply_KnownKey_RunsWithAudit()
     {
         var rows = await Service.ApplyAsync(Key, _actorId, Ct);
 
@@ -75,7 +75,7 @@ public class DataMigrationsTests
     }
 
     [HumansFact]
-    public async Task A_second_apply_finds_nothing_pending()
+    public async Task Apply_SecondTime_FindsNothingPending()
     {
         await Service.ApplyAsync(Key, _actorId, Ct);
 
@@ -84,7 +84,7 @@ public class DataMigrationsTests
     }
 
     [HumansFact]
-    public async Task Apply_of_an_unknown_key_runs_nothing_and_audits_nothing()
+    public async Task Apply_UnknownKey_RunsNothing()
     {
         (await Service.ApplyAsync("nope.missing", _actorId, Ct)).Should().BeNull();
 
@@ -93,7 +93,7 @@ public class DataMigrationsTests
     }
 
     [HumansFact]
-    public void Screen_is_board_readable_and_apply_is_an_admin_only_antiforgery_post()
+    public void Apply_IsAdminOnlyPost()
     {
         typeof(DataMigrationsController).GetCustomAttribute<AuthorizeAttribute>(inherit: false)!.Policy
             .Should().Be(PolicyNames.BoardOrAdmin);
@@ -107,7 +107,7 @@ public class DataMigrationsTests
     }
 
     [HumansFact]
-    public async Task Screen_lists_the_reports()
+    public async Task Screen_ListsReports()
     {
         var original = _migrations.Migrations().Single();
         _migrations.Additional = [original with { Key = "zz.alpha", Section = "Alpha" }, original with { Key = "aa.fake" }];
@@ -120,7 +120,7 @@ public class DataMigrationsTests
     }
 
     [HumansFact]
-    public async Task Apply_without_an_actor_is_refused_before_anything_runs()
+    public async Task Apply_NoActor_IsRefused()
     {
         (await Controller(actorId: null).Apply(Key, Ct)).Should().BeOfType<UnauthorizedResult>();
 
@@ -129,13 +129,13 @@ public class DataMigrationsTests
     }
 
     [HumansFact]
-    public async Task Apply_of_an_unknown_key_is_not_found()
+    public async Task Apply_UnknownKey_IsNotFound()
     {
         (await Controller(_actorId).Apply("nope.missing", Ct)).Should().BeOfType<NotFoundResult>();
     }
 
     [HumansFact]
-    public async Task Apply_redirects_back_to_the_migrations_tab()
+    public async Task Apply_Success_RedirectsToMigrationsTab()
     {
         var result = await Controller(_actorId).Apply(Key, Ct);
 
@@ -146,7 +146,7 @@ public class DataMigrationsTests
     }
 
     [HumansFact]
-    public void Endpoint_is_an_anonymous_get()
+    public void Endpoint_IsAnonymousGet()
     {
         var endpoint = MapStatusEndpoint();
 
@@ -155,7 +155,7 @@ public class DataMigrationsTests
     }
 
     [HumansFact]
-    public async Task Endpoint_publishes_keys_counts_and_done_but_never_row_data()
+    public async Task Endpoint_NeverPublishesRowData()
     {
         var original = _migrations.Migrations().Single();
         _migrations.Additional = [original with { Key = "zz.alpha", Section = "Alpha" }, original with { Key = "aa.fake" }];
@@ -195,7 +195,7 @@ public class DataMigrationsTests
     [Xunit.InlineData(AccountScenario.Merged)]
     [Xunit.InlineData(AccountScenario.Missing)]
     [Xunit.InlineData(AccountScenario.Cancelled)]
-    public async Task Apply_resolves_account_before_invoking_migration(AccountScenario account)
+    public async Task Apply_ResolvesAccountBeforeMigration(AccountScenario account)
     {
         var users = Substitute.For<IUserService>();
         var survivor = Guid.NewGuid();
@@ -232,7 +232,7 @@ public class DataMigrationsTests
     }
 
     [HumansFact]
-    public async Task Widget_gallery_stops_loading_when_account_lookup_is_cancelled()
+    public async Task WidgetGallery_LookupCancelled_StopsLoading()
     {
         var users = Substitute.For<IUserService>();
         using var request = new CancellationTokenSource();

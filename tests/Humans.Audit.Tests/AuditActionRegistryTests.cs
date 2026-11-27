@@ -31,13 +31,13 @@ public class AuditActionRegistryTests
     }
 
     [HumansFact]
-    public void ContributorExposesItsStaticFieldsInDeclarationOrder()
+    public void Contributor_ExposesFieldsInDeclarationOrder()
     {
         new SectionActions().Actions.Should().Equal(SectionActions.Plain, SectionActions.Loud, SectionActions.Filtered);
     }
 
     [HumansFact]
-    public void ResolveReturnsTheDeclaredDefinitionOrABareOne()
+    public void Resolve_UnknownName_ReturnsBareDefinition()
     {
         var registry = new AuditActionRegistry([new SectionActions()]);
 
@@ -46,7 +46,7 @@ public class AuditActionRegistryTests
     }
 
     [HumansFact]
-    public void CanonicalNameIgnoresCaseAndLeavesUnknownNamesAlone()
+    public void CanonicalName_DifferentCase_ReturnsDeclaredName()
     {
         var registry = new AuditActionRegistry([new SectionActions()]);
 
@@ -55,7 +55,7 @@ public class AuditActionRegistryTests
     }
 
     [HumansFact]
-    public void AlertsAndQuickFiltersComeFromTheFlags()
+    public void Registry_Alerts_ComeFromFlags()
     {
         var registry = new AuditActionRegistry([new SectionActions()]);
 
@@ -65,7 +65,7 @@ public class AuditActionRegistryTests
     }
 
     [HumansFact]
-    public void DuplicateNameAcrossContributorsFailsConstruction()
+    public void Registry_DuplicateName_FailsConstruction()
     {
         var act = () => new AuditActionRegistry([new SectionActions(), new DuplicateActions()]);
 
@@ -73,7 +73,7 @@ public class AuditActionRegistryTests
     }
 
     [HumansFact]
-    public void NamesDifferingOnlyByCaseFailConstruction()
+    public void Registry_NamesDifferByCase_FailsConstruction()
     {
         var act = () => new AuditActionRegistry([new SectionActions(), new CaseOnlyDuplicateActions()]);
 
@@ -81,7 +81,7 @@ public class AuditActionRegistryTests
     }
 
     [HumansFact]
-    public void OverLongNameFailsConstruction()
+    public void Registry_OverLongName_FailsConstruction()
     {
         var act = () => new AuditActionRegistry([new OverLongActions()]);
 

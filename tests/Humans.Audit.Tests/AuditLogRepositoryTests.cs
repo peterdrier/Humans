@@ -112,7 +112,7 @@ public class AuditLogRepositoryTests
     }
 
     [HumansFact]
-    public async Task GetLegacyGoogleSyncEntriesAsync_ReturnsOnlyResourceRows_Oldest_First()
+    public async Task GetLegacyGoogleSyncEntriesAsync_ReturnsResourceRowsOldestFirst()
     {
         var ct = TestContext.Current.CancellationToken;
         var now = Instant.FromUtc(2026, 5, 12, 10, 0);

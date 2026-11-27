@@ -186,7 +186,7 @@ public class AuditLogServiceTests : IDisposable
     }
 
     [HumansFact]
-    public async Task GetFilteredAsync_MatchesTheFilterToADeclaredNameIgnoringCase()
+    public async Task GetFilteredAsync_ActionFilter_IgnoresCase()
     {
         var now = _clock.GetCurrentInstant();
         SeedAuditLogEntry(TestActions.VolunteerApproved, "User", Guid.NewGuid(), now);
@@ -358,7 +358,7 @@ public class AuditLogServiceTests : IDisposable
     }
 
     [HumansFact]
-    public async Task GetByUserAsync_ThroughAMergedAwayId_SurfacesTheSurvivorsRowsToo()
+    public async Task GetByUserAsync_MergedAwayId_IncludesSurvivorsRows()
     {
         // The read through the archived id answers with the survivor's record, and the
         // ids unioned are that record's own (survivor first), so rows written against the
@@ -401,7 +401,7 @@ public class AuditLogServiceTests : IDisposable
     }
 
     [HumansFact]
-    public async Task GetFilteredEntriesAsync_IncludeRelated_AddsRowsWhereTheIdIsTheRelatedEntity()
+    public async Task GetFilteredEntriesAsync_IncludeRelated_AddsRelatedRows()
     {
         var orderId = Guid.NewGuid();
         var now = _clock.GetCurrentInstant();

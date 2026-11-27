@@ -34,7 +34,7 @@ public class HiEventsPlatformTests
     [HumansTheory]
     [InlineData(true)]
     [InlineData(false)]
-    public async Task Check_propagates_caller_cancellation_but_reports_timeouts(bool cancelCaller)
+    public async Task Check_CallerCancels_Propagates(bool cancelCaller)
     {
         using var caller = new CancellationTokenSource();
         if (cancelCaller) await caller.CancelAsync();
@@ -49,7 +49,7 @@ public class HiEventsPlatformTests
     }
 
     [HumansFact]
-    public async Task CreateOrder_PostsFixedPricesAndNamesAndReturnsThePaymentLink()
+    public async Task CreateOrder_ValidOrder_ReturnsPaymentLink()
     {
         _handler.Enqueue(HttpStatusCode.OK, new
         {
@@ -161,7 +161,7 @@ public class HiEventsPlatformTests
     [HumansTheory]
     [InlineData(0)]
     [InlineData(2)]
-    public async Task CreateOrder_WithoutExactlyOneCarrierProduct_ThrowsBeforeCreatingAnOrder(int ticketProducts)
+    public async Task CreateOrder_NotOneCarrierProduct_Throws(int ticketProducts)
     {
         _handler.Enqueue(HttpStatusCode.OK, Products(Enumerable.Range(1, ticketProducts).Select(i => ("TICKET", i)).Append(("GENERAL", 200)).ToArray()));
 
@@ -173,7 +173,7 @@ public class HiEventsPlatformTests
     }
 
     [HumansFact]
-    public async Task CreateOrder_WithAVisibleCarrierProduct_ThrowsBeforeCreatingAnOrder()
+    public async Task CreateOrder_VisibleCarrierProduct_Throws()
     {
         _handler.Enqueue(HttpStatusCode.OK, new
         {
@@ -226,7 +226,7 @@ public class HiEventsPlatformTests
     }
 
     [HumansFact]
-    public async Task Refund_SendsTheRefundIdAsIdempotencyKeyAndIsPending()
+    public async Task Refund_SendsRefundIdAsIdempotencyKey()
     {
         _handler.Enqueue(HttpStatusCode.OK, RefundAnswer("re_1", "pending"));
         var refundId = Guid.Parse("aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee");
@@ -362,7 +362,7 @@ public class HiEventsPlatformTests
     [InlineData("RESERVED", "2027-01-02 10:30:00")]
     [InlineData("RESERVED", "2027-01-02 09:00:00")]
     [InlineData("ABANDONED", null)]
-    public async Task GetStatus_APaymentOnItsWay_IsProcessingEvenPastTheHold(string status, string? reservedUntil)
+    public async Task GetStatus_PaymentOnItsWay_IsProcessing(string status, string? reservedUntil)
     {
         _handler.Enqueue(HttpStatusCode.OK, Order(id: 42, total: 225m, status: status, reservedUntil: reservedUntil,
             processingAt: "2027-01-02T09:40:00.000000Z"));
@@ -464,7 +464,7 @@ public class HiEventsPlatformTests
     }
 
     [HumansFact]
-    public void IsConfigured_NeedsAnAbsoluteUrlAndKey_AndABadUrlDoesNotThrow()
+    public void IsConfigured_BadUrl_IsFalse()
     {
         Platform().IsConfigured.Should().BeTrue();
         Platform(apiKey: "").IsConfigured.Should().BeFalse();
@@ -616,7 +616,7 @@ public class HiEventsPlatformTests
     }
 
     [HumansFact]
-    public async Task Check_AnApiUrlServingTheWebApp_IsNotAnAcceptedKey()
+    public async Task Check_ApiUrlServesWebApp_RejectsKey()
     {
         _handler.EnqueueRaw(HttpStatusCode.OK, "<!doctype html><html></html>", "text/html");
 
@@ -636,7 +636,7 @@ public class HiEventsPlatformTests
     }
 
     [HumansFact]
-    public async Task Setup_WithAnAppUrlWithoutScheme_HasNoAdminLinkAndFailsTheCheck()
+    public async Task Setup_AppUrlWithoutScheme_HasNoAdminLink()
     {
         var platform = Platform(appUrl: "tickets.example");
 
@@ -655,7 +655,7 @@ public class HiEventsPlatformTests
     }
 
     [HumansFact]
-    public void Setup_NamesCloudUnsupportedAndNeverShowsSecrets()
+    public void Setup_NeverShowsSecrets()
     {
         var setup = Platform(apiUrl: "https://api.hi.events/api").Setup;
 
@@ -666,7 +666,7 @@ public class HiEventsPlatformTests
     }
 
     [HumansFact]
-    public async Task ListOrders_PagesThroughThePeriodAndReadsHumansIdsAndTickets()
+    public async Task ListOrders_SeveralPages_ReadsWholePeriod()
     {
         var full = Enumerable.Range(1, 100).Select(i => ListedOrder(i, OrderId.ToString("N"), tickets: 1)).ToArray();
         _handler.Enqueue(HttpStatusCode.OK, new { data = full, meta = new { last_page = 2, total = 101 } });
