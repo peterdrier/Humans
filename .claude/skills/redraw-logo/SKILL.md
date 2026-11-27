@@ -16,7 +16,7 @@ know you are and ask for the effort — it is not recoverable afterwards.
 ## The entry
 `<slug>` = `<yyyy-mm>-<model>-<effort>`, all lowercase, spaces to `-`, the vendor prefix dropped:
 `2026-11-opus-5.5-high`, `2026-11-gemini-4-neon-high`. The folder is
-`src/Humans.Web/wwwroot/img/logo-library/<slug>/` and holds exactly two files:
+`src/Humans.Web/wwwroot/img/logo-library/<slug>/` and holds two files from the drawing run (plus `stats.json`, see below):
 
 - `logo.svg` — your drawing.
 - `entry.json`:
@@ -54,6 +54,14 @@ If the folder already exists, stop and say so — the entry has been drawn.
    preview deploy, `https://<pr-number>.n.burn.camp/About/Logos`. Don't commit the render sheets.
    Before pushing, run `dotnet test tests/Humans.Web.Tests -v quiet --filter LogoLibrary`.
 6. **Tend the PR** per `.claude/steward.md`, or stop.
+
+## Recording time and cost
+After a drawing run ends, the orchestrator (never the run itself) runs
+`python .claude/skills/redraw-logo/stats.py <slug>` and commits the resulting `<entry>/stats.json`
+on the entry's branch or in a follow-up PR. It finds the run's Claude Code or Codex transcripts by
+the branch `logo/<slug>`, sums re-runs, and records working minutes, tokens and, for models priced in
+the script's table, estimated cost; the page shows it on the card. Unpriced models record
+`costUsd: null`. Gemini runs leave no transcripts to read and get no `stats.json`.
 
 ## Promoting an entry to the live logo — only when Peter asks
 This is the old "round": the chosen entry becomes the site's mark.

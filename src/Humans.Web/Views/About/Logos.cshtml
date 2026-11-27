@@ -41,6 +41,27 @@
                             <span class="text-muted small">@(entry.Effort is null ? Localizer["About_Logos_EffortUnrecorded"].Value : Localizer[$"About_Logos_Effort_{entry.Effort}"].Value) · @entry.Date</span>
                         </span>
                     </div>
+                    @if (entry.Stats is { } run)
+                    {
+                        var inv = System.Globalization.CultureInfo.InvariantCulture;
+                        var parts = new List<string>();
+                        if (run.Minutes is { } minutes)
+                        {
+                            parts.Add($"{minutes.ToString("0.0", inv)} min");
+                        }
+                        if (run.TotalTokens is { } tokens)
+                        {
+                            parts.Add(tokens >= 1_000_000 ? $"{(tokens / 1_000_000d).ToString("0.0", inv)}M tokens" : $"{(tokens / 1_000d).ToString("0", inv)}k tokens");
+                        }
+                        if (run.CostUsd is { } cost)
+                        {
+                            parts.Add($"~${cost.ToString("0.00", inv)}");
+                        }
+                        if (parts.Count > 0)
+                        {
+                            <p class="small text-muted mb-1">@string.Join(" · ", parts)</p>
+                        }
+                    }
                     <p class="small text-muted mb-0">@entry.NotesIn(System.Globalization.CultureInfo.CurrentUICulture.TwoLetterISOLanguageName)</p>
                 </div>
             }

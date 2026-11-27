@@ -143,6 +143,48 @@ public class AboutControllerTests
     }
 
     [HumansFact]
+    public void Logos_StatsFile_ReadsOntoEntry()
+    {
+        var root = Directory.CreateTempSubdirectory();
+        try
+        {
+            void Entry(string slug, string? stats)
+            {
+                var dir = Directory.CreateDirectory(Path.Combine(root.FullName, "img", "logo-library", slug));
+                File.WriteAllText(Path.Combine(dir.FullName, "entry.json"), """{"date":"2026-11","family":"Claude","model":"Opus","version":"5.5","effort":"low"}""");
+                if (stats is not null)
+                {
+                    File.WriteAllText(Path.Combine(dir.FullName, "stats.json"), stats);
+                }
+            }
+            Entry("2026-11-opus-5.5-low", """{"minutes":6.2,"inputTokens":100,"outputTokens":50,"cacheReadTokens":1000,"cacheWriteTokens":250,"costUsd":1.85,"source":"claude"}""");
+            Entry("2026-11-opus-5.5-medium", """{"minutes":3.0,"inputTokens":10,"outputTokens":5,"cacheReadTokens":0,"cacheWriteTokens":0,"costUsd":null,"source":"codex"}""");
+            Entry("2026-11-opus-5.5-high", null);
+            Entry("2026-11-opus-5.5-xhigh", "{not json");
+            using var files = new PhysicalFileProvider(root.FullName);
+            var environment = Substitute.For<IWebHostEnvironment>();
+            environment.WebRootFileProvider.Returns(files);
+            var controller = new AboutController(Substitute.For<IUserService>(), Substitute.For<ISystemRoleService>(),
+                new RoleCatalog(Array.Empty<ISectionRoles>()), SystemClock.Instance, NullLogger<AboutController>.Instance);
+
+            var view = Assert.IsType<ViewResult>(controller.Logos(environment));
+
+            var entries = Assert.IsAssignableFrom<IReadOnlyList<LogoLibraryEntry>>(view.Model).ToDictionary(e => e.Slug, StringComparer.Ordinal);
+            var priced = entries["2026-11-opus-5.5-low"].Stats!;
+            Assert.Equal(6.2, priced.Minutes);
+            Assert.Equal(1400, priced.TotalTokens);
+            Assert.Equal(1.85m, priced.CostUsd);
+            Assert.Null(entries["2026-11-opus-5.5-medium"].Stats!.CostUsd);
+            Assert.Null(entries["2026-11-opus-5.5-high"].Stats);
+            Assert.Null(entries["2026-11-opus-5.5-xhigh"].Stats);
+        }
+        finally
+        {
+            root.Delete(recursive: true);
+        }
+    }
+
+    [HumansFact]
     public void LogoLibrary_CommittedEntriesAreComplete()
     {
         var library = Path.Combine(RatchetTestRunner.LocateRepoRoot(), "src", "Humans.Web", "wwwroot", "img", "logo-library");

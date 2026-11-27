@@ -3,6 +3,7 @@ using Humans.Base.Constants;
 using Humans.Base.Controllers;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.FileProviders;
 using NodaTime;
 using Humans.Web.Models;
 using Humans.Users.Contracts;
@@ -71,7 +72,7 @@ public class AboutController(
                     stream, new System.Text.Json.JsonSerializerOptions { PropertyNameCaseInsensitive = true });
                 if (entry is not null)
                 {
-                    entries.Add(entry with { Slug = dir.Name });
+                    entries.Add(entry with { Slug = dir.Name, Stats = ReadLogoStats(files, dir.Name) });
                 }
             }
             catch (Exception ex) when (ex is System.Text.Json.JsonException or IOException or UnauthorizedAccessException)
@@ -95,6 +96,26 @@ public class AboutController(
             .ThenBy(e => e.Date, StringComparer.Ordinal)
             .ToList();
         return View(ordered);
+    }
+
+    private LogoRunStats? ReadLogoStats(IFileProvider files, string slug)
+    {
+        var file = files.GetFileInfo($"img/logo-library/{slug}/stats.json");
+        if (!file.Exists)
+        {
+            return null;
+        }
+        try
+        {
+            using var stream = file.CreateReadStream();
+            return System.Text.Json.JsonSerializer.Deserialize<LogoRunStats>(
+                stream, new System.Text.Json.JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+        }
+        catch (Exception ex) when (ex is System.Text.Json.JsonException or IOException or UnauthorizedAccessException)
+        {
+            logger.LogError(ex, "Failed to read logo library stats {Slug}", slug);
+            return null;
+        }
     }
 
     private static Version VersionKey(string version) =>
