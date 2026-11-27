@@ -120,7 +120,7 @@ One event-scoped early-entry grant: a human may enter on a date for a named proj
 | `POST /Teams/{slug}/EarlyEntry/Remove` | `RemoveEarlyEntry` | `TeamAdminController` | `ResolveEarlyEntryManagementAsync` |
 | `GET /Teams/{slug}/EarlyEntry/LookupTicket` | `LookupTicket` | `TeamAdminController` | `ResolveEarlyEntryManagementAsync` |
 
-`ResolveTeamManagementAsync` checks `TeamAuthorizationHandler` with `TeamOperationRequirement.ManageCoordinators`; `ResolveTeamViewAsync` admits the same, or a `TeamsPolicies.Read` holder (Board) with every form hidden; `ResolveEarlyEntryManagementAsync` checks `TeamOperationRequirement.ManageEarlyEntry`. `tree` and the other route words in `TeamService.ReservedTeamSlugs` can never be team slugs.
+`ResolveTeamManagementAsync` checks the `Teams.Manage` permission on the team; `ResolveTeamViewAsync` admits the same, or a `TeamsPolicies.Read` holder (Board) with every form hidden; `ResolveEarlyEntryManagementAsync` checks `Teams.EarlyEntry`. Both are declared in `Section.cs` and reach sub-teams; Teams Admin holds both everywhere, Early Entry Admin holds only `Teams.EarlyEntry`. Join-request approval, member and role changes, and the team page's manage flag ask the same `Teams.Manage` check. `tree` and the other route words in `TeamService.ReservedTeamSlugs` can never be team slugs.
 
 ## Actors & Roles
 
