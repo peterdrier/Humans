@@ -191,6 +191,67 @@ public sealed class StripeAccountReadTests
         await read.Should().ThrowAsync<InvalidOperationException>().WithMessage("*has_more*");
     }
 
+    [HumansTheory]
+    [InlineData(LedgerAmount.Movement, "amount")]
+    [InlineData(LedgerAmount.Movement, "fee")]
+    [InlineData(LedgerAmount.Movement, "created")]
+    [InlineData(LedgerAmount.Movement, "reporting_category")]
+    [InlineData(LedgerAmount.Payout, "amount")]
+    [InlineData(LedgerAmount.Payout, "created")]
+    [InlineData(LedgerAmount.Payout, "arrival_date")]
+    [InlineData(LedgerAmount.Payout, "status")]
+    [InlineData(LedgerAmount.Payout, "automatic")]
+    [InlineData(LedgerAmount.Payout, "reconciliation_status")]
+    [InlineData(LedgerAmount.PayoutContents, "type")]
+    [InlineData(LedgerAmount.PayoutContents, "net")]
+    public async Task Ledger_MissingConsumedField_RejectsRead(LedgerAmount source, string field)
+    {
+        var transaction = JsonNode.Parse("""{"id":"txn_1","object":"balance_transaction","currency":"eur","type":"charge","reporting_category":"charge","amount":100,"fee":10,"net":90,"created":1798884000}""")!.AsObject();
+        var payout = JsonNode.Parse("""{"id":"po_1","object":"payout","currency":"eur","amount":90,"created":1798884000,"arrival_date":1798884000,"status":"paid","automatic":false,"reconciliation_status":"completed"}""")!.AsObject();
+        payout["automatic"] = source == LedgerAmount.PayoutContents;
+        (source == LedgerAmount.Payout ? payout : transaction).Remove(field);
+        Answer("/v1/balance_transactions", source == LedgerAmount.Movement
+            ? List("/v1/balance_transactions", transaction.ToJsonString()) : List("/v1/balance_transactions"));
+        Answer("/v1/payment_intents", List("/v1/payment_intents"));
+        Answer("/v1/payouts", source == LedgerAmount.Movement
+            ? List("/v1/payouts") : List("/v1/payouts", payout.ToJsonString()));
+        if (source == LedgerAmount.PayoutContents)
+            Answer("/v1/balance_transactions", List("/v1/balance_transactions", transaction.ToJsonString()));
+
+        var read = () => Service(OwnKey()).GetAccountLedgerAsync("HiEvents", Now - Duration.FromDays(1), Now, Ct);
+
+        await read.Should().ThrowAsync<InvalidOperationException>().WithMessage($"*{field}*");
+    }
+
+    [HumansTheory]
+    [InlineData(FeeRead.Direct, false)]
+    [InlineData(FeeRead.Search, false)]
+    [InlineData(FeeRead.Fallback, false)]
+    [InlineData(FeeRead.Direct, true)]
+    [InlineData(FeeRead.Search, true)]
+    [InlineData(FeeRead.Fallback, true)]
+    public async Task Fee_AmountPresence_DistinguishesZero(FeeRead source, bool present)
+    {
+        var intent = JsonNode.Parse(Intent("pi_1", "42", fee: 0))!;
+        if (!present) intent["latest_charge"]!["balance_transaction"]!.AsObject().Remove("fee");
+        if (source == FeeRead.Direct)
+            Answer("/v1/payment_intents/pi_1", intent.ToJsonString());
+        else
+        {
+            Answer("/v1/payment_intents/search", source == FeeRead.Search
+                ? List("/v1/payment_intents/search", intent.ToJsonString()) : List("/v1/payment_intents/search"));
+            if (source == FeeRead.Fallback)
+                Answer("/v1/payment_intents", List("/v1/payment_intents", intent.ToJsonString()));
+        }
+        var service = Service(OwnKey());
+
+        var fee = source == FeeRead.Direct
+            ? await service.GetAccountPaymentFeeAsync("HiEvents", "pi_1", Ct)
+            : await service.FindAccountPaymentFeeAsync("HiEvents", Order42, Now, Ct);
+
+        fee.Should().Be(present ? 0L : null);
+    }
+
     public enum LedgerAmount { Movement, Payout, PayoutContents }
     public enum FeeRead { Direct, Search, Fallback }
 
@@ -207,7 +268,7 @@ public sealed class StripeAccountReadTests
     public async Task Ledger_UnsupportedCurrency_RejectsAmounts(LedgerAmount source, string? currency)
     {
         var currencyJson = System.Text.Json.JsonSerializer.Serialize(currency);
-        var transaction = $$"""{"id":"txn_1","object":"balance_transaction","currency":{{currencyJson}},"type":"charge","amount":100,"fee":10,"net":90,"created":1798884000}""";
+        var transaction = $$"""{"id":"txn_1","object":"balance_transaction","currency":{{currencyJson}},"type":"charge","reporting_category":"charge","amount":100,"fee":10,"net":90,"created":1798884000}""";
         Answer("/v1/balance_transactions", source == LedgerAmount.Movement
             ? List("/v1/balance_transactions", transaction) : List("/v1/balance_transactions"));
         Answer("/v1/payment_intents", List("/v1/payment_intents"));
@@ -297,7 +358,7 @@ public sealed class StripeAccountReadTests
     public async Task Ledger_MovementMetadata_PreservesOrderReference()
     {
         Answer("/v1/balance_transactions", List("/v1/balance_transactions",
-            """{"id":"txn_r","object":"balance_transaction","currency":"eur","reporting_category":"refund","source":{"id":"re_1","object":"refund","payment_intent":"pi_1","metadata":{"order_id":"older-order"}}}"""));
+            """{"id":"txn_r","object":"balance_transaction","currency":"eur","reporting_category":"refund","amount":-5000,"fee":0,"created":1798884000,"source":{"id":"re_1","object":"refund","payment_intent":"pi_1","metadata":{"order_id":"older-order"}}}"""));
         Answer("/v1/payment_intents", List("/v1/payment_intents", Intent("pi_1", "42")));
         Answer("/v1/payouts", List("/v1/payouts"));
 

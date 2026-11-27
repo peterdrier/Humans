@@ -228,6 +228,13 @@ internal sealed partial class StripeService(
         if (!string.Equals(bt.Currency, "eur", StringComparison.OrdinalIgnoreCase))
             throw new InvalidOperationException("Stripe balance transaction does not declare EUR currency.");
 
+        StripeMirrorClient.RequireFields(bt.RawJsonElement ?? default, "balance transaction", [], ["fee"]);
+        if (bt.RawJsonElement is not { } raw || !raw.TryGetProperty("fee_details", out var fees)
+            || fees.ValueKind != JsonValueKind.Array)
+            throw new InvalidOperationException("Stripe balance transaction has no fee_details array.");
+        foreach (var fee in fees.EnumerateArray())
+            StripeMirrorClient.RequireFields(fee, "fee", ["type"], ["amount"]);
+
         var pmd = charge.PaymentMethodDetails;
         var methodType = pmd?.Type ?? "unknown";
         string? methodDetail = null;
@@ -479,13 +486,18 @@ internal sealed partial class StripeService(
             orderId = parsed;
         }
 
+        Instant? createdAt = null;
+        if (s.RawJsonElement is { } raw && raw.TryGetProperty("created", out var created)
+            && created.ValueKind == JsonValueKind.Number && created.TryGetInt64(out _))
+            createdAt = Instant.FromDateTimeUtc(DateTime.SpecifyKind(s.Created, DateTimeKind.Utc));
+
         return new StoreCheckoutSessionData(
             SessionId: s.Id,
             OrderId: orderId,
             PaymentIntentId: string.IsNullOrEmpty(s.PaymentIntentId) ? null : s.PaymentIntentId,
             AmountEur: s.AmountTotal.HasValue ? FromStripeMinorUnits(s.AmountTotal.Value) : null,
             PaymentStatus: s.PaymentStatus,
-            CreatedAt: Instant.FromDateTimeUtc(DateTime.SpecifyKind(s.Created, DateTimeKind.Utc)),
+            CreatedAt: createdAt,
             Status: s.Status,
             Url: string.IsNullOrEmpty(s.Url) ? null : s.Url);
     }

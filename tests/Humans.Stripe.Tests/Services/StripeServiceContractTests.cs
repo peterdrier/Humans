@@ -80,7 +80,7 @@ public class StripeServiceContractTests
             {"id":"pi_async","object":"payment_intent","latest_charge":{
               "id":"ch_async","object":"charge","payment_method_details":{"type":"card","card":{"brand":"visa"}},
               "balance_transaction":{"id":"txn_async","object":"balance_transaction","currency":"eur",
-                "fee_details":[{"type":"stripe_fee","amount":123,"currency":"eur"},{"type":"application_fee","amount":45,"currency":"eur"}]}}}
+                "fee":168, "fee_details":[{"type":"stripe_fee","amount":123,"currency":"eur"},{"type":"application_fee","amount":45,"currency":"eur"}]}}}
             """;
         http.MakeRequestAsync(Arg.Any<StripeRequest>(), Arg.Any<CancellationToken>()).Returns(
             new StripeResponse(HttpStatusCode.OK, headers.Headers, pending),
@@ -98,6 +98,40 @@ public class StripeServiceContractTests
         available.PaymentMethodDetail.Should().Be("visa");
     }
 
+    [HumansTheory]
+    [InlineData("fee_details")]
+    [InlineData("fee")]
+    [InlineData("amount")]
+    [InlineData("type")]
+    public async Task PaymentDetails_MissingFeeField_RejectsResult(string field)
+    {
+        var payload = JsonNode.Parse("""{"id":"pi_fields","object":"payment_intent","latest_charge":{"id":"ch_fields","object":"charge","balance_transaction":{"id":"txn_fields","object":"balance_transaction","currency":"eur","fee":123, "fee_details":[{"currency":"eur","type":"stripe_fee","amount":123}]}}}""")!;
+        var transaction = payload["latest_charge"]!["balance_transaction"]!.AsObject();
+        if (field is "fee_details" or "fee") transaction.Remove(field);
+        else transaction["fee_details"]![0]!.AsObject().Remove(field);
+        var service = Answering(new StripeSettings { TicketsKey = "rk_test_fees" }, HttpStatusCode.OK, payload.ToJsonString());
+
+        var read = () => service.GetPaymentDetailsAsync("pi_fields", TestContext.Current.CancellationToken);
+
+        await read.Should().ThrowAsync<InvalidOperationException>().WithMessage("*fee*");
+    }
+
+    [HumansTheory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task StoreSession_TimestampPresence_PreservesUnknown(bool present)
+    {
+        var session = JsonNode.Parse("""{"id":"cs_time","object":"checkout.session","currency":"eur","created":0}""")!.AsObject();
+        if (!present) session.Remove("created");
+        var body = $$"""{"object":"list","has_more":false,"data":[{{session.ToJsonString()}}]}""";
+        var service = Answering(new StripeSettings { StoreKey = "rk_test_store" }, HttpStatusCode.OK, body);
+
+        var result = await service.ListStoreCheckoutSessionsAsync(TestContext.Current.CancellationToken);
+
+        result.Should().ContainSingle().Which.CreatedAt.Should()
+            .Be(present ? NodaTime.Instant.FromUnixTimeSeconds(0) : null);
+    }
+
     [HumansFact]
     public async Task PaymentDetails_preserves_explicit_zero_fees_on_an_available_balance_transaction()
     {
@@ -106,7 +140,7 @@ public class StripeServiceContractTests
         const string payload = """
             {"id":"pi_zero","object":"payment_intent","latest_charge":{
               "id":"ch_zero","object":"charge","payment_method_details":{"type":"card"},
-              "balance_transaction":{"id":"txn_zero","object":"balance_transaction","currency":"eur","fee_details":[]}}}
+              "balance_transaction":{"id":"txn_zero","object":"balance_transaction","currency":"eur","fee":0, "fee_details":[]}}}
             """;
         http.MakeRequestAsync(Arg.Any<StripeRequest>(), Arg.Any<CancellationToken>())
             .Returns(new StripeResponse(HttpStatusCode.OK, headers.Headers, payload));
@@ -199,7 +233,7 @@ public class StripeServiceContractTests
             {"id":"pi_currency","object":"payment_intent","status":"succeeded","currency":"eur","latest_charge":{
               "id":"ch_currency","object":"charge","currency":"eur","payment_method_details":{"type":"card"},
               "balance_transaction":{"id":"txn_currency","object":"balance_transaction","currency":"eur",
-                "fee_details":[{"type":"stripe_fee","amount":123,"currency":"eur"},{"type":"application_fee","amount":45,"currency":"eur"}]}}}
+                "fee":168, "fee_details":[{"type":"stripe_fee","amount":123,"currency":"eur"},{"type":"application_fee","amount":45,"currency":"eur"}]}}}
             """)!;
         var transaction = payload["latest_charge"]!["balance_transaction"]!.AsObject();
         var fees = transaction["fee_details"]!.AsArray();

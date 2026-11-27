@@ -130,8 +130,14 @@ integration uses — see [`memory/code/stripe-restricted-keys.md`](../../../../m
 - Store refund and charge reads require an explicit nonblank ID and integer amount and creation timestamp in the
   raw response. Incomplete objects fail before returning financial data; SDK defaults cannot become booked amounts
   or invoice-matching dates. A refund's nullable status retains its pending/unknown handling.
-- A missing balance transaction never becomes an explicit zero; a present transaction with no
-  fee entries reports zero.
+- A missing balance transaction never becomes an explicit zero. Fee-detail reads require an explicit total fee,
+  fee-details array, and each entry's type and integer amount. An explicit empty array still reports zero.
+  Account-fee reads return logged unknown for an absent fee amount; an explicit zero remains zero on direct,
+  search and fallback reads. Missing Store session timestamps remain null rather than becoming default dates.
+- Live ledger movements require explicit amount, fee, creation time and reporting category. Payouts require amount,
+  creation/arrival times, status, reconciliation status and an automatic flag. Payout contents require a type and,
+  except for the excluded payout movement itself, an explicit net amount. Missing consumed fields reject the
+  whole ledger; optional descriptions, metadata and source links remain optional.
 - `CreateCheckoutSessionAsync` rejects a non-positive amount and an unconfigured Store key
   before any network call, and throws (rather than returning a sentinel) on Stripe failure.
 - A checkout attempt id becomes the Stripe idempotency key, so repeating an attempt replays its

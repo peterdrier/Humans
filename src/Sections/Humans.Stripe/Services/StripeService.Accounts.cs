@@ -34,7 +34,8 @@ internal sealed partial class StripeService
             var transactions = await StripeMirrorClient.AllPagesAsync(
                 after => transactionService.ListAsync(new BalanceTransactionListOptions
                 { Created = period, Limit = 100, StartingAfter = after, Expand = ["data.source"] }, request, ct),
-                transaction => transaction.Id, $"{accountName} balance transactions", ct);
+                transaction => transaction.Id, $"{accountName} balance transactions", ct,
+                item => StripeMirrorClient.RequireFields(item, "ledger movement", ["reporting_category"], ["amount", "fee", "created"]));
             foreach (var transaction in transactions)
                 RequireEur(transaction.Currency, $"balance transaction {transaction.Id}");
 
@@ -83,7 +84,9 @@ internal sealed partial class StripeService
             foreach (var payout in await StripeMirrorClient.AllPagesAsync(
                          after => new PayoutService(client).ListAsync(new PayoutListOptions
                          { Created = period, Limit = 100, StartingAfter = after }, request, ct),
-                         payout => payout.Id, $"{accountName} payouts", ct))
+                         payout => payout.Id, $"{accountName} payouts", ct,
+                         item => StripeMirrorClient.RequireFields(item, "ledger payout", ["status", "reconciliation_status"],
+                             ["amount", "created", "arrival_date"], ["automatic"])))
             {
                 RequireEur(payout.Currency, $"payout {payout.Id}");
                 long? contentsNet = null;
@@ -96,7 +99,12 @@ internal sealed partial class StripeService
                     foreach (var t in await StripeMirrorClient.AllPagesAsync(
                                  after => transactionService.ListAsync(new BalanceTransactionListOptions
                                  { Payout = payout.Id, Limit = 100, StartingAfter = after }, request, ct),
-                                 transaction => transaction.Id, $"payout {payout.Id} contents", ct))
+                                 transaction => transaction.Id, $"payout {payout.Id} contents", ct, item =>
+                                 {
+                                     StripeMirrorClient.RequireFields(item, "payout movement", ["type"], []);
+                                     if (!string.Equals(item.GetProperty("type").GetString(), "payout", StringComparison.Ordinal))
+                                         StripeMirrorClient.RequireFields(item, "payout movement", [], ["net"]);
+                                 }))
                     {
                         if (string.Equals(t.Type, "payout", StringComparison.Ordinal))
                             continue;
@@ -167,6 +175,15 @@ internal sealed partial class StripeService
             {
                 logger.LogWarning("Stripe fee of {What} on {Account} has currency {Currency}; EUR is required",
                     what, accountName, transaction.Currency);
+                return null;
+            }
+            try
+            {
+                StripeMirrorClient.RequireFields(transaction.RawJsonElement ?? default, "payment fee", [], ["fee"]);
+            }
+            catch (InvalidOperationException ex)
+            {
+                logger.LogWarning(ex, "Stripe fee of {What} on the {Account} account has incomplete data", what, accountName);
                 return null;
             }
             return transaction.Fee;
