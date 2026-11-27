@@ -31,7 +31,7 @@ public sealed class PretixStripeTests
     {
         var paid = Guid.NewGuid();
         var refunded = Guid.NewGuid();
-        _stripe.GetAccountLedgerAsync("Pretix", Now - Duration.FromDays(1), Now, Arg.Any<CancellationToken>()).Returns(new StripeAccountLedger(
+        _stripe.GetAccountLedgerAsync("Tickets", Now - Duration.FromDays(1), Now, Arg.Any<CancellationToken>()).Returns(new StripeAccountLedger(
             [
                 Line("txn_c", "charge", 100000, 1440, "pi_new", $"NOWHERE2027-{Code}", Code),
                 Line("txn_r", "refund", -22500, 0, "pi_old", "NOWHERE2027-OLDCODE", "OLDCODE"),
@@ -57,21 +57,21 @@ public sealed class PretixStripeTests
     [HumansFact]
     public async Task Ledger_NoStripeAccount_IsEmpty()
     {
-        _stripe.CheckAccountAsync("Pretix", Arg.Any<CancellationToken>())
-            .Returns([new StripeAccountCheck(false, "Stripe:MirrorAccounts has no Pretix entry")]);
+        _stripe.CheckAccountAsync("Tickets", Arg.Any<CancellationToken>())
+            .Returns([new StripeAccountCheck(false, "Stripe:MirrorAccounts has no Tickets entry")]);
         var pretix = new FakePretix()
             .On("GET", "/api/v1/organizers/nobodies/events/", HttpStatusCode.OK, new { results = Array.Empty<object>() });
         var platform = Create(pretix, stripe: _stripe);
 
         (await platform.GetPaymentLedgerAsync(Now - Duration.FromDays(1), Now, Ct)).Should().BeNull();
-        (await platform.CheckAsync(null, Ct)).Should().Contain(new PlatformFinding(false, "Stripe:MirrorAccounts has no Pretix entry"));
+        (await platform.CheckAsync(null, Ct)).Should().Contain(new PlatformFinding(false, "Stripe:MirrorAccounts has no Tickets entry"));
     }
 
     [HumansFact]
     public async Task Status_PaidOrder_ReportsStripeFee()
     {
         var pretix = new FakePretix().On("GET", $"{Api}orders/{Code}/", HttpStatusCode.OK, PaidWithStripe(new { id = "pi_1", payment_method = "pm_1" }));
-        _stripe.GetAccountPaymentFeeAsync("Pretix", "pi_1", Arg.Any<CancellationToken>()).Returns(1440L);
+        _stripe.GetAccountPaymentFeeAsync("Tickets", "pi_1", Arg.Any<CancellationToken>()).Returns(1440L);
 
         var status = await Create(pretix, stripe: _stripe).GetStatusAsync($"nowhere2027/{Code}", Ct);
 

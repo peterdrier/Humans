@@ -22,5 +22,5 @@
     </div>
 }
 
-<partial name="_Filter" model="new TaskFilterViewModel(Model.Filter, Model.Events)" />
-<partial name="_TaskTable" model="new TaskTableModel(Model.Tasks, ShowTeam: true, Places: Model.Places, ReturnUrl: here)" />
+<partial name="_Filter" model="new TaskFilterViewModel(Model.Filter, Model.Events, Model.Teams)" />
+<partial name="_TaskRows" model='new TaskRowsModel(Model.Tasks, ShowTeam: true, ShowStatus: true, Model.Places, Model.Blockers, here, Localizer["Tasks_List_Empty"].Value)' />
