@@ -1,0 +1,28 @@
+@model TeamTasksCardViewModel
+
+<div class="card mb-4">
+    <div class="card-header d-flex flex-wrap justify-content-between align-items-center gap-2">
+        <h2 class="h5 mb-0">@Localizer["Tasks_Card_Title"]</h2>
+        <div class="d-flex flex-wrap gap-2">
+            @if (Model.WaitingRequests > 0)
+            {
+                <a href="@Model.RequestsUrl" class="btn btn-sm btn-outline-primary">@Localizer["Tasks_Card_Requests", Model.WaitingRequests]</a>
+            }
+            @if (Model.CanAdd)
+            {
+                <a href="@Model.AddUrl" class="btn btn-sm btn-outline-secondary">@Localizer["Tasks_Team_AddTitle"]</a>
+            }
+        </div>
+    </div>
+    @if (Model.Rows.Tasks.Count == 0)
+    {
+        <div class="card-body"><empty-state>@Model.Rows.Empty</empty-state></div>
+    }
+    else
+    {
+        <partial name="~/Views/Tasks/_TaskRows.cshtml" model="Model.Rows" />
+        <div class="card-footer">
+            <a href="@Model.TasksUrl">@Localizer["Tasks_Card_All", Model.Total]</a>
+        </div>
+    }
+</div>

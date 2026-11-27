@@ -14,7 +14,7 @@ namespace Humans.Stripe.Services;
 
 internal sealed class StripeSettings
 {
-    /// <summary>STRIPE_TICKETS_KEY: PaymentIntent and BalanceTransaction reads.</summary>
+    /// <summary>STRIPE_TICKETS_KEY: fee reads and Box Office checkout/refunds.</summary>
     public string TicketsKey { get; set; } = string.Empty;
 
     /// <summary>STRIPE_STORE_KEY: <c>checkout_session:write</c>, which includes read, so it can also list sessions.</summary>

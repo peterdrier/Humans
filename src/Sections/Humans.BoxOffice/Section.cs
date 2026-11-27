@@ -9,11 +9,11 @@ namespace Humans.BoxOffice;
 
 /// <summary>
 /// Humans' own ticketing platform: Stripe hosted Checkout behind Tickets' <see cref="ITicketingPlatform"/>, key
-/// <c>boxoffice</c>, on its own <c>STRIPE_BOXOFFICE_*</c> variables.
+/// <c>boxoffice</c>, on the Tickets Stripe account with its own webhook signing secret.
 /// </summary>
 public sealed class Section : ISection, ISectionConfiguration, ISectionAdminNav
 {
-    internal const string KeyVariable = "STRIPE_BOXOFFICE_KEY";
+    internal const string KeyVariable = "STRIPE_TICKETS_KEY";
     internal const string WebhookSecretVariable = "STRIPE_BOXOFFICE_WEBHOOK_SECRET";
 
     public void Register(IServiceCollection services, IConfiguration configuration)
@@ -29,7 +29,6 @@ public sealed class Section : ISection, ISectionConfiguration, ISectionAdminNav
 
     void ISectionConfiguration.DeclareSettings(IConfiguration configuration, ConfigurationRegistry registry)
     {
-        registry.RegisterEnvironmentVariable(KeyVariable, "Box Office (Stripe)", isSensitive: true);
         registry.RegisterEnvironmentVariable(WebhookSecretVariable, "Box Office (Stripe)", isSensitive: true);
     }
 

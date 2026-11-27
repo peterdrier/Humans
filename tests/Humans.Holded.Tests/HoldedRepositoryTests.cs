@@ -220,4 +220,20 @@ public sealed class HoldedRepositoryTests
         calls[0].Endpoint.Should().Be("ListLedgerEntriesAsync");
         calls[0].RateLimitRemaining.Should().Be(42);
     }
+
+    [HumansFact]
+    public async Task DeleteApiCallsBeforeAsync_KeepsCallsAtOrAfterCutoff()
+    {
+        var ct = Xunit.TestContext.Current.CancellationToken;
+        await _repo.AddApiCallsAsync(
+        [
+            new HoldedApiCall { Id = Guid.NewGuid(), CalledAt = Now.Minus(Duration.FromDays(1)), Endpoint = "old" },
+            new HoldedApiCall { Id = Guid.NewGuid(), CalledAt = Now, Endpoint = "new" },
+        ], ct);
+
+        var removed = await _repo.DeleteApiCallsBeforeAsync(Now, ct);
+
+        removed.Should().Be(1);
+        (await _repo.GetApiCallsAsync(ct)).Select(c => c.Endpoint).Should().Equal("new");
+    }
 }

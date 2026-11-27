@@ -1,10 +1,15 @@
 ---
-name: Nightly debt runs stop at time or quota boundaries
-description: "Nightly debt work selects the latest origin/main runner per run, uses Sol with optional Luna helpers, requires discovery before batching simple corrections and reasons for splits, checks cumulative weekly quota between committed rounds, and reports cleanup/repair/subagent spend."
+name: Nightly debt runs stop when drained, or at time or quota boundaries
+description: "Nightly debt runs: 12-hour window, stop early once the ledger and the ladder's Finds are drained, weekly quota checked between rounds, model routing."
 ---
 
 Work in validated, committed rounds for at most 12 hours, finishing the active
-batch afterward. The wrapper checks live weekly quota before the first round
+batch afterward. When no ledger row is actionable and the ladder's Finds return nothing
+workable, stop early with the report line `Stop: ledger drained`: the wrapper then publishes what
+is committed (or exits cleanly with nothing), and that is a success, not a reason to hunt for
+other work. Spare time goes to deleting or merging code (ladder rung 13); a change that closes no
+row, fixes nothing a person hits and removes nothing is made up (`daily-debt.md`, **What is worth a commit**).
+The wrapper checks live weekly quota before the first round
 and after each completed round. Stop new work if remaining quota falls below
 `max(16, 100 - 12 * (elapsed_days_since_weekly_reset + 1))` (the next day's
 allowance is available upfront; the cutoff is fixed per run and renewed on weekly
@@ -16,12 +21,12 @@ Use one native goal session across rounds. Complete the goal after each clean,
 committed batch and return a cumulative report. The wrapper reactivates that
 same goal only while time and quota allow another round. No fix-count target.
 One PR contains all independently validated fixes. Work existing ledger rows
-first ([[debt-ledger-must-shrink]]). Ledger-only or test-only work cannot qualify
+first ([[debt-ledger-must-shrink]]). Ledger-only work, or test work that grows the suite, cannot qualify
 a run for publication. Final build/test and publication may extend past the
 work deadline. Report real fixes, validation, elapsed time, and stop reason.
 
-**Production work first:** Standalone coverage, controller-policy pins, test
-scaffolding, and test cleanup are never sweep objectives. Add or update focused
+**Production work first:** Standalone coverage, controller-policy pins and test
+scaffolding are never sweep objectives. Add or update focused
 tests when a production-code fix warrants them, as part of that fix; prefer
 existing coverage when sufficient. Never weaken checks. Batch simple, verified
 instances of the same correction into one coherent commit; validate all affected sections and applicable rung
@@ -33,7 +38,7 @@ review scope, or time remaining. For a singleton, state the searched scope.
 Carry deferred candidates forward and record split reasons in the report.
 Freeze membership before editing and stop adding candidates at the
 deadline. Run the full non-integration suite once in the final wrapper gate,
-not repeatedly per commit. Test-only work cannot qualify a run for publication.
+not repeatedly per commit. Test work that shrinks the suite (renames, split theories) does qualify.
 
 **Model routing:** Require Codex CLI 0.159.2 or newer. Default to
 `gpt-6.1-sol` / medium for the coordinator.

@@ -38,7 +38,7 @@ Hi.Events is an open-source event ticketing platform. This section lets Humans u
   admin link; defaults to `ApiUrl` without `/api`; both must be absolute http(s), or the platform reads as unconfigured and
   Tickets takes no orders on it); and the environment variables `HIEVENTS_API_KEY` (a Hi.Events API key whose owner can
   edit the event, see financials and issue refunds), `HIEVENTS_WEBHOOK_SECRET`. The Stripe account behind the fork's
-  `STRIPE_SECRET_KEY` is the Stripe section's `Stripe:MirrorAccounts` entry named `HiEvents` (its `acct_` id, and a
+  `STRIPE_SECRET_KEY` is the Stripe section's `Stripe:MirrorAccounts` entry named `Tickets` (its `acct_` id, and a
   read-only key: its own through `KeyVariable`, or the org read key), with Balance, Balance transactions, Payouts, PaymentIntents, Charges, Refunds and Disputes read; it moves no money. Only infrastructure lives in
   configuration: there is no per-event mapping to keep, because each event's carrier products are found in Hi.Events.
 - **Carrier products**: Humans owns the catalogue and prices every line, so each Hi.Events event needs exactly one
@@ -59,6 +59,8 @@ None — the section owns no tables.
 | Any human | None — the section has no views; the webhook is anonymous and signature-checked |
 
 ## Invariants
+
+- Reporting-category classification uses `PaymentLedgerEntry.KindOf`, shared by all three ticketing adapters.
 
 - `IsConfigured` requires absolute HTTP(S) API/app URLs and a nonblank API key that can form an HTTP authorization header.
 - Create order: `PlatformEventRef` must be the numeric Hi.Events event id, else `TicketingPlatformException`. The Humans order id
@@ -110,7 +112,7 @@ None — the section owns no tables.
   surrogate pairs; each ticket line carries the holder's full legal name (Hi.Events allows 255 on this endpoint).
 - `Setup` shows the URLs and only set or missing for the key and secret; an API host on `hi.events` reads as Hi.Events Cloud, unsupported because it lacks the fork's checkout endpoint, and never passes the check. `CheckAsync` reads `users/me` (a body without a user, such as the web app's HTML, fails), the event's status and products, then posts an empty body to the checkout endpoint: the fork answers 422 before creating anything, stock Hi.Events 404 or 405.
 - Platform setup checks propagate caller cancellation instead of reporting a vendor failure; independent transport timeouts remain diagnostic findings.
-- `ListOrdersAsync` pages through an event's orders by `created_at` (100 a page, to `meta.last_page`), reading the Humans order id from `external_reference` and counting each Hi.Events attendee record as a ticket. It throws when the distinct orders read differ from `meta.total`, since ties in a second can move across pages. The list leaves out `RESERVED` and `ABANDONED` orders. It needs the key's user to see financials, as refunds already do. `EventRefOf` reads the event id from the order id. `GetPaymentLedgerAsync` reads the `HiEvents` Stripe account through `IStripeService` (null while not configured; a Stripe refusal is a `TicketingPlatformException`): its balance transactions and payouts created in the period, each movement tied to the `external_reference` of the Hi.Events order its PaymentIntent's `event_id`/`order_id` names. An order the API key's user cannot see (403/404), or one Humans did not open, names no Humans order. A payout's contents are listed as for Box Office.
+- `ListOrdersAsync` pages through an event's orders by `created_at` (100 a page, to `meta.last_page`), reading the Humans order id from `external_reference` and counting each Hi.Events attendee record as a ticket. It throws when the distinct orders read differ from `meta.total`, since ties in a second can move across pages. The list leaves out `RESERVED` and `ABANDONED` orders. It needs the key's user to see financials, as refunds already do. `EventRefOf` reads the event id from the order id. `GetPaymentLedgerAsync` reads the shared `Tickets` Stripe account through `IStripeService` (null while not configured; a Stripe refusal is a `TicketingPlatformException`): its balance transactions and payouts created in the period, each movement tied to the `external_reference` of the Hi.Events order its PaymentIntent's `event_id`/`order_id` names. An order the API key's user cannot see (403/404), or one Humans did not open, names no Humans order. A payout's contents are listed as for Box Office.
 
 - Checkout creation and setup checks read every product page before validating carrier counts and visibility. Product pages require data and valid paging metadata. Product and order traversals stop at 500 pages and fail instead of returning a partial result.
 
@@ -137,7 +139,7 @@ keeps the names it needs. A failure throws, so Tickets retries before tombstonin
 ## Cross-Section Dependencies
 
 - **Tickets**: implements `ITicketingPlatform`, calls `ITicketingPlatformEvents`, both from the `Humans.Tickets.Contracts` leaf.
-- **Stripe**: `IStripeService`'s account reads of the `HiEvents` mirror account (ledger, fee, key check).
+- **Stripe**: `IStripeService`'s account reads of the `Tickets` mirror account (ledger, fee, key check).
 - **Base**: configuration registry.
 
 ## Architecture

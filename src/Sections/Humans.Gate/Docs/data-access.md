@@ -64,10 +64,9 @@ terminal sign-in throttle) and `GateTerminalAccountSeeder`
 (`src/Sections/Humans.Tickets/Services/`), which provisions the shared
 kiosk account.
 
-### Background jobs (`Humans.Gate/Jobs/`)
+### Background jobs
 
-`GateRetentionJob` (daily purge of scan rows past retention, via
-`IGateService.PurgeScansBeforeAsync` — `Gate:RetentionDays`, default 365).
+None. Settings' daily retention job deletes scan rows past the app-wide retention period through `GateService` as an `IRetentionPeriodContributor`.
 
 ---
 

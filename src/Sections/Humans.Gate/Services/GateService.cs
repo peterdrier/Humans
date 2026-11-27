@@ -1,3 +1,4 @@
+using Humans.Base.Interfaces;
 using System.Globalization;
 using System.Security.Cryptography;
 using System.Text;
@@ -29,7 +30,7 @@ internal sealed class GateService(
     IConfiguration configuration,
     ILogger<GateService> logger,
     IClock clock,
-    IUserService users) : IGateService, IUserMerge, IUserDataContributor
+    IUserService users) : IGateService, IUserMerge, IUserDataContributor, IRetentionPeriodContributor
 {
     internal const string GateScans = "GateScans";
 
@@ -424,7 +425,9 @@ internal sealed class GateService(
             },
             ct);
 
-    public Task<int> PurgeScansBeforeAsync(Instant cutoff, CancellationToken ct = default) =>
+    public string Label => "gate scans";
+
+    public Task<int> DeleteOlderThanAsync(Instant cutoff, CancellationToken ct = default) =>
         repository.PurgeScansBeforeAsync(cutoff, ct);
 
     // actorUserId/now are unused: scan rows carry no audit column, and AccountMergeService audits the merge.

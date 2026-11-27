@@ -26,7 +26,7 @@ re-point their scans.
 | Who has arrived? | `GET /Gate/Report` | Per event day, against tickets held |
 | Has this ticket been used? | `IGateAdmissions.GetAdmittedAsync` | Tickets' read before it offers or sells a returned ticket |
 | Configure the gate | `/Settings#gate`, posting to `POST /Gate/Admin` | General-entry cutoff |
-| Housekeeping | `GateRetentionJob`, `IUserDataContributor`, `IUserMerge` | Purge, GDPR, merge |
+| Housekeeping | `IRetentionPeriodContributor`, `IUserDataContributor`, `IUserMerge` | Purge, GDPR, merge |
 
 ### Structure
 
@@ -34,7 +34,7 @@ A kiosk controller (scan, decide, find, undo, plus the settings POST the Setting
 report controller for the ticket team, one service holding every decision (evaluate, record, undo,
 report, search), the pure decision table (`GateAdmissionRules`) kept apart so its precedence is
 testable on its own, a small admit reader for Tickets (`GateAdmissionReads`, separate because one
-class would be a DI cycle with Tickets), one repository over the owned tables, the retention job,
+class would be a DI cycle with Tickets), one repository over the owned tables,
 and the PIN throttle. No caching decorator, no resx.
 
 ### Invariants

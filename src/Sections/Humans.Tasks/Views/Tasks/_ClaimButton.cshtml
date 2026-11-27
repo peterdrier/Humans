@@ -18,8 +18,4 @@ else
             @(Model.Task.NeedsApproval ? Localizer["Tasks_AskToJoin"] : Localizer["Tasks_Claim"])
         </button>
     </form>
-    @if (Model.Small && Model.Task.NeedsApproval && !string.IsNullOrWhiteSpace(Model.Task.ApprovalReason))
-    {
-        <div class="text-muted small">@Model.Task.ApprovalReason</div>
-    }
 }

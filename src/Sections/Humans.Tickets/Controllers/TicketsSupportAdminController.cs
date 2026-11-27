@@ -327,7 +327,7 @@ internal sealed record ResaleViewModel(
         && (Orders.GetValueOrDefault(holdingId) is not { IsOpen: true } holding || !holding.HoldsTickets(Now));
 
     public TicketSalesMode Mode => Ticketing.Mode;
-    public bool ResaleSelling => Ticketing.ResaleSelling;
+    public bool ResaleSelling => Ticketing.IsResaleSelling(Now);
     public bool SwitchedOff => Ticketing.EffectiveSwitches.Resale == ResaleScheme.Off;
 }
 

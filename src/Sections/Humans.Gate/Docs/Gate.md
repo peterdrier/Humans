@@ -123,8 +123,9 @@ personal staff logins or PINs, a staff leaderboard, and writing check-ins to the
 - **Vendor-checked-in dedupe signal** — `GateService.EvaluateAsync` treats either the synced
   `TicketAttendee.CheckedInAt` or legacy `Status == CheckedIn` as an existing vendor check-in. The
   gate's own unique index stays the authority.
-- **Retention** — `GateRetentionJob` purges `gate_scan_events` older than `Gate:RetentionDays`
-  (default 365) daily, because gate scans are attendance/movement data.
+- **Retention** — gate scans are attendance/movement data, so `GateService` is an
+  `IRetentionPeriodContributor`: Settings' daily retention job deletes `gate_scan_events` older than
+  the app-wide retention period (`/Settings#retention`, default 365 days).
 
 ## Data Model
 
@@ -236,8 +237,6 @@ PIN (`Gate:SupervisorPin`) under `GatePinThrottle`; see Invariants.
 - `Gate:SupervisorPin` — the shared supervisor override PIN, required for the too-early /
   unconfirmed-EE override and the child-without-ID waiver. **Unset → overrides fail closed**
   (refused with a "not configured" card); set it before doors open.
-- `Gate:RetentionDays` — retention window in days for `gate_scan_events` (default 365);
-  `<= 0` disables the purge.
 
 ## Architecture
 
@@ -246,10 +245,9 @@ except `Section` and `Contracts/`: `IGateAdmissions` (Tickets' read of admits); 
 kiosk carries no resource keys (every string is inline English by design — a staff-facing,
 single-locale terminal).
 **Owning service:** `GateService` (`Humans.Gate.Services`) — also implements `IUserMerge`,
-`IUserDataContributor`.
+`IUserDataContributor`, `IRetentionPeriodContributor`.
 **Owned tables:** `gate_scan_events`, `gate_settings` via `IGateRepository`.
-**Jobs:** `GateRetentionJob` (recurring, internal, `Humans.Gate/Jobs/`) is registered by the
-section's own `ISectionJobs` (discovered by Shell — cron `45 3 * * *`).
+**Jobs:** none; scan retention runs in Settings' daily retention job.
 **Decorator decision:** none — gate reads must be live (a stale verdict admits or blocks the wrong
 person), mirroring the read-through Scanner section.
 **Layout:** the scan terminal (`Views/Gate/Index`) uses the **chromeless kiosk layout**
