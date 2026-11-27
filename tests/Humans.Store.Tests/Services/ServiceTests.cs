@@ -1590,6 +1590,143 @@ public class ServiceTests
         }
     }
 
+    [HumansTheory]
+    [InlineData("en")]
+    [InlineData("es")]
+    [InlineData("de")]
+    [InlineData("it")]
+    [InlineData("fr")]
+    [InlineData("ca")]
+    [InlineData("nl")]
+    public async Task StoreNumbers_RequestCulture_PreservesAmounts(string culture)
+    {
+        using var scope = new CultureScope(culture);
+        var registrations = new ServiceCollection().AddLogging();
+        registrations.AddControllers();
+        using var services = registrations.BuildServiceProvider();
+        var catalog = NumberFormController(services);
+        var product = await BindNumberFormAsync<ProductInputModel>(catalog, CatalogNumberFields());
+
+        catalog.ModelState.IsValid.Should().BeTrue();
+        (await catalog.Save(product, TestContext.Current.CancellationToken)).Should().BeOfType<RedirectToActionResult>();
+        await _repo.Received(1).AddProductAsync(Arg.Is<Product>(p => p.UnitPriceEur == 12.50m
+            && p.VatRatePercent == 21m && p.DepositAmountEur == 1.25m), Arg.Any<CancellationToken>());
+
+        var settings = NumberFormController(services);
+        var input = await BindNumberFormAsync<StoreSettingsViewModel>(settings, new Dictionary<string, StringValues>(StringComparer.Ordinal)
+        {
+            [nameof(StoreSettingsViewModel.SimplifiedInvoiceThresholdEur)] = "750.50"
+        });
+        settings.ModelState.IsValid.Should().BeTrue();
+        await settings.SaveSettings(input, TestContext.Current.CancellationToken);
+        await _repo.Received(1).SaveSettingsAsync(Arg.Is<StoreSettings>(s => s.SimplifiedInvoiceThresholdEur == 750.50m),
+            Arg.Any<CancellationToken>());
+    }
+
+    [HumansTheory]
+    [InlineData("UnitPriceEur")]
+    [InlineData("VatRatePercent")]
+    [InlineData("DepositAmountEur")]
+    [InlineData("SimplifiedInvoiceThresholdEur")]
+    public async Task StoreNumbers_GroupingSeparator_RejectsWrite(string field)
+    {
+        using var scope = new CultureScope("es");
+        var registrations = new ServiceCollection().AddLogging();
+        registrations.AddControllers();
+        using var services = registrations.BuildServiceProvider();
+        var controller = NumberFormController(services);
+        if (field is nameof(StoreSettingsViewModel.SimplifiedInvoiceThresholdEur))
+        {
+            var input = await BindNumberFormAsync<StoreSettingsViewModel>(controller,
+                new Dictionary<string, StringValues>(StringComparer.Ordinal) { [field] = "1,25" });
+            await controller.SaveSettings(input, TestContext.Current.CancellationToken);
+        }
+        else
+        {
+            var fields = CatalogNumberFields();
+            fields[field] = "1,25";
+            var input = await BindNumberFormAsync<ProductInputModel>(controller, fields);
+            await controller.Save(input, TestContext.Current.CancellationToken);
+        }
+
+        controller.ModelState.IsValid.Should().BeFalse();
+        controller.ModelState[field]!.AttemptedValue.Should().Be("1,25");
+        controller.ModelState[field]!.Errors.Should().HaveCount(field is nameof(ProductInputModel.DepositAmountEur) ? 1 : 2);
+        await _repo.DidNotReceiveWithAnyArgs().AddProductAsync(default!);
+        await _repo.DidNotReceiveWithAnyArgs().UpdateProductAsync(default!);
+        await _repo.DidNotReceiveWithAnyArgs().SaveSettingsAsync(default!);
+        _audit.ReceivedCalls().Should().BeEmpty();
+    }
+
+    [HumansFact]
+    public async Task StoreNumbers_EmptyDeposit_PreservesNull()
+    {
+        using var scope = new CultureScope("es");
+        var registrations = new ServiceCollection().AddLogging();
+        registrations.AddControllers();
+        using var services = registrations.BuildServiceProvider();
+        var controller = NumberFormController(services);
+        var fields = CatalogNumberFields();
+        fields[nameof(ProductInputModel.DepositAmountEur)] = "";
+        var input = await BindNumberFormAsync<ProductInputModel>(controller, fields);
+
+        controller.ModelState.IsValid.Should().BeTrue();
+        await controller.Save(input, TestContext.Current.CancellationToken);
+
+        await _repo.Received(1).AddProductAsync(Arg.Is<Product>(p => p.UnitPriceEur == 12.50m && p.DepositAmountEur == null),
+            Arg.Any<CancellationToken>());
+    }
+
+    private StoreAdminController NumberFormController(IServiceProvider services)
+    {
+        var actor = Guid.NewGuid();
+        var users = Substitute.For<IUserService>();
+        users.GetUserInfoAsync(actor, Arg.Any<CancellationToken>()).Returns(
+            UserInfo.Create(new User { Id = actor }, [], [], null));
+        var http = new DefaultHttpContext
+        {
+            RequestServices = services,
+            User = new ClaimsPrincipal(new ClaimsIdentity([new Claim(ClaimTypes.NameIdentifier, actor.ToString())], "test"))
+        };
+        return new StoreAdminController(_service, _catalog, users)
+        {
+            ControllerContext = new ControllerContext { HttpContext = http },
+            TempData = new TempDataDictionary(http, Substitute.For<ITempDataProvider>()),
+            Url = Substitute.For<IUrlHelper>()
+        };
+    }
+
+    private static Dictionary<string, StringValues> CatalogNumberFields() => new(StringComparer.Ordinal)
+    {
+        [nameof(ProductInputModel.Year)] = "2026",
+        [nameof(ProductInputModel.Name)] = "Number test",
+        [nameof(ProductInputModel.Description)] = "Catalog item",
+        [nameof(ProductInputModel.UnitPriceEur)] = "12.50",
+        [nameof(ProductInputModel.VatRatePercent)] = "2.1e1",
+        [nameof(ProductInputModel.DepositAmountEur)] = "1.25",
+        [nameof(ProductInputModel.IsActive)] = "true",
+        [nameof(ProductInputModel.OrderableUntil)] = "2026-12-31"
+    };
+
+    private static async Task<T> BindNumberFormAsync<T>(StoreAdminController controller, Dictionary<string, StringValues> fields)
+        where T : class
+    {
+        var services = controller.HttpContext.RequestServices;
+        var metadata = services.GetRequiredService<IModelMetadataProvider>().GetMetadataForType(typeof(T));
+        var binder = services.GetRequiredService<IModelBinderFactory>().CreateBinder(new ModelBinderFactoryContext
+        {
+            Metadata = metadata,
+            CacheToken = typeof(T)
+        });
+        var context = DefaultModelBindingContext.CreateBindingContext(controller.ControllerContext,
+            new FormValueProvider(BindingSource.Form, new FormCollection(fields), CultureInfo.CurrentCulture),
+            metadata, bindingInfo: null, modelName: "");
+        await binder.BindModelAsync(context);
+        var model = (T)context.Result.Model!;
+        services.GetRequiredService<IObjectModelValidator>().Validate(controller.ControllerContext, context.ValidationState, "", model);
+        return model;
+    }
+
     [HumansFact]
     public async Task GetActiveCatalogAsync_does_not_return_deactivated_products()
     {

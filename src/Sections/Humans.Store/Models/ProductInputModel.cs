@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Mvc;
 using System.ComponentModel.DataAnnotations;
 using Microsoft.AspNetCore.Mvc.ModelBinding;
 using Microsoft.AspNetCore.Mvc.ModelBinding.Validation;
@@ -24,13 +25,16 @@ internal sealed class ProductInputModel
 
     [BindRequired]
     [Range(0.0, 1_000_000.0)]
+    [ModelBinder(BinderType = typeof(HtmlDecimalBinder))]
     public decimal UnitPriceEur { get; set; }
 
     [BindRequired]
     [Range(0.0, 100.0)]
+    [ModelBinder(BinderType = typeof(HtmlDecimalBinder))]
     public decimal VatRatePercent { get; set; }
 
     [Range(0.0, 1_000_000.0)]
+    [ModelBinder(BinderType = typeof(HtmlDecimalBinder))]
     public decimal? DepositAmountEur { get; set; }
 
     public int? HoldedRevenueAccountNum { get; set; }
