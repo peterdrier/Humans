@@ -2749,6 +2749,48 @@ public sealed partial class TicketCheckoutServiceTests
         _repo.Events.Should().Contain(e => e.OrderId == order.Id && e.Detail.Contains("after the order was Expired"));
     }
 
+    [HumansTheory]
+    [InlineData((int)TicketHolderKind.Adult)]
+    [InlineData((int)TicketHolderKind.Child)]
+    [InlineData((int)TicketHolderKind.Companion)]
+    public async Task PlatformOrderChangedAsync_AdmittedResale_IssuesFreshStock(int kind)
+    {
+        var admittedKind = (TicketHolderKind)kind;
+        var old = await OfferedTicketAsync();
+        var admitted = admittedKind == TicketHolderKind.Adult ? old : AddTicket(admittedKind, parent: old.Id);
+        var started = await _service.StartCheckoutAsync(Buy(), _otherBuyerId, Ct);
+        var order = _repo.Orders.Single(o => o.Id == started.OrderId);
+        _platform.GetStatusAsync(order.PlatformOrderId!, Arg.Any<CancellationToken>())
+            .Returns(new PlatformOrderStatus(PlatformOrderState.Expired, null, null, null));
+        await _service.PlatformOrderChangedAsync("test", order.PlatformOrderId!, Ct);
+        var offer = _repo.Offers.Single();
+        offer.State.Should().Be(TicketResaleOfferState.Open);
+        _ticketing.Mode = TicketSalesMode.Closed;
+        (await _service.FindIssuedTicketAsync(admitted.Barcode, Ct))!.IsValid.Should().BeTrue();
+        _admitted.Add(admitted.Barcode);
+
+        await PayAsync(order.PlatformOrderId!);
+        await _service.ReconcileOpenOrdersAsync(Ct);
+        _clock.Advance(TicketCheckoutService.ResaleRefundHold);
+        await _service.RunResaleRefundBatchAsync(Ct);
+
+        old.State.Should().Be(TicketCheckoutTicketState.Valid);
+        admitted.State.Should().Be(TicketCheckoutTicketState.Valid);
+        offer.State.Should().Be(TicketResaleOfferState.Withdrawn);
+        offer.ReservedByOrderId.Should().BeNull();
+        offer.SoldToOrderId.Should().BeNull();
+        offer.RefundId.Should().BeNull();
+        _repo.Tickets.Should().ContainSingle(t => t.OrderId == order.Id
+            && t.HolderUserId == _otherBuyerId && t.State == TicketCheckoutTicketState.Valid);
+        await _platform.DidNotReceive().RefundAsync(Arg.Any<RefundRequest>(), Arg.Any<CancellationToken>());
+        await _delivery.DidNotReceive().ResaleSoldAsync(Arg.Any<Guid>(), Arg.Any<long>(), Arg.Any<CancellationToken>());
+        await _audit.Received(1).LogAsync(TicketsAuditActions.TicketCheckoutNeedsAttention,
+            Arg.Any<string>(), order.Id, Arg.Is<string>(detail => detail.Contains("already admitted", StringComparison.Ordinal)),
+            Arg.Any<string>(), Arg.Any<Guid?>(), Arg.Any<string?>());
+        _repo.Events.Should().Contain(e => e.OrderId == old.OrderId
+            && e.Kind == TicketCheckoutOrderEventKind.ResaleWithdrawn);
+    }
+
     [HumansFact]
     public async Task A_late_payment_whose_offer_went_to_another_buyer_leaves_that_sale_alone()
     {

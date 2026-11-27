@@ -353,7 +353,7 @@ internal sealed partial class TicketCheckoutService
                 continue;
             if ((await repository.GetTicketingSettingsAsync(offer.TicketingSettingsId, ct))?.EffectiveSwitches.Resale == ResaleScheme.Off)
             {
-                await WithdrawSwitchedOffAsync(offer, null, ct);
+                await WithdrawResaleOfferAsync(offer, null, ct);
                 continue;
             }
             offer.State = TicketResaleOfferState.Open;
@@ -500,6 +500,14 @@ internal sealed partial class TicketCheckoutService
         if (offer.State == TicketResaleOfferState.Withdrawn
             || (offer.State == TicketResaleOfferState.Reserved && offer.ReservedByOrderId != buyerOrder.Id))
             return;
+
+        if (await IsAdmittedAsync(offer.TicketId, ct))
+        {
+            await WithdrawResaleOfferAsync(offer, null, ct, "the holder or a dependent was already admitted");
+            await NeedsAttentionAsync(buyerOrder.Id,
+                "The resale ticket's holder or dependent was already admitted; the paid buyer received fresh stock instead, which may exceed capacity", ct);
+            return;
+        }
 
         var now = clock.GetCurrentInstant();
         // The queue also sells an invited ticket, so only an invited buyer's own order counts as using the invitation.
@@ -767,7 +775,7 @@ internal sealed partial class TicketCheckoutService
             {
                 if (ticketing.EffectiveSwitches.Resale == ResaleScheme.Off && offer.State == TicketResaleOfferState.Open)
                 {
-                    await WithdrawSwitchedOffAsync(offer, null, ct);
+                    await WithdrawResaleOfferAsync(offer, null, ct);
                     changed++;
                     continue;
                 }

@@ -1409,10 +1409,12 @@ internal sealed partial class TicketCheckoutService(
     {
         foreach (var offer in (await repository.GetOffersForSettingsAsync(settingsId, ct))
                      .Where(o => o.State == TicketResaleOfferState.Open))
-            await WithdrawSwitchedOffAsync(offer, actorUserId, ct);
+            await WithdrawResaleOfferAsync(offer, actorUserId, ct);
     }
 
-    private async Task WithdrawSwitchedOffAsync(TicketResaleOffer offer, Guid? actorUserId, CancellationToken ct)
+    private async Task WithdrawResaleOfferAsync(
+        TicketResaleOffer offer, Guid? actorUserId, CancellationToken ct,
+        string reason = "resale switched off for this event")
     {
         offer.State = TicketResaleOfferState.Withdrawn;
         offer.WithdrawnAt = clock.GetCurrentInstant();
@@ -1429,8 +1431,8 @@ internal sealed partial class TicketCheckoutService(
         if (ticket is null)
             return;
         await TimelineAsync(ticket.OrderId, TicketCheckoutOrderEventKind.ResaleWithdrawn,
-            $"Ticket {ticket.Barcode} taken back out of the resale queue: resale switched off for this event", actorUserId, ct);
-        const string detail = "withdrawn from resale: resale switched off for this event";
+            $"Ticket {ticket.Barcode} taken back out of the resale queue: {reason}", actorUserId, ct);
+        var detail = $"withdrawn from resale: {reason}";
         if (actorUserId is { } actor)
             await auditLog.LogAsync(TicketsAuditActions.TicketResaleWithdrawn, AuditEntityType, ticket.OrderId,
                 $"Ticket {ticket.Barcode} {detail}", actor);

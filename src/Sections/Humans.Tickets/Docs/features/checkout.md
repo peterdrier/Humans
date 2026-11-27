@@ -28,7 +28,7 @@ Rules every platform follows:
   money. A payment that lands anyway is reported as
   `Paid`; the adapter never refunds or keeps it silently. Tickets issues the tickets, says so on the timeline and in the
   audit log ("after the order was Expired") and logs a warning; a released resale offer another order took stays
-  with that order, so the late ticket is fresh stock and may put the event one over capacity for the team to settle.
+  with that order, so the late ticket is fresh stock and may put the event one over capacity for the team to settle. Fulfilment also rechecks admission before completing a resale: if the old adult, child or companion has entered, it withdraws the offer and retains their tickets, issues fresh stock to the paid buyer and flags that outcome for the team. The old holder receives no resale refund or sold notice.
 - **Stuck order.** While a buyer's own unpaid order still holds their ticket, the buy page links to it and offers
   "cancel and start again", so a dropped connection never locks them out until `ExpiresAt`. Starting checkout runs to
   the end even if the buyer's request is aborted, so a half-made order always has its platform session.
