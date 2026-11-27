@@ -395,6 +395,7 @@ internal sealed partial class StripeService(
             {
                 if (!string.Equals(r.Currency, "eur", StringComparison.OrdinalIgnoreCase))
                     throw new InvalidOperationException($"Stripe refund {r.Id} does not declare EUR currency.");
+                StripeMirrorClient.RequireFields(r.RawJsonElement ?? default, "Store refund", ["id"], ["amount", "created"]);
                 results.Add(new StoreRefundData(
                     r.Id,
                     paymentIntentId,
@@ -433,6 +434,7 @@ internal sealed partial class StripeService(
             if (pi.LatestCharge is not { } charge) return null;
             if (!string.Equals(charge.Currency, "eur", StringComparison.OrdinalIgnoreCase))
                 throw new InvalidOperationException($"Stripe charge {charge.Id} does not declare EUR currency.");
+            StripeMirrorClient.RequireFields(charge.RawJsonElement ?? default, "Store charge", ["id"], ["amount", "created"]);
             return new StoreChargeData(
                 FromStripeMinorUnits(charge.Amount),
                 Instant.FromDateTimeUtc(DateTime.SpecifyKind(charge.Created, DateTimeKind.Utc)));

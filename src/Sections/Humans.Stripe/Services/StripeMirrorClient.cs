@@ -68,12 +68,12 @@ internal sealed class StripeMirrorClient(IHttpClient? httpClient = null) : IStri
             var options = new BalanceTransactionListOptions { Limit = PageLimit, StartingAfter = after };
             options.AddExpand("data.source");
             return transactionService.ListAsync(options, Request(), ct);
-        }, t => t.Id, "balance transactions", ct, item => RequireMirrorFields(item, "balance transaction",
+        }, t => t.Id, "balance transactions", ct, item => RequireFields(item, "balance transaction",
             ["type", "status", "currency", "reporting_category"], ["amount", "fee", "net", "created", "available_on"]));
 
         var payouts = await AllPagesAsync(
             after => new PayoutService(client).ListAsync(new PayoutListOptions { Limit = PageLimit, StartingAfter = after }, Request(), ct),
-            p => p.Id, "payouts", ct, item => RequireMirrorFields(item, "payout",
+            p => p.Id, "payouts", ct, item => RequireFields(item, "payout",
                 ["currency", "status"], ["amount", "created", "arrival_date"], ["automatic"]));
 
         // Stripe links transactions only to reconcilable automatic payouts; asking for a split payout's secondary part
@@ -117,7 +117,7 @@ internal sealed class StripeMirrorClient(IHttpClient? httpClient = null) : IStri
                 throw new InvalidOperationException($"Stripe {what}: a page without a data array.");
             foreach (var item in data.EnumerateArray())
             {
-                RequireMirrorFields(item, what, ["id"], []);
+                RequireFields(item, what, ["id"], []);
                 if (!seenIds.Add(item.GetProperty("id").GetString()!))
                     throw new InvalidOperationException($"Stripe {what}: repeated item id.");
                 validateItem?.Invoke(item);
@@ -146,7 +146,7 @@ internal sealed class StripeMirrorClient(IHttpClient? httpClient = null) : IStri
         }
     }
 
-    private static void RequireMirrorFields(
+    internal static void RequireFields(
         JsonElement item, string what, IReadOnlyList<string> textFields, IReadOnlyList<string> integerFields,
         IReadOnlyList<string>? booleanFields = null)
     {

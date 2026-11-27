@@ -122,6 +122,9 @@ integration uses — see [`memory/code/stripe-restricted-keys.md`](../../../../m
   cancellation — and `ParseStoreCheckoutEvent` never throws. An empty list means Stripe answered
   with nothing, so reconciliation cannot mistake an unreadable account for one with no sessions
   and false-flag recorded payments as orphans.
+- Store refund and charge reads require an explicit nonblank ID and integer amount and creation timestamp in the
+  raw response. Incomplete objects fail before returning financial data; SDK defaults cannot become booked amounts
+  or invoice-matching dates. A refund's nullable status retains its pending/unknown handling.
 - A missing balance transaction never becomes an explicit zero; a present transaction with no
   fee entries reports zero.
 - `CreateCheckoutSessionAsync` rejects a non-positive amount and an unconfigured Store key

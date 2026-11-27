@@ -1,3 +1,4 @@
+using System.Text.Json.Nodes;
 using System.Net;
 using AwesomeAssertions;
 using Humans.Stripe.Contracts;
@@ -89,6 +90,53 @@ public sealed class StripeAccountReadTests
     }
 
     private static readonly Dictionary<string, string> Order42 = new(StringComparer.Ordinal) { ["event_id"] = "7", ["order_id"] = "42" };
+
+    public enum StoreRead { Refund, Charge }
+
+    [HumansTheory]
+    [InlineData(StoreRead.Refund, "id")]
+    [InlineData(StoreRead.Refund, "amount")]
+    [InlineData(StoreRead.Refund, "created")]
+    [InlineData(StoreRead.Charge, "id")]
+    [InlineData(StoreRead.Charge, "amount")]
+    [InlineData(StoreRead.Charge, "created")]
+    public async Task StoreFinancialRead_MissingField_RejectsResult(StoreRead source, string field)
+    {
+        var item = JsonNode.Parse("""{"id":"entry_1","object":"charge","amount":250,"currency":"eur","created":1756720800}""")!.AsObject();
+        item["object"] = source == StoreRead.Refund ? "refund" : "charge";
+        item.Remove(field);
+        if (source == StoreRead.Refund)
+            Answer("/v1/refunds", List("/v1/refunds", item.ToJsonString()));
+        else
+            Answer("/v1/payment_intents/pi_1", $$"""{"id":"pi_1","object":"payment_intent","latest_charge":{{item.ToJsonString()}}}""");
+        var service = Service(new StripeMirrorAccount { Name = "Store", Id = "acct_store", ApiKey = "rk_test_store" });
+        Func<Task> read = source == StoreRead.Refund
+            ? async () => await service.ListStoreRefundsAsync("pi_1", Ct)
+            : async () => await service.GetStoreChargeAsync("pi_1", Ct);
+
+        await read.Should().ThrowAsync<InvalidOperationException>().WithMessage($"*{field}*");
+    }
+
+    [HumansTheory]
+    [InlineData(StoreRead.Refund)]
+    [InlineData(StoreRead.Charge)]
+    public async Task StoreFinancialRead_CompleteFields_PreservesValues(StoreRead source)
+    {
+        var service = Service(new StripeMirrorAccount { Name = "Store", Id = "acct_store", ApiKey = "rk_test_store" });
+        if (source == StoreRead.Refund)
+        {
+            Answer("/v1/refunds", List("/v1/refunds",
+                """{"id":"re_1","object":"refund","amount":250,"currency":"eur","created":1756720800,"status":null}"""));
+            (await service.ListStoreRefundsAsync("pi_1", Ct)).Should().ContainSingle().Which.Should()
+                .Be(new StoreRefundData("re_1", "pi_1", 2.50m, "", Instant.FromUnixTimeSeconds(1756720800)));
+        }
+        else
+        {
+            Answer("/v1/payment_intents/pi_1", """{"id":"pi_1","object":"payment_intent","latest_charge":{"id":"ch_1","object":"charge","amount":250,"currency":"eur","created":1756720800}}""");
+            (await service.GetStoreChargeAsync("pi_1", Ct)).Should()
+                .Be(new StoreChargeData(2.50m, Instant.FromUnixTimeSeconds(1756720800)));
+        }
+    }
 
     public enum LedgerAmount { Movement, Payout, PayoutContents }
     public enum FeeRead { Direct, Search, Fallback }
