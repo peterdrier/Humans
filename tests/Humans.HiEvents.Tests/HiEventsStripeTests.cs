@@ -56,7 +56,7 @@ public sealed class HiEventsStripeTests
     public async Task Ledger_ties_each_movement_to_the_Humans_order_of_its_HiEvents_order()
     {
         var refundedOrder = Guid.NewGuid();
-        _stripe.GetAccountLedgerAsync("HiEvents", Now - Duration.FromDays(1), Now, Arg.Any<CancellationToken>()).Returns(new StripeAccountLedger(
+        _stripe.GetAccountLedgerAsync("Tickets", Now - Duration.FromDays(1), Now, Arg.Any<CancellationToken>()).Returns(new StripeAccountLedger(
             [
                 Line("txn_c", "charge", 22500, 340, "pi_new", orderId: 42),
                 Line("txn_r", "refund", -5000, 0, "pi_old", orderId: 41),
@@ -86,7 +86,7 @@ public sealed class HiEventsStripeTests
     {
         (await Platform().GetPaymentLedgerAsync(Now - Duration.FromDays(1), Now, Ct)).Should().BeNull();
 
-        _stripe.GetAccountLedgerAsync("HiEvents", Arg.Any<Instant>(), Arg.Any<Instant>(), Arg.Any<CancellationToken>())
+        _stripe.GetAccountLedgerAsync("Tickets", Arg.Any<Instant>(), Arg.Any<Instant>(), Arg.Any<CancellationToken>())
             .Returns<StripeAccountLedger?>(_ => throw new InvalidOperationException("Stripe refused reading the HiEvents account"));
         var read = () => Platform().GetPaymentLedgerAsync(Now - Duration.FromDays(1), Now, Ct);
         await read.Should().ThrowAsync<TicketingPlatformException>().WithMessage("*refused*");
@@ -96,7 +96,7 @@ public sealed class HiEventsStripeTests
     public async Task A_paid_order_reports_the_fee_of_the_payment_carrying_its_ids()
     {
         _hiEvents.On("/api/events/7/orders/42", HttpStatusCode.OK, PaidOrder(42, HumansOrder.ToString("N")));
-        _stripe.FindAccountPaymentFeeAsync("HiEvents",
+        _stripe.FindAccountPaymentFeeAsync("Tickets",
                 Arg.Is<IReadOnlyDictionary<string, string>>(m => m.Count == 2 && m["event_id"] == "7" && m["order_id"] == "42"),
                 Instant.FromUtc(2027, 1, 2, 9, 58), Arg.Any<CancellationToken>())
             .Returns(340L);
@@ -111,7 +111,7 @@ public sealed class HiEventsStripeTests
     public async Task Check_carries_the_Stripe_account_s_findings()
     {
         _hiEvents.On("/api/users/me", HttpStatusCode.OK, new { data = new { id = 1 } });
-        _stripe.CheckAccountAsync("HiEvents", Arg.Any<CancellationToken>())
+        _stripe.CheckAccountAsync("Tickets", Arg.Any<CancellationToken>())
             .Returns([new StripeAccountCheck(false, "STRIPE_HIEVENTS_KEY is unset")]);
 
         (await Platform().CheckAsync(null, Ct)).Should().Contain(new PlatformFinding(false, "STRIPE_HIEVENTS_KEY is unset"));

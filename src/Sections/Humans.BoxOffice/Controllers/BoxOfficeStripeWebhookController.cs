@@ -7,7 +7,7 @@ namespace Humans.BoxOffice.Controllers;
 
 /// <summary>
 /// Anonymous: authenticated by the Stripe signature. Only a nudge: Tickets reads the session's state back from Stripe,
-/// so a replay changes nothing. 503 while either <c>STRIPE_BOXOFFICE_*</c> variable is unset; 400 on a bad signature, so
+/// so a replay changes nothing. 503 while the Tickets key or Box Office webhook secret is unset; 400 on a bad signature, so
 /// a wrong secret shows as failed deliveries in Stripe instead of green ones Humans ignores.
 /// </summary>
 [ApiController]
@@ -24,7 +24,7 @@ internal sealed class BoxOfficeStripeWebhookController(
     {
         if (!platform.IsWebhookConfigured || !platform.IsConfigured)
         {
-            logger.LogWarning("Box Office webhook hit while STRIPE_BOXOFFICE_* is unset; rejecting.");
+            logger.LogWarning("Box Office webhook hit while the Tickets key or Box Office webhook secret is unset; rejecting.");
             return StatusCode(StatusCodes.Status503ServiceUnavailable);
         }
 

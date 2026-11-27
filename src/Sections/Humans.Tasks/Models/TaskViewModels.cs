@@ -6,8 +6,36 @@ using NodaTime;
 
 namespace Humans.Tasks.Models;
 
+/// <summary>The filters every task list shares: one team, one priority, one status. All default to everything.</summary>
+internal class TaskRowFilter
+{
+    public Guid? Team { get; set; }
+
+    public SlotPriority? Priority { get; set; }
+
+    public TaskItemStatus? Status { get; set; }
+
+    /// <summary>
+    /// Drops a value the filter form has no option for (a team that is not among <paramref name="teams"/>, "no priority"),
+    /// so the selects never read "all" while a hidden value empties the list. <paramref name="withFinished"/> says
+    /// whether done and cancelled are statuses this list can show.
+    /// </summary>
+    public void DropUnoffered(IEnumerable<TeamChoice>? teams, bool withFinished)
+    {
+        if (Team is { } team && (teams is null || teams.All(t => t.Id != team))) Team = null;
+        if (Priority == SlotPriority.None) Priority = null;
+        if (Status is TaskItemStatus.Done or TaskItemStatus.Cancelled && !withFinished) Status = null;
+    }
+
+    /// <summary>Everything but the team, for a list that is already one team's.</summary>
+    public bool MatchesWithinTeam(TaskInfo task) =>
+        (Priority is null || task.Priority == Priority) && (Status is null || task.Status == Status);
+
+    public bool Matches(TaskInfo task) => MatchesWithinTeam(task) && (Team is null || task.Owner.Id == Team);
+}
+
 /// <summary>What the list filters post. The default is the active event's tasks plus tasks with no event, finished ones left out.</summary>
-internal sealed class TaskListFilter
+internal sealed class TaskListFilter : TaskRowFilter
 {
     public const string ActiveEvent = "active";
     public const string AnyEvent = "any";
@@ -22,8 +50,9 @@ internal sealed class TaskListFilter
     /// <summary>Null for the active-event and any-event choices.</summary>
     public Guid? SpecificEventId => Guid.TryParse(Event, out var id) ? id : null;
 
+    /// <summary>Asking for a done or cancelled status brings the finished tasks in, or the list would be empty.</summary>
     public TaskListScope ToScope() =>
-        new(string.Equals(EventChoice, AnyEvent, StringComparison.Ordinal), SpecificEventId, Finished);
+        new(string.Equals(EventChoice, AnyEvent, StringComparison.Ordinal), SpecificEventId, Finished || Status is TaskItemStatus.Done or TaskItemStatus.Cancelled);
 }
 
 internal sealed record EventOption(Guid Id, string Name);
@@ -34,11 +63,20 @@ internal sealed record TeamChoice(Guid Id, string Name, string Slug);
 internal enum MyPlace { CanClaim, Requested, Confirmed }
 
 /// <summary>
-/// The rows of a task table, with or without the team column. <paramref name="Places"/> lists the viewer's place on
-/// the tasks that have one; <paramref name="ReturnUrl"/> is the local page a claim posted from a row comes back to.
+/// The rows of a task list, with or without the team on each. <paramref name="Places"/> lists the viewer's place on
+/// the tasks that have one; <paramref name="Blockers"/> names, for each waiting task, the task it waits on (null when
+/// the viewer cannot see it); <paramref name="ReturnUrl"/> is the local page a claim posted from a row comes back to.
+/// <paramref name="ShowStatus"/> shows the status of a task that is only to do; the others always show theirs.
 /// </summary>
-internal sealed record TaskTableModel(
-    IReadOnlyList<TaskInfo> Tasks, bool ShowTeam, IReadOnlyDictionary<Guid, MyPlace> Places, string ReturnUrl);
+internal sealed record TaskRowsModel(
+    IReadOnlyList<TaskInfo> Tasks,
+    bool ShowTeam,
+    bool ShowStatus,
+    IReadOnlyDictionary<Guid, MyPlace> Places,
+    IReadOnlyDictionary<Guid, string?> Blockers,
+    string ReturnUrl,
+    string Empty,
+    bool Flush = false);
 
 /// <summary>
 /// A claim form for one task, or the viewer's <paramref name="Place"/> on it when that is not
@@ -52,8 +90,8 @@ internal sealed record RequestRow(TaskInfo Task, Guid UserId);
 /// <summary>The waiting requests with their answer buttons. <paramref name="ShowTask"/> names the task on each row.</summary>
 internal sealed record RequestsViewModel(IReadOnlyList<RequestRow> Rows, bool ShowTask, string ReturnUrl);
 
-/// <summary>Most needed first: critical, then important, nice to have, unset last.</summary>
-internal static class TaskPriorityOrder
+/// <summary>Most needed first: critical, then important, nice to have, unset last; then soonest due, undated last; then by title.</summary>
+internal static class TaskRowOrder
 {
     public static int Rank(SlotPriority priority) => priority switch
     {
@@ -62,10 +100,20 @@ internal static class TaskPriorityOrder
         SlotPriority.NiceToHave => 2,
         _ => 3,
     };
+
+    public static IEnumerable<TaskInfo> Order(IEnumerable<TaskInfo> tasks) =>
+        tasks
+            .OrderBy(t => Rank(t.Priority))
+            .ThenBy(t => t.Due?.Resolved is null)
+            .ThenBy(t => t.Due?.Resolved)
+            .ThenBy(t => t.Title, StringComparer.CurrentCultureIgnoreCase);
 }
 
-/// <summary>The filter form. <see cref="Events"/> is null on a team's page, which filters only on finished tasks.</summary>
-internal sealed record TaskFilterViewModel(TaskListFilter Filter, IReadOnlyList<EventOption>? Events);
+/// <summary>
+/// The filter form. <see cref="Events"/> and <see cref="Teams"/> are null where they make no sense: a team's page
+/// filters only on status, priority and finished tasks, and the open board has no event or finished choice.
+/// </summary>
+internal sealed record TaskFilterViewModel(TaskRowFilter Filter, IReadOnlyList<EventOption>? Events, IReadOnlyList<TeamChoice>? Teams);
 
 /// <summary><see cref="ManagedTeams"/> links a manager to each team's tasks page, where the add form is, before it has any tasks.</summary>
 internal sealed record TaskListViewModel(
@@ -73,11 +121,26 @@ internal sealed record TaskListViewModel(
     IReadOnlyList<EventOption> Events,
     TaskListFilter Filter,
     IReadOnlyList<TeamChoice> ManagedTeams,
-    IReadOnlyDictionary<Guid, MyPlace> Places);
+    IReadOnlyList<TeamChoice> Teams,
+    IReadOnlyDictionary<Guid, MyPlace> Places,
+    IReadOnlyDictionary<Guid, string?> Blockers);
 
-/// <summary>The open-tasks board: every task the viewer can see with a free slot, most needed first.</summary>
+/// <summary>The open-tasks board: every task the viewer can see with a free slot, most needed first. The counts are of the whole board, not the filtered rows.</summary>
 internal sealed record OpenBoardViewModel(
-    IReadOnlyList<TaskInfo> Tasks, int OpenSlots, int CriticalCount, IReadOnlyDictionary<Guid, MyPlace> Places);
+    IReadOnlyList<TaskInfo> Tasks,
+    int OpenSlots,
+    int CriticalCount,
+    TaskRowFilter Filter,
+    IReadOnlyList<TeamChoice> Teams,
+    IReadOnlyDictionary<Guid, MyPlace> Places,
+    IReadOnlyDictionary<Guid, string?> Blockers);
+
+/// <summary>
+/// A team's open tasks on its team page. <paramref name="Rows"/> holds the first few; <paramref name="Total"/> is how
+/// many the viewer can see. <paramref name="WaitingRequests"/> is zero unless the viewer manages the team.
+/// </summary>
+internal sealed record TeamTasksCardViewModel(
+    TaskRowsModel Rows, int Total, int WaitingRequests, bool CanAdd, string TasksUrl, string RequestsUrl, string AddUrl);
 
 internal sealed record TeamPageViewModel(
     Guid TeamId,
@@ -89,6 +152,7 @@ internal sealed record TeamPageViewModel(
     TaskForm AddForm,
     IReadOnlyList<EventOption> Events,
     IReadOnlyDictionary<Guid, MyPlace> Places,
+    IReadOnlyDictionary<Guid, string?> Blockers,
     IReadOnlyList<RequestRow> Requests);
 
 /// <summary>A task this one waits on. <see cref="Title"/> and <see cref="Status"/> are null when the viewer cannot see it.</summary>

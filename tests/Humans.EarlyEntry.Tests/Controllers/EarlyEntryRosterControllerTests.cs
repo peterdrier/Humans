@@ -50,7 +50,7 @@ public class EarlyEntryRosterControllerTests
     }
 
     [HumansFact]
-    public async Task Index_SingleMultiSourceRow_ReturnsCorrectViewModel()
+    public async Task Index_MultiSourceRow_KeepsSourceDetail()
     {
         var userId = Guid.NewGuid();
         var entryDate = new LocalDate(2026, 8, 25);
@@ -73,7 +73,7 @@ public class EarlyEntryRosterControllerTests
     }
 
     [HumansFact]
-    public async Task Index_SortsByEntryDateThenUserId()
+    public async Task Index_MixedDates_SortsByDateThenUser()
     {
         var early = new LocalDate(2026, 8, 20);
         var late = new LocalDate(2026, 8, 25);
@@ -98,7 +98,7 @@ public class EarlyEntryRosterControllerTests
     }
 
     [HumansFact]
-    public async Task Index_PopulatesLegalNameFromProfile()
+    public async Task Index_KnownUser_ShowsLegalName()
     {
         var userId = Guid.NewGuid();
 

@@ -502,6 +502,40 @@ public sealed partial class TicketCheckoutServiceTests
         _repo.Refunds.Select(r => r.RefundId).Should().OnlyHaveUniqueItems();
     }
 
+    [HumansTheory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task Refund_HumanRequest_RecordsActor(bool voidTicket)
+    {
+        var adult = await PaidAdultAsync();
+        _audit.ClearReceivedCalls();
+
+        var result = voidTicket
+            ? await _service.VoidTicketAsync(adult.Id, "Requested return", 5000, _adminId, Ct)
+            : await _service.RefundAsync(adult.OrderId, 5000, "Requested return", _adminId, Ct);
+
+        result.Succeeded.Should().BeTrue();
+        await _audit.Received(1).LogAsync(TicketsAuditActions.TicketCheckoutRefunded, "TicketCheckoutOrder", adult.OrderId,
+            Arg.Any<string>(), _adminId, null, null);
+        await _audit.DidNotReceive().LogAsync(TicketsAuditActions.TicketCheckoutRefunded, Arg.Any<string>(), adult.OrderId,
+            Arg.Any<string>(), Arg.Any<string>(), Arg.Any<Guid?>(), Arg.Any<string?>());
+    }
+
+    [HumansFact]
+    public async Task Refund_CancellationJob_RecordsAutomation()
+    {
+        var adult = await PaidAdultAsync();
+        await _service.CancelEventAsync(_ticketing.Id, "Storm", _adminId, Ct);
+        _audit.ClearReceivedCalls();
+
+        await _service.ReconcileOpenOrdersAsync(Ct);
+
+        await _audit.Received(1).LogAsync(TicketsAuditActions.TicketCheckoutRefunded, "TicketCheckoutOrder", adult.OrderId,
+            Arg.Any<string>(), "TicketCheckout", null, null);
+        await _audit.DidNotReceive().LogAsync(TicketsAuditActions.TicketCheckoutRefunded, Arg.Any<string>(), adult.OrderId,
+            Arg.Any<string>(), Arg.Any<Guid>(), Arg.Any<Guid?>(), Arg.Any<string?>());
+    }
+
     [HumansFact]
     public async Task A_stuck_unpaid_order_shows_on_the_buy_page_and_cancelling_it_frees_the_buyer_to_start_again()
     {
@@ -1131,6 +1165,63 @@ public sealed partial class TicketCheckoutServiceTests
         await _rules.Received().GetAsync("TicketRules/2027", true, Arg.Any<CancellationToken>());
     }
 
+    [HumansTheory]
+    [InlineData(-1, false)]
+    [InlineData(0, false)]
+    [InlineData(1, true)]
+    public async Task OfferForResaleAsync_ClosingBoundary_MatchesHolderAction(int seconds, bool available)
+    {
+        var ticket = await PaidAdultAsync();
+        _ticketing.ResaleOpenedAt = null;
+        _ticketing.SalesCloseAt = Now + Duration.FromSeconds(seconds);
+
+        var canOffer = (await _service.GetHeldTicketsAsync(_buyerId, Ct)).Single().CanOffer;
+        (await _service.OfferForResaleAsync(ticket.Id, _buyerId, Ct)).Succeeded.Should().Be(available);
+        canOffer.Should().Be(available);
+    }
+
+    [HumansTheory]
+    [InlineData(-1, false)]
+    [InlineData(0, false)]
+    [InlineData(1, true)]
+    public async Task InviteBuyersAsync_ClosingBoundary_MatchesHolderAction(int seconds, bool available)
+    {
+        var ticket = await OfferedTicketAsync();
+        _ticketing.SalesCloseAt = Now + Duration.FromSeconds(seconds);
+
+        var canInvite = (await _service.GetHeldTicketsAsync(_buyerId, Ct)).Single().CanInvite;
+        var result = await _service.InviteBuyersAsync(ticket.Id, _buyerId, ["bo@example.com"], new Uri("https://h.example/r/"), "en", Ct);
+        result.Succeeded.Should().Be(available);
+        canInvite.Should().Be(available);
+        if (!available)
+            result.Refusal.Should().Be("Tickets_Resale_Closed");
+    }
+
+    [HumansFact]
+    public async Task GetHeldTicketsAsync_ResalePaused_HidesInvitationAction()
+    {
+        var ticket = await OfferedTicketAsync();
+        _ticketing.Mode = TicketSalesMode.Open;
+        _ticketing.ResaleOpenedAt = null;
+
+        (await _service.GetHeldTicketsAsync(_buyerId, Ct)).Single().CanInvite.Should().BeFalse();
+        (await _service.InviteBuyersAsync(ticket.Id, _buyerId, ["bo@example.com"], new Uri("https://h.example/r/"), "en", Ct))
+            .Refusal.Should().Be("Tickets_Resale_NotOpenYet");
+    }
+
+    [HumansTheory]
+    [InlineData(-1, false)]
+    [InlineData(0, false)]
+    [InlineData(1, true)]
+    public void ResaleSelling_ClosingBoundary_UsesSnapshotTime(int seconds, bool selling)
+    {
+        _ticketing.SalesCloseAt = Now + Duration.FromSeconds(seconds);
+        var model = new Humans.Tickets.Controllers.ResaleViewModel(_ticketing.Id, "Event", _ticketing, [],
+            new Dictionary<Guid, TicketCheckoutOrder>(), Now);
+
+        model.ResaleSelling.Should().Be(selling);
+    }
+
     [HumansFact]
     public async Task Switching_resale_off_withdraws_open_offers_and_hands_the_tickets_back()
     {
@@ -1269,6 +1360,60 @@ public sealed partial class TicketCheckoutServiceTests
         (await _service.OfferForResaleAsync(ticket.Id, _buyerId, Ct)).Refusal.Should().Be("Tickets_Resale_NotOfferable");
         ticket.State.Should().Be(TicketCheckoutTicketState.Valid);
         _repo.Offers.Should().BeEmpty();
+    }
+
+    [HumansFact]
+    public async Task OfferForResaleAsync_AdmittedCompanion_Refuses()
+    {
+        var adult = await PaidAdultAsync();
+        (await _service.IssueCompanionAsync(adult.Id, "Helper Ruiz", null, "Support", false, _adminId, Ct)).Succeeded.Should().BeTrue();
+        var companion = _repo.Tickets.Single(t => t.Kind == TicketHolderKind.Companion);
+        companion.OrderId.Should().NotBe(adult.OrderId);
+        _admitted.Add(companion.Barcode);
+
+        var result = await _service.OfferForResaleAsync(adult.Id, _buyerId, Ct);
+
+        result.Refusal.Should().Be("Tickets_Resale_NotOfferable");
+        adult.State.Should().Be(TicketCheckoutTicketState.Valid);
+        _repo.Offers.Should().BeEmpty();
+    }
+
+    [HumansFact]
+    public async Task InviteBuyersAsync_AdmittedCompanion_Refuses()
+    {
+        var adult = await PaidAdultAsync();
+        (await _service.IssueCompanionAsync(adult.Id, "Helper Ruiz", null, "Support", false, _adminId, Ct)).Succeeded.Should().BeTrue();
+        (await _service.OfferForResaleAsync(adult.Id, _buyerId, Ct)).Succeeded.Should().BeTrue();
+        _admitted.Add(_repo.Tickets.Single(t => t.Kind == TicketHolderKind.Companion).Barcode);
+
+        var result = await _service.InviteBuyersAsync(adult.Id, _buyerId, ["bo@example.com"],
+            new Uri("https://h.example/r/"), "en", Ct);
+
+        result.Refusal.Should().Be("Tickets_Resale_NotOfferable");
+        _repo.Offers.Single().Invites.Should().BeEmpty();
+        _repo.Offers.Single().DirectedInviteCount.Should().Be(0);
+    }
+
+    [HumansFact]
+    public async Task StartCheckoutAsync_DirectedAdmittedCompanion_Refuses()
+    {
+        var adult = await PaidAdultAsync();
+        (await _service.IssueCompanionAsync(adult.Id, "Helper Ruiz", null, "Support", false, _adminId, Ct)).Succeeded.Should().BeTrue();
+        (await _service.OfferForResaleAsync(adult.Id, _buyerId, Ct)).Succeeded.Should().BeTrue();
+        EmailMessage? sent = null;
+        _email.SendAsync(Arg.Do<EmailMessage>(m => sent = m), Arg.Any<CancellationToken>()).Returns(Task.CompletedTask);
+        var link = new Uri("https://h.example/Tickets/Buy/Resale/");
+        (await _service.InviteBuyersAsync(adult.Id, _buyerId, ["bo@example.com"], link, "en", Ct)).Succeeded.Should().BeTrue();
+        var token = sent!.HtmlBody[link.AbsoluteUri.Length..];
+        _ticketing.Mode = TicketSalesMode.ResaleOnly;
+        _admitted.Add(_repo.Tickets.Single(t => t.Kind == TicketHolderKind.Companion).Barcode);
+        var orders = _repo.Orders.Count;
+
+        var result = await _service.StartCheckoutAsync(Buy() with { DirectedToken = token }, _otherBuyerId, Ct);
+
+        result.Refusal.Should().Be("Tickets_Buy_ResaleOnly");
+        _repo.Orders.Should().HaveCount(orders);
+        _repo.Offers.Single().State.Should().Be(TicketResaleOfferState.Open);
     }
 
     [HumansFact]
@@ -1517,7 +1662,7 @@ public sealed partial class TicketCheckoutServiceTests
         var ticket = await PaidAdultAsync();
         _ticketing.Mode = TicketSalesMode.InvitedOnly;
 
-        _ticketing.ResaleSelling.Should().BeFalse();
+        _ticketing.IsResaleSelling(Now).Should().BeFalse();
         (await _service.GetHeldTicketsAsync(_buyerId, Ct)).Single(t => t.Ticket.Id == ticket.Id).CanOffer.Should().BeFalse();
         (await _service.OfferForResaleAsync(ticket.Id, _buyerId, Ct)).Refusal.Should().Be("Tickets_Resale_Closed");
         var save = new TicketingSettingsSave(_ticketing.Id, _event.Id, "test", null, TicketSalesMode.InvitedOnly, null, 100, 0.1m,
@@ -1973,7 +2118,7 @@ public sealed partial class TicketCheckoutServiceTests
 
         if (replay)
         {
-            var refresh = () => _service.RefreshOrderAsync(order.Id, caller.Token);
+            var refresh = () => _service.PlatformOrderChangedAsync("test", order.PlatformOrderId!, caller.Token);
             await refresh.Should().ThrowAsync<OperationCanceledException>();
             _repo.Refunds[1].Refund.State.Should().Be(RefundState.Pending);
             await _platform.Received(1).GetStatusAsync(order.PlatformOrderId!, caller.Token);
@@ -2211,6 +2356,56 @@ public sealed partial class TicketCheckoutServiceTests
     }
 
     [HumansFact]
+    public async Task PlatformOrderChangedAsync_DonationPaid_QueuesReceiptOnce()
+    {
+        var order = await BuyAndPayAsync(Buy(forSelf: false, donation: 5000), _buyerId);
+
+        order.State.Should().Be(TicketCheckoutOrderState.Paid);
+        _repo.Tickets.Should().BeEmpty();
+        await _delivery.Received(1).TicketsIssuedAsync(order.Id, Arg.Any<CancellationToken>());
+        await _service.PlatformOrderChangedAsync("test", order.PlatformOrderId!, Ct);
+        await _delivery.Received(1).TicketsIssuedAsync(order.Id, Arg.Any<CancellationToken>());
+    }
+
+    [HumansTheory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task ReconcileOpenOrdersAsync_DonationReceiptMissing_Requeues(bool initialQueueFails)
+    {
+        if (initialQueueFails)
+            _delivery.TicketsIssuedAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
+                .Returns(_ => throw new InvalidOperationException("Queue unavailable"));
+        var order = await BuyAndPayAsync(Buy(forSelf: false, donation: 5000), _buyerId);
+        order.State.Should().Be(TicketCheckoutOrderState.Paid);
+        _repo.Tickets.Should().BeEmpty();
+        _delivery.TicketsIssuedAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>()).Returns(Task.CompletedTask);
+        _delivery.ClearReceivedCalls();
+
+        await _service.ReconcileOpenOrdersAsync(Ct);
+        await _delivery.DidNotReceiveWithAnyArgs().TicketsIssuedAsync(default);
+        _clock.Advance(Duration.FromMinutes(31));
+        await _service.ReconcileOpenOrdersAsync(Ct);
+
+        await _delivery.Received(1).TicketsIssuedAsync(order.Id, Arg.Any<CancellationToken>());
+        await _service.RecordDeliveryAsync(order.Id, TicketCheckoutOrderEventKind.TicketsEmailed, "receipt sent", null, Ct);
+        _delivery.ClearReceivedCalls();
+        await _service.ReconcileOpenOrdersAsync(Ct);
+        await _delivery.DidNotReceiveWithAnyArgs().TicketsIssuedAsync(default);
+    }
+
+    [HumansFact]
+    public async Task ReconcileOpenOrdersAsync_OldDonation_DoesNotRequeue()
+    {
+        await BuyAndPayAsync(Buy(forSelf: false, donation: 5000), _buyerId);
+        _delivery.ClearReceivedCalls();
+        _clock.Advance(Duration.FromDays(8));
+
+        await _service.ReconcileOpenOrdersAsync(Ct);
+
+        await _delivery.DidNotReceiveWithAnyArgs().TicketsIssuedAsync(default);
+    }
+
+    [HumansFact]
     public async Task Reconcile_hands_tickets_to_delivery_again_when_no_email_was_recorded()
     {
         var order = await BuyAndPayAsync(Buy(), _buyerId);
@@ -2396,6 +2591,101 @@ public sealed partial class TicketCheckoutServiceTests
             .Returns([new ActiveGrantInfo(LowIncomeProgram, _event.Id, Now)]);
 
         (await _service.GetBuyPagesAsync(_otherBuyerId, Ct)).Single().OwnPrice!.AmountMinor.Should().Be(22500);
+    }
+
+    public enum OrderRead { Buyer, Holder, Admin }
+
+    private async Task ReadOrderAsync(TicketCheckoutOrder order, OrderRead reader, CancellationToken ct)
+    {
+        if (reader == OrderRead.Admin)
+            await _service.RefreshOrderAsync(order.Id, ct);
+        else
+            await _service.GetBuyOrderAsync(order.Id, reader == OrderRead.Buyer ? order.BuyerUserId
+                : order.Lines.First(l => l.HolderUserId is not null && l.HolderUserId != order.BuyerUserId).HolderUserId!.Value, ct);
+    }
+
+    [HumansTheory]
+    [InlineData(OrderRead.Buyer, PlatformOrderState.Pending)]
+    [InlineData(OrderRead.Holder, PlatformOrderState.Pending)]
+    [InlineData(OrderRead.Admin, PlatformOrderState.Pending)]
+    [InlineData(OrderRead.Buyer, PlatformOrderState.Expired)]
+    [InlineData(OrderRead.Holder, PlatformOrderState.Expired)]
+    [InlineData(OrderRead.Admin, PlatformOrderState.Expired)]
+    [InlineData(OrderRead.Buyer, PlatformOrderState.Failed)]
+    [InlineData(OrderRead.Holder, PlatformOrderState.Failed)]
+    [InlineData(OrderRead.Admin, PlatformOrderState.Failed)]
+    public async Task RefreshOrderAsync_UnconfirmedClosure_KeepsReservation(OrderRead reader, PlatformOrderState state)
+    {
+        var offered = await OfferedTicketAsync();
+        var started = await _service.StartCheckoutAsync(Buy(), _otherBuyerId, Ct);
+        var order = _repo.Orders.Single(o => o.Id == started.OrderId);
+        order.Lines.Add(new TicketCheckoutOrderLine { Kind = OrderLineKind.Ticket, HolderUserId = _buyerId });
+        _clock.Advance(Duration.FromHours(2));
+        _platform.GetStatusAsync(order.PlatformOrderId!, Arg.Any<CancellationToken>())
+            .Returns(new PlatformOrderStatus(state, 50, "card", null));
+
+        await ReadOrderAsync(order, reader, Ct);
+
+        await _platform.DidNotReceive().CancelAsync(Arg.Any<string>(), Arg.Any<CancellationToken>());
+        order.State.Should().Be(TicketCheckoutOrderState.Pending);
+        order.FeeMinor.Should().Be(50);
+        _repo.Offers.Single().ReservedByOrderId.Should().Be(order.Id);
+        offered.State.Should().Be(TicketCheckoutTicketState.Offered);
+    }
+
+    [HumansTheory]
+    [InlineData(OrderRead.Buyer)]
+    [InlineData(OrderRead.Holder)]
+    [InlineData(OrderRead.Admin)]
+    public async Task RefreshOrderAsync_PendingRefund_DoesNotReplay(OrderRead reader)
+    {
+        var order = await BuyAndPayAsync(Buy(), _buyerId);
+        order.Lines.Add(new TicketCheckoutOrderLine { Kind = OrderLineKind.Ticket, HolderUserId = _otherBuyerId });
+        var refund = new TicketCheckoutRefund
+        {
+            Id = Guid.NewGuid(),
+            OrderId = order.Id,
+            AmountMinor = 5000,
+            Reason = "Returned",
+            State = RefundState.Pending,
+            PlatformRefundId = "re_pending",
+            CreatedAt = Now,
+        };
+        _repo.Refunds.Add((refund.Id, refund));
+        _platform.GetStatusAsync(order.PlatformOrderId!, Arg.Any<CancellationToken>())
+            .Returns(new PlatformOrderStatus(PlatformOrderState.Paid, 30, "card", Now, RefundedMinor: 5000));
+        _platform.RefundAsync(Arg.Any<RefundRequest>(), Arg.Any<CancellationToken>())
+            .Returns(new RefundResult(RefundState.Succeeded, "re_pending", null));
+        _platform.ClearReceivedCalls();
+
+        await ReadOrderAsync(order, reader, Ct);
+
+        await _platform.DidNotReceive().RefundAsync(Arg.Any<RefundRequest>(), Arg.Any<CancellationToken>());
+        refund.State.Should().Be(RefundState.Pending);
+        order.RefundedMinor.Should().Be(5000);
+        await _platform.Received(1).GetStatusAsync(order.PlatformOrderId!, Ct);
+    }
+
+    [HumansFact]
+    public async Task ReconcileOpenOrdersAsync_CancellationDuringClose_FinishesClosure()
+    {
+        await _service.StartCheckoutAsync(Buy(), _buyerId, Ct);
+        var order = _repo.Orders.Single();
+        _clock.Advance(Duration.FromHours(2));
+        using var caller = new CancellationTokenSource();
+        _platform.GetStatusAsync(order.PlatformOrderId!, caller.Token)
+            .Returns(new PlatformOrderStatus(PlatformOrderState.Pending, null, null, null));
+        _platform.CancelAsync(order.PlatformOrderId!, Arg.Any<CancellationToken>()).Returns(async call =>
+        {
+            await caller.CancelAsync();
+            call.ArgAt<CancellationToken>(1).ThrowIfCancellationRequested();
+        });
+
+        await _service.ReconcileOpenOrdersAsync(caller.Token);
+
+        await _platform.Received(1).CancelAsync(order.PlatformOrderId!, CancellationToken.None);
+        order.State.Should().Be(TicketCheckoutOrderState.Expired);
+        _repo.Events.Should().Contain(e => e.OrderId == order.Id && e.Kind == TicketCheckoutOrderEventKind.StateChanged);
     }
 
     [HumansFact]
