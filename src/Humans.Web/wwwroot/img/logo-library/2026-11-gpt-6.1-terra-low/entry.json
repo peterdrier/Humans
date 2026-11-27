@@ -1,6 +1,8 @@
-﻿{
+{
   "date": "2026-11",
   "model": "GPT-6.1 Terra",
+  "family": "GPT Terra",
+  "version": "6.1",
   "effort": "low",
   "brief": "v1",
   "notes": {

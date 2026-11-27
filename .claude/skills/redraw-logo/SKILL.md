@@ -24,6 +24,8 @@ know you are and ask for the effort — it is not recoverable afterwards.
   {
     "date": "2026-11",
     "model": "Claude Opus 5.5",
+    "family": "Claude Opus",
+    "version": "5.5",
     "effort": "high",
     "brief": "v1",
     "notes": {
@@ -33,7 +35,9 @@ know you are and ask for the effort — it is not recoverable afterwards.
   }
   ```
   `notes` is shown on the public page, so it needs all seven cultures (a test enforces it); plain
-  prose, no markdown. `effort` is one of `low` / `medium` / `high` / `xhigh` / `max` — the page
+  prose, no markdown. `family` is vendor plus tier (`Claude Opus`, `GPT Sol`, `Gemini Neon`) and
+  `version` the number alone (`5.5`, `6.2`, `4`); the gallery groups by family, then version. Save the
+  file as UTF-8 without a BOM. `effort` is one of `low` / `medium` / `high` / `xhigh` / `max` — the page
   translates those labels.
 
 If the folder already exists, stop and say so — the entry has been drawn.

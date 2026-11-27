@@ -793,7 +793,7 @@
   <data name="About_MailKitDesc" xml:space="preserve"><value>Transactional email for notifications and onboarding. The one library that makes SMTP feel almost pleasant.</value></data>
   <data name="About_MeetTheStaff" xml:space="preserve"><value>Meet the Staff</value></data>
   <data name="About_Logos_Title" xml:space="preserve"><value>The logo library</value></data>
-  <data name="About_Logos_Intro" xml:space="preserve"><value>Every model that helped build Humans drew its own Vitruvian Man from the same brief. Here they all are, oldest first.</value></data>
+  <data name="About_Logos_Intro" xml:space="preserve"><value>Every model that helped build Humans drew its own Vitruvian Man from the same brief. Here they are, by model family and version, from low effort to high.</value></data>
   <data name="About_Logos_Empty" xml:space="preserve"><value>No drawings yet.</value></data>
   <data name="About_Logos_EffortUnrecorded" xml:space="preserve"><value>effort not recorded</value></data>
   <data name="About_Logos_Effort_low" xml:space="preserve"><value>low</value></data>

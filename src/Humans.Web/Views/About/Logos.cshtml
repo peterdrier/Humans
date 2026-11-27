@@ -9,12 +9,14 @@
 {
     <empty-state>@Localizer["About_Logos_Empty"]</empty-state>
 }
-@foreach (var month in Model.GroupBy(e => e.Date))
+@foreach (var family in Model.GroupBy(e => e.Family))
 {
     <section class="mb-5">
-        <h2 class="h4 mb-3">@month.Key</h2>
-        <div class="logo-library">
-            @foreach (var entry in month)
+        <h2 class="h4 mb-3">@family.Key</h2>
+        @foreach (var version in family.GroupBy(e => e.Version))
+        {
+        <div class="logo-library mb-4">
+            @foreach (var entry in version)
             {
                 <div class="logo-entry">
                     <div class="about-mark"><img src="~/img/logo-library/@entry.Slug/logo.svg" alt="" aria-hidden="true" /></div>
@@ -22,13 +24,14 @@
                         <span class="logo-entry-small"><img src="~/img/logo-library/@entry.Slug/logo.svg" alt="" aria-hidden="true" /></span>
                         <span>
                             <strong>@entry.Model</strong><br />
-                            <span class="text-muted small">@(entry.Effort is null ? Localizer["About_Logos_EffortUnrecorded"].Value : Localizer[$"About_Logos_Effort_{entry.Effort}"].Value)</span>
+                            <span class="text-muted small">@(entry.Effort is null ? Localizer["About_Logos_EffortUnrecorded"].Value : Localizer[$"About_Logos_Effort_{entry.Effort}"].Value) · @entry.Date</span>
                         </span>
                     </div>
                     <p class="small text-muted mb-0">@entry.NotesIn(System.Globalization.CultureInfo.CurrentUICulture.TwoLetterISOLanguageName)</p>
                 </div>
             }
         </div>
+        }
     </section>
 }
 

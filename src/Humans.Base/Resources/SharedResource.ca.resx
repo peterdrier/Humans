@@ -1328,7 +1328,7 @@
   <data name="About_MailKitDesc" xml:space="preserve"><value>Correu transaccional per a notificacions i incorporació. L'única biblioteca que fa que SMTP sembli gairebé agradable.</value></data>
   <data name="About_MeetTheStaff" xml:space="preserve"><value>Coneix l'equip</value></data>
   <data name="About_Logos_Title" xml:space="preserve"><value>La biblioteca de logotips</value></data>
-  <data name="About_Logos_Intro" xml:space="preserve"><value>Cada model que ha ajudat a construir Humans ha dibuixat el seu propi Home de Vitruvi a partir del mateix encàrrec. Aquí els teniu tots, del més antic al més recent.</value></data>
+  <data name="About_Logos_Intro" xml:space="preserve"><value>Cada model que ha ajudat a construir Humans ha dibuixat el seu propi Home de Vitruvi a partir del mateix encàrrec. Aquí els teniu, per família de model i versió, de menys a més esforç.</value></data>
   <data name="About_Logos_Empty" xml:space="preserve"><value>Encara no hi ha dibuixos.</value></data>
   <data name="About_Logos_EffortUnrecorded" xml:space="preserve"><value>esforç no registrat</value></data>
   <data name="About_Logos_Effort_low" xml:space="preserve"><value>baix</value></data>

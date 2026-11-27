@@ -1,6 +1,8 @@
 {
   "date": "2026-11",
   "model": "Claude Sonnet 5.5",
+  "family": "Claude Sonnet",
+  "version": "5.5",
   "effort": "high",
   "brief": "v1",
   "notes": {

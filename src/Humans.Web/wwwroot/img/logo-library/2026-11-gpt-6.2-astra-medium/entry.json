@@ -1,6 +1,8 @@
 {
   "date": "2026-11",
   "model": "GPT-6.2 Astra",
+  "family": "GPT Astra",
+  "version": "6.2",
   "effort": "medium",
   "brief": "v1",
   "notes": {

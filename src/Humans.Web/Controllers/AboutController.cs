@@ -81,12 +81,18 @@ public class AboutController(
         }
 
         var ordered = entries
-            .OrderBy(e => e.Date, StringComparer.Ordinal)
-            .ThenBy(e => e.Model, StringComparer.OrdinalIgnoreCase)
+            .OrderBy(e => e.Family, StringComparer.OrdinalIgnoreCase)
+            .ThenBy(e => VersionKey(e.Version))
             .ThenBy(e => Array.IndexOf(EffortOrder, e.Effort?.ToLowerInvariant()))
+            .ThenBy(e => e.Date, StringComparer.Ordinal)
             .ToList();
         return View(ordered);
     }
+
+    private static Version VersionKey(string version) =>
+        Version.TryParse(version.Contains('.', StringComparison.Ordinal) ? version : version + ".0", out var parsed)
+            ? parsed
+            : new Version(0, 0);
 
     [Authorize]
     [HttpGet("Staff")]

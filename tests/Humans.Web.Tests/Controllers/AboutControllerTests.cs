@@ -104,7 +104,7 @@ public class AboutControllerTests
     }
 
     [HumansFact]
-    public void Logos_ListsReadableEntriesInTimelineOrder()
+    public void Logos_OrdersEntriesByFamilyVersionThenEffort()
     {
         var root = Directory.CreateTempSubdirectory();
         try
@@ -117,10 +117,12 @@ public class AboutControllerTests
                     File.WriteAllText(Path.Combine(dir.FullName, "entry.json"), json);
                 }
             }
-            Entry("2026-11-opus-5.5-high", """{"date":"2026-11","model":"Claude Opus 5.5","effort":"high"}""");
-            Entry("2026-11-opus-5.5-low", """{"date":"2026-11","model":"Claude Opus 5.5","effort":"low"}""");
-            Entry("2026-11-haiku-5.5-medium", """{"date":"2026-11","model":"Claude Haiku 5.5","effort":"medium"}""");
-            Entry("2026-02-opus-4.6-unrecorded", """{"date":"2026-02","model":"Claude Opus 4.6","effort":null}""");
+            Entry("2026-11-opus-5.5-high", """{"date":"2026-11","family":"Claude Opus","version":"5.5","effort":"high"}""");
+            Entry("2026-11-opus-5.5-low", """{"date":"2026-11","family":"Claude Opus","version":"5.5","effort":"low"}""");
+            Entry("2026-11-haiku-5.5-medium", """{"date":"2026-11","family":"Claude Haiku","version":"5.5","effort":"medium"}""");
+            Entry("2026-02-opus-4.6-unrecorded", """{"date":"2026-02","family":"Claude Opus","version":"4.6","effort":null}""");
+            Entry("2026-11-gpt-6-luna-low", """{"date":"2026-11","family":"GPT Luna","version":"6","effort":"low"}""");
+            Entry("2026-11-opus-10.0-low", """{"date":"2026-11","family":"Claude Opus","version":"10.0","effort":"low"}""");
             Entry("2026-11-broken", "{not json");
             Entry("2026-11-unfinished", null);
             using var files = new PhysicalFileProvider(root.FullName);
@@ -132,7 +134,7 @@ public class AboutControllerTests
             var view = Assert.IsType<ViewResult>(controller.Logos(environment));
 
             Assert.Equal(
-                "2026-02-opus-4.6-unrecorded,2026-11-haiku-5.5-medium,2026-11-opus-5.5-low,2026-11-opus-5.5-high",
+                "2026-11-haiku-5.5-medium,2026-02-opus-4.6-unrecorded,2026-11-opus-5.5-low,2026-11-opus-5.5-high,2026-11-opus-10.0-low,2026-11-gpt-6-luna-low",
                 string.Join(',', Assert.IsAssignableFrom<IReadOnlyList<LogoLibraryEntry>>(view.Model).Select(e => e.Slug)));
         }
         finally
@@ -142,7 +144,7 @@ public class AboutControllerTests
     }
 
     [HumansFact]
-    public void LogoLibrary_CommittedEntriesAreFullyLocalized()
+    public void LogoLibrary_CommittedEntriesAreComplete()
     {
         var library = Path.Combine(RatchetTestRunner.LocateRepoRoot(), "src", "Humans.Web", "wwwroot", "img", "logo-library");
         string?[] efforts = [null, "low", "medium", "high", "xhigh", "max"];
@@ -156,6 +158,10 @@ public class AboutControllerTests
             problems.AddRange(CultureCatalog.SupportedCultureCodes
                 .Where(c => string.IsNullOrWhiteSpace(entry.Notes.GetValueOrDefault(c)))
                 .Select(c => $"{slug}: notes missing '{c}'"));
+            if (string.IsNullOrWhiteSpace(entry.Family) || string.IsNullOrWhiteSpace(entry.Version))
+            {
+                problems.Add($"{slug}: family or version missing");
+            }
             if (!efforts.Contains(entry.Effort, StringComparer.Ordinal))
             {
                 problems.Add($"{slug}: effort '{entry.Effort}' has no localized label");
