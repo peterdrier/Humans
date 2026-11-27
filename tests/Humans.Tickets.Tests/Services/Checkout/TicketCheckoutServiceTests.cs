@@ -1193,6 +1193,69 @@ public sealed partial class TicketCheckoutServiceTests
         order.Lines.Single(l => l.Kind == OrderLineKind.Donation).DonationPurpose.Should().Be("Low income pool");
     }
 
+    [HumansTheory]
+    [InlineData(64, true)]
+    [InlineData(65, false)]
+    public async Task SaveTicketingSettings_WaveNameLength_RespectsStorageLimit(int length, bool accepted)
+    {
+        var save = new TicketingSettingsSave(_ticketing.Id, _event.Id, "test", null, TicketSalesMode.Open, null, 3000, 0.10m,
+            [new TicketSalesWave { Name = new string('W', length), EndsOn = new LocalDate(2027, 8, 1), PriceMinor = 1000 }], [], []);
+
+        var result = await _service.SaveTicketingSettingsAsync(save, _adminId, Ct);
+
+        result.Succeeded.Should().Be(accepted);
+        if (!accepted)
+        {
+            result.Refusal.Should().Contain("64");
+            _repo.Settings.Single().Should().BeSameAs(_ticketing);
+        }
+    }
+
+    [HumansTheory]
+    [InlineData(128, true)]
+    [InlineData(129, false)]
+    public async Task SaveTicketingSettings_ClassLabelLength_RespectsStorageLimit(int length, bool accepted)
+    {
+        var save = new TicketingSettingsSave(_ticketing.Id, _event.Id, "test", null, TicketSalesMode.Open, null, 3000, 0.10m,
+            _ticketing.Waves, [], [new TicketPriceRule
+            {
+                GrantProgramId = LowIncomeProgram,
+                Kind = TicketPriceRuleKind.ClassPrice,
+                AmountMinor = 1000,
+                Label = new string('C', length),
+            }]);
+
+        var result = await _service.SaveTicketingSettingsAsync(save, _adminId, Ct);
+
+        result.Succeeded.Should().Be(accepted);
+        if (!accepted)
+        {
+            result.Refusal.Should().Contain("128");
+            _repo.Settings.Single().Should().BeSameAs(_ticketing);
+        }
+    }
+
+    [HumansTheory]
+    [InlineData(128, true)]
+    [InlineData(129, false)]
+    public async Task SaveTicketingSettings_PlatformReferenceLength_RespectsStorageLimit(int length, bool accepted)
+    {
+        var reference = new string('E', length);
+        var save = new TicketingSettingsSave(_ticketing.Id, _event.Id, "test", $" {reference} ", TicketSalesMode.Open, null, 3000, 0.10m,
+            _ticketing.Waves, [], []);
+
+        var result = await _service.SaveTicketingSettingsAsync(save, _adminId, Ct);
+
+        result.Succeeded.Should().Be(accepted);
+        if (accepted)
+            _repo.Settings.Single().PlatformEventRef.Should().Be(reference);
+        else
+        {
+            result.Refusal.Should().Contain("128");
+            _repo.Settings.Single().Should().BeSameAs(_ticketing);
+        }
+    }
+
     [HumansFact]
     public async Task Child_types_and_donation_purposes_need_distinct_names()
     {

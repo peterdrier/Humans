@@ -48,9 +48,11 @@ internal sealed partial class TicketCheckoutService(
     private const int MaxOthers = 10;
     private const int MaxNameLength = 513;
 
-    /// <summary>Child type names and donation purposes, as the buyer sees them.</summary>
+    /// <summary>Wave/type names and donation purposes, as the buyer sees them.</summary>
     private const int MaxTypeNameLength = 64;
     private const int MaxEmailLength = 320;
+    private const int MaxClassLabelLength = 128;
+    private const int MaxPlatformEventRefLength = 128;
 
     internal const string AuditEntityType = "TicketCheckoutOrder";
     // Stored on audit rows, so it keeps the name from before the glossary.
@@ -91,6 +93,12 @@ internal sealed partial class TicketCheckoutService(
             return new("Pick an existing event.");
         if (PlatformFor(save.PlatformKey) is null)
             return new($"No ticketing platform is registered under '{save.PlatformKey}'.");
+        if (save.PlatformEventRef?.Trim().Length > MaxPlatformEventRefLength)
+            return new($"The platform event reference must be at most {MaxPlatformEventRefLength} characters.");
+        if (save.Waves.Any(w => w.Name.Length > MaxTypeNameLength))
+            return new($"Wave names must be at most {MaxTypeNameLength} characters.");
+        if (save.PriceRules.Any(r => r.Kind == TicketPriceRuleKind.ClassPrice && r.Label.Length > MaxClassLabelLength))
+            return new($"Class price labels must be at most {MaxClassLabelLength} characters.");
         if (save.Capacity < 0)
             return new("Capacity cannot be negative.");
         if (save.TicketVatRate is < 0 or >= 1)
