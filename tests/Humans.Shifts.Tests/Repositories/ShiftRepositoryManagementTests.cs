@@ -30,7 +30,7 @@ public sealed class ShiftRepositoryManagementTests : IDisposable
     [HumansFact]
     public async Task GetEventSettingsByIdAsync_ReturnsRowForItsId()
     {
-        var es = NewEvent(isActive: true);
+        var es = NewEvent();
         await _shiftsDbContext.EventSettings.AddAsync(es);
         await _shiftsDbContext.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
 
@@ -71,7 +71,7 @@ public sealed class ShiftRepositoryManagementTests : IDisposable
         var ct = Xunit.TestContext.Current.CancellationToken;
         var (settings, rota) = await SeedRotaAsync(RotaPeriod.Event);
         var calendar = BurnFixtures.Burn(id: settings.Id,
-            gateOpeningDate: settings.GateOpeningDate, timeZoneId: settings.TimeZoneId);
+            gateOpeningDate: new LocalDate(2026, 7, 1), timeZoneId: "Europe/Madrid");
         var shift = NewShift(rota, dayOffset: 0);
         shift.IsAllDay = false;
         shift.StartTime = new LocalTime(8, 0);
@@ -286,23 +286,16 @@ public sealed class ShiftRepositoryManagementTests : IDisposable
         sourcePrefs.Should().BeEmpty("the source row was folded away, not left orphaned");
     }
 
-    private EventSettings NewEvent(bool isActive) => new()
+    private EventSettings NewEvent() => new()
     {
         Id = Guid.NewGuid(),
-        EventName = "Event",
-        TimeZoneId = "Europe/Madrid",
-        GateOpeningDate = new LocalDate(2026, 7, 1),
-        BuildStartOffset = -14,
-        EventEndOffset = 6,
-        StrikeEndOffset = 9,
-        IsActive = isActive,
         CreatedAt = TestNow,
         UpdatedAt = TestNow
     };
 
     private async Task<(EventSettings es, Rota rota)> SeedRotaAsync(RotaPeriod period)
     {
-        var es = NewEvent(isActive: true);
+        var es = NewEvent();
         _shiftsDbContext.EventSettings.Add(es);
 
         var rota = new Rota

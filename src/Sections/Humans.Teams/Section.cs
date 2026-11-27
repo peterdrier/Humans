@@ -121,6 +121,7 @@ public sealed class Section :
     }
 
     internal const string RetireGovernanceBodiesKey = "teams.retire-governance-bodies";
+    internal const string RemoveGovernanceBodyRolesKey = "teams.remove-governance-body-roles";
 
     IEnumerable<DataMigration> ISectionDataMigrations.Migrations() =>
     [
@@ -129,7 +130,25 @@ public sealed class Section :
             "The three governance system teams, when their rows are deleted",
             RetireGovernanceBodiesStatusAsync,
             (sp, actorUserId, ct) => sp.GetRequiredService<ITeamManagementService>().RetireGovernanceBodyTeamsAsync(actorUserId, ct)),
+        new(RemoveGovernanceBodyRolesKey, "Teams",
+            "Delete the role slots left on the Asociados, Colaboradores and Board teams, so the teams themselves can be deleted",
+            "The three governance system teams' role slots, when their rows are deleted",
+            RemoveGovernanceBodyRolesStatusAsync,
+            (sp, actorUserId, ct) => sp.GetRequiredService<ITeamManagementService>().RemoveGovernanceBodyRolesAsync(actorUserId, ct)),
     ];
+
+    private static async Task<DataMigrationStatus> RemoveGovernanceBodyRolesStatusAsync(IServiceProvider sp, CancellationToken ct)
+    {
+        var teams = sp.GetRequiredService<ITeamManagementService>();
+        var rows = new List<IReadOnlyList<string>>();
+        foreach (var teamId in TeamService.GovernanceBodyTeamIds)
+        {
+            foreach (var role in await teams.GetRoleDefinitionsAsync(teamId, ct))
+                rows.Add([role.TeamName, role.Name, role.Assignments.Count(a => a.AssignedUserId is not null).ToString(CultureInfo.InvariantCulture)]);
+        }
+
+        return new(["Team", "Role", "Filled slots"], rows);
+    }
 
     private static async Task<DataMigrationStatus> RetireGovernanceBodiesStatusAsync(IServiceProvider sp, CancellationToken ct)
     {

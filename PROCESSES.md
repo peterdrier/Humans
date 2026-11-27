@@ -99,6 +99,17 @@ follow docs/maintenance/section-doctor/README.md with --section=Camps
 follow docs/maintenance/section-doctor/README.md with resume
 ```
 
+## Horizontal health: drift radar
+
+**When:** Run by the [maintenance dispatcher](docs/maintenance/dispatcher.md) on Saturdays, or on demand.
+
+**What it does:** Scans 30-day code/test/rules velocity (`scripts/drift-metrics.mjs`) plus a fresh sample of recent diffs to catch emerging cross-section slop and legacy rules getting in agents' way. Read-only toward the repo: opens at most one capped issue on `peterdrier/Humans` when something trips the bar. Procedure: [`docs/maintenance/drift-radar.md`](docs/maintenance/drift-radar.md).
+
+```
+follow docs/maintenance/drift-radar.md
+node scripts/drift-metrics.mjs --days 30
+```
+
 ## Debt: `/debt-sweep` and debt review
 
 **When:** Daily debt burndown.

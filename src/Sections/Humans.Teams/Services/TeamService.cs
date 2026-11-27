@@ -1172,6 +1172,48 @@ internal sealed class TeamService(
         return retired;
     }
 
+    public async Task<int> RemoveGovernanceBodyRolesAsync(Guid actorUserId, CancellationToken cancellationToken = default)
+    {
+        var removed = 0;
+        foreach (var teamId in GovernanceBodyTeamIds)
+        {
+            if (await repo.GetByIdAsync(teamId, cancellationToken) is not { } team)
+                continue;
+
+            foreach (var listed in await repo.GetRoleDefinitionsAsync(teamId, cancellationToken))
+            {
+                if (await repo.FindRoleDefinitionForMutationAsync(listed.Id, cancellationToken) is not { } definition)
+                    continue;
+
+                var holders = definition.Assignments.Select(a => a.TeamMember.UserId).Distinct().ToList();
+                await repo.RemoveRoleDefinitionAsync(definition, cancellationToken);
+
+                foreach (var userId in holders)
+                {
+                    await auditLogService.LogAsync(
+                        TeamsAuditActions.TeamRoleUnassigned, nameof(TeamRoleDefinition), definition.Id,
+                        $"Unassigned from role '{definition.Name}' in {team.Name} before the team was deleted",
+                        actorUserId, relatedEntityId: userId, relatedEntityType: AuditSubjectTypes.User);
+                }
+
+                await auditLogService.LogAsync(
+                    TeamsAuditActions.TeamRoleDefinitionDeleted, nameof(TeamRoleDefinition), definition.Id,
+                    $"Role definition '{definition.Name}' deleted from team {team.Name} before the team was deleted",
+                    actorUserId, relatedEntityId: teamId, relatedEntityType: nameof(Team));
+
+                if (definition.IsManagement)
+                {
+                    foreach (var userId in holders)
+                        await SystemTeamSync.SyncMembershipForUserAsync(userId, SystemTeamType.Coordinators, cancellationToken);
+                }
+
+                removed++;
+            }
+        }
+
+        return removed;
+    }
+
     public async Task<TeamMembershipMutationResult> LeaveTeamAsync(
         Guid teamId,
         Guid userId,

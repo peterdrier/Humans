@@ -167,10 +167,9 @@ output.
 
 No repository, no cache, not part of the `IApplicationService` inventory
 (a `System.Diagnostics.Metrics` gauge publisher, not a section service).
-Polls `IConsentService`, `IGovernanceManagement`,
-`IUserService` on a timer to publish `humans.asociados`,
-`humans.applications_pending`, `humans.pending_consents`,
-`humans.consent_deadline_approaching`.
+Polls `IGovernanceManagement` and `IGovernanceService` on a timer to publish
+`humans.asociados` and `humans.applications_pending`. The consent gauges are
+Consent's (`ConsentMetricsService`).
 
 ### GovernanceIndexService (Scoped)
 

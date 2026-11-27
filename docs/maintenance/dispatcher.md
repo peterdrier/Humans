@@ -30,17 +30,17 @@ At the first tick at or after 03:00, start **Issue drain** (`issue-drain.md`) un
 
 ## 4. Rotation
 
-At most one maintenance PR a day. At the first tick at or after 07:00, look up today's entry and start it, unless it was started today or a PR it opened earlier is still open. With an open PR, skip the day (backpressure); nothing is queued.
+At most one maintenance PR a day. At the first tick at or after 07:00, look up today's entry and start it, unless it was started today or its prior work is still open (an open PR matching its branch prefix, or — for issue-only jobs — an open issue carrying its label). With prior work still open, skip the day (backpressure); nothing is queued.
 
-| Day | Job | Doc | Its open PR's branch starts |
-|-----|-----|-----|-----------------------------|
-| Sunday | Dependency upgrades | `dependency-upgrades.md` | `deps/weekly-` |
-| Monday | Section doctor | `section-doctor/README.md` | `section-doctor/` |
-| Tuesday | Section doctor | `section-doctor/README.md` | `section-doctor/` |
-| Wednesday | Freshness sweep | `freshness-sweep/README.md` | `freshness-sweep/` |
-| Thursday | Section doctor | `section-doctor/README.md` | `section-doctor/` |
-| Friday | Section doctor | `section-doctor/README.md` | `section-doctor/` |
-| Saturday | none | | |
+| Day | Job | Doc | Backpressure check |
+|-----|-----|-----|--------------------|
+| Sunday | Dependency upgrades | `dependency-upgrades.md` | open PR branch starts `deps/weekly-` |
+| Monday | Section doctor | `section-doctor/README.md` | open PR branch starts `section-doctor/` |
+| Tuesday | Section doctor | `section-doctor/README.md` | open PR branch starts `section-doctor/` |
+| Wednesday | Freshness sweep | `freshness-sweep/README.md` | open PR branch starts `freshness-sweep/` |
+| Thursday | Section doctor | `section-doctor/README.md` | open PR branch starts `section-doctor/` |
+| Friday | Section doctor | `section-doctor/README.md` | open PR branch starts `section-doctor/` |
+| Saturday | Drift radar | `drift-radar.md` | open issue labeled `drift-radar` |
 
 ## Not dispatched
 
