@@ -431,9 +431,9 @@ internal sealed class HiEventsPlatform : ITicketingPlatform
                 $"events/{eventId}/orders?per_page={ListPageSize}&page={page}&sort_by=created_at&sort_direction=asc&{range}"), ct);
             var read = await ReadAsync<OrderPage>(response, ct);
             var meta = read.Meta ?? throw new HttpRequestException("Hi.Events answered an order page without its paging.");
-            if (meta.LastPage < 1)
+            if (meta.LastPage < 1 || meta.Total is null or < 0)
                 throw new HttpRequestException("Hi.Events answered an order page with invalid paging.");
-            foreach (var order in read.Data ?? [])
+            foreach (var order in read.Data ?? throw new HttpRequestException("Hi.Events answered an order page without data."))
             {
                 RequireEur(order);
                 orders[order.Id] = new PlatformOrderSummary(
@@ -508,11 +508,14 @@ internal sealed class HiEventsPlatform : ITicketingPlatform
                 $"events/{eventId}/products?per_page={ListPageSize}&page={page}"), ct);
             var read = await ReadAsync<ProductPage>(response, ct);
             var meta = read.Meta ?? throw new HttpRequestException("Hi.Events answered a product page without its paging.");
-            if (meta.LastPage < 1)
+            if (meta.LastPage < 1 || meta.Total is null or < 0)
                 throw new HttpRequestException("Hi.Events answered a product page with invalid paging.");
             products.AddRange(read.Data ?? throw new HttpRequestException("Hi.Events answered a product page without data."));
-            if (page >= meta.LastPage)
-                return products;
+            if (page < meta.LastPage)
+                continue;
+            if (products.Select(p => p.Id).Distinct().Count() != meta.Total)
+                throw new HttpRequestException($"Hi.Events listed an incomplete product catalogue of the {meta.Total} it counts; read again.");
+            return products;
         }
         throw new HttpRequestException($"Hi.Events products hit the {PageSafetyCap}-page safety cap.");
     }
@@ -657,7 +660,7 @@ internal sealed class HiEventsPlatform : ITicketingPlatform
 
     private sealed record OrderPage(List<HiEventsOrder>? Data, PageMeta? Meta);
 
-    private sealed record PageMeta(int LastPage, int Total);
+    private sealed record PageMeta(int LastPage, int? Total);
 
     private sealed record HiEventsAttendee(int Id);
 

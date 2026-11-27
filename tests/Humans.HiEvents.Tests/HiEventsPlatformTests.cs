@@ -738,6 +738,54 @@ public class HiEventsPlatformTests
     [HumansTheory]
     [InlineData(false)]
     [InlineData(true)]
+    public async Task ListOrders_IncompletePage_Throws(bool missingData)
+    {
+        _handler.Enqueue(HttpStatusCode.OK, missingData
+            ? new { data = (object?)null, meta = new Dictionary<string, int>(StringComparer.Ordinal) { ["last_page"] = 1, ["total"] = 0 } }
+            : new { data = (object?)Array.Empty<object>(), meta = new Dictionary<string, int>(StringComparer.Ordinal) { ["last_page"] = 1 } });
+
+        var read = () => Platform().ListOrdersAsync("7", Now, Now + Duration.FromDays(1), Ct);
+
+        await read.Should().ThrowAsync<HttpRequestException>();
+    }
+
+    [HumansTheory]
+    [InlineData(false, false)]
+    [InlineData(false, true)]
+    [InlineData(true, false)]
+    [InlineData(true, true)]
+    public async Task GetProducts_IncompletePage_RefusesCheckout(bool check, bool missingTotal)
+    {
+        if (check)
+        {
+            _handler.Enqueue(HttpStatusCode.OK, new { data = new { id = 1 } });
+            _handler.Enqueue(HttpStatusCode.OK, new { data = new { id = 7, status = "LIVE" } });
+        }
+        var paging = new Dictionary<string, int>(StringComparer.Ordinal) { ["last_page"] = 1 };
+        if (!missingTotal)
+            paging["total"] = 2;
+        _handler.Enqueue(HttpStatusCode.OK, new
+        {
+            data = new[] { new { id = 100, product_type = "TICKET", is_hidden = true } },
+            meta = paging,
+        });
+        // A missing second carrier must stop both the real checkout and the setup probe before POST.
+        _handler.Enqueue(HttpStatusCode.Created, Order(id: 42, total: 225m, paymentLink: "https://tickets.example/pay/42"));
+
+        if (check)
+            (await Platform().CheckAsync("7", Ct)).Should().Contain(f => !f.Ok && f.Text.Contains("could not be read", StringComparison.Ordinal));
+        else
+        {
+            var create = () => Platform().CreateOrderAsync(Request(
+                new PlatformOrderLine(OrderLineKind.Ticket, "General", 22500, 0.10m, "Ana")), Ct);
+            await create.Should().ThrowAsync<HttpRequestException>();
+        }
+        _handler.Requests.Should().OnlyContain(r => r.Request.Method == HttpMethod.Get);
+    }
+
+    [HumansTheory]
+    [InlineData(false)]
+    [InlineData(true)]
     public async Task Paging_StopsAtTheSafetyCap(bool products)
     {
         if (products)
