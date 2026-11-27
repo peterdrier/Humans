@@ -4,4 +4,6 @@ namespace Humans.Backdoor.Services;
 internal static class AuditEntityTypes
 {
     public const string BackdoorApiKey = "BackdoorApiKey";
+
+    public const string BackdoorConnection = "BackdoorConnection";
 }

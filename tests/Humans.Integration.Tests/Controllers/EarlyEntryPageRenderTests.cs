@@ -56,7 +56,7 @@ public class EarlyEntryPageRenderTests(HumansTestDatabase database) : Integratio
     [HumansFact(Timeout = 120000)]
     public async Task A_volunteer_cannot_reach_the_roster()
     {
-        // An internal controller in another assembly, guarded by a policy Shifts registers, not this section.
+        // An internal controller in another assembly, guarded by the policy EarlyEntry's Section registers.
         var ct = Xunit.TestContext.Current.CancellationToken;
         await Factory.SignInAsFullyOnboardedAsync(Client, DevPersona.Volunteer);
 

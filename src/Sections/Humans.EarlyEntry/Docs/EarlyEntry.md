@@ -4,17 +4,19 @@
   src/Sections/Humans.Camps/Services/CachingCampService.cs
   src/Sections/Humans.Camps/Services/CampService.cs
   src/Sections/Humans.Shifts/Section.cs
-  src/Sections/Humans.Shifts/Section.cs
   src/Sections/Humans.Shifts/Services/VolunteerTrackingExportService.cs
   src/Sections/Humans.Shifts/Services/ShiftEarlyEntryProjection.cs
   src/Sections/Humans.Teams/Section.cs
   src/Sections/Humans.Teams/Services/TeamService.cs
-  src/Sections/Humans.Teams/Services/TeamEarlyEntryProjection.cs
   src/Sections/Humans.Gate/Services/GateService.cs
   src/Sections/Humans.Scanner/Controllers/ScannerController.cs
   src/Sections/Humans.Tickets.Contracts/TicketStubInfo.cs
   src/Sections/Humans.Tickets/ViewComponents/MyTicketStubsViewComponent.cs
   src/Sections/Humans.Tickets/ViewComponents/TicketHoldingsViewComponent.cs
+  src/Sections/Humans.Tickets/Controllers/TicketBuyController.cs
+  src/Sections/Humans.Camps/Services/ICampManagement.cs
+  tests/Humans.EarlyEntry.Tests/**
+  tests/Humans.Integration.Tests/Controllers/EarlyEntryPageRenderTests.cs
 -->
 <!-- freshness:flag-on-change
   Re-read the provider fan-out contract: EE is derived data with no table of its own, so
@@ -52,7 +54,7 @@ verbatim; the nav entry is the section's own "Early Entry" group. The route is n
 
 | Actor | Capabilities |
 |-------|--------------|
-| Any authenticated human | Sees their own EE date on ticket-stub surfaces (homepage strip, holdings). The stub and holdings view components answer for the user they are invoked with; an admin profile view shows the profiled user's. |
+| Any authenticated human | Sees their own EE date on ticket-stub surfaces (homepage strip, holdings, my-tickets page). The stub and holdings view components answer for the user they are invoked with; an admin profile view shows the profiled user's. |
 | Gate / Scanner staff | Sees the *scanned attendee's* EE on the gate card (`ScannerController`, `GateService`). |
 | `EarlyEntryPolicies.Roster` (Admin, Board, EarlyEntryAdmin) | Reads the full cross-source roster at `/Shifts/Admin/EarlyEntry`. |
 | `EarlyEntryAdmin` | The grantable role this section declares (`EarlyEntryRoles`): grants, edits and revokes early-entry grants on any team with early entry enabled. Also reads the roster, reached from the admin shell's Early Entry group; confers nothing else here. |
@@ -81,7 +83,7 @@ verbatim; the nav entry is the section's own "Early Entry" group. The route is n
   components answer for the user they are invoked with, so who may see another member's EE
   there is the invoking page's gate, not this section's. The gate card is the deliberate
   staff-facing exception.
-- A human without Admin, Board or EarlyEntryAdmin **cannot** reach `/Shifts/Admin/EarlyEntry`; Shifts Admin alone no longer can.
+- A human without Admin, Board or EarlyEntryAdmin **cannot** reach `/Shifts/Admin/EarlyEntry`; Shifts Admin alone cannot.
 - The section exposes no write path, so no write **cannot**-clause applies.
 
 ## Triggers
@@ -104,8 +106,9 @@ Inbound, all through `Contracts/`:
 - **Teams** — `TeamService` implements `IEarlyEntryProvider`; only grants explicitly bound to the active Settings event contribute. Unassigned legacy grants require operator review in Teams before contributing.
 - **Gate** — `GateService` calls `IEarlyEntryService.GetForUserAsync` for the scanned attendee.
 - **Scanner** — `ScannerController` calls `GetForUserAsync` for the scanned attendee.
-- **Tickets** — `MyTicketStubsViewComponent` and
-  `TicketHoldingsViewComponent` call `GetForUserAsync` for the viewer.
+- **Tickets** — `MyTicketStubsViewComponent`,
+  `TicketHoldingsViewComponent` and `TicketBuyController` (the my-tickets page, `Mine`) call
+  `GetForUserAsync` for the viewer.
 
 ## Architecture
 

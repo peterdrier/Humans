@@ -31,23 +31,29 @@ internal sealed class TasksController(
     {
         if (await AccessAsync(ct) is not { } access) return Unauthorized();
 
-        var visible = (await tasks.GetListedTasksAsync(filter.ToScope(), ct)).Where(access.CanSee).OrderBy(t => t.Title, StringComparer.CurrentCultureIgnoreCase).ToList();
+        var listed = (await tasks.GetListedTasksAsync(filter.ToScope(), ct)).Where(access.CanSee).ToList();
+        var teamChoices = TeamsOf(listed);
+        filter.DropUnoffered(teamChoices, withFinished: true);
+        var visible = TaskRowOrder.Order(listed.Where(filter.Matches)).ToList();
         return View(new TaskListViewModel(
-            visible, await EventsAsync(currentEventId: null, ct), filter, await ManagedTeamsAsync(access, currentTeamId: null, ct), access.PlacesOn(visible)));
+            visible, await EventsAsync(currentEventId: null, ct), filter, await ManagedTeamsAsync(access, currentTeamId: null, ct),
+            teamChoices, access.PlacesOn(visible), access.BlockersOn(visible, await tasks.GetTasksAsync(ct))));
     }
 
     [HttpGet("Open")]
-    public async Task<IActionResult> Open(CancellationToken ct)
+    public async Task<IActionResult> Open([FromQuery] TaskRowFilter filter, CancellationToken ct)
     {
         if (await AccessAsync(ct) is not { } access) return Unauthorized();
 
         var open = (await tasks.GetListedTasksAsync(scope: null, ct))
             .Where(t => access.CanSee(t) && !t.IsFinished && t.OpenSlots > 0)
-            .OrderBy(t => TaskPriorityOrder.Rank(t.Priority))
-            .ThenBy(t => t.Title, StringComparer.CurrentCultureIgnoreCase)
             .ToList();
+        var teamChoices = TeamsOf(open);
+        filter.DropUnoffered(teamChoices, withFinished: false);
+        var shown = TaskRowOrder.Order(open.Where(filter.Matches)).ToList();
         return View(new OpenBoardViewModel(
-            open, open.Sum(t => t.OpenSlots), open.Count(t => t.Priority == SlotPriority.Critical), access.PlacesOn(open)));
+            shown, open.Sum(t => t.OpenSlots), open.Count(t => t.Priority == SlotPriority.Critical), filter, teamChoices,
+            access.PlacesOn(shown), access.BlockersOn(shown, await tasks.GetTasksAsync(ct))));
     }
 
     [HttpGet("Team/{slug}")]
@@ -257,14 +263,15 @@ internal sealed class TasksController(
     private async Task<TeamPageViewModel> TeamPageAsync(
         TeamInfo team, TasksAccess access, IReadOnlyList<TaskInfo> onTeam, TaskListFilter filter, TaskForm addForm, CancellationToken ct)
     {
-        var listed = (await tasks.GetListedTasksAsync(filter.ToScope(), ct))
-            .Where(t => t.Owner.Id == team.Id && access.CanSee(t))
-            .OrderBy(t => t.Title, StringComparer.CurrentCultureIgnoreCase)
+        filter.DropUnoffered(teams: null, withFinished: true);
+        var listed = TaskRowOrder.Order((await tasks.GetListedTasksAsync(filter.ToScope(), ct))
+                .Where(t => t.Owner.Id == team.Id && access.CanSee(t) && filter.MatchesWithinTeam(t)))
             .ToList();
-        var canAdd = access.Manages(team.Id) && team.IsActive && !team.IsSystemTeam;
+        var canAdd = access.CanAddTo(team);
         return new TeamPageViewModel(
             team.Id, team.Name, team.Slug, listed, filter, canAdd, addForm, await EventsAsync(addForm.EventId, ct),
-            access.PlacesOn(listed), access.Manages(team.Id) ? RequestsOn(onTeam) : []);
+            access.PlacesOn(listed), access.BlockersOn(listed, await tasks.GetTasksAsync(ct)),
+            access.Manages(team.Id) ? RequestsOn(onTeam) : []);
     }
 
     private async Task<TaskPageViewModel> TaskPageAsync(
@@ -303,6 +310,14 @@ internal sealed class TasksController(
             canManage ? RequestsOn([task]) : []);
     }
 
+    /// <summary>The teams the listed tasks belong to, for the team filter.</summary>
+    private static IReadOnlyList<TeamChoice> TeamsOf(IEnumerable<TaskInfo> listed) =>
+        [.. listed
+            .Where(t => t.TeamSlug.Length > 0)
+            .DistinctBy(t => t.Owner.Id)
+            .OrderBy(t => t.TeamName, StringComparer.CurrentCultureIgnoreCase)
+            .Select(t => new TeamChoice(t.Owner.Id, t.TeamName, t.TeamSlug))];
+
     /// <summary>Waiting requests, oldest first.</summary>
     private static IReadOnlyList<RequestRow> RequestsOn(IEnumerable<TaskInfo> onTasks) =>
         [.. onTasks
@@ -313,7 +328,7 @@ internal sealed class TasksController(
     /// <summary>Teams that can hold tasks and that the person manages, plus the task's own team so the form never drops it.</summary>
     private async Task<IReadOnlyList<TeamChoice>> ManagedTeamsAsync(TasksAccess access, Guid? currentTeamId, CancellationToken ct) =>
         [.. (await teams.GetTeamsAsync(ct)).Values
-            .Where(t => t.Id == currentTeamId || (t.IsActive && !t.IsSystemTeam && access.Manages(t.Id)))
+            .Where(t => t.Id == currentTeamId || access.CanAddTo(t))
             .OrderBy(t => t.Name, StringComparer.CurrentCultureIgnoreCase)
             .Select(t => new TeamChoice(t.Id, t.Name, t.Slug))];
 

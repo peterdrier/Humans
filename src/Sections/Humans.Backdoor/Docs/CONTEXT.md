@@ -24,7 +24,19 @@ Making a key (for yourself, or Admin for someone else), swapping it for a fresh 
 _Avoid_: make, issue, allocate
 
 **MCP endpoint**:
-`/api/backdoor/mcp`, where an AI client connects with an API key and asks which tools it may use.
+`/api/backdoor/mcp`, where an AI client connects with an API key or through Sign in with Humans, and asks which tools it may use.
+
+**Sign in with Humans**:
+The way the Claude apps connect: the person signs in to Humans in a browser tab and presses Allow, instead of pasting a key.
+_Avoid_: OAuth (in anything a member reads), login
+
+**Connection**:
+One person's Allow for an app through Sign in with Humans. It acts as that person, like a key, until revoked.
+_Avoid_: authorization, grant, session
+
+**Client id**:
+The fixed name (`humans-claude`) the person types into Claude so Humans knows which app is asking.
+_Avoid_: app id, client secret
 
 **Tool**:
 One named thing the MCP endpoint lets a client do, such as `hello`. Each declares a scope.

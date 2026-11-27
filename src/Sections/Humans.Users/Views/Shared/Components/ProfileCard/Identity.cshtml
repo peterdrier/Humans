@@ -8,6 +8,15 @@
     using var humanWriter = new StringWriter();
     human.WriteTo(humanWriter, System.Text.Encodings.Web.HtmlEncoder.Default);
     var humanHtml = new HtmlString(humanWriter.ToString().Trim());
+    // The button is a link, so its name renders without one.
+    var plainHuman = await Component.InvokeAsync(typeof(HumanViewComponent), new
+    {
+        userId = Model.UserId,
+        link = HumanLink.InsideControl,
+    });
+    using var plainWriter = new StringWriter();
+    plainHuman.WriteTo(plainWriter, System.Text.Encodings.Web.HtmlEncoder.Default);
+    var plainHumanHtml = new HtmlString(plainWriter.ToString().Trim());
     var hasLocation = !string.IsNullOrEmpty(Model.City) || !string.IsNullOrEmpty(Model.CountryCode);
 }
 
@@ -85,7 +94,7 @@
         @if (Model.CanSendMessage)
         {
             <a asp-controller="FacilitatedMessage" asp-action="SendMessage" asp-route-id="@Model.UserId" class="btn btn-outline-primary">
-                <i class="fa-solid fa-envelope me-1"></i> @HtmlLocalizer["Users_SendMessage_Button", humanHtml]
+                <i class="fa-solid fa-envelope me-1"></i> @HtmlLocalizer["Users_SendMessage_Button", plainHumanHtml]
             </a>
         }
         @if (Model.IsOwnProfile)

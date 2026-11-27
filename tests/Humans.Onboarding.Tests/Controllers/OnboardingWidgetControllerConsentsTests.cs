@@ -87,7 +87,7 @@ public class OnboardingWidgetControllerConsentsTests
         profile: profile);
 
     [HumansFact]
-    public async Task Consents_Get_StubProfile_RedirectsToNames_WithLocalizedInfo()
+    public async Task ConsentsGet_StubProfile_RedirectsToNames()
     {
         // A nameless user at the consent step would only get a refused form: bounce them to Names.
         var userId = Guid.NewGuid();
@@ -138,7 +138,7 @@ public class OnboardingWidgetControllerConsentsTests
     }
 
     [HumansFact]
-    public async Task Consents_Get_NothingLeftToSign_RedirectsThroughIndex()
+    public async Task ConsentsGet_NothingLeftToSign_RedirectsToIndex()
     {
         // Nothing left to sign → back through the Index dispatcher. The consent-suspension
         // self-heal for this case lives in IOnboardingService.GetNextUnsignedConsentAsync
@@ -155,7 +155,7 @@ public class OnboardingWidgetControllerConsentsTests
     }
 
     [HumansFact]
-    public async Task Consents_Get_DocumentUnavailable_StopsInsteadOfBouncingOffTheDispatcher()
+    public async Task ConsentsGet_DocumentUnavailable_Stops()
     {
         // Handing an unloadable unsigned document back to the dispatcher loops: it still answers "consents".
         var userId = Guid.NewGuid();

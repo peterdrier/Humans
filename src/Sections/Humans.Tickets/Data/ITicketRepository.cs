@@ -72,7 +72,7 @@ internal interface ITicketRepository : IRepository
     /// </summary>
     Task ApplyCheckInsAsync(IReadOnlyList<VendorCheckInDto> checkIns, CancellationToken ct = default);
 
-    /// <summary>Unmatched, <c>Valid</c> or <c>CheckedIn</c>, with a non-empty email.</summary>
+    /// <summary>Unmatched, unerased, <c>Valid</c> or <c>CheckedIn</c>, with a non-empty email.</summary>
     Task<IReadOnlyList<TicketAttendee>> GetUnmatchedActiveAttendeesAsync(
         string vendorEventId, CancellationToken ct = default);
 

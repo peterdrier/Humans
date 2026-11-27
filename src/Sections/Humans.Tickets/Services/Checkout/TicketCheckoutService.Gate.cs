@@ -38,7 +38,7 @@ internal sealed partial class TicketCheckoutService : ITicketGateLookup
 
         var label = ticket.ClassLabel ?? ticket.WaveName;
         var now = clock.GetCurrentInstant();
-        var canStillSell = ticketing.Mode != TicketSalesMode.Closed && !(ticketing.SalesCloseAt is { } close && now >= close);
+        var canStillSell = !ticketing.IsClosed(now);
         // A child goes wherever its adult goes: while the adult's offer can sell, the child would be voided with it.
         var inResaleQueue = canStillSell
             && (ticket.State == TicketCheckoutTicketState.Offered || parent?.State == TicketCheckoutTicketState.Offered);

@@ -30,7 +30,7 @@ internal sealed class HiEventsPlatform : ITicketingPlatform
 {
     public const string PlatformKey = "hievents";
     /// <summary>The <c>Stripe:MirrorAccounts</c> entry for the account the fork's STRIPE_SECRET_KEY charges into.</summary>
-    internal const string StripeAccountName = "HiEvents";
+    internal const string StripeAccountName = "Tickets";
 
     private static readonly JsonSerializerOptions JsonOptions = new()
     {
@@ -261,7 +261,7 @@ internal sealed class HiEventsPlatform : ITicketingPlatform
             "Each event needs exactly one TICKET and one GENERAL product, both hidden, without taxes or fees, offline payment off, and the event live. The event id in the ticketing settings is the numeric Hi.Events event id.",
             "The webhook goes on the order events.",
             "The fork's Stripe webhook must include payment_intent.processing and the charge.dispute.* events, or slow bank payments get cancelled at the hold and chargebacks never reach Humans.",
-            $"Fees and payouts reconcile from the Stripe account behind the fork's STRIPE_SECRET_KEY: a Stripe:MirrorAccounts entry named {StripeAccountName} with that account's id and a read-only key (Balance, Balance transactions, Payouts, PaymentIntents, Charges, Refunds, Disputes read).",
+            $"Fees and payouts reconcile from the Stripe account behind the fork's STRIPE_SECRET_KEY: the shared Tickets Stripe:MirrorAccounts entry named {StripeAccountName} with that account's id and a read-only key (Balance, Balance transactions, Payouts, PaymentIntents, Charges, Refunds, Disputes read).",
         ]);
 
     private bool IsCloud => _settings.ApiBaseUri is { } api
@@ -388,24 +388,13 @@ internal sealed class HiEventsPlatform : ITicketingPlatform
             Guid? humansOrderId = null;
             if (line.Payment is { } payment && !orderOf.TryGetValue(payment.PaymentIntentId, out humansOrderId))
                 orderOf[payment.PaymentIntentId] = humansOrderId = await HumansOrderOfAsync(payment.Metadata, ct);
-            entries.Add(new PaymentLedgerEntry(line.Id, line.CreatedAt, KindOf(line.ReportingCategory),
+            entries.Add(new PaymentLedgerEntry(line.Id, line.CreatedAt, PaymentLedgerEntry.KindOf(line.ReportingCategory),
                 line.AmountMinor, line.FeeMinor, humansOrderId, line.Description));
         }
 
         return new PaymentLedger(entries, stripe.Payouts.Select(p => new PaymentPayout(
             p.Id, p.CreatedAt, p.ArrivalAt, p.AmountMinor, p.Status, p.ContentsNetMinor, p.ContentsCount)).ToList());
     }
-
-    /// <summary>By Stripe's reporting category, as Box Office reads its own account.</summary>
-    private static PaymentLedgerEntryKind KindOf(string reportingCategory) => reportingCategory switch
-    {
-        "charge" or "charge_failure" or "partial_capture_reversal" => PaymentLedgerEntryKind.Charge,
-        "refund" or "refund_failure" => PaymentLedgerEntryKind.Refund,
-        "dispute" or "dispute_reversal" => PaymentLedgerEntryKind.Chargeback,
-        "fee" => PaymentLedgerEntryKind.Fee,
-        "payout" or "payout_reversal" => PaymentLedgerEntryKind.Payout,
-        _ => PaymentLedgerEntryKind.Other,
-    };
 
     private async Task<Guid?> HumansOrderOfAsync(IReadOnlyDictionary<string, string> metadata, CancellationToken ct)
     {

@@ -120,7 +120,10 @@ public sealed record SurveyResponseExport(
     IReadOnlyList<SurveyExportQuestion> Questions,
     IReadOnlyList<SurveyExportRow> Rows);
 
-/// <summary><see cref="Options"/> is empty for non-choice questions.</summary>
+/// <summary>
+/// <see cref="Options"/> is empty for non-choice questions. <see cref="CommentPrompt"/> is set (possibly blank) only
+/// for a choice question that asks for a comment, which the answer carries as its <c>TextValue</c>.
+/// </summary>
 public sealed record SurveyExportQuestion(
     Guid QuestionId,
     string Prompt,
@@ -129,7 +132,8 @@ public sealed record SurveyExportQuestion(
     GridSelectionMode? GridSelectionMode = null,
     IReadOnlyList<SurveyExportGridRow>? GridRows = null,
     SurveyRankedSettings? RankedSettings = null,
-    IReadOnlyList<string>? RankedUnavailableOptionValues = null);
+    IReadOnlyList<string>? RankedUnavailableOptionValues = null,
+    string? CommentPrompt = null);
 
 /// <summary><see cref="Value"/> is the stable machine key.</summary>
 public sealed record SurveyExportOption(string Value, string Label);

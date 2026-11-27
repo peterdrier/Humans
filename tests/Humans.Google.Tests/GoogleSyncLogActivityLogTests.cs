@@ -194,4 +194,18 @@ public sealed class GoogleSyncLogActivityLogTests
         public Task<GoogleIntegrationDbContext> CreateDbContextAsync(CancellationToken ct = default) =>
             Task.FromResult(new GoogleIntegrationDbContext(options));
     }
+
+    [HumansFact]
+    public async Task DeleteBeforeAsync_KeepsRowsAtOrAfterCutoff()
+    {
+        var kept = Entry(T0);
+        await SeedAsync(Entry(T0.Minus(Duration.FromDays(1))), kept);
+
+        var removed = await Repo().DeleteBeforeAsync(T0, Xunit.TestContext.Current.CancellationToken);
+
+        removed.Should().Be(1);
+        await using var ctx = new GoogleIntegrationDbContext(_options);
+        (await ctx.GoogleSyncLog.Select(e => e.Id).ToListAsync(Xunit.TestContext.Current.CancellationToken))
+            .Should().Equal(kept.Id);
+    }
 }

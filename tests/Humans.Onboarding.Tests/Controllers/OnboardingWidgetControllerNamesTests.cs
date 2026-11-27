@@ -92,7 +92,7 @@ public class OnboardingWidgetControllerNamesTests
     }
 
     [HumansFact]
-    public async Task Names_Get_ReturnsBlankViewModel_IgnoringOauthClaims()
+    public async Task NamesGet_ReturnsBlankViewModel()
     {
         // OAuth-supplied names are unverified: the prefill reads the saved profile (none here), never claims.
         var userId = Guid.NewGuid();
@@ -138,7 +138,7 @@ public class OnboardingWidgetControllerNamesTests
     }
 
     [HumansFact]
-    public async Task Names_Post_SavesProfile_AndRedirectsToShifts()
+    public async Task NamesPost_ValidModel_RedirectsToShifts()
     {
         var userId = Guid.NewGuid();
         _profileEditor.SaveProfileAsync(
@@ -201,7 +201,7 @@ public class OnboardingWidgetControllerNamesTests
     }
 
     [HumansFact]
-    public async Task Names_Post_RedirectsToIndex_AndDoesNotSave_WhenUserAlreadyNamed()
+    public async Task NamesPost_AlreadyNamed_DoesNotSave()
     {
         // Already named: skip the save, so the full-field overwrite can't clobber the rest of the profile.
         var userId = Guid.NewGuid();
@@ -220,7 +220,7 @@ public class OnboardingWidgetControllerNamesTests
     }
 
     [HumansFact]
-    public async Task Names_Post_SavesProfile_EvenWhenConsentsVacuouslyComplete()
+    public async Task NamesPost_NoConsentsRequired_SavesProfile()
     {
         // Regression for the OnboardingWidget/Names redirect loop: when the
         // Volunteers team has no required+effective legal docs the dispatcher's
@@ -273,7 +273,7 @@ public class OnboardingWidgetControllerNamesTests
     [HumansTheory]
     [InlineData(false)]
     [InlineData(true)]
-    public async Task Names_Post_PreservesExistingProfileFields_WhenFixingDriftedName(bool mergedAlias)
+    public async Task NamesPost_DriftedName_KeepsOtherProfileFields(bool mergedAlias)
     {
         // A data-drifted profile (City/Bio on file but a blank required name) reaches
         // this POST via NameRequiredFilter. SaveProfileAsync is a full-field overwrite,
@@ -300,7 +300,7 @@ public class OnboardingWidgetControllerNamesTests
     }
 
     [HumansFact]
-    public async Task Names_Post_InvalidModel_ReturnsView()
+    public async Task NamesPost_InvalidModel_ReturnsView()
     {
         var ctrl = BuildSut(Guid.NewGuid());
         ctrl.ModelState.AddModelError(nameof(NamesViewModel.BurnerName), "required");

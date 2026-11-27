@@ -23,7 +23,7 @@ using Humans.Base.Models.Tables;
 namespace Humans.Gate;
 
 /// <summary>No caching decorator: a stale gate read admits or blocks the wrong person.</summary>
-public sealed class Section : ISection, ISectionAdminNav, ISectionJobs, ISectionSettings
+public sealed class Section : ISection, ISectionAdminNav, ISectionSettings
 {
     public void Register(IServiceCollection services, IConfiguration configuration)
     {
@@ -42,6 +42,7 @@ public sealed class Section : ISection, ISectionAdminNav, ISectionJobs, ISection
         services.AddScoped<IGateService>(sp => sp.GetRequiredService<GateService>());
         services.AddScoped<IUserDataContributor>(sp => sp.GetRequiredService<GateService>());
         services.AddScoped<IUserMerge>(sp => sp.GetRequiredService<GateService>());
+        services.AddScoped<IRetentionPeriodContributor>(sp => sp.GetRequiredService<GateService>());
         services.AddScoped<IGateAdmissions, GateAdmissionReads>();
 
         // Only admit verdicts reach the arrivals report's badge column.
@@ -53,7 +54,6 @@ public sealed class Section : ISection, ISectionAdminNav, ISectionJobs, ISection
             [GateVerdict.AdmittedChildWithAdult] = "bg-warning text-dark",
         });
 
-        services.AddScoped<GateRetentionJob>();
         services.AddScoped<GateVendorCheckInJob>();
     }
 
@@ -65,12 +65,6 @@ public sealed class Section : ISection, ISectionAdminNav, ISectionJobs, ISection
             new("Vendor check-in backfill", "GateVendorBackfillAdmin", "Index", null, null, "fa-solid fa-cloud-arrow-up", PolicyNames.AdminOnly)
         ])
     ];
-
-    IEnumerable<RecurringJobDescriptor> ISectionJobs.Jobs(IServiceProvider services)
-    {
-        yield return new RecurringJobDescriptor(
-            "gate-retention", typeof(GateRetentionJob), "45 3 * * *");
-    }
 
     IEnumerable<SettingsTab> ISectionSettings.Tabs() =>
     [

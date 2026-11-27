@@ -18,12 +18,17 @@ internal sealed class Service(
     IClock clock,
     IOptions<HoldedSectionOptions> options,
     ILogger<Service> logger,
-    IOrgTimeZone orgTimeZone) : IHoldedService, IHoldedAdminService
+    IOrgTimeZone orgTimeZone) : IHoldedService, IHoldedAdminService, IRetentionPeriodContributor
 {
     /// <summary>The connector's ledger-entries page size, for the full-resync cost estimate.</summary>
     private const int LedgerPageSize = 200;
 
     public bool IsConfigured => client.IsConfigured;
+
+    public string Label => "Holded API call records";
+
+    public Task<int> DeleteOlderThanAsync(Instant cutoff, CancellationToken ct = default) =>
+        repo.DeleteApiCallsBeforeAsync(cutoff, ct);
 
     private DateTimeZone OrgZone => orgTimeZone.Zone;
 

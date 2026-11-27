@@ -491,7 +491,14 @@ main() {
   fi
   commits_made="$(git rev-list --count "$head_before..HEAD")"
   local goal_blocked=false
-  if (( codex_exit == 2 )); then
+  if (( codex_exit == 4 )); then
+    log "Worker reports the ledger drained"
+    if (( commits_made == 0 )); then
+      exit_reason="drained"
+      write_summary "$run_date" "$exit_reason" "$commits_made" "$build_result" "$test_result" "$pr_url"
+      return 0
+    fi
+  elif (( codex_exit == 2 )); then
     goal_blocked=true
     log "Codex goal blocked; validating committed work for a draft PR"
   elif (( codex_exit == 3 )); then
@@ -505,7 +512,7 @@ main() {
     exit_reason="codex-failed"
     die "Codex goal failed; preserving local work without publishing"
   fi
-  if [[ "$goal_blocked" == false ]] && (( codex_exit != 3 && $(date -u +%s) < work_deadline )); then
+  if [[ "$goal_blocked" == false ]] && (( codex_exit != 3 && codex_exit != 4 && $(date -u +%s) < work_deadline )); then
     exit_reason="goal-ended-early"
     die "Goal returned before the work deadline"
   fi
@@ -564,6 +571,12 @@ main() {
   # Bookkeeping and test-only work are not production debt fixes.
   # Executable tooling under docs/scripts still counts.
   if ! has_substantive_changes "$head_before" "$head_after"; then
+    if (( codex_exit == 4 )); then
+      exit_reason="drained"
+      log "Ledger drained with only bookkeeping commits; nothing to publish"
+      write_summary "$run_date" "$exit_reason" "$commits_made" "$build_result" "$test_result" "$pr_url"
+      return 0
+    fi
     exit_reason="no-substantive-fixes"
     die "No substantive fixes; ledger/documentation/test-only changes cannot produce a debt PR"
   fi
@@ -855,7 +868,9 @@ has_substantive_changes() {
       *) return 0 ;;
     esac
   done < <(git diff --name-only -z "$1" "$2")
-  return 1
+  # Test work that shrinks the suite (renames off NameBaseline.txt, split or
+  # dropped theories) is a fix; test work that grows it is not.
+  git diff --numstat "$1" "$2" -- tests | awk '$1 != "-" {a += $1; d += $2} END {exit !(d > a)}'
 }
 
 # Retries a push up to $4 additional times (2s/4s/8s/16s backoff), but only
