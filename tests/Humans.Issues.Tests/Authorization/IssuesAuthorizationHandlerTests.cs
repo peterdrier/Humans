@@ -40,7 +40,7 @@ public sealed class IssuesAuthorizationHandlerTests
 
     [HumansTheory]
     [MemberData(nameof(IssueAuthorizationCases))]
-    public async Task Issue_handle_authorization_matches_expected_scenarios(
+    public async Task HandleIssue_EachScenario_MatchesExpected(
         string[] roles,
         string? section,
         bool expected)

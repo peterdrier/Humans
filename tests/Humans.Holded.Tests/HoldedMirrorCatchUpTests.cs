@@ -65,7 +65,7 @@ public sealed class HoldedMirrorCatchUpTests
     [HumansTheory]
     [InlineData(false, true)]
     [InlineData(true, false)]
-    public async Task Boot_QueuesASync_OnlyWhileTheMirrorHasNeverSynced(bool synced, bool queued)
+    public async Task Boot_MirrorNeverSynced_QueuesSync(bool synced, bool queued)
     {
         var holded = Substitute.For<IHoldedService>();
         holded.GetPurchaseDocumentsAsync(Arg.Any<CancellationToken>()).Returns(new HoldedPurchaseDocMirror(

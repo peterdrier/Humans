@@ -30,7 +30,7 @@ public class HoldedNightlySyncTests
     [Xunit.InlineData(Phase.Documents, Phase.Contacts)]
     [Xunit.InlineData(Phase.Documents, Phase.Ledger)]
     [Xunit.InlineData(Phase.Contacts, Phase.Ledger)]
-    public async Task Shutdown_preserves_earlier_failures(Phase failedPhase, Phase canceledPhase)
+    public async Task RunAsync_ShutdownAfterFailure_KeepsFailure(Phase failedPhase, Phase canceledPhase)
     {
         using var shutdown = new CancellationTokenSource();
         var holded = Substitute.For<IHoldedService>();
@@ -60,7 +60,7 @@ public class HoldedNightlySyncTests
     [HumansTheory]
     [Xunit.InlineData(false)]
     [Xunit.InlineData(true)]
-    public async Task Independent_phase_failures_are_reported_together(bool ledgerFails)
+    public async Task RunAsync_TwoPhasesFail_ReportsBoth(bool ledgerFails)
     {
         var holded = Substitute.For<IHoldedService>();
         var docs = new IOException("Documents failed");
@@ -81,7 +81,7 @@ public class HoldedNightlySyncTests
     [Xunit.InlineData(Phase.Documents)]
     [Xunit.InlineData(Phase.Contacts)]
     [Xunit.InlineData(Phase.Ledger)]
-    public async Task Shutdown_without_an_earlier_failure_preserves_cancellation(Phase canceledPhase)
+    public async Task RunAsync_ShutdownNoFailure_KeepsCancellation(Phase canceledPhase)
     {
         using var shutdown = new CancellationTokenSource();
         var holded = Substitute.For<IHoldedService>();
@@ -103,7 +103,7 @@ public class HoldedNightlySyncTests
     [HumansTheory]
     [Xunit.InlineData(false)]
     [Xunit.InlineData(true)]
-    public async Task Shutdown_between_phases_stops_before_the_next_attempt(bool alreadyCanceled)
+    public async Task RunAsync_ShutdownBetweenPhases_StopsThere(bool alreadyCanceled)
     {
         using var shutdown = new CancellationTokenSource();
         var holded = Substitute.For<IHoldedService>();
@@ -156,7 +156,7 @@ public class HoldedNightlySyncTests
     }
 
     [HumansFact]
-    public async Task RunAsync_FailedDocumentSync_StillSweepsTheLedger_ThenFails()
+    public async Task RunAsync_DocumentSyncFails_StillSweepsLedger()
     {
         var holded = Substitute.For<IHoldedService>();
         holded.SyncPurchaseDocumentsAsync(Arg.Any<CancellationToken>())
