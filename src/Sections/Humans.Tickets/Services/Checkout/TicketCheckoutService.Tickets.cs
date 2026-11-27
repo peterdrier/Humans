@@ -1,5 +1,6 @@
 using System.Security.Cryptography;
 using System.Text;
+using Humans.Base.Extensions;
 using Humans.Tickets.Contracts;
 using Humans.Users.Contracts;
 using Humans.Tickets.Domain.Checkout;
@@ -29,7 +30,7 @@ internal sealed partial class TicketCheckoutService
         if (kind is not (TicketCheckoutOrderEventKind.TicketsEmailed or TicketCheckoutOrderEventKind.TicketsResent
             or TicketCheckoutOrderEventKind.TicketMailSkipped))
             throw new ArgumentOutOfRangeException(nameof(kind), kind, "Only delivery steps are recorded here.");
-        return TimelineAsync(orderId, kind, Truncate(detail), actorUserId, ct);
+        return TimelineAsync(orderId, kind, detail.Truncate(MaxReasonLength), actorUserId, ct);
     }
 
     public Task<IReadOnlyList<TicketCheckoutTicket>> GetTicketsForHolderAsync(Guid userId, CancellationToken ct = default) =>
@@ -488,7 +489,7 @@ internal sealed partial class TicketCheckoutService
         if (refundId is null)
         {
             logger.LogError("Resale refund for ticket {TicketId} could not start: {Refusal}", old.Id, result.Refusal);
-            var why = Truncate(result.Refusal ?? "refused");
+            var why = (result.Refusal ?? "refused").Truncate(MaxReasonLength);
             await RecordResaleRefundNotSentAsync(offer, old, why,
                 $"Resale refund of {FormatMinor(offer.RefundOwedMinor)} could not start ({why}); the ticketing team must refund it by hand", ct);
             return false;
@@ -515,7 +516,7 @@ internal sealed partial class TicketCheckoutService
             AmountMinor = offer.RefundOwedMinor,
             Reason = "Ticket resold",
             State = RefundState.Failed,
-            FailureReason = Truncate(failureReason),
+            FailureReason = failureReason.Truncate(MaxReasonLength),
             CreatedAt = clock.GetCurrentInstant(),
         }, ct);
         await auditLog.LogAsync(TicketsAuditActions.TicketCheckoutNeedsAttention, AuditEntityType, old.OrderId, detail, JobName);

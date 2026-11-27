@@ -1,4 +1,5 @@
 using Humans.Base.Data;
+using Humans.Base.Extensions;
 using Humans.Google.Contracts;
 using Microsoft.EntityFrameworkCore;
 using NodaTime;
@@ -315,7 +316,7 @@ internal sealed class GoogleResourceRepository(IDbContextFactory<GoogleIntegrati
             return;
         }
 
-        errorMessage = StoredGoogleText.Bound(errorMessage, 2000);
+        errorMessage = errorMessage.Truncate(2000);
 
         foreach (var row in rows)
         {

@@ -1,3 +1,4 @@
+using Humans.Base.Extensions;
 using Humans.Base.Interfaces;
 using Microsoft.Extensions.Caching.Memory;
 using Octokit;
@@ -263,8 +264,7 @@ internal sealed class CommunityFaqReader(
             var text = line.Trim();
             if (text.Length <= 200) return text;
             // Trim back to the last word boundary so the routing summary doesn't cut mid-word.
-            var length = char.IsHighSurrogate(text[199]) && char.IsLowSurrogate(text[200]) ? 199 : 200;
-            var cut = text[..length];
+            var cut = text.Truncate(200);
             var lastSpace = cut.LastIndexOf(' ');
             return (lastSpace > 0 ? cut[..lastSpace] : cut) + "…";
         }

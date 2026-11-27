@@ -1,3 +1,4 @@
+using Humans.Base.Extensions;
 using Humans.Google.Domain;
 using Humans.Google.Contracts;
 using static Humans.Google.Services.DrivePermissionPlanning;
@@ -444,7 +445,7 @@ internal sealed class GoogleDriveAccessSyncService(
         if (at <= 0) return "***";
         var plus = email.IndexOf('+', 0, at);
         var end = plus > 0 ? plus : at;
-        var prefix = StoredGoogleText.Bound(email, Math.Min(2, end));
+        var prefix = email.Truncate(Math.Min(2, end));
         return $"{prefix}***{email[end..]}";
     }
 

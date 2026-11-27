@@ -1,4 +1,5 @@
 using Humans.Base.Data;
+using Humans.Base.Extensions;
 using Humans.Google.Contracts;
 using Microsoft.EntityFrameworkCore;
 using NodaTime;
@@ -116,7 +117,7 @@ internal sealed class GoogleSyncOutboxRepository(IDbContextFactory<GoogleIntegra
 
         entity.FailedPermanently = true;
         entity.ProcessedAt = processedAt;
-        entity.LastError = StoredGoogleText.Bound(lastError, LastErrorMaxLength);
+        entity.LastError = lastError.Truncate(LastErrorMaxLength);
         await ctx.SaveChangesAsync(ct);
     }
 
@@ -133,7 +134,7 @@ internal sealed class GoogleSyncOutboxRepository(IDbContextFactory<GoogleIntegra
             return (false, 0);
 
         entity.RetryCount += 1;
-        entity.LastError = StoredGoogleText.Bound(lastError, LastErrorMaxLength);
+        entity.LastError = lastError.Truncate(LastErrorMaxLength);
 
         var exhausted = entity.RetryCount >= maxRetryCount;
         if (exhausted)

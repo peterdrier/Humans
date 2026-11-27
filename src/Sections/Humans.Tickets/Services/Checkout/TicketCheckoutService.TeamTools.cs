@@ -1,6 +1,7 @@
 using System.Diagnostics;
 using System.Security.Cryptography;
 using Humans.AuditLog.Contracts;
+using Humans.Base.Extensions;
 using Humans.Tickets.Contracts;
 using Humans.Tickets.Domain.Checkout;
 using NodaTime;
@@ -131,7 +132,7 @@ internal sealed partial class TicketCheckoutService
         {
             ticket.State = TicketCheckoutTicketState.Void;
             ticket.VoidedAt = now;
-            ticket.VoidReason = Truncate(why);
+            ticket.VoidReason = why.Truncate(MaxReasonLength);
             await repository.UpdateTicketAsync(ticket, ct);
             if (ticket.HolderUserId is { } holder)
                 holdings.InvalidateHoldings(holder);
@@ -145,7 +146,7 @@ internal sealed partial class TicketCheckoutService
         if (refundMinor > 0 && !state.HasCancelRefund(order))
         {
             var cancelRefundId = CancellationState.CancelRefundId(ticketing.Id, order.Id);
-            var (result, refundId) = await RefundCoreAsync(order.Id, refundMinor, Truncate(why), null, ct, cancelRefundId);
+            var (result, refundId) = await RefundCoreAsync(order.Id, refundMinor, why.Truncate(MaxReasonLength), null, ct, cancelRefundId);
             if (!result.Succeeded)
             {
                 refundByHand = true;
@@ -157,13 +158,13 @@ internal sealed partial class TicketCheckoutService
                         Id = cancelRefundId,
                         OrderId = order.Id,
                         AmountMinor = refundMinor,
-                        Reason = Truncate(why),
+                        Reason = why.Truncate(MaxReasonLength),
                         State = RefundState.Failed,
-                        FailureReason = Truncate(result.Refusal ?? "Refused"),
+                        FailureReason = (result.Refusal ?? "Refused").Truncate(MaxReasonLength),
                         CreatedAt = now,
                     }, ct);
                 refundNote = $"; the {FormatMinor(refundMinor)} {order.Currency} refund failed " +
-                    $"({Truncate(result.Refusal ?? "refused")}): the ticketing team must refund it by hand";
+                    $"({(result.Refusal ?? "refused").Truncate(MaxReasonLength)}): the ticketing team must refund it by hand";
                 await auditLog.LogAsync(TicketsAuditActions.TicketCheckoutNeedsAttention, AuditEntityType, order.Id,
                     $"Cancellation refund{refundNote[1..]}", JobName);
             }

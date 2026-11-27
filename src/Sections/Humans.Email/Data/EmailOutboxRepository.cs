@@ -1,4 +1,5 @@
 using Humans.Base.Data;
+using Humans.Base.Extensions;
 using Humans.Email.Domain;
 using Humans.Base.Enums;
 using Microsoft.EntityFrameworkCore;
@@ -154,14 +155,7 @@ internal sealed class EmailOutboxRepository(IDbContextFactory<EmailDbContext> fa
 
         message.Status = EmailOutboxStatus.Failed;
         message.RetryCount += 1;
-        if (lastError.Length > 4000)
-        {
-            var length = 4000;
-            if (char.IsHighSurrogate(lastError[length - 1]) && char.IsLowSurrogate(lastError[length]))
-                length--;
-            lastError = lastError[..length];
-        }
-        message.LastError = lastError;
+        message.LastError = lastError.Truncate(4000);
         message.NextRetryAt = nextRetryAt;
         message.PickedUpAt = null;
         await ctx.SaveChangesAsync(ct);

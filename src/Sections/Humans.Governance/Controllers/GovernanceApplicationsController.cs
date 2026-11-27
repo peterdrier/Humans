@@ -1,3 +1,4 @@
+using Humans.Base.Extensions;
 using Humans.Governance.Domain;
 using Humans.Base.Attributes;
 using Humans.Base.Models.Tables;
@@ -243,9 +244,7 @@ internal sealed class GovernanceApplicationsController(
             Status = a.Status,
             StatusBadgeClass = EnumBadgeMap.For(a.Status),
             SubmittedAt = a.SubmittedAt.ToDateTimeUtc(),
-            MotivationPreview = a.Motivation.Length > 100
-                ? a.Motivation[..(char.IsHighSurrogate(a.Motivation[99]) && char.IsLowSurrogate(a.Motivation[100]) ? 99 : 100)] + "..."
-                : a.Motivation,
+            MotivationPreview = a.Motivation.Truncate(103, "..."),
             MembershipTier = a.MembershipTier
         }).ToList();
 
