@@ -1,3 +1,4 @@
+using Humans.Base.Data;
 using Humans.Base.Threading;
 using Humans.MailerLite.Domain;
 using Microsoft.EntityFrameworkCore;
@@ -6,7 +7,7 @@ namespace Humans.MailerLite.Data;
 
 internal sealed class Repository(
     IDbContextFactory<MailerLiteDbContext> factory,
-    ILogger<Repository> logger) : IMailerLiteRepository
+    ILogger<Repository> logger) : SectionRepository<MailerLiteDbContext>(factory), IMailerLiteRepository
 {
     // The daily job and an admin's click can hit the same key at once, and a bare read-then-insert would write
     // it twice. Single server, so an app-level lock is the whole answer.
@@ -19,27 +20,21 @@ internal sealed class Repository(
         UpsertLocks[(uint)StringComparer.Ordinal.GetHashCode(key) % (uint)UpsertLocks.Length];
 
     public async Task<IReadOnlyList<MailerLiteSyncState>> GetSyncStatesAsync(
-        CancellationToken ct = default)
-    {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
-        return await ctx.MailerLiteSyncStates.AsNoTracking().ToListAsync(ct);
-    }
+        CancellationToken ct = default) =>
+        await RunAsync(ctx => ctx.MailerLiteSyncStates.AsNoTracking().ToListAsync(ct), ct);
 
     public async Task<MailerLiteSyncState?> GetSyncStateAsync(
-        string key, CancellationToken ct = default)
-    {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
-        return await ctx.MailerLiteSyncStates
+        string key, CancellationToken ct = default) =>
+        await RunAsync(ctx => ctx.MailerLiteSyncStates
             .AsNoTracking()
-            .FirstOrDefaultAsync(s => s.Key == key, ct);
-    }
+            .FirstOrDefaultAsync(s => s.Key == key, ct), ct);
 
     public async Task<MailerLiteSyncState> UpsertSyncStateAsync(
         MailerLiteSyncState state, CancellationToken ct = default)
     {
         using var _ = await UpsertLockFor(state.Key).AcquireAsync(logger, ct);
 
-        await using var ctx = await factory.CreateDbContextAsync(ct);
+        await using var ctx = await CreateDbContextAsync(ct);
 
         var row = await ctx.MailerLiteSyncStates.FirstOrDefaultAsync(s => s.Key == state.Key, ct);
         if (row is null)

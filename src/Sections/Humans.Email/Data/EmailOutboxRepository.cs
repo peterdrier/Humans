@@ -1,3 +1,4 @@
+using Humans.Base.Data;
 using Humans.Email.Domain;
 using Humans.Base.Enums;
 using Microsoft.EntityFrameworkCore;
@@ -6,64 +7,43 @@ using Npgsql;
 
 namespace Humans.Email.Data;
 
-internal sealed class EmailOutboxRepository(IDbContextFactory<EmailDbContext> factory) : IEmailOutboxRepository
+internal sealed class EmailOutboxRepository(IDbContextFactory<EmailDbContext> factory) : SectionRepository<EmailDbContext>(factory), IEmailOutboxRepository
 {
-    public async Task<int> GetTotalCountAsync(CancellationToken ct = default)
-    {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
-        return await ctx.EmailOutboxMessages.CountAsync(ct);
-    }
+    public async Task<int> GetTotalCountAsync(CancellationToken ct = default) =>
+        await RunAsync(ctx => ctx.EmailOutboxMessages.CountAsync(ct), ct);
 
-    public async Task<int> GetCountByStatusAsync(EmailOutboxStatus status, CancellationToken ct = default)
-    {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
-        return await ctx.EmailOutboxMessages.CountAsync(m => m.Status == status, ct);
-    }
+    public async Task<int> GetCountByStatusAsync(EmailOutboxStatus status, CancellationToken ct = default) =>
+        await RunAsync(ctx => ctx.EmailOutboxMessages.CountAsync(m => m.Status == status, ct), ct);
 
-    public async Task<int> GetSentCountSinceAsync(Instant since, CancellationToken ct = default)
-    {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
-        return await ctx.EmailOutboxMessages
-            .CountAsync(m => m.Status == EmailOutboxStatus.Sent && m.SentAt > since, ct);
-    }
+    public async Task<int> GetSentCountSinceAsync(Instant since, CancellationToken ct = default) =>
+        await RunAsync(ctx => ctx.EmailOutboxMessages
+            .CountAsync(m => m.Status == EmailOutboxStatus.Sent && m.SentAt > since, ct), ct);
 
-    public async Task<IReadOnlyList<EmailOutboxMessage>> GetRecentAsync(int take, CancellationToken ct = default)
-    {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
-        return await ctx.EmailOutboxMessages
+    public async Task<IReadOnlyList<EmailOutboxMessage>> GetRecentAsync(int take, CancellationToken ct = default) =>
+        await RunAsync(ctx => ctx.EmailOutboxMessages
             .AsNoTracking()
             .OrderByDescending(m => m.CreatedAt) // arch:db-sort-ok top-N selector
             .Take(take)
-            .ToListAsync(ct);
-    }
+            .ToListAsync(ct), ct);
 
     public async Task<IReadOnlyList<EmailOutboxMessage>> GetForUserAsync(
-        Guid userId, CancellationToken ct = default)
-    {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
-        return await ctx.EmailOutboxMessages
+        Guid userId, CancellationToken ct = default) =>
+        await RunAsync(ctx => ctx.EmailOutboxMessages
             .AsNoTracking()
             .Where(m => m.UserId == userId)
             .OrderByDescending(m => m.CreatedAt) // arch:db-sort-ok operational chronology
-            .ToListAsync(ct);
-    }
+            .ToListAsync(ct), ct);
 
-    public async Task<int> GetCountForUserAsync(Guid userId, CancellationToken ct = default)
-    {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
-        return await ctx.EmailOutboxMessages.CountAsync(m => m.UserId == userId, ct);
-    }
+    public async Task<int> GetCountForUserAsync(Guid userId, CancellationToken ct = default) =>
+        await RunAsync(ctx => ctx.EmailOutboxMessages.CountAsync(m => m.UserId == userId, ct), ct);
 
-    public async Task<int> GetPendingCountAsync(int maxRetries, CancellationToken ct = default)
-    {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
-        return await ctx.EmailOutboxMessages
-            .CountAsync(m => m.SentAt == null && m.RetryCount < maxRetries, ct);
-    }
+    public async Task<int> GetPendingCountAsync(int maxRetries, CancellationToken ct = default) =>
+        await RunAsync(ctx => ctx.EmailOutboxMessages
+            .CountAsync(m => m.SentAt == null && m.RetryCount < maxRetries, ct), ct);
 
     public async Task<bool> AddAsync(EmailOutboxMessage message, CancellationToken ct = default, bool idempotent = false)
     {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
+        await using var ctx = await CreateDbContextAsync(ct);
         if (idempotent && await ctx.EmailOutboxMessages.AnyAsync(m => m.Id == message.Id, ct))
             return false;
         ctx.EmailOutboxMessages.Add(message);
@@ -82,7 +62,7 @@ internal sealed class EmailOutboxRepository(IDbContextFactory<EmailDbContext> fa
 
     public async Task<string?> RetryAsync(Guid id, CancellationToken ct = default)
     {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
+        await using var ctx = await CreateDbContextAsync(ct);
         var message = await ctx.EmailOutboxMessages.FindAsync([id], ct);
         if (message is null) return null;
 
@@ -98,7 +78,7 @@ internal sealed class EmailOutboxRepository(IDbContextFactory<EmailDbContext> fa
 
     public async Task<string?> DiscardAsync(Guid id, CancellationToken ct = default)
     {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
+        await using var ctx = await CreateDbContextAsync(ct);
         var message = await ctx.EmailOutboxMessages.FindAsync([id], ct);
         if (message is null) return null;
 
@@ -116,7 +96,7 @@ internal sealed class EmailOutboxRepository(IDbContextFactory<EmailDbContext> fa
         int batchSize,
         CancellationToken ct = default)
     {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
+        await using var ctx = await CreateDbContextAsync(ct);
         return await ctx.EmailOutboxMessages
             .AsNoTracking()
             .Where(m => m.SentAt == null
@@ -136,7 +116,7 @@ internal sealed class EmailOutboxRepository(IDbContextFactory<EmailDbContext> fa
     {
         if (messageIds.Count == 0) return;
 
-        await using var ctx = await factory.CreateDbContextAsync(ct);
+        await using var ctx = await CreateDbContextAsync(ct);
         // Load-mutate-save rather than ExecuteUpdateAsync so the EF InMemory tests see the update.
         var messages = await ctx.EmailOutboxMessages
             .Where(m => messageIds.Contains(m.Id))
@@ -150,7 +130,7 @@ internal sealed class EmailOutboxRepository(IDbContextFactory<EmailDbContext> fa
 
     public async Task<bool> MarkSentAsync(Guid messageId, Instant sentAt, CancellationToken ct = default)
     {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
+        await using var ctx = await CreateDbContextAsync(ct);
         var message = await ctx.EmailOutboxMessages.FindAsync([messageId], ct);
         if (message is null) return false;
 
@@ -168,7 +148,7 @@ internal sealed class EmailOutboxRepository(IDbContextFactory<EmailDbContext> fa
         Instant nextRetryAt,
         CancellationToken ct = default)
     {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
+        await using var ctx = await CreateDbContextAsync(ct);
         var message = await ctx.EmailOutboxMessages.FindAsync([messageId], ct);
         if (message is null) return false;
 
@@ -190,7 +170,7 @@ internal sealed class EmailOutboxRepository(IDbContextFactory<EmailDbContext> fa
 
     public async Task<int> DeleteSentOlderThanAsync(Instant cutoff, CancellationToken ct = default)
     {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
+        await using var ctx = await CreateDbContextAsync(ct);
         // Load-then-RemoveRange: the EF InMemory provider used by the tests has no ExecuteDeleteAsync.
         var toDelete = await ctx.EmailOutboxMessages
             .Where(m => m.Status == EmailOutboxStatus.Sent && m.SentAt < cutoff)
@@ -203,7 +183,7 @@ internal sealed class EmailOutboxRepository(IDbContextFactory<EmailDbContext> fa
 
     public async Task<int> DeleteForUserAsync(Guid userId, CancellationToken ct = default)
     {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
+        await using var ctx = await CreateDbContextAsync(ct);
         // Load-then-RemoveRange for the same InMemory reason.
         var toDelete = await ctx.EmailOutboxMessages
             .Where(m => m.UserId == userId)
@@ -218,7 +198,7 @@ internal sealed class EmailOutboxRepository(IDbContextFactory<EmailDbContext> fa
     {
         if (sourceUserId == targetUserId) return;
 
-        await using var ctx = await factory.CreateDbContextAsync(ct);
+        await using var ctx = await CreateDbContextAsync(ct);
         var messages = await ctx.EmailOutboxMessages
             .Where(m => m.UserId == sourceUserId)
             .ToListAsync(ct);
@@ -233,7 +213,7 @@ internal sealed class EmailOutboxRepository(IDbContextFactory<EmailDbContext> fa
     public async Task IncrementDailySendCountAsync(
         LocalDate date, string templateName, bool succeeded, CancellationToken ct = default)
     {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
+        await using var ctx = await CreateDbContextAsync(ct);
         var row = await ctx.EmailDailySendCounts.FindAsync([date, templateName], ct);
         if (row is null)
         {
@@ -248,19 +228,16 @@ internal sealed class EmailOutboxRepository(IDbContextFactory<EmailDbContext> fa
     }
 
     public async Task<IReadOnlyList<EmailDailySendCount>> GetDailySendCountsSinceAsync(
-        LocalDate since, CancellationToken ct = default)
-    {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
-        return await ctx.EmailDailySendCounts
+        LocalDate since, CancellationToken ct = default) =>
+        await RunAsync(ctx => ctx.EmailDailySendCounts
             .AsNoTracking()
             .Where(c => c.Date >= since)
-            .ToListAsync(ct);
-    }
+            .ToListAsync(ct), ct);
 
     public async Task<IReadOnlySet<(LocalDate Date, string TemplateName)>> GetDailySendCountKeysAsync(
         CancellationToken ct = default)
     {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
+        await using var ctx = await CreateDbContextAsync(ct);
         var rows = await ctx.EmailDailySendCounts
             .AsNoTracking()
             .Select(c => new { c.Date, c.TemplateName })
@@ -272,18 +249,15 @@ internal sealed class EmailOutboxRepository(IDbContextFactory<EmailDbContext> fa
         IReadOnlyList<EmailDailySendCount> rows, CancellationToken ct = default)
     {
         if (rows.Count == 0) return;
-        await using var ctx = await factory.CreateDbContextAsync(ct);
+        await using var ctx = await CreateDbContextAsync(ct);
         ctx.EmailDailySendCounts.AddRange(rows);
         await ctx.SaveChangesAsync(ct);
     }
 
     public async Task<IReadOnlyList<EmailOutboxMessage>> GetSentSinceAsync(
-        Instant since, CancellationToken ct = default)
-    {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
-        return await ctx.EmailOutboxMessages
+        Instant since, CancellationToken ct = default) =>
+        await RunAsync(ctx => ctx.EmailOutboxMessages
             .AsNoTracking()
             .Where(m => m.Status == EmailOutboxStatus.Sent && m.SentAt >= since)
-            .ToListAsync(ct);
-    }
+            .ToListAsync(ct), ct);
 }

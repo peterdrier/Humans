@@ -5,21 +5,15 @@ namespace Humans.Governance.Data;
 
 internal sealed partial class ApplicationRepository
 {
-    public async Task<MembershipTierRecord?> GetAsync(Guid userId, CancellationToken ct = default)
-    {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
-        return await ctx.MembershipTiers.AsNoTracking().SingleOrDefaultAsync(x => x.UserId == userId, ct);
-    }
+    public async Task<MembershipTierRecord?> GetAsync(Guid userId, CancellationToken ct = default) =>
+        await RunAsync(ctx => ctx.MembershipTiers.AsNoTracking().SingleOrDefaultAsync(x => x.UserId == userId, ct), ct);
 
-    public async Task<IReadOnlyList<MembershipTierRecord>> GetAllAsync(CancellationToken ct = default)
-    {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
-        return await ctx.MembershipTiers.AsNoTracking().ToListAsync(ct);
-    }
+    public async Task<IReadOnlyList<MembershipTierRecord>> GetAllAsync(CancellationToken ct = default) =>
+        await RunAsync(ctx => ctx.MembershipTiers.AsNoTracking().ToListAsync(ct), ct);
 
     public async Task UpsertAsync(MembershipTierRecord values, CancellationToken ct = default)
     {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
+        await using var ctx = await CreateDbContextAsync(ct);
         await PrepareTierUpsertAsync(ctx, values, ct);
         await ctx.SaveChangesAsync(ct);
     }
@@ -40,7 +34,7 @@ internal sealed partial class ApplicationRepository
 
     public async Task ReassignAsync(Guid fromUserId, Guid toUserId, CancellationToken ct = default)
     {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
+        await using var ctx = await CreateDbContextAsync(ct);
         var source = await ctx.MembershipTiers.SingleOrDefaultAsync(x => x.UserId == fromUserId, ct);
         if (source is null) return;
 

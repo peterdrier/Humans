@@ -1,18 +1,18 @@
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using NodaTime;
+using Humans.Base.Data;
 using Humans.Users.Contracts;
 
 namespace Humans.Users.Data.Repositories;
 
-internal sealed partial class UserRepository : IUserRepository
+internal sealed partial class UserRepository : SectionRepository<UsersDbContext>, IUserRepository
 {
-    private readonly IDbContextFactory<UsersDbContext> _factory;
     private readonly IClock _clock;
 
     public UserRepository(IDbContextFactory<UsersDbContext> factory, IClock clock)
+        : base(factory)
     {
-        _factory = factory;
         _clock = clock;
     }
 
@@ -21,21 +21,15 @@ internal sealed partial class UserRepository : IUserRepository
     {
     }
 
-    public async Task<User?> GetByIdAsync(Guid userId, CancellationToken ct = default)
-    {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
-        return await ctx.Users
+    public async Task<User?> GetByIdAsync(Guid userId, CancellationToken ct = default) =>
+        await RunAsync(ctx => ctx.Users
             .AsNoTracking()
-            .FirstOrDefaultAsync(u => u.Id == userId, ct);
-    }
+            .FirstOrDefaultAsync(u => u.Id == userId, ct), ct);
 
-    public async Task<IReadOnlyList<User>> GetAllAsync(CancellationToken ct = default)
-    {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
-        return await ctx.Users
+    public async Task<IReadOnlyList<User>> GetAllAsync(CancellationToken ct = default) =>
+        await RunAsync(ctx => ctx.Users
             .AsNoTracking()
-            .ToListAsync(ct);
-    }
+            .ToListAsync(ct), ct);
 
     private static string EscapeLikePattern(string value)
         => value
@@ -46,7 +40,7 @@ internal sealed partial class UserRepository : IUserRepository
     public async Task<bool> SetPreferredLanguageAsync(
         Guid userId, string preferredLanguage, CancellationToken ct = default)
     {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        await using var ctx = await CreateDbContextAsync(ct);
         var user = await ctx.Users.FindAsync([userId], ct);
         if (user is null)
             return false;
@@ -59,7 +53,7 @@ internal sealed partial class UserRepository : IUserRepository
     public async Task<bool> SetLastSignInAsync(
         Guid userId, Instant at, CancellationToken ct = default)
     {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        await using var ctx = await CreateDbContextAsync(ct);
         var user = await ctx.Users.FindAsync([userId], ct);
         if (user is null)
             return false;
@@ -72,7 +66,7 @@ internal sealed partial class UserRepository : IUserRepository
     public async Task<bool> SetMarkedFakeAsync(
         Guid userId, Instant at, CancellationToken ct = default)
     {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        await using var ctx = await CreateDbContextAsync(ct);
         var user = await ctx.Users.FindAsync([userId], ct);
         if (user is null || user.MarkedFakeAt is not null)
             return false;
@@ -86,7 +80,7 @@ internal sealed partial class UserRepository : IUserRepository
         Guid userId, Instant requestedAt, Instant scheduledFor, Instant? eligibleAfter,
         CancellationToken ct = default)
     {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        await using var ctx = await CreateDbContextAsync(ct);
         var user = await ctx.Users.FindAsync([userId], ct);
         if (user is null)
             return false;
@@ -101,7 +95,7 @@ internal sealed partial class UserRepository : IUserRepository
 
     public async Task<bool> ClearDeletionAsync(Guid userId, CancellationToken ct = default)
     {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        await using var ctx = await CreateDbContextAsync(ct);
         var user = await ctx.Users.FindAsync([userId], ct);
         if (user is null)
             return false;
@@ -117,7 +111,7 @@ internal sealed partial class UserRepository : IUserRepository
     public async Task<bool> SetSuspensionAsync(
         Guid userId, bool suspended, bool adminSuspension, CancellationToken ct = default)
     {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        await using var ctx = await CreateDbContextAsync(ct);
         var user = await ctx.Users.FindAsync([userId], ct);
         if (user is null)
             return false;
@@ -136,7 +130,7 @@ internal sealed partial class UserRepository : IUserRepository
 
     public async Task<bool> SetRejectedAsync(Guid userId, CancellationToken ct = default)
     {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        await using var ctx = await CreateDbContextAsync(ct);
         var user = await ctx.Users.FindAsync([userId], ct);
         if (user is null)
             return false;
@@ -167,7 +161,7 @@ internal sealed partial class UserRepository : IUserRepository
         Guid sourceUserId, Guid targetUserId, Instant now,
         CancellationToken ct = default)
     {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        await using var ctx = await CreateDbContextAsync(ct);
         var user = await ctx.Users.FindAsync([sourceUserId], ct);
         if (user is null)
             return false;
@@ -210,20 +204,17 @@ internal sealed partial class UserRepository : IUserRepository
         return true;
     }
 
-    public async Task<IReadOnlyList<Guid>> GetUserIdsWithExternalLoginsAsync(CancellationToken ct = default)
-    {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
-        return await ctx.Set<IdentityUserLogin<Guid>>()
+    public async Task<IReadOnlyList<Guid>> GetUserIdsWithExternalLoginsAsync(CancellationToken ct = default) =>
+        await RunAsync(ctx => ctx.Set<IdentityUserLogin<Guid>>()
             .AsNoTracking()
             .Select(l => l.UserId)
             .Distinct()
-            .ToListAsync(ct);
-    }
+            .ToListAsync(ct), ct);
 
     public async Task<bool> SetContactSourceIfNullAsync(
         Guid userId, ContactSource source, CancellationToken ct = default)
     {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        await using var ctx = await CreateDbContextAsync(ct);
         var user = await ctx.Users.FindAsync([userId], ct);
         if (user is null || user.ContactSource is not null)
             return false;
@@ -240,7 +231,7 @@ internal sealed partial class UserRepository : IUserRepository
         if (userIds.Count == 0)
             return new Dictionary<Guid, IReadOnlyList<(string, string)>>();
 
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        await using var ctx = await CreateDbContextAsync(ct);
         var rows = await ctx.Set<IdentityUserLogin<Guid>>()
             .AsNoTracking()
             .Where(l => userIds.Contains(l.UserId))
@@ -259,7 +250,7 @@ internal sealed partial class UserRepository : IUserRepository
     public async Task ReassignLoginsToUserAsync(
         Guid sourceUserId, Guid targetUserId, CancellationToken ct = default)
     {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        await using var ctx = await CreateDbContextAsync(ct);
 
         var sourceLogins = await ctx.Set<IdentityUserLogin<Guid>>()
             .Where(l => l.UserId == sourceUserId)
@@ -295,22 +286,19 @@ internal sealed partial class UserRepository : IUserRepository
     }
 
     public async Task<IReadOnlyList<Guid>> GetAccountsDueForAnonymizationAsync(
-        Instant now, CancellationToken ct = default)
-    {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
-        return await ctx.Users
+        Instant now, CancellationToken ct = default) =>
+        await RunAsync(ctx => ctx.Users
             .AsNoTracking()
             .Where(u => u.DeletionScheduledFor != null
                 && u.DeletionScheduledFor <= now
                 && (u.DeletionEligibleAfter == null || u.DeletionEligibleAfter <= now))
             .Select(u => u.Id)
-            .ToListAsync(ct);
-    }
+            .ToListAsync(ct), ct);
 
     public async Task<ExpiredDeletionAnonymizationResult?> ApplyExpiredDeletionAnonymizationAsync(
         Guid userId, CancellationToken ct = default)
     {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        await using var ctx = await CreateDbContextAsync(ct);
         var user = await ctx.Users.FirstOrDefaultAsync(u => u.Id == userId, ct);
 
         if (user is null)

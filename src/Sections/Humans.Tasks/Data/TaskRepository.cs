@@ -1,31 +1,25 @@
+using Humans.Base.Data;
 using Humans.Tasks.Domain;
 using Microsoft.EntityFrameworkCore;
 using Npgsql;
 
 namespace Humans.Tasks.Data;
 
-internal sealed class TaskRepository(IDbContextFactory<TasksDbContext> factory, ILogger<TaskRepository> logger) : ITaskRepository
+internal sealed class TaskRepository(IDbContextFactory<TasksDbContext> factory, ILogger<TaskRepository> logger) : SectionRepository<TasksDbContext>(factory), ITaskRepository
 {
-    public async Task<IReadOnlyList<TaskItem>> GetAllAsync(CancellationToken ct = default)
-    {
-        await using var db = await factory.CreateDbContextAsync(ct);
-        return await db.TaskItems.AsNoTracking()
+    public async Task<IReadOnlyList<TaskItem>> GetAllAsync(CancellationToken ct = default) =>
+        await RunAsync(db => db.TaskItems.AsNoTracking()
             .Include(t => t.Assignments)
             .Include(t => t.Dependencies)
-            .ToListAsync(ct);
-    }
+            .ToListAsync(ct), ct);
 
-    public async Task AddAsync(TaskItem task, CancellationToken ct = default)
-    {
-        await using var db = await factory.CreateDbContextAsync(ct);
-        db.TaskItems.Add(task);
-        await db.SaveChangesAsync(ct);
-    }
+    public async Task AddAsync(TaskItem task, CancellationToken ct = default) =>
+        await InsertAsync(task, ct);
 
     public async Task AddManyAsync(
         IReadOnlyList<TaskItem> tasks, IReadOnlyList<TaskDependency> dependencies, CancellationToken ct = default)
     {
-        await using var db = await factory.CreateDbContextAsync(ct);
+        await using var db = await CreateDbContextAsync(ct);
         db.TaskItems.AddRange(tasks);
         db.TaskDependencies.AddRange(dependencies);
         await db.SaveChangesAsync(ct);
@@ -33,27 +27,27 @@ internal sealed class TaskRepository(IDbContextFactory<TasksDbContext> factory, 
 
     public async Task UpdateAsync(TaskItem task, CancellationToken ct = default)
     {
-        await using var db = await factory.CreateDbContextAsync(ct);
+        await using var db = await CreateDbContextAsync(ct);
         db.Entry(task).State = EntityState.Modified;
         await db.SaveChangesAsync(ct);
     }
 
     public async Task<bool> DeleteAsync(Guid taskId, CancellationToken ct = default)
     {
-        await using var db = await factory.CreateDbContextAsync(ct);
+        await using var db = await CreateDbContextAsync(ct);
         return await db.TaskItems.Where(t => t.Id == taskId).ExecuteDeleteAsync(ct) > 0;
     }
 
     public async Task<bool> AddAssignmentAsync(TaskAssignment assignment, CancellationToken ct = default)
     {
-        await using var db = await factory.CreateDbContextAsync(ct);
+        await using var db = await CreateDbContextAsync(ct);
         db.TaskAssignments.Add(assignment);
         return await TrySaveAsync(db, "person", assignment.TaskItemId, assignment.UserId, ct);
     }
 
     public async Task<bool> RemoveAssignmentAsync(Guid taskId, Guid userId, CancellationToken ct = default)
     {
-        await using var db = await factory.CreateDbContextAsync(ct);
+        await using var db = await CreateDbContextAsync(ct);
         return await db.TaskAssignments
             .Where(a => a.TaskItemId == taskId && a.UserId == userId)
             .ExecuteDeleteAsync(ct) > 0;
@@ -61,7 +55,7 @@ internal sealed class TaskRepository(IDbContextFactory<TasksDbContext> factory, 
 
     public async Task<bool> ConfirmRequestAsync(Guid taskId, Guid userId, CancellationToken ct = default)
     {
-        await using var db = await factory.CreateDbContextAsync(ct);
+        await using var db = await CreateDbContextAsync(ct);
         var request = await RequestAsync(db, taskId, userId, ct);
         if (request is null)
             return false;
@@ -73,7 +67,7 @@ internal sealed class TaskRepository(IDbContextFactory<TasksDbContext> factory, 
 
     public async Task<bool> RemoveRequestAsync(Guid taskId, Guid userId, CancellationToken ct = default)
     {
-        await using var db = await factory.CreateDbContextAsync(ct);
+        await using var db = await CreateDbContextAsync(ct);
         var request = await RequestAsync(db, taskId, userId, ct);
         if (request is null)
             return false;
@@ -85,14 +79,14 @@ internal sealed class TaskRepository(IDbContextFactory<TasksDbContext> factory, 
 
     public async Task<bool> AddDependencyAsync(TaskDependency dependency, CancellationToken ct = default)
     {
-        await using var db = await factory.CreateDbContextAsync(ct);
+        await using var db = await CreateDbContextAsync(ct);
         db.TaskDependencies.Add(dependency);
         return await TrySaveAsync(db, "dependency on task", dependency.TaskItemId, dependency.DependsOnTaskItemId, ct);
     }
 
     public async Task<bool> RemoveDependencyAsync(Guid taskId, Guid dependsOnTaskId, CancellationToken ct = default)
     {
-        await using var db = await factory.CreateDbContextAsync(ct);
+        await using var db = await CreateDbContextAsync(ct);
         return await db.TaskDependencies
             .Where(d => d.TaskItemId == taskId && d.DependsOnTaskItemId == dependsOnTaskId)
             .ExecuteDeleteAsync(ct) > 0;
@@ -100,13 +94,13 @@ internal sealed class TaskRepository(IDbContextFactory<TasksDbContext> factory, 
 
     public async Task RemoveUserAssignmentsAsync(Guid userId, CancellationToken ct = default)
     {
-        await using var db = await factory.CreateDbContextAsync(ct);
+        await using var db = await CreateDbContextAsync(ct);
         await db.TaskAssignments.Where(a => a.UserId == userId).ExecuteDeleteAsync(ct);
     }
 
     public async Task<int> ReassignUserAsync(Guid fromUserId, Guid toUserId, CancellationToken ct = default)
     {
-        await using var db = await factory.CreateDbContextAsync(ct);
+        await using var db = await CreateDbContextAsync(ct);
         var rows = await db.TaskAssignments.Where(a => a.UserId == fromUserId).ToListAsync(ct);
         if (rows.Count == 0)
             return 0;

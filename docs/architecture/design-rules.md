@@ -304,11 +304,14 @@ The decorator is optional in the sense that removing it leaves the system fully 
 
 Repositories are **Singleton** because they inject `IDbContextFactory<TContext>` rather than a context; every method creates and disposes its own short-lived context. `DbContext` is not thread-safe, holds a connection and accumulates tracked entities, so it must be short-lived, and the factory creates isolated contexts without scope-factory indirection.
 
+A repository derives from `SectionRepository<TContext>` (`Humans.Base.Data`): `RunAsync` runs one query on a fresh context, `InsertAsync` adds and saves, and `CreateDbContextAsync` hands out a context for anything longer.
+
 ```csharp
-public async Task<Profile?> GetByUserIdReadOnlyAsync(Guid userId, CancellationToken ct = default)
+internal sealed class ProfileRepository(IDbContextFactory<UsersDbContext> factory)
+    : SectionRepository<UsersDbContext>(factory), IProfileRepository
 {
-    await using var ctx = await _factory.CreateDbContextAsync(ct);
-    return await ctx.Profiles.AsNoTracking().FirstOrDefaultAsync(p => p.UserId == userId, ct);
+    public async Task<Profile?> GetByUserIdReadOnlyAsync(Guid userId, CancellationToken ct = default) =>
+        await RunAsync(ctx => ctx.Profiles.AsNoTracking().FirstOrDefaultAsync(p => p.UserId == userId, ct), ct);
 }
 ```
 

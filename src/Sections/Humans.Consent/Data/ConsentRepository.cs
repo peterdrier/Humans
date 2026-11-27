@@ -1,16 +1,13 @@
 using Microsoft.EntityFrameworkCore;
+using Humans.Base.Data;
 using Humans.Consent.Domain;
 
 namespace Humans.Consent.Data;
 
-internal sealed class ConsentRepository(IDbContextFactory<LegalDbContext> factory) : IConsentRepository
+internal sealed class ConsentRepository(IDbContextFactory<LegalDbContext> factory) : SectionRepository<LegalDbContext>(factory), IConsentRepository
 {
-    public async Task AddAsync(ConsentRecord record, CancellationToken ct = default)
-    {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
-        ctx.ConsentRecords.Add(record);
-        await ctx.SaveChangesAsync(ct);
-    }
+    public async Task AddAsync(ConsentRecord record, CancellationToken ct = default) =>
+        await InsertAsync(record, ct);
 
     public async Task<bool> ExistsForVersionAsync(
         IReadOnlyCollection<Guid> userIds, Guid documentVersionId, CancellationToken ct = default)
@@ -18,7 +15,7 @@ internal sealed class ConsentRepository(IDbContextFactory<LegalDbContext> factor
         if (userIds.Count == 0)
             return false;
 
-        await using var ctx = await factory.CreateDbContextAsync(ct);
+        await using var ctx = await CreateDbContextAsync(ct);
         return await ctx.ConsentRecords
             .AsNoTracking()
             .AnyAsync(c => userIds.Contains(c.UserId) && c.DocumentVersionId == documentVersionId, ct);
@@ -30,7 +27,7 @@ internal sealed class ConsentRepository(IDbContextFactory<LegalDbContext> factor
         if (userIds.Count == 0)
             return null;
 
-        await using var ctx = await factory.CreateDbContextAsync(ct);
+        await using var ctx = await CreateDbContextAsync(ct);
         return await ctx.ConsentRecords
             .AsNoTracking()
             .Where(c => userIds.Contains(c.UserId) && c.DocumentVersionId == documentVersionId)
@@ -44,7 +41,7 @@ internal sealed class ConsentRepository(IDbContextFactory<LegalDbContext> factor
         if (userIds.Count == 0)
             return [];
 
-        await using var ctx = await factory.CreateDbContextAsync(ct);
+        await using var ctx = await CreateDbContextAsync(ct);
         return await ctx.ConsentRecords
             .AsNoTracking()
             .Include(c => c.DocumentVersion)
@@ -60,7 +57,7 @@ internal sealed class ConsentRepository(IDbContextFactory<LegalDbContext> factor
         if (userIds.Count == 0)
             return 0;
 
-        await using var ctx = await factory.CreateDbContextAsync(ct);
+        await using var ctx = await CreateDbContextAsync(ct);
         return await ctx.ConsentRecords
             .CountAsync(c => userIds.Contains(c.UserId), ct);
     }
@@ -71,7 +68,7 @@ internal sealed class ConsentRepository(IDbContextFactory<LegalDbContext> factor
         if (userIds.Count == 0)
             return new HashSet<Guid>();
 
-        await using var ctx = await factory.CreateDbContextAsync(ct);
+        await using var ctx = await CreateDbContextAsync(ct);
         var ids = await ctx.ConsentRecords
             .AsNoTracking()
             .Where(c => userIds.Contains(c.UserId) && c.ExplicitConsent)
@@ -91,7 +88,7 @@ internal sealed class ConsentRepository(IDbContextFactory<LegalDbContext> factor
         if (userIds.Count == 0)
             return result;
 
-        await using var ctx = await factory.CreateDbContextAsync(ct);
+        await using var ctx = await CreateDbContextAsync(ct);
         var pairs = await ctx.ConsentRecords
             .AsNoTracking()
             .Where(c => userIds.Contains(c.UserId) && c.ExplicitConsent)

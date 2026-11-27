@@ -1,22 +1,17 @@
+using Humans.Base.Data;
 using Humans.Consent.Domain;
 using Microsoft.EntityFrameworkCore;
 
 namespace Humans.Consent.Data;
 
 internal sealed class ConsentReviewRepository(IDbContextFactory<LegalDbContext> factory)
-    : IConsentReviewRepository
+    : SectionRepository<LegalDbContext>(factory), IConsentReviewRepository
 {
-    public async Task<ConsentReview?> GetAsync(Guid userId, CancellationToken ct = default)
-    {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
-        return await ctx.ConsentReviews.AsNoTracking().SingleOrDefaultAsync(r => r.UserId == userId, ct);
-    }
+    public async Task<ConsentReview?> GetAsync(Guid userId, CancellationToken ct = default) =>
+        await RunAsync(ctx => ctx.ConsentReviews.AsNoTracking().SingleOrDefaultAsync(r => r.UserId == userId, ct), ct);
 
-    public async Task<IReadOnlyList<ConsentReview>> GetAllAsync(CancellationToken ct = default)
-    {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
-        return await ctx.ConsentReviews.AsNoTracking().ToListAsync(ct);
-    }
+    public async Task<IReadOnlyList<ConsentReview>> GetAllAsync(CancellationToken ct = default) =>
+        await RunAsync(ctx => ctx.ConsentReviews.AsNoTracking().ToListAsync(ct), ct);
 
     public async Task<IReadOnlyList<ConsentReview>> GetByUserIdsAsync(
         IReadOnlyCollection<Guid> userIds, CancellationToken ct = default)
@@ -24,13 +19,13 @@ internal sealed class ConsentReviewRepository(IDbContextFactory<LegalDbContext> 
         if (userIds.Count == 0)
             return [];
 
-        await using var ctx = await factory.CreateDbContextAsync(ct);
+        await using var ctx = await CreateDbContextAsync(ct);
         return await ctx.ConsentReviews.AsNoTracking().Where(r => userIds.Contains(r.UserId)).ToListAsync(ct);
     }
 
     public async Task UpsertAsync(ConsentReview values, CancellationToken ct = default)
     {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
+        await using var ctx = await CreateDbContextAsync(ct);
         var row = await ctx.ConsentReviews.SingleOrDefaultAsync(r => r.UserId == values.UserId, ct);
         if (row is null)
         {
@@ -53,7 +48,7 @@ internal sealed class ConsentReviewRepository(IDbContextFactory<LegalDbContext> 
 
     public async Task EraseFreeTextAsync(Guid userId, CancellationToken ct = default)
     {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
+        await using var ctx = await CreateDbContextAsync(ct);
         var row = await ctx.ConsentReviews.SingleOrDefaultAsync(r => r.UserId == userId, ct);
         if (row is null)
             return;

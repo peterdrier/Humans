@@ -6,16 +6,13 @@ namespace Humans.Users.Data.Repositories;
 
 internal sealed partial class UserRepository
 {
-    public async Task<Profile?> GetByUserIdAsync(Guid userId, CancellationToken ct = default)
-    {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
-        return await ctx.Profiles
-            .FirstOrDefaultAsync(p => p.UserId == userId, ct);
-    }
+    public async Task<Profile?> GetByUserIdAsync(Guid userId, CancellationToken ct = default) =>
+        await RunAsync(ctx => ctx.Profiles
+            .FirstOrDefaultAsync(p => p.UserId == userId, ct), ct);
 
     public async Task<Profile?> GetByUserIdReadOnlyAsync(Guid userId, CancellationToken ct = default)
     {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        await using var ctx = await CreateDbContextAsync(ct);
         var profile = await ctx.Profiles
             .AsNoTracking()
             .FirstOrDefaultAsync(p => p.UserId == userId, ct);
@@ -31,7 +28,7 @@ internal sealed partial class UserRepository
 
     public async Task<IReadOnlyList<Profile>> GetAllProfilesAsync(CancellationToken ct = default)
     {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        await using var ctx = await CreateDbContextAsync(ct);
         var profiles = await ctx.Profiles.AsNoTracking().ToListAsync(ct);
         AttachChildren(
             profiles,
@@ -63,7 +60,7 @@ internal sealed partial class UserRepository
     public async Task<(string ContentType, string? StorageKey)?> GetProfilePictureLocationAsync(
         Guid profileId, CancellationToken ct = default)
     {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        await using var ctx = await CreateDbContextAsync(ct);
         var row = await ctx.Profiles
             .AsNoTracking()
             .Where(p => p.Id == profileId)
@@ -75,18 +72,15 @@ internal sealed partial class UserRepository
     }
 
     public async Task<IReadOnlyList<ProfileLanguage>> GetLanguagesAsync(
-        Guid userId, CancellationToken ct = default)
-    {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
-        return await ctx.ProfileLanguages
+        Guid userId, CancellationToken ct = default) =>
+        await RunAsync(ctx => ctx.ProfileLanguages
             .AsNoTracking()
             .Where(pl => pl.UserId == userId)
-            .ToListAsync(ct);
-    }
+            .ToListAsync(ct), ct);
 
     public async Task ReplaceLanguagesAsync(Guid userId, IReadOnlyList<ProfileLanguage> languages, CancellationToken ct = default)
     {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        await using var ctx = await CreateDbContextAsync(ct);
         var existing = await ctx.ProfileLanguages
             .Where(pl => pl.UserId == userId)
             .ToListAsync(ct);
@@ -97,7 +91,7 @@ internal sealed partial class UserRepository
 
     public async Task AddAsync(Profile profile, CancellationToken ct = default, UserNames? names = null)
     {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        await using var ctx = await CreateDbContextAsync(ct);
         ctx.Profiles.Add(profile);
         await UpdateUserFromProfileAsync(ctx, profile, names, ct);
         await ctx.SaveChangesAsync(ct);
@@ -107,7 +101,7 @@ internal sealed partial class UserRepository
         Profile profile, CancellationToken ct = default, IReadOnlyList<CVEntry>? volunteerHistory = null,
         UserNames? names = null)
     {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        await using var ctx = await CreateDbContextAsync(ct);
         // Not ctx.Profiles.Update(profile): that cascades to the navigation collections and
         // could delete related rows that are simply unloaded on this entity.
         ctx.Attach(profile);
@@ -148,7 +142,7 @@ internal sealed partial class UserRepository
 
     public async Task<int> EraseProfileExtrasForUserAsync(Guid userId, CancellationToken ct = default)
     {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        await using var ctx = await CreateDbContextAsync(ct);
         var profile = await ctx.Profiles.FirstOrDefaultAsync(p => p.UserId == userId, ct);
 
         if (profile is not null)
@@ -172,7 +166,7 @@ internal sealed partial class UserRepository
         if (userIds.Count == 0)
             return new HashSet<Guid>();
 
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        await using var ctx = await CreateDbContextAsync(ct);
         var userIdList = userIds is IList<Guid> list ? list : userIds.ToList();
 
         // Profileless users are skipped: consent suspension only applies to onboarded humans.
@@ -215,7 +209,7 @@ internal sealed partial class UserRepository
         Guid sourceUserId, Guid targetUserId, Instant updatedAt, Profile? keptProfile, UserNames? keptNames,
         CancellationToken ct = default)
     {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        await using var ctx = await CreateDbContextAsync(ct);
 
         var sourceProfile = await ctx.Profiles
             .FirstOrDefaultAsync(p => p.UserId == sourceUserId, ct);
@@ -314,7 +308,7 @@ internal sealed partial class UserRepository
     public async Task<bool> AnonymizeForDeletionByUserIdAsync(
         Guid userId, CancellationToken ct = default)
     {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        await using var ctx = await CreateDbContextAsync(ct);
         var profile = await ctx.Profiles
             .FirstOrDefaultAsync(p => p.UserId == userId, ct);
 
