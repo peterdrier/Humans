@@ -13,7 +13,7 @@ internal static class CantinaRosterCalculation
     // Must match the last entry of Roster.cshtml's dietaryOrder; the service tests pin the literal.
     private static readonly string UnansweredKey = "Unanswered";
 
-    public static Dictionary<Guid, List<LocalDate>> BuildDaysOnSiteByUserId(
+    public static Dictionary<Guid, List<LocalDate>> BuildDaysOnSite(
         IReadOnlyList<(int DayOffset, IReadOnlyList<Guid> UserIds)> perDay,
         int weekStartOffset,
         LocalDate? weekStartDate)

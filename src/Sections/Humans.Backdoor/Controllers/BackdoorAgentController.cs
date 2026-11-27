@@ -29,7 +29,7 @@ internal sealed class BackdoorAgentController(IAgentTranscriptRead agent, IUserS
         take = take.ClampPageSize(max: 200);
         if (skip < 0) skip = 0;
 
-        var rows = await agent.ListAllConversationsForAdminWithMessagesAsync(
+        var rows = await agent.ListConversationsWithMessagesAsync(
             unansweredOnly, handoffsOnly, userId, take, skip, ct);
         var resolved = await ResolveUsersAsync(rows.Select(c => c.UserId), ct);
         return Ok(rows.Select(r => ToSummary(r, resolved)));

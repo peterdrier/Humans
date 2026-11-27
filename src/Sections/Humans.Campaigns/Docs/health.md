@@ -24,7 +24,7 @@ per campaign. Grants are personal data: exported for GDPR, hard-deleted on erasu
 | Getting codes in | ImportCodes (CSV), GenerateCodes (vendor, Draft-only) |
 | Sending | SendWave (preview + confirm), Resend (one grant) |
 | Copy it owns | the campaign-code email (`CampaignsEmails`, gallery sample via `CampaignsEmailPreviews`), the localized `CampaignReceived` notice (`CampaignsResource`) |
-| Reads other assemblies render | `GetActiveOrCompletedGrantsForUserAsync` (profile), `GetAllGrantsForUserAsync` (admin user detail), `GetCodeTrackingAsync` (Tickets dashboard) |
+| Reads other assemblies render | `GetGrantsForUserAsync` (profile), `GetAllGrantsForUserAsync` (admin user detail), `GetCodeTrackingAsync` (Tickets dashboard) |
 | Writes other assemblies drive | `MarkGrantsRedeemedAsync` (ticket sync) |
 | Platform obligations | GDPR export/erasure (`IUserDataContributor`), account-merge fold (`IUserMerge`) |
 

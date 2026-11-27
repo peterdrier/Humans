@@ -182,7 +182,7 @@ internal sealed class EventService(
     /// <summary>Submitted events stay, with the person's <c>Host</c> cleared; see <see cref="Erasure"/> for why.</summary>
     public async Task EraseForUserAsync(Guid userId, CancellationToken ct)
     {
-        await repo.DeleteFavouritesAndPreferenceForUserAsync(userId, ct);
+        await repo.DeleteForUserAsync(userId, ct);
         await repo.ClearSubmitterHostForUserAsync(userId, ct);
     }
 
@@ -247,7 +247,7 @@ internal sealed class EventService(
         }
     }
 
-    public async Task<EventSaveResult> UpdateAndResubmitAsync(Guid eventId, EventEdit edit, CancellationToken ct = default)
+    public async Task<EventSaveResult> ResubmitAsync(Guid eventId, EventEdit edit, CancellationToken ct = default)
     {
         var guideEvent = await LoadEventAsync(eventId, ct);
         await EnsureValidRecurrenceDaysAsync(edit.IsRecurring, edit.RecurrenceDays, ct, guideEvent.EventSettingsId);
@@ -286,7 +286,7 @@ internal sealed class EventService(
             CreatedAt = guideEvent.LastUpdatedAt
         };
 
-        await repo.SaveEventAndModerationActionAsync(guideEvent, action, ct);
+        await repo.SaveModeratedEventAsync(guideEvent, action, ct);
         return true;
     }
 
@@ -308,7 +308,7 @@ internal sealed class EventService(
             CreatedAt = now
         };
 
-        await repo.SaveEventAndModerationActionAsync(guideEvent, action, ct);
+        await repo.SaveModeratedEventAsync(guideEvent, action, ct);
     }
 
     /// <summary>Null, with the reason logged, when submissions are not open.</summary>
@@ -400,7 +400,7 @@ internal sealed class EventService(
             CreatedAt = clock.GetCurrentInstant()
         };
 
-        await repo.SaveEventAndModerationActionAsync(guideEvent, action, ct);
+        await repo.SaveModeratedEventAsync(guideEvent, action, ct);
 
         if (submitterEditUrl is not null)
         {

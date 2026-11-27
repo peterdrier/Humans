@@ -10,7 +10,7 @@
 (function () {
     var searchUrl = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(searchUrl));
     var voluntellUrl = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(voluntellUrl));
-    var tokenHtml = '@Html.Raw(Html.AntiForgeryTokenHtmlForJavaScript())';
+    var tokenHtml = '@Html.Raw(Html.AntiForgeryTokenForScript())';
     var assignButtonClass = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(assignButtonClass));
     var noResultsText = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(noResultsText));
     var errorText = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(errorText));

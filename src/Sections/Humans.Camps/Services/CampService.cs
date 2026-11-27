@@ -709,7 +709,7 @@ internal sealed class CampService : ICampManagement, ICampLeadDirectory, IUserMe
         return memberId is null ? AddCampMemberOutcome.InvalidUser : AddCampMemberOutcome.Added;
     }
 
-    public async Task<AssignCampRoleOutcome> AddMemberAndAssignRoleInActiveSeasonAsync(
+    public async Task<AssignCampRoleOutcome> AddMemberWithRoleAsync(
         Guid campId, Guid roleDefinitionId, Guid userId, Guid actorUserId,
         CancellationToken cancellationToken = default, Guid? eventSettingsId = null)
     {
@@ -1762,7 +1762,7 @@ internal sealed class CampService : ICampManagement, ICampLeadDirectory, IUserMe
         // The season change is committed; finish its notifications independently of the request.
         try
         {
-            var pendingUserIds = await _repo.GetPendingRequesterUserIdsForSeasonAsync(seasonId, CancellationToken.None);
+            var pendingUserIds = await _repo.GetPendingRequesterIdsAsync(seasonId, CancellationToken.None);
             if (pendingUserIds.Count == 0) return;
 
             var camp = await _repo.GetByIdAsync(campId, CancellationToken.None);

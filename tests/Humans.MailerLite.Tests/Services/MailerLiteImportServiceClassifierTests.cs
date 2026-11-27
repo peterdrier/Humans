@@ -104,7 +104,7 @@ public class MailerLiteImportServiceClassifierTests
             harness.AnyEmailRows[unsubscribed.Email] = [row];
         }
         var calls = 0;
-        harness.Provisioning.ReplaceUnverifiedEmailAndProvisionAsync(ownerId, emailId, Arg.Any<string>(),
+        harness.Provisioning.ReplaceUnverifiedEmailAsync(ownerId, emailId, Arg.Any<string>(),
                 Arg.Any<string?>(), ContactSource.MailerLite, Arg.Any<CancellationToken>())
             .Returns(_ => ++calls == 1
                 ? new AccountProvisioningResult(provisionedId, Created: true)
@@ -297,7 +297,7 @@ public class MailerLiteImportServiceClassifierTests
         harness.MlReturns(Active("pending@x.com"));
         harness.AnyEmailRows["pending@x.com"] =
             [UserEmailFixtures.Row(oldUserId, "pending@x.com", verified: false, id: oldEmailId)];
-        var replacement = harness.Provisioning.ReplaceUnverifiedEmailAndProvisionAsync(
+        var replacement = harness.Provisioning.ReplaceUnverifiedEmailAsync(
             oldUserId, oldEmailId, "pending@x.com", null, ContactSource.MailerLite, ct);
         if (fails) replacement.ThrowsAsync(new InvalidOperationException("Provisioning failed"));
         else replacement.Returns(new AccountProvisioningResult(Guid.NewGuid(), Created: true));
@@ -309,7 +309,7 @@ public class MailerLiteImportServiceClassifierTests
         result.UnverifiedEmailsReplaced.Should().Be(fails ? 0 : 1);
         result.Errors.Should().Be(fails ? 1 : 0);
         await harness.UserEmails.DidNotReceiveWithAnyArgs().DeleteEmailAsync(default, default);
-        await harness.Provisioning.Received(1).ReplaceUnverifiedEmailAndProvisionAsync(
+        await harness.Provisioning.Received(1).ReplaceUnverifiedEmailAsync(
             oldUserId, oldEmailId, "pending@x.com", null, ContactSource.MailerLite, ct);
     }
 

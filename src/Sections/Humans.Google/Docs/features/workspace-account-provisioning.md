@@ -104,9 +104,9 @@ Nobodies Collective uses Google Workspace for organizational email (@nobodies.te
 **Acceptance Criteria:**
 - "Reset + 2FA" button per row, Admin-only, CSRF-protected, hidden for suspended accounts **and for accounts already enrolled in 2-Step Verification** (the combined flow rotates backup codes destructively, so running it against a working 2FA setup would silently break it)
 - Confirm-before-post explains both will be shown once
-- Calls `IGoogleAdminService.ResetPasswordAndGenerate2FaAsync` which composes the existing password-reset + backup-codes flows; only the **first** code from the freshly-issued set is surfaced (the rest are unused — Google rotates the whole set destructively, but the admin only ever needs one)
+- Calls `IGoogleAdminService.IssueRecoveryCredentialsAsync` which composes the existing password-reset + backup-codes flows; only the **first** code from the freshly-issued set is surfaced (the rest are unused — Google rotates the whole set destructively, but the admin only ever needs one)
 - Confirmed (2026-05-04) to work for accounts that have not yet completed 2SV enrollment
-- **Server-side gate**: `ResetPasswordAndGenerate2FaAsync` re-fetches live Directory state at the top of the method and refuses with a clear error when `IsEnrolledIn2Sv` is true. The refusal is independent of the UI — a hand-crafted POST to `Accounts/ResetPasswordAndGenerate2Fa` for an enrolled email also returns the error path (no password reset, no code rotation). Refusals are logged via `WorkspaceAccountResetBlockedFor2Sv` for audit / abuse-pattern detection. If an admin genuinely needs to rotate 2FA for an enrolled human, that's done in the Google Admin console.
+- **Server-side gate**: `IssueRecoveryCredentialsAsync` re-fetches live Directory state at the top of the method and refuses with a clear error when `IsEnrolledIn2Sv` is true. The refusal is independent of the UI — a hand-crafted POST to `Accounts/ResetPasswordAndGenerate2Fa` for an enrolled email also returns the error path (no password reset, no code rotation). Refusals are logged via `WorkspaceAccountResetBlockedFor2Sv` for audit / abuse-pattern detection. If an admin genuinely needs to rotate 2FA for an enrolled human, that's done in the Google Admin console.
 - Both credentials appear once in the same modal as the password-only flow, with copy-to-clipboard formatted as:
   ```
   pw: <temp password>
@@ -122,7 +122,7 @@ Nobodies Collective uses Google Workspace for organizational email (@nobodies.te
 ## Account-Management Invariants
 
 ### Combined-recovery composition + partial-success handling
-`ResetPasswordAndGenerate2FaAsync` calls the underlying password-reset and backup-code-generation in sequence:
+`IssueRecoveryCredentialsAsync` calls the underlying password-reset and backup-code-generation in sequence:
 
 1. **Password-reset failure short-circuits** — if `ResetPasswordAsync` fails, the method returns `Success: false` and never attempts the backup-code call (no point handing out codes for an account the human still can't sign into).
 2. **Partial success on backup-code failure** — if the password reset succeeded but Google rejects the backup-code request, the method still returns `Success: true` with the temp password and `BackupCode: null`. Google rotates passwords destructively just like codes, so dropping the password to retry would lock the human out further. The admin sees "Password reset for X. Backup-code generation failed — deliver the password only and ask the human to re-attempt the 2FA request out-of-band."
@@ -233,7 +233,7 @@ Task ResetPasswordAsync(string email, string newPassword, CancellationToken ct);
 
 // Backup verification codes (post-provisioning recovery surface)
 // Combined recovery composes ResetPasswordAsync + GenerateBackupCodesAsync
-// at the IGoogleAdminService layer (ResetPasswordAndGenerate2FaAsync).
+// at the IGoogleAdminService layer (IssueRecoveryCredentialsAsync).
 Task<IReadOnlyList<string>> GenerateBackupCodesAsync(string email, CancellationToken ct);
 ```
 

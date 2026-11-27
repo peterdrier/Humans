@@ -1577,7 +1577,7 @@ public class SurveyServiceTests
 
         result.InvitationsProcessed.Should().Be(0);
         result.EmailsQueued.Should().Be(0);
-        await _repo.DidNotReceiveWithAnyArgs().AddInvitationAndSaveAsync(default!, default);
+        await _repo.DidNotReceiveWithAnyArgs().AddInvitationAsync(default!, default);
         _emailService.ReceivedCalls().Should().BeEmpty();
         _tokenProvider.ReceivedCalls().Should().BeEmpty();
     }
@@ -1601,9 +1601,9 @@ public class SurveyServiceTests
         var result = await invitations.SendInvitesAsync(survey.Id, Guid.NewGuid(), ct);
 
         result.InvitationsProcessed.Should().Be(1);
-        await _repo.Received(1).AddInvitationAndSaveAsync(Arg.Is<SurveyInvitation>(i => i.UserId == survivorId),
+        await _repo.Received(1).AddInvitationAsync(Arg.Is<SurveyInvitation>(i => i.UserId == survivorId),
             CancellationToken.None);
-        await _repo.DidNotReceive().AddInvitationAndSaveAsync(Arg.Is<SurveyInvitation>(i => i.UserId == archivedId),
+        await _repo.DidNotReceive().AddInvitationAsync(Arg.Is<SurveyInvitation>(i => i.UserId == archivedId),
             Arg.Any<CancellationToken>());
         await _emailService.Received(1).SendAsync(Arg.Is<EmailMessage>(m => m.UserId == survivorId), CancellationToken.None);
     }
@@ -1792,9 +1792,9 @@ public class SurveyServiceTests
 
         result.InvitationsProcessed.Should().Be(1);
         result.EmailsQueued.Should().Be(1);
-        await _repo.Received(1).AddInvitationAndSaveAsync(Arg.Is<SurveyInvitation>(i => i.UserId == recent), Arg.Any<CancellationToken>());
-        await _repo.DidNotReceive().AddInvitationAndSaveAsync(Arg.Is<SurveyInvitation>(i => i.UserId == stale), Arg.Any<CancellationToken>());
-        await _repo.DidNotReceive().AddInvitationAndSaveAsync(Arg.Is<SurveyInvitation>(i => i.UserId == never), Arg.Any<CancellationToken>());
+        await _repo.Received(1).AddInvitationAsync(Arg.Is<SurveyInvitation>(i => i.UserId == recent), Arg.Any<CancellationToken>());
+        await _repo.DidNotReceive().AddInvitationAsync(Arg.Is<SurveyInvitation>(i => i.UserId == stale), Arg.Any<CancellationToken>());
+        await _repo.DidNotReceive().AddInvitationAsync(Arg.Is<SurveyInvitation>(i => i.UserId == never), Arg.Any<CancellationToken>());
         _tokenProvider.Received(1).Create(Arg.Any<Guid>());
         await _emailService.Received(1).SendAsync(Arg.Any<EmailMessage>(), Arg.Any<CancellationToken>());
     }
@@ -1827,10 +1827,10 @@ public class SurveyServiceTests
         result.InvitationsProcessed.Should().Be(2);
         result.EmailsQueued.Should().Be(2);
         result.Failed.Should().Be(0);
-        await _repo.Received(2).AddInvitationAndSaveAsync(Arg.Any<SurveyInvitation>(), Arg.Any<CancellationToken>());
-        await _repo.Received(1).AddInvitationAndSaveAsync(Arg.Is<SurveyInvitation>(i => i.UserId == b), Arg.Any<CancellationToken>());
-        await _repo.Received(1).AddInvitationAndSaveAsync(Arg.Is<SurveyInvitation>(i => i.UserId == c), Arg.Any<CancellationToken>());
-        await _repo.DidNotReceive().AddInvitationAndSaveAsync(Arg.Is<SurveyInvitation>(i => i.UserId == a), Arg.Any<CancellationToken>());
+        await _repo.Received(2).AddInvitationAsync(Arg.Any<SurveyInvitation>(), Arg.Any<CancellationToken>());
+        await _repo.Received(1).AddInvitationAsync(Arg.Is<SurveyInvitation>(i => i.UserId == b), Arg.Any<CancellationToken>());
+        await _repo.Received(1).AddInvitationAsync(Arg.Is<SurveyInvitation>(i => i.UserId == c), Arg.Any<CancellationToken>());
+        await _repo.DidNotReceive().AddInvitationAsync(Arg.Is<SurveyInvitation>(i => i.UserId == a), Arg.Any<CancellationToken>());
         await _emailService.Received(2).SendAsync(Arg.Any<EmailMessage>(), Arg.Any<CancellationToken>());
         await _audit.Received(1).LogAsync(SurveysAuditActions.SurveyInvitesSent, "Survey", survey.Id, Arg.Any<string>(), Arg.Any<Guid>());
     }
@@ -1866,7 +1866,7 @@ public class SurveyServiceTests
         await _repo.Received(1).UpdateInvitationStatusAsync(
             participation.Id, EmailOutboxStatus.Queued, _clock.GetCurrentInstant(),
             Arg.Any<CancellationToken>());
-        await _repo.DidNotReceive().AddInvitationAndSaveAsync(
+        await _repo.DidNotReceive().AddInvitationAsync(
             Arg.Any<SurveyInvitation>(), Arg.Any<CancellationToken>());
         _tokenProvider.Received(1).Create(participation.Id);
         await _emailService.Received(1).SendAsync(
@@ -1911,7 +1911,7 @@ public class SurveyServiceTests
 
         result.InvitationsProcessed.Should().Be(0);
         result.EmailsQueued.Should().Be(0);
-        await _repo.DidNotReceive().AddInvitationAndSaveAsync(Arg.Any<SurveyInvitation>(), Arg.Any<CancellationToken>());
+        await _repo.DidNotReceive().AddInvitationAsync(Arg.Any<SurveyInvitation>(), Arg.Any<CancellationToken>());
         participation.SentAt.Should().BeNull();
         participation.Completed.Should().BeTrue();
         await _repo.DidNotReceive().UpdateInvitationStatusAsync(
@@ -2119,7 +2119,7 @@ public class SurveyServiceTests
         _userService.GetUserInfosAsync(Arg.Any<IEnumerable<Guid>>(), Arg.Any<CancellationToken>())
             .Returns(new ValueTask<IReadOnlyDictionary<Guid, UserInfo>>(new Dictionary<Guid, UserInfo> { [first] = UserInfoWithName(first, string.Empty, string.Empty) with { IdentityEmailColumn = "first@example.org" }, [second] = UserInfoWithName(second, string.Empty, string.Empty) with { IdentityEmailColumn = "second@example.org" } }));
         using var request = new CancellationTokenSource();
-        _repo.AddInvitationAndSaveAsync(Arg.Any<SurveyInvitation>(), Arg.Any<CancellationToken>())
+        _repo.AddInvitationAsync(Arg.Any<SurveyInvitation>(), Arg.Any<CancellationToken>())
             .Returns(async call =>
             {
                 call.Arg<CancellationToken>().ThrowIfCancellationRequested();
@@ -2169,7 +2169,7 @@ public class SurveyServiceTests
         var act = () => CreateInvitations().SendInvitesAsync(survey.Id, Guid.NewGuid(), aborted.Token);
 
         await act.Should().ThrowAsync<OperationCanceledException>();
-        await _repo.DidNotReceive().AddInvitationAndSaveAsync(Arg.Any<SurveyInvitation>(), Arg.Any<CancellationToken>());
+        await _repo.DidNotReceive().AddInvitationAsync(Arg.Any<SurveyInvitation>(), Arg.Any<CancellationToken>());
         await _emailService.DidNotReceive().SendAsync(Arg.Any<EmailMessage>(), Arg.Any<CancellationToken>());
         await _repo.DidNotReceive().UpdateInvitationStatusAsync(
             Arg.Any<Guid>(), EmailOutboxStatus.Failed, Arg.Any<Instant>(), Arg.Any<CancellationToken>());
@@ -2210,7 +2210,7 @@ public class SurveyServiceTests
 
         result.Succeeded.Should().BeFalse();
         result.Refusal.Should().Be("A team is required for the Team audience.");
-        await _repo.DidNotReceive().AddInvitationAndSaveAsync(
+        await _repo.DidNotReceive().AddInvitationAsync(
             Arg.Any<SurveyInvitation>(), Arg.Any<CancellationToken>());
     }
 
@@ -3161,9 +3161,9 @@ public class SurveyServiceTests
         await _repo.DidNotReceive().FinalizeCompletionTrackedResponseAsync(
             Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<SurveyResponse>(), Arg.Any<CancellationToken>());
         if (anonymity == ResponseAnonymity.Anonymous)
-            await _repo.Received(1).AddResponseWithAnswersAndSaveAsync(Arg.Any<SurveyResponse>(), ct);
+            await _repo.Received(1).AddFinalResponseAsync(Arg.Any<SurveyResponse>(), ct);
         else
-            await _repo.DidNotReceive().AddResponseWithAnswersAndSaveAsync(Arg.Any<SurveyResponse>(), Arg.Any<CancellationToken>());
+            await _repo.DidNotReceive().AddFinalResponseAsync(Arg.Any<SurveyResponse>(), Arg.Any<CancellationToken>());
     }
 
     [HumansFact]
@@ -3267,7 +3267,7 @@ public class SurveyServiceTests
 
         result.Outcome.Should().Be(SurveyWizardOutcome.ValidationFailed);
         result.InvalidAnswers.Should().BeEquivalentTo([questionId]);
-        await _repo.DidNotReceive().AddResponseWithAnswersAndSaveAsync(
+        await _repo.DidNotReceive().AddFinalResponseAsync(
             Arg.Any<SurveyResponse>(), Arg.Any<CancellationToken>());
     }
 
@@ -3279,7 +3279,7 @@ public class SurveyServiceTests
         survey.Questions = [RankedQuestion(questionId, survey.Id)];
         _repo.GetByIdAsync(survey.Id, Arg.Any<CancellationToken>()).Returns(survey);
         SurveyResponse? saved = null;
-        _repo.When(repo => repo.AddResponseWithAnswersAndSaveAsync(
+        _repo.When(repo => repo.AddFinalResponseAsync(
                 Arg.Any<SurveyResponse>(), Arg.Any<CancellationToken>()))
             .Do(call => saved = call.Arg<SurveyResponse>());
         var submission = new SurveySubmission(
@@ -3322,7 +3322,7 @@ public class SurveyServiceTests
             SurveyInputMethod.UserSpecificLink,
             "en",
             Arg.Any<CancellationToken>());
-        await _repo.DidNotReceive().AddResponseWithAnswersAndSaveAsync(Arg.Any<SurveyResponse>(), Arg.Any<CancellationToken>());
+        await _repo.DidNotReceive().AddFinalResponseAsync(Arg.Any<SurveyResponse>(), Arg.Any<CancellationToken>());
     }
 
     [HumansFact]
@@ -3497,7 +3497,7 @@ public class SurveyServiceTests
     {
         var survey = SurveyForSubmit(out var q1Id, out _);
         SurveyResponse? captured = null;
-        _repo.When(r => r.AddResponseWithAnswersAndSaveAsync(Arg.Any<SurveyResponse>(), Arg.Any<CancellationToken>()))
+        _repo.When(r => r.AddFinalResponseAsync(Arg.Any<SurveyResponse>(), Arg.Any<CancellationToken>()))
              .Do(ci => captured = ci.Arg<SurveyResponse>());
         var submission = new SurveySubmission(
             survey.Id, Guid.NewGuid(), null, null,
@@ -3536,7 +3536,7 @@ public class SurveyServiceTests
         survey.Questions = [grid];
         _repo.GetByIdAsync(survey.Id, Arg.Any<CancellationToken>()).Returns(survey);
         SurveyResponse? captured = null;
-        _repo.When(r => r.AddResponseWithAnswersAndSaveAsync(Arg.Any<SurveyResponse>(), Arg.Any<CancellationToken>()))
+        _repo.When(r => r.AddFinalResponseAsync(Arg.Any<SurveyResponse>(), Arg.Any<CancellationToken>()))
             .Do(ci => captured = ci.Arg<SurveyResponse>());
         var submission = new SurveySubmission(
             survey.Id, null, null, null,
@@ -3576,7 +3576,7 @@ public class SurveyServiceTests
 
         result.Outcome.Should().Be(SurveyWizardOutcome.ValidationFailed);
         result.MissingRequired.Should().BeEquivalentTo([grid.Id]);
-        await _repo.DidNotReceive().AddResponseWithAnswersAndSaveAsync(
+        await _repo.DidNotReceive().AddFinalResponseAsync(
             Arg.Any<SurveyResponse>(), Arg.Any<CancellationToken>());
     }
 
@@ -3602,7 +3602,7 @@ public class SurveyServiceTests
         };
         _repo.GetByIdAsync(survey.Id, Arg.Any<CancellationToken>()).Returns(survey);
         SurveyResponse? captured = null;
-        _repo.When(r => r.AddResponseWithAnswersAndSaveAsync(Arg.Any<SurveyResponse>(), Arg.Any<CancellationToken>()))
+        _repo.When(r => r.AddFinalResponseAsync(Arg.Any<SurveyResponse>(), Arg.Any<CancellationToken>()))
              .Do(ci => captured = ci.Arg<SurveyResponse>());
 
         // gate answered "no" → the hidden question's stale answer must be dropped.
@@ -3654,7 +3654,7 @@ public class SurveyServiceTests
         };
         _repo.GetByIdAsync(survey.Id, Arg.Any<CancellationToken>()).Returns(survey);
         SurveyResponse? captured = null;
-        _repo.When(r => r.AddResponseWithAnswersAndSaveAsync(Arg.Any<SurveyResponse>(), Arg.Any<CancellationToken>()))
+        _repo.When(r => r.AddFinalResponseAsync(Arg.Any<SurveyResponse>(), Arg.Any<CancellationToken>()))
              .Do(ci => captured = ci.Arg<SurveyResponse>());
 
         var submission = new SurveySubmission(
@@ -3687,7 +3687,7 @@ public class SurveyServiceTests
             WizardState(survey, submission), 1, back: false, submission.Answers, ct: TestContext.Current.CancellationToken);
 
         result.Outcome.Should().Be(SurveyWizardOutcome.Submitted);
-        await _repo.DidNotReceive().AddResponseWithAnswersAndSaveAsync(Arg.Any<SurveyResponse>(), Arg.Any<CancellationToken>());
+        await _repo.DidNotReceive().AddFinalResponseAsync(Arg.Any<SurveyResponse>(), Arg.Any<CancellationToken>());
         await _repo.DidNotReceive().FinalizeCompletionTrackedResponseAsync(
             Arg.Any<Guid>(),
             Arg.Any<Guid>(),
@@ -3709,7 +3709,7 @@ public class SurveyServiceTests
             WizardState(survey, submission), 1, back: false, submission.Answers, ct: TestContext.Current.CancellationToken);
 
         result.Outcome.Should().Be(SurveyWizardOutcome.Closed);
-        await _repo.DidNotReceive().AddResponseWithAnswersAndSaveAsync(Arg.Any<SurveyResponse>(), Arg.Any<CancellationToken>());
+        await _repo.DidNotReceive().AddFinalResponseAsync(Arg.Any<SurveyResponse>(), Arg.Any<CancellationToken>());
     }
 
     [HumansFact]
@@ -3726,7 +3726,7 @@ public class SurveyServiceTests
             WizardState(survey, submission), 1, back: false, submission.Answers, ct: TestContext.Current.CancellationToken);
 
         result.Outcome.Should().Be(SurveyWizardOutcome.Closed);
-        await _repo.DidNotReceive().AddResponseWithAnswersAndSaveAsync(Arg.Any<SurveyResponse>(), Arg.Any<CancellationToken>());
+        await _repo.DidNotReceive().AddFinalResponseAsync(Arg.Any<SurveyResponse>(), Arg.Any<CancellationToken>());
     }
 
     private Survey SurveyForWizard(out Guid q1Id, out Guid q2Id)
@@ -3837,7 +3837,7 @@ public class SurveyServiceTests
         state.CurrentPage.Should().Be(1);
         state.Started.Should().BeFalse();
         await _repo.DidNotReceive().MarkInvitationStartedAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>());
-        await _repo.DidNotReceive().AddResponseWithAnswersAndSaveAsync(Arg.Any<SurveyResponse>(), Arg.Any<CancellationToken>());
+        await _repo.DidNotReceive().AddFinalResponseAsync(Arg.Any<SurveyResponse>(), Arg.Any<CancellationToken>());
     }
 
     [HumansFact]
@@ -3892,7 +3892,7 @@ public class SurveyServiceTests
         ];
         _repo.GetByIdAsync(survey.Id, Arg.Any<CancellationToken>()).Returns(survey);
         SurveyResponse? saved = null;
-        _repo.When(repo => repo.AddResponseWithAnswersAndSaveAsync(
+        _repo.When(repo => repo.AddFinalResponseAsync(
                 Arg.Any<SurveyResponse>(), Arg.Any<CancellationToken>()))
             .Do(call => saved = call.Arg<SurveyResponse>());
         var submission = new SurveySubmission(
@@ -3942,7 +3942,7 @@ public class SurveyServiceTests
 
         result.Outcome.Should().Be(SurveyWizardOutcome.ValidationFailed);
         result.MissingRequired.Concat(result.InvalidAnswers ?? []).Should().Contain(id);
-        await _repo.DidNotReceive().AddResponseWithAnswersAndSaveAsync(
+        await _repo.DidNotReceive().AddFinalResponseAsync(
             Arg.Any<SurveyResponse>(), Arg.Any<CancellationToken>());
     }
 
@@ -4005,7 +4005,7 @@ public class SurveyServiceTests
 
         result.Outcome.Should().Be(SurveyWizardOutcome.ValidationFailed);
         result.InvalidAnswers.Should().BeEquivalentTo([questionId]);
-        await _repo.DidNotReceive().AddResponseWithAnswersAndSaveAsync(
+        await _repo.DidNotReceive().AddFinalResponseAsync(
             Arg.Any<SurveyResponse>(), Arg.Any<CancellationToken>());
     }
 
@@ -4035,7 +4035,7 @@ public class SurveyServiceTests
         state.CurrentPage.Should().Be(1);
         state.Answers[questionId.ToString()].RankedValue.Should().BeEquivalentTo(ranked);
         state.Started.Should().BeFalse();
-        await _repo.DidNotReceive().AddResponseWithAnswersAndSaveAsync(
+        await _repo.DidNotReceive().AddFinalResponseAsync(
             Arg.Any<SurveyResponse>(), Arg.Any<CancellationToken>());
     }
 
@@ -4073,7 +4073,7 @@ public class SurveyServiceTests
         result.Outcome.Should().Be(SurveyWizardOutcome.ValidationFailed);
         result.MissingRequired.Concat(result.InvalidAnswers ?? []).Should().Contain(id);
         state.CurrentPage.Should().Be(1);
-        await _repo.DidNotReceive().AddResponseWithAnswersAndSaveAsync(
+        await _repo.DidNotReceive().AddFinalResponseAsync(
             Arg.Any<SurveyResponse>(), Arg.Any<CancellationToken>());
     }
 
@@ -4086,7 +4086,7 @@ public class SurveyServiceTests
         state.CurrentPage = 2;
         state.Started = true;
         SurveyResponse? captured = null;
-        _repo.When(r => r.AddResponseWithAnswersAndSaveAsync(Arg.Any<SurveyResponse>(), Arg.Any<CancellationToken>()))
+        _repo.When(r => r.AddFinalResponseAsync(Arg.Any<SurveyResponse>(), Arg.Any<CancellationToken>()))
              .Do(ci => captured = ci.Arg<SurveyResponse>());
 
         var result = await CreateResponses().AdvanceWizardAsync(
@@ -4139,7 +4139,7 @@ public class SurveyServiceTests
         result.Outcome.Should().Be(SurveyWizardOutcome.Submitted);
         await _repo.DidNotReceive().FinalizeCompletionTrackedResponseAsync(
             Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<SurveyResponse>(), Arg.Any<CancellationToken>());
-        await _repo.DidNotReceive().AddResponseWithAnswersAndSaveAsync(Arg.Any<SurveyResponse>(), Arg.Any<CancellationToken>());
+        await _repo.DidNotReceive().AddFinalResponseAsync(Arg.Any<SurveyResponse>(), Arg.Any<CancellationToken>());
     }
 
     [HumansFact]
@@ -4274,7 +4274,7 @@ public class SurveyServiceTests
         result.MissingRequired.Should().ContainSingle().Which.Should().Be(gridId);
         state.CurrentPage.Should().Be(1);
         state.Answers[gridId.ToString()].GridSelections.Keys.Should().ContainSingle().Which.Should().Be("monday");
-        await _repo.DidNotReceive().AddResponseWithAnswersAndSaveAsync(
+        await _repo.DidNotReceive().AddFinalResponseAsync(
             Arg.Any<SurveyResponse>(), Arg.Any<CancellationToken>());
     }
 
@@ -4322,7 +4322,7 @@ public class SurveyServiceTests
         state.CurrentPage.Should().Be(1);
         state.Answers[gridId.ToString()].GridSelections.Keys
             .Should().ContainSingle().Which.Should().Be("monday");
-        await _repo.DidNotReceive().AddResponseWithAnswersAndSaveAsync(
+        await _repo.DidNotReceive().AddFinalResponseAsync(
             Arg.Any<SurveyResponse>(), Arg.Any<CancellationToken>());
     }
 
@@ -4377,7 +4377,7 @@ public class SurveyServiceTests
         log[3].Should().BeNull();
         log[2]!.ToString().Should().Contain(survey.Id.ToString()).And.Contain(expected.ToString());
         _repo.ReceivedCalls().Should().NotContain(call =>
-            call.GetMethodInfo().Name == nameof(ISurveyRepository.AddResponseWithAnswersAndSaveAsync)
+            call.GetMethodInfo().Name == nameof(ISurveyRepository.AddFinalResponseAsync)
             || call.GetMethodInfo().Name == nameof(ISurveyRepository.FinalizeIdentifiedResponseAsync)
             || call.GetMethodInfo().Name == nameof(ISurveyRepository.FinalizeCompletionTrackedResponseAsync));
     }
@@ -4415,7 +4415,7 @@ public class SurveyServiceTests
         result.InvalidAnswers.Should().ContainSingle().Which.Should().Be(questionId);
         state.CurrentPage.Should().Be(1);
         state.Answers[questionId.ToString()].RankedValue.Should().BeEquivalentTo(ranked);
-        await _repo.DidNotReceive().AddResponseWithAnswersAndSaveAsync(
+        await _repo.DidNotReceive().AddFinalResponseAsync(
             Arg.Any<SurveyResponse>(), Arg.Any<CancellationToken>());
     }
 
@@ -5972,14 +5972,14 @@ public class SurveyServiceTests
             .Returns(new ValueTask<IReadOnlyDictionary<Guid, UserInfo>>(new Dictionary<Guid, UserInfo> { [recipient] = UserInfoWithName(recipient, string.Empty, string.Empty) with { IdentityEmailColumn = "recipient@example.org" } }));
 
         var boardUserId = Guid.NewGuid();
-        var result = await CreateService().ApproveAndSendAsync(
+        var result = await CreateService().ApproveAsync(
             survey.Id, new SurveyViewer(boardUserId, SeesEverySurvey: true, ManagesEverySurvey: true), TestContext.Current.CancellationToken);
 
         result.Succeeded.Should().BeTrue();
         result.Send!.InvitationsProcessed.Should().Be(1);
         result.Send!.EmailsQueued.Should().Be(1);
         await _repo.Received(1).ApproveAsync(survey.Id, _clock.GetCurrentInstant(), Arg.Any<CancellationToken>());
-        await _repo.Received(1).AddInvitationAndSaveAsync(
+        await _repo.Received(1).AddInvitationAsync(
             Arg.Is<SurveyInvitation>(i => i.UserId == recipient), Arg.Any<CancellationToken>());
         await _audit.Received(1).LogAsync(
             SurveysAuditActions.SurveyApproved, "Survey", survey.Id, Arg.Any<string>(), boardUserId, authorId, AuditSubjectTypes.User);
@@ -5992,7 +5992,7 @@ public class SurveyServiceTests
         var survey = SurveyWith(SurveyStatus.PendingApproval, null, null);
         _repo.GetByIdAsync(survey.Id, Arg.Any<CancellationToken>()).Returns(survey);
 
-        var result = await CreateService().ApproveAndSendAsync(
+        var result = await CreateService().ApproveAsync(
             survey.Id, new SurveyViewer(Guid.NewGuid(), SeesEverySurvey: false, ManagesEverySurvey: false), TestContext.Current.CancellationToken);
 
         result.Succeeded.Should().BeFalse();
@@ -6009,7 +6009,7 @@ public class SurveyServiceTests
         var survey = SurveyWith(status, null, null);
         _repo.GetByIdAsync(survey.Id, Arg.Any<CancellationToken>()).Returns(survey);
 
-        var result = await CreateService().ApproveAndSendAsync(
+        var result = await CreateService().ApproveAsync(
             survey.Id, new SurveyViewer(Guid.NewGuid(), SeesEverySurvey: true, ManagesEverySurvey: true), TestContext.Current.CancellationToken);
 
         result.Succeeded.Should().BeFalse();
@@ -6026,7 +6026,7 @@ public class SurveyServiceTests
         var survey = SurveyWith(SurveyStatus.PendingApproval, null, null);
         _repo.GetByIdAsync(survey.Id, Arg.Any<CancellationToken>()).Returns(survey);
 
-        var result = await CreateService().ApproveAndSendAsync(
+        var result = await CreateService().ApproveAsync(
             survey.Id, new SurveyViewer(Guid.NewGuid(), SeesEverySurvey: true, ManagesEverySurvey: true), TestContext.Current.CancellationToken);
 
         result.Succeeded.Should().BeFalse();
@@ -6046,7 +6046,7 @@ public class SurveyServiceTests
         _repo.GetByIdAsync(survey.Id, Arg.Any<CancellationToken>()).Returns(survey);
         _teamService.GetTeamAsync(teamId, Arg.Any<CancellationToken>()).Returns((TeamInfo?)null);
 
-        var result = await CreateService().ApproveAndSendAsync(
+        var result = await CreateService().ApproveAsync(
             survey.Id, new SurveyViewer(Guid.NewGuid(), SeesEverySurvey: true, ManagesEverySurvey: true), TestContext.Current.CancellationToken);
 
         result.Succeeded.Should().BeFalse();

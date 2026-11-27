@@ -220,7 +220,7 @@ internal sealed class CampaignController(
             return BadRequest(ModelState);
         }
 
-        var result = await campaignService.GenerateAndImportDiscountCodesAsync(
+        var result = await campaignService.GenerateDiscountCodesAsync(
             currentUser.Id,
             id, count, discountType, discountValue);
         if (string.Equals(result.ErrorKey, "NotFound", StringComparison.Ordinal))

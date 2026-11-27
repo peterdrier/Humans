@@ -450,7 +450,7 @@ internal sealed class TeamService(
     {
         var activeEvent = Settings.GetActiveEventSettings();
         if (activeEvent is null) return [];
-        var grants = await repo.GetEarlyEntryGrantsForEnabledTeamsAsync(ct);
+        var grants = await repo.GetEarlyEntryGrantsAsync(ct);
         return Project(grants.Where(g => g.EventSettingsId == activeEvent.Id).ToList());
     }
 
@@ -816,7 +816,7 @@ internal sealed class TeamService(
         bool success;
         try
         {
-            success = await ApproveRequestWithMemberAndOutboxAsync(
+            success = await ApproveRequestAsync(
                 request, member, outboxEvent, cancellationToken);
         }
         catch (Exception ex)
@@ -1056,7 +1056,7 @@ internal sealed class TeamService(
         var wasActiveDepartment = team.IsActive && !team.ParentTeamId.HasValue;
         var willBeActiveDepartment = isActive && !parentTeamId.HasValue;
         var coordinatorUserIds = wasActiveDepartment != willBeActiveDepartment
-            ? await repo.GetActiveCoordinatorUserIdsForTeamAsync(teamId, cancellationToken)
+            ? await repo.GetCoordinatorUserIdsAsync(teamId, cancellationToken)
             : (IReadOnlyList<Guid>)[];
 
         var nameChanged = !string.Equals(team.Name, name, StringComparison.Ordinal);
@@ -1125,7 +1125,7 @@ internal sealed class TeamService(
 
         var coordinatorUserIds = team.ParentTeamId.HasValue
             ? (IReadOnlyList<Guid>)[]
-            : await repo.GetActiveCoordinatorUserIdsForTeamAsync(teamId, cancellationToken);
+            : await repo.GetCoordinatorUserIdsAsync(teamId, cancellationToken);
         var closedUsers = await repo.DeactivateTeamAsync(teamId, now, cancellationToken);
         foreach (var userId in closedUsers)
         {
@@ -1329,7 +1329,7 @@ internal sealed class TeamService(
                         tracked.ReviewNotes = "Added directly by team manager";
                         tracked.ResolvedAt = clock.GetCurrentInstant();
                     }
-                    success = await ApproveRequestWithMemberAndOutboxAsync(
+                    success = await ApproveRequestAsync(
                         tracked, member, outboxEvent, cancellationToken);
                 }
                 else
@@ -1679,7 +1679,7 @@ internal sealed class TeamService(
         return true;
     }
 
-    internal async Task<bool> ApproveRequestWithMemberAndOutboxAsync(
+    internal async Task<bool> ApproveRequestAsync(
         TeamJoinRequest request,
         TeamMember member,
         GoogleSyncOutboxEvent? outboxEvent,
@@ -2287,7 +2287,7 @@ internal sealed class TeamService(
     public async Task<IReadOnlyDictionary<Guid, TeamReadSnapshot>> GetTeamSnapshotsAsync(CancellationToken ct = default)
     {
         var teams = await repo.GetAllWithMembersAsync(ct);
-        var managementHolders = await repo.GetActiveManagementRoleHolderUserIdsByTeamAsync(ct);
+        var managementHolders = await repo.GetManagerUserIdsByTeamAsync(ct);
         var roleDefinitionsByTeam = await repo.GetAllRoleDefinitionsByTeamAsync(ct);
         var childIdsByParent = teams
             .Where(t => t.ParentTeamId.HasValue)

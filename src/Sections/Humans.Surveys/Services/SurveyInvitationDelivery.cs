@@ -85,7 +85,7 @@ internal sealed class SurveyInvitationDelivery(
                     UserId = userId,
                     CreatedAt = now,
                 };
-                await repo.AddInvitationAndSaveAsync(inv, sendCt);
+                await repo.AddInvitationAsync(inv, sendCt);
             }
             invitationsProcessed++;
 

@@ -50,7 +50,7 @@ internal interface ISurveyRepository : IRepository
     Task<IReadOnlyList<SurveyInvitation>> GetInvitationsAsync(Guid surveyId, CancellationToken ct = default);
 
     /// <summary>Commits per invite so the send wave is restartable.</summary>
-    Task AddInvitationAndSaveAsync(SurveyInvitation invitation, CancellationToken ct = default);
+    Task AddInvitationAsync(SurveyInvitation invitation, CancellationToken ct = default);
 
     /// <summary>
     /// Gets or creates the one per-survey/user participation row. The unique database index is the
@@ -99,7 +99,7 @@ internal interface ISurveyRepository : IRepository
         CancellationToken ct = default);
 
     /// <summary>CompletionTracked/Anonymous final submit.</summary>
-    Task AddResponseWithAnswersAndSaveAsync(SurveyResponse response, CancellationToken ct = default);
+    Task AddFinalResponseAsync(SurveyResponse response, CancellationToken ct = default);
 
     /// <summary>
     /// Finalises an Identified draft and marks its participation complete in one save. No-op if the

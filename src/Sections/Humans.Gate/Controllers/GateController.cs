@@ -287,19 +287,19 @@ internal sealed class GateController(
         }
 
         ResetPinThrottle(userKey);
-        return StampAndScan(userId);
+        return StartScanning(userId);
     }
 
     private async Task<IActionResult> SetClaimPinAsync(
         Guid userId, GatePinStatus status, string? pin, CancellationToken ct) =>
         await gate.SetOwnPinAsync(userId, pin ?? string.Empty, ct) switch
         {
-            GatePinSetResult.Ok => StampAndScan(userId),
+            GatePinSetResult.Ok => StartScanning(userId),
             _ => View("Pin", GatePinViewModel.ForClaim(
                 userId, status, "Pick a less obvious PIN — not 1234, 0000, or repeats")),
         };
 
-    private IActionResult StampAndScan(Guid userId)
+    private IActionResult StartScanning(Guid userId)
     {
         // Server-side, never from the request body, so attribution can't be forged.
         HttpContext.Session.SetString(ScannerSessionKey, userId.ToString());

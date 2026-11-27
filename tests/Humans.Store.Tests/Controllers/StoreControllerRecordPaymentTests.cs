@@ -69,7 +69,7 @@ public sealed class StoreControllerRecordPaymentTests
         teams.GetTeamsAsync(Arg.Any<CancellationToken>()).Returns(new Dictionary<Guid, TeamInfo>());
         _repo.GetActiveProductsForYearAsync(Arg.Any<int>(), Arg.Any<CancellationToken>()).Returns(new List<Product>());
         var clock = new FakeClock(Instant.FromUtc(2026, 9, 1, 10, 0));
-        _repo.GetOrderWithLinesAndPaymentsAsync(_order.Id, Arg.Any<CancellationToken>()).Returns(_order);
+        _repo.GetOrderWithLinesAsync(_order.Id, Arg.Any<CancellationToken>()).Returns(_order);
         _repo.GetAllProductsForYearAsync(Arg.Any<int>(), Arg.Any<CancellationToken>()).Returns(new List<Product>());
         _repo.GetProductsByIdsAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>()).Returns(new List<Product>());
         var stripe = _stripe;
@@ -260,7 +260,7 @@ public sealed class StoreControllerRecordPaymentTests
             TempData = controller.TempData,
             Url = controller.Url
         };
-        _repo.GetOrderWithLinesAndPaymentsAsync(_order.Id, Arg.Any<CancellationToken>()).Returns(call =>
+        _repo.GetOrderWithLinesAsync(_order.Id, Arg.Any<CancellationToken>()).Returns(call =>
         {
             call.Arg<CancellationToken>().ThrowIfCancellationRequested();
             return _order;
@@ -288,7 +288,7 @@ public sealed class StoreControllerRecordPaymentTests
         await run.Should().ThrowAsync<OperationCanceledException>();
         await users.Received(1).GetUserInfoAsync(_userId, request.Token);
         _repo.ReceivedCalls().Should().OnlyContain(call =>
-            string.Equals(call.GetMethodInfo().Name, nameof(IStoreRepository.GetOrderWithLinesAndPaymentsAsync), StringComparison.Ordinal));
+            string.Equals(call.GetMethodInfo().Name, nameof(IStoreRepository.GetOrderWithLinesAsync), StringComparison.Ordinal));
         if (!afterAccount) _repo.ReceivedCalls().Should().BeEmpty();
         _audit.ReceivedCalls().Should().BeEmpty();
     }

@@ -19,7 +19,7 @@ public interface ICampSeeding
     Task ApproveSeasonAsync(Guid seasonId, Guid reviewedByUserId, string? notes, CancellationToken cancellationToken = default);
 
     /// <summary>Adds the human to the camp's active season and assigns the role. Idempotent.</summary>
-    Task AddMemberAndAssignRoleInActiveSeasonAsync(
+    Task AddMemberWithRoleAsync(
         Guid campId, Guid roleDefinitionId, Guid userId, Guid actorUserId,
         CancellationToken cancellationToken = default);
 }

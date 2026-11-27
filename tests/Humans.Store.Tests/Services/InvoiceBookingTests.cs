@@ -49,7 +49,7 @@ public class InvoiceBookingTests
             HoldedDocNumber = "F260009",
             RequestPayload = """{"kind":"Invoice"}""",
         };
-        _repo.GetOrderWithLinesAndPaymentsAsync(_order.Id, Arg.Any<CancellationToken>()).Returns(_order);
+        _repo.GetOrderWithLinesAsync(_order.Id, Arg.Any<CancellationToken>()).Returns(_order);
         _repo.GetInvoicesForOrdersAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>()).Returns([_invoice]);
         _repo.GetSettingsAsync(Arg.Any<CancellationToken>()).Returns(new StoreSettings { StripeGatewayTreasuryId = Gateway });
         _holded.IsConfigured.Returns(true);

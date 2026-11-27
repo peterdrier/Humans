@@ -29,7 +29,7 @@ internal sealed class LegalDocumentSyncRunner(
         },
         failures);
 
-    public async Task SyncAndNotifyAsync(CancellationToken cancellationToken = default)
+    public async Task SyncAsync(CancellationToken cancellationToken = default)
     {
         var failures = new List<Exception>();
         int? syncFailures = null;

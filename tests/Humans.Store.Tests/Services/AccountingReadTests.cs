@@ -99,7 +99,7 @@ public class AccountingReadTests
                 new Payment { Id = Guid.NewGuid(), OrderId = CampOrderId, AmountEur = 30m, Method = PaymentMethod.Stripe, Status = PaymentStatus.Failed, StripePaymentIntentId = "pi_3", ReceivedAt = Instant.FromUtc(2026, 6, 6, 0, 0) },
             },
         };
-        _repo.GetOrdersForCampSeasonsWithLinesAndPaymentsAsync(
+        _repo.GetOrdersForCampSeasonsAsync(
                 Arg.Is<IReadOnlyCollection<Guid>>(ids => ids.Contains(SeasonId)), Arg.Any<CancellationToken>())
             .Returns([campOrder]);
 
@@ -111,12 +111,12 @@ public class AccountingReadTests
             State = OrderState.Open,
             Lines = { new OrderLine { Id = Guid.NewGuid(), OrderId = TeamOrderId, ProductId = IceId, Qty = 5, UnitPriceSnapshot = 3m, VatRateSnapshot = 10m } },
         };
-        _repo.GetOrdersForTeamsWithLinesAndPaymentsAsync(
+        _repo.GetOrdersForTeamsAsync(
                 Arg.Is<IReadOnlyCollection<Guid>>(ids => ids.Contains(DeptId)), 2026, Arg.Any<CancellationToken>())
             .Returns([teamOrder]);
 
         // The export selects by persisted Year, not through the counterparty.
-        _repo.GetOrdersForYearWithLinesAndPaymentsAsync(2026, Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+        _repo.GetOrdersForYearAsync(2026, Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
             .Returns([campOrder, teamOrder]);
     }
 
@@ -179,7 +179,7 @@ public class AccountingReadTests
         _repo.GetInvoicesForOrdersAsync(
                 Arg.Is<IReadOnlyCollection<Guid>>(ids => ids.Contains(CampOrderId)), Arg.Any<CancellationToken>())
             .Returns([new Invoice { Id = Guid.NewGuid(), OrderId = CampOrderId, HoldedDocId = "h1", HoldedDocNumber = "F-2026-0007" }]);
-        var campOrder = (await _repo.GetOrdersForCampSeasonsWithLinesAndPaymentsAsync([SeasonId], CancellationToken.None))[0];
+        var campOrder = (await _repo.GetOrdersForCampSeasonsAsync([SeasonId], CancellationToken.None))[0];
         campOrder.State = OrderState.InvoiceIssued;
         campOrder.IssuedInvoiceId = Guid.NewGuid();
 
@@ -229,7 +229,7 @@ public class AccountingReadTests
             Lines = { new OrderLine { Id = Guid.NewGuid(), OrderId = orphanId, ProductId = IceId, Qty = 1, UnitPriceSnapshot = 3m, VatRateSnapshot = 10m } },
             Payments = { new Payment { Id = Guid.NewGuid(), OrderId = orphanId, AmountEur = 4.40m, Method = PaymentMethod.Stripe, Status = PaymentStatus.Paid, StripePaymentIntentId = "pi_orphan" } },
         };
-        _repo.GetOrdersForYearWithLinesAndPaymentsAsync(2026, Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+        _repo.GetOrdersForYearAsync(2026, Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
             .Returns([orphan]);
 
         var ct = Xunit.TestContext.Current.CancellationToken;
@@ -248,7 +248,7 @@ public class AccountingReadTests
     {
         _camps.GetCampsForYearAsync(2025, Arg.Any<CancellationToken>()).Returns([]);
         _repo.GetAllProductsForYearAsync(2025, Arg.Any<CancellationToken>()).Returns([]);
-        _repo.GetOrdersForYearWithLinesAndPaymentsAsync(2025, Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+        _repo.GetOrdersForYearAsync(2025, Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
             .Returns([]);
 
         var ct = Xunit.TestContext.Current.CancellationToken;

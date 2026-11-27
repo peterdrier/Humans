@@ -51,7 +51,7 @@ internal interface IEventManagement : IEventService
     /// A null <paramref name="lifecycleActionUrl"/> skips the submitter's confirmation email.</summary>
     Task<EventSaveResult> SubmitEventAsync(Event guideEvent, string? lifecycleActionUrl = null, CancellationToken ct = default);
     /// <summary>Re-queues for moderation; the event's own <c>CampId</c> picks the field set.</summary>
-    Task<EventSaveResult> UpdateAndResubmitAsync(Guid eventId, EventEdit edit, CancellationToken ct = default);
+    Task<EventSaveResult> ResubmitAsync(Guid eventId, EventEdit edit, CancellationToken ct = default);
     Task WithdrawEventAsync(Guid eventId, CancellationToken ct = default);
 
     /// <summary>
@@ -62,7 +62,7 @@ internal interface IEventManagement : IEventService
 
     /// <summary>
     /// Leaves <see cref="Event.Status"/> untouched (an Approved event stays published), unlike
-    /// <see cref="UpdateAndResubmitAsync"/>. Appends an <see cref="EventModerationActionType.Edited"/> row with
+    /// <see cref="ResubmitAsync"/>. Appends an <see cref="EventModerationActionType.Edited"/> row with
     /// <paramref name="note"/> as its reason.
     /// </summary>
     Task AdminUpdateAsync(Guid eventId, EventEdit edit, Guid actorUserId, string? note, CancellationToken ct = default);

@@ -193,7 +193,7 @@ internal interface IBudgetRepository : IRepository
     /// <summary>
     /// For the GDPR export, which includes entries left on merged-away ids. Newest first.
     /// </summary>
-    Task<IReadOnlyList<BudgetAuditLog>> GetAuditLogEntriesForUserIdsAsync(
+    Task<IReadOnlyList<BudgetAuditLog>> GetAuditEntriesForUsersAsync(
         IReadOnlyCollection<Guid> userIds, CancellationToken ct = default);
 }
 

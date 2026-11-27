@@ -242,7 +242,7 @@ internal sealed class IssuesService(
             SetStatusFields(issue, IssueStatus.Resolved, senderUserId, now);
 
         issue.UpdatedAt = now;
-        await repo.AddCommentAndSaveIssueAsync(comment, issue, ct);
+        await repo.AddCommentAsync(comment, issue, ct);
         // The reply and any status change are committed; finish their follow-up work.
         ct = CancellationToken.None;
 

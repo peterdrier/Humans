@@ -38,7 +38,7 @@ Context: `CantinaDbContext` (history table `__EFMigrationsHistory_Cantina`).
 
 ### Read sources
 
-- `shift_signups` — owned by **Shifts** ([`Shifts.md`](../../Humans.Shifts/Docs/Shifts.md)). Filtered to `Status = Confirmed` joined to `shifts` by `DayOffset`. Read **through `IShiftService`** (`GetOnSiteUserIdsForDayAsync`), never the Shifts repository directly.
+- `shift_signups` — owned by **Shifts** ([`Shifts.md`](../../Humans.Shifts/Docs/Shifts.md)). Filtered to `Status = Confirmed` joined to `shifts` by `DayOffset`. Read **through `IShiftService`** (`GetOnSiteUserIdsAsync`), never the Shifts repository directly.
 - `user_profiles` / `users` — owned by **Users/Identity**. Burner names and the merge chain are read via **`IUserService`** (cached `UserInfo`). **`MedicalConditions` is never read by the cantina** — no Cantina DTO has such a field.
 
 ## Routing
@@ -121,7 +121,7 @@ Numeric offsets must also fit the requested day or full seven-day window within 
 - **Audit actions:** declared on `CantinaAuditActions` (`src/Sections/Humans.Cantina/CantinaAuditActions.cs`), one `AuditActionDefinition` each, written through `IAuditLogService`: `CantinaRosterExported`, `CantinaHealthDetailsRevealed`.
 - **AuditLog:** `IAuditLogService` records the weekly/daily CSV disclosures and the allergy / intolerance reveals.
 
-- **Shifts:** `IShiftService.GetOnSiteUserIdsForDayAsync` (on-site cohort). Service-layer reads only; the cantina never touches the Shifts repository.
+- **Shifts:** `IShiftService.GetOnSiteUserIdsAsync` (on-site cohort). Service-layer reads only; the cantina never touches the Shifts repository.
 - **Shifts pages:** Cantina fills Shifts' `IShiftsPageBanner` slot with `DietaryMissingBannerViewComponent`, shown on `/Shifts` and `/Shifts/Mine`.
 - **Settings:** `ISettingsService.GetActiveEventSettings` (active event/burn).
 - **Users/Identity:** `IUserService.GetUserInfosAsync` / `GetUserInfoAsync` — cached `UserInfo` for burner names and the merge chain. No entity reads.

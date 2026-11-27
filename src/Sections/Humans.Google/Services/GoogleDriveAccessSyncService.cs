@@ -270,7 +270,7 @@ internal sealed class GoogleDriveAccessSyncService(
             var mode = await syncSettingsService.GetModeAsync(SyncServiceType.GoogleDrive, ct);
             if (mode != SyncMode.None)
             {
-                errors.AddRange(await ApplyMissingAndChangedAsync(claim, plan, mode, syncSource, passStart, ct));
+                errors.AddRange(await ApplyChangesAsync(claim, plan, mode, syncSource, passStart, ct));
 
                 // A failed source may have claimed this folder too; its members would read as
                 // extra or over-privileged, so hold removals and demotions until it answers.
@@ -307,7 +307,7 @@ internal sealed class GoogleDriveAccessSyncService(
         return result;
     }
 
-    private async Task<List<string>> ApplyMissingAndChangedAsync(
+    private async Task<List<string>> ApplyChangesAsync(
         FolderClaim claim, DrivePlan plan, SyncMode mode, GoogleSyncSource syncSource, Instant passStart, CancellationToken ct)
     {
         var errors = new List<string>();
@@ -325,7 +325,7 @@ internal sealed class GoogleDriveAccessSyncService(
                     if (mode == SyncMode.AddOnly &&
                         !(DrivePermissionRoleMapper.Parse(member.CurrentRole) < DrivePermissionRoleMapper.Parse(member.ExpectedRole)))
                         continue;
-                    if (await UpdateAndLogAsync(claim, member, permissionId, syncSource, commitCt) is { } updateError) errors.Add(updateError);
+                    if (await UpdatePermissionAsync(claim, member, permissionId, syncSource, commitCt) is { } updateError) errors.Add(updateError);
                     continue;
                 }
 
@@ -465,13 +465,13 @@ internal sealed class GoogleDriveAccessSyncService(
                 {
                     // A downgrade, or a mixed permission whose direct elevation is extra: lower
                     // it to the expected role and do not claim all access was removed.
-                    if (await UpdateAndLogAsync(claim, member, permissionId, syncSource, commitCt) is { } error) errors.Add(error);
+                    if (await UpdatePermissionAsync(claim, member, permissionId, syncSource, commitCt) is { } error) errors.Add(error);
                     continue;
                 }
 
                 // Telling someone their access was removed when the delete failed (or the
                 // permission turned out to be inherited and untouchable) is a false notice.
-                var deletion = await DeleteAndLogAsync(claim, member.Email, member.UserId, permissionId, syncSource, commitCt);
+                var deletion = await DeletePermissionAsync(claim, member.Email, member.UserId, permissionId, syncSource, commitCt);
                 if (deletion.Error is not null) errors.Add(deletion.Error);
                 if (deletion.Deleted) await NotifyRemovalAsync(member.Email, claim, commitCt);
             }
@@ -484,7 +484,7 @@ internal sealed class GoogleDriveAccessSyncService(
         return errors;
     }
 
-    private async Task<string?> UpdateAndLogAsync(FolderClaim claim, MemberSyncStatus member, string permissionId, GoogleSyncSource syncSource, CancellationToken ct)
+    private async Task<string?> UpdatePermissionAsync(FolderClaim claim, MemberSyncStatus member, string permissionId, GoogleSyncSource syncSource, CancellationToken ct)
     {
         var role = member.ExpectedRole!;
         var (error, _) = await WithTransientRetryAsync(
@@ -507,7 +507,7 @@ internal sealed class GoogleDriveAccessSyncService(
     }
 
     /// <summary>Deletes one permission and logs the outcome. True only when Drive actually removed it.</summary>
-    private async Task<(bool Deleted, string? Error)> DeleteAndLogAsync(FolderClaim claim, string email, Guid? userId, string permissionId, GoogleSyncSource syncSource, CancellationToken ct)
+    private async Task<(bool Deleted, string? Error)> DeletePermissionAsync(FolderClaim claim, string email, Guid? userId, string permissionId, GoogleSyncSource syncSource, CancellationToken ct)
     {
         var result = await drivePermissions.DeletePermissionAsync(claim.FolderId, permissionId, ct);
         switch (result.Outcome)

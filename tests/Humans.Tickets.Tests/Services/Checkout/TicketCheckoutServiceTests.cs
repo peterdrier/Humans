@@ -337,7 +337,7 @@ public sealed partial class TicketCheckoutServiceTests
 
         _repo.Tickets.Select(t => t.HolderUserId).Should().BeEquivalentTo(new Guid?[] { _buyerId, katie, sarah });
         await _provisioning.DidNotReceiveWithAnyArgs().FindOrCreateUserByEmailAsync(default!, default, default);
-        await _provisioning.DidNotReceiveWithAnyArgs().ReplaceUnverifiedEmailAndProvisionAsync(default, default, default!, default, default);
+        await _provisioning.DidNotReceiveWithAnyArgs().ReplaceUnverifiedEmailAsync(default, default, default!, default, default);
     }
 
     [HumansFact]
@@ -1600,7 +1600,7 @@ public sealed partial class TicketCheckoutServiceTests
         var row = Row(_otherBuyerId, verified: false);
         var fresh = Guid.NewGuid();
         _userEmails.FindByAddressAsync("bo@example.com", true, false, Arg.Any<CancellationToken>()).Returns([row]);
-        _provisioning.ReplaceUnverifiedEmailAndProvisionAsync(_otherBuyerId, row.Id, "bo@example.com", null, ContactSource.Manual,
+        _provisioning.ReplaceUnverifiedEmailAsync(_otherBuyerId, row.Id, "bo@example.com", null, ContactSource.Manual,
                 Arg.Any<CancellationToken>())
             .Returns(new AccountProvisioningResult(fresh, Created: true));
 

@@ -219,10 +219,10 @@ If any field differs:
 | Existing status | Included in template | Action on upload |
 | --- | --- | --- |
 | Draft | Yes | Update fields → `SubmitEventAsync` |
-| Pending | Yes | Update fields → `UpdateAndResubmitAsync` (re-queues for moderation) |
-| Approved | Yes | Update fields → `UpdateAndResubmitAsync` (moves back to Pending for re-moderation) |
-| Rejected | Yes | Update fields → `UpdateAndResubmitAsync` (re-queues for moderation) |
-| ResubmitRequested | Yes | Update fields → `UpdateAndResubmitAsync` (re-queues for moderation) |
+| Pending | Yes | Update fields → `ResubmitAsync` (re-queues for moderation) |
+| Approved | Yes | Update fields → `ResubmitAsync` (moves back to Pending for re-moderation) |
+| Rejected | Yes | Update fields → `ResubmitAsync` (re-queues for moderation) |
+| ResubmitRequested | Yes | Update fields → `ResubmitAsync` (re-queues for moderation) |
 | Withdrawn | No | **Validation error** — row rejected, upload fails |
 
 #### Key Reused Pieces
@@ -232,7 +232,7 @@ If any field differs:
 | `ResolveCampEventManagementAsync(slug)` | Camps' `HumansCampControllerBase` helper — auth guard |
 | `BuildBulkUploadTemplateAsync(campId, campName)` | `IEventManagement` — builds the full template CSV (banner + existing camp events), wrapping `GetCampSubmissionsAsync` |
 | `SubmitEventAsync(event)` | `IEventManagement` — submits new events |
-| `UpdateAndResubmitAsync(eventId, edit)` | `IEventManagement` — applies an `EventEdit` + resubmits an existing event |
+| `ResubmitAsync(eventId, edit)` | `IEventManagement` — applies an `EventEdit` + resubmits an existing event |
 | `GetActiveCategoriesAsync()` | `IEventManagement` — category lookup for validation |
 | `ToInstant(date + time, tz)` | `Helpers/EventsTimeHelpers.cs` — date+time → UTC Instant |
 

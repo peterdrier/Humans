@@ -557,7 +557,7 @@ internal sealed class GoogleAdminService(
             Codes: codes);
     }
 
-    public async Task<WorkspaceRecoveryCredentialsResult> ResetPasswordAndGenerate2FaAsync(
+    public async Task<WorkspaceRecoveryCredentialsResult> IssueRecoveryCredentialsAsync(
         string email, Guid actorUserId,
         CancellationToken ct = default)
     {
