@@ -194,7 +194,7 @@ public class ScannerControllerTests
     }
 
     [HumansFact]
-    public async Task Card_MatchedUserWithoutActiveBurn_OfferedEventKeepsItsOwnStart()
+    public async Task Card_NoActiveBurn_OfferedEventKeepsOwnStart()
     {
         var userId = Guid.NewGuid();
         var start = Instant.FromUtc(2026, 6, 18, 6, 0);
@@ -312,7 +312,7 @@ public class ScannerControllerTests
     }
 
     [HumansFact]
-    public async Task Card_MatchedUserAllConsentsSigned_PendingListIsEmptyNotNull()
+    public async Task Card_AllConsentsSigned_PendingListIsEmpty()
     {
         var userId = Guid.NewGuid();
         var tickets = TicketsWithAttendee(Attendee(userId));
