@@ -308,13 +308,15 @@ internal sealed class TicketRepository(IDbContextFactory<TicketsDbContext> facto
         string vendorEventId, CancellationToken ct = default)
     {
         await using var ctx = await factory.CreateDbContextAsync(ct);
-        return await ctx.TicketAttendees
+        var attendees = await ctx.TicketAttendees
             .Where(a =>
                 a.VendorEventId == vendorEventId &&
                 a.MatchedUserId == null &&
+                a.PiiErasedAt == null &&
                 !string.IsNullOrEmpty(a.AttendeeEmail) &&
                 ActiveAttendeeStatuses.Contains(a.Status))
             .ToListAsync(ct);
+        return attendees.Where(a => !TicketPiiTombstone.IsTombstoned(a.AttendeeName, a.AttendeeEmail)).ToList();
     }
 
     public async Task UpdateOrderVatAmountsAsync(
