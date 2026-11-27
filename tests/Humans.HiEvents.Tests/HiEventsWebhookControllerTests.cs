@@ -30,7 +30,7 @@ public class HiEventsWebhookControllerTests
     }
 
     [HumansFact]
-    public async Task SignedNonOrderEvent_IsAcknowledgedAndIgnored()
+    public async Task Receive_SignedNonOrderEvent_IsIgnored()
     {
         const string body = """{"event_type":"attendee.updated","payload":{"id":5,"event_id":7}}""";
 
@@ -41,7 +41,7 @@ public class HiEventsWebhookControllerTests
     }
 
     [HumansFact]
-    public async Task BadSignature_IsUnauthorizedAndNudgesNothing()
+    public async Task Receive_BadSignature_IsUnauthorized()
     {
         var result = await Controller(OrderBody, Sign("other body")).Receive(TestContext.Current.CancellationToken);
 
@@ -50,7 +50,7 @@ public class HiEventsWebhookControllerTests
     }
 
     [HumansFact]
-    public async Task UnsetSecret_Is503AndNudgesNothing()
+    public async Task Receive_UnsetSecret_Is503()
     {
         var result = await Controller(OrderBody, Sign(OrderBody), secret: "").Receive(TestContext.Current.CancellationToken);
 

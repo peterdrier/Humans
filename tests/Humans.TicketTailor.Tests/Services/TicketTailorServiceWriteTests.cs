@@ -47,7 +47,7 @@ public class TicketTailorServiceWriteTests
     }
 
     [HumansFact]
-    public async Task VoidIssuedTicketAsync_VoidToHold_True_PostsCorrectFormBody()
+    public async Task VoidIssuedTicketAsync_VoidToHoldTrue_PostsTrue()
     {
         var handler = new RecordingHttpHandler();
         handler.EnqueueResponse(HttpStatusCode.OK, new
@@ -66,7 +66,7 @@ public class TicketTailorServiceWriteTests
     }
 
     [HumansFact]
-    public async Task VoidIssuedTicketAsync_VoidToHold_False_PostsFalseBody()
+    public async Task VoidIssuedTicketAsync_VoidToHoldFalse_PostsFalse()
     {
         var handler = new RecordingHttpHandler();
         handler.EnqueueResponse(HttpStatusCode.OK, new
@@ -83,7 +83,7 @@ public class TicketTailorServiceWriteTests
     }
 
     [HumansFact]
-    public async Task VoidIssuedTicketAsync_ResponseWithNoHoldId_ReturnsNullHoldId()
+    public async Task VoidIssuedTicketAsync_NoHoldIdInResponse_ReturnsNull()
     {
         var handler = new RecordingHttpHandler();
         handler.EnqueueResponse(HttpStatusCode.OK, new
@@ -151,7 +151,7 @@ public class TicketTailorServiceWriteTests
     }
 
     [HumansFact]
-    public async Task IssueTicketAsync_NeitherHoldNorEventAndType_ThrowsArgumentExceptionBeforeAnyCall()
+    public async Task IssueTicketAsync_NoHoldOrEventType_Throws()
     {
         var handler = new RecordingHttpHandler();
         var service = TicketTailorTestHost.CreateService(handler);
@@ -205,7 +205,7 @@ public class TicketTailorServiceWriteTests
     }
 
     [HumansFact]
-    public async Task IssueTicketAsync_WithEventAndType_PostsEventAndTypeFormKeys()
+    public async Task IssueTicketAsync_EventWithType_PostsBothKeys()
     {
         var handler = new RecordingHttpHandler();
         handler.EnqueueResponse(HttpStatusCode.OK, new
@@ -238,7 +238,7 @@ public class TicketTailorServiceWriteTests
     }
 
     [HumansFact]
-    public async Task IssueTicketAsync_SetsFullNameAndSendEmailInBody()
+    public async Task IssueTicketAsync_PostsFullName()
     {
         var handler = new RecordingHttpHandler();
         handler.EnqueueResponse(HttpStatusCode.OK, new

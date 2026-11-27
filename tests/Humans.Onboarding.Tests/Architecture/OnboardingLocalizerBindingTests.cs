@@ -39,7 +39,7 @@ public class OnboardingLocalizerBindingTests
         TimeSpan.FromSeconds(2));
 
     [HumansFact]
-    public void EveryRenderedKeyResolvesInTheSetItsCallSiteBindsTo()
+    public void RenderedKeys_ResolveInBoundSet()
     {
         var src = SrcRoot();
         var sets = ResourceFiles.ToDictionary(
