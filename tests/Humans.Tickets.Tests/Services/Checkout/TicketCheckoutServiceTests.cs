@@ -562,6 +562,40 @@ public sealed partial class TicketCheckoutServiceTests
     [HumansTheory]
     [InlineData(false)]
     [InlineData(true)]
+    public async Task Refund_HumanRequest_RecordsActor(bool voidTicket)
+    {
+        var adult = await PaidAdultAsync();
+        _audit.ClearReceivedCalls();
+
+        var result = voidTicket
+            ? await _service.VoidTicketAsync(adult.Id, "Requested return", 5000, _adminId, Ct)
+            : await _service.RefundAsync(adult.OrderId, 5000, "Requested return", _adminId, Ct);
+
+        result.Succeeded.Should().BeTrue();
+        await _audit.Received(1).LogAsync(TicketsAuditActions.TicketCheckoutRefunded, "TicketCheckoutOrder", adult.OrderId,
+            Arg.Any<string>(), _adminId, null, null);
+        await _audit.DidNotReceive().LogAsync(TicketsAuditActions.TicketCheckoutRefunded, Arg.Any<string>(), adult.OrderId,
+            Arg.Any<string>(), Arg.Any<string>(), Arg.Any<Guid?>(), Arg.Any<string?>());
+    }
+
+    [HumansFact]
+    public async Task Refund_CancellationJob_RecordsAutomation()
+    {
+        var adult = await PaidAdultAsync();
+        await _service.CancelEventAsync(_ticketing.Id, "Storm", _adminId, Ct);
+        _audit.ClearReceivedCalls();
+
+        await _service.ReconcileOpenOrdersAsync(Ct);
+
+        await _audit.Received(1).LogAsync(TicketsAuditActions.TicketCheckoutRefunded, "TicketCheckoutOrder", adult.OrderId,
+            Arg.Any<string>(), "TicketCheckout", null, null);
+        await _audit.DidNotReceive().LogAsync(TicketsAuditActions.TicketCheckoutRefunded, Arg.Any<string>(), adult.OrderId,
+            Arg.Any<string>(), Arg.Any<Guid>(), Arg.Any<Guid?>(), Arg.Any<string?>());
+    }
+
+    [HumansTheory]
+    [InlineData(false)]
+    [InlineData(true)]
     public async Task CancelAsync_MissingPlatform_KeepsRemoteReservation(bool pending)
     {
         var state = pending ? TicketCheckoutOrderState.Pending : TicketCheckoutOrderState.Created;
@@ -2373,14 +2407,14 @@ public sealed partial class TicketCheckoutServiceTests
     {
         var adult = await PaidAdultAsync();
         _audit.LogAsync(TicketsAuditActions.TicketCheckoutRefunded, Arg.Any<string>(), adult.OrderId,
-            Arg.Any<string>(), Arg.Any<string>(), Arg.Any<Guid?>(), Arg.Any<string?>())
+            Arg.Any<string>(), _adminId, Arg.Any<Guid?>(), Arg.Any<string?>())
             .Returns(_ => throw new InvalidOperationException("Interrupted after refund"));
         var attempt = () => _service.VoidTicketAsync(adult.Id, "Original void", 5000, _adminId, Ct);
         await attempt.Should().ThrowAsync<InvalidOperationException>().WithMessage("Interrupted after refund");
         adult.State.Should().Be(TicketCheckoutTicketState.Valid);
         _repo.Refunds.Should().ContainSingle().Which.Refund.State.Should().Be(RefundState.Succeeded);
         _audit.LogAsync(TicketsAuditActions.TicketCheckoutRefunded, Arg.Any<string>(), adult.OrderId,
-            Arg.Any<string>(), Arg.Any<string>(), Arg.Any<Guid?>(), Arg.Any<string?>()).Returns(Task.CompletedTask);
+            Arg.Any<string>(), _adminId, Arg.Any<Guid?>(), Arg.Any<string?>()).Returns(Task.CompletedTask);
 
         (await _service.VoidTicketAsync(adult.Id, "Changed retry", 7000, _adminId, Ct)).Succeeded.Should().BeTrue();
 

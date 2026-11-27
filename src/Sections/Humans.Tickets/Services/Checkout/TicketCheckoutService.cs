@@ -918,10 +918,12 @@ internal sealed partial class TicketCheckoutService(
             $"{order.PlatformKey} answered {result.State}" + (result.PlatformRefundId is { } refundRef ? $" ({refundRef})" : string.Empty) +
             (result.FailureReason is { } failure ? $": {Truncate(failure)}" : string.Empty), null, ct);
 
-        await auditLog.LogAsync(TicketsAuditActions.TicketCheckoutRefunded, AuditEntityType, order.Id,
-            $"Refund of {FormatMinor(amountMinor)} {order.Currency} through {order.PlatformKey}: {result.State}" +
-            (result.FailureReason is { } why ? $" ({why})" : string.Empty) + $". Reason: {refund.Reason}",
-            actorUserId?.ToString() ?? JobName);
+        var description = $"Refund of {FormatMinor(amountMinor)} {order.Currency} through {order.PlatformKey}: {result.State}" +
+            (result.FailureReason is { } why ? $" ({why})" : string.Empty) + $". Reason: {refund.Reason}";
+        if (actorUserId is { } actor)
+            await auditLog.LogAsync(TicketsAuditActions.TicketCheckoutRefunded, AuditEntityType, order.Id, description, actor);
+        else
+            await auditLog.LogAsync(TicketsAuditActions.TicketCheckoutRefunded, AuditEntityType, order.Id, description, JobName);
 
         if (result.State is RefundState.Succeeded or RefundState.Pending)
             await RecoverAsync(order, ct);

@@ -47,6 +47,8 @@ Order-detail and delivery-card presentation ordering belongs to their rendering 
 
 Companion requests stay with their requesting holder after ticket transfer. Member reads and withdrawals exclude previous holders' requests and decision notes; a new holder may ask independently. Staff see the original requester and can decline a stale request, but cannot approve it against the new holder's ticket, including when reusing an already-issued companion.
 
+Refund audit entries record human refund and refunded-void callers in `ActorUserId`; automated refund attempts use the `TicketCheckout` job identity.
+
 Operator controllers order companion requests pending-first/newest-first, cancellation refund groups by state,
 and backend lists by key. Backend status pages order orders and stuck orders newest-first and refunds oldest-first;
 the reconciliation start date is the minimum order timestamp in the organisation's zone, independent of row order.
