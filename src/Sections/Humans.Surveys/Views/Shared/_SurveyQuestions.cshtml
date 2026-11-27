@@ -6,7 +6,7 @@
     void RenderComment(SurveyPageQuestion q, int answerIndex)
     {
         if (!q.AsksForComment) return;
-        var shown = q.SelectedOptionValues.Count > 0
+        var shown = Model.IsPreview || q.SelectedOptionValues.Count > 0
             && (q.CommentOptionValues.Count == 0 || q.SelectedOptionValues.Any(v => q.CommentOptionValues.Contains(v, StringComparer.Ordinal)));
         var prompt = string.IsNullOrWhiteSpace(q.CommentPrompt) ? Localizer["Surveys_Answer_CommentDefault"].Value : q.CommentPrompt;
         <div class="survey-comment mt-2" data-comment-options="@string.Join("\n", q.CommentOptionValues)" hidden="@(shown ? null : "hidden")">
