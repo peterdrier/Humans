@@ -327,6 +327,53 @@ public sealed class TicketRepositoryTests : IDisposable
     }
 
     [HumansFact]
+    public async Task GetUnmatchedActiveAttendees_ErasedContacts_ExcludesProvisioningCandidates()
+    {
+        var now = _clock.GetCurrentInstant();
+        var orderId = Guid.NewGuid();
+        _dbContext.TicketOrders.Add(new TicketOrder
+        {
+            Id = orderId,
+            VendorOrderId = "erasure_import",
+            VendorEventId = "event",
+            BuyerName = "Buyer",
+            BuyerEmail = "buyer@example.com",
+            Currency = "EUR",
+            PaymentStatus = TicketPaymentStatus.Paid,
+            PurchasedAt = now,
+            SyncedAt = now,
+        });
+        var contacts = new (string Name, string Email, Instant? ErasedAt)[]
+        {
+            ("Original name", "original@example.com", now),
+            (TicketPiiTombstone.Name, "legacy@example.com", null),
+            ("Legacy name", TicketPiiTombstone.EmailFor(Guid.NewGuid()).ToUpperInvariant(), null),
+            ("Live contact", "live@example.com", null),
+        };
+        foreach (var contact in contacts)
+        {
+            _dbContext.TicketAttendees.Add(new TicketAttendee
+            {
+                Id = Guid.NewGuid(),
+                TicketOrderId = orderId,
+                VendorTicketId = contact.Email,
+                VendorEventId = "event",
+                AttendeeName = contact.Name,
+                AttendeeEmail = contact.Email,
+                PiiErasedAt = contact.ErasedAt,
+                Status = TicketAttendeeStatus.CheckedIn,
+                SyncedAt = now,
+            });
+        }
+        await _dbContext.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
+
+        var candidates = await _repo.GetUnmatchedActiveAttendeesAsync(
+            "event", Xunit.TestContext.Current.CancellationToken);
+
+        candidates.Should().ContainSingle().Which.AttendeeEmail.Should().Be("live@example.com");
+    }
+
+    [HumansFact]
     public async Task GetUnmatchedActiveAttendeesAsync_IncludesCheckedInAttendees()
     {
         var orderId = Guid.NewGuid();

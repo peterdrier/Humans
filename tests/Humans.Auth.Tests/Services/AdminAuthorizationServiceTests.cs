@@ -14,7 +14,7 @@ public sealed class AdminAuthorizationServiceTests
     private static readonly Instant TestNow = Instant.FromUtc(2026, 5, 11, 12, 0);
 
     private readonly ICurrentUserContext _currentUser = Substitute.For<ICurrentUserContext>();
-    private readonly IRoleAssignmentRepository _roleAssignments = Substitute.For<IRoleAssignmentRepository>();
+    private readonly ISystemRoleRepository _roleAssignments = Substitute.For<ISystemRoleRepository>();
     private readonly AdminAuthorizationService _service;
 
     public AdminAuthorizationServiceTests()
@@ -38,7 +38,7 @@ public sealed class AdminAuthorizationServiceTests
     }
 
     [HumansFact]
-    public async Task RequireCurrentUserIsAdminAsync_CurrentUserIsNotAdmin_Throws()
+    public async Task RequireCurrentUserIsAdminAsync_NotAdmin_Throws()
     {
         var currentUserId = Guid.NewGuid();
         _currentUser.UserId.Returns(currentUserId);

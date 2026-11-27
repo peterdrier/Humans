@@ -1,8 +1,8 @@
+using Humans.Testing;
 using AwesomeAssertions;
 using Humans.Base.Interfaces;
 using Humans.Users.Contracts;
 using Humans.Workgroups.Domain;
-using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Localization;
 using Humans.Workgroups.Services;
@@ -52,7 +52,7 @@ public sealed class MyWorkgroupsViewComponentTests
             [], [], [], null, null, null);
         var workgroups = Substitute.For<IWorkgroupService>();
         workgroups.GetForMemberAsync(survivorId, request.Token).Returns(new[] { group });
-        var localizer = Substitute.For<IStringLocalizer<WorkgroupsResource>>();
+        var localizer = Substitute.For<IStringLocalizer<WorkgroupsResource>>().AddFormatting();
         localizer[Arg.Any<string>()].Returns(call => new LocalizedString(call.Arg<string>(), call.Arg<string>()));
         using var services = new ServiceCollection().AddSingleton(users).AddSingleton(workgroups)
             .AddSingleton<IClock>(SystemClock.Instance).AddSingleton(localizer).BuildServiceProvider();

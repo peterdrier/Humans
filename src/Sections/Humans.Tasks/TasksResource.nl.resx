@@ -61,14 +61,10 @@
   <data name="Tasks_Filter_AnyEvent" xml:space="preserve"><value>Elk evenement</value></data>
   <data name="Tasks_Filter_Finished" xml:space="preserve"><value>Afgeronde en geannuleerde meenemen</value></data>
   <data name="Tasks_Filter_Apply" xml:space="preserve"><value>Tonen</value></data>
-  <data name="Tasks_Col_Task" xml:space="preserve"><value>Taak</value></data>
   <data name="Tasks_Col_Team" xml:space="preserve"><value>Team</value></data>
   <data name="Tasks_Col_Status" xml:space="preserve"><value>Status</value></data>
   <data name="Tasks_Col_Priority" xml:space="preserve"><value>Prioriteit</value></data>
-  <data name="Tasks_Col_Due" xml:space="preserve"><value>Deadline</value></data>
-  <data name="Tasks_Col_Slots" xml:space="preserve"><value>Mensen</value></data>
   <data name="Tasks_Hidden" xml:space="preserve"><value>Verborgen</value></data>
-  <data name="Tasks_WaitingOn" xml:space="preserve"><value>Wacht op</value></data>
   <data name="Tasks_Yes" xml:space="preserve"><value>Ja</value></data>
   <data name="Tasks_No" xml:space="preserve"><value>Nee</value></data>
   <data name="Tasks_Team_Title" xml:space="preserve"><value>Taken van {0}</value></data>
@@ -129,10 +125,63 @@
   <data name="Tasks_DependencyAdded" xml:space="preserve"><value>Wacht nu op die taak.</value></data>
   <data name="Tasks_DependencyRemoved" xml:space="preserve"><value>Wacht niet meer op die taak.</value></data>
   <data name="Tasks_Refusal_NoPerson" xml:space="preserve"><value>Kies een persoon uit de lijst.</value></data>
-  <data name="Tasks_Refusal_Unreadable" xml:space="preserve"><value>Een datum of evenement kon niet worden gelezen. Controleer ze en probeer het opnieuw.</value></data>
+  <data name="Tasks_Refusal_Unreadable" xml:space="preserve"><value>Kon niet worden gelezen: {0}. Controleer het en probeer het opnieuw.</value></data>
   <data name="Enum_TaskItemStatus_Todo" xml:space="preserve"><value>Te doen</value></data>
   <data name="Enum_TaskItemStatus_InProgress" xml:space="preserve"><value>Bezig</value></data>
   <data name="Enum_TaskItemStatus_Blocked" xml:space="preserve"><value>Geblokkeerd</value></data>
   <data name="Enum_TaskItemStatus_Done" xml:space="preserve"><value>Klaar</value></data>
   <data name="Enum_TaskItemStatus_Cancelled" xml:space="preserve"><value>Geannuleerd</value></data>
+  <data name="Tasks_Refusal_Finished" xml:space="preserve"><value>Deze taak is klaar of geannuleerd en kan niet meer worden opgepakt.</value></data>
+  <data name="Tasks_Refusal_Full" xml:space="preserve"><value>Alle plekken van deze taak zijn bezet.</value></data>
+  <data name="Tasks_Refusal_YouAreOn" xml:space="preserve"><value>Je zit al op deze taak.</value></data>
+  <data name="Tasks_Refusal_YouRequested" xml:space="preserve"><value>Je hebt al gevraagd om aan deze taak mee te doen.</value></data>
+  <data name="Tasks_Refusal_YouAreNotOn" xml:space="preserve"><value>Je hebt geen plek op deze taak.</value></data>
+  <data name="Tasks_Refusal_NoYourRequest" xml:space="preserve"><value>Je hebt geen aanvraag voor deze taak.</value></data>
+  <data name="Tasks_Refusal_NoRequest" xml:space="preserve"><value>Die persoon heeft geen openstaande aanvraag voor deze taak.</value></data>
+  <data name="Tasks_Email_Greeting" xml:space="preserve"><value>&lt;p&gt;Hoi {0},&lt;/p&gt;</value></data>
+  <data name="Tasks_Email_ReasonLine" xml:space="preserve"><value>&lt;p&gt;Reden: {0}&lt;/p&gt;</value></data>
+  <data name="Tasks_Email_RequestApproved_Subject" xml:space="preserve"><value>Je zit op de taak: {0}</value></data>
+  <data name="Tasks_Email_RequestApproved_Body" xml:space="preserve"><value>&lt;h2&gt;Aanvraag goedgekeurd&lt;/h2&gt;{0}&lt;p&gt;Je aanvraag om mee te doen aan &lt;strong&gt;{1}&lt;/strong&gt; ({2}) is goedgekeurd. Je hebt nu een plek op deze taak.&lt;/p&gt;&lt;p&gt;&lt;a href="{3}"&gt;Taak bekijken&lt;/a&gt;&lt;/p&gt;</value></data>
+  <data name="Tasks_Email_RequestDeclined_Subject" xml:space="preserve"><value>Je aanvraag voor: {0}</value></data>
+  <data name="Tasks_Email_RequestDeclined_Body" xml:space="preserve"><value>&lt;h2&gt;Aanvraag niet goedgekeurd&lt;/h2&gt;{0}&lt;p&gt;Je aanvraag om mee te doen aan &lt;strong&gt;{1}&lt;/strong&gt; ({2}) is deze keer niet goedgekeurd.&lt;/p&gt;{3}&lt;p&gt;Je kunt opnieuw vragen zolang de taak nog een vrije plek heeft.&lt;/p&gt;&lt;p&gt;&lt;a href="{4}"&gt;Taak bekijken&lt;/a&gt;&lt;/p&gt;</value></data>
+  <data name="Tasks_Todo_Requests_Title" xml:space="preserve"><value>Openstaande taakaanvragen</value></data>
+  <data name="Tasks_Todo_Requests_Description" xml:space="preserve"><value>{0} heeft {1} aanvraag/aanvragen die op jouw antwoord wachten.</value></data>
+  <data name="Tasks_Todo_Requests_Action" xml:space="preserve"><value>Aanvragen beantwoorden</value></data>
+  <data name="Tasks_Claim" xml:space="preserve"><value>Ik doe dit</value></data>
+  <data name="Tasks_AskToJoin" xml:space="preserve"><value>Vraag om mee te doen</value></data>
+  <data name="Tasks_Release" xml:space="preserve"><value>Verlaat deze taak</value></data>
+  <data name="Tasks_Withdraw" xml:space="preserve"><value>Verzoek intrekken</value></data>
+  <data name="Tasks_RequestWaiting" xml:space="preserve"><value>Wacht op goedkeuring</value></data>
+  <data name="Tasks_YouAreOn" xml:space="preserve"><value>Je zit op deze taak</value></data>
+  <data name="Tasks_Claim_Approval" xml:space="preserve"><value>Een beheerder keurt goed wie deze taak oppakt.</value></data>
+  <data name="Tasks_Claim_FreeSlot" xml:space="preserve"><value>Deze taak heeft een vrije plek.</value></data>
+  <data name="Tasks_Claim_Waiting" xml:space="preserve"><value>Je verzoek wacht op antwoord van een beheerder. Je krijgt een e-mail.</value></data>
+  <data name="Tasks_Requests_Title" xml:space="preserve"><value>Wacht op goedkeuring</value></data>
+  <data name="Tasks_Requests_Approve" xml:space="preserve"><value>Goedkeuren</value></data>
+  <data name="Tasks_Requests_Decline" xml:space="preserve"><value>Afwijzen</value></data>
+  <data name="Tasks_Requests_Reason" xml:space="preserve"><value>Reden, wordt meegestuurd in de e-mail (optioneel)</value></data>
+  <data name="Tasks_List_Open" xml:space="preserve"><value>Open taken</value></data>
+  <data name="Tasks_Open_Title" xml:space="preserve"><value>Open taken</value></data>
+  <data name="Tasks_Open_Subtitle" xml:space="preserve"><value>Taken waar nog mensen voor nodig zijn, de dringendste eerst.</value></data>
+  <data name="Tasks_Open_Slots" xml:space="preserve"><value>Vrije plekken</value></data>
+  <data name="Tasks_Open_Critical" xml:space="preserve"><value>Kritiek</value></data>
+  <data name="Tasks_Open_Empty" xml:space="preserve"><value>Op dit moment hebben alle taken hun mensen.</value></data>
+  <data name="Tasks_Open_NeedsApproval" xml:space="preserve"><value>Vraagt goedkeuring</value></data>
+  <data name="Tasks_Claimed" xml:space="preserve"><value>Je zit op {0}.</value></data>
+  <data name="Tasks_Requested" xml:space="preserve"><value>Je hebt gevraagd om mee te doen aan {0}. Een beheerder antwoordt.</value></data>
+  <data name="Tasks_Released" xml:space="preserve"><value>Je hebt {0} verlaten.</value></data>
+  <data name="Tasks_Withdrawn" xml:space="preserve"><value>Verzoek ingetrokken.</value></data>
+  <data name="Tasks_Approved" xml:space="preserve"><value>Verzoek goedgekeurd.</value></data>
+  <data name="Tasks_Declined" xml:space="preserve"><value>Verzoek afgewezen.</value></data>
+  <data name="Tasks_Row_Understaffed" xml:space="preserve"><value>Te weinig mensen</value></data>
+  <data name="Tasks_Row_WaitingOnTask" xml:space="preserve"><value>Wacht op “{0}”</value></data>
+  <data name="Tasks_Row_WaitingOnHidden" xml:space="preserve"><value>Wacht op een verborgen taak</value></data>
+  <data name="Tasks_Row_Needs" xml:space="preserve"><value>nog {0} nodig</value></data>
+  <data name="Tasks_Filter_AnyTeam" xml:space="preserve"><value>Alle teams</value></data>
+  <data name="Tasks_Filter_AnyPriority" xml:space="preserve"><value>Elke prioriteit</value></data>
+  <data name="Tasks_Filter_AnyStatus" xml:space="preserve"><value>Elke status</value></data>
+  <data name="Tasks_Card_Title" xml:space="preserve"><value>Taken</value></data>
+  <data name="Tasks_Card_Empty" xml:space="preserve"><value>Op dit moment geen openstaande taken.</value></data>
+  <data name="Tasks_Card_Requests" xml:space="preserve"><value>Wachtende verzoeken: {0}</value></data>
+  <data name="Tasks_Card_All" xml:space="preserve"><value>Alle taken bekijken ({0})</value></data>
 </root>

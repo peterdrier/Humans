@@ -6,6 +6,7 @@ using Humans.Store.Models;
 using Humans.Store.Contracts;
 using Humans.Store.Domain;
 using Humans.Store.Services.Dtos;
+using Humans.Store.Services;
 using Humans.AuditLog.Contracts;
 using Humans.AuditLog.ViewComponents;
 using Microsoft.AspNetCore.Authorization;
@@ -28,6 +29,30 @@ namespace Humans.Store.Tests.Services;
 
 public class StorePricesViewTests
 {
+    [HumansTheory]
+    [Xunit.InlineData("en")]
+    [Xunit.InlineData("es")]
+    [Xunit.InlineData("de")]
+    [Xunit.InlineData("it")]
+    [Xunit.InlineData("fr")]
+    [Xunit.InlineData("ca")]
+    [Xunit.InlineData("nl")]
+    public async Task PaymentMethodRepair_AmountsKeepInvariantSortValuesAndLocalizedEuroText(string cultureCode)
+    {
+        using var culture = new CultureScope(cultureCode);
+        IReadOnlyList<PaymentMethodRepairRow> rows =
+        [
+            new(Guid.NewGuid(), PaymentMethod.BankTransfer, 1234.56m, Instant.FromUtc(2026, 7, 1, 0, 0)),
+            new(Guid.NewGuid(), PaymentMethod.BankTransfer, 500m, Instant.FromUtc(2026, 7, 2, 0, 0)),
+        ];
+
+        var html = await RenderAsync("PaymentMethods", rows, viewPath: "/Views/StoreAdmin/PaymentMethods.cshtml");
+
+        html.Should().Contain("data-sort-value=\"1234.56\"")
+            .And.Contain("data-sort-value=\"500\"")
+            .And.Contain(HtmlEncoder.Default.Encode(1234.56m.ToEuro()));
+    }
+
     [HumansFact]
     public async Task VatBreakdowns_UseUiDecimalSeparator()
     {
@@ -94,7 +119,7 @@ public class StorePricesViewTests
             100, 0, null, 0, 100);
         var order = new OrderDto(orderId, Guid.NewGuid(), null, OrderCounterpartyType.Camp, "Camp", 2026,
             OrderState.Open, null, null, null, null, null, null, [line], [], 100, 0, 0, 0, 100, now);
-        var history = new AuditEvent(Guid.NewGuid(), now, new AuditActionDefinition(StoreAuditActions.StoreProductPriceChanged.Name),
+        var history = new AuditEvent(Guid.NewGuid(), now, new AuditActionDefinition(StoreAuditActions.StoreProductPriceChanged.Name, AuditKept.Forever),
             null, null, "Product", productId, null, null, null, null, null, null, null, "Price history fixture");
 
         var html = await RenderAsync("Order", new OrderViewModel { Order = order }, [history]);

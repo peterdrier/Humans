@@ -37,8 +37,7 @@ internal interface IGoogleSyncOutboxRepository : IRepository
     Task MarkPermanentlyFailedAsync(
         Guid id, Instant processedAt, string lastError, CancellationToken ct = default);
 
-    /// <summary>False when the row is missing or not failed.</summary>
-    Task<bool> RequeueAsync(Guid id, CancellationToken ct = default);
+    Task<OutboxRequeue> RequeueAsync(Guid id, CancellationToken ct = default);
 
     Task<int> RequeueAllFailedAsync(CancellationToken ct = default);
 
@@ -52,4 +51,11 @@ internal interface IGoogleSyncOutboxRepository : IRepository
         string lastError,
         int maxRetryCount,
         CancellationToken ct = default);
+}
+
+internal enum OutboxRequeue
+{
+    Requeued,
+    NotFound,
+    NotFailed
 }

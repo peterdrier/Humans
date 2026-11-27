@@ -63,7 +63,7 @@ public class ReconcileOrphanTests(HumansTestDatabase database)
                 + string.Join("; ", result.Errors.Select(e => e.Description)));
         }
 
-        authDb.RoleAssignments.Add(new RoleAssignment
+        authDb.SystemRoles.Add(new SystemRole
         {
             Id = Guid.NewGuid(),
             UserId = adminId,

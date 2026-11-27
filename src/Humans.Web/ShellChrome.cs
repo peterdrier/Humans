@@ -10,5 +10,5 @@ namespace Humans.Web;
 internal sealed class ShellChrome : ISectionChrome
 {
     public IEnumerable<ChromeComponent> Components() =>
-        [new(ChromeSlots.AdminDashboard, typeof(LoginMethodCardViewComponent), Weight: 50)];
+        [new(ChromeSlots.AdminDashboard, typeof(SignInMethodCardViewComponent), Weight: 50)];
 }

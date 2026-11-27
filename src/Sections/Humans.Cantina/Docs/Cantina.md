@@ -38,7 +38,7 @@ Context: `CantinaDbContext` (history table `__EFMigrationsHistory_Cantina`).
 
 ### Read sources
 
-- `shift_signups` — owned by **Shifts** ([`Shifts.md`](../../Humans.Shifts/Docs/Shifts.md)). Filtered to `Status = Confirmed` joined to `shifts` by `DayOffset`. Read **through `IShiftService`** (`GetOnSiteUserIdsForDayAsync`), never the Shifts repository directly.
+- `shift_signups` — owned by **Shifts** ([`Shifts.md`](../../Humans.Shifts/Docs/Shifts.md)). Filtered to `Status = Confirmed` joined to `shifts` by `DayOffset`. Read **through `IShiftService`** (`GetOnSiteUserIdsAsync`), never the Shifts repository directly.
 - `user_profiles` / `users` — owned by **Users/Identity**. Burner names and the merge chain are read via **`IUserService`** (cached `UserInfo`). **`MedicalConditions` is never read by the cantina** — no Cantina DTO has such a field.
 
 ## Routing
@@ -76,6 +76,9 @@ Numeric offsets must also fit the requested day or full seven-day window within 
 - Dietary save and decline actions honour request cancellation while resolving the
   account, before saving. Once started, either mutation finishes independently of
   the browser request; mutation failures retain the form's existing error handling.
+  Both writes resolve archived IDs to the survivor and refuse missing or tombstoned
+  accounts before storing answers or an opt-out. Refusals report save failure without
+  recreating erased data or claiming success.
 
 - Roster exports and health reveals resolve the signed-in account before loading
   personal rows and audit the surviving account ID after a merge. Missing accounts
@@ -85,13 +88,14 @@ Numeric offsets must also fit the requested day or full seven-day window within 
 
 - **Dietary info is opt-in and never blocks a shift signup** (nobodies-collective/Humans#2104). No signup path — the `/Shifts` day toggle, range signup, onboarding widget, Voluntell — consults Cantina. The roster tolerates humans with empty dietary fields (declined members count as unanswered).
 - **Cantina reports facts; callers decide whether to ask.** `ICantinaService` exposes only the profile (`HasPreference`, `DeclinedToAnswer`); it has no "should prompt" read. Each prompt (Cantina's dashboard nudge, Users' medical prompt, the Shifts `/Shifts` banner) composes its own gate from those facts plus what it owns: today all three hide on a preference or a decline. See [`dietary-nudge`](features/dietary-nudge.md).
-- **`MedicalConditions` is never surfaced via this section, regardless of viewer role.** The Cantina plans around food, not medical history (GDPR Article 9 boundary). `MedicalConditions` lives on the cached `UserInfo`/`ProfileInfo`, but `CantinaRosterService` simply never reads it, and the output DTOs (`RosterPersonDto`, `DailyPersonRowDto`) have no `MedicalConditions` property. Medical data continues to flow only through the `_VolunteerProfileBadges` partial's audited reveal, gated to ShiftsNoInfo / Admin — not through Cantina.
+- **`MedicalConditions` is never surfaced via this section, regardless of viewer role.** The Cantina plans around food, not medical history (GDPR Article 9 boundary). `MedicalConditions` lives on the cached `UserInfo`/`ProfileInfo`, but `CantinaRosterService` simply never reads it, and the output DTOs (`RosterPersonDto`, `DailyPersonRowDto`) have no `MedicalConditions` property. Medical data is shown only through Users' audited reveal on the profile, gated to Admin and Board, not through Cantina.
 - "On site" is strictly defined as a Confirmed `ShiftSignup` on a Shift with matching `DayOffset`, **plus the arrival day** (`arrivalDay = firstConfirmedShiftDay − 1`). Refused, Bailed, Cancelled, NoShow, and Pending signups do not count. All-day shifts are single-day (one row per signup per day per shift, per Shifts §all-day-window).
 - Weekly aggregates (dietary preference roll-up, allergy / intolerance counters, total head count) are computed over **unique humans** for the week, not summed day-by-day. A human on site Mon + Wed counts once. Empty weeks use the same aggregation path, retaining every dietary/allergy/intolerance bucket with a zero count.
 - The roster stays read-only: no membership, schedule or dietary writes, and no notifications. Weekly and daily CSV downloads append `CantinaRosterExported` through AuditLog with the authenticated actor, event/date scope and emitted person-row count, including empty/repeated downloads. No dietary values are logged; HTML reads do not add export audits.
 - Allergy and intolerance details (health data) are hidden on the roster pages until an audited reveal: the reveal POST records `CantinaHealthDetailsRevealed` through the same roster service path (one row on the event naming the actor, the week or day and the person-row count; never one row per member shown, because the roster is the kitchen's working list across a few hundred people, not a lookup of one person's health data), hands a token for that one week or day through TempData, and the following render shows the details once. Preference roll-ups and allergy / intolerance **counts** always show. Pinned by `CantinaRosterServiceTests.HealthReveal_IsAudited_AndUnlocksOnlyThePageItWasPostedFor` and `HealthReveal_WritesOneRow_HoweverManyMembersItShows`.
 - The roster is rendered live on every request — no cached aggregates. CSV exports the same in-memory aggregate produced for the HTML view. Daily HTML and CSV column totals share the matrix’s per-preference, allergy and intolerance counts; health totals stay behind the existing audited disclosure gates.
 - Every `RosterPersonDto` in the cohort has a confirmed shift no later than the day after the week, so its arrival day always exists and `ArrivesOn` is non-nullable.
+- Weekly roster calculation uses on-site dates as a set; its fallback arrival is the minimum date without reordering the source list.
 - A dietary save is the member's own: the form takes the user from the principal, refuses "Other" without its text, filters chips against `DietaryOptions`, and keeps no medical field. A save clears `DeclinedToAnswer`; a decline clears every food field. After normalization, saves refuse preferences over 200 Unicode characters and retained Other texts over 500, matching the existing columns. Refusals preserve all stored answers and the opt-out; unknown preferences within the bound and discarded text remain supported. Member self-saves and declines are not audited.
 - Merge (`IUserMerge`): the survivor's answers win. When the survivor has no row, the source's row moves. Saved empty answers and declines are preserved. The source's row is removed; retries preserve the result. Reads under an archived id resolve to the survivor.
 - GDPR: export slice `DietaryProfile` (row, including `DeclinedToAnswer`; null when none); erasure deletes the row. Users' erasure still nulls the legacy columns.
@@ -100,7 +104,7 @@ Numeric offsets must also fit the requested day or full seven-day window within 
 ## Negative Access Rules
 
 - Pre-volunteer humans (Guest dashboard, profile not yet active) **cannot** see the Cantina admin sidebar entry — it lives under the `Cantina` group in `AdminNavTree` and is gated by the same `CantinaPolicies.Read` policy used by the controller. The entry is reachable only via the Admin shell (`/Admin/*`); there is no member-shell top-nav link.
-- Any human (including Cantina-team members and Cantina coordinators) **cannot** see another human's `MedicalConditions` through this section — the field is not in the DTO and not in the view. The only surface for medical data remains `_VolunteerProfileBadges`' audited reveal (ShiftsNoInfo / Admin only).
+- Any human (including Cantina-team members and Cantina coordinators) **cannot** see another human's `MedicalConditions` through this section — the field is not in the DTO and not in the view. The only surface for medical data is Users' audited reveal on the profile (Admin and Board only).
 - Authenticated humans who fail the access gate **cannot** read the roster or download the CSV — every route answers `302 → /Account/AccessDenied` (cookie authentication's `AccessDeniedPath`, set app-wide in `Program.cs`). Pinned by `CantinaPageRenderTests.A_volunteer_cannot_reach_the_roster_or_the_export`.
 - Team coordinators and Cantina-team members **cannot** see the roster on that basis alone — access requires the `Admin`, `CantinaAdmin` or `Board` role. Team membership grants nothing here.
 - No actor **can** change membership or schedule data from this section, and no one **can** edit another member's dietary answers — the roster's only POSTs are the two reveals, which write nothing but their audit entry. Export and reveal audit entries are the roster's only writes.
@@ -117,7 +121,7 @@ Numeric offsets must also fit the requested day or full seven-day window within 
 - **Audit actions:** declared on `CantinaAuditActions` (`src/Sections/Humans.Cantina/CantinaAuditActions.cs`), one `AuditActionDefinition` each, written through `IAuditLogService`: `CantinaRosterExported`, `CantinaHealthDetailsRevealed`.
 - **AuditLog:** `IAuditLogService` records the weekly/daily CSV disclosures and the allergy / intolerance reveals.
 
-- **Shifts:** `IShiftService.GetOnSiteUserIdsForDayAsync` (on-site cohort). Service-layer reads only; the cantina never touches the Shifts repository.
+- **Shifts:** `IShiftService.GetOnSiteUserIdsAsync` (on-site cohort). Service-layer reads only; the cantina never touches the Shifts repository.
 - **Shifts pages:** Cantina fills Shifts' `IShiftsPageBanner` slot with `DietaryMissingBannerViewComponent`, shown on `/Shifts` and `/Shifts/Mine`.
 - **Settings:** `ISettingsService.GetActiveEventSettings` (active event/burn).
 - **Users/Identity:** `IUserService.GetUserInfosAsync` / `GetUserInfoAsync` — cached `UserInfo` for burner names and the merge chain. No entity reads.

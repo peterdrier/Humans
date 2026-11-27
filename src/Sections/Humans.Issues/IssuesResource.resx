@@ -35,7 +35,7 @@
   <!-- ======================== -->
   <!-- Common / Shared          -->
   <!-- ======================== -->
-  <data name="Issue_Unavailable" xml:space="preserve"><value>That issue isn't available — it may have been removed, or you don't have access to it.</value></data>
+  <data name="Issue_Unavailable" xml:space="preserve"><value>That issue isn't available to you.</value></data>
   <data name="Issue_PageTitle" xml:space="preserve"><value>Issues</value></data>
   <data name="Issue_NavLabel" xml:space="preserve"><value>Issues</value></data>
   <data name="Issue_New" xml:space="preserve"><value>New issue</value></data>

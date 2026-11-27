@@ -73,7 +73,7 @@ public class AuditLogServiceTests : IDisposable
             TestActions.VolunteerApproved, nameof(User), entityId,
             "Auto-approved", "SystemTeamSyncJob");
 
-        var entry = await _dbContext.AuditLogEntries.AsNoTracking().SingleAsync(Xunit.TestContext.Current.CancellationToken);
+        var entry = await _dbContext.AuditLogEntries.AsNoTracking().SingleAsync(TestContext.Current.CancellationToken);
         entry.Action.Should().Be(TestActions.VolunteerApproved.Name);
         entry.EntityType.Should().Be("User");
         entry.EntityId.Should().Be(entityId);
@@ -92,7 +92,7 @@ public class AuditLogServiceTests : IDisposable
             TestActions.MemberSuspended, nameof(User), entityId,
             "Suspended for inactivity", actorId);
 
-        var entry = await _dbContext.AuditLogEntries.AsNoTracking().SingleAsync(Xunit.TestContext.Current.CancellationToken);
+        var entry = await _dbContext.AuditLogEntries.AsNoTracking().SingleAsync(TestContext.Current.CancellationToken);
         entry.ActorUserId.Should().Be(actorId);
         entry.Action.Should().Be(TestActions.MemberSuspended.Name);
         entry.EntityType.Should().Be("User");
@@ -111,7 +111,7 @@ public class AuditLogServiceTests : IDisposable
             "Assigned Board role", "TestJob");
 
         // Each entry is persisted immediately through the repository; the caller never calls SaveChanges.
-        (await _dbContext.AuditLogEntries.AsNoTracking().CountAsync(Xunit.TestContext.Current.CancellationToken)).Should().Be(1);
+        (await _dbContext.AuditLogEntries.AsNoTracking().CountAsync(TestContext.Current.CancellationToken)).Should().Be(1);
     }
 
     [HumansTheory]
@@ -272,7 +272,7 @@ public class AuditLogServiceTests : IDisposable
     public async Task LogAsync_SwallowsRepoFailure_DoesNotThrow()
     {
         var throwingRepo = Substitute.For<IAuditLogRepository>();
-        throwingRepo.AddAsync(Arg.Any<AuditLogEntry>(), Arg.Any<CancellationToken>())
+        throwingRepo.AddAsync(Arg.Any<AuditLogEntrySnapshot>(), Arg.Any<CancellationToken>())
             .ThrowsAsync(new InvalidOperationException("DB unavailable"));
 
         using var loggerFactory = new LoggerFactory();
@@ -295,9 +295,9 @@ public class AuditLogServiceTests : IDisposable
     public async Task LogAsync_RepoFailure_PreservesAuditDetailsWithoutLoggingSuccess(bool backgroundJob)
     {
         var throwingRepo = Substitute.For<IAuditLogRepository>();
-        AuditLogEntry? attempted = null;
+        AuditLogEntrySnapshot? attempted = null;
         var failure = new InvalidOperationException("DB unavailable");
-        throwingRepo.AddAsync(Arg.Do<AuditLogEntry>(entry => attempted = entry), Arg.Any<CancellationToken>())
+        throwingRepo.AddAsync(Arg.Do<AuditLogEntrySnapshot>(entry => attempted = entry), Arg.Any<CancellationToken>())
             .ThrowsAsync(failure);
 
         var capturing = new CapturingLogger<AuditLogService>();
@@ -432,9 +432,33 @@ public class AuditLogServiceTests : IDisposable
         SeedAuditLogEntry(TestActions.MemberSuspended, "User", Guid.NewGuid(), now - Duration.FromHours(3),
             actorUserId: source);
         SeedAuditLogEntry(TestActions.RoleEnded, "User", Guid.NewGuid(), now - Duration.FromHours(4));
+        _dbContext.TemporaryAuditLogEntries.Add(new TemporaryAuditLogEntry
+        {
+            Id = Guid.NewGuid(),
+            Action = TestActions.BudgetLineChanged.Name,
+            EntityType = "BudgetLine",
+            EntityId = Guid.NewGuid(),
+            Description = "line moved",
+            OccurredAt = now,
+            ActorUserId = userId
+        });
+        _dbContext.TemporaryAuditLogEntries.Add(new TemporaryAuditLogEntry
+        {
+            Id = Guid.NewGuid(),
+            Action = TestActions.BudgetLineChanged.Name,
+            EntityType = "User",
+            EntityId = userId,
+            Description = "about you",
+            OccurredAt = now - Duration.FromHours(1)
+        });
         await _dbContext.SaveChangesAsync(TestContext.Current.CancellationToken);
 
-        var slice = (await _service.ContributeForUserAsync(userId, TestContext.Current.CancellationToken)).Single();
+        var slices = await _service.ContributeForUserAsync(userId, TestContext.Current.CancellationToken);
+        var slice = slices.Single(s => string.Equals(s.SectionName, AuditLogService.AuditLog, StringComparison.Ordinal));
+        using (var temporary = System.Text.Json.JsonDocument.Parse(System.Text.Json.JsonSerializer.Serialize(
+            slices.Single(s => string.Equals(s.SectionName, AuditLogService.AuditLogTemporary, StringComparison.Ordinal)).Data)))
+            temporary.RootElement.EnumerateArray().Select(r => r.GetProperty("Description").GetString())
+                .Should().Equal(null, "about you");
 
         using var json = System.Text.Json.JsonDocument.Parse(System.Text.Json.JsonSerializer.Serialize(slice.Data));
         var rows = json.RootElement.EnumerateArray()

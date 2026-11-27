@@ -99,7 +99,7 @@
         <table class="table table-sm mb-0">
             <thead><tr><th class="ps-3">Date</th><th>Entry</th><th>Description</th><th class="text-end pe-3">Debit − credit</th></tr></thead>
             <tbody>
-                @foreach (var l in Model.View.Unattributed)
+                @foreach (var l in Model.View.Unattributed.OrderBy(line => line.Date).ThenBy(line => line.EntryNumber))
                 {
                     <tr>
                         <td class="ps-3">@Day(l.Date)</td>
@@ -203,7 +203,7 @@ else if (Model.NotConfigured is { } why)
         }
         else if (canRun)
         {
-            <form authorize-policy="@Humans.Finance.Contracts.FinancePolicies.Manage" asp-action="BookPleo" method="post"
+            <form authorize-policy="@FinancePolicies.Manage" asp-action="BookPleo" method="post"
                   class="d-flex align-items-center gap-2 flex-wrap">
                 <label for="batch" class="mb-0">Book next</label>
                 <select id="batch" name="batch" class="form-select form-select-sm w-auto">
@@ -279,7 +279,7 @@ else if (Model.NotConfigured is { } why)
             <div class="card-header">Ready, by Holded account (@Model.ReadyByAccount.Count account@(Model.ReadyByAccount.Count == 1 ? "" : "s"))</div>
             <table class="table table-sm mb-0">
                 <tbody>
-                    @foreach (var a in Model.ReadyByAccount)
+                    @foreach (var a in Model.ReadyByAccount.OrderBy(account => account.AccountNum))
                     {
                         <tr>
                             <td class="ps-3"><a href="/Holded/Accounts/@a.AccountNum">@a.AccountNum</a> <span class="text-muted">@a.Name</span></td>
@@ -354,7 +354,7 @@ else if (Model.NotConfigured is { } why)
         }
         else if (canRun)
         {
-            <form authorize-policy="@Humans.Finance.Contracts.FinancePolicies.Manage" asp-action="AttachPleoReceipts" method="post">
+            <form authorize-policy="@FinancePolicies.Manage" asp-action="AttachPleoReceipts" method="post">
                 <button type="submit" class="btn btn-primary btn-sm">Attach waiting receipts</button>
             </form>
         }
@@ -368,7 +368,7 @@ else if (Model.NotConfigured is { } why)
         <table class="table table-sm mb-0">
             <thead><tr><th class="ps-3">Pleo</th><th>Merchant</th><th>Holded now</th><th>What changed</th><th class="pe-3">Correction</th></tr></thead>
             <tbody>
-                @foreach (var c in Model.View.Changes)
+                @foreach (var c in Model.View.Changes.OrderBy(c => c.PleoId, StringComparer.Ordinal))
                 {
                     <tr class="@(c.Corrections.Count == 0 ? "table-warning" : "")">
                         <td class="ps-3"><a href="/Pleo/Entries/@c.PleoId">@(c.Entry is { } e ? Day(e.SettledAt) : c.PleoId)</a></td>
@@ -397,7 +397,7 @@ else if (Model.NotConfigured is { } why)
         }
         else if (canRun)
         {
-            <form authorize-policy="@Humans.Finance.Contracts.FinancePolicies.Manage" asp-action="CorrectPleo" method="post"
+            <form authorize-policy="@FinancePolicies.Manage" asp-action="CorrectPleo" method="post"
                   class="d-flex align-items-center gap-2 flex-wrap">
                 <label for="correctBatch" class="mb-0">Post corrections for next</label>
                 <select id="correctBatch" name="batch" class="form-select form-select-sm w-auto">

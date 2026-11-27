@@ -1,5 +1,6 @@
 using Humans.Auth.Contracts;
 using Humans.Backdoor.Models;
+using Humans.Backdoor.OAuth;
 using Humans.Backdoor.Services;
 using Humans.Base.Authorization;
 using Humans.Base.Constants;
@@ -12,16 +13,17 @@ using Microsoft.Extensions.Localization;
 namespace Humans.Backdoor.Controllers;
 
 /// <summary>
-/// A freshly issued plaintext rides one redirect in TempData and is shown once. It is never stored, so a lost key is
+/// A freshly created plaintext rides one redirect in TempData and is shown once. It is never stored, so a lost key is
 /// rotated, not recovered.
 /// Anyone a <see cref="BackdoorScope"/> admits makes, rotates and revokes their own keys here. Board and Admin read
-/// every key (who holds one, never the key itself); only Admin issues, rotates or revokes someone else's. The page is
+/// every key (whose it is, never the key itself); only Admin creates, rotates or revokes someone else's. The page is
 /// not linked for anyone but Admin and Board.
 /// </summary>
 [Route("Backdoor")]
 internal sealed class BackdoorController(
     IBackdoorApiKeyService keys,
-    IRoleAssignmentService roles,
+    IBackdoorConnectionService connections,
+    ISystemRoleService roles,
     IUserService users,
     IAuthorizationService authorization,
     IStringLocalizer<BackdoorResource> localizer) : HumansControllerBase(users)
@@ -40,9 +42,9 @@ internal sealed class BackdoorController(
     }
 
     /// <summary>No owner means the caller's own key; naming someone else is Admin-only.</summary>
-    [HttpPost("Issue")]
+    [HttpPost("Create")]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> Issue(Guid? ownerUserId, string label, CancellationToken ct)
+    public async Task<IActionResult> Create(Guid? ownerUserId, string label, CancellationToken ct)
     {
         var (userMissing, actor) = await RequireCurrentUserAsync(ct);
         if (userMissing is not null) return userMissing;
@@ -54,7 +56,7 @@ internal sealed class BackdoorController(
             return RedirectToAction(nameof(Index));
         }
 
-        var result = await keys.IssueAsync(owner, label ?? string.Empty, actor.Id, ct);
+        var result = await keys.CreateAsync(owner, label ?? string.Empty, actor.Id, ct);
         return RedirectAfter(result);
     }
 
@@ -65,8 +67,8 @@ internal sealed class BackdoorController(
         var (userMissing, actor) = await RequireCurrentUserAsync(ct);
         if (userMissing is not null) return userMissing;
 
-        if (!await MayHandleKeyAsync(id, actor.Id, ct))
-            return RedirectAfter(BackdoorKeyIssueResult.Failed(BackdoorKeyError.NotFound));
+        if (await KeyAccessErrorAsync(id, actor.Id, ct) is { } denied)
+            return RedirectAfter(BackdoorKeyCreateResult.Failed(denied));
 
         var result = await keys.RotateAsync(id, actor.Id, ct);
         return RedirectAfter(result);
@@ -79,15 +81,34 @@ internal sealed class BackdoorController(
         var (userMissing, actor) = await RequireCurrentUserAsync(ct);
         if (userMissing is not null) return userMissing;
 
-        if (await MayHandleKeyAsync(id, actor.Id, ct) && await keys.RevokeAsync(id, actor.Id, ct))
-            SetSuccess(localizer["Backdoor_Revoked"]);
+        if ((await KeyAccessErrorAsync(id, actor.Id, ct) ?? await keys.RevokeAsync(id, actor.Id, ct)) is { } error)
+            SetError(localizer[$"Backdoor_Error_{error}"]);
         else
-            SetError(localizer["Backdoor_Error_NotFound"]);
+            SetSuccess(localizer["Backdoor_Revoked"]);
 
         return RedirectToAction(nameof(Index));
     }
 
-    private IActionResult RedirectAfter(BackdoorKeyIssueResult result)
+    /// <summary>Your own connections always; anyone's only as a full Admin. Someone else's reads as missing.</summary>
+    [HttpPost("Connections/{id:guid}/Revoke")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> RevokeConnection(Guid id, CancellationToken ct)
+    {
+        var (userMissing, actor) = await RequireCurrentUserAsync(ct);
+        if (userMissing is not null) return userMissing;
+
+        var connection = (await connections.ListAsync(ct)).FirstOrDefault(c => c.Id == id);
+        if (connection is not null
+            && await MayHandleKeysOfAsync(connection.UserId, actor.Id)
+            && await connections.RevokeAsync(id, actor.Id, ct))
+            SetSuccess(localizer["Backdoor_Connections_Revoked"]);
+        else
+            SetError(localizer["Backdoor_Connections_Error_NotFound"]);
+
+        return RedirectToAction(nameof(Index));
+    }
+
+    private IActionResult RedirectAfter(BackdoorKeyCreateResult result)
     {
         if (result.Succeeded)
         {
@@ -112,9 +133,12 @@ internal sealed class BackdoorController(
     private async Task<bool> MayHandleKeysOfAsync(Guid ownerUserId, Guid actorUserId) =>
         ownerUserId == actorUserId || await IsAdminAsync();
 
-    private async Task<bool> MayHandleKeyAsync(Guid keyId, Guid actorUserId, CancellationToken ct) =>
-        (await keys.ListAsync(ct)).FirstOrDefault(k => k.Id == keyId) is { } key
-        && await MayHandleKeysOfAsync(key.UserId, actorUserId);
+    private async Task<BackdoorKeyError?> KeyAccessErrorAsync(Guid keyId, Guid actorUserId, CancellationToken ct)
+    {
+        if ((await keys.ListAsync(ct)).FirstOrDefault(k => k.Id == keyId) is not { } key)
+            return BackdoorKeyError.NotFound;
+        return await MayHandleKeysOfAsync(key.UserId, actorUserId) ? null : BackdoorKeyError.NotAllowed;
+    }
 
     private async Task<BackdoorKeysViewModel> BuildViewModelAsync(
         Guid me, string? newPlaintextKey, CancellationToken ct)
@@ -124,6 +148,9 @@ internal sealed class BackdoorController(
         if (!seesEveryKey)
             rows = [.. rows.Where(r => r.UserId == me)];
         var isAdmin = await IsAdminAsync();
+        var connectionRows = await connections.ListAsync(ct);
+        if (!seesEveryKey)
+            connectionRows = [.. connectionRows.Where(c => c.UserId == me)];
 
         return new BackdoorKeysViewModel
         {
@@ -139,15 +166,19 @@ internal sealed class BackdoorController(
                 r.IsOwnerEligible,
                 r.IsExpired,
                 isAdmin || r.UserId == me))],
-            EligibleUsers = isAdmin ? await AllocationCandidatesAsync(ct) : [],
+            EligibleUsers = isAdmin ? await OwnerCandidatesAsync(ct) : [],
             NewPlaintextKey = newPlaintextKey,
             ShortKeyLifetimeDays = (int)BackdoorApiKeyService.ShortKeyLifetime.TotalDays,
             ShowsOwners = seesEveryKey,
+            Connections = [.. connectionRows.OrderByDescending(c => c.CreatedAt).Select(c => new BackdoorConnectionListItem(
+                c.Id, c.UserId, c.ClientName, c.CreatedAt, isAdmin || c.UserId == me))],
+            McpAddress = Section.McpResource(Request),
+            ClaudeClientId = BackdoorOAuthClients.Claude.ClientId,
         };
     }
 
-    /// <summary>Admin allocates to Admin and Board holders; anyone else a scope admits makes their own key.</summary>
-    private async Task<IReadOnlyList<BackdoorKeyCandidate>> AllocationCandidatesAsync(CancellationToken ct)
+    /// <summary>Admin creates keys for Admin and Board members; anyone else a scope admits makes their own key.</summary>
+    private async Task<IReadOnlyList<BackdoorKeyCandidate>> OwnerCandidatesAsync(CancellationToken ct)
     {
         var eligibleIds = new HashSet<Guid>(await roles.GetActiveUserIdsInRoleAsync(RoleNames.Admin, ct));
         eligibleIds.UnionWith(await roles.GetActiveUserIdsInRoleAsync(RoleNames.Board, ct));
@@ -155,7 +186,7 @@ internal sealed class BackdoorController(
         var infos = await UserService.GetUserInfosAsync([.. eligibleIds], ct);
 
         // A role assignment outlives a suspension, so the role sets alone name accounts the service refuses. Narrowing
-        // by state matches the account-state half of the test IBackdoorApiKeyService applies at issue.
+        // by state matches the account-state half of the test IBackdoorApiKeyService applies at creation.
         var eligibleOwnerIds = eligibleIds
             .Where(id => infos.GetValueOrDefault(id)?.State == UserState.Active)
             .ToHashSet();

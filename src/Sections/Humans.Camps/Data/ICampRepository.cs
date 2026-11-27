@@ -213,7 +213,7 @@ internal partial interface ICampRepository : IRepository
     /// not mutate the membership rows — pending rows stay as-is so humans can
     /// re-request if the season is reactivated.
     /// </summary>
-    Task<IReadOnlyList<Guid>> GetPendingRequesterUserIdsForSeasonAsync(
+    Task<IReadOnlyList<Guid>> GetPendingRequesterIdsAsync(
         Guid campSeasonId, CancellationToken ct = default);
 
     /// <summary>Returns (CampSeasonId, UserId, Status) for the member, or null if not found. Read-only.</summary>

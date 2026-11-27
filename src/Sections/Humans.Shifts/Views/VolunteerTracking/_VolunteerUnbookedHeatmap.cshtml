@@ -39,7 +39,7 @@
 <div class="card mb-3">
     <div class="card-header d-flex align-items-center">
         <strong><i class="fa-solid fa-table-cells me-2"></i>@Localizer["Shifts_VolTrack_Unbooked_Title"]</strong>
-        <span class="text-muted small ms-2">@string.Format(Localizer["Shifts_VolTrack_Unbooked_Subtitle_Count"].Value, Model.Rows.Count)</span>
+        <span class="text-muted small ms-2">@Localizer["Shifts_VolTrack_Unbooked_Subtitle_Count", Model.Rows.Count]</span>
         <div class="btn-group btn-group-sm ms-auto" role="group" aria-label="Heatmap horizontal scroll" data-vt-scroll-group hidden>
             <button type="button" class="btn btn-outline-secondary" data-vt-scroll="left" aria-label="@Localizer["Shifts_VolTrack_Scroll_Left"]"><i class="fa-solid fa-chevron-left"></i></button>
             <button type="button" class="btn btn-outline-secondary" data-vt-scroll="right" aria-label="@Localizer["Shifts_VolTrack_Scroll_Right"]"><i class="fa-solid fa-chevron-right"></i></button>
@@ -76,12 +76,12 @@
                             <vc:human user-id="@row.UserId" layout="AvatarName" size="32" />
                             <div class="small">
                                 <span class="badge bg-secondary me-1" title="@Localizer["Shifts_VolTrack_AvailableDaysTooltip"]">
-                                    <i class="fa-solid fa-calendar-check me-1"></i>@string.Format(Localizer["Shifts_VolTrack_AvailableDaysBadge"].Value, availableDays)
+                                    <i class="fa-solid fa-calendar-check me-1"></i>@Localizer["Shifts_VolTrack_AvailableDaysBadge", availableDays]
                                 </span>
                                 @if (row.UnbookedCount > 0)
                                 {
                                     <span class="badge bg-warning text-dark" title="@Localizer["Shifts_VolTrack_UnbookedTooltip"]">
-                                        @string.Format(Localizer["Shifts_VolTrack_UnbookedBadge"].Value, row.UnbookedCount)
+                                        @Localizer["Shifts_VolTrack_UnbookedBadge", row.UnbookedCount]
                                     </span>
                                 }
                                 @if (row.BarrioSetupStartDate.HasValue)

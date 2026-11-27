@@ -1,7 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using NodaTime;
 using Humans.Users.Contracts;
-using Humans.Users.Services;
 
 namespace Humans.Users.Data.Repositories;
 

@@ -39,7 +39,7 @@ internal sealed class TicketSyncJob(
 
         try
         {
-            var result = await syncService.SyncOrdersAndAttendeesAsync(cancellationToken);
+            var result = await syncService.SyncAsync(cancellationToken);
 
             logger.LogInformation(
                 "Ticket sync job completed: {Orders} orders, {Attendees} attendees synced",

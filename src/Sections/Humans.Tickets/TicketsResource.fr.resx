@@ -260,9 +260,10 @@
   <data name="Tickets_Buy_TermsUnavailable" xml:space="preserve">
     <value>Les règles des billets ne peuvent pas être chargées pour le moment, donc aucun billet ne peut être acheté. Réessaie dans quelques minutes.</value>
   </data>
-  <data name="Tickets_Resale_InviteInvalid" xml:space="preserve">
-    <value>Ce lien d'invitation n'est plus valide, ou il a été envoyé à une autre adresse que celle de ton compte.</value>
-  </data>
+  <data name="Tickets_Resale_InviteNotFound" xml:space="preserve"><value>Aucune invitation pour cet événement ne correspond à ce lien.</value></data>
+  <data name="Tickets_Resale_InviteOtherEmail" xml:space="preserve"><value>Cette invitation a été envoyée à une autre adresse que celle de ton compte.</value></data>
+  <data name="Tickets_Resale_NotSelling" xml:space="preserve"><value>Les billets en revente ne sont pas en vente pour cet événement en ce moment.</value></data>
+  <data name="Tickets_Resale_InviteSelfOnly" xml:space="preserve"><value>Un lien d'invitation achète un seul billet, pour toi uniquement.</value></data>
   <data name="Tickets_Resale_NotFound" xml:space="preserve">
     <value>Billet introuvable.</value>
   </data>

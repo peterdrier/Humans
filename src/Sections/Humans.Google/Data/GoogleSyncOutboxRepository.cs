@@ -70,19 +70,21 @@ internal sealed class GoogleSyncOutboxRepository(IDbContextFactory<GoogleIntegra
             .ToListAsync(ct);
     }
 
-    public async Task<bool> RequeueAsync(Guid id, CancellationToken ct = default)
+    public async Task<OutboxRequeue> RequeueAsync(Guid id, CancellationToken ct = default)
     {
         await using var ctx = await factory.CreateDbContextAsync(ct);
         var entity = await ctx.GoogleSyncOutboxEvents.FindAsync([id], ct);
-        if (entity is null || !entity.FailedPermanently)
-            return false;
+        if (entity is null)
+            return OutboxRequeue.NotFound;
+        if (!entity.FailedPermanently)
+            return OutboxRequeue.NotFailed;
 
         entity.FailedPermanently = false;
         entity.ProcessedAt = null;
         entity.RetryCount = 0;
         entity.LastError = null;
         await ctx.SaveChangesAsync(ct);
-        return true;
+        return OutboxRequeue.Requeued;
     }
 
     public async Task<int> RequeueAllFailedAsync(CancellationToken ct = default)

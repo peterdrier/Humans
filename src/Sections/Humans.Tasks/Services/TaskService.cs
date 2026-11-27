@@ -1,6 +1,7 @@
 using Humans.AuditLog.Contracts;
 using Humans.Base.Authorization;
 using Humans.Base.Extensions;
+using Humans.Email.Contracts;
 using Humans.Gdpr.Contracts;
 using Humans.Settings.Contracts;
 using Humans.Tasks.Contracts;
@@ -24,6 +25,8 @@ internal sealed partial class TaskService(
     ISettingsService settings,
     IUserService users,
     IAuditLogService audit,
+    IEmailService email,
+    TasksEmails emails,
     IClock clock,
     IStringLocalizer<TasksResource> localizer,
     ILogger<TaskService> logger) : ITaskService, ITaskWrite, IUserDataContributor, IUserMerge
@@ -205,8 +208,10 @@ internal sealed partial class TaskService(
         var snapshot = await LoadAsync(ct);
         if (!snapshot.Tasks.TryGetValue(taskId, out var task))
             return Refuse("Tasks_Refusal_NoTask", actorUserId, taskId);
-        if (await users.GetUserInfoAsync(userId, ct) is null)
+        var person = await users.GetUserInfoAsync(userId, ct);
+        if (person is null || person.IsTombstone)
             return Refuse("Tasks_Refusal_NoPerson", actorUserId, taskId);
+        userId = person.Id;
         if (task.Assignments.Any(a => a.UserId == userId))
             return Refuse("Tasks_Refusal_AlreadyOn", actorUserId, taskId);
 
@@ -235,7 +240,8 @@ internal sealed partial class TaskService(
         if (!snapshot.Tasks.TryGetValue(taskId, out var task))
             return Refuse("Tasks_Refusal_NoTask", actorUserId, taskId);
 
-        var existing = task.Assignments.FirstOrDefault(a => a.UserId == userId);
+        // A request is answered with approve or decline, so its email is never skipped.
+        var existing = task.Assignments.FirstOrDefault(a => a.UserId == userId && a.State == TaskAssignmentState.Confirmed);
         if (existing is null || !await repository.RemoveAssignmentAsync(taskId, userId, ct))
             return Refuse("Tasks_Refusal_NotOn", actorUserId, taskId);
         task.Assignments.Remove(existing);

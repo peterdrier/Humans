@@ -1,3 +1,4 @@
+using Humans.Testing;
 using Humans.Settings.Contracts;
 using System.Security.Claims;
 using System.Globalization;
@@ -7,7 +8,6 @@ using Microsoft.AspNetCore.Mvc.ModelBinding.Validation;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Primitives;
 using AwesomeAssertions;
-using Humans.Base.Authorization;
 using Humans.Base.Constants;
 using Humans.Base.Enums;
 using Humans.Google.Contracts;
@@ -109,7 +109,7 @@ public class TeamAdminControllerMembersTests
             Check("definitions", call.Arg<CancellationToken>());
             return Task.FromResult<IReadOnlyList<TeamRoleDefinitionSnapshot>>([]);
         });
-        teams.UpdateTeamPageContentAsync(default, default, default!, default, default, default, default)
+        teams.UpdateTeamPageContentAsync(default, default, default!, default, default, default)
             .ReturnsForAnyArgs(async call =>
             {
                 call.Arg<CancellationToken>().Should().Be(CancellationToken.None);
@@ -129,7 +129,7 @@ public class TeamAdminControllerMembersTests
             User = new ClaimsPrincipal(new ClaimsIdentity([new Claim(ClaimTypes.NameIdentifier, userId.ToString())], "test"))
         };
         var controller = new TeamAdminController(teams, resources, users, Substitute.For<IEmailProvisioningService>(),
-            auth, NullLogger<TeamAdminController>.Instance, Substitute.For<IStringLocalizer<TeamsResource>>(), Substitute.For<ITicketService>(), Substitute.For<ISettingsService>())
+            auth, NullLogger<TeamAdminController>.Instance, Substitute.For<IStringLocalizer<TeamsResource>>().AddFormatting(), Substitute.For<ITicketService>(), Substitute.For<ISettingsService>())
         {
             ControllerContext = new ControllerContext { HttpContext = http },
             TempData = new TempDataDictionary(http, Substitute.For<ITempDataProvider>()),
@@ -190,7 +190,7 @@ public class TeamAdminControllerMembersTests
         if (ajax) http.Request.Headers.XRequestedWith = "XMLHttpRequest";
         var controller = new TeamAdminController(teams, Substitute.For<ITeamResourceService>(), users,
             Substitute.For<IEmailProvisioningService>(), authorization, NullLogger<TeamAdminController>.Instance,
-            Substitute.For<IStringLocalizer<TeamsResource>>(), Substitute.For<ITicketService>(), Substitute.For<ISettingsService>())
+            Substitute.For<IStringLocalizer<TeamsResource>>().AddFormatting(), Substitute.For<ITicketService>(), Substitute.For<ISettingsService>())
         {
             ControllerContext = new ControllerContext { HttpContext = http },
             TempData = new TempDataDictionary(http, Substitute.For<ITempDataProvider>()),
@@ -237,7 +237,7 @@ public class TeamAdminControllerMembersTests
         var authorization = Substitute.For<IAuthorizationService>();
         authorization.AuthorizeAsync(Arg.Any<ClaimsPrincipal>(), team, Arg.Any<IEnumerable<IAuthorizationRequirement>>())
             .Returns(AuthorizationResult.Success());
-        var localizer = Substitute.For<IStringLocalizer<TeamsResource>>();
+        var localizer = Substitute.For<IStringLocalizer<TeamsResource>>().AddFormatting();
         localizer["Teams_TeamAdmin_ProvideRejectionReason"].Returns(
             new LocalizedString("Teams_TeamAdmin_ProvideRejectionReason", "Translated reason required"));
         var http = new DefaultHttpContext
@@ -289,7 +289,7 @@ public class TeamAdminControllerMembersTests
             User = new ClaimsPrincipal(new ClaimsIdentity(
                 [new Claim(ClaimTypes.NameIdentifier, userId.ToString())], "test"))
         };
-        var localizer = Substitute.For<IStringLocalizer<TeamsResource>>();
+        var localizer = Substitute.For<IStringLocalizer<TeamsResource>>().AddFormatting();
         localizer[Arg.Any<string>()].Returns(call => new LocalizedString(call.Arg<string>(), call.Arg<string>()));
         var controller = new TeamAdminController(teams, Substitute.For<ITeamResourceService>(),
             users, Substitute.For<IEmailProvisioningService>(), authorization, NullLogger<TeamAdminController>.Instance,
@@ -359,7 +359,7 @@ public class TeamAdminControllerMembersTests
         var logger = Substitute.For<ILogger<TeamAdminController>>();
         var controller = new TeamAdminController(teams, Substitute.For<ITeamResourceService>(), users,
             Substitute.For<IEmailProvisioningService>(), authorization, logger,
-            Substitute.For<IStringLocalizer<TeamsResource>>(), Substitute.For<ITicketService>(), Substitute.For<ISettingsService>())
+            Substitute.For<IStringLocalizer<TeamsResource>>().AddFormatting(), Substitute.For<ITicketService>(), Substitute.For<ISettingsService>())
         {
             ControllerContext = new ControllerContext { HttpContext = http },
             TempData = new TempDataDictionary(http, Substitute.For<ITempDataProvider>())
@@ -440,7 +440,7 @@ public class TeamAdminControllerMembersTests
         };
         var controller = new TeamAdminController(teams, Substitute.For<ITeamResourceService>(),
             users, Substitute.For<IEmailProvisioningService>(), authorization, NullLogger<TeamAdminController>.Instance,
-            Substitute.For<IStringLocalizer<TeamsResource>>(), Substitute.For<ITicketService>(), Substitute.For<ISettingsService>())
+            Substitute.For<IStringLocalizer<TeamsResource>>().AddFormatting(), Substitute.For<ITicketService>(), Substitute.For<ISettingsService>())
         {
             ControllerContext = new ControllerContext { HttpContext = http, ActionDescriptor = new ControllerActionDescriptor() },
             TempData = new TempDataDictionary(http, Substitute.For<ITempDataProvider>())
@@ -483,6 +483,106 @@ public class TeamAdminControllerMembersTests
     }
 
     [HumansTheory]
+    [InlineData(false, "IsActive", null)]
+    [InlineData(false, "EarlyEntryEnabled", null)]
+    [InlineData(true, "IsPublicPage", null)]
+    [InlineData(true, "ShowCoordinatorsOnPublicPage", null)]
+    [InlineData(false, "IsActive", "bad")]
+    [InlineData(false, "EarlyEntryEnabled", "bad")]
+    [InlineData(true, "IsPublicPage", "bad")]
+    [InlineData(true, "ShowCoordinatorsOnPublicPage", "bad")]
+    [InlineData(false, null, null)]
+    [InlineData(true, null, null)]
+    public async Task TeamForms_MissingFlags_RefuseWrites(bool page, string? field, string? value)
+    {
+        var userId = Guid.NewGuid();
+        var teams = Substitute.For<ITeamManagementService>();
+        var users = Substitute.For<IUserService>();
+        users.GetUserInfoAsync(userId, Arg.Any<CancellationToken>())
+            .Returns(UserInfo.Create(new User { Id = userId }, [], [], null));
+        var team = new TeamInfo(Guid.NewGuid(), "Team", null, "team", true, false, SystemTeamType.None,
+            false, false, false, false, Instant.MinValue, []);
+        teams.GetTeamsAsync(Arg.Any<CancellationToken>()).Returns(new Dictionary<Guid, TeamInfo> { [team.Id] = team });
+        teams.UpdateTeamWithGoogleGroupAsync(default, "", null, false, false)
+            .ReturnsForAnyArgs(new TeamUpdateResult(new Team { Id = team.Id, Name = "Team", Slug = team.Slug }));
+        teams.UpdateTeamPageContentAsync(default, null, default!, false, false, default)
+            .ReturnsForAnyArgs(TeamPageUpdateResult.Success());
+        var authorization = Substitute.For<IAuthorizationService>();
+        authorization.AuthorizeAsync(Arg.Any<ClaimsPrincipal>(), team, Arg.Any<IEnumerable<IAuthorizationRequirement>>())
+            .Returns(AuthorizationResult.Success());
+        authorization.AuthorizeAsync(Arg.Any<ClaimsPrincipal>(), Arg.Any<object?>(), Arg.Any<string>())
+            .Returns(AuthorizationResult.Success());
+        var http = new DefaultHttpContext
+        {
+            User = new ClaimsPrincipal(new ClaimsIdentity([new Claim(ClaimTypes.NameIdentifier, userId.ToString())], "test"))
+        };
+        var registrations = new ServiceCollection().AddLogging().AddLocalization();
+        registrations.AddControllers();
+        using var services = registrations.BuildServiceProvider();
+        http.RequestServices = services;
+        var localizer = services.GetRequiredService<IStringLocalizer<TeamsResource>>();
+        Controller controller = page
+            ? new TeamAdminController(teams, Substitute.For<ITeamResourceService>(), users,
+                Substitute.For<IEmailProvisioningService>(), authorization, NullLogger<TeamAdminController>.Instance,
+                localizer, Substitute.For<ITicketService>(), Substitute.For<ISettingsService>())
+            : new TeamController(teams, Substitute.For<ITeamPageService>(), users, Substitute.For<ITeamResourceService>(),
+                localizer, services.GetRequiredService<IStringLocalizer<Humans.Base.SharedResource>>(), authorization, NullLogger<TeamController>.Instance);
+        controller.ControllerContext = new ControllerContext { HttpContext = http };
+        controller.TempData = new TempDataDictionary(http, Substitute.For<ITempDataProvider>());
+        controller.Url = Substitute.For<IUrlHelper>();
+        var fields = new Dictionary<string, StringValues>(StringComparer.Ordinal)
+        {
+            ["Id"] = team.Id.ToString(),
+            ["Name"] = "Team",
+            ["IsActive"] = "false",
+            ["EarlyEntryEnabled"] = "false",
+            ["IsPublicPage"] = "false",
+            ["ShowCoordinatorsOnPublicPage"] = "false"
+        };
+        if (field is not null)
+        {
+            if (value is null) fields.Remove(field);
+            else fields[field] = value;
+        }
+        var modelType = page ? typeof(EditTeamPageViewModel) : typeof(EditTeamViewModel);
+        var metadata = services.GetRequiredService<IModelMetadataProvider>().GetMetadataForType(modelType);
+        var binder = services.GetRequiredService<IModelBinderFactory>().CreateBinder(new ModelBinderFactoryContext { Metadata = metadata });
+        var context = DefaultModelBindingContext.CreateBindingContext(controller.ControllerContext,
+            new FormValueProvider(BindingSource.Form, new FormCollection(fields), CultureInfo.InvariantCulture),
+            metadata, bindingInfo: null, modelName: "");
+        await binder.BindModelAsync(context);
+        var form = context.Result.Model!;
+        services.GetRequiredService<IObjectModelValidator>().Validate(controller.ControllerContext, null, "", form);
+
+        var result = page
+            ? await ((TeamAdminController)controller).EditPage(team.Slug, (EditTeamPageViewModel)form)
+            : await ((TeamController)controller).EditTeam(team.Id, (EditTeamViewModel)form);
+
+        var mutations = teams.ReceivedCalls().Where(call => string.Equals(call.GetMethodInfo().Name,
+            page ? nameof(ITeamManagementService.UpdateTeamPageContentAsync) : nameof(ITeamManagementService.UpdateTeamWithGoogleGroupAsync),
+            StringComparison.Ordinal)).ToList();
+        if (field is not null)
+        {
+            result.Should().BeOfType<ViewResult>();
+            mutations.Should().BeEmpty();
+            controller.ModelState[field]!.Errors.Should().NotBeEmpty();
+        }
+        else
+        {
+            result.Should().BeOfType<RedirectToActionResult>();
+            var args = mutations.Should().ContainSingle().Which.GetArguments();
+            args[page ? 3 : 4].Should().Be(false);
+            args[page ? 4 : 12].Should().Be(false);
+        }
+    }
+
+    [HumansTheory]
+    [InlineData(false, false, true, "IsPublic")]
+    [InlineData(true, false, true, "IsPublic")]
+    [InlineData(true, true, true, "IsPublic")]
+    [InlineData(false, false, true, "Period")]
+    [InlineData(true, false, true, "Period")]
+    [InlineData(true, true, true, "Period")]
     [InlineData(false, false, true, null)]
     [InlineData(true, false, true, null)]
     [InlineData(true, true, true, null)]
@@ -518,7 +618,7 @@ public class TeamAdminControllerMembersTests
         var controller = new TeamAdminController(teams, Substitute.For<ITeamResourceService>(),
             users,
             Substitute.For<IEmailProvisioningService>(), authorization, NullLogger<TeamAdminController>.Instance,
-            Substitute.For<IStringLocalizer<TeamsResource>>(), Substitute.For<ITicketService>(), Substitute.For<ISettingsService>())
+            Substitute.For<IStringLocalizer<TeamsResource>>().AddFormatting(), Substitute.For<ITicketService>(), Substitute.For<ISettingsService>())
         {
             ControllerContext = new ControllerContext { HttpContext = http },
             TempData = new TempDataDictionary(http, Substitute.For<ITempDataProvider>()),
@@ -533,7 +633,9 @@ public class TeamAdminControllerMembersTests
             ["Name"] = "Role",
             ["SlotCount"] = "1",
             ["SortOrder"] = "0",
-            ["Priorities"] = "None"
+            ["Priorities"] = "None",
+            ["IsPublic"] = "false",
+            ["Period"] = "YearRound"
         };
         if (!string.IsNullOrEmpty(omitted)) fields.Remove(omitted);
         var modelType = edit ? typeof(EditRoleDefinitionModel) : typeof(CreateRoleDefinitionModel);
@@ -569,6 +671,16 @@ public class TeamAdminControllerMembersTests
                     : nameof(ITeamManagementService.CreateRoleDefinitionAsync), StringComparison.Ordinal)).Subject;
             mutation.GetArguments()[3].Should().Be(1);
             mutation.GetArguments()[5].Should().Be(0);
+            if (edit)
+            {
+                ((EditRoleDefinitionModel)form).Period.Should().Be(RolePeriod.YearRound);
+                ((EditRoleDefinitionModel)form).IsPublic.Should().BeFalse();
+            }
+            else
+            {
+                ((CreateRoleDefinitionModel)form).Period.Should().Be(RolePeriod.YearRound);
+                ((CreateRoleDefinitionModel)form).IsPublic.Should().BeFalse();
+            }
             return;
         }
         if (allowed)
@@ -615,7 +727,7 @@ public class TeamAdminControllerMembersTests
         };
         var controller = new TeamAdminController(teams, Substitute.For<ITeamResourceService>(), users,
             Substitute.For<IEmailProvisioningService>(), authorization, NullLogger<TeamAdminController>.Instance,
-            Substitute.For<IStringLocalizer<TeamsResource>>(), Substitute.For<ITicketService>(), Substitute.For<ISettingsService>())
+            Substitute.For<IStringLocalizer<TeamsResource>>().AddFormatting(), Substitute.For<ITicketService>(), Substitute.For<ISettingsService>())
         {
             ControllerContext = new ControllerContext { HttpContext = http },
             TempData = new TempDataDictionary(http, Substitute.For<ITempDataProvider>())
@@ -632,7 +744,7 @@ public class TeamAdminControllerMembersTests
 
         result.Should().BeOfType<RedirectToActionResult>();
         await teams.Received(1).UpdateRoleDefinitionAsync(roleId, "Updated", null, 1,
-            Arg.Any<List<SlotPriority>>(), 0, authorized ? requested : (bool?)null,
+            Arg.Any<List<SlotPriority>>(), 0, authorized ? requested : null,
             RolePeriod.YearRound, userId, true, 7, Arg.Any<CancellationToken>());
     }
 
@@ -667,7 +779,7 @@ public class TeamAdminControllerMembersTests
         };
         var controller = new TeamAdminController(teams, Substitute.For<ITeamResourceService>(),
             users, provisioning, authorization,
-            NullLogger<TeamAdminController>.Instance, Substitute.For<IStringLocalizer<TeamsResource>>(),
+            NullLogger<TeamAdminController>.Instance, Substitute.For<IStringLocalizer<TeamsResource>>().AddFormatting(),
             Substitute.For<ITicketService>(), Substitute.For<ISettingsService>())
         {
             ControllerContext = new ControllerContext { HttpContext = http },
@@ -679,7 +791,7 @@ public class TeamAdminControllerMembersTests
         result.Should().BeOfType<RedirectToActionResult>();
         await provisioning.Received(1).ProvisionNobodiesEmailAsync(targetId, "person", actorId, team.Id);
         controller.TempData[TempDataKeys.InfoMessage].Should().Be(warning);
-        await teams.DidNotReceiveWithAnyArgs().GetTeamAsync(default, default);
+        await teams.DidNotReceiveWithAnyArgs().GetTeamAsync(default);
         controller.TempData[TempDataKeys.SuccessMessage].Should().BeNull();
         controller.TempData[TempDataKeys.ErrorMessage].Should().BeNull();
     }
@@ -730,7 +842,7 @@ public class TeamAdminControllerMembersTests
         {
             User = new ClaimsPrincipal(new ClaimsIdentity([new Claim(ClaimTypes.NameIdentifier, actorId.ToString())], "Test"))
         };
-        var localizer = Substitute.For<IStringLocalizer<TeamsResource>>();
+        var localizer = Substitute.For<IStringLocalizer<TeamsResource>>().AddFormatting();
         localizer["Teams_RemoveMember_Permission"].Returns(new LocalizedString("Teams_RemoveMember_Permission", reason));
         var controller = new TeamAdminController(teams, Substitute.For<ITeamResourceService>(),
             users, Substitute.For<IEmailProvisioningService>(), authorization,
@@ -793,7 +905,7 @@ public class TeamAdminControllerMembersTests
         resources.GetTeamResourcesAsync(team.Id, Arg.Any<CancellationToken>()).Returns([]);
         var controller = new TeamAdminController(teams, resources, users,
             Substitute.For<IEmailProvisioningService>(), authorization, NullLogger<TeamAdminController>.Instance,
-            Substitute.For<IStringLocalizer<TeamsResource>>(), Substitute.For<ITicketService>(), Substitute.For<ISettingsService>())
+            Substitute.For<IStringLocalizer<TeamsResource>>().AddFormatting(), Substitute.For<ITicketService>(), Substitute.For<ISettingsService>())
         {
             ControllerContext = new ControllerContext
             {
@@ -836,7 +948,7 @@ public class TeamAdminControllerMembersTests
         };
         var controller = new TeamAdminController(teams, Substitute.For<ITeamResourceService>(), users,
             Substitute.For<IEmailProvisioningService>(), authorization, NullLogger<TeamAdminController>.Instance,
-            Substitute.For<IStringLocalizer<TeamsResource>>(), Substitute.For<ITicketService>(), Substitute.For<ISettingsService>())
+            Substitute.For<IStringLocalizer<TeamsResource>>().AddFormatting(), Substitute.For<ITicketService>(), Substitute.For<ISettingsService>())
         {
             ControllerContext = new ControllerContext { HttpContext = http },
             TempData = new TempDataDictionary(http, Substitute.For<ITempDataProvider>()),

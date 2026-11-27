@@ -308,7 +308,7 @@ public class TicketControllerTests
         queries.GetOrderExportDataAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>()).Returns([]);
         queries.GetDonationExportDataAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>()).Returns([]);
         var backfill = Substitute.For<IUserParticipationBackfillService>();
-        backfill.BackfillFromCsvAsync(2026, "input", Arg.Any<Guid>(), Arg.Any<CancellationToken>(), false)
+        backfill.BackfillFromCsvAsync(2026, "input", Arg.Any<Guid>(), Arg.Any<CancellationToken>())
             .Returns(new ParticipationBackfillResult(true, "Preview", 1, "parsed"));
         var dashboard = new TicketDashboardPageBuilder(Substitute.For<ITicketVendorService>(),
             Options.Create(new TicketVendorSettings()), queries, NullLogger<TicketDashboardPageBuilder>.Instance);
@@ -346,7 +346,7 @@ public class TicketControllerTests
                 switch (action)
                 {
                     case AuditedAction.ParticipationBackfill:
-                        await backfill.Received(1).BackfillFromCsvAsync(2026, "input", actorId, CancellationToken.None, false);
+                        await backfill.Received(1).BackfillFromCsvAsync(2026, "input", actorId, CancellationToken.None);
                         break;
                     case AuditedAction.ExportAttendees: await queries.Received(1).GetAttendeeExportDataAsync(actorId, request.Token); break;
                     case AuditedAction.ExportOrders: await queries.Received(1).GetOrderExportDataAsync(actorId, request.Token); break;

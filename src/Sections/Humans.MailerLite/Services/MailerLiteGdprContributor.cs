@@ -6,7 +6,7 @@ using Humans.Users.Contracts;
 namespace Humans.MailerLite.Services;
 
 /// <summary>
-/// Export contributes nothing: subscriber state mirrors what other sections already export. Erasure deletes the
+/// Export contributes nothing: subscriber state mirrors what other sections already export. Erasure requests permanent removal of the
 /// subscribers under the exact raw account's addresses, never a merge-resolved survivor's.
 /// </summary>
 internal sealed class MailerLiteGdprContributor(
@@ -59,7 +59,7 @@ internal sealed class MailerLiteGdprContributor(
         foreach (var address in addresses)
         {
             ct.ThrowIfCancellationRequested();
-            // Finish an in-flight vendor delete; the erasure cascade can stop before the next address.
+            // Finish an in-flight vendor erasure request; the erasure cascade can stop before the next address.
             await mailerLiteService.DeleteSubscriberAsync(address, CancellationToken.None);
         }
     }

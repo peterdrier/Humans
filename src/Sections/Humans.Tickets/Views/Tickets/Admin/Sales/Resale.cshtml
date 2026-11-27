@@ -12,7 +12,7 @@
         ? ("Selling", "bg-success", null)
         : Model.SwitchedOff
             ? ("Switched off", "bg-secondary", "Resale is switched off for this event in its ticketing settings, so nothing in the queue sells.")
-            : Model.Mode is TicketSalesMode.Closed or TicketSalesMode.InvitedOnly
+            : Model.Ticketing.IsClosed(Model.Now) || Model.Mode == TicketSalesMode.InvitedOnly
                 ? ("Not open to everyone", "bg-secondary", "Sales are not open to everyone, so nothing in the queue sells.")
                 : ("Paused", "bg-warning text-dark", "Resale is paused, so the queue is not moving yet.");
     StatTileViewModel[] tiles =

@@ -14,15 +14,15 @@ public sealed class AuthEmailsTests
     private static AuthEmails Create() => TestAuthEmails.Create();
 
     [HumansFact]
-    public void MagicLinkLogin_IsAlwaysSend_TimeSensitiveTemplate()
+    public void SignInLink_IsAlwaysSend_TimeSensitiveTemplate()
     {
         var userId = Guid.NewGuid();
-        var msg = Create().MagicLinkLogin(userId, "a@x.com", "Alice", "https://link", "en");
+        var msg = Create().SignInLink(userId, "a@x.com", "Alice", "https://link", "en");
 
         msg.UserId.Should().Be(userId);
         msg.RecipientEmail.Should().Be("a@x.com");
         msg.RecipientName.Should().Be("Alice");
-        msg.TemplateName.Should().Be(AuthEmails.MagicLinkLoginTemplate);
+        msg.TemplateName.Should().Be(AuthEmails.SignInLinkTemplate);
         msg.Urgent.Should().BeTrue();
         msg.Category.Should().BeNull();
         msg.ReplyTo.Should().BeNull();
@@ -30,35 +30,35 @@ public sealed class AuthEmailsTests
     }
 
     [HumansFact]
-    public void MagicLinkSignup_UsesAddressAsName()
+    public void SignInLinkSignup_UsesAddressAsName()
     {
-        var msg = Create().MagicLinkSignup("new@x.com", "https://link", "en");
+        var msg = Create().SignInLinkSignup("new@x.com", "https://link", "en");
 
         msg.RecipientEmail.Should().Be("new@x.com");
         msg.RecipientName.Should().Be("new@x.com");
         msg.UserId.Should().BeNull("no account stands behind a signup address yet");
-        msg.TemplateName.Should().Be(AuthEmails.MagicLinkSignupTemplate);
+        msg.TemplateName.Should().Be(AuthEmails.SignInLinkSignupTemplate);
         msg.Urgent.Should().BeTrue();
         msg.Category.Should().BeNull();
     }
 
     [HumansFact]
-    public void MagicLinkLogin_HtmlEncodesTheDisplayName()
+    public void SignInLink_HtmlEncodesTheDisplayName()
     {
-        var msg = Create().MagicLinkLogin(Guid.NewGuid(), "a@x.com", "<b>Alice</b>", "https://link", "en");
+        var msg = Create().SignInLink(Guid.NewGuid(), "a@x.com", "<b>Alice</b>", "https://link", "en");
 
         msg.HtmlBody.Should().Contain("&lt;b&gt;Alice&lt;/b&gt;");
     }
 
     [HumansFact]
-    public void RendersInTheRecipientsCulture()
+    public void Render_UsesRecipientsCulture()
     {
-        Create().MagicLinkLogin(Guid.NewGuid(), "a@x.com", "Alice", "https://link", "es")
-            .Subject.Should().Be("Auth_Email_MagicLinkLogin_Subject#es");
+        Create().SignInLink(Guid.NewGuid(), "a@x.com", "Alice", "https://link", "es")
+            .Subject.Should().Be("Auth_Email_SignInLink_Subject#es");
     }
 
     [HumansFact]
-    public void EveryTemplateHasAPreviewSample()
+    public void Templates_EachHasPreviewSample()
     {
         var emails = Create();
         var templates = TemplateNames(emails);
@@ -73,7 +73,7 @@ public sealed class AuthEmailsTests
     }
 
     [HumansFact]
-    public void PreviewSampleIdsAreUnique()
+    public void PreviewSampleIds_AreUnique()
     {
         var samples = new AuthEmailPreviews(Create())
             .Samples(new EmailPreviewPersona("en", "Sally Smith", "sally@example.com"));
@@ -83,7 +83,7 @@ public sealed class AuthEmailsTests
 
     /// <summary>
     /// Every template the builder can produce, found by reflection rather than listed, so a
-    /// template added without a gallery sample fails <see cref="EveryTemplateHasAPreviewSample"/>.
+    /// template added without a gallery sample fails <see cref="Templates_EachHasPreviewSample"/>.
     /// </summary>
     private static IReadOnlyList<string> TemplateNames(AuthEmails emails) =>
     [

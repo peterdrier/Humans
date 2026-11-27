@@ -3,13 +3,11 @@ using Humans.Base.Extensions;
 using Microsoft.Extensions.Options;
 using NodaTime;
 using Humans.Base.Configuration;
-using Humans.Consent.Contracts;
 using Humans.Notifications.Contracts;
 using Humans.Teams.Contracts;
 using Humans.Consent.Data;
 using Humans.Consent.Domain;
 using Humans.Users.Contracts;
-using Humans.Base.Interfaces;
 using System.Text.RegularExpressions;
 using System.Globalization;
 using System.Resources;
@@ -618,7 +616,7 @@ internal sealed partial class LegalDocumentSyncService(
                     v.EffectiveFrom,
                     v.ChangesSummary,
                     v.RequiresReConsent,
-                    v.Content.Keys.Order(StringComparer.Ordinal).ToList()))
+                    v.Content.Keys.ToList()))
                 .ToList());
     }
 

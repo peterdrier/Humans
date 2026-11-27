@@ -1,7 +1,6 @@
 using Xunit;
 using System.Security.Cryptography;
 using Humans.Consent.Services;
-using Humans.Consent.Contracts;
 using Microsoft.Extensions.DependencyInjection;
 using System.Text;
 using AwesomeAssertions;
@@ -12,10 +11,8 @@ using NSubstitute;
 using Humans.Base.Interfaces;
 using Humans.Consent.Domain;
 using ConsentService = Humans.Consent.Services.ConsentService;
-using Humans.Notifications.Contracts;
 using Humans.Auth.Contracts;
 using Humans.Base.Constants;
-using Humans.Base.Enums;
 using Humans.Teams.Contracts;
 using Humans.Consent.Data;
 using Humans.Users.Contracts;
@@ -28,7 +25,7 @@ public sealed class ConsentServiceTests : ConsentTestHarness
     // The real decorator over _service: the inner submit evicts it before its membership check.
     private readonly CachingConsentService _cache;
     private readonly ITeamService _teamService = Substitute.For<ITeamService>();
-    private readonly IRoleAssignmentService _roleAssignments = Substitute.For<IRoleAssignmentService>();
+    private readonly ISystemRoleService _roleAssignments = Substitute.For<ISystemRoleService>();
     private readonly List<(Guid UserId, Guid TeamId)> _memberships = [];
     private readonly ILegalDocumentSyncManagement _legalDocumentSyncService = Substitute.For<ILegalDocumentSyncManagement>();
     private readonly IHumanLifecycleService _humanLifecycleService = Substitute.For<IHumanLifecycleService>();
@@ -507,7 +504,7 @@ public sealed class ConsentServiceTests : ConsentTestHarness
             .Returns(call =>
             {
                 call.ArgAt<CancellationToken>(1).ThrowIfCancellationRequested();
-                return (IReadOnlyList<RequiredDocumentVersionSnapshot>)[];
+                return [];
             });
 
         var result = await _service.SubmitConsentAsync(userId, versionId, true, "127.0.0.1", "Agent", cancellation.Token);

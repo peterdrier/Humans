@@ -46,7 +46,23 @@ public sealed record QuestionAggregate(
 {
     public int PageNumber { get; init; }
     public int Order { get; init; }
+
+    /// <summary>The question's Markdown help text in the default culture: the full wording behind a short prompt.</summary>
+    public string HelpText { get; init; } = string.Empty;
+
+    /// <summary>
+    /// The earlier choice question this one follows up, when its show-if is a single "is" clause on it;
+    /// <see cref="AskedWhen"/> holds that clause's option labels.
+    /// </summary>
+    public Guid? FollowUpOf { get; init; }
+    public IReadOnlyList<string> AskedWhen { get; init; } = [];
+
+    /// <summary>A free-text follow-up's answers grouped by what each respondent chose on <see cref="FollowUpOf"/>.</summary>
+    public IReadOnlyList<FreeTextGroup> FreeTextByParentChoice { get; init; } = [];
 }
+
+/// <summary><see cref="Label"/> is the parent choice (comma-joined when several were picked).</summary>
+public sealed record FreeTextGroup(string Label, IReadOnlyList<string> Texts);
 
 /// <summary><see cref="Percent"/> is the share of responses to that question (0 when none).</summary>
 public sealed record OptionCount(string Value, string Label, int Count, double Percent)
@@ -104,7 +120,10 @@ public sealed record SurveyResponseExport(
     IReadOnlyList<SurveyExportQuestion> Questions,
     IReadOnlyList<SurveyExportRow> Rows);
 
-/// <summary><see cref="Options"/> is empty for non-choice questions.</summary>
+/// <summary>
+/// <see cref="Options"/> is empty for non-choice questions. <see cref="CommentPrompt"/> is set (possibly blank) only
+/// for a choice question that asks for a comment, which the answer carries as its <c>TextValue</c>.
+/// </summary>
 public sealed record SurveyExportQuestion(
     Guid QuestionId,
     string Prompt,
@@ -113,7 +132,8 @@ public sealed record SurveyExportQuestion(
     GridSelectionMode? GridSelectionMode = null,
     IReadOnlyList<SurveyExportGridRow>? GridRows = null,
     SurveyRankedSettings? RankedSettings = null,
-    IReadOnlyList<string>? RankedUnavailableOptionValues = null);
+    IReadOnlyList<string>? RankedUnavailableOptionValues = null,
+    string? CommentPrompt = null);
 
 /// <summary><see cref="Value"/> is the stable machine key.</summary>
 public sealed record SurveyExportOption(string Value, string Label);

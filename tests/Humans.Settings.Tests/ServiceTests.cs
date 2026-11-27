@@ -61,6 +61,29 @@ public sealed class ServiceTests
     }
 
     [HumansFact]
+    public async Task SaveRetentionDaysAsync_ZeroDays_Refused()
+    {
+        var result = await BuildSut().SaveRetentionDaysAsync(0, Actor, TestContext.Current.CancellationToken);
+
+        result.Succeeded.Should().BeFalse();
+        await _repository.DidNotReceive().SetValueAsync(RetentionPeriod.Key, Arg.Any<string>(), Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
+    public async Task SaveRetentionDaysAsync_Saved_AuditsPreviousPeriod()
+    {
+        var ct = TestContext.Current.CancellationToken;
+        _repository.GetAllEventSettingsAsync(Arg.Any<CancellationToken>()).Returns([]);
+
+        var result = await BuildSut().SaveRetentionDaysAsync(90, Actor, ct);
+
+        result.Succeeded.Should().BeTrue();
+        await _repository.Received(1).SetValueAsync(RetentionPeriod.Key, "90", Arg.Any<CancellationToken>());
+        await _auditLog.Received(1).LogAsync(SettingsAuditActions.RetentionPeriodChanged, AuditEntityTypes.RetentionPeriod,
+            Guid.Empty, "Retention period changed from 365 to 90 days.", Actor);
+    }
+
+    [HumansFact]
     public async Task EventReads_AreServedFromMemoryUntilAWriteReloadsThem()
     {
         var ct = TestContext.Current.CancellationToken;
@@ -451,7 +474,9 @@ public sealed class ServiceTests
             StrikeEndOffset = strikeEnd,
         };
         var sut = BuildSut();
-        const string error = "Event end must be on or after gate opening, and strike end must be on or after event end.";
+        var error = eventEnd < 0
+            ? "Event end must be on or after gate opening."
+            : "Strike end must be on or after event end.";
         if (seed)
         {
             var act = () => sut.CreateActiveEventAsync(settings, TestContext.Current.CancellationToken);
@@ -658,7 +683,7 @@ public sealed class ServiceTests
 
         result.Succeeded.Should().BeFalse();
         result.ErrorMessage.Should().Contain("Nowhere 2026").And.Contain("2026-06-14 to 2026-07-18");
-        await _repository.DidNotReceiveWithAnyArgs().UpsertEventSettingsAsync(default!, default, default);
+        await _repository.DidNotReceiveWithAnyArgs().UpsertEventSettingsAsync(default!, default);
     }
 
     [HumansFact]
@@ -691,7 +716,7 @@ public sealed class ServiceTests
         var result = await BuildSut().ActivateEventSettingsAsync(next.Id, Actor, TestContext.Current.CancellationToken);
 
         result.Succeeded.Should().BeTrue();
-        await _repository.DidNotReceiveWithAnyArgs().UpsertEventSettingsAsync(default!, default, default);
+        await _repository.DidNotReceiveWithAnyArgs().UpsertEventSettingsAsync(default!, default);
         await _auditLog.Received(1).LogAsync(
             SettingsAuditActions.EventSettingsUpdated, Arg.Any<string>(), next.Id,
             "Event 'Nowhere 2027' made active; 'Nowhere 2026' set inactive.", Actor);
@@ -715,7 +740,7 @@ public sealed class ServiceTests
         var result = await BuildSut().ActivateEventSettingsAsync(id, Actor, TestContext.Current.CancellationToken);
 
         result.Succeeded.Should().BeFalse();
-        await _repository.DidNotReceiveWithAnyArgs().SetActiveEventSettingsAsync(default, default, default);
+        await _repository.DidNotReceiveWithAnyArgs().SetActiveEventSettingsAsync(default, default);
         await _auditLog.DidNotReceiveWithAnyArgs().LogAsync(null!, default!, default, default!, default(Guid));
     }
 
@@ -789,7 +814,7 @@ public sealed class ServiceTests
         var result = await BuildSut().SaveTimeZoneAsync("Mars/Olympus", Actor, TestContext.Current.CancellationToken);
 
         result.Succeeded.Should().BeFalse();
-        await _repository.DidNotReceiveWithAnyArgs().SetValueAsync(default!, default!, default);
+        await _repository.DidNotReceiveWithAnyArgs().SetValueAsync(default!, default!);
         _auditLog.ReceivedCalls().Should().BeEmpty();
     }
 }

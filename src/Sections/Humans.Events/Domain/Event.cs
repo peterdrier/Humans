@@ -1,7 +1,6 @@
 using Humans.Events.Services;
 using Humans.Base.Attributes;
 using NodaTime;
-using Humans.Events.Contracts;
 
 namespace Humans.Events.Domain;
 
@@ -121,7 +120,7 @@ internal sealed class Event
         LastUpdatedAt = clock.GetCurrentInstant();
     }
 
-    /// <summary>The caller persists via <c>UpdateAndResubmitAsync</c>.</summary>
+    /// <summary>The caller persists via <c>ResubmitAsync</c>.</summary>
     public void ApplyIndividualEdit(
         Guid categoryId, Guid venueId, string title, string description,
         Instant startAt, int durationMinutes, string? locationNote, string? host,
@@ -139,7 +138,7 @@ internal sealed class Event
         RecurrenceDays = isRecurring ? recurrenceDays : null;
     }
 
-    /// <summary>The caller persists via <c>UpdateAndResubmitAsync</c>.</summary>
+    /// <summary>The caller persists via <c>ResubmitAsync</c>.</summary>
     public void ApplyBarrioEdit(
         Guid categoryId, string title, string description,
         Instant startAt, int durationMinutes, string? locationNote, string? host,

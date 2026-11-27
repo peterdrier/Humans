@@ -1,21 +1,5 @@
 # Section debt ledger for Humans.Tickets. Shape + routing: memory/process/debt-ledger-additions.md.
 # /debt-sweep pools every src/Sections/*/Docs/debt.yml into the same inbox as the central ledger.
 version: 1
-next_id: 18
-inbox:
-  - added: 2026-11-21
-    id: TICKETS-13
-    what: "ticket_sales_events.ChildPriceMinor and ChildMaxAge are unread shadow properties (TicketCheckoutConfiguration) since ChildTypes replaced them (peterdrier/Humans#2549). Drop both in a PR of their own with Peter's approval for that drop (destructive-drops-need-approval)."
-    review: light
-  - added: 2026-11-22
-    id: TICKETS-15
-    what: "TicketBuyController.CanSee and TicketBuyOrderViewModel.VisibleLines/VisibleTickets decide who may see an order and which of its lines; that is authorization living in the controller. Move it into the order read (take the viewer id, return only what they may see). Found by the 2026-11-21 doctor run, Controller intent thread."
-    review: light
-  - added: 2026-11-22
-    id: TICKETS-16
-    what: "ResaleViewModel.IsStuck (TicketsSupportAdminController.cs) re-derives 'a reserved offer whose order no longer holds it', which SweepOffersAsync also decides; the two can drift. One predicate on the offer/order domain read for both. Found by the 2026-11-21 doctor run."
-    review: light
-  - added: 2026-11-22
-    id: TICKETS-17
-    what: "MemberTicketStatusViewComponent.HumansTicketCountAsync defines a held Humans ticket (Valid or Offered, active event or open sale) separately from TicketCheckoutService.HoldsTicketAsync and the buy page; one predicate or a service count would keep the status card and the buy page agreeing. Found by the 2026-11-21 doctor run."
-    review: light
+next_id: 30
+inbox: []

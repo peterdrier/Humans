@@ -44,8 +44,8 @@ internal sealed class TicketsEmails(
         {
             return new EmailMessage(
                 toEmail, null, null,
-                Lf("Tickets_Resale_Email_Invite_Subject", eventName),
-                Lf("Tickets_Resale_Email_Invite_Body", Encode(holderName), Encode(eventName), Encode(claimUrl)),
+                localizer["Tickets_Resale_Email_Invite_Subject", eventName],
+                localizer["Tickets_Resale_Email_Invite_Body", Encode(holderName), Encode(eventName), Encode(claimUrl)],
                 "ticket_resale_invitation", MessageCategory.Ticketing);
         }
     }
@@ -60,9 +60,11 @@ internal sealed class TicketsEmails(
         {
             var eventName = Encode(ticket.EventName);
             var boughtBy = ticket.BuyerName is { } buyer
-                ? $"<p>{Lf("Tickets_Delivery_Ticket_BoughtBy", Encode(buyer))}</p>"
+                ? $"<p>{localizer["Tickets_Delivery_Ticket_BoughtBy", Encode(buyer)]}</p>"
                 : string.Empty;
-            var cards = string.Concat(ticket.Tickets.Select(card => $"""
+            var orderedCards = ticket.Tickets.Take(1).Concat(ticket.Tickets.Skip(1)
+                .OrderBy(card => card.Kind).ThenBy(card => card.IssuedAt));
+            var cards = string.Concat(orderedCards.Select(card => $"""
                 <div style="border: 2px dashed #c9a96e; border-radius: 12px; padding: 20px; margin: 20px 0; text-align: center; background: #ffffff;">
                     <div style="font-size: 12px; letter-spacing: 0.15em; text-transform: uppercase; color: #8b7355;">{eventName}</div>
                     <div style="font-family: Georgia, serif; font-size: 24px; color: #3d2b1f; margin: 6px 0 2px 0;">{Encode(card.HolderName)}</div>
@@ -75,8 +77,8 @@ internal sealed class TicketsEmails(
                 ? $"<p>{localizer["Tickets_Delivery_Ticket_Riders"].Value}</p>"
                 : string.Empty;
             var body = $"""
-                <h2>{Lf("Tickets_Delivery_Ticket_Heading", eventName)}</h2>
-                <p>{Lf("Tickets_Delivery_Ticket_Intro", Encode(ticket.HolderName))}</p>
+                <h2>{localizer["Tickets_Delivery_Ticket_Heading", eventName]}</h2>
+                <p>{localizer["Tickets_Delivery_Ticket_Intro", Encode(ticket.HolderName)]}</p>
                 {boughtBy}
                 {riders}
                 {cards}
@@ -92,7 +94,7 @@ internal sealed class TicketsEmails(
                 """;
             return new EmailMessage(
                 ticket.HolderEmail, ticket.HolderName, ticket.HolderUserId,
-                Lf("Tickets_Delivery_Ticket_Subject", ticket.EventName),
+                localizer["Tickets_Delivery_Ticket_Subject", ticket.EventName],
                 body, "ticket_issued", MessageCategory.System, Culture: culture, DeliveryId: ticket.DeliveryId, Urgent: true);
         }
     }
@@ -105,8 +107,8 @@ internal sealed class TicketsEmails(
             var rows = string.Concat(receipt.Lines.Select(line =>
             {
                 var label = line.Kind == OrderLineKind.Ticket
-                    ? Lf("Tickets_Delivery_Receipt_TicketLine", Encode(line.HolderName ?? string.Empty), (line.VatRate * 100m).ToString("0.##", CultureInfo.CurrentCulture))
-                    : Lf("Tickets_Delivery_Receipt_DonationLine", Encode(line.DonationPurpose ?? localizer["Tickets_Buy_Purpose_General"].Value));
+                    ? localizer["Tickets_Delivery_Receipt_TicketLine", Encode(line.HolderName ?? string.Empty), (line.VatRate * 100m).ToString("0.##", CultureInfo.CurrentCulture)]
+                    : localizer["Tickets_Delivery_Receipt_DonationLine", Encode(line.DonationPurpose ?? localizer["Tickets_Buy_Purpose_General"].Value)];
                 return $"<tr><td>{label}</td><td style=\"text-align: right;\">{Money(line.AmountMinor)}</td></tr>";
             }));
             var refunded = receipt.RefundedMinor > 0
@@ -114,15 +116,15 @@ internal sealed class TicketsEmails(
                 : string.Empty;
             var method = string.IsNullOrWhiteSpace(receipt.PaymentMethod)
                 ? string.Empty
-                : $"<br>{Lf("Tickets_Delivery_Receipt_Method", Encode(receipt.PaymentMethod))}";
+                : $"<br>{localizer["Tickets_Delivery_Receipt_Method", Encode(receipt.PaymentMethod)]}";
             var donationNote = receipt.Lines.Any(l => l.Kind == OrderLineKind.Donation)
                 ? $"<p>{localizer["Tickets_Delivery_Receipt_DonationNote"].Value}</p>"
                 : string.Empty;
             var body = $"""
-                <h2>{Lf("Tickets_Delivery_Receipt_Heading", Encode(receipt.EventName))}</h2>
-                <p>{Lf("Tickets_Delivery_Receipt_Intro", Encode(receipt.BuyerName))}</p>
-                <p>{Lf("Tickets_Delivery_Receipt_Reference", Encode(receipt.Reference))}<br>
-                {Lf("Tickets_Delivery_Receipt_PaidOn", Encode(receipt.PaidOn.ToString("d", CultureInfo.CurrentCulture)))}{method}</p>
+                <h2>{localizer["Tickets_Delivery_Receipt_Heading", Encode(receipt.EventName)]}</h2>
+                <p>{localizer["Tickets_Delivery_Receipt_Intro", Encode(receipt.BuyerName)]}</p>
+                <p>{localizer["Tickets_Delivery_Receipt_Reference", Encode(receipt.Reference)]}<br>
+                {localizer["Tickets_Delivery_Receipt_PaidOn", Encode(receipt.PaidOn.ToString("d", CultureInfo.CurrentCulture))]}{method}</p>
                 <table style="width: 100%; border-collapse: collapse;">
                     <tbody>{rows}</tbody>
                     <tfoot>
@@ -136,7 +138,7 @@ internal sealed class TicketsEmails(
                 """;
             return new EmailMessage(
                 receipt.BuyerEmail, receipt.BuyerName, receipt.BuyerUserId,
-                Lf("Tickets_Delivery_Receipt_Subject", receipt.Reference),
+                localizer["Tickets_Delivery_Receipt_Subject", receipt.Reference],
                 body, "ticket_order_receipt", MessageCategory.System, Culture: culture, DeliveryId: receipt.DeliveryId, Urgent: true);
         }
     }
@@ -149,18 +151,18 @@ internal sealed class TicketsEmails(
         using (new CultureScope(culture, logger))
         {
             var body = $"""
-                <h2>{Lf("Tickets_Delivery_Join_Heading", Encode(eventName))}</h2>
-                <p>{Lf("Tickets_Delivery_Join_Intro", Encode(holderName), Encode(eventName))}</p>
+                <h2>{localizer["Tickets_Delivery_Join_Heading", Encode(eventName)]}</h2>
+                <p>{localizer["Tickets_Delivery_Join_Intro", Encode(holderName), Encode(eventName)]}</p>
                 <p>{localizer["Tickets_Delivery_Join_Why"].Value}</p>
                 <ol>
-                    <li>{Lf("Tickets_Delivery_Join_StepProfile", Encode(profileUrl.ToString()))}</li>
-                    <li>{Lf("Tickets_Delivery_Join_StepShifts", Encode(shiftsUrl.ToString()))}</li>
+                    <li>{localizer["Tickets_Delivery_Join_StepProfile", Encode(profileUrl.ToString())]}</li>
+                    <li>{localizer["Tickets_Delivery_Join_StepShifts", Encode(shiftsUrl.ToString())]}</li>
                 </ol>
                 <p>{localizer["Tickets_Delivery_Join_Closing"].Value}</p>
                 """;
             return new EmailMessage(
                 holderEmail, holderName, holderUserId,
-                Lf("Tickets_Delivery_Join_Subject", eventName),
+                localizer["Tickets_Delivery_Join_Subject", eventName],
                 body, "ticket_join_invitation", MessageCategory.VolunteerUpdates, Culture: culture, DeliveryId: deliveryId);
         }
     }
@@ -170,23 +172,23 @@ internal sealed class TicketsEmails(
     /// back, which is not optional mail.
     /// </summary>
     public EmailMessage EventCancelled(
-        Guid buyerUserId, string buyerEmail, string buyerName, string eventName, long refundMinor, bool refundFailed, bool hadDonation,
+        Guid buyerUserId, string buyerEmail, string buyerName, string eventName, long refundMinor, bool refundByHand, bool hadDonation,
         string? culture = null)
     {
         using (new CultureScope(culture, logger))
         {
             var refund = refundMinor > 0
-                ? $"<p>{Lf(refundFailed ? "Tickets_Cancel_Email_RefundByHand" : "Tickets_Cancel_Email_Refund", Money(refundMinor))}</p>"
+                ? $"<p>{localizer[refundByHand ? "Tickets_Cancel_Email_RefundByHand" : "Tickets_Cancel_Email_Refund", Money(refundMinor)]}</p>"
                 : string.Empty;
             var donation = hadDonation ? $"<p>{localizer["Tickets_Cancel_Email_Donation"].Value}</p>" : string.Empty;
             var body = $"""
-                {Lf("Tickets_Cancel_Email_Body", Encode(buyerName), Encode(eventName))}
+                {localizer["Tickets_Cancel_Email_Body", Encode(buyerName), Encode(eventName)]}
                 {refund}
                 {donation}
                 """;
             return new EmailMessage(
                 buyerEmail, buyerName, buyerUserId,
-                Lf("Tickets_Cancel_Email_Subject", eventName),
+                localizer["Tickets_Cancel_Email_Subject", eventName],
                 body, "ticket_event_cancelled", MessageCategory.System, Culture: culture, Urgent: true);
         }
     }
@@ -203,13 +205,13 @@ internal sealed class TicketsEmails(
         {
             var kind = failed ? "Failed" : "Lapsed";
             var body = $"""
-                <p>{Lf($"Tickets_Email_Payment{kind}_Intro", Encode(buyerName), Encode(reference), Encode(eventName))}</p>
+                <p>{localizer[$"Tickets_Email_Payment{kind}_Intro", Encode(buyerName), Encode(reference), Encode(eventName)]}</p>
                 <p>{localizer["Tickets_Email_PaymentEnded_Late"].Value}</p>
                 <p><a href="{Encode(buyUrl.ToString())}">{localizer["Tickets_Email_PaymentEnded_Retry"].Value}</a></p>
                 """;
             return new EmailMessage(
                 buyerEmail, buyerName, buyerUserId,
-                Lf($"Tickets_Email_Payment{kind}_Subject", eventName),
+                localizer[$"Tickets_Email_Payment{kind}_Subject", eventName],
                 body, "ticket_payment_ended", MessageCategory.System, Culture: culture, DeliveryId: deliveryId);
         }
     }
@@ -222,13 +224,13 @@ internal sealed class TicketsEmails(
         using (new CultureScope(culture, logger))
         {
             var body = $"""
-                <p>{Lf("Tickets_Email_ResaleSold_Intro", Encode(holderName), Encode(eventName))}</p>
-                <p>{Lf("Tickets_Email_ResaleSold_Refund", Money(refundMinor))}</p>
+                <p>{localizer["Tickets_Email_ResaleSold_Intro", Encode(holderName), Encode(eventName)]}</p>
+                <p>{localizer["Tickets_Email_ResaleSold_Refund", Money(refundMinor)]}</p>
                 <p><a href="{Encode(ticketsUrl.ToString())}">{localizer["Tickets_Email_Resale_Open"].Value}</a></p>
                 """;
             return new EmailMessage(
                 holderEmail, holderName, holderUserId,
-                Lf("Tickets_Email_ResaleSold_Subject", eventName),
+                localizer["Tickets_Email_ResaleSold_Subject", eventName],
                 body, "ticket_resale_sold", MessageCategory.System, Culture: culture, DeliveryId: deliveryId);
         }
     }
@@ -241,22 +243,19 @@ internal sealed class TicketsEmails(
         using (new CultureScope(culture, logger))
         {
             var body = $"""
-                <p>{Lf("Tickets_Email_ResaleUnsold_Intro", Encode(holderName), Encode(eventName))}</p>
+                <p>{localizer["Tickets_Email_ResaleUnsold_Intro", Encode(holderName), Encode(eventName)]}</p>
                 <p>{localizer["Tickets_Email_ResaleUnsold_NoRefund"].Value}</p>
                 <p><a href="{Encode(ticketsUrl.ToString())}">{localizer["Tickets_Email_Resale_Open"].Value}</a></p>
                 """;
             return new EmailMessage(
                 holderEmail, holderName, holderUserId,
-                Lf("Tickets_Email_ResaleUnsold_Subject", eventName),
+                localizer["Tickets_Email_ResaleUnsold_Subject", eventName],
                 body, "ticket_resale_unsold", MessageCategory.System, Culture: culture, DeliveryId: deliveryId);
         }
     }
 
     private static string Money(long minor) =>
         WebUtility.HtmlEncode((minor / 100m).ToString("N2", CultureInfo.CurrentCulture) + " €");
-
-    private string Lf(string key, params object[] args) =>
-        string.Format(CultureInfo.CurrentCulture, localizer[key].Value, args);
 
     private static string Encode(string text) => WebUtility.HtmlEncode(text);
 }
@@ -273,7 +272,10 @@ internal sealed record IssuedTicketMail(
     Guid? DeliveryId);
 
 /// <summary><paramref name="Kind"/> names a <c>Tickets_Delivery_Kind_*</c> key.</summary>
-internal sealed record TicketCard(string HolderName, string Kind, string Barcode, Uri CodeImageUrl);
+internal sealed record TicketCard(string HolderName, TicketHolderKind Kind, string Barcode, Uri CodeImageUrl)
+{
+    public NodaTime.Instant IssuedAt { get; init; }
+}
 
 internal sealed record OrderReceiptMail(
     Guid BuyerUserId,

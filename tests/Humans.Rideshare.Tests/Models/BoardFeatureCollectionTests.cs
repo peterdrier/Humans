@@ -32,7 +32,7 @@ public sealed class BoardFeatureCollectionTests
     [HumansFact]
     public void Build_ProvidesLocalizedPopupDatesAlongsideMachineDates()
     {
-        using var scope = new Humans.Base.Extensions.CultureScope(Humans.Base.Extensions.CultureCatalog.CanonicalLegalCultureCode);
+        using var scope = new Base.Extensions.CultureScope(Base.Extensions.CultureCatalog.CanonicalLegalCultureCode);
         System.Globalization.CultureInfo.CurrentCulture = System.Globalization.CultureInfo.GetCultureInfo("en");
         var trip = Trip(Guid.NewGuid(), route: StoredRoute);
         var request = Request(Guid.NewGuid());
@@ -46,9 +46,9 @@ public sealed class BoardFeatureCollectionTests
         offer.GetProperty("departureDate").GetString().Should().Be("2026-07-03");
         pin.GetProperty("desiredDate").GetString().Should().Be("2026-07-03");
         offer.GetProperty("departureDateLabel").GetString().Should().Be(
-            Humans.Base.Extensions.DateFormattingExtensions.ToWeekdayDayMonth(trip.DepartureDate));
+            Base.Extensions.DateFormattingExtensions.ToWeekdayDayMonth(trip.DepartureDate));
         pin.GetProperty("desiredDateLabel").GetString().Should().Be(
-            Humans.Base.Extensions.DateFormattingExtensions.ToWeekdayDayMonth(request.DesiredDate));
+            Base.Extensions.DateFormattingExtensions.ToWeekdayDayMonth(request.DesiredDate));
     }
 
     [HumansTheory]

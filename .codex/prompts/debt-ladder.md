@@ -3,11 +3,13 @@
 A standing, top-down list of **work types**, not a nightly checklist. Open
 ledger rows come first: the rungs order and explain the work on them, and
 their Finds commands look for new debt only once no ledger row is actionable.
+Rung 12 (one section of discovery) runs right after the ledger rows, before rungs 9 to 11.
+Rung 13 (delete or merge code) comes last and may use whatever time is left.
 The ledger must end every run smaller than it started (`daily-debt.md`). Make a
 brief rung-1 hygiene pass, then work substantive rungs top-down. After every
-fix, continue with another safe candidate until the work window elapses;
-then finish the current task. One run produces one PR containing all fixes.
-No item count or drained rung is a stopping condition before that deadline.
+fix, continue with another candidate from the ledger or a rung's Finds. When
+none is left, stop, even before the deadline (`daily-debt.md`, **Stop when the
+work runs out**). One run produces one PR containing all fixes.
 
 Guardrails, working loop, and the timed-goal/commit protocol live in
 `daily-debt.md`. This file is only the priority order and the per-rung
@@ -23,18 +25,12 @@ same-correction batch per commit (possibly across sections), every culture,
 migrations only via `dotnet ef migrations add`, never touch `NoDestructiveMigrationOps.baseline.txt` or a `[DontFix]` class.
 
 Every ledger row carries a permanent `id:` (`memory/process/debt-ledger-additions.md`). Identify
-an item by its id everywhere — in the PR body, in commit messages, in this file's seed lists — and
+an item by its id everywhere — in the PR body, in commit messages — and
 by `file:line` only for a baseline/props entry, which has no ledger row. The PR body **must** list
 the ids it closed.
 
-**Seed lists below are dated 2026-09-20** (from a full-corpus audit; Rungs
-3, 5 and 6 corrected 2026-10-06). Seeds and counts are not facts (D10):
-re-derive them from each rung's Finds/detector every night, and fix any stale
-text in this file in the same PR. Verify
-each is still true before touching it — code moves fast and a seed item that's
-already fixed is rung-1 work (close it), not rung-N work. Once a rung's seed
-list is exhausted, work the open ledger rows that rung covers, then its
-**Finds** command for anything not yet in a ledger.
+Seeds and counts are not facts (D10): re-derive them from each rung's Finds
+every night. Once a rung's Finds return nothing, it is drained.
 
 ---
 
@@ -59,46 +55,11 @@ Prioritize rows you have least confidence are still live (oldest `added:`
 dates, or ones whose `what:` describes a "stale comment"/"doc says X" pattern
 — those flip fastest as code moves).
 
-**Seed (verify each, then delete the row / fix the note):**
-- `src/Sections/Humans.Teams/Docs/debt.yml` — the `IShiftService`
-  data-access.md row: already reads `IShiftService`, both sites.
-- `src/Sections/Humans.Users/Docs/debt.yml` — the `AccountDeletionService`
-  "false thread-safety rationale" row: `grep -i thread` now returns nothing.
-- `src/Sections/Humans.Email/Docs/debt.yml` — the `ISystemSettingsService`
-  data-access.md row: doc already says `ISettingsService` throughout.
-- `src/Sections/Humans.Calendar/Docs/debt.yml` — the `ICalFeedService.cs`
-  stale thread-safety comment row: comment already rewritten.
-- `src/Sections/Humans.Search/Docs/debt.yml` — the `IShiftService`
-  doc/csproj row: `SearchService.cs` already injects the `Read` leaf.
-- `docs/architecture/debt-ledger.yml` `inbox:` — close: the
-  `burnername-is-the-display-name.md` stale-atom row (already rewritten
-  2026-09-18); the `dietary-medical-nudge.md:73` dead-link row (already
-  points at `Users.md`); the `TeamConfiguration RequiresApproval` sentinel
-  row (`.HasSentinel(true)` already present); the `DashboardService reads
-  EventSettings via wrong interface` row (`GetMemberDashboardAsync` no
-  longer exists — dashboard was rearchitected into per-section
-  contributors); the pre-G5 dead freshness-trigger-path row (no
-  `Humans.Application/Domain/Infrastructure/UI` paths remain under
-  `docs/guide/`); the `UsersAdminController.Audience` direct-DbContext row
-  (now goes through `IUsersAudienceService`); the `FeedbackService
-  IFormFile/FileStream` row (already on `IFileStorage`); the
-  `AuditLogRepository/UserRepository.PurgeAsync/AccountMergeRepository`
-  cross-domain row (superseded by the `IUserDataContributor` fan-out); the
-  `Finance/Creditors/Resync` dead-route-in-docs row (already removed from
-  both docs).
-- `docs/architecture/debt-ledger.yml` `themes:` — correct, don't delete.
-  Re-run each theme's own detector and write what it returns into that
-  theme's `remaining:`; do not carry a number in here, and do not trust one
-  written here before (`memory/process/no-derived-aggregates-in-docs.md` —
-  a count restated in prose is a shadow copy that goes stale silently, and
-  this file is prose). Three are known to be overstated:
-  `obsolete-user-displayname`, `baseline-display-sort`, and
-  `cs0618-pragma-nav-reads` — the last badly, since `Humans.Infrastructure`
-  no longer exists and its share of that count went with it. Theme
-  bookkeeping (D11): add a missing `parked:` key where a theme's notes cite
-  Peter parking it; delete a retired theme that has no analyzer to re-seed
-  it (e.g. `grandfathered-hum0024-nav-strip` — its FK-constraint residue is
-  destructive schema work, a GH issue per D9, not sweep work).
+Theme bookkeeping (D11): re-run each theme's own detector and write what it
+returns into that theme's `remaining:`; never carry a number in this file
+(`memory/process/no-derived-aggregates-in-docs.md`). Add a missing `parked:`
+key where a theme's notes cite Peter parking it; delete a retired theme that has
+no analyzer to re-seed it.
 
 **Cap:** this rung never fully drains, so it could otherwise eat the whole
 night and starve every rung below it. Spend at most ~15% of tonight's budget
@@ -106,8 +67,7 @@ here (stated at the top of `daily-debt.md`) — once you've spent that long,
 stop and descend to rung 2 regardless of remaining candidates.
 
 **Drained:** never fully — always safe to spend a few minutes here before
-descending. Skip the pass only if you already checked every seed item above
-in a prior run and no new rows have been added since.
+descending. Skip the pass when no row has been added or changed since the last run.
 
 **Done-check:** `docs/architecture/debt-ledger.yml` and touched `debt.yml`
 files still parse as valid YAML (`python3 -c "import yaml,glob; [yaml.safe_load(open(f)) for f in glob.glob('docs/architecture/debt-ledger.yml') + glob.glob('src/Sections/*/Docs/debt.yml')]"`). No build/test needed (docs-only).
@@ -187,7 +147,6 @@ find src/Sections/*/Views -name '*.cshtml' -print0 \
 Cross-check each hit's controller/view against the exempt route list before
 picking it.
 
-**Seed check (2026-10-10):** The former Teams edit, Budget views, Events forms/card and Users attendance seeds are already localized. Teams edit is also operator-exempt by its actual policy. Re-run Finds for current gaps, including enum labels and refusal feedback.
 
 **Drained when:** both grep commands return nothing outside the exempt list.
 
@@ -216,10 +175,6 @@ Collect the eligible moves in the section before editing, inspect every consumer
 and validate them as one batch under `daily-debt.md`. Do not create one round per
 `OrderBy`; explain splits caused by different semantics or risk.
 
-**Seed check (2026-10-22):** The former `TeamRepository.GetAllRoleDefinitionsAsync`
-seed is resolved: the repository `OrderBy` was removed and `TeamController.Roster`
-sorts by priority, team name, role name and slot number. The display-sort baseline
-is empty. Re-run Finds for new actionable view moves.
 
 **Drained when:** the grep above (minus TicketRepository) returns nothing.
 
@@ -243,7 +198,6 @@ grep -B1 -A1 "review: light" docs/architecture/debt-ledger.yml src/Sections/*/Do
   | grep -i "dead\|duplicate\|unused\|zero call sites\|no caller"
 ```
 
-**Seed check (2026-10-10):** The former duplicate ticket cache helper, PriorityOnly flag, reportLink parameter and Login_Hello key seeds no longer exist. Re-run Finds for current production duplication.
 
 **Drained when:** the grep above returns nothing with `review: light`.
 
@@ -260,9 +214,6 @@ renamed as a side effect of unrelated work. Keep reflection-resolved
 Update every usage and all supported cultures together; only take a candidate that
 can finish as one coherent change inside the remaining window.
 
-**Seed check (2026-10-17):** The former Governance and Teams prefix seeds are
-resolved. Re-run Finds for other sections; historical percentages are not a
-current backlog.
 
 **Finds:** Resources live at each section project's root, not in a `Resources/`
 subdirectory. Inspect each result against the naming atom before selecting it.
@@ -285,10 +236,8 @@ change after accounting for the documented exemptions and every usage site.
 ## Rung 8 — Real TODO/HACK compromises
 
 **What:** `MA0026` is globally `NoWarn`'d, so TODO/HACK comments don't fail
-the build — the seed below are the genuine accepted compromises left, per
-a full audit; everything else that greps as TODO/HACK is a note-to-self, not
-debt. New ones can appear over time — **this rung never fully drains either**,
-same as rung 1, but starts nearly empty.
+the build. Most TODO/HACK comments are notes-to-self, not debt; only a genuine
+accepted compromise is a candidate.
 
 **Finds:**
 ```
@@ -297,13 +246,127 @@ grep -rn "TODO\|HACK" --include=*.cs --include=*.cshtml src/Sections/Humans.Cale
 (plus a periodic full-`src/` sweep to catch new ones elsewhere — read each
 hit; most are legitimate notes-to-self, not fixable debt.)
 
-**Seed check (2026-10-10):** The former Calendar URL/organization-default and ticket-stub event-label seeds are fixed. Feed links use configured public base URLs and the ticket stub reads active event settings. Re-run Finds for new compromises.
 
-**Drained when:** the seed items are closed and the current sweep
+**Drained when:** the current sweep
 finds no new genuine compromise (a debug-screen "pending caching" comment
 etc. is not one — leave it).
 
 **Done-check:** `dotnet test tests/Humans.<Section>.Tests -v quiet -clp:ErrorsOnly` for whichever section changed.
+
+---
+
+## Rung 9 — Test name backlog
+
+**What:** test names still listed in a project's `NameBaseline.txt` (the HUM0043 name rule: `Method_Condition_Result`,
+at most 10 words, no "And"; [`test-names-one-rule`](../../memory/code/test-names-one-rule.md)). Rename them
+within one test project, trim the list, and delete a list that empties. A name that needs a split into two tests
+is split. Grep `docs/`, `memory/`, `src/**/Docs/` and `.github/workflows/` for the old names.
+
+**Never collide with the rename work Claude does by hand:** skip any test project whose `NameBaseline.txt`
+is changed on an open PR.
+```
+wc -l tests/*/NameBaseline.txt | sort -n
+gh pr list --repo peterdrier/Humans --state open --json number,files \
+  --jq '.[] | select(any(.files[]; .path | endswith("NameBaseline.txt"))) | .number'
+```
+
+**Drained when:** no `NameBaseline.txt` remains outside projects claimed by an open PR.
+
+**Done-check:** the touched test project's tests; the build shows no new HUM0043 warnings.
+
+---
+
+## Rung 10 — The sweep's own leftovers
+
+**What:** two shapes earlier nights added that the rules now rule out:
+- **Dispatcher theories:** a theory whose parameter picks the operation and whose body switches on it. Split it
+  into tests that each name their rule, and drop rows that prove nothing new.
+- **Read-side cancellation plumbing:** a test that cancels a read to prove the token reaches it
+  ([`cancellation-token-propagation`](../../memory/architecture/cancellation-token-propagation.md)), together
+  with the read-side `catch (OperationCanceledException` / `ThrowIfCancellationRequested` code it pins when a
+  plain token pass-through does the job. Keep everything that protects a write which must finish
+  (`CancellationToken.None`, jobs, a vendor call already made).
+
+One section per batch. This is production simplification plus its tests, so it counts as a substantive fix.
+
+**Finds:**
+```
+grep -rlE 'CancellationTokenSource' tests/ | xargs grep -lE 'Theory' | head -50
+grep -rnE 'catch \(OperationCanceledException' src/Sections --include=*.cs
+```
+
+**Drained when:** neither shape is left.
+
+**Done-check:** the section's tests.
+
+---
+
+## Rung 11 — Open issues
+
+**What:** open issues on `peterdrier/Humans` labelled `bug` or `tech-debt`, skipping any labelled `question`
+(waiting on Peter), `db:yes` or `db:Destructive`, and anything an open PR already names. Also the
+`[Grandfathered]` items whose ledger theme has no `parked:` key. One issue (or one slice of a large one,
+say which) per batch; put `Closes #N` in the commit only when the issue is fully done.
+```
+gh issue list --repo peterdrier/Humans --state open --limit 100 --json number,title,labels \
+  --jq '.[] | select(any(.labels[]; .name == "bug" or .name == "tech-debt"))
+             | select(all(.labels[]; .name != "question" and .name != "db:yes" and .name != "db:Destructive"))'
+grep -rn '\[Grandfathered(' src --include=*.cs
+```
+
+**Drained when:** the lists above are empty.
+
+**Done-check:** the touched sections' tests.
+
+---
+
+## Rung 12 — Find problems nobody has listed
+
+**What:** read one section's code for real defects nobody has found yet: wrong results, broken pages, an
+authorization gap, a GDPR export or deletion path that misses data, an automated action with no audit entry.
+Take the section after the one the previous night's PR named under **Discovery section** (alphabetical in
+`src/Sections`, wrapping around; start at the first section if none is named). Name tonight's section in the report.
+
+**The bar:** every fix states, in its commit message, a `Scenario:` line saying what a member or admin
+does today and what goes wrong. A real problem you can't fix tonight becomes a ledger row with the same line.
+What is not a find ([`no-invented-validation`](../../memory/code/no-invented-validation.md)):
+a guard for a state nothing produces, tolerance for a malformed admin setting, cancellation plumbing,
+or a test that only pins how things are wired.
+
+**When:** right after the open ledger rows, before rungs 9 to 11, so the long backlogs never crowd it out.
+
+**Drained when:** tonight's section has been read.
+
+**Done-check:** the section's tests.
+
+---
+
+## Rung 13 — Delete or merge code
+
+**What:** less code is better. Find something to remove or fold together, with no change in behaviour:
+- code with no caller, a setting nothing reads, a page or endpoint no link reaches (say how you checked);
+- two helpers, DTOs, view models or near-identical methods doing the same job: keep one in its owner;
+- a guard, retry or fallback for a state nothing produces ([`no-invented-validation`](../../memory/code/no-invented-validation.md));
+- tests that prove 2 + 2 = 4 (`daily-debt.md`, **What is worth a commit**), and theory rows that test nothing new;
+- an analyzer suppression, `[Obsolete]` member or baseline entry whose reason no longer holds.
+
+Never remove a feature a person uses, a GDPR export or deletion path, an audit entry, an authorization check,
+or anything protecting a write that must finish. Never delete a public Contracts member another section calls.
+A deletion that needs a judgment call goes under **Needs Peter** instead.
+
+**The bar:** every commit removes more lines than it adds (production and tests together), and its message says
+what was removed and why nothing depends on it. Work section by section, alphabetically after the previous PR's
+**Removal section**, and name the last section you reached in the report.
+
+**Finds:** start from the section's own files; tools that help:
+```
+dotnet build Humans.slnx -v quiet -warnaserror- 2>&1 | grep -E 'IDE0051|IDE0052|CS0169|CS0414'
+grep -rn 'Obsolete\|SuppressMessage\|#pragma warning disable' src/Sections/<Section> --include=*.cs
+```
+
+**Drained when:** a full pass over every section finds nothing that meets the bar.
+
+**Done-check:** the section's tests.
 
 ---
 
@@ -315,6 +378,11 @@ etc. is not one — leave it).
   admin pages; destructive schema work (GH issue). Integration-test
   flakiness is a GH issue. Hangfire compat shims/type remaps/migrations
   (D13): jobs re-register at startup — delete the shim, never add one.
+- **Invented validation and plumbing tests** ([`no-invented-validation`](../../memory/code/no-invented-validation.md),
+  [`cancellation-token-propagation`](../../memory/architecture/cancellation-token-propagation.md)):
+  guards for states nothing produces, tolerance for malformed admin settings,
+  and tests that cancel a read to prove the token reaches it. Never a fix;
+  remove such code when a ledger row asks for it.
 - **Standalone test work:** missing coverage, controller-policy pins, test
   scaffolding, test helpers, and test-suite expansion are not sweep objectives.
   Add or update a focused test when a production fix warrants it, as part of

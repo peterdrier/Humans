@@ -1,7 +1,7 @@
 @model Humans.Users.Models.AdminHumanDetailViewModel
 @inject IAuthorizationService AuthService
 @{
-    ViewData["Title"] = string.Format(Localizer["Users_AdminHumanDetail_Title"].Value, Model.DisplayName);
+    ViewData["Title"] = Localizer["Users_AdminHumanDetail_Title", Model.DisplayName].Value;
     var stateLabel = Model.State == UserState.DeletePending ? "Delete Pending" : Model.State.ToString();
     var stateBadgeClass = StatusBadgeExtensions.GetMembershipStatusBadgeClass(stateLabel);
 }
@@ -68,11 +68,11 @@
                     <dt class="col-sm-3">@SharedLocalizer["Admin_Joined"]</dt>
                     <dd class="col-sm-9">@Model.CreatedAt.ToDateTime()</dd>
 
-                    <dt class="col-sm-3">@SharedLocalizer["Admin_LastLogin"]</dt>
+                    <dt class="col-sm-3">@SharedLocalizer["Admin_LastSignIn"]</dt>
                     <dd class="col-sm-9">
-                        @if (Model.LastLoginAt.HasValue)
+                        @if (Model.LastSignInAt.HasValue)
                         {
-                            @Model.LastLoginAt.Value.ToDateTime()
+                            @Model.LastSignInAt.Value.ToDateTime()
                         }
                         else
                         {

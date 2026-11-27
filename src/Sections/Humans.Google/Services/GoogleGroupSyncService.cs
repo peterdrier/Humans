@@ -1,6 +1,5 @@
 using Humans.Google.Domain;
 using Humans.Google.Contracts;
-using GroupClaim = Humans.Google.Services.GoogleGroupSyncService.GroupClaim;
 using Humans.AuditLog.Contracts;
 using Humans.Users.Contracts;
 using Humans.Teams.Contracts;
@@ -9,7 +8,6 @@ using Humans.Base.Helpers;
 using Microsoft.Extensions.Options;
 using NodaTime;
 using Humans.Google.Services.Workspace;
-using Humans.Base.Interfaces;
 
 namespace Humans.Google.Services;
 
@@ -41,7 +39,8 @@ internal sealed class GoogleGroupSyncService(
     {
         if (string.IsNullOrWhiteSpace(groupKey))
         {
-            logger.LogWarning("RequestSyncAsync called with null/empty group key; skipping");
+            logger.LogWarning("RequestSyncAsync called with {Key} group key; skipping",
+                groupKey is null ? "no" : "a blank");
             return Task.CompletedTask;
         }
 

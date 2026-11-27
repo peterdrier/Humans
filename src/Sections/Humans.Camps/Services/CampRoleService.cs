@@ -200,7 +200,7 @@ internal sealed class CampRoleService(
         if (campMemberId != Guid.Empty && await repo.AssignmentExistsAsync(campSeasonId, roleDefinitionId, campMemberId, ct))
             return AssignCampRoleOutcome.AlreadyHoldsRole;
 
-        var existingCount = await repo.CountAssignmentsForSeasonAndDefinitionAsync(campSeasonId, roleDefinitionId, ct);
+        var existingCount = await repo.CountRoleAssignmentsAsync(campSeasonId, roleDefinitionId, ct);
         if (existingCount >= def.SlotCount)
             return AssignCampRoleOutcome.SlotCapReached;
 

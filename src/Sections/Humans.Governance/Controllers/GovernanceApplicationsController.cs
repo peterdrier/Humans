@@ -181,7 +181,7 @@ internal sealed class GovernanceApplicationsController(
             SubmittedAt = application.SubmittedAt.ToDateTimeUtc(),
             ResolvedAt = application.ResolvedAt?.ToDateTimeUtc(),
             ReviewedByUserId = application.ReviewedByUserId,
-            ReviewNotes = application.ReviewNotes,
+            DecisionNote = application.DecisionNote,
             CanWithdraw = application.CanWithdraw,
             History = application.History
                 .OrderByDescending(h => h.ChangedAt)
@@ -311,7 +311,7 @@ internal sealed class GovernanceApplicationsController(
             Language = application.Language,
             SubmittedAt = application.SubmittedAt.ToDateTimeUtc(),
             ReviewedByUserId = application.ReviewedByUserId,
-            ReviewNotes = application.ReviewNotes,
+            DecisionNote = application.DecisionNote,
             CanApproveReject = application.CanApproveReject,
             History = application.History
                 .OrderByDescending(h => h.ChangedAt)

@@ -14,6 +14,14 @@
     <PackageVersion Include="HtmlSanitizer" Version="11.0.26" />
     <PackageVersion Include="Ical.Net" Version="5.2.4" />
     <PackageVersion Include="Markdig" Version="1.6.0" />
+    <!-- The Backdoor MCP endpoint (src/Sections/Humans.Backdoor/Docs/features/mcp.md). Apache-2.0. -->
+    <PackageVersion Include="ModelContextProtocol.AspNetCore" Version="2.4.0" />
+    <PackageVersion Include="OpenIddict.Core" Version="7.9.0" />
+    <PackageVersion Include="OpenIddict.Server.AspNetCore" Version="7.9.0" />
+    <PackageVersion Include="OpenIddict.Server.DataProtection" Version="7.9.0" />
+    <PackageVersion Include="OpenIddict.Validation.AspNetCore" Version="7.9.0" />
+    <PackageVersion Include="OpenIddict.Validation.DataProtection" Version="7.9.0" />
+    <PackageVersion Include="OpenIddict.Validation.ServerIntegration" Version="7.9.0" />
     <!-- User-Agent parsing for /Admin/ClientStats (code-based, no regex DB; library telemetry left off) -->
     <PackageVersion Include="MyCSharp.HttpUserAgentParser" Version="3.1.6" />
     <PackageVersion Include="Microsoft.AspNetCore.Identity.EntityFrameworkCore" Version="10.0.15" />

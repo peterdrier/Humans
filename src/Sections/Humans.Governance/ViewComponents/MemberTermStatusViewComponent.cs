@@ -1,7 +1,6 @@
 using Humans.Base.Extensions;
 using Humans.Base.Constants;
 using Humans.Teams.Contracts;
-using System.Security.Claims;
 using Humans.Governance.Contracts;
 using Humans.Governance.Services;
 using Microsoft.AspNetCore.Mvc;

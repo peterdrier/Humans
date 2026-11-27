@@ -112,7 +112,7 @@ internal sealed partial class TicketCheckoutService
     private async Task<bool> CancelOrderAsync(
         TicketingSettings ticketing, TicketCheckoutOrder order, CancellationState state, CancellationToken ct)
     {
-        var live = state.Tickets[order.Id].Where(IsLive).ToList();
+        var live = state.Tickets[order.Id].Where(t => t.IsHeld).ToList();
         var offers = state.Offers.Where(o => live.Any(t => t.Id == o.TicketId)
             && o.State is TicketResaleOfferState.Open or TicketResaleOfferState.Reserved).ToList();
         if (offers.Any(o => o.State == TicketResaleOfferState.Reserved))
@@ -138,17 +138,17 @@ internal sealed partial class TicketCheckoutService
         }
 
         // A repeat after a stop part way finds the refund already asked for, so the email still names it.
-        var (refundMinor, refundFailed) = state.CancelRefund(order) is { } asked
-            ? (asked.AmountMinor, asked.State == RefundState.Failed)
+        var (refundMinor, refundByHand) = state.CancelRefund(order) is { } asked
+            ? (asked.AmountMinor, asked.State is RefundState.Failed or RefundState.ManualRequired)
             : (state.Refundable(order), false);
-        var refundNote = refundMinor > 0 ? $", {FormatMinor(refundMinor)} {order.Currency} refund asked for" : ", nothing to refund";
+        string? refundNote = null;
         if (refundMinor > 0 && !state.HasCancelRefund(order))
         {
             var cancelRefundId = CancellationState.CancelRefundId(ticketing.Id, order.Id);
             var (result, refundId) = await RefundCoreAsync(order.Id, refundMinor, Truncate(why), null, ct, cancelRefundId);
             if (!result.Succeeded)
             {
-                refundFailed = true;
+                refundByHand = true;
                 logger.LogError("Cancellation refund of order {OrderId} failed: {Refusal}", order.Id, result.Refusal);
                 // Written as failed so it is not asked again and the team sees what is owed.
                 if (refundId is null)
@@ -167,7 +167,13 @@ internal sealed partial class TicketCheckoutService
                 await auditLog.LogAsync(TicketsAuditActions.TicketCheckoutNeedsAttention, AuditEntityType, order.Id,
                     $"Cancellation refund{refundNote[1..]}", JobName);
             }
+            else if (refundId is { } id)
+                refundByHand = (await repository.GetRefundsAsync(order.Id, ct))
+                    .Any(r => r.Id == id && r.State is RefundState.Failed or RefundState.ManualRequired);
         }
+        refundNote ??= refundMinor <= 0 ? ", nothing to refund"
+            : refundByHand ? $"; the ticketing team must refund {FormatMinor(refundMinor)} {order.Currency} by hand"
+            : $", {FormatMinor(refundMinor)} {order.Currency} refund asked for";
 
         await TimelineAsync(order.Id, TicketCheckoutOrderEventKind.EventCancelled,
             $"{why}. {live.Count} ticket(s) voided" + (offers.Count > 0 ? $", {offers.Count} taken out of the resale queue" : string.Empty) +
@@ -176,16 +182,13 @@ internal sealed partial class TicketCheckoutService
         if (!string.IsNullOrWhiteSpace(order.BuyerEmail))
         {
             var notice = emails.EventCancelled(order.BuyerUserId, order.BuyerEmail, order.BuyerName, eventName, refundMinor,
-                refundFailed, order.Lines.Any(l => l.Kind == OrderLineKind.Donation), order.Culture);
+                refundByHand, order.Lines.Any(l => l.Kind == OrderLineKind.Donation), order.Culture);
             await email.SendAsync(notice with { DeliveryId = CancellationState.CancelNoticeId(ticketing.Id, order.Id) }, ct);
         }
         order.CancellationEmailedAt = clock.GetCurrentInstant();
         await repository.UpdateOrderAsync(order, ct);
         return true;
     }
-
-    private static bool IsLive(TicketCheckoutTicket t) =>
-        t.State is TicketCheckoutTicketState.Valid or TicketCheckoutTicketState.Offered;
 
     private async Task<CancellationState> LoadCancellationAsync(TicketingSettings ticketing, CancellationToken ct) =>
         new(ticketing,
@@ -244,7 +247,7 @@ internal sealed partial class TicketCheckoutService
         /// that the cancellation has not asked for.
         /// </summary>
         public IReadOnlyList<TicketCheckoutOrder> ToDo => Paid
-            .Where(o => o.CancellationEmailedAt is null || tickets[o.Id].Any(IsLive) || (Refundable(o) > 0 && !HasCancelRefund(o)))
+            .Where(o => o.CancellationEmailedAt is null || tickets[o.Id].Any(t => t.IsHeld) || (Refundable(o) > 0 && !HasCancelRefund(o)))
             .OrderBy(o => o.PaidAt)
             .ToList();
 
@@ -258,7 +261,7 @@ internal sealed partial class TicketCheckoutService
                     ticketing.CancelledAt, ticketing.CancelledByUserId, ticketing.CancelReason,
                     PaidOrders: paid.Count,
                     ToDo: ToDo.Count,
-                    LiveTickets: paid.Sum(o => tickets[o.Id].Count(IsLive)),
+                    LiveTickets: paid.Sum(o => tickets[o.Id].Count(t => t.IsHeld)),
                     TicketMoneyMinor: paid.Sum(o => o.TicketTotalMinor),
                     ChargedBackMinor: paid.Sum(o => o.ChargedBackMinor),
                     RefundedMinor: paid.Sum(o => Math.Max(o.RefundedMinor,
@@ -266,7 +269,7 @@ internal sealed partial class TicketCheckoutService
                     InFlightMinor: paid.Sum(o => refunds[o.Id].Where(r => r.State is RefundState.Pending or RefundState.ManualRequired).Sum(r => r.AmountMinor)),
                     StillRefundableMinor: paid.Sum(Refundable),
                     DonationsMinor: paid.Sum(o => o.TotalMinor - o.TicketTotalMinor),
-                    RefundsSince: since.GroupBy(r => r.State).OrderBy(g => g.Key)
+                    RefundsSince: since.GroupBy(r => r.State)
                         .Select(g => new RefundStateRow(g.Key, g.Count(), g.Sum(r => r.AmountMinor))).ToList());
             }
         }

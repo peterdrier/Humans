@@ -9,7 +9,7 @@ namespace Humans.Notifications.Services;
 internal sealed class NotificationService(
     NotificationEmitter emitter,
     INotificationRepository repo,
-    IRoleAssignmentService roleAssignmentService,
+    ISystemRoleService systemRoleService,
     ILogger<NotificationService> logger) : INotificationService, IUserMerge
 {
     public async Task SendToRoleAsync(
@@ -23,7 +23,7 @@ internal sealed class NotificationService(
         string? actionLabel = null,
         CancellationToken cancellationToken = default)
     {
-        var roleUserIds = await roleAssignmentService.GetActiveUserIdsInRoleAsync(roleName, cancellationToken);
+        var roleUserIds = await systemRoleService.GetActiveUserIdsInRoleAsync(roleName, cancellationToken);
         if (roleUserIds.Count == 0)
         {
             logger.LogWarning("SendToRoleAsync: no active users found for role '{RoleName}'", roleName);

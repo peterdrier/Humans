@@ -1,5 +1,4 @@
 using Humans.AuditLog.Contracts;
-using Humans.Users.Contracts;
 using Humans.Tickets.Domain.Checkout;
 
 namespace Humans.Tickets.Services.Checkout;
@@ -68,8 +67,7 @@ internal sealed partial class TicketCheckoutService
     {
         var tickets = (await repository.GetTicketsForSettingsAsync(settingsId, ct)).ToDictionary(t => t.Id);
         var rows = new List<CompanionRequestRow>();
-        foreach (var request in (await repository.GetCompanionRequestsForSettingsAsync(settingsId, ct))
-                     .OrderBy(r => r.State != TicketCompanionRequestState.Pending).ThenByDescending(r => r.RequestedAt))
+        foreach (var request in await repository.GetCompanionRequestsForSettingsAsync(settingsId, ct))
         {
             tickets.TryGetValue(request.TicketId, out var ticket);
             var companion = await users.GetUserInfoAsync(request.CompanionUserId, ct);
@@ -85,8 +83,10 @@ internal sealed partial class TicketCheckoutService
         var request = await repository.GetCompanionRequestAsync(requestId, ct);
         if (request is null)
             return new("That request does not exist.");
+        if (request.State == TicketCompanionRequestState.Withdrawn)
+            return new("That request was withdrawn.");
         if (request.State != TicketCompanionRequestState.Pending)
-            return new("That request was already answered or withdrawn.");
+            return new($"That request was already {(request.State == TicketCompanionRequestState.Approved ? "approved" : "declined")}.");
         note = string.IsNullOrWhiteSpace(note) ? null : note.Trim();
         if (note?.Length > MaxCompanionNoteLength)
             return new($"Keep the note under {MaxCompanionNoteLength} characters.");

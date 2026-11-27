@@ -10,7 +10,6 @@ using Microsoft.Extensions.Localization;
 using NodaTime;
 using NSubstitute;
 using Humans.Users.Contracts;
-using ConsentService = Humans.Consent.Services.ConsentService;
 
 namespace Humans.Consent.Tests.Architecture;
 

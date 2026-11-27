@@ -16,11 +16,13 @@ function init(el) {
 
     const placeInput = document.getElementById(el.dataset.placeInput);
     if (placeInput) {
-        placeInput.addEventListener('change', () => {
+        const clearPoint = () => {
             latInput.value = '';
             lngInput.value = '';
             if (marker) { marker.remove(); marker = null; }
-        });
+        };
+        placeInput.addEventListener('input', clearPoint);
+        placeInput.addEventListener('change', clearPoint);
     }
 
     const initial = readPoint(latInput, lngInput);

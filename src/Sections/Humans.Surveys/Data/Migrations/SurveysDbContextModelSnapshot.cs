@@ -18,7 +18,7 @@ namespace Humans.Surveys.Data.Migrations
         {
 #pragma warning disable 612, 618
             modelBuilder
-                .HasAnnotation("ProductVersion", "10.0.10")
+                .HasAnnotation("ProductVersion", "10.0.15")
                 .HasAnnotation("Relational:MaxIdentifierLength", 63);
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
@@ -209,6 +209,9 @@ namespace Humans.Surveys.Data.Migrations
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
+
+                    b.Property<string>("Comment")
+                        .HasColumnType("jsonb");
 
                     b.Property<string>("GridRows")
                         .HasColumnType("jsonb");

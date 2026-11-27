@@ -15,6 +15,30 @@ namespace Humans.Stripe.Tests.Services;
 /// <summary>Live reads of a ticketing platform's own Stripe account: its ledger, a payment's fee, and the key check.</summary>
 public sealed class StripeAccountReadTests
 {
+    [HumansTheory]
+    [InlineData("")]
+    [InlineData(" \t")]
+    [InlineData("rk_test_bad suffix")]
+    [InlineData("rk_test_secret\r\nhidden")]
+    public async Task Account_UnusableKey_RefusesBeforeSdk(string key)
+    {
+        using var assertions = new AwesomeAssertions.Execution.AssertionScope();
+        var account = OwnKey(key);
+        var store = OwnKey(key);
+        store.Name = "Store";
+        var service = Service(account, store);
+        account.IsConfigured.Should().BeFalse();
+        (await service.GetAccountLedgerAsync("HiEvents", Now - Duration.FromDays(1), Now, Ct)).Should().BeNull();
+        (await service.GetAccountPaymentFeeAsync("HiEvents", "pi_1", Ct)).Should().BeNull();
+        (await service.FindAccountPaymentFeeAsync("HiEvents", Order42, Now, Ct)).Should().BeNull();
+        (await service.ListStoreRefundsAsync("pi_1", Ct)).Should().BeNull();
+        (await service.GetStoreChargeAsync("pi_1", Ct)).Should().BeNull();
+        var findings = await service.CheckAccountAsync("HiEvents", Ct);
+        findings.Should().ContainSingle().Which.Ok.Should().BeFalse();
+        findings.Should().OnlyContain(f => !f.Text.Contains("rk_test_secret", StringComparison.Ordinal));
+        _requests.Should().BeEmpty();
+    }
+
     private static readonly CancellationToken Ct = TestContext.Current.CancellationToken;
     private static readonly Instant Now = Instant.FromUtc(2027, 1, 2, 10, 0);
 
@@ -98,11 +122,86 @@ public sealed class StripeAccountReadTests
             .Should().Equal(
                 ("txn_c", "charge", 22500L, 340L, "pi_new", "42"),
                 ("txn_r", "refund", -5000L, 0L, "pi_old", "41"),
-                ("txn_p", "payout", -17160L, 0L, (string?)null, (string?)null));
+                ("txn_p", "payout", -17160L, 0L, null, null));
         ledger.Lines[0].Payment!.Description.Should().Be("D-42");
         ledger.Payouts.Select(p => (p.Id, p.ContentsNetMinor, p.ContentsCount)).Should().Equal(
-            ("po_1", (long?)17160, 2), ("po_2", (long?)null, 0));
+            ("po_1", 17160, 2), ("po_2", null, 0));
         _requests.Should().OnlyContain(r => r.Method == HttpMethod.Get);
+    }
+
+    [HumansFact]
+    public async Task Ledger_MovementMetadata_PreservesOrderReference()
+    {
+        Answer("/v1/balance_transactions", List("/v1/balance_transactions",
+            """{"id":"txn_r","object":"balance_transaction","reporting_category":"refund","source":{"id":"re_1","object":"refund","payment_intent":"pi_1","metadata":{"order_id":"older-order"}}}"""));
+        Answer("/v1/payment_intents", List("/v1/payment_intents", Intent("pi_1", "42")));
+        Answer("/v1/payouts", List("/v1/payouts"));
+
+        var ledger = await Service(OwnKey()).GetAccountLedgerAsync("HiEvents", Now, Now, Ct);
+
+        ledger!.Lines.Single().Payment!.Metadata.Should().Contain("order_id", "older-order").And.Contain("event_id", "7");
+    }
+
+    [HumansFact]
+    public async Task Check_CheckoutRequested_UsesTicketsKey()
+    {
+        Answer("/v1/checkout/sessions", List("/v1/checkout/sessions"));
+        Answer("/v1/balance_transactions", List("/v1/balance_transactions"));
+        Answer("/v1/payouts", List("/v1/payouts"));
+        Answer("/v1/payment_intents", List("/v1/payment_intents"));
+        Answer("/v1/charges", List("/v1/charges"));
+        Answer("/v1/refunds", List("/v1/refunds"));
+        Answer("/v1/disputes", List("/v1/disputes"));
+        var service = new StripeService(Options.Create(new StripeSettings { TicketsKey = "rk_test_tickets" }),
+            new CapturingLogger<StripeService>(), _http,
+            Options.Create(new StripeMirrorOptions { Accounts = [OwnKey()] }));
+
+        var findings = await service.CheckAccountAsync("HiEvents", Ct, includeCheckout: true);
+
+        findings.Should().HaveCount(7).And.OnlyContain(f => f.Ok);
+        _requests[0].AuthorizationHeader.Parameter.Should().Be("rk_test_tickets");
+        _requests[0].Uri.AbsolutePath.Should().Be("/v1/checkout/sessions");
+        _requests.Skip(1).Should().OnlyContain(r => r.AuthorizationHeader.Parameter == "rk_test_hievents");
+    }
+
+    [HumansTheory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public async Task Check_Cancellation_RespectsCaller(bool cancelCaller)
+    {
+        using var caller = new CancellationTokenSource();
+        if (cancelCaller) await caller.CancelAsync();
+        _http.MakeRequestAsync(Arg.Any<StripeRequest>(), Arg.Any<CancellationToken>())
+            .Returns<StripeResponse>(_ => throw new TaskCanceledException("probe cancelled", null, caller.Token));
+
+        var check = () => Service(OwnKey()).CheckAccountAsync("HiEvents", caller.Token);
+
+        if (cancelCaller)
+            await check.Should().ThrowAsync<OperationCanceledException>();
+        else
+            (await check()).Should().OnlyContain(f => !f.Ok && f.Text.Contains("could not be reached"));
+    }
+
+    [HumansTheory]
+    [InlineData("")]
+    [InlineData("rk_test_invalid key")]
+    public async Task Check_UnusableCheckoutKey_KeepsReportingFindings(string key)
+    {
+        Answer("/v1/balance_transactions", List("/v1/balance_transactions"));
+        Answer("/v1/payouts", List("/v1/payouts"));
+        Answer("/v1/payment_intents", List("/v1/payment_intents"));
+        Answer("/v1/charges", List("/v1/charges"));
+        Answer("/v1/refunds", List("/v1/refunds"));
+        Answer("/v1/disputes", List("/v1/disputes"));
+        var service = new StripeService(Options.Create(new StripeSettings { TicketsKey = key }),
+            new CapturingLogger<StripeService>(), _http,
+            Options.Create(new StripeMirrorOptions { Accounts = [OwnKey()] }));
+
+        var findings = await service.CheckAccountAsync("HiEvents", Ct, includeCheckout: true);
+
+        findings.Should().ContainSingle(f => !f.Ok).Which.Text.Should().Contain("STRIPE_TICKETS_KEY");
+        findings.Count(f => f.Ok).Should().Be(6);
+        _requests.Should().HaveCount(6).And.NotContain(r => r.Uri.AbsolutePath == "/v1/checkout/sessions");
     }
 
     [HumansFact]
@@ -211,7 +310,7 @@ public sealed class StripeAccountReadTests
     }
 
     [HumansFact]
-    public async Task Check_flags_a_full_live_secret_key()
+    public async Task Check_FullLiveSecretKey_IsFlagged()
     {
         using var headers = new HttpResponseMessage();
         _http.MakeRequestAsync(Arg.Any<StripeRequest>(), Arg.Any<CancellationToken>())

@@ -5,8 +5,16 @@ namespace Humans.Backdoor;
 /// <summary>The audit actions Backdoor writes. Names are stored on audit rows: never rename one.</summary>
 internal sealed class BackdoorAuditActions : AuditActionContributor
 {
-    // Rotation is a revoke of the old key followed by an issue of the new one.
-    public static readonly AuditActionDefinition BackdoorApiKeyIssued = new("BackdoorApiKeyIssued");
+    // Rotation is a revoke of the old key followed by a create of the new one.
+    public static readonly AuditActionDefinition BackdoorApiKeyCreated = new("BackdoorApiKeyCreated", AuditKept.Forever);
 
-    public static readonly AuditActionDefinition BackdoorApiKeyRevoked = new("BackdoorApiKeyRevoked");
+    public static readonly AuditActionDefinition BackdoorApiKeyRevoked = new("BackdoorApiKeyRevoked", AuditKept.Forever);
+
+    public static readonly AuditActionDefinition BackdoorConnectionApproved = new("BackdoorConnectionApproved", AuditKept.Forever);
+
+    public static readonly AuditActionDefinition BackdoorConnectionRevoked = new("BackdoorConnectionRevoked", AuditKept.Forever);
+
+    /// <summary>The old name of <see cref="BackdoorApiKeyCreated"/>. Nothing writes it; declared so rows stored under it
+    /// still resolve.</summary>
+    public static readonly AuditActionDefinition BackdoorApiKeyIssued = new("BackdoorApiKeyIssued", AuditKept.Forever);
 }

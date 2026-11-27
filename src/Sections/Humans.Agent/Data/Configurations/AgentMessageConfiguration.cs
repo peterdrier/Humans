@@ -17,7 +17,7 @@ internal sealed class AgentMessageConfiguration : IEntityTypeConfiguration<Agent
         builder.Property(m => m.Content).IsRequired(); // text (unbounded) — transcripts can be long
         builder.Property(m => m.CreatedAt).IsRequired();
         builder.Property(m => m.Model).HasMaxLength(64).IsRequired();
-        builder.Property(m => m.RefusalReason).HasMaxLength(256);
+        builder.Property(m => m.Outcome).HasMaxLength(256);
 
         builder.Property(m => m.FetchedDocs)
             .HasColumnType("jsonb")
@@ -36,7 +36,7 @@ internal sealed class AgentMessageConfiguration : IEntityTypeConfiguration<Agent
 
         builder.HasIndex(m => m.ConversationId);
         builder.HasIndex(m => m.CreatedAt);
-        builder.HasIndex(m => m.RefusalReason);
+        builder.HasIndex(m => m.Outcome);
         builder.HasIndex(m => m.HandedOffToFeedbackId);
     }
 }

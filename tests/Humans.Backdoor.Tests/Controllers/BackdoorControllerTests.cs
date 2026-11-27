@@ -19,12 +19,12 @@ namespace Humans.Backdoor.Tests.Controllers;
 
 /// <summary>
 /// The section's one page, at <c>/Backdoor</c>. Covers what it decides on its own: which
-/// humans the allocate dropdown offers, and whether a listed key actually works.
+/// humans the owner dropdown offers, and whether a listed key actually works.
 /// </summary>
 public class BackdoorControllerTests
 {
     private readonly IBackdoorApiKeyService _keys = Substitute.For<IBackdoorApiKeyService>();
-    private readonly IRoleAssignmentService _roles = Substitute.For<IRoleAssignmentService>();
+    private readonly ISystemRoleService _roles = Substitute.For<ISystemRoleService>();
     private readonly IUserService _users = Substitute.For<IUserService>();
     private readonly IAuthorizationService _auth = Substitute.For<IAuthorizationService>();
     private readonly BackdoorController _sut;
@@ -50,7 +50,7 @@ public class BackdoorControllerTests
         _users.GetUserInfoAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
             .Returns(ci => new ValueTask<UserInfo?>(Info(ci.Arg<Guid>(), UserState.Active)));
 
-        _sut = new BackdoorController(_keys, _roles, _users, _auth, Substitute.For<IStringLocalizer<BackdoorResource>>())
+        _sut = new BackdoorController(_keys, Substitute.For<IBackdoorConnectionService>(), _roles, _users, _auth, Substitute.For<IStringLocalizer<BackdoorResource>>())
         {
             TempData = new TempDataDictionary(
                 new DefaultHttpContext(), Substitute.For<ITempDataProvider>()),
@@ -95,9 +95,9 @@ public class BackdoorControllerTests
     {
         SignIn(Guid.NewGuid(), RoleNames.Board);
 
-        await _sut.Issue(_activeAdmin, "laptop", Xunit.TestContext.Current.CancellationToken);
+        await _sut.Create(_activeAdmin, "laptop", Xunit.TestContext.Current.CancellationToken);
 
-        await _keys.DidNotReceiveWithAnyArgs().IssueAsync(default, default!, default);
+        await _keys.DidNotReceiveWithAnyArgs().CreateAsync(default, default!, default);
     }
 
     [HumansFact]
@@ -153,12 +153,12 @@ public class BackdoorControllerTests
     }
 
     [HumansFact]
-    public async Task Allocate_dropdown_omits_a_role_holder_whose_account_is_suspended()
+    public async Task Index_SuspendedAdmin_NotInOwnerDropdown()
     {
         var model = await IndexModelAsync();
 
         // A suspension leaves the Admin assignment standing, so the role set still names them
-        // — but IsEligibleAsync would refuse the issue, and the dropdown must not offer it.
+        // — but IsEligibleAsync would refuse the key, and the dropdown must not offer it.
         model.EligibleUsers.Select(u => u.UserId).Should().ContainSingle()
             .Which.Should().Be(_activeAdmin);
     }

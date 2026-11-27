@@ -1,12 +1,11 @@
+using Humans.Google.Data;
 using Humans.Base.Attributes;
-using Humans.Base.Enums;
-using Humans.Base.Interfaces;
 using Humans.Google.Contracts;
 using NodaTime;
 
 namespace Humans.Google.Services;
 
-internal interface IGoogleSyncManagement : IGoogleSyncService, IGoogleSyncWrite, IApplicationService
+internal interface IGoogleSyncManagement : IGoogleSyncService, IGoogleSyncWrite
 {
     /// <summary>Group resources are routed through <see cref="IGoogleGroupSync"/>.</summary>
     [ExternalWrite]
@@ -35,7 +34,7 @@ internal interface IGoogleSyncManagement : IGoogleSyncService, IGoogleSyncWrite,
     Task<int> EnforceInheritedAccessRestrictionsAsync(CancellationToken cancellationToken = default);
 
     /// <summary>Audited against <paramref name="actorUserId"/> only when the event was found and reset.</summary>
-    Task<bool> RequeueOutboxEventAsync(Guid id, Guid actorUserId, CancellationToken cancellationToken = default);
+    Task<OutboxRequeue> RequeueOutboxEventAsync(Guid id, Guid actorUserId, CancellationToken cancellationToken = default);
 
     /// <summary>Audited against <paramref name="actorUserId"/> even when nothing was reset.</summary>
     Task<int> RequeueAllFailedOutboxEventsAsync(Guid actorUserId, CancellationToken cancellationToken = default);

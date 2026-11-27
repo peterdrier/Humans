@@ -698,17 +698,20 @@ internal sealed class HoldedClient : IHoldedClient
         var lines = new List<HoldedSalesDocumentLineDto>();
         foreach (var l in Arr(Prop(node, "lines")))
         {
-            if (ReadOptionalDecimal(Prop(l, "units")) is not { } units
-                || ReadOptionalDecimal(Prop(l, "price")) is not { } price
-                || ReadOptionalDecimal(Prop(l, "tax")) is not { } taxPercent)
+            var units = ReadOptionalDecimal(Prop(l, "units"));
+            var price = ReadOptionalDecimal(Prop(l, "price"));
+            var taxPercent = ReadOptionalDecimal(Prop(l, "tax"));
+            if (units is null || price is null || taxPercent is null)
             {
+                var unreadable = string.Join(", ", new[] { ("units", units), ("price", price), ("tax", taxPercent) }
+                    .Where(f => f.Item2 is null).Select(f => f.Item1));
                 _logger.LogWarning(
-                    "Holded {Kind} document {DocumentId} has a line without a readable units, price or tax; " +
-                    "its lines read as none", kind, documentId);
+                    "Holded {Kind} document {DocumentId} has a line whose {Unreadable} could not be read; " +
+                    "its lines read as none", kind, documentId, unreadable);
                 return [];
             }
             var name = Prop(l, "name") is JsonValue v && v.TryGetValue<string>(out var n) ? n : "";
-            lines.Add(new HoldedSalesDocumentLineDto(units, price, taxPercent));
+            lines.Add(new HoldedSalesDocumentLineDto(units.Value, price.Value, taxPercent.Value));
         }
         return lines;
     }
@@ -858,7 +861,7 @@ internal sealed class HoldedClient : IHoldedClient
             contact_id = contactId,
             bank_account_id = treasuryId,
             // v2 takes amounts as decimal strings, as on document payments.
-            amount = amount.ToString("F2", System.Globalization.CultureInfo.InvariantCulture),
+            amount = amount.ToString("F2", CultureInfo.InvariantCulture),
             date = LocalDatePattern.Iso.Format(date),
             description,
         };

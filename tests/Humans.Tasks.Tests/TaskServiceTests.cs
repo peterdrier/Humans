@@ -314,6 +314,56 @@ public sealed class TaskServiceTests
         (await _kit.Service.GetTaskAsync(task.Id, Ct))!.Assignments.Should().ContainSingle();
     }
 
+    [HumansTheory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task Assign_Tombstone_DoesNotRecreateErasedLink(bool legacy)
+    {
+        var task = await _kit.CreateAsync();
+        var personId = Guid.NewGuid();
+        await _kit.Service.AssignAsync(task.Id, personId, _kit.Actor, Ct);
+        await _kit.Service.EraseForUserAsync(personId, Ct);
+        var person = (await _kit.Users.GetUserInfoAsync(personId, Ct))!;
+        person = legacy ? person with { IdentityEmailColumn = "erased@gdpr.local" } : person with { State = UserState.Deleted };
+        _kit.Users.GetUserInfoAsync(personId, Arg.Any<CancellationToken>()).Returns(person);
+        _kit.Audit.ClearReceivedCalls();
+
+        var result = await _kit.Service.AssignAsync(task.Id, personId, _kit.Actor, Ct);
+
+        result.Refusal.Should().Be("Tasks_Refusal_NoPerson");
+        (await _kit.Service.GetTaskAsync(task.Id, Ct))!.Assignments.Should().BeEmpty();
+        _kit.Audit.ReceivedCalls().Should().BeEmpty();
+    }
+
+    [HumansTheory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task Assign_ArchivedId_UsesSurvivor(bool alreadyAssigned)
+    {
+        var task = await _kit.CreateAsync();
+        var archivedId = Guid.NewGuid();
+        var survivorId = Guid.NewGuid();
+        var survivor = (await _kit.Users.GetUserInfoAsync(survivorId, Ct))! with { MergedUserIds = [archivedId] };
+        _kit.Users.GetUserInfoAsync(archivedId, Arg.Any<CancellationToken>()).Returns(survivor);
+        if (alreadyAssigned) await _kit.Service.AssignAsync(task.Id, survivorId, _kit.Actor, Ct);
+        _kit.Audit.ClearReceivedCalls();
+
+        var result = await _kit.Service.AssignAsync(task.Id, archivedId, _kit.Actor, Ct);
+
+        if (alreadyAssigned)
+        {
+            result.Refusal.Should().Be("Tasks_Refusal_AlreadyOn");
+            _kit.Audit.ReceivedCalls().Should().BeEmpty();
+        }
+        else
+        {
+            result.Succeeded.Should().BeTrue();
+            await _kit.Audit.Received(1).LogAsync(TasksAuditActions.TaskAssigned, TaskService.AuditEntityType, task.Id,
+                Arg.Any<string>(), _kit.Actor, survivorId, AuditSubjectTypes.User);
+        }
+        (await _kit.Service.GetTaskAsync(task.Id, Ct))!.Assignments.Should().ContainSingle().Which.UserId.Should().Be(survivorId);
+    }
+
     [HumansFact]
     public async Task Unassign_RemovesThePersonAndRefusesSomeoneNotOnTheTask()
     {

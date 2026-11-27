@@ -205,7 +205,8 @@
   <data name="Expenses_SelectAccount" xml:space="preserve"><value>— Selecciona una cuenta —</value></data>
   <data name="Expenses_AccountGroupBudgetCategories" xml:space="preserve"><value>Categorías del presupuesto</value></data>
   <data name="Expenses_AccountGroupOther" xml:space="preserve"><value>Otras cuentas</value></data>
-  <data name="Expenses_Validation_AccountNotFound" xml:space="preserve"><value>Cuenta no encontrada o ya no disponible.</value></data>
+  <data name="Expenses_Validation_AccountNotFound" xml:space="preserve"><value>Esa cuenta no existe.</value></data>
+  <data name="Expenses_Validation_AccountInactive" xml:space="preserve"><value>Esa cuenta ya no está abierta a gastos.</value></data>
   <data name="Expenses_OptionalMaxChars" xml:space="preserve"><value>(opcional, máx. 500 caracteres)</value></data>
   <data name="Expenses_SubjectPlaceholder" xml:space="preserve"><value>Describe el gasto…</value></data>
   <data name="Expenses_CreateDraft" xml:space="preserve"><value>Crear borrador</value></data>
@@ -291,11 +292,16 @@
   <data name="Expenses_Preapprovals_Revoked" xml:space="preserve"><value>Esta preaprobación ha sido revocada. El informe no puede aprobarse con ella: una vez rechazado, la preaprobación puede quitarse o cambiarse en el borrador.</value></data>
   <data name="Expenses_Preapprovals_Column" xml:space="preserve"><value>Preaprobación</value></data>
   <data name="Expenses_Preapprovals_RevokedBadge" xml:space="preserve"><value>revocada</value></data>
-  <data name="Expenses_Validation_PreapprovalNotClaimable" xml:space="preserve"><value>No se puede presentar contra esa preaprobación: no es del miembro, no está abierta o su plazo ha vencido.</value></data>
   <data name="Expenses_Validation_PreapprovalLocked" xml:space="preserve"><value>La preaprobación y la cuenta de un informe enviado no se pueden cambiar.</value></data>
   <data name="Expenses_Validation_PreapprovalRevoked" xml:space="preserve"><value>La preaprobación fue revocada; este informe no puede enviarse contra ella.</value></data>
   <data name="Expenses_Validation_PreapprovalDeadlinePassed" xml:space="preserve"><value>El plazo de reclamación ({0}) ha vencido; este informe ya no puede enviarse contra la preaprobación.</value></data>
-  <data name="Expenses_Validation_PreapprovalUnavailable" xml:space="preserve"><value>La preaprobación ya no está disponible: la reclamó otro informe o ya se usó.</value></data>
+  <data name="Expenses_Validation_PreapprovalNotFound" xml:space="preserve"><value>Esa preaprobación ya no existe.</value></data>
+  <data name="Expenses_Validation_PreapprovalNotTheirs" xml:space="preserve"><value>Esa preaprobación es de otra persona.</value></data>
+  <data name="Expenses_Validation_PreapprovalNotGranted" xml:space="preserve"><value>Esa preaprobación aún no se ha concedido.</value></data>
+  <data name="Expenses_Validation_PreapprovalDeclined" xml:space="preserve"><value>Esa preaprobación fue denegada.</value></data>
+  <data name="Expenses_Validation_PreapprovalClaimedElsewhere" xml:space="preserve"><value>Otro informe ya tiene esa preaprobación.</value></data>
+  <data name="Expenses_Validation_PreapprovalUsed" xml:space="preserve"><value>Esa preaprobación ya se usó en un informe aprobado.</value></data>
+  <data name="Expenses_Validation_PreapprovalNotHeld" xml:space="preserve"><value>Este informe ya no tiene esa preaprobación.</value></data>
   <data name="Expenses_Detail_RejectedGuidance" xml:space="preserve"><value>Puedes corregir este informe sin empezar de nuevo: abre cualquier línea de abajo para editarla, sustituir su recibo o eliminarla, y vuelve a enviarlo.</value></data>
   <data name="Expenses_Detail_RejectedGuidanceLink" xml:space="preserve"><value>Ir a las líneas</value></data>
   <data name="Expenses_Submitter" xml:space="preserve"><value>Solicitante</value></data>
@@ -307,4 +313,5 @@
   <data name="Expenses_Flash_DraftOutcomeUnknown" xml:space="preserve"><value>No se pudo confirmar si el borrador se guardó. Revisa los informes existentes antes de crear otro borrador.</value></data>
   <data name="Expenses_Permission_Endorse_Title" xml:space="preserve"><value>Avalar gastos</value></data>
   <data name="Expenses_Permission_Endorse_Blurb" xml:space="preserve"><value>Avalar, rechazar y denegar líneas de las solicitudes de gastos con cargo al presupuesto del equipo.</value></data>
+  <data name="Expenses_Validation_SubmitterUnavailable" xml:space="preserve"><value>La persona solicitante ya no está disponible.</value></data>
 </root>

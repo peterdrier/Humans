@@ -63,7 +63,7 @@ public sealed class ConsentRepositoryTests : IDisposable
         var versionId = Guid.NewGuid();
         await _repo.AddAsync(BuildRecord(userId, versionId), Xunit.TestContext.Current.CancellationToken);
 
-        var exists = await _repo.ExistsForUserIdsAndVersionAsync([userId], versionId, Xunit.TestContext.Current.CancellationToken);
+        var exists = await _repo.ExistsForVersionAsync([userId], versionId, Xunit.TestContext.Current.CancellationToken);
 
         exists.Should().BeTrue();
     }
@@ -71,7 +71,7 @@ public sealed class ConsentRepositoryTests : IDisposable
     [HumansFact]
     public async Task ExistsForUserIdsAndVersionAsync_ReturnsFalse_WhenNoRecord()
     {
-        var exists = await _repo.ExistsForUserIdsAndVersionAsync([Guid.NewGuid()], Guid.NewGuid(), Xunit.TestContext.Current.CancellationToken);
+        var exists = await _repo.ExistsForVersionAsync([Guid.NewGuid()], Guid.NewGuid(), Xunit.TestContext.Current.CancellationToken);
 
         exists.Should().BeFalse();
     }
@@ -82,7 +82,7 @@ public sealed class ConsentRepositoryTests : IDisposable
         var versionId = Guid.NewGuid();
         await _repo.AddAsync(BuildRecord(Guid.NewGuid(), versionId), Xunit.TestContext.Current.CancellationToken);
 
-        var exists = await _repo.ExistsForUserIdsAndVersionAsync([Guid.NewGuid()], versionId, Xunit.TestContext.Current.CancellationToken);
+        var exists = await _repo.ExistsForVersionAsync([Guid.NewGuid()], versionId, Xunit.TestContext.Current.CancellationToken);
 
         exists.Should().BeFalse();
     }
@@ -94,7 +94,7 @@ public sealed class ConsentRepositoryTests : IDisposable
         var versionId = Guid.NewGuid();
         await _repo.AddAsync(BuildRecord(userId, versionId), Xunit.TestContext.Current.CancellationToken);
 
-        var record = await _repo.GetByUserIdsAndVersionAsync([userId], versionId, Xunit.TestContext.Current.CancellationToken);
+        var record = await _repo.GetForVersionAsync([userId], versionId, Xunit.TestContext.Current.CancellationToken);
 
         record.Should().NotBeNull();
         record.UserId.Should().Be(userId);
@@ -104,7 +104,7 @@ public sealed class ConsentRepositoryTests : IDisposable
     [HumansFact]
     public async Task GetByUserIdsAndVersionAsync_ReturnsNull_WhenMissing()
     {
-        var record = await _repo.GetByUserIdsAndVersionAsync([Guid.NewGuid()], Guid.NewGuid(), Xunit.TestContext.Current.CancellationToken);
+        var record = await _repo.GetForVersionAsync([Guid.NewGuid()], Guid.NewGuid(), Xunit.TestContext.Current.CancellationToken);
 
         record.Should().BeNull();
     }
@@ -231,7 +231,7 @@ public sealed class ConsentRepositoryTests : IDisposable
         await _repo.AddAsync(BuildRecord(userId, explicitId, explicitConsent: true), Xunit.TestContext.Current.CancellationToken);
         await _repo.AddAsync(BuildRecord(userId, implicitId, explicitConsent: false), Xunit.TestContext.Current.CancellationToken);
 
-        var ids = await _repo.GetExplicitlyConsentedVersionIdsForUserIdsAsync([userId], Xunit.TestContext.Current.CancellationToken);
+        var ids = await _repo.GetConsentedVersionIdsAsync([userId], Xunit.TestContext.Current.CancellationToken);
 
         ids.Should().HaveCount(1);
         ids.Should().Contain(explicitId);
@@ -241,7 +241,7 @@ public sealed class ConsentRepositoryTests : IDisposable
     [HumansFact]
     public async Task GetExplicitlyConsentedVersionIdsForUserIdsAsync_ReturnsEmpty_WhenNone()
     {
-        var ids = await _repo.GetExplicitlyConsentedVersionIdsForUserIdsAsync([Guid.NewGuid()], Xunit.TestContext.Current.CancellationToken);
+        var ids = await _repo.GetConsentedVersionIdsAsync([Guid.NewGuid()], Xunit.TestContext.Current.CancellationToken);
 
         ids.Should().BeEmpty();
     }
@@ -256,7 +256,7 @@ public sealed class ConsentRepositoryTests : IDisposable
         await _repo.AddAsync(BuildRecord(targetId, targetVersion, explicitConsent: true), Xunit.TestContext.Current.CancellationToken);
         await _repo.AddAsync(BuildRecord(sourceId, sourceVersion, explicitConsent: true), Xunit.TestContext.Current.CancellationToken);
 
-        var ids = await _repo.GetExplicitlyConsentedVersionIdsForUserIdsAsync([targetId, sourceId], Xunit.TestContext.Current.CancellationToken);
+        var ids = await _repo.GetConsentedVersionIdsAsync([targetId, sourceId], Xunit.TestContext.Current.CancellationToken);
 
         ids.Should().HaveCount(2);
         ids.Should().Contain(targetVersion);
@@ -266,7 +266,7 @@ public sealed class ConsentRepositoryTests : IDisposable
     [HumansFact]
     public async Task GetExplicitlyConsentedVersionIdsForUsersAsync_EmptyInput_ReturnsEmpty()
     {
-        var map = await _repo.GetExplicitlyConsentedVersionIdsForUsersAsync([], Xunit.TestContext.Current.CancellationToken);
+        var map = await _repo.GetConsentedVersionIdsByUserAsync([], Xunit.TestContext.Current.CancellationToken);
 
         map.Should().BeEmpty();
     }
@@ -280,7 +280,7 @@ public sealed class ConsentRepositoryTests : IDisposable
         var versionId = Guid.NewGuid();
         await _repo.AddAsync(BuildRecord(userWithConsents, versionId, explicitConsent: true), Xunit.TestContext.Current.CancellationToken);
 
-        var map = await _repo.GetExplicitlyConsentedVersionIdsForUsersAsync(
+        var map = await _repo.GetConsentedVersionIdsByUserAsync(
             new List<Guid> { userWithConsents, userWithoutConsents }, Xunit.TestContext.Current.CancellationToken);
 
         map.Should().ContainKey(userWithConsents);
@@ -298,7 +298,7 @@ public sealed class ConsentRepositoryTests : IDisposable
         await _repo.AddAsync(BuildRecord(userId, explicitVersion, explicitConsent: true), Xunit.TestContext.Current.CancellationToken);
         await _repo.AddAsync(BuildRecord(userId, implicitVersion, explicitConsent: false), Xunit.TestContext.Current.CancellationToken);
 
-        var map = await _repo.GetExplicitlyConsentedVersionIdsForUsersAsync(new List<Guid> { userId }, Xunit.TestContext.Current.CancellationToken);
+        var map = await _repo.GetConsentedVersionIdsByUserAsync(new List<Guid> { userId }, Xunit.TestContext.Current.CancellationToken);
 
         map[userId].Should().Contain(explicitVersion);
         map[userId].Should().NotContain(implicitVersion);

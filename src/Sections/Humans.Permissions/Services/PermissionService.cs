@@ -15,7 +15,7 @@ internal sealed class PermissionService(
     IEnumerable<ISectionPermissions> sections,
     IEnumerable<IOwnerKind> ownerKinds,
     IEnumerable<IPermissionSource> sources,
-    IRoleAssignmentService roleAssignments) : IPermissionService
+    ISystemRoleService roleAssignments) : IPermissionService
 {
     private readonly Lazy<Dictionary<string, Permission>> _byKey = new(() => BuildCatalog(sections));
 

@@ -344,7 +344,6 @@ internal sealed class ShiftAdminController(
         return RedirectToAction(nameof(Index), new { slug });
     }
 
-    // Management scope, so NoInfoAdmin is excluded.
     [HttpGet("Rotas/{rotaId}/Email")]
     public async Task<IActionResult> EmailRota(string slug, Guid rotaId, CancellationToken ct = default)
     {
@@ -411,9 +410,11 @@ internal sealed class ShiftAdminController(
             .ToList();
         if (userIds.Count == 0) return [];
 
-        var infos = await UserService.GetUserInfosAsync(userIds, ct);
-        return userIds
-            .Select(id => infos.TryGetValue(id, out var u) ? u.BurnerName : null)
+        var infos = RotaCoordinatorMessageService.GetAvailableRecipients(
+            userIds, await UserService.GetUserInfosAsync(userIds, ct));
+        return infos.Values
+            .DistinctBy(user => user.Id)
+            .Select(user => user.BurnerName)
             .Where(n => !string.IsNullOrWhiteSpace(n))
             .Select(n => n!)
             .OrderBy(n => n, StringComparer.OrdinalIgnoreCase)

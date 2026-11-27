@@ -16,7 +16,7 @@ internal sealed class BudgetAuditLogConfiguration : IEntityTypeConfiguration<Bud
         builder.Property(a => a.Description).IsRequired();
         builder.Property(a => a.OccurredAt).IsRequired();
 
-        // GetAuditLogEntriesForUserIdsAsync filters this column alone.
+        // GetAuditEntriesForUsersAsync filters this column alone.
         builder.HasIndex(a => a.ActorUserId);
 
         builder.HasIndex(a => a.BudgetYearId);

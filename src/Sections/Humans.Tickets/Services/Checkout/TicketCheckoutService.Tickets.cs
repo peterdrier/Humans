@@ -3,7 +3,6 @@ using System.Text;
 using Humans.Tickets.Contracts;
 using Humans.Users.Contracts;
 using Humans.Tickets.Domain.Checkout;
-using Humans.Base.Extensions;
 using NodaTime;
 
 namespace Humans.Tickets.Services.Checkout;
@@ -21,9 +20,6 @@ internal sealed partial class TicketCheckoutService
     private static readonly Duration DeliveryGrace = Duration.FromMinutes(30);
     private static readonly Duration DeliveryRepairWindow = Duration.FromDays(7);
 
-    public async Task<IReadOnlyList<TicketCheckoutTicket>> GetTicketsForOrderAsync(Guid orderId, CancellationToken ct = default) =>
-        (await repository.GetTicketsForOrderAsync(orderId, ct)).OrderBy(t => t.Kind).ThenBy(t => t.IssuedAt).ToList();
-
     public Task<TicketCheckoutTicket?> GetTicketAsync(Guid id, CancellationToken ct = default) =>
         repository.GetTicketAsync(id, ct);
 
@@ -36,23 +32,34 @@ internal sealed partial class TicketCheckoutService
         return TimelineAsync(orderId, kind, Truncate(detail), actorUserId, ct);
     }
 
-    public async Task<IReadOnlyList<TicketCheckoutTicket>> GetTicketsForHolderAsync(Guid userId, CancellationToken ct = default) =>
-        (await repository.GetTicketsForHolderAsync(userId, ct)).OrderByDescending(t => t.IssuedAt).ToList();
+    public Task<IReadOnlyList<TicketCheckoutTicket>> GetTicketsForHolderAsync(Guid userId, CancellationToken ct = default) =>
+        repository.GetTicketsForHolderAsync(userId, ct);
 
-    public async Task<IReadOnlyList<TicketCheckoutTicket>> GetTicketsForSettingsAsync(Guid settingsId, CancellationToken ct = default) =>
-        (await repository.GetTicketsForSettingsAsync(settingsId, ct)).OrderBy(t => t.IssuedAt).ToList();
+    public async Task<int> GetHeldTicketCountAsync(Guid userId, CancellationToken ct = default)
+    {
+        var activeEvent = settings.GetActiveEventSettings();
+        var forEvent = (await repository.ListTicketingSettingsAsync(ct))
+            .Where(e => activeEvent is null || e.EventSettingsId == activeEvent.Id || e.Mode != TicketSalesMode.Closed)
+            .Select(e => e.Id).ToHashSet();
+        return (await repository.GetTicketsForHolderAsync(userId, ct))
+            .Count(t => t.IsHeld && forEvent.Contains(t.TicketingSettingsId));
+    }
 
-    public async Task<IReadOnlyList<TicketResaleOffer>> GetOffersForSettingsAsync(Guid settingsId, CancellationToken ct = default) =>
-        (await repository.GetOffersForSettingsAsync(settingsId, ct)).OrderBy(o => o.OfferedAt).ToList();
+    public Task<IReadOnlyList<TicketCheckoutTicket>> GetTicketsForSettingsAsync(Guid settingsId, CancellationToken ct = default) =>
+        repository.GetTicketsForSettingsAsync(settingsId, ct);
 
-    public async Task<IReadOnlyList<TicketCheckoutRefund>> GetRefundsForSettingsAsync(Guid settingsId, CancellationToken ct = default) =>
-        (await repository.GetRefundsForSettingsAsync(settingsId, ct)).OrderBy(r => r.CreatedAt).ToList();
+    public Task<IReadOnlyList<TicketResaleOffer>> GetOffersForSettingsAsync(Guid settingsId, CancellationToken ct = default) =>
+        repository.GetOffersForSettingsAsync(settingsId, ct);
+
+    public Task<IReadOnlyList<TicketCheckoutRefund>> GetRefundsForSettingsAsync(Guid settingsId, CancellationToken ct = default) =>
+        repository.GetRefundsForSettingsAsync(settingsId, ct);
 
     public async Task<IReadOnlyList<HeldTicket>> GetHeldTicketsAsync(Guid userId, CancellationToken ct = default)
     {
         var held = new List<HeldTicket>();
+        var now = clock.GetCurrentInstant();
         foreach (var group in (await repository.GetTicketsForHolderAsync(userId, ct))
-                     .Where(t => t.State is TicketCheckoutTicketState.Valid or TicketCheckoutTicketState.Offered)
+                     .Where(t => t.IsHeld)
                      .GroupBy(t => t.TicketingSettingsId))
         {
             var ticketing = await repository.GetTicketingSettingsAsync(group.Key, ct);
@@ -63,16 +70,17 @@ internal sealed partial class TicketCheckoutService
             var positions = TicketSupportReports.QueuePositions(offers);
             var eventTickets = ticketing is null ? [] : await repository.GetTicketsForSettingsAsync(group.Key, ct);
             var companionRequests = await repository.GetCompanionRequestsForSettingsAsync(group.Key, ct);
-            foreach (var ticket in group.OrderBy(t => t.IssuedAt))
+            foreach (var ticket in group)
             {
                 var offer = queue.FirstOrDefault(o => o.TicketId == ticket.Id);
                 var hasDependents = eventTickets.Any(t => t.ParentTicketId == ticket.Id && t.State == TicketCheckoutTicketState.Valid);
                 held.Add(new HeldTicket(ticket, eventName, offer, offer is null ? null : positions[offer.Id],
-                    CanOffer: ticketing?.EffectiveSwitches.Resale is not (null or ResaleScheme.Off) && offer is null && ticket.Kind == TicketHolderKind.Adult && ticketing is { Mode: not (TicketSalesMode.Closed or TicketSalesMode.InvitedOnly) },
+                    CanOffer: ticketing is { Mode: not TicketSalesMode.InvitedOnly } && !ticketing.IsClosed(now)
+                        && ticketing.EffectiveSwitches.Resale != ResaleScheme.Off && offer is null && ticket.Kind == TicketHolderKind.Adult,
                     HasDependents: hasDependents,
                     DirectedActive: offer?.HasLiveInvite == true)
                 {
-                    CanInvite = ticketing?.EffectiveSwitches.Resale == ResaleScheme.QueueAndDirected,
+                    CanInvite = ticketing?.EffectiveSwitches.Resale == ResaleScheme.QueueAndDirected && ticketing.IsResaleSelling(now),
                     CompanionRequest = companionRequests.Where(r => r.TicketId == ticket.Id).MaxBy(r => r.RequestedAt),
                     CanAskCompanion = CanAskCompanion(ticket, ticketing, eventTickets, companionRequests),
                 });
@@ -92,7 +100,8 @@ internal sealed partial class TicketCheckoutService
         if (ticket.State != TicketCheckoutTicketState.Valid || ticket.Kind != TicketHolderKind.Adult)
             return new("Tickets_Resale_NotOfferable");
         var ticketing = await repository.GetTicketingSettingsAsync(ticket.TicketingSettingsId, ct);
-        if (ticketing is null || ticketing.Mode is TicketSalesMode.Closed or TicketSalesMode.InvitedOnly
+        var now = clock.GetCurrentInstant();
+        if (ticketing is null || ticketing.IsClosed(now) || ticketing.Mode == TicketSalesMode.InvitedOnly
             || ticketing.EffectiveSwitches.Resale == ResaleScheme.Off)
             return new("Tickets_Resale_Closed");
         // The bank already took this order's money back: a resale would owe a refund of money Humans no longer holds.
@@ -106,7 +115,6 @@ internal sealed partial class TicketCheckoutService
             .ToList();
         if (await IsAdmittedAsync(ticket, ct))
             return new("Tickets_Resale_NotOfferable");
-        var now = clock.GetCurrentInstant();
         var offer = new TicketResaleOffer
         {
             Id = Guid.NewGuid(),
@@ -174,6 +182,8 @@ internal sealed partial class TicketCheckoutService
                 .Where(o => o.TicketId == ticket.Id).Sum(o => o.DirectedInviteCount) + addresses.Count > MaxInvitesPerTicket)
             return new("Tickets_Resale_InviteLimit");
         var now = clock.GetCurrentInstant();
+        if (ticketing.IsClosed(now))
+            return new("Tickets_Resale_Closed");
         if (!(await LoadStockAsync(ticketing, now, ct)).ResaleOpen)
             return new("Tickets_Resale_NotOpenYet");
 
@@ -210,10 +220,10 @@ internal sealed partial class TicketCheckoutService
         return CheckoutMutationResult.Ok;
     }
 
-    /// <summary>The ticket or a valid child riding on it was admitted: selling it would void someone already inside.</summary>
+    /// <summary>The ticket or a valid dependent was admitted: a companion can be on a separate order.</summary>
     private async Task<bool> IsAdmittedAsync(TicketCheckoutTicket ticket, CancellationToken ct)
     {
-        var dependents = (await repository.GetTicketsForOrderAsync(ticket.OrderId, ct))
+        var dependents = (await repository.GetTicketsForSettingsAsync(ticket.TicketingSettingsId, ct))
             .Where(t => t.ParentTicketId == ticket.Id && t.State == TicketCheckoutTicketState.Valid)
             .Select(t => t.Barcode);
         return (await gateAdmissions.GetAdmittedAsync([ticket.Barcode, .. dependents], ct)).Count > 0;
@@ -233,14 +243,20 @@ internal sealed partial class TicketCheckoutService
         return (ticket, offer);
     }
 
-    /// <summary>The link was sent to the signed-in buyer's email, for this event.</summary>
-    private static bool InviteIsFor(TicketResaleOffer offer, string tokenHash, BuyContext context) =>
-        offer.TicketingSettingsId == context.Ticketing.Id && offer.InviteFor(tokenHash) is { } invite
-        && string.Equals(invite.Email, context.Buyer?.Email, StringComparison.OrdinalIgnoreCase);
+    /// <summary>
+    /// Why the link can't buy for the signed-in buyer, or null when it was sent to their email, for this event, and
+    /// resale is selling.
+    /// </summary>
+    private static string? InviteRefusal(TicketResaleOffer? offer, string tokenHash, BuyContext context) =>
+        offer is null || offer.TicketingSettingsId != context.Ticketing.Id || offer.InviteFor(tokenHash) is not { } invite
+            ? "Tickets_Resale_InviteNotFound"
+            : !string.Equals(invite.Email, context.Buyer?.Email, StringComparison.OrdinalIgnoreCase)
+                ? "Tickets_Resale_InviteOtherEmail"
+                : !context.Ticketing.IsResaleSelling(context.Now) ? "Tickets_Resale_NotSelling" : null;
 
     /// <summary>The linked offer while it can still sell to this buyer: the link is theirs and the queue is open.</summary>
-    private static TicketResaleOffer? DirectedOfferFor(TicketResaleOffer offer, string tokenHash, BuyContext context) =>
-        context.Ticketing.ResaleSelling && offer.State == TicketResaleOfferState.Open && InviteIsFor(offer, tokenHash, context)
+    private static TicketResaleOffer? DirectedOfferFor(TicketResaleOffer? offer, string tokenHash, BuyContext context) =>
+        offer?.State == TicketResaleOfferState.Open && InviteRefusal(offer, tokenHash, context) is null
             ? offer
             : null;
 
@@ -323,7 +339,7 @@ internal sealed partial class TicketCheckoutService
         foreach (var offerId in order.Lines.Select(l => l.ResaleOfferId).OfType<Guid>())
             await CompleteResaleAsync(offerId, order, ct);
 
-        if (issuedNow)
+        if (issuedNow || !order.Lines.Any(l => l.Kind == OrderLineKind.Ticket))
             await HandOffToDeliveryAsync(order.Id, ct);
     }
 
@@ -382,7 +398,7 @@ internal sealed partial class TicketCheckoutService
         if (rows.Count > 1)
             return (null, "the address is unverified on more than one account");
         var provisioned = rows.Count == 1
-            ? await provisioning.ReplaceUnverifiedEmailAndProvisionAsync(rows[0].UserId, rows[0].Id, address, displayName: null, ContactSource.Manual, ct)
+            ? await provisioning.ReplaceUnverifiedEmailAsync(rows[0].UserId, rows[0].Id, address, displayName: null, ContactSource.Manual, ct)
             : await provisioning.FindOrCreateUserByEmailAsync(address, displayName: null, ContactSource.Manual, ct);
         return (provisioned.UserId, null);
     }
@@ -536,10 +552,10 @@ internal sealed partial class TicketCheckoutService
                     // A missed webhook must not pay out: both orders are read from their platform first, so a refund or
                     // chargeback only the platform knows of still holds the refund back or lowers what can be refunded.
                     if (buyerOrder is not null)
-                        await RefreshAsync(buyerOrder, ct);
+                        await RecoverAsync(buyerOrder, ct);
                     if (await repository.GetTicketAsync(offer.TicketId, ct) is { } old
                         && await repository.GetOrderAsync(old.OrderId, ct) is { } holderOrder)
-                        await RefreshAsync(holderOrder, ct);
+                        await RecoverAsync(holderOrder, ct);
                 }
                 catch (Exception ex) when (ex is not OperationCanceledException)
                 {
@@ -570,7 +586,7 @@ internal sealed partial class TicketCheckoutService
             if (started + heldBack > 0)
                 await auditLog.LogAsync(TicketsAuditActions.TicketResaleRefundBatch, TicketingSettingsAuditEntityType, ticketing.Id,
                     $"Evening resale refund batch: {started} refund(s) started, {FormatMinor(startedMinor)} in total; " +
-                    $"{heldBack} held back because the buyer's order was refunded or charged back; " +
+                    $"{heldBack} held back, each with its own entry saying why; " +
                     $"{waiting} left for a later batch", JobName);
             batch = new(batch.Started + started, batch.StartedMinor + startedMinor, batch.HeldBack + heldBack, batch.Waiting + waiting);
         }
@@ -626,11 +642,12 @@ internal sealed partial class TicketCheckoutService
                 }
             }
 
-            // Tickets issued but never handed to delivery (the process stopped in between). Delivery dedupes a repeat;
+            // Tickets or a donation receipt never handed to delivery. Delivery dedupes a repeat;
             // the wait lets a first hand-off still in its queue finish, and the window keeps old orders out.
             var now = clock.GetCurrentInstant();
             foreach (var order in orders.Where(o => deliveries.Any() && o is { State: TicketCheckoutOrderState.Paid, PaidAt: { } paidAt }
-                         && issued.Contains(o.Id) && paidAt <= now - DeliveryGrace && paidAt > now - DeliveryRepairWindow))
+                         && (issued.Contains(o.Id) || !o.Lines.Any(l => l.Kind == OrderLineKind.Ticket))
+                         && paidAt <= now - DeliveryGrace && paidAt > now - DeliveryRepairWindow))
             {
                 if ((await repository.GetOrderEventsAsync(order.Id, ct)).Any(e =>
                         e.Kind is TicketCheckoutOrderEventKind.TicketsEmailed or TicketCheckoutOrderEventKind.TicketMailSkipped))
@@ -669,8 +686,7 @@ internal sealed partial class TicketCheckoutService
         foreach (var ticketing in await repository.ListTicketingSettingsAsync(ct))
         {
             // A cancelled event is closed too, but its holders are refunded by the cancel sweep, not told there is no refund.
-            var closed = ticketing.CancelledAt is null
-                && (ticketing.Mode == TicketSalesMode.Closed || (ticketing.SalesCloseAt is { } close && now >= close));
+            var closed = ticketing.CancelledAt is null && ticketing.IsClosed(now);
             foreach (var offer in await repository.GetOffersForSettingsAsync(ticketing.Id, ct))
             {
                 if (closed && offer is { State: TicketResaleOfferState.Open, UnsoldNotifiedAt: null }

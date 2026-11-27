@@ -2,7 +2,6 @@ using Humans.Events.Domain;
 using System.Reflection;
 using AwesomeAssertions;
 using Humans.Email.Contracts;
-using Humans.Events.Contracts;
 using Humans.Events.Services;
 using Microsoft.Extensions.Localization;
 using Microsoft.Extensions.Logging.Abstractions;

@@ -26,7 +26,7 @@ internal sealed class AccountProvisioningService(
         return result;
     }
 
-    public async Task<AccountProvisioningResult> ReplaceUnverifiedEmailAndProvisionAsync(
+    public async Task<AccountProvisioningResult> ReplaceUnverifiedEmailAsync(
         Guid userId, Guid emailId, string email, string? displayName, ContactSource source,
         CancellationToken ct = default)
     {
@@ -172,7 +172,7 @@ internal sealed class AccountProvisioningService(
             : Task.CompletedTask;
     }
 
-    public async Task<MagicLinkSignupCompletionResult> CompleteMagicLinkSignupAsync(
+    public async Task<SignInLinkSignupResult> CompleteSignInLinkSignupAsync(
         string email,
         string burnerName,
         string firstName,
@@ -190,7 +190,7 @@ internal sealed class AccountProvisioningService(
         if (burnerName.Length > 256 || firstName.Length > 256 || lastName.Length > 256)
         {
             logger.LogWarning("Magic-link signup refused: a name exceeds the 256-character limit");
-            return new MagicLinkSignupCompletionResult(MagicLinkSignupCompletionOutcome.Failed, UserId: null);
+            return new SignInLinkSignupResult(SignInLinkSignupOutcome.Failed, UserId: null);
         }
 
         var existingEmail = (await userEmailService.FindByAddressAsync(email, aliased: true, verifiedOnly: true, ct))
@@ -203,8 +203,8 @@ internal sealed class AccountProvisioningService(
                 logger.LogWarning(
                     "Verified UserEmail references missing user {UserId} during magic-link signup for {Email}",
                     existingEmail.UserId, email);
-                return new MagicLinkSignupCompletionResult(
-                    MagicLinkSignupCompletionOutcome.Failed,
+                return new SignInLinkSignupResult(
+                    SignInLinkSignupOutcome.Failed,
                     UserId: null);
             }
 
@@ -212,9 +212,9 @@ internal sealed class AccountProvisioningService(
                 existingUser.Id, burnerName, firstName, lastName, ct))
                 await auditLogService.LogAsync(UsersAuditActions.StubProfileBackfilled, AuditSubjectTypes.User, existingUser.Id,
                     "Completed missing profile after interrupted magic-link signup.", existingUser.Id);
-            await userService.RecordLoginAsync(existingUser.Id, ct);
-            return new MagicLinkSignupCompletionResult(
-                MagicLinkSignupCompletionOutcome.ExistingUser,
+            await userService.RecordSignInAsync(existingUser.Id, ct);
+            return new SignInLinkSignupResult(
+                SignInLinkSignupOutcome.ExistingUser,
                 existingUser.Id);
         }
 
@@ -224,7 +224,7 @@ internal sealed class AccountProvisioningService(
             Id = Guid.NewGuid(),
             BurnerName = burnerName,
             CreatedAt = now,
-            LastLoginAt = now
+            LastSignInAt = now
         };
 
         var createResult = await userManager.CreateAsync(user);
@@ -234,8 +234,8 @@ internal sealed class AccountProvisioningService(
                 "Failed to create user via magic link signup for {Email}: {Errors}",
                 email,
                 string.Join(", ", createResult.Errors.Select(e => e.Description)));
-            return new MagicLinkSignupCompletionResult(
-                MagicLinkSignupCompletionOutcome.Failed,
+            return new SignInLinkSignupResult(
+                SignInLinkSignupOutcome.Failed,
                 UserId: null);
         }
 
@@ -260,8 +260,8 @@ internal sealed class AccountProvisioningService(
                     "Failed to clean up orphan user {UserId} after AddVerifiedEmailAsync failure",
                     user.Id);
             }
-            return new MagicLinkSignupCompletionResult(
-                MagicLinkSignupCompletionOutcome.Failed,
+            return new SignInLinkSignupResult(
+                SignInLinkSignupOutcome.Failed,
                 UserId: null);
         }
 
@@ -272,20 +272,20 @@ internal sealed class AccountProvisioningService(
             "Magic link signup: user {UserId} created account for {Email}",
             user.Id, email);
 
-        return new MagicLinkSignupCompletionResult(
-            MagicLinkSignupCompletionOutcome.Created,
+        return new SignInLinkSignupResult(
+            SignInLinkSignupOutcome.Created,
             user.Id);
     }
 
     public async Task<IReadOnlyList<string>> CreateAccountAsync(
-        Guid userId, string burnerName, Instant createdAt, Instant? lastLoginAt = null)
+        Guid userId, string burnerName, Instant createdAt, Instant? lastSignInAt = null)
     {
         var result = await userManager.CreateAsync(new User
         {
             Id = userId,
             BurnerName = burnerName,
             CreatedAt = createdAt,
-            LastLoginAt = lastLoginAt
+            LastSignInAt = lastSignInAt
         });
         return [.. result.Errors.Select(e => e.Description)];
     }

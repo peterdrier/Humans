@@ -22,17 +22,14 @@ internal sealed class EmailMessageFactory(
 
             return new EmailMessage(
                 recipientEmail, recipientName, recipientUserId,
-                Lf("Email_FacilitatedMessage_Subject", senderName),
-                Lf("Email_FacilitatedMessage_Body", Encode(recipientName), Encode(senderName), sanitizedMessage, contactInfoHtml),
+                localizer["Email_FacilitatedMessage_Subject", senderName],
+                localizer["Email_FacilitatedMessage_Body", Encode(recipientName), Encode(senderName), sanitizedMessage, contactInfoHtml],
                 "facilitated_message", MessageCategory.FacilitatedMessages,
                 ReplyTo: replyTo ?? (includeContactInfo ? senderEmail : null), Culture: CultureInfo.CurrentUICulture.Name);
         }
     }
 
     private string L(string key) => localizer[key].Value;
-
-    private string Lf(string key, params object[] args) =>
-        string.Format(CultureInfo.CurrentCulture, localizer[key].Value, args);
 
     private static string Encode(string text) => WebUtility.HtmlEncode(text);
 }

@@ -260,9 +260,10 @@
   <data name="Tickets_Buy_TermsUnavailable" xml:space="preserve">
     <value>Al momento non è possibile caricare le regole dei biglietti, quindi non si possono acquistare biglietti. Riprova tra qualche minuto.</value>
   </data>
-  <data name="Tickets_Resale_InviteInvalid" xml:space="preserve">
-    <value>Questo link di invito non è più valido, oppure è stato inviato a un'email diversa da quella con cui hai effettuato l'accesso.</value>
-  </data>
+  <data name="Tickets_Resale_InviteNotFound" xml:space="preserve"><value>Nessun invito per questo evento corrisponde a questo link.</value></data>
+  <data name="Tickets_Resale_InviteOtherEmail" xml:space="preserve"><value>Questo invito è stato inviato a un'email diversa da quella con cui hai effettuato l'accesso.</value></data>
+  <data name="Tickets_Resale_NotSelling" xml:space="preserve"><value>I biglietti in rivendita non sono in vendita per questo evento in questo momento.</value></data>
+  <data name="Tickets_Resale_InviteSelfOnly" xml:space="preserve"><value>Un link di invito acquista un solo biglietto, solo per te.</value></data>
   <data name="Tickets_Resale_NotFound" xml:space="preserve">
     <value>Biglietto non trovato.</value>
   </data>

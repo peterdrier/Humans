@@ -152,13 +152,13 @@ internal static class PersonSearchMatcher
         return snippet;
     }
 
-    /// <summary>Lowercase + NFD + strip combining marks.</summary>
+    /// <summary>NFD + strip combining marks + lowercase.</summary>
     internal static string Fold(string? value)
     {
         if (string.IsNullOrEmpty(value))
             return string.Empty;
 
-        var nfd = value.ToLowerInvariant().Normalize(NormalizationForm.FormD);
+        var nfd = value.Normalize(NormalizationForm.FormD);
         var sb = new StringBuilder(nfd.Length);
         foreach (var ch in nfd)
         {
@@ -166,7 +166,7 @@ internal static class PersonSearchMatcher
                 sb.Append(ch);
         }
 
-        return sb.ToString();
+        return sb.ToString().ToLowerInvariant();
     }
 
     private static string[] FoldTokens(string query) =>

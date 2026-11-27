@@ -81,7 +81,7 @@ public class FinanceOverviewServiceTests
     }
 
     private readonly IHoldedService _holded = Substitute.For<IHoldedService>();
-    private readonly Humans.Finance.Data.IFinanceRepository _repo = Substitute.For<Humans.Finance.Data.IFinanceRepository>();
+    private readonly Data.IFinanceRepository _repo = Substitute.For<Data.IFinanceRepository>();
     private readonly IStripeMirrorService _stripe = Substitute.For<IStripeMirrorService>();
     private readonly Humans.AuditLog.Contracts.IAuditLogService _audit = Substitute.For<Humans.AuditLog.Contracts.IAuditLogService>();
 
@@ -101,9 +101,9 @@ public class FinanceOverviewServiceTests
             .Returns([new StripeAccountBalance("acct_store", 1m, 0m, Instant.FromUtc(2026, 11, 1, 0, 0))]);
         return new FinanceOverviewService(FixedOrgTimeZone.Madrid, _holded, Substitute.For<IFinanceService>(),
             Substitute.For<IFinanceAdminService>(), Substitute.For<Humans.Expenses.Contracts.IExpenseReportService>(),
-            Substitute.For<IBudgetService>(), null!, Substitute.For<Humans.Pleo.Contracts.IPleoService>(),
+            Substitute.For<IBudgetService>(), null!, Substitute.For<IPleoService>(),
             _stripe, Microsoft.Extensions.Options.Options.Create(new SepaOptions()),
-            _repo, _audit, NodaTime.SystemClock.Instance);
+            _repo, _audit, SystemClock.Instance);
     }
 
     [HumansFact]
@@ -138,6 +138,27 @@ public class FinanceOverviewServiceTests
         await _audit.Received(1).LogAsync(FinanceAuditActions.FinanceStripeLedgerLinksUpdated, Arg.Any<string>(),
             Arg.Any<Guid>(), Arg.Is<string>(d => d.Contains("44100001 → acct_store")), actor,
             Arg.Any<Guid?>(), Arg.Any<string?>());
+    }
+
+    [HumansTheory]
+    [InlineData(null, false)]
+    [InlineData("acct_store", false)]
+    [InlineData("acct_typo", false)]
+    [InlineData(null, true)]
+    [InlineData("acct_store", true)]
+    [InlineData("acct_typo", true)]
+    public async Task SaveStripeLinks_ZeroAccount_RefusesBeforeReplacingLinks(string? account, bool includeOtherInvalid)
+    {
+        var service = LinkService();
+        var links = new Dictionary<int, string?> { [0] = account, [44100001] = "acct_store" };
+        if (includeOtherInvalid) links[44100004] = "acct_store";
+
+        var refusal = await service.SaveStripeLinksAsync(links, Guid.NewGuid(), TestContext.Current.CancellationToken);
+
+        refusal.Should().NotBeNull();
+        await _repo.DidNotReceive().ReplaceStripeLedgerLinksAsync(
+            Arg.Any<IReadOnlyDictionary<int, string>>(), Arg.Any<CancellationToken>());
+        _audit.ReceivedCalls().Should().BeEmpty();
     }
 
     [HumansFact]
@@ -186,7 +207,7 @@ public class FinanceOverviewServiceTests
 
         var viewData = result.Should().BeOfType<ViewViewComponentResult>().Which.ViewData;
         viewData.Should().NotBeNull();
-        var model = viewData!.Model.Should().BeOfType<FinanceSettingsViewModel>().Subject;
+        var model = viewData.Model.Should().BeOfType<FinanceSettingsViewModel>().Subject;
         model.Rows.Select(r => r.LedgerAccountNum).Should().Equal(44100001, 44100002, 44100003);
         model.Rows.Select(r => r.Index).Should().Equal(0, 1, 2);
         model.Rows.Last().StripeAccountId.Should().Be("acct_old");
@@ -229,7 +250,7 @@ public class FinanceOverviewServiceTests
     }
 
     [HumansFact]
-    public void BuildSepaInProgress_KeepsUnbookedUnwithdrawn_OldestFirst()
+    public void BuildSepaInProgress_KeepsUnbookedUnwithdrawn()
     {
         static SepaPayoutTransferRow Transfer(decimal amount, long sentAt, Instant? booked = null, Instant? withdrawn = null) =>
             new(Guid.NewGuid(), Guid.NewGuid(), "f.xml", Instant.FromUnixTimeSeconds(sentAt), Guid.NewGuid(),
@@ -240,7 +261,7 @@ public class FinanceOverviewServiceTests
         var open = FinanceOverviewService.BuildSepaInProgress(
             [Transfer(1m, 2), Transfer(2m, 1), Transfer(3m, 0, booked: now), Transfer(4m, 0, withdrawn: now)]);
 
-        open.Select(t => t.Amount).Should().Equal(2m, 1m);
+        open.Select(t => t.Amount).Should().BeEquivalentTo(new[] { 2m, 1m });
     }
 
     [HumansFact]

@@ -16,7 +16,7 @@ public class NotificationMeterProviderTests
 
     public NotificationMeterProviderTests()
     {
-        _meterContributor.GetMetersAsync(default!, default, default).ReturnsForAnyArgs([]);
+        _meterContributor.GetMetersAsync(default!, default).ReturnsForAnyArgs([]);
         _contributors = [_meterContributor];
         _provider = new NotificationMeterProvider(_contributors, NullLogger<NotificationMeterProvider>.Instance);
     }
@@ -56,7 +56,7 @@ public class NotificationMeterProviderTests
             new ClaimsPrincipal(new ClaimsIdentity()), TestContext.Current.CancellationToken);
 
         meters.Should().BeEmpty();
-        await _meterContributor.DidNotReceiveWithAnyArgs().GetMetersAsync(default!, default, default);
+        await _meterContributor.DidNotReceiveWithAnyArgs().GetMetersAsync(default!, default);
     }
 
     [HumansTheory]
@@ -85,7 +85,7 @@ public class NotificationMeterProviderTests
         if (callerCancelled)
         {
             await read.Should().ThrowAsync<OperationCanceledException>();
-            await healthy.DidNotReceiveWithAnyArgs().GetMetersAsync(default!, default, default);
+            await healthy.DidNotReceiveWithAnyArgs().GetMetersAsync(default!, default);
         }
         else
         {

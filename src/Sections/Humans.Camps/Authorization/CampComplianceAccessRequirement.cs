@@ -1,5 +1,4 @@
 using Humans.Base.Constants;
-using Humans.Camps.Contracts;
 using Humans.Base.Authorization;
 using Microsoft.AspNetCore.Authorization;
 

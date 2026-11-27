@@ -111,17 +111,17 @@ public sealed class TicketSyncServiceTests : TicketsTestHarness
         _vendorService.GetOrdersAsync(Arg.Any<Instant?>(), Arg.Any<string>(), Arg.Any<CancellationToken>()).Returns(call =>
         {
             Read(SyncReadBoundary.Orders, call.Arg<CancellationToken>());
-            return (IReadOnlyList<VendorOrderDto>)[];
+            return [];
         });
         _vendorService.GetIssuedTicketsAsync(Arg.Any<Instant?>(), Arg.Any<string>(), Arg.Any<CancellationToken>()).Returns(call =>
         {
             Read(SyncReadBoundary.Tickets, call.Arg<CancellationToken>());
-            return (IReadOnlyList<VendorTicketDto>)[];
+            return [];
         });
         _vendorService.GetCheckInsAsync(Arg.Any<Instant?>(), Arg.Any<string>(), Arg.Any<CancellationToken>()).Returns(call =>
         {
             Read(SyncReadBoundary.CheckIns, call.Arg<CancellationToken>());
-            return (IReadOnlyList<VendorCheckInDto>)[];
+            return [];
         });
         _stripeService.GetPaymentDetailsAsync("pi_cancel", Arg.Any<CancellationToken>()).Returns(call =>
         {
@@ -135,7 +135,7 @@ public sealed class TicketSyncServiceTests : TicketsTestHarness
             { EventId = "ev_test_123", ApiKey = "test_key" }), logger,
             _userService, _participations, _ticketReads, _campaignService, _shiftManagementService, Substitute.For<IAuditLogService>());
 
-        var error = await Xunit.Record.ExceptionAsync(() => service.SyncOrdersAndAttendeesAsync(shutdown.Token));
+        var error = await Xunit.Record.ExceptionAsync(() => service.SyncAsync(shutdown.Token));
 
         error.Should().BeAssignableTo<OperationCanceledException>();
         observed.Should().Be(shutdown.Token);
@@ -175,7 +175,7 @@ public sealed class TicketSyncServiceTests : TicketsTestHarness
             { EventId = "ev_test_123", ApiKey = "test_key" }), logger,
             _userService, _participations, _ticketReads, _campaignService, _shiftManagementService, Substitute.For<IAuditLogService>());
 
-        var error = await Xunit.Record.ExceptionAsync(() => service.SyncOrdersAndAttendeesAsync(shutdown.Token));
+        var error = await Xunit.Record.ExceptionAsync(() => service.SyncAsync(shutdown.Token));
 
         error.Should().BeAssignableTo<OperationCanceledException>();
         probe.Triggered.Should().BeTrue();
@@ -234,7 +234,7 @@ public sealed class TicketSyncServiceTests : TicketsTestHarness
             : new OperationCanceledException(kind == SyncFailureKind.Shutdown
                 ? shutdown.Token : new CancellationToken(true));
         var sync = Substitute.For<ITicketSyncService>();
-        sync.SyncOrdersAndAttendeesAsync(shutdown.Token).Returns(async Task<TicketSyncResult> (_) =>
+        sync.SyncAsync(shutdown.Token).Returns(async Task<TicketSyncResult> (_) =>
         {
             if (kind == SyncFailureKind.Shutdown) await shutdown.CancelAsync();
             throw failure;
@@ -264,15 +264,15 @@ public sealed class TicketSyncServiceTests : TicketsTestHarness
         var ct = Xunit.TestContext.Current.CancellationToken;
         var sync = Substitute.For<ITicketSyncService>();
         sync.IsScheduledSyncEnabledAsync(ct).Returns(enabled);
-        sync.SyncOrdersAndAttendeesAsync(ct).Returns(new TicketSyncResult(0, 0, 0, 0, 0));
+        sync.SyncAsync(ct).Returns(new TicketSyncResult(0, 0, 0, 0, 0));
         var job = new TicketSyncJob(sync, Options.Create(new TicketVendorSettings
         { EventId = "ev_test_123", ApiKey = "test_key" }), new CapturingLogger<TicketSyncJob>());
 
         await job.ExecuteAsync(ct);
-        await sync.Received(enabled ? 1 : 0).SyncOrdersAndAttendeesAsync(ct);
+        await sync.Received(enabled ? 1 : 0).SyncAsync(ct);
 
         await job.RunNowAsync(ct);
-        await sync.Received(enabled ? 2 : 1).SyncOrdersAndAttendeesAsync(ct);
+        await sync.Received(enabled ? 2 : 1).SyncAsync(ct);
     }
 
     [HumansFact]
@@ -330,7 +330,7 @@ public sealed class TicketSyncServiceTests : TicketsTestHarness
             { EventId = "ev_test_123", ApiKey = "test_key" }), logger,
             _userService, _participations, _ticketReads, _campaignService, _shiftManagementService, Substitute.For<IAuditLogService>());
 
-        var observed = await Xunit.Record.ExceptionAsync(() => service.SyncOrdersAndAttendeesAsync(cancellation.Token));
+        var observed = await Xunit.Record.ExceptionAsync(() => service.SyncAsync(cancellation.Token));
 
         observed.Should().BeSameAs(failure);
         logger.Entries.Should().Contain(entry => entry.Level == LogLevel.Error && ReferenceEquals(entry.Exception, diagnosticFailure));
@@ -427,7 +427,7 @@ public sealed class TicketSyncServiceTests : TicketsTestHarness
         _vendorService.GetIssuedTicketsAsync(Arg.Any<Instant?>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
             .Returns(new List<VendorTicketDto>());
 
-        var result = await _service.SyncOrdersAndAttendeesAsync(Xunit.TestContext.Current.CancellationToken);
+        var result = await _service.SyncAsync(Xunit.TestContext.Current.CancellationToken);
 
         result.OrdersSynced.Should().Be(2);
         result.AttendeesSynced.Should().Be(0);
@@ -453,8 +453,8 @@ public sealed class TicketSyncServiceTests : TicketsTestHarness
             .Returns(new StripePaymentDetails("card", "visa", StripeFee: 1.20m, ApplicationFee: 0.45m,
                 FeeTax: 0.25m, WithheldTax: 0.10m));
 
-        await _service.SyncOrdersAndAttendeesAsync(Xunit.TestContext.Current.CancellationToken);
-        await _service.SyncOrdersAndAttendeesAsync(Xunit.TestContext.Current.CancellationToken);
+        await _service.SyncAsync(Xunit.TestContext.Current.CancellationToken);
+        await _service.SyncAsync(Xunit.TestContext.Current.CancellationToken);
 
         var order = await TicketsDb.TicketOrders.AsNoTracking().SingleAsync(Xunit.TestContext.Current.CancellationToken);
         order.StripeFee.Should().Be(1.20m);
@@ -482,7 +482,7 @@ public sealed class TicketSyncServiceTests : TicketsTestHarness
                 Arg.Any<IReadOnlyCollection<DiscountCodeRedemption>>(), Arg.Any<CancellationToken>())
             .Throws(new InvalidOperationException(error));
 
-        var act = () => _service.SyncOrdersAndAttendeesAsync(Xunit.TestContext.Current.CancellationToken);
+        var act = () => _service.SyncAsync(Xunit.TestContext.Current.CancellationToken);
         await act.Should().ThrowAsync<InvalidOperationException>().WithMessage(error);
 
         // Orders and attendees have already committed; readers must reload those rows.
@@ -514,7 +514,7 @@ public sealed class TicketSyncServiceTests : TicketsTestHarness
         _vendorService.GetIssuedTicketsAsync(Arg.Any<Instant?>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
             .Returns(new List<VendorTicketDto>());
 
-        var result = await _service.SyncOrdersAndAttendeesAsync(Xunit.TestContext.Current.CancellationToken);
+        var result = await _service.SyncAsync(Xunit.TestContext.Current.CancellationToken);
 
         result.OrdersMatched.Should().Be(1);
 
@@ -536,7 +536,7 @@ public sealed class TicketSyncServiceTests : TicketsTestHarness
             .Returns(new List<VendorTicketDto>());
 
         // First sync
-        await _service.SyncOrdersAndAttendeesAsync(Xunit.TestContext.Current.CancellationToken);
+        await _service.SyncAsync(Xunit.TestContext.Current.CancellationToken);
 
         // Update the order's total for second sync
         var updatedOrders = new List<VendorOrderDto>
@@ -547,7 +547,7 @@ public sealed class TicketSyncServiceTests : TicketsTestHarness
             .Returns(updatedOrders);
 
         // Second sync
-        await _service.SyncOrdersAndAttendeesAsync(Xunit.TestContext.Current.CancellationToken);
+        await _service.SyncAsync(Xunit.TestContext.Current.CancellationToken);
 
         var dbOrders = await TicketsDb.TicketOrders.ToListAsync(Xunit.TestContext.Current.CancellationToken);
         dbOrders.Should().ContainSingle();
@@ -576,7 +576,7 @@ public sealed class TicketSyncServiceTests : TicketsTestHarness
             Arg.Any<CancellationToken>())
             .Returns(1);
 
-        var result = await _service.SyncOrdersAndAttendeesAsync(Xunit.TestContext.Current.CancellationToken);
+        var result = await _service.SyncAsync(Xunit.TestContext.Current.CancellationToken);
 
         result.CodesRedeemed.Should().Be(1);
 
@@ -598,7 +598,7 @@ public sealed class TicketSyncServiceTests : TicketsTestHarness
         _vendorService.GetOrdersAsync(Arg.Any<Instant?>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
             .Throws(new HttpRequestException("API unavailable"));
 
-        var result = await _service.SyncOrdersAndAttendeesAsync(Xunit.TestContext.Current.CancellationToken);
+        var result = await _service.SyncAsync(Xunit.TestContext.Current.CancellationToken);
 
         result.OrdersSynced.Should().Be(0);
         var syncState = await TicketsDb.TicketSyncStates.AsNoTracking()
@@ -620,7 +620,7 @@ public sealed class TicketSyncServiceTests : TicketsTestHarness
 
         TicketSyncResult? result = null;
         Func<Task> act = async () =>
-            result = await _service.SyncOrdersAndAttendeesAsync(Xunit.TestContext.Current.CancellationToken);
+            result = await _service.SyncAsync(Xunit.TestContext.Current.CancellationToken);
 
         // The no-rethrow behavior is what stops the Hangfire retry storm — assert it explicitly.
         await act.Should().NotThrowAsync();
@@ -639,7 +639,7 @@ public sealed class TicketSyncServiceTests : TicketsTestHarness
         _vendorService.GetOrdersAsync(Arg.Any<Instant?>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
             .Throws(new TaskCanceledException("The operation was canceled."));
 
-        var act = () => _service.SyncOrdersAndAttendeesAsync(Xunit.TestContext.Current.CancellationToken);
+        var act = () => _service.SyncAsync(Xunit.TestContext.Current.CancellationToken);
 
         await act.Should().ThrowAsync<TaskCanceledException>();
 
@@ -661,7 +661,7 @@ public sealed class TicketSyncServiceTests : TicketsTestHarness
         _vendorService.GetOrdersAsync(Arg.Any<Instant?>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
             .Throws(new HttpRequestException("Unauthorized", null, System.Net.HttpStatusCode.Unauthorized));
 
-        var act = () => _service.SyncOrdersAndAttendeesAsync(Xunit.TestContext.Current.CancellationToken);
+        var act = () => _service.SyncAsync(Xunit.TestContext.Current.CancellationToken);
 
         await act.Should().ThrowAsync<HttpRequestException>();
 
@@ -697,7 +697,7 @@ public sealed class TicketSyncServiceTests : TicketsTestHarness
             Substitute.For<ISettingsService>(),
             Substitute.For<IAuditLogService>());
 
-        var result = await service.SyncOrdersAndAttendeesAsync(Xunit.TestContext.Current.CancellationToken);
+        var result = await service.SyncAsync(Xunit.TestContext.Current.CancellationToken);
 
         result.OrdersSynced.Should().Be(0);
         result.AttendeesSynced.Should().Be(0);
@@ -725,10 +725,10 @@ public sealed class TicketSyncServiceTests : TicketsTestHarness
             .Returns(tickets);
 
         // First sync
-        await _service.SyncOrdersAndAttendeesAsync(Xunit.TestContext.Current.CancellationToken);
+        await _service.SyncAsync(Xunit.TestContext.Current.CancellationToken);
 
         // Second sync with same data
-        await _service.SyncOrdersAndAttendeesAsync(Xunit.TestContext.Current.CancellationToken);
+        await _service.SyncAsync(Xunit.TestContext.Current.CancellationToken);
 
         var dbOrders = await TicketsDb.TicketOrders.ToListAsync(Xunit.TestContext.Current.CancellationToken);
         dbOrders.Should().ContainSingle();
@@ -757,7 +757,7 @@ public sealed class TicketSyncServiceTests : TicketsTestHarness
         _vendorService.GetIssuedTicketsAsync(Arg.Any<Instant?>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
             .Returns(tickets);
 
-        await _service.SyncOrdersAndAttendeesAsync(Xunit.TestContext.Current.CancellationToken);
+        await _service.SyncAsync(Xunit.TestContext.Current.CancellationToken);
 
         var order = await TicketsDb.TicketOrders.SingleAsync(Xunit.TestContext.Current.CancellationToken);
         order.VatAmount.Should().Be(28.64m);
@@ -782,7 +782,7 @@ public sealed class TicketSyncServiceTests : TicketsTestHarness
         _vendorService.GetIssuedTicketsAsync(Arg.Any<Instant?>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
             .Returns(tickets);
 
-        await _service.SyncOrdersAndAttendeesAsync(Xunit.TestContext.Current.CancellationToken);
+        await _service.SyncAsync(Xunit.TestContext.Current.CancellationToken);
 
         var order = await TicketsDb.TicketOrders.SingleAsync(Xunit.TestContext.Current.CancellationToken);
         order.VatAmount.Should().Be(9.09m);
@@ -849,7 +849,7 @@ public sealed class TicketSyncServiceTests : TicketsTestHarness
         _vendorService.GetIssuedTicketsAsync(Arg.Any<Instant?>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
             .Returns(tickets);
 
-        await _service.SyncOrdersAndAttendeesAsync(Xunit.TestContext.Current.CancellationToken);
+        await _service.SyncAsync(Xunit.TestContext.Current.CancellationToken);
 
         var syncedOrders = await TicketsDb.TicketOrders
             .OrderBy(o => o.VendorOrderId)
@@ -881,7 +881,7 @@ public sealed class TicketSyncServiceTests : TicketsTestHarness
         _vendorService.GetIssuedTicketsAsync(Arg.Any<Instant?>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
             .Returns(tickets);
 
-        var result = await _service.SyncOrdersAndAttendeesAsync(Xunit.TestContext.Current.CancellationToken);
+        var result = await _service.SyncAsync(Xunit.TestContext.Current.CancellationToken);
 
         result.OrdersSynced.Should().Be(500);
         result.AttendeesSynced.Should().Be(700);
@@ -924,7 +924,7 @@ public sealed class TicketSyncServiceTests : TicketsTestHarness
         _vendorService.GetCheckInsAsync(Arg.Any<Instant?>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
             .Returns(new List<VendorCheckInDto> { MakeCheckInDto("tkt_chk", checkInInstant) });
 
-        await _service.SyncOrdersAndAttendeesAsync(Xunit.TestContext.Current.CancellationToken);
+        await _service.SyncAsync(Xunit.TestContext.Current.CancellationToken);
 
         await _participations.Received(1).RecordParticipationAsync(
             userId, 2026, ParticipationStatus.Attended,
@@ -965,7 +965,7 @@ public sealed class TicketSyncServiceTests : TicketsTestHarness
                 MakeCheckInDto("tkt_b", earlier),
             });
 
-        await _service.SyncOrdersAndAttendeesAsync(Xunit.TestContext.Current.CancellationToken);
+        await _service.SyncAsync(Xunit.TestContext.Current.CancellationToken);
 
         await _participations.Received(1).RecordParticipationAsync(
             userId, 2026, ParticipationStatus.Attended,
@@ -991,7 +991,7 @@ public sealed class TicketSyncServiceTests : TicketsTestHarness
                 MakeTicketDto("tkt_v", "ord_v", "Alice", "alice@example.com", status: "valid")
             });
 
-        await _service.SyncOrdersAndAttendeesAsync(Xunit.TestContext.Current.CancellationToken);
+        await _service.SyncAsync(Xunit.TestContext.Current.CancellationToken);
 
         await _participations.Received(1).RecordParticipationAsync(
             userId, 2026, ParticipationStatus.Ticketed,
@@ -1026,7 +1026,7 @@ public sealed class TicketSyncServiceTests : TicketsTestHarness
                 MakeTicketDto("tkt_same", "ord_same", "Alice", "alice@example.com", status: "valid")
             });
 
-        await _service.SyncOrdersAndAttendeesAsync(Xunit.TestContext.Current.CancellationToken);
+        await _service.SyncAsync(Xunit.TestContext.Current.CancellationToken);
 
         await _participations.DidNotReceive().RecordParticipationAsync(
             Arg.Any<Guid>(), Arg.Any<int>(), Arg.Any<ParticipationStatus>(),
@@ -1061,7 +1061,7 @@ public sealed class TicketSyncServiceTests : TicketsTestHarness
                 MakeTicketDto("tkt_void", "ord_void", "Alice", "alice@example.com", status: "void")
             });
 
-        await _service.SyncOrdersAndAttendeesAsync(Xunit.TestContext.Current.CancellationToken);
+        await _service.SyncAsync(Xunit.TestContext.Current.CancellationToken);
 
         await _participations.Received(1).RemoveTicketSyncParticipationAsync(
             userId, 2026, Arg.Any<CancellationToken>());
@@ -1101,7 +1101,7 @@ public sealed class TicketSyncServiceTests : TicketsTestHarness
         _vendorService.GetCheckInsAsync(Arg.Any<Instant?>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
             .Returns(new List<VendorCheckInDto> { MakeCheckInDto("tkt_chk", checkInInstant) });
 
-        await _service.SyncOrdersAndAttendeesAsync(Xunit.TestContext.Current.CancellationToken);
+        await _service.SyncAsync(Xunit.TestContext.Current.CancellationToken);
 
         await _participations.Received(1).RecordParticipationAsync(
             userId, 2026, ParticipationStatus.Attended,
@@ -1125,7 +1125,7 @@ public sealed class TicketSyncServiceTests : TicketsTestHarness
         _vendorService.GetIssuedTicketsAsync(Arg.Any<Instant?>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
             .Returns(tickets);
 
-        await _service.SyncOrdersAndAttendeesAsync(Xunit.TestContext.Current.CancellationToken);
+        await _service.SyncAsync(Xunit.TestContext.Current.CancellationToken);
 
         var dbAttendee = await TicketsDb.TicketAttendees.SingleAsync(Xunit.TestContext.Current.CancellationToken);
         dbAttendee.Barcode.Should().Be("bc-123");

@@ -40,8 +40,8 @@ public class DevSeedControllerTests
         // Staging with DevAuth on is QA / a preview.
         _environment.EnvironmentName.Returns("Staging");
         SetDevAuthEnabled(true);
-        _serviceProvider.GetService(typeof(Humans.Development.Services.Demo.DemoRunStatus))
-            .Returns(new Humans.Development.Services.Demo.DemoRunStatus());
+        _serviceProvider.GetService(typeof(Services.Demo.DemoRunStatus))
+            .Returns(new Services.Demo.DemoRunStatus());
         var ctrl = BuildSut();
         ctrl.TempData = Substitute.For<ITempDataDictionary>();
 
@@ -57,7 +57,7 @@ public class DevSeedControllerTests
     [HumansTheory]
     [Xunit.InlineData(DevSeedAction.SeedBudget)]
     [Xunit.InlineData(DevSeedAction.SeedCampRoles)]
-    public async Task Seed_preflight_cancellation_stops_before_resolving_a_seeder(DevSeedAction action)
+    public async Task Seed_PreflightCancelled_ResolvesNoSeeder(DevSeedAction action)
     {
         _environment.EnvironmentName.Returns("Development");
         SetDevAuthEnabled(true);

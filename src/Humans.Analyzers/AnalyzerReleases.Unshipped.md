@@ -31,3 +31,7 @@ HUM0037 | Humans.Architecture   | Error    | EF infrastructure or IQueryable use
 HUM0038 | Humans.Architecture   | Error    | Read path writes: a controller action answering GET ([HttpGet]/[HttpHead], or no verb attribute) or a view component Invoke/InvokeAsync calls a member of an I*Write interface or a method marked [ExternalWrite]
 HUM0039 | Humans.Architecture   | Error    | The User or UserEmail EF entity is named outside Humans.Base and the Users section
 HUM0041 | Humans.Architecture   | Error    | A view writes UserInfo.BurnerName as plain text instead of rendering the person with <vc:human>; analyzes Razor-generated code mapped to a .cshtml line
+HUM0042 | Humans.Naming         | Error    | Method name has more than six words (not counting Async) or contains "And"; overrides, interface implementations and controller actions are exempt
+HUM0043 | Humans.Naming         | Error    | Test name is not Method_Result / Method_Condition_Result: a lowercase sentence, more than three parts, more than ten words, or "And" after the first part
+HUM0044 | Humans.Naming         | Error    | NameBaseline.txt lists a method that is gone or no longer breaks HUM0042/HUM0043
+HUM0045 | Humans.Architecture   | Error    | string.Format over a localized string (LocalizedString or its .Value) — pass the arguments to the localizer indexer, localizer[key, args]; analyzes Razor-generated code mapped to a .cshtml line

@@ -5,8 +5,8 @@ using System.Text;
 using AwesomeAssertions;
 using Humans.BoxOffice.Controllers;
 using Humans.BoxOffice.Services;
-using Humans.Testing;
 using Humans.Tickets.Contracts;
+using Humans.Stripe.Contracts;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -21,15 +21,44 @@ namespace Humans.BoxOffice.Tests;
 
 public sealed class BoxOfficePlatformTests
 {
+    [HumansTheory]
+    [InlineData("")]
+    [InlineData(" \t")]
+    [InlineData("rk_test_bad suffix")]
+    [InlineData("rk_test_secret\r\nhidden")]
+    public async Task Platform_UnusableKey_RefusesBeforeSdk(string key)
+    {
+        using var assertions = new AwesomeAssertions.Execution.AssertionScope();
+        var platform = Platform(secretKey: key);
+        var ct = TestContext.Current.CancellationToken;
+        platform.IsConfigured.Should().BeFalse();
+        var findings = await platform.CheckAsync(null, ct);
+        findings.Should().ContainSingle().Which.Ok.Should().BeFalse();
+        findings.Should().OnlyContain(f => !f.Text.Contains("rk_test_secret", StringComparison.Ordinal));
+        Func<Task>[] operations =
+        [
+            () => platform.CreateOrderAsync(Order(Now + Duration.FromHours(1), new PlatformOrderLine(OrderLineKind.Ticket, "Entry", 1000, 0.21m, "Ana")), ct),
+            () => platform.GetStatusAsync("cs_test_config", ct),
+            () => platform.ListOrdersAsync(null, Now - Duration.FromDays(1), Now, ct),
+            () => platform.RefundAsync(new RefundRequest(Guid.NewGuid(), "cs_test_config", 1000, "Resold"), ct),
+            () => platform.CancelAsync("cs_test_config", ct),
+        ];
+        foreach (var operation in operations)
+            await operation.Should().ThrowAsync<TicketingPlatformException>().WithMessage("*not configured*");
+        (await platform.GetPaymentLedgerAsync(Now - Duration.FromDays(1), Now, ct)).Should().BeNull();
+        _http.ReceivedCalls().Should().BeEmpty();
+    }
+
     private static readonly Instant Now = Instant.FromUtc(2027, 1, 10, 12, 0);
+    private readonly IStripeService _stripe = Substitute.For<IStripeService>();
     private readonly IHttpClient _http = Substitute.For<IHttpClient>();
     private readonly List<StripeRequest> _requests = [];
 
     private const string WebhookSecret = "whsec_test_boxoffice";
 
-    private BoxOfficePlatform Platform(string webhookSecret = "") =>
-        new(Options.Create(new BoxOfficeSettings { SecretKey = "sk_test_boxoffice", WebhookSecret = webhookSecret }),
-            new FakeClock(Now), NullLogger<BoxOfficePlatform>.Instance, _http);
+    private BoxOfficePlatform Platform(string webhookSecret = "", string secretKey = "sk_test_boxoffice") =>
+        new(Options.Create(new BoxOfficeSettings { SecretKey = secretKey, WebhookSecret = webhookSecret }),
+            _stripe, new FakeClock(Now), NullLogger<BoxOfficePlatform>.Instance, _http);
 
     private static PlatformOrderRequest Order(Instant expiresAt, params PlatformOrderLine[] lines) => new(
         Guid.NewGuid(), Guid.NewGuid(), null, "Ana García", "ana@example.com", "EUR", "es-ES", lines, expiresAt,
@@ -78,7 +107,7 @@ public sealed class BoxOfficePlatformTests
     [HumansFact]
     public void Unconfigured_platform_says_so()
     {
-        new BoxOfficePlatform(Options.Create(new BoxOfficeSettings()), new FakeClock(Now),
+        new BoxOfficePlatform(Options.Create(new BoxOfficeSettings()), _stripe, new FakeClock(Now),
             NullLogger<BoxOfficePlatform>.Instance).IsConfigured.Should().BeFalse();
     }
 
@@ -89,51 +118,37 @@ public sealed class BoxOfficePlatformTests
 
         setup.Hosting.Should().Contain("test mode");
         setup.Settings.Should().OnlyContain(s => s.IsSecret && s.Value == null);
-        setup.Settings.Single(s => string.Equals(s.Name, "STRIPE_BOXOFFICE_KEY", StringComparison.Ordinal)).IsSet.Should().BeTrue();
+        setup.Settings.Single(s => string.Equals(s.Name, "STRIPE_TICKETS_KEY", StringComparison.Ordinal)).IsSet.Should().BeTrue();
     }
 
     [HumansFact]
-    public async Task Check_reads_sessions_and_flags_a_missing_webhook_secret()
+    public async Task Check_Configured_UsesConnectorFindings()
     {
-        Respond(
-            """{"object":"list","url":"/v1/checkout/sessions","has_more":false,"data":[]}""",
-            """{"object":"list","url":"/v1/balance_transactions","has_more":false,"data":[]}""",
-            """{"object":"list","url":"/v1/payouts","has_more":false,"data":[]}""");
+        var ct = TestContext.Current.CancellationToken;
+        _stripe.CheckAccountAsync("Tickets", ct, includeCheckout: true).Returns(
+            [new(true, "Checkout Sessions (test mode)"), new(false, "Payouts refused (403)")]);
 
-        var findings = await Platform().CheckAsync(null, TestContext.Current.CancellationToken);
+        var findings = await Platform().CheckAsync(null, ct);
 
-        findings.Should().Contain(f => f.Ok && f.Text.Contains("test mode"));
-        findings.Should().Contain(f => f.Ok && f.Text.Contains("Balance transactions"));
-        findings.Should().Contain(f => f.Ok && f.Text.Contains("Payouts"));
-        findings.Should().ContainSingle(f => !f.Ok).Which.Text.Should().Contain("STRIPE_BOXOFFICE_WEBHOOK_SECRET");
-        _requests.Should().HaveCount(3).And.OnlyContain(r => r.Method == HttpMethod.Get);
+        findings.Should().SatisfyRespectively(
+            checkout => checkout.Should().Be(new PlatformFinding(true, "Checkout Sessions (test mode)")),
+            payouts => payouts.Should().Be(new PlatformFinding(false, "Payouts refused (403)")),
+            webhook => webhook.Text.Should().Contain("STRIPE_BOXOFFICE_WEBHOOK_SECRET"));
+        await _stripe.Received(1).CheckAccountAsync("Tickets", ct, includeCheckout: true);
+        _requests.Should().BeEmpty();
     }
 
     [HumansFact]
-    public async Task Check_names_a_read_scope_the_key_lacks()
+    public async Task Check_CallerCancellation_Propagates()
     {
-        using var headers = new HttpResponseMessage();
-        _http.MakeRequestAsync(Arg.Any<StripeRequest>(), Arg.Any<CancellationToken>()).Returns(
-            new StripeResponse(HttpStatusCode.OK, headers.Headers, """{"object":"list","url":"/v1/checkout/sessions","has_more":false,"data":[]}"""),
-            new StripeResponse(HttpStatusCode.OK, headers.Headers, """{"object":"list","url":"/v1/balance_transactions","has_more":false,"data":[]}"""),
-            new StripeResponse(HttpStatusCode.Forbidden, headers.Headers,
-                """{"error":{"type":"invalid_request_error","message":"The provided key does not have the required permissions."}}"""));
+        using var caller = new CancellationTokenSource();
+        await caller.CancelAsync();
+        _stripe.CheckAccountAsync("Tickets", caller.Token, includeCheckout: true)
+            .Returns<Task<IReadOnlyList<StripeAccountCheck>>>(_ => throw new OperationCanceledException(caller.Token));
 
-        var findings = await Platform().CheckAsync(null, TestContext.Current.CancellationToken);
+        var check = () => Platform().CheckAsync(null, caller.Token);
 
-        findings.Should().Contain(f => !f.Ok && f.Text.Contains("reading Payouts") && f.Text.Contains("403"));
-        findings.Should().Contain(f => f.Ok && f.Text.Contains("Balance transactions"));
-    }
-
-    [HumansFact]
-    public async Task Check_reports_an_unreachable_Stripe_instead_of_throwing()
-    {
-        _http.MakeRequestAsync(Arg.Any<StripeRequest>(), Arg.Any<CancellationToken>())
-            .Returns<StripeResponse>(_ => throw new HttpRequestException("no route"));
-
-        var findings = await Platform().CheckAsync(null, TestContext.Current.CancellationToken);
-
-        findings.Should().Contain(f => !f.Ok && f.Text.Contains("could not be reached"));
+        await check.Should().ThrowAsync<OperationCanceledException>();
     }
 
     [HumansFact]
@@ -204,8 +219,10 @@ public sealed class BoxOfficePlatformTests
         Respond(Session("complete", "paid", PaidCharge),
             RefundList(Refund("re_1", "succeeded", 5000), Refund("re_2", "pending", 3000), Refund("re_3", "failed", 2000, Guid.NewGuid())));
 
+        _stripe.GetAccountPaymentFeeAsync("Tickets", "pi_1", TestContext.Current.CancellationToken).Returns(29L);
         var status = await Platform().GetStatusAsync("cs_test_1", TestContext.Current.CancellationToken);
 
+        await _stripe.Received(1).GetAccountPaymentFeeAsync("Tickets", "pi_1", TestContext.Current.CancellationToken);
         status.State.Should().Be(PlatformOrderState.Paid);
         status.FeeMinor.Should().Be(29);
         status.PaymentMethod.Should().Be("ideal");
@@ -215,12 +232,12 @@ public sealed class BoxOfficePlatformTests
     }
 
     [HumansTheory]
-    [Xunit.InlineData("open", "unpaid", "requires_payment_method", PlatformOrderState.Pending)]
-    [Xunit.InlineData("expired", "unpaid", "canceled", PlatformOrderState.Expired)]
-    [Xunit.InlineData("complete", "unpaid", "processing", PlatformOrderState.Processing)]
-    [Xunit.InlineData("complete", "unpaid", "requires_action", PlatformOrderState.Processing)]
-    [Xunit.InlineData("complete", "unpaid", "requires_payment_method", PlatformOrderState.Failed)]
-    [Xunit.InlineData("complete", "unpaid", "canceled", PlatformOrderState.Failed)]
+    [InlineData("open", "unpaid", "requires_payment_method", PlatformOrderState.Pending)]
+    [InlineData("expired", "unpaid", "canceled", PlatformOrderState.Expired)]
+    [InlineData("complete", "unpaid", "processing", PlatformOrderState.Processing)]
+    [InlineData("complete", "unpaid", "requires_action", PlatformOrderState.Processing)]
+    [InlineData("complete", "unpaid", "requires_payment_method", PlatformOrderState.Failed)]
+    [InlineData("complete", "unpaid", "canceled", PlatformOrderState.Failed)]
     public async Task Status_maps_open_expired_settling_and_failed_debits(
         string status, string paymentStatus, string intent, PlatformOrderState expected)
     {
@@ -308,11 +325,62 @@ public sealed class BoxOfficePlatformTests
         _requests.Should().HaveCount(2).And.OnlyContain(r => r.Method == HttpMethod.Get);
     }
 
+    [HumansTheory]
+    [InlineData(500, "api_error")]
+    [InlineData(502, "api_error")]
+    [InlineData(503, "api_error")]
+    [InlineData(504, "api_error")]
+    [InlineData(409, "invalid_request_error")]
+    [InlineData(409, "idempotency_error")]
+    [InlineData(400, "idempotency_error")]
+    [InlineData(400, "api_error")]
+    [InlineData(429, "rate_limit_error")]
+    public async Task RefundAsync_UnresolvedError_Throws(int status, string type)
+    {
+        RefundError(status, type);
+        var refund = () => Platform().RefundAsync(
+            new RefundRequest(Guid.NewGuid(), "cs_test_1", 12000, "Returned"), TestContext.Current.CancellationToken);
+
+        await refund.Should().ThrowAsync<TicketingPlatformException>().WithMessage("*refund-unresolved*");
+        _requests.Should().HaveCount(3);
+        _requests[^1].Method.Should().Be(HttpMethod.Post);
+    }
+
+    [HumansTheory]
+    [InlineData(400, "invalid_request_error")]
+    [InlineData(401, "authentication_error")]
+    [InlineData(402, "card_error")]
+    [InlineData(403, "invalid_request_error")]
+    [InlineData(404, "invalid_request_error")]
+    public async Task RefundAsync_DefinitiveRejection_ReturnsFailed(int status, string type)
+    {
+        RefundError(status, type);
+
+        var result = await Platform().RefundAsync(
+            new RefundRequest(Guid.NewGuid(), "cs_test_1", 12000, "Returned"), TestContext.Current.CancellationToken);
+
+        result.State.Should().Be(RefundState.Failed);
+        result.PlatformRefundId.Should().BeNull();
+        result.FailureReason.Should().Be("refund-unresolved");
+        _requests.Should().HaveCount(3);
+    }
+
+    private void RefundError(int status, string type)
+    {
+        using var headers = new HttpResponseMessage();
+        var session = new StripeResponse(HttpStatusCode.OK, headers.Headers, Session("complete", "paid", PaidCharge));
+        var refunds = new StripeResponse(HttpStatusCode.OK, headers.Headers, RefundList());
+        var error = new StripeResponse((HttpStatusCode)status, headers.Headers,
+            $$$"""{"error":{"type":"{{{type}}}","message":"refund-unresolved"}}""");
+        _http.MakeRequestAsync(Arg.Do<StripeRequest>(_requests.Add), Arg.Any<CancellationToken>())
+            .Returns(session, refunds, error);
+    }
+
     [HumansFact]
     public async Task A_webhook_with_a_bad_signature_is_rejected()
     {
         var platform = new BoxOfficePlatform(
-            Options.Create(new BoxOfficeSettings { SecretKey = "sk_test_boxoffice", WebhookSecret = "whsec_test" }), new FakeClock(Now),
+            Options.Create(new BoxOfficeSettings { SecretKey = "sk_test_boxoffice", WebhookSecret = "whsec_test" }), _stripe, new FakeClock(Now),
             NullLogger<BoxOfficePlatform>.Instance, _http);
 
         (await platform.ParseWebhookAsync("{}", "t=1,v1=bad", TestContext.Current.CancellationToken)).Should().BeNull();
@@ -324,48 +392,55 @@ public sealed class BoxOfficePlatformTests
     {
         var paidHere = Guid.NewGuid();
         var refundedLater = Guid.NewGuid();
-        Respond(
-            """
-            {"object":"list","url":"/v1/balance_transactions","has_more":false,"data":[
-             {"id":"txn_c","object":"balance_transaction","type":"charge","reporting_category":"charge","amount":30000,"fee":450,"net":29550,"created":1799582400,
-              "source":{"id":"ch_1","object":"charge","payment_intent":"pi_new","metadata":{}}},
-             {"id":"txn_r","object":"balance_transaction","type":"refund","reporting_category":"refund","amount":-5000,"fee":0,"net":-5000,"created":1799582500,
-              "source":{"id":"re_1","object":"refund","payment_intent":"pi_old","metadata":{}}},
-             {"id":"txn_f","object":"balance_transaction","type":"stripe_fee","reporting_category":"fee","amount":-200,"fee":0,"net":-200,"created":1799582600,
-              "description":"Billing","source":null},
-             {"id":"txn_p","object":"balance_transaction","type":"payout","reporting_category":"payout","amount":-24350,"fee":0,"net":-24350,"created":1799582700,
-              "source":{"id":"po_1","object":"payout"}}]}
-            """,
-            $$$"""
-            {"object":"list","url":"/v1/payment_intents","has_more":false,"data":[
-             {"id":"pi_new","object":"payment_intent","metadata":{"humans_ticket_order_id":"{{{paidHere}}}"}}]}
-            """,
-            $$$"""{"id":"pi_old","object":"payment_intent","metadata":{"humans_ticket_order_id":"{{{refundedLater}}}"}}""",
-            """
-            {"object":"list","url":"/v1/payouts","has_more":false,"data":[
-             {"id":"po_1","object":"payout","amount":24350,"arrival_date":1799625600,"automatic":true,"status":"paid","reconciliation_status":"completed","created":1799582700},
-             {"id":"po_2","object":"payout","amount":1000,"arrival_date":1799625600,"automatic":false,"status":"pending","reconciliation_status":"not_applicable","created":1799582800},
-             {"id":"po_3","object":"payout","amount":700,"arrival_date":1799625600,"automatic":true,"status":"paid","reconciliation_status":"in_progress","created":1799582900}]}
-            """,
-            """
-            {"object":"list","url":"/v1/balance_transactions","has_more":false,"data":[
-             {"id":"txn_c","object":"balance_transaction","type":"charge","net":29550},
-             {"id":"txn_r","object":"balance_transaction","type":"refund","net":-5000},
-             {"id":"txn_f","object":"balance_transaction","type":"stripe_fee","net":-200},
-             {"id":"txn_p","object":"balance_transaction","type":"payout","net":-24350}]}
-            """);
+        var from = Now - Duration.FromDays(1);
+        var ct = TestContext.Current.CancellationToken;
+        StripeLedgerPayment Payment(Guid orderId) => new("pi_" + orderId, null,
+            new Dictionary<string, string>(StringComparer.Ordinal) { ["humans_ticket_order_id"] = orderId.ToString() });
+        _stripe.GetAccountLedgerAsync("Tickets", from, Now, ct).Returns(new StripeAccountLedger(
+            [
+                new("txn_c", Now, "charge", 30000, 450, null, Payment(paidHere)),
+                new("txn_r", Now, "refund", -5000, 0, null, Payment(refundedLater)),
+                new("txn_f", Now, "fee", -200, 0, "Billing", null),
+                new("txn_p", Now, "payout", -24350, 0, null, null),
+            ],
+            [
+                new("po_1", Now, Now, 24350, "paid", 24350, 3),
+                new("po_2", Now, Now, 1000, "pending", null, 0),
+                new("po_3", Now, Now, 700, "paid", null, 0),
+            ]));
 
         var ledger = await Platform().GetPaymentLedgerAsync(Now - Duration.FromDays(1), Now, TestContext.Current.CancellationToken);
 
         ledger!.Entries.Select(e => (e.Id, e.Kind, e.AmountMinor, e.FeeMinor, e.HumansOrderId)).Should().Equal(
-            ("txn_c", PaymentLedgerEntryKind.Charge, 30000L, 450L, (Guid?)paidHere),
-            ("txn_r", PaymentLedgerEntryKind.Refund, -5000L, 0L, (Guid?)refundedLater),
-            ("txn_f", PaymentLedgerEntryKind.Fee, -200L, 0L, (Guid?)null),
-            ("txn_p", PaymentLedgerEntryKind.Payout, -24350L, 0L, (Guid?)null));
+            ("txn_c", PaymentLedgerEntryKind.Charge, 30000L, 450L, paidHere),
+            ("txn_r", PaymentLedgerEntryKind.Refund, -5000L, 0L, refundedLater),
+            ("txn_f", PaymentLedgerEntryKind.Fee, -200L, 0L, null),
+            ("txn_p", PaymentLedgerEntryKind.Payout, -24350L, 0L, null));
         ledger.Payouts.Select(p => (p.Id, p.AmountMinor, p.Status, p.ContentsNetMinor, p.ContentsCount)).Should().Equal(
-            ("po_1", 24350L, "paid", (long?)24350, 3), ("po_2", 1000L, "pending", (long?)null, 0),
-            ("po_3", 700L, "paid", (long?)null, 0));
-        _requests.Should().HaveCount(5).And.OnlyContain(r => r.Method == HttpMethod.Get);
+            ("po_1", 24350L, "paid", 24350, 3), ("po_2", 1000L, "pending", null, 0),
+            ("po_3", 700L, "paid", null, 0));
+        await _stripe.Received(1).GetAccountLedgerAsync("Tickets", from, Now, ct);
+        _requests.Should().BeEmpty();
+    }
+
+    [HumansFact]
+    public async Task Ledger_UnconfiguredReporting_ReturnsUnknown()
+    {
+        _stripe.GetAccountLedgerAsync("Tickets", Arg.Any<Instant>(), Arg.Any<Instant>(), Arg.Any<CancellationToken>())
+            .Returns((StripeAccountLedger?)null);
+
+        (await Platform().GetPaymentLedgerAsync(Now, Now, TestContext.Current.CancellationToken)).Should().BeNull();
+    }
+
+    [HumansFact]
+    public async Task Ledger_ReportingRefusal_ThrowsPlatformException()
+    {
+        _stripe.GetAccountLedgerAsync("Tickets", Arg.Any<Instant>(), Arg.Any<Instant>(), Arg.Any<CancellationToken>())
+            .Returns<Task<StripeAccountLedger?>>(_ => throw new InvalidOperationException("Stripe refused the Tickets account"));
+
+        var read = () => Platform().GetPaymentLedgerAsync(Now, Now, TestContext.Current.CancellationToken);
+
+        await read.Should().ThrowAsync<TicketingPlatformException>().WithMessage("*Tickets account*");
     }
 
     [HumansFact]
@@ -383,8 +458,8 @@ public sealed class BoxOfficePlatformTests
     }
 
     [HumansTheory]
-    [Xunit.InlineData(5, 31)]
-    [Xunit.InlineData(72 * 60, 23 * 60)]
+    [InlineData(5, 31)]
+    [InlineData(72 * 60, 23 * 60)]
     public async Task Checkout_leaves_free_lines_out_and_keeps_the_session_inside_Stripes_lifetime(int askedMinutes, int sentMinutes)
     {
         Respond(Session("open", "unpaid"));
@@ -479,9 +554,9 @@ public sealed class BoxOfficePlatformTests
     }
 
     [HumansTheory]
-    [Xunit.InlineData("charge.refunded", """{"id":"ch_1","object":"charge","payment_intent":"pi_1"}""")]
-    [Xunit.InlineData("refund.failed", """{"id":"re_1","object":"refund","payment_intent":"pi_1"}""")]
-    [Xunit.InlineData("charge.dispute.created", """{"id":"dp_1","object":"dispute","payment_intent":"pi_1"}""")]
+    [InlineData("charge.refunded", """{"id":"ch_1","object":"charge","payment_intent":"pi_1"}""")]
+    [InlineData("refund.failed", """{"id":"re_1","object":"refund","payment_intent":"pi_1"}""")]
+    [InlineData("charge.dispute.created", """{"id":"dp_1","object":"dispute","payment_intent":"pi_1"}""")]
     public async Task A_verified_money_event_names_the_sessions_of_its_payment(string type, string dataObject)
     {
         Respond("""{"object":"list","url":"/v1/checkout/sessions","has_more":false,"data":[{"id":"cs_1","object":"checkout.session"}]}""");
@@ -522,7 +597,7 @@ public sealed class BoxOfficePlatformTests
 
         var unset = await Webhook(Platform(), events, body, Sign(body)).Receive(ct);
         var forged = await Webhook(Platform(WebhookSecret), events, body, "t=1,v1=bad").Receive(ct);
-        await events.DidNotReceiveWithAnyArgs().PlatformOrderChangedAsync(default!, default!, default);
+        await events.DidNotReceiveWithAnyArgs().PlatformOrderChangedAsync(default!, default!);
         var verified = await Webhook(Platform(WebhookSecret), events, body, Sign(body)).Receive(ct);
 
         unset.Should().BeOfType<StatusCodeResult>().Which.StatusCode.Should().Be(StatusCodes.Status503ServiceUnavailable);

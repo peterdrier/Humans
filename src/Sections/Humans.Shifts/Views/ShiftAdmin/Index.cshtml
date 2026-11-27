@@ -519,6 +519,7 @@
                                                                 }
                                                             </select>
                                                         </div>
+                                                        <input type="hidden" name="__Invariant" value="DurationHours" />
                                                         @if (shift.IsAllDay)
                                                         {
                                                             <div class="col-md-2">
@@ -860,6 +861,7 @@
                                             <input type="time" name="TimeSlots[0].StartTime" class="form-control form-control-sm" value="08:00" />
                                         </div>
                                         <div class="col-auto">
+                                            <input type="hidden" name="__Invariant" value="TimeSlots[0].DurationHours" />
                                             <input type="number" name="TimeSlots[0].DurationHours" class="form-control form-control-sm" value="4" step="0.5" min="0.5" style="width:80px" />
                                             <small class="text-muted">hours</small>
                                         </div>
@@ -912,6 +914,7 @@
                                 </div>
                                 <div class="col-md-1">
                                     <label class="form-label form-label-sm">Hours</label>
+                                    <input type="hidden" name="__Invariant" value="DurationHours" />
                                     <input type="number" name="DurationHours" class="form-control form-control-sm" value="4" step="0.5" min="0.5" />
                                 </div>
                                 <div class="col-md-1">
@@ -1118,6 +1121,9 @@
         container.querySelectorAll('.slot-row').forEach(function(row, i) {
             row.querySelectorAll('input[name]').forEach(function(input) {
                 input.name = input.name.replace(/TimeSlots\[\d+\]/, 'TimeSlots[' + i + ']');
+                if (input.name === '__Invariant') {
+                    input.value = input.value.replace(/TimeSlots\[\d+\]/, 'TimeSlots[' + i + ']');
+                }
             });
         });
     }
@@ -1131,7 +1137,7 @@
             var row = document.createElement('div');
             row.className = 'slot-row row g-2 align-items-end mb-1';
             row.innerHTML = '<div class="col-auto"><input type="time" name="TimeSlots[' + idx + '].StartTime" class="form-control form-control-sm" value="08:00" /></div>'
-                + '<div class="col-auto"><input type="number" name="TimeSlots[' + idx + '].DurationHours" class="form-control form-control-sm" value="4" step="0.5" min="0.5" style="width:80px" /><small class="text-muted">hours</small></div>'
+                + '<div class="col-auto"><input type="hidden" name="__Invariant" value="TimeSlots[' + idx + '].DurationHours" /><input type="number" name="TimeSlots[' + idx + '].DurationHours" class="form-control form-control-sm" value="4" step="0.5" min="0.5" style="width:80px" /><small class="text-muted">hours</small></div>'
                 + '<div class="col-auto"><button type="button" class="btn btn-sm btn-outline-danger remove-slot-btn">Remove</button></div>';
             container.appendChild(row);
             row.querySelector('.remove-slot-btn').addEventListener('click', function() {
@@ -1247,7 +1253,7 @@
 
     // Scroll to fragment on page load (for newly created rotas)
     if (window.location.hash) {
-        var target = document.querySelector(window.location.hash);
+        var target = document.getElementById(window.location.hash.slice(1));
         if (target) {
             setTimeout(function() { target.scrollIntoView({ behavior: 'smooth', block: 'start' }); }, 100);
         }

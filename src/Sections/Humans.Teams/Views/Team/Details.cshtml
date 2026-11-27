@@ -1,6 +1,7 @@
 @inject IAuthorizationService AuthService
 @inject IEnumerable<ITeamShiftsParts> ShiftsParts
 @inject IEnumerable<ITeamRolesPart> RolesParts
+@inject IEnumerable<ITeamTasksPart> TasksParts
 @model Humans.Teams.Models.TeamDetailViewModel
 @{
     ViewData["Title"] = Model.Name;
@@ -56,7 +57,7 @@
                 @if (Model.IsAuthenticated && Model.IsSystemTeam)
                 {
                     <div class="alert alert-info mb-0">
-                        @string.Format(Localizer["Teams_TeamDetail_SystemTeamInfo"].Value, systemTeamLabel)
+                        @Localizer["Teams_TeamDetail_SystemTeamInfo", systemTeamLabel]
                     </div>
                 }
             </div>
@@ -131,6 +132,10 @@
             {
                 @await Component.InvokeAsync(part.Card, new TeamRolesCardArgs(Model.Id))
             }
+            foreach (var part in TasksParts)
+            {
+                @await Component.InvokeAsync(part.Card, new TeamTasksCardArgs(Model.Id))
+            }
         }
 
         @if (Model.IsAuthenticated || Model.ShowCoordinatorsOnPublicPage)
@@ -139,7 +144,7 @@
             <div class="card-header d-flex justify-content-between align-items-center">
                 @if (Model.IsAuthenticated)
                 {
-                    <span>@string.Format(Localizer["Teams_TeamDetail_Members"].Value, Model.Members.Count)</span>
+                    <span>@Localizer["Teams_TeamDetail_Members", Model.Members.Count]</span>
                     @if (Model.CanCurrentUserManage || Model.CanCurrentUserEditTeam)
                     {
                         <a asp-controller="TeamAdmin" asp-action="Members" asp-route-slug="@Model.Slug" class="btn btn-sm btn-outline-primary">

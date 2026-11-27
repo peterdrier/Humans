@@ -7,6 +7,7 @@ using Humans.Tickets.Services.Checkout;
 using Humans.Users.Contracts;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc.ModelBinding;
 using NodaTime;
 
 namespace Humans.Tickets.Controllers;
@@ -22,7 +23,8 @@ internal sealed class TicketsSupportAdminController(
     ITicketCheckoutService checkout,
     ISettingsService settings,
     IClock clock,
-    IUserService userService) : HumansControllerBase(userService)
+    IUserService userService,
+    ILogger<TicketsSupportAdminController> logger) : HumansControllerBase(userService)
 {
     [HttpGet("Lookup")]
     public async Task<IActionResult> Lookup(string? q, CancellationToken ct)
@@ -34,7 +36,8 @@ internal sealed class TicketsSupportAdminController(
             foreach (var ticketing in await checkout.ListTicketingSettingsAsync(ct))
             {
                 var eventName = await EventNameAsync(ticketing, ct);
-                var tickets = (await checkout.GetTicketsForSettingsAsync(ticketing.Id, ct)).ToLookup(t => t.OrderId);
+                var tickets = (await checkout.GetTicketsForSettingsAsync(ticketing.Id, ct))
+                    .OrderBy(ticket => ticket.IssuedAt).ToLookup(t => t.OrderId);
                 hits.AddRange((await checkout.GetOrdersForSettingsAsync(ticketing.Id, ct))
                     .Where(o => TicketSupportReports.Matches(o, tickets[o.Id], query))
                     .Select(o => new OrderSearchHit(o, tickets[o.Id].ToList(), eventName)));
@@ -51,7 +54,8 @@ internal sealed class TicketsSupportAdminController(
         if (ticketing is null)
             return NotFound();
         var rows = TicketSupportReports.RefundList(
-            await checkout.GetOrdersForSettingsAsync(id, ct), await checkout.GetRefundsForSettingsAsync(id, ct), state);
+            await checkout.GetOrdersForSettingsAsync(id, ct), await checkout.GetRefundsForSettingsAsync(id, ct), state)
+            .OrderByDescending(row => row.Refund.CreatedAt).ToList();
         return View("~/Views/Tickets/Admin/Sales/Refunds.cshtml",
             new RefundsViewModel(id, await EventNameAsync(ticketing, ct), state, rows));
     }
@@ -64,7 +68,9 @@ internal sealed class TicketsSupportAdminController(
             return NotFound();
         var tickets = await checkout.GetTicketsForSettingsAsync(id, ct);
         var rows = TicketSupportReports.ResaleQueue(
-            await checkout.GetOffersForSettingsAsync(id, ct), tickets, await checkout.GetRefundsForSettingsAsync(id, ct));
+            await checkout.GetOffersForSettingsAsync(id, ct), tickets, await checkout.GetRefundsForSettingsAsync(id, ct))
+            .OrderBy(row => row.Position is null).ThenBy(row => row.Position)
+            .ThenByDescending(row => row.Offer.SoldAt ?? row.Offer.WithdrawnAt ?? row.Offer.OfferedAt).ToList();
         var reservedBy = (await checkout.GetOrdersForSettingsAsync(id, ct)).ToDictionary(o => o.Id);
         return View("~/Views/Tickets/Admin/Sales/Resale.cshtml", new ResaleViewModel(
             id, await EventNameAsync(ticketing, ct), ticketing, rows, reservedBy, clock.GetCurrentInstant()));
@@ -93,6 +99,7 @@ internal sealed class TicketsSupportAdminController(
         var progress = await checkout.GetCancellationProgressAsync(id, ct);
         if (ticketing is null || progress is null)
             return NotFound();
+        progress = progress with { RefundsSince = progress.RefundsSince.OrderBy(row => row.State).ToList() };
         return View("~/Views/Tickets/Admin/Sales/Cancel.cshtml", new CancelViewModel(
             id, await EventNameAsync(ticketing, ct), ticketing.PlatformKey, progress));
     }
@@ -120,10 +127,15 @@ internal sealed class TicketsSupportAdminController(
     [HttpPost("{id:guid}/Resale/Open")]
     [Authorize(Policy = TicketsPolicies.Manage)]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> SetResaleOpen(Guid id, bool open, CancellationToken ct)
+    public async Task<IActionResult> SetResaleOpen(Guid id, [BindRequired] bool open, CancellationToken ct)
     {
         var (errorResult, user) = await RequireCurrentUserAsync(ct);
         if (errorResult is not null) return errorResult;
+        if (!ModelState.IsValid)
+        {
+            logger.LogWarning("Rejected malformed resale control for sale {SaleId} by {ActorUserId}", id, user.Id);
+            return BadRequest(ModelState);
+        }
 
         var result = await checkout.SetResaleOpenAsync(id, open, user.Id, ct);
         if (result.Succeeded)
@@ -139,17 +151,25 @@ internal sealed class TicketsSupportAdminController(
         var ticketing = await checkout.GetTicketingSettingsAsync(id, ct);
         if (ticketing is null)
             return NotFound();
+        var rows = (await checkout.GetCompanionRequestsAsync(id, ct))
+            .OrderBy(row => row.Request.State != TicketCompanionRequestState.Pending)
+            .ThenByDescending(row => row.Request.RequestedAt).ToList();
         return View("~/Views/Tickets/Admin/Sales/Companions.cshtml", new CompanionsViewModel(
-            id, await EventNameAsync(ticketing, ct), await checkout.GetCompanionRequestsAsync(id, ct)));
+            id, await EventNameAsync(ticketing, ct), rows));
     }
 
     [HttpPost("{id:guid}/Companions/{requestId:guid}")]
     [Authorize(Policy = TicketsPolicies.Manage)]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> DecideCompanion(Guid id, Guid requestId, bool approve, string? note, CancellationToken ct)
+    public async Task<IActionResult> DecideCompanion(Guid id, Guid requestId, [BindRequired] bool approve, string? note, CancellationToken ct)
     {
         var (errorResult, user) = await RequireCurrentUserAsync(ct);
         if (errorResult is not null) return errorResult;
+        if (!ModelState.IsValid)
+        {
+            logger.LogWarning("Rejected malformed companion decision for request {RequestId} by {ActorUserId}", requestId, user.Id);
+            return BadRequest(ModelState);
+        }
 
         var result = await checkout.DecideCompanionRequestAsync(requestId, approve, note, user.Id, ct);
         if (result.Succeeded)
@@ -172,6 +192,13 @@ internal sealed class TicketsSupportAdminController(
             await checkout.GetRefundsForSettingsAsync(id, ct),
             await checkout.GetOffersForSettingsAsync(id, ct),
             evt?.TimeZone ?? DateTimeZone.Utc);
+        report = report with
+        {
+            ByPrice = report.ByPrice.OrderByDescending(row => row.Count).ThenBy(row => row.Label, StringComparer.Ordinal).ToList(),
+            DonationsByPurpose = report.DonationsByPurpose.OrderBy(row => row.Purpose, StringComparer.Ordinal).ToList(),
+            RefundsByState = report.RefundsByState.OrderBy(row => row.State).ToList(),
+            ResaleByState = report.ResaleByState.OrderBy(row => row.State).ToList(),
+        };
         return View("~/Views/Tickets/Admin/Sales/Report.cshtml",
             new ReportViewModel(id, evt?.EventName ?? ticketing.EventSettingsId.ToString(), ticketing.Capacity, report));
     }
@@ -186,7 +213,7 @@ internal sealed class TicketsSupportAdminController(
         var eventTickets = await checkout.GetTicketsForSettingsAsync(ticket.TicketingSettingsId, ct);
         var offer = (await checkout.GetOffersForSettingsAsync(ticket.TicketingSettingsId, ct))
             .Where(o => o.TicketId == ticket.Id).MaxBy(o => o.OfferedAt);
-        var dependents = eventTickets.Where(t => t.ParentTicketId == ticket.Id).ToList();
+        var dependents = eventTickets.Where(t => t.ParentTicketId == ticket.Id).OrderBy(t => t.IssuedAt).ToList();
         return View("~/Views/Tickets/Admin/Sales/Ticket.cshtml", new TicketAdminViewModel(
             detail.Order, ticket,
             ticket.ParentTicketId is { } parentId ? eventTickets.FirstOrDefault(t => t.Id == parentId) : null,
@@ -211,17 +238,24 @@ internal sealed class TicketsSupportAdminController(
     [HttpPost("Order/{orderId:guid}/Ticket/{ticketId:guid}/Void")]
     [Authorize(Policy = TicketsPolicies.Manage)]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> Void(Guid orderId, Guid ticketId, string? reason, decimal? refund, bool noRefund, CancellationToken ct)
+    public async Task<IActionResult> Void(Guid orderId, Guid ticketId, string? reason, string? refund, [BindRequired] bool noRefund, CancellationToken ct)
     {
-        var refundMinor = noRefund || refund is not { } euros ? 0 : (long)Math.Round(euros * 100m, MidpointRounding.AwayFromZero);
-        if (!noRefund && refundMinor <= 0)
+        if (!ModelState.IsValid)
         {
+            logger.LogWarning("Rejected malformed ticket void for {TicketId} by {UserId}", ticketId, GetCurrentUserId());
+            return BadRequest(ModelState);
+        }
+        var refundMinor = 0L;
+        if (!noRefund && (!SalesEditForm.TryMinor(refund, out refundMinor) || refundMinor <= 0))
+        {
+            logger.LogWarning("Rejected void refund amount for ticket {TicketId} by {UserId}", ticketId, GetCurrentUserId());
             SetError("Enter the amount to refund, or choose 'No refund' to void without one. Nothing was voided.");
             return RedirectToAction(nameof(Ticket), new { orderId, ticketId });
         }
         return await ActAsync(orderId, ticketId,
             noRefund ? "Ticket voided with no refund." : "Ticket voided and the refund sent; it shows on the order and the refund list.",
-            (actor, c) => checkout.VoidTicketAsync(ticketId, reason ?? string.Empty, refundMinor, actor, c), ct);
+            // Voiding can refund at the platform; a disconnect must not leave the refund unrecorded.
+            (actor, _) => checkout.VoidTicketAsync(ticketId, reason ?? string.Empty, refundMinor, actor, CancellationToken.None), ct);
     }
 
     [HttpPost("Order/{orderId:guid}/Ticket/{ticketId:guid}/Restore")]
@@ -293,7 +327,7 @@ internal sealed record ResaleViewModel(
         && (Orders.GetValueOrDefault(holdingId) is not { IsOpen: true } holding || !holding.HoldsTickets(Now));
 
     public TicketSalesMode Mode => Ticketing.Mode;
-    public bool ResaleSelling => Ticketing.ResaleSelling;
+    public bool ResaleSelling => Ticketing.IsResaleSelling(Now);
     public bool SwitchedOff => Ticketing.EffectiveSwitches.Resale == ResaleScheme.Off;
 }
 

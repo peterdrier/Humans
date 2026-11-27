@@ -176,4 +176,6 @@
   <data name="Store_DownloadInvoice" xml:space="preserve"><value>Download invoice {0}</value></data>
   <data name="Store_RecordPaymentProduct" xml:space="preserve"><value>Deposit of</value></data>
   <data name="Enum_PaymentMethod_WriteOff" xml:space="preserve"><value>Write-off</value></data>
+  <data name="Store_Permission_TeamOrders_Title" xml:space="preserve"><value>Order for the team</value></data>
+  <data name="Store_Permission_TeamOrders_Blurb" xml:space="preserve"><value>Create and edit the department's store order.</value></data>
 </root>

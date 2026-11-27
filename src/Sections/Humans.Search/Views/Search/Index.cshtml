@@ -1,25 +1,15 @@
-@using System.Globalization
 @using Microsoft.AspNetCore.Html
 @model GlobalSearchViewModel
 
 @{
     ViewData["Title"] = Localizer["Search_GlobalTitle"].Value;
 
-    string ChipUrl(string? filter)
-    {
-        var q = Model.Query ?? string.Empty;
-        return filter is not null
-            ? Url.Action("Index", "Search", new { q, filter })!
-            : Url.Action("Index", "Search", new { q })!;
-    }
+    string ChipUrl(string? filter) => Url.Action("Index", "Search", new { q = Model.Query ?? string.Empty, filter })!;
 
     string ChipClass(string? filter) =>
         string.Equals(Model.Filter, filter, StringComparison.Ordinal)
             ? "btn btn-primary btn-sm"
             : "btn btn-outline-primary btn-sm";
-
-    bool ShowSection(SearchBucket bucket) =>
-        bucket.Hits.Count > 0 && (Model.Filter is null || string.Equals(Model.Filter, bucket.Key, StringComparison.Ordinal));
 }
 
 <page-header>
@@ -41,12 +31,17 @@
     </div>
 </form>
 
-@if (!Model.HasQuery)
+@if (Model.SearchFailed)
+{
+    <div class="alert alert-warning" role="alert">
+        @Localizer["Search_Unavailable"]
+    </div>
+}
+else if (!Model.HasQuery)
 {
     <div class="alert alert-info">
         <i class="fa-solid fa-circle-info me-2"></i>
-        @string.Format(CultureInfo.CurrentCulture, Localizer["Search_GlobalHint"].Value,
-            string.Join(", ", Model.Buckets.Select(b => b.Label)))
+        @Localizer["Search_GlobalHint", string.Join(", ", Model.Buckets.Select(b => b.Label))]
     </div>
 }
 else if (Model.QueryIsTooShort)
@@ -54,12 +49,6 @@ else if (Model.QueryIsTooShort)
     <div class="alert alert-info">
         <i class="fa-solid fa-circle-info me-2"></i>
         @Localizer["Search_MinChars"]
-    </div>
-}
-else if (Model.SearchFailed)
-{
-    <div class="alert alert-warning" role="alert">
-        @Localizer["Search_Unavailable"]
     </div>
 }
 else
@@ -91,7 +80,7 @@ else
     else
     {
         @* Every row is the owning section's own view component, bound from the SearchHit. *@
-        @foreach (var bucket in Model.Buckets.Where(ShowSection))
+        @foreach (var bucket in Model.Buckets.Where(b => b.Hits.Count > 0))
         {
             <h3 class="h5 mt-4 mb-2"><i class="@bucket.IconCssClass me-2"></i>@bucket.Label</h3>
             <div class="list-group">

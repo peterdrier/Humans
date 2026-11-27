@@ -2,17 +2,17 @@
   src/Humans.Web/Controllers/AccountController.cs
   src/Sections/Humans.Tickets/Controllers/TicketsOnsiteAdminController.cs
   src/Sections/Humans.Tickets/Controllers/TicketsGateAdminController.cs
-  src/Humans.Web/Views/Account/GateLogin.cshtml
+  src/Humans.Web/Views/Account/GateSignIn.cshtml
   src/Sections/Humans.Tickets/Views/Tickets/Admin/Gate.cshtml
   src/Sections/Humans.Tickets/Services/GateTerminalAccountSeeder.cs
-  src/Humans.Web/Services/GateLoginThrottle.cs
+  src/Humans.Web/Services/GateSignInThrottle.cs
   src/Humans.Base/Constants/SystemUserIds.cs
   src/Humans.Base/Authorization/PolicyNames.cs
   src/Humans.Web/Authorization/AuthorizationPolicyExtensions.cs
   src/Humans.Web/Program.cs
 -->
 <!-- freshness:flag-on-change
-  Gate-terminal shared account (GateTerminal GUID, ScannerAccess policy, /Account/GateLogin, /Tickets/Admin/Gate password set/rotate, GateTerminalAccountSeeder, GateLoginThrottle, kiosk route restriction, onsite-roster access) — review when any of these change.
+  Gate-terminal shared account (GateTerminal GUID, ScannerAccess policy, /Account/GateSignIn, /Tickets/Admin/Gate password set/rotate, GateTerminalAccountSeeder, GateSignInThrottle, kiosk route restriction, onsite-roster access) — review when any of these change.
 -->
 
 # Scanner — Gate Terminal Login
@@ -36,7 +36,7 @@ record admission decisions through Gate's `GateAdmit` policy. It has no admin
 roles. The credential page links to the Gate admissions terminal and states this
 write capability. A route-restriction middleware in `src/Humans.Web/Program.cs`
 bounces the signed-in gate account to `/Gate` for any path outside `/Gate/*`,
-`/Account/GateLogin`, `/Account/Logout`, and `/Account/AccessDenied` — defense in
+`/Account/GateSignIn`, `/Account/Logout`, and `/Account/AccessDenied` — defense in
 depth on top of the zero roles. The separate Scanner tool remains read-only and
 cannot be opened by the kiosk account.
 
@@ -47,7 +47,7 @@ cannot be opened by the kiosk account.
   Profile ("Gate Terminal", legal name Gate/Terminal) created through the canonical
   `SaveProfileAsync` path so `UserStateClassifier` yields `Active` (the membership
   filter requires it). The account is marked fake in Users (on every password set) so it never sits in
-  the Consent Coordinator review queue. If setup fails after creating the user,
+  the Consent Admin review queue. If setup fails after creating the user,
   another password-set attempt resumes setup on that row. Until a password exists,
   account creation and the profile save must both succeed before a password is set.
   Credential writes reload the user in a fresh Identity scope after setup, preserving
@@ -58,7 +58,7 @@ cannot be opened by the kiosk account.
   via reset-token replace, so a new password that fails the Identity policy leaves the
   old password untouched. A successful rotation bumps the security stamp, which kills
   existing gate sessions at the next security-stamp validation sweep (≤30 min).
-- **Login:** `/Account/GateLogin` (anonymous GET form + POST). Username is the fixed
+- **Login:** `/Account/GateSignIn` (anonymous GET form + POST). Username is the fixed
   constant `gate`; password checked via `CheckPasswordSignInAsync` with
   `lockoutOnFailure: false`. Success signs in with `isPersistent: true` and redirects
   to the Gate admissions terminal (`/Gate`). Signing the kiosk out
@@ -67,7 +67,7 @@ cannot be opened by the kiosk account.
 - **Brute-force protection is per source IP, never per account.** The username is
   public, so Identity's per-account lockout would let anyone deny the real terminal
   at gate by deliberately failing passwords — the attacker and the victim would share
-  the lockout. Instead `GateLoginThrottle` (in-memory, singleton) allows 10 failed
+  the lockout. Instead `GateSignInThrottle` (in-memory, singleton) allows 10 failed
   attempts per minute per source IP; an attacker only ever locks themselves out.
   Lockout is explicitly disabled on the account (`SetLockoutEnabledAsync(false)` on
   every password set) so no other code path can ever lock it either. Forwarded
@@ -94,7 +94,7 @@ cannot be opened by the kiosk account.
   id; Board reads the gate and admits no one), kept separate so the gate's admission writes never ride on the read-only
   `ScannerAccess` gate.
 - **Audit:** every password set/rotate writes `TicketsAuditActions.GateTerminalPasswordSet`
-  with the acting admin as actor. Gate sign-ins stamp `LastLoginAt` (surfaced on the
+  with the acting admin as actor. Gate sign-ins stamp `LastSignInAt` (surfaced on the
   admin card).
 
 ## Scope & Non-Goals
@@ -103,7 +103,7 @@ cannot be opened by the kiosk account.
 
 - `SystemUserIds` constants + GUID block `0004` reservation.
 - `ScannerAccess` policy on `ScannerController` and `TicketsOnsiteAdminController`.
-- `/Account/GateLogin` (localized, all supported locales).
+- `/Account/GateSignIn` (localized, all supported locales).
 - `/Tickets/Admin/Gate` admin card (status + set/rotate password) + admin-nav entry.
 - `GateTerminalAccountSeeder` (`src/Sections/Humans.Tickets/Services/`, registered by the
   Tickets section in every environment).
@@ -121,7 +121,7 @@ cannot be opened by the kiosk account.
 ## Operational Notes
 
 - If the laptop loses its cookie (cleared browser, >14 days idle), gate staff
-  re-enter the known credential at `/Account/GateLogin` — no admin needed on-site.
+  re-enter the known credential at `/Account/GateSignIn` — no admin needed on-site.
 - The account can never be locked out. Sustained wrong passwords from one source
   pause that source for 60-second windows; the gate laptop on its own IP is
   unaffected by attackers elsewhere, and the on-screen error explains the wait

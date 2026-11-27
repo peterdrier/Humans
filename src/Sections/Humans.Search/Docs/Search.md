@@ -19,6 +19,8 @@
   src/Sections/Humans.Shifts/Controllers/ShiftsController.cs
   src/Sections/Humans.Shifts/Models/ShiftBrowsePageBuilder.cs
   src/Sections/Humans.Teams/ViewComponents/TeamsSearchResultViewComponent.cs
+  src/Sections/Humans.Users/ViewComponents/UserSearchResultViewComponent.cs
+  src/Humans.Base/Extensions/StringSearchExtensions.cs
   src/Sections/Humans.Camps/ViewComponents/CampsSearchResultViewComponent.cs
   src/Sections/Humans.Shifts/ViewComponents/ShiftsSearchResultViewComponent.cs
   src/Sections/Humans.Events/ViewComponents/EventsSearchResultViewComponent.cs
@@ -69,7 +71,7 @@ None — Search owns no tables. It is a read-only fan-out over the contributed c
 - **Every hit arrives pre-scored by its owning section; `SearchService` never rescores.** Teams/Camps/Shifts/Events score against `StringSearchExtensions.NameMatchScore` in `Humans.Base` (exact 100, prefix 80, contains 60; Events halves the tiers for a Description-only match). Humans arrive from `PersonSearchMatcher`, which adds a whole-name-prefix tier (85) and a non-name public-field tier (40) — so a Humans score of 85 or 40 is correct, not a defect. A GUID hit scores 100 in every bucket.
 - Human-result match badges use Users’ localized built-in field labels in the current UI culture. Custom contact labels remain verbatim.
 - **No result cap.** Every match is returned; each contributor passes `int.MaxValue` to its section's search. Capping was tried and hid people.
-- **Display order is the controller's, never the service's** ([`display-sort-in-controllers`](../../../../memory/architecture/display-sort-in-controllers.md)): every bucket by score desc then `SortKey` asc (case-insensitive). Humans' sort key is the burner name, so that is the person-search `OrderByRelevance()` order.
+- **Display order is the controller's, never the service's** ([`display-sort-in-controllers`](../../../../memory/architecture/display-sort-in-controllers.md)): categories by weight then ordinal key, and hits within every bucket by score desc then `SortKey` asc (case-insensitive). The service returns categories unordered with their contributed weights. Humans' sort key is the burner name, so that is the person-search `OrderByRelevance()` order.
 - **Text queries are visibility-filtered per section, role-blind.** Hidden teams, non-public camp seasons (outside `Active`/`Full`), admin-only rotas and admin-only profile fields are excluded for every viewer. The filters are constants inside each section's own search call (`CachingTeamService`, `CachingCampService`, `ShiftManagementService`, and Users' contributor calling `IUserService.SearchUsersAsync(..., PersonSearchFields.PublicAll, ...)`) — not a role check `SearchService` performs.
 - **GUID queries are NOT visibility-filtered — a routing convenience, not an authorization statement.** Pasting an entity's own id (Team, Camp, Rota, Human) resolves it past the text-query filters, on the reasoning that a caller can only use an id they already hold. Search may return a hit the caller cannot open; enforcement is the destination page's job (ruling on nobodies-collective/Humans#985). **Do not re-add a visibility check on the GUID path.**
 - The Humans bucket has no visibility filter for the GUID path to bypass, but resolution is not unconditional: `CachingUserService.SearchUsersAsync` returns an id hit only for a human with a non-rejected `Profile`, the same eligibility gate the text loop applies per candidate. The GUID path skips only the `PersonSearchFields.PublicAll` field mask.

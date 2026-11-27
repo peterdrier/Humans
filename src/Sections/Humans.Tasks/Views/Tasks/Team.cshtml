@@ -11,6 +11,7 @@
 
 <page-header title="@(Localizer["Tasks_Team_Title", Model.TeamName].Value)">
     <page-header-subtitle><a href="@Url.Action("Details", "Team", new { slug = Model.TeamSlug })">@Localizer["Tasks_Team_TeamPage"]</a></page-header-subtitle>
+    <a href="@Url.Action("Open", "Tasks")" class="btn btn-outline-secondary">@Localizer["Tasks_List_Open"]</a>
     <a href="@Url.Action("Index", "Tasks")" class="btn btn-outline-secondary">@Localizer["Tasks_Team_All"]</a>
     @if (Model.CanAdd)
     {
@@ -18,8 +19,23 @@
     }
 </page-header>
 
-<partial name="_Filter" model="new TaskFilterViewModel(Model.Filter, null)" />
-<partial name="_TaskTable" model="new TaskTableModel(Model.Tasks, ShowTeam: false)" />
+@{
+    var teamUrl = Url.Action("Team", "Tasks", new { slug = Model.TeamSlug }) + Context.Request.QueryString;
+}
+
+@if (Model.Requests.Count > 0)
+{
+    <div class="card mb-4" id="requests">
+        <div class="card-header d-flex justify-content-between align-items-center">
+            <h2 class="h5 mb-0">@Localizer["Tasks_Requests_Title"]</h2>
+            <span class="text-muted small">@Model.Requests.Count</span>
+        </div>
+        <partial name="_Requests" model="new RequestsViewModel(Model.Requests, ShowTask: true, ReturnUrl: teamUrl)" />
+    </div>
+}
+
+<partial name="_Filter" model="new TaskFilterViewModel(Model.Filter, null, null)" />
+<partial name="_TaskRows" model='new TaskRowsModel(Model.Tasks, ShowTeam: false, ShowStatus: true, Model.Places, Model.Blockers, teamUrl, Localizer["Tasks_List_Empty"].Value)' />
 
 @if (Model.CanAdd)
 {

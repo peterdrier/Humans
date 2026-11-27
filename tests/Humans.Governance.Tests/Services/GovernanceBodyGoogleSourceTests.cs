@@ -6,7 +6,6 @@ using Humans.Governance.Contracts;
 using Humans.Governance.Data;
 using Humans.Governance.Domain;
 using Humans.Governance.Services;
-using Humans.Testing;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging.Abstractions;
 using NodaTime;
@@ -21,7 +20,7 @@ public sealed class GovernanceBodyGoogleSourceTests
 {
     private static readonly Instant Now = Instant.FromUtc(2026, 11, 21, 12, 0);
     private readonly IApplicationRepository _applications = Substitute.For<IApplicationRepository>();
-    private readonly IRoleAssignmentService _roles = Substitute.For<IRoleAssignmentService>();
+    private readonly ISystemRoleService _roles = Substitute.For<ISystemRoleService>();
     private readonly GovernanceBodyRepository _bodies = new(new TestDbContextFactory<GovernanceDbContext>(
         new DbContextOptionsBuilder<GovernanceDbContext>().UseInMemoryDatabase(Guid.NewGuid().ToString()).Options));
 

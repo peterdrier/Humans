@@ -1,3 +1,4 @@
+using Humans.Backdoor.Authentication;
 using System.Security.Claims;
 using System.Text.Json;
 using AwesomeAssertions;
@@ -29,7 +30,7 @@ public class BackdoorNotificationsControllerTests
     {
         var userId = Guid.NewGuid();
         var principal = new ClaimsPrincipal(new ClaimsIdentity(
-            [new Claim(ClaimTypes.NameIdentifier, userId.ToString())], BackdoorApiKeyAuthFilter.AuthenticationScheme));
+            [new Claim(ClaimTypes.NameIdentifier, userId.ToString())], BackdoorApiKeyHandler.SchemeName));
         _sut.ControllerContext = new ControllerContext { HttpContext = new DefaultHttpContext { User = principal } };
         var createdAt = new DateTime(2026, 4, 10, 9, 0, 0, DateTimeKind.Utc);
         _inbox.GetUnreadInboxAsync(principal, Arg.Any<CancellationToken>()).Returns(new NotificationInboxSnapshot(

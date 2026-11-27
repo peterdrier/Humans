@@ -1,3 +1,5 @@
+using Humans.Base.Authorization;
+using Humans.Permissions.Contracts;
 using Humans.Finance.Contracts;
 using Humans.Store.Contracts;
 using System.Security.Claims;
@@ -30,7 +32,7 @@ public class OrderAuthorizationHandlerTests
     private static readonly LocalDate FutureDeadline = new(2026, 12, 31);
 
     private readonly ICampService _campService = Substitute.For<ICampService>();
-    private readonly ITeamService _teamService = Substitute.For<ITeamService>();
+    private readonly IPermissionService _permissions = Substitute.For<IPermissionService>();
     private readonly ISettingsService _shifts = Substitute.For<ISettingsService>();
     private readonly IUserService _users = Substitute.For<IUserService>();
     private readonly FakeClock _clock = new(Instant.FromUtc(2026, 3, 14, 12, 0));
@@ -41,7 +43,7 @@ public class OrderAuthorizationHandlerTests
         _shifts.GetActiveEventSettings().Returns(BurnFixtures.Burn(year: 2026, timeZoneId: "Europe/Madrid"));
         _users.GetUserInfoAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
             .Returns(call => UserInfo.Create(new User { Id = call.Arg<Guid>() }, [], [], null));
-        _handler = new OrderAuthorizationHandler(_campService, _teamService, _users, _shifts, _clock, new Microsoft.AspNetCore.Http.HttpContextAccessor());
+        _handler = new OrderAuthorizationHandler(_campService, _permissions, _users, _shifts, _clock, new HttpContextAccessor());
     }
 
     [HumansTheory]
@@ -63,10 +65,8 @@ public class OrderAuthorizationHandlerTests
         var ownerId = accountExists && survivorOwns ? survivorId : cookieId;
         if (teamOrder)
         {
-            _teamService.GetTeamAsync(order.TeamId!.Value, Arg.Any<CancellationToken>()).Returns(
-                new TeamInfo(order.TeamId.Value, "Department", null, "department", true, false,
-                    SystemTeamType.None, false, true, false, false, _clock.GetCurrentInstant(), [],
-                    ManagementRoleHolderUserIds: new HashSet<Guid> { ownerId }));
+            _permissions.HasAsync(ownerId, StorePermissions.TeamOrders, new Owner(TeamOwner.Kind, order.TeamId!.Value),
+                Arg.Any<CancellationToken>()).Returns(true);
         }
         else
         {
@@ -148,13 +148,13 @@ public class OrderAuthorizationHandlerTests
             Read("Season", call.Arg<CancellationToken>());
             return camp.Seasons[0];
         });
-        _teamService.GetTeamAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>()).Returns(call =>
+        _permissions.HasAsync(Arg.Any<Guid>(), Arg.Any<string>(), Arg.Any<Owner>(), Arg.Any<CancellationToken>()).Returns(call =>
         {
             Read("Team", call.Arg<CancellationToken>());
-            return (TeamInfo?)null;
+            return false;
         });
         var context = new AuthorizationHandlerContext([OrderOperationRequirement.View], Principal(role: null, userId), order);
-        var handler = new OrderAuthorizationHandler(_campService, _teamService, _users, _shifts, _clock, http);
+        var handler = new OrderAuthorizationHandler(_campService, _permissions, _users, _shifts, _clock, http);
         await Assert.ThrowsAnyAsync<OperationCanceledException>(() => handler.HandleAsync(context));
         Assert.Equal(request.Token, observed);
         Assert.False(context.HasSucceeded);

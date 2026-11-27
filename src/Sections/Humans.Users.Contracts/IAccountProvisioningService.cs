@@ -17,7 +17,7 @@ public interface IAccountProvisioningService
     /// Replaces the planned unverified, unlinked email row and provisions its contact account atomically. Refuses
     /// stale plans; a metadata or commit failure keeps the original row. Best-effort success audits follow the commit.
     /// </summary>
-    Task<AccountProvisioningResult> ReplaceUnverifiedEmailAndProvisionAsync(
+    Task<AccountProvisioningResult> ReplaceUnverifiedEmailAsync(
         Guid userId, Guid emailId, string email, string? displayName, ContactSource source,
         CancellationToken ct = default);
 
@@ -25,7 +25,7 @@ public interface IAccountProvisioningService
     /// After Auth has verified the token. A double submit signs in the existing owner; otherwise creates the user,
     /// its verified email and a stub profile, rolling back the user if the email row fails.
     /// </summary>
-    Task<MagicLinkSignupCompletionResult> CompleteMagicLinkSignupAsync(
+    Task<SignInLinkSignupResult> CompleteSignInLinkSignupAsync(
         string email,
         string burnerName,
         string firstName,
@@ -34,21 +34,21 @@ public interface IAccountProvisioningService
 
     /// <summary>
     /// A bare account with no email, profile or password, for fixed system accounts and dev seed data. Returns
-    /// Identity's error descriptions, empty on success. <paramref name="lastLoginAt"/> is seed fixture data only:
-    /// a real sign-in records the login through <see cref="IUserWrite.RecordLoginAsync"/>.
+    /// Identity's error descriptions, empty on success. <paramref name="lastSignInAt"/> is seed fixture data only:
+    /// a real sign-in records the login through <see cref="IUserWrite.RecordSignInAsync"/>.
     /// </summary>
     Task<IReadOnlyList<string>> CreateAccountAsync(
-        Guid userId, string burnerName, Instant createdAt, Instant? lastLoginAt = null);
+        Guid userId, string burnerName, Instant createdAt, Instant? lastSignInAt = null);
 }
 
 public record AccountProvisioningResult(Guid UserId, bool Created);
 
-/// <summary><paramref name="UserId"/> is null when <paramref name="Outcome"/> is <see cref="MagicLinkSignupCompletionOutcome.Failed"/>.</summary>
-public sealed record MagicLinkSignupCompletionResult(
-    MagicLinkSignupCompletionOutcome Outcome,
+/// <summary><paramref name="UserId"/> is null when <paramref name="Outcome"/> is <see cref="SignInLinkSignupOutcome.Failed"/>.</summary>
+public sealed record SignInLinkSignupResult(
+    SignInLinkSignupOutcome Outcome,
     Guid? UserId);
 
-public enum MagicLinkSignupCompletionOutcome
+public enum SignInLinkSignupOutcome
 {
     Created,
     ExistingUser,

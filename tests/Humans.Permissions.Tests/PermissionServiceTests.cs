@@ -75,7 +75,7 @@ public sealed class PermissionServiceTests
     }
 
     [HumansFact]
-    public async Task GetOwnersAsync_ReturnsTheOwnerAndEverythingBelowIt()
+    public async Task GetOwnersAsync_ReturnsOwnerWithDescendants()
     {
         var service = Build("coordinator:Production");
 
@@ -98,7 +98,7 @@ public sealed class PermissionServiceTests
     public void Permissions_RefusesAKeyDeclaredTwice()
     {
         var service = new PermissionService(
-            [new Declares(ShiftsManage), new Declares(ShiftsManage)], [], [], Substitute.For<IRoleAssignmentService>());
+            [new Declares(ShiftsManage), new Declares(ShiftsManage)], [], [], Substitute.For<ISystemRoleService>());
 
         var act = () => service.Permissions;
 
@@ -107,13 +107,13 @@ public sealed class PermissionServiceTests
 
     private PermissionService Build(string holding)
     {
-        var roles = Substitute.For<IRoleAssignmentService>();
+        var roles = Substitute.For<ISystemRoleService>();
         var holdings = new List<Holding>();
         var parts = holding.Split(':');
 
         if (string.Equals(parts[0], "role", StringComparison.Ordinal))
             roles.GetActiveForUserAsync(_userId, Arg.Any<CancellationToken>())
-                .Returns([new RoleAssignmentSnapshot(parts[1], null)]);
+                .Returns([new SystemRoleSnapshot(parts[1], null)]);
         else
             roles.GetActiveForUserAsync(_userId, Arg.Any<CancellationToken>()).Returns([]);
 

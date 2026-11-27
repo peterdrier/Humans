@@ -6,7 +6,7 @@ namespace Humans.Budget.Contracts;
 public static class BudgetPermissions
 {
     /// <summary>
-    /// Edit the line items of the team's budget categories; holding it anywhere opens the coordinator budget pages.
+    /// Edit the line items of the team's budget categories; holding it anywhere opens the department budget pages.
     /// Finance Admin holds it everywhere.
     /// </summary>
     public const string Edit = "Budget.Edit";

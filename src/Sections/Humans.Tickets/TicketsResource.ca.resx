@@ -260,9 +260,10 @@
   <data name="Tickets_Buy_TermsUnavailable" xml:space="preserve">
     <value>Ara mateix no es poden carregar les normes de les entrades, així que no es poden comprar entrades. Torna-ho a provar d'aquí a uns minuts.</value>
   </data>
-  <data name="Tickets_Resale_InviteInvalid" xml:space="preserve">
-    <value>Aquest enllaç d'invitació ja no és vàlid, o es va enviar a un correu diferent del de la teva sessió.</value>
-  </data>
+  <data name="Tickets_Resale_InviteNotFound" xml:space="preserve"><value>Cap invitació per a aquest esdeveniment coincideix amb aquest enllaç.</value></data>
+  <data name="Tickets_Resale_InviteOtherEmail" xml:space="preserve"><value>Aquesta invitació es va enviar a un correu diferent del de la teva sessió.</value></data>
+  <data name="Tickets_Resale_NotSelling" xml:space="preserve"><value>Les entrades de revenda no estan a la venda per a aquest esdeveniment ara mateix.</value></data>
+  <data name="Tickets_Resale_InviteSelfOnly" xml:space="preserve"><value>Un enllaç d'invitació compra una sola entrada, només per a tu.</value></data>
   <data name="Tickets_Resale_NotFound" xml:space="preserve">
     <value>Entrada no trobada.</value>
   </data>

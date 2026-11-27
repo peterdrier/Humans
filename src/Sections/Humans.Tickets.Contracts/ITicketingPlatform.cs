@@ -114,7 +114,19 @@ public sealed record PaymentLedgerEntry(
     long AmountMinor,
     long FeeMinor,
     Guid? HumansOrderId,
-    string? Description);
+    string? Description)
+{
+    /// <summary>Maps Stripe reporting categories consistently across ticketing adapters.</summary>
+    public static PaymentLedgerEntryKind KindOf(string reportingCategory) => reportingCategory switch
+    {
+        "charge" or "charge_failure" or "partial_capture_reversal" => PaymentLedgerEntryKind.Charge,
+        "refund" or "refund_failure" => PaymentLedgerEntryKind.Refund,
+        "dispute" or "dispute_reversal" => PaymentLedgerEntryKind.Chargeback,
+        "fee" => PaymentLedgerEntryKind.Fee,
+        "payout" or "payout_reversal" => PaymentLedgerEntryKind.Payout,
+        _ => PaymentLedgerEntryKind.Other,
+    };
+}
 
 public enum PaymentLedgerEntryKind
 {
@@ -297,5 +309,6 @@ public sealed class TicketingPlatformException(string message, Exception? inner 
 /// </summary>
 public interface ITicketingPlatformEvents : IApplicationService
 {
+    [ExternalWrite]
     Task PlatformOrderChangedAsync(string platformKey, string platformOrderId, CancellationToken ct = default);
 }

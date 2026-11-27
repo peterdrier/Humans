@@ -250,7 +250,7 @@
                     <span class="badge bg-danger ms-2">Error</span>
                 }
             </span>
-            <form asp-action="Sync" method="post" class="d-inline" authorize-policy="@Humans.Tickets.Contracts.TicketsPolicies.Manage">
+            <form asp-action="Sync" method="post" class="d-inline" authorize-policy="@TicketsPolicies.Manage">
                 @Html.AntiForgeryToken()
                 <button type="submit" class="btn btn-sm btn-primary">
                     <i class="fa-solid fa-sync"></i> Sync Now <i class="fa-solid fa-lock auth-lock-icon"></i>
@@ -264,7 +264,7 @@
                 </button>
             </form>
             <a asp-controller="TicketsContactsAdmin" asp-action="Index"
-               class="btn btn-sm btn-outline-primary ms-2" authorize-policy="@Humans.Tickets.Contracts.TicketsPolicies.Read">
+               class="btn btn-sm btn-outline-primary ms-2" authorize-policy="@TicketsPolicies.Read">
                 <i class="fa-solid fa-user-plus"></i> Import Attendee Contacts <i class="fa-solid fa-lock auth-lock-icon"></i>
             </a>
         </div>

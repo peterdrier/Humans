@@ -6,7 +6,6 @@ using Humans.Base.Interfaces;
 using Humans.AuditLog.Contracts;
 using Humans.Email.Contracts;
 using Humans.Notifications.Contracts;
-using Humans.Users.Contracts;
 
 namespace Humans.Users.Services;
 

@@ -35,9 +35,9 @@ Transitions:
 A "send wave" assigns ungranted codes to eligible humans and queues the email delivery:
 
 1. Admin selects one team to target (one wave per team; repeat for more).
-2. Service collects all active members of that team.
+2. Service resolves team members to available accounts, excludes tombstones, and deduplicates merged IDs by the surviving human.
 3. Exclusions applied automatically:
-   - Humans already granted a code for this campaign
+   - Humans already granted a code for this campaign under any of their merged IDs
 4. Remaining eligible humans are matched to available codes (one each). (`CampaignCodes` is an always-on message category — there is no opt-out to exclude on; `CampaignService` does not call `ICommunicationPreferenceService`.)
 5. A `CampaignGrant` record is created per assignment.
 6. An `EmailOutboxMessage` is queued per grant, carrying the `CampaignId` for the Feedback-ID header.

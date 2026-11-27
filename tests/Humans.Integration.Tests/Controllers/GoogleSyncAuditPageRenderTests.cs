@@ -2,7 +2,6 @@ using Humans.Google.Domain;
 using System.Net;
 using AwesomeAssertions;
 using Humans.Base.Enums;
-using Humans.Google.Contracts;
 using Humans.Google.Services;
 using Humans.Integration.Tests.Infrastructure;
 using Microsoft.Extensions.DependencyInjection;

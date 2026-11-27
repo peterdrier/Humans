@@ -49,8 +49,7 @@ internal static class TestHoldedSync
                 ? movements
                 // A page read with no sync before it: what the nightly sync would have stored.
                 : await feed.ListBankMovementsAsync(
-                    ci.ArgAt<string>(0), ci.ArgAt<LocalDate>(1), ci.ArgAt<LocalDate>(2), CancellationToken.None,
-                    null)));
+                    ci.ArgAt<string>(0), ci.ArgAt<LocalDate>(1), ci.ArgAt<LocalDate>(2), CancellationToken.None)));
 
         holded.SyncAccountLedgerAsync(Arg.Any<int>(), Arg.Any<CancellationToken>()).Returns(true);
         // The chart's balance rides in as an opening line, so the lines sum to what the chart says is owed.

@@ -83,7 +83,7 @@ public class AgentSectionDocReaderTests
     [InlineData("ConsentReview", "Consent")]
     [InlineData("Board", "Governance")]
     [InlineData("UsersAdmin", "Users")]
-    [InlineData("RoleAssignments", "Auth")]
+    [InlineData("SystemRoles", "Auth")]
     [InlineData("LegalDocuments", "Consent")]
     [InlineData("GoogleSync", "Google")]
     [InlineData("LegalAndConsent", "Consent")]
@@ -111,7 +111,7 @@ public class AgentSectionDocReaderTests
     [InlineData("ConsentReview")]
     [InlineData("Board")]
     [InlineData("UsersAdmin")]
-    [InlineData("RoleAssignments")]
+    [InlineData("SystemRoles")]
     [InlineData("LegalDocuments")]
     [InlineData("GoogleSync")]
     [InlineData("LegalAndConsent")]
@@ -150,7 +150,7 @@ public class AgentSectionDocReaderTests
         Exception failure = unexpected ? new InvalidOperationException("Unexpected fetch failure")
             : new ApiException("GitHub unavailable", System.Net.HttpStatusCode.ServiceUnavailable);
         var source = new FakeSource { FailWith = failure };
-        var logger = new Humans.Testing.CapturingLogger<AgentSectionDocReader>();
+        var logger = new CapturingLogger<AgentSectionDocReader>();
         var reader = new AgentSectionDocReader(source, new MemoryCache(new MemoryCacheOptions()), logger);
 
         var content = await reader.ReadAsync("Shifts", TestContext.Current.CancellationToken);

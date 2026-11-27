@@ -1,4 +1,3 @@
-using Humans.Base.Authorization;
 using Humans.Base.Caching;
 using Humans.Base.Configuration;
 using Humans.Base.Constants;
@@ -43,7 +42,7 @@ public sealed class Section :
     public void Register(IServiceCollection services, IConfiguration configuration)
     {
         services.AddSingleton<IAuditActionContributor, FinanceAuditActions>();
-        services.AddSectionDbContext<FinanceDbContext>(sentinelTable: "holded_expense_docs");
+        services.AddSectionDbContext<FinanceDbContext>(sentinelTable: "holded_category_map");
 
         // Absent the Sepa:* keys, /Finance/Creditors says payout is unavailable rather than generating a rejectable
         // file. The flat SEPA_CREDITOR_IBAN overrides the appsetting (not a fallback): this is the account the money
@@ -68,8 +67,8 @@ public sealed class Section :
         services.AddScoped<IFinanceService>(sp => sp.GetRequiredService<Service>());
         services.AddScoped<IFinanceWrite>(sp => sp.GetRequiredService<Service>());
         services.AddScoped<IFinanceAdminService>(sp => sp.GetRequiredService<Service>());
-        services.AddScoped<Jobs.SepaBankBookingJob>();
-        services.AddScoped<Jobs.ExpenseReconJob>();
+        services.AddScoped<SepaBankBookingJob>();
+        services.AddScoped<ExpenseReconJob>();
         services.AddScoped<IUserDataContributor>(sp => sp.GetRequiredService<Service>());
         services.AddScoped<IUserMerge>(sp => sp.GetRequiredService<Service>());
 

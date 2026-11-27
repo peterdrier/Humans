@@ -73,7 +73,7 @@ public class CommunicationPreferenceAccessibilityTests
         var path = guest ? "/Views/GuestAccount/CommunicationPreferences.cshtml"
             : "/Views/Shared/Components/CommunicationPreferencesPanel/Default.cshtml";
         var result = engine.GetView(null, path, isMainPage: false);
-        Assert.True(result.Success, string.Join(", ", result.SearchedLocations ?? []));
+        Assert.True(result.Success, string.Join(", ", result.SearchedLocations));
         var http = new DefaultHttpContext { RequestServices = services };
         var action = new ActionContext(http, new RouteData(), new Microsoft.AspNetCore.Mvc.Abstractions.ActionDescriptor());
         var data = new ViewDataDictionary<CommunicationPreferencesViewModel>(services.GetRequiredService<IModelMetadataProvider>(), new ModelStateDictionary()) { Model = model };

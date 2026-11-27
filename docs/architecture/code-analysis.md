@@ -86,8 +86,12 @@ HUM0037 | EF infrastructure (including derived contexts) or `IQueryable` used un
 HUM0038 | Read path writes: a controller action that answers GET (`[HttpGet]`/`[HttpHead]`, or no verb attribute) or a view component's `Invoke`/`InvokeAsync` calls a member of an `I*Write` interface or a method marked `[ExternalWrite]` — move the write behind a state-changing action. No `[Grandfathered]` downgrade; shipped at zero violations. Mutating `I*Service`/`I*Management` members carry no mechanical signal and stay with section-doctor's controller-intent lens | Error
 HUM0039 | `User` / `UserEmail` named outside Humans.Base and the Users section. Both EF entities sit in Base only so Base has no project reference; everyone else reads `UserInfo` / `IUserService` and signs in through `IUserSignInService` | Error
 HUM0041 | A view writes `UserInfo.BurnerName` as plain text instead of rendering the person with `<vc:human>` (memory/architecture/burnername-is-the-display-name.md). Analyzes Razor-generated code mapped to a `.cshtml` line; sorting or comparing by the name is allowed. The link half of the rule is in the type: `HumanLink` has no plain "none", only `InsideControl` and `Kiosk` | Error
+HUM0042 | Method name has more than six words (not counting `Async`) or contains "And" (design-rules.md, *Naming*). Overrides, interface implementations and controller actions are exempt. Names older than the rule are listed in the project's `NameBaseline.txt` | Error
+HUM0043 | Test name is not `Method_Result` / `Method_Condition_Result`: a lowercase sentence, more than three parts, more than ten words, or "And" after the first part. Same `NameBaseline.txt` | Error
+HUM0044 | `NameBaseline.txt` lists a method that is gone or no longer breaks HUM0042 / HUM0043 — delete the line; the list only shrinks | Error
+HUM0045 | `string.Format` over a localized string (`LocalizedString` or its `.Value`). Pass the arguments to the indexer, `localizer[key, args]`, which already formats with the current culture. Analyzes Razor-generated code mapped to a `.cshtml` line | Error
 
-> The next free id is **HUM0042** (0004, 0012-0013, 0017-0018, 0021, 0022-0023, 0024, 0029, 0032, 0040 unused — all retired, not reassigned: 0004 with the `Profile.IsSuspended` column drop in #1217, 0012-0013 with the section split — both asserted a `Humans.Application.*` namespace layout the section assemblies replaced, 0017-0018 in nobodies-collective/Humans#1064 — the assembly boundary makes a cross-section repository injection a compile error, and with `[Section]` gone there is no "cannot determine the section" state left to report, 0022-0023 subsumed by the universal HUM0025, 0021/0024 in #1278, 0040 (HUM0039's stale-baseline check) once HUM0039's baseline emptied, 0032 with the retired read/write interface split — a section's `Contracts` are now its whole public face, so HUM0034 and HUM0037 carry the boundary and the only name key is HUM0034's `I*Management` check (see `memory/architecture/section-public-contract.md`), 0029 once `Humans.Application` declared no `I*Read` interface at all — its assembly gate made it analyze zero types, and `.Contracts` leaves cannot name EF types — the EF `User : IdentityUser<Guid>` entity lives in `Humans.Base` — with HUM0037 enforcing the EF infrastructure boundary while permitting that Identity model; HUM0037 also enforces the former `IQueryable` gap tracked by nobodies-collective/Humans#1040). Always confirm against `AnalyzerReleases.Unshipped.md` before assigning a new id.
+> The next free id is **HUM0046** (0004, 0012-0013, 0017-0018, 0021, 0022-0023, 0024, 0029, 0032, 0040 unused — all retired, not reassigned: 0004 with the `Profile.IsSuspended` column drop in #1217, 0012-0013 with the section split — both asserted a `Humans.Application.*` namespace layout the section assemblies replaced, 0017-0018 in nobodies-collective/Humans#1064 — the assembly boundary makes a cross-section repository injection a compile error, and with `[Section]` gone there is no "cannot determine the section" state left to report, 0022-0023 subsumed by the universal HUM0025, 0021/0024 in #1278, 0040 (HUM0039's stale-baseline check) once HUM0039's baseline emptied, 0032 with the retired read/write interface split — a section's `Contracts` are now its whole public face, so HUM0034 and HUM0037 carry the boundary and the only name key is HUM0034's `I*Management` check (see `memory/architecture/section-public-contract.md`), 0029 once `Humans.Application` declared no `I*Read` interface at all — its assembly gate made it analyze zero types, and `.Contracts` leaves cannot name EF types — the EF `User : IdentityUser<Guid>` entity lives in `Humans.Base` — with HUM0037 enforcing the EF infrastructure boundary while permitting that Identity model; HUM0037 also enforces the former `IQueryable` gap tracked by nobodies-collective/Humans#1040). Always confirm against `AnalyzerReleases.Unshipped.md` before assigning a new id.
 
 Authoritative declaration: `src/Humans.Analyzers/AnalyzerReleases.Unshipped.md`
 (plus `AnalyzerReleases.Shipped.md` once we cut a 1.0).
@@ -105,8 +109,7 @@ and its name is the assembly name minus the `Humans.` prefix (`Humans.Store` and
 reaches `Microsoft.EntityFrameworkCore.DbContext`. That means every
 `<Section>DbContext` (`UsersDbContext` included). Neither namespace nor assembly is pinned, so moving the
 contexts cannot silently switch these rules off; production-only scoping comes
-from `src/Directory.Build.props` attaching the analyzer to `src/` projects only,
-not from where the context lives.
+from the build (see *How it ships*), not from where the context lives.
 
 ### How it ships
 
@@ -115,16 +118,21 @@ not from where the context lives.
 project under `src/` except the analyzer itself. The analyzer compiles to
 `netstandard2.0` and binds to the `Microsoft.CodeAnalysis.CSharp` version pinned in
 `Directory.Packages.props`, held deliberately low: a compiler older than that
-version refuses to load the analyzer (CS9057). Tests do *not* attach the
-analyzer to their own compilation — they instantiate analyzers directly via
-`AnalyzerTestHarness` and feed them synthetic compilations.
+version refuses to load the analyzer (CS9057).
+
+`tests/Directory.Build.props` attaches the same assembly to the test projects for the
+naming rules alone (HUM0042-HUM0044, category `Humans.Naming`). Every other rule is
+category `Humans.Architecture`, which the root `.editorconfig` switches off under
+`tests/`, so a new architecture rule stays production-only without touching the build.
+Analyzer tests instantiate analyzers directly via `AnalyzerTestHarness` and feed them
+synthetic compilations.
 
 ### When to write an analyzer vs. a test
 
 | Pattern shape | Tool | Why |
 |---|---|---|
 | "X may not call Y" / "only X may call Y" / "must not write to property" | **Analyzer** | Fires in-editor + at build with a precise source location. The compiler's semantic model handles inheritance, generics, async lowering. |
-| "no new violations from here, baseline absorbs the existing N" | **Ratchet test** (`Architecture/Rules/`, `Architecture/Ratchet/`) | Analyzers don't natively express accumulated-debt baselines. Build one when there's a third rule that needs it, not for the first. |
+| "no new violations from here, baseline absorbs the existing N" | **Analyzer** with `[Grandfathered]` on the few, or a per-project baseline file on the many | The hard rules put baselines in analyzers, not tests. `NameLengthAnalyzer` is the file-baseline pattern: an `AdditionalFiles` list per project, and a stale line is itself an error so the list only shrinks. The ratchet tests that predate this are debt, not a pattern. |
 | "this symbol must exist" / "this interface must implement that marker" | **Reflection test** | Analyzers fire on present code, not absent code. |
 | "in this folder, no calls of shape X" / "section ownership comes from directory layout" | **Filesystem-aware ratchet test** | Analyzers see compilations, not folders. |
 | EF migration-file checks (no `Drop*` in `Up()`) | **Ratchet test** | Migration files are EF-generated; an analyzer would fire on legitimate ops. |

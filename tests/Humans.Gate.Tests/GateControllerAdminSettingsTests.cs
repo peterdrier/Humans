@@ -1,4 +1,3 @@
-using Hangfire;
 using AwesomeAssertions;
 using Humans.Gate.Controllers;
 using Humans.Gate.Models;
@@ -40,7 +39,7 @@ public sealed class GateControllerAdminSettingsTests
     }
 
     [HumansFact]
-    public async Task Admin_Post_ValidModel_RedirectsToTheSettingsPageGateTab()
+    public async Task AdminPost_ValidModel_RedirectsToGateTab()
     {
         var model = new GateSettingsViewModel("2026-07-06T10:00:00Z", 16);
 
@@ -51,7 +50,7 @@ public sealed class GateControllerAdminSettingsTests
     }
 
     [HumansFact]
-    public async Task Admin_Post_InvalidInstant_RedirectsToTheSettingsPageGateTabWithoutSaving()
+    public async Task AdminPost_InvalidInstant_RedirectsWithoutSaving()
     {
         var model = new GateSettingsViewModel("not-an-instant", 16);
 

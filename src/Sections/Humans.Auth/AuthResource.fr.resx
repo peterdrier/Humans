@@ -40,20 +40,20 @@
   <resheader name="writer">
     <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=2.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
   </resheader>
-  <data name="Auth_Email_MagicLinkLogin_Subject" xml:space="preserve">
+  <data name="Auth_Email_SignInLink_Subject" xml:space="preserve">
     <value>Votre lien de connexion pour Nobodies</value>
   </data>
-  <data name="Auth_Email_MagicLinkLogin_Body" xml:space="preserve">
+  <data name="Auth_Email_SignInLink_Body" xml:space="preserve">
     <value>&lt;p&gt;Bonjour {0},&lt;/p&gt;&lt;p&gt;Cliquez sur le lien ci-dessous pour vous connecter :&lt;/p&gt;&lt;p&gt;&lt;a href="{1}"&gt;Se connecter à Nobodies&lt;/a&gt;&lt;/p&gt;&lt;p&gt;Ce lien expire dans 15 minutes et ne peut être utilisé qu'une seule fois.&lt;/p&gt;&lt;p&gt;Si vous n'avez pas demandé ceci, vous pouvez ignorer cet e-mail.&lt;/p&gt;</value>
   </data>
-  <data name="Auth_Email_MagicLinkSignup_Subject" xml:space="preserve">
+  <data name="Auth_Email_SignInLinkSignup_Subject" xml:space="preserve">
     <value>Bienvenue chez Nobodies — confirmez votre e-mail</value>
   </data>
-  <data name="Auth_Email_MagicLinkSignup_Body" xml:space="preserve">
+  <data name="Auth_Email_SignInLinkSignup_Body" xml:space="preserve">
     <value>&lt;p&gt;Bienvenue chez Nobodies !&lt;/p&gt;&lt;p&gt;Cliquez sur le lien ci-dessous pour créer votre compte :&lt;/p&gt;&lt;p&gt;&lt;a href="{0}"&gt;Créer votre compte&lt;/a&gt;&lt;/p&gt;&lt;p&gt;Ce lien expire dans 15 minutes et ne peut être utilisé qu'une seule fois.&lt;/p&gt;&lt;p&gt;Si vous n'avez pas demandé ceci, vous pouvez ignorer cet e-mail.&lt;/p&gt;</value>
   </data>
   <data name="Auth_Roles_Title" xml:space="preserve">
-    <value>Attributions de rôles</value>
+    <value>Rôles système</value>
   </data>
   <data name="Auth_Roles_All" xml:space="preserve">
     <value>Tous</value>
@@ -74,13 +74,13 @@
     <value>Valide jusqu'au</value>
   </data>
   <data name="Auth_Roles_Assignments" xml:space="preserve">
-    <value>Attributions de rôles</value>
+    <value>Rôles système</value>
   </data>
   <data name="Auth_Roles_AddRole" xml:space="preserve">
-    <value>Ajouter un rôle</value>
+    <value>Attribuer un rôle système</value>
   </data>
   <data name="Auth_Roles_Ended" xml:space="preserve">
-    <value>Terminé</value>
+    <value>Révoqué</value>
   </data>
   <data name="Auth_Roles_From" xml:space="preserve">
     <value>Du</value>
@@ -89,16 +89,16 @@
     <value>au</value>
   </data>
   <data name="Auth_Roles_EndConfirm" xml:space="preserve">
-    <value>Mettre fin à cette attribution de rôle ?</value>
+    <value>Révoquer ce rôle système ?</value>
   </data>
   <data name="Auth_Roles_End" xml:space="preserve">
-    <value>Terminer</value>
+    <value>Révoquer</value>
   </data>
   <data name="Auth_Roles_NoAssignments" xml:space="preserve">
-    <value>Aucune attribution de rôle.</value>
+    <value>Aucun rôle système.</value>
   </data>
   <data name="Auth_AddRole_Title" xml:space="preserve">
-    <value>Ajouter un rôle</value>
+    <value>Attribuer un rôle système</value>
   </data>
   <data name="Auth_AddRole_SelectRole" xml:space="preserve">
     <value>Sélectionner un rôle...</value>
@@ -109,6 +109,6 @@
   <data name="Auth_AddRole_NotesPlaceholder" xml:space="preserve">
     <value>Motif de l'attribution</value>
   </data>
-  <data name="Auth_Notification_RoleAssigned" xml:space="preserve"><value>Le rôle {0} t’a été attribué</value><comment>{0}=role name</comment></data>
-  <data name="Auth_Notification_RoleEnded" xml:space="preserve"><value>Ton attribution au rôle {0} a pris fin</value><comment>{0}=role name</comment></data>
+  <data name="Auth_Notification_RoleAssigned" xml:space="preserve"><value>Le rôle système {0} t’a été attribué</value><comment>{0}=role name</comment></data>
+  <data name="Auth_Notification_RoleRevoked" xml:space="preserve"><value>Le rôle système {0} t’a été retiré</value><comment>{0}=role name</comment></data>
 </root>

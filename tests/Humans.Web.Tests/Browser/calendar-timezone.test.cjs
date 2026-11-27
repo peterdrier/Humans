@@ -68,3 +68,27 @@ test('timezone picker blocks overlapping saves and reloads after success', async
     assert.equal(ui.reloads(), 1);
     assert.deepEqual(ui.errors, []);
 });
+
+const site = readFileSync(resolve(__dirname, '../../../src/Humans.Web/wwwroot/js/site.js'), 'utf8');
+const automaticScript = site.slice(site.indexOf('// Timezone detection'), site.indexOf('// Notification bell popup'));
+for (const outcome of ['success', 'refused', 'offline']) {
+    test(`automatic timezone reporting handles ${outcome}`, async () => {
+        const warnings = [], requests = [];
+        vm.runInNewContext(automaticScript, {
+            Intl: { DateTimeFormat: () => ({ resolvedOptions: () => ({ timeZone: 'Europe/Madrid' }) }) },
+            document: { querySelector: () => ({}) },
+            console: { warn: (...args) => warnings.push(args) },
+            fetch: (url, options) => {
+                requests.push({ url, options });
+                return outcome === 'offline' ? Promise.reject(new Error('offline'))
+                    : Promise.resolve({ ok: outcome === 'success', status: outcome === 'success' ? 204 : 503 });
+            },
+        });
+        await flush();
+        assert.equal(requests.length, 1);
+        assert.equal(requests[0].url, '/api/timezone');
+        assert.equal(requests[0].options.method, 'POST');
+        assert.equal(JSON.parse(requests[0].options.body).timeZone, 'Europe/Madrid');
+        assert.equal(warnings.length, outcome === 'success' ? 0 : 1);
+    });
+}

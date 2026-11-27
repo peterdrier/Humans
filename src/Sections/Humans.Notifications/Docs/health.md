@@ -107,7 +107,7 @@ Specified or known, not built; reserved, not ranked:
 ## Load-bearing weirdness
 
 - **`NotificationEmitter` is its own type.** `NotificationService` injects
-  `IRoleAssignmentService`, and `RoleAssignmentService` emits; it injects the narrow
+  `ISystemRoleService`, and `SystemRoleService` emits; it injects the narrow
   `INotificationEmitter`, whose implementation has no edge back, so the graph cannot close.
   Known-recipient callers inject `INotificationEmitter` directly; `NotificationService` exposes only shared role dispatch and recipient reassignment.
 - **`NotificationRecipient.UserId` is init-only**, so the account-merge fold is

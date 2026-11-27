@@ -134,7 +134,7 @@ public sealed class ExternalLoginServiceTests : ServiceTestHarness
 
         (await _userManager.FindByLoginAsync(Provider, providerKey))!.Id.Should().Be(userB.Id);
         (await _userManager.GetLoginsAsync(userA)).Should().BeEmpty();
-        await _userService.DidNotReceiveWithAnyArgs().RecordLoginAsync(default, default);
+        await _userService.DidNotReceiveWithAnyArgs().RecordSignInAsync(default);
         await _userEmailService.DidNotReceiveWithAnyArgs()
             .ReconcileOAuthIdentityAsync(default, default!, default!, default!, default);
     }
@@ -163,7 +163,7 @@ public sealed class ExternalLoginServiceTests : ServiceTestHarness
 
         (await _userManager.GetLoginsAsync(userA))
             .Should().ContainSingle(l => l.LoginProvider == Provider && l.ProviderKey == providerKey);
-        await _userService.Received(1).RecordLoginAsync(userA.Id, Arg.Any<CancellationToken>());
+        await _userService.Received(1).RecordSignInAsync(userA.Id, Arg.Any<CancellationToken>());
         await _userService.Received(1).EnsureStubProfileAsync(
             userA.Id, null, null, null, Arg.Any<CancellationToken>(), userA.Id);
         await _userEmailService.Received(1).ReconcileOAuthIdentityAsync(
@@ -191,7 +191,7 @@ public sealed class ExternalLoginServiceTests : ServiceTestHarness
         result.SignInUserId.Should().BeNull();
 
         (await _userManager.FindByLoginAsync(Provider, providerKey))!.Id.Should().Be(userA.Id);
-        await _userService.Received(1).RecordLoginAsync(userA.Id, Arg.Any<CancellationToken>());
+        await _userService.Received(1).RecordSignInAsync(userA.Id, Arg.Any<CancellationToken>());
         await _userService.Received(1).EnsureStubProfileAsync(
             userA.Id, null, null, null, Arg.Any<CancellationToken>(), userA.Id);
         await _userEmailService.Received(1).ReconcileOAuthIdentityAsync(
@@ -275,7 +275,7 @@ public sealed class ExternalLoginServiceTests : ServiceTestHarness
         result.Outcome.Should().Be(ExternalLoginOutcome.SignedIn);
         result.SignInUserId.Should().BeNull();
 
-        await _userService.Received(1).RecordLoginAsync(userA.Id, Arg.Any<CancellationToken>());
+        await _userService.Received(1).RecordSignInAsync(userA.Id, Arg.Any<CancellationToken>());
         await _userEmailService.Received(1).ReconcileOAuthIdentityAsync(
             userA.Id, Provider, providerKey, "a@example.com", true, Arg.Any<CancellationToken>());
     }

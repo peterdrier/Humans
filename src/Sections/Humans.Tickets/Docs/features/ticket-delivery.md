@@ -16,7 +16,7 @@ so every named person gets their own ticket by email, and can open it in Humans 
 | Mail | To | Category | When |
 |------|----|----------|------|
 | `ticket_issued` | each valid or offered ticket with an email, to its holder; a ticket without one (a child) rides on its adult's mail | System | as soon as the order's tickets are issued |
-| `ticket_order_receipt` | the buyer | System | with the tickets |
+| `ticket_order_receipt` | the buyer | System | when paid, including donation-only orders with no tickets |
 | `ticket_join_invitation` | each holder of an adult or companion ticket with an account | VolunteerUpdates (opt-out honoured, never locked) | two days later, only if the ticket is still `Valid` |
 | `ticket_payment_ended` | the buyer | System | when an order that reached its platform ends `Failed` (declined) or `Expired` (lapsed unpaid), with a link to try again (B16, B17) |
 | `ticket_resale_sold` | the holder of a resold ticket | System | at the sale; says the refund follows in the evening batch (H11) |
@@ -30,7 +30,7 @@ so every named person gets their own ticket by email, and can open it in Humans 
 - **Receipt:** order reference (`TicketCheckoutOrder.Reference`, also shown on the buyer and admin order pages), paid date in the event's time zone, payment
   method, each ticket line with its VAT rate, each donation line marked without VAT, total, any refund so far, and
   "a receipt, not an invoice" (no invoices for tickets).
-- **Invitation:** asks the holder to complete their profile and pick a shift, linking `/Profile` and `/Shifts`.
+- **Invitation:** asks the holder to complete their profile and pick a shift, linking `/Profile` and `/Shifts`. It requires a resolved, non-tombstoned account, skips unavailable accounts even if the ticket retains an address, and identifies live merge recipients by their survivor id.
 
 Each holder's mail renders in their profile language once they have signed in, otherwise in the language the order
 was placed in (an account that has never signed in has the default language, not a choice); the receipt in the order's language. All copy lives in `TicketsResource`
@@ -44,6 +44,8 @@ endpoint never renders text Humans did not issue. The QR uses error correction l
 screen. `/Tickets/Buy/Mine` embeds the same image as a `data:` URI.
 
 ## Repeats and resends
+
+A paid donation-only order uses the same hand-off for its receipt, without ticket emails or volunteer invitations. Recovery retries a missing receipt after 30 minutes, for up to seven days from payment, until `TicketsEmailed` or `TicketMailSkipped` is recorded. Older orders are not swept into delivery. The admin resend rule still requires a live ticket.
 
 `TicketsIssuedAsync` only enqueues a Hangfire job (`TicketDeliveryService.DeliverAsync`), so a failure while sending
 is retried instead of lost inside the paid transition. Each mail's `EmailMessage.DeliveryId` derives from the template

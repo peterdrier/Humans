@@ -1501,7 +1501,7 @@ public sealed class GoogleWorkspaceSyncServiceTests
             .Returns(async _ =>
             {
                 await cancellation.CancelAsync();
-                return (GoogleClientError?)null;
+                return null;
             });
 
         var act = () => _syncService.EnforceInheritedAccessRestrictionsAsync(ct);
@@ -1537,7 +1537,7 @@ public sealed class GoogleWorkspaceSyncServiceTests
 
         await act.Should().ThrowAsync<OperationCanceledException>();
         await _drivePermissions.DidNotReceiveWithAnyArgs()
-            .SetInheritedPermissionsDisabledAsync(default!, default, default);
+            .SetInheritedPermissionsDisabledAsync(default!, default);
     }
 
     [HumansFact]
@@ -1549,7 +1549,7 @@ public sealed class GoogleWorkspaceSyncServiceTests
         var act = () => _syncService.RemediateGroupSettingsAsync("group@nobodies.team", cancellation.Token);
 
         await act.Should().ThrowAsync<OperationCanceledException>();
-        await _groupProvisioning.DidNotReceiveWithAnyArgs().UpdateGroupSettingsAsync(default!, default!, default);
+        await _groupProvisioning.DidNotReceiveWithAnyArgs().UpdateGroupSettingsAsync(default!, default!);
         await _auditLogService.DidNotReceive().LogAsync(
             GoogleAuditActions.GoogleResourceSettingsRemediated,
             TeamGoogleResource.AuditEntityType, Guid.Empty, Arg.Any<string>(), nameof(GoogleWorkspaceSyncService));
@@ -1564,7 +1564,7 @@ public sealed class GoogleWorkspaceSyncServiceTests
             .Returns(async _ =>
             {
                 await cancellation.CancelAsync();
-                return (GoogleClientError?)null;
+                return null;
             });
 
         var result = await _syncService.RemediateGroupSettingsAsync("group@nobodies.team", ct);
@@ -1616,14 +1616,15 @@ public sealed class GoogleWorkspaceSyncServiceTests
     [Xunit.InlineData(false)]
     public async Task RequeueOutboxEventAsync_AuditsOnlyWhenTheEventWasRequeued(bool requeued)
     {
+        var requeue = requeued ? OutboxRequeue.Requeued : OutboxRequeue.NotFailed;
         var id = Guid.NewGuid();
         var actor = Guid.NewGuid();
-        _googleSyncOutboxRepository.RequeueAsync(id, Arg.Any<CancellationToken>()).Returns(requeued);
+        _googleSyncOutboxRepository.RequeueAsync(id, Arg.Any<CancellationToken>()).Returns(requeue);
 
         (await _syncService.RequeueOutboxEventAsync(id, actor, Xunit.TestContext.Current.CancellationToken))
-            .Should().Be(requeued);
+            .Should().Be(requeue);
 
-        await _auditLogService.Received(requeued ? 1 : 0).LogAsync(
+        await _auditLogService.Received(requeue == OutboxRequeue.Requeued ? 1 : 0).LogAsync(
             GoogleAuditActions.GoogleSyncRetryScheduled, "GoogleSyncOutboxEvent", id,
             $"Admin manually requeued Google sync outbox event {id}", actor);
     }

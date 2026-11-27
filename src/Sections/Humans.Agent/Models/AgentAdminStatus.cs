@@ -14,7 +14,7 @@ internal sealed record AgentStatusMessageRow(
     string Model,
     int DurationMs,
     string[] FetchedDocs,
-    string? RefusalReason);
+    string? Outcome);
 
 internal sealed record AgentUsageStats(
     int ConversationCount,
@@ -34,7 +34,7 @@ internal sealed record AgentSpendStats(
     decimal TotalUsd);
 
 /// <summary>Last 7 days.</summary>
-internal sealed record AgentRefusalBucket(string Reason, int Count);
+internal sealed record AgentOutcomeBucket(string Outcome, int Count);
 
 /// <summary>Last 7 days.</summary>
 internal sealed record AgentTopDoc(string Slug, int Count);

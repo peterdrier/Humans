@@ -1,47 +1,26 @@
 using NSubstitute;
 using AwesomeAssertions;
-using Humans.Agent.Contracts;
 using Humans.Base.Interfaces;
 using Humans.Agent.Services.Preload;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Logging.Abstractions;
-using Humans.Agent.Domain;
 using Humans.Agent.Services;
 
 namespace Humans.Agent.Tests;
 
 public class AgentPreloadCorpusBuilderTests
 {
-    [HumansFact]
-    public async Task Tier1_index_lists_only_the_eight_highest_signal_sections()
-    {
-        var builder = MakeBuilder();
-        var text = await builder.BuildAsync(AgentPreloadConfig.Tier1, Xunit.TestContext.Current.CancellationToken);
-
-        text.Should().Contain("**Onboarding**");
-        text.Should().Contain("**Teams**");
-        text.Should().Contain("**Consent**");
-        text.Should().Contain("**Governance**");
-        text.Should().Contain("**Shifts**");
-        text.Should().Contain("**Tickets**");
-        text.Should().Contain("**Users**");
-        text.Should().Contain("**Auth**");
-        text.Should().NotContain("**Budget**");
-        text.Should().NotContain("**Camps**");
-        text.Should().NotContain("**CityPlanning**");
-    }
-
     /// <summary>
-    /// A section the reader can serve but that never appears in the Tier2 index is one the
+    /// A section the reader can serve but that never appears in the index is one the
     /// agent has no reason to ask for — the index is the only place it learns the key set.
     /// Asserting against <c>KnownSections</c> rather than a hand-listed set keeps the two
     /// lists from drifting apart.
     /// </summary>
     [HumansFact]
-    public async Task Tier2_index_lists_every_section_the_reader_can_serve()
+    public async Task Build_Index_ListsEverySectionTheReaderServes()
     {
         var builder = MakeBuilder();
-        var text = await builder.BuildAsync(AgentPreloadConfig.Tier2, Xunit.TestContext.Current.CancellationToken);
+        var text = await builder.BuildAsync(Xunit.TestContext.Current.CancellationToken);
 
         var reader = new AgentSectionDocReader(
             new StubSource(), new MemoryCache(new MemoryCacheOptions()),
@@ -54,7 +33,7 @@ public class AgentPreloadCorpusBuilderTests
     public async Task Index_does_not_include_section_bodies()
     {
         var builder = MakeBuilder();
-        var text = await builder.BuildAsync(AgentPreloadConfig.Tier2, Xunit.TestContext.Current.CancellationToken);
+        var text = await builder.BuildAsync(Xunit.TestContext.Current.CancellationToken);
 
         // Section bodies have these subheadings; the index must not include them.
         text.Should().NotContain("## Invariants");
@@ -63,24 +42,10 @@ public class AgentPreloadCorpusBuilderTests
     }
 
     [HumansFact]
-    public async Task Tier1_output_is_below_the_ITPM_budget()
-    {
-        var builder = MakeBuilder();
-        var text = await builder.BuildAsync(AgentPreloadConfig.Tier1, Xunit.TestContext.Current.CancellationToken);
-
-        // Rough token estimate: 1 token ≈ 3.8 chars for English/Spanish mix.
-        // The index is just keys + taglines; section bodies are fetched on demand
-        // via fetch_section_guide. 2K tokens leaves enormous headroom under the
-        // Anthropic ITPM budget.
-        var estimatedTokens = text.Length / 3.8;
-        estimatedTokens.Should().BeLessThan(2_000, "Tier1 preload is now a section index; full bodies are fetched on demand");
-    }
-
-    [HumansFact]
     public async Task Index_includes_community_faq_block_when_files_exist()
     {
         var builder = MakeBuilder(communityFiles: ["FAQ-general"]);
-        var text = await builder.BuildAsync(AgentPreloadConfig.Tier2, Xunit.TestContext.Current.CancellationToken);
+        var text = await builder.BuildAsync(Xunit.TestContext.Current.CancellationToken);
 
         text.Should().Contain("Community FAQ");
         text.Should().Contain("**FAQ-general**");
@@ -91,7 +56,7 @@ public class AgentPreloadCorpusBuilderTests
     public async Task Community_index_renders_covers_keywords_so_the_router_can_match()
     {
         var builder = MakeBuilder(communityFiles: ["FAQ-general"]);
-        var text = await builder.BuildAsync(AgentPreloadConfig.Tier2, Xunit.TestContext.Current.CancellationToken);
+        var text = await builder.BuildAsync(Xunit.TestContext.Current.CancellationToken);
 
         text.Should().Contain("covers: kw-FAQ-general, alpha, beta");
     }
@@ -100,7 +65,7 @@ public class AgentPreloadCorpusBuilderTests
     public async Task Index_omits_community_block_when_no_files()
     {
         var builder = MakeBuilder(communityFiles: []);
-        var text = await builder.BuildAsync(AgentPreloadConfig.Tier2, Xunit.TestContext.Current.CancellationToken);
+        var text = await builder.BuildAsync(Xunit.TestContext.Current.CancellationToken);
 
         text.Should().NotContain("Community FAQ");
     }
@@ -111,14 +76,14 @@ public class AgentPreloadCorpusBuilderTests
         var files = new List<string> { "FAQ-general" };
         var builder = MakeBuilder(communityFiles: files);
 
-        var before = await builder.BuildAsync(AgentPreloadConfig.Tier2, Xunit.TestContext.Current.CancellationToken);
+        var before = await builder.BuildAsync(Xunit.TestContext.Current.CancellationToken);
         before.Should().Contain("**FAQ-general**");
         before.Should().NotContain("**FAQ-comms**");
 
         files.Add("FAQ-comms");
         await builder.ReloadAllAsync(Xunit.TestContext.Current.CancellationToken);
 
-        var after = await builder.BuildAsync(AgentPreloadConfig.Tier2, Xunit.TestContext.Current.CancellationToken);
+        var after = await builder.BuildAsync(Xunit.TestContext.Current.CancellationToken);
         after.Should().Contain("**FAQ-comms**");
     }
 
@@ -131,13 +96,13 @@ public class AgentPreloadCorpusBuilderTests
         var source = new StubSource { CommunityFiles = ["topic"], FailingRead = failingRead };
         var builder = MakeBuilder(source: source);
 
-        var degraded = await builder.BuildAsync(AgentPreloadConfig.Tier1, Xunit.TestContext.Current.CancellationToken);
+        var degraded = await builder.BuildAsync(Xunit.TestContext.Current.CancellationToken);
         degraded.Should().NotContain(string.Equals(failingRead, "Onboarding", StringComparison.Ordinal) ? "**Onboarding**" : "**topic**");
         source.FailingRead = null;
-        var recovered = await builder.BuildAsync(AgentPreloadConfig.Tier1, Xunit.TestContext.Current.CancellationToken);
+        var recovered = await builder.BuildAsync(Xunit.TestContext.Current.CancellationToken);
         recovered.Should().ContainAll("**Onboarding**", "**topic**");
         source.FailingRead = "listing";
-        (await builder.BuildAsync(AgentPreloadConfig.Tier1, Xunit.TestContext.Current.CancellationToken))
+        (await builder.BuildAsync(Xunit.TestContext.Current.CancellationToken))
             .Should().BeSameAs(recovered, "complete corpora remain cached");
     }
 
@@ -149,17 +114,17 @@ public class AgentPreloadCorpusBuilderTests
         var files = new List<string> { "topic" };
         var source = new StubSource { CommunityFiles = files };
         var builder = MakeBuilder(source: source);
-        var original = await builder.BuildAsync(AgentPreloadConfig.Tier1, Xunit.TestContext.Current.CancellationToken);
+        var original = await builder.BuildAsync(Xunit.TestContext.Current.CancellationToken);
         files.Add("new-topic");
         source.FailingRead = failingRead;
 
         (await builder.ReloadAllAsync(Xunit.TestContext.Current.CancellationToken)).Should().BeFalse();
 
-        (await builder.BuildAsync(AgentPreloadConfig.Tier1, Xunit.TestContext.Current.CancellationToken))
+        (await builder.BuildAsync(Xunit.TestContext.Current.CancellationToken))
             .Should().BeSameAs(original);
         source.FailingRead = null;
         (await builder.ReloadAllAsync(Xunit.TestContext.Current.CancellationToken)).Should().BeTrue();
-        (await builder.BuildAsync(AgentPreloadConfig.Tier1, Xunit.TestContext.Current.CancellationToken))
+        (await builder.BuildAsync(Xunit.TestContext.Current.CancellationToken))
             .Should().Contain("**new-topic**");
     }
 
@@ -185,13 +150,13 @@ public class AgentPreloadCorpusBuilderTests
         });
         var builder = MakeBuilder(source: source);
 
-        var oldBuild = builder.BuildAsync(AgentPreloadConfig.Tier1, token);
+        var oldBuild = builder.BuildAsync(token);
         await started.Task.WaitAsync(token);
         (await builder.ReloadAllAsync(token)).Should().BeTrue();
         pending.SetResult("# Old community");
         await oldBuild.WaitAsync(token);
 
-        (await builder.BuildAsync(AgentPreloadConfig.Tier1, token))
+        (await builder.BuildAsync(token))
             .Should().Contain("Fresh community").And.NotContain("Old community");
     }
 

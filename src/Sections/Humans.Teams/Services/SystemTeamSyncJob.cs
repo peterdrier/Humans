@@ -172,7 +172,7 @@ internal sealed class SystemTeamSyncJob(
             .Select(u => u.Id)
             .ToList();
 
-        var eligibleSet = await ConsentService.GetUsersWithAllRequiredConsentsForTeamAsync(
+        var eligibleSet = await ConsentService.GetConsentedUsersForTeamAsync(
             candidateIds, SystemTeamIds.Volunteers, cancellationToken);
 
         await SyncTeamMembershipAsync(team, eligibleSet.ToList(), cancellationToken, step: step);
@@ -199,7 +199,7 @@ internal sealed class SystemTeamSyncJob(
             .Distinct()
             .ToList();
 
-        var eligibleSet = await ConsentService.GetUsersWithAllRequiredConsentsForTeamAsync(
+        var eligibleSet = await ConsentService.GetConsentedUsersForTeamAsync(
             leadUserIds, SystemTeamIds.Coordinators, cancellationToken);
 
         await SyncTeamMembershipAsync(team, eligibleSet.ToList(), cancellationToken, step: step);
@@ -396,6 +396,11 @@ internal sealed class SystemTeamSyncJob(
             {
                 if (!addedUsersWithEmails.TryGetValue(userId, out var user))
                     continue;
+                if (user.IsTombstone)
+                {
+                    logger.LogWarning("Skipping added-to-team welcome for unavailable user {UserId} team {TeamId}", userId, team.Id);
+                    continue;
+                }
 
                 try
                 {

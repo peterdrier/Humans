@@ -44,7 +44,7 @@ public class CantinaDailyRosterServiceTests
         _dietary.GetDietaryProfilesAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
             .Returns(new Dictionary<Guid, DietaryProfileInfo>());
 
-        _shiftMgmt.GetOnSiteUserIdsForDayAsync(
+        _shiftMgmt.GetOnSiteUserIdsAsync(
                 Arg.Any<Guid>(), Arg.Any<int>(), Arg.Any<CancellationToken>())
             .Returns(Task.FromResult<IReadOnlyList<Guid>>(Array.Empty<Guid>()));
 
@@ -257,7 +257,7 @@ public class CantinaDailyRosterServiceTests
     {
         // The cantina output DTO must not expose MedicalConditions, even though
         // medical rides on the cached UserInfo (its Profile). GDPR Art.9 boundary.
-        typeof(Humans.Cantina.Services.Dtos.DailyPersonRowDto)
+        typeof(DailyPersonRowDto)
             .GetProperty("MedicalConditions").Should().BeNull(
             "DailyPersonRowDto must not expose MedicalConditions — GDPR Art.9 boundary.");
 
@@ -351,7 +351,7 @@ public class CantinaDailyRosterServiceTests
     }
 
     private void SetupDay(int dayOffset, params Guid[] onSiteIds) =>
-        _shiftMgmt.GetOnSiteUserIdsForDayAsync(
+        _shiftMgmt.GetOnSiteUserIdsAsync(
                 Arg.Any<Guid>(), dayOffset, Arg.Any<CancellationToken>())
             .Returns(Task.FromResult<IReadOnlyList<Guid>>(onSiteIds));
 

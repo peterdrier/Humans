@@ -18,7 +18,7 @@ Repository: `INotificationRepository`.
 | Notifications | R/W |
 | NotificationRecipients | R/W |
 
-Resolves role holders through `IRoleAssignmentService`, then delegates all emission to the
+Resolves role holders through `ISystemRoleService`, then delegates all emission to the
 section-internal `NotificationEmitter`. Its only repository write is merge reassignment.
 Implements `IUserMerge`.
 

@@ -9,7 +9,6 @@ using NodaTime.Testing;
 using NSubstitute;
 using Humans.Tickets.Services;
 using Humans.Tickets.Services.Dtos;
-using Humans.Tickets.Domain;
 
 namespace Humans.Tickets.Tests.Services;
 
@@ -160,7 +159,7 @@ public sealed class CachingTicketQueryServiceTests
         _inner.GetUserTicketHoldingsAsync(UserA, ct).Returns(pending.Task, Task.FromResult(current));
         var read = _decorator.GetUserTicketHoldingsAsync(UserA, ct);
 
-        if (viaSync) await _decorator.SyncOrdersAndAttendeesAsync(ct);
+        if (viaSync) await _decorator.SyncAsync(ct);
         else await _decorator.EraseForUserAsync(UserA, ct);
         pending.SetResult(old);
         (await read).Should().BeSameAs(old);
@@ -177,11 +176,11 @@ public sealed class CachingTicketQueryServiceTests
         await PrimeAsync(UserA, UserB);
         if (throws)
         {
-            _sync.SyncOrdersAndAttendeesAsync(Arg.Any<CancellationToken>())
+            _sync.SyncAsync(Arg.Any<CancellationToken>())
                 .Returns(Task.FromException<TicketSyncResult>(new InvalidOperationException("redemption failed")));
         }
 
-        var sync = () => _decorator.SyncOrdersAndAttendeesAsync(ct);
+        var sync = () => _decorator.SyncAsync(ct);
         if (throws) await sync.Should().ThrowAsync<InvalidOperationException>();
         else await sync();
 

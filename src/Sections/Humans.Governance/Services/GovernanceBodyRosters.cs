@@ -14,7 +14,7 @@ namespace Humans.Governance.Services;
 /// </summary>
 internal sealed class GovernanceBodyRosters(
     IApplicationRepository applications,
-    IRoleAssignmentService roles,
+    ISystemRoleService roles,
     IClock clock) : IApplicationService
 {
     public async Task<IReadOnlyDictionary<GovernanceBody, IReadOnlyList<Guid>>> GetAsync(CancellationToken ct = default)

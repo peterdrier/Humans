@@ -33,8 +33,8 @@ internal sealed class TicketsEmailPreviews(TicketsEmails emails, TicketCodeImage
             new EmailPreviewSample("ticket-issued", "Ticket (bought by someone else, with a child)",
                 emails.TicketIssued(new IssuedTicketMail(Guid.Empty, email, name, SampleEvent,
                     [
-                        new TicketCard(name, "Adult", SampleBarcode, codeImages.ImageUrl(SampleBarcode)),
-                        new TicketCard("Kit Firestone", "Child", SampleChildBarcode, codeImages.ImageUrl(SampleChildBarcode)),
+                        new TicketCard(name, TicketHolderKind.Adult, SampleBarcode, codeImages.ImageUrl(SampleBarcode)),
+                        new TicketCard("Kit Firestone", TicketHolderKind.Child, SampleChildBarcode, codeImages.ImageUrl(SampleChildBarcode)),
                     ],
                     new Uri(SampleBase, "Tickets/Buy/Mine"), SampleReceiver, null), culture)),
             new EmailPreviewSample("ticket-order-receipt", "Ticket Order Receipt",
@@ -58,7 +58,7 @@ internal sealed class TicketsEmailPreviews(TicketsEmails emails, TicketCodeImage
                 emails.JoinInvitation(Guid.Empty, email, name, SampleEvent, new Uri(SampleBase, "Profile"),
                     new Uri(SampleBase, "Shifts"), null, culture)),
             new EmailPreviewSample("ticket-event-cancelled", "Ticket Event Cancelled",
-                emails.EventCancelled(Guid.Empty, email, name, SampleEvent, 45000, refundFailed: false, hadDonation: true, culture)),
+                emails.EventCancelled(Guid.Empty, email, name, SampleEvent, 45000, refundByHand: false, hadDonation: true, culture)),
         ];
     }
 }

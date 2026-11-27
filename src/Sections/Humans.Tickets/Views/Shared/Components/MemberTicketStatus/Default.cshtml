@@ -37,7 +37,7 @@
                             <h5 class="mb-0">@SharedLocalizer["Dashboard_TicketConfirmed"]</h5>
                             @if (Model.UserTicketCount + Model.HumansTicketCount > 1)
                             {
-                                <small class="text-muted">@string.Format(SharedLocalizer["Dashboard_TicketCount"].Value, Model.UserTicketCount + Model.HumansTicketCount)</small>
+                                <small class="text-muted">@SharedLocalizer["Dashboard_TicketCount", Model.UserTicketCount + Model.HumansTicketCount]</small>
                             }
                         </div>
                     </div>

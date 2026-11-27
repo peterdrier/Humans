@@ -1,5 +1,4 @@
 using Humans.Base.Extensions;
-using System.Security.Claims;
 using Humans.Base.Constants;
 using Humans.Settings.Contracts;
 using Humans.Shifts.Contracts;

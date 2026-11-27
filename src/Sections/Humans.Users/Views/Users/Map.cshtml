@@ -82,7 +82,7 @@
 {
     <div class="card">
         <div class="card-header">
-            @string.Format(Localizer["Users_Map_Count"].Value, Model.Markers.Count)
+            @Localizer["Users_Map_Count", Model.Markers.Count]
         </div>
         <div class="card-body p-0">
             <div id="map"></div>

@@ -55,6 +55,8 @@
     <ProjectReference Include="..\Humans.Notifications.Contracts\Humans.Notifications.Contracts.csproj" />
     <ProjectReference Include="..\Humans.Settings\Humans.Settings.csproj" />
     <ProjectReference Include="..\Humans.Teams.Contracts\Humans.Teams.Contracts.csproj" />
+    <!-- Permissions: declares Google.ManageResources, and checks it on departments. -->
+    <ProjectReference Include="..\Humans.Permissions\Humans.Permissions.csproj" />
   </ItemGroup>
 
   <ItemGroup>

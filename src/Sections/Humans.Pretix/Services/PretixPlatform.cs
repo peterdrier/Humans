@@ -37,7 +37,7 @@ internal sealed partial class PretixPlatform(
 {
     public const string PlatformKey = "pretix";
     /// <summary>The <c>Stripe:MirrorAccounts</c> entry for the account pretix's Stripe settings charge into.</summary>
-    internal const string StripeAccountName = "Pretix";
+    internal const string StripeAccountName = "Tickets";
 
     /// <summary>
     /// Internal names of the carrier items every pretix event needs: one admission item taxed like a ticket, one
@@ -79,8 +79,7 @@ internal sealed partial class PretixPlatform(
             throw new TicketingPlatformException(
                 $"pretix event {eventSlug} sells in {ev.Currency}, not {request.Currency}.");
 
-        var items = await SendAsync<PretixPage<PretixItem>>(
-            HttpMethod.Get, $"{EventPath(eventSlug)}items/?active=true", body: null, ct);
+        var items = await ReadAllPagesAsync<PretixItem>($"{EventPath(eventSlug)}items/?active=true", ct);
         var code = OrderCode(request.OrderId);
         var body = BuildOrderBody(request, code, CarrierItem(items, TicketItemName), CarrierItem(items, DonationItemName));
         var created = true;
@@ -239,8 +238,11 @@ internal sealed partial class PretixPlatform(
         EnsureConfigured();
         var (eventSlug, code) = ParsePlatformOrderId(platformOrderId);
         var order = await SendAsync<PretixOrder>(HttpMethod.Get, OrderPath(eventSlug, code), body: null, ct);
-        if (MapStatus(order, logger).State is PlatformOrderState.Paid or PlatformOrderState.Processing)
-            throw new TicketingPlatformException($"pretix order {code} is paid or its payment is settling.");
+        var state = MapStatus(order, logger).State;
+        if (state is PlatformOrderState.Paid or PlatformOrderState.Processing)
+            throw new TicketingPlatformException(state == PlatformOrderState.Paid
+                ? $"pretix order {code} is paid."
+                : $"pretix order {code} has a payment settling.");
         // Expired is cancelled too: pretix still accepts a late payment on an expired order.
         if (!string.Equals(order.Status, "c", StringComparison.Ordinal))
             await CancelOrderAsync(eventSlug, code, ct);
@@ -292,7 +294,7 @@ internal sealed partial class PretixPlatform(
                 ? "pretix Hosted gives no shell for deploy/pretix/bootstrap.py: make the same settings by hand in the pretix control panel, following what bootstrap.py does."
                 : "deploy/pretix/bootstrap.py, run in the pretix container, sets this up.",
             "The webhook goes on the order actions; the event id in the ticketing settings is the pretix event slug.",
-            $"Fees and payouts reconcile from the Stripe account set in pretix's Stripe settings: a Stripe:MirrorAccounts entry named {StripeAccountName} with that account's id and a read-only key (Balance, Balance transactions, Payouts, PaymentIntents, Charges, Refunds, Disputes read).",
+            $"Fees and payouts reconcile from the Stripe account set in pretix's Stripe settings: the shared Tickets Stripe:MirrorAccounts entry named {StripeAccountName} with that account's id and a read-only key (Balance, Balance transactions, Payouts, PaymentIntents, Charges, Refunds, Disputes read).",
         ]);
 
     private bool IsHosted => Uri.TryCreate(Settings.BaseUrl, UriKind.Absolute, out var root)
@@ -308,7 +310,7 @@ internal sealed partial class PretixPlatform(
     public async Task<IReadOnlyList<PlatformFinding>> CheckAsync(string? platformEventRef, CancellationToken ct = default)
     {
         if (!IsConfigured)
-            return [new(false, "Pretix:BaseUrl, Pretix:Organizer and PRETIX_API_TOKEN must all be set.")];
+            return [new(false, "pretix needs an absolute HTTP(S) Pretix:BaseUrl, Pretix:Organizer and a PRETIX_API_TOKEN valid in an HTTP header.")];
 
         var findings = new List<PlatformFinding>
         {
@@ -349,15 +351,18 @@ internal sealed partial class PretixPlatform(
             if (details.Testmode)
                 findings.Add(new(false, "The event is in pretix test mode; whether payments are real depends on the Stripe keys set in pretix."));
 
-            var items = await SendAsync<PretixPage<PretixItem>>(
-                HttpMethod.Get, $"{EventPath(platformEventRef)}items/?active=true", body: null, ct);
+            var items = await ReadAllPagesAsync<PretixItem>($"{EventPath(platformEventRef)}items/?active=true", ct);
             foreach (var name in new[] { TicketItemName, DonationItemName })
             {
-                var count = items.Results.Count(i => string.Equals(i.InternalName, name, StringComparison.Ordinal));
+                var count = items.Count(i => string.Equals(i.InternalName, name, StringComparison.Ordinal));
                 findings.Add(count == 1
                     ? new(true, $"Carrier item {name} found.")
                     : new(false, $"The event has {count} active items with internal name {name}; it needs exactly one."));
             }
+        }
+        catch (OperationCanceledException) when (ct.IsCancellationRequested)
+        {
+            throw;
         }
         catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException or JsonException)
         {
@@ -402,7 +407,7 @@ internal sealed partial class PretixPlatform(
                 slugs ??= await EventSlugsAsync(ct);
                 orderOf[payment.PaymentIntentId] = humansOrderId = await HumansOrderOfAsync(payment, slugs, ct);
             }
-            entries.Add(new PaymentLedgerEntry(line.Id, line.CreatedAt, KindOf(line.ReportingCategory),
+            entries.Add(new PaymentLedgerEntry(line.Id, line.CreatedAt, PaymentLedgerEntry.KindOf(line.ReportingCategory),
                 line.AmountMinor, line.FeeMinor, humansOrderId, line.Description));
         }
 
@@ -424,28 +429,14 @@ internal sealed partial class PretixPlatform(
         return HumansOrderId(Deserialize<PretixOrder>(response.Body));
     }
 
-    /// <summary>By Stripe's reporting category, as Box Office reads its own account.</summary>
-    private static PaymentLedgerEntryKind KindOf(string reportingCategory) => reportingCategory switch
-    {
-        "charge" or "charge_failure" or "partial_capture_reversal" => PaymentLedgerEntryKind.Charge,
-        "refund" or "refund_failure" => PaymentLedgerEntryKind.Refund,
-        "dispute" or "dispute_reversal" => PaymentLedgerEntryKind.Chargeback,
-        "fee" => PaymentLedgerEntryKind.Fee,
-        "payout" or "payout_reversal" => PaymentLedgerEntryKind.Payout,
-        _ => PaymentLedgerEntryKind.Other,
-    };
-
     /// <summary>The organizer's event slugs, by the capitalised form pretix writes on a payment.</summary>
     private async Task<Dictionary<string, string>> EventSlugsAsync(CancellationToken ct)
     {
         var slugs = new Dictionary<string, string>(StringComparer.Ordinal);
-        for (string? next = $"api/v1/organizers/{Uri.EscapeDataString(Settings.Organizer)}/events/"; next is not null;)
-        {
-            var page = await SendAsync<PretixPage<PretixEventSlug>>(HttpMethod.Get, next, body: null, ct);
-            foreach (var ev in page.Results)
-                slugs[ev.Slug.ToUpperInvariant()] = ev.Slug;
-            next = page.Next;
-        }
+        var events = await ReadAllPagesAsync<PretixEventSlug>(
+            $"api/v1/organizers/{Uri.EscapeDataString(Settings.Organizer)}/events/", ct);
+        foreach (var ev in events)
+            slugs[ev.Slug.ToUpperInvariant()] = ev.Slug;
 
         return slugs;
     }
@@ -464,26 +455,35 @@ internal sealed partial class PretixPlatform(
             throw new TicketingPlatformException("pretix needs the event's slug to list its orders.");
 
         // Inactive carriers too: an order keeps its item after the item is switched off.
-        var ticketItems = new HashSet<int>();
-        for (string? next = $"{EventPath(platformEventRef)}items/"; next is not null;)
+        var items = await ReadAllPagesAsync<PretixItem>($"{EventPath(platformEventRef)}items/", ct);
+        var ticketItems = items
+            .Where(i => string.Equals(i.InternalName, TicketItemName, StringComparison.Ordinal))
+            .Select(i => i.Id).ToHashSet();
+        var orders = await ReadAllPagesAsync<PretixOrder>(
+            $"{EventPath(platformEventRef)}orders/?created_since={Uri.EscapeDataString(InstantPattern.ExtendedIso.Format(from))}"
+            + $"&created_before={Uri.EscapeDataString(InstantPattern.ExtendedIso.Format(to))}&ordering=datetime", ct);
+        return orders.Select(order => Summarize(platformEventRef, order, ticketItems)).ToList();
+    }
+
+    private const int PageSafetyCap = 500;
+
+    private async Task<IReadOnlyList<T>> ReadAllPagesAsync<T>(string firstPath, CancellationToken ct)
+    {
+        var items = new List<T>();
+        var visited = new HashSet<Uri>();
+        var origin = new Uri(Settings.BaseUrl);
+        for (string? next = firstPath; next is not null;)
         {
-            var page = await SendAsync<PretixPage<PretixItem>>(HttpMethod.Get, next, body: null, ct);
-            ticketItems.UnionWith(page.Results
-                .Where(i => string.Equals(i.InternalName, TicketItemName, StringComparison.Ordinal)).Select(i => i.Id));
+            if (visited.Count == PageSafetyCap)
+                throw new HttpRequestException($"pretix pagination hit the {PageSafetyCap}-page safety cap.");
+            if (!visited.Add(new Uri(origin, next)))
+                throw new HttpRequestException("pretix pagination repeated a page.");
+
+            var page = await SendAsync<PretixPage<T>>(HttpMethod.Get, next, body: null, ct);
+            items.AddRange(page.Results);
             next = page.Next;
         }
-
-        var orders = new List<PlatformOrderSummary>();
-        for (string? next = $"{EventPath(platformEventRef)}orders/?created_since={Uri.EscapeDataString(InstantPattern.ExtendedIso.Format(from))}"
-                 + $"&created_before={Uri.EscapeDataString(InstantPattern.ExtendedIso.Format(to))}&ordering=datetime";
-             next is not null;)
-        {
-            var page = await SendAsync<PretixPage<PretixOrder>>(HttpMethod.Get, next, body: null, ct);
-            orders.AddRange(page.Results.Select(order => Summarize(platformEventRef, order, ticketItems)));
-            next = page.Next;
-        }
-
-        return orders;
+        return items;
     }
 
     private PlatformOrderSummary Summarize(string eventSlug, PretixOrder order, IReadOnlySet<int> ticketItems)
@@ -623,8 +623,8 @@ internal sealed partial class PretixPlatform(
         _ => false,
     };
 
-    private static int CarrierItem(PretixPage<PretixItem> items, string internalName) =>
-        items.Results.SingleOrDefault(i => string.Equals(i.InternalName, internalName, StringComparison.Ordinal))?.Id
+    private static int CarrierItem(IReadOnlyList<PretixItem> items, string internalName) =>
+        items.SingleOrDefault(i => string.Equals(i.InternalName, internalName, StringComparison.Ordinal))?.Id
         ?? throw new TicketingPlatformException(
             $"The pretix event has no active item with internal name '{internalName}' (see deploy/pretix/bootstrap.py).");
 
@@ -792,7 +792,15 @@ internal sealed partial class PretixPlatform(
 
     private async Task<RawResponse> SendRawAsync(HttpMethod method, string path, JsonObject? body, CancellationToken ct)
     {
-        using var message = new HttpRequestMessage(method, new Uri(new Uri(Settings.BaseUrl), path));
+        var origin = new Uri(Settings.BaseUrl);
+        var target = new Uri(origin, path);
+        // Pagination links come from the vendor; never send the organizer token to another origin.
+        if (!string.Equals(target.Scheme, origin.Scheme, StringComparison.OrdinalIgnoreCase)
+            || !string.Equals(target.IdnHost, origin.IdnHost, StringComparison.OrdinalIgnoreCase)
+            || target.Port != origin.Port)
+            throw new HttpRequestException("pretix returned an API URL outside the configured origin.");
+
+        using var message = new HttpRequestMessage(method, target);
         message.Headers.Authorization = new AuthenticationHeaderValue("Token", Settings.ApiToken);
         message.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
         if (body is not null)

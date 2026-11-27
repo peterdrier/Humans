@@ -4,6 +4,9 @@ using Humans.Auth.Contracts;
 using Humans.Backdoor.Data;
 using Humans.Backdoor.Domain;
 using Humans.Backdoor.Services;
+using Humans.Base.Authorization;
+using Humans.Permissions.Contracts;
+using Humans.Tasks.Contracts;
 using Humans.Users.Contracts;
 using Microsoft.Extensions.Logging.Abstractions;
 using NodaTime;
@@ -21,8 +24,9 @@ public class BackdoorApiKeyServiceTests
     private static readonly Instant Now = Instant.FromUtc(2026, 8, 24, 10, 0);
 
     private readonly IBackdoorApiKeyRepository _repository = Substitute.For<IBackdoorApiKeyRepository>();
-    private readonly IRoleAssignmentService _roles = Substitute.For<IRoleAssignmentService>();
+    private readonly ISystemRoleService _roles = Substitute.For<ISystemRoleService>();
     private readonly IUserService _users = Substitute.For<IUserService>();
+    private readonly IPermissionService _permissions = Substitute.For<IPermissionService>();
     private readonly IAuditLogService _audit = Substitute.For<IAuditLogService>();
     private readonly BackdoorApiKeyService _sut;
 
@@ -32,17 +36,34 @@ public class BackdoorApiKeyServiceTests
     public BackdoorApiKeyServiceTests()
     {
         _sut = new BackdoorApiKeyService(
-            _repository, _roles, _users, _audit, new FakeClock(Now),
+            _repository, _roles, _permissions, _users, _audit, new FakeClock(Now),
             NullLogger<BackdoorApiKeyService>.Instance);
         MakeEligible(_actor);
+        _permissions.GetOwnersAsync(Arg.Any<Guid>(), Arg.Any<string>(), Arg.Any<CancellationToken>()).Returns([]);
+    }
+
+    [HumansFact]
+    public async Task A_tasks_manager_gets_a_key_that_expires()
+    {
+        MakeEligible(_owner, admin: false, board: false);
+        _permissions.GetOwnersAsync(_owner, TasksPermissions.Manage, Arg.Any<CancellationToken>())
+            .Returns([new Owner("Team", Guid.NewGuid())]);
+        BackdoorApiKey? stored = null;
+        await _repository.AddAsync(Arg.Do<BackdoorApiKey>(k => stored = k), Arg.Any<CancellationToken>());
+
+        var result = await _sut.CreateAsync(_owner, "tasks agent", _owner);
+
+        result.Succeeded.Should().BeTrue();
+        stored!.ExpiresAt.Should().Be(Now + BackdoorApiKeyService.ShortKeyLifetime);
+        (await _sut.AdmitsAsync(_owner, BackdoorScope.AdminAndBoard)).Should().BeFalse();
     }
 
     private void MakeEligible(
         Guid userId, bool admin = true, bool board = false, UserState state = UserState.Active)
     {
-        List<RoleAssignmentSnapshot> assignments = [];
-        if (admin) assignments.Add(new RoleAssignmentSnapshot("Admin", null));
-        if (board) assignments.Add(new RoleAssignmentSnapshot("Board", null));
+        List<SystemRoleSnapshot> assignments = [];
+        if (admin) assignments.Add(new SystemRoleSnapshot("Admin", null));
+        if (board) assignments.Add(new SystemRoleSnapshot("Board", null));
         _roles.GetActiveForUserAsync(userId, Arg.Any<CancellationToken>()).Returns(assignments);
         _users.GetUserInfoAsync(userId, Arg.Any<CancellationToken>())
             .Returns(new ValueTask<UserInfo?>(UserInfo.Create(
@@ -81,13 +102,13 @@ public class BackdoorApiKeyServiceTests
     }
 
     [HumansFact]
-    public async Task Issue_stores_only_a_hash_and_a_prefix()
+    public async Task Create_ValidLabel_KeepsPlaintextOutOfStorage()
     {
         MakeEligible(_owner);
         BackdoorApiKey? stored = null;
         await _repository.AddAsync(Arg.Do<BackdoorApiKey>(k => stored = k), Arg.Any<CancellationToken>());
 
-        var result = await _sut.IssueAsync(_owner, "triage agent", _actor);
+        var result = await _sut.CreateAsync(_owner, "triage agent", _actor);
 
         result.Succeeded.Should().BeTrue();
         result.PlaintextKey.Should().StartWith("hmn_");
@@ -102,11 +123,11 @@ public class BackdoorApiKeyServiceTests
     }
 
     [HumansFact]
-    public async Task Issue_to_a_Board_member_is_allowed()
+    public async Task Create_BoardMember_Succeeds()
     {
         MakeEligible(_owner, admin: false, board: true);
 
-        var result = await _sut.IssueAsync(_owner, "board laptop", _actor);
+        var result = await _sut.CreateAsync(_owner, "board laptop", _actor);
 
         result.Succeeded.Should().BeTrue();
     }
@@ -118,7 +139,7 @@ public class BackdoorApiKeyServiceTests
         BackdoorApiKey? stored = null;
         await _repository.AddAsync(Arg.Do<BackdoorApiKey>(k => stored = k), Arg.Any<CancellationToken>());
 
-        var result = await _sut.IssueAsync(_owner, "board laptop", _owner);
+        var result = await _sut.CreateAsync(_owner, "board laptop", _owner);
 
         result.Succeeded.Should().BeTrue();
         stored!.ExpiresAt.Should().BeNull();
@@ -138,11 +159,11 @@ public class BackdoorApiKeyServiceTests
     }
 
     [HumansFact]
-    public async Task Issue_to_a_plain_member_is_refused()
+    public async Task Create_PlainMember_Refused()
     {
         MakeEligible(_owner, admin: false, board: false);
 
-        var result = await _sut.IssueAsync(_owner, "triage agent", _actor);
+        var result = await _sut.CreateAsync(_owner, "triage agent", _actor);
 
         result.Succeeded.Should().BeFalse();
         result.PlaintextKey.Should().BeNull();
@@ -150,38 +171,38 @@ public class BackdoorApiKeyServiceTests
     }
 
     [HumansFact]
-    public async Task Issue_requires_a_label()
+    public async Task Create_BlankLabel_Refused()
     {
         MakeEligible(_owner);
 
-        var result = await _sut.IssueAsync(_owner, "  ", _actor);
+        var result = await _sut.CreateAsync(_owner, "  ", _actor);
 
         result.Succeeded.Should().BeFalse();
         await _repository.DidNotReceiveWithAnyArgs().AddAsync(default!);
     }
 
     [HumansFact]
-    public async Task Issue_refuses_a_label_longer_than_the_column()
+    public async Task Create_LabelTooLong_Refused()
     {
         MakeEligible(_owner);
 
         // The form caps this at 100, but the endpoint is reachable without the form and the
         // column is varchar(100) — an unvalidated label would be a 500 from the insert.
-        var result = await _sut.IssueAsync(_owner, new string('x', 101), _actor);
+        var result = await _sut.CreateAsync(_owner, new string('x', 101), _actor);
 
         result.Succeeded.Should().BeFalse();
         await _repository.DidNotReceiveWithAnyArgs().AddAsync(default!);
     }
 
     [HumansFact]
-    public async Task Issue_records_an_audit_entry_naming_the_owner()
+    public async Task Create_ValidKey_AuditsEntryNamingOwner()
     {
         MakeEligible(_owner);
 
-        await _sut.IssueAsync(_owner, "triage agent", _actor);
+        await _sut.CreateAsync(_owner, "triage agent", _actor);
 
         await _audit.Received(1).LogAsync(
-            BackdoorAuditActions.BackdoorApiKeyIssued,
+            BackdoorAuditActions.BackdoorApiKeyCreated,
             AuditEntityTypes.BackdoorApiKey,
             Arg.Any<Guid>(),
             Arg.Is<string>(d => d.Contains("triage agent")),
@@ -195,8 +216,8 @@ public class BackdoorApiKeyServiceTests
     {
         MakeEligible(_owner);
 
-        var first = await _sut.IssueAsync(_owner, "one", _actor);
-        var second = await _sut.IssueAsync(_owner, "two", _actor);
+        var first = await _sut.CreateAsync(_owner, "one", _actor);
+        var second = await _sut.CreateAsync(_owner, "two", _actor);
 
         first.PlaintextKey.Should().NotBe(second.PlaintextKey);
     }
@@ -208,7 +229,7 @@ public class BackdoorApiKeyServiceTests
         _repository.GetByIdAsync(key.Id, Arg.Any<CancellationToken>()).Returns(key);
         _repository.RevokeAsync(key.Id, _actor, Now, Arg.Any<CancellationToken>()).Returns(true);
 
-        (await _sut.RevokeAsync(key.Id, _actor)).Should().BeTrue();
+        (await _sut.RevokeAsync(key.Id, _actor)).Should().BeNull();
 
         await _audit.Received(1).LogAsync(
             BackdoorAuditActions.BackdoorApiKeyRevoked, AuditEntityTypes.BackdoorApiKey, key.Id,
@@ -222,7 +243,7 @@ public class BackdoorApiKeyServiceTests
         key.RevokedAt = Now;
         _repository.GetByIdAsync(key.Id, Arg.Any<CancellationToken>()).Returns(key);
 
-        (await _sut.RevokeAsync(key.Id, _actor)).Should().BeFalse();
+        (await _sut.RevokeAsync(key.Id, _actor)).Should().Be(BackdoorKeyError.AlreadyRevoked);
 
         await _repository.DidNotReceiveWithAnyArgs().RevokeAsync(default, default, default);
     }
@@ -250,11 +271,11 @@ public class BackdoorApiKeyServiceTests
     }
 
     /// <summary>
-    /// The audit half of a rotate: two entries, revoke then issue, both naming the actor and
+    /// The audit half of a rotate: two entries, revoke then create, both naming the actor and
     /// the owner. Without this, a rotate that silently skipped one of them would still pass.
     /// </summary>
     [HumansFact]
-    public async Task Rotate_writes_a_revoke_entry_then_an_issue_entry()
+    public async Task Rotate_ActiveKey_AuditsRevokeThenCreate()
     {
         var key = ExistingKey();
         MakeEligible(key.UserId);
@@ -270,7 +291,7 @@ public class BackdoorApiKeyServiceTests
                 BackdoorAuditActions.BackdoorApiKeyRevoked, AuditEntityTypes.BackdoorApiKey, key.Id,
                 Arg.Any<string>(), _actor, key.UserId, AuditSubjectTypes.User);
             _ = _audit.LogAsync(
-                BackdoorAuditActions.BackdoorApiKeyIssued, AuditEntityTypes.BackdoorApiKey, Arg.Any<Guid>(),
+                BackdoorAuditActions.BackdoorApiKeyCreated, AuditEntityTypes.BackdoorApiKey, Arg.Any<Guid>(),
                 Arg.Any<string>(), _actor, key.UserId, AuditSubjectTypes.User);
         });
     }
@@ -307,7 +328,7 @@ public class BackdoorApiKeyServiceTests
         MakeEligible(_owner);
         BackdoorApiKey? stored = null;
         await _repository.AddAsync(Arg.Do<BackdoorApiKey>(k => stored = k), Arg.Any<CancellationToken>());
-        var plaintext = (await _sut.IssueAsync(_owner, "triage agent", _actor)).PlaintextKey!;
+        var plaintext = (await _sut.CreateAsync(_owner, "triage agent", _actor)).PlaintextKey!;
 
         _repository.FindActiveByHashAsync(stored!.KeyHash, Arg.Any<CancellationToken>()).Returns(stored);
 
@@ -354,11 +375,11 @@ public class BackdoorApiKeyServiceTests
     }
 
     [HumansFact]
-    public async Task Issue_to_a_suspended_admin_is_refused()
+    public async Task Create_SuspendedAdmin_Refused()
     {
         MakeEligible(_owner, admin: true, state: UserState.Suspended);
 
-        var result = await _sut.IssueAsync(_owner, "triage agent", _actor);
+        var result = await _sut.CreateAsync(_owner, "triage agent", _actor);
 
         result.Succeeded.Should().BeFalse();
         await _repository.DidNotReceiveWithAnyArgs().AddAsync(default!);

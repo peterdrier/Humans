@@ -1,7 +1,6 @@
 using Humans.Users.Contracts;
 using System.Security.Claims;
 using AwesomeAssertions;
-using Humans.Base.Authorization;
 using Humans.Base.Enums;
 using Humans.Base.Interfaces;
 using Humans.Campaigns.Services;
@@ -32,7 +31,7 @@ public class UserPartsTests
     [HumansFact]
     public void Parts_ContributeMyCodesToProfile_AndCampaignCodesToAdminDetail()
     {
-        IUserPart contribution = ((IUserPart)new Section());
+        IUserPart contribution = new Section();
 
         contribution.Parts().Should().BeEquivalentTo(
         [
@@ -44,7 +43,7 @@ public class UserPartsTests
     [HumansFact]
     public async Task MyCodes_ShowsTheViewersActiveOrCompletedGrants()
     {
-        _campaigns.GetActiveOrCompletedGrantsForUserAsync(_userId, Arg.Any<CancellationToken>())
+        _campaigns.GetGrantsForUserAsync(_userId, Arg.Any<CancellationToken>())
             .Returns([Grant("Summer")]);
 
         var result = await BuildMyCodes(viewerId: _userId).InvokeAsync(_userId, ProfileCardViewMode.Self);
@@ -57,7 +56,7 @@ public class UserPartsTests
     [HumansFact]
     public async Task MyCodes_RendersNothing_WhenThereAreNoGrants()
     {
-        _campaigns.GetActiveOrCompletedGrantsForUserAsync(_userId, Arg.Any<CancellationToken>())
+        _campaigns.GetGrantsForUserAsync(_userId, Arg.Any<CancellationToken>())
             .Returns([]);
 
         var result = await BuildMyCodes(viewerId: _userId).InvokeAsync(_userId, ProfileCardViewMode.Self);
@@ -73,7 +72,7 @@ public class UserPartsTests
         var result = await BuildMyCodes(viewerId: _userId).InvokeAsync(_userId, mode);
 
         result.Should().BeOfType<ContentViewComponentResult>().Which.Content.Should().BeEmpty();
-        await _campaigns.DidNotReceive().GetActiveOrCompletedGrantsForUserAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>());
+        await _campaigns.DidNotReceive().GetGrantsForUserAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>());
     }
 
     [HumansFact]
@@ -82,7 +81,7 @@ public class UserPartsTests
         var result = await BuildMyCodes(viewerId: Guid.NewGuid()).InvokeAsync(_userId, ProfileCardViewMode.Self);
 
         result.Should().BeOfType<ContentViewComponentResult>().Which.Content.Should().BeEmpty();
-        await _campaigns.DidNotReceive().GetActiveOrCompletedGrantsForUserAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>());
+        await _campaigns.DidNotReceive().GetGrantsForUserAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>());
     }
 
     [HumansFact]

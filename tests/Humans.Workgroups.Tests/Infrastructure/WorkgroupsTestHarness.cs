@@ -69,7 +69,7 @@ public abstract class WorkgroupsTestHarness : IDisposable
         Surveys.GetSummariesAsync(Arg.Any<CancellationToken>())
             .Returns(_ => Task.FromResult<IReadOnlyList<SurveySummary>>(_surveys.Values.ToList()));
 
-        Roles = Substitute.For<IRoleAssignmentService>();
+        Roles = Substitute.For<ISystemRoleService>();
         Roles.GetActiveUserIdsInRoleAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
             .Returns([]);
 
@@ -120,7 +120,7 @@ public abstract class WorkgroupsTestHarness : IDisposable
     private protected FakeClock Clock { get; }
     private protected IUserService Users { get; }
     private protected ISurveyAnalysisRead Surveys { get; }
-    private protected IRoleAssignmentService Roles { get; }
+    private protected ISystemRoleService Roles { get; }
     private protected ITeamService Teams { get; }
     private protected IGovernanceService Governance { get; }
     private protected ISettingsService Settings { get; }
@@ -186,7 +186,7 @@ public abstract class WorkgroupsTestHarness : IDisposable
         {
             Id = Guid.NewGuid(),
             Name = name,
-            Slug = Humans.Base.Helpers.SlugHelper.GenerateSlug(name),
+            Slug = Base.Helpers.SlugHelper.GenerateSlug(name),
             Purpose = "Purpose",
             Deliverable = "A report",
             DeliverableKind = WorkgroupDeliverableKind.Report,

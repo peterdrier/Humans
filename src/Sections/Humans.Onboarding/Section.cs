@@ -1,6 +1,4 @@
-using Humans.Base.Constants;
 using Humans.Base.Interfaces;
-using Humans.Base.Models;
 using Humans.Consent.Contracts;
 using Humans.Email.Contracts;
 using Humans.Issues.Contracts;
@@ -42,7 +40,7 @@ public sealed class Section :
 
     IReadOnlyList<string> IIssueQueueOwner.PathSegments => [];
 
-    IReadOnlyList<string> IIssueQueueOwner.OwningRoles => [ConsentRoles.ConsentCoordinator, ShiftsRoles.ShiftsAdmin, UsersRoles.UsersAdmin];
+    IReadOnlyList<string> IIssueQueueOwner.OwningRoles => [ConsentRoles.ConsentAdmin, ShiftsRoles.ShiftsAdmin, UsersRoles.UsersAdmin];
 
     IEnumerable<ChromeComponent> ISectionChrome.Components() =>
         [new(ChromeSlots.AboveContent, typeof(OnboardingProgressBannerViewComponent))];

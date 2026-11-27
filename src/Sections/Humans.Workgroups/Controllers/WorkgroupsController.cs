@@ -9,7 +9,6 @@ using Humans.Calendar.Contracts;
 using Humans.Governance.Contracts;
 using Humans.Holded.Contracts;
 using Humans.Settings.Contracts;
-using Humans.Teams.Contracts;
 using Humans.Users.Contracts;
 using Humans.Workgroups.Domain;
 using Humans.Workgroups.Models;
@@ -26,7 +25,7 @@ namespace Humans.Workgroups.Controllers;
 internal sealed class WorkgroupsController(
     IWorkgroupService workgroups,
     IUserService users,
-    IRoleAssignmentService roles,
+    ISystemRoleService roles,
     IGovernanceService governance,
     IStringLocalizer<WorkgroupsResource> localizer,
     IStringLocalizer<CalendarResource> calendarLocalizer,

@@ -6,7 +6,7 @@
 
 <page-header title="@(Localizer["Store_Title"].Value)">
     <div class="d-flex align-items-center gap-2">
-        <div class="btn-group" authorize-policy="@Humans.Store.Contracts.StorePolicies.Read">
+        <div class="btn-group" authorize-policy="@StorePolicies.Read">
             <a asp-controller="StoreAdmin" asp-action="Catalog" class="btn btn-sm btn-outline-secondary">@Localizer["Store_AdminCatalog"]</a>
             <a asp-controller="StoreAdmin" asp-action="Summary" class="btn btn-sm btn-outline-secondary">@Localizer["Store_AdminSummary"]</a>
             <a asp-controller="StoreAdmin" asp-action="Payments" class="btn btn-sm btn-outline-secondary">@Localizer["Store_AdminPayments"]</a>

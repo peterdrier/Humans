@@ -1,8 +1,8 @@
+using Humans.Testing;
 using System.Security.Claims;
 using AwesomeAssertions;
 using Humans.AuditLog.Contracts;
 using Humans.Auth.Contracts;
-using Humans.Governance;
 using Humans.Governance.Data;
 using Humans.Google.Contracts;
 using Humans.Governance.Domain;
@@ -11,7 +11,6 @@ using Humans.Base.Authorization;
 using Humans.Base.Constants;
 using Humans.Governance.Controllers;
 using Humans.Governance.Services;
-using Humans.Testing;
 using Humans.Users.Contracts;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
@@ -26,8 +25,8 @@ namespace Humans.Governance.Tests.Services;
 public sealed class GovernanceBoardSeatsTests
 {
     private static readonly Instant Now = Instant.FromUtc(2026, 11, 19, 12, 0);
-    private readonly IRoleAssignmentService _roles = Substitute.For<IRoleAssignmentService>();
-    private readonly IRoleAssignmentWrite _write = Substitute.For<IRoleAssignmentWrite>();
+    private readonly ISystemRoleService _roles = Substitute.For<ISystemRoleService>();
+    private readonly ISystemRoleWrite _write = Substitute.For<ISystemRoleWrite>();
 
     private readonly IUserService _users = Substitute.For<IUserService>();
 
@@ -92,7 +91,7 @@ public sealed class GovernanceBoardSeatsTests
         await Seats().SetPositionAsync(BoardPosition.Secretary, ana, Guid.NewGuid());
         var seat = Row(ana, RoleNames.Board);
         _roles.GetByUserIdAsync(ana, Arg.Any<CancellationToken>()).Returns([seat]);
-        _write.EndRoleAsync(seat.Id, Arg.Any<Guid>(), null, Arg.Any<CancellationToken>()).Returns(new RoleAssignmentResult(true));
+        _write.RevokeRoleAsync(seat.Id, Arg.Any<Guid>(), null, Arg.Any<CancellationToken>()).Returns(new SystemRoleResult(true));
 
         await Seats().EndAsync(ana, Guid.NewGuid());
 
@@ -113,6 +112,22 @@ public sealed class GovernanceBoardSeatsTests
     }
 
     [HumansFact]
+    public async Task Add_UnavailableRoleTarget_RefusesSeat()
+    {
+        var userId = Guid.NewGuid();
+        _users.GetUserInfoAsync(userId, Arg.Any<CancellationToken>()).Returns(
+            UserInfo.Create(new User { Id = userId }, [], [], null) with { State = UserState.Active });
+        _write.AssignRoleAsync(userId, RoleNames.Board, Arg.Any<Guid>(), null, Arg.Any<CancellationToken>())
+            .Returns(new SystemRoleResult(false, "UserUnavailable"));
+
+        var result = await Seats().AddAsync(userId, Guid.NewGuid(), Xunit.TestContext.Current.CancellationToken);
+
+        result.ErrorKey.Should().Be(GovernanceBoardSeats.InactiveAccount);
+        _groupSync.ReceivedCalls().Should().BeEmpty();
+        _audit.ReceivedCalls().Should().BeEmpty();
+    }
+
+    [HumansFact]
     public async Task Add_refuses_an_unknown_account()
     {
         (await Seats().AddAsync(Guid.NewGuid(), Guid.NewGuid())).ErrorKey.Should().Be(GovernanceBoardSeats.InactiveAccount);
@@ -120,7 +135,7 @@ public sealed class GovernanceBoardSeatsTests
         _write.ReceivedCalls().Should().BeEmpty();
     }
 
-    private static RoleAssignmentSummarySnapshot Row(Guid userId, string role, Instant? validTo = null) =>
+    private static SystemRoleSummarySnapshot Row(Guid userId, string role, Instant? validTo = null) =>
         new(Guid.NewGuid(), userId, null, "Member", role, Now - Duration.FromDays(30), validTo, null, Guid.NewGuid(), null);
 
     [HumansFact]
@@ -130,12 +145,12 @@ public sealed class GovernanceBoardSeatsTests
         var board = Row(userId, RoleNames.Board);
         _roles.GetByUserIdAsync(userId, Arg.Any<CancellationToken>()).Returns(
             [Row(userId, "TeamsAdmin"), Row(userId, RoleNames.Board, Now - Duration.FromDays(1)), board]);
-        _write.EndRoleAsync(board.Id, Arg.Any<Guid>(), null, Arg.Any<CancellationToken>()).Returns(new RoleAssignmentResult(true));
+        _write.RevokeRoleAsync(board.Id, Arg.Any<Guid>(), null, Arg.Any<CancellationToken>()).Returns(new SystemRoleResult(true));
 
         (await Seats().EndAsync(userId, Guid.NewGuid())).Success.Should().BeTrue();
 
-        await _write.Received(1).EndRoleAsync(Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<string?>(), Arg.Any<CancellationToken>());
-        await _write.Received(1).EndRoleAsync(board.Id, Arg.Any<Guid>(), null, Arg.Any<CancellationToken>());
+        await _write.Received(1).RevokeRoleAsync(Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<string?>(), Arg.Any<CancellationToken>());
+        await _write.Received(1).RevokeRoleAsync(board.Id, Arg.Any<Guid>(), null, Arg.Any<CancellationToken>());
     }
 
     [HumansFact]
@@ -146,7 +161,7 @@ public sealed class GovernanceBoardSeatsTests
 
         (await Seats().EndAsync(userId, Guid.NewGuid())).Success.Should().BeFalse();
 
-        await _write.DidNotReceive().EndRoleAsync(Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<string?>(), Arg.Any<CancellationToken>());
+        await _write.DidNotReceive().RevokeRoleAsync(Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<string?>(), Arg.Any<CancellationToken>());
     }
 
     [HumansTheory]
@@ -159,13 +174,13 @@ public sealed class GovernanceBoardSeatsTests
         users.GetUserInfoAsync(actorId, Arg.Any<CancellationToken>()).Returns(new ValueTask<UserInfo?>(
             UserInfoFixtures.FromUser(new User { Id = actorId, DisplayName = "Board member", Email = "b@example.com" })));
         var authorization = Substitute.For<IAuthorizationService>();
-        authorization.AuthorizeAsync(Arg.Any<ClaimsPrincipal>(), RoleNames.Board, PolicyNames.RoleAssignmentManage)
+        authorization.AuthorizeAsync(Arg.Any<ClaimsPrincipal>(), RoleNames.Board, PolicyNames.SystemRoleManage)
             .Returns(AuthorizationResult.Failed());
         var controller = new GovernanceController(users, Substitute.For<IGovernanceIndexService>(), Seats(),
             new GovernanceBodyLinksService(_repo, Substitute.For<Humans.Teams.Contracts.ITeamService>(), Substitute.For<ITeamResourceService>(),
                 _audit, new GovernanceBodySync(_repo, _groupSync, Substitute.For<IGoogleSyncWrite>()), new FakeClock(Now)),
             authorization,
-            Substitute.For<IStringLocalizer<GovernanceResource>>())
+            Substitute.For<IStringLocalizer<GovernanceResource>>().AddFormatting())
         {
             ControllerContext = new ControllerContext
             {

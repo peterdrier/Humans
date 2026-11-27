@@ -1,5 +1,4 @@
 using Humans.Events.Domain;
-using Humans.Events.Contracts;
 
 namespace Humans.Events.Services;
 

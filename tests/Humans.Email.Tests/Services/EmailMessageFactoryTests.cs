@@ -1,3 +1,4 @@
+using Humans.Testing;
 using Humans.Email.Contracts;
 using Xunit;
 using AwesomeAssertions;
@@ -74,7 +75,7 @@ public sealed class EmailMessageFactoryTests
     [MemberData(nameof(SupportedCultures.All), MemberType = typeof(SupportedCultures))]
     public void FacilitatedMessage_CapturesCultureBeforeRestoringTheCaller(string culture)
     {
-        using var callerCulture = new Humans.Base.Extensions.CultureScope("en");
+        using var callerCulture = new Base.Extensions.CultureScope("en");
 
         var message = _factory.FacilitatedMessage(Guid.NewGuid(), "a@x.com", "Alice", "Bob", "Hi", false, null, culture);
 
@@ -90,7 +91,7 @@ public sealed class EmailMessageFactoryTests
             ["Email_FacilitatedMessage_Body"] =
                 "<p>Hi {0},</p><p>{1} sent you a message:</p>{2}{3}",
         };
-        var localizer = Substitute.For<IStringLocalizer<EmailResource>>();
+        var localizer = Substitute.For<IStringLocalizer<EmailResource>>().AddFormatting();
         localizer[Arg.Any<string>()].Returns(call =>
         {
             var key = call.Arg<string>();

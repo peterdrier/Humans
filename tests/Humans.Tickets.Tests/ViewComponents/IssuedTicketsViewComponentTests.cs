@@ -37,7 +37,7 @@ public sealed class IssuedTicketsViewComponentTests
         var result = await BuildSut().InvokeAsync(Guid.NewGuid(), ProfileCardViewMode.Public);
 
         result.Should().BeOfType<ContentViewComponentResult>().Which.Content.Should().BeEmpty();
-        await _checkout.DidNotReceiveWithAnyArgs().GetTicketsForHolderAsync(default, default);
+        await _checkout.DidNotReceiveWithAnyArgs().GetTicketsForHolderAsync(default);
     }
 
     [HumansFact]
@@ -72,23 +72,25 @@ public sealed class IssuedTicketsViewComponentTests
             ("HNEW", "Nowhere 2027", "Valid"), ("HOLD", "Nowhere 2027", "Void"));
     }
 
-    [HumansFact]
-    public async Task ListsAChildTicket_UnderTheAdultItRidesOn()
+    [HumansTheory]
+    [Xunit.InlineData(false)]
+    [Xunit.InlineData(true)]
+    public async Task InvokeAsync_UnaddressedDependent_ListsUnderParent(bool separateOrder)
     {
         var userId = Guid.NewGuid();
         var adult = new TicketCheckoutTicket { Id = Guid.NewGuid(), OrderId = Guid.NewGuid(), HolderUserId = userId, Barcode = "HADULT" };
         var child = new TicketCheckoutTicket
         {
             Id = Guid.NewGuid(),
-            OrderId = adult.OrderId,
+            OrderId = separateOrder ? Guid.NewGuid() : adult.OrderId,
             ParentTicketId = adult.Id,
             HolderName = "Kid",
-            Kind = TicketHolderKind.Child,
+            Kind = separateOrder ? TicketHolderKind.Companion : TicketHolderKind.Child,
             Barcode = "HCHILD",
         };
         var stranger = new TicketCheckoutTicket { Id = Guid.NewGuid(), OrderId = adult.OrderId, HolderUserId = Guid.NewGuid(), Barcode = "HOTHER" };
         _checkout.GetTicketsForHolderAsync(userId, Arg.Any<CancellationToken>()).Returns([adult]);
-        _checkout.GetTicketsForOrderAsync(adult.OrderId, Arg.Any<CancellationToken>()).Returns([adult, child, stranger]);
+        _checkout.GetTicketsForSettingsAsync(adult.TicketingSettingsId, Arg.Any<CancellationToken>()).Returns([adult, child, stranger]);
 
         var result = await BuildSut().InvokeAsync(userId, ProfileCardViewMode.Self);
 

@@ -11,6 +11,8 @@
 
 ## Invariant
 
+`User.Email` and `UserInfo.Email` directly select a verified primary-preferred row, retaining the first source row on equal flags and the legacy Identity-column fallback when no verified row supplies an address.
+
 **No `Humans.*` project reference.** Anything every section needs lives here; a type that needs another project's types does not belong here. External dependencies are unrestricted (Peter, 2026-08-15): the base may take any NuGet package or shared framework it needs, and today carries `Microsoft.AspNetCore.App`, EF Core + Npgsql (+ NodaTime provider), NodaTime, CsvHelper, Serilog, Octokit, HtmlSanitizer, Markdig and AngleSharp. Reason about placement from the reference rule and from whether a type is genuinely cross-section, never from package count. The csproj's header comment records which arrival forced each package.
 
 ## Namespaces
@@ -46,19 +48,26 @@ The base builds with `Microsoft.NET.Sdk.Razor` + `AddRazorSupportForMvc` to host
 
 ### Behavioural notes
 
+- Shared MVC/API current-user resolution guards treat missing and tombstoned account snapshots as unavailable, returning the helper's existing NotFound, Challenge or Unauthorized result. Live merge survivors resolve to their canonical account; lookup cancellation still propagates. Tombstone refusals log Warning with the account ID.
+
 - Memory-cache helpers cover exclusive token/cooldown reservations and camp-contact rate-limit invalidation.
 
-- Bulk cache warmups use a coordinator-supplied row publisher guarded by the existing mutation generation. A concurrent mutation during loading, publication or finalization discards the partial attempt and retries the complete snapshot and derived indexes under the existing warmup lock. Cancellation and loader failures leave the cache cold.
+- Bulk cache warmups use a coordinator-supplied row publisher guarded by the existing mutation generation. A concurrent mutation during loading, publication or finalization discards the partial attempt and retries the complete snapshot and derived indexes under the existing warmup lock. Cancellation and loader failures discard all rows published by the aborted attempt and leave the cache cold, so a later successful snapshot cannot retain rows absent from its source. Cancellation is checked again after the loader returns, including when it did not throw. Startup load failures still warn and allow the host to boot.
 
-- Replacement cache reloads use the existing mutation generation to guard publication. An intervening cache mutation discards the affected row and marks warmed caches cold, so a later read retries source instead of publishing an older value or deletion. Other rows remain cached.
+- Per-key cache misses check caller cancellation after the loader returns and before publication, including null results. A cancelled miss leaves existing rows untouched and retries source on the next read. Committed-write replacement reloads keep their own token boundaries.
+
+- Replacement cache reloads use the existing mutation generation to guard publication. Cancellation after the loader returns follows the failed-reload path: evict the affected row, mark warmed caches cold and propagate cancellation so the next read retries source. Detached committed-write refreshes remain non-cancellable. An intervening cache mutation discards the affected row and marks warmed caches cold, so a later read retries source instead of publishing an older value or deletion. Other rows remain cached.
 
 - Shared Markdown renders only disabled checkbox inputs for task lists. Authored hidden, text, submit and image inputs are removed so content cannot introduce active form controls; checked and unchecked task lists remain visible.
 
 - Shared dismiss controls (member alerts, Markdown help, login errors, dynamically created toasts) use `Common_Close` for their accessible label; both Shell layouts supply it to the toast helper.
+- The human-search picker exposes combobox/listbox semantics, keeps focus in the input and supports arrow-key navigation with Enter selection. Native caret-editing keys remain available, and IME composition never selects a result. Escape and Tab dismiss results and cancel pending lookups; selecting a result updates the same submitted identity as mouse selection.
+
 - The human-search picker rejects stale searches: a lookup dismissed with Escape or an outside click is invalidated, timers and response versions belong to each input, and an older response never replaces a newer result.
 - The email composer preview is ordered per modal: only the latest preview can replace its frame, subject or error, and separate modal instances stay independent.
 
 - `CultureScope` leaves both ambient cultures unchanged for blank or unknown culture codes. When supplied a logger, an unknown culture emits a Warning with the rejected code and fallback, without an exception stack; valid scopes restore both prior cultures on disposal.
+- `SlugHelper.GenerateSlug` lowercases invariantly, replaces each run outside ASCII letters and digits with one hyphen, and trims edge hyphens. It does not transliterate diacritics; empty results and reserved names remain caller-owned decisions.
 
 ## Tests
 

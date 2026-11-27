@@ -2,7 +2,6 @@ using Humans.Gdpr.Contracts;
 using AwesomeAssertions;
 using Humans.EarlyEntry.Contracts;
 using Humans.Base.Enums;
-using Humans.Base.Interfaces.Caching;
 using Humans.Base.Extensions;
 using Humans.Settings.Contracts;
 using Microsoft.EntityFrameworkCore;
@@ -110,6 +109,42 @@ public sealed class CachingCampServiceTests : CampsTestHarness
             return camps.Select(ProjectCampInfo).ToList();
         }
 
+    }
+
+    [HumansFact]
+    public async Task Failed_partial_warmup_cannot_restore_a_camp_missing_from_the_recovery_snapshot()
+    {
+        var ct = TestContext.Current.CancellationToken;
+        var (first, _) = await SeedCampWithSeasonAsync(2026);
+        var (second, _) = await SeedCampWithSeasonAsync(2026);
+        var source = new Dictionary<Guid, CampInfo>
+        {
+            [first.Id] = (await _innerSubstitute.GetCampByIdAsync(first.Id, ct))!,
+            [second.Id] = (await _innerSubstitute.GetCampByIdAsync(second.Id, ct))!
+        };
+        _innerSubstitute.GetCampsForYearAsync(Arg.Any<int>(), Arg.Any<CancellationToken>())
+            .Returns(call => (IReadOnlyList<CampInfo>)source.Values.Where(camp => camp.Seasons.Any(season => season.Year == call.Arg<int>())).ToList());
+        var reads = 0;
+        var publishedId = Guid.Empty;
+        var fail = true;
+        _innerSubstitute.GetCampByIdAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>()).Returns(call =>
+        {
+            var id = call.Arg<Guid>();
+            if (fail && ++reads == 2) throw new InvalidOperationException("Second camp load failed");
+            publishedId = id;
+            return source.GetValueOrDefault(id);
+        });
+        Func<Task> warm = () => _service.GetCampsForYearAsync(2026, ct);
+
+        await warm.Should().ThrowAsync<InvalidOperationException>();
+        _service.AsReadOnlyDictionary.Should().BeEmpty();
+        source.Remove(publishedId);
+        fail = false;
+
+        var recovered = await _service.GetCampsForYearAsync(2026, ct);
+
+        recovered.Should().ContainSingle().Which.Id.Should().Be(source.Keys.Single());
+        _service.IsWarmedUp.Should().BeTrue();
     }
 
     public override void Dispose()
@@ -598,7 +633,7 @@ public sealed class CachingCampServiceTests : CampsTestHarness
         { nameof(ICampManagement.RejectCampMemberAsync), (t, c, _, ct) => t._service.RejectCampMemberAsync(c, Guid.NewGuid(), Guid.NewGuid(), ct) },
         { nameof(ICampManagement.RemoveCampMemberAsync), (t, c, _, ct) => t._service.RemoveCampMemberAsync(c, Guid.NewGuid(), Guid.NewGuid(), ct) },
         { nameof(ICampManagement.AddCampMemberToActiveSeasonAsync), (t, c, _, ct) => t._service.AddCampMemberToActiveSeasonAsync(c, Guid.NewGuid(), Guid.NewGuid(), ct) },
-        { nameof(ICampManagement.AddMemberAndAssignRoleInActiveSeasonAsync), (t, c, _, ct) => t._service.AddMemberAndAssignRoleInActiveSeasonAsync(c, Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid(), ct) },
+        { nameof(ICampManagement.AddMemberWithRoleAsync), (t, c, _, ct) => t._service.AddMemberWithRoleAsync(c, Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid(), ct) },
         { nameof(ICampManagement.WithdrawCampMembershipRequestAsync), (t, _, _, ct) => t._service.WithdrawCampMembershipRequestAsync(Guid.NewGuid(), Guid.NewGuid(), ct) },
         { nameof(ICampManagement.LeaveCampAsync), (t, _, _, ct) => t._service.LeaveCampAsync(Guid.NewGuid(), Guid.NewGuid(), ct) },
         { nameof(ICampManagement.SetEarlyEntryAsync), (t, c, _, ct) => t._service.SetEarlyEntryAsync(c, Guid.NewGuid(), true, Guid.NewGuid(), ct) },

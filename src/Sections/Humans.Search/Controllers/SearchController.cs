@@ -26,7 +26,7 @@ internal sealed class SearchController(
         try
         {
             var results = await searchService.SearchAsync(trimmed, filter, ct);
-            return View(BuildViewModel(trimmed.Length < 2 ? q : results.Query, results));
+            return View(BuildViewModel(trimmed.Length < SearchService.MinQueryLength ? q : results.Query, results));
         }
         catch (OperationCanceledException) when (ct.IsCancellationRequested)
         {
@@ -48,6 +48,7 @@ internal sealed class SearchController(
             Query = query,
             Filter = results.Filter,
             Buckets = results.Buckets
+                .OrderBy(b => b.Weight).ThenBy(b => b.Key, StringComparer.Ordinal)
                 .Select(b => b with
                 {
                     Hits = b.Hits

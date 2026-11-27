@@ -22,7 +22,7 @@
 }
 else
 {
-    <form authorize-policy="@Humans.Store.Contracts.StorePolicies.Manage" asp-action="RepairPaymentMethods" method="post" class="mb-3">
+    <form authorize-policy="@StorePolicies.Manage" asp-action="RepairPaymentMethods" method="post" class="mb-3">
         @Html.AntiForgeryToken()
         <button type="submit" class="btn btn-warning"
                 data-confirm="Copy the method into the string column on @Model.Count payment(s)?">
@@ -30,12 +30,13 @@ else
         </button>
     </form>
 
+    Func<PaymentMethodRepairRow, IHtmlContent> amountCell = @<text>@item.AmountEur.ToEuro()</text>;
     Func<PaymentMethodRepairRow, IHtmlContent> receivedCell = @<text>@item.ReceivedAt.ToInvariantTimestamp() UTC</text>;
     var rows = Model.OrderBy(row => row.ReceivedAt).ToList();
     var table = TableModel.For(rows)
         .Link("Order", r => r.OrderId, r => Url.Action("Order", "Store", new { id = r.OrderId }), o => o.Code())
         .Column("Method", r => r.Method)
-        .Column("Amount", r => r.AmountEur.ToEuro(), c => c.Css("text-nowrap"))
+        .Template("Amount", amountCell, c => c.Css("text-nowrap"), sortBy: r => r.AmountEur)
         .Template("Received", receivedCell)
         .Build();
     <partial name="_Table" model="table" />

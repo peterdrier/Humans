@@ -240,7 +240,7 @@ await _budgetService.DeleteLineItemAsync(id);
 - **Exception: full-Admin destructive deletes.** A service may inject `IAdminAuthorizationService` and call `RequireCurrentUserIsAdminAsync` only for a method that permanently deletes data or performs a destructive reset, and whose rule is exactly "must hold the full `Admin` role". The action must still carry `[Authorize(Policy = PolicyNames.AdminOnly)]` or stricter. Never for resource-scoped auth, reads, ordinary edits or privilege flags.
 - **Roles are section-owned.** A grantable role is declared by its section through `ISectionRoles`; the base holds only the cross-section names ([`roles-are-section-owned`](../../memory/architecture/roles-are-section-owned.md)).
 
-**Do not push authorization into services.** Two attempts shipped service-layer authorization and both crashed DI validation on startup: `Service → RoleAssignmentService → IAuthorizationService → Handler → Service` is a cycle, and the hot-fix that hid it (lazy `IServiceProvider` resolution) hid the cycle from the validator rather than removing it. The unwind moved `AuthorizeAsync` back to controllers. Service-layer auth gives no real defence in depth here: one UI, no public API, background jobs are trusted server code, controllers are the only human-facing mutation path. Do not reopen this without changing this section first.
+**Do not push authorization into services.** Two attempts shipped service-layer authorization and both crashed DI validation on startup: `Service → SystemRoleService → IAuthorizationService → Handler → Service` is a cycle, and the hot-fix that hid it (lazy `IServiceProvider` resolution) hid the cycle from the validator rather than removing it. The unwind moved `AuthorizeAsync` back to controllers. Service-layer auth gives no real defence in depth here: one UI, no public API, background jobs are trusted server code, controllers are the only human-facing mutation path. Do not reopen this without changing this section first.
 
 ## Append-only entities
 
@@ -257,6 +257,29 @@ Some entities are append-only: new state = new row. **Never add UPDATE or DELETE
 - **View models** live in a section's `Models/` folder or inline in controllers. Controllers map DTOs or entities to view models for Razor. The section-agnostic ones (the generic table models, `PagerViewModel`) live in the base.
 - **Domain entities should not leak into Razor views** when a DTO gives better separation. Simple 1:1 cases are acceptable; anything that would have required `.Include` for navigation is not.
 - **View components** are Web-role code: a section's `ViewComponents/`, or the base's for the section-agnostic ones. They call services, not repositories, and are one of the two framework carve-outs HUM0034 allows a section to declare `public`.
+
+## Naming
+
+A name is short and says one thing. A name that needs "And" is describing two things, and a name that reads as a sentence is doing a comment's job.
+
+**All names**
+
+- A method is a verb. A type is a noun. A bool reads as a yes/no question (`IsActive`, `HasPin`).
+- Pairs use matching words: `Add`/`Remove`, `Start`/`Stop`, `Open`/`Close`.
+- Say what it does in the fewest plain words. Don't repeat what the class, the parameters or the return type already say: on a slot repository it is `RemoveAsync`, not `UnassignFromAllRolesAsync`.
+- No "And" in a method name. A method that needs one does two things: split it, or name the one outcome the caller wants (`RedeemSignupToken`, not `VerifyAndConsumeSignupToken`). "Or" is fine (`GetOrCreate`).
+- The name does not carry who is calling (`ForFinanceCorrection`), what comes back (`WithResult`) or that it saves (`AndSave`).
+- No coined words. Use the word from [`CONTEXT.md`](../../CONTEXT.md) or the everyday one.
+- A method name has at most 6 words, not counting `Async`.
+
+**Test names**
+
+- One shape: `Method_Result` or `Method_Condition_Result`, PascalCase, three parts at most. The first part is the method under test, without `Async`.
+- The name states the one rule the test proves. The asserts are the list of details; adding an assert does not change the name.
+- No "And" after the first part. No lowercase sentences. At most 10 words.
+- A "why" goes in a one-line comment above the test.
+
+**Enforced by** `NameLengthAnalyzer`, on production and test projects: method names over 6 words or with "And", test names outside the shape, over 10 words or with "And". Overrides, interface implementations and controller actions (their names are URLs) are exempt, since the name was chosen elsewhere. Names that broke the rule when it arrived are listed in each project's `NameBaseline.txt`; a line whose method is gone or now passes is a build error, so the lists only shrink. Verbs, nouns, matching pairs and "first part is the method" are review only.
 
 ## Section caching pattern
 
@@ -289,7 +312,7 @@ public async Task<Profile?> GetByUserIdReadOnlyAsync(Guid userId, CancellationTo
 }
 ```
 
-Read method naming: `*ReadOnlyAsync` is `AsNoTracking()` and returns detached entities; `*ForMutationAsync` tracks, for a caller that will mutate and call `UpdateAsync` on the same repository in the same method.
+Read method naming: `*ReadOnlyAsync` is `AsNoTracking()` and returns detached entities; `*ForMutationAsync` tracks, for a caller that will mutate and call `UpdateAsync` on the same repository in the same method. A repository with only one read for a thing names it without either suffix.
 
 ### Inner service rules
 

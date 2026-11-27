@@ -17,7 +17,7 @@ public class EarlyEntryServiceTests
     }
 
     [HumansFact]
-    public async Task Roster_keeps_one_row_per_user()
+    public async Task GetRosterAsync_TwoProviders_OneRowPerUser()
     {
         var alice = Guid.NewGuid();
         var bob = Guid.NewGuid();
@@ -43,7 +43,7 @@ public class EarlyEntryServiceTests
     }
 
     [HumansFact]
-    public async Task Same_source_label_twice_is_one_source_and_not_multiple()
+    public async Task GetForUserAsync_SameLabelTwice_IsOneSource()
     {
         var userId = Guid.NewGuid();
         var sut = new EarlyEntryService(new[]
@@ -66,7 +66,7 @@ public class EarlyEntryServiceTests
     }
 
     [HumansFact]
-    public async Task Source_labels_differing_only_in_case_are_two_sources()
+    public async Task GetRosterAsync_LabelsDifferByCase_AreTwoSources()
     {
         var userId = Guid.NewGuid();
         var sut = new EarlyEntryService(new[]
@@ -82,7 +82,7 @@ public class EarlyEntryServiceTests
     }
 
     [HumansFact]
-    public async Task GetForUserAsync_returns_earliest_and_sources_or_null_for_unknown()
+    public async Task GetForUserAsync_KnownUser_ReturnsEarliestWithSources()
     {
         var userId = Guid.NewGuid();
         var campGrant = new EarlyEntryGrant(userId, new LocalDate(2026, 7, 7), "Camp: Flags");
@@ -106,7 +106,7 @@ public class EarlyEntryServiceTests
     }
 
     [HumansFact]
-    public async Task GetForUserAsync_GathersOncePerScope_AndFreshInTheNext()
+    public async Task GetForUserAsync_SameScope_GathersOnce()
     {
         // Nothing outlives the request scope, so a grant written or revoked shows on the
         // next request without the writing section telling this one; within one request

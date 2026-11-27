@@ -205,7 +205,8 @@
   <data name="Expenses_SelectAccount" xml:space="preserve"><value>— Kies een rekening —</value></data>
   <data name="Expenses_AccountGroupBudgetCategories" xml:space="preserve"><value>Budgetcategorieën</value></data>
   <data name="Expenses_AccountGroupOther" xml:space="preserve"><value>Overige rekeningen</value></data>
-  <data name="Expenses_Validation_AccountNotFound" xml:space="preserve"><value>Rekening niet gevonden of niet meer beschikbaar.</value></data>
+  <data name="Expenses_Validation_AccountNotFound" xml:space="preserve"><value>Die rekening bestaat niet.</value></data>
+  <data name="Expenses_Validation_AccountInactive" xml:space="preserve"><value>Die rekening staat niet meer open voor onkosten.</value></data>
   <data name="Expenses_OptionalMaxChars" xml:space="preserve"><value>(optioneel, max. 500 tekens)</value></data>
   <data name="Expenses_SubjectPlaceholder" xml:space="preserve"><value>Beschrijf de declaratie…</value></data>
   <data name="Expenses_CreateDraft" xml:space="preserve"><value>Concept aanmaken</value></data>
@@ -291,11 +292,16 @@
   <data name="Expenses_Preapprovals_Revoked" xml:space="preserve"><value>Deze voorafgaande goedkeuring is ingetrokken. De declaratie kan niet op basis hiervan worden goedgekeurd: na afwijzing kan de voorafgaande goedkeuring in het concept worden verwijderd of vervangen.</value></data>
   <data name="Expenses_Preapprovals_Column" xml:space="preserve"><value>Voorafgaande goedkeuring</value></data>
   <data name="Expenses_Preapprovals_RevokedBadge" xml:space="preserve"><value>ingetrokken</value></data>
-  <data name="Expenses_Validation_PreapprovalNotClaimable" xml:space="preserve"><value>Er kan niet op basis van die voorafgaande goedkeuring worden ingediend: deze is niet van het lid, staat niet open of de indieningstermijn is verstreken.</value></data>
   <data name="Expenses_Validation_PreapprovalLocked" xml:space="preserve"><value>De voorafgaande goedkeuring en rekening van een ingediende declaratie kunnen niet worden gewijzigd.</value></data>
   <data name="Expenses_Validation_PreapprovalRevoked" xml:space="preserve"><value>De voorafgaande goedkeuring is ingetrokken; deze declaratie kan niet op basis hiervan worden ingediend.</value></data>
   <data name="Expenses_Validation_PreapprovalDeadlinePassed" xml:space="preserve"><value>De indieningsdeadline {0} is verstreken; deze declaratie kan niet meer op basis van de voorafgaande goedkeuring worden ingediend.</value></data>
-  <data name="Expenses_Validation_PreapprovalUnavailable" xml:space="preserve"><value>De voorafgaande goedkeuring is niet meer beschikbaar: deze is aan een andere declaratie gekoppeld of al gebruikt.</value></data>
+  <data name="Expenses_Validation_PreapprovalNotFound" xml:space="preserve"><value>Die voorafgaande goedkeuring bestaat niet meer.</value></data>
+  <data name="Expenses_Validation_PreapprovalNotTheirs" xml:space="preserve"><value>Die voorafgaande goedkeuring is van iemand anders.</value></data>
+  <data name="Expenses_Validation_PreapprovalNotGranted" xml:space="preserve"><value>Die voorafgaande goedkeuring is nog niet toegekend.</value></data>
+  <data name="Expenses_Validation_PreapprovalDeclined" xml:space="preserve"><value>Die voorafgaande goedkeuring is afgewezen.</value></data>
+  <data name="Expenses_Validation_PreapprovalClaimedElsewhere" xml:space="preserve"><value>Een andere declaratie heeft die voorafgaande goedkeuring al.</value></data>
+  <data name="Expenses_Validation_PreapprovalUsed" xml:space="preserve"><value>Die voorafgaande goedkeuring is al gebruikt door een goedgekeurde declaratie.</value></data>
+  <data name="Expenses_Validation_PreapprovalNotHeld" xml:space="preserve"><value>Deze declaratie heeft die voorafgaande goedkeuring niet meer.</value></data>
   <data name="Expenses_Detail_RejectedGuidance" xml:space="preserve"><value>Je kunt deze declaratie aanpassen zonder opnieuw te beginnen: open een regel hieronder om deze te bewerken, de bon te vervangen of de regel te verwijderen, en dien de declaratie daarna opnieuw in.</value></data>
   <data name="Expenses_Detail_RejectedGuidanceLink" xml:space="preserve"><value>Naar de regels</value></data>
   <data name="Expenses_Submitter" xml:space="preserve"><value>Indiener</value></data>
@@ -307,4 +313,5 @@
   <data name="Expenses_Flash_DraftOutcomeUnknown" xml:space="preserve"><value>We konden niet bevestigen of het concept is opgeslagen. Controleer bestaande declaraties voordat je nog een concept aanmaakt.</value></data>
   <data name="Expenses_Permission_Endorse_Title" xml:space="preserve"><value>Declaraties goedkeuren</value></data>
   <data name="Expenses_Permission_Endorse_Blurb" xml:space="preserve"><value>Declaraties op het budget van het team goedkeuren, afwijzen en regels weigeren.</value></data>
+  <data name="Expenses_Validation_SubmitterUnavailable" xml:space="preserve"><value>De indiener is niet meer beschikbaar.</value></data>
 </root>

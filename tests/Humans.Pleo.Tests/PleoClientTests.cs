@@ -4,14 +4,73 @@ using AwesomeAssertions;
 using Humans.Pleo.Services;
 using Microsoft.Extensions.Options;
 using Microsoft.AspNetCore.WebUtilities;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace Humans.Pleo.Tests;
 
 public sealed class PleoClientTests
 {
-    private static PleoClient Make(Func<HttpRequestMessage, HttpResponseMessage> respond) =>
+    [HumansTheory]
+    [Xunit.InlineData("not a URI", false)]
+    [Xunit.InlineData("", false)]
+    [Xunit.InlineData("/relative", false)]
+    [Xunit.InlineData("ftp://pleo.example", false)]
+    [Xunit.InlineData("https://pleo.example", true)]
+    [Xunit.InlineData("http://pleo.example", true)]
+    public async Task Register_Endpoint_ResolvesBeforeValidation(string baseUrl, bool valid)
+    {
+        var services = new ServiceCollection();
+        new Section().Register(services, new ConfigurationBuilder().AddInMemoryCollection(
+            new Dictionary<string, string?>(StringComparer.Ordinal) { ["Pleo:BaseUrl"] = baseUrl }).Build());
+        services.Configure<PleoClientOptions>(o => { o.ApiKey = "test-key"; o.CompanyId = "company-1"; });
+        var calls = 0;
+        services.AddHttpClient<IPleoClient, PleoClient>().ConfigurePrimaryHttpMessageHandler(() => new StubHandler(request =>
+        {
+            calls++;
+            request.RequestUri!.Host.Should().Be("pleo.example");
+            return Json(Page("", false, null));
+        }));
+        using var provider = services.BuildServiceProvider();
+
+        var client = provider.GetRequiredService<IPleoClient>();
+        var read = () => client.SearchEntriesAsync(Xunit.TestContext.Current.CancellationToken);
+
+        client.IsConfigured.Should().Be(valid);
+        if (valid)
+            (await read()).Should().BeEmpty();
+        else
+            await read.Should().ThrowAsync<PleoPermanentException>().WithMessage("*absolute HTTP(S)*");
+        calls.Should().Be(valid ? 1 : 0);
+    }
+
+    private static PleoClient Make(Func<HttpRequestMessage, HttpResponseMessage> respond, string apiKey = "test-key", string companyId = "company-1") =>
         new(new HttpClient(new StubHandler(respond)) { BaseAddress = new Uri("https://external.pleo.io") },
-            Options.Create(new PleoClientOptions { ApiKey = "test-key", CompanyId = "company-1" }));
+            Options.Create(new PleoClientOptions { ApiKey = apiKey, CompanyId = companyId }));
+
+    [HumansTheory]
+    [Xunit.InlineData("", "company-1")]
+    [Xunit.InlineData(" \t", "company-1")]
+    [Xunit.InlineData("test-key", "")]
+    [Xunit.InlineData("test-key", " \t")]
+    public async Task Api_IncompleteConfiguration_RefusesBeforeHttp(string apiKey, string companyId)
+    {
+        using var assertions = new AwesomeAssertions.Execution.AssertionScope();
+        var calls = 0;
+        var client = Make(_ =>
+        {
+            calls++;
+            return Json(Page("", false, null));
+        }, apiKey, companyId);
+        client.IsConfigured.Should().BeFalse();
+        var ct = Xunit.TestContext.Current.CancellationToken;
+        Func<Task>[] operations = [() => client.SearchEntriesAsync(ct), () => client.GetBalanceAsync(ct)];
+
+        foreach (var operation in operations)
+            await operation.Should().ThrowAsync<PleoPermanentException>()
+                .WithMessage(apiKey.Trim().Length == 0 ? "PLEO_API_KEY not set." : "PLEO_COMPANY_ID not set.");
+        calls.Should().Be(0);
+    }
 
     private static HttpResponseMessage Json(string body) =>
         new(HttpStatusCode.OK) { Content = new StringContent(body, Encoding.UTF8, "application/json") };

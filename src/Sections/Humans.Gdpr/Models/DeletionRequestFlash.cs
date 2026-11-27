@@ -20,7 +20,7 @@ internal sealed record DeletionRequestFlash(bool Success, string ResourceKey, In
     }
 
     public string Format(IStringLocalizer<GdprResource> localizer) =>
-        string.Format(CultureInfo.CurrentCulture, localizer[ResourceKey].Value, EffectiveDeletionDate.ToDate());
+        localizer[ResourceKey, EffectiveDeletionDate.ToDate() ?? string.Empty];
 
     private static string ErrorResourceKeyFor(string? errorKey) =>
         string.Equals(errorKey, "AlreadyPending", StringComparison.Ordinal)

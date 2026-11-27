@@ -28,7 +28,7 @@ internal sealed class GateService(
     IEarlyEntryService earlyEntry,
     ISettingsService settingsService,
     IShiftService shifts,
-    IRoleAssignmentService roles,
+    ISystemRoleService roles,
     ITicketWrite ticketWrite,
     ITicketGateLookup issuedTickets,
     IPasswordHasher<GateStaffPin> pinHasher,
@@ -111,17 +111,14 @@ internal sealed class GateService(
     /// </summary>
     private async Task<ScannedTicket?> FindTicketAsync(string code, EventSettingsInfo? burn, CancellationToken ct)
     {
-        var orders = await tickets.GetTicketOrdersAsync(ct);
-        var attendee = orders
-            .Where(o => o.IsCurrentEvent)
-            .SelectMany(o => o.Attendees)
+        var attendee = (await CurrentEventAttendeesAsync(ct))
             .FirstOrDefault(a => a.Barcode is not null
                 && string.Equals(GateBarcode.Normalize(a.Barcode), code, StringComparison.Ordinal));
         if (attendee is not null)
             return new ScannedTicket(
                 attendee.AttendeeName, attendee.TicketTypeName,
                 IsVoid: attendee.Status == TicketAttendeeStatus.Void,
-                CheckedInAtVendor: attendee.CheckedInAt is not null || attendee.Status == TicketAttendeeStatus.CheckedIn,
+                CheckedInAtVendor: IsCheckedInAtVendor(attendee),
                 GuestUserId: attendee.MatchedUserId, EntryUserId: attendee.MatchedUserId,
                 TicketAttendeeId: attendee.Id, CheckoutTicketId: null, VendorTicketId: attendee.VendorTicketId,
                 InResaleQueue: false);
@@ -296,9 +293,7 @@ internal sealed class GateService(
         bool Matches(string? ticketName, params Guid?[] userIds) =>
             NameContains(ticketName, q) || userIds.Any(id => id is { } uid && people.Contains(uid));
 
-        var vendor = (await tickets.GetTicketOrdersAsync(ct))
-            .Where(o => o.IsCurrentEvent)
-            .SelectMany(o => o.Attendees)
+        var vendor = (await CurrentEventAttendeesAsync(ct))
             .Where(a => a.Status != TicketAttendeeStatus.Void && !string.IsNullOrWhiteSpace(a.Barcode)
                 && Matches(a.AttendeeName, a.MatchedUserId))
             .Select(a => new GateNameMatch(GateBarcode.Normalize(a.Barcode), a.AttendeeName ?? string.Empty, a.TicketTypeName));
@@ -373,6 +368,13 @@ internal sealed class GateService(
         return new GateUndoResult(GateUndoOutcome.Undone);
     }
 
+    private async Task<IEnumerable<TicketAttendeeInfo>> CurrentEventAttendeesAsync(CancellationToken ct) =>
+        (await tickets.GetTicketOrdersAsync(ct)).Where(o => o.IsCurrentEvent).SelectMany(o => o.Attendees);
+
+    // A checked-in ticket keeps Status Valid, so testing Status alone would miss every synced check-in.
+    private static bool IsCheckedInAtVendor(TicketAttendeeInfo attendee) =>
+        attendee.CheckedInAt is not null || attendee.Status == TicketAttendeeStatus.CheckedIn;
+
     /// <summary>
     /// With the mirror on, the admit's check-in job may post after the undo. Either way the ticket sync would read the
     /// vendor's check-in back and mark the guest Attended again, and the gate would STOP the rescan as a duplicate.
@@ -387,7 +389,7 @@ internal sealed class GateService(
         var attendee = (await tickets.GetTicketOrdersAsync(ct))
             .SelectMany(o => o.Attendees)
             .FirstOrDefault(a => a.Id == attendeeId);
-        return attendee is not null && (attendee.CheckedInAt is not null || attendee.Status == TicketAttendeeStatus.CheckedIn);
+        return attendee is not null && IsCheckedInAtVendor(attendee);
     }
 
     /// <summary>Only when no other admit of theirs stands, or a second ticket of theirs would read as not arrived.</summary>
@@ -411,10 +413,7 @@ internal sealed class GateService(
             return null;
         var zone = EventZone(burn.TimeZoneId);
 
-        var attendees = (await tickets.GetTicketOrdersAsync(ct))
-            .Where(o => o.IsCurrentEvent)
-            .SelectMany(o => o.Attendees)
-            .ToList();
+        var attendees = (await CurrentEventAttendeesAsync(ct)).ToList();
         var issued = await issuedTickets.GetIssuedTicketsForEventAsync(burn.Id, ct);
         var vendorById = attendees.ToDictionary(a => a.Id);
         var issuedById = issued.ToDictionary(t => t.Id);
@@ -498,11 +497,7 @@ internal sealed class GateService(
         // Checkout-issued tickets live only in Humans: there is no vendor to mirror them to.
         var admits = scans.Where(s => s.IsLiveAdmit && s.CheckoutTicketId is null).ToList();
 
-        var orders = await tickets.GetTicketOrdersAsync(ct);
-        var attendees = orders
-            .Where(o => o.IsCurrentEvent)
-            .SelectMany(o => o.Attendees)
-            .ToDictionary(a => a.Id);
+        var attendees = (await CurrentEventAttendeesAsync(ct)).ToDictionary(a => a.Id);
 
         List<GateVendorBackfillRow> pending = [];
         List<GateVendorBackfillRow> unmirrorable = [];
@@ -515,8 +510,7 @@ internal sealed class GateService(
             if (attendee is null || string.IsNullOrEmpty(attendee.VendorTicketId))
                 unmirrorable.Add(new GateVendorBackfillRow(
                     admit.Barcode, attendee?.AttendeeName, admit.OccurredAt, VendorTicketId: null));
-            // A checked-in ticket keeps Status Valid, so testing Status alone would re-post every synced check-in.
-            else if (attendee.CheckedInAt is not null || attendee.Status == TicketAttendeeStatus.CheckedIn)
+            else if (IsCheckedInAtVendor(attendee))
                 alreadyCheckedIn++;
             else
             {
@@ -537,13 +531,17 @@ internal sealed class GateService(
 
         var snapshot = await GetVendorCheckInBackfillAsync(ct);
         List<GateVendorBackfillRow> enqueued = [];
+        var claimedElsewhere = false;
         foreach (var row in snapshot.Pending)
         {
             if (vendorTicketId is not null && !string.Equals(row.VendorTicketId, vendorTicketId, StringComparison.Ordinal))
                 continue;
             // Claim before enqueue: overlapping backfill requests must not double-post a check-in.
             if (!mirrorLedger.TryMarkSent(row.VendorTicketId!))
+            {
+                claimedElsewhere = true;
                 continue;
+            }
 
             var admittedAtUnixSeconds = row.AdmittedAt.ToUnixTimeSeconds();
             // The job keeps the original admit time and runs independently of the admin request.
@@ -552,7 +550,17 @@ internal sealed class GateService(
             enqueued.Add(row);
         }
 
-        return new GateVendorBackfillResult(true, enqueued);
+        if (vendorTicketId is null || enqueued.Count > 0)
+            return new GateVendorBackfillResult(true, enqueued);
+        if (claimedElsewhere || snapshot.SentAwaitingSync.Any(r => string.Equals(r.VendorTicketId, vendorTicketId, StringComparison.Ordinal)))
+            return new GateVendorBackfillResult(true, enqueued, "That ticket's check-in was already sent to the vendor.");
+        var attendee = (await tickets.GetTicketOrdersAsync(ct))
+            .SelectMany(o => o.Attendees)
+            .FirstOrDefault(a => string.Equals(a.VendorTicketId, vendorTicketId, StringComparison.Ordinal));
+        return new GateVendorBackfillResult(true, enqueued,
+            attendee is not null && (attendee.CheckedInAt is not null || attendee.Status == TicketAttendeeStatus.CheckedIn)
+                ? "That ticket is already checked in at the vendor."
+                : "That ticket has no gate admit waiting to be sent.");
     }
 
     public async Task<IReadOnlyList<Guid>> GetShiftRosterAsync(

@@ -15,7 +15,7 @@ internal sealed class CachingCampService(
     IServiceScopeFactory scopeFactory,
     IClock clock,
     ILogger<CachingCampService> logger) : TrackedCache<Guid, CampInfo>("Camp.CampInfo", warmOnStartup: true, logger),
-    ICampManagement, ICampLeadDirectory, ICampSeeding, ICampRoleCampAccess, IUserMerge, ICampRoleService, IUserDataContributor, IEarlyEntryProvider,
+    ICampManagement, ICampLeadDirectory, ICampSeeding, ICampRoleCampAccess, IUserMerge, ICampRoleService, IUserDataContributor,
     IEventSettingsChangeListener
 {
     /// <summary>DI key for the undecorated inner <see cref="ICampManagement"/>.</summary>
@@ -449,12 +449,12 @@ internal sealed class CachingCampService(
             return result;
         });
 
-    public Task<AssignCampRoleOutcome> AddMemberAndAssignRoleInActiveSeasonAsync(
+    public Task<AssignCampRoleOutcome> AddMemberWithRoleAsync(
         Guid campId, Guid roleDefinitionId, Guid userId, Guid actorUserId,
         CancellationToken cancellationToken = default, Guid? eventSettingsId = null) =>
         MutateAsync(async () =>
         {
-            var result = await WithInnerAsync(inner => inner.AddMemberAndAssignRoleInActiveSeasonAsync(
+            var result = await WithInnerAsync(inner => inner.AddMemberWithRoleAsync(
                 campId, roleDefinitionId, userId, actorUserId, cancellationToken, eventSettingsId));
             InvalidateCamp(campId);
             return result;
@@ -807,10 +807,10 @@ internal sealed class CachingCampService(
     }
 
     /// <inheritdoc />
-    async Task ICampSeeding.AddMemberAndAssignRoleInActiveSeasonAsync(
+    async Task ICampSeeding.AddMemberWithRoleAsync(
         Guid campId, Guid roleDefinitionId, Guid userId, Guid actorUserId,
         CancellationToken cancellationToken) =>
-        await AddMemberAndAssignRoleInActiveSeasonAsync(
+        await AddMemberWithRoleAsync(
             campId, roleDefinitionId, userId, actorUserId, cancellationToken);
 
     private async Task<T> WithInnerLeadDirectoryAsync<T>(Func<ICampLeadDirectory, Task<T>> work)

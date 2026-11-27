@@ -43,10 +43,17 @@ internal sealed class TicketsPlatformAdminController(
         if (await checkout.GetPlatformLedgerAsync(key, ct) is not { } ledger)
             return NotFound();
 
+        ledger = ledger with
+        {
+            Orders = ledger.Orders.OrderByDescending(order => order.CreatedAt).ToList(),
+            Stuck = ledger.Stuck.OrderByDescending(order => order.CreatedAt).ToList(),
+            UnsettledRefunds = ledger.UnsettledRefunds.OrderBy(refund => refund.CreatedAt).ToList(),
+            FailedRefunds = ledger.FailedRefunds.OrderBy(refund => refund.CreatedAt).ToList(),
+        };
         return View("~/Views/Tickets/Admin/Platforms/Index.cshtml", new PlatformStatusViewModel(
             new PlatformsViewModel([ledger.Platform], await checkout.ListTicketingSettingsAsync(ct), await settings.GetAllEventSettingsAsync(ct), check),
             ledger,
-            ledger.Orders.Count == 0 ? null : LocalDatePattern.Iso.Format(ledger.Orders[^1].CreatedAt.InZone(orgTimeZone.Zone).Date)));
+            ledger.Orders.Count == 0 ? null : LocalDatePattern.Iso.Format(ledger.Orders.Min(order => order.CreatedAt).InZone(orgTimeZone.Zone).Date)));
     }
 }
 

@@ -1,5 +1,5 @@
+using Humans.Testing;
 using Humans.Teams.Domain;
-using Humans.Consent.Contracts;
 using Xunit;
 using System.Globalization;
 using System.Security.Claims;
@@ -10,7 +10,6 @@ using Microsoft.AspNetCore.Mvc.ModelBinding.Validation;
 using Microsoft.Extensions.DependencyInjection;
 using AwesomeAssertions;
 using Humans.Base;
-using Humans.Base.Configuration;
 using Humans.Base.Enums;
 using Humans.Google.Contracts;
 using Humans.Teams.Contracts;
@@ -21,7 +20,6 @@ using Humans.Users.Contracts;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Localization;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Logging;
@@ -78,8 +76,8 @@ public class TeamControllerPageContentTests
             .Returns(new[] { childZulu, hiddenChild, zulu, system, childAlpha, hidden, alpha });
         var controller = new TeamController(
             teams, Substitute.For<ITeamPageService>(), Substitute.For<IUserService>(),
-            Substitute.For<ITeamResourceService>(), Substitute.For<IStringLocalizer<TeamsResource>>(),
-            Substitute.For<IStringLocalizer<SharedResource>>(), Substitute.For<IAuthorizationService>(),
+            Substitute.For<ITeamResourceService>(), Substitute.For<IStringLocalizer<TeamsResource>>().AddFormatting(),
+            Substitute.For<IStringLocalizer<SharedResource>>().AddFormatting(), Substitute.For<IAuthorizationService>(),
             NullLogger<TeamController>.Instance);
 
         var result = await controller.Summary(TestContext.Current.CancellationToken);
@@ -343,7 +341,7 @@ public class TeamControllerPageContentTests
         if (role is not null) claims.Add(new Claim(ClaimTypes.Role, role));
         var controller = new TeamController(
             teams, pages, users, Substitute.For<ITeamResourceService>(),
-            Substitute.For<IStringLocalizer<TeamsResource>>(), Substitute.For<IStringLocalizer<SharedResource>>(),
+            Substitute.For<IStringLocalizer<TeamsResource>>().AddFormatting(), Substitute.For<IStringLocalizer<SharedResource>>().AddFormatting(),
             Substitute.For<IAuthorizationService>(), NullLogger<TeamController>.Instance)
         {
             ControllerContext = new ControllerContext
@@ -411,7 +409,7 @@ public class TeamControllerPageContentTests
         if (role is not null) claims.Add(new Claim(ClaimTypes.Role, role));
         var controller = new TeamController(
             teams, pages, users, Substitute.For<ITeamResourceService>(),
-            Substitute.For<IStringLocalizer<TeamsResource>>(), Substitute.For<IStringLocalizer<SharedResource>>(),
+            Substitute.For<IStringLocalizer<TeamsResource>>().AddFormatting(), Substitute.For<IStringLocalizer<SharedResource>>().AddFormatting(),
             Substitute.For<IAuthorizationService>(), NullLogger<TeamController>.Instance)
         {
             ControllerContext = new ControllerContext
@@ -562,7 +560,7 @@ public class TeamControllerPageContentTests
         teams.LeaveTeamAsync(team.Id, userId, Arg.Any<CancellationToken>())
             .Returns(new TeamMembershipMutationResult(false, "Teams_NotMember"));
         teams.WithdrawJoinRequestAsync(Arg.Any<Guid>(), userId, Arg.Any<CancellationToken>())
-            .Returns(new TeamMembershipMutationResult(false, "Teams_RequestUnavailable"));
+            .Returns(new TeamMembershipMutationResult(false, "Teams_RequestNotFound"));
         teams.DeleteTeamAsync(team.Id, userId, Arg.Any<CancellationToken>())
             .Returns(new TeamDeactivationResult("Cannot deactivate"));
         var http = new DefaultHttpContext
@@ -632,7 +630,7 @@ public class TeamControllerPageContentTests
             {
                 "Join" => "Teams_Team_AlreadyPendingRequest",
                 "Leave" => "Teams_NotMember",
-                _ => "Teams_RequestUnavailable"
+                _ => "Teams_RequestNotFound"
             };
             teams.JoinTeamAsync(team.Id, userId, Arg.Any<string?>(), Arg.Any<CancellationToken>())
                 .Returns(unknown
@@ -706,7 +704,7 @@ public class TeamControllerPageContentTests
                 Arg.Any<bool?>(), Arg.Any<bool?>(), Arg.Any<bool?>(), Arg.Any<bool?>(), Arg.Any<bool?>(),
                 Arg.Any<bool>(), Arg.Any<Guid?>(), Arg.Any<CancellationToken>())
             .Returns(new TeamUpdateResult(
-                Team: new Humans.Teams.Domain.Team { Id = teamId, Name = "Alpha", Slug = "alpha" },
+                Team: new Team { Id = teamId, Name = "Alpha", Slug = "alpha" },
                 GroupWarning: warning,
                 InactiveGroupResourceId: inactiveResourceId));
         var http = new DefaultHttpContext { RequestServices = services };
@@ -754,7 +752,7 @@ public class TeamControllerPageContentTests
                 Arg.Any<bool?>(), Arg.Any<bool?>(), Arg.Any<bool?>(), Arg.Any<bool?>(), Arg.Any<bool?>(),
                 Arg.Any<bool>(), Arg.Any<Guid?>(), Arg.Any<CancellationToken>())
             .Returns(new TeamUpdateResult(
-                Team: new Humans.Teams.Domain.Team { Id = teamId, Name = "Alpha", Slug = "alpha" }));
+                Team: new Team { Id = teamId, Name = "Alpha", Slug = "alpha" }));
         var http = new DefaultHttpContext { RequestServices = services };
         var controller = new TeamController(
             teams, Substitute.For<ITeamPageService>(), Substitute.For<IUserService>(),
@@ -892,8 +890,8 @@ public class TeamControllerPageContentTests
         pages.GetTeamPageDetailAsync("test", null, Arg.Any<CancellationToken>()).Returns(page);
         var controller = new TeamController(
             Substitute.For<ITeamManagementService>(), pages, Substitute.For<IUserService>(),
-            Substitute.For<ITeamResourceService>(), Substitute.For<IStringLocalizer<TeamsResource>>(),
-            Substitute.For<IStringLocalizer<SharedResource>>(), Substitute.For<IAuthorizationService>(),
+            Substitute.For<ITeamResourceService>(), Substitute.For<IStringLocalizer<TeamsResource>>().AddFormatting(),
+            Substitute.For<IStringLocalizer<SharedResource>>().AddFormatting(), Substitute.For<IAuthorizationService>(),
             NullLogger<TeamController>.Instance)
         {
             ControllerContext = new ControllerContext { HttpContext = new DefaultHttpContext() }
@@ -928,8 +926,8 @@ public class TeamControllerPageContentTests
         pages.GetTeamPageDetailAsync("test", null, Arg.Any<CancellationToken>()).Returns(page);
         var controller = new TeamController(
             Substitute.For<ITeamManagementService>(), pages, Substitute.For<IUserService>(),
-            Substitute.For<ITeamResourceService>(), Substitute.For<IStringLocalizer<TeamsResource>>(),
-            Substitute.For<IStringLocalizer<SharedResource>>(), Substitute.For<IAuthorizationService>(),
+            Substitute.For<ITeamResourceService>(), Substitute.For<IStringLocalizer<TeamsResource>>().AddFormatting(),
+            Substitute.For<IStringLocalizer<SharedResource>>().AddFormatting(), Substitute.For<IAuthorizationService>(),
             NullLogger<TeamController>.Instance)
         {
             ControllerContext = new ControllerContext { HttpContext = new DefaultHttpContext() }
@@ -955,10 +953,10 @@ public class TeamControllerPageContentTests
         using var request = new CancellationTokenSource();
         using var services = new ServiceCollection().AddLogging().AddLocalization().BuildServiceProvider();
         var teams = Substitute.For<ITeamManagementService>();
-        var logger = new Humans.Testing.CapturingLogger<TeamController>();
+        var logger = new CapturingLogger<TeamController>();
         var failure = new IOException("Team write unavailable");
         var teamId = Guid.NewGuid();
-        var team = new Humans.Teams.Domain.Team { Id = teamId, Name = "Alpha", Slug = "alpha" };
+        var team = new Team { Id = teamId, Name = "Alpha", Slug = "alpha" };
         var result = path is TeamParentPickerPath.EditReactivation
             ? new TeamUpdateResult(team, GroupWarning: "Confirm reactivation", InactiveGroupResourceId: Guid.NewGuid())
             : new TeamUpdateResult(ErrorMessage: "Refused");

@@ -13,7 +13,7 @@
     <a asp-controller="Expenses" asp-action="Index" class="btn btn-outline-primary">
         <i class="fa-solid fa-receipt me-1"></i>@Localizer["Budget_Expenses"]
     </a>
-    @if (Model.IsCoordinator)
+    @if (Model.CanEditBudget)
     {
         <a asp-action="Index" class="btn btn-outline-primary">
             <i class="fa-solid fa-list me-1"></i>@Localizer["Budget_DepartmentDetail"]

@@ -2,7 +2,7 @@
 
 Unattended nightly native Codex goal against a **dedicated clone** of this
 repo — never your working checkout. Gates on build + test before publishing,
-opens one PR per run containing all substantive fixes. Ledger-only and test-only runs
+opens one PR per run containing all substantive fixes. Ledger-only runs, and test-only runs that grow the suite,
 fail without publishing. Scheduler: systemd user timer (the only one shipped here).
 
 A separate Claude cloud routine currently runs at 08:00 UTC using
@@ -22,7 +22,7 @@ The worker fixes production code and executable tooling. Standalone coverage
 work and test cleanup are not sweep objectives. Add or update focused tests
 when a code fix warrants them; prefer existing coverage when sufficient.
 Scoped tests validate each change; the wrapper runs the full non-integration
-suite once at the end. Test-only changes do not qualify a run for publication.
+suite once at the end. Test-only changes qualify only when they shrink the suite (more test lines deleted than added).
 
 ## Batching
 
@@ -40,11 +40,12 @@ individual scrutiny. The cumulative report lists items and split reasons.
 `TIME_BUDGET` defaults to `12h` and cannot exceed 12 hours. The worker finishes
 its active batch afterward; final build/test and publication may extend past it.
 The service pins only the quota guard; `TIME_BUDGET` in `debt-runner.env`
-remains effective for scheduled runs. Set it to `12h` for the full window, or
-choose a shorter duration.
+remains effective for scheduled runs.
 
-There is no fix-count target. Work existing ledger rows before searching for new
-debt. One branch and PR contain all completed substantive fixes.
+There is no fix-count target. Work existing ledger rows, then the ladder's Finds;
+when both are drained the worker reports `Stop: ledger drained`, the run stops early,
+publishes any substantive fixes, and exits 0 (`exit_reason=drained` when there is nothing
+to publish). One branch and PR contain all completed substantive fixes.
 
 Before starting work and after each validated, committed round, the runner reads
 live quota through `account/rateLimits/read`. It selects the `codex` bucket's

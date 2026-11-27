@@ -299,7 +299,7 @@ public sealed class GoogleRemovalNotificationServiceTests
         }
 
         if (emails.FirstOrDefault(e => e.designated) is { Email: not null } designation)
-            _identities.Rows[userId] = new Humans.Google.Domain.WorkspaceIdentityRecord
+            _identities.Rows[userId] = new Domain.WorkspaceIdentityRecord
             {
                 UserId = userId,
                 Email = designation.Email,

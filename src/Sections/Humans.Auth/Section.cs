@@ -3,7 +3,6 @@ using Humans.Auth.Contracts;
 using Humans.Auth.Data;
 using Humans.Auth.Services;
 using Humans.Auth.ViewComponents;
-using Humans.Base.Authorization;
 using Humans.Base.Constants;
 using Humans.Base.Extensions;
 using Humans.Base.Hosting;
@@ -38,14 +37,14 @@ public sealed class Section :
     [
         new()
         {
-            Key = "RoleAssignments",
-            SectionName = "Role Assignments",
+            Key = "SystemRoles",
+            SectionName = "System Roles",
             Order = 91,
             Roles = ["Board", "UsersAdmin", "Admin"],
             Features =
             [
-                Of("View role assignments", ("Board", Allowed), ("UsersAdmin", Allowed), ("Admin", Allowed)),
-                Of("Add or end role assignments", ("Board", Denied), ("UsersAdmin", Allowed), ("Admin", Allowed)),
+                Of("View system roles", ("Board", Allowed), ("UsersAdmin", Allowed), ("Admin", Allowed)),
+                Of("Assign or revoke system roles", ("Board", Denied), ("UsersAdmin", Allowed), ("Admin", Allowed)),
             ]
         }
     ];
@@ -54,7 +53,7 @@ public sealed class Section :
 
     // Read once per process: the markdown ships inside this assembly and never changes at runtime.
     private static readonly IReadOnlyList<SectionHelpEntry> HelpEntries =
-        [SectionHelpEntry.FromEmbeddedMarkdown(typeof(Section).Assembly, "RoleAssignments", 82)];
+        [SectionHelpEntry.FromEmbeddedMarkdown(typeof(Section).Assembly, "SystemRoles", 82)];
 
     public void Register(IServiceCollection services, IConfiguration configuration)
     {
@@ -65,35 +64,35 @@ public sealed class Section :
         // Composed from every section's ISectionRoles (registered by discovery); throws on a duplicate name.
         services.AddSingleton(sp => new RoleCatalog(sp.GetServices<ISectionRoles>()));
 
-        services.AddSingleton<IRoleAssignmentRepository, RoleAssignmentRepository>();
+        services.AddSingleton<ISystemRoleRepository, SystemRoleRepository>();
         services.AddScoped<IAdminAuthorizationService, AdminAuthorizationService>();
 
         // IUserDataContributor and IUserMerge reach the undecorated inner through the unkeyed concrete, which
         // forwards to this keyed registration, so there is only one inner instance.
-        services.AddKeyedScoped<IRoleAssignmentManagement, RoleAssignmentService>(
-            CachingRoleAssignmentService.InnerServiceKey);
-        services.AddScoped<RoleAssignmentService>(sp =>
-            (RoleAssignmentService)sp.GetRequiredKeyedService<IRoleAssignmentManagement>(
-                CachingRoleAssignmentService.InnerServiceKey));
-        services.AddScoped<IUserDataContributor>(sp => sp.GetRequiredService<RoleAssignmentService>());
-        services.AddScoped<IUserMerge>(sp => sp.GetRequiredService<RoleAssignmentService>());
+        services.AddKeyedScoped<ISystemRoleManagement, SystemRoleService>(
+            CachingSystemRoleService.InnerServiceKey);
+        services.AddScoped<SystemRoleService>(sp =>
+            (SystemRoleService)sp.GetRequiredKeyedService<ISystemRoleManagement>(
+                CachingSystemRoleService.InnerServiceKey));
+        services.AddScoped<IUserDataContributor>(sp => sp.GetRequiredService<SystemRoleService>());
+        services.AddScoped<IUserMerge>(sp => sp.GetRequiredService<SystemRoleService>());
 
-        services.AddSingleton<CachingRoleAssignmentService>();
-        services.AddSingleton<IRoleAssignmentManagement>(sp =>
-            sp.GetRequiredService<CachingRoleAssignmentService>());
-        services.AddSingleton<IRoleAssignmentService>(sp =>
-            sp.GetRequiredService<IRoleAssignmentManagement>());
-        services.AddSingleton<IRoleAssignmentWrite>(sp =>
-            sp.GetRequiredService<IRoleAssignmentManagement>());
+        services.AddSingleton<CachingSystemRoleService>();
+        services.AddSingleton<ISystemRoleManagement>(sp =>
+            sp.GetRequiredService<CachingSystemRoleService>());
+        services.AddSingleton<ISystemRoleService>(sp =>
+            sp.GetRequiredService<ISystemRoleManagement>());
+        services.AddSingleton<ISystemRoleWrite>(sp =>
+            sp.GetRequiredService<ISystemRoleManagement>());
         services.AddSingleton<ICacheStats>(sp =>
-            sp.GetRequiredService<CachingRoleAssignmentService>());
-        services.AddHostedService(sp => sp.GetRequiredService<CachingRoleAssignmentService>());
+            sp.GetRequiredService<CachingSystemRoleService>());
+        services.AddHostedService(sp => sp.GetRequiredService<CachingSystemRoleService>());
 
-        services.AddSingleton<IAuthorizationHandler, RoleAssignmentAuthorizationHandler>();
+        services.AddSingleton<IAuthorizationHandler, SystemRoleAuthorizationHandler>();
 
-        services.AddScoped<IMagicLinkUrlBuilder, MagicLinkUrlBuilder>();
-        services.AddScoped<IMagicLinkRateLimiter, MagicLinkRateLimiter>();
-        services.AddScoped<IMagicLinkService, MagicLinkService>();
+        services.AddScoped<ISignInLinkUrlBuilder, SignInLinkUrlBuilder>();
+        services.AddScoped<ISignInLinkRateLimiter, SignInLinkRateLimiter>();
+        services.AddScoped<ISignInLinkService, SignInLinkService>();
 
         services.AddScoped<AuthEmails>();
         services.AddScoped<IEmailPreviewContributor, AuthEmailPreviews>();
@@ -105,30 +104,43 @@ public sealed class Section :
     IEnumerable<AdminNavGroup> ISectionAdminNav.Groups() =>
     [
         new("Users", [
-            new("Roles", "RoleAssignments", "Roles", null, null, "fa-solid fa-id-badge", UsersPolicies.Read, Weight: 10)
+            new("Roles", "SystemRoles", "Roles", null, null, "fa-solid fa-id-badge", UsersPolicies.Read, Weight: 10)
         ])
     ];
 
     internal const string RoleRenamesKey = "auth.role-renames";
+    internal const string EndRetiredRolesKey = "auth.end-retired-roles";
 
     IEnumerable<DataMigration> ISectionDataMigrations.Migrations() =>
     [
         new(RoleRenamesKey, "Auth",
-            "Rewrite role assignments stored under a former role name (HumanAdmin, CampAdmin, TicketAdmin, NoInfoAdmin, VolunteerCoordinator, EETeamAdmin) to the current name",
-            "RoleDefinition.FormerNames on each renamed role and the former-name reads in RoleAssignmentService",
+            "Rewrite system roles stored under a former role name (HumanAdmin, CampAdmin, TicketAdmin, VolunteerCoordinator, EETeamAdmin, ConsentCoordinator) to the current name",
+            "RoleDefinition.FormerNames on each renamed role and the former-name reads in SystemRoleService",
             StatusAsync, ApplyAsync),
+        new(EndRetiredRolesKey, "Auth",
+            "End active system roles stored under a name no section declares any more (ShiftsNoInfo, NoInfoAdmin), auditing each as revoked",
+            "SystemRoleService.EndRetiredRolesAsync and GetActiveRowsUnderRetiredNamesAsync",
+            RetiredStatusAsync, RetiredApplyAsync),
     ];
 
     private static async Task<DataMigrationStatus> StatusAsync(IServiceProvider sp, CancellationToken ct) =>
         new(["User", "Stored role", "Current role", "Valid to"],
-            [.. (await sp.GetRequiredService<RoleAssignmentService>().GetRowsUnderFormerNamesAsync(ct))
+            [.. (await sp.GetRequiredService<SystemRoleService>().GetRowsUnderFormerNamesAsync(ct))
                 .Select(r => (IReadOnlyList<string>)
                 [
                     r.UserId.ToString(), r.StoredName, r.CurrentName, r.ValidTo.ToIso8601() ?? "open",
                 ])]);
 
     private static Task<int> ApplyAsync(IServiceProvider sp, Guid actorUserId, CancellationToken ct) =>
-        sp.GetRequiredService<RoleAssignmentService>().RewriteFormerNamesAsync(ct);
+        sp.GetRequiredService<SystemRoleService>().RewriteFormerNamesAsync(ct);
+
+    private static async Task<DataMigrationStatus> RetiredStatusAsync(IServiceProvider sp, CancellationToken ct) =>
+        new(["User", "Stored role", "Valid from"],
+            [.. (await sp.GetRequiredService<SystemRoleService>().GetActiveRowsUnderRetiredNamesAsync(ct))
+                .Select(r => (IReadOnlyList<string>)[r.UserId.ToString(), r.RoleName, r.ValidFrom.ToIso8601()])]);
+
+    private static Task<int> RetiredApplyAsync(IServiceProvider sp, Guid actorUserId, CancellationToken ct) =>
+        sp.GetRequiredService<SystemRoleService>().EndRetiredRolesAsync(actorUserId, ct);
 
     IReadOnlyList<RoleDefinition> ISectionRoles.Roles { get; } =
     [
@@ -141,5 +153,5 @@ public sealed class Section :
     ];
 
     IEnumerable<UserPart> IUserPart.Parts() =>
-        [new(UserPartSlots.AdminDetail, typeof(RoleAssignmentsCardViewComponent), Weight: 50)];
+        [new(UserPartSlots.AdminDetail, typeof(SystemRolesCardViewComponent), Weight: 50)];
 }

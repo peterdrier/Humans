@@ -13,7 +13,7 @@ Promotion is decided from the consumer list, never from the name.
 `SearchControllerTests` substitutes it (the concrete class is `internal sealed`).
 
 The things outside the section that mention "Search" are not references to this project.
-The member-nav item is the section's own `SectionNav : ISectionNav`, so Shell names nothing
+The member-nav item is the section's own `Section`, which implements `ISectionNav`, so Shell names nothing
 here. `HumanSearchViewComponent` / `<vc:human-search>`, `<vc:user-search-result>`,
 `PersonSearchMatcher` and `PersonSearchFields` share the word and belong to Users —
 `Docs/Search.md` records the naming trap.

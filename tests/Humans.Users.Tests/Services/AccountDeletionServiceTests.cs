@@ -9,7 +9,6 @@ using Humans.AuditLog.Contracts;
 using Humans.Email.Contracts;
 using Humans.Gdpr.Contracts;
 using Humans.Users.Contracts;
-using Humans.Shifts.Contracts;
 using Humans.Teams.Contracts;
 using Humans.Tickets.Contracts;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -25,7 +24,7 @@ public class AccountDeletionServiceTests
     private readonly IUserManagement _userService = Substitute.For<IUserManagement>();
     private readonly IUserEmailService _userEmailService = Substitute.For<IUserEmailService>();
     private readonly ITeamWrite _teamService = Substitute.For<ITeamWrite>();
-    private readonly IRoleAssignmentWrite _roleAssignmentService = Substitute.For<IRoleAssignmentWrite>();
+    private readonly ISystemRoleWrite _systemRoleService = Substitute.For<ISystemRoleWrite>();
     private readonly IGdprService _gdprService = Substitute.For<IGdprService>();
     private readonly ITicketService _ticketQueryService = Substitute.For<ITicketService>();
     private readonly IUserInfoSliceRefresher _userInfoRefresher = Substitute.For<IUserInfoSliceRefresher>();
@@ -46,7 +45,7 @@ public class AccountDeletionServiceTests
             _userService,
             _userEmailService,
             _teamService,
-            _roleAssignmentService,
+            _systemRoleService,
             _gdprService,
             _ticketQueryService,
             _userInfoRefresher,
@@ -117,7 +116,7 @@ public class AccountDeletionServiceTests
         var user = MakeUser(userId, preferredLanguage: language);
         _userService.GetRawUserInfoAsync(userId, Arg.Any<CancellationToken>()).Returns(user);
         _teamService.RevokeAllMembershipsAsync(userId, Arg.Any<CancellationToken>()).Returns(3);
-        _roleAssignmentService.RevokeAllActiveAsync(userId, Arg.Any<CancellationToken>()).Returns(1);
+        _systemRoleService.RevokeAllActiveAsync(userId, Arg.Any<CancellationToken>()).Returns(1);
         _userEmailService.GetNotificationTargetEmailsAsync(
                 Arg.Is<IReadOnlyCollection<Guid>>(ids => ids.Contains(userId)),
                 Arg.Any<CancellationToken>())
@@ -133,7 +132,7 @@ public class AccountDeletionServiceTests
             Arg.Any<Instant?>(), Arg.Any<CancellationToken>());
 
         await _teamService.Received(1).RevokeAllMembershipsAsync(userId, Arg.Any<CancellationToken>());
-        await _roleAssignmentService.Received(1).RevokeAllActiveAsync(userId, Arg.Any<CancellationToken>());
+        await _systemRoleService.Received(1).RevokeAllActiveAsync(userId, Arg.Any<CancellationToken>());
 
         await _auditLogService.Received(1).LogAsync(
             UsersAuditActions.MembershipsRevokedOnDeletionRequest, nameof(User), userId,
@@ -163,7 +162,7 @@ public class AccountDeletionServiceTests
                 transaction = Transaction.Current?.Clone();
                 return rolesFail ? Task.FromResult(1) : Task.FromException<int>(new IOException("Membership write failed"));
             });
-        _roleAssignmentService.RevokeAllActiveAsync(userId, Arg.Any<CancellationToken>())
+        _systemRoleService.RevokeAllActiveAsync(userId, Arg.Any<CancellationToken>())
             .Returns(_ => Task.FromException<int>(new IOException("Role write failed")));
         var refreshedAfterRollback = false;
         _userInfoRefresher.RefreshAsync(userId, Arg.Any<CancellationToken>(), Arg.Any<string>(), Arg.Any<string>())
@@ -208,7 +207,7 @@ public class AccountDeletionServiceTests
                 transactionIds.Add(Transaction.Current?.TransactionInformation.LocalIdentifier);
                 return Task.FromResult(1);
             });
-        _roleAssignmentService.RevokeAllActiveAsync(userId, Arg.Any<CancellationToken>())
+        _systemRoleService.RevokeAllActiveAsync(userId, Arg.Any<CancellationToken>())
             .Returns(_ =>
             {
                 transactionIds.Add(Transaction.Current?.TransactionInformation.LocalIdentifier);
@@ -249,7 +248,7 @@ public class AccountDeletionServiceTests
         result.Success.Should().BeFalse();
         result.ErrorKey.Should().Be("NotFound");
         _teamService.ReceivedCalls().Should().BeEmpty();
-        _roleAssignmentService.ReceivedCalls().Should().BeEmpty();
+        _systemRoleService.ReceivedCalls().Should().BeEmpty();
         _auditLogService.ReceivedCalls().Should().BeEmpty();
         _emailService.ReceivedCalls().Should().BeEmpty();
     }
@@ -270,7 +269,7 @@ public class AccountDeletionServiceTests
         await _userService.Received(1).SetDeletionPendingAsync(userId, Arg.Any<Instant>(), Arg.Any<Instant>(),
             Arg.Any<Instant?>(), Arg.Any<CancellationToken>());
         await _teamService.Received(1).RevokeAllMembershipsAsync(userId, Arg.Any<CancellationToken>());
-        await _roleAssignmentService.Received(1).RevokeAllActiveAsync(userId, Arg.Any<CancellationToken>());
+        await _systemRoleService.Received(1).RevokeAllActiveAsync(userId, Arg.Any<CancellationToken>());
         await _auditLogService.Received(1).LogAsync(UsersAuditActions.MembershipsRevokedOnDeletionRequest,
             nameof(User), userId, Arg.Any<string>(), userId, Arg.Any<Guid?>(), Arg.Any<string?>());
         await _emailService.DidNotReceiveWithAnyArgs().SendAsync(default!);
@@ -310,7 +309,7 @@ public class AccountDeletionServiceTests
             transaction!.TransactionInformation.Status.Should().Be(TransactionStatus.Committed);
         }
         await _teamService.Received(1).RevokeAllMembershipsAsync(userId, Arg.Any<CancellationToken>());
-        await _roleAssignmentService.Received(1).RevokeAllActiveAsync(userId, Arg.Any<CancellationToken>());
+        await _systemRoleService.Received(1).RevokeAllActiveAsync(userId, Arg.Any<CancellationToken>());
         await _auditLogService.Received(1).LogAsync(
             UsersAuditActions.MembershipsRevokedOnDeletionRequest, nameof(User), userId,
             Arg.Any<string>(), userId, Arg.Any<Guid?>(), Arg.Any<string?>());

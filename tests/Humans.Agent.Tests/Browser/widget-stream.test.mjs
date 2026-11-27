@@ -8,7 +8,7 @@ const { installHumans } = createRequire(import.meta.url)('../../browser-support/
 
 const source = readFileSync(new URL('../../../src/Sections/Humans.Agent/wwwroot/js/agent/widget.js', import.meta.url), 'utf8');
 const text = 'event: text\ndata: {"textDelta":"Partial answer"}\n\n';
-const proposal = 'event: propose\ndata: {"issueProposal":{"title":"Help"}}\n\n';
+const proposal = 'event: handoff\ndata: {"handoff":{"title":"Help"}}\n\n';
 function final(reason = 'end_turn') {
     return `event: final\ndata: ${JSON.stringify({ finalizer: { stopReason: reason, conversationId: '11111111-1111-1111-1111-111111111111' } })}\n\n`;
 }
@@ -29,7 +29,7 @@ class Element {
 
 async function submit(chunks) {
     const elements = Object.fromEntries(['agentPanel', 'agentPanelClose', 'agentMessages', 'agentComposer', 'agentInput', 'agentSend'].map(id => [id, new Element()]));
-    elements.agentPanel.dataset = { networkErrorText: 'Network error.', turnErrorText: 'Turn failed.', issueProposedText: 'Issue drafted.' };
+    elements.agentPanel.dataset = { networkErrorText: 'Network error.', turnErrorText: 'Turn failed.', handoffDraftedText: 'Issue drafted.' };
     elements.agentInput.value = 'Question';
     let index = 0;
     const reader = { async read() {

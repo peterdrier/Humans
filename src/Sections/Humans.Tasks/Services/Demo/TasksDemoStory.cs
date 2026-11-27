@@ -8,7 +8,8 @@ namespace Humans.Tasks.Services.Demo;
 
 /// <summary>
 /// Tasks across three demo departments, tied to the active event: open, part-filled and overfilled slots, a task
-/// waiting on another, a blocked one with its note, a hidden one, one needing approval, and fixed and relative dates.
+/// waiting on another, a blocked one with its note, a hidden one, one needing approval with two requests waiting, and fixed
+/// and relative dates.
 /// Tasks with an event attach to the active event and never change its settings; with none, only the event-less
 /// task is made and the report says so.
 /// </summary>
@@ -81,7 +82,7 @@ internal sealed class TasksDemoStory(ITaskService tasks, ISettingsService settin
             ?? throw new InvalidOperationException($"Could not make demo task '{spec.Title}': {result.Refusal}");
     }
 
-    /// <summary>Puts people, status and the wait on the task if it lacks them, so a cut-off run is finished by the next.</summary>
+    /// <summary>Puts people, requests, status and the wait on the task if it lacks them, so a cut-off run is finished by the next.</summary>
     private async Task SettleAsync(
         TaskSpec spec, Guid taskId, IReadOnlyDictionary<string, Guid> made, IReadOnlyList<Guid> people,
         Guid actorUserId, CancellationToken ct)
@@ -94,6 +95,13 @@ internal sealed class TasksDemoStory(ITaskService tasks, ISettingsService settin
                      .Where(p => task.Assignments.All(a => a.UserId != p)))
         {
             await tasks.AssignAsync(taskId, userId, actorUserId, ct);
+        }
+
+        // A request is made by the person themselves, so the audit trail shows them as its actor.
+        foreach (var userId in people.Skip(spec.RequestsOffset).Take(spec.Requests)
+                     .Where(p => task.Assignments.All(a => a.UserId != p)))
+        {
+            await tasks.ClaimAsync(taskId, userId, ct);
         }
 
         if (spec.WaitsOn is { } other && made.TryGetValue(other, out var otherId)
@@ -128,7 +136,7 @@ internal sealed class TasksDemoStory(ITaskService tasks, ISettingsService settin
             new("welfare-tent", "teams:team:participant-wellness", "Set up the welfare tent",
                 "Tent, cots and the first-aid box. Sensitive, so a coordinator confirms who joins.",
                 Relative(gate), Relative(gate.PlusDays(1)), SlotPriority.Critical, 3, People: 0, PeopleOffset: 0,
-                NeedsApproval: true, ApprovalReason: "A coordinator confirms who joins."),
+                NeedsApproval: true, ApprovalReason: "A coordinator confirms who joins.", Requests: 2, RequestsOffset: 7),
             new("volunteer-thanks", "teams:team:participant-wellness", "Plan the volunteer thank-you evening",
                 "Not tied to an event.",
                 null, Fixed(today.PlusDays(14)), SlotPriority.None, 2, People: 0, PeopleOffset: 0, NeedsEvent: false),
@@ -152,6 +160,8 @@ internal sealed class TasksDemoStory(ITaskService tasks, ISettingsService settin
         int PeopleOffset,
         bool NeedsApproval = false,
         string? ApprovalReason = null,
+        int Requests = 0,
+        int RequestsOffset = 0,
         bool IsHidden = false,
         bool NeedsEvent = true,
         string? WaitsOn = null,

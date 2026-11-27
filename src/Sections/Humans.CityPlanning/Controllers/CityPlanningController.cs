@@ -1,7 +1,6 @@
 using Humans.Containers;
 using Microsoft.Extensions.Localization;
 using Humans.Camps.Contracts;
-using Humans.CityPlanning.Contracts;
 using Humans.CityPlanning.Services;
 using Humans.Containers.Contracts;
 using Humans.Base.Authorization;

@@ -5,7 +5,6 @@ using AwesomeAssertions;
 using Humans.CityPlanning.Contracts;
 using Humans.Camps.Contracts;
 using Humans.Consent.Contracts;
-using Humans.Governance.Contracts;
 using Humans.Onboarding.Contracts;
 using Humans.Users.Contracts;
 using Humans.Teams.Contracts;
@@ -31,7 +30,7 @@ public class DevPersonaSeederTests
     private readonly IProfileEditorService _profileEditor = Substitute.For<IProfileEditorService>();
     private readonly IUserEmailService _userEmails = Substitute.For<IUserEmailService>();
     private readonly IContactFieldService _contactFields = Substitute.For<IContactFieldService>();
-    private readonly IRoleAssignmentWrite _roleAssignments = Substitute.For<IRoleAssignmentWrite>();
+    private readonly ISystemRoleWrite _roleAssignments = Substitute.For<ISystemRoleWrite>();
     private readonly ITeamService _teams = Substitute.For<ITeamService>();
     private readonly ITeamWrite _teamsWrite = Substitute.For<ITeamWrite>();
     private readonly ITeamSeeding _teamSeeding = Substitute.For<ITeamSeeding>();
@@ -93,7 +92,7 @@ public class DevPersonaSeederTests
         new(missingVersionIds.Length, missingVersionIds);
 
     [HumansFact]
-    public async Task EnsureActiveAsync_MissingConsents_SubmitsEachThroughConsentServiceAndRestores()
+    public async Task EnsureActiveAsync_MissingConsents_SubmitsEach()
     {
         var userId = Guid.NewGuid();
         var v1 = Guid.NewGuid();
@@ -259,7 +258,7 @@ public class DevPersonaSeederTests
     }
 
     [HumansFact]
-    public async Task ResetLegalNamesAsync_BlanksLegalNamesAndKeepsBurnerName()
+    public async Task ResetLegalNamesAsync_KeepsBurnerName()
     {
         // The no-name persona must hit the onboarding name gate on every sign-in.
         var userId = DevPersonaSeeder.PersonaGuid("no-name");

@@ -202,8 +202,13 @@ internal sealed class StoreWebhookRegistrationService(
 
         if (!stripe.IsWebhookCleanupConfigured || string.IsNullOrEmpty(github.AccessToken))
         {
-            logger.LogInformation(
-                "Cross-PR webhook sweep skipped: missing Stripe:WebhookCleanupOwner/Repository or GitHub:AccessToken.");
+            var unset = new[]
+            {
+                string.IsNullOrEmpty(stripe.WebhookCleanupGitHubOwner) ? "Stripe:WebhookCleanupGitHubOwner" : null,
+                string.IsNullOrEmpty(stripe.WebhookCleanupGitHubRepository) ? "Stripe:WebhookCleanupGitHubRepository" : null,
+                string.IsNullOrEmpty(github.AccessToken) ? "GitHub:AccessToken" : null,
+            }.OfType<string>();
+            logger.LogInformation("Cross-PR webhook sweep skipped: {Unset} not set.", string.Join(", ", unset));
             return null;
         }
 

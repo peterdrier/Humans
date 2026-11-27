@@ -451,7 +451,7 @@ public sealed class TeamRepositoryTests : IDisposable
 
         var withdrew = await _repo.WithdrawRequestAsync(request.Id, user.Id, _clock.GetCurrentInstant(), TestContext.Current.CancellationToken);
 
-        withdrew.Should().BeFalse();
+        withdrew.Should().Be(TeamJoinRequestStatus.Approved);
     }
 
     [HumansFact]
@@ -473,7 +473,7 @@ public sealed class TeamRepositoryTests : IDisposable
         var now = _clock.GetCurrentInstant();
         var withdrew = await _repo.WithdrawRequestAsync(request.Id, user.Id, now, TestContext.Current.CancellationToken);
 
-        withdrew.Should().BeTrue();
+        withdrew.Should().Be(TeamJoinRequestStatus.Pending);
         _dbContext.ChangeTracker.Clear();
         var reloaded = await _dbContext.TeamJoinRequests.AsNoTracking().FirstAsync(r => r.Id == request.Id, TestContext.Current.CancellationToken);
         reloaded.Status.Should().Be(TeamJoinRequestStatus.Withdrawn);
@@ -515,7 +515,7 @@ public sealed class TeamRepositoryTests : IDisposable
             });
         await _dbContext.SaveChangesAsync(TestContext.Current.CancellationToken);
 
-        var grants = await _repo.GetEarlyEntryGrantsForEnabledTeamsAsync(TestContext.Current.CancellationToken);
+        var grants = await _repo.GetEarlyEntryGrantsAsync(TestContext.Current.CancellationToken);
 
         grants.Should().ContainSingle().Which.TeamId.Should().Be(active.Id);
     }

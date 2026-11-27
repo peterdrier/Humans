@@ -4,6 +4,7 @@ using Microsoft.Extensions.Logging;
 using NodaTime;
 // See StripeService.cs: the bare name `Stripe` binds to this section here.
 using Stripe;
+using Stripe.Checkout;
 
 namespace Humans.Stripe.Services;
 
@@ -53,20 +54,24 @@ internal sealed partial class StripeService
             var lines = new List<StripeLedgerLine>();
             foreach (var t in transactions)
             {
-                var intentId = t.Source switch
+                var (intentId, sourceMetadata) = t.Source switch
                 {
-                    Charge c => c.PaymentIntentId,
-                    Refund r => r.PaymentIntentId,
-                    Dispute d => d.PaymentIntentId,
-                    _ => null,
+                    Charge c => (c.PaymentIntentId, c.Metadata),
+                    Refund r => (r.PaymentIntentId, r.Metadata),
+                    Dispute d => (d.PaymentIntentId, d.Metadata),
+                    _ => (null, null),
                 };
                 StripeLedgerPayment? payment = null;
                 if (intentId is not null)
                 {
                     if (!intents.TryGetValue(intentId, out var intent))
                         intents[intentId] = intent = await new PaymentIntentService(client).GetAsync(intentId, null, request, ct);
-                    payment = new StripeLedgerPayment(intent.Id, intent.Description,
-                        intent.Metadata ?? new Dictionary<string, string>(StringComparer.Ordinal));
+                    var metadata = new Dictionary<string, string>(intent.Metadata ?? [], StringComparer.Ordinal);
+                    // A movement can carry its order reference even when the older intent does not.
+                    if (sourceMetadata is not null)
+                        foreach (var pair in sourceMetadata)
+                            metadata[pair.Key] = pair.Value;
+                    payment = new StripeLedgerPayment(intent.Id, intent.Description, metadata);
                 }
 
                 lines.Add(new StripeLedgerLine(t.Id, InstantOf(t.Created), t.ReportingCategory ?? "", t.Amount, t.Fee,
@@ -158,41 +163,59 @@ internal sealed partial class StripeService
         }
     }
 
-    public async Task<IReadOnlyList<StripeAccountCheck>> CheckAccountAsync(string accountName, CancellationToken ct = default)
+    public async Task<IReadOnlyList<StripeAccountCheck>> CheckAccountAsync(
+        string accountName, CancellationToken ct = default, bool includeCheckout = false)
     {
+        var findings = new List<StripeAccountCheck>();
+        if (includeCheckout)
+        {
+            var checkoutMode = _settings.TicketsKey.StartsWith("sk_test_", StringComparison.Ordinal)
+                || _settings.TicketsKey.StartsWith("rk_test_", StringComparison.Ordinal) ? "test mode" : "live mode";
+            findings.Add(_settings.IsConfigured
+                ? await ProbeAsync("STRIPE_TICKETS_KEY", $"Checkout Sessions ({checkoutMode})",
+                    () => new SessionService(new StripeClient(_settings.TicketsKey, httpClient: httpClient))
+                        .ListAsync(new SessionListOptions { Limit = 1 }, cancellationToken: ct), ct)
+                : new(false, "STRIPE_TICKETS_KEY is unset or contains whitespace: checkout cannot be read."));
+        }
         var account = Account(accountName);
         if (account is null)
-            return [new(false, $"Stripe:MirrorAccounts has no {accountName} entry: its Stripe fees and payouts are not reconciled.")];
+        {
+            findings.Add(new(false, $"Stripe:MirrorAccounts has no {accountName} entry: its Stripe fees and payouts are not reconciled."));
+            return findings;
+        }
         var keyName = account.UsesOrgKey ? StripeMirrorConfiguration.OrgKeyVariable : account.KeyVariable!;
         if (Reader(accountName) is not var (client, request))
-            return [new(false, $"{keyName} is unset: the {accountName} account's Stripe fees and payouts are not reconciled.")];
+        {
+            findings.Add(new(false, $"{keyName} is unset or contains whitespace: the {accountName} account's Stripe fees and payouts are not reconciled."));
+            return findings;
+        }
 
         var mode = account.ApiKey.StartsWith("sk_test_", StringComparison.Ordinal) || account.ApiKey.StartsWith("rk_test_", StringComparison.Ordinal)
             ? "test mode"
             : "live mode";
-        List<StripeAccountCheck> findings =
-        [
-            await ProbeAsync(keyName, $"Balance transactions ({mode})",
-                () => new BalanceTransactionService(client).ListAsync(new BalanceTransactionListOptions { Limit = 1 }, request, ct)),
-            await ProbeAsync(keyName, "Payouts",
-                () => new PayoutService(client).ListAsync(new PayoutListOptions { Limit = 1 }, request, ct)),
-            await ProbeAsync(keyName, "PaymentIntents",
-                () => new PaymentIntentService(client).ListAsync(new PaymentIntentListOptions { Limit = 1 }, request, ct)),
-            // The ledger expands each movement's charge, refund or dispute, and a fee read its payment's charge.
-            await ProbeAsync(keyName, "Charges",
-                () => new ChargeService(client).ListAsync(new ChargeListOptions { Limit = 1 }, request, ct)),
-            await ProbeAsync(keyName, "Refunds",
-                () => new RefundService(client).ListAsync(new RefundListOptions { Limit = 1 }, request, ct)),
-            await ProbeAsync(keyName, "Disputes",
-                () => new DisputeService(client).ListAsync(new DisputeListOptions { Limit = 1 }, request, ct)),
-        ];
         // memory/code/stripe-restricted-keys.md: a probe can only confirm scopes are present, not that nothing else is.
         if (account.ApiKey.StartsWith("sk_live_", StringComparison.Ordinal))
-            findings.Insert(0, new(false, $"{keyName} is a full secret key that can move money: use a read-only restricted key (rk_live_)."));
+            findings.Add(new(false, $"{keyName} is a full secret key that can move money: use a read-only restricted key (rk_live_)."));
+        findings.AddRange(
+        [
+            await ProbeAsync(keyName, $"Balance transactions ({mode})",
+                () => new BalanceTransactionService(client).ListAsync(new BalanceTransactionListOptions { Limit = 1 }, request, ct), ct),
+            await ProbeAsync(keyName, "Payouts",
+                () => new PayoutService(client).ListAsync(new PayoutListOptions { Limit = 1 }, request, ct), ct),
+            await ProbeAsync(keyName, "PaymentIntents",
+                () => new PaymentIntentService(client).ListAsync(new PaymentIntentListOptions { Limit = 1 }, request, ct), ct),
+            // The ledger expands each movement's charge, refund or dispute, and a fee read its payment's charge.
+            await ProbeAsync(keyName, "Charges",
+                () => new ChargeService(client).ListAsync(new ChargeListOptions { Limit = 1 }, request, ct), ct),
+            await ProbeAsync(keyName, "Refunds",
+                () => new RefundService(client).ListAsync(new RefundListOptions { Limit = 1 }, request, ct), ct),
+            await ProbeAsync(keyName, "Disputes",
+                () => new DisputeService(client).ListAsync(new DisputeListOptions { Limit = 1 }, request, ct), ct),
+        ]);
         return findings;
     }
 
-    private static async Task<StripeAccountCheck> ProbeAsync(string keyName, string what, Func<Task> read)
+    private static async Task<StripeAccountCheck> ProbeAsync(string keyName, string what, Func<Task> read, CancellationToken ct)
     {
         try
         {
@@ -202,6 +225,10 @@ internal sealed partial class StripeService
         catch (StripeException ex)
         {
             return new(false, $"Stripe refused {keyName} reading {what} ({(int)ex.HttpStatusCode} {ex.StripeError?.Code ?? ex.StripeError?.Type ?? "error"}).");
+        }
+        catch (OperationCanceledException) when (ct.IsCancellationRequested)
+        {
+            throw;
         }
         catch (Exception ex) when (ex is HttpRequestException or OperationCanceledException)
         {

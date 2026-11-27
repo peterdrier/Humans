@@ -172,6 +172,38 @@ public sealed class VolunteerTrackingXlsxBuilderTests
         sheet.Column(1).Width.Should().BeGreaterThan(0);
     }
 
+    [HumansFact]
+    public void Workbook_orders_departments_by_hours_then_name_and_humans_by_first_shift_then_name()
+    {
+        var day = new LocalDate(2026, 7, 7);
+        var team = Guid.NewGuid();
+        var color = "#1F77B4";
+        var bob = new HumanRow(Guid.NewGuid(), "Bob", [CellState.Worked(team, color)]) { FirstShiftDay = day };
+        var zara = new HumanRow(Guid.NewGuid(), "Zara", [CellState.Worked(team, color)]) { FirstShiftDay = day.PlusDays(-1) };
+        var alice = new HumanRow(Guid.NewGuid(), "Alice", [CellState.Worked(team, color)]) { FirstShiftDay = day.PlusDays(-1) };
+        var model = NewEmptyModel([day]) with
+        {
+            Groups =
+            [
+                new DepartmentGroup(Guid.NewGuid(), "Aardvark", color, [bob with { UserId = Guid.NewGuid() }]) { TotalHours = 10 },
+                new DepartmentGroup(team, "Zulu", color, [bob, zara, alice]) { TotalHours = 20 },
+                new DepartmentGroup(Guid.NewGuid(), "alpha", color, [alice with { UserId = Guid.NewGuid() }]) { TotalHours = 20 }
+            ],
+            TotalsPerDay = [5]
+        };
+
+        using var workbook = new XLWorkbook(new MemoryStream(new VolunteerTrackingXlsxBuilder().Build(model).Content));
+        var sheet = workbook.Worksheets.Single();
+
+        Enumerable.Range(7, 9).Select(row => sheet.Cell(row, 1).GetString()).Should().Equal(
+            "alpha (1 humans)", "Alice", "Zulu (3 humans)", "Alice", "Zara", "Bob",
+            "Aardvark (1 humans)", "Bob", "Total humans on-site");
+        sheet.Cell("B10").GetString().Should().Be("Alice");
+        sheet.Cell("B11").GetString().Should().Be("Zara");
+        sheet.Cell("B12").GetString().Should().Be("Bob");
+        sheet.Cell("B15").GetDouble().Should().Be(5);
+    }
+
     private static VolunteerExportModel NewEmptyModel(IReadOnlyList<LocalDate> days) => new(
         MethodologyBlurb: "M.",
         FilterSummary: "F.",

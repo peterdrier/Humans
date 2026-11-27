@@ -7,7 +7,7 @@ internal sealed class BackdoorKeysViewModel
     /// <summary>Every key for Admin and Board; only the viewer's own for anyone else.</summary>
     public IReadOnlyList<BackdoorKeyListItem> Keys { get; init; } = [];
 
-    /// <summary>Who an Admin may allocate a key to. Empty for anyone else, who only makes their own.</summary>
+    /// <summary>Who an Admin may create a key for. Empty for anyone else, who only makes their own.</summary>
     public IReadOnlyList<BackdoorKeyCandidate> EligibleUsers { get; init; } = [];
 
     /// <summary>Shown once: survives exactly one redirect, in TempData. Null on a plain page load.</summary>
@@ -17,7 +17,18 @@ internal sealed class BackdoorKeysViewModel
 
     /// <summary>Admin and Board read every key, so the list names each owner.</summary>
     public bool ShowsOwners { get; init; }
+
+    /// <summary>Working "Sign in with Humans" connections, scoped like <see cref="Keys"/>.</summary>
+    public IReadOnlyList<BackdoorConnectionListItem> Connections { get; init; } = [];
+
+    /// <summary>The address and client id a person types into Claude's connector dialog.</summary>
+    public string McpAddress { get; init; } = string.Empty;
+
+    public string ClaudeClientId { get; init; } = string.Empty;
 }
+
+internal sealed record BackdoorConnectionListItem(
+    Guid Id, Guid UserId, string ClientName, Instant CreatedAt, bool ViewerMayManage);
 
 internal sealed record BackdoorKeyListItem(
     Guid Id,

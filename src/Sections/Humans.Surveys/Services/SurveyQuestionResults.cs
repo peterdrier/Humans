@@ -99,6 +99,70 @@ internal static class SurveyQuestionResults
         }
     }
 
+    /// <summary>
+    /// Links a question to the earlier choice question its show-if names, when that show-if is a single
+    /// "is" clause, and groups a free-text follow-up's answers by each respondent's choice there.
+    /// </summary>
+    internal static QuestionAggregate WithFollowUp(
+        QuestionAggregate aggregate,
+        SurveyQuestion question,
+        IEnumerable<SurveyQuestion> allQuestions,
+        IReadOnlyList<SurveyResponse> responses,
+        string culture)
+    {
+        if (question.ShowIf is not { Clauses: [{ Operator: BranchOperator.Is } clause] }) return aggregate;
+
+        var parent = allQuestions.FirstOrDefault(q => q.Id == clause.QuestionId);
+        if (parent is null
+            || parent.Type is not (SurveyQuestionType.SingleChoice or SurveyQuestionType.MultiChoice)
+            || (parent.PageNumber, parent.Order).CompareTo((question.PageNumber, question.Order)) >= 0)
+            return aggregate;
+
+        return aggregate with
+        {
+            FollowUpOf = parent.Id,
+            AskedWhen = parent.Options
+                .OrderBy(o => o.Order)
+                .Where(o => clause.OptionValues.Contains(o.Value, StringComparer.Ordinal))
+                .Select(o => o.Label.Resolve(culture, culture))
+                .ToList(),
+            FreeTextByParentChoice = question.Type is SurveyQuestionType.ShortText or SurveyQuestionType.LongText
+                ? GroupTextByChoice(parent, question.Id, responses, culture)
+                : [],
+        };
+    }
+
+    /// <summary>Adds a choice question's comments, grouped by the options each respondent picked.</summary>
+    internal static QuestionAggregate WithComments(
+        QuestionAggregate aggregate,
+        SurveyQuestion question,
+        IReadOnlyList<SurveyResponse> responses,
+        string culture)
+        => question.Comment is null
+            ? aggregate
+            : aggregate with { FreeTextByParentChoice = GroupTextByChoice(question, question.Id, responses, culture) };
+
+    private static List<FreeTextGroup> GroupTextByChoice(
+        SurveyQuestion choice,
+        Guid textQuestionId,
+        IReadOnlyList<SurveyResponse> responses,
+        string culture)
+    {
+        var options = choice.Options.OrderBy(o => o.Order).ToList();
+        return responses
+            .Select(r => (
+                Chosen: options
+                    .Where(o => r.Answers.Any(a => a.QuestionId == choice.Id
+                        && a.SelectedOptionValues.Contains(o.Value, StringComparer.Ordinal)))
+                    .ToList(),
+                Text: r.Answers.FirstOrDefault(a => a.QuestionId == textQuestionId)?.TextValue))
+            .Where(x => !string.IsNullOrEmpty(x.Text))
+            .GroupBy(x => string.Join(", ", x.Chosen.Select(o => o.Label.Resolve(culture, culture))), StringComparer.Ordinal)
+            .OrderBy(g => g.First().Chosen.Select(o => options.IndexOf(o)).DefaultIfEmpty(int.MaxValue).Min())
+            .Select(g => new FreeTextGroup(g.Key, g.Select(x => x.Text!).ToList()))
+            .ToList();
+    }
+
     internal static RankedQuestionResult BuildRankedQuestionResult(
         SurveyQuestion question,
         IReadOnlyList<SurveyResponse> responses,

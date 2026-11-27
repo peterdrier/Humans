@@ -5,7 +5,6 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.ViewFeatures;
 using Humans.AuditLog.Contracts;
 using Humans.Base.Constants;
-using Humans.Onboarding.Contracts;
 using Humans.Tickets.Services;
 using Humans.Users.Contracts;
 using Microsoft.AspNetCore.Identity;

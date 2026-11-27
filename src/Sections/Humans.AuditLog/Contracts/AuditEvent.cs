@@ -7,6 +7,7 @@ namespace Humans.AuditLog.Contracts;
 /// <summary>
 /// Built only by <see cref="IAuditViewerService"/>. Rendered output never contains a raw GUID. <c>Action</c> is the
 /// stored name resolved to its definition; a name nobody declares any more is a bare definition with no verb.
+/// <c>Kept</c> is the side the entry is stored on, which can differ from <c>Action.Kept</c> after a side change.
 /// </summary>
 public sealed record AuditEvent(
     Guid Id,
@@ -23,7 +24,8 @@ public sealed record AuditEvent(
     string? TargetTeamSlug,
     Guid? RelatedEntityId,
     string? RelatedEntityType,
-    string Description)
+    string Description,
+    AuditKept Kept = AuditKept.Forever)
 {
     /// <summary>
     /// Uses "You" and the self-verb when <paramref name="viewerUserId"/> is the actor or subject. Null when the
