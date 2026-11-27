@@ -450,7 +450,7 @@ internal sealed class TeamService(
     {
         var activeEvent = Settings.GetActiveEventSettings();
         if (activeEvent is null) return [];
-        var grants = await repo.GetEarlyEntryGrantsForEnabledTeamsAsync(ct);
+        var grants = await repo.GetEarlyEntryGrantsAsync(ct);
         return Project(grants.Where(g => g.EventSettingsId == activeEvent.Id).ToList());
     }
 
@@ -468,9 +468,9 @@ internal sealed class TeamService(
             return new(Refusal: teamRefusal);
         if (userId == Guid.Empty)
             return new(Refusal: "UserId must be a non-empty GUID.");
-        var targetUserId = await ResolveMembershipTargetAsync(userId, ct);
+        var (targetUserId, membershipRefusal) = await ResolveMembershipTargetAsync(userId, ct);
         if (targetUserId is null)
-            return new(Refusal: UnavailableMembershipTargetMessage);
+            return new(Refusal: membershipRefusal);
         userId = targetUserId.Value;
 
         if (await GetEventRefusalAsync(eventSettingsId, ct) is { } eventRefusal)
@@ -768,9 +768,11 @@ internal sealed class TeamService(
         CancellationToken cancellationToken = default)
     {
         var now = clock.GetCurrentInstant();
-        var withdrew = await repo.WithdrawRequestAsync(requestId, userId, now, cancellationToken);
-        if (!withdrew)
-            return new TeamMembershipMutationResult(false, "Teams_RequestUnavailable");
+        var before = await repo.WithdrawRequestAsync(requestId, userId, now, cancellationToken);
+        if (before != TeamJoinRequestStatus.Pending)
+            return new TeamMembershipMutationResult(false, before is { } status
+                ? $"Teams_Request{status}"
+                : "Teams_RequestNotFound");
 
         logger.LogInformation("User {UserId} withdrew join request {RequestId}", userId, requestId);
         return new TeamMembershipMutationResult(true);
@@ -814,7 +816,7 @@ internal sealed class TeamService(
         bool success;
         try
         {
-            success = await ApproveRequestWithMemberAndOutboxAsync(
+            success = await ApproveRequestAsync(
                 request, member, outboxEvent, cancellationToken);
         }
         catch (Exception ex)
@@ -1054,7 +1056,7 @@ internal sealed class TeamService(
         var wasActiveDepartment = team.IsActive && !team.ParentTeamId.HasValue;
         var willBeActiveDepartment = isActive && !parentTeamId.HasValue;
         var coordinatorUserIds = wasActiveDepartment != willBeActiveDepartment
-            ? await repo.GetActiveCoordinatorUserIdsForTeamAsync(teamId, cancellationToken)
+            ? await repo.GetCoordinatorUserIdsAsync(teamId, cancellationToken)
             : (IReadOnlyList<Guid>)[];
 
         var nameChanged = !string.Equals(team.Name, name, StringComparison.Ordinal);
@@ -1123,7 +1125,7 @@ internal sealed class TeamService(
 
         var coordinatorUserIds = team.ParentTeamId.HasValue
             ? (IReadOnlyList<Guid>)[]
-            : await repo.GetActiveCoordinatorUserIdsForTeamAsync(teamId, cancellationToken);
+            : await repo.GetCoordinatorUserIdsAsync(teamId, cancellationToken);
         var closedUsers = await repo.DeactivateTeamAsync(teamId, now, cancellationToken);
         foreach (var userId in closedUsers)
         {
@@ -1290,9 +1292,9 @@ internal sealed class TeamService(
         if (team.IsSystemTeam)
             return new(Refusal: "Cannot add members to system teams manually");
 
-        var resolvedUserId = await ResolveMembershipTargetAsync(targetUserId, cancellationToken);
+        var (resolvedUserId, membershipRefusal) = await ResolveMembershipTargetAsync(targetUserId, cancellationToken);
         if (resolvedUserId is null)
-            return new(Refusal: UnavailableMembershipTargetMessage);
+            return new(Refusal: membershipRefusal);
         targetUserId = resolvedUserId.Value;
         var isExisting = await repo.IsActiveMemberAsync(teamId, targetUserId, cancellationToken);
         if (isExisting)
@@ -1327,7 +1329,7 @@ internal sealed class TeamService(
                         tracked.ReviewNotes = "Added directly by team manager";
                         tracked.ResolvedAt = clock.GetCurrentInstant();
                     }
-                    success = await ApproveRequestWithMemberAndOutboxAsync(
+                    success = await ApproveRequestAsync(
                         tracked, member, outboxEvent, cancellationToken);
                 }
                 else
@@ -1677,7 +1679,7 @@ internal sealed class TeamService(
         return true;
     }
 
-    internal async Task<bool> ApproveRequestWithMemberAndOutboxAsync(
+    internal async Task<bool> ApproveRequestAsync(
         TeamJoinRequest request,
         TeamMember member,
         GoogleSyncOutboxEvent? outboxEvent,
@@ -2116,9 +2118,9 @@ internal sealed class TeamService(
         if (definition is null || team is null)
             return new(Refusal: refusal);
 
-        var resolvedUserId = await ResolveMembershipTargetAsync(targetUserId, cancellationToken);
+        var (resolvedUserId, membershipRefusal) = await ResolveMembershipTargetAsync(targetUserId, cancellationToken);
         if (resolvedUserId is null)
-            return new(Refusal: UnavailableMembershipTargetMessage);
+            return new(Refusal: membershipRefusal);
         targetUserId = resolvedUserId.Value;
         var existingMember = await repo.FindActiveMemberForMutationAsync(definition.TeamId, targetUserId, cancellationToken);
         var now = clock.GetCurrentInstant();
@@ -2209,12 +2211,19 @@ internal sealed class TeamService(
 
     // Lazy: Users depends on Teams during service resolution.
 
-    internal const string UnavailableMembershipTargetMessage = "Cannot add a missing, deleted or merged account to a team.";
-
-    internal async Task<Guid?> ResolveMembershipTargetAsync(Guid userId, CancellationToken ct)
+    /// <summary>Exactly one of the id and the refusal is set.</summary>
+    internal async Task<(Guid? UserId, string? Refusal)> ResolveMembershipTargetAsync(Guid userId, CancellationToken ct)
     {
         var user = await UserService.GetUserInfoAsync(userId, ct);
-        return user is null || user.IsTombstone ? null : user.Id;
+        if (user is null)
+            return (null, $"Cannot add account {userId} to a team: it does not exist.");
+        if (!user.IsTombstone)
+            return (user.Id, null);
+        var merged = user.State == UserState.Merged || user.MergedToUserId is not null
+            || user.IdentityEmailColumn?.EndsWith("@merged.local", StringComparison.OrdinalIgnoreCase) == true;
+        return (null, merged
+            ? "Cannot add an account that was merged into another to a team."
+            : "Cannot add a deleted account to a team.");
     }
 
     public async Task<IReadOnlyList<AdminTeamSummary>> GetAdminTeamListAsync(CancellationToken cancellationToken = default)
@@ -2278,7 +2287,7 @@ internal sealed class TeamService(
     public async Task<IReadOnlyDictionary<Guid, TeamReadSnapshot>> GetTeamSnapshotsAsync(CancellationToken ct = default)
     {
         var teams = await repo.GetAllWithMembersAsync(ct);
-        var managementHolders = await repo.GetActiveManagementRoleHolderUserIdsByTeamAsync(ct);
+        var managementHolders = await repo.GetManagerUserIdsByTeamAsync(ct);
         var roleDefinitionsByTeam = await repo.GetAllRoleDefinitionsByTeamAsync(ct);
         var childIdsByParent = teams
             .Where(t => t.ParentTeamId.HasValue)

@@ -788,6 +788,16 @@ src/Sections/Humans.Tickets/Data/Migrations/20261121235220_DropRetiredResaleInvi
 # Approval: Peter, 2026-11-24, in the Agent rename thread: "yes for preloadconfig drop".
 src/Sections/Humans.Agent/Data/Migrations/20261124151418_DropAgentSettingsPreloadConfig.cs:DropColumn(name=PreloadConfig,table=agent_settings)#1
 
+# Finance: finance_holded_expense_docs and finance_holded_doc_sync_states, Finance's old copy of Holded purchase
+# documents and its sync-state singleton (peterdrier/Humans#2323).
+# Evidence: pickaxe git log -S 'HoldedExpenseDocs' over origin/main: the last code that read or wrote either DbSet
+# was removed by #2273 (1ee4dafcd, 2026-11-04), when the purchase-document mirror moved to the Holded section; later
+# hits are docs. Holded is still the source of these facts and the Holded mirror refetches them on sync.
+# Approval: Peter, 2026-11-26, in the "Issue drain 2026-11-23" project thread: "Number three for 2323, destructive PR
+# is okay."
+src/Sections/Humans.Finance/Data/Migrations/20261126234254_DropRetiredHoldedExpenseDocTables.cs:DropTable(name=finance_holded_doc_sync_states)#1
+src/Sections/Humans.Finance/Data/Migrations/20261126234254_DropRetiredHoldedExpenseDocTables.cs:DropTable(name=finance_holded_expense_docs)#1
+
 # Shifts: shift_volunteer_event_profiles.DietaryPreference, Allergies, Intolerances, AllergyOtherText,
 # IntoleranceOtherText and MedicalConditions (the old dietary and medical answers on the shift profile).
 # Replaced by the Profile columns (Users) in #780, whose migration MoveDietaryMedicalToProfile

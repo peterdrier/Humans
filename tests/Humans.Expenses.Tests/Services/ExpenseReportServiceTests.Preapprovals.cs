@@ -219,7 +219,7 @@ public sealed partial class ExpenseReportServiceTests
         var result = await _sut.CreateDraftAsync(submitter, submitter, CategoryAccountNumber, "Project X", someoneElsesGrant.Id, TestContext.Current.CancellationToken);
 
         result.Succeeded.Should().BeFalse();
-        result.Error!.ResourceKey.Should().Be("Expenses_Validation_PreapprovalNotClaimable");
+        result.Error!.ResourceKey.Should().Be("Expenses_Validation_PreapprovalNotTheirs");
         (await _sut.GetForSubmitterAsync(submitter, TestContext.Current.CancellationToken)).Should().BeEmpty();
     }
 
@@ -236,7 +236,7 @@ public sealed partial class ExpenseReportServiceTests
         var result = await _sut.CreateDraftAsync(member, admin, 0, "Project X", adminsGrant.Id, TestContext.Current.CancellationToken);
 
         result.Succeeded.Should().BeFalse();
-        result.Error!.ResourceKey.Should().Be("Expenses_Validation_PreapprovalNotClaimable");
+        result.Error!.ResourceKey.Should().Be("Expenses_Validation_PreapprovalNotTheirs");
     }
 
     [HumansFact]
@@ -466,8 +466,8 @@ public sealed partial class ExpenseReportServiceTests
 
     [HumansTheory]
     [InlineData(GrantStatus.Revoked, "Expenses_Validation_PreapprovalRevoked")]
-    [InlineData(GrantStatus.Consumed, "Expenses_Validation_PreapprovalUnavailable")]
-    [InlineData(GrantStatus.Declined, "Expenses_Validation_PreapprovalUnavailable")]
+    [InlineData(GrantStatus.Consumed, "Expenses_Validation_PreapprovalUsed")]
+    [InlineData(GrantStatus.Declined, "Expenses_Validation_PreapprovalDeclined")]
     public async Task Submit_WithGrant_NotOpen_IsRefused_WithoutClaiming(GrantStatus status, string expectedKey)
     {
         SetupActiveYear();
@@ -525,7 +525,7 @@ public sealed partial class ExpenseReportServiceTests
         var result = await _sut.SubmitAsync(id, submitter, TestContext.Current.CancellationToken);
 
         result.Succeeded.Should().BeFalse();
-        result.Error!.ResourceKey.Should().Be("Expenses_Validation_PreapprovalUnavailable");
+        result.Error!.ResourceKey.Should().Be("Expenses_Validation_PreapprovalClaimedElsewhere");
         var loaded = await _sut.GetAsync(id, TestContext.Current.CancellationToken);
         loaded!.Status.Should().Be(ExpenseReportStatus.Draft);
         loaded.MaxAmount.Should().BeNull();
@@ -633,7 +633,7 @@ public sealed partial class ExpenseReportServiceTests
         var result = await _review.ApproveAsync(id, Guid.NewGuid(), null, null, TestContext.Current.CancellationToken);
 
         result.Succeeded.Should().BeFalse();
-        result.Error!.OperatorMessage.Should().Contain("reject the report");
+        result.Error!.OperatorMessage.Should().Contain("Reject the report");
         (await _sut.GetAsync(id, TestContext.Current.CancellationToken))!.Status.Should().Be(ExpenseReportStatus.Submitted);
         (await _expenseRepo.GetLatestOutboxForReportAsync(id, TestContext.Current.CancellationToken)).Should().BeNull();
     }

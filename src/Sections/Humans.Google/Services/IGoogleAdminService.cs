@@ -40,7 +40,7 @@ internal interface IGoogleAdminService : IApplicationService
     /// audit entries.
     /// </summary>
     [ExternalWrite]
-    Task<WorkspaceRecoveryCredentialsResult> ResetPasswordAndGenerate2FaAsync(
+    Task<WorkspaceRecoveryCredentialsResult> IssueRecoveryCredentialsAsync(
         string email, Guid actorUserId,
         CancellationToken ct = default);
 

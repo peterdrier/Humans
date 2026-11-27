@@ -11,11 +11,11 @@ internal interface IConsentRepository : IRepository
 {
     Task AddAsync(ConsentRecord record, CancellationToken ct = default);
 
-    Task<bool> ExistsForUserIdsAndVersionAsync(
+    Task<bool> ExistsForVersionAsync(
         IReadOnlyCollection<Guid> userIds, Guid documentVersionId, CancellationToken ct = default);
 
     /// <summary>The most recent match when several ids signed the same version; null if none.</summary>
-    Task<ConsentRecord?> GetByUserIdsAndVersionAsync(
+    Task<ConsentRecord?> GetForVersionAsync(
         IReadOnlyCollection<Guid> userIds, Guid documentVersionId, CancellationToken ct = default);
 
     /// <summary>Newest first, with the version and its document included.</summary>
@@ -25,11 +25,12 @@ internal interface IConsentRepository : IRepository
     Task<int> GetCountForUserIdsAsync(
         IReadOnlyCollection<Guid> userIds, CancellationToken ct = default);
 
-    Task<IReadOnlySet<Guid>> GetExplicitlyConsentedVersionIdsForUserIdsAsync(
+    /// <summary>Explicit consents only.</summary>
+    Task<IReadOnlySet<Guid>> GetConsentedVersionIdsAsync(
         IReadOnlyCollection<Guid> userIds, CancellationToken ct = default);
 
-    /// <summary>Every input user id appears, with an empty set when it has none.</summary>
-    Task<IReadOnlyDictionary<Guid, IReadOnlySet<Guid>>> GetExplicitlyConsentedVersionIdsForUsersAsync(
+    /// <summary>Explicit consents only. Every input user id appears, with an empty set when it has none.</summary>
+    Task<IReadOnlyDictionary<Guid, IReadOnlySet<Guid>>> GetConsentedVersionIdsByUserAsync(
         IReadOnlyList<Guid> userIds, CancellationToken ct = default);
 
 }

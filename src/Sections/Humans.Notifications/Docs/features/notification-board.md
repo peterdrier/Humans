@@ -168,7 +168,7 @@ Every source today, and what it becomes. Audience is who the entry is published 
 | Today | Owner | Entry | Audience | Retracted when |
 |-------|-------|-------|----------|----------------|
 | TeamJoinRequestSubmitted, join-requests meter | Teams | one per pending request | `TeamCoordinators:<teamId>`; a second entry per team for `Role:Admin` when the team has no coordinator | request decided or withdrawn |
-| ShiftCoverageGap | Shifts | one per upcoming shift with confirmed < minimum, same predicate `CheckAndNotifyCoverageGapAsync` uses | `TeamCoordinators:<rota's team>` | shift reaches minimum, is cancelled, or starts |
+| ShiftCoverageGap | Shifts | one per upcoming shift with confirmed < minimum, same predicate `NotifyCoverageGapAsync` uses | `TeamCoordinators:<rota's team>` | shift reaches minimum, is cancelled, or starts |
 | IssueSubmitted | Issues | one per open unassigned issue | one `Role:<name>` recipient set per routed role from `IssueSectionRouting.RolesFor`, plus `Role:Admin`, all on the one entry | assigned or terminal |
 | IssueAssigned | Issues | one per open issue assigned to you | `User` | reassigned or terminal |
 | TermRenewalReminder | Governance | one per term expiring within the job's window, excluding terms with a pending renewal application for the same tier (the predicate `TermRenewalReminderJob` uses) | `User` | renewed, expired, or a renewal application submitted |

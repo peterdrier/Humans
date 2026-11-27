@@ -129,7 +129,7 @@
   <data name="Tasks_DependencyAdded" xml:space="preserve"><value>Ara espera aquesta tasca.</value></data>
   <data name="Tasks_DependencyRemoved" xml:space="preserve"><value>Ja no espera aquesta tasca.</value></data>
   <data name="Tasks_Refusal_NoPerson" xml:space="preserve"><value>Tria una persona de la llista.</value></data>
-  <data name="Tasks_Refusal_Unreadable" xml:space="preserve"><value>No s'ha pogut llegir una data o un esdeveniment. Revisa'ls i torna-ho a provar.</value></data>
+  <data name="Tasks_Refusal_Unreadable" xml:space="preserve"><value>No s'ha pogut llegir: {0}. Revisa-ho i torna-ho a provar.</value></data>
   <data name="Enum_TaskItemStatus_Todo" xml:space="preserve"><value>Per fer</value></data>
   <data name="Enum_TaskItemStatus_InProgress" xml:space="preserve"><value>En curs</value></data>
   <data name="Enum_TaskItemStatus_Blocked" xml:space="preserve"><value>Bloquejada</value></data>

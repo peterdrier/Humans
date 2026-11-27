@@ -309,18 +309,20 @@ internal sealed class ExpenseReportService(
     {
         foreach (var attachment in attachments.Distinct())
         {
+            var step = "verify";
             try
             {
                 // A save can commit before its acknowledgement or audit fails. Verify the actual linkage
                 // without caller cancellation; a failed verification retains the file for safety.
                 if (await repo.GetReportIdByAttachmentIdAsync(attachment.Id, CancellationToken.None) is not null)
                     continue;
+                step = "delete";
                 await fileStorage.DeleteAsync(AttachmentKey(attachment.Id, attachment.Extension), CancellationToken.None);
             }
             catch (Exception ex)
             {
-                logger.LogError(ex, "Could not verify or delete attachment file {AttachmentId} for line {LineId}",
-                    attachment.Id, lineId);
+                logger.LogError(ex, "Could not {Step} attachment file {AttachmentId} for line {LineId}",
+                    step, attachment.Id, lineId);
             }
         }
     }
@@ -723,12 +725,20 @@ internal sealed class ExpenseReportService(
     internal async Task<(ExpenseBooking? Booking, ExpenseMutationResult? Refusal)> ResolveGrantBookingAsync(
         Guid grantId, Guid submitterUserId, Guid? heldGrantId, CancellationToken ct)
     {
-        var grant = grantId == heldGrantId
-            ? await PreapprovalGrantQueries.GetGrantAsync(preapprovals, grantId, ct)
-            : (await PreapprovalGrantQueries.ListClaimableAsync(preapprovals, await AllIdsAsync(submitterUserId, ct), ct)).FirstOrDefault(g => g.Id == grantId);
-        if (grant is null)
-            return (null, ExpenseMutationResult.Failure("Expenses_Validation_PreapprovalNotClaimable"));
+        var grant = await PreapprovalGrantQueries.GetGrantAsync(preapprovals, grantId, ct);
+        if (grantId != heldGrantId && grant is not null && !(await AllIdsAsync(submitterUserId, ct)).Contains(grant.HolderUserId))
+            return (null, ExpenseMutationResult.Failure("Expenses_Validation_PreapprovalNotTheirs"));
+        if (grant is null || (grantId != heldGrantId && !grant.ClaimableToday))
+            return (null, GrantUnavailable(grant));
         return (new ExpenseBooking(grant.HoldedAccountNumber, grant.HoldedAccountId, null, null), null);
+    }
+
+    private static ExpenseMutationResult GrantUnavailable(GrantOption? grant)
+    {
+        var key = PreapprovalGrantQueries.UnavailableKey(grant);
+        return string.Equals(key, "Expenses_Validation_PreapprovalDeadlinePassed", StringComparison.Ordinal)
+            ? ExpenseMutationResult.Failure(key, grant!.ClaimBy.ToInvariantDate())
+            : ExpenseMutationResult.Failure(key);
     }
 
     /// <summary>
@@ -744,7 +754,10 @@ internal sealed class ExpenseReportService(
         var account = (await finance.ListExpenseAccountsAsync(activeOnly: true, ct))
             .FirstOrDefault(a => a.AccountNum == holdedAccountNumber);
         if (account is null)
-            return (null, ExpenseMutationResult.Failure("Expenses_Validation_AccountNotFound"));
+            return (null, ExpenseMutationResult.Failure(
+                (await finance.ListExpenseAccountsAsync(activeOnly: false, ct)).Any(a => a.AccountNum == holdedAccountNumber)
+                    ? "Expenses_Validation_AccountInactive"
+                    : "Expenses_Validation_AccountNotFound"));
         if (!account.IsBudgetCategory)
             return (new ExpenseBooking(account.AccountNum, account.AccountId, null, null), null);
 
@@ -1296,7 +1309,7 @@ internal sealed class ExpenseReportService(
                 if (release.Refusal is { } releaseRefusal)
                 {
                     logger.LogWarning("Pre-approval {GrantId} refused release by report {ReportId}: {Reason}", releasedId, reportId, releaseRefusal);
-                    return ExpenseMutationResult.Failure("Expenses_Validation_PreapprovalUnavailable");
+                    return GrantUnavailable(await PreapprovalGrantQueries.GetGrantAsync(preapprovals, releasedId, ct));
                 }
                 await repo.UpdateDraftAsync(updated, ct);
                 scope.Complete();
@@ -1373,7 +1386,7 @@ internal sealed class ExpenseReportService(
                 if (claim.Refusal is { } refusal)
                 {
                     logger.LogWarning("Pre-approval {GrantId} refused the claim by report {ReportId}: {Reason}", grantId, reportId, refusal);
-                    return ExpenseMutationResult.Failure("Expenses_Validation_PreapprovalUnavailable");
+                    return GrantUnavailable(await PreapprovalGrantQueries.GetGrantAsync(preapprovals, grantId, ct));
                 }
                 var stamp = claim.Claimed!;
                 var ok = await repo.SubmitAsync(
@@ -1475,7 +1488,7 @@ internal sealed class ExpenseReportService(
                 // Held by this report (a resubmit) or by another one; ClaimAsync tells them apart.
                 return null;
             default:
-                return ExpenseMutationResult.Failure("Expenses_Validation_PreapprovalUnavailable");
+                return GrantUnavailable(grant);
         }
     }
 }

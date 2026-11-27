@@ -18,11 +18,12 @@ internal interface IStoreRepository : IRepository
 
     Task<IReadOnlyList<Order>> GetOrdersForCampSeasonAsync(Guid campSeasonId, CancellationToken ct = default);
     Task<Order?> GetOrderByIdAsync(Guid orderId, CancellationToken ct = default);
-    Task<Order?> GetOrderWithLinesAndPaymentsAsync(Guid orderId, CancellationToken ct = default);
+    /// <summary>With lines and payments.</summary>
+    Task<Order?> GetOrderWithLinesAsync(Guid orderId, CancellationToken ct = default);
     /// <summary>Legacy camp orders whose persisted year is unresolved.</summary>
     Task<IReadOnlyList<Order>> GetOrdersWithMissingYearAsync(CancellationToken ct = default);
-    /// <summary>Empty input returns an empty list without a round trip.</summary>
-    Task<IReadOnlyList<Order>> GetOrdersForCampSeasonsWithLinesAndPaymentsAsync(
+    /// <summary>With lines and payments. Empty input returns an empty list without a round trip.</summary>
+    Task<IReadOnlyList<Order>> GetOrdersForCampSeasonsAsync(
         IReadOnlyCollection<Guid> campSeasonIds,
         CancellationToken ct = default);
 
@@ -31,17 +32,17 @@ internal interface IStoreRepository : IRepository
     /// </summary>
     Task<Order?> GetOrderForTeamAsync(Guid teamId, int year, CancellationToken ct = default);
 
-    /// <summary>Empty input returns an empty list without a round trip.</summary>
-    Task<IReadOnlyList<Order>> GetOrdersForTeamsWithLinesAndPaymentsAsync(
+    /// <summary>With lines and payments. Empty input returns an empty list without a round trip.</summary>
+    Task<IReadOnlyList<Order>> GetOrdersForTeamsAsync(
         IReadOnlyCollection<Guid> teamIds,
         int year,
         CancellationToken ct = default);
 
     /// <summary>
-    /// By persisted <see cref="Order.Year"/>, plus legacy <c>Year = 0</c> rows in <paramref name="campSeasonIds"/>. Not
+    /// With lines and payments. By persisted <see cref="Order.Year"/>, plus legacy <c>Year = 0</c> rows in <paramref name="campSeasonIds"/>. Not
     /// selected through the counterparty, so the accounting export never loses a row that carries money.
     /// </summary>
-    Task<IReadOnlyList<Order>> GetOrdersForYearWithLinesAndPaymentsAsync(
+    Task<IReadOnlyList<Order>> GetOrdersForYearAsync(
         int year,
         IReadOnlyCollection<Guid> campSeasonIds,
         CancellationToken ct = default);
@@ -53,13 +54,14 @@ internal interface IStoreRepository : IRepository
 
     Task AddLineAsync(OrderLine line, CancellationToken ct = default);
     Task RemoveLineAsync(Guid lineId, CancellationToken ct = default);
-    Task<LineContext?> GetLineWithOrderAndProductAsync(Guid lineId, CancellationToken ct = default);
+    /// <summary>With its order and product.</summary>
+    Task<LineContext?> GetLineAsync(Guid lineId, CancellationToken ct = default);
 
     Task AddPaymentAsync(Payment payment, CancellationToken ct = default);
     Task<bool> StripePaymentIntentExistsAsync(string paymentIntentId, CancellationToken ct = default);
 
     /// <summary>Null when none. The Stripe PI index is unique, so at most one row matches.</summary>
-    Task<Payment?> GetPaymentByStripePaymentIntentIdAsync(string paymentIntentId, CancellationToken ct = default);
+    Task<Payment?> GetPaymentByIntentIdAsync(string paymentIntentId, CancellationToken ct = default);
 
     /// <summary>The bare write: the service owns the transition rules.</summary>
     Task UpdatePaymentStatusAsync(Guid paymentId, PaymentStatus status, CancellationToken ct = default);

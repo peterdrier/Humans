@@ -365,7 +365,7 @@ internal sealed class EventRepository(IDbContextFactory<EventGuideDbContext> fac
                    .ToList();
     }
 
-    public async Task SaveEventAndModerationActionAsync(Event guideEvent, EventModerationAction action, CancellationToken ct = default)
+    public async Task SaveModeratedEventAsync(Event guideEvent, EventModerationAction action, CancellationToken ct = default)
     {
         await using var ctx = await factory.CreateDbContextAsync(ct);
         ctx.Attach(guideEvent);
@@ -475,7 +475,7 @@ internal sealed class EventRepository(IDbContextFactory<EventGuideDbContext> fac
             .ToListAsync(ct);
     }
 
-    public async Task<int> DeleteFavouritesAndPreferenceForUserAsync(Guid userId, CancellationToken ct = default)
+    public async Task<int> DeleteForUserAsync(Guid userId, CancellationToken ct = default)
     {
         await using var ctx = await factory.CreateDbContextAsync(ct);
 

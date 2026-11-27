@@ -24,21 +24,51 @@ internal sealed class SurveyResponseService(
     private static readonly Instant NonCorrelatablePublicParticipationCreatedAt =
         Instant.FromUtc(1970, 1, 1, 0, 0);
 
-    public async Task<SurveyAnswerContext?> ResolveAnswerContextAsync(string token, CancellationToken ct = default)
+    public async Task<SurveyAnswerLink> ResolveAnswerContextAsync(string token, CancellationToken ct = default)
     {
-        var invitationId = tokenProvider.Resolve(token);
-        if (invitationId is null) return null;
+        var (invitationId, tokenFailure) = tokenProvider.Resolve(token);
+        if (invitationId is null)
+        {
+            switch (tokenFailure)
+            {
+                case SurveyLinkFailure.NoToken:
+                    logger.LogWarning("Survey answer link has no token");
+                    break;
+                case SurveyLinkFailure.Expired:
+                    logger.LogWarning("Survey answer link token has expired");
+                    break;
+                default:
+                    logger.LogWarning("Survey answer link token could not be decrypted");
+                    break;
+            }
+
+            return SurveyAnswerLink.Failed(tokenFailure ?? SurveyLinkFailure.Unreadable);
+        }
 
         var invitation = await repo.GetInvitationByIdAsync(invitationId.Value, ct);
-        if (invitation is null) return null;
+        if (invitation is null)
+        {
+            logger.LogWarning("Survey answer link names invitation {InvitationId}, which no longer exists", invitationId);
+            return SurveyAnswerLink.Failed(SurveyLinkFailure.InvitationNotFound);
+        }
 
         // A completed invitation's token is spent (Identified/CompletionTracked flip Completed at
         // submit) — resolving it again would let the same invite submit a second response.
         // Anonymous completions leave Completed false by design, so those tokens stay answerable.
-        if (invitation.Completed) return null;
+        if (invitation.Completed)
+        {
+            logger.LogInformation("Survey answer link for invitation {InvitationId} was already used to answer", invitation.Id);
+            return SurveyAnswerLink.Failed(SurveyLinkFailure.AlreadyAnswered);
+        }
 
         var definition = await authoring.GetForEditAsync(invitation.SurveyId, ct);
-        if (definition is null) return null;
+        if (definition is null)
+        {
+            logger.LogWarning("Survey answer link for invitation {InvitationId} names survey {SurveyId}, which no longer exists",
+                invitation.Id, invitation.SurveyId);
+            return SurveyAnswerLink.Failed(SurveyLinkFailure.SurveyNotFound);
+        }
+
         var isEligible = !definition.Editable.IsAsociadoVote
             || await audience.IsEligibleAsociadoAsync(invitation.UserId, ct);
 
@@ -47,14 +77,14 @@ internal sealed class SurveyResponseService(
             : null;
         var draftAnswers = draft is null ? [] : MapDraftAnswers(draft);
 
-        return new SurveyAnswerContext(
+        return new SurveyAnswerLink(new SurveyAnswerContext(
             invitation.SurveyId,
             invitation.Id,
             invitation.UserId,
             definition,
             draftAnswers,
             DraftResponseId: draft?.Id,
-            IsEligible: isEligible);
+            IsEligible: isEligible), Failure: null);
     }
 
     public async Task<Guid> StartIdentifiedDraftAsync(
@@ -361,7 +391,7 @@ internal sealed class SurveyResponseService(
                         Answers = MapAnswers(responseId, visibleAnswers),
                     };
                     // Anonymous leaves the invitation's Completed flag untouched (no link, even to participation).
-                    await repo.AddResponseWithAnswersAndSaveAsync(response, ct);
+                    await repo.AddFinalResponseAsync(response, ct);
                     break;
                 }
         }

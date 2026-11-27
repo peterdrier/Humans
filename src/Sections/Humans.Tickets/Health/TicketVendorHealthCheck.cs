@@ -18,8 +18,10 @@ internal sealed class TicketVendorHealthCheck(
     {
         if (!_settings.IsConfigured)
         {
-            return HealthCheckResult.Degraded(
-                "Ticket vendor not configured — missing EventId or API key. Ticket sync will be skipped.");
+            var unset = string.IsNullOrEmpty(_settings.EventId)
+                ? string.IsNullOrEmpty(_settings.ApiKey) ? "EventId and API key are" : "EventId is"
+                : "API key is";
+            return HealthCheckResult.Degraded($"Ticket vendor not configured: {unset} not set. Ticket sync will be skipped.");
         }
 
         try

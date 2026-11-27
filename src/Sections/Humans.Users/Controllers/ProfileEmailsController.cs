@@ -172,23 +172,23 @@ internal sealed class ProfileEmailsController(
         if (!authz.Succeeded)
             return Forbid();
 
-        var ok = await userEmailService.ClearPrimaryAsync(user.Id, emailId, user.Id, ct);
-        SetPrimaryEmailClearedResult(ok, user.Id, emailId, user.Id);
+        var result = await userEmailService.ClearPrimaryAsync(user.Id, emailId, user.Id, ct);
+        SetPrimaryEmailClearedResult(result, user.Id, emailId, user.Id);
 
         return RedirectToAction(nameof(Emails));
     }
 
-    private void SetPrimaryEmailClearedResult(bool ok, Guid userId, Guid emailId, Guid actorId)
+    private void SetPrimaryEmailClearedResult(UpdateEmailResult result, Guid userId, Guid emailId, Guid actorId)
     {
-        if (ok)
+        if (result.Succeeded)
         {
             SetSuccess(localizer["Users_EmailGrid_PrimaryFlagCleared"].Value);
             return;
         }
 
         logger.LogWarning("Clear primary email refused for email {EmailId}, user {UserId}, actor {ActorId}: {Reason}",
-            emailId, userId, actorId, "Users_EmailGrid_ClearPrimaryRejected");
-        SetError(localizer["Users_EmailGrid_ClearPrimaryRejected"].Value);
+            emailId, userId, actorId, result.ErrorKey);
+        SetError(LocalizeEmailRefusal(result.ErrorKey!));
     }
 
     [HttpPost("Me/Emails/Link/{provider}")]
@@ -243,23 +243,15 @@ internal sealed class ProfileEmailsController(
 
     private void SetEmailUnlinkedResult(UnlinkEmailResult result, Guid userId, Guid? emailId, Guid actorId)
     {
-        if (!result.Succeeded || result.ErrorKey is not null)
-            logger.LogWarning("Email unlink refused for email {EmailId}, user {UserId}, actor {ActorId}: {Reason}",
-                emailId, userId, actorId, result.ErrorKey ?? "Users_EmailGrid_UnlinkRejected");
-
-        if (result.ErrorKey is { } errorKey)
-        {
-            SetError(LocalizeEmailRefusal(errorKey));
-            return;
-        }
-
         if (result.Succeeded)
         {
             SetSuccess(localizer["Users_EmailGrid_UnlinkSuccess"].Value);
             return;
         }
 
-        SetError(localizer["Users_EmailGrid_UnlinkRejected"].Value);
+        logger.LogWarning("Email unlink refused for email {EmailId}, user {UserId}, actor {ActorId}: {Reason}",
+            emailId, userId, actorId, result.ErrorKey);
+        SetError(LocalizeEmailRefusal(result.ErrorKey!));
     }
 
     // Keyed by (Provider, ProviderKey); the auth-method invariant is enforced server-side.
@@ -270,7 +262,7 @@ internal sealed class ProfileEmailsController(
     {
         if (string.IsNullOrWhiteSpace(provider) || string.IsNullOrWhiteSpace(providerKey))
         {
-            SetError(localizer["Users_EmailGrid_UnlinkRejected"].Value);
+            SetError(localizer["Users_EmailGrid_UnlinkNoProvider"].Value);
             return RedirectToAction(nameof(Emails));
         }
 
@@ -353,8 +345,8 @@ internal sealed class ProfileEmailsController(
         if (actor is null)
             return Forbid();
 
-        var ok = await userEmailService.ClearPrimaryAsync(id, emailId, actor.Id, ct);
-        SetPrimaryEmailClearedResult(ok, id, emailId, actor.Id);
+        var result = await userEmailService.ClearPrimaryAsync(id, emailId, actor.Id, ct);
+        SetPrimaryEmailClearedResult(result, id, emailId, actor.Id);
 
         return RedirectToAction(nameof(AdminEmails), new { id });
     }

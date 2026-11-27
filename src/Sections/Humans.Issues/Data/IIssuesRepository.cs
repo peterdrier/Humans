@@ -23,7 +23,7 @@ internal interface IIssuesRepository : IRepository
 
     Task SaveTrackedIssueAsync(Issue issue, CancellationToken ct = default);
 
-    Task AddCommentAndSaveIssueAsync(IssueComment comment, Issue issue, CancellationToken ct = default);
+    Task AddCommentAsync(IssueComment comment, Issue issue, CancellationToken ct = default);
 
     Task<int> CountActionableAsync(
         IReadOnlySet<string>? sectionFilter, IReadOnlyCollection<Guid>? viewerFallback,

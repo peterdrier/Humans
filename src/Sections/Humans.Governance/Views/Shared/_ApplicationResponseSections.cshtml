@@ -41,12 +41,12 @@
     </div>
 }
 
-@if (!string.IsNullOrEmpty(Model.ReviewNotes))
+@if (!string.IsNullOrEmpty(Model.DecisionNote))
 {
     <div class="card mb-4">
         <div class="card-header">@Localizer["Governance_ApplicationDetail_ReviewerNotes"]</div>
         <div class="card-body">
-            <p class="mb-0 pre-wrap">@Model.ReviewNotes</p>
+            <p class="mb-0 pre-wrap">@Model.DecisionNote</p>
         </div>
     </div>
 }

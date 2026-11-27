@@ -264,7 +264,7 @@ internal sealed class MailerLiteImportService(
                             var replacing = provisioningDecision.Outcome == SubscriberOutcome.ReplaceUnverifiedEmail;
                             // A replacement provisions a separate contact, so target its returned id, not TargetUserId.
                             var (provUserId, provCreated) = replacing
-                                ? await provisioning.ReplaceUnverifiedEmailAndProvisionAsync(
+                                ? await provisioning.ReplaceUnverifiedEmailAsync(
                                     provisioningDecision.TargetUserId!.Value, provisioningDecision.UnverifiedEmailIdToDelete!.Value,
                                     governing.Email, displayName: null, ContactSource.MailerLite, ct)
                                 : await provisioning.FindOrCreateUserByEmailAsync(

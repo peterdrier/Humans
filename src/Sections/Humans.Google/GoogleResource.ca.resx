@@ -115,9 +115,10 @@
   <data name="Google_Identity_Updated" xml:space="preserve">
     <value>Correu de servei de Google actualitzat. La sincronització es reintentarà amb el correu nou.</value>
   </data>
-  <data name="Google_Identity_SetRejected" xml:space="preserve">
-    <value>No s'ha pogut establir el correu de servei de Google: fila desconeguda o no verificada.</value>
-  </data>
+  <data name="Google_Identity_Refused_AccountNotFound" xml:space="preserve"><value>No s'ha pogut establir el correu del servei de Google: aquest compte ja no existeix.</value></data>
+  <data name="Google_Identity_Refused_NotTheirEmail" xml:space="preserve"><value>No s'ha pogut establir el correu del servei de Google: aquesta adreça no és en aquest compte.</value></data>
+  <data name="Google_Identity_Refused_Unverified" xml:space="preserve"><value>No s'ha pogut establir el correu del servei de Google: primer verifica aquesta adreça.</value></data>
+  <data name="Google_Identity_Refused_NobodiesAddressWins" xml:space="preserve"><value>No s'ha pogut establir el correu del servei de Google: una adreça @nobodies.team verificada sempre és la identitat de Google.</value></data>
   <data name="Google_Identity_Google" xml:space="preserve">
     <value>Google</value>
   </data>
@@ -156,4 +157,6 @@
   <data name="Google_TeamResources_ServiceAccount" xml:space="preserve"><value>Compte de servei: {0}</value><comment>{0} = service account email</comment></data>
   <data name="Google_Meter_FailedSyncEvents" xml:space="preserve"><value>Sincronitzacions de Google fallides</value></data>
   <data name="Google_Meter_AudienceAdmin" xml:space="preserve"><value>administradors</value></data>
+  <data name="Google_Permission_ManageResources_Title" xml:space="preserve"><value>Gestionar els recursos de Google</value></data>
+  <data name="Google_Permission_ManageResources_Blurb" xml:space="preserve"><value>Vincular i desvincular les carpetes de Drive i els Grups de Google del departament.</value></data>
 </root>

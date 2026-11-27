@@ -46,7 +46,7 @@ public sealed class TempDataCookieValidationMiddleware(
             var orphans = ChunkNames(CollectChunkSiblings(requestCookies, cookieName));
             if (orphans.Count > 0)
             {
-                RemoveFromRequestAndResponse(context, orphans);
+                RemoveCookies(context, orphans);
             }
 
             await next(context);
@@ -78,7 +78,7 @@ public sealed class TempDataCookieValidationMiddleware(
             rawValue.Length,
             hasChunkSiblings);
 
-        RemoveFromRequestAndResponse(context, relatedNames);
+        RemoveCookies(context, relatedNames);
 
         await next(context);
     }
@@ -87,7 +87,7 @@ public sealed class TempDataCookieValidationMiddleware(
     /// Hides <paramref name="names"/> from the downstream request and expires them on the
     /// response, so neither MVC nor the next request from this client sees them again.
     /// </summary>
-    private void RemoveFromRequestAndResponse(HttpContext context, HashSet<string> names)
+    private void RemoveCookies(HttpContext context, HashSet<string> names)
     {
         context.Request.Cookies = new FilteredRequestCookieCollection(context.Request.Cookies, names);
 

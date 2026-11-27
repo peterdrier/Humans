@@ -117,7 +117,8 @@ internal sealed class Service(
         }
         catch (Exception ex)
         {
-            logger.LogError(ex, "Failed to refresh the Holded chart while creating or linking account '{Name}'", name);
+            logger.LogError(ex, "Failed to refresh the Holded chart while {Purpose} account '{Name}'",
+                existingAccountNum is null ? "creating" : $"linking existing {existingAccountNum} as", name);
             throw;
         }
 
@@ -2046,9 +2047,15 @@ internal sealed class Service(
         if (file.Count == 0)
             return new SepaBookingResult(false, "That payout file no longer exists — reload the page.");
         // A withdrawn transfer is not the file's to book: the gate is over the rest.
-        var unbooked = Live(file).Where(r => !r.IsBooked).OrderBy(r => r.SupplierAccountNum).ToList();
+        var live = Live(file).ToList();
+        var unbooked = live.Where(r => !r.IsBooked).OrderBy(r => r.SupplierAccountNum).ToList();
         if (unbooked.Count == 0)
-            return new SepaBookingResult(false, "Every transfer in that file is already booked or withdrawn — nothing was posted.");
+            return new SepaBookingResult(false, (live.Count, file.Count - live.Count) switch
+            {
+                (_, 0) => "Every transfer in that file is already booked. Nothing was posted.",
+                (0, _) => "Every transfer in that file was withdrawn. Nothing was posted.",
+                var (bookedCount, withdrawnCount) => $"Nothing is left to post: {bookedCount} transfer(s) in that file are already booked and {withdrawnCount} withdrawn."
+            });
         var unmatched = unbooked.Where(r => !r.CanBook).ToList();
         if (unmatched.Count > 0)
             return new SepaBookingResult(false,

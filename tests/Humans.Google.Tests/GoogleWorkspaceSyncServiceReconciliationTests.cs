@@ -68,7 +68,6 @@ public sealed class GoogleWorkspaceSyncServiceReconciliationTests : GoogleTestHa
             repository,
             googleClient: Substitute.For<ITeamResourceGoogleClient>(),
             drivePermissions: _drivePermissions,
-            teamService: Substitute.For<ITeamService>(),
             serviceProvider: new ServiceLocatorBuilder().Build(),
             auditLogService: AuditLog,
             resourceOptions: new TeamResourceManagementOptions(),

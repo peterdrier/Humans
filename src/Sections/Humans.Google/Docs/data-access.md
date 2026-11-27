@@ -187,9 +187,9 @@ Sole owner of `google_resources`. All consumers call
 `DbSet<TeamGoogleResource>`; ownership is enforced by the section's `internal`
 `GoogleIntegrationDbContext` and `IGoogleResourceRepository` plus
 HUM0008/HUM0009/HUM0025. Cross-section calls via
-`ITeamService`, `ITeamResourceGoogleClient`, `IGoogleDrivePermissionsClient`,
+`ITeamResourceGoogleClient`, `IGoogleDrivePermissionsClient`,
 `IAuditLogService`, plus `IServiceProvider` to lazy-resolve
-`ISystemRoleService` (breaks a DI cycle). No cache.
+`ISystemRoleService` and `IPermissionService` (breaks a DI cycle). No cache.
 
 ### GoogleSyncOutboxProcessor (Scoped, `internal`)
 

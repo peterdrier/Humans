@@ -64,5 +64,6 @@
   <data name="Backdoor_Error_LabelTooLong" xml:space="preserve"><value>L'etichetta deve avere al massimo 100 caratteri.</value></data>
   <data name="Backdoor_Error_NotEligible" xml:space="preserve"><value>Questo account non può avere una chiave.</value></data>
   <data name="Backdoor_Error_NotAllowed" xml:space="preserve"><value>Puoi creare e modificare solo le tue chiavi.</value></data>
-  <data name="Backdoor_Error_NotFound" xml:space="preserve"><value>Questa chiave non esiste più o è già stata revocata.</value></data>
+  <data name="Backdoor_Error_NotFound" xml:space="preserve"><value>Questa chiave non esiste più.</value></data>
+  <data name="Backdoor_Error_AlreadyRevoked" xml:space="preserve"><value>Questa chiave è già stata revocata.</value></data>
 </root>

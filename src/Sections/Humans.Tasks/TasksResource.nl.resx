@@ -129,7 +129,7 @@
   <data name="Tasks_DependencyAdded" xml:space="preserve"><value>Wacht nu op die taak.</value></data>
   <data name="Tasks_DependencyRemoved" xml:space="preserve"><value>Wacht niet meer op die taak.</value></data>
   <data name="Tasks_Refusal_NoPerson" xml:space="preserve"><value>Kies een persoon uit de lijst.</value></data>
-  <data name="Tasks_Refusal_Unreadable" xml:space="preserve"><value>Een datum of evenement kon niet worden gelezen. Controleer ze en probeer het opnieuw.</value></data>
+  <data name="Tasks_Refusal_Unreadable" xml:space="preserve"><value>Kon niet worden gelezen: {0}. Controleer het en probeer het opnieuw.</value></data>
   <data name="Enum_TaskItemStatus_Todo" xml:space="preserve"><value>Te doen</value></data>
   <data name="Enum_TaskItemStatus_InProgress" xml:space="preserve"><value>Bezig</value></data>
   <data name="Enum_TaskItemStatus_Blocked" xml:space="preserve"><value>Geblokkeerd</value></data>

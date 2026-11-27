@@ -56,7 +56,7 @@ internal interface IEventRepository : IRepository
     /// <summary>Scoped like <see cref="Event.IsInEvent"/>.</summary>
     Task<IReadOnlyList<CampEventOverlap>> GetActiveCampEventsAsync(Guid? eventSettingsId, CancellationToken ct = default);
     /// <summary>Persists the already-transitioned event and appends the action in one transaction.</summary>
-    Task SaveEventAndModerationActionAsync(Event guideEvent, EventModerationAction action, CancellationToken ct = default);
+    Task SaveModeratedEventAsync(Event guideEvent, EventModerationAction action, CancellationToken ct = default);
 
     Task<HashSet<Guid>> GetFavouriteEventIdsAsync(Guid userId, CancellationToken ct = default);
     Task<IReadOnlyList<EventFavourite>> GetFavouritesWithEventsAsync(Guid userId, CancellationToken ct = default);
@@ -75,7 +75,7 @@ internal interface IEventRepository : IRepository
     Task<IReadOnlyList<EventFavourite>> GetFavouritesForContributorAsync(Guid userId, CancellationToken ct = default);
 
     /// <summary>GDPR Art. 17: removes the user's favourites and their category-exclusion preference.</summary>
-    Task<int> DeleteFavouritesAndPreferenceForUserAsync(Guid userId, CancellationToken ct = default);
+    Task<int> DeleteForUserAsync(Guid userId, CancellationToken ct = default);
 
     /// <summary>
     /// GDPR Art. 17: clears <c>Host</c> on every event the user submitted. The submission itself is retained (see

@@ -13,8 +13,8 @@ internal interface IBackdoorApiKeyService : IApplicationService
     Task<BackdoorKeyCreateResult> CreateAsync(
         Guid ownerUserId, string label, Guid actorUserId, CancellationToken ct = default);
 
-    /// <summary>Revokes an active key. Returns false if it is missing or already revoked.</summary>
-    Task<bool> RevokeAsync(Guid keyId, Guid actorUserId, CancellationToken ct = default);
+    /// <summary>Revokes an active key. Null on success, else <see cref="BackdoorKeyError.NotFound"/> or <see cref="BackdoorKeyError.AlreadyRevoked"/>.</summary>
+    Task<BackdoorKeyError?> RevokeAsync(Guid keyId, Guid actorUserId, CancellationToken ct = default);
 
     /// <summary>
     /// Replaces the key with one for the same owner and label, its expiry worked out afresh. Fails as
@@ -49,6 +49,8 @@ internal enum BackdoorKeyError
     LabelTooLong,
     NotEligible,
     NotFound,
+    AlreadyRevoked,
+    NotAllowed,
 }
 
 /// <summary><see cref="PlaintextKey"/> is non-null only on success and never retrievable again.</summary>

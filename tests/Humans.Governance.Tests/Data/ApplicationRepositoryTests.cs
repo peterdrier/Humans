@@ -469,7 +469,7 @@ public sealed class ApplicationRepositoryTests : IDisposable
         var users = Substitute.For<IUserService>();
         users.GetAllUserInfosAsync(Arg.Any<CancellationToken>()).Returns((IReadOnlyList<UserInfo>)[]);
         var membership = Substitute.For<IConsentService>();
-        membership.GetUsersWithAllRequiredConsentsForTeamAsync(
+        membership.GetConsentedUsersForTeamAsync(
                 Arg.Any<IEnumerable<Guid>>(), Arg.Any<Guid>(), Arg.Any<CancellationToken>())
             .Returns(new HashSet<Guid>());
         membership.GetUsersPastConsentDeadlineAsync(Arg.Any<Duration?>(), Arg.Any<CancellationToken>())

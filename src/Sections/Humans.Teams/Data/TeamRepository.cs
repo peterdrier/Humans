@@ -62,7 +62,7 @@ internal sealed class TeamRepository(IDbContextFactory<TeamsDbContext> factory) 
             .ToListAsync(ct);
     }
 
-    public async Task<IReadOnlyDictionary<Guid, IReadOnlySet<Guid>>> GetActiveManagementRoleHolderUserIdsByTeamAsync(
+    public async Task<IReadOnlyDictionary<Guid, IReadOnlySet<Guid>>> GetManagerUserIdsByTeamAsync(
         CancellationToken ct = default)
     {
         await using var db = await factory.CreateDbContextAsync(ct);
@@ -493,7 +493,7 @@ internal sealed class TeamRepository(IDbContextFactory<TeamsDbContext> factory) 
         await db.SaveChangesAsync(ct);
     }
 
-    public async Task<IReadOnlyList<Guid>> GetActiveCoordinatorUserIdsForTeamAsync(
+    public async Task<IReadOnlyList<Guid>> GetCoordinatorUserIdsAsync(
         Guid teamId, CancellationToken ct = default)
     {
         await using var db = await factory.CreateDbContextAsync(ct);
@@ -600,19 +600,19 @@ internal sealed class TeamRepository(IDbContextFactory<TeamsDbContext> factory) 
         return role;
     }
 
-    public async Task<bool> WithdrawRequestAsync(
+    public async Task<TeamJoinRequestStatus?> WithdrawRequestAsync(
         Guid requestId, Guid userId, Instant now, CancellationToken ct = default)
     {
         await using var db = await factory.CreateDbContextAsync(ct);
         var request = await db.TeamJoinRequests
             .FirstOrDefaultAsync(r => r.Id == requestId && r.UserId == userId, ct);
         if (request is null || request.Status != TeamJoinRequestStatus.Pending)
-            return false;
+            return request?.Status;
 
         request.Status = TeamJoinRequestStatus.Withdrawn;
         request.ResolvedAt = now;
         await db.SaveChangesAsync(ct);
-        return true;
+        return TeamJoinRequestStatus.Pending;
     }
 
     public async Task<bool> RejectRequestAsync(
@@ -818,7 +818,7 @@ internal sealed class TeamRepository(IDbContextFactory<TeamsDbContext> factory) 
         return memberships.Select(m => (m.Id, m.TeamId)).ToList();
     }
 
-    public async Task<IReadOnlyList<TeamEarlyEntryGrant>> GetEarlyEntryGrantsForEnabledTeamsAsync(CancellationToken ct = default)
+    public async Task<IReadOnlyList<TeamEarlyEntryGrant>> GetEarlyEntryGrantsAsync(CancellationToken ct = default)
     {
         await using var db = await factory.CreateDbContextAsync(ct);
         return await db.TeamEarlyEntryGrants

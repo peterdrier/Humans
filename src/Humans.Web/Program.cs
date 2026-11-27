@@ -553,8 +553,7 @@ foreach (var resourceType in SectionDiscoveryExtensions.SectionResourceTypes())
         if (policy is null)
         {
             app.Logger.LogError(
-                "AUTHORIZATION BROKEN: PolicyNames.{Name} has no registered policy. Its " +
-                "owning section may be missing, or its Policies contribution failed to register.",
+                "AUTHORIZATION BROKEN: no section registered a policy for PolicyNames.{Name}.",
                 name);
         }
     }

@@ -7,7 +7,8 @@ reverts the rest, deals with the bot findings, and gets the PR mergeable for Pet
 Peter merges. Never merge, never force-push, never rewrite the branch's history.
 
 Unattended runs push by URL, file issues on `peterdrier/Humans`, and also fix any build or
-formatting failure (the code-quality action) on the PR.
+formatting failure (the code-quality action) on the PR. They never stall on a permission prompt:
+[`unattended-runs-never-prompt`](../../../memory/process/unattended-runs-never-prompt.md).
 
 Budget: **3 review rounds total** for this PR (Peter, 2026-09-22), and this run's commit
 is round 1.

@@ -19,7 +19,7 @@ internal sealed record ProductAccountChoices(
 
     private static string? Missing(string label, int? account, IReadOnlyList<AccountChoice> choices) =>
         account is { } n && choices.All(c => c.Number != n)
-            ? $"{label} {n} is no longer in the Holded chart (removed or archived). Pick another."
+            ? $"{label} {n} is no longer in the Holded chart. Pick another."
             : null;
 }
 

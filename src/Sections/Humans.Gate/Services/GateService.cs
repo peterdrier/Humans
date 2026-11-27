@@ -531,13 +531,17 @@ internal sealed class GateService(
 
         var snapshot = await GetVendorCheckInBackfillAsync(ct);
         List<GateVendorBackfillRow> enqueued = [];
+        var claimedElsewhere = false;
         foreach (var row in snapshot.Pending)
         {
             if (vendorTicketId is not null && !string.Equals(row.VendorTicketId, vendorTicketId, StringComparison.Ordinal))
                 continue;
             // Claim before enqueue: overlapping backfill requests must not double-post a check-in.
             if (!mirrorLedger.TryMarkSent(row.VendorTicketId!))
+            {
+                claimedElsewhere = true;
                 continue;
+            }
 
             var admittedAtUnixSeconds = row.AdmittedAt.ToUnixTimeSeconds();
             // The job keeps the original admit time and runs independently of the admin request.
@@ -546,7 +550,17 @@ internal sealed class GateService(
             enqueued.Add(row);
         }
 
-        return new GateVendorBackfillResult(true, enqueued);
+        if (vendorTicketId is null || enqueued.Count > 0)
+            return new GateVendorBackfillResult(true, enqueued);
+        if (claimedElsewhere || snapshot.SentAwaitingSync.Any(r => string.Equals(r.VendorTicketId, vendorTicketId, StringComparison.Ordinal)))
+            return new GateVendorBackfillResult(true, enqueued, "That ticket's check-in was already sent to the vendor.");
+        var attendee = (await tickets.GetTicketOrdersAsync(ct))
+            .SelectMany(o => o.Attendees)
+            .FirstOrDefault(a => string.Equals(a.VendorTicketId, vendorTicketId, StringComparison.Ordinal));
+        return new GateVendorBackfillResult(true, enqueued,
+            attendee is not null && (attendee.CheckedInAt is not null || attendee.Status == TicketAttendeeStatus.CheckedIn)
+                ? "That ticket is already checked in at the vendor."
+                : "That ticket has no gate admit waiting to be sent.");
     }
 
     public async Task<IReadOnlyList<Guid>> GetShiftRosterAsync(

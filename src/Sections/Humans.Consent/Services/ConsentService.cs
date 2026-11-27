@@ -59,7 +59,7 @@ internal sealed class ConsentService(
             return new ConsentSubmitResult(false, ErrorKey: "ContentUnavailable");
         }
 
-        var alreadyConsented = await repo.ExistsForUserIdsAndVersionAsync(info.AllUserIds, documentVersionId, ct);
+        var alreadyConsented = await repo.ExistsForVersionAsync(info.AllUserIds, documentVersionId, ct);
 
         if (alreadyConsented)
             return new ConsentSubmitResult(false, ErrorKey: "AlreadyConsented");
@@ -234,7 +234,7 @@ internal sealed class ConsentService(
 
         var info = await userService.GetUserInfoAsync(userId, ct);
         var chainIds = info?.AllUserIds ?? [userId];
-        var consentRecord = await repo.GetByUserIdsAndVersionAsync(chainIds, documentVersionId, ct);
+        var consentRecord = await repo.GetForVersionAsync(chainIds, documentVersionId, ct);
 
         return new ConsentReviewDetail(
             DocumentVersionId: version.Id,
@@ -258,7 +258,7 @@ internal sealed class ConsentService(
         Guid userId, CancellationToken ct = default)
     {
         var chainIds = await GetChainFollowIdsAsync(userId, ct);
-        return await repo.GetExplicitlyConsentedVersionIdsForUserIdsAsync(chainIds, ct);
+        return await repo.GetConsentedVersionIdsAsync(chainIds, ct);
     }
 
     public async Task<IReadOnlyDictionary<Guid, IReadOnlyList<Guid>>> GetUserIdChainsAsync(
@@ -285,7 +285,7 @@ internal sealed class ConsentService(
         {
             // Callers may pass overlapping ids.
             var distinctInputs = userIds.Distinct().ToList();
-            return await repo.GetExplicitlyConsentedVersionIdsForUsersAsync(distinctInputs, ct);
+            return await repo.GetConsentedVersionIdsByUserAsync(distinctInputs, ct);
         }
 
         // The repository's ToDictionary throws on duplicate keys.
@@ -293,7 +293,7 @@ internal sealed class ConsentService(
         foreach (var ids in idsByInput.Values)
             allIdsSet.UnionWith(ids);
 
-        var raw = await repo.GetExplicitlyConsentedVersionIdsForUsersAsync(allIdsSet.ToList(), ct);
+        var raw = await repo.GetConsentedVersionIdsByUserAsync(allIdsSet.ToList(), ct);
 
         // Each input unions its own id list. A reverse source→target map wouldn't do: a batch holding a survivor
         // and one of its tombstones resolves both to the survivor, and the last written would own the list.
@@ -359,7 +359,7 @@ internal sealed class ConsentService(
         return requiredVersions.All(v => consentedVersionIds.Contains(v.Id));
     }
 
-    public async Task<IReadOnlySet<Guid>> GetUsersWithAllRequiredConsentsForTeamAsync(
+    public async Task<IReadOnlySet<Guid>> GetConsentedUsersForTeamAsync(
         IEnumerable<Guid> userIds, Guid teamId, CancellationToken ct = default)
     {
         var userIdList = userIds.ToList();

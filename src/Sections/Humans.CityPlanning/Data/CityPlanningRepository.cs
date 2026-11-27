@@ -57,7 +57,7 @@ internal sealed class CityPlanningRepository(IDbContextFactory<CityPlanningDbCon
             .FirstOrDefaultAsync(h => h.Id == historyId && h.CampSeasonId == campSeasonId, ct);
     }
 
-    public async Task<CampPolygon> SavePolygonAndAppendHistoryAsync(
+    public async Task<CampPolygon> SavePolygonAsync(
         Guid campSeasonId,
         string geoJson,
         double areaSqm,

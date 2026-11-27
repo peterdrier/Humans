@@ -41,7 +41,7 @@ public class ShiftViewServiceTests
     {
         var userId = Guid.NewGuid();
         StubActiveCalendar(null);
-        _management.GetVolunteerEventProfilesByUserIdsAsync(
+        _management.GetVolunteerProfilesAsync(
                 Arg.Is<IReadOnlyCollection<Guid>>(ids => ids.Contains(userId)),
                 Arg.Any<CancellationToken>())
             .Returns([]);
@@ -72,7 +72,7 @@ public class ShiftViewServiceTests
         var buildStatus = new VolunteerBuildStatus { UserId = userId, EventSettingsId = eventId };
 
         StubActiveCalendar(Calendar(eventId));
-        _management.GetVolunteerEventProfilesByUserIdsAsync(
+        _management.GetVolunteerProfilesAsync(
                 Arg.Is<IReadOnlyCollection<Guid>>(ids => ids.Contains(userId)),
                 Arg.Any<CancellationToken>())
             .Returns([profile]);
@@ -105,7 +105,7 @@ public class ShiftViewServiceTests
     {
         var userId = Guid.NewGuid();
         StubActiveCalendar(null);
-        _management.GetVolunteerEventProfilesByUserIdsAsync(
+        _management.GetVolunteerProfilesAsync(
                 Arg.Is<IReadOnlyCollection<Guid>>(ids => ids.Contains(userId)),
                 Arg.Any<CancellationToken>())
             .Returns([]);
@@ -137,7 +137,7 @@ public class ShiftViewServiceTests
         ]);
 
         StubActiveCalendar(Calendar(eventId));
-        _management.GetVolunteerEventProfilesByUserIdsAsync(
+        _management.GetVolunteerProfilesAsync(
                 Arg.Is<IReadOnlyCollection<Guid>>(ids => ids.Contains(userId)),
                 Arg.Any<CancellationToken>())
             .Returns([]);

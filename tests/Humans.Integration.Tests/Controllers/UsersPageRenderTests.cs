@@ -314,7 +314,7 @@ public class UsersPageRenderTests(HumansTestDatabase database) : IntegrationTest
         await roleSeeding.SeedSystemRolesAsync(userId, ct);
         var leadDefinitionId = await roleSeeding.GetDefinitionIdBySlugAsync(CampSeedRoles.CampLeadSlug, ct);
         leadDefinitionId.Should().NotBeNull("the Camp Lead role definition must exist after seeding system roles");
-        await seeding.AddMemberAndAssignRoleInActiveSeasonAsync(
+        await seeding.AddMemberWithRoleAsync(
             camp.Id, leadDefinitionId.Value, userId, userId, ct);
 
         return CampName;

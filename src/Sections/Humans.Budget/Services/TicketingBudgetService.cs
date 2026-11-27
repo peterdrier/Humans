@@ -82,7 +82,7 @@ internal sealed class TicketingBudgetService(
         }
     }
 
-    public async Task<TicketingProjectionSaveResult?> UpdateProjectionAndRefreshAsync(
+    public async Task<TicketingProjectionSaveResult?> UpdateProjectionAsync(
         TicketingProjectionUpdateCommand command,
         Guid actorUserId,
         CancellationToken ct = default)

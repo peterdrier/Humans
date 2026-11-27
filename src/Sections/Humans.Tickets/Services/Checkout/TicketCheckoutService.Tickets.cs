@@ -242,14 +242,20 @@ internal sealed partial class TicketCheckoutService
         return (ticket, offer);
     }
 
-    /// <summary>The link was sent to the signed-in buyer's email, for this event.</summary>
-    private static bool InviteIsFor(TicketResaleOffer offer, string tokenHash, BuyContext context) =>
-        offer.TicketingSettingsId == context.Ticketing.Id && offer.InviteFor(tokenHash) is { } invite
-        && string.Equals(invite.Email, context.Buyer?.Email, StringComparison.OrdinalIgnoreCase);
+    /// <summary>
+    /// Why the link can't buy for the signed-in buyer, or null when it was sent to their email, for this event, and
+    /// resale is selling.
+    /// </summary>
+    private static string? InviteRefusal(TicketResaleOffer? offer, string tokenHash, BuyContext context) =>
+        offer is null || offer.TicketingSettingsId != context.Ticketing.Id || offer.InviteFor(tokenHash) is not { } invite
+            ? "Tickets_Resale_InviteNotFound"
+            : !string.Equals(invite.Email, context.Buyer?.Email, StringComparison.OrdinalIgnoreCase)
+                ? "Tickets_Resale_InviteOtherEmail"
+                : !context.Ticketing.ResaleSelling ? "Tickets_Resale_NotSelling" : null;
 
     /// <summary>The linked offer while it can still sell to this buyer: the link is theirs and the queue is open.</summary>
-    private static TicketResaleOffer? DirectedOfferFor(TicketResaleOffer offer, string tokenHash, BuyContext context) =>
-        context.Ticketing.ResaleSelling && offer.State == TicketResaleOfferState.Open && InviteIsFor(offer, tokenHash, context)
+    private static TicketResaleOffer? DirectedOfferFor(TicketResaleOffer? offer, string tokenHash, BuyContext context) =>
+        offer?.State == TicketResaleOfferState.Open && InviteRefusal(offer, tokenHash, context) is null
             ? offer
             : null;
 
@@ -391,7 +397,7 @@ internal sealed partial class TicketCheckoutService
         if (rows.Count > 1)
             return (null, "the address is unverified on more than one account");
         var provisioned = rows.Count == 1
-            ? await provisioning.ReplaceUnverifiedEmailAndProvisionAsync(rows[0].UserId, rows[0].Id, address, displayName: null, ContactSource.Manual, ct)
+            ? await provisioning.ReplaceUnverifiedEmailAsync(rows[0].UserId, rows[0].Id, address, displayName: null, ContactSource.Manual, ct)
             : await provisioning.FindOrCreateUserByEmailAsync(address, displayName: null, ContactSource.Manual, ct);
         return (provisioned.UserId, null);
     }
@@ -579,7 +585,7 @@ internal sealed partial class TicketCheckoutService
             if (started + heldBack > 0)
                 await auditLog.LogAsync(TicketsAuditActions.TicketResaleRefundBatch, TicketingSettingsAuditEntityType, ticketing.Id,
                     $"Evening resale refund batch: {started} refund(s) started, {FormatMinor(startedMinor)} in total; " +
-                    $"{heldBack} held back because the buyer's order was refunded or charged back; " +
+                    $"{heldBack} held back, each with its own entry saying why; " +
                     $"{waiting} left for a later batch", JobName);
             batch = new(batch.Started + started, batch.StartedMinor + startedMinor, batch.HeldBack + heldBack, batch.Waiting + waiting);
         }

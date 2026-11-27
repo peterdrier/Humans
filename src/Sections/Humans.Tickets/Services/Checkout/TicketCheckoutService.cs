@@ -117,8 +117,8 @@ internal sealed partial class TicketCheckoutService(
         if (existing?.CancelledAt is not null)
             return new("The event is cancelled; its ticketing settings can no longer change.");
         if (save.TermsFolder is { } newFolder && !string.Equals(newFolder, existing?.TermsFolder, StringComparison.Ordinal)
-            && await rulesSource.GetAsync(newFolder, refresh: true, ct) is null)
-            return new($"The legal repo has no Spanish and English ticket rules in {newFolder}, or GitHub could not be read. " +
+            && await rulesSource.GetAsync(newFolder, refresh: true, ct) is { Problem: { } problem })
+            return new($"The ticket rules in {newFolder} can't be used. {problem} " +
                 "The folder needs one name.md (Spanish) and name-en.md (English), and no other markdown without a language suffix.");
         var clash = await repository.GetTicketingSettingsForEventAsync(save.EventSettingsId, ct);
         if (clash is not null && clash.Id != existing?.Id)
@@ -240,8 +240,8 @@ internal sealed partial class TicketCheckoutService(
             || context.Ticketing.EffectiveSwitches.Resale != ResaleScheme.QueueAndDirected)
             return null;
         var rules = await RulesForAsync(context.Ticketing, ct);
-        if (!InviteIsFor(offer, tokenHash, context) || !context.Ticketing.ResaleSelling)
-            return ToBuyPage(context, rules, "Tickets_Resale_InviteInvalid", directed: true);
+        if (InviteRefusal(offer, tokenHash, context) is { } refusal)
+            return ToBuyPage(context, rules, refusal, directed: true);
         if (DirectedOfferFor(offer, tokenHash, context) is not null)
             return ToBuyPage(context, rules, null, directed: true);
         var stock = await LoadStockAsync(context.Ticketing, context.Now, ct);
@@ -250,7 +250,7 @@ internal sealed partial class TicketCheckoutService(
     }
 
     private async Task<TicketRules?> RulesForAsync(TicketingSettings ticketing, CancellationToken ct) =>
-        ticketing.TermsFolder is { } folder ? await rulesSource.GetAsync(folder, ct: ct) : null;
+        ticketing.TermsFolder is { } folder ? (await rulesSource.GetAsync(folder, ct: ct)).Rules : null;
 
     /// <summary>
     /// A ticket in resale sells at the resale price, so a page that can only sell one (directed, resale only, or fresh
@@ -320,7 +320,7 @@ internal sealed partial class TicketCheckoutService(
         {
             if (!command.AcceptTerms)
                 return StartCheckoutResult.Refused("Tickets_Buy_TermsRequired");
-            terms = await rulesSource.GetAsync(termsFolder, ct: ct);
+            terms = (await rulesSource.GetAsync(termsFolder, ct: ct)).Rules;
             if (terms is null)
                 return StartCheckoutResult.Refused("Tickets_Buy_TermsUnavailable");
             // The buyer accepts the text they were shown; rules changed since then are shown again first. The folder
@@ -347,9 +347,10 @@ internal sealed partial class TicketCheckoutService(
             var invited = switches.Resale == ResaleScheme.QueueAndDirected
                 ? await repository.GetOfferByTokenHashAsync(tokenHash, ct)
                 : null;
-            if (invited is null || !InviteIsFor(invited, tokenHash, context) || !ticketing.ResaleSelling
-                || !command.ForSelf || others.Count > 0)
-                return StartCheckoutResult.Refused("Tickets_Resale_InviteInvalid");
+            if (InviteRefusal(invited, tokenHash, context) is { } refusal)
+                return StartCheckoutResult.Refused(refusal);
+            if (!command.ForSelf || others.Count > 0)
+                return StartCheckoutResult.Refused("Tickets_Resale_InviteSelfOnly");
             // Gone to someone else first: the link buys the next ticket in the queue, at the resale price like the invitation.
             directed = DirectedOfferFor(invited, tokenHash, context);
             if (directed is not null && await IsAdmittedAsync(directed.TicketId, ct))

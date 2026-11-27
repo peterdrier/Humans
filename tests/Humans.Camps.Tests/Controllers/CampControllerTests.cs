@@ -1267,7 +1267,7 @@ public class CampControllerTests
         else
             result.Should().BeOfType<ForbidResult>();
         await _camps.DidNotReceiveWithAnyArgs().AddCampMemberToActiveSeasonAsync(default, default, default);
-        await _camps.DidNotReceiveWithAnyArgs().AddMemberAndAssignRoleInActiveSeasonAsync(default, default, default, default);
+        await _camps.DidNotReceiveWithAnyArgs().AddMemberWithRoleAsync(default, default, default, default);
     }
 
     [HumansTheory]
@@ -1296,7 +1296,7 @@ public class CampControllerTests
 
         result.Should().BeOfType<RedirectToActionResult>().Which.RouteValues!["eventSettingsId"].Should().Be(eventSettingsId);
         if (assignRole)
-            await _camps.Received(1).AddMemberAndAssignRoleInActiveSeasonAsync(camp.Id, roleId, userId, actorId, ct, eventSettingsId);
+            await _camps.Received(1).AddMemberWithRoleAsync(camp.Id, roleId, userId, actorId, ct, eventSettingsId);
         else
             await _camps.Received(1).AddCampMemberToActiveSeasonAsync(camp.Id, userId, actorId, ct, eventSettingsId);
     }

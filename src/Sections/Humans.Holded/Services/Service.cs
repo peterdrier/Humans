@@ -471,7 +471,7 @@ internal sealed class Service(
                 await repo.ReplaceLedgerWindowAsync(
                     ToWindowStart(from), now, accountNum: null, fetched.Select(l => ToEntity(l, now)).ToList(), now, ct);
 
-                var mismatches = await RefreshAccountsAndReconcileAsync(today, now, ct);
+                var mismatches = await ReconcileAccountsAsync(today, now, ct);
 
                 state.SyncStatus = HoldedSyncStatus.Idle;
                 state.LastSyncAt = now;
@@ -784,7 +784,7 @@ internal sealed class Service(
     /// <summary>A drifted account gets one targeted full-history re-pull; accounts still off afterwards are
     /// returned.</summary>
     private async Task<List<(int AccountNum, decimal HoldedBalance, decimal LocalBalance)>>
-        RefreshAccountsAndReconcileAsync(LocalDate today, Instant now, CancellationToken ct)
+        ReconcileAccountsAsync(LocalDate today, Instant now, CancellationToken ct)
     {
         var accounts = await RefreshChartAsync(now, ct);
 

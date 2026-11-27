@@ -58,7 +58,10 @@ internal sealed class GateController(
 
         if (!ModelState.IsValid || idConfirmed is not { } confirmed)
         {
-            logger.LogWarning("Rejected gate decision with missing or malformed values from scanner {ScannerId}", scanner.Id);
+            var problem = ModelState.IsValid
+                ? "no idConfirmed value"
+                : "malformed " + string.Join(", ", ModelState.Where(e => e.Value?.Errors.Count > 0).Select(e => e.Key));
+            logger.LogWarning("Rejected gate decision from scanner {ScannerId}: {Problem}", scanner.Id, problem);
             return BadRequest();
         }
 
@@ -284,19 +287,19 @@ internal sealed class GateController(
         }
 
         ResetPinThrottle(userKey);
-        return StampAndScan(userId);
+        return StartScanning(userId);
     }
 
     private async Task<IActionResult> SetClaimPinAsync(
         Guid userId, GatePinStatus status, string? pin, CancellationToken ct) =>
         await gate.SetOwnPinAsync(userId, pin ?? string.Empty, ct) switch
         {
-            GatePinSetResult.Ok => StampAndScan(userId),
+            GatePinSetResult.Ok => StartScanning(userId),
             _ => View("Pin", GatePinViewModel.ForClaim(
                 userId, status, "Pick a less obvious PIN — not 1234, 0000, or repeats")),
         };
 
-    private IActionResult StampAndScan(Guid userId)
+    private IActionResult StartScanning(Guid userId)
     {
         // Server-side, never from the request body, so attribution can't be forged.
         HttpContext.Session.SetString(ScannerSessionKey, userId.ToString());

@@ -220,7 +220,7 @@ internal sealed class AttendeeContactImportService(
             case AttendeeImportOutcome.CreateNewUser:
                 var replacing = decision.Outcome == AttendeeImportOutcome.DeleteUnverifiedThenCreate;
                 var provisioned = replacing
-                    ? await provisioning.ReplaceUnverifiedEmailAndProvisionAsync(
+                    ? await provisioning.ReplaceUnverifiedEmailAsync(
                         decision.UnverifiedRowUserId!.Value, decision.UnverifiedEmailIdToDelete!.Value,
                         decision.Email!, decision.AttendeeName, ContactSource.TicketTailor, ct)
                     : await provisioning.FindOrCreateUserByEmailAsync(
