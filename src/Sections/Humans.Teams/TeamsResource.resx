@@ -247,4 +247,13 @@
   <data name="Teams_Permission_Manage_Blurb" xml:space="preserve"><value>Manage members, join requests, roles and the team page.</value></data>
   <data name="Teams_Permission_EarlyEntry_Title" xml:space="preserve"><value>Manage early entry</value></data>
   <data name="Teams_Permission_EarlyEntry_Blurb" xml:space="preserve"><value>Grant early entry for the team's projects.</value></data>
+  <data name="Teams_AdminTeams_EraseMembers" xml:space="preserve">
+    <value>Erase members</value>
+  </data>
+  <data name="Teams_AdminTeams_EraseMembersConfirm" xml:space="preserve">
+    <value>Delete everyone's membership history on this team? This cannot be undone.</value>
+  </data>
+  <data name="Teams_AdminTeams_MembersErased" xml:space="preserve">
+    <value>Membership history erased.</value>
+  </data>
 </root>

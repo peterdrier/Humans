@@ -296,6 +296,7 @@ Google integration management is consolidated in `GoogleController` (`[Route("Go
 - When a human selects a different Google email, the new canonical address starts `Unknown` (status is per-address, #687); fresh Drive sync events and scoped Google Group sync requests are enqueued for current team memberships.
 - When a Google resource is linked to a team, current team members are synced to that resource.
 - When a Google resource is unlinked, it is deactivated and audited; the unlink itself does not revoke Google permissions.
+- After a scheduled Execute pass in `AddAndRemove` mode empties a retired team's group without error, Google deactivates that team's group resource rows, clears the team's group prefix through `ITeamWrite` and audits the unlink. The group stays in Google, empty.
 - The system team sync job runs hourly, reconciling system team membership.
 - After the hourly system team sync completes, all Google Group memberships are reconciled through `IGoogleGroupSync.ReconcileAllAsync` so membership changes are reflected in Google Groups.
 - The reconciliation job runs daily at 03:00, detecting drift between expected and actual Google resource state.

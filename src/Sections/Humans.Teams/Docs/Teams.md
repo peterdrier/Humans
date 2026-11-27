@@ -93,6 +93,7 @@ One event-scoped early-entry grant: a human may enter on a date for a named proj
 | `GET /Teams/{id:guid}/Edit` | `EditTeam` (GET) | `TeamController` | `TeamsPolicies.Read` |
 | `POST /Teams/{id:guid}/Edit` | `EditTeam` (POST) | `TeamController` | `TeamsPolicies.Manage` |
 | `POST /Teams/{id:guid}/Delete` | `DeleteTeam` | `TeamController` | `PolicyNames.AdminOnly` |
+| `POST /Teams/{id:guid}/EraseMembers` | `EraseMembers` | `TeamController` | `PolicyNames.AdminOnly` — retired teams only |
 | `GET /Teams/{teamId:guid}/GoogleResources` | `GetTeamGoogleResources` | `TeamController` | `TeamsPolicies.Read` — JSON for the parent-resource warning |
 | `GET /Teams/{teamId:guid}/SendMessage/{id:guid}` | `SendMessage` (GET) | `TeamMessageController` | `[Authorize]` + `ITeamMessageOptionsProvider` |
 | `POST /Teams/{teamId:guid}/SendMessage/{id:guid}` | `SendMessage` (POST) | `TeamMessageController` | `[Authorize]` + the same check |
@@ -188,6 +189,8 @@ One event-scoped early-entry grant: a human may enter on a date for a named proj
 - The system-team sync runs hourly (Hangfire `teams-system-sync`) and on demand from the sections whose facts it reads. It recomputes Volunteers (approved, unsuspended, consents signed, not rejected by the Consent Admin), Coordinators and Barrio Leads (active camp leads), reconciles `TeamMember.Role` against management assignments, audits every committed change before Google provisioning, and ends with a Google Group reconciliation pass when Workspace credentials are configured. It sends no "added to team" email for hidden teams or missing/tombstoned recipients. Skipping an unavailable recipient does not undo committed membership changes or audits and does not skip later live recipients.
 - When an account merge is accepted, Teams ends the source's non-system memberships, adds the survivor where needed, moves role assignments, join requests and early-entry grants to the survivor (a source Pending request colliding with a survivor Pending request for the same team is dropped), and reconciles both humans' Coordinators membership.
 - Before a person leaves or is removed from a team, when account deletion revokes all their memberships, and for each member when a team is deactivated, Teams calls Roles' `IRoleWrite.RemoveAsync` so they hold no role there. A merge doesn't: Roles moves its own slots.
+- **Retire** (the Summary page's Deactivate) sets the team inactive and ends its memberships; retired teams leave the directory, profiles and pickers. A retired team keeps claiming its Google group with nobody in it, so Google's sync empties the group, then unlinks it and clears the team's group prefix.
+- **Erase members** (Admin, retired teams only) deletes the team's membership rows, role slots, join requests and early-entry grants; the team row stays so ids held by other sections still resolve. One audit entry records the count, never the names. Earlier permanent audit entries naming members stay (append-only).
 - On erasure, Teams ends live memberships, hard-deletes the human's join requests and early-entry grants, and keeps ended membership rows. The GDPR export carries the `TeamMemberships`, `TeamJoinRequests` (own requests, notes and status history) and `TeamEarlyEntry` slices, following the merge chain.
 
 ## Cross-Section Dependencies

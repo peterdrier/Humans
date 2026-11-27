@@ -146,6 +146,12 @@ internal interface ITeamManagementService : ITeamManagement
     Task<TeamDeactivationResult> DeleteTeamAsync(Guid teamId, Guid actorUserId, CancellationToken cancellationToken = default);
 
     /// <summary>
+    /// Deletes a retired team's membership history: membership rows, role slots, join requests and early-entry grants.
+    /// The team row stays. Refuses an active team.
+    /// </summary>
+    Task<TeamDeactivationResult> EraseMembersAsync(Guid teamId, Guid actorUserId, CancellationToken cancellationToken = default);
+
+    /// <summary>
     /// Deactivates whichever of the Asociados, Colaboradores and Board teams are still active, ending their memberships.
     /// Returns how many it deactivated.
     /// </summary>

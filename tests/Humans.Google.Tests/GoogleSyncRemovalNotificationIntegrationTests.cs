@@ -65,6 +65,7 @@ public sealed class GoogleSyncRemovalNotificationIntegrationTests
             _teamResourceClient,
             _teamResourceService,
             _teamService,
+            Substitute.For<ITeamWrite>(),
             _userService, identities,
             _userEmailService,
             _syncSettingsService,
