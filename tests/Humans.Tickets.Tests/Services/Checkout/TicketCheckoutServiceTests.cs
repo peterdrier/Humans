@@ -2410,6 +2410,26 @@ public sealed partial class TicketCheckoutServiceTests
     }
 
     [HumansTheory]
+    [InlineData(OrderRead.Buyer)]
+    [InlineData(OrderRead.Holder)]
+    [InlineData(OrderRead.Admin)]
+    public async Task RefreshOrderAsync_LatePaymentMethod_PersistsMetadata(OrderRead reader)
+    {
+        var order = await BuyAndPayAsync(Buy(), _buyerId);
+        order.PaymentMethod = null;
+        order.Lines.Add(new TicketCheckoutOrderLine { Kind = OrderLineKind.Ticket, HolderUserId = _otherBuyerId });
+        _repo.OrderWrites.Clear();
+        _clock.Advance(Duration.FromMinutes(1));
+        _platform.GetStatusAsync(order.PlatformOrderId!, Arg.Any<CancellationToken>())
+            .Returns(new PlatformOrderStatus(PlatformOrderState.Paid, 0, "ideal", Now));
+
+        await ReadOrderAsync(order, reader, Ct);
+
+        _repo.OrderWrites.Should().Equal((order.Id, "ideal"));
+        order.UpdatedAt.Should().Be(_clock.GetCurrentInstant());
+    }
+
+    [HumansTheory]
     [InlineData(OrderRead.Buyer, PlatformOrderState.Pending)]
     [InlineData(OrderRead.Holder, PlatformOrderState.Pending)]
     [InlineData(OrderRead.Admin, PlatformOrderState.Pending)]
@@ -2750,7 +2770,13 @@ public sealed partial class TicketCheckoutServiceTests
             Orders.Add(order);
             return Task.CompletedTask;
         }
-        public Task UpdateOrderAsync(TicketCheckoutOrder order, CancellationToken ct = default) => Task.CompletedTask;
+        public List<(Guid OrderId, string? PaymentMethod)> OrderWrites { get; } = [];
+
+        public Task UpdateOrderAsync(TicketCheckoutOrder order, CancellationToken ct = default)
+        {
+            OrderWrites.Add((order.Id, order.PaymentMethod));
+            return Task.CompletedTask;
+        }
         public Task<IReadOnlyList<TicketCheckoutRefund>> GetRefundsAsync(Guid orderId, CancellationToken ct = default) =>
             Task.FromResult<IReadOnlyList<TicketCheckoutRefund>>(Refunds.Select(r => r.Refund).Where(r => r.OrderId == orderId).ToList());
         public Task AddRefundAsync(TicketCheckoutRefund refund, CancellationToken ct = default)

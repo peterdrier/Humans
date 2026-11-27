@@ -634,7 +634,7 @@ internal sealed partial class TicketCheckoutService(
         TicketCheckoutOrder order, PlatformOrderStatus status, bool closureConfirmed, CancellationToken ct)
     {
         var now = clock.GetCurrentInstant();
-        var before = (order.State, order.RefundedMinor, order.FeeMinor, order.ChargedBackMinor);
+        var before = (order.State, order.RefundedMinor, order.FeeMinor, order.ChargedBackMinor, order.PaymentMethod);
         var newState = status.State switch
         {
             PlatformOrderState.Paid => TicketCheckoutOrderState.Paid,
@@ -678,7 +678,7 @@ internal sealed partial class TicketCheckoutService(
             && !(await repository.GetOrderEventsAsync(order.Id, ct)).Any(e => e.Detail.StartsWith(ProcessingStuck, StringComparison.Ordinal)))
             await NeedsAttentionAsync(order.Id,
                 $"{ProcessingStuck} for {ProcessingAttention.Days} days; it holds its tickets until {order.PlatformKey} settles it", ct);
-        if (before == (order.State, order.RefundedMinor, order.FeeMinor, order.ChargedBackMinor))
+        if (before == (order.State, order.RefundedMinor, order.FeeMinor, order.ChargedBackMinor, order.PaymentMethod))
             return false;
 
         order.UpdatedAt = now;

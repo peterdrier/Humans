@@ -21,6 +21,7 @@ Rules every platform follows:
 
 - **Exact price.** The buyer pays exactly the lines; no fee is added. `PlatformOrderStatus.FeeMinor` is only what the
   payment provider kept (processing cost), null when unknown.
+- **Payment metadata.** A newly reported payment method is saved independently of changes to state, fees, refunds or chargebacks, with the order's update time. A missing method in a later status does not clear the known one.
 - **Late payments.** Tickets owns the hold. When `ExpiresAt` passes unpaid, webhooks and background recovery call `CancelAsync` (also when the
   platform reports Expired or Failed, and the order stays open until that cancel succeeds) so the platform stops taking
   money. A payment that lands anyway is reported as
