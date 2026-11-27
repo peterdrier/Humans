@@ -43,7 +43,9 @@ The service pins only the quota guard; `TIME_BUDGET` in `debt-runner.env`
 remains effective for scheduled runs.
 
 There is no fix-count target. Work existing ledger rows, then the ladder's Finds;
-when both are drained the run stops early and that is a success. One branch and PR contain all completed substantive fixes.
+when both are drained the worker reports `Stop: ledger drained`, the run stops early,
+publishes any substantive fixes, and exits 0 (`exit_reason=drained` when there is nothing
+to publish). One branch and PR contain all completed substantive fixes.
 
 Before starting work and after each validated, committed round, the runner reads
 live quota through `account/rateLimits/read`. It selects the `codex` bucket's

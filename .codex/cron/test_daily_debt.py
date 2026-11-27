@@ -142,6 +142,18 @@ class GoalFailureTests(unittest.TestCase):
                 with self.assertRaisesRegex(RuntimeError, "Completed round left uncommitted changes"):
                     self.run_events(events, repair=repair, quota=quota, tree_status=" M production.cs\n")
 
+    def test_drained_report_returns_without_reactivating_goal(self):
+        events = [self.event("thread/goal/updated", goal={"status": "complete"}),
+                  self.event("item/completed", item={"type": "agentMessage", "phase": "final_answer",
+                                                     "text": "Report\n\nStop: ledger drained"}),
+                  self.event("turn/completed", turn={"status": "completed"})]
+
+        result, report, requests, _ = self.run_events(events, repair=False)
+
+        self.assertEqual(result, 4)
+        self.assertIn("Stop: ledger drained", report)
+        self.assertEqual(sum(x.get("method") == "thread/goal/set" for x in requests), 1)
+
     def test_completed_round_requires_a_report_even_with_quota_disabled(self):
         for repair in (False, True):
             with self.subTest(repair=repair):
@@ -526,6 +538,16 @@ for line in sys.stdin:
             emit("item/completed", {"item": {"type": "agentMessage", "phase": "final_answer", "text": "Cumulative fixes: " + str(started)}})
             emit("turn/completed", {"turn": {"status": "completed"}})
             continue
+        if scenario.startswith("drained") and not thread.startswith("fixture-repair"):
+            print(json.dumps({"id": request["id"], "result": {}}), flush=True)
+            emit("turn/started", {"turn": {"id": "drained"}})
+            if scenario == "drained":
+                commit(1)
+            emit("thread/goal/updated", {"goal": {"status": "complete"}})
+            emit("item/completed", {"item": {"type": "agentMessage", "phase": "final_answer",
+                                             "text": "Cumulative fixes: 1\\n\\nStop: ledger drained"}})
+            emit("turn/completed", {"turn": {"status": "completed"}})
+            continue
         if started > 1:
             assert scenario.startswith("early-")
             assert params["threadId"] == thread
@@ -636,6 +658,22 @@ for line in sys.stdin:
         self.assertIn("weekly quota cutoff", body)
         self.assertNotIn("--draft", published[0])
         self.assertEqual(len(self.git(self.clone, "log", "--oneline", "origin/main..HEAD").splitlines()), 1)
+
+    def test_drained_worker_publishes_committed_fixes_before_deadline(self):
+        result, calls, published = self.run_scenario("drained")
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertEqual(len(published), 1)
+        self.assertEqual([x[1] for x in calls if x[0] == "dotnet"], ["build", "test"])
+        self.assertIn("Stop: ledger drained", (self.root / "pr-body").read_text())
+        requests = [json.loads(x) for x in (self.root / "requests.jsonl").read_text().splitlines()]
+        self.assertEqual(sum(x["method"] == "turn/start" for x in requests), 1)
+
+    def test_drained_worker_without_commits_exits_cleanly(self):
+        result, calls, published = self.run_scenario("drained-empty")
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertEqual(published, [])
+        self.assertIn("exit_reason=drained", result.stdout)
+        self.assertEqual([x for x in calls if x[0] == "dotnet"], [])
 
     def test_quota_allows_next_round_in_same_thread_then_stops(self):
         self.env["IGNORE_QUOTA_CUTOFF"] = "0"

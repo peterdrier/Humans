@@ -43,7 +43,9 @@ no fix-count quota. Do not sleep to consume time.
 
 **Stop when the work runs out.** When no ledger row is actionable and every
 rung's Finds returns nothing workable, the run is done: finish the current batch,
-complete the goal and report "ledger drained" with the time used. That is a
+complete the goal and end the cumulative report with the exact line
+`Stop: ledger drained`, plus the time used. The wrapper then stops, publishing
+any substantive fixes already committed. That is a
 successful run, not a failure, even hours before the deadline and even when it
 produces no PR. Never go looking for defects outside the ledger and the rungs' Finds
 to fill the window: that is how a sweep starts guarding states nothing produces
@@ -330,7 +332,7 @@ down it.
 4. Only when no ledger row is actionable, work the rungs' Finds commands for
    new debt. One available item is not a reason to stop for the night.
 5. When no ledger row is actionable and the Finds return nothing workable,
-   stop: complete the goal and report "ledger drained".
+   stop: complete the goal with the line `Stop: ledger drained` in the report.
 6. A rung's **Done-check** is the local validation gate. Run it once per
    completed batch or individual fix before committing and finishing the round. The
    wrapper runs the final full gate once before publishing the single PR.

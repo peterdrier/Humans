@@ -5,7 +5,8 @@ description: "Nightly debt runs: 4-hour default window, stop early once the ledg
 
 Work in validated, committed rounds for 4 hours by default (at most 12), finishing the active
 batch afterward. When no ledger row is actionable and the ladder's Finds return nothing
-workable, stop early and report "ledger drained": that is a success, not a reason to hunt for
+workable, stop early with the report line `Stop: ledger drained`: the wrapper then publishes what
+is committed (or exits cleanly with nothing), and that is a success, not a reason to hunt for
 other work. The wrapper checks live weekly quota before the first round
 and after each completed round. Stop new work if remaining quota falls below
 `max(16, 100 - 12 * (elapsed_days_since_weekly_reset + 1))` (the next day's

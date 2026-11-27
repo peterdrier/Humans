@@ -31,9 +31,9 @@ and no compensation for.
   vendor, use a local `CancellationToken.None` for the rest (a void-then-reissue at a ticket vendor, say).
 - There is no user-operated "cancel this sync" affordance today, so no call site may claim genuine
   caller cancellation.
-- **Tests:** only for a write that must not be cut off (it finishes with `CancellationToken.None`).
-  Never a test that cancels a read to prove the token reaches it: that pins plumbing, and HUM0033
-  already guards the rule that matters.
+- **Tests:** only for a write that must not be cut off (it finishes with `CancellationToken.None`,
+  in a job or after a vendor step). Never a test that cancels a read to prove the token reaches it:
+  that pins plumbing.
 
 **Enforcement:** mark service interface methods that reach an external mutating call with
 `[ExternalWrite]` (`Humans.Base.Attributes`); analyzer **HUM0033** errors when a state-changing action

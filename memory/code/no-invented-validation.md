@@ -5,17 +5,18 @@ description: Adding a guard, validation or fallback: only for a state the app ca
 
 Guard a state only when something in the app can produce it, and check it once, in the code that owns it.
 
-**Why:** Peter (2026-11): no invented validation. The nightly sweep, once its ledger ran dry, spread an
-erased-or-merged-account check from 6 files to 56 (the base controller already refuses that current user)
-and made clients "stay resolvable" with malformed URLs and API keys. Each copy is a rule someone must keep
-true, for a state that is rare or impossible.
+**Why:** Peter: no invented validation. [`review-finding-triage`](../process/review-finding-triage.md) already
+declines review findings whose only fix is a guard for an unreachable state; this atom applies the same bar to work
+an agent finds itself. Once its ledger ran dry, the nightly sweep copied the same `x is null || x.IsTombstone`
+line into 37 service sites and added malformed-URL tolerance to clients. Each copy is a rule someone must keep true.
 
 **How to apply:**
 - Before adding a check, name what produces the state. Nothing does → no check.
-- The current user: use the base controller's `ResolveCurrentUserOr…Async`, never re-check `IsTombstone` by hand.
-  Another person's account (a target, a recipient) is checked by the service that acts on it.
-- A malformed setting only an admin can enter fails loudly where it is read. No tolerance code, no fallback.
+- Users already resolves a merged id to its survivor, so a resolved read is tombstoned only for an erased account.
+  The current user is checked by the base controller (`ResolveCurrentUserOr…Async`); don't re-check by hand.
+  The same check repeated across callers belongs in one owner read, not in each caller.
+- A malformed setting only an admin can enter needs no tolerance code. Let the call that uses it fail and log;
+  never at boot or DI resolution ([`no-startup-guards`](../architecture/no-startup-guards.md)).
 - No duplicate, range or date guards nobody asked for, and don't ask whether to widen one.
-- A guard you remove needs no replacement test.
 
 **Related:** [[cancellation-token-propagation]], [[debt-sweep-standing-policy]]
