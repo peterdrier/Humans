@@ -2238,6 +2238,54 @@ public sealed partial class TicketCheckoutServiceTests
         await _holdingsInner.Received(2).GetUserTicketHoldingsAsync(newHolder, Arg.Any<CancellationToken>());
     }
 
+    [HumansTheory]
+    [InlineData(513, true)]
+    [InlineData(514, false)]
+    public async Task RenameTicket_HolderNameLength_RespectsStorageLimit(int length, bool accepted)
+    {
+        var ticket = await PaidAdultAsync();
+        var originalName = ticket.HolderName;
+        _userEmails.FindByAddressAsync("ana@example.com", true, true, Arg.Any<CancellationToken>())
+            .Returns([Row(_buyerId, verified: true)]);
+        var name = new string('N', length);
+
+        var result = await _service.RenameTicketAsync(
+            ticket.Id, name, "ana@example.com", "Correct legal name", false, _adminId, Ct);
+
+        result.Succeeded.Should().Be(accepted);
+        ticket.HolderName.Should().Be(accepted ? name : originalName);
+        if (!accepted)
+        {
+            result.Refusal.Should().Contain("513");
+            _repo.Events.Should().NotContain(e => e.Kind == TicketCheckoutOrderEventKind.Renamed);
+            await _delivery.DidNotReceive().TicketRenamedAsync(ticket.Id, Arg.Any<CancellationToken>());
+        }
+    }
+
+    [HumansTheory]
+    [InlineData(513, true, null)]
+    [InlineData(514, false, null)]
+    [InlineData(514, false, "helper@example.com")]
+    public async Task IssueCompanion_HolderNameLength_RespectsStorageLimit(int length, bool accepted, string? email)
+    {
+        var adult = await PaidAdultAsync();
+        var orders = _repo.Orders.Count;
+        var tickets = _repo.Tickets.Count;
+        _provisioning.ClearReceivedCalls();
+
+        var result = await _service.IssueCompanionAsync(
+            adult.Id, new string('N', length), email, "Support", false, _adminId, Ct);
+
+        result.Succeeded.Should().Be(accepted);
+        _repo.Orders.Should().HaveCount(orders + (accepted ? 1 : 0));
+        _repo.Tickets.Should().HaveCount(tickets + (accepted ? 1 : 0));
+        if (!accepted)
+        {
+            result.Refusal.Should().Contain("513");
+            await _provisioning.DidNotReceiveWithAnyArgs().FindOrCreateUserByEmailAsync(default!, default, default, default);
+        }
+    }
+
     [HumansFact]
     public async Task Rename_moves_a_full_price_ticket_to_the_new_holder_and_audits_it()
     {

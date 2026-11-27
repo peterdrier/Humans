@@ -17,8 +17,8 @@ internal sealed partial class TicketCheckoutService
         holderEmail = holderEmail.Trim();
         if (ReasonRefusal(reason) is { } refusal)
             return refusal;
-        if (holderName.Length == 0 || !LooksLikeEmail(holderEmail))
-            return new("A rename needs the holder's legal name and email.");
+        if (holderName.Length is 0 or > MaxNameLength || !LooksLikeEmail(holderEmail))
+            return new($"A rename needs the holder's legal name of at most {MaxNameLength} characters and a valid email.");
         var ticket = await repository.GetTicketAsync(ticketId, ct);
         if (ticket is null)
             return new("That ticket does not exist.");
@@ -258,8 +258,8 @@ internal sealed partial class TicketCheckoutService
         holderEmail = string.IsNullOrWhiteSpace(holderEmail) ? null : holderEmail.Trim();
         if (ReasonRefusal(reason) is { } refusal)
             return refusal;
-        if (holderName.Length == 0 || (holderEmail is not null && !LooksLikeEmail(holderEmail)))
-            return new("A companion needs a legal name; the email is optional but must be valid.");
+        if (holderName.Length is 0 or > MaxNameLength || (holderEmail is not null && !LooksLikeEmail(holderEmail)))
+            return new($"A companion needs a legal name of at most {MaxNameLength} characters; the email is optional but must be valid.");
         return (await IssueCompanionCoreAsync(parentTicketId, holderName, holderEmail, async c =>
         {
             if (holderEmail is null)
