@@ -102,7 +102,8 @@ internal sealed partial class TicketCheckoutService
                     DirectedActive: offer?.HasLiveInvite == true)
                 {
                     CanInvite = ticketing?.EffectiveSwitches.Resale == ResaleScheme.QueueAndDirected && ticketing.IsResaleSelling(now),
-                    CompanionRequest = companionRequests.Where(r => r.TicketId == ticket.Id).MaxBy(r => r.RequestedAt),
+                    CompanionRequest = companionRequests.Where(r => r.TicketId == ticket.Id && r.HolderUserId == ticket.HolderUserId)
+                        .MaxBy(r => r.RequestedAt),
                     CanAskCompanion = CanAskCompanion(ticket, ticketing, eventTickets, companionRequests),
                 });
                 // A child ticket has no account of its own: it shows under the adult who holds it.

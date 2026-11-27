@@ -45,6 +45,8 @@ Raw checkout order, holder-ticket, event-ticket, offer and refund reads return r
 ordering. The admin order list sorts newest first; lookup tickets and dependent-ticket panels sort by issue time.
 Order-detail and delivery-card presentation ordering belongs to their rendering callers.
 
+Companion requests stay with their requesting holder after ticket transfer. Member reads and withdrawals exclude previous holders' requests and decision notes; a new holder may ask independently. Staff see the original requester and can decline a stale request, but cannot approve it against the new holder's ticket, including when reusing an already-issued companion.
+
 Operator controllers order companion requests pending-first/newest-first, cancellation refund groups by state,
 and backend lists by key. Backend status pages order orders and stuck orders newest-first and refunds oldest-first;
 the reconciliation start date is the minimum order timestamp in the organisation's zone, independent of row order.

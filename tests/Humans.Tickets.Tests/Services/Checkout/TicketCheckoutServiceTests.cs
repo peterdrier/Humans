@@ -2670,6 +2670,99 @@ public sealed partial class TicketCheckoutServiceTests
     [HumansTheory]
     [InlineData(false)]
     [InlineData(true)]
+    public async Task GetHeldTickets_RenamedParent_HidesPreviousRequest(bool declined)
+    {
+        var adult = await PaidAdultAsync();
+        Human("helper@example.com", "Helper", "Ruiz");
+        var nextHolder = Human("next@example.com", "Next", "Holder");
+        await _service.RequestCompanionAsync(adult.Id, _buyerId, "helper@example.com", "Private support needs", Ct);
+        var request = _repo.CompanionRequests.Single();
+        if (declined)
+            await _service.DecideCompanionRequestAsync(request.Id, false, "Private decision", _adminId, Ct);
+        (await _service.RenameTicketAsync(adult.Id, "Next Holder", "next@example.com", "Transfer requested", false, _adminId, Ct))
+            .Succeeded.Should().BeTrue();
+
+        var held = (await _service.GetHeldTicketsAsync(nextHolder, Ct)).Single(t => t.Ticket.Id == adult.Id);
+
+        held.CompanionRequest.Should().BeNull();
+        held.CanAskCompanion.Should().BeTrue();
+        _repo.CompanionRequests.Should().ContainSingle(r => r.Id == request.Id && r.HolderUserId == _buyerId);
+    }
+
+    [HumansFact]
+    public async Task WithdrawCompanionRequest_RenamedParent_PreservesPreviousRequest()
+    {
+        var adult = await PaidAdultAsync();
+        Human("helper@example.com", "Helper", "Ruiz");
+        var nextHolder = Human("next@example.com", "Next", "Holder");
+        await _service.RequestCompanionAsync(adult.Id, _buyerId, "helper@example.com", "Original request", Ct);
+        var previous = _repo.CompanionRequests.Single();
+        (await _service.RenameTicketAsync(adult.Id, "Next Holder", "next@example.com", "Transfer requested", false, _adminId, Ct))
+            .Succeeded.Should().BeTrue();
+
+        (await _service.WithdrawCompanionRequestAsync(adult.Id, nextHolder, Ct))
+            .Refusal.Should().Be("Tickets_Companion_NothingPending");
+        (await _service.RequestCompanionAsync(adult.Id, nextHolder, "helper@example.com", "New request", Ct))
+            .Succeeded.Should().BeTrue();
+        (await _service.WithdrawCompanionRequestAsync(adult.Id, nextHolder, Ct)).Succeeded.Should().BeTrue();
+
+        previous.State.Should().Be(TicketCompanionRequestState.Pending);
+        _repo.CompanionRequests.Should().ContainSingle(r => r.HolderUserId == nextHolder && r.State == TicketCompanionRequestState.Withdrawn);
+    }
+
+    [HumansFact]
+    public async Task GetCompanionRequests_RenamedParent_LabelsOriginalHolder()
+    {
+        var adult = await PaidAdultAsync();
+        var original = (await _users.GetUserInfoAsync(_buyerId, Ct))!.FullName;
+        Human("helper@example.com", "Helper", "Ruiz");
+        Human("next@example.com", "Next", "Holder");
+        await _service.RequestCompanionAsync(adult.Id, _buyerId, "helper@example.com", "Original request", Ct);
+        (await _service.RenameTicketAsync(adult.Id, "Next Holder", "next@example.com", "Transfer requested", false, _adminId, Ct))
+            .Succeeded.Should().BeTrue();
+
+        var row = (await _service.GetCompanionRequestsAsync(_ticketing.Id, Ct)).Single();
+
+        row.HolderName.Should().Be(original);
+        row.Request.HolderUserId.Should().Be(_buyerId);
+    }
+
+    [HumansTheory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task DecideCompanionRequest_RenamedParent_RefusesApproval(bool alreadyIssued)
+    {
+        var adult = await PaidAdultAsync();
+        Human("helper@example.com", "Helper", "Ruiz");
+        Human("next@example.com", "Next", "Holder");
+        await _service.RequestCompanionAsync(adult.Id, _buyerId, "helper@example.com", "Original request", Ct);
+        var request = _repo.CompanionRequests.Single();
+        (await _service.RenameTicketAsync(adult.Id, "Next Holder", "next@example.com", "Transfer requested", false, _adminId, Ct))
+            .Succeeded.Should().BeTrue();
+        if (alreadyIssued)
+            (await _service.IssueCompanionAsync(adult.Id, "Helper Ruiz", "helper@example.com", "New holder's companion", false, _adminId, Ct))
+                .Succeeded.Should().BeTrue();
+        var orders = _repo.Orders.Count;
+        var tickets = _repo.Tickets.Count;
+        _delivery.ClearReceivedCalls();
+
+        var result = await _service.DecideCompanionRequestAsync(request.Id, true, null, _adminId, Ct);
+
+        result.Succeeded.Should().BeFalse();
+        request.State.Should().Be(TicketCompanionRequestState.Pending);
+        request.CompanionTicketId.Should().BeNull();
+        _repo.Orders.Should().HaveCount(orders);
+        _repo.Tickets.Should().HaveCount(tickets);
+        await _delivery.DidNotReceiveWithAnyArgs().TicketsIssuedAsync(default);
+        await _audit.DidNotReceive().LogAsync(TicketsAuditActions.TicketCompanionRequestDecided, Arg.Any<string>(), request.Id,
+            Arg.Any<string>(), Arg.Any<Guid>(), Arg.Any<Guid?>(), Arg.Any<string?>());
+        (await _service.DecideCompanionRequestAsync(request.Id, false, "Ticket transferred", _adminId, Ct))
+            .Succeeded.Should().BeTrue();
+    }
+
+    [HumansTheory]
+    [InlineData(false)]
+    [InlineData(true)]
     public async Task DecideCompanionRequestAsync_DifferentCompanion_Refuses(bool differentParent)
     {
         var adult = await PaidAdultAsync();

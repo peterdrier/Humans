@@ -52,7 +52,7 @@ internal sealed partial class TicketCheckoutService
         if (ticket is null || ticket.HolderUserId != holderUserId)
             return new("Tickets_Resale_NotFound");
         var pending = (await repository.GetCompanionRequestsForSettingsAsync(ticket.TicketingSettingsId, ct))
-            .FirstOrDefault(r => r.TicketId == ticketId && r.State == TicketCompanionRequestState.Pending);
+            .FirstOrDefault(r => r.TicketId == ticketId && r.HolderUserId == holderUserId && r.State == TicketCompanionRequestState.Pending);
         if (pending is null)
             return new("Tickets_Companion_NothingPending");
         pending.State = TicketCompanionRequestState.Withdrawn;
@@ -71,7 +71,11 @@ internal sealed partial class TicketCheckoutService
         {
             tickets.TryGetValue(request.TicketId, out var ticket);
             var companion = await users.GetUserInfoAsync(request.CompanionUserId, ct);
-            rows.Add(new CompanionRequestRow(request, ticket?.HolderName ?? string.Empty,
+            var holderName = ticket?.HolderName ?? string.Empty;
+            if (ticket?.HolderUserId != request.HolderUserId)
+                holderName = await users.GetUserInfoAsync(request.HolderUserId, ct) is { IsTombstone: false } holder
+                    ? holder.FullName : string.Empty;
+            rows.Add(new CompanionRequestRow(request, holderName,
                 companion?.FullName ?? string.Empty, ticket?.Barcode ?? string.Empty, ticket?.OrderId ?? Guid.Empty));
         }
         return rows;
@@ -96,6 +100,8 @@ internal sealed partial class TicketCheckoutService
         TicketCheckoutTicket? companionTicket = null;
         if (approve)
         {
+            if ((await repository.GetTicketAsync(request.TicketId, ct))?.HolderUserId != request.HolderUserId)
+                return new("The ticket no longer belongs to the requesting holder; decline the request.");
             companionTicket = (await repository.GetTicketsForSettingsAsync(request.TicketingSettingsId, ct))
                 .FirstOrDefault(t => t.ParentTicketId == request.TicketId && t.HolderUserId == request.CompanionUserId
                     && t.Kind == TicketHolderKind.Companion && t.State == TicketCheckoutTicketState.Valid);
@@ -144,5 +150,5 @@ internal sealed partial class TicketCheckoutService
         ticket is { State: TicketCheckoutTicketState.Valid, Kind: TicketHolderKind.Adult, HolderUserId: not null }
         && ticketing is { Mode: not TicketSalesMode.Closed, EffectiveSwitches.CompanionTicketsOn: true }
         && !eventTickets.Any(t => t.ParentTicketId == ticket.Id && t.Kind == TicketHolderKind.Companion && t.State == TicketCheckoutTicketState.Valid)
-        && !requests.Any(r => r.TicketId == ticket.Id && r.State == TicketCompanionRequestState.Pending);
+        && !requests.Any(r => r.TicketId == ticket.Id && r.HolderUserId == ticket.HolderUserId && r.State == TicketCompanionRequestState.Pending);
 }

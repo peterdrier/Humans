@@ -277,7 +277,7 @@ Paid orders whose ticket issuance was interrupted retain their fresh-stock capac
 
 A holder of a valid adult ticket can ask, on `/Tickets/Buy/Mine`, for a free companion ticket for someone already in
 Humans: their email (the same lookup as buying for others: one live verified account with a legal name, not the holder,
-not already holding a ticket) and a short note on why. One ask is pending at a time; the holder can withdraw it. The
+not already holding a ticket) and a short note on why. One ask per current holder and ticket is pending at a time; the holder can withdraw only their own request. After transfer, the new holder sees none of the previous holder's requests or decision notes and may ask independently. Old requests remain in the staff queue under their original requester; approval refuses if the ticket has changed holder, including interrupted-issuance recovery, while staff may still decline them. The
 ticketing team answers from the event's Companions queue: approve rechecks the companion and issues the free ticket to
 their account (the usual ticket email; the holder gets the zero receipt), decline needs a note the holder sees on their
 ticket. Nobody's account is created and the companion is never mailed an invitation. The ask and the answer land on the
