@@ -797,6 +797,8 @@ src/Sections/Humans.Agent/Data/Migrations/20261124151418_DropAgentSettingsPreloa
 # are Profile, DTO or section-move commits. The entity carried a "do NOT read or write these" note since then.
 # Approval: Peter, 2026-11-26, in the role-retirement thread: "let's get rid of those two medical conditions
 # and the dietary columns that are in shifts ... Yes, drop the two columns".
+# Rollback caveat: Down() re-adds Allergies and Intolerances as NOT NULL jsonb with default '', which
+# Postgres rejects; rolling back means re-adding those two columns by a new migration.
 src/Sections/Humans.Shifts/Data/Migrations/20261126232724_DropVolunteerProfileDietaryMedicalColumns.cs:DropColumn(name=Allergies,table=shift_volunteer_event_profiles)#1
 src/Sections/Humans.Shifts/Data/Migrations/20261126232724_DropVolunteerProfileDietaryMedicalColumns.cs:DropColumn(name=AllergyOtherText,table=shift_volunteer_event_profiles)#1
 src/Sections/Humans.Shifts/Data/Migrations/20261126232724_DropVolunteerProfileDietaryMedicalColumns.cs:DropColumn(name=DietaryPreference,table=shift_volunteer_event_profiles)#1
