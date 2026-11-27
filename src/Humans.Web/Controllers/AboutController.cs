@@ -80,6 +80,13 @@ public class AboutController(
             }
         }
 
+        var brief = files.GetFileInfo("img/logo-library/brief-v1.md");
+        if (brief.Exists)
+        {
+            using var reader = new StreamReader(brief.CreateReadStream());
+            ViewData["Brief"] = reader.ReadToEnd();
+        }
+
         var ordered = entries
             .OrderBy(e => e.Family, StringComparer.OrdinalIgnoreCase)
             .ThenBy(e => e.Model, StringComparer.OrdinalIgnoreCase)

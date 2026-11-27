@@ -43,7 +43,7 @@ If the folder already exists, stop and say so — the entry has been drawn.
 ## Steps
 1. **Branch.** Off `origin/main`, branch `logo/<slug>`, in your own worktree. Parallel runs are
    expected; you touch only your own folder, so they never conflict.
-2. **Read the brief: `.claude/skills/redraw-logo/brief-v1.md`, and only that.** It is frozen and it is
+2. **Read the brief: `src/Humans.Web/wwwroot/img/logo-library/brief-v1.md`, and only that.** It is frozen and it is
    the whole input. Do not open other library entries, `wwwroot/img/logo.svg`, `logo.md` or git
    history of the mark — the comparison only works if every model starts from the same text.
 3. **Draw and iterate** per the brief, rendering every pass with

@@ -148,7 +148,7 @@ follow docs/maintenance/freshness-sweep/README.md with --full
 
 **When:** Whenever a new model ships, once per model and effort level; runs in parallel.
 
-**What it does:** Draws the Vitruvian Man against the frozen brief (`.claude/skills/redraw-logo/brief-v1.md`) and adds it as one entry to the logo library (`wwwroot/img/logo-library/`, shown at `/About/Logos`), then opens the PR. Never touches the live logo; promoting an entry is a separate step Peter asks for.
+**What it does:** Draws the Vitruvian Man against the frozen brief (`src/Humans.Web/wwwroot/img/logo-library/brief-v1.md`) and adds it as one entry to the logo library (`wwwroot/img/logo-library/`, shown at `/About/Logos`), then opens the PR. Never touches the live logo; promoting an entry is a separate step Peter asks for.
 
 ```
 /redraw-logo Claude Opus 5.5 high

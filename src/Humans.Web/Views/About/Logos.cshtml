@@ -5,6 +5,17 @@
 
 <page-header title="@(Localizer["About_Logos_Title"].Value)" subtitle="@(Localizer["About_Logos_Intro"].Value)" />
 
+@if (ViewData["Brief"] is string brief)
+{
+    <div class="card mb-5">
+        <div class="card-body">
+            <h2 class="h5 card-title"><i class="fa-solid fa-scroll me-2"></i>The prompt</h2>
+            <p class="small text-muted">Every drawing from November 2026 on started from exactly this text, word for word. The three earlier rounds (February, June and October 2026) were drawn against looser briefs that changed between rounds.</p>
+            <div class="logo-brief">@Html.SanitizedMarkdown(brief)</div>
+        </div>
+    </div>
+}
+
 @if (Model.Count == 0)
 {
     <empty-state>@Localizer["About_Logos_Empty"]</empty-state>
