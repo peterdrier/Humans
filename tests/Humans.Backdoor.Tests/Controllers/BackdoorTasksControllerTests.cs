@@ -84,7 +84,7 @@ public sealed class BackdoorTasksControllerTests
     }
 
     [HumansFact]
-    public async Task Bulk_OneTeamWithoutManageRefusesTheWholePayloadBeforeTasksSeesIt()
+    public async Task Bulk_OneUnmanagedTeam_RefusesWholePayload()
     {
         var result = await _sut.Bulk(Payload(false, "production", "art", "production"));
 
@@ -110,7 +110,7 @@ public sealed class BackdoorTasksControllerTests
     }
 
     [HumansFact]
-    public async Task Bulk_AnUnknownTeamIsAnsweredExactlyAsATeamTheOwnerCannotManage()
+    public async Task Bulk_UnknownTeam_AnswersLikeUnmanagedTeam()
     {
         var unknown = await _sut.Bulk(Payload(false, "nowhere"));
         var unmanaged = await _sut.Bulk(Payload(false, "art"));
@@ -136,7 +136,7 @@ public sealed class BackdoorTasksControllerTests
     }
 
     [HumansFact]
-    public async Task Bulk_AnEmptyOrNullEntryNeverReachesTasksAsAnException()
+    public async Task Bulk_EmptyOrNullEntry_IsRefused()
     {
         var model = Payload(false, "production");
         model.Tasks.Add(null!);

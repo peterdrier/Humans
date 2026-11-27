@@ -34,14 +34,14 @@ public sealed class CalendarFeedTokenServiceTests : IDisposable
     private CancellationToken Ct => Xunit.TestContext.Current.CancellationToken;
 
     [HumansFact]
-    public async Task A_member_who_never_opened_the_card_has_no_token()
+    public async Task Get_NeverOpenedCard_HasNoToken()
     {
         (await _sut.GetAsync(_user, Ct)).Should().BeNull();
         _audit.ReceivedCalls().Should().BeEmpty();
     }
 
     [HumansFact]
-    public async Task Ensure_mints_once_and_then_returns_the_same_token()
+    public async Task Ensure_CalledTwice_ReturnsSameToken()
     {
         var first = await _sut.EnsureAsync(_user, Ct);
         var second = await _sut.EnsureAsync(_user, Ct);
@@ -59,7 +59,7 @@ public sealed class CalendarFeedTokenServiceTests : IDisposable
     }
 
     [HumansFact]
-    public async Task Ensure_adopts_a_token_written_behind_its_back_instead_of_replacing_it()
+    public async Task Ensure_TokenWrittenMeanwhile_IsAdopted()
     {
         // The row appears without the service putting it there — a concurrent first view
         // of /Calendar, or any other writer. Ensure must adopt it: minting over a live
@@ -76,7 +76,7 @@ public sealed class CalendarFeedTokenServiceTests : IDisposable
     }
 
     [HumansFact]
-    public async Task Rotate_replaces_the_token_and_leaves_exactly_one_row()
+    public async Task Rotate_ExistingToken_LeavesOneRow()
     {
         var original = await _sut.EnsureAsync(_user, Ct);
         _audit.ClearReceivedCalls();
@@ -96,7 +96,7 @@ public sealed class CalendarFeedTokenServiceTests : IDisposable
     }
 
     [HumansFact]
-    public async Task Rotate_touches_nobody_elses_token()
+    public async Task Rotate_OtherMembersToken_IsUntouched()
     {
         var other = Guid.NewGuid();
         var othersToken = await _sut.EnsureAsync(other, Ct);
@@ -108,7 +108,7 @@ public sealed class CalendarFeedTokenServiceTests : IDisposable
     }
 
     [HumansFact]
-    public async Task Erasure_deletes_the_token_and_is_safe_to_retry()
+    public async Task Erasure_Retried_DeletesToken()
     {
         await _sut.EnsureAsync(_user, Ct);
 
@@ -119,7 +119,7 @@ public sealed class CalendarFeedTokenServiceTests : IDisposable
     }
 
     [HumansFact]
-    public async Task Merge_kills_the_eliminated_accounts_feed_and_leaves_the_survivors_alone()
+    public async Task Merge_EliminatedAccount_LosesFeed()
     {
         var survivor = Guid.NewGuid();
         var survivorToken = await _sut.EnsureAsync(survivor, Ct);
@@ -132,7 +132,7 @@ public sealed class CalendarFeedTokenServiceTests : IDisposable
     }
 
     [HumansFact]
-    public async Task The_export_says_whether_a_feed_exists_and_never_carries_the_token()
+    public async Task Export_FeedExists_OmitsToken()
     {
         var token = await _sut.EnsureAsync(_user, Ct);
 
@@ -145,7 +145,7 @@ public sealed class CalendarFeedTokenServiceTests : IDisposable
     }
 
     [HumansFact]
-    public async Task The_export_reports_no_feed_for_a_member_who_has_none()
+    public async Task Export_NoFeed_ReportsNone()
     {
         var slices = await _sut.ContributeForUserAsync(_user, Ct);
 

@@ -11,7 +11,7 @@ namespace Humans.Agent.Tests;
 public class AgentPromptAssemblerTests
 {
     [HumansFact]
-    public void BuildUserContextTail_includes_display_name_and_locale_header()
+    public void BuildUserContextTail_Header_HasNameWithLocale()
     {
         var snapshot = new AgentUserContext(
             DisplayName: "Felipe García",
@@ -39,7 +39,7 @@ public class AgentPromptAssemblerTests
     }
 
     [HumansFact]
-    public void BuildUserContextTail_renders_team_with_role_per_team()
+    public void BuildUserContextTail_Teams_RenderRolePerTeam()
     {
         var snapshot = new AgentUserContext(
             DisplayName: "Volunteer",
@@ -64,7 +64,7 @@ public class AgentPromptAssemblerTests
     }
 
     [HumansFact]
-    public void BuildUserContextTail_renders_upcoming_shift_block_with_date_range_and_day_count()
+    public void BuildUserContextTail_ShiftBlock_RendersDateRange()
     {
         var blockKey = Guid.NewGuid();
         var snapshot = MakeSnapshot(
@@ -85,7 +85,7 @@ public class AgentPromptAssemblerTests
     }
 
     [HumansFact]
-    public void BuildUserContextTail_renders_upcoming_shift_singleton_with_single_date()
+    public void BuildUserContextTail_SingleShift_RendersSingleDate()
     {
         var snapshot = MakeSnapshot(
             new UpcomingShiftEntry(
@@ -104,7 +104,7 @@ public class AgentPromptAssemblerTests
     }
 
     [HumansFact]
-    public void BuildUserContextTail_omits_upcoming_shifts_section_when_empty()
+    public void BuildUserContextTail_NoShifts_OmitsShiftsSection()
     {
         var snapshot = MakeSnapshot();
         var tail = new AgentPromptAssembler().BuildUserContextTail(snapshot);
@@ -112,7 +112,7 @@ public class AgentPromptAssemblerTests
     }
 
     [HumansFact]
-    public void BuildUserContextTail_sorts_upcoming_shifts_by_start_date_at_render_time()
+    public void BuildUserContextTail_Shifts_AreSortedByStart()
     {
         // Service layer returns unsorted; the rendering layer is responsible for display order.
         var snapshot = MakeSnapshot(
@@ -128,7 +128,7 @@ public class AgentPromptAssemblerTests
     }
 
     [HumansFact]
-    public void BuildUserContextTail_sorts_teams_alphabetically_at_render_time()
+    public void BuildUserContextTail_Teams_AreSortedAlphabetically()
     {
         var snapshot = new AgentUserContext(
             DisplayName: "Test",
@@ -154,7 +154,7 @@ public class AgentPromptAssemblerTests
     }
 
     [HumansFact]
-    public void BuildUserContextTail_renders_shift_key_so_agent_can_call_get_shift_details()
+    public void BuildUserContextTail_Shift_RendersShiftKey()
     {
         var key = Guid.NewGuid();
         var snapshot = MakeSnapshot(
@@ -166,7 +166,7 @@ public class AgentPromptAssemblerTests
     }
 
     [HumansFact]
-    public void BuildUserContextTail_caps_upcoming_shifts_with_overflow_marker()
+    public void BuildUserContextTail_ManyShifts_AddsOverflowMarker()
     {
         var entries = Enumerable.Range(0, 12)
             .Select(i => new UpcomingShiftEntry(

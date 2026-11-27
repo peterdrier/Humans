@@ -15,7 +15,7 @@ namespace Humans.Agent.Tests;
 public class AgentConversationRetentionTests
 {
     [HumansFact]
-    public async Task Deletes_conversations_older_than_retention_days_only()
+    public async Task Run_OlderThanRetention_AreDeleted()
     {
         await using var db = InMemoryDb();
         var user = Guid.NewGuid();
@@ -39,7 +39,7 @@ public class AgentConversationRetentionTests
     }
 
     [HumansFact]
-    public async Task Records_the_run_even_when_nothing_was_deleted()
+    public async Task Run_NothingDeleted_IsStillRecorded()
     {
         // The admin status panel needs the timestamp to show the job is alive; a purge that
         // deletes nothing is the normal case on most nights.

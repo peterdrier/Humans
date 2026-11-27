@@ -8,7 +8,7 @@ namespace Humans.Calendar.Tests.Contracts;
 public sealed class CalendarRecurrenceTests
 {
     [HumansFact]
-    public void A_weekly_rule_keeps_its_local_time_across_daylight_saving()
+    public void Expand_WeeklyAcrossDaylightSaving_KeepsLocalTime()
     {
         // 19:00 Madrid is 17:00Z in summer and 18:00Z after the clocks go back on 25 October.
         var first = Instant.FromUtc(2026, 10, 20, 17, 0);
@@ -20,7 +20,7 @@ public sealed class CalendarRecurrenceTests
     }
 
     [HumansFact]
-    public void A_one_off_item_is_its_own_occurrence_only_inside_the_window()
+    public void Expand_OneOffOutsideWindow_HasNoOccurrence()
     {
         var start = Instant.FromUtc(2026, 6, 2, 10, 0);
         var end = start.Plus(Duration.FromHours(1));

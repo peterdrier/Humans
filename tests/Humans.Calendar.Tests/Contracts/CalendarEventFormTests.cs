@@ -14,7 +14,7 @@ public sealed class CalendarEventFormTests
     private static readonly IStringLocalizer<CalendarResource> Localizer = CreateLocalizer();
 
     [HumansFact]
-    public void Timed_fields_are_read_in_the_chosen_zone()
+    public void Resolve_TimedFields_UseChosenZone()
     {
         var form = Timed("Europe/Madrid", new LocalTime(19, 0), new LocalTime(20, 0));
 
@@ -26,7 +26,7 @@ public sealed class CalendarEventFormTests
     }
 
     [HumansFact]
-    public void SetTimed_round_trips_through_Resolve()
+    public void SetTimed_ThenResolve_RoundTrips()
     {
         var zone = DateTimeZoneProviders.Tzdb["America/New_York"];
         var start = Instant.FromUtc(2026, 11, 3, 23, 30);
@@ -42,7 +42,7 @@ public sealed class CalendarEventFormTests
     [HumansTheory]
     [InlineData(false)]
     [InlineData(true)]
-    public void Timed_fields_outside_the_instant_range_are_validation_errors(bool endOnly)
+    public void Resolve_TimedFieldsOutOfRange_AreErrors(bool endOnly)
     {
         var form = Timed("America/Los_Angeles", new LocalTime(23, 0), new LocalTime(23, 30));
         if (!endOnly) form.StartDate = LocalDate.MaxIsoValue;
@@ -56,7 +56,7 @@ public sealed class CalendarEventFormTests
     }
 
     [HumansFact]
-    public void An_end_before_the_start_is_a_field_error()
+    public void Resolve_EndBeforeStart_IsFieldError()
     {
         var form = Timed("UTC", new LocalTime(11, 0), new LocalTime(10, 0));
         var modelState = new ModelStateDictionary();
@@ -68,7 +68,7 @@ public sealed class CalendarEventFormTests
     }
 
     [HumansFact]
-    public void All_day_is_ignored_when_the_host_does_not_support_it()
+    public void Resolve_AllDayUnsupported_IsIgnored()
     {
         var form = Timed("UTC", new LocalTime(10, 0), new LocalTime(11, 0));
         form.IsAllDay = true;
@@ -83,7 +83,7 @@ public sealed class CalendarEventFormTests
     [HumansTheory]
     [InlineData(true, "FREQ=WEEKLY", "UTC")]
     [InlineData(false, null, null)]
-    public void Recurrence_resolves_only_when_the_host_supports_it(bool supported, string? rule, string? zone)
+    public void Resolve_RecurrenceUnsupported_IsIgnored(bool supported, string? rule, string? zone)
     {
         var form = Timed("UTC", new LocalTime(10, 0), new LocalTime(11, 0));
         form.Recurrence = supported;
@@ -97,7 +97,7 @@ public sealed class CalendarEventFormTests
     }
 
     [HumansFact]
-    public void An_invalid_rule_is_a_field_error()
+    public void Resolve_InvalidRule_IsFieldError()
     {
         var form = Timed("UTC", new LocalTime(10, 0), new LocalTime(11, 0));
         form.IsRecurring = true;
