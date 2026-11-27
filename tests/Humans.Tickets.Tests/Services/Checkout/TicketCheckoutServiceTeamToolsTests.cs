@@ -13,7 +13,7 @@ using Xunit;
 
 namespace Humans.Tickets.Tests.Services.Checkout;
 
-public sealed partial class TicketCheckoutServiceTests
+public sealed class TicketCheckoutServiceTeamToolsTests : CheckoutServiceFixture
 {
     [HumansFact]
     public async Task Void_with_a_refund_refunds_first_then_voids_and_says_so()
