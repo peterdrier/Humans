@@ -63,8 +63,9 @@ internal interface ITicketCheckoutService : ITicketingPlatformEvents
 
     Task<TicketCheckoutTicket?> GetTicketAsync(Guid id, CancellationToken ct = default);
 
-    /// <summary>Appends a ticket delivery step (emailed, resent, skipped) to the order's timeline.</summary>
-    Task RecordDeliveryAsync(Guid orderId, TicketCheckoutOrderEventKind kind, string detail, Guid? actorUserId, CancellationToken ct = default);
+    /// <summary>Appends a delivery step; a resale offer is marked notified only after its email reaches the outbox.</summary>
+    Task RecordDeliveryAsync(Guid orderId, TicketCheckoutOrderEventKind kind, string detail, Guid? actorUserId,
+        CancellationToken ct = default, Guid? resaleOfferId = null);
 
     /// <summary>Every ticket the person holds or held, any event and state, newest first.</summary>
     Task<IReadOnlyList<TicketCheckoutTicket>> GetTicketsForHolderAsync(Guid userId, CancellationToken ct = default);

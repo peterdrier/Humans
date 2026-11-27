@@ -930,6 +930,81 @@ public sealed partial class TicketCheckoutServiceTests
     }
 
     [HumansFact]
+    public async Task ReconcileOpenOrdersAsync_SoldNoticeHandoffFails_Retries()
+    {
+        var old = await OfferedTicketAsync();
+        _delivery.ResaleSoldAsync(old.Id, Arg.Any<long>(), Arg.Any<CancellationToken>())
+            .Returns(_ => throw new InvalidOperationException("queue down"), _ => Task.CompletedTask);
+        await BuyAndPayAsync(Buy(), _otherBuyerId);
+
+        await _service.ReconcileOpenOrdersAsync(Ct);
+
+        await _delivery.Received(2).ResaleSoldAsync(old.Id, 22500, Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
+    public async Task ReconcileOpenOrdersAsync_UnsoldJobQueued_RetainsPendingNotice()
+    {
+        var old = await OfferedTicketAsync();
+        _ticketing.Mode = TicketSalesMode.Closed;
+
+        await _service.ReconcileOpenOrdersAsync(Ct);
+        _repo.Offers.Single().UnsoldNotifiedAt.Should().BeNull();
+        await _service.ReconcileOpenOrdersAsync(Ct);
+
+        await _delivery.Received(2).ResaleUnsoldAsync(old.Id, Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
+    public async Task RecordDeliveryAsync_SoldOutboxAccepted_CompletesNotice()
+    {
+        var old = await OfferedTicketAsync();
+        await BuyAndPayAsync(Buy(), _otherBuyerId);
+        var offer = _repo.Offers.Single();
+        offer.SoldNotificationPending.Should().BeTrue();
+        _delivery.ClearReceivedCalls();
+        await _service.ReconcileOpenOrdersAsync(Ct);
+        await _delivery.Received(1).ResaleSoldAsync(old.Id, 22500, Arg.Any<CancellationToken>());
+
+        await _service.RecordDeliveryAsync(old.OrderId, TicketCheckoutOrderEventKind.ResaleSold, "Notice queued", null, Ct, offer.Id);
+        await _service.RecordDeliveryAsync(old.OrderId, TicketCheckoutOrderEventKind.ResaleSold, "Notice queued", null, Ct, offer.Id);
+        offer.SoldNotificationPending.Should().BeFalse();
+        _delivery.ClearReceivedCalls();
+        await _service.ReconcileOpenOrdersAsync(Ct);
+
+        await _delivery.DidNotReceive().ResaleSoldAsync(Arg.Any<Guid>(), Arg.Any<long>(), Arg.Any<CancellationToken>());
+        _repo.Events.Count(e => e.Kind == TicketCheckoutOrderEventKind.ResaleSold && string.Equals(e.Detail, "Notice queued", StringComparison.Ordinal)).Should().Be(1);
+    }
+
+    [HumansFact]
+    public async Task ReconcileOpenOrdersAsync_SaleInterrupted_RecoversNotice()
+    {
+        var old = await OfferedTicketAsync();
+        _repo.RejectEventKind = TicketCheckoutOrderEventKind.ResaleSold;
+        var pay = () => BuyAndPayAsync(Buy(), _otherBuyerId);
+        await pay.Should().ThrowAsync<InvalidOperationException>().WithMessage("Timeline write failed");
+        _repo.Offers.Single().SoldNotificationPending.Should().BeTrue();
+        _repo.RejectEventKind = null;
+
+        await _service.ReconcileOpenOrdersAsync(Ct);
+
+        await _delivery.Received(1).ResaleSoldAsync(old.Id, 22500, Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
+    public async Task ReconcileOpenOrdersAsync_LegacySoldNotice_DoesNotBackfill()
+    {
+        await OfferedTicketAsync();
+        await BuyAndPayAsync(Buy(), _otherBuyerId);
+        _repo.Offers.Single().SoldNotificationPending = null;
+        _delivery.ClearReceivedCalls();
+
+        await _service.ReconcileOpenOrdersAsync(Ct);
+
+        await _delivery.DidNotReceive().ResaleSoldAsync(Arg.Any<Guid>(), Arg.Any<long>(), Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
     public async Task At_sales_close_the_holder_of_an_unsold_offer_is_told_once()
     {
         var old = await OfferedTicketAsync();
@@ -938,6 +1013,8 @@ public sealed partial class TicketCheckoutServiceTests
 
         _ticketing.Mode = TicketSalesMode.Closed;
         await _service.ReconcileOpenOrdersAsync(Ct);
+        await _service.RecordDeliveryAsync(old.OrderId, TicketCheckoutOrderEventKind.ResaleUnsold, "Notice queued", null, Ct,
+            _repo.Offers.Single().Id);
         await _service.ReconcileOpenOrdersAsync(Ct);
 
         await _delivery.Received(1).ResaleUnsoldAsync(old.Id, Arg.Any<CancellationToken>());
@@ -957,6 +1034,8 @@ public sealed partial class TicketCheckoutServiceTests
         await _service.ReconcileOpenOrdersAsync(Ct);
         _repo.Offers.Single().UnsoldNotifiedAt.Should().BeNull();
         await _service.ReconcileOpenOrdersAsync(Ct);
+        await _service.RecordDeliveryAsync(old.OrderId, TicketCheckoutOrderEventKind.ResaleUnsold, "Notice queued", null, Ct,
+            _repo.Offers.Single().Id);
         await _service.ReconcileOpenOrdersAsync(Ct);
 
         await _delivery.Received(2).ResaleUnsoldAsync(old.Id, Arg.Any<CancellationToken>());
@@ -3587,9 +3666,13 @@ public sealed partial class TicketCheckoutServiceTests
 
         public List<TicketCheckoutOrderEvent> Events { get; } = [];
 
+        public TicketCheckoutOrderEventKind? RejectEventKind { get; set; }
+
         public Task AddOrderEventAsync(TicketCheckoutOrderEvent orderEvent, CancellationToken ct = default)
         {
             ct.ThrowIfCancellationRequested();
+            if (orderEvent.Kind == RejectEventKind)
+                throw new InvalidOperationException("Timeline write failed");
             Events.Add(orderEvent);
             return Task.CompletedTask;
         }

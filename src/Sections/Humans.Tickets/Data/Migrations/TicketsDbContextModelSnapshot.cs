@@ -399,6 +399,9 @@ namespace Humans.Tickets.Data.Migrations
                     b.Property<Instant?>("SoldAt")
                         .HasColumnType("timestamp with time zone");
 
+                    b.Property<bool?>("SoldNotificationPending")
+                        .HasColumnType("boolean");
+
                     b.Property<Guid?>("SoldToOrderId")
                         .HasColumnType("uuid");
 

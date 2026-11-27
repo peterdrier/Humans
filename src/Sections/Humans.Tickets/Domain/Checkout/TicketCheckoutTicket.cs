@@ -109,6 +109,9 @@ internal sealed class TicketResaleOffer
 
     public Instant? SoldAt { get; set; }
 
+    /// <summary>True until the sold notice reaches the email outbox; null for legacy offers without a delivery intent.</summary>
+    public bool? SoldNotificationPending { get; set; }
+
     public Instant? WithdrawnAt { get; set; }
 
     /// <summary>The holder's refund once the evening batch requested it.</summary>

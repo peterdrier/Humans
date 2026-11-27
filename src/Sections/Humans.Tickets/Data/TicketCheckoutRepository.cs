@@ -372,10 +372,12 @@ internal sealed class TicketCheckoutRepository(IDbContextFactory<TicketsDbContex
             changed++;
         }
         foreach (var offer in (await ctx.TicketResaleOffers.ToListAsync(ct))
-                     .Where(o => o.Invites.Count > 0
-                                 && (o.HolderUserId == userId || o.Invites.Any(i => addresses.Contains(i.Email)))))
+                     .Where(o => (o.HolderUserId == userId && (o.Invites.Count > 0 || o.SoldNotificationPending is not null))
+                                 || o.Invites.Any(i => addresses.Contains(i.Email))))
         {
             offer.Invites = offer.HolderUserId == userId ? [] : offer.Invites.Where(i => !addresses.Contains(i.Email)).ToList();
+            if (offer.HolderUserId == userId)
+                offer.SoldNotificationPending = null;
             ctx.TicketResaleOffers.Update(offer);
             changed++;
         }

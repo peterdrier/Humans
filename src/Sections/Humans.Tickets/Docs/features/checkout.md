@@ -226,6 +226,10 @@ addresses were typed. Directed resale links buy only the buyer's own ticket.
   never resold alone (Peter, 2026-11-22).
 - When the buyer's order is paid, the offer is sold, the old ticket becomes `Resold`, the old adult's children are
   voided in the same repository commit, the buyer gets a new ticket, and the holder is told it sold (`ticket_resale_sold`).
+  A nullable pending intent is saved with each new sale. Reconciliation retries the notice until the email reaches
+  the outbox and its audit entry is written, using the same delivery ID throughout. A failed enqueue or interrupted
+  delivery job leaves the intent pending. Legacy sold offers without an intent are not backfilled. Unsold notices
+  use the same outbox completion boundary before setting `UnsoldNotifiedAt`.
 - **Evening refund batch** (`TicketResaleRefundJob`, daily 19:00 UTC, H11): the holder is refunded what they paid
   (adult plus children) through the original order's platform, once the buyer's order has held for 12 hours, under the
   offer's id so a repeat finds the same refund and a call that threw is retried. Both orders are read from their

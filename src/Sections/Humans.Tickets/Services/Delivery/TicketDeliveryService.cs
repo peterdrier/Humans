@@ -151,12 +151,19 @@ internal sealed class TicketDeliveryService(
     {
         if (await HolderMailAsync(ticketId, TicketCheckoutTicketState.Resold, ct) is not { } to)
             return;
+        var offer = (await checkout.GetOffersForSettingsAsync(to.Ticket.TicketingSettingsId, ct))
+            .FirstOrDefault(o => o.TicketId == ticketId && o.State == TicketResaleOfferState.Sold);
+        if (offer?.SoldNotificationPending == false)
+            return;
         await email.SendAsync(emails.ResaleSold(
             to.UserId, to.Email, to.Ticket.HolderName, to.EventName, refundMinor, new Uri($"{BaseUrl}/Tickets/Buy/Mine"),
             DeliveryIdFor("ticket_resale_sold", ticketId), to.Culture), ct);
         await auditLog.LogAsync(TicketsAuditActions.TicketHolderNotified, TicketCheckoutService.AuditEntityType, to.Ticket.OrderId,
             $"Told the holder ticket {to.Ticket.Barcode} was resold and its refund follows in the evening batch", JobName,
             to.UserId, AuditSubjectTypes.User);
+        if (offer is not null)
+            await checkout.RecordDeliveryAsync(to.Ticket.OrderId, TicketCheckoutOrderEventKind.ResaleSold,
+                $"Resale sold notice queued for ticket {to.Ticket.Barcode}", null, ct, offer.Id);
     }
 
     /// <summary>The holder whose ticket was still in the resale queue at sales close.</summary>
@@ -164,12 +171,20 @@ internal sealed class TicketDeliveryService(
     {
         if (await HolderMailAsync(ticketId, TicketCheckoutTicketState.Offered, ct) is not { } to)
             return;
+        var offer = (await checkout.GetOffersForSettingsAsync(to.Ticket.TicketingSettingsId, ct))
+            .FirstOrDefault(o => o.TicketId == ticketId && o.State == TicketResaleOfferState.Open);
+        if (offer?.UnsoldNotifiedAt is not null)
+            return;
         await email.SendAsync(emails.ResaleUnsold(
             to.UserId, to.Email, to.Ticket.HolderName, to.EventName, new Uri($"{BaseUrl}/Tickets/Buy/Mine"),
             DeliveryIdFor("ticket_resale_unsold", ticketId), to.Culture), ct);
         await auditLog.LogAsync(TicketsAuditActions.TicketHolderNotified, TicketCheckoutService.AuditEntityType, to.Ticket.OrderId,
             $"Told the holder ticket {to.Ticket.Barcode} did not sell before sales closed: no refund, the ticket stays valid", JobName,
             to.UserId, AuditSubjectTypes.User);
+        if (offer is not null)
+            await checkout.RecordDeliveryAsync(to.Ticket.OrderId, TicketCheckoutOrderEventKind.ResaleUnsold,
+                $"Sales closed with ticket {to.Ticket.Barcode} unsold: no refund; its notice is queued and the ticket still admits its holder",
+                null, ct, offer.Id);
     }
 
     /// <summary>A renamed ticket goes to its holder again under the new name, with any children riding on it.</summary>

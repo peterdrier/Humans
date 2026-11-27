@@ -368,6 +368,39 @@ public sealed class TicketDeliveryServiceTests
         _sent[1].HtmlBody.Should().Contain("225,00 €");
     }
 
+    [HumansTheory]
+    [Xunit.InlineData(false)]
+    [Xunit.InlineData(true)]
+    public async Task SendResaleNoticeAsync_OutboxFails_DoesNotComplete(bool sold)
+    {
+        var ticket = Ticket(PartnerId, "Ben Partner", "ben@example.com",
+            sold ? TicketCheckoutTicketState.Resold : TicketCheckoutTicketState.Offered);
+        var offer = new TicketResaleOffer
+        {
+            Id = Guid.NewGuid(),
+            TicketId = ticket.Id,
+            State = sold ? TicketResaleOfferState.Sold : TicketResaleOfferState.Open,
+            SoldNotificationPending = sold ? true : null,
+        };
+        _checkout.GetTicketAsync(ticket.Id, Arg.Any<CancellationToken>()).Returns(ticket);
+        _checkout.GetOffersForSettingsAsync(ticket.TicketingSettingsId, Arg.Any<CancellationToken>()).Returns([offer]);
+        _email.SendAsync(Arg.Any<EmailMessage>(), Arg.Any<CancellationToken>())
+            .Returns(_ => throw new InvalidOperationException("Outbox unavailable"), _ => Task.CompletedTask);
+        var service = Create();
+        Func<Task> send = () => sold ? service.SendResaleSoldAsync(ticket.Id, 22500) : service.SendResaleUnsoldAsync(ticket.Id);
+
+        await send.Should().ThrowAsync<InvalidOperationException>().WithMessage("Outbox unavailable");
+        await _checkout.DidNotReceive().RecordDeliveryAsync(Arg.Any<Guid>(), Arg.Any<TicketCheckoutOrderEventKind>(),
+            Arg.Any<string>(), Arg.Any<Guid?>(), Arg.Any<CancellationToken>(), Arg.Any<Guid?>());
+        await send();
+
+        await _checkout.Received(1).RecordDeliveryAsync(ticket.OrderId,
+            sold ? TicketCheckoutOrderEventKind.ResaleSold : TicketCheckoutOrderEventKind.ResaleUnsold,
+            Arg.Any<string>(), null, Arg.Any<CancellationToken>(), offer.Id);
+        _sent.Select(m => m.DeliveryId).Distinct().Should().ContainSingle()
+            .Which.Should().Be(TicketDeliveryService.DeliveryIdFor(sold ? "ticket_resale_sold" : "ticket_resale_unsold", ticket.Id));
+    }
+
     [HumansFact]
     public async Task RenamedTicket_IsSentToTheNewHolder_WithTheChildrenRidingOnIt()
     {

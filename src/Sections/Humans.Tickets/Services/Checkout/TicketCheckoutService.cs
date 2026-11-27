@@ -1031,6 +1031,7 @@ internal sealed partial class TicketCheckoutService(
                 WithdrawnAt = o.WithdrawnAt.ToIso8601(),
                 InvitedEmails = o.Invites.Select(i => i.Email).ToList(),
                 PendingInvitationEmails = o.Invites.Where(i => i.DeliveryPending == true).Select(i => i.Email).ToList(),
+                o.SoldNotificationPending,
                 UnsoldNotifiedAt = o.UnsoldNotifiedAt.ToIso8601(),
             }).ToList()),
             new UserDataSlice(CompanionRequestsSlice, companionRequests.Select(r => new

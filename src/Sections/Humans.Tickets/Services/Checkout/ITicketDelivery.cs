@@ -5,7 +5,8 @@ namespace Humans.Tickets.Services.Checkout;
 /// or holder is mailed about. Registered implementations run in turn; one that throws is logged and never undoes the
 /// change. The reconcile job tells <see cref="TicketsIssuedAsync"/> again, every run for up to seven days, until the
 /// order's timeline has a <c>TicketsEmailed</c> or <c>TicketMailSkipped</c> row: an implementation must dedupe a repeat
-/// and must record one of those two rows once it is done. The other calls come once per moment.
+/// and must record one of those two rows once it is done. Resale notices also repeat until their outbox handoff is
+/// recorded through checkout; implementations must dedupe them. The other calls come once per moment.
 /// </summary>
 internal interface ITicketDelivery
 {

@@ -169,6 +169,25 @@ public sealed class TicketCheckoutRepositoryTests
         storedOrder.Lines[0].HolderUserId.Should().Be(storedTicket.HolderUserId);
     }
 
+    [HumansFact]
+    public async Task UpdateOfferAsync_SoldNoticeIntent_PersistsThenErases()
+    {
+        var options = new DbContextOptionsBuilder<TicketsDbContext>()
+            .UseInMemoryDatabase(Guid.NewGuid().ToString()).Options;
+        var repository = new TicketCheckoutRepository(new TestDbContextFactory<TicketsDbContext>(options));
+        var holder = Guid.NewGuid();
+        var offer = new TicketResaleOffer { Id = Guid.NewGuid(), HolderUserId = holder, SoldNotificationPending = true };
+        await repository.AddOfferAsync(offer, Xunit.TestContext.Current.CancellationToken);
+        (await repository.GetOfferAsync(offer.Id, Xunit.TestContext.Current.CancellationToken))!.SoldNotificationPending.Should().BeTrue();
+        offer.SoldNotificationPending = false;
+        await repository.UpdateOfferAsync(offer, Xunit.TestContext.Current.CancellationToken);
+        (await repository.GetOfferAsync(offer.Id, Xunit.TestContext.Current.CancellationToken))!.SoldNotificationPending.Should().BeFalse();
+
+        await repository.ErasePiiForUserAsync(holder, [], Xunit.TestContext.Current.CancellationToken);
+
+        (await repository.GetOfferAsync(offer.Id, Xunit.TestContext.Current.CancellationToken))!.SoldNotificationPending.Should().BeNull();
+    }
+
     private sealed class RejectTicketUpdate : SaveChangesInterceptor
     {
         public bool Reject { get; set; }
