@@ -38,7 +38,7 @@ public class ServiceStripeReconciliationTests
         _repo.GetProductsByIdsAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
             .Returns(new List<Product>());
         _service = new Service(
-            _repo, _audit, Substitute.For<IAuditViewerService>(), _campService, _teams, _clock, _shifts, _stripe,
+            _repo, _audit, Substitute.For<IAuditViewerService>(), _campService, _teams, Substitute.For<Humans.Permissions.Contracts.IPermissionService>(), _clock, _shifts, _stripe,
             new CatalogService(_repo, _audit, _clock, _holded, NullLogger<CatalogService>.Instance), NullLogger<Service>.Instance);
     }
 

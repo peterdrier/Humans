@@ -34,7 +34,7 @@ public class SummaryAggregateTests
         _teams.GetTeamsAsync(Arg.Any<CancellationToken>())
             .Returns(new Dictionary<Guid, TeamInfo>());
         _service = new Service(
-            _repo, _audit, Substitute.For<IAuditViewerService>(), _camps, _teams, _clock, _shifts, _stripe,
+            _repo, _audit, Substitute.For<IAuditViewerService>(), _camps, _teams, Substitute.For<Humans.Permissions.Contracts.IPermissionService>(), _clock, _shifts, _stripe,
             new CatalogService(_repo, _audit, _clock, _holded, NullLogger<CatalogService>.Instance), NullLogger<Service>.Instance);
     }
 
