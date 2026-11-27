@@ -25,7 +25,7 @@ public class HoldedClientReadTests
             new FakeClock(Instant.FromUtc(2026, 8, 10, 12, 0)), zone ?? FixedOrgTimeZone.Madrid);
 
     [HumansFact]
-    public async Task ListExpenseAccounts_reads_identity_without_parsing_unused_name()
+    public async Task ListExpenseAccounts_UnusedName_IsNotParsed()
     {
         var json = """{"items":[{"id":"a1","name":42,"account_num":62900000.0,"archived":false}],"cursor":null,"has_more":false}""";
         var handler = new StubHandler(_ => Respond(HttpStatusCode.OK, json));
@@ -49,7 +49,7 @@ public class HoldedClientReadTests
     [Xunit.InlineData("chart", "id", "null")]
     [Xunit.InlineData("chart", "id", "empty")]
     [Xunit.InlineData("chart", "id", "whitespace")]
-    public async Task Account_reads_refuse_missing_identity(string endpoint, string field, string shape)
+    public async Task AccountReads_MissingIdentity_IsRefused(string endpoint, string field, string shape)
     {
         var body = JsonNode.Parse("""
             {"items":[{"id":"a1","name":"Capital","account_num":62900000,"number":10000000,
@@ -80,7 +80,7 @@ public class HoldedClientReadTests
     [Xunit.InlineData("ledger", "entry_number", 2064.5)]
     [Xunit.InlineData("ledger", "line", 2.5)]
     [Xunit.InlineData("ledger", "account", 40000004.5)]
-    public async Task Account_and_ledger_reads_refuse_fractional_identifiers(
+    public async Task AccountAndLedgerReads_FractionalIdentifier_IsRefused(
         string endpoint, string field, double value)
     {
         var body = JsonNode.Parse("""
@@ -113,7 +113,7 @@ public class HoldedClientReadTests
     }
 
     [HumansFact]
-    public async Task ListExpenseAccounts_surfaces_an_unreadable_account_as_permanent_not_a_raw_parse_throw()
+    public async Task ListExpenseAccounts_UnreadableAccount_IsPermanent()
     {
         var json = """{"items":[{"id":42,"name":"Otros servicios","account_num":62900000}],"cursor":null,"has_more":false}""";
         var client = Make(new StubHandler(_ => Respond(HttpStatusCode.OK, json)));
@@ -124,7 +124,7 @@ public class HoldedClientReadTests
     }
 
     [HumansFact]
-    public async Task ListPurchaseDocuments_parses_lines_account_and_tags()
+    public async Task ListPurchaseDocuments_Lines_ParseAccountWithTags()
     {
         var json = """
         {"items":[
@@ -161,7 +161,7 @@ public class HoldedClientReadTests
     }
 
     [HumansFact]
-    public async Task ListPurchaseDocuments_reads_dates_in_the_org_zone()
+    public async Task ListPurchaseDocuments_Dates_UseOrgZone()
     {
         var json = """{"items":[{"id":"doc-1","document_number":"F001","contact_name":"Alice","date":"2026-05-14","subtotal":"1.00","tax":"0.00","total":"1.00","payments_pending":"0.00","currency":"eur","lines":[]}],"cursor":null,"has_more":false}""";
         var lisbon = DateTimeZoneProviders.Tzdb["Europe/Lisbon"];
@@ -173,7 +173,7 @@ public class HoldedClientReadTests
     }
 
     [HumansFact]
-    public async Task ListPurchaseDocuments_warns_on_a_foreign_currency_and_still_reads_every_doc()
+    public async Task ListPurchaseDocuments_ForeignCurrency_StillReadsDocs()
     {
         var json = """
         {"items":[
@@ -200,7 +200,7 @@ public class HoldedClientReadTests
     [Xunit.InlineData("id", " ", true)]
     [Xunit.InlineData("payments_pending", null, false)]
     [Xunit.InlineData("payments_pending", null, true)]
-    public async Task ListPurchaseDocuments_refuses_missing_or_blank_required_fields(
+    public async Task ListPurchaseDocuments_MissingRequiredField_IsRefused(
         string field, string? value, bool present)
     {
         var doc = JsonNode.Parse("""{"id":"doc-1","date":"2026-05-14","total":"121.00","payments_pending":"121.00","draft":false}""")!.AsObject();
@@ -215,7 +215,7 @@ public class HoldedClientReadTests
     }
 
     [HumansFact]
-    public async Task ListPurchaseDocuments_puts_limit_in_query_string()
+    public async Task ListPurchaseDocuments_Limit_IsInQueryString()
     {
         string? capturedQuery = null;
         var handler = new StubHandler(req =>
@@ -231,7 +231,7 @@ public class HoldedClientReadTests
     }
 
     [HumansFact]
-    public async Task ListPurchaseDocuments_treats_a_non_array_lines_as_no_lines()
+    public async Task ListPurchaseDocuments_NonArrayLines_HasNoLines()
     {
         // Holded sends an absent sub-record as an empty array and is equally free to send an
         // absent collection as something other than an array; AsArray() throws on both.
@@ -247,7 +247,7 @@ public class HoldedClientReadTests
     }
 
     [HumansFact]
-    public async Task ListPurchaseDocuments_surfaces_an_unreadable_doc_as_permanent_not_a_raw_parse_throw()
+    public async Task ListPurchaseDocuments_UnreadableDoc_IsPermanent()
     {
         // Callers handle only IHoldedClient's two typed exceptions; a raw parse throw from a bad
         // stored value would escape the client and leak an Infrastructure detail upward.
@@ -260,7 +260,7 @@ public class HoldedClientReadTests
     }
 
     [HumansFact]
-    public async Task ListPurchaseDocuments_parses_the_internal_description()
+    public async Task ListPurchaseDocuments_InternalDescription_IsParsed()
     {
         var json = """
         {"items":[
@@ -277,7 +277,7 @@ public class HoldedClientReadTests
     }
 
     [HumansFact]
-    public async Task ListPurchaseDocuments_parses_the_draft_flag()
+    public async Task ListPurchaseDocuments_DraftFlag_IsParsed()
     {
         // Neither ?approval_status=draft nor ?draft=true reliably filters the live list endpoint
         // (verified live, 2026-08-25), so approval state is read from each item's own `draft`
@@ -300,7 +300,7 @@ public class HoldedClientReadTests
     }
 
     [HumansFact]
-    public async Task ListLedgerEntries_parses_ddMMyyyy_dates_and_string_decimals()
+    public async Task ListLedgerEntries_Line_ParsesDateWithDecimals()
     {
         var json = """
         {"items":[{"id":"68f0c1a2b3c4d5e6f7a8b9c0","entry_number":2064.0,"line":2.0,"date":"09/02/2026",
@@ -332,7 +332,7 @@ public class HoldedClientReadTests
     }
 
     [HumansFact]
-    public async Task ListLedgerEntries_follows_cursor_until_has_more_false()
+    public async Task ListLedgerEntries_HasMore_FollowsCursor()
     {
         var callCount = 0;
         string? secondQuery = null;
@@ -366,7 +366,7 @@ public class HoldedClientReadTests
     }
 
     [HumansFact]
-    public async Task ListLedgerEntries_throws_when_page_cap_hit()
+    public async Task ListLedgerEntries_PageCapHit_Throws()
     {
         // A truncated fetch here would drive replace-semantics reconciliation to delete rows that
         // still exist in Holded — lossy becomes destructive, so the cap must throw, never log-and-return.
@@ -390,7 +390,7 @@ public class HoldedClientReadTests
     [HumansTheory]
     [Xunit.InlineData(false)]
     [Xunit.InlineData(true)]
-    public async Task ListLedgerEntries_rejects_repeated_cursors_before_refetching_pages(bool cycle)
+    public async Task ListLedgerEntries_RepeatedCursor_IsRejected(bool cycle)
     {
         var callCount = 0;
         var handler = new StubHandler(_ =>
@@ -413,7 +413,7 @@ public class HoldedClientReadTests
     }
 
     [HumansFact]
-    public async Task ListLedgerEntries_throws_when_has_more_carries_no_cursor()
+    public async Task ListLedgerEntries_HasMoreNoCursor_Throws()
     {
         // The page cannot be followed, and the prefix cannot be returned: the same replace
         // semantics as the cap case turn a short read into a delete of rows Holded still has.
@@ -437,7 +437,7 @@ public class HoldedClientReadTests
     [HumansTheory]
     [Xunit.InlineData("""{"status":0,"info":"Not allowed"}""")]
     [Xunit.InlineData("""{"items":null,"cursor":null,"has_more":false}""")]
-    public async Task ListLedgerEntries_refuses_a_200_without_an_items_array(string body)
+    public async Task ListLedgerEntries_NoItemsArray_IsRefused(string body)
     {
         // Read leniently, this is an empty page, and an empty window deletes every cached line in it.
         var client = Make(new StubHandler(_ => Respond(HttpStatusCode.OK, body)));
@@ -452,7 +452,7 @@ public class HoldedClientReadTests
     [HumansTheory]
     [Xunit.InlineData(false)]
     [Xunit.InlineData(true)]
-    public async Task ListLedgerEntries_masks_error_body_before_truncating_the_preview(bool escaped)
+    public async Task ListLedgerEntries_ErrorBody_IsMaskedBeforeTruncating(bool escaped)
     {
         var info = escaped
             ? "invalid iban E S 9 1 2100\u00a00418\n4502 0005 1332"
@@ -470,7 +470,7 @@ public class HoldedClientReadTests
     }
 
     [HumansFact]
-    public async Task ListLedgerEntries_refuses_a_page_with_a_null_item()
+    public async Task ListLedgerEntries_NullItem_IsRefused()
     {
         var client = Make(new StubHandler(_ => Respond(HttpStatusCode.OK, """
             {"items":[{"id":"68f0c1a2b3c4d5e6f7a8b9c1","entry_number":1,"line":1,"date":"01/01/2026","account":40000004,
@@ -486,7 +486,7 @@ public class HoldedClientReadTests
     }
 
     [HumansFact]
-    public async Task ListLedgerEntries_refuses_the_page_when_an_amount_is_absent()
+    public async Task ListLedgerEntries_AbsentAmount_IsRefused()
     {
         // An absent debit/credit must not read as 0.00: replace semantics would overwrite the
         // cached line's real amount and still report the sweep as a success.
@@ -503,7 +503,7 @@ public class HoldedClientReadTests
     }
 
     [HumansFact]
-    public async Task ListLedgerEntries_passes_account_filter()
+    public async Task ListLedgerEntries_AccountFilter_IsPassed()
     {
         string? capturedQuery = null;
         var handler = new StubHandler(req =>
@@ -521,7 +521,7 @@ public class HoldedClientReadTests
     }
 
     [HumansFact]
-    public async Task ListLedgerEntries_sends_end_date_one_day_past_the_inclusive_to()
+    public async Task ListLedgerEntries_InclusiveTo_SendsNextDay()
     {
         // end_date is exclusive on the live API (probed 2026-08-25: an entry dated 25/08/2026 is
         // absent with end_date=2026-08-25, present with end_date=2026-08-26), so the request must
@@ -542,7 +542,7 @@ public class HoldedClientReadTests
     }
 
     [HumansFact]
-    public async Task ListLedgerEntries_surfaces_an_unreadable_line_as_permanent_not_a_raw_parse_throw()
+    public async Task ListLedgerEntries_UnreadableLine_IsPermanent()
     {
         // Fail the page rather than drop the line: creditor and account balances are summed from
         // these debits and credits, and a quietly dropped line reads as a settled entry that never happened.
@@ -557,7 +557,7 @@ public class HoldedClientReadTests
     }
 
     [HumansFact]
-    public async Task ListAccountingAccounts_refuses_an_account_with_no_number()
+    public async Task ListAccountingAccounts_NoNumber_IsRefused()
     {
         // The number is the account's identity: it keys the mirror, picks the PGC group and drives
         // the POV flip. Reading an absent one as 0 put an "Unclassified", sign-flipped phantom on
@@ -580,7 +580,7 @@ public class HoldedClientReadTests
     [Xunit.InlineData("credit", true)]
     [Xunit.InlineData("balance", false)]
     [Xunit.InlineData("balance", true)]
-    public async Task ListAccountingAccounts_refuses_missing_totals(string field, bool explicitNull)
+    public async Task ListAccountingAccounts_MissingTotals_IsRefused(string field, bool explicitNull)
     {
         var body = JsonNode.Parse("""
             {"items":[{"id":"a1","number":10000000,"name":"Capital",
@@ -601,7 +601,7 @@ public class HoldedClientReadTests
     }
 
     [HumansFact]
-    public async Task ListAccountingAccounts_parses_totals()
+    public async Task ListAccountingAccounts_Account_ParsesTotals()
     {
         var json = """
         {"items":[{"id":"a1","color":"#fff","number":10000000.0,"name":"Capital",
@@ -628,7 +628,7 @@ public class HoldedClientReadTests
     [HumansTheory]
     [Xunit.InlineData(0L)]
     [Xunit.InlineData(36L)]
-    public async Task GetUsage_parses_period_and_usage(long count)
+    public async Task GetUsage_Reading_ParsesPeriodWithUsage(long count)
     {
         var json = $$"""
         {"type":"automation_token","period":"2026-08","usage":{{count}},"limit":2000000,
@@ -648,7 +648,7 @@ public class HoldedClientReadTests
     [Xunit.InlineData("{\"period\":\"2026-08\",\"usage\":null}")]
     [Xunit.InlineData("{\"usage\":36}")]
     [Xunit.InlineData("{\"status\":0,\"message\":\"error\"}")]
-    public async Task GetUsage_rejects_incomplete_readings(string json)
+    public async Task GetUsage_IncompleteReading_IsRejected(string json)
     {
         var client = Make(new StubHandler(_ => Respond(HttpStatusCode.OK, json)));
 
@@ -658,7 +658,7 @@ public class HoldedClientReadTests
     }
 
     [HumansFact]
-    public async Task CreateExpenseAccount_posts_and_returns_id()
+    public async Task CreateExpenseAccount_Posted_ReturnsId()
     {
         string? capturedMethod = null;
         var handler = new StubHandler(req =>
@@ -675,7 +675,7 @@ public class HoldedClientReadTests
     }
 
     [HumansFact]
-    public async Task CreateExpenseAccount_surfaces_an_unreadable_response_as_permanent_not_a_raw_parse_throw()
+    public async Task CreateExpenseAccount_UnreadableResponse_IsPermanent()
     {
         var client = Make(new StubHandler(_ => Respond(HttpStatusCode.OK, "not json")));
 

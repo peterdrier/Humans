@@ -44,7 +44,7 @@ public class HoldedClientSalesDocumentTests
     [HumansTheory]
     [InlineData(HoldedSalesDocumentKind.Invoice, "/api/v2/invoices")]
     [InlineData(HoldedSalesDocumentKind.SalesReceipt, "/api/v2/sales-receipts")]
-    public async Task CreateSalesDocumentAsync_PostsExpectedJson_AndReturnsId(
+    public async Task CreateSalesDocumentAsync_Posted_ReturnsId(
         HoldedSalesDocumentKind kind, string expectedPath)
     {
         string? body = null;
@@ -76,7 +76,7 @@ public class HoldedClientSalesDocumentTests
     [HumansTheory]
     [InlineData(HoldedSalesDocumentKind.Invoice, "/api/v2/invoices?limit=200")]
     [InlineData(HoldedSalesDocumentKind.SalesReceipt, "/api/v2/sales-receipts?limit=200")]
-    public async Task FindSalesDocumentIdsByTagAsync_ReturnsOnlyTheTaggedDocuments(
+    public async Task FindSalesDocumentIdsByTagAsync_Tag_ReturnsTaggedOnly(
         HoldedSalesDocumentKind kind, string expectedPath)
     {
         // v2 has no server-side tag filter, so the whole collection is walked and matched here.
@@ -106,7 +106,7 @@ public class HoldedClientSalesDocumentTests
     [InlineData(",\"id\":null")]
     [InlineData(",\"id\":\"\"")]
     [InlineData(",\"id\":\"   \"")]
-    public async Task FindSalesDocumentIdsByTagAsync_RefusesAMatchWithNoId(string identity)
+    public async Task FindSalesDocumentIdsByTagAsync_NoId_IsRefused(string identity)
     {
         // An empty result reads as "nothing issued yet" and lets a second document be created,
         // so a match that cannot be identified must fail the search rather than be dropped.
@@ -138,7 +138,7 @@ public class HoldedClientSalesDocumentTests
     }
 
     [HumansFact]
-    public async Task GetSalesDocumentAsync_ParsesTotalsAndKeepsTheRawBody()
+    public async Task GetSalesDocumentAsync_Document_KeepsRawBody()
     {
         // Decimals arrive as strings, per the connector invariant.
         const string json = """
@@ -163,7 +163,7 @@ public class HoldedClientSalesDocumentTests
     }
 
     [HumansFact]
-    public async Task GetSalesDocumentAsync_ParsesLinesWithTheLineTaxAsAPercent()
+    public async Task GetSalesDocumentAsync_LineTax_IsPercent()
     {
         // v2 returns `lines` (not v1's `products`), every number a string. 10 x EUR 5 at 21% keeps the line's
         // rate (21) apart from the document's tax amount (10.50).
@@ -183,7 +183,7 @@ public class HoldedClientSalesDocumentTests
     }
 
     [HumansFact]
-    public async Task GetSalesDocumentAsync_ReadsAnUnreadableLineAsNoLinesWithoutFailing()
+    public async Task GetSalesDocumentAsync_UnreadableLine_HasNoLines()
     {
         // This read follows an approval; failing it would strand an approved factura.
         var logger = new CapturingLogger<HoldedClient>();

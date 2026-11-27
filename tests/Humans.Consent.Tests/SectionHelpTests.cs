@@ -13,7 +13,7 @@ public class SectionHelpTests
         ((ISectionHelp)new Section()).HelpEntries.Single(e => string.Equals(e.Key, key, StringComparison.Ordinal));
 
     [HumansFact]
-    public void Contributes_its_help_entries_in_corpus_order()
+    public void Help_Entries_AreInCorpusOrder()
     {
         ((ISectionHelp)new Section()).HelpEntries
             .Select(e => (e.Key, e.Order))
@@ -21,7 +21,7 @@ public class SectionHelpTests
     }
 
     [HumansFact]
-    public void Reads_the_consentreview_guide_and_glossary_out_of_the_assembly()
+    public void Help_ReadsConsentReviewFromAssembly()
     {
         var entry = Entry("ConsentReview");
 
@@ -32,7 +32,7 @@ public class SectionHelpTests
     }
 
     [HumansFact]
-    public void Reads_the_LegalDocuments_help_out_of_the_assembly()
+    public void Help_ReadsLegalDocumentsFromAssembly()
     {
         var entry = ((ISectionHelp)new Section()).HelpEntries
             .Single(e => string.Equals(e.Key, "LegalDocuments", StringComparison.Ordinal));

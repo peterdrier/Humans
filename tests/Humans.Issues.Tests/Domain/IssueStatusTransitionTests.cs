@@ -14,7 +14,7 @@ namespace Humans.Issues.Tests.Domain;
 public class IssueStatusTransitionTests
 {
     [HumansFact]
-    public void IsTerminal_returns_correct_value()
+    public void IsTerminal_EachStatus_MatchesRule()
     {
         IssueStatus.Triage.IsTerminal().Should().BeFalse();
         IssueStatus.Open.IsTerminal().Should().BeFalse();
@@ -27,7 +27,7 @@ public class IssueStatusTransitionTests
     private readonly IssueSectionRouting _routing = TestIssueQueues.Shipped();
 
     [HumansFact]
-    public void RolesFor_unknown_section_returns_empty()
+    public void RolesFor_UnknownSection_ReturnsEmpty()
     {
         _routing.RolesFor(null).Should().BeEmpty();
         _routing.RolesFor("UnknownSection").Should().BeEmpty();
@@ -40,7 +40,7 @@ public class IssueStatusTransitionTests
     [HumansTheory]
     [InlineData("ZSomethingElse")]
     [InlineData("Camping")]
-    public void Unclaimed_section_keys_fall_through_to_admin_only(string section)
+    public void Routing_UnclaimedSectionKey_IsAdminOnly(string section)
     {
         _routing.RolesFor(section).Should().BeEmpty();
         _routing.Resolve(section).Should().BeNull();
@@ -51,7 +51,7 @@ public class IssueStatusTransitionTests
 
     /// <summary>The table is whatever DI discovered — no section declares, no queue routes.</summary>
     [HumansFact]
-    public void Routing_is_built_from_the_contributions()
+    public void Routing_Contributions_BuildTheTable()
     {
         var routing = TestIssueQueues.Routing(
             new TestQueueOwner("Elsewhere", [TeamsRoles.TeamsAdmin]));
@@ -72,7 +72,7 @@ public class IssueStatusTransitionTests
     [HumansTheory]
     [InlineData("Profiles", UsersRoles.UsersAdmin)]
     [InlineData("Legal", ConsentRoles.ConsentAdmin)]
-    public void Renamed_sections_keep_routing_their_stored_queue_key(string section, string role)
+    public void Routing_RenamedSection_KeepsStoredQueueKey(string section, string role)
     {
         _routing.RolesFor(section).Should().Equal(role);
         _routing.Resolve(section).Should().Be(section);
@@ -81,7 +81,7 @@ public class IssueStatusTransitionTests
     }
 
     [HumansFact]
-    public void RolesFor_known_section_includes_owner_role()
+    public void RolesFor_KnownSection_IncludesOwnerRole()
     {
         _routing.RolesFor("Tickets")
             .Should().Contain(TicketsRoles.TicketsAdmin);
@@ -91,7 +91,7 @@ public class IssueStatusTransitionTests
     }
 
     [HumansFact]
-    public void SectionsForRoles_returns_sections_user_can_handle()
+    public void SectionsForRoles_WithRoles_ReturnsHandledSections()
     {
         var sections = _routing.SectionsForRoles([CampsRoles.CampsAdmin]);
 
@@ -104,7 +104,7 @@ public class IssueStatusTransitionTests
     }
 
     [HumansFact]
-    public void SectionsForRoles_empty_role_set_returns_empty()
+    public void SectionsForRoles_NoRoles_ReturnsEmpty()
     {
         var sections = _routing.SectionsForRoles([]);
         sections.Should().BeEmpty();

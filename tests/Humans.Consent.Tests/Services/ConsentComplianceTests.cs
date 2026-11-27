@@ -83,7 +83,7 @@ public sealed class ConsentComplianceTests
     [InlineData(10, 0, true)]
     [InlineData(5, 0, false)]
     [InlineData(5, 3, true)]
-    public async Task PastDeadline_AppliesTheGracePeriodAndTheReminderHorizon(
+    public async Task PastDeadline_GracePeriod_IsApplied(
         int daysSinceEffective, int horizonDays, bool expected)
     {
         var unsigned = Guid.NewGuid();
@@ -102,7 +102,7 @@ public sealed class ConsentComplianceTests
     }
 
     [HumansFact]
-    public async Task Progress_CountsVolunteersOwnTeamsAndCoordinatorsDocuments()
+    public async Task Progress_OwnTeamDocuments_AreCounted()
     {
         var userId = Guid.NewGuid();
         var teamId = Guid.NewGuid();
