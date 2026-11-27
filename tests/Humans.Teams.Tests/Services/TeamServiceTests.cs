@@ -3695,6 +3695,30 @@ public sealed class TeamServiceTests : TeamsTestHarness
         (await _service.RetireGovernanceBodyTeamsAsync(actor, ct)).Should().Be(0);
     }
 
+    [HumansFact]
+    public async Task RemoveGovernanceBodyRolesAsync_FilledSlot_DeletesRoleWithAudit()
+    {
+        var ct = TestContext.Current.CancellationToken;
+        var holder = SeedUser(displayName: "President");
+        var board = await TeamsDb.Teams.FindAsync([SystemTeamIds.Board], ct)
+            ?? SeedTeam("Board", SystemTeamType.Board, SystemTeamIds.Board);
+        var membership = SeedTeamMember(board.Id, holder.Id);
+        var role = SeedTeamRoleDefinition(board.Id, isManagement: false);
+        SeedTeamRoleAssignment(role.Id, membership.Id);
+        await SaveAllAsync(ct);
+        var actor = Guid.NewGuid();
+
+        (await _service.RemoveGovernanceBodyRolesAsync(actor, ct)).Should().Be(1);
+
+        await using var stored = await TeamsDbFactory.CreateDbContextAsync(ct);
+        (await stored.TeamRoleDefinitions.AnyAsync(d => d.TeamId == board.Id, ct)).Should().BeFalse();
+        (await stored.TeamRoleAssignments.AnyAsync(ct)).Should().BeFalse();
+        await AuditLog.Received(1).LogAsync(
+            TeamsAuditActions.TeamRoleUnassigned, nameof(TeamRoleDefinition), role.Id,
+            "Unassigned from role 'Member Role' in Board before the team was deleted", actor, holder.Id, AuditSubjectTypes.User);
+        (await _service.RemoveGovernanceBodyRolesAsync(actor, ct)).Should().Be(0);
+    }
+
     private TeamRoleDefinition SeedTeamRoleDefinition(Guid teamId, bool isManagement)
     {
         var definition = new TeamRoleDefinition
