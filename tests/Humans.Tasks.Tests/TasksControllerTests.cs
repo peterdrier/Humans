@@ -22,6 +22,7 @@ using Microsoft.AspNetCore.Mvc.ViewFeatures;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Primitives;
+using NodaTime;
 using NSubstitute;
 using Xunit;
 
@@ -622,7 +623,7 @@ public sealed class TasksControllerTests
         var important = await _kit.CreateAsync(TaskTestKit.Input(title: "Important one"));
         var critical = await _kit.CreateAsync(TaskTestKit.Input(title: "Critical one") with { Priority = SlotPriority.Critical });
 
-        var model = (await Human().Open(Ct)).Should().BeOfType<ViewResult>().Which.Model.Should().BeOfType<OpenBoardViewModel>().Which;
+        var model = (await Human().Open(new TaskRowFilter(), Ct)).Should().BeOfType<ViewResult>().Which.Model.Should().BeOfType<OpenBoardViewModel>().Which;
 
         model.Tasks.Select(t => t.Id).Should().Equal(critical.Id, asked.Id, important.Id, mine.Id);
         model.OpenSlots.Should().Be(4);
@@ -630,8 +631,152 @@ public sealed class TasksControllerTests
         model.Places[mine.Id].Should().Be(MyPlace.Confirmed);
         model.Places[asked.Id].Should().Be(MyPlace.Requested);
         new[] { hidden.Id, full.Id, finished.Id }.Should().NotIntersectWith(model.Tasks.Select(t => t.Id));
-        var asSeeAll = (await As([], RoleNames.Board).Open(Ct)).Should().BeOfType<ViewResult>().Which.Model.Should().BeOfType<OpenBoardViewModel>().Which;
+        var asSeeAll = (await As([], RoleNames.Board).Open(new TaskRowFilter(), Ct)).Should().BeOfType<ViewResult>().Which.Model.Should().BeOfType<OpenBoardViewModel>().Which;
         asSeeAll.Tasks.Select(t => t.Id).Should().Contain(hidden.Id);
+    }
+
+    private async Task<TaskInfo> TitledAsync(string title, SlotPriority priority, Guid? team = null, LocalDate? due = null) =>
+        await _kit.CreateAsync(TaskTestKit.Input(team, title, due: due is { } d ? new TaskDateInput(false, d) : null) with { Priority = priority });
+
+    private static TaskListViewModel IndexModel(IActionResult r) =>
+        r.Should().BeOfType<ViewResult>().Which.Model.Should().BeOfType<TaskListViewModel>().Which;
+
+    [HumansFact]
+    public async Task Lists_OrderRowsByPriorityThenDueDateThenTitle()
+    {
+        var niceSoon = await TitledAsync("A nice one", SlotPriority.NiceToHave, due: new LocalDate(2027, 2, 1));
+        var undated = await TitledAsync("Critical, undated", SlotPriority.Critical);
+        var late = await TitledAsync("Critical, later", SlotPriority.Critical, due: new LocalDate(2027, 4, 1));
+        var soon = await TitledAsync("Critical, sooner", SlotPriority.Critical, due: new LocalDate(2027, 3, 1));
+        var unset = await TitledAsync("No priority", SlotPriority.None, due: new LocalDate(2027, 1, 20));
+        var expected = new[] { soon.Id, late.Id, undated.Id, niceSoon.Id, unset.Id };
+
+        IndexModel(await Human().Index(new TaskListFilter(), Ct)).Tasks.Select(t => t.Id).Should().Equal(expected);
+        (await Human().Team("production", new TaskListFilter(), Ct)).Should().BeOfType<ViewResult>()
+            .Which.Model.Should().BeOfType<TeamPageViewModel>().Which.Tasks.Select(t => t.Id).Should().Equal(expected);
+        (await Human().Open(new TaskRowFilter(), Ct)).Should().BeOfType<ViewResult>()
+            .Which.Model.Should().BeOfType<OpenBoardViewModel>().Which.Tasks.Select(t => t.Id).Should().Equal(expected);
+    }
+
+    [HumansFact]
+    public async Task Index_TeamPriorityFilters_NarrowTheRows()
+    {
+        var productionCritical = await TitledAsync("Bar", SlotPriority.Critical, TaskTestKit.Production);
+        await TitledAsync("Bar stools", SlotPriority.Important, TaskTestKit.Production);
+        var artCritical = await TitledAsync("Mural", SlotPriority.Critical, TaskTestKit.Art);
+
+        var byTeam = IndexModel(await Human().Index(new TaskListFilter { Team = TaskTestKit.Art }, Ct));
+        var byPriority = IndexModel(await Human().Index(new TaskListFilter { Priority = SlotPriority.Critical }, Ct));
+        var both = IndexModel(await Human().Index(new TaskListFilter { Team = TaskTestKit.Production, Priority = SlotPriority.Critical }, Ct));
+
+        byTeam.Tasks.Select(t => t.Id).Should().Equal(artCritical.Id);
+        byPriority.Tasks.Select(t => t.Id).Should().Equal(productionCritical.Id, artCritical.Id);
+        both.Tasks.Select(t => t.Id).Should().Equal(productionCritical.Id);
+        byTeam.Teams.Select(t => t.Slug).Should().Equal(["art", "production"], "the team choices do not shrink with the filter");
+    }
+
+    [HumansFact]
+    public async Task Index_TeamNotOffered_IsDropped()
+    {
+        var production = await TitledAsync("Bar", SlotPriority.Important, TaskTestKit.Production);
+        var art = await TitledAsync("Mural", SlotPriority.Important, TaskTestKit.Art);
+        await _kit.SetStatusAsync(art.Id, TaskItemStatus.Done);
+
+        var stale = IndexModel(await Human().Index(new TaskListFilter { Team = TaskTestKit.Art }, Ct));
+        var withFinished = IndexModel(await Human().Index(new TaskListFilter { Team = TaskTestKit.Art, Finished = true }, Ct));
+
+        stale.Filter.Team.Should().BeNull("the select cannot offer a team with nothing listed");
+        stale.Tasks.Select(t => t.Id).Should().Equal(production.Id);
+        withFinished.Filter.Team.Should().Be(TaskTestKit.Art);
+        withFinished.Tasks.Select(t => t.Id).Should().Equal(art.Id);
+    }
+
+    [HumansFact]
+    public async Task Lists_PriorityNone_IsDropped()
+    {
+        var plain = await TitledAsync("Bar", SlotPriority.Important);
+
+        IndexModel(await Human().Index(new TaskListFilter { Priority = SlotPriority.None }, Ct))
+            .Tasks.Select(t => t.Id).Should().Equal(plain.Id);
+    }
+
+    [HumansFact]
+    public async Task Lists_StatusFilter_NarrowsTheRows()
+    {
+        var todo = await TitledAsync("Bar", SlotPriority.Important);
+        var going = await TitledAsync("Stools", SlotPriority.Important);
+        await _kit.SetStatusAsync(going.Id, TaskItemStatus.InProgress);
+        var done = await TitledAsync("Old", SlotPriority.Important);
+        await _kit.SetStatusAsync(done.Id, TaskItemStatus.Done);
+
+        IndexModel(await Human().Index(new TaskListFilter { Status = TaskItemStatus.InProgress }, Ct))
+            .Tasks.Select(t => t.Id).Should().Equal(going.Id);
+        IndexModel(await Human().Index(new TaskListFilter { Status = TaskItemStatus.Done }, Ct))
+            .Tasks.Select(t => t.Id).Should().Equal([done.Id], "asking for done brings finished tasks in");
+        (await Human().Team("production", new TaskListFilter { Status = TaskItemStatus.Todo }, Ct))
+            .Should().BeOfType<ViewResult>().Which.Model.Should().BeOfType<TeamPageViewModel>().Which
+            .Tasks.Select(t => t.Id).Should().Equal(todo.Id);
+        (await Human().Open(new TaskRowFilter { Status = TaskItemStatus.Done }, Ct))
+            .Should().BeOfType<ViewResult>().Which.Model.Should().BeOfType<OpenBoardViewModel>().Which
+            .Filter.Status.Should().BeNull("the open board has no finished tasks to filter to");
+    }
+
+    [HumansFact]
+    public async Task Team_FiltersByPriority()
+    {
+        await TitledAsync("Bar", SlotPriority.Critical);
+        var nice = await TitledAsync("Stools", SlotPriority.NiceToHave);
+
+        var model = (await Human().Team("production", new TaskListFilter { Priority = SlotPriority.NiceToHave }, Ct))
+            .Should().BeOfType<ViewResult>().Which.Model.Should().BeOfType<TeamPageViewModel>().Which;
+
+        model.Tasks.Select(t => t.Id).Should().Equal(nice.Id);
+    }
+
+    [HumansFact]
+    public async Task Open_FilterNarrowsTheRows_NotTheBoardsCounts()
+    {
+        await TitledAsync("Bar", SlotPriority.Critical, TaskTestKit.Production);
+        var art = await TitledAsync("Mural", SlotPriority.Important, TaskTestKit.Art);
+
+        var model = (await Human().Open(new TaskRowFilter { Team = TaskTestKit.Art }, Ct))
+            .Should().BeOfType<ViewResult>().Which.Model.Should().BeOfType<OpenBoardViewModel>().Which;
+
+        model.Tasks.Select(t => t.Id).Should().Equal(art.Id);
+        model.OpenSlots.Should().Be(2);
+        model.CriticalCount.Should().Be(1);
+    }
+
+    [HumansFact]
+    public async Task Lists_WaitingTask_NamesOnlyAVisibleBlocker()
+    {
+        var visible = await _kit.CreateAsync(TaskTestKit.Input(title: "Fence"));
+        var secret = await _kit.CreateAsync(TaskTestKit.Input(title: "Secret plan", hidden: true));
+        var waitsOnVisible = await _kit.CreateAsync(TaskTestKit.Input(title: "Signs"));
+        var waitsOnSecret = await _kit.CreateAsync(TaskTestKit.Input(title: "Banner"));
+        var waitsOnBoth = await _kit.CreateAsync(TaskTestKit.Input(title: "Lights"));
+        (await _kit.Service.AddDependencyAsync(waitsOnBoth.Id, secret.Id, _kit.Actor, Ct)).Succeeded.Should().BeTrue();
+        (await _kit.Service.AddDependencyAsync(waitsOnBoth.Id, visible.Id, _kit.Actor, Ct)).Succeeded.Should().BeTrue();
+        (await _kit.Service.AddDependencyAsync(waitsOnVisible.Id, visible.Id, _kit.Actor, Ct)).Succeeded.Should().BeTrue();
+        (await _kit.Service.AddDependencyAsync(waitsOnSecret.Id, secret.Id, _kit.Actor, Ct)).Succeeded.Should().BeTrue();
+
+        var human = IndexModel(await Human().Index(new TaskListFilter(), Ct)).Blockers;
+        var seeAll = IndexModel(await As([], RoleNames.Board).Index(new TaskListFilter(), Ct)).Blockers;
+
+        human.Should().HaveCount(3);
+        human[waitsOnBoth.Id].Should().Be("Fence", "a visible blocker is named even when a hidden one comes first");
+        human[waitsOnVisible.Id].Should().Be("Fence");
+        human[waitsOnSecret.Id].Should().BeNull();
+        seeAll[waitsOnSecret.Id].Should().Be("Secret plan");
+    }
+
+    [HumansFact]
+    public async Task Claim_FromFilteredList_ReturnsToIt()
+    {
+        var task = await TaskOnAsync(TaskTestKit.Production);
+        var back = $"/Tasks?Priority=Critical&Team={TaskTestKit.Production}&Finished=true";
+
+        (await Human().Claim(task.Id, back, Ct)).Should().BeOfType<LocalRedirectResult>().Which.Url.Should().Be(back);
     }
 
     [HumansFact]
