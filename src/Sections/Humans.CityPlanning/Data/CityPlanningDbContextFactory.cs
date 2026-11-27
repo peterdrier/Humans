@@ -1,30 +1,9 @@
-using Humans.Base.Data;
+using Humans.Base.Hosting;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.EntityFrameworkCore.Design;
 
 namespace Humans.CityPlanning.Data;
 
-/// <summary>Same history table as the runtime registration, so a CI apply writes the table the app reads.</summary>
-internal sealed class CityPlanningDbContextFactory : IDesignTimeDbContextFactory<CityPlanningDbContext>
+internal sealed class CityPlanningDbContextFactory : SectionDesignTimeDbContextFactory<CityPlanningDbContext>
 {
-    public CityPlanningDbContext CreateDbContext(string[] args)
-    {
-        var connectionString =
-            Environment.GetEnvironmentVariable("ConnectionStrings__DefaultConnection")
-            ?? "Host=localhost;Database=humans_design_time;Username=humans;Password=humans";
-
-        var optionsBuilder = new DbContextOptionsBuilder<CityPlanningDbContext>();
-        optionsBuilder.UseNpgsql(
-            connectionString,
-            npgsqlOptions =>
-            {
-                npgsqlOptions.UseNodaTime();
-                npgsqlOptions.MigrationsAssembly("Humans.CityPlanning");
-                npgsqlOptions.MigrationsHistoryTable(
-                    SectionMigrationsHistory.TableFor<CityPlanningDbContext>());
-                npgsqlOptions.UseQuerySplittingBehavior(QuerySplittingBehavior.SplitQuery);
-            });
-
-        return new CityPlanningDbContext(optionsBuilder.Options);
-    }
+    protected override CityPlanningDbContext Create(DbContextOptions<CityPlanningDbContext> options) => new(options);
 }
