@@ -26,10 +26,15 @@ know you are and ask for the effort — it is not recoverable afterwards.
     "model": "Claude Opus 5.5",
     "effort": "high",
     "brief": "v1",
-    "notes": "One paragraph: what you aimed for, what is still weak."
+    "notes": {
+      "en": "One short paragraph: what you aimed for, what is still weak.",
+      "es": "...", "de": "...", "it": "...", "fr": "...", "ca": "...", "nl": "..."
+    }
   }
   ```
-  `notes` is shown on the page; plain prose, no markdown.
+  `notes` is shown on the public page, so it needs all seven cultures (a test enforces it); plain
+  prose, no markdown. `effort` is one of `low` / `medium` / `high` / `xhigh` / `max` — the page
+  translates those labels.
 
 If the folder already exists, stop and say so — the entry has been drawn.
 
@@ -45,7 +50,7 @@ If the folder already exists, stop and say so — the entry has been drawn.
 5. **Ship.** Commit only the new folder, push, open a PR against `origin/main` titled
    `Logo library: <model>, <effort>`. The body is your notes plus a link to the entry on the PR's
    preview deploy, `https://<pr-number>.n.burn.camp/About/Logos`. Don't commit the render sheets.
-   No build or tests needed — no code changed.
+   Before pushing, run `dotnet test tests/Humans.Web.Tests -v quiet --filter LogoLibrary`.
 6. **Tend the PR** per `.claude/steward.md`, or stop.
 
 ## Promoting an entry to the live logo — only when Peter asks

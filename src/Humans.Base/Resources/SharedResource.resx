@@ -796,6 +796,11 @@
   <data name="About_Logos_Intro" xml:space="preserve"><value>Every model that helped build Humans drew its own Vitruvian Man from the same brief. Here they all are, oldest first.</value></data>
   <data name="About_Logos_Empty" xml:space="preserve"><value>No drawings yet.</value></data>
   <data name="About_Logos_EffortUnrecorded" xml:space="preserve"><value>effort not recorded</value></data>
+  <data name="About_Logos_Effort_low" xml:space="preserve"><value>low</value></data>
+  <data name="About_Logos_Effort_medium" xml:space="preserve"><value>medium</value></data>
+  <data name="About_Logos_Effort_high" xml:space="preserve"><value>high</value></data>
+  <data name="About_Logos_Effort_xhigh" xml:space="preserve"><value>extra high</value></data>
+  <data name="About_Logos_Effort_max" xml:space="preserve"><value>max</value></data>
   <data name="About_Logos_Link" xml:space="preserve"><value>See every version of the logo</value></data>
   <data name="About_Logos_Back" xml:space="preserve"><value>Back to About</value></data>
   <data name="About_NeedHelp" xml:space="preserve"><value>Need help?</value></data>

@@ -22,10 +22,10 @@
                         <span class="logo-entry-small"><img src="~/img/logo-library/@entry.Slug/logo.svg" alt="" aria-hidden="true" /></span>
                         <span>
                             <strong>@entry.Model</strong><br />
-                            <span class="text-muted small">@(entry.Effort ?? Localizer["About_Logos_EffortUnrecorded"].Value)</span>
+                            <span class="text-muted small">@(entry.Effort is null ? Localizer["About_Logos_EffortUnrecorded"].Value : Localizer[$"About_Logos_Effort_{entry.Effort}"].Value)</span>
                         </span>
                     </div>
-                    <p class="small text-muted mb-0">@entry.Notes</p>
+                    <p class="small text-muted mb-0">@entry.NotesIn(System.Globalization.CultureInfo.CurrentUICulture.TwoLetterISOLanguageName)</p>
                 </div>
             }
         </div>

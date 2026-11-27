@@ -1331,6 +1331,11 @@
   <data name="About_Logos_Intro" xml:space="preserve"><value>Chaque modèle qui a contribué à Humans a dessiné son propre Homme de Vitruve à partir de la même consigne. Les voici tous, du plus ancien au plus récent.</value></data>
   <data name="About_Logos_Empty" xml:space="preserve"><value>Aucun dessin pour l’instant.</value></data>
   <data name="About_Logos_EffortUnrecorded" xml:space="preserve"><value>effort non enregistré</value></data>
+  <data name="About_Logos_Effort_low" xml:space="preserve"><value>faible</value></data>
+  <data name="About_Logos_Effort_medium" xml:space="preserve"><value>moyen</value></data>
+  <data name="About_Logos_Effort_high" xml:space="preserve"><value>élevé</value></data>
+  <data name="About_Logos_Effort_xhigh" xml:space="preserve"><value>très élevé</value></data>
+  <data name="About_Logos_Effort_max" xml:space="preserve"><value>maximal</value></data>
   <data name="About_Logos_Link" xml:space="preserve"><value>Voir toutes les versions du logo</value></data>
   <data name="About_Logos_Back" xml:space="preserve"><value>Retour à À propos</value></data>
   <data name="About_NeedHelp" xml:space="preserve"><value>Besoin d'aide ?</value></data>

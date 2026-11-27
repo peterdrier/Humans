@@ -3,5 +3,13 @@
   "model": "Claude Fable 5.1",
   "effort": "high",
   "brief": null,
-  "notes": "Faithful Leonardo geometry (square rests on the circle, navel-centred). Eight-head proportions, etched muscle groups, hands with fingers, feet with toes, face and hair."
+  "notes": {
+    "en": "Faithful Leonardo geometry (square rests on the circle, navel-centred). Eight-head proportions, etched muscle groups, hands with fingers, feet with toes, face and hair.",
+    "es": "Geometría fiel a Leonardo (el cuadrado se apoya en el círculo, centrado en el ombligo). Proporciones de ocho cabezas, grupos musculares grabados, manos con dedos, pies con dedos, cara y pelo.",
+    "de": "Getreue Leonardo-Geometrie (das Quadrat ruht auf dem Kreis, Mittelpunkt am Nabel). Acht-Kopf-Proportionen, radierte Muskelgruppen, Hände mit Fingern, Füße mit Zehen, Gesicht und Haare.",
+    "it": "Geometria fedele a Leonardo (il quadrato poggia sul cerchio, centrato sull’ombelico). Proporzioni di otto teste, gruppi muscolari incisi, mani con dita, piedi con dita, volto e capelli.",
+    "fr": "Géométrie fidèle à Léonard (le carré repose sur le cercle, centré sur le nombril). Proportions de huit têtes, groupes musculaires gravés, mains avec doigts, pieds avec orteils, visage et cheveux.",
+    "ca": "Geometria fidel a Leonardo (el quadrat reposa sobre el cercle, centrat al melic). Proporcions de vuit caps, grups musculars gravats, mans amb dits, peus amb dits, cara i cabell.",
+    "nl": "Getrouwe Leonardo-geometrie (het vierkant rust op de cirkel, gecentreerd op de navel). Acht-hoofdenproporties, geëtste spiergroepen, handen met vingers, voeten met tenen, gezicht en haar."
+  }
 }

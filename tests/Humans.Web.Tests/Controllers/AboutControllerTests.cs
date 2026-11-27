@@ -1,6 +1,8 @@
 using Humans.Auth.Contracts;
+using Humans.Base.Extensions;
 using Humans.Base.Interfaces;
 using Humans.Users.Contracts;
+using Humans.Web.Tests.Architecture.Ratchet;
 using Humans.Web.Controllers;
 using Humans.Web.Models;
 using Microsoft.AspNetCore.Http;
@@ -137,5 +139,29 @@ public class AboutControllerTests
         {
             root.Delete(recursive: true);
         }
+    }
+
+    [HumansFact]
+    public void LogoLibrary_CommittedEntriesAreFullyLocalized()
+    {
+        var library = Path.Combine(RatchetTestRunner.LocateRepoRoot(), "src", "Humans.Web", "wwwroot", "img", "logo-library");
+        string?[] efforts = [null, "low", "medium", "high", "xhigh", "max"];
+        var problems = new List<string>();
+        foreach (var dir in Directory.GetDirectories(library))
+        {
+            var slug = Path.GetFileName(dir);
+            var entry = System.Text.Json.JsonSerializer.Deserialize<LogoLibraryEntry>(
+                File.ReadAllText(Path.Combine(dir, "entry.json")),
+                new System.Text.Json.JsonSerializerOptions { PropertyNameCaseInsensitive = true })!;
+            problems.AddRange(CultureCatalog.SupportedCultureCodes
+                .Where(c => string.IsNullOrWhiteSpace(entry.Notes.GetValueOrDefault(c)))
+                .Select(c => $"{slug}: notes missing '{c}'"));
+            if (!efforts.Contains(entry.Effort, StringComparer.Ordinal))
+            {
+                problems.Add($"{slug}: effort '{entry.Effort}' has no localized label");
+            }
+        }
+
+        Assert.Empty(problems);
     }
 }

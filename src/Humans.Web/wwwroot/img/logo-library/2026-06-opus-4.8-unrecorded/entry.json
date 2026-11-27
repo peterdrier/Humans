@@ -3,5 +3,13 @@
   "model": "Claude Opus 4.8 (1M)",
   "effort": null,
   "brief": null,
-  "notes": "First self-simplifying mark: stick-figure anatomy in bold capsules plus etch tiers, square and circle concentric."
+  "notes": {
+    "en": "First self-simplifying mark: stick-figure anatomy in bold capsules plus etch tiers, square and circle concentric.",
+    "es": "Primera marca que se simplifica sola: anatomía de figura de palitos en cápsulas gruesas más niveles de grabado; cuadrado y círculo concéntricos.",
+    "de": "Erstes sich selbst vereinfachendes Zeichen: Strichmännchen-Anatomie aus kräftigen Kapseln plus Radierebenen; Quadrat und Kreis konzentrisch.",
+    "it": "Primo marchio che si semplifica da solo: anatomia a omino stilizzato in capsule spesse più livelli di incisione; quadrato e cerchio concentrici.",
+    "fr": "Première marque qui se simplifie d’elle-même : anatomie en bâtonnets faite de capsules épaisses, plus des niveaux de gravure ; carré et cercle concentriques.",
+    "ca": "Primera marca que se simplifica sola: anatomia de figura de pals en càpsules gruixudes més nivells de gravat; quadrat i cercle concèntrics.",
+    "nl": "Eerste zichzelf vereenvoudigende merkteken: stokfiguur-anatomie in dikke capsules plus etslagen; vierkant en cirkel concentrisch."
+  }
 }
