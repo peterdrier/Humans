@@ -23,7 +23,6 @@ public sealed class GoogleGroupSyncServiceTests
     private readonly ITeamResourceGoogleClient _teamResourceClient = Substitute.For<ITeamResourceGoogleClient>();
     private readonly ITeamResourceManagement _teamResourceService = Substitute.For<ITeamResourceManagement>();
     private readonly ITeamService _teamService = Substitute.For<ITeamService>();
-    private readonly ITeamWrite _teamWrite = Substitute.For<ITeamWrite>();
     private readonly IUserService _userService = Substitute.For<IUserService>();
     private readonly IWorkspaceIdentityManagement _identities;
     private readonly IUserEmailService _userEmailService = Substitute.For<IUserEmailService>();
@@ -481,48 +480,17 @@ public sealed class GoogleGroupSyncServiceTests
             Arg.Any<string>());
     }
 
-    [HumansTheory]
-    [Xunit.InlineData(false)]
-    [Xunit.InlineData(true)]
-    public async Task ReconcileAllAsync_RetiredTeamGroupEmptied_UnlinksOnlyThatGroup(bool teamActive)
-    {
-        var service = CreateService(new StaticSource("team@nobodies.team"));
-        var resource = StageResource("team@nobodies.team");
-        StubGroup("team@nobodies.team", "group-1");
-        var teamId = StubTeams(teamActive);
-
-        await service.ReconcileAllAsync(SyncAction.Execute, Xunit.TestContext.Current.CancellationToken);
-
-        var expected = teamActive ? 0 : 1;
-        await _teamResourceService.Received(expected).UnlinkResourceAsync(resource.Id, null, Arg.Any<CancellationToken>());
-        await _teamResourceService.DidNotReceiveWithAnyArgs().DeactivateResourcesForTeamAsync(default);
-        await _teamWrite.Received(expected).SetGoogleGroupPrefixAsync(teamId, null, Arg.Any<CancellationToken>());
-    }
-
     [HumansFact]
     public async Task ReconcileAllAsync_EmptyClaimGroupMissing_DoesNotProvision()
     {
         var service = CreateService(new StaticSource("team@nobodies.team"));
         _provisioningClient.LookupGroupIdAsync("team@nobodies.team", Arg.Any<CancellationToken>())
             .Returns(new GroupLookupIdResult(null, new GoogleClientError(404, "Resource Not Found: groupKey")));
-        var teamId = StubTeams(teamActive: false);
 
         var result = await service.ReconcileAllAsync(SyncAction.Execute, Xunit.TestContext.Current.CancellationToken);
 
         result.ErrorCount.Should().Be(0);
         await _provisioningClient.DidNotReceiveWithAnyArgs().CreateGroupAsync(default!, default!, default!, default);
-        await _teamWrite.Received(1).SetGoogleGroupPrefixAsync(teamId, null, Arg.Any<CancellationToken>());
-    }
-
-    private Guid StubTeams(bool teamActive)
-    {
-        var teamId = Guid.NewGuid();
-        _teamService.GetTeamsAsync(Arg.Any<CancellationToken>()).Returns(new Dictionary<Guid, TeamInfo>
-        {
-            [teamId] = new(teamId, "Low income", null, "low-income", teamActive, false, SystemTeamType.None, false,
-                false, true, false, _clock.GetCurrentInstant(), [], GoogleGroupPrefix: "team"),
-        });
-        return teamId;
     }
 
     [HumansFact]
@@ -1217,7 +1185,6 @@ public sealed class GoogleGroupSyncServiceTests
         _teamResourceClient,
         _teamResourceService,
         _teamService,
-        _teamWrite,
         _userService,
         _identities,
         _userEmailService,

@@ -18,7 +18,6 @@ internal sealed class GoogleGroupSyncService(
     ITeamResourceGoogleClient teamResourceClient,
     ITeamResourceManagement teamResourceService,
     ITeamService teamService,
-    ITeamWrite teamWrite,
     IUserService userService,
     IWorkspaceIdentityManagement workspaceIdentities,
     IUserEmailService userEmailService,
@@ -59,7 +58,6 @@ internal sealed class GoogleGroupSyncService(
         var expectedMembersByUserId = await GoogleSyncMemberHydration.LoadAsync(
             claims.SelectMany(c => c.UserIds).Distinct().ToList(), userService, workspaceIdentities, ct);
         var diffs = new List<ResourceSyncDiff>();
-        var emptiedGroups = new Dictionary<string, Guid?>(StringComparer.OrdinalIgnoreCase);
 
         foreach (var claim in claims)
         {
@@ -70,43 +68,17 @@ internal sealed class GoogleGroupSyncService(
                 continue;
             }
 
-            var diff = await ReconcileClaimAsync(
+            diffs.Add(await ReconcileClaimAsync(
                 claim,
                 action,
                 resourcesByGroup.GetValueOrDefault(claim.GroupKey),
                 scheduleRetryOnFailure: action == SyncAction.Execute,
                 nextRetryAttempt: 1,
                 expectedMembersByUserId,
-                ct);
-            diffs.Add(diff);
-            if (diff.ErrorMessage is null && claim.UserIds.Length == 0)
-                emptiedGroups[claim.GroupKey] = resourcesByGroup.GetValueOrDefault(claim.GroupKey)?.Id;
+                ct));
         }
-
-        if (action == SyncAction.Execute
-            && await syncSettingsService.GetModeAsync(SyncServiceType.GoogleGroups, ct) == SyncMode.AddAndRemove)
-            await UnlinkEmptiedRetiredTeamGroupsAsync(emptiedGroups, ct);
 
         return new SyncPreviewResult { Diffs = diffs };
-    }
-
-    /// <summary>
-    /// A retired team's group is unlinked once a pass has emptied it without error: its resource row is unlinked and the
-    /// team's prefix cleared, so nothing claims the group again. The group itself stays in Google, empty.
-    /// </summary>
-    private async Task UnlinkEmptiedRetiredTeamGroupsAsync(IReadOnlyDictionary<string, Guid?> emptiedGroups, CancellationToken ct)
-    {
-        var teams = await teamService.GetTeamsAsync(ct);
-        foreach (var team in teams.Values.Where(t => !t.IsActive && t.GoogleGroupEmail is { } key && emptiedGroups.ContainsKey(key)))
-        {
-            if (emptiedGroups[team.GoogleGroupEmail!] is { } resourceId)
-                await teamResourceService.UnlinkResourceAsync(resourceId, ct: ct);
-            await teamWrite.SetGoogleGroupPrefixAsync(team.Id, null, ct);
-            await auditLogService.LogAsync(
-                GoogleAuditActions.GoogleResourceUnlinked, "Team", team.Id,
-                $"Cleared the group prefix of retired team {team.Name} after emptying {team.GoogleGroupEmail}",
-                nameof(GoogleGroupSyncService));
-        }
     }
 
     public async Task<ResourceSyncDiff> ReconcileOneAsync(
@@ -158,7 +130,7 @@ internal sealed class GoogleGroupSyncService(
     {
         var (lookup, provisionAttempted) = await LookupOrProvisionGroupAsync(claim, action, ct);
 
-        // An empty claim (a retired team) never creates a group; a missing group is already empty.
+        // A claim with nobody in it never creates a group; a missing group is already empty.
         if (lookup.GroupNumericId is null && claim.UserIds.Length == 0 && IsGroupNotFound(lookup.Error))
         {
             return new ResourceSyncDiff
