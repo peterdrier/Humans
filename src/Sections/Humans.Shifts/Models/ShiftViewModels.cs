@@ -294,6 +294,10 @@ internal sealed class ShiftAdminViewModel
 {
     public TeamInfo Department { get; set; } = null!;
     public BurnSettingsInfo EventSettings { get; set; } = null!;
+
+    /// <summary>The department's shift mailing list for this event; null when it has no rotas, so no list exists.</summary>
+    public string? ShiftListEmail { get; set; }
+
     public List<ShiftAdminRota> Rotas { get; set; } = [];
     public List<ShiftAdminPendingSignup> PendingSignups { get; set; } = [];
     public int TotalSlots { get; set; }
