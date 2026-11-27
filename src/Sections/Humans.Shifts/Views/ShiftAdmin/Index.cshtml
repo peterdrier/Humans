@@ -1024,6 +1024,14 @@
                     Send a single message to every human signed up on any of this team's current or upcoming rotas.
                     Each recipient gets one email listing their own shifts; replies come back to you.
                 </p>
+                @if (Model.ShiftListEmail is { } listEmail)
+                {
+                    <p class="mb-2">
+                        Mailing list for everyone with a confirmed shift in this department this event:
+                        <a href="mailto:@listEmail"><code>@listEmail</code></a>.
+                        Anyone can write to it from their own email. Membership updates hourly.
+                    </p>
+                }
                 <a asp-action="EmailTeamRotas" asp-route-slug="@Model.Department.Slug" class="btn btn-outline-primary">
                     Compose&hellip;
                 </a>

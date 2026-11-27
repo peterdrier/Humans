@@ -170,10 +170,8 @@ graph LR
     Finance --> Stripe
     Finance -.-> Email
     Finance -.-> Tickets
-    Gate --> Auth
     Gate --> EarlyEntry
     Gate --> Settings
-    Gate --> Shifts
     Gate -.-> Tickets
     Gdpr -.-> Users
     Google --> AuditLog
@@ -244,6 +242,7 @@ graph LR
     Shifts --> Calendar
     Shifts --> Consent
     Shifts --> EarlyEntry
+    Shifts --> Google
     Shifts --> Permissions
     Shifts --> Settings
     Shifts --> Teams
