@@ -129,7 +129,6 @@ public sealed class ProfileCardViewComponent(
                     Proficiency = pl.Proficiency
                 }).ToList(),
             PreferredLanguage = info.PreferredLanguage,
-            BurnerName = info.BurnerName,
         };
         // The card offers one way to reach the member: the email it shows, or else the button.
         model.CanSendMessage = !isOwnProfile

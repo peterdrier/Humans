@@ -281,9 +281,13 @@ public sealed class ProfileCardViewComponentTests
         html.Contains("Private board notes", StringComparison.Ordinal).Should().Be(viewMode != ProfileCardViewMode.Public);
         var messageLabel = string.Format(CultureInfo.CurrentCulture,
             new ResourceManager(typeof(UsersResource)).GetString("Users_SendMessage_Button", CultureInfo.CurrentUICulture)!, name);
-        // Plain text, not the linked name: a link inside the button splits it in two.
-        html.Contains(HtmlEncoder.Default.Encode(messageLabel), StringComparison.Ordinal)
-            .Should().Be(viewMode != ProfileCardViewMode.Self);
+        var text = WebUtility.HtmlDecode(Regex.Replace(html, "<[^>]*>", string.Empty, RegexOptions.NonBacktracking));
+        text.Contains(messageLabel, StringComparison.Ordinal).Should().Be(viewMode != ProfileCardViewMode.Self);
+        // A link inside the button splits it in two.
+        var button = Regex.Match(html, "btn-outline-primary\"[^>]*>\\s*<i class=\"fa-solid fa-envelope me-1\"></i>(?<inner>.*?)</a>",
+            RegexOptions.Singleline | RegexOptions.NonBacktracking);
+        button.Success.Should().Be(viewMode != ProfileCardViewMode.Self);
+        button.Groups["inner"].Value.Should().NotContain("<a");
     }
 
     private static async Task<string> RenderAsync(ProfileCardViewModel model, IUserService users)
@@ -316,7 +320,12 @@ public sealed class ProfileCardViewComponentTests
         var result = services.GetRequiredService<IRazorViewEngine>()
             .GetView(null, "/Views/Shared/Components/ProfileCard/Default.cshtml", isMainPage: false);
         result.Success.Should().BeTrue();
-        var http = new DefaultHttpContext { RequestServices = services };
+        var http = new DefaultHttpContext
+        {
+            RequestServices = services,
+            // Signed in, so names render as links.
+            User = new ClaimsPrincipal(new ClaimsIdentity([new Claim(ClaimTypes.NameIdentifier, Guid.NewGuid().ToString())], "test")),
+        };
         var route = new RouteData();
         route.Values["controller"] = "Profile";
         var action = new ActionContext(http, route, new Microsoft.AspNetCore.Mvc.Abstractions.ActionDescriptor());

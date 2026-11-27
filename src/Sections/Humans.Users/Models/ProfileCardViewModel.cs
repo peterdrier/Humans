@@ -54,9 +54,6 @@ internal sealed class ProfileCardViewModel
         }
     }
 
-    /// <summary>Plain name for text that sits inside a link, such as the message button.</summary>
-    public string BurnerName { get; set; } = string.Empty;
-
     /// <summary>True when viewing another user's profile, the card shows no email, and the owner accepts facilitated messages.</summary>
     public bool CanSendMessage { get; set; }
 
