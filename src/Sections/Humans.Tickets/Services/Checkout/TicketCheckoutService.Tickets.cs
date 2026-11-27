@@ -781,7 +781,7 @@ internal sealed partial class TicketCheckoutService
                     changed++;
                     continue;
                 }
-                if (offer is { State: TicketResaleOfferState.Sold, SoldNotificationPending: true }
+                if (ticketing.CancelledAt is null && offer is { State: TicketResaleOfferState.Sold, SoldNotificationPending: true }
                     && (await repository.GetTicketAsync(offer.TicketId, ct))?.State == TicketCheckoutTicketState.Resold
                     && await TellDeliveryAsync(d => d.ResaleSoldAsync(offer.TicketId, offer.RefundOwedMinor, ct), offer.TicketId))
                     changed++;

@@ -88,6 +88,66 @@ public sealed class TicketDeliveryServiceTests
         _checkout.GetTicketsForSettingsAsync(_ticketing.Id, Arg.Any<CancellationToken>()).Returns(tickets);
     }
 
+    [HumansTheory]
+    [Xunit.InlineData(false)]
+    [Xunit.InlineData(true)]
+    public async Task DeliverAsync_CancelledEvent_SendsReceiptOnly(bool resend)
+    {
+        var adult = Ticket(PartnerId, "Ben Partner", "ben@example.com");
+        var child = Ticket(null, "Child", null, kind: TicketHolderKind.Child, parent: adult.Id);
+        var companion = Ticket(null, "Companion", null, kind: TicketHolderKind.Companion, parent: adult.Id);
+        Tickets(adult, child, companion);
+        _ticketing.Mode = TicketSalesMode.Closed;
+        _ticketing.CancelledAt = Instant.FromUtc(2027, 1, 3, 0, 0);
+        var service = Create();
+
+        if (resend)
+            (await service.ResendAsync(_order.Id, Guid.NewGuid())).Succeeded.Should().BeTrue();
+        else
+            await service.DeliverAsync(_order.Id);
+
+        _sent.Should().ContainSingle().Which.TemplateName.Should().Be("ticket_order_receipt");
+        _jobs.DidNotReceiveWithAnyArgs().Create(default!, default!);
+        adult.State.Should().Be(TicketCheckoutTicketState.Valid);
+        child.State.Should().Be(TicketCheckoutTicketState.Valid);
+        companion.State.Should().Be(TicketCheckoutTicketState.Valid);
+    }
+
+    [HumansTheory]
+    [Xunit.InlineData("join")]
+    [Xunit.InlineData("rename")]
+    [Xunit.InlineData("sold")]
+    [Xunit.InlineData("unsold")]
+    [Xunit.InlineData("payment")]
+    public async Task SendNoticeAsync_CancelledEvent_SuppressesStalePromises(string kind)
+    {
+        var ticket = Ticket(PartnerId, "Ben Partner", "ben@example.com",
+            string.Equals(kind, "sold", StringComparison.Ordinal) ? TicketCheckoutTicketState.Resold
+                : string.Equals(kind, "unsold", StringComparison.Ordinal) ? TicketCheckoutTicketState.Offered : TicketCheckoutTicketState.Valid);
+        Tickets(ticket);
+        _checkout.GetTicketAsync(ticket.Id, Arg.Any<CancellationToken>()).Returns(ticket);
+        _ticketing.Mode = TicketSalesMode.Closed;
+        _ticketing.CancelledAt = Instant.FromUtc(2027, 1, 3, 0, 0);
+        if (string.Equals(kind, "payment", StringComparison.Ordinal))
+            _order.State = TicketCheckoutOrderState.Failed;
+        var service = Create();
+
+        await (kind switch
+        {
+            "join" => service.SendJoinInvitationAsync(_order.Id, ticket.Id),
+            "rename" => service.SendRenamedTicketAsync(ticket.Id, Guid.NewGuid()),
+            "sold" => service.SendResaleSoldAsync(ticket.Id, 22500),
+            "unsold" => service.SendResaleUnsoldAsync(ticket.Id),
+            "payment" => service.SendPaymentEndedAsync(_order.Id),
+            _ => throw new ArgumentOutOfRangeException(nameof(kind)),
+        });
+
+        _sent.Should().BeEmpty();
+        _audit.ReceivedCalls().Should().BeEmpty();
+        await _checkout.DidNotReceive().RecordDeliveryAsync(Arg.Any<Guid>(), Arg.Any<TicketCheckoutOrderEventKind>(),
+            Arg.Any<string>(), Arg.Any<Guid?>(), Arg.Any<CancellationToken>(), Arg.Any<Guid?>());
+    }
+
     [HumansFact]
     public async Task Deliver_RendersTheHolderFirstAndDependentsByIssueTime()
     {

@@ -2,8 +2,4 @@
 # /debt-sweep pools every src/Sections/*/Docs/debt.yml into the same inbox as the central ledger.
 version: 1
 next_id: 27
-inbox:
-  - added: 2026-11-27
-    id: TICKETS-26
-    what: "TicketDeliveryService ignores ticketing CancelledAt when sending issued/renamed QR cards and delayed join invitations. Before cancellation reconciliation voids the physical rows, queued jobs can still send access mail for a cancelled event. Apply cancellation eligibility to those paths while preserving truthful financial receipts/status notices. Found tracing post-payment delivery; separate from checkout acceptance persistence."
-    review: panel
+inbox: []

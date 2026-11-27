@@ -236,7 +236,7 @@ internal sealed class TicketDeliveryService(
         }
 
         var tickets = detail.Tickets
-            .Where(t => t.IsHeld)
+            .Where(t => ticketing.CancelledAt is null && t.IsHeld)
             .ToList();
         var baseUrl = BaseUrl;
         var buyer = await users.GetUserInfoAsync(order.BuyerUserId, ct);
@@ -325,7 +325,7 @@ internal sealed class TicketDeliveryService(
     private async Task<string?> EventNameAsync(Guid settingsId, CancellationToken ct)
     {
         var ticketing = await checkout.GetTicketingSettingsAsync(settingsId, ct);
-        return ticketing is null ? null : (await settings.GetEventSettingsByIdAsync(ticketing.EventSettingsId, ct))?.EventName;
+        return ticketing is not { CancelledAt: null } ? null : (await settings.GetEventSettingsByIdAsync(ticketing.EventSettingsId, ct))?.EventName;
     }
 
     /// <summary>

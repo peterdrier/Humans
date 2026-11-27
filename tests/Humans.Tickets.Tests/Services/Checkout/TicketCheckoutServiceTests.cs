@@ -1002,6 +1002,21 @@ public sealed partial class TicketCheckoutServiceTests
     }
 
     [HumansFact]
+    public async Task ReconcileOpenOrdersAsync_CancelledEvent_SuppressesSoldNoticeRetries()
+    {
+        var old = await OfferedTicketAsync();
+        await BuyAndPayAsync(Buy(), _otherBuyerId);
+        await _service.CancelEventAsync(_ticketing.Id, "Storm", _adminId, Ct);
+        _delivery.ClearReceivedCalls();
+
+        await _service.ReconcileOpenOrdersAsync(Ct);
+        await _service.ReconcileOpenOrdersAsync(Ct);
+
+        await _delivery.DidNotReceive().ResaleSoldAsync(old.Id, Arg.Any<long>(), Arg.Any<CancellationToken>());
+        _repo.Offers.Single().SoldNotificationPending.Should().BeTrue("suppression is not an accepted delivery");
+    }
+
+    [HumansFact]
     public async Task RecordDeliveryAsync_SoldOutboxAccepted_CompletesNotice()
     {
         var old = await OfferedTicketAsync();
