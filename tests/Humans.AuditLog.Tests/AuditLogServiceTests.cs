@@ -434,13 +434,22 @@ public class AuditLogServiceTests : IDisposable
         SeedAuditLogEntry(TestActions.RoleEnded, "User", Guid.NewGuid(), now - Duration.FromHours(4));
         _dbContext.TemporaryAuditLogEntries.Add(new TemporaryAuditLogEntry
         {
-            Id = Guid.NewGuid(), Action = TestActions.BudgetLineChanged.Name, EntityType = "BudgetLine",
-            EntityId = Guid.NewGuid(), Description = "line moved", OccurredAt = now, ActorUserId = userId
+            Id = Guid.NewGuid(),
+            Action = TestActions.BudgetLineChanged.Name,
+            EntityType = "BudgetLine",
+            EntityId = Guid.NewGuid(),
+            Description = "line moved",
+            OccurredAt = now,
+            ActorUserId = userId
         });
         _dbContext.TemporaryAuditLogEntries.Add(new TemporaryAuditLogEntry
         {
-            Id = Guid.NewGuid(), Action = TestActions.BudgetLineChanged.Name, EntityType = "User",
-            EntityId = userId, Description = "about you", OccurredAt = now - Duration.FromHours(1)
+            Id = Guid.NewGuid(),
+            Action = TestActions.BudgetLineChanged.Name,
+            EntityType = "User",
+            EntityId = userId,
+            Description = "about you",
+            OccurredAt = now - Duration.FromHours(1)
         });
         await _dbContext.SaveChangesAsync(TestContext.Current.CancellationToken);
 

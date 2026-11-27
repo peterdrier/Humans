@@ -20,17 +20,29 @@ internal sealed class AuditLogRepository(IDbContextFactory<AuditLogDbContext> fa
             case AuditKept.Forever:
                 ctx.AuditLogEntries.Add(new AuditLogEntry
                 {
-                    Id = entry.Id, Action = entry.Action, EntityType = entry.EntityType, EntityId = entry.EntityId,
-                    Description = entry.Description, OccurredAt = entry.OccurredAt, ActorUserId = entry.ActorUserId,
-                    RelatedEntityId = entry.RelatedEntityId, RelatedEntityType = entry.RelatedEntityType
+                    Id = entry.Id,
+                    Action = entry.Action,
+                    EntityType = entry.EntityType,
+                    EntityId = entry.EntityId,
+                    Description = entry.Description,
+                    OccurredAt = entry.OccurredAt,
+                    ActorUserId = entry.ActorUserId,
+                    RelatedEntityId = entry.RelatedEntityId,
+                    RelatedEntityType = entry.RelatedEntityType
                 });
                 break;
             case AuditKept.RetentionPeriod:
                 ctx.TemporaryAuditLogEntries.Add(new TemporaryAuditLogEntry
                 {
-                    Id = entry.Id, Action = entry.Action, EntityType = entry.EntityType, EntityId = entry.EntityId,
-                    Description = entry.Description, OccurredAt = entry.OccurredAt, ActorUserId = entry.ActorUserId,
-                    RelatedEntityId = entry.RelatedEntityId, RelatedEntityType = entry.RelatedEntityType
+                    Id = entry.Id,
+                    Action = entry.Action,
+                    EntityType = entry.EntityType,
+                    EntityId = entry.EntityId,
+                    Description = entry.Description,
+                    OccurredAt = entry.OccurredAt,
+                    ActorUserId = entry.ActorUserId,
+                    RelatedEntityId = entry.RelatedEntityId,
+                    RelatedEntityType = entry.RelatedEntityType
                 });
                 break;
             default:
@@ -47,16 +59,30 @@ internal sealed class AuditLogRepository(IDbContextFactory<AuditLogDbContext> fa
         ctx.AuditLogEntries.AsNoTracking()
             .Select(e => new Row
             {
-                Id = e.Id, Action = e.Action, EntityType = e.EntityType, EntityId = e.EntityId,
-                Description = e.Description, OccurredAt = e.OccurredAt, ActorUserId = e.ActorUserId,
-                RelatedEntityId = e.RelatedEntityId, RelatedEntityType = e.RelatedEntityType, Temporary = false
+                Id = e.Id,
+                Action = e.Action,
+                EntityType = e.EntityType,
+                EntityId = e.EntityId,
+                Description = e.Description,
+                OccurredAt = e.OccurredAt,
+                ActorUserId = e.ActorUserId,
+                RelatedEntityId = e.RelatedEntityId,
+                RelatedEntityType = e.RelatedEntityType,
+                Temporary = false
             })
             .Concat(ctx.TemporaryAuditLogEntries.AsNoTracking()
                 .Select(e => new Row
                 {
-                    Id = e.Id, Action = e.Action, EntityType = e.EntityType, EntityId = e.EntityId,
-                    Description = e.Description, OccurredAt = e.OccurredAt, ActorUserId = e.ActorUserId,
-                    RelatedEntityId = e.RelatedEntityId, RelatedEntityType = e.RelatedEntityType, Temporary = true
+                    Id = e.Id,
+                    Action = e.Action,
+                    EntityType = e.EntityType,
+                    EntityId = e.EntityId,
+                    Description = e.Description,
+                    OccurredAt = e.OccurredAt,
+                    ActorUserId = e.ActorUserId,
+                    RelatedEntityId = e.RelatedEntityId,
+                    RelatedEntityType = e.RelatedEntityType,
+                    Temporary = true
                 }));
 
     private static async Task<IReadOnlyList<AuditLogEntrySnapshot>> ToSnapshotsAsync(IQueryable<Row> rows, CancellationToken ct) =>
