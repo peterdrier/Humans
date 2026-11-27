@@ -1,6 +1,8 @@
 {
   "date": "2026-11",
-  "model": "Claude Opus 5.5",
+  "family": "Claude",
+  "model": "Opus",
+  "version": "5.5",
   "effort": "high",
   "brief": "v1",
   "notes": {

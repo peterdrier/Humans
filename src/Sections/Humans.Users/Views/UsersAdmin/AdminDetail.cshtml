@@ -6,10 +6,9 @@
     var stateBadgeClass = StatusBadgeExtensions.GetMembershipStatusBadgeClass(stateLabel);
 }
 
-@section Crumbs {
-    <span><vc:human user-id="@Model.UserId" layout="Text" link="Public" /></span>
-}
-
+<page-header>
+    <page-header-title><vc:human user-id="@Model.UserId" layout="Text" link="Public" /></page-header-title>
+</page-header>
 
 <vc:merged-accounts user-id="@Model.UserId" />
 

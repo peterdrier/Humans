@@ -1,6 +1,8 @@
 {
   "date": "2026-11",
-  "model": "GPT-6.2 Sol",
+  "family": "GPT",
+  "model": "Sol",
+  "version": "6.2",
   "effort": "low",
   "brief": "v1",
   "notes": {

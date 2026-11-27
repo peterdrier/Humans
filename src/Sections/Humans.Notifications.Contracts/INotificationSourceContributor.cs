@@ -1,3 +1,4 @@
+using JetBrains.Annotations;
 using System.Reflection;
 using Humans.Base.Interfaces;
 
@@ -17,6 +18,7 @@ public interface INotificationSourceContributor : IFanout
 /// <see cref="INotificationSourceContributor"/> singleton. The fields are the contributed list, so nothing is
 /// declared twice.
 /// </summary>
+[UsedImplicitly(ImplicitUseKindFlags.Access, ImplicitUseTargetFlags.WithInheritors | ImplicitUseTargetFlags.WithMembers)]
 public abstract class NotificationSourceContributor : INotificationSourceContributor
 {
     public IReadOnlyList<NotificationSourceDefinition> Sources { get; }

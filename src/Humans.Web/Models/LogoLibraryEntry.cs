@@ -9,7 +9,9 @@ public sealed record LogoLibraryEntry
 {
     public string Slug { get; init; } = string.Empty;
     public string Date { get; init; } = string.Empty;
+    public string Family { get; init; } = string.Empty;
     public string Model { get; init; } = string.Empty;
+    public string Version { get; init; } = string.Empty;
     public string? Effort { get; init; }
     public string? Brief { get; init; }
     public IReadOnlyDictionary<string, string> Notes { get; init; } = new Dictionary<string, string>(StringComparer.Ordinal);

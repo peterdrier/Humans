@@ -1328,7 +1328,7 @@
   <data name="About_MailKitDesc" xml:space="preserve"><value>Correo transaccional para notificaciones e incorporación. La única biblioteca que hace que SMTP resulte casi agradable.</value></data>
   <data name="About_MeetTheStaff" xml:space="preserve"><value>Conoce al equipo</value></data>
   <data name="About_Logos_Title" xml:space="preserve"><value>La biblioteca de logotipos</value></data>
-  <data name="About_Logos_Intro" xml:space="preserve"><value>Cada modelo que ayudó a construir Humans dibujó su propio Hombre de Vitruvio a partir del mismo encargo. Aquí están todos, del más antiguo al más reciente.</value></data>
+  <data name="About_Logos_Intro" xml:space="preserve"><value>Cada modelo que ayudó a construir Humans dibujó su propio Hombre de Vitruvio a partir del mismo encargo. Aquí están, por familia de modelo y versión, de menor a mayor esfuerzo.</value></data>
   <data name="About_Logos_Empty" xml:space="preserve"><value>Todavía no hay dibujos.</value></data>
   <data name="About_Logos_EffortUnrecorded" xml:space="preserve"><value>esfuerzo no registrado</value></data>
   <data name="About_Logos_Effort_low" xml:space="preserve"><value>bajo</value></data>

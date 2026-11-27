@@ -1328,7 +1328,7 @@
   <data name="About_MailKitDesc" xml:space="preserve"><value>Transaktionale E-Mails für Benachrichtigungen und Onboarding. Die eine Bibliothek, die SMTP fast angenehm anfühlen lässt.</value></data>
   <data name="About_MeetTheStaff" xml:space="preserve"><value>Lerne das Team kennen</value></data>
   <data name="About_Logos_Title" xml:space="preserve"><value>Die Logo-Bibliothek</value></data>
-  <data name="About_Logos_Intro" xml:space="preserve"><value>Jedes Modell, das an Humans mitgebaut hat, hat nach derselben Vorgabe seinen eigenen Vitruvianischen Menschen gezeichnet. Hier sind sie alle, die ältesten zuerst.</value></data>
+  <data name="About_Logos_Intro" xml:space="preserve"><value>Jedes Modell, das an Humans mitgebaut hat, hat nach derselben Vorgabe seinen eigenen Vitruvianischen Menschen gezeichnet. Hier sind sie, nach Modellfamilie und Version, von niedrigem bis hohem Aufwand.</value></data>
   <data name="About_Logos_Empty" xml:space="preserve"><value>Noch keine Zeichnungen.</value></data>
   <data name="About_Logos_EffortUnrecorded" xml:space="preserve"><value>Aufwand nicht erfasst</value></data>
   <data name="About_Logos_Effort_low" xml:space="preserve"><value>niedrig</value></data>

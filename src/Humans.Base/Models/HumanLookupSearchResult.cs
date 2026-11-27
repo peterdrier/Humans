@@ -1,3 +1,5 @@
+using JetBrains.Annotations;
+
 namespace Humans.Base.Models;
 
 /// <summary>
@@ -6,6 +8,7 @@ namespace Humans.Base.Models;
 /// picker in the app returns, which is why it sits in Humans.Base rather than in Shell: a section
 /// project cannot reference Humans.Web.
 /// </summary>
+[UsedImplicitly(ImplicitUseKindFlags.Access, ImplicitUseTargetFlags.WithMembers)]
 public record HumanLookupSearchResult(
     Guid UserId,
     string DisplayName,

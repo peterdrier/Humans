@@ -1,4 +1,5 @@
 using Humans.Store.Services.Dtos;
+using JetBrains.Annotations;
 
 namespace Humans.Store.Models;
 
@@ -15,6 +16,7 @@ internal sealed record CatalogAccountsRow(
     int Index, ProductDto Product, int? Income, int? Cost, int? TeamUsage);
 
 /// <summary>One posted row of the bulk accounts table.</summary>
+[UsedImplicitly(ImplicitUseKindFlags.Assign, ImplicitUseTargetFlags.WithMembers)]
 internal sealed class CatalogAccountsInput
 {
     public Guid ProductId { get; set; }
