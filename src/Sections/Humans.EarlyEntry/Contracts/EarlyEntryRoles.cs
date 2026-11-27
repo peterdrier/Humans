@@ -5,8 +5,7 @@ public static class EarlyEntryRoles
 {
     /// <summary>
     /// Early Entry Admin: grants, edits and revokes early-entry grants on any team that has early entry enabled.
-    /// Coordinators manage early entry for their own team without it. Confers nothing else. Stored as
-    /// <c>EETeamAdmin</c> before 2026-10.
+    /// Coordinators manage early entry for their own team without it. Confers nothing else.
     /// </summary>
     public const string EarlyEntryAdmin = "EarlyEntryAdmin";
 }
