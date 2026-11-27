@@ -192,11 +192,9 @@ internal static class TicketPaymentReconBuilder
 
     private static IReadOnlyList<TicketPayoutIssue> Check(PaymentPayout payout)
     {
-        var issues = new List<TicketPayoutIssue>();
-        if (payout.ContentsNetMinor is { } net && net != payout.AmountMinor)
-            issues.Add(TicketPayoutIssue.ContentsMismatch);
         if (payout.Status is "failed" or "canceled")
-            issues.Add(TicketPayoutIssue.Failed);
-        return issues;
+            return [TicketPayoutIssue.Failed];
+        return payout.ContentsNetMinor is { } net && net != payout.AmountMinor
+            ? [TicketPayoutIssue.ContentsMismatch] : [];
     }
 }

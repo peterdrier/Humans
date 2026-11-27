@@ -112,8 +112,7 @@ month it was made. Every balance movement is tied to its Humans order: Box Offic
 carry the platform's own order, whose Humans order the adapter reads back from the platform. A payment must
 name a paid (or settling) order on that platform, for the order's total, with the fee Humans recorded on the order (a
 failed delayed debit whose payment came back, in the period or any time after it, may be Failed); a refund or chargeback must name an order; a payout must
-send exactly the net of the movements Stripe says it contains. A failed payout is shown but does not unbalance: Stripe
-returns the money and pays it out again, and it would otherwise hold the nightly alert forever. Totals show charged, refunded, chargebacks, fees, net into the balance and paid out to the
+send exactly the net of the movements Stripe says it contains. Failed and cancelled payouts remain visible as failed but skip contents-mismatch checks and never unbalance: the funds remain in, or return to, the account for a later payout. Otherwise they could hold the nightly alert forever. Balance-movement totals still include every payout and reversal. Totals show charged, refunded, chargebacks, fees, net into the balance and paid out to the
 bank, and the fees on order payments Humans against Stripe. Fees not on a payment (Stripe's own billing, a chargeback
 fee) name no order: they are listed and counted, not a difference. A manual payout's contents cannot be listed, nor an
 automatic one's until Stripe has finished reconciling it, so only its status is checked. pretix and Hi.Events record the fee on a paid order from

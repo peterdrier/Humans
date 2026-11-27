@@ -183,6 +183,20 @@ public sealed class TicketPaymentReconTests
         Build().Balanced.Should().BeTrue();
     }
 
+    [HumansTheory]
+    [InlineData("failed")]
+    [InlineData("canceled")]
+    public void Build_FailedPayoutContents_RemainsBalanced(string status)
+    {
+        _payouts.Add(new PaymentPayout("po_returned", Mid, null, 5000, status, 0, 0));
+
+        var recon = Build();
+
+        recon.Balanced.Should().BeTrue();
+        recon.PayoutProblems.Should().BeEmpty();
+        recon.Payouts.Should().ContainSingle().Which.Issues.Should().Equal(TicketPayoutIssue.Failed);
+    }
+
     [HumansFact]
     public void A_failed_delayed_debit_whose_payment_came_back_balances()
     {

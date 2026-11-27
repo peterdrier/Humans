@@ -53,6 +53,8 @@ Erased adults cannot be offered or receive resale invitations; their existing of
 
 Refund audit entries record human refund and refunded-void callers in `ActorUserId`; automated refund attempts use the `TicketCheckout` job identity.
 
+Payment reconciliation shows failed and cancelled payouts as failed, without testing their uncompleted contents or unbalancing the report. Other payout statuses still compare known contents totals. Balance-movement totals retain every payout and reversal.
+
 Ticket rules require one unsuffixed Spanish base file and a matching English translation. A suffixed Spanish file cannot replace the base. Duplicate languages within that base's file set, including suffix-case variants and explicit Spanish copies, make the folder unavailable rather than choosing one text. Unrelated translated files are ignored.
 
 Operator controllers order companion requests pending-first/newest-first, cancellation refund groups by state,
