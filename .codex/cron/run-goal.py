@@ -64,6 +64,13 @@ def quota_stop_reason(result, now, policy=None):
     return None
 
 
+DRAINED_MARKER = "Stop: ledger drained"
+
+
+def reports_drained(report):
+    return any(line.strip() == DRAINED_MARKER for line in report.splitlines())
+
+
 def run(prompt_file, report_file, deadline, repair=False):
     prompt = Path(prompt_file).read_text()
     # Repair mode: the deadline is a cap, not a target; finishing early is fine.
@@ -72,8 +79,10 @@ def run(prompt_file, report_file, deadline, repair=False):
         "and finish with a concise report. Do no other debt work. Completing before "
         f"Unix time {deadline} is expected; that time is a cap, not a target."
     ) if repair else (
-        f"Follow {prompt_file} and actively fix substantive tech debt until Unix time "
-        f"{deadline}, unless the wrapper ends work at a weekly quota boundary. "
+        f"Follow {prompt_file} and fix substantive tech debt until the ledger and the "
+        f"ladder's Finds are drained or Unix time {deadline}, whichever comes first, unless "
+        "the wrapper ends work at a weekly quota boundary. When nothing workable is left, "
+        f"complete the goal with a cumulative report containing the line `{DRAINED_MARKER}`. "
         "Before editing repeated simple corrections, discover related instances in the section "
         "and shared consumers. Plan one batch by correction, risk, and shared tests; "
         "justify splitting known related candidates. "
@@ -233,7 +242,8 @@ def run(prompt_file, report_file, deadline, repair=False):
                         "before editing, and explain any split of known related fixes. Run shared "
                         "checks once per completed batch, then commit, complete the goal and "
                         "return the cumulative report so the wrapper can check quota. "
-                        "No fix-count quota; the ledger must shrink. If the deadline has now "
+                        "No fix-count quota; the ledger must shrink. If nothing workable is left, "
+                        f"complete the goal with the line `{DRAINED_MARKER}` in the report. If the deadline has now "
                         "passed, finish and validate the current task. Complete the goal only "
                         "then, and return a cumulative PR report covering the entire run."
                     ),
@@ -307,6 +317,10 @@ def run(prompt_file, report_file, deadline, repair=False):
                     if subprocess.check_output(["git", "status", "--porcelain"],
                                                cwd=os.environ["WORK_DIR"], text=True).strip():
                         raise RuntimeError("Completed round left uncommitted changes")
+                    if not repair and reports_drained(final_message):
+                        outcome("Ledger drained")
+                        Path(report_file).write_text(final_message)
+                        return 4
                 if quota_enabled and goal_status == "complete":
                     quota_request = next_request_id
                     next_request_id += 1

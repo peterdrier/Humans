@@ -29,11 +29,10 @@ internal interface IGateRepository : IRepository
     /// <summary>As guest, as the staffer who scanned, or as the one who undid the admit.</summary>
     Task<IReadOnlyList<GateScanEvent>> GetScansForUserAsync(Guid userId, CancellationToken ct = default);
 
-    /// <summary>Also carries the merged-away staff PIN to the survivor.</summary>
     Task ReassignUserAsync(Guid fromUserId, Guid toUserId, CancellationToken ct = default);
 
     /// <summary>
-    /// Clears <c>GuestUserId</c> and <c>OverrideByUserId</c> and deletes the staff PIN. <c>ScannedByUserId</c> is
+    /// Clears <c>GuestUserId</c> and <c>OverrideByUserId</c>. <c>ScannedByUserId</c> is
     /// non-nullable and stays; see the erasure declaration.
     /// </summary>
     Task<int> EraseUserFromScansAsync(Guid userId, CancellationToken ct = default);
@@ -45,14 +44,6 @@ internal interface IGateRepository : IRepository
 
     /// <summary>Id is forced to 1.</summary>
     Task SaveSettingsAsync(GateSettings settings, CancellationToken ct = default);
-
-    Task<GateStaffPin?> GetStaffPinAsync(Guid userId, CancellationToken ct = default);
-
-    /// <summary>The hash is already computed by the service.</summary>
-    Task UpsertStaffPinAsync(GateStaffPin pin, CancellationToken ct = default);
-
-    /// <summary>No-op when none exists.</summary>
-    Task DeleteStaffPinAsync(Guid userId, CancellationToken ct = default);
 }
 
 internal enum GateRecordOutcome

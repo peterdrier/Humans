@@ -7,7 +7,6 @@
   tests/Humans.Web.Tests/Architecture/TicketVendorPortArchitectureTests.cs
   tests/Humans.TicketTailor.Tests/**
   src/Sections/Humans.Tickets.Contracts/TicketVendorServiceKeys.cs
-  src/Sections/Humans.Tickets.Contracts/ITicketVendorMirror.cs
   src/Sections/Humans.Tickets/Section.cs
   src/Sections/Humans.Tickets/Services/TicketVendorGateway.cs
   src/Sections/Humans.Tickets/Services/TicketSyncService.cs
@@ -54,22 +53,20 @@ None — the section owns no tables. Tickets owns every local row mirrored from 
 - Attendee email is the answer to the custom question whose text is exactly `Email`, else the ticket's top-level email.
 - Money crosses the boundary in euros: vendor cents divided by 100 on the way in, monetary discount values multiplied by 100 on the way out. Order reads require an explicit EUR currency code (case-insensitive), a total, a nonblank payment status and a representable `created_at` timestamp. Missing/null creation time cannot become the Unix epoch; an explicitly supplied zero remains the epoch. Out-of-range order timestamps fail with `HttpRequestException`. Missing financial fields or unsupported currency fail the complete read with `HttpRequestException`; no zero total, completed status or currency is invented. Explicit zero totals and nonblank status values are preserved.
 - Event capacity is `ticket_groups.max_quantity` summed, falling back to `ticket_types.quantity_total`. A missing/unreadable event response, missing/blank name, or missing/null `total_issued_tickets` throws `HttpRequestException` rather than producing a successful unnamed or zero-sold summary. An explicitly reported zero remains valid. `TicketTailorService` itself is cache-free; Tickets' `CachingTicketVendorService` holds the summary for 15 minutes, and a failed read is never cached.
-- Void and issue throw `TicketVendorWriteException` with a `TicketVendorFailureKind`: 400/422 Validation, 401/403 AuthFailed, 404 NotFound, 429 RateLimited, anything else and transport failure Transient. Every other method — reads, discount codes, check-in — throws `HttpRequestException`. Unreadable JSON in a successful void or issue response is a typed Transient failure; unreadable discount responses throw `HttpRequestException`. These decoding failures retain their cause and never retry the write.
+- Void and issue throw `TicketVendorWriteException` with a `TicketVendorFailureKind`: 400/422 Validation, 401/403 AuthFailed, 404 NotFound, 429 RateLimited, anything else and transport failure Transient. Every other method — reads and discount codes — throws `HttpRequestException`. Unreadable JSON in a successful void or issue response is a typed Transient failure; unreadable discount responses throw `HttpRequestException`. These decoding failures retain their cause and never retry the write.
 - Issue requires either `HoldId` or both `EventId` and `TicketTypeId`; anything else is an `ArgumentException` before any call. A successful response must contain a nonblank ticket ID and status `valid`; a missing ID or missing/invalid status follows the existing empty-body vendor-failure path so Tickets records the committed void as partial state instead of attempting to persist an unusable replacement. The connector never retries the issue write.
 - Discount generation posts form-encoded requests to `/discounts`, with the generated `NOBO-` code also used as the required name. Percentage discounts use `type=percentage` and `price_percent`; fixed discounts use `type=fixed_amount` and `price` in cents. Numeric fields use invariant formatting, and a supplied expiry is sent as Unix seconds; an absent expiry is omitted. Missing or blank response codes throw `HttpRequestException` without retrying the creation. Wire fields follow [TicketTailor’s discount API](https://developers.tickettailor.com/docs/api/create-discount-code/).
-- Check-in posts form-encoded `issued_ticket_id`, `quantity=1` and `check_in_at`; the vendor call is not idempotent, so callers never retry it. The key needs Event-manager scope.
 - The stub dataset is deterministic: the first order is `peter@nobodies.team`; every paid order holds one or two valid tickets and every non-paid order one void ticket; check-ins fall on 2026-07-08; incremental syncs (`since` set) return no tickets and no check-ins. Exact totals are the tests' to own (`tests/Humans.TicketTailor.Tests/Services/StubTicketVendorServiceTests.cs`).
 
 ## Negative Access Rules
 
-- Sections other than Tickets **cannot** inject `ITicketVendorService`; they ask Tickets through `Humans.Tickets.Contracts` (Gate's check-in mirror goes through `ITicketVendorMirror`).
+- Sections other than Tickets **cannot** inject `ITicketVendorService`; they ask Tickets through `Humans.Tickets.Contracts`.
 - Code outside this project **cannot** name `TicketTailorService` or `StubTicketVendorService`.
 - A non-Production environment **cannot** reach the live vendor, whatever `TICKET_VENDOR_API_KEY` holds.
-- The client **cannot** retry a check-in.
 
 ## Triggers
 
-None — the section is a pure request/response surface. Side effects around sync, transfer and gate check-in belong to Tickets and Gate.
+None — the section is a pure request/response surface. Side effects around sync and transfer belong to Tickets.
 
 ## Cross-Section Dependencies
 

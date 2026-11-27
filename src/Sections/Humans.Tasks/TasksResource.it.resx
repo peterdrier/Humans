@@ -61,14 +61,10 @@
   <data name="Tasks_Filter_AnyEvent" xml:space="preserve"><value>Qualsiasi evento</value></data>
   <data name="Tasks_Filter_Finished" xml:space="preserve"><value>Includi completate e annullate</value></data>
   <data name="Tasks_Filter_Apply" xml:space="preserve"><value>Mostra</value></data>
-  <data name="Tasks_Col_Task" xml:space="preserve"><value>Attività</value></data>
   <data name="Tasks_Col_Team" xml:space="preserve"><value>Team</value></data>
   <data name="Tasks_Col_Status" xml:space="preserve"><value>Stato</value></data>
   <data name="Tasks_Col_Priority" xml:space="preserve"><value>Priorità</value></data>
-  <data name="Tasks_Col_Due" xml:space="preserve"><value>Scadenza</value></data>
-  <data name="Tasks_Col_Slots" xml:space="preserve"><value>Persone</value></data>
   <data name="Tasks_Hidden" xml:space="preserve"><value>Nascosta</value></data>
-  <data name="Tasks_WaitingOn" xml:space="preserve"><value>In attesa di</value></data>
   <data name="Tasks_Yes" xml:space="preserve"><value>Sì</value></data>
   <data name="Tasks_No" xml:space="preserve"><value>No</value></data>
   <data name="Tasks_Team_Title" xml:space="preserve"><value>Attività di {0}</value></data>
@@ -164,8 +160,6 @@
   <data name="Tasks_Requests_Approve" xml:space="preserve"><value>Approva</value></data>
   <data name="Tasks_Requests_Decline" xml:space="preserve"><value>Rifiuta</value></data>
   <data name="Tasks_Requests_Reason" xml:space="preserve"><value>Motivo, inviato nell'email (facoltativo)</value></data>
-  <data name="Tasks_Col_Join" xml:space="preserve"><value>Unisciti</value></data>
-  <data name="Tasks_Col_Free" xml:space="preserve"><value>Liberi</value></data>
   <data name="Tasks_List_Open" xml:space="preserve"><value>Compiti aperti</value></data>
   <data name="Tasks_Open_Title" xml:space="preserve"><value>Compiti aperti</value></data>
   <data name="Tasks_Open_Subtitle" xml:space="preserve"><value>Compiti che hanno ancora bisogno di persone, i più urgenti per primi.</value></data>
@@ -179,4 +173,15 @@
   <data name="Tasks_Withdrawn" xml:space="preserve"><value>Richiesta ritirata.</value></data>
   <data name="Tasks_Approved" xml:space="preserve"><value>Richiesta approvata.</value></data>
   <data name="Tasks_Declined" xml:space="preserve"><value>Richiesta rifiutata.</value></data>
+  <data name="Tasks_Row_Understaffed" xml:space="preserve"><value>Mancano persone</value></data>
+  <data name="Tasks_Row_WaitingOnTask" xml:space="preserve"><value>Aspetta «{0}»</value></data>
+  <data name="Tasks_Row_WaitingOnHidden" xml:space="preserve"><value>Aspetta un'attività nascosta</value></data>
+  <data name="Tasks_Row_Needs" xml:space="preserve"><value>ne mancano {0}</value></data>
+  <data name="Tasks_Filter_AnyTeam" xml:space="preserve"><value>Tutti i team</value></data>
+  <data name="Tasks_Filter_AnyPriority" xml:space="preserve"><value>Qualsiasi priorità</value></data>
+  <data name="Tasks_Filter_AnyStatus" xml:space="preserve"><value>Qualsiasi stato</value></data>
+  <data name="Tasks_Card_Title" xml:space="preserve"><value>Attività</value></data>
+  <data name="Tasks_Card_Empty" xml:space="preserve"><value>Nessuna attività aperta al momento.</value></data>
+  <data name="Tasks_Card_Requests" xml:space="preserve"><value>Richieste in attesa: {0}</value></data>
+  <data name="Tasks_Card_All" xml:space="preserve"><value>Vedi tutte le attività ({0})</value></data>
 </root>

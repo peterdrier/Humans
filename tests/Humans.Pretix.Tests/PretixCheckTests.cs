@@ -15,7 +15,7 @@ public class PretixCheckTests
     [HumansTheory]
     [InlineData(true)]
     [InlineData(false)]
-    public async Task Check_propagates_caller_cancellation_but_reports_timeouts(bool cancelCaller)
+    public async Task Check_CallerCancels_Propagates(bool cancelCaller)
     {
         using var caller = new CancellationTokenSource();
         if (cancelCaller) await caller.CancelAsync();
@@ -29,7 +29,7 @@ public class PretixCheckTests
     }
 
     [HumansFact]
-    public async Task A_ready_event_passes_with_reads_only()
+    public async Task Check_ReadyEvent_Passes()
     {
         var pretix = Organizer()
             .On("GET", Api, HttpStatusCode.OK, new { currency = "EUR", live = true, testmode = false })
@@ -50,7 +50,7 @@ public class PretixCheckTests
     }
 
     [HumansFact]
-    public async Task An_offline_event_missing_a_carrier_says_both()
+    public async Task Check_OfflineEventNoCarrier_SaysBoth()
     {
         var pretix = Organizer()
             .On("GET", Api, HttpStatusCode.OK, new { currency = "EUR", live = false, testmode = true })
@@ -65,7 +65,7 @@ public class PretixCheckTests
     }
 
     [HumansFact]
-    public async Task A_rejected_token_stops_before_the_event()
+    public async Task Check_RejectedToken_StopsBeforeEvent()
     {
         var pretix = new FakePretix()
             .On("GET", "/api/v1/organizers/nobodies/events/", HttpStatusCode.Unauthorized, new { detail = "Invalid token." });
@@ -77,7 +77,7 @@ public class PretixCheckTests
     }
 
     [HumansFact]
-    public async Task A_refused_items_read_is_a_finding_not_a_throw()
+    public async Task Check_ItemsReadRefused_IsFinding()
     {
         var pretix = Organizer()
             .On("GET", Api, HttpStatusCode.OK, new { currency = "EUR", live = true, testmode = false })
@@ -89,7 +89,7 @@ public class PretixCheckTests
     }
 
     [HumansFact]
-    public async Task A_path_like_event_id_is_refused_before_any_event_call()
+    public async Task Check_PathLikeEventId_IsRefused()
     {
         var pretix = Organizer();
 
@@ -100,7 +100,7 @@ public class PretixCheckTests
     }
 
     [HumansFact]
-    public void Setup_labels_pretix_hosted_and_hides_secrets()
+    public void Setup_HidesSecrets()
     {
         var settings = PretixTestHost.Settings();
         settings.BaseUrl = "https://pretix.eu/";

@@ -295,7 +295,8 @@ internal sealed record QuestionInput(
     IReadOnlyList<GridRowInput>? GridRows = null,
     IReadOnlyList<InformationImageInput>? InformationImages = null,
     RankedQuestionSettings? RankedSettings = null,
-    IReadOnlyList<string>? RankedUnavailableOptionValues = null);
+    IReadOnlyList<string>? RankedUnavailableOptionValues = null,
+    SurveyCommentSettings? Comment = null);
 
 /// <summary>One choice option in the builder graph. <c>Value</c> is the stable machine key.</summary>
 internal sealed record OptionInput(

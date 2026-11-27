@@ -50,8 +50,13 @@ internal sealed class TicketingSettings
     public TicketingSwitches EffectiveSwitches => Switches ?? new();
 
     /// <summary>Whether tickets in resale sell now. Resale only mode sells nothing else, so it opens resale too.</summary>
-    public bool ResaleSelling =>
-        EffectiveSwitches.Resale != ResaleScheme.Off && Mode is (TicketSalesMode.Open or TicketSalesMode.ResaleOnly) && (ResaleOpenedAt is not null || Mode == TicketSalesMode.ResaleOnly);
+    public bool IsResaleSelling(Instant now) =>
+        !IsClosed(now) && EffectiveSwitches.Resale != ResaleScheme.Off
+        && Mode is (TicketSalesMode.Open or TicketSalesMode.ResaleOnly)
+        && (ResaleOpenedAt is not null || Mode == TicketSalesMode.ResaleOnly);
+
+    /// <summary>The close instant is exclusive for new sales and resale actions.</summary>
+    public bool IsClosed(Instant now) => Mode == TicketSalesMode.Closed || (SalesCloseAt is { } close && now >= close);
 
     /// <summary>
     /// The folder in the legal repo holding the ticket rules every buyer accepts, one markdown file per language; null

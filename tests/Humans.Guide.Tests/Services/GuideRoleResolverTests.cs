@@ -234,7 +234,7 @@ public class GuideRoleResolverTests
     }
 
     [HumansFact]
-    public async Task Resolve_CoordinatorOnOneTeamMemberOnAnother_IsTeamCoordinatorTrue()
+    public async Task Resolve_CoordinatorOnOneTeam_IsTeamCoordinator()
     {
         var userId = Guid.NewGuid();
         StubTeams(
@@ -251,7 +251,7 @@ public class GuideRoleResolverTests
 
     [HumansTheory]
     [MemberData(nameof(MappedRoles))]
-    public async Task Resolve_EveryRoleAParentheticalCanName_IsProbedAgainstClaims(string role)
+    public async Task Resolve_EveryNamedRole_IsProbed(string role)
     {
         // A role the map can name but the resolver never probes is invisible: the segment
         // carries it among its privileges, but GuideFilter looks for it in SystemRoles,

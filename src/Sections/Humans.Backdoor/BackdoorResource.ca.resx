@@ -66,4 +66,23 @@
   <data name="Backdoor_Error_NotAllowed" xml:space="preserve"><value>Només pots crear i canviar les teves pròpies claus.</value></data>
   <data name="Backdoor_Error_NotFound" xml:space="preserve"><value>Aquesta clau ja no existeix.</value></data>
   <data name="Backdoor_Error_AlreadyRevoked" xml:space="preserve"><value>Aquesta clau ja està revocada.</value></data>
+  <data name="Backdoor_Connections_Title" xml:space="preserve"><value>Apps connectades</value></data>
+  <data name="Backdoor_Connections_Empty" xml:space="preserve"><value>No hi ha apps connectades.</value></data>
+  <data name="Backdoor_Connections_App" xml:space="preserve"><value>App</value></data>
+  <data name="Backdoor_Connections_Connected" xml:space="preserve"><value>Connectada</value></data>
+  <data name="Backdoor_Connections_Revoked" xml:space="preserve"><value>Connexió revocada.</value></data>
+  <data name="Backdoor_Connections_Error_NotFound" xml:space="preserve"><value>Aquesta connexió ja no existeix.</value></data>
+  <data name="Backdoor_Connect_Title" xml:space="preserve"><value>Connectar Claude</value></data>
+  <data name="Backdoor_Connect_Steps" xml:space="preserve"><value>A Claude, afegeix un connector personalitzat amb aquesta adreça. A Configuració avançada, introdueix l'ID de client OAuth de sota. Claude obrirà Humans, on inicies sessió i ho permets.</value></data>
+  <data name="Backdoor_Connect_Address" xml:space="preserve"><value>Adreça</value></data>
+  <data name="Backdoor_Connect_ClientId" xml:space="preserve"><value>ID de client OAuth</value></data>
+  <data name="Backdoor_Authorize_Title" xml:space="preserve"><value>Permetre que {0} faci servir Humans en nom teu?</value></data>
+  <data name="Backdoor_Authorize_Body" xml:space="preserve"><value>{0} podrà fer servir les eines de Humans que tu pots fer servir, actuant en nom teu, fins que ho revoquis a la teva pàgina de claus API o passin 30 dies.</value></data>
+  <data name="Backdoor_Authorize_ReturnsTo" xml:space="preserve"><value>Quan ho permetis, tornaràs a:</value></data>
+  <data name="Backdoor_Authorize_Warning" xml:space="preserve"><value>Permet-ho només si acabes de començar tu mateix a connectar {0}. Si no, prem Denegar.</value></data>
+  <data name="Backdoor_Authorize_Allow" xml:space="preserve"><value>Permetre</value></data>
+  <data name="Backdoor_Authorize_Deny" xml:space="preserve"><value>Denegar</value></data>
+  <data name="Backdoor_Connection_Notification_Title" xml:space="preserve"><value>{0} s'ha connectat al teu compte de Humans</value></data>
+  <data name="Backdoor_Connection_Notification_Body" xml:space="preserve"><value>Si no has estat tu, revoca-ho a la teva pàgina de claus API.</value></data>
+  <data name="Backdoor_Connection_Notification_Action" xml:space="preserve"><value>Revisar</value></data>
 </root>

@@ -110,6 +110,26 @@
             <div class="form-text grid-column-help">@Localizer["Surveys_Admin_Builder_GridColumnHelp"]</div>
         </div>
 
+        <div class="comment-section border-top pt-2 mt-2">
+            <div class="form-check">
+                <input type="checkbox" class="form-check-input comment-enabled" id="comment-@key"
+                       name="@(prefix).CommentEnabled" value="true" @(q.CommentEnabled ? "checked" : null) />
+                <label class="form-check-label small" for="comment-@key">@Localizer["Surveys_Admin_Builder_AskForComment"]</label>
+            </div>
+            <div class="comment-details mt-2" style="@(q.CommentEnabled ? "" : "display:none")">
+                <partial name="_SurveyLocalizedField" model="@(new SurveyLocalizedFieldModel($"{prefix}.CommentPrompt", Localizer["Surveys_Admin_Builder_Field_CommentPrompt"], q.CommentPrompt))" />
+                <label class="form-label small mb-0" for="comment-options-@key">@Localizer["Surveys_Admin_Builder_CommentOptions"]</label>
+                <select id="comment-options-@key" name="@(prefix).CommentOptionValues" multiple size="3"
+                        class="form-select form-select-sm w-auto comment-options">
+                    @foreach (var v in q.CommentOptionValues)
+                    {
+                        <option value="@v" selected>@v</option>
+                    }
+                </select>
+                <div class="form-text">@Localizer["Surveys_Admin_Builder_CommentOptionsHelp"]</div>
+            </div>
+        </div>
+
         <div class="ranked-section border-top pt-2 mt-2">
             <div class="alert alert-info small py-2">
                 @Localizer["Surveys_Admin_Builder_RankedMethodNote"]

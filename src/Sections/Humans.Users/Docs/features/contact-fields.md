@@ -173,6 +173,7 @@ Eve (active member, no shared teams) views Bob's profile:
 - Icon for field type (envelope, phone, etc.)
 - Visibility icon with tooltip
 - "Add" button if no fields exist
+- Send message button for any viewer but the owner, unless the card already shows them an email or the owner opted out of facilitated messages
 
 ### Profile Edit
 - Dynamic form with add/remove capability

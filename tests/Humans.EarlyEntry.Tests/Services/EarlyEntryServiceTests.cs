@@ -17,7 +17,7 @@ public class EarlyEntryServiceTests
     }
 
     [HumansFact]
-    public async Task Roster_KeepsOneRowPerUser()
+    public async Task GetRosterAsync_TwoProviders_OneRowPerUser()
     {
         var alice = Guid.NewGuid();
         var bob = Guid.NewGuid();
@@ -66,7 +66,7 @@ public class EarlyEntryServiceTests
     }
 
     [HumansFact]
-    public async Task GetForUserAsync_LabelsDifferByCase_AreTwoSources()
+    public async Task GetRosterAsync_LabelsDifferByCase_AreTwoSources()
     {
         var userId = Guid.NewGuid();
         var sut = new EarlyEntryService(new[]
