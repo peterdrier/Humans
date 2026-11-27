@@ -59,8 +59,6 @@ internal interface ITicketCheckoutService : ITicketingPlatformEvents
     [ExternalWrite]
     Task<CheckoutMutationResult> CancelAsync(Guid orderId, Guid userId, CancellationToken ct = default);
 
-    Task<IReadOnlyList<TicketCheckoutTicket>> GetTicketsForOrderAsync(Guid orderId, CancellationToken ct = default);
-
     Task<TicketCheckoutTicket?> GetTicketAsync(Guid id, CancellationToken ct = default);
 
     /// <summary>Appends a delivery step; a resale offer is marked notified only after its email reaches the outbox.</summary>

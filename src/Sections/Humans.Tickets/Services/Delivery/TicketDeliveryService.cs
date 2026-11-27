@@ -192,7 +192,7 @@ internal sealed class TicketDeliveryService(
     {
         if (await HolderMailAsync(ticketId, TicketCheckoutTicketState.Valid, ct) is not { } to)
             return;
-        var riders = ((await checkout.GetOrderDetailAsync(to.Ticket.OrderId, ct))?.Tickets ?? [])
+        var riders = (await checkout.GetTicketsForSettingsAsync(to.Ticket.TicketingSettingsId, ct))
             .Where(t => t.ParentTicketId == ticketId && t.State == TicketCheckoutTicketState.Valid && string.IsNullOrWhiteSpace(t.HolderEmail));
         await email.SendAsync(emails.TicketIssued(new IssuedTicketMail(
             to.UserId, to.Email, to.Ticket.HolderName, to.EventName, [Card(to.Ticket), .. riders.Select(Card)],
@@ -241,27 +241,43 @@ internal sealed class TicketDeliveryService(
         var baseUrl = BaseUrl;
         var buyer = await users.GetUserInfoAsync(order.BuyerUserId, ct);
 
-        // Each ticket with an email gets its own mail; one without (a child) rides on its adult's.
-        var mailed = tickets.Where(t => !string.IsNullOrWhiteSpace(t.HolderEmail) || t.ParentTicketId is null).ToList();
+        var family = (await checkout.GetTicketsForSettingsAsync(ticketing.Id, ct))
+            .Concat(tickets).DistinctBy(t => t.Id).ToList();
+        var orderTicketIds = tickets.Select(t => t.Id).ToHashSet();
+        // A separate-order companion needs its own handoff to the adult; an in-order child rides on the adult's mail.
+        var mailed = tickets.Where(t => !string.IsNullOrWhiteSpace(t.HolderEmail)
+            || t.ParentTicketId is not { } parentId || !orderTicketIds.Contains(parentId)).ToList();
         int ticketMails = 0, skipped = 0;
         foreach (var ticket in mailed)
         {
-            var holder = ticket.HolderUserId is { } holderId ? await users.GetUserInfoAsync(holderId, ct) : null;
-            if ((holder?.Email ?? ticket.HolderEmail ?? (ticket.HolderUserId == order.BuyerUserId ? buyer?.Email ?? order.BuyerEmail : null)) is not { } address)
+            var recipient = ticket;
+            if (ticket.HolderUserId is null && string.IsNullOrWhiteSpace(ticket.HolderEmail) && ticket.ParentTicketId is { } parentId)
+            {
+                if (family.FirstOrDefault(t => t.Id == parentId && t.IsHeld) is not { } parent)
+                {
+                    logger.LogWarning("Ticket {TicketId} on order {OrderId} has no live adult recipient; its ticket email was not sent", ticket.Id, orderId);
+                    skipped++;
+                    continue;
+                }
+                recipient = parent;
+            }
+            var holder = recipient.HolderUserId is { } holderId ? await users.GetUserInfoAsync(holderId, ct) : null;
+            if ((holder?.Email ?? recipient.HolderEmail ?? (recipient.HolderUserId == order.BuyerUserId ? buyer?.Email ?? order.BuyerEmail : null)) is not { } address)
             {
                 logger.LogWarning("Ticket {TicketId} on order {OrderId} has no address; its ticket email was not sent", ticket.Id, orderId);
                 skipped++;
                 continue;
             }
-            var riders = tickets.Where(t => t.ParentTicketId == ticket.Id && !mailed.Contains(t));
+            var riders = family.Where(t => t.ParentTicketId == ticket.Id
+                && t.State == TicketCheckoutTicketState.Valid && string.IsNullOrWhiteSpace(t.HolderEmail));
             await email.SendAsync(emails.TicketIssued(new IssuedTicketMail(
-                ticket.HolderUserId,
+                recipient.HolderUserId,
                 address,
-                ticket.HolderName,
+                recipient.HolderName,
                 eventSettings.EventName,
                 [Card(ticket), .. riders.Select(Card)],
                 new Uri($"{baseUrl}/Tickets/Buy/Mine"),
-                ticket.HolderUserId != order.BuyerUserId ? order.BuyerName : null,
+                recipient.HolderUserId != order.BuyerUserId ? order.BuyerName : null,
                 fresh ? null : DeliveryIdFor("ticket_issued", ticket.Id)), CultureOf(holder, order)), ct);
             ticketMails++;
         }

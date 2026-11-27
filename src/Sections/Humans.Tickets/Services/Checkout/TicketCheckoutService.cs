@@ -495,7 +495,7 @@ internal sealed partial class TicketCheckoutService(
             return null;
         var refunds = await repository.GetRefundsAsync(orderId, ct);
         var timeline = (await repository.GetOrderEventsAsync(orderId, ct)).OrderBy(e => e.At).ToList();
-        return new OrderDetail(order, refunds, timeline, await GetTicketsForOrderAsync(orderId, ct));
+        return new OrderDetail(order, refunds, timeline, await repository.GetTicketsForOrderAsync(orderId, ct));
     }
 
     public async Task<BuyOrder?> GetBuyOrderAsync(Guid orderId, Guid viewerId, CancellationToken ct = default)

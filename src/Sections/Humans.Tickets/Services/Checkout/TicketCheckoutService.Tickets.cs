@@ -21,9 +21,6 @@ internal sealed partial class TicketCheckoutService
     private static readonly Duration DeliveryGrace = Duration.FromMinutes(30);
     private static readonly Duration DeliveryRepairWindow = Duration.FromDays(7);
 
-    public Task<IReadOnlyList<TicketCheckoutTicket>> GetTicketsForOrderAsync(Guid orderId, CancellationToken ct = default) =>
-        repository.GetTicketsForOrderAsync(orderId, ct);
-
     public Task<TicketCheckoutTicket?> GetTicketAsync(Guid id, CancellationToken ct = default) =>
         repository.GetTicketAsync(id, ct);
 
