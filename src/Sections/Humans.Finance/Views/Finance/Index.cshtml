@@ -57,7 +57,6 @@
 
 <page-header title="Finance">
     <div class="d-flex align-items-center gap-3">
-        <span class="small text-muted">Holded ledger synced @(Model.LedgerSyncedAt?.ToDateTime() ?? "never")</span>
         <a href="/Holded" class="btn btn-outline-secondary btn-sm">
             <i class="fa-solid fa-rotate me-1"></i>Holded sync
         </a>
@@ -82,6 +81,17 @@
             {
                 <partial name="_Table" model="cashTable" />
             }
+            <div class="card-footer small text-muted">
+                Numbers read: Holded ledger @(Model.LedgerSyncedAt?.ToDateTime() ?? "never")
+                @if (ledger is not null)
+                {
+                    if (ledger.BankFeed is { } bankFeed)
+                    {
+                        <text>· Bank feed @(bankFeed.SyncedAt?.ToDateTime() ?? "never")</text>
+                    }
+                    <text>· Pleo @(ledger.PleoReadAt?.ToDateTime() ?? "never") · Stripe @(ledger.StripeReadAt?.ToDateTime() ?? "never")</text>
+                }
+            </div>
         </div>
     </div>
 
