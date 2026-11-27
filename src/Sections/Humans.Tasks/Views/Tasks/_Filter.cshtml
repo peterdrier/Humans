@@ -1,4 +1,4 @@
-@* The filters of a task list: which event, which team, which priority, and whether done and cancelled tasks count. *@
+@* The filters of a task list: which event, which team, which priority, which status, and whether done and cancelled tasks count. *@
 @model TaskFilterViewModel
 
 <form method="get" class="d-flex flex-wrap align-items-end gap-3 mb-3">
@@ -36,6 +36,16 @@
             @foreach (var priority in new[] { SlotPriority.Critical, SlotPriority.Important, SlotPriority.NiceToHave })
             {
                 <option value="@priority" selected="@(Model.Filter.Priority == priority)">@SharedLocalizer.EnumDisplay(priority)</option>
+            }
+        </select>
+    </div>
+    <div>
+        <label class="form-label" for="filter-status">@Localizer["Tasks_Col_Status"]</label>
+        <select class="form-select" id="filter-status" name="Status">
+            <option value="">@Localizer["Tasks_Filter_AnyStatus"]</option>
+            @foreach (var status in Enum.GetValues<TaskItemStatus>().Where(s => Model.Filter is TaskListFilter || s is not (TaskItemStatus.Done or TaskItemStatus.Cancelled)))
+            {
+                <option value="@status" selected="@(Model.Filter.Status == status)">@Localizer[$"Enum_TaskItemStatus_{status}"]</option>
             }
         </select>
     </div>

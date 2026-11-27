@@ -65,7 +65,6 @@
   <data name="Tasks_Col_Status" xml:space="preserve"><value>Statut</value></data>
   <data name="Tasks_Col_Priority" xml:space="preserve"><value>Priorité</value></data>
   <data name="Tasks_Hidden" xml:space="preserve"><value>Masquée</value></data>
-  <data name="Tasks_WaitingOn" xml:space="preserve"><value>En attente de</value></data>
   <data name="Tasks_Yes" xml:space="preserve"><value>Oui</value></data>
   <data name="Tasks_No" xml:space="preserve"><value>Non</value></data>
   <data name="Tasks_Team_Title" xml:space="preserve"><value>Tâches de {0}</value></data>
@@ -180,6 +179,7 @@
   <data name="Tasks_Row_Needs" xml:space="preserve"><value>il en manque {0}</value></data>
   <data name="Tasks_Filter_AnyTeam" xml:space="preserve"><value>Toutes les équipes</value></data>
   <data name="Tasks_Filter_AnyPriority" xml:space="preserve"><value>Toute priorité</value></data>
+  <data name="Tasks_Filter_AnyStatus" xml:space="preserve"><value>Tout statut</value></data>
   <data name="Tasks_Card_Title" xml:space="preserve"><value>Tâches</value></data>
   <data name="Tasks_Card_Empty" xml:space="preserve"><value>Aucune tâche ouverte pour le moment.</value></data>
   <data name="Tasks_Card_Requests" xml:space="preserve"><value>Demandes en attente : {0}</value></data>

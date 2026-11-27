@@ -676,6 +676,52 @@ public sealed class TasksControllerTests
     }
 
     [HumansFact]
+    public async Task Index_TeamNotOffered_IsDropped()
+    {
+        var production = await TitledAsync("Bar", SlotPriority.Important, TaskTestKit.Production);
+        var art = await TitledAsync("Mural", SlotPriority.Important, TaskTestKit.Art);
+        await _kit.SetStatusAsync(art.Id, TaskItemStatus.Done);
+
+        var stale = IndexModel(await Human().Index(new TaskListFilter { Team = TaskTestKit.Art }, Ct));
+        var withFinished = IndexModel(await Human().Index(new TaskListFilter { Team = TaskTestKit.Art, Finished = true }, Ct));
+
+        stale.Filter.Team.Should().BeNull("the select cannot offer a team with nothing listed");
+        stale.Tasks.Select(t => t.Id).Should().Equal(production.Id);
+        withFinished.Filter.Team.Should().Be(TaskTestKit.Art);
+        withFinished.Tasks.Select(t => t.Id).Should().Equal(art.Id);
+    }
+
+    [HumansFact]
+    public async Task Lists_PriorityNone_IsDropped()
+    {
+        var plain = await TitledAsync("Bar", SlotPriority.Important);
+
+        IndexModel(await Human().Index(new TaskListFilter { Priority = SlotPriority.None }, Ct))
+            .Tasks.Select(t => t.Id).Should().Equal(plain.Id);
+    }
+
+    [HumansFact]
+    public async Task Lists_StatusFilter_NarrowsTheRows()
+    {
+        var todo = await TitledAsync("Bar", SlotPriority.Important);
+        var going = await TitledAsync("Stools", SlotPriority.Important);
+        await _kit.SetStatusAsync(going.Id, TaskItemStatus.InProgress);
+        var done = await TitledAsync("Old", SlotPriority.Important);
+        await _kit.SetStatusAsync(done.Id, TaskItemStatus.Done);
+
+        IndexModel(await Human().Index(new TaskListFilter { Status = TaskItemStatus.InProgress }, Ct))
+            .Tasks.Select(t => t.Id).Should().Equal(going.Id);
+        IndexModel(await Human().Index(new TaskListFilter { Status = TaskItemStatus.Done }, Ct))
+            .Tasks.Select(t => t.Id).Should().Equal([done.Id], "asking for done brings finished tasks in");
+        (await Human().Team("production", new TaskListFilter { Status = TaskItemStatus.Todo }, Ct))
+            .Should().BeOfType<ViewResult>().Which.Model.Should().BeOfType<TeamPageViewModel>().Which
+            .Tasks.Select(t => t.Id).Should().Equal(todo.Id);
+        (await Human().Open(new TaskRowFilter { Status = TaskItemStatus.Done }, Ct))
+            .Should().BeOfType<ViewResult>().Which.Model.Should().BeOfType<OpenBoardViewModel>().Which
+            .Filter.Status.Should().BeNull("the open board has no finished tasks to filter to");
+    }
+
+    [HumansFact]
     public async Task Team_FiltersByPriority()
     {
         await TitledAsync("Bar", SlotPriority.Critical);
@@ -708,13 +754,17 @@ public sealed class TasksControllerTests
         var secret = await _kit.CreateAsync(TaskTestKit.Input(title: "Secret plan", hidden: true));
         var waitsOnVisible = await _kit.CreateAsync(TaskTestKit.Input(title: "Signs"));
         var waitsOnSecret = await _kit.CreateAsync(TaskTestKit.Input(title: "Banner"));
+        var waitsOnBoth = await _kit.CreateAsync(TaskTestKit.Input(title: "Lights"));
+        (await _kit.Service.AddDependencyAsync(waitsOnBoth.Id, secret.Id, _kit.Actor, Ct)).Succeeded.Should().BeTrue();
+        (await _kit.Service.AddDependencyAsync(waitsOnBoth.Id, visible.Id, _kit.Actor, Ct)).Succeeded.Should().BeTrue();
         (await _kit.Service.AddDependencyAsync(waitsOnVisible.Id, visible.Id, _kit.Actor, Ct)).Succeeded.Should().BeTrue();
         (await _kit.Service.AddDependencyAsync(waitsOnSecret.Id, secret.Id, _kit.Actor, Ct)).Succeeded.Should().BeTrue();
 
         var human = IndexModel(await Human().Index(new TaskListFilter(), Ct)).Blockers;
         var seeAll = IndexModel(await As([], RoleNames.Board).Index(new TaskListFilter(), Ct)).Blockers;
 
-        human.Should().HaveCount(2);
+        human.Should().HaveCount(3);
+        human[waitsOnBoth.Id].Should().Be("Fence", "a visible blocker is named even when a hidden one comes first");
         human[waitsOnVisible.Id].Should().Be("Fence");
         human[waitsOnSecret.Id].Should().BeNull();
         seeAll[waitsOnSecret.Id].Should().Be("Secret plan");

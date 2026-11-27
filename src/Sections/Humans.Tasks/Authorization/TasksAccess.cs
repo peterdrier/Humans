@@ -36,6 +36,9 @@ internal sealed record TasksAccess(Guid UserId, bool SeesAll, IReadOnlySet<Guid>
 
     public bool Manages(Guid teamId) => ManagedTeamIds.Contains(teamId);
 
+    /// <summary>A manager adds tasks only to a team that can hold them: active, and not a system team.</summary>
+    public bool CanAddTo(TeamInfo team) => Manages(team.Id) && team.IsActive && !team.IsSystemTeam;
+
     public bool Manages(TaskInfo task) =>
         string.Equals(task.Owner.Kind, TeamOwner.Kind, StringComparison.Ordinal) && Manages(task.Owner.Id);
 
@@ -66,8 +69,8 @@ internal sealed record TasksAccess(Guid UserId, bool SeesAll, IReadOnlySet<Guid>
         tasks.Select(t => (t.Id, Place: PlaceOn(t))).Where(p => p.Place is not null).ToDictionary(p => p.Id, p => p.Place!.Value);
 
     /// <summary>
-    /// For each waiting task in <paramref name="rows"/>, the title of the first unfinished task it waits on, or null
-    /// when the person cannot see that task. <paramref name="all"/> is every task, so a blocker outside the list is found.
+    /// For each waiting task in <paramref name="rows"/>, the title of the first unfinished task it waits on that the
+    /// person can see, or null when they cannot see any of them. <paramref name="all"/> is every task, so a blocker outside the list is found.
     /// </summary>
     public IReadOnlyDictionary<Guid, string?> BlockersOn(IEnumerable<TaskInfo> rows, IEnumerable<TaskInfo> all)
     {
@@ -76,9 +79,9 @@ internal sealed record TasksAccess(Guid UserId, bool SeesAll, IReadOnlySet<Guid>
             .Where(t => t.IsWaiting)
             .ToDictionary(
                 t => t.Id,
-                t => t.WaitingOn.FirstOrDefault(l => l.Status is not (TaskItemStatus.Done or TaskItemStatus.Cancelled)) is { } link && visible.Contains(link.Id)
-                    ? link.Title
-                    : null);
+                t => t.WaitingOn
+                    .Where(l => l.Status is not (TaskItemStatus.Done or TaskItemStatus.Cancelled))
+                    .FirstOrDefault(l => visible.Contains(l.Id))?.Title);
     }
 
     /// <summary>

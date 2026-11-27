@@ -12,7 +12,7 @@ namespace Humans.Tasks.ViewComponents;
 
 /// <summary>
 /// A team's open tasks on the team page. Parameters bind from <see cref="TeamTasksCardArgs"/>. Shows what the viewer may
-/// see, a few rows of it, and for a manager the requests waiting. A team that cannot hold tasks and has none shows nothing.
+/// see, a few rows of it, and for a manager the requests waiting. With nothing to show and no way to add, it shows nothing.
 /// </summary>
 internal sealed class TeamTasksCardViewComponent(
     ITaskService tasks,
@@ -37,8 +37,8 @@ internal sealed class TeamTasksCardViewComponent(
         var open = TaskRowOrder.Order((await tasks.GetListedTasksAsync(new TaskListFilter().ToScope(), ct))
                 .Where(t => t.Owner.Id == teamId && access.CanSee(t)))
             .ToList();
-        var canAdd = access.Manages(team.Id) && team.IsActive && !team.IsSystemTeam;
-        if (open.Count == 0 && (!team.IsActive || team.IsSystemTeam)) return Content(string.Empty);
+        var canAdd = access.CanAddTo(team);
+        if (open.Count == 0 && !canAdd) return Content(string.Empty);
 
         var shown = open.Take(RowLimit).ToList();
         var back = HttpContext.Request.Path + HttpContext.Request.QueryString.Value;

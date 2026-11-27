@@ -6,16 +6,32 @@ using NodaTime;
 
 namespace Humans.Tasks.Models;
 
-/// <summary>The filters every task list shares: one team, one priority. Both default to everything.</summary>
+/// <summary>The filters every task list shares: one team, one priority, one status. All default to everything.</summary>
 internal class TaskRowFilter
 {
     public Guid? Team { get; set; }
 
     public SlotPriority? Priority { get; set; }
 
-    public bool MatchesPriority(TaskInfo task) => Priority is null || task.Priority == Priority;
+    public TaskItemStatus? Status { get; set; }
 
-    public bool Matches(TaskInfo task) => MatchesPriority(task) && (Team is null || task.Owner.Id == Team);
+    /// <summary>
+    /// Drops a value the filter form has no option for (a team that is not among <paramref name="teams"/>, "no priority"),
+    /// so the selects never read "all" while a hidden value empties the list. <paramref name="withFinished"/> says
+    /// whether done and cancelled are statuses this list can show.
+    /// </summary>
+    public void DropUnoffered(IEnumerable<TeamChoice>? teams, bool withFinished)
+    {
+        if (Team is { } team && (teams is null || teams.All(t => t.Id != team))) Team = null;
+        if (Priority == SlotPriority.None) Priority = null;
+        if (Status is TaskItemStatus.Done or TaskItemStatus.Cancelled && !withFinished) Status = null;
+    }
+
+    /// <summary>Everything but the team, for a list that is already one team's.</summary>
+    public bool MatchesWithinTeam(TaskInfo task) =>
+        (Priority is null || task.Priority == Priority) && (Status is null || task.Status == Status);
+
+    public bool Matches(TaskInfo task) => MatchesWithinTeam(task) && (Team is null || task.Owner.Id == Team);
 }
 
 /// <summary>What the list filters post. The default is the active event's tasks plus tasks with no event, finished ones left out.</summary>
@@ -34,8 +50,9 @@ internal sealed class TaskListFilter : TaskRowFilter
     /// <summary>Null for the active-event and any-event choices.</summary>
     public Guid? SpecificEventId => Guid.TryParse(Event, out var id) ? id : null;
 
+    /// <summary>Asking for a done or cancelled status brings the finished tasks in, or the list would be empty.</summary>
     public TaskListScope ToScope() =>
-        new(string.Equals(EventChoice, AnyEvent, StringComparison.Ordinal), SpecificEventId, Finished);
+        new(string.Equals(EventChoice, AnyEvent, StringComparison.Ordinal), SpecificEventId, Finished || Status is TaskItemStatus.Done or TaskItemStatus.Cancelled);
 }
 
 internal sealed record EventOption(Guid Id, string Name);
@@ -94,7 +111,7 @@ internal static class TaskRowOrder
 
 /// <summary>
 /// The filter form. <see cref="Events"/> and <see cref="Teams"/> are null where they make no sense: a team's page
-/// filters only on finished tasks and priority, and the open board has no event or finished choice.
+/// filters only on status, priority and finished tasks, and the open board has no event or finished choice.
 /// </summary>
 internal sealed record TaskFilterViewModel(TaskRowFilter Filter, IReadOnlyList<EventOption>? Events, IReadOnlyList<TeamChoice>? Teams);
 

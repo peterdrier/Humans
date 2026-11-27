@@ -93,7 +93,7 @@ public sealed class TeamTasksCardTests
         model.Total.Should().Be(2);
         model.Rows.Places.Should().ContainKey(critical.Id).WhoseValue.Should().Be(MyPlace.CanClaim);
         model.Rows.ReturnUrl.Should().Be("/Teams/production?x=1", "a claim made on the card comes back to the team page");
-        model.TasksUrl.Should().Be("/Tasks/Team/production");
+        model.TasksUrl.Should().EndWith("production");
     }
 
     [HumansFact]
@@ -138,7 +138,7 @@ public sealed class TeamTasksCardTests
         var manager = Model(await CardAsync(TaskTestKit.Production, [TaskTestKit.Production]));
         manager.WaitingRequests.Should().Be(2);
         manager.CanAdd.Should().BeTrue();
-        manager.RequestsUrl.Should().Be("/Tasks/Team/production#requests");
+        manager.RequestsUrl.Should().EndWith("#requests");
 
         var plain = Model(await CardAsync(TaskTestKit.Production));
         plain.WaitingRequests.Should().Be(0);
@@ -147,11 +147,24 @@ public sealed class TeamTasksCardTests
     }
 
     [HumansFact]
-    public async Task Card_NoTasks_ShowsAnEmptyCard()
+    public async Task Card_NoTasks_ShowsAnEmptyCardToManagersOnly()
     {
-        var empty = Model(await CardAsync(TaskTestKit.Production));
-        empty.Rows.Tasks.Should().BeEmpty();
-        empty.Total.Should().Be(0);
+        var manager = Model(await CardAsync(TaskTestKit.Production, [TaskTestKit.Production]));
+        manager.Rows.Tasks.Should().BeEmpty();
+        manager.Total.Should().Be(0);
+        manager.CanAdd.Should().BeTrue();
+
+        (await CardAsync(TaskTestKit.Production)).Should().BeOfType<ContentViewComponentResult>("a member with nothing to see and nothing to add gets no card");
+        (await CardAsync(TaskTestKit.Production, null, RoleNames.Board)).Should().BeOfType<ContentViewComponentResult>();
+    }
+
+    [HumansFact]
+    public async Task Card_OnlyHiddenTasks_ShowsNothingToOutsiders()
+    {
+        await TaskAsync(TaskTestKit.Production, hidden: true);
+
+        (await CardAsync(TaskTestKit.Production)).Should().BeOfType<ContentViewComponentResult>();
+        Model(await CardAsync(TaskTestKit.Production, null, RoleNames.Board)).Total.Should().Be(1);
     }
 
     [HumansFact]

@@ -25,8 +25,11 @@ using Microsoft.Extensions.Localization;
 namespace Humans.Tasks;
 
 public sealed class Section : ISection, ISectionRoles, ISectionNav, ISectionAdminNav, ISectionPolicies, ISectionPermissions,
-    ISectionThingsToDo, ITeamTasksPart
+    ISectionThingsToDo, ISectionChrome, ITeamTasksPart
 {
+    IEnumerable<ChromeComponent> ISectionChrome.Components() =>
+        [new(ChromeSlots.WidgetGallery, typeof(ViewComponents.TasksGalleryViewComponent))];
+
     Type ITeamTasksPart.Card => typeof(ViewComponents.TeamTasksCardViewComponent);
 
     IReadOnlyList<RoleDefinition> ISectionRoles.Roles { get; } =
