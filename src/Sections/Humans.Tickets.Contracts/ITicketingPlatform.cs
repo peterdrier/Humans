@@ -275,7 +275,9 @@ public enum PlatformOrderState
     Processing,
 }
 
-public sealed record RefundRequest(Guid RefundId, string PlatformOrderId, long AmountMinor, string Reason);
+/// <summary><paramref name="CreatedAt"/> is the persisted refund request time, unchanged on every replay.
+/// A platform may require it before starting a refund when its idempotency guarantee expires.</summary>
+public sealed record RefundRequest(Guid RefundId, string PlatformOrderId, long AmountMinor, string Reason, Instant? CreatedAt = null);
 
 /// <summary>
 /// <paramref name="PlatformRefundId"/> is required whenever the platform accepted the refund

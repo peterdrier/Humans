@@ -792,7 +792,7 @@ internal sealed partial class TicketCheckoutService(
     {
         try
         {
-            return await platform.RefundAsync(new RefundRequest(refund.Id, order.PlatformOrderId!, refund.AmountMinor, refund.Reason), ct);
+            return await platform.RefundAsync(new RefundRequest(refund.Id, order.PlatformOrderId!, refund.AmountMinor, refund.Reason, refund.CreatedAt), ct);
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
@@ -875,7 +875,7 @@ internal sealed partial class TicketCheckoutService(
         try
         {
             result = await platform.RefundAsync(
-                new RefundRequest(refund.Id, order.PlatformOrderId!, amountMinor, refund.Reason), ct);
+                new RefundRequest(refund.Id, order.PlatformOrderId!, amountMinor, refund.Reason, refund.CreatedAt), ct);
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {

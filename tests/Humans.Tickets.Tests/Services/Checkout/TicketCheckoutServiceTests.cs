@@ -2007,10 +2007,14 @@ public sealed partial class TicketCheckoutServiceTests
             .Returns(new RefundResult(RefundState.Succeeded, "re_p", null));
         _platform.RefundAsync(Arg.Is<RefundRequest>(r => r.AmountMinor == 5000), Arg.Any<CancellationToken>())
             .Returns(new RefundResult(RefundState.Failed, "re_p", "bank refused"));
+        _clock.Advance(Duration.FromSeconds(1));
         await _service.ReconcileOpenOrdersAsync(Ct);
 
         _repo.Refunds.Select(r => r.Refund.State).Should().Equal(RefundState.Succeeded, RefundState.Failed);
         (await _service.GetOrderDetailAsync(order.Id, Ct))!.RefundableMinor.Should().Be(12500);
+        _platform.ReceivedCalls().Where(call => string.Equals(call.GetMethodInfo().Name,
+                nameof(ITicketingPlatform.RefundAsync), StringComparison.Ordinal))
+            .Select(call => (RefundRequest)call.GetArguments()[0]!).Should().OnlyContain(r => r.CreatedAt == Now);
     }
 
     [HumansFact]
@@ -2381,6 +2385,7 @@ public sealed partial class TicketCheckoutServiceTests
         _repo.Refunds.Single().Refund.State.Should().Be(RefundState.Pending);
         (await _service.GetOrderDetailAsync(order.Id, Ct))!.RefundableMinor.Should().Be(12500);
         var rows = _repo.Events.Count;
+        _clock.Advance(Duration.FromSeconds(1));
         await _service.ReconcileOpenOrdersAsync(Ct);
         _repo.Events.Should().HaveCount(rows, "a resend that changes nothing adds no rows");
 
@@ -2390,7 +2395,7 @@ public sealed partial class TicketCheckoutServiceTests
 
         _repo.Refunds.Single().Refund.State.Should().Be(RefundState.Succeeded);
         await _platform.Received(3).RefundAsync(
-            Arg.Is<RefundRequest>(r => r.RefundId == _repo.Refunds[0].RefundId), Arg.Any<CancellationToken>());
+            Arg.Is<RefundRequest>(r => r.RefundId == _repo.Refunds[0].RefundId && r.CreatedAt == Now), Arg.Any<CancellationToken>());
     }
 
     [HumansFact]

@@ -302,6 +302,10 @@ internal sealed class BoxOfficePlatform(
             && string.Equals(id, request.RefundId.ToString(), StringComparison.Ordinal));
         if (earlier is not null)
             return new RefundResult(StateOf(earlier), earlier.Id, StateOf(earlier) == RefundState.Failed ? earlier.FailureReason : null);
+        // Stripe may forget the key after 24 hours; an unseen older refund needs reconciliation, not another POST.
+        var now = clock.GetCurrentInstant();
+        if (request.CreatedAt is not { } createdAt || createdAt > now || now - createdAt >= Duration.FromHours(24))
+            throw new TicketingPlatformException($"Stripe refund {request.RefundId} needs reconciliation: its original 24-hour idempotency window cannot be trusted.");
         // Second guard behind Tickets' own: never more than this one payment still holds.
         var remaining = charge.Amount - charge.AmountRefunded;
         if (request.AmountMinor > remaining)
