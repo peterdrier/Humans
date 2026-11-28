@@ -1175,32 +1175,6 @@ internal sealed class TeamService(
         return new();
     }
 
-    public async Task<int> RetireGovernanceBodyTeamsAsync(Guid actorUserId, CancellationToken cancellationToken = default)
-    {
-        var retired = 0;
-        foreach (var teamId in GovernanceBodyTeamIds)
-        {
-            if (await repo.GetByIdAsync(teamId, cancellationToken) is not { IsActive: true } team)
-                continue;
-
-            var closedUsers = await repo.DeactivateTeamAsync(teamId, clock.GetCurrentInstant(), cancellationToken);
-            foreach (var userId in closedUsers)
-            {
-                await auditLogService.LogAsync(
-                    TeamsAuditActions.TeamMemberRemoved, nameof(Team), teamId,
-                    $"Membership ended when {team.Name} was deactivated",
-                    actorUserId, targetId: userId, targetType: AuditSubjectTypes.User);
-            }
-
-            logger.LogInformation(
-                "Retired governance body team {TeamId} ({TeamName}); closed {MemberCount} memberships",
-                teamId, team.Name, closedUsers.Count);
-            retired++;
-        }
-
-        return retired;
-    }
-
     public async Task<int> RemoveGovernanceBodyRolesAsync(Guid actorUserId, CancellationToken cancellationToken = default)
     {
         var removed = 0;

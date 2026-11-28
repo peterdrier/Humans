@@ -83,10 +83,8 @@ Repository: `IGovernanceBodyRepository` (`GovernanceBodyRepository`).
 | GovernanceBodyFiles | R/W |
 
 Each body's (Asociados, Colaboradores, Board) Google group prefix and Google files, and their edits from the
-Manage card (audited, then `GovernanceBodySync`). Cross-section reads: for the one-time
-`governance.body-links-from-teams` data migration, `ITeamService.GetTeamAsync` (the old system team's
-`GoogleGroupPrefix`) and `ITeamResourceService.GetResourcesByTeamIdsAsync` (its active non-Group resources);
-for adding a file, `ITeamResourceService.LookUpDriveLinkAsync`. Writes `IAuditLogService`. No personal data.
+Manage card (audited, then `GovernanceBodySync`). Cross-section read: for adding a file,
+`ITeamResourceService.LookUpDriveLinkAsync`. Writes `IAuditLogService`. No personal data.
 
 ### GovernanceBodyRosters (Scoped, internal)
 

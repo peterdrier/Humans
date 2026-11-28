@@ -152,12 +152,6 @@ internal interface ITeamManagementService : ITeamManagement
     Task<TeamDeactivationResult> EraseMembersAsync(Guid teamId, Guid actorUserId, CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// Deactivates whichever of the Asociados, Colaboradores and Board teams are still active, ending their memberships.
-    /// Returns how many it deactivated.
-    /// </summary>
-    Task<int> RetireGovernanceBodyTeamsAsync(Guid actorUserId, CancellationToken cancellationToken = default);
-
-    /// <summary>
     /// Deletes the role slots left on the Asociados, Colaboradores and Board teams, so their rows can be deleted.
     /// Returns how many role definitions it deleted.
     /// </summary>

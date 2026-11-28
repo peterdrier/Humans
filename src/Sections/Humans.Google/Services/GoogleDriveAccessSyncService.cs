@@ -183,13 +183,14 @@ internal sealed class GoogleDriveAccessSyncService(
         return diff;
     }
 
+    /// <summary>A resource whose team is inactive or deleted is retired once its claim reconciles cleanly.</summary>
     private async Task DeactivateRetiredTeamResourcesAsync(
         IReadOnlyList<TeamGoogleResource> resources, IReadOnlyList<ResourceSyncDiff> diffs, CancellationToken ct)
     {
         var teamsById = await teamService.GetTeamsAsync(ct);
         var diffsById = diffs.Where(d => d.GoogleId is not null)
             .ToDictionary(d => d.GoogleId!, StringComparer.Ordinal);
-        foreach (var group in resources.Where(r => teamsById.TryGetValue(r.TeamId, out var team) && !team.IsActive)
+        foreach (var group in resources.Where(r => !teamsById.TryGetValue(r.TeamId, out var team) || !team.IsActive)
             .GroupBy(r => (r.TeamId, r.ResourceType)))
         {
             if (group.All(r => diffsById.TryGetValue(r.GoogleId, out var diff) && diff.ErrorMessage is null))

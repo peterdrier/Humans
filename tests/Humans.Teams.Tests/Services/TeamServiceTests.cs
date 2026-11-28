@@ -3672,7 +3672,7 @@ public sealed class TeamServiceTests : TeamsTestHarness
     }
 
     [HumansFact]
-    public async Task GovernanceBodyTeam_IsNotClaimed_AndRetiringItEndsItsMembershipsOnce()
+    public async Task GetExpectedAsync_GovernanceBodyTeam_IsNotClaimed()
     {
         var ct = TestContext.Current.CancellationToken;
         var member = SeedUser(displayName: "Asociada");
@@ -3681,18 +3681,8 @@ public sealed class TeamServiceTests : TeamsTestHarness
         board.GoogleGroupPrefix = "board";
         SeedTeamMember(board.Id, member.Id);
         await SaveAllAsync(ct);
-        var actor = Guid.NewGuid();
 
         (await _service.GetExpectedAsync(ct: ct)).Should().NotContainKey($"board@{DomainConstants.GoogleGroupDomain}");
-        (await _service.RetireGovernanceBodyTeamsAsync(actor, ct)).Should().BeGreaterThan(0);
-
-        await using var stored = await TeamsDbFactory.CreateDbContextAsync(ct);
-        (await stored.Teams.FindAsync([SystemTeamIds.Board], ct))!.IsActive.Should().BeFalse();
-        (await stored.TeamMembers.SingleAsync(m => m.TeamId == SystemTeamIds.Board, ct)).LeftAt.Should().NotBeNull();
-        await AuditLog.Received(1).LogAsync(
-            TeamsAuditActions.TeamMemberRemoved, nameof(Team), SystemTeamIds.Board,
-            "Membership ended when Board was deactivated", actor, member.Id, AuditSubjectTypes.User);
-        (await _service.RetireGovernanceBodyTeamsAsync(actor, ct)).Should().Be(0);
     }
 
     [HumansFact]

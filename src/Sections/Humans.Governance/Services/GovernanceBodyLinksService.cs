@@ -4,19 +4,14 @@ using Humans.Base.Interfaces;
 using Humans.Google.Contracts;
 using Humans.Governance.Data;
 using Humans.Governance.Domain;
-using Humans.Teams.Contracts;
 using NodaTime;
 using System.Text.RegularExpressions;
 
 namespace Humans.Governance.Services;
 
-/// <summary>
-/// Each body's Google group and files. Governance claims them in Google, so its stored copy is the source of truth:
-/// the copy from the body's old system team runs once per body and never overwrites a stored row.
-/// </summary>
+/// <summary>Each body's Google group and files. Governance claims them in Google, so its stored copy is the source of truth.</summary>
 internal sealed class GovernanceBodyLinksService(
     IGovernanceBodyRepository repository,
-    ITeamService teams,
     ITeamResourceService teamResources,
     IAuditLogService audit,
     GovernanceBodySync bodySync,
@@ -27,12 +22,15 @@ internal sealed class GovernanceBodyLinksService(
     public const string FileAlreadyLinked = "Governance_Manage_FileAlreadyLinked";
     public const string FileNotFound = "Governance_Manage_FileNotFound";
 
-    /// <summary>The old system team per body; its Guid also keys the body's audit entries.</summary>
-    internal static readonly IReadOnlyDictionary<GovernanceBody, Guid> TeamIds = new Dictionary<GovernanceBody, Guid>
+    /// <summary>
+    /// Keys each body's audit entries. These are its old system team's ids, kept so the body's history stays in one place.
+    /// Reserved GUID block 0001: see docs/guid-reservations.md.
+    /// </summary>
+    internal static readonly IReadOnlyDictionary<GovernanceBody, Guid> AuditIds = new Dictionary<GovernanceBody, Guid>
     {
-        [GovernanceBody.Asociados] = SystemTeamIds.Asociados,
-        [GovernanceBody.Colaboradores] = SystemTeamIds.Colaboradors,
-        [GovernanceBody.Board] = SystemTeamIds.Board,
+        [GovernanceBody.Asociados] = Guid.Parse("00000000-0000-0000-0001-000000000004"),
+        [GovernanceBody.Colaboradores] = Guid.Parse("00000000-0000-0000-0001-000000000005"),
+        [GovernanceBody.Board] = Guid.Parse("00000000-0000-0000-0001-000000000003"),
     };
 
     public Task<IReadOnlyList<GovernanceBodyLinks>> GetAllAsync(CancellationToken ct = default) =>
@@ -108,73 +106,13 @@ internal sealed class GovernanceBodyLinksService(
         await repository.ReplaceAsync(links, ct);
         ct = CancellationToken.None; // the change is stored: its audit and sync request must follow
         await audit.LogAsync(GovernanceAuditActions.GovernanceBodyLinksChanged, GovernanceAuditSubjectTypes.GovernanceBody,
-            TeamIds[links.Body], description, actorUserId);
+            AuditIds[links.Body], description, actorUserId);
         await bodySync.RequestAsync(links.Body, ct);
     }
 
     /// <summary>Same rule as a team's or workgroup's group name.</summary>
     private static readonly Regex GroupPrefixPattern =
         new("^[a-z0-9]([a-z0-9-]*[a-z0-9])?$", RegexOptions.ExplicitCapture, TimeSpan.FromSeconds(1));
-
-    /// <summary>The bodies with no stored row yet, as (null, from Teams).</summary>
-    public async Task<IReadOnlyList<(GovernanceBodyLinks? Stored, GovernanceBodyLinks FromTeams)>> GetPendingCopiesAsync(
-        CancellationToken ct = default)
-    {
-        var stored = (await repository.GetAllAsync(ct)).ToDictionary(b => b.Body);
-        var fromTeams = await ReadFromTeamsAsync(ct);
-        return [.. fromTeams
-            .Select(t => (Stored: stored.GetValueOrDefault(t.Body), FromTeams: t))
-            .Where(p => p.Stored is null)];
-    }
-
-    /// <summary>Stores every pending body's links from its old team. Returns how many bodies it wrote.</summary>
-    public async Task<int> CopyFromTeamsAsync(Guid actorUserId, CancellationToken ct = default)
-    {
-        var pending = await GetPendingCopiesAsync(ct);
-        foreach (var (_, links) in pending)
-        {
-            await repository.ReplaceAsync(links, ct);
-            await audit.LogAsync(
-                GovernanceAuditActions.GovernanceBodyLinksCopied, GovernanceAuditSubjectTypes.GovernanceBody, TeamIds[links.Body],
-                $"Copied {links.Body} group '{links.GoogleGroupPrefix ?? "none"}' and {links.Files.Count} Google file(s) from its system team",
-                actorUserId);
-        }
-
-        return pending.Count;
-    }
-
-    private async Task<IReadOnlyList<GovernanceBodyLinks>> ReadFromTeamsAsync(CancellationToken ct)
-    {
-        var now = clock.GetCurrentInstant();
-        var resources = await teamResources.GetResourcesByTeamIdsAsync([.. TeamIds.Values], ct);
-        var result = new List<GovernanceBodyLinks>();
-        foreach (var (body, teamId) in TeamIds)
-        {
-            var team = await teams.GetTeamAsync(teamId, ct);
-            if (team is null)
-            {
-                continue; // a missing team must not wipe the stored copy
-            }
-
-            var links = new GovernanceBodyLinks { Body = body, GoogleGroupPrefix = team.GoogleGroupPrefix, UpdatedAt = now };
-            // The group address lives on the team; a Group resource row only records the link.
-            links.Files.AddRange(resources.GetValueOrDefault(teamId, [])
-                .Where(r => r.IsActive && r.ResourceType != GoogleResourceType.Group)
-                .Select(r => new GovernanceBodyFile
-                {
-                    Id = Guid.NewGuid(),
-                    Body = body,
-                    GoogleId = r.GoogleId,
-                    ResourceType = r.ResourceType,
-                    Name = r.Name,
-                    Url = r.Url,
-                    PermissionLevel = r.DrivePermissionLevel,
-                }));
-            result.Add(links);
-        }
-
-        return result;
-    }
 }
 
 /// <summary><see cref="ErrorKey"/> is a resource key; <see cref="GoogleMessage"/> is Google's own English reason.</summary>
