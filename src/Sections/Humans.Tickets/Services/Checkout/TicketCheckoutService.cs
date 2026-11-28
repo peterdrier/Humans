@@ -1039,7 +1039,7 @@ internal sealed partial class TicketCheckoutService(
             }
             ticketing.PersonalDataErasedAt = now;
             await repository.SaveTicketingSettingsAsync(ticketing, ct);
-            await auditLog.LogAsync(TicketsAuditActions.TicketEventPersonalDataErased, TicketingSettingsAuditEntityType, ticketing.Id,
+            await auditLog.LogAsync(TicketsAuditActions.TicketEventPersonalDataErased, TicketingSettingsAuditSubjectType, ticketing.Id,
                 $"Asked {platform.Key} to erase the event's personal data, {holdDays} day(s) after its strike", JobName);
             erased++;
         }
