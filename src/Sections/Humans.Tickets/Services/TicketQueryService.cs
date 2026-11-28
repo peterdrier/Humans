@@ -202,7 +202,6 @@ internal sealed class TicketQueryService(
             var hasTransfer = a.Status == TicketAttendeeStatus.Void && tr is not null;
             return new TicketAttendeeInfo(
                 Id: a.Id,
-                VendorTicketId: a.VendorTicketId,
                 AttendeeName: a.AttendeeName,
                 AttendeeEmail: a.AttendeeEmail,
                 TicketTypeName: a.TicketTypeName,
@@ -215,8 +214,7 @@ internal sealed class TicketQueryService(
         }).ToList(),
         StripeFee: o.StripeFee,
         ApplicationFee: o.ApplicationFee,
-        FeeTax: o.FeeTax,
-        WithheldTax: o.WithheldTax);
+        FeeTax: o.FeeTax);
 
     private const string SalesRecordRetention =
         "Partially retained: the order/attendee row itself (amount, currency, ticket type, " +

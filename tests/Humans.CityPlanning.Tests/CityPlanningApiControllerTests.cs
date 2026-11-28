@@ -411,7 +411,7 @@ public sealed class CityPlanningApiControllerTests : CityPlanningTestBase
                 IsActive: true, IsSystemTeam: false, SystemTeamType: SystemTeamType.None,
                 RequiresApproval: false, IsPublicPage: false, IsHidden: false,
                 IsPromotedToDirectory: false, CreatedAt: Instant.MinValue,
-                Members: [new(Guid.NewGuid(), _userId, string.Empty, null, null, TeamMemberRole.Member, Instant.MinValue)]),
+                Members: [new(Guid.NewGuid(), _userId, string.Empty, null, TeamMemberRole.Member, Instant.MinValue)]),
         });
         await _service.SaveCampPolygonAsync(_campSeasonId, Square, 10, Guid.NewGuid(), cancellationToken: ct);
         var historyId = (await CityPlanningDb.CampPolygonHistories.SingleAsync(ct)).Id;
@@ -433,7 +433,7 @@ public sealed class CityPlanningApiControllerTests : CityPlanningTestBase
                 IsActive: true, IsSystemTeam: false, SystemTeamType: SystemTeamType.None,
                 RequiresApproval: false, IsPublicPage: false, IsHidden: false,
                 IsPromotedToDirectory: false, CreatedAt: Instant.MinValue,
-                Members: [new(Guid.NewGuid(), _userId, string.Empty, null, null, TeamMemberRole.Member, Instant.MinValue)]),
+                Members: [new(Guid.NewGuid(), _userId, string.Empty, null, TeamMemberRole.Member, Instant.MinValue)]),
         });
         var otherSeason = (await _campService.GetCampSeasonByIdAsync(_campSeasonId, ct))! with { Id = Guid.NewGuid() };
         _campService.GetCampSeasonByIdAsync(otherSeason.Id, Arg.Any<CancellationToken>()).Returns(otherSeason);

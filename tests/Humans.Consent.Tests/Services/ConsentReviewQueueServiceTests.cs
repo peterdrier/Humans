@@ -35,7 +35,7 @@ public sealed class ConsentReviewQueueServiceTests
     }
 
     private void Review(Guid userId, ConsentCheckStatus? status = null, bool isApproved = false, Instant? rejectedAt = null) =>
-        _reviews[userId] = ConsentReviewInfo.None(userId) with
+        _reviews[userId] = ConsentReviewInfo.None() with
         {
             Status = status,
             IsApproved = isApproved,

@@ -8,7 +8,7 @@ namespace Humans.Store.Tests.Services;
 public class BalanceCalculatorTests
 {
     [HumansFact]
-    public void Empty_order_has_zero_balance()
+    public void Calculate_EmptyOrder_IsZero()
     {
         var order = new Order();
         var result = BalanceCalculator.Compute(order);
@@ -21,7 +21,7 @@ public class BalanceCalculatorTests
     }
 
     [HumansFact]
-    public void Single_line_with_21_percent_vat()
+    public void Calculate_SingleLine_Adds21PercentVat()
     {
         var lineId = Guid.NewGuid();
         var order = new Order
@@ -42,7 +42,7 @@ public class BalanceCalculatorTests
     }
 
     [HumansFact]
-    public void Deposit_lines_excluded_from_vat_added_to_total()
+    public void Calculate_DepositLine_SkipsVat()
     {
         var lineId = Guid.NewGuid();
         var order = new Order
@@ -64,7 +64,7 @@ public class BalanceCalculatorTests
     }
 
     [HumansFact]
-    public void Payments_reduce_balance_negative_payment_treated_as_refund()
+    public void Calculate_NegativePayment_CountsAsRefund()
     {
         var lineId = Guid.NewGuid();
         var order = new Order
@@ -88,7 +88,7 @@ public class BalanceCalculatorTests
     }
 
     [HumansFact]
-    public void Deposit_return_leaves_overage_and_refund_settles_it()
+    public void Calculate_DepositReturnThenRefund_SettlesOverage()
     {
         // €100 item + €50 deposit, paid in full; €30 of the deposit comes back → €30 owed
         // to the camp; refunding it lands the order on zero.
@@ -116,7 +116,7 @@ public class BalanceCalculatorTests
     // and a Failed settlement (bounced) must NOT reduce the order balance.
 
     [HumansFact]
-    public void Pending_refund_counts_at_once_failed_refund_never()
+    public void Calculate_PendingRefund_CountsAtOnce()
     {
         var order = new Order
         {
@@ -133,7 +133,7 @@ public class BalanceCalculatorTests
     }
 
     [HumansFact]
-    public void Only_paid_payments_count_toward_balance()
+    public void Calculate_UnpaidPayments_AreIgnored()
     {
         var lineId = Guid.NewGuid();
         var order = new Order
@@ -157,7 +157,7 @@ public class BalanceCalculatorTests
     }
 
     [HumansFact]
-    public void Pending_only_order_is_not_treated_as_paid()
+    public void Calculate_PendingOnly_IsNotPaid()
     {
         // SEPA mandate captured at checkout but not yet cleared: the order is still fully owed.
         var order = new Order
@@ -182,7 +182,7 @@ public class BalanceCalculatorTests
     // Issued orders are frozen and read their add-time snapshots forever.
 
     [HumansFact]
-    public void Open_order_reprices_to_current_price_when_lower()
+    public void Calculate_LowerCurrentPrice_Reprices()
     {
         var productId = Guid.NewGuid();
         var order = OpenOrderWithLine(productId, snapshotUnit: 50m, snapshotVat: 21m);
@@ -197,7 +197,7 @@ public class BalanceCalculatorTests
     }
 
     [HumansFact]
-    public void Open_order_reprices_current_vat_and_deposit_when_higher()
+    public void Calculate_HigherCurrentPrice_Reprices()
     {
         var productId = Guid.NewGuid();
         var order = new Order
@@ -224,7 +224,7 @@ public class BalanceCalculatorTests
     }
 
     [HumansFact]
-    public void Issued_order_ignores_current_price_and_uses_snapshot()
+    public void Calculate_IssuedOrder_UsesSnapshot()
     {
         var productId = Guid.NewGuid();
         var order = OpenOrderWithLine(productId, snapshotUnit: 50m, snapshotVat: 21m);
@@ -238,7 +238,7 @@ public class BalanceCalculatorTests
     }
 
     [HumansFact]
-    public void Open_order_falls_back_to_snapshot_when_current_price_unresolved()
+    public void Calculate_UnresolvedPrice_UsesSnapshot()
     {
         var order = OpenOrderWithLine(Guid.NewGuid(), snapshotUnit: 50m, snapshotVat: 21m);
         var current = Prices(); // no entry for this product
@@ -250,7 +250,7 @@ public class BalanceCalculatorTests
     }
 
     [HumansFact]
-    public void Open_order_balance_goes_negative_when_repriced_below_payments()
+    public void Calculate_RepricedBelowPayments_IsNegative()
     {
         var productId = Guid.NewGuid();
         var order = new Order

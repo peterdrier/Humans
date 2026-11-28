@@ -50,12 +50,12 @@ internal sealed class SurveyController(
 
         if (!ctx.IsEligible)
         {
-            return View("Closed", new SurveyClosedViewModel { Reason = "ineligible-asociado" });
+            return View("Closed", model: "ineligible-asociado");
         }
 
         if (!IsAnswerable(ctx.Definition))
         {
-            return View("Closed", new SurveyClosedViewModel { Reason = "closed" });
+            return View("Closed", model: "closed");
         }
 
         var culture = ResolveCulture(editable.DefaultCulture);
@@ -110,13 +110,13 @@ internal sealed class SurveyController(
 
         if (!ctx.IsEligible)
         {
-            return View("Closed", new SurveyClosedViewModel { Reason = "ineligible-asociado" });
+            return View("Closed", model: "ineligible-asociado");
         }
 
         // Re-gate on the POST: the intro may have been loaded just before the window closed.
         if (!IsAnswerable(ctx.Definition))
         {
-            return View("Closed", new SurveyClosedViewModel { Reason = "closed" });
+            return View("Closed", model: "closed");
         }
 
         // Asociado votes use the participation ledger to enforce eligibility and one vote per
@@ -174,7 +174,7 @@ internal sealed class SurveyController(
 
         if (!IsAnswerable(ctx.Definition))
         {
-            return View("Closed", new SurveyClosedViewModel { Reason = "closed" });
+            return View("Closed", model: "closed");
         }
 
         var culture = ResolveCulture(editable.DefaultCulture);
@@ -210,7 +210,7 @@ internal sealed class SurveyController(
 
         if (!IsAnswerable(ctx.Definition))
         {
-            return View("Closed", new SurveyClosedViewModel { Reason = "closed" });
+            return View("Closed", model: "closed");
         }
 
         var resolvedCulture = SurveyPageViewModelFactory.ResolveCulture(culture, editable.DefaultCulture);
@@ -333,12 +333,9 @@ internal sealed class SurveyController(
         if (ctx.Access == SurveyPublicAccess.AuthenticationRequired) return Challenge();
         if (ctx.Access == SurveyPublicAccess.Ineligible)
         {
-            return View("Closed", new SurveyClosedViewModel
-            {
-                Reason = ctx.Definition.Editable.IsAsociadoVote
+            return View("Closed", model: ctx.Definition.Editable.IsAsociadoVote
                     ? "ineligible-asociado"
-                    : "ineligible",
-            });
+                    : "ineligible");
         }
         return View("ThankYou", BuildThankYou(ctx.Definition));
     }
@@ -413,26 +410,20 @@ internal sealed class SurveyController(
             SurveyPublicAccess.AuthenticationRequired => (null, Challenge()),
             SurveyPublicAccess.Ineligible => (
                 null,
-                View("Closed", new SurveyClosedViewModel
-                {
-                    Reason = ctx.Definition.Editable.IsAsociadoVote
+                View("Closed", model: ctx.Definition.Editable.IsAsociadoVote
                         ? "ineligible-asociado"
-                        : "ineligible",
-                })),
+                        : "ineligible")),
             _ => (ctx, null),
         };
     }
 
-    private ViewResult LinkFailed(SurveyLinkFailure? failure) => View("Closed", new SurveyClosedViewModel
+    private ViewResult LinkFailed(SurveyLinkFailure? failure) => View("Closed", model: failure switch
     {
-        Reason = failure switch
-        {
-            SurveyLinkFailure.Expired => "expired",
-            SurveyLinkFailure.AlreadyAnswered => "answered",
-            SurveyLinkFailure.InvitationNotFound => "invitation-removed",
-            SurveyLinkFailure.SurveyNotFound => "survey-removed",
-            _ => "invalid",
-        },
+        SurveyLinkFailure.Expired => "expired",
+        SurveyLinkFailure.AlreadyAnswered => "answered",
+        SurveyLinkFailure.InvitationNotFound => "invitation-removed",
+        SurveyLinkFailure.SurveyNotFound => "survey-removed",
+        _ => "invalid",
     });
 
     /// <summary>The service re-enforces the same rule at submit.</summary>
@@ -445,18 +436,18 @@ internal sealed class SurveyController(
     private async Task<IActionResult> RenderPage(SurveyWizardState state, WizardRoute route, CancellationToken ct)
     {
         var definition = await surveyService.GetForEditAsync(state.SurveyId, ct);
-        if (definition is null) return View("Closed", new SurveyClosedViewModel { Reason = "survey-removed" });
+        if (definition is null) return View("Closed", model: "survey-removed");
 
         var editable = definition.Editable;
         if (!IsAnswerable(definition))
         {
-            return View("Closed", new SurveyClosedViewModel { Reason = "closed" });
+            return View("Closed", model: "closed");
         }
         if (editable.IsAsociadoVote
             && (state.UserId is not { } userId
                 || !await audience.IsEligibleAsociadoAsync(userId, ct)))
         {
-            return View("Closed", new SurveyClosedViewModel { Reason = "ineligible-asociado" });
+            return View("Closed", model: "ineligible-asociado");
         }
 
         var answerStates = SurveyWizardFlow.ToAnswerStates(state.Answers);
@@ -470,7 +461,7 @@ internal sealed class SurveyController(
             {
                 // Not thank-you: the respondent submitted nothing, and a survey whose questions are all hidden (or
                 // has none) should show as such rather than as completed.
-                return View("Closed", new SurveyClosedViewModel { Reason = "empty" });
+                return View("Closed", model: "empty");
             }
 
             state.CurrentPage = next.Value;
@@ -518,14 +509,14 @@ internal sealed class SurveyController(
         switch (result.Outcome)
         {
             case SurveyWizardOutcome.NotFound:
-                return View("Closed", new SurveyClosedViewModel { Reason = "survey-removed" });
+                return View("Closed", model: "survey-removed");
 
             case SurveyWizardOutcome.Closed:
-                return View("Closed", new SurveyClosedViewModel { Reason = "closed" });
+                return View("Closed", model: "closed");
 
             case SurveyWizardOutcome.Ineligible:
                 route.Clear(HttpContext.Session);
-                return View("Closed", new SurveyClosedViewModel { Reason = "ineligible-asociado" });
+                return View("Closed", model: "ineligible-asociado");
 
             case SurveyWizardOutcome.ValidationFailed:
                 foreach (var id in result.MissingRequired)

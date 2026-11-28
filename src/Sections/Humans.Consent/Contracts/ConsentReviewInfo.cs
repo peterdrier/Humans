@@ -8,18 +8,15 @@ namespace Humans.Consent.Contracts;
 /// state is Users' <c>UserInfo.State</c>.
 /// </summary>
 public sealed record ConsentReviewInfo(
-    Guid UserId,
     ConsentCheckStatus? Status,
-    Instant? CheckedAt,
-    Guid? CheckedByUserId,
     string? Notes,
     bool IsApproved,
     string? RejectionReason,
     Instant? RejectedAt,
     Guid? RejectedByUserId)
 {
-    public static ConsentReviewInfo None(Guid userId) =>
-        new(userId, null, null, null, null, false, null, null, null);
+    public static ConsentReviewInfo None() =>
+        new(null, null, false, null, null, null);
 
     public bool IsRejected => RejectedAt is not null;
 

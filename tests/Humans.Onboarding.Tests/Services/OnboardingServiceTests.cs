@@ -34,7 +34,7 @@ public sealed class OnboardingServiceTests
     public OnboardingServiceTests()
     {
         _consentService.GetConsentReviewAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
-            .Returns(call => _reviews.GetValueOrDefault(call.Arg<Guid>()) ?? ConsentReviewInfo.None(call.Arg<Guid>()));
+            .Returns(call => _reviews.GetValueOrDefault(call.Arg<Guid>()) ?? ConsentReviewInfo.None());
         _consentService.GetConsentReviewsAsync(Arg.Any<CancellationToken>())
             .Returns(_ => _reviews);
         _userServiceWrite.SetRejectedAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
@@ -42,7 +42,7 @@ public sealed class OnboardingServiceTests
     }
 
     private void Review(Guid userId, ConsentCheckStatus? status = null, bool isApproved = false, Instant? rejectedAt = null) =>
-        _reviews[userId] = ConsentReviewInfo.None(userId) with
+        _reviews[userId] = ConsentReviewInfo.None() with
         {
             Status = status,
             IsApproved = isApproved,
@@ -110,7 +110,7 @@ public sealed class OnboardingServiceTests
 
         _consentWrite.RecordRejectionAsync(userId, retryReviewer, Arg.Any<string?>(), Arg.Any<CancellationToken>())
             .Returns(new OnboardingResult(false, "AlreadyRejected"));
-        _reviews[userId] = ConsentReviewInfo.None(userId) with
+        _reviews[userId] = ConsentReviewInfo.None() with
         {
             RejectionReason = "duplicate account",
             RejectedAt = Instant.FromUtc(2026, 10, 1, 12, 0),

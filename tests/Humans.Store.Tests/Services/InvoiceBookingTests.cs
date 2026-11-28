@@ -122,7 +122,7 @@ public class InvoiceBookingTests
     private Task<InvoiceBookingState> BookAsync() => _booking.BookAsync(_order.Id, Guid.NewGuid(), TestContext.Current.CancellationToken);
 
     [HumansFact]
-    public async Task A_charge_crossing_the_total_pays_only_the_rest_and_books_the_excess_as_a_collection()
+    public async Task Book_ChargeOverTotal_BooksExcessAsCollection()
     {
         Charge("pi_1", 60m, FirstCharge);
         Charge("pi_2", 50m, SecondCharge);
@@ -143,7 +143,7 @@ public class InvoiceBookingTests
     }
 
     [HumansFact]
-    public async Task A_charge_missing_from_the_feed_books_nothing_and_waits()
+    public async Task Book_ChargeMissingFromFeed_BooksNothing()
     {
         Charge("pi_1", 60m, FirstCharge);
         Charge("pi_2", 40m, SecondCharge, fedToHolded: false);
@@ -158,7 +158,7 @@ public class InvoiceBookingTests
     }
 
     [HumansFact]
-    public async Task A_rerun_of_a_booked_order_posts_nothing()
+    public async Task Book_AlreadyBookedOrder_PostsNothing()
     {
         Charge("pi_1", 100m, FirstCharge);
         await BookAsync();
@@ -174,7 +174,7 @@ public class InvoiceBookingTests
     }
 
     [HumansFact]
-    public async Task A_refund_goes_back_to_the_contact_and_its_line_is_reconciled()
+    public async Task Book_Refund_GoesBackToContact()
     {
         // EUR 110 charged on a EUR 100 invoice, EUR 10 refunded in Stripe.
         Charge("pi_1", 110m, FirstCharge);
@@ -204,7 +204,7 @@ public class InvoiceBookingTests
     }
 
     [HumansFact]
-    public async Task A_camp_account_off_zero_after_posting_hands_the_order_over_and_does_not_send()
+    public async Task Book_CampAccountOffZero_HandsOrderOver()
     {
         Charge("pi_1", 100m, FirstCharge);
         _holded.GetAccountBalancesAsync(Arg.Any<CancellationToken>())
@@ -218,7 +218,7 @@ public class InvoiceBookingTests
     }
 
     [HumansFact]
-    public async Task A_step_failing_after_a_post_hands_the_order_over_and_a_rerun_posts_nothing()
+    public async Task Book_StepFailsAfterPost_HandsOrderOver()
     {
         Charge("pi_1", 110m, FirstCharge);
         _write.WhenForAnyArgs(w => w.ReconcileBankMovementAsync(default!, default!, default!))

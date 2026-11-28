@@ -136,7 +136,7 @@ Physical shipping containers managed per-barrio or at org level, placed on the C
 
 ## Architecture
 
-`Service` owns camp/all/individual container reads, yearly placements, the admin overview and the gallery/placement projection it reuses after mutations.
+`Service` owns camp/all/individual container reads, yearly placements, the admin overview and the gallery/placement projection it reuses after mutations. The overview returns `ContainerCampGroup` rows directly, including camps with no containers; CityPlanning owns display ordering.
 
 **Owning services:** `Service` (`Humans.Containers.Services`)
 **Owned tables:** `containers`, `container_images`, `container_placements`

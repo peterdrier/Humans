@@ -303,7 +303,6 @@ public sealed class CachingTicketQueryServiceTests
         TicketAttendeeStatus status,
         string? email = null) => new(
             Id: Guid.NewGuid(),
-            VendorTicketId: $"tkt_{Guid.NewGuid():N}",
             AttendeeName: "Attendee",
             AttendeeEmail: email,
             TicketTypeName: "Full Week",

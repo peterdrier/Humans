@@ -39,8 +39,8 @@ public class ExpenseReconTests
         string? docId = "d1", decimal amount = 100m, string description = "ER: Train", Guid? user = null,
         Guid? report = null, ExpenseHoldedSyncState state = ExpenseHoldedSyncState.Pushed, Instant? settled = null,
         Instant? date = null) =>
-        new(report ?? ReportA, Guid.NewGuid(), ExpenseReportStatus.Approved, user ?? Alice, "c-alice", docId, description,
-            $"Expense report {report ?? ReportA}", amount, date ?? Submitted, state, settled ?? Submitted);
+        new(report ?? ReportA, Guid.NewGuid(), ExpenseReportStatus.Approved, user ?? Alice, docId, description,
+            amount, date ?? Submitted, state, settled ?? Submitted);
 
     private static HoldedLedgerLineInfo Ledger(
         int account, string? type, string? description, decimal debit = 0m, decimal credit = 0m,

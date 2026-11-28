@@ -7,14 +7,7 @@ internal sealed class OrgContainerIndexViewModel
 {
     public int Year { get; set; }
     public bool IsContainerPlacementOpen { get; set; }
-    public List<BarrioContainerGroup> BarrioGroups { get; set; } = [];
-}
-
-internal sealed class BarrioContainerGroup
-{
-    public Guid CampId { get; set; }
-    public string CampName { get; set; } = string.Empty;
-    public List<ContainerWithPlacement> Containers { get; set; } = [];
+    public List<ContainerCampGroup> BarrioGroups { get; set; } = [];
 }
 
 internal sealed class ContainerMapViewModel

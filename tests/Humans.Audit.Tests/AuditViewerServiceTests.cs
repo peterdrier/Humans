@@ -31,7 +31,7 @@ public class AuditViewerServiceTests
             .Returns([entry]);
 
         var service = new AuditViewerService(
-            auditLog, Registry, [StubContributor("User", (actor, "Frank"), (viewer, "Peter"))]);
+            auditLog, Registry, [StubContributor((actor, "Frank"), (viewer, "Peter"))]);
 
         var entries = await service.GetForUserAsync(viewer, 10, Xunit.TestContext.Current.CancellationToken);
 
@@ -80,7 +80,7 @@ public class AuditViewerServiceTests
             .Returns([entry]);
 
         var service = new AuditViewerService(
-            auditLog, Registry, [StubContributor("User", (actor, "Frank"), (viewer, "Peter"))]);
+            auditLog, Registry, [StubContributor((actor, "Frank"), (viewer, "Peter"))]);
 
         var entries = await service.GetForUserAsync(viewer, 10, Xunit.TestContext.Current.CancellationToken);
         var line = entries[0].RenderPlainText(viewerUserId: viewer);
@@ -110,11 +110,11 @@ public class AuditViewerServiceTests
         teams.ResolveNamesAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
             .Returns(new Dictionary<Guid, EntityName>
             {
-                [teamId] = new("Team", "Cantina", "cantina")
+                [teamId] = new("Cantina", "cantina")
             });
 
         var service = new AuditViewerService(
-            auditLog, Registry, [StubContributor("User", (viewer, "Peter")), teams]);
+            auditLog, Registry, [StubContributor((viewer, "Peter")), teams]);
 
         var entries = await service.GetForUserAsync(viewer, 10, Xunit.TestContext.Current.CancellationToken);
 
@@ -139,7 +139,7 @@ public class AuditViewerServiceTests
         auditLog.GetFilteredAsync(null, 1, 50, Arg.Any<CancellationToken>())
             .Returns(([entry], 1, alerts));
 
-        var service = new AuditViewerService(auditLog, Registry, [StubContributor("User", (actor, "Frank"))]);
+        var service = new AuditViewerService(auditLog, Registry, [StubContributor((actor, "Frank"))]);
 
         var result = await service.GetPageAsync(null, 1, 50, Xunit.TestContext.Current.CancellationToken);
 
@@ -165,11 +165,10 @@ public class AuditViewerServiceTests
         entries.Single().Action.Should().Be(new AuditActionDefinition("RetiredLongAgo", AuditKept.Forever));
     }
 
-    private static IEntityNameContributor StubContributor(
-        string subjectType, params (Guid Id, string Name)[] entries)
+    private static IEntityNameContributor StubContributor(params (Guid Id, string Name)[] entries)
     {
         var contributor = Substitute.For<IEntityNameContributor>();
-        var dict = entries.ToDictionary(e => e.Id, e => new EntityName(subjectType, e.Name));
+        var dict = entries.ToDictionary(e => e.Id, e => new EntityName(e.Name));
         contributor.ResolveNamesAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
             .Returns(dict);
         return contributor;

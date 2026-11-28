@@ -310,11 +310,7 @@ internal sealed class CalendarService(
                 var occurrences = contributed.SelectMany(item => ToOccurrences(item, from, to)).ToList();
                 items.AddRange(occurrences);
             }
-            catch (OperationCanceledException) when (ct.IsCancellationRequested)
-            {
-                throw;
-            }
-            catch (Exception ex)
+            catch (Exception ex) when (ex is not OperationCanceledException || !ct.IsCancellationRequested)
             {
                 logger.LogError(ex,
                     "Community calendar contributor {Contributor} failed for window [{From}, {To}); its items are skipped",

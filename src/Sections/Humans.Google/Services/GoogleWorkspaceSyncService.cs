@@ -674,7 +674,6 @@ internal sealed class GoogleWorkspaceSyncService(
 
         using var semaphore = new SemaphoreSlim(5);
         var tasks = allGroups
-            .Where(g => !string.IsNullOrEmpty(g.Email))
             .Select(async group =>
             {
                 var email = group.Email;

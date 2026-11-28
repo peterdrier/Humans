@@ -55,11 +55,7 @@ public class AuditLogViewComponent(IAuditViewerService auditViewer, ILogger<Audi
                 ? entries.Where(e => e.OccurredAt >= since.Value).ToList()
                 : entries;
         }
-        catch (OperationCanceledException) when (HttpContext.RequestAborted.IsCancellationRequested)
-        {
-            throw;
-        }
-        catch (Exception ex)
+        catch (Exception ex) when (ex is not OperationCanceledException || !HttpContext.RequestAborted.IsCancellationRequested)
         {
             logger.LogError(ex, "Error loading audit log entries for SubjectType={SubjectType}, SubjectId={SubjectId}, UserId={UserId}",
                 subjectType, subjectId, userId);

@@ -76,7 +76,7 @@ public class ExpiresOnAnalyzerTests
     }
 
     [HumansFact]
-    public async Task Before_date_callers_warn_and_declaration_clean()
+    public async Task Analyze_BeforeDate_OnlyCallersWarn()
     {
         var diagnostics = await RunAtAsync(new DateTime(2026, 5, 12));
 
@@ -88,7 +88,7 @@ public class ExpiresOnAnalyzerTests
     }
 
     [HumansFact]
-    public async Task On_date_callers_error_and_declaration_warns_grace_period()
+    public async Task Analyze_OnDate_CallersErrorDeclarationWarns()
     {
         var diagnostics = await RunAtAsync(new DateTime(2026, 5, 26));
 
@@ -101,7 +101,7 @@ public class ExpiresOnAnalyzerTests
     }
 
     [HumansFact]
-    public async Task Within_grace_window_declaration_still_warns()
+    public async Task Analyze_WithinGraceWindow_DeclarationWarns()
     {
         var diagnostics = await RunAtAsync(new DateTime(2026, 6, 1));
 
@@ -111,7 +111,7 @@ public class ExpiresOnAnalyzerTests
     }
 
     [HumansFact]
-    public async Task After_grace_window_declaration_errors()
+    public async Task Analyze_AfterGraceWindow_DeclarationErrors()
     {
         var diagnostics = await RunAtAsync(new DateTime(2026, 6, 3));
 
@@ -124,7 +124,7 @@ public class ExpiresOnAnalyzerTests
     }
 
     [HumansFact]
-    public async Task Custom_grace_days_extends_warning_window()
+    public async Task Analyze_CustomGraceDays_ExtendsWarningWindow()
     {
         var source = AttributeStub + """
 
@@ -149,7 +149,7 @@ public class ExpiresOnAnalyzerTests
     }
 
     [HumansFact]
-    public async Task Class_level_attribute_flags_member_usage()
+    public async Task Analyze_ClassLevelAttribute_FlagsMemberUsage()
     {
         var source = AttributeStub + """
 
@@ -179,7 +179,7 @@ public class ExpiresOnAnalyzerTests
     }
 
     [HumansFact]
-    public async Task No_attribute_no_diagnostics()
+    public async Task Analyze_NoAttribute_IsSilent()
     {
         var source = AttributeStub + """
 
@@ -203,7 +203,7 @@ public class ExpiresOnAnalyzerTests
     }
 
     [HumansFact]
-    public async Task Malformed_member_attribute_falls_through_to_valid_class_attribute()
+    public async Task Analyze_MalformedMemberAttribute_UsesClassAttribute()
     {
         // A malformed [ExpiresOn] on a member must not suppress a valid one
         // on its containing type — the loop should `continue`, not `return`.
@@ -237,7 +237,7 @@ public class ExpiresOnAnalyzerTests
     }
 
     [HumansFact]
-    public async Task Malformed_date_emits_no_diagnostic()
+    public async Task Analyze_MalformedDate_IsSilent()
     {
         var source = AttributeStub + """
 

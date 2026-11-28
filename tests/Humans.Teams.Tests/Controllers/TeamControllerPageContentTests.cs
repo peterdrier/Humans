@@ -311,7 +311,7 @@ public class TeamControllerPageContentTests
                 ? null : UserInfo.Create(new User { Id = viewer }, [], [], profile: null));
         });
         var now = Instant.FromUtc(2026, 1, 1, 0, 0);
-        var coordinator = new TeamMemberInfo(Guid.NewGuid(), viewer, "Coordinator", null, null, TeamMemberRole.Coordinator, now);
+        var coordinator = new TeamMemberInfo(Guid.NewGuid(), viewer, "Coordinator", null, TeamMemberRole.Coordinator, now);
         var parent = new TeamInfo(Guid.NewGuid(), "Parent", null, "parent", true, false,
             SystemTeamType.None, false, false, false, false, now,
             viewerKind == RosterViewer.ParentCoordinator ? [coordinator] : []);

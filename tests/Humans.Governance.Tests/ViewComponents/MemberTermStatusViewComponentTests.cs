@@ -49,7 +49,7 @@ public sealed class MemberTermStatusViewComponentTests
         teams.GetTeamAsync(SystemTeamIds.Volunteers, Arg.Any<CancellationToken>()).Returns(new TeamInfo(
             SystemTeamIds.Volunteers, "Volunteers", null, "volunteers", true, true, SystemTeamType.Volunteers,
             false, false, false, false, now,
-            [new TeamMemberInfo(Guid.NewGuid(), userId, "Member", null, null, TeamMemberRole.Member, now)]));
+            [new TeamMemberInfo(Guid.NewGuid(), userId, "Member", null, TeamMemberRole.Member, now)]));
         var http = new DefaultHttpContext
         {
             User = new ClaimsPrincipal(new ClaimsIdentity([new Claim(ClaimTypes.NameIdentifier, userId.ToString())], "test"))

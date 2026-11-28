@@ -121,7 +121,7 @@ public class AccountingReadTests
     }
 
     [HumansFact]
-    public async Task Order_lines_cover_camp_and_team_orders_with_their_labels()
+    public async Task OrderLines_CampOrTeamOrder_HaveLabels()
     {
         var lines = await _reader.GetOrderLinesAsync(2026, Xunit.TestContext.Current.CancellationToken);
 
@@ -146,7 +146,7 @@ public class AccountingReadTests
     }
 
     [HumansFact]
-    public async Task Order_lines_are_priced_like_the_summary_so_gross_sums_to_the_order_total()
+    public async Task OrderLines_Gross_SumsToOrderTotal()
     {
         var ct = Xunit.TestContext.Current.CancellationToken;
 
@@ -174,7 +174,7 @@ public class AccountingReadTests
     }
 
     [HumansFact]
-    public async Task Order_lines_carry_the_issued_invoice_number_and_frozen_state()
+    public async Task OrderLines_IssuedOrder_CarryInvoiceNumber()
     {
         _repo.GetInvoicesForOrdersAsync(
                 Arg.Is<IReadOnlyCollection<Guid>>(ids => ids.Contains(CampOrderId)), Arg.Any<CancellationToken>())
@@ -193,7 +193,7 @@ public class AccountingReadTests
     }
 
     [HumansFact]
-    public async Task Payments_are_paid_only_refunds_negative_and_carry_the_stripe_intent()
+    public async Task Payments_PaidOnly_RefundsAreNegative()
     {
         var payments = await _reader.GetPaymentsAsync(2026, Xunit.TestContext.Current.CancellationToken);
 
@@ -215,7 +215,7 @@ public class AccountingReadTests
     }
 
     [HumansFact]
-    public async Task Orders_whose_camp_was_deleted_since_still_export_with_their_money()
+    public async Task OrderLines_DeletedCamp_StillExported()
     {
         // The camp is gone (seasons cascade; Store keeps the bare CampSeasonId), so it is
         // absent from GetCampsForYearAsync — the order must still appear, unlabeled.
@@ -244,7 +244,7 @@ public class AccountingReadTests
     }
 
     [HumansFact]
-    public async Task Empty_year_returns_no_rows()
+    public async Task Read_EmptyYear_ReturnsNoRows()
     {
         _camps.GetCampsForYearAsync(2025, Arg.Any<CancellationToken>()).Returns([]);
         _repo.GetAllProductsForYearAsync(2025, Arg.Any<CancellationToken>()).Returns([]);
@@ -257,7 +257,7 @@ public class AccountingReadTests
     }
 
     [HumansFact]
-    public async Task Order_history_is_each_orders_audit_trail_plus_price_changes_to_its_products()
+    public async Task OrderHistory_Order_HasAuditPlusPriceChanges()
     {
         AuditEntry At(int day, AuditActionDefinition action, Guid subjectId) =>
             new(Guid.NewGuid(), Instant.FromUtc(2026, 6, day, 0, 0), action, null, null, "x", subjectId,

@@ -57,7 +57,6 @@ internal sealed class EventsController(
             var campName = ResolveCampDisplayName(camp, guideSettings?.EventSettingsId);
             barrioBlocks.Add(new BarrioSubmissionsBlock
             {
-                CampId = camp.Id,
                 CampName = campName,
                 CampSlug = camp.Slug,
                 SubmittedCount = summary.SubmittedCount,
@@ -663,17 +662,13 @@ internal sealed class EventsController(
             using var reader = new StreamReader(file.OpenReadStream(), System.Text.Encoding.UTF8);
             parsed = BulkEventCsvParser.Parse(await reader.ReadToEndAsync(HttpContext.RequestAborted));
         }
-        catch (OperationCanceledException) when (HttpContext.RequestAborted.IsCancellationRequested)
-        {
-            throw;
-        }
         catch (CsvHelper.CsvFormatException ex)
         {
             logger.LogWarning("Bulk CSV parse failed for camp slug {Slug}: {Message}", slug, ex.Message);
             SetError(localizer["Events_Upload_ParseFailed"].Value);
             return RedirectToAction(nameof(MySubmissions));
         }
-        catch (Exception ex)
+        catch (Exception ex) when (ex is not OperationCanceledException || !HttpContext.RequestAborted.IsCancellationRequested)
         {
             logger.LogError(ex, "Bulk CSV parse failed for camp slug {Slug}: {Message}", slug, ex.Message);
             SetError(localizer["Events_Upload_ParseFailed"].Value);

@@ -17,7 +17,7 @@ public class VatInclusivePriceTests
     [InlineData("10", "4", "10.40")]      // super-reduced rate
     [InlineData("12.34", "0", "12.34")]   // 0% VAT is a no-op, must not regress
     [InlineData("0.50", "21", "0.61")]    // 0.605 midpoint: away-from-zero rounds to 0.61 (banker's would give 0.60)
-    public void ProductDto_unit_price_incl_vat(string ex, string vat, string expected)
+    public void ProductDto_UnitPrice_IncludesVat(string ex, string vat, string expected)
     {
         Product(D(ex), D(vat)).UnitPriceInclVatEur.Should().Be(D(expected));
     }
@@ -29,13 +29,13 @@ public class VatInclusivePriceTests
     [InlineData("10", "4", "10.40")]
     [InlineData("12.34", "0", "12.34")]
     [InlineData("0.50", "21", "0.61")]
-    public void OrderLineDto_unit_price_incl_vat(string ex, string vat, string expected)
+    public void OrderLineDto_UnitPrice_IncludesVat(string ex, string vat, string expected)
     {
         Line(qty: 1, unitEx: D(ex), vat: D(vat)).EffectiveUnitPriceInclVat.Should().Be(D(expected));
     }
 
     [HumansFact]
-    public void Per_unit_incl_vat_is_display_only_and_not_additive_for_multi_qty()
+    public void UnitPriceInclVat_MultiQty_IsNotAdditive()
     {
         // qty 3 × €9.99 @ 21%: per-unit incl VAT is rounded per unit (€12.09), but the
         // authoritative line VAT is rounded once on the whole subtotal. The two intentionally

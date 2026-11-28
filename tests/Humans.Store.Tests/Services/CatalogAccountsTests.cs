@@ -36,7 +36,7 @@ public class CatalogAccountsTests
     }
 
     [HumansFact]
-    public async Task Choices_split_the_unarchived_chart_into_the_three_blocks()
+    public async Task Choices_UnarchivedChart_SplitIntoThreeBlocks()
     {
         var choices = await _catalog.GetAccountChoicesAsync(TestContext.Current.CancellationToken);
 
@@ -51,7 +51,7 @@ public class CatalogAccountsTests
     }
 
     [HumansFact]
-    public async Task Saving_a_product_with_an_account_no_longer_in_the_chart_is_refused()
+    public async Task Save_AccountNotInChart_IsRefused()
     {
         var product = MakeProduct("Ice");
         _repo.GetProductByIdAsync(product.Id, Arg.Any<CancellationToken>()).Returns(product);
@@ -65,7 +65,7 @@ public class CatalogAccountsTests
     }
 
     [HumansFact]
-    public async Task An_account_the_product_already_holds_does_not_block_other_edits()
+    public async Task Save_AccountAlreadyHeld_AllowsOtherEdits()
     {
         var product = MakeProduct("Ice", income: 75900009);
         _repo.GetProductByIdAsync(product.Id, Arg.Any<CancellationToken>()).Returns(product);
@@ -77,7 +77,7 @@ public class CatalogAccountsTests
     }
 
     [HumansFact]
-    public async Task Bulk_save_writes_and_audits_changed_rows_only()
+    public async Task BulkSave_ChangedRows_OnlyThoseWritten()
     {
         var gas = MakeProduct("Gas");
         var ice = MakeProduct("Ice", income: 75900008);
@@ -100,7 +100,7 @@ public class CatalogAccountsTests
     }
 
     [HumansFact]
-    public async Task Bulk_save_with_one_bad_row_writes_nothing()
+    public async Task BulkSave_OneBadRow_WritesNothing()
     {
         var gas = MakeProduct("Gas");
         var ice = MakeProduct("Ice");
@@ -117,7 +117,7 @@ public class CatalogAccountsTests
     }
 
     [HumansFact]
-    public async Task Settings_save_the_stripe_gateway_treasury_and_audit_it()
+    public async Task Settings_StripeTreasury_SavedWithAudit()
     {
         var actor = Guid.NewGuid();
         var ct = TestContext.Current.CancellationToken;

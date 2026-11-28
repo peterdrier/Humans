@@ -40,7 +40,7 @@ public class OrchestratorRepositoryInjectionAnalyzerTests
         string.Equals(d.Id, OrchestratorRepositoryInjectionAnalyzer.RoleConflictDiagnosticId, StringComparison.Ordinal);
 
     [HumansFact]
-    public async Task HUM0026_fires_when_orchestrator_injects_a_repository()
+    public async Task HUM0026_Repository_Fires()
     {
         var source = Stubs + """
 
@@ -66,7 +66,7 @@ public class OrchestratorRepositoryInjectionAnalyzerTests
     }
 
     [HumansFact]
-    public async Task HUM0026_fires_when_orchestrator_injects_UsersDbContext()
+    public async Task HUM0026_UsersDbContext_Fires()
     {
         var source = Stubs + """
 
@@ -90,7 +90,7 @@ public class OrchestratorRepositoryInjectionAnalyzerTests
     }
 
     [HumansFact]
-    public async Task HUM0026_fires_when_orchestrator_injects_a_section_DbContext()
+    public async Task HUM0026_SectionDbContext_Fires()
     {
         var source = Stubs + """
 
@@ -114,7 +114,7 @@ public class OrchestratorRepositoryInjectionAnalyzerTests
     }
 
     [HumansFact]
-    public async Task HUM0026_fires_when_orchestrator_injects_DbContextFactory_of_UsersDbContext()
+    public async Task HUM0026_DbContextFactory_Fires()
     {
         var source = Stubs + """
 
@@ -138,7 +138,7 @@ public class OrchestratorRepositoryInjectionAnalyzerTests
     }
 
     [HumansFact]
-    public async Task HUM0026_fires_when_orchestrator_injects_bare_IRepository_marker()
+    public async Task HUM0026_BareRepositoryMarker_Fires()
     {
         // Roslyn's AllInterfaces excludes the interface symbol itself, so a
         // parameter typed as the bare IRepository marker must be detected via
@@ -165,7 +165,7 @@ public class OrchestratorRepositoryInjectionAnalyzerTests
     }
 
     [HumansFact]
-    public async Task HUM0026_fires_when_orchestrator_injects_repository_via_service_interface()
+    public async Task HUM0026_RepositoryViaServiceInterface_Fires()
     {
         // Production pattern: class implements IOrchestrator transitively via
         // its service interface, not directly. Guards against a regression
@@ -195,7 +195,7 @@ public class OrchestratorRepositoryInjectionAnalyzerTests
     }
 
     [HumansFact]
-    public async Task HUM0027_fires_when_both_markers_held_via_separate_interfaces()
+    public async Task HUM0027_MarkersViaSeparateInterfaces_Fires()
     {
         var source = Stubs + """
 
@@ -217,7 +217,7 @@ public class OrchestratorRepositoryInjectionAnalyzerTests
     }
 
     [HumansFact]
-    public async Task HUM0026_does_not_fire_on_pure_service_injection()
+    public async Task HUM0026_ServiceInjection_IsSilent()
     {
         var source = Stubs + """
 
@@ -243,7 +243,7 @@ public class OrchestratorRepositoryInjectionAnalyzerTests
     }
 
     [HumansFact]
-    public async Task HUM0026_does_not_fire_on_non_orchestrator_section_service()
+    public async Task HUM0026_NonOrchestratorService_IsSilent()
     {
         var source = Stubs + """
 
@@ -267,7 +267,7 @@ public class OrchestratorRepositoryInjectionAnalyzerTests
     }
 
     [HumansFact]
-    public async Task HUM0027_fires_when_type_implements_both_markers()
+    public async Task HUM0027_BothMarkers_Fires()
     {
         var source = Stubs + """
 
@@ -292,7 +292,7 @@ public class OrchestratorRepositoryInjectionAnalyzerTests
     }
 
     [HumansFact]
-    public async Task HUM0027_does_not_fire_when_type_implements_only_IOrchestrator()
+    public async Task HUM0027_OnlyOrchestratorMarker_IsSilent()
     {
         var source = Stubs + """
 

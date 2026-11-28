@@ -42,7 +42,6 @@ public class CampControllerTests
     private readonly IShiftView _shiftView = Substitute.For<IShiftView>();
     private readonly IUserService _users = Substitute.For<IUserService>();
     private readonly IAuthorizationService _authorization = Substitute.For<IAuthorizationService>();
-    private readonly IClock _clock = Substitute.For<IClock>();
     private readonly IStringLocalizer<CampsResource> _campsLocalizer = Substitute.For<IStringLocalizer<CampsResource>>();
     private readonly IStringLocalizer<SharedResource> _sharedLocalizer = Substitute.For<IStringLocalizer<SharedResource>>();
 
@@ -628,61 +627,6 @@ public class CampControllerTests
 
         _camps.ReceivedCalls().Select(call => call.GetMethodInfo().Name).Should()
             .NotContain(nameof(ICampManagement.CreateCampAsync)).And.NotContain(nameof(ICampManagement.OptInToSeasonAsync));
-    }
-
-    [HumansTheory]
-    [InlineData(nameof(CampController.Edit), "Camp")]
-    [InlineData(nameof(CampController.Edit), "Viewer")]
-    [InlineData(nameof(CampController.Edit), "EditData")]
-    [InlineData(nameof(CampController.Members), "Camp")]
-    [InlineData(nameof(CampController.Members), "Viewer")]
-    [InlineData(nameof(CampController.Members), "EditData")]
-    [InlineData(nameof(CampController.Contact), "Camp")]
-    public async Task CampReadPages_StopLoadingAfterRequestCancellation(string route, string boundary)
-    {
-        using var request = new CancellationTokenSource();
-        var abandon = false;
-        var boundaryToken = CancellationToken.None;
-        async Task<T> ReadAsync<T>(T value, string name, CancellationToken ct)
-        {
-            if (abandon && string.Equals(name, boundary, StringComparison.Ordinal))
-            {
-                await request.CancelAsync();
-                boundaryToken = ct;
-            }
-            ct.ThrowIfCancellationRequested();
-            return value;
-        }
-
-        var userId = Guid.NewGuid();
-        var camp = MakeCamp("alpha", "Alpha", CampSeasonStatus.Active, userId);
-        var season = camp.Seasons.Single();
-        _camps.GetCampBySlugAsync(camp.Slug, Arg.Any<CancellationToken>()).Returns(call =>
-            ReadAsync<CampInfo?>(camp, "Camp", call.Arg<CancellationToken>()));
-        _users.GetUserInfoAsync(userId, Arg.Any<CancellationToken>()).Returns(call =>
-            new ValueTask<UserInfo?>(ReadAsync<UserInfo?>(MakeUserInfo(userId), "Viewer", call.Arg<CancellationToken>())));
-        _camps.GetCampEditDataAsync(camp.Id, null, Arg.Any<CancellationToken>()).Returns(call =>
-            ReadAsync<CampEditData?>(MakeEditData(camp, season), "EditData", call.Arg<CancellationToken>()));
-        _camps.GetSettingsAsync(Arg.Any<CancellationToken>()).Returns(Settings2026());
-        _authorization.AuthorizeAsync(
-            Arg.Any<ClaimsPrincipal>(), Arg.Any<object?>(), Arg.Any<IEnumerable<IAuthorizationRequirement>>())
-            .Returns(AuthorizationResult.Success());
-        _roles.BuildPanelAsync(season.Id, Arg.Any<CancellationToken>())
-            .Returns(new CampRolesPanelData([]));
-        var controller = BuildController(userId);
-        controller.HttpContext.RequestAborted = request.Token;
-        Func<Task<IActionResult>> load = route switch
-        {
-            nameof(CampController.Edit) => () => controller.Edit(camp.Slug, null, request.Token),
-            nameof(CampController.Members) => () => controller.Members(camp.Slug, null, request.Token),
-            nameof(CampController.Contact) => () => controller.Contact(camp.Slug),
-            _ => throw new ArgumentOutOfRangeException(nameof(route)),
-        };
-
-        (await load()).Should().BeOfType<ViewResult>();
-        abandon = true;
-        await load.Should().ThrowAsync<OperationCanceledException>();
-        boundaryToken.Should().Be(request.Token);
     }
 
     [HumansFact]
@@ -1557,8 +1501,6 @@ public class CampControllerTests
         if (selected.IsPublic)
         {
             model.RolesPanel.Should().NotBeNull();
-            model.RolesPanel!.CampSeasonId.Should().Be(selected.Id);
-            model.RolesPanel!.ActiveMembers.Should().ContainSingle().Which.UserId.Should().Be(memberId);
             await _roles.Received(1).BuildPanelAsync(selected.Id, TestContext.Current.CancellationToken);
         }
         else
@@ -1635,7 +1577,6 @@ public class CampControllerTests
             .Model.Should().BeOfType<CampEditViewModel>().Subject;
         vm.RolesPanel!.Rows.Select(row => row.Name).Should().Equal("Priority", "Alpha", "Zebra");
         vm.ActiveMembers.Select(m => m.UserId).Should().Equal(oneShiftMemberId, fivePlusShiftMemberId, zeroShiftMemberId);
-        vm.RolesPanel.ActiveMembers.Select(m => m.UserId).Should().Equal(oneShiftMemberId, fivePlusShiftMemberId, zeroShiftMemberId);
         vm.RolesPanel.Rows.Single(row => string.Equals(row.Name, "Zebra", StringComparison.Ordinal)).FilledSlots.Select(s => s.UserId)
             .Should().Equal(oneShiftMemberId, zeroShiftMemberId);
         vm.ActiveMembers.Single(m => m.UserId == zeroShiftMemberId).EventShiftSignupCount.Should().Be(0);
@@ -1905,7 +1846,6 @@ public class CampControllerTests
             _shiftView,
             _users,
             _authorization,
-            _clock,
             logger ?? NullLogger<CampController>.Instance,
             campsLocalizer ?? _campsLocalizer,
             sharedLocalizer ?? _sharedLocalizer);

@@ -1227,7 +1227,7 @@ public sealed class ShiftDashboardMetricsTests : ShiftsTestHarness
                     t.Members
                         .Where(m => m.LeftAt is null)
                         .Select(m => new TeamMemberInfo(
-                            m.Id, m.UserId, string.Empty, null, null, m.Role, m.JoinedAt))
+                            m.Id, m.UserId, string.Empty, null, m.Role, m.JoinedAt))
                         .ToList(),
                     t.ParentTeamId));
         }

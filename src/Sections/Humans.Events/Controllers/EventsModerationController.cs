@@ -362,7 +362,6 @@ internal sealed class EventsModerationController(
             Status = e.Status,
             DuplicateCandidates = e.DuplicateCandidates.Select(other => new DuplicateCandidateViewModel
             {
-                Id = other.Id,
                 Title = other.Title,
                 StartAt = ToLocalDateTime(other.StartAt, tz),
                 DurationMinutes = other.DurationMinutes,

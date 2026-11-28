@@ -29,7 +29,7 @@ public class IdentityColumnReadAnalyzerTests
         string.Equals(d.Id, IdentityColumnReadAnalyzer.DiagnosticId, StringComparison.Ordinal);
 
     [HumansFact]
-    public async Task Fires_on_User_Email_read_in_Application()
+    public async Task Analyze_UserEmailRead_Fires()
     {
         var source = DomainStub + """
 
@@ -51,7 +51,7 @@ public class IdentityColumnReadAnalyzerTests
     }
 
     [HumansFact]
-    public async Task Fires_on_User_NormalizedEmail_read_in_Web()
+    public async Task Analyze_NormalizedEmailReadInWeb_Fires()
     {
         var source = DomainStub + """
 
@@ -73,7 +73,7 @@ public class IdentityColumnReadAnalyzerTests
     }
 
     [HumansFact]
-    public async Task Fires_on_all_four_forbidden_getters()
+    public async Task Analyze_ForbiddenGetters_AllFire()
     {
         var source = DomainStub + """
 
@@ -101,7 +101,7 @@ public class IdentityColumnReadAnalyzerTests
     }
 
     [HumansFact]
-    public async Task Does_not_fire_on_UserInfo_Email_read()
+    public async Task Analyze_UserInfoEmailRead_IsSilent()
     {
         // UserInfo (DTO) has its own `Email` property — reads of that are
         // the CORRECT path. Analyzer must not flag them.
@@ -125,7 +125,7 @@ public class IdentityColumnReadAnalyzerTests
     }
 
     [HumansFact]
-    public async Task Does_not_fire_on_non_Identity_property_on_User()
+    public async Task Analyze_NonIdentityProperty_IsSilent()
     {
         var source = DomainStub + """
 
@@ -147,7 +147,7 @@ public class IdentityColumnReadAnalyzerTests
     }
 
     [HumansFact]
-    public async Task Does_not_fire_on_assignment_target()
+    public async Task Analyze_AssignmentTarget_IsSilent()
     {
         // Writes are HUM0002's job — HUM0019 stays out of the way.
         var source = DomainStub + """
@@ -170,7 +170,7 @@ public class IdentityColumnReadAnalyzerTests
     }
 
     [HumansFact]
-    public async Task Fires_on_property_pattern_read()
+    public async Task Analyze_PropertyPatternRead_Fires()
     {
         // Property patterns (`u is { Email: not null }`) fire IPropertyReferenceOperation
         // because IPropertySubpatternOperation.Member wraps a PropertyReference child —
@@ -197,7 +197,7 @@ public class IdentityColumnReadAnalyzerTests
     }
 
     [HumansFact]
-    public async Task Fires_on_switch_property_pattern_read()
+    public async Task Analyze_SwitchPatternRead_Fires()
     {
         // Same path via `switch` expression property pattern — also caught by
         // IPropertyReferenceOperation, not a bypass. Regression coverage.
@@ -225,7 +225,7 @@ public class IdentityColumnReadAnalyzerTests
     }
 
     [HumansFact]
-    public async Task Fires_on_string_interpolation_read()
+    public async Task Analyze_InterpolationRead_Fires()
     {
         var source = DomainStub + """
 

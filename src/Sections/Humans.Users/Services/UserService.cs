@@ -743,7 +743,7 @@ internal sealed class UserService(
         return true;
     }
 
-    public async Task<UserProfileSaveResult> SaveProfileAsync(
+    public async Task SaveProfileAsync(
         Guid userId,
         UserProfileSaveCommand command,
         byte[]? profilePictureData = null,
@@ -803,8 +803,7 @@ internal sealed class UserService(
             profile.DateOfBirth = null;
         }
 
-        // Every upload lands on a fresh key, so the previous bytes survive until the editor deletes
-        // them after this save commits.
+        // Every upload lands on a fresh key, so the previous bytes survive until the metadata save commits.
         var pictureMutation = command.PictureMutation;
         string? newPictureKey = null;
         if (pictureMutation == UserProfilePictureMutation.Set
@@ -843,7 +842,6 @@ internal sealed class UserService(
         {
             await repo.UpdateAsync(profile, ct, volunteerHistory,
                 new UserNames(command.BurnerName, command.FirstName, command.LastName));
-            return new UserProfileSaveResult(previousPictureKey, currentPictureKey);
         }
         finally
         {

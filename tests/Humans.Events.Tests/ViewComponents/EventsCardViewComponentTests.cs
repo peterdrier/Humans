@@ -28,7 +28,7 @@ public class EventsCardViewComponentTests
     private readonly IUserService _users = Substitute.For<IUserService>();
 
     private EventsCardViewComponent BuildSut(
-        Guid? viewerId, bool eventsEnabled = true, CancellationToken requestAborted = default)
+        Guid? viewerId, bool eventsEnabled = true)
     {
         if (viewerId is { } knownViewer)
             _users.GetUserInfoAsync(knownViewer, Arg.Any<CancellationToken>())
@@ -36,7 +36,7 @@ public class EventsCardViewComponentTests
         var identity = viewerId is null
             ? new ClaimsIdentity()
             : new ClaimsIdentity([new Claim(ClaimTypes.NameIdentifier, viewerId.Value.ToString())], "Test");
-        var http = new DefaultHttpContext { User = new ClaimsPrincipal(identity), RequestAborted = requestAborted };
+        var http = new DefaultHttpContext { User = new ClaimsPrincipal(identity) };
         var config = new ConfigurationBuilder()
             .AddInMemoryCollection(new Dictionary<string, string?>(StringComparer.Ordinal) { ["Features:Events"] = eventsEnabled ? "true" : "false" })
             .Build();
@@ -52,39 +52,31 @@ public class EventsCardViewComponentTests
     [HumansTheory]
     [Xunit.InlineData(AccountScenario.Merged)]
     [Xunit.InlineData(AccountScenario.Missing)]
-    [Xunit.InlineData(AccountScenario.Cancelled)]
     public async Task FavouriteViewer_CardLoad_ResolvesFirst(AccountScenario account)
     {
         var cookieId = Guid.NewGuid();
         var survivor = Guid.NewGuid();
         var campId = Guid.NewGuid();
-        using var request = new CancellationTokenSource();
-        var component = BuildSut(cookieId, requestAborted: request.Token);
-        _users.GetUserInfoAsync(cookieId, Arg.Any<CancellationToken>()).Returns(call =>
+        var component = BuildSut(cookieId);
+        _users.GetUserInfoAsync(cookieId, Arg.Any<CancellationToken>()).Returns(_ =>
         {
-            call.Arg<CancellationToken>().Should().Be(request.Token);
-            call.Arg<CancellationToken>().ThrowIfCancellationRequested();
             return new ValueTask<UserInfo?>(account == AccountScenario.Missing ? null :
                 UserInfo.Create(new User { Id = survivor }, [], [], null));
         });
         var ev = Approved(Guid.NewGuid(), "Event", Instant.FromUtc(2026, 8, 1, 10, 0));
         _events.GetApprovedEventsAsync(campId, null, null, null, Arg.Any<IReadOnlyList<string>>(), Arg.Any<CancellationToken>())
             .Returns([ev]);
-        _events.GetFavouriteEventIdsAsync(survivor, request.Token).Returns(new HashSet<Guid> { ev.Id });
-        if (account == AccountScenario.Cancelled)
-            await request.CancelAsync();
+        _events.GetFavouriteEventIdsAsync(survivor, Arg.Any<CancellationToken>()).Returns(new HashSet<Guid> { ev.Id });
         var invoke = () => component.InvokeAsync(campId: campId);
 
-        if (account == AccountScenario.Cancelled)
-            await invoke.Should().ThrowAsync<OperationCanceledException>();
-        else if (account == AccountScenario.Missing)
+        if (account == AccountScenario.Missing)
             (await invoke()).Should().BeOfType<ContentViewComponentResult>().Which.Content.Should().BeEmpty();
         else
         {
             var model = (await invoke()).Should().BeOfType<ViewViewComponentResult>().Which.ViewData!.Model
-                .Should().BeOfType<EventsCardViewModel>().Subject;
-            model.Rows.Should().ContainSingle().Which.IsFavourited.Should().BeTrue();
-            await _events.Received(1).GetFavouriteEventIdsAsync(survivor, request.Token);
+                .Should().BeAssignableTo<IReadOnlyList<EventsCardRow>>().Subject;
+            model.Should().ContainSingle().Which.IsFavourited.Should().BeTrue();
+            await _events.Received(1).GetFavouriteEventIdsAsync(survivor, Arg.Any<CancellationToken>());
             return;
         }
         _events.ReceivedCalls().Should().BeEmpty();
@@ -121,11 +113,11 @@ public class EventsCardViewComponentTests
         var result = await BuildSut(viewerId).InvokeAsync(campId: campId);
 
         var view = result.Should().BeOfType<ViewViewComponentResult>().Subject;
-        var vm = view.ViewData!.Model.Should().BeOfType<EventsCardViewModel>().Subject;
-        vm.Rows.Select(r => r.Title).Should().ContainInOrder("Early", "Late");
-        vm.Rows[0].IsFavourited.Should().BeTrue();   // Early — favourited
-        vm.Rows[1].IsFavourited.Should().BeFalse();  // Late — not favourited
-        vm.Rows[0].Description.Should().Be("Morning yoga by the temple.");
+        var vm = view.ViewData!.Model.Should().BeAssignableTo<IReadOnlyList<EventsCardRow>>().Subject;
+        vm.Select(r => r.Title).Should().ContainInOrder("Early", "Late");
+        vm[0].IsFavourited.Should().BeTrue();   // Early — favourited
+        vm[1].IsFavourited.Should().BeFalse();  // Late — not favourited
+        vm[0].Description.Should().Be("Morning yoga by the temple.");
     }
 
     [HumansFact]
@@ -146,8 +138,8 @@ public class EventsCardViewComponentTests
         var result = await BuildSut(viewerId).InvokeAsync(userId: susieId);
 
         var view = result.Should().BeOfType<ViewViewComponentResult>().Subject;
-        var vm = view.ViewData!.Model.Should().BeOfType<EventsCardViewModel>().Subject;
-        vm.Rows.Select(r => r.Title).Should().Equal("Susie's Salon");
+        var vm = view.ViewData!.Model.Should().BeAssignableTo<IReadOnlyList<EventsCardRow>>().Subject;
+        vm.Select(r => r.Title).Should().Equal("Susie's Salon");
     }
 
     [HumansFact]
@@ -175,22 +167,6 @@ public class EventsCardViewComponentTests
         await _events.DidNotReceive().GetApprovedEventsAsync(
             Arg.Any<Guid?>(), Arg.Any<Guid?>(), Arg.Any<Guid?>(), Arg.Any<string?>(),
             Arg.Any<IReadOnlyList<string>>(), Arg.Any<CancellationToken>());
-    }
-
-    [HumansFact]
-    public async Task RequestAborted_PropagatesCancellation()
-    {
-        using var aborted = new CancellationTokenSource();
-        await aborted.CancelAsync();
-        _events.GetApprovedEventsAsync(Arg.Any<Guid?>(), Arg.Any<Guid?>(), Arg.Any<Guid?>(), Arg.Any<string?>(),
-                Arg.Any<IReadOnlyList<string>>(), aborted.Token)
-            .Returns(Task.FromException<IReadOnlyList<ApprovedEventView>>(
-                new OperationCanceledException(aborted.Token)));
-
-        var act = () => BuildSut(Guid.NewGuid(), requestAborted: aborted.Token)
-            .InvokeAsync(campId: Guid.NewGuid());
-
-        await act.Should().ThrowAsync<OperationCanceledException>();
     }
 
     [HumansFact]

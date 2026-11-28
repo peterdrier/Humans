@@ -39,7 +39,7 @@ public sealed class TeamDirectoryBuilderTests
             IsPromotedToDirectory: isPromoted,
             CreatedAt: Now,
             Members: memberIds
-                .Select(id => new TeamMemberInfo(Guid.NewGuid(), id, "m", null, null, TeamMemberRole.Member, Now))
+                .Select(id => new TeamMemberInfo(Guid.NewGuid(), id, "m", null, TeamMemberRole.Member, Now))
                 .ToList(),
             ParentTeamId: parentId);
 

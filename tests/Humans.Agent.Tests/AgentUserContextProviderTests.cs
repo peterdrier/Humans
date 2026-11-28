@@ -186,8 +186,8 @@ public class AgentUserContextProviderTests
 
         var teams = Substitute.For<ITeamService>();
         teams.GetUserTeamMembershipsAsync(userId, Arg.Any<CancellationToken>())
-            .Returns((teamMemberships ?? []).Select((m, i) => new UserTeamMembershipInfo(
-                Guid.NewGuid(), m.TeamName, $"team-{i}", m.Role)
+            .Returns((teamMemberships ?? []).Select(m => new UserTeamMembershipInfo(
+                Guid.NewGuid(), m.TeamName, m.Role)
             {
                 IsActive = true,
                 IsHidden = m.IsHidden,

@@ -3,9 +3,8 @@ using NodaTime;
 namespace Humans.Expenses.Contracts;
 
 /// <summary>
-/// One Holded purchase document Humans expects to exist: a bookable line after the cap allocation, pushed or not.
-/// <see cref="Description"/>, <see cref="Notes"/> and <see cref="BookedAmount"/> are what the push writes, so they
-/// compare directly with the document. <see cref="CreditorUserId"/> is the merge survivor, who owns the binding.
+/// One expected purchase for ledger reconciliation: a bookable line after the cap allocation, pushed or not.
+/// Description and booked amount match the creditor account’s purchase lines; CreditorUserId is the merge survivor.
 /// </summary>
 /// <remarks>
 /// <list type="bullet">
@@ -21,10 +20,8 @@ public sealed record ExpenseHoldedReconLine(
     Guid? LineId,
     ExpenseReportStatus ReportStatus,
     Guid CreditorUserId,
-    string? HoldedContactId,
     string? HoldedDocId,
     string Description,
-    string Notes,
     decimal BookedAmount,
     Instant DocumentDate,
     ExpenseHoldedSyncState SyncState,

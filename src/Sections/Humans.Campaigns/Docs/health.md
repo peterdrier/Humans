@@ -107,7 +107,7 @@ none
   rather than trusting the preview.
 - A single-grant resend that cannot resolve its recipient rethrows to the admin, so a send that
   queued nothing never reports success.
-- `LatestEmailStatus` and `LatestEmailAt` stay mapped on `campaign_grants` although nothing
+- `LatestEmailStatus` and `LatestEmailAt` stay mapped as EF shadow properties on `campaign_grants` although nothing
   writes them: dropping the columns needs its own approved migration
   (`memory/architecture/destructive-drops-need-approval.md`). The GDPR export still hands over the
   status old grants hold.

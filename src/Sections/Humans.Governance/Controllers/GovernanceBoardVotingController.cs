@@ -29,10 +29,7 @@ internal sealed class GovernanceBoardVotingController(
         {
             BoardMembers = boardMembers
                 .OrderBy(m => m.DisplayName, StringComparer.OrdinalIgnoreCase)
-                .Select(m => new BoardVoteMemberViewModel
-                {
-                    UserId = m.UserId
-                })
+                .Select(m => m.UserId)
                 .ToList(),
             Applications = applications
                 .OrderBy(a => a.MembershipTier)

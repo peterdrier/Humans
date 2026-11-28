@@ -368,7 +368,7 @@ public sealed class GoogleWorkspaceSyncServiceReconciliationTests : GoogleTestHa
         StubTeams(
             (firstTeam, true, []),
             (secondTeam, true,
-            [new TeamMemberInfo(Guid.NewGuid(), memberId, "Second-team human", email, null,
+            [new TeamMemberInfo(Guid.NewGuid(), memberId, "Second-team human", email,
                 TeamMemberRole.Member, Clock.GetCurrentInstant())]));
         // Teams' source unions both links' claims; the connector reconciles that union once.
         _driveSource.GetExpectedAccessAsync(Arg.Any<string?>(), Arg.Any<CancellationToken>())

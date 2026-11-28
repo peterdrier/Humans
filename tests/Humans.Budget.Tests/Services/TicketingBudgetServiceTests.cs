@@ -332,7 +332,7 @@ public class TicketingBudgetServiceTests
             .Returns(new List<TicketOrderInfo>
             {
                 BuildOrder(purchasedAt, 100m, stripeFee: 2m, applicationFee: 1m, TicketAttendeeStatus.Valid)
-                    with { FeeTax = 0.42m, WithheldTax = 0.10m },
+                    with { FeeTax = 0.42m },
                 BuildOrder(purchasedAt, 50m, stripeFee: 1m, applicationFee: 0.5m, TicketAttendeeStatus.Valid),
                 BuildOrder(purchasedAt, 50m, stripeFee: 0.7m, applicationFee: 0.5m, TicketAttendeeStatus.Valid)
                     with { FeeTax = 0m },
@@ -557,7 +557,6 @@ public class TicketingBudgetServiceTests
             IsCurrentEvent: true,
             Attendees: attendeeStatuses.Select(status => new TicketAttendeeInfo(
                 Id: Guid.NewGuid(),
-                VendorTicketId: $"ticket-{Guid.NewGuid():N}",
                 AttendeeName: null,
                 AttendeeEmail: null,
                 TicketTypeName: null,

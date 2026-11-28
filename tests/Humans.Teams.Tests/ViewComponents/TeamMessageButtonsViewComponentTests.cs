@@ -155,7 +155,7 @@ public sealed class TeamMessageButtonsViewComponentTests
         _teams.GetTeamsAsync(Arg.Any<CancellationToken>()).Returns(options.ToDictionary(t => t.TeamId, t =>
             new TeamInfo(t.TeamId, t.TeamName, null, t.TeamName, true, false, SystemTeamType.None,
                 false, false, false, false, Instant.MinValue,
-                [new TeamMemberInfo(Guid.NewGuid(), viewerId, "Viewer", null, null, TeamMemberRole.Coordinator, Instant.MinValue)],
+                [new TeamMemberInfo(Guid.NewGuid(), viewerId, "Viewer", null, TeamMemberRole.Coordinator, Instant.MinValue)],
                 GoogleGroupPrefix: t.GoogleGroupEmail.Split('@')[0])));
         _resources.GetResourcesByTeamIdsAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
             .Returns(options.ToDictionary(t => t.TeamId, t => (IReadOnlyList<GoogleResourceSnapshot>)

@@ -1,11 +1,11 @@
-@model EventsCardViewModel
+@model IReadOnlyList<EventsCardRow>
 
 <div class="card mb-4">
     <div class="card-header">
         <i class="fa-solid fa-calendar-days me-1"></i> @Localizer["Events_CardTitle"]
     </div>
     <div class="list-group list-group-flush">
-        @foreach (var row in Model.Rows)
+        @foreach (var row in Model)
         {
             <div class="list-group-item">
                 <div class="d-flex justify-content-between align-items-start">

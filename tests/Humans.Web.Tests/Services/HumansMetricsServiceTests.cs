@@ -25,7 +25,7 @@ public class HumansMetricsServiceTests
         users.GetAllUserInfosAsync(Arg.Any<CancellationToken>()).Returns(humans);
         var consent = Substitute.For<IConsentService>();
         consent.GetConsentReviewsAsync(Arg.Any<CancellationToken>()).Returns(
-            humans.ToDictionary(u => u.Id, u => ConsentReviewInfo.None(u.Id) with
+            humans.ToDictionary(u => u.Id, u => ConsentReviewInfo.None() with
             {
                 IsApproved = u.Id != humans[^1].Id,
             }));

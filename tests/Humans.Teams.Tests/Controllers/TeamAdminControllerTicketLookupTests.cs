@@ -13,7 +13,6 @@ public class TeamAdminControllerTicketLookupTests
     private static TicketAttendeeInfo Attendee(string barcode, Guid? matchedUserId = null) =>
         new(
             Id: Guid.NewGuid(),
-            VendorTicketId: "vt-" + barcode,
             AttendeeName: "Ada Lovelace",
             AttendeeEmail: "ada@example.com",
             TicketTypeName: "General Admission",

@@ -240,7 +240,6 @@
   <data name="Camps_Flash_RegistrationPendingReview" xml:space="preserve"><value>El teu campament s'ha registrat i està pendent de revisió.</value></data>
   <data name="Camps_Flash_RegistrationFailed" xml:space="preserve"><value>No hem pogut registrar el teu campament ara. Torna-ho a provar o contacta amb un administrador si el problema continua.</value></data>
   <data name="Camps_Flash_NoSeason" xml:space="preserve"><value>No s'ha trobat cap temporada per a aquest campament.</value></data>
-  <data name="Camps_Flash_UnknownHuman" xml:space="preserve"><value>(desconegut)</value></data>
   <data name="Camps_Flash_UpdateFailed" xml:space="preserve"><value>No s'ha pogut actualitzar el campament.</value></data>
   <data name="Camps_Flash_Updated" xml:space="preserve"><value>Campament actualitzat correctament.</value></data>
   <data name="Camps_Flash_OptedIn" xml:space="preserve"><value>Inscrit a la temporada {0}.</value></data>

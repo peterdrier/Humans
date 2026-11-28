@@ -584,7 +584,7 @@ public sealed class CityPlanningServiceTests : CityPlanningTestBase
         var members = memberUserId.HasValue
             ? new List<TeamMemberInfo>
             {
-                new(Guid.NewGuid(), memberUserId.Value, string.Empty, null, null,
+                new(Guid.NewGuid(), memberUserId.Value, string.Empty, null,
                     TeamMemberRole.Member, Instant.MinValue),
             }
             : new List<TeamMemberInfo>();

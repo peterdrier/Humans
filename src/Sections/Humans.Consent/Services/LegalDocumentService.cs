@@ -49,10 +49,6 @@ internal sealed class LegalDocumentService(
             cache.Set(cacheKey, content, CacheTtl);
             return content;
         }
-        catch (OperationCanceledException) when (ct.IsCancellationRequested)
-        {
-            throw;
-        }
         catch (GitHubApiException ex) when (!ct.IsCancellationRequested)
         {
             // Status code only — the inner Octokit exception can carry GitHub's HTML error body.

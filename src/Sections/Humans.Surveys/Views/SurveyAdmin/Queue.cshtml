@@ -1,4 +1,4 @@
-@model SurveyPendingApprovalViewModel
+@model IReadOnlyList<Humans.Surveys.Services.SurveyPendingApprovalItem>
 @inject Humans.Base.Interfaces.IOrgTimeZone OrgTimeZone
 
 @{
@@ -9,7 +9,7 @@
 <page-header title="@(Localizer["Surveys_Admin_Queue_Title"].Value)" />
 <div asp-validation-summary="ModelOnly" class="text-danger mb-3"></div>
 
-@if (Model.Items.Count == 0)
+@if (Model.Count == 0)
 {
     <empty-state>@Localizer["Surveys_Admin_Queue_Empty"]</empty-state>
 }
@@ -21,7 +21,7 @@ else
                 Func<SurveyPendingApprovalItem, IHtmlContent> columntitleCell = @<text>@(string.IsNullOrWhiteSpace(item.Title) ? Localizer["Surveys_Admin_Index_Untitled"].Value : item.Title)</text>;
                 Func<SurveyPendingApprovalItem, IHtmlContent> submittedCell = @<text>@(item.SubmittedAt is { } at ? at.ToDateTime(orgZone) : "—")</text>;
                 Func<SurveyPendingApprovalItem, IHtmlContent> queueActionsCell = @<text><partial name="_SurveyReviewActions" model="@item.Id" /></text>;
-                var queueTable = TableModel.For(Model.Items)
+                var queueTable = TableModel.For(Model)
                     .Template(Localizer["Surveys_Admin_Index_ColumnTitle"], columntitleCell)
                     .Human(Localizer["Surveys_Admin_Queue_Author"], r => r.CreatedByUserId)
                     .Template(Localizer["Surveys_Admin_Queue_Submitted"], submittedCell, o => o.Css("small text-muted"), sortBy: i => i.SubmittedAt)

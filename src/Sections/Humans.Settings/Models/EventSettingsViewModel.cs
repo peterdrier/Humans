@@ -46,11 +46,9 @@ internal sealed class EventSettingsViewModel
     public bool IsActive { get; set; }
 }
 
-internal sealed record EventSettingsFormError(string Message);
-
 internal sealed record EventSettingsParseResult(
     EventSettingsInfo? Settings,
-    IReadOnlyList<EventSettingsFormError> Errors)
+    IReadOnlyList<string> Errors)
 {
     public bool Success => Settings is not null && Errors.Count == 0;
 }
@@ -101,11 +99,11 @@ internal static class EventSettingsFormMapper
 
     internal static EventSettingsParseResult Parse(EventSettingsViewModel model)
     {
-        var errors = new List<EventSettingsFormError>();
+        var errors = new List<string>();
 
         var parsedDate = LocalDatePattern.Iso.Parse(model.GateOpeningDate);
         if (!parsedDate.Success)
-            errors.Add(new EventSettingsFormError("Invalid date format."));
+            errors.Add("Invalid date format.");
 
         Instant? earlyEntryClose = null;
         if (!string.IsNullOrEmpty(model.EarlyEntryClose))
@@ -114,16 +112,14 @@ internal static class EventSettingsFormMapper
             if (parsedInstant.Success)
                 earlyEntryClose = parsedInstant.Value;
             else
-                errors.Add(new EventSettingsFormError("Invalid UTC instant format."));
+                errors.Add("Invalid UTC instant format.");
         }
 
-        var earlyEntryCapacity = ParseDictionary(
-            model.EarlyEntryCapacityJson, nameof(model.EarlyEntryCapacityJson), errors) ?? [];
+        var earlyEntryCapacity = ParseDictionary(model.EarlyEntryCapacityJson, errors) ?? [];
 
         var barriosAllocation = string.IsNullOrWhiteSpace(model.BarriosEarlyEntryAllocationJson)
             ? null
-            : ParseDictionary(
-                model.BarriosEarlyEntryAllocationJson, nameof(model.BarriosEarlyEntryAllocationJson), errors);
+            : ParseDictionary(model.BarriosEarlyEntryAllocationJson, errors);
 
         if (errors.Count > 0)
             return new EventSettingsParseResult(null, errors);
@@ -154,7 +150,7 @@ internal static class EventSettingsFormMapper
     }
 
     private static Dictionary<int, int>? ParseDictionary(
-        string? json, string fieldName, List<EventSettingsFormError> errors)
+        string? json, List<string> errors)
     {
         if (string.IsNullOrWhiteSpace(json))
             return null;
@@ -165,7 +161,7 @@ internal static class EventSettingsFormMapper
         }
         catch (JsonException ex)
         {
-            errors.Add(new EventSettingsFormError($"Invalid JSON: {ex.Message}"));
+            errors.Add($"Invalid JSON: {ex.Message}");
             return null;
         }
     }

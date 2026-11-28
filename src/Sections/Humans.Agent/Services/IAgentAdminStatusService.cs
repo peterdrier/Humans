@@ -21,5 +21,5 @@ internal sealed record AgentAdminStatusReport(
     IReadOnlyList<AgentTopDoc> TopDocs7Days,
     IReadOnlyList<AgentTopUser> TopUsers7Days,
     AgentRetentionRunSnapshot Retention,
-    AgentBalanceStatus Balance,
+    string BalanceUnavailableReason,
     bool SettingsStoreWarm);

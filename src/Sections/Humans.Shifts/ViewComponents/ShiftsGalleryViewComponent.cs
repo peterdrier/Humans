@@ -68,11 +68,7 @@ internal sealed class ShiftsGalleryViewComponent(
                 UserSignupShiftIds = userSignupShiftIds,
             });
         }
-        catch (OperationCanceledException) when (HttpContext.RequestAborted.IsCancellationRequested)
-        {
-            throw;
-        }
-        catch (Exception ex)
+        catch (Exception ex) when (ex is not OperationCanceledException || !HttpContext.RequestAborted.IsCancellationRequested)
         {
             logger.LogWarning("Failed to resolve shifts samples for widget gallery: {Reason}", ex.Message);
             return View(ShiftsGalleryViewModel.Empty with { CurrentUserId = currentUserId });

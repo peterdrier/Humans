@@ -108,27 +108,6 @@ public sealed class LegalDocumentServiceTests : IDisposable
     }
 
     [HumansFact]
-    public async Task GetDocumentContentAsync_CancelledCallerStopsBeforeCachedRead()
-    {
-        await _service.GetDocumentContentAsync("statutes");
-        using var cancellation = new CancellationTokenSource();
-        await cancellation.CancelAsync();
-
-        await Assert.ThrowsAnyAsync<OperationCanceledException>(() =>
-            _service.GetDocumentContentAsync("statutes", cancellation.Token));
-    }
-
-    [HumansFact]
-    public async Task GetDocumentContentAsync_ForwardsCallerTokenToConnector()
-    {
-        using var cancellation = new CancellationTokenSource();
-
-        await _service.GetDocumentContentAsync("statutes", cancellation.Token);
-
-        Assert.Equal(cancellation.Token, _connector.LastFetchToken);
-    }
-
-    [HumansFact]
     public async Task GetDocumentContentAsync_CachesResult()
     {
         _connector.Content = new Dictionary<string, string>(StringComparer.Ordinal)
@@ -246,89 +225,29 @@ public sealed class LegalDocumentServiceTests : IDisposable
         new UTF8Encoding(false, true).GetBytes(summary).Should().NotBeEmpty();
     }
 
-    [HumansTheory]
-    [InlineData("discovery", 1)]
-    [InlineData("file", 1)]
-    [InlineData("file", 2)]
-    [InlineData("file", 3)]
-    [InlineData("commit", 1)]
-    [InlineData("prefix", 1)]
-    [InlineData("prefix", 2)]
-    public async Task GitHubRead_PropagatesCancellationAtEachFetch(string operation, int pauseRequest)
-    {
-        using var cancelled = CancellationTokenSource.CreateLinkedTokenSource(TestContext.Current.CancellationToken);
-        using var handler = new LegalContentHandler(string.Equals(operation, "commit", StringComparison.Ordinal) ? "summary" : null, pauseRequest);
-        var connector = new GitHubLegalDocumentConnector(
-            Options.Create(new GitHubSettings { Owner = "nobodies", Repository = "legal" }),
-            NullLogger<GitHubLegalDocumentConnector>.Instance);
-        var client = new GitHubClient(new Connection(
-            new ProductHeaderValue("test"), new HttpClientAdapter(() => handler)));
-        typeof(GitHubLegalDocumentConnector)
-            .GetField("_client", BindingFlags.Instance | BindingFlags.NonPublic)!
-            .SetValue(connector, client);
-
-        var read = ReadAsync();
-        await handler.Started.Task.WaitAsync(TestContext.Current.CancellationToken);
-        await cancelled.CancelAsync();
-        handler.Release.SetResult();
-
-        var act = () => read.WaitAsync(TestContext.Current.CancellationToken);
-        var thrown = await act.Should().ThrowAsync<OperationCanceledException>();
-        thrown.Which.CancellationToken.Should().Be(cancelled.Token);
-        handler.Requests.Should().HaveCount(pauseRequest);
-
-        async Task ReadAsync()
-        {
-            switch (operation)
-            {
-                case "discovery":
-                    await connector.DiscoverLanguageFilesAsync("Estatutos", cancelled.Token);
-                    break;
-                case "file":
-                    await connector.GetFileContentAsync("Estatutos/ESTATUTOS.md", cancelled.Token);
-                    break;
-                case "commit":
-                    await connector.GetCommitMessageAsync("abc", cancelled.Token);
-                    break;
-                case "prefix":
-                    await connector.GetFolderContentByPrefixAsync("Estatutos", "ESTATUTOS", cancelled.Token);
-                    break;
-                default:
-                    throw new ArgumentOutOfRangeException(nameof(operation));
-            }
-        }
-    }
-
-    private sealed class LegalContentHandler(string? commitMessage = null, int? pauseRequest = null, bool branchAdvances = false) : HttpMessageHandler
+    private sealed class LegalContentHandler(string? commitMessage = null, bool branchAdvances = false) : HttpMessageHandler
     {
         public List<Uri> Requests { get; } = [];
-        public TaskCompletionSource Started { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
-        public TaskCompletionSource Release { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
 
-        protected override async Task<HttpResponseMessage> SendAsync(
+        protected override Task<HttpResponseMessage> SendAsync(
             HttpRequestMessage request, CancellationToken cancellationToken)
         {
             Requests.Add(request.RequestUri!);
-            if (Requests.Count == pauseRequest)
-            {
-                Started.SetResult();
-                await Release.Task.WaitAsync(cancellationToken);
-            }
             if (request.RequestUri!.AbsolutePath.EndsWith("/commits", StringComparison.Ordinal))
-                return new HttpResponseMessage(HttpStatusCode.OK)
+                return Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK)
                 {
                     Content = new StringContent("[{\"sha\":\"commit-1\"}]", Encoding.UTF8, "application/json")
-                };
+                });
             if (branchAdvances && request.RequestUri!.AbsolutePath.EndsWith("/commits/commit-1", StringComparison.Ordinal))
-                return new HttpResponseMessage(HttpStatusCode.OK)
+                return Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK)
                 {
                     Content = new StringContent(JsonSerializer.Serialize(new { commit = new { message = commitMessage } }), Encoding.UTF8, "application/json")
-                };
+                });
             if (branchAdvances && request.RequestUri!.AbsolutePath.EndsWith("/commits/abc", StringComparison.Ordinal))
-                return new HttpResponseMessage(HttpStatusCode.NotFound)
+                return Task.FromResult(new HttpResponseMessage(HttpStatusCode.NotFound)
                 {
                     Content = new StringContent("{\"message\":\"No commit found\"}", Encoding.UTF8, "application/json")
-                };
+                });
             if (branchAdvances)
             {
                 var body = request.RequestUri!.AbsolutePath.Contains("/contents/", StringComparison.Ordinal)
@@ -338,7 +257,7 @@ public sealed class LegalDocumentServiceTests : IDisposable
                         : "Changed after metadata was read";
                 var mediaType = request.RequestUri!.AbsolutePath.Contains("/contents/", StringComparison.Ordinal) || request.RequestUri!.AbsolutePath.Contains("/git/blobs/", StringComparison.Ordinal)
                     ? "application/json" : "application/octet-stream";
-                return new HttpResponseMessage(HttpStatusCode.OK) { Content = new StringContent(body, Encoding.UTF8, mediaType) };
+                return Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK) { Content = new StringContent(body, Encoding.UTF8, mediaType) });
             }
             const string directory = """
                 [{"type":"file","name":"ESTATUTOS.md","path":"Estatutos/ESTATUTOS.md","sha":"abc"}]
@@ -346,13 +265,13 @@ public sealed class LegalDocumentServiceTests : IDisposable
             const string file = """
                 {"type":"file","name":"ESTATUTOS.md","path":"Estatutos/ESTATUTOS.md","sha":"abc","content":"aG9sYQ==","encoding":"base64"}
                 """;
-            return new HttpResponseMessage(HttpStatusCode.OK)
+            return Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK)
             {
                 Content = new StringContent(commitMessage is not null
                     ? JsonSerializer.Serialize(new { commit = new { message = commitMessage } })
                     : Requests.Count == 1 ? directory : file,
                     Encoding.UTF8, "application/json")
-            };
+            });
         }
     }
 
@@ -364,7 +283,6 @@ public sealed class LegalDocumentServiceTests : IDisposable
         public bool CancelFetch { get; set; }
         public CancellationTokenSource? CancelDuringFetch { get; set; }
         public bool ReturnAfterCancellation { get; set; }
-        public CancellationToken LastFetchToken { get; private set; }
 
         public Task<IReadOnlyDictionary<string, string>> DiscoverLanguageFilesAsync(
             string folderPath, CancellationToken ct = default) =>
@@ -380,7 +298,6 @@ public sealed class LegalDocumentServiceTests : IDisposable
         public async Task<IReadOnlyDictionary<string, string>> GetFolderContentByPrefixAsync(
             string folderPath, string filePrefix, CancellationToken ct = default)
         {
-            LastFetchToken = ct;
             if (CancelDuringFetch is not null)
             {
                 await CancelDuringFetch.CancelAsync();

@@ -17,11 +17,6 @@ internal sealed class SurveyAdminIndexViewModel
     public bool ManagesEverySurvey { get; init; }
 }
 
-internal sealed class SurveyPendingApprovalViewModel
-{
-    public IReadOnlyList<SurveyPendingApprovalItem> Items { get; init; } = [];
-}
-
 /// <summary>Side-effect-free.</summary>
 internal sealed class SurveyEmailPreviewViewModel
 {
@@ -73,12 +68,6 @@ internal sealed class SurveyStartViewModel
     [BindRequired]
     public ResponseAnonymity Anonymity { get; set; } = ResponseAnonymity.Identified;
     public string Culture { get; set; } = CultureCatalog.DefaultCultureCode;
-}
-
-/// <summary><see cref="Reason"/> is a friendly explanation key.</summary>
-internal sealed class SurveyClosedViewModel
-{
-    public string? Reason { get; init; }
 }
 
 /// <summary>Invite rows are sorted in the controller.</summary>

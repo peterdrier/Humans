@@ -2,7 +2,6 @@ using Humans.Governance.Contracts;
 using Humans.Audit.Contracts;
 using Humans.Auth.Contracts;
 using Humans.Base.Helpers;
-using Humans.Teams.Contracts;
 using Humans.Users.Contracts;
 
 namespace Humans.Users.Services;
@@ -10,8 +9,6 @@ namespace Humans.Users.Services;
 // Detection only; AccountMergeService.MergeAsync resolves.
 internal sealed class DuplicateAccountService(
     IUserManagement userService,
-    ITeamService teamService,
-    ISystemRoleService systemRoleService,
     IGovernanceService governanceService,
     IAuditLogService auditLogService,
     IAuditViewerService auditViewer) : IDuplicateAccountService
@@ -82,17 +79,6 @@ internal sealed class DuplicateAccountService(
 
         var tiers = await governanceService.GetMembershipTiersAsync(ct);
 
-        var teamCounts = new Dictionary<Guid, int>();
-        var roleAssignmentCounts = new Dictionary<Guid, int>();
-        foreach (var userId in involvedUserIds)
-        {
-            var memberships = await teamService.GetUserTeamMembershipsAsync(userId, ct);
-            teamCounts[userId] = memberships.Count;
-
-            var roles = await systemRoleService.GetByUserIdAsync(userId, ct);
-            roleAssignmentCounts[userId] = roles.Count(r => r.ValidTo == null);
-        }
-
         foreach (var (normalizedEmail, entries) in conflicts)
         {
             var distinctUserIds = entries.Select(x => x.UserId).Distinct().ToList();
@@ -122,12 +108,8 @@ internal sealed class DuplicateAccountService(
                         SharedEmail = rawEmail,
                         Accounts =
                         [
-                            BuildAccountInfo(id1,
-                                entries.Where(e => e.UserId == id1).Select(e => e.Source).ToList(),
-                                infoMap, tiers, teamCounts, roleAssignmentCounts),
-                            BuildAccountInfo(id2,
-                                entries.Where(e => e.UserId == id2).Select(e => e.Source).ToList(),
-                                infoMap, tiers, teamCounts, roleAssignmentCounts)
+                            BuildAccountInfo(id1, infoMap, tiers),
+                            BuildAccountInfo(id2, infoMap, tiers)
                         ]
                     };
                 }
@@ -164,11 +146,8 @@ internal sealed class DuplicateAccountService(
 
     private static DuplicateAccountInfo BuildAccountInfo(
         Guid userId,
-        List<string> emailSources,
         Dictionary<Guid, UserInfo> infoMap,
-        IReadOnlyDictionary<Guid, MembershipTier> tiers,
-        Dictionary<Guid, int> teamCounts,
-        Dictionary<Guid, int> roleAssignmentCounts)
+        IReadOnlyDictionary<Guid, MembershipTier> tiers)
     {
         infoMap.TryGetValue(userId, out var info);
         var profile = info?.Profile;
@@ -176,14 +155,12 @@ internal sealed class DuplicateAccountService(
         string? membershipStatus = null;
         string? membershipTier = null;
         var hasProfile = profile is not null;
-        var isProfileComplete = false;
 
         if (info is not null && profile is not null)
         {
             membershipTier = tiers.GetValueOrDefault(userId, MembershipTier.Volunteer).ToString();
             membershipStatus = info.IsSuspended ? "Suspended"
                 : info.State == UserState.Active ? "Active" : "Pending";
-            isProfileComplete = info.HasRequiredNameFields;
         }
 
         return new DuplicateAccountInfo

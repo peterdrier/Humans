@@ -449,7 +449,7 @@ internal sealed class Service(
         return placements.Select(ToPlacementDto).ToList();
     }
 
-    public async Task<ContainerAdminOverview> GetAdminOverviewAsync(int year, CancellationToken ct = default)
+    public async Task<IReadOnlyList<ContainerCampGroup>> GetAdminOverviewAsync(int year, CancellationToken ct = default)
     {
         var allContainers = await repo.GetAllAsync(ct);
         var placements = await repo.GetPlacementsAsync(year, ct);
@@ -466,7 +466,7 @@ internal sealed class Service(
             .GroupBy(c => c.CampId)
             .ToDictionary(g => g.Key, g => g.ToList());
 
-        var campGroups = camps
+        return camps
             .Select(camp => new ContainerCampGroup(
                 camp.Id,
                 camp.Seasons.First(s => s.Year == year).Name,
@@ -474,8 +474,6 @@ internal sealed class Service(
                     ? cs.Select(Compose).ToList()
                     : []))
             .ToList();
-
-        return new ContainerAdminOverview(campGroups);
     }
 
     private async Task<IReadOnlyList<ContainerDto>> ToDtosAsync(

@@ -98,20 +98,6 @@ public sealed class GuestDataControllerTests
         ctrl.TempData[TempDataKeys.ErrorMessage].Should().Be("Error_TryAgainLater");
     }
 
-    [HumansFact]
-    public async Task DownloadData_CancelledRequest_PropagatesCancellation()
-    {
-        using var cancellation = new CancellationTokenSource();
-        await cancellation.CancelAsync();
-        _gdpr.ExportForUserAsync(_userId, cancellation.Token)
-            .Returns(Task.FromException<GdprExport>(new OperationCanceledException(cancellation.Token)));
-        var ctrl = Sut();
-
-        var act = () => ctrl.DownloadData(cancellation.Token);
-
-        await act.Should().ThrowAsync<OperationCanceledException>();
-    }
-
     [HumansTheory]
     [InlineData(nameof(GuestDataController.RequestDeletion), "Gdpr/Guest/RequestDeletion")]
     [InlineData(nameof(GuestDataController.CancelDeletion), "Gdpr/Guest/CancelDeletion")]

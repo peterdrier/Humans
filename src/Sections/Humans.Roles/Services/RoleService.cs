@@ -42,9 +42,6 @@ internal sealed class RoleService(
     public async Task<IReadOnlyList<RoleInfo>> GetRolesAsync(CancellationToken ct = default) =>
         (await repository.GetAllAsync(ct)).Select(ToInfo).ToList();
 
-    public async Task<RoleInfo?> GetRoleAsync(Guid roleId, CancellationToken ct = default) =>
-        (await GetRolesAsync(ct)).FirstOrDefault(r => r.Id == roleId);
-
     public async Task<bool> CanManageAsync(Owner owner, Guid userId, CancellationToken ct = default)
     {
         if (await HasSystemRoleAsync(userId, ct, RoleNames.Admin, RolesSystemRoles.RolesAdmin))

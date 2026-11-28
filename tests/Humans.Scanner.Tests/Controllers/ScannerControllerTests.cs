@@ -59,7 +59,6 @@ public class ScannerControllerTests
     private static TicketAttendeeInfo Attendee(
         Guid? matchedUserId = null, TicketAttendeeStatus status = TicketAttendeeStatus.Valid) => new(
         Id: Guid.NewGuid(),
-        VendorTicketId: "vt-1",
         AttendeeName: "Ada Lovelace",
         AttendeeEmail: "ada@example.com",
         TicketTypeName: "General Admission",
@@ -127,7 +126,6 @@ public class ScannerControllerTests
         var transferredAt = Instant.FromUtc(2026, 6, 5, 9, 0);
         var attendee = new TicketAttendeeInfo(
             Id: Guid.NewGuid(),
-            VendorTicketId: "vt-void",
             AttendeeName: "Old Owner",
             AttendeeEmail: "old@example.com",
             TicketTypeName: "General Admission",

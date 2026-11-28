@@ -2,7 +2,6 @@ using Humans.Governance.Contracts;
 using Humans.Audit.Contracts;
 using Humans.Auth.Contracts;
 using AwesomeAssertions;
-using Humans.Teams.Contracts;
 using Humans.Users.Services;
 using NodaTime;
 using NSubstitute;
@@ -13,13 +12,11 @@ namespace Humans.Users.Tests.Services;
 public sealed class DuplicateAccountServiceTests
 {
     private readonly IUserManagement _userService = Substitute.For<IUserManagement>();
-    private readonly ITeamService _teamService = Substitute.For<ITeamService>();
-    private readonly ISystemRoleService _roles = Substitute.For<ISystemRoleService>();
     private readonly IAuditLogService _audit = Substitute.For<IAuditLogService>();
     private readonly IAuditViewerService _auditViewer = Substitute.For<IAuditViewerService>();
     private static readonly Instant Now = Instant.FromUtc(2026, 6, 6, 12, 0);
 
-    private DuplicateAccountService Sut => new(_userService, _teamService, _roles, Substitute.For<IGovernanceService>(), _audit, _auditViewer);
+    private DuplicateAccountService Sut => new(_userService, Substitute.For<IGovernanceService>(), _audit, _auditViewer);
 
     private void SetUsers(params UserInfo[] infos) =>
         _userService.GetAllUserInfosAsync(Arg.Any<CancellationToken>())

@@ -29,7 +29,7 @@ public class EmailMutationPathsAnalyzerTests
         string.Equals(d.Id, EmailMutationPathsAnalyzer.RepositoryCallerDiagnosticId, StringComparison.Ordinal);
 
     [HumansFact]
-    public async Task Fires_HUM0005_when_service_called_from_non_ExternalLoginService()
+    public async Task Analyze_ServiceFromOtherCaller_FiresHUM0005()
     {
         var source = InterfaceStubs + """
 
@@ -55,7 +55,7 @@ public class EmailMutationPathsAnalyzerTests
     }
 
     [HumansFact]
-    public async Task Does_not_fire_when_service_called_from_ExternalLoginService()
+    public async Task Analyze_ServiceFromExternalLoginService_IsSilent()
     {
         var source = InterfaceStubs + """
 
@@ -81,7 +81,7 @@ public class EmailMutationPathsAnalyzerTests
     }
 
     [HumansFact]
-    public async Task Fires_HUM0005_when_service_called_from_AccountController()
+    public async Task Analyze_ServiceFromAccountController_FiresHUM0005()
     {
         // The pin moved off AccountController when HUM0031 forced the OAuth
         // decision ladder into ExternalLoginService. The controller
@@ -111,7 +111,7 @@ public class EmailMutationPathsAnalyzerTests
     }
 
     [HumansFact]
-    public async Task Fires_HUM0006_when_repository_called_from_non_UserEmailService()
+    public async Task Analyze_RepositoryFromOtherCaller_FiresHUM0006()
     {
         var source = InterfaceStubs + """
 
@@ -137,7 +137,7 @@ public class EmailMutationPathsAnalyzerTests
     }
 
     [HumansFact]
-    public async Task Does_not_fire_when_repository_called_from_UserEmailService()
+    public async Task Analyze_RepositoryFromUserEmailService_IsSilent()
     {
         var source = InterfaceStubs + """
 
@@ -163,7 +163,7 @@ public class EmailMutationPathsAnalyzerTests
     }
 
     [HumansFact]
-    public async Task Does_not_fire_when_repository_called_from_UserService()
+    public async Task Analyze_RepositoryFromUserService_IsSilent()
     {
         var source = InterfaceStubs + """
 
@@ -189,7 +189,7 @@ public class EmailMutationPathsAnalyzerTests
     }
 
     [HumansFact]
-    public async Task Fires_HUM0005_when_concrete_service_class_called_from_non_allowed_caller()
+    public async Task Analyze_ConcreteServiceOtherCaller_FiresHUM0005()
     {
         // A caller holding the concrete UserEmailService (rather than the
         // IUserEmailService interface) used to bypass the analyzer because the call's
@@ -231,7 +231,7 @@ public class EmailMutationPathsAnalyzerTests
     }
 
     [HumansFact]
-    public async Task Fires_HUM0006_when_concrete_repository_class_called_from_non_UserEmailService()
+    public async Task Analyze_ConcreteRepositoryOtherCaller_FiresHUM0006()
     {
         var source = InterfaceStubs + """
 
@@ -269,7 +269,7 @@ public class EmailMutationPathsAnalyzerTests
     }
 
     [HumansFact]
-    public async Task Fires_HUM0005_when_service_called_from_Infrastructure_non_allowed_caller()
+    public async Task Analyze_ServiceFromInfrastructureCaller_FiresHUM0005()
     {
         // Positive scope test for Infrastructure — mirrors the HUM0006 canary below.
         // The rule is unscoped; this pins that a caller outside Application/Web
@@ -298,7 +298,7 @@ public class EmailMutationPathsAnalyzerTests
     }
 
     [HumansFact]
-    public async Task Fires_HUM0006_when_repository_called_from_Infrastructure_non_UserEmailService()
+    public async Task Analyze_RepositoryFromInfrastructureCaller_FiresHUM0006()
     {
         // Positive scope test for Infrastructure. The rule is unscoped; a future
         // narrowing that only kept Application/Web would pass every other test

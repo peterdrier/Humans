@@ -148,9 +148,9 @@ public sealed class GoogleSyncHistoryMigrationServiceTests : IDisposable
         report.Skipped.Should().Be(2);
         report.SkippedRows.Should().HaveCount(2);
         report.SkippedRows.Should().Contain(r =>
-            r.AuditId == otherAction.Id && r.Reason.Contains("GoogleResourceProvisioned"));
+            string.Equals(r.Action, otherAction.Action, StringComparison.Ordinal) && r.Reason.Contains("GoogleResourceProvisioned"));
         report.SkippedRows.Should().Contain(r =>
-            r.AuditId == noPayload.Id && r.Reason.Contains("SyncSource"));
+            string.Equals(r.Action, noPayload.Action, StringComparison.Ordinal) && r.Reason.Contains("SyncSource"));
         (await _seedContext.GoogleSyncLog.AsNoTracking().CountAsync(Ct)).Should().Be(1);
     }
 

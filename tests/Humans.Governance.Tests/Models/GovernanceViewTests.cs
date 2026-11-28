@@ -71,10 +71,7 @@ public sealed class GovernanceViewTests
         var result = new AssemblyVoteResult(
             new AssemblyVoteAudienceResult(1, 1, new YesNoTally(1, 0, 0), null, null, AssemblyVoteVerdict.Passed, []),
             null, AssemblyVoteMethod.YesNo, at);
-        var results = new AssemblyVoteResultsViewModel
-        {
-            Results = new AssemblyVoteResultsView(vote, result, [], ballots, "Recorded acta"),
-        };
+        var results = new AssemblyVoteResultsView(vote, result, [], ballots, "Recorded acta");
         var admin = new AssemblyVoteBallotsViewModel { VoteId = vote.Id, Ballots = ballots };
         var unknown = new ResourceManager(typeof(SharedResource)).GetString("Common_Unknown", CultureInfo.CurrentUICulture)!;
         foreach (var (page, model) in new (string, object)[] { ("Results", results), ("Admin/Ballots", admin) })

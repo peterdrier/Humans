@@ -106,7 +106,7 @@ public sealed class AssemblyVoteRosterTests : IDisposable
                 SystemTeamIds.Volunteers, "Volunteers", null, "volunteers",
                 true, true, SystemTeamType.Volunteers, false, false, false, false,
                 _fx.Clock.GetCurrentInstant(),
-                [new TeamMemberInfo(Guid.NewGuid(), volunteer, "Volunteer", null, null,
+                [new TeamMemberInfo(Guid.NewGuid(), volunteer, "Volunteer", null,
                     TeamMemberRole.Member, _fx.Clock.GetCurrentInstant())])));
         _fx.StubActiveUsers(volunteer);
 

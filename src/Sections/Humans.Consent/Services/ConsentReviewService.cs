@@ -27,7 +27,7 @@ internal sealed class ConsentReviewService(
         var info = await users.GetUserInfoAsync(userId, ct);
         var id = info?.Id ?? userId;
         var row = await repo.GetAsync(id, ct);
-        return row is not null ? ToInfo(row) : ConsentReviewInfo.None(id);
+        return row is not null ? ToInfo(row) : ConsentReviewInfo.None();
     }
 
     public async Task<IReadOnlyDictionary<Guid, ConsentReviewInfo>> GetReviewsAsync(CancellationToken ct = default) =>
@@ -112,7 +112,7 @@ internal sealed class ConsentReviewService(
     }
 
     private static ConsentReviewInfo ToInfo(ConsentReview r) => new(
-        r.UserId, r.Status, r.CheckedAt, r.CheckedByUserId, r.Notes,
+        r.Status, r.Notes,
         r.IsApproved, r.RejectionReason, r.RejectedAt, r.RejectedByUserId);
 
     /// <summary>Rows of every id in the merge chain.</summary>

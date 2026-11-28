@@ -74,7 +74,6 @@ internal sealed partial class TaskService(
         var rows = listed
             .GroupBy(t => t.Owner)
             .Select(g => new TeamTaskCounts(
-                g.Key.Id,
                 g.First().TeamName,
                 g.First().TeamSlug,
                 g.Count(),
@@ -501,9 +500,7 @@ internal sealed partial class TaskService(
                 .Select(d => snapshot.Tasks.GetValueOrDefault(d.DependsOnTaskItemId))
                 .OfType<TaskItem>()
                 .Select(o => new TaskLinkInfo(o.Id, o.Title, o.Status))
-                .ToList(),
-            task.CreatedAt,
-            task.UpdatedAt);
+                .ToList());
     }
 
     private static TaskDateInfo? DateInfo(LocalDate? fixedDate, int? offset, EventSettingsInfo? taskEvent) =>

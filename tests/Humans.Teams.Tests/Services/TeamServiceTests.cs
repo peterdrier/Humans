@@ -3049,7 +3049,6 @@ public sealed class TeamServiceTests : TeamsTestHarness
             Id = merged ? Guid.NewGuid() : user.Id,
             BurnerName = "Updated Human",
             Email = "updated@example.test",
-            ProfilePictureUrl = "/updated-photo.png",
         });
         // Users keys its merge-resolved read by the requested id, even when the value is a survivor.
         _userService.GetUserInfosAsync(Arg.Any<IEnumerable<Guid>>(), Arg.Any<CancellationToken>())
@@ -3067,7 +3066,6 @@ public sealed class TeamServiceTests : TeamsTestHarness
         var member = after.Members.Should().ContainSingle().Subject;
         member.DisplayName.Should().Be(replacement.BurnerName);
         member.Email.Should().Be(replacement.Email);
-        member.ProfilePictureUrl.Should().Be(replacement.ProfilePictureUrl);
         member.UserId.Should().Be(user.Id);
         member.TeamMemberId.Should().Be(membership.Id);
         before.Members.Single().DisplayName.Should().Be("Alice");
