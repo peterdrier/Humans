@@ -42,7 +42,6 @@ public class CampControllerTests
     private readonly IShiftView _shiftView = Substitute.For<IShiftView>();
     private readonly IUserService _users = Substitute.For<IUserService>();
     private readonly IAuthorizationService _authorization = Substitute.For<IAuthorizationService>();
-    private readonly IClock _clock = Substitute.For<IClock>();
     private readonly IStringLocalizer<CampsResource> _campsLocalizer = Substitute.For<IStringLocalizer<CampsResource>>();
     private readonly IStringLocalizer<SharedResource> _sharedLocalizer = Substitute.For<IStringLocalizer<SharedResource>>();
 
@@ -1902,7 +1901,6 @@ public class CampControllerTests
             _shiftView,
             _users,
             _authorization,
-            _clock,
             logger ?? NullLogger<CampController>.Instance,
             campsLocalizer ?? _campsLocalizer,
             sharedLocalizer ?? _sharedLocalizer);

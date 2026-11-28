@@ -3,7 +3,6 @@ using Microsoft.AspNetCore.Mvc;
 
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Localization;
-using NodaTime;
 using Humans.CityPlanning.Contracts;
 using Humans.Shifts.Contracts;
 using Humans.Base;
@@ -21,7 +20,6 @@ internal sealed class CampController(
     IShiftView shiftView,
     IUserService userService,
     IAuthorizationService authorizationService,
-    IClock clock,
     ILogger<CampController> logger,
     IStringLocalizer<CampsResource> campsLocalizer,
     IStringLocalizer<SharedResource> sharedLocalizer)
@@ -30,7 +28,6 @@ internal sealed class CampController(
     private readonly CampDirectoryPageBuilder _directoryPageBuilder = new(campService, campRoleService);
     private readonly ICampManagement _campService = campService;
     private readonly IUserService _userService = userService;
-    private readonly IClock _clock = clock;
     private readonly IAuthorizationService _authorizationService = authorizationService;
 
     [AllowAnonymous]
@@ -96,8 +93,7 @@ internal sealed class CampController(
         var membership = ResolveCurrentUserMembershipState(camp, currentUser, settings.ActiveEventSettingsId);
 
         var vm = MapCampDetailViewModel(
-            camp, season, isLead, isCampAdmin, membership, settings.ActiveEventSettingsId,
-            _clock.GetCurrentInstant().InUtc().Date);
+            camp, season, isLead, isCampAdmin, membership, settings.ActiveEventSettingsId);
         await PopulateDetailCardsAsync(vm, season, currentUser, isCampAdmin, ct);
         return View(vm);
     }
@@ -130,8 +126,7 @@ internal sealed class CampController(
         var membership = ResolveCurrentUserMembershipState(camp, currentUser, settings.ActiveEventSettingsId);
 
         var vm = MapCampDetailViewModel(
-            camp, season, isLead, isCampAdmin, membership, settings.ActiveEventSettingsId,
-            _clock.GetCurrentInstant().InUtc().Date);
+            camp, season, isLead, isCampAdmin, membership, settings.ActiveEventSettingsId);
         await PopulateDetailCardsAsync(vm, season, currentUser, isCampAdmin, ct);
         return View(nameof(Details), vm);
     }
@@ -1160,8 +1155,7 @@ internal sealed class CampController(
         bool isLead,
         bool isCampAdmin,
         CampMembershipStateViewModel membership,
-        Guid? activeEventSettingsId,
-        LocalDate today) => new()
+        Guid? activeEventSettingsId) => new()
         {
             Id = camp.Id,
             Slug = camp.Slug,
