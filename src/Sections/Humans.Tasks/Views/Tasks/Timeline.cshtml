@@ -72,6 +72,12 @@ else
                     </div>
                 }
             }
+            <div class="tl-legend small text-muted">
+                @foreach (var priority in new[] { SlotPriority.Critical, SlotPriority.Important, SlotPriority.NiceToHave })
+                {
+                    <span><span class="tl-swatch tl-bar--@TaskRowOrder.Edge(priority)"></span> @SharedLocalizer.EnumDisplay(priority)</span>
+                }
+            </div>
         </div>
     </div>
 

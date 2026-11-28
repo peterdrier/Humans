@@ -72,6 +72,7 @@ internal sealed record DependencyGraph(IReadOnlyList<GraphNode> Nodes, IReadOnly
 internal static class TaskTimeline
 {
     private const long Whole = 10000;
+    private const long Pad = 150;
 
     /// <summary>
     /// <paramref name="shown"/> are the tasks the viewer may see after the page's filters; <paramref name="all"/> is every
@@ -86,9 +87,11 @@ internal static class TaskTimeline
             return new([], [], [], shown.Count, graph);
 
         var spans = dated.ToDictionary(t => t.Id, Span);
-        var first = spans.Values.Min(s => s.From);
-        var last = spans.Values.Max(s => s.To);
-        var days = Offset(first, last) + 1;
+        var earliest = spans.Values.Min(s => s.From);
+        var latest = spans.Values.Max(s => s.To);
+        var first = new LocalDate(earliest.Year, earliest.Month, 1);
+        var end = new LocalDate(latest.Year, latest.Month, 1).PlusMonths(1);
+        var days = Offset(first, end);
 
         var bars = dated
             .Select(t => Bar(t, spans[t.Id], first, days, visibleIds))
@@ -104,7 +107,7 @@ internal static class TaskTimeline
             .OrderBy(g => g.Key)
             .Select(g => new TimelineWeek(g.Key, [.. g]))
             .ToList();
-        return new(Months(first, last, days), teams, weeks, shown.Count - dated.Count, graph);
+        return new(Months(first, end, days), teams, weeks, shown.Count - dated.Count, graph);
     }
 
     /// <summary>One date: that day. Two: start to due, whichever way round a changed event left them.</summary>
@@ -117,11 +120,13 @@ internal static class TaskTimeline
 
     private static int Offset(LocalDate from, LocalDate to) => Period.Between(from, to, PeriodUnits.Days).Days;
 
-    private static int Share(int dayCount, int days) => (int)(dayCount * Whole / days);
+    private static int Share(int dayCount, int days) => (int)(dayCount * (Whole - 2 * Pad) / days);
+
+    private static int Place(int dayCount, int days) => (int)Pad + Share(dayCount, days);
 
     private static TimelineBar Bar(TaskInfo task, (LocalDate From, LocalDate To) span, LocalDate first, int days, HashSet<Guid> visibleIds)
     {
-        var left = Share(Offset(first, span.From), days);
+        var left = Place(Offset(first, span.From), days);
         var width = Share(Offset(span.From, span.To) + 1, days);
         var waitsOn = task.WaitingOn
             .Select(l => visibleIds.Contains(l.Id) ? new DependencyRow(l.Id, l.Title, l.Status) : new DependencyRow(l.Id, null, null))
@@ -131,16 +136,12 @@ internal static class TaskTimeline
             : new(task, span.From, span.To, left, width, waitsOn);
     }
 
-    private static List<TimelineMonth> Months(LocalDate first, LocalDate last, int days)
+    /// <summary>Whole months, from the first's month to <paramref name="end"/> (the first of the month after the last date).</summary>
+    private static List<TimelineMonth> Months(LocalDate first, LocalDate end, int days)
     {
         var months = new List<TimelineMonth>();
-        for (var month = new LocalDate(first.Year, first.Month, 1); month <= last; month = month.PlusMonths(1))
-        {
-            var from = month < first ? first : month;
-            var monthEnd = month.PlusMonths(1).PlusDays(-1);
-            var to = monthEnd > last ? last : monthEnd;
-            months.Add(new(from, Share(Offset(first, from), days), Share(Offset(from, to) + 1, days)));
-        }
+        for (var month = first; month < end; month = month.PlusMonths(1))
+            months.Add(new(month, Place(Offset(first, month), days), Share(Offset(month, month.PlusMonths(1)), days)));
 
         return months;
     }

@@ -3221,6 +3221,21 @@ body.city-map-fullscreen main {
 .tl-bar--important { background: var(--h-amber); }
 .tl-bar--nice { background: var(--h-sage); }
 
+.tl-legend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem 1rem;
+    margin-top: 0.75rem;
+}
+
+.tl-swatch {
+    display: inline-block;
+    width: 0.9rem;
+    height: 0.6rem;
+    border-radius: var(--h-radius-sm);
+    vertical-align: baseline;
+}
+
 .tl-bar--marker {
     top: 0.45rem;
     width: 0.9rem;

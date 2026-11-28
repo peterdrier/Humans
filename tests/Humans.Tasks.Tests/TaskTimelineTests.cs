@@ -223,15 +223,15 @@ public sealed class TaskTimelineTests
     }
 
     [HumansFact]
-    public void Build_Bars_FillTheAxisFromFirstDayToLast()
+    public void Build_Bars_StayInsideTheAxisPadding()
     {
         var first = Make("Early", D(3, 1), D(3, 2));
         var last = Make("Late", D(3, 9), D(3, 10));
 
         var bars = Build([first, last]).Teams.Single().Bars;
 
-        bars[0].Left.Should().Be(0);
-        (bars[1].Left + bars[1].Width).Should().Be(10000);
+        bars[0].Left.Should().BeGreaterThan(0);
+        (bars[1].Left + bars[1].Width).Should().BeLessThan(10000);
     }
 
     [HumansFact]
@@ -281,12 +281,21 @@ public sealed class TaskTimelineTests
     }
 
     [HumansFact]
-    public void Build_Months_CoverTheAxisFromFirstDayToLast()
+    public void Build_Months_RunWholeMonthsPastTheLastDate()
     {
         var view = Build([Make("Long", D(1, 20), D(3, 10))]);
 
-        view.Months.Select(m => m.First).Should().Equal(D(1, 20), D(2, 1), D(3, 1));
-        view.Months[0].Left.Should().Be(0);
-        (view.Months[^1].Left + view.Months[^1].Width).Should().Be(10000);
+        view.Months.Select(m => m.First).Should().Equal(D(1, 1), D(2, 1), D(3, 1));
+        view.Months[0].Left.Should().BeGreaterThan(0);
+        (view.Months[^1].Left + view.Months[^1].Width).Should().BeLessThan(10000);
+    }
+
+    [HumansFact]
+    public void Build_LastDateOnMonthEnd_KeepsLabelInsideAxis()
+    {
+        var view = Build([Make("Gate", D(7, 1), D(7, 31))]);
+
+        view.Months.Should().ContainSingle().Which.First.Should().Be(D(7, 1));
+        (view.Months[0].Left + view.Months[0].Width).Should().BeLessThan(10000);
     }
 }
