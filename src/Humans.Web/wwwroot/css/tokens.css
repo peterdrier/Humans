@@ -6,7 +6,9 @@
 @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;0,700;1,400;1,600&family=Source+Sans+3:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400&display=swap');
 
 :root {
-  /* ——— Parchment & ink ——— */
+  /* ——— Parchment & ink ———
+     Text tokens (ink, umber, sepia, sepia-light, gold-dark) hold WCAG AA 4.5:1 on warm-white and
+     parchment-light; check the ratio before changing one. */
   --h-parchment:       #f5e6c8;
   --h-parchment-light: #faf3e6;
   --h-parchment-dark:  #e8d4ab;
@@ -14,14 +16,16 @@
   --h-aged-ink-light:  #5a4535;
   --h-gold:            #c9a96e;
   --h-gold-light:      #d9c08e;
-  --h-gold-dark:       #a88a4e;
+  --h-gold-dark:       #846a3e;
   --h-warm-white:      #fefaf3;
-  --h-sepia:           #8b7355;
-  --h-sepia-light:     #a69178;
+  --h-sepia:           #776047;
+  --h-sepia-light:     #7f6b57;
   --h-umber:           #6b5340;
   --h-vellum:          #f0e2c8;
   --h-border:          #d4c4a8;
   --h-border-light:    #e2d6bf;
+  /* Inputs, radios and checkboxes: 3:1 against the surface, unlike decorative card borders. */
+  --h-field-border:    #9a8973;
 
   /* ——— Status (warm-shifted) ——— */
   --h-sage:       #6b8f71;
@@ -30,7 +34,7 @@
   --h-amber-dark: #a87520;
   --h-amber-light: #daa84a;
   --h-rust:       #a04030;
-  --h-blue-muted: #5b7d8f;
+  --h-blue-muted: #5a798a;
 
   /* --- Semantic tokens --- */
   --h-text:            var(--h-aged-ink);
