@@ -424,10 +424,7 @@ internal sealed class TeamController(
     {
         var teamsById = await teamService.GetTeamsAsync(ct);
         var isAuthenticated = User.Identity?.IsAuthenticated == true;
-        return View(new TeamTreeViewModel
-        {
-            Departments = TeamDirectoryBuilder.BuildTree(teamsById, isAuthenticated),
-        });
+        return View(TeamDirectoryBuilder.BuildTree(teamsById, isAuthenticated));
     }
 
     [HttpGet("Summary")]
