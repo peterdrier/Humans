@@ -36,7 +36,8 @@ see reserve holds). Spec: [`features/stripe-mirror.md`](features/stripe-mirror.m
   **account reads** (`GetAccountLedgerAsync`, `GetAccountPaymentFeeAsync`, `FindAccountPaymentFeeAsync`,
   `CheckAccountAsync`) read one by name, live: `Tickets` serves Box Office, pretix and Hi.Events: all charge into that one account.
   `CheckAccountAsync(includeCheckout: true)` also probes Checkout Sessions with `STRIPE_TICKETS_KEY`. A ledger refusal throws `InvalidOperationException`; a fee read never throws (unknown is null,
-  and logged), so a fee never holds up a paid order; checks propagate caller cancellation and turn vendor failures into findings.
+  and logged), so a fee never holds up a paid order; the check probes every read scope the reads use and flags a full `sk_live_`
+  key; checks propagate caller cancellation and turn vendor failures into findings.
 - A **Checkout Session** is a Stripe-hosted payment page created for one Store order.
   `humans_store_order_id` is stamped on both the session's and the PaymentIntent's
   metadata, which is how a payment is matched back to an order from the dashboard,

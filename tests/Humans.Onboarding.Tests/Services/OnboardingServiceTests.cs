@@ -1,5 +1,5 @@
 using AwesomeAssertions;
-using Humans.AuditLog.Contracts;
+using Humans.Audit.Contracts;
 using Humans.Consent.Contracts;
 using Humans.Base.Constants;
 using Humans.Base.Enums;
@@ -83,7 +83,7 @@ public sealed class OnboardingServiceTests
         await _userServiceWrite.DidNotReceiveWithAnyArgs().SetRejectedAsync(default, Arg.Any<CancellationToken>());
         await _auditLogService.Received(0).LogAsync(
             OnboardingAuditActions.SignupRejected,
-            AuditEntityTypes.Profile,
+            OnboardingAuditSubjectTypes.Profile,
             userId,
             Arg.Any<string>(),
             reviewerId);
@@ -127,7 +127,7 @@ public sealed class OnboardingServiceTests
         await _userServiceWrite.Received(1).SetRejectedAsync(userId, Arg.Any<CancellationToken>());
         await _auditLogService.Received(1).LogAsync(
             OnboardingAuditActions.SignupRejected,
-            AuditEntityTypes.Profile,
+            OnboardingAuditSubjectTypes.Profile,
             userId,
             "Signup rejected: duplicate account",
             originalReviewer);
@@ -217,7 +217,7 @@ public sealed class OnboardingServiceTests
         body.Should().Be("Tu inscripción no se ha podido aprobar: " + reason);
         await _consentWrite.Received(1).RecordRejectionAsync(userId, reviewerId, reason, Arg.Any<CancellationToken>());
         await _auditLogService.Received(1).LogAsync(
-            OnboardingAuditActions.SignupRejected, AuditEntityTypes.Profile, userId,
+            OnboardingAuditActions.SignupRejected, OnboardingAuditSubjectTypes.Profile, userId,
             "Signup rejected: " + reason, reviewerId);
         _syncJob.ReceivedCalls().Should().HaveCount(1);
     }
@@ -265,7 +265,7 @@ public sealed class OnboardingServiceTests
 
         await _auditLogService.Received(1).LogAsync(
             OnboardingAuditActions.SignupRejected,
-            AuditEntityTypes.Profile,
+            OnboardingAuditSubjectTypes.Profile,
             userId,
             $"Signup rejected: {reason}",
             reviewerId);

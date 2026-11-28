@@ -4,8 +4,8 @@ namespace Humans.Google.Contracts;
 
 public class TeamGoogleResource
 {
-    /// <summary>The audit <c>EntityType</c> stored on existing rows (the class's former name): never change it.</summary>
-    public const string AuditEntityType = "GoogleResource";
+    /// <summary>The audit <c>SubjectType</c> stored on existing rows (the class's former name): never change it.</summary>
+    public const string AuditSubjectType = "GoogleResource";
 
     public Guid Id { get; init; }
 

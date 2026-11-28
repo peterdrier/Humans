@@ -2,7 +2,7 @@ using System.Text.RegularExpressions;
 using Humans.Base.Constants;
 using Humans.Base.Extensions;
 using Humans.Auth.Contracts;
-using Humans.AuditLog.Contracts;
+using Humans.Audit.Contracts;
 using Humans.Email.Contracts;
 using Humans.Finance.Contracts;
 using Humans.Holded.Contracts;
@@ -306,7 +306,7 @@ internal sealed class WorkgroupService(
         // The row is overwritten, so the audit entry is the only record of the meeting the members were told about.
         await AuditAsync(WorkgroupsAuditActions.WorkgroupMeetingUpdated, workgroup,
             $"Edited the meeting of {meeting.StartUtc.InUtc().Date.ToInvariantDate()}", actorUserId,
-            AuditEntityTypes.WorkgroupMeeting, meeting.Id);
+            WorkgroupsAuditSubjectTypes.WorkgroupMeeting, meeting.Id);
         return new();
     }
 
@@ -326,7 +326,7 @@ internal sealed class WorkgroupService(
 
         await AuditAsync(WorkgroupsAuditActions.WorkgroupMeetingDeleted, workgroup,
             $"Deleted the meeting of {meeting.StartUtc.InUtc().Date.ToInvariantDate()}", actorUserId,
-            AuditEntityTypes.WorkgroupMeeting, meeting.Id);
+            WorkgroupsAuditSubjectTypes.WorkgroupMeeting, meeting.Id);
         return new();
     }
 
@@ -393,7 +393,7 @@ internal sealed class WorkgroupService(
         // The log keeps no history of its own, so without this an edit is as invisible as a deletion.
         await AuditAsync(WorkgroupsAuditActions.WorkgroupLogEntryUpdated, workgroup,
             $"Edited the {entry.Kind} entry of {entry.OccurredOn.ToInvariantDate()}", actorUserId,
-            AuditEntityTypes.WorkgroupLogEntry, entryId);
+            WorkgroupsAuditSubjectTypes.WorkgroupLogEntry, entryId);
         return new();
     }
 
@@ -410,7 +410,7 @@ internal sealed class WorkgroupService(
         // The log keeps no tombstone, so the audit trail is where the deletion stays visible.
         await AuditAsync(WorkgroupsAuditActions.WorkgroupLogEntryDeleted, workgroup,
             $"Deleted the {entry.Kind} entry of {entry.OccurredOn.ToInvariantDate()}", actorUserId,
-            AuditEntityTypes.WorkgroupLogEntry, entryId);
+            WorkgroupsAuditSubjectTypes.WorkgroupLogEntry, entryId);
         return new();
     }
 
@@ -1033,7 +1033,7 @@ internal sealed class WorkgroupService(
         // Audited so the Board can review moderation; the row shows only "hidden by the group".
         await AuditAsync(WorkgroupsAuditActions.WorkgroupCommentHidden, workgroup,
             $"Hid a comment on {comment.Document.Title}: {reason.Trim()}", actorUserId,
-            AuditEntityTypes.WorkgroupComment, comment.Id);
+            WorkgroupsAuditSubjectTypes.WorkgroupComment, comment.Id);
         return new();
     }
 
@@ -1084,7 +1084,7 @@ internal sealed class WorkgroupService(
 
         await repository.SetRootDriveFolderIdAsync(id, ct);
         await auditLog.LogAsync(WorkgroupsAuditActions.WorkgroupsRootFolderUpdated,
-            AuditEntityTypes.WorkgroupsSettings, Guid.Empty,
+            WorkgroupsAuditSubjectTypes.WorkgroupsSettings, Guid.Empty,
             $"Root Drive folder set to {id}", actorUserId);
         return new();
     }
@@ -1147,13 +1147,13 @@ internal sealed class WorkgroupService(
         Workgroup w,
         string description,
         Guid actorUserId,
-        string entityType = AuditEntityTypes.Workgroup,
-        Guid? entityId = null)
+        string subjectType = WorkgroupsAuditSubjectTypes.Workgroup,
+        Guid? subjectId = null)
     {
-        var id = entityId ?? w.Id;
-        await auditLog.LogAsync(action, entityType, id, description, actorUserId,
-            relatedEntityId: id == w.Id ? null : w.Id,
-            relatedEntityType: id == w.Id ? null : AuditEntityTypes.Workgroup);
+        var id = subjectId ?? w.Id;
+        await auditLog.LogAsync(action, subjectType, id, description, actorUserId,
+            targetId: id == w.Id ? null : w.Id,
+            targetType: id == w.Id ? null : WorkgroupsAuditSubjectTypes.Workgroup);
     }
 
     internal static WorkgroupLogEntry SystemEntry(
@@ -1228,9 +1228,9 @@ internal sealed class WorkgroupService(
         pending.LeftAt = clock.GetCurrentInstant();
         await repository.UpdateMembersAsync([pending], ct);
         ct = CancellationToken.None;
-        await auditLog.LogAsync(WorkgroupsAuditActions.WorkgroupMembershipDeclined, AuditEntityTypes.Workgroup, workgroup.Id,
+        await auditLog.LogAsync(WorkgroupsAuditActions.WorkgroupMembershipDeclined, WorkgroupsAuditSubjectTypes.Workgroup, workgroup.Id,
             $"Declined the join request of {name}", actorUserId,
-            relatedEntityId: userId, relatedEntityType: AuditSubjectTypes.User);
+            targetId: userId, targetType: AuditSubjectTypes.User);
         await NotifyAsync([userId], WorkgroupsNotificationSources.WorkgroupMembershipDecided,
             "Workgroups_Notice_MembershipDeclined", ToInfo(workgroup), body: null, ct);
         return new();
@@ -1271,9 +1271,9 @@ internal sealed class WorkgroupService(
         else await repository.UpdateMembersAsync([member], ct, entries);
         ct = CancellationToken.None;
         // Related entity is the person admitted: their GDPR export selects audit rows by that column.
-        await auditLog.LogAsync(auditAction, AuditEntityTypes.Workgroup, workgroup.Id,
+        await auditLog.LogAsync(auditAction, WorkgroupsAuditSubjectTypes.Workgroup, workgroup.Id,
             $"{name} admitted to the group", actorUserId,
-            relatedEntityId: member.UserId, relatedEntityType: AuditSubjectTypes.User);
+            targetId: member.UserId, targetType: AuditSubjectTypes.User);
         await NotifyAsync([member.UserId], WorkgroupsNotificationSources.WorkgroupMembershipDecided,
             noticeKey, ToInfo(workgroup), body: null, ct);
         await RequestGoogleSyncAsync(workgroup, ct);
@@ -1772,7 +1772,7 @@ internal sealed class WorkgroupService(
         elapsed >= threshold && elapsed - threshold < Duration.FromDays(1);
     private async Task AuditJobAsync(AuditActionDefinition action, Workgroup w, string description)
     {
-        await auditLog.LogAsync(action, AuditEntityTypes.Workgroup, w.Id, description,
+        await auditLog.LogAsync(action, WorkgroupsAuditSubjectTypes.Workgroup, w.Id, description,
             WorkgroupRhythmJobName);
     }
 
@@ -2031,7 +2031,7 @@ internal sealed class WorkgroupService(
         ct = CancellationToken.None;
         await AuditAsync(WorkgroupsAuditActions.WorkgroupDispositionRecorded, workgroup,
             $"Recorded {disposition} on '{document.Title}': {note.Trim()}", actorUserId,
-            AuditEntityTypes.WorkgroupDocument, document.Id);
+            WorkgroupsAuditSubjectTypes.WorkgroupDocument, document.Id);
 
         var info = ToInfo(workgroup);
         await NotifyAsync(info.CurrentMemberUserIds(), WorkgroupsNotificationSources.WorkgroupDispositionRecorded,

@@ -1,4 +1,4 @@
-using Humans.AuditLog.Contracts;
+using Humans.Audit.Contracts;
 using Humans.Base.Authorization;
 using Humans.Base.Models.Tables;
 using Humans.Base.Extensions;
@@ -88,7 +88,7 @@ public sealed class Section :
     private static async Task<DataMigrationStatus> AuditCopyStatusAsync(IServiceProvider sp, CancellationToken ct) =>
         new(["When", "Entity", "Description"],
             [.. (await sp.GetRequiredService<BudgetService>().GetPendingAuditCopiesAsync(ct))
-                .Select(r => (IReadOnlyList<string>)[r.OccurredAt.ToIso8601(), r.EntityType, r.Description])]);
+                .Select(r => (IReadOnlyList<string>)[r.OccurredAt.ToIso8601(), r.SubjectType, r.Description])]);
 
     private static Task<int> ApplyAuditCopyAsync(IServiceProvider sp, Guid actorUserId, CancellationToken ct) =>
         sp.GetRequiredService<BudgetService>().CopyAuditLogToAuditAsync(actorUserId, ct);

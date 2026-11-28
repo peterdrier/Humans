@@ -1,5 +1,5 @@
 using System.Text.Json;
-using Humans.AuditLog.Contracts;
+using Humans.Audit.Contracts;
 using Humans.Notifications.Contracts;
 using Humans.Rideshare.Data;
 using Humans.Rideshare.Domain;

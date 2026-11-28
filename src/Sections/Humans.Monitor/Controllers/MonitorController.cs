@@ -37,6 +37,6 @@ internal sealed class MonitorController(
             SetError("Drive activity check failed. Check logs for details.");
         }
 
-        return RedirectToAction("Index", "AuditLog", new { filter = GoogleAuditActions.AnomalousPermissionDetected.Name });
+        return RedirectToAction("Index", "Audit", new { filter = GoogleAuditActions.AnomalousPermissionDetected.Name });
     }
 }

@@ -7,7 +7,7 @@
   </Folder>
   <Folder Name="/src/Sections/">
     <Project Path="src/Sections/Humans.Agent/Humans.Agent.csproj" />
-    <Project Path="src/Sections/Humans.AuditLog/Humans.AuditLog.csproj" />
+    <Project Path="src/Sections/Humans.Audit/Humans.Audit.csproj" />
     <Project Path="src/Sections/Humans.Auth/Humans.Auth.csproj" />
     <Project Path="src/Sections/Humans.Backdoor/Humans.Backdoor.csproj" />
     <Project Path="src/Sections/Humans.Budget/Humans.Budget.csproj" />
@@ -77,7 +77,7 @@
     <Project Path="tests/Humans.Base.Tests/Humans.Base.Tests.csproj" />
     <Project Path="tests/Humans.Testing/Humans.Testing.csproj" />
     <Project Path="tests/Humans.Testing.Tests/Humans.Testing.Tests.csproj" />
-    <Project Path="tests/Humans.AuditLog.Tests/Humans.AuditLog.Tests.csproj" />
+    <Project Path="tests/Humans.Audit.Tests/Humans.Audit.Tests.csproj" />
     <Project Path="tests/Humans.Integration.Tests/Humans.Integration.Tests.csproj" />
     <Project Path="tests/Humans.Agent.Tests/Humans.Agent.Tests.csproj" />
     <Project Path="tests/Humans.Auth.Tests/Humans.Auth.Tests.csproj" />

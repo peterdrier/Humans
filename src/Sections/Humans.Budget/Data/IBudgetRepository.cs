@@ -24,7 +24,7 @@ internal interface IBudgetRepository : IRepository
     /// Seeds a "Departments" group with one category per budgetable team and a "Ticketing" group with its projection and
     /// two categories, in one save, so a year never exists without its scaffold.
     /// </summary>
-    Task CreateYearWithScaffoldAsync(BudgetYearDraft draft, ICollection<BudgetChange> changes, CancellationToken ct = default);
+    Task CreateYearWithScaffoldAsync(BudgetYearDraft draft, ICollection<BudgetAuditEntry> changes, CancellationToken ct = default);
 
     /// <summary>Audits each changed field; returns a refusal when the year is missing or Closed.</summary>
     Task<BudgetYearMutationResult> UpdateYearAsync(
@@ -32,7 +32,7 @@ internal interface IBudgetRepository : IRepository
         string year,
         string name,
         string? platformEventId,
-        ICollection<BudgetChange> changes,
+        ICollection<BudgetAuditEntry> changes,
         Instant now,
         CancellationToken ct = default);
 
@@ -42,7 +42,7 @@ internal interface IBudgetRepository : IRepository
     Task<BudgetYearMutationResult> UpdateYearStatusAsync(
         Guid yearId,
         BudgetYearStatus status,
-        ICollection<BudgetChange> changes,
+        ICollection<BudgetAuditEntry> changes,
         Instant now,
         CancellationToken ct = default);
 
@@ -51,7 +51,7 @@ internal interface IBudgetRepository : IRepository
     /// </summary>
     Task<BudgetYearMutationResult> ArchiveYearAsync(
         Guid yearId,
-        ICollection<BudgetChange> changes,
+        ICollection<BudgetAuditEntry> changes,
         Instant now,
         CancellationToken ct = default);
 
@@ -62,14 +62,14 @@ internal interface IBudgetRepository : IRepository
     Task<int> SyncDepartmentCategoriesAsync(
         Guid budgetYearId,
         IReadOnlyList<BudgetableTeamRef> budgetableTeams,
-        ICollection<BudgetChange> changes,
+        ICollection<BudgetAuditEntry> changes,
         Instant now,
         CancellationToken ct = default);
 
     /// <summary>Throws if the year is closed. False when the group already existed.</summary>
     Task<bool> EnsureTicketingGroupAsync(
         Guid budgetYearId,
-        ICollection<BudgetChange> changes,
+        ICollection<BudgetAuditEntry> changes,
         Instant now,
         CancellationToken ct = default);
 
@@ -78,7 +78,7 @@ internal interface IBudgetRepository : IRepository
         Guid budgetYearId,
         string name,
         bool isRestricted,
-        ICollection<BudgetChange> changes,
+        ICollection<BudgetAuditEntry> changes,
         Instant now,
         CancellationToken ct = default);
 
@@ -88,7 +88,7 @@ internal interface IBudgetRepository : IRepository
         string name,
         int sortOrder,
         bool isRestricted,
-        ICollection<BudgetChange> changes,
+        ICollection<BudgetAuditEntry> changes,
         Instant now,
         CancellationToken ct = default);
 
@@ -97,7 +97,7 @@ internal interface IBudgetRepository : IRepository
     /// </summary>
     Task<bool> DeleteGroupAsync(
         Guid groupId,
-        ICollection<BudgetChange> changes,
+        ICollection<BudgetAuditEntry> changes,
         Instant now,
         CancellationToken ct = default);
 
@@ -111,7 +111,7 @@ internal interface IBudgetRepository : IRepository
         decimal allocatedAmount,
         ExpenditureType expenditureType,
         Guid? teamId,
-        ICollection<BudgetChange> changes,
+        ICollection<BudgetAuditEntry> changes,
         Instant now,
         CancellationToken ct = default);
 
@@ -121,14 +121,14 @@ internal interface IBudgetRepository : IRepository
         string name,
         decimal allocatedAmount,
         ExpenditureType expenditureType,
-        ICollection<BudgetChange> changes,
+        ICollection<BudgetAuditEntry> changes,
         Instant now,
         CancellationToken ct = default);
 
     /// <summary>Cascades to line items. Throws if the year is closed. False when the category does not exist.</summary>
     Task<bool> DeleteCategoryAsync(
         Guid categoryId,
-        ICollection<BudgetChange> changes,
+        ICollection<BudgetAuditEntry> changes,
         Instant now,
         CancellationToken ct = default);
 
@@ -138,21 +138,21 @@ internal interface IBudgetRepository : IRepository
     /// <summary>Throws if the year is closed or the category does not exist.</summary>
     Task CreateLineItemAsync(
         BudgetLineItemDraft draft,
-        ICollection<BudgetChange> changes,
+        ICollection<BudgetAuditEntry> changes,
         Instant now,
         CancellationToken ct = default);
 
     /// <summary>Audits each change. Throws if the year is closed. False when the line item does not exist.</summary>
     Task<bool> UpdateLineItemAsync(
         BudgetLineItemUpdate update,
-        ICollection<BudgetChange> changes,
+        ICollection<BudgetAuditEntry> changes,
         Instant now,
         CancellationToken ct = default);
 
     /// <summary>Throws if the year is closed. False when the line item does not exist.</summary>
     Task<bool> DeleteLineItemAsync(
         Guid lineItemId,
-        ICollection<BudgetChange> changes,
+        ICollection<BudgetAuditEntry> changes,
         Instant now,
         CancellationToken ct = default);
 
@@ -164,7 +164,7 @@ internal interface IBudgetRepository : IRepository
     /// </summary>
     Task<int> UpdateTicketingProjectionAsync(
         TicketingProjectionUpdate update,
-        ICollection<BudgetChange> changes,
+        ICollection<BudgetAuditEntry> changes,
         Instant now,
         CancellationToken ct = default,
         LocalDate? refreshFromDate = null);
@@ -182,22 +182,22 @@ internal interface IBudgetRepository : IRepository
         Guid budgetYearId,
         IReadOnlyList<TicketingWeeklyActualsInput> weeklyActuals,
         LocalDate today,
-        ICollection<BudgetChange> changes,
+        ICollection<BudgetAuditEntry> changes,
         Instant now,
         CancellationToken ct = default);
 
     /// <summary>Unordered, uncapped. Goes with the <c>budget_audit_logs</c> table.</summary>
-    Task<IReadOnlyList<BudgetAuditLog>> GetLegacyAuditLogsAsync(CancellationToken ct = default);
+    Task<IReadOnlyList<BudgetChange>> GetLegacyAuditLogsAsync(CancellationToken ct = default);
 
     /// <summary>
     /// For the GDPR export, which includes entries left on merged-away ids. Newest first.
     /// </summary>
-    Task<IReadOnlyList<BudgetAuditLog>> GetAuditEntriesForUsersAsync(
+    Task<IReadOnlyList<BudgetChange>> GetChangesForUsersAsync(
         IReadOnlyCollection<Guid> userIds, CancellationToken ct = default);
 }
 
 /// <summary>One audited change, written to Audit against its budget year.</summary>
-internal sealed record BudgetChange(Guid BudgetYearId, string EntityType, Guid EntityId, string Description);
+internal sealed record BudgetAuditEntry(Guid BudgetYearId, string EntityType, Guid EntityId, string Description);
 
 internal sealed record BudgetYearDraft(
     Guid Id,

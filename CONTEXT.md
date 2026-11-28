@@ -36,7 +36,7 @@ _Avoid_: director
 Words that belong to one section live in that section's own glossary. Words used across sections stay in this file.
 
 - [Agent](src/Sections/Humans.Agent/Docs/CONTEXT.md): the member help chat (Assistant)
-- [Audit](src/Sections/Humans.AuditLog/Docs/CONTEXT.md): the audit log, its entries and the history shown on pages
+- [Audit](src/Sections/Humans.Audit/Docs/CONTEXT.md): the audit log, its entries and the history shown on pages
 - [Auth](src/Sections/Humans.Auth/Docs/CONTEXT.md): signing in, signing up and system roles
 - [Backdoor](src/Sections/Humans.Backdoor/Docs/CONTEXT.md): personal API keys and the Backdoor API
 - [BoxOffice](src/Sections/Humans.BoxOffice/Docs/CONTEXT.md): Humans' own ticketing platform on Stripe

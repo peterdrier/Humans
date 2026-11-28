@@ -1,7 +1,7 @@
 using Humans.Finance.Contracts;
 using System.Security.Claims;
 using AwesomeAssertions;
-using Humans.AuditLog.Contracts;
+using Humans.Audit.Contracts;
 using Humans.Base.Constants;
 using Humans.Camps.Contracts;
 using Humans.Holded.Contracts;
@@ -407,10 +407,10 @@ public sealed class StoreControllerRecordPaymentTests
         payment.ExternalRef.Should().Be("6a3b8e7cbd5b6f5ec40cbb87");
         payment.ReceivedAt.Should().Be(Instant.FromUtc(2026, 6, 24, 0, 0));
         await _audit.Received(1).LogAsync(
-            StoreAuditActions.StorePaymentRecorded, AuditEntityTypes.Payment, payment.Id,
+            StoreAuditActions.StorePaymentRecorded, StoreAuditSubjectTypes.Payment, payment.Id,
             Arg.Is<string>(d => d.Contains("bank transfer") && d.Contains("7216.71")
                 && d.Contains("6a3b8e7cbd5b6f5ec40cbb87") && d.Contains("2026-06-24")),
-            _userId, _order.Id, AuditEntityTypes.Order);
+            _userId, _order.Id, StoreAuditSubjectTypes.Order);
         (await _service.GetOrderAsync(_order.Id, TestContext.Current.CancellationToken))!.BalanceEur.Should().Be(0m);
     }
 
@@ -497,11 +497,11 @@ public sealed class StoreControllerRecordPaymentTests
         result.Should().BeOfType<RedirectToActionResult>();
         await _repo.Received(1).DeletePaymentAsync(mistaken.Id, Arg.Any<CancellationToken>());
         await _audit.Received(1).LogAsync(
-            StoreAuditActions.StorePaymentDeleted, AuditEntityTypes.Payment, mistaken.Id,
+            StoreAuditActions.StorePaymentDeleted, StoreAuditSubjectTypes.Payment, mistaken.Id,
             Arg.Is<string>(d => d.Contains("Refund") && d.Contains("-3.00") && d.Contains("Paid")
                 && !d.Contains(_order.Id.ToString()) && d.Contains("ref-1") && d.Contains("2026-08-01")
                 && d.Contains(recorder.ToString()) && d.Contains("wrong order")),
-            _userId, _order.Id, AuditEntityTypes.Order);
+            _userId, _order.Id, StoreAuditSubjectTypes.Order);
         (await _service.GetOrderAsync(_order.Id, TestContext.Current.CancellationToken))!.BalanceEur.Should().Be(0m);
     }
 

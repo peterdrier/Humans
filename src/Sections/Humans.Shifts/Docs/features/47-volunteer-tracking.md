@@ -90,7 +90,7 @@ Summary:
 
 **Table:** `shift_volunteer_build_statuses`. **Unique:** `(UserId, EventSettingsId)`.
 
-Audit actions (`ShiftsAuditActions`): `VolunteerCampSetupSet`, `VolunteerCampSetupCleared`, `VolunteerDayOffMarked`, `VolunteerDayOffCleared`. `EntityType = nameof(VolunteerBuildStatus)`.
+Audit actions (`ShiftsAuditActions`): `VolunteerCampSetupSet`, `VolunteerCampSetupCleared`, `VolunteerDayOffMarked`, `VolunteerDayOffCleared`. `SubjectType = nameof(VolunteerBuildStatus)`.
 
 ## Workflows
 

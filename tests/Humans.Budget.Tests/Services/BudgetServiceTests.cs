@@ -1,5 +1,5 @@
 using Humans.Settings.Contracts;
-using Humans.AuditLog.Contracts;
+using Humans.Audit.Contracts;
 using Humans.Budget.Authorization;
 using AwesomeAssertions;
 using System.Globalization;
@@ -260,7 +260,7 @@ public sealed class BudgetServiceTests
     [InlineData("Index")]
     [InlineData("YearDetail")]
     [InlineData("CategoryDetail")]
-    [InlineData("AuditLog")]
+    [InlineData("Changes")]
     [InlineData("Admin")]
     public async Task AdminReads_RequestCancellation_IsNotRenderedAsLoadFailure(string action)
     {
@@ -281,7 +281,7 @@ public sealed class BudgetServiceTests
             "Index" => controller.Index,
             "YearDetail" => () => controller.YearDetail(_yearId),
             "CategoryDetail" => () => controller.CategoryDetail(_yearId),
-            "AuditLog" => () => controller.AuditLog(null),
+            "Changes" => () => controller.Changes(null),
             _ => controller.Admin
         };
         await read.Should().ThrowAsync<OperationCanceledException>();
@@ -2561,7 +2561,7 @@ public sealed class BudgetServiceTests
                          (userId, "own"), (sourceId, "merged"), (Guid.NewGuid(), "stranger"), (null, "automation")
                      })
             {
-                ctx.BudgetAuditLogs.Add(new BudgetAuditLog
+                ctx.BudgetChanges.Add(new BudgetChange
                 {
                     Id = Guid.NewGuid(),
                     BudgetYearId = _yearId,
@@ -2596,9 +2596,10 @@ public sealed class BudgetServiceTests
         rows.Should().ContainSingle().Which.Should().BeEquivalentTo(new
         {
             Id = pending,
-            Description = "Ticketing budget sync: synced",
+            Description = "synced",
+            JobName = "Ticketing budget sync",
             ActorUserId = (Guid?)null,
-            RelatedEntityId = (Guid?)_yearId
+            TargetId = (Guid?)_yearId
         });
     }
 
@@ -2609,7 +2610,7 @@ public sealed class BudgetServiceTests
         await SeedLegacyAuditAsync(ct);
         await using (var ctx = await _budgetDbFactory.CreateDbContextAsync(ct))
         {
-            ctx.BudgetAuditLogs.Add(new BudgetAuditLog
+            ctx.BudgetChanges.Add(new BudgetChange
             {
                 Id = Guid.NewGuid(),
                 BudgetYearId = _yearId,
@@ -2654,7 +2655,7 @@ public sealed class BudgetServiceTests
         var byJob = Guid.NewGuid();
         await using var ctx = await _budgetDbFactory.CreateDbContextAsync(ct);
         ctx.BudgetYears.Add(new BudgetYear { Id = _yearId, Year = "2026", Name = "Budget 2026" });
-        ctx.BudgetAuditLogs.Add(new BudgetAuditLog
+        ctx.BudgetChanges.Add(new BudgetChange
         {
             Id = byActor,
             BudgetYearId = _yearId,
@@ -2664,7 +2665,7 @@ public sealed class BudgetServiceTests
             ActorUserId = Guid.NewGuid(),
             OccurredAt = _clock.GetCurrentInstant()
         });
-        ctx.BudgetAuditLogs.Add(new BudgetAuditLog
+        ctx.BudgetChanges.Add(new BudgetChange
         {
             Id = byJob,
             BudgetYearId = _yearId,
@@ -2708,7 +2709,7 @@ public sealed class BudgetServiceTests
             await ctx.SaveChangesAsync(TestContext.Current.CancellationToken);
         }
 
-        var changes = new List<BudgetChange>();
+        var changes = new List<BudgetAuditEntry>();
         var now = _clock.GetCurrentInstant();
         var ct = TestContext.Current.CancellationToken;
         if (string.Equals(mutation, "update-year", StringComparison.Ordinal))

@@ -1,4 +1,4 @@
-using Humans.AuditLog.Contracts;
+using Humans.Audit.Contracts;
 using Humans.Agent.Data;
 using Humans.Agent.Services.Anthropic;
 using Humans.Agent.Services.Stores;

@@ -2,7 +2,7 @@ using System.Transactions;
 using Humans.Base.Interfaces;
 using Humans.Preapprovals.Data;
 using static Humans.Preapprovals.Services.PreapprovalService;
-using Humans.AuditLog.Contracts;
+using Humans.Audit.Contracts;
 using Humans.Base.Extensions;
 using Humans.Notifications.Contracts;
 using Humans.Preapprovals.Contracts;
@@ -97,10 +97,10 @@ internal sealed class PreapprovalDeadlineReminders(
             }, ct);
             scope.Complete();
         }
-        await auditLog.LogAsync(PreapprovalsAuditActions.PreapprovalReminderSent, AuditEntityTypes.Grant, fresh.Id,
+        await auditLog.LogAsync(PreapprovalsAuditActions.PreapprovalReminderSent, PreapprovalsAuditSubjectTypes.Grant, fresh.Id,
             $"{(kind == ReminderKind.D3 ? LastReminderDays : FirstReminderDays)}-day reminder sent: " +
             $"{Euros(fresh.MaxAmount)} under \"{fresh.Program.Name}\", claim by {fresh.Program.ClaimBy.ToInvariantDate()} ({info.DaysLeft(today)} days left).",
-            ReminderJobName, relatedEntityId: fresh.ProgramId, relatedEntityType: AuditEntityTypes.Program);
+            ReminderJobName, targetId: fresh.ProgramId, targetType: PreapprovalsAuditSubjectTypes.Program);
     }
 
     /// <summary>D3 inside the last three days, D14 inside the last fourteen, nothing past the deadline.</summary>

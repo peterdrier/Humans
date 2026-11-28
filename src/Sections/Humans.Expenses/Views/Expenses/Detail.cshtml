@@ -659,7 +659,7 @@
 </div>
 
 @* Everyone who may open the report sees it: the entries are that report's own history. *@
-<vc:audit-log entity-type="@AuditEntityTypes.Report" entity-id="@r.Id"
+<vc:audit-log subject-type="@ExpensesAuditSubjectTypes.Report" subject-id="@r.Id"
               limit="50" title="@Localizer["Expenses_Detail_History"].Value" empty-text="@Localizer["Expenses_Detail_NoHistory"].Value" />
 
 @if (Model.CanFinanceReject || Model.CanCoordinatorReject)

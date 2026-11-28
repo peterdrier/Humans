@@ -67,7 +67,7 @@ internal sealed class BudgetRepository(IDbContextFactory<BudgetDbContext> factor
     }
 
     public async Task CreateYearWithScaffoldAsync(
-        BudgetYearDraft draft, ICollection<BudgetChange> changes, CancellationToken ct = default)
+        BudgetYearDraft draft, ICollection<BudgetAuditEntry> changes, CancellationToken ct = default)
     {
         await using var ctx = await factory.CreateDbContextAsync(ct);
 
@@ -147,7 +147,7 @@ internal sealed class BudgetRepository(IDbContextFactory<BudgetDbContext> factor
         string year,
         string name,
         string? platformEventId,
-        ICollection<BudgetChange> changes,
+        ICollection<BudgetAuditEntry> changes,
         Instant now,
         CancellationToken ct = default)
     {
@@ -190,7 +190,7 @@ internal sealed class BudgetRepository(IDbContextFactory<BudgetDbContext> factor
     public async Task<BudgetYearMutationResult> UpdateYearStatusAsync(
         Guid yearId,
         BudgetYearStatus status,
-        ICollection<BudgetChange> changes,
+        ICollection<BudgetAuditEntry> changes,
         Instant now,
         CancellationToken ct = default)
     {
@@ -232,7 +232,7 @@ internal sealed class BudgetRepository(IDbContextFactory<BudgetDbContext> factor
 
     public async Task<BudgetYearMutationResult> ArchiveYearAsync(
         Guid yearId,
-        ICollection<BudgetChange> changes,
+        ICollection<BudgetAuditEntry> changes,
         Instant now,
         CancellationToken ct = default)
     {
@@ -260,7 +260,7 @@ internal sealed class BudgetRepository(IDbContextFactory<BudgetDbContext> factor
     public async Task<int> SyncDepartmentCategoriesAsync(
         Guid budgetYearId,
         IReadOnlyList<BudgetableTeamRef> budgetableTeams,
-        ICollection<BudgetChange> changes,
+        ICollection<BudgetAuditEntry> changes,
         Instant now,
         CancellationToken ct = default)
     {
@@ -317,7 +317,7 @@ internal sealed class BudgetRepository(IDbContextFactory<BudgetDbContext> factor
 
     public async Task<bool> EnsureTicketingGroupAsync(
         Guid budgetYearId,
-        ICollection<BudgetChange> changes,
+        ICollection<BudgetAuditEntry> changes,
         Instant now,
         CancellationToken ct = default)
     {
@@ -368,7 +368,7 @@ internal sealed class BudgetRepository(IDbContextFactory<BudgetDbContext> factor
         Guid budgetYearId,
         string name,
         bool isRestricted,
-        ICollection<BudgetChange> changes,
+        ICollection<BudgetAuditEntry> changes,
         Instant now,
         CancellationToken ct = default)
     {
@@ -409,7 +409,7 @@ internal sealed class BudgetRepository(IDbContextFactory<BudgetDbContext> factor
         string name,
         int sortOrder,
         bool isRestricted,
-        ICollection<BudgetChange> changes,
+        ICollection<BudgetAuditEntry> changes,
         Instant now,
         CancellationToken ct = default)
     {
@@ -453,7 +453,7 @@ internal sealed class BudgetRepository(IDbContextFactory<BudgetDbContext> factor
 
     public async Task<bool> DeleteGroupAsync(
         Guid groupId,
-        ICollection<BudgetChange> changes,
+        ICollection<BudgetAuditEntry> changes,
         Instant now,
         CancellationToken ct = default)
     {
@@ -496,7 +496,7 @@ internal sealed class BudgetRepository(IDbContextFactory<BudgetDbContext> factor
         decimal allocatedAmount,
         ExpenditureType expenditureType,
         Guid? teamId,
-        ICollection<BudgetChange> changes,
+        ICollection<BudgetAuditEntry> changes,
         Instant now,
         CancellationToken ct = default)
     {
@@ -537,7 +537,7 @@ internal sealed class BudgetRepository(IDbContextFactory<BudgetDbContext> factor
         string name,
         decimal allocatedAmount,
         ExpenditureType expenditureType,
-        ICollection<BudgetChange> changes,
+        ICollection<BudgetAuditEntry> changes,
         Instant now,
         CancellationToken ct = default)
     {
@@ -584,7 +584,7 @@ internal sealed class BudgetRepository(IDbContextFactory<BudgetDbContext> factor
 
     public async Task<bool> DeleteCategoryAsync(
         Guid categoryId,
-        ICollection<BudgetChange> changes,
+        ICollection<BudgetAuditEntry> changes,
         Instant now,
         CancellationToken ct = default)
     {
@@ -620,7 +620,7 @@ internal sealed class BudgetRepository(IDbContextFactory<BudgetDbContext> factor
 
     public async Task CreateLineItemAsync(
         BudgetLineItemDraft draft,
-        ICollection<BudgetChange> changes,
+        ICollection<BudgetAuditEntry> changes,
         Instant now,
         CancellationToken ct = default)
     {
@@ -662,7 +662,7 @@ internal sealed class BudgetRepository(IDbContextFactory<BudgetDbContext> factor
 
     public async Task<bool> UpdateLineItemAsync(
         BudgetLineItemUpdate update,
-        ICollection<BudgetChange> changes,
+        ICollection<BudgetAuditEntry> changes,
         Instant now,
         CancellationToken ct = default)
     {
@@ -738,7 +738,7 @@ internal sealed class BudgetRepository(IDbContextFactory<BudgetDbContext> factor
 
     public async Task<bool> DeleteLineItemAsync(
         Guid lineItemId,
-        ICollection<BudgetChange> changes,
+        ICollection<BudgetAuditEntry> changes,
         Instant now,
         CancellationToken ct = default)
     {
@@ -775,7 +775,7 @@ internal sealed class BudgetRepository(IDbContextFactory<BudgetDbContext> factor
 
     public async Task<int> UpdateTicketingProjectionAsync(
         TicketingProjectionUpdate update,
-        ICollection<BudgetChange> changes,
+        ICollection<BudgetAuditEntry> changes,
         Instant now,
         CancellationToken ct = default,
         LocalDate? refreshFromDate = null)
@@ -828,7 +828,7 @@ internal sealed class BudgetRepository(IDbContextFactory<BudgetDbContext> factor
         Guid budgetYearId,
         IReadOnlyList<TicketingWeeklyActualsInput> weeklyActuals,
         LocalDate today,
-        ICollection<BudgetChange> changes,
+        ICollection<BudgetAuditEntry> changes,
         Instant now,
         CancellationToken ct = default)
     {
@@ -913,13 +913,13 @@ internal sealed class BudgetRepository(IDbContextFactory<BudgetDbContext> factor
         return lineItemsChanged;
     }
 
-    public async Task<IReadOnlyList<BudgetAuditLog>> GetLegacyAuditLogsAsync(CancellationToken ct = default)
+    public async Task<IReadOnlyList<BudgetChange>> GetLegacyAuditLogsAsync(CancellationToken ct = default)
     {
         await using var ctx = await factory.CreateDbContextAsync(ct);
-        return await ctx.BudgetAuditLogs.AsNoTracking().ToListAsync(ct);
+        return await ctx.BudgetChanges.AsNoTracking().ToListAsync(ct);
     }
 
-    public async Task<IReadOnlyList<BudgetAuditLog>> GetAuditEntriesForUsersAsync(
+    public async Task<IReadOnlyList<BudgetChange>> GetChangesForUsersAsync(
         IReadOnlyCollection<Guid> userIds, CancellationToken ct = default)
     {
         if (userIds.Count == 0)
@@ -927,7 +927,7 @@ internal sealed class BudgetRepository(IDbContextFactory<BudgetDbContext> factor
 
         await using var ctx = await factory.CreateDbContextAsync(ct);
 
-        return await ctx.BudgetAuditLogs
+        return await ctx.BudgetChanges
             .AsNoTracking()
             .Where(bal => bal.ActorUserId.HasValue && userIds.Contains(bal.ActorUserId.Value))
             // arch:db-sort-ok budget audit user chronology
@@ -1179,15 +1179,15 @@ internal sealed class BudgetRepository(IDbContextFactory<BudgetDbContext> factor
     }
 
     private static void AddFieldAudit(
-        ICollection<BudgetChange> changes,
+        ICollection<BudgetAuditEntry> changes,
         Guid budgetYearId, string entityType, Guid entityId,
         string fieldName, string? oldValue, string? newValue) =>
-        changes.Add(new BudgetChange(budgetYearId, entityType, entityId,
+        changes.Add(new BudgetAuditEntry(budgetYearId, entityType, entityId,
             $"Changed {entityType}.{fieldName} from '{oldValue}' to '{newValue}'"));
 
     private static void AddDescriptionAudit(
-        ICollection<BudgetChange> changes,
+        ICollection<BudgetAuditEntry> changes,
         Guid budgetYearId, string entityType, Guid entityId,
         string description) =>
-        changes.Add(new BudgetChange(budgetYearId, entityType, entityId, description));
+        changes.Add(new BudgetAuditEntry(budgetYearId, entityType, entityId, description));
 }

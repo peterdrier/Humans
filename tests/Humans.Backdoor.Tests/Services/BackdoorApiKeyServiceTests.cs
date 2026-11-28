@@ -1,5 +1,5 @@
 using AwesomeAssertions;
-using Humans.AuditLog.Contracts;
+using Humans.Audit.Contracts;
 using Humans.Auth.Contracts;
 using Humans.Backdoor.Data;
 using Humans.Backdoor.Domain;
@@ -203,12 +203,12 @@ public class BackdoorApiKeyServiceTests
 
         await _audit.Received(1).LogAsync(
             BackdoorAuditActions.BackdoorApiKeyCreated,
-            AuditEntityTypes.BackdoorApiKey,
+            BackdoorAuditSubjectTypes.BackdoorApiKey,
             Arg.Any<Guid>(),
             Arg.Is<string>(d => d.Contains("triage agent")),
             _actor,
-            relatedEntityId: _owner,
-            relatedEntityType: AuditSubjectTypes.User);
+            targetId: _owner,
+            targetType: AuditSubjectTypes.User);
     }
 
     [HumansFact]
@@ -232,7 +232,7 @@ public class BackdoorApiKeyServiceTests
         (await _sut.RevokeAsync(key.Id, _actor)).Should().BeNull();
 
         await _audit.Received(1).LogAsync(
-            BackdoorAuditActions.BackdoorApiKeyRevoked, AuditEntityTypes.BackdoorApiKey, key.Id,
+            BackdoorAuditActions.BackdoorApiKeyRevoked, BackdoorAuditSubjectTypes.BackdoorApiKey, key.Id,
             Arg.Any<string>(), _actor, key.UserId, AuditSubjectTypes.User);
     }
 
@@ -288,10 +288,10 @@ public class BackdoorApiKeyServiceTests
         Received.InOrder(() =>
         {
             _ = _audit.LogAsync(
-                BackdoorAuditActions.BackdoorApiKeyRevoked, AuditEntityTypes.BackdoorApiKey, key.Id,
+                BackdoorAuditActions.BackdoorApiKeyRevoked, BackdoorAuditSubjectTypes.BackdoorApiKey, key.Id,
                 Arg.Any<string>(), _actor, key.UserId, AuditSubjectTypes.User);
             _ = _audit.LogAsync(
-                BackdoorAuditActions.BackdoorApiKeyCreated, AuditEntityTypes.BackdoorApiKey, Arg.Any<Guid>(),
+                BackdoorAuditActions.BackdoorApiKeyCreated, BackdoorAuditSubjectTypes.BackdoorApiKey, Arg.Any<Guid>(),
                 Arg.Any<string>(), _actor, key.UserId, AuditSubjectTypes.User);
         });
     }

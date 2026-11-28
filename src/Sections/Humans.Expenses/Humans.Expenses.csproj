@@ -36,10 +36,10 @@
     -->
     <ProjectReference Include="..\Humans.Budget\Humans.Budget.csproj" />
     <!--
-      <vc:audit-log> on the report detail page. Acyclic: nothing on Humans.AuditLog's graph
+      <vc:audit-log> on the report detail page. Acyclic: nothing on Humans.Audit's graph
       names Expenses.
     -->
-    <ProjectReference Include="..\Humans.AuditLog\Humans.AuditLog.csproj" />
+    <ProjectReference Include="..\Humans.Audit\Humans.Audit.csproj" />
     <!--
       Creditor bindings and the payment round-trip come from Finance's contracts leaf, never
       from Humans.Finance itself (memory/architecture/section-project-cycle-fix.md).

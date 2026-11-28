@@ -94,8 +94,8 @@ internal sealed class BudgetAdminController(
         }
     }
 
-    [HttpGet("AuditLog/{yearId:guid?}")]
-    public async Task<IActionResult> AuditLog(Guid? yearId)
+    [HttpGet("Changes/{yearId:guid?}")]
+    public async Task<IActionResult> Changes(Guid? yearId)
     {
         var ct = HttpContext.RequestAborted;
         try

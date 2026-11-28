@@ -63,7 +63,7 @@ Services/           IRideshareService + RideshareService — every rule in the s
                     CachingRideshareService  — Singleton decorator over the snapshot; carries F1
                     RideshareReadModels      — the snapshot and its per-row views; derived facts live here
                     RideshareMutationResult / RideshareRefusal — untranslated refusal keys and arguments, localized by controllers
-                    AuditEntityTypes         — the one audit discriminator
+                    RideshareAuditSubjectTypes         — the one audit discriminator
                     Routing/                 — IRouteProvider, the OpenRouteService client, its options, the geometry check — R1
 Data/               one repository over every table, one context, one factory, a configuration per entity, the migrations
 Domain/             an entity per table, the enums they carry

@@ -1,7 +1,7 @@
 using System.Security.Cryptography;
 using System.Text;
 using Hangfire;
-using Humans.AuditLog.Contracts;
+using Humans.Audit.Contracts;
 using Humans.Base.Configuration;
 using Humans.Base.Extensions;
 using Humans.Email.Contracts;
@@ -84,7 +84,7 @@ internal sealed class TicketDeliveryService(
             jobs.Schedule<TicketDeliveryService>(
                 d => d.SendJoinInvitationAsync(orderId, ticket.Id, CancellationToken.None), JoinInvitationDelay);
 
-        await auditLog.LogAsync(TicketsAuditActions.TicketDeliverySent, TicketCheckoutService.AuditEntityType, orderId,
+        await auditLog.LogAsync(TicketsAuditActions.TicketDeliverySent, TicketCheckoutService.AuditSubjectType, orderId,
             sent.Describe(), JobName);
         await RecordOnTimelineAsync(orderId, TicketCheckoutOrderEventKind.TicketsEmailed, sent, null, ct);
     }
@@ -99,7 +99,7 @@ internal sealed class TicketDeliveryService(
         if (sent is null)
             return new("Only a paid order with a live ticket can be resent.");
 
-        await auditLog.LogAsync(TicketsAuditActions.TicketDeliveryResent, TicketCheckoutService.AuditEntityType, orderId,
+        await auditLog.LogAsync(TicketsAuditActions.TicketDeliveryResent, TicketCheckoutService.AuditSubjectType, orderId,
             sent.Describe(), actorUserId);
         await RecordOnTimelineAsync(orderId, TicketCheckoutOrderEventKind.TicketsResent, sent, actorUserId, ct);
         return CheckoutMutationResult.Ok;
@@ -125,7 +125,7 @@ internal sealed class TicketDeliveryService(
             holder.Id, address, ticket.HolderName, eventName,
             new Uri($"{baseUrl}/Profile"), new Uri($"{baseUrl}/Shifts"),
             DeliveryIdFor("ticket_join_invitation", ticket.Id), CultureOf(holder, detail.Order)), ct);
-        await auditLog.LogAsync(TicketsAuditActions.TicketJoinInvitationSent, TicketCheckoutService.AuditEntityType, orderId,
+        await auditLog.LogAsync(TicketsAuditActions.TicketJoinInvitationSent, TicketCheckoutService.AuditSubjectType, orderId,
             "Handed the volunteer invitation for a ticket holder to Email (it honours their opt-out)",
             JobName, ticket.Id, "TicketCheckoutTicket");
     }
@@ -142,7 +142,7 @@ internal sealed class TicketDeliveryService(
         await email.SendAsync(emails.PaymentEnded(
             order.BuyerUserId, buyer?.Email ?? order.BuyerEmail, order.BuyerName, eventName, order.Reference, failed,
             new Uri($"{BaseUrl}/Tickets/Buy"), DeliveryIdFor("ticket_payment_ended", order.Id), CultureOf(buyer, order)), ct);
-        await auditLog.LogAsync(TicketsAuditActions.TicketHolderNotified, TicketCheckoutService.AuditEntityType, orderId,
+        await auditLog.LogAsync(TicketsAuditActions.TicketHolderNotified, TicketCheckoutService.AuditSubjectType, orderId,
             failed ? "Told the buyer the payment failed" : "Told the buyer the order lapsed unpaid", JobName);
     }
 
@@ -154,7 +154,7 @@ internal sealed class TicketDeliveryService(
         await email.SendAsync(emails.ResaleSold(
             to.UserId, to.Email, to.Ticket.HolderName, to.EventName, refundMinor, new Uri($"{BaseUrl}/Tickets/Buy/Mine"),
             DeliveryIdFor("ticket_resale_sold", ticketId), to.Culture), ct);
-        await auditLog.LogAsync(TicketsAuditActions.TicketHolderNotified, TicketCheckoutService.AuditEntityType, to.Ticket.OrderId,
+        await auditLog.LogAsync(TicketsAuditActions.TicketHolderNotified, TicketCheckoutService.AuditSubjectType, to.Ticket.OrderId,
             $"Told the holder ticket {to.Ticket.Barcode} was resold and its refund follows in the evening batch", JobName,
             to.UserId, AuditSubjectTypes.User);
     }
@@ -167,7 +167,7 @@ internal sealed class TicketDeliveryService(
         await email.SendAsync(emails.ResaleUnsold(
             to.UserId, to.Email, to.Ticket.HolderName, to.EventName, new Uri($"{BaseUrl}/Tickets/Buy/Mine"),
             DeliveryIdFor("ticket_resale_unsold", ticketId), to.Culture), ct);
-        await auditLog.LogAsync(TicketsAuditActions.TicketHolderNotified, TicketCheckoutService.AuditEntityType, to.Ticket.OrderId,
+        await auditLog.LogAsync(TicketsAuditActions.TicketHolderNotified, TicketCheckoutService.AuditSubjectType, to.Ticket.OrderId,
             $"Told the holder ticket {to.Ticket.Barcode} did not sell before sales closed: no refund, the ticket stays valid", JobName,
             to.UserId, AuditSubjectTypes.User);
     }
@@ -182,7 +182,7 @@ internal sealed class TicketDeliveryService(
         await email.SendAsync(emails.TicketIssued(new IssuedTicketMail(
             to.UserId, to.Email, to.Ticket.HolderName, to.EventName, [Card(to.Ticket), .. riders.Select(Card)],
             new Uri($"{BaseUrl}/Tickets/Buy/Mine"), null, deliveryId), to.Culture), ct);
-        await auditLog.LogAsync(TicketsAuditActions.TicketHolderNotified, TicketCheckoutService.AuditEntityType, to.Ticket.OrderId,
+        await auditLog.LogAsync(TicketsAuditActions.TicketHolderNotified, TicketCheckoutService.AuditSubjectType, to.Ticket.OrderId,
             $"Sent renamed ticket {to.Ticket.Barcode} to its holder", JobName, to.UserId, AuditSubjectTypes.User);
     }
 

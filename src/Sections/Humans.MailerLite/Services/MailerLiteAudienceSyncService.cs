@@ -1,4 +1,4 @@
-using Humans.AuditLog.Contracts;
+using Humans.Audit.Contracts;
 using Humans.MailerLite.Data;
 using Humans.MailerLite.Domain;
 using Humans.MailerLite.Services.Dtos;
@@ -232,7 +232,7 @@ internal sealed class MailerLiteAudienceSyncService(
         {
             await audit.LogAsync(
                 MailerLiteAuditActions.MailerLiteAudienceSyncCompleted,
-                entityType: "MailerLiteAudience", entityId: state.Id,
+                subjectType: "MailerLiteAudience", subjectId: state.Id,
                 description: description,
                 actorUserId: actor);
         }
@@ -240,7 +240,7 @@ internal sealed class MailerLiteAudienceSyncService(
         {
             await audit.LogAsync(
                 MailerLiteAuditActions.MailerLiteAudienceSyncCompleted,
-                entityType: "MailerLiteAudience", entityId: state.Id,
+                subjectType: "MailerLiteAudience", subjectId: state.Id,
                 description: description,
                 jobName: JobName);
         }

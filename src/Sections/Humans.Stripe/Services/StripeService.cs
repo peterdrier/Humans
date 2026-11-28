@@ -667,6 +667,9 @@ internal sealed class StripeService(
         var mode = account.ApiKey.StartsWith("sk_test_", StringComparison.Ordinal) || account.ApiKey.StartsWith("rk_test_", StringComparison.Ordinal)
             ? "test mode"
             : "live mode";
+        // memory/code/stripe-restricted-keys.md: a probe can only confirm scopes are present, not that nothing else is.
+        if (account.ApiKey.StartsWith("sk_live_", StringComparison.Ordinal))
+            findings.Add(new(false, $"{keyName} is a full secret key that can move money: use a read-only restricted key (rk_live_)."));
         findings.AddRange(
         [
             await ProbeAsync(keyName, $"Balance transactions ({mode})",
@@ -675,6 +678,13 @@ internal sealed class StripeService(
                 () => new PayoutService(client).ListAsync(new PayoutListOptions { Limit = 1 }, request, ct), ct),
             await ProbeAsync(keyName, "PaymentIntents",
                 () => new PaymentIntentService(client).ListAsync(new PaymentIntentListOptions { Limit = 1 }, request, ct), ct),
+            // The ledger expands each movement's charge, refund or dispute, and a fee read its payment's charge.
+            await ProbeAsync(keyName, "Charges",
+                () => new ChargeService(client).ListAsync(new ChargeListOptions { Limit = 1 }, request, ct), ct),
+            await ProbeAsync(keyName, "Refunds",
+                () => new RefundService(client).ListAsync(new RefundListOptions { Limit = 1 }, request, ct), ct),
+            await ProbeAsync(keyName, "Disputes",
+                () => new DisputeService(client).ListAsync(new DisputeListOptions { Limit = 1 }, request, ct), ct),
         ]);
         return findings;
     }

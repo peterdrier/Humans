@@ -23,7 +23,7 @@ move, and do we run out?", including the VAT the association will settle each qu
 | Manage the plan tree (admin: year lifecycle, groups, categories, line items) | `/Budget/Admin/Years/*`, `/Budget/Admin/Groups/*`, `/Budget/Admin/Categories/*`, `/Budget/Admin/LineItems/*`, `/Budget/Admin/Years` |
 | Feed ticket actuals in / re-project | `/Budget/Admin/TicketingBudget/{yearId}/Sync`, `/Budget/Admin/TicketingProjection/{groupId}/Update`, `/Budget/Admin/Years/{id}/EnsureTicketingGroup`, nightly `budget-ticketing-sync` job |
 | When does money move? | `/Finance/CashFlow` — served by Finance ([`Finance.md`](../../Humans.Finance/Docs/Finance.md)) |
-| Who changed what? | `/Budget/Admin/AuditLog/{yearId?}` |
+| Who changed what? | `/Budget/Audit/{yearId?}` |
 | Cross-section reads (Expenses, Finance, Tickets, Backdoor; Development's demo seed) | `IBudgetService`, `IBudgetDemoSeeder` (`Contracts/` folder) |
 
 ## Structure
@@ -54,11 +54,11 @@ The shapes imply the layered split that exists:
   cannot be archived — `Data/BudgetRepository.cs:259`.
 - A `Closed` year is read-only: every repository mutation except status change and archive
   gates on it and refuses — `Data/BudgetRepository.cs:1031`.
-- Every create/update/delete of a year, group, category, line item, or projection writes a
-  `BudgetAuditLog` row in the same `SaveChanges`; the two ticketing paths write one summary
-  row only when the change tracker has changes, with a null actor for the nightly job —
-  `Data/BudgetRepository.cs:916`. The repository has no audit write surface beyond its two
-  private helpers — `Data/BudgetRepository.cs:1188`, `Data/BudgetRepository.cs:1215`.
+- Every create/update/delete of a year, group, category, line item, or projection adds a
+  `BudgetAuditEntry` that `BudgetService` audits as `BudgetChanged` once the save commits;
+  the two ticketing paths add one summary entry only when the change tracker has changes,
+  audited as the ticketing sync job for the nightly run. `budget_audit_logs` is no longer
+  written.
 - Coordinators may write line items only in a category whose `TeamId` is in their effective
   coordinator set (departments they coordinate plus active child teams), never in archived
   years, restricted or ticketing groups — `Authorization/BudgetAuthorizationHandler.cs:35`;

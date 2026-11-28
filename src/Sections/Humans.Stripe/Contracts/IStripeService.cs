@@ -98,7 +98,8 @@ public interface IStripeService : IApplicationService
         string accountName, IReadOnlyDictionary<string, string> metadata, Instant createdSince, CancellationToken ct = default);
 
     /// <summary>
-    /// One finding per read scope <see cref="GetAccountLedgerAsync"/> needs on the named account.
+    /// One finding per read scope the account reads need on the named account, plus one that is not ok for a full live
+    /// secret key.
     /// <paramref name="includeCheckout"/> also probes Checkout Sessions with the Tickets checkout key.
     /// Caller cancellation propagates; vendor failures are findings.
     /// </summary>

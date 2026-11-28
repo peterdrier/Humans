@@ -149,7 +149,7 @@ communication-preference interfaces live in `Humans.Email.Contracts` (Users deco
   and the per-period audiences share `ShiftViewAudienceBase`, differing only in the
   predicate they apply to `ShiftUserSummary` (`HasShift`, or `HasShiftInPeriod` for Build /
   Event / Strike; Setup = Build). `TicketNoShiftsAudience` reads the same view directly.
-- **AuditLog**: writes via `IAuditLogService.LogAsync` (job overload).
+- **Audit**: writes via `IAuditLogService.LogAsync` (job overload).
 - **GDPR**: `MailerLiteGdprContributor` implements `IUserDataContributor` — Article 15 export contributes nothing (the subscriber list mirrors state already exported by the sections that generate it); Article 17 erasure reads the exact raw account and requests permanent forgetting of subscribers under its owned verified addresses plus a live account’s canonical/legacy email fallback, including both Gmail/Googlemail domain spellings recognized by import matching, via `IMailerLiteService.DeleteSubscriberAsync`. An archived id never resolves forward to the survivor; tombstone identity-column fallbacks are excluded because that address may now belong to the living survivor. Verified rows still owned by the archived id remain erasable.
 
 ## Architecture

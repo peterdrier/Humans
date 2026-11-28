@@ -9,7 +9,7 @@ using System.Text;
 using System.Text.Encodings.Web;
 using System.Text.Json;
 using AwesomeAssertions;
-using Humans.AuditLog.Contracts;
+using Humans.Audit.Contracts;
 using Humans.Backdoor.Authentication;
 using Humans.Backdoor.Controllers;
 using Humans.Backdoor.Data;

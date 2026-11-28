@@ -2,8 +2,8 @@ import { test, expect } from '@playwright/test';
 import { loginAs, expectBlocked } from '../helpers/auth';
 
 test.describe('Onboarding (16-onboarding-pipeline + 17-coordinator-roles)', () => {
-  test('US-17.2: consent coordinator sees review queue with filter tabs', async ({ page }) => {
-    await loginAs(page, 'consent-coordinator');
+  test('US-17.2: consent admin sees review queue with filter tabs', async ({ page }) => {
+    await loginAs(page, 'consent-admin');
     await page.goto('/Consent/ReviewQueue');
 
     await expect(page.locator('h1, h2').first()).toBeVisible();

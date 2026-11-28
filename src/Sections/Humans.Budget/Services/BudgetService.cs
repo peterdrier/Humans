@@ -1,6 +1,6 @@
 using System.Globalization;
 using Humans.Base.Extensions;
-using Humans.AuditLog.Contracts;
+using Humans.Audit.Contracts;
 using Humans.Budget.Contracts;
 using Humans.Budget.Data;
 using Humans.Teams.Contracts;
@@ -23,7 +23,7 @@ internal sealed class BudgetService(
     ILogger<BudgetService> logger) : IBudgetManagement, IUserDataContributor
 {
     /// <summary>GDPR export JSON key.</summary>
-    internal const string BudgetAuditLog = "BudgetAuditLog";
+    internal const string BudgetChanges = "BudgetChanges";
 
     private const string TicketingSyncJobName = "Ticketing budget sync";
 
@@ -35,7 +35,7 @@ internal sealed class BudgetService(
 
         var now = clock.GetCurrentInstant();
 
-        var changes = new List<BudgetChange>();
+        var changes = new List<BudgetAuditEntry>();
         var group = await repository.CreateGroupAsync(
             budgetYearId, name, isRestricted, changes, now);
         await AuditAsync(changes, actorUserId);
@@ -54,7 +54,7 @@ internal sealed class BudgetService(
 
         var now = clock.GetCurrentInstant();
 
-        var changes = new List<BudgetChange>();
+        var changes = new List<BudgetAuditEntry>();
         var ok = await repository.UpdateGroupAsync(
             groupId, name, sortOrder, isRestricted, changes, now);
         await AuditAsync(changes, actorUserId);
@@ -67,7 +67,7 @@ internal sealed class BudgetService(
     {
         var now = clock.GetCurrentInstant();
 
-        var changes = new List<BudgetChange>();
+        var changes = new List<BudgetAuditEntry>();
         var ok = await repository.DeleteGroupAsync(groupId, changes, now);
         await AuditAsync(changes, actorUserId);
         if (!ok)
@@ -89,7 +89,7 @@ internal sealed class BudgetService(
 
         var now = clock.GetCurrentInstant();
 
-        var changes = new List<BudgetChange>();
+        var changes = new List<BudgetAuditEntry>();
         var category = await repository.CreateCategoryAsync(
             budgetGroupId, name, allocatedAmount, expenditureType, teamId, changes, now);
         await AuditAsync(changes, actorUserId);
@@ -112,7 +112,7 @@ internal sealed class BudgetService(
 
         var now = clock.GetCurrentInstant();
 
-        var changes = new List<BudgetChange>();
+        var changes = new List<BudgetAuditEntry>();
         var ok = await repository.UpdateCategoryAsync(
             categoryId, name, allocatedAmount, expenditureType, changes, now);
         await AuditAsync(changes, actorUserId);
@@ -125,7 +125,7 @@ internal sealed class BudgetService(
     {
         var now = clock.GetCurrentInstant();
 
-        var changes = new List<BudgetChange>();
+        var changes = new List<BudgetAuditEntry>();
         var ok = await repository.DeleteCategoryAsync(categoryId, changes, now);
         await AuditAsync(changes, actorUserId);
         if (!ok)
@@ -161,7 +161,7 @@ internal sealed class BudgetService(
             ExpectedDate: expectedDate,
             VatRate: vatRate);
 
-        var changes = new List<BudgetChange>();
+        var changes = new List<BudgetAuditEntry>();
         await repository.CreateLineItemAsync(draft, changes, now);
         await AuditAsync(changes, actorUserId);
 
@@ -198,7 +198,7 @@ internal sealed class BudgetService(
             ExpectedDate: expectedDate,
             VatRate: vatRate);
 
-        var changes = new List<BudgetChange>();
+        var changes = new List<BudgetAuditEntry>();
         var ok = await repository.UpdateLineItemAsync(update, changes, now);
         await AuditAsync(changes, actorUserId);
         if (!ok)
@@ -238,7 +238,7 @@ internal sealed class BudgetService(
     {
         var now = clock.GetCurrentInstant();
 
-        var changes = new List<BudgetChange>();
+        var changes = new List<BudgetAuditEntry>();
         var ok = await repository.DeleteLineItemAsync(lineItemId, changes, now);
         await AuditAsync(changes, actorUserId);
         if (!ok)
@@ -278,7 +278,7 @@ internal sealed class BudgetService(
             StripeFeeFixed: stripeFeeFixed,
             PlatformFeePercent: platformFeePercent);
 
-        var changes = new List<BudgetChange>();
+        var changes = new List<BudgetAuditEntry>();
         var created = await repository.UpdateTicketingProjectionAsync(
             update, changes, now, ct, refreshProjections ? now.InUtc().Date : null);
         await AuditAsync(changes, actorUserId);
@@ -288,7 +288,7 @@ internal sealed class BudgetService(
     }
 
     /// <summary>After the save: a null actor is the nightly ticketing sync.</summary>
-    private async Task AuditAsync(IEnumerable<BudgetChange> changes, Guid? actorUserId)
+    private async Task AuditAsync(IEnumerable<BudgetAuditEntry> changes, Guid? actorUserId)
     {
         foreach (var change in changes)
         {
@@ -313,8 +313,8 @@ internal sealed class BudgetService(
         return rows
             .Where(r => !imported.Contains(r.Id))
             .Select(r => new TemporaryAuditImportRow(r.Id, BudgetAuditActions.BudgetChanged, r.EntityType, r.EntityId,
-                r.ActorUserId is null ? $"{TicketingSyncJobName}: {r.Description}" : r.Description,
-                r.OccurredAt, r.ActorUserId, r.BudgetYearId, nameof(BudgetYear)))
+                r.Description, r.OccurredAt, r.ActorUserId, r.ActorUserId is null ? TicketingSyncJobName : null,
+                r.BudgetYearId, nameof(BudgetYear)))
             .ToList();
     }
 
@@ -323,7 +323,7 @@ internal sealed class BudgetService(
     {
         var pending = await GetPendingAuditCopiesAsync(ct);
         var written = await auditImport.ImportAsync(pending, ct);
-        foreach (var year in pending.GroupBy(r => r.RelatedEntityId!.Value))
+        foreach (var year in pending.GroupBy(r => r.TargetId!.Value))
         {
             await auditLogService.LogAsync(BudgetAuditActions.BudgetAuditLogCopied, nameof(BudgetYear), year.Key,
                 $"Copied {year.Count()} budget change entries into the audit log", actorUserId);
@@ -348,7 +348,7 @@ internal sealed class BudgetService(
         var now = clock.GetCurrentInstant();
         var today = now.InUtc().Date;
 
-        var changes = new List<BudgetChange>();
+        var changes = new List<BudgetAuditEntry>();
         var changed = await repository.SyncTicketingActualsAsync(
             budgetYearId, weeklyActuals, today, changes, now, ct);
         await AuditAsync(changes, actorUserId);
@@ -401,7 +401,7 @@ internal sealed class BudgetService(
         // Include audit rows left on accounts merged into this one. Asked with an archived id, the survivor's rows
         // count too.
         var allIds = (await userService.GetUserInfoAsync(userId, ct))?.AllUserIds ?? [userId];
-        var entries = await repository.GetAuditEntriesForUsersAsync(allIds, ct);
+        var entries = await repository.GetChangesForUsersAsync(allIds, ct);
 
         var shaped = entries.Select(bal => new
         {
@@ -411,13 +411,13 @@ internal sealed class BudgetService(
             OccurredAt = bal.OccurredAt.ToIso8601()
         }).ToList();
 
-        return [new UserDataSlice(BudgetAuditLog, shaped)];
+        return [new UserDataSlice(BudgetChanges, shaped)];
     }
 
     private static readonly IReadOnlyDictionary<string, string?> Erasure =
         new Dictionary<string, string?>(StringComparer.Ordinal)
         {
-            [BudgetAuditLog] =
+            [BudgetChanges] =
                 "Retained: append-only accounting audit ledger. Spanish law requires the books " +
                 "and their supporting records be kept 6 years (Código de Comercio Art. 30) and " +
                 "4 years for tax purposes (Ley 58/2003 Art. 66) — GDPR Art. 17(3)(b)."
@@ -618,7 +618,7 @@ internal sealed class BudgetService(
             BudgetableTeams: teamRefs,
             Now: now);
 
-        var changes = new List<BudgetChange>();
+        var changes = new List<BudgetAuditEntry>();
         await repository.CreateYearWithScaffoldAsync(draft, changes);
         await AuditAsync(changes, actorUserId);
 
@@ -639,7 +639,7 @@ internal sealed class BudgetService(
     {
         var now = clock.GetCurrentInstant();
 
-        var changes = new List<BudgetChange>();
+        var changes = new List<BudgetAuditEntry>();
         var result = await repository.UpdateYearStatusAsync(yearId, status, changes, now);
         await AuditAsync(changes, actorUserId);
         if (!result.Succeeded) return result;
@@ -661,7 +661,7 @@ internal sealed class BudgetService(
 
         var now = clock.GetCurrentInstant();
 
-        var changes = new List<BudgetChange>();
+        var changes = new List<BudgetAuditEntry>();
         var result = await repository.UpdateYearAsync(
             yearId, year, name, platformEventId, changes, now);
         await AuditAsync(changes, actorUserId);
@@ -672,7 +672,7 @@ internal sealed class BudgetService(
     {
         var now = clock.GetCurrentInstant();
 
-        var changes = new List<BudgetChange>();
+        var changes = new List<BudgetAuditEntry>();
         var result = await repository.ArchiveYearAsync(yearId, changes, now);
         await AuditAsync(changes, actorUserId);
         if (!result.Succeeded) return result;
@@ -694,7 +694,7 @@ internal sealed class BudgetService(
 
         var teamRefs = await GetBudgetableTeamsAsync();
 
-        var changes = new List<BudgetChange>();
+        var changes = new List<BudgetAuditEntry>();
         var created = await repository.SyncDepartmentCategoriesAsync(
             budgetYearId, teamRefs, changes, now);
         await AuditAsync(changes, actorUserId);
@@ -711,7 +711,7 @@ internal sealed class BudgetService(
     {
         var now = clock.GetCurrentInstant();
 
-        var changes = new List<BudgetChange>();
+        var changes = new List<BudgetAuditEntry>();
         var created = await repository.EnsureTicketingGroupAsync(budgetYearId, changes, now);
         await AuditAsync(changes, actorUserId);
 
