@@ -412,8 +412,7 @@ internal sealed class CampRoleService(
             definition.SlotCount,
             definition.MinimumRequired,
             definition.SortOrder,
-            definition.DeactivatedAt,
-            definition.SpecialRole);
+            definition.DeactivatedAt);
 
     public async Task<CampRolesPanelData> BuildPanelAsync(Guid campSeasonId, CancellationToken ct = default)
     {

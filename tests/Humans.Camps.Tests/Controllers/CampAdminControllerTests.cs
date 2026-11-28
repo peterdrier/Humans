@@ -122,7 +122,7 @@ public class CampAdminControllerTests
         var roles = Substitute.For<ICampRoleService>();
         CampRoleDefinitionInfo Definition(string name, int order, bool active) =>
             new(Guid.NewGuid(), name, "", null, 1, 1, order,
-                active ? null : Instant.FromUtc(2026, 1, 1, 0, 0), CampSpecialRole.None);
+                active ? null : Instant.FromUtc(2026, 1, 1, 0, 0));
         roles.ListDefinitionsAsync(true, Arg.Any<CancellationToken>()).Returns([
             Definition("Zebra", 1, true), Definition("Old Zebra", 1, false),
             Definition("Alpha", 1, true), Definition("Old Alpha", 1, false),
@@ -639,7 +639,7 @@ public class CampAdminControllerTests
         }
         else
         {
-            var role = new CampRoleDefinitionInfo(Guid.NewGuid(), "Worker", "worker", null, 1, 1, 0, null, default);
+            var role = new CampRoleDefinitionInfo(Guid.NewGuid(), "Worker", "worker", null, 1, 1, 0, null);
             roles.GetDefinitionBySlugAsync("worker", ct).Returns(role);
             roles.BuildDrillDownAsync(role.Id, selected.EventSettingsId, ct).Returns(new CampRoleDrillDownData(role, selected, null, []));
             var result = await CreateController(camps, roles, users, Guid.NewGuid()).RolesDrillDown("worker", null, ct);
