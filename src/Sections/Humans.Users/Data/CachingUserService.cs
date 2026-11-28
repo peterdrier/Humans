@@ -516,7 +516,7 @@ internal sealed class CachingUserService(
             return result;
         });
 
-    public Task<UserProfileSaveResult> SaveProfileAsync(
+    public Task SaveProfileAsync(
         Guid userId,
         UserProfileSaveCommand command,
         byte[]? profilePictureData = null,
@@ -524,10 +524,9 @@ internal sealed class CachingUserService(
         IReadOnlyList<CvEntry>? volunteerHistory = null) =>
         MutateAsync(async () =>
         {
-            var result = await WithInnerAsync(inner =>
+            await WithInnerAsync(inner =>
                 inner.SaveProfileAsync(userId, command, profilePictureData, ct, volunteerHistory));
             await RefreshEntryAsync(userId);
-            return result;
         });
 
     public Task SaveMedicalConditionsAsync(

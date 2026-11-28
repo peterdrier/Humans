@@ -811,7 +811,7 @@ Email insertion and OAuth reconciliation refuse deleted or merged accounts, incl
 
 `UserService` assembles single, bulk and selected-ID account graphs through the existing `UserInfoFactory`, and owns verified email/alias lookup. Email/login/profile collection, missing-account behavior, lookup preference and cancellation are unchanged.
 
-`UserService` owns stub creation, profile/CV/picture saves, medical text and language replacement. Its shared profile lock, stub audit and picture rollback/supersession cleanup retain their existing semantics.
+`UserService` owns stub creation, profile/CV/picture saves, medical text and language replacement. Its internal profile-save call returns completion only; picture keys stay inside the owner. Its shared profile lock, stub audit and picture rollback/supersession cleanup retain their existing semantics.
 
 Admin manual email verification returns an explicit `VerifyEmailResult.NoPendingVerification` refusal for missing, verified or provider-attached rows, without writes or audit. The Admin-only action keeps its existing refusal text and warns without an exception stack. Other returned email refusals remain localized; dependency failures propagate rather than becoming refusal feedback. An address confirmed on another account is refused with `Users_Profile_EmailVerifiedOnAnotherAccount`.
 
