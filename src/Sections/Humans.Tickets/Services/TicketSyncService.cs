@@ -235,6 +235,16 @@ internal sealed class TicketSyncService(
             actorUserId);
     }
 
+    public Task<int> GetPostEventHoldDaysAsync(CancellationToken ct = default) =>
+        ticketRepository.GetPostEventHoldDaysAsync(ct);
+
+    public async Task SetPostEventHoldDaysAsync(int days, Guid actorUserId, CancellationToken ct = default)
+    {
+        await ticketRepository.SetPostEventHoldDaysAsync(days, ct);
+        await auditLog.LogAsync(TicketsAuditActions.TicketPostEventHoldSet, "TicketSettings", Guid.Empty,
+            $"Set the post-event hold to {days} day(s).", actorUserId);
+    }
+
     public async Task ReassignAsync(Guid sourceUserId, Guid targetUserId, Guid actorUserId, Instant updatedAt,
         CancellationToken ct)
     {

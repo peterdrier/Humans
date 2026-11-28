@@ -232,6 +232,17 @@ public sealed class CachingTicketQueryServiceTests
     }
 
     [HumansFact]
+    public async Task SetPostEventHoldDays_DropsAllHoldings_KeepsProjection()
+    {
+        await PrimeAsync(UserA, UserB);
+
+        await _decorator.SetPostEventHoldDaysAsync(60, UserC, TestContext.Current.CancellationToken);
+
+        await _sync.Received(1).SetPostEventHoldDaysAsync(60, UserC, Arg.Any<CancellationToken>());
+        await AssertReloadedAsync(orders: false, reloaded: [UserA, UserB], kept: []);
+    }
+
+    [HumansFact]
     public async Task ReadPassThroughs_KeepBothSlicesCached()
     {
         var ct = TestContext.Current.CancellationToken;

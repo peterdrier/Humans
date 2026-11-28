@@ -61,6 +61,15 @@ public interface ITicketingPlatform : IApplicationService
     [ExternalWrite]
     Task ErasePersonalDataAsync(string platformOrderId, string email, CancellationToken ct = default);
 
+    /// <summary>
+    /// GDPR erasure for a whole event, once its post-event hold has passed: removes the personal data the platform keeps
+    /// for <paramref name="platformEventRef"/> that <see cref="ErasePersonalDataAsync"/> cannot reach (order logs, payment
+    /// billing details). Tickets calls it once per event. Idempotent. Throws when it could not, so the next run retries;
+    /// a no-op for a platform that keeps no such data.
+    /// </summary>
+    [ExternalWrite]
+    Task EraseEventPersonalDataAsync(string? platformEventRef, CancellationToken ct = default);
+
     /// <summary>What an admin needs to connect this platform, shown on Tickets' platforms page. Never throws.</summary>
     PlatformSetup Setup { get; }
 

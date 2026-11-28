@@ -180,6 +180,7 @@ public sealed class Section :
         services.AddScoped<TicketCheckoutReconcileJob>();
         services.AddScoped<TicketReconJob>();
         services.AddScoped<TicketResaleRefundJob>();
+        services.AddScoped<TicketEventErasureJob>();
     }
 
     string IIssueQueueOwner.QueueKey => "Tickets";
@@ -277,6 +278,9 @@ public sealed class Section :
 
         // Evening in Spain (cron is UTC): pays the resale refunds whose buyer's order has held.
         yield return new RecurringJobDescriptor("tickets-resale-refund-batch", typeof(TicketResaleRefundJob), "0 19 * * *");
+
+        // After users-account-deletions (00:00 UTC), so held deletions erase their orders before the event's data goes.
+        yield return new RecurringJobDescriptor("tickets-event-erasure", typeof(TicketEventErasureJob), "0 5 * * *");
     }
 
     IEnumerable<SettingsTab> ISectionSettings.Tabs() =>

@@ -271,6 +271,57 @@ internal sealed partial class PretixPlatform(
         }
     }
 
+    /// <summary>Waits between polls of a shred, which pretix asks to be at least a second apart.</summary>
+    internal TimeSpan ShredPollDelay { get; set; } = TimeSpan.FromSeconds(2);
+
+    /// <summary>About ten minutes at the default delay; the next run starts over if pretix is slower.</summary>
+    private const int ShredPollCap = 300;
+
+    /// <summary>
+    /// Runs every shredder pretix offers for the event: the order log's old emails and the Stripe plugin's billing details
+    /// go only this way. pretix shreds only an event that is over and offline, so the shop is taken offline first.
+    /// Invoices are off on Humans' events (<c>deploy/pretix/bootstrap.py</c>), so no tax record is lost.
+    /// </summary>
+    public async Task EraseEventPersonalDataAsync(string? platformEventRef, CancellationToken ct = default)
+    {
+        EnsureConfigured();
+        if (string.IsNullOrWhiteSpace(platformEventRef))
+            throw new TicketingPlatformException("pretix needs the event's slug as PlatformEventRef.");
+        var eventPath = EventPath(platformEventRef);
+
+        var ev = await SendAsync<PretixEvent>(HttpMethod.Get, eventPath, body: null, ct);
+        if (ev.Live)
+            await SendAsync<JsonElement>(HttpMethod.Patch, eventPath, new JsonObject { ["live"] = false }, ct);
+
+        var shredders = await ReadAllPagesAsync<PretixShredder>($"{eventPath}shredders/", ct);
+        if (shredders.Count == 0)
+            return;
+        var export = await SendAsync<PretixShredExport>(HttpMethod.Post, $"{eventPath}shredders/export/",
+            new JsonObject { ["shredders"] = new JsonArray([.. shredders.Select(s => (JsonNode?)s.Identifier)]) }, ct);
+
+        // The shred URL answers 409 until the export it shreds from is ready.
+        var started = await PollShredAsync(HttpMethod.Post, export.Shred, HttpStatusCode.Accepted, ct);
+        var status = Deserialize<PretixShredStarted>(started.Body).Status;
+        await PollShredAsync(HttpMethod.Get, status, HttpStatusCode.OK, ct);
+        logger.LogInformation("pretix shredded event {Event} with {Shredders}", platformEventRef,
+            string.Join(", ", shredders.Select(s => s.Identifier)));
+    }
+
+    private async Task<RawResponse> PollShredAsync(HttpMethod method, string url, HttpStatusCode done, CancellationToken ct)
+    {
+        for (var attempt = 0; attempt < ShredPollCap; attempt++)
+        {
+            var response = await SendRawAsync(method, url, body: null, ct);
+            if (response.Status == done)
+                return response;
+            if (response.Status != HttpStatusCode.Conflict)
+                throw new HttpRequestException(
+                    $"pretix shred {method} {url} failed with {(int)response.Status}: {response.Body}", null, response.Status);
+            await Task.Delay(ShredPollDelay, ct);
+        }
+        throw new HttpRequestException($"pretix shred {method} {url} still running after {ShredPollCap} polls.");
+    }
+
     public PlatformSetup Setup => new(
         "pretix",
         Hosting(),
@@ -282,7 +333,7 @@ internal sealed partial class PretixPlatform(
                 !string.IsNullOrWhiteSpace(Settings.BaseUrl), NullIfBlank(Settings.BaseUrl)),
             new("Pretix:Organizer", "Organizer slug", IsSecret: false, !string.IsNullOrWhiteSpace(Settings.Organizer),
                 NullIfBlank(Settings.Organizer)),
-            new("PRETIX_API_TOKEN", "Team API token with order read and write on the events Humans sells", IsSecret: true,
+            new("PRETIX_API_TOKEN", "Team API token with order read and write, and general event settings write (to take a shop offline for the shred), on the events Humans sells", IsSecret: true,
                 !string.IsNullOrWhiteSpace(Settings.ApiToken), null),
             new("PRETIX_WEBHOOK_SECRET", "The secret in the webhook URL below", IsSecret: true,
                 !string.IsNullOrWhiteSpace(Settings.WebhookSecret), null),
@@ -884,6 +935,12 @@ internal sealed partial class PretixPlatform(
         int LocalId, string State, decimal Amount, string Provider, string? PaymentDate, JsonElement? Details = null);
 
     private sealed record PretixEventSlug(string Slug);
+
+    private sealed record PretixShredder(string Identifier);
+
+    private sealed record PretixShredExport(string Download, string Shred);
+
+    private sealed record PretixShredStarted(string Status);
 
     internal sealed record PretixRefund(
         int LocalId, string State, decimal Amount, int? Payment, string? Comment, string? Provider,
