@@ -192,7 +192,6 @@ internal static class CantinaRosterCalculation
         foreach (var profile in uniqueProfiles)
         {
             var chips = pickChips(profile);
-            if (chips is null) continue;
 
             foreach (var chip in chips)
             {
