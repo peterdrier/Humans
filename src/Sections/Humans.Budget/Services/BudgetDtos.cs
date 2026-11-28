@@ -19,15 +19,6 @@ internal sealed record BudgetGroupSummarySnapshot(
     bool IsRestricted,
     bool IsDepartmentGroup);
 
-internal sealed record BudgetAuditLogSnapshot(
-    string EntityType,
-    string? FieldName,
-    string? OldValue,
-    string? NewValue,
-    string Description,
-    Guid? ActorUserId,
-    Instant OccurredAt);
-
 internal sealed record EnsureTicketingGroupResult(bool Created, string Message);
 
 internal sealed record TicketingProjectionUpdateCommand(

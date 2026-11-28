@@ -1,5 +1,7 @@
+using Humans.AuditLog.Contracts;
 using Humans.Base.Authorization;
 using Humans.Base.Models.Tables;
+using Humans.Base.Extensions;
 using Humans.Base.Hosting;
 using Humans.Base.Interfaces;
 using Humans.Budget.Authorization;
@@ -24,6 +26,7 @@ public sealed class Section :
     ISection,
     IIssueQueueOwner,
     ISectionAdminNav,
+    ISectionDataMigrations,
     ISectionJobs,
     ISectionNav,
     ISectionPermissions
@@ -37,6 +40,7 @@ public sealed class Section :
             [BudgetYearStatus.Closed] = "bg-secondary",
         });
 
+        services.AddSingleton<IAuditActionContributor, BudgetAuditActions>();
         services.AddSectionDbContext<BudgetDbContext>(sentinelTable: "budget_years");
 
         services.AddSingleton<IBudgetRepository, BudgetRepository>();
@@ -72,6 +76,22 @@ public sealed class Section :
             new("Overview", "BudgetAdmin", "Index", null, null, "fa-solid fa-coins", FinancePolicies.Read)
         ])
     ];
+
+    IEnumerable<DataMigration> ISectionDataMigrations.Migrations() =>
+    [
+        new("budget.audit-log-to-audit", "Budget",
+            "Copy the budget change log into the audit log's temporary side",
+            "The budget_audit_logs table, in its drop PR",
+            AuditCopyStatusAsync, ApplyAuditCopyAsync),
+    ];
+
+    private static async Task<DataMigrationStatus> AuditCopyStatusAsync(IServiceProvider sp, CancellationToken ct) =>
+        new(["When", "Entity", "Description"],
+            [.. (await sp.GetRequiredService<BudgetService>().GetPendingAuditCopiesAsync(ct))
+                .Select(r => (IReadOnlyList<string>)[r.OccurredAt.ToIso8601(), r.EntityType, r.Description])]);
+
+    private static Task<int> ApplyAuditCopyAsync(IServiceProvider sp, Guid actorUserId, CancellationToken ct) =>
+        sp.GetRequiredService<BudgetService>().CopyAuditLogToAuditAsync(actorUserId, ct);
 
     IEnumerable<RecurringJobDescriptor> ISectionJobs.Jobs(IServiceProvider services)
     {

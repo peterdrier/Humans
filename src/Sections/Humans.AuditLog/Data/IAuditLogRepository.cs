@@ -47,6 +47,12 @@ internal interface IAuditLogRepository : IRepository
     /// <summary>Temporary side only: entries naming this exact user id as actor, entity or related entity.</summary>
     Task<int> DeleteTemporaryForUserAsync(Guid userId, CancellationToken ct = default);
 
+    /// <summary>The ones among <paramref name="ids"/> on the temporary side. Goes with <c>ITemporaryAuditImport</c>.</summary>
+    Task<IReadOnlySet<Guid>> GetTemporaryIdsAsync(IReadOnlyCollection<Guid> ids, CancellationToken ct = default);
+
+    /// <summary>Temporary side only, in one save. Goes with <c>ITemporaryAuditImport</c>.</summary>
+    Task AddTemporaryRangeAsync(IReadOnlyList<AuditLogEntrySnapshot> entries, CancellationToken ct = default);
+
     /// <summary>Oldest first, uncapped. Goes with the Google columns.</summary>
     Task<IReadOnlyList<AuditLogEntry>> GetLegacyGoogleSyncEntriesAsync(CancellationToken ct = default);
 }

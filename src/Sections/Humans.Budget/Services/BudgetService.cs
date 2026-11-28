@@ -1,5 +1,6 @@
 using System.Globalization;
 using Humans.Base.Extensions;
+using Humans.AuditLog.Contracts;
 using Humans.Budget.Contracts;
 using Humans.Budget.Data;
 using Humans.Teams.Contracts;
@@ -10,9 +11,10 @@ using Humans.Users.Contracts;
 
 namespace Humans.Budget.Services;
 
-/// <summary>budget_audit_logs is append-only.</summary>
 internal sealed class BudgetService(
     IBudgetRepository repository,
+    IAuditLogService auditLogService,
+    ITemporaryAuditImport auditImport,
     ITeamService teamService,
     IUserService userService,
     IClock clock,
@@ -20,6 +22,8 @@ internal sealed class BudgetService(
 {
     /// <summary>GDPR export JSON key.</summary>
     internal const string BudgetAuditLog = "BudgetAuditLog";
+
+    private const string TicketingSyncJobName = "Ticketing budget sync";
 
     public async Task<BudgetSaveResult<BudgetGroupDetail>> CreateGroupAsync(
         Guid budgetYearId, string name, bool isRestricted, Guid actorUserId)
@@ -29,8 +33,10 @@ internal sealed class BudgetService(
 
         var now = clock.GetCurrentInstant();
 
+        var changes = new List<BudgetChange>();
         var group = await repository.CreateGroupAsync(
-            budgetYearId, name, isRestricted, actorUserId, now);
+            budgetYearId, name, isRestricted, changes, now);
+        await AuditAsync(changes, actorUserId);
 
         logger.LogInformation(
             "Created budget group '{Name}' in year {YearId}", name, budgetYearId);
@@ -46,8 +52,10 @@ internal sealed class BudgetService(
 
         var now = clock.GetCurrentInstant();
 
+        var changes = new List<BudgetChange>();
         var ok = await repository.UpdateGroupAsync(
-            groupId, name, sortOrder, isRestricted, actorUserId, now);
+            groupId, name, sortOrder, isRestricted, changes, now);
+        await AuditAsync(changes, actorUserId);
         if (!ok)
             return new(Refusal: $"Budget group {groupId} not found");
         return new();
@@ -57,7 +65,9 @@ internal sealed class BudgetService(
     {
         var now = clock.GetCurrentInstant();
 
-        var ok = await repository.DeleteGroupAsync(groupId, actorUserId, now);
+        var changes = new List<BudgetChange>();
+        var ok = await repository.DeleteGroupAsync(groupId, changes, now);
+        await AuditAsync(changes, actorUserId);
         if (!ok)
             return new(Refusal: $"Budget group {groupId} not found");
 
@@ -77,8 +87,10 @@ internal sealed class BudgetService(
 
         var now = clock.GetCurrentInstant();
 
+        var changes = new List<BudgetChange>();
         var category = await repository.CreateCategoryAsync(
-            budgetGroupId, name, allocatedAmount, expenditureType, teamId, actorUserId, now);
+            budgetGroupId, name, allocatedAmount, expenditureType, teamId, changes, now);
+        await AuditAsync(changes, actorUserId);
 
         logger.LogInformation(
             "Created budget category '{Name}' in group {GroupId}", name, budgetGroupId);
@@ -98,8 +110,10 @@ internal sealed class BudgetService(
 
         var now = clock.GetCurrentInstant();
 
+        var changes = new List<BudgetChange>();
         var ok = await repository.UpdateCategoryAsync(
-            categoryId, name, allocatedAmount, expenditureType, actorUserId, now);
+            categoryId, name, allocatedAmount, expenditureType, changes, now);
+        await AuditAsync(changes, actorUserId);
         if (!ok)
             return new(Refusal: $"Budget category {categoryId} not found");
         return new();
@@ -109,7 +123,9 @@ internal sealed class BudgetService(
     {
         var now = clock.GetCurrentInstant();
 
-        var ok = await repository.DeleteCategoryAsync(categoryId, actorUserId, now);
+        var changes = new List<BudgetChange>();
+        var ok = await repository.DeleteCategoryAsync(categoryId, changes, now);
+        await AuditAsync(changes, actorUserId);
         if (!ok)
             return new(Refusal: $"Budget category {categoryId} not found");
 
@@ -143,7 +159,9 @@ internal sealed class BudgetService(
             ExpectedDate: expectedDate,
             VatRate: vatRate);
 
-        await repository.CreateLineItemAsync(draft, actorUserId, now);
+        var changes = new List<BudgetChange>();
+        await repository.CreateLineItemAsync(draft, changes, now);
+        await AuditAsync(changes, actorUserId);
 
         logger.LogInformation(
             "Created line item '{Description}' in category {CategoryId}",
@@ -178,7 +196,9 @@ internal sealed class BudgetService(
             ExpectedDate: expectedDate,
             VatRate: vatRate);
 
-        var ok = await repository.UpdateLineItemAsync(update, actorUserId, now);
+        var changes = new List<BudgetChange>();
+        var ok = await repository.UpdateLineItemAsync(update, changes, now);
+        await AuditAsync(changes, actorUserId);
         if (!ok)
             return new(Refusal: $"Budget line item {lineItemId} not found");
         return new();
@@ -216,7 +236,9 @@ internal sealed class BudgetService(
     {
         var now = clock.GetCurrentInstant();
 
-        var ok = await repository.DeleteLineItemAsync(lineItemId, actorUserId, now);
+        var changes = new List<BudgetChange>();
+        var ok = await repository.DeleteLineItemAsync(lineItemId, changes, now);
+        await AuditAsync(changes, actorUserId);
         if (!ok)
             return new(Refusal: $"Budget line item {lineItemId} not found");
 
@@ -254,11 +276,54 @@ internal sealed class BudgetService(
             StripeFeeFixed: stripeFeeFixed,
             PlatformFeePercent: platformFeePercent);
 
+        var changes = new List<BudgetChange>();
         var created = await repository.UpdateTicketingProjectionAsync(
-            update, actorUserId, now, ct, refreshProjections ? now.InUtc().Date : null);
+            update, changes, now, ct, refreshProjections ? now.InUtc().Date : null);
+        await AuditAsync(changes, actorUserId);
 
         logger.LogInformation("Updated ticketing projection for group {GroupId}", budgetGroupId);
         return new(created);
+    }
+
+    /// <summary>After the save: a null actor is the nightly ticketing sync.</summary>
+    private async Task AuditAsync(IEnumerable<BudgetChange> changes, Guid? actorUserId)
+    {
+        foreach (var change in changes)
+        {
+            if (actorUserId is { } actor)
+                await auditLogService.LogAsync(BudgetAuditActions.BudgetChanged, change.EntityType, change.EntityId,
+                    change.Description, actor, change.BudgetYearId, nameof(BudgetYear));
+            else
+                await auditLogService.LogAsync(BudgetAuditActions.BudgetChanged, change.EntityType, change.EntityId,
+                    change.Description, TicketingSyncJobName, change.BudgetYearId, nameof(BudgetYear));
+        }
+    }
+
+    /// <summary>Temporary: goes with <c>budget_audit_logs</c>.</summary>
+    internal async Task<IReadOnlyList<TemporaryAuditImportRow>> GetPendingAuditCopiesAsync(CancellationToken ct = default)
+    {
+        var rows = await repository.GetLegacyAuditLogsAsync(ct);
+        var imported = await auditImport.GetImportedIdsAsync(rows.Select(r => r.Id).ToList(), ct);
+        return rows
+            .Where(r => !imported.Contains(r.Id))
+            .Select(r => new TemporaryAuditImportRow(r.Id, BudgetAuditActions.BudgetChanged, r.EntityType, r.EntityId,
+                r.ActorUserId is null ? $"{TicketingSyncJobName}: {r.Description}" : r.Description,
+                r.OccurredAt, r.ActorUserId, r.BudgetYearId, nameof(BudgetYear)))
+            .ToList();
+    }
+
+    /// <summary>Temporary: goes with <c>budget_audit_logs</c>. Audits one entry per budget year copied.</summary>
+    internal async Task<int> CopyAuditLogToAuditAsync(Guid actorUserId, CancellationToken ct = default)
+    {
+        var pending = await GetPendingAuditCopiesAsync(ct);
+        var written = await auditImport.ImportAsync(pending, ct);
+        foreach (var year in pending.GroupBy(r => r.RelatedEntityId!.Value))
+        {
+            await auditLogService.LogAsync(BudgetAuditActions.BudgetAuditLogCopied, nameof(BudgetYear), year.Key,
+                $"Copied {year.Count()} budget change entries into the audit log", actorUserId);
+        }
+
+        return written;
     }
 
     public BudgetSummaryResult ComputeBudgetSummary(IReadOnlyList<BudgetGroupDetail> groups) =>
@@ -277,8 +342,10 @@ internal sealed class BudgetService(
         var now = clock.GetCurrentInstant();
         var today = now.InUtc().Date;
 
+        var changes = new List<BudgetChange>();
         var changed = await repository.SyncTicketingActualsAsync(
-            budgetYearId, weeklyActuals, today, actorUserId, now, ct);
+            budgetYearId, weeklyActuals, today, changes, now, ct);
+        await AuditAsync(changes, actorUserId);
 
         logger.LogInformation(
             "Ticketing budget sync: {Created} line items created/updated for {Weeks} actual weeks + projections",
@@ -520,19 +587,6 @@ internal sealed class BudgetService(
     public Task<Guid?> GetLineItemCategoryIdAsync(Guid id, CancellationToken ct = default) =>
         repository.GetLineItemCategoryIdAsync(id, ct);
 
-    public async Task<IReadOnlyList<BudgetAuditLogSnapshot>> GetAuditLogAsync(Guid? budgetYearId, CancellationToken ct = default)
-    {
-        var entries = await repository.GetAuditLogAsync(budgetYearId, ct);
-        return entries.Select(e => new BudgetAuditLogSnapshot(
-            e.EntityType,
-            e.FieldName,
-            e.OldValue,
-            e.NewValue,
-            e.Description,
-            e.ActorUserId,
-            e.OccurredAt)).ToList();
-    }
-
     public async Task<int> GetProjectedRemainingTicketsAsync(
         Guid budgetGroupId, CancellationToken ct = default)
     {
@@ -556,10 +610,11 @@ internal sealed class BudgetService(
             Year: year,
             Name: name,
             BudgetableTeams: teamRefs,
-            ActorUserId: actorUserId,
             Now: now);
 
-        await repository.CreateYearWithScaffoldAsync(draft);
+        var changes = new List<BudgetChange>();
+        await repository.CreateYearWithScaffoldAsync(draft, changes);
+        await AuditAsync(changes, actorUserId);
 
         logger.LogInformation(
             "Created budget year {Year} ({Name}) with {TeamCount} department categories",
@@ -578,7 +633,9 @@ internal sealed class BudgetService(
     {
         var now = clock.GetCurrentInstant();
 
-        var result = await repository.UpdateYearStatusAsync(yearId, status, actorUserId, now);
+        var changes = new List<BudgetChange>();
+        var result = await repository.UpdateYearStatusAsync(yearId, status, changes, now);
+        await AuditAsync(changes, actorUserId);
         if (!result.Succeeded) return result;
 
         logger.LogInformation(
@@ -598,8 +655,10 @@ internal sealed class BudgetService(
 
         var now = clock.GetCurrentInstant();
 
+        var changes = new List<BudgetChange>();
         var result = await repository.UpdateYearAsync(
-            yearId, year, name, platformEventId, actorUserId, now);
+            yearId, year, name, platformEventId, changes, now);
+        await AuditAsync(changes, actorUserId);
         return result;
     }
 
@@ -607,7 +666,9 @@ internal sealed class BudgetService(
     {
         var now = clock.GetCurrentInstant();
 
-        var result = await repository.ArchiveYearAsync(yearId, actorUserId, now);
+        var changes = new List<BudgetChange>();
+        var result = await repository.ArchiveYearAsync(yearId, changes, now);
+        await AuditAsync(changes, actorUserId);
         if (!result.Succeeded) return result;
 
         logger.LogInformation("Archived budget year {YearId}", yearId);
@@ -627,8 +688,10 @@ internal sealed class BudgetService(
 
         var teamRefs = await GetBudgetableTeamsAsync();
 
+        var changes = new List<BudgetChange>();
         var created = await repository.SyncDepartmentCategoriesAsync(
-            budgetYearId, teamRefs, actorUserId, now);
+            budgetYearId, teamRefs, changes, now);
+        await AuditAsync(changes, actorUserId);
 
         if (created > 0)
             logger.LogInformation(
@@ -642,7 +705,9 @@ internal sealed class BudgetService(
     {
         var now = clock.GetCurrentInstant();
 
-        var created = await repository.EnsureTicketingGroupAsync(budgetYearId, actorUserId, now);
+        var changes = new List<BudgetChange>();
+        var created = await repository.EnsureTicketingGroupAsync(budgetYearId, changes, now);
+        await AuditAsync(changes, actorUserId);
 
         if (created)
             logger.LogInformation("Added ticketing group to budget year {YearId}", budgetYearId);

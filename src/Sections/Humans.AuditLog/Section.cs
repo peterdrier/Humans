@@ -55,6 +55,8 @@ public sealed class Section : ISection, ISectionAdminNav, ISectionAdminTiles, IS
         services.AddScoped<IRetentionPeriodContributor>(sp => sp.GetRequiredService<AuditLogService>());
         // Temporary: goes with the six Google columns.
         services.AddScoped<ILegacyGoogleSyncAuditReader>(sp => sp.GetRequiredService<AuditLogService>());
+        // Temporary: goes when Budget's and Events' history tables are dropped.
+        services.AddScoped<ITemporaryAuditImport>(sp => sp.GetRequiredService<AuditLogService>());
 
         services.AddScoped<AuditViewerService>();
         services.AddScoped<IAuditViewerService>(sp => sp.GetRequiredService<AuditViewerService>());

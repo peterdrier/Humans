@@ -1,6 +1,3 @@
-@model IReadOnlyList<Humans.Budget.Services.BudgetAuditLogSnapshot>
-@using Humans.Base.Models.Tables
-@using Microsoft.AspNetCore.Html
 @{
     ViewData["Title"] = "Budget changes";
     var yearId = ViewBag.YearId as Guid?;
@@ -34,51 +31,13 @@
     </div>
 }
 
-@if (Model.Count > 0)
+@if (yearId is { } selectedYearId)
 {
-    Func<BudgetAuditLogSnapshot, IHtmlContent> whoCell =
-        @<text>
-            @if (item.ActorUserId is { } actorId)
-            {
-                <vc:human user-id="@actorId" />
-            }
-            else
-            {
-                <span class="text-muted">System</span>
-            }
-        </text>;
-    Func<BudgetAuditLogSnapshot, IHtmlContent> entityTypeCell =
-        @<text><span class="badge bg-secondary">@item.EntityType</span></text>;
-    Func<BudgetAuditLogSnapshot, IHtmlContent> oldValueCell = @<text>
-        @if (!string.IsNullOrEmpty(item.OldValue))
-        {
-            <span class="text-danger">@item.OldValue</span>
-        }
-    </text>;
-    Func<BudgetAuditLogSnapshot, IHtmlContent> newValueCell = @<text>
-        @if (!string.IsNullOrEmpty(item.NewValue))
-        {
-            <span class="text-success">@item.NewValue</span>
-        }
-    </text>;
-    var auditTable = TableModel.For(Model)
-        .Column("Time", r => r.OccurredAt.ToDateTimeUtc().ToString("g", System.Globalization.CultureInfo.CurrentCulture), c => c.Css("text-nowrap"))
-        .Template("Who", whoCell)
-        .Template("Entity Type", entityTypeCell)
-        .Column("Description", r => r.Description)
-        .Column("Field", r => r.FieldName ?? "")
-        .Template("Old Value", oldValueCell)
-        .Template("New Value", newValueCell)
-        .Build();
-    <div class="card">
-        <partial name="_Table" model="auditTable" />
-    </div>
+    <vc:audit-log entity-id="@selectedYearId" include-related="true" limit="500" layout="table"
+                  columns="when,actor,description" title="Budget changes" empty-text="No budget changes." />
 }
 else
 {
-    <div class="card">
-        <div class="card-body text-center py-4 text-muted">
-            No audit log entries found.
-        </div>
-    </div>
+    <vc:audit-log entity-ids="@years.Select(y => y.Id).ToList()" include-related="true" limit="500" layout="table"
+                  columns="when,actor,description" title="Budget changes" empty-text="No budget changes." />
 }

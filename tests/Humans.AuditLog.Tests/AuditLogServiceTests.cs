@@ -475,6 +475,36 @@ public class AuditLogServiceTests : IDisposable
         return entry;
     }
 
+    [HumansFact]
+    public async Task ImportAsync_RowAlreadyImported_IsSkipped()
+    {
+        var ct = TestContext.Current.CancellationToken;
+        var first = ImportRow(TestActions.BudgetLineChanged);
+        var second = ImportRow(TestActions.BudgetLineChanged);
+        await _service.ImportAsync([first], ct);
+
+        var written = await _service.ImportAsync([first, second], ct);
+
+        written.Should().Be(1);
+        var stored = await _dbContext.TemporaryAuditLogEntries.AsNoTracking().ToListAsync(ct);
+        stored.Select(e => e.Id).Should().BeEquivalentTo([first.Id, second.Id]);
+        stored.Single(e => e.Id == first.Id).OccurredAt.Should().Be(first.OccurredAt);
+        (await _dbContext.AuditLogEntries.CountAsync(ct)).Should().Be(0);
+    }
+
+    [HumansFact]
+    public async Task ImportAsync_ForeverAction_Throws()
+    {
+        var act = () => _service.ImportAsync([ImportRow(TestActions.VolunteerApproved)], TestContext.Current.CancellationToken);
+
+        await act.Should().ThrowAsync<InvalidOperationException>();
+        (await _dbContext.TemporaryAuditLogEntries.CountAsync(TestContext.Current.CancellationToken)).Should().Be(0);
+    }
+
+    private static TemporaryAuditImportRow ImportRow(AuditActionDefinition action) =>
+        new(Guid.NewGuid(), action, "BudgetLineItem", Guid.NewGuid(), "Changed", Instant.FromUtc(2026, 1, 5, 9, 0),
+            Guid.NewGuid(), Guid.NewGuid(), "BudgetYear");
+
     /// <summary>A record listing the given ids as accounts merged into <paramref name="userId"/>.</summary>
     private static UserInfo WithMergedIds(Guid userId, params Guid[] mergedUserIds)
     {

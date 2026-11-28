@@ -19,7 +19,8 @@ internal sealed class AuditLogService(
     AuditActionRegistry registry,
     IClock clock,
     ILogger<AuditLogService> logger)
-    : IAuditLogService, IAuditLogReader, IUserDataContributor, ILegacyGoogleSyncAuditReader, IRetentionPeriodContributor
+    : IAuditLogService, IAuditLogReader, IUserDataContributor, ILegacyGoogleSyncAuditReader, IRetentionPeriodContributor,
+      ITemporaryAuditImport
 {
     internal const string AuditLog = "AuditLog";
     internal const string AuditLogTemporary = "AuditLogTemporary";
@@ -171,6 +172,25 @@ internal sealed class AuditLogService(
     /// <summary>Temporary side only: the permanent table's triggers refuse every delete.</summary>
     public Task<int> DeleteOlderThanAsync(Instant cutoff, CancellationToken ct = default) =>
         repo.DeleteTemporaryBeforeAsync(cutoff, ct);
+
+    public Task<IReadOnlySet<Guid>> GetImportedIdsAsync(IReadOnlyCollection<Guid> ids, CancellationToken ct = default) =>
+        repo.GetTemporaryIdsAsync(ids, ct);
+
+    public async Task<int> ImportAsync(IReadOnlyList<TemporaryAuditImportRow> rows, CancellationToken ct = default)
+    {
+        if (rows.FirstOrDefault(r => r.Action.Kept != AuditKept.RetentionPeriod) is { } forever)
+            throw new InvalidOperationException($"{forever.Action.Name} is kept forever; imports go to the temporary side only.");
+
+        var imported = await repo.GetTemporaryIdsAsync(rows.Select(r => r.Id).ToList(), ct);
+        var pending = rows
+            .Where(r => !imported.Contains(r.Id))
+            .Select(r => new AuditLogEntrySnapshot(r.Id, r.Action.Name, r.EntityType, r.EntityId, r.Description,
+                r.OccurredAt, r.ActorUserId, r.RelatedEntityId, r.RelatedEntityType, AuditKept.RetentionPeriod))
+            .ToList();
+        if (pending.Count > 0)
+            await repo.AddTemporaryRangeAsync(pending, ct);
+        return pending.Count;
+    }
 
     public async Task<IReadOnlyList<LegacyGoogleSyncAuditRow>> GetLegacyGoogleSyncRowsAsync(
         CancellationToken ct = default)

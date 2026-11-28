@@ -3,12 +3,12 @@
   src/Sections/Humans.Budget/Contracts/**
 -->
 <!-- freshness:flag-on-change
-  Budget lifecycle, restricted/ticketing-group rules, append-only audit log, and resource-based authorization — review when Budget services/entities/controllers/auth handlers change.
+  Budget lifecycle, restricted/ticketing-group rules, budget changes on Audit's temporary side, and resource-based authorization — review when Budget services/entities/controllers/auth handlers change.
 -->
 
 # Budget — Section Invariants
 
-Fiscal-year budgets (Draft/Active/Closed), groups, categories, line items, append-only audit log.
+Fiscal-year budgets (Draft/Active/Closed), groups, categories, line items, and their change history in Audit.
 
 ## Concepts
 
@@ -16,7 +16,7 @@ Fiscal-year budgets (Draft/Active/Closed), groups, categories, line items, appen
 - A **Budget Group** is a second-level grouping within a year (e.g., "Departments", "Site Infrastructure"). Groups can be flagged as **restricted**, hiding them from people with Edit budget.
 - A **Budget Category** is a third-level container within a group that holds the allocated budget amount. Categories can be linked to a department.
 - A **Budget Line Item** is a detail row within a category — a free-text description with an amount, expenditure type (CapEx or OpEx), and an optional responsible team.
-- The **Audit Log** is an append-only record of every field-level change to budget entities.
+- **Budget changes** are audited as `BudgetChanged` on Audit's temporary side (kept for the app-wide retention period), each related to its budget year. The legacy `budget_audit_logs` table is no longer written.
 
 ## Data Model
 
@@ -118,7 +118,7 @@ Detail row within a category.
 
 ### BudgetAuditLog
 
-Append-only per design-rules.md, *Append-only entities*. `IBudgetRepository` exposes no add/update/delete surface for audit rows — each mutation method writes its own audit rows inside the same `SaveChanges` (the ticketing sync paths write one summary row per run that changed anything) — plus the reads: `GetAuditLogAsync`, `GetAuditEntriesForUsersAsync`.
+Retired: no longer written. The `budget.audit-log-to-audit` data migration on `/Debug/DataMigrations` copies its rows to Audit's temporary side, keeping each row's id, time and actor; the table is dropped in a later PR with Peter's OK. Reads left: `GetLegacyAuditLogsAsync` (the migration) and `GetAuditEntriesForUsersAsync` (GDPR export).
 
 **Table:** `budget_audit_logs`
 
@@ -246,9 +246,10 @@ Stored as string via `HasConversion<string>()`.
 - Projection materialization runs only inside parameter updates and actuals sync; there is no standalone refresh mutation. It upserts generated rows by category and canonical description, preserving their ids and timestamps when unchanged. Only obsolete generated projections are removed; actuals and manual lines remain. An actuals sync with no changes writes no audit entry.
 - The ticketing projection includes the event date in its final week, including when that date is a Monday and forms a one-day final week. Once the event date has passed, it emits no projected weeks. Preview and persisted projections bound each week before date addition and stop on the event date, including `9999-12-31`; neither path calculates an out-of-range Sunday or an exclusive end beyond the supported date range.
 - Line-item mutations return only expected refusal details. Their authorization lookup reads only the nullable parent category id; category detail remains the read path for editable line values.
-- Every create, update, or delete on a group, category, or line item generates a `BudgetAuditLog` entry recording old value, new value, actor, and timestamp; the ticketing sync paths write one summary entry per run that changed anything, with a null actor for the nightly job.
-- Audit values and descriptions preserve complete field changes without separate length caps;
+- Every create, update, or delete on a year, group, category, or line item adds a `BudgetChange` that `BudgetService` audits as `BudgetChanged` once the save commits; field edits spell out the old and new value in the description. The ticketing sync paths add one summary change per run that changed anything; the nightly job audits it as automation. An audit write that fails is logged and never undoes the budget change.
+- Audit descriptions preserve complete field changes without separate length caps;
   editing a valid line note (up to 2000 characters) cannot fail because its audit is longer.
+- `/Budget/Admin/AuditLog` renders `<vc:audit-log include-related>` keyed on the chosen year, or on every year for "All Years", newest 500.
 - "Sync Departments" creates a category for each department that does not already have one in the selected year.
 - `/Budget/Admin` index shows a consolidated accordion view: groups, categories with budget vs actual comparison, and inline line items. FinanceAdmin sees all summary data inline. Group and category headers share one column grid (Budget; Lines, the line-item sum; remaining; Holded, the booked actual) labelled once per group; only the three total cards carry the euro sign. Expanding a category shows its line items beside its Holded documents. The header carries Budget actions only; Finance pages are reached through Finance's own nav.
 - Category projections own the shared line-item total and available amount used by member/admin views and the summary. Cashflow-only rows never contribute to either amount; available is the signed allocation minus that total. These internal facts do not change the public read contract.
@@ -274,7 +275,7 @@ Stored as string via `HasConversion<string>()`.
 
 ## Triggers
 
-- `BudgetService.ContributeForUserAsync` (GDPR contributor) chain-follows merge tombstones via the resolved record's `UserInfo.AllUserIds` so `BudgetAuditLog` entries written under a now-merged source `ActorUserId` surface for the fold target. `BudgetAuditLog` is append-only (`design-rules.md`, *Append-only entities*) and stays attributed to the source User row by design.
+- `BudgetService.ContributeForUserAsync` (GDPR contributor) chain-follows merge tombstones via the resolved record's `UserInfo.AllUserIds` so legacy `BudgetAuditLog` entries written under a now-merged source `ActorUserId` surface for the fold target. New budget changes are exported by Audit's temporary slice.
 
 ## Cross-Section Dependencies
 
@@ -283,7 +284,8 @@ Stored as string via `HasConversion<string>()`.
 - **Users/Identity:** `IUserService.GetUserInfosAsync`, actor display names for audit log. `IUserService.GetUserInfoAsync`, the returned `UserInfo.AllUserIds` chain-follows merge tombstones on the `BudgetAuditLog` GDPR export so source-attributed entries surface for the fold target.
 - **Finance:** `IFinanceService.GetActualsForYearAsync` — the year page's per-category Holded figure (`BudgetAdminController`).
 - **Camps:** `ICampService` — the development demo seeder (`Services/DevelopmentBudgetSeeder.cs`) only.
-- **Gdpr:** implements `IUserDataContributor` (`BudgetService`) for the audit-log export.
+- **Gdpr:** implements `IUserDataContributor` (`BudgetService`) for the legacy audit-log export.
+- **AuditLog:** `IAuditLogService` for `BudgetChanged`; the temporary `ITemporaryAuditImport` for the data migration; `<vc:audit-log>` on the changes page.
 - **Issues:** implements `IIssueQueueOwner` on `Section` (see Issue queue).
 - **Admin:** Budget year lifecycle management is restricted to FinanceAdmin and Admin.
 
@@ -302,13 +304,13 @@ The internal `BudgetReader` owns year/category/line-item views, Edit budget scop
 - **Cross-section calls** route through `ITeamService` (`GetTeamsAsync` for team lookups), `IPermissionService` for Edit budget scope, and `IUserService.GetUserInfosAsync` for actor display names. The ticketing-actuals data flows *inbound* via `IBudgetManagement.SyncTicketingActualsAsync`, called by Budget's own `TicketingBudgetService` bridge. The year page also reads `IFinanceService.GetActualsForYearAsync` for the per-category Holded figure and the approved purchase docs behind it, which it lists under the category alongside the budget line items. The view orders those documents newest-first, then by document number with ordinal comparison; Finance supplies the amounts and documents without display ordering.
 - **Admin surface at `/Budget/Admin`.** `BudgetAdminController` (`Humans.Budget.Controllers`) owns Budget's own admin surface — years (`/Budget/Admin/Years` lists them all), groups, categories, line items, ticketing projection, audit log — at `[Route("Budget/Admin")]`. `/Finance` is Finance's own, not Budget's; see [`src/Sections/Humans.Finance/Docs/Finance.md`](../../Humans.Finance/Docs/Finance.md).
 - **Render test** — `tests/Humans.Integration.Tests/Controllers/BudgetPageRenderTests.cs`: every page renders with no raw `Budget_` key and no unbound `<vc:>` tag, in English and Spanish. General architecture coverage (`HUM0009`, `HUM0034`) applies to Budget code paths. No dedicated `BudgetArchitectureTests.cs` file exists.
-- **Repository shape** — `budget_audit_logs` is append-only (`design-rules.md`, *Append-only entities*); the CRUD mutation methods write their audit rows inside their own `SaveChanges` — the ticketing sync paths write one summary row per run that changed anything — and the repository's audit surface is read-only.
+- **Repository shape** — mutation methods take a `changes` collector instead of an actor and add each audited change to it; the service audits them after the save. `budget_audit_logs` is read-only until it is dropped.
 
 ### Touch-and-clean guidance
 
 - Do **not** re-add cross-domain navs (`Team`, `ResponsibleTeam`, `ActorUser`) or `.Include()` calls that traverse into any non-Budget entity. If you need a team name or actor display name alongside budget data, load the Budget aggregate first, then call `ITeamService` / `IUserService` to stitch the labels in memory.
 - New cross-section reads must go through the owning service interface (`ITeamService`, `IUserService`) — never `_dbContext`. Treat any new `DbContext` touch of another section's table as a regression.
-- Keep new audit-log writes using `AddAsync`-only semantics — never `Update` or `Remove` a `BudgetAuditLog` row, even in cleanup code (*Append-only entities*).
+- Never write `budget_audit_logs` again: new history goes to Audit through `BudgetChange`.
 
 ## Issue queue
 
@@ -320,4 +322,4 @@ issues filed against it — `FinanceAdmin`, plus `Admin`, which handles every qu
 discovers the declaration through DI and holds no list of sections; dropping the seam
 sends this section's stored issues to the Admin-only queue.
 
-Internal `BudgetYearManagement` owns year creation, status/edit/archive operations, department scaffolding/synchronization and ticketing-group setup. `BudgetService` retains its existing entry points. Budgetable-team selection/order, vendor-event normalization, timestamp evaluation, repository-owned audit writes, refusals and logger category are unchanged. Category, line-item and ticketing-projection mutations retain their existing amount/tax validation. No public contract or DI registration is added.
+Internal `BudgetYearManagement` owns year creation, status/edit/archive operations, department scaffolding/synchronization and ticketing-group setup. `BudgetService` retains its existing entry points. Budgetable-team selection/order, vendor-event normalization, timestamp evaluation, service-owned audit writes, refusals and logger category are unchanged. Category, line-item and ticketing-projection mutations retain their existing amount/tax validation. No public contract or DI registration is added.
