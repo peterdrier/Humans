@@ -43,6 +43,25 @@
 @* The CSS and script live in the partial so it renders right wherever it is hosted (dashboard and profile build
    strip). Repeated style tags on one page are harmless. *@
 <style>
+    /* High contrast turns colours black and white, so each state gets its own pattern (cells and legend). */
+    html[data-contrast="high"] body :is(.vt-cell, .legend-swatch).bg-success { background: #000 !important; }
+    html[data-contrast="high"] body :is(.vt-cell, .legend-swatch).bg-success-subtle {
+        background: repeating-linear-gradient(45deg, #000 0 2px, #fff 2px 6px) !important;
+    }
+    html[data-contrast="high"] body :is(.vt-cell, .legend-swatch).bg-danger {
+        background: repeating-linear-gradient(45deg, #000 0 2px, transparent 2px 6px),
+            repeating-linear-gradient(-45deg, #000 0 2px, #fff 2px 6px) !important;
+    }
+    html[data-contrast="high"] body :is(.vt-cell, .legend-swatch).bg-warning {
+        background: radial-gradient(#000 1.5px, #fff 2px) 0 0 / 6px 6px !important;
+    }
+    html[data-contrast="high"] body :is(.vt-cell, .legend-swatch).bg-primary {
+        background: repeating-linear-gradient(0deg, #000 0 2px, #fff 2px 6px) !important;
+    }
+    html[data-contrast="high"] body :is(.vt-cell, .legend-swatch).vt-dayoff {
+        background: repeating-linear-gradient(90deg, #000 0 1px, #fff 1px 6px) !important;
+    }
+    html[data-contrast="high"] body .vt-cell button { background: transparent !important; }
     /* Day-off cell: striped grey, signals "we know about this, intentionally
        not-here" without competing with the green/red/blue signals. */
     .vt-dayoff {

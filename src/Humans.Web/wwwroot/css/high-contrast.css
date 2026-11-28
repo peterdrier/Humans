@@ -54,14 +54,24 @@ html[data-contrast="high"] {
   --bs-link-color-rgb: 0, 0, 0;
 }
 
-/* Hard-coded colours anywhere still come out black on white. */
+/* Hard-coded text colours anywhere still come out black. */
 html[data-contrast="high"] body,
 html[data-contrast="high"] body * {
   color: #000 !important;
-  background-color: #fff !important;
   border-color: #000 !important;
   text-shadow: none !important;
   box-shadow: none !important;
+}
+
+/* Surfaces go white, status bands (bg-* utilities) included. Data cells, maps and charts keep their own
+   backgrounds: a view whose colours carry meaning adds its own high-contrast patterns (the Shifts heatmap). */
+html[data-contrast="high"] body,
+html[data-contrast="high"] body :where(.card, .card-header, .card-body, .card-footer, .card-shell, .frame,
+  .alert, .dropdown-menu, .modal-content, .modal-header, .modal-body, .modal-footer, .offcanvas, .popover,
+  .popover-body, .popover-header, .toast, .toast-header, .list-group-item, .form-control, .form-select,
+  .input-group-text, .badge, .btn, .nav-link, .page-link, .accordion-item, .accordion-button,
+  [class^="bg-"], [class*=" bg-"], [class^="text-bg-"], [class*=" text-bg-"], [class^="table-"], [class*=" table-"]) {
+  background-color: #fff !important;
 }
 
 html[data-contrast="high"] body {
@@ -93,10 +103,10 @@ html[data-contrast="high"] ::placeholder {
 
 /* Inverted: the header band, primary actions and selected states read as solid black. :where keeps
    these at the specificity of the black-on-white rule above, so the header's menus below can win. */
-html[data-contrast="high"] body :where(.navbar, .bg-dark, .btn-primary, .btn.active, .btn-check:checked + .btn,
+html[data-contrast="high"] body :where(.navbar, .m-nav, .sidebar, .bg-dark, .btn-primary, .btn.active, .btn-check:checked + .btn,
   .dropdown-item.active, .nav-pills .nav-link.active, .page-item.active .page-link, .progress-bar,
   .form-check-input:checked, .tooltip-inner),
-html[data-contrast="high"] body :where(.navbar, .bg-dark, .btn-primary, .btn.active, .btn-check:checked + .btn,
+html[data-contrast="high"] body :where(.navbar, .m-nav, .sidebar, .bg-dark, .btn-primary, .btn.active, .btn-check:checked + .btn,
   .dropdown-item.active, .nav-pills .nav-link.active, .page-item.active .page-link, .progress-bar) * {
   background-color: #000 !important;
   color: #fff !important;
@@ -108,15 +118,15 @@ html[data-contrast="high"] body .form-check-input:checked {
 }
 
 /* Menus open out of the header band and stay black on white. */
-html[data-contrast="high"] body .navbar .dropdown-menu,
-html[data-contrast="high"] body .navbar .dropdown-menu * {
+html[data-contrast="high"] body :is(.navbar, .m-nav) .dropdown-menu,
+html[data-contrast="high"] body :is(.navbar, .m-nav) .dropdown-menu * {
   background-color: #fff !important;
   color: #000 !important;
   border-color: #000 !important;
 }
 
-html[data-contrast="high"] body .navbar .dropdown-menu .dropdown-item.active,
-html[data-contrast="high"] body .navbar .dropdown-menu .dropdown-item.active * {
+html[data-contrast="high"] body :is(.navbar, .m-nav) .dropdown-menu .dropdown-item.active,
+html[data-contrast="high"] body :is(.navbar, .m-nav) .dropdown-menu .dropdown-item.active * {
   background-color: #000 !important;
   color: #fff !important;
 }
@@ -126,10 +136,17 @@ html[data-contrast="high"] :focus-visible {
   outline-offset: 2px !important;
 }
 
-html[data-contrast="high"] .navbar :focus-visible {
+/* The admin sidebar's current page: inverted black on white inside the black rail. */
+html[data-contrast="high"] body .sidebar a.active,
+html[data-contrast="high"] body .sidebar a.active * {
+  background-color: #fff !important;
+  color: #000 !important;
+}
+
+html[data-contrast="high"] :is(.navbar, .m-nav, .sidebar) :focus-visible {
   outline-color: #fff !important;
 }
 
-html[data-contrast="high"] .navbar .dropdown-menu :focus-visible {
+html[data-contrast="high"] :is(.navbar, .m-nav) .dropdown-menu :focus-visible {
   outline-color: #000 !important;
 }
