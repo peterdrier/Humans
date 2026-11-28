@@ -57,7 +57,7 @@ internal sealed class AgentAdminStatusService(
 
         var topDocs7Days = rows
             .Where(r => r.CreatedAt >= window7Days)
-            .SelectMany(r => r.FetchedDocs ?? Array.Empty<string>())
+            .SelectMany(r => r.FetchedDocs)
             .Where(slug => !string.IsNullOrEmpty(slug))
             .GroupBy(CanonicalDocSlug, StringComparer.OrdinalIgnoreCase)
             .Select(g => new AgentTopDoc(g.Key, g.Count()))
