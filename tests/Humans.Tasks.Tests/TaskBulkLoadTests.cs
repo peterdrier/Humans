@@ -1,5 +1,5 @@
 using AwesomeAssertions;
-using Humans.AuditLog.Contracts;
+using Humans.Audit.Contracts;
 using Humans.Tasks.Contracts;
 using Humans.Tasks.Domain;
 using Humans.Tasks.Services;

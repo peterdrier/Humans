@@ -1,6 +1,6 @@
 using AwesomeAssertions;
 using Humans.Base.Interfaces;
-using Humans.AuditLog.Contracts;
+using Humans.Audit.Contracts;
 using Humans.Camps.Contracts;
 using Humans.Containers.Contracts;
 using Humans.Containers.Data;
@@ -190,12 +190,12 @@ public sealed class ServicePlacementTests
 
         await _auditLog.Received(1).LogAsync(
             ContainersAuditActions.ContainerPlacementSaved,
-            AuditEntityTypes.ContainerPlacement,
+            ContainersAuditSubjectTypes.ContainerPlacement,
             container.Id,
             Arg.Any<string>(),
             ActorUserId,
             container.Id,
-            AuditEntityTypes.Container);
+            ContainersAuditSubjectTypes.Container);
     }
 
     [HumansFact]

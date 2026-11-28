@@ -81,7 +81,7 @@ Rules:
 1. One section owns each entity. If another section needs to read it, it calls
    the owning section's public service interface — never joins the table.
 2. Enums owned by this section live here too; a cross-section enum is
-   documented by the section that hosts it (e.g. AuditLog for AuditAction).
+   documented by the section that hosts it (e.g. Audit for AuditAction).
 3. If the entity is append-only per design-rules.md, *Append-only entities*, say so and name the
    enforcement (DB trigger, repository shape, architecture test).
 -->

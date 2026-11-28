@@ -50,14 +50,14 @@ public class ContainersArchitectureTests
     }
 
     [HumansFact]
-    public void AuditEntityTypes_AreLiterals_NotNameof()
+    public void AuditSubjectTypes_AreLiterals_NotNameof()
     {
         // These are literal string values we store in the DB. Pinned so a rename can't
         // quietly change them and orphan existing audit_log rows
         // (memory/code/type-name-as-persisted-string.md).
-        AuditEntityTypes.Container.Should().Be("Container");
-        AuditEntityTypes.ContainerPlacement.Should().Be("ContainerPlacement");
-        AuditEntityTypes.Camp.Should().Be("Camp");
+        ContainersAuditSubjectTypes.Container.Should().Be("Container");
+        ContainersAuditSubjectTypes.ContainerPlacement.Should().Be("ContainerPlacement");
+        ContainersAuditSubjectTypes.Camp.Should().Be("Camp");
     }
 
     [HumansFact]

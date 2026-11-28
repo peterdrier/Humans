@@ -1,5 +1,5 @@
 using System.Text;
-using Humans.AuditLog.Contracts;
+using Humans.Audit.Contracts;
 using Humans.Auth.Contracts;
 using Humans.Base.Authorization;
 using Humans.Base.Constants;
@@ -37,7 +37,7 @@ internal sealed class RoleService(
     IStringLocalizerFactory localizers) : IRoleManagementService
 {
     internal const string ExportSection = "Roles";
-    internal const string AuditEntityType = "Role";
+    internal const string AuditSubjectType = "Role";
 
     public async Task<IReadOnlyList<RoleInfo>> GetRolesAsync(CancellationToken ct = default) =>
         (await repository.GetAllAsync(ct)).Select(ToInfo).ToList();
@@ -159,9 +159,9 @@ internal sealed class RoleService(
         Apply(role, input, now);
         await repository.AddAsync(role, ct);
 
-        await audit.LogAsync(RolesAuditActions.RoleCreated, AuditEntityType, role.Id,
+        await audit.LogAsync(RolesAuditActions.RoleCreated, AuditSubjectType, role.Id,
             $"Role '{role.Name}' created on {await OwnerNameAsync(owner, ct)}{PermissionText(role)}",
-            actorUserId, relatedEntityId: owner.Id, relatedEntityType: owner.Kind);
+            actorUserId, targetId: owner.Id, targetType: owner.Kind);
 
         return new(ToInfo(role));
     }
@@ -195,9 +195,9 @@ internal sealed class RoleService(
         var change = string.Equals(permissionsBefore, permissionsAfter, StringComparison.Ordinal)
             ? string.Empty
             : $"; permissions changed from{(permissionsBefore.Length == 0 ? " none" : permissionsBefore)} to{(permissionsAfter.Length == 0 ? " none" : permissionsAfter)}";
-        await audit.LogAsync(RolesAuditActions.RoleUpdated, AuditEntityType, role.Id,
+        await audit.LogAsync(RolesAuditActions.RoleUpdated, AuditSubjectType, role.Id,
             $"Role '{role.Name}' on {await OwnerNameAsync(owner, ct)} updated{change}",
-            actorUserId, relatedEntityId: owner.Id, relatedEntityType: owner.Kind);
+            actorUserId, targetId: owner.Id, targetType: owner.Kind);
 
         return new(ToInfo(role));
     }
@@ -215,9 +215,9 @@ internal sealed class RoleService(
         if (!await repository.DeleteAsync(roleId, ct))
             return Refuse(localizer["Roles_Refusal_NoRole"]);
 
-        await audit.LogAsync(RolesAuditActions.RoleDeleted, AuditEntityType, role.Id,
+        await audit.LogAsync(RolesAuditActions.RoleDeleted, AuditSubjectType, role.Id,
             $"Role '{role.Name}' on {await OwnerNameAsync(owner, ct)} deleted with {role.Assignments.Count} holder(s)",
-            actorUserId, relatedEntityId: owner.Id, relatedEntityType: owner.Kind);
+            actorUserId, targetId: owner.Id, targetType: owner.Kind);
 
         return new(ToInfo(role));
     }
@@ -259,9 +259,9 @@ internal sealed class RoleService(
         if (!await repository.AddAssignmentAsync(assignment, ct))
             return Refuse(localizer["Roles_Refusal_Conflict"]);
 
-        await audit.LogAsync(RolesAuditActions.HolderAdded, AuditEntityType, role.Id,
+        await audit.LogAsync(RolesAuditActions.HolderAdded, AuditSubjectType, role.Id,
             $"Assigned to role '{role.Name}' on {await OwnerNameAsync(owner, ct)}",
-            actorUserId, relatedEntityId: userId, relatedEntityType: AuditSubjectTypes.User);
+            actorUserId, targetId: userId, targetType: AuditSubjectTypes.User);
 
         role.Assignments.Add(assignment);
         return new(ToInfo(role));
@@ -282,9 +282,9 @@ internal sealed class RoleService(
         if (role.Assignments.FirstOrDefault(a => a.UserId == userId) is { } removed)
             role.Assignments.Remove(removed);
 
-        await audit.LogAsync(RolesAuditActions.HolderRemoved, AuditEntityType, role.Id,
+        await audit.LogAsync(RolesAuditActions.HolderRemoved, AuditSubjectType, role.Id,
             $"Unassigned from role '{role.Name}' on {await OwnerNameAsync(owner, ct)}",
-            actorUserId, relatedEntityId: userId, relatedEntityType: AuditSubjectTypes.User);
+            actorUserId, targetId: userId, targetType: AuditSubjectTypes.User);
 
         return new(ToInfo(role));
     }
@@ -301,9 +301,9 @@ internal sealed class RoleService(
         var ownerName = await OwnerNameAsync(owner, ct);
         foreach (var roleId in removed)
         {
-            await audit.LogAsync(RolesAuditActions.HolderRemoved, AuditEntityType, roleId,
+            await audit.LogAsync(RolesAuditActions.HolderRemoved, AuditSubjectType, roleId,
                 $"Unassigned from role '{roles[roleId].Name}' on {ownerName} on leaving",
-                actorUserId, relatedEntityId: userId, relatedEntityType: AuditSubjectTypes.User);
+                actorUserId, targetId: userId, targetType: AuditSubjectTypes.User);
         }
     }
 
@@ -337,7 +337,7 @@ internal sealed class RoleService(
 
         await audit.LogAsync(RolesAuditActions.HolderAdded, AuditSubjectTypes.User, mergedToUserId,
             $"Took over {moved} role slot(s) from merged account {mergedFromUserId}",
-            actorUserId, relatedEntityId: mergedFromUserId, relatedEntityType: AuditSubjectTypes.User);
+            actorUserId, targetId: mergedFromUserId, targetType: AuditSubjectTypes.User);
     }
 
     private async Task<bool> CanTouchAsync(Owner owner, bool coordinatorRole, Guid actorUserId, CancellationToken ct) =>

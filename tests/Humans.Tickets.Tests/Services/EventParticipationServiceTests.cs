@@ -1,7 +1,7 @@
 using Humans.Testing;
 using System.Security.Claims;
 using AwesomeAssertions;
-using Humans.AuditLog.Contracts;
+using Humans.Audit.Contracts;
 using Humans.Budget.Contracts;
 using Humans.Campaigns.Contracts;
 using Humans.Governance.Contracts;

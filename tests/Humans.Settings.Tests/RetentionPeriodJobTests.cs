@@ -1,5 +1,5 @@
 using AwesomeAssertions;
-using Humans.AuditLog.Contracts;
+using Humans.Audit.Contracts;
 using Humans.Base.Interfaces;
 using Humans.Settings.Contracts;
 using Humans.Settings.Jobs;
@@ -41,7 +41,7 @@ public sealed class RetentionPeriodJobTests
         await Job(contributor).ExecuteAsync(TestContext.Current.CancellationToken);
 
         await contributor.Received(1).DeleteOlderThanAsync(Now - Duration.FromDays(365), Arg.Any<CancellationToken>());
-        await _auditLog.Received(1).LogAsync(SettingsAuditActions.RetentionPeriodDeleted, AuditEntityTypes.RetentionPeriod,
+        await _auditLog.Received(1).LogAsync(SettingsAuditActions.RetentionPeriodDeleted, SettingsAuditSubjectTypes.RetentionPeriod,
             Guid.Empty, "Deleted 3 temporary audit entries older than 365 days.", RetentionPeriodJob.JobName);
     }
 

@@ -13,7 +13,7 @@ using Microsoft.AspNetCore.Mvc.ViewFeatures;
 using Microsoft.Extensions.Localization;
 using Humans.Auth.Contracts;
 using AwesomeAssertions;
-using Humans.AuditLog.Contracts;
+using Humans.Audit.Contracts;
 using Humans.Base.Interfaces;
 using Humans.Email.Contracts;
 using Humans.Notifications.Contracts;
@@ -96,7 +96,7 @@ public sealed class IssuesServiceTests
             .GetFilteredAsync(
                 Arg.Any<string?>(), Arg.Any<Guid?>(), Arg.Any<Guid?>(), Arg.Any<IReadOnlyList<string>?>(),
                 Arg.Any<int>(), Arg.Any<bool>(), Arg.Any<CancellationToken>())
-            .Returns(Task.FromResult<IReadOnlyList<AuditEvent>>([]));
+            .Returns(Task.FromResult<IReadOnlyList<AuditEntry>>([]));
 
 
         _userService = NewRegistryBackedUserService();
@@ -365,7 +365,7 @@ public sealed class IssuesServiceTests
         _auditViewer.GetFilteredAsync(
                 Arg.Any<string?>(), issueId, Arg.Any<Guid?>(), Arg.Any<IReadOnlyList<string>?>(),
                 Arg.Any<int>(), Arg.Any<bool>(), Arg.Any<CancellationToken>())
-            .Returns(Task.FromResult<IReadOnlyList<AuditEvent>>(
+            .Returns(Task.FromResult<IReadOnlyList<AuditEntry>>(
             [new(Guid.NewGuid(), auditAt, IssuesAuditActions.IssueGitHubLinked, null, null, nameof(Issue), issueId,
                 null, null, null, null, null, null, null, "GitHub link: 123")]));
 

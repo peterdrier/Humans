@@ -57,13 +57,15 @@ with scopes_disabled():
     donation, _ = Item.objects.get_or_create(event=event, internal_name="humans-donation", defaults={
         "name": "Donation", "default_price": Decimal("0"), "admission": False, "free_price": True})
 
-    # Orders only, on the events Humans sells; reading the event and its items needs no further permission.
+    # Orders, plus general event settings so Humans can take the shop offline to shred the event after its
+    # post-event hold; only on the events Humans sells. Reading the event and its items needs no further permission.
     if not hasattr(Team, "limit_event_permissions"):
         raise SystemExit("This pretix has no Team.limit_event_permissions; update the permission setup in bootstrap.py.")
     team, _ = Team.objects.get_or_create(organizer=org, name="Humans API")
     team.all_events = False
     team.all_event_permissions = False
-    team.limit_event_permissions = {"event.orders:read": True, "event.orders:write": True}
+    team.limit_event_permissions = {
+        "event.orders:read": True, "event.orders:write": True, "event.settings.general:write": True}
     team.save()
     team.limit_events.add(event)
     token = team.tokens.filter(active=True).first() or team.tokens.create(name="humans")

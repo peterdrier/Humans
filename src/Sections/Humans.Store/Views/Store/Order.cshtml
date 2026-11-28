@@ -227,8 +227,8 @@ else
 
 @* The audit log is the order's history: entries about the order, its lines, payments and invoice, plus price changes
    to its products while it has existed. *@
-<vc:audit-log entity-ids="@order.Lines.Select(l => l.ProductId).Prepend(order.Id).Distinct().ToList()"
-              include-related="true"
+<vc:audit-log subject-ids="@order.Lines.Select(l => l.ProductId).Prepend(order.Id).Distinct().ToList()"
+              include-targets="true"
               actions="@string.Join(',', (Model.CanRecordPayment ? StoreAuditActions.OrderHistoryForAdmins : StoreAuditActions.OrderHistory).Select(a => a.Name))"
               since="@order.CreatedAt" limit="500"
               layout="table" columns="when,actor,action,description"

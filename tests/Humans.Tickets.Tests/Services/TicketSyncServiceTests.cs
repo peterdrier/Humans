@@ -1,4 +1,4 @@
-using Humans.AuditLog.Contracts;
+using Humans.Audit.Contracts;
 using Humans.Tickets.Jobs;
 using System.Transactions;
 using AwesomeAssertions;

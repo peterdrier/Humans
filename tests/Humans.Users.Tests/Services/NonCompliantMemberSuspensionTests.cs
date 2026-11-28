@@ -7,7 +7,7 @@ using NSubstitute;
 using Humans.Web.Services;
 using Humans.Base.Interfaces;
 using Humans.Users.Jobs;
-using Humans.AuditLog.Contracts;
+using Humans.Audit.Contracts;
 using Humans.Email.Contracts;
 using Humans.Notifications.Contracts;
 using Humans.Users.Contracts;

@@ -22,7 +22,7 @@ using ModelContextProtocol.Server;
 using Humans.Notifications.Contracts;
 using OpenIddict.Validation.AspNetCore;
 using static OpenIddict.Abstractions.OpenIddictConstants;
-using Humans.AuditLog.Contracts;
+using Humans.Audit.Contracts;
 using Humans.Backdoor.Controllers;
 
 [assembly: Humans.Base.Demo.NoDemoStory("No demo story written yet.")]

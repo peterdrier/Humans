@@ -16,7 +16,7 @@ using Microsoft.Extensions.Configuration;
 using Humans.Notifications.Contracts;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
-using Humans.AuditLog.Contracts;
+using Humans.Audit.Contracts;
 using Humans.Rideshare.Controllers;
 
 [assembly: Humans.Base.Demo.NoDemoStory("No demo story written yet.")]

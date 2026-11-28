@@ -82,7 +82,7 @@ failure instead of throwing.
   save — `Data/Repository.cs:70` — then its gallery and legacy files — `Services/Service.cs:139`.
   Placement-image files are not deleted (accepted).
 - Every write is audited under the literal entity types `Container` / `ContainerPlacement`,
-  related to `Camp` / `Container` — `Services/AuditEntityTypes.cs:22`.
+  related to `Camp` / `Container` — `Services/ContainersAuditSubjectTypes.cs:22`.
 - Names never contain `<`, `>` or `$` — `Services/Service.cs:340`.
 
 ## 5. Seams

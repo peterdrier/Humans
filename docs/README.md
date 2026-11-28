@@ -14,7 +14,7 @@ Business requirements, user stories, data model, and workflows for each feature 
 | [Volunteer Tracking](../src/Sections/Humans.Shifts/Docs/features/47-volunteer-tracking.md) | `/Shifts/Dashboard/VolunteerTracking` heatmap surfacing build-period gaps and declared-but-unbooked volunteers for the VC |
 | [Active User Metrics](features/global/active-user-metrics.md) | Distinct authenticated users tracked by trailing window (5m / 1h / 24h), surfaced as Prometheus gauges plus three tiles on `/Admin` |
 | [Agent Section](../src/Sections/Humans.Agent/Docs/features/Agent-feature.md) | Conversational helper grounded on docs and user state, with `route_to_issue` handoff and admin spot-check view |
-| [F-12: Audit Log](../src/Sections/Humans.AuditLog/Docs/features/audit-log.md) | Structured, queryable audit trail for background job and admin actions beyond Serilog text logs |
+| [F-12: Audit Log](../src/Sections/Humans.Audit/Docs/features/audit-log.md) | Structured, queryable audit trail for background job and admin actions beyond Serilog text logs |
 | [User Authentication & Accounts](../src/Sections/Humans.Auth/Docs/features/authentication.md) | Secure, streamlined authentication integrated with Google Workspace and temporal role tracking for governance compliance |
 | [Feature 30: Magic Link Authentication](../src/Sections/Humans.Auth/Docs/features/magic-link-auth.md) | Email-based passwordless login and signup as the foundation for non-Google auth methods |
 | [Backdoor Finance Read API](../src/Sections/Humans.Backdoor/Docs/features/finance-read-api.md) | Read-only, key-authed `GET` routes over expense reports, creditor accounts and ledgers, the category map, SEPA transfers and purchase-doc sync state, for reconciling Holded against Humans |
@@ -102,7 +102,7 @@ Terse, authoritative invariant docs for each major section: concepts, data model
 |----------|-------------|
 | [Admin Shell](sections/admin-shell.md) | Frame-only section providing the shared admin sidebar, breadcrumb, and dashboard skeleton — owns no tables |
 | [Agent](../src/Sections/Humans.Agent/Docs/Agent.md) | Conversational helper backed by Anthropic Claude, available to authenticated consented users when `AgentSettings.Enabled = true` |
-| [Audit Log](../src/Sections/Humans.AuditLog/Docs/AuditLog.md) | Append-only system audit trail capturing actor, action, entity, and timestamp; enforced append-only per design-rules.md, *Append-only entities* |
+| [Audit Log](../src/Sections/Humans.Audit/Docs/Audit.md) | Append-only system audit trail capturing actor, action, entity, and timestamp; enforced append-only per design-rules.md, *Append-only entities* |
 | [Auth](../src/Sections/Humans.Auth/Docs/Auth.md) | Temporal role assignments, magic-link login/signup, and claims transformation |
 | [Backdoor](../src/Sections/Humans.Backdoor/Docs/Backdoor.md) | The Backdoor API — every key-authed API an agent talks to, under `/api/backdoor/*`, gated by one personal key per human |
 | [Budget](../src/Sections/Humans.Budget/Docs/Budget.md) | Fiscal-year budgets (Draft/Active/Closed) with groups, categories, line items, and an append-only audit log |

@@ -3,7 +3,7 @@ using System.ComponentModel.DataAnnotations;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.DataProtection;
 using NodaTime;
-using Humans.AuditLog.Contracts;
+using Humans.Audit.Contracts;
 using Humans.Users.Data.Repositories;
 using Humans.Users.Contracts;
 using Humans.Base.Helpers;
@@ -206,7 +206,7 @@ internal sealed class UserEmailService(
             AuditSubjectTypes.User, userId,
             $"Cleared primary flag from {row.Email}",
             actorUserId,
-            relatedEntityId: row.Id, relatedEntityType: AuditSubjectTypes.UserEmail);
+            targetId: row.Id, targetType: AuditSubjectTypes.UserEmail);
 
         return new(true);
     }
@@ -315,7 +315,7 @@ internal sealed class UserEmailService(
                 ? $"Unlinked orphan {provider} login (no matching UserEmail row)"
                 : $"Unlinked {provider} (key {ShortProviderKeyHash(providerKey)}) from {row.Email}",
             actorUserId,
-            relatedEntityId: row?.Id, relatedEntityType: row is null ? null : AuditSubjectTypes.UserEmail);
+            targetId: row?.Id, targetType: row is null ? null : AuditSubjectTypes.UserEmail);
 
         return new(true);
     }
@@ -324,9 +324,9 @@ internal sealed class UserEmailService(
         string description, Guid? actorUserId) =>
         actorUserId is { } actor
             ? auditLogService.LogAsync(action, AuditSubjectTypes.User, userId, description, actor,
-                relatedEntityId: emailId, relatedEntityType: AuditSubjectTypes.UserEmail)
+                targetId: emailId, targetType: AuditSubjectTypes.UserEmail)
             : auditLogService.LogAsync(action, AuditSubjectTypes.User, userId, description, nameof(UserEmailService),
-                relatedEntityId: emailId, relatedEntityType: AuditSubjectTypes.UserEmail);
+                targetId: emailId, targetType: AuditSubjectTypes.UserEmail);
 
     internal static bool CanUnlink(int verifiedEmailCount, bool removesVerifiedEmail) =>
         verifiedEmailCount - (removesVerifiedEmail ? 1 : 0) >= 1;
@@ -592,7 +592,7 @@ internal sealed class UserEmailService(
                 AuditSubjectTypes.User, userId,
                 blockedDescription,
                 actorUserId: userId,
-                relatedEntityId: blocker.Id, relatedEntityType: AuditSubjectTypes.UserEmail);
+                targetId: blocker.Id, targetType: AuditSubjectTypes.UserEmail);
 
             return new OAuthReconcileResult(
                 ReconcileOutcome.CrossUserBlocked,
@@ -711,7 +711,7 @@ internal sealed class UserEmailService(
             AuditSubjectTypes.User, userId,
             signingDescription,
             actorUserId: userId,
-            relatedEntityId: affectedRowId, relatedEntityType: AuditSubjectTypes.UserEmail);
+            targetId: affectedRowId, targetType: AuditSubjectTypes.UserEmail);
 
         return new OAuthReconcileResult(outcome, previousEmail, affectedRowId, null, null, null);
     }
@@ -792,10 +792,10 @@ internal sealed class UserEmailService(
         var description = $"Added pending email {email} (conflict: {addResult.IsConflict})";
         if (actorUserId is { } actor)
             await auditLogService.LogAsync(UsersAuditActions.UserEmailAdded, AuditSubjectTypes.User, userId,
-                description, actor, relatedEntityId: addResult.EmailId, relatedEntityType: AuditSubjectTypes.UserEmail);
+                description, actor, targetId: addResult.EmailId, targetType: AuditSubjectTypes.UserEmail);
         else
             await auditLogService.LogAsync(UsersAuditActions.UserEmailAdded, AuditSubjectTypes.User, userId,
-                description, nameof(UserEmailService), relatedEntityId: addResult.EmailId, relatedEntityType: AuditSubjectTypes.UserEmail);
+                description, nameof(UserEmailService), targetId: addResult.EmailId, targetType: AuditSubjectTypes.UserEmail);
 
         var token = EmailConfirmationService.CreateToken(dataProtection, userId, addResult.EmailId);
 
@@ -852,7 +852,7 @@ internal sealed class UserEmailService(
             AuditSubjectTypes.User, userId,
             $"Admin manually verified email {pendingEmail.Email}",
             actorUserId,
-            relatedEntityId: pendingEmail.Id, relatedEntityType: AuditSubjectTypes.UserEmail);
+            targetId: pendingEmail.Id, targetType: AuditSubjectTypes.UserEmail);
 
         return new VerifyEmailResult(pendingEmail.Email);
     }

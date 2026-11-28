@@ -15,7 +15,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.Extensions.Configuration;
 using Humans.Notifications.Contracts;
 using Microsoft.Extensions.DependencyInjection;
-using Humans.AuditLog.Contracts;
+using Humans.Audit.Contracts;
 using Humans.Issues.Controllers;
 
 [assembly: Humans.Base.Demo.NoDemoStory("No demo story written yet.")]

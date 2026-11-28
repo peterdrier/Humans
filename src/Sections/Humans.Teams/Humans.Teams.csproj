@@ -35,7 +35,7 @@
     <!-- Roles: Teams is the Team owner of roles; it calls IRoleWrite before ending a membership. -->
     <ProjectReference Include="..\Humans.Roles\Humans.Roles.csproj" />
     <ProjectReference Include="..\Humans.Permissions\Humans.Permissions.csproj" />
-    <ProjectReference Include="..\Humans.AuditLog\Humans.AuditLog.csproj" />
+    <ProjectReference Include="..\Humans.Audit\Humans.Audit.csproj" />
     <!-- TeamAdmin/Members.cshtml renders <vc:audit-log>. AuditLog references only Teams.Contracts, so no cycle. -->
     <ProjectReference Include="..\Humans.EarlyEntry\Humans.EarlyEntry.csproj" />
     <!-- SystemTeamSyncJob's eligibility inputs: Camps (camp leads), Governance (approved tiers),

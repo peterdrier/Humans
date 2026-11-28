@@ -1,6 +1,6 @@
 using Humans.Base.Helpers;
 using Humans.Email.Contracts;
-using Humans.AuditLog.Contracts;
+using Humans.Audit.Contracts;
 using Humans.MailerLite.Data;
 using Humans.MailerLite.Domain;
 using Humans.MailerLite.Services.Dtos;
@@ -311,7 +311,7 @@ internal sealed class MailerLiteImportService(
 
         await audit.LogAsync(
             MailerLiteAuditActions.MailerLiteReconciliationCompleted,
-            entityType: "MailerLite", entityId: state.Id,
+            subjectType: "MailerLite", subjectId: state.Id,
             description: result.FormatSummary(),
             actorUserId: actorUserId);
 

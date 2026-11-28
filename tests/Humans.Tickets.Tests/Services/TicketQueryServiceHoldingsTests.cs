@@ -1,5 +1,5 @@
 using Humans.Governance.Contracts;
-using Humans.AuditLog.Contracts;
+using Humans.Audit.Contracts;
 using AwesomeAssertions;
 using Humans.Budget.Contracts;
 using Humans.Campaigns.Contracts;

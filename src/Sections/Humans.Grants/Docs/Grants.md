@@ -117,7 +117,7 @@ Admin pages live at `/Grants/Admin` (`GrantsAdminController`), in the Admin side
 
 ## Cross-Section Dependencies
 
-- **AuditLog**: `IAuditLogService.LogAsync`. Actions declared on `GrantsAuditActions` (`src/Sections/Humans.Grants/GrantsAuditActions.cs`), one `AuditActionDefinition` each: `GrantProgramCreated`, `GrantProgramEdited`, `GrantProgramManagerAdded`, `GrantProgramManagerRemoved`, `GrantIssued`, `GrantRevoked`, `GrantNoticeResent`.
+- **Audit**: `IAuditLogService.LogAsync`. Actions declared on `GrantsAuditActions` (`src/Sections/Humans.Grants/GrantsAuditActions.cs`), one `AuditActionDefinition` each: `GrantProgramCreated`, `GrantProgramEdited`, `GrantProgramManagerAdded`, `GrantProgramManagerRemoved`, `GrantIssued`, `GrantRevoked`, `GrantNoticeResent`.
 - **Users**: `IUserService.GetUserInfoAsync` (merged ids, preferred language, burner names and canonical notice address). Implements `IUserMerge`.
 - **Notifications**: `INotificationEmitter.SendAsync` (`GrantReceived`, `GrantRevoked`). Its sources are declared in `GrantsNotificationSources` (`src/Sections/Humans.Grants/GrantsNotificationSources.cs`), one `NotificationSourceDefinition` each: `GrantReceived` (informational, to the grant holder: a grant issued to the person, or its notice resent); `GrantRevoked` (informational, to the former holder: a grant the person held was revoked).
 - **Email**: `IEmailService.SendAsync`; contributes `IEmailPreviewContributor` samples.

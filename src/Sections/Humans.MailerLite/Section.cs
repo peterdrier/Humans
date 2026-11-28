@@ -13,7 +13,7 @@ using Humans.MailerLite.Services.MailerLite;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
-using Humans.AuditLog.Contracts;
+using Humans.Audit.Contracts;
 using Humans.MailerLite.Controllers;
 
 [assembly: NoDemoStory("Vendor mirror: demo people must never reach MailerLite.")]

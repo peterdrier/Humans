@@ -187,13 +187,13 @@ internal interface IBudgetRepository : IRepository
         CancellationToken ct = default);
 
     /// <summary>The most recent 500.</summary>
-    Task<IReadOnlyList<BudgetAuditLog>> GetAuditLogAsync(
+    Task<IReadOnlyList<BudgetChange>> GetChangesAsync(
         Guid? budgetYearId, CancellationToken ct = default);
 
     /// <summary>
     /// For the GDPR export, which includes entries left on merged-away ids. Newest first.
     /// </summary>
-    Task<IReadOnlyList<BudgetAuditLog>> GetAuditEntriesForUsersAsync(
+    Task<IReadOnlyList<BudgetChange>> GetChangesForUsersAsync(
         IReadOnlyCollection<Guid> userIds, CancellationToken ct = default);
 }
 

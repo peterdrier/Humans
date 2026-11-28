@@ -17,6 +17,14 @@ internal interface ITicketSyncService : IApplicationService
 
     Task SetScheduledSyncEnabledAsync(bool enabled, Guid actorUserId, CancellationToken ct = default);
 
+    /// <summary>
+    /// Days after an event's strike that a ticket holder's deletion waits, and after which each platform erases the
+    /// event's personal data.
+    /// </summary>
+    Task<int> GetPostEventHoldDaysAsync(CancellationToken ct = default);
+
+    Task SetPostEventHoldDaysAsync(int days, Guid actorUserId, CancellationToken ct = default);
+
     Task ReassignAsync(Guid mergedFromUserId, Guid mergedToUserId, Guid actorUserId, Instant now, CancellationToken ct);
 }
 

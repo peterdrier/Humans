@@ -1,4 +1,4 @@
-using Humans.AuditLog.Contracts;
+using Humans.Audit.Contracts;
 using Humans.Base.Attributes;
 using Humans.Base.Interfaces;
 using Humans.Finance.Contracts;
@@ -346,9 +346,9 @@ internal sealed class InvoiceService(
         await repo.SaveIssuedInvoiceAsync(invoice, order, ct);
 
         await audit.LogAsync(
-            StoreAuditActions.StoreInvoiceIssued, AuditEntityTypes.Invoice, invoice.Id,
+            StoreAuditActions.StoreInvoiceIssued, StoreAuditSubjectTypes.Invoice, invoice.Id,
             auditDetail, actorUserId,
-            order.Id, AuditEntityTypes.Order);
+            order.Id, StoreAuditSubjectTypes.Order);
         return AdminMutationResult.Success;
     }
 
@@ -699,11 +699,11 @@ internal sealed class InvoiceService(
         await repo.SaveInvoiceBookingAsync(invoice, CancellationToken.None);
         if (changed)
             await audit.LogAsync(
-                StoreAuditActions.StoreInvoiceBooked, AuditEntityTypes.Invoice, invoice.Id,
+                StoreAuditActions.StoreInvoiceBooked, StoreAuditSubjectTypes.Invoice, invoice.Id,
                 $"Booking of invoice {invoice.HoldedDocNumber}: {state}"
                     + (note is null ? string.Empty : $" — {note}")
                     + (posted.Count == 0 ? " (nothing posted)" : $". Posted: {string.Join("; ", posted)}"),
-                actorUserId, order.Id, AuditEntityTypes.Order);
+                actorUserId, order.Id, StoreAuditSubjectTypes.Order);
 
         if (state == InvoiceBookingState.Booked && invoice.SentAt is null)
             await SendAsync(order, invoice, actorUserId, CancellationToken.None);
@@ -732,9 +732,9 @@ internal sealed class InvoiceService(
         invoice.SentAt = clock.GetCurrentInstant();
         await repo.SaveInvoiceBookingAsync(invoice, CancellationToken.None);
         await audit.LogAsync(
-            StoreAuditActions.StoreInvoiceSent, AuditEntityTypes.Invoice, invoice.Id,
+            StoreAuditActions.StoreInvoiceSent, StoreAuditSubjectTypes.Invoice, invoice.Id,
             $"Sent invoice {invoice.HoldedDocNumber} to {email ?? "the invoice contact's email"}",
-            actorUserId, order.Id, AuditEntityTypes.Order);
+            actorUserId, order.Id, StoreAuditSubjectTypes.Order);
         return AdminMutationResult.Success;
     }
 

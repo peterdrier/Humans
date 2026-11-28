@@ -4,11 +4,11 @@
   src/Sections/Humans.Monitor/Section.cs
   src/Sections/Humans.Monitor/Controllers/MonitorController.cs
   src/Sections/Humans.Google/Services/Workspace/GoogleDriveActivityClient.cs
-  src/Sections/Humans.AuditLog/Section.cs
-  src/Sections/Humans.AuditLog/Controllers/AuditLogController.cs
-  src/Sections/Humans.AuditLog/Views/AuditLog/Index.cshtml
-  src/Sections/Humans.AuditLog/Views/AuditLog/_Content.cshtml
-  src/Sections/Humans.AuditLog/Domain/AuditLogEntry.cs
+  src/Sections/Humans.Audit/Section.cs
+  src/Sections/Humans.Audit/Controllers/AuditController.cs
+  src/Sections/Humans.Audit/Views/Audit/Index.cshtml
+  src/Sections/Humans.Audit/Views/Audit/_Content.cshtml
+  src/Sections/Humans.Audit/Domain/AuditLogEntry.cs
 -->
 <!-- freshness:flag-on-change
   Drive Activity API integration, anomalous-permission detection, and audit-log filter UI — review when DriveActivityMonitorService, its job, or the audit-log views change.
@@ -41,7 +41,7 @@ Nobodies Collective manages Google Shared Drive folders and Groups through the s
 **So that** I can verify the current state on demand
 
 **Acceptance Criteria:**
-- "Check Drive Activity Now" button on the Audit Log page (`/AuditLog`)
+- "Check Drive Activity Now" button on the Audit Log page (`/Audit`)
 - Shows result count after completion
 - Redirects to filtered audit log view showing anomalous permission entries
 - Trigger endpoint: `POST /Monitor/CheckDriveActivity` (on `MonitorController`, `src/Sections/Humans.Monitor`)
@@ -52,12 +52,12 @@ Nobodies Collective manages Google Shared Drive folders and Groups through the s
 **So that** I can review system activity and investigate anomalies
 
 **Acceptance Criteria:**
-- Global audit log page at `/AuditLog` (on `AuditLogController`)
+- Global audit log page at `/Audit` (on `AuditController`)
 - Filter by action type (All, Anomalous Permissions, Access Granted/Revoked, Suspensions, Roles)
 - Anomalous entries highlighted with warning styling
 - Alert banner showing total anomaly count
 - Paginated (50 per page)
-- Reached from the admin sidebar (`src/Sections/Humans.AuditLog/Section.cs`)
+- Reached from the admin sidebar (`src/Sections/Humans.Audit/Section.cs`)
 
 ## Architecture
 
@@ -66,9 +66,9 @@ Nobodies Collective manages Google Shared Drive folders and Groups through the s
 - `GoogleAuditActions.AnomalousPermissionDetected` audit action definition (`Alert: true`, quick filter "Anomalous Permissions"; stored as a string, no migration needed) — `src/Sections/Humans.Google/Contracts/`
 - `IDriveActivityMonitorService` interface with `CheckForAnomalousActivityAsync` method, and its implementation `DriveActivityMonitorService` using Google Drive Activity API v2 — `src/Sections/Humans.Monitor/Services/`
 - `DriveActivityMonitorJob` - Hangfire background job wrapper — `src/Sections/Humans.Monitor/Jobs/`
-- `AuditLogController.Index` action (`/AuditLog`) - paginated audit log with filtering — `src/Sections/Humans.AuditLog/Controllers/`
+- `AuditController.Index` action (`/Audit`) - paginated audit log with filtering — `src/Sections/Humans.Audit/Controllers/`
 - `MonitorController.CheckDriveActivity` action (`POST /Monitor/CheckDriveActivity`) - manual trigger — `src/Sections/Humans.Monitor/Controllers/`
-- `Views/AuditLog/Index.cshtml` view, with `_Content.cshtml` as the partial carrying the form, filter buttons, badge and banner — `src/Sections/Humans.AuditLog/Views/AuditLog/`
+- `Views/Audit/Index.cshtml` view, with `_Content.cshtml` as the partial carrying the form, filter buttons, badge and banner — `src/Sections/Humans.Audit/Views/Audit/`
 
 ### Service Registration
 
@@ -122,7 +122,7 @@ Uses the existing `AuditLogEntry` entity. No new tables or migrations required.
 | Field | Value |
 |-------|-------|
 | Action | `AnomalousPermissionDetected` |
-| EntityType | `GoogleResource` |
+| SubjectType | `GoogleResource` |
 | EntityId | TeamGoogleResource.Id (from DB) |
 | Description | Human-readable: "Anomalous permission change on '{name}' by {actor}: {details}" |
 | ActorUserId | `null` (system job) |
@@ -140,11 +140,11 @@ Time-window dedup: each run queries only activity since the last successful run'
 
 ## Admin UI
 
-### Route: `/AuditLog`
+### Route: `/Audit`
 
 | Route | Method | Action |
 |-------|--------|--------|
-| `AuditLog` | GET | View paginated audit log with optional `filter` |
+| `Audit` | GET | View paginated audit log with optional `filter` |
 | `Monitor/CheckDriveActivity` | POST | Trigger manual Drive activity check |
 
 ### Filter Options
@@ -163,7 +163,7 @@ Quick filters are declared by each section's audit action definitions; the set t
 
 ## Authorization
 
-`[Authorize(Policy = PolicyNames.BoardOrAdmin)]` on the controller's actions (`AuditLogController` inherits `HumansControllerBase`, not `AdminController`).
+`[Authorize(Policy = PolicyNames.BoardOrAdmin)]` on the controller's actions (`AuditController` inherits `HumansControllerBase`, not `AdminController`).
 
 ## Limitations
 
@@ -175,4 +175,4 @@ Quick filters are declared by each section's audit action definitions; the set t
 
 - [F-07: Google](../../../Humans.Google/Docs/features/google-integration.md) - Manages the resources being monitored
 - [F-08: Background Jobs](../../../../../docs/features/global/background-jobs.md) - Job scheduling
-- [F-12: Audit Log](../../../Humans.AuditLog/Docs/features/audit-log.md) - Audit log infrastructure
+- [F-12: Audit Log](../../../Humans.Audit/Docs/features/audit-log.md) - Audit log infrastructure

@@ -1,6 +1,6 @@
 using AwesomeAssertions;
 using Humans.Base.Interfaces;
-using Humans.AuditLog.Contracts;
+using Humans.Audit.Contracts;
 using Humans.Camps.Contracts;
 using Humans.Containers.Contracts;
 using Humans.Containers.Data;
@@ -651,8 +651,8 @@ public sealed class ServiceImageTests
         (await ctx.ContainerImages.CountAsync(ct)).Should().Be(0);
         metadataDeletedBeforeCleanup.Should().BeTrue();
         auditedBeforeCleanup.Should().BeTrue();
-        await _auditLog.Received(1).LogAsync(ContainersAuditActions.ContainerDeleted, AuditEntityTypes.Container, container.Id,
-            Arg.Any<string>(), actorId, CampId, AuditEntityTypes.Camp);
+        await _auditLog.Received(1).LogAsync(ContainersAuditActions.ContainerDeleted, ContainersAuditSubjectTypes.Container, container.Id,
+            Arg.Any<string>(), actorId, CampId, ContainersAuditSubjectTypes.Camp);
         _logger.ReceivedCalls().Where(call =>
             call.GetArguments()[0] is Microsoft.Extensions.Logging.LogLevel level && level == Microsoft.Extensions.Logging.LogLevel.Error
             && ReferenceEquals(call.GetArguments()[3], cleanupFailure)).Should().ContainSingle();

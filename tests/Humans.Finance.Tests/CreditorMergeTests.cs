@@ -1,5 +1,5 @@
 using AwesomeAssertions;
-using Humans.AuditLog.Contracts;
+using Humans.Audit.Contracts;
 using Humans.Base.Caching;
 using Humans.Budget.Contracts;
 using Humans.Email.Contracts;

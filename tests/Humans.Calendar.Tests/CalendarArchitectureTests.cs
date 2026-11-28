@@ -49,7 +49,7 @@ public class CalendarArchitectureTests
         // These are literal string values we store in the DB. Pinned so a rename can't
         // quietly change them and orphan existing audit_log rows
         // (memory/code/type-name-as-persisted-string.md).
-        AuditEntityTypes.CalendarEvent.Should().Be("CalendarEvent");
-        AuditEntityTypes.Team.Should().Be("Team");
+        CalendarAuditSubjectTypes.CalendarEvent.Should().Be("CalendarEvent");
+        CalendarAuditSubjectTypes.Team.Should().Be("Team");
     }
 }

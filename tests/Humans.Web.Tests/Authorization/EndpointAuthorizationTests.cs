@@ -59,7 +59,7 @@ public class EndpointAuthorizationTests
         { typeof(UsersAdminAccountMergesController), null, "AdminOnly" },
         { SectionType("Humans.Email.Controllers.EmailController"), null, "AdminOnly" },
         { typeof(AdminController), "Index", "AnyAdminRole" },
-        { SectionType("Humans.AuditLog.Controllers.AuditLogController"), "Index", "BoardOrAdmin" },
+        { SectionType("Humans.Audit.Controllers.AuditController"), "Index", "BoardOrAdmin" },
         { SectionType("Humans.Monitor.Controllers.MonitorController"), "CheckDriveActivity", "AdminOnly" },
         { SectionType("Humans.Google.Controllers.GoogleController"), "Resource", "BoardOrAdmin" },
         { SectionType("Humans.Google.Controllers.GoogleController"), "Human", UsersPolicies.Read },

@@ -1,7 +1,7 @@
 using Humans.Governance.Contracts;
 using Humans.Google.Contracts;
 using AwesomeAssertions;
-using Humans.AuditLog.Contracts;
+using Humans.Audit.Contracts;
 using Humans.Email.Contracts;
 using Humans.Users.Contracts;
 using Humans.Surveys.Data;
@@ -5840,7 +5840,7 @@ public class SurveyServiceTests
         captured!.Questions.Single().RankedUnavailableOptionValues.Should().Equal("c");
         await _audit.Received(1).LogAsync(
             SurveysAuditActions.SurveyUpdated,
-            AuditEntityTypes.Survey,
+            SurveysAuditSubjectTypes.Survey,
             survey.Id,
             Arg.Is<string>(value => value.Contains("unavailable (c)", StringComparison.Ordinal)
                 && value.Contains("restored (b)", StringComparison.Ordinal)),

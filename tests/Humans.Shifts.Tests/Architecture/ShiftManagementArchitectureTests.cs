@@ -2,7 +2,7 @@ using AwesomeAssertions;
 using Microsoft.Extensions.Hosting;
 using Humans.Base.Data;
 using Npgsql;
-using Humans.AuditLog.Contracts;
+using Humans.Audit.Contracts;
 using Humans.Auth.Contracts;
 using Humans.Settings.Contracts;
 using Humans.Tickets.Contracts;

@@ -1,5 +1,5 @@
 using System.Transactions;
-using Humans.AuditLog.Contracts;
+using Humans.Audit.Contracts;
 using Humans.Base.Extensions;
 using Humans.Campaigns.Contracts;
 using Humans.Settings.Contracts;
@@ -233,6 +233,16 @@ internal sealed class TicketSyncService(
             "TicketSettings", Guid.Empty,
             enabled ? "Turned the scheduled ticket vendor sync on." : "Turned the scheduled ticket vendor sync off.",
             actorUserId);
+    }
+
+    public Task<int> GetPostEventHoldDaysAsync(CancellationToken ct = default) =>
+        ticketRepository.GetPostEventHoldDaysAsync(ct);
+
+    public async Task SetPostEventHoldDaysAsync(int days, Guid actorUserId, CancellationToken ct = default)
+    {
+        await ticketRepository.SetPostEventHoldDaysAsync(days, ct);
+        await auditLog.LogAsync(TicketsAuditActions.TicketPostEventHoldSet, "TicketSettings", Guid.Empty,
+            $"Set the post-event hold to {days} day(s).", actorUserId);
     }
 
     public async Task ReassignAsync(Guid sourceUserId, Guid targetUserId, Guid actorUserId, Instant updatedAt,

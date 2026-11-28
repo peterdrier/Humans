@@ -1,4 +1,4 @@
-using Humans.AuditLog.Contracts;
+using Humans.Audit.Contracts;
 using Humans.Base.Extensions;
 using Humans.Pleo.Contracts;
 using Humans.Pleo.Data;
