@@ -14,7 +14,7 @@
                 type="button"
                 data-bs-toggle="dropdown"
                 data-bs-display="static"
-                aria-label="@displayName"
+                aria-label="@(string.IsNullOrEmpty(displayName) ? Localizer["Common_Unknown"].Value : displayName)"
                 aria-expanded="false">
             @if (currentUser is not null)
             {

@@ -803,7 +803,7 @@ document.addEventListener('click', function (e) {
             return candidate.getAttribute('name') === message.dataset.valmsgFor;
         });
         if (!field) return;
-        if (!message.id) message.id = (field.id || message.dataset.valmsgFor.replace(/[^\w-]/g, '_')) + '-error';
+        if (!message.id) message.id = (field.id || message.dataset.valmsgFor.replace(/[^\w-]/g, '_')) + '-valmsg';
         var ids = (field.getAttribute('aria-describedby') || '').split(/\s+/).filter(Boolean);
         if (ids.indexOf(message.id) < 0) {
             ids.push(message.id);

@@ -24,7 +24,7 @@ test('a server-rejected field is described by its message and marked invalid', (
     vm.createContext(context);
     vm.runInContext(script, context);
 
-    assert.equal(message.id, 'BurnerName-error');
-    assert.equal(fieldAttributes['aria-describedby'], 'BurnerNameHelp BurnerName-error');
+    assert.equal(message.id, 'BurnerName-valmsg');
+    assert.equal(fieldAttributes['aria-describedby'], 'BurnerNameHelp BurnerName-valmsg');
     assert.equal(fieldAttributes['aria-invalid'], 'true');
 });
