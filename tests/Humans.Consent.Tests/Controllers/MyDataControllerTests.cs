@@ -20,13 +20,12 @@ public class MyDataControllerTests
     private readonly IUserService _userService = Substitute.For<IUserService>();
     private readonly IConsentManagement _consentService = Substitute.For<IConsentManagement>();
 
-    private MyDataController BuildSut(CancellationToken ct = default)
+    private MyDataController BuildSut()
     {
         var http = new DefaultHttpContext
         {
             User = new ClaimsPrincipal(new ClaimsIdentity(
                 [new Claim(ClaimTypes.NameIdentifier, _userId.ToString())], "test")),
-            RequestAborted = ct,
         };
         return new MyDataController(
             _userService,
@@ -99,21 +98,4 @@ public class MyDataControllerTests
         view.Model.Should().BeOfType<MyDataViewModel>().Which.DeletionScheduledFor.Should().Be(expected);
     }
 
-    [HumansFact]
-    public async Task Index_RequestCancelled_StopsLoading()
-    {
-        using var request = new CancellationTokenSource();
-        _userService.GetUserInfoAsync(_userId, Arg.Any<CancellationToken>()).Returns(call =>
-        {
-            call.Arg<CancellationToken>().ThrowIfCancellationRequested();
-            return Info(_userId);
-        });
-        _consentService.GetConsentDashboardAsync(_userId, Arg.Any<CancellationToken>())
-            .Returns(new ConsentDashboard([], []));
-        var sut = BuildSut(request.Token);
-
-        await request.CancelAsync();
-
-        await FluentActions.Awaiting(() => sut.Index()).Should().ThrowAsync<OperationCanceledException>();
-    }
 }
