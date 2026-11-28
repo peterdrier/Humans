@@ -31,13 +31,15 @@ internal sealed class TasksController(
     {
         if (await AccessAsync(ct) is not { } access) return Unauthorized();
 
-        var listed = (await tasks.GetListedTasksAsync(filter.ToScope(), ct)).Where(access.CanSee).ToList();
+        var all = await tasks.GetTasksAsync(ct);
+        var listed = tasks.Listed(all, filter.ToScope()).Where(access.CanSee).ToList();
         var teamChoices = TeamsOf(listed);
-        filter.DropUnoffered(teamChoices, withFinished: true);
+        var statuses = TaskRowFilter.StatusChoices(withFinished: true);
+        filter.DropUnoffered(teamChoices, statuses);
         var visible = TaskRowOrder.Order(listed.Where(filter.Matches)).ToList();
         return View(new TaskListViewModel(
             visible, await EventsAsync(currentEventId: null, ct), filter, await ManagedTeamsAsync(access, currentTeamId: null, ct),
-            teamChoices, access.PlacesOn(visible), access.BlockersOn(visible, await tasks.GetTasksAsync(ct))));
+            teamChoices, statuses, access.PlacesOn(visible), access.BlockersOn(visible, all)));
     }
 
     [HttpGet("Open")]
@@ -45,15 +47,17 @@ internal sealed class TasksController(
     {
         if (await AccessAsync(ct) is not { } access) return Unauthorized();
 
-        var open = (await tasks.GetListedTasksAsync(scope: null, ct))
+        var all = await tasks.GetTasksAsync(ct);
+        var open = tasks.Listed(all)
             .Where(t => access.CanSee(t) && !t.IsFinished && t.OpenSlots > 0)
             .ToList();
         var teamChoices = TeamsOf(open);
-        filter.DropUnoffered(teamChoices, withFinished: false);
+        var statuses = TaskRowFilter.StatusChoices(withFinished: false);
+        filter.DropUnoffered(teamChoices, statuses);
         var shown = TaskRowOrder.Order(open.Where(filter.Matches)).ToList();
         return View(new OpenBoardViewModel(
-            shown, open.Sum(t => t.OpenSlots), open.Count(t => t.Priority == SlotPriority.Critical), filter, teamChoices,
-            access.PlacesOn(shown), access.BlockersOn(shown, await tasks.GetTasksAsync(ct))));
+            shown, open.Sum(t => t.OpenSlots), open.Count(t => t.Priority == SlotPriority.Critical), filter, teamChoices, statuses,
+            access.PlacesOn(shown), access.BlockersOn(shown, all)));
     }
 
     [HttpGet("Team/{slug}")]
@@ -62,11 +66,11 @@ internal sealed class TasksController(
         if (await AccessAsync(ct) is not { } access) return Unauthorized();
         if (await FindTeamAsync(slug, ct) is not { } team) return NotFound();
 
-        var onTeam = (await tasks.GetTasksAsync(ct)).Where(t => t.Owner.Id == team.Id).ToList();
-        if (!access.CanSeeTeam(team.Id, team.IsHidden, onTeam)) return NotFound();
+        var all = await tasks.GetTasksAsync(ct);
+        if (!access.CanSeeTeam(team.Id, team.IsHidden, all.Where(t => t.Owner.Id == team.Id))) return NotFound();
 
         var addForm = new TaskForm { TeamId = team.Id, EventId = settings.GetActiveEventSettings()?.Id };
-        return View(await TeamPageAsync(team, access, onTeam, filter, addForm, ct));
+        return View(await TeamPageAsync(team, access, all, filter, addForm, ct));
     }
 
     [HttpGet("{id:guid}")]
@@ -90,8 +94,7 @@ internal sealed class TasksController(
         if (!result.Succeeded)
         {
             SetError(result.Refusal!);
-            var onTeam = (await tasks.GetTasksAsync(ct)).Where(t => t.Owner.Id == team.Id).ToList();
-            return View(nameof(Team), await TeamPageAsync(team, access, onTeam, new TaskListFilter(), form, ct));
+            return View(nameof(Team), await TeamPageAsync(team, access, await tasks.GetTasksAsync(ct), new TaskListFilter(), form, ct));
         }
 
         SetSuccess(localizer["Tasks_Added", result.Task!.Title].Value);
@@ -252,17 +255,18 @@ internal sealed class TasksController(
     }
 
     private async Task<TeamPageViewModel> TeamPageAsync(
-        TeamInfo team, TasksAccess access, IReadOnlyList<TaskInfo> onTeam, TaskListFilter filter, TaskForm addForm, CancellationToken ct)
+        TeamInfo team, TasksAccess access, IReadOnlyList<TaskInfo> all, TaskListFilter filter, TaskForm addForm, CancellationToken ct)
     {
-        filter.DropUnoffered(teams: null, withFinished: true);
-        var listed = TaskRowOrder.Order((await tasks.GetListedTasksAsync(filter.ToScope(), ct))
+        var statuses = TaskRowFilter.StatusChoices(withFinished: true);
+        filter.DropUnoffered(teams: null, statuses);
+        var listed = TaskRowOrder.Order(tasks.Listed(all, filter.ToScope())
                 .Where(t => t.Owner.Id == team.Id && access.CanSee(t) && filter.MatchesWithinTeam(t)))
             .ToList();
         var canAdd = access.CanAddTo(team);
         return new TeamPageViewModel(
-            team.Id, team.Name, team.Slug, listed, filter, canAdd, addForm, await EventsAsync(addForm.EventId, ct),
-            access.PlacesOn(listed), access.BlockersOn(listed, await tasks.GetTasksAsync(ct)),
-            access.Manages(team.Id) ? RequestsOn(onTeam) : []);
+            team.Id, team.Name, team.Slug, listed, filter, canAdd, addForm, await EventsAsync(addForm.EventId, ct), statuses,
+            access.PlacesOn(listed), access.BlockersOn(listed, all),
+            access.Manages(team.Id) ? RequestsOn(all.Where(t => t.Owner.Id == team.Id)) : []);
     }
 
     private async Task<TaskPageViewModel> TaskPageAsync(

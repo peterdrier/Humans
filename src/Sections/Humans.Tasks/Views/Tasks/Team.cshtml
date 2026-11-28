@@ -34,7 +34,7 @@
     </div>
 }
 
-<partial name="_Filter" model="new TaskFilterViewModel(Model.Filter, null, null)" />
+<partial name="_Filter" model="new TaskFilterViewModel(Model.Filter, null, null, Model.Statuses)" />
 <partial name="_TaskRows" model='new TaskRowsModel(Model.Tasks, ShowTeam: false, ShowStatus: true, Model.Places, Model.Blockers, teamUrl, Localizer["Tasks_List_Empty"].Value)' />
 
 @if (Model.CanAdd)

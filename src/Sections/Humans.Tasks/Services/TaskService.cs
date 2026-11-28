@@ -51,11 +51,14 @@ internal sealed partial class TaskService(
         return snapshot.Tasks.Values.Select(t => ToInfo(t, snapshot)).ToList();
     }
 
-    public async Task<IReadOnlyList<TaskInfo>> GetListedTasksAsync(TaskListScope? scope = null, CancellationToken ct = default)
+    public async Task<IReadOnlyList<TaskInfo>> GetListedTasksAsync(TaskListScope? scope = null, CancellationToken ct = default) =>
+        Listed(await GetTasksAsync(ct), scope);
+
+    public IReadOnlyList<TaskInfo> Listed(IEnumerable<TaskInfo> all, TaskListScope? scope = null)
     {
         scope ??= new TaskListScope();
         var activeEventId = settings.GetActiveEventSettings()?.Id;
-        return (await GetTasksAsync(ct))
+        return all
             .Where(t => (scope.IncludeFinished || !t.IsFinished)
                 && (scope.AnyEvent
                     || (scope.EventId is { } eventId ? t.EventId == eventId : t.EventId is null || t.EventId == activeEventId)))

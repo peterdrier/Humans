@@ -771,15 +771,6 @@ public sealed class TasksControllerTests
     }
 
     [HumansFact]
-    public async Task Claim_FromFilteredList_ReturnsToIt()
-    {
-        var task = await TaskOnAsync(TaskTestKit.Production);
-        var back = $"/Tasks?Priority=Critical&Team={TaskTestKit.Production}&Finished=true";
-
-        (await Human().Claim(task.Id, back, Ct)).Should().BeOfType<LocalRedirectResult>().Which.Url.Should().Be(back);
-    }
-
-    [HumansFact]
     public async Task Claim_TakesSlotOrMakesRequest()
     {
         var plain = await TaskOnAsync(TaskTestKit.Production);

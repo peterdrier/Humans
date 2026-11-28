@@ -21,6 +21,12 @@ internal interface ITaskService : IApplicationService
     /// </summary>
     Task<IReadOnlyList<TaskInfo>> GetListedTasksAsync(TaskListScope? scope = null, CancellationToken ct = default);
 
+    /// <summary>
+    /// The listing rule applied to tasks the caller already holds (from <see cref="GetTasksAsync"/>), so a page reads
+    /// the tasks once. A null scope is the default <see cref="TaskListScope"/>.
+    /// </summary>
+    IReadOnlyList<TaskInfo> Listed(IEnumerable<TaskInfo> all, TaskListScope? scope = null);
+
     Task<TaskInfo?> GetTaskAsync(Guid taskId, CancellationToken ct = default);
 
     /// <summary>One row per team with listed tasks, and every listed blocked task. For the read-only admin page.</summary>

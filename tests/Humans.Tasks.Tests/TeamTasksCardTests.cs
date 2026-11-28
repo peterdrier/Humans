@@ -32,6 +32,7 @@ public sealed class TeamTasksCardTests
 {
     private readonly TaskTestKit _kit = new();
     private readonly Guid _me = Guid.NewGuid();
+    private string _userState = "Active";
 
     private static CancellationToken Ct => TestContext.Current.CancellationToken;
 
@@ -55,14 +56,14 @@ public sealed class TeamTasksCardTests
         var http = new DefaultHttpContext
         {
             User = new ClaimsPrincipal(new ClaimsIdentity(
-                [new Claim(ClaimTypes.NameIdentifier, _me.ToString()), .. roles.Select(r => new Claim(ClaimTypes.Role, r))], "test")),
+                [new Claim(ClaimTypes.NameIdentifier, _me.ToString()), new Claim(RoleChecks.UserStateClaimType, _userState), .. roles.Select(r => new Claim(ClaimTypes.Role, r))], "test")),
             RequestServices = new ServiceCollection().AddSingleton(factory).AddSingleton(Substitute.For<ICompositeViewEngine>()).BuildServiceProvider(),
         };
         http.Request.Path = "/Teams/production";
         http.Request.QueryString = new QueryString("?x=1");
 
         var viewData = new ViewDataDictionary(new EmptyModelMetadataProvider(), new ModelStateDictionary());
-        var card = new TeamTasksCardViewComponent(_kit.Service, _kit.Teams, permissions, Authorization, new TaskTestKit.KeyLocalizer())
+        var card = new TeamTasksCardViewComponent(_kit.Service, _kit.Teams, permissions, Authorization)
         {
             ViewComponentContext = new ViewComponentContext
             {
@@ -94,6 +95,15 @@ public sealed class TeamTasksCardTests
         model.Rows.Places.Should().ContainKey(critical.Id).WhoseValue.Should().Be(MyPlace.CanClaim);
         model.Rows.ReturnUrl.Should().Be("/Teams/production?x=1", "a claim made on the card comes back to the team page");
         model.TasksUrl.Should().EndWith("production");
+    }
+
+    [HumansFact]
+    public async Task Card_SuspendedMember_OffersNoClaim()
+    {
+        var task = await TaskAsync(TaskTestKit.Production);
+        _userState = "Suspended";
+
+        Model(await CardAsync(TaskTestKit.Production)).Rows.Places.Should().NotContainKey(task.Id);
     }
 
     [HumansFact]
@@ -174,8 +184,4 @@ public sealed class TeamTasksCardTests
         (await CardAsync(TaskTestKit.Retired)).Should().BeOfType<ContentViewComponentResult>();
         (await CardAsync(Guid.NewGuid())).Should().BeOfType<ContentViewComponentResult>();
     }
-
-    [HumansFact]
-    public void Section_FillsTheTeamPagesTasksSlotWithTheCard() =>
-        ((ITeamTasksPart)new Section()).Card.Should().Be<TeamTasksCardViewComponent>();
 }

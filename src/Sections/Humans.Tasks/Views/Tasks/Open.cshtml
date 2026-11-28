@@ -20,5 +20,5 @@
     <partial name="_StatTile" model='new StatTileViewModel(Localizer["Tasks_Open_Critical"].Value, Model.CriticalCount.ToString(), Severity: Model.CriticalCount > 0 ? Humans.Base.Interfaces.TileSeverity.Critical : Humans.Base.Interfaces.TileSeverity.Normal)' />
 </div>
 
-<partial name="_Filter" model="new TaskFilterViewModel(Model.Filter, null, Model.Teams)" />
+<partial name="_Filter" model="new TaskFilterViewModel(Model.Filter, null, Model.Teams, Model.Statuses)" />
 <partial name="_TaskRows" model='new TaskRowsModel(Model.Tasks, ShowTeam: true, ShowStatus: false, Model.Places, Model.Blockers, here, Localizer["Tasks_Open_Empty"].Value)' />

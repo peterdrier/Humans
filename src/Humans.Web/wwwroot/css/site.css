@@ -3122,14 +3122,15 @@ body.city-map-fullscreen main {
     .stats { grid-template-columns: 1fr; }
 }
 
-/* Task rows (Tasks lists, the tasks card on a team page): a priority-coloured edge, slot dots in the meta line. */
-.task-row {
+/* Task rows (Tasks lists, the tasks card on a team page): a priority-coloured edge, slot dots in the meta line.
+   Three classes deep so the card's .list-group-flush > .list-group-item does not zero the edge. */
+.list-group > .list-group-item.task-row {
     border-left: 4px solid var(--h-border);
 }
 
-.task-row--critical { border-left-color: var(--h-rust); }
-.task-row--important { border-left-color: var(--h-amber); }
-.task-row--nice { border-left-color: var(--h-sage); }
+.list-group > .list-group-item.task-row--critical { border-left-color: var(--h-rust); }
+.list-group > .list-group-item.task-row--important { border-left-color: var(--h-amber); }
+.list-group > .list-group-item.task-row--nice { border-left-color: var(--h-sage); }
 
 .task-row-main {
     min-width: 0;

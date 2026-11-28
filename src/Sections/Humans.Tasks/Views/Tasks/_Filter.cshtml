@@ -43,7 +43,7 @@
         <label class="form-label" for="filter-status">@Localizer["Tasks_Col_Status"]</label>
         <select class="form-select" id="filter-status" name="Status">
             <option value="">@Localizer["Tasks_Filter_AnyStatus"]</option>
-            @foreach (var status in Enum.GetValues<TaskItemStatus>().Where(s => Model.Filter is TaskListFilter || s is not (TaskItemStatus.Done or TaskItemStatus.Cancelled)))
+            @foreach (var status in Model.Statuses)
             {
                 <option value="@status" selected="@(Model.Filter.Status == status)">@Localizer[$"Enum_TaskItemStatus_{status}"]</option>
             }
