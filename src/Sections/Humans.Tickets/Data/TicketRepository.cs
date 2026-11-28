@@ -62,7 +62,7 @@ internal sealed class TicketRepository(IDbContextFactory<TicketsDbContext> facto
 
     public async Task<int> GetPostEventHoldDaysAsync(CancellationToken ct = default)
     {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
+        await using var ctx = await CreateDbContextAsync(ct);
         return await ctx.TicketSettings.AsNoTracking()
             .Where(s => s.Id == 1)
             .Select(s => s.PostEventHoldDays)
@@ -71,7 +71,7 @@ internal sealed class TicketRepository(IDbContextFactory<TicketsDbContext> facto
 
     public async Task SetPostEventHoldDaysAsync(int days, CancellationToken ct = default)
     {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
+        await using var ctx = await CreateDbContextAsync(ct);
         var row = await ctx.TicketSettings.FindAsync([1], ct);
         if (row is null)
             ctx.TicketSettings.Add(new TicketSettings { Id = 1, PostEventHoldDays = days });
