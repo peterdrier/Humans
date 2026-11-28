@@ -1,23 +1,21 @@
 using System.Transactions;
 using Microsoft.EntityFrameworkCore;
+using Humans.Base.Data;
 using Humans.Tickets.Domain;
 
 namespace Humans.Tickets.Data;
 
-internal sealed class TicketTransferRepository(IDbContextFactory<TicketsDbContext> factory) : ITicketTransferRepository
+internal sealed class TicketTransferRepository(IDbContextFactory<TicketsDbContext> factory) : SectionRepository<TicketsDbContext>(factory), ITicketTransferRepository
 {
-    public async Task<IReadOnlyList<TicketTransferRequest>> GetApprovedAsync(CancellationToken ct = default)
-    {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
-        return await ctx.TicketTransferRequests
+    public async Task<IReadOnlyList<TicketTransferRequest>> GetApprovedAsync(CancellationToken ct = default) =>
+        await RunAsync(ctx => ctx.TicketTransferRequests
             .AsNoTracking()
             .Where(r => r.Status == TicketTransferStatus.Approved)
-            .ToListAsync(ct);
-    }
+            .ToListAsync(ct), ct);
 
     public async Task<int> ErasePiiForUserAsync(Guid userId, CancellationToken ct = default)
     {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
+        await using var ctx = await CreateDbContextAsync(ct);
 
         var transfers = await ctx.TicketTransferRequests
             .Where(r => r.SenderUserId == userId
@@ -52,7 +50,7 @@ internal sealed class TicketTransferRepository(IDbContextFactory<TicketsDbContex
 
     public async Task ReassignUserAsync(Guid sourceUserId, Guid targetUserId, CancellationToken ct = default)
     {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
+        await using var ctx = await CreateDbContextAsync(ct);
         if (Transaction.Current is not null)
         {
             await ReassignUserCoreAsync(ctx, sourceUserId, targetUserId, ct);

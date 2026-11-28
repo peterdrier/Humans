@@ -1,3 +1,4 @@
+using Humans.Base.Data;
 using Humans.Events.Services.Dtos;
 using Humans.Events.Domain;
 using Microsoft.EntityFrameworkCore;
@@ -5,17 +6,14 @@ using NodaTime;
 
 namespace Humans.Events.Data;
 
-internal sealed class EventRepository(IDbContextFactory<EventGuideDbContext> factory) : IEventRepository
+internal sealed class EventRepository(IDbContextFactory<EventGuideDbContext> factory) : SectionRepository<EventGuideDbContext>(factory), IEventRepository
 {
-    public async Task<EventGuideSettings?> GetGuideSettingsAsync(CancellationToken ct = default)
-    {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
-        return await ctx.EventGuideSettings.AsNoTracking().FirstOrDefaultAsync(ct);
-    }
+    public async Task<EventGuideSettings?> GetGuideSettingsAsync(CancellationToken ct = default) =>
+        await RunAsync(ctx => ctx.EventGuideSettings.AsNoTracking().FirstOrDefaultAsync(ct), ct);
 
     public async Task UpsertGuideSettingsAsync(EventGuideSettings settings, CancellationToken ct = default)
     {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
+        await using var ctx = await CreateDbContextAsync(ct);
         var existing = await ctx.EventGuideSettings.FirstOrDefaultAsync(ct);
         if (existing == null)
         {
@@ -33,33 +31,24 @@ internal sealed class EventRepository(IDbContextFactory<EventGuideDbContext> fac
         await ctx.SaveChangesAsync(ct);
     }
 
-    public async Task<IReadOnlyList<EventCategory>> GetActiveCategoriesAsync(CancellationToken ct = default)
-    {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
-        return await ctx.EventCategories
+    public async Task<IReadOnlyList<EventCategory>> GetActiveCategoriesAsync(CancellationToken ct = default) =>
+        await RunAsync(ctx => ctx.EventCategories
             .AsNoTracking()
             .Where(c => c.IsActive)
-            .ToListAsync(ct);
-    }
+            .ToListAsync(ct), ct);
 
-    public async Task<IReadOnlyList<EventCategory>> GetAllCategoriesAsync(CancellationToken ct = default)
-    {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
-        return await ctx.EventCategories
+    public async Task<IReadOnlyList<EventCategory>> GetAllCategoriesAsync(CancellationToken ct = default) =>
+        await RunAsync(ctx => ctx.EventCategories
             .AsNoTracking()
             .Include(c => c.Events)
-            .ToListAsync(ct);
-    }
+            .ToListAsync(ct), ct);
 
-    public async Task<EventCategory?> GetCategoryAsync(Guid id, CancellationToken ct = default)
-    {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
-        return await ctx.EventCategories.AsNoTracking().FirstOrDefaultAsync(c => c.Id == id, ct);
-    }
+    public async Task<EventCategory?> GetCategoryAsync(Guid id, CancellationToken ct = default) =>
+        await RunAsync(ctx => ctx.EventCategories.AsNoTracking().FirstOrDefaultAsync(c => c.Id == id, ct), ct);
 
     public async Task<bool> CategorySlugExistsAsync(string slug, Guid? excludeId, CancellationToken ct = default)
     {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
+        await using var ctx = await CreateDbContextAsync(ct);
         var query = ctx.EventCategories.AsNoTracking().Where(c => c.Slug == slug);
         if (excludeId.HasValue) query = query.Where(c => c.Id != excludeId.Value);
         return await query.AnyAsync(ct);
@@ -67,20 +56,16 @@ internal sealed class EventRepository(IDbContextFactory<EventGuideDbContext> fac
 
     public async Task<int> GetMaxCategoryOrderAsync(CancellationToken ct = default)
     {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
+        await using var ctx = await CreateDbContextAsync(ct);
         return await ctx.EventCategories.AsNoTracking().Select(c => (int?)c.DisplayOrder).MaxAsync(ct) ?? 0;
     }
 
-    public async Task AddCategoryAsync(EventCategory category, CancellationToken ct = default)
-    {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
-        ctx.EventCategories.Add(category);
-        await ctx.SaveChangesAsync(ct);
-    }
+    public async Task AddCategoryAsync(EventCategory category, CancellationToken ct = default) =>
+        await InsertAsync(category, ct);
 
     public async Task SaveCategoryAsync(EventCategory category, CancellationToken ct = default)
     {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
+        await using var ctx = await CreateDbContextAsync(ct);
         ctx.Attach(category);
         ctx.Entry(category).State = EntityState.Modified;
         await ctx.SaveChangesAsync(ct);
@@ -88,7 +73,7 @@ internal sealed class EventRepository(IDbContextFactory<EventGuideDbContext> fac
 
     public async Task<(bool deleted, int linkedCount)> DeleteCategoryAsync(Guid id, CancellationToken ct = default)
     {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
+        await using var ctx = await CreateDbContextAsync(ct);
         var category = await ctx.EventCategories
             .Include(c => c.Events)
             .FirstOrDefaultAsync(c => c.Id == id, ct);
@@ -102,7 +87,7 @@ internal sealed class EventRepository(IDbContextFactory<EventGuideDbContext> fac
 
     public async Task SwapCategoryOrderAsync(Guid id, int direction, CancellationToken ct = default)
     {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
+        await using var ctx = await CreateDbContextAsync(ct);
         var categories = await ctx.EventCategories
             .OrderBy(c => c.DisplayOrder) // arch:db-sort-ok reorder neighbor lookup (swap operation, not display)
             .ThenBy(c => c.Name)
@@ -116,46 +101,33 @@ internal sealed class EventRepository(IDbContextFactory<EventGuideDbContext> fac
         await ctx.SaveChangesAsync(ct);
     }
 
-    public async Task<IReadOnlyList<EventVenue>> GetActiveVenuesAsync(CancellationToken ct = default)
-    {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
-        return await ctx.EventVenues
+    public async Task<IReadOnlyList<EventVenue>> GetActiveVenuesAsync(CancellationToken ct = default) =>
+        await RunAsync(ctx => ctx.EventVenues
             .AsNoTracking()
             .Where(v => v.IsActive)
-            .ToListAsync(ct);
-    }
+            .ToListAsync(ct), ct);
 
-    public async Task<IReadOnlyList<EventVenue>> GetAllVenuesAsync(CancellationToken ct = default)
-    {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
-        return await ctx.EventVenues
+    public async Task<IReadOnlyList<EventVenue>> GetAllVenuesAsync(CancellationToken ct = default) =>
+        await RunAsync(ctx => ctx.EventVenues
             .AsNoTracking()
             .Include(v => v.Events)
-            .ToListAsync(ct);
-    }
+            .ToListAsync(ct), ct);
 
-    public async Task<EventVenue?> GetVenueAsync(Guid id, CancellationToken ct = default)
-    {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
-        return await ctx.EventVenues.AsNoTracking().FirstOrDefaultAsync(v => v.Id == id, ct);
-    }
+    public async Task<EventVenue?> GetVenueAsync(Guid id, CancellationToken ct = default) =>
+        await RunAsync(ctx => ctx.EventVenues.AsNoTracking().FirstOrDefaultAsync(v => v.Id == id, ct), ct);
 
     public async Task<int> GetMaxVenueOrderAsync(CancellationToken ct = default)
     {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
+        await using var ctx = await CreateDbContextAsync(ct);
         return await ctx.EventVenues.AsNoTracking().Select(v => (int?)v.DisplayOrder).MaxAsync(ct) ?? 0;
     }
 
-    public async Task AddVenueAsync(EventVenue venue, CancellationToken ct = default)
-    {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
-        ctx.EventVenues.Add(venue);
-        await ctx.SaveChangesAsync(ct);
-    }
+    public async Task AddVenueAsync(EventVenue venue, CancellationToken ct = default) =>
+        await InsertAsync(venue, ct);
 
     public async Task SaveVenueAsync(EventVenue venue, CancellationToken ct = default)
     {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
+        await using var ctx = await CreateDbContextAsync(ct);
         ctx.Attach(venue);
         ctx.Entry(venue).State = EntityState.Modified;
         await ctx.SaveChangesAsync(ct);
@@ -163,7 +135,7 @@ internal sealed class EventRepository(IDbContextFactory<EventGuideDbContext> fac
 
     public async Task<(bool deleted, int linkedCount)> DeleteVenueAsync(Guid id, CancellationToken ct = default)
     {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
+        await using var ctx = await CreateDbContextAsync(ct);
         var venue = await ctx.EventVenues
             .Include(v => v.Events)
             .FirstOrDefaultAsync(v => v.Id == id, ct);
@@ -177,7 +149,7 @@ internal sealed class EventRepository(IDbContextFactory<EventGuideDbContext> fac
 
     public async Task SwapVenueOrderAsync(Guid id, int direction, CancellationToken ct = default)
     {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
+        await using var ctx = await CreateDbContextAsync(ct);
         var venues = await ctx.EventVenues
             .OrderBy(v => v.DisplayOrder) // arch:db-sort-ok reorder neighbor lookup (swap operation, not display)
             .ThenBy(v => v.Name)
@@ -191,51 +163,35 @@ internal sealed class EventRepository(IDbContextFactory<EventGuideDbContext> fac
         await ctx.SaveChangesAsync(ct);
     }
 
-    public async Task<IReadOnlyList<Event>> GetUserSubmissionsAsync(Guid userId, CancellationToken ct = default)
-    {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
-        return await ctx.Events
+    public async Task<IReadOnlyList<Event>> GetUserSubmissionsAsync(Guid userId, CancellationToken ct = default) =>
+        await RunAsync(ctx => ctx.Events
             .AsNoTracking()
             .Include(e => e.Category)
             .Include(e => e.EventVenue)
             .Where(e => e.CampId == null && e.SubmitterUserId == userId)
-            .ToListAsync(ct);
-    }
+            .ToListAsync(ct), ct);
 
-    public async Task<Event?> GetUserEventAsync(Guid eventId, Guid userId, CancellationToken ct = default)
-    {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
-        return await WithDetails(ctx.Events.AsNoTracking()).FirstOrDefaultAsync(
-            e => e.Id == eventId && e.CampId == null && e.SubmitterUserId == userId, ct);
-    }
+    public async Task<Event?> GetUserEventAsync(Guid eventId, Guid userId, CancellationToken ct = default) =>
+        await RunAsync(ctx => WithDetails(ctx.Events.AsNoTracking()).FirstOrDefaultAsync(
+            e => e.Id == eventId && e.CampId == null && e.SubmitterUserId == userId, ct), ct);
 
-    public async Task<IReadOnlyList<Event>> GetCampSubmissionsAsync(Guid campId, CancellationToken ct = default)
-    {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
-        return await ctx.Events
+    public async Task<IReadOnlyList<Event>> GetCampSubmissionsAsync(Guid campId, CancellationToken ct = default) =>
+        await RunAsync(ctx => ctx.Events
             .AsNoTracking()
             .Include(e => e.Category)
             .Where(e => e.CampId == campId)
-            .ToListAsync(ct);
-    }
+            .ToListAsync(ct), ct);
 
-    public async Task<Event?> GetCampEventAsync(Guid eventId, Guid campId, CancellationToken ct = default)
-    {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
-        return await WithDetails(ctx.Events.AsNoTracking()).FirstOrDefaultAsync(
-            e => e.Id == eventId && e.CampId == campId, ct);
-    }
+    public async Task<Event?> GetCampEventAsync(Guid eventId, Guid campId, CancellationToken ct = default) =>
+        await RunAsync(ctx => WithDetails(ctx.Events.AsNoTracking()).FirstOrDefaultAsync(
+            e => e.Id == eventId && e.CampId == campId, ct), ct);
 
-    public async Task AddEventAsync(Event guideEvent, CancellationToken ct = default)
-    {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
-        ctx.Events.Add(guideEvent);
-        await ctx.SaveChangesAsync(ct);
-    }
+    public async Task AddEventAsync(Event guideEvent, CancellationToken ct = default) =>
+        await InsertAsync(guideEvent, ct);
 
     public async Task SaveEventAsync(Event guideEvent, CancellationToken ct = default)
     {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
+        await using var ctx = await CreateDbContextAsync(ct);
         ctx.Attach(guideEvent);
         ctx.Entry(guideEvent).State = EntityState.Modified;
         await ctx.SaveChangesAsync(ct);
@@ -245,7 +201,7 @@ internal sealed class EventRepository(IDbContextFactory<EventGuideDbContext> fac
         IReadOnlyList<Event> created, IReadOnlyList<Event> updated, CancellationToken ct = default)
     {
         if (created.Count == 0 && updated.Count == 0) return;
-        await using var ctx = await factory.CreateDbContextAsync(ct);
+        await using var ctx = await CreateDbContextAsync(ct);
         foreach (var guideEvent in updated)
             ctx.Entry(guideEvent).State = EntityState.Modified;
         ctx.Events.AddRange(created);
@@ -256,7 +212,7 @@ internal sealed class EventRepository(IDbContextFactory<EventGuideDbContext> fac
         Guid? campId, Guid? venueId, Guid? categoryId, string? q,
         IReadOnlyList<string> excludedSlugs, CancellationToken ct = default)
     {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
+        await using var ctx = await CreateDbContextAsync(ct);
         var query = ctx.Events
             .AsNoTracking()
             .Include(e => e.Category)
@@ -281,28 +237,22 @@ internal sealed class EventRepository(IDbContextFactory<EventGuideDbContext> fac
         return await query.ToListAsync(ct);
     }
 
-    public async Task<Event?> GetApprovedEventByIdAsync(Guid id, CancellationToken ct = default)
-    {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
-        return await ctx.Events
+    public async Task<Event?> GetApprovedEventByIdAsync(Guid id, CancellationToken ct = default) =>
+        await RunAsync(ctx => ctx.Events
             .AsNoTracking()
             .Include(e => e.Category)
             .Include(e => e.EventVenue)
-            .FirstOrDefaultAsync(e => e.Id == id && e.Status == EventStatus.Approved, ct);
-    }
+            .FirstOrDefaultAsync(e => e.Id == id && e.Status == EventStatus.Approved, ct), ct);
 
-    public async Task<IReadOnlyList<Event>> GetAllEventsForDashboardAsync(CancellationToken ct = default)
-    {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
-        return await ctx.Events
+    public async Task<IReadOnlyList<Event>> GetAllEventsForDashboardAsync(CancellationToken ct = default) =>
+        await RunAsync(ctx => ctx.Events
             .AsNoTracking()
             .Include(e => e.Category)
-            .ToListAsync(ct);
-    }
+            .ToListAsync(ct), ct);
 
     public async Task<Dictionary<EventStatus, int>> GetModerationStatusCountsAsync(Guid? eventSettingsId, CancellationToken ct = default)
     {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
+        await using var ctx = await CreateDbContextAsync(ct);
         var moderationStatuses = new[]
         {
             EventStatus.Pending,
@@ -325,24 +275,18 @@ internal sealed class EventRepository(IDbContextFactory<EventGuideDbContext> fac
 
     public async Task<IReadOnlyList<Event>> GetEventsByStatusAsync(EventStatus status, CancellationToken ct = default)
     {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
+        await using var ctx = await CreateDbContextAsync(ct);
         var query = WithDetails(ctx.Events.AsNoTracking())
             .Where(e => e.Status == status);
 
         return await query.ToListAsync(ct);
     }
 
-    public async Task<Event?> GetEventForModerationAsync(Guid eventId, CancellationToken ct = default)
-    {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
-        return await ctx.Events.AsNoTracking().FirstOrDefaultAsync(e => e.Id == eventId, ct);
-    }
+    public async Task<Event?> GetEventForModerationAsync(Guid eventId, CancellationToken ct = default) =>
+        await RunAsync(ctx => ctx.Events.AsNoTracking().FirstOrDefaultAsync(e => e.Id == eventId, ct), ct);
 
-    public async Task<Event?> GetEventWithDetailsAsync(Guid eventId, CancellationToken ct = default)
-    {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
-        return await WithDetails(ctx.Events.AsNoTracking()).FirstOrDefaultAsync(e => e.Id == eventId, ct);
-    }
+    public async Task<Event?> GetEventWithDetailsAsync(Guid eventId, CancellationToken ct = default) =>
+        await RunAsync(ctx => WithDetails(ctx.Events.AsNoTracking()).FirstOrDefaultAsync(e => e.Id == eventId, ct), ct);
 
     // Write loads stay nav-free so Attach on save never drags a stale Category/EventVenue graph along.
     private static IQueryable<Event> WithDetails(IQueryable<Event> query) => query
@@ -352,7 +296,7 @@ internal sealed class EventRepository(IDbContextFactory<EventGuideDbContext> fac
 
     public async Task<IReadOnlyList<CampEventOverlap>> GetActiveCampEventsAsync(Guid? eventSettingsId, CancellationToken ct = default)
     {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
+        await using var ctx = await CreateDbContextAsync(ct);
         var rows = await ctx.Events
             .AsNoTracking()
             .Where(e => e.CampId != null &&
@@ -367,7 +311,7 @@ internal sealed class EventRepository(IDbContextFactory<EventGuideDbContext> fac
 
     public async Task SaveModeratedEventAsync(Event guideEvent, EventModerationAction action, CancellationToken ct = default)
     {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
+        await using var ctx = await CreateDbContextAsync(ct);
         ctx.Attach(guideEvent);
         ctx.Entry(guideEvent).State = EntityState.Modified;
         ctx.EventModerationActions.Add(action);
@@ -376,7 +320,7 @@ internal sealed class EventRepository(IDbContextFactory<EventGuideDbContext> fac
 
     public async Task<HashSet<Guid>> GetFavouriteEventIdsAsync(Guid userId, CancellationToken ct = default)
     {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
+        await using var ctx = await CreateDbContextAsync(ct);
         var ids = await ctx.EventFavourites
             .AsNoTracking()
             .Where(f => f.UserId == userId)
@@ -385,20 +329,17 @@ internal sealed class EventRepository(IDbContextFactory<EventGuideDbContext> fac
         return [.. ids];
     }
 
-    public async Task<IReadOnlyList<EventFavourite>> GetFavouritesWithEventsAsync(Guid userId, CancellationToken ct = default)
-    {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
-        return await ctx.EventFavourites
+    public async Task<IReadOnlyList<EventFavourite>> GetFavouritesWithEventsAsync(Guid userId, CancellationToken ct = default) =>
+        await RunAsync(ctx => ctx.EventFavourites
             .AsNoTracking()
             .Include(f => f.Event).ThenInclude(e => e.Category)
             .Include(f => f.Event).ThenInclude(e => e.EventVenue)
             .Where(f => f.UserId == userId && f.Event.Status == EventStatus.Approved)
-            .ToListAsync(ct);
-    }
+            .ToListAsync(ct), ct);
 
     public async Task<bool> AddFavouriteIfAbsentAsync(EventFavourite favourite, CancellationToken ct = default)
     {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
+        await using var ctx = await CreateDbContextAsync(ct);
         var exists = await MatchingFavourites(ctx, favourite.UserId, favourite.GuideEventId, favourite.DayOffset)
             .AnyAsync(ct);
         if (exists) return false;
@@ -421,7 +362,7 @@ internal sealed class EventRepository(IDbContextFactory<EventGuideDbContext> fac
 
     public async Task<bool> RemoveFavouriteAsync(Guid userId, Guid eventId, int? dayOffset, CancellationToken ct = default)
     {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
+        await using var ctx = await CreateDbContextAsync(ct);
         var existing = await MatchingFavourites(ctx, userId, eventId, dayOffset).ToListAsync(ct);
         if (existing.Count == 0) return false;
         ctx.EventFavourites.RemoveRange(existing);
@@ -438,15 +379,12 @@ internal sealed class EventRepository(IDbContextFactory<EventGuideDbContext> fac
             .Where(f => f.UserId == userId && f.GuideEventId == eventId)
             .Where(f => dayOffset == null || f.DayOffset == null || f.DayOffset == dayOffset);
 
-    public async Task<EventPreference?> GetPreferenceAsync(Guid userId, CancellationToken ct = default)
-    {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
-        return await ctx.EventPreferences.AsNoTracking().FirstOrDefaultAsync(p => p.UserId == userId, ct);
-    }
+    public async Task<EventPreference?> GetPreferenceAsync(Guid userId, CancellationToken ct = default) =>
+        await RunAsync(ctx => ctx.EventPreferences.AsNoTracking().FirstOrDefaultAsync(p => p.UserId == userId, ct), ct);
 
     public async Task UpsertPreferenceAsync(Guid userId, string excludedCategorySlugsJson, Instant updatedAt, CancellationToken ct = default)
     {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
+        await using var ctx = await CreateDbContextAsync(ct);
         var existing = await ctx.EventPreferences.FirstOrDefaultAsync(p => p.UserId == userId, ct);
         if (existing == null)
         {
@@ -466,18 +404,15 @@ internal sealed class EventRepository(IDbContextFactory<EventGuideDbContext> fac
         await ctx.SaveChangesAsync(ct);
     }
 
-    public async Task<IReadOnlyList<EventFavourite>> GetFavouritesForContributorAsync(Guid userId, CancellationToken ct = default)
-    {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
-        return await ctx.EventFavourites
+    public async Task<IReadOnlyList<EventFavourite>> GetFavouritesForContributorAsync(Guid userId, CancellationToken ct = default) =>
+        await RunAsync(ctx => ctx.EventFavourites
             .AsNoTracking()
             .Where(f => f.UserId == userId)
-            .ToListAsync(ct);
-    }
+            .ToListAsync(ct), ct);
 
     public async Task<int> DeleteForUserAsync(Guid userId, CancellationToken ct = default)
     {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
+        await using var ctx = await CreateDbContextAsync(ct);
 
         var favourites = await ctx.EventFavourites.Where(f => f.UserId == userId).ToListAsync(ct);
         var preferences = await ctx.EventPreferences.Where(p => p.UserId == userId).ToListAsync(ct);
@@ -491,7 +426,7 @@ internal sealed class EventRepository(IDbContextFactory<EventGuideDbContext> fac
 
     public async Task<int> ClearSubmitterHostForUserAsync(Guid userId, CancellationToken ct = default)
     {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
+        await using var ctx = await CreateDbContextAsync(ct);
 
         var submissions = await ctx.Events
             .Where(e => e.SubmitterUserId == userId && e.Host != null)
@@ -508,7 +443,7 @@ internal sealed class EventRepository(IDbContextFactory<EventGuideDbContext> fac
     public async Task ReassignToUserAsync(
         Guid sourceUserId, Guid targetUserId, Instant updatedAt, CancellationToken ct = default)
     {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
+        await using var ctx = await CreateDbContextAsync(ct);
 
         var submissions = await ctx.Events.Where(e => e.SubmitterUserId == sourceUserId).ToListAsync(ct);
         foreach (var submission in submissions)

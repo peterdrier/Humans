@@ -30,9 +30,7 @@ public sealed class CommunicationPreferenceServiceTests : IDisposable
 
     public CommunicationPreferenceServiceTests()
     {
-        var options = new DbContextOptionsBuilder<EmailDbContext>()
-            .UseInMemoryDatabase(Guid.NewGuid().ToString())
-            .Options;
+        var options = TestDbOptions.InMemory<EmailDbContext>();
         _db = new EmailDbContext(options);
 
         _users.GetUserInfoAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())

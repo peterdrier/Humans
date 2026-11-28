@@ -1,10 +1,11 @@
+using Humans.Base.Data;
 using Humans.CityPlanning.Domain;
 using Microsoft.EntityFrameworkCore;
 using NodaTime;
 
 namespace Humans.CityPlanning.Data;
 
-internal sealed class CityPlanningRepository(IDbContextFactory<CityPlanningDbContext> factory) : ICityPlanningRepository
+internal sealed class CityPlanningRepository(IDbContextFactory<CityPlanningDbContext> factory) : SectionRepository<CityPlanningDbContext>(factory), ICityPlanningRepository
 {
     public async Task<IReadOnlyList<CampPolygon>> GetPolygonsByCampSeasonIdsAsync(
         IReadOnlyCollection<Guid> campSeasonIds, CancellationToken ct = default)
@@ -14,7 +15,7 @@ internal sealed class CityPlanningRepository(IDbContextFactory<CityPlanningDbCon
             return [];
         }
 
-        await using var ctx = await factory.CreateDbContextAsync(ct);
+        await using var ctx = await CreateDbContextAsync(ct);
         return await ctx.CampPolygons
             .AsNoTracking()
             .Where(p => campSeasonIds.Contains(p.CampSeasonId))
@@ -29,7 +30,7 @@ internal sealed class CityPlanningRepository(IDbContextFactory<CityPlanningDbCon
             return [];
         }
 
-        await using var ctx = await factory.CreateDbContextAsync(ct);
+        await using var ctx = await CreateDbContextAsync(ct);
         return await ctx.CampPolygons
             .AsNoTracking()
             .Where(p => campSeasonIds.Contains(p.CampSeasonId))
@@ -40,7 +41,7 @@ internal sealed class CityPlanningRepository(IDbContextFactory<CityPlanningDbCon
     public async Task<IReadOnlyList<CampPolygonHistory>> GetHistoryForCampSeasonAsync(
         Guid campSeasonId, CancellationToken ct = default)
     {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
+        await using var ctx = await CreateDbContextAsync(ct);
         // Unordered: the controller sorts for display.
         return await ctx.CampPolygonHistories
             .AsNoTracking()
@@ -49,13 +50,10 @@ internal sealed class CityPlanningRepository(IDbContextFactory<CityPlanningDbCon
     }
 
     public async Task<CampPolygonHistory?> GetHistoryEntryAsync(
-        Guid campSeasonId, Guid historyId, CancellationToken ct = default)
-    {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
-        return await ctx.CampPolygonHistories
+        Guid campSeasonId, Guid historyId, CancellationToken ct = default) =>
+        await RunAsync(ctx => ctx.CampPolygonHistories
             .AsNoTracking()
-            .FirstOrDefaultAsync(h => h.Id == historyId && h.CampSeasonId == campSeasonId, ct);
-    }
+            .FirstOrDefaultAsync(h => h.Id == historyId && h.CampSeasonId == campSeasonId, ct), ct);
 
     public async Task<CampPolygon> SavePolygonAsync(
         Guid campSeasonId,
@@ -66,7 +64,7 @@ internal sealed class CityPlanningRepository(IDbContextFactory<CityPlanningDbCon
         Instant now,
         CancellationToken ct = default)
     {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
+        await using var ctx = await CreateDbContextAsync(ct);
 
         var polygon = await ctx.CampPolygons
             .FirstOrDefaultAsync(p => p.CampSeasonId == campSeasonId, ct);
@@ -111,7 +109,7 @@ internal sealed class CityPlanningRepository(IDbContextFactory<CityPlanningDbCon
 
     public async Task<int> DeleteHistoryBeforeAsync(Instant cutoff, CancellationToken ct = default)
     {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
+        await using var ctx = await CreateDbContextAsync(ct);
         var rows = await ctx.CampPolygonHistories.Where(h => h.ModifiedAt < cutoff).ToListAsync(ct);
         if (rows.Count == 0)
         {
@@ -131,7 +129,7 @@ internal sealed class CityPlanningRepository(IDbContextFactory<CityPlanningDbCon
             return 0;
         }
 
-        await using var ctx = await factory.CreateDbContextAsync(ct);
+        await using var ctx = await CreateDbContextAsync(ct);
 
         // Load-and-remove rather than ExecuteDelete keeps this provider-agnostic for the test suite.
         var history = await ctx.CampPolygonHistories
@@ -153,18 +151,15 @@ internal sealed class CityPlanningRepository(IDbContextFactory<CityPlanningDbCon
         return history.Count + polygons.Count;
     }
 
-    public async Task<CityPlanningSettings?> GetSettingsAsync(int year, CancellationToken ct = default)
-    {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
-        return await ctx.CityPlanningSettings
+    public async Task<CityPlanningSettings?> GetSettingsAsync(int year, CancellationToken ct = default) =>
+        await RunAsync(ctx => ctx.CityPlanningSettings
             .AsNoTracking()
-            .FirstOrDefaultAsync(s => s.Year == year, ct);
-    }
+            .FirstOrDefaultAsync(s => s.Year == year, ct), ct);
 
     public async Task<CityPlanningSettings> GetOrCreateSettingsAsync(
         int year, Instant now, CancellationToken ct = default)
     {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
+        await using var ctx = await CreateDbContextAsync(ct);
         var settings = await ctx.CityPlanningSettings
             .FirstOrDefaultAsync(s => s.Year == year, ct);
 
@@ -189,7 +184,7 @@ internal sealed class CityPlanningRepository(IDbContextFactory<CityPlanningDbCon
         Instant now,
         CancellationToken ct = default)
     {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
+        await using var ctx = await CreateDbContextAsync(ct);
         var settings = await ctx.CityPlanningSettings
             .FirstOrDefaultAsync(s => s.Year == year, ct);
 

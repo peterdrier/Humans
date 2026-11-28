@@ -1,3 +1,4 @@
+using Humans.Base.Data;
 using Humans.Finance.Domain;
 using Microsoft.EntityFrameworkCore;
 using NodaTime;
@@ -5,17 +6,14 @@ using NodaTime;
 namespace Humans.Finance.Data;
 
 internal sealed class PaymentDetailsRepository(IDbContextFactory<FinanceDbContext> factory)
-    : IPaymentDetailsRepository
+    : SectionRepository<FinanceDbContext>(factory), IPaymentDetailsRepository
 {
-    public async Task<PaymentDetails?> GetAsync(Guid userId, CancellationToken ct = default)
-    {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
-        return await ctx.PaymentDetails.AsNoTracking().SingleOrDefaultAsync(x => x.UserId == userId, ct);
-    }
+    public async Task<PaymentDetails?> GetAsync(Guid userId, CancellationToken ct = default) =>
+        await RunAsync(ctx => ctx.PaymentDetails.AsNoTracking().SingleOrDefaultAsync(x => x.UserId == userId, ct), ct);
 
     public async Task UpsertAsync(Guid userId, string? iban, Instant now, CancellationToken ct = default)
     {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
+        await using var ctx = await CreateDbContextAsync(ct);
         var row = await ctx.PaymentDetails.SingleOrDefaultAsync(x => x.UserId == userId, ct);
         if (row is null)
         {
@@ -31,7 +29,7 @@ internal sealed class PaymentDetailsRepository(IDbContextFactory<FinanceDbContex
 
     public async Task<bool> DeleteAsync(Guid userId, CancellationToken ct = default)
     {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
+        await using var ctx = await CreateDbContextAsync(ct);
         var row = await ctx.PaymentDetails.SingleOrDefaultAsync(x => x.UserId == userId, ct);
         if (row is null) return false;
         ctx.PaymentDetails.Remove(row);
@@ -41,7 +39,7 @@ internal sealed class PaymentDetailsRepository(IDbContextFactory<FinanceDbContex
 
     public async Task ReassignAsync(Guid fromUserId, Guid toUserId, Instant now, CancellationToken ct = default)
     {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
+        await using var ctx = await CreateDbContextAsync(ct);
         var source = await ctx.PaymentDetails.SingleOrDefaultAsync(x => x.UserId == fromUserId, ct);
         if (source is null) return;
 

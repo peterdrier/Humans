@@ -48,8 +48,7 @@ public sealed class EventParticipationServiceTests : IDisposable
 
     public EventParticipationServiceTests()
     {
-        var options = new DbContextOptionsBuilder<TicketsDbContext>()
-            .UseInMemoryDatabase(Guid.NewGuid().ToString()).Options;
+        var options = TestDbOptions.InMemory<TicketsDbContext>();
         _db = new TicketsDbContext(options);
         var repo = new EventParticipationRepository(new TestDbContextFactory<TicketsDbContext>(options));
         _queries = new TicketQueryService(FixedOrgTimeZone.Madrid, Substitute.For<ITicketRepository>(),

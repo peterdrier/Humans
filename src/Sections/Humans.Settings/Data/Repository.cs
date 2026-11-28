@@ -1,3 +1,4 @@
+using Humans.Base.Data;
 using Humans.Settings.Contracts;
 using Humans.Settings.Domain;
 using Microsoft.EntityFrameworkCore;
@@ -6,29 +7,23 @@ using NodaTime;
 namespace Humans.Settings.Data;
 
 internal sealed class Repository(IDbContextFactory<SettingsDbContext> factory)
-    : ISettingsRepository
+    : SectionRepository<SettingsDbContext>(factory), ISettingsRepository
 {
-    public async Task<string?> GetValueAsync(string key, CancellationToken ct = default)
-    {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
-        return await ctx.Settings
+    public async Task<string?> GetValueAsync(string key, CancellationToken ct = default) =>
+        await RunAsync(ctx => ctx.Settings
             .AsNoTracking()
             .Where(setting => setting.Key == key)
             .Select(setting => setting.Value)
-            .FirstOrDefaultAsync(ct);
-    }
+            .FirstOrDefaultAsync(ct), ct);
 
-    public async Task<IReadOnlyDictionary<string, string>> GetAllValuesAsync(CancellationToken ct = default)
-    {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
-        return await ctx.Settings
+    public async Task<IReadOnlyDictionary<string, string>> GetAllValuesAsync(CancellationToken ct = default) =>
+        await RunAsync(ctx => ctx.Settings
             .AsNoTracking()
-            .ToDictionaryAsync(setting => setting.Key, setting => setting.Value, StringComparer.Ordinal, ct);
-    }
+            .ToDictionaryAsync(setting => setting.Key, setting => setting.Value, StringComparer.Ordinal, ct), ct);
 
     public async Task SetValueAsync(string key, string value, CancellationToken ct = default)
     {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
+        await using var ctx = await CreateDbContextAsync(ct);
         var setting = await ctx.Settings
             .FirstOrDefaultAsync(s => s.Key == key, ct);
 
@@ -48,42 +43,30 @@ internal sealed class Repository(IDbContextFactory<SettingsDbContext> factory)
         await ctx.SaveChangesAsync(ct);
     }
 
-    public async Task<EventSettings?> GetActiveEventSettingsAsync(CancellationToken ct = default)
-    {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
-        return await ctx.EventSettings
+    public async Task<EventSettings?> GetActiveEventSettingsAsync(CancellationToken ct = default) =>
+        await RunAsync(ctx => ctx.EventSettings
             .AsNoTracking()
-            .FirstOrDefaultAsync(e => e.Status == EventSettingsStatus.Active, ct);
-    }
+            .FirstOrDefaultAsync(e => e.Status == EventSettingsStatus.Active, ct), ct);
 
-    public async Task<EventSettings?> GetEventSettingsByIdAsync(Guid id, CancellationToken ct = default)
-    {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
-        return await ctx.EventSettings
+    public async Task<EventSettings?> GetEventSettingsByIdAsync(Guid id, CancellationToken ct = default) =>
+        await RunAsync(ctx => ctx.EventSettings
             .AsNoTracking()
-            .FirstOrDefaultAsync(e => e.Id == id, ct);
-    }
+            .FirstOrDefaultAsync(e => e.Id == id, ct), ct);
 
-    public async Task<IReadOnlyList<EventSettings>> GetAllEventSettingsAsync(CancellationToken ct = default)
-    {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
-        return await ctx.EventSettings
+    public async Task<IReadOnlyList<EventSettings>> GetAllEventSettingsAsync(CancellationToken ct = default) =>
+        await RunAsync(ctx => ctx.EventSettings
             .AsNoTracking()
-            .ToListAsync(ct);
-    }
+            .ToListAsync(ct), ct);
 
-    public async Task<bool> AnyOtherActiveEventSettingsAsync(Guid excludingId, CancellationToken ct = default)
-    {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
-        return await ctx.EventSettings
+    public async Task<bool> AnyOtherActiveEventSettingsAsync(Guid excludingId, CancellationToken ct = default) =>
+        await RunAsync(ctx => ctx.EventSettings
             .AsNoTracking()
-            .AnyAsync(e => e.Status == EventSettingsStatus.Active && e.Id != excludingId, ct);
-    }
+            .AnyAsync(e => e.Status == EventSettingsStatus.Active && e.Id != excludingId, ct), ct);
 
     public async Task UpsertEventSettingsAsync(
         EventSettings settings, Instant now, CancellationToken ct = default)
     {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
+        await using var ctx = await CreateDbContextAsync(ct);
         var existing = await ctx.EventSettings.FirstOrDefaultAsync(e => e.Id == settings.Id, ct);
 
         if (existing is null)
@@ -116,7 +99,7 @@ internal sealed class Repository(IDbContextFactory<SettingsDbContext> factory)
     public async Task<IReadOnlyList<EventSettings>> SetActiveEventSettingsAsync(
         Guid id, Instant now, CancellationToken ct = default)
     {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
+        await using var ctx = await CreateDbContextAsync(ct);
         var target = await ctx.EventSettings.FirstOrDefaultAsync(e => e.Id == id, ct);
         if (target is null)
             return [];

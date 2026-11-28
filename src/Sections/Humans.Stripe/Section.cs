@@ -9,6 +9,7 @@ using Humans.Stripe.Jobs;
 using Humans.Stripe.Services;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Humans.Stripe.Controllers;
 
 [assembly: Humans.Base.Demo.NoDemoStory("Vendor mirror: its data arrives through the Stripe sync, never from demo stories.")]
 
@@ -18,9 +19,9 @@ namespace Humans.Stripe;
 /// <c>Section</c> (as <c>ISectionConfiguration</c>) declares the same <c>STRIPE_*</c> variables to the settings inventory: rename both
 /// together.
 /// </summary>
-public sealed class Section : ISection, ISectionAdminNav, ISectionConfiguration, ISectionJobs
+public sealed class Section : SectionBase, ISectionAdminNav, ISectionConfiguration, ISectionJobs
 {
-    public void Register(IServiceCollection services, IConfiguration configuration)
+    public override void Register(IServiceCollection services, IConfiguration configuration)
     {
         services.Configure<StripeSettings>(opts =>
         {
@@ -49,11 +50,11 @@ public sealed class Section : ISection, ISectionAdminNav, ISectionConfiguration,
 
     IEnumerable<AdminNavGroup> ISectionAdminNav.Groups() =>
     [
-        new("Stripe", [
-            new("Accounts",     "Stripe", "Index",        null, null, "fa-brands fa-stripe-s",   FinancePolicies.Read),
-            new("Transactions", "Stripe", "Transactions", null, null, "fa-solid fa-list",        FinancePolicies.Read),
-            new("Payouts",      "Stripe", "Payouts",      null, null, "fa-solid fa-building-columns", FinancePolicies.Read),
-            new("Reserves",     "Stripe", "Reserves",     null, null, "fa-solid fa-vault",       FinancePolicies.Read)
+        AdminGroup([
+            AdminLink<StripeController>("Accounts", nameof(StripeController.Index), "fa-brands fa-stripe-s", FinancePolicies.Read),
+            AdminLink<StripeController>("Transactions", nameof(StripeController.Transactions), "fa-solid fa-list", FinancePolicies.Read),
+            AdminLink<StripeController>("Payouts", nameof(StripeController.Payouts), "fa-solid fa-building-columns", FinancePolicies.Read),
+            AdminLink<StripeController>("Reserves", nameof(StripeController.Reserves), "fa-solid fa-vault", FinancePolicies.Read)
         ])
     ];
 

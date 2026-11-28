@@ -9,6 +9,7 @@ using Humans.Holded.Data;
 using Humans.Holded.Jobs;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Humans.Holded.Controllers;
 
 [assembly: Humans.Base.Demo.NoDemoStory("Vendor mirror: its data arrives through the Holded sync, never from demo stories.")]
 
@@ -16,9 +17,9 @@ namespace Humans.Holded;
 
 /// <summary>No GDPR contributor: no table is user-scoped. The member-to-creditor binding is Finance's, and Finance
 /// exports it.</summary>
-public sealed class Section : ISection, ISectionAdminNav, ISectionConfiguration, ISectionJobs
+public sealed class Section : SectionBase, ISectionAdminNav, ISectionConfiguration, ISectionJobs
 {
-    public void Register(IServiceCollection services, IConfiguration configuration)
+    public override void Register(IServiceCollection services, IConfiguration configuration)
     {
         // The sentinel must prove this baseline ran. holded_ledger_lines can't: the old root chain and Finance's
         // pre-split model both created it. holded_accounts is created by this baseline alone. Sections migrate in
@@ -64,11 +65,11 @@ public sealed class Section : ISection, ISectionAdminNav, ISectionConfiguration,
 
     IEnumerable<AdminNavGroup> ISectionAdminNav.Groups() =>
     [
-        new("Holded", [
-            new("Summary", "Holded", "Index", null, null, "fa-solid fa-book", FinancePolicies.Read),
-            new("Accounts", "Holded", "Accounts", null, null, "fa-solid fa-list-ol", FinancePolicies.Read),
-            new("Purchases", "Holded", "Purchases", null, null, "fa-solid fa-file-invoice", FinancePolicies.Read),
-            new("API calls", "Holded", "Calls", null, null, "fa-solid fa-tower-broadcast", FinancePolicies.Read)
+        AdminGroup([
+            AdminLink<HoldedController>("Summary", nameof(HoldedController.Index), "fa-solid fa-book", FinancePolicies.Read),
+            AdminLink<HoldedController>("Accounts", nameof(HoldedController.Accounts), "fa-solid fa-list-ol", FinancePolicies.Read),
+            AdminLink<HoldedController>("Purchases", nameof(HoldedController.Purchases), "fa-solid fa-file-invoice", FinancePolicies.Read),
+            AdminLink<HoldedController>("API calls", nameof(HoldedController.Calls), "fa-solid fa-tower-broadcast", FinancePolicies.Read)
         ])
     ];
 

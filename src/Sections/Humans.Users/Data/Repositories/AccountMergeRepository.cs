@@ -1,31 +1,24 @@
 using Microsoft.EntityFrameworkCore;
+using Humans.Base.Data;
 
 namespace Humans.Users.Data.Repositories;
 
-internal sealed class AccountMergeRepository(IDbContextFactory<UsersDbContext> factory) : IAccountMergeRepository
+internal sealed class AccountMergeRepository(IDbContextFactory<UsersDbContext> factory) : SectionRepository<UsersDbContext>(factory), IAccountMergeRepository
 {
-    public async Task<IReadOnlyList<AccountMergeRequest>> GetPendingAsync(CancellationToken ct = default)
-    {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
-        return await ctx.AccountMergeRequests
+    public async Task<IReadOnlyList<AccountMergeRequest>> GetPendingAsync(CancellationToken ct = default) =>
+        await RunAsync(ctx => ctx.AccountMergeRequests
             .AsNoTracking()
             .Where(r => r.Status == AccountMergeRequestStatus.Pending)
-            .ToListAsync(ct);
-    }
+            .ToListAsync(ct), ct);
 
-    public async Task<AccountMergeRequest?> GetByIdPlainAsync(Guid id, CancellationToken ct = default)
-    {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
-        return await ctx.AccountMergeRequests
+    public async Task<AccountMergeRequest?> GetByIdPlainAsync(Guid id, CancellationToken ct = default) =>
+        await RunAsync(ctx => ctx.AccountMergeRequests
             .AsNoTracking()
-            .FirstOrDefaultAsync(r => r.Id == id, ct);
-    }
+            .FirstOrDefaultAsync(r => r.Id == id, ct), ct);
 
     public async Task<IReadOnlyList<AccountMergeRequestGdprRow>> GetForUserGdprAsync(
-        IReadOnlyCollection<Guid> userIds, CancellationToken ct = default)
-    {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
-        return await ctx.AccountMergeRequests
+        IReadOnlyCollection<Guid> userIds, CancellationToken ct = default) =>
+        await RunAsync(ctx => ctx.AccountMergeRequests
             .AsNoTracking()
             .Where(amr => userIds.Contains(amr.TargetUserId) || userIds.Contains(amr.SourceUserId))
             .Select(amr => new AccountMergeRequestGdprRow(
@@ -33,12 +26,11 @@ internal sealed class AccountMergeRepository(IDbContextFactory<UsersDbContext> f
                 userIds.Contains(amr.TargetUserId),
                 amr.CreatedAt,
                 amr.ResolvedAt))
-            .ToListAsync(ct);
-    }
+            .ToListAsync(ct), ct);
 
     public async Task<int> ScrubPiiForUserAsync(Guid userId, CancellationToken ct = default)
     {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
+        await using var ctx = await CreateDbContextAsync(ct);
 
         var rows = await ctx.AccountMergeRequests
             .Where(amr => amr.TargetUserId == userId
@@ -71,7 +63,7 @@ internal sealed class AccountMergeRepository(IDbContextFactory<UsersDbContext> f
 
     public async Task UpdateAsync(AccountMergeRequest request, CancellationToken ct = default)
     {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
+        await using var ctx = await CreateDbContextAsync(ct);
         ctx.Attach(request);
         ctx.Entry(request).State = EntityState.Modified;
         await ctx.SaveChangesAsync(ct);

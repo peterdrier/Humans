@@ -9,9 +9,9 @@ namespace Humans.Tour;
 /// <c>Register</c> is empty, but the type must stay: implementing <c>ISection</c> is what makes this assembly a
 /// section.
 /// </summary>
-public sealed class Section : ISection, ISectionMemberDashboard, ISectionNav
+public sealed class Section : SectionBase, ISectionMemberDashboard, ISectionNav
 {
-    public void Register(IServiceCollection services, IConfiguration configuration)
+    public override void Register(IServiceCollection services, IConfiguration configuration)
     {
     }
 

@@ -15,9 +15,7 @@ public sealed class EventParticipationRepositoryTests : IDisposable
 
     public EventParticipationRepositoryTests()
     {
-        var options = new DbContextOptionsBuilder<TicketsDbContext>()
-            .UseInMemoryDatabase(Guid.NewGuid().ToString())
-            .Options;
+        var options = TestDbOptions.InMemory<TicketsDbContext>();
         _db = new TicketsDbContext(options);
         _repo = new EventParticipationRepository(new TestDbContextFactory<TicketsDbContext>(options));
     }

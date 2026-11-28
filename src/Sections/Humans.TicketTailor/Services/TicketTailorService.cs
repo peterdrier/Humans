@@ -1,4 +1,5 @@
 using System.Globalization;
+using System.Net;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Runtime.CompilerServices;
@@ -6,6 +7,7 @@ using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using Humans.Base.Extensions;
+using Humans.Base.Http;
 using Humans.Tickets.Contracts;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
@@ -17,12 +19,11 @@ namespace Humans.TicketTailor.Services;
 /// Void and issue throw <see cref="TicketVendorWriteException"/>; every other method throws
 /// <see cref="HttpRequestException"/>.
 /// </summary>
-internal sealed class TicketTailorService : ITicketVendorService
+internal sealed class TicketTailorService : ApiClientBase, ITicketVendorService
 {
     private const string BaseUrl = "https://api.tickettailor.com/v1";
     private const int PageSafetyCap = 500;
 
-    private readonly HttpClient _httpClient;
     private readonly ILogger<TicketTailorService> _logger;
 
     private static readonly JsonSerializerOptions JsonOptions = new()
@@ -34,19 +35,33 @@ internal sealed class TicketTailorService : ITicketVendorService
     public TicketTailorService(
         HttpClient httpClient,
         IOptions<TicketVendorSettings> settings,
-        ILogger<TicketTailorService> logger)
+        ILogger<TicketTailorService> logger) : base(httpClient, BaseUrl)
     {
-        _httpClient = httpClient;
         _logger = logger;
 
+        // A default header, not Authorize: the writes send through Http directly.
         var apiKey = settings.Value.ApiKey;
         if (!string.IsNullOrEmpty(apiKey))
         {
             var authBytes = Encoding.ASCII.GetBytes($"{apiKey}:");
-            _httpClient.DefaultRequestHeaders.Authorization =
+            Http.DefaultRequestHeaders.Authorization =
                 new AuthenticationHeaderValue("Basic", Convert.ToBase64String(authBytes));
         }
     }
+
+    protected override string ApiName => "TicketTailor";
+
+    // Callers branch on HttpRequestException.StatusCode, 429 included, so every failure keeps that shape.
+    protected override Exception Transient(string message, Exception? inner = null) =>
+        new HttpRequestException(message, inner);
+
+    protected override Exception Permanent(string message, HttpStatusCode? status = null, string? body = null) =>
+        new HttpRequestException(message, null, status);
+
+    protected override Exception Failure(HttpResponseMessage response, string body, string caller) =>
+        new HttpRequestException(
+            $"TicketTailor {caller}: {((int)response.StatusCode).ToString(CultureInfo.InvariantCulture)} {response.ReasonPhrase}",
+            null, response.StatusCode);
 
     public async Task<IReadOnlyList<VendorOrderDto>> GetOrdersAsync(
         Instant? since, string eventId, CancellationToken ct = default)
@@ -129,58 +144,48 @@ internal sealed class TicketTailorService : ITicketVendorService
         return checkIns;
     }
 
-    private async IAsyncEnumerable<IReadOnlyList<T>> FetchPagesAsync<T>(
+    private IAsyncEnumerable<IReadOnlyList<T>> FetchPagesAsync<T>(
         string resource, string timestampField, Instant? since, string eventId,
-        Func<T, string> getId, [EnumeratorCancellation] CancellationToken ct,
+        Func<T, string> getId, CancellationToken ct,
         [CallerMemberName] string operation = "")
     {
-        string? cursor = null;
-        var seenCursors = new HashSet<string>(StringComparer.Ordinal);
-        for (var page = 1; page <= PageSafetyCap; page++)
+        var url = $"{BaseUrl}/{resource}?event_id={eventId}";
+        if (since.HasValue)
+            url += $"&{timestampField}.gte={since.Value.ToUnixTimeSeconds()}";
+        return GetPagesAsync($"{resource} pagination", cursor => FetchPageAsync(
+            cursor is null ? url : $"{url}&starting_after={cursor}", getId, operation, ct), PageSafetyCap, ct);
+    }
+
+    private async Task<(IReadOnlyList<T> Page, string? Next)> FetchPageAsync<T>(
+        string url, Func<T, string> getId, string operation, CancellationToken ct)
+    {
+        // Time each request under its operation name, not the whole sync.
+        TtPaginatedResponse<T>? body;
+        using (_logger.TimeOperation(operation: operation))
         {
-            var url = $"{BaseUrl}/{resource}?event_id={eventId}";
-            if (since.HasValue)
-                url += $"&{timestampField}.gte={since.Value.ToUnixTimeSeconds()}";
-            if (cursor is not null)
-                url += $"&starting_after={cursor}";
-
-            // Time each request under its operation name, not the whole sync.
-            TtPaginatedResponse<T>? body;
-            using (_logger.TimeOperation(operation: operation))
+            using var request = new HttpRequestMessage(HttpMethod.Get, url);
+            using var response = await SendAsync(request, ct, operation);
+            try
             {
-                using var response = await _httpClient.GetAsync(url, ct);
-                response.EnsureSuccessStatusCode();
-                try
-                {
-                    body = await response.Content.ReadFromJsonAsync<TtPaginatedResponse<T>>(JsonOptions, ct);
-                }
-                catch (JsonException ex)
-                {
-                    throw new HttpRequestException("TicketTailor pagination response could not be read.", ex);
-                }
+                body = await response.Content.ReadFromJsonAsync<TtPaginatedResponse<T>>(JsonOptions, ct);
             }
-
-            if (body?.Data is null)
-                throw new HttpRequestException("TicketTailor pagination response is missing data.");
-            if (body.Links is null)
-                throw new HttpRequestException("TicketTailor pagination response is missing links.");
-            if (body.Data.Any(item => item is null || string.IsNullOrWhiteSpace(getId(item))))
-                throw new HttpRequestException("TicketTailor pagination response contains an item without an identity.");
-            if (body.Data.Count == 0)
+            catch (JsonException ex)
             {
-                if (body.Links.Next is not null)
-                    throw new HttpRequestException("TicketTailor pagination returned an empty nonterminal page.");
-                yield break;
+                throw new HttpRequestException("TicketTailor pagination response could not be read.", ex);
             }
-
-            yield return body.Data;
-            cursor = body.Links.Next is not null ? getId(body.Data[^1]) : null;
-            // Every item's id was checked above, so a next page always has a cursor.
-            if (cursor is null) yield break;
-            if (!seenCursors.Add(cursor))
-                throw new HttpRequestException($"TicketTailor pagination returned cursor {cursor} a second time.");
         }
-        throw new HttpRequestException($"TicketTailor pagination hit the {PageSafetyCap}-page safety cap.");
+
+        if (body?.Data is null)
+            throw new HttpRequestException("TicketTailor pagination response is missing data.");
+        if (body.Links is null)
+            throw new HttpRequestException("TicketTailor pagination response is missing links.");
+        if (body.Data.Any(item => item is null || string.IsNullOrWhiteSpace(getId(item))))
+            throw new HttpRequestException("TicketTailor pagination response contains an item without an identity.");
+        if (body.Data.Count == 0 && body.Links.Next is not null)
+            throw new HttpRequestException("TicketTailor pagination returned an empty nonterminal page.");
+
+        // Every item's id was checked above, so a next page always has a cursor.
+        return (body.Data, body.Links.Next is not null ? getId(body.Data[^1]) : null);
     }
 
     public async Task<VendorEventSummaryDto> GetEventSummaryAsync(
@@ -188,16 +193,13 @@ internal sealed class TicketTailorService : ITicketVendorService
     {
         using var _ = _logger.TimeOperation();
 
-        using var response = await _httpClient.GetAsync($"{BaseUrl}/events/{eventId}", ct);
-
-        if (!response.IsSuccessStatusCode)
-        {
+        using var request = new HttpRequestMessage(HttpMethod.Get, $"{BaseUrl}/events/{eventId}");
+        var raw = await SendRawAsync(request, ct);
+        if (!raw.IsSuccessStatusCode)
             _logger.LogWarning(
                 "TicketTailor event summary API returned {StatusCode} for event {EventId}",
-                (int)response.StatusCode, eventId);
-
-            response.EnsureSuccessStatusCode();
-        }
+                (int)raw.StatusCode, eventId);
+        using var response = await EnsureSuccessAsync(raw, ct);
 
         TtEvent evt;
         try
@@ -248,7 +250,7 @@ internal sealed class TicketTailorService : ITicketVendorService
                 fields["expires"] = expires.ToUnixTimeSeconds().ToString(CultureInfo.InvariantCulture);
 
             using var form = new FormUrlEncodedContent(fields);
-            using var response = await _httpClient.PostAsync($"{BaseUrl}/discounts", form, ct);
+            using var response = await Http.PostAsync($"{BaseUrl}/discounts", form, ct);
             response.EnsureSuccessStatusCode();
 
             TtDiscountCode? result;
@@ -282,7 +284,7 @@ internal sealed class TicketTailorService : ITicketVendorService
         HttpResponseMessage response;
         try
         {
-            response = await _httpClient.PostAsync(url, content, ct);
+            response = await Http.PostAsync(url, content, ct);
         }
         catch (HttpRequestException ex)
         {
@@ -344,7 +346,7 @@ internal sealed class TicketTailorService : ITicketVendorService
         HttpResponseMessage response;
         try
         {
-            response = await _httpClient.PostAsync($"{BaseUrl}/issued_tickets", content, ct);
+            response = await Http.PostAsync($"{BaseUrl}/issued_tickets", content, ct);
         }
         catch (HttpRequestException ex)
         {

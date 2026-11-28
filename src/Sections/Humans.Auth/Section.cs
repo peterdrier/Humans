@@ -19,13 +19,14 @@ using Humans.Audit.Contracts;
 using Humans.Base.Models;
 using static Humans.Base.Models.AccessLevel;
 using static Humans.Base.Models.AccessMatrixFeature;
+using Humans.Auth.Controllers;
 
 [assembly: Humans.Base.Demo.NoDemoStory("No demo story written yet.")]
 
 namespace Humans.Auth;
 
 public sealed class Section :
-    ISection,
+    SectionBase,
     ISectionAccessMatrix,
     ISectionHelp,
     ISectionAdminNav,
@@ -55,7 +56,7 @@ public sealed class Section :
     private static readonly IReadOnlyList<SectionHelpEntry> HelpEntries =
         [SectionHelpEntry.FromEmbeddedMarkdown(typeof(Section).Assembly, "SystemRoles", 82)];
 
-    public void Register(IServiceCollection services, IConfiguration configuration)
+    public override void Register(IServiceCollection services, IConfiguration configuration)
     {
         services.AddSingleton<IAuditActionContributor, AuthAuditActions>();
         services.AddSingleton<INotificationSourceContributor, AuthNotificationSources>();
@@ -104,7 +105,7 @@ public sealed class Section :
     IEnumerable<AdminNavGroup> ISectionAdminNav.Groups() =>
     [
         new("Users", [
-            new("Roles", "SystemRoles", "Roles", null, null, "fa-solid fa-id-badge", UsersPolicies.Read, Weight: 10)
+            AdminLink<SystemRolesController>("Roles", nameof(SystemRolesController.Roles), "fa-solid fa-id-badge", UsersPolicies.Read, weight: 10)
         ])
     ];
 

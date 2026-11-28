@@ -1,39 +1,31 @@
+using Humans.Base.Data;
 using Humans.Containers.Domain;
 using Microsoft.EntityFrameworkCore;
 using NodaTime;
 
 namespace Humans.Containers.Data;
 
-internal sealed class Repository(IDbContextFactory<ContainersDbContext> factory) : IContainerRepository
+internal sealed class Repository(IDbContextFactory<ContainersDbContext> factory) : SectionRepository<ContainersDbContext>(factory), IContainerRepository
 {
-    public async Task<IReadOnlyList<Container>> GetByCampAsync(Guid campId, CancellationToken ct = default)
-    {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
-        return await ctx.Containers
+    public async Task<IReadOnlyList<Container>> GetByCampAsync(Guid campId, CancellationToken ct = default) =>
+        await RunAsync(ctx => ctx.Containers
             .AsNoTracking()
             .Where(c => c.CampId == campId)
-            .ToListAsync(ct);
-    }
+            .ToListAsync(ct), ct);
 
-    public async Task<IReadOnlyList<Container>> GetAllAsync(CancellationToken ct = default)
-    {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
-        return await ctx.Containers
+    public async Task<IReadOnlyList<Container>> GetAllAsync(CancellationToken ct = default) =>
+        await RunAsync(ctx => ctx.Containers
             .AsNoTracking()
-            .ToListAsync(ct);
-    }
+            .ToListAsync(ct), ct);
 
-    public async Task<Container?> GetByIdAsync(Guid id, CancellationToken ct = default)
-    {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
-        return await ctx.Containers
+    public async Task<Container?> GetByIdAsync(Guid id, CancellationToken ct = default) =>
+        await RunAsync(ctx => ctx.Containers
             .AsNoTracking()
-            .FirstOrDefaultAsync(c => c.Id == id, ct);
-    }
+            .FirstOrDefaultAsync(c => c.Id == id, ct), ct);
 
     public async Task<Container> AddAsync(Container container, IReadOnlyCollection<ContainerImage> images, CancellationToken ct = default)
     {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
+        await using var ctx = await CreateDbContextAsync(ct);
         ctx.Containers.Add(container);
         ctx.ContainerImages.AddRange(images);
         await ctx.SaveChangesAsync(ct);
@@ -43,7 +35,7 @@ internal sealed class Repository(IDbContextFactory<ContainersDbContext> factory)
     public async Task<Container> UpdateAsync(Container container, IReadOnlyCollection<ContainerImage> newImages,
         IReadOnlyCollection<Guid> removeImageIds, CancellationToken ct = default)
     {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
+        await using var ctx = await CreateDbContextAsync(ct);
         ctx.Containers.Update(container);
         if (removeImageIds.Count > 0)
         {
@@ -59,7 +51,7 @@ internal sealed class Repository(IDbContextFactory<ContainersDbContext> factory)
 
     public async Task<IReadOnlyList<string>> DeleteAsync(Guid id, CancellationToken ct = default)
     {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
+        await using var ctx = await CreateDbContextAsync(ct);
         var container = await ctx.Containers.FirstOrDefaultAsync(c => c.Id == id, ct);
         if (container is null)
         {
@@ -101,33 +93,27 @@ internal sealed class Repository(IDbContextFactory<ContainersDbContext> factory)
     {
         if (containerIds.Count == 0) return [];
 
-        await using var ctx = await factory.CreateDbContextAsync(ct);
+        await using var ctx = await CreateDbContextAsync(ct);
         return await ctx.ContainerImages
             .AsNoTracking()
             .Where(i => containerIds.Contains(i.ContainerId))
             .ToListAsync(ct);
     }
 
-    public async Task<ContainerPlacement?> GetPlacementAsync(Guid containerId, int year, CancellationToken ct = default)
-    {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
-        return await ctx.ContainerPlacements
+    public async Task<ContainerPlacement?> GetPlacementAsync(Guid containerId, int year, CancellationToken ct = default) =>
+        await RunAsync(ctx => ctx.ContainerPlacements
             .AsNoTracking()
-            .FirstOrDefaultAsync(p => p.ContainerId == containerId && p.Year == year, ct);
-    }
+            .FirstOrDefaultAsync(p => p.ContainerId == containerId && p.Year == year, ct), ct);
 
-    public async Task<IReadOnlyList<ContainerPlacement>> GetPlacementsAsync(int? year, CancellationToken ct = default)
-    {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
-        return await ctx.ContainerPlacements
+    public async Task<IReadOnlyList<ContainerPlacement>> GetPlacementsAsync(int? year, CancellationToken ct = default) =>
+        await RunAsync(ctx => ctx.ContainerPlacements
             .AsNoTracking()
             .Where(p => year == null || p.Year == year)
-            .ToListAsync(ct);
-    }
+            .ToListAsync(ct), ct);
 
     public async Task UpsertPlacementAsync(ContainerPlacement placement, CancellationToken ct = default)
     {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
+        await using var ctx = await CreateDbContextAsync(ct);
         var existing = await ctx.ContainerPlacements
             .FirstOrDefaultAsync(p => p.ContainerId == placement.ContainerId && p.Year == placement.Year, ct);
         if (existing is null)
@@ -149,7 +135,7 @@ internal sealed class Repository(IDbContextFactory<ContainersDbContext> factory)
     public async Task<ContainerPlacement> SavePlacementGeometryAsync(
         Guid containerId, int year, string geoJson, Instant now, CancellationToken ct = default)
     {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
+        await using var ctx = await CreateDbContextAsync(ct);
 
         var containerExists = await ctx.Containers
             .AsNoTracking()
@@ -184,7 +170,7 @@ internal sealed class Repository(IDbContextFactory<ContainersDbContext> factory)
 
     public async Task DeletePlacementAsync(Guid containerId, int year, CancellationToken ct = default)
     {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
+        await using var ctx = await CreateDbContextAsync(ct);
         var placement = await ctx.ContainerPlacements
             .FirstOrDefaultAsync(p => p.ContainerId == containerId && p.Year == year, ct);
         if (placement is null) return;

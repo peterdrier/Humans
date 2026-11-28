@@ -1,4 +1,5 @@
 using Humans.Audit.Contracts;
+using Humans.Base.Extensions;
 using Humans.Pleo.Contracts;
 using Humans.Pleo.Data;
 using Humans.Pleo.Domain;
@@ -433,7 +434,7 @@ internal sealed class Service(
                     var interrupted = ex is OperationCanceledException && ct.IsCancellationRequested && !mirrorReplaced;
                     state.SyncStatus = interrupted ? PleoSyncStatus.Idle : PleoSyncStatus.Error;
                     state.StatusChangedAt = clock.GetCurrentInstant();
-                    state.LastError = interrupted ? previousError : PleoTextBounds.Bound(ex.Message, 2000);
+                    state.LastError = interrupted ? previousError : ex.Message.Truncate(2000);
                     await repo.SaveSyncStateAsync(state, CancellationToken.None);
                 }
                 catch (Exception saveEx)
@@ -467,7 +468,7 @@ internal sealed class Service(
                 logger.LogWarning("Pleo category fetch failed; sweeping without refreshing categories: {Reason}", ex.Message);
             else
                 logger.LogError(ex, "Pleo category fetch failed; sweeping without refreshing categories");
-            return ([], PleoTextBounds.Bound($"Categories not refreshed: {ex.Message}", 2000));
+            return ([], $"Categories not refreshed: {ex.Message}".Truncate(2000));
         }
     }
 
@@ -492,7 +493,7 @@ internal sealed class Service(
         // Live categories first: where an archived one shares a name, the live one takes the existing row.
         foreach (var w in fetched.DistinctBy(w => w.Id, StringComparer.Ordinal).OrderBy(w => w.Archived))
         {
-            var name = PleoTextBounds.Bound(w.Name?.Trim(), 128);
+            var name = w.Name?.Trim().Truncate(128);
             if (string.IsNullOrEmpty(name) || w.Id.Length is 0 or > 64
                 || w.AccountId is null || !codeByAccount.TryGetValue(w.AccountId, out var code))
                 continue;
@@ -580,7 +581,7 @@ internal sealed class Service(
             MerchantName = w.Merchant?.Name,
             MerchantCategoryCode = w.Merchant?.MerchantCategoryCode,
             MerchantCountry = w.Merchant?.Address?.Country,
-            Note = PleoTextBounds.Bound(w.Note, 2000),
+            Note = w.Note?.Truncate(2000),
             ReceiptCount = w.ReceiptIds?.Count ?? 0,
             Raw = raw,
         };

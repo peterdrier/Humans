@@ -1,5 +1,6 @@
 using System.Globalization;
 using Microsoft.EntityFrameworkCore;
+using Humans.Base.Data;
 using Humans.Base.Extensions;
 using Humans.Budget.Domain;
 using Humans.Budget.Contracts;
@@ -8,7 +9,7 @@ using NodaTime;
 namespace Humans.Budget.Data;
 
 internal sealed class BudgetRepository(IDbContextFactory<BudgetDbContext> factory, ILogger<BudgetRepository> logger)
-    : IBudgetRepository
+    : SectionRepository<BudgetDbContext>(factory), IBudgetRepository
 {
     private const string TicketRevenueCategoryName = "Ticket Revenue";
     private const string ProcessingFeesCategoryName = "Processing Fees";
@@ -19,7 +20,7 @@ internal sealed class BudgetRepository(IDbContextFactory<BudgetDbContext> factor
     public async Task<IReadOnlyList<BudgetYear>> GetAllYearsAsync(
         bool includeArchived, CancellationToken ct = default)
     {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
+        await using var ctx = await CreateDbContextAsync(ct);
 
         var query = ctx.BudgetYears
             .AsNoTracking()
@@ -35,7 +36,7 @@ internal sealed class BudgetRepository(IDbContextFactory<BudgetDbContext> factor
 
     public async Task<BudgetYear?> GetYearByIdAsync(Guid id, CancellationToken ct = default)
     {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
+        await using var ctx = await CreateDbContextAsync(ct);
 
         // Display sort (SortOrder) is applied by the controllers and views, not here.
         return await ctx.BudgetYears
@@ -50,7 +51,7 @@ internal sealed class BudgetRepository(IDbContextFactory<BudgetDbContext> factor
 
     public async Task<BudgetYear?> GetActiveYearAsync(CancellationToken ct = default)
     {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
+        await using var ctx = await CreateDbContextAsync(ct);
 
         var activeId = await ctx.BudgetYears
             .AsNoTracking()
@@ -69,7 +70,7 @@ internal sealed class BudgetRepository(IDbContextFactory<BudgetDbContext> factor
     public async Task CreateYearWithScaffoldAsync(
         BudgetYearDraft draft, ICollection<BudgetAuditEntry> changes, CancellationToken ct = default)
     {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
+        await using var ctx = await CreateDbContextAsync(ct);
 
         var budgetYear = new BudgetYear
         {
@@ -151,7 +152,7 @@ internal sealed class BudgetRepository(IDbContextFactory<BudgetDbContext> factor
         Instant now,
         CancellationToken ct = default)
     {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
+        await using var ctx = await CreateDbContextAsync(ct);
 
         var budgetYear = await ctx.BudgetYears.FirstOrDefaultAsync(y => y.Id == yearId, ct);
         if (budgetYear is null)
@@ -194,7 +195,7 @@ internal sealed class BudgetRepository(IDbContextFactory<BudgetDbContext> factor
         Instant now,
         CancellationToken ct = default)
     {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
+        await using var ctx = await CreateDbContextAsync(ct);
 
         var year = await ctx.BudgetYears.FirstOrDefaultAsync(y => y.Id == yearId && !y.IsArchived, ct);
         if (year is null)
@@ -236,7 +237,7 @@ internal sealed class BudgetRepository(IDbContextFactory<BudgetDbContext> factor
         Instant now,
         CancellationToken ct = default)
     {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
+        await using var ctx = await CreateDbContextAsync(ct);
 
         var year = await ctx.BudgetYears.FirstOrDefaultAsync(y => y.Id == yearId, ct);
         if (year is null)
@@ -264,7 +265,7 @@ internal sealed class BudgetRepository(IDbContextFactory<BudgetDbContext> factor
         Instant now,
         CancellationToken ct = default)
     {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
+        await using var ctx = await CreateDbContextAsync(ct);
 
         await EnsureYearNotClosedAsync(ctx, budgetYearId, ct);
 
@@ -321,7 +322,7 @@ internal sealed class BudgetRepository(IDbContextFactory<BudgetDbContext> factor
         Instant now,
         CancellationToken ct = default)
     {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
+        await using var ctx = await CreateDbContextAsync(ct);
 
         await EnsureYearNotClosedAsync(ctx, budgetYearId, ct);
 
@@ -372,7 +373,7 @@ internal sealed class BudgetRepository(IDbContextFactory<BudgetDbContext> factor
         Instant now,
         CancellationToken ct = default)
     {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
+        await using var ctx = await CreateDbContextAsync(ct);
 
         var yearExists = await ctx.BudgetYears.AnyAsync(y => y.Id == budgetYearId, ct);
         if (!yearExists)
@@ -413,7 +414,7 @@ internal sealed class BudgetRepository(IDbContextFactory<BudgetDbContext> factor
         Instant now,
         CancellationToken ct = default)
     {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
+        await using var ctx = await CreateDbContextAsync(ct);
 
         var group = await ctx.BudgetGroups.FirstOrDefaultAsync(g => g.Id == groupId, ct);
         if (group is null)
@@ -457,7 +458,7 @@ internal sealed class BudgetRepository(IDbContextFactory<BudgetDbContext> factor
         Instant now,
         CancellationToken ct = default)
     {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
+        await using var ctx = await CreateDbContextAsync(ct);
 
         var group = await ctx.BudgetGroups.FirstOrDefaultAsync(g => g.Id == groupId, ct);
         if (group is null)
@@ -479,7 +480,7 @@ internal sealed class BudgetRepository(IDbContextFactory<BudgetDbContext> factor
 
     public async Task<BudgetCategory?> GetCategoryByIdAsync(Guid id, CancellationToken ct = default)
     {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
+        await using var ctx = await CreateDbContextAsync(ct);
 
         // Line-item display sort (SortOrder) is applied by the views.
         return await ctx.BudgetCategories
@@ -500,7 +501,7 @@ internal sealed class BudgetRepository(IDbContextFactory<BudgetDbContext> factor
         Instant now,
         CancellationToken ct = default)
     {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
+        await using var ctx = await CreateDbContextAsync(ct);
 
         var group = await ctx.BudgetGroups.FirstOrDefaultAsync(g => g.Id == budgetGroupId, ct)
             ?? throw new InvalidOperationException($"Budget group {budgetGroupId} not found");
@@ -541,7 +542,7 @@ internal sealed class BudgetRepository(IDbContextFactory<BudgetDbContext> factor
         Instant now,
         CancellationToken ct = default)
     {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
+        await using var ctx = await CreateDbContextAsync(ct);
 
         var category = await ctx.BudgetCategories
             .Include(c => c.BudgetGroup)
@@ -588,7 +589,7 @@ internal sealed class BudgetRepository(IDbContextFactory<BudgetDbContext> factor
         Instant now,
         CancellationToken ct = default)
     {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
+        await using var ctx = await CreateDbContextAsync(ct);
 
         var category = await ctx.BudgetCategories
             .Include(c => c.BudgetGroup)
@@ -610,7 +611,7 @@ internal sealed class BudgetRepository(IDbContextFactory<BudgetDbContext> factor
 
     public async Task<Guid?> GetLineItemCategoryIdAsync(Guid id, CancellationToken ct = default)
     {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
+        await using var ctx = await CreateDbContextAsync(ct);
 
         return await ctx.BudgetLineItems
             .Where(li => li.Id == id)
@@ -624,7 +625,7 @@ internal sealed class BudgetRepository(IDbContextFactory<BudgetDbContext> factor
         Instant now,
         CancellationToken ct = default)
     {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
+        await using var ctx = await CreateDbContextAsync(ct);
 
         var category = await ctx.BudgetCategories
             .Include(c => c.BudgetGroup)
@@ -666,7 +667,7 @@ internal sealed class BudgetRepository(IDbContextFactory<BudgetDbContext> factor
         Instant now,
         CancellationToken ct = default)
     {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
+        await using var ctx = await CreateDbContextAsync(ct);
 
         var lineItem = await ctx.BudgetLineItems
             .Include(li => li.BudgetCategory)
@@ -742,7 +743,7 @@ internal sealed class BudgetRepository(IDbContextFactory<BudgetDbContext> factor
         Instant now,
         CancellationToken ct = default)
     {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
+        await using var ctx = await CreateDbContextAsync(ct);
 
         var lineItem = await ctx.BudgetLineItems
             .Include(li => li.BudgetCategory)
@@ -766,7 +767,7 @@ internal sealed class BudgetRepository(IDbContextFactory<BudgetDbContext> factor
     public async Task<TicketingProjection?> GetTicketingProjectionAsync(
         Guid budgetGroupId, CancellationToken ct = default)
     {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
+        await using var ctx = await CreateDbContextAsync(ct);
 
         return await ctx.TicketingProjections
             .AsNoTracking()
@@ -780,7 +781,7 @@ internal sealed class BudgetRepository(IDbContextFactory<BudgetDbContext> factor
         CancellationToken ct = default,
         LocalDate? refreshFromDate = null)
     {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
+        await using var ctx = await CreateDbContextAsync(ct);
 
         var group = await ctx.BudgetGroups
             .Include(g => g.Categories).ThenInclude(category => category.LineItems)
@@ -832,7 +833,7 @@ internal sealed class BudgetRepository(IDbContextFactory<BudgetDbContext> factor
         Instant now,
         CancellationToken ct = default)
     {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
+        await using var ctx = await CreateDbContextAsync(ct);
 
         await EnsureYearNotClosedAsync(ctx, budgetYearId, ct);
 
@@ -915,7 +916,7 @@ internal sealed class BudgetRepository(IDbContextFactory<BudgetDbContext> factor
 
     public async Task<IReadOnlyList<BudgetChange>> GetLegacyAuditLogsAsync(CancellationToken ct = default)
     {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
+        await using var ctx = await CreateDbContextAsync(ct);
         return await ctx.BudgetChanges.AsNoTracking().ToListAsync(ct);
     }
 
@@ -925,7 +926,7 @@ internal sealed class BudgetRepository(IDbContextFactory<BudgetDbContext> factor
         if (userIds.Count == 0)
             return [];
 
-        await using var ctx = await factory.CreateDbContextAsync(ct);
+        await using var ctx = await CreateDbContextAsync(ct);
 
         return await ctx.BudgetChanges
             .AsNoTracking()

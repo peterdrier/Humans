@@ -17,13 +17,14 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Humans.Audit.Contracts;
+using Humans.Finance.Controllers;
 
 [assembly: Humans.Base.Demo.NoDemoStory("No demo story written yet.")]
 
 namespace Humans.Finance;
 
 public sealed class Section :
-    ISection,
+    SectionBase,
     ISectionRoles,
     ISectionAdminNav,
     ISectionConfiguration,
@@ -39,7 +40,7 @@ public sealed class Section :
             "fa-solid fa-coins"),
     ];
 
-    public void Register(IServiceCollection services, IConfiguration configuration)
+    public override void Register(IServiceCollection services, IConfiguration configuration)
     {
         services.AddSingleton<IAuditActionContributor, FinanceAuditActions>();
         services.AddSectionDbContext<FinanceDbContext>(sentinelTable: "holded_category_map");
@@ -92,15 +93,15 @@ public sealed class Section :
 
     IEnumerable<AdminNavGroup> ISectionAdminNav.Groups() =>
     [
-        new("Finance", [
-            new("Overview", "Finance", "Index", null, null, "fa-solid fa-landmark", FinancePolicies.Read),
-            new("Cash flow", "Finance", "CashFlow", null, null, "fa-solid fa-chart-line", FinancePolicies.Read),
-            new("Creditors", "Finance", "Creditors", null, null, "fa-solid fa-users", FinancePolicies.Read),
-            new("SEPA payouts", "Finance", "Sepa", null, null, "fa-solid fa-money-bill-transfer", FinancePolicies.Read),
-            new("Pleo reconcile", "Finance", "Pleo", null, null, "fa-solid fa-credit-card", FinancePolicies.Read),
-            new("Expense recon", "Finance", "ExpenseRecon", null, null, "fa-solid fa-scale-balanced", FinancePolicies.Read),
-            new("Account map", "Finance", "HoldedAccounts", null, null, "fa-solid fa-diagram-project", FinancePolicies.Read),
-            new("Unmatched docs", "Finance", "HoldedUnmatched", null, null, "fa-solid fa-question", FinancePolicies.Read)
+        AdminGroup([
+            AdminLink<FinanceController>("Overview", nameof(FinanceController.Index), "fa-solid fa-landmark", FinancePolicies.Read),
+            AdminLink<FinanceController>("Cash flow", nameof(FinanceController.CashFlow), "fa-solid fa-chart-line", FinancePolicies.Read),
+            AdminLink<FinanceController>("Creditors", nameof(FinanceController.Creditors), "fa-solid fa-users", FinancePolicies.Read),
+            AdminLink<FinanceController>("SEPA payouts", nameof(FinanceController.Sepa), "fa-solid fa-money-bill-transfer", FinancePolicies.Read),
+            AdminLink<FinanceController>("Pleo reconcile", nameof(FinanceController.Pleo), "fa-solid fa-credit-card", FinancePolicies.Read),
+            AdminLink<FinanceController>("Expense recon", nameof(FinanceController.ExpenseRecon), "fa-solid fa-scale-balanced", FinancePolicies.Read),
+            AdminLink<FinanceController>("Account map", nameof(FinanceController.HoldedAccounts), "fa-solid fa-diagram-project", FinancePolicies.Read),
+            AdminLink<FinanceController>("Unmatched docs", nameof(FinanceController.HoldedUnmatched), "fa-solid fa-question", FinancePolicies.Read)
         ])
     ];
 

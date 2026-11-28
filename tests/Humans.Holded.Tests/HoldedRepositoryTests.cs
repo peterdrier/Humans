@@ -16,9 +16,7 @@ public sealed class HoldedRepositoryTests
 
     public HoldedRepositoryTests()
     {
-        var options = new DbContextOptionsBuilder<HoldedDbContext>()
-            .UseInMemoryDatabase(Guid.NewGuid().ToString())
-            .Options;
+        var options = TestDbOptions.InMemory<HoldedDbContext>();
         _repo = new Repository(new TestDbContextFactory<HoldedDbContext>(options));
     }
 

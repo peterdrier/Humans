@@ -192,8 +192,7 @@ public sealed class FormViewModelTests
         }
         offer.ToSave()!.MemberPlaceLabel.Should().Be(city);
         request.ToSave()!.PickupPlaceLabel.Should().Be(city);
-        using var db = new RideshareDbContext(new DbContextOptionsBuilder<RideshareDbContext>()
-            .UseInMemoryDatabase(Guid.NewGuid().ToString()).Options);
+        using var db = new RideshareDbContext(TestDbOptions.InMemory<RideshareDbContext>());
         // InMemory does not enforce varchar bounds; both complete labels must fit production storage.
         city.Length.Should().BeLessThanOrEqualTo(db.Model.FindEntityType(typeof(RideshareTrip))!
             .FindProperty(nameof(RideshareTrip.MemberPlaceLabel))!.GetMaxLength() ?? int.MaxValue);

@@ -11,10 +11,11 @@ using Humans.Audit.Contracts;
 using Humans.Base.Models;
 using static Humans.Base.Models.AccessLevel;
 using static Humans.Base.Models.AccessMatrixFeature;
+using Humans.Debug.Controllers;
 
 namespace Humans.Debug;
 
-public sealed class Section : ISection, ISectionAdminNav, ISectionChrome, ISectionEndpoints, ISectionAccessMatrix
+public sealed class Section : SectionBase, ISectionAdminNav, ISectionChrome, ISectionEndpoints, ISectionAccessMatrix
 {
     IReadOnlyList<AccessMatrixData> ISectionAccessMatrix.AccessMatrices =>
     [
@@ -32,7 +33,7 @@ public sealed class Section : ISection, ISectionAdminNav, ISectionChrome, ISecti
         }
     ];
 
-    public void Register(IServiceCollection services, IConfiguration configuration)
+    public override void Register(IServiceCollection services, IConfiguration configuration)
     {
         services.AddSingleton<IAuditActionContributor, DebugAuditActions>();
         // Scoped: the migrations' delegates resolve the request's services.
@@ -41,25 +42,25 @@ public sealed class Section : ISection, ISectionAdminNav, ISectionChrome, ISecti
 
     IEnumerable<AdminNavGroup> ISectionAdminNav.Groups() =>
     [
-        new("Debug", [
-            new("Logs",          "Debug", "Logs",          null, null, "fa-solid fa-triangle-exclamation", PolicyNames.BoardOrAdmin, Weight: 0),
-            new("HTTP errors",   "Debug", "HttpErrors",    null, null, "fa-solid fa-circle-exclamation",   PolicyNames.BoardOrAdmin, Weight: 10),
-            new("Database",      "Debug", "Database",      null, null, "fa-solid fa-server",               PolicyNames.BoardOrAdmin, Weight: 15),
-            new("DB stats",      "Debug", "DbStats",       null, null, "fa-solid fa-database",             PolicyNames.BoardOrAdmin, Weight: 20),
-            new("Cache stats",   "Debug", "CacheStats",    null, null, "fa-solid fa-bolt",                 PolicyNames.BoardOrAdmin, Weight: 30),
-            new("Client stats",  "Debug", "ClientStats",   null, null, "fa-solid fa-display",              PolicyNames.BoardOrAdmin, Weight: 40),
-            new("Timings",       "Debug", "Timings",       null, null, "fa-solid fa-stopwatch",            PolicyNames.BoardOrAdmin, Weight: 50),
-            new("Sections",      "Debug", "Sections",      null, null, "fa-solid fa-layer-group",          PolicyNames.BoardOrAdmin, Weight: 60),
-            new("Configuration", "Debug", "Configuration", null, null, "fa-solid fa-gear",                 PolicyNames.BoardOrAdmin, Weight: 70),
-            new("Maintenance",   "Debug", "Maintenance",   null, null, "fa-solid fa-screwdriver-wrench",   PolicyNames.BoardOrAdmin, Weight: 80),
-            new("All users", "UsersDebug", "Index", null, null, "fa-solid fa-bug-slash", PolicyNames.BoardOrAdmin, Weight: 82),
-            new("Data migrations", "DataMigrations", "Index", null, null, "fa-solid fa-right-left",         PolicyNames.BoardOrAdmin, Weight: 85),
+        AdminGroup([
+            AdminLink<DebugController>("Logs", nameof(DebugController.Logs), "fa-solid fa-triangle-exclamation", PolicyNames.BoardOrAdmin, weight: 0),
+            AdminLink<DebugController>("HTTP errors", nameof(DebugController.HttpErrors), "fa-solid fa-circle-exclamation", PolicyNames.BoardOrAdmin, weight: 10),
+            AdminLink<DebugController>("Database", nameof(DebugController.Database), "fa-solid fa-server", PolicyNames.BoardOrAdmin, weight: 15),
+            AdminLink<DebugController>("DB stats", nameof(DebugController.DbStats), "fa-solid fa-database", PolicyNames.BoardOrAdmin, weight: 20),
+            AdminLink<DebugController>("Cache stats", nameof(DebugController.CacheStats), "fa-solid fa-bolt", PolicyNames.BoardOrAdmin, weight: 30),
+            AdminLink<DebugController>("Client stats", nameof(DebugController.ClientStats), "fa-solid fa-display", PolicyNames.BoardOrAdmin, weight: 40),
+            AdminLink<DebugController>("Timings", nameof(DebugController.Timings), "fa-solid fa-stopwatch", PolicyNames.BoardOrAdmin, weight: 50),
+            AdminLink<DebugController>("Sections", nameof(DebugController.Sections), "fa-solid fa-layer-group", PolicyNames.BoardOrAdmin, weight: 60),
+            AdminLink<DebugController>("Configuration", nameof(DebugController.Configuration), "fa-solid fa-gear", PolicyNames.BoardOrAdmin, weight: 70),
+            AdminLink<DebugController>("Maintenance", nameof(DebugController.Maintenance), "fa-solid fa-screwdriver-wrench", PolicyNames.BoardOrAdmin, weight: 80),
+            AdminLink<UsersDebugController>("All users", nameof(UsersDebugController.Index), "fa-solid fa-bug-slash", PolicyNames.BoardOrAdmin, weight: 82),
+            AdminLink<DataMigrationsController>("Data migrations", nameof(DataMigrationsController.Index), "fa-solid fa-right-left", PolicyNames.BoardOrAdmin, weight: 85),
             new("Hangfire",      null,    null,            null, "/hangfire",     "fa-solid fa-clock-rotate-left", PolicyNames.BoardOrAdmin, Weight: 90),
             new("Health",        null,    null,            null, "/health/ready", "fa-solid fa-heart-pulse",       PolicyNames.BoardOrAdmin, Weight: 100),
-            new("Color palette", "ColorPalette",  "Index",         null, null, "fa-solid fa-palette",  PolicyNames.BoardOrAdmin, Weight: 110),
-            new("Components",    "WidgetGallery", "Index",         null, null, "fa-solid fa-shapes",   PolicyNames.BoardOrAdmin, Weight: 120),
-            new("Date formats",  "Debug",         "FormatGallery", null, null, "fa-solid fa-clock",    PolicyNames.BoardOrAdmin, Weight: 130),
-            new("Translations",  "Debug",         "Translations",  null, null, "fa-solid fa-language", PolicyNames.BoardOrAdmin, Weight: 140)
+            AdminLink<ColorPaletteController>("Color palette", nameof(ColorPaletteController.Index), "fa-solid fa-palette", PolicyNames.BoardOrAdmin, weight: 110),
+            AdminLink<WidgetGalleryController>("Components", nameof(WidgetGalleryController.Index), "fa-solid fa-shapes", PolicyNames.BoardOrAdmin, weight: 120),
+            AdminLink<DebugController>("Date formats", nameof(DebugController.FormatGallery), "fa-solid fa-clock", PolicyNames.BoardOrAdmin, weight: 130),
+            AdminLink<DebugController>("Translations", nameof(DebugController.Translations), "fa-solid fa-language", PolicyNames.BoardOrAdmin, weight: 140)
         ])
     ];
 

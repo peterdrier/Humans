@@ -47,10 +47,7 @@ public sealed class DeletionConfirmationLeavesNoOutboxRowTests : IDisposable
 
     public DeletionConfirmationLeavesNoOutboxRowTests()
     {
-        var options = new DbContextOptionsBuilder<EmailDbContext>()
-            .UseInMemoryDatabase(Guid.NewGuid().ToString())
-            .ConfigureWarnings(w => w.Ignore(InMemoryEventId.TransactionIgnoredWarning))
-            .Options;
+        var options = TestDbOptions.InMemory<EmailDbContext>();
         _emailDb = new EmailDbContext(options);
 
         // The builder is sealed, so it is built for real over a stub localizer rather than mocked.

@@ -20,7 +20,7 @@ All of it went in nobodies-collective/Humans#1064.
 
 **How to apply:**
 
-- Adding a section: create `Section.cs : ISection` at the project root and reference the project
+- Adding a section: create `Section.cs : SectionBase` at the project root (`SectionBase` implements `ISection` and exposes the name as `Name`) and reference the project
   from `src/Humans.Web`. That is the whole registration.
 - Renaming a section means renaming the assembly. There is no second place to update.
 - A `.Contracts` **assembly** exists only to break a reference cycle; a `Contracts/` folder in

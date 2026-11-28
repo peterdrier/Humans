@@ -138,6 +138,7 @@ internal sealed partial class TicketCheckoutService(
             ResaleOpenedAt = save.Switches.Resale == ResaleScheme.Off ? null : existing?.ResaleOpenedAt,
             Switches = save.Switches,
             TermsFolder = save.TermsFolder,
+            PersonalDataErasedAt = existing?.PersonalDataErasedAt,
             UpdatedAt = now,
         };
         await repository.SaveTicketingSettingsAsync(ticketing, ct);
@@ -466,7 +467,7 @@ internal sealed partial class TicketCheckoutService(
             order.State = TicketCheckoutOrderState.Failed;
             order.UpdatedAt = clock.GetCurrentInstant();
             await repository.UpdateOrderAsync(order, ct);
-            await TimelineAsync(order.Id, TicketCheckoutOrderEventKind.PlatformRefused, Truncate(ex.Message), null, ct);
+            await TimelineAsync(order.Id, TicketCheckoutOrderEventKind.PlatformRefused, ex.Message.Truncate(MaxReasonLength), null, ct);
             await ReleaseOffersAsync(order, ct);
             return StartCheckoutResult.Refused("Tickets_Buy_PlatformFailed");
         }
@@ -758,7 +759,7 @@ internal sealed partial class TicketCheckoutService(
             else if (own is { State: RefundState.Failed })
             {
                 refund.State = RefundState.Failed;
-                refund.FailureReason = Truncate(own.FailureReason ?? $"{order.PlatformKey} reports the refund failed");
+                refund.FailureReason = (own.FailureReason ?? $"{order.PlatformKey} reports the refund failed").Truncate(MaxReasonLength);
             }
             else
             {
@@ -839,7 +840,7 @@ internal sealed partial class TicketCheckoutService(
         // Saved first, so a crash after the platform call still counts against what can be refunded.
         await repository.AddRefundAsync(refund, ct);
         await TimelineAsync(order.Id, TicketCheckoutOrderEventKind.RefundRequested,
-            $"Refund of {FormatMinor(amountMinor)} {order.Currency} requested: {Truncate(refund.Reason)}", actorUserId, ct);
+            $"Refund of {FormatMinor(amountMinor)} {order.Currency} requested: {refund.Reason.Truncate(MaxReasonLength)}", actorUserId, ct);
 
         var result = await CallPlatformRefundAsync(platform, order, refund, actorUserId, ct);
         return (result.State == RefundState.Failed
@@ -882,7 +883,7 @@ internal sealed partial class TicketCheckoutService(
         await repository.UpdateRefundAsync(refund, ct);
         await TimelineAsync(order.Id, TicketCheckoutOrderEventKind.RefundSettled,
             $"{order.PlatformKey} answered {result.State}" + (result.PlatformRefundId is { } refundRef ? $" ({refundRef})" : string.Empty) +
-            (result.FailureReason is { } failure ? $": {Truncate(failure)}" : string.Empty), null, ct);
+            (result.FailureReason is { } failure ? $": {failure.Truncate(MaxReasonLength)}" : string.Empty), null, ct);
 
         var description = $"Refund of {FormatMinor(amountMinor)} {order.Currency} through {order.PlatformKey}: {result.State}" +
             (result.FailureReason is { } why ? $" ({why})" : string.Empty) + $". Reason: {refund.Reason}";
@@ -1010,6 +1011,41 @@ internal sealed partial class TicketCheckoutService(
         ];
     }
 
+    public async Task<int> EraseHeldEventDataAsync(CancellationToken ct = default)
+    {
+        var holdDays = await holdings.GetPostEventHoldDaysAsync(ct);
+        var now = clock.GetCurrentInstant();
+        var erased = 0;
+        foreach (var ticketing in (await repository.ListTicketingSettingsAsync(ct)).Where(t => t.PersonalDataErasedAt is null))
+        {
+            if (await settings.GetEventSettingsByIdAsync(ticketing.EventSettingsId, ct) is not { } ev
+                || TicketQueryService.PostEventHoldDate(ev, holdDays) > now)
+                continue;
+            if (PlatformFor(ticketing.PlatformKey) is not { } platform)
+            {
+                logger.LogWarning("Event {SettingsId} is on retired platform {Platform}; its personal data there was not erased",
+                    ticketing.Id, ticketing.PlatformKey);
+                continue;
+            }
+            try
+            {
+                await platform.EraseEventPersonalDataAsync(ticketing.PlatformEventRef, ct);
+            }
+            catch (Exception ex) when (ex is not OperationCanceledException)
+            {
+                logger.LogWarning(ex, "{Platform} could not erase event {SettingsId}'s personal data; the next run retries",
+                    platform.Key, ticketing.Id);
+                continue;
+            }
+            ticketing.PersonalDataErasedAt = now;
+            await repository.SaveTicketingSettingsAsync(ticketing, ct);
+            await auditLog.LogAsync(TicketsAuditActions.TicketEventPersonalDataErased, TicketingSettingsAuditSubjectType, ticketing.Id,
+                $"Asked {platform.Key} to erase the event's personal data, {holdDays} day(s) after its strike", JobName);
+            erased++;
+        }
+        return erased;
+    }
+
     private static readonly IReadOnlyDictionary<string, string?> Erasure =
         new Dictionary<string, string?>(StringComparer.Ordinal)
         {
@@ -1114,18 +1150,10 @@ internal sealed partial class TicketCheckoutService(
             OrderId = orderId,
             At = clock.GetCurrentInstant(),
             Kind = kind,
-            Detail = Truncate(detail, 2000),
+            Detail = detail.Truncate(2000),
             ActorUserId = actorUserId,
         }, ct);
 
-    private static string Truncate(string text, int max = 500)
-    {
-        if (text.Length <= max) return text;
-        var length = max;
-        if (char.IsHighSurrogate(text[length - 1]) && char.IsLowSurrogate(text[length]))
-            length--;
-        return text[..length];
-    }
 
     private void MarkPaid(TicketCheckoutOrder order, long? feeMinor, string? method, Instant paidAt)
     {
@@ -1408,7 +1436,7 @@ internal sealed partial class TicketCheckoutService(
         if (kind is not (TicketCheckoutOrderEventKind.TicketsEmailed or TicketCheckoutOrderEventKind.TicketsResent
             or TicketCheckoutOrderEventKind.TicketMailSkipped))
             throw new ArgumentOutOfRangeException(nameof(kind), kind, "Only delivery steps are recorded here.");
-        return TimelineAsync(orderId, kind, Truncate(detail), actorUserId, ct);
+        return TimelineAsync(orderId, kind, detail.Truncate(MaxReasonLength), actorUserId, ct);
     }
 
     public Task<IReadOnlyList<TicketCheckoutTicket>> GetTicketsForHolderAsync(Guid userId, CancellationToken ct = default) =>
@@ -1867,7 +1895,7 @@ internal sealed partial class TicketCheckoutService(
         if (refundId is null)
         {
             logger.LogError("Resale refund for ticket {TicketId} could not start: {Refusal}", old.Id, result.Refusal);
-            var why = Truncate(result.Refusal ?? "refused");
+            var why = (result.Refusal ?? "refused").Truncate(MaxReasonLength);
             await RecordResaleRefundNotSentAsync(offer, old, why,
                 $"Resale refund of {FormatMinor(offer.RefundOwedMinor)} could not start ({why}); the ticketing team must refund it by hand", ct);
             return false;
@@ -1894,7 +1922,7 @@ internal sealed partial class TicketCheckoutService(
             AmountMinor = offer.RefundOwedMinor,
             Reason = "Ticket resold",
             State = RefundState.Failed,
-            FailureReason = Truncate(failureReason),
+            FailureReason = failureReason.Truncate(MaxReasonLength),
             CreatedAt = clock.GetCurrentInstant(),
         }, ct);
         await auditLog.LogAsync(TicketsAuditActions.TicketCheckoutNeedsAttention, AuditSubjectType, old.OrderId, detail, JobName);
@@ -2661,7 +2689,7 @@ internal sealed partial class TicketCheckoutService(
         {
             ticket.State = TicketCheckoutTicketState.Void;
             ticket.VoidedAt = now;
-            ticket.VoidReason = Truncate(why);
+            ticket.VoidReason = why.Truncate(MaxReasonLength);
             await repository.UpdateTicketAsync(ticket, ct);
             if (ticket.HolderUserId is { } holder)
                 holdings.InvalidateHoldings(holder);
@@ -2675,7 +2703,7 @@ internal sealed partial class TicketCheckoutService(
         if (refundMinor > 0 && !state.HasCancelRefund(order))
         {
             var cancelRefundId = CancellationState.CancelRefundId(ticketing.Id, order.Id);
-            var (result, refundId) = await RefundCoreAsync(order.Id, refundMinor, Truncate(why), null, ct, cancelRefundId);
+            var (result, refundId) = await RefundCoreAsync(order.Id, refundMinor, why.Truncate(MaxReasonLength), null, ct, cancelRefundId);
             if (!result.Succeeded)
             {
                 refundByHand = true;
@@ -2687,13 +2715,13 @@ internal sealed partial class TicketCheckoutService(
                         Id = cancelRefundId,
                         OrderId = order.Id,
                         AmountMinor = refundMinor,
-                        Reason = Truncate(why),
+                        Reason = why.Truncate(MaxReasonLength),
                         State = RefundState.Failed,
-                        FailureReason = Truncate(result.Refusal ?? "Refused"),
+                        FailureReason = (result.Refusal ?? "Refused").Truncate(MaxReasonLength),
                         CreatedAt = now,
                     }, ct);
                 refundNote = $"; the {FormatMinor(refundMinor)} {order.Currency} refund failed " +
-                    $"({Truncate(result.Refusal ?? "refused")}): the ticketing team must refund it by hand";
+                    $"({(result.Refusal ?? "refused").Truncate(MaxReasonLength)}): the ticketing team must refund it by hand";
                 await auditLog.LogAsync(TicketsAuditActions.TicketCheckoutNeedsAttention, AuditSubjectType, order.Id,
                     $"Cancellation refund{refundNote[1..]}", JobName);
             }

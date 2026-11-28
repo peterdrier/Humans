@@ -1,3 +1,4 @@
+using Humans.Base.Data;
 using Humans.Tickets.Contracts;
 using Humans.Tickets.Domain;
 using Microsoft.EntityFrameworkCore;
@@ -6,25 +7,19 @@ using NodaTime;
 namespace Humans.Tickets.Data;
 
 internal sealed class EventParticipationRepository(IDbContextFactory<TicketsDbContext> factory)
-    : IEventParticipationRepository
+    : SectionRepository<TicketsDbContext>(factory), IEventParticipationRepository
 {
-    public async Task<IReadOnlyList<EventParticipation>> GetByUserIdAsync(Guid userId, CancellationToken ct = default)
-    {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
-        return await ctx.EventParticipations.AsNoTracking().Where(ep => ep.UserId == userId).ToListAsync(ct);
-    }
+    public async Task<IReadOnlyList<EventParticipation>> GetByUserIdAsync(Guid userId, CancellationToken ct = default) =>
+        await RunAsync(ctx => ctx.EventParticipations.AsNoTracking().Where(ep => ep.UserId == userId).ToListAsync(ct), ct);
 
-    public async Task<IReadOnlyList<EventParticipation>> GetAllAsync(CancellationToken ct = default)
-    {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
-        return await ctx.EventParticipations.AsNoTracking().ToListAsync(ct);
-    }
+    public async Task<IReadOnlyList<EventParticipation>> GetAllAsync(CancellationToken ct = default) =>
+        await RunAsync(ctx => ctx.EventParticipations.AsNoTracking().ToListAsync(ct), ct);
 
     public async Task<bool> UpsertAsync(
         Guid userId, int year, ParticipationStatus status, ParticipationSource source,
         Instant? declaredAt, Instant? checkedInAt, CancellationToken ct = default)
     {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
+        await using var ctx = await CreateDbContextAsync(ct);
         var existing = await ctx.EventParticipations
             .FirstOrDefaultAsync(ep => ep.UserId == userId && ep.Year == year, ct);
         if (existing is null)
@@ -64,7 +59,7 @@ internal sealed class EventParticipationRepository(IDbContextFactory<TicketsDbCo
 
     public async Task<bool> UndoCheckInAsync(Guid userId, int year, CancellationToken ct = default)
     {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
+        await using var ctx = await CreateDbContextAsync(ct);
         var existing = await ctx.EventParticipations
             .FirstOrDefaultAsync(ep => ep.UserId == userId && ep.Year == year, ct);
         if (existing is not { Status: ParticipationStatus.Attended })
@@ -82,7 +77,7 @@ internal sealed class EventParticipationRepository(IDbContextFactory<TicketsDbCo
         Guid userId, int year, ParticipationSource requiredSource,
         CancellationToken ct = default)
     {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
+        await using var ctx = await CreateDbContextAsync(ct);
         var existing = await ctx.EventParticipations
             .FirstOrDefaultAsync(ep => ep.UserId == userId && ep.Year == year, ct);
         if (existing?.Status is null
@@ -105,7 +100,7 @@ internal sealed class EventParticipationRepository(IDbContextFactory<TicketsDbCo
         if (entries.Count == 0)
             return [];
 
-        await using var ctx = await factory.CreateDbContextAsync(ct);
+        await using var ctx = await CreateDbContextAsync(ct);
         var existing = await ctx.EventParticipations
             .Where(ep => ep.Year == year)
             .ToDictionaryAsync(ep => ep.UserId, ct);
@@ -143,7 +138,7 @@ internal sealed class EventParticipationRepository(IDbContextFactory<TicketsDbCo
         Guid sourceUserId, Guid targetUserId,
         CancellationToken ct = default)
     {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
+        await using var ctx = await CreateDbContextAsync(ct);
         var rows = await ctx.EventParticipations
             .Where(ep => ep.UserId == sourceUserId || ep.UserId == targetUserId)
             .ToListAsync(ct);
