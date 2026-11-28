@@ -143,23 +143,20 @@ public class StorePricesViewTests
         const string paidAndBalance = "1.234,50";
         using var inputCulture = new CultureScope(CultureCatalog.DefaultCultureCode);
         CultureInfo.CurrentUICulture = CultureInfo.GetCultureInfo(CultureCatalog.CanonicalLegalCultureCode);
-        var model = new SummaryViewModel
-        {
-            Summary = new SummaryDto(2026,
+        var model = new SummaryDto(2026,
                 [new OrderSummaryDto(Guid.NewGuid(), OrderCounterpartyType.Camp, "Camp",
                     OrderState.Open, 2469m, 1234.5m, 1234.5m),
                  new OrderSummaryDto(Guid.NewGuid(), OrderCounterpartyType.Team, "Team",
-                    OrderState.Open, 9000m, 0m, 0m)], [], new CrossTabDto([], [])),
-        };
+                    OrderState.Open, 9000m, 0m, 0m)], [], new CrossTabDto([], []));
 
         var html = await RenderAsync("Summary", model, viewPath: "/Views/StoreAdmin/Summary.cshtml");
 
         var footer = html[html.IndexOf("<tfoot", StringComparison.Ordinal)..];
         footer = footer[..footer.IndexOf("</tfoot>", StringComparison.Ordinal)];
-        model.Summary.CampOrders.Should().ContainSingle();
-        model.Summary.CampTotalDueEur.Should().Be(2469m);
-        model.Summary.CampPaymentsTotalEur.Should().Be(1234.5m);
-        model.Summary.CampBalanceEur.Should().Be(1234.5m);
+        model.CampOrders.Should().ContainSingle();
+        model.CampTotalDueEur.Should().Be(2469m);
+        model.CampPaymentsTotalEur.Should().Be(1234.5m);
+        model.CampBalanceEur.Should().Be(1234.5m);
         footer.Should().Contain("1 camps");
         footer.Should().Contain(HtmlEncoder.Default.Encode(due));
         footer.Split(HtmlEncoder.Default.Encode(paidAndBalance)).Should().HaveCount(3);
