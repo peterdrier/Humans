@@ -43,7 +43,7 @@ public class ThingsToDoMedicalPromptTests
     }
 
     [HumansFact]
-    public async Task MedicalPromptShowsWhileTheDietaryNudgeIsOpen()
+    public async Task MedicalPrompt_DietaryNudgeOpen_IsShown()
     {
         var userId = StubUser(dietary: null, medical: null);
 
@@ -57,7 +57,7 @@ public class ThingsToDoMedicalPromptTests
     }
 
     [HumansFact]
-    public async Task MedicalPromptGoesAwayOnceTheFoodQuestionIsAnswered()
+    public async Task MedicalPrompt_FoodQuestionAnswered_IsHidden()
     {
         var userId = StubUser(dietary: "Vegan", medical: null);
 
@@ -67,7 +67,7 @@ public class ThingsToDoMedicalPromptTests
     }
 
     [HumansFact]
-    public async Task MedicalPromptGoesAwayAfterIDontWantToAnswer()
+    public async Task MedicalPrompt_DeclinedToAnswer_IsHidden()
     {
         var userId = StubUser(dietary: null, medical: null, declined: true);
 
@@ -77,7 +77,7 @@ public class ThingsToDoMedicalPromptTests
     }
 
     [HumansFact]
-    public async Task MedicalPromptNotShownWhenConditionsAreOnFile()
+    public async Task MedicalPrompt_ConditionsOnFile_IsHidden()
     {
         var userId = StubUser(dietary: null, medical: "Epilepsy");
 
@@ -87,7 +87,7 @@ public class ThingsToDoMedicalPromptTests
     }
 
     [HumansFact]
-    public async Task NoConsentReviewEntry_TheReviewGatesNothingForTheMember()
+    public async Task ThingsToDo_PendingReview_HasNoReviewEntry()
     {
         var userId = StubUser(dietary: null, medical: null);
 
@@ -97,7 +97,7 @@ public class ThingsToDoMedicalPromptTests
     }
 
     [HumansFact]
-    public async Task UsersNoLongerContributesTheDietaryNudge()
+    public async Task ThingsToDo_Users_OmitsDietaryNudge()
     {
         var userId = StubUser(dietary: null, medical: null);
 

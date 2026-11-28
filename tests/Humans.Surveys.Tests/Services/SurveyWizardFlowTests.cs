@@ -42,7 +42,7 @@ public class SurveyWizardFlowTests
     [Xunit.InlineData(false, true, ResponseAnonymity.Anonymous, ResponseAnonymity.Anonymous)]
     [Xunit.InlineData(false, true, ResponseAnonymity.Identified, ResponseAnonymity.Identified)]
     [Xunit.InlineData(false, false, ResponseAnonymity.Anonymous, ResponseAnonymity.Identified)]
-    public void Invited_anonymity_follows_vote_then_anonymous_setting(
+    public void InvitedAnonymity_Vote_OverridesAnonymousSetting(
         bool isAsociadoVote, bool allowAnonymous, ResponseAnonymity requested, ResponseAnonymity expected)
     {
         var editable = new SurveyEditInput(
@@ -53,7 +53,7 @@ public class SurveyWizardFlowTests
     }
 
     [HumansFact]
-    public void Public_tracked_state_is_accessible_only_to_its_owner()
+    public void PublicTrackedState_OtherUser_IsNotAccessible()
     {
         var ownerId = Guid.NewGuid();
         var state = new SurveyWizardState
@@ -68,7 +68,7 @@ public class SurveyWizardFlowTests
     }
 
     [HumansFact]
-    public void Public_anonymous_state_remains_accessible_without_a_principal()
+    public void PublicAnonymousState_NoPrincipal_IsAccessible()
     {
         var state = new SurveyWizardState
         {
@@ -81,7 +81,7 @@ public class SurveyWizardFlowTests
     }
 
     [HumansFact]
-    public void OrderedPages_returns_distinct_ascending_pages()
+    public void OrderedPages_Pages_AreDistinctAscending()
     {
         var questions = new[]
         {
@@ -95,7 +95,7 @@ public class SurveyWizardFlowTests
     }
 
     [HumansFact]
-    public void VisibleQuestionsOnPage_filters_by_ShowIf_and_orders_by_Order()
+    public void VisibleQuestionsOnPage_ShowIf_FiltersThenOrders()
     {
         var gate = Guid.NewGuid();
         var shown = Guid.NewGuid();
@@ -116,7 +116,7 @@ public class SurveyWizardFlowTests
     }
 
     [HumansFact]
-    public void VisibleQuestionsOnPage_ignores_stale_answers_on_hidden_branches()
+    public void VisibleQuestionsOnPage_HiddenBranchAnswers_AreIgnored()
     {
         // Q1 gates Q2, Q2 gates Q3. Q2 was answered while Q1 == "yes"; the respondent went back
         // and flipped Q1 to "no" — Q2's stale answer must not keep Q3 visible.
@@ -140,7 +140,7 @@ public class SurveyWizardFlowTests
     }
 
     [HumansFact]
-    public void NextVisiblePage_skips_a_page_whose_questions_are_all_hidden()
+    public void NextVisiblePage_AllQuestionsHidden_SkipsPage()
     {
         var gate = Guid.NewGuid();
         var questions = new[]
@@ -156,7 +156,7 @@ public class SurveyWizardFlowTests
     }
 
     [HumansFact]
-    public void NextVisiblePage_returns_null_when_no_later_page_has_visible_questions()
+    public void NextVisiblePage_NoLaterVisiblePage_ReturnsNull()
     {
         var gate = Guid.NewGuid();
         var questions = new[]
@@ -169,7 +169,7 @@ public class SurveyWizardFlowTests
     }
 
     [HumansFact]
-    public void NextVisiblePage_reveals_a_later_page_when_a_branch_is_taken()
+    public void NextVisiblePage_BranchTaken_RevealsLaterPage()
     {
         var gate = Guid.NewGuid();
         var questions = new[]
@@ -182,7 +182,7 @@ public class SurveyWizardFlowTests
     }
 
     [HumansFact]
-    public void FirstVisiblePage_returns_the_first_page_with_a_visible_question()
+    public void FirstVisiblePage_Pages_ReturnsFirstVisible()
     {
         var gate = Guid.NewGuid();
         var questions = new[]
@@ -196,7 +196,7 @@ public class SurveyWizardFlowTests
     }
 
     [HumansFact]
-    public void RequiredUnanswered_lists_only_visible_required_unanswered_questions()
+    public void RequiredUnanswered_MixedQuestions_ListsVisibleRequired()
     {
         var gate = Guid.NewGuid();
         var requiredText = Guid.NewGuid();
@@ -218,7 +218,7 @@ public class SurveyWizardFlowTests
     }
 
     [HumansFact]
-    public void RequiredUnanswered_treats_any_of_options_text_rating_as_answered()
+    public void RequiredUnanswered_AnyAnswerKind_CountsAsAnswered()
     {
         var choice = Guid.NewGuid();
         var text = Guid.NewGuid();
@@ -241,7 +241,7 @@ public class SurveyWizardFlowTests
     }
 
     [HumansFact]
-    public void RequiredUnanswered_never_requires_an_information_item()
+    public void RequiredUnanswered_InformationItem_IsNeverRequired()
     {
         var information = Q(
             Guid.NewGuid(), 1, 1, SurveyQuestionType.Information, required: true);
@@ -253,7 +253,7 @@ public class SurveyWizardFlowTests
     }
 
     [HumansFact]
-    public void RequiredUnanswered_requires_an_answer_for_every_grid_row()
+    public void RequiredUnanswered_Grid_NeedsEveryRow()
     {
         var id = Guid.NewGuid();
         var visible = new[] { Grid(id, GridSelectionMode.Multiple) };
@@ -282,7 +282,7 @@ public class SurveyWizardFlowTests
     }
 
     [HumansFact]
-    public void RequiredUnanswered_requires_exactly_one_selection_per_row_in_single_mode()
+    public void RequiredUnanswered_SingleModeGrid_NeedsOnePerRow()
     {
         var id = Guid.NewGuid();
         var visible = new[] { Grid(id, GridSelectionMode.Single) };
@@ -301,7 +301,7 @@ public class SurveyWizardFlowTests
     }
 
     [HumansFact]
-    public void ToAnswerInputs_keeps_empty_grid_data_null_for_non_grid_answers()
+    public void ToAnswerInputs_NonGridAnswer_KeepsGridNull()
     {
         var id = Guid.NewGuid();
         var answers = new Dictionary<string, SurveyWizardAnswer>(StringComparer.Ordinal)

@@ -65,7 +65,7 @@ public sealed class UserRepositoryUserEmailTests : IDisposable
     [Xunit.InlineData("first.last@example.test", "firstlast@example.test", false)]
     [Xunit.InlineData("alex_smith@example.test", "alexXsmith@example.test", false)]
     [Xunit.InlineData("percent%name@example.test", "percentXname@example.test", false)]
-    public async Task BatchLookup_UsesLiteralCaseInsensitiveAndGmailIdentityRules(
+    public async Task BatchLookup_Addresses_MatchByGmailIdentity(
         string stored, string target, bool matches)
     {
         using var culture = new CultureScope("tr");

@@ -10,7 +10,7 @@ public class SurveyInviteTokenTests
         => new(DataProtectionProvider.Create("survey-tests"));
 
     [HumansFact]
-    public void Resolve_round_trips_invitation_id()
+    public void Resolve_ValidToken_ReturnsInvitationId()
     {
         var provider = CreateProvider();
         var id = Guid.NewGuid();
@@ -30,7 +30,7 @@ public class SurveyInviteTokenTests
     }
 
     [HumansFact]
-    public void Resolve_returns_null_for_tampered_token()
+    public void Resolve_TamperedToken_ReturnsNull()
     {
         var provider = CreateProvider();
         var token = provider.Create(Guid.NewGuid());
@@ -40,13 +40,13 @@ public class SurveyInviteTokenTests
     }
 
     [HumansFact]
-    public void Resolve_returns_null_for_garbage()
+    public void Resolve_Garbage_ReturnsNull()
     {
         CreateProvider().Resolve("not-a-real-token").Failure.Should().Be(SurveyLinkFailure.Unreadable);
     }
 
     [HumansFact]
-    public void Resolve_returns_null_for_a_missing_token()
+    public void Resolve_MissingToken_ReturnsNull()
     {
         // /Survey/Answer and /Survey/Answer/ThankYou are [AllowAnonymous]; a request with no ?t=
         // must read as a missing token, not a 500.
@@ -58,7 +58,7 @@ public class SurveyInviteTokenTests
     }
 
     [HumansFact]
-    public void Preview_token_round_trips_survey_id_and_culture_and_is_distinct_from_invite_tokens()
+    public void PreviewToken_Resolved_ReturnsSurveyIdCulture()
     {
         var dataProtection = DataProtectionProvider.Create("survey-preview-tests");
         var previewProvider = new SurveyPreviewTokenProvider(dataProtection);

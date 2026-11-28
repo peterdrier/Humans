@@ -13,7 +13,7 @@ public class PersonSearchMatcherTests
 {
     [HumansTheory]
     [MemberData(nameof(SupportedCultures.All), MemberType = typeof(SupportedCultures))]
-    public void Built_in_match_labels_use_ui_culture_and_custom_labels_stay_verbatim(string culture)
+    public void Match_BuiltInLabels_UseUiCulture(string culture)
     {
         var resources = new ResourceManager(typeof(UsersResource));
         string Label(string key) => resources.GetString(key, CultureInfo.GetCultureInfo(culture))!;
@@ -139,7 +139,7 @@ public class PersonSearchMatcherTests
     }
 
     [HumansFact]
-    public void Matches_nothing_when_burnername_blank_even_with_a_legacy_DisplayName()
+    public void Match_BlankBurnerName_MatchesNothing()
     {
         // No DisplayName fallback for an ordinary (non-sentinel) row: a blank BurnerName renders
         // and searches blank, even with a legacy DisplayName set.
@@ -157,7 +157,7 @@ public class PersonSearchMatcherTests
     [InlineData("İSTANBUL", "istanbul")]
     [InlineData("istanbul", "I\u0307stanbul")]
     [InlineData("JOSÉ", "josé")]
-    public void Name_match_is_accent_and_case_insensitive(string query, string burnerName)
+    public void Match_Name_IgnoresAccentsCase(string query, string burnerName)
     {
         var human = Human(burnerName: burnerName);
 
@@ -168,7 +168,7 @@ public class PersonSearchMatcherTests
     [InlineData("sparkle pony")]
     [InlineData("pony sparkle")]
     [InlineData("PONY")]
-    public void Name_match_splits_query_into_tokens(string query)
+    public void Match_NameQuery_SplitsIntoTokens(string query)
     {
         var human = Human(burnerName: "Sparkle Pony");
 
@@ -178,7 +178,7 @@ public class PersonSearchMatcherTests
     [HumansTheory]
     [InlineData("joel", "Joël")]   // unaccented query finds accented name
     [InlineData("Joël", "joel")]   // accented query finds unaccented name
-    public void Name_match_finds_accented_and_unaccented_joel(string query, string burnerName)
+    public void Match_AccentedName_FindsBothSpellings(string query, string burnerName)
     {
         var human = Human(burnerName: burnerName);
 
@@ -190,7 +190,7 @@ public class PersonSearchMatcherTests
     [InlineData("Ian Smith", 85)]    // whole-string prefix
     [InlineData("Bob Ian", 80)]      // token prefix
     [InlineData("Brian", 60)]        // substring only
-    public void Name_match_score_reflects_match_quality(string burnerName, int expectedScore)
+    public void Match_NameScore_ReflectsMatchQuality(string burnerName, int expectedScore)
     {
         // This ranking is what floats the literal "Ian" above "Adrian"/"Brian" instead of
         // alphabetizing them. Controllers sort by Score; the matcher assigns it.
@@ -203,7 +203,7 @@ public class PersonSearchMatcherTests
     }
 
     [HumansFact]
-    public void Name_match_outscores_non_name_field_match()
+    public void Match_Name_OutscoresOtherFields()
     {
         // Someone named "Ian" must rank above someone whose bio merely mentions "Ian".
         var named = Human(burnerName: "Ian");
@@ -218,7 +218,7 @@ public class PersonSearchMatcherTests
     }
 
     [HumansFact]
-    public void Legal_name_matches_under_AdminAll_scope_but_not_public()
+    public void Match_LegalName_NeedsAdminAllScope()
     {
         // Burner "Sparkle" hides legal name "María García". Searching the real name must work in
         // admin/coordinator windows but NEVER in public search (would deanonymize the burner).
@@ -236,7 +236,7 @@ public class PersonSearchMatcherTests
     [InlineData("berlin")]    // City
     [InlineData("kitchen")]   // ContributionInterests
     [InlineData("they")]      // Pronouns
-    public void Bio_fields_match_under_Bio_scope(string query)
+    public void Match_BioFields_MatchUnderBioScope(string query)
     {
         var human = Human(burnerName: "Sparkle", bio: "Loves welding", city: "Berlin",
             interests: "kitchen crew", pronouns: "they/them");
@@ -265,7 +265,7 @@ public class PersonSearchMatcherTests
     }
 
     [HumansFact]
-    public void Volunteer_cv_matches_newest_matching_entry_under_Bio_scope()
+    public void Match_VolunteerCv_UsesNewestMatchingEntry()
     {
         var human = Human(burnerName: "Sparkle");
         human = human with
@@ -287,7 +287,7 @@ public class PersonSearchMatcherTests
     }
 
     [HumansFact]
-    public void Public_contact_field_matches_under_Bio_but_private_one_does_not()
+    public void Match_PrivateContactField_SkippedUnderBio()
     {
         var pub = Human(burnerName: "Sparkle",
             contactFields: [("publichandle", ContactFieldVisibility.AllActiveProfiles)]);
@@ -302,7 +302,7 @@ public class PersonSearchMatcherTests
     [HumansTheory]
     [InlineData(ContactFieldVisibility.AllActiveProfiles, PersonSearchFields.Bio)]
     [InlineData(ContactFieldVisibility.BoardOnly, PersonSearchFields.Admin)]
-    public void Contact_match_uses_authored_order_within_its_visibility_bucket(
+    public void Match_Contacts_UseAuthoredOrder(
         ContactFieldVisibility visibility, PersonSearchFields fields)
     {
         var otherVisibility = visibility == ContactFieldVisibility.AllActiveProfiles
@@ -327,7 +327,7 @@ public class PersonSearchMatcherTests
     }
 
     [HumansFact]
-    public void Publicly_exposed_email_matches_for_everyone_but_private_email_is_admin_only()
+    public void Match_PrivateEmail_IsAdminOnly()
     {
         var pub = Human(burnerName: "Sparkle",
             emails: [("public@example.com", true, ContactFieldVisibility.AllActiveProfiles)]);
@@ -344,7 +344,7 @@ public class PersonSearchMatcherTests
     [InlineData("boardnote")]
     [InlineData("penicillin")]  // medical
     [InlineData("janedoe")]     // emergency contact name
-    public void Board_private_and_health_fields_never_match_even_under_AdminAll(string query)
+    public void Match_PrivateHealthFields_NeverMatch(string query)
     {
         var human = Human(
             burnerName: "Sparkle",
@@ -357,7 +357,7 @@ public class PersonSearchMatcherTests
     }
 
     [HumansFact]
-    public void Rejected_profile_is_never_matched()
+    public void Match_RejectedProfile_NeverMatches()
     {
         var human = Human(burnerName: "Sparkle", isRejected: true);
 
@@ -365,7 +365,7 @@ public class PersonSearchMatcherTests
     }
 
     [HumansFact]
-    public void IsSearchable_is_profile_present_and_not_rejected()
+    public void IsSearchable_RejectedOrNoProfile_IsFalse()
     {
         // The single-person lookups (/api/profiles/by-userid, allowEmail) read this same flag.
         Human().IsSearchable.Should().BeTrue();
@@ -381,7 +381,7 @@ public class PersonSearchMatcherTests
     [InlineData("İSTANBUL", "istanbul")]
     [InlineData("istanbul", "I\u0307stanbul")]
     [InlineData("peter pan", "Peter Pan")]  // full multi-token string, exact
-    public void ExactName_matches_folded_full_string_equality(string query, string burnerName)
+    public void ExactName_FoldedFullString_Matches(string query, string burnerName)
     {
         var human = Human(burnerName: burnerName);
 
@@ -396,7 +396,7 @@ public class PersonSearchMatcherTests
     [InlineData("Pan", "Peter Pan")]     // token of name — must NOT match
     [InlineData("Joseph", "Jose")]       // prefix superset — must NOT match
     [InlineData("Jose", "Joseph")]       // prefix subset — must NOT match
-    public void ExactName_is_not_substring_or_prefix(string query, string burnerName)
+    public void ExactName_SubstringOrPrefix_DoesNotMatch(string query, string burnerName)
     {
         var human = Human(burnerName: burnerName);
 
@@ -404,7 +404,7 @@ public class PersonSearchMatcherTests
     }
 
     [HumansFact]
-    public void ExactName_never_matches_rejected_profile()
+    public void ExactName_RejectedProfile_NeverMatches()
     {
         var human = Human(burnerName: "Sparkle", isRejected: true);
 
@@ -412,7 +412,7 @@ public class PersonSearchMatcherTests
     }
 
     [HumansFact]
-    public void ExactName_alone_does_not_match_bio_legal_or_admin_buckets()
+    public void ExactName_OtherBuckets_DoNotMatch()
     {
         // ExactName must be its own bit: it confines to the resolved display name only,
         // and never spills into Bio / Legal name / Admin email field buckets.
@@ -428,7 +428,7 @@ public class PersonSearchMatcherTests
     }
 
     [HumansFact]
-    public void ExactName_does_not_resolve_display_name_when_burnername_blank()
+    public void ExactName_BlankBurnerName_SkipsDisplayName()
     {
         // No DisplayName fallback: a blank BurnerName searches blank.
         var human = Human(burnerName: "", displayName: "Maria Garcia");

@@ -24,7 +24,7 @@ public sealed class SurveyPreviewEmailServiceTests
     [Xunit.InlineData("blank-email")]
     [Xunit.InlineData("blank-email-send")]
     [Xunit.InlineData("queue-failure")]
-    public async Task Preview_failures_return_refusal_keys_without_localized_exceptions(string failure)
+    public async Task Preview_Failure_ReturnsRefusalKey(string failure)
     {
         using var culture = new CultureScope("es");
         var ct = Xunit.TestContext.Current.CancellationToken;
@@ -141,7 +141,7 @@ public sealed class SurveyPreviewEmailServiceTests
     }
 
     [HumansFact]
-    public async Task PreviewForUserAsync_returns_the_rendered_message_without_sending_it()
+    public async Task PreviewForUserAsync_Valid_RendersWithoutSending()
     {
         var surveyId = Guid.NewGuid();
         var userId = Guid.NewGuid();
@@ -191,7 +191,7 @@ public sealed class SurveyPreviewEmailServiceTests
     [Xunit.InlineData(false, false)]
     [Xunit.InlineData(true, true)]
     [Xunit.InlineData(true, false)]
-    public async Task SendToUserAsync_uses_invitation_template_without_creating_an_invitation(
+    public async Task SendToUserAsync_Valid_CreatesNoInvitation(
         bool queueCancelled, bool callerCancelled)
     {
         var surveyId = Guid.NewGuid();
@@ -262,7 +262,7 @@ public sealed class SurveyPreviewEmailServiceTests
     }
 
     [HumansFact]
-    public async Task PreviewForUserAsync_leaves_optional_copy_blank_when_only_an_unrelated_culture_exists()
+    public async Task PreviewForUserAsync_OnlyUnrelatedCulture_LeavesCopyBlank()
     {
         var surveyId = Guid.NewGuid();
         var userId = Guid.NewGuid();

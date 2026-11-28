@@ -93,7 +93,7 @@ public class EmailConfirmationServiceTests
     [InlineData(BadLink.AlreadyConfirmed)]
     [InlineData(BadLink.GoogleRow)]
     [InlineData(BadLink.AskingAccountMerged)]
-    public async Task UnusableLink_IsInvalidAndChangesNothing(BadLink kind)
+    public async Task Confirm_UnusableLink_ChangesNothing(BadLink kind)
     {
         OtherAccountHasTheAddress();
         var token = kind switch
@@ -119,7 +119,7 @@ public class EmailConfirmationServiceTests
     }
 
     [HumansFact]
-    public async Task LinkOpenedByAnotherAccount_RevealsNothingAndChangesNothing()
+    public async Task Confirm_OtherAccountsLink_ChangesNothing()
     {
         // The account that already has the address opens a link made by somebody else.
         OtherAccountHasTheAddress();
@@ -158,7 +158,7 @@ public class EmailConfirmationServiceTests
     }
 
     [HumansFact]
-    public async Task OtherAccountNeverFilledIn_KeepsTheSignedInAccountWhateverWasPosted()
+    public async Task Confirm_OtherAccountBare_KeepsSignedInAccount()
     {
         OtherAccountHasTheAddress(filledIn: false);
 
@@ -193,7 +193,7 @@ public class EmailConfirmationServiceTests
     [HumansTheory]
     [InlineData(false)]
     [InlineData(true)]
-    public async Task BothFilledIn_WithoutAChoiceOfOneOfTheTwo_MergesNothing(bool strangerPicked)
+    public async Task Confirm_BothFilledNoChoice_MergesNothing(bool strangerPicked)
     {
         OtherAccountHasTheAddress();
 
@@ -229,7 +229,7 @@ public class EmailConfirmationServiceTests
     }
 
     [HumansFact]
-    public async Task MergeRefusedByTheEngine_IsBlockedAndSendsNoNotice()
+    public async Task Confirm_MergeRefused_SendsNoNotice()
     {
         OtherAccountHasTheAddress();
         _mergeService.MergeAsync(default, default, default).ReturnsForAnyArgs(new AccountMergeResult("refused"));

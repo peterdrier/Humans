@@ -37,7 +37,7 @@ public sealed class UserServiceProfileOnboardingMutationTests : ServiceTestHarne
     [HumansTheory]
     [InlineData(false)]
     [InlineData(true)]
-    public async Task RecordLogin_MetadataFailure_DoesNotBlockSignIn_ButPreservesCancellation(bool cancelled)
+    public async Task RecordLogin_MetadataFails_DoesNotBlockSignIn(bool cancelled)
     {
         var userId = Guid.NewGuid();
         using var request = new CancellationTokenSource();
@@ -96,7 +96,7 @@ public sealed class UserServiceProfileOnboardingMutationTests : ServiceTestHarne
     [HumansTheory]
     [InlineData(false)]
     [InlineData(true)]
-    public async Task AddUserEmailAsync_AddressVerifiedOnAnotherUser_RefusesVerifiedAndFlagsUnverified(bool verified)
+    public async Task AddUserEmailAsync_VerifiedOnOtherUser_ReturnsRefusal(bool verified)
     {
         var userId = Guid.NewGuid();
         var repository = Substitute.For<IUserRepository>();
@@ -183,7 +183,7 @@ public sealed class UserServiceProfileOnboardingMutationTests : ServiceTestHarne
     [HumansTheory]
     [InlineData(false)]
     [InlineData(true)]
-    public async Task ContributeForUserAsync_EmitsUserProfileSlices_WithOAuthKeySourcedFromProviderColumn(
+    public async Task ContributeForUserAsync_OAuthKey_ComesFromProviderColumn(
         bool hasDeletionHold)
     {
         // The JSON key stays "IsOAuth" per memory/code/no-rename-serialized-fields.md
@@ -285,7 +285,7 @@ public sealed class UserServiceProfileOnboardingMutationTests : ServiceTestHarne
     }
 
     [HumansFact]
-    public async Task ContributeForUserAsync_ExportsOwnEmailLifecycleWithoutRetiredGoogleState()
+    public async Task ContributeForUserAsync_Emails_OmitRetiredGoogleState()
     {
         var userId = Guid.NewGuid();
         var otherUserId = Guid.NewGuid();
@@ -563,7 +563,7 @@ public sealed class UserServiceProfileOnboardingMutationTests : ServiceTestHarne
     }
 
     [HumansFact]
-    public async Task EnsureStubProfileAsync_WithSeededNames_CreatesActiveProfileWithTrimmedNames()
+    public async Task EnsureStubProfileAsync_SeededNames_CreatesActiveProfile()
     {
         var userId = Guid.NewGuid();
         SeedUser(userId);
@@ -579,7 +579,7 @@ public sealed class UserServiceProfileOnboardingMutationTests : ServiceTestHarne
     }
 
     [HumansFact]
-    public async Task MarkFakeAsync_SetsTheMarkOnceAndAuditsOnlyTheFirstMark()
+    public async Task MarkFakeAsync_MarkedTwice_AuditsOnce()
     {
         var userId = Guid.NewGuid();
         SeedUser(userId);
@@ -623,7 +623,7 @@ public sealed class UserServiceProfileOnboardingMutationTests : ServiceTestHarne
     }
 
     [HumansFact]
-    public async Task EnsureStubProfileAsync_WithoutNames_InheritsBurnerNameAlreadySeededOnUser()
+    public async Task EnsureStubProfileAsync_NoNames_KeepsUsersBurnerName()
     {
         // OAuth/import account creation seeds User.BurnerName directly, then calls
         // EnsureStubProfileAsync with no names. The stub must not wipe it.
@@ -672,7 +672,7 @@ public sealed class UserServiceProfileOnboardingMutationTests : ServiceTestHarne
     }
 
     [HumansFact]
-    public async Task AddUserEmailAsync_LegacyIdentityEmailWithoutRows_AddsVerifiedRow()
+    public async Task AddUserEmailAsync_LegacyEmailNoRows_AddsVerifiedRow()
     {
         var userId = Guid.NewGuid();
         var user = SeedUser(userId);
@@ -735,7 +735,7 @@ public sealed class UserServiceProfileOnboardingMutationTests : ServiceTestHarne
     }
 
     [HumansFact]
-    public async Task AddEmailAsync_OverlappingRequests_CreateOneRowAndOneVerificationMail()
+    public async Task AddEmailAsync_OverlappingRequests_CreateOneRow()
     {
         var ct = TestContext.Current.CancellationToken;
         var userId = Guid.NewGuid();
@@ -920,7 +920,7 @@ public sealed class UserServiceProfileOnboardingMutationTests : ServiceTestHarne
     }
 
     [HumansFact]
-    public async Task ReassignAsync_KeptProfileTakesWhatItLacksAndTheNotesOfBoth()
+    public async Task ReassignAsync_KeptProfile_TakesMissingFields()
     {
         var ct = TestContext.Current.CancellationToken;
         var sourceUserId = Guid.NewGuid();

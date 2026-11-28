@@ -81,7 +81,7 @@ public sealed class ProfileServiceTests : ServiceTestHarness
     }
 
     [HumansFact]
-    public async Task SaveProfileAsync_WithContactsAndLanguages_PersistsCompleteEditBeforeReturning()
+    public async Task SaveProfileAsync_ContactsWithLanguages_PersistsWholeEdit()
     {
         var ct = Xunit.TestContext.Current.CancellationToken;
         var userId = Guid.NewGuid();
@@ -148,7 +148,7 @@ public sealed class ProfileServiceTests : ServiceTestHarness
     }
 
     [HumansFact]
-    public async Task SaveProfileAsync_UploadWithHeifExtensionFallback_IsProcessedToJpeg()
+    public async Task SaveProfileAsync_HeifExtensionUpload_BecomesJpeg()
     {
         var userId = Guid.NewGuid();
         await SeedUserAsync(userId);
@@ -243,7 +243,7 @@ public sealed class ProfileServiceTests : ServiceTestHarness
     /// BurnerName / FirstName / LastName promotes the user's stored state.
     /// </summary>
     [HumansFact(Timeout = 10000)]
-    public async Task ProfileEditorService_SaveProfileAsync_TransitionsBareToActive_WhenAllRequiredFieldsPopulated()
+    public async Task SaveProfileAsync_RequiredFieldsFilled_BecomesActive()
     {
         var userId = Guid.NewGuid();
         await SeedUserAsync(userId);
@@ -256,7 +256,7 @@ public sealed class ProfileServiceTests : ServiceTestHarness
     }
 
     [HumansFact(Timeout = 10000)]
-    public async Task ProfileEditorService_SaveProfileAsync_StaysBare_WhenRequiredFieldsBlank()
+    public async Task SaveProfileAsync_RequiredFieldsBlank_StaysBare()
     {
         var userId = Guid.NewGuid();
         await SeedUserAsync(userId);
@@ -310,7 +310,7 @@ public sealed class ProfileServiceTests : ServiceTestHarness
     }
 
     [HumansFact]
-    public async Task SaveProfileAsync_ParsesBirthday_InvalidDay_SetsNull()
+    public async Task SaveProfileAsync_InvalidBirthdayDay_SetsNull()
     {
         var userId = Guid.NewGuid();
         await SeedUserWithProfileAsync(userId);
@@ -367,7 +367,7 @@ public sealed class ProfileServiceTests : ServiceTestHarness
     }
 
     [HumansFact]
-    public async Task SaveProfileAsync_FailedFirstPictureUploadDoesNotPublishMissingFileMetadata()
+    public async Task SaveProfileAsync_FirstUploadFails_WritesNoPictureMetadata()
     {
         var userId = Guid.NewGuid();
         await SeedUserWithProfileAsync(userId);
@@ -474,7 +474,7 @@ public sealed class ProfileServiceTests : ServiceTestHarness
     }
 
     [HumansFact]
-    public async Task SaveProfileAsync_UnverifiableFailedSave_PreservesUploadedBytesAndOriginalFailure()
+    public async Task SaveProfileAsync_UnverifiableFailedSave_KeepsUploadedBytes()
     {
         var ct = Xunit.TestContext.Current.CancellationToken;
         var userId = Guid.NewGuid();
@@ -504,7 +504,7 @@ public sealed class ProfileServiceTests : ServiceTestHarness
     }
 
     [HumansFact]
-    public async Task SaveProfileAsync_SameContentTypeReplace_FailedMetadataSaveKeepsThePreviousBytes()
+    public async Task SaveProfileAsync_ReplaceMetadataFails_KeepsPreviousBytes()
     {
         var userId = Guid.NewGuid();
         var profileId = await SeedUserWithProfileAsync(userId, withPicture: true);
@@ -535,7 +535,7 @@ public sealed class ProfileServiceTests : ServiceTestHarness
     }
 
     [HumansFact]
-    public async Task SaveProfileAsync_UserNameSaveFailure_PreservesProfileAndPreviousPicture()
+    public async Task SaveProfileAsync_NameSaveFails_KeepsPreviousPicture()
     {
         var ct = Xunit.TestContext.Current.CancellationToken;
         var userId = Guid.NewGuid();
@@ -573,7 +573,7 @@ public sealed class ProfileServiceTests : ServiceTestHarness
     }
 
     [HumansFact]
-    public async Task SaveProfileAsync_SuccessfulReplace_WritesAVersionedKeyAndDeletesThePreviousFile()
+    public async Task SaveProfileAsync_ReplaceSucceeds_DeletesPreviousFile()
     {
         var userId = Guid.NewGuid();
         var profileId = await SeedUserWithProfileAsync(userId, withPicture: true);
@@ -597,7 +597,7 @@ public sealed class ProfileServiceTests : ServiceTestHarness
     }
 
     [HumansFact]
-    public async Task GetProfilePictureAsync_NullStorageKey_ResolvesTheLegacyDeterministicKey()
+    public async Task GetProfilePictureAsync_NullStorageKey_UsesLegacyKey()
     {
         var userId = Guid.NewGuid();
         var profileId = await SeedUserWithProfileAsync(userId, withPicture: true);
@@ -663,7 +663,7 @@ public sealed class ProfileServiceTests : ServiceTestHarness
     }
 
     [HumansFact]
-    public async Task SaveProfileAsync_RemoveProfilePicture_ClearsContentTypeAndDeletesFile()
+    public async Task SaveProfileAsync_RemovePicture_DeletesFile()
     {
         var userId = Guid.NewGuid();
         var profileId = await SeedUserWithProfileAsync(userId, withPicture: true);
@@ -710,7 +710,7 @@ public sealed class ProfileServiceTests : ServiceTestHarness
     }
 
     [HumansFact]
-    public async Task GetProfilePictureAsync_FilesystemHit_ServesFromStoreWithoutDbBytes()
+    public async Task GetProfilePictureAsync_FilesystemHit_ServesFromStore()
     {
         // FS-first: when the picture is on disk, serve those bytes even if they differ from
         // the DB copy. The store is authoritative once the content-type column says a picture exists.
@@ -744,7 +744,7 @@ public sealed class ProfileServiceTests : ServiceTestHarness
     }
 
     [HumansFact]
-    public async Task GetProfilePictureAsync_AnonymizedProfile_ReturnsNullEvenWithStaleFile()
+    public async Task GetProfilePictureAsync_AnonymizedProfile_ReturnsNull()
     {
         // GDPR: after anonymization the content-type column is null. If the
         // on-disk file wasn't successfully removed (best-effort delete failed)
@@ -794,7 +794,7 @@ public sealed class ProfileServiceTests : ServiceTestHarness
     }
 
     [HumansFact]
-    public async Task SaveProfileAsync_EmptyCvWithoutNoPriorExperienceFlag_ReturnsRefusalWithoutWrites()
+    public async Task SaveProfileAsync_EmptyCvNoFlag_ReturnsRefusal()
     {
         var userId = Guid.NewGuid();
         await SeedUserAsync(userId);
@@ -811,7 +811,7 @@ public sealed class ProfileServiceTests : ServiceTestHarness
     }
 
     [HumansFact]
-    public async Task SaveProfileAsync_NullCv_SkipsCompletenessCheck_AndLeavesHistoryUntouched()
+    public async Task SaveProfileAsync_NullCv_LeavesHistoryUntouched()
     {
         // Name-only saves (onboarding widget) pass no CV payload — they must not
         // be blocked by the completeness rule nor overwrite stored history.
@@ -840,7 +840,7 @@ public sealed class ProfileServiceTests : ServiceTestHarness
     [HumansTheory]
     [Xunit.InlineData(false)]
     [Xunit.InlineData(true)]
-    public async Task SaveProfileAsync_CvSaveFailure_PreservesOriginalDeclarationAndHistory(bool hadHistory)
+    public async Task SaveProfileAsync_CvSaveFails_KeepsOriginalHistory(bool hadHistory)
     {
         var ct = Xunit.TestContext.Current.CancellationToken;
         var userId = Guid.NewGuid();

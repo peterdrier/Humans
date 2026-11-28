@@ -152,7 +152,7 @@ public sealed class EmailProblemsServiceTests : ServiceTestHarness
     }
 
     [HumansFact]
-    public async Task ScanAsync_OrphanAndGhostRowsForTombstones_ArePreserved()
+    public async Task ScanAsync_TombstoneOrphanRows_AreKept()
     {
         // A UserEmail row or external login still pointing at a tombstone is real leftover data,
         // and this page is the only place an admin can clean it up: the tombstone suppression
@@ -207,7 +207,7 @@ public sealed class EmailProblemsServiceTests : ServiceTestHarness
     }
 
     [HumansFact]
-    public async Task DetectsMultipleIsPrimary()
+    public async Task ScanAsync_MultiplePrimaries_AreDetected()
     {
         var userId = Guid.NewGuid();
         AddInfo(MakeInfo(userId, emails:
@@ -243,7 +243,7 @@ public sealed class EmailProblemsServiceTests : ServiceTestHarness
     }
 
     [HumansFact]
-    public async Task DoesNotFlagZeroIsPrimary_WhenUserHasNoVerifiedEmails()
+    public async Task ScanAsync_NoVerifiedEmails_SkipsZeroPrimaryFlag()
     {
         var userId = Guid.NewGuid();
         AddInfo(MakeInfo(userId, emails:
@@ -277,7 +277,7 @@ public sealed class EmailProblemsServiceTests : ServiceTestHarness
     }
 
     [HumansFact]
-    public async Task DetectsOrphanUserEmail()
+    public async Task ScanAsync_OrphanUserEmail_IsDetected()
     {
         var deadUserId = Guid.NewGuid();
         var emailId = Guid.NewGuid();
@@ -294,7 +294,7 @@ public sealed class EmailProblemsServiceTests : ServiceTestHarness
     }
 
     [HumansFact]
-    public async Task DetectsGhostExternalLogins()
+    public async Task ScanAsync_GhostExternalLogin_IsDetected()
     {
         var ghostUserId = Guid.NewGuid();
         SetOrphans();
@@ -307,7 +307,7 @@ public sealed class EmailProblemsServiceTests : ServiceTestHarness
     }
 
     [HumansFact]
-    public async Task DetectsLegacyIdentityEmailNotInUserEmails()
+    public async Task ScanAsync_IdentityEmailNotInRows_FlagsLegacyEmail()
     {
         var userId = Guid.NewGuid();
         AddInfo(MakeInfo(userId, identityEmailColumn: "legacy@x.com", emails:
@@ -375,7 +375,7 @@ public sealed class EmailProblemsServiceTests : ServiceTestHarness
     }
 
     [HumansFact]
-    public async Task BackfillLegacyIdentityEmails_FlaggedUser_CallsAddVerifiedAndReturnsPair()
+    public async Task BackfillLegacyIdentityEmails_FlaggedUser_AddsVerifiedRow()
     {
         // The legacy address is added as a plain verified row; the next OAuth sign-in's
         // reconcile attaches the provider tag via TagMoved.
@@ -391,7 +391,7 @@ public sealed class EmailProblemsServiceTests : ServiceTestHarness
     }
 
     [HumansFact]
-    public async Task BackfillLegacyIdentityEmails_AlreadyHasMatchingVerifiedRow_SkipsUser()
+    public async Task BackfillLegacyIdentityEmails_MatchingVerifiedRow_SkipsUser()
     {
         var userId = Guid.NewGuid();
         AddInfo(MakeInfo(userId, identityEmailColumn: "match@x.com", emails:
@@ -418,7 +418,7 @@ public sealed class EmailProblemsServiceTests : ServiceTestHarness
     }
 
     [HumansFact]
-    public async Task DoesNotFlagLegacyEmail_WhenProfileLessUserHasMatchingVerifiedRow()
+    public async Task ScanAsync_ProfileLessMatchingRow_IsNotFlagged()
     {
         var userId = Guid.NewGuid();
         AddInfo(MakeInfo(userId, hasProfile: false, identityEmailColumn: "import@x.com", emails:
@@ -435,7 +435,7 @@ public sealed class EmailProblemsServiceTests : ServiceTestHarness
     }
 
     [HumansFact]
-    public async Task DetectsLegacyEmail_WhenProfileLessUserHasNoMatchingRow()
+    public async Task ScanAsync_ProfileLessNoMatchingRow_FlagsLegacyEmail()
     {
         var userId = Guid.NewGuid();
         AddInfo(MakeInfo(userId, hasProfile: false, identityEmailColumn: "legacy@x.com"));
@@ -451,7 +451,7 @@ public sealed class EmailProblemsServiceTests : ServiceTestHarness
     }
 
     [HumansFact]
-    public async Task BackfillLegacyIdentityEmails_ProfileLessUserAlreadyMatched_SkipsUser()
+    public async Task BackfillLegacyIdentityEmails_ProfileLessMatched_SkipsUser()
     {
         var userId = Guid.NewGuid();
         AddInfo(MakeInfo(userId, hasProfile: false, identityEmailColumn: "import@x.com", emails:
@@ -467,7 +467,7 @@ public sealed class EmailProblemsServiceTests : ServiceTestHarness
     }
 
     [HumansFact]
-    public async Task BackfillLegacyIdentityEmails_AuditsEachCreatedRowAgainstTheActor()
+    public async Task BackfillLegacyIdentityEmails_CreatedRows_AuditActor()
     {
         var actorId = Guid.NewGuid();
         var u1 = Guid.NewGuid();
@@ -498,7 +498,7 @@ public sealed class EmailProblemsServiceTests : ServiceTestHarness
             Arg.Any<string>(), Arg.Any<Guid>());
     }
     [HumansFact]
-    public async Task BackfillLegacyIdentityEmails_RefusedAdd_SkipsThatUserAndContinues()
+    public async Task BackfillLegacyIdentityEmails_RefusedAdd_ContinuesWithRest()
     {
         var refused = Guid.NewGuid();
         var ok = Guid.NewGuid();
@@ -535,7 +535,7 @@ public sealed class EmailProblemsServiceTests : ServiceTestHarness
     }
 
     [HumansFact]
-    public async Task BackfillLegacyIdentityEmails_ExistingRowVerifiedElsewhere_IsNotCountedOrAudited()
+    public async Task BackfillLegacyIdentityEmails_VerifiedElsewhere_IsNotCounted()
     {
         var userId = Guid.NewGuid();
         var pending = Email(userId, "legacy@x.com", isVerified: false);
@@ -554,7 +554,7 @@ public sealed class EmailProblemsServiceTests : ServiceTestHarness
     }
 
     [HumansFact]
-    public async Task DoesNotFlagLegacyEmail_WhenVerifiedRowIsTheGooglemailSpelling()
+    public async Task ScanAsync_GooglemailSpelling_IsNotFlagged()
     {
         var userId = Guid.NewGuid();
         AddInfo(MakeInfo(userId, identityEmailColumn: "Legacy@gmail.com", emails:
@@ -571,7 +571,7 @@ public sealed class EmailProblemsServiceTests : ServiceTestHarness
     }
 
     [HumansFact]
-    public async Task BackfillLegacyIdentityEmails_MergedSentinelColumnBehindVerifiedRow_SkipsUser()
+    public async Task BackfillLegacyIdentityEmails_MergedSentinelColumn_SkipsUser()
     {
         var userId = Guid.NewGuid();
         AddInfo(MakeInfo(userId, identityEmailColumn: $"{userId:N}@merged.local", emails:

@@ -23,7 +23,7 @@ public sealed class SurveyRepositoryTests : IDisposable
     public void Dispose() => _db.Dispose();
 
     [HumansFact]
-    public async Task GetInvitationsDueForReminderAsync_returns_only_sent_open_uncompleted_unreminded_invitees()
+    public async Task GetInvitationsDueForReminderAsync_MixedInvitees_ReturnsDueOnly()
     {
         var openSurvey = Survey(SurveyStatus.Open);
         var draftSurvey = Survey(SurveyStatus.Draft);
@@ -45,7 +45,7 @@ public sealed class SurveyRepositoryTests : IDisposable
     }
 
     [HumansFact]
-    public async Task SetReminderSentAsync_stamps_the_invitation_without_changing_delivery_state()
+    public async Task SetReminderSentAsync_Stamped_KeepsDeliveryState()
     {
         var survey = Survey(SurveyStatus.Open);
         var invitation = Invitation(survey.Id, sentAt: Now - Duration.FromDays(7));

@@ -134,7 +134,7 @@ public class ProfileApiControllerTests
     [InlineData("search")]
     [InlineData("count")]
     [InlineData("lookup")]
-    public async Task Profile_reads_cancel_during_current_user_resolution(string action)
+    public async Task ProfileReads_CancelledUserLookup_Throw(string action)
     {
         var viewer = MakeUser(Guid.NewGuid());
         var targetId = Guid.NewGuid();
@@ -168,7 +168,7 @@ public class ProfileApiControllerTests
     }
 
     [HumansFact]
-    public async Task Search_returns_401_when_current_user_resolves_to_null()
+    public async Task Search_NoCurrentUser_Returns401()
     {
         // [Authorize] handles no-cookie at the framework layer. This covers the
         // session-valid-but-user-row-gone race: the action must fail closed
@@ -187,7 +187,7 @@ public class ProfileApiControllerTests
     }
 
     [HumansFact]
-    public async Task Search_surfaces_visible_primary_email_as_detail()
+    public async Task Search_VisiblePrimaryEmail_IsDetail()
     {
         var viewer = MakeUser(Guid.NewGuid());
         var targetUserId = Guid.NewGuid();
@@ -219,7 +219,7 @@ public class ProfileApiControllerTests
     }
 
     [HumansFact]
-    public async Task Search_falls_back_to_contact_field_in_priority_order_when_no_visible_email()
+    public async Task Search_NoVisibleEmail_UsesTopContactField()
     {
         var viewer = MakeUser(Guid.NewGuid());
         var targetUserId = Guid.NewGuid();
@@ -252,7 +252,7 @@ public class ProfileApiControllerTests
     }
 
     [HumansFact]
-    public async Task Search_returns_null_detail_when_viewer_can_see_nothing()
+    public async Task Search_NothingVisible_ReturnsNullDetail()
     {
         var viewer = MakeUser(Guid.NewGuid());
         var targetUserId = Guid.NewGuid();
@@ -278,7 +278,7 @@ public class ProfileApiControllerTests
     }
 
     [HumansFact]
-    public async Task Search_skips_obsolete_email_contact_field_type()
+    public async Task Search_ObsoleteEmailContactType_IsSkipped()
     {
         var viewer = MakeUser(Guid.NewGuid());
         var targetUserId = Guid.NewGuid();
@@ -312,7 +312,7 @@ public class ProfileApiControllerTests
     }
 
     [HumansFact]
-    public async Task Search_orders_results_by_relevance_score_then_name()
+    public async Task Search_Results_OrderByScoreThenName()
     {
         // An exact match (Ian) must outrank substring hits (Adrian, Brian…). The service returns matches
         // unordered; the controller must rank by Score desc, then name. Service order here is
@@ -350,7 +350,7 @@ public class ProfileApiControllerTests
     [HumansTheory]
     [InlineData(false)]
     [InlineData(true)]
-    public async Task Search_allowEmail_resolves_exact_email_to_single_row(bool mergedOwner)
+    public async Task Search_AllowEmailExactMatch_ReturnsOneRow(bool mergedOwner)
     {
         var viewer = MakeUser(Guid.NewGuid());
         var targetUserId = Guid.NewGuid();
@@ -385,7 +385,7 @@ public class ProfileApiControllerTests
     }
 
     [HumansFact]
-    public async Task Search_allowEmail_returns_empty_when_email_unknown()
+    public async Task Search_AllowEmailUnknownAddress_ReturnsEmpty()
     {
         var viewer = MakeUser(Guid.NewGuid());
         _userEmailService.FindByAddressAsync(Arg.Any<string>(), false, true, Arg.Any<CancellationToken>())
@@ -400,7 +400,7 @@ public class ProfileApiControllerTests
     }
 
     [HumansFact]
-    public async Task Search_allowEmail_off_does_not_exact_match_email()
+    public async Task Search_AllowEmailOff_SkipsExactEmail()
     {
         var viewer = MakeUser(Guid.NewGuid());
         _userService.SearchUsersAsync(Arg.Any<string>(),
@@ -416,7 +416,7 @@ public class ProfileApiControllerTests
     }
 
     [HumansFact]
-    public async Task GetByUserId_returns_404_when_full_profile_not_in_cache()
+    public async Task GetByUserId_ProfileNotCached_Returns404()
     {
         var viewer = MakeUser(Guid.NewGuid());
         _userService.GetUserInfoAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
@@ -430,7 +430,7 @@ public class ProfileApiControllerTests
     }
 
     [HumansFact]
-    public async Task GetByUserId_returns_404_when_profile_is_rejected()
+    public async Task GetByUserId_RejectedProfile_Returns404()
     {
         var viewer = MakeUser(Guid.NewGuid());
         var targetUserId = Guid.NewGuid();
@@ -447,7 +447,7 @@ public class ProfileApiControllerTests
     }
 
     [HumansFact]
-    public async Task GetByUserId_returns_picker_row_with_viewer_visible_email()
+    public async Task GetByUserId_VisibleEmail_ReturnsPickerRow()
     {
         var viewer = MakeUser(Guid.NewGuid());
         var targetUserId = Guid.NewGuid();

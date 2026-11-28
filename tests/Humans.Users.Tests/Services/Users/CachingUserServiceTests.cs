@@ -138,7 +138,7 @@ public class CachingUserServiceTests
     [HumansTheory]
     [InlineData(false)]
     [InlineData(true)]
-    public async Task RecordLogin_TrackingFailure_DoesNotBlockSignIn_AndEvictsUncertainSnapshot(bool refreshFailure)
+    public async Task RecordLogin_TrackingFails_EvictsSnapshot(bool refreshFailure)
     {
         var ct = TestContext.Current.CancellationToken;
         var userId = Guid.NewGuid();
@@ -180,7 +180,7 @@ public class CachingUserServiceTests
     }
 
     [HumansFact]
-    public async Task SuspendProfiles_RefreshFailure_DoesNotLeaveOtherChangedUsersStale()
+    public async Task SuspendProfiles_RefreshFails_RefreshesOtherUsers()
     {
         var ct = TestContext.Current.CancellationToken;
         var first = Guid.NewGuid();
@@ -245,7 +245,7 @@ public class CachingUserServiceTests
     [HumansTheory]
     [InlineData(true)]
     [InlineData(false)]
-    public async Task CommittedUserStateWrite_RefreshesWarmCacheAndPreservesRelatedSlices(bool suspend)
+    public async Task WriteUserState_WarmCache_KeepsRelatedSlices(bool suspend)
     {
         var ct = TestContext.Current.CancellationToken;
         var user = SampleUser();
@@ -292,7 +292,7 @@ public class CachingUserServiceTests
     }
 
     [HumansFact]
-    public async Task CommittedUserCreate_AddsTheNewRowToAWarmCache()
+    public async Task CreateUser_WarmCache_AddsNewRow()
     {
         // UserManager.CreateAsync (dev personas, the gate-terminal account) lands through
         // the interceptor; no caller has to signal the new row.
@@ -322,7 +322,7 @@ public class CachingUserServiceTests
     }
 
     [HumansFact]
-    public async Task AdminStubProfileCreation_ForwardsAuditActor_AndRefreshesProfile()
+    public async Task EnsureStubProfile_AsAdmin_ForwardsAuditActor()
     {
         var userId = Guid.NewGuid();
         var actorId = Guid.NewGuid();
@@ -408,7 +408,7 @@ public class CachingUserServiceTests
     }
 
     [HumansFact]
-    public async Task GetUserInfoAsync_DictMiss_DelegatesToInnerAndCaches()
+    public async Task GetUserInfoAsync_DictMiss_CachesInnerResult()
     {
         var userId = Guid.NewGuid();
         var info = SampleUserInfo(userId);
@@ -428,7 +428,7 @@ public class CachingUserServiceTests
     }
 
     [HumansFact]
-    public async Task GetUserInfoAsync_InnerReturnsNull_DoesNotCacheAndKeepsAsking()
+    public async Task GetUserInfoAsync_InnerReturnsNull_DoesNotCache()
     {
         var userId = Guid.NewGuid();
         _inner.GetUserInfoAsync(userId, Arg.Any<CancellationToken>())
@@ -530,7 +530,7 @@ public class CachingUserServiceTests
     }
 
     [HumansFact]
-    public async Task WarmAllAsync_PopulatesDictForAllUsers_AndServesFromDict()
+    public async Task WarmAllAsync_AllUsers_ServedFromDict()
     {
         var userA = SampleUser();
         var userB = SampleUser();
@@ -572,7 +572,7 @@ public class CachingUserServiceTests
     }
 
     [HumansFact]
-    public async Task GetUserInfosAsync_ColdCache_WarmsBeforeFallback_DoesNotLoadPerKey()
+    public async Task GetUserInfosAsync_ColdCache_WarmsOnce()
     {
         // On cold cache, GetUserInfosAsync(ids) must trigger the bulk
         // WarmAllAsync exactly once instead of issuing a per-id LoadRowAsync
@@ -732,7 +732,7 @@ public class CachingUserServiceTests
     }
 
     [HumansFact]
-    public async Task GetUserInfosAsync_WarmCache_ServesFromDict_ZeroInnerCalls()
+    public async Task GetUserInfosAsync_WarmCache_SkipsInner()
     {
         // GetUserInfosAsync is the sole batched lookup; a fully warm cache
         // must never call the inner service.
@@ -757,7 +757,7 @@ public class CachingUserServiceTests
     }
 
     [HumansFact]
-    public async Task GetUserInfosAsync_DelayedMiss_DoesNotReplaceARefreshedUser()
+    public async Task GetUserInfosAsync_DelayedMiss_KeepsRefreshedUser()
     {
         var ct = TestContext.Current.CancellationToken;
         var userId = Guid.NewGuid();
@@ -916,7 +916,7 @@ public class CachingUserServiceTests
     [HumansTheory]
     [InlineData(false)]
     [InlineData(true)]
-    public async Task SearchUsersAsync_LimitKeepsTheHighestScore_RegardlessOfWhichUserMatchesExactly(bool swap)
+    public async Task SearchUsersAsync_Limit_KeepsHighestScore(bool swap)
     {
         var ids = new[]
         {
@@ -1060,7 +1060,7 @@ public class CachingUserServiceTests
     }
 
     [HumansFact]
-    public async Task SearchUsersAsync_PublicAll_GuidQuery_ExcludesRejected()
+    public async Task SearchUsersAsync_PublicGuidQuery_ExcludesRejected()
     {
         // The by-id fast path skips the PersonSearchFields mask (which text fields match), not
         // the eligibility gate: global search never hands out a rejected human's id.
@@ -1074,7 +1074,7 @@ public class CachingUserServiceTests
     }
 
     [HumansFact]
-    public async Task SearchUsersAsync_PublicAll_GuidQuery_ExcludesUserWithNoProfile()
+    public async Task SearchUsersAsync_PublicGuidQuery_ExcludesProfileLess()
     {
         var userId = Guid.NewGuid();
         var sut = CreateSut();
@@ -1086,7 +1086,7 @@ public class CachingUserServiceTests
     }
 
     [HumansFact]
-    public async Task SearchUsersAsync_ExactName_GuidQuery_DoesNotShortCircuitById()
+    public async Task SearchUsersAsync_ExactNameGuidQuery_SkipsIdLookup()
     {
         // The GUID-by-id fast path serves general search; an ExactName count must
         // match by name only and never resolve the typed text as a user id.
@@ -1117,7 +1117,7 @@ public class CachingUserServiceTests
     }
 
     [HumansFact]
-    public async Task SearchUsersAsync_AdminBit_GuidNotFound_ReturnsEmpty()
+    public async Task SearchUsersAsync_AdminGuidNotFound_ReturnsEmpty()
     {
         var sut = CreateSut();
         await PrimeAsync(sut, BuildSearchableUserInfo(Guid.NewGuid(), burnerName: "Alice"));
@@ -1188,7 +1188,7 @@ public class CachingUserServiceTests
             .Returns(new ValueTask<UserInfo?>(UserInfoFor(userId, profile, burnerName, firstName)));
 
     [HumansFact]
-    public async Task SaveProfileAsync_RefreshesProfileAndDisplayNameSlice()
+    public async Task SaveProfileAsync_Saved_RefreshesProfileSlice()
     {
         var userId = Guid.NewGuid();
         var profileId = Guid.NewGuid();
@@ -1354,7 +1354,7 @@ public class CachingUserServiceTests
     }
 
     [HumansFact]
-    public async Task ApplyUserEmailReconcilePlanAsync_RefreshesEveryMutatedUsersEmailSlice()
+    public async Task ApplyUserEmailReconcilePlanAsync_MutatedUsers_RefreshEmailSlices()
     {
         var signingUserId = Guid.NewGuid();
         var displacedUserId = Guid.NewGuid();
@@ -1483,7 +1483,7 @@ public class CachingUserServiceTests
     }
 
     [HumansFact]
-    public async Task MergedUserIds_OnAMidChainRow_CarriesOnlyWhatIsBehindIt()
+    public async Task MergedUserIds_MidChainRow_ListsRowsBehind()
     {
         var (a, b, c, _) = SeedChain();
         var sut = CreateSut();
@@ -1495,7 +1495,7 @@ public class CachingUserServiceTests
     }
 
     [HumansFact]
-    public async Task MergedUserIds_IsEmptyForTheHeadOfAChain()
+    public async Task MergedUserIds_ChainHead_IsEmpty()
     {
         var (a, _, _, _) = SeedChain();
         var sut = CreateSut();
@@ -1506,7 +1506,7 @@ public class CachingUserServiceTests
     }
 
     [HumansFact]
-    public async Task GetUserInfoAsync_ResolvesAMergedAwayIdForwardToTheSurvivor()
+    public async Task GetUserInfoAsync_MergedAwayId_ReturnsSurvivor()
     {
         var (a, _, c, _) = SeedChain();
         var sut = CreateSut();
@@ -1517,7 +1517,7 @@ public class CachingUserServiceTests
     }
 
     [HumansFact]
-    public async Task GetUserInfosAsync_KeysByTheRequestedIdAndValuesByTheSurvivor()
+    public async Task GetUserInfosAsync_MergedId_KeyedByRequestedId()
     {
         // Asked for all three ids of an A→B→C chain: three entries, every one of them C.
         // Keying by the survivor instead would turn infos[a] into a miss.
@@ -1531,7 +1531,7 @@ public class CachingUserServiceTests
     }
 
     [HumansFact]
-    public async Task GetUserInfoAsync_ResolvesAGdprErasedIdToItsOwnRow()
+    public async Task GetUserInfoAsync_GdprErasedId_ReturnsOwnRow()
     {
         // Erasure reuses MergedAt but leaves MergedToUserId null: there is no survivor to
         // redirect to, and every AuditLog/Consent/Budget row referencing them must still
@@ -1547,7 +1547,7 @@ public class CachingUserServiceTests
     }
 
     [HumansFact]
-    public async Task GetUserInfoAsync_DoesNotTreatALiveMemberNamedDeletedUserAsErased()
+    public async Task GetUserInfoAsync_MemberNamedDeletedUser_IsNotErased()
     {
         // A burner/display name a member typed themselves
         // ("Deleted User") must never read as GDPR-erased — only the minted tombstone email
@@ -1591,7 +1591,7 @@ public class CachingUserServiceTests
     }
 
     [HumansFact]
-    public async Task GetUserInfoAsync_ResolvesForwardThroughAMergeThatLandedAfterWarmup()
+    public async Task GetUserInfoAsync_MergeAfterWarmup_ReturnsSurvivor()
     {
         var (_, _, c, _) = SeedChain();
         var sut = CreateSut();
@@ -1622,7 +1622,7 @@ public class CachingUserServiceTests
     }
 
     [HumansFact]
-    public async Task GetAllRawUserInfosAsync_IncludesEveryRowTombstonesAndAll()
+    public async Task GetAllRawUserInfosAsync_Tombstones_AreIncluded()
     {
         var (a, b, c, d) = SeedChain();
         var sut = CreateSut();
@@ -1668,7 +1668,7 @@ public class CachingUserServiceTests
     }
 
     [HumansFact]
-    public async Task AllUserIds_OnAResolvedRecord_ListsTheSurvivorFirstThenTheWholeChain()
+    public async Task AllUserIds_ResolvedRecord_ListsSurvivorFirst()
     {
         // A caller holding the archived id A reads through it and gets C's record; the ids to
         // union its own rows over are C's, never A's.
@@ -1682,7 +1682,7 @@ public class CachingUserServiceTests
     }
 
     [HumansFact]
-    public async Task AllUserIds_OnARowNothingWasMergedInto_IsJustItself()
+    public async Task AllUserIds_NothingMergedIn_IsItself()
     {
         var (a, _, _, _) = SeedChain();
         var sut = CreateSut();
@@ -1746,7 +1746,7 @@ public class CachingUserServiceTests
     }
 
     [HumansFact]
-    public async Task SearchUsersAsync_ByExactId_ResolvesAnArchivedIdToItsSurvivor()
+    public async Task SearchUsersAsync_ArchivedId_ReturnsSurvivor()
     {
         // An id pasted from an audit trail may be one that was merged away since.
         var survivorId = Guid.NewGuid();

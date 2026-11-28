@@ -128,7 +128,7 @@ public class ProfileEmailsControllerGridTests
     [InlineData(EmailMutation.SetEmailVisibility)]
     [InlineData(EmailMutation.DeleteEmail)]
     [InlineData(EmailMutation.LinkGoogle)]
-    public async Task Email_mutation_account_preflight_observes_cancellation(EmailMutation action)
+    public async Task EmailMutations_CancelledPreflight_Throw(EmailMutation action)
     {
         using var request = new CancellationTokenSource();
         _controller.HttpContext.RequestAborted = request.Token;
@@ -353,7 +353,7 @@ public class ProfileEmailsControllerGridTests
     }
 
     [HumansFact]
-    public async Task Link_AsSelf_ReturnsChallengeResult_WithProvider()
+    public async Task Link_AsSelf_ReturnsProviderChallenge()
     {
         // Override the callback-specific Url.Action so the RedirectUri assertion below is meaningful.
         _controller.Url.Action(Arg.Is<UrlActionContext>(ctx =>
@@ -418,7 +418,7 @@ public class ProfileEmailsControllerGridTests
     }
 
     [HumansFact]
-    public async Task Unlink_AsSelf_CallsUnlinkAsync_AndRedirectsToGrid()
+    public async Task Unlink_AsSelf_RedirectsToGrid()
     {
         var emailId = Guid.NewGuid();
         _userEmailService.UnlinkAsync(_userId, emailId, _userId, Arg.Any<CancellationToken>())
@@ -452,7 +452,7 @@ public class ProfileEmailsControllerGridTests
     // Admin grid actions: the route userId is the target, the signed-in user is the actor.
 
     [HumansFact]
-    public async Task AdminSetPrimary_AsAdmin_CallsServiceWithRouteUserId()
+    public async Task AdminSetPrimary_AsAdmin_UsesRouteUserId()
     {
         var targetUserId = Guid.NewGuid();
         var emailId = Guid.NewGuid();
@@ -496,7 +496,7 @@ public class ProfileEmailsControllerGridTests
     }
 
     [HumansFact]
-    public async Task AdminAddEmail_AsAdmin_CallsServiceWithRouteUserId()
+    public async Task AdminAddEmail_AsAdmin_UsesRouteUserId()
     {
         var targetUserId = Guid.NewGuid();
         const string newEmail = "added@example.com";
@@ -576,7 +576,7 @@ public class ProfileEmailsControllerGridTests
     }
 
     [HumansFact]
-    public async Task AdminDeleteEmail_AsAdmin_CallsServiceWithRouteUserId()
+    public async Task AdminDeleteEmail_AsAdmin_UsesRouteUserId()
     {
         var targetUserId = Guid.NewGuid();
         var emailId = Guid.NewGuid();
@@ -592,7 +592,7 @@ public class ProfileEmailsControllerGridTests
     }
 
     [HumansFact]
-    public async Task AdminSetVisibility_AsAdmin_CallsServiceWithRouteUserId()
+    public async Task AdminSetVisibility_AsAdmin_UsesRouteUserId()
     {
         var targetUserId = Guid.NewGuid();
         var emailId = Guid.NewGuid();
@@ -785,7 +785,7 @@ public class ProfileEmailsControllerGridTests
     [HumansTheory]
     [InlineData(true)]
     [InlineData(false)]
-    public async Task UnlinkLinkedAccount_DelegatesProviderIdentityAndLocalizesResult(bool succeeds)
+    public async Task UnlinkLinkedAccount_ProviderIdentity_LocalizesResult(bool succeeds)
     {
         _userEmailService.UnlinkAsync(_userId, null, _userId, Arg.Any<CancellationToken>(), "Google", "key")
             .Returns(new UnlinkEmailResult(succeeds,

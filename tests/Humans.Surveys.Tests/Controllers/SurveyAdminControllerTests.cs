@@ -58,7 +58,7 @@ public sealed class SurveyAdminControllerTests
     [Xunit.InlineData(true, "AllowAnonymous")]
     [Xunit.InlineData(true, "IsAsociadoVote")]
     [Xunit.InlineData(true, null)]
-    public async Task Save_requires_explicit_anonymity_and_vote_flags(bool existing, string? missingField)
+    public async Task Save_MissingAnonymityFlags_IsInvalid(bool existing, string? missingField)
     {
         var actorId = Guid.NewGuid();
         var surveyId = Guid.NewGuid();
@@ -398,7 +398,7 @@ public sealed class SurveyAdminControllerTests
     [HumansTheory]
     [Xunit.InlineData(false)]
     [Xunit.InlineData(true)]
-    public async Task Save_reports_localized_success_to_an_ordinary_author(bool existing)
+    public async Task Save_PlainAuthor_ReportsLocalizedSuccess(bool existing)
     {
         var ct = Xunit.TestContext.Current.CancellationToken;
         var authorId = Guid.NewGuid();
@@ -425,7 +425,7 @@ public sealed class SurveyAdminControllerTests
     [HumansTheory]
     [Xunit.InlineData(false)]
     [Xunit.InlineData(true)]
-    public async Task Save_localizes_refusals_and_propagates_dependency_failures(bool dependencyFailure)
+    public async Task Save_Refused_ShowsLocalizedFeedback(bool dependencyFailure)
     {
         var actor = Guid.NewGuid();
         var surveys = Substitute.For<ISurveyService>();
@@ -473,7 +473,7 @@ public sealed class SurveyAdminControllerTests
     [Xunit.InlineData("http")]
     [Xunit.InlineData("provider-cancellation")]
     [Xunit.InlineData("request-cancellation")]
-    public async Task Save_translation_failure_reports_the_committed_save_without_exposing_the_exception(string failureKind)
+    public async Task Save_TranslationFails_ReportsCommittedSave(string failureKind)
     {
         var actor = Guid.NewGuid();
         var id = Guid.NewGuid();
@@ -521,7 +521,7 @@ public sealed class SurveyAdminControllerTests
     }
 
     [HumansFact]
-    public async Task Preview_email_reports_localized_success_to_the_ordinary_author()
+    public async Task PreviewEmail_PlainAuthor_ReportsLocalizedSuccess()
     {
         var ct = Xunit.TestContext.Current.CancellationToken;
         var authorId = Guid.NewGuid();
@@ -543,7 +543,7 @@ public sealed class SurveyAdminControllerTests
     }
 
     [HumansFact]
-    public void Save_allows_five_valid_information_images_without_accepting_a_larger_request()
+    public void Save_FiveInformationImages_IsAllowed()
     {
         var limit = typeof(SurveyAdminController).GetMethod(nameof(SurveyAdminController.Save))!
             .GetCustomAttribute<RequestSizeLimitAttribute>();
@@ -558,7 +558,7 @@ public sealed class SurveyAdminControllerTests
     [HumansTheory]
     [Xunit.InlineData(true)]
     [Xunit.InlineData(false)]
-    public async Task Review_does_not_disguise_unexpected_dependency_failures_as_refusals(bool approve)
+    public async Task Review_DependencyFailure_Throws(bool approve)
     {
         var id = Guid.NewGuid();
         var surveys = Substitute.For<ISurveyService>();
@@ -583,7 +583,7 @@ public sealed class SurveyAdminControllerTests
     [HumansTheory]
     [Xunit.InlineData(true)]
     [Xunit.InlineData(false)]
-    public async Task Open_continues_to_send_only_after_a_successful_transition(bool succeeded)
+    public async Task Open_TransitionFails_SkipsSend(bool succeeded)
     {
         var id = Guid.NewGuid();
         var surveys = Substitute.For<ISurveyService>();
@@ -609,7 +609,7 @@ public sealed class SurveyAdminControllerTests
     [HumansTheory]
     [Xunit.InlineData(true)]
     [Xunit.InlineData(false)]
-    public async Task StatusTransition_does_not_disguise_unexpected_failures_as_refusals(bool open)
+    public async Task StatusTransition_UnexpectedFailure_Throws(bool open)
     {
         var id = Guid.NewGuid();
         var surveys = Substitute.For<ISurveyService>();
@@ -634,7 +634,7 @@ public sealed class SurveyAdminControllerTests
     [Xunit.InlineData(false, 0)]
     [Xunit.InlineData(false, 1)]
     [Xunit.InlineData(true, 0)]
-    public async Task SendInvites_displays_expected_refusals_or_invitation_totals(bool refused, int failed)
+    public async Task SendInvites_Result_ShowsRefusalOrTotals(bool refused, int failed)
     {
         var id = Guid.NewGuid();
         var surveys = Substitute.For<ISurveyService>();
@@ -664,7 +664,7 @@ public sealed class SurveyAdminControllerTests
     }
 
     [HumansFact]
-    public async Task SendInvites_does_not_disguise_unexpected_failures_as_refusals()
+    public async Task SendInvites_UnexpectedFailure_Throws()
     {
         var id = Guid.NewGuid();
         var surveys = Substitute.For<ISurveyService>();
@@ -683,7 +683,7 @@ public sealed class SurveyAdminControllerTests
     [HumansTheory]
     [Xunit.InlineData(0)]
     [Xunit.InlineData(1)]
-    public async Task Approve_reports_delivery_failures_without_hiding_the_approval(int failed)
+    public async Task Approve_DeliveryFailures_AreReported(int failed)
     {
         var id = Guid.NewGuid();
         var surveys = Substitute.For<ISurveyService>();
@@ -702,7 +702,7 @@ public sealed class SurveyAdminControllerTests
     }
 
     [HumansFact]
-    public async Task Approve_from_a_survey_page_returns_to_that_page()
+    public async Task Approve_FromSurveyPage_ReturnsThere()
     {
         var id = Guid.NewGuid();
         var surveys = Substitute.For<ISurveyService>();
@@ -719,7 +719,7 @@ public sealed class SurveyAdminControllerTests
     }
 
     [HumansFact]
-    public async Task Approve_refusal_returns_to_queue_with_the_reason()
+    public async Task Approve_Refused_ReturnsToQueueWithReason()
     {
         var id = Guid.NewGuid();
         var surveys = Substitute.For<ISurveyService>();
@@ -736,7 +736,7 @@ public sealed class SurveyAdminControllerTests
     }
 
     [HumansFact]
-    public async Task Reject_invalid_note_renders_queue_with_original_text_and_error()
+    public async Task Reject_InvalidNote_KeepsTypedText()
     {
         var surveyId = Guid.NewGuid();
         var olderId = Guid.NewGuid();
@@ -767,7 +767,7 @@ public sealed class SurveyAdminControllerTests
     }
 
     [HumansFact]
-    public async Task Preview_renders_a_draft_survey_through_the_respondent_intro()
+    public async Task Preview_DraftSurvey_RendersRespondentIntro()
     {
         var surveyId = Guid.NewGuid();
         var authorId = Guid.NewGuid();
@@ -796,7 +796,7 @@ public sealed class SurveyAdminControllerTests
     }
 
     [HumansFact]
-    public async Task PreviewPage_shows_all_authored_questions_on_the_selected_page()
+    public async Task PreviewPage_SelectedPage_ShowsAllQuestions()
     {
         var surveyId = Guid.NewGuid();
         var authorId = Guid.NewGuid();
@@ -845,7 +845,7 @@ public sealed class SurveyAdminControllerTests
     }
 
     [HumansFact]
-    public async Task Send_preserves_the_name_of_a_deactivated_audience_team()
+    public async Task Send_DeactivatedAudienceTeam_KeepsName()
     {
         var surveyId = Guid.NewGuid();
         var teamId = Guid.NewGuid();
@@ -901,7 +901,7 @@ public sealed class SurveyAdminControllerTests
     [HumansTheory]
     [Xunit.InlineData(false)]
     [Xunit.InlineData(true)]
-    public async Task RankedAvailability_logs_refusals_and_propagates_dependency_failures(bool dependencyFailure)
+    public async Task RankedAvailability_DependencyFailure_Throws(bool dependencyFailure)
     {
         var surveyId = Guid.NewGuid();
         var questionId = Guid.NewGuid();
@@ -967,7 +967,7 @@ public sealed class SurveyAdminControllerTests
     [HumansTheory]
     [Xunit.InlineData(false)]
     [Xunit.InlineData(true)]
-    public async Task Preview_dependency_failure_propagates_without_refusal_feedback(bool send)
+    public async Task PreviewEmail_DependencyFailure_Throws(bool send)
     {
         var authorId = Guid.NewGuid();
         var surveyId = Guid.NewGuid();
@@ -998,7 +998,7 @@ public sealed class SurveyAdminControllerTests
     [HumansTheory]
     [Xunit.InlineData(false)]
     [Xunit.InlineData(true)]
-    public async Task Preview_refusal_uses_translated_feedback_without_success(bool send)
+    public async Task PreviewEmail_Refused_ShowsTranslatedFeedback(bool send)
     {
         var authorId = Guid.NewGuid();
         var surveyId = Guid.NewGuid();
@@ -1113,7 +1113,7 @@ public sealed class SurveyAdminControllerTests
         new(new Dictionary<string, string>(StringComparer.Ordinal) { ["en"] = en });
 
     [HumansFact]
-    public async Task Index_scopes_to_the_callers_own_surveys_for_a_plain_author()
+    public async Task Index_PlainAuthor_ShowsOwnSurveys()
     {
         var authorId = Guid.NewGuid();
         var surveys = Substitute.For<ISurveyService>();
@@ -1135,7 +1135,7 @@ public sealed class SurveyAdminControllerTests
     }
 
     [HumansFact]
-    public async Task Edit_denies_a_non_owner_non_boardOrAdmin_human_by_id()
+    public async Task Edit_NonOwner_IsDenied()
     {
         var authorId = Guid.NewGuid();
         var strangerId = Guid.NewGuid();
@@ -1151,7 +1151,7 @@ public sealed class SurveyAdminControllerTests
     }
 
     [HumansFact]
-    public async Task Edit_allows_the_owner_to_edit_their_own_draft()
+    public async Task Edit_OwnerOwnDraft_IsAllowed()
     {
         var authorId = Guid.NewGuid();
         var surveyId = Guid.NewGuid();
@@ -1167,7 +1167,7 @@ public sealed class SurveyAdminControllerTests
     }
 
     [HumansFact]
-    public async Task Edit_hides_the_run_controls_from_an_author_who_is_not_on_the_Board()
+    public async Task Edit_PlainAuthor_HidesRunControls()
     {
         var authorId = Guid.NewGuid();
         var surveyId = Guid.NewGuid();
@@ -1188,7 +1188,7 @@ public sealed class SurveyAdminControllerTests
     [Xunit.InlineData(true, false, true)]
     [Xunit.InlineData(true, true, true)]
     [Xunit.InlineData(false, true, false)]
-    public async Task Builder_submit_control_matches_author_ownership(bool ownsSurvey, bool manager, bool canSubmit)
+    public async Task Builder_SubmitControl_MatchesOwnership(bool ownsSurvey, bool manager, bool canSubmit)
     {
         var viewerId = Guid.NewGuid();
         var surveyId = Guid.NewGuid();
@@ -1205,7 +1205,7 @@ public sealed class SurveyAdminControllerTests
     }
 
     [HumansFact]
-    public async Task Invalid_save_rebuilds_submit_control_from_the_stored_owner()
+    public async Task Save_Invalid_RebuildsSubmitControl()
     {
         var viewerId = Guid.NewGuid();
         var surveyId = Guid.NewGuid();
@@ -1223,7 +1223,7 @@ public sealed class SurveyAdminControllerTests
     }
 
     [HumansFact]
-    public async Task Submit_denies_a_non_owner_by_id()
+    public async Task Submit_NonOwner_IsDenied()
     {
         var authorId = Guid.NewGuid();
         var strangerId = Guid.NewGuid();
@@ -1240,7 +1240,7 @@ public sealed class SurveyAdminControllerTests
     }
 
     [HumansFact]
-    public async Task Submit_lets_the_owner_submit_their_own_draft()
+    public async Task Submit_OwnerOwnDraft_IsAllowed()
     {
         var authorId = Guid.NewGuid();
         var surveyId = Guid.NewGuid();
@@ -1262,7 +1262,7 @@ public sealed class SurveyAdminControllerTests
     }
 
     [HumansFact]
-    public async Task Submit_dependency_failure_propagates_without_refusal_feedback()
+    public async Task Submit_DependencyFailure_Throws()
     {
         var authorId = Guid.NewGuid();
         var surveyId = Guid.NewGuid();
@@ -1284,7 +1284,7 @@ public sealed class SurveyAdminControllerTests
     [HumansTheory]
     [Xunit.InlineData("Surveys_SubmitNotAuthor")]
     [Xunit.InlineData("Surveys_SubmitNotDraft")]
-    public async Task Submit_refusal_uses_translated_feedback(string errorKey)
+    public async Task Submit_Refused_ShowsTranslatedFeedback(string errorKey)
     {
         var authorId = Guid.NewGuid();
         var surveyId = Guid.NewGuid();
@@ -1309,7 +1309,7 @@ public sealed class SurveyAdminControllerTests
     [Xunit.InlineData("thank-you")]
     [Xunit.InlineData("email")]
     [Xunit.InlineData("send-email")]
-    public async Task Preview_denies_a_non_owner_non_boardOrAdmin_human_by_id(string route)
+    public async Task Preview_NonOwner_IsDenied(string route)
     {
         // Rehearsal reads the whole survey back, Drafts included — opening it to authors must not
         // open it to everyone with an account.
@@ -1337,7 +1337,7 @@ public sealed class SurveyAdminControllerTests
     }
 
     [HumansFact]
-    public async Task Results_denies_a_non_owner_non_boardOrAdmin_human_by_id()
+    public async Task Results_NonOwner_IsDenied()
     {
         var authorId = Guid.NewGuid();
         var strangerId = Guid.NewGuid();
@@ -1353,7 +1353,7 @@ public sealed class SurveyAdminControllerTests
     }
 
     [HumansFact]
-    public async Task Results_denies_the_owner_before_their_own_survey_closes()
+    public async Task Results_OwnerBeforeClose_IsDenied()
     {
         var authorId = Guid.NewGuid();
         var surveyId = Guid.NewGuid();
@@ -1369,7 +1369,7 @@ public sealed class SurveyAdminControllerTests
     }
 
     [HumansFact]
-    public async Task Results_allows_the_owner_after_their_own_survey_closes()
+    public async Task Results_OwnerClosedSurvey_IsAllowed()
     {
         var authorId = Guid.NewGuid();
         var surveyId = Guid.NewGuid();
@@ -1388,7 +1388,7 @@ public sealed class SurveyAdminControllerTests
     }
 
     [HumansFact]
-    public async Task Board_sees_every_survey_and_the_recipients_but_runs_nothing()
+    public async Task Index_Board_HidesRunControls()
     {
         var surveyId = Guid.NewGuid();
         var surveys = Substitute.For<ISurveyService>();
@@ -1417,14 +1417,14 @@ public sealed class SurveyAdminControllerTests
     [Xunit.InlineData(nameof(SurveyAdminController.Close))]
     [Xunit.InlineData(nameof(SurveyAdminController.SendInvites))]
     [Xunit.InlineData(nameof(SurveyAdminController.RankedAvailability))]
-    public void Survey_runs_are_Surveys_Manage_only(string action)
+    public void RunActions_Policy_IsSurveysManage(string action)
     {
         typeof(SurveyAdminController).GetMethod(action)!.GetCustomAttribute<AuthorizeAttribute>()!.Policy
             .Should().Be(SurveysPolicies.Manage);
     }
 
     [HumansFact]
-    public async Task Board_reads_results_but_downloads_nothing()
+    public async Task Results_Board_HidesDownloads()
     {
         var surveyId = Guid.NewGuid();
         var surveys = Substitute.For<ISurveyService>();

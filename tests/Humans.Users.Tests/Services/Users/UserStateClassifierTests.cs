@@ -24,7 +24,7 @@ public class UserStateClassifierTests
     [InlineData(true, true, true, true, true, false, true, UserState.Deleted)] // Deleted > Rejected
     [InlineData(true, true, true, true, true, true, false, UserState.Merged)] // Merged > all below
     [InlineData(true, true, true, true, true, true, true, UserState.Merged)] // Merged is the top of the ladder
-    public void Classify_applies_precedence(
+    public void Classify_SeveralStates_AppliesPrecedence(
         bool hasName,
         bool suspended,
         bool adminSuspended,
@@ -46,7 +46,7 @@ public class UserStateClassifierTests
     }
 
     [HumansFact]
-    public void Classify_entity_returns_Active_for_a_named_unflagged_profile()
+    public void Classify_NamedUnflaggedProfile_ReturnsActive()
     {
         var user = NewUser(displayName: "Real Name");
         var profile = NewNamedProfile(user.Id);
@@ -55,7 +55,7 @@ public class UserStateClassifierTests
     }
 
     [HumansFact]
-    public void Classify_entity_returns_Bare_when_a_required_name_field_is_blank()
+    public void Classify_RequiredNameBlank_ReturnsBare()
     {
         var user = NewUser(displayName: "Real Name");
         var profile = NewNamedProfile(user.Id);
@@ -67,7 +67,7 @@ public class UserStateClassifierTests
     [HumansTheory]
     [InlineData(UserState.Suspended)]
     [InlineData(UserState.AdminSuspended)]
-    public void Classify_entity_carries_stored_suspension_forward(UserState stored)
+    public void Classify_StoredSuspension_IsCarriedForward(UserState stored)
     {
         var user = NewUser(displayName: "Real Name");
         user.State = stored;
@@ -80,7 +80,7 @@ public class UserStateClassifierTests
     [InlineData(false, false, UserState.Active)]
     [InlineData(true, false, UserState.Suspended)]
     [InlineData(true, true, UserState.AdminSuspended)]
-    public void Classify_entity_takes_the_suspension_the_transition_supplies(
+    public void Classify_TransitionSuspension_IsUsed(
         bool isSuspended, bool isAdminSuspended, UserState expected)
     {
         var user = NewUser(displayName: "Real Name");
@@ -92,7 +92,7 @@ public class UserStateClassifierTests
     }
 
     [HumansFact]
-    public void Classify_entity_distinguishes_merge_tombstone_from_gdpr_deletion()
+    public void Classify_MergeTombstone_IsNotGdprDeletion()
     {
         var instant = Instant.FromUtc(2026, 1, 1, 0, 0);
 
@@ -112,7 +112,7 @@ public class UserStateClassifierTests
     // A member typing "Deleted User" as their own burner name must not be classified as
     // GDPR-deleted and lose application access.
     [HumansFact]
-    public void Classify_entity_does_not_treat_a_user_typed_BurnerName_as_deletion()
+    public void Classify_TypedSentinelBurnerName_IsNotDeleted()
     {
         var user = NewUser(displayName: "Real Name");
         user.BurnerName = UserStateClassifier.GdprAnonymizedDisplayName;
@@ -123,7 +123,7 @@ public class UserStateClassifierTests
     }
 
     [HumansFact]
-    public void Classify_entity_recognises_the_minted_tombstone_email()
+    public void Classify_MintedTombstoneEmail_IsDeleted()
     {
         var user = NewUser(displayName: "Real Name");
         user.Email = $"deleted-{user.Id:N}@deleted.local";
@@ -132,7 +132,7 @@ public class UserStateClassifierTests
     }
 
     [HumansFact]
-    public void Classify_entity_does_not_recognise_the_retired_name_only_tombstone()
+    public void Classify_NameOnlyTombstone_IsNotDeleted()
     {
         // Production migration is complete: only the minted email identifies erasure.
         var user = NewUser(displayName: UserStateClassifier.GdprAnonymizedDisplayName);
@@ -144,7 +144,7 @@ public class UserStateClassifierTests
     }
 
     [HumansFact]
-    public void Classify_entity_does_not_treat_the_DisplayName_sentinel_alone_as_deletion()
+    public void Classify_DisplayNameSentinelAlone_IsNotDeleted()
     {
         // The DisplayName sentinel never supplies the erasure signal.
         var user = NewUser(displayName: UserStateClassifier.GdprAnonymizedDisplayName);
@@ -165,7 +165,7 @@ public class UserStateClassifierTests
     [InlineData(UserState.Rejected, true)]
     [InlineData(UserState.Deleted, true)]
     [InlineData(UserState.Merged, true)]
-    public void IsWalled_is_exactly_the_status_wall_states(UserState state, bool walled)
+    public void IsWalled_States_MatchStatusWall(UserState state, bool walled)
     {
         state.IsWalled().Should().Be(walled);
         Enum.GetValues<UserState>().Should().HaveCount(8, "a new state needs a row here and a walled-or-not decision");

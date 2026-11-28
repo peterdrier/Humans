@@ -12,7 +12,7 @@ namespace Humans.Surveys.Tests.Models;
 public sealed class SurveyResultsBuilderTests
 {
     [HumansFact]
-    public void Identified_respondents_are_ordered_by_submission_time_then_response_id()
+    public void Build_IdentifiedRespondents_OrderBySubmissionTime()
     {
         var time = Instant.FromUtc(2026, 1, 1, 0, 0);
         var firstId = Guid.Parse("00000000-0000-0000-0000-000000000001");
@@ -34,7 +34,7 @@ public sealed class SurveyResultsBuilderTests
 
     [HumansTheory]
     [MemberData(nameof(SupportedCultures.All), MemberType = typeof(SupportedCultures))]
-    public void Rating_average_uses_ui_language_independently_of_form_parsing(string language)
+    public void Build_RatingAverage_UsesUiLanguage(string language)
     {
         var expected = 3.5.ToString("0.0", CultureInfo.GetCultureInfo(language));
         using var culture = new CultureScope(language);

@@ -33,7 +33,7 @@ public class SectionDataMigrationsTests
         ((ISectionDataMigrations)new Section()).Migrations().Single(m => string.Equals(m.Key, key, StringComparison.Ordinal));
 
     [HumansFact]
-    public void Registers_each_migration_under_a_unique_users_key()
+    public void Migrations_Registered_HaveUniqueUsersKeys()
     {
         var migrations = ((ISectionDataMigrations)new Section()).Migrations().ToList();
 
@@ -47,7 +47,7 @@ public class SectionDataMigrationsTests
     }
 
     [HumansFact]
-    public async Task Legacy_emails_lists_only_legacy_problems_and_applies_with_the_actor()
+    public async Task LegacyEmails_Apply_PassesActor()
     {
         var legacyUser = Guid.NewGuid();
         _emailProblems.ScanAsync(Arg.Any<CancellationToken>()).Returns(new EmailProblemsReport(
@@ -69,7 +69,7 @@ public class SectionDataMigrationsTests
     }
 
     [HumansFact]
-    public async Task Leftover_merge_requests_are_listed_and_dismissed_with_the_actor()
+    public async Task LeftoverMergeRequests_Dismiss_PassesActor()
     {
         var asked = new AccountMergeUserSnapshot(Guid.NewGuid());
         var holder = new AccountMergeUserSnapshot(Guid.NewGuid());

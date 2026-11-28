@@ -109,7 +109,7 @@ public class AccountDeletionServiceTests
     [Xunit.InlineData(" ", "en")]
     [Xunit.InlineData("not a culture!", "en")]
     [Xunit.InlineData("fr-FR", "en")]
-    public async Task RequestDeletionAsync_Valid_SetsDeletionPendingAndCascades(string language, string expectedCulture)
+    public async Task RequestDeletionAsync_Valid_SetsDeletionPending(string language, string expectedCulture)
     {
         using var actorCulture = new CultureScope("fr");
         var userId = Guid.NewGuid();
@@ -187,7 +187,7 @@ public class AccountDeletionServiceTests
     }
 
     [HumansFact]
-    public async Task RequestDeletionAsync_CommitsMarkerAndRevocationsTogether()
+    public async Task RequestDeletionAsync_Valid_CommitsMarkerWithRevocations()
     {
         var userId = Guid.NewGuid();
         _userService.GetRawUserInfoAsync(userId, Arg.Any<CancellationToken>()).Returns(MakeUser(userId));
@@ -342,7 +342,7 @@ public class AccountDeletionServiceTests
     [Xunit.InlineData(10)]
     [Xunit.InlineData(30)]
     [Xunit.InlineData(60)]
-    public async Task RequestDeletionAsync_TicketHolder_ReportsTheLaterOfGracePeriodAndEventHold(int holdDays)
+    public async Task RequestDeletionAsync_TicketHolder_ReportsLaterDate(int holdDays)
     {
         var userId = Guid.NewGuid();
         var user = MakeUser(userId);
@@ -510,7 +510,7 @@ public class AccountDeletionServiceTests
     }
 
     [HumansFact]
-    public async Task PurgeAsync_OnATombstoneId_ErasesThatRowAloneNotTheSurvivor()
+    public async Task PurgeAsync_TombstoneId_SparesSurvivor()
     {
         // The raw read is the whole point: purging an archived id directly must erase that
         // one row. Through the redirecting read it would resolve to the living survivor and
@@ -527,7 +527,7 @@ public class AccountDeletionServiceTests
     }
 
     [HumansFact]
-    public async Task PurgeAsync_Success_ErasesEverySectionAndInvalidatesCaches()
+    public async Task PurgeAsync_Success_ErasesEverySection()
     {
         var userId = Guid.NewGuid();
         _userService.GetRawUserInfoAsync(userId, Arg.Any<CancellationToken>()).Returns(MakeUser(userId));
@@ -545,7 +545,7 @@ public class AccountDeletionServiceTests
     }
 
     [HumansFact]
-    public async Task PurgeAsync_Success_WritesAuditLogWithActorAndWithoutThePurgedName()
+    public async Task PurgeAsync_Success_AuditsWithoutPurgedName()
     {
         var userId = Guid.NewGuid();
         var actorId = Guid.NewGuid();
@@ -576,7 +576,7 @@ public class AccountDeletionServiceTests
     }
 
     [HumansFact]
-    public async Task AnonymizeExpiredAccountAsync_ErasesEverySectionAndInvalidatesCaches()
+    public async Task AnonymizeExpiredAccountAsync_Valid_ErasesEverySection()
     {
         var userId = Guid.NewGuid();
         var user = MakeUser(userId, email: "expired@example.com", displayName: "Expired Human",

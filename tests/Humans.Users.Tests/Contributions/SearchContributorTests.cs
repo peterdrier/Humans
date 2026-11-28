@@ -30,7 +30,7 @@ public sealed class SearchContributorTests
     }
 
     [HumansFact]
-    public async Task Category_PassesTheMatchContextThrough_WithTheBurnerNameAsSortKey()
+    public async Task Category_MatchContext_SortsByBurnerName()
     {
         var human = new HumanSearchResult(
             Guid.NewGuid(), "Sparkle", null, "Bio", "…builds <em>kitchens</em>…", null, 40);

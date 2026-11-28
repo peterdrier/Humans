@@ -205,7 +205,7 @@ public sealed class ContactFieldServiceTests : ServiceTestHarness
     }
 
     [HumansFact]
-    public async Task GetViewerAccessLevel_WhenCoordinator_ReturnsCoordinatorsAndBoard()
+    public async Task GetViewerAccessLevel_Coordinator_ReturnsCoordinatorLevel()
     {
         var ownerId = Guid.NewGuid();
         var viewerId = Guid.NewGuid();
@@ -237,7 +237,7 @@ public sealed class ContactFieldServiceTests : ServiceTestHarness
     }
 
     [HumansFact]
-    public async Task GetViewerAccessLevel_WhenNoSharedTeams_ReturnsAllActiveProfiles()
+    public async Task GetViewerAccessLevel_NoSharedTeams_ReturnsAllActive()
     {
         var ownerId = Guid.NewGuid();
         var viewerId = Guid.NewGuid();
@@ -254,7 +254,7 @@ public sealed class ContactFieldServiceTests : ServiceTestHarness
     }
 
     [HumansFact]
-    public async Task GetViewerAccessLevel_WhenOnlySharesVolunteersTeam_ReturnsAllActiveProfiles()
+    public async Task GetViewerAccessLevel_OnlyVolunteersShared_ReturnsAllActive()
     {
         // Volunteers team is excluded from "shared team" visibility
         var ownerId = Guid.NewGuid();
@@ -274,7 +274,7 @@ public sealed class ContactFieldServiceTests : ServiceTestHarness
     }
 
     [HumansFact]
-    public async Task GetViewerAccessLevel_WhenSharesNonVolunteersTeam_ReturnsMyTeams()
+    public async Task GetViewerAccessLevel_OtherTeamShared_ReturnsMyTeams()
     {
         // Sharing a non-Volunteers team should grant MyTeams visibility
         var ownerId = Guid.NewGuid();
@@ -300,7 +300,7 @@ public sealed class ContactFieldServiceTests : ServiceTestHarness
     #region GetVisibleContactFieldsAsync Tests
 
     [HumansFact]
-    public async Task GetVisibleContactFields_WhenProfileNotFound_ReturnsEmptyList()
+    public async Task GetVisibleContactFields_ProfileNotFound_ReturnsEmpty()
     {
         var result = await _service.GetVisibleContactFieldsAsync(Guid.NewGuid(), Guid.NewGuid(), TestContext.Current.CancellationToken);
 
@@ -314,7 +314,7 @@ public sealed class ContactFieldServiceTests : ServiceTestHarness
     [InlineData(ContactFieldVisibility.CoordinatorsAndBoard, false, 3)]
     [InlineData(ContactFieldVisibility.MyTeams, true, 2)]
     [InlineData(ContactFieldVisibility.MyTeams, false, 2)]
-    public async Task GetVisibleContactFields_UsesEachViewersPermissionsOnTheSameService(
+    public async Task GetVisibleContactFields_TwoViewers_UsesEachViewersAccess(
         ContactFieldVisibility privilege, bool privilegedFirst, int privilegedFieldCount)
     {
         var ownerId = Guid.NewGuid();
@@ -372,7 +372,7 @@ public sealed class ContactFieldServiceTests : ServiceTestHarness
     }
 
     [HumansFact]
-    public async Task GetVisibleContactFields_LocalizesDefaultLabelsAndPreservesCustomLabels()
+    public async Task GetVisibleContactFields_DefaultLabels_AreLocalized()
     {
         using var cultureScope = new CultureScope("en");
         var localizer = new StringLocalizer<UsersResource>(new ResourceManagerStringLocalizerFactory(
@@ -527,7 +527,7 @@ public sealed class ContactFieldServiceTests : ServiceTestHarness
     }
 
     [HumansFact]
-    public async Task SaveContactFields_Omitted_legacy_email_is_preserved()
+    public async Task SaveContactFields_LegacyEmailOmitted_IsKept()
     {
         var ct = TestContext.Current.CancellationToken;
         var profile = await CreateProfileAsync(Guid.NewGuid());
@@ -554,7 +554,7 @@ public sealed class ContactFieldServiceTests : ServiceTestHarness
     }
 
     [HumansFact]
-    public async Task Profile_editor_keeps_legacy_email_out_of_editable_type_selector()
+    public async Task ProfileEditor_LegacyEmailType_IsNotSelectable()
     {
         var userId = Guid.NewGuid();
         var profile = await CreateProfileAsync(userId);
@@ -598,7 +598,7 @@ public sealed class ContactFieldServiceTests : ServiceTestHarness
     [InlineData(false, true)]
     [InlineData(true, false)]
     [InlineData(true, true)]
-    public async Task Legacy_contact_removal_is_explicit_and_profile_scoped(bool removeOwn, bool staleEditor)
+    public async Task RemoveLegacyContact_OtherProfile_IsIgnored(bool removeOwn, bool staleEditor)
     {
         var ct = TestContext.Current.CancellationToken;
         var profile = await CreateProfileAsync(Guid.NewGuid());
@@ -660,7 +660,7 @@ public sealed class ContactFieldServiceTests : ServiceTestHarness
     }
 
     [HumansFact]
-    public async Task SaveContactFields_WithInvalidValueOnNonEmailField_Succeeds()
+    public async Task SaveContactFields_InvalidNonEmailValue_Succeeds()
     {
         // Non-email fields should not be validated as email
         var profile = await CreateProfileAsync(Guid.NewGuid());

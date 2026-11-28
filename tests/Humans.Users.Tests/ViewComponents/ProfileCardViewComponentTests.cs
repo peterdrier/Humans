@@ -119,7 +119,7 @@ public sealed class ProfileCardViewComponentTests
     [Xunit.InlineData("Public")]
     [Xunit.InlineData("Self")]
     [Xunit.InlineData("Admin")]
-    public async Task TeamNames_PublicCardHidesHiddenParents_WhileSelfAndAdminKeepThem(string mode)
+    public async Task TeamNames_PublicCard_HidesHiddenParents(string mode)
     {
         var viewMode = Enum.Parse<ProfileCardViewMode>(mode);
         var userId = Guid.NewGuid();
@@ -231,7 +231,7 @@ public sealed class ProfileCardViewComponentTests
     [Xunit.InlineData(ProfileCardViewMode.Public)]
     [Xunit.InlineData(ProfileCardViewMode.Self)]
     [Xunit.InlineData(ProfileCardViewMode.Admin)]
-    public async Task Identity_UsesTheCanonicalUserName_WhilePreservingPrivateProfileFields(ProfileCardViewMode viewMode)
+    public async Task Identity_Rendered_UsesCanonicalUserName(ProfileCardViewMode viewMode)
     {
         var userId = Guid.NewGuid();
         const string name = "Canonical <script>&";

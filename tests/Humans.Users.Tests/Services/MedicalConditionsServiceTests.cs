@@ -31,7 +31,7 @@ public class MedicalConditionsServiceTests
     public MedicalConditionsServiceTests() => _sut = new MedicalConditionsService(_repo, _userService, _audit);
 
     [HumansFact]
-    public async Task Reveal_ReturnsTheText_AndAuditsSubjectAndActorWithoutTheText()
+    public async Task Reveal_TextOnFile_AuditsWithoutText()
     {
         var subjectId = StubMember("Epilepsy");
 
@@ -46,7 +46,7 @@ public class MedicalConditionsServiceTests
     [HumansTheory]
     [Xunit.InlineData(null)]
     [Xunit.InlineData("")]
-    public async Task Reveal_NothingOnFile_ReturnsNull_AndAuditsNothing(string? onFile)
+    public async Task Reveal_NothingOnFile_ReturnsNull(string? onFile)
     {
         var subjectId = StubMember(onFile);
 
@@ -56,7 +56,7 @@ public class MedicalConditionsServiceTests
     }
 
     [HumansFact]
-    public async Task Reveal_UnknownMember_ReturnsNull_AndAuditsNothing()
+    public async Task Reveal_UnknownMember_ReturnsNull()
     {
         (await _sut.RevealAsync(Guid.NewGuid(), _actorId)).Should().BeNull();
 
@@ -64,7 +64,7 @@ public class MedicalConditionsServiceTests
     }
 
     [HumansFact]
-    public async Task Reveal_MergedAwayId_ReadsAndAuditsTheSurvivor()
+    public async Task Reveal_MergedAwayId_AuditsSurvivor()
     {
         var survivorId = StubMember("Asthma");
         var mergedId = Guid.NewGuid();
@@ -78,7 +78,7 @@ public class MedicalConditionsServiceTests
     }
 
     [HumansFact]
-    public void RevealEndpoint_RequiresTheMedicalPolicyAndAntiforgery()
+    public void RevealEndpoint_Attributes_RequireMedicalPolicy()
     {
         var action = typeof(ProfileViewController).GetMethod(nameof(ProfileViewController.RevealMedical))!;
 
@@ -103,7 +103,7 @@ public class MedicalConditionsServiceTests
     }
 
     [HumansFact]
-    public async Task RevealEndpoint_MissingActor_Forbids_WithoutReadingHealthData()
+    public async Task RevealEndpoint_MissingActor_ForbidsBeforeHealthRead()
     {
         var subjectId = StubMember("Epilepsy");
 
@@ -115,7 +115,7 @@ public class MedicalConditionsServiceTests
     }
 
     [HumansFact]
-    public async Task RevealEndpoint_CancelledActorLookup_Propagates_BeforeAnyHealthRead()
+    public async Task RevealEndpoint_CancelledActorLookup_ThrowsBeforeHealthRead()
     {
         var subjectId = StubMember("Epilepsy");
         using var aborted = new CancellationTokenSource();

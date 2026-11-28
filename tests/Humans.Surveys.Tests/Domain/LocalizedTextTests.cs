@@ -6,14 +6,14 @@ namespace Humans.Surveys.Tests.Domain;
 public class LocalizedTextTests
 {
     [HumansFact]
-    public void Resolve_prefers_requested_culture()
+    public void Resolve_CulturePresent_UsesRequestedCulture()
     {
         var t = new LocalizedText(new Dictionary<string, string>(StringComparer.Ordinal) { ["en"] = "Hello", ["es"] = "Hola" });
         t.Resolve("es", "en").Should().Be("Hola");
     }
 
     [HumansFact]
-    public void Resolve_falls_back_to_default_then_any_present()
+    public void Resolve_CultureMissing_UsesDefaultThenAny()
     {
         var t = new LocalizedText(new Dictionary<string, string>(StringComparer.Ordinal) { ["en"] = "Hello" });
         t.Resolve("de", "en").Should().Be("Hello");           // default-culture fallback
@@ -22,7 +22,7 @@ public class LocalizedTextTests
     }
 
     [HumansFact]
-    public void ResolveOptional_does_not_fall_back_to_an_unrelated_culture()
+    public void ResolveOptional_UnrelatedCulture_ReturnsNothing()
     {
         var t = new LocalizedText(new Dictionary<string, string>(StringComparer.Ordinal)
         {
@@ -35,7 +35,7 @@ public class LocalizedTextTests
     }
 
     [HumansFact]
-    public void Empty_resolves_to_empty_string_and_equality_is_by_value()
+    public void Empty_Resolved_IsEmptyString()
     {
         LocalizedText.Empty.Resolve("en", "en").Should().BeEmpty();
         new LocalizedText(new Dictionary<string, string>(StringComparer.Ordinal) { ["en"] = "x" })

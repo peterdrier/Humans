@@ -129,7 +129,7 @@ public sealed class SurveyControllerTests
     [Xunit.InlineData(true, false, false, null, ResponseAnonymity.Identified)]
     [Xunit.InlineData(true, false, true, null, ResponseAnonymity.CompletionTracked)]
     [Xunit.InlineData(true, true, false, "invalid", null)]
-    public async Task Public_start_requires_an_explicit_choice_only_when_the_respondent_chooses_privacy(
+    public async Task PublicStart_PrivacyChoosable_RequiresChoice(
         bool loggedIn, bool allowAnonymous, bool asociadoVote, string? posted, ResponseAnonymity? expected)
     {
         var surveyId = Guid.NewGuid();
@@ -205,7 +205,7 @@ public sealed class SurveyControllerTests
     [Xunit.InlineData("Page", "two")]
     [Xunit.InlineData("Answers[0].QuestionId", "not-a-guid")]
     [Xunit.InlineData("Answers[0].RatingValue", "five")]
-    public async Task Public_page_post_binds_the_real_form_and_rejects_only_malformed_values(
+    public async Task PublicPage_MalformedValues_AreRejected(
         string? field, string? value)
     {
         var surveyId = Guid.NewGuid();
@@ -268,7 +268,7 @@ public sealed class SurveyControllerTests
     }
 
     [HumansFact]
-    public async Task Submitting_leaves_the_thank_you_marker_in_session()
+    public async Task Submit_Finished_LeavesThankYouMarker()
     {
         var surveyId = Guid.NewGuid();
         var surveys = Substitute.For<ISurveyService>();
@@ -291,7 +291,7 @@ public sealed class SurveyControllerTests
     }
 
     [HumansFact]
-    public async Task ThankYou_shows_the_authored_copy_after_the_invitation_is_completed()
+    public async Task ThankYou_InvitationCompleted_ShowsAuthoredCopy()
     {
         var surveyId = Guid.NewGuid();
         var surveys = Substitute.For<ISurveyService>();
@@ -313,7 +313,7 @@ public sealed class SurveyControllerTests
     }
 
     [HumansFact]
-    public async Task ThankYou_uses_the_language_the_respondent_answered_in()
+    public async Task ThankYou_Rendered_UsesAnswerLanguage()
     {
         var surveyId = Guid.NewGuid();
         var surveys = Substitute.For<ISurveyService>();
@@ -331,7 +331,7 @@ public sealed class SurveyControllerTests
     }
 
     [HumansFact]
-    public async Task ThankYou_without_a_marker_still_resolves_a_bookmarked_link_by_token()
+    public async Task ThankYou_NoMarker_ResolvesByToken()
     {
         var surveyId = Guid.NewGuid();
         var surveys = Substitute.For<ISurveyService>();
@@ -355,7 +355,7 @@ public sealed class SurveyControllerTests
     }
 
     [HumansFact]
-    public async Task PublicThankYou_reads_the_marker_for_its_own_slug_only()
+    public async Task PublicThankYou_OtherSlugMarker_IsIgnored()
     {
         var surveyId = Guid.NewGuid();
         var surveys = Substitute.For<ISurveyService>();
@@ -376,7 +376,7 @@ public sealed class SurveyControllerTests
     }
 
     [HumansFact]
-    public async Task Identified_slug_requires_sign_in()
+    public async Task IdentifiedSlug_SignedOut_RequiresSignIn()
     {
         var surveyId = Guid.NewGuid();
         var surveys = Substitute.For<ISurveyService>();
@@ -394,7 +394,7 @@ public sealed class SurveyControllerTests
     }
 
     [HumansFact]
-    public async Task Eligible_identified_slug_shows_an_identified_intro_without_anonymity_choices()
+    public async Task IdentifiedSlug_Eligible_HidesAnonymityChoices()
     {
         var surveyId = Guid.NewGuid();
         var userId = Guid.NewGuid();
@@ -416,7 +416,7 @@ public sealed class SurveyControllerTests
     }
 
     [HumansFact]
-    public async Task Identified_slug_forces_identified_even_if_anonymous_is_posted()
+    public async Task IdentifiedSlug_AnonymousPosted_StaysIdentified()
     {
         var surveyId = Guid.NewGuid();
         var userId = Guid.NewGuid();
@@ -452,7 +452,7 @@ public sealed class SurveyControllerTests
     }
 
     [HumansFact]
-    public async Task Asociado_slug_forces_completion_tracking_without_linking_a_draft()
+    public async Task AsociadoSlug_Start_LinksNoDraft()
     {
         var surveyId = Guid.NewGuid();
         var userId = Guid.NewGuid();
@@ -493,7 +493,7 @@ public sealed class SurveyControllerTests
     }
 
     [HumansFact]
-    public async Task Asociado_invite_start_forces_completion_tracking_and_does_not_create_a_draft()
+    public async Task AsociadoInvite_Start_CreatesNoDraft()
     {
         var surveyId = Guid.NewGuid();
         var invitationId = Guid.NewGuid();
@@ -536,7 +536,7 @@ public sealed class SurveyControllerTests
     }
 
     [HumansFact]
-    public async Task Asociado_invite_preserves_a_legacy_identified_draft_as_unlinked_wizard_state()
+    public async Task AsociadoInvite_LegacyIdentifiedDraft_BecomesUnlinked()
     {
         var surveyId = Guid.NewGuid();
         var invitationId = Guid.NewGuid();
@@ -572,7 +572,7 @@ public sealed class SurveyControllerTests
     }
 
     [HumansFact]
-    public async Task Identified_invite_resume_reuses_the_existing_draft_without_a_write()
+    public async Task IdentifiedInvite_Resume_ReusesDraft()
     {
         var surveyId = Guid.NewGuid();
         var draftId = Guid.NewGuid();
@@ -604,7 +604,7 @@ public sealed class SurveyControllerTests
     }
 
     [HumansFact]
-    public async Task Public_page_rechecks_audience_and_clears_the_wizard_when_access_is_lost()
+    public async Task PublicPage_AccessLost_ClearsWizard()
     {
         var surveyId = Guid.NewGuid();
         var userId = Guid.NewGuid();
@@ -634,7 +634,7 @@ public sealed class SurveyControllerTests
     }
 
     [HumansFact]
-    public async Task A_page_with_nothing_visible_says_so_instead_of_claiming_the_survey_is_done()
+    public async Task Page_NothingVisible_SaysSo()
     {
         var surveyId = Guid.NewGuid();
         var surveys = Substitute.For<ISurveyService>();

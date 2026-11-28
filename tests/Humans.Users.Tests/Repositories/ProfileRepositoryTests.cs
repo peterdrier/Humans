@@ -29,7 +29,7 @@ public sealed class UserRepositoryProfileTests : IDisposable
     }
 
     [HumansFact]
-    public async Task AddAsync_WritesTheNamesToTheUserAndClassifiesIt()
+    public async Task AddAsync_Names_WritesToUser()
     {
         var user = await SeedUserAsync();
 
@@ -41,7 +41,7 @@ public sealed class UserRepositoryProfileTests : IDisposable
     }
 
     [HumansFact]
-    public async Task UpdateAsync_WritesGivenNamesAndLeavesThemAloneOtherwise()
+    public async Task UpdateAsync_NamesGiven_WritesOnlyThose()
     {
         var user = await SeedUserAsync();
         var profile = NewProfile(user.Id);
@@ -60,7 +60,7 @@ public sealed class UserRepositoryProfileTests : IDisposable
     }
 
     [HumansFact(Timeout = 10000)]
-    public async Task UpdateAsync_Cv_AddsUpdatesAndRemovesEntries()
+    public async Task UpdateAsync_CvChanges_SyncsEntries()
     {
         var user = await SeedUserAsync(UserState.Active);
         var profile = NewProfile(user.Id);
@@ -130,7 +130,7 @@ public sealed class UserRepositoryProfileTests : IDisposable
     }
 
     [HumansFact]
-    public async Task UpdateAsync_Cv_DoesNotBumpUpdatedAt_WhenFieldsUnchanged()
+    public async Task UpdateAsync_CvUnchanged_KeepsUpdatedAt()
     {
         var user = await SeedUserAsync(UserState.Active);
         var profile = NewProfile(user.Id);
@@ -167,7 +167,7 @@ public sealed class UserRepositoryProfileTests : IDisposable
     }
 
     [HumansFact]
-    public async Task UpdateAsync_Cv_PreservesIdAndCreatedAt_WhenDateOrEventNameChanges()
+    public async Task UpdateAsync_CvEntryEdited_KeepsIdCreatedAt()
     {
         // The whole point of Id-keyed reconcile: editing Date or EventName
         // must update the existing row in place, not delete-and-insert (which
@@ -238,7 +238,7 @@ public sealed class UserRepositoryProfileTests : IDisposable
     }
 
     [HumansFact]
-    public async Task SetSuspensionAsync_WritesOnlyUserStateAndLeavesAdminNotesAlone()
+    public async Task SetSuspensionAsync_Suspend_KeepsAdminNotes()
     {
         // AdminNotes is a general-purpose field admins own. The suspension reason lives in the
         // audit log and the notification, so suspending must not overwrite what is there.
@@ -266,7 +266,7 @@ public sealed class UserRepositoryProfileTests : IDisposable
     }
 
     [HumansFact]
-    public async Task AnonymizeForDeletionByUserIdAsync_ClearsTheUserSideBurnerName()
+    public async Task AnonymizeForDeletionByUserIdAsync_BurnerName_IsCleared()
     {
         var user = await SeedUserAsync(UserState.Active);
         await _repo.AddAsync(

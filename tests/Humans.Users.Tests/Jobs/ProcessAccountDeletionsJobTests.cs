@@ -210,7 +210,7 @@ public class ProcessAccountDeletionsJobTests : IDisposable
     [Xunit.InlineData(" ", "en")]
     [Xunit.InlineData("not a culture!", "en")]
     [Xunit.InlineData("fr-FR", "en")]
-    public async Task ExecuteAsync_AnonymizesAndLogsAndEmailsEachDueAccount(string language, string expectedCulture)
+    public async Task ExecuteAsync_DueAccounts_AnonymizesEach(string language, string expectedCulture)
     {
         using var actorCulture = new CultureScope("fr");
         var userId = Guid.NewGuid();
@@ -242,7 +242,7 @@ public class ProcessAccountDeletionsJobTests : IDisposable
     }
 
     [HumansFact]
-    public async Task ExecuteAsync_NullSummary_SkipsAndContinues()
+    public async Task ExecuteAsync_NullSummary_SkipsAccount()
     {
         var vanishedId = Guid.NewGuid();
         var goodId = Guid.NewGuid();
@@ -295,7 +295,7 @@ public class ProcessAccountDeletionsJobTests : IDisposable
     }
 
     [HumansFact]
-    public async Task ExecuteAsync_ContinuesProcessingAndReportsIndividualFailure()
+    public async Task ExecuteAsync_OneAccountFails_ContinuesWithRest()
     {
         var user1 = Guid.NewGuid();
         var user2 = Guid.NewGuid();

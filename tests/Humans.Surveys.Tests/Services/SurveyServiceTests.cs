@@ -141,7 +141,7 @@ public class SurveyServiceTests
             "en", false, null, null, null, null, null, null, qs.ToList());
 
     [HumansFact]
-    public async Task CreateAsync_persists_draft_with_questions_options_and_creator()
+    public async Task CreateAsync_Valid_PersistsDraftWithQuestions()
     {
         Survey? captured = null;
         _repo.When(r => r.AddAsync(Arg.Any<Survey>(), Arg.Any<CancellationToken>()))
@@ -172,7 +172,7 @@ public class SurveyServiceTests
     }
 
     [HumansFact]
-    public async Task CreateAsync_persists_trimmed_invitation_email_copy()
+    public async Task CreateAsync_InvitationCopy_IsTrimmed()
     {
         Survey? captured = null;
         _repo.When(r => r.AddAsync(Arg.Any<Survey>(), Arg.Any<CancellationToken>()))
@@ -191,7 +191,7 @@ public class SurveyServiceTests
     }
 
     [HumansFact]
-    public async Task CreateAsync_rejects_multiline_or_overlong_invitation_subjects()
+    public async Task CreateAsync_BadInvitationSubject_IsRejected()
     {
         var multiline = Input() with { InvitationEmailSubject = L("First\nSecond") };
         var overlong = Input() with { InvitationEmailSubject = L(new string('x', 201)) };
@@ -213,7 +213,7 @@ public class SurveyServiceTests
     }
 
     [HumansFact]
-    public async Task CreateAsync_rejects_overlong_invitation_messages()
+    public async Task CreateAsync_OverlongInvitationMessage_IsRejected()
     {
         var input = Input() with
         {
@@ -238,7 +238,7 @@ public class SurveyServiceTests
     [HumansTheory]
     [InlineData(InvitationDeliveryFailure.EnqueueAcknowledgement)]
     [InlineData(InvitationDeliveryFailure.StatusMarker)]
-    public async Task SendInvitesAsync_retry_reuses_delivery_without_suppressing_reminder(InvitationDeliveryFailure failureStage)
+    public async Task SendInvitesAsync_Retry_ReusesDelivery(InvitationDeliveryFailure failureStage)
     {
         var ct = TestContext.Current.CancellationToken;
         var teamId = Guid.NewGuid();
@@ -323,7 +323,7 @@ public class SurveyServiceTests
     [InlineData(SurveyQuestionType.RankedChoice, false, 101)]
     [InlineData(SurveyQuestionType.SingleChoice, true, 100)]
     [InlineData(SurveyQuestionType.SingleChoice, true, 101)]
-    public async Task Authoring_enforces_option_value_storage_limit(SurveyQuestionType type, bool editing, int length)
+    public async Task Authoring_OverlongOptionValue_IsRejected(SurveyQuestionType type, bool editing, int length)
     {
         var actor = Guid.NewGuid();
         var survey = SurveyWith(SurveyStatus.Draft, null, null, createdByUserId: actor);
@@ -373,7 +373,7 @@ public class SurveyServiceTests
     [InlineData(SurveyQuestionType.MultiChoice, true, "Empty")]
     [InlineData(SurveyQuestionType.MultiChoice, true, "Blank")]
     [InlineData(SurveyQuestionType.MultiChoice, true, "Unique")]
-    public async Task Authoring_rejects_unanswerable_or_ambiguous_choice_options(
+    public async Task Authoring_AmbiguousChoiceOptions_AreRejected(
         SurveyQuestionType type, bool editing, string defect)
     {
         var actor = Guid.NewGuid();
@@ -400,7 +400,7 @@ public class SurveyServiceTests
     }
 
     [HumansFact]
-    public async Task CreateAsync_persists_grid_configuration()
+    public async Task CreateAsync_Grid_PersistsConfiguration()
     {
         Survey? captured = null;
         _repo.When(r => r.AddAsync(Arg.Any<Survey>(), Arg.Any<CancellationToken>()))
@@ -419,7 +419,7 @@ public class SurveyServiceTests
     }
 
     [HumansFact]
-    public async Task CreateAsync_saves_and_persists_an_information_image()
+    public async Task CreateAsync_InformationImage_IsSaved()
     {
         Survey? captured = null;
         _repo.When(r => r.AddAsync(Arg.Any<Survey>(), Arg.Any<CancellationToken>()))
@@ -460,7 +460,7 @@ public class SurveyServiceTests
     [InlineData(true, true)]
     [InlineData(false, false)]
     [InlineData(false, true)]
-    public async Task Authoring_rejects_duplicate_question_or_option_identities(bool questions, bool update)
+    public async Task Authoring_DuplicateIdentities_AreRejected(bool questions, bool update)
     {
         var repeatedId = Guid.NewGuid();
         var first = questions
@@ -487,7 +487,7 @@ public class SurveyServiceTests
     [HumansTheory]
     [InlineData(false)]
     [InlineData(true)]
-    public async Task UpdateAsync_rejects_repeated_information_image_identities(bool acrossQuestions)
+    public async Task UpdateAsync_RepeatedImageIdentities_AreRejected(bool acrossQuestions)
     {
         var existing = SurveyWith(SurveyStatus.Draft, null, null);
         var questionId = Guid.NewGuid();
@@ -522,7 +522,7 @@ public class SurveyServiceTests
     [InlineData(true, true, false)]
     [InlineData(true, true, true)]
     [InlineData(false, false, false)]
-    public async Task Failed_authoring_save_preserves_images_when_commit_cannot_be_ruled_out(
+    public async Task Authoring_UncertainCommit_KeepsImages(
         bool editing, bool committed, bool verificationFails)
     {
         var options = TestDbOptions.InMemory<SurveysDbContext>();
@@ -583,7 +583,7 @@ public class SurveyServiceTests
     }
 
     [HumansFact]
-    public async Task CreateAsync_rejects_an_information_image_filename_over_256_characters()
+    public async Task CreateAsync_OverlongImageFilename_IsRejected()
     {
         await using var content = new MemoryStream([1, 2, 3]);
         var information = new QuestionInput(
@@ -613,7 +613,7 @@ public class SurveyServiceTests
     [HumansTheory]
     [InlineData(false)]
     [InlineData(true)]
-    public async Task CreateAsync_cleans_uploaded_images_when_expected_validation_refuses_the_save(bool duringPreparation)
+    public async Task CreateAsync_ValidationRefuses_CleansUploadedImages(bool duringPreparation)
     {
         await using var content = new MemoryStream([1, 2, 3]);
         var upload = new SurveyImageUpload(content, "image/png", "image.png", 3);
@@ -643,7 +643,7 @@ public class SurveyServiceTests
     }
 
     [HumansFact]
-    public async Task UpdateAsync_does_not_delete_a_removed_image_that_a_concurrent_editor_may_restore()
+    public async Task UpdateAsync_RemovedImage_IsNotDeleted()
     {
         var survey = SurveyWith(SurveyStatus.Draft, null, null);
         var questionId = Guid.NewGuid();
@@ -684,7 +684,7 @@ public class SurveyServiceTests
     }
 
     [HumansFact]
-    public async Task CreateAsync_rejects_an_image_row_without_an_upload()
+    public async Task CreateAsync_ImageRowNoUpload_IsRejected()
     {
         var information = new QuestionInput(
             Guid.NewGuid(), 1, 0, SurveyQuestionType.Information,
@@ -715,7 +715,7 @@ public class SurveyServiceTests
     [InlineData(null, null)]
     [InlineData(1, 1)]
     [InlineData(int.MaxValue, int.MaxValue)]
-    public async Task CreateAsync_accepts_default_and_single_value_rating_scales(int? min, int? max)
+    public async Task CreateAsync_SingleValueRatingScale_IsAccepted(int? min, int? max)
     {
         var question = Q("Rating", SurveyQuestionType.Rating, 1, 1) with
         {
@@ -736,7 +736,7 @@ public class SurveyServiceTests
     [InlineData(true, null, 0)]
     [InlineData(false, 6, null)]
     [InlineData(true, 6, null)]
-    public async Task Rating_bounds_are_validated_before_authoring_writes(bool editing, int? min, int? max)
+    public async Task Authoring_BadRatingBounds_AreRejected(bool editing, int? min, int? max)
     {
         var survey = SurveyWith(SurveyStatus.Draft, null, null);
         _repo.GetByIdAsync(survey.Id, Arg.Any<CancellationToken>()).Returns(survey);
@@ -759,7 +759,7 @@ public class SurveyServiceTests
     }
 
     [HumansFact]
-    public async Task CreateAsync_rejects_a_grid_with_more_than_five_columns()
+    public async Task CreateAsync_GridSixColumns_IsRejected()
     {
         var columns = Enumerable.Range(1, 6)
             .Select(index => Opt($"c{index}", $"Column {index}", index))
@@ -780,7 +780,7 @@ public class SurveyServiceTests
     }
 
     [HumansFact]
-    public async Task CreateAsync_rejects_a_grid_without_rows()
+    public async Task CreateAsync_GridNoRows_IsRejected()
     {
         var act = async () => await CreateService().CreateAsync(
             Input(GridInput(rows: [])),
@@ -796,7 +796,7 @@ public class SurveyServiceTests
     }
 
     [HumansFact]
-    public async Task CreateAsync_rejects_a_grid_without_a_selection_mode()
+    public async Task CreateAsync_GridNoSelectionMode_IsRejected()
     {
         var act = async () => await CreateService().CreateAsync(
             Input(GridInput(mode: null)),
@@ -812,7 +812,7 @@ public class SurveyServiceTests
     }
 
     [HumansFact]
-    public async Task CreateAsync_rejects_a_grid_with_an_undefined_selection_mode()
+    public async Task CreateAsync_GridUndefinedSelectionMode_IsRejected()
     {
         var act = async () => await CreateService().CreateAsync(
             Input(GridInput(mode: (GridSelectionMode)2)),
@@ -828,7 +828,7 @@ public class SurveyServiceTests
     }
 
     [HumansFact]
-    public async Task CreateAsync_rejects_a_grid_with_a_blank_row_value()
+    public async Task CreateAsync_GridBlankRowValue_IsRejected()
     {
         var act = async () => await CreateService().CreateAsync(
             Input(GridInput(rows: [new GridRowInput(" ", L("Blank"))])),
@@ -844,7 +844,7 @@ public class SurveyServiceTests
     }
 
     [HumansFact]
-    public async Task CreateAsync_rejects_a_grid_with_duplicate_row_values()
+    public async Task CreateAsync_GridDuplicateRows_IsRejected()
     {
         var act = async () => await CreateService().CreateAsync(
             Input(GridInput(rows:
@@ -864,7 +864,7 @@ public class SurveyServiceTests
     }
 
     [HumansFact]
-    public async Task CreateAsync_rejects_a_grid_with_duplicate_column_values()
+    public async Task CreateAsync_GridDuplicateColumns_IsRejected()
     {
         var act = async () => await CreateService().CreateAsync(
             Input(GridInput(columns:
@@ -884,7 +884,7 @@ public class SurveyServiceTests
     }
 
     [HumansFact]
-    public async Task CreateAsync_rejects_using_a_grid_as_a_branching_source()
+    public async Task CreateAsync_GridBranchingSource_IsRejected()
     {
         var gridId = Guid.NewGuid();
         var dependentId = Guid.NewGuid();
@@ -924,7 +924,7 @@ public class SurveyServiceTests
     [HumansTheory]
     [InlineData(SurveyQuestionType.RankedChoice)]
     [InlineData(SurveyQuestionType.Information)]
-    public async Task CreateAsync_rejects_ranked_and_information_questions_as_branching_sources(SurveyQuestionType sourceType)
+    public async Task CreateAsync_RankedBranchingSource_IsRejected(SurveyQuestionType sourceType)
     {
         var sourceId = Guid.NewGuid();
         var source = sourceType == SurveyQuestionType.RankedChoice
@@ -986,7 +986,7 @@ public class SurveyServiceTests
     };
 
     [HumansFact]
-    public async Task UpdateAsync_refuses_an_edit_by_someone_who_is_neither_the_author_nor_board()
+    public async Task UpdateAsync_NonAuthor_ReturnsRefusal()
     {
         // The controller's resource handler already says this before rendering a button; the
         // service is the enforcing copy, so a caller that never went through the page is refused too.
@@ -1007,7 +1007,7 @@ public class SurveyServiceTests
     }
 
     [HumansFact]
-    public async Task UpdateAsync_lets_the_author_edit_their_own_survey()
+    public async Task UpdateAsync_Author_EditsOwnSurvey()
     {
         var id = Guid.NewGuid();
         var author = Guid.NewGuid();
@@ -1022,7 +1022,7 @@ public class SurveyServiceTests
     }
 
     [HumansFact]
-    public async Task UpdateAsync_audit_names_the_changed_fields()
+    public async Task UpdateAsync_FieldsChanged_AuditNamesThem()
     {
         var id = Guid.NewGuid();
         var actor = Guid.NewGuid();
@@ -1046,7 +1046,7 @@ public class SurveyServiceTests
     }
 
     [HumansFact]
-    public async Task UpdateAsync_audit_counts_a_rating_label_only_edit()
+    public async Task UpdateAsync_RatingLabelEdit_IsAudited()
     {
         var id = Guid.NewGuid();
         var qid = Guid.NewGuid();
@@ -1082,7 +1082,7 @@ public class SurveyServiceTests
     }
 
     [HumansFact]
-    public async Task UpdateAsync_audit_counts_a_grid_selection_mode_only_edit()
+    public async Task UpdateAsync_GridSelectionModeEdit_IsAudited()
     {
         var id = Guid.NewGuid();
         var qid = Guid.NewGuid();
@@ -1118,7 +1118,7 @@ public class SurveyServiceTests
     }
 
     [HumansFact]
-    public async Task UpdateAsync_audit_stays_bare_when_nothing_changed()
+    public async Task UpdateAsync_NothingChanged_AuditStaysBare()
     {
         var id = Guid.NewGuid();
         _repo.GetByIdAsync(id, Arg.Any<CancellationToken>())
@@ -1135,7 +1135,7 @@ public class SurveyServiceTests
     [InlineData("Admin")]
     [InlineData("ANSWER")]
     [InlineData(" answer ")]
-    public async Task CreateAsync_rejects_reserved_slug_and_does_not_persist(string slug)
+    public async Task CreateAsync_ReservedSlug_IsRejected(string slug)
     {
         var act = async () => await CreateService().CreateAsync(InputWithSlug(slug), Guid.NewGuid(), TestContext.Current.CancellationToken);
 
@@ -1151,7 +1151,7 @@ public class SurveyServiceTests
     [InlineData("admin")]
     [InlineData("Admin")]
     [InlineData("ANSWER")]
-    public async Task UpdateAsync_rejects_reserved_slug_and_does_not_persist(string slug)
+    public async Task UpdateAsync_ReservedSlug_IsRejected(string slug)
     {
         var survey = SurveyWith(SurveyStatus.Draft, null, null);
         _repo.GetByIdAsync(survey.Id, Arg.Any<CancellationToken>()).Returns(survey);
@@ -1170,7 +1170,7 @@ public class SurveyServiceTests
     [InlineData(true, false)]
     [InlineData(false, true)]
     [InlineData(true, true)]
-    public async Task Invalid_slug_is_rejected_before_uploading_information_images(bool existing, bool tooLong)
+    public async Task Authoring_InvalidSlug_UploadsNoImages(bool existing, bool tooLong)
     {
         var ct = TestContext.Current.CancellationToken;
         var survey = SurveyWith(SurveyStatus.Draft, null, null);
@@ -1201,7 +1201,7 @@ public class SurveyServiceTests
     [InlineData(0)]
     [InlineData(1)]
     [InlineData(2)]
-    public async Task CreateAsync_accepts_non_reserved_slug_and_normalises_it(int example)
+    public async Task CreateAsync_FreeSlug_IsNormalised(int example)
     {
         Survey? captured = null;
         _repo.When(r => r.AddAsync(Arg.Any<Survey>(), Arg.Any<CancellationToken>()))
@@ -1220,7 +1220,7 @@ public class SurveyServiceTests
     }
 
     [HumansFact]
-    public async Task CreateAsync_rejects_team_audience_without_team_and_does_not_persist()
+    public async Task CreateAsync_TeamAudienceNoTeam_IsRejected()
     {
         var act = async () => await CreateService().CreateAsync(
             InputWithAudience(SurveyAudienceType.Team), Guid.NewGuid(), TestContext.Current.CancellationToken);
@@ -1234,7 +1234,7 @@ public class SurveyServiceTests
     }
 
     [HumansFact]
-    public async Task UpdateAsync_rejects_logged_in_since_audience_without_cutoff_and_does_not_persist()
+    public async Task UpdateAsync_LoggedInSinceNoCutoff_IsRejected()
     {
         var act = async () => await CreateService().UpdateAsync(
             Guid.NewGuid(), InputWithAudience(SurveyAudienceType.LoggedInSince),
@@ -1249,7 +1249,7 @@ public class SurveyServiceTests
     }
 
     [HumansFact]
-    public async Task CreateAsync_rejects_unknown_audience_and_does_not_persist()
+    public async Task CreateAsync_UnknownAudience_IsRejected()
     {
         var act = async () => await CreateService().CreateAsync(
             InputWithAudience((SurveyAudienceType)999), Guid.NewGuid(), TestContext.Current.CancellationToken);
@@ -1263,7 +1263,7 @@ public class SurveyServiceTests
     }
 
     [HumansFact]
-    public async Task UpdateAsync_rejects_forward_reference_and_does_not_persist()
+    public async Task UpdateAsync_ForwardReference_IsRejected()
     {
         var survey = SurveyWith(SurveyStatus.Draft, null, null);
         _repo.GetByIdAsync(survey.Id, Arg.Any<CancellationToken>()).Returns(survey);
@@ -1293,7 +1293,7 @@ public class SurveyServiceTests
     }
 
     [HumansFact]
-    public async Task OpenAsync_flips_draft_to_open_and_stamps_updatedAt()
+    public async Task OpenAsync_Draft_BecomesOpen()
     {
         var id = Guid.NewGuid();
         _repo.GetStatusAsync(id, Arg.Any<CancellationToken>()).Returns(SurveyStatus.Draft);
@@ -1306,7 +1306,7 @@ public class SurveyServiceTests
     }
 
     [HumansFact]
-    public async Task OpenAsync_returns_refusal_when_survey_missing()
+    public async Task OpenAsync_SurveyMissing_ReturnsRefusal()
     {
         _repo.GetStatusAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>()).Returns((SurveyStatus?)null);
 
@@ -1325,7 +1325,7 @@ public class SurveyServiceTests
     [InlineData("en", "es")]
     [InlineData("EN", "es")]
     [InlineData("en", "ES")]
-    public async Task PreFillTranslationsAsync_fills_only_blank_cultures_and_never_overwrites(string sourceKey, string targetKey)
+    public async Task PreFillTranslationsAsync_FilledCultures_AreNotOverwritten(string sourceKey, string targetKey)
     {
         var survey = SurveyWith(SurveyStatus.Draft, null, null);
         survey.Title = new LocalizedText(new Dictionary<string, string>(StringComparer.Ordinal)
@@ -1368,7 +1368,7 @@ public class SurveyServiceTests
     }
 
     [HumansFact]
-    public async Task PreFillTranslationsAsync_includes_grid_row_labels()
+    public async Task PreFillTranslationsAsync_GridRowLabels_AreIncluded()
     {
         var survey = SurveyWith(SurveyStatus.Draft, null, null);
         var questionId = Guid.NewGuid();
@@ -1411,7 +1411,7 @@ public class SurveyServiceTests
     }
 
     [HumansFact]
-    public async Task PreFillTranslationsAsync_no_missing_translations_is_a_noop()
+    public async Task PreFillTranslationsAsync_NothingMissing_DoesNothing()
     {
         var survey = SurveyWith(SurveyStatus.Draft, null, null);
         _repo.GetByIdAsync(survey.Id, Arg.Any<CancellationToken>()).Returns(survey);
@@ -1426,7 +1426,7 @@ public class SurveyServiceTests
     }
 
     [HumansFact]
-    public async Task PreFillTranslationsAsync_includes_invitation_subject_and_message()
+    public async Task PreFillTranslationsAsync_InvitationCopy_IsIncluded()
     {
         var survey = SurveyWith(SurveyStatus.Draft, null, null);
         survey.InvitationEmailSubject = L("Choose a date");
@@ -1465,7 +1465,7 @@ public class SurveyServiceTests
     [HumansTheory]
     [InlineData(false)]
     [InlineData(true)]
-    public async Task Active_audiences_use_account_state_instead_of_consent_review(bool shiftParticipants)
+    public async Task Audience_Active_UsesAccountState(bool shiftParticipants)
     {
         var active = UserWithLastSignIn(Guid.NewGuid(), null);
         var inactive = Enum.GetValues<UserState>()
@@ -1641,7 +1641,7 @@ public class SurveyServiceTests
     }
 
     [HumansFact]
-    public async Task PreviewAudienceCountAsync_team_counts_only_net_new_members()
+    public async Task PreviewAudienceCountAsync_Team_CountsNewMembersOnly()
     {
         var teamId = Guid.NewGuid();
         Guid alreadyInvited = Guid.NewGuid(), newA = Guid.NewGuid(), newB = Guid.NewGuid();
@@ -1666,7 +1666,7 @@ public class SurveyServiceTests
     }
 
     [HumansFact]
-    public async Task PreviewAudienceCountAsync_does_not_count_a_survivor_whose_archived_id_was_already_invited()
+    public async Task PreviewAudienceCountAsync_ArchivedIdInvited_SkipsSurvivor()
     {
         // Invitations are never re-pointed on merge. The team lists the survivor's live
         // id; the invitation sits under the archived one. Same human, not a net-new invitee.
@@ -1693,7 +1693,7 @@ public class SurveyServiceTests
     }
 
     [HumansFact]
-    public async Task PreviewAudienceCountAsync_unknown_audience_type_warns_and_resolves_to_nobody()
+    public async Task PreviewAudienceCountAsync_UnknownAudienceType_ReturnsZero()
     {
         var survey = SurveyWith(SurveyStatus.Draft, (SurveyAudienceType)99, null);
         _repo.GetByIdAsync(survey.Id, Arg.Any<CancellationToken>()).Returns(survey);
@@ -1708,7 +1708,7 @@ public class SurveyServiceTests
     }
 
     [HumansFact]
-    public async Task PreviewAudienceCountAsync_loggedInSince_counts_only_users_logged_in_at_or_after_cutoff()
+    public async Task PreviewAudienceCountAsync_LoggedInSince_CountsFromCutoff()
     {
         var cutoff = Instant.FromUtc(2026, 1, 1, 0, 0);
         var survey = SurveyWith(SurveyStatus.Draft, SurveyAudienceType.LoggedInSince, null, cutoff);
@@ -1731,7 +1731,7 @@ public class SurveyServiceTests
     }
 
     [HumansFact]
-    public async Task PreviewAudienceCountAsync_loggedInSince_excludes_status_walled_accounts()
+    public async Task PreviewAudienceCountAsync_LoggedInSince_ExcludesWalledAccounts()
     {
         var cutoff = Instant.FromUtc(2026, 1, 1, 0, 0);
         var recentLogin = cutoff + Duration.FromDays(3);
@@ -1757,7 +1757,7 @@ public class SurveyServiceTests
     }
 
     [HumansFact]
-    public async Task PreviewAudienceCountAsync_loggedInSince_returns_zero_when_cutoff_missing()
+    public async Task PreviewAudienceCountAsync_LoggedInSinceNoCutoff_ReturnsZero()
     {
         var survey = SurveyWith(SurveyStatus.Draft, SurveyAudienceType.LoggedInSince, null);
         _repo.GetByIdAsync(survey.Id, Arg.Any<CancellationToken>()).Returns(survey);
@@ -1770,7 +1770,7 @@ public class SurveyServiceTests
     }
 
     [HumansFact]
-    public async Task SendInvitesAsync_loggedInSince_invites_only_matching_users()
+    public async Task SendInvitesAsync_LoggedInSince_InvitesMatchingUsers()
     {
         var cutoff = Instant.FromUtc(2026, 1, 1, 0, 0);
         Guid recent = Guid.NewGuid(), stale = Guid.NewGuid(), never = Guid.NewGuid();
@@ -1799,7 +1799,7 @@ public class SurveyServiceTests
     }
 
     [HumansFact]
-    public async Task SendInvitesAsync_creates_invitations_only_for_net_new_recipients()
+    public async Task SendInvitesAsync_ExistingRecipients_AreSkipped()
     {
         var teamId = Guid.NewGuid();
         Guid a = Guid.NewGuid(), b = Guid.NewGuid(), c = Guid.NewGuid(), blank = Guid.NewGuid();
@@ -1835,7 +1835,7 @@ public class SurveyServiceTests
     }
 
     [HumansFact]
-    public async Task SendInvitesAsync_upgrades_an_unsent_public_participation_instead_of_inserting_a_duplicate()
+    public async Task SendInvitesAsync_UnsentPublicParticipation_IsUpgraded()
     {
         var teamId = Guid.NewGuid();
         var userId = Guid.NewGuid();
@@ -1875,7 +1875,7 @@ public class SurveyServiceTests
     [HumansTheory]
     [InlineData(false)]
     [InlineData(true)]
-    public async Task SendInvitesAsync_skips_a_completed_public_participant_including_after_merge(bool merged)
+    public async Task SendInvitesAsync_CompletedPublicParticipant_IsSkipped(bool merged)
     {
         var teamId = Guid.NewGuid();
         var userId = Guid.NewGuid();
@@ -1921,7 +1921,7 @@ public class SurveyServiceTests
     }
 
     [HumansFact]
-    public async Task SendInvitesAsync_resolves_title_and_custom_copy_in_each_recipient_culture()
+    public async Task SendInvitesAsync_Copy_UsesRecipientCulture()
     {
         var teamId = Guid.NewGuid();
         var userId = Guid.NewGuid();
@@ -1969,7 +1969,7 @@ public class SurveyServiceTests
     }
 
     [HumansFact]
-    public async Task SendInvitesAsync_leaves_optional_copy_blank_when_only_an_unrelated_culture_exists()
+    public async Task SendInvitesAsync_OnlyUnrelatedCulture_LeavesCopyBlank()
     {
         var teamId = Guid.NewGuid();
         var userId = Guid.NewGuid();
@@ -2013,7 +2013,7 @@ public class SurveyServiceTests
     [InlineData(false, true)]
     [InlineData(true, false)]
     [InlineData(true, true)]
-    public async Task SendInvitesAsync_retries_unsent_failures_without_replacing_participation(
+    public async Task SendInvitesAsync_UnsentFailures_AreRetried(
         bool existingParticipation, bool preparationFails)
     {
         var ct = TestContext.Current.CancellationToken;
@@ -2072,7 +2072,7 @@ public class SurveyServiceTests
     [HumansTheory]
     [InlineData(false)]
     [InlineData(true)]
-    public async Task SendInvitesAsync_marks_failed_and_continues_when_email_preparation_or_send_throws(bool preparationFails)
+    public async Task SendInvitesAsync_SendThrows_MarksFailed(bool preparationFails)
     {
         var teamId = Guid.NewGuid();
         Guid b = Guid.NewGuid(), c = Guid.NewGuid();
@@ -2106,7 +2106,7 @@ public class SurveyServiceTests
     [HumansTheory]
     [InlineData(false)]
     [InlineData(true)]
-    public async Task SendInvitesAsync_finishes_batch_when_request_is_cancelled_after_first_invitation_save(bool upgradePublicParticipation)
+    public async Task SendInvitesAsync_CancelledMidBatch_FinishesBatch(bool upgradePublicParticipation)
     {
         var teamId = Guid.NewGuid();
         Guid first = Guid.NewGuid(), second = Guid.NewGuid();
@@ -2151,7 +2151,7 @@ public class SurveyServiceTests
     }
 
     [HumansFact]
-    public async Task SendInvitesAsync_cancellation_before_batch_creates_no_invitation()
+    public async Task SendInvitesAsync_CancelledBeforeBatch_CreatesNothing()
     {
         var teamId = Guid.NewGuid();
         var userId = Guid.NewGuid();
@@ -2174,7 +2174,7 @@ public class SurveyServiceTests
     }
 
     [HumansFact]
-    public async Task SendInvitesAsync_returns_refusal_when_not_open()
+    public async Task SendInvitesAsync_NotOpen_ReturnsRefusal()
     {
         var survey = SurveyWith(SurveyStatus.Draft, SurveyAudienceType.Team, Guid.NewGuid());
         _repo.GetByIdAsync(survey.Id, Arg.Any<CancellationToken>()).Returns(survey);
@@ -2186,7 +2186,7 @@ public class SurveyServiceTests
     }
 
     [HumansFact]
-    public async Task SendInvitesAsync_returns_refusal_when_audience_null()
+    public async Task SendInvitesAsync_NullAudience_ReturnsRefusal()
     {
         var survey = SurveyWith(SurveyStatus.Open, null, null);
         _repo.GetByIdAsync(survey.Id, Arg.Any<CancellationToken>()).Returns(survey);
@@ -2198,7 +2198,7 @@ public class SurveyServiceTests
     }
 
     [HumansFact]
-    public async Task SendInvitesAsync_returns_refusal_when_team_audience_has_no_team()
+    public async Task SendInvitesAsync_TeamAudienceNoTeam_ReturnsRefusal()
     {
         var survey = SurveyWith(SurveyStatus.Open, SurveyAudienceType.Team, null);
         _repo.GetByIdAsync(survey.Id, Arg.Any<CancellationToken>()).Returns(survey);
@@ -2213,7 +2213,7 @@ public class SurveyServiceTests
     }
 
     [HumansFact]
-    public async Task SendDueRemindersAsync_sends_one_reminder_stamps_reminder_and_returns_count()
+    public async Task SendDueRemindersAsync_OneDue_StampsReminder()
     {
         var now = _clock.GetCurrentInstant();
         var survey = SurveyWith(SurveyStatus.Open, SurveyAudienceType.Team, Guid.NewGuid());
@@ -2303,7 +2303,7 @@ public class SurveyServiceTests
     }
 
     [HumansFact]
-    public async Task SendDueRemindersAsync_skips_an_Open_survey_that_is_past_its_ClosesAt()
+    public async Task SendDueRemindersAsync_PastClosesAt_SkipsSurvey()
     {
         var now = _clock.GetCurrentInstant();
         var survey = SurveyWith(SurveyStatus.Open, SurveyAudienceType.Team, Guid.NewGuid());
@@ -2334,7 +2334,7 @@ public class SurveyServiceTests
     }
 
     [HumansFact]
-    public async Task SendDueRemindersAsync_skips_an_Open_survey_that_has_not_reached_its_OpensAt()
+    public async Task SendDueRemindersAsync_BeforeOpensAt_SkipsSurvey()
     {
         var now = _clock.GetCurrentInstant();
         var survey = SurveyWith(SurveyStatus.Open, SurveyAudienceType.Team, Guid.NewGuid());
@@ -2363,7 +2363,7 @@ public class SurveyServiceTests
     }
 
     [HumansFact]
-    public async Task SendDueRemindersAsync_returns_zero_and_sends_nothing_when_none_due()
+    public async Task SendDueRemindersAsync_NoneDue_ReturnsZero()
     {
         _repo.GetInvitationsDueForReminderAsync(Arg.Any<Instant>(), Arg.Any<CancellationToken>())
             .Returns(new List<SurveyInvitation>());
@@ -2380,7 +2380,7 @@ public class SurveyServiceTests
     [InlineData(true, null)]
     [InlineData(true, "")]
     [InlineData(true, " \t ")]
-    public async Task SendDueRemindersAsync_skips_invitee_with_no_resolvable_email(bool userExists, string? email)
+    public async Task SendDueRemindersAsync_NoEmail_SkipsInvitee(bool userExists, string? email)
     {
         var survey = SurveyWith(SurveyStatus.Open, SurveyAudienceType.Team, Guid.NewGuid());
         var userId = Guid.NewGuid();
@@ -2417,7 +2417,7 @@ public class SurveyServiceTests
     [InlineData(ReminderShutdownStage.EnqueueFailure)]
     [InlineData(ReminderShutdownStage.StampFailure)]
     [InlineData(ReminderShutdownStage.EarlierFailure)]
-    public async Task ReminderShutdown_FinishesStartedDeliveryAndAuditsPartialResults(ReminderShutdownStage stage)
+    public async Task SendDueRemindersAsync_Shutdown_FinishesStartedDelivery(ReminderShutdownStage stage)
     {
         using var shutdown = new CancellationTokenSource();
         var now = _clock.GetCurrentInstant();
@@ -2484,7 +2484,7 @@ public class SurveyServiceTests
     [InlineData(ReminderFailureStage.Preparation)]
     [InlineData(ReminderFailureStage.Enqueue)]
     [InlineData(ReminderFailureStage.Stamp)]
-    public async Task SendDueRemindersAsync_continues_then_fails_and_retries_with_stable_delivery_ids(ReminderFailureStage failureStage)
+    public async Task SendDueRemindersAsync_Retry_ReusesDeliveryIds(ReminderFailureStage failureStage)
     {
         var now = _clock.GetCurrentInstant();
         var survey = SurveyWith(SurveyStatus.Open, SurveyAudienceType.Team, Guid.NewGuid());
@@ -2553,7 +2553,7 @@ public class SurveyServiceTests
     }
 
     [HumansFact]
-    public async Task GetInviteStatusesAsync_stitches_burner_names_and_falls_back_to_user_id()
+    public async Task GetInviteStatusesAsync_NoBurnerName_UsesUserId()
     {
         var surveyId = Guid.NewGuid();
         Guid known = Guid.NewGuid(), unknown = Guid.NewGuid();
@@ -2593,7 +2593,7 @@ public class SurveyServiceTests
     }
 
     [HumansFact]
-    public async Task GetOfficialLinkAsync_uses_the_current_humans_unspent_invitation()
+    public async Task GetOfficialLinkAsync_UnspentInvitation_IsUsed()
     {
         var survey = SurveyWith(SurveyStatus.Open, null, null);
         survey.PublicSlug = "public-fallback";
@@ -2612,7 +2612,7 @@ public class SurveyServiceTests
     }
 
     [HumansFact]
-    public async Task GetOfficialLinkAsync_falls_back_to_the_public_slug()
+    public async Task GetOfficialLinkAsync_NoInvitation_UsesPublicSlug()
     {
         var survey = SurveyWith(SurveyStatus.Open, null, null);
         survey.PublicSlug = "public-survey";
@@ -2649,7 +2649,7 @@ public class SurveyServiceTests
     }
 
     [HumansFact]
-    public async Task ResolveAnswerContextAsync_populates_context_and_flags_resumable_draft()
+    public async Task ResolveAnswerContextAsync_ExistingDraft_FlagsResumable()
     {
         var survey = SurveyWith(SurveyStatus.Open, SurveyAudienceType.Team, Guid.NewGuid());
         var userId = Guid.NewGuid();
@@ -2728,7 +2728,7 @@ public class SurveyServiceTests
     }
 
     [HumansFact]
-    public async Task ResolveAnswerContextAsync_rejects_a_non_asociado_from_an_asociado_vote()
+    public async Task ResolveAnswerContextAsync_NonAsociadoOnVote_IsRejected()
     {
         var survey = SurveyWith(SurveyStatus.Open, SurveyAudienceType.Asociados, null);
         survey.IsAsociadoVote = true;
@@ -2754,7 +2754,7 @@ public class SurveyServiceTests
     [InlineData("MISSING", 0)]
     [InlineData("a", 80)]
     [InlineData("😀", 80)]
-    public async Task ResolvePublicContextAsync_returns_null_for_unknown_slug(string text, int repeat)
+    public async Task ResolvePublicContextAsync_UnknownSlug_ReturnsNull(string text, int repeat)
     {
         var slug = repeat == 0 ? text : string.Concat(Enumerable.Repeat(text, repeat));
         var normalized = slug.ToLowerInvariant();
@@ -2775,7 +2775,7 @@ public class SurveyServiceTests
     [InlineData(" ANSWER ", 0)]
     [InlineData("a", 81)]
     [InlineData("😀", 81)]
-    public async Task ResolvePublicContextAsync_returns_null_for_invalid_slug(string text, int repeat)
+    public async Task ResolvePublicContextAsync_InvalidSlug_ReturnsNull(string text, int repeat)
     {
         var slug = repeat == 0 ? text : string.Concat(Enumerable.Repeat(text, repeat));
         var ctx = await CreateResponses().ResolvePublicContextAsync(
@@ -2786,7 +2786,7 @@ public class SurveyServiceTests
     }
 
     [HumansFact]
-    public async Task ResolvePublicContextAsync_returns_context_for_known_slug()
+    public async Task ResolvePublicContextAsync_KnownSlug_ReturnsContext()
     {
         var survey = SurveyWith(SurveyStatus.Open, null, null);
         survey.PublicSlug = "feedback";
@@ -2805,7 +2805,7 @@ public class SurveyServiceTests
     }
 
     [HumansFact]
-    public async Task ResolvePublicContextAsync_requires_authentication_when_anonymous_disallowed()
+    public async Task ResolvePublicContextAsync_AnonymousDisallowed_RequiresSignIn()
     {
         var survey = SurveyWith(SurveyStatus.Open, null, null);
         survey.PublicSlug = "feedback";
@@ -2821,7 +2821,7 @@ public class SurveyServiceTests
     }
 
     [HumansFact]
-    public async Task ResolvePublicContextAsync_allows_any_logged_in_human_when_no_audience_is_set()
+    public async Task ResolvePublicContextAsync_NoAudience_AllowsAnyHuman()
     {
         var survey = SurveyWith(SurveyStatus.Open, null, null);
         survey.PublicSlug = "feedback";
@@ -2840,7 +2840,7 @@ public class SurveyServiceTests
     }
 
     [HumansFact]
-    public async Task ResolvePublicContextAsync_checks_the_current_team_audience()
+    public async Task ResolvePublicContextAsync_TeamAudience_ChecksCurrentTeam()
     {
         var teamId = Guid.NewGuid();
         var eligibleUserId = Guid.NewGuid();
@@ -2865,7 +2865,7 @@ public class SurveyServiceTests
     }
 
     [HumansFact]
-    public async Task IncrementPublicStartedAsync_delegates_to_repo_once()
+    public async Task IncrementPublicStartedAsync_Called_HitsRepoOnce()
     {
         var surveyId = Guid.NewGuid();
 
@@ -2875,7 +2875,7 @@ public class SurveyServiceTests
     }
 
     [HumansFact]
-    public async Task StartIdentifiedDraftAsync_returns_existing_draft_without_creating_a_second()
+    public async Task StartIdentifiedDraftAsync_DraftExists_ReturnsIt()
     {
         var surveyId = Guid.NewGuid();
         var userId = Guid.NewGuid();
@@ -2901,7 +2901,7 @@ public class SurveyServiceTests
     [InlineData(false, true)]
     [InlineData(true, false)]
     [InlineData(true, true)]
-    public async Task IdentifiedStarts_share_one_draft_when_their_initial_lookups_overlap(
+    public async Task StartIdentifiedDraftAsync_OverlappingStarts_ShareOneDraft(
         bool firstPublic, bool secondPublic)
     {
         var ct = TestContext.Current.CancellationToken;
@@ -2957,7 +2957,7 @@ public class SurveyServiceTests
     }
 
     [HumansFact]
-    public async Task StartIdentifiedDraftAsync_creates_identified_draft_when_none_exists()
+    public async Task StartIdentifiedDraftAsync_NoDraft_CreatesOne()
     {
         var surveyId = Guid.NewGuid();
         var invitationId = Guid.NewGuid();
@@ -2984,7 +2984,7 @@ public class SurveyServiceTests
     }
 
     [HumansFact]
-    public async Task StartPublicTrackedResponseAsync_identified_creates_unsent_participation_and_slug_draft()
+    public async Task StartPublicTrackedResponseAsync_Identified_CreatesSlugDraft()
     {
         var surveyId = Guid.NewGuid();
         var userId = Guid.NewGuid();
@@ -3021,7 +3021,7 @@ public class SurveyServiceTests
     }
 
     [HumansFact]
-    public async Task StartPublicTrackedResponseAsync_completion_tracked_preserves_existing_draft_answers_without_linking_the_draft()
+    public async Task StartPublicTrackedResponseAsync_Tracked_KeepsDraftAnswers()
     {
         var surveyId = Guid.NewGuid();
         var userId = Guid.NewGuid();
@@ -3062,7 +3062,7 @@ public class SurveyServiceTests
     }
 
     [HumansFact]
-    public async Task StartPublicTrackedResponseAsync_completed_participation_refuses_another_tracked_start()
+    public async Task StartPublicTrackedResponseAsync_AlreadyCompleted_ReturnsRefusal()
     {
         var surveyId = Guid.NewGuid();
         var userId = Guid.NewGuid();
@@ -3091,7 +3091,7 @@ public class SurveyServiceTests
     [InlineData(ResponseAnonymity.Identified, true)]
     [InlineData(ResponseAnonymity.CompletionTracked, false)]
     [InlineData(ResponseAnonymity.CompletionTracked, true)]
-    public async Task StartPublicTrackedResponseAsync_checks_completed_merged_accounts(ResponseAnonymity anonymity, bool completed)
+    public async Task StartPublicTrackedResponseAsync_MergedAccountCompleted_ReturnsRefusal(ResponseAnonymity anonymity, bool completed)
     {
         var surveyId = Guid.NewGuid();
         var survivor = Guid.NewGuid();
@@ -3128,7 +3128,7 @@ public class SurveyServiceTests
     [InlineData(ResponseAnonymity.CompletionTracked, false)]
     [InlineData(ResponseAnonymity.CompletionTracked, true)]
     [InlineData(ResponseAnonymity.Anonymous, false)]
-    public async Task AdvanceWizardAsync_completion_follows_the_merge_chain_at_finalization(
+    public async Task AdvanceWizardAsync_MergedAccount_CompletesSurvivorsInvitation(
         ResponseAnonymity anonymity, bool completedAfterPreparation)
     {
         var ct = TestContext.Current.CancellationToken;
@@ -3165,7 +3165,7 @@ public class SurveyServiceTests
     }
 
     [HumansFact]
-    public async Task StartPublicTrackedResponseAsync_identified_restores_existing_draft_answers()
+    public async Task StartPublicTrackedResponseAsync_Identified_RestoresDraftAnswers()
     {
         var surveyId = Guid.NewGuid();
         var userId = Guid.NewGuid();
@@ -3237,7 +3237,7 @@ public class SurveyServiceTests
     [InlineData("duplicate")]
     [InlineData("equal-ranks")]
     [InlineData("rejection")]
-    public async Task AdvanceWizardAsync_final_submission_rejects_invalid_ranked_ballots_before_persisting(string violation)
+    public async Task AdvanceWizardAsync_InvalidRankedBallot_IsRejected(string violation)
     {
         var survey = SurveyWith(SurveyStatus.Open, null, null);
         var questionId = Guid.NewGuid();
@@ -3270,7 +3270,7 @@ public class SurveyServiceTests
     }
 
     [HumansFact]
-    public async Task AdvanceWizardAsync_final_submission_persists_normalized_valid_ranked_ballots()
+    public async Task AdvanceWizardAsync_ValidRankedBallot_IsNormalized()
     {
         var survey = SurveyWith(SurveyStatus.Open, null, null);
         var questionId = Guid.NewGuid();
@@ -3297,7 +3297,7 @@ public class SurveyServiceTests
     }
 
     [HumansFact]
-    public async Task AdvanceWizardAsync_final_submission_identified_finalises_existing_draft_and_completes_invitation()
+    public async Task AdvanceWizardAsync_IdentifiedSubmit_FinalisesDraft()
     {
         var survey = SurveyForSubmit(out var q1Id, out var q2Id);
         var draftId = Guid.NewGuid();
@@ -3324,7 +3324,7 @@ public class SurveyServiceTests
     }
 
     [HumansFact]
-    public async Task AdvanceWizardAsync_final_submission_rechecks_asociado_eligibility_before_finalising()
+    public async Task AdvanceWizardAsync_AsociadoSubmit_RechecksEligibility()
     {
         var survey = SurveyForSubmit(out var questionId, out _);
         survey.IsAsociadoVote = true;
@@ -3348,7 +3348,7 @@ public class SurveyServiceTests
     }
 
     [HumansFact]
-    public async Task AdvanceWizardAsync_final_submission_rejects_an_identified_asociado_ballot()
+    public async Task AdvanceWizardAsync_IdentifiedAsociadoBallot_IsRejected()
     {
         var survey = SurveyForSubmit(out var questionId, out _);
         survey.IsAsociadoVote = true;
@@ -3375,7 +3375,7 @@ public class SurveyServiceTests
     }
 
     [HumansFact]
-    public async Task AdvanceWizardAsync_final_submission_completion_tracked_stores_unlinked_response_and_completes_invitation()
+    public async Task AdvanceWizardAsync_TrackedSubmit_StoresUnlinkedResponse()
     {
         var survey = SurveyForSubmit(out var q1Id, out _);
         var invitationId = Guid.NewGuid();
@@ -3406,7 +3406,7 @@ public class SurveyServiceTests
     [HumansTheory]
     [InlineData(false)]
     [InlineData(true)]
-    public async Task AdvanceWizardAsync_final_submission_concurrent_writes_preserve_one_final_response(bool identified)
+    public async Task AdvanceWizardAsync_ConcurrentSubmits_KeepOneResponse(bool identified)
     {
         var ct = TestContext.Current.CancellationToken;
         var pause = new PauseFirstResponseSave();
@@ -3491,7 +3491,7 @@ public class SurveyServiceTests
     }
 
     [HumansFact]
-    public async Task AdvanceWizardAsync_final_submission_anonymous_stores_unlinked_response_and_leaves_invitation_untouched()
+    public async Task AdvanceWizardAsync_AnonymousSubmit_LeavesInvitationUntouched()
     {
         var survey = SurveyForSubmit(out var q1Id, out _);
         SurveyResponse? captured = null;
@@ -3527,7 +3527,7 @@ public class SurveyServiceTests
     }
 
     [HumansFact]
-    public async Task AdvanceWizardAsync_final_submission_stores_null_for_an_unanswered_optional_grid()
+    public async Task AdvanceWizardAsync_UnansweredOptionalGrid_StoresNull()
     {
         var survey = SurveyWith(SurveyStatus.Open, null, null);
         var grid = GridQuestion(Guid.NewGuid(), survey.Id);
@@ -3552,7 +3552,7 @@ public class SurveyServiceTests
     }
 
     [HumansFact]
-    public async Task AdvanceWizardAsync_final_submission_rejects_an_incomplete_required_grid()
+    public async Task AdvanceWizardAsync_IncompleteRequiredGrid_IsRejected()
     {
         var survey = SurveyWith(SurveyStatus.Open, null, null);
         var grid = GridQuestion(Guid.NewGuid(), survey.Id, GridSelectionMode.Single);
@@ -3579,7 +3579,7 @@ public class SurveyServiceTests
     }
 
     [HumansFact]
-    public async Task AdvanceWizardAsync_final_submission_drops_answers_to_questions_hidden_by_branching()
+    public async Task AdvanceWizardAsync_HiddenQuestionAnswers_AreDropped()
     {
         var gate = Guid.NewGuid();
         var hidden = Guid.NewGuid();
@@ -3620,7 +3620,7 @@ public class SurveyServiceTests
     }
 
     [HumansFact]
-    public async Task AdvanceWizardAsync_final_submission_drops_answers_unlocked_only_by_a_stale_hidden_answer()
+    public async Task AdvanceWizardAsync_StaleUnlockedAnswers_AreDropped()
     {
         // Q1 gates Q2, Q2 gates Q3 — flipping Q1 to "no" must hide Q3 even though Q2's stale
         // answer would still satisfy Q3's condition on its own.
@@ -3670,7 +3670,7 @@ public class SurveyServiceTests
     }
 
     [HumansFact]
-    public async Task AdvanceWizardAsync_final_submission_returns_submitted_when_invitation_already_completed()
+    public async Task AdvanceWizardAsync_SubmitInvitationCompleted_ReturnsSubmitted()
     {
         var survey = SurveyForSubmit(out var q1Id, out _);
         var invitation = InvitationFor(survey.Id, Guid.NewGuid());
@@ -3694,7 +3694,7 @@ public class SurveyServiceTests
     }
 
     [HumansFact]
-    public async Task AdvanceWizardAsync_final_submission_returns_closed_when_survey_not_open()
+    public async Task AdvanceWizardAsync_SubmitNotOpen_ReturnsClosed()
     {
         var survey = SurveyForSubmit(out var q1Id, out _);
         survey.Status = SurveyStatus.Closed;
@@ -3711,7 +3711,7 @@ public class SurveyServiceTests
     }
 
     [HumansFact]
-    public async Task AdvanceWizardAsync_final_submission_returns_closed_when_window_closed()
+    public async Task AdvanceWizardAsync_SubmitWindowClosed_ReturnsClosed()
     {
         var survey = SurveyForSubmit(out var q1Id, out _);
         survey.ClosesAt = _clock.GetCurrentInstant() - Duration.FromMinutes(1);
@@ -3790,7 +3790,7 @@ public class SurveyServiceTests
     };
 
     [HumansFact]
-    public async Task AdvanceWizardAsync_navigates_to_next_page_and_fires_started_once()
+    public async Task AdvanceWizardAsync_NextPage_FiresStartedOnce()
     {
         var survey = SurveyForWizard(out var q1Id, out _);
         var invitationId = Guid.NewGuid();
@@ -3807,7 +3807,7 @@ public class SurveyServiceTests
     }
 
     [HumansFact]
-    public async Task AdvanceWizardAsync_reports_missing_required_and_stays_on_page()
+    public async Task AdvanceWizardAsync_MissingRequired_StaysOnPage()
     {
         var survey = SurveyForWizard(out var q1Id, out _);
         var state = WizardState(survey.Id);
@@ -3820,7 +3820,7 @@ public class SurveyServiceTests
     }
 
     [HumansFact]
-    public async Task AdvanceWizardAsync_rejects_duplicate_question_entries_before_advancing()
+    public async Task AdvanceWizardAsync_DuplicateQuestionEntries_AreRejected()
     {
         var survey = SurveyForWizard(out var questionId, out _);
         var state = WizardState(survey.Id, Guid.NewGuid());
@@ -3839,7 +3839,7 @@ public class SurveyServiceTests
     }
 
     [HumansFact]
-    public async Task AdvanceWizardAsync_ignores_duplicate_entries_outside_the_visible_page()
+    public async Task AdvanceWizardAsync_DuplicatesOffPage_AreIgnored()
     {
         var survey = SurveyForWizard(out var questionId, out var laterQuestionId);
         var unknownId = Guid.NewGuid();
@@ -3855,7 +3855,7 @@ public class SurveyServiceTests
     }
 
     [HumansFact]
-    public async Task AdvanceWizardAsync_keeps_valid_choices_and_discards_other_answer_fields()
+    public async Task AdvanceWizardAsync_ChoiceAnswer_DropsOtherFields()
     {
         var survey = SurveyForWizard(out var id, out _);
         var state = WizardState(survey.Id);
@@ -3872,7 +3872,7 @@ public class SurveyServiceTests
     }
 
     [HumansFact]
-    public async Task AdvanceWizardAsync_final_submission_uses_normalized_choices_for_branching_and_ignores_hidden_invalid_answers()
+    public async Task AdvanceWizardAsync_HiddenInvalidAnswers_AreIgnored()
     {
         var survey = SurveyWith(SurveyStatus.Open, null, null);
         var gateId = Guid.NewGuid();
@@ -3913,7 +3913,7 @@ public class SurveyServiceTests
     [InlineData("multiple-single-choice")]
     [InlineData("rating-too-low")]
     [InlineData("rating-too-high")]
-    public async Task AdvanceWizardAsync_validates_answer_shape_against_the_question(string violation)
+    public async Task AdvanceWizardAsync_WrongAnswerShape_IsRejected(string violation)
     {
         var survey = SurveyWith(SurveyStatus.Open, null, null);
         var id = Guid.NewGuid();
@@ -3953,7 +3953,7 @@ public class SurveyServiceTests
     [InlineData(SurveyQuestionType.LongText, false, 4001)]
     [InlineData(SurveyQuestionType.LongText, true, 4000)]
     [InlineData(SurveyQuestionType.LongText, true, 4001)]
-    public async Task AdvanceWizardAsync_bounds_text_before_autosave_and_preserves_input(
+    public async Task AdvanceWizardAsync_OverlongText_KeepsInput(
         SurveyQuestionType type, bool supplementaryCharacters, int characterCount)
     {
         var survey = SurveyForWizard(out var questionId, out _);
@@ -3989,7 +3989,7 @@ public class SurveyServiceTests
     [HumansTheory]
     [InlineData(SurveyQuestionType.ShortText)]
     [InlineData(SurveyQuestionType.LongText)]
-    public async Task AdvanceWizardAsync_final_submission_rejects_overlong_text_before_persistence(SurveyQuestionType type)
+    public async Task AdvanceWizardAsync_OverlongTextSubmit_IsRejected(SurveyQuestionType type)
     {
         var survey = SurveyForWizard(out var questionId, out _);
         survey.Questions.Single(q => q.Id == questionId).Type = type;
@@ -4008,7 +4008,7 @@ public class SurveyServiceTests
     }
 
     [HumansFact]
-    public async Task AdvanceWizardAsync_reports_invalid_ranked_answer_and_preserves_it()
+    public async Task AdvanceWizardAsync_InvalidRankedAnswer_IsKept()
     {
         var survey = SurveyWith(SurveyStatus.Open, null, null);
         var questionId = Guid.NewGuid();
@@ -4040,7 +4040,7 @@ public class SurveyServiceTests
     [HumansTheory]
     [InlineData(false)]
     [InlineData(true)]
-    public async Task AdvanceWizardAsync_revalidates_choice_and_rating_schema_at_final_submission(bool rating)
+    public async Task AdvanceWizardAsync_ChoiceSchemaChanged_RevalidatesAnswers(bool rating)
     {
         var id = Guid.NewGuid();
         var initial = SurveyWith(SurveyStatus.Open, null, null);
@@ -4076,7 +4076,7 @@ public class SurveyServiceTests
     }
 
     [HumansFact]
-    public async Task AdvanceWizardAsync_submits_after_last_visible_page()
+    public async Task AdvanceWizardAsync_LastVisiblePage_Submits()
     {
         var survey = SurveyForWizard(out var q1Id, out var q2Id);
         var state = WizardState(survey.Id);
@@ -4097,7 +4097,7 @@ public class SurveyServiceTests
     }
 
     [HumansFact]
-    public async Task AdvanceWizardAsync_submits_completion_tracked_response_and_completes_invitation()
+    public async Task AdvanceWizardAsync_TrackedSubmit_CompletesInvitation()
     {
         var survey = SurveyForWizard(out var q1Id, out var q2Id);
         var invitationId = Guid.NewGuid();
@@ -4118,7 +4118,7 @@ public class SurveyServiceTests
     }
 
     [HumansFact]
-    public async Task AdvanceWizardAsync_returns_submitted_when_invitation_already_completed()
+    public async Task AdvanceWizardAsync_InvitationCompleted_ReturnsSubmitted()
     {
         var survey = SurveyForWizard(out var q1Id, out var q2Id);
         var invitation = InvitationFor(survey.Id, Guid.NewGuid());
@@ -4141,7 +4141,7 @@ public class SurveyServiceTests
     }
 
     [HumansFact]
-    public async Task AdvanceWizardAsync_returns_closed_when_survey_not_open()
+    public async Task AdvanceWizardAsync_NotOpen_ReturnsClosed()
     {
         var survey = SurveyForWizard(out var q1Id, out _);
         survey.Status = SurveyStatus.Closed;
@@ -4155,7 +4155,7 @@ public class SurveyServiceTests
     }
 
     [HumansFact]
-    public async Task AdvanceWizardAsync_back_navigates_without_validation()
+    public async Task AdvanceWizardAsync_Back_SkipsValidation()
     {
         var survey = SurveyForWizard(out var q1Id, out _);
         var state = WizardState(survey.Id);
@@ -4171,7 +4171,7 @@ public class SurveyServiceTests
     }
 
     [HumansFact]
-    public async Task AdvanceWizardAsync_normalizes_grid_rows_columns_and_single_selection()
+    public async Task AdvanceWizardAsync_GridAnswer_IsNormalized()
     {
         var gridId = Guid.NewGuid();
         var survey = SurveyWith(SurveyStatus.Open, null, null);
@@ -4227,7 +4227,7 @@ public class SurveyServiceTests
     }
 
     [HumansFact]
-    public async Task AdvanceWizardAsync_revalidates_an_earlier_required_grid_after_its_schema_changes()
+    public async Task AdvanceWizardAsync_GridSchemaChanged_RevalidatesGrid()
     {
         var gridId = Guid.NewGuid();
         var finalId = Guid.NewGuid();
@@ -4277,7 +4277,7 @@ public class SurveyServiceTests
     }
 
     [HumansFact]
-    public async Task AdvanceWizardAsync_revalidates_the_definition_reloaded_for_submission()
+    public async Task AdvanceWizardAsync_DefinitionReloaded_IsRevalidated()
     {
         var gridId = Guid.NewGuid();
         var initial = SurveyWith(SurveyStatus.Open, null, null);
@@ -4329,7 +4329,7 @@ public class SurveyServiceTests
     [InlineData("missing", (int)SurveyWizardOutcome.NotFound)]
     [InlineData("eligibility", (int)SurveyWizardOutcome.Ineligible)]
     [InlineData("identity", (int)SurveyWizardOutcome.Ineligible)]
-    public async Task AdvanceWizardAsync_returns_final_gate_refusals_without_finalizing(
+    public async Task AdvanceWizardAsync_FinalGateRefusal_SkipsFinalizing(
         string refusal, int expectedValue)
     {
         var expected = (SurveyWizardOutcome)expectedValue;
@@ -4381,7 +4381,7 @@ public class SurveyServiceTests
     }
 
     [HumansFact]
-    public async Task AdvanceWizardAsync_reports_ranked_answer_invalidated_at_submission_reload()
+    public async Task AdvanceWizardAsync_RankedInvalidAfterReload_IsReported()
     {
         var questionId = Guid.NewGuid();
         var initial = SurveyWith(SurveyStatus.Open, null, null);
@@ -4564,7 +4564,7 @@ public class SurveyServiceTests
     };
 
     [HumansFact]
-    public async Task GetResultsAsync_returns_null_when_survey_missing()
+    public async Task GetResultsAsync_SurveyMissing_ReturnsNull()
     {
         _repo.GetByIdAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>()).Returns((Survey?)null);
 
@@ -4574,7 +4574,7 @@ public class SurveyServiceTests
     }
 
     [HumansFact]
-    public async Task Information_items_are_omitted_from_results_and_response_exports()
+    public async Task Results_InformationItems_AreOmitted()
     {
         var surveyId = Guid.NewGuid();
         var informationId = Guid.NewGuid();
@@ -4714,7 +4714,7 @@ public class SurveyServiceTests
     }
 
     [HumansFact]
-    public async Task GetResultsAsync_aggregates_choice_rating_and_freetext_over_submitted_responses()
+    public async Task GetResultsAsync_SubmittedResponses_AreAggregated()
     {
         var surveyId = Guid.NewGuid();
         var choiceId = Guid.NewGuid();
@@ -4799,7 +4799,7 @@ public class SurveyServiceTests
     [InlineData(null, null, 3, 1, 5)]
     [InlineData(2, null, 3, 2, 5)]
     [InlineData(null, 4, 3, 1, 4)]
-    public async Task GetResultsAsync_uses_respondent_defaults_for_omitted_rating_bounds(
+    public async Task GetResultsAsync_OmittedRatingBounds_UseDefaults(
         int? min, int? max, int? answer, int expectedMin, int expectedMax)
     {
         var survey = SurveyWith(SurveyStatus.Closed, null, null);
@@ -4832,7 +4832,7 @@ public class SurveyServiceTests
     [HumansTheory]
     [InlineData(int.MaxValue - 1, int.MaxValue)]
     [InlineData(int.MinValue, int.MinValue + 1)]
-    public async Task GetResultsAsync_handles_rating_scales_at_integer_boundaries(int min, int max)
+    public async Task GetResultsAsync_RatingAtIntegerBounds_IsHandled(int min, int max)
     {
         var survey = SurveyWith(SurveyStatus.Closed, null, null);
         var questionId = Guid.NewGuid();
@@ -4854,7 +4854,7 @@ public class SurveyServiceTests
     }
 
     [HumansFact]
-    public async Task GetResultsAsync_aggregates_grid_cells_per_row()
+    public async Task GetResultsAsync_Grid_AggregatesCellsPerRow()
     {
         var surveyId = Guid.NewGuid();
         var gridId = Guid.NewGuid();
@@ -4889,7 +4889,7 @@ public class SurveyServiceTests
     }
 
     [HumansFact]
-    public async Task GetResultsAsync_percent_base_is_respondents_who_answered_the_question()
+    public async Task GetResultsAsync_Percent_UsesQuestionRespondents()
     {
         // Branched/optional questions aren't seen by everyone: the percent base must be the
         // respondents who answered THIS question, not all submissions.
@@ -4927,7 +4927,7 @@ public class SurveyServiceTests
     }
 
     [HumansFact]
-    public async Task GetScopedResultsAsync_filters_aggregates_without_filtering_participation_or_drilldown()
+    public async Task GetScopedResultsAsync_Filter_KeepsParticipationUnfiltered()
     {
         var surveyId = Guid.NewGuid();
         var choiceId = Guid.NewGuid();
@@ -4992,7 +4992,7 @@ public class SurveyServiceTests
     }
 
     [HumansFact]
-    public async Task GetResultsAsync_preserves_identified_respondent_metadata()
+    public async Task GetResultsAsync_IdentifiedRespondents_KeepMetadata()
     {
         var surveyId = Guid.NewGuid();
         var survey = SurveyWith(SurveyStatus.Closed, null, null);
@@ -5021,7 +5021,7 @@ public class SurveyServiceTests
     }
 
     [HumansFact]
-    public async Task GetResultsAsync_builds_funnel_from_started_count_public_count_and_input_method_splits()
+    public async Task GetResultsAsync_Funnel_UsesStartedCounts()
     {
         var surveyId = Guid.NewGuid();
         var survey = SurveyWith(SurveyStatus.Open, null, null);
@@ -5062,7 +5062,7 @@ public class SurveyServiceTests
     }
 
     [HumansFact]
-    public async Task GetResponseExportAsync_returns_null_when_survey_missing()
+    public async Task GetResponseExportAsync_SurveyMissing_ReturnsNull()
     {
         _repo.GetByIdAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>()).Returns((Survey?)null);
 
@@ -5073,7 +5073,7 @@ public class SurveyServiceTests
     }
 
     [HumansFact]
-    public async Task GetResponseExportAsync_populates_identity_only_for_identified_rows()
+    public async Task GetResponseExportAsync_NonIdentifiedRows_HaveNoIdentity()
     {
         var surveyId = Guid.NewGuid();
         var choiceId = Guid.NewGuid();
@@ -5119,7 +5119,7 @@ public class SurveyServiceTests
     }
 
     [HumansFact]
-    public async Task GetResponseExportAsync_maps_answer_values_and_labels_and_orders_questions_by_page_then_order()
+    public async Task GetResponseExportAsync_Questions_OrderByPageThenOrder()
     {
         var surveyId = Guid.NewGuid();
         var multiId = Guid.NewGuid();
@@ -5158,7 +5158,7 @@ public class SurveyServiceTests
     }
 
     [HumansFact]
-    public async Task GetResponseExportAsync_includes_grid_schema_and_resolved_selections()
+    public async Task GetResponseExportAsync_Grid_IncludesSchema()
     {
         var surveyId = Guid.NewGuid();
         var gridId = Guid.NewGuid();
@@ -5192,7 +5192,7 @@ public class SurveyServiceTests
     }
 
     [HumansFact]
-    public async Task GetResponseExportAsync_includes_ranked_schema_availability_and_raw_ballot()
+    public async Task GetResponseExportAsync_Ranked_IncludesRawBallot()
     {
         var surveyId = Guid.NewGuid();
         var questionId = Guid.NewGuid();
@@ -5234,7 +5234,7 @@ public class SurveyServiceTests
     }
 
     [HumansFact]
-    public async Task GetResponseExportAsync_preserves_raw_grid_keys_removed_from_the_current_definition()
+    public async Task GetResponseExportAsync_RemovedGridKeys_AreKept()
     {
         var surveyId = Guid.NewGuid();
         var gridId = Guid.NewGuid();
@@ -5263,7 +5263,7 @@ public class SurveyServiceTests
     }
 
     [HumansFact]
-    public async Task GetResponseExportAsync_orders_rows_by_submitted_at()
+    public async Task GetResponseExportAsync_Rows_OrderBySubmittedAt()
     {
         var surveyId = Guid.NewGuid();
         var survey = SurveyWith(SurveyStatus.Closed, null, null);
@@ -5288,7 +5288,7 @@ public class SurveyServiceTests
     [HumansTheory]
     [InlineData(false)]
     [InlineData(true)]
-    public async Task ContributeForUserAsync_includes_identified_responses_and_invitations_from_merged_accounts(bool archivedId)
+    public async Task ContributeForUserAsync_MergedAccounts_AreIncluded(bool archivedId)
     {
         var survivorId = Guid.NewGuid();
         var sourceId = Guid.NewGuid();
@@ -5326,7 +5326,7 @@ public class SurveyServiceTests
     [HumansTheory]
     [InlineData(false)]
     [InlineData(true)]
-    public async Task ContributeForUserAsync_returns_survey_responses_slice_with_title_and_answers(bool missingDefinition)
+    public async Task ContributeForUserAsync_Responses_IncludeTitleWithAnswers(bool missingDefinition)
     {
         var userId = Guid.NewGuid();
         var surveyId = Guid.NewGuid();
@@ -5385,7 +5385,7 @@ public class SurveyServiceTests
     [HumansTheory]
     [InlineData("de", "ES")]
     [InlineData("ca", "CA")]
-    public async Task ContributeForUserAsync_resolves_titles_and_answer_labels_with_the_survey_default(
+    public async Task ContributeForUserAsync_Labels_UseSurveyDefault(
         string requestedCulture, string expectedLanguage)
     {
         static LocalizedText Translations(string text) => new(new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
@@ -5435,7 +5435,7 @@ public class SurveyServiceTests
     }
 
     [HumansFact]
-    public async Task ContributeForUserAsync_returns_empty_collection_slice_when_user_has_no_identified_responses()
+    public async Task ContributeForUserAsync_NoIdentifiedResponses_ReturnsEmptySlice()
     {
         var userId = Guid.NewGuid();
         _repo.GetIdentifiedResponsesForUserAsync(userId, Arg.Any<CancellationToken>())
@@ -5452,7 +5452,7 @@ public class SurveyServiceTests
     }
 
     [HumansFact]
-    public async Task ContributeForUserAsync_surfaces_only_what_the_repo_returns()
+    public async Task ContributeForUserAsync_RepoRows_AreOnlySource()
     {
         // The repository query is the gate that excludes CompletionTracked/Anonymous tiers.
         // The contributor must not re-add any other responses — it surfaces exactly the repo result.
@@ -5480,7 +5480,7 @@ public class SurveyServiceTests
     }
 
     [HumansFact]
-    public async Task ContributeForUserAsync_exports_the_surveys_this_person_authored()
+    public async Task ContributeForUserAsync_Author_ExportsAuthoredSurveys()
     {
         var userId = Guid.NewGuid();
         _repo.GetIdentifiedResponsesForUserAsync(userId, Arg.Any<CancellationToken>())
@@ -5507,7 +5507,7 @@ public class SurveyServiceTests
     }
 
     [HumansFact]
-    public async Task ContributeForUserAsync_exports_the_invitation_ledger_even_with_no_response_of_their_own()
+    public async Task ContributeForUserAsync_NoResponse_ExportsInvitations()
     {
         // The case the responses slice cannot cover: invited, answered under completion tracking
         // (so the response carries no UserId), and the ledger row is the only record of theirs.
@@ -5547,7 +5547,7 @@ public class SurveyServiceTests
     }
 
     [HumansFact]
-    public async Task ContributeForUserAsync_declares_erasure_for_every_key_it_exports()
+    public async Task ContributeForUserAsync_ExportedKeys_DeclareErasure()
     {
         var userId = Guid.NewGuid();
         _repo.GetIdentifiedResponsesForUserAsync(userId, Arg.Any<CancellationToken>())
@@ -5562,7 +5562,7 @@ public class SurveyServiceTests
     }
 
     [HumansFact]
-    public async Task EraseForUserAsync_drops_authorship_as_well_as_responses()
+    public async Task EraseForUserAsync_Author_DropsAuthorship()
     {
         var userId = Guid.NewGuid();
 
@@ -5573,7 +5573,7 @@ public class SurveyServiceTests
     }
 
     [HumansFact]
-    public async Task ReassignAsync_moves_authored_surveys_to_the_surviving_account()
+    public async Task ReassignAsync_AuthoredSurveys_MoveToSurvivor()
     {
         var eliminated = Guid.NewGuid();
         var survivor = Guid.NewGuid();
@@ -5588,7 +5588,7 @@ public class SurveyServiceTests
     }
 
     [HumansFact]
-    public async Task CreateAsync_allows_ranked_choice_in_an_ordinary_survey()
+    public async Task CreateAsync_RankedChoiceOrdinarySurvey_IsAllowed()
     {
         Survey? captured = null;
         _repo.When(repository => repository.AddAsync(
@@ -5608,7 +5608,7 @@ public class SurveyServiceTests
     }
 
     [HumansFact]
-    public async Task CreateAsync_asociado_vote_requires_fixed_asociado_configuration_but_allows_a_slug()
+    public async Task CreateAsync_AsociadoVote_NeedsFixedConfiguration()
     {
         var ranked = RankedInput();
         var service = CreateService();
@@ -5658,7 +5658,7 @@ public class SurveyServiceTests
     }
 
     [HumansFact]
-    public async Task OpenAsync_rejects_reopening_a_closed_asociado_vote()
+    public async Task OpenAsync_ClosedAsociadoVote_ReturnsRefusal()
     {
         var survey = SurveyWith(SurveyStatus.Closed, null, null);
         survey.IsAsociadoVote = true;
@@ -5675,7 +5675,7 @@ public class SurveyServiceTests
     }
 
     [HumansFact]
-    public async Task UpdateAsync_cannot_edit_an_asociado_vote_after_opening()
+    public async Task UpdateAsync_OpenedAsociadoVote_ReturnsRefusal()
     {
         var survey = SurveyWith(SurveyStatus.Open, null, null);
         survey.IsAsociadoVote = true;
@@ -5698,7 +5698,7 @@ public class SurveyServiceTests
     }
 
     [HumansFact]
-    public async Task Open_asociado_vote_exposes_participation_but_embargoes_answer_results_and_exports()
+    public async Task AsociadoVote_Open_EmbargoesAnswerResults()
     {
         var survey = SurveyWith(SurveyStatus.Open, null, null);
         survey.IsAsociadoVote = true;
@@ -5743,7 +5743,7 @@ public class SurveyServiceTests
     }
 
     [HumansFact]
-    public async Task Closed_asociado_vote_exposes_unattributed_ballots_and_exports_without_identity_or_timing()
+    public async Task AsociadoVote_Closed_ExportsWithoutIdentity()
     {
         var survey = SurveyWith(SurveyStatus.Closed, SurveyAudienceType.Asociados, null);
         survey.IsAsociadoVote = true;
@@ -5792,7 +5792,7 @@ public class SurveyServiceTests
     }
 
     [HumansFact]
-    public async Task UpdateAsync_freezes_ranked_candidates_order_and_settings_after_first_saved_answer()
+    public async Task UpdateAsync_RankedAfterFirstAnswer_IsFrozen()
     {
         // Not an Asociado vote: the freeze must hold on its own, without the open-vote lock.
         var survey = SurveyWith(SurveyStatus.Open, null, null);
@@ -5818,7 +5818,7 @@ public class SurveyServiceTests
     }
 
     [HumansFact]
-    public async Task SetRankedAvailabilityAsync_is_post_close_only_and_audits_stable_values()
+    public async Task SetRankedAvailabilityAsync_BeforeClose_ReturnsRefusal()
     {
         var survey = SurveyWith(SurveyStatus.Closed, SurveyAudienceType.Asociados, null);
         survey.IsAsociadoVote = true;
@@ -5852,7 +5852,7 @@ public class SurveyServiceTests
     [InlineData("missing-survey", "Survey not found.")]
     [InlineData("missing-question", "Ranked-choice question not found.")]
     [InlineData("wrong-question-type", "Ranked-choice question not found.")]
-    public async Task SetRankedAvailabilityAsync_refuses_invalid_targets_without_writes(string target, string reason)
+    public async Task SetRankedAvailabilityAsync_InvalidTarget_ReturnsRefusal(string target, string reason)
     {
         var survey = SurveyWith(string.Equals(target, "open", StringComparison.Ordinal) ? SurveyStatus.Open : SurveyStatus.Closed, SurveyAudienceType.Asociados, null);
         survey.IsAsociadoVote = true;
@@ -5875,7 +5875,7 @@ public class SurveyServiceTests
     }
 
     [HumansFact]
-    public async Task Closed_ranked_results_preserve_original_and_recount_available_options()
+    public async Task RankedResults_Closed_RecountAvailableOptions()
     {
         var survey = SurveyWith(SurveyStatus.Closed, null, null);
         survey.IsAsociadoVote = true;
@@ -5930,7 +5930,7 @@ public class SurveyServiceTests
     }
 
     [HumansFact]
-    public async Task SubmitForApprovalAsync_moves_authors_own_draft_to_pending_approval()
+    public async Task SubmitForApprovalAsync_OwnDraft_BecomesPending()
     {
         var authorId = Guid.NewGuid();
         var survey = SurveyWith(SurveyStatus.Draft, null, null, createdByUserId: authorId);
@@ -5945,7 +5945,7 @@ public class SurveyServiceTests
     }
 
     [HumansFact]
-    public async Task SubmitForApprovalAsync_returns_refusal_for_a_non_author()
+    public async Task SubmitForApprovalAsync_NonAuthor_ReturnsRefusal()
     {
         var authorId = Guid.NewGuid();
         var survey = SurveyWith(SurveyStatus.Draft, null, null, createdByUserId: authorId);
@@ -5964,7 +5964,7 @@ public class SurveyServiceTests
     [InlineData(SurveyStatus.PendingApproval)]
     [InlineData(SurveyStatus.Open)]
     [InlineData(SurveyStatus.Closed)]
-    public async Task SubmitForApprovalAsync_returns_refusal_when_survey_is_not_a_draft(SurveyStatus status)
+    public async Task SubmitForApprovalAsync_NotDraft_ReturnsRefusal(SurveyStatus status)
     {
         var authorId = Guid.NewGuid();
         var survey = SurveyWith(status, null, null, createdByUserId: authorId);
@@ -5980,7 +5980,7 @@ public class SurveyServiceTests
     }
 
     [HumansFact]
-    public async Task SubmitForApprovalAsync_returns_refusal_when_survey_missing()
+    public async Task SubmitForApprovalAsync_SurveyMissing_ReturnsRefusal()
     {
         _repo.GetByIdAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>()).Returns((Survey?)null);
 
@@ -5993,7 +5993,7 @@ public class SurveyServiceTests
     }
 
     [HumansFact]
-    public async Task ApproveAndSendAsync_opens_the_survey_and_sends_invitations_in_one_step()
+    public async Task ApproveAndSendAsync_Valid_OpensThenSends()
     {
         var authorId = Guid.NewGuid();
         var teamId = Guid.NewGuid();
@@ -6023,7 +6023,7 @@ public class SurveyServiceTests
     }
 
     [HumansFact]
-    public async Task ApproveAndSendAsync_returns_refusal_for_a_viewer_who_does_not_manage_surveys()
+    public async Task ApproveAndSendAsync_NonManager_ReturnsRefusal()
     {
         var survey = SurveyWith(SurveyStatus.PendingApproval, null, null);
         _repo.GetByIdAsync(survey.Id, Arg.Any<CancellationToken>()).Returns(survey);
@@ -6040,7 +6040,7 @@ public class SurveyServiceTests
     [InlineData(SurveyStatus.Draft)]
     [InlineData(SurveyStatus.Open)]
     [InlineData(SurveyStatus.Closed)]
-    public async Task ApproveAndSendAsync_returns_refusal_when_survey_is_not_pending_approval(SurveyStatus status)
+    public async Task ApproveAndSendAsync_NotPending_ReturnsRefusal(SurveyStatus status)
     {
         var survey = SurveyWith(status, null, null);
         _repo.GetByIdAsync(survey.Id, Arg.Any<CancellationToken>()).Returns(survey);
@@ -6054,7 +6054,7 @@ public class SurveyServiceTests
     }
 
     [HumansFact]
-    public async Task ApproveAndSendAsync_leaves_the_survey_pending_when_it_has_no_audience()
+    public async Task ApproveAndSendAsync_NoAudience_StaysPending()
     {
         // Open is not a state the author can edit out of, so a misconfigured audience has to
         // fail before approval is persisted — otherwise the survey is stranded Open and out
@@ -6072,7 +6072,7 @@ public class SurveyServiceTests
     }
 
     [HumansFact]
-    public async Task ApproveAndSendAsync_leaves_the_survey_pending_when_the_audience_resolves_to_nobody()
+    public async Task ApproveAndSendAsync_EmptyAudience_StaysPending()
     {
         // Well-formed configuration — a Team audience carrying a team id — but the team is gone,
         // so there is nobody to ask. Approving would open a survey that invites no one and put it
@@ -6092,7 +6092,7 @@ public class SurveyServiceTests
     }
 
     [HumansFact]
-    public async Task RejectAsync_returns_a_pending_survey_to_draft_with_the_note()
+    public async Task RejectAsync_Pending_ReturnsToDraft()
     {
         var authorId = Guid.NewGuid();
         var survey = SurveyWith(SurveyStatus.PendingApproval, null, null, createdByUserId: authorId);
@@ -6110,7 +6110,7 @@ public class SurveyServiceTests
     }
 
     [HumansFact]
-    public async Task RejectAsync_rejects_an_oversized_note_without_persisting_or_auditing()
+    public async Task RejectAsync_OversizedNote_ReturnsRefusal()
     {
         var survey = SurveyWith(SurveyStatus.PendingApproval, null, null);
         _repo.GetByIdAsync(survey.Id, Arg.Any<CancellationToken>()).Returns(survey);
@@ -6126,7 +6126,7 @@ public class SurveyServiceTests
     }
 
     [HumansFact]
-    public async Task RejectAsync_accepts_a_trimmed_note_at_the_storage_limit()
+    public async Task RejectAsync_NoteAtLimit_IsAccepted()
     {
         var survey = SurveyWith(SurveyStatus.PendingApproval, null, null);
         _repo.GetByIdAsync(survey.Id, Arg.Any<CancellationToken>()).Returns(survey);
@@ -6141,7 +6141,7 @@ public class SurveyServiceTests
     }
 
     [HumansFact]
-    public async Task RejectAsync_returns_refusal_for_a_viewer_who_does_not_manage_surveys()
+    public async Task RejectAsync_NonManager_ReturnsRefusal()
     {
         var survey = SurveyWith(SurveyStatus.PendingApproval, null, null);
         _repo.GetByIdAsync(survey.Id, Arg.Any<CancellationToken>()).Returns(survey);
@@ -6159,7 +6159,7 @@ public class SurveyServiceTests
     [InlineData("")]
     [InlineData("   ")]
     [InlineData(null)]
-    public async Task RejectAsync_returns_refusal_when_the_note_is_blank(string? note)
+    public async Task RejectAsync_BlankNote_ReturnsRefusal(string? note)
     {
         var survey = SurveyWith(SurveyStatus.PendingApproval, null, null);
         _repo.GetByIdAsync(survey.Id, Arg.Any<CancellationToken>()).Returns(survey);
@@ -6177,7 +6177,7 @@ public class SurveyServiceTests
     [InlineData(SurveyStatus.Draft)]
     [InlineData(SurveyStatus.Open)]
     [InlineData(SurveyStatus.Closed)]
-    public async Task RejectAsync_returns_refusal_when_survey_is_not_pending_approval(SurveyStatus status)
+    public async Task RejectAsync_NotPending_ReturnsRefusal(SurveyStatus status)
     {
         var survey = SurveyWith(status, null, null);
         _repo.GetByIdAsync(survey.Id, Arg.Any<CancellationToken>()).Returns(survey);
@@ -6192,7 +6192,7 @@ public class SurveyServiceTests
     }
 
     [HumansFact]
-    public async Task OpenAsync_returns_refusal_for_a_survey_pending_approval()
+    public async Task OpenAsync_PendingApproval_ReturnsRefusal()
     {
         var id = Guid.NewGuid();
         _repo.GetStatusAsync(id, Arg.Any<CancellationToken>()).Returns(SurveyStatus.PendingApproval);
@@ -6205,7 +6205,7 @@ public class SurveyServiceTests
     }
 
     [HumansFact]
-    public async Task CloseAsync_returns_refusal_for_a_survey_pending_approval()
+    public async Task CloseAsync_PendingApproval_ReturnsRefusal()
     {
         // Closed reopens through OpenAsync, so closing a pending submission would walk it out of
         // the approval gate: PendingApproval → Closed → Open, no approval recorded, nobody invited.
@@ -6220,7 +6220,7 @@ public class SurveyServiceTests
     }
 
     [HumansFact]
-    public async Task GetAdminSummariesAsync_scopes_to_the_authors_own_surveys()
+    public async Task GetAdminSummariesAsync_Author_SeesOwnSurveys()
     {
         var authorId = Guid.NewGuid();
         var mine = SurveyWith(SurveyStatus.Draft, null, null, createdByUserId: authorId);
@@ -6237,7 +6237,7 @@ public class SurveyServiceTests
     }
 
     [HumansFact]
-    public async Task GetAdminSummariesAsync_boardOrAdmin_sees_every_survey()
+    public async Task GetAdminSummariesAsync_BoardOrAdmin_SeesEverySurvey()
     {
         var mine = SurveyWith(SurveyStatus.Draft, null, null, createdByUserId: Guid.NewGuid());
         var someoneElses = SurveyWith(SurveyStatus.Open, null, null, createdByUserId: Guid.NewGuid());
@@ -6253,7 +6253,7 @@ public class SurveyServiceTests
     }
 
     [HumansFact]
-    public async Task GetPendingApprovalQueueAsync_returns_only_pending_surveys_with_authors_and_timestamps()
+    public async Task GetPendingApprovalQueueAsync_MixedStatuses_ReturnsPendingOnly()
     {
         var authorA = Guid.NewGuid();
         var authorB = Guid.NewGuid();
@@ -6273,7 +6273,7 @@ public class SurveyServiceTests
     }
 
     [HumansFact]
-    public async Task Asociado_eligibility_does_not_need_the_consent_coordinator_review()
+    public async Task IsEligibleAsociadoAsync_NoConsentReview_IsEligible()
     {
         var userId = Guid.NewGuid();
         var asociado = Asociado(userId);
@@ -6293,7 +6293,7 @@ public class SurveyServiceTests
     }
 
     [HumansFact]
-    public async Task IsEligibleAsociadoAsync_rejects_a_stored_id_that_resolves_to_another_user()
+    public async Task IsEligibleAsociadoAsync_IdResolvesElsewhere_IsRejected()
     {
         // Every caller passes an id a draft, invitation or response is stored under. An
         // archived id resolves to an eligible survivor, but answering under it would give one

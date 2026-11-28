@@ -27,7 +27,7 @@ namespace Humans.Surveys.Tests.Models;
 public sealed class SurveyIdentityViewTests
 {
     [HumansFact]
-    public async Task ResultsAndInvitations_RenderCanonicalIdentity_AndEncodeNames()
+    public async Task IdentityViews_Names_AreEncoded()
     {
         using var culture = new CultureScope("en");
         var known = Guid.NewGuid();

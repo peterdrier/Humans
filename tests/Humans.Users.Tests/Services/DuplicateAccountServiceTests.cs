@@ -101,7 +101,7 @@ public sealed class DuplicateAccountServiceTests
     }
 
     [HumansFact]
-    public async Task DetectDuplicatesAsync_FlagsALegacyColumnHiddenBehindAnotherVerifiedRow()
+    public async Task DetectDuplicatesAsync_HiddenLegacyColumn_IsFlagged()
     {
         var legacy = Guid.NewGuid();
         var bare = Guid.NewGuid();
@@ -117,7 +117,7 @@ public sealed class DuplicateAccountServiceTests
     }
 
     [HumansFact]
-    public async Task DetectDuplicatesAsync_AuditsANewPairOnce_LowerIdIsTheEntity()
+    public async Task DetectDuplicatesAsync_NewPair_AuditsOnce()
     {
         var a = Guid.NewGuid();
         var b = Guid.NewGuid();

@@ -82,7 +82,7 @@ public class UsersAdminAccountMergesControllerTests
     }
 
     [HumansFact]
-    public async Task Index_PutsThePickedPairFirstAndReadsRecentMergesFromTheAuditLog()
+    public async Task Index_PickedPair_ListsItFirst()
     {
         var pickedA = Guid.NewGuid();
         var pickedB = Guid.NewGuid();
@@ -115,7 +115,7 @@ public class UsersAdminAccountMergesControllerTests
     }
 
     [HumansFact]
-    public async Task Merge_CallsMergeAsyncWithSurvivorArchivedAndAdmin_RedirectsToIndex()
+    public async Task Merge_Valid_PassesSurvivorArchivedAdmin()
     {
         var survivor = Guid.NewGuid();
         var archived = Guid.NewGuid();
@@ -129,7 +129,7 @@ public class UsersAdminAccountMergesControllerTests
     }
 
     [HumansFact]
-    public async Task Merge_WhenRefused_SetsErrorAndRedirectsToIndex()
+    public async Task Merge_Refused_SetsError()
     {
         var survivor = Guid.NewGuid();
         var archived = Guid.NewGuid();

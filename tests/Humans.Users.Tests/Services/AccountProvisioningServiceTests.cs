@@ -358,7 +358,7 @@ public class AccountProvisioningServiceTests
     [Xunit.InlineData("Identity")]
     [Xunit.InlineData("Email")]
     [Xunit.InlineData("Profile")]
-    public async Task ReplaceUnverified_ProvisioningFailureRollsBackEmailAndAccount(string stage)
+    public async Task ReplaceUnverified_ProvisioningFails_RollsBack(string stage)
     {
         var row = SeedPendingReplacement();
         switch (stage)
@@ -385,7 +385,7 @@ public class AccountProvisioningServiceTests
     }
 
     [HumansFact]
-    public async Task ReplaceUnverified_SuccessCommitsFreshVerifiedOwnerAndRefreshesBothUsers()
+    public async Task ReplaceUnverified_Success_CommitsVerifiedOwner()
     {
         var row = SeedPendingReplacement();
         Transaction? transaction = null;
@@ -495,7 +495,7 @@ public class AccountProvisioningServiceTests
     }
 
     [HumansFact]
-    public async Task FindOrCreateUserByEmailAsync_CreatesNewUser_WhenNoExistingAccount()
+    public async Task FindOrCreateUserByEmailAsync_NoAccount_CreatesUser()
     {
         var result = await _service.FindOrCreateUserByEmailAsync(
             "alice@example.com", "Alice Smith", ContactSource.TicketTailor, Xunit.TestContext.Current.CancellationToken);
@@ -514,7 +514,7 @@ public class AccountProvisioningServiceTests
     }
 
     [HumansFact]
-    public async Task FindOrCreateUserByEmailAsync_FindsExisting_ByPrimaryEmail()
+    public async Task FindOrCreateUserByEmailAsync_PrimaryEmail_FindsExisting()
     {
         var existingUser = new User
         {
@@ -547,7 +547,7 @@ public class AccountProvisioningServiceTests
     }
 
     [HumansFact]
-    public async Task FindOrCreateUserByEmailAsync_FindsExisting_BySecondaryEmail()
+    public async Task FindOrCreateUserByEmailAsync_SecondaryEmail_FindsExisting()
     {
         // Seed a user with a secondary email
         var existingUser = new User
@@ -625,7 +625,7 @@ public class AccountProvisioningServiceTests
     }
 
     [HumansFact]
-    public async Task FindOrCreateUserByEmailAsync_SetsContactSource_OnSelfRegisteredUser()
+    public async Task FindOrCreateUserByEmailAsync_SelfRegistered_SetsSource()
     {
         // Seed a self-registered user (no ContactSource)
         var existingUser = new User
@@ -660,7 +660,7 @@ public class AccountProvisioningServiceTests
     }
 
     [HumansFact]
-    public async Task FindOrCreateUserByEmailAsync_UsesEmailPrefix_WhenDisplayNameEmpty()
+    public async Task FindOrCreateUserByEmailAsync_Nameless_UsesEmailPrefix()
     {
         var result = await _service.FindOrCreateUserByEmailAsync(
             "grace@example.com", null, ContactSource.MailerLite, Xunit.TestContext.Current.CancellationToken);
@@ -694,7 +694,7 @@ public class AccountProvisioningServiceTests
     }
 
     [HumansFact]
-    public async Task FindOrCreateUserByEmailAsync_NewUser_GetsOneVerifiedPrimaryEmail()
+    public async Task FindOrCreateUserByEmailAsync_Created_HasVerifiedPrimary()
     {
         var result = await _service.FindOrCreateUserByEmailAsync(
             "ivy@example.com", "Ivy", ContactSource.TicketTailor, Xunit.TestContext.Current.CancellationToken);
@@ -711,7 +711,7 @@ public class AccountProvisioningServiceTests
     }
 
     [HumansFact]
-    public async Task FindOrCreateUserByEmailAsync_RoutesEmailRowsThroughIUserEmailService()
+    public async Task FindOrCreateUserByEmailAsync_Rows_UseEmailService()
     {
         // Email-row policy routes through IUserEmailService, not the repository.
         var result = await _service.FindOrCreateUserByEmailAsync(
@@ -727,7 +727,7 @@ public class AccountProvisioningServiceTests
     [HumansTheory]
     [Xunit.InlineData(false)]
     [Xunit.InlineData(true)]
-    public async Task ImportCreationFailure_RollsBackUserAndEmail_BeforeRetry(bool profileFailure)
+    public async Task Import_CreationFails_RollsBackUser(bool profileFailure)
     {
         var ct = Xunit.TestContext.Current.CancellationToken;
         _userEmailFake.ThrowOnAddProvisioned = !profileFailure;
@@ -769,7 +769,7 @@ public class AccountProvisioningServiceTests
     [HumansTheory]
     [Xunit.InlineData(false)]
     [Xunit.InlineData(true)]
-    public async Task ProvisioningRetry_RepairsProfileAfterUserAndEmailWereSaved(bool imported)
+    public async Task Provisioning_Retry_RepairsMissingProfile(bool imported)
     {
         var ct = Xunit.TestContext.Current.CancellationToken;
         if (imported)

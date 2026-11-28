@@ -10,7 +10,7 @@ public class SectionAccessMatrixTests
         ((ISectionAccessMatrix)new Section()).AccessMatrices.Single(m => string.Equals(m.Key, "Profile", StringComparison.Ordinal));
 
     [HumansFact]
-    public void Contributes_the_Profile_matrix_under_the_key_the_page_calls_it_with()
+    public void AccessMatrix_Profile_UsesPageKey()
     {
         var matrix = Matrix();
 
@@ -25,7 +25,7 @@ public class SectionAccessMatrixTests
     /// point is that neither sees them in full, so it is pinned literally.
     /// </summary>
     [HumansFact]
-    public void Pins_every_feature_row()
+    public void AccessMatrix_MatchesFeatureRowPin()
     {
         Matrix().Features
             .Select(f => $"{f.Name}: {string.Join(", ", f.RoleAccess.Select(kv => $"{kv.Key}={kv.Value}"))}")
@@ -38,7 +38,7 @@ public class SectionAccessMatrixTests
     }
 
     [HumansFact]
-    public void Pins_the_UsersAdmin_matrix()
+    public void AccessMatrix_MatchesUsersAdminPin()
     {
         var matrix = ((ISectionAccessMatrix)new Section()).AccessMatrices
             .Single(m => string.Equals(m.Key, "UsersAdmin", StringComparison.Ordinal));

@@ -111,21 +111,21 @@ public sealed class SurveyAuthorizationHandlerTests
     }
 
     [HumansFact]
-    public async Task Author_can_edit_their_own_draft()
+    public async Task Edit_AuthorOwnDraft_IsAllowed()
     {
         var result = await EvaluateAsync(CreateUser(AuthorId), Detail(SurveyStatus.Draft, AuthorId), SurveyOperation.Edit);
         result.Should().BeTrue();
     }
 
     [HumansFact]
-    public async Task Author_cannot_edit_their_own_survey_once_pending_approval()
+    public async Task Edit_AuthorPendingApproval_IsDenied()
     {
         var result = await EvaluateAsync(CreateUser(AuthorId), Detail(SurveyStatus.PendingApproval, AuthorId), SurveyOperation.Edit);
         result.Should().BeFalse();
     }
 
     [HumansFact]
-    public async Task NonOwner_cannot_edit_someone_elses_draft()
+    public async Task Edit_NonOwner_IsDenied()
     {
         var result = await EvaluateAsync(CreateUser(OtherUserId), Detail(SurveyStatus.Draft, AuthorId), SurveyOperation.Edit);
         result.Should().BeFalse();
@@ -135,7 +135,7 @@ public sealed class SurveyAuthorizationHandlerTests
     [Xunit.InlineData(SurveysRoles.SurveysAdmin, true)]
     [Xunit.InlineData(RoleNames.Admin, true)]
     [Xunit.InlineData(RoleNames.Board, false)]
-    public async Task Surveys_admins_edit_any_survey_regardless_of_status_and_Board_does_not(string role, bool expected)
+    public async Task Edit_AnyStatus_NeedsSurveysAdmin(string role, bool expected)
     {
         var result = await EvaluateAsync(
             CreateUserWithRole(role), Detail(SurveyStatus.PendingApproval, AuthorId), SurveyOperation.Edit);
@@ -143,21 +143,21 @@ public sealed class SurveyAuthorizationHandlerTests
     }
 
     [HumansFact]
-    public async Task Author_can_submit_their_own_draft()
+    public async Task Submit_AuthorOwnDraft_IsAllowed()
     {
         var result = await EvaluateAsync(CreateUser(AuthorId), Detail(SurveyStatus.Draft, AuthorId), SurveyOperation.Submit);
         result.Should().BeTrue();
     }
 
     [HumansFact]
-    public async Task NonOwner_cannot_submit_someone_elses_draft()
+    public async Task Submit_NonOwner_IsDenied()
     {
         var result = await EvaluateAsync(CreateUser(OtherUserId), Detail(SurveyStatus.Draft, AuthorId), SurveyOperation.Submit);
         result.Should().BeFalse();
     }
 
     [HumansFact]
-    public async Task Admin_cannot_submit_someone_elses_draft()
+    public async Task Submit_AdminOnOthersDraft_IsDenied()
     {
         // Submit is author-only, regardless of any role also held.
         var result = await EvaluateAsync(
@@ -166,28 +166,28 @@ public sealed class SurveyAuthorizationHandlerTests
     }
 
     [HumansFact]
-    public async Task Author_cannot_submit_a_survey_already_pending_approval()
+    public async Task Submit_AuthorPendingApproval_IsDenied()
     {
         var result = await EvaluateAsync(CreateUser(AuthorId), Detail(SurveyStatus.PendingApproval, AuthorId), SurveyOperation.Submit);
         result.Should().BeFalse();
     }
 
     [HumansFact]
-    public async Task Author_can_view_their_own_results_once_closed()
+    public async Task ViewResults_AuthorClosedSurvey_IsAllowed()
     {
         var result = await EvaluateAsync(CreateUser(AuthorId), Detail(SurveyStatus.Closed, AuthorId), SurveyOperation.ViewResults);
         result.Should().BeTrue();
     }
 
     [HumansFact]
-    public async Task Author_cannot_view_their_own_results_before_closing()
+    public async Task ViewResults_AuthorBeforeClose_IsDenied()
     {
         var result = await EvaluateAsync(CreateUser(AuthorId), Detail(SurveyStatus.Open, AuthorId), SurveyOperation.ViewResults);
         result.Should().BeFalse();
     }
 
     [HumansFact]
-    public async Task NonOwner_cannot_view_someone_elses_closed_results()
+    public async Task ViewResults_NonOwnerClosedSurvey_IsDenied()
     {
         var result = await EvaluateAsync(CreateUser(OtherUserId), Detail(SurveyStatus.Closed, AuthorId), SurveyOperation.ViewResults);
         result.Should().BeFalse();
@@ -197,7 +197,7 @@ public sealed class SurveyAuthorizationHandlerTests
     [Xunit.InlineData(SurveysRoles.SurveysAdmin)]
     [Xunit.InlineData(RoleNames.Admin)]
     [Xunit.InlineData(RoleNames.Board)]
-    public async Task Readers_view_results_for_any_survey_at_any_status(string role)
+    public async Task ViewResults_ReaderAnyStatus_IsAllowed(string role)
     {
         var result = await EvaluateAsync(
             CreateUserWithRole(role), Detail(SurveyStatus.Open, AuthorId), SurveyOperation.ViewResults);
@@ -208,7 +208,7 @@ public sealed class SurveyAuthorizationHandlerTests
     [Xunit.InlineData(SurveysRoles.SurveysAdmin, true)]
     [Xunit.InlineData(RoleNames.Admin, true)]
     [Xunit.InlineData(RoleNames.Board, false)]
-    public async Task Only_surveys_admins_download_someone_elses_results(string role, bool expected)
+    public async Task Download_OthersResults_NeedsSurveysAdmin(string role, bool expected)
     {
         var result = await EvaluateAsync(
             CreateUserWithRole(role), Detail(SurveyStatus.Closed, AuthorId), SurveyOperation.ExportResults);
@@ -218,28 +218,28 @@ public sealed class SurveyAuthorizationHandlerTests
     [HumansTheory]
     [Xunit.InlineData(SurveyStatus.Closed, true)]
     [Xunit.InlineData(SurveyStatus.Open, false)]
-    public async Task Author_downloads_their_own_results_once_closed(SurveyStatus status, bool expected)
+    public async Task Download_AuthorClosedSurvey_IsAllowed(SurveyStatus status, bool expected)
     {
         var result = await EvaluateAsync(CreateUser(AuthorId), Detail(status, AuthorId), SurveyOperation.ExportResults);
         result.Should().Be(expected);
     }
 
     [HumansFact]
-    public async Task Author_can_preview_their_own_survey_at_any_status()
+    public async Task Preview_AuthorAnyStatus_IsAllowed()
     {
         var result = await EvaluateAsync(CreateUser(AuthorId), Detail(SurveyStatus.PendingApproval, AuthorId), SurveyOperation.Preview);
         result.Should().BeTrue();
     }
 
     [HumansFact]
-    public async Task NonOwner_cannot_preview_someone_elses_survey()
+    public async Task Preview_NonOwner_IsDenied()
     {
         var result = await EvaluateAsync(CreateUser(OtherUserId), Detail(SurveyStatus.Draft, AuthorId), SurveyOperation.Preview);
         result.Should().BeFalse();
     }
 
     [HumansFact]
-    public async Task Board_can_preview_any_survey()
+    public async Task Preview_BoardAnySurvey_IsAllowed()
     {
         var result = await EvaluateAsync(
             CreateUserWithRole(RoleNames.Board), Detail(SurveyStatus.Draft, AuthorId), SurveyOperation.Preview);
@@ -247,7 +247,7 @@ public sealed class SurveyAuthorizationHandlerTests
     }
 
     [HumansFact]
-    public async Task Unauthenticated_user_is_denied_every_operation()
+    public async Task Operations_Unauthenticated_AreDenied()
     {
         var unauthenticated = new ClaimsPrincipal(new ClaimsIdentity());
         var result = await EvaluateAsync(unauthenticated, Detail(SurveyStatus.Draft, AuthorId), SurveyOperation.Edit);

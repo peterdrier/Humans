@@ -17,15 +17,15 @@ public class SurveyBranchingEvaluatorTests
         => new() { [q] = new AnswerState(vals, null, null) };
 
     [HumansFact]
-    public void Null_condition_is_visible()
+    public void IsVisible_NullCondition_IsTrue()
         => SurveyBranchingEvaluator.IsVisible(null, NoAnswers()).Should().BeTrue();
 
     [HumansFact]
-    public void Empty_clauses_is_visible()
+    public void IsVisible_EmptyClauses_IsTrue()
         => SurveyBranchingEvaluator.IsVisible(Cond(BranchCombine.All), NoAnswers()).Should().BeTrue();
 
     [HumansFact]
-    public void Is_matches_selected_value()
+    public void IsVisible_IsSelectedValue_IsTrue()
     {
         var q = Guid.NewGuid();
         var answers = Answers(q, "yes");
@@ -34,7 +34,7 @@ public class SurveyBranchingEvaluatorTests
     }
 
     [HumansFact]
-    public void Is_on_unanswered_question_is_false()
+    public void IsVisible_IsOnUnanswered_IsFalse()
     {
         var q = Guid.NewGuid();
         SurveyBranchingEvaluator.IsVisible(
@@ -43,7 +43,7 @@ public class SurveyBranchingEvaluatorTests
     }
 
     [HumansFact]
-    public void IsNot_is_true_unless_value_selected()
+    public void IsVisible_IsNotValueSelected_IsFalse()
     {
         var q = Guid.NewGuid();
         SurveyBranchingEvaluator.IsVisible(Cond(BranchCombine.All, Clause(q, BranchOperator.IsNot, "yes")), Answers(q, "no")).Should().BeTrue();
@@ -54,7 +54,7 @@ public class SurveyBranchingEvaluatorTests
     }
 
     [HumansFact]
-    public void Answered_and_NotAnswered()
+    public void IsVisible_AnsweredOperators_FollowAnswerState()
     {
         var q = Guid.NewGuid();
         SurveyBranchingEvaluator.IsVisible(Cond(BranchCombine.All, Clause(q, BranchOperator.Answered)), Answers(q, "a")).Should().BeTrue();
@@ -64,7 +64,7 @@ public class SurveyBranchingEvaluatorTests
     }
 
     [HumansFact]
-    public void Answered_sees_text_answers()
+    public void IsVisible_AnsweredText_IsTrue()
     {
         var q = Guid.NewGuid();
         var answers = new Dictionary<Guid, AnswerState> { [q] = new AnswerState([], "some text", null) };
@@ -73,7 +73,7 @@ public class SurveyBranchingEvaluatorTests
     }
 
     [HumansFact]
-    public void Answered_sees_rating_answers()
+    public void IsVisible_AnsweredRating_IsTrue()
     {
         var q = Guid.NewGuid();
         var answers = new Dictionary<Guid, AnswerState> { [q] = new AnswerState([], null, 4) };
@@ -82,7 +82,7 @@ public class SurveyBranchingEvaluatorTests
     }
 
     [HumansFact]
-    public void Whitespace_text_is_not_answered()
+    public void IsVisible_WhitespaceText_IsNotAnswered()
     {
         var q = Guid.NewGuid();
         var answers = new Dictionary<Guid, AnswerState> { [q] = new AnswerState([], "   ", null) };
@@ -90,7 +90,7 @@ public class SurveyBranchingEvaluatorTests
     }
 
     [HumansFact]
-    public void All_combine_is_and()
+    public void IsVisible_AllCombine_NeedsEveryClause()
     {
         var q1 = Guid.NewGuid();
         var q2 = Guid.NewGuid();
@@ -106,7 +106,7 @@ public class SurveyBranchingEvaluatorTests
     }
 
     [HumansFact]
-    public void Any_combine_is_or()
+    public void IsVisible_AnyCombine_NeedsOneClause()
     {
         var q = Guid.NewGuid();
         var answers = Answers(q, "a");
@@ -119,7 +119,7 @@ public class SurveyBranchingEvaluatorTests
     }
 
     [HumansFact]
-    public void Is_on_multichoice_matches_any_selected()
+    public void IsVisible_IsOnMultiChoice_MatchesAnySelected()
     {
         var q = Guid.NewGuid();
         var answers = Answers(q, "a", "b");
@@ -127,7 +127,7 @@ public class SurveyBranchingEvaluatorTests
     }
 
     [HumansFact]
-    public void ValidateNoForwardReferences_flags_self_and_later_references()
+    public void ValidateNoForwardReferences_SelfOrLater_IsFlagged()
     {
         var q1 = Guid.NewGuid();
         var q2 = Guid.NewGuid();
@@ -145,7 +145,7 @@ public class SurveyBranchingEvaluatorTests
     }
 
     [HumansFact]
-    public void ValidateNoForwardReferences_passes_when_all_backward()
+    public void ValidateNoForwardReferences_AllBackward_Passes()
     {
         var q1 = Guid.NewGuid();
         var q2 = Guid.NewGuid();
@@ -159,7 +159,7 @@ public class SurveyBranchingEvaluatorTests
     }
 
     [HumansFact]
-    public void ValidateClauseOptionValues_flags_Is_and_IsNot_without_values()
+    public void ValidateClauseOptionValues_IsWithoutValues_IsFlagged()
     {
         var q1 = Guid.NewGuid();
         var q2 = Guid.NewGuid();
@@ -180,7 +180,7 @@ public class SurveyBranchingEvaluatorTests
     }
 
     [HumansFact]
-    public void EffectiveAnswerStates_drops_stale_answers_on_hidden_branches_transitively()
+    public void EffectiveAnswerStates_HiddenBranches_DropStaleAnswers()
     {
         // Q1 gates Q2, Q2 gates Q3. Q2/Q3 were answered while Q1 == "yes"; after flipping Q1 to
         // "no", their stale answers must not count — directly or via each other.

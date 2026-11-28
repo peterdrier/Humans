@@ -68,7 +68,7 @@ public class ProfileAdminControllerTests
     }
 
     [HumansFact]
-    public async Task Orphan_email_account_preflight_observes_cancellation()
+    public async Task DeleteOrphanEmail_CancelledPreflight_Throws()
     {
         using var request = new CancellationTokenSource();
         _users.GetUserInfoAsync(_adminUserId, Arg.Any<CancellationToken>()).Returns(call =>
@@ -98,7 +98,7 @@ public class ProfileAdminControllerTests
     }
 
     [HumansFact]
-    public async Task EmailProblems_GET_CallsScanAndReturnsViewWithModel()
+    public async Task EmailProblems_Get_ReturnsScanModel()
     {
         _emailProblems.ScanAsync(Arg.Any<CancellationToken>())
             .Returns(new EmailProblemsReport(NodaTime.SystemClock.Instance.GetCurrentInstant(),
@@ -112,7 +112,7 @@ public class ProfileAdminControllerTests
     }
 
     [HumansFact]
-    public async Task DeleteOrphanEmail_RowExists_PassesActorAndRedirects()
+    public async Task DeleteOrphanEmail_RowExists_PassesActor()
     {
         var emailId = Guid.NewGuid();
         _userEmails.DeleteByIdAsync(emailId, Arg.Any<CancellationToken>(), _adminUserId).Returns(true);

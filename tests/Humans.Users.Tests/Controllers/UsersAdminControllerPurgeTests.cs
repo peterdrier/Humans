@@ -105,7 +105,7 @@ public class UsersAdminControllerPurgeTests
     [InlineData(LifecycleAction.RejectSignup)]
     [InlineData(LifecycleAction.PurgeHuman)]
     [InlineData(LifecycleAction.PurgeHumanCancelledAtTargetLookup)]
-    public async Task Lifecycle_account_preflight_observes_cancellation(LifecycleAction action)
+    public async Task LifecycleActions_CancelledPreflight_Throw(LifecycleAction action)
     {
         using var request = new CancellationTokenSource();
         var targetId = Guid.NewGuid();
@@ -194,7 +194,7 @@ public class UsersAdminControllerPurgeTests
     }
 
     [HumansFact]
-    public async Task SuspendHuman_ForwardsActorAndNotesThenRedirectsToDetail()
+    public async Task SuspendHuman_Valid_ForwardsActorNotes()
     {
         var target = Guid.NewGuid();
         _lifecycle.SuspendAsync(target, _adminUserId, "Repeatedly misses shifts", Arg.Any<CancellationToken>())
@@ -222,7 +222,7 @@ public class UsersAdminControllerPurgeTests
     }
 
     [HumansFact]
-    public async Task RejectSignup_ForwardsActorAndReasonThenRedirectsToDetail()
+    public async Task RejectSignup_Valid_ForwardsActorReason()
     {
         var target = Guid.NewGuid();
         _onboarding.RejectSignupAsync(target, _adminUserId, "Duplicate signup", Arg.Any<CancellationToken>())
