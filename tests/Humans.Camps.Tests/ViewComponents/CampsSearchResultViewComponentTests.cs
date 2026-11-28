@@ -18,7 +18,7 @@ public class CampsSearchResultViewComponentTests
     private readonly ICampService _camps = Substitute.For<ICampService>();
 
     [HumansFact]
-    public async Task Renders_the_active_event_season_name()
+    public async Task InvokeAsync_ActiveEvent_ShowsSeasonName()
     {
         StubSettings(publicYear: 2026);
         var id = StubCamp("garden", (2025, "Old Name"), (2026, "Garden of Joy"));
@@ -32,7 +32,7 @@ public class CampsSearchResultViewComponentTests
     }
 
     [HumansFact]
-    public async Task Falls_back_to_the_slug_when_the_camp_has_no_season_for_that_event()
+    public async Task InvokeAsync_NoSeasonForEvent_ShowsSlug()
     {
         StubSettings(publicYear: 2026);
         var id = StubCamp("garden", (2024, "Long Ago"));
@@ -45,7 +45,7 @@ public class CampsSearchResultViewComponentTests
     }
 
     [HumansFact]
-    public async Task Renders_nothing_for_an_unknown_id()
+    public async Task InvokeAsync_UnknownId_RendersNothing()
     {
         _camps.GetCampByIdAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>()).Returns((CampInfo?)null);
 
@@ -57,7 +57,7 @@ public class CampsSearchResultViewComponentTests
     [HumansTheory]
     [Xunit.InlineData(false)]
     [Xunit.InlineData(true)]
-    public async Task AbandonedRequest_CancelsCampAndActiveEventReads(bool settings)
+    public async Task InvokeAsync_AbandonedRequest_CancelsReads(bool settings)
     {
         using var aborted = new CancellationTokenSource();
         await aborted.CancelAsync();

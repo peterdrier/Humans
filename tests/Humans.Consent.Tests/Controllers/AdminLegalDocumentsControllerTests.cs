@@ -104,7 +104,7 @@ public sealed class AdminLegalDocumentsControllerTests
     [InlineData((int)VersionSummaryUpdateResult.Updated, true)]
     [InlineData((int)VersionSummaryUpdateResult.TooLong, true)]
     [InlineData((int)VersionSummaryUpdateResult.TooLong, false)]
-    public async Task SummaryUpdates_surface_refusals_and_require_an_actor(int outcome, bool signedIn)
+    public async Task SummaryUpdates_NoActorOrRefusal_AreSurfaced(int outcome, bool signedIn)
     {
         var actor = Guid.NewGuid();
         var documentId = Guid.NewGuid();

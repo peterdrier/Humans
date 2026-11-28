@@ -155,7 +155,7 @@ public class ICalFeedServiceTests
     }
 
     [HumansFact]
-    public async Task GetFeedIcsAsync_MergedUser_SurvivorsOwnToken_ReturnsNull()
+    public async Task GetFeedIcsAsync_MergedUserToken_ReturnsNull()
     {
         var tombstoneId = Guid.NewGuid();
         var survivorId = Guid.NewGuid();
@@ -174,7 +174,7 @@ public class ICalFeedServiceTests
 
     [HumansTheory]
     [MemberData(nameof(SupportedCultures.All), MemberType = typeof(SupportedCultures))]
-    public async Task GetFeedIcsAsync_ValidToken_SerializesItemsAsUtcVEvents(string language)
+    public async Task GetFeedIcsAsync_ValidToken_WritesUtcEvents(string language)
     {
         var userId = Guid.NewGuid();
         var token = Guid.NewGuid();
@@ -212,7 +212,7 @@ public class ICalFeedServiceTests
     }
 
     [HumansFact]
-    public async Task GetFeedIcsAsync_RepeatingItem_IsOneSeriesInItsOwnZone()
+    public async Task GetFeedIcsAsync_RepeatingItem_IsOneSeries()
     {
         var userId = Guid.NewGuid();
         var token = Guid.NewGuid();
@@ -271,7 +271,7 @@ public class ICalFeedServiceTests
     }
 
     [HumansFact]
-    public async Task GetFeedIcsAsync_LocationUrl_IsAGoogleConferenceLeadsTheDescriptionAndFillsAnEmptyLocation()
+    public async Task GetFeedIcsAsync_LocationUrl_LeadsDescription()
     {
         var userId = Guid.NewGuid();
         var token = Guid.NewGuid();

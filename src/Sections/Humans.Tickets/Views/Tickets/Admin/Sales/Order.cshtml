@@ -68,11 +68,6 @@
         .Build();
 }
 
-@section Crumbs {
-    <a asp-action="Orders" asp-route-id="@o.TicketingSettingsId">Orders</a>
-    <span>@o.Reference</span>
-}
-
 <page-header title="Order @o.Reference" subtitle="@o.BuyerName">
     <page-header-badge><status-badge value="@o.State" /></page-header-badge>
     @if (o.AdminUrl is not null)

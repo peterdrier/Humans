@@ -1,0 +1,17 @@
+{
+  "date": "2026-11",
+  "family": "GPT",
+  "model": "Sol",
+  "version": "6.2",
+  "effort": "low",
+  "brief": "v1",
+  "notes": {
+    "en": "I aimed for a silhouette that keeps both poses legible at navbar size, with fine engraving for larger views. The hands and face are still stylized.",
+    "es": "Busqué una silueta que mantuviera legibles ambas posturas en la barra de navegación, con trazos finos de grabado para tamaños mayores. Las manos y el rostro siguen estilizados.",
+    "de": "Mein Ziel war eine Silhouette, in der beide Posen auch in der Navigationsleiste erkennbar bleiben, mit feinen Gravurlinien für größere Ansichten. Hände und Gesicht bleiben stilisiert.",
+    "it": "Ho cercato una silhouette che mantenesse leggibili entrambe le pose nella barra di navigazione, con linee d’incisione sottili per le dimensioni maggiori. Le mani e il volto restano stilizzati.",
+    "fr": "J’ai cherché une silhouette qui garde les deux poses lisibles dans la barre de navigation, avec de fins traits de gravure pour les grands formats. Les mains et le visage restent stylisés.",
+    "ca": "Vaig buscar una silueta que mantingués llegibles totes dues postures a la barra de navegació, amb traços fins de gravat per a mides més grans. Les mans i el rostre continuen estilitzats.",
+    "nl": "Ik streefde naar een silhouet waarin beide houdingen leesbaar blijven in de navigatiebalk, met fijne graveerlijnen voor grotere weergaven. De handen en het gezicht blijven gestileerd."
+  }
+}

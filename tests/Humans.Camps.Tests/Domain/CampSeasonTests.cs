@@ -10,7 +10,7 @@ public class CampSeasonTests
     private static readonly Instant Now = Instant.FromUtc(2026, 5, 28, 12, 0);
 
     [HumansFact]
-    public void CreatePendingRenewal_CopiesSeasonFieldsAndSetsRequestedYear()
+    public void CreatePendingRenewal_Season_CopiesFieldsWithYear()
     {
         var source = CreateSeason(CampSeasonStatus.Active);
         source.Vibes = [CampVibe.LiveMusic, CampVibe.Wellness];

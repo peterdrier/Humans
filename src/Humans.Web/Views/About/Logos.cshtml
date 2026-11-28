@@ -1,0 +1,74 @@
+@model IReadOnlyList<Humans.Web.Models.LogoLibraryEntry>
+@{
+    ViewData["Title"] = Localizer["About_Logos_Title"].Value;
+}
+
+<page-header title="@(Localizer["About_Logos_Title"].Value)" subtitle="@(Localizer["About_Logos_Intro"].Value)" />
+
+@if (ViewData["Brief"] is string brief)
+{
+    <div class="card mb-5">
+        <div class="card-body">
+            <h2 class="h5 card-title"><i class="fa-solid fa-scroll me-2"></i>The prompt</h2>
+            <p class="small text-muted">Every drawing from November 2026 on started from exactly this text, word for word. The three earlier rounds (February, June and October 2026) were drawn against looser briefs that changed between rounds.</p>
+            <div class="logo-brief">@Html.SanitizedMarkdown(brief)</div>
+        </div>
+    </div>
+}
+
+@if (Model.Count == 0)
+{
+    <empty-state>@Localizer["About_Logos_Empty"]</empty-state>
+}
+@foreach (var family in Model.GroupBy(e => e.Family))
+{
+    <section class="mb-5">
+        <h2 class="h3 mb-3">@family.Key</h2>
+        @foreach (var byModel in family.GroupBy(e => e.Model))
+        {
+        <h3 class="h5 mb-3">@byModel.Key</h3>
+        @foreach (var version in byModel.GroupBy(e => e.Version))
+        {
+        <div class="logo-library mb-4">
+            @foreach (var entry in version)
+            {
+                <div class="logo-entry">
+                    <div class="about-mark"><img src="~/img/logo-library/@entry.Slug/logo.svg" alt="" aria-hidden="true" /></div>
+                    <div class="d-flex align-items-center justify-content-center gap-2 mb-2">
+                        <span class="logo-entry-small"><img src="~/img/logo-library/@entry.Slug/logo.svg" alt="" aria-hidden="true" /></span>
+                        <span>
+                            <strong>@entry.Family @entry.Model @entry.Version</strong><br />
+                            <span class="text-muted small">@(entry.Effort is null ? Localizer["About_Logos_EffortUnrecorded"].Value : Localizer[$"About_Logos_Effort_{entry.Effort}"].Value) · @entry.Date</span>
+                        </span>
+                    </div>
+                    @if (entry.Stats is { } run)
+                    {
+                        var inv = System.Globalization.CultureInfo.InvariantCulture;
+                        var parts = new List<string>();
+                        if (run.Minutes is { } minutes)
+                        {
+                            parts.Add($"{minutes.ToString("0.0", inv)} min");
+                        }
+                        if (run.OutputTokens is { } tokens)
+                        {
+                            parts.Add($"{(tokens / 1_000d).ToString("0", inv)}k tokens out");
+                        }
+                        if (run.CostUsd is { } cost)
+                        {
+                            parts.Add($"~${cost.ToString("0.00", inv)}");
+                        }
+                        if (parts.Count > 0)
+                        {
+                            <p class="small text-muted mb-1">@string.Join(" · ", parts)</p>
+                        }
+                    }
+                    <p class="small text-muted mb-0">@entry.NotesIn(System.Globalization.CultureInfo.CurrentUICulture.TwoLetterISOLanguageName)</p>
+                </div>
+            }
+        </div>
+        }
+        }
+    </section>
+}
+
+<p class="mt-4"><a asp-controller="About" asp-action="Index">@Localizer["About_Logos_Back"]</a></p>

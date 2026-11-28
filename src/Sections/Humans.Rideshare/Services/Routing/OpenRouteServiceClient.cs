@@ -1,3 +1,4 @@
+using JetBrains.Annotations;
 using System.Net.Http.Json;
 using System.Text.Json;
 using Microsoft.Extensions.Options;
@@ -114,5 +115,6 @@ internal sealed class OpenRouteServiceClient(
             or KeyNotFoundException or InvalidOperationException or FormatException or OverflowException;
 
     // ORS expects lower-case "coordinates"; JsonContent's default web options camel-case it.
+    [UsedImplicitly(ImplicitUseKindFlags.Access, ImplicitUseTargetFlags.WithMembers)]
     private sealed record DirectionsRequest(double[][] Coordinates);
 }

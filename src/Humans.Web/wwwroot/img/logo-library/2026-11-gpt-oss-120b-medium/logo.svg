@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="-2 -2 244 244" role="img" aria-label="Vitruvian Man">
+  <!-- Gold figure -->
+  <g fill="#c9a96e" stroke="none">
+    <!-- Simple torso and limbs as polygons -->
+    <polygon points="120,70 130,120 120,170 110,120" />
+    <polygon points="120,70 140,80 150,120 140,160 120,170" />
+    <polygon points="120,70 100,80 90,120 100,160 120,170" />
+    <!-- Head -->
+    <circle cx="120" cy="45" r="20" />
+  </g>
+  <!-- Ink details -->
+  <g stroke="#3d2b1f" stroke-width="2" fill="none">
+    <!-- Circle frame -->
+    <circle cx="120" cy="120" r="120" />
+    <!-- Square frame -->
+    <rect x="23" y="46" width="194" height="194" />
+    <!-- Arms -->
+    <line x1="23" y1="120" x2="217" y2="120" />
+    <line x1="120" y1="46" x2="120" y2="234" />
+    <!-- Legs -->
+    <line x1="120" y1="170" x2="70" y2="234" />
+    <line x1="120" y1="170" x2="170" y2="234" />
+  </g>
+</svg>

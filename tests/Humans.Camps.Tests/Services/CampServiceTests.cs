@@ -283,7 +283,7 @@ public sealed class CampServiceTests : CampsTestHarness
     }
 
     [HumansFact]
-    public async Task CreateCampAsync_NoLeadDefinition_CreatesCampAndActiveMemberWithoutAssignment()
+    public async Task CreateCampAsync_NoLeadDefinition_CreatesWithoutAssignment()
     {
         await SeedSettingsAsync();
         var userId = Guid.NewGuid();
@@ -322,7 +322,7 @@ public sealed class CampServiceTests : CampsTestHarness
     }
 
     [HumansFact]
-    public async Task CreateCampAsync_LongNameCollisionSlugsStayWithinTheirStoredBound()
+    public async Task CreateCampAsync_LongNameCollision_SlugFitsBound()
     {
         var ct = TestContext.Current.CancellationToken;
         await SeedSettingsAsync();
@@ -354,7 +354,7 @@ public sealed class CampServiceTests : CampsTestHarness
     }
 
     [HumansFact]
-    public async Task GetCampsForYearAsync_RoleLeadResolvesSeason_NonLeadNull()
+    public async Task GetCampsForYearAsync_NonLead_SeasonIsNull()
     {
         await SeedSettingsAsync();
         var camp = await CreateTestCampAsync();
@@ -403,7 +403,7 @@ public sealed class CampServiceTests : CampsTestHarness
     }
 
     [HumansFact]
-    public async Task DeleteCampAsync_MissingCamp_ReturnsRefusalWithoutAuditOrPolygonDeletion()
+    public async Task DeleteCampAsync_MissingCamp_IsRefused()
     {
         var result = await _service.DeleteCampAsync(Guid.NewGuid(), TestActorId, TestContext.Current.CancellationToken);
 
@@ -599,7 +599,7 @@ public sealed class CampServiceTests : CampsTestHarness
     }
 
     [HumansFact]
-    public async Task GetCampsForYearAsync_RegularRoleHolder_IsNotEventManager()
+    public async Task GetCampsForYearAsync_RegularRole_NotEventManager()
     {
         await SeedSettingsAsync();
         var (campId, seasonId) = await SeedCampWithSeasonAsync();
@@ -615,7 +615,7 @@ public sealed class CampServiceTests : CampsTestHarness
     }
 
     [HumansFact]
-    public async Task GetCampsForYearAsync_EventManagerRoleAssignment_CanBeFilteredFromCampInfo()
+    public async Task GetCampsForYearAsync_EventManagerRole_IsFilterable()
     {
         await SeedSettingsAsync();
         var (campId, seasonId) = await SeedCampWithSeasonAsync();
@@ -631,7 +631,7 @@ public sealed class CampServiceTests : CampsTestHarness
     }
 
     [HumansFact]
-    public async Task GetCampsForYearAsync_WorkshopAssignment_CanBeFilteredFromCampInfo()
+    public async Task GetCampsForYearAsync_WorkshopAssignment_IsFilterable()
     {
         await SeedSettingsAsync();
         var (campId, seasonId) = await SeedCampWithSeasonAsync();
@@ -647,7 +647,7 @@ public sealed class CampServiceTests : CampsTestHarness
     }
 
     [HumansFact]
-    public async Task GetCampsForYearAsync_CreatorLead_CanBeFilteredFromCampInfo()
+    public async Task GetCampsForYearAsync_CreatorLead_IsFilterable()
     {
         await SeedSettingsAsync();
         var camp = await CreateTestCampAsync(); // creator is seeded as a role-backed Camp Lead.
@@ -660,7 +660,7 @@ public sealed class CampServiceTests : CampsTestHarness
     }
 
     [HumansFact]
-    public async Task GetCampsForYearAsync_LeadRoleHolders_CanBeFilteredOnceFromCampInfo()
+    public async Task GetCampsForYearAsync_LeadRoleHolders_AreFilterable()
     {
         await SeedSettingsAsync();
         var camp = await CreateTestCampAsync(); // creator is a role-backed Camp Lead.
@@ -679,7 +679,7 @@ public sealed class CampServiceTests : CampsTestHarness
     }
 
     [HumansFact]
-    public async Task GetCampsForYearAsync_EventManagerRoleWithoutSeasonInYear_IsExcluded()
+    public async Task GetCampsForYearAsync_ManagerWithoutSeason_IsExcluded()
     {
         await SeedSettingsAsync();
         var (_, seasonId) = await SeedCampWithSeasonAsync(); // season is 2026.
@@ -934,7 +934,7 @@ public sealed class CampServiceTests : CampsTestHarness
     [InlineData(CampSeasonStatus.Full, true)]
     [InlineData(CampSeasonStatus.Rejected, false)]
     [InlineData(CampSeasonStatus.Withdrawn, false)]
-    public void CampSeasonInfo_IsPublic_OnlyForActiveOrFullSeasons(CampSeasonStatus status, bool expected)
+    public void IsPublic_OnlyActiveOrFull_IsTrue(CampSeasonStatus status, bool expected)
     {
         var season = new CampSeasonInfo(
             Guid.NewGuid(), Guid.NewGuid(), 2026, null, "Camp", string.Empty, string.Empty,
@@ -945,7 +945,7 @@ public sealed class CampServiceTests : CampsTestHarness
     }
 
     [HumansFact]
-    public async Task CampInfo_GetSeasonForEventWithoutFallback_ReturnsNullWhenSeasonMissing()
+    public async Task GetSeasonForEventWithoutFallback_SeasonMissing_ReturnsNull()
     {
         await SeedSettingsAsync();
         var leadUserId = Guid.NewGuid();
@@ -985,7 +985,7 @@ public sealed class CampServiceTests : CampsTestHarness
     }
 
     [HumansFact]
-    public async Task GetSettingsAsync_PublicYear_FallsBackToClockYear_WhenNoActiveEvent()
+    public async Task GetSettingsAsync_NoActiveEvent_UsesClockYear()
     {
         await SeedSettingsAsync();
         _settingsService.GetActiveEventSettings()
@@ -1072,7 +1072,7 @@ public sealed class CampServiceTests : CampsTestHarness
     }
 
     [HumansFact]
-    public async Task OpenSeasonAsync_AlreadyCancelled_LeavesSettingsAndAuditUnchanged()
+    public async Task OpenSeasonAsync_AlreadyCancelled_ChangesNothing()
     {
         var ct = TestContext.Current.CancellationToken;
         await SeedSettingsAsync();
@@ -1089,7 +1089,7 @@ public sealed class CampServiceTests : CampsTestHarness
     }
 
     [HumansFact]
-    public async Task Registration_UsesOnlyEventRows_AndNewEventsStartClosed()
+    public async Task Registration_NewEvent_StartsClosed()
     {
         var ct = TestContext.Current.CancellationToken;
         await SeedSettingsAsync();
@@ -1111,7 +1111,7 @@ public sealed class CampServiceTests : CampsTestHarness
     }
 
     [HumansFact]
-    public async Task SetRegistrationInfoAsync_TrimsStoresAndAudits_BlankStoresEmptyNotNull()
+    public async Task SetRegistrationInfoAsync_Blank_StoresEmptyNotNull()
     {
         var ct = TestContext.Current.CancellationToken;
         await SeedSettingsAsync();
@@ -1134,7 +1134,7 @@ public sealed class CampServiceTests : CampsTestHarness
     }
 
     [HumansFact]
-    public async Task Registration_AnEventCreatedLaterInALegacyOpenYear_StartsClosed()
+    public async Task Registration_LaterEventInOpenYear_StartsClosed()
     {
         var ct = TestContext.Current.CancellationToken;
         await SeedSettingsAsync();
@@ -1161,7 +1161,7 @@ public sealed class CampServiceTests : CampsTestHarness
     }
 
     [HumansFact]
-    public async Task OptInToSeasonAsync_ASecondEventInTheSameYear_GetsItsOwnSeason()
+    public async Task OptInToSeasonAsync_SecondEvent_GetsOwnSeason()
     {
         var ct = TestContext.Current.CancellationToken;
         await SeedSettingsAsync();
@@ -1183,7 +1183,7 @@ public sealed class CampServiceTests : CampsTestHarness
     }
 
     [HumansFact]
-    public async Task GetCampsForEventAsync_DoesNotInferAnUnassignedSeasonsEvent()
+    public async Task GetCampsForEventAsync_UnassignedSeason_IsExcluded()
     {
         var ct = TestContext.Current.CancellationToken;
         await SeedSettingsAsync();
@@ -1204,7 +1204,7 @@ public sealed class CampServiceTests : CampsTestHarness
     }
 
     [HumansFact]
-    public async Task RequestCampMembershipAsync_JoinsTheActiveEventsSeason_NotAnotherOfTheSameYear()
+    public async Task RequestCampMembershipAsync_TwoSeasons_JoinsActiveEvent()
     {
         var ct = TestContext.Current.CancellationToken;
         await SeedSettingsAsync();
@@ -1579,7 +1579,7 @@ public sealed class CampServiceTests : CampsTestHarness
     }
 
     [HumansFact]
-    public async Task ApproveCampMemberAsync_PendingRequest_SetsActiveAndNotifies()
+    public async Task ApproveCampMemberAsync_PendingRequest_ActivatesWithNotice()
     {
         await SeedSettingsAsync();
         var camp = await CreateTestCampAsync();
@@ -1683,7 +1683,7 @@ public sealed class CampServiceTests : CampsTestHarness
     }
 
     [HumansFact]
-    public async Task RejectCampMemberAsync_PendingRequest_SetsRemovedAndNotifies()
+    public async Task RejectCampMemberAsync_PendingRequest_RemovesWithNotice()
     {
         await SeedSettingsAsync();
         var camp = await CreateTestCampAsync();
@@ -1900,7 +1900,7 @@ public sealed class CampServiceTests : CampsTestHarness
     [InlineData(true, true, false)]
     [InlineData(false, true, true)]
     [InlineData(true, true, true)]
-    public async Task LeadMemberShortcuts_UseOnlyTheSelectedOrActiveEventsOpenSeason(
+    public async Task LeadMemberShortcuts_Event_UsesItsOpenSeason(
         bool assignRole, bool hasActiveEventSeason, bool selectFutureEvent)
     {
         var service = CreateRoleAssigningService();
@@ -1962,7 +1962,7 @@ public sealed class CampServiceTests : CampsTestHarness
     }
 
     [HumansFact]
-    public async Task AddMemberAndAssignRoleInActiveSeason_creates_active_member_assigns_role_and_audits()
+    public async Task AddMemberWithRole_NewMember_CreatesAssignsAudits()
     {
         var service = CreateRoleAssigningService();
         // Seed a camp + season + a target user
@@ -1998,7 +1998,7 @@ public sealed class CampServiceTests : CampsTestHarness
     }
 
     [HumansFact]
-    public async Task AddCampMemberToActiveSeason_creates_active_member_and_audits()
+    public async Task AddCampMemberToActiveSeason_Valid_CreatesWithAudit()
     {
         var service = CreateRoleAssigningService();
         var camp = new Camp { Id = Guid.NewGuid(), Slug = "active-add-camp" };
@@ -2048,7 +2048,7 @@ public sealed class CampServiceTests : CampsTestHarness
     }
 
     [HumansFact]
-    public async Task AddMemberAndAssignRoleInActiveSeason_FullSeason_StillAssigns()
+    public async Task AddMemberWithRole_FullSeason_StillAssigns()
     {
         var service = CreateRoleAssigningService();
         // Full is informational only — camp management must keep
@@ -2071,7 +2071,7 @@ public sealed class CampServiceTests : CampsTestHarness
     }
 
     [HumansFact]
-    public async Task AddMemberAndAssignRoleInActiveSeason_uses_existing_active_member_without_audit()
+    public async Task AddMemberWithRole_ExistingMember_ReusedWithoutAudit()
     {
         var service = CreateRoleAssigningService();
         var camp = new Camp { Id = Guid.NewGuid(), Slug = "test-camp-2" };
@@ -2110,7 +2110,7 @@ public sealed class CampServiceTests : CampsTestHarness
     }
 
     [HumansFact]
-    public async Task AddMemberAndAssignRoleInActiveSeason_uses_active_season()
+    public async Task AddMemberWithRole_Always_UsesActiveSeason()
     {
         var service = CreateRoleAssigningService();
         var camp = new Camp { Id = Guid.NewGuid(), Slug = "active-camp" };
@@ -2136,7 +2136,7 @@ public sealed class CampServiceTests : CampsTestHarness
     }
 
     [HumansFact]
-    public async Task AddMemberAndAssignRoleInActiveSeason_without_active_season_does_not_create_member()
+    public async Task AddMemberWithRole_NoActiveSeason_CreatesNoMember()
     {
         var camp = new Camp { Id = Guid.NewGuid(), Slug = "inactive-camp" };
         var season = new CampSeason { Id = Guid.NewGuid(), CampId = camp.Id, Year = 2026, EventSettingsId = EventId(2026), Status = CampSeasonStatus.Pending };
@@ -2172,7 +2172,7 @@ public sealed class CampServiceTests : CampsTestHarness
     [InlineData(nameof(AssignCampRoleOutcome.RoleNotFound))]
     [InlineData(nameof(AssignCampRoleOutcome.RoleDeactivated))]
     [InlineData(nameof(AssignCampRoleOutcome.SlotCapReached))]
-    public async Task Add_member_and_role_refusal_does_not_create_membership(string refusal)
+    public async Task AddMemberWithRole_RoleRefused_CreatesNoMember(string refusal)
     {
         var expected = Enum.Parse<AssignCampRoleOutcome>(refusal);
         var ct = TestContext.Current.CancellationToken;
@@ -2207,7 +2207,7 @@ public sealed class CampServiceTests : CampsTestHarness
     [InlineData(true, false)]
     [InlineData(false, true)]
     [InlineData(true, true)]
-    public async Task Add_member_and_role_commit_together(bool pendingMember, bool failSave)
+    public async Task AddMemberWithRole_Success_CommitsTogether(bool pendingMember, bool failSave)
     {
         var ct = TestContext.Current.CancellationToken;
         var factory = new TestDbContextFactory<CampsDbContext>(new DbContextOptionsBuilder<CampsDbContext>()
@@ -2288,7 +2288,7 @@ public sealed class CampServiceTests : CampsTestHarness
     }
 
     [HumansFact]
-    public async Task RemoveCampMember_keeps_roles_when_membership_save_fails()
+    public async Task RemoveCampMember_SaveFails_KeepsRoles()
     {
         var ct = TestContext.Current.CancellationToken;
         var factory = new TestDbContextFactory<CampsDbContext>(new DbContextOptionsBuilder<CampsDbContext>()
@@ -2355,7 +2355,7 @@ public sealed class CampServiceTests : CampsTestHarness
     [InlineData("Leave")]
     [InlineData("Withdraw")]
     [InlineData("Remove")]
-    public async Task Member_removal_cascades_only_its_roles_and_audits_after_saving(string operation)
+    public async Task MemberRemoval_Saved_RemovesOnlyOwnRoles(string operation)
     {
         var ct = TestContext.Current.CancellationToken;
         var camp = new Camp { Id = Guid.NewGuid(), Slug = "member-cascade" };
@@ -2519,7 +2519,7 @@ public sealed class CampServiceTests : CampsTestHarness
     }
 
     [HumansFact]
-    public async Task MarkSeasonFullAsync_SetsStatusAndAudits()
+    public async Task MarkSeasonFullAsync_ActiveSeason_SetsStatusWithAudit()
     {
         await SeedSettingsAsync();
         var camp = await CreateTestCampAsync();
@@ -2542,7 +2542,7 @@ public sealed class CampServiceTests : CampsTestHarness
     [InlineData(CampSeasonStatus.Rejected)]
     [InlineData(CampSeasonStatus.Withdrawn)]
     [InlineData(CampSeasonStatus.Full)]
-    public async Task MarkSeasonFullAsync_NonActiveSeason_RefusesWithoutPublishingOrAuditing(CampSeasonStatus status)
+    public async Task MarkSeasonFullAsync_NonActiveSeason_IsRefused(CampSeasonStatus status)
     {
         var ct = TestContext.Current.CancellationToken;
         await SeedSettingsAsync();
@@ -2698,7 +2698,7 @@ public sealed class CampServiceTests : CampsTestHarness
     }
 
     [HumansFact]
-    public async Task ReorderImages_saves_order_and_audits_the_acting_manager()
+    public async Task ReorderImages_Valid_SavesWithAudit()
     {
         var ct = TestContext.Current.CancellationToken;
         await SeedSettingsAsync();
@@ -2720,7 +2720,7 @@ public sealed class CampServiceTests : CampsTestHarness
     }
 
     [HumansFact]
-    public async Task ReorderImages_does_not_audit_a_failed_save()
+    public async Task ReorderImages_SaveFails_WritesNoAudit()
     {
         var repo = Substitute.For<ICampRepository>();
         repo.ReorderImagesAsync(Arg.Any<Guid>(), Arg.Any<IReadOnlyList<Guid>>(), Arg.Any<CancellationToken>())
@@ -2745,7 +2745,7 @@ public sealed class CampServiceTests : CampsTestHarness
     [InlineData(true, "after")]
     [InlineData(true, "audit")]
     [InlineData(true, "verification")]
-    public async Task Failed_image_deletion_cleans_only_confirmed_unreferenced_files(bool deleteCamp, string failureStage)
+    public async Task ImageDeletion_Fails_CleansOnlyUnreferencedFiles(bool deleteCamp, string failureStage)
     {
         var ct = TestContext.Current.CancellationToken;
         var failure = new IOException("Deletion failed");
@@ -2832,7 +2832,7 @@ public sealed class CampServiceTests : CampsTestHarness
     [InlineData(false, true)]
     [InlineData(true, false)]
     [InlineData(true, true)]
-    public async Task Image_cleanup_follows_committed_deletion_and_audit(
+    public async Task ImageCleanup_Deletion_RunsAfterCommit(
         bool deleteCamp, bool storageFails)
     {
         var ct = TestContext.Current.CancellationToken;
@@ -2919,7 +2919,7 @@ public sealed class CampServiceTests : CampsTestHarness
     [InlineData("no-row")]
     [InlineData("committed")]
     [InlineData("verification-failure")]
-    public async Task Failed_image_metadata_write_cleans_only_an_unreferenced_upload(string failure)
+    public async Task ImageMetadataWrite_Fails_CleansOnlyUnreferencedUpload(string failure)
     {
         var ct = TestContext.Current.CancellationToken;
         var repo = Substitute.For<ICampRepository>();
@@ -3090,7 +3090,7 @@ public sealed class CampServiceTests : CampsTestHarness
     }
 
     [HumansFact]
-    public async Task RemoveHistoricalName_audits_the_removed_name_and_acting_manager()
+    public async Task RemoveHistoricalName_Removed_AuditsNameWithManager()
     {
         var ct = TestContext.Current.CancellationToken;
         await SeedSettingsAsync();
@@ -3133,7 +3133,7 @@ public sealed class CampServiceTests : CampsTestHarness
     }
 
     [HumansFact]
-    public async Task GetCampsForYearAsync_ProjectsSeasonMembersAndMembershipState()
+    public async Task GetCampsForYearAsync_Season_ProjectsMembersWithState()
     {
         await SeedSettingsAsync();
         await SeedSpecialDefinitionAsync(CampSpecialRole.Lead);
@@ -3169,7 +3169,7 @@ public sealed class CampServiceTests : CampsTestHarness
     }
 
     [HumansFact]
-    public async Task GetCampsForYearAsync_NoOpenSeasonMembershipState_ReturnsNoOpenSeason()
+    public async Task GetCampsForYearAsync_Closed_ReturnsNoOpenSeason()
     {
         await SeedSettingsAsync();
         var camp = await CreateTestCampAsync();
@@ -3180,7 +3180,7 @@ public sealed class CampServiceTests : CampsTestHarness
     }
 
     [HumansFact]
-    public void CampInfo_GetMembershipState_UsesTheActiveEventsSeason_WhenFuturePendingSeasonExists()
+    public void GetMembershipState_FuturePendingSeason_UsesActiveEvent()
     {
         var campId = Guid.NewGuid();
         var memberId = Guid.NewGuid();
@@ -3217,7 +3217,7 @@ public sealed class CampServiceTests : CampsTestHarness
     }
 
     [HumansFact]
-    public async Task GetCampsForYearAsync_ReturnsOnlyRealCampMemberRows_AfterCampLeadRetirement()
+    public async Task GetCampsForYearAsync_RetiredLead_OnlyMemberRows()
     {
         // Active members come only from real CampMember rows — no synthesis. The camp
         // creator is a real Active member (+ Camp Lead role assignment) and appears via their own row.
@@ -3247,7 +3247,7 @@ public sealed class CampServiceTests : CampsTestHarness
     }
 
     [HumansFact]
-    public async Task GetCampUserInfoAsync_ActiveMemberWithRole_ReturnsActiveSeasonAndNamedRole()
+    public async Task GetCampUserInfoAsync_MemberWithRole_ReturnsBoth()
     {
         await SeedSettingsAsync();
         var camp = await CreateTestCampAsync();
@@ -3277,7 +3277,7 @@ public sealed class CampServiceTests : CampsTestHarness
     }
 
     [HumansFact]
-    public void Resolve_ActiveMemberInActiveYear_ReturnsSeasonAndRolesInOrder()
+    public void Resolve_ActiveMember_ReturnsSeasonWithOrderedRoles()
     {
         var userId = Guid.NewGuid();
         var camps = new[] { MakeCampWithMember(2026, userId, CampMemberStatus.Active, ["Camp Lead", "Greeter"]) };
@@ -3312,7 +3312,7 @@ public sealed class CampServiceTests : CampsTestHarness
     [HumansTheory]
     [InlineData(false)]
     [InlineData(true)]
-    public async Task GdprExport_IncludesOrdinaryMembershipHistoryAndErasureRemovesIt(bool requestArchivedId)
+    public async Task GdprExport_MembershipHistory_ExportedThenErased(bool requestArchivedId)
     {
         var ct = TestContext.Current.CancellationToken;
         await SeedSettingsAsync();

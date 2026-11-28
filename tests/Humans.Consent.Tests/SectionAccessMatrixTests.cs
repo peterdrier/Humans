@@ -10,7 +10,7 @@ public class SectionAccessMatrixTests
         ((ISectionAccessMatrix)new Section()).AccessMatrices.Single(m => string.Equals(m.Key, "ConsentReview", StringComparison.Ordinal));
 
     [HumansFact]
-    public void Contributes_the_ConsentReview_matrix_under_the_key_the_page_calls_it_with()
+    public void AccessMatrix_ConsentReview_UsesPageKey()
     {
         var matrix = Matrix();
 
@@ -25,7 +25,7 @@ public class SectionAccessMatrixTests
     /// the point of the table, so it is pinned literally.
     /// </summary>
     [HumansFact]
-    public void Pins_every_feature_row()
+    public void AccessMatrix_MatchesConsentReviewPin()
     {
         Matrix().Features
             .Select(f => $"{f.Name}: {string.Join(", ", f.RoleAccess.Select(kv => $"{kv.Key}={kv.Value}"))}")
@@ -37,7 +37,7 @@ public class SectionAccessMatrixTests
     }
 
     [HumansFact]
-    public void Pins_the_LegalDocuments_matrix()
+    public void AccessMatrix_MatchesLegalDocumentsPin()
     {
         var matrix = ((ISectionAccessMatrix)new Section()).AccessMatrices
             .Single(m => string.Equals(m.Key, "LegalDocuments", StringComparison.Ordinal));

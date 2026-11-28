@@ -23,7 +23,7 @@ public class AgentFeatureSpecReaderTests
     [InlineData("docs/features/global", true)]
     [InlineData("src/Sections/Humans.Shifts/Docs/features", false)]
     [InlineData("src/Sections/Humans.Shifts/Docs/features", true)]
-    public async Task ReadAsync_ResolvesCanonicalFilenameAndSharesCacheAcrossCaseVariants(string folder, bool canonicalFirst)
+    public async Task ReadAsync_CaseVariants_ShareCache(string folder, bool canonicalFirst)
     {
         var source = Substitute.For<IGuideContentSource>();
         source.ListMarkdownPathsAsync(Arg.Any<CancellationToken>())
@@ -84,7 +84,7 @@ public class AgentFeatureSpecReaderTests
     /// build. Fail here instead, at the moment the second one is committed.
     /// </summary>
     [HumansFact]
-    public void Every_spec_stem_in_the_repository_is_unique()
+    public void SpecStems_InRepository_AreUnique()
     {
         // Asserted on the paths that feed the index, not on the index: its keys are unique by
         // construction, the colliding spec having already been dropped by TryAdd.
@@ -105,7 +105,7 @@ public class AgentFeatureSpecReaderTests
     /// start serving invariants docs as feature specs.
     /// </summary>
     [HumansFact]
-    public async Task Section_owned_docs_are_not_served_as_feature_specs()
+    public async Task ReadAsync_SectionOwnedDoc_IsNotServed()
     {
         var reader = new AgentFeatureSpecReader(
             new TreeSource(RepositoryMarkdownPaths()),
@@ -133,7 +133,7 @@ public class AgentFeatureSpecReaderTests
     /// the rest of the process lifetime. An incomplete listing must be rebuilt every call.
     /// </summary>
     [HumansFact]
-    public async Task An_incomplete_repository_listing_is_not_cached()
+    public async Task Listing_Incomplete_IsNotCached()
     {
         var source = new TreeSource(RepositoryMarkdownPaths(), isComplete: false);
         var reader = new AgentFeatureSpecReader(
@@ -151,7 +151,7 @@ public class AgentFeatureSpecReaderTests
 
     /// <summary>The complement: a complete listing is indexed once and reused.</summary>
     [HumansFact]
-    public async Task A_complete_repository_listing_is_cached()
+    public async Task Listing_Complete_IsCached()
     {
         var source = new TreeSource(RepositoryMarkdownPaths());
         var reader = new AgentFeatureSpecReader(

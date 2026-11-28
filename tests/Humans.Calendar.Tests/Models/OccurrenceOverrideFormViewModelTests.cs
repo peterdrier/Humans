@@ -12,7 +12,7 @@ namespace Humans.Calendar.Tests.Models;
 public sealed class OccurrenceOverrideFormViewModelTests
 {
     [HumansFact]
-    public void DateOverride_ParsesDatesWithoutTimezoneAndRejectsPostedTimes()
+    public void DateOverride_PostedTimes_AreRejected()
     {
         OccurrenceOverrideFormViewModel.TryParseOriginalDate("2026-03-29").Should().Be(new LocalDate(2026, 3, 29));
         OccurrenceOverrideFormViewModel.TryParseOriginalDate("2026-03-29T14:00:00Z").Should().BeNull();

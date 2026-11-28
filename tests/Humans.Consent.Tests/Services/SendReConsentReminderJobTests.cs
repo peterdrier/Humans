@@ -104,7 +104,7 @@ public sealed class SendReConsentReminderJobTests
     [InlineData(ReminderBoundary.Stamp)]
     [InlineData(ReminderBoundary.PriorFailure)]
     [InlineData(ReminderBoundary.UnitCancellation)]
-    public async Task ConsentShutdown_ReminderFinishesStartedUnitAndPreservesFailures(ReminderBoundary boundary)
+    public async Task Job_Shutdown_FinishesStartedUnit(ReminderBoundary boundary)
     {
         using var shutdown = new CancellationTokenSource();
         var now = Instant.FromUtc(2026, 10, 2, 4, 0);
@@ -181,7 +181,7 @@ public sealed class SendReConsentReminderJobTests
     [InlineData("success", " ", "en")]
     [InlineData("success", "not a culture!", "en")]
     [InlineData("success", "fr-FR", "en")]
-    public async Task RecipientFailure_DoesNotPreventLaterRemindersOrHideJobFailure(string outcome, string language, string expectedLanguage)
+    public async Task Job_OneRecipientFails_SendsLaterReminders(string outcome, string language, string expectedLanguage)
     {
         using var serverCulture = new CultureScope("fr");
         var now = Instant.FromUtc(2026, 10, 2, 4, 0);
@@ -256,7 +256,7 @@ public sealed class SendReConsentReminderJobTests
     [HumansTheory]
     [InlineData(false)]
     [InlineData(true)]
-    public async Task StampFailure_RetryReusesDeliveryId_AndNextCooldownCycleGetsANewOne(bool previouslyReminded)
+    public async Task Job_StampFailsThenRetry_ReusesDeliveryId(bool previouslyReminded)
     {
         var now = Instant.FromUtc(2026, 10, 2, 4, 0);
         var clock = new FakeClock(now);

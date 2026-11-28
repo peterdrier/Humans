@@ -16,7 +16,7 @@ public sealed class BackdoorAgentControllerTests
     [Xunit.InlineData(199, "x", "x")]
     [Xunit.InlineData(199, "😀", "")]
     [Xunit.InlineData(198, "😀", "😀")]
-    public async Task List_bounds_the_latest_user_preview_without_splitting_unicode(
+    public async Task List_LongUnicodePreview_IsCutCleanly(
         int prefixLength, string boundary, string expectedTail)
     {
         var agent = Substitute.For<IAgentTranscriptRead>();

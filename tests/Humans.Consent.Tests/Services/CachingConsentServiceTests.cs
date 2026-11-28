@@ -52,7 +52,7 @@ public sealed class CachingConsentServiceTests
     }
 
     [HumansFact]
-    public async Task GetConsentMapForUsersAsync_ColdCache_50Ids_IssuesSingleBulkInnerCall()
+    public async Task GetConsentMapForUsersAsync_ColdCache_MakesOneCall()
     {
         var userIds = Enumerable.Range(0, 50).Select(_ => Guid.NewGuid()).ToList();
         var stub = userIds.ToDictionary(
@@ -77,7 +77,7 @@ public sealed class CachingConsentServiceTests
     }
 
     [HumansFact]
-    public async Task GetConsentMapForUsersAsync_AllHits_DoesNotReloadConsentSets()
+    public async Task GetConsentMapForUsersAsync_AllHits_DoesNotReload()
     {
         var userIds = Enumerable.Range(0, 10).Select(_ => Guid.NewGuid()).ToList();
         var firstCallStub = userIds.ToDictionary(
@@ -104,7 +104,7 @@ public sealed class CachingConsentServiceTests
     }
 
     [HumansFact]
-    public async Task GetConsentMapForUsersAsync_DuplicateColdIds_DedupedBeforeInnerCall()
+    public async Task GetConsentMapForUsersAsync_DuplicateColdIds_AreDeduped()
     {
         // Caller passes the same uncached id multiple times. The inner
         // bulk call must see each id once, not redo merge/source work
@@ -131,7 +131,7 @@ public sealed class CachingConsentServiceTests
     }
 
     [HumansFact]
-    public async Task GetConsentMapForUsersAsync_PartialHits_OnlyMissesGoToInner()
+    public async Task GetConsentMapForUsersAsync_PartialHits_LoadsOnlyMisses()
     {
         var hitIds = Enumerable.Range(0, 3).Select(_ => Guid.NewGuid()).ToList();
         var missIds = Enumerable.Range(0, 4).Select(_ => Guid.NewGuid()).ToList();
@@ -236,7 +236,7 @@ public sealed class CachingConsentServiceTests
     [HumansTheory]
     [InlineData(false)]
     [InlineData(true)]
-    public async Task SubmitConsentAsync_Success_RefreshesRowBeforeReturning_SoNextReadHitsCache(bool cancelAfterCommit)
+    public async Task SubmitConsentAsync_Success_RefreshesCachedRow(bool cancelAfterCommit)
     {
         using var cancellation = new CancellationTokenSource();
         var userId = Guid.NewGuid();
@@ -283,7 +283,7 @@ public sealed class CachingConsentServiceTests
     [HumansTheory]
     [InlineData(false)]
     [InlineData(true)]
-    public async Task Cancelled_reads_do_not_publish_returned_consent_sets(bool bulk)
+    public async Task Reads_Cancelled_PublishNothing(bool bulk)
     {
         using var cancellation = new CancellationTokenSource();
         var userId = Guid.NewGuid();
@@ -318,7 +318,7 @@ public sealed class CachingConsentServiceTests
     }
 
     [HumansFact]
-    public async Task BulkRead_StartedBeforeSubmit_CannotReplaceTheCommittedConsentSet()
+    public async Task BulkRead_StartedBeforeSubmit_IsDiscarded()
     {
         var ct = TestContext.Current.CancellationToken;
         var userId = Guid.NewGuid();

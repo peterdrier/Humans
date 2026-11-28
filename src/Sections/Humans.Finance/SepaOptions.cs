@@ -1,4 +1,5 @@
 using Humans.Finance.Models;
+using JetBrains.Annotations;
 
 namespace Humans.Finance;
 
@@ -6,6 +7,7 @@ namespace Humans.Finance;
 /// "Creditor" is the historical name of these <c>Sepa:*</c> settings; in a pain.001 payout the organisation is the
 /// <em>debtor</em>, and that is where they land in the file.
 /// </summary>
+[UsedImplicitly(ImplicitUseKindFlags.Assign, ImplicitUseTargetFlags.WithMembers)]
 internal sealed class SepaOptions
 {
     /// <summary><c>Dbtr/Nm</c>.</summary>

@@ -1,0 +1,172 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="-2 -2 244 244" role="img" aria-label="Vitruvian Man">
+  <!-- Background: transparent -->
+
+  <!-- Guide circle and square (faint gold, construction layer) -->
+  <circle cx="120" cy="120" r="120" fill="none" stroke="#c9a96e" stroke-width="0.5" opacity="0.3"/>
+  <rect x="23" y="46" width="194" height="194" fill="none" stroke="#c9a96e" stroke-width="0.5" opacity="0.3"/>
+
+  <!-- BOLD SOLID BASE - Gold filled forms (survives at 38px and below) -->
+  <g id="base">
+    <!-- Head -->
+    <circle cx="120" cy="56" r="13" fill="#c9a96e"/>
+
+    <!-- Neck -->
+    <path d="M 117 69 Q 120 72 123 69" fill="none" stroke="#c9a96e" stroke-width="3" stroke-linecap="round"/>
+
+    <!-- Shoulders -->
+    <path d="M 108 77 Q 120 75 132 77" fill="none" stroke="#c9a96e" stroke-width="5" stroke-linecap="round"/>
+
+    <!-- Torso - wider, more anatomical -->
+    <path d="M 110 80 L 112 115 L 128 115 L 130 80" fill="#c9a96e"/>
+
+    <!-- Chest definition -->
+    <path d="M 112 85 Q 120 88 128 85" fill="none" stroke="#c9a96e" stroke-width="2" opacity="0.6"/>
+
+    <!-- Pelvis -->
+    <ellipse cx="120" cy="128" rx="12" ry="10" fill="#c9a96e"/>
+
+    <!-- Legs - together position (center) -->
+    <rect x="118" y="138" width="4" height="34" fill="#c9a96e"/>
+    <!-- Legs - spread position (outer) -->
+    <rect x="107" y="138" width="4" height="34" fill="#c9a96e"/>
+    <rect x="129" y="138" width="4" height="34" fill="#c9a96e"/>
+
+    <!-- Feet -->
+    <ellipse cx="120" cy="174" rx="3.5" ry="2.5" fill="#c9a96e"/>
+    <ellipse cx="109" cy="174" rx="3.5" ry="2.5" fill="#c9a96e"/>
+    <ellipse cx="131" cy="174" rx="3.5" ry="2.5" fill="#c9a96e"/>
+
+    <!-- Arms - horizontal position (shoulders to sides) -->
+    <rect x="23" y="95" width="97" height="4.5" fill="#c9a96e" rx="2"/>
+    <rect x="124" y="95" width="97" height="4.5" fill="#c9a96e" rx="2"/>
+    <!-- Hands on horizontal arms -->
+    <circle cx="22" cy="97.25" r="3" fill="#c9a96e"/>
+    <circle cx="218" cy="97.25" r="3" fill="#c9a96e"/>
+
+    <!-- Arms - raised position (reaching circle) -->
+    <path d="M 110 78 Q 85 55 55 40" fill="none" stroke="#c9a96e" stroke-width="4.5" stroke-linecap="round"/>
+    <path d="M 130 78 Q 155 55 185 40" fill="none" stroke="#c9a96e" stroke-width="4.5" stroke-linecap="round"/>
+    <!-- Hands on raised arms -->
+    <circle cx="55" cy="40" r="3" fill="#c9a96e"/>
+    <circle cx="185" cy="40" r="3" fill="#c9a96e"/>
+  </g>
+
+  <!-- TIER 1 ETCH (≈2.0 units, shows from ~64px) - Main contours and pose separations -->
+  <g id="tier1" stroke="#3d2b1f" stroke-width="2.0" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <!-- Head contour -->
+    <circle cx="120" cy="56" r="13"/>
+
+    <!-- Neck curve -->
+    <path d="M 117 69 Q 120 72 123 69"/>
+
+    <!-- Shoulder line -->
+    <path d="M 108 77 Q 120 75 132 77"/>
+
+    <!-- Torso outline left -->
+    <path d="M 110 80 L 112 115"/>
+
+    <!-- Torso outline right -->
+    <path d="M 130 80 L 128 115"/>
+
+    <!-- Waist curve -->
+    <path d="M 112 115 Q 120 125 128 115"/>
+
+    <!-- Hip outline -->
+    <ellipse cx="120" cy="128" rx="12" ry="10"/>
+
+    <!-- Center line (vertical axis) -->
+    <line x1="120" y1="46" x2="120" y2="174" stroke-width="1.5" opacity="0.6"/>
+
+    <!-- Leg separations - inner legs -->
+    <line x1="120" y1="138" x2="120" y2="174"/>
+
+    <!-- Leg outlines - spread -->
+    <line x1="109" y1="138" x2="109" y2="174"/>
+    <line x1="131" y1="138" x2="131" y2="174"/>
+
+    <!-- Horizontal arm lines -->
+    <line x1="23" y1="97.25" x2="218" y2="97.25"/>
+
+    <!-- Raised arm curves -->
+    <path d="M 110 78 Q 85 55 55 40"/>
+    <path d="M 130 78 Q 155 55 185 40"/>
+  </g>
+
+  <!-- TIER 2 ETCH (≈1.4 units, shows from ~96px) - Muscle groups and hair -->
+  <g id="tier2" stroke="#3d2b1f" stroke-width="1.4" fill="none" stroke-linecap="round" stroke-linejoin="round" opacity="0.85">
+    <!-- Hair texture -->
+    <path d="M 115 48 Q 120 45 125 48"/>
+    <path d="M 112 50 Q 120 46 128 50"/>
+    <path d="M 110 52 Q 120 48 130 52"/>
+
+    <!-- Pectoral muscles -->
+    <path d="M 112 82 Q 110 92 112 102"/>
+    <path d="M 128 82 Q 130 92 128 102"/>
+
+    <!-- Abdominal muscles -->
+    <line x1="118" y1="100" x2="118" y2="120"/>
+    <line x1="122" y1="100" x2="122" y2="120"/>
+    <path d="M 115 108 Q 120 112 125 108"/>
+    <path d="M 115 118 Q 120 123 125 118"/>
+
+    <!-- Chest definition -->
+    <path d="M 115 85 Q 120 88 125 85"/>
+
+    <!-- Arm muscle definition on horizontal arms -->
+    <path d="M 50 95 Q 65 97 80 95"/>
+    <path d="M 160 95 Q 175 97 190 95"/>
+
+    <!-- Forearm definition on raised arms -->
+    <path d="M 85 60 Q 75 55 55 40"/>
+    <path d="M 155 60 Q 145 55 185 40"/>
+
+    <!-- Thigh separation and muscle -->
+    <path d="M 114 138 Q 110 155 110 170"/>
+    <path d="M 126 138 Q 130 155 130 170"/>
+
+    <!-- Shoulder definition -->
+    <path d="M 108 77 Q 110 85 115 90"/>
+    <path d="M 132 77 Q 130 85 125 90"/>
+  </g>
+
+  <!-- TIER 3 ETCH (≈0.9 units, shows from ~150px) - Fingers, toes, face, hatching -->
+  <g id="tier3" stroke="#3d2b1f" stroke-width="0.9" fill="none" stroke-linecap="round" stroke-linejoin="round" opacity="0.7">
+    <!-- Face features -->
+    <circle cx="118" cy="54" r="1.5" fill="#3d2b1f"/>
+    <circle cx="122" cy="54" r="1.5" fill="#3d2b1f"/>
+    <path d="M 120 58 Q 118 60 120 62"/>
+
+    <!-- Hair hatching (subtle cross-hatching) -->
+    <line x1="112" y1="48" x2="115" y2="46"/>
+    <line x1="125" y1="46" x2="128" y2="48"/>
+    <line x1="114" y1="50" x2="116" y2="48"/>
+    <line x1="124" y1="48" x2="126" y2="50"/>
+    <line x1="116" y1="52" x2="118" y2="50"/>
+    <line x1="122" y1="50" x2="124" y2="52"/>
+
+    <!-- Finger definition on horizontal hands -->
+    <line x1="20" y1="95" x2="20" y2="99"/>
+    <line x1="24" y1="95" x2="24" y2="99"/>
+    <line x1="219" y1="95" x2="219" y2="99"/>
+    <line x1="215" y1="95" x2="215" y2="99"/>
+
+    <!-- Toe definition -->
+    <line x1="118" y1="172" x2="118" y2="176"/>
+    <line x1="122" y1="172" x2="122" y2="176"/>
+    <line x1="107" y1="172" x2="107" y2="176"/>
+    <line x1="111" y1="172" x2="111" y2="176"/>
+    <line x1="129" y1="172" x2="129" y2="176"/>
+    <line x1="133" y1="172" x2="133" y2="176"/>
+
+    <!-- Rib hatching (vertical lines on torso) -->
+    <line x1="115" y1="90" x2="115" y2="110"/>
+    <line x1="117" y1="88" x2="117" y2="112"/>
+    <line x1="123" y1="88" x2="123" y2="112"/>
+    <line x1="125" y1="90" x2="125" y2="110"/>
+
+    <!-- Ankle definition -->
+    <circle cx="120" cy="172" r="1.5"/>
+    <circle cx="109" cy="172" r="1.5"/>
+    <circle cx="131" cy="172" r="1.5"/>
+  </g>
+</svg>

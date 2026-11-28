@@ -96,7 +96,7 @@ public class HoldedClientTransportTests
     }
 
     [HumansFact]
-    public async Task Sends_bearer_authorization_header()
+    public async Task Send_AnyCall_HasBearerHeader()
     {
         HttpRequestMessage? captured = null;
         var handler = new StubHandler(req =>
@@ -115,7 +115,7 @@ public class HoldedClientTransportTests
     }
 
     [HumansFact]
-    public async Task A_403_for_a_missing_key_permission_names_the_permission()
+    public async Task Send_MissingKeyPermission_NamesPermission()
     {
         var client = Make(new StubHandler(_ => Respond(HttpStatusCode.Forbidden,
             """{"error":"Insufficient permissions: accounting:payments.write required"}""")));
@@ -127,7 +127,7 @@ public class HoldedClientTransportTests
     }
 
     [HumansFact]
-    public async Task Retries_once_on_429_honoring_retry_after()
+    public async Task Send_RateLimited_RetriesOnceAfterWait()
     {
         var requestCount = 0;
         var handler = new StubHandler(_ =>
@@ -149,7 +149,7 @@ public class HoldedClientTransportTests
     }
 
     [HumansFact]
-    public async Task Retry_after_HTTP_date_preserves_a_fractional_wait()
+    public async Task Send_RetryAfterHttpDate_KeepsFractionalWait()
     {
         var requestCount = 0;
         var retryAt = new DateTimeOffset(2026, 8, 10, 12, 0, 1, TimeSpan.Zero);
@@ -181,7 +181,7 @@ public class HoldedClientTransportTests
     [HumansTheory]
     [Xunit.InlineData(HoldedSalesDocumentKind.Invoice)]
     [Xunit.InlineData(HoldedSalesDocumentKind.SalesReceipt)]
-    public async Task Does_not_retry_bodyless_approval_posts_on_429(HoldedSalesDocumentKind kind)
+    public async Task Send_BodylessApprovalRateLimited_IsNotRetried(HoldedSalesDocumentKind kind)
     {
         var requestCount = 0;
         var handler = new StubHandler(req =>
@@ -202,7 +202,7 @@ public class HoldedClientTransportTests
     }
 
     [HumansFact]
-    public async Task Throws_transient_when_429_persists()
+    public async Task Send_RateLimitPersists_ThrowsTransient()
     {
         var handler = new StubHandler(_ =>
         {
@@ -218,7 +218,7 @@ public class HoldedClientTransportTests
     }
 
     [HumansFact]
-    public async Task Records_call_in_log()
+    public async Task Send_AnyCall_IsLogged()
     {
         var handler = new StubHandler(_ =>
         {

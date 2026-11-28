@@ -19,7 +19,7 @@ namespace Humans.Agent.Tests;
 public class AgentDocsHealthCheckTests
 {
     [HumansFact]
-    public async Task Healthy_when_both_canaries_exist_in_this_repo()
+    public async Task Check_BothCanariesExist_IsHealthy()
     {
         var source = Substitute.For<IGuideContentSource>();
         source.GetMarkdownAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
@@ -31,7 +31,7 @@ public class AgentDocsHealthCheckTests
     }
 
     [HumansFact]
-    public async Task Degraded_when_the_section_guide_canary_is_missing()
+    public async Task Check_GuideCanaryMissing_IsDegraded()
     {
         var source = Substitute.For<IGuideContentSource>();
         source.GetMarkdownAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>())

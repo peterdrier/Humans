@@ -71,7 +71,7 @@ public class ConsentReviewQueueControllerTests
     }
 
     [HumansFact]
-    public void TheQueueItselfIsReadableByEveryReviewQueueRole()
+    public void Queue_EachReviewQueueRole_MayRead()
     {
         var onTheClass = typeof(ConsentReviewQueueController)
             .GetCustomAttributes<AuthorizeAttribute>()
@@ -88,7 +88,7 @@ public class ConsentReviewQueueControllerTests
     /// on the anonymized source profile while the coordinator sees the survivor's name.
     /// </summary>
     [HumansFact]
-    public async Task Detail_ThroughAMergedAwayId_RedirectsToTheSurvivorsRoute()
+    public async Task Detail_MergedAwayId_RedirectsToSurvivor()
     {
         var survivorId = Guid.NewGuid();
         _userService.GetUserInfoAsync(_subjectId, Arg.Any<CancellationToken>())
@@ -118,7 +118,7 @@ public class ConsentReviewQueueControllerTests
     }
 
     [HumansFact]
-    public async Task Clear_SurvivesAThrowingServiceAndSaysSoRatherThan500ing()
+    public async Task Clear_ServiceThrows_ShowsErrorMessage()
     {
         _queue.ClearAsync(_subjectId, _reviewerId, null, Arg.Any<CancellationToken>())
             .Returns<OnboardingResult>(_ => throw new InvalidOperationException("boom"));
@@ -131,7 +131,7 @@ public class ConsentReviewQueueControllerTests
     }
 
     [HumansFact]
-    public async Task Flag_RecordsTheReviewerAndTheNotes()
+    public async Task Flag_WithNotes_RecordsReviewer()
     {
         _queue.FlagAsync(_subjectId, _reviewerId, "needs a chat", Arg.Any<CancellationToken>())
             .Returns(new OnboardingResult(true));
@@ -209,7 +209,7 @@ public class ConsentReviewQueueControllerTests
     }
 
     [HumansFact]
-    public async Task Reject_WithNoSignedInUser_DoesNotReachTheService()
+    public async Task Reject_NoSignedInUser_SkipsService()
     {
         var ctrl = BuildSut(signedIn: false);
 

@@ -1327,6 +1327,17 @@
   <data name="About_MadeByTail" xml:space="preserve"><value>con amore per la comunità Nobodies.</value></data>
   <data name="About_MailKitDesc" xml:space="preserve"><value>Email transazionali per notifiche e onboarding. L'unica libreria che rende SMTP quasi piacevole.</value></data>
   <data name="About_MeetTheStaff" xml:space="preserve"><value>Conosci lo staff</value></data>
+  <data name="About_Logos_Title" xml:space="preserve"><value>La biblioteca dei loghi</value></data>
+  <data name="About_Logos_Intro" xml:space="preserve"><value>Ogni modello che ha aiutato a costruire Humans ha disegnato il proprio Uomo vitruviano a partire dalla stessa consegna. Eccoli, per famiglia di modelli e versione, dall’impegno più basso al più alto.</value></data>
+  <data name="About_Logos_Empty" xml:space="preserve"><value>Ancora nessun disegno.</value></data>
+  <data name="About_Logos_EffortUnrecorded" xml:space="preserve"><value>impegno non registrato</value></data>
+  <data name="About_Logos_Effort_low" xml:space="preserve"><value>basso</value></data>
+  <data name="About_Logos_Effort_medium" xml:space="preserve"><value>medio</value></data>
+  <data name="About_Logos_Effort_high" xml:space="preserve"><value>alto</value></data>
+  <data name="About_Logos_Effort_xhigh" xml:space="preserve"><value>molto alto</value></data>
+  <data name="About_Logos_Effort_max" xml:space="preserve"><value>massimo</value></data>
+  <data name="About_Logos_Link" xml:space="preserve"><value>Vedi tutte le versioni del logo</value></data>
+  <data name="About_Logos_Back" xml:space="preserve"><value>Torna a Chi siamo</value></data>
   <data name="About_NeedHelp" xml:space="preserve"><value>Hai bisogno di aiuto?</value></data>
   <data name="About_NuGetPackagesHeading" xml:space="preserve"><value>Pacchetti NuGet</value></data>
   <data name="About_OpenSourceLicensesHeading" xml:space="preserve"><value>Licenze open source</value></data>

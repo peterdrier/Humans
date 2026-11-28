@@ -136,7 +136,7 @@ public sealed class ExpenseReportServiceTests
         profile: profile);
 
     [HumansFact]
-    public async Task AbandonedExpensesIndex_CancelsReadsInsteadOfShowingAnErrorView()
+    public async Task Index_AbandonedRequest_CancelsReads()
     {
         var actorId = Guid.NewGuid();
         _userService.GetUserInfoAsync(actorId, Arg.Any<CancellationToken>()).Returns(
@@ -227,7 +227,7 @@ public sealed class ExpenseReportServiceTests
     }
 
     [HumansFact]
-    public async Task AbandonedNewReportForm_CancelsItsUserReadWithoutShowingAnError()
+    public async Task NewReportForm_AbandonedRequest_CancelsUserRead()
     {
         SetupActiveYear();
         var actorId = Guid.NewGuid();
@@ -272,7 +272,7 @@ public sealed class ExpenseReportServiceTests
     [InlineData("Iban", true)]
     [InlineData("Review", false)]
     [InlineData("Review", true)]
-    public async Task AbandonedReportPages_CancelViewerAndOwningReportReads(string page, bool cancelAfterViewer)
+    public async Task ReportPages_AbandonedRequest_CancelReads(string page, bool cancelAfterViewer)
     {
         var (year, category) = SetupActiveYear();
         var actorId = Guid.NewGuid();
@@ -333,7 +333,7 @@ public sealed class ExpenseReportServiceTests
     }
 
     [HumansFact]
-    public async Task Review_PassesSubmitterIdsToTheViewWithoutBulkNameHydration()
+    public async Task Review_Submitters_PassedAsIdsOnly()
     {
         var (year, category) = SetupActiveYear();
         var viewerId = Guid.NewGuid();
@@ -469,7 +469,7 @@ public sealed class ExpenseReportServiceTests
     }
 
     [HumansFact]
-    public async Task CreateDraftAsync_CreatesReport_WithDraftStatusAndZeroTotal()
+    public async Task CreateDraftAsync_New_IsDraftWithZeroTotal()
     {
         var (year, category) = SetupActiveYear();
         var userId = Guid.NewGuid();
@@ -517,7 +517,7 @@ public sealed class ExpenseReportServiceTests
     }
 
     [HumansFact]
-    public async Task CreateDraftAsync_Refuses_AnOrphanedCategoryAccount_FinanceNoLongerOffersIt()
+    public async Task CreateDraftAsync_OrphanedCategoryAccount_IsRefused()
     {
         // Finance drops a map row whose category is not in the active year from the active list
         // (ListExpenseAccountsAsync(activeOnly: true)), so the member never sees it and the service
@@ -536,7 +536,7 @@ public sealed class ExpenseReportServiceTests
     }
 
     [HumansFact]
-    public async Task CreateDraftAsync_StoresTheAccount_AndDerivesItsCategory()
+    public async Task CreateDraftAsync_MappedAccount_DerivesCategory()
     {
         var (year, category) = SetupActiveYear();
         var userId = Guid.NewGuid();
@@ -551,7 +551,7 @@ public sealed class ExpenseReportServiceTests
     }
 
     [HumansFact]
-    public async Task CreateDraftAsync_OnAnUnmappedAccount_HasNoCategoryAndNoYear()
+    public async Task CreateDraftAsync_UnmappedAccount_HasNoCategoryOrYear()
     {
         SetupActiveYear();
         var userId = Guid.NewGuid();
@@ -631,7 +631,7 @@ public sealed class ExpenseReportServiceTests
     }
 
     [HumansFact]
-    public async Task Merged_submitter_lists_all_historical_reports_without_another_humans_reports()
+    public async Task MergedSubmitter_List_HasOnlyOwnReports()
     {
         var ct = TestContext.Current.CancellationToken;
         var (_, category) = SetupActiveYear();
@@ -661,14 +661,14 @@ public sealed class ExpenseReportServiceTests
     [InlineData("withdraw")]
     [InlineData("iban")]
     [InlineData("iban-snapshot")]
-    public async Task Merged_submitter_can_manage_historical_reports_and_updates_the_surviving_profile(string operation)
+    public async Task MergedSubmitter_HistoricalReports_AreManageable(string operation)
     {
         var ct = TestContext.Current.CancellationToken;
         SetupActiveYear();
         var sourceId = Guid.NewGuid();
         var survivorId = Guid.NewGuid();
-        SetupUserAndProfile(sourceId, "Old Name", "ES9121000418450200051332");
-        SetupUserAndProfile(survivorId, "Current Name", "ES9121000418450200051332");
+        SetupUser(sourceId, "Old Name", "ES9121000418450200051332");
+        SetupUser(survivorId, "Current Name", "ES9121000418450200051332");
         var reportId = (await _sut.CreateDraftAsync(sourceId, sourceId, CategoryAccountNumber, "Supplies", ct: ct)).ReportId!.Value;
         var lineId = (await _sut.AddLineAsync(reportId, sourceId, "Timber", 10m, ct: ct)).LineId!.Value;
         using var receipt = new MemoryStream([1, 2, 3]);
@@ -722,7 +722,7 @@ public sealed class ExpenseReportServiceTests
     }
 
     [HumansFact]
-    public async Task AddLineAsync_AddsLine_AndUpdatesTotal()
+    public async Task AddLineAsync_Line_AddedTotalUpdated()
     {
         SetupActiveYear();
         var submitter = Guid.NewGuid();
@@ -758,7 +758,7 @@ public sealed class ExpenseReportServiceTests
 
 
     [HumansFact]
-    public async Task RemoveLineAsync_RemovesLine_AndRecomputesTotal()
+    public async Task RemoveLineAsync_Line_RemovedTotalRecomputed()
     {
         SetupActiveYear();
         var submitter = Guid.NewGuid();
@@ -793,7 +793,7 @@ public sealed class ExpenseReportServiceTests
 
 
     [HumansFact]
-    public async Task UpdateLineAsync_UpdatesAmount_AndRecomputesTotal()
+    public async Task UpdateLineAsync_Amount_RecomputesTotal()
     {
         SetupActiveYear();
         var submitter = Guid.NewGuid();
@@ -844,7 +844,7 @@ public sealed class ExpenseReportServiceTests
     }
 
     [HumansFact]
-    public async Task AttachFileToLineAsync_StoresFile_CreatesRow_LinksLine_Audits()
+    public async Task AttachFileToLineAsync_Valid_StoresLinksAudits()
     {
         SetupActiveYear();
         var submitter = Guid.NewGuid();
@@ -1088,7 +1088,7 @@ public sealed class ExpenseReportServiceTests
 
 
     [HumansFact]
-    public async Task AttachFileToLineAsync_Throws_WhenLineDoesNotBelongToReport()
+    public async Task AttachFileToLineAsync_LineOfOtherReport_Throws()
     {
         SetupActiveYear();
         var submitter = Guid.NewGuid();
@@ -1185,7 +1185,7 @@ public sealed class ExpenseReportServiceTests
     }
 
     [HumansFact]
-    public async Task RemoveAttachmentFromLineAsync_UnlinksAndDeletesFile_Audits()
+    public async Task RemoveAttachmentFromLineAsync_Valid_DeletesWithAudit()
     {
         SetupActiveYear();
         var submitter = Guid.NewGuid();
@@ -1217,7 +1217,7 @@ public sealed class ExpenseReportServiceTests
     }
 
     [HumansFact]
-    public async Task RemoveAttachmentFromLineAsync_RequestDisconnectsAtCommit_RemovesMetadataAuditsAndCleansFile()
+    public async Task RemoveAttachmentFromLineAsync_Disconnect_StillCleansUp()
     {
         SetupActiveYear();
         using var request = new CancellationTokenSource();
@@ -1262,7 +1262,7 @@ public sealed class ExpenseReportServiceTests
     }
 
     [HumansFact]
-    public async Task AddLineAsync_ProofRow_UnderInvoiceLine_ExcludedFromTotal()
+    public async Task AddLineAsync_ProofUnderInvoice_ExcludedFromTotal()
     {
         SetupActiveYear();
         var submitter = Guid.NewGuid();
@@ -1278,7 +1278,7 @@ public sealed class ExpenseReportServiceTests
     }
 
     [HumansFact]
-    public async Task AddLineAsync_ProofRow_Throws_WhenParentIsNotInvoice()
+    public async Task AddLineAsync_ProofUnderNonInvoice_Throws()
     {
         SetupActiveYear();
         var submitter = Guid.NewGuid();
@@ -1291,7 +1291,7 @@ public sealed class ExpenseReportServiceTests
     }
 
     [HumansFact]
-    public async Task AddLineAsync_ProofRow_Throws_WhenParentMissing()
+    public async Task AddLineAsync_ProofParentMissing_Throws()
     {
         SetupActiveYear();
         var submitter = Guid.NewGuid();
@@ -1559,7 +1559,7 @@ public sealed class ExpenseReportServiceTests
     [HumansTheory]
     [InlineData(false)]
     [InlineData(true)]
-    public async Task AttachFileToLineAsync_SuccessfulReplacement_RemovesOldMetadataAndCleansFile(bool cleanupFails)
+    public async Task AttachFileToLineAsync_Replacement_RemovesOldFile(bool cleanupFails)
     {
         var ct = TestContext.Current.CancellationToken;
         SetupActiveYear();
@@ -1591,7 +1591,7 @@ public sealed class ExpenseReportServiceTests
     }
 
     [HumansFact]
-    public async Task AttachFileToLineAsync_SaveThrowsAfterCommit_RestoresPreviousMetadataAndFile()
+    public async Task AttachFileToLineAsync_SaveThrows_RestoresPreviousFile()
     {
         var ct = TestContext.Current.CancellationToken;
         SetupActiveYear();
@@ -1762,7 +1762,7 @@ public sealed class ExpenseReportServiceTests
     [HumansTheory]
     [InlineData(true)]
     [InlineData(false)]
-    public async Task RemoveLineAsync_InvoiceLine_RemovesItsProofRows_AndTheirFiles(bool cancelAtAudit)
+    public async Task RemoveLineAsync_InvoiceLine_RemovesProofsWithFiles(bool cancelAtAudit)
     {
         SetupActiveYear();
         var submitter = Guid.NewGuid();
@@ -1814,7 +1814,7 @@ public sealed class ExpenseReportServiceTests
         var submitter = Guid.NewGuid();
         var id = (await _sut.CreateDraftAsync(submitter, submitter, CategoryAccountNumber, "Project X", ct: TestContext.Current.CancellationToken)).ReportId!.Value;
         (await _sut.AddLineAsync(id, submitter, "Invoice, no file", 1000m, ExpenseLineType.Invoice, ct: TestContext.Current.CancellationToken)).Succeeded.Should().BeTrue();
-        SetupUserAndProfile(submitter, "Bob", "ES1234");
+        SetupUser(submitter, "Bob", "ES1234");
 
         var result = await _sut.SubmitAsync(id, submitter, TestContext.Current.CancellationToken);
         result.Succeeded.Should().BeFalse();
@@ -1831,7 +1831,7 @@ public sealed class ExpenseReportServiceTests
         var invoiceFile = MakeAttachment(submitter);
         await _expenseRepo.ReplaceLineAttachmentAsync(id, invoiceId, invoiceFile, TestContext.Current.CancellationToken);
         (await _sut.AddLineAsync(id, submitter, "Proof, no file", 400m, parentLineId: invoiceId, ct: TestContext.Current.CancellationToken)).Succeeded.Should().BeTrue();
-        SetupUserAndProfile(submitter, "Bob", "ES1234");
+        SetupUser(submitter, "Bob", "ES1234");
 
         var result = await _sut.SubmitAsync(id, submitter, TestContext.Current.CancellationToken);
         result.Succeeded.Should().BeFalse();
@@ -1846,7 +1846,7 @@ public sealed class ExpenseReportServiceTests
         var id = (await _sut.CreateDraftAsync(submitter, submitter, CategoryAccountNumber, "   ", ct: TestContext.Current.CancellationToken)).ReportId!.Value;
         var lineId = (await _sut.AddLineAsync(id, submitter, "Item", 100m, ct: TestContext.Current.CancellationToken)).LineId!.Value;
         await _expenseRepo.ReplaceLineAttachmentAsync(id, lineId, MakeAttachment(submitter), TestContext.Current.CancellationToken);
-        SetupUserAndProfile(submitter, "Alice Tester", "ES9121000418450200051332");
+        SetupUser(submitter, "Alice Tester", "ES9121000418450200051332");
 
         var result = await _sut.SubmitAsync(id, submitter, TestContext.Current.CancellationToken);
 
@@ -1876,7 +1876,7 @@ public sealed class ExpenseReportServiceTests
             .Returns(WrapInUserInfo(submitter, UserFixtures.Profile(), firstName: firstName, lastName: lastName));
         _finance.GetIbanAsync(submitter, Arg.Any<CancellationToken>()).Returns("ES9121000418450200051332");
         if (financeAdmin)
-            SetupUserAndProfile(actor, "Finance Admin", "ES9121000418450200051332");
+            SetupUser(actor, "Finance Admin", "ES9121000418450200051332");
 
         var result = await _sut.SubmitAsync(id, actor,
             TestContext.Current.CancellationToken);
@@ -1907,7 +1907,7 @@ public sealed class ExpenseReportServiceTests
 
         var legalName = namePartLength == 0
             ? "Alice Tester" : $"{new string('A', namePartLength)} {new string('B', namePartLength)}";
-        SetupUserAndProfile(submitter, legalName, "ES9121000418450200051332");
+        SetupUser(submitter, legalName, "ES9121000418450200051332");
 
         var ok = (await _sut.SubmitAsync(id, submitter, TestContext.Current.CancellationToken)).Succeeded;
 
@@ -1930,7 +1930,7 @@ public sealed class ExpenseReportServiceTests
         SetupActiveYear();
         var submitter = Guid.NewGuid();
         var id = (await _sut.CreateDraftAsync(submitter, submitter, CategoryAccountNumber, "Project X", ct: TestContext.Current.CancellationToken)).ReportId!.Value;
-        SetupUserAndProfile(submitter, "Bob", "ES1234");
+        SetupUser(submitter, "Bob", "ES1234");
 
         var result = await _sut.SubmitAsync(id, submitter, TestContext.Current.CancellationToken);
         result.Succeeded.Should().BeFalse();
@@ -1944,7 +1944,7 @@ public sealed class ExpenseReportServiceTests
         var submitter = Guid.NewGuid();
         var id = (await _sut.CreateDraftAsync(submitter, submitter, CategoryAccountNumber, "Project X", ct: TestContext.Current.CancellationToken)).ReportId!.Value;
         (await _sut.AddLineAsync(id, submitter, "No attachment line", 50m, ct: TestContext.Current.CancellationToken)).Succeeded.Should().BeTrue();
-        SetupUserAndProfile(submitter, "Bob", "ES1234");
+        SetupUser(submitter, "Bob", "ES1234");
 
         var result = await _sut.SubmitAsync(id, submitter, TestContext.Current.CancellationToken);
         result.Succeeded.Should().BeFalse();
@@ -1977,7 +1977,7 @@ public sealed class ExpenseReportServiceTests
         var id = (await _sut.CreateDraftAsync(submitter, submitter, CategoryAccountNumber, "Project X", ct: TestContext.Current.CancellationToken)).ReportId!.Value;
         var lineId = (await _sut.AddLineAsync(id, submitter, "Item", 100m, ct: TestContext.Current.CancellationToken)).LineId!.Value;
         await _expenseRepo.ReplaceLineAttachmentAsync(id, lineId, MakeAttachment(submitter), TestContext.Current.CancellationToken);
-        SetupUserAndProfile(submitter, "Alice", "ES9121000418450200051332");
+        SetupUser(submitter, "Alice", "ES9121000418450200051332");
 
         (await _sut.SubmitAsync(id, submitter, TestContext.Current.CancellationToken)).Succeeded.Should().BeTrue();
 
@@ -1998,7 +1998,7 @@ public sealed class ExpenseReportServiceTests
         var id = (await _sut.CreateDraftAsync(submitter, submitter, CategoryAccountNumber, "Project X", ct: TestContext.Current.CancellationToken)).ReportId!.Value;
         var lineId = (await _sut.AddLineAsync(id, submitter, "Item", 100m, ct: TestContext.Current.CancellationToken)).LineId!.Value;
         await _expenseRepo.ReplaceLineAttachmentAsync(id, lineId, MakeAttachment(submitter), TestContext.Current.CancellationToken);
-        SetupUserAndProfile(submitter, "Alice Tester", "ES9121000418450200051332");
+        SetupUser(submitter, "Alice Tester", "ES9121000418450200051332");
 
         var result = await _sut.SubmitAsync(id, submitter, TestContext.Current.CancellationToken);
 
@@ -2030,7 +2030,7 @@ public sealed class ExpenseReportServiceTests
         var submitter = Guid.NewGuid();
         var id = (await _sut.CreateDraftAsync(submitter, submitter, CategoryAccountNumber, "Project X", ct: TestContext.Current.CancellationToken)).ReportId!.Value;
         (await _sut.AddLineAsync(id, submitter, "No attachment line", 50m, ct: TestContext.Current.CancellationToken)).Succeeded.Should().BeTrue();
-        SetupUserAndProfile(submitter, "Bob", "ES1234");
+        SetupUser(submitter, "Bob", "ES1234");
 
         var result = await _sut.SubmitAsync(id, submitter, TestContext.Current.CancellationToken);
 
@@ -2045,7 +2045,7 @@ public sealed class ExpenseReportServiceTests
         var submitter = Guid.NewGuid();
         var id = (await _sut.CreateDraftAsync(submitter, submitter, CategoryAccountNumber, "Project X", ct: TestContext.Current.CancellationToken)).ReportId!.Value;
         await _sut.AddMileageLineAsync(id, submitter, "Berlin", "Barcelona", 100m, TestContext.Current.CancellationToken);
-        SetupUserAndProfile(submitter, "Alice Tester", "ES9121000418450200051332");
+        SetupUser(submitter, "Alice Tester", "ES9121000418450200051332");
 
         var result = await _sut.SubmitAsync(id, submitter, TestContext.Current.CancellationToken);
 
@@ -2060,7 +2060,7 @@ public sealed class ExpenseReportServiceTests
         var submitter = Guid.NewGuid();
         var id = (await _sut.CreateDraftAsync(submitter, submitter, CategoryAccountNumber, "Project X", ct: TestContext.Current.CancellationToken)).ReportId!.Value;
         await _sut.AddLineAsync(id, submitter, "Tent", 50m, ct: TestContext.Current.CancellationToken); // Receipt line, no attachment
-        SetupUserAndProfile(submitter, "Alice Tester", "ES9121000418450200051332");
+        SetupUser(submitter, "Alice Tester", "ES9121000418450200051332");
 
         var result = await _sut.SubmitAsync(id, submitter, TestContext.Current.CancellationToken);
 
@@ -2077,7 +2077,7 @@ public sealed class ExpenseReportServiceTests
         var submitter = Guid.NewGuid();
         var id = (await sut.CreateDraftAsync(submitter, submitter, CategoryAccountNumber, "Project X", ct: TestContext.Current.CancellationToken)).ReportId!.Value;
         (await sut.AddLineAsync(id, submitter, "No attachment line", 50m, ct: TestContext.Current.CancellationToken)).Succeeded.Should().BeTrue(); // Receipt line, no attachment
-        SetupUserAndProfile(submitter, "Bob", "ES1234");
+        SetupUser(submitter, "Bob", "ES1234");
 
         var result = await sut.SubmitAsync(id, submitter, TestContext.Current.CancellationToken);
 
@@ -2334,12 +2334,12 @@ public sealed class ExpenseReportServiceTests
     }
 
     [HumansFact]
-    public async Task CreateDraftAsync_OnBehalf_MakesTheMemberTheSubmitter_AndAudits()
+    public async Task CreateDraftAsync_OnBehalf_MemberIsSubmitter()
     {
         SetupActiveYear();
         var member = Guid.NewGuid();
         var admin = Guid.NewGuid();
-        SetupUserAndProfile(member, "Dani Member", "ES9121000418450200051332");
+        SetupUser(member, "Dani Member", "ES9121000418450200051332");
 
         var id = (await _sut.CreateDraftAsync(member, admin, CategoryAccountNumber, "Project X", ct: TestContext.Current.CancellationToken)).ReportId!.Value;
 
@@ -2357,7 +2357,7 @@ public sealed class ExpenseReportServiceTests
     }
 
     [HumansFact]
-    public async Task UpdateDraftAsync_OnBehalf_Succeeds_OnAnEndorsedReport()
+    public async Task UpdateDraftAsync_OnBehalfEndorsed_Succeeds()
     {
         // A finance admin's edit window covers the statuses a report can still be corrected in,
         // and correcting one does not send it back a step — the endorsement stands.
@@ -2376,7 +2376,7 @@ public sealed class ExpenseReportServiceTests
     }
 
     [HumansFact]
-    public async Task UpdateDraftAsync_OnAPendingReport_KeepsItsOwnBudgetYear()
+    public async Task UpdateDraftAsync_PendingReport_KeepsBudgetYear()
     {
         // The report belongs to a year that is no longer the active one. Re-resolving its header
         // through the active year would silently move last year's accounting into this year.
@@ -2402,7 +2402,7 @@ public sealed class ExpenseReportServiceTests
     }
 
     [HumansFact]
-    public async Task UpdateDraftAsync_OnAPendingReport_RejectsACategoryFromAnotherYear()
+    public async Task UpdateDraftAsync_OtherYearCategory_IsRejected()
     {
         SetupActiveYear();
         var member = Guid.NewGuid();
@@ -2438,14 +2438,14 @@ public sealed class ExpenseReportServiceTests
     }
 
     [HumansFact]
-    public async Task EveryOnBehalfEdit_WritesAnAuditEntry_NamingTheMember()
+    public async Task OnBehalfEdit_Each_AuditNamesMember()
     {
         // An admin changing somebody else's report is an action taken on their behalf, so each
         // header and line change owes them a trail — not just the create and the submit.
         SetupActiveYear();
         var member = Guid.NewGuid();
         var admin = Guid.NewGuid();
-        SetupUserAndProfile(member, "Dani Member", "ES9121000418450200051332");
+        SetupUser(member, "Dani Member", "ES9121000418450200051332");
         var id = (await _sut.CreateDraftAsync(member, member, CategoryAccountNumber, "Project X", ct: TestContext.Current.CancellationToken)).ReportId!.Value;
 
         await _sut.UpdateHeaderAsync(id, AsFinance(admin), CategoryAccountNumber, "corrected", ct: TestContext.Current.CancellationToken);
@@ -2472,7 +2472,7 @@ public sealed class ExpenseReportServiceTests
         SetupActiveYear();
         var member = Guid.NewGuid();
         var admin = Guid.NewGuid();
-        SetupUserAndProfile(member, "Dani Member", "ES9121000418450200051332");
+        SetupUser(member, "Dani Member", "ES9121000418450200051332");
         var id = (await _sut.CreateDraftAsync(member, member, CategoryAccountNumber, "Project X", ct: TestContext.Current.CancellationToken)).ReportId!.Value;
 
         await _sut.UpdateHeaderAsync(id, AsFinance(admin), CategoryAccountNumber, "corrected", ct: TestContext.Current.CancellationToken);
@@ -2508,7 +2508,7 @@ public sealed class ExpenseReportServiceTests
     }
 
     [HumansFact]
-    public async Task AddLineAsync_OnBehalf_Succeeds_ForFinanceAdmin()
+    public async Task AddLineAsync_FinanceAdminOnBehalf_Succeeds()
     {
         SetupActiveYear();
         var member = Guid.NewGuid();
@@ -2525,7 +2525,7 @@ public sealed class ExpenseReportServiceTests
 
 
     [HumansFact]
-    public async Task SubmitAsync_OnBehalf_SnapshotsTheMembersProfile_NotTheActors()
+    public async Task SubmitAsync_OnBehalf_SnapshotsMembersProfile()
     {
         // The payee is whoever the report belongs to. Reading the acting admin's profile here
         // would pay the admin's account for the member's receipts.
@@ -2537,8 +2537,8 @@ public sealed class ExpenseReportServiceTests
         var lineId = (await _sut.AddLineAsync(id, AsFinance(admin), "Item", 100m, ct: TestContext.Current.CancellationToken)).LineId!.Value;
         await _expenseRepo.ReplaceLineAttachmentAsync(id, lineId, MakeAttachment(admin), TestContext.Current.CancellationToken);
 
-        SetupUserAndProfile(member, "Dani Member", "ES9121000418450200051332");
-        SetupUserAndProfile(admin, "Ada Admin", "ES7100302053091234567895");
+        SetupUser(member, "Dani Member", "ES9121000418450200051332");
+        SetupUser(admin, "Ada Admin", "ES7100302053091234567895");
 
         var ok = (await _sut.SubmitAsync(id, admin, TestContext.Current.CancellationToken)).Succeeded;
 
@@ -2569,7 +2569,7 @@ public sealed class ExpenseReportServiceTests
         var reportId = Guid.NewGuid();
         await SeedReportWithStatusAsync(reportId, member, category.Id, Guid.NewGuid(),
             ExpenseReportStatus.Draft);
-        SetupUserAndProfile(member, "Dani Member", "ES9121000418450200051332");
+        SetupUser(member, "Dani Member", "ES9121000418450200051332");
         _financeWrite
             .SetIbanAsync(member, "ES9121000418450200051332", Arg.Any<CancellationToken>())
             .Returns(true);
@@ -2590,7 +2590,7 @@ public sealed class ExpenseReportServiceTests
     }
 
     [HumansFact]
-    public async Task AttachFileToLineAsync_OnBehalf_RelatesTheAuditToTheMember_NotTheAdmin()
+    public async Task AttachFileToLineAsync_OnBehalf_AuditNamesMember()
     {
         SetupActiveYear();
         var member = Guid.NewGuid();
@@ -2621,7 +2621,7 @@ public sealed class ExpenseReportServiceTests
         var reportId = Guid.NewGuid();
         await SeedReportWithStatusAsync(reportId, member, category.Id, Guid.NewGuid(),
             ExpenseReportStatus.Submitted, payeeIban: "ES1000750000010000000000");
-        SetupUserAndProfile(member, "Dani Member", "ES9121000418450200051332");
+        SetupUser(member, "Dani Member", "ES9121000418450200051332");
         _financeWrite
             .SetIbanAsync(member, "ES9121000418450200051332", Arg.Any<CancellationToken>())
             .Returns(true);
@@ -2751,7 +2751,7 @@ public sealed class ExpenseReportServiceTests
     [InlineData(true, true)]
     [InlineData(true, false)]
     [InlineData(false, false)]
-    public async Task CoordinatorQueueIdentityResolution_UsesSurvivorAndDeniesMissingAccounts(
+    public async Task CoordinatorQueue_MissingAccount_IsDenied(
         bool accountExists, bool survivorCoordinates)
     {
         var ct = TestContext.Current.CancellationToken;
@@ -2775,7 +2775,7 @@ public sealed class ExpenseReportServiceTests
 
 
     [HumansFact]
-    public async Task CoordinatorEndorseAsync_ByAFinanceAdminWhoIsNotTheCoordinator_Endorses()
+    public async Task CoordinatorEndorseAsync_FinanceAdmin_Endorses()
     {
         var (_, category) = SetupActiveYear();
         var reportId = Guid.NewGuid();
@@ -2795,7 +2795,7 @@ public sealed class ExpenseReportServiceTests
     }
 
     [HumansFact]
-    public async Task CoordinatorRejectAsync_ByAFinanceAdminWhoIsNotTheCoordinator_ReturnsToDraft()
+    public async Task CoordinatorRejectAsync_FinanceAdmin_ReturnsToDraft()
     {
         var (_, category) = SetupActiveYear();
         var reportId = Guid.NewGuid();
@@ -2849,7 +2849,7 @@ public sealed class ExpenseReportServiceTests
     }
 
     [HumansFact]
-    public async Task CoordinatorRejectAsync_ReturnsToDraft_And_Audits()
+    public async Task CoordinatorRejectAsync_Coordinator_ReturnsToDraftWithAudit()
     {
         var (_, category) = SetupActiveYear();
         var coordinator = Guid.NewGuid();
@@ -2965,7 +2965,7 @@ public sealed class ExpenseReportServiceTests
     }
 
     [HumansFact]
-    public async Task ApproveAsync_FlipsToApproved_AndAudits()
+    public async Task ApproveAsync_Pending_ApprovesWithAudit()
     {
         var (_, category) = SetupActiveYear();
         var actor = Guid.NewGuid();
@@ -2994,7 +2994,7 @@ public sealed class ExpenseReportServiceTests
     [InlineData(" ", "en")]
     [InlineData("not-a-culture", "en")]
     [InlineData("pt", "en")]
-    public async Task ApproveAsync_EmailsTheSubmitter_WithTheCappedAmountAndAMaskedIban(string language, string expectedCulture)
+    public async Task ApproveAsync_Capped_EmailsCappedAmountMaskedIban(string language, string expectedCulture)
     {
         string amount;
         using (new CultureScope(expectedCulture))
@@ -3024,7 +3024,7 @@ public sealed class ExpenseReportServiceTests
     }
 
     [HumansFact]
-    public async Task ApproveAsync_ForAMemberWithNoNotificationAddress_ApprovesAndSendsNothing()
+    public async Task ApproveAsync_NoNotificationAddress_ApprovesWithoutEmail()
     {
         var (_, category) = SetupActiveYear();
         var submitter = Guid.NewGuid();
@@ -3155,7 +3155,7 @@ public sealed class ExpenseReportServiceTests
     }
 
     [HumansFact]
-    public async Task ApproveAsync_WithOverrideAccount_AuditsBoth_AndRebooks()
+    public async Task ApproveAsync_OverrideAccount_AuditsBothThenRebooks()
     {
         var (_, category) = SetupActiveYear();
         var actor = Guid.NewGuid();
@@ -3271,7 +3271,7 @@ public sealed class ExpenseReportServiceTests
     }
 
     [HumansFact]
-    public async Task FinanceRejectAsync_ReturnsToDraft_AndAudits()
+    public async Task FinanceRejectAsync_Report_ReturnsToDraftWithAudit()
     {
         var (_, category) = SetupActiveYear();
         var actor = Guid.NewGuid();
@@ -3465,11 +3465,11 @@ public sealed class ExpenseReportServiceTests
     }
 
     [HumansFact]
-    public async Task GetHoldedTimelineAsync_builds_timeline_with_owed_and_other()
+    public async Task GetHoldedTimelineAsync_Report_HasOwedWithOther()
     {
         var userId = Guid.NewGuid();
         SetupActiveYear();
-        SetupUserAndProfile(userId, "Alice Tester", "ES9121000418450200051332");
+        SetupUser(userId, "Alice Tester", "ES9121000418450200051332");
         var reportId = await SeedApprovedReportWithAttachmentAsync(userId);
         await _expenseRepo.SetHoldedContactLinkAsync(reportId, "c1", 40000007, FakeNow, TestContext.Current.CancellationToken);
         var seededLineId = (await _sut.GetAsync(reportId, TestContext.Current.CancellationToken))!.Lines[0].Id;
@@ -3495,8 +3495,8 @@ public sealed class ExpenseReportServiceTests
         var survivorId = Guid.NewGuid();
         var sourceId = Guid.NewGuid();
         SetupActiveYear();
-        SetupUserAndProfile(sourceId, "Alice Old", "ES9121000418450200051332");
-        SetupUserAndProfile(survivorId, "Alice Tester", "ES9121000418450200051332");
+        SetupUser(sourceId, "Alice Old", "ES9121000418450200051332");
+        SetupUser(survivorId, "Alice Tester", "ES9121000418450200051332");
         var survivorReportId = await SeedApprovedReportWithAttachmentAsync(survivorId);
         var sourceReportId = await SeedApprovedReportWithAttachmentAsync(sourceId);
         foreach (var (reportId, docId) in new[] { (survivorReportId, "doc-1"), (sourceReportId, "doc-2") })
@@ -3522,13 +3522,13 @@ public sealed class ExpenseReportServiceTests
     [HumansTheory]
     [InlineData(false)]
     [InlineData(true)]
-    public async Task GetHoldedTimelineAsync_RegisteredTotal_UsesThePayableNotTheReceiptsTotal(bool withdrawn)
+    public async Task GetHoldedTimelineAsync_RegisteredTotal_UsesPayable(bool withdrawn)
     {
         // The seeded report has a 50 € line capped at 30 €, so a 30 € creditor balance is fully
         // explained by this report — counting the receipts total would leave 20 € as "other".
         var userId = Guid.NewGuid();
         SetupActiveYear();
-        SetupUserAndProfile(userId, "Alice Tester", "ES9121000418450200051332");
+        SetupUser(userId, "Alice Tester", "ES9121000418450200051332");
         var reportId = await SeedApprovedReportWithAttachmentAsync(userId, maxAmount: 30m);
         await _expenseRepo.SetHoldedContactLinkAsync(reportId, "c1", 40000007, FakeNow, TestContext.Current.CancellationToken);
         var seededLineId = (await _sut.GetAsync(reportId, TestContext.Current.CancellationToken))!.Lines[0].Id;
@@ -3552,13 +3552,13 @@ public sealed class ExpenseReportServiceTests
     [HumansTheory]
     [InlineData(false)]
     [InlineData(true)]
-    public async Task GetHoldedTimelineAsync_RegisteredTotal_CountsOnlyLinesWhoseDocExists(bool withdrawn)
+    public async Task GetHoldedTimelineAsync_RegisteredTotal_CountsLinesWithDoc(bool withdrawn)
     {
         // A per-line push that failed partway: line A's doc was created, line B's wasn't yet.
         // Only A's 40 € is booked in Holded, so the registered total must not claim B's 60 € too.
         var userId = Guid.NewGuid();
         SetupActiveYear();
-        SetupUserAndProfile(userId, "Alice Tester", "ES9121000418450200051332");
+        SetupUser(userId, "Alice Tester", "ES9121000418450200051332");
 
         var reportId = (await _sut.CreateDraftAsync(userId, userId, CategoryAccountNumber, "Project X", ct: TestContext.Current.CancellationToken)).ReportId!.Value;
         var lineAId = (await _sut.AddLineAsync(reportId, userId, "A", 40m, ct: TestContext.Current.CancellationToken)).LineId!.Value;
@@ -3590,11 +3590,11 @@ public sealed class ExpenseReportServiceTests
     }
 
     [HumansFact]
-    public async Task GetHoldedTimelineAsync_CarriesPaidTotalAndDate()
+    public async Task GetHoldedTimelineAsync_Paid_HasTotalWithDate()
     {
         var userId = Guid.NewGuid();
         SetupActiveYear();
-        SetupUserAndProfile(userId, "Alice Tester", "ES9121000418450200051332");
+        SetupUser(userId, "Alice Tester", "ES9121000418450200051332");
         var reportId = await SeedApprovedReportWithAttachmentAsync(userId);
         await _expenseRepo.SetHoldedContactLinkAsync(reportId, "c1", 40000007, FakeNow, TestContext.Current.CancellationToken);
         var seededLineId = (await _sut.GetAsync(reportId, TestContext.Current.CancellationToken))!.Lines[0].Id;
@@ -3769,7 +3769,7 @@ public sealed class ExpenseReportServiceTests
     [HumansTheory]
     [InlineData(ExpenseReportStatus.Submitted)]
     [InlineData(ExpenseReportStatus.CoordinatorEndorsed)]
-    public async Task DeclineLine_DropsTheLineFromTotalAndPayable_KeepsItOnTheReport_AndAudits(ExpenseReportStatus status)
+    public async Task DeclineLine_Valid_DropsFromTotalKeepsLine(ExpenseReportStatus status)
     {
         var (reportId, _, _, lines) = await SeedDeclineReportAsync(
             status, Guid.NewGuid(), null, 0, 100m, 50m);
@@ -3793,7 +3793,7 @@ public sealed class ExpenseReportServiceTests
     }
 
     [HumansFact]
-    public async Task DeclineLine_LeavesTheCapAlone_PayableIsTheLesserOfAcceptedTotalAndCap()
+    public async Task DeclineLine_Capped_PaysLesserOfTotalOrCap()
     {
         // €500 of receipts, a €400 cap, €50 declined: accepted total €450, payout still €400.
         var (reportId, _, _, lines) = await SeedDeclineReportAsync(
@@ -3808,7 +3808,7 @@ public sealed class ExpenseReportServiceTests
     }
 
     [HumansFact]
-    public async Task DeclineLine_BringingTheAcceptedTotalUnderTheCap_PaysTheAcceptedTotal()
+    public async Task DeclineLine_TotalDropsUnderCap_PaysAcceptedTotal()
     {
         var (reportId, _, _, lines) = await SeedDeclineReportAsync(
             ExpenseReportStatus.Submitted, Guid.NewGuid(), 400m, 0, 300m, 100m, 50m);
@@ -3824,7 +3824,7 @@ public sealed class ExpenseReportServiceTests
     [HumansTheory]
     [InlineData(ExpenseReportStatus.Submitted)]
     [InlineData(ExpenseReportStatus.CoordinatorEndorsed)]
-    public async Task UndoDeclineLine_PutsTheLineBackInTotalAndPayable_AndAudits(ExpenseReportStatus status)
+    public async Task UndoDeclineLine_Declined_RestoresLineToTotal(ExpenseReportStatus status)
     {
         var (reportId, _, _, lines) = await SeedDeclineReportAsync(
             status, Guid.NewGuid(), null, 1, 50m, 100m);
@@ -3846,7 +3846,7 @@ public sealed class ExpenseReportServiceTests
     }
 
     [HumansFact]
-    public async Task DeclineLine_ByACoordinatorOfTheCategory_WorksWhileSubmitted()
+    public async Task DeclineLine_CoordinatorWhileSubmitted_Works()
     {
         var coordinator = Guid.NewGuid();
         var (reportId, categoryId, teamId, lines) = await SeedDeclineReportAsync(
@@ -3862,7 +3862,7 @@ public sealed class ExpenseReportServiceTests
     [HumansTheory]
     [InlineData(false)]
     [InlineData(true)]
-    public async Task FirstReviewLineDecision_IsRefusedOnceTheReportIsEndorsed(bool undo)
+    public async Task FirstReviewLineDecision_EndorsedReport_IsRefused(bool undo)
     {
         var coordinator = Guid.NewGuid();
         var (reportId, categoryId, teamId, lines) = await SeedDeclineReportAsync(
@@ -3882,7 +3882,7 @@ public sealed class ExpenseReportServiceTests
     [InlineData(ExpenseReportStatus.Draft)]
     [InlineData(ExpenseReportStatus.Approved)]
     [InlineData(ExpenseReportStatus.Withdrawn)]
-    public async Task DeclineLine_OutsideTheDecisionWindow_IsRefusedEvenForFinanceAdmin(ExpenseReportStatus status)
+    public async Task DeclineLine_OutsideDecisionWindow_IsRefused(ExpenseReportStatus status)
     {
         var (reportId, _, _, lines) = await SeedDeclineReportAsync(status, Guid.NewGuid(), null, 0, 100m);
 
@@ -3893,7 +3893,7 @@ public sealed class ExpenseReportServiceTests
     }
 
     [HumansFact]
-    public async Task DeclineLine_RefusesABlankReason_AProofRow_AndADoubleDecline()
+    public async Task DeclineLine_InvalidRequest_IsRefused()
     {
         var (reportId, _, _, lines) = await SeedDeclineReportAsync(
             ExpenseReportStatus.Submitted, Guid.NewGuid(), null, 0, 100m, 50m);
@@ -3930,7 +3930,7 @@ public sealed class ExpenseReportServiceTests
     }
 
     [HumansFact]
-    public async Task RemovingADeclinedLine_ClearsIt_WithoutTakingItsAmountOutOfTheTotalAgain()
+    public async Task RemoveLine_Declined_TotalUnchanged()
     {
         var submitter = Guid.NewGuid();
         var (reportId, _, _, lines) = await SeedDeclineReportAsync(
@@ -3946,7 +3946,7 @@ public sealed class ExpenseReportServiceTests
     }
 
     [HumansFact]
-    public async Task ReplacingTheFileOfADeclinedLine_ClearsTheDecline_AndCountsTheLineAgain()
+    public async Task ReplaceFile_DeclinedLine_ClearsDecline()
     {
         var submitter = Guid.NewGuid();
         var (reportId, _, _, lines) = await SeedDeclineReportAsync(
@@ -3973,7 +3973,7 @@ public sealed class ExpenseReportServiceTests
     }
 
     [HumansFact]
-    public async Task ReplacingTheFileOfADeclinedLine_ReacceptanceSaveFailure_PreservesPreviousReceipt()
+    public async Task ReplaceFile_ReacceptanceSaveFails_KeepsPreviousReceipt()
     {
         var ct = TestContext.Current.CancellationToken;
         var submitter = Guid.NewGuid();
@@ -4010,7 +4010,7 @@ public sealed class ExpenseReportServiceTests
     }
 
     [HumansFact]
-    public async Task ReplacingTheFileOfADeclinedLine_WhenTheUploadRollsBack_KeepsTheDecline()
+    public async Task ReplaceFile_UploadRollsBack_KeepsDecline()
     {
         var submitter = Guid.NewGuid();
         var (reportId, _, _, lines) = await SeedDeclineReportAsync(
@@ -4084,7 +4084,7 @@ public sealed class ExpenseReportServiceTests
     }
 
     [HumansFact]
-    public async Task DrainHoldedOutboxAsync_SecondReport_SeedsContactIdFromTheMembersEarlierReport()
+    public async Task DrainHoldedOutboxAsync_SecondReport_ReusesContactId()
     {
         // A member whose Holded contact predates holded_creditor_contacts has a contact id on older
         // reports and no binding row. Seeding only from the report being pushed sends Finance a null,
@@ -4125,7 +4125,7 @@ public sealed class ExpenseReportServiceTests
     }
 
     [HumansFact]
-    public async Task DrainHoldedOutboxAsync_MergedSubmitter_BindsAndNumbersTheSurvivor()
+    public async Task DrainHoldedOutboxAsync_MergedSubmitter_BindsSurvivor()
     {
         // The report was submitted under an id that has since been merged into a survivor.
         var (_, category) = SetupActiveYear();
@@ -4168,7 +4168,7 @@ public sealed class ExpenseReportServiceTests
     }
 
     [HumansFact]
-    public async Task DrainHoldedOutboxAsync_DelegatesContactEnrichmentToFinance_PersistsContactLink()
+    public async Task DrainHoldedOutboxAsync_NewContact_PersistsContactLink()
     {
         // A user with distinct legal name and burner.
         var (_, category) = SetupActiveYear();
@@ -4339,7 +4339,7 @@ public sealed class ExpenseReportServiceTests
             []);
     }
 
-    private void SetupUserAndProfile(Guid userId, string displayName, string iban)
+    private void SetupUser(Guid userId, string displayName, string iban)
     {
         var nameParts = displayName.Split(' ', 2, StringSplitOptions.RemoveEmptyEntries);
         var firstName = nameParts.Length > 0 ? nameParts[0] : displayName;
@@ -4646,7 +4646,7 @@ public sealed class ExpenseReportServiceTests
         var id = await CreateGrantDraftAsync(submitter, grant);
         var lineId = (await _sut.AddLineAsync(id, submitter, "Fuel", 120m, ct: TestContext.Current.CancellationToken)).LineId!.Value;
         await _expenseRepo.ReplaceLineAttachmentAsync(id, lineId, MakeAttachment(submitter), TestContext.Current.CancellationToken);
-        SetupUserAndProfile(submitter, "Alice Tester", "ES9121000418450200051332");
+        SetupUser(submitter, "Alice Tester", "ES9121000418450200051332");
         return id;
     }
 
@@ -4672,7 +4672,7 @@ public sealed class ExpenseReportServiceTests
     }
 
     [HumansFact]
-    public async Task CreateDraft_WithGrant_BooksToTheGrantsAccount_WithNoCategory()
+    public async Task CreateDraft_WithGrant_UsesGrantAccount()
     {
         SetupActiveYear();
         var submitter = Guid.NewGuid();
@@ -4707,7 +4707,7 @@ public sealed class ExpenseReportServiceTests
     }
 
     [HumansFact]
-    public async Task CreateDraft_OnBehalf_UsesTheMembersGrants_NotTheAdmins()
+    public async Task CreateDraft_OnBehalf_UsesMembersGrants()
     {
         SetupActiveYear();
         var member = Guid.NewGuid();
@@ -4723,7 +4723,7 @@ public sealed class ExpenseReportServiceTests
     }
 
     [HumansFact]
-    public async Task UpdateDraft_KeepsTheHeldGrant_EvenWhenNoLongerClaimable()
+    public async Task UpdateDraft_HeldGrantUnclaimable_IsKept()
     {
         // A rejected report corrected after the deadline keeps the grant it filed in time.
         SetupActiveYear();
@@ -4762,7 +4762,7 @@ public sealed class ExpenseReportServiceTests
     [InlineData(ExpenseReportStatus.Draft, 62900600, "acc-new-program")]
     [InlineData(ExpenseReportStatus.Submitted, GrantAccountNumber, GrantAccountId)]
     [InlineData(ExpenseReportStatus.CoordinatorEndorsed, GrantAccountNumber, GrantAccountId)]
-    public async Task UpdateDraft_ProgramAccountChange_DoesNotMoveASubmittedStamp(
+    public async Task UpdateDraft_ProgramAccountChange_KeepsSubmittedStamp(
         ExpenseReportStatus status, int expectedAccountNumber, string expectedAccountId)
     {
         var submitter = Guid.NewGuid();
@@ -4810,7 +4810,7 @@ public sealed class ExpenseReportServiceTests
     }
 
     [HumansFact]
-    public async Task Submit_WithGrant_ClaimsIt_AndRestampsAccountAndCapFromTheGrant()
+    public async Task Submit_WithGrant_ClaimsThenRestamps()
     {
         var completed = TrackPreapprovalCompletions();
         SetupActiveYear();
@@ -4851,7 +4851,7 @@ public sealed class ExpenseReportServiceTests
     }
 
     [HumansFact]
-    public async Task Endorse_PreapprovedReport_ByItsProgramsManager_KeepsTheGrantAsTheCeiling()
+    public async Task Endorse_ProgramManager_KeepsGrantAsCeiling()
     {
         var submitter = Guid.NewGuid();
         var grant = MakeGrant(maxAmount: 150m);
@@ -4881,7 +4881,7 @@ public sealed class ExpenseReportServiceTests
     }
 
     [HumansFact]
-    public async Task CoordinatorReject_PreapprovedReport_ByItsProgramsManager_SendsItBackToDraft_StillHoldingTheGrant()
+    public async Task CoordinatorReject_ProgramManager_ReturnsToDraftKeepsGrant()
     {
         var submitter = Guid.NewGuid();
         var grant = MakeGrant();
@@ -4898,7 +4898,7 @@ public sealed class ExpenseReportServiceTests
     }
 
     [HumansFact]
-    public async Task Submit_WithGrant_AfterTheDeadline_IsRefused_WithoutTouchingTheGrant()
+    public async Task Submit_GrantAfterDeadline_IsRefused()
     {
         SetupActiveYear();
         var submitter = Guid.NewGuid();
@@ -4916,7 +4916,7 @@ public sealed class ExpenseReportServiceTests
     }
 
     [HumansFact]
-    public async Task Submit_WithGrant_OnTheDeadlineDay_StillClaims()
+    public async Task Submit_GrantOnDeadlineDay_Claims()
     {
         SetupActiveYear();
         var submitter = Guid.NewGuid();
@@ -4930,7 +4930,7 @@ public sealed class ExpenseReportServiceTests
     }
 
     [HumansFact]
-    public async Task Submit_WithGrant_HeldByThisReport_ResubmitsPastTheDeadline()
+    public async Task Submit_GrantHeldByReport_ResubmitsPastDeadline()
     {
         // A rejection does not undo a claim filed in time: the grant stays Claimed by the report
         // and ClaimAsync is idempotent for it, deadline or not.
@@ -4951,7 +4951,7 @@ public sealed class ExpenseReportServiceTests
     [InlineData(GrantStatus.Revoked, "Expenses_Validation_PreapprovalRevoked")]
     [InlineData(GrantStatus.Consumed, "Expenses_Validation_PreapprovalUsed")]
     [InlineData(GrantStatus.Declined, "Expenses_Validation_PreapprovalDeclined")]
-    public async Task Submit_WithGrant_NotOpen_IsRefused_WithoutClaiming(GrantStatus status, string expectedKey)
+    public async Task Submit_GrantNotOpen_IsRefused(GrantStatus status, string expectedKey)
     {
         SetupActiveYear();
         var submitter = Guid.NewGuid();
@@ -4994,7 +4994,7 @@ public sealed class ExpenseReportServiceTests
     }
 
     [HumansFact]
-    public async Task Submit_WithGrant_WhenTheClaimIsRefused_LeavesTheDraftAlone()
+    public async Task Submit_GrantClaimRefused_LeavesDraft()
     {
         // Claimed by another report between the pre-check and the claim: Preapprovals is the gate.
         SetupActiveYear();
@@ -5015,7 +5015,7 @@ public sealed class ExpenseReportServiceTests
     }
 
     [HumansFact]
-    public async Task Approve_WithGrant_BlankCap_KeepsTheGrantsCurrentAmount_AndConsumesIt()
+    public async Task Approve_GrantBlankCap_UsesGrantAmount()
     {
         var completed = TrackPreapprovalCompletions();
         SetupActiveYear();
@@ -5038,7 +5038,7 @@ public sealed class ExpenseReportServiceTests
     }
 
     [HumansFact]
-    public async Task Approve_WithGrant_LowerCap_IsFinancesCall()
+    public async Task Approve_GrantLowerCap_IsAllowed()
     {
         SetupActiveYear();
         var grant = MakeGrant(maxAmount: 150m);
@@ -5053,7 +5053,7 @@ public sealed class ExpenseReportServiceTests
     }
 
     [HumansFact]
-    public async Task Approve_WithGrant_CapAboveTheGrant_IsRefused()
+    public async Task Approve_CapAboveGrant_IsRefused()
     {
         SetupActiveYear();
         var grant = MakeGrant(maxAmount: 150m);
@@ -5070,7 +5070,7 @@ public sealed class ExpenseReportServiceTests
     }
 
     [HumansFact]
-    public async Task Approve_WithGrant_AccountOverride_IsRefused()
+    public async Task Approve_GrantAccountOverride_IsRefused()
     {
         SetupActiveYear();
         var grant = MakeGrant();
@@ -5089,7 +5089,7 @@ public sealed class ExpenseReportServiceTests
     }
 
     [HumansFact]
-    public async Task Approve_WithGrant_PostingItsOwnAccount_IsNotAnOverride()
+    public async Task Approve_GrantOwnAccount_IsNotOverride()
     {
         SetupActiveYear();
         var grant = MakeGrant();
@@ -5103,7 +5103,7 @@ public sealed class ExpenseReportServiceTests
     }
 
     [HumansFact]
-    public async Task Approve_WithGrant_WhenConsumeIsRefused_LeavesTheReportPending()
+    public async Task Approve_GrantConsumeRefused_StaysPending()
     {
         SetupActiveYear();
         var grant = MakeGrant();
@@ -5157,7 +5157,7 @@ public sealed class ExpenseReportServiceTests
     }
 
     [HumansFact]
-    public async Task Withdraw_AfterApproval_IsRefused_AndLeavesTheGrantConsumed()
+    public async Task Withdraw_AfterApproval_IsRefused()
     {
         SetupActiveYear();
         var submitter = Guid.NewGuid();
@@ -5192,7 +5192,7 @@ public sealed class ExpenseReportServiceTests
     }
 
     [HumansFact]
-    public async Task Withdraw_AfterTheGrantWasRevoked_StillWithdraws_WithoutReleasing()
+    public async Task Withdraw_GrantRevoked_WithdrawsWithoutRelease()
     {
         // Revoke keeps the report pending; the member must still be able to take it back.
         SetupActiveYear();
@@ -5210,7 +5210,7 @@ public sealed class ExpenseReportServiceTests
     }
 
     [HumansFact]
-    public async Task UpdateDraft_RejectedDraft_DroppingTheClaimedGrant_ReleasesIt()
+    public async Task UpdateDraft_DropClaimedGrant_ReleasesIt()
     {
         var completed = TrackPreapprovalCompletions();
         SetupActiveYear();
@@ -5230,7 +5230,7 @@ public sealed class ExpenseReportServiceTests
     }
 
     [HumansFact]
-    public async Task UpdateDraft_RejectedDraft_SwappingTheClaimedGrant_ReleasesTheOldOne()
+    public async Task UpdateDraft_SwapClaimedGrant_ReleasesOld()
     {
         SetupActiveYear();
         var submitter = Guid.NewGuid();
@@ -5249,7 +5249,7 @@ public sealed class ExpenseReportServiceTests
     }
 
     [HumansFact]
-    public async Task UpdateDraft_RejectedDraft_KeepingTheClaimedGrant_ReleasesNothing()
+    public async Task UpdateDraft_KeepClaimedGrant_ReleasesNothing()
     {
         SetupActiveYear();
         var submitter = Guid.NewGuid();
@@ -5266,7 +5266,7 @@ public sealed class ExpenseReportServiceTests
     }
 
     [HumansFact]
-    public async Task UpdateDraft_DraftWithARevokedGrant_DropsItWithoutRelease()
+    public async Task UpdateDraft_RevokedGrant_DropsWithoutRelease()
     {
         // docs/features/global/preapprovals.md: a draft whose grant was revoked is not stranded.
         SetupActiveYear();
@@ -5285,7 +5285,7 @@ public sealed class ExpenseReportServiceTests
     }
 
     [HumansFact]
-    public async Task UpdateDraft_RejectedDraft_WhenTheReleaseIsRefused_KeepsTheGrant()
+    public async Task UpdateDraft_ReleaseRefused_KeepsGrant()
     {
         SetupActiveYear();
         var submitter = Guid.NewGuid();

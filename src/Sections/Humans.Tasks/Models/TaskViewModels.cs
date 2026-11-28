@@ -1,3 +1,4 @@
+using JetBrains.Annotations;
 using Microsoft.AspNetCore.Mvc.ModelBinding;
 using Humans.Tasks.Domain;
 using Humans.Tasks.Services;
@@ -35,6 +36,7 @@ internal class TaskRowFilter
 }
 
 /// <summary>What the list filters post. The default is the active event's tasks plus tasks with no event, finished ones left out.</summary>
+[UsedImplicitly(ImplicitUseKindFlags.Assign, ImplicitUseTargetFlags.WithMembers)]
 internal sealed class TaskListFilter : TaskRowFilter
 {
     public const string ActiveEvent = "active";

@@ -1,8 +1,10 @@
 using Humans.Base.Attributes;
 using Humans.Base.Interfaces;
+using JetBrains.Annotations;
 
 namespace Humans.Shifts.Contracts;
 
+[UsedImplicitly(ImplicitUseKindFlags.Access, ImplicitUseTargetFlags.WithMembers)]
 public sealed record ShiftsPageBannerArgs(Guid UserId);
 
 /// <summary>

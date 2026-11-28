@@ -181,7 +181,7 @@ public sealed class CampRepositoryTests : IDisposable
     }
 
     [HumansFact]
-    public async Task EventScopedWrites_IgnoreUnassignedAndOtherEvents()
+    public async Task EventScopedWrites_OtherEvents_AreIgnored()
     {
         var ct = Xunit.TestContext.Current.CancellationToken;
         var camp = await SeedCampAsync("unassigned");
@@ -206,7 +206,7 @@ public sealed class CampRepositoryTests : IDisposable
     }
 
     [HumansFact]
-    public async Task HasApprovedSeasonAsync_ReturnsTrue_WhenAnyActiveFullOrWithdrawn()
+    public async Task HasApprovedSeasonAsync_ActiveFullOrWithdrawn_IsTrue()
     {
         var camp = await SeedCampAsync("approved-camp");
         await SeedSeasonAsync(camp.Id, 2025, CampSeasonStatus.Withdrawn);
@@ -283,7 +283,7 @@ public sealed class CampRepositoryTests : IDisposable
     }
 
     [HumansFact]
-    public async Task ReassignMembershipsToUserAsync_MovesMembership_WhenTargetNotMemberOfSeason()
+    public async Task ReassignMembershipsToUserAsync_TargetNotMember_MovesMembership()
     {
         var ct = Xunit.TestContext.Current.CancellationToken;
         var season = await SeedCampWithSeasonAsync("merge-camp");
@@ -321,7 +321,7 @@ public sealed class CampRepositoryTests : IDisposable
     [HumansTheory]
     [Xunit.InlineData(false)]
     [Xunit.InlineData(true)]
-    public async Task ReassignMembershipsToUserAsync_CommitsRoleFoldingAndMemberRemovalTogether(bool failMemberRemoval)
+    public async Task ReassignMembershipsToUserAsync_Folding_CommitsTogether(bool failMemberRemoval)
     {
         var ct = Xunit.TestContext.Current.CancellationToken;
         var season = await SeedCampWithSeasonAsync("collide-camp");
@@ -372,7 +372,7 @@ public sealed class CampRepositoryTests : IDisposable
     }
 
     [HumansFact]
-    public async Task ReassignMembershipsToUserAsync_RepointsRemovedSourceMember_EvenWhenTargetHasLiveMember()
+    public async Task ReassignMembershipsToUserAsync_RemovedSource_IsRepointed()
     {
         var ct = Xunit.TestContext.Current.CancellationToken;
         var season = await SeedCampWithSeasonAsync("history-camp");
@@ -416,7 +416,7 @@ public sealed class CampRepositoryTests : IDisposable
     }
 
     [HumansFact]
-    public async Task ReassignMembershipsToUserAsync_KeepsActiveStatus_WhenFoldingActiveSourceIntoPendingTarget()
+    public async Task ReassignMembershipsToUserAsync_ActiveIntoPending_KeepsActive()
     {
         var ct = Xunit.TestContext.Current.CancellationToken;
         var season = await SeedCampWithSeasonAsync("status-camp");
@@ -437,7 +437,7 @@ public sealed class CampRepositoryTests : IDisposable
     }
 
     [HumansFact]
-    public async Task ReassignMembershipsToUserAsync_PreservesEarlyEntry_WhenFoldingIntoCollidingMember()
+    public async Task ReassignMembershipsToUserAsync_CollidingMember_KeepsEarlyEntry()
     {
         var ct = Xunit.TestContext.Current.CancellationToken;
         var season = await SeedCampWithSeasonAsync("ee-fold-camp");

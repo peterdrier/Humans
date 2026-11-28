@@ -30,7 +30,7 @@ public class AgentPreloadCorpusBuilderTests
     }
 
     [HumansFact]
-    public async Task Index_does_not_include_section_bodies()
+    public async Task Index_Sections_OmitBodies()
     {
         var builder = MakeBuilder();
         var text = await builder.BuildAsync(Xunit.TestContext.Current.CancellationToken);
@@ -42,7 +42,7 @@ public class AgentPreloadCorpusBuilderTests
     }
 
     [HumansFact]
-    public async Task Index_includes_community_faq_block_when_files_exist()
+    public async Task Index_CommunityFilesExist_IncludesFaqBlock()
     {
         var builder = MakeBuilder(communityFiles: ["FAQ-general"]);
         var text = await builder.BuildAsync(Xunit.TestContext.Current.CancellationToken);
@@ -53,7 +53,7 @@ public class AgentPreloadCorpusBuilderTests
     }
 
     [HumansFact]
-    public async Task Community_index_renders_covers_keywords_so_the_router_can_match()
+    public async Task CommunityIndex_Keywords_AreRendered()
     {
         var builder = MakeBuilder(communityFiles: ["FAQ-general"]);
         var text = await builder.BuildAsync(Xunit.TestContext.Current.CancellationToken);
@@ -62,7 +62,7 @@ public class AgentPreloadCorpusBuilderTests
     }
 
     [HumansFact]
-    public async Task Index_omits_community_block_when_no_files()
+    public async Task Index_NoCommunityFiles_OmitsFaqBlock()
     {
         var builder = MakeBuilder(communityFiles: []);
         var text = await builder.BuildAsync(Xunit.TestContext.Current.CancellationToken);
@@ -71,7 +71,7 @@ public class AgentPreloadCorpusBuilderTests
     }
 
     [HumansFact]
-    public async Task ReloadAllAsync_rebuilds_corpus_with_new_community_files()
+    public async Task ReloadAllAsync_NewCommunityFiles_RebuildsCorpus()
     {
         var files = new List<string> { "FAQ-general" };
         var builder = MakeBuilder(communityFiles: files);
@@ -91,7 +91,7 @@ public class AgentPreloadCorpusBuilderTests
     [Xunit.InlineData("topic")]
     [Xunit.InlineData("Onboarding")]
     [Xunit.InlineData("listing")]
-    public async Task Incomplete_corpus_recovers_after_a_transient_fetch_failure(string failingRead)
+    public async Task Corpus_TransientFetchFailure_Recovers(string failingRead)
     {
         var source = new StubSource { CommunityFiles = ["topic"], FailingRead = failingRead };
         var builder = MakeBuilder(source: source);
@@ -109,7 +109,7 @@ public class AgentPreloadCorpusBuilderTests
     [HumansTheory]
     [Xunit.InlineData("topic")]
     [Xunit.InlineData("listing")]
-    public async Task Failed_reload_keeps_the_previous_complete_corpus(string failingRead)
+    public async Task Reload_Fails_KeepsPreviousCorpus(string failingRead)
     {
         var files = new List<string> { "topic" };
         var source = new StubSource { CommunityFiles = files };
@@ -129,7 +129,7 @@ public class AgentPreloadCorpusBuilderTests
     }
 
     [HumansFact]
-    public async Task Pending_build_cannot_replace_a_reloaded_corpus()
+    public async Task Build_PendingAfterReload_IsDiscarded()
     {
         var token = Xunit.TestContext.Current.CancellationToken;
         var started = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);

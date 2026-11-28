@@ -1,0 +1,17 @@
+{
+  "date": "2026-11",
+  "family": "Claude",
+  "model": "Fable",
+  "version": "5.2",
+  "effort": "medium",
+  "brief": "v1",
+  "notes": {
+    "en": "Aimed for a solid gold figure that survives at navbar size, with an ink halo separating the two poses and the raised arms and spread legs hatched so they read as the second pose. Three passes. Still weak: the abdomen is schematic, the hair reads as a bob, the hands are mittens with finger lines, and below 48px the frame fades faster than the figure.",
+    "es": "Busqué una figura dorada sólida que sobreviva al tamaño de la barra de navegación, con un halo de tinta que separa las dos poses y con los brazos alzados y las piernas abiertas sombreados para que se lean como la segunda pose. Tres pasadas. Puntos débiles: el abdomen es esquemático, el pelo parece una melena corta, las manos son manoplas con líneas de dedos y por debajo de 48px el marco se desvanece antes que la figura.",
+    "de": "Ziel war eine massive goldene Figur, die in Navbar-Größe besteht, mit einem Tintensaum, der die beiden Posen trennt, und schraffierten erhobenen Armen und gespreizten Beinen, damit sie als zweite Pose lesbar sind. Drei Durchgänge. Noch schwach: Der Bauch ist schematisch, das Haar wirkt wie ein Bob, die Hände sind Fäustlinge mit Fingerlinien, und unter 48px verblasst der Rahmen schneller als die Figur.",
+    "it": "Ho cercato una figura dorata piena che regga alla dimensione della barra di navigazione, con un alone d’inchiostro che separa le due pose e con le braccia alzate e le gambe divaricate tratteggiate perché si leggano come la seconda posa. Tre passaggi. Punti deboli: l’addome è schematico, i capelli sembrano un caschetto, le mani sono muffole con linee per le dita e sotto i 48px la cornice svanisce prima della figura.",
+    "fr": "J’ai visé une figure dorée pleine qui tienne à la taille de la barre de navigation, avec un liseré d’encre séparant les deux poses et des bras levés et des jambes écartées hachurés pour qu’ils se lisent comme la seconde pose. Trois passes. Points faibles : l’abdomen est schématique, les cheveux font penser à un carré, les mains sont des moufles avec des traits de doigts et, sous 48px, le cadre s’efface plus vite que la figure.",
+    "ca": "Buscava una figura daurada sòlida que sobrevisqui a la mida de la barra de navegació, amb un halo de tinta que separa les dues poses i amb els braços alçats i les cames obertes ombrejats perquè es llegeixin com la segona posa. Tres passades. Punts febles: l’abdomen és esquemàtic, el cabell sembla una mitja cabellera, les mans són manyoples amb línies de dits i per sota de 48px el marc s’esvaeix abans que la figura.",
+    "nl": "Het doel was een massieve gouden figuur die op navbarformaat overeind blijft, met een inktrand die de twee houdingen scheidt en met gearceerde geheven armen en gespreide benen, zodat ze als de tweede houding lezen. Drie rondes. Nog zwak: de buik is schematisch, het haar lijkt een boblijn, de handen zijn wanten met vingerlijnen en onder 48px vervaagt het kader sneller dan de figuur."
+  }
+}
