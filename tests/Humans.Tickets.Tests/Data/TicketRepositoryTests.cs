@@ -474,57 +474,6 @@ public sealed class TicketRepositoryTests : IDisposable
         b.CheckedInAt.Should().BeNull();
     }
 
-    // Regression: including TicketOrder->Attendees under AsNoTracking forms a cycle EF rejects
-    // at query translation, so the sibling lookup is its own query.
-    [HumansFact]
-    public async Task GetAttendeeByIdAsync_WithSiblingAttendees_DoesNotThrow()
-    {
-        var orderId = Guid.NewGuid();
-        _dbContext.TicketOrders.Add(new TicketOrder
-        {
-            Id = orderId,
-            VendorOrderId = "ord_siblings",
-            VendorEventId = "ev_x",
-            BuyerEmail = "b@x.com",
-            BuyerName = "B",
-            Currency = "EUR",
-            PaymentStatus = TicketPaymentStatus.Paid,
-            PurchasedAt = _clock.GetCurrentInstant(),
-            SyncedAt = _clock.GetCurrentInstant(),
-        });
-
-        var targetId = Guid.NewGuid();
-        await _dbContext.TicketAttendees.AddRangeAsync(
-            new TicketAttendee
-            {
-                Id = targetId,
-                TicketOrderId = orderId,
-                VendorEventId = "ev_x",
-                VendorTicketId = "tkt_1",
-                AttendeeName = "First",
-                Status = TicketAttendeeStatus.Valid,
-                SyncedAt = _clock.GetCurrentInstant(),
-            },
-            new TicketAttendee
-            {
-                Id = Guid.NewGuid(),
-                TicketOrderId = orderId,
-                VendorEventId = "ev_x",
-                VendorTicketId = "tkt_2",
-                AttendeeName = "Second",
-                Status = TicketAttendeeStatus.Valid,
-                SyncedAt = _clock.GetCurrentInstant(),
-            });
-        await _dbContext.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
-
-        var result = await _repo.GetAttendeeByIdAsync(targetId, Xunit.TestContext.Current.CancellationToken);
-
-        result.Should().NotBeNull();
-        result.VendorTicketId.Should().Be("tkt_1");
-        result.TicketOrder.Should().NotBeNull();
-        result.TicketOrder.VendorOrderId.Should().Be("ord_siblings");
-    }
-
     [HumansFact]
     public async Task GetVendorTicketIdsForOrderAsync_ReturnsAllAttendeesForOrder()
     {

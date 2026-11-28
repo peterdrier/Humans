@@ -46,12 +46,6 @@ internal interface ITicketRepository : IRepository
     Task<IReadOnlyList<OrderDiscountCodeRow>> GetOrderDiscountCodesAsync(
         CancellationToken ct = default);
 
-    /// <summary>
-    /// Includes the parent order but not its sibling attendees: that cycle fails under AsNoTracking. Use
-    /// <see cref="GetVendorTicketIdsForOrderAsync"/> for siblings.
-    /// </summary>
-    Task<TicketAttendee?> GetAttendeeByIdAsync(Guid attendeeId, CancellationToken ct = default);
-
     Task<IReadOnlyList<string>> GetVendorTicketIdsForOrderAsync(
         Guid orderId, CancellationToken ct = default);
 
