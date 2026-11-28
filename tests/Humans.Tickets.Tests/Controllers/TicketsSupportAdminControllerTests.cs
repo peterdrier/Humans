@@ -33,6 +33,7 @@ namespace Humans.Tickets.Tests.Controllers;
 public class TicketsSupportAdminControllerTests
 {
     private readonly ITicketCheckoutService _checkout = Substitute.For<ITicketCheckoutService>();
+    private readonly ITicketReconService _recon = Substitute.For<ITicketReconService>();
     private readonly TicketingSettings _sale = new() { Id = Guid.NewGuid(), EventSettingsId = Guid.NewGuid() };
     private static readonly Instant Now = Instant.FromUtc(2027, 1, 10, 12, 0);
 
@@ -68,7 +69,7 @@ public class TicketsSupportAdminControllerTests
             .Returns(new ValueTask<UserInfo?>(UserInfo.Create(new User { Id = actorId }, [], [], null)));
         Controller controller = voiding
             ? new TicketsSupportAdminController(_checkout, Substitute.For<ISettingsService>(), SystemClock.Instance, users, NullLogger<TicketsSupportAdminController>.Instance)
-            : new TicketsSalesAdminController(_checkout, null!, Substitute.For<ISettingsService>(),
+            : new TicketsSalesAdminController(_checkout, _recon, null!, Substitute.For<ISettingsService>(),
                 Substitute.For<IGrantService>(), Substitute.For<IOrgTimeZone>(), SystemClock.Instance, users, NullLogger<TicketsSalesAdminController>.Instance);
         var http = new DefaultHttpContext
         {
@@ -319,7 +320,7 @@ public class TicketsSupportAdminControllerTests
             .Returns(UserInfo.Create(new User { Id = actorId }, [], [], null));
         var zone = Substitute.For<IOrgTimeZone>();
         zone.Zone.Returns(DateTimeZone.Utc);
-        var controller = new TicketsSalesAdminController(_checkout, null!, Substitute.For<ISettingsService>(),
+        var controller = new TicketsSalesAdminController(_checkout, _recon, null!, Substitute.For<ISettingsService>(),
             Substitute.For<IGrantService>(), zone, SystemClock.Instance, users, NullLogger<TicketsSalesAdminController>.Instance);
         var registrations = new ServiceCollection().AddLogging();
         registrations.AddControllers();
@@ -426,7 +427,7 @@ public class TicketsSupportAdminControllerTests
         _checkout.RefreshOrderAsync(order.Id, Arg.Any<CancellationToken>()).Returns(order);
         _checkout.GetOrderDetailAsync(order.Id, Arg.Any<CancellationToken>())
             .Returns(new OrderDetail(order, [newer, older], [], [child, adult]));
-        var controller = new TicketsSalesAdminController(_checkout, null!, Substitute.For<ISettingsService>(),
+        var controller = new TicketsSalesAdminController(_checkout, _recon, null!, Substitute.For<ISettingsService>(),
             Substitute.For<IGrantService>(), Substitute.For<IOrgTimeZone>(), SystemClock.Instance, Substitute.For<IUserService>(), NullLogger<TicketsSalesAdminController>.Instance);
 
         var result = (ViewResult)await controller.Order(order.Id, TestContext.Current.CancellationToken);
@@ -467,8 +468,8 @@ public class TicketsSupportAdminControllerTests
     [HumansFact]
     public async Task Platforms_PresentsKeysInOrdinalOrder()
     {
-        _checkout.Platforms.Returns([new("z", false, null!), new("a", true, null!)]);
-        var controller = new TicketsSalesAdminController(_checkout, null!, Substitute.For<ISettingsService>(),
+        _recon.Platforms.Returns([new("z", false, null!), new("a", true, null!)]);
+        var controller = new TicketsSalesAdminController(_checkout, _recon, null!, Substitute.For<ISettingsService>(),
             Substitute.For<IGrantService>(), Substitute.For<IOrgTimeZone>(), SystemClock.Instance, Substitute.For<IUserService>(), NullLogger<TicketsSalesAdminController>.Instance);
 
         var result = (ViewResult)await controller.Platforms(TestContext.Current.CancellationToken);
@@ -485,10 +486,10 @@ public class TicketsSupportAdminControllerTests
         var newRefund = new TicketCheckoutRefund { Id = Guid.NewGuid(), CreatedAt = Now + Duration.FromHours(1) };
         var ledger = new PlatformLedger(new("test", true, null!), [older, newer], [], [older, newer],
             [newRefund, oldRefund], [newRefund, oldRefund]);
-        _checkout.GetPlatformLedgerAsync("test", Arg.Any<CancellationToken>()).Returns(ledger);
+        _recon.GetPlatformLedgerAsync("test", Arg.Any<CancellationToken>()).Returns(ledger);
         var zone = Substitute.For<IOrgTimeZone>();
         zone.Zone.Returns(DateTimeZoneProviders.Tzdb["Europe/Madrid"]);
-        var controller = new TicketsPlatformAdminController(_checkout, Substitute.For<ISettingsService>(), zone, Substitute.For<IUserService>());
+        var controller = new TicketsPlatformAdminController(_checkout, _recon, Substitute.For<ISettingsService>(), zone, Substitute.For<IUserService>());
 
         var result = (ViewResult)await controller.Index("test", TestContext.Current.CancellationToken);
         var model = (PlatformStatusViewModel)result.Model!;
@@ -507,7 +508,7 @@ public class TicketsSupportAdminControllerTests
         var newer = new TicketCheckoutOrder { Id = Guid.NewGuid(), CreatedAt = Now + Duration.FromHours(1) };
         _checkout.GetOrdersForSettingsAsync(_sale.Id, Arg.Any<CancellationToken>()).Returns([older, newer]);
         _checkout.GetTicketingSettingsAsync(_sale.Id, Arg.Any<CancellationToken>()).Returns(_sale);
-        var controller = new TicketsSalesAdminController(_checkout, null!, Substitute.For<ISettingsService>(),
+        var controller = new TicketsSalesAdminController(_checkout, _recon, null!, Substitute.For<ISettingsService>(),
             Substitute.For<IGrantService>(), Substitute.For<IOrgTimeZone>(), SystemClock.Instance, Substitute.For<IUserService>(), NullLogger<TicketsSalesAdminController>.Instance);
 
         var result = (ViewResult)await controller.Orders(_sale.Id, TestContext.Current.CancellationToken);

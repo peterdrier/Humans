@@ -23,7 +23,9 @@ test.describe('Camps (20-camps)', () => {
     await loginAs(page, 'camps-admin');
     await page.goto('/Camps/Admin');
 
-    await expect(page.locator('h1, h2').first()).toBeVisible();
+    // Admin-shell page: assert the selected tab, not a heading (see tickets.spec.ts).
+    await expect(page.getByRole('navigation', { name: 'Section pages' }).locator('[aria-current="page"]'))
+      .toHaveText('Overview');
     expect(page.url()).toContain('/Camps/Admin');
   });
 

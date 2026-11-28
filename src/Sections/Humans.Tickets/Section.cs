@@ -171,7 +171,8 @@ public sealed class Section :
         services.AddScoped<ITicketingPlatformEvents>(sp => sp.GetRequiredService<TicketCheckoutService>());
         services.AddScoped<IUserDataContributor>(sp => sp.GetRequiredService<TicketCheckoutService>());
         services.AddScoped<IUserMerge>(sp => sp.GetRequiredService<TicketCheckoutService>());
-        services.AddScoped<ITicketGateLookup>(sp => sp.GetRequiredService<TicketCheckoutService>());
+        services.AddScoped<ITicketGateLookup, TicketGateLookup>();
+        services.AddScoped<ITicketReconService, TicketReconService>();
         services.AddSingleton<TicketCodeImages>();
         services.AddScoped<TicketDeliveryService>();
         services.AddScoped<ITicketDelivery, TicketDeliveryHandOff>();

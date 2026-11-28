@@ -147,7 +147,7 @@ public sealed class GoogleGroupSyncServiceTests
     {
         using var cancellation = new CancellationTokenSource();
         var callerToken = cancellation.Token;
-        var service = CreateService(new StaticSource("new-group@nobodies.team"));
+        var service = CreateService(new StaticSource("new-group@nobodies.team", Guid.NewGuid()));
         _provisioningClient.LookupGroupIdAsync("new-group@nobodies.team", Arg.Any<CancellationToken>())
             .Returns(new GroupLookupIdResult(null, new GoogleClientError(404, "not found")),
                 new GroupLookupIdResult("group-new", null));
@@ -181,7 +181,7 @@ public sealed class GoogleGroupSyncServiceTests
     {
         using var cancellation = new CancellationTokenSource();
         const string groupKey = "new-group@nobodies.team";
-        var service = CreateService(new StaticSource(groupKey));
+        var service = CreateService(new StaticSource(groupKey, Guid.NewGuid()));
         var resource = StageResource(groupKey);
         _provisioningClient.LookupGroupIdAsync(groupKey, Arg.Any<CancellationToken>())
             .Returns(new GroupLookupIdResult(null, new GoogleClientError(404, "not found")));
@@ -478,6 +478,19 @@ public sealed class GoogleGroupSyncServiceTests
             Arg.Any<Guid>(),
             Arg.Any<string>(),
             Arg.Any<string>());
+    }
+
+    [HumansFact]
+    public async Task ReconcileAllAsync_EmptyClaimGroupMissing_DoesNotProvision()
+    {
+        var service = CreateService(new StaticSource("team@nobodies.team"));
+        _provisioningClient.LookupGroupIdAsync("team@nobodies.team", Arg.Any<CancellationToken>())
+            .Returns(new GroupLookupIdResult(null, new GoogleClientError(404, "Resource Not Found: groupKey")));
+
+        var result = await service.ReconcileAllAsync(SyncAction.Execute, Xunit.TestContext.Current.CancellationToken);
+
+        result.ErrorCount.Should().Be(0);
+        await _provisioningClient.DidNotReceiveWithAnyArgs().CreateGroupAsync(default!, default!, default!, default);
     }
 
     [HumansFact]

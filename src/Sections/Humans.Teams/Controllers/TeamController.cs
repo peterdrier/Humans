@@ -656,6 +656,31 @@ internal sealed class TeamController(
         return RedirectToAction(nameof(Summary));
     }
 
+    [HttpPost("{id:guid}/EraseMembers")]
+    [Authorize(Policy = PolicyNames.AdminOnly)]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> EraseMembers(Guid id)
+    {
+        var (currentUserError, currentUser) = await ResolveCurrentUserOrUnauthorizedAsync(HttpContext.RequestAborted);
+        if (currentUserError is not null)
+        {
+            return currentUserError;
+        }
+
+        var result = await teamService.EraseMembersAsync(id, currentUser!.Id);
+        if (result.Refusal is { } refusal)
+        {
+            logger.LogWarning("Refused erasing members of team {TeamId} by admin {AdminId}: {Reason}", id, currentUser.Id, refusal);
+            SetError(refusal);
+        }
+        else
+        {
+            SetSuccess("Membership history erased.");
+        }
+
+        return RedirectToAction(nameof(Summary));
+    }
+
     [HttpGet("{teamId:guid}/GoogleResources")]
     [Authorize(Policy = TeamsPolicies.Read)]
     public async Task<IActionResult> GetTeamGoogleResources(Guid teamId, CancellationToken cancellationToken)
