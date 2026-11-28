@@ -61,7 +61,7 @@ public class HoldedClientTests
     [Xunit.InlineData("receipt", "{\"id\":null}", false)]
     [Xunit.InlineData("receipt", "{\"id\":\"\"}", false)]
     [Xunit.InlineData("receipt", "{\"id\":\"  \"}", false)]
-    public async Task CreationResponses_normalize_unreadable_success_without_retrying(string operation, string json, bool parseError = true, bool invalidCharset = false)
+    public async Task CreationResponses_UnreadableSuccess_AreNotRetried(string operation, string json, bool parseError = true, bool invalidCharset = false)
     {
         var calls = 0;
         var client = Make(new StubHandler(_ =>
@@ -94,7 +94,7 @@ public class HoldedClientTests
     }
 
     [HumansFact]
-    public async Task CreatePurchaseDocumentAsync_PostsExpectedJson_AndReturnsId()
+    public async Task CreatePurchaseDocumentAsync_Posted_ReturnsId()
     {
         string? capturedBody = null;
         var handler = new StubHandler(req =>
@@ -128,7 +128,7 @@ public class HoldedClientTests
     }
 
     [HumansFact]
-    public async Task GetPurchaseDocumentAsync_reads_used_fields_without_parsing_unused_metadata()
+    public async Task GetPurchaseDocumentAsync_UnusedMetadata_IsNotParsed()
     {
         var json = """
         {
@@ -175,7 +175,7 @@ public class HoldedClientTests
     }
 
     [HumansFact]
-    public async Task GetPurchaseDocumentAsync_MalformedPaymentsDetailEntry_IsDropped_NotTheDocument()
+    public async Task GetPurchaseDocumentAsync_MalformedPaymentEntry_IsDropped()
     {
         // One GUI-entered payment in an unexpected shape must not fail every reader of the document
         // (the publisher, the paid poll, the before-read of a payment mid-allocation).
@@ -193,7 +193,7 @@ public class HoldedClientTests
     }
 
     [HumansFact]
-    public async Task GetPurchaseDocumentAsync_surfaces_an_unreadable_body_as_permanent_not_a_raw_parse_throw()
+    public async Task GetPurchaseDocumentAsync_UnreadableBody_IsPermanent()
     {
         // Callers handle only IHoldedClient's two typed exceptions; a raw parse throw from a bad
         // stored value would escape the client and leak an Infrastructure detail upward.
@@ -293,7 +293,7 @@ public class HoldedClientTests
     }
 
     [HumansFact]
-    public async Task DeletePurchaseDocumentAsync_sends_DELETE_to_the_purchase_url()
+    public async Task DeletePurchaseDocumentAsync_Call_SendsDeleteToPurchaseUrl()
     {
         HttpRequestMessage? seen = null;
         var client = Make(new StubHandler(req => { seen = req; return new HttpResponseMessage(HttpStatusCode.NoContent); }));
@@ -305,7 +305,7 @@ public class HoldedClientTests
     }
 
     [HumansFact]
-    public async Task DeletePurchaseDocumentAsync_4xx_throws_permanent()
+    public async Task DeletePurchaseDocumentAsync_ClientError_IsPermanent()
     {
         // A paid document cannot be deleted; the caller must list it for a human, never retry.
         var client = Make(new StubHandler(_ => Respond(HttpStatusCode.BadRequest, """{"status":400,"detail":"Document has payments"}""")));
@@ -318,7 +318,7 @@ public class HoldedClientTests
     [HumansTheory]
     [Xunit.InlineData(false)]
     [Xunit.InlineData(true)]
-    public async Task PermanentFailure_MasksAnIbanEchoedBackInTheResponseBody(bool escaped)
+    public async Task PermanentFailure_IbanInResponseBody_IsMasked(bool escaped)
     {
         // The message becomes the outbox LastError, the audit description and the finance-admin
         // card. A 4xx on a contact create can echo the IBAN we just sent
@@ -391,7 +391,7 @@ public class HoldedClientTests
         """{"id":"pay-9","amount":"18.00","date":"2026-08-25","bank_id":"treasury-1"}""";
 
     [HumansFact]
-    public async Task PayPurchaseDocumentAsync_PostsTheAmountAsAString_AndReadsTheIdOffTheDocument()
+    public async Task PayPurchaseDocumentAsync_Amount_IsPostedAsString()
     {
         // The POST response carries no id — never did. The id is the payments_detail entry that is
         // new after the POST and matches the amount, date and treasury account just sent, even when
@@ -413,7 +413,7 @@ public class HoldedClientTests
     }
 
     [HumansFact]
-    public async Task PayPurchaseDocumentAsync_NoTreasuryAccount_OmitsTheKeyRatherThanSendingNull()
+    public async Task PayPurchaseDocumentAsync_NoTreasuryAccount_OmitsKey()
     {
         // A null treasury_id is not "use the default" to Holded — the key is simply left out, and
         // the after-read then matches on amount and date alone, whatever bank Holded picked.
@@ -437,7 +437,7 @@ public class HoldedClientTests
     [Xunit.InlineData("""{"id":"pay-9","amount":"18.00","date":"2026-08-24","bank_id":"treasury-1"}""")]
     [Xunit.InlineData("""{"id":"pay-9","amount":"18.00","date":"2026-08-25","bank_id":"treasury-2"}""")]
     [Xunit.InlineData("""{"id":"pay-9","amount":"18.00","date":"2026-08-25","bank_id":"treasury-1"},{"id":"pay-10","amount":"18.00","date":"2026-08-25","bank_id":"treasury-1"}""")]
-    public async Task PayPurchaseDocumentAsync_NoSingleNewMatchingPayment_ReturnsAnUnconfirmedRef(string afterDetail)
+    public async Task PayPurchaseDocumentAsync_NoSingleNewPayment_IsUnconfirmed(string afterDetail)
     {
         // A 2xx means the payment posted. Throwing would lose it from the record and let the caller
         // pay again — the sentinel keeps it, naming the document a human has to check in Holded.
@@ -454,7 +454,7 @@ public class HoldedClientTests
     [HumansTheory]
     [Xunit.InlineData(true)]
     [Xunit.InlineData(false)]
-    public async Task PayPurchaseDocumentAsync_PostAnswers503_TheDocumentSaysWhetherItPosted(bool savedAnyway)
+    public async Task PayPurchaseDocumentAsync_PostAnswers503_ChecksDocument(bool savedAnyway)
     {
         // Production, 2026-11-05: a 503 is not proof nothing was saved. The document decides.
         var handler = PaymentHandler(
@@ -470,7 +470,7 @@ public class HoldedClientTests
     }
 
     [HumansFact]
-    public async Task PayPurchaseDocumentAsync_DocumentReadFailsBeforeThePost_ThrowsAndPostsNothing()
+    public async Task PayPurchaseDocumentAsync_ReadFailsBeforePost_PostsNothing()
     {
         // Without the before-list the new payment could not be told apart afterwards, so the read
         // failing is a refusal: nothing is posted, and the caller handles it like any refused call.
@@ -519,7 +519,7 @@ public class HoldedClientTests
     }
 
     [HumansFact]
-    public async Task PostLedgerEntryAsync_PostsTwoBalancedLinesAsStringsAndReturnsTheEntryId()
+    public async Task PostLedgerEntryAsync_BalancedLines_ReturnsEntryId()
     {
         string? capturedBody = null;
         var handler = new StubHandler(req =>
@@ -543,7 +543,7 @@ public class HoldedClientTests
     }
 
     [HumansFact]
-    public async Task PostLedgerEntryAsync_ResponseWithoutAnId_ReturnsAnUnconfirmedRef()
+    public async Task PostLedgerEntryAsync_ResponseWithoutId_IsUnconfirmed()
     {
         // A 2xx means the entry posted; throwing would let the caller post it twice.
         var handler = new StubHandler(_ => Respond(HttpStatusCode.Created, "{}"));

@@ -39,7 +39,7 @@ public sealed class CachingRideshareServiceTests
     }
 
     [HumansFact]
-    public async Task GetSnapshot_SecondReadOfTheSameEvent_IsServedFromTheCache()
+    public async Task GetSnapshot_SecondRead_IsFromCache()
     {
         var first = await _service.GetSnapshotAsync(Event2026, Ct);
         var second = await _service.GetSnapshotAsync(Event2026, Ct);
@@ -130,7 +130,7 @@ public sealed class CachingRideshareServiceTests
     }
 
     [HumansFact]
-    public async Task EraseForUser_ForwardsToTheInner_AndClearsTheCache()
+    public async Task EraseForUser_Forwarded_ClearsCache()
     {
         var userId = Guid.NewGuid();
         await _service.GetSnapshotAsync(Event2026, Ct);
@@ -143,7 +143,7 @@ public sealed class CachingRideshareServiceTests
     }
 
     [HumansFact]
-    public async Task Reassign_ForwardsToTheInner_AndClearsTheCache()
+    public async Task Reassign_Forwarded_ClearsCache()
     {
         var source = Guid.NewGuid();
         var target = Guid.NewGuid();
@@ -165,7 +165,7 @@ public sealed class CachingRideshareServiceTests
     [InlineData("offer", true)]
     [InlineData("erasure", false)]
     [InlineData("erasure", true)]
-    public async Task FailedWrite_EvictsSnapshots_AndPreservesTheFailure(string operation, bool cancelled)
+    public async Task Write_Fails_EvictsSnapshots(string operation, bool cancelled)
     {
         var actor = Guid.NewGuid();
         Exception failure = cancelled

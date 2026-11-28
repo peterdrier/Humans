@@ -178,7 +178,7 @@ public sealed class CachingEventServiceTests
     }
 
     [HumansFact]
-    public async Task SearchAsync_DescriptionOnlyMatch_StillAppears_RankedBelowEveryTitleMatch()
+    public async Task SearchAsync_DescriptionOnlyMatch_RanksBelowTitleMatches()
     {
         // Title misses entirely; only the description carries the match. It must still
         // surface, and its score must stay below the lowest title tier (Contains, 60) so a
@@ -195,7 +195,7 @@ public sealed class CachingEventServiceTests
     }
 
     [HumansFact]
-    public async Task SearchAsync_DescriptionOnlyMatches_TierAmongThemselves_ExactAboveContains()
+    public async Task SearchAsync_DescriptionOnlyMatches_ExactAboveContains()
     {
         SeedApproved(
             Approved("Alpha", description: "Sunset"), // description exact match
@@ -284,7 +284,7 @@ public sealed class CachingEventServiceTests
     [InlineData("category", true)]
     [InlineData("events", false)]
     [InlineData("events", true)]
-    public async Task FailedCategoryUpdate_ReloadsLookupAndFlattenedEventFields(string stage, bool cancelled)
+    public async Task CategoryUpdate_Fails_ReloadsCache(string stage, bool cancelled)
     {
         var ct = TestContext.Current.CancellationToken;
         var before = Approved("Sunset Yoga");

@@ -1,5 +1,6 @@
 using System.Text;
 using Humans.Roles.Contracts;
+using Humans.Permissions.Contracts;
 using Humans.Base.Constants;
 using Humans.Google.Contracts;
 using Humans.Auth.Contracts;
@@ -674,27 +675,29 @@ internal sealed class TeamService(
         if (SelfJoinRefusal(team, requiresApproval: true) is { } errorKey)
             return new TeamJoinRequestResult(ErrorKey: errorKey);
 
-        using var joinRequest = await JoinRequestLock.AcquireAsync(logger, cancellationToken);
-        var existingRequest = await repo.FindUserPendingRequestAsync(teamId, userId, cancellationToken);
-        if (existingRequest is not null)
-            return new TeamJoinRequestResult(ErrorKey: "Teams_Team_AlreadyPendingRequest");
-
-        var teamInfo = await GetTeamAsync(teamId, cancellationToken);
-        var isMember = teamInfo is { IsActive: true } && teamInfo.Members.Any(m => m.UserId == userId);
-        if (isMember)
-            return new TeamJoinRequestResult(ErrorKey: "Teams_Team_AlreadyMember");
-
-        var request = new TeamJoinRequest
+        TeamJoinRequest request;
+        using (await JoinRequestLock.AcquireAsync(logger, cancellationToken))
         {
-            Id = Guid.NewGuid(),
-            TeamId = teamId,
-            UserId = userId,
-            Message = message,
-            RequestedAt = clock.GetCurrentInstant()
-        };
+            var existingRequest = await repo.FindUserPendingRequestAsync(teamId, userId, cancellationToken);
+            if (existingRequest is not null)
+                return new TeamJoinRequestResult(ErrorKey: "Teams_Team_AlreadyPendingRequest");
 
-        await repo.AddRequestAsync(request, cancellationToken);
-        joinRequest.Dispose();
+            var teamInfo = await GetTeamAsync(teamId, cancellationToken);
+            var isMember = teamInfo is { IsActive: true } && teamInfo.Members.Any(m => m.UserId == userId);
+            if (isMember)
+                return new TeamJoinRequestResult(ErrorKey: "Teams_Team_AlreadyMember");
+
+            request = new TeamJoinRequest
+            {
+                Id = Guid.NewGuid(),
+                TeamId = teamId,
+                UserId = userId,
+                Message = message,
+                RequestedAt = clock.GetCurrentInstant()
+            };
+
+            await repo.AddRequestAsync(request, cancellationToken);
+        }
 
         // The join request is committed; finish its notices even if the browser disconnects.
         cancellationToken = CancellationToken.None;
@@ -1169,6 +1172,48 @@ internal sealed class TeamService(
         }
 
         return retired;
+    }
+
+    public async Task<int> RemoveGovernanceBodyRolesAsync(Guid actorUserId, CancellationToken cancellationToken = default)
+    {
+        var removed = 0;
+        foreach (var teamId in GovernanceBodyTeamIds)
+        {
+            if (await repo.GetByIdAsync(teamId, cancellationToken) is not { } team)
+                continue;
+
+            foreach (var listed in await repo.GetRoleDefinitionsAsync(teamId, cancellationToken))
+            {
+                if (await repo.FindRoleDefinitionForMutationAsync(listed.Id, cancellationToken) is not { } definition)
+                    continue;
+
+                var holders = definition.Assignments.Select(a => a.TeamMember.UserId).Distinct().ToList();
+                await repo.RemoveRoleDefinitionAsync(definition, cancellationToken);
+
+                foreach (var userId in holders)
+                {
+                    await auditLogService.LogAsync(
+                        TeamsAuditActions.TeamRoleUnassigned, nameof(TeamRoleDefinition), definition.Id,
+                        $"Unassigned from role '{definition.Name}' in {team.Name} before the team was deleted",
+                        actorUserId, relatedEntityId: userId, relatedEntityType: AuditSubjectTypes.User);
+                }
+
+                await auditLogService.LogAsync(
+                    TeamsAuditActions.TeamRoleDefinitionDeleted, nameof(TeamRoleDefinition), definition.Id,
+                    $"Role definition '{definition.Name}' deleted from team {team.Name} before the team was deleted",
+                    actorUserId, relatedEntityId: teamId, relatedEntityType: nameof(Team));
+
+                if (definition.IsManagement)
+                {
+                    foreach (var userId in holders)
+                        await SystemTeamSync.SyncMembershipForUserAsync(userId, SystemTeamType.Coordinators, cancellationToken);
+                }
+
+                removed++;
+            }
+        }
+
+        return removed;
     }
 
     public async Task<TeamMembershipMutationResult> LeaveTeamAsync(
@@ -2207,7 +2252,8 @@ internal sealed class TeamService(
 
     private IRoleWrite RoleWrite => serviceProvider.GetRequiredService<IRoleWrite>();
 
-    private ISystemRoleService SystemRoleService => serviceProvider.GetRequiredService<ISystemRoleService>();
+    // Lazy: the permission service reads this section's cached holdings, so an eager one would close a DI cycle.
+    private IPermissionService Permissions => serviceProvider.GetRequiredService<IPermissionService>();
 
     // Lazy: Users depends on Teams during service resolution.
 
@@ -2369,13 +2415,7 @@ internal sealed class TeamService(
         Guid userId,
         CancellationToken cancellationToken = default)
     {
-        var isAdmin = await SystemRoleService.IsUserAdminAsync(userId, cancellationToken);
-        if (isAdmin) return true;
-
-        var isTeamsAdmin = await SystemRoleService.IsUserTeamsAdminAsync(userId, cancellationToken);
-        if (isTeamsAdmin) return true;
-
-        return await IsUserCoordinatorOfTeamAsync(teamId, userId, cancellationToken);
+        return await Permissions.HasAsync(userId, TeamsPermissions.Manage, TeamOwner.Of(teamId), cancellationToken);
     }
 
     public async Task<bool> IsUserCoordinatorOfTeamAsync(

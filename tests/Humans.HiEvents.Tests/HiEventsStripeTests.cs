@@ -53,7 +53,7 @@ public sealed class HiEventsStripeTests
     };
 
     [HumansFact]
-    public async Task Ledger_ties_each_movement_to_the_Humans_order_of_its_HiEvents_order()
+    public async Task Ledger_EachMovement_NamesHumansOrder()
     {
         var refundedOrder = Guid.NewGuid();
         _stripe.GetAccountLedgerAsync("Tickets", Now - Duration.FromDays(1), Now, Arg.Any<CancellationToken>()).Returns(new StripeAccountLedger(
@@ -82,7 +82,7 @@ public sealed class HiEventsStripeTests
     }
 
     [HumansFact]
-    public async Task Without_the_Stripe_account_there_is_no_ledger_and_a_refusal_is_a_platform_failure()
+    public async Task Ledger_NoStripeAccount_IsEmpty()
     {
         (await Platform().GetPaymentLedgerAsync(Now - Duration.FromDays(1), Now, Ct)).Should().BeNull();
 
@@ -93,7 +93,7 @@ public sealed class HiEventsStripeTests
     }
 
     [HumansFact]
-    public async Task A_paid_order_reports_the_fee_of_the_payment_carrying_its_ids()
+    public async Task GetStatus_PaidOrder_ReportsPaymentFee()
     {
         _hiEvents.On("/api/events/7/orders/42", HttpStatusCode.OK, PaidOrder(42, HumansOrder.ToString("N")));
         _stripe.FindAccountPaymentFeeAsync("Tickets",
@@ -108,7 +108,7 @@ public sealed class HiEventsStripeTests
     }
 
     [HumansFact]
-    public async Task Check_carries_the_Stripe_account_s_findings()
+    public async Task Check_CarriesStripeFindings()
     {
         _hiEvents.On("/api/users/me", HttpStatusCode.OK, new { data = new { id = 1 } });
         _stripe.CheckAccountAsync("Tickets", Arg.Any<CancellationToken>())

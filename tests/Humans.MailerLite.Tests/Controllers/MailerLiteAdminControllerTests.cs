@@ -142,7 +142,7 @@ public class MailerLiteAdminControllerTests
     [InlineData(AccountScenario.Merged)]
     [InlineData(AccountScenario.Missing)]
     [InlineData(AccountScenario.Cancelled)]
-    public async Task Commit_ResolvesActorBeforePlanningAndApplying(AccountScenario account)
+    public async Task Commit_Actor_ResolvedBeforePlanning(AccountScenario account)
     {
         using var request = new CancellationTokenSource();
         var survivor = Guid.NewGuid();
@@ -188,7 +188,7 @@ public class MailerLiteAdminControllerTests
     }
 
     [HumansFact]
-    public async Task Commit_InvalidLimitBinding_DoesNotBuildOrApplyAnUnlimitedPlan()
+    public async Task Commit_InvalidLimitBinding_AppliesNothing()
     {
         var plan = new ImportPlan([Decision(SubscriberOutcome.CreateNewHuman)], TotalPulled: 1);
         _importService.BuildPlanAsync(Arg.Any<CancellationToken>()).Returns(plan);
@@ -202,7 +202,7 @@ public class MailerLiteAdminControllerTests
     }
 
     [HumansFact]
-    public async Task Commit_RedirectsToPreview_WhenCountsDriftedMoreThan10Percent()
+    public async Task Commit_CountsDrifted_RedirectsToPreview()
     {
         // Snapshot from the previous GET /Import had 10 create-new-human decisions.
         var snapshot = new ImportPlanCounts(
@@ -314,7 +314,7 @@ public class MailerLiteAdminControllerTests
     }
 
     [HumansFact]
-    public async Task Refresh_CallsRefreshAsync_AndRedirectsToIndex()
+    public async Task Refresh_Succeeds_RedirectsToIndex()
     {
         var ctrl = BuildSut();
 
@@ -327,7 +327,7 @@ public class MailerLiteAdminControllerTests
     }
 
     [HumansFact]
-    public async Task Refresh_OnHttpFailure_SetsErrorBannerAndRedirects()
+    public async Task Refresh_HttpFailure_SetsErrorBanner()
     {
         _mlService.RefreshAsync(Arg.Any<CancellationToken>())
             .ThrowsAsync(new HttpRequestException(
@@ -348,7 +348,7 @@ public class MailerLiteAdminControllerTests
     }
 
     [HumansFact]
-    public async Task Refresh_OnTimeout_SetsErrorBannerAndRedirects()
+    public async Task Refresh_Timeout_SetsErrorBanner()
     {
         // MailerLiteClient surfaces HttpClient timeouts as TaskCanceledException
         // when the caller's CancellationToken was not the one that fired.
@@ -405,7 +405,7 @@ public class MailerLiteAdminControllerTests
     }
 
     [HumansFact]
-    public async Task Debug_RendersFiveSections_AndListsAvailableAudiencesInDropdown()
+    public async Task Debug_Page_RendersFiveSections()
     {
         var memberId = Guid.NewGuid();
         var audience = Substitute.For<IMailerLiteAudience>();

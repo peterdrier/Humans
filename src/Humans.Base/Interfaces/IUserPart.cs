@@ -1,5 +1,6 @@
 using Humans.Base.Attributes;
 using Humans.Base.Enums;
+using JetBrains.Annotations;
 
 namespace Humans.Base.Interfaces;
 
@@ -37,6 +38,7 @@ public static class UserPartSlots
 }
 
 /// <summary>The arguments an <see cref="IUserPart"/> component's Invoke/InvokeAsync accepts.</summary>
+[UsedImplicitly(ImplicitUseKindFlags.Access, ImplicitUseTargetFlags.WithMembers)]
 public sealed record UserPartArgs(Guid UserId, ProfileCardViewMode ViewMode);
 
 /// <summary>A section-owned view component rendered into a named user-part slot.</summary>

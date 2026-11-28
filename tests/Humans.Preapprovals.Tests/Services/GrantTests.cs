@@ -130,7 +130,7 @@ public sealed class GrantTests : PreapprovalsTestHarness
     [HumansTheory]
     [InlineData(true)]
     [InlineData(false)]
-    public async Task Apply_ManagerDeliveryFailure_ContinuesOtherLanguageGroupsAndEmails(bool notificationFails)
+    public async Task Apply_ManagerDeliveryFails_ContinuesOthers(bool notificationFails)
     {
         var managers = new[]
         {
@@ -224,7 +224,7 @@ public sealed class GrantTests : PreapprovalsTestHarness
     }
 
     [HumansFact]
-    public async Task Issue_Fixed_CopiesPerPersonAmount_NotifiesAndEmails_Audits()
+    public async Task Issue_FixedProgram_CopiesPerPersonAmount()
     {
         var program = await SeedProgramAsync(perPerson: 300m);
         var person = SeedUser("Person", language: "de");
@@ -266,7 +266,7 @@ public sealed class GrantTests : PreapprovalsTestHarness
     }
 
     [HumansFact]
-    public async Task Issue_CeilingExceeded_RefusedWithHeadroom_RevokedDoesNotCount()
+    public async Task Issue_CeilingExceeded_IsRefused()
     {
         var program = await SeedProgramAsync(kind: ProgramKind.PerGrantAmount, perPerson: null, ceiling: 1000m);
         await SeedGrantAsync(program, amount: 600m);
@@ -304,7 +304,7 @@ public sealed class GrantTests : PreapprovalsTestHarness
     [InlineData("issue")]
     [InlineData("batch")]
     [InlineData("apply")]
-    public async Task NewGrants_ResolveMergedBeneficiariesBeforePersistenceAndBatchCeiling(string operation)
+    public async Task NewGrants_MergedBeneficiaries_AreResolved(string operation)
     {
         var archived = Guid.NewGuid();
         var survivor = SeedUser("Survivor", mergedIds: [archived]);
@@ -409,7 +409,7 @@ public sealed class GrantTests : PreapprovalsTestHarness
     }
 
     [HumansFact]
-    public async Task Apply_CreatesAppliedRow_NotifiesManagers_AndSecondSubmitEdits()
+    public async Task Apply_SecondSubmit_EditsRow()
     {
         var manager = SeedUser("Manager");
         var program = await SeedProgramAsync(kind: ProgramKind.PerGrantAmount, perPerson: null, managers: manager);
@@ -439,7 +439,7 @@ public sealed class GrantTests : PreapprovalsTestHarness
     [InlineData(false, true)]
     [InlineData(true, false)]
     [InlineData(true, true)]
-    public async Task Apply_ApplicantNameLookupFailure_DoesNotFailTheSavedApplication(
+    public async Task Apply_NameLookupFails_StillSaves(
         bool isUpdate, bool failEmailLookup)
     {
         var manager = SeedUser("Manager");
@@ -490,7 +490,7 @@ public sealed class GrantTests : PreapprovalsTestHarness
     }
 
     [HumansFact]
-    public async Task Apply_Fixed_IgnoresRequestedAmount_PerGrantRequiresPositive()
+    public async Task Apply_FixedProgram_IgnoresRequestedAmount()
     {
         var fixedProgram = await SeedProgramAsync(perPerson: 300m);
         var perGrant = await SeedProgramAsync(kind: ProgramKind.PerGrantAmount, perPerson: null);
@@ -554,7 +554,7 @@ public sealed class GrantTests : PreapprovalsTestHarness
     }
 
     [HumansFact]
-    public async Task Approve_PerGrant_LowersToAmount_ChecksCeiling_ResolvesRequest_NotifiesBeneficiary()
+    public async Task Approve_PerGrant_LowersToAmount()
     {
         var program = await SeedProgramAsync(kind: ProgramKind.PerGrantAmount, perPerson: null, ceiling: 1000m);
         await SeedGrantAsync(program, amount: 700m);
@@ -580,7 +580,7 @@ public sealed class GrantTests : PreapprovalsTestHarness
     }
 
     [HumansFact]
-    public async Task Approve_Fixed_RefusesAmount_UsesPerPerson()
+    public async Task Approve_FixedProgram_UsesPerPersonAmount()
     {
         var program = await SeedProgramAsync(perPerson: 300m);
         var application = await SeedGrantAsync(program, amount: 300m, status: GrantStatus.Applied);
@@ -592,7 +592,7 @@ public sealed class GrantTests : PreapprovalsTestHarness
     }
 
     [HumansFact]
-    public async Task Approve_NotApplied_OrClosedProgram_Refused()
+    public async Task Approve_NotAppliedOrClosed_IsRefused()
     {
         var program = await SeedProgramAsync();
         var open = await SeedGrantAsync(program);
@@ -604,7 +604,7 @@ public sealed class GrantTests : PreapprovalsTestHarness
     }
 
     [HumansFact]
-    public async Task Decline_NotApplied_RefusedAndUnchanged()
+    public async Task Decline_NotApplied_IsRefused()
     {
         var program = await SeedProgramAsync();
         var open = await SeedGrantAsync(program);
@@ -613,7 +613,7 @@ public sealed class GrantTests : PreapprovalsTestHarness
     }
 
     [HumansFact]
-    public async Task Decline_SetsDeclined_ResolvesRequest_NotifiesWithNote()
+    public async Task Decline_Applied_NotifiesWithNote()
     {
         var program = await SeedProgramAsync();
         var person = SeedUser("Person");
@@ -638,7 +638,7 @@ public sealed class GrantTests : PreapprovalsTestHarness
     [InlineData((int)GrantStatus.Open, false)]
     [InlineData((int)GrantStatus.Claimed, false)]
     [InlineData((int)GrantStatus.Open, true)]
-    public async Task Revoke_KeepsAmountAndReport_ResolvesFileBy_NotifiesHolder(int statusValue, bool withdrawnReport)
+    public async Task Revoke_OpenGrant_NotifiesHolder(int statusValue, bool withdrawnReport)
     {
         var status = (GrantStatus)statusValue;
         var program = await SeedProgramAsync();
@@ -670,7 +670,7 @@ public sealed class GrantTests : PreapprovalsTestHarness
     [InlineData((int)GrantStatus.Consumed)]
     [InlineData((int)GrantStatus.Declined)]
     [InlineData((int)GrantStatus.Revoked)]
-    public async Task Revoke_AndChangeAmount_RefusedOutsideOpenOrClaimed(int statusValue)
+    public async Task Revoke_NotOpenOrClaimed_IsRefused(int statusValue)
     {
         var status = (GrantStatus)statusValue;
         var program = await SeedProgramAsync();
@@ -728,7 +728,7 @@ public sealed class GrantTests : PreapprovalsTestHarness
     [HumansTheory]
     [InlineData((int)GrantStatus.Claimed)]
     [InlineData((int)GrantStatus.Open)]
-    public async Task ChangeAmount_CeilingChecked_AuditedWithOldAndNew_Notifies(int statusValue)
+    public async Task ChangeAmount_WithinCeiling_AuditsOldNew(int statusValue)
     {
         var program = await SeedProgramAsync(ceiling: 1000m);
         await SeedGrantAsync(program, amount: 600m);

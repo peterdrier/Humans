@@ -20,7 +20,7 @@ public sealed class CalendarGridLayoutTests
     [InlineData(2027, 2, 2027, 2, 1, 2027, 2, 28)]
     // A month ending on a Sunday needs no trailing pad either.
     [InlineData(2026, 5, 2026, 4, 27, 2026, 5, 31)]
-    public void MonthGridBounds_Covers_every_cell_the_grid_renders(
+    public void MonthGridBounds_Grid_CoversEveryCell(
         int year, int month,
         int startYear, int startMonth, int startDay,
         int endYear, int endMonth, int endDay)
@@ -37,7 +37,7 @@ public sealed class CalendarGridLayoutTests
     }
 
     [HumansFact]
-    public void BuildWeekLayout_Reuses_the_lowest_non_conflicting_banner_slot()
+    public void BuildWeekLayout_FreeSlot_ReusesLowest()
     {
         var layout = CalendarGridLayout.BuildWeekLayout(
             WeekStart,
@@ -56,7 +56,7 @@ public sealed class CalendarGridLayoutTests
     }
 
     [HumansFact]
-    public void BuildWeekLayout_Puts_overflowed_banners_in_each_covered_day_cell()
+    public void BuildWeekLayout_OverflowedBanners_FillCoveredCells()
     {
         var layout = CalendarGridLayout.BuildWeekLayout(
             WeekStart,

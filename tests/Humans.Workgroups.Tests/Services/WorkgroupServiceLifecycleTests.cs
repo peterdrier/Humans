@@ -26,7 +26,7 @@ public sealed class WorkgroupServiceLifecycleTests : WorkgroupsTestHarness
     [HumansTheory]
     [InlineData(NoticeAudience.Coordinators)]
     [InlineData(NoticeAudience.Board)]
-    public async Task LifecycleEmails_ResolveAndDeduplicateMergedRecipients(NoticeAudience audience)
+    public async Task LifecycleEmails_MergedRecipients_AreDeduplicated(NoticeAudience audience)
     {
         var firstAlias = SeedUser("Archived first");
         var secondAlias = SeedUser("Archived second");
@@ -114,7 +114,7 @@ public sealed class WorkgroupServiceLifecycleTests : WorkgroupsTestHarness
     [InlineData("reactivate")]
     [InlineData("scope")]
     [InlineData("budget")]
-    public async Task WorkgroupEdit_LogSaveFailure_LeavesStateAndPendingRequestsUnchanged(string action)
+    public async Task WorkgroupEdit_LogSaveFailure_ChangesNothing(string action)
     {
         var status = action switch
         {
@@ -180,7 +180,7 @@ public sealed class WorkgroupServiceLifecycleTests : WorkgroupsTestHarness
     [HumansTheory]
     [InlineData(false)]
     [InlineData(true)]
-    public async Task Reactivate_NotificationFault_DoesNotSkipEmailDriveOrAccountRestore(bool failRecipientLookup)
+    public async Task Reactivate_NotificationFault_StillRestoresRest(bool failRecipientLookup)
     {
         var group = await SeedWorkgroupAsync(status: WorkgroupStatus.Dormant);
         group.HoldedAccountNumber = 62900160;
@@ -219,7 +219,7 @@ public sealed class WorkgroupServiceLifecycleTests : WorkgroupsTestHarness
     }
 
     [HumansFact]
-    public async Task Refer_BoardNoticeFault_DoesNotFailTheDecisionOrSkipEmail()
+    public async Task Refer_BoardNoticeFault_DecisionStands()
     {
         var group = await SeedWorkgroupAsync(status: WorkgroupStatus.Applied);
         var actor = group.Members.Single().UserId;
@@ -318,7 +318,7 @@ public sealed class WorkgroupServiceLifecycleTests : WorkgroupsTestHarness
     [InlineData("apply")]
     [InlineData("refer")]
     [InlineData("refuse")]
-    public async Task Notices_LongGroupNameAndDetail_DispatchFullCopyAndKeepFullRecords(string action)
+    public async Task Notices_LongNameWithDetail_KeepFullText(string action)
     {
         var name = new string('x', 200);
         var detail = string.Concat(Enumerable.Repeat("🚀", 1998)) + "tail";
@@ -435,7 +435,7 @@ public sealed class WorkgroupServiceLifecycleTests : WorkgroupsTestHarness
     [InlineData(nameof(WorkgroupStatus.Applied), "pt", "en")]
     [InlineData(nameof(WorkgroupStatus.Applied), "fr-FR", "en")]
     [InlineData(nameof(WorkgroupStatus.Applied), "not a culture!", "en")]
-    public async Task Refuse_FromAppliedOrReferred_WithReasons_Succeeds(
+    public async Task Refuse_AppliedOrReferredWithReasons_Succeeds(
         string fromName, string? language, string expectedLanguage)
     {
         using var culture = new Base.Extensions.CultureScope("fr");
@@ -483,7 +483,7 @@ public sealed class WorkgroupServiceLifecycleTests : WorkgroupsTestHarness
     [HumansTheory]
     [InlineData(nameof(WorkgroupStatus.Active))]
     [InlineData(nameof(WorkgroupStatus.Dormant))]
-    public async Task Withdraw_FromActiveOrDormant_WithReasons_Succeeds(string fromName)
+    public async Task Withdraw_ActiveOrDormantWithReasons_Succeeds(string fromName)
     {
         var from = Enum.Parse<WorkgroupStatus>(fromName);
 
@@ -525,7 +525,7 @@ public sealed class WorkgroupServiceLifecycleTests : WorkgroupsTestHarness
     }
 
     [HumansFact]
-    public async Task Close_FromActive_WithReasons_EndsAsDormantQuiet()
+    public async Task Close_ActiveWithReasons_EndsDormantQuiet()
     {
         var workgroup = await SeedWorkgroupAsync(status: WorkgroupStatus.Active);
 
@@ -624,7 +624,7 @@ public sealed class WorkgroupServiceLifecycleTests : WorkgroupsTestHarness
     }
 
     [HumansFact]
-    public async Task MarkDone_WithACommentWindowStillOpen_ReturnsARefusal()
+    public async Task MarkDone_CommentWindowOpen_IsRefused()
     {
         var workgroup = await SeedWorkgroupAsync(status: WorkgroupStatus.Active);
         var member = workgroup.Members.Single().UserId;
@@ -747,7 +747,7 @@ public sealed class WorkgroupServiceLifecycleTests : WorkgroupsTestHarness
     /// <c>AddCommentAsync</c> anyone could keep commenting on a closed group's document.
     /// </summary>
     [HumansFact]
-    public async Task AddComment_OnDormantGroupWithStillOpenWindow_IsFrozen()
+    public async Task AddComment_DormantGroupOpenWindow_IsFrozen()
     {
         var workgroup = await SeedWorkgroupAsync(status: WorkgroupStatus.Active);
         var now = Clock.GetCurrentInstant();

@@ -132,7 +132,7 @@ internal sealed class ProfileController(
     {
         var cvEntries = model.EditableVolunteerHistory
             .Where(vh => !string.IsNullOrWhiteSpace(vh.EventName) && vh.ParsedDate.HasValue)
-            .Select(vh => new CVEntry(
+            .Select(vh => new CvEntry(
                 vh.Id ?? Guid.Empty,
                 vh.ParsedDate!.Value,
                 vh.EventName,

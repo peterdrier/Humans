@@ -29,8 +29,6 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\Humans.Base\Humans.Base.csproj" />
-    <!-- IIssueQueueOwner: this section declares the issue queue it owns. -->
-    <ProjectReference Include="..\Humans.Issues\Humans.Issues.csproj" />
     <!--
       Humans.Base above carries the shared enums whose persisted strings this section reads;
       the section's own persisted-string enums (SignupStatus, ShiftPriority, SignupPolicy,
@@ -76,6 +74,8 @@
     <ProjectReference Include="..\Humans.Teams.Contracts\Humans.Teams.Contracts.csproj" />
     <ProjectReference Include="..\Humans.Tickets.Contracts\Humans.Tickets.Contracts.csproj" />
     <ProjectReference Include="..\Humans.EarlyEntry\Humans.EarlyEntry.csproj" />
+    <!-- Fills Google's IGoogleGroupMembershipSource slot for the department shift lists. -->
+    <ProjectReference Include="..\Humans.Google\Humans.Google.csproj" />
   </ItemGroup>
 
   <ItemGroup>

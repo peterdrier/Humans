@@ -9,7 +9,7 @@ namespace Humans.Email.Tests.Services;
 public sealed class EmailPreviewServiceTests
 {
     [HumansFact]
-    public void RenderSystemMessage_uses_the_canonical_body_composer()
+    public void RenderSystemMessage_Body_UsesCanonicalComposer()
     {
         var composer = Substitute.For<IEmailBodyComposer>();
         composer.Compose("<p>Invitation</p>").Returns(("<html>Branded invitation</html>", "Invitation"));
@@ -26,7 +26,7 @@ public sealed class EmailPreviewServiceTests
     }
 
     [HumansFact]
-    public void RenderSystemMessage_rejects_opt_outable_messages()
+    public void RenderSystemMessage_OptOutableMessage_IsRejected()
     {
         var composer = Substitute.For<IEmailBodyComposer>();
         var sut = new EmailPreviewService(composer);
@@ -42,7 +42,7 @@ public sealed class EmailPreviewServiceTests
     }
 
     [HumansFact]
-    public void RenderMarkdown_always_on_category_has_no_unsubscribe_placeholder()
+    public void RenderMarkdown_AlwaysOnCategory_HasNoUnsubscribe()
     {
         var composer = Substitute.For<IEmailBodyComposer>();
         composer.Compose(Arg.Any<string>(), Arg.Any<string?>(), Arg.Any<string?>()).Returns(("<html>Branded</html>", "Plain"));
@@ -55,7 +55,7 @@ public sealed class EmailPreviewServiceTests
     }
 
     [HumansFact]
-    public void RenderMarkdown_opt_outable_category_gets_placeholder_unsubscribe_footer()
+    public void RenderMarkdown_OptOutableCategory_GetsUnsubscribeFooter()
     {
         var composer = Substitute.For<IEmailBodyComposer>();
         composer.Compose(Arg.Any<string>(), Arg.Any<string?>(), Arg.Any<string?>()).Returns(("<html>Branded</html>", "Plain"));
@@ -67,7 +67,7 @@ public sealed class EmailPreviewServiceTests
     }
 
     [HumansFact]
-    public void RenderMarkdown_no_category_has_no_unsubscribe_placeholder()
+    public void RenderMarkdown_NoCategory_HasNoUnsubscribe()
     {
         var composer = Substitute.For<IEmailBodyComposer>();
         composer.Compose(Arg.Any<string>(), Arg.Any<string?>(), Arg.Any<string?>()).Returns(("<html>Branded</html>", "Plain"));
@@ -78,7 +78,7 @@ public sealed class EmailPreviewServiceTests
         composer.Received(1).Compose(Arg.Any<string>(), null, CultureInfo.CurrentUICulture.Name);
     }
     [HumansFact]
-    public void Compose_MarkdownTableRetainsRowsAndCellsInPlainText()
+    public void Compose_MarkdownTable_KeepsCellsInPlainText()
     {
         var environment = Substitute.For<Microsoft.Extensions.Hosting.IHostEnvironment>();
         environment.EnvironmentName.Returns("Production");

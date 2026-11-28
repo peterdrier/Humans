@@ -6,7 +6,7 @@ namespace Humans.Email.Tests.Services;
 public sealed class EmailInlineStylerTests
 {
     [HumansFact]
-    public void Apply_stamps_inline_style_on_every_supported_tag()
+    public void Apply_SupportedTags_GetInlineStyle()
     {
         var html = "<h1>H1</h1><h2>H2</h2><h3>H3</h3><p>P</p><a href=\"https://example.com\">A</a>"
             + "<ul><li>Li</li></ul><ol><li>Li</li></ol><blockquote>Quote</blockquote>"
@@ -21,7 +21,7 @@ public sealed class EmailInlineStylerTests
     }
 
     [HumansFact]
-    public void Apply_keeps_an_existing_style_attribute_winning_over_the_palette()
+    public void Apply_ExistingStyleAttribute_WinsOverPalette()
     {
         var html = "<p style=\"color:red;\">Hi</p>";
 
@@ -34,7 +34,7 @@ public sealed class EmailInlineStylerTests
     }
 
     [HumansFact]
-    public void Apply_leaves_unstyled_tags_alone()
+    public void Apply_UnstyledTags_AreLeftAlone()
     {
         var html = "<p>Hi <em>there</em></p>";
 
@@ -44,7 +44,7 @@ public sealed class EmailInlineStylerTests
     }
 
     [HumansFact]
-    public void Apply_returns_input_unchanged_when_empty()
+    public void Apply_EmptyInput_ReturnsUnchanged()
     {
         EmailInlineStyler.Apply(string.Empty).Should().BeEmpty();
     }

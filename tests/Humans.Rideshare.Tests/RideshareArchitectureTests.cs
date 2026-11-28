@@ -74,7 +74,7 @@ public class RideshareArchitectureTests
     }
 
     [HumansFact]
-    public void Decorator_IsASingleton_AndIsWhatIRideshareServiceResolvesTo()
+    public void Decorator_Registration_IsSingletonService()
     {
         var services = Registrations();
         services.Single(d => d.ServiceType == typeof(CachingRideshareService)).Lifetime

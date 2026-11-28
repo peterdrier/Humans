@@ -159,7 +159,7 @@ public sealed class LegalDocumentServiceTests : IDisposable
     }
 
     [HumansFact]
-    public async Task PrefixDocumentRead_UsesConfiguredBranchForDirectoryAndContent()
+    public async Task PrefixDocumentRead_ConfiguredBranch_IsUsed()
     {
         using var handler = new LegalContentHandler();
         var connector = new GitHubLegalDocumentConnector(
@@ -180,7 +180,7 @@ public sealed class LegalDocumentServiceTests : IDisposable
     }
 
     [HumansFact]
-    public async Task FileRead_PreservesUtf8ContentForTheDiscoveredSha_WhenBranchAdvances()
+    public async Task FileRead_BranchAdvances_ReadsDiscoveredSha()
     {
         using var handler = new LegalContentHandler(branchAdvances: true);
         var connector = new GitHubLegalDocumentConnector(

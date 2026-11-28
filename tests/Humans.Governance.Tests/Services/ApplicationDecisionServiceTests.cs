@@ -27,7 +27,6 @@ using Humans.Governance.Contracts;
 using Humans.Google.Contracts;
 using AwesomeAssertions;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Logging.Abstractions;
 using NodaTime;
 using NSubstitute;
@@ -129,7 +128,9 @@ public sealed class ApplicationDecisionServiceTests : IDisposable
     private readonly IGoogleGroupSync _groupSync = Substitute.For<IGoogleGroupSync>();
     private readonly IHumansMetrics _metrics = Substitute.For<IHumansMetrics>();
     private readonly ISystemRoleService _systemRoleService = Substitute.For<ISystemRoleService>();
-    private readonly IMemoryCache _cache = new MemoryCache(new MemoryCacheOptions());
+    private readonly CachingGovernanceManagement _badgeCache = new(
+        Substitute.For<IServiceScopeFactory>(), NullLogger<CachingGovernanceManagement>.Instance);
+    private readonly CachingGovernanceService _tierCache;
     private readonly ApplicationDecisionService _service;
 
     public ApplicationDecisionServiceTests()
@@ -144,6 +145,8 @@ public sealed class ApplicationDecisionServiceTests : IDisposable
             .Returns(new ValueTask<IReadOnlyDictionary<Guid, UserInfo>>(new Dictionary<Guid, UserInfo>()));
         _systemRoleService.GetActiveUserIdsInRoleAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
             .Returns(Task.FromResult<IReadOnlyList<Guid>>([]));
+        _tierCache = new CachingGovernanceService(
+            Substitute.For<IServiceScopeFactory>(), NullLogger<CachingGovernanceService>.Instance);
 
         _service = CreateService();
     }
@@ -159,20 +162,21 @@ public sealed class ApplicationDecisionServiceTests : IDisposable
         _notificationService,
         new GovernanceBodySync(new GovernanceBodyRepository(_governanceDbFactory), _groupSync, Substitute.For<IGoogleSyncWrite>()),
         _metrics,
-        _cache,
+        _tierCache,
+        _badgeCache,
         _clock,
         NullLogger<ApplicationDecisionService>.Instance);
 
     private MembershipTierService CreateTierService() =>
-        new(new ApplicationRepository(_governanceDbFactory), _repository, _userService, _auditLog, _clock);
+        new(new ApplicationRepository(_governanceDbFactory), _repository, _userService, _auditLog, _tierCache, _clock);
 
     private void PrimeVotingBadges(params Guid[] boardMemberIds)
     {
-        foreach (var id in boardMemberIds) _cache.Set(ApplicationDecisionService.VotingBadgeCacheKey(id), -1);
+        foreach (var id in boardMemberIds) _badgeCache.Set(id, -1);
     }
 
     private bool VotingBadgeCached(Guid boardMemberId) =>
-        _cache.TryGetValue(ApplicationDecisionService.VotingBadgeCacheKey(boardMemberId), out _);
+        _badgeCache.ContainsKey(boardMemberId);
 
     [HumansFact]
     public async Task SubmitAsync_ValidColaborador_CreatesApplication()
@@ -802,6 +806,7 @@ public sealed class ApplicationDecisionServiceTests : IDisposable
         row.GrantedAt.Should().Be(_clock.GetCurrentInstant());
         row.ExpiresAt.Should().Be(approved.TermExpiresAt);
         row.GrantedByApplicationId.Should().Be(app.Id);
+        _tierCache.BulkInvalidations.Should().Be(1, "the tier pill must show the new tier");
     }
 
     [HumansFact]

@@ -61,7 +61,7 @@ public class GuideFilterTests
     }
 
     [HumansFact]
-    public void Apply_Anonymous_DropsTheHeadingAndNotJustTheBody()
+    public void Apply_Anonymous_DropsHeadingToo()
     {
         // Filtering markdown means an invisible block, heading included, leaves nothing behind.
         var result = Apply(Sample, GuideRoleContext.Anonymous);
@@ -81,7 +81,7 @@ public class GuideFilterTests
     }
 
     [HumansFact]
-    public void Apply_TeamCoordinator_SeesVolunteerAndCoordinator()
+    public void Apply_TeamCoordinator_SeesCoordinatorBlock()
     {
         var result = Apply(Sample, Roles(isCoord: true));
 
@@ -114,7 +114,7 @@ public class GuideFilterTests
     }
 
     [HumansFact]
-    public void Apply_TeamsAdmin_SeesCoordinatorAndBoardOnTeamsFile()
+    public void Apply_TeamsAdminOnTeamsFile_SeesBoardBlock()
     {
         // Within-file superset: seeing Board/Admin via (Teams Admin) implies seeing Coordinator too.
         var result = Apply(Sample, Roles(isCoord: false, GuideTestRoles.TeamsAdmin));
@@ -178,7 +178,7 @@ public class GuideFilterTests
     }
 
     [HumansFact]
-    public void Apply_AdminOnFileWithNoBoardAdminBlock_StillSeesCoordinator()
+    public void Apply_AdminNoBoardBlock_SeesCoordinator()
     {
         // Every other Admin/Board case in this file also contains a boardadmin block, so the
         // within-file superset promotion could carry them and IsCoordinatorVisible's own
@@ -216,7 +216,7 @@ public class GuideFilterTests
     }
 
     [HumansFact]
-    public void Apply_NotACampLead_DoesNotSeeCampLeadBlock()
+    public void Apply_NotCampLead_HidesCampLeadBlock()
     {
         var result = Apply(CampsLike, Roles(isCoord: false));
 

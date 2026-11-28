@@ -18,7 +18,7 @@ namespace Humans.AuditLog.Tests;
 public class AuditLogUiLocalizationTests
 {
     [HumansFact]
-    public void EnglishNarrative_SuppressesSubjectWithoutDanglingPreposition_AndUsesSelfForm()
+    public void Render_ActorIsSubject_UsesSelfForm()
     {
         using var culture = new CultureScope("en");
         using var services = new ServiceCollection().AddLogging().AddLocalization().BuildServiceProvider();
@@ -34,7 +34,7 @@ public class AuditLogUiLocalizationTests
     }
 
     [HumansFact]
-    public void ActionWithoutResxEntries_FallsBackToItsEnglishVerbAndHumanizedName()
+    public void Render_ActionWithoutResx_UsesEnglishVerb()
     {
         using var culture = new CultureScope("es");
         using var services = new ServiceCollection().AddLogging().AddLocalization().BuildServiceProvider();
@@ -49,7 +49,7 @@ public class AuditLogUiLocalizationTests
 
     [HumansTheory]
     [MemberData(nameof(SupportedCultures.All), MemberType = typeof(SupportedCultures))]
-    public async Task MemberLine_RendersLocalizedActorAndVerb_WithoutChangingStoredDescription(string cultureName)
+    public async Task MemberLine_OtherCulture_RendersLocalizedVerb(string cultureName)
     {
         using var culture = new CultureScope(cultureName);
         using var services = new ServiceCollection().AddLogging().AddLocalization().BuildServiceProvider();

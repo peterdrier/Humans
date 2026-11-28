@@ -15,7 +15,7 @@ namespace Humans.Agent.Tests;
 public class AgentAdminStatusServiceTests
 {
     [HumansFact]
-    public async Task Aggregates_messages_into_24h_7d_30d_windows()
+    public async Task Status_Messages_AggregateIntoThreeWindows()
     {
         await using var db = InMemoryDb();
         var now = Instant.FromUtc(2026, 5, 17, 12, 0);
@@ -65,7 +65,7 @@ public class AgentAdminStatusServiceTests
     }
 
     [HumansFact]
-    public async Task Top_docs_combines_case_variants_and_section_aliases()
+    public async Task TopDocs_CaseVariantsOrAliases_AreCombined()
     {
         await using var db = InMemoryDb();
         var now = Instant.FromUtc(2026, 5, 17, 12, 0);
@@ -131,7 +131,7 @@ public class AgentAdminStatusServiceTests
     }
 
     [HumansFact]
-    public async Task Latency_panel_reports_zero_when_the_window_holds_no_completed_turn()
+    public async Task Latency_NoCompletedTurn_IsZero()
     {
         // Decoupling MessageCount from the duration sample made an empty sample reachable
         // with a positive message count: a window of nothing but user rows and unanswered turns.
@@ -157,7 +157,7 @@ public class AgentAdminStatusServiceTests
     }
 
     [HumansFact]
-    public async Task Balance_unavailable_when_admin_key_missing()
+    public async Task Balance_NoAdminKey_IsUnavailable()
     {
         await using var db = InMemoryDb();
         var clock = new FakeClock(Instant.FromUtc(2026, 5, 17, 12, 0));
@@ -175,7 +175,7 @@ public class AgentAdminStatusServiceTests
     }
 
     [HumansFact]
-    public async Task SettingsStoreWarm_false_when_UpdatedAt_is_MinValue()
+    public async Task SettingsStoreWarm_UpdatedAtMinValue_IsFalse()
     {
         await using var db = InMemoryDb();
         var clock = new FakeClock(Instant.FromUtc(2026, 5, 17, 12, 0));

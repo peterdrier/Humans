@@ -66,7 +66,7 @@ internal interface IUserManagement : IUserService, IUserWrite, IUserMerge
         UserProfileSaveCommand command,
         byte[]? profilePictureData = null,
         CancellationToken ct = default,
-        IReadOnlyList<CVEntry>? volunteerHistory = null);
+        IReadOnlyList<CvEntry>? volunteerHistory = null);
 
     /// <summary>
     /// Creates the profile row if needed and touches no other field. GDPR Art. 9: the caller owns

@@ -46,7 +46,7 @@ public class HoldedClientTreasuryTests
     }
 
     [HumansFact]
-    public async Task ListBankMovementsAsync_ParsesFields_AndLowercasesStatus()
+    public async Task ListBankMovementsAsync_Status_IsLowercased()
     {
         var json = $$"""
         {"items":[{{Line("m1", "-120.00", "PENDING", booking: "2026-08-18T00:00:00+00:00", description: "12345678 - NCA - Alice", origin: "bank")}}],
@@ -68,7 +68,7 @@ public class HoldedClientTreasuryTests
     }
 
     [HumansFact]
-    public async Task ListBankMovementsAsync_ReadsBookingDate_TheFeedHasNoDateKey()
+    public async Task ListBankMovementsAsync_Line_ReadsBookingDate()
     {
         // The real record behind every "undated" Sabadell line: the
         // v2 feed has no `date` key at all, only booking_date and value_date, ISO 8601 with an offset.
@@ -109,7 +109,7 @@ public class HoldedClientTreasuryTests
     }
 
     [HumansFact]
-    public async Task CreateTreasuryPaymentAsync_PostsTypeContactBankAccountAndAStringAmount()
+    public async Task CreateTreasuryPaymentAsync_Amount_IsPostedAsString()
     {
         string? body = null;
         var client = Make(new StubHandler(req =>
@@ -129,7 +129,7 @@ public class HoldedClientTreasuryTests
     }
 
     [HumansFact]
-    public async Task ListBankMovementsAsync_FallsBackToValueDate_WhenBookingDateIsAbsentOrBlank()
+    public async Task ListBankMovementsAsync_NoBookingDate_UsesValueDate()
     {
         var json = $$"""
         {"items":[
@@ -147,7 +147,7 @@ public class HoldedClientTreasuryTests
     }
 
     [HumansFact]
-    public async Task ListBankMovementsAsync_TakesTheDatePartAsGiven_NotShiftedToMadrid()
+    public async Task ListBankMovementsAsync_DatePart_IsNotShifted()
     {
         // A Sabadell line is midnight UTC; shifting it to Europe/Madrid would not move the day, but a
         // late-evening gateway line would land on the next day, and Holded books it on the UTC date.
@@ -204,7 +204,7 @@ public class HoldedClientTreasuryTests
     }
 
     [HumansFact]
-    public async Task ListBankMovementsAsync_NonCandidateLineWithUnreadableDate_IsSkipped_AndLogged()
+    public async Task ListBankMovementsAsync_NonCandidateBadDate_IsSkipped()
     {
         // A line with neither booking_date nor value_date, or an unparsable one, cannot be windowed.
         // Incoming or already-touched lines can never be a SEPA candidate, so they are skipped.
@@ -228,7 +228,7 @@ public class HoldedClientTreasuryTests
     }
 
     [HumansFact]
-    public async Task ListBankMovementsAsync_PendingOutgoingLineWithUnreadableDate_IsPermanent()
+    public async Task ListBankMovementsAsync_PendingOutgoingBadDate_IsPermanent()
     {
         // Dropping the undated line would leave m2 with no visible rival, so the sweep could book the
         // transfer against the wrong one of two same-amount lines. The page fails instead.
@@ -249,7 +249,7 @@ public class HoldedClientTreasuryTests
     }
 
     [HumansFact]
-    public async Task ListBankMovementsAsync_PendingOutgoingLineWithUnreadableDate_IsSkipped_WhenTheCallerNamesIt()
+    public async Task ListBankMovementsAsync_NamedBadDateLine_IsSkipped()
     {
         // Once Finance has given up on a genuinely undated line, it asks for
         // that one id to be skipped. Another undated pending line still fails.
@@ -281,7 +281,7 @@ public class HoldedClientTreasuryTests
     }
 
     [HumansFact]
-    public async Task ListBankMovementsAsync_LineWithNoStatus_IsPermanent_NotAssumedPending()
+    public async Task ListBankMovementsAsync_LineWithoutStatus_IsPermanent()
     {
         // "pending" is the one status the SEPA sweep reads as bookable, so a manufactured one could
         // book a transfer against a line Holded has already settled. Absent means unreadable.
@@ -300,7 +300,7 @@ public class HoldedClientTreasuryTests
     }
 
     [HumansFact]
-    public async Task ListBankMovementsAsync_LineWithBlankId_IsPermanent_NotBookedAgainst()
+    public async Task ListBankMovementsAsync_BlankLineId_IsPermanent()
     {
         // A blank id would still pass a null check, persist as HoldedBankMovementId, and send the
         // sweep's reconcile call to an invalid URL — same bug class as an absent status.
@@ -321,7 +321,7 @@ public class HoldedClientTreasuryTests
     [HumansTheory]
     [Xunit.InlineData(false)]
     [Xunit.InlineData(true)]
-    public async Task ListBankMovementsAsync_RejectsNullRowsRatherThanReturningAnIncompleteFeed(bool mixed)
+    public async Task ListBankMovementsAsync_NullRow_IsRejected(bool mixed)
     {
         var rows = mixed
             ? $$"""{{Line("m1", "-10.00", "pending", booking: "2026-08-18T00:00:00+00:00")}},null"""
@@ -337,7 +337,7 @@ public class HoldedClientTreasuryTests
     }
 
     [HumansFact]
-    public async Task ListBankMovementsAsync_MalformedSuccessBody_IsAHoldedException_NotRawJson()
+    public async Task ListBankMovementsAsync_MalformedBody_IsHoldedException()
     {
         // The paged walk parses the envelope before any caller's try block. Unnormalized, the
         // JsonException escapes the client and /Finance/Sepa fails the request instead of showing
@@ -352,7 +352,7 @@ public class HoldedClientTreasuryTests
     }
 
     [HumansFact]
-    public async Task ListBankMovementsAsync_EnvelopeFieldOfTheWrongType_IsAHoldedException()
+    public async Task ListBankMovementsAsync_WrongTypeEnvelopeField_IsHoldedException()
     {
         // Same gap, reached through has_more rather than the parser itself.
         var json = """{"items":[],"cursor":null,"has_more":"yes"}""";

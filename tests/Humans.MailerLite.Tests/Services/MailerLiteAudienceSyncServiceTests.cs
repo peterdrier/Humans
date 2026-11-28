@@ -38,7 +38,7 @@ public class MailerLiteAudienceSyncServiceTests
     [InlineData(DetachedFailure.CreateGroup, true)]
     [InlineData(DetachedFailure.Summary, false)]
     [InlineData(DetachedFailure.Summary, true)]
-    public async Task Detached_timeouts_remain_failures_when_shutdown_also_begins(DetachedFailure stage, bool shutdownRequested)
+    public async Task SyncAllAsync_TimeoutDuringShutdown_StaysFailure(DetachedFailure stage, bool shutdownRequested)
     {
         using var shutdown = new CancellationTokenSource();
         var audience = NewAudience("a-aud", "Humans - A", []);
@@ -74,7 +74,7 @@ public class MailerLiteAudienceSyncServiceTests
     [InlineData(PriorFailure.Preflight)]
     [InlineData(PriorFailure.Operation)]
     [InlineData(PriorFailure.OperationAtBoundary)]
-    public async Task Interrupted_sweep_keeps_prior_audience_and_operation_failures(PriorFailure stage)
+    public async Task SyncAllAsync_Interrupted_KeepsPriorFailures(PriorFailure stage)
     {
         using var shutdown = new CancellationTokenSource();
         var user = Guid.NewGuid();
@@ -117,7 +117,7 @@ public class MailerLiteAudienceSyncServiceTests
     [InlineData(AudienceWrite.BulkImport)]
     [InlineData(AudienceWrite.Assign)]
     [InlineData(AudienceWrite.Unassign)]
-    public async Task SyncAllAsync_CancelledDuringWrites_FinishesAudienceStateAndAuditBeforeStopping(
+    public async Task SyncAllAsync_CancelledDuringWrites_FinishesAudience(
         AudienceWrite cancelledDuring)
     {
         using var shutdown = new CancellationTokenSource();
@@ -175,7 +175,7 @@ public class MailerLiteAudienceSyncServiceTests
     }
 
     [HumansFact]
-    public async Task SyncAllAsync_CancelledAtEndOfPreflight_DoesNotStartWrites()
+    public async Task SyncAllAsync_CancelledAfterPreflight_StartsNoWrites()
     {
         using var shutdown = new CancellationTokenSource();
         var user = Guid.NewGuid();
@@ -216,7 +216,7 @@ public class MailerLiteAudienceSyncServiceTests
     }
 
     [HumansFact]
-    public async Task SyncAsync_NewUserNotInML_BulkImportsAndAssigns()
+    public async Task SyncAsync_NewUser_BulkImports()
     {
         var userA = Guid.NewGuid();
         var audience = NewAudience("a-aud", "Humans - A", [userA]);
@@ -371,7 +371,7 @@ public class MailerLiteAudienceSyncServiceTests
     }
 
     [HumansFact]
-    public async Task SyncAsync_AssignFails_CountedInErrorsAndSyncContinues()
+    public async Task SyncAsync_AssignFails_Continues()
     {
         var userA = Guid.NewGuid();
         var userB = Guid.NewGuid();
@@ -404,7 +404,7 @@ public class MailerLiteAudienceSyncServiceTests
     }
 
     [HumansFact]
-    public async Task SyncAsync_PersistsSyncStateAndAuditsInProse()
+    public async Task SyncAsync_Completed_PersistsSyncState()
     {
         var ct = TestContext.Current.CancellationToken;
         var userA = Guid.NewGuid();
@@ -458,7 +458,7 @@ public class MailerLiteAudienceSyncServiceTests
     }
 
     [HumansFact]
-    public async Task ComputeAllStatsAsync_ReadsLastSyncFromTheSyncStateTable()
+    public async Task ComputeAllStatsAsync_LastSync_ComesFromSyncState()
     {
         var ct = TestContext.Current.CancellationToken;
         var userA = Guid.NewGuid();

@@ -69,7 +69,7 @@ public sealed class ConsentNotificationMetersTests : IDisposable
     [HumansTheory]
     [InlineData]
     [InlineData("ShiftsAdmin")]
-    public async Task OtherViewers_GetNoMeterAndNoReads(params string[] roles)
+    public async Task Meters_OtherViewers_GetNone(params string[] roles)
     {
         var meters = await _sut.GetMetersAsync(Viewer(roles), Guid.NewGuid(), TestContext.Current.CancellationToken);
 

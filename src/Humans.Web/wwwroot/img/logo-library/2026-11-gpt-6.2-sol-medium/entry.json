@@ -1,0 +1,17 @@
+{
+  "date": "2026-11",
+  "family": "GPT",
+  "model": "Sol",
+  "version": "6.2",
+  "effort": "medium",
+  "brief": "v1",
+  "notes": {
+    "en": "I aimed for an engraved figure whose four arms and four legs stay distinct at navbar size. The broad silhouette carries the pose at 38 pixels. The hands are still simplified, and the two leg poses share a crowded transition at the hips.",
+    "es": "Busqué una figura con aspecto de grabado cuyos cuatro brazos y cuatro piernas se distingan en la barra de navegación. La silueta amplia mantiene legible la pose a 38 píxeles. Las manos siguen simplificadas y las dos posturas de las piernas se juntan en poco espacio a la altura de las caderas.",
+    "de": "Mein Ziel war eine Figur im Stil eines Kupferstichs, deren vier Arme und vier Beine auch in der Navigationsleiste erkennbar bleiben. Die kräftige Silhouette hält die Pose bei 38 Pixeln lesbar. Die Hände sind noch vereinfacht, und an der Hüfte liegen die beiden Beinstellungen eng beieinander.",
+    "it": "Ho cercato di disegnare una figura incisa in cui le quattro braccia e le quattro gambe restino distinguibili nella barra di navigazione. La silhouette ampia rende leggibile la posa a 38 pixel. Le mani sono ancora semplificate e le due posizioni delle gambe si sovrappongono nella zona delle anche.",
+    "fr": "J’ai cherché à dessiner une figure gravée dont les quatre bras et les quatre jambes restent distincts dans la barre de navigation. La silhouette ample permet de lire la pose à 38 pixels. Les mains restent simplifiées et les deux positions des jambes se rejoignent dans un espace étroit au niveau des hanches.",
+    "ca": "He volgut dibuixar una figura amb aspecte de gravat en què els quatre braços i les quatre cames es distingeixin a la barra de navegació. La silueta ampla manté la postura llegible a 38 píxels. Les mans encara són simplificades i les dues posicions de les cames s’ajunten en poc espai a l’altura dels malucs.",
+    "nl": "Ik wilde een gegraveerde figuur tekenen waarvan de vier armen en vier benen in de navigatiebalk herkenbaar blijven. Het stevige silhouet houdt de houding leesbaar op 38 pixels. De handen zijn nog vereenvoudigd en de twee beenhoudingen komen dicht bij elkaar bij de heupen."
+  }
+}

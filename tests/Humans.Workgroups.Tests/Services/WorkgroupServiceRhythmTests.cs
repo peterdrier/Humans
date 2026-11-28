@@ -23,7 +23,7 @@ public sealed class WorkgroupServiceRhythmTests : WorkgroupsTestHarness
     [HumansTheory]
     [Xunit.InlineData(false)]
     [Xunit.InlineData(true)]
-    public async Task UpdateNudge_UsesTheResolvedRecipientsLanguage_AndDeduplicatesAliases(bool includeSurvivor)
+    public async Task UpdateNudge_ResolvedRecipient_UsesTheirLanguage(bool includeSurvivor)
     {
         var formerId = SeedUser("Former account");
         var survivorId = SeedUser("Survivor", language: "es");
@@ -93,7 +93,7 @@ public sealed class WorkgroupServiceRhythmTests : WorkgroupsTestHarness
     [HumansTheory]
     [Xunit.InlineData(false)]
     [Xunit.InlineData(true)]
-    public async Task UpdateNudge_FailedLanguage_DoesNotSuppressOthersOrOverstateDelivery(bool hasAnotherLanguage)
+    public async Task UpdateNudge_OneLanguageFails_OthersStillSend(bool hasAnotherLanguage)
     {
         var group = await SeedWorkgroupAsync(registeredAt: Clock.GetCurrentInstant().Minus(Duration.FromDays(30)));
         var first = group.Members.Single().UserId;
@@ -132,7 +132,7 @@ public sealed class WorkgroupServiceRhythmTests : WorkgroupsTestHarness
     [Xunit.InlineData("Recipients")]
     [Xunit.InlineData("CoordinatorNotice")]
     [Xunit.InlineData("BoardNotice")]
-    public async Task JobCancellation_DuringTheLastGroup_PropagatesWithoutAnErrorLog(string boundary)
+    public async Task Job_CancelledDuringLastGroup_Propagates(string boundary)
     {
         using var shutdown = new CancellationTokenSource();
         var boardNotice = string.Equals(boundary, "BoardNotice", StringComparison.Ordinal);
@@ -185,7 +185,7 @@ public sealed class WorkgroupServiceRhythmTests : WorkgroupsTestHarness
     }
 
     [HumansFact]
-    public async Task ThirtyDaysSilent_NudgesCoordinators_AndAudits()
+    public async Task Job_ThirtyDaysSilent_NudgesCoordinators()
     {
         var workgroup = await SeedWorkgroupAsync(registeredAt: Clock.GetCurrentInstant().Minus(Duration.FromDays(30)));
 
@@ -230,7 +230,7 @@ public sealed class WorkgroupServiceRhythmTests : WorkgroupsTestHarness
     }
 
     [HumansFact]
-    public async Task SixtyDaysSilent_NudgesAndNothingElse()
+    public async Task Job_SixtyDaysSilent_OnlyNudges()
     {
         var workgroup = await SeedWorkgroupAsync(registeredAt: Clock.GetCurrentInstant().Minus(Duration.FromDays(60)));
 
@@ -280,7 +280,7 @@ public sealed class WorkgroupServiceRhythmTests : WorkgroupsTestHarness
     }
 
     [HumansFact]
-    public async Task OneGroupsFailure_DoesNotStopThePassForTheRest()
+    public async Task Job_OneGroupFails_ContinuesWithRest()
     {
         var failing = await SeedWorkgroupAsync(
             name: "Silent", driveFolderId: "folder-silent",
@@ -303,7 +303,7 @@ public sealed class WorkgroupServiceRhythmTests : WorkgroupsTestHarness
     }
 
     [HumansFact]
-    public async Task AWeeklySeries_OffersItsNextOccurrence_ButScheduledWeeksAreNotActivity()
+    public async Task WeeklySeries_ScheduledWeeks_AreNotActivity()
     {
         var now = Clock.GetCurrentInstant();
         var started = now.Minus(Duration.FromDays(60));

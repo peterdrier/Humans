@@ -73,7 +73,7 @@ public sealed class AuthorizationHandlerTests : PreapprovalsTestHarness
     }
 
     [HumansFact]
-    public async Task ManagerOfA_ManagesA_NotB_NeverAdministers()
+    public async Task Manager_OtherProgram_IsDenied()
     {
         var manager = SeedUser("Manager");
         var a = (await NewService().GetProgramAsync((await SeedProgramAsync(name: "A", managers: manager)).Id, Ct))!;
@@ -102,7 +102,7 @@ public sealed class AuthorizationHandlerTests : PreapprovalsTestHarness
     [HumansTheory]
     [Xunit.InlineData(RoleNames.Admin)]
     [Xunit.InlineData(FinanceRoles.FinanceAdmin)]
-    public async Task ManagingRoles_ManageAndAdministerEveryProgram(string role)
+    public async Task ManagingRoles_AnyProgram_MayAdminister(string role)
     {
         var program = (await NewService().GetProgramAsync((await SeedProgramAsync()).Id, Ct))!;
         var user = Principal(SeedUser("Role holder"), role);

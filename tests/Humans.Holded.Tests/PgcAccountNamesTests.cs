@@ -39,7 +39,7 @@ public sealed class PgcAccountNamesTests
     ];
 
     [HumansFact]
-    public void Every_standard_account_and_its_subgroup_and_group_have_an_entry()
+    public void StandardAccounts_WithGroups_HaveEntries()
     {
         var prefixes = PgcAccountNames.Entries.Select(e => e.Prefix).ToHashSet(StringComparer.Ordinal);
         var missing = StandardAccounts
@@ -91,14 +91,14 @@ public sealed class PgcAccountNamesTests
     ];
 
     [HumansFact]
-    public void Every_standard_name_in_the_live_chart_translates()
+    public void StandardNames_InLiveChart_Translate()
     {
         LiveChartNames.Where(a => PgcAccountNames.EnglishName(a.Number, a.Name) is null)
             .Select(a => a.Number).Should().BeEmpty();
     }
 
     [HumansFact]
-    public void Entries_are_digit_prefixes_with_both_names()
+    public void Entries_Each_HasDigitPrefixWithNames()
     {
         PgcAccountNames.Entries.Should().OnlyContain(e =>
             e.Prefix.Length >= 1 && e.Prefix.Length <= 4 && e.Prefix.All(char.IsAsciiDigit)
@@ -110,13 +110,13 @@ public sealed class PgcAccountNamesTests
     [Xunit.InlineData(57200000, "BANCOS E INSTITUCIONES DE CREDITO C/C VISTA, EUROS", "Banks, current accounts, euros")]
     [Xunit.InlineData(12900000, "Excendente del ejercicio", "Surplus for the year")] // Holded's own misspelling
     [Xunit.InlineData(47200021, "Hacienda Pública, IVA soportado 21%", "Input VAT 21%")]
-    public void Standard_spanish_names_translate(int number, string holded, string english) =>
+    public void StandardNames_Spanish_Translate(int number, string holded, string english) =>
         PgcAccountNames.EnglishName(number, holded).Should().Be(english);
 
     [HumansTheory]
     [Xunit.InlineData(57200001, "Banco Sabadell")]
     [Xunit.InlineData(41000012, "Acreedores por prestaciones de servicios")]
     [Xunit.InlineData(62900000, "Otros servicios")]
-    public void Names_the_association_chose_and_member_and_category_accounts_keep_theirs(int number, string holded) =>
+    public void ChosenNames_Translation_KeepsThem(int number, string holded) =>
         PgcAccountNames.EnglishName(number, holded).Should().BeNull();
 }

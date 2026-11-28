@@ -34,6 +34,15 @@ internal sealed record FinanceLedgerCardsVm(
         [.. Banks.OrderBy(a => a.AccountNum), .. Stripe.OrderBy(a => a.AccountNum)];
     public decimal CashTotal => Banks.Sum(a => a.Amount) + Stripe.Sum(a => a.Amount);
     public decimal ReceivablesTotal => Receivables.Sum(a => a.Amount);
+
+    /// <summary>When the Pleo mirror read the wallet. Null when it never has.</summary>
+    public Instant? PleoReadAt => Banks.Select(a => a.Source?.ReadAt).FirstOrDefault(r => r is not null);
+
+    /// <summary>The oldest read among the linked Stripe accounts. Null when none has a mirrored balance.</summary>
+    public Instant? StripeReadAt => Stripe.Select(a => a.Source?.ReadAt).Where(r => r is not null).Min();
+
+    /// <summary>Null when no account has a mirrored bank feed.</summary>
+    public FinanceBankFeedVm? BankFeed => CashAccounts.Select(a => a.BankFeed).FirstOrDefault(f => f is not null);
 }
 
 /// <summary><see cref="Amount"/> is Holded's ledger balance. <see cref="Source"/> is set on an account whose provider

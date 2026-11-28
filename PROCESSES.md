@@ -99,6 +99,17 @@ follow docs/maintenance/section-doctor/README.md with --section=Camps
 follow docs/maintenance/section-doctor/README.md with resume
 ```
 
+## Horizontal health: drift radar
+
+**When:** Run by the [maintenance dispatcher](docs/maintenance/dispatcher.md) on Saturdays, or on demand.
+
+**What it does:** Scans 30-day code/test/rules velocity (`scripts/drift-metrics.mjs`) plus a fresh sample of recent diffs to catch emerging cross-section slop and legacy rules getting in agents' way. Read-only toward the repo: opens at most one capped issue on `peterdrier/Humans` when something trips the bar. Procedure: [`docs/maintenance/drift-radar.md`](docs/maintenance/drift-radar.md).
+
+```
+follow docs/maintenance/drift-radar.md
+node scripts/drift-metrics.mjs --days 30
+```
+
 ## Debt: `/debt-sweep` and debt review
 
 **When:** Daily debt burndown.
@@ -135,13 +146,12 @@ follow docs/maintenance/freshness-sweep/README.md with --full
 
 ## Brand: `/redraw-logo`
 
-**When:** Every 2-3 months, when a new first-class model ships.
+**When:** Whenever a new model ships, once per model and effort level; runs in parallel.
 
-**What it does:** Redraws the Vitruvian Man mark against the standing brief (`src/Humans.Web/wwwroot/img/logo.md`), derives every icon from the master, archives the previous round under `docs/brand/logo-history/`, wires it in and opens the PR.
+**What it does:** Draws the Vitruvian Man against the frozen brief (`src/Humans.Web/wwwroot/img/logo-library/brief-v1.md`) and adds it as one entry to the logo library (`wwwroot/img/logo-library/`, shown at `/About/Logos`), then opens the PR. Never touches the live logo; promoting an entry is a separate step Peter asks for.
 
 ```
-/redraw-logo            # label the archive after the running model
-/redraw-logo opus-5.5   # explicit label
+/redraw-logo Claude Opus 5.5 high
 ```
 
 ## Triage: `/triage`

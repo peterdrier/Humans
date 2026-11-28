@@ -1255,7 +1255,7 @@ Git Bash.)
    lands in `Humans.<Section>.Services`. Agent's `Services/Stores/` is the shape and the sweep's
    predicate does not match it, which is the honest classification rather than a dodge: these
    types *are* the cache, where the rule is about a service that has acquired one. Gate's
-   `GatePinThrottle` and `GateVendorMirrorLedger` moved there (proven: Gate).
+   `GatePinThrottle` moved there (proven: Gate).
    - **When the offender is the section's actual service, the answer is the allowlist, not
      `Stores/`.** `GuideContentService` is `IGuideContentService`, the type the controller
      injects; relocating it to dodge the sweep's namespace predicate would be the dodge step 6a

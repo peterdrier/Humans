@@ -6,7 +6,7 @@ namespace Humans.Tickets.Contracts;
 
 /// <summary>
 /// The vendor port: a vendor swap is one adapter project deleted and one added. Other sections go through
-/// <see cref="ITicketDiscountCodes"/> and <see cref="ITicketVendorMirror"/>; the contracts leaf names none of this.
+/// <see cref="ITicketDiscountCodes"/>; the contracts leaf names none of this.
 /// </summary>
 public interface ITicketVendorService : IApplicationService
 {
@@ -47,9 +47,4 @@ public interface ITicketVendorService : IApplicationService
     [ExternalWrite]
     Task<VendorTicketDto> IssueTicketAsync(
         IssueTicketRequest request, CancellationToken ct = default);
-
-    /// <summary>Not idempotent: each call creates a vendor record, so callers must never retry.</summary>
-    [ExternalWrite]
-    Task CreateCheckInAsync(
-        string vendorTicketId, Instant occurredAt, CancellationToken ct = default);
 }

@@ -18,7 +18,7 @@ namespace Humans.Grants.Tests.ViewComponents;
 public sealed class MyGrantsViewComponentTests : GrantsTestHarness
 {
     [HumansFact]
-    public async Task KeepsGrantsEndedThisYear_FromAnOlderProgram_DropsOnesEndedEarlier()
+    public async Task Invoke_GrantEndedThisYear_IsKept()
     {
         var holder = SeedUser("Holder");
         var older = await SeedProgramAsync(name: "Older");
@@ -37,7 +37,7 @@ public sealed class MyGrantsViewComponentTests : GrantsTestHarness
     }
 
     [HumansFact]
-    public async Task ACookieStillCarryingAMergedAwayId_SeesTheSurvivorsGrants()
+    public async Task Invoke_MergedAwayId_ShowsSurvivorsGrants()
     {
         var archived = Guid.NewGuid();
         var survivor = SeedUser("Survivor", mergedIds: [archived]);

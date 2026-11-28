@@ -28,7 +28,7 @@ public sealed class SectionSettingsTests
     [Xunit.InlineData("   ", true)]
     [Xunit.InlineData("\t", true)]
     [Xunit.InlineData("smtp.example.org", true)]
-    public async Task Production_uses_smtp_and_reports_missing_configuration_at_send_time(string? host, bool production)
+    public async Task Production_MissingSmtpConfiguration_FailsAtSendTime(string? host, bool production)
     {
         var configuration = new ConfigurationBuilder().AddInMemoryCollection(
             new Dictionary<string, string?>(StringComparer.Ordinal) { ["Email:SmtpHost"] = host }).Build();

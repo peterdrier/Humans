@@ -47,7 +47,7 @@ public sealed class GrantsAdminAuthorizationTests
     }
 
     [HumansFact]
-    public void EveryPost_NamesAPolicy_AndValidatesTheAntiForgeryToken()
+    public void PostActions_Policy_IsNamed()
     {
         var posts = typeof(GrantsAdminController).GetMethods(BindingFlags.Instance | BindingFlags.Public | BindingFlags.DeclaredOnly)
             .Where(m => m.GetCustomAttribute<HttpPostAttribute>() is not null)

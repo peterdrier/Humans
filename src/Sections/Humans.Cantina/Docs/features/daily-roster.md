@@ -1,6 +1,6 @@
 <!-- freshness:triggers
   src/Sections/Humans.Shifts/Services/ShiftManagementService.cs
-  src/Sections/Humans.Shifts/Data/ShiftRepository.Signups.cs
+  src/Sections/Humans.Shifts/Data/ShiftRepository.cs
   src/Sections/Humans.Users/Domain/Profile.cs
   src/Humans.Base/Users/UserInfo.cs
   src/Sections/Humans.Cantina/**

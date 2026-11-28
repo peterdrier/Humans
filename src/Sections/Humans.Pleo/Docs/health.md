@@ -55,19 +55,19 @@ and the controller see.
 3. A short read never shrinks the mirror: a page without a `data` array, without a boolean
    `hasNextPage`, without a cursor when more is promised, with a repeated cursor, or past the
    page cap throws (`src/Sections/Humans.Pleo/Services/PleoClient.cs:155`, `:163`, `:170`, `:172`,
-   `:174`; `PleoClientTests.Pager_rejects_unknown_completion_instead_of_returning_a_partial_dataset`).
+   `:174`; `PleoClientTests.Pager_UnknownCompletion_Fails`).
 4. A category row a person linked is never changed by a sweep, and a sweep never deletes or
    unlinks a category row (`src/Sections/Humans.Pleo/Services/Service.cs`;
    `src/Sections/Humans.Pleo/Data/Repository.cs:22`;
-   `PleoSyncTests.Sweep_links_and_adds_categories_from_Pleos_mapping_but_leaves_a_hand_link`).
+   `PleoSyncTests.Sync_PleoMapping_LinksCategories`).
 5. A failed category read does not stop the sweep: categories stay as they are and the error is
    kept on the sync row (`src/Sections/Humans.Pleo/Services/Service.cs`;
-   `PleoSyncTests.A_failed_category_fetch_still_mirrors_entries_and_reports_the_error`).
+   `PleoSyncTests.Sync_CategoryFetchFails_StillMirrorsEntries`).
 6. One sweep at a time; a second caller is told it was skipped
    (`src/Sections/Humans.Pleo/Services/Service.cs`).
 7. A 4xx ends the nightly job without retry; anything else keeps Hangfire's retries
    (`src/Sections/Humans.Pleo/Jobs/PleoSyncJob.cs:20`;
-   `PleoSyncJobTests.Permanent_failure_completes_the_job_so_Hangfire_does_not_retry`).
+   `PleoSyncJobTests.Run_PermanentFailure_Completes`).
 8. An entry's EUR amount is Pleo's EUR bill value when there is one; otherwise an EUR transaction
    value signed by its family; an unclassified family or another currency has none
    (`src/Sections/Humans.Pleo/Domain/PleoEntryRules.cs:29`).
@@ -79,7 +79,7 @@ and the controller see.
     without the API key, as an image, a PDF or an opaque download
     (`src/Sections/Humans.Pleo/Services/Service.cs`;
     `src/Sections/Humans.Pleo/Services/PleoClient.cs:110`, `:120`;
-    `PleoClientTests.Receipt_file_is_downloaded_from_the_signed_url_without_the_key`).
+    `PleoClientTests.GetReceiptFile_SignedUrl_OmitsKey`).
 12. Board reads every page; only finance admins and admins sync or change a category
     (`src/Sections/Humans.Pleo/Controllers/PleoController.cs:11`, `:30`, `:108`, `:115`, `:121`).
 13. Every category link, unlink and add, by hand or by a sweep, writes an audit entry

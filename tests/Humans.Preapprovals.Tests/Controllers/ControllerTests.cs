@@ -71,7 +71,7 @@ public sealed class ControllerTests : PreapprovalsTestHarness
     private readonly IStringLocalizer<PreapprovalsResource> _localizer = Substitute.For<IStringLocalizer<PreapprovalsResource>>();
 
     [HumansFact]
-    public void AdminController_IsGatedByTheManagePolicy_MemberByAccess()
+    public void AdminController_Policy_IsManage()
     {
         typeof(PreapprovalsAdminController).GetCustomAttributes(typeof(AuthorizeAttribute), inherit: false)
             .Cast<AuthorizeAttribute>().Single().Policy.Should().Be(PreapprovalsPolicies.Manage);
@@ -84,7 +84,7 @@ public sealed class ControllerTests : PreapprovalsTestHarness
     [HumansTheory]
     [Xunit.InlineData(false)]
     [Xunit.InlineData(true)]
-    public async Task ManagerOfA_OnB_IsForbidden_AndSeesOnlyA(bool merged)
+    public async Task Manager_OtherProgram_IsForbidden(bool merged)
     {
         var archived = Guid.NewGuid();
         var manager = SeedUser("Manager", mergedIds: merged ? [archived] : []);
@@ -108,7 +108,7 @@ public sealed class ControllerTests : PreapprovalsTestHarness
     [HumansTheory]
     [Xunit.InlineData(false)]
     [Xunit.InlineData(true)]
-    public async Task GrantOfAnotherProgram_UnderMyProgramsUrl_IsNotFound_EvenWithMalformedInput(bool malformed)
+    public async Task Grant_UnderOtherProgramsUrl_IsNotFound(bool malformed)
     {
         var manager = SeedUser("Manager");
         var a = await SeedProgramAsync(name: "A", managers: manager);
@@ -210,7 +210,7 @@ public sealed class ControllerTests : PreapprovalsTestHarness
     }
 
     [HumansFact]
-    public void Creating_a_program_is_Finance_Manage_only()
+    public void Create_Policy_IsFinanceManage()
     {
         typeof(PreapprovalsAdminController).GetMethods()
             .Where(m => string.Equals(m.Name, nameof(PreapprovalsAdminController.New), StringComparison.Ordinal))
@@ -220,7 +220,7 @@ public sealed class ControllerTests : PreapprovalsTestHarness
     }
 
     [HumansFact]
-    public async Task Board_reads_every_program_and_changes_nothing()
+    public async Task Board_AnyProgram_ReadsOnly()
     {
         var program = await SeedProgramAsync(name: "A");
         var other = await SeedProgramAsync(name: "B");
@@ -290,7 +290,7 @@ public sealed class ControllerTests : PreapprovalsTestHarness
     [Xunit.InlineData(true, "AcceptsApplications", false)]
     [Xunit.InlineData(true, "", false)]
     [Xunit.InlineData(true, "", true)]
-    public async Task Program_forms_require_explicit_kind_status_and_application_choice(bool editing, string omitted, bool zeroChoices)
+    public async Task ProgramForms_MissingChoices_AreRefused(bool editing, string omitted, bool zeroChoices)
     {
         var existing = editing ? await SeedProgramAsync(kind: ProgramKind.PerGrantAmount, status: ProgramStatus.Closed) : null;
         var controller = BuildAdmin(SeedUser("Finance admin"), FinanceRoles.FinanceAdmin);
@@ -355,7 +355,7 @@ public sealed class ControllerTests : PreapprovalsTestHarness
     }
 
     [HumansFact]
-    public async Task Apply_WhenNotAccepting_Is400_AndFormHidden()
+    public async Task Apply_NotAccepting_Is400()
     {
         var program = await SeedProgramAsync(acceptsApplications: false);
         var person = SeedUser("Person");
@@ -371,7 +371,7 @@ public sealed class ControllerTests : PreapprovalsTestHarness
     }
 
     [HumansFact]
-    public async Task Apply_Accepted_RedirectsWithSuccess_AndAmountRuleShowsAsError()
+    public async Task Apply_Accepted_RedirectsWithSuccess()
     {
         var program = await SeedProgramAsync(kind: ProgramKind.PerGrantAmount, perPerson: null);
         var person = SeedUser("Person");
@@ -389,7 +389,7 @@ public sealed class ControllerTests : PreapprovalsTestHarness
     }
 
     [HumansFact]
-    public async Task Member_Index_ListsOwnGrantsAndOpenPrograms_NoManageFlag()
+    public async Task Index_Member_ListsOwnGrants()
     {
         var mine = await SeedProgramAsync(name: "Mine", acceptsApplications: false);
         var open = await SeedProgramAsync(name: "Open");

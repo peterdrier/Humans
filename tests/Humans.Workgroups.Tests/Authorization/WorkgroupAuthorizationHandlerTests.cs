@@ -78,7 +78,7 @@ public sealed class WorkgroupAuthorizationHandlerTests
     [HumansTheory]
     [Xunit.InlineData(RoleNames.Board)]
     [Xunit.InlineData(RoleNames.Admin)]
-    public async Task Member_BoardAndAdminMayEditOnlyActiveGroups(string role)
+    public async Task Member_BoardOrAdmin_EditsOnlyActiveGroups(string role)
     {
         (await EvaluateAsync(SignedInWithRole(role), ActiveWorkgroup(), WorkgroupOperationRequirement.Member))
             .Should().BeTrue();
@@ -141,7 +141,7 @@ public sealed class WorkgroupAuthorizationHandlerTests
     [HumansTheory]
     [Xunit.InlineData(RoleNames.Board)]
     [Xunit.InlineData(RoleNames.Admin)]
-    public async Task Administer_BoardAndAdmin_Succeed(string role)
+    public async Task Administer_BoardOrAdmin_Succeeds(string role)
     {
         var result = await EvaluateAsync(
             SignedInWithRole(role), ActiveWorkgroup(), WorkgroupOperationRequirement.Administer);
@@ -165,7 +165,7 @@ public sealed class WorkgroupAuthorizationHandlerTests
     [Xunit.InlineData("Stranger", true, false)]
     [Xunit.InlineData("Board", false, true)]
     [Xunit.InlineData("Admin", false, true)]
-    public async Task ManageMembership_PreservesCoordinatorAndPrivilegedAccess(string actor, bool active, bool allowed)
+    public async Task ManageMembership_CoordinatorOrPrivileged_Succeeds(string actor, bool active, bool allowed)
     {
         var workgroup = active ? ActiveWorkgroup() : DormantWorkgroup();
         if (string.Equals(actor, "Member", StringComparison.Ordinal))

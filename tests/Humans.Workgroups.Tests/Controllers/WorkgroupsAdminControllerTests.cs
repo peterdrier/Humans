@@ -73,7 +73,7 @@ public sealed class WorkgroupsAdminControllerTests : WorkgroupsTestHarness
     [InlineData(true, "true", "create", true)]
     [InlineData(false, "true", "link", true)]
     [InlineData(true, "true", "link", true)]
-    public async Task BudgetForms_RequireExplicitBudgetAndValidAccountChoices(
+    public async Task BudgetForms_MissingChoices_AreRefused(
         bool bootstrap, string? hasBudget, string? accountMode, bool valid)
     {
         var service = Substitute.For<IWorkgroupService>();
@@ -309,7 +309,7 @@ public sealed class WorkgroupsAdminControllerTests : WorkgroupsTestHarness
     [InlineData(nameof(WorkgroupsAdminController.Refuse))]
     [InlineData(nameof(WorkgroupsAdminController.Withdraw))]
     [InlineData(nameof(WorkgroupsAdminController.Close))]
-    public async Task Invalid_reasons_flash_error_and_redirect_to_details(string action)
+    public async Task Reasons_Invalid_RedirectToDetails(string action)
     {
         var status = string.Equals(action, nameof(WorkgroupsAdminController.Refuse), StringComparison.Ordinal)
             ? WorkgroupStatus.Applied : WorkgroupStatus.Active;
@@ -339,7 +339,7 @@ public sealed class WorkgroupsAdminControllerTests : WorkgroupsTestHarness
     [InlineData(nameof(WorkgroupsAdminController.Refuse))]
     [InlineData(nameof(WorkgroupsAdminController.Withdraw))]
     [InlineData(nameof(WorkgroupsAdminController.Close))]
-    public async Task In_bounds_rejected_reasons_are_kept_as_draft(string action)
+    public async Task Reasons_InBoundsRejected_AreKeptAsDraft(string action)
     {
         var status = string.Equals(action, nameof(WorkgroupsAdminController.Refuse), StringComparison.Ordinal)
             ? WorkgroupStatus.Applied : WorkgroupStatus.Active;
@@ -385,7 +385,7 @@ public sealed class WorkgroupsAdminControllerTests : WorkgroupsTestHarness
     }
 
     [HumansFact]
-    public async Task Budget_ValidForm_SetsBudgetAndRedirectsToTheGroup()
+    public async Task Budget_ValidForm_SetsBudget()
     {
         var workgroup = await SeedWorkgroupAsync(name: "ALM 2027");
         var sut = MakeAdminController(nameof(WorkgroupsAdminController.Budget));
@@ -433,7 +433,7 @@ public sealed class WorkgroupsAdminControllerTests : WorkgroupsTestHarness
     }
 
     [HumansFact]
-    public async Task RegisterExisting_LinkMode_BindsTheChosenAccountInsteadOfCreating()
+    public async Task RegisterExisting_LinkMode_BindsChosenAccount()
     {
         var sut = MakeAdminController(nameof(WorkgroupsAdminController.RegisterExisting));
         var model = new RegisterExistingViewModel

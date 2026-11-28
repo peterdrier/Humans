@@ -117,14 +117,6 @@ public sealed class VolunteerTrackingRepositoryConfirmedShiftsTests(HumansTestDa
         var es = new EventSettings
         {
             Id = Guid.NewGuid(),
-            EventName = $"Elsewhere-{suffix}",
-            Year = 2026,
-            TimeZoneId = "Europe/Madrid",
-            GateOpeningDate = new LocalDate(2026, 7, 1),
-            BuildStartOffset = -10,
-            EventEndOffset = 6,
-            StrikeEndOffset = 8,
-            IsActive = true,
             CreatedAt = now,
             UpdatedAt = now,
         };
@@ -176,19 +168,8 @@ public sealed class VolunteerTrackingRepositoryConfirmedShiftsTests(HumansTestDa
         await db.SaveChangesAsync(TestContext.Current.CancellationToken);
         await teamsDb.SaveChangesAsync(TestContext.Current.CancellationToken);
         await shiftsDb.SaveChangesAsync(TestContext.Current.CancellationToken);
-        var calendar = new EventSettingsInfo(
-            Id: es.Id,
-            EventName: es.EventName,
-            Year: es.Year,
-            TimeZoneId: es.TimeZoneId,
-            GateOpeningDate: es.GateOpeningDate,
-            BuildStartOffset: es.BuildStartOffset,
-            EventEndOffset: es.EventEndOffset,
-            StrikeEndOffset: es.StrikeEndOffset,
-            EarlyEntryCapacity: new Dictionary<int, int>(es.EarlyEntryCapacity),
-            BarriosEarlyEntryAllocation: es.BarriosEarlyEntryAllocation is null
-                ? null : new Dictionary<int, int>(es.BarriosEarlyEntryAllocation),
-            EarlyEntryClose: es.EarlyEntryClose);
+        var calendar = BurnFixtures.Burn(id: es.Id, eventName: $"Elsewhere-{suffix}", gateOpeningDate: new LocalDate(2026, 7, 1),
+            buildStartOffset: -10, eventEndOffset: 6, strikeEndOffset: 8);
         return (es.Id, calendar, teamA.Id, teamB.Id, user1.Id);
     }
 

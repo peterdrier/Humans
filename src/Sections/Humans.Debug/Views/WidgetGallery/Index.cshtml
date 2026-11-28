@@ -381,15 +381,15 @@
                 <div class="wg-card">
                     <div class="wg-card-header">
                         <div>
-                            <span class="wg-card-name">&lt;vc:admin-breadcrumb&gt;</span>
+                            <span class="wg-card-name">&lt;vc:admin-section-name&gt;</span>
                             <span class="wg-card-kind kind-vc">ViewComponent</span>
                         </div>
-                        <span class="wg-card-path">src/Humans.Base/ViewComponents/AdminBreadcrumbViewComponent.cs</span>
+                        <span class="wg-card-path">src/Humans.Base/ViewComponents/AdminSectionNameViewComponent.cs</span>
                     </div>
-                    <div class="wg-card-note">Resolves <em>Group / Page / Subpage</em> from the sections' <code>ISectionAdminNav</code> contributions and the current route; a subpage's own trail comes from the page's <code>Crumbs</code> section. Falls back to the page title when no nav match. <code>@@section Crumbs</code> works in both layouts: the member layout renders the same section through <code>&lt;vc:breadcrumb&gt;</code> below, so a page writes its crumbs once and never hand-rolls breadcrumb markup.</div>
+                    <div class="wg-card-note">The admin top bar's section name: the nav group the current route belongs to, from the sections' <code>ISectionAdminNav</code> contributions. Falls back to the page title when no nav item matches. The admin shell shows no breadcrumb and ignores a page's <code>@@section Crumbs</code>; the member layout renders it through <code>&lt;vc:breadcrumb&gt;</code> below.</div>
                     @ParamsBlock()
                     <div class="wg-card-example">
-                        <vc:admin-breadcrumb />
+                        <vc:admin-section-name />
                         <div class="text-muted small">↑ resolves to whatever admin nav entry matches this route, or the page title.</div>
                     </div>
                 </div>

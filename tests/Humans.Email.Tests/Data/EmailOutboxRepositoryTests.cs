@@ -148,7 +148,7 @@ public sealed class EmailOutboxRepositoryTests : IDisposable
     }
 
     [HumansFact]
-    public async Task RetryAsync_ResetsStatusAndCountersAndReturnsRecipient()
+    public async Task RetryAsync_FailedRow_ResetsCounters()
     {
         var msg = BuildMessage(status: EmailOutboxStatus.Failed, retryCount: 3);
         msg.LastError = "boom";
@@ -175,7 +175,7 @@ public sealed class EmailOutboxRepositoryTests : IDisposable
     }
 
     [HumansFact]
-    public async Task DiscardAsync_DeletesAndReturnsRecipient()
+    public async Task DiscardAsync_ExistingRow_ReturnsRecipient()
     {
         var msg = BuildMessage();
         await _repo.AddAsync(msg, TestContext.Current.CancellationToken);
@@ -221,7 +221,7 @@ public sealed class EmailOutboxRepositoryTests : IDisposable
     }
 
     [HumansFact]
-    public async Task GetProcessingBatchAsync_PutsUrgentMessagesAheadOfABulkBacklog()
+    public async Task GetProcessingBatchAsync_BulkBacklog_UrgentComesFirst()
     {
         var now = _clock.GetCurrentInstant();
         var stale = now - Duration.FromMinutes(5);
@@ -304,7 +304,7 @@ public sealed class EmailOutboxRepositoryTests : IDisposable
     }
 
     [HumansFact]
-    public async Task MarkSentAsync_FlipsStatusAndClearsPickedUpAt()
+    public async Task MarkSentAsync_Row_ClearsPickedUpAt()
     {
         var msg = BuildMessage(status: EmailOutboxStatus.Queued);
         msg.PickedUpAt = _clock.GetCurrentInstant();
@@ -328,7 +328,7 @@ public sealed class EmailOutboxRepositoryTests : IDisposable
     }
 
     [HumansFact]
-    public async Task MarkFailedAsync_SetsFailureFieldsAndIncrementsRetry()
+    public async Task MarkFailedAsync_Row_IncrementsRetry()
     {
         var msg = BuildMessage(status: EmailOutboxStatus.Queued, retryCount: 1);
         msg.PickedUpAt = _clock.GetCurrentInstant();
@@ -389,7 +389,7 @@ public sealed class EmailOutboxRepositoryTests : IDisposable
     }
 
     [HumansFact]
-    public async Task ReassignToUserAsync_MovesAllStatusesAndPreservesRowsAndIsIdempotent()
+    public async Task ReassignToUserAsync_AllStatuses_MoveToTarget()
     {
         var sourceId = Guid.NewGuid();
         var targetId = Guid.NewGuid();
@@ -452,7 +452,7 @@ public sealed class EmailOutboxRepositoryTests : IDisposable
     }
 
     [HumansFact]
-    public async Task IncrementDailySendCountAsync_AccumulatesSentAndFailedSeparately()
+    public async Task IncrementDailySendCountAsync_SentOrFailed_CountSeparately()
     {
         var date = new LocalDate(2026, 8, 15);
 
@@ -466,7 +466,7 @@ public sealed class EmailOutboxRepositoryTests : IDisposable
     }
 
     [HumansFact]
-    public async Task IncrementDailySendCountAsync_KeepsDatesAndTemplatesSeparate()
+    public async Task IncrementDailySendCountAsync_DatesOrTemplates_StaySeparate()
     {
         var day1 = new LocalDate(2026, 8, 15);
         var day2 = new LocalDate(2026, 8, 16);
@@ -513,7 +513,7 @@ public sealed class EmailOutboxRepositoryTests : IDisposable
     }
 
     [HumansFact]
-    public async Task GetSentSinceAsync_ExcludesFailedQueuedAndBeforeCutoff()
+    public async Task GetSentSinceAsync_NotSentOrBeforeCutoff_IsExcluded()
     {
         var now = _clock.GetCurrentInstant();
         var sent = BuildMessage(status: EmailOutboxStatus.Sent, sentAt: now, createdAt: now);

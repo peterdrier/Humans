@@ -44,7 +44,7 @@ public class SectionRegistrationTests
     }
 
     [HumansFact]
-    public void NonProduction_WithARealKey_StillBindsTheStubAndKeepsTheKey()
+    public void Register_NonProductionWithRealKey_BindsStub()
     {
         using var provider = Build("Development", services =>
             services.Configure<TicketVendorSettings>(o => o.ApiKey = "sk_live_real"));

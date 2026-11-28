@@ -178,7 +178,7 @@ public class TeamAdminControllerMembersTests
             false, false, false, false, Instant.MinValue, []);
         teams.GetTeamsAsync(Arg.Any<CancellationToken>()).Returns(new Dictionary<Guid, TeamInfo> { [team.Id] = team });
         var authorization = Substitute.For<IAuthorizationService>();
-        authorization.AuthorizeAsync(Arg.Any<ClaimsPrincipal>(), team, Arg.Any<IEnumerable<IAuthorizationRequirement>>())
+        authorization.AuthorizeAsync(Arg.Any<ClaimsPrincipal>(), TeamOwner.Of(team.Id), Arg.Any<IEnumerable<IAuthorizationRequirement>>())
             .Returns(AuthorizationResult.Success());
         StubTeamsAdminOrAdminPolicy(authorization);
         var http = new DefaultHttpContext
@@ -235,7 +235,7 @@ public class TeamAdminControllerMembersTests
         teams.RejectJoinRequestAsync(requestId, userId, null)
             .Returns(new TeamJoinReviewResult(ErrorKey: "Teams_TeamAdmin_ProvideRejectionReason"));
         var authorization = Substitute.For<IAuthorizationService>();
-        authorization.AuthorizeAsync(Arg.Any<ClaimsPrincipal>(), team, Arg.Any<IEnumerable<IAuthorizationRequirement>>())
+        authorization.AuthorizeAsync(Arg.Any<ClaimsPrincipal>(), TeamOwner.Of(team.Id), Arg.Any<IEnumerable<IAuthorizationRequirement>>())
             .Returns(AuthorizationResult.Success());
         var localizer = Substitute.For<IStringLocalizer<TeamsResource>>().AddFormatting();
         localizer["Teams_TeamAdmin_ProvideRejectionReason"].Returns(
@@ -278,7 +278,7 @@ public class TeamAdminControllerMembersTests
             false, false, false, false, Instant.MinValue, []);
         teams.GetTeamsAsync(Arg.Any<CancellationToken>()).Returns(new Dictionary<Guid, TeamInfo> { [team.Id] = team });
         var authorization = Substitute.For<IAuthorizationService>();
-        authorization.AuthorizeAsync(Arg.Any<ClaimsPrincipal>(), team, Arg.Any<IEnumerable<IAuthorizationRequirement>>())
+        authorization.AuthorizeAsync(Arg.Any<ClaimsPrincipal>(), TeamOwner.Of(team.Id), Arg.Any<IEnumerable<IAuthorizationRequirement>>())
             .Returns(AuthorizationResult.Success());
         var registrations = new ServiceCollection().AddLogging();
         registrations.AddControllers();
@@ -349,7 +349,7 @@ public class TeamAdminControllerMembersTests
             false, false, false, false, Instant.MinValue, [], EarlyEntryEnabled: true);
         teams.GetTeamsAsync(Arg.Any<CancellationToken>()).Returns(new Dictionary<Guid, TeamInfo> { [team.Id] = team });
         var authorization = Substitute.For<IAuthorizationService>();
-        authorization.AuthorizeAsync(Arg.Any<ClaimsPrincipal>(), team, Arg.Any<IEnumerable<IAuthorizationRequirement>>())
+        authorization.AuthorizeAsync(Arg.Any<ClaimsPrincipal>(), TeamOwner.Of(team.Id), Arg.Any<IEnumerable<IAuthorizationRequirement>>())
             .Returns(AuthorizationResult.Success());
         var http = new DefaultHttpContext
         {
@@ -427,7 +427,7 @@ public class TeamAdminControllerMembersTests
         teams.GetTeamsAsync(Arg.Any<CancellationToken>()).Returns(new Dictionary<Guid, TeamInfo> { [team.Id] = team });
         teams.GetEarlyEntryGrantsForTeamAsync(team.Id, Arg.Any<CancellationToken>()).Returns(Array.Empty<TeamEarlyEntryGrantInfo>());
         var authorization = Substitute.For<IAuthorizationService>();
-        authorization.AuthorizeAsync(Arg.Any<ClaimsPrincipal>(), team, Arg.Any<IEnumerable<IAuthorizationRequirement>>())
+        authorization.AuthorizeAsync(Arg.Any<ClaimsPrincipal>(), TeamOwner.Of(team.Id), Arg.Any<IEnumerable<IAuthorizationRequirement>>())
             .Returns(AuthorizationResult.Success());
         var registrations = new ServiceCollection().AddLogging();
         registrations.AddControllers();
@@ -508,7 +508,7 @@ public class TeamAdminControllerMembersTests
         teams.UpdateTeamPageContentAsync(default, null, default!, false, false, default)
             .ReturnsForAnyArgs(TeamPageUpdateResult.Success());
         var authorization = Substitute.For<IAuthorizationService>();
-        authorization.AuthorizeAsync(Arg.Any<ClaimsPrincipal>(), team, Arg.Any<IEnumerable<IAuthorizationRequirement>>())
+        authorization.AuthorizeAsync(Arg.Any<ClaimsPrincipal>(), TeamOwner.Of(team.Id), Arg.Any<IEnumerable<IAuthorizationRequirement>>())
             .Returns(AuthorizationResult.Success());
         authorization.AuthorizeAsync(Arg.Any<ClaimsPrincipal>(), Arg.Any<object?>(), Arg.Any<string>())
             .Returns(AuthorizationResult.Success());
@@ -606,7 +606,7 @@ public class TeamAdminControllerMembersTests
             false, false, false, false, Instant.MinValue, []);
         teams.GetTeamsAsync(Arg.Any<CancellationToken>()).Returns(new Dictionary<Guid, TeamInfo> { [team.Id] = team });
         var authorization = Substitute.For<IAuthorizationService>();
-        authorization.AuthorizeAsync(Arg.Any<ClaimsPrincipal>(), team, Arg.Any<IEnumerable<IAuthorizationRequirement>>())
+        authorization.AuthorizeAsync(Arg.Any<ClaimsPrincipal>(), TeamOwner.Of(team.Id), Arg.Any<IEnumerable<IAuthorizationRequirement>>())
             .Returns(allowed ? AuthorizationResult.Success() : AuthorizationResult.Failed());
         StubTeamsAdminOrAdminPolicy(authorization);
         var http = new DefaultHttpContext
@@ -716,7 +716,7 @@ public class TeamAdminControllerMembersTests
         teams.UpdateRoleDefinitionAsync(default, default!, default, default, default!, default, default, default, default)
             .ReturnsForAnyArgs(new TeamRoleDefinitionMutationResult());
         var authorization = Substitute.For<IAuthorizationService>();
-        authorization.AuthorizeAsync(Arg.Any<ClaimsPrincipal>(), team, Arg.Any<IEnumerable<IAuthorizationRequirement>>())
+        authorization.AuthorizeAsync(Arg.Any<ClaimsPrincipal>(), TeamOwner.Of(team.Id), Arg.Any<IEnumerable<IAuthorizationRequirement>>())
             .Returns(AuthorizationResult.Success());
         authorization.AuthorizeAsync(Arg.Any<ClaimsPrincipal>(), Arg.Any<object?>(), TeamsPolicies.Manage)
             .Returns(authorized ? AuthorizationResult.Success() : AuthorizationResult.Failed());
@@ -767,7 +767,7 @@ public class TeamAdminControllerMembersTests
         teams.GetTeamsAsync(Arg.Any<CancellationToken>()).Returns(new Dictionary<Guid, TeamInfo> { [team.Id] = team });
         teams.GetTeamAsync(team.Id, Arg.Any<CancellationToken>()).Returns(team);
         var authorization = Substitute.For<IAuthorizationService>();
-        authorization.AuthorizeAsync(Arg.Any<ClaimsPrincipal>(), team, Arg.Any<IEnumerable<IAuthorizationRequirement>>())
+        authorization.AuthorizeAsync(Arg.Any<ClaimsPrincipal>(), TeamOwner.Of(team.Id), Arg.Any<IEnumerable<IAuthorizationRequirement>>())
             .Returns(AuthorizationResult.Success());
         var provisioning = Substitute.For<IEmailProvisioningService>();
         const string warning = "Account created; ask an admin to reset the password.";
@@ -835,7 +835,7 @@ public class TeamAdminControllerMembersTests
             ? Task.FromException<TeamJoinReviewResult>(failure)
             : Task.FromResult(new TeamJoinReviewResult(Refusal: reason)));
         var authorization = Substitute.For<IAuthorizationService>();
-        authorization.AuthorizeAsync(Arg.Any<ClaimsPrincipal>(), team, Arg.Any<IEnumerable<IAuthorizationRequirement>>())
+        authorization.AuthorizeAsync(Arg.Any<ClaimsPrincipal>(), TeamOwner.Of(team.Id), Arg.Any<IEnumerable<IAuthorizationRequirement>>())
             .Returns(AuthorizationResult.Success());
         var logger = Substitute.For<ILogger<TeamAdminController>>();
         var http = new DefaultHttpContext
@@ -899,7 +899,7 @@ public class TeamAdminControllerMembersTests
         users.GetUserInfosAsync(Arg.Any<IEnumerable<Guid>>(), Arg.Any<CancellationToken>())
             .Returns(new ValueTask<IReadOnlyDictionary<Guid, UserInfo>>(new Dictionary<Guid, UserInfo>()));
         var authorization = Substitute.For<IAuthorizationService>();
-        authorization.AuthorizeAsync(Arg.Any<ClaimsPrincipal>(), team, Arg.Any<IEnumerable<IAuthorizationRequirement>>())
+        authorization.AuthorizeAsync(Arg.Any<ClaimsPrincipal>(), TeamOwner.Of(team.Id), Arg.Any<IEnumerable<IAuthorizationRequirement>>())
             .Returns(AuthorizationResult.Success());
         var resources = Substitute.For<ITeamResourceService>();
         resources.GetTeamResourcesAsync(team.Id, Arg.Any<CancellationToken>()).Returns([]);
@@ -937,7 +937,7 @@ public class TeamAdminControllerMembersTests
             false, false, false, false, Instant.MinValue, []);
         teams.GetTeamsAsync(Arg.Any<CancellationToken>()).Returns(new Dictionary<Guid, TeamInfo> { [team.Id] = team });
         var authorization = Substitute.For<IAuthorizationService>();
-        authorization.AuthorizeAsync(Arg.Any<ClaimsPrincipal>(), team, Arg.Any<IEnumerable<IAuthorizationRequirement>>())
+        authorization.AuthorizeAsync(Arg.Any<ClaimsPrincipal>(), TeamOwner.Of(team.Id), Arg.Any<IEnumerable<IAuthorizationRequirement>>())
             .Returns(AuthorizationResult.Failed());
         authorization.AuthorizeAsync(Arg.Any<ClaimsPrincipal>(), Arg.Any<object?>(), TeamsPolicies.Read)
             .Returns(AuthorizationResult.Success());

@@ -26,7 +26,7 @@ public class CommunicationPreferenceAccessibilityTests
 {
     public enum PreferenceSurface { Member, Admin, Guest }
 
-    public static TheoryData<string, PreferenceSurface> CulturesAndSurfaces()
+    public static TheoryData<string, PreferenceSurface> Surfaces_EveryCulture_Cases()
     {
         var data = new TheoryData<string, PreferenceSurface>();
         foreach (var surface in Enum.GetValues<PreferenceSurface>())
@@ -36,8 +36,8 @@ public class CommunicationPreferenceAccessibilityTests
     }
 
     [HumansTheory]
-    [MemberData(nameof(CulturesAndSurfaces))]
-    public async Task PreferenceCheckboxes_HaveLocalizedChannelAndCategoryNames(string culture, PreferenceSurface surface)
+    [MemberData(nameof(Surfaces_EveryCulture_Cases))]
+    public async Task PreferenceCheckboxes_EveryCulture_HaveLocalizedNames(string culture, PreferenceSurface surface)
     {
         using var cultureScope = new CultureScope(culture);
         var builder = WebApplication.CreateBuilder(new WebApplicationOptions

@@ -1,0 +1,17 @@
+{
+  "date": "2026-11",
+  "family": "GPT",
+  "model": "Astra",
+  "version": "6.2",
+  "effort": "low",
+  "brief": "v1",
+  "notes": {
+    "en": "I aimed to keep both poses legible at navbar size. The fine lines give the ribs and knees shape, though the hands still flatten into the frame.",
+    "es": "Busqué que ambas posturas se distinguieran en la barra de navegación. Las líneas finas dan forma a las costillas y las rodillas, aunque las manos aún se confunden con el marco.",
+    "de": "Beide Haltungen sollten auch in der Navigationsleiste erkennbar bleiben. Feine Linien formen Rippen und Knie, doch die Hände gehen noch im Rahmen auf.",
+    "it": "Volevo che entrambe le pose si distinguessero nella barra di navigazione. Le linee sottili modellano costole e ginocchia, anche se le mani si confondono ancora con la cornice.",
+    "fr": "Je voulais que les deux poses restent lisibles dans la barre de navigation. Les traits fins dessinent les côtes et les genoux, mais les mains se fondent encore dans le cadre.",
+    "ca": "Volia que les dues postures es distingissin a la barra de navegació. Les línies fines donen forma a les costelles i als genolls, tot i que les mans encara es confonen amb el marc.",
+    "nl": "Ik wilde beide houdingen herkenbaar houden in de navigatiebalk. Fijne lijnen geven de ribben en knieën vorm, al vallen de handen nog samen met het kader."
+  }
+}

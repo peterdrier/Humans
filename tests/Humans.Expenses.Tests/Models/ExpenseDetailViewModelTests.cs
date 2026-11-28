@@ -48,7 +48,7 @@ public class ExpenseDetailViewModelTests
         };
 
     [HumansFact]
-    public void Finance_admin_sees_the_submitters_payee_snapshot_not_their_own()
+    public void Payee_FinanceAdmin_SeesSubmittersSnapshot()
     {
         var vm = Vm(Report(), isSubmitter: false, isFinanceAdmin: true);
 
@@ -58,7 +58,7 @@ public class ExpenseDetailViewModelTests
     }
 
     [HumansFact]
-    public void Submitter_sees_their_own_payee_snapshot()
+    public void Payee_Submitter_SeesOwnSnapshot()
     {
         var vm = Vm(Report(), isSubmitter: true, isFinanceAdmin: false);
 
@@ -67,7 +67,7 @@ public class ExpenseDetailViewModelTests
     }
 
     [HumansFact]
-    public void A_plain_viewer_sees_no_payee_identity()
+    public void Payee_PlainViewer_IsHidden()
     {
         // A coordinator endorses, but does not pay — the legal name is unmasked, so it stops here.
         var vm = Vm(Report(), isSubmitter: false, isFinanceAdmin: false);
@@ -78,7 +78,7 @@ public class ExpenseDetailViewModelTests
     }
 
     [HumansFact]
-    public void A_coordinator_sees_the_submitters_names_but_never_the_iban()
+    public void Payee_Coordinator_SeesNamesNotIban()
     {
         var vm = Vm(Report(), isSubmitter: false, isFinanceAdmin: false, canSeeNames: true);
 
@@ -88,7 +88,7 @@ public class ExpenseDetailViewModelTests
     }
 
     [HumansFact]
-    public void The_submitter_sees_their_names_and_masked_iban()
+    public void Payee_Submitter_SeesNamesWithMaskedIban()
     {
         var vm = Vm(Report(), isSubmitter: true, isFinanceAdmin: false, canSeeNames: true);
 
@@ -98,7 +98,7 @@ public class ExpenseDetailViewModelTests
     }
 
     [HumansFact]
-    public void An_unrelated_member_sees_neither_names_nor_iban()
+    public void Payee_UnrelatedMember_IsHidden()
     {
         var vm = Vm(Report(), isSubmitter: false, isFinanceAdmin: false);
 
@@ -108,7 +108,7 @@ public class ExpenseDetailViewModelTests
     }
 
     [HumansFact]
-    public void A_draft_has_no_snapshot_yet_so_the_payee_fields_stay_null()
+    public void Payee_Draft_IsNull()
     {
         // PayeeName/PayeeIban are frozen onto the report by SubmitAsync; before that they are blank,
         // and blank must not render as an empty payee line.
@@ -119,7 +119,7 @@ public class ExpenseDetailViewModelTests
     }
 
     [HumansFact]
-    public void The_iban_edit_action_follows_the_submitter_and_the_edit_grant()
+    public void IbanEdit_SubmitterWithEditGrant_IsOffered()
     {
         // The Iban action Forbids anyone who is neither, so offering them the button is a
         // guaranteed 403. A finance admin gets there through the Edit grant, not the role.
@@ -129,19 +129,19 @@ public class ExpenseDetailViewModelTests
     }
 
     [HumansFact]
-    public void An_uncapped_report_pays_its_receipts_total()
+    public void Payout_NoCap_IsReceiptsTotal()
     {
         Report(total: 100m, maxAmount: null).Payable.Should().Be(100m);
     }
 
     [HumansFact]
-    public void A_cap_above_the_receipts_total_does_not_raise_the_payout()
+    public void Payout_CapAboveTotal_IsReceiptsTotal()
     {
         Report(total: 100m, maxAmount: 150m).Payable.Should().Be(100m);
     }
 
     [HumansFact]
-    public void A_cap_below_the_receipts_total_is_what_gets_paid()
+    public void Payout_CapBelowTotal_IsCap()
     {
         Report(total: 100m, maxAmount: 60m).Payable.Should().Be(60m);
     }

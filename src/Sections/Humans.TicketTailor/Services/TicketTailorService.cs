@@ -269,35 +269,6 @@ internal sealed class TicketTailorService : ITicketVendorService
         return codes;
     }
 
-    public async Task CreateCheckInAsync(
-        string vendorTicketId, Instant occurredAt, CancellationToken ct = default)
-    {
-        using var _ = _logger.TimeOperation();
-
-        // Form-encoded, not JSON — a JSON body silently 400s. issued_ticket_id and quantity are
-        // required; check_in_at is unix seconds. Not idempotent (each POST creates a record), so
-        // callers never retry. The key needs Event-manager scope; an Order-manager key 403s.
-        using var form = new FormUrlEncodedContent(new Dictionary<string, string>(StringComparer.Ordinal)
-        {
-            ["issued_ticket_id"] = vendorTicketId,
-            ["quantity"] = "1",
-            ["check_in_at"] = occurredAt.ToUnixTimeSeconds().ToString(CultureInfo.InvariantCulture),
-        });
-
-        using var response = await _httpClient.PostAsync($"{BaseUrl}/check_ins", form, ct);
-
-        if (!response.IsSuccessStatusCode)
-        {
-            _logger.LogWarning(
-                "TicketTailor check-in API returned {StatusCode} for issued ticket {VendorTicketId}",
-                (int)response.StatusCode, vendorTicketId);
-            response.EnsureSuccessStatusCode();
-        }
-
-        _logger.LogInformation(
-            "Recorded TicketTailor check-in for issued ticket {VendorTicketId}", vendorTicketId);
-    }
-
     public async Task<VoidIssuedTicketResult> VoidIssuedTicketAsync(
         string vendorTicketId, bool voidToHold, CancellationToken ct = default)
     {

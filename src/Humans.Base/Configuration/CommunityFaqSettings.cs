@@ -1,3 +1,5 @@
+using JetBrains.Annotations;
+
 namespace Humans.Base.Configuration;
 
 /// <summary>
@@ -6,6 +8,7 @@ namespace Humans.Base.Configuration;
 /// flow). Defaults to the public nobodies-collective/knowledge-base@main. The access token,
 /// if any, falls back to GitHubSettings (the corpus is public, so usually none is needed).
 /// </summary>
+[UsedImplicitly(ImplicitUseKindFlags.Assign, ImplicitUseTargetFlags.WithMembers)]
 public sealed class CommunityFaqSettings
 {
     public const string SectionName = "CommunityFaq";

@@ -238,7 +238,7 @@ public class NotificationRepositoryTests : IDisposable
     }
 
     [HumansFact]
-    public async Task ReassignRecipientsToUserAsync_MovesRowsFromSourceToTarget_PreservingReadAt()
+    public async Task ReassignRecipientsToUserAsync_SourceRows_MoveToTarget()
     {
         var source = Guid.NewGuid();
         var target = Guid.NewGuid();
@@ -257,7 +257,7 @@ public class NotificationRepositoryTests : IDisposable
     }
 
     [HumansFact]
-    public async Task ReassignRecipientsToUserAsync_CollapsesDuplicateOnSameNotification_TargetWins()
+    public async Task ReassignRecipientsToUserAsync_BothAreRecipients_TargetWins()
     {
         var source = Guid.NewGuid();
         var target = Guid.NewGuid();
@@ -285,7 +285,7 @@ public class NotificationRepositoryTests : IDisposable
     }
 
     [HumansFact]
-    public async Task ReassignRecipientsToUserAsync_ReFKsNotificationResolvedByUserId_FromSourceToTarget()
+    public async Task ReassignRecipientsToUserAsync_ResolvedBySource_PointsAtTarget()
     {
         var source = Guid.NewGuid();
         var target = Guid.NewGuid();
@@ -324,7 +324,7 @@ public class NotificationRepositoryTests : IDisposable
     [HumansTheory]
     [InlineData("vote-1", 1)]
     [InlineData(null, 2)]
-    public async Task ResolveBySourceAsync_OptionalKeyPreservesOtherRecipientsAndSources(string? key, int expectedResolved)
+    public async Task ResolveBySourceAsync_WithKey_LeavesOthersOpen(string? key, int expectedResolved)
     {
         var voter = Guid.NewGuid();
         var otherVoter = Guid.NewGuid();
@@ -345,7 +345,7 @@ public class NotificationRepositoryTests : IDisposable
     }
 
     [HumansFact]
-    public async Task ResolveBySourceKeyAsync_ResolvesOnlyMatchingSourceAndKey_AcrossRecipients()
+    public async Task ResolveBySourceKeyAsync_ResolvesOnlyMatchingKey()
     {
         var u1 = Guid.NewGuid();
         var u2 = Guid.NewGuid();

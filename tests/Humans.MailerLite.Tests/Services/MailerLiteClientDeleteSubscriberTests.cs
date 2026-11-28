@@ -45,7 +45,7 @@ public class MailerLiteClientDeleteSubscriberTests
     [InlineData("{}")]
     [InlineData("""{"data":{"id":" ","email":"erased@example.org","status":"active"}}""")]
     [InlineData("""{"data":{"id":"2","email":"other@example.org","status":"active"}}""")]
-    public async Task DeleteSubscriberAsync_InvalidLookup_PreservesSnapshotAndDoesNotForget(string payload)
+    public async Task DeleteSubscriberAsync_InvalidLookup_KeepsSnapshot(string payload)
     {
         var handler = new DeleteHandler(HttpStatusCode.OK) { LookupPayload = payload };
         var client = BuildClient(handler);
@@ -70,7 +70,7 @@ public class MailerLiteClientDeleteSubscriberTests
     }
 
     [HumansFact]
-    public async Task DeleteSubscriberAsync_NotFoundAtTheRemote_StillEvictsFromTheSnapshot()
+    public async Task DeleteSubscriberAsync_NotFoundRemotely_EvictsFromSnapshot()
     {
         var client = BuildClient(new DeleteHandler(HttpStatusCode.NotFound));
         await DrainAsync(client);
@@ -108,7 +108,7 @@ public class MailerLiteClientDeleteSubscriberTests
     }
 
     [HumansFact]
-    public async Task Unknown_status_remains_in_the_snapshot_and_logs_a_warning()
+    public async Task DeleteSubscriberAsync_UnknownStatus_KeepsSnapshot()
     {
         var logger = new CapturingLogger<MailerLiteClient>();
         var client = BuildClient(new DeleteHandler(HttpStatusCode.NoContent, "future-status"), logger);
@@ -127,7 +127,7 @@ public class MailerLiteClientDeleteSubscriberTests
     [HumansTheory]
     [InlineData(false)]
     [InlineData(true)]
-    public async Task DeleteSubscriberAsync_Failure_PreservesSnapshotAndStatusTotals(bool lookupFails)
+    public async Task DeleteSubscriberAsync_Failure_KeepsSnapshot(bool lookupFails)
     {
         var client = BuildClient(new DeleteHandler(lookupFails ? HttpStatusCode.OK : HttpStatusCode.InternalServerError)
         { LookupStatus = lookupFails ? HttpStatusCode.InternalServerError : HttpStatusCode.OK });

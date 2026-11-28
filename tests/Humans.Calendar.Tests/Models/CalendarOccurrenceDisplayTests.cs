@@ -7,7 +7,7 @@ namespace Humans.Calendar.Tests.Models;
 public sealed class CalendarOccurrenceDisplayTests
 {
     [HumansFact]
-    public void EndLocalDate_Treats_a_midnight_end_as_half_open()
+    public void EndLocalDate_MidnightEnd_IsHalfOpen()
     {
         var occurrence = Occurrence(
             Instant.FromUtc(2026, 6, 1, 10, 0),
@@ -21,7 +21,7 @@ public sealed class CalendarOccurrenceDisplayTests
     // spans two local dates, so its time label would mislead on the second day — but on the
     // first it is emphatically not an all-day event, and 22:00 is the only time it has.
     [HumansFact]
-    public void TimeLabelFor_ShowsTheStartTime_OnTheFirstDayOfATimedMultiDayEvent()
+    public void TimeLabelFor_MultiDayFirstDay_ShowsStartTime()
     {
         var madrid = DateTimeZoneProviders.Tzdb["Europe/Madrid"];
         var occurrence = Occurrence(
@@ -36,7 +36,7 @@ public sealed class CalendarOccurrenceDisplayTests
     }
 
     [HumansFact]
-    public void TimeLabelFor_MarksAnAllDayEvent_AllDayThenContinues()
+    public void TimeLabelFor_AllDayEvent_SaysAllDay()
     {
         var madrid = DateTimeZoneProviders.Tzdb["Europe/Madrid"];
         var occurrence = Occurrence(
@@ -51,7 +51,7 @@ public sealed class CalendarOccurrenceDisplayTests
     }
 
     [HumansFact]
-    public void TimeLabelFor_ShowsTheStartTime_ForAnOrdinarySingleDayEvent()
+    public void TimeLabelFor_SingleDayEvent_ShowsStartTime()
     {
         var madrid = DateTimeZoneProviders.Tzdb["Europe/Madrid"];
         var occurrence = Occurrence(
@@ -63,7 +63,7 @@ public sealed class CalendarOccurrenceDisplayTests
     }
 
     [HumansFact]
-    public void ShouldHideTimeLabel_Hides_a_timed_event_that_spans_local_dates()
+    public void ShouldHideTimeLabel_TimedSpansDates_IsTrue()
     {
         var occurrence = Occurrence(
             Instant.FromUtc(2026, 6, 1, 21, 0),
@@ -80,7 +80,7 @@ public sealed class CalendarOccurrenceDisplayTests
     // every all-day event either disappears or a spurious day appears — and List.cshtml
     // and Team.cshtml now both drive their day expansion off exactly this pair.
     [HumansFact]
-    public void All_day_event_recovers_its_inclusive_end_date()
+    public void EndLocalDate_AllDay_IsInclusiveEndDate()
     {
         var madrid = DateTimeZoneProviders.Tzdb["Europe/Madrid"];
         var occurrence = Occurrence(
@@ -96,7 +96,7 @@ public sealed class CalendarOccurrenceDisplayTests
     // Spring-forward: 29 Mar 2026 is 23 hours long in Madrid. The inclusive end must still
     // be the 29th, not the 28th — subtracting a fixed 24h instead of a tick would fail this.
     [HumansFact]
-    public void All_day_event_spanning_a_DST_transition_keeps_its_inclusive_end_date()
+    public void EndLocalDate_AllDayAcrossDst_IsInclusive()
     {
         var madrid = DateTimeZoneProviders.Tzdb["Europe/Madrid"];
         var occurrence = Occurrence(
@@ -110,7 +110,7 @@ public sealed class CalendarOccurrenceDisplayTests
     // Legacy single-day all-day rows predate the exclusive-end convention and carry a null
     // end. They must collapse to their start date, not to "no end".
     [HumansFact]
-    public void All_day_event_with_a_null_end_collapses_to_its_start_date()
+    public void EndLocalDate_AllDayNullEnd_IsStartDate()
     {
         var madrid = DateTimeZoneProviders.Tzdb["Europe/Madrid"];
         var occurrence = Occurrence(
