@@ -3258,6 +3258,13 @@ summary:focus-visible,
     outline-color: var(--h-parchment);
 }
 
+/* Menus and popups that open from the dark bars are light again. */
+.navbar .dropdown-menu :focus-visible,
+.m-nav .dropdown-menu :focus-visible,
+.notification-popup :focus-visible {
+    outline-color: var(--h-aged-ink);
+}
+
 /* Shown only while focused (Bootstrap's visually-hidden-focusable), so keyboard users can jump past the nav. */
 .skip-link:focus {
     position: fixed !important;
