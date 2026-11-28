@@ -21,7 +21,6 @@ public sealed class CantinaCsvWritersTests
         IReadOnlyList<string>? allergies = null,
         string? allergyOther = null) =>
         new(
-            UserId: Guid.NewGuid(),
             BurnerName: burnerName,
             ArrivesOn: WeekStart,
             NoShift: Array.Empty<LocalDate>(),
@@ -99,7 +98,6 @@ public sealed class CantinaCsvWritersTests
             .ToArray();
 
         var person = new RosterPersonDto(
-            UserId: Guid.NewGuid(),
             BurnerName: "Arrival",
             ArrivesOn: arrivalDay,
             NoShift: noShiftDays,
