@@ -14,7 +14,7 @@ public sealed class TicketingPreferenceLockTests
     [HumansTheory]
     [InlineData(0, false)]
     [InlineData(1, true)]
-    public async Task OnlyAMatchedTicketHolderLocksTicketing(int orderCount, bool locked)
+    public async Task PreferenceLock_NoMatchedTicket_IsUnlocked(int orderCount, bool locked)
     {
         var userId = Guid.NewGuid();
         var tickets = Substitute.For<ITicketService>();
@@ -27,7 +27,7 @@ public sealed class TicketingPreferenceLockTests
     }
 
     [HumansFact]
-    public async Task AMatchedAttendeeWithoutAnOrderLocksTicketing()
+    public async Task PreferenceLock_MatchedAttendeeNoOrder_IsLocked()
     {
         var userId = Guid.NewGuid();
         var tickets = Substitute.For<ITicketService>();

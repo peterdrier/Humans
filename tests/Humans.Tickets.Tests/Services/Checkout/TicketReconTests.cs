@@ -62,7 +62,7 @@ public sealed class TicketReconTests
     [HumansTheory]
     [InlineData(false)]
     [InlineData(true)]
-    public void Outside_production_an_order_this_database_never_held_is_another_instances(bool sharedAccount)
+    public void Compare_UnknownOrderOutsideProduction_IsOtherInstances(bool sharedAccount)
     {
         Order();
         var elsewhere = Order(platformKey: "boxoffice", atPlatform: false);
@@ -87,7 +87,7 @@ public sealed class TicketReconTests
     }
 
     [HumansFact]
-    public void Another_instances_orders_alone_balance_outside_production()
+    public void Compare_OtherInstanceOrders_BalanceOutsideProduction()
     {
         Order();
         _platform.Add(new PlatformOrderSummary("ev/foreign", Guid.NewGuid(), Mid, PlatformOrderState.Paid, 5000, 1, 0, 0));
@@ -97,7 +97,7 @@ public sealed class TicketReconTests
     }
 
     [HumansFact]
-    public void Matching_sides_balance_and_count_paid_orders_only()
+    public void Compare_MatchingSides_Balance()
     {
         Order(tickets: 2);
         Order(refunded: 5000);
@@ -113,7 +113,7 @@ public sealed class TicketReconTests
     }
 
     [HumansFact]
-    public void Order_the_platform_no_longer_lists_is_missing()
+    public void Compare_OrderGoneFromPlatform_IsMissing()
     {
         Order(atPlatform: false);
 
@@ -125,7 +125,7 @@ public sealed class TicketReconTests
     }
 
     [HumansFact]
-    public void Order_only_the_platform_holds_is_extra_and_counts_on_its_side()
+    public void Compare_PlatformOnlyOrder_IsExtra()
     {
         Order();
         _platform.Add(new PlatformOrderSummary("ev/MANUAL", null, Mid, PlatformOrderState.Paid, 25000, 1, 0, 0));
@@ -138,7 +138,7 @@ public sealed class TicketReconTests
     }
 
     [HumansFact]
-    public void Second_platform_order_for_one_humans_order_is_a_duplicate()
+    public void Compare_SecondPlatformOrder_IsDuplicate()
     {
         var order = Order();
         _platform.Add(Mirror(order) with { PlatformOrderId = "ev/AGAIN" });
@@ -152,7 +152,7 @@ public sealed class TicketReconTests
     }
 
     [HumansFact]
-    public void Platform_order_humans_never_recorded_is_flagged_and_still_paired()
+    public void Compare_UnrecordedPlatformOrder_IsFlagged()
     {
         var order = Order(state: TicketCheckoutOrderState.Created);
         _platform[0] = _platform[0] with { State = PlatformOrderState.Paid };
@@ -164,7 +164,7 @@ public sealed class TicketReconTests
     }
 
     [HumansFact]
-    public void Unopened_order_the_platform_never_took_is_left_out()
+    public void Compare_UnopenedOrder_IsLeftOut()
     {
         Order(state: TicketCheckoutOrderState.Created, atPlatform: false).PlatformOrderId = null;
 
@@ -175,7 +175,7 @@ public sealed class TicketReconTests
     }
 
     [HumansFact]
-    public void Free_order_no_platform_took_stays_out_of_the_totals()
+    public void Compare_FreeOrderNotOnPlatform_IsLeftOut()
     {
         Order();
         Order(total: 0, atPlatform: false).PlatformOrderId = null;
@@ -188,7 +188,7 @@ public sealed class TicketReconTests
     }
 
     [HumansFact]
-    public void Charged_paid_order_no_platform_holds_is_missing_not_free()
+    public void Compare_ChargedOrderNotOnPlatform_IsMissing()
     {
         Order(atPlatform: false).PlatformOrderId = null;
 
@@ -198,7 +198,7 @@ public sealed class TicketReconTests
     }
 
     [HumansFact]
-    public void Free_order_without_its_tickets_is_flagged()
+    public void Compare_FreeOrderNoTickets_IsFlagged()
     {
         Order(total: 0, atPlatform: false, issue: false).PlatformOrderId = null;
 
@@ -206,7 +206,7 @@ public sealed class TicketReconTests
     }
 
     [HumansFact]
-    public void Recorded_platform_order_replaced_by_another_names_both()
+    public void Compare_PlatformOrderReplaced_NamesBoth()
     {
         Order();
         _platform[0] = _platform[0] with { PlatformOrderId = "ev/OTHER" };
@@ -220,7 +220,7 @@ public sealed class TicketReconTests
     }
 
     [HumansFact]
-    public void Difference_where_no_money_moved_is_listed_and_balanced()
+    public void Compare_DifferenceWithoutMoney_Balances()
     {
         Order(state: TicketCheckoutOrderState.Pending, atPlatform: false);
         _platform.Add(new PlatformOrderSummary("ev/LEFTOVER", null, Mid, PlatformOrderState.Expired, 25000, 1, 0, 0));
@@ -232,7 +232,7 @@ public sealed class TicketReconTests
     }
 
     [HumansFact]
-    public void Differences_in_money_and_tickets_are_named_per_order()
+    public void Compare_Differences_AreNamedPerOrder()
     {
         Order();
         _platform[0] = _platform[0] with { TotalMinor = 29000, RefundedMinor = 1000, ChargedBackMinor = 500, TicketCount = 2 };
@@ -244,7 +244,7 @@ public sealed class TicketReconTests
     }
 
     [HumansFact]
-    public void Paid_order_without_its_tickets_is_flagged()
+    public void Compare_PaidOrderNoTickets_IsFlagged()
     {
         Order(tickets: 2, issue: false);
 
@@ -256,7 +256,7 @@ public sealed class TicketReconTests
     }
 
     [HumansFact]
-    public void Pair_split_by_the_period_edge_belongs_to_the_humans_order()
+    public void Compare_PairSplitByPeriodEdge_FollowsHumansOrder()
     {
         var late = Order(createdAt: To - Duration.FromMilliseconds(200));
         _platform[0] = _platform[0] with { CreatedAt = To + Duration.FromMilliseconds(300) };
@@ -271,7 +271,7 @@ public sealed class TicketReconTests
     }
 
     [HumansFact]
-    public void Platform_that_cannot_count_tickets_takes_humans_count()
+    public void Compare_PlatformWithoutTicketCount_UsesHumansCount()
     {
         Order(tickets: 3);
         _platform[0] = _platform[0] with { TicketCount = null };
@@ -283,7 +283,7 @@ public sealed class TicketReconTests
     }
 
     [HumansFact]
-    public void Order_of_another_platform_is_not_this_ones_and_its_platform_twin_is_extra()
+    public void Compare_OtherPlatformOrder_TwinIsExtra()
     {
         Order(platformKey: "boxoffice");
 
@@ -294,7 +294,7 @@ public sealed class TicketReconTests
     }
 
     [HumansFact]
-    public void Unreadable_platform_is_never_balanced()
+    public void Compare_UnreadablePlatform_NeverBalances()
     {
         TicketReconBuilder.Unreadable(Key, From, To, "down").Balanced.Should().BeFalse();
     }

@@ -38,7 +38,7 @@ public class TicketsOnsiteAdminControllerTests
     }
 
     [HumansFact]
-    public async Task Index_NoActiveEvent_DispatchesYearZero_AndReturnsEmpty()
+    public async Task Index_NoActiveEvent_ReturnsEmpty()
     {
         var users = Substitute.For<IUserService>();
         var shifts = Substitute.For<ISettingsService>();
@@ -61,7 +61,7 @@ public class TicketsOnsiteAdminControllerTests
     }
 
     [HumansFact]
-    public async Task Index_SortsRowsNewestFirstAndAllNameListsIgnoringCase()
+    public async Task Index_Rows_AreNewestFirst()
     {
         var aliceId = Guid.NewGuid();
         var bobId = Guid.NewGuid();

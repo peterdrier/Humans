@@ -18,7 +18,7 @@ public class TicketStubInfoTests
         Status: TicketAttendeeStatus.Valid);
 
     [HumansFact]
-    public void From_StampsHolderEarlyEntry_AndMapsCoreFields()
+    public void From_Holder_StampsEarlyEntry()
     {
         var ee = new LocalDate(2026, 8, 24);
         var row = Row();

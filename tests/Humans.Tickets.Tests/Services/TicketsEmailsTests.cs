@@ -16,7 +16,7 @@ public sealed class TicketsEmailsTests
     private static TicketsEmails Create() => TestTicketsEmails.Create();
 
     [HumansFact]
-    public void ReconciliationAlert_GoesToTheTicketsInbox_WithEachFindingEncoded()
+    public void ReconciliationAlert_Findings_AreEncoded()
     {
         var msg = Create().ReconciliationAlert(["boxoffice orders: <out> of balance", "pretix orders: could not be checked"],
             "/Tickets/Admin/Sales/Recon?from=2027-01-01&to=2027-01-09");
@@ -44,7 +44,7 @@ public sealed class TicketsEmailsTests
         40000, refundedMinor, new Uri("https://humans.example/Tickets/Buy/Order/1"), Guid.NewGuid());
 
     [HumansFact]
-    public void TicketIssued_GoesToTheHolder_WithTheCodeImageAndRules_System()
+    public void TicketIssued_Holder_GetsCodeImage()
     {
         var ticket = SampleTicket("Ana <Holder>", buyerName: "Ben & Co");
 
@@ -75,7 +75,7 @@ public sealed class TicketsEmailsTests
     }
 
     [HumansFact]
-    public void TicketIssued_ForTheBuyerThemselves_SaysNothingAboutWhoPaid()
+    public void TicketIssued_BuyerIsHolder_OmitsWhoPaid()
     {
         Create().TicketIssued(SampleTicket(), "en").HtmlBody.Should().NotContain("bought this ticket for you")
             .And.NotContain("children coming with you");
@@ -88,7 +88,7 @@ public sealed class TicketsEmailsTests
     }
 
     [HumansFact]
-    public void OrderReceipt_SplitsTheTicketWithItsVatFromTheDonationWithout()
+    public void OrderReceipt_Donation_HasNoVat()
     {
         var msg = Create().OrderReceipt(SampleReceipt(), "en");
 
@@ -112,7 +112,7 @@ public sealed class TicketsEmailsTests
     }
 
     [HumansFact]
-    public void JoinInvitation_IsAVolunteerUpdate_AndLinksProfileAndShifts()
+    public void JoinInvitation_Rendered_LinksProfileShifts()
     {
         var msg = Create().JoinInvitation(Guid.NewGuid(), "ana@x.com", "Ana", "Nowhere 2027",
             new Uri("https://humans.example/Profile"), new Uri("https://humans.example/Shifts"), null, "en");
@@ -123,7 +123,7 @@ public sealed class TicketsEmailsTests
     }
 
     [HumansFact]
-    public void EveryTemplateHasAPreviewSample()
+    public void Templates_EachHasPreviewSample()
     {
         var emails = Create();
         var templates = TemplateNames(emails);
@@ -138,7 +138,7 @@ public sealed class TicketsEmailsTests
     }
 
     [HumansFact]
-    public void PreviewSampleIdsAreUnique()
+    public void PreviewSampleIds_AreUnique()
     {
         var samples = new TicketsEmailPreviews(Create(), TestTicketCodeImages.Create())
             .Samples(new EmailPreviewPersona("en", "Sally Smith", "sally@example.com"));
@@ -148,7 +148,7 @@ public sealed class TicketsEmailsTests
 
     /// <summary>
     /// Every template the builder can produce, found by reflection rather than listed, so a
-    /// template added without a gallery sample fails <see cref="EveryTemplateHasAPreviewSample"/>.
+    /// template added without a gallery sample fails <see cref="Templates_EachHasPreviewSample"/>.
     /// The decision builder is one method over two outcomes, so each <c>bool</c> arm is sampled.
     /// </summary>
     private static IReadOnlyList<string> TemplateNames(TicketsEmails emails) =>

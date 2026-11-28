@@ -48,7 +48,7 @@ public sealed class TicketReconJobTests
     }
 
     [HumansFact]
-    public async Task Sends_nothing_when_everything_balances()
+    public async Task ExecuteAsync_AllBalanced_SendsNothing()
     {
         await Job().ExecuteAsync(TestContext.Current.CancellationToken);
 
@@ -56,7 +56,7 @@ public sealed class TicketReconJobTests
     }
 
     [HumansFact]
-    public async Task Mails_the_team_once_with_every_finding()
+    public async Task ExecuteAsync_Findings_MailsTeamOnce()
     {
         var order = new TicketCheckoutOrder { Id = Guid.NewGuid(), PlatformKey = "boxoffice", State = TicketCheckoutOrderState.Paid, TotalMinor = 30000, FeeMinor = 450 };
         var fee = new PaymentLedgerEntry("txn_1", Now, PaymentLedgerEntryKind.Charge, 30000, 470, order.Id, null);
@@ -76,7 +76,7 @@ public sealed class TicketReconJobTests
     }
 
     [HumansFact]
-    public async Task Reconciles_payments_over_the_whole_sale_up_to_today()
+    public async Task ExecuteAsync_Payments_CoverWholeSale()
     {
         await Job().ExecuteAsync(TestContext.Current.CancellationToken);
 

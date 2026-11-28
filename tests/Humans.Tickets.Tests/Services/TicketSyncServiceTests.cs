@@ -85,7 +85,7 @@ public sealed class TicketSyncServiceTests : TicketsTestHarness
     [Xunit.InlineData(SyncReadBoundary.Tickets)]
     [Xunit.InlineData(SyncReadBoundary.CheckIns)]
     [Xunit.InlineData(SyncReadBoundary.Stripe)]
-    public async Task ShutdownDuringSyncRead_RestoresIdleAndPreservesRetryCursor(SyncReadBoundary boundary)
+    public async Task Sync_ShutdownDuringRead_KeepsRetryCursor(SyncReadBoundary boundary)
     {
         using var shutdown = new CancellationTokenSource();
         var cursor = Clock.GetCurrentInstant() - Duration.FromDays(1);
@@ -259,7 +259,7 @@ public sealed class TicketSyncServiceTests : TicketsTestHarness
     [HumansTheory]
     [Xunit.InlineData(false)]
     [Xunit.InlineData(true)]
-    public async Task ScheduledSync_RunsOnlyWhenTurnedOn_ManualSyncAlwaysRuns(bool enabled)
+    public async Task ScheduledSync_SwitchedOff_DoesNotRun(bool enabled)
     {
         var ct = Xunit.TestContext.Current.CancellationToken;
         var sync = Substitute.For<ITicketSyncService>();
@@ -276,7 +276,7 @@ public sealed class TicketSyncServiceTests : TicketsTestHarness
     }
 
     [HumansFact]
-    public async Task ScheduledSyncSwitch_StartsOffAndSavesWithAudit()
+    public async Task ScheduledSyncSwitch_Saved_IsAudited()
     {
         var ct = Xunit.TestContext.Current.CancellationToken;
         var audit = Substitute.For<IAuditLogService>();
@@ -343,7 +343,7 @@ public sealed class TicketSyncServiceTests : TicketsTestHarness
     [HumansTheory]
     [Xunit.InlineData(false)]
     [Xunit.InlineData(true)]
-    public async Task ReassignAsync_OrderAndTransferWritesShareATransaction(bool failTransferWrite)
+    public async Task ReassignAsync_Writes_ShareOneTransaction(bool failTransferWrite)
     {
         var ct = Xunit.TestContext.Current.CancellationToken;
         var from = Guid.NewGuid();
@@ -438,7 +438,7 @@ public sealed class TicketSyncServiceTests : TicketsTestHarness
     }
 
     [HumansFact]
-    public async Task SyncOrdersAndAttendeesAsync_StoresEveryStripeFeeBucket_AndKeepsThemOnResync()
+    public async Task SyncOrdersAndAttendeesAsync_Resync_KeepsFeeBuckets()
     {
         var orders = new List<VendorOrderDto>
         {
@@ -469,7 +469,7 @@ public sealed class TicketSyncServiceTests : TicketsTestHarness
     [HumansTheory]
     [Xunit.InlineData(false)]
     [Xunit.InlineData(true)]
-    public async Task SyncOrdersAndAttendeesAsync_KeepsCommittedRowsWhenRedemptionFailsAfterWrites(bool oversizedError)
+    public async Task SyncOrdersAndAttendeesAsync_RedemptionFails_KeepsRows(bool oversizedError)
     {
         var error = oversizedError
             ? new string('e', 1999) + "😀" + new string('e', 100)
@@ -739,7 +739,7 @@ public sealed class TicketSyncServiceTests : TicketsTestHarness
     }
 
     [HumansFact]
-    public async Task SyncOrdersAndAttendeesAsync_ComputesVatUsingOnlyNonVoidTickets()
+    public async Task SyncOrdersAndAttendeesAsync_VoidTickets_CarryNoVat()
     {
         var orders = new List<VendorOrderDto>
         {
@@ -764,7 +764,7 @@ public sealed class TicketSyncServiceTests : TicketsTestHarness
     }
 
     [HumansFact]
-    public async Task SyncOrdersAndAttendeesAsync_ComputesVatOnAmountPaidAfterDiscount()
+    public async Task SyncOrdersAndAttendeesAsync_Discount_LowersVat()
     {
         // 315 list-price ticket bought for 100 with a 215 discount code: VAT is on the 100 collected.
         var orders = new List<VendorOrderDto>
@@ -830,7 +830,7 @@ public sealed class TicketSyncServiceTests : TicketsTestHarness
     }
 
     [HumansFact(Timeout = 10000)]
-    public async Task SyncOrdersAndAttendeesAsync_StoresZeroVatForRefundedOrCancelledOrders()
+    public async Task SyncOrdersAndAttendeesAsync_RefundedOrder_HasZeroVat()
     {
         var orders = new List<VendorOrderDto>
         {
@@ -899,7 +899,7 @@ public sealed class TicketSyncServiceTests : TicketsTestHarness
     }
 
     [HumansFact]
-    public async Task SyncEventParticipations_FlipsToAttended_WhenTicketValidAndCheckInRecorded()
+    public async Task SyncEventParticipations_ValidCheckedIn_BecomesAttended()
     {
         // Regression: the issued ticket stays status="valid" once scanned; check-in arrives as a
         // separate /check_ins record. Sync must read that record (not the ticket status) to flip
@@ -937,7 +937,7 @@ public sealed class TicketSyncServiceTests : TicketsTestHarness
     }
 
     [HumansFact]
-    public async Task SyncEventParticipations_TakesMinCheckedInAt_AcrossUsersCheckedInAttendees()
+    public async Task SyncEventParticipations_SeveralCheckIns_TakesEarliest()
     {
         var userId = Guid.NewGuid();
         SeedUser(userId);
@@ -973,7 +973,7 @@ public sealed class TicketSyncServiceTests : TicketsTestHarness
     }
 
     [HumansFact]
-    public async Task SyncEventParticipations_PassesNullCheckedInAt_ForTicketedOnlyAttendees()
+    public async Task SyncEventParticipations_TicketedOnly_PassesNullCheckIn()
     {
         var userId = Guid.NewGuid();
         SeedUser(userId);

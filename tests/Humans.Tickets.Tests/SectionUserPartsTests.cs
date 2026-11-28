@@ -6,7 +6,7 @@ namespace Humans.Tickets.Tests;
 public sealed class SectionUserPartsTests
 {
     [HumansFact]
-    public void Parts_ContributesHoldingsAndIssuedTicketsSidebars_AndTheOnsiteChip()
+    public void Parts_Section_ContributesTicketSidebars()
     {
         IUserPart contribution = new Section();
 

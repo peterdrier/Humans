@@ -91,7 +91,7 @@ public sealed class StripeAccountReadTests
     private static readonly Dictionary<string, string> Order42 = new(StringComparer.Ordinal) { ["event_id"] = "7", ["order_id"] = "42" };
 
     [HumansFact]
-    public async Task Ledger_carries_each_movement_s_PaymentIntent_and_each_settled_payout_s_contents()
+    public async Task ReadLedger_Movements_CarryPaymentIntent()
     {
         Answer("/v1/balance_transactions", List("/v1/balance_transactions",
             """
@@ -205,7 +205,7 @@ public sealed class StripeAccountReadTests
     }
 
     [HumansFact]
-    public async Task An_account_without_an_entry_or_a_key_reads_nothing_and_its_check_says_why()
+    public async Task Check_NoEntryOrKey_SaysWhy()
     {
         var unset = Service(OwnKey(key: ""));
 
@@ -221,7 +221,7 @@ public sealed class StripeAccountReadTests
     }
 
     [HumansFact]
-    public async Task A_refusal_reading_the_ledger_throws_InvalidOperationException()
+    public async Task ReadLedger_Refused_ThrowsInvalidOperation()
     {
         using var headers = new HttpResponseMessage();
         _http.MakeRequestAsync(Arg.Any<StripeRequest>(), Arg.Any<CancellationToken>()).Returns(new StripeResponse(
@@ -233,7 +233,7 @@ public sealed class StripeAccountReadTests
     }
 
     [HumansFact]
-    public async Task A_payment_s_fee_is_read_from_its_charge_through_the_org_key()
+    public async Task ReadFee_OrgKey_ReadsFromCharge()
     {
         Answer("/v1/payment_intents/pi_1", Intent("pi_1", "42", fee: 1440));
         var org = new StripeMirrorAccount { Name = "Pretix", Id = "acct_pretix", ApiKey = "rk_org" };
@@ -246,7 +246,7 @@ public sealed class StripeAccountReadTests
     }
 
     [HumansFact]
-    public async Task A_payment_found_by_metadata_reports_its_fee()
+    public async Task ReadFee_FoundByMetadata_ReportsFee()
     {
         Answer("/v1/payment_intents/search", List("/v1/payment_intents/search", Intent("pi_1", "42", fee: 340)));
 
@@ -257,7 +257,7 @@ public sealed class StripeAccountReadTests
     }
 
     [HumansFact]
-    public async Task A_payment_search_has_not_indexed_yet_is_found_by_listing_since_it_was_made()
+    public async Task ReadFee_NotYetIndexed_IsFoundByListing()
     {
         Answer("/v1/payment_intents/search", List("/v1/payment_intents/search"));
         Answer("/v1/payment_intents", List("/v1/payment_intents",
@@ -267,7 +267,7 @@ public sealed class StripeAccountReadTests
     }
 
     [HumansFact]
-    public async Task An_old_payment_search_cannot_find_is_left_without_a_fee()
+    public async Task ReadFee_OldPaymentNotFound_HasNoFee()
     {
         Answer("/v1/payment_intents/search", List("/v1/payment_intents/search"));
 
@@ -276,7 +276,7 @@ public sealed class StripeAccountReadTests
     }
 
     [HumansFact]
-    public async Task A_Stripe_failure_leaves_the_fee_unknown()
+    public async Task ReadFee_StripeFails_LeavesFeeUnknown()
     {
         _http.MakeRequestAsync(Arg.Any<StripeRequest>(), Arg.Any<CancellationToken>())
             .Returns<StripeResponse>(_ => throw new HttpRequestException("no route"));
@@ -286,7 +286,7 @@ public sealed class StripeAccountReadTests
     }
 
     [HumansFact]
-    public async Task Check_reads_once_per_scope_and_names_a_refused_one()
+    public async Task Check_RefusedScope_IsNamed()
     {
         using var headers = new HttpResponseMessage();
         _http.MakeRequestAsync(Arg.Any<StripeRequest>(), Arg.Any<CancellationToken>()).Returns(

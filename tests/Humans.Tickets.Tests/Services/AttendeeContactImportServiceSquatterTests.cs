@@ -11,7 +11,7 @@ namespace Humans.Tickets.Tests.Services;
 public class AttendeeContactImportServiceSquatterTests
 {
     [HumansFact]
-    public async Task Squatter_DomainAliases_ReplaceOnceAndAttachEveryAttendee()
+    public async Task Squatter_DomainAliases_ReplaceOnce()
     {
         var harness = new PlanHarness();
         var ownerId = Guid.NewGuid();

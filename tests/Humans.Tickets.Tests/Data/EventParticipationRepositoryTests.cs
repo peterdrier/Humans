@@ -89,7 +89,7 @@ public sealed class EventParticipationRepositoryTests : IDisposable
     }
 
     [HumansFact]
-    public async Task Upsert_FillsMissingArrival_OnAttendedRecord_AndNeverOverwritesIt()
+    public async Task Upsert_KnownArrival_IsNeverOverwritten()
     {
         var userId = Guid.NewGuid();
         await SeedAsync(Row(userId, ParticipationStatus.Attended, ParticipationSource.AdminBackfill));
@@ -144,7 +144,7 @@ public sealed class EventParticipationRepositoryTests : IDisposable
     [HumansTheory]
     [Xunit.InlineData(ParticipationStatus.NotAttending, ParticipationSource.UserDeclared)]
     [Xunit.InlineData(ParticipationStatus.Attended, ParticipationSource.TicketSync)]
-    public async Task Clear_RefusesOtherSources_AndAttended(ParticipationStatus status, ParticipationSource source)
+    public async Task Clear_OtherSourceOrAttended_IsRefused(ParticipationStatus status, ParticipationSource source)
     {
         var userId = Guid.NewGuid();
         await SeedAsync(Row(userId, status, source));
@@ -155,7 +155,7 @@ public sealed class EventParticipationRepositoryTests : IDisposable
     }
 
     [HumansFact]
-    public async Task Backfill_AddsAndUpdates_PreservesAttended_AndReportsOnlyChanges()
+    public async Task Backfill_AttendedRow_IsKept()
     {
         var newId = Guid.NewGuid();
         var existingId = Guid.NewGuid();
@@ -183,7 +183,7 @@ public sealed class EventParticipationRepositoryTests : IDisposable
     [Xunit.InlineData(ParticipationStatus.Ticketed, false)]
     [Xunit.InlineData(ParticipationStatus.Attended, false)]
     [Xunit.InlineData(ParticipationStatus.Attended, true)]
-    public async Task Reassign_HigherPrecedenceWins_AndKnownArrivalIsKept(
+    public async Task Reassign_BothHaveRows_HigherPrecedenceWins(
         ParticipationStatus targetStatus, bool targetHasArrival)
     {
         var sourceId = Guid.NewGuid();
@@ -204,7 +204,7 @@ public sealed class EventParticipationRepositoryTests : IDisposable
     }
 
     [HumansFact]
-    public async Task Reassign_MovesSourceOnlyYears_AndPreservesTheTargetsHigherStatus()
+    public async Task Reassign_SourceOnlyYears_MoveToTarget()
     {
         var sourceId = Guid.NewGuid();
         var targetId = Guid.NewGuid();

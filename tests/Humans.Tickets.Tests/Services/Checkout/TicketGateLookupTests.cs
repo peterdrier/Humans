@@ -17,7 +17,7 @@ public sealed class TicketGateLookupTests : CheckoutServiceFixture
     }
 
     [HumansFact]
-    public async Task Gate_finds_an_issued_ticket_by_its_code_with_its_event_and_holder()
+    public async Task Gate_IssuedTicketCode_FindsTicket()
     {
         var ticket = AddTicket(holder: _buyerId, classLabel: "Low income");
 
@@ -35,7 +35,7 @@ public sealed class TicketGateLookupTests : CheckoutServiceFixture
     [InlineData((int)TicketCheckoutTicketState.Offered, true, true, false)]
     [InlineData((int)TicketCheckoutTicketState.Resold, false, false, false)]
     [InlineData((int)TicketCheckoutTicketState.Void, false, false, false)]
-    public async Task Gate_refuses_a_ticket_that_can_still_sell_on_resale_and_resold_or_void_ones(
+    public async Task Gate_OfferedOrVoidTicket_IsRefused(
         int state, bool salesClosed, bool valid, bool inQueue)
     {
         var ticket = AddTicket(holder: _buyerId, state: (TicketCheckoutTicketState)state);
@@ -49,7 +49,7 @@ public sealed class TicketGateLookupTests : CheckoutServiceFixture
     }
 
     [HumansFact]
-    public async Task Gate_refuses_a_child_ticket_while_its_adults_offer_can_still_sell()
+    public async Task Gate_ChildOfOfferedAdult_IsRefused()
     {
         var adult = AddTicket(holder: _buyerId, state: TicketCheckoutTicketState.Offered);
         var child = AddTicket(TicketHolderKind.Child, parent: adult.Id);
@@ -63,7 +63,7 @@ public sealed class TicketGateLookupTests : CheckoutServiceFixture
     }
 
     [HumansFact]
-    public async Task Gate_takes_a_childs_early_entry_from_the_adult_it_belongs_to()
+    public async Task Gate_ChildTicket_TakesAdultsEarlyEntry()
     {
         var adult = AddTicket(holder: _buyerId);
         var child = AddTicket(TicketHolderKind.Child, parent: adult.Id);
@@ -76,7 +76,7 @@ public sealed class TicketGateLookupTests : CheckoutServiceFixture
     }
 
     [HumansFact]
-    public async Task Gate_lists_every_issued_ticket_of_an_event_for_name_search()
+    public async Task Gate_NameSearch_ListsIssuedTickets()
     {
         var adult = AddTicket(holder: _buyerId);
         var child = AddTicket(TicketHolderKind.Child, parent: adult.Id);

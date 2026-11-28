@@ -56,7 +56,7 @@ public sealed class CachingTicketQueryServiceTests
     [InlineData("", false)]
     [InlineData("   ", false)]
     [InlineData(null, false)]
-    public async Task Barcode_lookup_uses_current_event_and_exact_code(string? barcode, bool found)
+    public async Task BarcodeLookup_Code_MatchesExactly(string? barcode, bool found)
     {
         var hit = MakeAttendee(UserA, TicketAttendeeStatus.Void) with { Barcode = "BC-Exact" };
         var past = MakeOrder(Guid.NewGuid(), null,
@@ -143,7 +143,7 @@ public sealed class CachingTicketQueryServiceTests
     [InlineData(false, true)]
     [InlineData(true, false)]
     [InlineData(true, true)]
-    public async Task GetUserTicketHoldingsAsync_LoadStartedBeforeEviction_DoesNotRepopulateCache(
+    public async Task GetUserTicketHoldingsAsync_LoadBeforeEviction_SkipsCache(
         bool expired, bool viaSync)
     {
         var ct = TestContext.Current.CancellationToken;
@@ -170,7 +170,7 @@ public sealed class CachingTicketQueryServiceTests
     [HumansTheory]
     [InlineData(false)]
     [InlineData(true)]
-    public async Task SyncOrdersAndAttendeesAsync_DropsProjectionAndAllHoldings_EvenWhenALaterStageThrows(bool throws)
+    public async Task SyncOrdersAndAttendeesAsync_LaterStageThrows_DropsCaches(bool throws)
     {
         var ct = TestContext.Current.CancellationToken;
         await PrimeAsync(UserA, UserB);
@@ -190,7 +190,7 @@ public sealed class CachingTicketQueryServiceTests
     [HumansTheory]
     [InlineData(false)]
     [InlineData(true)]
-    public async Task ApplyContactImport_DropsProjectionAndAllHoldings_EvenWhenParticipationThrows(bool throws)
+    public async Task ApplyContactImport_ParticipationThrows_StillDropsCaches(bool throws)
     {
         var ct = TestContext.Current.CancellationToken;
         await PrimeAsync(UserA, UserB);
@@ -209,7 +209,7 @@ public sealed class CachingTicketQueryServiceTests
     }
 
     [HumansFact]
-    public async Task EraseForUserAsync_DropsProjectionAndAllHoldings()
+    public async Task EraseForUserAsync_Erased_DropsCaches()
     {
         await PrimeAsync(UserA, UserB);
 
@@ -220,7 +220,7 @@ public sealed class CachingTicketQueryServiceTests
     }
 
     [HumansFact]
-    public async Task ReassignAsync_DropsProjectionAndBothUsersHoldings_LeavesOthersCached()
+    public async Task ReassignAsync_Merged_KeepsOtherUsersCached()
     {
         var now = Instant.FromUtc(2026, 5, 16, 12, 0);
         await PrimeAsync(UserA, UserB, UserC);

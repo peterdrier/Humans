@@ -15,7 +15,7 @@ public sealed class VerifiedEmailLookupTests
             emails.Select(e => new UserEmail { Id = Guid.NewGuid(), UserId = id, Email = e.Email, IsVerified = e.Verified }).ToList());
 
     [HumansFact]
-    public void MapsAVerifiedEmailToItsOwner_FoldingCaseAndGoogleMail()
+    public void Lookup_VerifiedEmail_MapsToOwner()
     {
         var owner = Guid.NewGuid();
 
@@ -26,7 +26,7 @@ public sealed class VerifiedEmailLookupTests
     }
 
     [HumansFact]
-    public void IgnoresUnverifiedEmails()
+    public void Lookup_UnverifiedEmails_AreIgnored()
     {
         var (lookup, _) = VerifiedEmailLookup.Build([UserWith(Guid.NewGuid(), ("ada@example.com", false))]);
 
@@ -34,7 +34,7 @@ public sealed class VerifiedEmailLookupTests
     }
 
     [HumansFact]
-    public void AnEmailVerifiedByTwoUsersMapsToNobody_AndIsReported()
+    public void Lookup_EmailOfTwoUsers_MapsToNobody()
     {
         var (lookup, collisions) = VerifiedEmailLookup.Build([
             UserWith(Guid.NewGuid(), ("ada@gmail.com", true)),
@@ -46,7 +46,7 @@ public sealed class VerifiedEmailLookupTests
     }
 
     [HumansFact]
-    public void TheSameUserVerifyingBothAliasesIsNotACollision()
+    public void Lookup_SameUserBothAliases_IsNotCollision()
     {
         var owner = Guid.NewGuid();
 

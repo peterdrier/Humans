@@ -11,7 +11,7 @@ public sealed class TicketCodeImagesTests
     private const string Barcode = "H7K2M9QX4T8VB3NRP";
 
     [HumansFact]
-    public void ImageUrl_CarriesATokenThatResolvesBackToTheBarcode()
+    public void ImageUrl_Token_ResolvesToBarcode()
     {
         var images = TestTicketCodeImages.Create();
 

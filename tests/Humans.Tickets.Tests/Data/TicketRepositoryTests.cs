@@ -121,7 +121,7 @@ public sealed class TicketRepositoryTests : IDisposable
     }
 
     [HumansFact(Timeout = 10000)]
-    public async Task UpsertOrdersAsync_InsertsNewRowsAndUpdatesExisting()
+    public async Task UpsertOrdersAsync_MixedRows_InsertsOrUpdates()
     {
         var existing = new TicketOrder
         {
@@ -178,7 +178,7 @@ public sealed class TicketRepositoryTests : IDisposable
     }
 
     [HumansFact]
-    public async Task GetMatchedAttendeesForEventAsync_FiltersToEventAndMatchedOnly()
+    public async Task GetMatchedAttendeesForEventAsync_MixedRows_ReturnsMatchedOnly()
     {
         var orderId = Guid.NewGuid();
         var order = new TicketOrder
@@ -240,7 +240,7 @@ public sealed class TicketRepositoryTests : IDisposable
     }
 
     [HumansFact]
-    public async Task GetUnmatchedActiveAttendeesAsync_ReturnsOnlyValidAndCheckedIn_WithEmail_AndNullMatch()
+    public async Task GetUnmatchedActiveAttendeesAsync_MixedRows_ReturnsActiveUnmatched()
     {
         var orderId = Guid.NewGuid();
         var eventId = "evt_123";
@@ -410,7 +410,7 @@ public sealed class TicketRepositoryTests : IDisposable
     }
 
     [HumansFact]
-    public async Task ApplyCheckInsAsync_SetsEarliestScan_IsWriteOnce_AndSkipsUnknownTickets()
+    public async Task ApplyCheckInsAsync_RepeatScan_KeepsEarliest()
     {
         var orderId = Guid.NewGuid();
         const string eventId = "evt_apply";
@@ -535,7 +535,7 @@ public sealed class TicketRepositoryTests : IDisposable
     }
 
     [HumansFact]
-    public async Task GetOrdersPageAsync_SearchIsLiteralAndCultureIndependent_BeforePaging()
+    public async Task GetOrdersPageAsync_Search_IsLiteral()
     {
         using var culture = new CultureScope("tr");
         var orders = Enumerable.Range(0, 3).Select(index => new TicketOrder
@@ -560,7 +560,7 @@ public sealed class TicketRepositoryTests : IDisposable
     }
 
     [HumansFact]
-    public async Task GetAttendeesPageAsync_DuplicateEmailsIgnoreCulture_AndStaySeparateFromMatchedHumans()
+    public async Task GetAttendeesPageAsync_DuplicateEmails_IgnoreCulture()
     {
         using var culture = new CultureScope("tr");
         var orderId = Guid.NewGuid();
@@ -602,7 +602,7 @@ public sealed class TicketRepositoryTests : IDisposable
     }
 
     [HumansFact]
-    public async Task HasEventTicketAsync_IsAttendeeOnly_PaidOrderWithoutAttendeeRowIsNotAHolding()
+    public async Task HasEventTicketAsync_PaidOrderNoAttendee_IsFalse()
     {
         var buyerId = Guid.NewGuid();
         var holderId = Guid.NewGuid();
@@ -651,7 +651,7 @@ public sealed class TicketRepositoryTests : IDisposable
     }
 
     [HumansFact]
-    public async Task EraseUserPiiAsync_ThenUpsertOrdersAsync_DoesNotRestorePii_ButOtherFieldsStillSync()
+    public async Task UpsertOrdersAsync_ErasedRow_DoesNotRestorePii()
     {
         var userId = Guid.NewGuid();
         var orderId = Guid.NewGuid();
@@ -694,7 +694,7 @@ public sealed class TicketRepositoryTests : IDisposable
     }
 
     [HumansFact]
-    public async Task EraseUserPiiAsync_ThenUpsertAttendeesAsync_DoesNotRestorePii_ButOtherFieldsStillSync()
+    public async Task UpsertAttendeesAsync_ErasedRow_DoesNotRestorePii()
     {
         var userId = Guid.NewGuid();
         var orderId = Guid.NewGuid();
@@ -747,7 +747,7 @@ public sealed class TicketRepositoryTests : IDisposable
     }
 
     [HumansFact]
-    public async Task UpsertOrdersAsync_NonErasedRow_StillTakesVendorNameAndEmail()
+    public async Task UpsertOrdersAsync_NonErasedRow_TakesVendorName()
     {
         var orderId = Guid.NewGuid();
         _dbContext.TicketOrders.Add(new TicketOrder
@@ -786,7 +786,7 @@ public sealed class TicketRepositoryTests : IDisposable
     }
 
     [HumansFact]
-    public async Task UpsertOrdersAsync_LegacyTombstonedRow_KeepsTombstoneAndStampsPiiErasedAt()
+    public async Task UpsertOrdersAsync_LegacyTombstonedRow_KeepsTombstone()
     {
         // Regression: a row erased before PiiErasedAt existed lands with the column NULL on
         // migration. The guard must still recognise the tombstone via name/email and self-heal
@@ -830,7 +830,7 @@ public sealed class TicketRepositoryTests : IDisposable
     }
 
     [HumansFact]
-    public async Task UpsertAttendeesAsync_LegacyTombstonedRow_KeepsTombstoneAndStampsPiiErasedAt()
+    public async Task UpsertAttendeesAsync_LegacyTombstonedRow_KeepsTombstone()
     {
         var userId = Guid.NewGuid();
         var orderId = Guid.NewGuid();

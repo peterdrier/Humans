@@ -107,7 +107,7 @@ integration uses — see [`memory/code/stripe-restricted-keys.md`](../../../../m
 - No Stripe.NET SDK type appears on `Contracts/`; consumers see only `StripePaymentDetails`,
   `StoreCheckoutWebhookEvent`, `StoreCheckoutSessionData`, `StripeAccountBalance` and the account-read records
   (`StripeAccountLedger`, `StripeLedgerLine`, `StripeLedgerPayment`, `StripeLedgerPayout`, `StripeAccountCheck`) — verified by
-  `StripeConnectorArchitectureTests.IStripeService_ExposesNoStripeSdkTypesOnItsPublicSurface`,
+  `StripeConnectorArchitectureTests.IStripeService_PublicSurface_HasNoSdkTypes`,
   which walks nested generics and arrays.
 - Box Office retains a Stripe.net client for its ticketing session/refund/webhook protocol. Its ledger, fee and account-check reads go through `IStripeService`.
 - Account ledger payment metadata combines PaymentIntent metadata with movement metadata; movement values take precedence. Tickets adapters share `PaymentLedgerEntry.KindOf` for reporting-category classification.

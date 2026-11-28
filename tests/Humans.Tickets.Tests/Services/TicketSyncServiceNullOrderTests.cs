@@ -76,7 +76,7 @@ public sealed class TicketSyncServiceNullOrderTests : TicketsTestHarness
     /// row's TicketOrderId and upsert the attendee (not skip it).
     /// </summary>
     [HumansFact]
-    public async Task SyncOrdersAndAttendeesAsync_NullVendorOrderId_ExistingLocalRow_UpsertsSucessfully()
+    public async Task SyncOrdersAndAttendeesAsync_NullOrderIdLocalRow_Upserts()
     {
         // Seed a parent order and a pre-existing attendee row.
         var parentOrderId = Guid.NewGuid();
@@ -145,7 +145,7 @@ public sealed class TicketSyncServiceNullOrderTests : TicketsTestHarness
     /// and log a warning. AttendeesSynced must not include the skipped ticket.
     /// </summary>
     [HumansFact]
-    public async Task SyncOrdersAndAttendeesAsync_NullVendorOrderId_NoLocalRow_SkipsWithoutUpsert()
+    public async Task SyncOrdersAndAttendeesAsync_NullOrderIdNoRow_Skips()
     {
         // No pre-existing data for this ticket ID.
         var ticket = new VendorTicketDto(
@@ -229,7 +229,7 @@ public sealed class TicketSyncServiceNullOrderTests : TicketsTestHarness
     /// "like-for-like, no $ drift" transfer guarantee.
     /// </summary>
     [HumansFact]
-    public async Task SyncOrdersAndAttendeesAsync_NullVendorOrderId_PreservesLocalPrice()
+    public async Task SyncOrdersAndAttendeesAsync_NullOrderId_KeepsPrice()
     {
         var parentOrderId = Guid.NewGuid();
         TicketsDb.TicketOrders.Add(new TicketOrder

@@ -55,7 +55,7 @@ public sealed class TicketQueryServiceHoldingsTests
     }
 
     [HumansFact]
-    public async Task ReturnsEmpty_WhenUserHasNoOrdersAndNoAttendees()
+    public async Task Holdings_NoOrdersOrAttendees_ReturnsEmpty()
     {
         var result = await _service.GetUserTicketHoldingsAsync(UserA, Xunit.TestContext.Current.CancellationToken);
         result.OrderCount.Should().Be(0);
@@ -63,7 +63,7 @@ public sealed class TicketQueryServiceHoldingsTests
     }
 
     [HumansFact]
-    public async Task CountsOrdersByBuyerAndAttendeeNamesByCurrentOwner()
+    public async Task Holdings_Orders_CountByBuyer()
     {
         // UserA bought 2 orders.
         var order1Id = Guid.NewGuid();
@@ -112,7 +112,7 @@ public sealed class TicketQueryServiceHoldingsTests
     }
 
     [HumansFact]
-    public async Task IncludesActiveAndVoidedTickets()
+    public async Task Holdings_VoidedTickets_AreIncluded()
     {
         var orderId = Guid.NewGuid();
         var order = new TicketOrder { Id = orderId, MatchedUserId = UserA };
@@ -147,7 +147,7 @@ public sealed class TicketQueryServiceHoldingsTests
     }
 
     [HumansFact]
-    public async Task ExcludesTicketsTheUserBoughtButDoesNotHold_AndCarriesCheckedInAt()
+    public async Task Holdings_BoughtButNotHeld_AreExcluded()
     {
         var orderId = Guid.NewGuid();
         var order = new TicketOrder { Id = orderId, MatchedUserId = UserA };
@@ -208,7 +208,7 @@ public sealed class TicketQueryServiceHoldingsTests
     }
 
     [HumansFact]
-    public async Task TicketCountFallback_CountsNothingForAnAliasVerifiedByTwoUsers()
+    public async Task TicketCountFallback_AliasOfTwoUsers_CountsNothing()
     {
         // The sync leaves such an attendee unmatched; the fallback must not hand the ticket
         // to both users instead.

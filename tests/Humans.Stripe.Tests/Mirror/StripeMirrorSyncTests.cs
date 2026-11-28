@@ -71,7 +71,7 @@ public sealed class StripeMirrorSyncTests
     [Xunit.InlineData(SyncBoundary.DetachedSave)]
     [Xunit.InlineData(SyncBoundary.InitialSaveFailure)]
     [Xunit.InlineData(SyncBoundary.UnrelatedCancellation)]
-    public async Task Account_shutdown_respects_the_mirror_commit_boundary(SyncBoundary boundary)
+    public async Task Sweep_Shutdown_RespectsCommitBoundary(SyncBoundary boundary)
     {
         using var shutdown = new CancellationTokenSource();
         var now = Instant.FromUtc(2026, 11, 5, 12, 0);
@@ -142,7 +142,7 @@ public sealed class StripeMirrorSyncTests
     }
 
     [HumansFact]
-    public async Task Shutdown_does_not_hide_an_earlier_account_failure()
+    public async Task Sweep_ShutdownAfterFailure_KeepsFailure()
     {
         using var shutdown = new CancellationTokenSource();
         var failure = new IOException("Tickets unavailable");
@@ -161,7 +161,7 @@ public sealed class StripeMirrorSyncTests
     }
 
     [HumansFact]
-    public async Task A_sweep_replaces_its_account_and_leaves_the_others()
+    public async Task Sweep_OneAccount_LeavesOthers()
     {
         Returns(Tickets, Txn("t1", "acct_t", 100), Txn("t2", "acct_t", 200));
         Returns(Store, Txn("s1", "acct_s", 50));
@@ -184,7 +184,7 @@ public sealed class StripeMirrorSyncTests
     [HumansTheory]
     [Xunit.InlineData(false)]
     [Xunit.InlineData(true)]
-    public async Task Failed_sweep_stores_a_complete_unicode_error_and_continues_other_accounts(bool pairFits)
+    public async Task Sweep_AccountFails_ContinuesOtherAccounts(bool pairFits)
     {
         var prefix = new string('e', pairFits ? 1998 : 1999);
         _client.FetchAsync(Tickets, Arg.Any<CancellationToken>())
@@ -203,7 +203,7 @@ public sealed class StripeMirrorSyncTests
     [HumansTheory]
     [Xunit.InlineData(false)]
     [Xunit.InlineData(true)]
-    public async Task Diagnostic_save_failure_preserves_account_isolation_and_cancellation(bool requestAborted)
+    public async Task Sweep_DiagnosticSaveFails_KeepsAccountsIsolated(bool requestAborted)
     {
         Returns(Tickets, Txn("old-ticket", Tickets.Id, 100));
         Returns(Store, Txn("old-store", Store.Id, 50));
@@ -264,7 +264,7 @@ public sealed class StripeMirrorSyncTests
     }
 
     [HumansFact]
-    public async Task No_configured_key_means_no_sweep()
+    public async Task Sweep_NoConfiguredKey_DoesNothing()
     {
         var service = new StripeMirrorService(_repo, _client,
             Options.Create(new StripeMirrorOptions { Accounts = [new StripeMirrorAccount { Name = "Tickets", Id = "acct_t" }] }),
@@ -275,7 +275,7 @@ public sealed class StripeMirrorSyncTests
     }
 
     [HumansFact]
-    public void A_refund_takes_its_buyer_from_the_charge_on_the_same_intent()
+    public void Sweep_Refund_TakesBuyerFromCharge()
     {
         var rows = StripeMirrorService.FillFromSiblings(
         [
@@ -290,7 +290,7 @@ public sealed class StripeMirrorSyncTests
     }
 
     [HumansFact]
-    public void Sibling_buyer_fields_fill_independently_without_overwriting_populated_values()
+    public void Sweep_PopulatedBuyerFields_AreNotOverwritten()
     {
         var rows = StripeMirrorService.FillFromSiblings(
         [
@@ -309,7 +309,7 @@ public sealed class StripeMirrorSyncTests
     [HumansTheory]
     [Xunit.InlineData("")]
     [Xunit.InlineData("  ")]
-    public void Blank_intent_ids_cannot_attribute_a_refund_to_an_unrelated_buyer(string intent)
+    public void Sweep_BlankIntentId_AttributesNoBuyer(string intent)
     {
         var rows = StripeMirrorService.FillFromSiblings(
         [
@@ -323,7 +323,7 @@ public sealed class StripeMirrorSyncTests
     }
 
     [HumansFact]
-    public async Task Search_finds_an_order_by_buyer_email_or_metadata_order_id()
+    public async Task Search_BuyerEmailOrOrderId_FindsOrder()
     {
         Returns(Tickets,
             Txn("t1", "acct_t", 100, email: "Ana@Example.org", metadata: """{"order_id":"79159110"}"""),
@@ -339,7 +339,7 @@ public sealed class StripeMirrorSyncTests
     }
 
     [HumansFact]
-    public async Task Summary_reconciles_to_the_balance_and_shows_the_reserve_peak()
+    public async Task Summary_Totals_ReconcileToBalance()
     {
         var hold = Txn("h", "acct_t", -300, StripeLedger.RiskReserve);
         hold.AvailableOn = Instant.FromUtc(2026, 7, 9, 0, 0);
@@ -366,7 +366,7 @@ public sealed class StripeMirrorSyncTests
     }
 
     [HumansFact]
-    public async Task A_cancelled_sweep_does_not_leave_its_account_running()
+    public async Task Sweep_Cancelled_ClearsRunningState()
     {
         using var cts = new CancellationTokenSource();
         _client.FetchAsync(Tickets, Arg.Any<CancellationToken>()).Returns<StripeAccountFetch>(_ =>
@@ -385,7 +385,7 @@ public sealed class StripeMirrorSyncTests
         null, null, null, null, Instant.MinValue, Instant.MinValue);
 
     [HumansFact]
-    public async Task Export_holds_the_members_payments_by_verified_email_only()
+    public async Task Export_UnverifiedEmail_IsExcluded()
     {
         var userId = Guid.NewGuid();
         _users.GetUserInfoAsync(userId, Arg.Any<CancellationToken>()).Returns(new UserInfo(

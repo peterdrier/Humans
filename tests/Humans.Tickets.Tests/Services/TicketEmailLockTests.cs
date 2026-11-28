@@ -10,7 +10,7 @@ namespace Humans.Tickets.Tests.Services;
 public sealed class TicketEmailLockTests
 {
     [HumansFact]
-    public async Task LocksTheHumansMatchedBuyerAndAttendeeAddressesOnly()
+    public async Task EmailLock_UnmatchedAddresses_AreNotLocked()
     {
         var userId = Guid.NewGuid();
         var otherId = Guid.NewGuid();

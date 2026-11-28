@@ -49,7 +49,7 @@ public class TicketBuyControllerTests
         { GateOpeningDate = gates };
 
     [HumansFact]
-    public async Task Mine_OrdersFamiliesWithinTheEventAndKeepsDependentsBesideTheirHolder()
+    public async Task Mine_Dependents_StayBesideHolder()
     {
         var eventId = Guid.NewGuid();
         TicketCheckoutTicket Ticket(Instant issued, Guid? holder, Guid? parent = null) => new()
@@ -86,7 +86,7 @@ public class TicketBuyControllerTests
     }
 
     [HumansFact]
-    public async Task Index_PresentsEventsByGateDateAndOrderHistoryNewestFirst()
+    public async Task Index_Events_OrderByGateDate()
     {
         var older = new TicketCheckoutOrder { Id = Guid.NewGuid(), CreatedAt = Now };
         var newer = new TicketCheckoutOrder { Id = Guid.NewGuid(), CreatedAt = Now + Duration.FromDays(1) };
@@ -115,7 +115,7 @@ public class TicketBuyControllerTests
     }
 
     [HumansFact]
-    public async Task DirectedResale_PresentsOrderHistoryNewestFirstAndRetainsTheToken()
+    public async Task DirectedResale_OrderHistory_IsNewestFirst()
     {
         var older = new TicketCheckoutOrder { Id = Guid.NewGuid(), CreatedAt = Now };
         var newer = new TicketCheckoutOrder { Id = Guid.NewGuid(), CreatedAt = Now + Duration.FromDays(1) };

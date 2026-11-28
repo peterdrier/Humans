@@ -104,7 +104,7 @@ public sealed class MemberTicketStatusViewComponentTests
         new() { Id = Guid.NewGuid(), EventSettingsId = EventId, PlatformKey = "boxoffice", Mode = mode };
 
     [HumansFact]
-    public async Task InvokeAsync_OffSeasonWithASaleOpen_StillOffersTheBuyPage()
+    public async Task InvokeAsync_OffSeasonSaleOpen_OffersBuyPage()
     {
         _settings.GetActiveEventSettings().Returns(Event(isOffSeason: true));
 
@@ -117,7 +117,7 @@ public sealed class MemberTicketStatusViewComponentTests
     [HumansTheory]
     [InlineData(true)]
     [InlineData(false)]
-    public async Task InvokeAsync_OffSeasonWithInvitedOnlySale_OffersTheBuyPageOnlyToTheInvited(bool invited)
+    public async Task InvokeAsync_InvitedOnlySale_OffersInvitedOnly(bool invited)
     {
         _settings.GetActiveEventSettings().Returns(Event(isOffSeason: true));
         var sale = Sale(TicketSalesMode.InvitedOnly);

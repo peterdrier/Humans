@@ -135,7 +135,7 @@ public sealed class EventParticipationServiceTests : IDisposable
     }
 
     [HumansFact]
-    public async Task Read_HistoricalClearedRowsAreUnknown_AndCanBeRecordedAgain()
+    public async Task Read_ClearedRow_IsUnknown()
     {
         var user = SeedUser();
         _db.EventParticipations.Add(new TicketRow
@@ -205,7 +205,7 @@ public sealed class EventParticipationServiceTests : IDisposable
     }
 
     [HumansFact]
-    public async Task Backfill_AuditsOnlyCommittedFinalChanges_AndNoOpsOnRepeat()
+    public async Task Backfill_Repeated_AuditsNothing()
     {
         var user = SeedUser();
         var attended = SeedUser((2025, ParticipationStatus.Attended, ParticipationSource.TicketSync));
@@ -229,7 +229,7 @@ public sealed class EventParticipationServiceTests : IDisposable
     }
 
     [HumansFact]
-    public async Task Merge_FoldsBothUsersRows_ByPrecedence_AndDeletesTheSource()
+    public async Task Merge_BothUsersRows_FoldByPrecedence()
     {
         var source = SeedUser(
             (2024, ParticipationStatus.Attended, ParticipationSource.TicketSync),
@@ -266,7 +266,7 @@ public sealed class EventParticipationServiceTests : IDisposable
     }
 
     [HumansFact]
-    public async Task Erase_RetainsTheRows_AsUsersDidForTheLegacyTable()
+    public async Task Erase_Rows_AreRetained()
     {
         var user = SeedUser();
         await _sut.DeclareNotAttendingAsync(user.Id, 2026, Ct);
@@ -290,7 +290,7 @@ public sealed class EventParticipationServiceTests : IDisposable
     [InlineData(ProfileCardViewMode.Public, false, false, false)]
     [InlineData(ProfileCardViewMode.Public, true, false, true)]
     [InlineData(ProfileCardViewMode.Admin, false, true, false)]
-    public async Task OnsiteChip_RendersForSelfInTheHoldingsCard_OrTheOnsiteRosterPolicy_Only(
+    public async Task OnsiteChip_OtherViewerWithoutPolicy_RendersNothing(
         ProfileCardViewMode mode, bool viewerPassesPolicy, bool inHoldings, bool renders)
     {
         var userId = Guid.NewGuid();
@@ -317,7 +317,7 @@ public sealed class EventParticipationServiceTests : IDisposable
     }
 
     [HumansFact]
-    public async Task OnsiteChip_NothingWithoutACheckInForTheActiveYear()
+    public async Task OnsiteChip_NoCheckInThisYear_RendersNothing()
     {
         var userId = Guid.NewGuid();
         var tickets = Substitute.For<ITicketService>();
@@ -349,7 +349,7 @@ public sealed class EventParticipationServiceTests : IDisposable
     [HumansTheory]
     [InlineData(true)]
     [InlineData(false)]
-    public async Task Declaration_ActsOnTheSignedInMember_ForTheActiveYear(bool declared)
+    public async Task Declaration_SignedInMember_UsesActiveYear(bool declared)
     {
         var user = SeedUser();
         var participations = Substitute.For<IEventParticipationManagement>();

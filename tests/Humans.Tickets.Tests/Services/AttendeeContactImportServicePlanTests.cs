@@ -184,7 +184,7 @@ public class AttendeeContactImportServicePlanTests
     [Xunit.InlineData("buyer@x.com", "BUYER@x.com")]
     [Xunit.InlineData("buyer@gmail.com", "BUYER@googlemail.com")]
     [Xunit.InlineData("buyer@googlemail.com", "buyer@gmail.com")]
-    public async Task Plan_MultipleAttendeesSameEmail_CollapseToOneDecisionWithGroup(string email, string alternate)
+    public async Task Plan_SameEmailAttendees_BecomeOneDecision(string email, string alternate)
     {
         var harness = new PlanHarness();
         var leadId = Guid.NewGuid();
@@ -230,7 +230,7 @@ public class AttendeeContactImportServicePlanTests
     }
 
     [HumansFact]
-    public async Task Plan_NoEmailAttendees_RemainPerAttendee_NotGrouped()
+    public async Task Plan_NoEmailAttendees_StayUngrouped()
     {
         var harness = new PlanHarness();
         harness.AddUnmatched(new TicketAttendee

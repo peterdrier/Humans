@@ -68,7 +68,7 @@ public class TicketQueryArchitectureTests
     /// production <c>Section.Register</c>, not a test-built mirror of it.
     /// </summary>
     [HumansFact]
-    public void ITicketManagement_And_ITicketService_ResolveToSameInstance()
+    public void TicketInterfaces_Resolved_ShareOneInstance()
     {
         var services = new ServiceCollection();
         services.AddLogging();
