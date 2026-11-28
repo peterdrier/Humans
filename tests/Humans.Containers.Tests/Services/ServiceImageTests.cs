@@ -33,9 +33,7 @@ public sealed class ServiceImageTests
     private static readonly Guid CampId = Guid.Parse("00000000-0000-0000-0099-000000000001");
 
     private readonly DbContextOptions<ContainersDbContext> _containersOptions =
-        new DbContextOptionsBuilder<ContainersDbContext>()
-            .UseInMemoryDatabase(Guid.NewGuid().ToString())
-            .Options;
+        TestDbOptions.InMemory<ContainersDbContext>();
 
     public ServiceImageTests()
     {

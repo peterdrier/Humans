@@ -19,9 +19,7 @@ public class AuditLogRepositoryTests
 
     public AuditLogRepositoryTests()
     {
-        var options = new DbContextOptionsBuilder<AuditLogDbContext>()
-            .UseInMemoryDatabase(Guid.NewGuid().ToString())
-            .Options;
+        var options = TestDbOptions.InMemory<AuditLogDbContext>();
         _factory = new TestDbContextFactory<AuditLogDbContext>(options);
         _sut = new AuditLogRepository(_factory);
     }

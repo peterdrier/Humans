@@ -47,10 +47,7 @@ public sealed class UserRepositoryUserEmailTests : IDisposable
 
     public UserRepositoryUserEmailTests()
     {
-        var options = new DbContextOptionsBuilder<UsersDbContext>()
-            .UseInMemoryDatabase(Guid.NewGuid().ToString())
-            .ConfigureWarnings(w => w.Ignore(InMemoryEventId.TransactionIgnoredWarning))
-            .Options;
+        var options = TestDbOptions.InMemory<UsersDbContext>();
         _dbContext = new UsersDbContext(options);
         _repo = new UserRepository(new TestDbContextFactory(options));
     }

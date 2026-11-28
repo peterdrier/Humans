@@ -18,6 +18,7 @@ using Microsoft.Extensions.DependencyInjection;
 using static Humans.Base.Models.AccessLevel;
 using static Humans.Base.Models.AccessMatrixFeature;
 using Humans.Audit.Contracts;
+using Humans.CityPlanning.Controllers;
 
 [assembly: Humans.Base.Demo.NoDemoStory("No demo story written yet.")]
 
@@ -27,7 +28,7 @@ namespace Humans.CityPlanning;
 /// Camps resolves <c>ICampDeletionListener</c> lazily, since <c>CityPlanningService</c> injects <c>ICampService</c>.
 /// </summary>
 public sealed class Section :
-    ISection,
+    SectionBase,
     ICampPart,
     IIssueQueueOwner,
     ISectionAccessMatrix,
@@ -39,9 +40,11 @@ public sealed class Section :
     ISectionPolicies,
     ISectionSettings
 {
+    public override string DisplayName => "City Planning";
+
     IEnumerable<CampPart> ICampPart.Parts() => [new(typeof(CampPlacementPhaseViewComponent))];
 
-    public void Register(IServiceCollection services, IConfiguration configuration)
+    public override void Register(IServiceCollection services, IConfiguration configuration)
     {
         services.AddSingleton<IAuditActionContributor, CityPlanningAuditActions>();
         services.Configure<CityPlanningOptions>(configuration.GetSection(CityPlanningOptions.SectionName));
@@ -121,9 +124,9 @@ public sealed class Section :
 
     IEnumerable<AdminNavGroup> ISectionAdminNav.Groups() =>
     [
-        new("City Planning", [
+        AdminGroup([
             // The page also admits city-planning team members; they reach it from the member-side City page.
-            new("Barrio map", "CityPlanning", "Admin", null, null, "fa-solid fa-map", CampsPolicies.Manage)
+            AdminLink<CityPlanningController>("Barrio map", nameof(CityPlanningController.Admin), "fa-solid fa-map", CampsPolicies.Manage)
         ])
     ];
 

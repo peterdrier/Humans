@@ -15,7 +15,7 @@ A stub for the future Low Income process. Today it is one Admin-only page that g
 
 ## Routing
 
-`/LowIncome/Admin` (`LowIncomeAdminController`): Index (GET), Grant and Remove (POST). In the Admin sidebar as Low income → Grants.
+`/LowIncome/Admin` (`LowIncomeAdminController`): Index (GET), Grant and Remove (POST). In the Admin sidebar as Low Income → Grants.
 
 ## Actors & Roles
 

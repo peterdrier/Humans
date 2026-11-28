@@ -22,8 +22,7 @@ public sealed class HoldedWriteTests
 
     public HoldedWriteTests()
     {
-        var options = new DbContextOptionsBuilder<HoldedDbContext>()
-            .UseInMemoryDatabase(Guid.NewGuid().ToString()).Options;
+        var options = TestDbOptions.InMemory<HoldedDbContext>();
         _repo = new Repository(new TestDbContextFactory<HoldedDbContext>(options));
         _write = new HoldedWrite(_client, _repo, _holded, NullLogger<HoldedWrite>.Instance);
     }

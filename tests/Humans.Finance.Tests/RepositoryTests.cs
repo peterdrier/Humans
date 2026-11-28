@@ -20,9 +20,7 @@ public class RepositoryTests
 
     private static (Repository Repo, IDbContextFactory<FinanceDbContext> Factory) Make()
     {
-        var options = new DbContextOptionsBuilder<FinanceDbContext>()
-            .UseInMemoryDatabase($"finance-{Guid.NewGuid():N}")
-            .Options;
+        var options = TestDbOptions.InMemory<FinanceDbContext>();
         var factory = new Factory(options);
         return (new Repository(factory), factory);
     }

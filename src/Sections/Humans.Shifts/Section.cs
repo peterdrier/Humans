@@ -38,11 +38,12 @@ using Microsoft.Extensions.Localization;
 using NodaTime;
 using static Humans.Base.Models.AccessLevel;
 using static Humans.Base.Models.AccessMatrixFeature;
+using Humans.Shifts.Controllers;
 
 namespace Humans.Shifts;
 
 public sealed class Section :
-    ISection,
+    SectionBase,
     IIssueQueueOwner,
     ISectionRoles,
     ISectionAccessMatrix,
@@ -69,7 +70,7 @@ public sealed class Section :
             FormerNames: ["VolunteerCoordinator"]),
     ];
 
-    public void Register(IServiceCollection services, IConfiguration configuration)
+    public override void Register(IServiceCollection services, IConfiguration configuration)
     {
         services.AddSingleton<IAuditActionContributor, ShiftsAuditActions>();
         services.AddSingleton<INotificationSourceContributor, ShiftsNotificationSources>();
@@ -197,12 +198,12 @@ public sealed class Section :
 
     IEnumerable<AdminNavGroup> ISectionAdminNav.Groups() =>
     [
-        new("Shifts", [
-            new("Dashboard",         "ShiftDashboard",      "Index",          null, null, "fa-solid fa-gauge",            ShiftsPolicies.DepartmentRead),
-            new("Summary by camp",   "Shifts",              "Summary",        null, null, "fa-solid fa-campground",       ShiftsPolicies.DepartmentRead),
-            new("Volunteer tracking","VolunteerTracking",   "Index",          null, null, "fa-solid fa-user-clock",       ShiftsPolicies.Read),
-            new("Workload",          "ShiftWorkloadAdmin",  "Index",          null, null, "fa-solid fa-scale-unbalanced", ShiftsPolicies.Read),
-            new("Post-event stats",  "ShiftDashboard",      "PostEventStats", null, null, "fa-solid fa-chart-bar",        ShiftsPolicies.Read),
+        AdminGroup([
+            AdminLink<ShiftDashboardController>("Dashboard", nameof(ShiftDashboardController.Index), "fa-solid fa-gauge", ShiftsPolicies.DepartmentRead),
+            AdminLink<ShiftsController>("Summary by camp", nameof(ShiftsController.Summary), "fa-solid fa-campground", ShiftsPolicies.DepartmentRead),
+            AdminLink<VolunteerTrackingController>("Volunteer tracking", nameof(VolunteerTrackingController.Index), "fa-solid fa-user-clock", ShiftsPolicies.Read),
+            AdminLink<ShiftWorkloadAdminController>("Workload", nameof(ShiftWorkloadAdminController.Index), "fa-solid fa-scale-unbalanced", ShiftsPolicies.Read),
+            AdminLink<ShiftDashboardController>("Post-event stats", nameof(ShiftDashboardController.PostEventStats), "fa-solid fa-chart-bar", ShiftsPolicies.Read),
         ])
     ];
 

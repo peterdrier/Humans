@@ -6,9 +6,9 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace Humans.Monitor;
 
-public sealed class Section : ISection, ISectionJobs
+public sealed class Section : SectionBase, ISectionJobs
 {
-    public void Register(IServiceCollection services, IConfiguration configuration)
+    public override void Register(IServiceCollection services, IConfiguration configuration)
     {
         services.AddScoped<IDriveActivityMonitorService, DriveActivityMonitorService>();
 

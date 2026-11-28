@@ -25,9 +25,7 @@ public sealed class HoldedPurchaseDocSyncTests
 
     public HoldedPurchaseDocSyncTests()
     {
-        var options = new DbContextOptionsBuilder<HoldedDbContext>()
-            .UseInMemoryDatabase(Guid.NewGuid().ToString())
-            .Options;
+        var options = TestDbOptions.InMemory<HoldedDbContext>();
         var callLog = Substitute.For<IHoldedCallLog>();
         callLog.DrainAll().Returns([]);
         _service = new Service(new Repository(new TestDbContextFactory<HoldedDbContext>(options)), _client, callLog,

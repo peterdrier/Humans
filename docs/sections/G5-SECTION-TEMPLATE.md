@@ -540,7 +540,7 @@ Git Bash.)
      rendered by the status filter in `Views/Expenses/Index.cshtml`; carving them out would have
      degraded it to `Humanize(value.ToString())` — English-looking text in every locale, and a
      resource fallback survives the step 12 HTML diff).
-4. [ ] `Section.cs` at the project root: `public sealed class Section : ISection` with
+4. [ ] `Section.cs` at the project root: `public sealed class Section : SectionBase` with
    `Register(IServiceCollection services, IConfiguration configuration)` — `AddSectionDbContext`,
    repositories, services, section-owned authorization handlers (keyed caching-decorator pairs
    move verbatim). Shell discovers it; nothing is added to `Program.cs`. Remove the section's

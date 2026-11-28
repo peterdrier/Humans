@@ -22,7 +22,7 @@ public sealed class GovernanceBodyGoogleSourceTests
     private readonly IApplicationRepository _applications = Substitute.For<IApplicationRepository>();
     private readonly ISystemRoleService _roles = Substitute.For<ISystemRoleService>();
     private readonly GovernanceBodyRepository _bodies = new(new TestDbContextFactory<GovernanceDbContext>(
-        new DbContextOptionsBuilder<GovernanceDbContext>().UseInMemoryDatabase(Guid.NewGuid().ToString()).Options));
+        TestDbOptions.InMemory<GovernanceDbContext>()));
 
     private GovernanceBodyGoogleSource Source(IGovernanceBodyRepository? bodies = null) => new(
         bodies ?? _bodies, new GovernanceBodyRosters(_applications, _roles, new FakeClock(Now)),

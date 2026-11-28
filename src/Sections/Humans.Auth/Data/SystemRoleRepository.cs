@@ -1,37 +1,29 @@
 using Microsoft.EntityFrameworkCore;
 using NodaTime;
 using Humans.Auth.Domain;
+using Humans.Base.Data;
 
 namespace Humans.Auth.Data;
 
-internal sealed class SystemRoleRepository(IDbContextFactory<AuthDbContext> factory) : ISystemRoleRepository
+internal sealed class SystemRoleRepository(IDbContextFactory<AuthDbContext> factory) : SectionRepository<AuthDbContext>(factory), ISystemRoleRepository
 {
-    public async Task<SystemRole?> FindForMutationAsync(Guid assignmentId, CancellationToken ct = default)
-    {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
-        return await ctx.SystemRoles
+    public async Task<SystemRole?> FindForMutationAsync(Guid assignmentId, CancellationToken ct = default) =>
+        await RunAsync(ctx => ctx.SystemRoles
             .AsNoTracking()
-            .FirstOrDefaultAsync(ra => ra.Id == assignmentId, ct);
-    }
+            .FirstOrDefaultAsync(ra => ra.Id == assignmentId, ct), ct);
 
-    public async Task<SystemRole?> GetByIdAsync(Guid assignmentId, CancellationToken ct = default)
-    {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
-        return await ctx.SystemRoles
+    public async Task<SystemRole?> GetByIdAsync(Guid assignmentId, CancellationToken ct = default) =>
+        await RunAsync(ctx => ctx.SystemRoles
             .AsNoTracking()
-            .FirstOrDefaultAsync(ra => ra.Id == assignmentId, ct);
-    }
+            .FirstOrDefaultAsync(ra => ra.Id == assignmentId, ct), ct);
 
-    public async Task<IReadOnlyList<SystemRole>> GetByUserIdAsync(Guid userId, CancellationToken ct = default)
-    {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
-        return await ctx.SystemRoles
+    public async Task<IReadOnlyList<SystemRole>> GetByUserIdAsync(Guid userId, CancellationToken ct = default) =>
+        await RunAsync(ctx => ctx.SystemRoles
             .AsNoTracking()
             .Where(ra => ra.UserId == userId)
             // arch:db-sort-ok user role history chronology
             .OrderByDescending(ra => ra.ValidFrom)
-            .ToListAsync(ct);
-    }
+            .ToListAsync(ct), ct);
 
     public async Task<(IReadOnlyList<SystemRole> Items, int TotalCount)> GetFilteredAsync(
         IReadOnlyList<string>? roleNames,
@@ -41,7 +33,7 @@ internal sealed class SystemRoleRepository(IDbContextFactory<AuthDbContext> fact
         Instant now,
         CancellationToken ct = default)
     {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
+        await using var ctx = await CreateDbContextAsync(ct);
         var query = ctx.SystemRoles.AsNoTracking().AsQueryable();
 
         if (roleNames is not null)
@@ -74,7 +66,7 @@ internal sealed class SystemRoleRepository(IDbContextFactory<AuthDbContext> fact
         Instant? validTo,
         CancellationToken ct = default)
     {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
+        await using var ctx = await CreateDbContextAsync(ct);
         var query = ctx.SystemRoles
             .AsNoTracking()
             .Where(ra => ra.UserId == userId && roleNames.Contains(ra.RoleName));
@@ -98,64 +90,50 @@ internal sealed class SystemRoleRepository(IDbContextFactory<AuthDbContext> fact
         Guid userId,
         IReadOnlyList<string> roleNames,
         Instant now,
-        CancellationToken ct = default)
-    {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
-        return await ctx.SystemRoles.AnyAsync(
+        CancellationToken ct = default) =>
+        await RunAsync(ctx => ctx.SystemRoles.AnyAsync(
             ra => ra.UserId == userId &&
                   roleNames.Contains(ra.RoleName) &&
                   ra.ValidFrom <= now &&
                   (ra.ValidTo == null || ra.ValidTo > now),
-            ct);
-    }
+            ct), ct);
 
     public async Task<bool> HasAnyActiveAssignmentAsync(
         Guid userId,
         Instant now,
-        CancellationToken ct = default)
-    {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
-        return await ctx.SystemRoles.AnyAsync(
+        CancellationToken ct = default) =>
+        await RunAsync(ctx => ctx.SystemRoles.AnyAsync(
             ra => ra.UserId == userId &&
                   ra.ValidFrom <= now &&
                   (ra.ValidTo == null || ra.ValidTo > now),
-            ct);
-    }
+            ct), ct);
 
     public async Task<IReadOnlyList<Guid>> GetUserIdsWithActiveAssignmentsAsync(
         Instant now,
-        CancellationToken ct = default)
-    {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
-        return await ctx.SystemRoles
+        CancellationToken ct = default) =>
+        await RunAsync(ctx => ctx.SystemRoles
             .AsNoTracking()
             .Where(ra => ra.ValidFrom <= now && (ra.ValidTo == null || ra.ValidTo > now))
             .Select(ra => ra.UserId)
             .Distinct()
-            .ToListAsync(ct);
-    }
+            .ToListAsync(ct), ct);
 
     public async Task<IReadOnlyList<SystemRole>> GetActiveForUserForMutationAsync(
         Guid userId,
         Instant now,
-        CancellationToken ct = default)
-    {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
-        return await ctx.SystemRoles
+        CancellationToken ct = default) =>
+        await RunAsync(ctx => ctx.SystemRoles
             .AsNoTracking()
             .Where(ra => ra.UserId == userId &&
                          ra.ValidFrom <= now &&
                          (ra.ValidTo == null || ra.ValidTo > now))
-            .ToListAsync(ct);
-    }
+            .ToListAsync(ct), ct);
 
     public async Task<IReadOnlyList<Guid>> GetActiveUserIdsInRoleAsync(
         IReadOnlyList<string> roleNames,
         Instant now,
-        CancellationToken ct = default)
-    {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
-        return await ctx.SystemRoles
+        CancellationToken ct = default) =>
+        await RunAsync(ctx => ctx.SystemRoles
             .AsNoTracking()
             .Where(ra =>
                 roleNames.Contains(ra.RoleName) &&
@@ -163,14 +141,13 @@ internal sealed class SystemRoleRepository(IDbContextFactory<AuthDbContext> fact
                 (ra.ValidTo == null || ra.ValidTo > now))
             .Select(ra => ra.UserId)
             .Distinct()
-            .ToListAsync(ct);
-    }
+            .ToListAsync(ct), ct);
 
     public async Task<IReadOnlyDictionary<string, int>> GetActiveCountsByRoleAsync(
         Instant now,
         CancellationToken ct = default)
     {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
+        await using var ctx = await CreateDbContextAsync(ct);
         var rows = await ctx.SystemRoles
             .AsNoTracking()
             .Where(ra => ra.ValidFrom <= now && (ra.ValidTo == null || ra.ValidTo > now))
@@ -188,23 +165,19 @@ internal sealed class SystemRoleRepository(IDbContextFactory<AuthDbContext> fact
         if (roleNames.Count == 0)
             return [];
 
-        await using var ctx = await factory.CreateDbContextAsync(ct);
+        await using var ctx = await CreateDbContextAsync(ct);
         return await ctx.SystemRoles
             .AsNoTracking()
             .Where(ra => roleNames.Contains(ra.RoleName))
             .ToListAsync(ct);
     }
 
-    public async Task AddAsync(SystemRole assignment, CancellationToken ct = default)
-    {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
-        ctx.SystemRoles.Add(assignment);
-        await ctx.SaveChangesAsync(ct);
-    }
+    public async Task AddAsync(SystemRole assignment, CancellationToken ct = default) =>
+        await InsertAsync(assignment, ct);
 
     public async Task UpdateAsync(SystemRole assignment, CancellationToken ct = default)
     {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
+        await using var ctx = await CreateDbContextAsync(ct);
         ctx.Attach(assignment);
         ctx.Entry(assignment).State = EntityState.Modified;
         await ctx.SaveChangesAsync(ct);
@@ -215,7 +188,7 @@ internal sealed class SystemRoleRepository(IDbContextFactory<AuthDbContext> fact
         if (assignments.Count == 0)
             return;
 
-        await using var ctx = await factory.CreateDbContextAsync(ct);
+        await using var ctx = await CreateDbContextAsync(ct);
         foreach (var assignment in assignments)
         {
             ctx.Attach(assignment);
@@ -229,7 +202,7 @@ internal sealed class SystemRoleRepository(IDbContextFactory<AuthDbContext> fact
         Func<string, string> canonicalName,
         CancellationToken ct = default)
     {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
+        await using var ctx = await CreateDbContextAsync(ct);
 
         var sourceRows = await ctx.SystemRoles
             .Where(ra => ra.UserId == sourceUserId)

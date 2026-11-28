@@ -15,9 +15,9 @@ using Microsoft.Extensions.Hosting;
 
 namespace Humans.Notifications;
 
-public sealed class Section : ISection, ISectionChrome, ISectionJobs
+public sealed class Section : SectionBase, ISectionChrome, ISectionJobs
 {
-    public void Register(IServiceCollection services, IConfiguration configuration)
+    public override void Register(IServiceCollection services, IConfiguration configuration)
     {
         services.AddSectionDbContext<NotificationsDbContext>(sentinelTable: "notifications");
 

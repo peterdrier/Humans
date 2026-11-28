@@ -1,15 +1,16 @@
+using Humans.Base.Data;
 using Humans.Rideshare.Domain;
 using Microsoft.EntityFrameworkCore;
 using NodaTime;
 
 namespace Humans.Rideshare.Data;
 
-internal sealed class RideshareRepository(IDbContextFactory<RideshareDbContext> factory) : IRideshareRepository
+internal sealed class RideshareRepository(IDbContextFactory<RideshareDbContext> factory) : SectionRepository<RideshareDbContext>(factory), IRideshareRepository
 {
     public async Task<RideshareEventGraph> GetEventGraphAsync(
         Guid eventSettingsId, CancellationToken ct = default)
     {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
+        await using var ctx = await CreateDbContextAsync(ct);
         var settings = await ctx.Settings.AsNoTracking().FirstOrDefaultAsync(s => s.EventSettingsId == eventSettingsId, ct);
         var trips = await ctx.Trips.AsNoTracking()
             .Include(t => t.Interests)
@@ -22,15 +23,12 @@ internal sealed class RideshareRepository(IDbContextFactory<RideshareDbContext> 
     }
 
     public async Task<RideshareSettings?> GetSettingsAsync(
-        Guid eventSettingsId, CancellationToken ct = default)
-    {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
-        return await ctx.Settings.AsNoTracking().FirstOrDefaultAsync(s => s.EventSettingsId == eventSettingsId, ct);
-    }
+        Guid eventSettingsId, CancellationToken ct = default) =>
+        await RunAsync(ctx => ctx.Settings.AsNoTracking().FirstOrDefaultAsync(s => s.EventSettingsId == eventSettingsId, ct), ct);
 
     public async Task UpsertSettingsAsync(RideshareSettings settings, CancellationToken ct = default)
     {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
+        await using var ctx = await CreateDbContextAsync(ct);
         var existing = await ctx.Settings.FirstOrDefaultAsync(s => s.Id == settings.Id, ct);
         if (existing == null)
         {
@@ -51,23 +49,17 @@ internal sealed class RideshareRepository(IDbContextFactory<RideshareDbContext> 
         await ctx.SaveChangesAsync(ct);
     }
 
-    public async Task<RideshareTrip?> GetTripAsync(Guid id, CancellationToken ct = default)
-    {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
-        return await ctx.Trips.AsNoTracking()
+    public async Task<RideshareTrip?> GetTripAsync(Guid id, CancellationToken ct = default) =>
+        await RunAsync(ctx => ctx.Trips.AsNoTracking()
             .Include(t => t.Interests)
-            .FirstOrDefaultAsync(t => t.Id == id, ct);
-    }
+            .FirstOrDefaultAsync(t => t.Id == id, ct), ct);
 
-    public async Task<RideshareRequest?> GetRequestAsync(Guid id, CancellationToken ct = default)
-    {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
-        return await ctx.Requests.AsNoTracking().FirstOrDefaultAsync(r => r.Id == id, ct);
-    }
+    public async Task<RideshareRequest?> GetRequestAsync(Guid id, CancellationToken ct = default) =>
+        await RunAsync(ctx => ctx.Requests.AsNoTracking().FirstOrDefaultAsync(r => r.Id == id, ct), ct);
 
     public async Task<RideshareInterest?> GetInterestAsync(Guid id, CancellationToken ct = default)
     {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
+        await using var ctx = await CreateDbContextAsync(ct);
         // Interest → Trip → Interests is a cycle, which plain AsNoTracking refuses
         // ("Cycles are not allowed in no-tracking queries"); identity resolution
         // keeps the result detached while letting the seat maths see the siblings.
@@ -79,70 +71,53 @@ internal sealed class RideshareRepository(IDbContextFactory<RideshareDbContext> 
 
     public async Task AddTripsAsync(IReadOnlyList<RideshareTrip> trips, CancellationToken ct = default)
     {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
+        await using var ctx = await CreateDbContextAsync(ct);
         ctx.Trips.AddRange(trips);
         await ctx.SaveChangesAsync(ct);
     }
 
     public async Task UpdateTripAsync(RideshareTrip trip, CancellationToken ct = default)
     {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
+        await using var ctx = await CreateDbContextAsync(ct);
         ctx.Attach(trip);
         ctx.Entry(trip).State = EntityState.Modified;
         await ctx.SaveChangesAsync(ct);
     }
 
-    public async Task AddRequestAsync(RideshareRequest request, CancellationToken ct = default)
-    {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
-        ctx.Requests.Add(request);
-        await ctx.SaveChangesAsync(ct);
-    }
+    public async Task AddRequestAsync(RideshareRequest request, CancellationToken ct = default) =>
+        await InsertAsync(request, ct);
 
     public async Task UpdateRequestAsync(RideshareRequest request, CancellationToken ct = default)
     {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
+        await using var ctx = await CreateDbContextAsync(ct);
         ctx.Attach(request);
         ctx.Entry(request).State = EntityState.Modified;
         await ctx.SaveChangesAsync(ct);
     }
 
-    public async Task AddInterestAsync(RideshareInterest interest, CancellationToken ct = default)
-    {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
-        ctx.Interests.Add(interest);
-        await ctx.SaveChangesAsync(ct);
-    }
+    public async Task AddInterestAsync(RideshareInterest interest, CancellationToken ct = default) =>
+        await InsertAsync(interest, ct);
 
     public async Task UpdateInterestAsync(RideshareInterest interest, CancellationToken ct = default)
     {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
+        await using var ctx = await CreateDbContextAsync(ct);
         ctx.Attach(interest);
         ctx.Entry(interest).State = EntityState.Modified;
         await ctx.SaveChangesAsync(ct);
     }
 
-    public async Task<IReadOnlyList<RideshareTrip>> GetTripsForUserAsync(Guid userId, CancellationToken ct = default)
-    {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
-        return await ctx.Trips.AsNoTracking().Where(t => t.UserId == userId).ToListAsync(ct);
-    }
+    public async Task<IReadOnlyList<RideshareTrip>> GetTripsForUserAsync(Guid userId, CancellationToken ct = default) =>
+        await RunAsync(ctx => ctx.Trips.AsNoTracking().Where(t => t.UserId == userId).ToListAsync(ct), ct);
 
-    public async Task<IReadOnlyList<RideshareRequest>> GetRequestsForUserAsync(Guid userId, CancellationToken ct = default)
-    {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
-        return await ctx.Requests.AsNoTracking().Where(r => r.UserId == userId).ToListAsync(ct);
-    }
+    public async Task<IReadOnlyList<RideshareRequest>> GetRequestsForUserAsync(Guid userId, CancellationToken ct = default) =>
+        await RunAsync(ctx => ctx.Requests.AsNoTracking().Where(r => r.UserId == userId).ToListAsync(ct), ct);
 
-    public async Task<IReadOnlyList<RideshareInterest>> GetInterestsForUserAsync(Guid userId, CancellationToken ct = default)
-    {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
-        return await ctx.Interests.AsNoTracking().Where(i => i.FromUserId == userId).ToListAsync(ct);
-    }
+    public async Task<IReadOnlyList<RideshareInterest>> GetInterestsForUserAsync(Guid userId, CancellationToken ct = default) =>
+        await RunAsync(ctx => ctx.Interests.AsNoTracking().Where(i => i.FromUserId == userId).ToListAsync(ct), ct);
 
     public async Task DeleteUserRowsAsync(Guid userId, CancellationToken ct = default)
     {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
+        await using var ctx = await CreateDbContextAsync(ct);
 
         // Tracked removes rather than ExecuteDelete so the section's EF-InMemory tests
         // exercise the same path.
@@ -169,7 +144,7 @@ internal sealed class RideshareRepository(IDbContextFactory<RideshareDbContext> 
     public async Task ReassignToUserAsync(
         Guid sourceUserId, Guid targetUserId, Instant updatedAt, CancellationToken ct = default)
     {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
+        await using var ctx = await CreateDbContextAsync(ct);
 
         // Every interest the fold can affect: either person's own, plus anyone's on the source's
         // trips or requests (those become self-interest). Navigations loaded so the conflict pass

@@ -64,9 +64,7 @@ public sealed class CampRepositoryTests : IDisposable
 
     public CampRepositoryTests()
     {
-        var options = new DbContextOptionsBuilder<CampsDbContext>()
-            .UseInMemoryDatabase(Guid.NewGuid().ToString())
-            .Options;
+        var options = TestDbOptions.InMemory<CampsDbContext>();
         _dbContext = new CampsDbContext(options);
         _clock = new FakeClock(Instant.FromUtc(2026, 3, 1, 12, 0));
         _repo = new CampRepository(new TestDbContextFactory<CampsDbContext>(options));

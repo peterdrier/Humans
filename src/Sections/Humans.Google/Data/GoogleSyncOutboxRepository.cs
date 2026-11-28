@@ -1,3 +1,5 @@
+using Humans.Base.Data;
+using Humans.Base.Extensions;
 using Humans.Google.Contracts;
 using Microsoft.EntityFrameworkCore;
 using NodaTime;
@@ -5,16 +7,12 @@ using NodaTime;
 namespace Humans.Google.Data;
 
 internal sealed class GoogleSyncOutboxRepository(IDbContextFactory<GoogleIntegrationDbContext> factory)
-    : IGoogleSyncOutboxRepository
+    : SectionRepository<GoogleIntegrationDbContext>(factory), IGoogleSyncOutboxRepository
 {
     private const int LastErrorMaxLength = 4000;
 
-    public async Task AddAsync(GoogleSyncOutboxEvent outboxEvent, CancellationToken ct = default)
-    {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
-        ctx.GoogleSyncOutboxEvents.Add(outboxEvent);
-        await ctx.SaveChangesAsync(ct);
-    }
+    public async Task AddAsync(GoogleSyncOutboxEvent outboxEvent, CancellationToken ct = default) =>
+        await InsertAsync(outboxEvent, ct);
 
     public async Task AddRangeAsync(
         IReadOnlyCollection<GoogleSyncOutboxEvent> outboxEvents,
@@ -23,56 +21,47 @@ internal sealed class GoogleSyncOutboxRepository(IDbContextFactory<GoogleIntegra
         if (outboxEvents.Count == 0)
             return;
 
-        await using var ctx = await factory.CreateDbContextAsync(ct);
+        await using var ctx = await CreateDbContextAsync(ct);
         ctx.GoogleSyncOutboxEvents.AddRange(outboxEvents);
         await ctx.SaveChangesAsync(ct);
     }
 
     public async Task<int> CountFailedAsync(CancellationToken ct = default)
     {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
+        await using var ctx = await CreateDbContextAsync(ct);
         // Dead-lettered events stay in the count, or the badge silently reads zero.
         return await ctx.GoogleSyncOutboxEvents
             .AsNoTracking()
             .CountAsync(e => e.FailedPermanently || (e.ProcessedAt == null && e.LastError != null), ct);
     }
 
-    public async Task<int> CountPendingAsync(CancellationToken ct = default)
-    {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
-        return await ctx.GoogleSyncOutboxEvents
+    public async Task<int> CountPendingAsync(CancellationToken ct = default) =>
+        await RunAsync(ctx => ctx.GoogleSyncOutboxEvents
             .AsNoTracking()
-            .CountAsync(e => e.ProcessedAt == null, ct);
-    }
+            .CountAsync(e => e.ProcessedAt == null, ct), ct);
 
     public async Task<IReadOnlyList<GoogleSyncOutboxEvent>> GetRecentAsync(
-        int take, CancellationToken ct = default)
-    {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
-        return await ctx.GoogleSyncOutboxEvents
+        int take, CancellationToken ct = default) =>
+        await RunAsync(ctx => ctx.GoogleSyncOutboxEvents
             .AsNoTracking()
             .OrderByDescending(e => e.OccurredAt) // arch:db-sort-ok top-N recent-events selector (Take)
             .Take(take)
-            .ToListAsync(ct);
-    }
+            .ToListAsync(ct), ct);
 
     public async Task<IReadOnlyList<GoogleSyncOutboxEvent>> GetProcessingBatchAsync(
-        int batchSize, int maxRetryCount, CancellationToken ct = default)
-    {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
-        return await ctx.GoogleSyncOutboxEvents
+        int batchSize, int maxRetryCount, CancellationToken ct = default) =>
+        await RunAsync(ctx => ctx.GoogleSyncOutboxEvents
             .AsNoTracking()
             .Where(e => e.ProcessedAt == null
                 && !e.FailedPermanently
                 && e.RetryCount < maxRetryCount)
             .OrderBy(e => e.OccurredAt) // arch:db-sort-ok outbox FIFO processing batch (Take)
             .Take(batchSize)
-            .ToListAsync(ct);
-    }
+            .ToListAsync(ct), ct);
 
     public async Task<OutboxRequeue> RequeueAsync(Guid id, CancellationToken ct = default)
     {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
+        await using var ctx = await CreateDbContextAsync(ct);
         var entity = await ctx.GoogleSyncOutboxEvents.FindAsync([id], ct);
         if (entity is null)
             return OutboxRequeue.NotFound;
@@ -89,7 +78,7 @@ internal sealed class GoogleSyncOutboxRepository(IDbContextFactory<GoogleIntegra
 
     public async Task<int> RequeueAllFailedAsync(CancellationToken ct = default)
     {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
+        await using var ctx = await CreateDbContextAsync(ct);
         var failed = await ctx.GoogleSyncOutboxEvents
             .Where(e => e.FailedPermanently)
             .ToListAsync(ct);
@@ -108,7 +97,7 @@ internal sealed class GoogleSyncOutboxRepository(IDbContextFactory<GoogleIntegra
 
     public async Task MarkProcessedAsync(Guid id, Instant processedAt, CancellationToken ct = default)
     {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
+        await using var ctx = await CreateDbContextAsync(ct);
         var entity = await ctx.GoogleSyncOutboxEvents.FindAsync([id], ct);
         if (entity is null)
             return;
@@ -121,14 +110,14 @@ internal sealed class GoogleSyncOutboxRepository(IDbContextFactory<GoogleIntegra
     public async Task MarkPermanentlyFailedAsync(
         Guid id, Instant processedAt, string lastError, CancellationToken ct = default)
     {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
+        await using var ctx = await CreateDbContextAsync(ct);
         var entity = await ctx.GoogleSyncOutboxEvents.FindAsync([id], ct);
         if (entity is null)
             return;
 
         entity.FailedPermanently = true;
         entity.ProcessedAt = processedAt;
-        entity.LastError = StoredGoogleText.Bound(lastError, LastErrorMaxLength);
+        entity.LastError = lastError.Truncate(LastErrorMaxLength);
         await ctx.SaveChangesAsync(ct);
     }
 
@@ -139,13 +128,13 @@ internal sealed class GoogleSyncOutboxRepository(IDbContextFactory<GoogleIntegra
         int maxRetryCount,
         CancellationToken ct = default)
     {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
+        await using var ctx = await CreateDbContextAsync(ct);
         var entity = await ctx.GoogleSyncOutboxEvents.FindAsync([id], ct);
         if (entity is null)
             return (false, 0);
 
         entity.RetryCount += 1;
-        entity.LastError = StoredGoogleText.Bound(lastError, LastErrorMaxLength);
+        entity.LastError = lastError.Truncate(LastErrorMaxLength);
 
         var exhausted = entity.RetryCount >= maxRetryCount;
         if (exhausted)

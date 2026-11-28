@@ -21,13 +21,14 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Localization;
 using Humans.Audit.Contracts;
+using Humans.Events.Controllers;
 
 [assembly: Humans.Base.Demo.NoDemoStory("No demo story written yet.")]
 
 namespace Humans.Events;
 
 public sealed class Section :
-    ISection,
+    SectionBase,
     IUserPart,
     ICampPart,
     ISectionRoles,
@@ -52,7 +53,7 @@ public sealed class Section :
 
     IEnumerable<CampPart> ICampPart.Parts() => [new(typeof(EventsCardViewComponent))];
 
-    public void Register(IServiceCollection services, IConfiguration configuration)
+    public override void Register(IServiceCollection services, IConfiguration configuration)
     {
         EnumBadgeMap.Register(new Dictionary<Enum, string>
         {
@@ -109,12 +110,12 @@ public sealed class Section :
 
     IEnumerable<AdminNavGroup> ISectionAdminNav.Groups() =>
     [
-        new("Events", [
-            new("Dashboard",  "EventsDashboard",  "Index",      null, null, "fa-solid fa-chart-line",    EventsPolicies.Read),
-            new("Moderation", "EventsModeration", "Index",      null, null, "fa-solid fa-gavel",         EventsPolicies.Read),
-            new("Categories", "EventsAdmin",      "Categories", null, null, "fa-solid fa-tags",          EventsPolicies.Read),
-            new("Venues",     "EventsAdmin",      "Venues",     null, null, "fa-solid fa-location-dot",  EventsPolicies.Read),
-            new("Export",     "EventsExport",     "Index",      null, null, "fa-solid fa-file-export",   EventsPolicies.Read)
+        AdminGroup([
+            AdminLink<EventsDashboardController>("Dashboard", nameof(EventsDashboardController.Index), "fa-solid fa-chart-line", EventsPolicies.Read),
+            AdminLink<EventsModerationController>("Moderation", nameof(EventsModerationController.Index), "fa-solid fa-gavel", EventsPolicies.Read),
+            AdminLink<EventsAdminController>("Categories", nameof(EventsAdminController.Categories), "fa-solid fa-tags", EventsPolicies.Read),
+            AdminLink<EventsAdminController>("Venues", nameof(EventsAdminController.Venues), "fa-solid fa-location-dot", EventsPolicies.Read),
+            AdminLink<EventsExportController>("Export", nameof(EventsExportController.Index), "fa-solid fa-file-export", EventsPolicies.Read)
         ])
     ];
 

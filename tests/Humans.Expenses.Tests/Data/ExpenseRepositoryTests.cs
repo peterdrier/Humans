@@ -14,9 +14,7 @@ public class ExpenseRepositoryTests
 
     public ExpenseRepositoryTests()
     {
-        var options = new DbContextOptionsBuilder<ExpensesDbContext>()
-            .UseInMemoryDatabase(Guid.NewGuid().ToString())
-            .Options;
+        var options = TestDbOptions.InMemory<ExpensesDbContext>();
         _factory = new TestDbContextFactory<ExpensesDbContext>(options);
         _sut = new ExpenseRepository(_factory);
     }

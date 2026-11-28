@@ -1,6 +1,7 @@
 using System.Net;
 using System.Text.Json;
 using System.Text.Json.Nodes;
+using Humans.Base.Extensions;
 using Humans.Stripe.Domain;
 using NodaTime;
 // `Stripe` would bind to this section inside its namespaces; see StripeService.cs.
@@ -206,12 +207,12 @@ internal sealed class StripeMirrorClient(IHttpClient? httpClient = null) : IStri
             Net = t.Net,
             Created = Instant.FromDateTimeUtc(DateTime.SpecifyKind(t.Created, DateTimeKind.Utc)),
             AvailableOn = Instant.FromDateTimeUtc(DateTime.SpecifyKind(t.AvailableOn, DateTimeKind.Utc)),
-            Description = Clip(t.Description, 1000),
+            Description = t.Description?.Truncate(1000),
             SourceId = t.SourceId,
             PayoutId = string.Equals(t.Type, "payout", StringComparison.Ordinal) ? t.SourceId : payoutId,
             PaymentIntentId = paymentIntentId,
-            CustomerName = Clip(name, 256),
-            CustomerEmail = Clip(email, 256),
+            CustomerName = name?.Truncate(256),
+            CustomerEmail = email?.Truncate(256),
             Metadata = metadata is { Count: > 0 } ? JsonSerializer.Serialize(metadata) : null,
             Raw = RawWithSourceId(t),
         };
@@ -231,14 +232,6 @@ internal sealed class StripeMirrorClient(IHttpClient? httpClient = null) : IStri
     private static string? Meta(Dictionary<string, string>? metadata, string key) =>
         metadata is not null && metadata.TryGetValue(key, out var v) ? NonBlank(v) : null;
 
-    internal static string? Clip(string? value, int max)
-    {
-        if (value is null || value.Length <= max) return value;
-        var length = max;
-        if (char.IsHighSurrogate(value[length - 1]) && char.IsLowSurrogate(value[length]))
-            length--;
-        return value[..length];
-    }
 
     private static StripePayout ToPayout(string accountId, Payout p) => new()
     {
@@ -253,7 +246,7 @@ internal sealed class StripeMirrorClient(IHttpClient? httpClient = null) : IStri
         ArrivalDate = Instant.FromDateTimeUtc(DateTime.SpecifyKind(p.ArrivalDate, DateTimeKind.Utc)),
         BalanceTransactionId = p.BalanceTransactionId,
         FailureCode = p.FailureCode,
-        FailureMessage = Clip(p.FailureMessage, 1000),
+        FailureMessage = p.FailureMessage?.Truncate(1000),
         StatementDescriptor = p.StatementDescriptor,
     };
 

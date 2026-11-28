@@ -1,22 +1,20 @@
+using Humans.Base.Data;
 using Humans.Workgroups.Domain;
 using Microsoft.EntityFrameworkCore;
 using NodaTime;
 
 namespace Humans.Workgroups.Data;
 
-internal sealed class WorkgroupRepository(IDbContextFactory<WorkgroupsDbContext> factory) : IWorkgroupRepository
+internal sealed class WorkgroupRepository(IDbContextFactory<WorkgroupsDbContext> factory) : SectionRepository<WorkgroupsDbContext>(factory), IWorkgroupRepository
 {
-    public async Task<string?> GetRootDriveFolderIdAsync(CancellationToken ct = default)
-    {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
-        return await ctx.Settings.AsNoTracking()
+    public async Task<string?> GetRootDriveFolderIdAsync(CancellationToken ct = default) =>
+        await RunAsync(ctx => ctx.Settings.AsNoTracking()
             .Where(s => s.Id == WorkgroupsSettings.SingletonId)
-            .Select(s => s.RootDriveFolderId).SingleOrDefaultAsync(ct);
-    }
+            .Select(s => s.RootDriveFolderId).SingleOrDefaultAsync(ct), ct);
 
     public async Task SetRootDriveFolderIdAsync(string folderId, CancellationToken ct = default)
     {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
+        await using var ctx = await CreateDbContextAsync(ct);
         var setting = await ctx.Settings.SingleOrDefaultAsync(s => s.Id == WorkgroupsSettings.SingletonId, ct);
         if (setting is null)
             ctx.Settings.Add(new WorkgroupsSettings { RootDriveFolderId = folderId });
@@ -27,65 +25,43 @@ internal sealed class WorkgroupRepository(IDbContextFactory<WorkgroupsDbContext>
 
     public async Task<WorkgroupsGraph> GetGraphAsync(CancellationToken ct = default)
     {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
+        await using var ctx = await CreateDbContextAsync(ct);
         // Identity resolution rather than plain AsNoTracking: the child back-references make the graph cyclic.
         var workgroups = await Register(ctx).ToListAsync(ct);
         return new WorkgroupsGraph(workgroups);
     }
 
-    public async Task<Workgroup?> GetWorkgroupAsync(Guid id, CancellationToken ct = default)
-    {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
-        return await Register(ctx).FirstOrDefaultAsync(w => w.Id == id, ct);
-    }
+    public async Task<Workgroup?> GetWorkgroupAsync(Guid id, CancellationToken ct = default) =>
+        await RunAsync(ctx => Register(ctx).FirstOrDefaultAsync(w => w.Id == id, ct), ct);
 
-    public async Task<bool> SlugTakenAsync(string slug, Guid? exceptId = null, CancellationToken ct = default)
-    {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
-        return await ctx.Workgroups.AsNoTracking()
-            .AnyAsync(w => w.Slug == slug && (exceptId == null || w.Id != exceptId), ct);
-    }
+    public async Task<bool> SlugTakenAsync(string slug, Guid? exceptId = null, CancellationToken ct = default) =>
+        await RunAsync(ctx => ctx.Workgroups.AsNoTracking()
+            .AnyAsync(w => w.Slug == slug && (exceptId == null || w.Id != exceptId), ct), ct);
 
-    public async Task<WorkgroupMeeting?> GetMeetingAsync(Guid id, CancellationToken ct = default)
-    {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
-        return await ctx.Meetings.AsNoTracking().FirstOrDefaultAsync(m => m.Id == id, ct);
-    }
+    public async Task<WorkgroupMeeting?> GetMeetingAsync(Guid id, CancellationToken ct = default) =>
+        await RunAsync(ctx => ctx.Meetings.AsNoTracking().FirstOrDefaultAsync(m => m.Id == id, ct), ct);
 
-    public async Task<WorkgroupLogEntry?> GetLogEntryAsync(Guid id, CancellationToken ct = default)
-    {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
-        return await ctx.LogEntries.AsNoTracking().FirstOrDefaultAsync(e => e.Id == id, ct);
-    }
+    public async Task<WorkgroupLogEntry?> GetLogEntryAsync(Guid id, CancellationToken ct = default) =>
+        await RunAsync(ctx => ctx.LogEntries.AsNoTracking().FirstOrDefaultAsync(e => e.Id == id, ct), ct);
 
-    public async Task<WorkgroupDocument?> GetDocumentAsync(Guid id, CancellationToken ct = default)
-    {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
-        return await ctx.Documents.AsNoTrackingWithIdentityResolution()
+    public async Task<WorkgroupDocument?> GetDocumentAsync(Guid id, CancellationToken ct = default) =>
+        await RunAsync(ctx => ctx.Documents.AsNoTrackingWithIdentityResolution()
             .Include(d => d.Comments)
-            .FirstOrDefaultAsync(d => d.Id == id, ct);
-    }
+            .FirstOrDefaultAsync(d => d.Id == id, ct), ct);
 
-    public async Task<WorkgroupDocumentComment?> GetCommentAsync(Guid id, CancellationToken ct = default)
-    {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
-        return await ctx.Comments.AsNoTrackingWithIdentityResolution()
+    public async Task<WorkgroupDocumentComment?> GetCommentAsync(Guid id, CancellationToken ct = default) =>
+        await RunAsync(ctx => ctx.Comments.AsNoTrackingWithIdentityResolution()
             .Include(c => c.Document)
-            .FirstOrDefaultAsync(c => c.Id == id, ct);
-    }
+            .FirstOrDefaultAsync(c => c.Id == id, ct), ct);
 
-    public async Task AddWorkgroupAsync(Workgroup workgroup, CancellationToken ct = default)
-    {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
-        ctx.Workgroups.Add(workgroup);
-        await ctx.SaveChangesAsync(ct);
-    }
+    public async Task AddWorkgroupAsync(Workgroup workgroup, CancellationToken ct = default) =>
+        await InsertAsync(workgroup, ct);
 
     public async Task UpdateWorkgroupAsync(
         Workgroup workgroup, CancellationToken ct = default, IReadOnlyList<WorkgroupLogEntry>? logEntries = null,
         IReadOnlyList<WorkgroupMember>? membersToUpdate = null)
     {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
+        await using var ctx = await CreateDbContextAsync(ct);
         ctx.Attach(workgroup);
         ctx.Entry(workgroup).State = EntityState.Modified;
         if (membersToUpdate is not null)
@@ -98,7 +74,7 @@ internal sealed class WorkgroupRepository(IDbContextFactory<WorkgroupsDbContext>
     public async Task AddMemberAsync(
         WorkgroupMember member, CancellationToken ct = default, IReadOnlyList<WorkgroupLogEntry>? logEntries = null)
     {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
+        await using var ctx = await CreateDbContextAsync(ct);
         ctx.Members.Add(member);
         if (logEntries is not null) ctx.LogEntries.AddRange(logEntries);
         await ctx.SaveChangesAsync(ct);
@@ -108,7 +84,7 @@ internal sealed class WorkgroupRepository(IDbContextFactory<WorkgroupsDbContext>
         IReadOnlyList<WorkgroupMember> members, CancellationToken ct = default,
         IReadOnlyList<WorkgroupLogEntry>? logEntries = null)
     {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
+        await using var ctx = await CreateDbContextAsync(ct);
         foreach (var member in members)
         {
             ctx.Attach(member);
@@ -118,31 +94,23 @@ internal sealed class WorkgroupRepository(IDbContextFactory<WorkgroupsDbContext>
         await ctx.SaveChangesAsync(ct);
     }
 
-    public async Task AddMeetingAsync(WorkgroupMeeting meeting, CancellationToken ct = default)
-    {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
-        ctx.Meetings.Add(meeting);
-        await ctx.SaveChangesAsync(ct);
-    }
+    public async Task AddMeetingAsync(WorkgroupMeeting meeting, CancellationToken ct = default) =>
+        await InsertAsync(meeting, ct);
 
     public async Task UpdateMeetingAsync(WorkgroupMeeting meeting, CancellationToken ct = default)
     {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
+        await using var ctx = await CreateDbContextAsync(ct);
         ctx.Attach(meeting);
         ctx.Entry(meeting).State = EntityState.Modified;
         await ctx.SaveChangesAsync(ct);
     }
 
-    public async Task AddLogEntryAsync(WorkgroupLogEntry entry, CancellationToken ct = default)
-    {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
-        ctx.LogEntries.Add(entry);
-        await ctx.SaveChangesAsync(ct);
-    }
+    public async Task AddLogEntryAsync(WorkgroupLogEntry entry, CancellationToken ct = default) =>
+        await InsertAsync(entry, ct);
 
     public async Task UpdateLogEntryAsync(WorkgroupLogEntry entry, CancellationToken ct = default)
     {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
+        await using var ctx = await CreateDbContextAsync(ct);
         ctx.Attach(entry);
         ctx.Entry(entry).State = EntityState.Modified;
         await ctx.SaveChangesAsync(ct);
@@ -150,7 +118,7 @@ internal sealed class WorkgroupRepository(IDbContextFactory<WorkgroupsDbContext>
 
     public async Task DeleteLogEntryAsync(Guid id, CancellationToken ct = default)
     {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
+        await using var ctx = await CreateDbContextAsync(ct);
         // Tracked remove rather than ExecuteDelete, so the EF-InMemory tests exercise the same path.
         var entry = await ctx.LogEntries.FirstOrDefaultAsync(e => e.Id == id, ct);
         if (entry == null)
@@ -160,34 +128,26 @@ internal sealed class WorkgroupRepository(IDbContextFactory<WorkgroupsDbContext>
         await ctx.SaveChangesAsync(ct);
     }
 
-    public async Task AddDocumentAsync(WorkgroupDocument document, CancellationToken ct = default)
-    {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
-        ctx.Documents.Add(document);
-        await ctx.SaveChangesAsync(ct);
-    }
+    public async Task AddDocumentAsync(WorkgroupDocument document, CancellationToken ct = default) =>
+        await InsertAsync(document, ct);
 
     public async Task UpdateDocumentAsync(
         WorkgroupDocument document, CancellationToken ct = default, IReadOnlyList<WorkgroupLogEntry>? logEntries = null)
     {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
+        await using var ctx = await CreateDbContextAsync(ct);
         ctx.Attach(document);
         ctx.Entry(document).State = EntityState.Modified;
         if (logEntries is not null) ctx.LogEntries.AddRange(logEntries);
         await ctx.SaveChangesAsync(ct);
     }
 
-    public async Task AddCommentAsync(WorkgroupDocumentComment comment, CancellationToken ct = default)
-    {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
-        ctx.Comments.Add(comment);
-        await ctx.SaveChangesAsync(ct);
-    }
+    public async Task AddCommentAsync(WorkgroupDocumentComment comment, CancellationToken ct = default) =>
+        await InsertAsync(comment, ct);
 
     public async Task UpdateCommentsAsync(
         IReadOnlyList<WorkgroupDocumentComment> comments, CancellationToken ct = default)
     {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
+        await using var ctx = await CreateDbContextAsync(ct);
         foreach (var comment in comments)
         {
             ctx.Attach(comment);
@@ -198,7 +158,7 @@ internal sealed class WorkgroupRepository(IDbContextFactory<WorkgroupsDbContext>
 
     public async Task<WorkgroupUserRows> GetRowsForUserAsync(Guid userId, CancellationToken ct = default)
     {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
+        await using var ctx = await CreateDbContextAsync(ct);
 
         // EraseUserAsync nulls the applicant attribution, so it must be exportable too.
         var appliedFor = await ctx.Workgroups.AsNoTracking()
@@ -227,7 +187,7 @@ internal sealed class WorkgroupRepository(IDbContextFactory<WorkgroupsDbContext>
 
     public async Task EraseUserAsync(Guid userId, Instant now, CancellationToken ct = default)
     {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
+        await using var ctx = await CreateDbContextAsync(ct);
 
         var memberships = await ctx.Members.Where(m => m.UserId == userId).ToListAsync(ct);
         ctx.Members.RemoveRange(memberships);
@@ -280,7 +240,7 @@ internal sealed class WorkgroupRepository(IDbContextFactory<WorkgroupsDbContext>
     public async Task ReassignToUserAsync(
         Guid sourceUserId, Guid targetUserId, Instant now, CancellationToken ct = default)
     {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
+        await using var ctx = await CreateDbContextAsync(ct);
 
         foreach (var w in await ctx.Workgroups.Where(w => w.AppliedByUserId == sourceUserId).ToListAsync(ct))
         {

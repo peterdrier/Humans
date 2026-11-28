@@ -5,17 +5,18 @@ using Humans.Audit.Services;
 using Microsoft.EntityFrameworkCore;
 using Humans.Audit.Contracts;
 using NodaTime;
+using Humans.Base.Data;
 
 namespace Humans.Audit.Data;
 
-internal sealed class AuditLogRepository(IDbContextFactory<AuditLogDbContext> factory) : IAuditLogRepository
+internal sealed class AuditLogRepository(IDbContextFactory<AuditLogDbContext> factory) : SectionRepository<AuditLogDbContext>(factory), IAuditLogRepository
 {
     public async Task AddAsync(AuditLogEntrySnapshot entry, CancellationToken ct = default)
     {
         // A fresh context still enlists in ambient transactions; audit owns its commit.
         using var scope = new TransactionScope(TransactionScopeOption.Suppress,
             TransactionScopeAsyncFlowOption.Enabled);
-        await using var ctx = await factory.CreateDbContextAsync(ct);
+        await using var ctx = await CreateDbContextAsync(ct);
         switch (entry.Kept)
         {
             case AuditKept.Forever:
@@ -115,7 +116,7 @@ internal sealed class AuditLogRepository(IDbContextFactory<AuditLogDbContext> fa
     public async Task<(IReadOnlyList<AuditLogEntrySnapshot> Items, int TotalCount, IReadOnlyDictionary<string, int> AlertCounts)> GetFilteredAsync(
         string? actionFilter, IReadOnlyList<string> alertActions, int page, int pageSize, CancellationToken ct = default)
     {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
+        await using var ctx = await CreateDbContextAsync(ct);
 
         var query = Rows(ctx);
 
@@ -143,7 +144,7 @@ internal sealed class AuditLogRepository(IDbContextFactory<AuditLogDbContext> fa
         if (userIds.Count == 0)
             return [];
 
-        await using var ctx = await factory.CreateDbContextAsync(ct);
+        await using var ctx = await CreateDbContextAsync(ct);
         return await ToSnapshotsAsync(Rows(ctx)
             .Where(e =>
                 (e.SubjectType == AuditSubjectTypes.User && userIds.Contains(e.SubjectId)) ||
@@ -162,7 +163,7 @@ internal sealed class AuditLogRepository(IDbContextFactory<AuditLogDbContext> fa
         bool includeTargets = false,
         CancellationToken ct = default)
     {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
+        await using var ctx = await CreateDbContextAsync(ct);
 
         var query = Rows(ctx);
 
@@ -195,7 +196,7 @@ internal sealed class AuditLogRepository(IDbContextFactory<AuditLogDbContext> fa
         if (userIds.Count == 0)
             return [];
 
-        await using var ctx = await factory.CreateDbContextAsync(ct);
+        await using var ctx = await CreateDbContextAsync(ct);
         return await ToSnapshotsAsync(Rows(ctx)
             .Where(a =>
                 userIds.Contains(a.SubjectId) ||
@@ -207,7 +208,7 @@ internal sealed class AuditLogRepository(IDbContextFactory<AuditLogDbContext> fa
 
     public async Task<int> DeleteTemporaryBeforeAsync(Instant cutoff, CancellationToken ct = default)
     {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
+        await using var ctx = await CreateDbContextAsync(ct);
         var old = await ctx.TemporaryAuditLogEntries.Where(e => e.OccurredAt < cutoff).ToListAsync(ct);
         ctx.TemporaryAuditLogEntries.RemoveRange(old);
         await ctx.SaveChangesAsync(ct);
@@ -216,7 +217,7 @@ internal sealed class AuditLogRepository(IDbContextFactory<AuditLogDbContext> fa
 
     public async Task<int> DeleteTemporaryForUserAsync(Guid userId, CancellationToken ct = default)
     {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
+        await using var ctx = await CreateDbContextAsync(ct);
         var rows = await ctx.TemporaryAuditLogEntries
             .Where(e => e.SubjectId == userId || e.TargetId == userId || e.ActorUserId == userId)
             .ToListAsync(ct);
@@ -225,14 +226,11 @@ internal sealed class AuditLogRepository(IDbContextFactory<AuditLogDbContext> fa
         return rows.Count;
     }
 
-    public async Task<IReadOnlyList<AuditLogEntry>> GetLegacyGoogleSyncEntriesAsync(CancellationToken ct = default)
-    {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
-        return await ctx.AuditLogEntries
+    public async Task<IReadOnlyList<AuditLogEntry>> GetLegacyGoogleSyncEntriesAsync(CancellationToken ct = default) =>
+        await RunAsync(ctx => ctx.AuditLogEntries
             .AsNoTracking()
             .Where(e => e.ResourceId != null)
             // arch:db-sort-ok one-time migration reads the whole set in order
             .OrderBy(e => e.OccurredAt)
-            .ToListAsync(ct);
-    }
+            .ToListAsync(ct), ct);
 }

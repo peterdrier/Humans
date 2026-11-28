@@ -5,11 +5,14 @@ using Humans.EarlyEntry.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Humans.EarlyEntry.Controllers;
 
 namespace Humans.EarlyEntry;
 
-public sealed class Section : ISection, ISectionRoles, ISectionAdminNav, ISectionPolicies
+public sealed class Section : SectionBase, ISectionRoles, ISectionAdminNav, ISectionPolicies
 {
+    public override string DisplayName => "Early Entry";
+
     IReadOnlyList<RoleDefinition> ISectionRoles.Roles { get; } =
     [
         new(EarlyEntryRoles.EarlyEntryAdmin, "Early Entry Admin",
@@ -18,7 +21,7 @@ public sealed class Section : ISection, ISectionRoles, ISectionAdminNav, ISectio
             FormerNames: ["EETeamAdmin"]),
     ];
 
-    public void Register(IServiceCollection services, IConfiguration configuration)
+    public override void Register(IServiceCollection services, IConfiguration configuration)
     {
         // Scoped and uncached: fresh every request, so no contributing section has to evict anything.
         services.AddScoped<IEarlyEntryService, EarlyEntryService>();
@@ -30,8 +33,8 @@ public sealed class Section : ISection, ISectionRoles, ISectionAdminNav, ISectio
 
     IEnumerable<AdminNavGroup> ISectionAdminNav.Groups() =>
     [
-        new("Early Entry", [
-            new("Early entry", "EarlyEntryRoster", "Index", null, null, "fa-solid fa-door-open", EarlyEntryPolicies.Roster)
+        AdminGroup([
+            AdminLink<EarlyEntryRosterController>("Early entry", nameof(EarlyEntryRosterController.Index), "fa-solid fa-door-open", EarlyEntryPolicies.Roster)
         ])
     ];
 }
