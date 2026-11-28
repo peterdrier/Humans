@@ -76,6 +76,27 @@
             </li>
 
             <li><hr class="dropdown-divider" /></li>
+            <li><h6 class="dropdown-header">@Localizer["Nav_HighContrast"]</h6></li>
+            @foreach (var (value, setting, labelKey) in new (string, bool?, string)[]
+                     {
+                         ("auto", null, "Nav_HighContrast_Device"),
+                         ("on", true, "Nav_HighContrast_On"),
+                         ("off", false, "Nav_HighContrast_Off"),
+                     })
+            {
+                var isCurrent = currentUser?.HighContrast == setting;
+                <li>
+                    <form asp-controller="Profile" asp-action="SetHighContrast" method="post">
+                        <input type="hidden" name="value" value="@value" />
+                        <input type="hidden" name="returnUrl" value="@(Context.Request.Path + Context.Request.QueryString)" />
+                        <button type="submit" class="dropdown-item d-flex align-items-center gap-2" aria-pressed="@(isCurrent ? "true" : "false")">
+                            <i class="fa-solid fa-check fa-fw @(isCurrent ? "" : "invisible")" aria-hidden="true"></i> @Localizer[labelKey]
+                        </button>
+                    </form>
+                </li>
+            }
+
+            <li><hr class="dropdown-divider" /></li>
 
             <!-- Logout -->
             <li>

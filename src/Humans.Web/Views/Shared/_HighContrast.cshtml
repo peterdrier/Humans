@@ -1,0 +1,17 @@
+@inject IUserService ContrastUserService
+@{
+    bool? highContrast = null;
+    if (User.GetUserId() is { } contrastUserId)
+    {
+        highContrast = (await ContrastUserService.GetUserInfoAsync(contrastUserId))?.HighContrast;
+    }
+    var choice = highContrast switch { true => "high", false => "normal", null => "" };
+}
+<link rel="stylesheet" href="~/css/high-contrast.css" asp-append-version="true" />
+@* In the head so the page never paints in the wrong colours first. An empty choice follows the device. *@
+<script>
+    (function (choice) {
+        var high = choice === 'high' || (choice === '' && window.matchMedia('(prefers-contrast: more)').matches);
+        if (high) document.documentElement.dataset.contrast = 'high';
+    })('@choice');
+</script>

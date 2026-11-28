@@ -147,6 +147,7 @@ internal sealed class UserInfoSaveChangesInterceptor(
             FirstName = user.FirstName,
             LastName = user.LastName,
             PreferredLanguage = user.PreferredLanguage,
+            HighContrast = user.HighContrast,
             ProfilePictureUrl = user.ProfilePictureUrl,
             CreatedAt = user.CreatedAt,
             LastSignInAt = user.LastSignInAt,

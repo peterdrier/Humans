@@ -32,6 +32,7 @@
     <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
     <link rel="stylesheet" href="~/css/admin-shell.css" asp-append-version="true" />
     @await RenderSectionAsync("Styles", required: false)
+    <partial name="_HighContrast" />
 </head>
 <body class="admin-shell">
     <environment exclude="Production">

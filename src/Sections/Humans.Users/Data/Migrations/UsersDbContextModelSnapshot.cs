@@ -81,6 +81,9 @@ namespace Humans.Users.Data.Migrations
                         .HasColumnType("character varying(256)")
                         .HasColumnName("GoogleEmail");
 
+                    b.Property<bool?>("HighContrast")
+                        .HasColumnType("boolean");
+
                     b.Property<string>("LastName")
                         .HasMaxLength(256)
                         .HasColumnType("character varying(256)");

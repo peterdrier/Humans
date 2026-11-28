@@ -1,0 +1,135 @@
+/* ==========================================================================
+   High contrast: black on white, for members who switch it on or whose device asks for more
+   contrast. _HighContrast.cshtml sets html[data-contrast="high"]. Loaded last so it beats section
+   styles. Status colours collapse to black, so meaning must never rest on colour alone.
+   ========================================================================== */
+
+/* Tokens first: every rule that reads a token follows without an override. */
+html[data-contrast="high"] {
+  --h-parchment: #fff;
+  --h-parchment-light: #fff;
+  --h-parchment-dark: #fff;
+  --h-warm-white: #fff;
+  --h-vellum: #fff;
+  --h-bg-elevated: #fff;
+  --h-blue-muted: #fff;
+  --h-aged-ink: #000;
+  --h-aged-ink-light: #000;
+  --h-umber: #000;
+  --h-sepia: #000;
+  --h-sepia-light: #000;
+  --h-gold: #000;
+  --h-gold-light: #000;
+  --h-gold-dark: #000;
+  --h-amber: #000;
+  --h-amber-dark: #000;
+  --h-amber-light: #000;
+  --h-rust: #000;
+  --h-sage: #000;
+  --h-sage-dark: #000;
+  --h-border: #000;
+  --h-border-light: #000;
+  --h-field-border: #000;
+  --h-muted-text: #000;
+  --h-chip-text: #000;
+  --h-alert-warning-bg: #fff;
+  --h-alert-info-bg: #fff;
+  --h-alert-success-bg: #fff;
+  --h-alert-danger-bg: #fff;
+  --h-alert-warning-text: #000;
+  --h-alert-info-text: #000;
+  --h-alert-success-text: #000;
+  --h-alert-danger-text: #000;
+  --h-font-display: var(--h-font-body);
+  --h-grain: none;
+  --h-shadow-sm: none;
+  --h-shadow: none;
+  --h-shadow-lg: none;
+  --bs-body-color: #000;
+  --bs-body-bg: #fff;
+  --bs-secondary-color: #000;
+  --bs-tertiary-color: #000;
+  --bs-border-color: #000;
+  --bs-link-color: #000;
+  --bs-link-color-rgb: 0, 0, 0;
+}
+
+/* Hard-coded colours anywhere still come out black on white. */
+html[data-contrast="high"] body,
+html[data-contrast="high"] body * {
+  color: #000 !important;
+  background-color: #fff !important;
+  border-color: #000 !important;
+  text-shadow: none !important;
+  box-shadow: none !important;
+}
+
+html[data-contrast="high"] body {
+  background-image: none !important;
+}
+
+html[data-contrast="high"] :is(.card, .card-shell, .frame, .alert, .dropdown-menu, .form-control, .form-select, .list-group-item) {
+  border-width: 2px !important;
+  border-style: solid !important;
+}
+
+html[data-contrast="high"] .badge {
+  border: 1px solid #000 !important;
+}
+
+html[data-contrast="high"] a:not(.btn, .nav-link, .dropdown-item, .navbar-brand) {
+  text-decoration: underline !important;
+  text-decoration-thickness: 2px !important;
+}
+
+html[data-contrast="high"] .btn {
+  border: 2px solid #000 !important;
+  font-weight: 600;
+}
+
+html[data-contrast="high"] ::placeholder {
+  color: #444 !important;
+}
+
+/* Inverted: the header band, primary actions and selected states read as solid black. :where keeps
+   these at the specificity of the black-on-white rule above, so the header's menus below can win. */
+html[data-contrast="high"] body :where(.navbar, .bg-dark, .btn-primary, .btn.active, .btn-check:checked + .btn,
+  .dropdown-item.active, .nav-pills .nav-link.active, .page-item.active .page-link, .progress-bar,
+  .form-check-input:checked, .tooltip-inner),
+html[data-contrast="high"] body :where(.navbar, .bg-dark, .btn-primary, .btn.active, .btn-check:checked + .btn,
+  .dropdown-item.active, .nav-pills .nav-link.active, .page-item.active .page-link, .progress-bar) * {
+  background-color: #000 !important;
+  color: #fff !important;
+  border-color: #fff !important;
+}
+
+html[data-contrast="high"] body .form-check-input:checked {
+  border-color: #000 !important;
+}
+
+/* Menus open out of the header band and stay black on white. */
+html[data-contrast="high"] body .navbar .dropdown-menu,
+html[data-contrast="high"] body .navbar .dropdown-menu * {
+  background-color: #fff !important;
+  color: #000 !important;
+  border-color: #000 !important;
+}
+
+html[data-contrast="high"] body .navbar .dropdown-menu .dropdown-item.active,
+html[data-contrast="high"] body .navbar .dropdown-menu .dropdown-item.active * {
+  background-color: #000 !important;
+  color: #fff !important;
+}
+
+html[data-contrast="high"] :focus-visible {
+  outline: 3px solid #000 !important;
+  outline-offset: 2px !important;
+}
+
+html[data-contrast="high"] .navbar :focus-visible {
+  outline-color: #fff !important;
+}
+
+html[data-contrast="high"] .navbar .dropdown-menu :focus-visible {
+  outline-color: #000 !important;
+}

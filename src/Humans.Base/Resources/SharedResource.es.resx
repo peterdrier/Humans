@@ -1068,6 +1068,18 @@
   <data name="Nav_Guide" xml:space="preserve">
     <value>Ayuda</value>
   </data>
+  <data name="Nav_HighContrast" xml:space="preserve">
+    <value>Alto contraste</value>
+  </data>
+  <data name="Nav_HighContrast_Device" xml:space="preserve">
+    <value>Según mi dispositivo</value>
+  </data>
+  <data name="Nav_HighContrast_On" xml:space="preserve">
+    <value>Activado</value>
+  </data>
+  <data name="Nav_HighContrast_Off" xml:space="preserve">
+    <value>Desactivado</value>
+  </data>
   <data name="Privacy_Lead" xml:space="preserve">
     <value>Humans gestiona la membresía de Nobodies Collective y procesa datos personales conforme al RGPD y la ley española de protección de datos (LOPDGDD).</value>
   </data>

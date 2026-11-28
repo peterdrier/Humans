@@ -58,14 +58,32 @@ public class PreferredLanguageCalculatorTests
         result.Select(l => l.Language).Should().Equal("en", "es");
     }
 
+    [HumansFact]
+    public void CountHighContrast_SplitsByChoice_SkipsSuspended()
+    {
+        var snapshot = new List<UserInfo>
+        {
+            MakeUserInfo(Guid.NewGuid(), "en", highContrast: true),
+            MakeUserInfo(Guid.NewGuid(), "en", highContrast: false),
+            MakeUserInfo(Guid.NewGuid(), "en"),
+            MakeUserInfo(Guid.NewGuid(), "en"),
+            MakeUserInfo(Guid.NewGuid(), "en", UserState.Suspended, highContrast: true),
+        };
+
+        PreferredLanguageCalculator.CountHighContrast(snapshot)
+            .Should().Be(new HighContrastCount(On: 1, Off: 1, Device: 2));
+    }
+
     private static UserInfo MakeUserInfo(
-        Guid id, string preferredLanguage, UserState state = UserState.Active) => UserInfoFactory.Create(
+        Guid id, string preferredLanguage, UserState state = UserState.Active, bool? highContrast = null) =>
+        UserInfoFactory.Create(
         user: new User
         {
             Id = id,
             DisplayName = "U",
             PreferredLanguage = preferredLanguage,
             State = state,
+            HighContrast = highContrast,
             CreatedAt = Instant.FromUtc(2026, 1, 1, 0, 0),
         },
         userEmails: [],

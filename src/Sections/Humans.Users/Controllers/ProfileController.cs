@@ -265,4 +265,24 @@ internal sealed class ProfileController(
             return View(model);
         }
     }
+
+    /// <summary>The header's display switch: "on", "off", or anything else to follow the device.</summary>
+    [HttpPost("Me/HighContrast")]
+    [ValidateAntiForgeryToken]
+    [AllowBeforeActiveMembership]
+    public async Task<IActionResult> SetHighContrast(string? value, string? returnUrl, CancellationToken ct)
+    {
+        if (GetCurrentUserId() is not { } userId)
+            return NotFound();
+
+        bool? highContrast = value switch
+        {
+            "on" => true,
+            "off" => false,
+            _ => null,
+        };
+        await _userService.SetHighContrastAsync(userId, highContrast, ct);
+
+        return Url.IsLocalUrl(returnUrl) ? LocalRedirect(returnUrl) : RedirectToAction(nameof(Me));
+    }
 }

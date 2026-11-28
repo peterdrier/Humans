@@ -51,6 +51,7 @@
     <link rel="stylesheet" href="~/css/tokens.css" asp-append-version="true" />
     <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
     @await RenderSectionAsync("Styles", required: false)
+    <partial name="_HighContrast" />
 </head>
 <body class="@(ViewData["BodyClass"])">
     <environment exclude="Production">

@@ -51,6 +51,19 @@ internal sealed class UserRepository : SectionRepository<UsersDbContext>, IUserR
         return true;
     }
 
+    public async Task<bool> SetHighContrastAsync(
+        Guid userId, bool? highContrast, CancellationToken ct = default)
+    {
+        await using var ctx = await CreateDbContextAsync(ct);
+        var user = await ctx.Users.FindAsync([userId], ct);
+        if (user is null)
+            return false;
+
+        user.HighContrast = highContrast;
+        await ctx.SaveChangesAsync(ct);
+        return true;
+    }
+
     public async Task<bool> SetLastSignInAsync(
         Guid userId, Instant at, CancellationToken ct = default)
     {
@@ -188,6 +201,7 @@ internal sealed class UserRepository : SectionRepository<UsersDbContext>, IUserR
         ctx.Entry(user).Property("NormalizedEmail").CurrentValue = tombstoneAddress.ToUpperInvariant();
 
         user.ProfilePictureUrl = null;
+        user.HighContrast = null;
         user.PhoneNumber = null;
         user.PhoneNumberConfirmed = false;
 
@@ -324,6 +338,7 @@ internal sealed class UserRepository : SectionRepository<UsersDbContext>, IUserR
         ctx.Entry(user).Property("NormalizedEmail").CurrentValue = tombstoneAddress.ToUpperInvariant();
 
         user.ProfilePictureUrl = null;
+        user.HighContrast = null;
         user.PhoneNumber = null;
         user.PhoneNumberConfirmed = false;
 
