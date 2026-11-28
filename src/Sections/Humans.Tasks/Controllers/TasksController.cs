@@ -60,6 +60,23 @@ internal sealed class TasksController(
             access.PlacesOn(shown), access.BlockersOn(shown, all)));
     }
 
+    /// <summary>The same visibility and filters as the lists; a team's own view is the team filter.</summary>
+    [HttpGet("Timeline")]
+    public async Task<IActionResult> Timeline([FromQuery] TaskListFilter filter, CancellationToken ct)
+    {
+        if (await AccessAsync(ct) is not { } access) return Unauthorized();
+
+        var all = await tasks.GetTasksAsync(ct);
+        var listed = tasks.Listed(all, filter.ToScope()).Where(access.CanSee).ToList();
+        var teamChoices = TeamsOf(listed);
+        var statuses = TaskRowFilter.StatusChoices(withFinished: true);
+        filter.Undated = false;
+        filter.DropUnoffered(teamChoices, statuses);
+        var shown = TaskRowOrder.Order(listed.Where(filter.Matches)).ToList();
+        return View(new TimelinePageViewModel(
+            filter, await EventsAsync(currentEventId: null, ct), teamChoices, statuses, TaskTimeline.Build(shown, all, access.CanSee)));
+    }
+
     [HttpGet("Team/{slug}")]
     public async Task<IActionResult> Team(string slug, [FromQuery] TaskListFilter filter, CancellationToken ct)
     {

@@ -56,5 +56,12 @@
             <label class="form-check-label" for="filter-finished">@Localizer["Tasks_Filter_Finished"]</label>
         </div>
     }
+    @if (Model.OfferUndated)
+    {
+        <div class="form-check mb-2">
+            <input type="checkbox" class="form-check-input" id="filter-undated" name="Undated" value="true" checked="@Model.Filter.Undated" />
+            <label class="form-check-label" for="filter-undated">@Localizer["Tasks_Filter_Undated"]</label>
+        </div>
+    }
     <button type="submit" class="btn btn-outline-secondary">@Localizer["Tasks_Filter_Apply"]</button>
 </form>

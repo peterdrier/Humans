@@ -169,6 +169,9 @@ internal sealed record TaskInfo(
     public bool IsWaiting => !IsFinished && WaitingOn.Any(l => l.Status is not (TaskItemStatus.Done or TaskItemStatus.Cancelled));
 
     public bool IsFinished => Status is TaskItemStatus.Done or TaskItemStatus.Cancelled;
+
+    /// <summary>No start and no due date, as shown: a relative date with no event to resolve against counts as none.</summary>
+    public bool IsUndated => Start?.Resolved is null && Due?.Resolved is null;
 }
 
 /// <summary>What a write answers.</summary>

@@ -1,0 +1,49 @@
+@* The tasks that have a link, one column per depth, an arrow from each task to the tasks waiting on it. Drawn on the server; on a phone it scrolls inside its own box. *@
+@model DependencyGraph
+
+@if (Model.Nodes.Count == 0)
+{
+    <empty-state>@Localizer["Tasks_Graph_Empty"]</empty-state>
+}
+else
+{
+    <div class="dep-graph">
+        <svg width="@Model.Width" height="@Model.Height" viewBox="0 0 @Model.Width @Model.Height" role="group" aria-label="@Localizer["Tasks_Graph_Title"]" xmlns="http://www.w3.org/2000/svg">
+            <defs>
+                <marker id="dep-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto">
+                    <path d="M 0 0 L 10 5 L 0 10 z" class="dep-arrowhead" />
+                </marker>
+            </defs>
+            @foreach (var edge in Model.Edges)
+            {
+                var x1 = edge.From.X + DependencyGraph.NodeWidth;
+                var y1 = edge.From.Y + DependencyGraph.NodeHeight / 2;
+                var x2 = edge.To.X;
+                var y2 = edge.To.Y + DependencyGraph.NodeHeight / 2;
+                var bend = DependencyGraph.ColumnGap / 2;
+                <path class="dep-edge" d="M @x1 @y1 C @(x1 + bend) @y1, @(x2 - bend) @y2, @x2 @y2" marker-end="url(#dep-arrow)" />
+            }
+            @foreach (var node in Model.Nodes)
+            {
+                if (node.Task is not { } task)
+                {
+                    <g class="dep-node dep-node--hidden">
+                        <rect x="@node.X" y="@node.Y" width="@DependencyGraph.NodeWidth" height="@DependencyGraph.NodeHeight" rx="6" />
+                        <text x="@(node.X + 12)" y="@(node.Y + 33)" class="dep-node-title">@Localizer["Tasks_Task_HiddenTask"]</text>
+                    </g>
+                    continue;
+                }
+
+                var state = task.Status == TaskItemStatus.Blocked ? "blocked" : task.IsWaiting ? "waiting" : task.Status == TaskItemStatus.Done ? "done" : "plain";
+                <g class="dep-node dep-node--@state">
+                    <a href="@Url.Action("Details", "Tasks", new { id = task.Id })">
+                        <title>@task.Title</title>
+                        <rect x="@node.X" y="@node.Y" width="@DependencyGraph.NodeWidth" height="@DependencyGraph.NodeHeight" rx="6" />
+                        <text x="@(node.X + 12)" y="@(node.Y + 24)" class="dep-node-title">@task.Title.Truncate(28, "…")</text>
+                        <text x="@(node.X + 12)" y="@(node.Y + 43)" class="dep-node-status">@Localizer[$"Enum_TaskItemStatus_{task.Status}"]@(task.IsWaiting ? " · " + Localizer["Tasks_Task_WaitingOnTitle"].Value : null)</text>
+                    </a>
+                </g>
+            }
+        </svg>
+    </div>
+}

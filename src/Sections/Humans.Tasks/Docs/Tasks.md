@@ -29,15 +29,27 @@ Pieces of work with an end, hanging on a team. A task is to a role (standing res
 | `GET /Tasks/Open` | The open-tasks board: every listed task the viewer can see with a free slot, most needed first (see Task rows); team, priority and status filters; open-slot and critical tiles (of the whole board, not the filtered rows); each row shows the viewer's place (claim button, waiting, or on it). Linked from `/Tasks` and team pages | Signed-in members |
 | `POST /Tasks/{id}/Claim`, `/Release`, `/Withdraw` | The caller's own claim (or request), release, withdrawal. The controller checks only that the task is visible (404 otherwise); the service refuses every state case in words | Anyone who can see the task |
 | `POST /Tasks/{id}/Approve`, `/Decline` (`userId`, decline `reason`) | Answer a request | `Tasks.Manage` on the task's team; 403 otherwise, 404 first when hidden |
+| `GET /Tasks/Timeline` | Dated tasks over time and the dependency graph (see Timeline below). Same visibility, default set and filters as `/Tasks`; a team's view is the `Team` filter. Linked from `/Tasks` and every team's tasks page; the page links back to `/Tasks` | Signed-in members |
 | `GET /Tasks/Admin` | Read-only per-team counts and every blocked task with its note. The admin sidebar's Tasks group. English only (admin page). | TasksAdmin, Board, Admin (`TasksPolicies.Read`) |
 
-`POST /api/backdoor/tasks/bulk` (Backdoor's key-authed API) loads a whole set of tasks; see Bulk load below. Every claiming POST takes an optional `returnUrl`, followed only when `Url.IsLocalUrl` accepts it (else back to the task page). The timeline arrives in a later PR.
+`POST /api/backdoor/tasks/bulk` (Backdoor's key-authed API) loads a whole set of tasks; see Bulk load below. Every claiming POST takes an optional `returnUrl`, followed only when `Url.IsLocalUrl` accepts it (else back to the task page).
 
 The team page (`/Teams/{slug}`, Teams) carries a **Tasks card** through Teams' `ITeamTasksPart` slot: the team's listed tasks the viewer may see as the same rows, five at most with a "see all" link to `/Tasks/Team/{slug}`, an empty state, for a manager the count of waiting requests (linking to `#requests`) and an Add link. It renders nothing in a hidden team the viewer cannot see, and nothing when the viewer sees no tasks on the team and cannot add one (not a manager, or the team is system or inactive). A non-manager sees the card only for tasks they can see; a manager of an active team always has it, with the empty state. Teams' page does not gate on membership, so a viewer whose account is walled (suspended, say) sees the rows but never a claim button.
 
 ### Task rows
 
-Every list (`/Tasks`, a team's page, the board, the team-page card) shows one row per task (`_TaskRows`), ordered by priority (critical first, none last), then due date (undated last), then title (`TaskRowOrder`). A row has the title (link), tags (priority, status, understaffed for a critical task with open slots, blocked-by-wait "Waiting on <title>" or "a hidden task" when the viewer cannot see the blocker, needs approval with its reason, hidden), a line of slot dots with "n of m · needs k", the due date and, on lists spanning teams, the team, and on the right the claim control. The status shows always on `/Tasks` and team pages, and on the board and the card only when it is not to do. The row's left edge is coloured by priority. Badge colours come from `EnumBadgeMap` rows (`TaskItemStatus`, `TaskTag`), never from the view. Lists are card rows, not `_Table` tables, so there are no sortable columns: the order is fixed and the filters are query parameters (`Event`, `Team`, `Priority`, `Status`, `Finished`) of a GET form, applied server-side. A filter value the form has no option for (a team not among the choices, no priority) is dropped, and a done or cancelled status brings finished tasks into the list. The rows have a widget-gallery card. a claim's `returnUrl` carries the whole query string back.
+Every list (`/Tasks`, a team's page, the board, the team-page card) shows one row per task (`_TaskRows`), ordered by priority (critical first, none last), then due date (undated last), then title (`TaskRowOrder`). A row has the title (link), tags (priority, status, understaffed for a critical task with open slots, blocked-by-wait "Waiting on <title>" or "a hidden task" when the viewer cannot see the blocker, needs approval with its reason, hidden), a line of slot dots with "n of m · needs k", the due date and, on lists spanning teams, the team, and on the right the claim control. The status shows always on `/Tasks` and team pages, and on the board and the card only when it is not to do. The row's left edge is coloured by priority. Badge colours come from `EnumBadgeMap` rows (`TaskItemStatus`, `TaskTag`), never from the view. Lists are card rows, not `_Table` tables, so there are no sortable columns: the order is fixed and the filters are query parameters (`Event`, `Team`, `Priority`, `Status`, `Finished`, `Undated`) of a GET form, applied server-side. A filter value the form has no option for (a team not among the choices, no priority) is dropped, and a done or cancelled status brings finished tasks into the list. The rows have a widget-gallery card. a claim's `returnUrl` carries the whole query string back.
+
+## Timeline
+
+`GET /Tasks/Timeline` reads the tasks once and applies the lists' own rules: the listed set (`ITaskService.Listed`), `TasksAccess.CanSee`, and the `TaskListFilter` (event, team, priority, status, finished). `Models/TaskTimeline.cs` lays the result out; it is pure and holds no access checks.
+
+- **Bars.** Each task with a resolved start or due date is a bar from start to due (relative dates already resolved from the event, as on the other pages). A task with one date is a **marker** on that day. Bars are grouped by team, ordered by start, then due, then title; positions are integers in hundredths of a percent of the axis, so the markup carries no decimals. A month row labels the axis.
+- **Undated.** A task with no resolved start and no due date (`TaskInfo.IsUndated`) is left off and counted: "N tasks have no dates" links to `/Tasks` with the same filters plus `Undated=true`, the "no dates" filter on `TaskRowFilter` (a checkbox on every list except the timeline, which ignores it).
+- **Phone.** Below the `md` breakpoint the bars give way to a list grouped by week (the Monday on or before the start date, or the due date when there is no start), each task with its status, dates, team and "Waiting on" its linked tasks. Nothing scrolls sideways.
+- **Dependency graph.** A server-drawn inline SVG below the timeline, no script. Only tasks with a link appear. Column = depth: 0 waits on nothing in the graph; every other task sits one column right of the deepest task it waits on. An arrow runs from each task to the task waiting on it. Each node links to `/Tasks/{id}` and shows its status, with "Waiting on" added when the task is waiting; stored Blocked has its own border. The layout assumes the service has refused every circle but never trusts it: depth passes are capped at the node count, so a circle that got in anyway still lays out. The graph scrolls sideways inside its own box on a phone.
+- **What the graph draws.** Every link with a shown task at one end, where each end is a shown task or one the viewer cannot see. A visible task a filter left out is not drawn, so a filter narrows the graph as it narrows the lists. A task the viewer cannot see is "a hidden task": a dashed node with no link, no status and no id in the markup.
+- Colours are `--h-*` tokens, so a dark theme only has to redefine tokens.
 
 ## Bulk load
 
@@ -120,7 +132,7 @@ The waiting requests (state Requested, `TaskInfo.WaitingRequests`), oldest first
 - Every create (bulk or form), update, status change, delete, assign, unassign, claim, release, request, withdrawn request, approval, decline and dependency change is audited (`TasksAuditActions`, entity type `TaskItem`; claim, release, request, withdraw, approve and decline carry the person as the related subject; a decline's reason is in the description). Every refusal is logged at Warning.
 - Add/edit forms require explicit priority, slot count, date modes, approval and visibility flags; status changes require an explicit status. Missing required values and malformed fields refuse the write, log a Warning and show the form again with what was typed. Explicit false flags and the None priority remain valid. A refused status change preserves the existing status and blocked note.
 - GDPR: export lists the person's tasks with state (Confirmed or Requested) and date; erasure removes their places and requests; a decline reason is stored nowhere but the email and the audit entry; a merge moves them to the survivor, keeping one row, confirmed winning. Task text is not tied to a person and stays.
-- Demo story: `Services/Demo/TasksDemoStory.cs`, after Teams.
+- Demo story: `Services/Demo/TasksDemoStory.cs`, after Teams. It has dated tasks with a three-step dependency chain, one task waiting on two, tasks with one date and one task with none, so the timeline and the graph have something to show.
 
 ## Negative Access Rules
 
@@ -136,6 +148,7 @@ The waiting requests (state Requested, `TaskInfo.WaitingRequests`), oldest first
 - A manager **cannot** approve or decline a request that does not exist, and approving or declining never touches a confirmed place.
 - The waiting-requests entries on Home appear only for holders of `Tasks.Manage` on the team; nobody else, and not a person for their own request.
 - Board, plain members, people confirmed on a task and requesters themselves **cannot** see who has asked to join: the requests card is for the team's managers only, and lists and the board show counts of confirmed people.
+- A member **cannot** see a hidden task, or any task of a hidden team, on the timeline or in the graph: bars never carry them, and a link to one is "a hidden task" with no title, status or link.
 - Board **cannot** change any task.
 - Only TasksAdmin, Board and Admin **can** open `/Tasks/Admin`; managers cannot. It is read-only.
 
@@ -163,7 +176,7 @@ The waiting requests (state Requested, `TaskInfo.WaitingRequests`), oldest first
 
 **Owning services:** `TaskService`
 **Owned tables:** `task_items`, `task_assignments`, `task_dependencies`
-**Status:** (A) Migrated: new section, 2026-11-22; bulk load; claiming, requests, emails, Home entries and the open-tasks board; task rows and the team-page card.
+**Status:** (A) Migrated: new section, 2026-11-22; bulk load; claiming, requests, emails, Home entries and the open-tasks board; task rows and the team-page card; the timeline and dependency graph.
 
 ### Public contract
 

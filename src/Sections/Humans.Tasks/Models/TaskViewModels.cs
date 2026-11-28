@@ -7,7 +7,7 @@ using NodaTime;
 
 namespace Humans.Tasks.Models;
 
-/// <summary>The filters every task list shares: one team, one priority, one status. All default to everything.</summary>
+/// <summary>The filters every task list shares: one team, one priority, one status, and only tasks with no dates. All default to everything.</summary>
 internal class TaskRowFilter
 {
     public Guid? Team { get; set; }
@@ -15,6 +15,9 @@ internal class TaskRowFilter
     public SlotPriority? Priority { get; set; }
 
     public TaskItemStatus? Status { get; set; }
+
+    /// <summary>Only tasks with no start and no due date, which the timeline leaves off.</summary>
+    public bool Undated { get; set; }
 
     /// <summary>The statuses a list offers: every one, or all but done and cancelled on a list that never shows finished tasks.</summary>
     public static IReadOnlyList<TaskItemStatus> StatusChoices(bool withFinished) =>
@@ -33,7 +36,7 @@ internal class TaskRowFilter
 
     /// <summary>Everything but the team, for a list that is already one team's.</summary>
     public bool MatchesWithinTeam(TaskInfo task) =>
-        (Priority is null || task.Priority == Priority) && (Status is null || task.Status == Status);
+        (Priority is null || task.Priority == Priority) && (Status is null || task.Status == Status) && (!Undated || task.IsUndated);
 
     public bool Matches(TaskInfo task) => MatchesWithinTeam(task) && (Team is null || task.Owner.Id == Team);
 }
@@ -109,6 +112,15 @@ internal static class TaskRowOrder
         _ => 3,
     };
 
+    /// <summary>The suffix of the <c>task-row--*</c> and <c>tl-bar--*</c> classes that colour by priority.</summary>
+    public static string Edge(SlotPriority priority) => priority switch
+    {
+        SlotPriority.Critical => "critical",
+        SlotPriority.Important => "important",
+        SlotPriority.NiceToHave => "nice",
+        _ => "none",
+    };
+
     public static IEnumerable<TaskInfo> Order(IEnumerable<TaskInfo> tasks) =>
         tasks
             .OrderBy(t => Rank(t.Priority))
@@ -120,10 +132,14 @@ internal static class TaskRowOrder
 /// <summary>
 /// The filter form. <see cref="Events"/> and <see cref="Teams"/> are null where they make no sense: a team's page
 /// filters only on status, priority and finished tasks, and the open board has no event or finished choice.
-/// <paramref name="Statuses"/> are the status choices the page offers.
+/// <paramref name="Statuses"/> are the status choices the page offers; <paramref name="OfferUndated"/> adds the "without dates only" box.
 /// </summary>
 internal sealed record TaskFilterViewModel(
-    TaskRowFilter Filter, IReadOnlyList<EventOption>? Events, IReadOnlyList<TeamChoice>? Teams, IReadOnlyList<TaskItemStatus> Statuses);
+    TaskRowFilter Filter,
+    IReadOnlyList<EventOption>? Events,
+    IReadOnlyList<TeamChoice>? Teams,
+    IReadOnlyList<TaskItemStatus> Statuses,
+    bool OfferUndated = true);
 
 /// <summary><see cref="ManagedTeams"/> links a manager to each team's tasks page, where the add form is, before it has any tasks.</summary>
 internal sealed record TaskListViewModel(

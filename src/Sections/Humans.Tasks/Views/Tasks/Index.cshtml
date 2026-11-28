@@ -8,6 +8,7 @@
 <page-header title="@(Localizer["Tasks_List_Title"].Value)">
     <page-header-subtitle>@Localizer["Tasks_List_Subtitle"]</page-header-subtitle>
     <a href="@Url.Action("Open", "Tasks")" class="btn btn-outline-secondary">@Localizer["Tasks_List_Open"]</a>
+    <a href="@Url.Action("Timeline", "Tasks")" class="btn btn-outline-secondary">@Localizer["Tasks_Timeline_Title"]</a>
     <a authorize-policy="@TasksPolicies.Read" href="@Url.Action("Index", "TasksAdmin")" class="btn btn-outline-secondary">@Localizer["Tasks_List_Admin"]</a>
 </page-header>
 

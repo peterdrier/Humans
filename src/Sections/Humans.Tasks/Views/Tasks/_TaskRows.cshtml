@@ -10,13 +10,7 @@ else
     <ul class="list-group @(Model.Flush ? "list-group-flush" : null)">
         @foreach (var item in Model.Tasks)
         {
-            var edge = item.Priority switch
-            {
-                SlotPriority.Critical => "critical",
-                SlotPriority.Important => "important",
-                SlotPriority.NiceToHave => "nice",
-                _ => "none"
-            };
+            var edge = TaskRowOrder.Edge(item.Priority);
             var filled = Math.Min(item.ConfirmedCount, item.SlotCount);
             var understaffed = item.Priority == SlotPriority.Critical && !item.IsFinished && item.OpenSlots > 0;
             var waiting = Model.Blockers.GetValueOrDefault(item.Id) is { } blocker
