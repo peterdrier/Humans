@@ -32,7 +32,7 @@ public class TicketingBudgetServiceTests
     private readonly Guid _yearId = Guid.NewGuid();
 
     [HumansFact]
-    public void Section_registration_resolves_the_ticketing_job_through_scoped_DI()
+    public void Section_ScopedDi_ResolvesTicketingJob()
     {
         var services = new ServiceCollection();
         new Section().Register(services, new ConfigurationBuilder().Build());
@@ -175,7 +175,7 @@ public class TicketingBudgetServiceTests
     }
 
     [HumansFact]
-    public async Task SyncActualsAsync_BucketsByIsoWeek_AndExcludesCurrentWeek()
+    public async Task SyncActualsAsync_CurrentWeek_IsExcluded()
     {
         // "Now" is Wed 2026-03-11 → current ISO-week Monday is 2026-03-09 (excluded).
         // Two paid orders in the completed week of 2026-03-02 (Mon) .. 2026-03-08 (Sun),
@@ -325,7 +325,7 @@ public class TicketingBudgetServiceTests
     }
 
     [HumansFact]
-    public async Task SyncActualsAsync_SumsStripeFeeTax_AndTracksFeesOfUnknownTax()
+    public async Task SyncActualsAsync_StripeFeeTax_IsSummed()
     {
         var purchasedAt = Instant.FromUtc(2026, 3, 3, 10, 0); // inside completed week Mon 2 Mar
         _ticketService.GetTicketOrdersAsync(Arg.Any<CancellationToken>())
@@ -384,7 +384,7 @@ public class TicketingBudgetServiceTests
     }
 
     [HumansFact]
-    public async Task SyncActualsAsync_EventWithNoOrdersOfAnyStatus_WritesNothing()
+    public async Task SyncActualsAsync_NoOrders_WritesNothing()
     {
         // Only another event's orders: the year's event has none (moved platform event id / missing state).
         _ticketService.GetTicketOrdersAsync(Arg.Any<CancellationToken>())
@@ -425,7 +425,7 @@ public class TicketingBudgetServiceTests
     }
 
     [HumansFact]
-    public async Task SyncActualsAsync_RefusesNonActiveYear_AndWritesNothing()
+    public async Task SyncActualsAsync_NonActiveYear_IsRefused()
     {
         var act = () => CreateSut().SyncActualsAsync(
             Guid.NewGuid(), actorUserId: null, TestContext.Current.CancellationToken);

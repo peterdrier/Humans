@@ -78,7 +78,7 @@ public class MailerLiteClientWriteGuardTests
     }
 
     [HumansFact]
-    public async Task BulkImportSubscribersToGroupAsync_RejectsWritesToNonHumansGroups()
+    public async Task BulkImportSubscribersToGroupAsync_NonHumansGroup_IsRejected()
     {
         var handler = new ScriptedHandler();
         handler.EnqueueJson(HttpStatusCode.OK, """{"data":[],"meta":{"next_cursor":null}}""");

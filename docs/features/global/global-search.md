@@ -6,7 +6,7 @@
   src/Sections/Humans.Teams/**
   src/Sections/Humans.Camps/Services/CachingCampService.cs
   src/Sections/Humans.Shifts/Services/ShiftManagementService.cs
-  src/Sections/Humans.Shifts/Data/ShiftRepository.Management.cs
+  src/Sections/Humans.Shifts/Data/ShiftRepository.cs
   src/Sections/Humans.Users/Services/PersonSearchMatcher.cs
   src/Sections/Humans.Camps/Controllers/CampController.cs
   src/Sections/Humans.Shifts/Controllers/ShiftsController.cs
@@ -32,7 +32,7 @@
   US-GS.4 GUID exception and its known-gap note depend on CampController/TeamController, and the
   per-bucket filters and GUID branches live in the Caching*Service classes and ShiftManagementService —
   and for Shifts, one level deeper still: the service's text branch delegates to
-  ShiftRepository.Management.cs, where the active-event, IsVisibleToVolunteers and EF.Functions.ILike
+  ShiftRepository.cs, where the active-event, IsVisibleToVolunteers and EF.Functions.ILike
   predicates behind this doc's Shifts claims actually live.
   Rotas are the non-obvious one: a rota hit links to /Shifts?departmentId=, not to the rota, so its
   destination gate is ShiftBrowsePageBuilder's IncludeAdminOnly/IncludeHidden flags behind

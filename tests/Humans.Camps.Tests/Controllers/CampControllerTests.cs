@@ -103,7 +103,7 @@ public class CampControllerTests
     [InlineData(ContactSurface.Form)]
     [InlineData(ContactSurface.Redisplay)]
     [InlineData(ContactSurface.Send)]
-    public async Task Contact_UsesTheActiveEventsSeasonForNamesAndLeadNotices(ContactSurface surface)
+    public async Task Contact_ActiveEvent_UsesItsSeason(ContactSurface surface)
     {
         using var request = new CancellationTokenSource();
         var senderId = Guid.NewGuid();
@@ -264,7 +264,7 @@ public class CampControllerTests
     [InlineData(true, "", "1", -1)]
     [InlineData(false, "", "1", 1)]
     [InlineData(true, "", "1", 1)]
-    public async Task Camp_forms_require_posted_choices_and_valid_counts(
+    public async Task CampForms_MissingChoicesOrCounts_AreRefused(
         bool edit, string omitted, string memberCount = "1", int timesAtNowhere = 0)
     {
         var registrations = new ServiceCollection().AddLogging();
@@ -417,7 +417,7 @@ public class CampControllerTests
     [InlineData("Withdraw", true)]
     [InlineData("Leave", false)]
     [InlineData("Leave", true)]
-    public async Task MemberPreflight_CancelsCampAndAccountReadsBeforeMutation(string action, bool cancelAtAccount)
+    public async Task MemberPreflight_AbandonedRequest_CancelsReads(string action, bool cancelAtAccount)
     {
         using var request = new CancellationTokenSource();
         var actorId = Guid.NewGuid();
@@ -544,7 +544,7 @@ public class CampControllerTests
     [InlineData(false, true)]
     [InlineData(true, false)]
     [InlineData(true, true)]
-    public async Task Register_stops_loading_when_the_request_is_abandoned(bool cancelAfterSettings, bool invalidPost)
+    public async Task Register_AbandonedRequest_StopsLoading(bool cancelAfterSettings, bool invalidPost)
     {
         using var request = new CancellationTokenSource();
         var abandon = false;
@@ -577,7 +577,7 @@ public class CampControllerTests
     [HumansTheory]
     [InlineData("From Camps")]
     [InlineData("")]
-    public async Task Register_ShowsTheEventsOwnRegistrationInfo_OverCityPlanningsOldCopy(string campsInfo)
+    public async Task Register_EventHasInfo_ShowsEventInfo(string campsInfo)
     {
         var settings = Settings2026();
         _camps.GetSettingsAsync(Arg.Any<CancellationToken>()).Returns(settings with
@@ -686,7 +686,7 @@ public class CampControllerTests
     }
 
     [HumansFact]
-    public void UploadImage_allows_one_valid_image_without_accepting_a_larger_request()
+    public void UploadImage_OneValidImage_IsAllowed()
     {
         var limit = typeof(CampController).GetMethod(nameof(CampController.UploadImage))!
             .GetCustomAttribute<RequestSizeLimitAttribute>();
@@ -995,7 +995,7 @@ public class CampControllerTests
     [InlineData("Reject", true)]
     [InlineData("Remove", true)]
     [InlineData("Withdraw", true)]
-    public async Task MembershipAction_LogsExpectedRejectionAndPropagatesUnexpectedFailure(string action, bool unexpected)
+    public async Task MembershipAction_UnexpectedFailure_Propagates(string action, bool unexpected)
     {
         var actorId = Guid.NewGuid();
         var memberId = Guid.NewGuid();
@@ -1042,7 +1042,7 @@ public class CampControllerTests
     }
 
     [HumansFact]
-    public void ContactForm_LocalizesRequiredAndLengthMessages()
+    public void ContactForm_ValidationMessages_AreLocalized()
     {
         using var cultureScope = new CultureScope("en");
         var registrations = new ServiceCollection().AddLogging().AddLocalization();
@@ -1122,7 +1122,7 @@ public class CampControllerTests
     }
 
     [HumansFact]
-    public async Task Index_InvalidFilterQueryValue_ClearsModelStateAndRendersWithDefaults()
+    public async Task Index_InvalidFilter_RendersWithDefaults()
     {
         // Regression: a scanner payload in a bool
         // filter param leaves an invalid attempted value in ModelState, which the
@@ -1143,7 +1143,7 @@ public class CampControllerTests
     }
 
     [HumansFact]
-    public async Task Index_RoleLeadPendingCamp_AppearsInMyCamps_FromCampInfo()
+    public async Task Index_RoleLeadPendingCamp_AppearsInMyCamps()
     {
         var userId = Guid.NewGuid();
         var pending = MakeCamp("pending", "Pending Camp", CampSeasonStatus.Pending, leadUserId: userId);
@@ -1569,7 +1569,7 @@ public class CampControllerTests
     }
 
     [HumansFact]
-    public async Task Members_Shows_Active_Event_Shift_Counts_From_Shift_View()
+    public async Task Members_ActiveEvent_ShowsShiftCounts()
     {
         var leadUserId = Guid.NewGuid();
         var zeroShiftMemberId = Guid.NewGuid();
@@ -1645,7 +1645,7 @@ public class CampControllerTests
     }
 
     [HumansFact]
-    public async Task Details_NonPublicSeason_AnonymousViewer_IsRefused()
+    public async Task Details_NonPublicSeasonAnonymous_IsRefused()
     {
         // Global search stops offering a camp once its public-year season leaves Active/Full, and
         // the id path deliberately does not, so /Camps/{slug} has to be the enforcement point.
@@ -1665,7 +1665,7 @@ public class CampControllerTests
     }
 
     [HumansFact]
-    public async Task SeasonDetails_NonPublicSeason_AnonymousViewer_IsRefused()
+    public async Task SeasonDetails_NonPublicSeasonAnonymous_IsRefused()
     {
         // The same coverage for the arbitrary-year route.
         var withdrawn = MakeCamp("withdrawn-camp", "Withdrawn Camp", CampSeasonStatus.Withdrawn);
@@ -1682,7 +1682,7 @@ public class CampControllerTests
     }
 
     [HumansFact]
-    public async Task Details_NonPublicSeason_Lead_StillRenders()
+    public async Task Details_NonPublicSeasonLead_Renders()
     {
         // The slug gate must not lock a lead out of their own Pending camp.
         var leadUserId = Guid.NewGuid();
@@ -1706,7 +1706,7 @@ public class CampControllerTests
     }
 
     [HumansFact]
-    public async Task Details_FutureSeasonOnlyCamp_Lead_StillRenders()
+    public async Task Details_FutureSeasonLead_Renders()
     {
         // A camp registered for an open future year has no PublicYear season, so the
         // public-year projection cannot answer "is this user its lead" — the slug gate
@@ -1742,7 +1742,7 @@ public class CampControllerTests
     }
 
     [HumansFact]
-    public async Task SeasonDetails_OptedInRenewalSeason_PriorSeasonLead_StillRenders()
+    public async Task SeasonDetails_RenewalSeasonPriorLead_Renders()
     {
         // OptInToSeasonAsync copies no lead assignments into the renewal season, so the
         // year projection for the new year carries no leads — viewer state must resolve
@@ -1863,7 +1863,7 @@ public class CampControllerTests
     }
 
     [HumansFact]
-    public async Task Register_get_and_post_choose_latest_gate_among_open_events()
+    public async Task Register_OpenEvents_ChoosesLatestGate()
     {
         var actor = Guid.NewGuid();
         var older = Event2026 with { GateOpeningDate = new LocalDate(2026, 7, 1) };

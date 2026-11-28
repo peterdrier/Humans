@@ -84,7 +84,7 @@ public sealed class AuthorizationHandlerTests : GrantsTestHarness
     }
 
     [HumansFact]
-    public async Task ManagerOfA_ManagesA_NotB_NeverAdministers()
+    public async Task Manager_OtherProgram_IsDenied()
     {
         var manager = SeedUser("Manager");
         var a = (await NewService().GetProgramAsync((await SeedProgramAsync(name: "A", managers: manager)).Id, Ct))!;
@@ -102,7 +102,7 @@ public sealed class AuthorizationHandlerTests : GrantsTestHarness
     [HumansTheory]
     [Xunit.InlineData(RoleNames.Admin)]
     [Xunit.InlineData(GrantsRoles.GrantsAdmin)]
-    public async Task AdminAndGrantsAdmin_ManageAndAdministerEveryProgram(string role)
+    public async Task Admins_AnyProgram_MayAdminister(string role)
     {
         var program = (await NewService().GetProgramAsync((await SeedProgramAsync()).Id, Ct))!;
         var user = Principal(SeedUser("Role holder"), role);
@@ -145,7 +145,7 @@ public sealed class AuthorizationHandlerTests : GrantsTestHarness
     [HumansTheory]
     [Xunit.InlineData(false)]
     [Xunit.InlineData(true)]
-    public async Task Index_ShowsProgramsManagedThroughAnyMergedId_AndHidesUnrelatedPrograms(bool archivedCookie)
+    public async Task Index_MergedIds_ShowsManagedPrograms(bool archivedCookie)
     {
         var archived = Guid.NewGuid();
         var survivor = SeedUser("Survivor", mergedIds: [archived]);
@@ -205,7 +205,7 @@ public sealed class AuthorizationHandlerTests : GrantsTestHarness
     [HumansTheory]
     [Xunit.InlineData(false)]
     [Xunit.InlineData(true)]
-    public async Task ManagerOfA_ActingOnMissingOrForeignGrant_IsNotFound_AndChangesNothing(bool missingGrant)
+    public async Task Manager_ForeignGrant_IsNotFound(bool missingGrant)
     {
         var manager = SeedUser("Manager");
         var a = await SeedProgramAsync(name: "A", managers: manager);
@@ -229,7 +229,7 @@ public sealed class AuthorizationHandlerTests : GrantsTestHarness
     }
 
     [HumansFact]
-    public async Task ACookieStillCarryingAMergedAwayId_ManagesTheSurvivorsProgram()
+    public async Task Manage_MergedAwayId_ManagesSurvivorsProgram()
     {
         var archived = Guid.NewGuid();
         var survivor = SeedUser("Survivor", mergedIds: [archived]);

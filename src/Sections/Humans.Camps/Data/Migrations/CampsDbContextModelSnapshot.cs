@@ -432,12 +432,6 @@ namespace Humans.Camps.Data.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
 
-                    b.Property<LocalDate?>("EeStartDate")
-                        .HasColumnType("date");
-
-                    b.Property<int>("PublicYear")
-                        .HasColumnType("integer");
-
                     b.HasKey("Id");
 
                     b.ToTable("camp_settings", (string)null);
@@ -445,8 +439,7 @@ namespace Humans.Camps.Data.Migrations
                     b.HasData(
                         new
                         {
-                            Id = new Guid("00000000-0000-0000-0010-000000000001"),
-                            PublicYear = 2026
+                            Id = new Guid("00000000-0000-0000-0010-000000000001")
                         });
                 });
 

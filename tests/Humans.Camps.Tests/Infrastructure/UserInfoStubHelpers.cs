@@ -56,7 +56,7 @@ internal static class UserInfoStubHelpers
     /// Stubs GetAllUserInfosAsync to read from the provided DbContext options
     /// (new context per call, includes UserEmails + Profile slice).
     /// </summary>
-    public static IUserService StubGetAllUserInfosFromDb(this IUserService userService, DbContextOptions<UsersDbContext> options)
+    public static IUserService StubUserInfosFromDb(this IUserService userService, DbContextOptions<UsersDbContext> options)
     {
         userService
             .GetAllUserInfosAsync(Arg.Any<CancellationToken>())

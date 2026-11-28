@@ -14,7 +14,7 @@ public sealed class ExpensesEmailsTests
     private static ExpensesEmails Create() => TestExpensesEmails.Create();
 
     [HumansFact]
-    public void ReportApproved_StampsSystem_AndLinksTheReport()
+    public void ReportApproved_Email_LinksReport()
     {
         var reportId = Guid.NewGuid();
         var msg = Create().ReportApproved(Guid.NewGuid(), "a@x.com", "Alice <A>", reportId, 1234.5m, "ES79****789", "de");
@@ -32,7 +32,7 @@ public sealed class ExpensesEmailsTests
     }
 
     [HumansFact]
-    public void EveryTemplateHasAPreviewSample()
+    public void Templates_EachHasPreviewSample()
     {
         var emails = Create();
         var templates = TemplateNames(emails);
@@ -47,7 +47,7 @@ public sealed class ExpensesEmailsTests
     }
 
     [HumansFact]
-    public void PreviewSampleIdsAreUnique()
+    public void PreviewSampleIds_AreUnique()
     {
         var samples = new ExpensesEmailPreviews(Create())
             .Samples(new EmailPreviewPersona("en", "Sally Smith", "sally@example.com"));
@@ -57,7 +57,7 @@ public sealed class ExpensesEmailsTests
 
     /// <summary>
     /// Every template the builder can produce, found by reflection rather than listed, so a
-    /// template added without a gallery sample fails <see cref="EveryTemplateHasAPreviewSample"/>.
+    /// template added without a gallery sample fails <see cref="Templates_EachHasPreviewSample"/>.
     /// </summary>
     private static IReadOnlyList<string> TemplateNames(ExpensesEmails emails) =>
     [

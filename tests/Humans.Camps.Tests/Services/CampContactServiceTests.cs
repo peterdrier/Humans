@@ -90,7 +90,7 @@ public class CampContactServiceTests : IDisposable
     [HumansTheory]
     [Xunit.MemberData(nameof(SupportedCultures.All), MemberType = typeof(SupportedCultures))]
     [Xunit.InlineData("xx")]
-    public async Task Contact_notice_uses_each_lead_language(string language)
+    public async Task ContactNotice_EachLead_GetsOwnLanguage(string language)
     {
         var leadId = Guid.NewGuid();
         _users.GetUserInfosAsync(Arg.Any<IEnumerable<Guid>>(), Arg.Any<CancellationToken>())
@@ -115,7 +115,7 @@ public class CampContactServiceTests : IDisposable
     }
 
     [HumansFact]
-    public async Task Contact_notice_routes_merged_leads_to_one_live_recipient()
+    public async Task ContactNotice_MergedLeads_ReachOneRecipient()
     {
         var archivedLead = Guid.NewGuid();
         var liveLead = Guid.NewGuid();
@@ -138,7 +138,7 @@ public class CampContactServiceTests : IDisposable
     }
 
     [HumansFact]
-    public async Task Contact_notice_failed_language_lookup_falls_back_to_English()
+    public async Task ContactNotice_LanguageLookupFails_UsesEnglish()
     {
         _users.GetUserInfosAsync(Arg.Any<IEnumerable<Guid>>(), Arg.Any<CancellationToken>())
             .Returns(ValueTask.FromException<IReadOnlyDictionary<Guid, UserInfo>>(new IOException("Lookup failed")));
@@ -156,7 +156,7 @@ public class CampContactServiceTests : IDisposable
     }
 
     [HumansFact]
-    public async Task Contact_notice_failed_language_group_does_not_stop_other_leads()
+    public async Task ContactNotice_LanguageGroupFails_OtherLeadsNotified()
     {
         var spanishLead = Guid.NewGuid();
         var englishLead = Guid.NewGuid();
@@ -184,7 +184,7 @@ public class CampContactServiceTests : IDisposable
     }
 
     [HumansFact]
-    public async Task Contact_notice_long_name_dispatches_full_copy()
+    public async Task ContactNotice_LongName_SendsFullCopy()
     {
         var campName = string.Concat(Enumerable.Repeat("🏕️", 128));
         await _service.SendFacilitatedMessageAsync(
@@ -240,7 +240,7 @@ public class CampContactServiceTests : IDisposable
     }
 
     [HumansFact]
-    public async Task Contact_audit_failure_after_queueing_keeps_success_and_rate_limit()
+    public async Task Contact_AuditFailure_KeepsSuccess()
     {
         var failure = new InvalidOperationException("Audit unavailable");
         _auditLogService.LogAsync(Arg.Any<AuditActionDefinition>(), Arg.Any<string>(), Arg.Any<Guid>(),
@@ -289,7 +289,7 @@ public class CampContactServiceTests : IDisposable
     }
 
     [HumansFact]
-    public async Task SendFacilitatedMessageAsync_PassesMessageThroughForTheRendererToSanitize()
+    public async Task SendFacilitatedMessageAsync_Message_PassesUnsanitized()
     {
         // Sanitization happens once, inside EmailMessageFactory.FacilitatedMessage via
         // SanitizedMarkdownRenderer (see EmailMessageFactoryTests) — this service hands the

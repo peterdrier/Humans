@@ -208,8 +208,9 @@ Specified but not built. Reserved, not ranked, not to be built by a doctor run.
 ## 6. Deliberately not done
 
 - **No caching decorator on either aggregate.** A handful of Board-driven writes a week does
-  not pay for one, and on votes a cached tally is a leaked tally. The per-Board-member voting
-  badge is the one cached read, inline in the service, two minutes.
+  not pay for one, and on votes a cached tally is a leaked tally. The two cached reads are
+  decorators over the read interfaces: every non-Volunteer tier (the tier pill) and each Board
+  member's unvoted count (the voting pill).
 - **No concurrency token.** Repo-wide rule. The vote lane does not need one either: it takes
   the row's lock and compares the state it read, which is a narrower guarantee than a version
   column and does not put one on every table.

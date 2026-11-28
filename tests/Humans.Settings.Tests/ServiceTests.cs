@@ -84,7 +84,7 @@ public sealed class ServiceTests
     }
 
     [HumansFact]
-    public async Task EventReads_AreServedFromMemoryUntilAWriteReloadsThem()
+    public async Task EventReads_NoWrite_ComeFromMemory()
     {
         var ct = TestContext.Current.CancellationToken;
         var first = MakeEntity(Guid.NewGuid());
@@ -103,7 +103,7 @@ public sealed class ServiceTests
     }
 
     [HumansFact]
-    public async Task ValueReads_AreServedFromMemoryUntilAValueWriteReloadsThem()
+    public async Task ValueReads_NoWrite_ComeFromMemory()
     {
         var ct = TestContext.Current.CancellationToken;
         _repository.GetAllEventSettingsAsync(Arg.Any<CancellationToken>()).Returns([]);
@@ -258,7 +258,7 @@ public sealed class ServiceTests
     }
 
     [HumansFact]
-    public async Task GetEventSettingsByIdAsync_MapsEveryFieldOntoTheDto()
+    public async Task GetEventSettingsByIdAsync_KnownId_MapsEveryField()
     {
         var id = Guid.NewGuid();
         var row = MakeEntity(id);
@@ -304,7 +304,7 @@ public sealed class ServiceTests
     }
 
     [HumansFact]
-    public async Task GetEventSettingsByIdAsync_ReturnsNullForAnUnknownId()
+    public async Task GetEventSettingsByIdAsync_UnknownId_ReturnsNull()
     {
         var unknown = Guid.NewGuid();
         _repository.GetEventSettingsByIdAsync(unknown, Arg.Any<CancellationToken>())
@@ -343,7 +343,7 @@ public sealed class ServiceTests
     }
 
     [HumansFact]
-    public async Task SaveEventSettingsAsync_RoundTripsTheDtoBackOntoTheEntityAndStampsTheClock()
+    public async Task SaveEventSettingsAsync_ValidDto_RoundTripsOntoEntity()
     {
         var id = Guid.NewGuid();
         var dto = new EventSettingsInfo(
@@ -382,7 +382,7 @@ public sealed class ServiceTests
     }
 
     [HumansFact]
-    public async Task SaveEventSettingsAsync_WritesAnAuditEntryNamingTheActorAndTheSavedValues()
+    public async Task SaveEventSettingsAsync_Saved_AuditsActor()
     {
         var id = Guid.NewGuid();
         var dto = new EventSettingsInfo(
@@ -499,7 +499,7 @@ public sealed class ServiceTests
     [HumansTheory]
     [Xunit.InlineData(0, 0)]
     [Xunit.InlineData(6, 6)]
-    public async Task SaveEventSettingsAsync_AcceptsGateDayEventsAndNoStrikeDays(int eventEnd, int strikeEnd)
+    public async Task SaveEventSettingsAsync_NoStrikeDays_IsAccepted(int eventEnd, int strikeEnd)
     {
         var settings = MakeDto(Guid.NewGuid(), EventSettingsStatus.Inactive) with
         {
@@ -518,7 +518,7 @@ public sealed class ServiceTests
     // The EarlyEntryStartOffset invariant: BuildStartOffset ≤ offset < 0.
 
     [HumansFact]
-    public async Task SaveEventSettingsAsync_RefusesEarlyEntryStartOffset_BeforeBuildStart()
+    public async Task SaveEventSettingsAsync_EarlyEntryBeforeBuildStart_IsRefused()
     {
         var id = Guid.NewGuid();
 
@@ -534,7 +534,7 @@ public sealed class ServiceTests
     }
 
     [HumansFact]
-    public async Task SaveEventSettingsAsync_RefusesEarlyEntryStartOffset_AtOrAfterZero()
+    public async Task SaveEventSettingsAsync_EarlyEntryOffsetNotNegative_IsRefused()
     {
         var id = Guid.NewGuid();
 
@@ -607,7 +607,7 @@ public sealed class ServiceTests
     }
 
     [HumansFact]
-    public async Task SaveEventSettingsAsync_TellsNoListenerWhenTheSaveIsRefused()
+    public async Task SaveEventSettingsAsync_SaveRefused_TellsNoListener()
     {
         var id = Guid.NewGuid();
         _repository.AnyOtherActiveEventSettingsAsync(id, Arg.Any<CancellationToken>()).Returns(true);
@@ -621,7 +621,7 @@ public sealed class ServiceTests
     }
 
     [HumansFact]
-    public async Task SaveEventSettingsAsync_RefusesToActivateWhileAnotherRowIsActive()
+    public async Task SaveEventSettingsAsync_AnotherRowActive_IsRefused()
     {
         var id = Guid.NewGuid();
         _repository.AnyOtherActiveEventSettingsAsync(id, Arg.Any<CancellationToken>()).Returns(true);
@@ -654,7 +654,7 @@ public sealed class ServiceTests
     }
 
     [HumansFact]
-    public async Task SaveEventSettingsAsync_DoesNotCheckActivationWhenSavingAnInactiveRow()
+    public async Task SaveEventSettingsAsync_InactiveRow_SkipsActivationCheck()
     {
         // Leaving zero rows active is allowed — deactivating is how a cycle ends.
         var id = Guid.NewGuid();
@@ -687,7 +687,7 @@ public sealed class ServiceTests
     }
 
     [HumansFact]
-    public async Task SaveEventSettingsAsync_AllowsTheNextYearsEventAndIgnoresItsOwnAndDeletedRows()
+    public async Task SaveEventSettingsAsync_NextYearsEvent_IsAllowed()
     {
         var id = Guid.NewGuid();
         var deleted = MakeEntity(Guid.NewGuid(), isActive: false);
@@ -705,7 +705,7 @@ public sealed class ServiceTests
     }
 
     [HumansFact]
-    public async Task ActivateEventSettingsAsync_SwitchesTheActiveEventInOneAuditedStep()
+    public async Task ActivateEventSettingsAsync_OtherEvent_SwitchesActiveEvent()
     {
         var previous = MakeEntity(Guid.NewGuid(), isActive: false);
         var next = MakeEntity(Guid.NewGuid(), isActive: false);
@@ -748,7 +748,7 @@ public sealed class ServiceTests
     // row is created on demand, the first time a rota or knob edit needs one.
 
     [HumansFact]
-    public async Task SaveEventSettingsAsync_CreatesABrandNewRowWithoutAskingShifts()
+    public async Task SaveEventSettingsAsync_NewRow_DoesNotAskShifts()
     {
         var id = Guid.NewGuid();
 
@@ -760,7 +760,7 @@ public sealed class ServiceTests
     }
 
     [HumansFact]
-    public async Task GetValueAsync_AndSetValueAsync_PassThroughToTheRepository()
+    public async Task ValueReadWrite_AnyKey_PassesToRepository()
     {
         _repository.GetValueAsync("Feature:Enabled", Arg.Any<CancellationToken>()).Returns("true");
         var sut = BuildSut();
@@ -777,7 +777,7 @@ public sealed class ServiceTests
     // The timezone is one global setting; the copy on each event row is never read.
 
     [HumansFact]
-    public async Task GetEventSettingsByIdAsync_ReadsTheGlobalTimezoneNotTheRowCopy()
+    public async Task GetEventSettingsByIdAsync_AnyRow_ReadsGlobalTimezone()
     {
         var row = MakeEntity(Guid.NewGuid());
         _repository.GetEventSettingsByIdAsync(row.Id, Arg.Any<CancellationToken>()).Returns(row);
@@ -789,7 +789,7 @@ public sealed class ServiceTests
     }
 
     [HumansFact]
-    public async Task SaveTimeZoneAsync_StoresTheKeyAuditsAndNotifiesEveryEvent()
+    public async Task SaveTimeZoneAsync_KnownZone_StoresKey()
     {
         var first = Guid.NewGuid();
         var second = Guid.NewGuid();
@@ -809,7 +809,7 @@ public sealed class ServiceTests
     }
 
     [HumansFact]
-    public async Task SaveTimeZoneAsync_RefusesAnUnknownZoneAndWritesNothing()
+    public async Task SaveTimeZoneAsync_UnknownZone_IsRefused()
     {
         var result = await BuildSut().SaveTimeZoneAsync("Mars/Olympus", Actor, TestContext.Current.CancellationToken);
 

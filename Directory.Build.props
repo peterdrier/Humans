@@ -40,8 +40,11 @@
           peterdrier/Humans#1156 cleared all 15 grandfathers, so this entry is
           inert; it stays so a grandfather (ordinary debt) never breaks the
           build. Permanent.
+        - HUM0046: hand-written type across several files. A grandfathered
+          type carries [Grandfathered("HUM0046", ...)] and stays a warning so
+          ordinary debt never breaks the build. Permanent.
     -->
-    <WarningsNotAsErrors>$(WarningsNotAsErrors);HUM0010;HUM0011;HUM0031;HUM_USER_DISPLAYNAME</WarningsNotAsErrors>
+    <WarningsNotAsErrors>$(WarningsNotAsErrors);HUM0010;HUM0011;HUM0031;HUM0046;HUM_USER_DISPLAYNAME</WarningsNotAsErrors>
     <EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
     <EnableNETAnalyzers>true</EnableNETAnalyzers>
     <AnalysisLevel>latest</AnalysisLevel>
@@ -105,6 +108,9 @@
 
   <!-- Analyzers -->
   <ItemGroup>
+    <!-- [UsedImplicitly] and friends for code only reflection or serialization reaches; compile-time only. -->
+    <PackageReference Include="JetBrains.Annotations" PrivateAssets="all" />
+
     <PackageReference Include="Roslynator.Analyzers">
       <PrivateAssets>all</PrivateAssets>
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>

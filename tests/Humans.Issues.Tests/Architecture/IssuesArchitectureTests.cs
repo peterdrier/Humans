@@ -26,7 +26,7 @@ public class IssuesArchitectureTests
     }
 
     [HumansFact]
-    public void AuditEntityTypesAreLiterals()
+    public void AuditEntityTypes_Values_AreLiterals()
     {
         // These are literal string values we store in the DB. Pinned so a rename can't
         // quietly change them and orphan existing audit_log rows

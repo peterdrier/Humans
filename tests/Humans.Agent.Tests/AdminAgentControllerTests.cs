@@ -23,7 +23,7 @@ public sealed class AdminAgentControllerTests
     [HumansTheory]
     [Xunit.InlineData(true)]
     [Xunit.InlineData(false)]
-    public async Task Settings_requires_and_forwards_the_resolved_actor(bool actorExists)
+    public async Task Settings_ResolvedActor_IsForwarded(bool actorExists)
     {
         var ct = Xunit.TestContext.Current.CancellationToken;
         var actorId = Guid.NewGuid();
@@ -67,7 +67,7 @@ public sealed class AdminAgentControllerTests
     [Xunit.InlineData("RetentionDays", false)]
     [Xunit.InlineData("", false)]
     [Xunit.InlineData("", true)]
-    public async Task Settings_require_all_posted_values_before_overwriting_retention_and_limits(string omitted, bool zeroChoices)
+    public async Task Settings_MissingPostedValue_OverwritesNothing(string omitted, bool zeroChoices)
     {
         var ct = Xunit.TestContext.Current.CancellationToken;
         var actor = Guid.NewGuid();
@@ -138,7 +138,7 @@ public sealed class AdminAgentControllerTests
     [HumansTheory]
     [Xunit.InlineData(true)]
     [Xunit.InlineData(false)]
-    public async Task Reload_reports_the_actual_refresh_outcome(bool succeeded)
+    public async Task Reload_Done_ReportsRefreshOutcome(bool succeeded)
     {
         var cancellationToken = Xunit.TestContext.Current.CancellationToken;
         var preload = Substitute.For<IAgentPreloadCorpusBuilder>();

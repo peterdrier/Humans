@@ -112,7 +112,7 @@ public class VolunteerTrackingRepositoryTests(HumansTestDatabase database)
 
         await shiftsDb.SaveChangesAsync(TestContext.Current.CancellationToken);
 
-        var result = await sut.GetEligibleBuildSignupsAsync(es.Id, es.BuildStartOffset, TestContext.Current.CancellationToken);
+        var result = await sut.GetEligibleBuildSignupsAsync(es.Id, buildStartOffset: -10, TestContext.Current.CancellationToken);
 
         result.Should().HaveCount(1);
         result[0].UserId.Should().Be(userId);
@@ -267,21 +267,13 @@ public class VolunteerTrackingRepositoryTests(HumansTestDatabase database)
         fetched.DayOffs.Select(d => d.DayOffset).Should().Equal(-8, -5);
     }
 
-    /// <summary>A uniquely named <see cref="EventSettings"/> row, so each test gets its own event id.</summary>
+    /// <summary>A fresh <see cref="EventSettings"/> row, so each test gets its own event id.</summary>
     private static async Task<EventSettings> SeedActiveEventAsync(ShiftsDbContext shiftsDb)
     {
         var now = SystemClock.Instance.GetCurrentInstant();
         var es = new EventSettings
         {
             Id = Guid.NewGuid(),
-            EventName = $"VTrack-{Guid.NewGuid():N}",
-            Year = 2026,
-            TimeZoneId = "Europe/Madrid",
-            GateOpeningDate = new LocalDate(2026, 7, 1),
-            BuildStartOffset = -10,
-            EventEndOffset = 6,
-            StrikeEndOffset = 8,
-            IsActive = true,
             CreatedAt = now,
             UpdatedAt = now,
         };

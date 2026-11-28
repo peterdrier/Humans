@@ -13,7 +13,7 @@ namespace Humans.Agent.Tests;
 public class AgentPreloadWarmupHostedServiceTests
 {
     [HumansFact]
-    public async Task WarmAsync_stops_pending_reads_when_the_host_is_stopping()
+    public async Task WarmAsync_HostStopping_StopsPendingReads()
     {
         using var shutdown = new CancellationTokenSource();
         var lifetime = Substitute.For<Microsoft.Extensions.Hosting.IHostApplicationLifetime>();
@@ -73,7 +73,7 @@ public class AgentPreloadWarmupHostedServiceTests
     }
 
     [HumansFact]
-    public async Task WarmAsync_swallows_exceptions()
+    public async Task WarmAsync_ReadThrows_IsSwallowed()
     {
         var corpus = Substitute.For<IAgentPreloadCorpusBuilder>();
         corpus.BuildAsync(Arg.Any<CancellationToken>())

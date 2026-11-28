@@ -1327,6 +1327,17 @@
   <data name="About_MadeByTail" xml:space="preserve"><value>amb amor per a la comunitat Nobodies.</value></data>
   <data name="About_MailKitDesc" xml:space="preserve"><value>Correu transaccional per a notificacions i incorporació. L'única biblioteca que fa que SMTP sembli gairebé agradable.</value></data>
   <data name="About_MeetTheStaff" xml:space="preserve"><value>Coneix l'equip</value></data>
+  <data name="About_Logos_Title" xml:space="preserve"><value>La biblioteca de logotips</value></data>
+  <data name="About_Logos_Intro" xml:space="preserve"><value>Cada model que ha ajudat a construir Humans ha dibuixat el seu propi Home de Vitruvi a partir del mateix encàrrec. Aquí els teniu, per família de model i versió, de menys a més esforç.</value></data>
+  <data name="About_Logos_Empty" xml:space="preserve"><value>Encara no hi ha dibuixos.</value></data>
+  <data name="About_Logos_EffortUnrecorded" xml:space="preserve"><value>esforç no registrat</value></data>
+  <data name="About_Logos_Effort_low" xml:space="preserve"><value>baix</value></data>
+  <data name="About_Logos_Effort_medium" xml:space="preserve"><value>mitjà</value></data>
+  <data name="About_Logos_Effort_high" xml:space="preserve"><value>alt</value></data>
+  <data name="About_Logos_Effort_xhigh" xml:space="preserve"><value>molt alt</value></data>
+  <data name="About_Logos_Effort_max" xml:space="preserve"><value>màxim</value></data>
+  <data name="About_Logos_Link" xml:space="preserve"><value>Mostra totes les versions del logotip</value></data>
+  <data name="About_Logos_Back" xml:space="preserve"><value>Torna a Quant a</value></data>
   <data name="About_NeedHelp" xml:space="preserve"><value>Necessites ajuda?</value></data>
   <data name="About_NuGetPackagesHeading" xml:space="preserve"><value>Paquets NuGet</value></data>
   <data name="About_OpenSourceLicensesHeading" xml:space="preserve"><value>Llicències de codi obert</value></data>

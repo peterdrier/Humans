@@ -1327,6 +1327,17 @@
   <data name="About_MadeByTail" xml:space="preserve"><value>mit Liebe für die Nobodies Community.</value></data>
   <data name="About_MailKitDesc" xml:space="preserve"><value>Transaktionale E-Mails für Benachrichtigungen und Onboarding. Die eine Bibliothek, die SMTP fast angenehm anfühlen lässt.</value></data>
   <data name="About_MeetTheStaff" xml:space="preserve"><value>Lerne das Team kennen</value></data>
+  <data name="About_Logos_Title" xml:space="preserve"><value>Die Logo-Bibliothek</value></data>
+  <data name="About_Logos_Intro" xml:space="preserve"><value>Jedes Modell, das an Humans mitgebaut hat, hat nach derselben Vorgabe seinen eigenen Vitruvianischen Menschen gezeichnet. Hier sind sie, nach Modellfamilie und Version, von niedrigem bis hohem Aufwand.</value></data>
+  <data name="About_Logos_Empty" xml:space="preserve"><value>Noch keine Zeichnungen.</value></data>
+  <data name="About_Logos_EffortUnrecorded" xml:space="preserve"><value>Aufwand nicht erfasst</value></data>
+  <data name="About_Logos_Effort_low" xml:space="preserve"><value>niedrig</value></data>
+  <data name="About_Logos_Effort_medium" xml:space="preserve"><value>mittel</value></data>
+  <data name="About_Logos_Effort_high" xml:space="preserve"><value>hoch</value></data>
+  <data name="About_Logos_Effort_xhigh" xml:space="preserve"><value>sehr hoch</value></data>
+  <data name="About_Logos_Effort_max" xml:space="preserve"><value>maximal</value></data>
+  <data name="About_Logos_Link" xml:space="preserve"><value>Alle Versionen des Logos ansehen</value></data>
+  <data name="About_Logos_Back" xml:space="preserve"><value>Zurück zu Über uns</value></data>
   <data name="About_NeedHelp" xml:space="preserve"><value>Brauchst du Hilfe?</value></data>
   <data name="About_NuGetPackagesHeading" xml:space="preserve"><value>NuGet-Pakete</value></data>
   <data name="About_OpenSourceLicensesHeading" xml:space="preserve"><value>Open-Source-Lizenzen</value></data>

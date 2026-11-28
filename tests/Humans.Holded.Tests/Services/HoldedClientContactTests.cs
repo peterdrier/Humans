@@ -24,7 +24,7 @@ public class HoldedClientContactTests
             "{\"items\":[" + contact + "],\"cursor\":null,\"has_more\":false}")));
 
     [HumansFact]
-    public async Task ListContacts_parses_supplier_record_num()
+    public async Task ListContacts_SupplierRecord_ParsesNumber()
     {
         var json = """{"id":"c1","name":"Daniela Real","supplier_record":{"num":40000001.0}}""";
         var client = MakeContactList(json);
@@ -36,7 +36,7 @@ public class HoldedClientContactTests
     }
 
     [HumansFact]
-    public async Task ListContacts_refuses_fractional_supplier_account_number()
+    public async Task ListContacts_FractionalAccountNumber_IsRefused()
     {
         var client = MakeContactList("""{"id":"c1","name":"Daniela Real","supplier_record":{"num":40000001.5}}""");
 
@@ -47,7 +47,7 @@ public class HoldedClientContactTests
 
     [HumansTheory]
     [Xunit.InlineData("{\"id\":\"c1\",\"name\":\"X\"}")]
-    public async Task ListContacts_supplierAccountNum_null_when_absent(string json)
+    public async Task ListContacts_NoSupplierAccountNumber_IsNull(string json)
     {
         var client = MakeContactList(json);
         var contact = (await client.ListContactsAsync(Xunit.TestContext.Current.CancellationToken)).Single();
@@ -58,7 +58,7 @@ public class HoldedClientContactTests
     [HumansTheory]
     [Xunit.InlineData("{\"id\":\"\"}")]
     [Xunit.InlineData("{\"id\":\"   \"}")]
-    public async Task ListContacts_refuses_blank_identity(string json)
+    public async Task ListContacts_BlankIdentity_IsRefused(string json)
     {
         var client = MakeContactList(json);
 
@@ -68,7 +68,7 @@ public class HoldedClientContactTests
     }
 
     [HumansFact]
-    public async Task ListContacts_parses_contact_info_fields_and_joins_bill_address()
+    public async Task ListContacts_BillAddress_IsJoined()
     {
         var json = """
         {
@@ -93,7 +93,7 @@ public class HoldedClientContactTests
     }
 
     [HumansFact]
-    public async Task ListContacts_contact_info_fields_null_when_bill_address_absent()
+    public async Task ListContacts_NoBillAddress_InfoFieldsNull()
     {
         var client = MakeContactList("""{"id":"c1","name":"X"}""");
 
@@ -104,7 +104,7 @@ public class HoldedClientContactTests
     }
 
     [HumansFact]
-    public async Task ListContacts_parses_id_name_and_supplierAccountNum()
+    public async Task ListContacts_Contact_ParsesSupplierAccountNumber()
     {
         var json = """
         {"items":[
@@ -124,7 +124,7 @@ public class HoldedClientContactTests
     }
 
     [HumansFact]
-    public async Task ListContacts_treats_a_non_object_supplierRecord_as_no_account()
+    public async Task ListContacts_NonObjectSupplierRecord_HasNoAccount()
     {
         // Holded represents an absent supplier sub-record as []; this is a valid contact,
         // so it must remain in the complete list rather than fail the pull.
@@ -145,7 +145,7 @@ public class HoldedClientContactTests
     }
 
     [HumansFact]
-    public async Task ListContacts_surfaces_an_unreadable_page_envelope_as_permanent_not_a_raw_parse_throw()
+    public async Task ListContacts_UnreadablePageEnvelope_IsPermanent()
     {
         var client = Make(new StubHandler(_ => Respond(HttpStatusCode.OK, "not json")));
 
@@ -162,7 +162,7 @@ public class HoldedClientContactTests
     [Xunit.InlineData("{\"id\":\"   \"}")]
     [Xunit.InlineData("""{"id":"bad","name":42}""")]
     [Xunit.InlineData("""{"id":"bad","supplier_record":{"num":40000001.5}}""")]
-    public async Task ListContacts_refuses_an_unreadable_contact_instead_of_returning_a_partial_list(string unreadable)
+    public async Task ListContacts_UnreadableContact_RefusesWholeList(string unreadable)
     {
         var json = $$$"""
         {"items":[
@@ -178,7 +178,7 @@ public class HoldedClientContactTests
     }
 
     [HumansFact]
-    public async Task ListContacts_surfaces_an_unreadable_contact_as_permanent_not_a_raw_parse_throw()
+    public async Task ListContacts_UnreadableContact_IsPermanent()
     {
         var client = MakeContactList("""{"id":42,"name":"Numeric id"}""");
 
@@ -188,7 +188,7 @@ public class HoldedClientContactTests
     }
 
     [HumansFact]
-    public async Task ListContacts_follows_cursor_until_has_more_false()
+    public async Task ListContacts_HasMore_FollowsCursor()
     {
         // An unpaged call silently truncates at whatever cap Holded applies.
         var callCount = 0;
@@ -215,7 +215,7 @@ public class HoldedClientContactTests
     }
 
     [HumansFact]
-    public async Task ListContacts_stops_after_one_call_when_first_page_has_no_more()
+    public async Task ListContacts_NoMorePages_MakesOneCall()
     {
         var callCount = 0;
         var handler = new StubHandler(_ =>
@@ -232,7 +232,7 @@ public class HoldedClientContactTests
     }
 
     [HumansFact]
-    public async Task CreateContact_always_posts_and_returns_id()
+    public async Task CreateContact_Posted_ReturnsId()
     {
         string? method = null;
         var client = Make(new StubHandler(req =>
@@ -248,7 +248,7 @@ public class HoldedClientContactTests
     }
 
     [HumansFact]
-    public async Task CreateContact_does_not_send_custom_id_v2_has_no_such_field()
+    public async Task CreateContact_Body_HasNoCustomId()
     {
         // v2 contacts POST schema has no `custom_id` property (it is read-only on GET).
         string? capturedBody = null;
@@ -267,7 +267,7 @@ public class HoldedClientContactTests
     }
 
     [HumansFact]
-    public async Task CreateContact_sends_creditor_type()
+    public async Task CreateContact_Body_HasCreditorType()
     {
         string? capturedBody = null;
         var client = Make(new StubHandler(req =>
@@ -287,7 +287,7 @@ public class HoldedClientContactTests
     [Xunit.InlineData("{\"id\":null}")]
     [Xunit.InlineData("{\"id\":\"\"}")]
     [Xunit.InlineData("{\"id\":\"  \"}")]
-    public async Task CreateContact_without_an_id_in_the_response_is_permanent(string response)
+    public async Task CreateContact_ResponseWithoutId_IsPermanent(string response)
     {
         var client = Make(new StubHandler(_ => Respond(HttpStatusCode.OK, response)));
 
@@ -298,7 +298,7 @@ public class HoldedClientContactTests
     }
 
     [HumansFact]
-    public async Task CreateContactAsync_SendsTaxCodeAndBillingAddressForAClient()
+    public async Task CreateContactAsync_Client_SendsTaxCodeWithAddress()
     {
         string? body = null;
         var handler = new StubHandler(req =>

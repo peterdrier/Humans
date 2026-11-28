@@ -1,0 +1,98 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="-2 -2 244 244" role="img" aria-label="Vitruvian Man">
+  <!-- frame -->
+  <g fill="none" stroke="#c9a96e">
+    <circle cx="120" cy="120" r="120" stroke-width="3"/>
+    <rect x="23" y="46" width="194" height="194" stroke-width="3"/>
+  </g>
+  <!-- faint construction -->
+  <g fill="none" stroke="#c9a96e" stroke-width="0.5" opacity="0.45">
+    <line x1="120" y1="0" x2="120" y2="240"/>
+    <line x1="23" y1="143" x2="217" y2="143"/>
+  </g>
+
+  <!-- ===== solid gold base ===== -->
+  <g fill="#c9a96e">
+    <!-- head: skull + jaw, slight taper -->
+    <path d="M109 59 Q108 47 120 47 Q132 47 131 59 Q130 67 126 71 Q123 74 120 74 Q117 74 114 71 Q110 67 109 59 Z"/>
+    <!-- neck -->
+    <path d="M115 72 L125 72 L126 78 L114 78 Z"/>
+    <!-- torso: shoulders, chest, waist, hips -->
+    <path d="M101 78 Q120 74 139 78 L137 96 L134 112 Q133 120 131 128 L133 136 L132 144 L108 144 L107 136 L109 128 Q107 120 106 112 L103 96 Z"/>
+
+    <!-- horizontal arms: shoulder to wrist, even width -->
+    <path d="M102 80 Q70 82 28 86 L28 93 Q70 91 104 91 Z"/>
+    <path d="M138 80 Q170 82 212 86 L212 93 Q170 91 136 91 Z"/>
+    <!-- raised arms: reach circle upper area -->
+    <path d="M104 80 L46 37 L50 31 L111 73 Z"/>
+    <path d="M136 80 L194 37 L190 31 L129 73 Z"/>
+
+    <!-- legs together: thigh/calf taper, small gap between -->
+    <path d="M109 143 L107 190 L109 233 L117 233 L118 190 L118 148 Z"/>
+    <path d="M131 143 L133 190 L131 233 L123 233 L122 190 L122 148 Z"/>
+    <!-- legs spread: reach circle lower arcs -->
+    <path d="M109 144 L64 214 L71 220 L120 152 Z"/>
+    <path d="M131 144 L176 214 L169 220 L120 152 Z"/>
+
+    <!-- hands: small tapered palms -->
+    <path d="M28 86 L21 87 Q19 90 21 92 L28 93 Z"/>
+    <path d="M212 86 L219 87 Q221 90 219 92 L212 93 Z"/>
+    <path d="M46 37 L39 33 Q37 30 40 29 L50 31 Z"/>
+    <path d="M194 37 L201 33 Q203 30 200 29 L190 31 Z"/>
+    <!-- feet -->
+    <path d="M109 233 L103 238 L117 238 L117 233 Z"/>
+    <path d="M131 233 L137 238 L123 238 L123 233 Z"/>
+    <path d="M64 214 L55 222 L71 223 L71 220 Z"/>
+    <path d="M176 214 L185 222 L169 223 L169 220 Z"/>
+  </g>
+
+  <!-- ===== tier 1: main contours and pose separations (2.0) ===== -->
+  <g fill="none" stroke="#3d2b1f" stroke-width="2" stroke-linecap="round">
+    <!-- chin / neck line -->
+    <path d="M114 74 L126 74"/>
+    <!-- shoulder vs raised-arm separation -->
+    <path d="M104 80 L111 73"/>
+    <path d="M136 80 L129 73"/>
+    <!-- waist and groin -->
+    <path d="M109 128 Q120 133 131 128"/>
+    <path d="M108 144 L132 144"/>
+    <!-- leg pose separation at hip -->
+    <path d="M110 145 L119 155"/>
+    <path d="M130 145 L121 155"/>
+    <!-- straight legs inner line -->
+    <path d="M120 150 L120 230"/>
+  </g>
+
+  <!-- ===== tier 2: muscle groups and hair (1.4) ===== -->
+  <g fill="none" stroke="#3d2b1f" stroke-width="1.4" stroke-linecap="round" opacity="0.9">
+    <!-- hair: wavy cap along the crown -->
+    <path d="M110 55 Q109 47 120 47 Q131 47 130 55 Q127 51 124 52 Q122 50 120 51 Q118 50 116 52 Q113 51 110 55 Z" fill="#3d2b1f" stroke="none"/>
+    <!-- pectorals -->
+    <path d="M110 90 Q120 95 130 90"/>
+    <!-- abdomen -->
+    <path d="M113 106 Q120 109 127 106"/>
+    <path d="M114 118 Q120 121 126 118"/>
+    <!-- elbows on horizontal arms -->
+    <path d="M70 85 L70 90"/>
+    <path d="M170 85 L170 90"/>
+    <!-- knees -->
+    <path d="M109 190 L117 190"/>
+    <path d="M123 190 L131 190"/>
+    <path d="M90 180 L94 185"/>
+    <path d="M150 180 L146 185"/>
+  </g>
+
+  <!-- ===== tier 3: face, fingers, hatching (0.9) ===== -->
+  <g fill="none" stroke="#3d2b1f" stroke-width="0.9" stroke-linecap="round" opacity="0.85">
+    <!-- brow and nose, no smile -->
+    <path d="M114 58 L118 58"/>
+    <path d="M122 58 L126 58"/>
+    <path d="M120 59 L119 64"/>
+    <!-- fingers -->
+    <path d="M22 88 L18 87 M22 90 L17 90 M22 92 L18 93"/>
+    <path d="M218 88 L222 87 M218 90 L223 90 M218 92 L222 93"/>
+    <path d="M41 32 L37 29 M43 34 L39 32"/>
+    <path d="M199 32 L203 29 M197 34 L201 32"/>
+    <!-- torso hatching -->
+    <path d="M106 98 L108 100 M105 94 L107 96 M134 98 L132 100 M135 94 L133 96"/>
+  </g>
+</svg>

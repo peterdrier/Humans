@@ -1529,6 +1529,49 @@ a:hover {
     height: auto;
 }
 
+/* --- About/Logos: the logo library, one card per model drawing --- */
+.logo-library {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+    gap: 2rem 1.5rem;
+}
+
+.logo-entry {
+    text-align: center;
+}
+
+.logo-entry .about-mark {
+    width: 200px;
+    height: 200px;
+    margin-bottom: 0.75rem;
+}
+
+.logo-entry-small {
+    display: inline-block;
+    padding: 4px;
+    border-radius: var(--h-radius-sm);
+    background: var(--h-aged-ink);
+}
+
+.logo-brief {
+    max-height: 24rem;
+    overflow-y: auto;
+    padding: 1rem 1.25rem;
+    border-radius: var(--h-radius);
+    background: var(--h-parchment-dark);
+    font-size: 0.9rem;
+}
+
+.logo-brief > :last-child {
+    margin-bottom: 0;
+}
+
+.logo-entry-small img {
+    display: block;
+    width: 38px;
+    height: 38px;
+}
+
 /* --- Home (unauthenticated landing page) --- */
 .home-hero {
     padding: 3.5rem 1rem 2.5rem;

@@ -55,7 +55,7 @@ public class AgentSettingsServiceTests
     }
 
     [HumansFact]
-    public async Task Updating_persists_to_db_and_refreshes_store()
+    public async Task Update_Saved_RefreshesStore()
     {
         await using var db = CreateDb();
         db.AgentSettings.Add(new AgentSettings
@@ -114,7 +114,7 @@ public class AgentSettingsServiceTests
     }
 
     [HumansFact]
-    public async Task Model_options_list_live_models_with_prices_and_keep_the_saved_one()
+    public async Task ModelOptions_LiveModels_KeepSavedOne()
     {
         var anthropic = Substitute.For<IAnthropicClient>();
         anthropic.ListModelsAsync(Arg.Any<CancellationToken>()).Returns(new List<AnthropicModelInfo>
@@ -136,7 +136,7 @@ public class AgentSettingsServiceTests
     [HumansTheory]
     [Xunit.InlineData(false)]
     [Xunit.InlineData(true)]
-    public async Task Model_options_classify_failures_and_fall_back_to_the_saved_model(bool unexpected)
+    public async Task ModelOptions_ListFails_FallBackToSavedModel(bool unexpected)
     {
         Exception failure = unexpected ? new InvalidOperationException("Model lookup failed") : new HttpRequestException("Model lookup failed");
         var anthropic = Substitute.For<IAnthropicClient>();

@@ -13,6 +13,7 @@
     <!-- 9.1.973 is the first stable release resolving AngleSharp 1.x — required to clear GHSA-pgww-w46g-26qg (nobodies-collective/Humans#929). -->
     <PackageVersion Include="HtmlSanitizer" Version="11.0.26" />
     <PackageVersion Include="Ical.Net" Version="5.2.4" />
+    <PackageVersion Include="JetBrains.Annotations" Version="2026.2.0" />
     <PackageVersion Include="Markdig" Version="1.6.0" />
     <!-- The Backdoor MCP endpoint (src/Sections/Humans.Backdoor/Docs/features/mcp.md). Apache-2.0. -->
     <PackageVersion Include="ModelContextProtocol.AspNetCore" Version="2.4.0" />
