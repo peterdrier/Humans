@@ -8,17 +8,17 @@ namespace Humans.Grants.Authorization;
 internal sealed class ProgramOperationRequirement : IAuthorizationRequirement
 {
     /// <summary>The program page: a manager of this program, Grants Admin, Admin or Board.</summary>
-    public static readonly ProgramOperationRequirement View = new(nameof(View));
+    public static readonly ProgramOperationRequirement View = new();
 
     /// <summary>Issue, revoke, resend: a manager of this program, Grants Admin or Admin. Never Board.</summary>
-    public static readonly ProgramOperationRequirement Manage = new(nameof(Manage));
+    public static readonly ProgramOperationRequirement Manage = new();
 
     /// <summary>The program itself and its managers: Grants Admin or Admin.</summary>
-    public static readonly ProgramOperationRequirement Administer = new(nameof(Administer));
+    public static readonly ProgramOperationRequirement Administer = new();
 
-    private ProgramOperationRequirement(string name) => Name = name;
-
-    public string Name { get; }
+    private ProgramOperationRequirement()
+    {
+    }
 }
 
 /// <summary>Matches manager rows against every id the viewer has held, as <see cref="GrantsPolicyHandler"/> does.</summary>

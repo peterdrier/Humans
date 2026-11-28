@@ -107,12 +107,10 @@ public class GateServiceTests
         Guid? matchedUserId = null,
         string barcode = Barcode,
         Guid? attendeeId = null,
-        Instant? checkedInAt = null,
-        string vendorTicketId = "v1")
+        Instant? checkedInAt = null)
     {
         var attendee = new TicketAttendeeInfo(
             Id: attendeeId ?? Guid.NewGuid(),
-            VendorTicketId: vendorTicketId,
             AttendeeName: "Jane Donovan",
             AttendeeEmail: "jane@example.com",
             TicketTypeName: "GA",

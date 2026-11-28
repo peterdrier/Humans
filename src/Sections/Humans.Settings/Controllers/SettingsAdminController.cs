@@ -30,7 +30,7 @@ internal sealed class SettingsAdminController(
 
         var parsed = EventSettingsFormMapper.Parse(model);
         if (!parsed.Success)
-            return BackToTab(model.Id, Describe(parsed.Errors.Select(error => error.Message)));
+            return BackToTab(model.Id, Describe(parsed.Errors));
 
         var actor = await GetCurrentUserInfoAsync(ct);
         if (actor is null) return Challenge();

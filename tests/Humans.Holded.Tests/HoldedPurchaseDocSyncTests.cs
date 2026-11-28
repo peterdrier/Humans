@@ -79,6 +79,7 @@ public sealed class HoldedPurchaseDocSyncTests
         a.Description.Should().Be("ER: Train");
         a.Tags.Should().Equal("comms", "ops");
         a.BookedAccountId.Should().Be("acc-1");
+        a.Total.Should().Be(121m);
         a.PaymentsPending.Should().Be(121m);
         a.Date.Should().Be(new LocalDate(2026, 4, 1));
         a.HoldedUrl.Should().Be("https://app.holded.com/expenses/list#open:purchase-a");

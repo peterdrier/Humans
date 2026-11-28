@@ -213,10 +213,9 @@ public sealed class CampaignServiceTests
         entries.Single(args => (AuditActionDefinition)args[0]! == CampaignsAuditActions.CampaignWaveSent)[5].Should().Be(user.Id);
         ClearAllTrackers();
         (await _campaignsDb.Campaigns.SingleAsync(ct)).Status.Should().Be(CampaignStatus.Completed);
-#pragma warning disable CS0618 // a retired column must stay unwritten until its drop is approved
-        (await _campaignsDb.CampaignGrants.SingleAsync(ct)).LatestEmailStatus.Should().BeNull(
+        var reloadedGrant = await _campaignsDb.CampaignGrants.SingleAsync(ct);
+        _campaignsDb.Entry(reloadedGrant).Property<EmailOutboxStatus?>("LatestEmailStatus").CurrentValue.Should().BeNull(
             "delivery state is no longer tracked on a grant (nobodies-collective/Humans#1243)");
-#pragma warning restore CS0618
     }
 
     [HumansFact]
@@ -919,10 +918,8 @@ public sealed class CampaignServiceTests
             .ToListAsync(Xunit.TestContext.Current.CancellationToken);
         grants.Should().ContainSingle();
         grants[0].UserId.Should().Be(user.Id);
-#pragma warning disable CS0618 // a retired column must stay unwritten until its drop is approved
-        grants[0].LatestEmailStatus.Should().BeNull();
-        grants[0].LatestEmailAt.Should().BeNull();
-#pragma warning restore CS0618
+        _campaignsDb.Entry(grants[0]).Property<EmailOutboxStatus?>("LatestEmailStatus").CurrentValue.Should().BeNull();
+        _campaignsDb.Entry(grants[0]).Property<Instant?>("LatestEmailAt").CurrentValue.Should().BeNull();
 
         // CampaignService hands the built message to IEmailService — verify the
         // campaign, recipient and code reached it. Allocation orders by ImportOrder, so the
@@ -1445,11 +1442,7 @@ public sealed class CampaignServiceTests
             CampaignCodeId = code.Id,
             UserId = user.Id,
             AssignedAt = _clock.GetCurrentInstant(),
-#pragma warning disable CS0618 // old grants still hand over their stored status
-            // A grant from before delivery tracking was dropped still hands over what it holds.
-            LatestEmailStatus = EmailOutboxStatus.Sent
-#pragma warning restore CS0618
-        });
+        }).Property<EmailOutboxStatus?>("LatestEmailStatus").CurrentValue = EmailOutboxStatus.Sent;
         _campaignsDb.CampaignGrants.Add(new CampaignGrant
         {
             Id = Guid.NewGuid(),
@@ -1652,7 +1645,7 @@ public sealed class CampaignServiceTests
         _people.TryGetValue(userId, out var person);
         _teams[teamId].Members.Add(new TeamMemberInfo(
             Guid.NewGuid(), userId, person?.BurnerName ?? string.Empty,
-            person?.Email, null, TeamMemberRole.Member, _clock.GetCurrentInstant()));
+            person?.Email, TeamMemberRole.Member, _clock.GetCurrentInstant()));
     }
 
     private Task SaveAllAsync(CancellationToken ct = default) => _campaignsDb.SaveChangesAsync(ct);

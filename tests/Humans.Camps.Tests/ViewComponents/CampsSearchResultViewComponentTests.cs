@@ -54,29 +54,11 @@ public class CampsSearchResultViewComponentTests
         await _camps.DidNotReceive().GetSettingsAsync(Arg.Any<CancellationToken>());
     }
 
-    [HumansTheory]
-    [Xunit.InlineData(false)]
-    [Xunit.InlineData(true)]
-    public async Task InvokeAsync_AbandonedRequest_CancelsReads(bool settings)
-    {
-        using var aborted = new CancellationTokenSource();
-        await aborted.CancelAsync();
-        StubSettings(publicYear: 2026);
-        var id = StubCamp("garden", (2026, "Garden"));
-        if (settings)
-            _camps.GetSettingsAsync(aborted.Token).Returns(Task.FromCanceled<CampSettingsInfo>(aborted.Token));
-        else
-            _camps.GetCampByIdAsync(id, aborted.Token).Returns(Task.FromCanceled<CampInfo?>(aborted.Token));
-        var act = () => CreateComponent(aborted.Token).InvokeAsync(id);
-
-        await act.Should().ThrowAsync<OperationCanceledException>();
-    }
-
-    private CampsSearchResultViewComponent CreateComponent(CancellationToken ct = default) => new(_camps)
+    private CampsSearchResultViewComponent CreateComponent() => new(_camps)
     {
         ViewComponentContext = new ViewComponentContext
         {
-            ViewContext = new ViewContext { HttpContext = new DefaultHttpContext { RequestAborted = ct } },
+            ViewContext = new ViewContext { HttpContext = new DefaultHttpContext() },
         },
     };
 

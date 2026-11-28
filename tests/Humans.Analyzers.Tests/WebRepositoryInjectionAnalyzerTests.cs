@@ -26,7 +26,7 @@ public class WebRepositoryInjectionAnalyzerTests
         string.Equals(d.Id, WebRepositoryInjectionAnalyzer.DiagnosticId, StringComparison.Ordinal);
 
     [HumansFact]
-    public async Task Fires_when_controller_injects_repository()
+    public async Task Analyze_InjectedRepository_Fires()
     {
         var source = Stubs + """
 
@@ -48,7 +48,7 @@ public class WebRepositoryInjectionAnalyzerTests
     }
 
     [HumansFact]
-    public async Task Does_not_fire_when_controller_injects_service()
+    public async Task Analyze_InjectedService_IsSilent()
     {
         var source = Stubs + """
 
@@ -70,7 +70,7 @@ public class WebRepositoryInjectionAnalyzerTests
     }
 
     [HumansFact]
-    public async Task Grandfathered_violator_downgrades_to_warning()
+    public async Task Analyze_GrandfatheredViolator_Warns()
     {
         var source = Stubs + """
 
@@ -104,7 +104,7 @@ public class WebRepositoryInjectionAnalyzerTests
     }
 
     [HumansFact]
-    public async Task Fires_on_indirect_repository_extension()
+    public async Task Analyze_IndirectRepositoryExtension_Fires()
     {
         var source = """
             namespace Humans.Base.Interfaces.Repositories

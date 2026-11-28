@@ -257,33 +257,6 @@ internal sealed class ShiftRepository : SectionRepository<ShiftsDbContext>, IShi
         return await query.ToListAsync(ct);
     }
 
-    public async Task<IReadOnlyList<Rota>> GetRotasAsync(
-        Guid eventSettingsId,
-        IReadOnlyCollection<Guid> teamIds,
-        RotaReadShape shape,
-        CancellationToken ct = default)
-    {
-        if (teamIds.Count == 0) return [];
-
-        await using var ctx = await CreateDbContextAsync(ct);
-        var query = ctx.Rotas.AsNoTracking();
-
-        if (shape.HasFlag(RotaReadShape.EventSettings))
-            query = query.Include(r => r.EventSettings);
-
-        if (shape.HasFlag(RotaReadShape.ShiftSignups))
-            query = query.Include(r => r.Shifts).ThenInclude(s => s.ShiftSignups);
-        else if (shape.HasFlag(RotaReadShape.Shifts))
-            query = query.Include(r => r.Shifts);
-
-        if (shape.HasFlag(RotaReadShape.Tags))
-            query = query.Include(r => r.Tags);
-
-        return await query
-            .Where(r => r.EventSettingsId == eventSettingsId && teamIds.Contains(r.TeamId))
-            .ToListAsync(ct);
-    }
-
     public async Task<IReadOnlyDictionary<Guid, int>> GetConfirmedSignupCountsByShiftAsync(
         IReadOnlyCollection<Guid> shiftIds,
         CancellationToken ct = default)

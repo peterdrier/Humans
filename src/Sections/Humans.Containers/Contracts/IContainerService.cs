@@ -27,12 +27,9 @@ public interface IContainerService : IApplicationService
         CancellationToken ct = default);
 
     /// <summary>Includes every camp with a season in the year, even one with no containers.</summary>
-    Task<ContainerAdminOverview> GetAdminOverviewAsync(int year, CancellationToken ct = default);
+    Task<IReadOnlyList<ContainerCampGroup>> GetAdminOverviewAsync(int year, CancellationToken ct = default);
 
 }
-
-public record ContainerAdminOverview(
-    IReadOnlyList<ContainerCampGroup> CampGroups);
 
 public record ContainerCampGroup(
     Guid CampId,

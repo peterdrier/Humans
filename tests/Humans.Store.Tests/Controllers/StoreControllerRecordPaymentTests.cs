@@ -336,7 +336,7 @@ public sealed class StoreControllerRecordPaymentTests
     [HumansTheory]
     [InlineData(nameof(PaymentMethod.Refund))]
     [InlineData(nameof(PaymentMethod.BankTransfer))]
-    public async Task StoreAdmin_is_forbidden_to_record_a_refund_or_bank_transfer(string methodName)
+    public async Task RecordRefund_StoreAdmin_IsForbidden(string methodName)
     {
         var controller = BuildController(StoreRoles.StoreAdmin);
 
@@ -351,7 +351,7 @@ public sealed class StoreControllerRecordPaymentTests
     [HumansTheory]
     [InlineData(StoreRoles.StoreAdmin)]
     [InlineData(RoleNames.Board)]
-    public async Task Only_FinanceAdmin_and_Admin_can_check_stripe_refunds(string role)
+    public async Task CheckStripeRefunds_OtherRoles_AreForbidden(string role)
     {
         var controller = BuildController(role);
 
@@ -364,7 +364,7 @@ public sealed class StoreControllerRecordPaymentTests
     [HumansTheory]
     [InlineData(FinanceRoles.FinanceAdmin)]
     [InlineData(RoleNames.Admin)]
-    public async Task FinanceAdmin_and_Admin_can_record_a_refund(string role)
+    public async Task RecordRefund_FinanceAdminOrAdmin_IsAllowed(string role)
     {
         var controller = BuildController(role);
 
@@ -380,7 +380,7 @@ public sealed class StoreControllerRecordPaymentTests
     [HumansTheory]
     [InlineData(FinanceRoles.FinanceAdmin)]
     [InlineData(RoleNames.Admin)]
-    public async Task FinanceAdmin_and_Admin_record_a_bank_transfer_that_pays_down_the_balance(string role)
+    public async Task RecordBankTransfer_FinanceAdminOrAdmin_ReducesBalance(string role)
     {
         _order.Lines =
         [
@@ -415,7 +415,7 @@ public sealed class StoreControllerRecordPaymentTests
     }
 
     [HumansFact]
-    public async Task StoreAdmin_can_still_record_a_deposit_return()
+    public async Task RecordDepositReturn_StoreAdmin_IsAllowed()
     {
         var productId = Guid.NewGuid();
         _order.Lines =
@@ -456,7 +456,7 @@ public sealed class StoreControllerRecordPaymentTests
     [HumansTheory]
     [InlineData(StoreRoles.StoreAdmin)]
     [InlineData(FinanceRoles.FinanceAdmin)]
-    public async Task Only_full_Admin_may_delete_a_payment(string role)
+    public async Task DeletePayment_NonAdmin_IsForbidden(string role)
     {
         var payment = AddPayment(-3m, PaymentMethod.Refund);
         var controller = BuildController(role);
@@ -471,7 +471,7 @@ public sealed class StoreControllerRecordPaymentTests
     }
 
     [HumansFact]
-    public async Task Admin_deleting_a_payment_removes_the_row_audits_it_and_the_balance_follows()
+    public async Task DeletePayment_Admin_RemovesRowWithAudit()
     {
         _order.Lines =
         [
@@ -506,7 +506,7 @@ public sealed class StoreControllerRecordPaymentTests
     }
 
     [HumansFact]
-    public async Task Deleting_a_payment_that_is_not_on_the_order_changes_nothing()
+    public async Task DeletePayment_NotOnOrder_ChangesNothing()
     {
         var controller = BuildController(RoleNames.Admin);
 
@@ -519,7 +519,7 @@ public sealed class StoreControllerRecordPaymentTests
     [InlineData("record")]
     [InlineData("payment-delete")]
     [InlineData("order-delete")]
-    public async Task Controller_does_not_turn_repository_faults_into_operator_refusal_feedback(string operation)
+    public async Task Controller_RepositoryFault_IsNotShownAsRefusal(string operation)
     {
         var controller = BuildController(RoleNames.Admin);
         var failure = new InvalidOperationException("Private persistence diagnostic");
@@ -547,7 +547,7 @@ public sealed class StoreControllerRecordPaymentTests
     [InlineData(StoreRoles.StoreAdmin, false, false)]
     [InlineData(FinanceRoles.FinanceAdmin, true, false)]
     [InlineData(RoleNames.Admin, true, true)]
-    public async Task Order_page_offers_refund_and_payment_delete_by_role(string role, bool canRecordFinancePayment, bool canDeletePayment)
+    public async Task OrderPage_Role_DecidesRefundOrDeleteOffers(string role, bool canRecordFinancePayment, bool canDeletePayment)
     {
         var controller = BuildController(role);
 
@@ -560,7 +560,7 @@ public sealed class StoreControllerRecordPaymentTests
     }
 
     [HumansFact]
-    public async Task Order_page_hides_Delete_when_a_payment_row_exists_at_zero_balance()
+    public async Task OrderPage_PaymentAtZeroBalance_HidesDelete()
     {
         _order.Payments.Add(new Payment
         {
@@ -580,7 +580,7 @@ public sealed class StoreControllerRecordPaymentTests
     }
 
     [HumansFact]
-    public async Task Order_page_offers_Delete_on_an_empty_open_order()
+    public async Task OrderPage_EmptyOpenOrder_OffersDelete()
     {
         var controller = BuildController(RoleNames.Admin);
 

@@ -84,7 +84,7 @@ public sealed class TableOwnershipRuleTests
         AnalyzerTestHarness.RunAsync(new SectionRulesAnalyzer(), "Humans.Infrastructure", source);
 
     [HumansFact]
-    public async Task Fires_at_each_site_when_two_repositories_reference_the_same_dbset()
+    public async Task Analyze_TwoRepositoriesOneDbSet_FiresAtEachSite()
     {
         var source = Stubs + """
 
@@ -115,7 +115,7 @@ public sealed class TableOwnershipRuleTests
     }
 
     [HumansFact]
-    public async Task Fires_when_two_repositories_share_a_dbset_on_a_relocated_context()
+    public async Task Analyze_SharedDbSetRelocatedContext_Fires()
     {
         // ctx.Set<T>() only resolves to a table when the owning context was
         // discovered, so this also proves discovery is not namespace-pinned.
@@ -147,7 +147,7 @@ public sealed class TableOwnershipRuleTests
     }
 
     [HumansFact]
-    public async Task Does_not_fire_when_only_one_repository_references_a_dbset()
+    public async Task Analyze_OneRepositoryPerDbSet_IsSilent()
     {
         var source = Stubs + """
 
@@ -169,7 +169,7 @@ public sealed class TableOwnershipRuleTests
     }
 
     [HumansFact]
-    public async Task Counts_reads_not_just_writes()
+    public async Task Analyze_Reads_AreCounted()
     {
         // EventRepository writes Events; AuditLogRepository only reads it.
         var source = Stubs + """
@@ -199,7 +199,7 @@ public sealed class TableOwnershipRuleTests
     }
 
     [HumansFact]
-    public async Task Grandfathered_scope_downgrades_both_participants_to_warning()
+    public async Task Analyze_GrandfatheredScope_BothWarn()
     {
         var source = Stubs + """
 
@@ -231,7 +231,7 @@ public sealed class TableOwnershipRuleTests
     }
 
     [HumansFact]
-    public async Task New_sharer_of_a_grandfathered_table_still_errors()
+    public async Task Analyze_NewSharerOfGrandfatheredTable_Fires()
     {
         // EventRepository is grandfathered for Events; AuditLogRepository is the
         // new sharer and is NOT — its site must still be an Error.
@@ -264,7 +264,7 @@ public sealed class TableOwnershipRuleTests
     }
 
     [HumansFact]
-    public async Task Grandfather_for_a_different_scope_does_not_downgrade()
+    public async Task Analyze_GrandfatheredOtherScope_Fires()
     {
         // The grandfather names AuditLogEntries, but the violation is on Events —
         // scope mismatch, so the diagnostic stays an Error.
@@ -297,7 +297,7 @@ public sealed class TableOwnershipRuleTests
     }
 
     [HumansFact]
-    public async Task Non_repository_dbcontext_users_do_not_count_toward_the_total()
+    public async Task Analyze_NonRepositoryUsers_AreNotCounted()
     {
         // A non-IRepository class touches Events, but only one *repository* does,
         // so HUM0025 does not fire (that class is HUM0009's concern, not this rule's).
@@ -328,7 +328,7 @@ public sealed class TableOwnershipRuleTests
     }
 
     [HumansFact]
-    public async Task Detects_ctx_Set_generic_and_inherited_identity_dbset()
+    public async Task Analyze_GenericSetOrInheritedDbSet_IsDetected()
     {
         // RepoA reaches Users via the inherited property; RepoB via ctx.Set<User>().
         // Both must resolve to the same "Users" table so N=2 fires.

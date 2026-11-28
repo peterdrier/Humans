@@ -59,7 +59,6 @@ public sealed class Section :
         services.AddScoped<IAgentUserContextProvider, AgentUserContextProvider>();
         services.AddScoped<IAgentAdminStatusService, AgentAdminStatusService>();
 
-        services.AddScoped<IAgentAnthropicBalanceProvider, AnthropicBalanceProvider>();
 
         // Stateless readers over the shared IMemoryCache; IGuideContentSource is a singleton, so capturing it is safe.
         services.AddSingleton<AgentSectionDocReader>();
@@ -113,7 +112,6 @@ public sealed class Section :
     {
         configuration.GetOptionalSetting(registry, "Anthropic:ApiKey", "Anthropic", isSensitive: true,
             importance: ConfigurationImportance.Recommended);
-        configuration.GetOptionalSetting(registry, "Anthropic:DefaultModel", "Anthropic");
 
         configuration.GetOptionalSetting(registry, "CommunityFaq:Owner", "Community FAQ");
         configuration.GetOptionalSetting(registry, "CommunityFaq:Repository", "Community FAQ");

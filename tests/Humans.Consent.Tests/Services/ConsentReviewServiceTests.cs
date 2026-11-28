@@ -101,7 +101,7 @@ public sealed class ConsentReviewServiceTests : IDisposable
     {
         var user = SeedUser();
 
-        (await _sut.GetReviewAsync(user.Id, Ct)).Should().Be(ConsentReviewInfo.None(user.Id));
+        (await _sut.GetReviewAsync(user.Id, Ct)).Should().Be(ConsentReviewInfo.None());
         (await _sut.GetReviewsAsync(Ct)).Should().NotContainKey(user.Id);
     }
 
@@ -113,8 +113,7 @@ public sealed class ConsentReviewServiceTests : IDisposable
         _users.GetUserInfoAsync(archivedId, Arg.Any<CancellationToken>()).Returns(survivor);
         await SeedRowAsync(new ConsentReview { UserId = survivor.Id, IsApproved = true, UpdatedAt = Now });
 
-        (await _sut.GetReviewAsync(archivedId, Ct)).Should().BeEquivalentTo(
-            new { UserId = survivor.Id, IsApproved = true }, o => o.ExcludingMissingMembers());
+        (await _sut.GetReviewAsync(archivedId, Ct)).IsApproved.Should().BeTrue();
     }
 
     [HumansFact]
@@ -352,7 +351,7 @@ public sealed class ConsentReviewServiceTests : IDisposable
     {
         var active = SeedUser();
         var tombstone = SeedUser(state: UserState.Merged, mergedAt: Earlier);
-        var none = ConsentReviewInfo.None(active.Id);
+        var none = ConsentReviewInfo.None();
         var flagged = none with { Status = ConsentCheckStatus.Flagged };
 
         none.NeedsConsentReview(active).Should().BeTrue();
@@ -386,9 +385,9 @@ public sealed class ConsentReviewServiceTests : IDisposable
         var withReason = Guid.NewGuid();
         var withoutReason = Guid.NewGuid();
         consent.GetConsentReviewAsync(withReason, Arg.Any<CancellationToken>())
-            .Returns(ConsentReviewInfo.None(withReason) with { RejectionReason = "dup", RejectedAt = Earlier });
+            .Returns(ConsentReviewInfo.None() with { RejectionReason = "dup", RejectedAt = Earlier });
         consent.GetConsentReviewAsync(withoutReason, Arg.Any<CancellationToken>())
-            .Returns(ConsentReviewInfo.None(withoutReason) with { RejectedAt = Earlier });
+            .Returns(ConsentReviewInfo.None() with { RejectedAt = Earlier });
         var component = WithContext(new RejectionReasonViewComponent(consent));
 
         (await component.InvokeAsync(withReason, ProfileCardViewMode.Self))
@@ -405,7 +404,7 @@ public sealed class ConsentReviewServiceTests : IDisposable
         var reviewer = SeedUser(UserFixtures.Profile(), burnerName: "Rita", firstName: "R", lastName: "C");
         var user = SeedUser(state: UserState.Rejected);
         var consent = Substitute.For<IConsentService>();
-        consent.GetConsentReviewAsync(user.Id, Arg.Any<CancellationToken>()).Returns(ConsentReviewInfo.None(user.Id) with
+        consent.GetConsentReviewAsync(user.Id, Arg.Any<CancellationToken>()).Returns(ConsentReviewInfo.None() with
         {
             Status = ConsentCheckStatus.Flagged,
             RejectionReason = "dup",

@@ -305,9 +305,7 @@ internal sealed class UserRepository : SectionRepository<UsersDbContext>, IUserR
         if (user is null)
             return null;
 
-        var originalEmail = user.Email;
         var originalBurnerName = user.BurnerName ?? string.Empty;
-        var preferredLanguage = user.PreferredLanguage;
 
         user.DisplayName = UserInfo.GdprAnonymizedBurnerName;
 

@@ -707,11 +707,7 @@ internal sealed class ShiftAdminController(
                 _ => throw new InvalidOperationException($"Unexpected volunteer search status '{result.Status}'.")
             };
         }
-        catch (OperationCanceledException) when (ct.IsCancellationRequested)
-        {
-            throw;
-        }
-        catch (Exception ex)
+        catch (Exception ex) when (ex is not OperationCanceledException || !ct.IsCancellationRequested)
         {
             logger.LogError(ex, "Volunteer search failed for shift {ShiftId}, query '{Query}'", shiftId, query);
             return StatusCode(500, new { error = "Search failed." });

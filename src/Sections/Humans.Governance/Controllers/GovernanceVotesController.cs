@@ -32,11 +32,8 @@ internal sealed class GovernanceVotesController(
         if (user is null) return Challenge();
 
         var votes = await voteService.GetVotesForMemberAsync(user.Id, ct);
-        return View("~/Views/Governance/Votes/Index.cshtml", new AssemblyVoteListViewModel
-        {
-            Votes = votes.OrderByDescending(v => v.Status == AssemblyVoteStatus.Open)
-                .ThenByDescending(v => v.ClosesAt).ToList()
-        });
+        return View("~/Views/Governance/Votes/Index.cshtml", votes.OrderByDescending(v => v.Status == AssemblyVoteStatus.Open)
+                .ThenByDescending(v => v.ClosesAt).ToList());
     }
 
     [HttpGet("{voteId:guid}")]
@@ -127,7 +124,7 @@ internal sealed class GovernanceVotesController(
         var results = await voteService.GetResultsAsync(voteId, user.Id, IsViewerBoardOrAdmin(), ct);
         if (results is null) return NotFound();
 
-        return View("~/Views/Governance/Votes/Results.cshtml", new AssemblyVoteResultsViewModel { Results = results });
+        return View("~/Views/Governance/Votes/Results.cshtml", results);
     }
 
     /// <summary>The same stored tally as <see cref="Results"/>, as a CSV of the YesNo counts or IRV rounds.</summary>

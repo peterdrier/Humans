@@ -38,11 +38,7 @@ public sealed class DietaryMissingBannerViewComponent : ViewComponent
 
             return View();
         }
-        catch (OperationCanceledException) when (ct.IsCancellationRequested)
-        {
-            throw;
-        }
-        catch (Exception ex)
+        catch (Exception ex) when (ex is not OperationCanceledException || !ct.IsCancellationRequested)
         {
             // A banner failure must not crash /Shifts.
             _logger.LogError(ex, "Failed to evaluate dietary banner for user {UserId}", userId);

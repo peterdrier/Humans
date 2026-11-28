@@ -1,9 +1,9 @@
-@model Humans.Surveys.Models.SurveyClosedViewModel
+@model string
 
 @{
     ViewData["Title"] = Localizer["Surveys_Closed_Title"].Value;
 
-    var (headingKey, bodyKey) = Model.Reason switch
+    var (headingKey, bodyKey) = Model switch
     {
         "closed" => ("Surveys_Closed_Heading", "Surveys_Closed_Body"),
         "empty" => ("Surveys_NothingToAnswer_Heading", "Surveys_NothingToAnswer_Body"),

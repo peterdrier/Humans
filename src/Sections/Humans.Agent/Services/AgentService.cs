@@ -448,11 +448,10 @@ internal sealed class AgentService : IAgentService
         };
         await _repo.AppendMessageAsync(message, cancellationToken);
 
-        var fallbackFinalizer = finalFinalizer ?? new AgentTurnFinalizer(0, 0, 0, 0, "unknown");
         // Stamp the conversation id so the client can reuse it on the next send, and
         // the turn-wide token sums so the finalizer reflects the whole turn, not just
         // the last provider request. Other fields (stop reason, model) stay from the last one.
-        yield return new AgentTurnToken(null, null, fallbackFinalizer with
+        yield return new AgentTurnToken(null, null, finalFinalizer with
         {
             ConversationId = conversation.Id,
             InputTokens = usage.PromptTokens,

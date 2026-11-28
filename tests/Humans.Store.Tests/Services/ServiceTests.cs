@@ -66,7 +66,7 @@ public class ServiceTests
     }
 
     [HumansFact]
-    public async Task GetIndexDataAsync_returns_active_year_catalog_and_empty_lead_sections()
+    public async Task GetIndexDataAsync_NoLedCamps_ReturnsCatalogOnly()
     {
         var inactive = MakeProduct(name: "Retired tent");
         inactive.IsActive = false;
@@ -89,7 +89,7 @@ public class ServiceTests
     [HumansTheory]
     [InlineData(IndexAudience.Lead)]
     [InlineData(IndexAudience.Privileged)]
-    public async Task Index_includes_every_eligible_camp_season_in_the_catalog_year(IndexAudience audience)
+    public async Task Index_EligibleSeasons_AllIncluded(IndexAudience audience)
     {
         var userId = Guid.NewGuid();
         var first = MakeCampInfo(Guid.NewGuid(), Guid.NewGuid(), "Spring", userId);
@@ -122,7 +122,7 @@ public class ServiceTests
     }
 
     [HumansFact]
-    public async Task GetIndexDataAsync_selects_highest_balance_camp_order_with_live_prices()
+    public async Task GetIndexDataAsync_CampOrders_PicksHighestBalance()
     {
         var userId = Guid.NewGuid();
         var campId = Guid.NewGuid();
@@ -172,7 +172,7 @@ public class ServiceTests
     }
 
     [HumansFact]
-    public async Task GetOrderPageDataAsync_loads_edit_catalog_and_computes_payment_state()
+    public async Task GetOrderPageDataAsync_Order_HasCatalogWithState()
     {
         var campSeasonId = Guid.NewGuid();
         var order = new OrderDto(
@@ -215,7 +215,7 @@ public class ServiceTests
     }
 
     [HumansFact]
-    public async Task GetActiveCatalogAsync_returns_empty_for_empty_catalog()
+    public async Task GetActiveCatalogAsync_EmptyCatalog_ReturnsEmpty()
     {
         _repo.GetActiveProductsForYearAsync(2026, Arg.Any<CancellationToken>())
             .Returns([]);
@@ -226,7 +226,7 @@ public class ServiceTests
     }
 
     [HumansFact]
-    public async Task GetActiveCatalogAsync_maps_products_to_dtos()
+    public async Task GetActiveCatalogAsync_Products_MappedToDtos()
     {
         var p = MakeProduct(name: "Tent", price: 50m, vat: 21m, deposit: 100m);
         _repo.GetActiveProductsForYearAsync(2026, Arg.Any<CancellationToken>())
@@ -242,7 +242,7 @@ public class ServiceTests
     }
 
     [HumansFact]
-    public async Task GetActiveCatalogAsync_preserves_repository_order()
+    public async Task GetActiveCatalogAsync_Products_KeepRepositoryOrder()
     {
         _repo.GetActiveProductsForYearAsync(2026, Arg.Any<CancellationToken>())
             .Returns([
@@ -257,7 +257,7 @@ public class ServiceTests
     }
 
     [HumansFact]
-    public async Task GetAllProductsForYearAsync_preserves_repository_order()
+    public async Task GetAllProductsForYearAsync_Products_KeepRepositoryOrder()
     {
         var activeTent = MakeProduct(name: "Tent");
         activeTent.IsActive = true;
@@ -275,7 +275,7 @@ public class ServiceTests
     }
 
     [HumansFact]
-    public async Task GetOrderAsync_returns_null_when_missing()
+    public async Task GetOrderAsync_Missing_ReturnsNull()
     {
         _repo.GetOrderWithLinesAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
             .Returns((Order?)null);
@@ -286,7 +286,7 @@ public class ServiceTests
     }
 
     [HumansFact]
-    public async Task GetOrderAsync_maps_order_with_balance()
+    public async Task GetOrderAsync_Order_MappedWithBalance()
     {
         var product = MakeProduct(name: "Tent", price: 50m, vat: 21m);
         var orderId = Guid.NewGuid();
@@ -316,7 +316,7 @@ public class ServiceTests
     [InlineData(2026)]
     [InlineData(2025)]
     [InlineData(0)]
-    public async Task GetOrderAsync_open_order_line_reflects_its_year_catalog_price(int orderYear)
+    public async Task GetOrderAsync_OpenOrder_UsesCatalogPrice(int orderYear)
     {
         // Line was added at €50/21%; the catalog price has since dropped to €40/10%.
         var catalogYear = orderYear == 0 ? 2026 : orderYear;
@@ -350,7 +350,7 @@ public class ServiceTests
     }
 
     [HumansFact]
-    public async Task GetOrderAsync_issued_order_line_keeps_snapshot_price()
+    public async Task GetOrderAsync_IssuedOrder_KeepsSnapshotPrice()
     {
         // After invoicing, later catalog price changes must not move the order.
         var product = MakeProduct(name: "Tent", price: 50m, vat: 21m);
@@ -382,7 +382,7 @@ public class ServiceTests
     }
 
     [HumansFact]
-    public async Task GetOrderAsync_does_not_repair_legacy_year_before_caller_authorizes_order()
+    public async Task GetOrderAsync_LegacyYear_IsNotRepaired()
     {
         var orderId = Guid.NewGuid();
         var seasonId = Guid.NewGuid();
@@ -407,7 +407,7 @@ public class ServiceTests
     }
 
     [HumansFact]
-    public async Task GetOrderYearRepairReportAsync_lists_resolved_and_unresolved_rows()
+    public async Task GetOrderYearRepairReportAsync_Rows_ListsResolvedOrNot()
     {
         var resolvedOrderId = Guid.NewGuid();
         var resolvedSeasonId = Guid.NewGuid();
@@ -438,7 +438,7 @@ public class ServiceTests
     }
 
     [HumansFact]
-    public async Task RepairOrderYearsAsync_updates_and_audits_each_resolvable_row()
+    public async Task RepairOrderYearsAsync_ResolvableRows_UpdatedWithAudit()
     {
         var actorId = Guid.NewGuid();
         var firstOrderId = Guid.NewGuid();
@@ -490,7 +490,7 @@ public class ServiceTests
     }
 
     [HumansFact]
-    public async Task RepairOrderYearsAsync_is_idempotent_after_candidates_are_gone()
+    public async Task RepairOrderYearsAsync_NoCandidates_IsNoop()
     {
         var orderId = Guid.NewGuid();
         var seasonId = Guid.NewGuid();
@@ -510,7 +510,7 @@ public class ServiceTests
     }
 
     [HumansFact]
-    public async Task CreateOrderAsync_persists_open_order_with_now_timestamps_and_audits()
+    public async Task CreateOrderAsync_Order_SavedOpenWithAudit()
     {
         var campSeasonId = Guid.NewGuid();
         var actor = Guid.NewGuid();
@@ -540,7 +540,7 @@ public class ServiceTests
     }
 
     [HumansFact]
-    public async Task CreateOrder_refuses_a_missing_season_without_writing()
+    public async Task CreateOrder_MissingSeason_IsRefused()
     {
         var result = await _service.CreateOrderAsync(Guid.NewGuid(), Guid.NewGuid(), TestContext.Current.CancellationToken);
         result.Succeeded.Should().BeFalse();
@@ -553,7 +553,7 @@ public class ServiceTests
     [HumansTheory]
     [InlineData(false)]
     [InlineData(true)]
-    public async Task Order_creation_dependency_faults_propagate_unchanged(bool team)
+    public async Task CreateOrder_DependencyFault_Propagates(bool team)
     {
         var id = Guid.NewGuid();
         var failure = new InvalidOperationException("Private lookup diagnostic");
@@ -569,7 +569,7 @@ public class ServiceTests
     }
 
     [HumansFact]
-    public async Task AddLineAsync_rejects_non_positive_qty()
+    public async Task AddLineAsync_NonPositiveQty_IsRejected()
     {
         foreach (var qty in new[] { 0, -3 })
         {
@@ -582,7 +582,7 @@ public class ServiceTests
     }
 
     [HumansFact]
-    public async Task AddLineAsync_rejects_when_order_not_open()
+    public async Task AddLineAsync_OrderNotOpen_IsRejected()
     {
         var orderId = Guid.NewGuid();
         var productId = Guid.NewGuid();
@@ -599,7 +599,7 @@ public class ServiceTests
     [InlineData("order", "Store_OrderMissing")]
     [InlineData("product", "Store_ProductMissing")]
     [InlineData("inactive", "Store_ProductInactive")]
-    public async Task AddLine_refusals_log_without_exception_and_do_not_write(string missing, string expectedKey)
+    public async Task AddLine_Refusal_LogsWithoutException(string missing, string expectedKey)
     {
         var order = new Order { Id = Guid.NewGuid(), Year = 2026, State = OrderState.Open };
         var product = MakeProduct();
@@ -622,7 +622,7 @@ public class ServiceTests
     }
 
     [HumansFact]
-    public async Task AddLineAsync_allows_past_deadline_and_notes_it_in_audit()
+    public async Task AddLineAsync_PastDeadline_NotedInAudit()
     {
         // The deadline gate is authorization (OrderAuthorizationHandler) — the
         // service is auth-free and only annotates the audit trail.
@@ -646,7 +646,7 @@ public class ServiceTests
     }
 
     [HumansFact]
-    public async Task AddLineAsync_snapshots_product_price_vat_deposit_and_audits()
+    public async Task AddLineAsync_Product_SnapshotsPriceWithAudit()
     {
         var orderId = Guid.NewGuid();
         var actor = Guid.NewGuid();
@@ -757,7 +757,7 @@ public class ServiceTests
     }
 
     [HumansFact]
-    public async Task AddLineAsync_refuses_a_product_from_another_year_without_writing()
+    public async Task AddLineAsync_ProductFromOtherYear_IsRefused()
     {
         var ct = TestContext.Current.CancellationToken;
         var order = new Order { Id = Guid.NewGuid(), Year = 2025, State = OrderState.Open };
@@ -777,7 +777,7 @@ public class ServiceTests
     [HumansTheory]
     [InlineData(false)]
     [InlineData(true)]
-    public async Task AddLineAsync_refuses_an_unresolved_legacy_year_without_writing(bool campOrder)
+    public async Task AddLineAsync_UnresolvedLegacyYear_IsRefused(bool campOrder)
     {
         var ct = TestContext.Current.CancellationToken;
         var order = new Order
@@ -799,7 +799,7 @@ public class ServiceTests
     }
 
     [HumansFact]
-    public async Task AddLineAsync_returns_failure_for_expected_validation()
+    public async Task AddLineAsync_ValidationError_ReturnsFailure()
     {
         var result = await _service.AddLineAsync(
             Guid.NewGuid(), Guid.NewGuid(), 0, Guid.NewGuid(), TestContext.Current.CancellationToken);
@@ -809,7 +809,7 @@ public class ServiceTests
     }
 
     [HumansFact]
-    public async Task AddLineAsync_returns_success_when_line_is_added()
+    public async Task AddLineAsync_LineAdded_ReturnsSuccess()
     {
         var orderId = Guid.NewGuid();
         var actor = Guid.NewGuid();
@@ -828,7 +828,7 @@ public class ServiceTests
     }
 
     [HumansFact]
-    public async Task RemoveLineAsync_rejects_when_line_not_in_order()
+    public async Task RemoveLineAsync_LineNotInOrder_IsRejected()
     {
         var lineId = Guid.NewGuid();
         var actualOrderId = Guid.NewGuid();
@@ -844,7 +844,7 @@ public class ServiceTests
     }
 
     [HumansFact]
-    public async Task RemoveLineAsync_rejects_when_order_not_open()
+    public async Task RemoveLineAsync_OrderNotOpen_IsRejected()
     {
         var lineId = Guid.NewGuid();
         var orderId = Guid.NewGuid();
@@ -859,7 +859,7 @@ public class ServiceTests
     }
 
     [HumansFact]
-    public async Task RemoveLineAsync_allows_past_deadline_and_notes_it_in_audit()
+    public async Task RemoveLineAsync_PastDeadline_NotedInAudit()
     {
         // The deadline gate is authorization (OrderAuthorizationHandler) — the
         // service is auth-free and only annotates the audit trail.
@@ -880,7 +880,7 @@ public class ServiceTests
     }
 
     [HumansFact]
-    public async Task RemoveLineAsync_removes_and_audits()
+    public async Task RemoveLineAsync_Line_RemovedWithAudit()
     {
         var lineId = Guid.NewGuid();
         var orderId = Guid.NewGuid();
@@ -899,7 +899,7 @@ public class ServiceTests
     }
 
     [HumansFact]
-    public async Task RemoveLineAsync_returns_failure_for_expected_rejection()
+    public async Task RemoveLineAsync_Rejection_ReturnsFailure()
     {
         var lineId = Guid.NewGuid();
         var orderId = Guid.NewGuid();
@@ -913,7 +913,7 @@ public class ServiceTests
     }
 
     [HumansFact]
-    public async Task RemoveLineAsync_returns_success_when_line_is_removed()
+    public async Task RemoveLineAsync_LineRemoved_ReturnsSuccess()
     {
         var lineId = Guid.NewGuid();
         var orderId = Guid.NewGuid();
@@ -930,7 +930,7 @@ public class ServiceTests
     }
 
     [HumansFact]
-    public async Task UpdateCounterpartyAsync_updates_even_when_order_issued()
+    public async Task UpdateCounterpartyAsync_IssuedOrder_StillUpdates()
     {
         // Per Store invariant: counterparty edits while issued are gated by the
         // auth handler (camp-lead denied, FinanceAdmin allowed). The service
@@ -950,7 +950,7 @@ public class ServiceTests
     }
 
     [HumansFact]
-    public async Task UpdateCounterpartyAsync_updates_fields_and_audits()
+    public async Task UpdateCounterpartyAsync_Fields_UpdatedWithAudit()
     {
         var orderId = Guid.NewGuid();
         var actor = Guid.NewGuid();
@@ -987,7 +987,7 @@ public class ServiceTests
     [InlineData("CountryCode", 2, true)]
     [InlineData("Email", 320, false)]
     [InlineData("Email", 320, true)]
-    public async Task UpdateCounterpartyAsync_rejects_overlong_fields_without_changing_billing_details(
+    public async Task UpdateCounterpartyAsync_OverlongFields_AreRejected(
         string field, int maximum, bool oversized)
     {
         var before = new OrderCounterpartyInput("Before", "Old VAT", "Old address", "ES", "old@example.org");
@@ -1038,7 +1038,7 @@ public class ServiceTests
     }
 
     [HumansFact]
-    public async Task UpdateCounterpartyAsync_returns_failure_for_expected_rejection()
+    public async Task UpdateCounterpartyAsync_Rejection_ReturnsFailure()
     {
         var orderId = Guid.NewGuid();
         _repo.GetOrderByIdAsync(orderId, Arg.Any<CancellationToken>())
@@ -1054,7 +1054,7 @@ public class ServiceTests
     }
 
     [HumansFact]
-    public async Task UpdateCounterpartyAsync_returns_success_when_updated()
+    public async Task UpdateCounterpartyAsync_Updated_ReturnsSuccess()
     {
         var orderId = Guid.NewGuid();
         var actor = Guid.NewGuid();
@@ -1073,7 +1073,7 @@ public class ServiceTests
     }
 
     [HumansFact]
-    public async Task CreateProductAsync_persists_product_with_now_timestamps_and_audits()
+    public async Task CreateProductAsync_Product_SavedWithAudit()
     {
         var actor = Guid.NewGuid();
         Product? captured = null;
@@ -1109,7 +1109,7 @@ public class ServiceTests
     }
 
     [HumansFact]
-    public async Task CreateProductAsync_rejects_empty_name()
+    public async Task CreateProductAsync_EmptyName_IsRejected()
     {
         var draft = new ProductDto(
             Guid.Empty, 2026, "   ", "", 10m, 21m, null,
@@ -1122,7 +1122,7 @@ public class ServiceTests
     }
 
     [HumansFact]
-    public async Task CreateProductAsync_rejects_negative_price()
+    public async Task CreateProductAsync_NegativePrice_IsRejected()
     {
         var draft = new ProductDto(
             Guid.Empty, 2026, "Tent", "", -1m, 21m, null,
@@ -1135,7 +1135,7 @@ public class ServiceTests
     }
 
     [HumansFact]
-    public async Task CreateProductAsync_rejects_negative_vat()
+    public async Task CreateProductAsync_NegativeVat_IsRejected()
     {
         var draft = new ProductDto(
             Guid.Empty, 2026, "Tent", "", 10m, -1m, null,
@@ -1160,7 +1160,7 @@ public class ServiceTests
     [InlineData(true, "vat", "1000")]
     [InlineData(false, "deposit", "10000000000")]
     [InlineData(true, "deposit", "10000000000")]
-    public async Task CatalogMoney_rejects_values_that_cannot_be_stored_exactly(bool editing, string field, string text)
+    public async Task CatalogMoney_InexactValues_AreRejected(bool editing, string field, string text)
     {
         var amount = decimal.Parse(text, CultureInfo.InvariantCulture);
         var product = MakeProduct();
@@ -1187,7 +1187,7 @@ public class ServiceTests
     [InlineData("0", "0", null)]
     [InlineData("0.0100", "21.0000", "0.0000")]
     [InlineData("9999999999.99", "999.99", "9999999999.99")]
-    public async Task CatalogMoney_accepts_exact_storage_boundaries(string price, string vat, string? deposit)
+    public async Task CatalogMoney_StorageBoundaries_AreAccepted(string price, string vat, string? deposit)
     {
         var draft = new ProductDto(Guid.Empty, 2026, "Product", "",
             decimal.Parse(price, CultureInfo.InvariantCulture), decimal.Parse(vat, CultureInfo.InvariantCulture),
@@ -1203,7 +1203,7 @@ public class ServiceTests
     }
 
     [HumansFact]
-    public async Task UpdateProductAsync_mutates_fields_and_audits()
+    public async Task UpdateProductAsync_Fields_UpdatedWithAudit()
     {
         var existing = MakeProduct(name: "Old", price: 10m, vat: 5m);
         existing.CreatedAt = Instant.FromUtc(2026, 1, 1, 0, 0);
@@ -1241,7 +1241,7 @@ public class ServiceTests
     }
 
     [HumansFact]
-    public async Task UpdateProductAsync_logs_price_changed_event_with_from_to()
+    public async Task UpdateProductAsync_PriceChanged_LogsFromTo()
     {
         var existing = MakeProduct(name: "Ice", price: 1.23m, vat: 21m, deposit: null);
         _repo.GetProductByIdAsync(existing.Id, Arg.Any<CancellationToken>()).Returns(existing);
@@ -1263,7 +1263,7 @@ public class ServiceTests
     }
 
     [HumansFact]
-    public async Task UpdateProductAsync_no_price_event_when_price_unchanged()
+    public async Task UpdateProductAsync_PriceUnchanged_LogsNoEvent()
     {
         var existing = MakeProduct(name: "Ice", price: 1.23m, vat: 21m, deposit: null);
         _repo.GetProductByIdAsync(existing.Id, Arg.Any<CancellationToken>()).Returns(existing);
@@ -1282,7 +1282,7 @@ public class ServiceTests
     }
 
     [HumansFact]
-    public async Task UpdateProductAsync_refuses_when_product_missing()
+    public async Task UpdateProductAsync_MissingProduct_IsRefused()
     {
         _repo.GetProductByIdAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
             .Returns((Product?)null);
@@ -1298,7 +1298,7 @@ public class ServiceTests
     }
 
     [HumansFact]
-    public async Task UpdateProductAsync_does_not_mutate_existing_lines_unit_price_snapshot()
+    public async Task UpdateProductAsync_ExistingLines_KeepSnapshotPrice()
     {
         // Snapshot semantics: a line added before a price change keeps the original price.
         var product = MakeProduct(name: "Tent", price: 50m, vat: 21m, deposit: 100m);
@@ -1333,7 +1333,7 @@ public class ServiceTests
     }
 
     [HumansFact]
-    public async Task SaveProductWithResultAsync_creates_product_from_form_request()
+    public async Task SaveProductWithResultAsync_FormRequest_CreatesProduct()
     {
         var actor = Guid.NewGuid();
         Product? captured = null;
@@ -1360,7 +1360,7 @@ public class ServiceTests
     }
 
     [HumansFact]
-    public async Task SaveProductWithResultAsync_returns_field_error_for_invalid_date()
+    public async Task SaveProductWithResultAsync_InvalidDate_ReturnsFieldError()
     {
         var result = await _catalog.SaveProductWithResultAsync(
             new ProductSaveRequest(
@@ -1383,7 +1383,7 @@ public class ServiceTests
     }
 
     [HumansFact]
-    public async Task DeactivateProductAsync_marks_inactive_and_audits()
+    public async Task DeactivateProductAsync_Product_InactiveWithAudit()
     {
         var existing = MakeProduct(name: "Tent");
         existing.IsActive = true;
@@ -1406,7 +1406,7 @@ public class ServiceTests
     }
 
     [HumansFact]
-    public async Task DeactivateProductAsync_refuses_when_product_missing()
+    public async Task DeactivateProductAsync_MissingProduct_IsRefused()
     {
         _repo.GetProductByIdAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
             .Returns((Product?)null);
@@ -1518,7 +1518,7 @@ public class ServiceTests
     [InlineData("IsActive")]
     [InlineData("zero")]
     [InlineData("valid")]
-    public async Task CatalogSave_requires_explicit_prices_and_active_choice(string scenario)
+    public async Task CatalogSave_MissingPriceOrActive_IsRejected(string scenario)
     {
         var product = MakeProduct(price: 10m, vat: 21m);
         product.IsActive = false;
@@ -1591,7 +1591,7 @@ public class ServiceTests
     }
 
     [HumansFact]
-    public async Task GetActiveCatalogAsync_does_not_return_deactivated_products()
+    public async Task GetActiveCatalogAsync_DeactivatedProducts_AreExcluded()
     {
         // GetActiveProductsForYearAsync filters by IsActive at the repo layer.
         // Verify the service relays that contract: a deactivated product is not in the
@@ -1605,7 +1605,7 @@ public class ServiceTests
     }
 
     [HumansFact]
-    public async Task CreateStripeCheckoutSessionAsync_builds_checkout_session_from_order()
+    public async Task CreateStripeCheckoutSessionAsync_Order_BuildsSession()
     {
         var order = MakeOrderDto(balanceEur: 50m, counterpartyName: "Camp Alpha", email: "camp@example.test");
         _stripeService.IsStoreCheckoutConfigured.Returns(true);
@@ -1632,7 +1632,7 @@ public class ServiceTests
     }
 
     [HumansFact]
-    public async Task CreateStripeCheckoutSessionAsync_rejects_while_a_payment_is_pending()
+    public async Task CreateStripeCheckoutSessionAsync_PendingPayment_IsRejected()
     {
         // A captured-but-uncleared mandate does not count as paid, so the balance still
         // looks open — the pending row alone must stop a second payment.
@@ -1673,7 +1673,7 @@ public class ServiceTests
     }
 
     [HumansFact]
-    public async Task CreateStripeCheckoutSessionAsync_rejects_amount_above_balance()
+    public async Task CreateStripeCheckoutSessionAsync_AmountAboveBalance_IsRejected()
     {
         var order = MakeOrderDto(balanceEur: 10m);
         _stripeService.IsStoreCheckoutConfigured.Returns(true);
@@ -1696,7 +1696,7 @@ public class ServiceTests
     }
 
     [HumansFact]
-    public async Task CreateStripeCheckoutSessionAsync_rejects_when_stripe_is_unconfigured()
+    public async Task CreateStripeCheckoutSessionAsync_StripeUnconfigured_IsRejected()
     {
         var order = MakeOrderDto(balanceEur: 10m);
         _stripeService.IsStoreCheckoutConfigured.Returns(false);
@@ -1711,7 +1711,7 @@ public class ServiceTests
     [InlineData("0.001")]
     [InlineData("1.005")]
     [InlineData("9.999")]
-    public async Task CheckoutMoney_rejects_fractional_cents_before_calling_Stripe(string text)
+    public async Task CheckoutMoney_FractionalCents_AreRejected(string text)
     {
         _stripeService.IsStoreCheckoutConfigured.Returns(true);
 
@@ -1728,7 +1728,7 @@ public class ServiceTests
     [InlineData("1000000")]
     [InlineData("9999999999.99")]
     [InlineData("79228162514264337593543950335")]
-    public async Task CheckoutMoney_rejects_amounts_above_Stripes_EUR_limit_before_calling_it(string text)
+    public async Task CheckoutMoney_AboveStripeLimit_IsRejected(string text)
     {
         var amount = decimal.Parse(text, CultureInfo.InvariantCulture);
         var order = MakeOrderDto(balanceEur: amount);
@@ -1754,7 +1754,7 @@ public class ServiceTests
     [InlineData("1.2300")]
     [InlineData("10.00")]
     [InlineData("999999.99")]
-    public async Task CheckoutMoney_passes_exact_cent_amounts_to_Stripe(string text)
+    public async Task CheckoutMoney_ExactCents_PassedToStripe(string text)
     {
         var amount = decimal.Parse(text, CultureInfo.InvariantCulture);
         var order = MakeOrderDto(balanceEur: Math.Max(10m, amount));
@@ -1775,7 +1775,7 @@ public class ServiceTests
     }
 
     [HumansFact]
-    public async Task Checkout_with_an_unchanged_amount_replays_the_open_attempt()
+    public async Task Checkout_UnchangedAmount_ReplaysOpenAttempt()
     {
         var order = MakeOrderDto(balanceEur: 50m);
         var attemptId = Guid.NewGuid();
@@ -1802,7 +1802,7 @@ public class ServiceTests
     }
 
     [HumansFact]
-    public async Task Checkout_with_a_changed_amount_expires_the_open_session_and_opens_a_new_attempt()
+    public async Task Checkout_ChangedAmount_OpensNewAttempt()
     {
         var order = MakeOrderDto(balanceEur: 50m);
         var oldAttempt = Guid.NewGuid();
@@ -1834,7 +1834,7 @@ public class ServiceTests
     }
 
     [HumansFact]
-    public async Task Checkout_replaying_an_attempt_that_completed_opens_no_new_session()
+    public async Task Checkout_CompletedAttemptReplay_OpensNoSession()
     {
         var order = MakeOrderDto(balanceEur: 50m);
         _repo.GetOrderByIdAsync(order.Id, Arg.Any<CancellationToken>()).Returns(new Order
@@ -1861,7 +1861,7 @@ public class ServiceTests
     }
 
     [HumansFact]
-    public async Task Checkout_attempt_blocks_order_deletion_until_expiry_in_service_and_projection()
+    public async Task Checkout_OpenAttempt_BlocksDeletionUntilExpiry()
     {
         var ct = TestContext.Current.CancellationToken;
         var order = new Order
@@ -1896,7 +1896,7 @@ public class ServiceTests
     }
 
     [HumansFact]
-    public async Task Order_deletion_waits_for_checkout_creation_before_checking_attempt_state()
+    public async Task DeleteOrder_CheckoutBeingCreated_WaitsForIt()
     {
         var ct = TestContext.Current.CancellationToken;
         var product = MakeProduct(price: 20m, vat: 0m);
@@ -1954,7 +1954,7 @@ public class ServiceTests
     }
 
     [HumansFact]
-    public async Task Completed_checkout_webhook_clears_the_orders_open_attempt()
+    public async Task CompletedCheckout_Webhook_ClearsOpenAttempt()
     {
         var orderId = Guid.NewGuid();
         _repo.GetOrderByIdAsync(orderId, Arg.Any<CancellationToken>()).Returns(new Order
@@ -1977,7 +1977,7 @@ public class ServiceTests
     }
 
     [HumansFact]
-    public async Task Reconciling_a_paid_session_whose_webhook_never_arrived_lets_the_next_checkout_open_a_new_session()
+    public async Task Reconcile_PaidSessionWithoutWebhook_UnblocksNextCheckout()
     {
         var order = MakeOrderDto(balanceEur: 50m);
         var paidAttempt = Guid.NewGuid();
@@ -2011,7 +2011,7 @@ public class ServiceTests
     [HumansTheory]
     [InlineData(0)]
     [InlineData(-1)]
-    public async Task Checkout_refuses_non_positive_amount_without_calling_Stripe(int amount)
+    public async Task Checkout_NonPositiveAmount_IsRefused(int amount)
     {
         _stripeService.IsStoreCheckoutConfigured.Returns(true);
         var result = await _service.CreateStripeCheckoutSessionAsync(MakeOrderDto(balanceEur: 10m), amount,
@@ -2023,7 +2023,7 @@ public class ServiceTests
     }
 
     [HumansFact]
-    public async Task Pay_localizes_refusals_and_hides_Stripe_diagnostics_with_detached_write_token()
+    public async Task Pay_Refusal_IsLocalizedWithoutStripeDetails()
     {
         using var scope = new CultureScope(CultureCatalog.DefaultCultureCode);
         using var services = new ServiceCollection().AddLogging().AddLocalization().BuildServiceProvider();
@@ -2092,7 +2092,7 @@ public class ServiceTests
     [InlineData("payment-delete", true)]
     [InlineData("order-delete", false)]
     [InlineData("order-delete", true)]
-    public async Task Admin_ledger_mutations_propagate_repository_faults_unchanged(string operation, bool lookup)
+    public async Task AdminLedgerMutations_RepositoryFault_Propagates(string operation, bool lookup)
     {
         var order = new Order { Id = Guid.NewGuid(), State = OrderState.Open, Year = 2026 };
         var paymentId = Guid.NewGuid();
@@ -2127,7 +2127,7 @@ public class ServiceTests
     [InlineData(nameof(PaymentMethod.Refund), false, true)]
     [InlineData(nameof(PaymentMethod.Refund), true, false)]
     [InlineData(nameof(PaymentMethod.Refund), true, true)]
-    public async Task RecordAdminPaymentAsync_rejects_overlong_metadata_before_recording(
+    public async Task RecordAdminPaymentAsync_OverlongMetadata_IsRejected(
         string methodName, bool notesField, bool oversized)
     {
         var method = Enum.Parse<PaymentMethod>(methodName);
@@ -2161,7 +2161,7 @@ public class ServiceTests
     [HumansTheory]
     [InlineData(nameof(PaymentMethod.DepositReturn), "150.00", "150.00")]
     [InlineData(nameof(PaymentMethod.Refund), "80.00", "-80.00")]
-    public async Task RecordAdminPaymentAsync_stores_deposit_return_positive_and_refund_negative(
+    public async Task RecordAdminPaymentAsync_Refund_StoredNegative(
         string methodName, decimal entered, decimal stored)
     {
         var method = Enum.Parse<PaymentMethod>(methodName);
@@ -2193,7 +2193,7 @@ public class ServiceTests
     [InlineData(nameof(PaymentMethod.Refund), "0.001")]
     [InlineData(nameof(PaymentMethod.DepositReturn), "10000000000")]
     [InlineData(nameof(PaymentMethod.Refund), "10000000000")]
-    public async Task ManualPaymentMoney_rejects_values_that_cannot_be_stored_exactly(string methodName, string text)
+    public async Task ManualPaymentMoney_InexactValues_AreRejected(string methodName, string text)
     {
         var method = Enum.Parse<PaymentMethod>(methodName);
         var order = MakeDepositOrder(Guid.NewGuid(), 9_999_999_999.99m);
@@ -2216,7 +2216,7 @@ public class ServiceTests
     [InlineData(nameof(PaymentMethod.Refund), "0.0100")]
     [InlineData(nameof(PaymentMethod.DepositReturn), "9999999999.99")]
     [InlineData(nameof(PaymentMethod.Refund), "9999999999.99")]
-    public async Task ManualPaymentMoney_preserves_exact_amounts_and_signs(string methodName, string text)
+    public async Task ManualPaymentMoney_ExactAmounts_KeepSign(string methodName, string text)
     {
         var method = Enum.Parse<PaymentMethod>(methodName);
         var amount = decimal.Parse(text, CultureInfo.InvariantCulture);
@@ -2234,7 +2234,7 @@ public class ServiceTests
     [HumansTheory]
     [InlineData(null, "2026-02-24", "reference")]
     [InlineData("6a3b8e7cbd5b6f5ec40cbb87", null, "value date")]
-    public async Task RecordAdminPaymentAsync_refuses_an_incomplete_bank_transfer(
+    public async Task RecordAdminPaymentAsync_IncompleteBankTransfer_IsRefused(
         string? reference, string? valueDate, string refusal)
     {
         var order = MakeDepositOrder(Guid.NewGuid(), depositTotal: 0m);
@@ -2252,7 +2252,7 @@ public class ServiceTests
     [HumansTheory]
     [InlineData(nameof(PaymentMethod.Stripe))]
     [InlineData(nameof(PaymentMethod.Manual))]
-    public async Task RecordAdminPaymentAsync_rejects_other_methods(string methodName)
+    public async Task RecordAdminPaymentAsync_OtherMethods_AreRejected(string methodName)
     {
         var method = Enum.Parse<PaymentMethod>(methodName);
         var result = await _service.RecordAdminPaymentAsync(Guid.NewGuid(), method, 10m, null, null, null, Guid.NewGuid(), TestContext.Current.CancellationToken);
@@ -2265,7 +2265,7 @@ public class ServiceTests
     [HumansTheory]
     [InlineData(0)]
     [InlineData(-5)]
-    public async Task RecordAdminPaymentAsync_rejects_non_positive_amount(decimal amount)
+    public async Task RecordAdminPaymentAsync_NonPositiveAmount_IsRejected(decimal amount)
     {
         var result = await _service.RecordAdminPaymentAsync(Guid.NewGuid(), PaymentMethod.Refund, amount, null, null, null, Guid.NewGuid(), TestContext.Current.CancellationToken);
 
@@ -2277,7 +2277,7 @@ public class ServiceTests
     [HumansTheory]
     [InlineData(null)]
     [InlineData("   ")]
-    public async Task RecordAdminPaymentAsync_rejects_refund_without_reference(string? externalRef)
+    public async Task RecordAdminPaymentAsync_RefundWithoutReference_IsRejected(string? externalRef)
     {
         var result = await _service.RecordAdminPaymentAsync(Guid.NewGuid(), PaymentMethod.Refund, 10m, externalRef, null, null, Guid.NewGuid(), TestContext.Current.CancellationToken);
 
@@ -2287,7 +2287,7 @@ public class ServiceTests
     }
 
     [HumansFact]
-    public async Task RecordAdminPaymentAsync_allows_deposit_return_without_reference()
+    public async Task RecordAdminPaymentAsync_DepositReturnWithoutReference_IsAllowed()
     {
         var orderId = Guid.NewGuid();
         _repo.GetOrderWithLinesAsync(orderId, Arg.Any<CancellationToken>())
@@ -2301,7 +2301,7 @@ public class ServiceTests
     }
 
     [HumansFact]
-    public async Task RepairPaymentMethodNamesAsync_copies_int_method_and_audits_each_row()
+    public async Task RepairPaymentMethodNamesAsync_Rows_CopiedWithAudit()
     {
         var actor = Guid.NewGuid();
         var stripe = new Payment { Id = Guid.NewGuid(), OrderId = Guid.NewGuid(), Method = PaymentMethod.Stripe };
@@ -2321,7 +2321,7 @@ public class ServiceTests
     [HumansTheory]
     [InlineData(false)]
     [InlineData(true)]
-    public async Task Historical_order_mutations_use_its_year_live_prices(bool depositReturn)
+    public async Task HistoricalOrder_Mutations_UseItsYearPrices(bool depositReturn)
     {
         var product = MakeProduct(year: 2025, price: 10m, vat: 0m, deposit: 20m);
         var order = new Order
@@ -2351,7 +2351,7 @@ public class ServiceTests
     }
 
     [HumansFact]
-    public async Task RecordAdminPaymentAsync_rejects_team_order()
+    public async Task RecordAdminPaymentAsync_TeamOrder_IsRejected()
     {
         var orderId = Guid.NewGuid();
         _repo.GetOrderWithLinesAsync(orderId, Arg.Any<CancellationToken>())
@@ -2365,7 +2365,7 @@ public class ServiceTests
     }
 
     [HumansFact]
-    public async Task RecordAdminPaymentAsync_rejects_deposit_return_beyond_deposit_still_held()
+    public async Task RecordAdminPaymentAsync_ReturnAboveHeldDeposit_IsRejected()
     {
         // €100 deposited, €30 already returned → at most €70 can still come back.
         var orderId = Guid.NewGuid();
@@ -2385,7 +2385,7 @@ public class ServiceTests
     }
 
     [HumansFact]
-    public async Task RecordAdminPaymentAsync_refund_has_no_cap()
+    public async Task RecordAdminPaymentAsync_Refund_HasNoCap()
     {
         var orderId = Guid.NewGuid();
         _repo.GetOrderWithLinesAsync(orderId, Arg.Any<CancellationToken>())
@@ -2408,7 +2408,7 @@ public class ServiceTests
     };
 
     [HumansFact]
-    public async Task CompletedCheckout_no_ops_when_payment_intent_id_already_exists()
+    public async Task CompletedCheckout_KnownPaymentIntent_IsNoop()
     {
         var orderId = Guid.NewGuid();
         var paymentIntentId = "pi_test_dup";
@@ -2428,7 +2428,7 @@ public class ServiceTests
     }
 
     [HumansFact]
-    public async Task CompletedCheckout_skips_non_positive_amounts()
+    public async Task CompletedCheckout_NonPositiveAmount_IsSkipped()
     {
         var orderId = Guid.NewGuid();
         _repo.StripePaymentIntentExistsAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
@@ -2446,7 +2446,7 @@ public class ServiceTests
     }
 
     [HumansFact]
-    public async Task HandleStripeCheckoutWebhookEventAsync_records_completed_paid_session_as_paid()
+    public async Task HandleStripeCheckoutWebhookEventAsync_PaidSession_RecordsPaid()
     {
         var orderId = Guid.NewGuid();
         _repo.StripePaymentIntentExistsAsync("pi_checkout", Arg.Any<CancellationToken>())
@@ -2473,7 +2473,7 @@ public class ServiceTests
     }
 
     [HumansFact]
-    public async Task HandleStripeCheckoutWebhookEventAsync_records_completed_unpaid_session_as_pending()
+    public async Task HandleStripeCheckoutWebhookEventAsync_UnpaidSession_RecordsPending()
     {
         // SEPA / async Bizum: completed fires with payment_status "unpaid" — only the mandate is
         // captured. We record Pending so the order balance does NOT count it as paid.
@@ -2500,7 +2500,7 @@ public class ServiceTests
     [InlineData(false, true)]
     [InlineData(true, false)]
     [InlineData(true, true)]
-    public async Task CompletedCheckout_FailedRecordingPropagates_AndRetryRecordsOnce(bool paid, bool cancelled)
+    public async Task CompletedCheckout_RetryAfterFailure_RecordsOnce(bool paid, bool cancelled)
     {
         var ct = TestContext.Current.CancellationToken;
         var orderId = Guid.NewGuid();
@@ -2535,7 +2535,7 @@ public class ServiceTests
     }
 
     [HumansFact]
-    public async Task HandleStripeCheckoutWebhookEventAsync_skips_completed_checkout_when_session_is_incomplete()
+    public async Task HandleStripeCheckoutWebhookEventAsync_IncompleteSession_IsSkipped()
     {
         await _service.HandleStripeCheckoutWebhookEventAsync(new StoreCheckoutWebhookEvent(
             "evt_checkout",
@@ -2546,7 +2546,7 @@ public class ServiceTests
     }
 
     [HumansFact]
-    public async Task AsyncPaymentSucceeded_transitions_matching_pending_to_paid()
+    public async Task AsyncPaymentSucceeded_MatchingPending_BecomesPaid()
     {
         var orderId = Guid.NewGuid();
         var pending = new Payment
@@ -2573,7 +2573,7 @@ public class ServiceTests
     }
 
     [HumansFact]
-    public async Task AsyncPaymentSucceeded_is_idempotent_when_already_paid()
+    public async Task AsyncPaymentSucceeded_AlreadyPaid_IsNoop()
     {
         var orderId = Guid.NewGuid();
         var paid = new Payment
@@ -2599,7 +2599,7 @@ public class ServiceTests
     [HumansTheory]
     [InlineData(StoreCheckoutEventKind.CheckoutSessionAsyncPaymentSucceeded, true)]
     [InlineData(StoreCheckoutEventKind.CheckoutSessionAsyncPaymentFailed, false)]
-    public async Task AsyncPayment_out_of_order_preserves_terminal_state_after_completed_and_redelivery(
+    public async Task AsyncPayment_OutOfOrder_KeepsTerminalState(
         StoreCheckoutEventKind kind, bool succeeded)
     {
         var status = succeeded ? PaymentStatus.Paid : PaymentStatus.Failed;
@@ -2637,7 +2637,7 @@ public class ServiceTests
     [InlineData(true, false)]
     [InlineData(false, true)]
     [InlineData(false, false)]
-    public async Task Concurrent_completed_and_settlement_preserve_one_terminal_payment(bool terminalReadsFirst, bool succeeded)
+    public async Task CompletedCheckout_ConcurrentSettlement_KeepsOnePayment(bool terminalReadsFirst, bool succeeded)
     {
         var ct = TestContext.Current.CancellationToken;
         var options = TestDbOptions.InMemory<StoreDbContext>();
@@ -2706,7 +2706,7 @@ public class ServiceTests
     }
 
     [HumansFact]
-    public async Task AsyncPaymentFailed_transitions_matching_pending_to_failed()
+    public async Task AsyncPaymentFailed_MatchingPending_BecomesFailed()
     {
         // SEPA bounces after completed: the order returns to unpaid, NOT paid-then-reversed.
         var orderId = Guid.NewGuid();
@@ -2734,7 +2734,7 @@ public class ServiceTests
     }
 
     [HumansFact]
-    public async Task AsyncPaymentFailed_is_idempotent_when_already_failed()
+    public async Task AsyncPaymentFailed_AlreadyFailed_IsNoop()
     {
         var orderId = Guid.NewGuid();
         var failed = new Payment
@@ -2758,7 +2758,7 @@ public class ServiceTests
     }
 
     [HumansFact]
-    public async Task AsyncPaymentFailed_with_no_row_and_missing_order_is_a_noop()
+    public async Task AsyncPaymentFailed_NoRowNoOrder_IsNoop()
     {
         // Without order metadata the terminal failure cannot be attributed to an order.
         _repo.GetPaymentByIntentIdAsync("pi_nothing", Arg.Any<CancellationToken>())
@@ -2774,7 +2774,7 @@ public class ServiceTests
     }
 
     [HumansFact]
-    public async Task CompletedThenFailed_leaves_order_unpaid_not_reversed()
+    public async Task CompletedThenFailed_Order_StaysUnpaid()
     {
         // End-to-end of the SEPA-bounce path through the public handler: completed(unpaid) records
         // Pending, then async_payment_failed flips it to Failed. The order is never marked paid.
@@ -2803,7 +2803,7 @@ public class ServiceTests
     }
 
     [HumansFact]
-    public async Task CheckoutSessionExpired_removes_orphan_pending_payment()
+    public async Task CheckoutSessionExpired_OrphanPending_IsRemoved()
     {
         var orderId = Guid.NewGuid();
         var pending = new Payment
@@ -2830,7 +2830,7 @@ public class ServiceTests
     }
 
     [HumansFact]
-    public async Task CheckoutSessionExpired_does_not_touch_a_settled_payment()
+    public async Task CheckoutSessionExpired_SettledPayment_IsUntouched()
     {
         var paid = new Payment
         {

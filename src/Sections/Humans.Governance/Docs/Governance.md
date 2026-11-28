@@ -350,6 +350,7 @@ Approval and rejection share the same ordered eligibility check (application exi
 - Statutes language tabs retain native language names and use the localized canonical Spanish legal marker.
 
 - Application detail reads supply history timestamps and reviewer/actor IDs without display sorting. Application and Board-detail projections omit unused applicant names and photos; application reviewer/history and tally-peek attribution render the IDs through `<vc:human>` as plain text, without separate Users name lookups. Member and Board detail controllers order history newest first; GDPR export keeps its chronological order.
+- The application index derives its new-submission flag from the loaded application statuses; it does not re-read a separate pending application.
 - Application status follows: Submitted then Approved, Rejected, or Withdrawn. Member-visible history uses the same localized status captions as application details.
 - Application submission and withdrawal, Board voting, and finalization use request cancellation for the account lookup before mutation. Cancellation propagates before any application or vote write; decision, team-sync and email work retains its non-cancellable mutation boundary.
 - Each Board member gets exactly one vote per application (DB-enforced via unique index on `(ApplicationId, BoardMemberUserId)`).

@@ -401,11 +401,7 @@ internal sealed class UserEmailService(
         return info.UserEmails
             .Where(e => e.IsVerified && e.Visibility != null && allowed.Contains(e.Visibility!.Value))
             .Select(e => new UserEmailDto(
-                e.Id,
                 e.Email,
-                e.IsVerified,
-                e.Provider,
-                e.ProviderKey,
                 e.IsPrimary,
                 e.Visibility))
             .ToList();

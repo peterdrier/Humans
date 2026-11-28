@@ -1,7 +1,7 @@
-@model Humans.Store.Models.SummaryViewModel
+@model Humans.Store.Contracts.SummaryDto
 @{
     ViewData["Title"] = "Store summary";
-    var s = Model.Summary;
+    var s = Model;
     var productColumns = s.CrossTab.Products.OrderBy(p => p.ProductName, StringComparer.Ordinal).ToList();
 }
 

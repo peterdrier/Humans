@@ -61,7 +61,7 @@ internal interface IUserManagement : IUserService, IUserWrite, IUserMerge
     /// Saves the profile fields and the user's display label together. Picture bytes are written
     /// before their metadata, so a failed write keeps the previous picture. A null CV is left alone.
     /// </summary>
-    Task<UserProfileSaveResult> SaveProfileAsync(
+    Task SaveProfileAsync(
         Guid userId,
         UserProfileSaveCommand command,
         byte[]? profilePictureData = null,

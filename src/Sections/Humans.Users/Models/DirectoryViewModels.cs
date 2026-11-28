@@ -14,11 +14,6 @@ internal sealed class BirthdayEntryViewModel
     public List<string> TeamNames { get; set; } = [];
 }
 
-internal sealed class MapViewModel
-{
-    public List<MapMarkerViewModel> Markers { get; set; } = [];
-}
-
 internal sealed class MapMarkerViewModel
 {
     public Guid UserId { get; set; }

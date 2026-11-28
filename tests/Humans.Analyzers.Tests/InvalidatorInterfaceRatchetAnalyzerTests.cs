@@ -29,7 +29,7 @@ public class InvalidatorInterfaceRatchetAnalyzerTests
         string.Equals(d.Id, InvalidatorInterfaceRatchetAnalyzer.DiagnosticId, StringComparison.Ordinal);
 
     [HumansFact]
-    public async Task Fires_error_on_new_invalidator_interface_without_grandfather()
+    public async Task Analyze_NewInvalidatorInterface_Fires()
     {
         var source = Stubs + """
 
@@ -53,7 +53,7 @@ public class InvalidatorInterfaceRatchetAnalyzerTests
     }
 
     [HumansFact]
-    public async Task Downgrades_to_warning_when_interface_has_Grandfathered_for_HUM0028()
+    public async Task Analyze_GrandfatheredInterface_Warns()
     {
         var source = Stubs + """
 
@@ -82,7 +82,7 @@ public class InvalidatorInterfaceRatchetAnalyzerTests
     }
 
     [HumansFact]
-    public async Task Grandfathered_for_a_different_rule_still_fires_error()
+    public async Task Analyze_GrandfatheredOtherRule_Fires()
     {
         var source = Stubs + """
 
@@ -111,7 +111,7 @@ public class InvalidatorInterfaceRatchetAnalyzerTests
     }
 
     [HumansFact]
-    public async Task Does_not_fire_on_the_IInvalidator_marker_itself()
+    public async Task Analyze_MarkerItself_IsSilent()
     {
         // The marker only declares itself; the analyzer must not double-flag it.
         var diagnostics = await AnalyzerTestHarness.RunAsync(
@@ -123,7 +123,7 @@ public class InvalidatorInterfaceRatchetAnalyzerTests
     }
 
     [HumansFact]
-    public async Task Does_not_fire_on_interface_that_does_not_extend_IInvalidator()
+    public async Task Analyze_UnrelatedInterface_IsSilent()
     {
         var source = Stubs + """
 

@@ -710,7 +710,6 @@ internal sealed class HoldedClient : IHoldedClient
                     "its lines read as none", kind, documentId, unreadable);
                 return [];
             }
-            var name = Prop(l, "name") is JsonValue v && v.TryGetValue<string>(out var n) ? n : "";
             lines.Add(new HoldedSalesDocumentLineDto(units.Value, price.Value, taxPercent.Value));
         }
         return lines;

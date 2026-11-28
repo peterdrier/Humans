@@ -527,9 +527,7 @@ public sealed class OutboxEmailServiceTests : IDisposable
 
         var msg = await _emailDb.EmailOutboxMessages.SingleAsync(TestContext.Current.CancellationToken);
         msg.UserId.Should().Be(userId);
-#pragma warning disable CS0618 // a retired column must stay unwritten until its drop is approved
-        msg.CampaignGrantId.Should().BeNull();
-#pragma warning restore CS0618
+        _emailDb.Entry(msg).Property<Guid?>("CampaignGrantId").CurrentValue.Should().BeNull();
         msg.ReplyTo.Should().Be("reply@example.com");
         msg.ExtraHeaders.Should().NotBeNull();
     }

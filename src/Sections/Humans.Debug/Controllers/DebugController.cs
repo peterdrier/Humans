@@ -139,7 +139,7 @@ internal sealed class DebugController(
             };
         }).ToList();
 
-        return View(new AdminConfigurationViewModel { Items = items });
+        return View(items);
     }
 
     // Anonymous on purpose: only migration names + counts, no sensitive data.
@@ -309,7 +309,7 @@ internal sealed class DebugController(
             })
             .ToList();
 
-        return View(new TimingsViewModel { Entries = entries });
+        return View(entries);
     }
 
     [HttpGet("FormatGallery")]

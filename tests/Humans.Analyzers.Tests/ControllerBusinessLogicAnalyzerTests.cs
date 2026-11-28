@@ -36,7 +36,7 @@ public class ControllerBusinessLogicAnalyzerTests
         "a == -1 " + string.Concat(Enumerable.Range(0, n).Select(i => $"|| a == {i} "));
 
     [HumansFact]
-    public async Task Fires_error_when_method_exceeds_statement_threshold()
+    public async Task Analyze_OverStatementThreshold_Fires()
     {
         var source = Stubs + $$"""
 
@@ -63,7 +63,7 @@ public class ControllerBusinessLogicAnalyzerTests
     }
 
     [HumansFact]
-    public async Task Fires_error_when_method_exceeds_complexity_threshold()
+    public async Task Analyze_OverComplexityThreshold_Fires()
     {
         var source = Stubs + $$"""
 
@@ -89,7 +89,7 @@ public class ControllerBusinessLogicAnalyzerTests
     }
 
     [HumansFact]
-    public async Task Counts_switch_expression_arms_toward_complexity()
+    public async Task Analyze_SwitchExpressionArms_CountTowardComplexity()
     {
         var arms = string.Concat(Enumerable.Range(0, ControllerBusinessLogicAnalyzer.MaxCyclomaticComplexity)
             .Select(i => $"{i} => \"{i}\",\n"));
@@ -120,7 +120,7 @@ public class ControllerBusinessLogicAnalyzerTests
     }
 
     [HumansFact]
-    public async Task Fires_on_private_helper_method_in_controller()
+    public async Task Analyze_PrivateControllerHelper_Fires()
     {
         var source = Stubs + $$"""
 
@@ -146,7 +146,7 @@ public class ControllerBusinessLogicAnalyzerTests
     }
 
     [HumansFact]
-    public async Task Downgrades_to_warning_when_method_is_grandfathered()
+    public async Task Analyze_GrandfatheredMethod_Warns()
     {
         var source = Stubs + $$"""
 
@@ -175,7 +175,7 @@ public class ControllerBusinessLogicAnalyzerTests
     }
 
     [HumansFact]
-    public async Task Does_not_fire_at_exactly_the_thresholds()
+    public async Task Analyze_AtThresholds_IsSilent()
     {
         var source = Stubs + $$"""
 
@@ -206,7 +206,7 @@ public class ControllerBusinessLogicAnalyzerTests
     }
 
     [HumansFact]
-    public async Task Does_not_fire_on_non_controller_class()
+    public async Task Analyze_NonControllerClass_IsSilent()
     {
         var source = Stubs + $$"""
 

@@ -63,12 +63,6 @@ internal interface IShiftManagementRepository : IRepository
         ShiftEventQuery query,
         CancellationToken ct = default);
 
-    Task<IReadOnlyList<Rota>> GetRotasAsync(
-        Guid eventSettingsId,
-        IReadOnlyCollection<Guid> teamIds,
-        RotaReadShape shape,
-        CancellationToken ct = default);
-
     Task<IReadOnlyDictionary<Guid, int>> GetConfirmedSignupCountsByShiftAsync(
         IReadOnlyCollection<Guid> shiftIds,
         CancellationToken ct = default);

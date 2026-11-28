@@ -85,6 +85,6 @@ internal sealed class UsersController(
         ViewData["GoogleMapsApiKey"] = configuration.GetRequiredSetting(
             configRegistry, "GoogleMaps:ApiKey", "Google Maps", isSensitive: true);
 
-        return View(new MapViewModel { Markers = markers });
+        return View(markers);
     }
 }

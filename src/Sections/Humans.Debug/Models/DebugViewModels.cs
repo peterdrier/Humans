@@ -11,11 +11,6 @@ internal sealed class ConfigurationItemViewModel
     public string Importance { get; set; } = "optional";
 }
 
-internal sealed class AdminConfigurationViewModel
-{
-    public List<ConfigurationItemViewModel> Items { get; set; } = [];
-}
-
 internal sealed class DbStatsViewModel
 {
     public long TotalQueryCount { get; set; }
@@ -69,11 +64,6 @@ internal sealed class DecoratorCacheStatEntryViewModel
     public long BulkInvalidations { get; set; }
     public double HitRatePercent { get; set; }
     public bool IsWarmedUp { get; set; }
-}
-
-internal sealed class TimingsViewModel
-{
-    public List<TimingEntryViewModel> Entries { get; set; } = [];
 }
 
 internal sealed class TimingEntryViewModel

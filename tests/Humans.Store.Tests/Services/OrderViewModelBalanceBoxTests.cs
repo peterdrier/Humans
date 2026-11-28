@@ -25,7 +25,7 @@ public class OrderViewModelBalanceBoxTests
         new(Guid.NewGuid(), amount, method, status, null, null, Instant.FromUtc(2026, 1, 1, 0, 0), null);
 
     [HumansFact]
-    public void Camp_owing_the_org_reads_balance_owed_with_the_amount()
+    public void BalanceBox_CampOwes_ReadsBalanceOwed()
     {
         var vm = Vm(balance: 120m);
 
@@ -34,7 +34,7 @@ public class OrderViewModelBalanceBoxTests
     }
 
     [HumansFact]
-    public void Zero_balance_keeps_the_balance_owed_label()
+    public void BalanceBox_ZeroBalance_KeepsOwedLabel()
     {
         var vm = Vm(balance: 0m);
 
@@ -43,7 +43,7 @@ public class OrderViewModelBalanceBoxTests
     }
 
     [HumansFact]
-    public void Org_owing_the_camp_reads_refund_amount_as_a_positive_figure()
+    public void BalanceBox_OrgOwes_ReadsPositiveRefund()
     {
         var vm = Vm(balance: -30m);
 
@@ -52,7 +52,7 @@ public class OrderViewModelBalanceBoxTests
     }
 
     [HumansFact]
-    public void Deposits_returned_sums_only_paid_deposit_returns()
+    public void DepositsReturned_Payments_SumsPaidReturnsOnly()
     {
         var vm = Vm(
             balance: 0m,

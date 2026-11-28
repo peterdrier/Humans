@@ -75,7 +75,7 @@ internal sealed class Service(
             state?.LastCount ?? 0,
             state?.StatusChangedAt,
             docs.Select(d => new HoldedPurchaseDocInfo(
-                    d.Id, d.DocNumber, d.ContactName, d.ContactId, d.Description, d.Date, d.Subtotal, d.Total,
+                    d.Id, d.DocNumber, d.ContactName, d.ContactId, d.Description, d.Date, d.Total,
                     d.IsApproved, d.Notes, d.Tags, d.BookedAccountId, PurchaseDocUrl(d.Id),
                     d.PaymentsPending))
                 .ToList());

@@ -9,8 +9,6 @@ internal sealed class EmailPauseSettingsTabViewComponent(IEmailOutboxManagement 
     public async Task<IViewComponentResult> InvokeAsync()
     {
         var isPaused = await outboxService.IsEmailPausedAsync(HttpContext.RequestAborted);
-        return View(new EmailPauseSettingsTabViewModel(isPaused));
+        return View(isPaused);
     }
 }
-
-internal sealed record EmailPauseSettingsTabViewModel(bool IsPaused);

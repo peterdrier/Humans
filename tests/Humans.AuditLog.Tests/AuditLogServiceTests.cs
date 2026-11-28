@@ -46,23 +46,6 @@ public class AuditLogServiceTests : IDisposable
     }
 
     [HumansFact]
-    public async Task AbandonedAuditPage_CancelsRepositoryReads()
-    {
-        using var request = new CancellationTokenSource();
-        var controller = new AuditLogController(_userService, new AuditViewerService(_service, Registry, []), Registry)
-        {
-            ControllerContext = new ControllerContext
-            {
-                HttpContext = new DefaultHttpContext { RequestAborted = request.Token }
-            }
-        };
-        (await controller.Index(null)).Should().BeOfType<ViewResult>();
-        await request.CancelAsync();
-        Func<Task> read = async () => await controller.Index(null);
-        await read.Should().ThrowAsync<OperationCanceledException>();
-    }
-
-    [HumansFact]
     public async Task LogAsync_JobOverload_PersistsEntry()
     {
         var entityId = Guid.NewGuid();

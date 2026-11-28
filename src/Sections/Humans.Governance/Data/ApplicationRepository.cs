@@ -114,14 +114,6 @@ internal sealed class ApplicationRepository(IDbContextFactory<GovernanceDbContex
             .Distinct()
             .ToListAsync(ct), ct);
 
-    public Task<MemberApplication?> GetSubmittedForUserAsync(
-        Guid userId, CancellationToken ct = default) =>
-        WithContextAsync(ctx => ctx.Applications
-            .AsNoTracking()
-            .FirstOrDefaultAsync(
-                a => a.UserId == userId && a.Status == ApplicationStatus.Submitted,
-                ct), ct);
-
     public async Task<IReadOnlyList<MemberApplication>> GetAllSubmittedWithVotesAsync(
         CancellationToken ct = default) =>
         await WithContextAsync(async ctx => await ctx.Applications

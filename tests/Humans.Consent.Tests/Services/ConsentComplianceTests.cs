@@ -62,7 +62,7 @@ public sealed class ConsentComplianceTests
     private static TeamInfo Team(Guid id, SystemTeamType type, Guid memberId, TeamMemberRole role) => new(
         id, "Team", null, "team", IsActive: true, IsSystemTeam: type != SystemTeamType.None, type,
         RequiresApproval: false, IsPublicPage: false, IsHidden: false, IsPromotedToDirectory: false, Now,
-        [new TeamMemberInfo(Guid.NewGuid(), memberId, "Member", null, null, role, Now)]);
+        [new TeamMemberInfo(Guid.NewGuid(), memberId, "Member", null, role, Now)]);
 
     [HumansFact]
     public async Task BatchCheck_ReturnsOnlyUsersWhoSignedEveryRequiredVersion()
