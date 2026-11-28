@@ -191,7 +191,7 @@
   <data name="Tasks_Timeline_UndatedMany" xml:space="preserve"><value>{0} attività non hanno date</value></data>
   <data name="Tasks_Timeline_WeekOf" xml:space="preserve"><value>Settimana del {0}</value></data>
   <data name="Tasks_Graph_Title" xml:space="preserve"><value>Dipendenze</value></data>
-  <data name="Tasks_Graph_Intro" xml:space="preserve"><value>Ogni freccia va da un'attività a quella che la aspetta. Le attività senza collegamenti non compaiono.</value></data>
+  <data name="Tasks_Graph_Intro" xml:space="preserve"><value>Ogni freccia va da un'attività a quella che la aspetta. Le attività senza collegamenti non compaiono. Le attività sbiadite sono collegate ma fuori da questa vista.</value></data>
   <data name="Tasks_Graph_Empty" xml:space="preserve"><value>Nessuna attività qui ne aspetta un'altra.</value></data>
   <data name="Tasks_Filter_Undated" xml:space="preserve"><value>Solo senza date</value></data>
 </root>

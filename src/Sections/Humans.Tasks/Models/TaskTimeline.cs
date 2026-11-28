@@ -40,9 +40,11 @@ internal sealed record TimelinePageViewModel(
 
 /// <summary>
 /// A task in the graph, or a task the viewer cannot see (<see cref="Task"/> null, shown as "a hidden task" with no
-/// link or status). The column is its depth: 0 waits on nothing here, every other is one right of the deepest task it waits on.
+/// link or status). <see cref="IsContext"/> marks a task the viewer can see but the page's filters left out, drawn
+/// only because a shown task is linked to it. The column is its depth: 0 waits on nothing here, every other is one
+/// right of the deepest task it waits on.
 /// </summary>
-internal sealed record GraphNode(TaskInfo? Task, int Column, int Row)
+internal sealed record GraphNode(TaskInfo? Task, bool IsContext, int Column, int Row)
 {
     public int X => DependencyGraph.Margin + Column * (DependencyGraph.NodeWidth + DependencyGraph.ColumnGap);
 
@@ -144,22 +146,24 @@ internal static class TaskTimeline
     }
 
     /// <summary>
-    /// Every link with a shown task at one end, drawn when each end is a shown task or one the viewer cannot see.
-    /// Layout assumes no circles (the service refuses them) but never trusts it: the depth passes are capped at the node
-    /// count, so a circle that got in anyway still ends with every task in a column.
+    /// Every link with a shown task at one end. The other end is a shown task, a visible one the filters left out
+    /// (context), or one the viewer cannot see, which gets a node of its own per link so the graph tells no more than a
+    /// row's "a hidden task" does. Layout assumes no circles (the service refuses them) but never trusts it: the depth
+    /// passes are capped at the node count, so a circle that got in anyway still ends with every task in a column.
     /// </summary>
     private static DependencyGraph Graph(IReadOnlyList<TaskInfo> shown, IReadOnlyList<TaskInfo> all, HashSet<Guid> visibleIds)
     {
         var shownIds = shown.Select(t => t.Id).ToHashSet();
-        bool Drawn(Guid id) => shownIds.Contains(id) || !visibleIds.Contains(id);
+        (Guid Id, Guid Via) Key(Guid id, Guid other) => visibleIds.Contains(id) ? (id, Guid.Empty) : (id, other);
         var links = all
             .SelectMany(t => t.WaitingOn.Select(l => (Dependent: t.Id, Dependency: l.Id)))
-            .Where(l => (shownIds.Contains(l.Dependent) || shownIds.Contains(l.Dependency)) && Drawn(l.Dependent) && Drawn(l.Dependency))
+            .Where(l => shownIds.Contains(l.Dependent) || shownIds.Contains(l.Dependency))
+            .Select(l => (Dependent: Key(l.Dependent, l.Dependency), Dependency: Key(l.Dependency, l.Dependent)))
             .ToList();
         if (links.Count == 0)
             return new([], []);
 
-        var depth = links.SelectMany(l => new[] { l.Dependent, l.Dependency }).Distinct().ToDictionary(id => id, _ => 0);
+        var depth = links.SelectMany(l => new[] { l.Dependent, l.Dependency }).Distinct().ToDictionary(key => key, _ => 0);
         for (var pass = 0; pass < depth.Count; pass++)
         {
             var changed = false;
@@ -176,14 +180,19 @@ internal static class TaskTimeline
         }
 
         var byId = all.ToDictionary(t => t.Id);
-        var nodes = new Dictionary<Guid, GraphNode>();
+        var nodes = new Dictionary<(Guid Id, Guid Via), GraphNode>();
         foreach (var column in depth.GroupBy(d => d.Value).OrderBy(g => g.Key))
         {
-            var ids = column.Select(d => d.Key).ToList();
-            var seen = TaskRowOrder.Order(ids.Where(visibleIds.Contains).Select(id => byId[id])).Select(t => t.Id);
+            var keys = column.Select(d => d.Key).ToList();
+            var seen = TaskRowOrder.Order(keys.Where(k => visibleIds.Contains(k.Id)).Select(k => byId[k.Id]))
+                .OrderBy(t => !shownIds.Contains(t.Id))
+                .Select(t => (t.Id, Guid.Empty));
             var row = 0;
-            foreach (var id in seen.Concat(ids.Where(id => !visibleIds.Contains(id))))
-                nodes[id] = new(visibleIds.Contains(id) ? byId[id] : null, column.Key, row++);
+            foreach (var key in seen.Concat(keys.Where(k => !visibleIds.Contains(k.Id))))
+            {
+                var task = visibleIds.Contains(key.Id) ? byId[key.Id] : null;
+                nodes[key] = new(task, task is not null && !shownIds.Contains(key.Id), column.Key, row++);
+            }
         }
 
         return new([.. nodes.Values], [.. links.Select(l => new GraphEdge(nodes[l.Dependency], nodes[l.Dependent]))]);

@@ -17,7 +17,7 @@ Pieces of work with an end, hanging on a team. A task is to a role (standing res
 - A **slot** is a place for one person. People on a task are **confirmed**, or **requested** (asked to join, no slot taken). Overfilling is allowed.
 - **Waiting on**: a link from a task to another it depends on. Shown, never enforced.
 - **Effectively hidden**: the task's own flag, or its team being hidden.
-- The **listed** tasks are the active event's plus event-less ones, minus done and cancelled. The list filters (any event, one event, include finished) are a `TaskListScope` on `ITaskService.GetListedTasksAsync`, so the rule lives only in the service.
+- The **listed** tasks are the active event's plus event-less ones, minus done and cancelled. The list filters (any event, one event, include finished) are a `TaskListScope` on `ITaskService.Listed`, so the rule lives only in the service.
 
 ## Pages
 
@@ -34,7 +34,7 @@ Pieces of work with an end, hanging on a team. A task is to a role (standing res
 
 `POST /api/backdoor/tasks/bulk` (Backdoor's key-authed API) loads a whole set of tasks; see Bulk load below. Every claiming POST takes an optional `returnUrl`, followed only when `Url.IsLocalUrl` accepts it (else back to the task page).
 
-The team page (`/Teams/{slug}`, Teams) carries a **Tasks card** through Teams' `ITeamTasksPart` slot: the team's listed tasks the viewer may see as the same rows, five at most with a "see all" link to `/Tasks/Team/{slug}`, an empty state, for a manager the count of waiting requests (linking to `#requests`) and an Add link. It renders nothing in a hidden team the viewer cannot see, and nothing when the viewer sees no tasks on the team and cannot add one (not a manager, or the team is system or inactive). A non-manager sees the card only for tasks they can see; a manager of an active team always has it, with the empty state. Teams' page does not gate on membership, so a viewer whose account is walled (suspended, say) sees the rows but never a claim button.
+The team page (`/Teams/{slug}`, Teams) carries a **Tasks card** through Teams' `ITeamTasksPart` slot: the team's listed tasks the viewer may see as the same rows, five at most with a "see all" link to `/Tasks/Team/{slug}`, an empty state, for a manager the count of waiting requests (linking to `#requests`) and an Add link. It renders nothing in a hidden team the viewer cannot see, and nothing when the viewer sees no tasks on the team and cannot add one (not a manager, or the team is system or inactive). A non-manager sees the card only for tasks they can see; a manager of an active team always has it, with the empty state. Teams' page does not gate on membership, so a viewer whose account is walled (suspended, say) sees the rows but never a claim button: `TasksAccess.CanClaim` needs an active account.
 
 ### Task rows
 
@@ -42,13 +42,13 @@ Every list (`/Tasks`, a team's page, the board, the team-page card) shows one ro
 
 ## Timeline
 
-`GET /Tasks/Timeline` reads the tasks once and applies the lists' own rules: the listed set (`ITaskService.Listed`), `TasksAccess.CanSee`, and the `TaskListFilter` (event, team, priority, status, finished). `Models/TaskTimeline.cs` lays the result out; it is pure and holds no access checks.
+`GET /Tasks/Timeline` reads the tasks once and applies the lists' own rules: the listed set (`ITaskService.Listed`), `TasksAccess.CanSee`, and the `TaskListFilter` (event, team, priority, status, finished). The team filter is kept for any team the viewer can see (`CanSeeTeam`), even one with nothing listed, so a team's link lands on its own empty timeline. `Models/TaskTimeline.cs` lays the result out; it is pure and holds no access checks.
 
 - **Bars.** Each task with a resolved start or due date is a bar from start to due (relative dates already resolved from the event, as on the other pages). A task with one date is a **marker** on that day. Bars are grouped by team, ordered by start, then due, then title; positions are integers in hundredths of a percent of the axis, so the markup carries no decimals. A month row labels the axis.
 - **Undated.** A task with no resolved start and no due date (`TaskInfo.IsUndated`) is left off and counted: "N tasks have no dates" links to `/Tasks` with the same filters plus `Undated=true`, the "no dates" filter on `TaskRowFilter` (a checkbox on every list except the timeline, which ignores it).
 - **Phone.** Below the `md` breakpoint the bars give way to a list grouped by week (the Monday on or before the start date, or the due date when there is no start), each task with its status, dates, team and "Waiting on" its linked tasks. Nothing scrolls sideways.
 - **Dependency graph.** A server-drawn inline SVG below the timeline, no script. Only tasks with a link appear. Column = depth: 0 waits on nothing in the graph; every other task sits one column right of the deepest task it waits on. An arrow runs from each task to the task waiting on it. Each node links to `/Tasks/{id}` and shows its status, with "Waiting on" added when the task is waiting; stored Blocked has its own border. The layout assumes the service has refused every circle but never trusts it: depth passes are capped at the node count, so a circle that got in anyway still lays out. The graph scrolls sideways inside its own box on a phone.
-- **What the graph draws.** Every link with a shown task at one end, where each end is a shown task or one the viewer cannot see. A visible task a filter left out is not drawn, so a filter narrows the graph as it narrows the lists. A task the viewer cannot see is "a hidden task": a dashed node with no link, no status and no id in the markup.
+- **What the graph draws.** Every link with a shown task at one end. A linked task the viewer can see but the filters left out (another team, finished, another event) is drawn faded as context, so a team's graph keeps its cross-team links. A task the viewer cannot see is "a hidden task": a dashed node with no link, no status and no id in the markup, one node per link, so the graph never shows that two links lead to the same hidden task.
 - Colours are `--h-*` tokens, so a dark theme only has to redefine tokens.
 
 ## Bulk load

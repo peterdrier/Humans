@@ -186,12 +186,12 @@
   <data name="Tasks_Card_All" xml:space="preserve"><value>Alle taken bekijken ({0})</value></data>
   <data name="Tasks_Timeline_Title" xml:space="preserve"><value>Tijdlijn</value></data>
   <data name="Tasks_Timeline_Subtitle" xml:space="preserve"><value>Taken van start tot deadline, en wat op wat wacht.</value></data>
-  <data name="Tasks_Timeline_Empty" xml:space="preserve"><value>Geen taken met data om te tonen.</value></data>
-  <data name="Tasks_Timeline_UndatedOne" xml:space="preserve"><value>1 taak heeft geen data</value></data>
-  <data name="Tasks_Timeline_UndatedMany" xml:space="preserve"><value>{0} taken hebben geen data</value></data>
+  <data name="Tasks_Timeline_Empty" xml:space="preserve"><value>Geen taken met datums om te tonen.</value></data>
+  <data name="Tasks_Timeline_UndatedOne" xml:space="preserve"><value>1 taak heeft geen datums</value></data>
+  <data name="Tasks_Timeline_UndatedMany" xml:space="preserve"><value>{0} taken hebben geen datums</value></data>
   <data name="Tasks_Timeline_WeekOf" xml:space="preserve"><value>Week van {0}</value></data>
   <data name="Tasks_Graph_Title" xml:space="preserve"><value>Afhankelijkheden</value></data>
-  <data name="Tasks_Graph_Intro" xml:space="preserve"><value>Elke pijl loopt van een taak naar de taak die erop wacht. Taken zonder koppelingen blijven weg.</value></data>
+  <data name="Tasks_Graph_Intro" xml:space="preserve"><value>Elke pijl loopt van een taak naar de taak die erop wacht. Taken zonder koppelingen blijven weg. Vervaagde taken zijn gekoppeld maar vallen buiten deze weergave.</value></data>
   <data name="Tasks_Graph_Empty" xml:space="preserve"><value>Geen enkele taak hier wacht op een andere.</value></data>
-  <data name="Tasks_Filter_Undated" xml:space="preserve"><value>Alleen zonder data</value></data>
+  <data name="Tasks_Filter_Undated" xml:space="preserve"><value>Alleen zonder datums</value></data>
 </root>

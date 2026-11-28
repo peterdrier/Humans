@@ -37,10 +37,10 @@ public sealed class TasksAccessTests
 
     private static TasksAccess Access(Who who) => who switch
     {
-        Who.Manager => new TasksAccess(Me, SeesAll: false, new HashSet<Guid> { Production }),
-        Who.ManagerOfOtherTeam => new TasksAccess(Me, SeesAll: false, new HashSet<Guid> { Art }),
-        Who.SeesAll => new TasksAccess(Me, SeesAll: true, new HashSet<Guid>()),
-        _ => new TasksAccess(Me, SeesAll: false, new HashSet<Guid>()),
+        Who.Manager => new TasksAccess(Me, SeesAll: false, new HashSet<Guid> { Production }, IsActive: true),
+        Who.ManagerOfOtherTeam => new TasksAccess(Me, SeesAll: false, new HashSet<Guid> { Art }, IsActive: true),
+        Who.SeesAll => new TasksAccess(Me, SeesAll: true, new HashSet<Guid>(), IsActive: true),
+        _ => new TasksAccess(Me, SeesAll: false, new HashSet<Guid>(), IsActive: true),
     };
 
     private static TaskInfo Task(Who who, bool hidden = false, bool teamHidden = false) => new(
@@ -95,9 +95,9 @@ public sealed class TasksAccessTests
     {
         var task = Task(Who.Manager);
 
-        new TasksAccess(Me, false, new HashSet<Guid> { Production, Art }).CanMove(task, Art).Should().BeTrue();
-        new TasksAccess(Me, false, new HashSet<Guid> { Production }).CanMove(task, Art).Should().BeFalse();
-        new TasksAccess(Me, false, new HashSet<Guid> { Art }).CanMove(task, Art).Should().BeFalse();
+        new TasksAccess(Me, false, new HashSet<Guid> { Production, Art }, IsActive: true).CanMove(task, Art).Should().BeTrue();
+        new TasksAccess(Me, false, new HashSet<Guid> { Production }, IsActive: true).CanMove(task, Art).Should().BeFalse();
+        new TasksAccess(Me, false, new HashSet<Guid> { Art }, IsActive: true).CanMove(task, Art).Should().BeFalse();
     }
 
     [HumansFact]
@@ -149,6 +149,10 @@ public sealed class TasksAccessTests
         Access(Who.Human).CanClaim(full).Should().BeFalse();
         Access(Who.Human).CanClaim(onlyRequested).Should().BeTrue();
     }
+
+    [HumansFact]
+    public void CanClaim_InactiveAccount_IsFalse() =>
+        (Access(Who.Human) with { IsActive = false }).CanClaim(Task(Who.Human)).Should().BeFalse();
 
     [HumansTheory]
     [InlineData(Who.Human, false)]

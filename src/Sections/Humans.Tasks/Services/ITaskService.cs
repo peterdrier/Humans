@@ -16,14 +16,8 @@ internal interface ITaskService : IApplicationService
     Task<IReadOnlyList<TaskInfo>> GetTasksAsync(CancellationToken ct = default);
 
     /// <summary>
-    /// The tasks a list shows; a null scope is the default <see cref="TaskListScope"/>. Callers filter what the viewer
-    /// may see, and sort.
-    /// </summary>
-    Task<IReadOnlyList<TaskInfo>> GetListedTasksAsync(TaskListScope? scope = null, CancellationToken ct = default);
-
-    /// <summary>
-    /// The listing rule applied to tasks the caller already holds (from <see cref="GetTasksAsync"/>), so a page reads
-    /// the tasks once. A null scope is the default <see cref="TaskListScope"/>.
+    /// Of <paramref name="all"/> (from <see cref="GetTasksAsync"/>, so a page reads the tasks once), the ones a list
+    /// shows; a null scope is the default <see cref="TaskListScope"/>. Callers filter what the viewer may see, and sort.
     /// </summary>
     IReadOnlyList<TaskInfo> Listed(IEnumerable<TaskInfo> all, TaskListScope? scope = null);
 

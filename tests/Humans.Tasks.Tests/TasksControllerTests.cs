@@ -51,7 +51,8 @@ public sealed class TasksControllerTests
             .Returns([.. manages.Select(id => new Owner(TeamOwner.Kind, id))]);
 
         var identity = new ClaimsIdentity(
-            [new Claim(ClaimTypes.NameIdentifier, _me.ToString()), .. roles.Select(r => new Claim(ClaimTypes.Role, r))], "test");
+            [new Claim(ClaimTypes.NameIdentifier, _me.ToString()), new Claim(RoleChecks.UserStateClaimType, nameof(UserState.Active)),
+                .. roles.Select(r => new Claim(ClaimTypes.Role, r))], "test");
         var http = new DefaultHttpContext { User = new ClaimsPrincipal(identity) };
         return new TasksController(
             _kit.Service, permissions, _kit.Teams, _kit.Settings, Substitute.For<IUserService>(), Authorization, new TaskTestKit.KeyLocalizer(), NullLogger<TasksController>.Instance)
@@ -1044,6 +1045,40 @@ public sealed class TasksControllerTests
         await DatedAsync("Mural", TaskTestKit.Art);
 
         Drawn(TimelineModel(await Human().Timeline(new TaskListFilter { Team = TaskTestKit.Production }, Ct))).Should().Equal(production.Id);
+    }
+
+    [HumansFact]
+    public async Task Timeline_TeamFilter_KeptForTeamWithNothingListed()
+    {
+        await DatedAsync("Mural", TaskTestKit.Art);
+
+        var model = TimelineModel(await Human().Timeline(new TaskListFilter { Team = TaskTestKit.Production }, Ct));
+
+        model.Filter.Team.Should().Be(TaskTestKit.Production);
+        model.Teams.Select(t => t.Id).Should().Contain(TaskTestKit.Production);
+        Drawn(model).Should().BeEmpty();
+    }
+
+    [HumansFact]
+    public async Task Timeline_TeamFilter_DroppedForHiddenTeam()
+    {
+        var model = TimelineModel(await Human().Timeline(new TaskListFilter { Team = TaskTestKit.HiddenTeam }, Ct));
+
+        model.Filter.Team.Should().BeNull();
+        model.Teams.Select(t => t.Id).Should().NotContain(TaskTestKit.HiddenTeam);
+    }
+
+    [HumansFact]
+    public async Task Timeline_TeamFilter_DrawsCrossTeamLinksAsContext()
+    {
+        var mural = await DatedAsync("Mural", TaskTestKit.Art);
+        var bar = await DatedAsync("Bar", TaskTestKit.Production);
+        (await _kit.Service.AddDependencyAsync(bar.Id, mural.Id, _kit.Actor, Ct)).Succeeded.Should().BeTrue();
+
+        var graph = TimelineModel(await Human().Timeline(new TaskListFilter { Team = TaskTestKit.Production }, Ct)).Timeline.Graph;
+
+        graph.Nodes.Should().ContainSingle(n => n.Task!.Id == mural.Id && n.IsContext);
+        graph.Edges.Should().ContainSingle();
     }
 
     [HumansFact]

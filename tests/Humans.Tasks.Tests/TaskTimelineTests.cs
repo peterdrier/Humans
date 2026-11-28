@@ -149,12 +149,28 @@ public sealed class TaskTimelineTests
     }
 
     [HumansFact]
-    public void Graph_VisibleTaskTheFiltersLeftOut_IsNotDrawn()
+    public void Graph_VisibleTaskTheFiltersLeftOut_IsContext()
     {
-        var done = After("Done one");
-        var signs = After("Signs", done);
+        var otherTeam = After("Other team's fence");
+        var signs = After("Signs", otherTeam);
 
-        Build([signs], [done, signs]).Graph.Nodes.Should().BeEmpty();
+        var nodes = Build([signs], [otherTeam, signs]).Graph.Nodes;
+
+        nodes.Single(n => n.Task!.Id == otherTeam.Id).IsContext.Should().BeTrue();
+        nodes.Single(n => n.Task!.Id == signs.Id).IsContext.Should().BeFalse();
+    }
+
+    [HumansFact]
+    public void Graph_HiddenTaskOnTwoLinks_IsTwoNodes()
+    {
+        var secret = After("Secret plan");
+        var signs = After("Signs", secret);
+        var tanks = After("Tanks", secret);
+
+        var graph = Build([signs, tanks], [secret, signs, tanks], t => t.Id != secret.Id).Graph;
+
+        graph.Nodes.Count(n => n.Task is null).Should().Be(2);
+        graph.Edges.Select(e => e.From).Should().OnlyHaveUniqueItems();
     }
 
     [HumansFact]

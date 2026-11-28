@@ -60,7 +60,10 @@ internal sealed class TasksController(
             access.PlacesOn(shown), access.BlockersOn(shown, all)));
     }
 
-    /// <summary>The same visibility and filters as the lists; a team's own view is the team filter.</summary>
+    /// <summary>
+    /// The same visibility and filters as the lists; a team's own view is the team filter, kept for a team the viewer
+    /// can see even when it has nothing listed, so its tasks page's link lands on its empty timeline.
+    /// </summary>
     [HttpGet("Timeline")]
     public async Task<IActionResult> Timeline([FromQuery] TaskListFilter filter, CancellationToken ct)
     {
@@ -69,6 +72,14 @@ internal sealed class TasksController(
         var all = await tasks.GetTasksAsync(ct);
         var listed = tasks.Listed(all, filter.ToScope()).Where(access.CanSee).ToList();
         var teamChoices = TeamsOf(listed);
+        if (filter.Team is { } teamId && teamChoices.All(t => t.Id != teamId)
+            && await teams.GetTeamAsync(teamId, ct) is { Slug.Length: > 0 } team
+            && access.CanSeeTeam(team.Id, team.IsHidden, all.Where(t => t.Owner.Id == team.Id)))
+        {
+            teamChoices = [.. teamChoices.Append(new TeamChoice(team.Id, team.Name, team.Slug))
+                .OrderBy(t => t.Name, StringComparer.CurrentCultureIgnoreCase)];
+        }
+
         var statuses = TaskRowFilter.StatusChoices(withFinished: true);
         filter.Undated = false;
         filter.DropUnoffered(teamChoices, statuses);

@@ -1,4 +1,4 @@
-@* The tasks that have a link, one column per depth, an arrow from each task to the tasks waiting on it. Drawn on the server; on a phone it scrolls inside its own box. *@
+@* The tasks that have a link, one column per depth, an arrow from each task to the tasks waiting on it. A linked task the filters left out is faded context. Drawn on the server; on a phone it scrolls inside its own box. *@
 @model DependencyGraph
 
 @if (Model.Nodes.Count == 0)
@@ -35,7 +35,7 @@ else
                 }
 
                 var state = task.Status == TaskItemStatus.Blocked ? "blocked" : task.IsWaiting ? "waiting" : task.Status == TaskItemStatus.Done ? "done" : "plain";
-                <g class="dep-node dep-node--@state">
+                <g class="dep-node dep-node--@state @(node.IsContext ? "dep-node--context" : null)">
                     <a href="@Url.Action("Details", "Tasks", new { id = task.Id })">
                         <title>@task.Title</title>
                         <rect x="@node.X" y="@node.Y" width="@DependencyGraph.NodeWidth" height="@DependencyGraph.NodeHeight" rx="6" />

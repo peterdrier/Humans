@@ -51,9 +51,6 @@ internal sealed partial class TaskService(
         return snapshot.Tasks.Values.Select(t => ToInfo(t, snapshot)).ToList();
     }
 
-    public async Task<IReadOnlyList<TaskInfo>> GetListedTasksAsync(TaskListScope? scope = null, CancellationToken ct = default) =>
-        Listed(await GetTasksAsync(ct), scope);
-
     public IReadOnlyList<TaskInfo> Listed(IEnumerable<TaskInfo> all, TaskListScope? scope = null)
     {
         scope ??= new TaskListScope();
@@ -73,7 +70,7 @@ internal sealed partial class TaskService(
 
     public async Task<TasksAdminSummary> GetAdminSummaryAsync(CancellationToken ct = default)
     {
-        var listed = await GetListedTasksAsync(ct: ct);
+        var listed = Listed(await GetTasksAsync(ct));
         var rows = listed
             .GroupBy(t => t.Owner)
             .Select(g => new TeamTaskCounts(

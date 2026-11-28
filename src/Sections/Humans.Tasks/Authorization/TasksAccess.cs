@@ -1,4 +1,5 @@
 using System.Security.Claims;
+using Humans.Base.Authorization;
 using Humans.Base.Extensions;
 using Humans.Permissions.Contracts;
 using Humans.Tasks.Contracts;
@@ -18,7 +19,8 @@ namespace Humans.Tasks.Authorization;
 /// <param name="UserId">The signed-in person.</param>
 /// <param name="SeesAll">Passes <see cref="TasksPolicies.Read"/>: sees every task, hidden ones included. Changes nothing by itself.</param>
 /// <param name="ManagedTeamIds">The teams where the person holds <see cref="TasksPermissions.Manage"/>, sub-teams included.</param>
-internal sealed record TasksAccess(Guid UserId, bool SeesAll, IReadOnlySet<Guid> ManagedTeamIds)
+/// <param name="IsActive">The account is active. Every Tasks page waits for it; the team page, which carries the tasks card, does not.</param>
+internal sealed record TasksAccess(Guid UserId, bool SeesAll, IReadOnlySet<Guid> ManagedTeamIds, bool IsActive)
 {
     /// <summary>Null when the principal carries no user id.</summary>
     public static async Task<TasksAccess?> ForAsync(
@@ -31,7 +33,8 @@ internal sealed record TasksAccess(Guid UserId, bool SeesAll, IReadOnlySet<Guid>
         return new TasksAccess(
             userId,
             (await authorization.AuthorizeAsync(user, TasksPolicies.Read)).Succeeded,
-            managed.Where(o => string.Equals(o.Kind, TeamOwner.Kind, StringComparison.Ordinal)).Select(o => o.Id).ToHashSet());
+            managed.Where(o => string.Equals(o.Kind, TeamOwner.Kind, StringComparison.Ordinal)).Select(o => o.Id).ToHashSet(),
+            RoleChecks.IsActiveMember(user));
     }
 
     public bool Manages(Guid teamId) => ManagedTeamIds.Contains(teamId);
@@ -52,11 +55,11 @@ internal sealed record TasksAccess(Guid UserId, bool SeesAll, IReadOnlySet<Guid>
         task.Assignments.Any(a => !a.IsConfirmed && a.UserId == UserId);
 
     /// <summary>
-    /// Whether the claim button shows: a task the person can see, not done or cancelled, with a free slot, that they are
-    /// not already on or waiting on. The service enforces the same state rules; seeing the task is only checked here.
+    /// Whether the claim button shows: an active account, a task the person can see, not done or cancelled, with a free
+    /// slot, that they are not already on or waiting on. The service enforces the same state rules; seeing the task is only checked here.
     /// </summary>
     public bool CanClaim(TaskInfo task) =>
-        CanSee(task) && !task.IsFinished && task.OpenSlots > 0 && task.Assignments.All(a => a.UserId != UserId);
+        IsActive && CanSee(task) && !task.IsFinished && task.OpenSlots > 0 && task.Assignments.All(a => a.UserId != UserId);
 
     /// <summary>The person's own part in a task, for the buttons a page shows. Null when they have none and cannot claim.</summary>
     public MyPlace? PlaceOn(TaskInfo task) =>

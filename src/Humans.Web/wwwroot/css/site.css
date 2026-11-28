@@ -3268,6 +3268,7 @@ body.city-map-fullscreen main {
 .dep-node--waiting rect { stroke: var(--h-amber); }
 .dep-node--done rect { stroke: var(--h-sage); }
 .dep-node--hidden rect { stroke-dasharray: 4 3; }
+.dep-node--context { opacity: 0.6; }
 
 .dep-node a:hover rect,
 .dep-node a:focus-visible rect {
