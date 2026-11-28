@@ -22,6 +22,7 @@ namespace Humans.Tickets.Controllers;
 [Route("Tickets/Admin/Sales")]
 internal sealed class TicketsSalesAdminController(
     ITicketCheckoutService checkout,
+    ITicketReconService reconService,
     TicketDeliveryService delivery,
     ISettingsService settings,
     IGrantService grants,
@@ -166,7 +167,7 @@ internal sealed class TicketsSalesAdminController(
         if (fromDate > toDate)
             (fromDate, toDate) = (toDate, fromDate);
 
-        var inUse = await checkout.GetPlatformsInUseAsync(ct);
+        var inUse = await reconService.GetPlatformsInUseAsync(ct);
         var keys = string.IsNullOrWhiteSpace(platform) ? inUse : [platform];
         var start = fromDate.AtStartOfDayInZone(zone).ToInstant();
         var end = toDate.PlusDays(1).AtStartOfDayInZone(zone).ToInstant();
@@ -174,10 +175,10 @@ internal sealed class TicketsSalesAdminController(
         var payments = new Dictionary<string, TicketPaymentRecon>(StringComparer.Ordinal);
         foreach (var key in keys)
         {
-            if (await checkout.ReconcilePlatformAsync(key, start, end, ct) is not { } recon)
+            if (await reconService.ReconcilePlatformAsync(key, start, end, ct) is not { } recon)
                 return NotFound();
             recons.Add(recon);
-            if (await checkout.ReconcilePaymentsAsync(key, start, end, ct) is { } payment)
+            if (await reconService.ReconcilePaymentsAsync(key, start, end, ct) is { } payment)
                 payments[key] = payment;
         }
 
@@ -189,7 +190,7 @@ internal sealed class TicketsSalesAdminController(
         value is not null && LocalDatePattern.Iso.Parse(value) is { Success: true } parsed ? parsed.Value : null;
 
     private IReadOnlyList<PlatformInfo> PlatformsForDisplay =>
-        checkout.Platforms.OrderBy(platform => platform.Key, StringComparer.Ordinal).ToList();
+        reconService.Platforms.OrderBy(platform => platform.Key, StringComparer.Ordinal).ToList();
 
     private async Task<PlatformsViewModel> PlatformsModelAsync(CancellationToken ct) =>
         new(PlatformsForDisplay, await checkout.ListTicketingSettingsAsync(ct), await settings.GetAllEventSettingsAsync(ct), null);

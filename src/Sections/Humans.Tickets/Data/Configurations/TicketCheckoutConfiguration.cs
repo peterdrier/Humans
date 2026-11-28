@@ -32,9 +32,6 @@ internal sealed class TicketingSettingsConfiguration : IEntityTypeConfiguration<
                 k => k == TicketPriceRuleKind.Discount ? "Credit" : k.ToString(),
                 v => v == "Credit" ? TicketPriceRuleKind.Discount : Enum.Parse<TicketPriceRuleKind>(v));
         });
-        // Replaced by ChildTypes; unread, kept until a drop of its own is approved (destructive-drops-need-approval).
-        builder.Property<long?>("ChildPriceMinor");
-        builder.Property<int?>("ChildMaxAge");
         builder.OwnsMany(x => x.ChildTypes, c =>
         {
             c.ToJson("child_types");

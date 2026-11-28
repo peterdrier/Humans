@@ -551,6 +551,8 @@ public sealed class ApplicationDecisionServiceTests : IDisposable
         ClearAllTrackers();
         var updated = await _governanceDb.Applications.FirstAsync(a => a.Id == app.Id, TestContext.Current.CancellationToken);
         updated.Status.Should().Be(ApplicationStatus.Withdrawn);
+        await _auditLog.Received(1).LogAsync(GovernanceAuditActions.TierApplicationWithdrawn,
+            Arg.Any<string>(), app.Id, Arg.Any<string>(), userId);
         _metrics.Received().RecordApplicationProcessed("withdrawn");
         VotingBadgeCached(boardMemberId).Should().BeFalse();
     }
@@ -1748,8 +1750,7 @@ public sealed class ApplicationDecisionServiceTests : IDisposable
 
         result.Should().NotBeNull();
         result.ReviewedByUserId.Should().Be(reviewerId);
-        result.History.Should().NotBeEmpty();
-        result.History[0].ChangedByUserId.Should().Be(reviewerId);
+        result.History.Select(row => row.ChangedByUserId).Should().Equal(userId, reviewerId);
         await _userService.DidNotReceive().GetUserInfosAsync(
             Arg.Any<IEnumerable<Guid>>(), Arg.Any<CancellationToken>());
     }
@@ -1775,40 +1776,20 @@ public sealed class ApplicationDecisionServiceTests : IDisposable
     [HumansTheory]
     [InlineData(false)]
     [InlineData(true)]
-    public async Task ApplicationDetails_order_state_history_newest_first(bool admin)
+    public async Task ApplicationDetails_HistoryFromRow_NewestFirst(bool admin)
     {
         var userId = Guid.NewGuid();
         var app = await SeedSubmittedApplicationAsync(userId);
+        _clock.Advance(Duration.FromDays(1));
         app.Withdraw(_clock);
         var now = _clock.GetCurrentInstant();
-        app.StateHistory.Add(new ApplicationStateHistory
-        {
-            ApplicationId = app.Id,
-            Status = ApplicationStatus.Submitted,
-            ChangedAt = now - Duration.FromDays(2),
-            ChangedByUserId = userId,
-            Notes = "Oldest",
-        });
-        app.StateHistory.Add(new ApplicationStateHistory
-        {
-            ApplicationId = app.Id,
-            Status = ApplicationStatus.Submitted,
-            ChangedAt = now - Duration.FromDays(1),
-            ChangedByUserId = userId,
-            Notes = "Middle",
-        });
         await SaveAllAsync(TestContext.Current.CancellationToken);
 
         var result = await _service.GetUserApplicationDetailAsync(app.Id, userId, TestContext.Current.CancellationToken);
 
         result.Should().NotBeNull();
-        result.History.Should().HaveCount(3);
-        result.History.Should().ContainSingle(row => row.Status == ApplicationStatus.Withdrawn);
-        result.History.Where(row => row.Status == ApplicationStatus.Submitted)
-            .Select(row => (row.ChangedAt, row.Notes)).Should().BeEquivalentTo(new[]
-            {
-                (now - Duration.FromDays(2), "Oldest"), (now - Duration.FromDays(1), "Middle"),
-            });
+        result.History.Select(row => row.Status).Should().Equal(ApplicationStatus.Submitted, ApplicationStatus.Withdrawn);
+        result.History.Should().OnlyContain(row => row.ChangedByUserId == userId);
         _userService.GetUserInfoAsync(userId, Arg.Any<CancellationToken>())
             .Returns(new ValueTask<UserInfo?>(UserInfoFixtures.FromUser(new User { Id = userId })));
         var controller = new GovernanceApplicationsController(_service, CreateTierService(), _userService,
@@ -1828,9 +1809,7 @@ public sealed class ApplicationDecisionServiceTests : IDisposable
         var history = admin
             ? page.Model.Should().BeOfType<AdminApplicationDetailViewModel>().Which.History
             : page.Model.Should().BeOfType<ApplicationDetailViewModel>().Which.History;
-        history.Select(row => row.ChangedAt).Should().Equal(
-            now.ToDateTimeUtc(), (now - Duration.FromDays(1)).ToDateTimeUtc(), (now - Duration.FromDays(2)).ToDateTimeUtc());
-        history.Select(row => row.Notes).Should().Equal(null, "Middle", "Oldest");
+        history.Select(row => row.ChangedAt).Should().Equal(now.ToDateTimeUtc(), app.SubmittedAt.ToDateTimeUtc());
     }
 
     [HumansTheory]
@@ -2119,6 +2098,22 @@ public sealed class ApplicationDecisionServiceTests : IDisposable
         row.GetProperty("UpdatedAt").GetString().Should().Be("2026-10-02T23:30:00Z");
         row.GetProperty("RenewalReminderSentAt").GetString()
             .Should().Be(reminderSent ? "2026-10-03T08:15:00Z" : null);
+    }
+
+    [HumansFact]
+    public async Task ContributeForUserAsync_DecidedApplication_IncludesDecisionNote()
+    {
+        var userId = Guid.NewGuid();
+        var application = await SeedSubmittedApplicationAsync(userId);
+        application.Reject(Guid.NewGuid(), "Not yet", _clock);
+        await SaveAllAsync(TestContext.Current.CancellationToken);
+
+        var slices = await _service.ContributeForUserAsync(userId, TestContext.Current.CancellationToken);
+        using var json = JsonDocument.Parse(JsonSerializer.Serialize(
+            slices.Single(slice => string.Equals(slice.SectionName, ApplicationDecisionService.Applications, StringComparison.Ordinal)).Data));
+
+        json.RootElement.EnumerateArray().Should().ContainSingle()
+            .Which.GetProperty("DecisionNote").GetString().Should().Be("Not yet");
     }
 
     private async Task<MemberApplication> SeedSubmittedApplicationAsync(

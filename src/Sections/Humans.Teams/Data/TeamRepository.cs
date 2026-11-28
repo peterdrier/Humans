@@ -236,6 +236,24 @@ internal sealed class TeamRepository(IDbContextFactory<TeamsDbContext> factory) 
         return activeMembers.Select(m => m.UserId).Distinct().ToList();
     }
 
+    public async Task<int> EraseMembersAsync(Guid teamId, CancellationToken ct = default)
+    {
+        await using var db = await factory.CreateDbContextAsync(ct);
+        var members = await db.TeamMembers.Where(tm => tm.TeamId == teamId).ToListAsync(ct);
+        var memberIds = members.Select(m => m.Id).ToList();
+        var requests = await db.TeamJoinRequests.Where(r => r.TeamId == teamId).ToListAsync(ct);
+
+        db.TeamRoleAssignments.RemoveRange(
+            await db.TeamRoleAssignments.Where(a => memberIds.Contains(a.TeamMemberId)).ToListAsync(ct));
+        db.TeamEarlyEntryGrants.RemoveRange(
+            await db.TeamEarlyEntryGrants.Where(g => g.TeamId == teamId).ToListAsync(ct));
+        db.TeamJoinRequests.RemoveRange(requests);
+        db.TeamMembers.RemoveRange(members);
+        await db.SaveChangesAsync(ct);
+
+        return members.Select(m => m.UserId).Concat(requests.Select(r => r.UserId)).Distinct().Count();
+    }
+
     public async Task<(bool Updated, string? PreviousPrefix)> SetGoogleGroupPrefixAsync(
         Guid teamId, string? prefix, CancellationToken ct = default)
     {

@@ -13,6 +13,8 @@ internal sealed class TeamsAuditActions : AuditActionContributor
 
     public static readonly AuditActionDefinition TeamLeft = new("TeamLeft", AuditKept.Forever, Verb: "left");
 
+    public static readonly AuditActionDefinition TeamMembersErased = new("TeamMembersErased", AuditKept.Forever);
+
     public static readonly AuditActionDefinition TeamJoinRequestApproved = new("TeamJoinRequestApproved", AuditKept.Forever, Verb: "approved join request for");
 
     public static readonly AuditActionDefinition TeamJoinRequestRejected = new("TeamJoinRequestRejected", AuditKept.Forever, Verb: "rejected join request for");
