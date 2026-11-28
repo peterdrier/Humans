@@ -79,7 +79,7 @@ public class ReadPathWriteAnalyzerTests
     [InlineData("[Microsoft.AspNetCore.Mvc.AcceptVerbs(\"GET\", \"POST\")]")]
     [InlineData("[Microsoft.AspNetCore.Mvc.AcceptVerbs(\"POST\", \"head\")]")]
     [InlineData("")]
-    public async Task Fires_when_an_action_answering_GET_calls_an_IWrite_member(string verbs)
+    public async Task Analyze_GetCallsWriteMember_Fires(string verbs)
     {
         var diagnostics = await RunAsync(Controller($$"""
                     {{verbs}}
@@ -92,7 +92,7 @@ public class ReadPathWriteAnalyzerTests
     }
 
     [HumansFact]
-    public async Task Fires_when_a_GET_action_calls_an_ExternalWrite_method()
+    public async Task Analyze_GetCallsExternalWrite_Fires()
     {
         var diagnostics = await RunAsync(Controller("""
                     [Microsoft.AspNetCore.Mvc.HttpGet]
@@ -103,7 +103,7 @@ public class ReadPathWriteAnalyzerTests
     }
 
     [HumansFact]
-    public async Task Fires_inside_a_lambda_in_a_GET_action()
+    public async Task Analyze_LambdaInGetAction_Fires()
     {
         var diagnostics = await RunAsync(Controller("""
                     [Microsoft.AspNetCore.Mvc.HttpGet]
@@ -115,7 +115,7 @@ public class ReadPathWriteAnalyzerTests
     }
 
     [HumansFact]
-    public async Task Fires_in_a_view_component_invoke()
+    public async Task Analyze_ViewComponentInvoke_Fires()
     {
         var diagnostics = await RunAsync("""
 
@@ -134,7 +134,7 @@ public class ReadPathWriteAnalyzerTests
     }
 
     [HumansFact]
-    public async Task Fires_when_called_through_the_implementing_class()
+    public async Task Analyze_ViaImplementingClass_Fires()
     {
         var diagnostics = await RunAsync("""
 
@@ -165,7 +165,7 @@ public class ReadPathWriteAnalyzerTests
     [InlineData("[Microsoft.AspNetCore.Mvc.HttpPost]")]
     [InlineData("[Microsoft.AspNetCore.Mvc.AcceptVerbs(\"POST\")]")]
     [InlineData("[Microsoft.AspNetCore.Mvc.AcceptVerbs(\"POST\", \"PUT\")]")]
-    public async Task Does_not_fire_for_a_POST_action(string verbs)
+    public async Task Analyze_PostAction_IsSilent(string verbs)
     {
         var diagnostics = await RunAsync(Controller($$"""
                     {{verbs}}
@@ -176,7 +176,7 @@ public class ReadPathWriteAnalyzerTests
     }
 
     [HumansFact]
-    public async Task Does_not_fire_for_a_read_in_a_GET_action()
+    public async Task Analyze_ReadInGetAction_IsSilent()
     {
         var diagnostics = await RunAsync(Controller("""
                     [Microsoft.AspNetCore.Mvc.HttpGet]
@@ -187,7 +187,7 @@ public class ReadPathWriteAnalyzerTests
     }
 
     [HumansFact]
-    public async Task Does_not_fire_for_a_private_helper_or_a_NonAction()
+    public async Task Analyze_PrivateHelperOrNonAction_IsSilent()
     {
         var diagnostics = await RunAsync(Controller("""
                     private System.Threading.Tasks.Task Helper() => _things.SaveAsync();

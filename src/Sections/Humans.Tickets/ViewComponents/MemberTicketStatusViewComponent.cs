@@ -71,11 +71,7 @@ public sealed class MemberTicketStatusViewComponent(
         {
             return (await ticketService.GetUserTicketHoldingsAsync(userId, ct)).TicketCount;
         }
-        catch (OperationCanceledException) when (ct.IsCancellationRequested)
-        {
-            throw;
-        }
-        catch (Exception ex)
+        catch (Exception ex) when (ex is not OperationCanceledException || !ct.IsCancellationRequested)
         {
             logger.LogError(ex, "Failed to load ticket status for user {UserId}", userId);
             return null;
@@ -89,11 +85,7 @@ public sealed class MemberTicketStatusViewComponent(
             return (await ticketService.GetParticipationsAsync(userId, ct))
                 .FirstOrDefault(p => p.Year == year)?.Status;
         }
-        catch (OperationCanceledException) when (ct.IsCancellationRequested)
-        {
-            throw;
-        }
-        catch (Exception ex)
+        catch (Exception ex) when (ex is not OperationCanceledException || !ct.IsCancellationRequested)
         {
             logger.LogError(ex, "Failed to load participation status for user {UserId}", userId);
             return null;

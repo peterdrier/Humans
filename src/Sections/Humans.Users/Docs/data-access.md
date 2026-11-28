@@ -301,12 +301,11 @@ No repository.
 
 Detection-only: loads the cached `UserInfo` read-model via
 `IUserService.GetAllUserInfosAsync` (full user base in memory, normalize for
-gmail/googlemail equivalence), then counts active teams / role assignments
-per involved user, with each user's membership tier and consent review. Resolution is delegated to
-`AccountMergeService.MergeAsync`. **No DB access.** Cross-section calls via
-`IUserService` (in-section, through the internal `IUserManagement`), `ITeamService`, `ISystemRoleService`,
-`IGovernanceService`, `IConsentService`, `IAuditLogService` and `IAuditViewerService` (the
-already-flagged `DuplicateAccountFlagged` entries). No cache.
+gmail/googlemail equivalence), then reads membership tiers for the account cards.
+Resolution is delegated to `AccountMergeService.MergeAsync`. **No DB access.**
+Reads use `IUserService` (in-section, through the internal `IUserManagement`)
+and `IGovernanceService`. `IAuditLogService` and `IAuditViewerService` record
+and deduplicate `DuplicateAccountFlagged` entries. No cache.
 
 ### ExternalLoginService (Scoped)
 

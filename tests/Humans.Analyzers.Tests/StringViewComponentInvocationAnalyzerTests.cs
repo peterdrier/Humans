@@ -52,7 +52,7 @@ public class StringViewComponentInvocationAnalyzerTests
         AnalyzerTestHarness.RunAsync(new StringViewComponentInvocationAnalyzer(), "Humans.Shifts", source);
 
     [HumansFact]
-    public async Task Fires_on_every_string_name_overload()
+    public async Task Analyze_StringNameOverloads_AllFire()
     {
         var source = Stubs + """
 
@@ -80,7 +80,7 @@ public class StringViewComponentInvocationAnalyzerTests
     }
 
     [HumansFact]
-    public async Task Fires_on_ViewComponentResult_name_assignment()
+    public async Task Analyze_ResultNameAssignment_Fires()
     {
         var source = Stubs + """
 
@@ -107,7 +107,7 @@ public class StringViewComponentInvocationAnalyzerTests
     }
 
     [HumansFact]
-    public async Task Does_not_fire_on_Type_invocations()
+    public async Task Analyze_TypeInvocation_IsSilent()
     {
         var source = Stubs + """
 
@@ -136,7 +136,7 @@ public class StringViewComponentInvocationAnalyzerTests
     }
 
     [HumansFact]
-    public async Task Generated_code_reports_only_line_mapped_sites()
+    public async Task Analyze_GeneratedCode_ReportsOnlyMappedSites()
     {
         // Razor output: a <vc:> tag helper's own InvokeAsync("Name") sits at an unmapped
         // location and is skipped; a hand-written view call maps through #line to the .cshtml.

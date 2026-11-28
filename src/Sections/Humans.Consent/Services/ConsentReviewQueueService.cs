@@ -41,7 +41,7 @@ internal sealed class ConsentReviewQueueService(
     private static (List<UserInfo> Pending, List<UserInfo> Flagged) PartitionReviewQueue(
         IReadOnlyCollection<UserInfo> all, IReadOnlyDictionary<Guid, ConsentReviewInfo> reviews)
     {
-        ConsentReviewInfo ReviewOf(UserInfo u) => reviews.GetValueOrDefault(u.Id) ?? ConsentReviewInfo.None(u.Id);
+        ConsentReviewInfo ReviewOf(UserInfo u) => reviews.GetValueOrDefault(u.Id) ?? ConsentReviewInfo.None();
 
         var flagged = all
             .Where(u => ReviewOf(u).IsConsentCheckFlagged(u))

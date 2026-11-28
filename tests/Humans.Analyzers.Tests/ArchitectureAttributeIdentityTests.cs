@@ -60,7 +60,7 @@ public class ArchitectureAttributeIdentityTests
     }
 
     [HumansFact]
-    public async Task Production_SurfaceBudgetAttribute_still_drives_HUM0015()
+    public async Task SurfaceBudgetAttribute_Production_DrivesHUM0015()
     {
         var ns = typeof(SurfaceBudgetAttribute).Namespace;
         var source = $$"""
@@ -86,7 +86,7 @@ public class ArchitectureAttributeIdentityTests
     }
 
     [HumansFact]
-    public async Task Production_SurfaceBudgetAttribute_still_drives_HUM0016()
+    public async Task SurfaceBudgetAttribute_Production_DrivesHUM0016()
     {
         var ns = typeof(SurfaceBudgetAttribute).Namespace;
         var source = $$"""
@@ -112,7 +112,7 @@ public class ArchitectureAttributeIdentityTests
     }
 
     [HumansFact]
-    public async Task Production_ExternalWriteAttribute_still_drives_HUM0033()
+    public async Task ExternalWriteAttribute_Production_DrivesHUM0033()
     {
         var ns = typeof(ExternalWriteAttribute).Namespace;
         var source = $$"""
@@ -170,7 +170,7 @@ public class ArchitectureAttributeIdentityTests
     }
 
     [HumansFact]
-    public async Task Production_ExpiresOnAttribute_still_drives_HUM0010()
+    public async Task ExpiresOnAttribute_Production_DrivesHUM0010()
     {
         var ns = typeof(ExpiresOnAttribute).Namespace;
         var source = $$"""
@@ -207,7 +207,7 @@ public class ArchitectureAttributeIdentityTests
     /// downgrade path is covered by the same end-to-end check as the rest.
     /// </summary>
     [HumansFact]
-    public async Task Production_GrandfatheredAttribute_still_downgrades_a_violation()
+    public async Task GrandfatheredAttribute_Production_DowngradesViolation()
     {
         var ns = typeof(GrandfatheredAttribute).Namespace;
         var source = $$"""

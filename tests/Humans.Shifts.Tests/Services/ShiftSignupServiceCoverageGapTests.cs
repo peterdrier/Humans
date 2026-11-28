@@ -405,7 +405,7 @@ public sealed class ShiftSignupServiceCoverageGapTests : ShiftsTestHarness
             IsPromotedToDirectory: false, CreatedAt: Instant.MinValue,
             Members:
             [
-                new(Guid.NewGuid(), coordinatorUserId, string.Empty, null, null, TeamMemberRole.Coordinator,
+                new(Guid.NewGuid(), coordinatorUserId, string.Empty, null, TeamMemberRole.Coordinator,
                     Instant.MinValue)
 
             ]);

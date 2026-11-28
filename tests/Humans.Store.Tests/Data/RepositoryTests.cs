@@ -20,7 +20,7 @@ public sealed class RepositoryTests
     }
 
     [HumansFact]
-    public async Task AddProductAsync_then_GetActiveProductsForYearAsync_round_trip()
+    public async Task AddProductAsync_Product_ReadsBackForYear()
     {
         var product = new Product
         {
@@ -48,7 +48,7 @@ public sealed class RepositoryTests
     }
 
     [HumansFact]
-    public async Task Payments_missing_method_name_are_listed_until_set()
+    public async Task Payments_MissingMethodName_ListedUntilSet()
     {
         var ct = Xunit.TestContext.Current.CancellationToken;
         var legacyId = Guid.NewGuid();
@@ -63,7 +63,7 @@ public sealed class RepositoryTests
     }
 
     [HumansFact]
-    public async Task GetActiveProductsForYearAsync_filters_by_year_and_active_flag()
+    public async Task GetActiveProductsForYearAsync_Products_FilteredByYearActive()
     {
         await _repo.AddProductAsync(MakeProduct(year: 2026, isActive: true, name: "A"), Xunit.TestContext.Current.CancellationToken);
         await _repo.AddProductAsync(MakeProduct(year: 2026, isActive: false, name: "B"), Xunit.TestContext.Current.CancellationToken);
@@ -76,7 +76,7 @@ public sealed class RepositoryTests
     }
 
     [HumansFact]
-    public async Task AddOrderAsync_then_GetOrderWithLinesAndPaymentsAsync_round_trip()
+    public async Task AddOrderAsync_Order_ReadsBackWithLines()
     {
         var orderId = Guid.NewGuid();
         var order = new Order
@@ -97,7 +97,7 @@ public sealed class RepositoryTests
     }
 
     [HumansFact]
-    public async Task GetOrdersWithMissingYearAsync_returns_only_year_zero_orders()
+    public async Task GetOrdersWithMissingYearAsync_Orders_OnlyYearZero()
     {
         var ct = Xunit.TestContext.Current.CancellationToken;
         var missing = new Order
@@ -120,7 +120,7 @@ public sealed class RepositoryTests
     }
 
     [HumansFact]
-    public async Task SaveIssuedInvoiceAsync_does_not_write_back_a_payment_settled_mid_issuance()
+    public async Task SaveIssuedInvoiceAsync_PaymentSettledMidIssuance_IsKept()
     {
         // The order is read before several slow Holded calls; a Stripe webhook can settle a payment
         // in between. Writing the stale aggregate back would lose the settlement, and there is no

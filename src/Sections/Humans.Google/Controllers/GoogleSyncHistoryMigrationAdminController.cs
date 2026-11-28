@@ -19,7 +19,7 @@ internal sealed class GoogleSyncHistoryMigrationAdminController(
     public async Task<IActionResult> Index(CancellationToken ct)
     {
         var report = await migration.PreviewAsync(ct);
-        return View(new GoogleSyncHistoryMigrationViewModel(report));
+        return View(report);
     }
 
     [HttpPost("Run")]
@@ -38,5 +38,3 @@ internal sealed class GoogleSyncHistoryMigrationAdminController(
         return RedirectToAction(nameof(Index));
     }
 }
-
-internal sealed record GoogleSyncHistoryMigrationViewModel(GoogleSyncHistoryMigrationReport Report);

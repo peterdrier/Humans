@@ -28,11 +28,7 @@ internal sealed class ICalFeedService(
             {
                 contributed = await contributor.GetCalendarItemsForUserAsync(userId, ct);
             }
-            catch (OperationCanceledException) when (ct.IsCancellationRequested)
-            {
-                throw;
-            }
-            catch (Exception ex)
+            catch (Exception ex) when (ex is not OperationCanceledException || !ct.IsCancellationRequested)
             {
                 // Never swallow: a silently missing section would look like the member has no commitments there.
                 logger.LogError(

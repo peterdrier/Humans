@@ -80,11 +80,7 @@ internal sealed class GitHubHealthCheck(IOptions<GitHubSettings> settings, ILogg
                 $"GitHub rate limit exceeded. Resets at {ex.Reset.ToTimeWithSeconds()}",
                 ex);
         }
-        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
-        {
-            throw;
-        }
-        catch (Exception ex)
+        catch (Exception ex) when (ex is not OperationCanceledException || !cancellationToken.IsCancellationRequested)
         {
             logger.LogWarning(ex, "GitHub health check failed");
             return HealthCheckResult.Unhealthy(

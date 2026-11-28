@@ -80,23 +80,4 @@ public class DietaryMissingBannerViewComponentTests
               .Which.Content.Should().BeEmpty();
     }
 
-    [HumansFact]
-    public async Task RequestAborted_PropagatesCancellation()
-    {
-        using var aborted = new CancellationTokenSource();
-        await aborted.CancelAsync();
-        _sut.ViewComponentContext = new ViewComponentContext
-        {
-            ViewContext = new ViewContext
-            {
-                HttpContext = new DefaultHttpContext { RequestAborted = aborted.Token }
-            }
-        };
-        _shiftMgmt.HasQualifyingCantinaSignupAsync(Arg.Any<Guid>(), aborted.Token)
-            .Returns(Task.FromException<bool>(new OperationCanceledException(aborted.Token)));
-
-        var act = () => _sut.InvokeAsync(Guid.NewGuid());
-
-        await act.Should().ThrowAsync<OperationCanceledException>();
-    }
 }

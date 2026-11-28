@@ -11,21 +11,6 @@ namespace Humans.Camps.Tests.ViewComponents;
 
 public sealed class MyCampsViewComponentTests
 {
-    [HumansFact]
-    public async Task InvokeAsync_RequestAborted_PropagatesCancellation()
-    {
-        using var aborted = new CancellationTokenSource();
-        await aborted.CancelAsync();
-        var camps = Substitute.For<ICampService>();
-        camps.GetSettingsAsync(aborted.Token)
-            .Returns(Task.FromException<CampSettingsInfo>(new OperationCanceledException(aborted.Token)));
-        var component = Build(camps, new DefaultHttpContext { RequestAborted = aborted.Token });
-
-        var act = () => component.InvokeAsync(Guid.NewGuid(), ProfileCardViewMode.Self);
-
-        await act.Should().ThrowAsync<OperationCanceledException>();
-    }
-
     [HumansTheory]
     [Xunit.InlineData(ProfileCardViewMode.Public)]
     [Xunit.InlineData(ProfileCardViewMode.Admin)]

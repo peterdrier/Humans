@@ -31,11 +31,7 @@ internal sealed class VolunteerBuildStripViewComponent(
 
             return View("~/Views/VolunteerTracking/_VolunteerHeatmap.cshtml", model);
         }
-        catch (OperationCanceledException) when (ct.IsCancellationRequested)
-        {
-            throw;
-        }
-        catch (Exception ex)
+        catch (Exception ex) when (ex is not OperationCanceledException || !ct.IsCancellationRequested)
         {
             logger.LogError(ex, "Error loading build strip for user {UserId}", userId);
             return Content(string.Empty);

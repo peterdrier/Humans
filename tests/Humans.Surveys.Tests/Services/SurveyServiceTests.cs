@@ -1540,7 +1540,7 @@ public class SurveyServiceTests
         IsActive: true, IsSystemTeam: false, SystemTeamType.None, RequiresApproval: false,
         IsPublicPage: false, IsHidden: false, IsPromotedToDirectory: false, Instant.MinValue,
         memberUserIds
-            .Select(u => new TeamMemberInfo(Guid.NewGuid(), u, "M", null, null, TeamMemberRole.Member, Instant.MinValue))
+            .Select(u => new TeamMemberInfo(Guid.NewGuid(), u, "M", null, TeamMemberRole.Member, Instant.MinValue))
             .ToList());
 
     [HumansTheory]

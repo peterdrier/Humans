@@ -163,26 +163,6 @@ internal sealed class TicketRepository(IDbContextFactory<TicketsDbContext> facto
             .ToListAsync(ct);
     }
 
-    public async Task<TicketAttendee?> GetAttendeeByIdAsync(Guid attendeeId, CancellationToken ct = default)
-    {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
-        return await ctx.TicketAttendees
-            .AsNoTracking()
-            .Include(a => a.TicketOrder)
-            .FirstOrDefaultAsync(a => a.Id == attendeeId, ct);
-    }
-
-    public async Task<IReadOnlyList<string>> GetVendorTicketIdsForOrderAsync(
-        Guid orderId, CancellationToken ct = default)
-    {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
-        return await ctx.TicketAttendees
-            .AsNoTracking()
-            .Where(a => a.TicketOrderId == orderId)
-            .Select(a => a.VendorTicketId)
-            .ToListAsync(ct);
-    }
-
     public async Task<IReadOnlyList<MatchedAttendeeRow>> GetMatchedAttendeesForEventAsync(
         string vendorEventId,
         CancellationToken ct = default)

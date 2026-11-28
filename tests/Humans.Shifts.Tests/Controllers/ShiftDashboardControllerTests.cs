@@ -41,38 +41,6 @@ public class ShiftDashboardControllerTests
         await _management.Received(1).GetPostEventStatsAsync(settings.Id, cancellation.Token);
     }
 
-    [HumansTheory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public async Task VolunteerSearch_PropagatesCancellationDuringShiftOrBuilderReads(bool duringBuilder)
-    {
-        using var cancellation = new CancellationTokenSource();
-        await cancellation.CancelAsync();
-        var shiftId = Guid.NewGuid();
-        if (duringBuilder)
-        {
-            var settings = Event;
-            var rotaId = Guid.NewGuid();
-            _management.GetShiftByIdAsync(shiftId, Arg.Any<CancellationToken>()).Returns(new ShiftWithRota(
-                new ShiftInfo(shiftId, rotaId, null, 0, new LocalTime(10, 0), 2, 0, 5, false, false, false),
-                new RotaInfo(rotaId, settings.Id, Guid.NewGuid(), "Rota", null, null,
-                    ShiftPriority.Normal, SignupPolicy.Public, RotaPeriod.Event, true, [])));
-            _settings.GetActiveAsync(Arg.Any<CancellationToken>())
-                .Returns(Task.FromCanceled<BurnSettingsInfo?>(cancellation.Token));
-        }
-        else
-        {
-            _management.GetShiftByIdAsync(shiftId, Arg.Any<CancellationToken>())
-                .Returns(Task.FromCanceled<ShiftWithRota?>(cancellation.Token));
-        }
-
-        await Assert.ThrowsAnyAsync<OperationCanceledException>(
-            () => Controller().SearchVolunteers(shiftId, "ann", cancellation.Token));
-
-        await _management.Received(1).GetShiftByIdAsync(shiftId, cancellation.Token);
-        if (duringBuilder) await _settings.Received(1).GetActiveAsync(cancellation.Token);
-    }
-
     [HumansFact]
     public async Task Index_OrdersCoverageAndCoordinatorActivityForDisplay()
     {

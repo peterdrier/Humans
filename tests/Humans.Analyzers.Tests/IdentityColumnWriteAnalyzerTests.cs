@@ -23,7 +23,7 @@ public class IdentityColumnWriteAnalyzerTests
         string.Equals(d.Id, IdentityColumnWriteAnalyzer.DiagnosticId, StringComparison.Ordinal);
 
     [HumansFact]
-    public async Task Fires_on_User_Email_direct_assignment_in_Application()
+    public async Task Analyze_UserEmailAssignment_Fires()
     {
         var source = DomainStub + """
 
@@ -45,7 +45,7 @@ public class IdentityColumnWriteAnalyzerTests
     }
 
     [HumansFact]
-    public async Task Fires_on_object_initializer_in_Web()
+    public async Task Analyze_ObjectInitializerInWeb_Fires()
     {
         var source = DomainStub + """
 
@@ -68,7 +68,7 @@ public class IdentityColumnWriteAnalyzerTests
     }
 
     [HumansFact]
-    public async Task Fires_on_all_five_forbidden_setters()
+    public async Task Analyze_ForbiddenSetters_AllFire()
     {
         var source = DomainStub + """
 
@@ -97,7 +97,7 @@ public class IdentityColumnWriteAnalyzerTests
     }
 
     [HumansFact]
-    public async Task Does_not_fire_on_non_Identity_property_on_User()
+    public async Task Analyze_NonIdentityProperty_IsSilent()
     {
         var source = DomainStub + """
 
@@ -119,7 +119,7 @@ public class IdentityColumnWriteAnalyzerTests
     }
 
     [HumansFact]
-    public async Task Fires_on_compound_assignment_plus_equals()
+    public async Task Analyze_PlusEqualsAssignment_Fires()
     {
         var source = DomainStub + """
 
@@ -141,7 +141,7 @@ public class IdentityColumnWriteAnalyzerTests
     }
 
     [HumansFact]
-    public async Task Fires_on_coalesce_assignment_question_question_equals()
+    public async Task Analyze_CoalesceAssignment_Fires()
     {
         var source = DomainStub + """
 
@@ -163,7 +163,7 @@ public class IdentityColumnWriteAnalyzerTests
     }
 
     [HumansFact]
-    public async Task Fires_on_compound_or_equals_on_bool()
+    public async Task Analyze_OrEqualsAssignment_Fires()
     {
         var source = DomainStub + """
 
@@ -185,7 +185,7 @@ public class IdentityColumnWriteAnalyzerTests
     }
 
     [HumansFact]
-    public async Task Does_not_fire_on_property_read()
+    public async Task Analyze_PropertyRead_IsSilent()
     {
         var source = DomainStub + """
 

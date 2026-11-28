@@ -9,8 +9,6 @@ namespace Humans.Roles.Contracts;
 public interface IRoleService : IApplicationService
 {
     Task<IReadOnlyList<RoleInfo>> GetRolesAsync(CancellationToken ct = default);
-
-    Task<RoleInfo?> GetRoleAsync(Guid roleId, CancellationToken ct = default);
 }
 
 /// <summary>One role with its holders.</summary>

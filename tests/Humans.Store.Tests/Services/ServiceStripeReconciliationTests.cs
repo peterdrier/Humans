@@ -69,7 +69,7 @@ public class ServiceStripeReconciliationTests
         new(sessionId, orderId, pi, amount, status, Instant.FromUtc(2026, 6, 1, 9, 0));
 
     [HumansFact]
-    public async Task GetStripeReconciliationAsync_classifies_each_session()
+    public async Task GetStripeReconciliationAsync_Sessions_EachClassified()
     {
         var recordedOrder = Guid.NewGuid();
         var missingOrder = Guid.NewGuid();
@@ -103,7 +103,7 @@ public class ServiceStripeReconciliationTests
     }
 
     [HumansFact]
-    public async Task GetStripeReconciliationAsync_classifies_pending_local_row_as_recorded_pending()
+    public async Task GetStripeReconciliationAsync_PendingLocalRow_IsRecordedPending()
     {
         var order = Guid.NewGuid();
         // Stripe shows the session as paid, but the local row is still Pending (the
@@ -128,7 +128,7 @@ public class ServiceStripeReconciliationTests
     }
 
     [HumansFact]
-    public async Task GetStripeReconciliationAsync_does_not_mark_failed_local_payment_as_reconciled()
+    public async Task GetStripeReconciliationAsync_FailedLocalPayment_IsNotReconciled()
     {
         var order = Guid.NewGuid();
         _stripe.ListStoreCheckoutSessionsAsync(Arg.Any<CancellationToken>()).Returns(new List<StoreCheckoutSessionData>
@@ -150,7 +150,7 @@ public class ServiceStripeReconciliationTests
     }
 
     [HumansFact]
-    public async Task GetStripeReconciliationAsync_flags_orphan_recorded_payment_absent_from_stripe()
+    public async Task GetStripeReconciliationAsync_PaymentAbsentFromStripe_IsOrphan()
     {
         var order = Guid.NewGuid();
         _stripe.ListStoreCheckoutSessionsAsync(Arg.Any<CancellationToken>()).Returns(new List<StoreCheckoutSessionData>());
@@ -168,7 +168,7 @@ public class ServiceStripeReconciliationTests
     }
 
     [HumansFact]
-    public async Task GetStripeReconciliationAsync_surfaces_health_flags()
+    public async Task GetStripeReconciliationAsync_Health_FlagsSurfaced()
     {
         _stripe.IsStoreWebhookConfigured.Returns(false);
         _stripe.IsStoreCheckoutConfigured.Returns(true);
@@ -184,7 +184,7 @@ public class ServiceStripeReconciliationTests
     }
 
     [HumansFact]
-    public async Task GetStripeReconciliationAsync_suppresses_orphans_when_stripe_unavailable()
+    public async Task GetStripeReconciliationAsync_StripeUnavailable_HidesOrphans()
     {
         var order = Guid.NewGuid();
         // Stripe could not be queried (key unset or missing read scope) → null, not empty list.
@@ -204,7 +204,7 @@ public class ServiceStripeReconciliationTests
     }
 
     [HumansFact]
-    public async Task RecordMissingStripePaymentsAsync_records_only_paid_matched_unrecorded()
+    public async Task RecordMissingStripePaymentsAsync_PaidMatchedUnrecorded_OnlyThoseRecorded()
     {
         var missingOrder = Guid.NewGuid();
         var recordedOrder = Guid.NewGuid();
@@ -245,7 +245,7 @@ public class ServiceStripeReconciliationTests
     }
 
     [HumansFact]
-    public async Task RecordMissingStripePaymentsAsync_skips_unmatched_order_and_writes_no_audit()
+    public async Task RecordMissingStripePaymentsAsync_UnmatchedOrder_IsSkipped()
     {
         var ghostOrder = Guid.NewGuid();
         _stripe.ListStoreCheckoutSessionsAsync(Arg.Any<CancellationToken>()).Returns(new List<StoreCheckoutSessionData>

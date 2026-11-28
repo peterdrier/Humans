@@ -38,7 +38,7 @@ public class ContractPersistenceRuleTests
     [InlineData("Persistence.LocalContext")]
     [InlineData("Persistence.LocalQuery")]
     [InlineData("System.Linq.IQueryable<string>")]
-    public async Task Rejects_persistence_types_inside_nested_contract_return_types(string persistenceType)
+    public async Task Analyze_NestedContractReturnType_Fires(string persistenceType)
     {
         var source = $$"""
             namespace Humans.Test.Contracts
@@ -56,7 +56,7 @@ public class ContractPersistenceRuleTests
     }
 
     [HumansFact]
-    public async Task Checks_contract_leaf_without_a_section_entry_point_or_contract_namespace()
+    public async Task Analyze_ContractLeafProject_Fires()
     {
         const string source = """
             namespace Api
@@ -71,7 +71,7 @@ public class ContractPersistenceRuleTests
     }
 
     [HumansFact]
-    public async Task Checks_contract_folder_even_when_namespace_does_not_name_it()
+    public async Task Analyze_ContractFolderOtherNamespace_Fires()
     {
         const string source = """
             namespace Api
@@ -87,7 +87,7 @@ public class ContractPersistenceRuleTests
     }
 
     [HumansFact]
-    public async Task Checks_implementation_bodies_in_contracts()
+    public async Task Analyze_ContractImplementationBody_Fires()
     {
         const string source = """
             namespace Humans.Test.Contracts
@@ -105,7 +105,7 @@ public class ContractPersistenceRuleTests
     }
 
     [HumansFact]
-    public async Task Allows_persistence_types_outside_contracts()
+    public async Task Analyze_PersistenceOutsideContracts_IsSilent()
     {
         const string source = """
             namespace Humans.Test.Data
@@ -120,7 +120,7 @@ public class ContractPersistenceRuleTests
     }
 
     [HumansFact]
-    public async Task Allows_identity_user_models_and_materialized_projections_in_contracts()
+    public async Task Analyze_UserModelsOrProjections_IsSilent()
     {
         const string source = """
             namespace Humans.Test.Contracts

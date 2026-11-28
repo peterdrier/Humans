@@ -411,11 +411,8 @@ internal sealed partial class PretixPlatform(
                     : new(false, $"The event has {count} active items with internal name {name}; it needs exactly one."));
             }
         }
-        catch (OperationCanceledException) when (ct.IsCancellationRequested)
-        {
-            throw;
-        }
-        catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException or JsonException)
+        catch (Exception ex) when (ex is HttpRequestException or JsonException
+            || (ex is TaskCanceledException && !ct.IsCancellationRequested))
         {
             findings.Add(new(false, $"pretix could not be read: {ex.Message}"));
         }

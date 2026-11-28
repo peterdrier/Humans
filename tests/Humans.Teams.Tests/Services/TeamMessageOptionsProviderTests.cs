@@ -151,7 +151,7 @@ public class TeamMessageOptionsProviderTests
         {
             [_teamId] = new(_teamId, "Infrastructure", null, "infrastructure", isActive, false, SystemTeamType.None, false,
                 true, false, false, Now,
-                [new(Guid.NewGuid(), _viewerId, "Viewer", "viewer@example.com", null, role, Now)],
+                [new(Guid.NewGuid(), _viewerId, "Viewer", "viewer@example.com", role, Now)],
                 GoogleGroupPrefix: groupPrefix)
         });
 

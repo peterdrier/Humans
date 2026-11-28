@@ -175,8 +175,8 @@ public class ExpenseReportServiceHoldedOutboxTests
 
         lines.Should().HaveCount(2);
         lines[0].Should().Be(new ExpenseHoldedReconLine(
-            report.Id, report.Lines[0].Id, ExpenseReportStatus.Approved, SubmitterId, "c-1", "doc-a", "ER: Wood",
-            $"Expense report {report.Id}", 20m, report.SubmittedAt!.Value, ExpenseHoldedSyncState.Failed, Now));
+            report.Id, report.Lines[0].Id, ExpenseReportStatus.Approved, SubmitterId, "doc-a", "ER: Wood",
+            20m, report.SubmittedAt!.Value, ExpenseHoldedSyncState.Failed, Now));
         lines[1].HoldedDocId.Should().BeNull();
         lines[1].BookedAmount.Should().Be(5m);
         await _repo.DidNotReceive().GetLatestOutboxForReportAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>());

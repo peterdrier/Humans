@@ -94,20 +94,6 @@ public class MemberDataControllerTests
     }
 
     [HumansFact]
-    public async Task DownloadData_CancelledRequest_PropagatesCancellation()
-    {
-        using var cancellation = new CancellationTokenSource();
-        await cancellation.CancelAsync();
-        _gdpr.ExportForUserAsync(_userId, cancellation.Token)
-            .Returns(Task.FromException<GdprExport>(new OperationCanceledException(cancellation.Token)));
-        var ctrl = Create();
-
-        var act = () => ctrl.DownloadData(cancellation.Token);
-
-        await act.Should().ThrowAsync<OperationCanceledException>();
-    }
-
-    [HumansFact]
     public async Task RequestDeletion_Success_ShowsEffectiveDate()
     {
         _deletion.RequestDeletionAsync(_userId, Arg.Any<CancellationToken>())

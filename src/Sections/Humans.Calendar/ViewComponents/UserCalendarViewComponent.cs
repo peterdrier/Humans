@@ -22,11 +22,7 @@ internal sealed class UserCalendarViewComponent(
             model.HasFeedToken = await tokens.GetAsync(user?.Id ?? userId, ct) is not null;
             model.Items = (await feed.GetFeedItemsAsync(user?.Id ?? userId, ct)).OrderBy(i => i.Start).ToList();
         }
-        catch (OperationCanceledException) when (HttpContext.RequestAborted.IsCancellationRequested)
-        {
-            throw;
-        }
-        catch (Exception ex)
+        catch (Exception ex) when (ex is not OperationCanceledException || !HttpContext.RequestAborted.IsCancellationRequested)
         {
             logger.LogError(ex, "Error loading calendar feed items for user {UserId}", userId);
             model.LoadFailed = true;

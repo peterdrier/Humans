@@ -1202,7 +1202,7 @@ public class CachingUserServiceTests
                 Arg.Any<UserProfileSaveCommand>(),
                 Arg.Any<byte[]?>(),
                 Arg.Any<CancellationToken>())
-            .Returns(new UserProfileSaveResult(null, "uploads/profile-pictures/new.png"));
+            .Returns(Task.CompletedTask);
 
         StubRefreshEntry(userId, new Profile
         {
@@ -1343,7 +1343,7 @@ public class CachingUserServiceTests
             UserProfilePictureMutation.None, null);
         var entries = new[] { new CvEntry(Guid.Empty, new LocalDate(2025, 3, 1), "Nowhere 2025", "Sound crew") };
         _inner.SaveProfileAsync(userId, command, null, Arg.Any<CancellationToken>(), entries)
-            .Returns(new UserProfileSaveResult(null, null));
+            .Returns(Task.CompletedTask);
 
         await sut.SaveProfileAsync(userId, command, ct: TestContext.Current.CancellationToken, volunteerHistory: entries);
 

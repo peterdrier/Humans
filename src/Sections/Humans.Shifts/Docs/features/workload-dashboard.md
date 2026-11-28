@@ -104,9 +104,9 @@ Gated to `ShiftsPolicies.Read` at the controller — the same policy that contro
 
 ## Architecture
 
-`WorkloadService` lives in `Humans.Shifts.Services` — read-only, no DbSet writes. Reads per-rota shift + signup rows through `IShiftRowView.GetRotasAsync`; uses `IShiftManagementRepository` only for the active-event lookup and an inlined distinct over `GetEventShiftsAsync` to derive the set of rota ids to walk (no new interface method — see `memory/architecture/interface-method-additions-are-debt.md`). Cross-section name stitching via `ITeamService.GetTeamsAsync` and `IUserService.GetUserInfosAsync`. Role hours come from `ITeamService.GetTeamsAsync` — the cached `TeamInfo` projection already carries each team's role definitions (with `EstimatedHours`, `RolePeriod`, `SlotCount`) and assignment holder ids, so no new cross-section method was added.
+`WorkloadService` reads active-event shifts and signups through `IShiftRotaRows.GetEventShiftsAsync`, after resolving the calendar through `EventCalendarResolver`. It holds no repository. Names and role hours come from `ITeamService.GetTeamsAsync` and `IUserService.GetUserInfosAsync`; the cached `TeamInfo` projection carries role definitions and assignment holder ids.
 
-**Cache:** No service-level cache. Source data lives in the Shifts-section per-rota cache owned by `CachingShiftViewService` (a section-level caching decorator per `design-rules.md`, *Section caching pattern*). Signup / shift / rota mutations evict the affected rota cache entries through `CachingShiftViewService`, so workload totals stay consistent without a parallel cache key. The aggregation itself is microsecond-scale CPU work over a few hundred rotas at our scale.
+**Cache:** No service-level cache. `CachingShiftService` supplies the section's cached rota rows and refreshes them after mutations, so workload totals need no parallel cache key.
 
 **Display sort:** The service returns unsorted lists; `ShiftWorkloadAdminController.Index` applies the default ordering before passing the report to the view. Per `memory/architecture/display-sort-in-controllers.md` — sorting in the service would leak presentation into the data layer.
 

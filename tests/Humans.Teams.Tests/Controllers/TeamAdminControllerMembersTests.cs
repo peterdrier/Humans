@@ -762,7 +762,7 @@ public class TeamAdminControllerMembersTests
         var team = new TeamInfo(Guid.NewGuid(), "Team", null, "team", true, false, SystemTeamType.None,
             false, false, false, false, Instant.MinValue,
             memberInControllerSnapshot
-                ? [new TeamMemberInfo(Guid.NewGuid(), targetId, "Person", null, null, TeamMemberRole.Member, Instant.MinValue)]
+                ? [new TeamMemberInfo(Guid.NewGuid(), targetId, "Person", null, TeamMemberRole.Member, Instant.MinValue)]
                 : []);
         teams.GetTeamsAsync(Arg.Any<CancellationToken>()).Returns(new Dictionary<Guid, TeamInfo> { [team.Id] = team });
         teams.GetTeamAsync(team.Id, Arg.Any<CancellationToken>()).Returns(team);
@@ -891,7 +891,7 @@ public class TeamAdminControllerMembersTests
         var instant = Instant.FromUtc(2026, 1, 1, 0, 0);
         var team = new TeamInfo(Guid.NewGuid(), "Team", null, "team", true, false, SystemTeamType.None,
             false, false, false, false, instant,
-            [new TeamMemberInfo(Guid.NewGuid(), userId, "Human", null, null, TeamMemberRole.Member, instant)]);
+            [new TeamMemberInfo(Guid.NewGuid(), userId, "Human", null, TeamMemberRole.Member, instant)]);
         teams.GetTeamsAsync(Arg.Any<CancellationToken>()).Returns(new Dictionary<Guid, TeamInfo> { [team.Id] = team });
         teams.GetPendingRequestsForTeamAsync(team.Id).Returns([]);
         users.GetUserInfoAsync(userId, Arg.Any<CancellationToken>())

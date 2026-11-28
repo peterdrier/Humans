@@ -6,7 +6,7 @@ using Xunit;
 
 namespace Humans.Tickets.Tests.Services.Checkout;
 
-public sealed partial class TicketCheckoutServiceTests
+public sealed class TicketCheckoutServiceEventErasureTests : CheckoutServiceFixture
 {
     // Strike ends 2027-06-09; the 30-day hold ends at the start of 2027-07-10 in Madrid.
     private static readonly Instant HoldPassed = Instant.FromUtc(2027, 7, 10, 5, 0);

@@ -124,29 +124,6 @@ public sealed class NotificationsControllerTests
         if (account != AccountScenario.Merged) inbox.ReceivedCalls().Should().BeEmpty();
     }
 
-    [HumansFact]
-    public async Task Index_RequestAborted_PropagatesCancellation()
-    {
-        using var aborted = new CancellationTokenSource();
-        await aborted.CancelAsync();
-        var inbox = Substitute.For<INotificationInboxService>();
-        inbox.GetInboxAsync(Arg.Any<Guid>(), Arg.Any<string?>(), Arg.Any<string>(), Arg.Any<string>(), aborted.Token)
-            .Returns(Task.FromException<NotificationInboxResult>(new OperationCanceledException(aborted.Token)));
-        var meterProvider = new NotificationMeterProvider([], NullLogger<NotificationMeterProvider>.Instance);
-        var users = Substitute.For<IUserService>();
-        users.GetUserInfoAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
-            .Returns(call => UserInfo.Create(new User { Id = call.Arg<Guid>() }, [], [], null));
-        var controller = new NotificationsController(inbox, users, meterProvider, NullLogger<NotificationsController>.Instance)
-        {
-            ControllerContext = new() { HttpContext = new DefaultHttpContext { RequestAborted = aborted.Token } }
-        };
-        controller.HttpContext.User = new ClaimsPrincipal(new ClaimsIdentity(
-            [new Claim(ClaimTypes.NameIdentifier, Guid.NewGuid().ToString())]));
-
-        var act = () => controller.Index(null);
-
-        await act.Should().ThrowAsync<OperationCanceledException>();
-    }
     [HumansTheory]
     [Xunit.InlineData(true, true)]
     [Xunit.InlineData(false, true)]

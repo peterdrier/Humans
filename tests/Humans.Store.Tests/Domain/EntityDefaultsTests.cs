@@ -7,7 +7,7 @@ namespace Humans.Store.Tests.Domain;
 public class EntityDefaultsTests
 {
     [HumansFact]
-    public void New_order_defaults_to_open_state()
+    public void NewOrder_Defaults_IsOpen()
     {
         var o = new Order();
 
@@ -17,7 +17,7 @@ public class EntityDefaultsTests
     }
 
     [HumansFact]
-    public void New_product_defaults_to_active()
+    public void NewProduct_Defaults_IsActive()
     {
         var p = new Product();
 
@@ -25,7 +25,7 @@ public class EntityDefaultsTests
     }
 
     [HumansFact]
-    public void New_payment_defaults_to_paid()
+    public void NewPayment_Defaults_IsPaid()
     {
         var p = new Payment();
 

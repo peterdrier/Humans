@@ -326,10 +326,6 @@ internal sealed class MailerLiteClient(IHttpClientFactory httpFactory, IClock cl
         }
     }
 
-    // Test seam.
-    internal Task<HttpResponseMessage> SendForTestsAsync(HttpMethod method, string url, CancellationToken ct)
-        => SendAsync(method, url, content: null, ct);
-
     private async Task<HttpResponseMessage> SendAsync(
         HttpMethod method, string url, HttpContent? content, CancellationToken ct,
         [CallerMemberName] string caller = "")

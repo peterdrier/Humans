@@ -89,11 +89,7 @@ internal sealed class AnthropicClient : IAnthropicClient
                 {
                     moved = await enumerator.MoveNextAsync().ConfigureAwait(false);
                 }
-                catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
-                {
-                    throw;
-                }
-                catch (Exception ex)
+                catch (Exception ex) when (ex is not OperationCanceledException || !cancellationToken.IsCancellationRequested)
                 {
                     if (ex is AnthropicServiceException or AnthropicIOException or HttpRequestException
                         or IOException or TimeoutException or OperationCanceledException)

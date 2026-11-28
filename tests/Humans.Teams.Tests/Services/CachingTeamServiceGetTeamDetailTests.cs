@@ -271,7 +271,7 @@ public sealed class CachingTeamServiceGetTeamDetailTests : IDisposable
         var member = page!.SubteamMembers.Should().ContainSingle().Subject;
         member.UserId.Should().Be(memberId);
         member.ChildTeamName.Should().Be("Alpha");
-        member.IsCoordinator.Should().BeFalse();
+        member.RoleTitle.Should().BeNull();
         page.SubteamLeads.Should().ContainSingle().Which.ChildTeamName.Should().Be("Zeta");
     }
 
@@ -320,8 +320,8 @@ public sealed class CachingTeamServiceGetTeamDetailTests : IDisposable
         var page = await _pages.GetTeamPageDetailAsync(parent.Slug, Guid.NewGuid(), ct);
 
         page.Should().NotBeNull();
-        page.SubteamLeads.Single(lead => string.Equals(lead.ChildTeamSlug, child.Slug, StringComparison.Ordinal)).RoleTitle.Should().Be("Ärea");
-        page.SubteamLeads.Single(lead => string.Equals(lead.ChildTeamSlug, privateRoleChild.Slug, StringComparison.Ordinal)).RoleTitle.Should().BeNull();
+        page.SubteamLeads.Single(lead => string.Equals(lead.ChildTeamName, child.Name, StringComparison.Ordinal)).RoleTitle.Should().Be("Ärea");
+        page.SubteamLeads.Single(lead => string.Equals(lead.ChildTeamName, privateRoleChild.Name, StringComparison.Ordinal)).RoleTitle.Should().BeNull();
         page.SubteamMembers.Single(person => person.UserId == coordinator).RoleTitle.Should().Be("Ärea");
         page.SubteamMembers.Single(person => person.UserId == member).RoleTitle.Should().BeNull();
     }
@@ -354,7 +354,6 @@ public sealed class CachingTeamServiceGetTeamDetailTests : IDisposable
                         m.UserId,
                         string.Empty,
                         null,
-                        null,
                         m.Role,
                         m.JoinedAt))
                     .ToList(),
@@ -362,7 +361,6 @@ public sealed class CachingTeamServiceGetTeamDetailTests : IDisposable
                 GoogleGroupPrefix: t.GoogleGroupPrefix,
                 HasBudget: t.HasBudget,
                 IsSensitive: t.IsSensitive,
-                UpdatedAt: t.UpdatedAt,
                 CustomSlug: t.CustomSlug,
                 ChildTeamIds: childIdsByParent.TryGetValue(t.Id, out var childIds) ? childIds : null,
                 ShowCoordinatorsOnPublicPage: t.ShowCoordinatorsOnPublicPage,

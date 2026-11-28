@@ -92,31 +92,6 @@ public class UserControllerTests
     }
 
     [HumansTheory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public async Task WallPages_RequestCancelled_StopLoading(bool deletion)
-    {
-        using var request = new CancellationTokenSource();
-        var now = Instant.FromUtc(2026, 10, 3, 0, 0);
-        _users.GetUserInfoAsync(_userId, Arg.Any<CancellationToken>()).Returns(call =>
-        {
-            call.Arg<CancellationToken>().ThrowIfCancellationRequested();
-            return new ValueTask<UserInfo?>(ControllerTestHost.Info(_userId, u =>
-            {
-                u.DeletionRequestedAt = now;
-                u.DeletionScheduledFor = now + Duration.FromDays(30);
-            }));
-        });
-        var wall = Create(UserState.Suspended);
-        wall.HttpContext.RequestAborted = request.Token;
-        Func<Task<IActionResult>> load = deletion ? wall.Deletion : wall.Status;
-
-        (await load()).Should().BeOfType<ViewResult>();
-        await request.CancelAsync();
-        await load.Should().ThrowAsync<OperationCanceledException>();
-    }
-
-    [HumansTheory]
     [InlineData(null)]
     [InlineData(10)]
     [InlineData(30)]

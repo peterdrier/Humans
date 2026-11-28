@@ -1015,7 +1015,7 @@ public class EventsControllerTests
         }
         else
         {
-            model.Barrios.Should().ContainSingle().Which.CampId.Should().Be(campId);
+            model.Barrios.Should().ContainSingle().Which.CampSlug.Should().Be(selectedCamp.Slug);
             model.Barrios[0].CampName.Should().Be("Selected camp");
             await _camps.Received(1).GetCampsForEventAsync(settings.EventSettingsId, request.Token);
             await _guide.DidNotReceive().GetCampSubmissionsSummaryAsync(otherCampId, Arg.Any<CancellationToken>());

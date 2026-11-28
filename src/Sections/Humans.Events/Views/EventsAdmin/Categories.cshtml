@@ -1,5 +1,5 @@
 @using Microsoft.AspNetCore.Html
-@model Humans.Events.Models.EventCategoryListViewModel
+@model List<Humans.Events.Models.EventCategoryRowViewModel>
 @{
     ViewData["Title"] = "Event Categories";
 }
@@ -11,7 +11,7 @@
 </page-header>
 
 
-@if (Model.Categories.Count == 0)
+@if (Model.Count == 0)
 {
     <div class="alert alert-info">
         No categories yet. Add one to get started.
@@ -19,7 +19,7 @@
 }
 else
 {
-    var catList = Model.Categories;
+    var catList = Model;
     Func<EventCategoryRowViewModel, IHtmlContent> catOrderCell = @<text>
         <div class="btn-group btn-group-sm">
             @{ var catIdx = catList.IndexOf(item); }
@@ -70,7 +70,7 @@ else
             </button>
         </form>
     </text>;
-    var catTable = TableModel.For(Model.Categories)
+    var catTable = TableModel.For(Model)
         .Template("Order", catOrderCell, c => c.NoSort())
         .Column("Name", r => r.Name)
         .Column("Slug", r => r.Slug, o => o.Code())

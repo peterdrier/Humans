@@ -38,7 +38,7 @@ internal sealed class GoogleSyncHistoryMigrationService(
             if (Map(row) is { } entry)
                 movable.Add(entry);
             else
-                skipped.Add(new GoogleSyncHistorySkippedRow(row.Id, row.OccurredAt, row.Action, SkipReason(row)));
+                skipped.Add(new GoogleSyncHistorySkippedRow(row.OccurredAt, row.Action, SkipReason(row)));
         }
 
         var moved = 0;

@@ -2325,7 +2325,7 @@ internal sealed class TeamService(
                 users.TryGetValue(member.UserId, out var user);
                 return new TeamMemberInfo(
                     member.TeamMemberId, member.UserId, user?.BurnerName ?? string.Empty,
-                    user?.Email, user?.ProfilePictureUrl, member.Role, member.JoinedAt);
+                    user?.Email, member.Role, member.JoinedAt);
             }).ToList(),
         });
     }
@@ -2370,7 +2370,6 @@ internal sealed class TeamService(
         GoogleGroupPrefix: team.GoogleGroupPrefix,
         HasBudget: team.HasBudget,
         IsSensitive: team.IsSensitive,
-        UpdatedAt: team.UpdatedAt,
         CustomSlug: team.CustomSlug,
         ManagementRoleHolderUserIds: managementHolders.TryGetValue(team.Id, out var holders) ? holders : null,
         RoleDefinitions: roleDefinitionsByTeam.TryGetValue(team.Id, out var defs)
@@ -2493,7 +2492,7 @@ internal sealed class TeamService(
         var memberships = await repo.GetActiveByUserIdAsync(userId, cancellationToken);
         return memberships
             .Select(m => new UserTeamMembershipInfo(
-                m.TeamId, m.Team.Name, m.Team.Slug, m.Role)
+                m.TeamId, m.Team.Name, m.Role)
             {
                 IsActive = m.Team.IsActive,
                 IsHidden = m.Team.IsHidden,

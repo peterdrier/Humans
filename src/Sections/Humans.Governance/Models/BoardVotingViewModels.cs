@@ -7,7 +7,7 @@ namespace Humans.Governance.Models;
 internal sealed class BoardVotingDashboardViewModel
 {
     public List<BoardVotingApplicationViewModel> Applications { get; set; } = [];
-    public List<BoardVoteMemberViewModel> BoardMembers { get; set; } = [];
+    public List<Guid> BoardMembers { get; set; } = [];
 }
 
 internal sealed class BoardVotingApplicationViewModel
@@ -23,11 +23,6 @@ internal sealed class BoardVoteCellViewModel
 {
     public VoteChoice? Vote { get; set; }
     public string? Note { get; set; }
-}
-
-internal sealed class BoardVoteMemberViewModel
-{
-    public Guid UserId { get; set; }
 }
 
 internal sealed class BoardVotingDetailViewModel

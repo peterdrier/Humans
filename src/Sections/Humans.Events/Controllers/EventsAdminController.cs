@@ -74,7 +74,7 @@ internal sealed class EventsAdminController(IEventManagement guide, ILogger<Even
                 EventCount = c.EventCount
             }).ToList();
 
-        return View(new EventCategoryListViewModel { Categories = rows });
+        return View(rows);
     }
 
     [HttpGet("Categories/Create")]
@@ -226,7 +226,7 @@ internal sealed class EventsAdminController(IEventManagement guide, ILogger<Even
                 EventCount = v.EventCount
             }).ToList();
 
-        return View(new GuideVenueListViewModel { Venues = rows });
+        return View(rows);
     }
 
     [HttpGet("Venues/Create")]

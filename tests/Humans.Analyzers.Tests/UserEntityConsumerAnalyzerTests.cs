@@ -29,7 +29,7 @@ public class UserEntityConsumerAnalyzerTests
         AnalyzerTestHarness.RunAsync(new UserEntityConsumerAnalyzer(), assembly, source, referencedSource: Entities);
 
     [HumansFact]
-    public async Task A_new_consumer_naming_an_entity_is_an_error()
+    public async Task Analyze_NewEntityConsumer_Fires()
     {
         var diagnostics = await RunAsync("Humans.Issues", Consumer);
 
@@ -38,7 +38,7 @@ public class UserEntityConsumerAnalyzerTests
     }
 
     [HumansFact]
-    public async Task The_Users_section_and_Base_are_silent()
+    public async Task Analyze_UsersSectionOrBase_IsSilent()
     {
         (await RunAsync("Humans.Users", Consumer)).Should().BeEmpty();
         (await RunAsync("Humans.Base", Consumer)).Should().BeEmpty();

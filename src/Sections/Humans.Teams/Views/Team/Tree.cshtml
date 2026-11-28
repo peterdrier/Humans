@@ -1,4 +1,4 @@
-@model Humans.Teams.Models.TeamTreeViewModel
+@model IReadOnlyList<Humans.Teams.Services.TeamTreeNode>
 @{
     ViewData["Title"] = Localizer["Teams_Tree_Title"].Value;
 }
@@ -35,14 +35,14 @@
 
 <page-header title="@(Localizer["Teams_Tree_Title"].Value)" subtitle="@(Localizer["Teams_Tree_Subtitle"].Value)" />
 
-@if (Model.Departments.Count == 0)
+@if (Model.Count == 0)
 {
     <div class="alert alert-light">@Localizer["Teams_NoTeams"]</div>
 }
 else
 {
     <ul class="team-tree">
-        @foreach (var department in Model.Departments)
+        @foreach (var department in Model)
         {
             <partial name="_TeamTreeNode" model="department" />
         }

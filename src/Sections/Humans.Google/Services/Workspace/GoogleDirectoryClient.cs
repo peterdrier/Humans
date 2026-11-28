@@ -56,14 +56,12 @@ internal sealed class GoogleDirectoryClient(
                 {
                     foreach (var g in response.GroupsValue)
                     {
-                        // Downstream treats both as non-nullable; Google always returns them on list in practice.
-                        if (string.IsNullOrEmpty(g.Email) || string.IsNullOrEmpty(g.Id))
+                        if (string.IsNullOrEmpty(g.Email))
                         {
                             continue;
                         }
 
                         groups.Add(new DirectoryGroup(
-                            Id: g.Id,
                             Email: g.Email,
                             DisplayName: g.Name,
                             DirectMembersCount: g.DirectMembersCount));

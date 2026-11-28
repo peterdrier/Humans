@@ -140,57 +140,57 @@ internal sealed class TasksController(
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Assign(Guid id, Guid userId, CancellationToken ct) =>
         await ChangeAsync(id, ct, (task, access) => access.Manages(task),
-            (task, access) => tasks.AssignAsync(id, userId, access.UserId, ct), "Tasks_Assigned");
+            access => tasks.AssignAsync(id, userId, access.UserId, ct), _ => "Tasks_Assigned");
 
     [HttpPost("{id:guid}/Unassign")]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Unassign(Guid id, Guid userId, CancellationToken ct) =>
         await ChangeAsync(id, ct, (task, access) => access.Manages(task),
-            (task, access) => tasks.UnassignAsync(id, userId, access.UserId, ct), "Tasks_Unassigned");
+            access => tasks.UnassignAsync(id, userId, access.UserId, ct), _ => "Tasks_Unassigned");
 
     [HttpPost("{id:guid}/Waits/Add")]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> AddDependency(Guid id, Guid dependsOn, CancellationToken ct) =>
-        await ChangeAsync(id, ct, (task, access) => access.Manages(task), async (task, access) =>
+        await ChangeAsync(id, ct, (task, access) => access.Manages(task), async access =>
             await tasks.GetTaskAsync(dependsOn, ct) is { } other && access.CanSee(other)
                 ? await tasks.AddDependencyAsync(id, dependsOn, access.UserId, ct)
-                : new TaskResult(Refusal: localizer["Tasks_Refusal_NoTask"].Value), "Tasks_DependencyAdded");
+                : new TaskResult(Refusal: localizer["Tasks_Refusal_NoTask"].Value), _ => "Tasks_DependencyAdded");
 
     [HttpPost("{id:guid}/Waits/Remove")]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> RemoveDependency(Guid id, Guid dependsOn, CancellationToken ct) =>
         await ChangeAsync(id, ct, (task, access) => access.Manages(task),
-            (task, access) => tasks.RemoveDependencyAsync(id, dependsOn, access.UserId, ct), "Tasks_DependencyRemoved");
+            access => tasks.RemoveDependencyAsync(id, dependsOn, access.UserId, ct), _ => "Tasks_DependencyRemoved");
 
     // Claim, release and withdraw only ever act on the signed-in person, so seeing the task is the whole check; the
     // service refuses a full, finished or already-held task in words, which a stale page needs more than a 403.
     [HttpPost("{id:guid}/Claim")]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Claim(Guid id, string? returnUrl, CancellationToken ct) =>
-        await ChangeAsync(id, ct, (_, _) => true, (task, access) => tasks.ClaimAsync(id, access.UserId, ct),
+        await ChangeAsync(id, ct, (_, _) => true, access => tasks.ClaimAsync(id, access.UserId, ct),
             task => task.NeedsApproval ? "Tasks_Requested" : "Tasks_Claimed", returnUrl);
 
     [HttpPost("{id:guid}/Release")]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Release(Guid id, string? returnUrl, CancellationToken ct) =>
-        await ChangeAsync(id, ct, (_, _) => true, (task, access) => tasks.ReleaseAsync(id, access.UserId, ct), "Tasks_Released", returnUrl);
+        await ChangeAsync(id, ct, (_, _) => true, access => tasks.ReleaseAsync(id, access.UserId, ct), _ => "Tasks_Released", returnUrl);
 
     [HttpPost("{id:guid}/Withdraw")]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Withdraw(Guid id, string? returnUrl, CancellationToken ct) =>
-        await ChangeAsync(id, ct, (_, _) => true, (task, access) => tasks.WithdrawRequestAsync(id, access.UserId, ct), "Tasks_Withdrawn", returnUrl);
+        await ChangeAsync(id, ct, (_, _) => true, access => tasks.WithdrawRequestAsync(id, access.UserId, ct), _ => "Tasks_Withdrawn", returnUrl);
 
     [HttpPost("{id:guid}/Approve")]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Approve(Guid id, Guid userId, string? returnUrl, CancellationToken ct) =>
         await ChangeAsync(id, ct, (task, access) => access.Manages(task),
-            (task, access) => tasks.ApproveRequestAsync(id, userId, access.UserId, ct), "Tasks_Approved", returnUrl);
+            access => tasks.ApproveRequestAsync(id, userId, access.UserId, ct), _ => "Tasks_Approved", returnUrl);
 
     [HttpPost("{id:guid}/Decline")]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Decline(Guid id, Guid userId, string? reason, string? returnUrl, CancellationToken ct) =>
         await ChangeAsync(id, ct, (task, access) => access.Manages(task),
-            (task, access) => tasks.DeclineRequestAsync(id, userId, reason, access.UserId, ct), "Tasks_Declined", returnUrl);
+            access => tasks.DeclineRequestAsync(id, userId, reason, access.UserId, ct), _ => "Tasks_Declined", returnUrl);
 
     [HttpPost("{id:guid}/Delete")]
     [ValidateAntiForgeryToken]
@@ -211,20 +211,11 @@ internal sealed class TasksController(
         return RedirectToAction(nameof(Team), new { slug = task.TeamSlug.Length > 0 ? task.TeamSlug : task.Owner.Id.ToString() });
     }
 
-    /// <summary>The shape of every small write on a task page: find it, check who may, run it, say what happened.</summary>
-    private Task<IActionResult> ChangeAsync(
-        Guid id, CancellationToken ct,
-        Func<TaskInfo, TasksAccess, bool> allowed,
-        Func<TaskInfo, TasksAccess, Task<TaskResult>> change,
-        string successKey,
-        string? returnUrl = null) =>
-        ChangeAsync(id, ct, allowed, change, _ => successKey, returnUrl);
-
     /// <summary>The message may take the task's title as <c>{0}</c>. A write posted from a list goes back to that list when <paramref name="returnUrl"/> is local.</summary>
     private async Task<IActionResult> ChangeAsync(
         Guid id, CancellationToken ct,
         Func<TaskInfo, TasksAccess, bool> allowed,
-        Func<TaskInfo, TasksAccess, Task<TaskResult>> change,
+        Func<TasksAccess, Task<TaskResult>> change,
         Func<TaskInfo, string> successKey,
         string? returnUrl = null)
     {
@@ -232,7 +223,7 @@ internal sealed class TasksController(
         if (await tasks.GetTaskAsync(id, ct) is not { } task || !access.CanSee(task)) return NotFound();
         if (!allowed(task, access)) return Forbid();
 
-        var result = await change(task, access);
+        var result = await change(access);
         if (result.Succeeded) SetSuccess(localizer[successKey(task), task.Title].Value);
         else SetError(result.Refusal!);
         return Url.IsLocalUrl(returnUrl) ? LocalRedirect(returnUrl!) : RedirectToAction(nameof(Details), new { id });

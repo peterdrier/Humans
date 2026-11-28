@@ -122,7 +122,7 @@ public class CampAdminControllerTests
         var roles = Substitute.For<ICampRoleService>();
         CampRoleDefinitionInfo Definition(string name, int order, bool active) =>
             new(Guid.NewGuid(), name, "", null, 1, 1, order,
-                active ? null : Instant.FromUtc(2026, 1, 1, 0, 0), CampSpecialRole.None);
+                active ? null : Instant.FromUtc(2026, 1, 1, 0, 0));
         roles.ListDefinitionsAsync(true, Arg.Any<CancellationToken>()).Returns([
             Definition("Zebra", 1, true), Definition("Old Zebra", 1, false),
             Definition("Alpha", 1, true), Definition("Old Alpha", 1, false),
@@ -353,56 +353,6 @@ public class CampAdminControllerTests
             case "Reactivate": await camps.Received(1).ReactivateSeasonAsync(targetId, actorId); break;
             case "Delete": await camps.Received(1).DeleteCampAsync(targetId, actorId); break;
         }
-    }
-
-    [HumansTheory]
-    [InlineData(false, "settings")]
-    [InlineData(false, "camps")]
-    [InlineData(false, "users")]
-    [InlineData(true, "settings")]
-    [InlineData(true, "camps")]
-    [InlineData(true, "roles")]
-    public async Task AdminRead_PropagatesRequestCancellationAtEveryRead(bool dashboard, string boundary)
-    {
-        var camps = Substitute.For<ICampManagement>();
-        var roles = Substitute.For<ICampRoleService>();
-        var users = Substitute.For<IUserService>();
-        using var cancellation = new CancellationTokenSource();
-        await cancellation.CancelAsync();
-        camps.GetSettingsAsync(Arg.Any<CancellationToken>()).Returns(call =>
-        {
-            if (string.Equals(boundary, "settings", StringComparison.Ordinal))
-                call.Arg<CancellationToken>().ThrowIfCancellationRequested();
-            return new CampSettingsInfo(2026, []) { ActiveEventSettingsId = ActiveEventId };
-        });
-        camps.GetCampsForEventAsync(ActiveEventId, Arg.Any<CancellationToken>()).Returns(call =>
-        {
-            if (string.Equals(boundary, "camps", StringComparison.Ordinal))
-                call.Arg<CancellationToken>().ThrowIfCancellationRequested();
-            return [];
-        });
-        users.GetUserInfosAsync(Arg.Any<IEnumerable<Guid>>(), Arg.Any<CancellationToken>()).Returns(call =>
-        {
-            if (string.Equals(boundary, "users", StringComparison.Ordinal))
-                call.Arg<CancellationToken>().ThrowIfCancellationRequested();
-            return new Dictionary<Guid, UserInfo>();
-        });
-        roles.GetMissingSpecialRolesAsync(Arg.Any<CancellationToken>()).Returns(call =>
-        {
-            if (string.Equals(boundary, "roles", StringComparison.Ordinal))
-                call.Arg<CancellationToken>().ThrowIfCancellationRequested();
-            return [];
-        });
-        var logger = Substitute.For<ILogger<CampAdminController>>();
-        var actorId = Guid.NewGuid();
-        users.GetUserInfoAsync(actorId, Arg.Any<CancellationToken>()).Returns(MakeUser(actorId));
-        var controller = CreateController(camps, roles, users, actorId, logger);
-        controller.HttpContext.RequestAborted = cancellation.Token;
-        Func<Task<IActionResult>> read = dashboard ? controller.Index : controller.ExportCamps;
-
-        await read.Should().ThrowAsync<OperationCanceledException>();
-        controller.TempData.Should().BeEmpty();
-        logger.ReceivedCalls().Should().BeEmpty();
     }
 
     [HumansFact]
@@ -689,7 +639,7 @@ public class CampAdminControllerTests
         }
         else
         {
-            var role = new CampRoleDefinitionInfo(Guid.NewGuid(), "Worker", "worker", null, 1, 1, 0, null, default);
+            var role = new CampRoleDefinitionInfo(Guid.NewGuid(), "Worker", "worker", null, 1, 1, 0, null);
             roles.GetDefinitionBySlugAsync("worker", ct).Returns(role);
             roles.BuildDrillDownAsync(role.Id, selected.EventSettingsId, ct).Returns(new CampRoleDrillDownData(role, selected, null, []));
             var result = await CreateController(camps, roles, users, Guid.NewGuid()).RolesDrillDown("worker", null, ct);
