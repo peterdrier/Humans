@@ -16,6 +16,9 @@ public interface ISettingsService : IApplicationService
     /// <summary>The organisation's IANA timezone, which every event is read in; Europe/Madrid until an admin sets one.</summary>
     Task<string> GetTimeZoneIdAsync(CancellationToken cancellationToken = default);
 
+    /// <summary>How many days temporary data is kept before the daily job deletes it; 365 until an admin sets one.</summary>
+    Task<int> GetRetentionDaysAsync(CancellationToken cancellationToken = default);
+
     /// <summary>Null when no event is active. Served from memory: the event settings load at startup.</summary>
     EventSettingsInfo? GetActiveEventSettings();
 

@@ -193,6 +193,7 @@ too wide to keep in step by hand. Derive it from the call sites.
 | in | every section that renders a date, a phase or an early-entry window | `ISettingsService.GetActiveEventSettings` / `GetEventSettingsByIdAsync` / `GetAllEventSettingsAsync`. Not enumerated — see above |
 | in | Development | `IEventSettingsSeeding`, from the dashboard seeder |
 | in | Workgroups | `ISettingsService.GetValueAsync` — legacy root-folder fallback until its admin saves section-owned `workgroup_settings`; no new writes. `ISettingsService.GetTimeZoneIdAsync` — the default zone of the meeting form |
+| in | Budget | `ISettingsService.GetRetentionDaysAsync` — which `budget_audit_logs` rows its temporary copy into Audit still takes |
 | in | Email | `ISettingsService` (`IsEmailSendingPaused`) |
 | in | Monitor | `ISettingsService` (`DriveActivityMonitor:LastRunAt`) |
 | in (seam) | Camps, Events, Rideshare, Shifts | implement `IEventSettingsChangeListener`: Shifts' `CachingShiftViewService` (flushes every `ShiftUserView` and forwards the id to its dashboard aggregates), Events' `CachingEventService` (its guide settings carry the timezone), Camps' `CachingCampService` (open seasons derive from events), Rideshare's `CachingRideshareService` (clears its cache). Settings names no consumer and references no consuming section |

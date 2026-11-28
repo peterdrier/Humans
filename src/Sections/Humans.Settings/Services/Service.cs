@@ -76,6 +76,9 @@ internal sealed class Service(
         return new(true);
     }
 
+    public async Task<int> GetRetentionDaysAsync(CancellationToken cancellationToken = default) =>
+        RetentionPeriod.Parse(await repository.GetValueAsync(RetentionPeriod.Key, cancellationToken));
+
     public async Task<EventSettingsSaveResult> SaveRetentionDaysAsync(
         int days, Guid actorUserId, CancellationToken cancellationToken = default)
     {

@@ -206,6 +206,35 @@ internal sealed class AuditLogRepository(IDbContextFactory<AuditLogDbContext> fa
             .OrderByDescending(a => a.OccurredAt), ct);
     }
 
+    public async Task<IReadOnlySet<Guid>> GetTemporaryIdsAsync(IReadOnlyCollection<Guid> ids, CancellationToken ct = default)
+    {
+        await using var ctx = await CreateDbContextAsync(ct);
+        var found = await ctx.TemporaryAuditLogEntries
+            .Where(e => ids.Contains(e.Id))
+            .Select(e => e.Id)
+            .ToListAsync(ct);
+        return found.ToHashSet();
+    }
+
+    public async Task AddTemporaryRangeAsync(IReadOnlyList<AuditLogEntrySnapshot> entries, CancellationToken ct = default)
+    {
+        await using var ctx = await CreateDbContextAsync(ct);
+        ctx.TemporaryAuditLogEntries.AddRange(entries.Select(entry => new TemporaryAuditLogEntry
+        {
+            Id = entry.Id,
+            Action = entry.Action,
+            SubjectType = entry.SubjectType,
+            SubjectId = entry.SubjectId,
+            Description = entry.Description,
+            OccurredAt = entry.OccurredAt,
+            ActorUserId = entry.ActorUserId,
+            JobName = entry.JobName,
+            TargetId = entry.TargetId,
+            TargetType = entry.TargetType
+        }));
+        await ctx.SaveChangesAsync(ct);
+    }
+
     public async Task<int> DeleteTemporaryBeforeAsync(Instant cutoff, CancellationToken ct = default)
     {
         await using var ctx = await CreateDbContextAsync(ct);

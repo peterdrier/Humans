@@ -7,8 +7,8 @@ namespace Humans.Budget.Data;
 
 /// <summary>
 /// No cross-method unit of work: each method saves within its own context, so writes that must be atomic (a year with
-/// its scaffold) are single methods. Each mutation writes its audit entries in the same save. A null actor on an entry
-/// means automation.
+/// its scaffold) are single methods. Each mutation adds what it changed to <c>changes</c>; the caller audits them once
+/// the save commits.
 /// </summary>
 internal interface IBudgetRepository : IRepository
 {
@@ -24,7 +24,7 @@ internal interface IBudgetRepository : IRepository
     /// Seeds a "Departments" group with one category per budgetable team and a "Ticketing" group with its projection and
     /// two categories, in one save, so a year never exists without its scaffold.
     /// </summary>
-    Task CreateYearWithScaffoldAsync(BudgetYearDraft draft, CancellationToken ct = default);
+    Task CreateYearWithScaffoldAsync(BudgetYearDraft draft, ICollection<BudgetAuditEntry> changes, CancellationToken ct = default);
 
     /// <summary>Audits each changed field; returns a refusal when the year is missing or Closed.</summary>
     Task<BudgetYearMutationResult> UpdateYearAsync(
@@ -32,7 +32,7 @@ internal interface IBudgetRepository : IRepository
         string year,
         string name,
         string? platformEventId,
-        Guid actorUserId,
+        ICollection<BudgetAuditEntry> changes,
         Instant now,
         CancellationToken ct = default);
 
@@ -42,7 +42,7 @@ internal interface IBudgetRepository : IRepository
     Task<BudgetYearMutationResult> UpdateYearStatusAsync(
         Guid yearId,
         BudgetYearStatus status,
-        Guid actorUserId,
+        ICollection<BudgetAuditEntry> changes,
         Instant now,
         CancellationToken ct = default);
 
@@ -51,7 +51,7 @@ internal interface IBudgetRepository : IRepository
     /// </summary>
     Task<BudgetYearMutationResult> ArchiveYearAsync(
         Guid yearId,
-        Guid actorUserId,
+        ICollection<BudgetAuditEntry> changes,
         Instant now,
         CancellationToken ct = default);
 
@@ -62,14 +62,14 @@ internal interface IBudgetRepository : IRepository
     Task<int> SyncDepartmentCategoriesAsync(
         Guid budgetYearId,
         IReadOnlyList<BudgetableTeamRef> budgetableTeams,
-        Guid actorUserId,
+        ICollection<BudgetAuditEntry> changes,
         Instant now,
         CancellationToken ct = default);
 
     /// <summary>Throws if the year is closed. False when the group already existed.</summary>
     Task<bool> EnsureTicketingGroupAsync(
         Guid budgetYearId,
-        Guid actorUserId,
+        ICollection<BudgetAuditEntry> changes,
         Instant now,
         CancellationToken ct = default);
 
@@ -78,7 +78,7 @@ internal interface IBudgetRepository : IRepository
         Guid budgetYearId,
         string name,
         bool isRestricted,
-        Guid actorUserId,
+        ICollection<BudgetAuditEntry> changes,
         Instant now,
         CancellationToken ct = default);
 
@@ -88,7 +88,7 @@ internal interface IBudgetRepository : IRepository
         string name,
         int sortOrder,
         bool isRestricted,
-        Guid actorUserId,
+        ICollection<BudgetAuditEntry> changes,
         Instant now,
         CancellationToken ct = default);
 
@@ -97,7 +97,7 @@ internal interface IBudgetRepository : IRepository
     /// </summary>
     Task<bool> DeleteGroupAsync(
         Guid groupId,
-        Guid actorUserId,
+        ICollection<BudgetAuditEntry> changes,
         Instant now,
         CancellationToken ct = default);
 
@@ -111,7 +111,7 @@ internal interface IBudgetRepository : IRepository
         decimal allocatedAmount,
         ExpenditureType expenditureType,
         Guid? teamId,
-        Guid actorUserId,
+        ICollection<BudgetAuditEntry> changes,
         Instant now,
         CancellationToken ct = default);
 
@@ -121,14 +121,14 @@ internal interface IBudgetRepository : IRepository
         string name,
         decimal allocatedAmount,
         ExpenditureType expenditureType,
-        Guid actorUserId,
+        ICollection<BudgetAuditEntry> changes,
         Instant now,
         CancellationToken ct = default);
 
     /// <summary>Cascades to line items. Throws if the year is closed. False when the category does not exist.</summary>
     Task<bool> DeleteCategoryAsync(
         Guid categoryId,
-        Guid actorUserId,
+        ICollection<BudgetAuditEntry> changes,
         Instant now,
         CancellationToken ct = default);
 
@@ -138,21 +138,21 @@ internal interface IBudgetRepository : IRepository
     /// <summary>Throws if the year is closed or the category does not exist.</summary>
     Task CreateLineItemAsync(
         BudgetLineItemDraft draft,
-        Guid actorUserId,
+        ICollection<BudgetAuditEntry> changes,
         Instant now,
         CancellationToken ct = default);
 
     /// <summary>Audits each change. Throws if the year is closed. False when the line item does not exist.</summary>
     Task<bool> UpdateLineItemAsync(
         BudgetLineItemUpdate update,
-        Guid actorUserId,
+        ICollection<BudgetAuditEntry> changes,
         Instant now,
         CancellationToken ct = default);
 
     /// <summary>Throws if the year is closed. False when the line item does not exist.</summary>
     Task<bool> DeleteLineItemAsync(
         Guid lineItemId,
-        Guid actorUserId,
+        ICollection<BudgetAuditEntry> changes,
         Instant now,
         CancellationToken ct = default);
 
@@ -164,7 +164,7 @@ internal interface IBudgetRepository : IRepository
     /// </summary>
     Task<int> UpdateTicketingProjectionAsync(
         TicketingProjectionUpdate update,
-        Guid actorUserId,
+        ICollection<BudgetAuditEntry> changes,
         Instant now,
         CancellationToken ct = default,
         LocalDate? refreshFromDate = null);
@@ -176,19 +176,18 @@ internal interface IBudgetRepository : IRepository
     /// </summary>
     /// <remarks>
     /// <paramref name="today"/> sets the current ISO-week cut-over, passed in so the repository stays
-    /// <c>IClock</c>-free. A null <paramref name="actorUserId"/> audits the sync as automation.
+    /// <c>IClock</c>-free.
     /// </remarks>
     Task<int> SyncTicketingActualsAsync(
         Guid budgetYearId,
         IReadOnlyList<TicketingWeeklyActualsInput> weeklyActuals,
         LocalDate today,
-        Guid? actorUserId,
+        ICollection<BudgetAuditEntry> changes,
         Instant now,
         CancellationToken ct = default);
 
-    /// <summary>The most recent 500.</summary>
-    Task<IReadOnlyList<BudgetChange>> GetChangesAsync(
-        Guid? budgetYearId, CancellationToken ct = default);
+    /// <summary>Unordered, uncapped. Goes with the <c>budget_audit_logs</c> table.</summary>
+    Task<IReadOnlyList<BudgetChange>> GetLegacyAuditLogsAsync(CancellationToken ct = default);
 
     /// <summary>
     /// For the GDPR export, which includes entries left on merged-away ids. Newest first.
@@ -197,12 +196,14 @@ internal interface IBudgetRepository : IRepository
         IReadOnlyCollection<Guid> userIds, CancellationToken ct = default);
 }
 
+/// <summary>One audited change, written to Audit against its budget year.</summary>
+internal sealed record BudgetAuditEntry(Guid BudgetYearId, string EntityType, Guid EntityId, string Description);
+
 internal sealed record BudgetYearDraft(
     Guid Id,
     string Year,
     string Name,
     IReadOnlyList<BudgetableTeamRef> BudgetableTeams,
-    Guid ActorUserId,
     Instant Now);
 
 internal sealed record BudgetableTeamRef(Guid Id, string Name);

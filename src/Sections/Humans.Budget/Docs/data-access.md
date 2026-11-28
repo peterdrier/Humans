@@ -18,10 +18,10 @@ Repository: `IBudgetRepository`.
 | BudgetGroups | R/W |
 | BudgetCategories | R/W |
 | BudgetLineItems | R/W |
-| BudgetChanges | R/W |
+| BudgetChanges | R (retired; data migration and GDPR export) |
 | TicketingProjections | R/W |
 
-Cross-section calls via `ITeamService`, `IUserService`, plus `IClock`.
+Cross-section calls via `ITeamService`, `IUserService`, `IAuditLogService`, `ITemporaryAuditImport`, plus `IClock`.
 Team labels are stitched at the service layer via `ITeamService`.
 Implements `IUserDataContributor`. No `IMemoryCache`.
 Cash flow (`/Finance/CashFlow`) is not Budget's: Finance's `CashFlowService`

@@ -85,9 +85,9 @@ BudgetYear ("2026", "2027-A", ...)
 
 ### Budget changes
 
-All budget changes are logged:
+All budget changes are logged in Audit's temporary side, kept for one season (the app-wide retention period):
 - Who made the change
-- What was changed (entity, field, old value, new value)
+- What was changed (entity, and for an edit the field with its old and new value, in the description)
 - When (timestamp)
 
 Example: "Daniela changed Sound > Equipment Rental budget from 20,000 to 23,000 on 2026-02-17"

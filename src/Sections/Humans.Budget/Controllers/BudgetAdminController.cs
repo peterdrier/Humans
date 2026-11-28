@@ -106,15 +106,18 @@ internal sealed class BudgetAdminController(
                 yearId = active?.Id;
             }
 
-            var entries = await budgetService.GetChangesAsync(yearId, ct);
+            var years = await budgetService.GetAllYearsAsync(includeArchived: true, ct);
+            if (yearId is { } id && years.All(y => y.Id != id))
+                return NotFound();
+
             ViewBag.YearId = yearId;
-            ViewBag.Years = await budgetService.GetAllYearsAsync(includeArchived: true, ct);
-            return View(entries);
+            ViewBag.Years = years;
+            return View();
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
-            logger.LogError(ex, "Error loading budget changes");
-            SetError("Failed to load budget changes.");
+            logger.LogError(ex, "Error loading budget audit log");
+            SetError("Failed to load audit log.");
             return RedirectToAction(nameof(Index));
         }
     }
