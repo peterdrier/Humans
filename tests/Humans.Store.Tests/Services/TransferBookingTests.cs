@@ -36,7 +36,7 @@ public class TransferBookingTests
             "Ice Crew / Ice");
 
     [HumansFact]
-    public void Each_month_books_the_change_since_the_last_entry_and_resumes_after_what_is_booked()
+    public void Book_EachMonth_BooksChangeSinceLastEntry()
     {
         var lines = new[] { Line(40m, 5), Line(20m, 7) };
         var rows = StoreTransferBooking.Plan(2026, lines, Catalog, [Booked(5, 50m)], Departments, new YearMonth(2026, 8), FixedOrgTimeZone.Madrid.Zone);
@@ -56,7 +56,7 @@ public class TransferBookingTests
     }
 
     [HumansFact]
-    public void A_team_whose_last_line_is_removed_gets_the_booked_amount_reversed()
+    public void Book_LastLineRemoved_ReversesBookedAmount()
     {
         var rows = StoreTransferBooking.Plan(2026, [], Catalog, [Booked(5, 40m)], Departments, new YearMonth(2026, 6), FixedOrgTimeZone.Madrid.Zone);
 
@@ -67,7 +67,7 @@ public class TransferBookingTests
     }
 
     [HumansFact]
-    public void A_changed_transfer_account_reverses_the_old_one_and_books_the_new_one_in_full()
+    public void Book_ChangedTransferAccount_ReversesOldOne()
     {
         const int oldAccount = 62990001;
         var rows = StoreTransferBooking.Plan(
@@ -78,7 +78,7 @@ public class TransferBookingTests
     }
 
     [HumansFact]
-    public void A_product_without_a_transfer_account_or_a_team_without_a_department_account_is_not_ready()
+    public void Preview_MissingAccount_IsNotReady()
     {
         var rows = StoreTransferBooking.Plan(
             2026, [Line(40m, 5, transfer: null)], new Dictionary<Guid, int?>(), [], Departments,
@@ -98,7 +98,7 @@ public class TransferBookingTests
     }
 
     [HumansFact]
-    public async Task Booking_posts_ready_months_once_and_skips_what_the_ledger_already_names()
+    public async Task Book_ReadyMonths_PostedOnce()
     {
         var ct = Xunit.TestContext.Current.CancellationToken;
         var orders = Substitute.For<IStoreAccountingRead>();
@@ -148,7 +148,7 @@ public class TransferBookingTests
     [Xunit.InlineData("unicode-year")]
     [Xunit.InlineData("invalid-team")]
     [Xunit.InlineData("missing-key")]
-    public async Task Malformed_transfer_keys_block_preview_and_booking_without_losing_known_bookings(string corruption)
+    public async Task Book_MalformedTransferKeys_AreBlocked(string corruption)
     {
         var ct = Xunit.TestContext.Current.CancellationToken;
         var orders = Substitute.For<IStoreAccountingRead>();

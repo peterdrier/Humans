@@ -52,7 +52,7 @@ public class DbContextOwnershipRuleTests
         string.Equals(d.Id, "HUM0009", StringComparison.Ordinal);
 
     [HumansFact]
-    public async Task Fires_error_on_non_repository_class_using_UsersDbContext()
+    public async Task Analyze_NonRepositoryUsersDbContext_Fires()
     {
         var source = Stubs + """
 
@@ -78,7 +78,7 @@ public class DbContextOwnershipRuleTests
     }
 
     [HumansFact]
-    public async Task Fires_error_on_non_repository_class_using_a_section_DbContext()
+    public async Task Analyze_NonRepositorySectionDbContext_Fires()
     {
         var source = Stubs + """
 
@@ -104,7 +104,7 @@ public class DbContextOwnershipRuleTests
     }
 
     [HumansFact]
-    public async Task Does_not_fire_on_repository_implementation()
+    public async Task Analyze_Repository_IsSilent()
     {
         var source = Stubs + """
 
@@ -128,7 +128,7 @@ public class DbContextOwnershipRuleTests
     }
 
     [HumansFact]
-    public async Task Does_not_fire_on_design_time_dbcontext_factory()
+    public async Task Analyze_DesignTimeFactory_IsSilent()
     {
         var source = Stubs + """
 
@@ -151,7 +151,7 @@ public class DbContextOwnershipRuleTests
     }
 
     [HumansFact]
-    public async Task Does_not_fire_on_infrastructure_hosting_lifecycle_service()
+    public async Task Analyze_HostingLifecycleService_IsSilent()
     {
         var source = Stubs + """
 
@@ -174,7 +174,7 @@ public class DbContextOwnershipRuleTests
     }
 
     [HumansFact]
-    public async Task Still_fires_on_hosted_lifecycle_service_outside_hosting_bootstrap_namespace()
+    public async Task Analyze_LifecycleServiceOutsideHosting_Fires()
     {
         var source = Stubs + """
 
@@ -197,7 +197,7 @@ public class DbContextOwnershipRuleTests
     }
 
     [HumansFact]
-    public async Task Fires_on_field_reference_not_just_constructor_param()
+    public async Task Analyze_FieldReference_Fires()
     {
         var source = Stubs + """
 
@@ -219,7 +219,7 @@ public class DbContextOwnershipRuleTests
     }
 
     [HumansFact]
-    public async Task Fires_on_method_parameter()
+    public async Task Analyze_MethodParameter_Fires()
     {
         var source = Stubs + """
 
@@ -241,7 +241,7 @@ public class DbContextOwnershipRuleTests
     }
 
     [HumansFact]
-    public async Task Downgrades_to_warning_when_class_has_Grandfathered_for_HUM0009()
+    public async Task Analyze_GrandfatheredClass_Warns()
     {
         var source = Stubs + """
 
@@ -272,7 +272,7 @@ public class DbContextOwnershipRuleTests
     }
 
     [HumansFact]
-    public async Task Grandfathered_for_a_different_rule_still_fires_error()
+    public async Task Analyze_GrandfatheredOtherRule_Fires()
     {
         var source = Stubs + """
 
@@ -303,7 +303,7 @@ public class DbContextOwnershipRuleTests
     }
 
     [HumansFact]
-    public async Task Fires_on_UsersDbContext_as_generic_type_argument_of_base_class()
+    public async Task Analyze_BaseClassTypeArgument_Fires()
     {
         // Pins the recursive type-argument walk in TypeReferences. Without it
         // the analyzer would silently miss UserStore<…, UsersDbContext, …>
@@ -335,7 +335,7 @@ public class DbContextOwnershipRuleTests
     }
 
     [HumansFact]
-    public async Task Message_names_the_actual_DbContext_type_used()
+    public async Task Message_UsedDbContext_NamesItsType()
     {
         // Detection is structural (any DbContext-derived type), so the message
         // must name the actual context used rather than a hardcoded

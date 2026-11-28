@@ -23,7 +23,7 @@ public sealed class DateTimeFormatStringAnalyzerTests
         string.Equals(d.Id, DateTimeFormatStringAnalyzer.DiagnosticId, StringComparison.Ordinal);
 
     [HumansFact]
-    public async Task Fires_on_DateTime_ToString_custom_format()
+    public async Task Analyze_DateTimeCustomFormat_Fires()
     {
         var source = """
             using System;
@@ -37,7 +37,7 @@ public sealed class DateTimeFormatStringAnalyzerTests
     }
 
     [HumansFact]
-    public async Task Fires_on_interpolation_custom_format()
+    public async Task Analyze_InterpolationCustomFormat_Fires()
     {
         var source = """
             using System;
@@ -51,7 +51,7 @@ public sealed class DateTimeFormatStringAnalyzerTests
     }
 
     [HumansFact]
-    public async Task Fires_on_NodaTime_Pattern_Create()
+    public async Task Analyze_NodaTimePatternCreate_Fires()
     {
         var source = NodaStub + """
 
@@ -65,7 +65,7 @@ public sealed class DateTimeFormatStringAnalyzerTests
     }
 
     [HumansFact]
-    public async Task Does_not_fire_on_NodaTime_standard_Iso_pattern()
+    public async Task Analyze_NodaTimeIsoPattern_IsSilent()
     {
         var source = NodaStub + """
 
@@ -79,7 +79,7 @@ public sealed class DateTimeFormatStringAnalyzerTests
     }
 
     [HumansFact]
-    public async Task Does_not_fire_on_single_char_standard_format()
+    public async Task Analyze_SingleCharStandardFormat_IsSilent()
     {
         var source = """
             using System;
@@ -93,7 +93,7 @@ public sealed class DateTimeFormatStringAnalyzerTests
     }
 
     [HumansFact]
-    public async Task Does_not_fire_on_non_date_ToString()
+    public async Task Analyze_NonDateToString_IsSilent()
     {
         var source = """
             namespace Humans.Web.Models
@@ -106,7 +106,7 @@ public sealed class DateTimeFormatStringAnalyzerTests
     }
 
     [HumansFact]
-    public async Task Does_not_fire_inside_the_home_type()
+    public async Task Analyze_HomeType_IsSilent()
     {
         var source = """
             using System;
@@ -123,7 +123,7 @@ public sealed class DateTimeFormatStringAnalyzerTests
     }
 
     [HumansFact]
-    public async Task Does_not_fire_in_migration_namespace()
+    public async Task Analyze_MigrationNamespace_IsSilent()
     {
         var source = """
             using System;

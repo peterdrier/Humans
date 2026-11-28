@@ -54,7 +54,7 @@ public class ServiceTeamOrdersTests
     }
 
     [HumansFact]
-    public async Task CreateTeamOrderAsync_writes_order_with_team_id_and_active_year()
+    public async Task CreateTeamOrderAsync_Team_WritesOrderForActiveYear()
     {
         var teamId = Guid.NewGuid();
         var userId = Guid.NewGuid();
@@ -80,7 +80,7 @@ public class ServiceTeamOrdersTests
     }
 
     [HumansFact]
-    public async Task CreateTeamOrderAsync_refuses_when_team_already_has_order_this_year()
+    public async Task CreateTeamOrderAsync_TeamHasOrder_IsRefused()
     {
         var teamId = Guid.NewGuid();
         var userId = Guid.NewGuid();
@@ -97,7 +97,7 @@ public class ServiceTeamOrdersTests
     }
 
     [HumansFact]
-    public async Task CreateTeamOrderAsync_refuses_when_team_is_a_subteam()
+    public async Task CreateTeamOrderAsync_Subteam_IsRefused()
     {
         var teamId = Guid.NewGuid();
         var userId = Guid.NewGuid();
@@ -113,7 +113,7 @@ public class ServiceTeamOrdersTests
     }
 
     [HumansFact]
-    public async Task CreateTeamOrderAsync_refuses_when_team_not_found()
+    public async Task CreateTeamOrderAsync_TeamNotFound_IsRefused()
     {
         var teamId = Guid.NewGuid();
         _teams.GetTeamAsync(teamId, Arg.Any<CancellationToken>()).Returns((TeamInfo?)null);
@@ -126,7 +126,7 @@ public class ServiceTeamOrdersTests
     }
 
     [HumansFact]
-    public async Task UpdateCounterpartyAsync_refuses_team_order()
+    public async Task UpdateCounterpartyAsync_TeamOrder_IsRefused()
     {
         var orderId = Guid.NewGuid();
         var teamOrder = new Order { Id = orderId, TeamId = Guid.NewGuid(), CampSeasonId = null, Year = 2026 };
@@ -142,7 +142,7 @@ public class ServiceTeamOrdersTests
     }
 
     [HumansFact]
-    public async Task CreateStripeCheckoutSessionAsync_refuses_team_order()
+    public async Task CreateStripeCheckoutSessionAsync_TeamOrder_IsRefused()
     {
         var teamOrder = MakeOrderDto(
             counterpartyType: OrderCounterpartyType.Team,
@@ -154,7 +154,7 @@ public class ServiceTeamOrdersTests
     }
 
     [HumansFact]
-    public async Task CompletedCheckout_throws_on_team_order()
+    public async Task CompletedCheckout_TeamOrder_Throws()
     {
         var orderId = Guid.NewGuid();
         var teamOrder = new Order { Id = orderId, TeamId = Guid.NewGuid(), CampSeasonId = null, Year = 2026 };
@@ -169,7 +169,7 @@ public class ServiceTeamOrdersTests
     }
 
     [HumansFact]
-    public async Task AddLineAsync_backfills_Year_from_camp_season_when_order_year_is_zero()
+    public async Task AddLineAsync_OrderYearZero_BackfillsYear()
     {
         var orderId = Guid.NewGuid();
         var seasonId = Guid.NewGuid();
@@ -220,7 +220,7 @@ public class ServiceTeamOrdersTests
     }
 
     [HumansFact]
-    public async Task GetIndexDataAsync_lists_coordinated_departments_alongside_led_camps()
+    public async Task GetIndexDataAsync_Coordinator_ListsDepartmentsWithCamps()
     {
         var userId = Guid.NewGuid();
         var deptId = Guid.NewGuid();
@@ -260,7 +260,7 @@ public class ServiceTeamOrdersTests
     }
 
     [HumansFact]
-    public async Task GetIndexDataAsync_ignores_departments_user_does_not_coordinate()
+    public async Task GetIndexDataAsync_UncoordinatedDepartments_AreIgnored()
     {
         var userId = Guid.NewGuid();
         var otherDeptId = Guid.NewGuid();
@@ -278,7 +278,7 @@ public class ServiceTeamOrdersTests
     }
 
     [HumansFact]
-    public async Task GetIndexDataAsync_privileged_reader_lists_departments_it_does_not_coordinate()
+    public async Task GetIndexDataAsync_PrivilegedReader_ListsAllDepartments()
     {
         var otherDeptId = Guid.NewGuid();
         _teams.GetTeamsAsync(Arg.Any<CancellationToken>())
@@ -297,7 +297,7 @@ public class ServiceTeamOrdersTests
     }
 
     [HumansFact]
-    public async Task GetStoreSummaryAsync_merges_team_orders_into_by_counterparty_and_cross_tab()
+    public async Task GetStoreSummaryAsync_TeamOrders_MergedIntoCounterparties()
     {
         var deptId = Guid.NewGuid();
         var productId = Guid.NewGuid();
@@ -365,7 +365,7 @@ public class ServiceTeamOrdersTests
     }
 
     [HumansFact]
-    public async Task DeleteOrderAsync_removes_zero_balance_order_and_audits()
+    public async Task DeleteOrderAsync_ZeroBalance_RemovesWithAudit()
     {
         var orderId = Guid.NewGuid();
         var actor = Guid.NewGuid();
@@ -382,7 +382,7 @@ public class ServiceTeamOrdersTests
     }
 
     [HumansFact]
-    public async Task DeleteOrderAsync_rejects_non_zero_balance_camp_order()
+    public async Task DeleteOrderAsync_NonzeroBalance_IsRejected()
     {
         var orderId = Guid.NewGuid();
         var order = new Order
@@ -406,7 +406,7 @@ public class ServiceTeamOrdersTests
     }
 
     [HumansFact]
-    public async Task DeleteOrderAsync_rejects_a_paid_in_full_order()
+    public async Task DeleteOrderAsync_PaidInFull_IsRejected()
     {
         // Paid in full reads zero-balance; deleting it would cascade the money records away.
         var orderId = Guid.NewGuid();
@@ -436,11 +436,11 @@ public class ServiceTeamOrdersTests
     }
 
     [HumansFact]
-    public Task DeleteOrderAsync_rejects_an_order_holding_only_a_pending_payment() =>
+    public Task DeleteOrderAsync_PendingPaymentOnly_IsRejected() =>
         AssertDeleteRefusedWithOnlyPaymentAsync(PaymentStatus.Pending);
 
     [HumansFact]
-    public Task DeleteOrderAsync_rejects_an_order_holding_only_a_failed_payment() =>
+    public Task DeleteOrderAsync_FailedPaymentOnly_IsRejected() =>
         AssertDeleteRefusedWithOnlyPaymentAsync(PaymentStatus.Failed);
 
     private async Task AssertDeleteRefusedWithOnlyPaymentAsync(PaymentStatus status)
@@ -469,7 +469,7 @@ public class ServiceTeamOrdersTests
     }
 
     [HumansFact]
-    public async Task DeleteOrderAsync_rejects_an_invoiced_order()
+    public async Task DeleteOrderAsync_InvoicedOrder_IsRejected()
     {
         // A paid, issued order reads zero-balance, but its store_invoices row references it under a
         // restrictive foreign key — the delete has to be refused here, not at the database.
@@ -492,7 +492,7 @@ public class ServiceTeamOrdersTests
     }
 
     [HumansFact]
-    public async Task DeleteOrderAsync_refuses_when_order_not_found()
+    public async Task DeleteOrderAsync_OrderNotFound_IsRefused()
     {
         var orderId = Guid.NewGuid();
         _repo.GetOrderWithLinesAsync(orderId, Arg.Any<CancellationToken>())
@@ -504,7 +504,7 @@ public class ServiceTeamOrdersTests
     }
 
     [HumansFact]
-    public async Task CreateOrderAsync_refuses_when_camp_season_already_has_order_for_year()
+    public async Task CreateOrderAsync_SeasonHasOrder_IsRefused()
     {
         var seasonId = Guid.NewGuid();
         _campService.GetCampSeasonByIdAsync(seasonId, Arg.Any<CancellationToken>())
@@ -525,7 +525,7 @@ public class ServiceTeamOrdersTests
     }
 
     [HumansFact]
-    public async Task CreateOrderAsync_refuses_when_the_camp_season_s_only_order_is_a_legacy_year_zero_row()
+    public async Task CreateOrderAsync_SeasonHasYearZeroOrder_IsRefused()
     {
         // A CampSeason is a (camp, year) pair, so the only order a year comparison can miss is one
         // that pre-dates the Year column. AddLine backfills those lazily — an order with no lines

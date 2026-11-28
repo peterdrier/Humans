@@ -63,7 +63,7 @@ public class ServiceStripeRefundCheckTests
         new(id, pi, amount, status, RefundedAt);
 
     [HumansFact]
-    public async Task Books_each_refund_once_with_pending_ones_counted_at_once()
+    public async Task Check_Refunds_EachBookedOnce()
     {
         var actor = Guid.NewGuid();
         var alreadyBooked = new Payment
@@ -101,7 +101,7 @@ public class ServiceStripeRefundCheckTests
     }
 
     [HumansFact]
-    public async Task Booked_refunds_follow_stripe_forward_only()
+    public async Task Check_BookedRefunds_FollowStripeForwardOnly()
     {
         Payment Booked(string re, PaymentStatus status) => new()
         {
@@ -135,7 +135,7 @@ public class ServiceStripeRefundCheckTests
     }
 
     [HumansFact]
-    public async Task Refuses_and_books_nothing_when_any_payment_refunds_cannot_be_read()
+    public async Task Check_UnreadableRefunds_BooksNothing()
     {
         var order = OrderWith(StripePaid("pi_a", 100m), StripePaid("pi_b", 100m));
         _stripe.ListStoreRefundsAsync("pi_a", Arg.Any<CancellationToken>())
@@ -149,7 +149,7 @@ public class ServiceStripeRefundCheckTests
     }
 
     [HumansFact]
-    public async Task Only_paid_stripe_payments_are_checked()
+    public async Task Check_UnpaidStripePayments_AreSkipped()
     {
         var pending = StripePaid("pi_pending", 100m);
         pending.Status = PaymentStatus.Pending;

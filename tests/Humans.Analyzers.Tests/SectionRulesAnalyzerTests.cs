@@ -64,7 +64,7 @@ public class SectionRulesAnalyzerTests
         string.Equals(d.Id, "HUM0034", StringComparison.Ordinal);
 
     [HumansFact]
-    public async Task Fires_on_public_type_with_no_carve_out()
+    public async Task Analyze_PublicTypeWithoutExemption_Fires()
     {
         var source = SectionEntryPoint + """
 
@@ -84,7 +84,7 @@ public class SectionRulesAnalyzerTests
     }
 
     [HumansFact]
-    public async Task Does_not_fire_on_internal_type()
+    public async Task Analyze_InternalType_IsSilent()
     {
         var source = SectionEntryPoint + """
 
@@ -104,7 +104,7 @@ public class SectionRulesAnalyzerTests
     }
 
     [HumansFact]
-    public async Task Does_not_fire_on_the_ISection_entry_point()
+    public async Task Analyze_SectionEntryPoint_IsSilent()
     {
         var source = SectionEntryPoint;
 
@@ -118,7 +118,7 @@ public class SectionRulesAnalyzerTests
     }
 
     [HumansFact]
-    public async Task Does_not_fire_on_the_Resource_marker()
+    public async Task Analyze_ResourceMarker_IsSilent()
     {
         var source = SectionEntryPoint + """
 
@@ -138,7 +138,7 @@ public class SectionRulesAnalyzerTests
     }
 
     [HumansFact]
-    public async Task Fires_on_public_type_whose_name_merely_contains_Resource()
+    public async Task Analyze_ResourceInNameOnly_Fires()
     {
         // Only a name ENDING in "Resource" is the carve-out (the runtime SectionResourceTypes() matcher is stricter: exactly <Section>Resource).
         var source = SectionEntryPoint + """
@@ -159,7 +159,7 @@ public class SectionRulesAnalyzerTests
     }
 
     [HumansFact]
-    public async Task Does_not_fire_on_type_under_Contracts_namespace()
+    public async Task Analyze_TypeUnderContracts_IsSilent()
     {
         var source = SectionEntryPoint + """
 
@@ -179,7 +179,7 @@ public class SectionRulesAnalyzerTests
     }
 
     [HumansFact]
-    public async Task Fires_on_public_Management_interface_under_Contracts()
+    public async Task Analyze_ManagementInterfaceUnderContracts_Fires()
     {
         var source = SectionEntryPoint + """
 
@@ -199,7 +199,7 @@ public class SectionRulesAnalyzerTests
     }
 
     [HumansFact]
-    public async Task Fires_on_public_Management_interface_in_Contracts_leaf()
+    public async Task Analyze_ManagementInterfaceInLeaf_Fires()
     {
         const string source = """
             namespace Humans.Test.Contracts
@@ -221,7 +221,7 @@ public class SectionRulesAnalyzerTests
     }
 
     [HumansFact]
-    public async Task Does_not_fire_on_IRecurringJob_implementor_under_Jobs()
+    public async Task Analyze_RecurringJobUnderJobs_IsSilent()
     {
         var source = SectionEntryPoint + """
 
@@ -245,7 +245,7 @@ public class SectionRulesAnalyzerTests
     }
 
     [HumansFact]
-    public async Task Does_not_fire_on_public_Job_suffixed_type_under_Jobs()
+    public async Task Analyze_JobSuffixedTypeUnderJobs_IsSilent()
     {
         // Enqueue-style Hangfire jobs don't implement
         // IRecurringJob — only the *Job naming convention marks them.
@@ -267,7 +267,7 @@ public class SectionRulesAnalyzerTests
     }
 
     [HumansFact]
-    public async Task Fires_on_public_non_job_type_under_Jobs()
+    public async Task Analyze_NonJobTypeUnderJobs_Fires()
     {
         var source = SectionEntryPoint + """
 
@@ -287,7 +287,7 @@ public class SectionRulesAnalyzerTests
     }
 
     [HumansFact]
-    public async Task Does_not_fire_on_EF_migration()
+    public async Task Analyze_EfMigration_IsSilent()
     {
         var source = SectionEntryPoint + """
 
@@ -310,7 +310,7 @@ public class SectionRulesAnalyzerTests
     // internal one renders <vc:…> as inert markup — green build, nothing on the page.
     // The carve-out matches ViewComponentConventions.IsComponent exactly.
     [HumansFact]
-    public async Task Does_not_fire_on_view_component_named_by_convention()
+    public async Task Analyze_ViewComponentByConvention_IsSilent()
     {
         var source = SectionEntryPoint + """
 
@@ -330,7 +330,7 @@ public class SectionRulesAnalyzerTests
     }
 
     [HumansFact]
-    public async Task Does_not_fire_on_view_component_declared_by_attribute()
+    public async Task Analyze_ViewComponentByAttribute_IsSilent()
     {
         var source = SectionEntryPoint + """
 
@@ -351,7 +351,7 @@ public class SectionRulesAnalyzerTests
     }
 
     [HumansFact]
-    public async Task Fires_on_NonViewComponent_despite_the_name()
+    public async Task Analyze_NonViewComponent_Fires()
     {
         // [NonViewComponent] opts a conventionally-named class out of being a component,
         // so it is ordinary section internals again and the carve-out must not cover it.
@@ -374,7 +374,7 @@ public class SectionRulesAnalyzerTests
     }
 
     [HumansFact]
-    public async Task Fires_on_public_type_whose_name_merely_contains_ViewComponent()
+    public async Task Analyze_ViewComponentInNameOnly_Fires()
     {
         var source = SectionEntryPoint + """
 
@@ -398,7 +398,7 @@ public class SectionRulesAnalyzerTests
     // literal markup. No section declares a tag helper yet — the clause is written ahead
     // of its first subject so the rule states the principle, not one carve-out.
     [HumansFact]
-    public async Task Does_not_fire_on_tag_helper()
+    public async Task Analyze_TagHelper_IsSilent()
     {
         var source = SectionEntryPoint + """
 
@@ -418,7 +418,7 @@ public class SectionRulesAnalyzerTests
     }
 
     [HumansFact]
-    public async Task Fires_on_public_type_named_TagHelper_that_implements_nothing()
+    public async Task Analyze_TagHelperInNameOnly_Fires()
     {
         // Implementing ITagHelper is the whole of the provider's test, so the name alone
         // carves nothing out — this one is ordinary section internals.
@@ -440,7 +440,7 @@ public class SectionRulesAnalyzerTests
     }
 
     [HumansFact]
-    public async Task Does_not_fire_on_tag_helper_whose_name_says_nothing()
+    public async Task Analyze_TagHelperWithPlainName_IsSilent()
     {
         // ...and conversely, discovery does not care what an implementation is called.
         var source = SectionEntryPoint + """
@@ -461,7 +461,7 @@ public class SectionRulesAnalyzerTests
     }
 
     [HumansFact]
-    public async Task Does_not_fire_outside_a_section_assembly()
+    public async Task Analyze_OutsideSectionAssembly_IsSilent()
     {
         var source = """
             namespace Humans.Test
@@ -480,7 +480,7 @@ public class SectionRulesAnalyzerTests
     }
 
     [HumansFact]
-    public async Task Grandfathered_violator_downgrades_to_warning()
+    public async Task Analyze_GrandfatheredViolator_Warns()
     {
         var source = SectionEntryPoint + """
 
@@ -514,7 +514,7 @@ public class SectionRulesAnalyzerTests
         """;
 
     [HumansFact]
-    public async Task Fires_on_repository_under_Contracts()
+    public async Task Analyze_RepositoryUnderContracts_Fires()
     {
         var source = SectionEntryPoint + RepositoryStub + """
 
@@ -534,7 +534,7 @@ public class SectionRulesAnalyzerTests
     }
 
     [HumansFact]
-    public async Task Does_not_fire_on_repository_outside_Contracts()
+    public async Task Analyze_RepositoryOutsideContracts_IsSilent()
     {
         var source = SectionEntryPoint + RepositoryStub + """
 
