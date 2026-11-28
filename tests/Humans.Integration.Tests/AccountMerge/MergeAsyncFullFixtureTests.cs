@@ -1,7 +1,8 @@
+using Humans.AuditLog.Data;
 using Humans.Users.Services;
 using Humans.Auth.Data;
 using Humans.Auth.Domain;
-using Humans.AuditLog.Data;
+using Humans.Audit.Data;
 using Humans.Teams.Data;
 using AwesomeAssertions;
 using Humans.Base.Constants;
@@ -109,8 +110,8 @@ public class MergeAsyncFullFixtureTests(HumansTestDatabase database) : Integrati
         var auditRow = await auditLogDb.AuditLogEntries.AsNoTracking()
             .FirstOrDefaultAsync(a =>
                 a.Action == "AccountMergeAccepted"
-                && a.EntityType == nameof(User)
-                && a.EntityId == sourceId, TestContext.Current.CancellationToken);
+                && a.SubjectType == nameof(User)
+                && a.SubjectId == sourceId, TestContext.Current.CancellationToken);
         auditRow.Should().NotBeNull("an AccountMergeAccepted audit row must be written for the archived account");
         auditRow.Description.Should().StartWith($"Folded archived {sourceId} into survivor {targetId}",
             "the audit description records the archived→survivor fold");

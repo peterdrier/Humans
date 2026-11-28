@@ -1,4 +1,5 @@
 using System.Collections.Concurrent;
+using Humans.Base.Extensions;
 using Humans.Holded.Contracts;
 using Humans.Holded.Data;
 using Humans.Holded.Domain;
@@ -486,8 +487,8 @@ internal sealed class Service(
                 // chart totals until it is confirmed.
                 state.LastError = mismatches.Count == 0
                     ? null
-                    : TruncateForState("Unreconciled after re-pull: " + string.Join("; ",
-                        mismatches.Select(m => $"{m.AccountNum}: holded {m.HoldedBalance:0.00}, local {m.LocalBalance:0.00}")));
+                    : ("Unreconciled after re-pull: " + string.Join("; ",
+                        mismatches.Select(m => $"{m.AccountNum}: holded {m.HoldedBalance:0.00}, local {m.LocalBalance:0.00}"))).Truncate(2000, "…");
                 await SaveCompletedSyncStateAsync(state);
 
                 await DrainCallLogAsync(CancellationToken.None);
@@ -879,7 +880,8 @@ internal sealed class Service(
         try
         {
             state.SyncStatus = HoldedSyncStatus.Error;
-            state.LastError = TruncateForState(failure.Message);
+            // LastError is varchar(2000): an unbounded message would fail the save and report a finished refresh as an error.
+            state.LastError = failure.Message.Truncate(2000, "…");
             state.StatusChangedAt = clock.GetCurrentInstant();
             await repo.SaveSyncStateAsync(state, CancellationToken.None);
         }
@@ -887,17 +889,6 @@ internal sealed class Service(
         {
             logger.LogError(saveEx, "Failed to persist {SyncKind} sync error state", state.Kind);
         }
-    }
-
-    /// <summary>LastError is varchar(2000): an unbounded message would fail the save and report a finished refresh
-    /// as an error.</summary>
-    private static string TruncateForState(string message)
-    {
-        if (message.Length <= 2000) return message;
-        var length = 1997;
-        if (char.IsHighSurrogate(message[length - 1]) && char.IsLowSurrogate(message[length]))
-            length--;
-        return message[..length] + "…";
     }
 
     /// <summary>Local midnight of the start date. Rows dated before it are outside the sweep and must survive.</summary>

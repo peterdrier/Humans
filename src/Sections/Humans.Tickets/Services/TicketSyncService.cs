@@ -1,5 +1,6 @@
 using System.Transactions;
-using Humans.AuditLog.Contracts;
+using Humans.Audit.Contracts;
+using Humans.Base.Extensions;
 using Humans.Campaigns.Contracts;
 using Humans.Settings.Contracts;
 using Humans.Tickets.Contracts;
@@ -193,16 +194,8 @@ internal sealed class TicketSyncService(
             {
                 syncState.SyncStatus = TicketSyncStatus.Error;
                 syncState.StatusChangedAt = clock.GetCurrentInstant();
-                syncState.LastError = ex.Message;
                 // The column is varchar(2000); logging and the rethrow retain the full diagnostic.
-                const int maxErrorLength = 2000;
-                if (syncState.LastError.Length > maxErrorLength)
-                {
-                    var length = maxErrorLength;
-                    if (char.IsHighSurrogate(syncState.LastError[length - 1]) && char.IsLowSurrogate(syncState.LastError[length]))
-                        length--;
-                    syncState.LastError = syncState.LastError[..length];
-                }
+                syncState.LastError = ex.Message.Truncate(2000);
                 await ticketRepository.PersistSyncStateAsync(syncState, CancellationToken.None);
             }
             catch (Exception saveEx)
@@ -240,6 +233,16 @@ internal sealed class TicketSyncService(
             "TicketSettings", Guid.Empty,
             enabled ? "Turned the scheduled ticket vendor sync on." : "Turned the scheduled ticket vendor sync off.",
             actorUserId);
+    }
+
+    public Task<int> GetPostEventHoldDaysAsync(CancellationToken ct = default) =>
+        ticketRepository.GetPostEventHoldDaysAsync(ct);
+
+    public async Task SetPostEventHoldDaysAsync(int days, Guid actorUserId, CancellationToken ct = default)
+    {
+        await ticketRepository.SetPostEventHoldDaysAsync(days, ct);
+        await auditLog.LogAsync(TicketsAuditActions.TicketPostEventHoldSet, "TicketSettings", Guid.Empty,
+            $"Set the post-event hold to {days} day(s).", actorUserId);
     }
 
     public async Task ReassignAsync(Guid sourceUserId, Guid targetUserId, Guid actorUserId, Instant updatedAt,

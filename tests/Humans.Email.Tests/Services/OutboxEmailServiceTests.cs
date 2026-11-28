@@ -42,13 +42,6 @@ public sealed class OutboxEmailServiceTests : IDisposable
     // InternalsVisibleTo on it.
     private readonly FakeClock _clock = new(Instant.FromUtc(2026, 3, 1, 12, 0));
 
-    private static DbContextOptions<TContext> NewSectionDbOptions<TContext>()
-        where TContext : DbContext =>
-        new DbContextOptionsBuilder<TContext>()
-            .UseInMemoryDatabase(Guid.NewGuid().ToString())
-            .ConfigureWarnings(w => w.Ignore(InMemoryEventId.TransactionIgnoredWarning))
-            .Options;
-
     public void Dispose() => _emailDb.Dispose();
 
     private readonly OutboxEmailService _service;
@@ -66,7 +59,7 @@ public sealed class OutboxEmailServiceTests : IDisposable
         _bodyComposer.Compose(Arg.Any<string>(), Arg.Any<string?>(), Arg.Any<string?>())
             .Returns(ci => ((string)ci[0], "plain-text-stub"));
 
-        var emailDbOptions = NewSectionDbOptions<EmailDbContext>();
+        var emailDbOptions = TestDbOptions.InMemory<EmailDbContext>();
         _emailDb = new EmailDbContext(emailDbOptions);
         var repo = new EmailOutboxRepository(new TestDbContextFactory<EmailDbContext>(emailDbOptions));
 
@@ -110,7 +103,7 @@ public sealed class OutboxEmailServiceTests : IDisposable
             .Returns(UserInfo.Create(new User { Id = userId, Email = "self@example.com" }, [], [], null));
         var selfSend = new ComposerSelfSendService(
             users, _service,
-            Substitute.For<Humans.AuditLog.Contracts.IAuditLogService>(), localizer,
+            Substitute.For<Humans.Audit.Contracts.IAuditLogService>(), localizer,
             NullLogger<ComposerSelfSendService>.Instance);
         var subject = string.Concat(Enumerable.Repeat(character, 1000));
         _bodyComposer.Compose(Arg.Any<string>(), Arg.Any<string?>(), Arg.Any<string?>())

@@ -347,6 +347,10 @@ internal sealed class BoxOfficePlatform(
     public Task ErasePersonalDataAsync(string platformOrderId, string email, CancellationToken ct = default) =>
         Task.CompletedTask;
 
+    /// <summary>Box Office keeps nothing per event; Stripe's records stay as above.</summary>
+    public Task EraseEventPersonalDataAsync(string? platformEventRef, CancellationToken ct = default) =>
+        Task.CompletedTask;
+
     public PlatformSetup Setup => new(
         "Box Office (Stripe)",
         $"Stripe, Humans' ticket account ({ModeLabel})",

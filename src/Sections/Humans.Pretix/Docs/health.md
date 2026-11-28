@@ -90,10 +90,7 @@ Docs/                                      Pretix.md (invariants), data-access.m
 
 ## 5. Seams
 
-- **Per-order data shred.** Erasure clears the order's contact fields, but pretix keeps the old
-  email in the order log and the Stripe payment details on the payment until its event-wide
-  shredder runs; the fix is Humans running that shredder through pretix's API once the post-event hold
-  ends (peterdrier/Humans#2623).
+- None open.
 
 ## 6. Deliberately not done
 

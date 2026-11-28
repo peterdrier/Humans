@@ -3,7 +3,7 @@ using AwesomeAssertions;
 using Humans.Calendar.Controllers;
 using Humans.Calendar.Domain;
 using Humans.Calendar.Data;
-using Humans.AuditLog.Contracts;
+using Humans.Audit.Contracts;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging.Abstractions;
 using Humans.Calendar.Models;
@@ -415,8 +415,7 @@ public class CalendarControllerICalTests
     public async Task AllDayOccurrenceForm_RequiresARepresentableEffectiveEnd(string scenario)
     {
         var ct = Xunit.TestContext.Current.CancellationToken;
-        var options = new DbContextOptionsBuilder<CalendarDbContext>()
-            .UseInMemoryDatabase(Guid.NewGuid().ToString()).Options;
+        var options = TestDbOptions.InMemory<CalendarDbContext>();
         var repository = new CalendarRepository(new TestDbContextFactory<CalendarDbContext>(options));
         var audit = Substitute.For<IAuditLogService>();
         var calendar = new CalendarService(repository, _teams, new FakeClock(_now), audit, NullLogger<CalendarService>.Instance, Substitute.For<IServiceScopeFactory>());

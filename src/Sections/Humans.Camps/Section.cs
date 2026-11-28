@@ -18,7 +18,8 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Localization;
 using static Humans.Base.Models.AccessLevel;
 using static Humans.Base.Models.AccessMatrixFeature;
-using Humans.AuditLog.Contracts;
+using Humans.Audit.Contracts;
+using Humans.Camps.Controllers;
 
 [assembly: Humans.Base.Demo.NoDemoStory("No demo story written yet.")]
 
@@ -29,7 +30,7 @@ namespace Humans.Camps;
 /// inner service owns the repository's unit of work.
 /// </summary>
 public sealed class Section :
-    ISection,
+    SectionBase,
     IIssueQueueOwner,
     ISectionRoles,
     ISectionAccessMatrix,
@@ -43,6 +44,8 @@ public sealed class Section :
     ISearchContributor,
     IUserPart
 {
+    public override string DisplayName => "Barrios";
+
     IEnumerable<ChromeComponent> ISectionChrome.Components() =>
         [new(ChromeSlots.WidgetGallery, typeof(CampsGalleryViewComponent))];
 
@@ -54,7 +57,7 @@ public sealed class Section :
             FormerNames: ["CampAdmin"]),
     ];
 
-    public void Register(IServiceCollection services, IConfiguration configuration)
+    public override void Register(IServiceCollection services, IConfiguration configuration)
     {
         services.AddSingleton<IAuditActionContributor, CampsAuditActions>();
         services.AddSingleton<INotificationSourceContributor, CampsNotificationSources>();
@@ -142,10 +145,10 @@ public sealed class Section :
 
     IEnumerable<AdminNavGroup> ISectionAdminNav.Groups() =>
     [
-        new("Barrios", [
-            new("Overview",   "CampAdmin",      "Index",      null, null, "fa-solid fa-tents",           CampsPolicies.Read, Weight: 0),
-            new("Roles",      "CampAdmin",      "Roles",      null, null, "fa-solid fa-user-tag",        CampsPolicies.Read, Weight: 10),
-            new("Compliance", "CampCompliance", "Compliance", null, null, "fa-solid fa-clipboard-check", CampsPolicies.Compliance, Weight: 20)
+        AdminGroup([
+            AdminLink<CampAdminController>("Overview", nameof(CampAdminController.Index), "fa-solid fa-tents", CampsPolicies.Read, weight: 0),
+            AdminLink<CampAdminController>("Roles", nameof(CampAdminController.Roles), "fa-solid fa-user-tag", CampsPolicies.Read, weight: 10),
+            AdminLink<CampComplianceController>("Compliance", nameof(CampComplianceController.Compliance), "fa-solid fa-clipboard-check", CampsPolicies.Compliance, weight: 20)
         ])
     ];
 

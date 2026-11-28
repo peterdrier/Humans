@@ -7,7 +7,7 @@ using System.Text;
 using Humans.Base.Constants;
 using Humans.Base.Extensions;
 using System.Security.Claims;
-using Humans.AuditLog.Contracts;
+using Humans.Audit.Contracts;
 using AwesomeAssertions;
 using Humans.Campaigns.Controllers;
 using Humans.Campaigns.Models;
@@ -43,10 +43,7 @@ public sealed class CampaignServiceTests
     private readonly FakeClock _clock = new(Instant.FromUtc(2026, 3, 31, 12, 0));
 
     private readonly TestDbContextFactory<CampaignsDbContext> _campaignsDbFactory =
-        new(new DbContextOptionsBuilder<CampaignsDbContext>()
-            .UseInMemoryDatabase(Guid.NewGuid().ToString())
-            .ConfigureWarnings(w => w.Ignore(InMemoryEventId.TransactionIgnoredWarning))
-            .Options);
+        new(TestDbOptions.InMemory<CampaignsDbContext>());
 
     private readonly CampaignsDbContext _campaignsDb;
 

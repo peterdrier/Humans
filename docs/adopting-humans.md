@@ -220,7 +220,7 @@ Permissions is the companion. It stores nothing. It simply answers the question 
 
 These three come along for free. You set nothing up, but you should know they are there.
 
-- **AuditLog** is a who-did-what-when trail that can only be added to. Every admin action and every automated action on a member leaves an entry, so your Board can see what happened and what the automation did.
+- **Audit** is a who-did-what-when trail that can only be added to. Every admin action and every automated action on a member leaves an entry, so your Board can see what happened and what the automation did.
 - **Gdpr** gives every member a self-service download of all their personal data, handles deletion requests, and puts up the right wall when an account is suspended or waiting to be deleted.
 - **Notifications** is the in-app inbox and the little live counters in the header.
 

@@ -1,4 +1,4 @@
-using Humans.AuditLog.Contracts;
+using Humans.Audit.Contracts;
 
 namespace Humans.Tickets;
 
@@ -80,4 +80,9 @@ internal sealed class TicketsAuditActions : AuditActionContributor
     public static readonly AuditActionDefinition TicketScheduledSyncEnabled = new("TicketScheduledSyncEnabled", AuditKept.Forever);
 
     public static readonly AuditActionDefinition TicketScheduledSyncDisabled = new("TicketScheduledSyncDisabled", AuditKept.Forever);
+
+    public static readonly AuditActionDefinition TicketPostEventHoldSet = new("TicketPostEventHoldSet", AuditKept.Forever);
+
+    /// <summary>The ticketing platform erased an event's personal data after its post-event hold.</summary>
+    public static readonly AuditActionDefinition TicketEventPersonalDataErased = new("TicketEventPersonalDataErased", AuditKept.Forever);
 }

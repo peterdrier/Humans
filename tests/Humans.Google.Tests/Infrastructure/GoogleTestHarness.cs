@@ -1,4 +1,4 @@
-using Humans.AuditLog.Contracts;
+using Humans.Audit.Contracts;
 using Humans.Google.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Diagnostics;
@@ -20,10 +20,7 @@ public abstract class GoogleTestHarness : IDisposable
 
     protected GoogleTestHarness(Instant? now = null)
     {
-        var options = new DbContextOptionsBuilder<GoogleIntegrationDbContext>()
-            .UseInMemoryDatabase(Guid.NewGuid().ToString())
-            .ConfigureWarnings(w => w.Ignore(InMemoryEventId.TransactionIgnoredWarning))
-            .Options;
+        var options = TestDbOptions.InMemory<GoogleIntegrationDbContext>();
 
         GoogleDb = new GoogleIntegrationDbContext(options);
         GoogleDbFactory = new TestDbContextFactory<GoogleIntegrationDbContext>(options);

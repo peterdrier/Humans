@@ -1,5 +1,5 @@
 using Humans.Governance.Contracts;
-using Humans.AuditLog.Contracts;
+using Humans.Audit.Contracts;
 using Humans.Email.Contracts;
 using Humans.Auth.Contracts;
 using Humans.Google.Contracts;
@@ -40,10 +40,7 @@ internal sealed class AssemblyVoteServiceFixture : IDisposable
     public readonly IGoogleTranslationService Translation = Substitute.For<IGoogleTranslationService>();
 
     private readonly TestDbContextFactory<GovernanceDbContext> _factory =
-        new(new DbContextOptionsBuilder<GovernanceDbContext>()
-            .UseInMemoryDatabase(Guid.NewGuid().ToString())
-            .ConfigureWarnings(w => w.Ignore(InMemoryEventId.TransactionIgnoredWarning))
-            .Options);
+        new(TestDbOptions.InMemory<GovernanceDbContext>());
 
     public readonly GovernanceDbContext Db;
     public readonly AssemblyVoteRepository Repository;

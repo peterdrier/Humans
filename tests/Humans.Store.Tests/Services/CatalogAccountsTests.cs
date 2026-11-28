@@ -1,5 +1,5 @@
 using AwesomeAssertions;
-using Humans.AuditLog.Contracts;
+using Humans.Audit.Contracts;
 using Humans.Holded.Contracts;
 using Humans.Store.Data;
 using Humans.Store.Domain;
@@ -95,7 +95,7 @@ public class CatalogAccountsTests
             Arg.Any<CancellationToken>());
         await _repo.DidNotReceive().UpdateProductAsync(Arg.Is<Product>(p => p.Id == ice.Id), Arg.Any<CancellationToken>());
         await _audit.Received(1).LogAsync(
-            StoreAuditActions.StoreProductUpdated, AuditEntityTypes.Product, gas.Id,
+            StoreAuditActions.StoreProductUpdated, StoreAuditSubjectTypes.Product, gas.Id,
             Arg.Is<string>(s => s.Contains("income 75900008")), Arg.Any<Guid>());
     }
 

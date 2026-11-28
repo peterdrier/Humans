@@ -187,7 +187,7 @@ Settled decisions that read as accidents. Do not re-litigate these.
 - **The review queue renders in the admin shell for admin-role users and the member shell for
   everyone else**, by the Shell's one layout rule (`docs/sections/admin-shell.md`); the sidebar
   filters itself.
-- **`Humans.Expenses` references `Humans.Budget` and `Humans.AuditLog` themselves**, not only
+- **`Humans.Expenses` references `Humans.Budget` and `Humans.Audit` themselves**, not only
   their contracts leaves, because a view component and a resource key live in the section
   projects. Both directions are checked acyclic.
 

@@ -1,4 +1,4 @@
-using Humans.AuditLog.Contracts;
+using Humans.Audit.Contracts;
 using Humans.Base.Enums;
 using Humans.Google.Contracts;
 using Humans.Google.Data;

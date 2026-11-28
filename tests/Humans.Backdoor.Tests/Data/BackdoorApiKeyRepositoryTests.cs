@@ -13,9 +13,7 @@ public sealed class BackdoorApiKeyRepositoryTests : IDisposable
 
     public BackdoorApiKeyRepositoryTests()
     {
-        var options = new DbContextOptionsBuilder<BackdoorDbContext>()
-            .UseInMemoryDatabase(Guid.NewGuid().ToString())
-            .Options;
+        var options = TestDbOptions.InMemory<BackdoorDbContext>();
         _db = new BackdoorDbContext(options);
         _repository = new BackdoorApiKeyRepository(new TestDbContextFactory<BackdoorDbContext>(options));
     }

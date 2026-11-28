@@ -18,9 +18,7 @@ public sealed class EmailOutboxRepositoryTests : IDisposable
 
     public EmailOutboxRepositoryTests()
     {
-        var options = new DbContextOptionsBuilder<EmailDbContext>()
-            .UseInMemoryDatabase(Guid.NewGuid().ToString())
-            .Options;
+        var options = TestDbOptions.InMemory<EmailDbContext>();
         _dbContext = new EmailDbContext(options);
         _clock = new FakeClock(Instant.FromUtc(2026, 4, 1, 12, 0));
         _repo = new EmailOutboxRepository(new TestDbContextFactory<EmailDbContext>(options));

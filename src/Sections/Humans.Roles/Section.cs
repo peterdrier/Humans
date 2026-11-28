@@ -1,4 +1,4 @@
-using Humans.AuditLog.Contracts;
+using Humans.Audit.Contracts;
 using Humans.Base.Constants;
 using Humans.Base.Hosting;
 using Humans.Base.Interfaces;
@@ -14,12 +14,13 @@ using Humans.Users.Contracts;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Humans.Roles.Controllers;
 
 [assembly: Humans.Base.Demo.NoDemoStory("No demo story written yet.")]
 
 namespace Humans.Roles;
 
-public sealed class Section : ISection, ISectionRoles, ISectionNav, ISectionAdminNav, ISectionPolicies, ITeamRolesPart
+public sealed class Section : SectionBase, ISectionRoles, ISectionNav, ISectionAdminNav, ISectionPolicies, ITeamRolesPart
 {
     Type ITeamRolesPart.Card => typeof(TeamRolesCardViewComponent);
 
@@ -34,12 +35,12 @@ public sealed class Section : ISection, ISectionRoles, ISectionNav, ISectionAdmi
         [new("Nav_Roles", Controller: "Roles", Action: "Index", Weight: 21)];
 
     IEnumerable<AdminNavGroup> ISectionAdminNav.Groups() =>
-        [new("Roles", [new("Roles", "Roles", "Admin", null, null, "fa-solid fa-user-tag", RolesPolicies.Read)])];
+        [AdminGroup([AdminLink<RolesController>("Roles", nameof(RolesController.Admin), "fa-solid fa-user-tag", RolesPolicies.Read)])];
 
     void ISectionPolicies.AddPolicies(AuthorizationOptions options) =>
         options.AddPolicy(RolesPolicies.Read, policy => policy.RequireRole(RolesSystemRoles.RolesAdmin, RoleNames.Board, RoleNames.Admin));
 
-    public void Register(IServiceCollection services, IConfiguration configuration)
+    public override void Register(IServiceCollection services, IConfiguration configuration)
     {
         services.AddSingleton<IAuditActionContributor, RolesAuditActions>();
         services.AddSectionDbContext<RolesDbContext>(sentinelTable: "role_definitions");

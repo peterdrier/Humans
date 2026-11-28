@@ -1,4 +1,5 @@
 using System.Text.RegularExpressions;
+using Humans.Base.Data;
 using Humans.Base.Enums;
 using Humans.Google.Domain;
 using Microsoft.EntityFrameworkCore;
@@ -7,23 +8,19 @@ using NodaTime;
 namespace Humans.Google.Data;
 
 internal sealed class GoogleSyncLogRepository(IDbContextFactory<GoogleIntegrationDbContext> factory)
-    : IGoogleSyncLogRepository
+    : SectionRepository<GoogleIntegrationDbContext>(factory), IGoogleSyncLogRepository
 {
     private const int MaxRows = 200;
 
-    public async Task AddAsync(GoogleSyncLogEntry entry, CancellationToken ct = default)
-    {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
-        ctx.GoogleSyncLog.Add(entry);
-        await ctx.SaveChangesAsync(ct);
-    }
+    public async Task AddAsync(GoogleSyncLogEntry entry, CancellationToken ct = default) =>
+        await InsertAsync(entry, ct);
 
     public async Task AddRangeAsync(IReadOnlyCollection<GoogleSyncLogEntry> entries, CancellationToken ct = default)
     {
         if (entries.Count == 0)
             return;
 
-        await using var ctx = await factory.CreateDbContextAsync(ct);
+        await using var ctx = await CreateDbContextAsync(ct);
         ctx.GoogleSyncLog.AddRange(entries);
         await ctx.SaveChangesAsync(ct);
     }
@@ -34,7 +31,7 @@ internal sealed class GoogleSyncLogRepository(IDbContextFactory<GoogleIntegratio
         if (ids.Count == 0)
             return new HashSet<Guid>();
 
-        await using var ctx = await factory.CreateDbContextAsync(ct);
+        await using var ctx = await CreateDbContextAsync(ct);
         var found = await ctx.GoogleSyncLog
             .AsNoTracking()
             .Where(e => ids.Contains(e.Id))
@@ -44,23 +41,20 @@ internal sealed class GoogleSyncLogRepository(IDbContextFactory<GoogleIntegratio
     }
 
     public async Task<IReadOnlyList<GoogleSyncLogEntry>> GetByResourceAsync(
-        Guid resourceId, CancellationToken ct = default)
-    {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
-        return await ctx.GoogleSyncLog
+        Guid resourceId, CancellationToken ct = default) =>
+        await RunAsync(ctx => ctx.GoogleSyncLog
             .AsNoTracking()
             .Where(e => e.ResourceId == resourceId)
             .OrderByDescending(e => e.OccurredAt) // arch:db-sort-ok top-N selector
             .Take(MaxRows)
-            .ToListAsync(ct);
-    }
+            .ToListAsync(ct), ct);
 
     public async Task<IReadOnlyList<GoogleSyncLogEntry>> GetRecentAsync(
         Instant? from, Instant? to, GoogleSyncLogAction? action, GoogleSyncSource? source, bool? success,
         IReadOnlyCollection<Guid>? resourceIds, int limit, CancellationToken ct = default,
         string? unlinkedDescriptionContains = null)
     {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
+        await using var ctx = await CreateDbContextAsync(ct);
         var query = ctx.GoogleSyncLog.AsNoTracking();
         if (unlinkedDescriptionContains is not null)
         {
@@ -84,11 +78,8 @@ internal sealed class GoogleSyncLogRepository(IDbContextFactory<GoogleIntegratio
             .ToListAsync(ct);
     }
 
-    public async Task<IReadOnlyList<Guid>> GetResourceIdsAsync(CancellationToken ct = default)
-    {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
-        return await ctx.GoogleSyncLog.AsNoTracking().Select(e => e.ResourceId).Distinct().ToListAsync(ct);
-    }
+    public async Task<IReadOnlyList<Guid>> GetResourceIdsAsync(CancellationToken ct = default) =>
+        await RunAsync(ctx => ctx.GoogleSyncLog.AsNoTracking().Select(e => e.ResourceId).Distinct().ToListAsync(ct), ct);
 
     public async Task<IReadOnlyList<GoogleSyncLogEntry>> GetByUserIdsAsync(
         IReadOnlyCollection<Guid> userIds, CancellationToken ct = default)
@@ -96,7 +87,7 @@ internal sealed class GoogleSyncLogRepository(IDbContextFactory<GoogleIntegratio
         if (userIds.Count == 0)
             return [];
 
-        await using var ctx = await factory.CreateDbContextAsync(ct);
+        await using var ctx = await CreateDbContextAsync(ct);
         return await ctx.GoogleSyncLog
             .AsNoTracking()
             .Where(e => e.UserId.HasValue && userIds.Contains(e.UserId.Value))
@@ -111,7 +102,7 @@ internal sealed class GoogleSyncLogRepository(IDbContextFactory<GoogleIntegratio
         if (userIds.Count == 0)
             return 0;
 
-        await using var ctx = await factory.CreateDbContextAsync(ct);
+        await using var ctx = await CreateDbContextAsync(ct);
         var rows = await ctx.GoogleSyncLog
             .Where(e => e.UserId.HasValue && userIds.Contains(e.UserId.Value))
             .ToListAsync(ct);
@@ -124,7 +115,7 @@ internal sealed class GoogleSyncLogRepository(IDbContextFactory<GoogleIntegratio
 
     public async Task<int> DeleteBeforeAsync(Instant cutoff, CancellationToken ct = default)
     {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
+        await using var ctx = await CreateDbContextAsync(ct);
         var rows = await ctx.GoogleSyncLog.Where(e => e.OccurredAt < cutoff).ToListAsync(ct);
         if (rows.Count == 0) return 0;
 
@@ -139,7 +130,7 @@ internal sealed class GoogleSyncLogRepository(IDbContextFactory<GoogleIntegratio
         if (userIds.Count == 0)
             return [];
 
-        await using var ctx = await factory.CreateDbContextAsync(ct);
+        await using var ctx = await CreateDbContextAsync(ct);
         return await ctx.GoogleSyncLog
             .AsNoTracking()
             .Where(e => e.UserId.HasValue && userIds.Contains(e.UserId.Value))

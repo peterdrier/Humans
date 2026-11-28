@@ -1,7 +1,7 @@
 using Humans.Testing;
 using System.Security.Claims;
 using AwesomeAssertions;
-using Humans.AuditLog.Contracts;
+using Humans.Audit.Contracts;
 using Humans.Budget.Contracts;
 using Humans.Campaigns.Contracts;
 using Humans.Governance.Contracts;
@@ -48,8 +48,7 @@ public sealed class EventParticipationServiceTests : IDisposable
 
     public EventParticipationServiceTests()
     {
-        var options = new DbContextOptionsBuilder<TicketsDbContext>()
-            .UseInMemoryDatabase(Guid.NewGuid().ToString()).Options;
+        var options = TestDbOptions.InMemory<TicketsDbContext>();
         _db = new TicketsDbContext(options);
         var repo = new EventParticipationRepository(new TestDbContextFactory<TicketsDbContext>(options));
         _queries = new TicketQueryService(FixedOrgTimeZone.Madrid, Substitute.For<ITicketRepository>(),

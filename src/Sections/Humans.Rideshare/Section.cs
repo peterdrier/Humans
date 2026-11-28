@@ -16,14 +16,15 @@ using Microsoft.Extensions.Configuration;
 using Humans.Notifications.Contracts;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
-using Humans.AuditLog.Contracts;
+using Humans.Audit.Contracts;
+using Humans.Rideshare.Controllers;
 
 [assembly: Humans.Base.Demo.NoDemoStory("No demo story written yet.")]
 
 namespace Humans.Rideshare;
 
 public sealed class Section :
-    ISection,
+    SectionBase,
     ISectionRoles,
     ISectionAdminNav,
     ISectionPolicies
@@ -35,7 +36,7 @@ public sealed class Section :
             "fa-solid fa-car"),
     ];
 
-    public void Register(IServiceCollection services, IConfiguration configuration)
+    public override void Register(IServiceCollection services, IConfiguration configuration)
     {
         services.AddSingleton<IAuditActionContributor, RideshareAuditActions>();
         services.AddSingleton<INotificationSourceContributor, RideshareNotificationSources>();
@@ -88,9 +89,9 @@ public sealed class Section :
 
     IEnumerable<AdminNavGroup> ISectionAdminNav.Groups() =>
     [
-        new("Rideshare", [
-            new("Settings & stats", "RideshareAdmin", "Index", null, null, "fa-solid fa-car",          RidesharePolicies.Read),
-            new("Day roster",       "RideshareAdmin", "Day",   null, null, "fa-solid fa-calendar-day", RidesharePolicies.Read)
+        AdminGroup([
+            AdminLink<RideshareAdminController>("Settings & stats", nameof(RideshareAdminController.Index), "fa-solid fa-car", RidesharePolicies.Read),
+            AdminLink<RideshareAdminController>("Day roster", nameof(RideshareAdminController.Day), "fa-solid fa-calendar-day", RidesharePolicies.Read)
         ])
     ];
 

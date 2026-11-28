@@ -10,16 +10,16 @@ using Humans.Users.Contracts;
 using Microsoft.Extensions.Configuration;
 using Humans.Notifications.Contracts;
 using Microsoft.Extensions.DependencyInjection;
-using Humans.AuditLog.Contracts;
+using Humans.Audit.Contracts;
 
 namespace Humans.Onboarding;
 
 public sealed class Section :
-    ISection,
+    SectionBase,
     IIssueQueueOwner,
     ISectionChrome
 {
-    public void Register(IServiceCollection services, IConfiguration configuration)
+    public override void Register(IServiceCollection services, IConfiguration configuration)
     {
         services.AddSingleton<IAuditActionContributor, OnboardingAuditActions>();
         services.AddSingleton<INotificationSourceContributor, OnboardingNotificationSources>();

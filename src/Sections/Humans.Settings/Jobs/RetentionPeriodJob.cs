@@ -1,4 +1,4 @@
-using Humans.AuditLog.Contracts;
+using Humans.Audit.Contracts;
 using Humans.Base.Interfaces;
 using Humans.Settings.Contracts;
 using Humans.Settings.Services;
@@ -43,7 +43,7 @@ internal sealed class RetentionPeriodJob(
                 continue;
 
             await auditLog.LogAsync(
-                SettingsAuditActions.RetentionPeriodDeleted, AuditEntityTypes.RetentionPeriod, Guid.Empty,
+                SettingsAuditActions.RetentionPeriodDeleted, SettingsAuditSubjectTypes.RetentionPeriod, Guid.Empty,
                 $"Deleted {deleted} {contributor.Label} older than {days} days.", JobName);
         }
 

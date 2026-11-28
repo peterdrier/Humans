@@ -15,23 +15,24 @@ using Humans.Gdpr.Contracts;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
-using Humans.AuditLog.Contracts;
+using Humans.Audit.Contracts;
 using Humans.Permissions.Contracts;
 using Humans.Teams.Contracts;
+using Humans.Expenses.Controllers;
 
 [assembly: Humans.Base.Demo.NoDemoStory("No demo story written yet.")]
 
 namespace Humans.Expenses;
 
 public sealed class Section :
-    ISection,
+    SectionBase,
     ISectionAdminNav,
     ISectionAdminTiles,
     ISectionJobs,
     ISectionPermissions,
     ISectionPolicies
 {
-    public void Register(IServiceCollection services, IConfiguration configuration)
+    public override void Register(IServiceCollection services, IConfiguration configuration)
     {
         services.AddSingleton<IAuditActionContributor, ExpensesAuditActions>();
         services.AddSectionDbContext<ExpensesDbContext>(sentinelTable: "expense_reports");
@@ -69,10 +70,10 @@ public sealed class Section :
 
     IEnumerable<AdminNavGroup> ISectionAdminNav.Groups() =>
     [
-        new("Expenses", [
+        AdminGroup([
             // The finance-admin door to the review queue, so it keeps the admin policy. Members reach the same page
             // from /Expenses.
-            new("Review", "Expenses", "Review", null, null, "fa-solid fa-magnifying-glass-dollar", FinancePolicies.Manage)
+            AdminLink<ExpensesController>("Review", nameof(ExpensesController.Review), "fa-solid fa-magnifying-glass-dollar", FinancePolicies.Manage)
         ])
     ];
 

@@ -10,7 +10,7 @@ using Microsoft.Extensions.Localization;
 using Humans.Users.Data;
 using AwesomeAssertions;
 using Humans.Users.Tests.Infrastructure;
-using Humans.AuditLog.Contracts;
+using Humans.Audit.Contracts;
 using Microsoft.Extensions.Logging.Abstractions;
 using NodaTime.Testing;
 using NSubstitute;
@@ -156,8 +156,7 @@ public class AccountMergeServiceMergeTests
             Value = "contact-number",
             Visibility = ContactFieldVisibility.BoardOnly
         };
-        var options = new DbContextOptionsBuilder<UsersDbContext>()
-            .UseInMemoryDatabase(Guid.NewGuid().ToString()).Options;
+        var options = TestDbOptions.InMemory<UsersDbContext>();
         await using (var seed = new UsersDbContext(options))
         {
             seed.Users.AddRange(source, target);
@@ -338,8 +337,7 @@ public class AccountMergeServiceMergeTests
         var outsiderId = Guid.NewGuid();
         var unrelatedSourceId = Guid.NewGuid();
         var unrelatedTargetId = Guid.NewGuid();
-        var options = new DbContextOptionsBuilder<UsersDbContext>()
-            .UseInMemoryDatabase(Guid.NewGuid().ToString()).Options;
+        var options = TestDbOptions.InMemory<UsersDbContext>();
         await using var db = new UsersDbContext(options);
         db.Users.AddRange(new[] { oldestId, archivedId, survivorId, outsiderId, unrelatedSourceId, unrelatedTargetId }
             .Select(id => new User { Id = id }));

@@ -4,6 +4,7 @@ using Microsoft.EntityFrameworkCore.Diagnostics;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Npgsql;
+using Npgsql.EntityFrameworkCore.PostgreSQL.Infrastructure;
 
 namespace Humans.Base.Hosting;
 
@@ -59,12 +60,20 @@ public static class SectionDbContextServiceCollectionExtensions
         Type contextType,
         string migrationsHistoryTable)
     {
-        options.UseNpgsql(sp.GetRequiredService<NpgsqlDataSource>(), npgsqlOptions =>
-        {
-            npgsqlOptions.UseNodaTime();
-            npgsqlOptions.MigrationsAssembly(contextType.Assembly.GetName().Name!);
-            npgsqlOptions.UseQuerySplittingBehavior(QuerySplittingBehavior.SplitQuery);
-            npgsqlOptions.MigrationsHistoryTable(migrationsHistoryTable);
-        });
+        options.UseNpgsql(sp.GetRequiredService<NpgsqlDataSource>(),
+            npgsqlOptions => ConfigureNpgsql(npgsqlOptions, contextType, migrationsHistoryTable));
+    }
+
+    /// <summary>The Npgsql options the runtime registration and <see cref="SectionDesignTimeDbContextFactory{TContext}"/>
+    /// share, so a CI apply writes the history table the app reads.</summary>
+    internal static void ConfigureNpgsql(
+        NpgsqlDbContextOptionsBuilder npgsqlOptions,
+        Type contextType,
+        string migrationsHistoryTable)
+    {
+        npgsqlOptions.UseNodaTime();
+        npgsqlOptions.MigrationsAssembly(contextType.Assembly.GetName().Name!);
+        npgsqlOptions.UseQuerySplittingBehavior(QuerySplittingBehavior.SplitQuery);
+        npgsqlOptions.MigrationsHistoryTable(migrationsHistoryTable);
     }
 }

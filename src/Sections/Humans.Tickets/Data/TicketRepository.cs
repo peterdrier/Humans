@@ -1,4 +1,5 @@
 using System.Text.RegularExpressions;
+using Humans.Base.Data;
 using Humans.Base.Extensions;
 using Humans.Tickets.Contracts;
 using Microsoft.EntityFrameworkCore;
@@ -8,22 +9,19 @@ using Humans.Tickets.Services.Dtos;
 
 namespace Humans.Tickets.Data;
 
-internal sealed class TicketRepository(IDbContextFactory<TicketsDbContext> factory, IClock clock) : ITicketRepository
+internal sealed class TicketRepository(IDbContextFactory<TicketsDbContext> factory, IClock clock) : SectionRepository<TicketsDbContext>(factory), ITicketRepository
 {
     private const RegexOptions LiteralSearchOptions =
         RegexOptions.IgnoreCase | RegexOptions.CultureInvariant | RegexOptions.NonBacktracking;
 
-    public async Task<TicketSyncState?> GetSyncStateAsync(CancellationToken ct = default)
-    {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
-        return await ctx.TicketSyncStates
+    public async Task<TicketSyncState?> GetSyncStateAsync(CancellationToken ct = default) =>
+        await RunAsync(ctx => ctx.TicketSyncStates
             .AsNoTracking()
-            .FirstOrDefaultAsync(s => s.Id == 1, ct);
-    }
+            .FirstOrDefaultAsync(s => s.Id == 1, ct), ct);
 
     public async Task PersistSyncStateAsync(TicketSyncState state, CancellationToken ct = default)
     {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
+        await using var ctx = await CreateDbContextAsync(ct);
         var existing = await ctx.TicketSyncStates.FirstOrDefaultAsync(s => s.Id == state.Id, ct);
         if (existing is null)
         {
@@ -38,30 +36,47 @@ internal sealed class TicketRepository(IDbContextFactory<TicketsDbContext> facto
 
     public async Task ResetSyncStateLastSyncAsync(CancellationToken ct = default)
     {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
+        await using var ctx = await CreateDbContextAsync(ct);
         var syncState = await ctx.TicketSyncStates.FindAsync([1], ct);
         if (syncState is null) return;
         syncState.LastSyncAt = null;
         await ctx.SaveChangesAsync(ct);
     }
 
-    public async Task<bool> IsScheduledSyncEnabledAsync(CancellationToken ct = default)
-    {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
-        return await ctx.TicketSettings.AsNoTracking()
+    public async Task<bool> IsScheduledSyncEnabledAsync(CancellationToken ct = default) =>
+        await RunAsync(ctx => ctx.TicketSettings.AsNoTracking()
             .Where(s => s.Id == 1)
             .Select(s => s.IsScheduledSyncEnabled)
-            .FirstOrDefaultAsync(ct);
-    }
+            .FirstOrDefaultAsync(ct), ct);
 
     public async Task SetScheduledSyncEnabledAsync(bool enabled, CancellationToken ct = default)
     {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
+        await using var ctx = await CreateDbContextAsync(ct);
         var row = await ctx.TicketSettings.FindAsync([1], ct);
         if (row is null)
             ctx.TicketSettings.Add(new TicketSettings { Id = 1, IsScheduledSyncEnabled = enabled });
         else
             row.IsScheduledSyncEnabled = enabled;
+        await ctx.SaveChangesAsync(ct);
+    }
+
+    public async Task<int> GetPostEventHoldDaysAsync(CancellationToken ct = default)
+    {
+        await using var ctx = await CreateDbContextAsync(ct);
+        return await ctx.TicketSettings.AsNoTracking()
+            .Where(s => s.Id == 1)
+            .Select(s => s.PostEventHoldDays)
+            .FirstOrDefaultAsync(ct) ?? TicketSettings.DefaultPostEventHoldDays;
+    }
+
+    public async Task SetPostEventHoldDaysAsync(int days, CancellationToken ct = default)
+    {
+        await using var ctx = await CreateDbContextAsync(ct);
+        var row = await ctx.TicketSettings.FindAsync([1], ct);
+        if (row is null)
+            ctx.TicketSettings.Add(new TicketSettings { Id = 1, PostEventHoldDays = days });
+        else
+            row.PostEventHoldDays = days;
         await ctx.SaveChangesAsync(ct);
     }
 
@@ -72,7 +87,7 @@ internal sealed class TicketRepository(IDbContextFactory<TicketsDbContext> facto
         if (vendorOrderIds.Count == 0)
             return new Dictionary<string, TicketOrder>(StringComparer.Ordinal);
 
-        await using var ctx = await factory.CreateDbContextAsync(ct);
+        await using var ctx = await CreateDbContextAsync(ct);
         var ids = vendorOrderIds.ToList();
         var orders = await ctx.TicketOrders
             .AsNoTracking()
@@ -88,7 +103,7 @@ internal sealed class TicketRepository(IDbContextFactory<TicketsDbContext> facto
         if (vendorTicketIds.Count == 0)
             return new Dictionary<string, TicketAttendee>(StringComparer.Ordinal);
 
-        await using var ctx = await factory.CreateDbContextAsync(ct);
+        await using var ctx = await CreateDbContextAsync(ct);
         var ids = vendorTicketIds.ToList();
         var attendees = await ctx.TicketAttendees
             .AsNoTracking()
@@ -100,7 +115,7 @@ internal sealed class TicketRepository(IDbContextFactory<TicketsDbContext> facto
     public async Task<IReadOnlyDictionary<string, Guid>> GetOrderIdsByVendorIdAsync(
         CancellationToken ct = default)
     {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
+        await using var ctx = await CreateDbContextAsync(ct);
         var rows = await ctx.TicketOrders
             .AsNoTracking()
             .Select(o => new { o.VendorOrderId, o.Id })
@@ -111,7 +126,7 @@ internal sealed class TicketRepository(IDbContextFactory<TicketsDbContext> facto
     public async Task<IReadOnlyList<TicketOrder>> GetOrdersNeedingStripeEnrichmentAsync(
         CancellationToken ct = default)
     {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
+        await using var ctx = await CreateDbContextAsync(ct);
         // Exclude empty, whitespace and "--" placeholder ids in SQL, so bogus ids never reach Stripe.
         return await ctx.TicketOrders
             .AsNoTracking()
@@ -123,38 +138,29 @@ internal sealed class TicketRepository(IDbContextFactory<TicketsDbContext> facto
     }
 
     public async Task<IReadOnlyList<TicketOrder>> GetAllOrdersWithAttendeesAsync(
-        CancellationToken ct = default)
-    {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
-        return await ctx.TicketOrders
+        CancellationToken ct = default) =>
+        await RunAsync(ctx => ctx.TicketOrders
             .AsNoTracking()
             .Include(o => o.Attendees)
-            .ToListAsync(ct);
-    }
+            .ToListAsync(ct), ct);
 
     public async Task<IReadOnlyList<OrderDiscountCodeRow>> GetOrderDiscountCodesAsync(
-        CancellationToken ct = default)
-    {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
-        return await ctx.TicketOrders
+        CancellationToken ct = default) =>
+        await RunAsync(ctx => ctx.TicketOrders
             .AsNoTracking()
             .Where(o => o.DiscountCode != null)
             .Select(o => new OrderDiscountCodeRow(o.DiscountCode!, o.PurchasedAt))
-            .ToListAsync(ct);
-    }
+            .ToListAsync(ct), ct);
 
     public async Task<IReadOnlyList<MatchedAttendeeRow>> GetMatchedAttendeesForEventAsync(
         string vendorEventId,
-        CancellationToken ct = default)
-    {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
-        return await ctx.TicketAttendees
+        CancellationToken ct = default) =>
+        await RunAsync(ctx => ctx.TicketAttendees
             .AsNoTracking()
             .Where(a => a.MatchedUserId != null && a.VendorEventId == vendorEventId)
             .Select(a => new MatchedAttendeeRow(
                 a.MatchedUserId!.Value, a.Status, a.CheckedInAt))
-            .ToListAsync(ct);
-    }
+            .ToListAsync(ct), ct);
 
     public async Task UpsertOrdersAsync(
         IReadOnlyList<TicketOrder> orders,
@@ -162,7 +168,7 @@ internal sealed class TicketRepository(IDbContextFactory<TicketsDbContext> facto
     {
         if (orders.Count == 0) return;
 
-        await using var ctx = await factory.CreateDbContextAsync(ct);
+        await using var ctx = await CreateDbContextAsync(ct);
         var vendorIds = orders.Select(o => o.VendorOrderId).ToList();
         var existing = await ctx.TicketOrders
             .Where(o => vendorIds.Contains(o.VendorOrderId))
@@ -212,7 +218,7 @@ internal sealed class TicketRepository(IDbContextFactory<TicketsDbContext> facto
     {
         if (attendees.Count == 0) return;
 
-        await using var ctx = await factory.CreateDbContextAsync(ct);
+        await using var ctx = await CreateDbContextAsync(ct);
         var vendorIds = attendees.Select(a => a.VendorTicketId).ToList();
         var existing = await ctx.TicketAttendees
             .Where(a => vendorIds.Contains(a.VendorTicketId))
@@ -263,7 +269,7 @@ internal sealed class TicketRepository(IDbContextFactory<TicketsDbContext> facto
             .GroupBy(c => c.VendorTicketId, StringComparer.Ordinal)
             .ToDictionary(g => g.Key, g => g.Min(c => c.CheckedInAt), StringComparer.Ordinal);
 
-        await using var ctx = await factory.CreateDbContextAsync(ct);
+        await using var ctx = await CreateDbContextAsync(ct);
         var vendorIds = earliestByTicket.Keys.ToList();
         var attendees = await ctx.TicketAttendees
             .Where(a => vendorIds.Contains(a.VendorTicketId))
@@ -285,7 +291,7 @@ internal sealed class TicketRepository(IDbContextFactory<TicketsDbContext> facto
     public async Task<IReadOnlyList<TicketAttendee>> GetUnmatchedActiveAttendeesAsync(
         string vendorEventId, CancellationToken ct = default)
     {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
+        await using var ctx = await CreateDbContextAsync(ct);
         var attendees = await ctx.TicketAttendees
             .Where(a =>
                 a.VendorEventId == vendorEventId &&
@@ -303,7 +309,7 @@ internal sealed class TicketRepository(IDbContextFactory<TicketsDbContext> facto
     {
         if (updates.Count == 0) return;
 
-        await using var ctx = await factory.CreateDbContextAsync(ct);
+        await using var ctx = await CreateDbContextAsync(ct);
         var ids = updates.Select(u => u.OrderId).ToList();
         var tracked = await ctx.TicketOrders
             .Where(o => ids.Contains(o.Id))
@@ -326,7 +332,7 @@ internal sealed class TicketRepository(IDbContextFactory<TicketsDbContext> facto
     {
         if (orders.Count == 0) return;
 
-        await using var ctx = await factory.CreateDbContextAsync(ct);
+        await using var ctx = await CreateDbContextAsync(ct);
         var ids = orders.Select(o => o.Id).ToList();
         var tracked = await ctx.TicketOrders
             .Where(o => ids.Contains(o.Id))
@@ -348,48 +354,39 @@ internal sealed class TicketRepository(IDbContextFactory<TicketsDbContext> facto
         await ctx.SaveChangesAsync(ct);
     }
     public async Task<int> CountValidAttendeesMatchedToUserAsync(
-        Guid userId, CancellationToken ct = default)
-    {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
-        return await ctx.TicketAttendees
+        Guid userId, CancellationToken ct = default) =>
+        await RunAsync(ctx => ctx.TicketAttendees
             .AsNoTracking()
             .CountAsync(
                 a => a.MatchedUserId == userId &&
                      (a.Status == TicketAttendeeStatus.Valid || a.Status == TicketAttendeeStatus.CheckedIn),
-                ct);
-    }
+                ct), ct);
 
     public async Task<IReadOnlyList<string>> GetValidAttendeeEmailsAsync(
-        CancellationToken ct = default)
-    {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
-        return await ctx.TicketAttendees
+        CancellationToken ct = default) =>
+        await RunAsync(ctx => ctx.TicketAttendees
             .AsNoTracking()
             .Where(a => a.AttendeeEmail != null &&
                         (a.Status == TicketAttendeeStatus.Valid ||
                          a.Status == TicketAttendeeStatus.CheckedIn))
             .Select(a => a.AttendeeEmail!)
-            .ToListAsync(ct);
-    }
+            .ToListAsync(ct), ct);
 
     public async Task<IReadOnlyList<Guid>> GetEventTicketHolderUserIdsAsync(
-        string vendorEventId, CancellationToken ct = default)
-    {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
-        return await ctx.TicketAttendees
+        string vendorEventId, CancellationToken ct = default) =>
+        await RunAsync(ctx => ctx.TicketAttendees
             .AsNoTracking()
             .Where(a => a.MatchedUserId != null &&
                         a.VendorEventId == vendorEventId &&
                         (a.Status == TicketAttendeeStatus.Valid || a.Status == TicketAttendeeStatus.CheckedIn))
             .Select(a => a.MatchedUserId!.Value)
             .Distinct()
-            .ToListAsync(ct);
-    }
+            .ToListAsync(ct), ct);
 
     public async Task<bool> HasEventTicketAsync(
         Guid userId, string vendorEventId, CancellationToken ct = default)
     {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
+        await using var ctx = await CreateDbContextAsync(ct);
 
         // Attendee rows only: buying for someone else is not holding a ticket.
         return await ctx.TicketAttendees
@@ -400,44 +397,35 @@ internal sealed class TicketRepository(IDbContextFactory<TicketsDbContext> facto
                      (a.Status == TicketAttendeeStatus.Valid || a.Status == TicketAttendeeStatus.CheckedIn), ct);
     }
 
-    public async Task<IReadOnlyList<string>> GetDistinctTicketTypesAsync(CancellationToken ct = default)
-    {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
-        return await ctx.TicketAttendees
+    public async Task<IReadOnlyList<string>> GetDistinctTicketTypesAsync(CancellationToken ct = default) =>
+        await RunAsync(ctx => ctx.TicketAttendees
             .AsNoTracking()
             .Select(a => a.TicketTypeName)
             .Distinct()
-            .ToListAsync(ct);
-    }
+            .ToListAsync(ct), ct);
 
     public async Task<IReadOnlyList<TicketOrder>> GetOrdersMatchedToUserAsync(
-        Guid userId, CancellationToken ct = default)
-    {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
-        return await ctx.TicketOrders
+        Guid userId, CancellationToken ct = default) =>
+        await RunAsync(ctx => ctx.TicketOrders
             .AsNoTracking()
             .Include(o => o.Attendees)
             .Where(o => o.MatchedUserId == userId)
             // arch:db-sort-ok user ticket history chronology over unbounded orders
             .OrderByDescending(o => o.PurchasedAt)
-            .ToListAsync(ct);
-    }
+            .ToListAsync(ct), ct);
 
     public async Task<IReadOnlyList<TicketAttendee>> GetAttendeesMatchedToUserAsync(
-        Guid userId, CancellationToken ct = default)
-    {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
-        return await ctx.TicketAttendees
+        Guid userId, CancellationToken ct = default) =>
+        await RunAsync(ctx => ctx.TicketAttendees
             .AsNoTracking()
             .Where(a => a.MatchedUserId == userId)
-            .ToListAsync(ct);
-    }
+            .ToListAsync(ct), ct);
 
     public async Task<IReadOnlyList<TicketAttendee>> GetAttendeesVisibleToUserAsync(
         Guid userId, CancellationToken ct = default)
     {
         // Ownership is attendee-only: the buyer never sees attendees other accounts own.
-        await using var ctx = await factory.CreateDbContextAsync(ct);
+        await using var ctx = await CreateDbContextAsync(ct);
         return await ctx.TicketAttendees
             .AsNoTracking()
             .Where(a => a.MatchedUserId == userId)
@@ -446,7 +434,7 @@ internal sealed class TicketRepository(IDbContextFactory<TicketsDbContext> facto
 
     public async Task<TicketDashboardTotals> GetDashboardTotalsAsync(CancellationToken ct = default)
     {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
+        await using var ctx = await CreateDbContextAsync(ct);
 
         var paidOrders = ctx.TicketOrders
             .AsNoTracking()
@@ -478,10 +466,8 @@ internal sealed class TicketRepository(IDbContextFactory<TicketsDbContext> facto
     }
 
     public async Task<IReadOnlyList<PaidOrderPaymentMethodRow>> GetPaidOrderPaymentMethodsAsync(
-        CancellationToken ct = default)
-    {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
-        return await ctx.TicketOrders
+        CancellationToken ct = default) =>
+        await RunAsync(ctx => ctx.TicketOrders
             .AsNoTracking()
             .Where(o => o.PaymentStatus == TicketPaymentStatus.Paid && o.PaymentMethod != null)
             .Select(o => new PaidOrderPaymentMethodRow
@@ -492,14 +478,11 @@ internal sealed class TicketRepository(IDbContextFactory<TicketsDbContext> facto
                 StripeFee = o.StripeFee,
                 ApplicationFee = o.ApplicationFee,
             })
-            .ToListAsync(ct);
-    }
+            .ToListAsync(ct), ct);
 
     public async Task<IReadOnlyList<OrderDateAndCount>> GetOrderDateAttendeeCountsAsync(
-        CancellationToken ct = default)
-    {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
-        return await ctx.TicketOrders
+        CancellationToken ct = default) =>
+        await RunAsync(ctx => ctx.TicketOrders
             .AsNoTracking()
             .Where(o => o.PaymentStatus == TicketPaymentStatus.Paid)
             .Select(o => new OrderDateAndCount
@@ -508,14 +491,11 @@ internal sealed class TicketRepository(IDbContextFactory<TicketsDbContext> facto
                 AttendeeCount = o.Attendees.Count(a =>
                     a.Status == TicketAttendeeStatus.Valid || a.Status == TicketAttendeeStatus.CheckedIn),
             })
-            .ToListAsync(ct);
-    }
+            .ToListAsync(ct), ct);
 
     public async Task<IReadOnlyList<RecentOrder>> GetRecentOrdersAsync(
-        int count, CancellationToken ct = default)
-    {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
-        return await ctx.TicketOrders
+        int count, CancellationToken ct = default) =>
+        await RunAsync(ctx => ctx.TicketOrders
             .AsNoTracking()
             // arch:db-sort-ok top-N dashboard selector over unbounded orders
             .OrderByDescending(o => o.PurchasedAt)
@@ -530,14 +510,11 @@ internal sealed class TicketRepository(IDbContextFactory<TicketsDbContext> facto
                 IsMatched = o.MatchedUserId != null,
                 PaymentStatus = o.PaymentStatus,
             })
-            .ToListAsync(ct);
-    }
+            .ToListAsync(ct), ct);
 
     public async Task<IReadOnlyList<PaidOrderSalesRow>> GetPaidOrderSalesRowsAsync(
-        CancellationToken ct = default)
-    {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
-        return await ctx.TicketOrders
+        CancellationToken ct = default) =>
+        await RunAsync(ctx => ctx.TicketOrders
             .AsNoTracking()
             .Where(o => o.PaymentStatus == TicketPaymentStatus.Paid)
             .Select(o => new PaidOrderSalesRow
@@ -563,14 +540,11 @@ internal sealed class TicketRepository(IDbContextFactory<TicketsDbContext> facto
                 FeeTax = o.FeeTax,
                 WithheldTax = o.WithheldTax,
             })
-            .ToListAsync(ct);
-    }
+            .ToListAsync(ct), ct);
 
     public async Task<IReadOnlyList<RefundedOrderRow>> GetRefundedOrderRowsAsync(
-        CancellationToken ct = default)
-    {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
-        return await ctx.TicketOrders
+        CancellationToken ct = default) =>
+        await RunAsync(ctx => ctx.TicketOrders
             .AsNoTracking()
             .Where(o => o.PaymentStatus == TicketPaymentStatus.Refunded)
             .Select(o => new RefundedOrderRow
@@ -582,14 +556,11 @@ internal sealed class TicketRepository(IDbContextFactory<TicketsDbContext> facto
                 FeeTax = o.FeeTax,
                 WithheldTax = o.WithheldTax,
             })
-            .ToListAsync(ct);
-    }
+            .ToListAsync(ct), ct);
 
     public async Task<IReadOnlyList<PaidAttendeeTypePriceRow>> GetPaidAttendeeTypePriceRowsAsync(
-        CancellationToken ct = default)
-    {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
-        return await ctx.TicketAttendees
+        CancellationToken ct = default) =>
+        await RunAsync(ctx => ctx.TicketAttendees
             .AsNoTracking()
             .Where(a =>
                 a.TicketOrder.PaymentStatus == TicketPaymentStatus.Paid &&
@@ -599,14 +570,11 @@ internal sealed class TicketRepository(IDbContextFactory<TicketsDbContext> facto
                 TicketTypeName = a.TicketTypeName,
                 Price = a.Price,
             })
-            .ToListAsync(ct);
-    }
+            .ToListAsync(ct), ct);
 
     public async Task<IReadOnlyList<DiscountCodeOrderRow>> GetOrdersWithDiscountCodesAsync(
-        CancellationToken ct = default)
-    {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
-        return await ctx.TicketOrders
+        CancellationToken ct = default) =>
+        await RunAsync(ctx => ctx.TicketOrders
             .AsNoTracking()
             .Where(o => o.DiscountCode != null)
             .Select(o => new DiscountCodeOrderRow
@@ -618,8 +586,7 @@ internal sealed class TicketRepository(IDbContextFactory<TicketsDbContext> facto
                 DiscountAmount = o.DiscountAmount,
                 IsPaid = o.PaymentStatus == TicketPaymentStatus.Paid,
             })
-            .ToListAsync(ct);
-    }
+            .ToListAsync(ct), ct);
 
     public async Task<(IReadOnlyList<OrderRow> Rows, int TotalCount)> GetOrdersPageAsync(
         string? search,
@@ -632,7 +599,7 @@ internal sealed class TicketRepository(IDbContextFactory<TicketsDbContext> facto
         bool? filterMatched,
         CancellationToken ct = default)
     {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
+        await using var ctx = await CreateDbContextAsync(ct);
         var query = ctx.TicketOrders.AsNoTracking().Include(o => o.Attendees).AsQueryable();
 
         if (search.HasSearchTerm(1))
@@ -702,7 +669,7 @@ internal sealed class TicketRepository(IDbContextFactory<TicketsDbContext> facto
         bool filterMultipleTickets,
         CancellationToken ct = default)
     {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
+        await using var ctx = await CreateDbContextAsync(ct);
         var query = ctx.TicketAttendees.AsNoTracking().Include(a => a.TicketOrder).AsQueryable();
 
         if (!string.IsNullOrEmpty(filterOrderId))
@@ -776,10 +743,8 @@ internal sealed class TicketRepository(IDbContextFactory<TicketsDbContext> facto
     }
 
     public async Task<IReadOnlyList<AttendeeExportRow>> GetAttendeeExportDataAsync(
-        CancellationToken ct = default)
-    {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
-        return await ctx.TicketAttendees
+        CancellationToken ct = default) =>
+        await RunAsync(ctx => ctx.TicketAttendees
             .AsNoTracking()
             .Include(a => a.TicketOrder)
             .Select(a => new AttendeeExportRow
@@ -791,13 +756,12 @@ internal sealed class TicketRepository(IDbContextFactory<TicketsDbContext> facto
                 Status = a.Status.ToString(),
                 VendorOrderId = a.TicketOrder.VendorOrderId,
             })
-            .ToListAsync(ct);
-    }
+            .ToListAsync(ct), ct);
 
     public async Task<IReadOnlyList<OrderExportRow>> GetOrderExportDataAsync(
         CancellationToken ct = default)
     {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
+        await using var ctx = await CreateDbContextAsync(ct);
         var orders = await ctx.TicketOrders
             .AsNoTracking()
             .Include(o => o.Attendees)
@@ -843,7 +807,7 @@ internal sealed class TicketRepository(IDbContextFactory<TicketsDbContext> facto
         string errorMessage,
         CancellationToken ct = default)
     {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
+        await using var ctx = await CreateDbContextAsync(ct);
         var state = await ctx.TicketSyncStates.FindAsync([1], ct);
         if (state is null)
             return null;
@@ -864,7 +828,7 @@ internal sealed class TicketRepository(IDbContextFactory<TicketsDbContext> facto
 
     public async Task<int> EraseUserPiiAsync(Guid userId, CancellationToken ct = default)
     {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
+        await using var ctx = await CreateDbContextAsync(ct);
 
         var tombstoneName = TicketPiiTombstone.Name;
         var tombstoneEmail = TicketPiiTombstone.EmailFor(userId);
@@ -899,7 +863,7 @@ internal sealed class TicketRepository(IDbContextFactory<TicketsDbContext> facto
         Guid sourceUserId, Guid targetUserId,
         CancellationToken ct = default)
     {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
+        await using var ctx = await CreateDbContextAsync(ct);
 
         var orders = await ctx.TicketOrders
             .Where(o => o.MatchedUserId == sourceUserId)

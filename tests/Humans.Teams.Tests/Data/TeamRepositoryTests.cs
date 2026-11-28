@@ -111,9 +111,7 @@ public sealed class TeamRepositoryTests : IDisposable
 
     public TeamRepositoryTests()
     {
-        var options = new DbContextOptionsBuilder<TeamsDbContext>()
-            .UseInMemoryDatabase(Guid.NewGuid().ToString())
-            .Options;
+        var options = TestDbOptions.InMemory<TeamsDbContext>();
         _dbContext = new TeamsDbContext(options);
         _clock = new FakeClock(Instant.FromUtc(2026, 3, 1, 12, 0));
         _repo = new TeamRepository(new TestDbContextFactory<TeamsDbContext>(options));

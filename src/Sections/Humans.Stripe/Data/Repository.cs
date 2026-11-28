@@ -1,14 +1,15 @@
+using Humans.Base.Data;
 using Humans.Stripe.Domain;
 using Microsoft.EntityFrameworkCore;
 using NodaTime;
 
 namespace Humans.Stripe.Data;
 
-internal sealed class Repository(IDbContextFactory<StripeDbContext> factory) : IStripeMirrorRepository
+internal sealed class Repository(IDbContextFactory<StripeDbContext> factory) : SectionRepository<StripeDbContext>(factory), IStripeMirrorRepository
 {
     public async Task ReplaceAccountAsync(StripeAccountSnapshot snapshot, Instant now, CancellationToken ct = default)
     {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
+        await using var ctx = await CreateDbContextAsync(ct);
         var account = snapshot.AccountId;
 
         Replace(ctx.StripeBalanceTransactions,
@@ -39,10 +40,8 @@ internal sealed class Repository(IDbContextFactory<StripeDbContext> factory) : I
         set.RemoveRange(existing.Values);
     }
 
-    public async Task<IReadOnlyList<StripeBalanceTransaction>> GetTransactionsAsync(CancellationToken ct = default)
-    {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
-        return await ctx.StripeBalanceTransactions.AsNoTracking()
+    public async Task<IReadOnlyList<StripeBalanceTransaction>> GetTransactionsAsync(CancellationToken ct = default) =>
+        await RunAsync(ctx => ctx.StripeBalanceTransactions.AsNoTracking()
             .Select(t => new StripeBalanceTransaction
             {
                 Id = t.Id,
@@ -65,36 +64,23 @@ internal sealed class Repository(IDbContextFactory<StripeDbContext> factory) : I
                 Metadata = t.Metadata,
                 SyncedAt = t.SyncedAt,
             })
-            .ToListAsync(ct);
-    }
+            .ToListAsync(ct), ct);
 
-    public async Task<StripeBalanceTransaction?> GetTransactionAsync(string id, CancellationToken ct = default)
-    {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
-        return await ctx.StripeBalanceTransactions.AsNoTracking().FirstOrDefaultAsync(t => t.Id == id, ct);
-    }
+    public async Task<StripeBalanceTransaction?> GetTransactionAsync(string id, CancellationToken ct = default) =>
+        await RunAsync(ctx => ctx.StripeBalanceTransactions.AsNoTracking().FirstOrDefaultAsync(t => t.Id == id, ct), ct);
 
-    public async Task<IReadOnlyList<StripePayout>> GetPayoutsAsync(CancellationToken ct = default)
-    {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
-        return await ctx.StripePayouts.AsNoTracking().ToListAsync(ct);
-    }
+    public async Task<IReadOnlyList<StripePayout>> GetPayoutsAsync(CancellationToken ct = default) =>
+        await RunAsync(ctx => ctx.StripePayouts.AsNoTracking().ToListAsync(ct), ct);
 
-    public async Task<IReadOnlyList<StripeBalance>> GetBalancesAsync(CancellationToken ct = default)
-    {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
-        return await ctx.StripeBalances.AsNoTracking().ToListAsync(ct);
-    }
+    public async Task<IReadOnlyList<StripeBalance>> GetBalancesAsync(CancellationToken ct = default) =>
+        await RunAsync(ctx => ctx.StripeBalances.AsNoTracking().ToListAsync(ct), ct);
 
-    public async Task<IReadOnlyList<StripeSyncState>> GetSyncStatesAsync(CancellationToken ct = default)
-    {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
-        return await ctx.StripeSyncStates.AsNoTracking().ToListAsync(ct);
-    }
+    public async Task<IReadOnlyList<StripeSyncState>> GetSyncStatesAsync(CancellationToken ct = default) =>
+        await RunAsync(ctx => ctx.StripeSyncStates.AsNoTracking().ToListAsync(ct), ct);
 
     public async Task SaveSyncStateAsync(StripeSyncState state, CancellationToken ct = default)
     {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
+        await using var ctx = await CreateDbContextAsync(ct);
         var existing = await ctx.StripeSyncStates.FirstOrDefaultAsync(s => s.AccountId == state.AccountId, ct);
         if (existing is null)
             ctx.StripeSyncStates.Add(state);

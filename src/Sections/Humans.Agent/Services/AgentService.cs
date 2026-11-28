@@ -572,8 +572,8 @@ internal sealed class AgentService : IAgentService
 
             // Trim to the same caps the issues form enforces; the agent's
             // suggestion sometimes runs over.
-            title = BoundProposalText(title, 200);
-            description = BoundProposalText(description, 5000);
+            title = title.Truncate(200);
+            description = description.Truncate(5000);
 
             return new AgentHandoff(title, category, description);
         }
@@ -586,14 +586,6 @@ internal sealed class AgentService : IAgentService
         }
     }
 
-    private static string BoundProposalText(string text, int maxLength)
-    {
-        if (text.Length <= maxLength) return text;
-        var length = maxLength;
-        if (char.IsHighSurrogate(text[length - 1]) && char.IsLowSurrogate(text[length]))
-            length--;
-        return text[..length];
-    }
 
     // existing: the caller's own conversation, already ownership-checked by AskAsync;
     // null starts a fresh one.

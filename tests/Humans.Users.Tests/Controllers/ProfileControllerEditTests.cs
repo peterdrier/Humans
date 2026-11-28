@@ -14,7 +14,7 @@ using System.Reflection;
 using System.Security.Claims;
 using AwesomeAssertions;
 using Humans.Base.Configuration;
-using Humans.AuditLog.Contracts;
+using Humans.Audit.Contracts;
 using Humans.Onboarding.Contracts;
 using Humans.Users.Contracts;
 

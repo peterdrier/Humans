@@ -14,23 +14,25 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.Extensions.Configuration;
 using Humans.Notifications.Contracts;
 using Microsoft.Extensions.DependencyInjection;
-using Humans.AuditLog.Contracts;
+using Humans.Audit.Contracts;
+using Humans.Preapprovals.Controllers;
 
 [assembly: Humans.Base.Demo.NoDemoStory("No demo story written yet.")]
 
 namespace Humans.Preapprovals;
 
-public sealed class Section : ISection, ISectionAdminNav, ISectionJobs, ISectionPolicies
+public sealed class Section : SectionBase, ISectionAdminNav, ISectionJobs, ISectionPolicies
 {
+    public override string DisplayName => "Pre-Approvals";
+
     IEnumerable<AdminNavGroup> ISectionAdminNav.Groups() =>
     [
-        new("Pre-approvals", [
-            new("Programs", "PreapprovalsAdmin", "Index", null, null,
-                "fa-solid fa-stamp", PreapprovalsPolicies.Manage)
+        AdminGroup([
+            AdminLink<PreapprovalsAdminController>("Programs", nameof(PreapprovalsAdminController.Index), "fa-solid fa-stamp", PreapprovalsPolicies.Manage)
         ])
     ];
 
-    public void Register(IServiceCollection services, IConfiguration configuration)
+    public override void Register(IServiceCollection services, IConfiguration configuration)
     {
         services.AddSingleton<IAuditActionContributor, PreapprovalsAuditActions>();
         services.AddSingleton<INotificationSourceContributor, PreapprovalsNotificationSources>();

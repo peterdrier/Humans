@@ -3,7 +3,7 @@ using Humans.Tickets.Contracts;
 using Humans.Auth.Contracts;
 using Humans.Shifts.Services.Dtos;
 using Humans.Base.Extensions;
-using Humans.AuditLog.Contracts;
+using Humans.Audit.Contracts;
 using Humans.Shifts.Contracts;
 using Humans.Teams.Contracts;
 using Humans.Shifts.Domain;
@@ -165,7 +165,7 @@ internal sealed class ShiftManagementService(
             $"Moved rota '{rota.Name}' from '{oldTeamName}' to '{targetTeam.Name}'",
             input.ActorUserId,
             // A persisted audit discriminator matched by exact equality, so a literal: Base cannot name the entity.
-            relatedEntityId: input.TargetTeamId, relatedEntityType: "Team");
+            targetId: input.TargetTeamId, targetType: "Team");
 
         return RotaMoveResult.Success($"Rota '{rota.Name}' moved to {targetTeam.Name}.", targetTeam.Slug);
     }
@@ -1586,7 +1586,7 @@ internal sealed class ShiftManagementService(
         {
             await auditLogService.LogAsync(ShiftsAuditActions.ShiftSignupCancelled, nameof(ShiftSignup), signup.Id,
                 $"shift {signup.ShiftId}: {reason}", actorUserId,
-                relatedEntityId: signup.UserId, relatedEntityType: AuditSubjectTypes.User);
+                targetId: signup.UserId, targetType: AuditSubjectTypes.User);
         }
     }
 

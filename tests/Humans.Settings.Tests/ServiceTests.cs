@@ -1,7 +1,7 @@
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.DependencyInjection;
 using AwesomeAssertions;
-using Humans.AuditLog.Contracts;
+using Humans.Audit.Contracts;
 using Humans.Settings.Contracts;
 using Humans.Settings.Data;
 using Humans.Settings.Domain;
@@ -79,7 +79,7 @@ public sealed class ServiceTests
 
         result.Succeeded.Should().BeTrue();
         await _repository.Received(1).SetValueAsync(RetentionPeriod.Key, "90", Arg.Any<CancellationToken>());
-        await _auditLog.Received(1).LogAsync(SettingsAuditActions.RetentionPeriodChanged, AuditEntityTypes.RetentionPeriod,
+        await _auditLog.Received(1).LogAsync(SettingsAuditActions.RetentionPeriodChanged, SettingsAuditSubjectTypes.RetentionPeriod,
             Guid.Empty, "Retention period changed from 365 to 90 days.", Actor);
     }
 
@@ -150,8 +150,7 @@ public sealed class ServiceTests
         var previous = MakeEntity(Guid.NewGuid());
         var next = MakeEntity(Guid.NewGuid(), isActive: false);
         next.GateOpeningDate = new LocalDate(2027, 7, 9);
-        var options = new DbContextOptionsBuilder<SettingsDbContext>()
-            .UseInMemoryDatabase(Guid.NewGuid().ToString()).Options;
+        var options = TestDbOptions.InMemory<SettingsDbContext>();
         await using (var seed = new SettingsDbContext(options))
         {
             seed.EventSettings.AddRange(previous, next);
@@ -402,7 +401,7 @@ public sealed class ServiceTests
         await BuildSut().SaveEventSettingsAsync(dto, Actor, TestContext.Current.CancellationToken);
 
         await _auditLog.Received(1).LogAsync(
-            SettingsAuditActions.EventSettingsUpdated, AuditEntityTypes.EventSettings, id,
+            SettingsAuditActions.EventSettingsUpdated, SettingsAuditSubjectTypes.EventSettings, id,
             Arg.Is<string>(d => d.Contains("Nowhere 2027") && d.Contains("2027-07-08")),
             Actor, Arg.Any<Guid?>(), Arg.Any<string?>());
     }
@@ -801,7 +800,7 @@ public sealed class ServiceTests
         result.Succeeded.Should().BeTrue();
         await _repository.Received(1).SetValueAsync(SettingKeys.EventTimeZoneId, "Atlantic/Canary", Arg.Any<CancellationToken>());
         await _auditLog.Received(1).LogAsync(
-            SettingsAuditActions.EventSettingsUpdated, AuditEntityTypes.EventTimeZone, Guid.Empty,
+            SettingsAuditActions.EventSettingsUpdated, SettingsAuditSubjectTypes.EventTimeZone, Guid.Empty,
             Arg.Is<string>(d => d.Contains("Europe/Madrid") && d.Contains("Atlantic/Canary")),
             Actor, Arg.Any<Guid?>(), Arg.Any<string?>());
         _listenerOne.Received(1).EventSettingsChanged(first);

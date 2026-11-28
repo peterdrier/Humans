@@ -8,7 +8,7 @@ using Microsoft.Extensions.DependencyInjection;
 using NodaTime;
 using Humans.Base.Extensions;
 using Humans.Base.Helpers;
-using Humans.AuditLog.Contracts;
+using Humans.Audit.Contracts;
 using Humans.EarlyEntry.Contracts;
 using Humans.Gdpr.Contracts;
 using Humans.Notifications.Contracts;
@@ -765,7 +765,7 @@ internal sealed class TeamService(
             TeamsAuditActions.TeamJoinedDirectly, nameof(Team), teamId,
             $"Joined {team.Name} directly",
             userId,
-            relatedEntityId: userId, relatedEntityType: AuditSubjectTypes.User);
+            targetId: userId, targetType: AuditSubjectTypes.User);
 
         await SendAddedToTeamEmailAsync(userId, team, cancellationToken);
         await SendTeamMemberAddedNotificationAsync(team, userId, cancellationToken);
@@ -847,7 +847,7 @@ internal sealed class TeamService(
             TeamsAuditActions.TeamJoinRequestApproved, nameof(Team), request.TeamId,
             $"Join request for {request.Team.Name} approved",
             approverUserId,
-            relatedEntityId: request.UserId, relatedEntityType: AuditSubjectTypes.User);
+            targetId: request.UserId, targetType: AuditSubjectTypes.User);
 
         await SendAddedToTeamEmailAsync(request.UserId, request.Team, cancellationToken);
         await SendJoinRequestApprovedNotificationAsync(request.Team, member.UserId, cancellationToken);
@@ -888,7 +888,7 @@ internal sealed class TeamService(
             TeamsAuditActions.TeamJoinRequestRejected, nameof(Team), request.TeamId,
             $"Join request for team rejected: {reason}",
             approverUserId,
-            relatedEntityId: request.UserId, relatedEntityType: AuditSubjectTypes.User);
+            targetId: request.UserId, targetType: AuditSubjectTypes.User);
 
         await SendJoinRequestRejectedNotificationAsync(request.Team, request.UserId, cancellationToken);
         return new();
@@ -1144,7 +1144,7 @@ internal sealed class TeamService(
             await auditLogService.LogAsync(
                 TeamsAuditActions.TeamMemberRemoved, nameof(Team), teamId,
                 $"Membership ended when {team.Name} was deactivated",
-                actorUserId, relatedEntityId: userId, relatedEntityType: AuditSubjectTypes.User);
+                actorUserId, targetId: userId, targetType: AuditSubjectTypes.User);
         }
 
         foreach (var userId in coordinatorUserIds)
@@ -1189,7 +1189,7 @@ internal sealed class TeamService(
                 await auditLogService.LogAsync(
                     TeamsAuditActions.TeamMemberRemoved, nameof(Team), teamId,
                     $"Membership ended when {team.Name} was deactivated",
-                    actorUserId, relatedEntityId: userId, relatedEntityType: AuditSubjectTypes.User);
+                    actorUserId, targetId: userId, targetType: AuditSubjectTypes.User);
             }
 
             logger.LogInformation(
@@ -1222,13 +1222,13 @@ internal sealed class TeamService(
                     await auditLogService.LogAsync(
                         TeamsAuditActions.TeamRoleUnassigned, nameof(TeamRoleDefinition), definition.Id,
                         $"Unassigned from role '{definition.Name}' in {team.Name} before the team was deleted",
-                        actorUserId, relatedEntityId: userId, relatedEntityType: AuditSubjectTypes.User);
+                        actorUserId, targetId: userId, targetType: AuditSubjectTypes.User);
                 }
 
                 await auditLogService.LogAsync(
                     TeamsAuditActions.TeamRoleDefinitionDeleted, nameof(TeamRoleDefinition), definition.Id,
                     $"Role definition '{definition.Name}' deleted from team {team.Name} before the team was deleted",
-                    actorUserId, relatedEntityId: teamId, relatedEntityType: nameof(Team));
+                    actorUserId, targetId: teamId, targetType: nameof(Team));
 
                 if (definition.IsManagement)
                 {
@@ -1268,7 +1268,7 @@ internal sealed class TeamService(
             TeamsAuditActions.TeamLeft, nameof(Team), teamId,
             $"Left {team.Name}",
             userId,
-            relatedEntityId: userId, relatedEntityType: AuditSubjectTypes.User);
+            targetId: userId, targetType: AuditSubjectTypes.User);
 
         if (wasCoordinator)
         {
@@ -1327,7 +1327,7 @@ internal sealed class TeamService(
             TeamsAuditActions.TeamMemberRemoved, nameof(Team), teamId,
             $"Member removed from {team.Name}",
             actorUserId,
-            relatedEntityId: userId, relatedEntityType: AuditSubjectTypes.User);
+            targetId: userId, targetType: AuditSubjectTypes.User);
 
         if (mergeTarget is not null && (wasCoordinator || removedAssignments.Count > 0))
         {
@@ -1430,7 +1430,7 @@ internal sealed class TeamService(
             TeamsAuditActions.TeamMemberAdded, nameof(Team), teamId,
             $"Member added to {team.Name}",
             actorUserId,
-            relatedEntityId: targetUserId, relatedEntityType: AuditSubjectTypes.User);
+            targetId: targetUserId, targetType: AuditSubjectTypes.User);
 
         await SendAddedToTeamEmailAsync(targetUserId, team, cancellationToken);
 
@@ -1452,7 +1452,7 @@ internal sealed class TeamService(
             TeamsAuditActions.TeamMemberRoleChanged, nameof(Team), teamId,
             $"Set member role to {role}",
             actorUserId,
-            relatedEntityId: userId, relatedEntityType: AuditSubjectTypes.User);
+            targetId: userId, targetType: AuditSubjectTypes.User);
     }
 
     public async Task<int> RevokeAllMembershipsAsync(Guid userId, CancellationToken cancellationToken = default)
@@ -1987,7 +1987,7 @@ internal sealed class TeamService(
             TeamsAuditActions.TeamRoleDefinitionCreated, nameof(TeamRoleDefinition), definition.Id,
             $"Role definition '{name}' created for team {team.Name}",
             actorUserId,
-            relatedEntityId: teamId, relatedEntityType: nameof(Team));
+            targetId: teamId, targetType: nameof(Team));
 
         return new(Definition: definition);
     }
@@ -2056,7 +2056,7 @@ internal sealed class TeamService(
             TeamsAuditActions.TeamRoleDefinitionUpdated, nameof(TeamRoleDefinition), definition.Id,
             $"Role definition '{name}' updated for team {team.Name}",
             actorUserId,
-            relatedEntityId: definition.TeamId, relatedEntityType: nameof(Team));
+            targetId: definition.TeamId, targetType: nameof(Team));
 
         if (managementChanged)
             await SyncRoleAssigneesAsync(definition, cancellationToken);
@@ -2086,7 +2086,7 @@ internal sealed class TeamService(
             TeamsAuditActions.TeamRoleDefinitionDeleted, nameof(TeamRoleDefinition), definition.Id,
             $"Role definition '{definition.Name}' deleted from team {team.Name}",
             actorUserId,
-            relatedEntityId: definition.TeamId, relatedEntityType: nameof(Team));
+            targetId: definition.TeamId, targetType: nameof(Team));
 
         return new();
     }
@@ -2126,7 +2126,7 @@ internal sealed class TeamService(
             TeamsAuditActions.TeamRoleDefinitionUpdated, nameof(TeamRoleDefinition), definition.Id,
             $"IsManagement set to {isManagement} on role '{definition.Name}' in {team.Name}",
             actorUserId,
-            relatedEntityId: definition.TeamId, relatedEntityType: nameof(Team));
+            targetId: definition.TeamId, targetType: nameof(Team));
 
         await SyncRoleAssigneesAsync(definition, cancellationToken);
 
@@ -2236,14 +2236,14 @@ internal sealed class TeamService(
                 TeamsAuditActions.TeamMemberAdded, nameof(Team), definition.TeamId,
                 $"Auto-added to {team.Name} via role assignment",
                 actorUserId,
-                relatedEntityId: targetUserId, relatedEntityType: AuditSubjectTypes.User);
+                targetId: targetUserId, targetType: AuditSubjectTypes.User);
         }
 
         await auditLogService.LogAsync(
             TeamsAuditActions.TeamRoleAssigned, nameof(TeamRoleDefinition), roleDefinitionId,
             $"Assigned to role '{definition.Name}' in {team.Name}",
             actorUserId,
-            relatedEntityId: targetUserId, relatedEntityType: AuditSubjectTypes.User);
+            targetId: targetUserId, targetType: AuditSubjectTypes.User);
 
         // Management roles promote: reconcile Coordinators in the mutation.
         await SystemTeamSync.SyncMembershipForUserAsync(targetUserId, SystemTeamType.Coordinators, cancellationToken);
@@ -2270,7 +2270,7 @@ internal sealed class TeamService(
             TeamsAuditActions.TeamRoleUnassigned, nameof(TeamRoleDefinition), roleDefinitionId,
             $"Unassigned from role '{definition.Name}' in {team.Name}",
             actorUserId,
-            relatedEntityId: targetUserId, relatedEntityType: AuditSubjectTypes.User);
+            targetId: targetUserId, targetType: AuditSubjectTypes.User);
 
         // Losing a management role can demote: reconcile Coordinators in the mutation.
         await SystemTeamSync.SyncMembershipForUserAsync(targetUserId, SystemTeamType.Coordinators, cancellationToken);

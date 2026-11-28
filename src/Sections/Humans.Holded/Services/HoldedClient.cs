@@ -63,7 +63,7 @@ internal sealed class HoldedClient : IHoldedClient
         using var req = new HttpRequestMessage(HttpMethod.Post, "/api/v2/ledger-entries");
         req.Content = JsonContent.Create(payload, options: OmitNulls);
 
-        using var resp = await _transport.SendAsync(req, ct);
+        using var resp = await _transport.SendWithRetryAsync(req, ct);
         string? id = null;
         try
         {
@@ -113,7 +113,7 @@ internal sealed class HoldedClient : IHoldedClient
         var payload = new { name, account_num = accountNum };
         using var req = new HttpRequestMessage(HttpMethod.Post, "/api/v2/expenses-accounts");
         req.Content = JsonContent.Create(payload, options: OmitNulls);
-        using var resp = await _transport.SendAsync(req, ct);
+        using var resp = await _transport.SendWithRetryAsync(req, ct);
         try
         {
             var body = await resp.Content.ReadAsStringAsync(ct);
@@ -202,7 +202,7 @@ internal sealed class HoldedClient : IHoldedClient
     public async Task<HoldedUsageDto> GetUsageAsync(CancellationToken ct = default)
     {
         using var req = new HttpRequestMessage(HttpMethod.Get, "/api/v2/usage");
-        using var resp = await _transport.SendAsync(req, ct);
+        using var resp = await _transport.SendWithRetryAsync(req, ct);
         await using var stream = await resp.Content.ReadAsStreamAsync(ct);
         try
         {
@@ -251,7 +251,7 @@ internal sealed class HoldedClient : IHoldedClient
         using var req = new HttpRequestMessage(HttpMethod.Post, "/api/v2/contacts");
         req.Content = JsonContent.Create(payload, options: OmitNulls);
 
-        using var resp = await _transport.SendAsync(req, ct);
+        using var resp = await _transport.SendWithRetryAsync(req, ct);
         try
         {
             var node = JsonNode.Parse(await resp.Content.ReadAsStringAsync(ct))
@@ -271,7 +271,7 @@ internal sealed class HoldedClient : IHoldedClient
     public async Task<HoldedContactDto> GetContactAsync(string contactId, CancellationToken ct = default)
     {
         using var req = new HttpRequestMessage(HttpMethod.Get, $"/api/v2/contacts/{contactId}");
-        using var resp = await _transport.SendAsync(req, ct);
+        using var resp = await _transport.SendWithRetryAsync(req, ct);
         await using var stream = await resp.Content.ReadAsStreamAsync(ct);
         try
         {
@@ -295,7 +295,7 @@ internal sealed class HoldedClient : IHoldedClient
         using var req = new HttpRequestMessage(HttpMethod.Delete, $"/api/v2/contacts/{contactId}");
         try
         {
-            using var resp = await _transport.SendAsync(req, ct);
+            using var resp = await _transport.SendWithRetryAsync(req, ct);
         }
         // The goal state already holds: a retried cleanup finds the contact gone.
         catch (HoldedPermanentException ex) when (ex.StatusCode == 404)
@@ -392,7 +392,7 @@ internal sealed class HoldedClient : IHoldedClient
         using var req = new HttpRequestMessage(HttpMethod.Post, "/api/v2/purchases");
         req.Content = JsonContent.Create(payload, options: OmitNulls);
 
-        using var resp = await _transport.SendAsync(req, ct);
+        using var resp = await _transport.SendWithRetryAsync(req, ct);
         // A successful create may already be persisted remotely; an unreadable response cannot be retried safely.
         try
         {
@@ -425,7 +425,7 @@ internal sealed class HoldedClient : IHoldedClient
             $"/api/v2/purchases/{documentId}/attachments");
         req.Content = content;
 
-        using var resp = await _transport.SendAsync(req, ct);
+        using var resp = await _transport.SendWithRetryAsync(req, ct);
     }
 
     public async Task<HoldedPurchaseDocumentDto> GetPurchaseDocumentAsync(
@@ -433,7 +433,7 @@ internal sealed class HoldedClient : IHoldedClient
     {
         using var req = new HttpRequestMessage(HttpMethod.Get, $"/api/v2/purchases/{documentId}");
 
-        using var resp = await _transport.SendAsync(req, ct);
+        using var resp = await _transport.SendWithRetryAsync(req, ct);
         await using var stream = await resp.Content.ReadAsStreamAsync(ct);
         try
         {
@@ -469,7 +469,7 @@ internal sealed class HoldedClient : IHoldedClient
         req.Content = new ByteArrayContent([]);
         try
         {
-            using var resp = await _transport.SendAsync(req, ct);
+            using var resp = await _transport.SendWithRetryAsync(req, ct);
         }
         // Already approved. A retried push re-approves what an earlier attempt approved; without this the retry
         // writes the whole push off.
@@ -484,7 +484,7 @@ internal sealed class HoldedClient : IHoldedClient
     public async Task DeletePurchaseDocumentAsync(string documentId, CancellationToken ct = default)
     {
         using var req = new HttpRequestMessage(HttpMethod.Delete, $"/api/v2/purchases/{documentId}");
-        using var resp = await _transport.SendAsync(req, ct);
+        using var resp = await _transport.SendWithRetryAsync(req, ct);
     }
 
     public Task<string> PayPurchaseDocumentAsync(
@@ -569,7 +569,7 @@ internal sealed class HoldedClient : IHoldedClient
             HttpMethod.Post, $"/api/v2/{SalesSegment(kind)}");
         req.Content = JsonContent.Create(BuildSalesDocumentPayload(input), options: OmitNulls);
 
-        using var resp = await _transport.SendAsync(req, ct);
+        using var resp = await _transport.SendWithRetryAsync(req, ct);
         try
         {
             var node = JsonNode.Parse(await resp.Content.ReadAsStringAsync(ct))
@@ -619,7 +619,7 @@ internal sealed class HoldedClient : IHoldedClient
     {
         using var req = new HttpRequestMessage(
             HttpMethod.Get, $"/api/v2/{SalesSegment(kind)}/{documentId}");
-        using var resp = await _transport.SendAsync(req, ct);
+        using var resp = await _transport.SendWithRetryAsync(req, ct);
         var body = await resp.Content.ReadAsStringAsync(ct);
         try
         {
@@ -656,7 +656,7 @@ internal sealed class HoldedClient : IHoldedClient
         HoldedSalesDocumentKind kind, string documentId, CancellationToken ct = default)
     {
         using var req = new HttpRequestMessage(HttpMethod.Get, $"/api/v2/{SalesSegment(kind)}/{documentId}/pdf");
-        using var resp = await _transport.SendAsync(req, ct);
+        using var resp = await _transport.SendWithRetryAsync(req, ct);
         var bytes = await resp.Content.ReadAsByteArrayAsync(ct);
         if (bytes.AsSpan().StartsWith("%PDF"u8)) return bytes;
         try
@@ -677,7 +677,7 @@ internal sealed class HoldedClient : IHoldedClient
     {
         using var req = new HttpRequestMessage(HttpMethod.Post, $"/api/v2/{SalesSegment(kind)}/{documentId}/send");
         req.Content = JsonContent.Create(new { emails }, options: OmitNulls);
-        using var resp = await _transport.SendAsync(req, ct);
+        using var resp = await _transport.SendWithRetryAsync(req, ct);
     }
 
     /// <summary>Holded takes only payments above zero on a sales document: money back is a separate payment.</summary>
@@ -844,7 +844,7 @@ internal sealed class HoldedClient : IHoldedClient
             $"/bank-movements/{Uri.EscapeDataString(movementId)}/reconcile");
         req.Content = JsonContent.Create(payload, options: OmitNulls);
 
-        using var resp = await _transport.SendAsync(req, ct);
+        using var resp = await _transport.SendWithRetryAsync(req, ct);
     }
 
     /// <summary><c>POST /payments</c>: money in (<c>collection</c>) or out (<c>payment</c>) on a contact, outside any
@@ -867,7 +867,7 @@ internal sealed class HoldedClient : IHoldedClient
 
         using var req = new HttpRequestMessage(HttpMethod.Post, "/api/v2/payments");
         req.Content = JsonContent.Create(payload, options: OmitNulls);
-        using var resp = await _transport.SendAsync(req, ct);
+        using var resp = await _transport.SendWithRetryAsync(req, ct);
         try
         {
             var id = Prop(JsonNode.Parse(await resp.Content.ReadAsStringAsync(ct)), "id")?.GetValue<string>();

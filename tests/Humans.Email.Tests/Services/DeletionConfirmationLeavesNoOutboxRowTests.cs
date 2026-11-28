@@ -6,7 +6,7 @@ using Humans.Teams.Contracts;
 using Humans.Tickets.Contracts;
 using Microsoft.Extensions.Hosting;
 using AwesomeAssertions;
-using Humans.AuditLog.Contracts;
+using Humans.Audit.Contracts;
 using Humans.Base.Interfaces;
 using Humans.Email.Data;
 using Humans.Email.Services;
@@ -47,10 +47,7 @@ public sealed class DeletionConfirmationLeavesNoOutboxRowTests : IDisposable
 
     public DeletionConfirmationLeavesNoOutboxRowTests()
     {
-        var options = new DbContextOptionsBuilder<EmailDbContext>()
-            .UseInMemoryDatabase(Guid.NewGuid().ToString())
-            .ConfigureWarnings(w => w.Ignore(InMemoryEventId.TransactionIgnoredWarning))
-            .Options;
+        var options = TestDbOptions.InMemory<EmailDbContext>();
         _emailDb = new EmailDbContext(options);
 
         // The builder is sealed, so it is built for real over a stub localizer rather than mocked.

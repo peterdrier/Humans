@@ -1,4 +1,4 @@
-using Humans.AuditLog.Contracts;
+using Humans.Audit.Contracts;
 using Humans.Auth.Contracts;
 using Humans.Base.Enums;
 using Humans.Notifications.Contracts;
@@ -32,16 +32,13 @@ public abstract class ShiftsTestHarness : IDisposable
 
     private protected DbContextOptions<UsersDbContext> DbOptions { get; }
     private protected UsersDbContext Db { get; }
+    private readonly SectionTestDbs _dbs = new();
 
-    // Every pair is built on first touch: eager construction gives each test its own EF
-    // internal service provider, which alone pushed a 5s-budget test past its CI timeout.
-    private readonly List<Func<DbContext?>> _sectionContextProbes = [];
-
-    private readonly Lazy<SectionDb<ShiftsDbContext>> _shiftsDb;
+    private readonly Lazy<SectionTestDb<ShiftsDbContext>> _shiftsDb;
     private protected ShiftsDbContext ShiftsDb => _shiftsDb.Value.Context;
     private protected TestDbContextFactory<ShiftsDbContext> ShiftsDbFactory => _shiftsDb.Value.Factory;
 
-    private readonly Lazy<SectionDb<TeamsDbContext>> _teamsDb;
+    private readonly Lazy<SectionTestDb<TeamsDbContext>> _teamsDb;
     private protected TeamsDbContext TeamsDb => _teamsDb.Value.Context;
     private protected TestDbContextFactory<TeamsDbContext> TeamsDbFactory => _teamsDb.Value.Factory;
 
@@ -54,84 +51,31 @@ public abstract class ShiftsTestHarness : IDisposable
 
     protected ShiftsTestHarness(Instant? now = null)
     {
-        DbOptions = new DbContextOptionsBuilder<UsersDbContext>()
-            .UseInMemoryDatabase(Guid.NewGuid().ToString())
-            .ConfigureWarnings(w => w.Ignore(InMemoryEventId.TransactionIgnoredWarning))
-            .Options;
+        DbOptions = TestDbOptions.InMemory<UsersDbContext>();
         Db = new UsersDbContext(DbOptions);
+        _dbs.Track(Db);
 
-        _shiftsDb = RegisterSection<ShiftsDbContext>(o => new(o));
-        _teamsDb = RegisterSection<TeamsDbContext>(o => new(o));
+        _shiftsDb = _dbs.Add<ShiftsDbContext>(o => new(o));
+        _teamsDb = _dbs.Add<TeamsDbContext>(o => new(o));
 
         Clock = new FakeClock(now ?? Instant.FromUtc(2026, 3, 1, 12, 0));
     }
 
-    private sealed record SectionDb<TContext>(TContext Context, TestDbContextFactory<TContext> Factory)
-        where TContext : DbContext;
-
-    private Lazy<SectionDb<TContext>> RegisterSection<TContext>(Func<DbContextOptions<TContext>, TContext> create)
-        where TContext : DbContext
-    {
-        var lazy = new Lazy<SectionDb<TContext>>(() =>
-        {
-            var options = NewSectionDbOptions<TContext>();
-            return new SectionDb<TContext>(create(options), new TestDbContextFactory<TContext>(options));
-        });
-
-        _sectionContextProbes.Add(() => lazy.IsValueCreated ? lazy.Value.Context : null);
-        return lazy;
-    }
-
-    private IEnumerable<DbContext> CreatedSectionContexts() =>
-        _sectionContextProbes.Select(probe => probe()).OfType<DbContext>();
-
-    private protected static DbContextOptions<TContext> NewSectionDbOptions<TContext>()
-        where TContext : DbContext =>
-        new DbContextOptionsBuilder<TContext>()
-            .UseInMemoryDatabase(Guid.NewGuid().ToString())
-            .ConfigureWarnings(w => w.Ignore(InMemoryEventId.TransactionIgnoredWarning))
-            .Options;
-
     /// <summary>Flushes <see cref="Db"/> and every section context the test touched.</summary>
-    private protected async Task SaveAllAsync(CancellationToken ct = default)
-    {
-        await Db.SaveChangesAsync(ct);
-        foreach (var sectionDb in CreatedSectionContexts())
-        {
-            await sectionDb.SaveChangesAsync(ct);
-        }
-    }
+    private protected Task SaveAllAsync(CancellationToken ct = default) => _dbs.SaveAllAsync(ct);
 
-    private protected void SaveAll()
-    {
-        Db.SaveChanges();
-        foreach (var sectionDb in CreatedSectionContexts())
-        {
-            sectionDb.SaveChanges();
-        }
-    }
+    private protected void SaveAll() => _dbs.SaveAll();
 
     /// <summary>
     /// Clears the change tracker on <see cref="Db"/> and every touched section context, so
     /// a read-back sees what the repository wrote rather than the tracked seed instance.
     /// </summary>
-    private protected void ClearAllTrackers()
-    {
-        Db.ChangeTracker.Clear();
-        foreach (var sectionDb in CreatedSectionContexts())
-        {
-            sectionDb.ChangeTracker.Clear();
-        }
-    }
+    private protected void ClearAllTrackers() => _dbs.ClearTrackers();
 
     public virtual void Dispose()
     {
         Cache.Dispose();
-        Db.Dispose();
-        foreach (var sectionDb in CreatedSectionContexts())
-        {
-            sectionDb.Dispose();
-        }
+        _dbs.Dispose();
         GC.SuppressFinalize(this);
     }
 

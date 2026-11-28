@@ -1,4 +1,5 @@
 using System.Collections.Concurrent;
+using Humans.Base.Extensions;
 using Humans.Base.Interfaces;
 
 namespace Humans.Web.Services;
@@ -75,8 +76,8 @@ public sealed class ClientStatsTracker : IClientStatsTracker
 
         entry = entry with
         {
-            Url = Truncate(entry.Url, MaxUrlLength),
-            UserAgent = Truncate(entry.UserAgent, MaxUserAgentLength),
+            Url = entry.Url.Truncate(MaxUrlLength),
+            UserAgent = entry.UserAgent.Truncate(MaxUserAgentLength),
             ClientLabel = label
         };
 
@@ -106,14 +107,6 @@ public sealed class ClientStatsTracker : IClientStatsTracker
     private static void Bump(ConcurrentDictionary<string, long> map, string key)
         => map.AddOrUpdate(key, 1, static (_, v) => v + 1);
 
-    private static string Truncate(string value, int maxLength)
-    {
-        if (value.Length <= maxLength) return value;
-        var length = maxLength;
-        if (char.IsHighSurrogate(value[length - 1]) && char.IsLowSurrogate(value[length]))
-            length--;
-        return value[..length];
-    }
 
     private static IReadOnlyList<ClientStatCount> Rank(ConcurrentDictionary<string, long> map)
         => map.Select(kv => new ClientStatCount(kv.Key, kv.Value))

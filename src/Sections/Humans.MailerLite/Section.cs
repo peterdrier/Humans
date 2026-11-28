@@ -13,7 +13,8 @@ using Humans.MailerLite.Services.MailerLite;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
-using Humans.AuditLog.Contracts;
+using Humans.Audit.Contracts;
+using Humans.MailerLite.Controllers;
 
 [assembly: NoDemoStory("Vendor mirror: demo people must never reach MailerLite.")]
 
@@ -23,9 +24,9 @@ namespace Humans.MailerLite;
 /// <c>MailerLiteOptions</c> binds here, not in Shell: the section's own client is its only consumer. No caching
 /// decorator: the Singleton client holds its own snapshot and refreshes on demand.
 /// </summary>
-public sealed class Section : ISection, ISectionAdminNav, ISectionConfiguration, ISectionJobs
+public sealed class Section : SectionBase, ISectionAdminNav, ISectionConfiguration, ISectionJobs
 {
-    public void Register(IServiceCollection services, IConfiguration configuration)
+    public override void Register(IServiceCollection services, IConfiguration configuration)
     {
         services.AddSingleton<IAuditActionContributor, MailerLiteAuditActions>();
         // The section's only table, so its presence proves the baseline ran.
@@ -83,8 +84,8 @@ public sealed class Section : ISection, ISectionAdminNav, ISectionConfiguration,
 
     IEnumerable<AdminNavGroup> ISectionAdminNav.Groups() =>
     [
-        new("MailerLite", [
-            new("MailerLite", "MailerLiteAdmin", "Index", null, null, "fa-solid fa-paper-plane", PolicyNames.AdminOnly)
+        AdminGroup([
+            AdminLink<MailerLiteAdminController>("MailerLite", nameof(MailerLiteAdminController.Index), "fa-solid fa-paper-plane", PolicyNames.AdminOnly)
         ])
     ];
 

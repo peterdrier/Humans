@@ -1,6 +1,6 @@
 using System.Globalization;
 using System.Security.Claims;
-using Humans.AuditLog.Contracts;
+using Humans.Audit.Contracts;
 using Humans.Base.Constants;
 using Humans.Base.Demo;
 using Humans.Base.Extensions;
@@ -21,10 +21,11 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Localization;
+using Humans.Tasks.Controllers;
 
 namespace Humans.Tasks;
 
-public sealed class Section : ISection, ISectionRoles, ISectionNav, ISectionAdminNav, ISectionPolicies, ISectionPermissions,
+public sealed class Section : SectionBase, ISectionRoles, ISectionNav, ISectionAdminNav, ISectionPolicies, ISectionPermissions,
     ISectionThingsToDo, ISectionChrome, ITeamTasksPart
 {
     IEnumerable<ChromeComponent> ISectionChrome.Components() =>
@@ -49,13 +50,13 @@ public sealed class Section : ISection, ISectionRoles, ISectionNav, ISectionAdmi
         [new("Nav_Tasks", Controller: "Tasks", Action: "Index", Weight: 22)];
 
     IEnumerable<AdminNavGroup> ISectionAdminNav.Groups() =>
-        [new("Tasks", [new("Tasks", "TasksAdmin", "Index", null, null, "fa-solid fa-list-check", TasksPolicies.Read)])];
+        [AdminGroup([AdminLink<TasksAdminController>("Tasks", nameof(TasksAdminController.Index), "fa-solid fa-list-check", TasksPolicies.Read)])];
 
     void ISectionPolicies.AddPolicies(AuthorizationOptions options) =>
         options.AddPolicy(TasksPolicies.Read, policy =>
             policy.RequireRole(TasksSystemRoles.TasksAdmin, RoleNames.Board, RoleNames.Admin));
 
-    public void Register(IServiceCollection services, IConfiguration configuration)
+    public override void Register(IServiceCollection services, IConfiguration configuration)
     {
         EnumBadgeMap.Register(new Dictionary<Enum, string>
         {

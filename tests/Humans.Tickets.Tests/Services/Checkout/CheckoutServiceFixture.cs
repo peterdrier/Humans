@@ -1,6 +1,6 @@
 using Humans.Testing;
 using AwesomeAssertions;
-using Humans.AuditLog.Contracts;
+using Humans.Audit.Contracts;
 using Humans.Base.Configuration;
 using Humans.Email.Contracts;
 using Humans.Grants.Contracts;
@@ -47,6 +47,7 @@ public abstract class CheckoutServiceFixture
     private protected readonly HashSet<string> _admitted = new(StringComparer.Ordinal);
     private protected readonly FakeClock _clock = new(Now);
     private protected readonly ITicketManagement _holdingsInner = Substitute.For<ITicketManagement>();
+    private protected readonly ITicketSyncService _sync = Substitute.For<ITicketSyncService>();
     private protected readonly CachingTicketQueryService _holdings;
     private protected readonly Guid _otherBuyerId = Guid.NewGuid();
     private protected int _sessions;
@@ -114,6 +115,8 @@ public abstract class CheckoutServiceFixture
             .Returns(ci => ci.Arg<IReadOnlyCollection<string>>().Where(_admitted.Contains).ToHashSet(StringComparer.Ordinal));
         var services = new ServiceCollection();
         services.AddKeyedScoped(CachingTicketQueryService.InnerServiceKey, (_, _) => _holdingsInner);
+        services.AddKeyedScoped(CachingTicketQueryService.InnerServiceKey, (_, _) => _sync);
+        _sync.GetPostEventHoldDaysAsync(Arg.Any<CancellationToken>()).Returns(30);
         _holdings = new CachingTicketQueryService(services.BuildServiceProvider().GetRequiredService<IServiceScopeFactory>(),
             _clock, NullLogger<CachingTicketQueryService>.Instance);
         _service = new TicketCheckoutService(_repo, [_platform], _grants, _settings, _users, _provisioning, _userEmails,

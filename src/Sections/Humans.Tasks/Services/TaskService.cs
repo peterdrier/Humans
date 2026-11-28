@@ -1,4 +1,4 @@
-using Humans.AuditLog.Contracts;
+using Humans.Audit.Contracts;
 using Humans.Base.Authorization;
 using Humans.Base.Extensions;
 using Humans.Email.Contracts;
@@ -32,7 +32,7 @@ internal sealed partial class TaskService(
     ILogger<TaskService> logger) : ITaskService, ITaskWrite, IUserDataContributor, IUserMerge
 {
     internal const string ExportSection = "Tasks";
-    internal const string AuditEntityType = "TaskItem";
+    internal const string AuditSubjectType = "TaskItem";
 
     internal const int TitleMaxLength = 200;
     internal const int DescriptionMaxLength = 4000;
@@ -112,9 +112,9 @@ internal sealed partial class TaskService(
         await repository.AddAsync(task, ct);
         snapshot.Tasks[task.Id] = task;
 
-        await audit.LogAsync(TasksAuditActions.TaskCreated, AuditEntityType, task.Id,
+        await audit.LogAsync(TasksAuditActions.TaskCreated, AuditSubjectType, task.Id,
             $"Task '{task.Title}' created on {TeamName(task, snapshot)}",
-            actorUserId, relatedEntityId: task.OwnerId, relatedEntityType: task.OwnerKind);
+            actorUserId, targetId: task.OwnerId, targetType: task.OwnerKind);
 
         return new(ToInfo(task, snapshot));
     }
@@ -147,9 +147,9 @@ internal sealed partial class TaskService(
         var moved = changes.Contains("team", StringComparer.Ordinal)
             ? $"; moved from {fromTeam} to {TeamName(task, snapshot)}"
             : string.Empty;
-        await audit.LogAsync(TasksAuditActions.TaskUpdated, AuditEntityType, task.Id,
+        await audit.LogAsync(TasksAuditActions.TaskUpdated, AuditSubjectType, task.Id,
             $"Task '{task.Title}' on {TeamName(task, snapshot)} updated ({(changes.Count == 0 ? "nothing changed" : string.Join(", ", changes))}){moved}",
-            actorUserId, relatedEntityId: task.OwnerId, relatedEntityType: task.OwnerKind);
+            actorUserId, targetId: task.OwnerId, targetType: task.OwnerKind);
 
         return new(ToInfo(task, snapshot));
     }
@@ -178,9 +178,9 @@ internal sealed partial class TaskService(
         task.UpdatedAt = clock.GetCurrentInstant();
         await repository.UpdateAsync(task, ct);
 
-        await audit.LogAsync(TasksAuditActions.TaskStatusChanged, AuditEntityType, task.Id,
+        await audit.LogAsync(TasksAuditActions.TaskStatusChanged, AuditSubjectType, task.Id,
             $"Task '{task.Title}' on {TeamName(task, snapshot)} changed from {before} to {status}{(note is null ? string.Empty : $": {note}")}",
-            actorUserId, relatedEntityId: task.OwnerId, relatedEntityType: task.OwnerKind);
+            actorUserId, targetId: task.OwnerId, targetType: task.OwnerKind);
 
         return new(ToInfo(task, snapshot));
     }
@@ -195,9 +195,9 @@ internal sealed partial class TaskService(
         if (!await repository.DeleteAsync(taskId, ct))
             return Refuse("Tasks_Refusal_NoTask", actorUserId, taskId);
 
-        await audit.LogAsync(TasksAuditActions.TaskDeleted, AuditEntityType, task.Id,
+        await audit.LogAsync(TasksAuditActions.TaskDeleted, AuditSubjectType, task.Id,
             $"Task '{task.Title}' on {info.TeamName} deleted with {task.Assignments.Count} person(s) and {task.Dependencies.Count} link(s)",
-            actorUserId, relatedEntityId: task.OwnerId, relatedEntityType: task.OwnerKind);
+            actorUserId, targetId: task.OwnerId, targetType: task.OwnerKind);
 
         return new(Removed: info);
     }
@@ -226,9 +226,9 @@ internal sealed partial class TaskService(
             return Refuse("Tasks_Refusal_AlreadyOn", actorUserId, taskId);
         task.Assignments.Add(assignment);
 
-        await audit.LogAsync(TasksAuditActions.TaskAssigned, AuditEntityType, task.Id,
+        await audit.LogAsync(TasksAuditActions.TaskAssigned, AuditSubjectType, task.Id,
             $"Assigned to task '{task.Title}' on {TeamName(task, snapshot)}",
-            actorUserId, relatedEntityId: userId, relatedEntityType: AuditSubjectTypes.User);
+            actorUserId, targetId: userId, targetType: AuditSubjectTypes.User);
 
         return new(ToInfo(task, snapshot));
     }
@@ -245,9 +245,9 @@ internal sealed partial class TaskService(
             return Refuse("Tasks_Refusal_NotOn", actorUserId, taskId);
         task.Assignments.Remove(existing);
 
-        await audit.LogAsync(TasksAuditActions.TaskUnassigned, AuditEntityType, task.Id,
+        await audit.LogAsync(TasksAuditActions.TaskUnassigned, AuditSubjectType, task.Id,
             $"Unassigned from task '{task.Title}' on {TeamName(task, snapshot)}",
-            actorUserId, relatedEntityId: userId, relatedEntityType: AuditSubjectTypes.User);
+            actorUserId, targetId: userId, targetType: AuditSubjectTypes.User);
 
         return new(ToInfo(task, snapshot));
     }
@@ -269,9 +269,9 @@ internal sealed partial class TaskService(
             return Refuse("Tasks_Refusal_DependencyExists", actorUserId, taskId);
         task.Dependencies.Add(dependency);
 
-        await audit.LogAsync(TasksAuditActions.TaskDependencyAdded, AuditEntityType, task.Id,
+        await audit.LogAsync(TasksAuditActions.TaskDependencyAdded, AuditSubjectType, task.Id,
             $"Task '{task.Title}' now waits on '{other.Title}'",
-            actorUserId, relatedEntityId: other.Id, relatedEntityType: AuditEntityType);
+            actorUserId, targetId: other.Id, targetType: AuditSubjectType);
 
         return new(ToInfo(task, snapshot));
     }
@@ -288,9 +288,9 @@ internal sealed partial class TaskService(
         task.Dependencies.Remove(dependency);
 
         var otherTitle = snapshot.Tasks.TryGetValue(dependsOnTaskId, out var other) ? other.Title : dependsOnTaskId.ToString();
-        await audit.LogAsync(TasksAuditActions.TaskDependencyRemoved, AuditEntityType, task.Id,
+        await audit.LogAsync(TasksAuditActions.TaskDependencyRemoved, AuditSubjectType, task.Id,
             $"Task '{task.Title}' no longer waits on '{otherTitle}'",
-            actorUserId, relatedEntityId: dependsOnTaskId, relatedEntityType: AuditEntityType);
+            actorUserId, targetId: dependsOnTaskId, targetType: AuditSubjectType);
 
         return new(ToInfo(task, snapshot));
     }
@@ -325,7 +325,7 @@ internal sealed partial class TaskService(
 
         await audit.LogAsync(TasksAuditActions.TaskAssigned, AuditSubjectTypes.User, mergedToUserId,
             $"Took over {moved} task place(s) from merged account {mergedFromUserId}",
-            actorUserId, relatedEntityId: mergedFromUserId, relatedEntityType: AuditSubjectTypes.User);
+            actorUserId, targetId: mergedFromUserId, targetType: AuditSubjectTypes.User);
     }
 
     private sealed record Snapshot(

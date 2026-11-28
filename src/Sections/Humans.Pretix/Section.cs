@@ -12,9 +12,9 @@ namespace Humans.Pretix;
 /// own, and QA needs a real instance to try the option against. Unconfigured, <c>IsConfigured</c> is false and
 /// Tickets takes no orders on it.
 /// </summary>
-public sealed class Section : ISection, ISectionConfiguration, ISectionAdminNav
+public sealed class Section : SectionBase, ISectionConfiguration, ISectionAdminNav
 {
-    public void Register(IServiceCollection services, IConfiguration configuration)
+    public override void Register(IServiceCollection services, IConfiguration configuration)
     {
         services.Configure<PretixSettings>(opts =>
         {

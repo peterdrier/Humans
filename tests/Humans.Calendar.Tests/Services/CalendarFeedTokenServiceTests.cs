@@ -1,5 +1,5 @@
 using AwesomeAssertions;
-using Humans.AuditLog.Contracts;
+using Humans.Audit.Contracts;
 using NSubstitute;
 using Humans.Calendar.Data;
 using Humans.Calendar.Domain;
@@ -23,9 +23,7 @@ public sealed class CalendarFeedTokenServiceTests : IDisposable
 
     public CalendarFeedTokenServiceTests()
     {
-        var options = new DbContextOptionsBuilder<CalendarDbContext>()
-            .UseInMemoryDatabase(Guid.NewGuid().ToString())
-            .Options;
+        var options = TestDbOptions.InMemory<CalendarDbContext>();
         _db = new CalendarDbContext(options);
         _sut = new CalendarFeedTokenService(
             new CalendarRepository(new TestDbContextFactory<CalendarDbContext>(options)), _audit);

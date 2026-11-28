@@ -1,6 +1,6 @@
 using System.Security.Claims;
 using AwesomeAssertions;
-using Humans.AuditLog.Contracts;
+using Humans.Audit.Contracts;
 using Humans.Users.Models;
 using Humans.Users.Controllers;
 using Microsoft.AspNetCore.Http;
@@ -92,7 +92,7 @@ public class UsersAdminAccountMergesControllerTests
             new[] { pickedA, pickedB }.Select(id => UserInfoFixtures.FromUser(new User { Id = id })).ToList());
         _duplicateService.DetectDuplicatesAsync(Arg.Any<CancellationToken>()).Returns([]);
         var at = NodaTime.Instant.FromUtc(2026, 11, 20, 12, 0);
-        AuditEvent Entry(AuditActionDefinition action, Guid actor, NodaTime.Instant when) => new(
+        AuditEntry Entry(AuditActionDefinition action, Guid actor, NodaTime.Instant when) => new(
             Guid.NewGuid(), when, action, actor, null, nameof(User), mergedAway,
             null, null, null, null, null, kept, nameof(User), "details");
         _auditViewer.GetFilteredAsync(

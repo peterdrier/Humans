@@ -15,13 +15,14 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.Extensions.Configuration;
 using Humans.Notifications.Contracts;
 using Microsoft.Extensions.DependencyInjection;
-using Humans.AuditLog.Contracts;
+using Humans.Audit.Contracts;
+using Humans.Grants.Controllers;
 
 [assembly: Humans.Base.Demo.NoDemoStory("No demo story written yet.")]
 
 namespace Humans.Grants;
 
-public sealed class Section : ISection, ISectionRoles, ISectionAdminNav, ISectionPolicies, IUserPart
+public sealed class Section : SectionBase, ISectionRoles, ISectionAdminNav, ISectionPolicies, IUserPart
 {
     IReadOnlyList<RoleDefinition> ISectionRoles.Roles { get; } =
     [
@@ -32,13 +33,12 @@ public sealed class Section : ISection, ISectionRoles, ISectionAdminNav, ISectio
 
     IEnumerable<AdminNavGroup> ISectionAdminNav.Groups() =>
     [
-        new("Grants", [
-            new("Programs", "GrantsAdmin", "Index", null, null,
-                "fa-solid fa-gift", GrantProgramsPolicy.Name)
+        AdminGroup([
+            AdminLink<GrantsAdminController>("Programs", nameof(GrantsAdminController.Index), "fa-solid fa-gift", GrantProgramsPolicy.Name)
         ])
     ];
 
-    public void Register(IServiceCollection services, IConfiguration configuration)
+    public override void Register(IServiceCollection services, IConfiguration configuration)
     {
         services.AddSingleton<IAuditActionContributor, GrantsAuditActions>();
         services.AddSingleton<INotificationSourceContributor, GrantsNotificationSources>();

@@ -13,7 +13,7 @@ using Microsoft.AspNetCore.Mvc.ViewFeatures;
 using Microsoft.Extensions.Localization;
 using Humans.Auth.Contracts;
 using AwesomeAssertions;
-using Humans.AuditLog.Contracts;
+using Humans.Audit.Contracts;
 using Humans.Base.Interfaces;
 using Humans.Email.Contracts;
 using Humans.Notifications.Contracts;
@@ -96,7 +96,7 @@ public sealed class IssuesServiceTests
             .GetFilteredAsync(
                 Arg.Any<string?>(), Arg.Any<Guid?>(), Arg.Any<Guid?>(), Arg.Any<IReadOnlyList<string>?>(),
                 Arg.Any<int>(), Arg.Any<bool>(), Arg.Any<CancellationToken>())
-            .Returns(Task.FromResult<IReadOnlyList<AuditEvent>>([]));
+            .Returns(Task.FromResult<IReadOnlyList<AuditEntry>>([]));
 
 
         _userService = NewRegistryBackedUserService();
@@ -109,7 +109,7 @@ public sealed class IssuesServiceTests
         _notificationService = Substitute.For<INotificationEmitter>();
         _notificationInbox = Substitute.For<INotificationAutoResolve>();
 
-        var issuesDbOptions = NewSectionDbOptions<IssuesDbContext>();
+        var issuesDbOptions = TestDbOptions.InMemory<IssuesDbContext>();
         _issuesDb = new IssuesDbContext(issuesDbOptions);
         _repository = new IssuesRepository(new TestDbContextFactory<IssuesDbContext>(issuesDbOptions));
 
@@ -119,13 +119,6 @@ public sealed class IssuesServiceTests
             _clock, _inMemoryFileStorage, _sectionCatalog, Domain.TestIssueQueues.Shipped(),
             _logger);
     }
-
-    private static DbContextOptions<TContext> NewSectionDbOptions<TContext>()
-        where TContext : DbContext =>
-        new DbContextOptionsBuilder<TContext>()
-            .UseInMemoryDatabase(Guid.NewGuid().ToString())
-            .ConfigureWarnings(w => w.Ignore(InMemoryEventId.TransactionIgnoredWarning))
-            .Options;
 
     private IUserService NewRegistryBackedUserService()
     {
@@ -372,7 +365,7 @@ public sealed class IssuesServiceTests
         _auditViewer.GetFilteredAsync(
                 Arg.Any<string?>(), issueId, Arg.Any<Guid?>(), Arg.Any<IReadOnlyList<string>?>(),
                 Arg.Any<int>(), Arg.Any<bool>(), Arg.Any<CancellationToken>())
-            .Returns(Task.FromResult<IReadOnlyList<AuditEvent>>(
+            .Returns(Task.FromResult<IReadOnlyList<AuditEntry>>(
             [new(Guid.NewGuid(), auditAt, IssuesAuditActions.IssueGitHubLinked, null, null, nameof(Issue), issueId,
                 null, null, null, null, null, null, null, "GitHub link: 123")]));
 
@@ -2549,7 +2542,7 @@ public sealed class IssuesServiceTests
     public async Task PurgeExpiredAsync_LostAcknowledgement_CleansOnlyConfirmedDeletedScreenshots(string failureStage)
     {
         var ct = TestContext.Current.CancellationToken;
-        var options = NewSectionDbOptions<IssuesDbContext>();
+        var options = TestDbOptions.InMemory<IssuesDbContext>();
         var first = Guid.NewGuid();
         var second = Guid.NewGuid();
         var live = Guid.NewGuid();

@@ -13,17 +13,18 @@ using Humans.Settings.Contracts;
 using Humans.Users.Contracts;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
-using Humans.AuditLog.Contracts;
+using Humans.Audit.Contracts;
 using Humans.Base.Models.Tables;
+using Humans.Gate.Controllers;
 
 [assembly: Humans.Base.Demo.NoDemoStory("No demo story written yet.")]
 
 namespace Humans.Gate;
 
 /// <summary>No caching decorator: a stale gate read admits or blocks the wrong person.</summary>
-public sealed class Section : ISection, ISectionAdminNav, ISectionSettings
+public sealed class Section : SectionBase, ISectionAdminNav, ISectionSettings
 {
-    public void Register(IServiceCollection services, IConfiguration configuration)
+    public override void Register(IServiceCollection services, IConfiguration configuration)
     {
         services.AddSingleton<IAuditActionContributor, GateAuditActions>();
         services.AddSectionDbContext<GateDbContext>(sentinelTable: "gate_settings");
@@ -52,9 +53,9 @@ public sealed class Section : ISection, ISectionAdminNav, ISectionSettings
 
     IEnumerable<AdminNavGroup> ISectionAdminNav.Groups() =>
     [
-        new("Gate", [
+        AdminGroup([
             new("Terminal",   "TicketsGateAdmin", "Index", null, null, "fa-solid fa-key",     TicketsPolicies.Read),
-            new("Arrivals",   "GateReport",       "Index", null, null, "fa-solid fa-person-walking-arrow-right", TicketsPolicies.Read)
+            AdminLink<GateReportController>("Arrivals", nameof(GateReportController.Index), "fa-solid fa-person-walking-arrow-right", TicketsPolicies.Read)
         ])
     ];
 

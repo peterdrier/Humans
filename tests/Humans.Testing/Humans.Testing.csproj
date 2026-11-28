@@ -36,11 +36,13 @@
     <ProjectReference Include="..\..\src\Sections\Humans.Shifts\Humans.Shifts.csproj" />
     <!-- EventSettingsInfo (BurnFixtures) fixture. -->
     <ProjectReference Include="..\..\src\Sections\Humans.Settings\Humans.Settings.csproj" />
+    <ProjectReference Include="..\..\src\Sections\Humans.Users\Humans.Users.csproj" />
     <!-- ProfileInfo / UserInfo fixtures (nobodies-collective/Humans#1051). -->
   </ItemGroup>
 
   <ItemGroup>
     <PackageReference Include="Microsoft.EntityFrameworkCore" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.InMemory" />
     <PackageReference Include="NodaTime" />
     <PackageReference Include="NSubstitute" />
     <!-- FactAttribute/TheoryAttribute for the attribute subclasses, without the

@@ -1,7 +1,7 @@
 using Humans.Governance.Contracts;
 using Humans.Google.Contracts;
 using AwesomeAssertions;
-using Humans.AuditLog.Contracts;
+using Humans.Audit.Contracts;
 using Humans.Email.Contracts;
 using Humans.Users.Contracts;
 using Humans.Surveys.Data;
@@ -525,8 +525,7 @@ public class SurveyServiceTests
     public async Task Failed_authoring_save_preserves_images_when_commit_cannot_be_ruled_out(
         bool editing, bool committed, bool verificationFails)
     {
-        var options = new DbContextOptionsBuilder<SurveysDbContext>()
-            .UseInMemoryDatabase(Guid.NewGuid().ToString()).Options;
+        var options = TestDbOptions.InMemory<SurveysDbContext>();
         var repository = new SurveyRepository(new TestDbContextFactory<SurveysDbContext>(options));
         var surveyId = Guid.NewGuid();
         if (editing)
@@ -2018,8 +2017,7 @@ public class SurveyServiceTests
         bool existingParticipation, bool preparationFails)
     {
         var ct = TestContext.Current.CancellationToken;
-        var options = new DbContextOptionsBuilder<SurveysDbContext>()
-            .UseInMemoryDatabase(Guid.NewGuid().ToString()).Options;
+        var options = TestDbOptions.InMemory<SurveysDbContext>();
         await using var db = new SurveysDbContext(options);
         var repo = new SurveyRepository(new TestDbContextFactory<SurveysDbContext>(options));
         var teamId = Guid.NewGuid();
@@ -5842,7 +5840,7 @@ public class SurveyServiceTests
         captured!.Questions.Single().RankedUnavailableOptionValues.Should().Equal("c");
         await _audit.Received(1).LogAsync(
             SurveysAuditActions.SurveyUpdated,
-            AuditEntityTypes.Survey,
+            SurveysAuditSubjectTypes.Survey,
             survey.Id,
             Arg.Is<string>(value => value.Contains("unavailable (c)", StringComparison.Ordinal)
                 && value.Contains("restored (b)", StringComparison.Ordinal)),

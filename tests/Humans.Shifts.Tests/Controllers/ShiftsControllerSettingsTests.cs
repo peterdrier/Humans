@@ -4,7 +4,7 @@ using System.Security.Claims;
 using System.Globalization;
 using Humans.Base.Constants;
 using AwesomeAssertions;
-using Humans.AuditLog.Contracts;
+using Humans.Audit.Contracts;
 using Humans.Shifts.Services;
 using Humans.Teams.Contracts;
 using Humans.Shifts.Controllers;

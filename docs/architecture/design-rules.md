@@ -164,7 +164,7 @@ Not every crosscut belongs in a decorator. The decorator pattern works only for 
 | **Authorization** | **In-controller** (resource-based handlers) | Needs HTTP identity + resource context |
 | **Transactions / unit of work** | **In-repository method** | One repository method = one `SaveChangesAsync` |
 
-**Audit is in-service and called after the business save.** A decorator wrapping `SuspendAsync(userId)` knows neither the actor nor the old state nor whether this was a name edit or a suspension, so the service calls `IAuditLogService.LogAsync(...)` itself. Audit commits separately from the business change and is best-effort: an audit failure never fails the business operation. Therefore call audit *after* the save (a business rollback never leaves a ghost audit row), never expect audit to roll back with a later business step, and never call `SaveChangesAsync` to flush it. How the audit crosscut persists its rows is AuditLog's business ([`AuditLog.md`](../../src/Sections/Humans.AuditLog/Docs/AuditLog.md)); which actions a section writes is declared by that section ([`section-owned-audit-actions`](../../memory/architecture/section-owned-audit-actions.md)).
+**Audit is in-service and called after the business save.** A decorator wrapping `SuspendAsync(userId)` knows neither the actor nor the old state nor whether this was a name edit or a suspension, so the service calls `IAuditLogService.LogAsync(...)` itself. Audit commits separately from the business change and is best-effort: an audit failure never fails the business operation. Therefore call audit *after* the save (a business rollback never leaves a ghost audit row), never expect audit to roll back with a later business step, and never call `SaveChangesAsync` to flush it. How the audit crosscut persists its rows is Audit's business ([`Audit.md`](../../src/Sections/Humans.Audit/Docs/Audit.md)); which actions a section writes is declared by that section ([`section-owned-audit-actions`](../../memory/architecture/section-owned-audit-actions.md)).
 
 ```csharp
 public async Task SuspendAsync(Guid userId, Guid actorId, string reason, CancellationToken ct)
@@ -200,6 +200,10 @@ public async Task SuspendAsync(Guid userId, Guid actorId, string reason, Cancell
 - **Forward the instance that actually serves the read.** Forward the caching decorator only when the fan-out read is projected from its cached snapshot; otherwise forward the inner scoped service. The orchestrator is Scoped so it resolves either lifetime; forwarding a decorator that does not serve the read buys no caching and adds a hop.
 
 Which fan-outs exist is each hub's business: the hub's `Docs/<Section>.md` names its contributor interface and what it merges.
+
+## Vendor API clients
+
+A section that calls its vendor's HTTP API directly derives its typed client from `ApiClientBase` (`Humans.Base.Http`): it supplies the vendor name, its own transient/permanent exceptions and credentials, and inherits the base-URL check, transport-failure mapping and cursor paging with its safety cap. Credentials go on only for requests aimed under the base address, so a signed download URL never carries the key. Retry a write only where the vendor documents it as safe; the base never retries.
 
 ## Section contributions to the Shell
 
@@ -304,11 +308,14 @@ The decorator is optional in the sense that removing it leaves the system fully 
 
 Repositories are **Singleton** because they inject `IDbContextFactory<TContext>` rather than a context; every method creates and disposes its own short-lived context. `DbContext` is not thread-safe, holds a connection and accumulates tracked entities, so it must be short-lived, and the factory creates isolated contexts without scope-factory indirection.
 
+A repository derives from `SectionRepository<TContext>` (`Humans.Base.Data`): `RunAsync` runs one query on a fresh context, `InsertAsync` adds and saves, and `CreateDbContextAsync` hands out a context for anything longer.
+
 ```csharp
-public async Task<Profile?> GetByUserIdReadOnlyAsync(Guid userId, CancellationToken ct = default)
+internal sealed class ProfileRepository(IDbContextFactory<UsersDbContext> factory)
+    : SectionRepository<UsersDbContext>(factory), IProfileRepository
 {
-    await using var ctx = await _factory.CreateDbContextAsync(ct);
-    return await ctx.Profiles.AsNoTracking().FirstOrDefaultAsync(p => p.UserId == userId, ct);
+    public async Task<Profile?> GetByUserIdReadOnlyAsync(Guid userId, CancellationToken ct = default) =>
+        await RunAsync(ctx => ctx.Profiles.AsNoTracking().FirstOrDefaultAsync(p => p.UserId == userId, ct), ct);
 }
 ```
 

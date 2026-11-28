@@ -1,5 +1,6 @@
 using System.Globalization;
 using Microsoft.EntityFrameworkCore;
+using Humans.Base.Data;
 using Humans.Base.Extensions;
 using Humans.Budget.Domain;
 using Humans.Budget.Contracts;
@@ -8,7 +9,7 @@ using NodaTime;
 namespace Humans.Budget.Data;
 
 internal sealed class BudgetRepository(IDbContextFactory<BudgetDbContext> factory, ILogger<BudgetRepository> logger)
-    : IBudgetRepository
+    : SectionRepository<BudgetDbContext>(factory), IBudgetRepository
 {
     private const string TicketRevenueCategoryName = "Ticket Revenue";
     private const string ProcessingFeesCategoryName = "Processing Fees";
@@ -19,7 +20,7 @@ internal sealed class BudgetRepository(IDbContextFactory<BudgetDbContext> factor
     public async Task<IReadOnlyList<BudgetYear>> GetAllYearsAsync(
         bool includeArchived, CancellationToken ct = default)
     {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
+        await using var ctx = await CreateDbContextAsync(ct);
 
         var query = ctx.BudgetYears
             .AsNoTracking()
@@ -35,7 +36,7 @@ internal sealed class BudgetRepository(IDbContextFactory<BudgetDbContext> factor
 
     public async Task<BudgetYear?> GetYearByIdAsync(Guid id, CancellationToken ct = default)
     {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
+        await using var ctx = await CreateDbContextAsync(ct);
 
         // Display sort (SortOrder) is applied by the controllers and views, not here.
         return await ctx.BudgetYears
@@ -50,7 +51,7 @@ internal sealed class BudgetRepository(IDbContextFactory<BudgetDbContext> factor
 
     public async Task<BudgetYear?> GetActiveYearAsync(CancellationToken ct = default)
     {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
+        await using var ctx = await CreateDbContextAsync(ct);
 
         var activeId = await ctx.BudgetYears
             .AsNoTracking()
@@ -69,7 +70,7 @@ internal sealed class BudgetRepository(IDbContextFactory<BudgetDbContext> factor
     public async Task CreateYearWithScaffoldAsync(
         BudgetYearDraft draft, CancellationToken ct = default)
     {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
+        await using var ctx = await CreateDbContextAsync(ct);
 
         var budgetYear = new BudgetYear
         {
@@ -136,7 +137,7 @@ internal sealed class BudgetRepository(IDbContextFactory<BudgetDbContext> factor
 
         AddDefaultTicketingCategories(ctx, ticketingGroup.Id, draft.Now);
 
-        AddDescriptionAudit(ctx, budgetYear.Id, nameof(BudgetYear), budgetYear.Id,
+        AddDescriptionChange(ctx, budgetYear.Id, nameof(BudgetYear), budgetYear.Id,
             $"Created budget year '{draft.Name}' ({draft.Year})",
             draft.ActorUserId, draft.Now);
 
@@ -152,7 +153,7 @@ internal sealed class BudgetRepository(IDbContextFactory<BudgetDbContext> factor
         Instant now,
         CancellationToken ct = default)
     {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
+        await using var ctx = await CreateDbContextAsync(ct);
 
         var budgetYear = await ctx.BudgetYears.FirstOrDefaultAsync(y => y.Id == yearId, ct);
         if (budgetYear is null)
@@ -163,7 +164,7 @@ internal sealed class BudgetRepository(IDbContextFactory<BudgetDbContext> factor
 
         if (!string.Equals(budgetYear.Year, year, StringComparison.Ordinal))
         {
-            AddFieldAudit(ctx, budgetYear.Id, nameof(BudgetYear), budgetYear.Id,
+            AddFieldChange(ctx, budgetYear.Id, nameof(BudgetYear), budgetYear.Id,
                 nameof(BudgetYear.Year), budgetYear.Year, year,
                 actorUserId, now);
             budgetYear.Year = year;
@@ -171,7 +172,7 @@ internal sealed class BudgetRepository(IDbContextFactory<BudgetDbContext> factor
 
         if (!string.Equals(budgetYear.Name, name, StringComparison.Ordinal))
         {
-            AddFieldAudit(ctx, budgetYear.Id, nameof(BudgetYear), budgetYear.Id,
+            AddFieldChange(ctx, budgetYear.Id, nameof(BudgetYear), budgetYear.Id,
                 nameof(BudgetYear.Name), budgetYear.Name, name,
                 actorUserId, now);
             budgetYear.Name = name;
@@ -179,7 +180,7 @@ internal sealed class BudgetRepository(IDbContextFactory<BudgetDbContext> factor
 
         if (!string.Equals(budgetYear.PlatformEventId, platformEventId, StringComparison.Ordinal))
         {
-            AddFieldAudit(ctx, budgetYear.Id, nameof(BudgetYear), budgetYear.Id,
+            AddFieldChange(ctx, budgetYear.Id, nameof(BudgetYear), budgetYear.Id,
                 nameof(BudgetYear.PlatformEventId), budgetYear.PlatformEventId, platformEventId,
                 actorUserId, now);
             budgetYear.PlatformEventId = platformEventId;
@@ -198,7 +199,7 @@ internal sealed class BudgetRepository(IDbContextFactory<BudgetDbContext> factor
         Instant now,
         CancellationToken ct = default)
     {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
+        await using var ctx = await CreateDbContextAsync(ct);
 
         var year = await ctx.BudgetYears.FirstOrDefaultAsync(y => y.Id == yearId && !y.IsArchived, ct);
         if (year is null)
@@ -217,7 +218,7 @@ internal sealed class BudgetRepository(IDbContextFactory<BudgetDbContext> factor
                 active.Status = BudgetYearStatus.Closed;
                 active.UpdatedAt = now;
 
-                AddFieldAudit(ctx, active.Id, nameof(BudgetYear), active.Id,
+                AddFieldChange(ctx, active.Id, nameof(BudgetYear), active.Id,
                     nameof(BudgetYear.Status),
                     BudgetYearStatus.Active.ToString(),
                     BudgetYearStatus.Closed.ToString(),
@@ -228,7 +229,7 @@ internal sealed class BudgetRepository(IDbContextFactory<BudgetDbContext> factor
         year.Status = status;
         year.UpdatedAt = now;
 
-        AddFieldAudit(ctx, year.Id, nameof(BudgetYear), year.Id,
+        AddFieldChange(ctx, year.Id, nameof(BudgetYear), year.Id,
             nameof(BudgetYear.Status), oldStatus.ToString(), status.ToString(),
             actorUserId, now);
 
@@ -242,7 +243,7 @@ internal sealed class BudgetRepository(IDbContextFactory<BudgetDbContext> factor
         Instant now,
         CancellationToken ct = default)
     {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
+        await using var ctx = await CreateDbContextAsync(ct);
 
         var year = await ctx.BudgetYears.FirstOrDefaultAsync(y => y.Id == yearId, ct);
         if (year is null)
@@ -256,7 +257,7 @@ internal sealed class BudgetRepository(IDbContextFactory<BudgetDbContext> factor
         year.Status = BudgetYearStatus.Closed;
         year.UpdatedAt = now;
 
-        AddDescriptionAudit(ctx, year.Id, nameof(BudgetYear), year.Id,
+        AddDescriptionChange(ctx, year.Id, nameof(BudgetYear), year.Id,
             $"Archived budget year '{year.Name}' ({year.Year})",
             actorUserId, now);
 
@@ -271,7 +272,7 @@ internal sealed class BudgetRepository(IDbContextFactory<BudgetDbContext> factor
         Instant now,
         CancellationToken ct = default)
     {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
+        await using var ctx = await CreateDbContextAsync(ct);
 
         await EnsureYearNotClosedAsync(ctx, budgetYearId, ct);
 
@@ -314,7 +315,7 @@ internal sealed class BudgetRepository(IDbContextFactory<BudgetDbContext> factor
             };
             ctx.BudgetCategories.Add(category);
 
-            AddDescriptionAudit(ctx, budgetYearId, nameof(BudgetCategory), category.Id,
+            AddDescriptionChange(ctx, budgetYearId, nameof(BudgetCategory), category.Id,
                 $"Synced department '{team.Name}' into budget",
                 actorUserId, now);
         }
@@ -329,7 +330,7 @@ internal sealed class BudgetRepository(IDbContextFactory<BudgetDbContext> factor
         Instant now,
         CancellationToken ct = default)
     {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
+        await using var ctx = await CreateDbContextAsync(ct);
 
         await EnsureYearNotClosedAsync(ctx, budgetYearId, ct);
 
@@ -365,7 +366,7 @@ internal sealed class BudgetRepository(IDbContextFactory<BudgetDbContext> factor
 
         AddDefaultTicketingCategories(ctx, ticketingGroup.Id, now);
 
-        AddDescriptionAudit(ctx, budgetYearId, nameof(BudgetGroup), ticketingGroup.Id,
+        AddDescriptionChange(ctx, budgetYearId, nameof(BudgetGroup), ticketingGroup.Id,
             "Added Ticketing group with projection parameters",
             actorUserId, now);
 
@@ -381,7 +382,7 @@ internal sealed class BudgetRepository(IDbContextFactory<BudgetDbContext> factor
         Instant now,
         CancellationToken ct = default)
     {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
+        await using var ctx = await CreateDbContextAsync(ct);
 
         var yearExists = await ctx.BudgetYears.AnyAsync(y => y.Id == budgetYearId, ct);
         if (!yearExists)
@@ -406,7 +407,7 @@ internal sealed class BudgetRepository(IDbContextFactory<BudgetDbContext> factor
         };
         ctx.BudgetGroups.Add(group);
 
-        AddDescriptionAudit(ctx, budgetYearId, nameof(BudgetGroup), group.Id,
+        AddDescriptionChange(ctx, budgetYearId, nameof(BudgetGroup), group.Id,
             $"Created budget group '{name}'",
             actorUserId, now);
 
@@ -423,7 +424,7 @@ internal sealed class BudgetRepository(IDbContextFactory<BudgetDbContext> factor
         Instant now,
         CancellationToken ct = default)
     {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
+        await using var ctx = await CreateDbContextAsync(ct);
 
         var group = await ctx.BudgetGroups.FirstOrDefaultAsync(g => g.Id == groupId, ct);
         if (group is null)
@@ -433,7 +434,7 @@ internal sealed class BudgetRepository(IDbContextFactory<BudgetDbContext> factor
 
         if (!string.Equals(group.Name, name, StringComparison.Ordinal))
         {
-            AddFieldAudit(ctx, group.BudgetYearId, nameof(BudgetGroup), group.Id,
+            AddFieldChange(ctx, group.BudgetYearId, nameof(BudgetGroup), group.Id,
                 nameof(BudgetGroup.Name), group.Name, name,
                 actorUserId, now);
             group.Name = name;
@@ -441,7 +442,7 @@ internal sealed class BudgetRepository(IDbContextFactory<BudgetDbContext> factor
 
         if (group.SortOrder != sortOrder)
         {
-            AddFieldAudit(ctx, group.BudgetYearId, nameof(BudgetGroup), group.Id,
+            AddFieldChange(ctx, group.BudgetYearId, nameof(BudgetGroup), group.Id,
                 nameof(BudgetGroup.SortOrder),
                 group.SortOrder.ToString(CultureInfo.InvariantCulture),
                 sortOrder.ToString(CultureInfo.InvariantCulture),
@@ -451,7 +452,7 @@ internal sealed class BudgetRepository(IDbContextFactory<BudgetDbContext> factor
 
         if (group.IsRestricted != isRestricted)
         {
-            AddFieldAudit(ctx, group.BudgetYearId, nameof(BudgetGroup), group.Id,
+            AddFieldChange(ctx, group.BudgetYearId, nameof(BudgetGroup), group.Id,
                 nameof(BudgetGroup.IsRestricted),
                 group.IsRestricted.ToString(), isRestricted.ToString(),
                 actorUserId, now);
@@ -470,7 +471,7 @@ internal sealed class BudgetRepository(IDbContextFactory<BudgetDbContext> factor
         Instant now,
         CancellationToken ct = default)
     {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
+        await using var ctx = await CreateDbContextAsync(ct);
 
         var group = await ctx.BudgetGroups.FirstOrDefaultAsync(g => g.Id == groupId, ct);
         if (group is null)
@@ -481,7 +482,7 @@ internal sealed class BudgetRepository(IDbContextFactory<BudgetDbContext> factor
         if (group.IsDepartmentGroup)
             throw new InvalidOperationException("Cannot delete the auto-generated Departments group.");
 
-        AddDescriptionAudit(ctx, group.BudgetYearId, nameof(BudgetGroup), group.Id,
+        AddDescriptionChange(ctx, group.BudgetYearId, nameof(BudgetGroup), group.Id,
             $"Deleted budget group '{group.Name}'",
             actorUserId, now);
 
@@ -493,7 +494,7 @@ internal sealed class BudgetRepository(IDbContextFactory<BudgetDbContext> factor
 
     public async Task<BudgetCategory?> GetCategoryByIdAsync(Guid id, CancellationToken ct = default)
     {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
+        await using var ctx = await CreateDbContextAsync(ct);
 
         // Line-item display sort (SortOrder) is applied by the views.
         return await ctx.BudgetCategories
@@ -514,7 +515,7 @@ internal sealed class BudgetRepository(IDbContextFactory<BudgetDbContext> factor
         Instant now,
         CancellationToken ct = default)
     {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
+        await using var ctx = await CreateDbContextAsync(ct);
 
         var group = await ctx.BudgetGroups.FirstOrDefaultAsync(g => g.Id == budgetGroupId, ct)
             ?? throw new InvalidOperationException($"Budget group {budgetGroupId} not found");
@@ -539,7 +540,7 @@ internal sealed class BudgetRepository(IDbContextFactory<BudgetDbContext> factor
         };
         ctx.BudgetCategories.Add(category);
 
-        AddDescriptionAudit(ctx, group.BudgetYearId, nameof(BudgetCategory), category.Id,
+        AddDescriptionChange(ctx, group.BudgetYearId, nameof(BudgetCategory), category.Id,
             $"Created budget category '{name}' with allocation {allocatedAmount:N2}",
             actorUserId, now);
 
@@ -556,7 +557,7 @@ internal sealed class BudgetRepository(IDbContextFactory<BudgetDbContext> factor
         Instant now,
         CancellationToken ct = default)
     {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
+        await using var ctx = await CreateDbContextAsync(ct);
 
         var category = await ctx.BudgetCategories
             .Include(c => c.BudgetGroup)
@@ -569,7 +570,7 @@ internal sealed class BudgetRepository(IDbContextFactory<BudgetDbContext> factor
 
         if (!string.Equals(category.Name, name, StringComparison.Ordinal))
         {
-            AddFieldAudit(ctx, budgetYearId, nameof(BudgetCategory), category.Id,
+            AddFieldChange(ctx, budgetYearId, nameof(BudgetCategory), category.Id,
                 nameof(BudgetCategory.Name), category.Name, name,
                 actorUserId, now);
             category.Name = name;
@@ -577,7 +578,7 @@ internal sealed class BudgetRepository(IDbContextFactory<BudgetDbContext> factor
 
         if (category.AllocatedAmount != allocatedAmount)
         {
-            AddFieldAudit(ctx, budgetYearId, nameof(BudgetCategory), category.Id,
+            AddFieldChange(ctx, budgetYearId, nameof(BudgetCategory), category.Id,
                 nameof(BudgetCategory.AllocatedAmount),
                 category.AllocatedAmount.ToString("N2", CultureInfo.InvariantCulture),
                 allocatedAmount.ToString("N2", CultureInfo.InvariantCulture),
@@ -587,7 +588,7 @@ internal sealed class BudgetRepository(IDbContextFactory<BudgetDbContext> factor
 
         if (category.ExpenditureType != expenditureType)
         {
-            AddFieldAudit(ctx, budgetYearId, nameof(BudgetCategory), category.Id,
+            AddFieldChange(ctx, budgetYearId, nameof(BudgetCategory), category.Id,
                 nameof(BudgetCategory.ExpenditureType),
                 category.ExpenditureType.ToString(), expenditureType.ToString(),
                 actorUserId, now);
@@ -606,7 +607,7 @@ internal sealed class BudgetRepository(IDbContextFactory<BudgetDbContext> factor
         Instant now,
         CancellationToken ct = default)
     {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
+        await using var ctx = await CreateDbContextAsync(ct);
 
         var category = await ctx.BudgetCategories
             .Include(c => c.BudgetGroup)
@@ -617,7 +618,7 @@ internal sealed class BudgetRepository(IDbContextFactory<BudgetDbContext> factor
         var budgetYearId = category.BudgetGroup!.BudgetYearId;
         await EnsureYearNotClosedAsync(ctx, budgetYearId, ct);
 
-        AddDescriptionAudit(ctx, budgetYearId, nameof(BudgetCategory), category.Id,
+        AddDescriptionChange(ctx, budgetYearId, nameof(BudgetCategory), category.Id,
             $"Deleted budget category '{category.Name}'",
             actorUserId, now);
 
@@ -629,7 +630,7 @@ internal sealed class BudgetRepository(IDbContextFactory<BudgetDbContext> factor
 
     public async Task<Guid?> GetLineItemCategoryIdAsync(Guid id, CancellationToken ct = default)
     {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
+        await using var ctx = await CreateDbContextAsync(ct);
 
         return await ctx.BudgetLineItems
             .Where(li => li.Id == id)
@@ -643,7 +644,7 @@ internal sealed class BudgetRepository(IDbContextFactory<BudgetDbContext> factor
         Instant now,
         CancellationToken ct = default)
     {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
+        await using var ctx = await CreateDbContextAsync(ct);
 
         var category = await ctx.BudgetCategories
             .Include(c => c.BudgetGroup)
@@ -673,7 +674,7 @@ internal sealed class BudgetRepository(IDbContextFactory<BudgetDbContext> factor
         };
         ctx.BudgetLineItems.Add(lineItem);
 
-        AddDescriptionAudit(ctx, budgetYearId, nameof(BudgetLineItem), lineItem.Id,
+        AddDescriptionChange(ctx, budgetYearId, nameof(BudgetLineItem), lineItem.Id,
             $"Created line item '{draft.Description}' ({draft.Amount:N2})",
             actorUserId, now);
 
@@ -686,7 +687,7 @@ internal sealed class BudgetRepository(IDbContextFactory<BudgetDbContext> factor
         Instant now,
         CancellationToken ct = default)
     {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
+        await using var ctx = await CreateDbContextAsync(ct);
 
         var lineItem = await ctx.BudgetLineItems
             .Include(li => li.BudgetCategory)
@@ -700,7 +701,7 @@ internal sealed class BudgetRepository(IDbContextFactory<BudgetDbContext> factor
 
         if (!string.Equals(lineItem.Description, update.Description, StringComparison.Ordinal))
         {
-            AddFieldAudit(ctx, budgetYearId, nameof(BudgetLineItem), lineItem.Id,
+            AddFieldChange(ctx, budgetYearId, nameof(BudgetLineItem), lineItem.Id,
                 nameof(BudgetLineItem.Description),
                 lineItem.Description, update.Description,
                 actorUserId, now);
@@ -709,7 +710,7 @@ internal sealed class BudgetRepository(IDbContextFactory<BudgetDbContext> factor
 
         if (lineItem.Amount != update.Amount)
         {
-            AddFieldAudit(ctx, budgetYearId, nameof(BudgetLineItem), lineItem.Id,
+            AddFieldChange(ctx, budgetYearId, nameof(BudgetLineItem), lineItem.Id,
                 nameof(BudgetLineItem.Amount),
                 lineItem.Amount.ToString("N2", CultureInfo.InvariantCulture),
                 update.Amount.ToString("N2", CultureInfo.InvariantCulture),
@@ -719,7 +720,7 @@ internal sealed class BudgetRepository(IDbContextFactory<BudgetDbContext> factor
 
         if (lineItem.ResponsibleTeamId != update.ResponsibleTeamId)
         {
-            AddFieldAudit(ctx, budgetYearId, nameof(BudgetLineItem), lineItem.Id,
+            AddFieldChange(ctx, budgetYearId, nameof(BudgetLineItem), lineItem.Id,
                 nameof(BudgetLineItem.ResponsibleTeamId),
                 lineItem.ResponsibleTeamId?.ToString(),
                 update.ResponsibleTeamId?.ToString(),
@@ -729,7 +730,7 @@ internal sealed class BudgetRepository(IDbContextFactory<BudgetDbContext> factor
 
         if (!string.Equals(lineItem.Notes, update.Notes, StringComparison.Ordinal))
         {
-            AddFieldAudit(ctx, budgetYearId, nameof(BudgetLineItem), lineItem.Id,
+            AddFieldChange(ctx, budgetYearId, nameof(BudgetLineItem), lineItem.Id,
                 nameof(BudgetLineItem.Notes),
                 lineItem.Notes, update.Notes,
                 actorUserId, now);
@@ -738,7 +739,7 @@ internal sealed class BudgetRepository(IDbContextFactory<BudgetDbContext> factor
 
         if (lineItem.ExpectedDate != update.ExpectedDate)
         {
-            AddFieldAudit(ctx, budgetYearId, nameof(BudgetLineItem), lineItem.Id,
+            AddFieldChange(ctx, budgetYearId, nameof(BudgetLineItem), lineItem.Id,
                 nameof(BudgetLineItem.ExpectedDate),
                 lineItem.ExpectedDate.ToInvariantDate(),
                 update.ExpectedDate.ToInvariantDate(),
@@ -748,7 +749,7 @@ internal sealed class BudgetRepository(IDbContextFactory<BudgetDbContext> factor
 
         if (lineItem.VatRate != update.VatRate)
         {
-            AddFieldAudit(ctx, budgetYearId, nameof(BudgetLineItem), lineItem.Id,
+            AddFieldChange(ctx, budgetYearId, nameof(BudgetLineItem), lineItem.Id,
                 nameof(BudgetLineItem.VatRate),
                 lineItem.VatRate.ToString(CultureInfo.InvariantCulture),
                 update.VatRate.ToString(CultureInfo.InvariantCulture),
@@ -768,7 +769,7 @@ internal sealed class BudgetRepository(IDbContextFactory<BudgetDbContext> factor
         Instant now,
         CancellationToken ct = default)
     {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
+        await using var ctx = await CreateDbContextAsync(ct);
 
         var lineItem = await ctx.BudgetLineItems
             .Include(li => li.BudgetCategory)
@@ -780,7 +781,7 @@ internal sealed class BudgetRepository(IDbContextFactory<BudgetDbContext> factor
         var budgetYearId = lineItem.BudgetCategory!.BudgetGroup!.BudgetYearId;
         await EnsureYearNotClosedAsync(ctx, budgetYearId, ct);
 
-        AddDescriptionAudit(ctx, budgetYearId, nameof(BudgetLineItem), lineItem.Id,
+        AddDescriptionChange(ctx, budgetYearId, nameof(BudgetLineItem), lineItem.Id,
             $"Deleted line item '{lineItem.Description}'",
             actorUserId, now);
 
@@ -793,7 +794,7 @@ internal sealed class BudgetRepository(IDbContextFactory<BudgetDbContext> factor
     public async Task<TicketingProjection?> GetTicketingProjectionAsync(
         Guid budgetGroupId, CancellationToken ct = default)
     {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
+        await using var ctx = await CreateDbContextAsync(ct);
 
         return await ctx.TicketingProjections
             .AsNoTracking()
@@ -807,7 +808,7 @@ internal sealed class BudgetRepository(IDbContextFactory<BudgetDbContext> factor
         CancellationToken ct = default,
         LocalDate? refreshFromDate = null)
     {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
+        await using var ctx = await CreateDbContextAsync(ct);
 
         var group = await ctx.BudgetGroups
             .Include(g => g.Categories).ThenInclude(category => category.LineItems)
@@ -842,7 +843,7 @@ internal sealed class BudgetRepository(IDbContextFactory<BudgetDbContext> factor
                 created = MaterializeProjectedWeeks(ctx, projection, revenueCategory, feesCategory, today, now);
         }
 
-        AddDescriptionAudit(ctx, group.BudgetYearId, nameof(TicketingProjection), projection.Id,
+        AddDescriptionChange(ctx, group.BudgetYearId, nameof(TicketingProjection), projection.Id,
             refreshFromDate is null
                 ? "Updated ticketing projection parameters"
                 : $"Updated ticketing projection parameters; refreshed {created} projected line item(s)",
@@ -860,7 +861,7 @@ internal sealed class BudgetRepository(IDbContextFactory<BudgetDbContext> factor
         Instant now,
         CancellationToken ct = default)
     {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
+        await using var ctx = await CreateDbContextAsync(ct);
 
         await EnsureYearNotClosedAsync(ctx, budgetYearId, ct);
 
@@ -933,7 +934,7 @@ internal sealed class BudgetRepository(IDbContextFactory<BudgetDbContext> factor
 
         if (ctx.ChangeTracker.HasChanges())
         {
-            AddDescriptionAudit(ctx, budgetYearId, nameof(BudgetGroup), ticketingGroup.Id,
+            AddDescriptionChange(ctx, budgetYearId, nameof(BudgetGroup), ticketingGroup.Id,
                 $"Ticketing sync: {lineItemsChanged} line item(s) created/updated from ticket sales data",
                 actorUserId, now);
             await ctx.SaveChangesAsync(ct);
@@ -942,12 +943,12 @@ internal sealed class BudgetRepository(IDbContextFactory<BudgetDbContext> factor
         return lineItemsChanged;
     }
 
-    public async Task<IReadOnlyList<BudgetAuditLog>> GetAuditLogAsync(
+    public async Task<IReadOnlyList<BudgetChange>> GetChangesAsync(
         Guid? budgetYearId, CancellationToken ct = default)
     {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
+        await using var ctx = await CreateDbContextAsync(ct);
 
-        var query = ctx.BudgetAuditLogs.AsNoTracking().AsQueryable();
+        var query = ctx.BudgetChanges.AsNoTracking().AsQueryable();
 
         if (budgetYearId.HasValue)
             query = query.Where(a => a.BudgetYearId == budgetYearId.Value);
@@ -959,15 +960,15 @@ internal sealed class BudgetRepository(IDbContextFactory<BudgetDbContext> factor
             .ToListAsync(ct);
     }
 
-    public async Task<IReadOnlyList<BudgetAuditLog>> GetAuditEntriesForUsersAsync(
+    public async Task<IReadOnlyList<BudgetChange>> GetChangesForUsersAsync(
         IReadOnlyCollection<Guid> userIds, CancellationToken ct = default)
     {
         if (userIds.Count == 0)
             return [];
 
-        await using var ctx = await factory.CreateDbContextAsync(ct);
+        await using var ctx = await CreateDbContextAsync(ct);
 
-        return await ctx.BudgetAuditLogs
+        return await ctx.BudgetChanges
             .AsNoTracking()
             .Where(bal => bal.ActorUserId.HasValue && userIds.Contains(bal.ActorUserId.Value))
             // arch:db-sort-ok budget audit user chronology
@@ -1218,14 +1219,14 @@ internal sealed class BudgetRepository(IDbContextFactory<BudgetDbContext> factor
         return 1;
     }
 
-    private void AddFieldAudit(
+    private void AddFieldChange(
         BudgetDbContext ctx,
         Guid budgetYearId, string entityType, Guid entityId,
         string fieldName, string? oldValue, string? newValue,
         Guid? actorUserId, Instant occurredAt)
     {
         var description = $"Changed {entityType}.{fieldName} from '{oldValue}' to '{newValue}'";
-        ctx.BudgetAuditLogs.Add(new BudgetAuditLog
+        ctx.BudgetChanges.Add(new BudgetChange
         {
             Id = Guid.NewGuid(),
             BudgetYearId = budgetYearId,
@@ -1241,17 +1242,17 @@ internal sealed class BudgetRepository(IDbContextFactory<BudgetDbContext> factor
 
         // Trace only — the budget_audit_logs row is the durable record.
         logger.LogDebug(
-            "BudgetAudit: {EntityType} {EntityId} — {Description} by user {ActorUserId}",
+            "BudgetChange: {EntityType} {EntityId} — {Description} by user {ActorUserId}",
             entityType, entityId, description, actorUserId);
     }
 
-    private void AddDescriptionAudit(
+    private void AddDescriptionChange(
         BudgetDbContext ctx,
         Guid budgetYearId, string entityType, Guid entityId,
         string description,
         Guid? actorUserId, Instant occurredAt)
     {
-        ctx.BudgetAuditLogs.Add(new BudgetAuditLog
+        ctx.BudgetChanges.Add(new BudgetChange
         {
             Id = Guid.NewGuid(),
             BudgetYearId = budgetYearId,
@@ -1266,7 +1267,7 @@ internal sealed class BudgetRepository(IDbContextFactory<BudgetDbContext> factor
         });
 
         logger.LogDebug(
-            "BudgetAudit: {EntityType} {EntityId} — {Description} by user {ActorUserId}",
+            "BudgetChange: {EntityType} {EntityId} — {Description} by user {ActorUserId}",
             entityType, entityId, description, actorUserId);
     }
 }

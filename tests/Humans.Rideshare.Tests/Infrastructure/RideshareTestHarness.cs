@@ -1,5 +1,5 @@
 using System.Text.Json;
-using Humans.AuditLog.Contracts;
+using Humans.Audit.Contracts;
 using Humans.Notifications.Contracts;
 using Humans.Rideshare.Data;
 using Humans.Rideshare.Domain;
@@ -45,10 +45,7 @@ public abstract class RideshareTestHarness : IDisposable
 
     protected RideshareTestHarness(Instant? now = null)
     {
-        var options = new DbContextOptionsBuilder<RideshareDbContext>()
-            .UseInMemoryDatabase(Guid.NewGuid().ToString())
-            .ConfigureWarnings(w => w.Ignore(InMemoryEventId.TransactionIgnoredWarning))
-            .Options;
+        var options = TestDbOptions.InMemory<RideshareDbContext>();
         Db = new RideshareDbContext(options);
         DbFactory = new TestDbContextFactory<RideshareDbContext>(options);
         Clock = new FakeClock(now ?? Instant.FromUtc(2026, 3, 1, 12, 0));

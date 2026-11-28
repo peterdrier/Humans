@@ -1,5 +1,5 @@
 using AwesomeAssertions;
-using Humans.AuditLog.Contracts;
+using Humans.Audit.Contracts;
 using Humans.Base.Constants;
 using Humans.Base.Enums;
 using Humans.Google.Contracts;
@@ -30,7 +30,7 @@ public sealed class GovernanceBodyLinksServiceTests
     public GovernanceBodyLinksServiceTests()
     {
         var factory = new TestDbContextFactory<GovernanceDbContext>(
-            new DbContextOptionsBuilder<GovernanceDbContext>().UseInMemoryDatabase(Guid.NewGuid().ToString()).Options);
+            TestDbOptions.InMemory<GovernanceDbContext>());
         _resources.GetResourcesByTeamIdsAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
             .Returns(_ => _resourcesByTeam);
         SetPrefix(SystemTeamIds.Asociados, "asociados");

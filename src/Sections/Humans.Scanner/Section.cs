@@ -5,6 +5,7 @@ using Humans.Issues.Contracts;
 using Humans.Tickets.Contracts;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Humans.Scanner.Controllers;
 
 namespace Humans.Scanner;
 
@@ -12,9 +13,9 @@ namespace Humans.Scanner;
 /// <c>Register</c> is empty, but the type must stay: implementing <c>ISection</c> is what makes this assembly a
 /// section. Without it the pages 404 with a green build.
 /// </summary>
-public sealed class Section : ISection, IIssueQueueOwner, ISectionAdminNav
+public sealed class Section : SectionBase, IIssueQueueOwner, ISectionAdminNav
 {
-    public void Register(IServiceCollection services, IConfiguration configuration)
+    public override void Register(IServiceCollection services, IConfiguration configuration)
     {
     }
 
@@ -28,8 +29,8 @@ public sealed class Section : ISection, IIssueQueueOwner, ISectionAdminNav
 
     IEnumerable<AdminNavGroup> ISectionAdminNav.Groups() =>
     [
-        new("Scanner", [
-            new("Scanner", "Scanner", "Index", null, null, "fa-solid fa-qrcode", PolicyNames.ScannerAccess)
+        AdminGroup([
+            AdminLink<ScannerController>("Scanner", nameof(ScannerController.Index), "fa-solid fa-qrcode", PolicyNames.ScannerAccess)
         ])
     ];
 }

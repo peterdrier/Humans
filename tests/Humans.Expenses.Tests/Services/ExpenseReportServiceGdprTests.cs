@@ -3,7 +3,7 @@ using AwesomeAssertions.Execution;
 using System.Text.Json;
 using Humans.Expenses.Contracts;
 using Humans.Base.Interfaces;
-using Humans.AuditLog.Contracts;
+using Humans.Audit.Contracts;
 using Humans.Budget.Contracts;
 using Humans.Finance.Contracts;
 using Humans.Gdpr.Contracts;
@@ -42,8 +42,8 @@ public class ExpenseReportServiceGdprTests
         // export reads the single id.
 
         _auditViewer.GetFilteredAsync(
-                entityType: Arg.Any<string?>(),
-                entityId: Arg.Any<Guid?>(),
+                subjectType: Arg.Any<string?>(),
+                subjectId: Arg.Any<Guid?>(),
                 userId: Arg.Any<Guid?>(),
                 actions: Arg.Any<IReadOnlyList<string>?>(),
                 limit: Arg.Any<int>(),
@@ -169,12 +169,12 @@ public class ExpenseReportServiceGdprTests
             Guid.NewGuid(),
             "Submitted",
             actorUserId: UserId,
-            relatedEntityId: UserId,
-            relatedEntityType: AuditSubjectTypes.User);
+            targetId: UserId,
+            targetType: AuditSubjectTypes.User);
 
         _auditViewer.GetFilteredAsync(
-                entityType: Arg.Any<string?>(),
-                entityId: Arg.Any<Guid?>(),
+                subjectType: Arg.Any<string?>(),
+                subjectId: Arg.Any<Guid?>(),
                 userId: Arg.Any<Guid?>(),
                 actions: Arg.Any<IReadOnlyList<string>?>(),
                 limit: Arg.Any<int>(),
@@ -225,8 +225,8 @@ public class ExpenseReportServiceGdprTests
         var approval = Event(ExpensesAuditActions.ExpenseApprove, report.Id, "Finance approved expense report.",
             actorUserId: Guid.NewGuid());
         _auditViewer.GetFilteredAsync(
-                entityType: "ExpenseReport",
-                entityId: report.Id,
+                subjectType: "ExpenseReport",
+                subjectId: report.Id,
                 userId: Arg.Any<Guid?>(),
                 actions: Arg.Any<IReadOnlyList<string>?>(),
                 limit: Arg.Any<int>(),
@@ -257,38 +257,38 @@ public class ExpenseReportServiceGdprTests
             ownReport.Id,
             "Submitted expense report.",
             actorUserId: adminId,
-            relatedEntityId: adminId,
-            relatedEntityType: AuditSubjectTypes.User);
+            targetId: adminId,
+            targetType: AuditSubjectTypes.User);
 
         var crossUserIbanSet = Event(
             ExpensesAuditActions.IbanSet,
             otherMemberId,
             "IBAN set for Dani Member to ES9121000418450200051332",
             actorUserId: adminId,
-            entityType: AuditEntityTypes.Profile,
-            relatedEntityId: otherMemberId,
-            relatedEntityType: AuditSubjectTypes.User);
+            subjectType: ExpensesAuditSubjectTypes.Profile,
+            targetId: otherMemberId,
+            targetType: AuditSubjectTypes.User);
         var crossUserPayeeUpdated = Event(
             ExpensesAuditActions.ExpensePayeeIbanUpdated,
             otherReportId,
             "Payee IBAN updated for Dani Member to ES9121000418450200051332.",
             actorUserId: adminId,
-            relatedEntityId: otherMemberId,
-            relatedEntityType: AuditSubjectTypes.User);
+            targetId: otherMemberId,
+            targetType: AuditSubjectTypes.User);
         var crossUserCreated = Event(
             ExpensesAuditActions.ExpenseCreatedOnBehalf,
             otherReportId,
             "Created expense report on behalf of Dani Member.",
             actorUserId: adminId,
-            relatedEntityId: otherMemberId,
-            relatedEntityType: AuditSubjectTypes.User);
+            targetId: otherMemberId,
+            targetType: AuditSubjectTypes.User);
         var crossUserEdited = Event(
             ExpensesAuditActions.ExpenseEditedOnBehalf,
             otherReportId,
             "Added line \"Secret Hotel\" €250 on behalf of Dani Member.",
             actorUserId: adminId,
-            relatedEntityId: otherMemberId,
-            relatedEntityType: AuditSubjectTypes.User);
+            targetId: otherMemberId,
+            targetType: AuditSubjectTypes.User);
         var crossUserLineDeclined = Event(
             ExpensesAuditActions.ExpenseLineDeclined,
             otherReportId,
@@ -309,11 +309,11 @@ public class ExpenseReportServiceGdprTests
             otherMemberId,
             $"Admin revealed IBAN for user {otherMemberId}",
             actorUserId: adminId,
-            entityType: AuditSubjectTypes.User);
+            subjectType: AuditSubjectTypes.User);
 
         _auditViewer.GetFilteredAsync(
-                entityType: null,
-                entityId: null,
+                subjectType: null,
+                subjectId: null,
                 userId: adminId,
                 actions: Arg.Any<IReadOnlyList<string>?>(),
                 limit: Arg.Any<int>(),
@@ -330,8 +330,8 @@ public class ExpenseReportServiceGdprTests
                 crossUserIbanReveal,
             ]);
         _auditViewer.GetFilteredAsync(
-                entityType: AuditEntityTypes.Report,
-                entityId: ownReport.Id,
+                subjectType: ExpensesAuditSubjectTypes.Report,
+                subjectId: ownReport.Id,
                 userId: null,
                 actions: Arg.Any<IReadOnlyList<string>?>(),
                 limit: Arg.Any<int>(),
@@ -365,8 +365,8 @@ public class ExpenseReportServiceGdprTests
             .Returns(WrapInUserInfo(adminId, UserFixtures.Profile()));
 
         _auditViewer.GetFilteredAsync(
-                entityType: null,
-                entityId: null,
+                subjectType: null,
+                subjectId: null,
                 userId: adminId,
                 actions: Arg.Any<IReadOnlyList<string>?>(),
                 limit: Arg.Any<int>(),
@@ -377,9 +377,9 @@ public class ExpenseReportServiceGdprTests
                     otherMemberId,
                     "IBAN set for Dani Member to ES9121000418450200051332",
                     actorUserId: adminId,
-                    entityType: AuditEntityTypes.Profile,
-                    relatedEntityId: otherMemberId,
-                    relatedEntityType: AuditSubjectTypes.User),
+                    subjectType: ExpensesAuditSubjectTypes.Profile,
+                    targetId: otherMemberId,
+                    targetType: AuditSubjectTypes.User),
                 Event(
                     ExpensesAuditActions.ExpenseApprove,
                     otherReportId,
@@ -413,28 +413,28 @@ public class ExpenseReportServiceGdprTests
             survivorId,
             "IBAN set for Dani Member to ES9121000418450200051332",
             actorUserId: adminId,
-            entityType: AuditEntityTypes.Profile,
-            relatedEntityId: survivorId,
-            relatedEntityType: AuditSubjectTypes.User);
+            subjectType: ExpensesAuditSubjectTypes.Profile,
+            targetId: survivorId,
+            targetType: AuditSubjectTypes.User);
         var subjectPayeeIbanUpdated = Event(
             ExpensesAuditActions.ExpensePayeeIbanUpdated,
             sourceReport.Id,
             "Payee IBAN updated for Dani Member to DE89370400440532013000.",
             actorUserId: adminId,
-            relatedEntityId: sourceId,
-            relatedEntityType: AuditSubjectTypes.User);
+            targetId: sourceId,
+            targetType: AuditSubjectTypes.User);
         var legacySelfIbanSet = Event(
             ExpensesAuditActions.IbanSet,
             sourceId,
             "IBAN set",
             actorUserId: sourceId,
-            entityType: AuditEntityTypes.Profile);
+            subjectType: ExpensesAuditSubjectTypes.Profile);
         var subjectIbanReveal = Event(
             FinanceAuditActions.IbanReveal,
             survivorId,
             $"Admin revealed IBAN for user {survivorId}",
             actorUserId: adminId,
-            entityType: AuditSubjectTypes.User);
+            subjectType: AuditSubjectTypes.User);
         var reportApproved = Event(
             ExpensesAuditActions.ExpenseApprove,
             sourceReport.Id,
@@ -445,13 +445,13 @@ public class ExpenseReportServiceGdprTests
             otherMemberId,
             "IBAN set for Other Member to FR7630006000011234567890189",
             actorUserId: survivorId,
-            entityType: AuditEntityTypes.Profile,
-            relatedEntityId: otherMemberId,
-            relatedEntityType: AuditSubjectTypes.User);
+            subjectType: ExpensesAuditSubjectTypes.Profile,
+            targetId: otherMemberId,
+            targetType: AuditSubjectTypes.User);
 
         _auditViewer.GetFilteredAsync(
-                entityType: null,
-                entityId: null,
+                subjectType: null,
+                subjectId: null,
                 userId: survivorId,
                 actions: Arg.Any<IReadOnlyList<string>?>(),
                 limit: Arg.Any<int>(),
@@ -464,8 +464,8 @@ public class ExpenseReportServiceGdprTests
                 crossUserIbanSet,
             ]);
         _auditViewer.GetFilteredAsync(
-                entityType: AuditEntityTypes.Report,
-                entityId: sourceReport.Id,
+                subjectType: ExpensesAuditSubjectTypes.Report,
+                subjectId: sourceReport.Id,
                 userId: null,
                 actions: Arg.Any<IReadOnlyList<string>?>(),
                 limit: Arg.Any<int>(),
@@ -499,14 +499,14 @@ public class ExpenseReportServiceGdprTests
         return info with { MergedUserIds = mergedUserIds };
     }
 
-    private static AuditEvent Event(
+    private static AuditEntry Event(
         AuditActionDefinition action,
-        Guid entityId,
+        Guid subjectId,
         string description,
         Guid? actorUserId,
-        string entityType = AuditEntityTypes.Report,
-        Guid? relatedEntityId = null,
-        string? relatedEntityType = null) =>
-        new(Guid.NewGuid(), FakeNow, action, actorUserId, null, entityType, entityId,
-            null, null, null, null, null, relatedEntityId, relatedEntityType, description);
+        string subjectType = ExpensesAuditSubjectTypes.Report,
+        Guid? targetId = null,
+        string? targetType = null) =>
+        new(Guid.NewGuid(), FakeNow, action, actorUserId, null, subjectType, subjectId,
+            null, null, null, null, null, targetId, targetType, description);
 }

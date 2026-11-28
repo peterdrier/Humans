@@ -1,5 +1,5 @@
 using AwesomeAssertions;
-using Humans.AuditLog.Contracts;
+using Humans.Audit.Contracts;
 using Humans.Camps.Contracts;
 using Humans.Holded.Contracts;
 using Humans.Settings.Contracts;
@@ -95,8 +95,8 @@ public class ServiceStripeRefundCheckTests
         await _repo.Received(1).AddPaymentAsync(Arg.Is<Payment>(p =>
             p.AmountEur == -10m && p.Status == PaymentStatus.Pending && p.ExternalRef == "re_wait"),
             Arg.Any<CancellationToken>());
-        await _audit.Received(1).LogAsync(StoreAuditActions.StorePaymentRecorded, AuditEntityTypes.Payment,
-            Arg.Any<Guid>(), Arg.Is<string>(s => s.Contains("re_new") && !s.Contains(order.Id.ToString())), actor, order.Id, AuditEntityTypes.Order);
+        await _audit.Received(1).LogAsync(StoreAuditActions.StorePaymentRecorded, StoreAuditSubjectTypes.Payment,
+            Arg.Any<Guid>(), Arg.Is<string>(s => s.Contains("re_new") && !s.Contains(order.Id.ToString())), actor, order.Id, StoreAuditSubjectTypes.Order);
         await _repo.DidNotReceive().UpdatePaymentStatusAsync(Arg.Any<Guid>(), Arg.Any<PaymentStatus>(), Arg.Any<CancellationToken>());
     }
 

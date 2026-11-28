@@ -9,7 +9,7 @@ using System.Text;
 using System.Text.Json;
 using AwesomeAssertions;
 using AwesomeAssertions.Execution;
-using Humans.AuditLog.Contracts;
+using Humans.Audit.Contracts;
 using Humans.Budget.Contracts;
 using Humans.Finance.Data;
 using Humans.Finance.Services;

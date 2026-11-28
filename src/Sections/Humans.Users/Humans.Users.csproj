@@ -7,6 +7,7 @@
 
   <ItemGroup>
     <InternalsVisibleTo Include="Humans.Users.Tests" />
+    <InternalsVisibleTo Include="Humans.Testing" />
     <!-- The one assembly allowed to see many sections. -->
     <InternalsVisibleTo Include="Humans.Integration.Tests" />
     <!-- Shell-level tests over this section's controllers and policies. -->
@@ -48,7 +49,7 @@
       Outbound section references, all acyclic: none of them names a Humans.Users type.
       Docs/Users.md, Cross-Section Dependencies, says what each one is for.
     -->
-    <ProjectReference Include="..\Humans.AuditLog\Humans.AuditLog.csproj" />
+    <ProjectReference Include="..\Humans.Audit\Humans.Audit.csproj" />
     <!-- ProfileController injects IAuditViewerService and AdminDetail.cshtml renders
          <vc:audit-log>. AuditLog reaches back only to Humans.Users.Contracts: no cycle. -->
     <ProjectReference Include="..\Humans.Auth\Humans.Auth.csproj" />

@@ -1,3 +1,4 @@
+using Humans.Base.Extensions;
 using Humans.Tickets.Contracts;
 using Humans.Tickets.Data;
 using Humans.Tickets.Domain.Checkout;
@@ -105,7 +106,7 @@ internal sealed class TicketReconService(
                 && await platform.GetPaymentLedgerAsync(to, now, ct) is { } later)
                 returnedLater = TicketPaymentReconBuilder.Returned(later);
         }
-        catch (Exception ex) when (ex is TicketingPlatformException or HttpRequestException
+        catch (Exception ex) when (ex is TicketingPlatformException or HttpRequestException or System.Text.Json.JsonException
                                        || (ex is TaskCanceledException && !ct.IsCancellationRequested))
         {
             logger.LogWarning(ex, "Payment reconciliation could not read {Platform}", platformKey);

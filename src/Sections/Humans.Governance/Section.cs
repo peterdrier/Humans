@@ -5,7 +5,7 @@ using Humans.Base.Authorization;
 using Humans.Base.Constants;
 using Humans.Base.Extensions;
 using Humans.Base.Hosting;
-using Humans.AuditLog.Contracts;
+using Humans.Audit.Contracts;
 using Humans.Base.Interfaces;
 using Humans.Base.Interfaces.Caching;
 using Humans.Base.Models;
@@ -28,6 +28,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Localization;
 using static Humans.Base.Models.AccessLevel;
 using static Humans.Base.Models.AccessMatrixFeature;
+using Humans.Governance.Controllers;
 
 [assembly: Humans.Base.Demo.NoDemoStory("No demo story written yet.")]
 
@@ -39,7 +40,7 @@ namespace Humans.Governance;
 /// notification-meter / voting-badge caches inline after a write.
 /// </summary>
 public sealed class Section :
-    ISection,
+    SectionBase,
     IIssueQueueOwner,
     ISectionAccessMatrix,
     ISectionAdminNav,
@@ -54,7 +55,7 @@ public sealed class Section :
     IEnumerable<UserPart> IUserPart.Parts() =>
         [new(UserPartSlots.DashboardHeading, typeof(MembershipTierBadgeViewComponent))];
 
-    public void Register(IServiceCollection services, IConfiguration configuration)
+    public override void Register(IServiceCollection services, IConfiguration configuration)
     {
         services.AddSingleton<IAuditActionContributor, GovernanceAuditActions>();
         services.AddSingleton<INotificationSourceContributor, GovernanceNotificationSources>();
@@ -173,13 +174,13 @@ public sealed class Section :
 
     IEnumerable<AdminNavGroup> ISectionAdminNav.Groups() =>
     [
-        new("Governance", [
-            new("Voting", "GovernanceBoardVoting", "BoardVoting", null, null, "fa-solid fa-check-to-slot", PolicyNames.BoardOrAdmin,
-                 PillCount: PillCounts.VotingQueueAsync),
-            new("Applications", "GovernanceApplications", "Admin", null, null, "fa-solid fa-file-signature", PolicyNames.BoardOrAdmin),
-            new("Assembly Votes", "GovernanceVotesAdmin", "Index", null, null, "fa-solid fa-landmark-flag", PolicyNames.BoardOrAdmin),
+        AdminGroup([
+            AdminLink<GovernanceBoardVotingController>("Voting", nameof(GovernanceBoardVotingController.BoardVoting), "fa-solid fa-check-to-slot", PolicyNames.BoardOrAdmin,
+                 pillCount: PillCounts.VotingQueueAsync),
+            AdminLink<GovernanceApplicationsController>("Applications", nameof(GovernanceApplicationsController.Admin), "fa-solid fa-file-signature", PolicyNames.BoardOrAdmin),
+            AdminLink<GovernanceVotesAdminController>("Assembly Votes", nameof(GovernanceVotesAdminController.Index), "fa-solid fa-landmark-flag", PolicyNames.BoardOrAdmin),
             // Temporary: term-expiry repair for rows approved under the pre-September-2026 rule.
-            new("Term expiry (temp)", "GovernanceApplications", "AdminTermExpiry", null, null, "fa-solid fa-calendar-check", PolicyNames.AdminOnly)
+            AdminLink<GovernanceApplicationsController>("Term expiry (temp)", nameof(GovernanceApplicationsController.AdminTermExpiry), "fa-solid fa-calendar-check", PolicyNames.AdminOnly)
         ])
     ];
 

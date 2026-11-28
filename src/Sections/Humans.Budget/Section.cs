@@ -15,20 +15,21 @@ using Humans.Teams.Contracts;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Humans.Budget.Controllers;
 
 [assembly: Humans.Base.Demo.NoDemoStory("No demo story written yet.")]
 
 namespace Humans.Budget;
 
 public sealed class Section :
-    ISection,
+    SectionBase,
     IIssueQueueOwner,
     ISectionAdminNav,
     ISectionJobs,
     ISectionNav,
     ISectionPermissions
 {
-    public void Register(IServiceCollection services, IConfiguration configuration)
+    public override void Register(IServiceCollection services, IConfiguration configuration)
     {
         EnumBadgeMap.Register(new Dictionary<Enum, string>
         {
@@ -66,10 +67,10 @@ public sealed class Section :
 
     IEnumerable<AdminNavGroup> ISectionAdminNav.Groups() =>
     [
-        new("Budget", [
+        AdminGroup([
             // "BudgetAdmin", not "Finance": the tag helper resolves controller names, not routes, and a name that
             // resolves to no action renders the anchor with no href.
-            new("Overview", "BudgetAdmin", "Index", null, null, "fa-solid fa-coins", FinancePolicies.Read)
+            AdminLink<BudgetAdminController>("Overview", nameof(BudgetAdminController.Index), "fa-solid fa-coins", FinancePolicies.Read)
         ])
     ];
 

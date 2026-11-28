@@ -1,4 +1,4 @@
-using Humans.AuditLog.Contracts;
+using Humans.Audit.Contracts;
 using Humans.Base.Configuration;
 using Humans.Base.Hosting;
 using Humans.Base.Interfaces;
@@ -9,6 +9,7 @@ using Humans.Pleo.Jobs;
 using Humans.Pleo.Services;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Humans.Pleo.Controllers;
 
 [assembly: Humans.Base.Demo.NoDemoStory("Vendor mirror: its data arrives through the Pleo sync, never from demo stories.")]
 
@@ -16,9 +17,9 @@ namespace Humans.Pleo;
 
 /// <summary>No GDPR contributor: cardholders are mirrored by Pleo id, name and code only, bound to no member, and a sweep
 /// drops anyone Pleo no longer returns.</summary>
-public sealed class Section : ISection, ISectionAdminNav, ISectionConfiguration, ISectionJobs
+public sealed class Section : SectionBase, ISectionAdminNav, ISectionConfiguration, ISectionJobs
 {
-    public void Register(IServiceCollection services, IConfiguration configuration)
+    public override void Register(IServiceCollection services, IConfiguration configuration)
     {
         services.AddSectionDbContext<PleoDbContext>(sentinelTable: "pleo_entries");
 
@@ -46,10 +47,10 @@ public sealed class Section : ISection, ISectionAdminNav, ISectionConfiguration,
 
     IEnumerable<AdminNavGroup> ISectionAdminNav.Groups() =>
     [
-        new("Pleo", [
-            new("Summary",    "Pleo", "Index",      null, null, "fa-solid fa-credit-card", FinancePolicies.Read),
-            new("Entries",    "Pleo", "Entries",    null, null, "fa-solid fa-list",        FinancePolicies.Read),
-            new("Categories", "Pleo", "Categories", null, null, "fa-solid fa-tags",        FinancePolicies.Read)
+        AdminGroup([
+            AdminLink<PleoController>("Summary", nameof(PleoController.Index), "fa-solid fa-credit-card", FinancePolicies.Read),
+            AdminLink<PleoController>("Entries", nameof(PleoController.Entries), "fa-solid fa-list", FinancePolicies.Read),
+            AdminLink<PleoController>("Categories", nameof(PleoController.Categories), "fa-solid fa-tags", FinancePolicies.Read)
         ])
     ];
 

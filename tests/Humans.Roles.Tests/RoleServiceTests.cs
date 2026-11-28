@@ -1,5 +1,5 @@
 using AwesomeAssertions;
-using Humans.AuditLog.Contracts;
+using Humans.Audit.Contracts;
 using Humans.Auth.Contracts;
 using Humans.Base.Authorization;
 using Humans.Permissions.Contracts;
@@ -343,7 +343,7 @@ public sealed class RoleServiceTests
         {
             result.Succeeded.Should().BeTrue();
             _owner.Asked.Should().Equal((Cantina, survivorId));
-            await _audit.Received(1).LogAsync(RolesAuditActions.HolderAdded, RoleService.AuditEntityType, role.Id,
+            await _audit.Received(1).LogAsync(RolesAuditActions.HolderAdded, RoleService.AuditSubjectType, role.Id,
                 Arg.Any<string>(), _actor, survivorId, AuditSubjectTypes.User);
         }
         role.Assignments.Should().NotBeEmpty().And.OnlyContain(a => a.UserId == survivorId);

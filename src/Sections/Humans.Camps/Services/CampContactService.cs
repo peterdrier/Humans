@@ -1,7 +1,7 @@
 using System.Globalization;
 using System.Resources;
 using Humans.Users.Contracts;
-using Humans.AuditLog.Contracts;
+using Humans.Audit.Contracts;
 using Humans.Email.Contracts;
 using Humans.Notifications.Contracts;
 using Microsoft.Extensions.Caching.Memory;

@@ -1,5 +1,5 @@
 using Humans.Shifts.Data;
-using Humans.AuditLog.Contracts;
+using Humans.Audit.Contracts;
 using AwesomeAssertions;
 using Humans.Settings.Contracts;
 using Humans.Shifts.Services.Dtos;

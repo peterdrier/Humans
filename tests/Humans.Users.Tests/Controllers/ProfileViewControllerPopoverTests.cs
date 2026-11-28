@@ -39,7 +39,7 @@ public class ProfileViewControllerPopoverTests
     private readonly ICampService _campService = Substitute.For<ICampService>();
     private readonly IStringLocalizer<SharedResource> _sharedLocalizer = Substitute.For<IStringLocalizer<SharedResource>>().AddFormatting();
     private readonly Humans.Users.Data.Repositories.IUserRepository _userRepo = Substitute.For<Humans.Users.Data.Repositories.IUserRepository>();
-    private readonly Humans.AuditLog.Contracts.IAuditLogService _audit = Substitute.For<Humans.AuditLog.Contracts.IAuditLogService>();
+    private readonly Humans.Audit.Contracts.IAuditLogService _audit = Substitute.For<Humans.Audit.Contracts.IAuditLogService>();
     private readonly ProfileViewController _controller;
     private readonly Guid _viewerId = Guid.NewGuid();
 

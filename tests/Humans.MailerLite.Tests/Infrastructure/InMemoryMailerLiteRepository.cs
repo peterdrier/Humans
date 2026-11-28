@@ -10,8 +10,6 @@ internal static class InMemoryMailerLiteRepository
     public static IMailerLiteRepository New() =>
         new Repository(
             new TestDbContextFactory<MailerLiteDbContext>(
-                new DbContextOptionsBuilder<MailerLiteDbContext>()
-                    .UseInMemoryDatabase(Guid.NewGuid().ToString())
-                    .Options),
+                TestDbOptions.InMemory<MailerLiteDbContext>()),
             NullLogger<Repository>.Instance);
 }

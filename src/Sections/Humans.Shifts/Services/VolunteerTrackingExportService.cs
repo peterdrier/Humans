@@ -1,5 +1,5 @@
 using Humans.Shifts.Services.Dtos;
-using Humans.AuditLog.Contracts;
+using Humans.Audit.Contracts;
 using Humans.Base.Extensions;
 using Humans.Base.Helpers;
 using Humans.EarlyEntry.Contracts;

@@ -1,3 +1,4 @@
+using Humans.Base.Data;
 using Humans.Governance.Domain;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Storage;
@@ -6,7 +7,7 @@ using NodaTime;
 namespace Humans.Governance.Data;
 
 internal sealed class AssemblyVoteRepository(IDbContextFactory<GovernanceDbContext> factory)
-    : IAssemblyVoteRepository
+    : SectionRepository<GovernanceDbContext>(factory), IAssemblyVoteRepository
 {
     public Task<AssemblyVote?> GetByIdAsync(Guid voteId, CancellationToken ct = default) =>
         WithContextAsync(ctx => ctx.AssemblyVotes
@@ -19,12 +20,8 @@ internal sealed class AssemblyVoteRepository(IDbContextFactory<GovernanceDbConte
             .Include(v => v.Options)
             .ToListAsync(ct), ct);
 
-    public async Task AddAsync(AssemblyVote vote, CancellationToken ct = default)
-    {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
-        ctx.AssemblyVotes.Add(vote);
-        await ctx.SaveChangesAsync(ct);
-    }
+    public async Task AddAsync(AssemblyVote vote, CancellationToken ct = default) =>
+        await InsertAsync(vote, ct);
 
     public async Task<bool> UpdateAsync(
         AssemblyVote vote,
@@ -34,7 +31,7 @@ internal sealed class AssemblyVoteRepository(IDbContextFactory<GovernanceDbConte
     {
         ArgumentNullException.ThrowIfNull(vote);
 
-        await using var ctx = await factory.CreateDbContextAsync(ct);
+        await using var ctx = await CreateDbContextAsync(ct);
         await using var tx = await BeginLockedWriteAsync(ctx, vote.Id, ct);
 
         var persisted = await ctx.AssemblyVotes.AsNoTracking()
@@ -109,7 +106,7 @@ internal sealed class AssemblyVoteRepository(IDbContextFactory<GovernanceDbConte
     {
         ArgumentNullException.ThrowIfNull(vote);
 
-        await using var ctx = await factory.CreateDbContextAsync(ct);
+        await using var ctx = await CreateDbContextAsync(ct);
         await using var tx = await BeginLockedWriteAsync(ctx, vote.Id, ct);
 
         // Read under the lock, not from the caller's snapshot: an Open that committed since
@@ -140,7 +137,7 @@ internal sealed class AssemblyVoteRepository(IDbContextFactory<GovernanceDbConte
 
     public async Task<bool> DeleteAsync(Guid voteId, CancellationToken ct = default)
     {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
+        await using var ctx = await CreateDbContextAsync(ct);
         await using var tx = await BeginLockedWriteAsync(ctx, voteId, ct);
 
         // Status re-read under the lock, for the same reason every other write re-reads it:
@@ -177,7 +174,7 @@ internal sealed class AssemblyVoteRepository(IDbContextFactory<GovernanceDbConte
     {
         ArgumentNullException.ThrowIfNull(vote);
 
-        await using var ctx = await factory.CreateDbContextAsync(ct);
+        await using var ctx = await CreateDbContextAsync(ct);
         await using var tx = await BeginLockedWriteAsync(ctx, vote.Id, ct);
 
         var persisted = await ctx.AssemblyVotes.FirstOrDefaultAsync(v => v.Id == vote.Id, ct);
@@ -241,7 +238,7 @@ internal sealed class AssemblyVoteRepository(IDbContextFactory<GovernanceDbConte
         if (rosterIds.Count == 0)
             return;
 
-        await using var ctx = await factory.CreateDbContextAsync(ct);
+        await using var ctx = await CreateDbContextAsync(ct);
         var rows = await ctx.AssemblyVoteRosterEntries
             .Where(r => rosterIds.Contains(r.Id)
                 && ctx.AssemblyVotes.Any(v => v.Id == r.VoteId && v.ClosesAt == announcedClosesAt))
@@ -256,7 +253,7 @@ internal sealed class AssemblyVoteRepository(IDbContextFactory<GovernanceDbConte
     public async Task ClearReminderStampsAsync(
         Guid voteId, Instant stampedBy, CancellationToken ct = default)
     {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
+        await using var ctx = await CreateDbContextAsync(ct);
         var rows = await ctx.AssemblyVoteRosterEntries
             .Where(r => r.VoteId == voteId
                 && r.ReminderSentAt != null
@@ -270,16 +267,13 @@ internal sealed class AssemblyVoteRepository(IDbContextFactory<GovernanceDbConte
     }
 
     public async Task<IReadOnlyList<AssemblyVoteRoster>> GetRosterNeedingReminderAsync(
-        Guid voteId, CancellationToken ct = default)
-    {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
-        return await ctx.AssemblyVoteRosterEntries
+        Guid voteId, CancellationToken ct = default) =>
+        await RunAsync(ctx => ctx.AssemblyVoteRosterEntries
             .AsNoTracking()
             .Where(r => r.VoteId == voteId
                 && r.ReminderSentAt == null
                 && !ctx.AssemblyBallots.Any(b => b.RosterId == r.Id))
-            .ToListAsync(ct);
-    }
+            .ToListAsync(ct), ct);
 
     /// <summary>
     /// Writes a member's ballot and its history row. Returns null when the vote is no longer
@@ -298,7 +292,7 @@ internal sealed class AssemblyVoteRepository(IDbContextFactory<GovernanceDbConte
         Instant now,
         CancellationToken ct = default)
     {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
+        await using var ctx = await CreateDbContextAsync(ct);
 
         // Hold the vote row's lock until the ballot commits; closure's status UPDATE waits on it.
         await using var tx = await BeginLockedWriteAsync(ctx, voteId, ct);
@@ -369,7 +363,7 @@ internal sealed class AssemblyVoteRepository(IDbContextFactory<GovernanceDbConte
     public async Task<AssemblyVoteParticipation> GetParticipationAsync(
         Guid voteId, CancellationToken ct = default)
     {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
+        await using var ctx = await CreateDbContextAsync(ct);
 
         var roster = ctx.AssemblyVoteRosterEntries.AsNoTracking().Where(r => r.VoteId == voteId);
         var ballots = ctx.AssemblyBallots.AsNoTracking().Where(b => b.VoteId == voteId);
@@ -402,7 +396,7 @@ internal sealed class AssemblyVoteRepository(IDbContextFactory<GovernanceDbConte
     {
         ArgumentNullException.ThrowIfNull(peek);
 
-        await using var ctx = await factory.CreateDbContextAsync(ct);
+        await using var ctx = await CreateDbContextAsync(ct);
         await using var tx = await BeginLockedWriteAsync(ctx, peek.VoteId, ct);
 
         // A peek is published as an early look, so it is written only while there is still
@@ -429,7 +423,7 @@ internal sealed class AssemblyVoteRepository(IDbContextFactory<GovernanceDbConte
     public async Task<IReadOnlyList<(AssemblyVoteRoster Roster, AssemblyVote Vote, AssemblyBallot? Ballot)>>
         GetVotingRecordForUserAsync(Guid userId, CancellationToken ct = default)
     {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
+        await using var ctx = await CreateDbContextAsync(ct);
 
         var rosterRows = await ctx.AssemblyVoteRosterEntries
             .AsNoTracking()
@@ -458,7 +452,7 @@ internal sealed class AssemblyVoteRepository(IDbContextFactory<GovernanceDbConte
     public async Task<(IReadOnlyList<AssemblyVote> Acted, IReadOnlyList<(AssemblyVotePeek Peek, AssemblyVote Vote)> Peeks)>
         GetActorRecordForUserAsync(Guid userId, CancellationToken ct = default)
     {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
+        await using var ctx = await CreateDbContextAsync(ct);
 
         var acted = await ctx.AssemblyVotes
             .AsNoTracking()
@@ -483,7 +477,7 @@ internal sealed class AssemblyVoteRepository(IDbContextFactory<GovernanceDbConte
 
     public async Task<int> AnonymizeRosterForUserAsync(Guid userId, CancellationToken ct = default)
     {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
+        await using var ctx = await CreateDbContextAsync(ct);
 
         var rows = await ctx.AssemblyVoteRosterEntries
             .Where(r => r.UserId == userId)
@@ -499,7 +493,7 @@ internal sealed class AssemblyVoteRepository(IDbContextFactory<GovernanceDbConte
     public async Task<IReadOnlyList<Guid>> ReassignVoteActorsToUserAsync(
         Guid sourceUserId, Guid targetUserId, CancellationToken ct = default)
     {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
+        await using var ctx = await CreateDbContextAsync(ct);
 
         // Roster rows and ballots are deliberately NOT re-pointed: they are frozen evidence of
         // who was entitled and what they cast. Two accounts on one roster is a defect in the
@@ -538,9 +532,6 @@ internal sealed class AssemblyVoteRepository(IDbContextFactory<GovernanceDbConte
 
     private async Task<T> WithContextAsync<T>(
         Func<GovernanceDbContext, Task<T>> action,
-        CancellationToken ct)
-    {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
-        return await action(ctx);
-    }
+        CancellationToken ct) =>
+        await RunAsync(ctx => action(ctx), ct);
 }

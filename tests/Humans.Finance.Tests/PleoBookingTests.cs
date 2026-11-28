@@ -1,5 +1,5 @@
 using AwesomeAssertions;
-using Humans.AuditLog.Contracts;
+using Humans.Audit.Contracts;
 using Humans.Finance.Data;
 using Humans.Finance.Domain;
 using Humans.Finance.Models;

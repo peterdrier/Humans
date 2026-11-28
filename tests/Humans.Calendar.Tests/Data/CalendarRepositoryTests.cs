@@ -1,7 +1,7 @@
 using Microsoft.Extensions.DependencyInjection;
 using Humans.Calendar.Services;
 using Humans.Calendar.Services.Dtos;
-using Humans.AuditLog.Contracts;
+using Humans.Audit.Contracts;
 using Microsoft.Extensions.Logging.Abstractions;
 using NodaTime.Testing;
 using NSubstitute;
@@ -27,9 +27,7 @@ public sealed class CalendarRepositoryTests : IDisposable
 
     public CalendarRepositoryTests()
     {
-        var options = new DbContextOptionsBuilder<CalendarDbContext>()
-            .UseInMemoryDatabase(Guid.NewGuid().ToString())
-            .Options;
+        var options = TestDbOptions.InMemory<CalendarDbContext>();
         _dbContext = new CalendarDbContext(options);
         _repo = new CalendarRepository(new TestDbContextFactory<CalendarDbContext>(options));
     }

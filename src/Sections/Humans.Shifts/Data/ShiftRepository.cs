@@ -1,3 +1,4 @@
+using Humans.Base.Data;
 using Humans.Shifts.Domain;
 using Microsoft.EntityFrameworkCore;
 using NodaTime;
@@ -10,9 +11,8 @@ namespace Humans.Shifts.Data;
 /// Management methods use short-lived contexts from the factory; signup mutations use the scoped
 /// <see cref="ShiftsDbContext"/> so load/mutate/save flows share one change tracker.
 /// </summary>
-internal sealed class ShiftRepository : IShiftManagementRepository
+internal sealed class ShiftRepository : SectionRepository<ShiftsDbContext>, IShiftManagementRepository
 {
-    private readonly IDbContextFactory<ShiftsDbContext> _factory;
     private readonly ShiftsDbContext _dbContext;
     private readonly IClock _clock;
 
@@ -20,29 +20,23 @@ internal sealed class ShiftRepository : IShiftManagementRepository
         IDbContextFactory<ShiftsDbContext> factory,
         ShiftsDbContext dbContext,
         IClock clock)
+        : base(factory)
     {
-        _factory = factory;
         _dbContext = dbContext;
         _clock = clock;
     }
 
-    public async Task<EventSettings?> GetEventSettingsByIdAsync(Guid id, CancellationToken ct = default)
-    {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
-        return await ctx.EventSettings
+    public async Task<EventSettings?> GetEventSettingsByIdAsync(Guid id, CancellationToken ct = default) =>
+        await RunAsync(ctx => ctx.EventSettings
             .AsNoTracking()
-            .FirstOrDefaultAsync(e => e.Id == id, ct);
-    }
+            .FirstOrDefaultAsync(e => e.Id == id, ct), ct);
 
-    public async Task<IReadOnlyList<EventSettings>> GetAllEventSettingsAsync(CancellationToken ct = default)
-    {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
-        return await ctx.EventSettings.AsNoTracking().ToListAsync(ct);
-    }
+    public async Task<IReadOnlyList<EventSettings>> GetAllEventSettingsAsync(CancellationToken ct = default) =>
+        await RunAsync(ctx => ctx.EventSettings.AsNoTracking().ToListAsync(ct), ct);
 
     public async Task SaveEventSettingsAsync(EventSettings entity, EntityMutationMode mode, CancellationToken ct = default)
     {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        await using var ctx = await CreateDbContextAsync(ct);
         if (mode == EntityMutationMode.Add)
             ctx.EventSettings.Add(entity);
         else
@@ -53,7 +47,7 @@ internal sealed class ShiftRepository : IShiftManagementRepository
     public async Task SaveRotaAsync(
         Rota rota, EntityMutationMode mode, CancellationToken ct = default, IReadOnlyList<Guid>? tagIds = null)
     {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        await using var ctx = await CreateDbContextAsync(ct);
         Rota tracked;
         if (mode == EntityMutationMode.Add)
         {
@@ -81,7 +75,7 @@ internal sealed class ShiftRepository : IShiftManagementRepository
     public async Task<bool> UpdateRotaTeamAssignmentAsync(
         Guid rotaId, Guid newTeamId, Instant updatedAt, CancellationToken ct = default)
     {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        await using var ctx = await CreateDbContextAsync(ct);
         var rota = await ctx.Rotas
             .FirstOrDefaultAsync(r => r.Id == rotaId, ct);
         if (rota is null) return false;
@@ -98,7 +92,7 @@ internal sealed class ShiftRepository : IShiftManagementRepository
     public async Task<Rota?> GetRotaAsync(
         Guid rotaId, RotaReadShape shape, CancellationToken ct = default)
     {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        await using var ctx = await CreateDbContextAsync(ct);
         IQueryable<Rota> query = ctx.Rotas.AsNoTracking();
 
         if (shape.HasFlag(RotaReadShape.EventSettings))
@@ -118,7 +112,7 @@ internal sealed class ShiftRepository : IShiftManagementRepository
     public async Task<IReadOnlyList<Rota>> GetRotaRowsAsync(
         IReadOnlyCollection<Guid>? rotaIds, CancellationToken ct = default)
     {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        await using var ctx = await CreateDbContextAsync(ct);
         var query = ctx.Rotas.AsNoTracking()
             .Include(r => r.Tags)
             .Include(r => r.Shifts).ThenInclude(s => s.ShiftSignups)
@@ -130,7 +124,7 @@ internal sealed class ShiftRepository : IShiftManagementRepository
 
     public async Task DeleteRotaCascadeAsync(Guid rotaId, CancellationToken ct = default)
     {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        await using var ctx = await CreateDbContextAsync(ct);
         var rota = await ctx.Rotas
             .Include(r => r.Shifts)
                 .ThenInclude(s => s.ShiftSignups)
@@ -156,7 +150,7 @@ internal sealed class ShiftRepository : IShiftManagementRepository
 
         var pattern = "%" + EscapeLikePattern(query.Trim()) + "%";
 
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        await using var ctx = await CreateDbContextAsync(ct);
         var q = ctx.Rotas
             .AsNoTracking()
             .Where(r => r.EventSettingsId == eventSettingsId
@@ -174,7 +168,7 @@ internal sealed class ShiftRepository : IShiftManagementRepository
 
     public async Task SaveShiftAsync(Shift shift, EntityMutationMode mode, CancellationToken ct = default)
     {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        await using var ctx = await CreateDbContextAsync(ct);
         if (mode == EntityMutationMode.Add)
             ctx.Shifts.Add(shift);
         else
@@ -184,14 +178,14 @@ internal sealed class ShiftRepository : IShiftManagementRepository
 
     public async Task AddShiftsAsync(IEnumerable<Shift> shifts, CancellationToken ct = default)
     {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        await using var ctx = await CreateDbContextAsync(ct);
         ctx.Shifts.AddRange(shifts);
         await ctx.SaveChangesAsync(ct);
     }
 
     public async Task<Shift?> GetShiftAsync(Guid shiftId, ShiftReadShape shape, CancellationToken ct = default)
     {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        await using var ctx = await CreateDbContextAsync(ct);
         IQueryable<Shift> query = ctx.Shifts.AsNoTracking();
 
         if (shape.HasFlag(ShiftReadShape.EventSettings))
@@ -207,7 +201,7 @@ internal sealed class ShiftRepository : IShiftManagementRepository
 
     public async Task DeleteShiftCascadeAsync(Guid shiftId, CancellationToken ct = default)
     {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        await using var ctx = await CreateDbContextAsync(ct);
         var shift = await ctx.Shifts
             .Include(s => s.ShiftSignups)
             .FirstOrDefaultAsync(s => s.Id == shiftId, ct);
@@ -219,22 +213,19 @@ internal sealed class ShiftRepository : IShiftManagementRepository
         await ctx.SaveChangesAsync(ct);
     }
 
-    public async Task<IReadOnlyList<int>> GetShiftDayOffsetsForRotaAsync(Guid rotaId, CancellationToken ct = default)
-    {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
-        return await ctx.Shifts
+    public async Task<IReadOnlyList<int>> GetShiftDayOffsetsForRotaAsync(Guid rotaId, CancellationToken ct = default) =>
+        await RunAsync(ctx => ctx.Shifts
             .AsNoTracking()
             .Where(s => s.RotaId == rotaId)
             .Select(s => s.DayOffset)
             .Distinct()
-            .ToListAsync(ct);
-    }
+            .ToListAsync(ct), ct);
 
     public async Task<IReadOnlyList<Shift>> GetEventShiftsAsync(
         ShiftEventQuery request,
         CancellationToken ct = default)
     {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        await using var ctx = await CreateDbContextAsync(ct);
 
         IQueryable<Shift> query = ctx.Shifts
             .AsNoTracking()
@@ -273,7 +264,7 @@ internal sealed class ShiftRepository : IShiftManagementRepository
         if (shiftIds.Count == 0)
             return new Dictionary<Guid, int>();
 
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        await using var ctx = await CreateDbContextAsync(ct);
         return await ctx.ShiftSignups
             .AsNoTracking()
             .Where(su => shiftIds.Contains(su.ShiftId) && su.Status == SignupStatus.Confirmed)
@@ -284,7 +275,7 @@ internal sealed class ShiftRepository : IShiftManagementRepository
 
     public async Task<IReadOnlyList<ShiftTag>> GetTagsAsync(string? query = null, CancellationToken ct = default)
     {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        await using var ctx = await CreateDbContextAsync(ct);
         var tags = await ctx.ShiftTags.AsNoTracking().ToListAsync(ct);
         return string.IsNullOrWhiteSpace(query)
             ? tags
@@ -293,7 +284,7 @@ internal sealed class ShiftRepository : IShiftManagementRepository
 
     public async Task<ShiftTag> GetOrCreateTagAsync(string name, CancellationToken ct = default)
     {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        await using var ctx = await CreateDbContextAsync(ct);
         var tags = await ctx.ShiftTags.AsNoTracking().ToListAsync(ct);
         var existing = tags.FirstOrDefault(t => string.Equals(t.Name, name, StringComparison.OrdinalIgnoreCase));
         if (existing is not null) return existing;
@@ -311,7 +302,7 @@ internal sealed class ShiftRepository : IShiftManagementRepository
     public async Task SetVolunteerTagPreferencesAsync(
         Guid userId, IReadOnlyList<Guid> tagIds, CancellationToken ct = default)
     {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        await using var ctx = await CreateDbContextAsync(ct);
 
         var existing = await ctx.VolunteerTagPreferences
             .Where(v => v.UserId == userId)
@@ -334,19 +325,16 @@ internal sealed class ShiftRepository : IShiftManagementRepository
     }
 
     public async Task<VolunteerEventProfile?> GetVolunteerEventProfileAsync(
-        Guid userId, CancellationToken ct = default)
-    {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
-        return await ctx.VolunteerEventProfiles
+        Guid userId, CancellationToken ct = default) =>
+        await RunAsync(ctx => ctx.VolunteerEventProfiles
             .AsNoTracking()
-            .FirstOrDefaultAsync(p => p.UserId == userId, ct);
-    }
+            .FirstOrDefaultAsync(p => p.UserId == userId, ct), ct);
 
     public async Task<IReadOnlyList<VolunteerEventProfile>> GetVolunteerProfilesAsync(
         IReadOnlyCollection<Guid> userIds, CancellationToken ct = default)
     {
         if (userIds.Count == 0) return [];
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        await using var ctx = await CreateDbContextAsync(ct);
         return await ctx.VolunteerEventProfiles
             .AsNoTracking()
             .Where(p => userIds.Contains(p.UserId))
@@ -354,17 +342,13 @@ internal sealed class ShiftRepository : IShiftManagementRepository
     }
 
     public async Task AddVolunteerEventProfileAsync(
-        VolunteerEventProfile profile, CancellationToken ct = default)
-    {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
-        ctx.VolunteerEventProfiles.Add(profile);
-        await ctx.SaveChangesAsync(ct);
-    }
+        VolunteerEventProfile profile, CancellationToken ct = default) =>
+        await InsertAsync(profile, ct);
 
     public async Task UpdateVolunteerEventProfileAsync(
         VolunteerEventProfile profile, CancellationToken ct = default)
     {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        await using var ctx = await CreateDbContextAsync(ct);
         ctx.VolunteerEventProfiles.Update(profile);
         await ctx.SaveChangesAsync(ct);
     }
@@ -372,7 +356,7 @@ internal sealed class ShiftRepository : IShiftManagementRepository
     public async Task<int> DeleteVolunteerEventProfilesForUserAsync(
         Guid userId, CancellationToken ct = default)
     {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        await using var ctx = await CreateDbContextAsync(ct);
         var profiles = await ctx.VolunteerEventProfiles
             .Where(p => p.UserId == userId)
             .ToListAsync(ct);
@@ -389,7 +373,7 @@ internal sealed class ShiftRepository : IShiftManagementRepository
         Guid sourceUserId, Guid targetUserId, Instant updatedAt,
         CancellationToken ct = default)
     {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        await using var ctx = await CreateDbContextAsync(ct);
 
         // One profile per user (unique index on UserId).
         var sourceProfiles = await ctx.VolunteerEventProfiles

@@ -1,6 +1,6 @@
 using System.Transactions;
 using AwesomeAssertions;
-using Humans.AuditLog.Contracts;
+using Humans.Audit.Contracts;
 using Humans.Governance.Contracts;
 using Humans.Governance.Data;
 using Humans.Governance.Domain;
@@ -32,7 +32,7 @@ public sealed class MembershipTierServiceTests : IDisposable
     public MembershipTierServiceTests()
     {
         var factory = new TestDbContextFactory<GovernanceDbContext>(
-            new DbContextOptionsBuilder<GovernanceDbContext>().UseInMemoryDatabase(Guid.NewGuid().ToString()).Options);
+            TestDbOptions.InMemory<GovernanceDbContext>());
         _db = factory.CreateDbContext();
         var services = new ServiceCollection();
         services.AddKeyedScoped<IGovernanceService>(CachingGovernanceService.InnerServiceKey, (_, _) => _sut!);

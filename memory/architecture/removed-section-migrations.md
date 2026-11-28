@@ -13,6 +13,6 @@ context owns nothing and there is nothing to break.
 
 **How to apply:** Ship the drop migration with the section's removal, wait for production to apply it, then
 delete the project in a follow-up. Before deleting, move any stored names the stability tests still require
-(audit actions to AuditLog's `RetiredAuditActions`, notification sources to Notifications'
+(audit actions to Audit's `RetiredAuditActions`, notification sources to Notifications'
 `RetiredNotificationSources`). Remove the section's `NoDestructiveMigrationOps` baseline lines with it.
 Migrations of a living section stay immutable: [[no-hand-edited-migrations]].

@@ -1,6 +1,6 @@
 using AwesomeAssertions;
 using Humans.Users.Contracts;
-using Humans.AuditLog.Contracts;
+using Humans.Audit.Contracts;
 using Humans.Grants.Data;
 using Humans.Grants.Domain;
 using Humans.Grants.Services;
@@ -81,7 +81,7 @@ public sealed class ProgramTests : GrantsTestHarness
         var stored = await db.Programs.Include(p => p.Managers).SingleAsync(Ct);
         stored.Managers.Select(m => m.UserId).Should().Equal(survivor);
         await AuditLog.Received(1).LogAsync(GrantsAuditActions.GrantProgramManagerAdded,
-            AuditEntityTypes.Program, stored.Id, Arg.Any<string>(), actor, survivor, AuditSubjectTypes.User);
+            GrantsAuditSubjectTypes.Program, stored.Id, Arg.Any<string>(), actor, survivor, AuditSubjectTypes.User);
     }
 
     [HumansFact]
@@ -97,9 +97,9 @@ public sealed class ProgramTests : GrantsTestHarness
         var program = await db.Programs.Include(p => p.Managers).SingleAsync(Ct);
         program.Id.Should().Be(result.Value);
         program.Managers.Select(m => m.UserId).Should().Equal(manager);
-        await AuditLog.Received(1).LogAsync(GrantsAuditActions.GrantProgramCreated, AuditEntityTypes.Program, program.Id,
+        await AuditLog.Received(1).LogAsync(GrantsAuditActions.GrantProgramCreated, GrantsAuditSubjectTypes.Program, program.Id,
             Arg.Any<string>(), actor, Arg.Any<Guid?>(), Arg.Any<string?>());
-        await AuditLog.Received(1).LogAsync(GrantsAuditActions.GrantProgramManagerAdded, AuditEntityTypes.Program, program.Id,
+        await AuditLog.Received(1).LogAsync(GrantsAuditActions.GrantProgramManagerAdded, GrantsAuditSubjectTypes.Program, program.Id,
             Arg.Any<string>(), actor, manager, AuditSubjectTypes.User);
     }
 
@@ -159,11 +159,11 @@ public sealed class ProgramTests : GrantsTestHarness
         var saved = await db.Programs.Include(p => p.Managers).SingleAsync(Ct);
         saved.Name.Should().Be("Renamed");
         saved.Managers.Select(m => m.UserId).Should().Equal(newManager);
-        await AuditLog.Received(1).LogAsync(GrantsAuditActions.GrantProgramEdited, AuditEntityTypes.Program, program.Id,
+        await AuditLog.Received(1).LogAsync(GrantsAuditActions.GrantProgramEdited, GrantsAuditSubjectTypes.Program, program.Id,
             Arg.Is<string>(s => s.Contains("Renamed")), actor, Arg.Any<Guid?>(), Arg.Any<string?>());
-        await AuditLog.Received(1).LogAsync(GrantsAuditActions.GrantProgramManagerAdded, AuditEntityTypes.Program, program.Id,
+        await AuditLog.Received(1).LogAsync(GrantsAuditActions.GrantProgramManagerAdded, GrantsAuditSubjectTypes.Program, program.Id,
             Arg.Any<string>(), actor, newManager, AuditSubjectTypes.User);
-        await AuditLog.Received(1).LogAsync(GrantsAuditActions.GrantProgramManagerRemoved, AuditEntityTypes.Program, program.Id,
+        await AuditLog.Received(1).LogAsync(GrantsAuditActions.GrantProgramManagerRemoved, GrantsAuditSubjectTypes.Program, program.Id,
             Arg.Any<string>(), actor, oldManager, AuditSubjectTypes.User);
     }
 
@@ -261,7 +261,7 @@ public sealed class ProgramTests : GrantsTestHarness
 
         await using var db = OpenContext();
         (await db.Programs.SingleAsync(Ct)).EventSettingsId.Should().Be(autumn.Id);
-        await AuditLog.Received(1).LogAsync(GrantsAuditActions.GrantProgramEdited, AuditEntityTypes.Program, program.Id,
+        await AuditLog.Received(1).LogAsync(GrantsAuditActions.GrantProgramEdited, GrantsAuditSubjectTypes.Program, program.Id,
             Arg.Is<string>(d => d.Contains("event Nowhere 2027 → Autumn 2027")), actor, Arg.Any<Guid?>(), Arg.Any<string?>());
     }
 
@@ -294,7 +294,7 @@ public sealed class ProgramTests : GrantsTestHarness
 
         await NewService().UpdateProgramAsync(program.Id, Save() with { EventSettingsId = twin.Id }, actor, Ct);
 
-        await AuditLog.Received(1).LogAsync(GrantsAuditActions.GrantProgramEdited, AuditEntityTypes.Program, program.Id,
+        await AuditLog.Received(1).LogAsync(GrantsAuditActions.GrantProgramEdited, GrantsAuditSubjectTypes.Program, program.Id,
             Arg.Any<string>(), actor, Arg.Any<Guid?>(), Arg.Any<string?>());
     }
 

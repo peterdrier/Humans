@@ -156,7 +156,7 @@ The waiting requests (state Requested, `TaskInfo.WaitingRequests`), oldest first
 - **Teams.Contracts**: `ITeamService` for team names, slugs, hidden and active flags; `TeamOwner`, `SlotPriority`.
 - **Backdoor** (consumer): calls `ITaskWrite.BulkLoadAsync` from its bulk-load controller.
 - **Settings**: `ISettingsService` for event names, gate opening dates and the active event.
-- **AuditLog**: `IAuditLogService.LogAsync`, `IAuditActionContributor`.
+- **Audit**: `IAuditLogService.LogAsync`, `IAuditActionContributor`.
 - **Gdpr / Users**: `IUserDataContributor` and `IUserMerge`, implemented by `TaskService`.
 
 ## Architecture

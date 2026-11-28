@@ -1,6 +1,6 @@
 using Humans.Base.Extensions;
 using Humans.Shifts.Contracts;
-using Humans.AuditLog.Contracts;
+using Humans.Audit.Contracts;
 using Humans.Shifts.Domain;
 using NodaTime;
 using NodaTime.Text;
@@ -33,7 +33,7 @@ internal sealed class VolunteerTrackingService(
             offsets.Length == 0 ? ShiftsAuditActions.VolunteerAvailabilityCleared : ShiftsAuditActions.VolunteerAvailabilitySet,
             "GeneralAvailability", userId,
             $"EventSettingsId={eventSettingsId}; AvailableDays={offsets.Length}; self-service update", userId,
-            relatedEntityId: eventSettingsId, relatedEntityType: "EventSettings");
+            targetId: eventSettingsId, targetType: "EventSettings");
         return true;
     }
 
@@ -180,12 +180,7 @@ internal sealed class VolunteerTrackingService(
             return new SetDayOffResult(false, "Shifts_VolTrack_Err_DayOffWithSignups");
         }
 
-        var trimmed = string.IsNullOrWhiteSpace(reason) ? null : reason.Trim();
-        if (trimmed is { Length: > 200 })
-        {
-            var length = char.IsHighSurrogate(trimmed[199]) && char.IsLowSurrogate(trimmed[200]) ? 199 : 200;
-            trimmed = trimmed[..length];
-        }
+        var trimmed = string.IsNullOrWhiteSpace(reason) ? null : reason.Trim().Truncate(200);
 
         var entry = new DayOffEntry(
             DayOffset: dayOffset,

@@ -5,6 +5,7 @@ using System.Runtime.CompilerServices;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 using Humans.Base.Extensions;
+using Humans.Base.Http;
 using Humans.Base.Helpers;
 using Humans.Holded.Contracts;
 using Microsoft.Extensions.Options;
@@ -13,37 +14,51 @@ using static Humans.Holded.Services.HoldedJson;
 
 namespace Humans.Holded.Services;
 
-internal sealed class HoldedTransport
+internal sealed class HoldedTransport(
+    HttpClient http,
+    IOptions<HoldedClientOptions> options,
+    ILogger<HoldedClient> logger,
+    IHoldedCallLog callLog,
+    IClock clock) : ApiClientBase(http, options.Value.BaseUrl)
 {
     private const int DefaultRetryAfterSeconds = 5;
     private const int MaxRetryAfterSeconds = 60;
 
-    private readonly HttpClient _http;
-    private readonly HoldedClientOptions _options;
-    private readonly ILogger<HoldedClient> _logger;
-    private readonly IHoldedCallLog _callLog;
-    private readonly IClock _clock;
+    private readonly HoldedClientOptions _options = options.Value;
 
-    public HoldedTransport(
-        HttpClient http,
-        IOptions<HoldedClientOptions> options,
-        ILogger<HoldedClient> logger,
-        IHoldedCallLog callLog,
-        IClock clock)
+    protected override string ApiName => "Holded";
+
+    protected override Exception Transient(string message, Exception? inner = null) =>
+        inner is null ? new HoldedTransientException(message) : new HoldedTransientException(message, inner);
+
+    protected override Exception Permanent(string message, HttpStatusCode? status = null, string? body = null) =>
+        status is { } code ? new HoldedPermanentException((int)code, body, message) : new HoldedPermanentException(message);
+
+    protected override void Authorize(HttpRequestMessage request) =>
+        request.Headers.Authorization = Authorization
+            ?? throw new HoldedPermanentException("HOLDED_API_KEY_V2 must be nonblank and valid in an HTTP authorization header.");
+
+    protected override void OnResponse(HttpRequestMessage request, HttpResponseMessage response, string caller) =>
+        RecordCall(caller, request.Method.Method, response);
+
+    protected override Exception Failure(HttpResponseMessage response, string body, string caller)
     {
-        _http = http;
-        _options = options.Value;
-        _logger = logger;
-        _callLog = callLog;
-        _clock = clock;
-
-        // Endpoint mistakes must not stop DI; operations fail at the send boundary.
-        if (_http.BaseAddress is null && Uri.TryCreate(_options.BaseUrl, UriKind.Absolute, out var baseAddress)
-            && baseAddress.Scheme is "http" or "https")
-            _http.BaseAddress = baseAddress;
+        var status = (int)response.StatusCode;
+        if (response.StatusCode == HttpStatusCode.TooManyRequests)
+            return new HoldedTransientException(
+                $"Holded 429 Too Many Requests (retry after {ReadRetryAfterSeconds(response)?.ToString(CultureInfo.InvariantCulture) ?? "unknown"}s)");
+        if (status >= 500)
+            return new HoldedTransientException($"Holded {status} {response.ReasonPhrase}");
+        if (response.StatusCode == HttpStatusCode.Forbidden && MissingKeyPermission(body) is { } permission)
+            return new HoldedPermanentException(403, body,
+                $"Humans' Holded key lacks {permission}; add it in Holded > Settings > API");
+        // This message reaches logs, LastError, the audit trail and the finance UI, and a 4xx on a contact
+        // create can echo the IBAN back: mask it here. ResponseBody keeps the raw body.
+        return new HoldedPermanentException(status, body,
+            $"Holded {status} {response.ReasonPhrase}: {MaskDiagnosticBody(body)}");
     }
 
-    public bool IsConfigured => _http.BaseAddress is { Scheme: "http" or "https" } && Authorization is not null;
+    public bool IsConfigured => HasBaseAddress && Authorization is not null;
 
     private AuthenticationHeaderValue? Authorization =>
         !string.IsNullOrWhiteSpace(_options.ApiKey)
@@ -57,50 +72,45 @@ internal sealed class HoldedTransport
     {
         var endpoint = pathAndQuery.Split('?', 2)[0];
         var items = new List<JsonNode>();
-        var seenCursors = new HashSet<string>(StringComparer.Ordinal);
-        string? cursor = null;
+        await foreach (var page in GetPagesAsync(endpoint, cursor => ReadPageAsync(pathAndQuery, endpoint, cursor, caller, ct), pageSafetyCap, ct))
+            items.AddRange(page);
+        return items;
+    }
+
+    private async Task<(List<JsonNode> Page, string? Next)> ReadPageAsync(
+        string pathAndQuery, string endpoint, string? cursor, string caller, CancellationToken ct)
+    {
+        var url = cursor is null ? pathAndQuery : $"{pathAndQuery}&cursor={Uri.EscapeDataString(cursor)}";
+        using var req = new HttpRequestMessage(HttpMethod.Get, url);
+        // Pass the real caller, or the call log records every paged endpoint as "ReadPageAsync".
+        using var resp = await SendWithRetryAsync(req, ct, caller);
         try
         {
-            for (var page = 1; page <= pageSafetyCap; page++)
+            await using var stream = await resp.Content.ReadAsStreamAsync(ct);
+            var root = await JsonNode.ParseAsync(stream, cancellationToken: ct);
+
+            // Strict, not Prop/Arr: a 200 carrying Holded's {"status":0,...} error, or any body without items,
+            // would read as an empty page, and a false empty deletes every cached row in the window.
+            if (Prop(root, "items") is not JsonArray itemsArr)
             {
-                var url = cursor is null
-                    ? pathAndQuery
-                    : $"{pathAndQuery}&cursor={Uri.EscapeDataString(cursor)}";
-                using var req = new HttpRequestMessage(HttpMethod.Get, url);
-                // Pass the real caller, or the call log records every paged endpoint as "GetPagedAsync".
-                using var resp = await SendAsync(req, ct, caller);
-                await using var stream = await resp.Content.ReadAsStreamAsync(ct);
-                var root = await JsonNode.ParseAsync(stream, cancellationToken: ct);
-
-                // Strict, not Prop/Arr: a 200 carrying Holded's {"status":0,...} error, or any body without items,
-                // would read as an empty page, and a false empty deletes every cached row in the window.
-                if (Prop(root, "items") is not JsonArray itemsArr)
-                {
-                    var preview = MaskDiagnosticBody(root?.ToJsonString() ?? "null");
-                    throw new HoldedTransientException(
-                        $"Holded returned a 200 without a valid items array for {endpoint} " +
-                        $"(body starts: {preview[..Math.Min(preview.Length, 120)]}).");
-                }
-                foreach (var n in itemsArr)
-                {
-                    if (n is null)
-                        throw new HoldedPermanentException(
-                            $"Holded page for {endpoint} contains a null item.");
-                    items.Add(n);
-                }
-
-                // Absent has_more is a legitimate final page (accounting-accounts sends no pagination metadata). But
-                // has_more:true without a cursor can't be followed, and the prefix would feed replace semantics.
-                var hasMore = Prop(root, "has_more")?.GetValue<bool>() ?? false;
-                cursor = Prop(root, "cursor")?.GetValue<string>();
-                if (!hasMore) return items;
-                if (string.IsNullOrEmpty(cursor))
-                    throw new HoldedTransientException(
-                        $"Holded page for {endpoint} claims has_more but carries no cursor.");
-                if (!seenCursors.Add(cursor))
-                    throw new HoldedTransientException(
-                        $"Holded page for {endpoint} carries a repeated cursor.");
+                var preview = MaskDiagnosticBody(root?.ToJsonString() ?? "null");
+                throw new HoldedTransientException(
+                    $"Holded returned a 200 without a valid items array for {endpoint} " +
+                    $"(body starts: {preview[..Math.Min(preview.Length, 120)]}).");
             }
+            var items = new List<JsonNode>();
+            foreach (var n in itemsArr)
+                items.Add(n ?? throw new HoldedPermanentException($"Holded page for {endpoint} contains a null item."));
+
+            // Absent has_more is a legitimate final page (accounting-accounts sends no pagination metadata). But
+            // has_more:true without a cursor can't be followed, and the prefix would feed replace semantics.
+            var hasMore = Prop(root, "has_more")?.GetValue<bool>() ?? false;
+            var next = Prop(root, "cursor")?.GetValue<string>();
+            if (!hasMore) return (items, null);
+            if (string.IsNullOrEmpty(next))
+                throw new HoldedTransientException(
+                    $"Holded page for {endpoint} claims has_more but carries no cursor.");
+            return (items, next);
         }
         catch (Exception ex) when (ex is JsonException or InvalidOperationException
             or FormatException or OverflowException)
@@ -111,26 +121,15 @@ internal sealed class HoldedTransport
             throw new HoldedPermanentException(
                 $"Holded page for {endpoint} could not be read.", ex);
         }
-
-        throw new HoldedTransientException(
-            $"Holded cursor pagination for {endpoint} hit the {pageSafetyCap}-page safety cap.");
     }
 
-    private void AttachAuth(HttpRequestMessage req) =>
-        req.Headers.Authorization = Authorization
-            ?? throw new HoldedPermanentException("HOLDED_API_KEY_V2 must be nonblank and valid in an HTTP authorization header.");
-
-    public async Task<HttpResponseMessage> SendAsync(
+    /// <summary>Sends, retrying a content-free GET once after a 429, and returns only a success.</summary>
+    public async Task<HttpResponseMessage> SendWithRetryAsync(
         HttpRequestMessage req, CancellationToken ct,
         [CallerMemberName] string caller = "")
     {
-        var destination = req.RequestUri is { IsAbsoluteUri: true } ? req.RequestUri : _http.BaseAddress;
-        if (destination is null || destination.Scheme is not ("http" or "https"))
-            throw new HoldedPermanentException("Holded:BaseUrl must be an absolute HTTP(S) URL.");
-
-        AttachAuth(req);
-        using var _ = _logger.TimeOperation(operation: caller);
-        var resp = await SendOnceAsync(req, caller, ct);
+        using var _ = logger.TimeOperation(operation: caller);
+        var resp = await SendRawAsync(req, ct, caller);
 
         // Only content-free GETs are safe to retry here. A bodyless approval POST still
         // mutates Holded, so the absence of content cannot establish repeatability.
@@ -141,35 +140,10 @@ internal sealed class HoldedTransport
             resp.Dispose();
             await Task.Delay(TimeSpan.FromMilliseconds(Math.Ceiling(retryAfterSeconds * 1000)), ct);
             using var retry = CloneForRetry(req);
-            resp = await SendOnceAsync(retry, caller, ct);
+            resp = await SendRawAsync(retry, ct, caller);
         }
 
-        if (resp.StatusCode == HttpStatusCode.TooManyRequests)
-        {
-            var retryAfterSeconds = ReadRetryAfterSeconds(resp);
-            using (resp)
-            {
-                throw new HoldedTransientException(
-                    $"Holded 429 Too Many Requests (retry after {retryAfterSeconds?.ToString(CultureInfo.InvariantCulture) ?? "unknown"}s)");
-            }
-        }
-
-        if (resp.IsSuccessStatusCode) return resp;
-
-        using (resp)
-        {
-            var body = await resp.Content.ReadAsStringAsync(ct);
-            if ((int)resp.StatusCode >= 500)
-                throw new HoldedTransientException(
-                    $"Holded {(int)resp.StatusCode} {resp.ReasonPhrase}");
-            if (resp.StatusCode == HttpStatusCode.Forbidden && MissingKeyPermission(body) is { } permission)
-                throw new HoldedPermanentException(403, body,
-                    $"Humans' Holded key lacks {permission}; add it in Holded > Settings > API");
-            // This message reaches logs, LastError, the audit trail and the finance UI, and a 4xx on a contact
-            // create can echo the IBAN back: mask it here. ResponseBody keeps the raw body.
-            throw new HoldedPermanentException((int)resp.StatusCode, body,
-                $"Holded {(int)resp.StatusCode} {resp.ReasonPhrase}: {MaskDiagnosticBody(body)}");
-        }
+        return await EnsureSuccessAsync(resp, ct, caller);
     }
 
     /// <summary>The scope Holded names in <c>Insufficient permissions: X required</c>, or null.</summary>
@@ -228,27 +202,6 @@ internal sealed class HoldedTransport
         }
     }
 
-    private async Task<HttpResponseMessage> SendOnceAsync(
-        HttpRequestMessage req, string caller, CancellationToken ct)
-    {
-        HttpResponseMessage resp;
-        try
-        {
-            resp = await _http.SendAsync(req, ct);
-        }
-        catch (HttpRequestException ex)
-        {
-            throw new HoldedTransientException("Holded HTTP send failed", ex);
-        }
-        catch (TaskCanceledException ex) when (!ct.IsCancellationRequested)
-        {
-            throw new HoldedTransientException("Holded HTTP send timed out", ex);
-        }
-
-        RecordCall(caller, req.Method.Method, resp);
-        return resp;
-    }
-
     private void RecordCall(string endpoint, string method, HttpResponseMessage resp)
     {
         int? rateLimitRemaining = resp.Headers.TryGetValues("X-RateLimit-Remaining", out var remaining)
@@ -259,8 +212,8 @@ internal sealed class HoldedTransport
             ? window.FirstOrDefault()
             : null;
 
-        _callLog.Record(new HoldedApiCallRecord(
-            _clock.GetCurrentInstant(), endpoint, method, (int)resp.StatusCode,
+        callLog.Record(new HoldedApiCallRecord(
+            clock.GetCurrentInstant(), endpoint, method, (int)resp.StatusCode,
             rateLimitRemaining, rateLimitWindow));
     }
 
@@ -270,7 +223,7 @@ internal sealed class HoldedTransport
         if (retryAfter?.Delta is { } delta) return delta.TotalSeconds;
         // Retry-After also has a valid HTTP-date form; a past date clamps to 0 (retry now).
         if (retryAfter?.Date is { } date)
-            return Math.Max(0, (date - _clock.GetCurrentInstant().ToDateTimeOffset()).TotalSeconds);
+            return Math.Max(0, (date - clock.GetCurrentInstant().ToDateTimeOffset()).TotalSeconds);
         return null;
     }
 

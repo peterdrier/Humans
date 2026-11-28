@@ -1,6 +1,6 @@
 using AwesomeAssertions;
 using Humans.Base.Interfaces;
-using Humans.AuditLog.Contracts;
+using Humans.Audit.Contracts;
 using Humans.Notifications.Contracts;
 using Humans.Onboarding.Contracts;
 using Microsoft.Extensions.Logging.Abstractions;

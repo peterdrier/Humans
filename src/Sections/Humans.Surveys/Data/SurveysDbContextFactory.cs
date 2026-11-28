@@ -1,30 +1,9 @@
-using Humans.Base.Data;
+using Humans.Base.Hosting;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.EntityFrameworkCore.Design;
 
 namespace Humans.Surveys.Data;
 
-/// <summary>Same history table as the runtime registration, so a CI apply writes the table the app reads.</summary>
-internal sealed class SurveysDbContextFactory : IDesignTimeDbContextFactory<SurveysDbContext>
+internal sealed class SurveysDbContextFactory : SectionDesignTimeDbContextFactory<SurveysDbContext>
 {
-    public SurveysDbContext CreateDbContext(string[] args)
-    {
-        var connectionString =
-            Environment.GetEnvironmentVariable("ConnectionStrings__DefaultConnection")
-            ?? "Host=localhost;Database=humans_design_time;Username=humans;Password=humans";
-
-        var optionsBuilder = new DbContextOptionsBuilder<SurveysDbContext>();
-        optionsBuilder.UseNpgsql(
-            connectionString,
-            npgsqlOptions =>
-            {
-                npgsqlOptions.UseNodaTime();
-                npgsqlOptions.MigrationsAssembly("Humans.Surveys");
-                npgsqlOptions.MigrationsHistoryTable(
-                    SectionMigrationsHistory.TableFor<SurveysDbContext>());
-                npgsqlOptions.UseQuerySplittingBehavior(QuerySplittingBehavior.SplitQuery);
-            });
-
-        return new SurveysDbContext(optionsBuilder.Options);
-    }
+    protected override SurveysDbContext Create(DbContextOptions<SurveysDbContext> options) => new(options);
 }

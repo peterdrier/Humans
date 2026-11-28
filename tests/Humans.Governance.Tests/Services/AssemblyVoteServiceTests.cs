@@ -677,7 +677,7 @@ public sealed class AssemblyVoteServiceTests : IDisposable
             vote.Id, adminId, viewerIsBoardOrAdmin: false, TestContext.Current.CancellationToken);
 
         await _fx.Audit.Received(1).LogAsync(
-            GovernanceAuditActions.AssemblyVoteStopped, AuditEntityTypes.AssemblyVote, vote.Id,
+            GovernanceAuditActions.AssemblyVoteStopped, GovernanceAuditSubjectTypes.AssemblyVote, vote.Id,
             Arg.Any<string>(), adminId);
     }
 
@@ -1826,7 +1826,7 @@ public sealed class AssemblyVoteServiceTests : IDisposable
         var rows = await _fx.Db.AssemblyVoteRosterEntries.AsNoTracking().Where(r => r.VoteId == vote.Id).ToListAsync(TestContext.Current.CancellationToken);
         rows.Count(r => opening ? r.NotifiedAt is not null : r.ReminderSentAt is not null).Should().Be(1);
         await _fx.Audit.Received(1).LogAsync(opening ? GovernanceAuditActions.AssemblyVoteOpened : GovernanceAuditActions.AssemblyVoteRemindersSent,
-            AuditEntityTypes.AssemblyVote, vote.Id, Arg.Is<string>(d => d.Contains("to 1 roster member", StringComparison.Ordinal)), AssemblyVoteService.LapseJobName);
+            GovernanceAuditSubjectTypes.AssemblyVote, vote.Id, Arg.Is<string>(d => d.Contains("to 1 roster member", StringComparison.Ordinal)), AssemblyVoteService.LapseJobName);
 
         _fx.Email.ClearReceivedCalls();
         _fx.Email.SendAsync(Arg.Any<EmailMessage>(), Arg.Any<CancellationToken>()).Returns(Task.CompletedTask);
@@ -1925,7 +1925,7 @@ public sealed class AssemblyVoteServiceTests : IDisposable
 
         await _fx.Audit.Received(1).LogAsync(
             GovernanceAuditActions.AssemblyVoteRemindersSent,
-            AuditEntityTypes.AssemblyVote,
+            GovernanceAuditSubjectTypes.AssemblyVote,
             vote.Id,
             Arg.Any<string>(),
             AssemblyVoteService.LapseJobName);
@@ -1949,7 +1949,7 @@ public sealed class AssemblyVoteServiceTests : IDisposable
 
         await _fx.Audit.Received(1).LogAsync(
             GovernanceAuditActions.AssemblyVoteRemindersSent,
-            AuditEntityTypes.AssemblyVote,
+            GovernanceAuditSubjectTypes.AssemblyVote,
             vote.Id,
             Arg.Is<string>(m => m.Contains("1 roster member(s)")),
             AssemblyVoteService.LapseJobName);
@@ -2984,7 +2984,7 @@ public sealed class AssemblyVoteServiceTests : IDisposable
         // open entry is about their transition and cannot show this.
         await _fx.Audit.Received(1).LogAsync(
             GovernanceAuditActions.AssemblyVoteOpened,
-            AuditEntityTypes.AssemblyVote,
+            GovernanceAuditSubjectTypes.AssemblyVote,
             vote.Id,
             Arg.Any<string>(),
             AssemblyVoteService.LapseJobName);
@@ -3164,7 +3164,7 @@ public sealed class AssemblyVoteServiceTests : IDisposable
         stored.ResultJson.Should().NotBeNull(
             "an interrupted close must not wait for somebody to open that one vote");
         await _fx.Audit.Received(1).LogAsync(
-            GovernanceAuditActions.AssemblyVoteClosed, AuditEntityTypes.AssemblyVote, vote.Id,
+            GovernanceAuditActions.AssemblyVoteClosed, GovernanceAuditSubjectTypes.AssemblyVote, vote.Id,
             Arg.Any<string>(), AssemblyVoteService.LapseJobName);
     }
 
@@ -3214,7 +3214,7 @@ public sealed class AssemblyVoteServiceTests : IDisposable
         stored.ResultJson.Should().BeNull(
             "the close is running, not interrupted; the request that owns it stores the tally");
         await _fx.Audit.DidNotReceive().LogAsync(
-            GovernanceAuditActions.AssemblyVoteClosed, AuditEntityTypes.AssemblyVote, vote.Id,
+            GovernanceAuditActions.AssemblyVoteClosed, GovernanceAuditSubjectTypes.AssemblyVote, vote.Id,
             Arg.Any<string>(), Arg.Any<string>());
     }
 

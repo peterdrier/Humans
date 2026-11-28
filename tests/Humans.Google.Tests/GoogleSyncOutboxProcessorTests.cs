@@ -32,9 +32,7 @@ public class GoogleSyncOutboxProcessorTests : IDisposable
 
     public GoogleSyncOutboxProcessorTests()
     {
-        var options = new DbContextOptionsBuilder<GoogleIntegrationDbContext>()
-            .UseInMemoryDatabase(Guid.NewGuid().ToString())
-            .Options;
+        var options = TestDbOptions.InMemory<GoogleIntegrationDbContext>();
 
         _dbContext = new GoogleIntegrationDbContext(options);
         var factory = new SingleContextFactory(options);

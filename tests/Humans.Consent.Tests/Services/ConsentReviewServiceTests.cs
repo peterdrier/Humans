@@ -1,5 +1,5 @@
 using AwesomeAssertions;
-using Humans.AuditLog.Contracts;
+using Humans.Audit.Contracts;
 using Humans.Base.Enums;
 using Humans.Base.Interfaces;
 using Humans.Consent.Contracts;
@@ -36,7 +36,7 @@ public sealed class ConsentReviewServiceTests : IDisposable
     public ConsentReviewServiceTests()
     {
         var factory = new TestDbContextFactory<LegalDbContext>(
-            new DbContextOptionsBuilder<LegalDbContext>().UseInMemoryDatabase(Guid.NewGuid().ToString()).Options);
+            TestDbOptions.InMemory<LegalDbContext>());
         _db = factory.CreateDbContext();
         _sut = new ConsentReviewService(new ConsentReviewRepository(factory), _users, _audit, _clock);
     }

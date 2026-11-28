@@ -1,42 +1,33 @@
+using Humans.Base.Data;
 using Humans.Calendar.Domain;
 using Microsoft.EntityFrameworkCore;
 using NodaTime;
 
 namespace Humans.Calendar.Data;
 
-internal sealed class CalendarRepository(IDbContextFactory<CalendarDbContext> factory) : ICalendarRepository
+internal sealed class CalendarRepository(IDbContextFactory<CalendarDbContext> factory) : SectionRepository<CalendarDbContext>(factory), ICalendarRepository
 {
-    public async Task<CalendarEvent?> GetEventByIdAsync(Guid id, CancellationToken ct = default)
-    {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
-        return await ctx.CalendarEvents
+    public async Task<CalendarEvent?> GetEventByIdAsync(Guid id, CancellationToken ct = default) =>
+        await RunAsync(ctx => ctx.CalendarEvents
             .AsNoTracking()
             .Include(e => e.Exceptions)
-            .FirstOrDefaultAsync(e => e.Id == id, ct);
-    }
+            .FirstOrDefaultAsync(e => e.Id == id, ct), ct);
 
-    public async Task<IReadOnlyList<CalendarEvent>> GetAllAsync(CancellationToken ct = default)
-    {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
-        return await ctx.CalendarEvents
+    public async Task<IReadOnlyList<CalendarEvent>> GetAllAsync(CancellationToken ct = default) =>
+        await RunAsync(ctx => ctx.CalendarEvents
             .AsNoTracking()
             .Include(e => e.Exceptions)
-            .ToListAsync(ct);
-    }
+            .ToListAsync(ct), ct);
 
-    public async Task AddAsync(CalendarEvent ev, CancellationToken ct = default)
-    {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
-        ctx.CalendarEvents.Add(ev);
-        await ctx.SaveChangesAsync(ct);
-    }
+    public async Task AddAsync(CalendarEvent ev, CancellationToken ct = default) =>
+        await InsertAsync(ev, ct);
 
     public async Task<bool> UpdateAsync(
         Guid id,
         Action<CalendarEvent> mutate,
         CancellationToken ct = default)
     {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
+        await using var ctx = await CreateDbContextAsync(ct);
         var ev = await ctx.CalendarEvents.Include(e => e.Exceptions).FirstOrDefaultAsync(e => e.Id == id, ct);
         if (ev is null)
         {
@@ -53,7 +44,7 @@ internal sealed class CalendarRepository(IDbContextFactory<CalendarDbContext> fa
         Instant deletedAt,
         CancellationToken ct = default)
     {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
+        await using var ctx = await CreateDbContextAsync(ct);
         var ev = await ctx.CalendarEvents.FirstOrDefaultAsync(e => e.Id == id, ct);
         if (ev is null)
         {
@@ -74,7 +65,7 @@ internal sealed class CalendarRepository(IDbContextFactory<CalendarDbContext> fa
         Action<CalendarEventException> apply,
         CancellationToken ct = default, LocalDate? originalDate = null)
     {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
+        await using var ctx = await CreateDbContextAsync(ct);
 
         // Each identity column has its own unique index, so missing the existing row here means a duplicate-insert
         // failure. A pre-date-columns all-day row is found by its stale instant and moved to date identity below.
@@ -120,7 +111,7 @@ internal sealed class CalendarRepository(IDbContextFactory<CalendarDbContext> fa
 
     public async Task<Guid?> GetFeedTokenAsync(Guid userId, CancellationToken ct = default)
     {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
+        await using var ctx = await CreateDbContextAsync(ct);
         var row = await ctx.CalendarFeedTokens
             .AsNoTracking()
             .FirstOrDefaultAsync(t => t.UserId == userId, ct);
@@ -130,7 +121,7 @@ internal sealed class CalendarRepository(IDbContextFactory<CalendarDbContext> fa
     public async Task<(Guid Token, bool Created)> GetOrAddFeedTokenAsync(
         Guid userId, Guid candidate, CancellationToken ct = default)
     {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
+        await using var ctx = await CreateDbContextAsync(ct);
         if (await ctx.CalendarFeedTokens.AsNoTracking()
                 .FirstOrDefaultAsync(t => t.UserId == userId, ct) is { } existing)
         {
@@ -158,7 +149,7 @@ internal sealed class CalendarRepository(IDbContextFactory<CalendarDbContext> fa
 
     public async Task SetFeedTokenAsync(Guid userId, Guid token, CancellationToken ct = default)
     {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
+        await using var ctx = await CreateDbContextAsync(ct);
         var row = await ctx.CalendarFeedTokens.FirstOrDefaultAsync(t => t.UserId == userId, ct);
         if (row is null)
         {
@@ -174,7 +165,7 @@ internal sealed class CalendarRepository(IDbContextFactory<CalendarDbContext> fa
 
     public async Task DeleteFeedTokenAsync(Guid userId, CancellationToken ct = default)
     {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
+        await using var ctx = await CreateDbContextAsync(ct);
         // Load+remove rather than ExecuteDeleteAsync: the in-memory provider the tests run on lacks it.
         var row = await ctx.CalendarFeedTokens.FirstOrDefaultAsync(t => t.UserId == userId, ct);
         if (row is null)

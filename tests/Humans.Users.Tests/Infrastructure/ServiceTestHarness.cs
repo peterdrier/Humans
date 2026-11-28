@@ -1,4 +1,4 @@
-using Humans.AuditLog.Contracts;
+using Humans.Audit.Contracts;
 using Humans.Auth.Contracts;
 using Humans.Notifications.Contracts;
 using Humans.Base.Enums;
@@ -25,15 +25,10 @@ public abstract class ServiceTestHarness : IDisposable
 
     private protected DbContextOptions<UsersDbContext> DbOptions { get; }
     private protected UsersDbContext Db { get; }
+    private readonly SectionTestDbs _dbs = new();
     private protected TestDbContextFactory DbFactory { get; }
 
-    // Section contexts are separate in-memory stores: a test seeding across two saves each.
-    // Every pair is built on first touch: eager construction gave each test its own EF
-    // service provider, which pushed a 5s-budget test past its CI timeout.
-
-    private readonly List<Func<DbContext?>> _sectionContextProbes = [];
-
-    private readonly Lazy<SectionDb<TeamsDbContext>> _teamsDb;
+    private readonly Lazy<SectionTestDb<TeamsDbContext>> _teamsDb;
     private protected TeamsDbContext TeamsDb => _teamsDb.Value.Context;
     private protected TestDbContextFactory<TeamsDbContext> TeamsDbFactory => _teamsDb.Value.Factory;
 
@@ -48,89 +43,31 @@ public abstract class ServiceTestHarness : IDisposable
 
     protected ServiceTestHarness(Instant? now = null)
     {
-        DbOptions = new DbContextOptionsBuilder<UsersDbContext>()
-            .UseInMemoryDatabase(Guid.NewGuid().ToString())
-            .ConfigureWarnings(w => w.Ignore(InMemoryEventId.TransactionIgnoredWarning))
-            .Options;
+        DbOptions = TestDbOptions.InMemory<UsersDbContext>();
         Db = new UsersDbContext(DbOptions);
+        _dbs.Track(Db);
         DbFactory = new TestDbContextFactory(DbOptions);
 
-        _teamsDb = RegisterSection<TeamsDbContext>(o => new(o));
+        _teamsDb = _dbs.Add<TeamsDbContext>(o => new(o));
 
         Clock = new FakeClock(now ?? Instant.FromUtc(2026, 3, 1, 12, 0));
     }
 
-    /// <summary>A peeled section's in-memory context and the factory over the same store.</summary>
-    private sealed record SectionDb<TContext>(TContext Context, TestDbContextFactory<TContext> Factory)
-        where TContext : DbContext;
-
-    private Lazy<SectionDb<TContext>> RegisterSection<TContext>(Func<DbContextOptions<TContext>, TContext> create)
-        where TContext : DbContext
-    {
-        var lazy = new Lazy<SectionDb<TContext>>(() =>
-        {
-            var options = NewSectionDbOptions<TContext>();
-            return new SectionDb<TContext>(create(options), new TestDbContextFactory<TContext>(options));
-        });
-
-        _sectionContextProbes.Add(() => lazy.IsValueCreated ? lazy.Value.Context : null);
-        return lazy;
-    }
-
-    private IEnumerable<DbContext> CreatedSectionContexts() =>
-        _sectionContextProbes.Select(probe => probe()).OfType<DbContext>();
-
-    /// <summary>
-    /// Pair with <c>new TestDbContextFactory&lt;TContext&gt;(options)</c> for the repository under
-    /// test, and construct a context directly from the options for seeding.
-    /// </summary>
-    private protected static DbContextOptions<TContext> NewSectionDbOptions<TContext>()
-        where TContext : DbContext =>
-        new DbContextOptionsBuilder<TContext>()
-            .UseInMemoryDatabase(Guid.NewGuid().ToString())
-            .ConfigureWarnings(w => w.Ignore(InMemoryEventId.TransactionIgnoredWarning))
-            .Options;
-
     /// <summary>Flushes <see cref="Db"/> and every section context, so a test need not track where each seed landed.</summary>
-    private protected async Task SaveAllAsync(CancellationToken ct = default)
-    {
-        await Db.SaveChangesAsync(ct);
-        foreach (var sectionDb in CreatedSectionContexts())
-        {
-            await sectionDb.SaveChangesAsync(ct);
-        }
-    }
+    private protected Task SaveAllAsync(CancellationToken ct = default) => _dbs.SaveAllAsync(ct);
 
     /// <summary>
     /// Clears the tracker on <see cref="Db"/> and every section context: clearing only
     /// <see cref="Db"/> silently returns stale state for entities another context owns.
     /// </summary>
-    private protected void ClearAllTrackers()
-    {
-        Db.ChangeTracker.Clear();
-        foreach (var sectionDb in CreatedSectionContexts())
-        {
-            sectionDb.ChangeTracker.Clear();
-        }
-    }
+    private protected void ClearAllTrackers() => _dbs.ClearTrackers();
 
-    private protected void SaveAll()
-    {
-        Db.SaveChanges();
-        foreach (var sectionDb in CreatedSectionContexts())
-        {
-            sectionDb.SaveChanges();
-        }
-    }
+    private protected void SaveAll() => _dbs.SaveAll();
 
     public virtual void Dispose()
     {
         Cache.Dispose();
-        Db.Dispose();
-        foreach (var sectionDb in CreatedSectionContexts())
-        {
-            sectionDb.Dispose();
-        }
+        _dbs.Dispose();
         GC.SuppressFinalize(this);
     }
 
@@ -141,7 +78,7 @@ public abstract class ServiceTestHarness : IDisposable
 
         svc.StubGetUserInfoFromContext(Db);
         svc.StubGetUserInfosFromDb(DbOptions);
-        svc.StubGetAllUserInfosFromDb(DbOptions);
+        svc.StubAllUserInfosFromDb(DbOptions);
 
         return svc;
     }
@@ -209,7 +146,6 @@ public abstract class ServiceTestHarness : IDisposable
         TeamsDb.TeamMembers.Add(member);
         return member;
     }
-
 
     private protected TeamJoinRequest SeedJoinRequest(
         Guid teamId,

@@ -1,4 +1,4 @@
-using Humans.AuditLog.Contracts;
+using Humans.Audit.Contracts;
 using AwesomeAssertions;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Diagnostics;
@@ -40,9 +40,7 @@ public class EmailOutboxProcessorTests : IDisposable
 
     public EmailOutboxProcessorTests()
     {
-        _options = new DbContextOptionsBuilder<EmailDbContext>()
-            .UseInMemoryDatabase(Guid.NewGuid().ToString())
-            .Options;
+        _options = TestDbOptions.InMemory<EmailDbContext>();
 
         _dbContext = new EmailDbContext(_options);
         _transport = Substitute.For<IEmailTransport>();

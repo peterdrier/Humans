@@ -1,6 +1,6 @@
 using Humans.Surveys.Contracts;
 using Humans.Auth.Contracts;
-using Humans.AuditLog.Contracts;
+using Humans.Audit.Contracts;
 using Humans.Email.Contracts;
 using Humans.Finance.Contracts;
 using Humans.Holded.Contracts;
@@ -38,10 +38,7 @@ public abstract class WorkgroupsTestHarness : IDisposable
 
     protected WorkgroupsTestHarness(Instant? now = null)
     {
-        var options = new DbContextOptionsBuilder<WorkgroupsDbContext>()
-            .UseInMemoryDatabase(Guid.NewGuid().ToString())
-            .ConfigureWarnings(w => w.Ignore(InMemoryEventId.TransactionIgnoredWarning))
-            .Options;
+        var options = TestDbOptions.InMemory<WorkgroupsDbContext>();
         Db = new WorkgroupsDbContext(options);
         DbFactory = new TestDbContextFactory<WorkgroupsDbContext>(options);
         Clock = new FakeClock(now ?? Instant.FromUtc(2026, 3, 1, 12, 0));

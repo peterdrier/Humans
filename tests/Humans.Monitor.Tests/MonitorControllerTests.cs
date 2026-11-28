@@ -27,7 +27,7 @@ public sealed class MonitorControllerTests
 
         var redirect = result.Should().BeOfType<RedirectToActionResult>().Subject;
         redirect.ActionName.Should().Be("Index");
-        redirect.ControllerName.Should().Be("AuditLog");
+        redirect.ControllerName.Should().Be("Audit");
         controller.TempData[TempDataKeys.ErrorMessage]
             .Should().Be("Drive activity check failed. Check logs for details.");
     }

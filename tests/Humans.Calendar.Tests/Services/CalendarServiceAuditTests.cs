@@ -1,6 +1,6 @@
 using Microsoft.Extensions.DependencyInjection;
 using AwesomeAssertions;
-using Humans.AuditLog.Contracts;
+using Humans.Audit.Contracts;
 using Humans.Calendar.Data;
 using Humans.Calendar.Domain;
 using Humans.Calendar.Services;
@@ -54,9 +54,9 @@ public class CalendarServiceAuditTests
 
         result.Succeeded.Should().BeTrue(result.ErrorMessage);
         await _audit.Received(1).LogAsync(
-            CalendarAuditActions.CalendarEventCreated, AuditEntityTypes.CalendarEvent, result.Event!.Id,
+            CalendarAuditActions.CalendarEventCreated, CalendarAuditSubjectTypes.CalendarEvent, result.Event!.Id,
             Arg.Any<string>(), actor,
-            teamId, AuditEntityTypes.Team);
+            teamId, CalendarAuditSubjectTypes.Team);
     }
 
     // The team the entry names is the one the update *sets*, which is what keeps a moved
@@ -89,9 +89,9 @@ public class CalendarServiceAuditTests
 
         result.Succeeded.Should().BeTrue(result.ErrorMessage);
         await _audit.Received(1).LogAsync(
-            CalendarAuditActions.CalendarEventUpdated, AuditEntityTypes.CalendarEvent, id,
+            CalendarAuditActions.CalendarEventUpdated, CalendarAuditSubjectTypes.CalendarEvent, id,
             Arg.Any<string>(), actor,
-            newTeamId, AuditEntityTypes.Team);
+            newTeamId, CalendarAuditSubjectTypes.Team);
     }
 
     [HumansFact]
@@ -106,9 +106,9 @@ public class CalendarServiceAuditTests
         await CreateSut().DeleteEventAsync(id, actor, TestContext.Current.CancellationToken);
 
         await _audit.Received(1).LogAsync(
-            CalendarAuditActions.CalendarEventDeleted, AuditEntityTypes.CalendarEvent, id,
+            CalendarAuditActions.CalendarEventDeleted, CalendarAuditSubjectTypes.CalendarEvent, id,
             Arg.Any<string>(), actor,
-            teamId, AuditEntityTypes.Team);
+            teamId, CalendarAuditSubjectTypes.Team);
     }
 
     [HumansFact]
@@ -142,7 +142,7 @@ public class CalendarServiceAuditTests
             eventId, Instant.FromUtc(2026, 6, 8, 10, 0), actor, TestContext.Current.CancellationToken);
 
         await _audit.Received(1).LogAsync(
-            CalendarAuditActions.CalendarOccurrenceCancelled, AuditEntityTypes.CalendarEvent, eventId,
+            CalendarAuditActions.CalendarOccurrenceCancelled, CalendarAuditSubjectTypes.CalendarEvent, eventId,
             Arg.Any<string>(), actor);
     }
 
@@ -167,7 +167,7 @@ public class CalendarServiceAuditTests
             actor, TestContext.Current.CancellationToken);
 
         await _audit.Received(1).LogAsync(
-            CalendarAuditActions.CalendarOccurrenceOverridden, AuditEntityTypes.CalendarEvent, eventId,
+            CalendarAuditActions.CalendarOccurrenceOverridden, CalendarAuditSubjectTypes.CalendarEvent, eventId,
             Arg.Any<string>(), actor);
     }
 }

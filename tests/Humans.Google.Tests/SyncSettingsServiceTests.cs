@@ -1,6 +1,6 @@
 using Humans.Google.Domain;
 using Humans.Google.Contracts;
-using Humans.AuditLog.Contracts;
+using Humans.Audit.Contracts;
 using NSubstitute;
 using AwesomeAssertions;
 using Microsoft.EntityFrameworkCore;
@@ -24,9 +24,7 @@ public class SyncSettingsServiceTests : IDisposable
 
     public SyncSettingsServiceTests()
     {
-        var options = new DbContextOptionsBuilder<GoogleIntegrationDbContext>()
-            .UseInMemoryDatabase(Guid.NewGuid().ToString())
-            .Options;
+        var options = TestDbOptions.InMemory<GoogleIntegrationDbContext>();
 
         _factory = new TestDbContextFactory<GoogleIntegrationDbContext>(options);
         _seedContext = _factory.CreateDbContext();

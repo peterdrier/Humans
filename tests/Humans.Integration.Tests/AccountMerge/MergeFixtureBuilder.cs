@@ -1,3 +1,4 @@
+using Humans.AuditLog.Data;
 using Humans.Email.Contracts;
 using Humans.Email.Data;
 using Humans.Tickets.Contracts;
@@ -7,8 +8,8 @@ using Humans.Shifts.Data;
 using Humans.Shifts.Domain;
 using Humans.Auth.Data;
 using Humans.Auth.Domain;
-using Humans.AuditLog.Data;
-using Humans.AuditLog.Domain;
+using Humans.Audit.Data;
+using Humans.Audit.Domain;
 using Humans.Teams.Data;
 using Humans.Teams.Domain;
 using Humans.Consent.Domain;
@@ -317,8 +318,8 @@ public sealed class MergeFixtureBuilder
         {
             Id = Guid.NewGuid(),
             Action = action,
-            EntityType = "User",
-            EntityId = SourceUserId,
+            SubjectType = "User",
+            SubjectId = SourceUserId,
             Description = description,
             OccurredAt = _now,
             ActorUserId = SourceUserId,
@@ -504,10 +505,10 @@ public sealed class MergeFixtureBuilder
         return budgetYearId;
     }
 
-    public MergeFixtureBuilder WithSourceBudgetAuditLog(
+    public MergeFixtureBuilder WithSourceBudgetChange(
         Guid budgetYearId, string description)
     {
-        _pendingBudget.Add(db => db.BudgetAuditLogs.Add(new BudgetAuditLog
+        _pendingBudget.Add(db => db.BudgetChanges.Add(new BudgetChange
         {
             Id = Guid.NewGuid(),
             BudgetYearId = budgetYearId,

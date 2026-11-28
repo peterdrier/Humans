@@ -1,5 +1,5 @@
 using AwesomeAssertions;
-using Humans.AuditLog.Contracts;
+using Humans.Audit.Contracts;
 using Humans.EarlyEntry.Contracts;
 using Humans.Gdpr.Contracts;
 using Humans.Settings.Contracts;
@@ -59,10 +59,7 @@ public class GateServiceTests
     // Owned rather than the shared UsersDbContext-based harness, which would grant this project
     // InternalsVisibleTo on it. Field initialisers run in declaration order; each test gets its own store.
     private readonly DbContextOptions<GateDbContext> _dbOptions =
-        new DbContextOptionsBuilder<GateDbContext>()
-            .UseInMemoryDatabase(Guid.NewGuid().ToString())
-            .ConfigureWarnings(w => w.Ignore(InMemoryEventId.TransactionIgnoredWarning))
-            .Options;
+        TestDbOptions.InMemory<GateDbContext>();
 
     private readonly FakeClock _clock = new(Instant.FromUtc(2026, 3, 1, 12, 0));
     private readonly GateDbContext _gateDb;
@@ -773,7 +770,7 @@ public class GateServiceTests
         row.UndoReason.Should().Be(GateService.UndoneAtGateReason);
         await _users.Received(1).UndoCheckInAsync(GuestId, 2027, CancellationToken.None);
         await _auditLog.Received(1).LogAsync(GateAuditActions.GateAdmitUndone, nameof(GateScanEvent), row.Id,
-            Arg.Any<string>(), AgentId, relatedEntityId: GuestId, relatedEntityType: Arg.Any<string?>());
+            Arg.Any<string>(), AgentId, targetId: GuestId, targetType: Arg.Any<string?>());
         (await new GateAdmissionReads(new GateRepository(_gateDbFactory)).GetAdmittedAsync([IssuedBarcode], Ct))
             .Should().BeEmpty();
 

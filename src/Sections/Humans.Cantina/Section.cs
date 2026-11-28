@@ -15,14 +15,15 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Localization;
-using Humans.AuditLog.Contracts;
+using Humans.Audit.Contracts;
+using Humans.Cantina.Controllers;
 
 [assembly: Humans.Base.Demo.NoDemoStory("No demo story written yet.")]
 
 namespace Humans.Cantina;
 
 public sealed class Section :
-    ISection,
+    SectionBase,
     ISectionRoles,
     ISectionAdminNav,
     ISectionPolicies,
@@ -36,7 +37,7 @@ public sealed class Section :
             "fa-solid fa-utensils"),
     ];
 
-    public void Register(IServiceCollection services, IConfiguration configuration)
+    public override void Register(IServiceCollection services, IConfiguration configuration)
     {
         services.AddSingleton<IAuditActionContributor, CantinaAuditActions>();
         services.AddSectionDbContext<CantinaDbContext>(sentinelTable: "cantina_dietary_profiles");
@@ -54,8 +55,8 @@ public sealed class Section :
 
     IEnumerable<AdminNavGroup> ISectionAdminNav.Groups() =>
     [
-        new("Cantina", [
-            new("Roster", "Cantina", "Roster", null, null, "fa-solid fa-utensils", CantinaPolicies.Read)
+        AdminGroup([
+            AdminLink<CantinaController>("Roster", nameof(CantinaController.Roster), "fa-solid fa-utensils", CantinaPolicies.Read)
         ])
     ];
 

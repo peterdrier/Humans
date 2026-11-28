@@ -19,9 +19,7 @@ public class NotificationInboxServiceTests : IDisposable
 
     public NotificationInboxServiceTests()
     {
-        var options = new DbContextOptionsBuilder<NotificationsDbContext>()
-            .UseInMemoryDatabase(Guid.NewGuid().ToString())
-            .Options;
+        var options = TestDbOptions.InMemory<NotificationsDbContext>();
 
         _dbContext = new NotificationsDbContext(options);
         _clock = new FakeClock(Instant.FromUtc(2026, 4, 1, 12, 0));

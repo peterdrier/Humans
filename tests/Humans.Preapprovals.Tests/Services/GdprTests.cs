@@ -1,6 +1,6 @@
 using Xunit;
 using AwesomeAssertions;
-using Humans.AuditLog.Contracts;
+using Humans.Audit.Contracts;
 using Humans.Gdpr.Contracts;
 using Humans.Preapprovals.Contracts;
 using Humans.Preapprovals.Domain;
@@ -127,7 +127,7 @@ public sealed class GdprTests : PreapprovalsTestHarness
         (await check.Grants.FindAsync([soleApplication.Id], Ct))!.BeneficiaryUserId.Should().Be(to);
         await NotificationResolve.Received(1).ResolveBySourceKeyAsync(PreapprovalsNotificationSources.PreapprovalApplicationReceived,
             PreapprovalNotices.RequestSourceKey(newerApplication.Id), actor, Arg.Any<CancellationToken>());
-        await AuditLog.Received(1).LogAsync(PreapprovalsAuditActions.PreapprovalMergeDroppedApplication, AuditEntityTypes.Grant, newerApplication.Id,
+        await AuditLog.Received(1).LogAsync(PreapprovalsAuditActions.PreapprovalMergeDroppedApplication, PreapprovalsAuditSubjectTypes.Grant, newerApplication.Id,
             Arg.Any<string>(), actor, to, AuditSubjectTypes.User);
     }
 

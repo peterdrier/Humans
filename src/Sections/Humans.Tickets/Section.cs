@@ -4,7 +4,7 @@ using Humans.Settings.Contracts;
 using Humans.Base.Configuration;
 using Humans.Base.Constants;
 using Humans.Base.Hosting;
-using Humans.AuditLog.Contracts;
+using Humans.Audit.Contracts;
 using Humans.Base.Interfaces;
 using Humans.Base.Interfaces.Caching;
 using Humans.Base.Models;
@@ -31,13 +31,14 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using static Humans.Base.Models.AccessLevel;
 using static Humans.Base.Models.AccessMatrixFeature;
+using Humans.Tickets.Controllers;
 
 [assembly: Humans.Base.Demo.NoDemoStory("Vendor mirror: ticket data arrives through the ticket vendor sync.")]
 
 namespace Humans.Tickets;
 
 public sealed class Section :
-    ISection,
+    SectionBase,
     IIssueQueueOwner,
     ISectionRoles,
     ISectionAccessMatrix,
@@ -64,7 +65,7 @@ public sealed class Section :
             FormerNames: ["TicketAdmin"]),
     ];
 
-    public void Register(IServiceCollection services, IConfiguration configuration)
+    public override void Register(IServiceCollection services, IConfiguration configuration)
     {
         // The port owns its settings, so replacing the vendor adapter does not take them along.
         var ticketVendorApiKey = Environment.GetEnvironmentVariable("TICKET_VENDOR_API_KEY") ?? string.Empty;
@@ -179,6 +180,7 @@ public sealed class Section :
         services.AddScoped<TicketCheckoutReconcileJob>();
         services.AddScoped<TicketReconJob>();
         services.AddScoped<TicketResaleRefundJob>();
+        services.AddScoped<TicketEventErasureJob>();
     }
 
     string IIssueQueueOwner.QueueKey => "Tickets";
@@ -208,13 +210,13 @@ public sealed class Section :
 
     IEnumerable<AdminNavGroup> ISectionAdminNav.Groups() =>
     [
-        new("Tickets", [
-            new("Tickets",           "Ticket",               "Index", null, null, "fa-solid fa-ticket",      TicketsPolicies.Read, Weight: 0),
-            new("Attendee contacts", "TicketsContactsAdmin", "Index", null, null, "fa-solid fa-address-book", TicketsPolicies.Read, Weight: 20),
-            new("Onsite roster",     "TicketsOnsiteAdmin",   "Index", null, null, "fa-solid fa-clipboard-list", PolicyNames.ScannerAccess, Weight: 30),
-            new("Sales",             "TicketsSalesAdmin",    "Index", null, null, "fa-solid fa-cash-register", TicketsPolicies.Read, Weight: 40),
+        AdminGroup([
+            AdminLink<TicketController>("Tickets", nameof(TicketController.Index), "fa-solid fa-ticket", TicketsPolicies.Read, weight: 0),
+            AdminLink<TicketsContactsAdminController>("Attendee contacts", nameof(TicketsContactsAdminController.Index), "fa-solid fa-address-book", TicketsPolicies.Read, weight: 20),
+            AdminLink<TicketsOnsiteAdminController>("Onsite roster", nameof(TicketsOnsiteAdminController.Index), "fa-solid fa-clipboard-list", PolicyNames.ScannerAccess, weight: 30),
+            AdminLink<TicketsSalesAdminController>("Sales", nameof(TicketsSalesAdminController.Index), "fa-solid fa-cash-register", TicketsPolicies.Read, weight: 40),
             // Also places the support pages (report, refunds, resale queue, ticket) in the admin shell; they name Sales as their parent.
-            new("Find an order",     "TicketsSupportAdmin",  "Lookup", null, null, "fa-solid fa-magnifying-glass", TicketsPolicies.Read, Weight: 50)
+            AdminLink<TicketsSupportAdminController>("Find an order", nameof(TicketsSupportAdminController.Lookup), "fa-solid fa-magnifying-glass", TicketsPolicies.Read, weight: 50)
         ])
     ];
 
@@ -276,6 +278,9 @@ public sealed class Section :
 
         // Evening in Spain (cron is UTC): pays the resale refunds whose buyer's order has held.
         yield return new RecurringJobDescriptor("tickets-resale-refund-batch", typeof(TicketResaleRefundJob), "0 19 * * *");
+
+        // After users-account-deletions (00:00 UTC), so held deletions erase their orders before the event's data goes.
+        yield return new RecurringJobDescriptor("tickets-event-erasure", typeof(TicketEventErasureJob), "0 5 * * *");
     }
 
     IEnumerable<SettingsTab> ISectionSettings.Tabs() =>

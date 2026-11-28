@@ -1,3 +1,4 @@
+using Humans.Base.Data;
 using Humans.Surveys.Contracts;
 using Humans.Surveys.Domain;
 using Humans.Base.Enums;
@@ -6,36 +7,26 @@ using NodaTime;
 
 namespace Humans.Surveys.Data;
 
-internal sealed class SurveyRepository(IDbContextFactory<SurveysDbContext> factory) : ISurveyRepository
+internal sealed class SurveyRepository(IDbContextFactory<SurveysDbContext> factory) : SectionRepository<SurveysDbContext>(factory), ISurveyRepository
 {
-    public async Task<Survey?> GetByIdAsync(Guid id, CancellationToken ct = default)
-    {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
-        return await ctx.Surveys
+    public async Task<Survey?> GetByIdAsync(Guid id, CancellationToken ct = default) =>
+        await RunAsync(ctx => ctx.Surveys
             .AsNoTracking()
             .Include(s => s.Questions)
                 .ThenInclude(q => q.Options)
-            .FirstOrDefaultAsync(s => s.Id == id, ct);
-    }
+            .FirstOrDefaultAsync(s => s.Id == id, ct), ct);
 
-    public async Task<IReadOnlyList<Survey>> GetAllSummariesAsync(CancellationToken ct = default)
-    {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
-        return await ctx.Surveys
+    public async Task<IReadOnlyList<Survey>> GetAllSummariesAsync(CancellationToken ct = default) =>
+        await RunAsync(ctx => ctx.Surveys
             .AsNoTracking()
-            .ToListAsync(ct);
-    }
+            .ToListAsync(ct), ct);
 
-    public async Task AddAsync(Survey survey, CancellationToken ct = default)
-    {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
-        ctx.Surveys.Add(survey);
-        await ctx.SaveChangesAsync(ct);
-    }
+    public async Task AddAsync(Survey survey, CancellationToken ct = default) =>
+        await InsertAsync(survey, ct);
 
     public async Task UpdateAsync(Survey survey, CancellationToken ct = default)
     {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
+        await using var ctx = await CreateDbContextAsync(ct);
         var existing = await ctx.Surveys
             .Include(s => s.Questions)
                 .ThenInclude(q => q.Options)
@@ -64,27 +55,21 @@ internal sealed class SurveyRepository(IDbContextFactory<SurveysDbContext> facto
         await ctx.SaveChangesAsync(ct);
     }
 
-    public async Task<SurveyStatus?> GetStatusAsync(Guid id, CancellationToken ct = default)
-    {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
-        return await ctx.Surveys
+    public async Task<SurveyStatus?> GetStatusAsync(Guid id, CancellationToken ct = default) =>
+        await RunAsync(ctx => ctx.Surveys
             .AsNoTracking()
             .Where(s => s.Id == id)
             .Select(s => (SurveyStatus?)s.Status)
-            .FirstOrDefaultAsync(ct);
-    }
+            .FirstOrDefaultAsync(ct), ct);
 
-    public async Task<bool> HasSavedAnswersAsync(Guid surveyId, CancellationToken ct = default)
-    {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
-        return await ctx.SurveyAnswers
+    public async Task<bool> HasSavedAnswersAsync(Guid surveyId, CancellationToken ct = default) =>
+        await RunAsync(ctx => ctx.SurveyAnswers
             .AsNoTracking()
-            .AnyAsync(answer => answer.Response.SurveyId == surveyId, ct);
-    }
+            .AnyAsync(answer => answer.Response.SurveyId == surveyId, ct), ct);
 
     public async Task SetStatusAsync(Guid id, SurveyStatus status, Instant updatedAt, CancellationToken ct = default)
     {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
+        await using var ctx = await CreateDbContextAsync(ct);
         var survey = await ctx.Surveys.FirstOrDefaultAsync(s => s.Id == id, ct);
         if (survey is null) return;
         survey.Status = status;
@@ -94,7 +79,7 @@ internal sealed class SurveyRepository(IDbContextFactory<SurveysDbContext> facto
 
     public async Task SubmitForApprovalAsync(Guid id, Instant submittedAt, CancellationToken ct = default)
     {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
+        await using var ctx = await CreateDbContextAsync(ct);
         var survey = await ctx.Surveys.FirstOrDefaultAsync(s => s.Id == id, ct);
         if (survey is null) return;
         survey.Status = SurveyStatus.PendingApproval;
@@ -106,7 +91,7 @@ internal sealed class SurveyRepository(IDbContextFactory<SurveysDbContext> facto
 
     public async Task ApproveAsync(Guid id, Instant approvedAt, CancellationToken ct = default)
     {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
+        await using var ctx = await CreateDbContextAsync(ct);
         var survey = await ctx.Surveys.FirstOrDefaultAsync(s => s.Id == id, ct);
         if (survey is null) return;
         survey.Status = SurveyStatus.Open;
@@ -118,7 +103,7 @@ internal sealed class SurveyRepository(IDbContextFactory<SurveysDbContext> facto
 
     public async Task RejectAsync(Guid id, string note, Instant rejectedAt, CancellationToken ct = default)
     {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
+        await using var ctx = await CreateDbContextAsync(ct);
         var survey = await ctx.Surveys.FirstOrDefaultAsync(s => s.Id == id, ct);
         if (survey is null) return;
         survey.Status = SurveyStatus.Draft;
@@ -130,7 +115,7 @@ internal sealed class SurveyRepository(IDbContextFactory<SurveysDbContext> facto
 
     public async Task<IReadOnlyDictionary<Guid, int>> GetInvitedCountsBySurveyAsync(CancellationToken ct = default)
     {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
+        await using var ctx = await CreateDbContextAsync(ct);
         var rows = await ctx.SurveyInvitations
             .AsNoTracking()
             .Where(i => i.SentAt != null)
@@ -142,7 +127,7 @@ internal sealed class SurveyRepository(IDbContextFactory<SurveysDbContext> facto
 
     public async Task<IReadOnlyDictionary<Guid, int>> GetResponseCountsBySurveyAsync(CancellationToken ct = default)
     {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
+        await using var ctx = await CreateDbContextAsync(ct);
         var rows = await ctx.SurveyResponses
             .AsNoTracking()
             .Where(r => r.SubmittedAt != null)
@@ -152,26 +137,19 @@ internal sealed class SurveyRepository(IDbContextFactory<SurveysDbContext> facto
         return rows.ToDictionary(r => r.SurveyId, r => r.Count);
     }
 
-    public async Task<IReadOnlyList<SurveyInvitation>> GetInvitationsAsync(Guid surveyId, CancellationToken ct = default)
-    {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
-        return await ctx.SurveyInvitations
+    public async Task<IReadOnlyList<SurveyInvitation>> GetInvitationsAsync(Guid surveyId, CancellationToken ct = default) =>
+        await RunAsync(ctx => ctx.SurveyInvitations
             .AsNoTracking()
             .Where(i => i.SurveyId == surveyId)
-            .ToListAsync(ct);
-    }
+            .ToListAsync(ct), ct);
 
-    public async Task AddInvitationAsync(SurveyInvitation invitation, CancellationToken ct = default)
-    {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
-        ctx.SurveyInvitations.Add(invitation);
-        await ctx.SaveChangesAsync(ct);
-    }
+    public async Task AddInvitationAsync(SurveyInvitation invitation, CancellationToken ct = default) =>
+        await InsertAsync(invitation, ct);
 
     public async Task<SurveyInvitation> GetOrCreateParticipationAsync(
         Guid surveyId, Guid userId, Instant createdAt, CancellationToken ct = default)
     {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
+        await using var ctx = await CreateDbContextAsync(ct);
         var existing = await ctx.SurveyInvitations
             .FirstOrDefaultAsync(i => i.SurveyId == surveyId && i.UserId == userId, ct);
         if (existing is not null) return existing;
@@ -204,7 +182,7 @@ internal sealed class SurveyRepository(IDbContextFactory<SurveysDbContext> facto
 
     public async Task UpdateInvitationStatusAsync(Guid id, EmailOutboxStatus status, Instant at, CancellationToken ct = default)
     {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
+        await using var ctx = await CreateDbContextAsync(ct);
         var invitation = await ctx.SurveyInvitations.FirstOrDefaultAsync(i => i.Id == id, ct);
         if (invitation is null) return;
         if (status == EmailOutboxStatus.Queued && invitation.SentAt is null)
@@ -218,7 +196,7 @@ internal sealed class SurveyRepository(IDbContextFactory<SurveysDbContext> facto
     public async Task<IReadOnlyList<SurveyInvitation>> GetInvitationsDueForReminderAsync(Instant cutoff, CancellationToken ct = default)
     {
         // Joins the survey's status; the repository owns both tables.
-        await using var ctx = await factory.CreateDbContextAsync(ct);
+        await using var ctx = await CreateDbContextAsync(ct);
         return await ctx.SurveyInvitations
             .AsNoTracking()
             .Where(i => !i.Completed
@@ -231,44 +209,36 @@ internal sealed class SurveyRepository(IDbContextFactory<SurveysDbContext> facto
 
     public async Task SetReminderSentAsync(Guid invitationId, Instant at, CancellationToken ct = default)
     {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
+        await using var ctx = await CreateDbContextAsync(ct);
         var invitation = await ctx.SurveyInvitations.FirstOrDefaultAsync(i => i.Id == invitationId, ct);
         if (invitation is null) return;
         invitation.ReminderSentAt = at;
         await ctx.SaveChangesAsync(ct);
     }
 
-    public async Task<SurveyInvitation?> GetInvitationByIdAsync(Guid invitationId, CancellationToken ct = default)
-    {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
-        return await ctx.SurveyInvitations
+    public async Task<SurveyInvitation?> GetInvitationByIdAsync(Guid invitationId, CancellationToken ct = default) =>
+        await RunAsync(ctx => ctx.SurveyInvitations
             .AsNoTracking()
-            .FirstOrDefaultAsync(i => i.Id == invitationId, ct);
-    }
+            .FirstOrDefaultAsync(i => i.Id == invitationId, ct), ct);
 
-    public async Task<Guid?> GetIdByPublicSlugAsync(string slug, CancellationToken ct = default)
-    {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
-        return await ctx.Surveys
+    public async Task<Guid?> GetIdByPublicSlugAsync(string slug, CancellationToken ct = default) =>
+        await RunAsync(ctx => ctx.Surveys
             .AsNoTracking()
             .Where(s => s.PublicSlug == slug)
             .Select(s => (Guid?)s.Id)
-            .FirstOrDefaultAsync(ct);
-    }
+            .FirstOrDefaultAsync(ct), ct);
 
     public async Task IncrementPublicStartedAsync(Guid surveyId, CancellationToken ct = default)
     {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
+        await using var ctx = await CreateDbContextAsync(ct);
         var survey = await ctx.Surveys.FirstOrDefaultAsync(s => s.Id == surveyId, ct);
         if (survey is null) return;
         survey.PublicStartedCount++;
         await ctx.SaveChangesAsync(ct);
     }
 
-    public async Task<SurveyResponse?> GetDraftResponseAsync(Guid surveyId, Guid userId, CancellationToken ct = default)
-    {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
-        return await ctx.SurveyResponses
+    public async Task<SurveyResponse?> GetDraftResponseAsync(Guid surveyId, Guid userId, CancellationToken ct = default) =>
+        await RunAsync(ctx => ctx.SurveyResponses
             .AsNoTracking()
             .Include(r => r.Answers)
             .FirstOrDefaultAsync(
@@ -276,15 +246,10 @@ internal sealed class SurveyRepository(IDbContextFactory<SurveysDbContext> facto
                      && r.UserId == userId
                      && r.Anonymity == ResponseAnonymity.Identified
                      && r.SubmittedAt == null,
-                ct);
-    }
+                ct), ct);
 
-    public async Task AddResponseAsync(SurveyResponse response, CancellationToken ct = default)
-    {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
-        ctx.SurveyResponses.Add(response);
-        await ctx.SaveChangesAsync(ct);
-    }
+    public async Task AddResponseAsync(SurveyResponse response, CancellationToken ct = default) =>
+        await InsertAsync(response, ct);
 
     public async Task SaveDraftAnswersAsync(
         Guid draftResponseId,
@@ -293,7 +258,7 @@ internal sealed class SurveyRepository(IDbContextFactory<SurveysDbContext> facto
         string culture,
         CancellationToken ct = default)
     {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
+        await using var ctx = await CreateDbContextAsync(ct);
         var draft = await ctx.SurveyResponses
             .Include(r => r.Answers)
             .FirstOrDefaultAsync(r => r.Id == draftResponseId && r.SubmittedAt == null, ct);
@@ -311,12 +276,8 @@ internal sealed class SurveyRepository(IDbContextFactory<SurveysDbContext> facto
         await ctx.SaveChangesAsync(ct);
     }
 
-    public async Task AddFinalResponseAsync(SurveyResponse response, CancellationToken ct = default)
-    {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
-        ctx.SurveyResponses.Add(response);
-        await ctx.SaveChangesAsync(ct);
-    }
+    public async Task AddFinalResponseAsync(SurveyResponse response, CancellationToken ct = default) =>
+        await InsertAsync(response, ct);
 
     public async Task FinalizeIdentifiedResponseAsync(
         Guid invitationId,
@@ -327,7 +288,7 @@ internal sealed class SurveyRepository(IDbContextFactory<SurveysDbContext> facto
         string culture,
         CancellationToken ct = default)
     {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
+        await using var ctx = await CreateDbContextAsync(ct);
         var invitation = await ctx.SurveyInvitations.FirstOrDefaultAsync(i => i.Id == invitationId, ct);
         if (invitation is null)
             throw new InvalidOperationException("Survey participation not found.");
@@ -361,7 +322,7 @@ internal sealed class SurveyRepository(IDbContextFactory<SurveysDbContext> facto
         SurveyResponse response,
         CancellationToken ct = default)
     {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
+        await using var ctx = await CreateDbContextAsync(ct);
         var invitation = await ctx.SurveyInvitations
             .FirstOrDefaultAsync(
                 i => i.Id == invitationId
@@ -388,47 +349,38 @@ internal sealed class SurveyRepository(IDbContextFactory<SurveysDbContext> facto
 
     public async Task MarkInvitationStartedAsync(Guid invitationId, CancellationToken ct = default)
     {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
+        await using var ctx = await CreateDbContextAsync(ct);
         var invitation = await ctx.SurveyInvitations.FirstOrDefaultAsync(i => i.Id == invitationId, ct);
         if (invitation is null) return;
         invitation.Started = true;
         await ctx.SaveChangesAsync(ct);
     }
 
-    public async Task<IReadOnlyList<SurveyResponse>> GetResponsesForResultsAsync(Guid surveyId, CancellationToken ct = default)
-    {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
-        return await ctx.SurveyResponses
+    public async Task<IReadOnlyList<SurveyResponse>> GetResponsesForResultsAsync(Guid surveyId, CancellationToken ct = default) =>
+        await RunAsync(ctx => ctx.SurveyResponses
             .AsNoTracking()
             .Include(r => r.Answers)
             .Where(r => r.SurveyId == surveyId && r.SubmittedAt != null)
-            .ToListAsync(ct);
-    }
+            .ToListAsync(ct), ct);
 
-    public async Task<IReadOnlyList<SurveyResponse>> GetIdentifiedResponsesForUserAsync(Guid userId, CancellationToken ct = default)
-    {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
-        return await ctx.SurveyResponses
+    public async Task<IReadOnlyList<SurveyResponse>> GetIdentifiedResponsesForUserAsync(Guid userId, CancellationToken ct = default) =>
+        await RunAsync(ctx => ctx.SurveyResponses
             .AsNoTracking()
             .Include(r => r.Answers)
             .Where(r => r.UserId == userId
                         && r.Anonymity == ResponseAnonymity.Identified
                         && r.SubmittedAt != null)
-            .ToListAsync(ct);
-    }
+            .ToListAsync(ct), ct);
 
-    public async Task<IReadOnlyList<SurveyInvitation>> GetInvitationsForUserAsync(Guid userId, CancellationToken ct = default)
-    {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
-        return await ctx.SurveyInvitations
+    public async Task<IReadOnlyList<SurveyInvitation>> GetInvitationsForUserAsync(Guid userId, CancellationToken ct = default) =>
+        await RunAsync(ctx => ctx.SurveyInvitations
             .AsNoTracking()
             .Where(i => i.UserId == userId)
-            .ToListAsync(ct);
-    }
+            .ToListAsync(ct), ct);
 
     public async Task<int> AnonymizeResponsesForUserAsync(Guid userId, CancellationToken ct = default)
     {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
+        await using var ctx = await CreateDbContextAsync(ct);
 
         var responses = await ctx.SurveyResponses
             .Where(r => r.UserId == userId)
@@ -454,7 +406,7 @@ internal sealed class SurveyRepository(IDbContextFactory<SurveysDbContext> facto
     public async Task<IReadOnlyList<Survey>> GetSurveysAuthoredByAsync(
         Guid userId, CancellationToken ct = default)
     {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
+        await using var ctx = await CreateDbContextAsync(ct);
         // Questions are included because the GDPR export reports a question count off this graph.
         return await ctx.Surveys
             .AsNoTracking()
@@ -465,7 +417,7 @@ internal sealed class SurveyRepository(IDbContextFactory<SurveysDbContext> facto
 
     public async Task<int> ClearAuthorshipForUserAsync(Guid userId, CancellationToken ct = default)
     {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
+        await using var ctx = await CreateDbContextAsync(ct);
 
         var surveys = await ctx.Surveys.Where(s => s.CreatedByUserId == userId).ToListAsync(ct);
         foreach (var survey in surveys)
@@ -481,7 +433,7 @@ internal sealed class SurveyRepository(IDbContextFactory<SurveysDbContext> facto
     public async Task<int> ReassignAuthorshipAsync(
         Guid fromUserId, Guid toUserId, Instant now, CancellationToken ct = default)
     {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
+        await using var ctx = await CreateDbContextAsync(ct);
 
         var surveys = await ctx.Surveys.Where(s => s.CreatedByUserId == fromUserId).ToListAsync(ct);
         foreach (var survey in surveys)

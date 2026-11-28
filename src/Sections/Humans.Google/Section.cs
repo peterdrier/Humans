@@ -24,17 +24,18 @@ using Microsoft.Extensions.Configuration;
 using Humans.Notifications.Contracts;
 using Humans.Permissions.Contracts;
 using Microsoft.Extensions.DependencyInjection;
-using Humans.AuditLog.Contracts;
+using Humans.Audit.Contracts;
 using Humans.Base.Models;
 using static Humans.Base.Models.AccessLevel;
 using static Humans.Base.Models.AccessMatrixFeature;
+using Humans.Google.Controllers;
 
 [assembly: NoDemoStory("Mirrors Google Workspace: demo people must never reach real Google.")]
 
 namespace Humans.Google;
 
 public sealed class Section :
-    ISection,
+    SectionBase,
     ISectionAccessMatrix,
     ISectionHelp,
     ISectionAdminNav,
@@ -66,7 +67,7 @@ public sealed class Section :
     private static readonly IReadOnlyList<SectionHelpEntry> HelpEntries =
         [SectionHelpEntry.FromEmbeddedMarkdown(typeof(Section).Assembly, "GoogleSync", 84)];
 
-    public void Register(IServiceCollection services, IConfiguration configuration)
+    public override void Register(IServiceCollection services, IConfiguration configuration)
     {
         EnumBadgeMap.Register(new Dictionary<Enum, string>
         {
@@ -194,19 +195,18 @@ public sealed class Section :
 
     IEnumerable<AdminNavGroup> ISectionAdminNav.Groups() =>
     [
-        new("Google", [
-            new("Overview",              "Google", "Index",        null, null, "fa-brands fa-google",           PolicyNames.AdminOnly),
-            new("Resource sync",         "Google", "Sync",         null, null, "fa-solid fa-arrows-rotate",     TeamsPolicies.Read),
-            new("All domain groups",     "Google", "AllGroups",    null, null, "fa-solid fa-globe",             PolicyNames.AdminOnly),
-            new("Workspace accounts",    "Google", "Accounts",     null, null, "fa-solid fa-at",                PolicyNames.AdminOnly),
-            new("Sync outbox",           "Google", "SyncOutbox",   null, null, "fa-solid fa-clock-rotate-left", PolicyNames.AdminOnly),
-            new("Sync results",          "Google", "SyncResults",  null, null, "fa-solid fa-list-check",        PolicyNames.AdminOnly),
-            new("Activity Log",          "Google", "ActivityLog",  null, null, "fa-solid fa-scroll", PolicyNames.AdminOnly),
-            new("Group settings",        "Google", "GroupSettingsResults", null, null, "fa-solid fa-gears",     PolicyNames.AdminOnly),
-            new("Email renames",         "Google", "EmailRenames", null, null, "fa-solid fa-right-left",        PolicyNames.AdminOnly),
-            new("Email flag violations", "Google", "EmailFlagViolations", null, null, "fa-solid fa-triangle-exclamation", PolicyNames.AdminOnly),
-            new("Sync history migration", "GoogleSyncHistoryMigrationAdmin", "Index", null, null,
-                "fa-solid fa-arrow-right-arrow-left", PolicyNames.AdminOnly)
+        AdminGroup([
+            AdminLink<GoogleController>("Overview", nameof(GoogleController.Index), "fa-brands fa-google", PolicyNames.AdminOnly),
+            AdminLink<GoogleController>("Resource sync", nameof(GoogleController.Sync), "fa-solid fa-arrows-rotate", TeamsPolicies.Read),
+            AdminLink<GoogleController>("All domain groups", nameof(GoogleController.AllGroups), "fa-solid fa-globe", PolicyNames.AdminOnly),
+            AdminLink<GoogleController>("Workspace accounts", nameof(GoogleController.Accounts), "fa-solid fa-at", PolicyNames.AdminOnly),
+            AdminLink<GoogleController>("Sync outbox", nameof(GoogleController.SyncOutbox), "fa-solid fa-clock-rotate-left", PolicyNames.AdminOnly),
+            AdminLink<GoogleController>("Sync results", nameof(GoogleController.SyncResults), "fa-solid fa-list-check", PolicyNames.AdminOnly),
+            AdminLink<GoogleController>("Activity Log", nameof(GoogleController.ActivityLog), "fa-solid fa-scroll", PolicyNames.AdminOnly),
+            AdminLink<GoogleController>("Group settings", nameof(GoogleController.GroupSettingsResults), "fa-solid fa-gears", PolicyNames.AdminOnly),
+            AdminLink<GoogleController>("Email renames", nameof(GoogleController.EmailRenames), "fa-solid fa-right-left", PolicyNames.AdminOnly),
+            AdminLink<GoogleController>("Email flag violations", nameof(GoogleController.EmailFlagViolations), "fa-solid fa-triangle-exclamation", PolicyNames.AdminOnly),
+            AdminLink<GoogleSyncHistoryMigrationAdminController>("Sync history migration", nameof(GoogleSyncHistoryMigrationAdminController.Index), "fa-solid fa-arrow-right-arrow-left", PolicyNames.AdminOnly)
         ])
     ];
 

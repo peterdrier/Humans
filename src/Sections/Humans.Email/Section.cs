@@ -20,7 +20,7 @@ using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
-using Humans.AuditLog.Contracts;
+using Humans.Audit.Contracts;
 using Humans.Base.Models;
 using static Humans.Base.Models.AccessLevel;
 using static Humans.Base.Models.AccessMatrixFeature;
@@ -31,7 +31,7 @@ namespace Humans.Email;
 
 /// <summary><c>EmailSettings</c> is bound in Shell, not here: many sections read it.</summary>
 public sealed class Section :
-    ISection,
+    SectionBase,
     ISectionAccessMatrix,
     ISectionAdminNav,
     ISectionAdminTiles,
@@ -57,7 +57,7 @@ public sealed class Section :
         }
     ];
 
-    public void Register(IServiceCollection services, IConfiguration configuration)
+    public override void Register(IServiceCollection services, IConfiguration configuration)
     {
         services.AddSingleton<IAuditActionContributor, EmailAuditActions>();
         services.AddSectionDbContext<EmailDbContext>(sentinelTable: "email_outbox_messages");
@@ -118,9 +118,9 @@ public sealed class Section :
 
     IEnumerable<AdminNavGroup> ISectionAdminNav.Groups() =>
     [
-        new("Email", [
-            new("Preview", "Email", "EmailPreview", null, null, "fa-solid fa-envelope", PolicyNames.AdminOnly, Weight: 0),
-            new("Outbox",  "Email", "EmailOutbox",  null, null, "fa-solid fa-inbox",    PolicyNames.AdminOnly, Weight: 10)
+        AdminGroup([
+            AdminLink<EmailController>("Preview", nameof(EmailController.EmailPreview), "fa-solid fa-envelope", PolicyNames.AdminOnly, weight: 0),
+            AdminLink<EmailController>("Outbox", nameof(EmailController.EmailOutbox), "fa-solid fa-inbox", PolicyNames.AdminOnly, weight: 10)
         ])
     ];
 

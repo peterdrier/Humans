@@ -1,5 +1,5 @@
 using AwesomeAssertions;
-using Humans.AuditLog.Contracts;
+using Humans.Audit.Contracts;
 using Humans.Agent.Models;
 using System.ComponentModel.DataAnnotations;
 using NSubstitute;
@@ -166,9 +166,7 @@ public class AgentSettingsServiceTests
 
     private static AgentDbContext CreateDb()
     {
-        var options = new DbContextOptionsBuilder<AgentDbContext>()
-            .UseInMemoryDatabase(Guid.NewGuid().ToString())
-            .Options;
+        var options = TestDbOptions.InMemory<AgentDbContext>();
         return new AgentDbContext(options);
     }
 

@@ -1,7 +1,7 @@
 using Humans.Shifts.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Diagnostics;
-using Humans.AuditLog.Contracts;
+using Humans.Audit.Contracts;
 using Humans.Shifts.Domain;
 using AwesomeAssertions;
 using Humans.Settings.Contracts;
@@ -46,8 +46,7 @@ public class VolunteerTrackingServiceTests
         var es = MakeEvent();
         var userId = Guid.NewGuid();
         var targetId = Guid.NewGuid();
-        var options = new DbContextOptionsBuilder<ShiftsDbContext>()
-            .UseInMemoryDatabase(Guid.NewGuid().ToString()).Options;
+        var options = TestDbOptions.InMemory<ShiftsDbContext>();
         await using (var seed = new ShiftsDbContext(options))
         {
             seed.GeneralAvailability.Add(new GeneralAvailability

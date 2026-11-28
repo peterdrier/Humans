@@ -1,5 +1,5 @@
 using AwesomeAssertions;
-using Humans.AuditLog.Contracts;
+using Humans.Audit.Contracts;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace Humans.Web.Tests.Infrastructure;

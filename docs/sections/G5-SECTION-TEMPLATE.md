@@ -106,7 +106,7 @@ visibility flip in one diff is unreviewable.
       `I<Section>ServiceRead` "cannot move into the horizontal's project". Peter's Base-floor
       decision makes a leaf referenceable from anywhere, and the two services that reading had
       stranded in `Humans.Application` — `AuditViewerService` and `SignInLinkService` — moved
-      into AuditLog and Auth on exactly that basis.
+      into Audit and Auth on exactly that basis.
 
       So still grep the section's services for `I*ServiceRead` and `Humans.*.Contracts`, but
       grep for the *section-project* reference the move would force, not for leaf names. A
@@ -115,7 +115,7 @@ visibility flip in one diff is unreviewable.
       - **"Is an orchestrator" is not "can't move".** That a service injects no
         `I*Repository` is a statement about the hard rules' orchestrator/service split, not
         about where the class may live. An orchestrator may live in the section it
-        orchestrates for (proven: Auth, AuditLog — lane 4b-2i moved `SignInLinkService` into
+        orchestrates for (proven: Auth, Audit — lane 4b-2i moved `SignInLinkService` into
         `Humans.Auth`).
       - **A controller does not follow its section's service, and a service coming home does
         not pull its controller in either.** `AccountController` is Auth's by every doc; run
@@ -540,7 +540,7 @@ Git Bash.)
      rendered by the status filter in `Views/Expenses/Index.cshtml`; carving them out would have
      degraded it to `Humanize(value.ToString())` — English-looking text in every locale, and a
      resource fallback survives the step 12 HTML diff).
-4. [ ] `Section.cs` at the project root: `public sealed class Section : ISection` with
+4. [ ] `Section.cs` at the project root: `public sealed class Section : SectionBase` with
    `Register(IServiceCollection services, IConfiguration configuration)` — `AddSectionDbContext`,
    repositories, services, section-owned authorization handlers (keyed caching-decorator pairs
    move verbatim). Shell discovers it; nothing is added to `Program.cs`. Remove the section's
@@ -684,7 +684,7 @@ Git Bash.)
    - Two renames are **not** inert: a type name written to the database and a type name that
      forms a resource key. `nameof(<AnotherSection'sEntity>)` stops compiling at the move —
      replace it with a literal beside the section's own audit discriminators (Store's
-     `Services/AuditEntityTypes.cs` is the shape), never with a project reference. Declare the
+     `Services/AuditSubjectTypes.cs` is the shape), never with a project reference. Declare the
      section's own discriminators as literals while you are there; that is what makes the rename
      schema-inert. See `memory/code/type-name-as-persisted-string.md`.
      - **"Stops compiling" only holds when the other section has already moved; otherwise the
@@ -694,7 +694,7 @@ Git Bash.)
        `src/Humans.Domain` was deleted at lane 3b. The rule is what matters and is unchanged; read
        the example as history. Grep the moved code for `nameof(` over *every* type
        the section does not own, not just the ones the build complains about, and take them all
-       into `AuditEntityTypes` (proven: Calendar).
+       into `AuditSubjectTypes` (proven: Calendar).
    - **The keystone analyzer (nobodies-collective/Humans#1013) has landed, so this is a build
      gate, not a convention — and it collapses the move commit and the visibility commit into
      one.** HUM0034 fails the build for any public type in a section assembly
@@ -721,22 +721,22 @@ Git Bash.)
      team display names, so it names `IUserService`, `ITeamService` and
      `ITeamResourceService`. That was read as "a horizontal referencing three verticals,
      forbidden at any size", and the type was parked in `Humans.Application` with its
-     `AuditEvent` DTO and verb table, registered from Shell, pinned by an assembly-level
+     `AuditEntry` DTO and verb table, registered from Shell, pinned by an assembly-level
      `GetReferencedAssemblies()` test. **Peter reversed it in the Base-floor decision of
      2026-08-14**: a former Base resident that names another section's read interface moves
      to its section, and Base gets no `Humans.Teams.Contracts` reference to keep it. A
      section taking another section's *contracts leaf* is sanctioned at end state; what is
-     forbidden is a cycle, and there is none — Teams references `Humans.AuditLog`, AuditLog
+     forbidden is a cycle, and there is none — Teams references `Humans.Audit`, Audit
      references `Humans.Teams.Contracts`, and the leaf reaches nothing. G5 lane 4b-2h moved
      the interface, the DTO, the verb table and `AuditLogViewComponent` into
-     `src/Sections/Humans.AuditLog`, and **retired the pinning test**, whose premise the
+     `src/Sections/Humans.Audit`, and **retired the pinning test**, whose premise the
      decision had inverted.
      - The widget is the expensive half, not the cheap one: a `<vc:>` component that leaves
        `Humans.UI` needs `@addTagHelper *, Humans.<Section>` in **every** consuming
        assembly's `_ViewImports.cshtml` plus a `ProjectReference`, and a missing line is
        silent — inert literal markup, green build, no log line. Prove each call site with a
        render test that asserts *seeded content*, never merely `NotContain("<vc:")`
-       (proven: AuditLog, five consumers).
+       (proven: Audit, five consumers).
    - **…and the horizontal rule bites a second time at the *type* level, which is not the same
      search as the reference one.** The bullet above asks what a horizontal's services
      *inject*. This asks what its leaf's signatures *name*:
@@ -1623,7 +1623,7 @@ Git Bash.)
       help when the `typeof(X).Assembly` naming "the Base assembly" is a type your own lane
       is moving — then the sweep does not lose one section, it silently relocates
       wholesale onto the section and stops covering Base at all. Four rules were anchored on
-      AuditLog's two types: `ApplicationServicesTakeNoDbContextRule` and
+      Audit's two types: `ApplicationServicesTakeNoDbContextRule` and
       `ApplicationServicesTakeNoMemoryCacheRule` on `typeof(AuditLogService).Assembly`,
       `IRepositoryImplementationsAreSealedRule` and
       `RepositoryImplementationsLiveInInfrastructureRule` on
@@ -1635,7 +1635,7 @@ Git Bash.)
       repository sweeps widened to `SectionAssemblies()` besides. **Grep
       `typeof(<AnyTypeYouAreMoving>).Assembly` across `tests/` as its own pre-flight search**
       — it is not the same grep as `typeof(<Section>` for the row-in-a-table case, and it
-      fails silently in the opposite direction (proven: AuditLog).
+      fails silently in the opposite direction (proven: Audit).
 
       **Sixth sighting, and it is the fifth one's other half: the interface that moves onto a
       leaf *entirely*.** The `GetInterfaces()` fix below rescues the read-split shape, where

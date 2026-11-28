@@ -16,7 +16,7 @@ using Humans.Governance.Domain;
 using Humans.Governance.Services;
 using Humans.Governance.Services.Dtos;
 using Humans.Users.Contracts;
-using Humans.AuditLog.Contracts;
+using Humans.Audit.Contracts;
 using Humans.Google.Contracts;
 using Humans.Teams.Contracts;
 using Microsoft.EntityFrameworkCore;
@@ -36,7 +36,7 @@ public sealed class GovernanceIndexServiceTests
     private readonly ISystemRoleService _roles = Substitute.For<ISystemRoleService>();
     private readonly HashSet<Guid> _inactive = [];
     private readonly GovernanceBodyRepository _bodies = new(new TestDbContextFactory<GovernanceDbContext>(
-        new DbContextOptionsBuilder<GovernanceDbContext>().UseInMemoryDatabase(Guid.NewGuid().ToString()).Options));
+        TestDbOptions.InMemory<GovernanceDbContext>()));
 
     private GovernanceIndexService CreateService()
     {
