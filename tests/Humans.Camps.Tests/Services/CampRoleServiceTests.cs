@@ -23,7 +23,6 @@ public sealed class CampRoleServiceTests : CampsTestHarness
     public CampRoleServiceTests()
         : base(Instant.FromUtc(2026, 4, 26, 12, 0))
     {
-        var googleIdentities = Substitute.For<IGoogleService>();
         _campAccess = Substitute.For<ICampRoleCampAccess>();
         _campAccess.GetSettingsAsync(Arg.Any<CancellationToken>())
             .Returns(new CampSettingsInfo(2026, [2026]) { Events = [Event2026] });
@@ -33,7 +32,6 @@ public sealed class CampRoleServiceTests : CampsTestHarness
         _service = new CampRoleService(
             repo,
             _campAccess,
-            googleIdentities,
             _userService,
             AuditLog,
             Notifier,

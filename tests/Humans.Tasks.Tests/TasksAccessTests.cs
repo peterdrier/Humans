@@ -52,7 +52,7 @@ public sealed class TasksAccessTests
             Who.RequestedOnly => [new TaskAssignmentInfo(Me, IsConfirmed: false, Instant.MinValue)],
             _ => [],
         },
-        [], Instant.MinValue, Instant.MinValue);
+        []);
 
     [HumansTheory]
     [InlineData(Who.Human, false, false, true)]

@@ -125,7 +125,7 @@ public class ProfileViewControllerPopoverTests
         var team = new TeamInfo(
             Guid.NewGuid(), "Infrastructure", null, "infrastructure", true, false,
             SystemTeamType.None, false, true, false, false, Instant.FromUnixTimeSeconds(0),
-            [new TeamMemberInfo(Guid.NewGuid(), id, "Coordinator", null, null,
+            [new TeamMemberInfo(Guid.NewGuid(), id, "Coordinator", null,
                 TeamMemberRole.Coordinator, Instant.FromUnixTimeSeconds(0))]);
         _teamService.GetTeamsAsync(Arg.Any<CancellationToken>())
             .Returns(new Dictionary<Guid, TeamInfo> { [team.Id] = team });

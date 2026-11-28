@@ -2160,7 +2160,7 @@ public sealed class CampServiceTests : CampsTestHarness
             var lookup = await repo.GetMemberLookupAsync(call.Arg<Guid>(), call.Arg<CancellationToken>());
             return lookup is { } row ? new CampMemberLookup(row.CampSeasonId, row.UserId, row.Status) : null;
         });
-        var roles = new CampRoleService(repo, access, Substitute.For<IGoogleService>(), _userService,
+        var roles = new CampRoleService(repo, access, _userService,
             AuditLog, Notifier, Options.Create(new GoogleWorkspaceOptions()), Clock, NullLogger<CampRoleService>.Instance);
         return new CampService(repo, AuditLog, Substitute.For<ISystemTeamSync>(), _fileStorage, Notifier,
             new Lazy<ICampRoleService>(() => roles), new Lazy<IEnumerable<ICampDeletionListener>>(() => [_deletionListener]),

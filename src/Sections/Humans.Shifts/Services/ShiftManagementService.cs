@@ -1388,8 +1388,7 @@ internal sealed class ShiftManagementService(
         var signups = await repo.GetForUsersAsync([userId], eventSettings.Id, ct);
 
         return signups.Any(s =>
-            s.Shift is not null
-            && (s.Status == SignupStatus.Pending || s.Status == SignupStatus.Confirmed)
+            (s.Status == SignupStatus.Pending || s.Status == SignupStatus.Confirmed)
             && s.Shift.QualifiesForCantinaMeal()
             && s.Shift.GetAbsoluteEnd(eventSettings) > now);
     }

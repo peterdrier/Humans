@@ -590,7 +590,7 @@ public sealed class ApplicationDecisionServiceTests : IDisposable
 
         (await _service.GetUserApplicationDetailAsync(app.Id, userId, ct))!.CanWithdraw.Should().BeTrue();
         (await _service.GetApplicationDetailAsync(app.Id, ct))!.CanApproveReject.Should().BeTrue();
-        (await _service.GetSubmittedApplicationForUserAsync(userId, ct)).Should().NotBeNull();
+        (await _service.GetUserApplicationsAsync(userId, ct)).Should().Contain(a => a.Status == ApplicationStatus.Submitted);
 
         app.Withdraw(_clock);
         await SaveAllAsync(ct);
@@ -598,7 +598,7 @@ public sealed class ApplicationDecisionServiceTests : IDisposable
 
         (await _service.GetUserApplicationDetailAsync(app.Id, userId, ct))!.CanWithdraw.Should().BeFalse();
         (await _service.GetApplicationDetailAsync(app.Id, ct))!.CanApproveReject.Should().BeFalse();
-        (await _service.GetSubmittedApplicationForUserAsync(userId, ct)).Should().BeNull();
+        (await _service.GetUserApplicationsAsync(userId, ct)).Should().NotContain(a => a.Status == ApplicationStatus.Submitted);
     }
 
     [HumansTheory]

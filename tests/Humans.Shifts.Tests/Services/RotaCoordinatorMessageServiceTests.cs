@@ -59,17 +59,12 @@ public sealed class RotaCoordinatorMessageServiceTests
 
     private async Task<IReadOnlyList<Rota>> StubbedRotasAsync(IReadOnlyCollection<Guid>? rotaIds)
     {
-        var rotas = new List<Rota>();
         if (rotaIds is null)
-        {
-            foreach (var eventId in _calendars.Keys)
-                rotas.AddRange(await _repo.GetRotasAsync(eventId, [], RotaReadShape.View));
-        }
-        else
-        {
-            foreach (var id in rotaIds)
-                if (await _repo.GetRotaAsync(id, RotaReadShape.View) is { } rota) rotas.Add(rota);
-        }
+            return await _repo.GetRotaRowsAsync(null);
+
+        var rotas = new List<Rota>();
+        foreach (var id in rotaIds)
+            if (await _repo.GetRotaAsync(id, RotaReadShape.View) is { } rota) rotas.Add(rota);
         return rotas;
     }
 
@@ -89,7 +84,7 @@ public sealed class RotaCoordinatorMessageServiceTests
         var senderId = Guid.NewGuid();
         var shift = MakeShift(Guid.Empty, 30, 10);
         var rota = MakeTeamRota(teamId, es, "Rota", [(shift, [recipientId])]);
-        _repo.GetRotasAsync(es.Id, Arg.Any<IReadOnlyCollection<Guid>>(), RotaReadShape.View, Arg.Any<CancellationToken>())
+        _repo.GetRotaRowsAsync(null, Arg.Any<CancellationToken>())
             .Returns([rota]);
         _repo.GetRotaAsync(rota.Id, RotaReadShape.View, Arg.Any<CancellationToken>()).Returns(rota);
         StubUsers(senderId, recipientId);
@@ -128,7 +123,7 @@ public sealed class RotaCoordinatorMessageServiceTests
         var late = MakeShift(Guid.Empty, 31, 14);
         var rota = MakeTeamRota(teamId, es, "First rota", [(early, [archivedId, survivorId]), (late, [survivorId])]);
         var other = MakeTeamRota(teamId, es, "Second rota", [(MakeShift(Guid.Empty, 32, 18), [archivedId])]);
-        _repo.GetRotasAsync(es.Id, Arg.Any<IReadOnlyCollection<Guid>>(), RotaReadShape.View, Arg.Any<CancellationToken>())
+        _repo.GetRotaRowsAsync(null, Arg.Any<CancellationToken>())
             .Returns([rota, other]);
         _repo.GetRotaAsync(rota.Id, RotaReadShape.View, Arg.Any<CancellationToken>()).Returns(rota);
         StubUsers(senderId, archivedId, survivorId);
@@ -160,7 +155,7 @@ public sealed class RotaCoordinatorMessageServiceTests
         var survivorId = Guid.NewGuid();
         var deletedId = Guid.NewGuid();
         var rota = MakeTeamRota(teamId, es, "Rota", [(MakeShift(Guid.Empty, 30, 10), [archivedId, survivorId, deletedId])]);
-        _repo.GetRotasAsync(es.Id, Arg.Any<IReadOnlyCollection<Guid>>(), RotaReadShape.View, Arg.Any<CancellationToken>())
+        _repo.GetRotaRowsAsync(null, Arg.Any<CancellationToken>())
             .Returns([rota]);
         var survivor = MakeUserInfoWithEmail(survivorId, "human@example.org", "Human");
         _userService.GetUserInfosAsync(Arg.Any<IEnumerable<Guid>>(), ct).Returns(new Dictionary<Guid, UserInfo>
@@ -187,7 +182,7 @@ public sealed class RotaCoordinatorMessageServiceTests
         var sender = Guid.NewGuid();
         var shift = MakeShift(Guid.Empty, dayOffset: 30, startHour: 10);
         var rota = MakeTeamRota(teamId, es, "Rota1", [(shift, [recipient])]);
-        _repo.GetRotasAsync(es.Id, Arg.Any<IReadOnlyCollection<Guid>>(), RotaReadShape.View, Arg.Any<CancellationToken>())
+        _repo.GetRotaRowsAsync(null, Arg.Any<CancellationToken>())
             .Returns([rota]);
         _repo.GetRotaAsync(rota.Id, RotaReadShape.View, Arg.Any<CancellationToken>()).Returns(rota);
         StubUsers(sender, recipient);
@@ -234,7 +229,7 @@ public sealed class RotaCoordinatorMessageServiceTests
         var sender = Guid.NewGuid();
         var shift = MakeShift(Guid.Empty, dayOffset: 30, startHour: 10);
         var rota = MakeTeamRota(teamId, es, "Rota1", [(shift, [recipient])]);
-        _repo.GetRotasAsync(es.Id, Arg.Any<IReadOnlyCollection<Guid>>(), RotaReadShape.View, Arg.Any<CancellationToken>())
+        _repo.GetRotaRowsAsync(null, Arg.Any<CancellationToken>())
             .Returns([rota]);
         _repo.GetRotaAsync(rota.Id, RotaReadShape.View, Arg.Any<CancellationToken>()).Returns(rota);
         StubUsers(sender, recipient);
@@ -643,7 +638,7 @@ public sealed class RotaCoordinatorMessageServiceTests
         var pastOnlyRota = MakeTeamRota(teamId, es, "PastOnly", [(pastShift, [userA])]);
         var futureRota = MakeTeamRota(teamId, es, "Future", [(futureShift, [userB])]);
 
-        _repo.GetRotasAsync(es.Id, Arg.Any<IReadOnlyCollection<Guid>>(), RotaReadShape.View, Arg.Any<CancellationToken>())
+        _repo.GetRotaRowsAsync(null, Arg.Any<CancellationToken>())
             .Returns([pastOnlyRota, futureRota]);
 
         var sender = Guid.NewGuid();
@@ -677,7 +672,7 @@ public sealed class RotaCoordinatorMessageServiceTests
         rota.Shifts.First().ShiftSignups.First(s => s.UserId == pending).Status = SignupStatus.Pending;
         rota.Shifts.First().ShiftSignups.First(s => s.UserId == bailed).Status = SignupStatus.Bailed;
 
-        _repo.GetRotasAsync(es.Id, Arg.Any<IReadOnlyCollection<Guid>>(), RotaReadShape.View, Arg.Any<CancellationToken>())
+        _repo.GetRotaRowsAsync(null, Arg.Any<CancellationToken>())
             .Returns([rota]);
 
         // Bailed user is filtered before user lookup, so only the two active
@@ -714,7 +709,7 @@ public sealed class RotaCoordinatorMessageServiceTests
         var rotaA = MakeTeamRota(teamId, es, "Aardvark", [(shiftR1, [userA])]);
         var rotaB = MakeTeamRota(teamId, es, "Beaver", [(shiftR2, [userA])]);
 
-        _repo.GetRotasAsync(es.Id, Arg.Any<IReadOnlyCollection<Guid>>(), RotaReadShape.View, Arg.Any<CancellationToken>())
+        _repo.GetRotaRowsAsync(null, Arg.Any<CancellationToken>())
             .Returns([rotaA, rotaB]);
 
         StubUsers(sender, userA);
@@ -754,7 +749,7 @@ public sealed class RotaCoordinatorMessageServiceTests
         var zRota = MakeTeamRota(teamId, es, "Zebra", [(shiftZ, [userA])]);
         var aRota = MakeTeamRota(teamId, es, "Antelope", [(shiftA, [userA])]);
 
-        _repo.GetRotasAsync(es.Id, Arg.Any<IReadOnlyCollection<Guid>>(), RotaReadShape.View, Arg.Any<CancellationToken>())
+        _repo.GetRotaRowsAsync(null, Arg.Any<CancellationToken>())
             .Returns([zRota, aRota]);
 
         StubUsers(sender, userA);
@@ -784,7 +779,7 @@ public sealed class RotaCoordinatorMessageServiceTests
         var shift = MakeShift(Guid.Empty, dayOffset: 30, startHour: 10);
         var rota = MakeTeamRota(teamId, es, "Rota1", [(shift, [userA])]);
 
-        _repo.GetRotasAsync(es.Id, Arg.Any<IReadOnlyCollection<Guid>>(), RotaReadShape.View, Arg.Any<CancellationToken>())
+        _repo.GetRotaRowsAsync(null, Arg.Any<CancellationToken>())
             .Returns([rota]);
         StubUsers(sender, userA);
 
@@ -812,7 +807,7 @@ public sealed class RotaCoordinatorMessageServiceTests
         var shift = MakeShift(Guid.Empty, dayOffset: 30, startHour: 10);
         var rota = MakeTeamRota(teamId, es, "Rota1", [(shift, [userA])]);
 
-        _repo.GetRotasAsync(es.Id, Arg.Any<IReadOnlyCollection<Guid>>(), RotaReadShape.View, Arg.Any<CancellationToken>())
+        _repo.GetRotaRowsAsync(null, Arg.Any<CancellationToken>())
             .Returns([rota]);
         StubUsers(sender, userA);
 
@@ -842,7 +837,7 @@ public sealed class RotaCoordinatorMessageServiceTests
         var shift = MakeShift(Guid.Empty, dayOffset: 30, startHour: 10);
         var rota = MakeTeamRota(teamId, es, "Rota1", [(shift, [userA, userB])]);
 
-        _repo.GetRotasAsync(es.Id, Arg.Any<IReadOnlyCollection<Guid>>(), RotaReadShape.View, Arg.Any<CancellationToken>())
+        _repo.GetRotaRowsAsync(null, Arg.Any<CancellationToken>())
             .Returns([rota]);
         StubUsers(sender, userA, userB);
 
@@ -879,7 +874,7 @@ public sealed class RotaCoordinatorMessageServiceTests
         var rota1 = MakeTeamRota(teamId, es, "R1", [(shift1, [userA, userB])]);
         var rota2 = MakeTeamRota(teamId, es, "R2", [(shift2, [userA])]);
 
-        _repo.GetRotasAsync(es.Id, Arg.Any<IReadOnlyCollection<Guid>>(), RotaReadShape.View, Arg.Any<CancellationToken>())
+        _repo.GetRotaRowsAsync(null, Arg.Any<CancellationToken>())
             .Returns([rota1, rota2]);
 
         _userService.GetUserInfosAsync(
@@ -931,7 +926,7 @@ public sealed class RotaCoordinatorMessageServiceTests
             teamId, es, "PastOnly", [(MakeShift(Guid.Empty, dayOffset: -30, startHour: 10), [userA])]);
         pastRota.Period = RotaPeriod.Build;
 
-        _repo.GetRotasAsync(es.Id, Arg.Any<IReadOnlyCollection<Guid>>(), RotaReadShape.View, Arg.Any<CancellationToken>())
+        _repo.GetRotaRowsAsync(null, Arg.Any<CancellationToken>())
             .Returns([pastRota]);
         StubUsers(sender, userA);
 
@@ -961,7 +956,7 @@ public sealed class RotaCoordinatorMessageServiceTests
             teamId, es, "Strike", [(MakeShift(Guid.Empty, dayOffset: 70, startHour: 10), [strikeUser])]);
         strikeRota.Period = RotaPeriod.Strike;
 
-        _repo.GetRotasAsync(es.Id, Arg.Any<IReadOnlyCollection<Guid>>(), RotaReadShape.View, Arg.Any<CancellationToken>())
+        _repo.GetRotaRowsAsync(null, Arg.Any<CancellationToken>())
             .Returns([buildRota, strikeRota]);
         // Only the Build rota survives the filter, so only its user is ever looked up.
         _ = strikeUser;
@@ -989,7 +984,7 @@ public sealed class RotaCoordinatorMessageServiceTests
             teamId, es, "Future", [(MakeShift(Guid.Empty, dayOffset: 30, startHour: 10), [userA])]);
         rota.Period = RotaPeriod.Event;
 
-        _repo.GetRotasAsync(es.Id, Arg.Any<IReadOnlyCollection<Guid>>(), RotaReadShape.View, Arg.Any<CancellationToken>())
+        _repo.GetRotaRowsAsync(null, Arg.Any<CancellationToken>())
             .Returns([rota]);
         _userService.GetUserInfosAsync(
             Arg.Is<IEnumerable<Guid>>(c => c.Contains(userA)), Arg.Any<CancellationToken>())

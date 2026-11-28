@@ -3,8 +3,6 @@ using AwesomeAssertions;
 using Humans.Google.Models;
 using Humans.Google.Services;
 using Humans.Google.ViewComponents;
-using Microsoft.AspNetCore.Http;
-using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.AspNetCore.Mvc.ViewComponents;
 using NodaTime;
 using NSubstitute;
@@ -13,31 +11,6 @@ namespace Humans.Google.Tests;
 
 public sealed class GoogleSyncSettingsTabViewComponentTests
 {
-    [HumansFact]
-    public async Task InvokeAsync_RequestAborted_PropagatesCancellation()
-    {
-        using var aborted = new CancellationTokenSource();
-        await aborted.CancelAsync();
-        var settings = Substitute.For<ISyncSettingsService>();
-        settings.GetAllAsync(aborted.Token)
-            .Returns(Task.FromException<IReadOnlyList<SyncServiceSettingsInfo>>(
-                new OperationCanceledException(aborted.Token)));
-        var sut = new GoogleSyncSettingsTabViewComponent(settings)
-        {
-            ViewComponentContext = new ViewComponentContext
-            {
-                ViewContext = new ViewContext
-                {
-                    HttpContext = new DefaultHttpContext { RequestAborted = aborted.Token }
-                }
-            }
-        };
-
-        var act = () => sut.InvokeAsync();
-
-        await act.Should().ThrowAsync<OperationCanceledException>();
-    }
-
     [HumansFact]
     public async Task InvokeAsync_MapsEachServiceWithItsFormattedNameAndUpdater()
     {
@@ -52,9 +25,9 @@ public sealed class GoogleSyncSettingsTabViewComponentTests
         var sut = new GoogleSyncSettingsTabViewComponent(settings);
 
         var result = await sut.InvokeAsync();
-        var model = (SyncSettingsViewModel)((ViewViewComponentResult)result).ViewData!.Model!;
+        var model = (IReadOnlyList<SyncServiceSettingViewModel>)((ViewViewComponentResult)result).ViewData!.Model!;
 
-        var row = model.Settings.Should().ContainSingle().Which;
+        var row = model.Should().ContainSingle().Which;
         row.ServiceType.Should().Be(SyncServiceType.GoogleDrive);
         row.ServiceName.Should().Be("Google Drive");
         row.CurrentMode.Should().Be(SyncMode.AddOnly);

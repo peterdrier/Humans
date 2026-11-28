@@ -234,7 +234,7 @@ public sealed class LegalDocumentSyncServiceTests : ConsentTestHarness
         _teamService.GetTeamAsync(_team.Id, Arg.Any<CancellationToken>()).Returns(_team with
         {
             Members = new[] { person, reached }.Select(user => new TeamMemberInfo(
-                Guid.NewGuid(), user.Id, user.BurnerName, user.Email, null, TeamMemberRole.Member, default)).ToList()
+                Guid.NewGuid(), user.Id, user.BurnerName, user.Email, TeamMemberRole.Member, default)).ToList()
         });
         _userService.GetUserInfosAsync(Arg.Any<IEnumerable<Guid>>(), Arg.Any<CancellationToken>())
             .Returns(new Dictionary<Guid, UserInfo> { [person.Id] = person, [reached.Id] = reached });
@@ -307,7 +307,7 @@ public sealed class LegalDocumentSyncServiceTests : ConsentTestHarness
             [], [], UserFixtures.Profile());
         _teamService.GetTeamAsync(_team.Id, Arg.Any<CancellationToken>()).Returns(_team with
         {
-            Members = [new TeamMemberInfo(Guid.NewGuid(), person.Id, person.BurnerName, person.Email, null, TeamMemberRole.Member, default)]
+            Members = [new TeamMemberInfo(Guid.NewGuid(), person.Id, person.BurnerName, person.Email, TeamMemberRole.Member, default)]
         });
         _userService.GetUserInfosAsync(Arg.Any<IEnumerable<Guid>>(), Arg.Any<CancellationToken>())
             .Returns(new Dictionary<Guid, UserInfo> { [person.Id] = person });
@@ -1150,7 +1150,7 @@ public sealed class LegalDocumentSyncServiceTests : ConsentTestHarness
         _teamService.GetTeamAsync(_team.Id, Arg.Any<CancellationToken>()).Returns(_team with
         {
             Members = members.Select(u => new TeamMemberInfo(
-                Guid.NewGuid(), u.Id, "Member", u.Email, null, TeamMemberRole.Member, default)).ToList()
+                Guid.NewGuid(), u.Id, "Member", u.Email, TeamMemberRole.Member, default)).ToList()
         });
         var everyone = members.Concat(outsiders).ToDictionary(u => u.Id);
         _userService.GetUserInfosAsync(Arg.Any<IEnumerable<Guid>>(), Arg.Any<CancellationToken>())

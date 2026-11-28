@@ -256,7 +256,6 @@ public sealed class CachingTeamServiceTests : TeamsTestHarness
             UserId: userId,
             DisplayName: "Member",
             Email: null,
-            ProfilePictureUrl: null,
             Role: role,
             JoinedAt: Instant.MinValue);
 
@@ -361,7 +360,7 @@ public sealed class CachingTeamServiceTests : TeamsTestHarness
     }
 
     [HumansFact]
-    public async Task GetUserTeamsAsync_SynthesizedTeamHasDisplayNameAndSlug()
+    public async Task GetUserTeamsAsync_ChildMembership_UsesChildIdentity()
     {
         var user = SeedUser("Alice");
         var parent = SeedTeam("Comms");
@@ -373,7 +372,7 @@ public sealed class CachingTeamServiceTests : TeamsTestHarness
         var result = await _service.GetUserTeamMembershipsAsync(user.Id, TestContext.Current.CancellationToken);
 
         var membership = result.Should().ContainSingle().Subject;
-        membership.TeamSlug.Should().Be("logo");
+        membership.TeamId.Should().Be(child.Id);
         membership.TeamName.Should().Be("Logo");
     }
 
@@ -982,7 +981,6 @@ public sealed class CachingTeamServiceTests : TeamsTestHarness
                             m.UserId,
                             user is null ? string.Empty : LegacyDisplayName(user),
                             email,
-                            user?.ProfilePictureUrl,
                             m.Role,
                             m.JoinedAt);
                     })
@@ -991,7 +989,6 @@ public sealed class CachingTeamServiceTests : TeamsTestHarness
                 GoogleGroupPrefix: t.GoogleGroupPrefix,
                 HasBudget: t.HasBudget,
                 IsSensitive: t.IsSensitive,
-                UpdatedAt: t.UpdatedAt,
                 CustomSlug: t.CustomSlug,
                 ChildTeamIds: childIdsByParent.TryGetValue(t.Id, out var childIds) ? childIds : null,
                 ShowCoordinatorsOnPublicPage: t.ShowCoordinatorsOnPublicPage,

@@ -44,7 +44,7 @@ public sealed class ConsentServiceTests : ConsentTestHarness
             {
                 Members = _memberships.Where(m => m.TeamId == kv.Key)
                     .Select(m => new TeamMemberInfo(
-                        Guid.NewGuid(), m.UserId, "Member", null, null, TeamMemberRole.Member, Clock.GetCurrentInstant()))
+                        Guid.NewGuid(), m.UserId, "Member", null, TeamMemberRole.Member, Clock.GetCurrentInstant()))
                     .ToList()
             }));
 

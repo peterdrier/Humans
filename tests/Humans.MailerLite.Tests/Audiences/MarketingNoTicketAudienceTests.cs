@@ -73,7 +73,6 @@ public class MarketingNoTicketAudienceTests
             IsCurrentEvent: true,
             Attendees: [new TicketAttendeeInfo(
                 Id: Guid.NewGuid(),
-                VendorTicketId: $"tkt_{userId:N}",
                 AttendeeName: null,
                 AttendeeEmail: null,
                 TicketTypeName: null,

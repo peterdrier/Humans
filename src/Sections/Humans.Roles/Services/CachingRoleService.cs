@@ -27,12 +27,6 @@ internal sealed class CachingRoleService(
         return [.. AsReadOnlyDictionary.Values];
     }
 
-    public async Task<RoleInfo?> GetRoleAsync(Guid roleId, CancellationToken ct = default)
-    {
-        await EnsureWarmedAsync(ct);
-        return TryGet(roleId, out var role) ? role : null;
-    }
-
     public async Task<IReadOnlyList<Holding>> GetHoldingsAsync(Guid userId, CancellationToken ct = default) =>
         (await GetRolesAsync(ct))
             .Where(r => r.Holders.Any(h => h.UserId == userId))

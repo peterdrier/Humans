@@ -44,23 +44,11 @@ public class EventsSearchResultViewComponentTests
         result.Should().BeOfType<ContentViewComponentResult>().Which.Content.Should().BeEmpty();
     }
 
-    [HumansFact]
-    public async Task AbandonedRequest_CancelsResultLookup()
-    {
-        using var aborted = new CancellationTokenSource();
-        await aborted.CancelAsync();
-        var id = Guid.NewGuid();
-        _events.GetApprovedEventByIdAsync(id, aborted.Token).Returns(Task.FromCanceled<ApprovedEventView?>(aborted.Token));
-        var act = () => CreateComponent(aborted.Token).InvokeAsync(id);
-
-        await act.Should().ThrowAsync<OperationCanceledException>();
-    }
-
-    private EventsSearchResultViewComponent CreateComponent(CancellationToken ct = default) => new(_events)
+    private EventsSearchResultViewComponent CreateComponent() => new(_events)
     {
         ViewComponentContext = new ViewComponentContext
         {
-            ViewContext = new ViewContext { HttpContext = new DefaultHttpContext { RequestAborted = ct } },
+            ViewContext = new ViewContext { HttpContext = new DefaultHttpContext() },
         },
     };
 

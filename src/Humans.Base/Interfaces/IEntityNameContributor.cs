@@ -19,8 +19,7 @@ public interface IEntityNameContributor : IFanout
 }
 
 /// <summary>
-/// One resolved Guid. <paramref name="EntityType"/> is the owning section's
-/// name for the thing (e.g. "User", "Team"); <paramref name="Slug"/> is its URL
-/// key when it has one, so a consumer can link to it.
+/// One resolved Guid. <paramref name="Slug"/> is its URL key when it has one,
+/// so a consumer can link to it.
 /// </summary>
-public sealed record EntityName(string EntityType, string DisplayName, string? Slug = null);
+public sealed record EntityName(string DisplayName, string? Slug = null);

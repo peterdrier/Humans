@@ -97,8 +97,7 @@ internal sealed class SignInLinkService(
         return sinceExpiry < Duration.Zero ? null : (long)sinceExpiry.TotalMinutes;
     }
 
-    public async Task<SignInLinkSignupCheck> ConsumeSignupTokenAsync(
-        string token, string? expectedEmail = null, CancellationToken ct = default)
+    public async Task<SignInLinkSignupCheck> ConsumeSignupTokenAsync(string token, string? expectedEmail = null)
     {
         var check = VerifySignupToken(token, expectedEmail);
         if (check.Email is null)

@@ -73,16 +73,9 @@ internal sealed class EventsCardViewComponent(
                 })
                 .ToList();
 
-            return View(new EventsCardViewModel
-            {
-                Rows = rows
-            });
+            return View(rows);
         }
-        catch (OperationCanceledException) when (ct.IsCancellationRequested)
-        {
-            throw;
-        }
-        catch (Exception ex)
+        catch (Exception ex) when (ex is not OperationCanceledException || !ct.IsCancellationRequested)
         {
             logger.LogError(ex, "Failed to load events card (campId={CampId}, userId={UserId})", campId, userId);
             return Content(string.Empty);

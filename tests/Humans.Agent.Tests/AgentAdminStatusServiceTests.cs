@@ -8,6 +8,7 @@ using NSubstitute;
 using Humans.Agent.Domain;
 using Humans.Agent.Models;
 using Humans.Agent.Services.Anthropic;
+using Microsoft.Extensions.Options;
 using Humans.Agent.Contracts;
 
 namespace Humans.Agent.Tests;
@@ -162,16 +163,9 @@ public class AgentAdminStatusServiceTests
         await using var db = InMemoryDb();
         var clock = new FakeClock(Instant.FromUtc(2026, 5, 17, 12, 0));
 
-        // Stand up the service with a balance provider that returns the
-        // "unavailable" status as the production fallback path would.
-        var balance = Substitute.For<IAgentAnthropicBalanceProvider>();
-        balance.GetBalanceAsync(Arg.Any<CancellationToken>())
-            .Returns(new AgentBalanceStatus(BalanceUsd: null, UnavailableReason: "Admin API key not configured"));
+        var report = await BuildService(db, clock).GetStatusAsync(Xunit.TestContext.Current.CancellationToken);
 
-        var report = await BuildService(db, clock, balance: balance).GetStatusAsync(Xunit.TestContext.Current.CancellationToken);
-
-        report.Balance.BalanceUsd.Should().BeNull();
-        report.Balance.UnavailableReason.Should().Be("Admin API key not configured");
+        report.BalanceUnavailableReason.Should().Be("Admin API key not configured");
     }
 
     [HumansFact]
@@ -209,15 +203,13 @@ public class AgentAdminStatusServiceTests
 
     private static AgentAdminStatusService BuildService(
         AgentDbContext db, IClock clock,
-        IAgentSettingsService? settings = null,
-        IAgentAnthropicBalanceProvider? balance = null)
+        IAgentSettingsService? settings = null)
     {
         settings ??= MakeSettings();
-        balance ??= MakeBalanceUnavailable();
         var repo = new AgentRepository(db, clock);
         var rate = new AgentRateLimitStore();
         var retention = new AgentRetentionRunStore();
-        return new AgentAdminStatusService(repo, settings, rate, retention, balance, clock);
+        return new AgentAdminStatusService(repo, settings, rate, retention, Options.Create(new AnthropicOptions()), clock);
     }
 
     private static IAgentSettingsService MakeSettings()
@@ -228,14 +220,6 @@ public class AgentAdminStatusServiceTests
             DailyMessageCap: 30, HourlyMessageCap: 10, DailyTokenCap: 50_000,
             RetentionDays: 90, UpdatedAt: Instant.FromUtc(2026, 5, 1, 0, 0)));
         return settings;
-    }
-
-    private static IAgentAnthropicBalanceProvider MakeBalanceUnavailable()
-    {
-        var balance = Substitute.For<IAgentAnthropicBalanceProvider>();
-        balance.GetBalanceAsync(Arg.Any<CancellationToken>())
-            .Returns(new AgentBalanceStatus(BalanceUsd: null, UnavailableReason: "test"));
-        return balance;
     }
 
     private static AgentConversation SeedConversation(AgentDbContext db, Guid userId, Instant now)

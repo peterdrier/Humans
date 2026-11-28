@@ -15,11 +15,7 @@ internal sealed class AgentSettingsStoreWarmupHostedService(
             var service = scope.ServiceProvider.GetRequiredService<IAgentSettingsService>();
             await service.LoadAsync(cancellationToken);
         }
-        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
-        {
-            throw;
-        }
-        catch (Exception ex)
+        catch (Exception ex) when (ex is not OperationCanceledException || !cancellationToken.IsCancellationRequested)
         {
             logger.LogWarning(ex, "Agent settings warmup failed; keeping disabled defaults until settings are saved");
         }

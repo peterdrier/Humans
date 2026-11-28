@@ -5,7 +5,6 @@ namespace Humans.Tickets.Contracts;
 /// <summary>A gate scan keeps <paramref name="Status"/> at Valid: test <paramref name="CheckedInAt"/> for check-in.</summary>
 public sealed record TicketAttendeeInfo(
     Guid Id,
-    string VendorTicketId,
     string? AttendeeName,
     string? AttendeeEmail,
     string? TicketTypeName,
@@ -17,8 +16,7 @@ public sealed record TicketAttendeeInfo(
     Instant? CheckedInAt = null);
 
 /// <summary>
-/// <paramref name="FeeTax"/> (VAT on Stripe's fees) and <paramref name="WithheldTax"/> are null on orders enriched
-/// before those Stripe buckets were captured.
+/// <paramref name="FeeTax"/> (VAT on Stripe's fees) is null on orders enriched before that bucket was captured.
 /// </summary>
 public sealed record TicketOrderInfo(
     Guid Id,
@@ -32,8 +30,7 @@ public sealed record TicketOrderInfo(
     IReadOnlyList<TicketAttendeeInfo> Attendees,
     decimal? StripeFee = null,
     decimal? ApplicationFee = null,
-    decimal? FeeTax = null,
-    decimal? WithheldTax = null)
+    decimal? FeeTax = null)
 {
     /// <summary>
     /// Matches a configured vendor event exactly, or the current event when no event is configured.

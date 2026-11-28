@@ -23,8 +23,7 @@ public interface ISignInLinkService : IApplicationService
     /// Consumes the token, so it works once: call it at redemption, never on a GET.
     /// <paramref name="expectedEmail"/> is only for logging.
     /// </summary>
-    Task<SignInLinkSignupCheck> ConsumeSignupTokenAsync(
-        string token, string? expectedEmail = null, CancellationToken ct = default);
+    Task<SignInLinkSignupCheck> ConsumeSignupTokenAsync(string token, string? expectedEmail = null);
 
     /// <summary>
     /// Call only when the signup the token was consumed for failed to create an account, so the person can

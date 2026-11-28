@@ -65,11 +65,11 @@ public class EarlyEntryRosterControllerTests
         var result = await ctrl.Index(Xunit.TestContext.Current.CancellationToken);
 
         var view = result.Should().BeOfType<ViewResult>().Subject;
-        var model = view.Model.Should().BeOfType<EarlyEntryRosterViewModel>().Subject;
-        model.Rows.Should().HaveCount(1);
-        model.Rows[0].UserId.Should().Be(userId);
-        model.Rows[0].HasMultiple.Should().BeTrue();
-        model.Rows[0].Sources.Should().HaveCount(2);
+        var model = view.Model.Should().BeAssignableTo<IReadOnlyList<EarlyEntryRosterRowVm>>().Subject;
+        model.Should().HaveCount(1);
+        model[0].UserId.Should().Be(userId);
+        model[0].HasMultiple.Should().BeTrue();
+        model[0].Sources.Should().HaveCount(2);
     }
 
     [HumansFact]
@@ -92,8 +92,8 @@ public class EarlyEntryRosterControllerTests
         var result = await ctrl.Index(Xunit.TestContext.Current.CancellationToken);
 
         var model = result.Should().BeOfType<ViewResult>().Subject
-            .Model.Should().BeOfType<EarlyEntryRosterViewModel>().Subject;
-        model.Rows.Select(r => (r.EarliestEntryDate, r.UserId))
+            .Model.Should().BeAssignableTo<IReadOnlyList<EarlyEntryRosterRowVm>>().Subject;
+        model.Select(r => (r.EarliestEntryDate, r.UserId))
             .Should().Equal((early, highId), (late, lowId), (late, highId));
     }
 
@@ -114,8 +114,8 @@ public class EarlyEntryRosterControllerTests
         var result = await ctrl.Index(Xunit.TestContext.Current.CancellationToken);
 
         var view = result.Should().BeOfType<ViewResult>().Subject;
-        var model = view.Model.Should().BeOfType<EarlyEntryRosterViewModel>().Subject;
-        model.Rows[0].LegalName.Should().Be("Jean Dupont");
+        var model = view.Model.Should().BeAssignableTo<IReadOnlyList<EarlyEntryRosterRowVm>>().Subject;
+        model[0].LegalName.Should().Be("Jean Dupont");
     }
 
     private static UserInfo MakeUserInfo(Guid userId, string burner, string first, string last) =>

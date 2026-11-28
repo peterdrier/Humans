@@ -438,13 +438,13 @@ internal sealed class TeamPageService(
                 var isCoordinator = cm.Role == TeamMemberRole.Coordinator;
 
                 if (isCoordinator)
-                    leads.Add(new TeamPageChildTeamMemberSummary(cm.UserId, child.Name, child.Slug, true, managementRoleName));
+                    leads.Add(new TeamPageChildTeamMemberSummary(cm.UserId, child.Name, managementRoleName));
 
                 if (directMemberUserIds.Contains(cm.UserId) || !addedUserIds.Add(cm.UserId))
                     continue;
 
                 rollupMembers.Add(new TeamPageChildTeamMemberSummary(
-                    cm.UserId, child.Name, child.Slug, isCoordinator, isCoordinator ? managementRoleName : null));
+                    cm.UserId, child.Name, isCoordinator ? managementRoleName : null));
             }
         }
 

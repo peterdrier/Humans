@@ -27,7 +27,7 @@ public class UsersAudienceServiceTests
         {
             new(Guid.NewGuid(), null, 100m,
                 TicketPaymentStatus.Paid, "event", Instant.FromUtc(2025, 1, 1, 0, 0), null, false,
-                [new(Guid.NewGuid(), "ticket", null, null, null, TicketAttendeeStatus.Valid, attendeeId)]),
+                [new(Guid.NewGuid(), null, null, null, TicketAttendeeStatus.Valid, attendeeId)]),
             new(Guid.NewGuid(), null, 100m,
                 TicketPaymentStatus.Paid, "event", Instant.FromUtc(2026, 1, 1, 0, 0), buyerId, true, []),
             new(Guid.NewGuid(), null, 100m,

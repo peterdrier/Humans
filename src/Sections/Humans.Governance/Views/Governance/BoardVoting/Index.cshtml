@@ -30,7 +30,7 @@ else
                             @foreach (var member in Model.BoardMembers)
                             {
                                 <th class="text-center" style="min-width: 80px;">
-                                    <small><vc:human user-id="@member.UserId" /></small>
+                                    <small><vc:human user-id="@member" /></small>
                                 </th>
                             }
                             <th></th>
@@ -65,7 +65,7 @@ else
                                 </td>
                                 @foreach (var member in Model.BoardMembers)
                                 {
-                                    var hasVote = app.VotesByBoardMember.TryGetValue(member.UserId, out var cell);
+                                    var hasVote = app.VotesByBoardMember.TryGetValue(member, out var cell);
                                     <td class="text-center">
                                         @if (hasVote && cell?.Vote != null)
                                         {

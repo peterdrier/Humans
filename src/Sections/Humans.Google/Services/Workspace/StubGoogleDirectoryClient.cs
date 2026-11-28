@@ -8,8 +8,8 @@ internal sealed class StubGoogleDirectoryClient(ILogger<StubGoogleDirectoryClien
 
         IReadOnlyList<DirectoryGroup> groups =
         [
-            new("stubgroup-1", "board@nobodies.team", "Board", DirectMembersCount: 5),
-            new("stubgroup-2", "all@nobodies.team", "All humans", DirectMembersCount: 42)
+            new("board@nobodies.team", "Board", DirectMembersCount: 5),
+            new("all@nobodies.team", "All humans", DirectMembersCount: 42)
         ];
 
         return Task.FromResult(new DirectoryGroupListResult(groups, Error: null));

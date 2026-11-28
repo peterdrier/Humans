@@ -116,11 +116,9 @@ internal sealed record CampRoleDefinitionInfo(
     int SlotCount,
     int MinimumRequired,
     int SortOrder,
-    Instant? DeactivatedAt,
-    CampSpecialRole SpecialRole)
+    Instant? DeactivatedAt)
 {
     public bool IsActive => DeactivatedAt is null;
-    public bool IsSpecial => SpecialRole != CampSpecialRole.None;
 }
 
 internal sealed record CampRoleAssignmentInfo(

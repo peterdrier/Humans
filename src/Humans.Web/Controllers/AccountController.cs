@@ -285,8 +285,7 @@ public class AccountController(
 
         // Redeem only once the submission is complete — consuming before the
         // validation re-render above would burn the link on a blank field.
-        var redemption = await signInLinkService.ConsumeSignupTokenAsync(
-            token, email, HttpContext.RequestAborted);
+        var redemption = await signInLinkService.ConsumeSignupTokenAsync(token, email);
         if (redemption.Email is not { } redeemedEmail)
         {
             // Already redeemed. A resubmit that carries the cookie the first POST set
