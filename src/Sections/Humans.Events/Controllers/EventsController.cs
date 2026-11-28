@@ -57,7 +57,6 @@ internal sealed class EventsController(
             var campName = ResolveCampDisplayName(camp, guideSettings?.EventSettingsId);
             barrioBlocks.Add(new BarrioSubmissionsBlock
             {
-                CampId = camp.Id,
                 CampName = campName,
                 CampSlug = camp.Slug,
                 SubmittedCount = summary.SubmittedCount,
