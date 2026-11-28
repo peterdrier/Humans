@@ -725,7 +725,6 @@ body.page-wide .main-content {
 .btn:focus-visible,
 .form-control:focus-visible,
 .form-select:focus-visible {
-    outline: none;
     box-shadow: 0 0 0 3px rgba(201, 169, 110, 0.2);
 }
 
@@ -1168,13 +1167,12 @@ body.page-wide .main-content {
 }
 
 .sortable-table-header {
-    cursor: pointer;
     user-select: none;
 }
 
-.sortable-table-header:focus-visible {
-    outline: 2px solid var(--h-gold);
-    outline-offset: 2px;
+.sortable-table-button {
+    all: unset;
+    cursor: pointer;
 }
 
 .sortable-table-header.sort-asc,
@@ -3240,4 +3238,51 @@ body.city-map-fullscreen main {
 .ticket-rules .document-content :is(h1, h2, h3) {
     font-size: 1.15rem;
     margin-top: 1rem;
+}
+
+/* Keyboard focus must stay visible (WCAG 2.4.7). Bootstrap and the rules above swap the outline for a faint
+   glow; these selectors match Bootstrap's specificity and come later, so the solid ring wins. */
+a:focus-visible,
+button:focus-visible,
+summary:focus-visible,
+[tabindex]:focus-visible,
+.btn:focus-visible,
+.nav-link:focus-visible,
+.dropdown-item:focus-visible,
+.form-control:focus-visible,
+.form-select:focus-visible,
+.form-check-input:focus-visible,
+.accordion-button:focus-visible {
+    outline: 2px solid var(--h-aged-ink);
+    outline-offset: 2px;
+}
+
+.navbar :focus-visible,
+.m-nav :focus-visible,
+#cookieConsent :focus-visible {
+    outline-color: var(--h-parchment);
+}
+
+/* Menus and popups that open from the dark bars are light again. */
+.navbar .dropdown-menu :focus-visible,
+.m-nav .dropdown-menu :focus-visible,
+.notification-popup :focus-visible {
+    outline-color: var(--h-aged-ink);
+}
+
+/* Shown only while focused (Bootstrap's visually-hidden-focusable), so keyboard users can jump past the nav. */
+.skip-link:focus {
+    position: fixed !important;
+    top: 0.5rem;
+    left: 0.5rem;
+    z-index: 2000;
+    padding: 0.5rem 1rem;
+    background: var(--h-warm-white);
+    color: var(--h-aged-ink);
+    border-radius: var(--h-radius);
+}
+
+/* The skip link's target: focus lands here so the next Tab starts in the page, with no ring round it. */
+#main-content:focus {
+    outline: none;
 }

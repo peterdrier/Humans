@@ -55,20 +55,51 @@ function sortValues(values, sortType = 'auto', nestedValues = []) {
         setAttribute(name, value) { attributes[name] = value; },
         removeAttribute(name) { delete attributes[name]; },
         querySelector() { return null; },
-        addEventListener(event, handler) { this[event] = handler; },
+        firstChild: null,
+        children: [],
+        appendChild(child) { this.children.push(child); },
     };
+    const button = runSorting(header, tbody);
+    button.click();
+    const ascending = tbody.rows.map(row => row.cells[0].textContent);
+    button.click();
+    return { ascending, descending: tbody.rows.map(row => row.cells[0].textContent),
+        nested: nestedBody.rows.map(row => row.cells[0].textContent) };
+}
+
+function runSorting(header, tbody) {
+    let button;
     const table = { tBodies: [tbody], querySelectorAll: () => [header] };
-    const context = { document: { querySelectorAll: () => [table] } };
+    const context = { document: {
+        querySelectorAll: () => [table],
+        createElement: () => (button = { appendChild() {}, addEventListener(event, handler) { this[event] = handler; } }),
+    } };
     vm.createContext(context);
     const sortingScript = site.slice(site.indexOf('// Declarative client-side table sorting'),
         site.indexOf('// Declarative client-side table filtering'));
     vm.runInContext(sortingScript, context);
-    header.click();
-    const ascending = tbody.rows.map(row => row.cells[0].textContent);
-    header.click();
-    return { ascending, descending: tbody.rows.map(row => row.cells[0].textContent),
-        nested: nestedBody.rows.map(row => row.cells[0].textContent) };
+    return button;
 }
+
+test('sortable headers stay column headers and sort from a button inside them', () => {
+    const attributes = {};
+    const header = {
+        dataset: { sortCol: '0' }, classList: { add() {}, remove() {} },
+        getAttribute(name) { return attributes[name]; },
+        setAttribute(name, value) { attributes[name] = value; },
+        removeAttribute(name) { delete attributes[name]; },
+        querySelector() { return null; },
+        firstChild: null,
+        children: [],
+        appendChild(child) { this.children.push(child); },
+    };
+    const button = runSorting(header, { rows: [], querySelectorAll: () => [], appendChild() {} });
+    assert.equal(attributes.role, undefined);
+    assert.deepEqual(header.children, [button]);
+    assert.equal(button.type, 'button');
+    button.click();
+    assert.equal(attributes['aria-sort'], 'ascending');
+});
 
 test('auto sorting compares complete labels rather than their numeric prefixes', () => {
     const labels = ['10 Blue', '2 Blue', '2 Amber', '1 Red'];

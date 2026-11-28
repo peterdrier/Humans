@@ -2,18 +2,21 @@
 @using System.Globalization
 @using Humans.Base.ViewComponents
 @functions {
-    string AvatarHtml(string? extraClass)
+    // decorative: the name is printed beside the picture (or the enclosing control names the person),
+    // so a screen reader would hear it twice.
+    string AvatarHtml(string? extraClass, bool decorative)
     {
         var enc = System.Text.Encodings.Web.HtmlEncoder.Default;
         var classExtra = string.IsNullOrEmpty(extraClass) ? "" : " " + extraClass;
         var sizeStyle = $"width: {Model.Size}px; height: {Model.Size}px;";
         if (!string.IsNullOrEmpty(Model.ProfilePictureUrl))
         {
-            return $"<img src=\"{enc.Encode(Model.ProfilePictureUrl)}\" alt=\"{enc.Encode(Model.DisplayName)}\" class=\"rounded-circle {Model.CssClass}{classExtra}\" style=\"{sizeStyle} object-fit: cover;\" />";
+            return $"<img src=\"{enc.Encode(Model.ProfilePictureUrl)}\" alt=\"{(decorative ? "" : enc.Encode(Model.DisplayName))}\" class=\"rounded-circle {Model.CssClass}{classExtra}\" style=\"{sizeStyle} object-fit: cover;\" />";
         }
         var initial = string.IsNullOrEmpty(Model.DisplayName) ? "?" : StringInfo.GetNextTextElement(Model.DisplayName);
         var fontRemStr = Model.FontRem.ToString(CultureInfo.InvariantCulture);
-        return $"<div class=\"{Model.BgColor} rounded-circle d-flex align-items-center justify-content-center text-white {Model.CssClass}{classExtra}\" style=\"{sizeStyle} font-size: {fontRemStr}rem;\">{enc.Encode(initial)}</div>";
+        var a11y = decorative ? " aria-hidden=\"true\"" : $" role=\"img\" aria-label=\"{enc.Encode(Model.DisplayName)}\"";
+        return $"<div{a11y} class=\"{Model.BgColor} rounded-circle d-flex align-items-center justify-content-center text-white {Model.CssClass}{classExtra}\" style=\"{sizeStyle} font-size: {fontRemStr}rem;\">{enc.Encode(initial)}</div>";
     }
 }
 @{
@@ -50,11 +53,11 @@
         if (Model.Href is not null)
         {
             var titleAttr = $" title=\"{System.Text.Encodings.Web.HtmlEncoder.Default.Encode(Model.DisplayName)}\"";
-            @Html.Raw($"<a href=\"{Model.Href}\"{titleAttr}{popoverAttrs}>{AvatarHtml(null)}</a>")
+            @Html.Raw($"<a href=\"{Model.Href}\"{titleAttr}{popoverAttrs}>{AvatarHtml(null, false)}</a>")
         }
         else
         {
-            @Html.Raw(AvatarHtml(null))
+            @Html.Raw(AvatarHtml(null, Model.Link == HumanLink.InsideControl))
         }
         break;
 
@@ -62,11 +65,11 @@
         var nameEnc = System.Text.Encodings.Web.HtmlEncoder.Default.Encode(Model.DisplayName);
         if (Model.Href is not null)
         {
-            @Html.Raw($"<a href=\"{Model.Href}\" class=\"d-flex align-items-center text-decoration-none text-reset\"{popoverAttrs}>{AvatarHtml("me-2")}<div><div class=\"fw-semibold\">{nameEnc}</div></div></a>")
+            @Html.Raw($"<a href=\"{Model.Href}\" class=\"d-flex align-items-center text-decoration-none text-reset\"{popoverAttrs}>{AvatarHtml("me-2", true)}<div><div class=\"fw-semibold\">{nameEnc}</div></div></a>")
         }
         else
         {
-            @Html.Raw($"<div class=\"d-flex align-items-center\">{AvatarHtml("me-2")}<div><div class=\"fw-semibold\">{nameEnc}</div></div></div>")
+            @Html.Raw($"<div class=\"d-flex align-items-center\">{AvatarHtml("me-2", true)}<div><div class=\"fw-semibold\">{nameEnc}</div></div></div>")
         }
         break;
 
@@ -74,12 +77,12 @@
         var cardNameEnc = System.Text.Encodings.Web.HtmlEncoder.Default.Encode(Model.DisplayName);
         if (Model.Href is not null)
         {
-            @Html.Raw($"<a href=\"{Model.Href}\" class=\"text-center text-decoration-none d-block\"{popoverAttrs}>{AvatarHtml("mb-2 mx-auto")}<div class=\"small\">{cardNameEnc}</div></a>")
+            @Html.Raw($"<a href=\"{Model.Href}\" class=\"text-center text-decoration-none d-block\"{popoverAttrs}>{AvatarHtml("mb-2 mx-auto", true)}<div class=\"small\">{cardNameEnc}</div></a>")
         }
         else
         {
             var focusAttr = string.IsNullOrEmpty(popoverAttrs) ? "" : " tabindex=\"0\"";
-            @Html.Raw($"<div class=\"text-center d-block\"{popoverAttrs}{focusAttr}>{AvatarHtml("mb-2 mx-auto")}<div class=\"small\">{cardNameEnc}</div></div>")
+            @Html.Raw($"<div class=\"text-center d-block\"{popoverAttrs}{focusAttr}>{AvatarHtml("mb-2 mx-auto", true)}<div class=\"small\">{cardNameEnc}</div></div>")
         }
         break;
 }

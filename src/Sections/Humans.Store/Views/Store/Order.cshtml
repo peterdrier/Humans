@@ -336,8 +336,8 @@ else
             <form asp-action="Pay" asp-route-id="@order.Id" method="post" class="row g-2 mt-3 mb-3 align-items-end">
                 @Html.AntiForgeryToken()
                 <div class="col-md-4">
-                    <label class="form-label">@Localizer["Store_AmountToPay"]</label>
-                    <input type="number" name="amountEur" class="form-control"
+                    <label for="amountEur" class="form-label">@Localizer["Store_AmountToPay"]</label>
+                    <input id="amountEur" type="number" name="amountEur" class="form-control"
                            min="0.01" max="@checkoutMaximum.ToString("0.00", System.Globalization.CultureInfo.InvariantCulture)"
                            step="0.01"
                            value="@checkoutMaximum.ToString("0.00", System.Globalization.CultureInfo.InvariantCulture)" required />

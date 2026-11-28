@@ -1525,4 +1525,5 @@
   <data name="Todo_Medical_Pending" xml:space="preserve"><value>Opcional. Solo lo veis tú y los No-Info Admins.</value></data>
   <data name="Nav_Roles" xml:space="preserve"><value>Roles</value></data>
   <data name="Nav_Tasks" xml:space="preserve"><value>Tareas</value></data>
+  <data name="Common_SkipToContent" xml:space="preserve"><value>Saltar al contenido principal</value></data>
 </root>

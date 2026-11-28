@@ -19,8 +19,8 @@
         <input type="text" name="search" class="form-control"
                placeholder="@SharedLocalizer["Admin_SearchPlaceholder"]"
                value="@Model.SearchTerm" autofocus />
-        <button type="submit" class="btn btn-primary">
-            <i class="fa-solid fa-search"></i>
+        <button type="submit" class="btn btn-primary" aria-label="Search">
+            <i class="fa-solid fa-search" aria-hidden="true"></i>
         </button>
         @if (!string.IsNullOrEmpty(Model.SearchTerm) || !string.IsNullOrEmpty(Model.StatusFilter) || Model.SortBy != "name" || Model.SortDir != "asc")
         {

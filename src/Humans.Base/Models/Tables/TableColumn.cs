@@ -197,5 +197,5 @@ file static class CellContent
     internal static readonly IHtmlContent Null =
         new HtmlString("""<span class="text-muted">—</span>""");
     internal static readonly IHtmlContent Check =
-        new HtmlString("""<i class="fa-solid fa-check text-success" aria-label="yes"></i>""");
+        new HtmlString("""<i class="fa-solid fa-check text-success" role="img" aria-label="yes"></i>""");
 }

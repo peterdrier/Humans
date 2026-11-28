@@ -34,20 +34,20 @@
                     <input type="hidden" name="LineType" value="@(Model.IsInvoice ? ExpenseLineType.Invoice : ExpenseLineType.Receipt)" />
 
                     <div class="mb-3">
-                        <label class="form-label">@Localizer[Model.IsInvoice ? "Expenses_InvoicePurpose" : "Expenses_ReceiptPurpose"] <span class="text-danger">*</span></label>
-                        <input type="text" name="Description" class="form-control" maxlength="500" required
+                        <label for="newLineDescription" class="form-label">@Localizer[Model.IsInvoice ? "Expenses_InvoicePurpose" : "Expenses_ReceiptPurpose"] <span class="text-danger">*</span></label>
+                        <input id="newLineDescription" type="text" name="Description" class="form-control" maxlength="500" required
                                placeholder="@Localizer[Model.IsInvoice ? "Expenses_InvoicePlaceholder" : "Expenses_ReceiptPlaceholder"]" />
                     </div>
 
                     <div class="mb-3">
-                        <label class="form-label">@Localizer["Expenses_AmountEur"] <span class="text-danger">*</span></label>
+                        <label for="newLineAmount" class="form-label">@Localizer["Expenses_AmountEur"] <span class="text-danger">*</span></label>
                         <input type="hidden" name="__Invariant" value="Amount" />
-                        <input type="number" name="Amount" class="form-control" step="0.01" min="0.01" placeholder="0.00" required style="max-width:200px;" />
+                        <input id="newLineAmount" type="number" name="Amount" class="form-control" step="0.01" min="0.01" placeholder="0.00" required style="max-width:200px;" />
                     </div>
 
                     <div class="mb-4">
-                        <label class="form-label">@Localizer[Model.IsInvoice ? "Expenses_InvoiceFile" : "Expenses_ReceiptFile"] <span class="text-danger">*</span></label>
-                        <input type="file" name="file" class="form-control" accept=".pdf,.jpg,.jpeg,.png,.heic" required />
+                        <label for="newLineFile" class="form-label">@Localizer[Model.IsInvoice ? "Expenses_InvoiceFile" : "Expenses_ReceiptFile"] <span class="text-danger">*</span></label>
+                        <input id="newLineFile" type="file" name="file" class="form-control" accept=".pdf,.jpg,.jpeg,.png,.heic" required />
                     </div>
 
                     <div class="d-flex gap-2">

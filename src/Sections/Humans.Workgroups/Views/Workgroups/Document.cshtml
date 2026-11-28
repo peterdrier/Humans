@@ -245,20 +245,20 @@ else
                     <div class="modal-body">
                         <div class="row g-2 mb-3">
                             <div class="col-6">
-                                <label class="form-label small">@Localizer["Workgroups_Field_OpensAt"]</label>
+                                <label for="opensDate" class="form-label small">@Localizer["Workgroups_Field_OpensAt"]</label>
                                 <input type="date" class="form-control form-control-sm" id="opensDate" required />
-                                <input type="time" class="form-control form-control-sm mt-1" id="opensTime" value="00:00" required />
+                                <input type="time" class="form-control form-control-sm mt-1" id="opensTime" value="00:00" required aria-label="@Localizer["Workgroups_Field_OpensAt"]" />
                             </div>
                             <div class="col-6">
-                                <label class="form-label small">@Localizer["Workgroups_Field_ClosesAt"]</label>
+                                <label for="closesDate" class="form-label small">@Localizer["Workgroups_Field_ClosesAt"]</label>
                                 <input type="date" class="form-control form-control-sm" id="closesDate" required />
-                                <input type="time" class="form-control form-control-sm mt-1" id="closesTime" value="23:59" required />
+                                <input type="time" class="form-control form-control-sm mt-1" id="closesTime" value="23:59" required aria-label="@Localizer["Workgroups_Field_ClosesAt"]" />
                             </div>
                         </div>
                         <div class="form-text mb-2">@Localizer["Workgroups_Field_TimesAreUtc"]</div>
                         <div class="mb-2">
-                            <label class="form-label small">@Localizer["Workgroups_Field_Categories"]</label>
-                            <textarea name="categories" class="form-control form-control-sm" rows="2" placeholder="@Localizer["Workgroups_CategoriesPlaceholder"]" required></textarea>
+                            <label for="voteCategories" class="form-label small">@Localizer["Workgroups_Field_Categories"]</label>
+                            <textarea id="voteCategories" name="categories" class="form-control form-control-sm" rows="2" placeholder="@Localizer["Workgroups_CategoriesPlaceholder"]" required></textarea>
                         </div>
                     </div>
                     <div class="modal-footer">

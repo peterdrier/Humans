@@ -268,6 +268,9 @@ public class MarkdownEditorTagHelper(
                     }}
                 }});
             }}
+            // CodeMirror types into its own hidden textarea; hand it the original field's name for screen readers.
+            var fieldName = el.getAttribute('aria-label') || (el.labels && el.labels[0] && el.labels[0].textContent.trim());
+            if (fieldName) {{ mde.codemirror.getInputField().setAttribute('aria-label', fieldName); }}
             el.humansMde = mde;
             el.dataset.mdeInitialized = 'true';
         }} catch (e) {{

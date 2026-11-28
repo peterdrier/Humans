@@ -49,7 +49,7 @@
         {
             <div class="col-md-3">
                 <input type="text" name="@Model.SearchParamName" value="@Model.SearchValue"
-                       class="form-control" placeholder="@Model.SearchPlaceholder" />
+                       class="form-control" placeholder="@Model.SearchPlaceholder" aria-label="@Model.SearchPlaceholder" />
             </div>
         }
         @foreach (var col in cols.Where(c => c.FilterKind == ColumnFilterKind.Select))
@@ -68,7 +68,7 @@
         {
             <div class="col-md-2">
                 <input type="text" name="@col.FilterParamName" value="@col.FilterValue"
-                       class="form-control" placeholder="@col.Header" />
+                       class="form-control" placeholder="@col.Header" aria-label="@Localizer["Common_FilterColumn", col.Header]" />
             </div>
         }
         @if (Model.ExtraFilterContent is not null)
@@ -94,7 +94,7 @@
     @if (Model.Mode == TableMode.Client && Model.HasSearchBox)
     {
         <input type="search" class="form-control form-control-sm mb-2" style="max-width: 20rem;"
-               placeholder="@Model.SearchPlaceholder" data-table-search />
+               placeholder="@Model.SearchPlaceholder" aria-label="@Model.SearchPlaceholder" data-table-search />
     }
     <div class="table-responsive">
         <table id="@Model.Id" class="@tableClass" data-sortable-table="@(clientSort ? "" : null)">
@@ -127,7 +127,8 @@
                     <tr data-table-filter-row>
                         @for (var i = 0; i < cols.Count; i++)
                         {
-                            <th class="@cols[i].HeaderCssClass">
+                            @* td, not th: a filter cell labels nothing, and an empty header cell confuses screen readers. *@
+                            <td class="@cols[i].HeaderCssClass">
                                 @if (cols[i].FilterKind == ColumnFilterKind.Text)
                                 {
                                     <input type="search" class="form-control form-control-sm fw-normal"
@@ -144,7 +145,7 @@
                                         }
                                     </select>
                                 }
-                            </th>
+                            </td>
                         }
                     </tr>
                 }

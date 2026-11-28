@@ -44,10 +44,10 @@
         </div>
 
         <hr />
-        <h6>@Localizer["Users_Profile_BoardNotes"]</h6>
-        <div class="form-text mb-3">@Localizer["Users_ProfileEdit_BoardNotesHelp"]</div>
+        <label asp-for="BoardNotes" class="h6 d-block">@Localizer["Users_Profile_BoardNotes"]</label>
+        <div class="form-text mb-3" id="BoardNotesHelp">@Localizer["Users_ProfileEdit_BoardNotesHelp"]</div>
         <div class="mb-3">
-            <textarea asp-for="BoardNotes" class="form-control" rows="3"></textarea>
+            <textarea asp-for="BoardNotes" class="form-control" rows="3" aria-describedby="BoardNotesHelp"></textarea>
             <span asp-validation-for="BoardNotes" class="text-danger"></span>
         </div>
     </div>

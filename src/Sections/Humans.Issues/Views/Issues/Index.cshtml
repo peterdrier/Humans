@@ -26,7 +26,7 @@
                asp-action="Index" asp-route-view="@IssueViewMode.Closed">@Localizer["Issue_Closed"]</a>
         </div>
 
-        <select name="category" class="form-select form-select-sm js-auto-submit" style="width: auto;">
+        <select name="category" class="form-select form-select-sm js-auto-submit" style="width: auto;" aria-label="@Localizer["Issue_Type"]">
             <option value="">@Localizer["Issue_AllCategories"]</option>
             @foreach (var c in Model.CategoryValues)
             {
@@ -43,7 +43,7 @@
 
         @if (Model.SectionOptions.Count > 0)
         {
-            <select name="section" class="form-select form-select-sm js-auto-submit" style="width: auto;">
+            <select name="section" class="form-select form-select-sm js-auto-submit" style="width: auto;" aria-label="@Localizer["Issue_Area"]">
                 <option value="">@Localizer["Issue_AllAreas"]</option>
                 @foreach (var s in Model.SectionOptions)
                 {

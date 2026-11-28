@@ -81,8 +81,9 @@ else
                         @if (isFirstSlotForRole)
                         {
                             <a class="text-muted small text-decoration-none ms-1" data-bs-toggle="collapse"
-                               href="#@collapseId" role="button" aria-expanded="false" aria-controls="@collapseId">
-                                <i class="fa-solid fa-chevron-down role-desc-chevron"></i>
+                               href="#@collapseId" role="button" aria-expanded="false" aria-controls="@collapseId"
+                               aria-label="@SharedLocalizer["GoogleSync_Details"]: @slot.RoleName">
+                                <i class="fa-solid fa-chevron-down role-desc-chevron" aria-hidden="true"></i>
                             </a>
                         }
                     </td>
