@@ -221,7 +221,7 @@ internal sealed class TeamRepository(IDbContextFactory<TeamsDbContext> factory) 
 
     public async Task<int> EraseMembersAsync(Guid teamId, CancellationToken ct = default)
     {
-        await using var db = await factory.CreateDbContextAsync(ct);
+        await using var db = await CreateDbContextAsync(ct);
         var members = await db.TeamMembers.Where(tm => tm.TeamId == teamId).ToListAsync(ct);
         var memberIds = members.Select(m => m.Id).ToList();
         var requests = await db.TeamJoinRequests.Where(r => r.TeamId == teamId).ToListAsync(ct);
