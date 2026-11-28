@@ -153,18 +153,11 @@ internal sealed class TeamController(
             && (await authorizationService.AuthorizeAsync(
                 User, TeamOwner.Of(teamInfo.Id), TeamPermissionRequirements.EarlyEntry)).Succeeded;
 
-        viewModel.SubteamLeads = teamPage.SubteamLeads.Select(MapChildTeamMember).ToList();
-        viewModel.ChildTeamMembers = teamPage.SubteamMembers.Select(MapChildTeamMember).ToList();
+        viewModel.SubteamLeads = teamPage.SubteamLeads;
+        viewModel.ChildTeamMembers = teamPage.SubteamMembers;
 
         return View(viewModel);
     }
-
-    private static ChildTeamMemberViewModel MapChildTeamMember(TeamPageChildTeamMemberSummary member) => new()
-    {
-        UserId = member.UserId,
-        ChildTeamName = member.ChildTeamName,
-        RoleTitle = member.RoleTitle
-    };
 
     private static TeamResourceLinkViewModel MapTeamResource(TeamPageResourceSummary resource) => new()
     {

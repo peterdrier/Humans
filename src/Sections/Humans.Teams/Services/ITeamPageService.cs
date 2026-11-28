@@ -90,8 +90,6 @@ internal sealed record TeamPageTeamLink(Guid Id, string Name, string Slug);
 internal sealed record TeamPageChildTeamMemberSummary(
     Guid UserId,
     string ChildTeamName,
-    string ChildTeamSlug,
-    bool IsCoordinator,
     string? RoleTitle);
 
 internal sealed record TeamPageTeamSummary(
