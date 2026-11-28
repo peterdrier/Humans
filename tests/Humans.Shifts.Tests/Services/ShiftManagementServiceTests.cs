@@ -86,7 +86,7 @@ public sealed class ShiftManagementServiceTests : ShiftsTestHarness
             ParentTeamId: team.ParentTeamId);
 
     [HumansFact]
-    public async Task CreateBuildStrikeShifts_CreatesOneAllDayShiftPerDay()
+    public async Task CreateBuildStrikeShifts_Days_OneAllDayShiftEach()
     {
         var (_, rota) = SeedRotaScenario(RotaPeriod.Build);
         await SaveAllAsync(Xunit.TestContext.Current.CancellationToken);
@@ -119,7 +119,7 @@ public sealed class ShiftManagementServiceTests : ShiftsTestHarness
     }
 
     [HumansFact]
-    public async Task CreateShiftAsync_CreatesShift_WhenInputMatchesRotaPeriodAndTeam()
+    public async Task CreateShiftAsync_InputMatchesRota_CreatesShift()
     {
         var (_, rota) = SeedRotaScenario(RotaPeriod.Build);
         await SaveAllAsync(Xunit.TestContext.Current.CancellationToken);
@@ -178,7 +178,7 @@ public sealed class ShiftManagementServiceTests : ShiftsTestHarness
     }
 
     [HumansFact]
-    public async Task UpdateShiftAsync_UpdatesShift_WhenInputMatchesRotaPeriodAndTeam()
+    public async Task UpdateShiftAsync_InputMatchesRota_UpdatesShift()
     {
         var (_, rota) = SeedRotaScenario(RotaPeriod.Build);
         var shift = SeedShift(rota, -4);
@@ -385,7 +385,7 @@ public sealed class ShiftManagementServiceTests : ShiftsTestHarness
     }
 
     [HumansFact]
-    public async Task GetShiftByIdAsync_AnswersForAShiftWhoseEventHasNoCalendar()
+    public async Task GetShiftByIdAsync_EventWithoutCalendar_StillAnswers()
     {
         // Settings knows no event at all: the ownership read must still find the shift,
         // or deleting/voluntelling an existing shift would 404.
@@ -409,7 +409,7 @@ public sealed class ShiftManagementServiceTests : ShiftsTestHarness
     }
 
     [HumansFact]
-    public async Task GetRotasByDepartmentAsync_CarriesEveryShiftAndSignup()
+    public async Task GetRotasByDepartmentAsync_Rotas_CarryShiftsWithSignups()
     {
         var (es, rota) = SeedRotaScenario(RotaPeriod.Event);
         var shift = SeedShift(rota, dayOffset: 1);
@@ -451,7 +451,7 @@ public sealed class ShiftManagementServiceTests : ShiftsTestHarness
     [Xunit.InlineData(true, "coordinator")]
     [Xunit.InlineData(true, "admin")]
     [Xunit.InlineData(true, "unscoped")]
-    public async Task GetBrowseShifts_EarlyEntryLockUsesViewerPrivilegeForEachTeam(bool closed, string viewerKind)
+    public async Task GetBrowseShifts_EarlyEntryLock_UsesViewerPrivilege(bool closed, string viewerKind)
     {
         var (es, rota) = SeedRotaScenario(RotaPeriod.Build);
         Calendars[es.Id].EarlyEntryClose = TestNow + Duration.FromSeconds(closed ? 0 : 1);
@@ -480,7 +480,7 @@ public sealed class ShiftManagementServiceTests : ShiftsTestHarness
     }
 
     [HumansFact]
-    public async Task GetBrowseShifts_IncludeSignups_ReturnsConfirmedAndPendingOnly()
+    public async Task GetBrowseShifts_IncludeSignups_OnlyConfirmedOrPending()
     {
         var (es, rota) = SeedRotaScenario(RotaPeriod.Event);
         var shift = SeedShift(rota, dayOffset: 1);
@@ -622,7 +622,7 @@ public sealed class ShiftManagementServiceTests : ShiftsTestHarness
     }
 
     [HumansFact]
-    public async Task GetBrowseShifts_DepartmentFilter_PromotedSubTeam_ReturnsOnlyOwnRotas()
+    public async Task GetBrowseShifts_PromotedSubteamFilter_ReturnsOwnRotas()
     {
         // Filtering by a promoted sub-team must return only its own rotas — not the
         // parent's, not the sibling unpromoted sub-team's. The promoted sub-team has
@@ -816,7 +816,7 @@ public sealed class ShiftManagementServiceTests : ShiftsTestHarness
     }
 
     [HumansFact]
-    public async Task SearchAsync_GuidQuery_ReturnsNothing_WhenNoRotaHasThatId()
+    public async Task SearchAsync_UnknownGuid_ReturnsNothing()
     {
         SeedRotaScenario(RotaPeriod.Event);
         await SaveAllAsync(Xunit.TestContext.Current.CancellationToken);
@@ -841,7 +841,7 @@ public sealed class ShiftManagementServiceTests : ShiftsTestHarness
     }
 
     [HumansFact]
-    public async Task SearchAsync_TextQuery_ReturnsNothing_WhenNoEventIsActive()
+    public async Task SearchAsync_NoActiveEvent_ReturnsNothing()
     {
         var results = await _service.SearchAsync(
             "rota", int.MaxValue, Xunit.TestContext.Current.CancellationToken);
@@ -850,7 +850,7 @@ public sealed class ShiftManagementServiceTests : ShiftsTestHarness
     }
 
     [HumansFact]
-    public async Task GetBrowseShifts_HiddenRota_IsAbsentForAVolunteer_AndPresentForAPrivilegedViewer()
+    public async Task GetBrowseShifts_HiddenRota_OnlyPrivilegedSeeIt()
     {
         // Destination-page half of the GUID search: /Shifts?departmentId={teamId} builds a default
         // ShiftBrowseQuery, which excludes hidden rotas; only privileged viewers add IncludeHidden.
@@ -1069,7 +1069,7 @@ public sealed class ShiftManagementServiceTests : ShiftsTestHarness
     }
 
     [HumansFact]
-    public async Task DeleteRotaAsync_WithOnlyPendingSignups_DeletesThemWithTheRota()
+    public async Task DeleteRotaAsync_OnlyPendingSignups_DeletesThemToo()
     {
         var (_, rota) = SeedRotaScenario(RotaPeriod.Event);
         var shift = SeedShift(rota, dayOffset: 1);
@@ -1118,7 +1118,7 @@ public sealed class ShiftManagementServiceTests : ShiftsTestHarness
     }
 
     [HumansFact]
-    public async Task MoveRotaToTeamAsync_WritesRotaMovedToTeamAuditEntry()
+    public async Task MoveRotaToTeamAsync_Move_WritesAuditEntry()
     {
         var (_, rota) = SeedRotaScenario(RotaPeriod.Build);
         SeedSignup(SeedShift(rota, -4), SeedUser("Builder"), SignupStatus.Confirmed);

@@ -21,7 +21,7 @@ public class VolunteerSearchScriptTests
 {
     [HumansTheory]
     [Xunit.MemberData(nameof(SupportedCultures.All), MemberType = typeof(SupportedCultures))]
-    public async Task Search_labels_round_trip_through_rendered_script_literals(string language)
+    public async Task SearchLabels_ScriptLiterals_RoundTrip(string language)
     {
         var resources = new ResourceManager(typeof(ShiftsResource));
         var culture = CultureInfo.GetCultureInfo(language);
@@ -43,7 +43,7 @@ public class VolunteerSearchScriptTests
     }
 
     [HumansFact]
-    public async Task Search_labels_escape_script_delimiters_and_control_characters()
+    public async Task SearchLabels_ScriptDelimiters_AreEscaped()
     {
         const string label = "l'heure \"du jour\"\n</script>\\suite";
         var script = await RenderAsync(new Dictionary<string, object?>(StringComparer.Ordinal) { ["ErrorText"] = label });

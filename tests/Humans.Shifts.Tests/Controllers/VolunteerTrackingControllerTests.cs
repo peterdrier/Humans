@@ -152,7 +152,7 @@ public class VolunteerTrackingControllerTests
     [InlineData(nameof(VolunteerTrackingController.ClearCampSetup))]
     [InlineData(nameof(VolunteerTrackingController.SetDayOff))]
     [InlineData(nameof(VolunteerTrackingController.ClearDayOff))]
-    public void WriteActions_Require_VolunteerTrackingWrite_Policy(string actionName)
+    public void WriteActions_All_RequireWritePolicy(string actionName)
     {
         var method = typeof(VolunteerTrackingController)
             .GetMethods(BindingFlags.Public | BindingFlags.Instance)
@@ -167,7 +167,7 @@ public class VolunteerTrackingControllerTests
     [InlineData(nameof(VolunteerTrackingController.ClearCampSetup))]
     [InlineData(nameof(VolunteerTrackingController.SetDayOff))]
     [InlineData(nameof(VolunteerTrackingController.ClearDayOff))]
-    public void WriteActions_Have_AntiForgery_Validation(string actionName)
+    public void WriteActions_All_ValidateAntiForgery(string actionName)
     {
         var method = typeof(VolunteerTrackingController)
             .GetMethods(BindingFlags.Public | BindingFlags.Instance)
@@ -200,7 +200,7 @@ public class VolunteerTrackingControllerTests
     }
 
     [HumansFact]
-    public async Task Index_cancels_department_loading_when_the_request_is_aborted()
+    public async Task Index_RequestAborted_CancelsDepartmentLoading()
     {
         using var aborted = new CancellationTokenSource();
         var es = MakeBurn(Guid.NewGuid());
@@ -222,7 +222,7 @@ public class VolunteerTrackingControllerTests
     }
 
     [HumansFact]
-    public async Task Index_MainCohort_SortedByGapsThenLastSignupThenName()
+    public async Task Index_MainCohort_SortedByGapsFirst()
     {
         var aliceId = Guid.NewGuid();
         var bobId = Guid.NewGuid();
@@ -288,7 +288,7 @@ public class VolunteerTrackingControllerTests
     }
 
     [HumansFact]
-    public async Task Index_HideCampSetup_FiltersRowsWithBarrioSetupStartDate()
+    public async Task Index_HideCampSetup_FiltersCampSetupRows()
     {
         var a = Guid.NewGuid(); var b = Guid.NewGuid();
         var rows = new List<VolunteerHeatmapRow>
@@ -333,7 +333,7 @@ public class VolunteerTrackingControllerTests
     }
 
     [HumansFact]
-    public async Task SetCampSetup_ValidForm_RedirectsAndSetsSuccessTempData()
+    public async Task SetCampSetup_ValidForm_RedirectsWithSuccess()
     {
         var current = new User { Id = Guid.NewGuid() };
         var target = Guid.NewGuid();
@@ -352,7 +352,7 @@ public class VolunteerTrackingControllerTests
     }
 
     [HumansFact]
-    public async Task SetCampSetup_ModelStateInvalid_RegexFail_RedirectsWithBadRequestError()
+    public async Task SetCampSetup_RegexFails_RedirectsWithBadRequest()
     {
         var current = new User { Id = Guid.NewGuid() };
         var ctrl = BuildSut(current);
@@ -376,7 +376,7 @@ public class VolunteerTrackingControllerTests
     }
 
     [HumansFact]
-    public async Task SetCampSetup_RegexPasses_ButLocalDateInvalid_RedirectsWithBadDateError()
+    public async Task SetCampSetup_InvalidLocalDate_RedirectsWithBadDate()
     {
         // Regex matches yyyy-MM-dd but month=13/day=40 fails LocalDatePattern.Iso.
         var current = new User { Id = Guid.NewGuid() };
@@ -432,7 +432,7 @@ public class VolunteerTrackingControllerTests
     }
 
     [HumansFact]
-    public async Task ClearCampSetup_HappyPath_CallsServiceAndRedirects()
+    public async Task ClearCampSetup_ValidForm_CallsService()
     {
         var current = new User { Id = Guid.NewGuid() };
         var target = Guid.NewGuid();
@@ -530,7 +530,7 @@ public class VolunteerTrackingControllerTests
     }
 
     [HumansFact]
-    public void SetAvailabilityDay_Requires_VolunteerTrackingWrite_Policy()
+    public void SetAvailabilityDay_Action_RequiresWritePolicy()
     {
         var method = typeof(VolunteerTrackingController)
             .GetMethods(BindingFlags.Public | BindingFlags.Instance)
@@ -541,7 +541,7 @@ public class VolunteerTrackingControllerTests
     }
 
     [HumansFact]
-    public void ClearAvailabilityDay_Requires_VolunteerTrackingWrite_Policy()
+    public void ClearAvailabilityDay_Action_RequiresWritePolicy()
     {
         var method = typeof(VolunteerTrackingController)
             .GetMethods(BindingFlags.Public | BindingFlags.Instance)
@@ -555,7 +555,7 @@ public class VolunteerTrackingControllerTests
     [InlineData(true, "user")]
     [InlineData(true, "empty-user")]
     [InlineData(false, "day")]
-    public async Task AvailabilityDay_RequiresMemberAndDay(bool adding, string missing)
+    public async Task AvailabilityDay_MissingMemberOrDay_IsRejected(bool adding, string missing)
     {
         Guid? target = string.Equals(missing, "user", StringComparison.Ordinal) ? null
             : string.Equals(missing, "empty-user", StringComparison.Ordinal) ? Guid.Empty : Guid.NewGuid();
@@ -625,7 +625,7 @@ public class VolunteerTrackingControllerTests
     }
 
     [HumansFact]
-    public async Task SetAvailabilityDay_HappyPath_CallsServiceAndRedirects()
+    public async Task SetAvailabilityDay_ValidForm_CallsService()
     {
         var current = new User { Id = Guid.NewGuid() };
         var target = Guid.NewGuid();
@@ -664,7 +664,7 @@ public class VolunteerTrackingControllerTests
     [HumansTheory]
     [InlineData(-3)]
     [InlineData(0)]
-    public async Task ClearAvailabilityDay_HappyPath_CallsServiceAndRedirects(int dayOffset)
+    public async Task ClearAvailabilityDay_ValidForm_CallsService(int dayOffset)
     {
         var current = new User { Id = Guid.NewGuid() };
         var target = Guid.NewGuid();

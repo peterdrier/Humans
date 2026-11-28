@@ -13,7 +13,7 @@ public class ShiftEarlyEntryProjectionTests
         Madrid.AtLeniently(new LocalDateTime(y, m, d, h, 0)).ToInstant();
 
     [HumansFact]
-    public void Earliest_shift_drives_grant_entry_date_minus_one_and_source_from_that_team()
+    public void Project_EarliestShift_SetsEntryDayBefore()
     {
         var userId = Guid.NewGuid();
         var flagsTeam = Guid.NewGuid();
@@ -42,7 +42,7 @@ public class ShiftEarlyEntryProjectionTests
     }
 
     [HumansFact]
-    public void Same_earliest_day_breaks_tie_on_team_name_ascending()
+    public void Project_SameEarliestDay_TieBreaksOnTeamName()
     {
         var userId = Guid.NewGuid();
         var zebraTeam = Guid.NewGuid();
@@ -68,7 +68,7 @@ public class ShiftEarlyEntryProjectionTests
     }
 
     [HumansFact]
-    public void Empty_rows_produces_empty_result()
+    public void Project_NoRows_ReturnsEmpty()
     {
         var grants = ShiftEarlyEntryProjection.Project(
             [],

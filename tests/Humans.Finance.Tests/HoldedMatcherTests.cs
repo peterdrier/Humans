@@ -11,7 +11,7 @@ public class HoldedMatcherTests
     private static readonly Guid CatB = Guid.NewGuid();
 
     [HumansFact]
-    public void NormalizeTag_strips_separators_and_lowercases()
+    public void NormalizeTag_Tag_LowercasedWithoutSeparators()
     {
         HoldedMatcher.NormalizeTag("Admin-Staff").Should().Be("adminstaff");
         HoldedMatcher.NormalizeTag("Operations / Toilets").Should().Be("operationstoilets");
@@ -20,7 +20,7 @@ public class HoldedMatcherTests
     }
 
     [HumansFact]
-    public void Match_prefers_account_over_tag()
+    public void Match_AccountPlusTag_PrefersAccount()
     {
         var map = new[]
         {
@@ -33,7 +33,7 @@ public class HoldedMatcherTests
     }
 
     [HumansFact]
-    public void Match_falls_back_to_tag_when_account_unmapped()
+    public void Match_UnmappedAccount_UsesTag()
     {
         var map = new[] { new HoldedMatchEntry(CatB, "acc-2", "staff") };
         var r = HoldedMatcher.Match("acc-generic", new[] { "Staff" }, map, new HashSet<string>(StringComparer.Ordinal));
@@ -42,7 +42,7 @@ public class HoldedMatcherTests
     }
 
     [HumansFact]
-    public void Match_returns_none_when_nothing_resolves()
+    public void Match_NothingResolves_ReturnsNone()
     {
         var map = new[] { new HoldedMatchEntry(CatB, "acc-2", "staff") };
         var r = HoldedMatcher.Match("acc-generic", new[] { "unknown" }, map, new HashSet<string>(StringComparer.Ordinal));
@@ -55,13 +55,13 @@ public class HoldedMatcherTests
     [InlineData("  Workgroups  /  ALM   2027 ", "workgroups / alm 2027")]
     [InlineData("Workgroups / Asamblea Éxito", "workgroups / asamblea exito")]
     [InlineData(null, "")]
-    public void NormalizeAccountName_TrimsCollapsesLowersAndFoldsAccents(string? raw, string expected)
+    public void NormalizeAccountName_Name_LowercasedWithoutAccents(string? raw, string expected)
     {
         HoldedMatcher.NormalizeAccountName(raw).Should().Be(expected);
     }
 
     [HumansFact]
-    public void Match_BookedToAManagedAccount_IsAnAccountMatchWithNoCategory()
+    public void Match_ManagedAccount_MatchesWithoutCategory()
     {
         var map = new[] { new HoldedMatchEntry(Guid.NewGuid(), "cat-0", "geeks") };
         var managed = new HashSet<string>(StringComparer.Ordinal) { "m-1" };

@@ -10,7 +10,7 @@ namespace Humans.Shifts.Tests.Models;
 public class ShiftBrowsePageBuilderPieSortTests
 {
     [HumansFact]
-    public void PromotedSubteam_RendersImmediatelyAfterItsParent_NotByOwnName()
+    public void Pies_PromotedSubteam_FollowsItsParent()
     {
         var mangoId = Guid.NewGuid();
         var pies = new List<DepartmentCoveragePie>

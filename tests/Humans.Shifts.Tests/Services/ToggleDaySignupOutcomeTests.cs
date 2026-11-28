@@ -8,7 +8,7 @@ namespace Humans.Shifts.Tests.Services;
 public sealed class ToggleDaySignupOutcomeTests
 {
     [HumansFact]
-    public void ActiveSignupCount_CountsOnlyPendingAndConfirmed()
+    public void ActiveSignupCount_Signups_CountsPendingOrConfirmed()
     {
         var signups = new[]
         {

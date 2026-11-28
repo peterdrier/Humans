@@ -66,7 +66,7 @@ public class ShiftBrowsePageBuilderDayFilterTests
     [Xunit.InlineData("999")]
     [Xunit.InlineData("-1")]
     [Xunit.InlineData("unknown")]
-    public async Task InvalidPhase_DoesNotTurnTwoSelectedPhasesIntoAllPhases(string invalid)
+    public async Task BuildAsync_InvalidPhase_KeepsSelectedPhases(string invalid)
     {
         var shifts = new[] { ShiftPeriod.Build, ShiftPeriod.Event, ShiftPeriod.Strike }
             .Select(p => UrgentShiftFixtures.Urgent(burn: Event, period: p, remainingSlots: 1))
@@ -105,7 +105,7 @@ public class ShiftBrowsePageBuilderDayFilterTests
     [HumansTheory]
     [Xunit.InlineData(false)]
     [Xunit.InlineData(true)]
-    public async Task BuildAsync_PreservesCancellationInTeamAndTagReads(bool tags)
+    public async Task BuildAsync_Cancellation_ReachesTeamTagReads(bool tags)
     {
         var builder = CreateBuilder();
         using var cancellation = new CancellationTokenSource();
@@ -157,7 +157,7 @@ public class ShiftBrowsePageBuilderDayFilterTests
     }
 
     [HumansFact]
-    public async Task NoDaySelected_FilterDayIsNull_AndExistingSortIsHonored()
+    public async Task BuildAsync_NoDaySelected_HonorsExistingSort()
     {
         _shiftManagement.GetBrowseShiftsAsync(Arg.Any<ShiftBrowseQuery>(), Arg.Any<CancellationToken>()).Returns([]);
         var builder = CreateBuilder();
@@ -169,7 +169,7 @@ public class ShiftBrowsePageBuilderDayFilterTests
     }
 
     [HumansFact]
-    public async Task DayOptions_GroupByCalendarDay_AndCarryPeriodAndSubPeriod()
+    public async Task DayOptions_Shifts_GroupByCalendarDay()
     {
         // Build-period day inside the PreEventWeek window (-7 <= -5 < -3).
         var buildShift = UrgentShiftFixtures.Shift(rotaId: Guid.NewGuid(), dayOffset: -5, isAllDay: true);

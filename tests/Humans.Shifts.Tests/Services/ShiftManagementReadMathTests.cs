@@ -66,7 +66,7 @@ public sealed class ShiftManagementReadMathTests : ShiftsTestHarness
     }
 
     [HumansFact]
-    public async Task GetStaffingSnapshot_CountsAShiftOnItsOwnDayOnly()
+    public async Task GetStaffingSnapshot_Shift_CountsOnOwnDayOnly()
     {
         var (es, rota) = SeedScenario();
         SeedShift(rota, dayOffset: 2, min: 1, max: 4);
@@ -81,7 +81,7 @@ public sealed class ShiftManagementReadMathTests : ShiftsTestHarness
     }
 
     [HumansFact]
-    public async Task GetStaffingSnapshot_SumsSlotsAndConfirmedAcrossEveryShiftOnTheDay()
+    public async Task GetStaffingSnapshot_ShiftsOnDay_AreSummed()
     {
         var (es, rota) = SeedScenario();
         var morning = SeedShift(rota, dayOffset: 2, min: 1, max: 4);
@@ -115,7 +115,7 @@ public sealed class ShiftManagementReadMathTests : ShiftsTestHarness
     }
 
     [HumansFact]
-    public async Task GetStaffingSnapshot_ScalesHoursByMaxVolunteers_AndBucketsThemByRotaPriority()
+    public async Task GetStaffingSnapshot_Hours_ScaledByMaxVolunteers()
     {
         var (es, essentialRota) = SeedScenario(ShiftPriority.Essential);
         var importantRota = SeedRota(es, essentialRota.TeamId, ShiftPriority.Important);
@@ -173,7 +173,7 @@ public sealed class ShiftManagementReadMathTests : ShiftsTestHarness
     }
 
     [HumansFact]
-    public async Task GetStaffingSnapshot_UsesTheAllDayWindow_NotTheDurationColumn()
+    public async Task GetStaffingSnapshot_AllDayShift_UsesAllDayWindow()
     {
         var (es, rota) = SeedScenario();
         var shift = SeedShift(rota, dayOffset: -2, min: 1, max: 2, durationHours: 24);
@@ -207,7 +207,7 @@ public sealed class ShiftManagementReadMathTests : ShiftsTestHarness
     }
 
     [HumansFact]
-    public async Task GetShiftsSummary_ReturnsNull_WhenTheTeamsRotasHaveNoShifts()
+    public async Task GetShiftsSummary_RotasWithoutShifts_ReturnsNull()
     {
         var (es, rota) = SeedScenario();
         await SaveAllAsync(Ct);
@@ -216,7 +216,7 @@ public sealed class ShiftManagementReadMathTests : ShiftsTestHarness
     }
 
     [HumansFact]
-    public async Task GetShiftsSummary_SumsSlotsAndCountsOnlyConfirmedSignups()
+    public async Task GetShiftsSummary_Signups_CountsOnlyConfirmed()
     {
         var (es, rota) = SeedScenario();
         var first = SeedShift(rota, dayOffset: 1, min: 1, max: 3);
@@ -301,7 +301,7 @@ public sealed class ShiftManagementReadMathTests : ShiftsTestHarness
     }
 
     [HumansFact]
-    public async Task GetUrgentShifts_ExcludesFullShiftsAndClampsRemainingAtZero()
+    public async Task GetUrgentShifts_FullShifts_AreExcluded()
     {
         var (es, rota) = SeedScenario();
         var full = SeedShift(rota, dayOffset: 8, min: 1, max: 1);
@@ -333,7 +333,7 @@ public sealed class ShiftManagementReadMathTests : ShiftsTestHarness
     }
 
     [HumansFact]
-    public async Task GetUrgentShifts_TreatsAStartOnlyBoundAsAnOpenEndedRange()
+    public async Task GetUrgentShifts_StartOnlyBound_IsOpenEnded()
     {
         var (es, rota) = SeedScenario();
         SeedShift(rota, dayOffset: 6, min: 1, max: 3);
@@ -347,7 +347,7 @@ public sealed class ShiftManagementReadMathTests : ShiftsTestHarness
     }
 
     [HumansFact]
-    public async Task GetUrgentShifts_TreatsAnEndOnlyBoundAsAnOpenEndedRange()
+    public async Task GetUrgentShifts_EndOnlyBound_IsOpenEnded()
     {
         var (es, rota) = SeedScenario();
         var beforeBound = SeedShift(rota, dayOffset: 6, min: 1, max: 3);

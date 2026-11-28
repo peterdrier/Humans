@@ -169,7 +169,7 @@ public class ShiftsControllerUserActiveSignupsTests
     }
 
     [HumansFact]
-    public async Task Index_SignupsSpanningTwoBurns_ResolvesEachRowAgainstItsOwnBurn()
+    public async Task Index_SignupsInTwoBurns_UseOwnBurn()
     {
         // Same DayOffset + StartTime in both burns: any difference in the rendered
         // instants can only come from the burn each row was resolved against.
@@ -218,7 +218,7 @@ public class ShiftsControllerUserActiveSignupsTests
     }
 
     [HumansFact]
-    public async Task Index_InactiveStatusesAndUnresolvableBurns_AreDropped()
+    public async Task Index_InactiveOrUnresolvableRows_AreDropped()
     {
         var unknownBurnId = Guid.NewGuid();
         _burnSettings.GetByIdAsync(unknownBurnId, Arg.Any<CancellationToken>()).Returns((BurnSettingsInfo?)null);

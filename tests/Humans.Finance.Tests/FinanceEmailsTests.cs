@@ -15,7 +15,7 @@ public sealed class FinanceEmailsTests
     private static FinanceEmails Create() => TestFinanceEmails.Create();
 
     [HumansFact]
-    public void SepaPayoutGenerated_StampsSystem_AndFormatsTheAmountForTheRecipient()
+    public void SepaPayoutGenerated_Amount_FormattedForRecipient()
     {
         var msg = Create().SepaPayoutGenerated(Guid.NewGuid(), "a@x.com", "Alice <A>", 1234.5m, "ES79****789", "de");
 
@@ -31,7 +31,7 @@ public sealed class FinanceEmailsTests
     }
 
     [HumansFact]
-    public void EveryTemplateHasAPreviewSample()
+    public void Templates_EachHasPreviewSample()
     {
         var emails = Create();
         var templates = TemplateNames(emails);
@@ -46,7 +46,7 @@ public sealed class FinanceEmailsTests
     }
 
     [HumansFact]
-    public void PreviewSampleIdsAreUnique()
+    public void PreviewSampleIds_AreUnique()
     {
         var samples = new FinanceEmailPreviews(Create())
             .Samples(new EmailPreviewPersona("en", "Sally Smith", "sally@example.com"));
@@ -56,7 +56,7 @@ public sealed class FinanceEmailsTests
 
     /// <summary>
     /// Every template the builder can produce, found by reflection rather than listed, so a
-    /// template added without a gallery sample fails <see cref="EveryTemplateHasAPreviewSample"/>.
+    /// template added without a gallery sample fails <see cref="Templates_EachHasPreviewSample"/>.
     /// </summary>
     private static IReadOnlyList<string> TemplateNames(FinanceEmails emails) =>
     [

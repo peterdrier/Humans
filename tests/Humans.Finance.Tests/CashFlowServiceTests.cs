@@ -101,7 +101,7 @@ public class CashFlowServiceTests
     }
 
     [HumansFact]
-    public void Build_FundsExhausted_MarksOnlyTheFirstPeriodTheExpenseBalanceHitsZero()
+    public void Build_FundsExhausted_MarksFirstZeroPeriodOnly()
     {
         // Runway 100: Jan leaves 40 (income never extends it), Feb hits -10, Mar stays below.
         var year = Year(
@@ -146,7 +146,7 @@ public class CashFlowServiceTests
     }
 
     [HumansFact]
-    public void ComputeVatEntries_IncomeOwesVat_ExpenseReclaimsIt_SettledAfterQuarterEnd()
+    public void ComputeVatEntries_IncomeVsExpense_SettledAfterQuarterEnd()
     {
         var groups = Year(
             Item(121m, new LocalDate(2026, 2, 10), vatRate: 21),
@@ -177,7 +177,7 @@ public class CashFlowServiceTests
     [InlineData(TicketPaymentStatus.Pending)]
     [InlineData(TicketPaymentStatus.Refunded)]
     [InlineData(TicketPaymentStatus.Cancelled)]
-    public async Task GetGrossTicketRevenueAsync_ConfiguredEvent_ExcludesOtherEventAndUnpaidOrders(TicketPaymentStatus unpaidStatus)
+    public async Task GetGrossTicketRevenueAsync_ConfiguredEvent_ExcludesUnpaidOrders(TicketPaymentStatus unpaidStatus)
     {
         var year = new BudgetYearDetail(_yearId, "2026", "2026", BudgetYearStatus.Active, false, [], PlatformEventId: "event-2026");
         var order = Order(100m);
@@ -195,7 +195,7 @@ public class CashFlowServiceTests
     }
 
     [HumansFact]
-    public async Task GetGrossTicketRevenueAsync_UnconfiguredYear_FallsBackToCurrentEvent()
+    public async Task GetGrossTicketRevenueAsync_UnconfiguredYear_UsesCurrentEvent()
     {
         var year = new BudgetYearDetail(_yearId, "2026", "2026", BudgetYearStatus.Active, false, []);
         var order = Order(100m);
@@ -212,7 +212,7 @@ public class CashFlowServiceTests
     }
 
     [HumansFact]
-    public async Task GetActiveYearCashFlowAsync_SeedsRunwayFromGrossTicketRevenue()
+    public async Task GetActiveYearCashFlowAsync_Runway_SeededFromTicketRevenue()
     {
         _budget.GetActiveYearAsync(Arg.Any<CancellationToken>())
             .Returns(Year(Item(-150m, new LocalDate(2026, 1, 3)), Item(-50m, new LocalDate(2026, 2, 3))));

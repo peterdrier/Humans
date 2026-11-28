@@ -126,7 +126,7 @@ public sealed class WorkloadServiceTests : ShiftsTestHarness
     }
 
     [HumansFact]
-    public async Task ByDepartment_CountsFilledSlotsAndHoursCappedAtMax_AndIncludesSlug()
+    public async Task ByDepartment_FilledSlots_CappedAtMax()
     {
         var es = await SeedEventAsync();
         var team = await SeedWorkloadTeamAsync("Gate");
@@ -155,7 +155,7 @@ public sealed class WorkloadServiceTests : ShiftsTestHarness
     }
 
     [HumansFact]
-    public async Task ByPerson_RoleHours_MappedByPeriod_YearRoundIntoOwnColumn_OthersFoldIntoShiftColumns()
+    public async Task ByPerson_RoleHours_MappedByPeriod()
     {
         // Event has shifts (so the report isn't short-circuited). Alice holds two
         // roles: a year-round role (10h) and a Build-period role (4h), plus a
@@ -229,7 +229,7 @@ public sealed class WorkloadServiceTests : ShiftsTestHarness
     }
 
     [HumansFact]
-    public async Task ByDepartment_FoldsRolePlannedAndFilledHours()
+    public async Task ByDepartment_RoleHours_AreFoldedIn()
     {
         // Gate has a 4h shift with 3 slots, 0 confirmed → shift planned 12, filled 0.
         // Gate also owns a 10h role with 2 slots, 1 filled → role planned 20, filled 10.
@@ -283,7 +283,7 @@ public sealed class WorkloadServiceTests : ShiftsTestHarness
     }
 
     [HumansFact]
-    public async Task ByDepartment_RoleHourProducts_PreserveDecimalTotalsBeyondIntegerRange()
+    public async Task ByDepartment_RoleHoursAboveIntRange_KeepDecimalTotals()
     {
         await SeedEventAsync();
         var team = await SeedWorkloadTeamAsync("Board");
@@ -330,7 +330,7 @@ public sealed class WorkloadServiceTests : ShiftsTestHarness
     }
 
     [HumansFact]
-    public async Task ByRota_IncludesAdminOnlyAndHiddenRotas()
+    public async Task ByRota_AdminOnlyOrHidden_AreIncluded()
     {
         // Workload view is admin-only — coordinators need full visibility for
         // balancing, including admin-only shifts and hidden rotas.

@@ -84,7 +84,7 @@ public class CreditorMergeTests
             _survivor, "Ana Ruiz", null, null, seedContactId, seedAccountNum, "TestJob", Ct);
 
     [HumansFact]
-    public async Task Merge_MovesTheArchivedBinding_AndTheNextPushReusesIt()
+    public async Task Merge_ArchivedBinding_MovedThenReused()
     {
         await BindAsync(_archived, "c-x", 40000012);
 
@@ -103,7 +103,7 @@ public class CreditorMergeTests
     }
 
     [HumansFact]
-    public async Task MergeBeforeBindingsMoved_SurvivorsPush_TakesOverTheArchivedBinding_InsteadOfMinting()
+    public async Task Merge_PushBeforeBindingsMoved_TakesArchivedBinding()
     {
         // The merge ran before Finance moved bindings: the archived id still holds the human's contact.
         await BindAsync(_archived, "c-x", 40000012);

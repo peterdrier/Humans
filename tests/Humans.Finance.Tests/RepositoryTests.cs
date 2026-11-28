@@ -36,7 +36,7 @@ public class RepositoryTests
     private static CancellationToken Ct => TestContext.Current.CancellationToken;
 
     [HumansFact]
-    public async Task UpsertCreditorContact_ANullAccountNumberDoesNotEraseAResolvedOne()
+    public async Task UpsertCreditorContact_NullAccountNumber_KeepsResolvedOne()
     {
         // A push that has not resolved the 400000xx yet still writes the contact id. It must not
         // clear a number an earlier push or an admin already recorded.
@@ -56,7 +56,7 @@ public class RepositoryTests
     }
 
     [HumansFact]
-    public async Task UpsertCreditorContact_ReturnsTrue_OnInsert_AndOnUpdate()
+    public async Task UpsertCreditorContact_InsertOrUpdate_ReturnsTrue()
     {
         // The false branch (Postgres 23505 on IX_holded_creditor_contacts_UserId) cannot be raised here:
         // EF InMemory enforces no unique indexes. It is covered in the service tests via the substitute.
@@ -70,7 +70,7 @@ public class RepositoryTests
     }
 
     [HumansFact]
-    public async Task TryInsertCreditorContact_ReturnsTrue_AndStoresTheRowOnAFreshMember()
+    public async Task TryInsertCreditorContact_FreshMember_StoresRow()
     {
         // The false branch (Postgres 23505 on IX_holded_creditor_contacts_UserId) cannot be raised here:
         // EF InMemory enforces no unique indexes. It is covered in the service tests via the substitute.
@@ -85,7 +85,7 @@ public class RepositoryTests
     }
 
     [HumansFact]
-    public async Task UpsertCreditorContact_IsKeyedByMember_SoAMemberNeverHoldsTwoBindings()
+    public async Task UpsertCreditorContact_SameMember_KeepsOneBinding()
     {
         var (repo, factory) = Make();
         var userId = Guid.NewGuid();
@@ -117,7 +117,7 @@ public class RepositoryTests
     }
 
     [HumansFact]
-    public async Task SaveSepaTransferBooking_StampsBookedAtBookedByAndMovementId()
+    public async Task SaveSepaTransferBooking_Row_StampsBookingFields()
     {
         var (repo, _) = Make();
         var fileId = Guid.NewGuid();
@@ -205,7 +205,7 @@ public class RepositoryTests
     }
 
     [HumansFact]
-    public async Task GetSepaPayoutTransferRows_ProjectsMovementIdAndReconciledAt()
+    public async Task GetSepaPayoutTransferRows_Rows_CarryMovementId()
     {
         var (repo, _) = Make();
         var fileId = Guid.NewGuid();
@@ -243,7 +243,7 @@ public class RepositoryTests
     }
 
     [HumansFact]
-    public async Task SaveSepaTransferWithdrawn_StampsWithdrawnAtAndBy_AndTheRowsCarryThem()
+    public async Task SaveSepaTransferWithdrawn_Row_StampsWithdrawnFields()
     {
         var (repo, _) = Make();
         var fileId = Guid.NewGuid();
@@ -287,7 +287,7 @@ public class RepositoryTests
     }
 
     [HumansFact]
-    public async Task ManagedAccounts_UpsertByNumber_KeepsIdAndCreatedAt_ReplacesTheRest()
+    public async Task ManagedAccounts_UpsertByNumber_KeepsIdReplacesRest()
     {
         var (repo, _) = Make();
         var t0 = Instant.FromUtc(2026, 9, 1, 0, 0);

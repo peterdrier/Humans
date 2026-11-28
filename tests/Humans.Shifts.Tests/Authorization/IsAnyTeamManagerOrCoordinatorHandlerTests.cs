@@ -31,7 +31,7 @@ public sealed class IsAnyTeamManagerOrCoordinatorHandlerTests
     [InlineData(true, true)]
     [InlineData(true, false)]
     [InlineData(false, false)]
-    public async Task MembershipAccess_UsesResolvedAccountAndDeniesMissingAccounts(
+    public async Task MembershipAccess_MissingAccount_IsDenied(
         bool accountExists, bool survivorAuthorized)
     {
         var coordinatorId = Guid.NewGuid();
@@ -43,7 +43,7 @@ public sealed class IsAnyTeamManagerOrCoordinatorHandlerTests
         _shiftManagement.CanManageOrApproveAnyShiftsAsync(coordinatorId, Arg.Any<CancellationToken>())
             .Returns(true);
 
-        var allowed = await EvaluateAsync(CreateUserWithIdAndRole(cookieId, "SomeNonAdminRole"));
+        var allowed = await EvaluateAsync(CreateUserInRole(cookieId, "SomeNonAdminRole"));
 
         allowed.Should().Be(accountExists && survivorAuthorized);
     }
@@ -76,7 +76,7 @@ public sealed class IsAnyTeamManagerOrCoordinatorHandlerTests
             return true;
         });
 
-        Func<Task> authorize = () => EvaluateAsync(CreateUserWithIdAndRole(userId, "SomeNonAdminRole"));
+        Func<Task> authorize = () => EvaluateAsync(CreateUserInRole(userId, "SomeNonAdminRole"));
         await authorize.Should().ThrowAsync<OperationCanceledException>();
         observed.Should().Be(request.Token);
     }
@@ -87,30 +87,30 @@ public sealed class IsAnyTeamManagerOrCoordinatorHandlerTests
     [InlineData(ShiftsRoles.ShiftsAdmin, true)]
     [InlineData(RoleNames.Board, true)]
     [InlineData(TeamsRoles.TeamsAdmin, false)]
-    public async Task ChecksCorrectRoles(string role, bool expected)
+    public async Task Handle_ManagerRoles_AreAllowed(string role, bool expected)
     {
         var result = await EvaluateAsync(CreateUserWithRole(role));
         result.Should().Be(expected);
     }
 
     [HumansFact]
-    public async Task AllowsUserWithCoordinatedTeams()
+    public async Task Handle_UserWithCoordinatedTeams_IsAllowed()
     {
         var userId = Guid.NewGuid();
         _shiftManagement.CanManageOrApproveAnyShiftsAsync(userId).Returns(true);
 
-        var result = await EvaluateAsync(CreateUserWithIdAndRole(userId, "SomeNonAdminRole"));
+        var result = await EvaluateAsync(CreateUserInRole(userId, "SomeNonAdminRole"));
 
         result.Should().BeTrue();
     }
 
     [HumansFact]
-    public async Task DeniesUserWithNoRoleAndNoCoordinatedTeams()
+    public async Task Handle_NoRoleNoTeams_IsDenied()
     {
         var userId = Guid.NewGuid();
         _shiftManagement.CanManageOrApproveAnyShiftsAsync(userId).Returns(false);
 
-        var result = await EvaluateAsync(CreateUserWithIdAndRole(userId, "SomeNonAdminRole"));
+        var result = await EvaluateAsync(CreateUserInRole(userId, "SomeNonAdminRole"));
 
         result.Should().BeFalse();
     }
@@ -133,9 +133,9 @@ public sealed class IsAnyTeamManagerOrCoordinatorHandlerTests
     }
 
     private static ClaimsPrincipal CreateUserWithRole(string role) =>
-        CreateUserWithIdAndRole(Guid.NewGuid(), role);
+        CreateUserInRole(Guid.NewGuid(), role);
 
-    private static ClaimsPrincipal CreateUserWithIdAndRole(Guid userId, string role)
+    private static ClaimsPrincipal CreateUserInRole(Guid userId, string role)
     {
         var claims = new List<Claim>
         {

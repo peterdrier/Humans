@@ -65,7 +65,7 @@ public sealed class OnboardingShiftsListViewComponentTests
     }
 
     [HumansFact]
-    public async Task Renders_with_the_burn_settings_resolved_from_the_id()
+    public async Task Invoke_EventId_ResolvesBurnSettings()
     {
         _burnSettings.GetByIdAsync(Event.Id, Arg.Any<CancellationToken>()).Returns(Event);
 
@@ -81,7 +81,7 @@ public sealed class OnboardingShiftsListViewComponentTests
     }
 
     [HumansFact]
-    public async Task Unordered_browse_rows_preserve_ranked_rota_and_equal_time_shift_ties()
+    public async Task Invoke_UnorderedRows_KeepRankedTies()
     {
         _burnSettings.GetByIdAsync(Event.Id, Arg.Any<CancellationToken>()).Returns(Event);
         var low = UrgentShiftFixtures.Urgent(urgencyScore: 1);
@@ -98,7 +98,7 @@ public sealed class OnboardingShiftsListViewComponentTests
     }
 
     [HumansFact]
-    public async Task Shows_only_the_passed_shifts_with_the_viewers_signups()
+    public async Task Invoke_PassedShifts_ShownWithViewerSignups()
     {
         _burnSettings.GetByIdAsync(Event.Id, Arg.Any<CancellationToken>()).Returns(Event);
         var shown = UrgentShiftFixtures.Urgent();
@@ -116,7 +116,7 @@ public sealed class OnboardingShiftsListViewComponentTests
     }
 
     [HumansFact]
-    public async Task Renders_nothing_when_the_event_is_unknown()
+    public async Task Invoke_UnknownEvent_RendersNothing()
     {
         var result = await InvokeAsync(Guid.NewGuid(), []);
 

@@ -88,7 +88,7 @@ public class SepaWithdrawTests
     }
 
     [HumansFact]
-    public async Task Withdraw_UnbookedTransfer_FlagsTheRow_Audits_AndTellsTheMemberInTheirLanguage()
+    public async Task Withdraw_UnbookedTransfer_FlagsRowWithAudit()
     {
         Seed();
 
@@ -119,7 +119,7 @@ public class SepaWithdrawTests
     [InlineData("bankline")]
     [InlineData("payments")]
     [InlineData("withdrawn")]
-    public async Task Withdraw_IsRefused_OnceTheRowIsBooked_TiedToALine_Posted_OrAlreadyWithdrawn(string state)
+    public async Task Withdraw_RowNoLongerUnbooked_IsRefused(string state)
     {
         Seed(
             bookedAt: string.Equals(state, "booked", StringComparison.Ordinal) ? FixedNow : null,
@@ -191,7 +191,7 @@ public class SepaWithdrawTests
             "ES79****789", amount, bookedAt, null, null, null, null, null, null, WithdrawnAt: withdrawnAt);
 
     [HumansFact]
-    public async Task CancelFile_WithdrawsEveryLiveTransferInOneSave_AuditsEach_AndEmailsNobody()
+    public async Task CancelFile_LiveTransfers_WithdrawnInOneSave()
     {
         var fileId = Guid.NewGuid();
         var a = FileRow(fileId, 1000m);
@@ -216,7 +216,7 @@ public class SepaWithdrawTests
     [HumansTheory]
     [InlineData(true)]
     [InlineData(false)]
-    public async Task CancelFile_IsRefused_WhenAnyTransferIsBooked_OrTheFileIsAlreadyCancelled(bool booked)
+    public async Task CancelFile_BookedOrCancelled_IsRefused(bool booked)
     {
         var fileId = Guid.NewGuid();
         var rows = new List<SepaPayoutTransferRow>
@@ -241,7 +241,7 @@ public class SepaWithdrawTests
     }
 
     [HumansFact]
-    public void Row_IsWithdrawn_IsExactlyAWithdrawnAt_AndNeverBookable()
+    public void Row_WithdrawnAt_MeansWithdrawn()
     {
         var row = new SepaPayoutTransferRow(
             TransferId, Guid.NewGuid(), "f.xml", GeneratedAt, Actor, UserId, 41000060, "c1", "Paul", "ES79****789",

@@ -21,7 +21,7 @@ namespace Humans.Finance.Tests;
 public class FinanceOverviewServiceTests
 {
     [HumansFact]
-    public void TaxFiling_ShowsLastQuarterUntilItsDeadline_ThenTheRunningQuarter()
+    public void TaxFiling_BeforeDeadline_ShowsLastQuarter()
     {
         var before = FinanceOverviewService.TaxFiling("303", "VAT", new LocalDate(2027, 1, 30), (_, _) => 0m);
         before.Should().Match<FinanceTaxFilingVm>(f =>
@@ -36,7 +36,7 @@ public class FinanceOverviewServiceTests
     }
 
     [HumansFact]
-    public void TaxAmounts_NetCreditNotes_AndSkipSettlementAndPayment()
+    public void TaxAmounts_CreditNotes_AreNetted()
     {
         var day = new LocalDate(2026, 11, 2).AtStartOfDayInZone(DateTimeZoneProviders.Tzdb["Europe/Madrid"]).ToInstant();
         HoldedLedgerLineInfo Line(int entry, int account, decimal debit, decimal credit) =>
@@ -56,7 +56,7 @@ public class FinanceOverviewServiceTests
     }
 
     [HumansFact]
-    public void StripeSources_FillsLinkedAccounts_AndSaysWhyTheRestAreUnknown()
+    public void StripeSources_UnlinkedAccounts_SayWhyUnknown()
     {
         var at = Instant.FromUtc(2026, 11, 1, 0, 0);
         var links = new Dictionary<int, string> { [44100003] = "acct_store", [44100004] = "acct_unswept" };
@@ -107,7 +107,7 @@ public class FinanceOverviewServiceTests
     }
 
     [HumansFact]
-    public async Task StripeLinkSettings_ListEvery441AccountFinanceShows_AndEveryLinkedOne()
+    public async Task StripeLinkSettings_Accounts_ListShownOrLinked()
     {
         var (ledger, _, _) = await LinkService().GetStripeLinkSettingsAsync(TestContext.Current.CancellationToken);
 
@@ -115,7 +115,7 @@ public class FinanceOverviewServiceTests
     }
 
     [HumansFact]
-    public async Task SaveStripeLinks_StoresTheChoices_UnlinksBlanks_Audits_AndRefusesUnknownValues()
+    public async Task SaveStripeLinks_Choices_StoredWithAudit()
     {
         var service = LinkService();
         var actor = Guid.NewGuid();
@@ -229,7 +229,7 @@ public class FinanceOverviewServiceTests
     }
 
     [HumansFact]
-    public void BuildLedgerCards_GroupsCashAndReceivables_AndFlipsTaxes()
+    public void BuildLedgerCards_Taxes_AreFlipped()
     {
         HoldedChartAccountInfo Account(int n, bool archived = false) => new(n, $"A{n}", null, archived, 0m);
         var chart = new[]
@@ -279,7 +279,7 @@ public class FinanceOverviewServiceTests
     }
 
     [HumansFact]
-    public void BuildOwed_And_BuildWork_SplitMembersSuppliersAndPayability()
+    public void BuildOwed_Creditors_SplitMembersFromSuppliers()
     {
         static CreditorContactBinding Bind() => new(Guid.NewGuid(), "c", null, CreditorContactSource.Auto);
         var rows = new[]
@@ -374,7 +374,7 @@ public class FinanceOverviewServiceTests
     }
 
     [HumansFact]
-    public void BuildBudget_UsesGroupSortOrderToBreakEqualOverBudgetTies()
+    public void BuildBudget_EqualOverBudget_UsesGroupSortOrder()
     {
         var yearId = Guid.NewGuid();
         var groups = Enumerable.Range(0, 4).Select(sortOrder =>

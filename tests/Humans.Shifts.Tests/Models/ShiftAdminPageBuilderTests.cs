@@ -108,7 +108,7 @@ public sealed class ShiftAdminPageBuilderTests
     }
 
     [HumansFact]
-    public async Task KeepsOnlyUsersWithoutAllConsents()
+    public async Task Build_Users_KeepsThoseMissingConsents()
     {
         var withConsents = Guid.NewGuid();
         var withoutConsents = Guid.NewGuid();
@@ -163,7 +163,7 @@ public sealed class ShiftAdminPageBuilderTests
     }
 
     [HumansFact]
-    public async Task DistinctUserIdsPassedToMembership()
+    public async Task Build_UserIds_PassedDistinctToMembership()
     {
         var sharedUser = Guid.NewGuid();
         var otherUser = Guid.NewGuid();

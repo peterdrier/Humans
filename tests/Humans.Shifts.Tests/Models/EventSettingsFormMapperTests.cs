@@ -27,7 +27,7 @@ public sealed class EventSettingsFormMapperTests
         IsShiftBrowsingOpen: false);
 
     [HumansFact]
-    public void ToViewModel_NoKnobsRow_ReturnsDefaultKnobsAndTheResolvedSubPeriods()
+    public void ToViewModel_NoKnobsRow_ReturnsDefaults()
     {
         var vm = EventSettingsFormMapper.ToViewModel(null, Burn);
 
@@ -60,7 +60,7 @@ public sealed class EventSettingsFormMapperTests
     [Xunit.InlineData(-25, -16, -17, -4)]
     [Xunit.InlineData(-25, -16, -9, 0)]
     [Xunit.InlineData(-366, -16, -9, -4)]
-    public void Validate_SubPeriodsOutOfOrderOrOnGateDay_AreRejected(int firstCrew, int setupWeek, int preEventWeek, int finishingWeekend)
+    public void Validate_SubPeriodsMisplaced_AreRejected(int firstCrew, int setupWeek, int preEventWeek, int finishingWeekend)
     {
         var model = new EventSettingsViewModel
         {

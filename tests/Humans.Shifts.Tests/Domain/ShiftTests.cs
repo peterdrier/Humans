@@ -185,7 +185,7 @@ public class ShiftTests
     }
 
     [HumansFact]
-    public void QualifiesForCantinaMeal_FiveHourFiftyNineMinuteShift_ReturnsFalse()
+    public void QualifiesForCantinaMeal_JustUnderSixHours_ReturnsFalse()
     {
         var shift = CreateShift();
         shift.IsAllDay = false;

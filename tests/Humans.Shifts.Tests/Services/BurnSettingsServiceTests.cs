@@ -47,7 +47,7 @@ public sealed class BurnSettingsServiceTests
     }
 
     [HumansFact]
-    public async Task GetByIdAsync_ShiftsOwnSubPeriodsWin_UnsetOnesUseShiftsDefaults()
+    public async Task GetByIdAsync_OwnSubPeriods_WinOverDefaults()
     {
         var id = Guid.NewGuid();
         var calendar = NewCalendar(id);
@@ -68,7 +68,7 @@ public sealed class BurnSettingsServiceTests
     }
 
     [HumansFact]
-    public async Task GetByIdAsync_ReturnsNull_WhenSettingsHasNoSuchCalendar()
+    public async Task GetByIdAsync_UnknownCalendar_ReturnsNull()
     {
         var result = await _service.GetByIdAsync(Guid.NewGuid(), Xunit.TestContext.Current.CancellationToken);
 
@@ -84,7 +84,7 @@ public sealed class BurnSettingsServiceTests
     }
 
     [HumansFact]
-    public async Task GetActiveAsync_NoLocalKnobsRowYet_DefaultsIsShiftBrowsingOpenToFalse()
+    public async Task GetActiveAsync_NoKnobsRow_BrowsingIsClosed()
     {
         var calendar = NewCalendar(Guid.NewGuid());
         StubActiveCalendar(calendar);
@@ -102,7 +102,7 @@ public sealed class BurnSettingsServiceTests
     }
 
     [HumansFact]
-    public async Task GetActiveAsync_LocalKnobsRowExists_UsesItsIsShiftBrowsingOpen()
+    public async Task GetActiveAsync_KnobsRowExists_UsesItsBrowsingFlag()
     {
         var calendar = NewCalendar(Guid.NewGuid());
         StubActiveCalendar(calendar);
@@ -115,7 +115,7 @@ public sealed class BurnSettingsServiceTests
     }
 
     [HumansFact]
-    public async Task GetEarlyEntryCapacityForDay_OnReturnedDto_PerformsStepFunctionLookup()
+    public async Task GetEarlyEntryCapacityForDay_Dto_UsesStepLookup()
     {
         var calendar = NewCalendar(Guid.NewGuid()) with
         {

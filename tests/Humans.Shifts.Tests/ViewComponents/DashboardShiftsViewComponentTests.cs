@@ -92,7 +92,7 @@ public sealed class DashboardShiftsViewComponentTests
     }
 
     [HumansFact]
-    public async Task InvokeAsync_OffSeason_ClosesShiftBrowsingEvenWhenTheBurnSwitchIsOpen()
+    public async Task InvokeAsync_OffSeason_ClosesShiftBrowsing()
     {
         var model = await InvokeAsync(isOffSeason: true);
 

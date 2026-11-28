@@ -75,7 +75,7 @@ public class ExpenseReconTests
             transfers, id => id == Alice ? "Alice" : "Bob", FixedOrgTimeZone.Madrid.Zone);
 
     [HumansFact]
-    public void LineMatchesItsLedgerPurchase_WhateverTheStoredDocIdPointsAt()
+    public void Recon_StaleStoredDocId_LineStillMatches()
     {
         var report = Build([Line("deleted-by-cleanup")], Purchase());
 
@@ -129,7 +129,7 @@ public class ExpenseReconTests
     }
 
     [HumansFact]
-    public void NoLedgerLine_IsMissingWhenThePushFailed_PendingWhileQueuedOrAfterTheSync()
+    public void Recon_NoLedgerLine_MissingOnlyIfPushFailed()
     {
         var failed = Line(null, state: ExpenseHoldedSyncState.Failed);
         var queued = Line(null, state: ExpenseHoldedSyncState.Queued);
@@ -145,7 +145,7 @@ public class ExpenseReconTests
     }
 
     [HumansFact]
-    public void MarkedPurchasesNoLineClaims_AreOrphans_ByWhetherTheirAccountIsBound()
+    public void Recon_UnclaimedMarkedPurchases_AreOrphans()
     {
         var report = Build(
             [Line()],
@@ -163,7 +163,7 @@ public class ExpenseReconTests
     }
 
     [HumansFact]
-    public void LegacyReportLevelDocument_MatchesOnReportIdAndAmount()
+    public void Recon_LegacyReportDocument_MatchesOnReportId()
     {
         var legacy = Line(amount: 250m, description: "") with { LineId = null };
 
@@ -175,7 +175,7 @@ public class ExpenseReconTests
     }
 
     [HumansFact]
-    public void BookedSepaTransfer_ClaimsItsDaysPayments_AndHandPaymentsAndALoanAreOtherMovements()
+    public void Recon_BookedSepaTransfer_ClaimsItsDaysPayments()
     {
         var bankDay = new LocalDate(2026, 10, 14);
         var report = Build(
@@ -200,7 +200,7 @@ public class ExpenseReconTests
     }
 
     [HumansFact]
-    public void BookedSepaTransfer_WithNoLedgerPayment_IsAWarningNotAProblem()
+    public void Recon_BookedTransferWithoutLedgerPayment_IsWarning()
     {
         var report = Build([Line()], [Purchase()], [Transfer(AliceAccount, 100m, booked: true)]);
 
@@ -212,7 +212,7 @@ public class ExpenseReconTests
     }
 
     [HumansFact]
-    public void MemberWithoutAnAccount_IsAWarningOnlyWithAMissingLine()
+    public void Recon_MemberWithoutAccount_WarnsOnMissingLine()
     {
         var pending = Build([Line(null, user: Bob, state: ExpenseHoldedSyncState.Queued)], [], [], accounts: new Dictionary<Guid, int>());
         var missing = Build([Line(user: Bob)], [], [], accounts: new Dictionary<Guid, int>());
@@ -223,7 +223,7 @@ public class ExpenseReconTests
     }
 
     [HumansFact]
-    public void YearFilter_NarrowsLinesAndOrphans_MembersStayAllTime()
+    public void Recon_YearFilter_NarrowsLinesNotMembers()
     {
         var lastYear = Line(description: "ER: Old", report: Guid.NewGuid(), date: Instant.FromUtc(2025, 12, 31, 23, 30));
         HoldedLedgerLineInfo[] ledger =
@@ -260,7 +260,7 @@ public class ExpenseReconTests
         Substitute.For<IPaymentDetailsManagement>(), NullLogger<Service>.Instance);
 
     [HumansFact]
-    public async Task GetExpenseRecon_ReadsTheAccountTheBoundContactIsOn_NotTheStoredNumber()
+    public async Task GetExpenseRecon_BoundContact_UsesItsLiveAccount()
     {
         const int stored = 41000066;
         const int contacts = 41000065;
@@ -285,7 +285,7 @@ public class ExpenseReconTests
     }
 
     [HumansFact]
-    public async Task GetExpenseRecon_ContactListUnreadable_IsUnavailable_NeverTheStoredNumber()
+    public async Task GetExpenseRecon_ContactListUnreadable_IsUnavailable()
     {
         _holded.GetLedgerSyncedAtAsync(Arg.Any<CancellationToken>()).Returns(SyncedAt);
         _holded.GetAccountBalancesAsync(Arg.Any<CancellationToken>())
@@ -351,7 +351,7 @@ public class ExpenseReconTests
     }
 
     [HumansFact]
-    public void Job_RunsAfterTheDocSyncAndTheLedgerSweep()
+    public void Job_Schedule_RunsAfterSyncThenSweep()
     {
         ((ISectionJobs)new Section()).Jobs(Substitute.For<IServiceProvider>())
             .Should().ContainSingle(j => j.JobType == typeof(ExpenseReconJob))

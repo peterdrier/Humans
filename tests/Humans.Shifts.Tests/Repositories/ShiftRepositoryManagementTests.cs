@@ -41,7 +41,7 @@ public sealed class ShiftRepositoryManagementTests : IDisposable
     }
 
     [HumansFact]
-    public async Task GetEventSettingsByIdAsync_ReturnsNullForAnUnknownId()
+    public async Task GetEventSettingsByIdAsync_UnknownId_ReturnsNull()
     {
         var result = await _repo.GetEventSettingsByIdAsync(Guid.NewGuid(), Xunit.TestContext.Current.CancellationToken);
 
@@ -66,7 +66,7 @@ public sealed class ShiftRepositoryManagementTests : IDisposable
     [HumansTheory]
     [Xunit.InlineData(40, false)]
     [Xunit.InlineData(48, true)]
-    public async Task ConfirmedShiftsInRange_IncludesEarlierStartsOnlyWhenTheyStillOverlap(int durationHours, bool overlaps)
+    public async Task ConfirmedShiftsInRange_EarlierStart_IncludedOnlyIfOverlapping(int durationHours, bool overlaps)
     {
         var ct = Xunit.TestContext.Current.CancellationToken;
         var (settings, rota) = await SeedRotaAsync(RotaPeriod.Event);
@@ -173,7 +173,7 @@ public sealed class ShiftRepositoryManagementTests : IDisposable
     [Xunit.InlineData("first_aid", "firstXaid")]
     [Xunit.InlineData("100% ready", "100X ready")]
     [Xunit.InlineData("a\\b", "ab")]
-    public async Task GetOrCreateTagAsync_UsesLiteralNamesAndReusesCaseVariants(string name, string otherName)
+    public async Task GetOrCreateTagAsync_CaseVariant_ReusesTag(string name, string otherName)
     {
         var other = new ShiftTag { Id = Guid.NewGuid(), Name = otherName };
         _shiftsDbContext.ShiftTags.Add(other);
@@ -255,7 +255,7 @@ public sealed class ShiftRepositoryManagementTests : IDisposable
     }
 
     [HumansFact]
-    public async Task ReassignProfilesAndTagPrefsToUserAsync_BothHoldSameTagPreference_TargetWinsNoDuplicate()
+    public async Task ReassignTagPrefs_SameTagPreference_TargetWins()
     {
         // Both source and target already prefer the same tag — the fold must
         // drop the source's row rather than insert a second (UserId, ShiftTagId)

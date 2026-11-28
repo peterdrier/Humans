@@ -26,7 +26,7 @@ public class ShiftInfoViewTests
     [HumansTheory]
     [Xunit.InlineData(null)]
     [Xunit.InlineData("l'heure à \"du jour\"\n</script>\\suite")]
-    public async Task Wizard_step_copy_round_trips_through_script(string? overrideCopy)
+    public async Task WizardStepCopy_Script_RoundTrips(string? overrideCopy)
     {
         using var culture = new CultureScope(CultureCatalog.DefaultCultureCode);
         var resources = new ResourceManager(typeof(ShiftsResource));

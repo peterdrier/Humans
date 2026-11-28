@@ -75,7 +75,7 @@ public sealed class VolunteerTrackingAvailabilityTests : ShiftsTestHarness
     }
 
     [HumansFact]
-    public async Task SetAvailability_ClearsTheDays_AndAuditsTheVolunteer()
+    public async Task SetAvailability_ClearedDays_AreAudited()
     {
         var userId = Guid.NewGuid();
         var esId = SeedEventSettings();
@@ -272,7 +272,7 @@ public sealed class VolunteerTrackingAvailabilityTests : ShiftsTestHarness
     }
 
     [HumansFact]
-    public async Task Reassign_MovesSourceOnlyBuildStatus_AndKeepsSurvivorRowOnCollision()
+    public async Task Reassign_Collision_KeepsSurvivorRow()
     {
         var ct = Xunit.TestContext.Current.CancellationToken;
         var source = Guid.NewGuid();

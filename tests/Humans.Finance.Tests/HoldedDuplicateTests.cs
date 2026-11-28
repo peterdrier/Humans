@@ -91,7 +91,7 @@ public class HoldedDuplicateTests
         new Dictionary<Guid, IReadOnlySet<string>>();
 
     [HumansFact]
-    public void Matcher_OneLineTwoDocuments_FlagsTheOneTheLineDoesNotLinkTo()
+    public void Matcher_OneLineTwoDocuments_FlagsUnlinkedOne()
     {
         var matches = HoldedDuplicateMatcher.Find([Booking("doc-a")], [Doc("doc-a"), Doc("doc-b")], NoExtraContacts);
 
@@ -138,7 +138,7 @@ public class HoldedDuplicateTests
     }
 
     [HumansFact]
-    public void Matcher_ListItemsCarryNoNotes_SoNotesAreNotPartOfTheMatch()
+    public void Matcher_ListItems_MatchWithoutNotes()
     {
         // The v2 purchase list never returns `notes` (verified live 2026-10-21); requiring them
         // here is why the page reported zero while Holded held ~430 duplicates.
@@ -192,7 +192,7 @@ public class HoldedDuplicateTests
     }
 
     [HumansFact]
-    public async Task DryRun_ADuplicateWithAPayment_IsRefusedAndListedForAHuman()
+    public async Task DryRun_DuplicateWithPayment_IsRefused()
     {
         _expenses.GetHoldedBookingsAsync(Arg.Any<CancellationToken>()).Returns([Booking("doc-a")]);
         Mirror([Doc("doc-a"), Doc("doc-paid", pending: 0m), Doc("doc-draft", draft: true, pending: 0m)]);
@@ -210,7 +210,7 @@ public class HoldedDuplicateTests
     }
 
     [HumansFact]
-    public async Task DryRun_ACandidateWhoseNotesAreNotThePushs_IsRefusedNotDeletable()
+    public async Task DryRun_NotesNotFromPush_IsRefused()
     {
         // Description and total match; the mirrored notes differ (another report's push) or are empty (a
         // hand-made document). Neither is this line's duplicate.
@@ -228,7 +228,7 @@ public class HoldedDuplicateTests
     }
 
     [HumansFact]
-    public async Task DryRun_TwoReportsWithIdenticalLines_TheDuplicateGoesToTheLineWhoseNotesItCarries()
+    public async Task DryRun_IdenticalLines_DuplicateFollowsItsNotes()
     {
         // Repeated commute lines across reports: report 1's line is first in the list and would claim
         // doc-b2 on description + total alone, but doc-b2 carries report 2's notes, so it is report
@@ -250,7 +250,7 @@ public class HoldedDuplicateTests
     }
 
     [HumansFact]
-    public async Task DryRun_ContactPair_TheUnboundTwinIsAnOrphanOnceItsDocumentsAreAllDuplicates()
+    public async Task DryRun_TwinWithOnlyDuplicates_IsOrphan()
     {
         // Catherine Morgaine Ryan: bound to 41000067 (c1); the race made c2 on 41000068 with the same
         // name, carrying only the duplicate documents.
@@ -267,7 +267,7 @@ public class HoldedDuplicateTests
     }
 
     [HumansFact]
-    public async Task DryRun_AnUnboundTwinBoundToAnotherMember_IsNeverSearched()
+    public async Task DryRun_TwinBoundToOtherMember_IsNotSearched()
     {
         var other = Guid.NewGuid();
         _holded.GetContactsAsync(Arg.Any<CancellationToken>()).Returns(TestContacts.Synced([Contact("c1", Account), Contact("c2", 41000068)]));
@@ -281,7 +281,7 @@ public class HoldedDuplicateTests
     }
 
     [HumansFact]
-    public async Task DryRun_AnEmptyUnboundCreditorContact_IsListedNotTouched()
+    public async Task DryRun_EmptyUnboundContact_IsListedOnly()
     {
         _holded.GetContactsAsync(Arg.Any<CancellationToken>()).Returns(TestContacts.Synced([Contact("c1", Account), Contact("c-empty", 41000062, "Someone Else")]));
         _expenses.GetHoldedBookingsAsync(Arg.Any<CancellationToken>()).Returns(new List<ExpenseHoldedBooking>());
@@ -294,7 +294,7 @@ public class HoldedDuplicateTests
     }
 
     [HumansFact]
-    public async Task DryRun_ACandidateWhoseNotesOrPaymentsAreNotMirroredYet_IsRefused()
+    public async Task DryRun_NotMirroredYet_IsRefused()
     {
         _expenses.GetHoldedBookingsAsync(Arg.Any<CancellationToken>()).Returns([Booking("doc-a")]);
         _notes["doc-b"] = null;
@@ -314,7 +314,7 @@ public class HoldedDuplicateTests
     }
 
     [HumansFact]
-    public async Task DryRun_WhenThePurchaseMirrorNeverSynced_SaysSoInsteadOfJudging()
+    public async Task DryRun_MirrorNeverSynced_SaysSo()
     {
         _holded.GetPurchaseDocumentsAsync(Arg.Any<CancellationToken>()).Returns(TestPurchaseMirror.NeverSynced);
 
@@ -326,7 +326,7 @@ public class HoldedDuplicateTests
     }
 
     [HumansFact]
-    public async Task Apply_DeletesTheDocumentsThenTheOrphanContact_AuditsEachId_AndResyncs()
+    public async Task Apply_Duplicates_DeletedThenOrphanContact()
     {
         _holded.GetContactsAsync(Arg.Any<CancellationToken>()).Returns(TestContacts.Synced([Contact("c1", Account), Contact("c2", 41000068)]));
         _expenses.GetHoldedBookingsAsync(Arg.Any<CancellationToken>()).Returns([Booking("doc-a")]);
@@ -373,7 +373,7 @@ public class HoldedDuplicateTests
     }
 
     [HumansFact]
-    public async Task Apply_ARefusedDocumentKeepsItsContact_AndAFailedDeleteIsReported()
+    public async Task Apply_RefusedDocument_KeepsItsContact()
     {
         _holded.GetContactsAsync(Arg.Any<CancellationToken>()).Returns(TestContacts.Synced([Contact("c1", Account), Contact("c2", 41000068)]));
         _expenses.GetHoldedBookingsAsync(Arg.Any<CancellationToken>()).Returns([Booking("doc-a")]);
@@ -409,7 +409,7 @@ public class HoldedDuplicateTests
     }
 
     [HumansFact]
-    public async Task Apply_ANoteEditedInHoldedSinceItWasMirrored_IsJudgedOnTheFreshNote()
+    public async Task Apply_NoteEditedSinceMirror_UsesFreshNote()
     {
         _expenses.GetHoldedBookingsAsync(Arg.Any<CancellationToken>()).Returns([Booking("doc-a")]);
         Mirror([Doc("doc-a"), Doc("doc-b")]);
@@ -423,7 +423,7 @@ public class HoldedDuplicateTests
     }
 
     [HumansFact]
-    public async Task Apply_TwoReportsWithIdenticalLines_DeletesTheDuplicateUnderTheRightLine()
+    public async Task Apply_IdenticalLines_DeletesUnderRightLine()
     {
         var report2 = Guid.NewGuid();
         var line2 = Booking("doc-b", report: report2);
@@ -439,7 +439,7 @@ public class HoldedDuplicateTests
     }
 
     [HumansFact]
-    public async Task Apply_WhenTheRefreshingSyncFailsOrIsBusy_DeletesNothing()
+    public async Task Apply_SyncFailsOrBusy_DeletesNothing()
     {
         _expenses.GetHoldedBookingsAsync(Arg.Any<CancellationToken>()).Returns([Booking("doc-a")]);
         Mirror([Doc("doc-a"), Doc("doc-b")]);
@@ -452,7 +452,7 @@ public class HoldedDuplicateTests
     }
 
     [HumansFact]
-    public async Task Apply_WhenTheContactListCannotBeRead_DeletesNothingAndSaysWhy()
+    public async Task Apply_ContactListUnreadable_DeletesNothing()
     {
         _expenses.GetHoldedBookingsAsync(Arg.Any<CancellationToken>()).Returns([Booking("doc-a")]);
         Mirror([Doc("doc-a"), Doc("doc-b")]);

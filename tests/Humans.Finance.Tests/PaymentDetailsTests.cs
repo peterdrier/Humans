@@ -101,7 +101,7 @@ public class PaymentDetailsTests
     }
 
     [HumansFact]
-    public async Task RevealIban_ThroughMergedId_AuditsTheOwnerOfTheRevealedDetails()
+    public async Task RevealIban_MergedId_AuditsDetailsOwner()
     {
         var source = Guid.NewGuid();
         var survivor = Guid.NewGuid();
@@ -146,7 +146,7 @@ public class PaymentDetailsTests
     }
 
     [HumansFact]
-    public async Task SetIban_Normalizes_AndRefusesAnUnknownUser()
+    public async Task SetIban_UnknownUser_IsRefused()
     {
         var id = Guid.NewGuid();
         SeedUser(id);
@@ -158,7 +158,7 @@ public class PaymentDetailsTests
     }
 
     [HumansFact]
-    public async Task GetIban_WithAMergedAwayId_ReadsTheSurvivorsRow()
+    public async Task GetIban_MergedAwayId_ReadsSurvivorRow()
     {
         var survivor = Guid.NewGuid();
         var archived = Guid.NewGuid();
@@ -170,7 +170,7 @@ public class PaymentDetailsTests
     }
 
     [HumansFact]
-    public async Task RevealIban_ReturnsTheIban_AndAuditsTheAdmin()
+    public async Task RevealIban_Iban_ReturnedWithAudit()
     {
         var target = Guid.NewGuid();
         var admin = Guid.NewGuid();
@@ -186,7 +186,7 @@ public class PaymentDetailsTests
     }
 
     [HumansFact]
-    public async Task RevealIban_WithNoIban_ReturnsNull_AndAuditsNothing()
+    public async Task RevealIban_NoIban_ReturnsNull()
     {
         var target = Guid.NewGuid();
         SeedUser(target);
@@ -253,7 +253,7 @@ public class PaymentDetailsTests
     }
 
     [HumansFact]
-    public async Task Export_MasksTheIban_AndErasureDeletesTheRow()
+    public async Task Export_Iban_IsMasked()
     {
         var id = Guid.NewGuid();
         SeedUser(id);
@@ -272,7 +272,7 @@ public class PaymentDetailsTests
     }
 
     [HumansFact]
-    public void RevealIban_IsAdminOnly_PostAndAntiforgery()
+    public void RevealIban_Action_IsAdminOnlyPost()
     {
         typeof(PaymentDetailsAdminController)
             .GetCustomAttributes(typeof(AuthorizeAttribute), inherit: false)
@@ -283,7 +283,7 @@ public class PaymentDetailsTests
     }
 
     [HumansFact]
-    public async Task RevealIban_PutsTheIbanInTempData_AndReturnsToTheAdminDetailPage()
+    public async Task RevealIban_Post_ReturnsToAdminDetailPage()
     {
         var target = Guid.NewGuid();
         var admin = Guid.NewGuid();
@@ -314,7 +314,7 @@ public class PaymentDetailsTests
     [HumansTheory]
     [Xunit.InlineData(true, ProfileCardViewMode.Public)]
     [Xunit.InlineData(false, ProfileCardViewMode.Admin)]
-    public async Task Card_RendersNothing_OutsideTheAdminHost_OrForANonAdmin(bool isAdmin, ProfileCardViewMode mode)
+    public async Task Card_NonAdminOrOtherHost_RendersNothing(bool isAdmin, ProfileCardViewMode mode)
     {
         var id = Guid.NewGuid();
         SeedUser(id);

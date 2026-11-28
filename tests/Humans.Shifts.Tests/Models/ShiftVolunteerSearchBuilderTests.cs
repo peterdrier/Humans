@@ -50,7 +50,7 @@ public class ShiftVolunteerSearchBuilderTests
         new(_burnSettings, _userService, _shiftView, _signupService, _tracking);
 
     [HumansFact]
-    public async Task SearchReads_PreserveCancellationAcrossEventAndCandidateLookups()
+    public async Task SearchReads_Cancellation_ReachesAllLookups()
     {
         using var cancellation = new CancellationTokenSource();
         var target = MakeShift(PastBurnId, 1, new LocalTime(10, 0), Duration.FromHours(4));
@@ -69,7 +69,7 @@ public class ShiftVolunteerSearchBuilderTests
     }
 
     [HumansFact]
-    public async Task TargetInActiveBurn_ReusesCachedViewAndResolvesTheBurnOnce()
+    public async Task Build_TargetInActiveBurn_ReusesCachedView()
     {
         var target = MakeShift(ActiveBurnId, dayOffset: 1, new LocalTime(10, 0), Duration.FromHours(4));
         // Cached view is active-scoped, so it may be used as-is here.
@@ -88,7 +88,7 @@ public class ShiftVolunteerSearchBuilderTests
     }
 
     [HumansFact]
-    public async Task TargetInAnotherBurn_UsesThatBurnsCalendarAndRefetchesSignups()
+    public async Task Build_TargetInAnotherBurn_UsesThatBurnsCalendar()
     {
         var target = MakeShift(PastBurnId, dayOffset: 1, new LocalTime(10, 0), Duration.FromHours(4));
 

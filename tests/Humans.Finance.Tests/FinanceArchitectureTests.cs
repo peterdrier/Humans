@@ -10,7 +10,7 @@ namespace Humans.Finance.Tests;
 public class FinanceArchitectureTests
 {
     [HumansFact]
-    public void FinanceControllerRequiresFinanceRead()
+    public void FinanceController_Class_RequiresFinanceRead()
     {
         // Nothing proves the negative at runtime: the render tests only ever sign in as Admin.
         typeof(FinanceController)

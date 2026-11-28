@@ -24,7 +24,7 @@ namespace Humans.Shifts.Tests.ViewComponents;
 public class ShiftSignupsViewTests
 {
     [HumansFact]
-    public async Task Header_resolves_the_subject_only_for_admin_mode()
+    public async Task Header_AdminMode_ResolvesSubject()
     {
         using var culture = new CultureScope(CultureCatalog.DefaultCultureCode);
         var userId = Guid.NewGuid();

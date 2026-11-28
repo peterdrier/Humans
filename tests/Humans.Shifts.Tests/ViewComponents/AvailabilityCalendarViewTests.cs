@@ -31,7 +31,7 @@ public class AvailabilityCalendarViewTests
 {
     [HumansTheory]
     [Xunit.MemberData(nameof(SupportedCultures.All), MemberType = typeof(SupportedCultures))]
-    public async Task Selected_days_label_preserves_the_member_language(string language)
+    public async Task SelectedDaysLabel_Render_KeepsMemberLanguage(string language)
     {
         using var culture = new CultureScope(language);
         var html = await RenderAsync();
@@ -47,7 +47,7 @@ public class AvailabilityCalendarViewTests
 
     [HumansTheory]
     [Xunit.MemberData(nameof(SupportedCultures.All), MemberType = typeof(SupportedCultures))]
-    public async Task Signup_range_summaries_preserve_the_member_language(string language)
+    public async Task SignupRangeSummaries_Render_KeepMemberLanguage(string language)
     {
         using var culture = new CultureScope(language);
         var resources = new ResourceManager(typeof(ShiftsResource));

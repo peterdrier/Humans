@@ -182,7 +182,7 @@ public sealed class ShiftManagementWriteGuardTests : ShiftsTestHarness
     }
 
     [HumansFact]
-    public async Task CreateRotaAsync_NoShiftsKnobsRowYet_CreatesOneOnDemand()
+    public async Task CreateRotaAsync_NoKnobsRow_CreatesOne()
     {
         // The calendar (Settings) knows about the event, but Shifts has never
         // created its own knobs row for it — the first rota creates one.
@@ -214,7 +214,7 @@ public sealed class ShiftManagementWriteGuardTests : ShiftsTestHarness
     }
 
     [HumansFact]
-    public async Task CreateRotaAsync_WithTags_PersistsRotaAndTags()
+    public async Task CreateRotaAsync_Tags_SavedWithRota()
     {
         var es = SeedEventSettings();
         var team = SeedDepartment("Gate");
@@ -352,7 +352,7 @@ public sealed class ShiftManagementWriteGuardTests : ShiftsTestHarness
     }
 
     [HumansFact]
-    public async Task MoveRotaToTeamAsync_Fails_WhenRotaBelongsToADifferentSourceTeam()
+    public async Task MoveRotaToTeamAsync_WrongSourceTeam_Fails()
     {
         var (_, rota, _) = SeedRotaScenario(RotaPeriod.Event);
         var target = SeedDepartment("Target");
@@ -381,7 +381,7 @@ public sealed class ShiftManagementWriteGuardTests : ShiftsTestHarness
     }
 
     [HumansFact]
-    public async Task MoveRotaToTeamAsync_Fails_WhenTargetIsASubTeam()
+    public async Task MoveRotaToTeamAsync_TargetIsSubteam_Fails()
     {
         var (_, rota, department) = SeedRotaScenario(RotaPeriod.Event);
         var subTeam = SeedDepartment("Sub", parentTeamId: department.Id);
@@ -395,7 +395,7 @@ public sealed class ShiftManagementWriteGuardTests : ShiftsTestHarness
     }
 
     [HumansFact]
-    public async Task MoveRotaToTeamAsync_Fails_WhenTargetIsASystemTeam()
+    public async Task MoveRotaToTeamAsync_TargetIsSystemTeam_Fails()
     {
         var (_, rota, _) = SeedRotaScenario(RotaPeriod.Event);
         var systemTeam = SeedDepartment("Volunteers", systemTeamType: SystemTeamType.Volunteers);
@@ -409,7 +409,7 @@ public sealed class ShiftManagementWriteGuardTests : ShiftsTestHarness
     }
 
     [HumansFact]
-    public async Task MoveRotaToTeamAsync_Fails_WhenRotaIsAlreadyOnTheTargetTeam()
+    public async Task MoveRotaToTeamAsync_AlreadyOnTarget_Fails()
     {
         var (_, rota, department) = SeedRotaScenario(RotaPeriod.Event);
         await SaveAllAsync(Ct);
@@ -464,7 +464,7 @@ public sealed class ShiftManagementWriteGuardTests : ShiftsTestHarness
     }
 
     [HumansFact]
-    public async Task DeleteShiftAsync_DeletesShiftAndPendingSignups()
+    public async Task DeleteShiftAsync_PendingSignups_DeletedWithShift()
     {
         var (_, rota, _) = SeedRotaScenario(RotaPeriod.Event);
         var shift = SeedShift(rota, dayOffset: 1);
@@ -490,7 +490,7 @@ public sealed class ShiftManagementWriteGuardTests : ShiftsTestHarness
     }
 
     [HumansFact]
-    public async Task CreateBuildStrikeShifts_Fails_WhenRotaBelongsToAnotherTeam()
+    public async Task CreateBuildStrikeShifts_OtherTeamsRota_Fails()
     {
         var (_, rota, _) = SeedRotaScenario(RotaPeriod.Build);
         await SaveAllAsync(Ct);
@@ -517,7 +517,7 @@ public sealed class ShiftManagementWriteGuardTests : ShiftsTestHarness
     }
 
     [HumansFact]
-    public async Task CreateBuildStrikeShifts_Fails_WhenAnyDayHasMinAboveMax()
+    public async Task CreateBuildStrikeShifts_MinAboveMax_Fails()
     {
         var (_, rota, _) = SeedRotaScenario(RotaPeriod.Build);
         await SaveAllAsync(Ct);
@@ -550,7 +550,7 @@ public sealed class ShiftManagementWriteGuardTests : ShiftsTestHarness
     [HumansTheory]
     [InlineData(-15)]
     [InlineData(0)]
-    public async Task CreateBuildStrikeShifts_ReturnsRefusal_WhenBuildDayOffsetIsOutsideTheBuildWindow(int dayOffset)
+    public async Task CreateBuildStrikeShifts_BuildDayOutsideWindow_IsRefused(int dayOffset)
     {
         var (_, rota, _) = SeedRotaScenario(RotaPeriod.Build);
         await SaveAllAsync(Ct);
@@ -581,7 +581,7 @@ public sealed class ShiftManagementWriteGuardTests : ShiftsTestHarness
     [HumansTheory]
     [InlineData(6)]
     [InlineData(10)]
-    public async Task CreateBuildStrikeShifts_ReturnsRefusal_WhenStrikeDayOffsetIsOutsideTheStrikeWindow(int dayOffset)
+    public async Task CreateBuildStrikeShifts_StrikeDayOutsideWindow_IsRefused(int dayOffset)
     {
         var (_, rota, _) = SeedRotaScenario(RotaPeriod.Strike);
         await SaveAllAsync(Ct);
@@ -614,7 +614,7 @@ public sealed class ShiftManagementWriteGuardTests : ShiftsTestHarness
     [InlineData(-14, true)]
     [InlineData(0, true)]
     [InlineData(9, true)]
-    public async Task All_period_staffing_respects_the_complete_event_window(int dayOffset, bool valid)
+    public async Task AllPeriodStaffing_Shifts_StayInEventWindow(int dayOffset, bool valid)
     {
         var (_, rota, _) = SeedRotaScenario(RotaPeriod.All);
         await SaveAllAsync(Ct);
@@ -641,7 +641,7 @@ public sealed class ShiftManagementWriteGuardTests : ShiftsTestHarness
     }
 
     [HumansFact]
-    public async Task CreateBuildStrikeShifts_IsAdditive_SkippingDaysThatAlreadyHaveShifts()
+    public async Task CreateBuildStrikeShifts_DaysWithShifts_AreSkipped()
     {
         var (_, rota, _) = SeedRotaScenario(RotaPeriod.Build);
         var existing = SeedShift(rota, dayOffset: -3);
@@ -663,7 +663,7 @@ public sealed class ShiftManagementWriteGuardTests : ShiftsTestHarness
     }
 
     [HumansFact]
-    public async Task CreateBuildStrikeShifts_LastEntryWins_WhenADayIsListedTwice()
+    public async Task CreateBuildStrikeShifts_DayListedTwice_LastWins()
     {
         var (_, rota, _) = SeedRotaScenario(RotaPeriod.Build);
         await SaveAllAsync(Ct);
@@ -685,7 +685,7 @@ public sealed class ShiftManagementWriteGuardTests : ShiftsTestHarness
     [InlineData(-1, 3)]
     [InlineData(0, 7)]
     [InlineData(4, 2)]
-    public async Task GenerateEventShifts_Fails_WhenTheDayRangeLeavesTheEventWindow(int start, int end)
+    public async Task GenerateEventShifts_RangeOutsideEvent_Fails(int start, int end)
     {
         var (_, rota, _) = SeedRotaScenario(RotaPeriod.Event);
         await SaveAllAsync(Ct);
@@ -699,7 +699,7 @@ public sealed class ShiftManagementWriteGuardTests : ShiftsTestHarness
     }
 
     [HumansFact]
-    public async Task GenerateEventShifts_Accepts_ASingleDayAtTheEndOfTheEventWindow()
+    public async Task GenerateEventShifts_LastEventDay_IsAccepted()
     {
         var (_, rota, _) = SeedRotaScenario(RotaPeriod.Event);
         await SaveAllAsync(Ct);
@@ -839,7 +839,7 @@ public sealed class ShiftManagementWriteGuardTests : ShiftsTestHarness
     [InlineData("create", true, 39d, true)]
     [InlineData("update", true, 39d, true)]
     [InlineData("event", true, 39d, true)]
-    public async Task ShiftWrites_KeepAbsoluteAndLocalEndsWithinTheCalendar(
+    public async Task ShiftWrites_Ends_StayWithinCalendar(
         string action, bool nearCalendarEnd, double hours, bool expectedSuccess)
     {
         var (es, rota, _) = SeedRotaScenario(RotaPeriod.Event);
@@ -941,7 +941,7 @@ public sealed class ShiftManagementWriteGuardTests : ShiftsTestHarness
     [InlineData(1d / 3600, 1)]
     [InlineData(2.3d, 8280)]
     [InlineData(1.15d, 4140)]
-    public async Task CreateShiftAsync_AcceptsZeroMinimumAndWholeSecondDurations(double hours, int seconds)
+    public async Task CreateShiftAsync_ZeroMinimum_IsAccepted(double hours, int seconds)
     {
         var (_, rota, _) = SeedRotaScenario(RotaPeriod.Event);
         await SaveAllAsync(Ct);
@@ -1030,7 +1030,7 @@ public sealed class ShiftManagementWriteGuardTests : ShiftsTestHarness
     }
 
     [HumansFact]
-    public async Task UpdateShiftAsync_Fails_WhenDayOffsetLeavesTheRotaPeriodWindow()
+    public async Task UpdateShiftAsync_DayOutsideRotaPeriod_Fails()
     {
         var (_, rota, _) = SeedRotaScenario(RotaPeriod.Build);
         var shift = SeedShift(rota, dayOffset: -4);
