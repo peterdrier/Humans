@@ -10,7 +10,7 @@ using Humans.Users.Contracts;
 
 namespace Humans.Budget.Services;
 
-/// <summary>budget_changes is append-only.</summary>
+/// <summary>budget_audit_logs is append-only.</summary>
 internal sealed class BudgetService(
     IBudgetRepository repository,
     ITeamService teamService,
