@@ -89,7 +89,7 @@ public sealed class TicketDeliveryServiceTests
     }
 
     [HumansFact]
-    public async Task Deliver_RendersTheHolderFirstAndDependentsByIssueTime()
+    public async Task Deliver_Rendered_PutsHolderFirst()
     {
         var now = Instant.FromUtc(2027, 1, 1, 12, 0);
         var adult = Ticket(BuyerId, "Ana Buyer", "ana@example.com", issuedAt: now + Duration.FromDays(2));
@@ -105,7 +105,7 @@ public sealed class TicketDeliveryServiceTests
     }
 
     [HumansFact]
-    public async Task Deliver_SendsOneTicketPerHolder_AndOneReceiptToTheBuyer()
+    public async Task Deliver_PaidOrder_SendsOneReceipt()
     {
         var own = Ticket(BuyerId, "Ana Buyer", "ana@example.com");
         var partner = Ticket(PartnerId, "Ben Partner", "ben@example.com");
@@ -142,7 +142,7 @@ public sealed class TicketDeliveryServiceTests
     }
 
     [HumansFact]
-    public async Task Deliver_PutsAChildWithoutEmailOnTheAdultsMail_AndInvitesOnlyTheAdult()
+    public async Task Deliver_ChildWithoutEmail_GoesOnAdultsMail()
     {
         var adult = Ticket(BuyerId, "Ana Buyer", "ana@example.com");
         var child = Ticket(BuyerId, "Kid Buyer", null, kind: TicketHolderKind.Child, parent: adult.Id);
@@ -237,7 +237,7 @@ public sealed class TicketDeliveryServiceTests
     }
 
     [HumansFact]
-    public async Task Resend_SendsFreshMail_AndAuditsTheActor()
+    public async Task Resend_Valid_AuditsActor()
     {
         Tickets(Ticket(BuyerId, "Ana Buyer", "ana@example.com"));
         var actor = Guid.NewGuid();
@@ -263,7 +263,7 @@ public sealed class TicketDeliveryServiceTests
     }
 
     [HumansFact]
-    public async Task Deliver_FailingOnTheSecondTicket_EndsWithEveryMailQueuedOnceAfterARetry()
+    public async Task Deliver_SecondTicketFails_RetryQueuesEachOnce()
     {
         Tickets(Ticket(BuyerId, "Ana Buyer", "ana@example.com"), Ticket(PartnerId, "Ben Partner", "ben@example.com"));
         var calls = 0;
@@ -283,7 +283,7 @@ public sealed class TicketDeliveryServiceTests
     }
 
     [HumansFact]
-    public async Task Deliver_UsesTheOrderLanguage_ForAHolderWhoHasNeverSignedIn()
+    public async Task Deliver_HolderNeverSignedIn_UsesOrderLanguage()
     {
         _users.GetUserInfoAsync(PartnerId, Arg.Any<CancellationToken>()).Returns(new ValueTask<UserInfo?>(
             new UserInfo(PartnerId, "Ben", false, "en", null, Instant.MinValue, null, null, null, null, null, null, null, null,
@@ -296,7 +296,7 @@ public sealed class TicketDeliveryServiceTests
     }
 
     [HumansFact]
-    public async Task Deliver_CountsTheMailsHandedToEmail_AndTheTicketsSkipped()
+    public async Task Deliver_Result_CountsMailsWithSkips()
     {
         var adult = Ticket(BuyerId, "Ana Buyer", "ana@example.com");
         Tickets(adult, Ticket(BuyerId, "Kid", null, kind: TicketHolderKind.Child, parent: adult.Id),
@@ -325,7 +325,7 @@ public sealed class TicketDeliveryServiceTests
     }
 
     [HumansFact]
-    public async Task NothingIsSentForAnUnpaidOrder()
+    public async Task Deliver_UnpaidOrder_SendsNothing()
     {
         _order.State = TicketCheckoutOrderState.Pending;
         Tickets(Ticket(BuyerId, "Ana Buyer", "ana@example.com"));
@@ -394,7 +394,7 @@ public sealed class TicketDeliveryServiceTests
     [Xunit.InlineData(nameof(TicketCheckoutTicketState.Void))]
     [Xunit.InlineData(nameof(TicketCheckoutTicketState.Resold))]
     [Xunit.InlineData(nameof(TicketCheckoutTicketState.Offered))]
-    public async Task JoinInvitation_IsSkippedOnceTheTicketIsNoLongerHeld(string state)
+    public async Task JoinInvitation_TicketNoLongerHeld_IsSkipped(string state)
     {
         var ticket = Ticket(PartnerId, "Ben Partner", "ben@example.com", Enum.Parse<TicketCheckoutTicketState>(state));
         Tickets(ticket);
@@ -405,7 +405,7 @@ public sealed class TicketDeliveryServiceTests
     }
 
     [HumansFact]
-    public async Task PaymentEnded_TellsTheBuyerOnlyWhenTheOrderFailedOrLapsed()
+    public async Task PaymentEnded_OrderFailedOrLapsed_TellsBuyer()
     {
         await Create().SendPaymentEndedAsync(_order.Id);
         _sent.Should().BeEmpty("a paid order gets its tickets, not a failure notice");
@@ -422,7 +422,7 @@ public sealed class TicketDeliveryServiceTests
     }
 
     [HumansFact]
-    public async Task ResaleSoldAndUnsold_GoToTheHolder_OnlyWhileTheTicketIsInThatState()
+    public async Task ResaleNotices_TicketLeftState_AreSkipped()
     {
         var ticket = Ticket(PartnerId, "Ben Partner", "ben@example.com", TicketCheckoutTicketState.Offered);
         _checkout.GetTicketAsync(ticket.Id, Arg.Any<CancellationToken>()).Returns(ticket);

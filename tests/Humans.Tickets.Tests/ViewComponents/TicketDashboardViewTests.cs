@@ -31,7 +31,7 @@ public class TicketDashboardViewTests
     [HumansTheory]
     [InlineData(false)]
     [InlineData(true)]
-    public async Task TicketStubLists_OrderNamesIgnoringCase_AndPutVoidsLast(bool holdingsCard)
+    public async Task TicketStubLists_Voids_ComeLast(bool holdingsCard)
     {
         var stubs = new List<TicketStubInfo>
         {
@@ -128,7 +128,7 @@ public class TicketDashboardViewTests
 
     [HumansTheory]
     [MemberData(nameof(SupportedCultures.All), MemberType = typeof(SupportedCultures))]
-    public async Task GuestOrders_RenderAmountInUiCultureAndKeepCurrencyCode(string culture)
+    public async Task GuestOrders_Amount_UsesUiCulture(string culture)
     {
         var expected = $"{1234.5m.ToString("N2", CultureInfo.GetCultureInfo(culture))} USD";
         var orders = new List<UserTicketOrderSummary>
@@ -144,7 +144,7 @@ public class TicketDashboardViewTests
 
     [HumansTheory]
     [MemberData(nameof(SupportedCultures.All), MemberType = typeof(SupportedCultures))]
-    public async Task DashboardNumbers_UseUiCultureAcrossCardsRowsAndTotals(string language)
+    public async Task DashboardNumbers_Rendered_UseUiCulture(string language)
     {
         var ui = CultureInfo.GetCultureInfo(language);
         var count = 1234.ToString("N0", ui);
@@ -227,7 +227,7 @@ public class TicketDashboardViewTests
     [HumansTheory]
     [InlineData(false)]
     [InlineData(true)]
-    public async Task MemberTicketCard_SellingInHumans_OffersTheBuyPage_WhateverTheVendorSync(bool vendorConfigured)
+    public async Task MemberTicketCard_SellingInHumans_OffersBuyPage(bool vendorConfigured)
     {
         var html = await RenderAsync("MemberTicketStatus",
             new MemberTicketStatusViewModel(Guid.NewGuid(), vendorConfigured, 0, 2027, null) { SellsInHumans = true },
@@ -239,7 +239,7 @@ public class TicketDashboardViewTests
     }
 
     [HumansFact]
-    public async Task MemberTicketCard_NothingSellingAndNoVendor_SaysNotConfigured()
+    public async Task MemberTicketCard_NothingSellingNoVendor_SaysNotConfigured()
     {
         var html = await RenderAsync("MemberTicketStatus",
             new MemberTicketStatusViewModel(Guid.NewGuid(), false, 0, 2027, null),
@@ -250,7 +250,7 @@ public class TicketDashboardViewTests
     }
 
     [HumansFact]
-    public async Task PlatformStatusPage_ListsStuckOrdersAndUnsettledRefunds()
+    public async Task PlatformStatusPage_StuckOrders_AreListed()
     {
         var at = Instant.FromUtc(2027, 3, 1, 12, 0);
         var stuck = new TicketCheckoutOrder

@@ -42,7 +42,7 @@ public class TicketHoldingsViewComponentTests
     }
 
     [HumansFact]
-    public async Task RendersOnlyTheOnsiteChip_ForSelfViewer_WithNoHoldings()
+    public async Task Holdings_SelfViewerNoHoldings_RendersOnsiteChip()
     {
         var userId = Guid.NewGuid();
         _tickets.GetUserTicketHoldingsAsync(userId, Arg.Any<CancellationToken>())

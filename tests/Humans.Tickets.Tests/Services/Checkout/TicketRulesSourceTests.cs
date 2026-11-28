@@ -10,7 +10,7 @@ namespace Humans.Tickets.Tests.Services.Checkout;
 public class TicketRulesSourceTests
 {
     [HumansFact]
-    public void The_suffix_less_file_is_spanish_and_names_the_set()
+    public void Read_SuffixLessFile_IsSpanish()
     {
         GitHubTicketRulesSource.RulesFiles(["R/NORMAS.md", "R/NORMAS-en.md", "R/NORMAS-DE.md", "R/notes-en.md", "R/logo.png"]).Files
             .Should().BeEquivalentTo([("R/NORMAS.md", "es"), ("R/NORMAS-en.md", "en"), ("R/NORMAS-DE.md", "de")]);
@@ -28,7 +28,7 @@ public class TicketRulesSourceTests
     }
 
     [HumansFact]
-    public async Task A_github_failure_replaces_cached_rules_with_unavailable_until_a_successful_read()
+    public async Task Read_GithubFails_ReplacesCachedRules()
     {
         var source = new ScriptedSource();
         var good = new TicketRules("R", "abc123", new Dictionary<string, string>(StringComparer.Ordinal) { ["es"] = "es", ["en"] = "en" });
@@ -59,7 +59,7 @@ public class TicketRulesSourceTests
     }
 
     [HumansFact]
-    public async Task A_folder_never_read_gives_no_rules_when_github_fails()
+    public async Task Read_GithubFailsNoCache_GivesNoRules()
     {
         var source = new ScriptedSource { Next = () => throw new HttpRequestException("down") };
         (await source.GetAsync("R")).Should().Be(TicketRulesRead.Failed("GitHub could not be reached."));

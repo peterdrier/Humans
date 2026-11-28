@@ -153,7 +153,7 @@ public abstract class CheckoutServiceFixture
 
     private protected static CancellationToken Ct => TestContext.Current.CancellationToken;
 
-    private protected async Task<TicketCheckoutOrder> BuyAndPayAsync(StartCheckout command, Guid userId)
+    private protected async Task<TicketCheckoutOrder> BuyPaidOrderAsync(StartCheckout command, Guid userId)
     {
         var result = await _service.StartCheckoutAsync(command, userId, Ct);
         result.Refusal.Should().BeNull();
@@ -166,7 +166,7 @@ public abstract class CheckoutServiceFixture
 
     private protected async Task<TicketCheckoutTicket> OfferedTicketAsync(StartCheckout? command = null)
     {
-        var order = await BuyAndPayAsync(command ?? Buy(), _buyerId);
+        var order = await BuyPaidOrderAsync(command ?? Buy(), _buyerId);
         var adult = _repo.Tickets.Single(t => t.OrderId == order.Id && t.Kind == TicketHolderKind.Adult);
         (await _service.OfferForResaleAsync(adult.Id, _buyerId, Ct)).Refusal.Should().BeNull();
         _ticketing.Mode = TicketSalesMode.ResaleOnly;
@@ -197,7 +197,7 @@ public abstract class CheckoutServiceFixture
 
     private protected async Task<TicketCheckoutTicket> PaidAdultAsync()
     {
-        var order = await BuyAndPayAsync(Buy(), _buyerId);
+        var order = await BuyPaidOrderAsync(Buy(), _buyerId);
         return _repo.Tickets.Single(t => t.OrderId == order.Id && t.Kind == TicketHolderKind.Adult);
     }
 

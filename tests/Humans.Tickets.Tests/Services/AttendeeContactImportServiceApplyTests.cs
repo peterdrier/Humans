@@ -20,7 +20,7 @@ public class AttendeeContactImportServiceApplyTests
     [HumansTheory]
     [Xunit.InlineData(false)]
     [Xunit.InlineData(true)]
-    public async Task Apply_AttachVerified_SetsMatchedUserIdAndUpserts(bool scanned)
+    public async Task Apply_AttachVerified_SetsMatchedUserId(bool scanned)
     {
         var harness = new ApplyHarness();
         var scan = Instant.FromUtc(2026, 5, 12, 10, 0);
@@ -76,7 +76,7 @@ public class AttendeeContactImportServiceApplyTests
     [Xunit.InlineData("none")]
     [Xunit.InlineData("provisioning")]
     [Xunit.InlineData("attendee-save")]
-    public async Task Apply_CreateNewUser_CompletesLinksParticipationAndAuditDespiteRequestCancellation(string cancelAt)
+    public async Task Apply_CreateUserCancelledRequest_StillCompletes(string cancelAt)
     {
         var harness = new ApplyHarness();
         using var request = new CancellationTokenSource();
@@ -145,7 +145,7 @@ public class AttendeeContactImportServiceApplyTests
     }
 
     [HumansFact]
-    public async Task Apply_CancelledDuringPreflight_StopsBeforeWritesAndAudit()
+    public async Task Apply_CancelledDuringPreflight_WritesNothing()
     {
         var harness = new ApplyHarness();
         using var request = new CancellationTokenSource();
@@ -258,7 +258,7 @@ public class AttendeeContactImportServiceApplyTests
     [Xunit.InlineData("buyer@x.com", "buyer@x.com")]
     [Xunit.InlineData("buyer@gmail.com", "BUYER@googlemail.com")]
     [Xunit.InlineData("buyer@googlemail.com", "buyer@gmail.com")]
-    public async Task Apply_GroupedDecision_FansMatchedUserIdToAllGroupAttendees(string email, string alternate)
+    public async Task Apply_GroupedDecision_MatchesWholeGroup(string email, string alternate)
     {
         var harness = new ApplyHarness();
         var leadId = Guid.NewGuid();
@@ -322,7 +322,7 @@ public class AttendeeContactImportServiceApplyTests
     [HumansTheory]
     [Xunit.InlineData(false)]
     [Xunit.InlineData(true)]
-    public async Task Apply_GroupedDecision_AttachVerified_FansToAllGroupAttendees(bool scanned)
+    public async Task Apply_GroupedAttachVerified_ReachesWholeGroup(bool scanned)
     {
         var harness = new ApplyHarness();
         var scan = Instant.FromUtc(2026, 5, 12, 10, 0);
@@ -375,7 +375,7 @@ public class AttendeeContactImportServiceApplyTests
     }
 
     [HumansFact]
-    public async Task Apply_GroupedDecision_GroupMemberWithDriftedEmail_IsSkippedButLeadProceeds()
+    public async Task Apply_GroupMemberEmailDrifted_IsSkipped()
     {
         var harness = new ApplyHarness();
         var leadId = Guid.NewGuid();
@@ -425,7 +425,7 @@ public class AttendeeContactImportServiceApplyTests
     }
 
     [HumansFact]
-    public async Task Apply_AttendeeVanishedBetweenPlanAndApply_IsCountedAndSkipped()
+    public async Task Apply_AttendeeVanished_IsSkipped()
     {
         var harness = new ApplyHarness();
         var goneId = Guid.NewGuid();

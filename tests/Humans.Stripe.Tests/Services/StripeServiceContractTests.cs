@@ -56,7 +56,7 @@ public class StripeServiceContractTests
     }
 
     [HumansFact]
-    public async Task GetPaymentDetails_returns_null_when_tickets_key_unset()
+    public async Task GetPaymentDetails_TicketsKeyUnset_ReturnsNull()
     {
         var (svc, log) = Build();
 
@@ -67,7 +67,7 @@ public class StripeServiceContractTests
     }
 
     [HumansFact]
-    public async Task PaymentDetails_waits_for_async_capture_fees_instead_of_recording_zero()
+    public async Task PaymentDetails_FeesPending_RecordsNoZero()
     {
         var http = Substitute.For<IHttpClient>();
         using var headers = new HttpResponseMessage();
@@ -99,7 +99,7 @@ public class StripeServiceContractTests
     }
 
     [HumansFact]
-    public async Task PaymentDetails_preserves_explicit_zero_fees_on_an_available_balance_transaction()
+    public async Task PaymentDetails_ExplicitZeroFees_AreKept()
     {
         var http = Substitute.For<IHttpClient>();
         using var headers = new HttpResponseMessage();
@@ -121,7 +121,7 @@ public class StripeServiceContractTests
     }
 
     [HumansFact]
-    public async Task PaymentDetails_captures_every_fee_bucket_and_stays_quiet_when_they_cover_the_total()
+    public async Task PaymentDetails_FeesCoverTotal_LogsNothing()
     {
         var http = Substitute.For<IHttpClient>();
         using var headers = new HttpResponseMessage();
@@ -151,7 +151,7 @@ public class StripeServiceContractTests
     }
 
     [HumansFact]
-    public async Task PaymentDetails_warns_when_an_unknown_fee_type_leaves_the_total_unaccounted()
+    public async Task PaymentDetails_UnknownFeeType_Warns()
     {
         var http = Substitute.For<IHttpClient>();
         using var headers = new HttpResponseMessage();
@@ -193,7 +193,7 @@ public class StripeServiceContractTests
     [InlineData("application_fee", "usd", false)]
     [InlineData("application_fee", "eur", false)]
     [InlineData("application_fee", "EUR", false)]
-    public async Task PaymentDetails_requires_euro_fee_currency(string target, string? currency, bool omitted)
+    public async Task PaymentDetails_NonEuroFee_IsRejected(string target, string? currency, bool omitted)
     {
         var payload = JsonNode.Parse("""
             {"id":"pi_currency","object":"payment_intent","status":"succeeded","currency":"eur","latest_charge":{
@@ -231,7 +231,7 @@ public class StripeServiceContractTests
     }
 
     [HumansFact]
-    public async Task ListStoreCheckoutSessions_returns_null_not_empty_when_store_key_unset()
+    public async Task ListStoreCheckoutSessions_StoreKeyUnset_ReturnsNull()
     {
         var (svc, log) = Build();
 
@@ -244,7 +244,7 @@ public class StripeServiceContractTests
     }
 
     [HumansFact]
-    public void ParseStoreCheckoutEvent_returns_null_when_signing_secret_unset()
+    public void ParseStoreCheckoutEvent_SecretUnset_ReturnsNull()
     {
         var (svc, log) = Build();
 
@@ -254,7 +254,7 @@ public class StripeServiceContractTests
     }
 
     [HumansFact]
-    public void ParseStoreCheckoutEvent_returns_null_for_an_invalid_signature()
+    public void ParseStoreCheckoutEvent_InvalidSignature_ReturnsNull()
     {
         var (svc, _) = Build(s => s.StoreWebhookSecret = TestWebhookSecret);
         var payload = SessionPayload("checkout.session.completed");
@@ -273,7 +273,7 @@ public class StripeServiceContractTests
     [InlineData("{\"id\":\"evt_invalid\",\"type\":\"checkout.session.completed\",\"data\":null}")]
     [InlineData("{\"type\":\"checkout.session.completed\",\"data\":{\"object\":{\"object\":\"checkout.session\",\"id\":\"cs_test\",\"currency\":\"eur\"}}}")]
     [InlineData("{\"id\":\"evt_invalid\",\"type\":\"checkout.session.completed\",\"data\":{\"object\":{\"object\":\"customer\",\"id\":\"cus_private\"}}}")]
-    public void ParseStoreCheckoutEvent_rejects_signed_malformed_payloads_without_throwing(string payload)
+    public void ParseStoreCheckoutEvent_MalformedPayload_ReturnsNull(string payload)
     {
         var (svc, log) = Build(s => s.StoreWebhookSecret = TestWebhookSecret);
 
@@ -286,7 +286,7 @@ public class StripeServiceContractTests
     [InlineData(0)]
     [InlineData("-0.01")]
     [InlineData(-100)]
-    public async Task CreateCheckoutSession_rejects_a_non_positive_amount(decimal amountEur)
+    public async Task CreateCheckoutSession_NonPositiveAmount_IsRejected(decimal amountEur)
     {
         var (svc, _) = Build(s => s.StoreKey = "sk_test_store");
 
@@ -297,7 +297,7 @@ public class StripeServiceContractTests
     }
 
     [HumansFact]
-    public async Task CreateCheckoutSession_rejects_an_unconfigured_store_key()
+    public async Task CreateCheckoutSession_StoreKeyUnset_IsRejected()
     {
         var (svc, _) = Build();
 
@@ -313,7 +313,7 @@ public class StripeServiceContractTests
     [InlineData("checkout.session.async_payment_failed", StoreCheckoutEventKind.CheckoutSessionAsyncPaymentFailed)]
     [InlineData("checkout.session.expired", StoreCheckoutEventKind.CheckoutSessionExpired)]
     [InlineData("customer.created", StoreCheckoutEventKind.Other)]
-    public void ParseStoreCheckoutEvent_categorizes_the_four_subscribed_events(
+    public void ParseStoreCheckoutEvent_SubscribedEvents_AreCategorized(
         string stripeEventType, StoreCheckoutEventKind expected)
     {
         var (svc, _) = Build(s => s.StoreWebhookSecret = TestWebhookSecret);
@@ -326,7 +326,7 @@ public class StripeServiceContractTests
     [HumansTheory]
     [InlineData("eur")]
     [InlineData("EUR")]
-    public void ParseStoreCheckoutEvent_projects_the_order_id_amount_and_status(string currency)
+    public void ParseStoreCheckoutEvent_Valid_ProjectsOrderFields(string currency)
     {
         var (svc, _) = Build(s => s.StoreWebhookSecret = TestWebhookSecret);
         var orderId = Guid.NewGuid();
@@ -358,7 +358,7 @@ public class StripeServiceContractTests
     [InlineData(null, true)]
     [InlineData(null, false)]
     [InlineData("", true)]
-    public void ParseStoreCheckoutEvent_requires_explicit_euro_currency(string? currency, bool present)
+    public void ParseStoreCheckoutEvent_NonEuroCurrency_IsRejected(string? currency, bool present)
     {
         var (svc, _) = Build(s => s.StoreWebhookSecret = TestWebhookSecret);
         var document = JsonNode.Parse(SessionPayload("checkout.session.completed"))!;
@@ -371,7 +371,7 @@ public class StripeServiceContractTests
     }
 
     [HumansFact]
-    public void ParseStoreCheckoutEvent_leaves_the_order_id_null_when_the_metadata_is_unusable()
+    public void ParseStoreCheckoutEvent_UnusableMetadata_HasNullOrderId()
     {
         var (svc, _) = Build(s => s.StoreWebhookSecret = TestWebhookSecret);
 
@@ -398,7 +398,7 @@ public class StripeServiceContractTests
     }
 
     [HumansFact]
-    public async Task Reads_return_null_when_the_key_lacks_the_scope()
+    public async Task Reads_KeyLacksScope_ReturnNull()
     {
         var ct = TestContext.Current.CancellationToken;
         var tickets = Answering(new StripeSettings { TicketsKey = "rk_test_t" }, HttpStatusCode.Forbidden, PermissionErrorBody);
@@ -412,7 +412,7 @@ public class StripeServiceContractTests
     [InlineData(HttpStatusCode.Unauthorized, "authentication_error")]
     [InlineData(HttpStatusCode.TooManyRequests, "rate_limit_error")]
     [InlineData(HttpStatusCode.InternalServerError, "api_error")]
-    public async Task Reads_and_the_write_propagate_every_other_stripe_failure(HttpStatusCode status, string type)
+    public async Task Calls_OtherStripeFailure_Throw(HttpStatusCode status, string type)
     {
         var ct = TestContext.Current.CancellationToken;
         var body = $$$"""{"error":{"type":"{{{type}}}","message":"boom"}}""";
@@ -429,7 +429,7 @@ public class StripeServiceContractTests
     }
 
     [HumansFact]
-    public async Task CreateCheckoutSession_rethrows_a_permission_error()
+    public async Task CreateCheckoutSession_PermissionError_Rethrows()
     {
         var svc = Answering(new StripeSettings { StoreKey = "rk_test_s" }, HttpStatusCode.Forbidden, PermissionErrorBody);
 
@@ -440,7 +440,7 @@ public class StripeServiceContractTests
     }
 
     [HumansFact]
-    public async Task CreateCheckoutSession_opens_no_replacement_when_the_superseded_session_already_completed()
+    public async Task CreateCheckoutSession_SupersededCompleted_OpensNoReplacement()
     {
         var http = Substitute.For<IHttpClient>();
         using var headers = new HttpResponseMessage();
@@ -462,7 +462,7 @@ public class StripeServiceContractTests
     }
 
     [HumansFact]
-    public async Task CreateCheckoutSession_returns_a_replayed_attempt_in_its_live_state()
+    public async Task CreateCheckoutSession_ReplayedAttempt_ReturnsLiveState()
     {
         var http = Substitute.For<IHttpClient>();
         using var headers = new HttpResponseMessage();
@@ -482,7 +482,7 @@ public class StripeServiceContractTests
     }
 
     [HumansFact]
-    public async Task PaymentDetails_returns_null_when_the_intent_has_no_charge()
+    public async Task PaymentDetails_IntentNoCharge_ReturnsNull()
     {
         var svc = Answering(new StripeSettings { TicketsKey = "rk_test_t" }, HttpStatusCode.OK,
             """{"id":"pi_none","object":"payment_intent","latest_charge":null}""");
@@ -491,7 +491,7 @@ public class StripeServiceContractTests
     }
 
     [HumansFact]
-    public async Task ListStoreCheckoutSessions_rejects_the_whole_list_when_one_session_is_not_euro()
+    public async Task ListStoreCheckoutSessions_NonEuroSession_RejectsList()
     {
         var svc = Answering(new StripeSettings { StoreKey = "rk_test_s" }, HttpStatusCode.OK, """
             {"object":"list","url":"/v1/checkout/sessions","has_more":false,"data":[
@@ -505,7 +505,7 @@ public class StripeServiceContractTests
     }
 
     [HumansFact]
-    public async Task ListStoreCheckoutSessions_returns_an_empty_list_when_stripe_holds_none()
+    public async Task ListStoreCheckoutSessions_StripeHoldsNone_ReturnsEmpty()
     {
         var svc = Answering(new StripeSettings { StoreKey = "rk_test_s" }, HttpStatusCode.OK,
             """{"object":"list","url":"/v1/checkout/sessions","has_more":false,"data":[]}""");
@@ -541,7 +541,7 @@ public class StripeServiceContractTests
     }
 
     [HumansFact]
-    public async Task StoreRefunds_read_through_the_store_account_and_are_null_without_one()
+    public async Task StoreRefunds_NoStoreAccount_ReturnNull()
     {
         var ct = TestContext.Current.CancellationToken;
         var http = Substitute.For<IHttpClient>();

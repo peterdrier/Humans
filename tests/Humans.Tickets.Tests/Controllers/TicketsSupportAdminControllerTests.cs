@@ -417,7 +417,7 @@ public class TicketsSupportAdminControllerTests
     }
 
     [HumansFact]
-    public async Task AdminOrder_PresentsTicketsByKindAndRefundsOldestFirst()
+    public async Task AdminOrder_Refunds_AreOldestFirst()
     {
         var order = new TicketCheckoutOrder { Id = Guid.NewGuid() };
         var adult = new TicketCheckoutTicket { Id = Guid.NewGuid(), Kind = TicketHolderKind.Adult, IssuedAt = Now };
@@ -478,7 +478,7 @@ public class TicketsSupportAdminControllerTests
     }
 
     [HumansFact]
-    public async Task PlatformStatus_OrdersRowsAndStartsReconciliationOnTheOldestLocalDay()
+    public async Task PlatformStatus_Reconciliation_StartsOnOldestDay()
     {
         var older = new TicketCheckoutOrder { Id = Guid.NewGuid(), CreatedAt = Instant.FromUtc(2027, 1, 9, 23, 30) };
         var newer = new TicketCheckoutOrder { Id = Guid.NewGuid(), CreatedAt = Now + Duration.FromDays(1) };
@@ -533,7 +533,7 @@ public class TicketsSupportAdminControllerTests
     }
 
     [HumansFact]
-    public async Task Ticket_PresentsDependentsByIssueTimeAndSelectsTheLatestOffer()
+    public async Task Ticket_SeveralOffers_SelectsLatest()
     {
         var order = new TicketCheckoutOrder { Id = Guid.NewGuid() };
         var ticket = new TicketCheckoutTicket { Id = Guid.NewGuid(), TicketingSettingsId = _sale.Id };
@@ -581,7 +581,7 @@ public class TicketsSupportAdminControllerTests
     }
 
     [HumansFact]
-    public async Task Report_OrdersPriceGroupsPurposesAndStatesForDisplay()
+    public async Task Report_Groups_AreOrderedForDisplay()
     {
         var order = new TicketCheckoutOrder
         {

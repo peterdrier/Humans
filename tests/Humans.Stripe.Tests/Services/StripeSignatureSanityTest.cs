@@ -16,7 +16,7 @@ namespace Humans.Stripe.Tests.Services;
 public class StripeSignatureSanityTest
 {
     [HumansFact]
-    public void Roundtrip_signed_payload_passes_EventUtility()
+    public void SignedPayload_RoundTrip_PassesEventUtility()
     {
         const string secret = "whsec_test_humans_integration_secret_do_not_use_in_prod";
         const string payload = """

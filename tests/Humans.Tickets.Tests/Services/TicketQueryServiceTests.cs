@@ -97,7 +97,7 @@ public sealed class TicketQueryServiceTests : TicketsTestHarness
     [InlineData(TicketDashboardRead.Budget, true)]
     [InlineData(TicketDashboardRead.Vendor, true)]
     [InlineData(TicketDashboardRead.Vendor, false)]
-    public async Task Dashboard_preserves_request_cancellation_through_all_reads(TicketDashboardRead boundary, bool requested)
+    public async Task Dashboard_Cancelled_Throws(TicketDashboardRead boundary, bool requested)
     {
         using var request = new CancellationTokenSource();
         var repository = Substitute.For<ITicketRepository>();
@@ -169,7 +169,7 @@ public sealed class TicketQueryServiceTests : TicketsTestHarness
     [InlineData("who-hasnt-bought")]
     [InlineData("codes")]
     [InlineData("sales")]
-    public async Task Admin_page_reads_honor_caller_cancellation(string page)
+    public async Task AdminPageReads_Cancelled_Throw(string page)
     {
         using var aborted = new CancellationTokenSource();
         await aborted.CancelAsync();
@@ -201,7 +201,7 @@ public sealed class TicketQueryServiceTests : TicketsTestHarness
     [InlineData("emails", false)]
     [InlineData("aliases", false)]
     [InlineData("hold", false)]
-    public async Task Holdings_private_reads_retain_cancellation_at_each_boundary(string boundary, bool cancel)
+    public async Task HoldingsReads_Cancelled_Throw(string boundary, bool cancel)
     {
         var userId = Guid.NewGuid();
         using var aborted = new CancellationTokenSource();
@@ -273,7 +273,7 @@ public sealed class TicketQueryServiceTests : TicketsTestHarness
     [InlineData("Offered", 2026, true)]
     [InlineData("Void", 2026, false)]
     [InlineData("Valid", 2025, false)]
-    public async Task Holdings_HumansIssuedTicket_HoldsDeletionUntil30DaysAfterStrike(string state, int year, bool held)
+    public async Task Holdings_HumansIssuedTicket_HoldsDeletion(string state, int year, bool held)
     {
         var userId = Guid.NewGuid();
         var ticketing = new TicketingSettings { Id = Guid.NewGuid(), EventSettingsId = Guid.NewGuid() };
@@ -307,7 +307,7 @@ public sealed class TicketQueryServiceTests : TicketsTestHarness
     [InlineData("attendees", true, false)]
     [InlineData("orders", true, false)]
     [InlineData("donations", true, false)]
-    public async Task Csv_export_reads_honor_browser_cancellation_and_preserve_completed_read_audits(string export, bool cancelled, bool hasActor)
+    public async Task CsvExportReads_Cancelled_KeepCompletedAudits(string export, bool cancelled, bool hasActor)
     {
         var actor = Guid.NewGuid();
         _userService.GetUserInfoAsync(actor, Arg.Any<CancellationToken>())
@@ -357,7 +357,7 @@ public sealed class TicketQueryServiceTests : TicketsTestHarness
     }
 
     [HumansFact]
-    public async Task GetWhoHasntBoughtAsync_LargePageDoesNotWrapToEarlierHumans()
+    public async Task GetWhoHasntBoughtAsync_LargePage_DoesNotWrap()
     {
         WireWhoHasntBoughtDependencies(CreateUser("Human", "human@example.com"));
         var first = await _service.GetWhoHasntBoughtAsync(null, null, null, null, 1, 50);
@@ -368,7 +368,7 @@ public sealed class TicketQueryServiceTests : TicketsTestHarness
     }
 
     [HumansFact]
-    public async Task EraseForUserAsync_scrubs_ticket_and_transfer_data()
+    public async Task EraseForUserAsync_Erased_ScrubsTransferData()
     {
         var userId = Guid.NewGuid();
 
@@ -378,7 +378,7 @@ public sealed class TicketQueryServiceTests : TicketsTestHarness
     }
 
     [HumansFact]
-    public async Task ContributeForUserAsync_exports_only_the_users_matched_order_and_attendee_records()
+    public async Task ContributeForUserAsync_MixedRows_ExportsMatchedOnly()
     {
         var userId = Guid.NewGuid();
         var orderId = Guid.NewGuid();
@@ -425,7 +425,7 @@ public sealed class TicketQueryServiceTests : TicketsTestHarness
     }
 
     [HumansFact]
-    public async Task GetSalesAggregatesAsync_ExcludesVoidTicketsFromCountsAndVipDonations()
+    public async Task GetSalesAggregatesAsync_VoidTickets_AreExcluded()
     {
         var orderId = Guid.NewGuid();
         var order = new TicketOrder
@@ -494,7 +494,7 @@ public sealed class TicketQueryServiceTests : TicketsTestHarness
     }
 
     [HumansFact]
-    public async Task GetSalesAggregatesAsync_ExcludesRefundedAndCancelledOrders()
+    public async Task GetSalesAggregatesAsync_RefundedOrCancelled_AreExcluded()
     {
         await TicketsDb.TicketOrders.AddRangeAsync(
             MakeOrder("ord_paid", TicketPaymentStatus.Paid, Instant.FromUtc(2026, 3, 2, 10, 0), 100m, 0m, 9.09m, 1, 0m),
@@ -517,7 +517,7 @@ public sealed class TicketQueryServiceTests : TicketsTestHarness
     }
 
     [HumansFact]
-    public async Task GetSalesAggregatesAsync_MonthlySales_SplitsPerMonthWithFeesAndRefundedGross()
+    public async Task GetSalesAggregatesAsync_MonthlySales_SplitPerMonth()
     {
         // 400 seat + 25 standalone donation = 425 gross; VAT base is min(400, 315) = 315.
         var march = MakeOrder("ord_mar", TicketPaymentStatus.Paid, Instant.FromUtc(2026, 3, 2, 10, 0), 425m, 25m, 28.64m, 1, 85m);
@@ -595,7 +595,7 @@ public sealed class TicketQueryServiceTests : TicketsTestHarness
     }
 
     [HumansFact]
-    public async Task GetDashboardStatsAsync_NetRevenue_DeductsFeeVatAndWithheldTax()
+    public async Task GetDashboardStatsAsync_NetRevenue_DeductsFeeVat()
     {
         var order = MakeOrder("ord_fees", TicketPaymentStatus.Paid, Instant.FromUtc(2026, 3, 2, 10, 0), 315m, 0m, 28.64m, 1, 0m);
         order.StripeFee = 5m;
@@ -613,7 +613,7 @@ public sealed class TicketQueryServiceTests : TicketsTestHarness
     }
 
     [HumansFact]
-    public async Task GetSalesAggregatesAsync_MonthlySales_BucketsByMadridMonthNotUtc()
+    public async Task GetSalesAggregatesAsync_MonthlySales_UseMadridMonth()
     {
         // 23:30 UTC on 31 Dec is 00:30 on 1 Jan in Europe/Madrid (UTC+1) — January's books.
         TicketsDb.TicketOrders.Add(
@@ -626,7 +626,7 @@ public sealed class TicketQueryServiceTests : TicketsTestHarness
     }
 
     [HumansFact]
-    public async Task GetSalesAggregatesAsync_MonthlySales_TicketIncomeExcludesVoidSeatsLikeTheVatBase()
+    public async Task GetSalesAggregatesAsync_MonthlyIncome_ExcludesVoidSeats()
     {
         var orderId = Guid.NewGuid();
         TicketsDb.TicketOrders.Add(new TicketOrder
@@ -661,7 +661,7 @@ public sealed class TicketQueryServiceTests : TicketsTestHarness
     }
 
     [HumansFact]
-    public async Task GetSalesAggregatesAsync_MonthlySales_TicketIncomeCountsATransferredSeatOnce()
+    public async Task GetSalesAggregatesAsync_TransferredSeat_CountsOnce()
     {
         // An automated transfer voids the original seat and adds a Valid replacement at the
         // same price on the same order; TotalAmount never moves. The month must report one seat.
@@ -697,7 +697,7 @@ public sealed class TicketQueryServiceTests : TicketsTestHarness
     }
 
     [HumansFact]
-    public async Task GetSalesAggregatesAsync_GroupsByTicketTypeAndPrice()
+    public async Task GetSalesAggregatesAsync_Tickets_GroupByTypePrice()
     {
         var orderId = Guid.NewGuid();
         TicketsDb.TicketOrders.Add(new TicketOrder
@@ -746,7 +746,7 @@ public sealed class TicketQueryServiceTests : TicketsTestHarness
     }
 
     [HumansFact]
-    public async Task GetSalesAggregatesAsync_ByTicketType_ExcludesUnpaidOrdersAndVoidAttendees()
+    public async Task GetSalesAggregatesAsync_TicketTypes_ExcludeUnpaidOrders()
     {
         var paidOrderId = Guid.NewGuid();
         TicketsDb.TicketOrders.Add(new TicketOrder
@@ -827,7 +827,7 @@ public sealed class TicketQueryServiceTests : TicketsTestHarness
     }
 
     [HumansFact]
-    public async Task GetSalesAggregatesAsync_ByDiscountCampaign_SplitsGrantedCodesFromVendorCodes()
+    public async Task GetSalesAggregatesAsync_Campaigns_SplitGrantedCodes()
     {
         var campaignId = Guid.NewGuid();
         var createdAt = Instant.FromUtc(2026, 1, 1, 0, 0);
@@ -863,7 +863,7 @@ public sealed class TicketQueryServiceTests : TicketsTestHarness
     }
 
     [HumansFact]
-    public async Task GetSalesAggregatesAsync_ByDiscountCampaign_KeepsCampaignsWithNoPaidRedemptions()
+    public async Task GetSalesAggregatesAsync_CampaignNoRedemptions_IsKept()
     {
         var campaignId = Guid.NewGuid();
         StubCodeTracking(
@@ -1015,7 +1015,7 @@ public sealed class TicketQueryServiceTests : TicketsTestHarness
     }
 
     [HumansFact]
-    public async Task GetOrdersPageAsync_BreaksSortTiesById_SoPagesNeverRepeatOrSkip()
+    public async Task GetOrdersPageAsync_SortTies_BreakById()
     {
         // Equal amounts, inserted in reverse Id order: only the Id tie-breaker yields Id order.
         var ids = new[] { new Guid("00000000-0000-0000-0000-000000000003"),
@@ -1040,7 +1040,7 @@ public sealed class TicketQueryServiceTests : TicketsTestHarness
     }
 
     [HumansFact]
-    public async Task GetAttendeesPageAsync_BreaksSortTiesById_SoPagesNeverRepeatOrSkip()
+    public async Task GetAttendeesPageAsync_SortTies_BreakById()
     {
         // Equal prices, inserted in reverse Id order: only the Id tie-breaker yields Id order.
         var order = MakeOrder("ord_ties", TicketPaymentStatus.Paid,
@@ -1188,7 +1188,7 @@ public sealed class TicketQueryServiceTests : TicketsTestHarness
     }
 
     [HumansFact]
-    public async Task GetWhoHasntBoughtAsync_CountsOnlyCurrentEventValidAttendeeMatches()
+    public async Task GetWhoHasntBoughtAsync_OtherEventTickets_DoNotCount()
     {
         var buyerOnly = CreateUser("Buyer Only", "buyer@example.com");
         var voided = CreateUser("Voided", "voided@example.com");
@@ -1321,7 +1321,7 @@ public sealed class TicketQueryServiceTests : TicketsTestHarness
     }
 
     [HumansFact]
-    public async Task GetOrderExportDataAsync_CarriesOrderIdAndVipDonationOverLiveSeats()
+    public async Task GetOrderExportDataAsync_LiveSeats_CarryVipDonation()
     {
         // Two live VIP seats at 400 (85 above the 315 threshold each); a voided 1000 seat must not count.
         var order = MakeOrder("ord_vip", TicketPaymentStatus.Paid,
@@ -1350,7 +1350,7 @@ public sealed class TicketQueryServiceTests : TicketsTestHarness
     }
 
     [HumansFact]
-    public async Task GetDonationExportDataAsync_PaidDonorsCarryPurchaseInstants_AndAudited()
+    public async Task GetDonationExportDataAsync_PaidDonors_CarryPurchaseInstants()
     {
         var ct = TestContext.Current.CancellationToken;
         TicketsDb.TicketOrders.Add(MakeOrder("ord_plain", TicketPaymentStatus.Paid,
@@ -1388,7 +1388,7 @@ public sealed class TicketQueryServiceTests : TicketsTestHarness
     }
 
     [HumansFact]
-    public async Task GetDonationExportDataAsync_IncludesDonationLinesOfPaidHumansOrders()
+    public async Task GetDonationExportDataAsync_PaidHumansOrders_AreIncluded()
     {
         var ticketing = new TicketingSettings { Id = Guid.NewGuid() };
         TicketCheckoutOrder Order(TicketCheckoutOrderState state, Instant paidAt, params (long Minor, string? Purpose)[] gifts) => new()
@@ -1421,7 +1421,7 @@ public sealed class TicketQueryServiceTests : TicketsTestHarness
     }
 
     [HumansFact]
-    public async Task Barcode_lookup_uses_the_synced_current_event()
+    public async Task BarcodeLookup_Synced_UsesCurrentEvent()
     {
         SetCurrentEvent("ev_test");
         var now = Instant.FromUtc(2026, 6, 1, 0, 0);
@@ -1441,7 +1441,7 @@ public sealed class TicketQueryServiceTests : TicketsTestHarness
     }
 
     [HumansFact]
-    public async Task GetTicketOrdersAsync_VoidAttendeeWithApprovedTransfer_CarriesRecipientAndBarcode()
+    public async Task GetTicketOrdersAsync_VoidWithTransfer_CarriesRecipient()
     {
         var attendeeId = Guid.NewGuid();
         var orderId = Guid.NewGuid();

@@ -26,7 +26,7 @@ public class StripeBootJobTests
     private static readonly TimeSpan SilenceWindow = TimeSpan.FromMilliseconds(500);
 
     [HumansFact]
-    public async Task Registrar_open_pr_read_observes_deadline_while_github_is_pending()
+    public async Task Registrar_GithubPending_ObservesDeadline()
     {
         var pending = new TaskCompletionSource<IReadOnlyList<PullRequest>>(TaskCreationOptions.RunContinuationsAsynchronously);
         var github = Substitute.For<IPullRequestsClient>();
@@ -41,7 +41,7 @@ public class StripeBootJobTests
     }
 
     [HumansFact]
-    public async Task Smoke_probe_does_not_block_startup_and_warns_per_unconfigured_key()
+    public async Task SmokeProbe_UnconfiguredKeys_WarnsPerKey()
     {
         var log = new CapturingLogger<StripeStartupSmokeService>();
         var probe = new StripeStartupSmokeService(Options.Create(new StripeSettings()), log);
@@ -59,7 +59,7 @@ public class StripeBootJobTests
     }
 
     [HumansFact]
-    public async Task Registrar_stays_silent_without_its_own_key()
+    public async Task Registrar_NoOwnKey_StaysSilent()
     {
         // Production and QA deliberately leave STRIPE_STORE_WEBHOOK_REGISTRAR_KEY unset. The
         // registrar must then do nothing at all — not even complain.
@@ -68,7 +68,7 @@ public class StripeBootJobTests
         var start = registrar.StartAsync(CancellationToken.None);
         start.IsCompleted.Should().BeTrue("boot must not wait on a Stripe round trip");
 
-        // Not StartAndSettleAsync: its wait is for an entry to appear, which is exactly what must not
+        // Not StartRegistrarAsync: its wait is for an entry to appear, which is exactly what must not
         // happen here, so it could only ever time out. See SilenceWindow.
         await Task.Delay(SilenceWindow);
         await registrar.StopAsync(CancellationToken.None);
@@ -77,7 +77,7 @@ public class StripeBootJobTests
     }
 
     [HumansFact]
-    public async Task Registrar_refuses_a_host_it_does_not_own()
+    public async Task Registrar_UnownedHost_IsRefused()
     {
         // A dev box or any unrecognized host: Stripe could not reach it, and registering would
         // burn an endpoint against the account quota.
@@ -85,20 +85,20 @@ public class StripeBootJobTests
             new StripeSettings { WebhookRegistrarKey = "rk_test_registrar" },
             "https://localhost:5001");
 
-        var entries = await StartAndSettleAsync(registrar, log);
+        var entries = await StartRegistrarAsync(registrar, log);
 
         entries.Should().ContainSingle()
             .Which.Message.Should().Contain("not a recognized PR-preview host");
     }
 
     [HumansFact]
-    public async Task Registrar_refuses_to_guess_a_url_when_base_url_is_unset()
+    public async Task Registrar_BaseUrlUnset_IsRefused()
     {
         var (registrar, log) = BuildRegistrar(
             new StripeSettings { WebhookRegistrarKey = "rk_test_registrar" },
             baseUrl: null);
 
-        var entries = await StartAndSettleAsync(registrar, log);
+        var entries = await StartRegistrarAsync(registrar, log);
 
         entries.Should().ContainSingle()
             .Which.Message.Should().Contain("no Email:BaseUrl configured");
@@ -117,7 +117,7 @@ public class StripeBootJobTests
     }
 
     private static async Task<IReadOnlyList<CapturingLogger<StoreWebhookRegistrationService>.LogEntry>>
-        StartAndSettleAsync(StoreWebhookRegistrationService registrar, CapturingLogger<StoreWebhookRegistrationService> log)
+        StartRegistrarAsync(StoreWebhookRegistrationService registrar, CapturingLogger<StoreWebhookRegistrationService> log)
     {
         var start = registrar.StartAsync(CancellationToken.None);
         start.IsCompleted.Should().BeTrue("boot must not wait on a Stripe round trip");

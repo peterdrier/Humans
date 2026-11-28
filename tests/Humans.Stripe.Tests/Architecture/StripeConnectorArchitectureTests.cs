@@ -12,7 +12,7 @@ public class StripeConnectorArchitectureTests
     // Nothing enforces "only Humans.Stripe references Stripe.net"; restore it from a host-level architecture test project.
 
     [HumansFact]
-    public void IStripeService_ExposesNoStripeSdkTypesOnItsPublicSurface()
+    public void IStripeService_PublicSurface_HasNoSdkTypes()
     {
         var methodTypes = typeof(IStripeService).GetMethods()
             .SelectMany(m => new[] { m.ReturnType }.Concat(m.GetParameters().Select(p => p.ParameterType)));

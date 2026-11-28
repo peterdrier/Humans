@@ -89,14 +89,14 @@ public sealed class TicketSupportReportsTests
     [InlineData("bo smi")]
     [InlineData("hx7q2k")]
     [InlineData(" cs_abc123 ")]
-    public void Lookup_matches_names_emails_ticket_codes_and_platform_references(string query)
+    public void Lookup_NameEmailOrCode_Matches(string query)
     {
         var order = Order(lines: Line());
         TicketSupportReports.Matches(order, [Ticket(order)], query).Should().BeTrue();
     }
 
     [HumansFact]
-    public void Lookup_matches_an_order_id_or_reference_only_exactly()
+    public void Lookup_OrderIdOrReference_MatchesExactly()
     {
         var order = Order(lines: Line());
 
@@ -110,14 +110,14 @@ public sealed class TicketSupportReportsTests
     [InlineData("an")]
     [InlineData("HX7Q")]
     [InlineData("cs_ABC")]
-    public void Lookup_ignores_short_queries_and_partial_codes(string query)
+    public void Lookup_ShortQueryOrPartialCode_FindsNothing(string query)
     {
         var order = Order(lines: Line());
         TicketSupportReports.Matches(order, [Ticket(order)], query).Should().BeFalse();
     }
 
     [HumansFact]
-    public void Refund_list_filters_by_state_and_drops_refunds_of_other_events()
+    public void RefundList_OtherEvents_AreDropped()
     {
         var order = Order(lines: Line());
         var failed = Refund(order.Id, 22500, RefundState.Failed, minute: 1);
@@ -131,7 +131,7 @@ public sealed class TicketSupportReportsTests
     }
 
     [HumansFact]
-    public void Resale_queue_assigns_waiting_positions_and_an_invited_offer_keeps_its_place()
+    public void ResaleQueue_InvitedOffer_KeepsPlace()
     {
         var order = Order(lines: Line());
         var (first, second, invited, sold) = (Ticket(order), Ticket(order), Ticket(order), Ticket(order));
@@ -152,7 +152,7 @@ public sealed class TicketSupportReportsTests
     }
 
     [HumansFact]
-    public void Sales_report_groups_issued_tickets_by_class_or_wave_and_splits_donations()
+    public void SalesReport_IssuedTickets_GroupByClassOrWave()
     {
         var wave = Order(lines: [Line(), Donation(17500, "Low income pool")]);
         var lowIncome = Order(lines: Line(12500));
@@ -182,7 +182,7 @@ public sealed class TicketSupportReportsTests
     }
 
     [HumansFact]
-    public void Sales_by_day_uses_the_event_time_zone()
+    public void SalesByDay_Days_UseEventTimeZone()
     {
         // 23:30 UTC on 10 January is already 11 January in Madrid.
         var late = Order(paidAt: Instant.FromUtc(2027, 1, 10, 23, 30), lines: [Line(), Donation(1000)]);
@@ -194,7 +194,7 @@ public sealed class TicketSupportReportsTests
     }
 
     [HumansFact]
-    public void Sales_report_totals_refunds_and_resale_offers_by_state()
+    public void SalesReport_Refunds_TotalByState()
     {
         var order = Order(lines: Line());
         var ticket = Ticket(order);

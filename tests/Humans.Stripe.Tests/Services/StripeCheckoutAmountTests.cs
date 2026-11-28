@@ -17,7 +17,7 @@ public class StripeCheckoutAmountTests
     [InlineData("19.995", 2000L)]
     [InlineData("19.994", 1999L)]
     [InlineData("123456.78", 12345678L)]
-    public void Converts_eur_to_stripe_minor_units(decimal eur, long expectedMinorUnits)
+    public void ToMinorUnits_Eur_Converts(decimal eur, long expectedMinorUnits)
     {
         StripeService.ToStripeMinorUnits(eur).Should().Be(expectedMinorUnits);
     }
@@ -34,7 +34,7 @@ public class StripeCheckoutAmountTests
     [InlineData(1999L, "19.99")]
     [InlineData(-250L, "-2.50")]
     [InlineData(12345678L, "123456.78")]
-    public void Converts_stripe_minor_units_back_to_eur(long minorUnits, decimal expectedEur)
+    public void FromMinorUnits_Cents_ConvertsToEur(long minorUnits, decimal expectedEur)
     {
         StripeService.FromStripeMinorUnits(minorUnits).Should().Be(expectedEur);
     }
@@ -44,7 +44,7 @@ public class StripeCheckoutAmountTests
     [InlineData("0.01")]
     [InlineData("19.99")]
     [InlineData("123456.78")]
-    public void Round_trips_a_representable_amount_without_loss(decimal eur)
+    public void Amount_Representable_RoundTrips(decimal eur)
     {
         StripeService.FromStripeMinorUnits(StripeService.ToStripeMinorUnits(eur)).Should().Be(eur);
     }

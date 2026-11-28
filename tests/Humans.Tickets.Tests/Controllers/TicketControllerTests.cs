@@ -42,7 +42,7 @@ public class TicketControllerTests
     }
 
     [HumansFact]
-    public async Task ExportDonations_OrdersByPurchaseInstantAndKeepsBothDonationKindsTogether()
+    public async Task ExportDonations_Rows_OrderByPurchaseInstant()
     {
         var actorId = Guid.NewGuid();
         var users = Substitute.For<IUserService>();
@@ -87,7 +87,7 @@ public class TicketControllerTests
     }
 
     [HumansFact]
-    public async Task Reports_OrderSalesBucketsTicketTypesAndCampaignsForDisplay()
+    public async Task Reports_Rows_AreOrderedForDisplay()
     {
         var earlier = Instant.FromUtc(2026, 1, 1, 0, 0);
         var later = earlier.Plus(Duration.FromDays(1));
@@ -228,7 +228,7 @@ public class TicketControllerTests
     [InlineData("codes")]
     [InlineData("sales")]
     [InlineData("accountant-export")]
-    public async Task Admin_lists_preserve_request_cancellation(string page)
+    public async Task AdminLists_CancelledRequest_Throw(string page)
     {
         using var aborted = new CancellationTokenSource();
         await aborted.CancelAsync();
@@ -366,7 +366,7 @@ public class TicketControllerTests
     [InlineData(false, true)]
     [InlineData(true, false)]
     [InlineData(true, true)]
-    public async Task ParticipationImport_RequiresActor_AndSeparatesReviewFromConfirm(bool hasActor, bool confirmed)
+    public async Task ParticipationImport_Review_WritesNothing(bool hasActor, bool confirmed)
     {
         var actorId = Guid.NewGuid();
         var users = Substitute.For<IUserService>();
@@ -420,7 +420,7 @@ public class TicketControllerTests
     [InlineData(false, true)]
     [InlineData(true, false)]
     [InlineData(false, false)]
-    public async Task PersonalDataExport_RequiresAnActorAndPassesItToTheAuditedService(bool attendees, bool hasActor)
+    public async Task PersonalDataExport_Actor_ReachesAuditedService(bool attendees, bool hasActor)
     {
         var actor = Guid.NewGuid();
         var users = Substitute.For<IUserService>();
@@ -512,14 +512,14 @@ public class TicketControllerTests
     }
 
     [HumansFact]
-    public void Class_admits_TicketAdmin_Board_and_Admin()
+    public void ClassPolicy_TicketAdminBoardAdmin_AreAdmitted()
     {
         typeof(TicketController).GetCustomAttribute<AuthorizeAttribute>(inherit: false)!.Policy
             .Should().Be(TicketsPolicies.Read);
     }
 
     [HumansFact]
-    public void ExportDonations_is_AdminOnly()
+    public void ExportDonations_Policy_IsAdminOnly()
     {
         var action = typeof(TicketController).GetMethods(BindingFlags.Instance | BindingFlags.Public)
             .Single(m => string.Equals(m.Name, nameof(TicketController.ExportDonations), StringComparison.Ordinal));
@@ -536,7 +536,7 @@ public class TicketControllerTests
     [InlineData(nameof(TicketController.ExportAccountantReport), TicketsPolicies.Manage)]
     [InlineData(nameof(TicketController.FullResync), PolicyNames.AdminOnly)]
     [InlineData(nameof(TicketController.ParticipationBackfill), PolicyNames.AdminOnly)]
-    public void Action_narrows_the_class_policy_so_Board_is_denied(string actionName, string policy)
+    public void ActionPolicy_Board_IsDenied(string actionName, string policy)
     {
         var actions = typeof(TicketController).GetMethods(BindingFlags.Instance | BindingFlags.Public)
             .Where(m => string.Equals(m.Name, actionName, StringComparison.Ordinal))

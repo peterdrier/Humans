@@ -56,7 +56,7 @@ public sealed class TicketPaymentReconTests
         TicketPaymentReconBuilder.Build(Key, From, To, new PaymentLedger(_entries, _payouts), _orders, sharedAccount: sharedAccount);
 
     [HumansFact]
-    public void Outside_production_a_movement_naming_an_order_this_database_never_held_is_set_apart_but_counted()
+    public void Recon_UnknownOrderOutsideProduction_IsSetApart()
     {
         var elsewhere = Order(platformKey: "pretix");
         Entry(PaymentLedgerEntryKind.Charge, 30000, 450, Guid.NewGuid());
@@ -74,7 +74,7 @@ public sealed class TicketPaymentReconTests
     }
 
     [HumansFact]
-    public void Another_instances_payments_alone_balance_outside_production()
+    public void Recon_OtherInstancePayments_BalanceOutsideProduction()
     {
         Entry(PaymentLedgerEntryKind.Charge, 30000, 450, Guid.NewGuid());
 
@@ -83,7 +83,7 @@ public sealed class TicketPaymentReconTests
     }
 
     [HumansFact]
-    public void Payments_matching_their_orders_with_the_recorded_fee_balance()
+    public void Recon_PaymentsMatchOrders_Balance()
     {
         var order = Order();
         Entry(PaymentLedgerEntryKind.Charge, 30000, 450, order.Id);
@@ -101,7 +101,7 @@ public sealed class TicketPaymentReconTests
     }
 
     [HumansFact]
-    public void A_fee_other_than_the_one_Humans_recorded_unbalances()
+    public void Recon_FeeDiffers_Unbalances()
     {
         var known = Order(fee: 450);
         var unknown = Order(fee: null);
@@ -117,7 +117,7 @@ public sealed class TicketPaymentReconTests
     }
 
     [HumansFact]
-    public void A_payment_for_another_amount_or_an_unpaid_order_unbalances()
+    public void Recon_PaymentAmountDiffers_Unbalances()
     {
         var expired = Order(state: TicketCheckoutOrderState.Expired);
         var settling = Order(state: TicketCheckoutOrderState.Processing);
@@ -131,7 +131,7 @@ public sealed class TicketPaymentReconTests
     }
 
     [HumansFact]
-    public void Money_naming_no_order_on_this_platform_unbalances()
+    public void Recon_MoneyWithoutOrder_Unbalances()
     {
         var elsewhere = Order(platformKey: "pretix");
         Entry(PaymentLedgerEntryKind.Charge, 30000, 450);
@@ -144,7 +144,7 @@ public sealed class TicketPaymentReconTests
     }
 
     [HumansFact]
-    public void Fees_on_their_own_are_listed_and_counted_but_do_not_unbalance()
+    public void Recon_FeesAlone_StayBalanced()
     {
         var order = Order();
         Entry(PaymentLedgerEntryKind.Charge, 30000, 450, order.Id);
@@ -162,7 +162,7 @@ public sealed class TicketPaymentReconTests
     }
 
     [HumansFact]
-    public void A_payout_that_does_not_add_up_or_failed_unbalances()
+    public void Recon_PayoutDoesNotAddUp_Unbalances()
     {
         _payouts.Add(new PaymentPayout("po_short", Mid, Mid, 10000, "paid", 9999, 3));
         _payouts.Add(new PaymentPayout("po_failed", Mid, null, 5000, "failed", 5000, 1));
@@ -176,7 +176,7 @@ public sealed class TicketPaymentReconTests
     }
 
     [HumansFact]
-    public void A_failed_payout_alone_is_shown_but_balances()
+    public void Recon_FailedPayoutAlone_Balances()
     {
         _payouts.Add(new PaymentPayout("po_failed", Mid, null, 5000, "failed", 5000, 1));
 
@@ -184,7 +184,7 @@ public sealed class TicketPaymentReconTests
     }
 
     [HumansFact]
-    public void A_failed_delayed_debit_whose_payment_came_back_balances()
+    public void Recon_FailedDebitReturned_Balances()
     {
         var failed = Order(state: TicketCheckoutOrderState.Failed);
         Entry(PaymentLedgerEntryKind.Charge, 30000, 450, failed.Id);
@@ -197,7 +197,7 @@ public sealed class TicketPaymentReconTests
     }
 
     [HumansFact]
-    public void A_payment_kept_on_a_failed_order_unbalances()
+    public void Recon_PaymentOnFailedOrder_Unbalances()
     {
         var failed = Order(state: TicketCheckoutOrderState.Failed);
         Entry(PaymentLedgerEntryKind.Charge, 30000, 450, failed.Id);
@@ -206,7 +206,7 @@ public sealed class TicketPaymentReconTests
     }
 
     [HumansFact]
-    public void An_unreadable_account_never_balances()
+    public void Recon_UnreadableAccount_NeverBalances()
     {
         TicketPaymentReconBuilder.Unreadable(Key, From, To, "down").Balanced.Should().BeFalse();
     }

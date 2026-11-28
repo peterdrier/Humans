@@ -16,7 +16,7 @@ namespace Humans.Tickets.Tests.Services.Checkout;
 public sealed class TicketCheckoutServiceTeamToolsTests : CheckoutServiceFixture
 {
     [HumansFact]
-    public async Task Void_with_a_refund_refunds_first_then_voids_and_says_so()
+    public async Task Void_WithRefund_RefundsFirst()
     {
         var adult = await PaidAdultAsync();
 
@@ -30,7 +30,7 @@ public sealed class TicketCheckoutServiceTeamToolsTests : CheckoutServiceFixture
     }
 
     [HumansFact]
-    public async Task Void_with_no_refund_says_plainly_that_no_money_goes_back()
+    public async Task Void_NoRefund_SaysNoMoneyBack()
     {
         var adult = await PaidAdultAsync();
 
@@ -43,7 +43,7 @@ public sealed class TicketCheckoutServiceTeamToolsTests : CheckoutServiceFixture
     }
 
     [HumansFact]
-    public async Task Void_leaves_the_ticket_working_when_the_refund_is_turned_down_or_too_big()
+    public async Task Void_RefundTurnedDown_KeepsTicket()
     {
         var adult = await PaidAdultAsync();
 
@@ -59,7 +59,7 @@ public sealed class TicketCheckoutServiceTeamToolsTests : CheckoutServiceFixture
     }
 
     [HumansFact]
-    public async Task Restore_brings_a_voided_ticket_back_as_an_audited_override()
+    public async Task Restore_VoidedTicket_IsAudited()
     {
         var adult = await PaidAdultAsync();
         await _service.VoidTicketAsync(adult.Id, "Wrong ticket", 0, _adminId, Ct);
@@ -75,11 +75,11 @@ public sealed class TicketCheckoutServiceTeamToolsTests : CheckoutServiceFixture
     }
 
     [HumansFact]
-    public async Task Restore_refuses_when_the_holder_already_holds_another_ticket()
+    public async Task Restore_HolderHasOtherTicket_IsRefused()
     {
         var adult = await PaidAdultAsync();
         await _service.VoidTicketAsync(adult.Id, "Rebought", 0, _adminId, Ct);
-        await BuyAndPayAsync(Buy(), _buyerId);
+        await BuyPaidOrderAsync(Buy(), _buyerId);
 
         (await _service.RestoreTicketAsync(adult.Id, "Oops", _adminId, Ct)).Refusal
             .Should().Be("The holder already holds another ticket for this event.");
@@ -87,7 +87,7 @@ public sealed class TicketCheckoutServiceTeamToolsTests : CheckoutServiceFixture
     }
 
     [HumansFact]
-    public async Task Override_rename_moves_a_class_priced_ticket_and_audits_it_as_an_override()
+    public async Task OverrideRename_ClassPricedTicket_IsAudited()
     {
         _grants.GetActiveGrantsAsync(_buyerId, Arg.Any<CancellationToken>())
             .Returns([new ActiveGrantInfo(LowIncomeProgram, _event.Id, Now)]);
@@ -105,7 +105,7 @@ public sealed class TicketCheckoutServiceTeamToolsTests : CheckoutServiceFixture
     }
 
     [HumansFact]
-    public async Task Override_companion_goes_past_capacity_and_is_audited_as_an_override()
+    public async Task OverrideCompanion_PastCapacity_IsAudited()
     {
         var adult = await PaidAdultAsync();
         _ticketing.Capacity = 1;
@@ -119,7 +119,7 @@ public sealed class TicketCheckoutServiceTeamToolsTests : CheckoutServiceFixture
     }
 
     [HumansFact]
-    public async Task Team_takes_a_ticket_out_of_the_resale_queue_for_its_holder_but_not_while_a_buyer_pays()
+    public async Task TeamWithdraw_BuyerPaying_IsRefused()
     {
         var adult = await OfferedTicketAsync();
         var offer = _repo.Offers.Single();
@@ -136,11 +136,11 @@ public sealed class TicketCheckoutServiceTeamToolsTests : CheckoutServiceFixture
     }
 
     [HumansFact]
-    public async Task Cancelling_the_event_voids_refunds_and_emails_every_paid_order_once()
+    public async Task CancelEvent_PaidOrders_RefundedOnce()
     {
         _ticketing.ChildTypes = [new TicketChildType { Name = "Child", UnderAge = 13, PriceMinor = 5000 }];
-        var first = await BuyAndPayAsync(Buy(donation: 1000) with { Children = [new("Kid García", null)] }, _buyerId);
-        var second = await BuyAndPayAsync(Buy(), _otherBuyerId);
+        var first = await BuyPaidOrderAsync(Buy(donation: 1000) with { Children = [new("Kid García", null)] }, _buyerId);
+        var second = await BuyPaidOrderAsync(Buy(), _otherBuyerId);
         _email.ClearReceivedCalls();
 
         (await _service.CancelEventAsync(_ticketing.Id, "Storm", _adminId, Ct)).Refusal.Should().BeNull();
@@ -171,7 +171,7 @@ public sealed class TicketCheckoutServiceTeamToolsTests : CheckoutServiceFixture
     }
 
     [HumansFact]
-    public async Task Cancelling_the_event_never_tells_a_resale_seller_that_there_is_no_refund()
+    public async Task CancelEvent_ResaleSeller_IsNotToldNoRefund()
     {
         var old = await OfferedTicketAsync();
 
@@ -186,10 +186,10 @@ public sealed class TicketCheckoutServiceTeamToolsTests : CheckoutServiceFixture
     }
 
     [HumansFact]
-    public async Task The_evening_resale_batch_skips_a_cancelled_event_whose_cancellation_refunded_both_orders()
+    public async Task EveningBatch_CancelledEvent_IsSkipped()
     {
         var old = await OfferedTicketAsync();
-        var buyer = await BuyAndPayAsync(Buy(), _otherBuyerId);
+        var buyer = await BuyPaidOrderAsync(Buy(), _otherBuyerId);
         await _service.CancelEventAsync(_ticketing.Id, "Storm", _adminId, Ct);
         await _service.ReconcileOpenOrdersAsync(Ct);
         _platform.ClearReceivedCalls();
@@ -206,9 +206,9 @@ public sealed class TicketCheckoutServiceTeamToolsTests : CheckoutServiceFixture
     }
 
     [HumansFact]
-    public async Task A_refund_the_provider_turns_down_after_cancelling_is_not_tried_again_and_shows_as_still_to_refund()
+    public async Task CancelEvent_RefundTurnedDown_IsNotRetried()
     {
-        await BuyAndPayAsync(Buy(), _buyerId);
+        await BuyPaidOrderAsync(Buy(), _buyerId);
         _platform.RefundAsync(Arg.Any<RefundRequest>(), Arg.Any<CancellationToken>())
             .Returns(new RefundResult(RefundState.Failed, null, "card closed"));
         await _service.CancelEventAsync(_ticketing.Id, "Storm", _adminId, Ct);
@@ -231,7 +231,7 @@ public sealed class TicketCheckoutServiceTeamToolsTests : CheckoutServiceFixture
     [HumansFact]
     public async Task CancelEventAsync_RefundFailsDuringRefresh_UsesManualNotice()
     {
-        await BuyAndPayAsync(Buy(), _buyerId);
+        await BuyPaidOrderAsync(Buy(), _buyerId);
         _platform.RefundAsync(Arg.Any<RefundRequest>(), Arg.Any<CancellationToken>())
             .Returns(new RefundResult(RefundState.Pending, "re_1", null),
                 new RefundResult(RefundState.Failed, "re_1", "Card closed"));
@@ -251,7 +251,7 @@ public sealed class TicketCheckoutServiceTeamToolsTests : CheckoutServiceFixture
     [InlineData(true)]
     public async Task CancelEventAsync_ManualRefund_UsesManualNotice(bool retry)
     {
-        var order = await BuyAndPayAsync(Buy(), _buyerId);
+        var order = await BuyPaidOrderAsync(Buy(), _buyerId);
         var manualUrl = new Uri("https://payments.example/refund");
         _platform.RefundAsync(Arg.Any<RefundRequest>(), Arg.Any<CancellationToken>())
             .Returns(new RefundResult(RefundState.ManualRequired, null, "Bank transfer", manualUrl));
@@ -282,9 +282,9 @@ public sealed class TicketCheckoutServiceTeamToolsTests : CheckoutServiceFixture
     }
 
     [HumansFact]
-    public async Task A_cancellation_email_that_fails_is_sent_next_run_naming_the_refund_already_asked_for()
+    public async Task CancelEvent_EmailFails_IsSentNextRun()
     {
-        await BuyAndPayAsync(Buy(), _buyerId);
+        await BuyPaidOrderAsync(Buy(), _buyerId);
         _email.SendAsync(Arg.Any<EmailMessage>(), Arg.Any<CancellationToken>())
             .Returns(Task.FromException(new InvalidOperationException("outbox down")), Task.CompletedTask);
         await _service.CancelEventAsync(_ticketing.Id, "Storm", _adminId, Ct);
@@ -303,9 +303,9 @@ public sealed class TicketCheckoutServiceTeamToolsTests : CheckoutServiceFixture
     }
 
     [HumansFact]
-    public async Task A_donation_only_order_gets_the_cancellation_email_and_no_refund()
+    public async Task CancelEvent_DonationOnlyOrder_GetsNoRefund()
     {
-        await BuyAndPayAsync(Buy(forSelf: false, donation: 5000), _buyerId);
+        await BuyPaidOrderAsync(Buy(forSelf: false, donation: 5000), _buyerId);
         _email.ClearReceivedCalls();
         await _service.CancelEventAsync(_ticketing.Id, "Storm", _adminId, Ct);
 
@@ -319,7 +319,7 @@ public sealed class TicketCheckoutServiceTeamToolsTests : CheckoutServiceFixture
     }
 
     [HumansFact]
-    public async Task A_cancelled_event_refuses_ticketing_settings_changes_resale_and_restores()
+    public async Task CancelledEvent_SettingsOrResale_AreRefused()
     {
         var adult = await PaidAdultAsync();
         await _service.CancelEventAsync(_ticketing.Id, "Storm", _adminId, Ct);
@@ -330,7 +330,7 @@ public sealed class TicketCheckoutServiceTeamToolsTests : CheckoutServiceFixture
     }
 
     [HumansFact]
-    public async Task Cancelling_waits_for_a_buyer_paying_for_a_ticket_in_resale()
+    public async Task CancelEvent_ResaleBuyerPaying_Waits()
     {
         var adult = await OfferedTicketAsync();
         _repo.Offers.Single().State = TicketResaleOfferState.Reserved;
@@ -343,10 +343,10 @@ public sealed class TicketCheckoutServiceTeamToolsTests : CheckoutServiceFixture
     }
 
     [HumansFact]
-    public async Task A_team_refund_after_cancelling_does_not_stand_in_for_the_rest_of_the_cancellation_refund()
+    public async Task CancelEvent_TeamRefundAfter_LeavesRestOwed()
     {
         _ticketing.ChildTypes = [new TicketChildType { Name = "Child", UnderAge = 13, PriceMinor = 5000 }];
-        var order = await BuyAndPayAsync(Buy() with { Children = [new("Kid García", null)] }, _buyerId);
+        var order = await BuyPaidOrderAsync(Buy() with { Children = [new("Kid García", null)] }, _buyerId);
         var child = _repo.Tickets.Single(t => t.Kind == TicketHolderKind.Child);
         await _service.CancelEventAsync(_ticketing.Id, "Storm", _adminId, Ct);
         (await _service.VoidTicketAsync(child.Id, "Asked first", 5000, _adminId, Ct)).Refusal.Should().BeNull();
@@ -362,9 +362,9 @@ public sealed class TicketCheckoutServiceTeamToolsTests : CheckoutServiceFixture
     }
 
     [HumansFact]
-    public async Task A_cancellation_refund_that_cannot_start_is_written_as_failed_and_emailed_once()
+    public async Task CancelEvent_RefundCannotStart_IsRecordedFailed()
     {
-        var order = await BuyAndPayAsync(Buy(), _buyerId);
+        var order = await BuyPaidOrderAsync(Buy(), _buyerId);
         order.PlatformOrderId = null;
         _email.ClearReceivedCalls();
         await _service.CancelEventAsync(_ticketing.Id, "Storm", _adminId, Ct);
@@ -379,10 +379,10 @@ public sealed class TicketCheckoutServiceTeamToolsTests : CheckoutServiceFixture
     }
 
     [HumansFact]
-    public async Task A_void_suggests_the_ticket_and_its_children_on_the_order_within_what_can_be_refunded()
+    public async Task Void_Suggestion_StaysWithinRefundable()
     {
         _ticketing.ChildTypes = [new TicketChildType { Name = "Child", UnderAge = 13, PriceMinor = 5000 }];
-        var order = await BuyAndPayAsync(Buy() with { Children = [new("Kid García", null)] }, _buyerId);
+        var order = await BuyPaidOrderAsync(Buy() with { Children = [new("Kid García", null)] }, _buyerId);
         var adult = _repo.Tickets.Single(t => t.Kind == TicketHolderKind.Adult);
         var child = _repo.Tickets.Single(t => t.Kind == TicketHolderKind.Child);
 
@@ -399,7 +399,7 @@ public sealed class TicketCheckoutServiceTeamToolsTests : CheckoutServiceFixture
     [InlineData("Pending", 1, true)]
     [InlineData("Processing", 1, false)]
     [InlineData("Expired", -1, true)]
-    public void A_reserved_offer_is_stuck_once_its_order_no_longer_holds_it(string state, int hoursPastHold, bool stuck)
+    public void StuckOffers_OrderGone_ListsReservedOffer(string state, int hoursPastHold, bool stuck)
     {
         var holding = new TicketCheckoutOrder { Id = Guid.NewGuid(), State = Enum.Parse<TicketCheckoutOrderState>(state), ExpiresAt = Now - Duration.FromHours(hoursPastHold) };
         var offer = new TicketResaleOffer { Id = Guid.NewGuid(), State = TicketResaleOfferState.Reserved, ReservedByOrderId = holding.Id };

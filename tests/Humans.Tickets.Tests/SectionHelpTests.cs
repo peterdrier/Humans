@@ -13,7 +13,7 @@ public class SectionHelpTests
         ((ISectionHelp)new Section()).HelpEntries.Single(e => string.Equals(e.Key, key, StringComparison.Ordinal));
 
     [HumansFact]
-    public void Contributes_its_help_entries_in_corpus_order()
+    public void Help_Entries_AreInCorpusOrder()
     {
         ((ISectionHelp)new Section()).HelpEntries
             .Select(e => (e.Key, e.Order))
@@ -21,7 +21,7 @@ public class SectionHelpTests
     }
 
     [HumansFact]
-    public void Reads_the_tickets_guide_and_glossary_out_of_the_assembly()
+    public void Help_ReadsTicketsGuideFromAssembly()
     {
         var entry = Entry("Tickets");
 

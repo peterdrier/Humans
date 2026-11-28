@@ -12,7 +12,7 @@ public sealed class SalesEditFormTests
     private static readonly Guid LowIncome = Guid.NewGuid();
 
     [HumansFact]
-    public void Rows_become_waves_rules_and_vip_totals_and_blank_rows_are_dropped()
+    public void ToSettings_BlankRows_AreDropped()
     {
         var form = new SalesEditForm
         {
@@ -46,7 +46,7 @@ public sealed class SalesEditFormTests
     }
 
     [HumansFact]
-    public void Saved_ticketing_settings_round_trip_through_the_form()
+    public void Form_SavedSettings_RoundTrip()
     {
         var ticketing = new TicketingSettings
         {
@@ -128,7 +128,7 @@ public sealed class SalesEditFormTests
     }
 
     [HumansFact]
-    public void A_half_filled_row_is_refused_by_name()
+    public void ToSettings_HalfFilledRow_IsRefusedByName()
     {
         var form = new SalesEditForm { Waves = [new() { Name = "Wave 2", Price = "250" }] };
 
@@ -140,7 +140,7 @@ public sealed class SalesEditFormTests
     [InlineData("vip")]
     [InlineData("rule")]
     [InlineData("child")]
-    public void Unrepresentable_amounts_are_refused_in_every_amount_field(string field)
+    public void ToSettings_UnrepresentableAmounts_AreRefused(string field)
     {
         foreach (var amount in new[] { "92233720368547758.08", "79228162514264337593543950335" })
         {
@@ -164,7 +164,7 @@ public sealed class SalesEditFormTests
     [InlineData("92233720368547758.07", long.MaxValue)]
     [InlineData("92233720368547758.074", long.MaxValue)]
     [InlineData("1.005", 101L)]
-    public void Representable_prices_keep_away_from_zero_cent_rounding(string amount, long expected)
+    public void ToSettings_RepresentablePrices_AvoidCentRounding(string amount, long expected)
     {
         var form = new SalesEditForm
         {

@@ -23,7 +23,7 @@ public sealed class TicketReconServiceTests : CheckoutServiceFixture
     }
 
     [HumansFact]
-    public async Task Platform_check_passes_the_trimmed_event_id_and_refuses_an_unknown_key()
+    public async Task PlatformCheck_UnknownKey_IsRefused()
     {
         IReadOnlyList<PlatformFinding> ok = [new(true, "fine")];
         _platform.CheckAsync("slug", Arg.Any<CancellationToken>()).Returns(ok);
@@ -33,7 +33,7 @@ public sealed class TicketReconServiceTests : CheckoutServiceFixture
     }
 
     [HumansFact]
-    public async Task Recon_reads_the_platform_a_margin_wider_and_reports_an_unreadable_one_without_comparing()
+    public async Task Recon_UnreadablePlatform_SkipsComparison()
     {
         _ticketing.PlatformEventRef = " slug ";
         var from = Instant.FromUtc(2027, 1, 1, 0, 0);
@@ -56,7 +56,7 @@ public sealed class TicketReconServiceTests : CheckoutServiceFixture
     }
 
     [HumansFact]
-    public async Task Payment_recon_looks_past_the_period_for_a_failed_debit_coming_back()
+    public async Task PaymentRecon_FailedDebit_LooksPastPeriod()
     {
         var order = new TicketCheckoutOrder
         {
@@ -86,7 +86,7 @@ public sealed class TicketReconServiceTests : CheckoutServiceFixture
     }
 
     [HumansFact]
-    public async Task Platform_ledger_flags_orders_open_past_expiry_splits_failed_refunds_and_leaves_free_orders_out_of_paid()
+    public async Task PlatformLedger_OrdersOpenPastExpiry_AreFlagged()
     {
         TicketCheckoutOrder Order(TicketCheckoutOrderState state, string? platformId, Duration age, Duration expiresIn, string key = "test", long total = 1000)
         {
@@ -130,7 +130,7 @@ public sealed class TicketReconServiceTests : CheckoutServiceFixture
     }
 
     [HumansFact]
-    public async Task Recon_keeps_reading_a_platform_and_event_its_orders_were_sold_under_after_its_ticketing_settings_moved()
+    public async Task Recon_SettingsMoved_ReadsOriginalPlatform()
     {
         var from = Instant.FromUtc(2027, 1, 1, 0, 0);
         var to = Instant.FromUtc(2027, 1, 2, 0, 0);

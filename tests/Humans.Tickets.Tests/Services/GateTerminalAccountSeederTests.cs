@@ -193,7 +193,7 @@ public sealed class GateTerminalAccountSeederTests : TicketsTestHarness
     }
 
     [HumansFact]
-    public async Task RejectedRotation_LeavesTheExistingPasswordAndDoesNotAuditSuccess()
+    public async Task Rotate_Rejected_KeepsExistingPassword()
     {
         SeedAccount(password: "existing");
         _signIn.SetPasswordAsync(SystemUserIds.GateTerminal, Arg.Any<string>())

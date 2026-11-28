@@ -85,7 +85,7 @@ public sealed class StripeMirrorClientTests
     [Xunit.InlineData("payouts", true)]
     [Xunit.InlineData("payout-breakdown", false)]
     [Xunit.InlineData("payout-breakdown", true)]
-    public async Task Repeated_item_IDs_cannot_complete_a_mirror_fetch(string consumer, bool acrossPages)
+    public async Task Fetch_RepeatedItemIds_IsNotPublished(string consumer, bool acrossPages)
     {
         var targetCalls = 0;
         string? repeatedItem = null;
@@ -133,7 +133,7 @@ public sealed class StripeMirrorClientTests
     [Xunit.InlineData(MirrorList.Payouts, "created")]
     [Xunit.InlineData(MirrorList.Payouts, "arrival_date")]
     [Xunit.InlineData(MirrorList.Payouts, "automatic")]
-    public async Task Incomplete_mirror_records_do_not_become_SDK_defaults(MirrorList list, string field)
+    public async Task Fetch_IncompleteRecords_AreNotDefaulted(MirrorList list, string field)
     {
         Respond(request =>
         {
@@ -154,7 +154,7 @@ public sealed class StripeMirrorClientTests
     }
 
     [HumansFact]
-    public async Task Org_key_reads_every_page_through_Stripe_Context_and_links_automatic_payouts()
+    public async Task Fetch_OrgKey_ReadsEveryPage()
     {
         Respond(Route);
         var account = new StripeMirrorAccount { Name = "Tickets", Id = "acct_t", ApiKey = "sk_org_test" };
@@ -184,7 +184,7 @@ public sealed class StripeMirrorClientTests
     [Xunit.InlineData("", "receipt@example.org", "metadata@example.org", "receipt@example.org")]
     [Xunit.InlineData("  ", " ", "metadata@example.org", "metadata@example.org")]
     [Xunit.InlineData("", "", " ", "legacy@example.org")]
-    public async Task Blank_billing_values_do_not_hide_receipt_or_metadata_buyer_details(
+    public async Task Fetch_BlankBillingValues_UseReceiptDetails(
         string blank, string receipt, string metadataAddress, string expectedEmail)
     {
         static string Encode(string value) => System.Text.Json.JsonSerializer.Serialize(value);
@@ -206,7 +206,7 @@ public sealed class StripeMirrorClientTests
     [HumansTheory]
     [Xunit.InlineData(false)]
     [Xunit.InlineData(true)]
-    public async Task Bounded_mirror_fields_preserve_complete_unicode_characters(bool pairFits)
+    public async Task Fetch_BoundedFields_KeepWholeUnicodeCharacters(bool pairFits)
     {
         var namePrefix = new string('n', pairFits ? 254 : 255);
         var descriptionPrefix = new string('d', pairFits ? 998 : 999);
@@ -237,7 +237,7 @@ public sealed class StripeMirrorClientTests
     }
 
     [HumansFact]
-    public async Task An_account_with_its_own_key_sends_no_Stripe_Context()
+    public async Task Fetch_AccountOwnKey_SendsNoStripeContext()
     {
         Respond(Route);
         var account = new StripeMirrorAccount { Name = "ICE", Id = "acct_i", KeyVariable = "STRIPE_ICE_READ_KEY", ApiKey = "rk_live_ice" };
@@ -282,7 +282,7 @@ public sealed class StripeMirrorClientTests
     [Xunit.InlineData("""{"object":"balance","available":[],"pending":[{"currency":"eur"}]}""")]
     [Xunit.InlineData("""{"object":"balance","available":[{"amount":25,"currency":""}],"pending":[]}""")]
     [Xunit.InlineData("""{"object":"balance","available":[],"pending":[{"amount":25,"currency":"  "}]}""")]
-    public async Task Incomplete_wallet_balance_cannot_publish_a_fetch(string body)
+    public async Task Fetch_IncompleteWalletBalance_IsNotPublished(string body)
     {
         Respond(r => r.Uri.AbsolutePath.EndsWith("/balance", StringComparison.Ordinal) ? body : Route(r));
         var account = new StripeMirrorAccount { Name = "Tickets", Id = "acct_t", ApiKey = "sk_org_test" };
@@ -295,7 +295,7 @@ public sealed class StripeMirrorClientTests
     [HumansTheory]
     [Xunit.InlineData(true)]
     [Xunit.InlineData(false)]
-    public async Task Complete_wallet_buckets_preserve_empty_zero_and_signed_amounts(bool empty)
+    public async Task Fetch_CompleteWalletBuckets_KeepSignedAmounts(bool empty)
     {
         var body = empty
             ? """{"object":"balance","available":[],"pending":[]}"""
@@ -321,7 +321,7 @@ public sealed class StripeMirrorClientTests
     [Xunit.InlineData("transactions")]
     [Xunit.InlineData("payouts")]
     [Xunit.InlineData("payout-breakdown")]
-    public async Task Missing_completion_metadata_cannot_publish_a_partial_fetch(string consumer)
+    public async Task Fetch_MissingCompletionMetadata_IsNotPublished(string consumer)
     {
         var targetCalls = 0;
         Respond(r =>
@@ -349,7 +349,7 @@ public sealed class StripeMirrorClientTests
     }
 
     [HumansFact]
-    public async Task A_pager_that_never_ends_throws_instead_of_returning_a_prefix()
+    public async Task Fetch_EndlessPager_Throws()
     {
         Respond(r => r.Uri.AbsolutePath.EndsWith("/balance_transactions", StringComparison.Ordinal) ? List(true) : List(false));
         var account = new StripeMirrorAccount { Name = "Tickets", Id = "acct_t", ApiKey = "sk_org_test" };

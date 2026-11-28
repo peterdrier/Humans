@@ -36,7 +36,7 @@ public sealed class CachingTicketVendorServiceTests
         new(EventName: "Test Event", TotalCapacity: 100, TicketsSold: sold, TicketsRemaining: 100 - sold);
 
     [HumansFact]
-    public async Task GetEventSummaryAsync_Miss_CallsInnerOnceAndReturnsItsValue()
+    public async Task GetEventSummaryAsync_Miss_CallsInnerOnce()
     {
         var summary = MakeSummary("ev_test");
         _inner.GetEventSummaryAsync("ev_test", Arg.Any<CancellationToken>()).Returns(Task.FromResult(summary));
@@ -103,7 +103,7 @@ public sealed class CachingTicketVendorServiceTests
     [HumansTheory]
     [Xunit.InlineData(false)]
     [Xunit.InlineData(true)]
-    public async Task GetEventSummaryAsync_LoadStartedBeforeInvalidation_DoesNotRepopulateCache(bool expired)
+    public async Task GetEventSummaryAsync_LoadBeforeInvalidation_SkipsCache(bool expired)
     {
         var ct = Xunit.TestContext.Current.CancellationToken;
         var old = MakeSummary("ev_test", sold: 1);

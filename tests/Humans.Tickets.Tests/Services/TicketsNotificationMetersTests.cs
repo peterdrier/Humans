@@ -41,7 +41,7 @@ public sealed class TicketsNotificationMetersTests : IDisposable
     }
 
     [HumansFact]
-    public async Task NonAdmin_GetsNoMeterAndNoRead()
+    public async Task Meters_NonAdmin_GetsNoMeter()
     {
         var meters = await _sut.GetMetersAsync(Viewer(RoleNames.Board), Guid.NewGuid(), TestContext.Current.CancellationToken);
 

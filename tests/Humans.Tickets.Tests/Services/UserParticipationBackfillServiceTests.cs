@@ -29,7 +29,7 @@ public sealed class UserParticipationBackfillServiceTests
     }
 
     [HumansFact]
-    public async Task Preview_ShowsParsedRows_WithoutWriting_AndCanBeConfirmed()
+    public async Task Preview_ParsedRows_WritesNothing()
     {
         var userId = Guid.NewGuid();
         var result = await CreateService().BackfillFromCsvAsync(2026,
@@ -63,7 +63,7 @@ public sealed class UserParticipationBackfillServiceTests
     }
 
     [HumansFact]
-    public async Task ParsesQuotedAndSemicolonDelimitedRows()
+    public async Task Parse_QuotedSemicolonRows_AreParsed()
     {
         var a = Guid.NewGuid();
         var csv = $"\"{a}\";\"Ticketed\"\n";

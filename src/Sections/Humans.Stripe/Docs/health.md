@@ -73,7 +73,7 @@ Docs/                         Stripe.md (invariants), data-access.md, health.md 
   (`src/Sections/Humans.Stripe/Services/StripeService.cs:161`,
   `src/Sections/Humans.Stripe/Services/StripeService.cs:170`). Every other `StripeException`
   propagates: those catches are filtered on `permission_error`, and the propagation is pinned
-  by `StripeServiceContractTests.Reads_and_the_write_propagate_every_other_stripe_failure`.
+  by `StripeServiceContractTests.Calls_OtherStripeFailure_Throw`.
 - **The write throws.** `CreateCheckoutSessionAsync` rejects a non-positive amount and an
   unset Store key before any network call
   (`src/Sections/Humans.Stripe/Services/StripeService.cs:72`,

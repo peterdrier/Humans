@@ -75,7 +75,7 @@ public class TicketsContactsAdminControllerTests
     }
 
     [HumansFact]
-    public async Task Index_RendersPreview_WithPlanAndProjectedRows()
+    public async Task Index_Plan_RendersProjectedRows()
     {
         var import = Substitute.For<IAttendeeContactImportService>();
         var attendeeId = Guid.NewGuid();
@@ -97,7 +97,7 @@ public class TicketsContactsAdminControllerTests
     }
 
     [HumansFact]
-    public async Task Apply_PassesSelectedIdsAndActorToService_AndRedirectsWithInfoMessage()
+    public async Task Apply_Selection_PassesIdsWithActor()
     {
         var import = Substitute.For<IAttendeeContactImportService>();
         var plan = new AttendeeImportPlan([], 0);
@@ -127,7 +127,7 @@ public class TicketsContactsAdminControllerTests
     }
 
     [HumansFact]
-    public async Task Apply_EmptySelection_RedirectsWithErrorMessage_NoServiceCall()
+    public async Task Apply_EmptySelection_SkipsService()
     {
         var import = Substitute.For<IAttendeeContactImportService>();
         var (controller, _) = NewController(import);

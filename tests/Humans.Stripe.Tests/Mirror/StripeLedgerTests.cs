@@ -23,7 +23,7 @@ public sealed class StripeLedgerTests
         };
 
     [HumansFact]
-    public void Held_follows_available_dates_not_creation()
+    public void Ledger_Held_FollowsAvailableDates()
     {
         // Two charges' holds and releases, each pair created together on the charge's day.
         var rows = new[]
@@ -46,7 +46,7 @@ public sealed class StripeLedgerTests
     }
 
     [HumansFact]
-    public void An_early_release_lowers_the_hold_from_its_own_date()
+    public void Ledger_EarlyRelease_LowersHoldFromItsDate()
     {
         var rows = new[]
         {
@@ -65,7 +65,7 @@ public sealed class StripeLedgerTests
     }
 
     [HumansFact]
-    public void A_late_stamped_available_on_lands_on_its_utc_date()
+    public void Ledger_LateAvailableOn_UsesUtcDate()
     {
         var row = Row(-1_00, new LocalDate(2026, 7, 9));
         row.AvailableOn = Instant.FromUtc(2026, 7, 9, 23, 30);

@@ -46,7 +46,7 @@ public class OnsiteRosterServiceTests
     }
 
     [HumansFact]
-    public async Task GetRosterAsync_NoFilters_ReturnsAllOnsite_WithJoinedNames()
+    public async Task GetRosterAsync_NoFilters_ReturnsAllOnsite()
     {
         var aliceId = Guid.NewGuid();
         var bobId = Guid.NewGuid();
