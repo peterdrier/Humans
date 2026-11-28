@@ -33,7 +33,7 @@ public sealed class SettingsArchitectureTests
     /// rebuilds from the fragment all have to agree on one convention.
     /// </summary>
     [HumansFact]
-    public void TheTabStripActivatesTheTabNamedByTheUrlFragment()
+    public void TabStrip_UrlFragment_ActivatesNamedTab()
     {
         var markup = File.ReadAllText(TabStripViewPath());
 

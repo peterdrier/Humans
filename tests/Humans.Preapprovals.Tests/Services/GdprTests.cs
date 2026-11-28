@@ -46,7 +46,7 @@ public sealed class GdprTests : PreapprovalsTestHarness
     }
 
     [HumansFact]
-    public async Task Export_DecisionsSlice_ForManagerCreatorAndDecider()
+    public async Task Export_Decider_GetsDecisions()
     {
         var manager = SeedUser("Manager");
         var program = await SeedProgramAsync(managers: manager);
@@ -69,7 +69,7 @@ public sealed class GdprTests : PreapprovalsTestHarness
     }
 
     [HumansFact]
-    public async Task Erase_DeletesAppliedAndManagerRows_KeepsDecidedGrants()
+    public async Task Erase_DecidedGrants_AreKept()
     {
         var person = SeedUser("Person");
         var program = await SeedProgramAsync(managers: person);
@@ -90,7 +90,7 @@ public sealed class GdprTests : PreapprovalsTestHarness
     [HumansTheory]
     [InlineData(false)]
     [InlineData(true)]
-    public async Task Merge_RekeysEveryColumn_DedupsManagers_CollapsesDuplicateApplications(bool selfAddedManager)
+    public async Task Merge_DuplicateApplications_Collapse(bool selfAddedManager)
     {
         var from = SeedUser("Old");
         var to = SeedUser("New");

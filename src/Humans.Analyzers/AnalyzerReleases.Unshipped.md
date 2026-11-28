@@ -35,3 +35,4 @@ HUM0042 | Humans.Naming         | Error    | Method name has more than six words
 HUM0043 | Humans.Naming         | Error    | Test name is not Method_Result / Method_Condition_Result: a lowercase sentence, more than three parts, more than ten words, or "And" after the first part
 HUM0044 | Humans.Naming         | Error    | NameBaseline.txt lists a method that is gone or no longer breaks HUM0042/HUM0043
 HUM0045 | Humans.Architecture   | Error    | string.Format over a localized string (LocalizedString or its .Value) — pass the arguments to the localizer indexer, localizer[key, args]; analyzes Razor-generated code mapped to a .cshtml line
+HUM0046 | Humans.Structure      | Error    | A hand-written type is declared in more than one non-generated file — partial is for generated code only (downgrades to Warning for types carrying [Grandfathered("HUM0046", ...)])

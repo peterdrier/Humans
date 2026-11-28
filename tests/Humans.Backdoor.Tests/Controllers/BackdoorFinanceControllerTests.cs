@@ -83,7 +83,7 @@ public class BackdoorFinanceControllerTests
     [HumansTheory]
     [Xunit.InlineData(false)]
     [Xunit.InlineData(true)]
-    public async Task MergedSubmitter_DetailRetainsPaymentAndFinanceFieldSeparation(bool financeAccess)
+    public async Task ExpenseReport_MergedSubmitter_KeepsFieldSeparation(bool financeAccess)
     {
         using var request = new CancellationTokenSource();
         var survivor = Guid.NewGuid();
@@ -110,7 +110,7 @@ public class BackdoorFinanceControllerTests
     }
 
     [HumansFact]
-    public async Task MissingViewer_DetailDoesNotInferFinancialOwnershipFromTheCookie()
+    public async Task ExpenseReport_MissingViewer_IsNotOwner()
     {
         var actor = Guid.NewGuid();
         SetPrincipal(actor);
@@ -129,7 +129,7 @@ public class BackdoorFinanceControllerTests
     }
 
     [HumansFact]
-    public async Task ExpenseReports_AuthorizesCandidatesBeforeProjectingNamesAndTimelines()
+    public async Task ExpenseReports_Candidates_AreAuthorizedFirst()
     {
         var userId = Guid.NewGuid();
         var archived = Guid.NewGuid();
@@ -173,7 +173,7 @@ public class BackdoorFinanceControllerTests
     /// <summary>Read-only surface, GET only — no <c>[Http{Post,Put,Patch,Delete}]</c> action anywhere
     /// on this controller.</summary>
     [HumansFact]
-    public void Every_action_is_HttpGet_only()
+    public void Actions_Each_IsHttpGetOnly()
     {
         var actions = typeof(BackdoorFinanceController)
             .GetMethods(System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Instance
@@ -275,7 +275,7 @@ public class BackdoorFinanceControllerTests
     };
 
     [HumansFact]
-    public async Task ExpenseReports_NonFinanceAdmin_SeesOnlyTheirOwnReviewQueue()
+    public async Task ExpenseReports_NonFinanceAdmin_SeesOwnReviewQueue()
     {
         var userId = Guid.NewGuid();
         SetPrincipal(userId);
@@ -294,7 +294,7 @@ public class BackdoorFinanceControllerTests
     /// only — a non-finance-admin submitter's own report shows the masked IBAN (submitter) but no
     /// push fields, and the timeline is never even fetched.</summary>
     [HumansFact]
-    public async Task ExpenseReports_NonFinanceAdminSubmitter_SeesNoPushStateAndSkipsTheTimelineFetch()
+    public async Task ExpenseReports_Submitter_SeesNoPushState()
     {
         var userId = Guid.NewGuid();
         SetPrincipal(userId);
@@ -312,7 +312,7 @@ public class BackdoorFinanceControllerTests
     }
 
     [HumansFact]
-    public async Task ExpenseReports_FinanceAdmin_MasksTheIbanAndProjectsPushState()
+    public async Task ExpenseReports_FinanceAdmin_MasksIban()
     {
         var userId = Guid.NewGuid();
         SetPrincipal(userId);
@@ -353,7 +353,7 @@ public class BackdoorFinanceControllerTests
     /// review queue never includes reports they submitted or a finance admin's, so this exercises
     /// the "neither" row shape the detail test already covers.</summary>
     [HumansFact]
-    public async Task ExpenseReports_NonSubmitterNonFinanceAdminRow_SeesNoPayeeIbanOrPush()
+    public async Task ExpenseReports_OtherPersonsRow_HidesPayeeIban()
     {
         var userId = Guid.NewGuid();
         SetPrincipal(userId);
@@ -421,7 +421,7 @@ public class BackdoorFinanceControllerTests
     /// submitter/finance-admin split <c>ExpensesController.Detail</c> uses, not a blanket grant to
     /// anyone whose <c>View</c> check passes.</summary>
     [HumansFact]
-    public async Task ExpenseReport_Submitter_SeesThePaymentHalfNotThePushHalf()
+    public async Task ExpenseReport_Submitter_SeesPaymentHalf()
     {
         var userId = Guid.NewGuid();
         SetPrincipal(userId);
@@ -454,7 +454,7 @@ public class BackdoorFinanceControllerTests
     }
 
     [HumansFact]
-    public async Task ExpenseReport_FinanceAdminNotSubmitter_SeesThePushHalfNotThePaymentHalf()
+    public async Task ExpenseReport_FinanceAdminNotSubmitter_SeesPushHalf()
     {
         SetPrincipal(Guid.NewGuid());
         SetFinanceAdmin(true);
@@ -476,7 +476,7 @@ public class BackdoorFinanceControllerTests
     /// ground, but they are neither the submitter nor a finance admin — so they get none of the
     /// payee name, IBAN, or Holded ids.</summary>
     [HumansFact]
-    public async Task ExpenseReport_CoordinatorNeitherSubmitterNorFinanceAdmin_SeesNoPayeeIbanOrTimeline()
+    public async Task ExpenseReport_OtherCoordinator_SeesNoPayeeIban()
     {
         SetPrincipal(Guid.NewGuid());
         SetFinanceAdmin(false);
@@ -499,7 +499,7 @@ public class BackdoorFinanceControllerTests
     /// <summary>The submitter half: they see the payee name (it is their own reimbursement)
     /// but not the finance-admin-only Holded ids.</summary>
     [HumansFact]
-    public async Task ExpenseReport_Submitter_SeesPayeeNameButNotFinanceAdminOnlyHoldedIds()
+    public async Task ExpenseReport_Submitter_SeesNoHoldedIds()
     {
         var userId = Guid.NewGuid();
         SetPrincipal(userId);
@@ -532,7 +532,7 @@ public class BackdoorFinanceControllerTests
     /// <summary>The finance-admin half: they see everything, including the payee name and the
     /// Holded ids the browser's finance card shows only them.</summary>
     [HumansFact]
-    public async Task ExpenseReport_FinanceAdmin_SeesPayeeNameAndHoldedIds()
+    public async Task ExpenseReport_FinanceAdmin_SeesHoldedIds()
     {
         SetPrincipal(Guid.NewGuid());
         SetFinanceAdmin(true);
@@ -601,7 +601,7 @@ public class BackdoorFinanceControllerTests
     }
 
     [HumansFact]
-    public async Task CreditorAccounts_ListsBothBindingsOnOneAccountAndTheUnresolvedOnes()
+    public async Task CreditorAccounts_TwoBindingsOneAccount_ListsBoth()
     {
         SetPrincipal(Guid.NewGuid());
         SetFinanceAdmin(true);
@@ -711,7 +711,7 @@ public class BackdoorFinanceControllerTests
     }
 
     [HumansFact]
-    public async Task SepaTransfers_FinanceAdmin_ProjectsMaskedIbanAndBookingState()
+    public async Task SepaTransfers_FinanceAdmin_MasksIban()
     {
         SetPrincipal(Guid.NewGuid());
         SetFinanceAdmin(true);
@@ -752,7 +752,7 @@ public class BackdoorFinanceControllerTests
     }
 
     [HumansFact]
-    public async Task HoldedSync_FinanceAdmin_ProjectsSyncStateAndUnmatchedDocs()
+    public async Task HoldedSync_FinanceAdmin_ShowsSyncState()
     {
         SetPrincipal(Guid.NewGuid());
         SetFinanceAdmin(true);
@@ -789,7 +789,7 @@ public class BackdoorFinanceControllerTests
     }
 
     [HumansFact]
-    public async Task ExpenseRecon_FinanceAdmin_ProjectsTheReport_WithNoIbanField()
+    public async Task ExpenseRecon_FinanceAdmin_HasNoIbanField()
     {
         SetPrincipal(Guid.NewGuid());
         SetFinanceAdmin(true);
@@ -845,7 +845,7 @@ public class BackdoorFinanceControllerTests
     /// for every string field of every route and for the download filename, not per field: an
     /// IBAN planted in each one is masked on the way out.</summary>
     [HumansFact]
-    public async Task Every_route_masks_an_Iban_planted_in_every_string_it_emits()
+    public async Task Routes_PlantedIban_IsMasked()
     {
         var ct = Xunit.TestContext.Current.CancellationToken;
         var userId = Guid.NewGuid();
@@ -974,7 +974,7 @@ public class BackdoorFinanceControllerTests
     /// <summary>The scrub above is called by hand; this proves MVC itself runs it. A real host,
     /// the real key filter and a real HTTP GET: an IBAN planted in a note comes back masked.</summary>
     [HumansFact]
-    public async Task Http_get_through_the_mvc_pipeline_masks_an_Iban_planted_in_a_note()
+    public async Task HttpGet_IbanInNote_IsMasked()
     {
         var ct = Xunit.TestContext.Current.CancellationToken;
         var userId = Guid.NewGuid();

@@ -50,7 +50,10 @@ public sealed class Section : ISection, ISectionAdminNav, ISectionConfiguration,
     IEnumerable<AdminNavGroup> ISectionAdminNav.Groups() =>
     [
         new("Stripe", [
-            new("Stripe", "Stripe", "Index", null, null, "fa-brands fa-stripe-s", FinancePolicies.Read)
+            new("Accounts",     "Stripe", "Index",        null, null, "fa-brands fa-stripe-s",   FinancePolicies.Read),
+            new("Transactions", "Stripe", "Transactions", null, null, "fa-solid fa-list",        FinancePolicies.Read),
+            new("Payouts",      "Stripe", "Payouts",      null, null, "fa-solid fa-building-columns", FinancePolicies.Read),
+            new("Reserves",     "Stripe", "Reserves",     null, null, "fa-solid fa-vault",       FinancePolicies.Read)
         ])
     ];
 

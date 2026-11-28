@@ -114,7 +114,6 @@ public sealed class Section :
 
         services.AddScoped<TicketVendorGateway>();
         services.AddScoped<ITicketDiscountCodes>(sp => sp.GetRequiredService<TicketVendorGateway>());
-        services.AddScoped<ITicketVendorMirror>(sp => sp.GetRequiredService<CachingTicketVendorService>());
 
         services.AddScoped<TicketDashboardPageBuilder>();
 
@@ -305,7 +304,7 @@ public sealed class Section :
         options.AddPolicy(PolicyNames.ScannerAccess, policy =>
             policy.AddRequirements(new TicketsAdminOrGateTerminalRequirement(admitsBoard: true)));
 
-        // Gate write actions (/Gate/Decision, /Gate/Claim POST): the ScannerAccess principals minus Board, which
+        // Gate write actions (/Gate/Decision, /Gate/Undo): the ScannerAccess principals minus Board, which
         // reads the gate and admits no one.
         options.AddPolicy(PolicyNames.GateAdmit, policy =>
             policy.AddRequirements(new TicketsAdminOrGateTerminalRequirement(admitsBoard: false)));

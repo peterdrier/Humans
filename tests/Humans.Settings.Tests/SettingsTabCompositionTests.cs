@@ -17,7 +17,7 @@ public class SettingsTabCompositionTests
     private static readonly ClaimsPrincipal User = new(new ClaimsIdentity());
 
     [HumansFact]
-    public async Task Orders_By_Weight_Stable_For_Equal_Weights()
+    public async Task Compose_EqualWeights_KeepsOrder()
     {
         var a = new FakeSettings(new SettingsTab("first", "First", typeof(FirstPanel), Weight: 0));
         var b = new FakeSettings(
@@ -30,7 +30,7 @@ public class SettingsTabCompositionTests
     }
 
     [HumansFact]
-    public async Task Drops_Tab_When_Policy_Fails()
+    public async Task Compose_PolicyFails_DropsTab()
     {
         var contributor = new FakeSettings(new SettingsTab("gated", "Gated", typeof(GatedPanel), Policy: "SomePolicy"));
         var auth = Substitute.For<IAuthorizationService>();
@@ -43,7 +43,7 @@ public class SettingsTabCompositionTests
     }
 
     [HumansFact]
-    public async Task Keeps_Tab_With_No_Policy()
+    public async Task Compose_NoPolicy_KeepsTab()
     {
         var contributor = new FakeSettings(new SettingsTab("open", "Open", typeof(OpenPanel)));
         var auth = Substitute.For<IAuthorizationService>();
@@ -56,7 +56,7 @@ public class SettingsTabCompositionTests
     }
 
     [HumansFact]
-    public async Task Deduplicates_By_Key_First_Wins()
+    public async Task Compose_DuplicateKey_FirstWins()
     {
         var first = new FakeSettings(new SettingsTab("shared", "First Claim", typeof(FirstPanel)));
         var second = new FakeSettings(new SettingsTab("shared", "Second Claim", typeof(SecondPanel)));
@@ -68,7 +68,7 @@ public class SettingsTabCompositionTests
     }
 
     [HumansFact]
-    public async Task Empty_Contributors_Yields_Empty_List()
+    public async Task Compose_NoContributors_YieldsEmptyList()
     {
         var tabs = await SettingsTabComposition.ComposeAsync([], AlwaysAllow(), User);
 

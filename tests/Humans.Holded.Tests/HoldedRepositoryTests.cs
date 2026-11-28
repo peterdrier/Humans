@@ -53,7 +53,7 @@ public sealed class HoldedRepositoryTests
     }
 
     [HumansFact]
-    public async Task GetOrCreateSyncState_creates_then_returns_same_row()
+    public async Task GetOrCreateSyncState_CalledTwice_ReturnsSameRow()
     {
         var ct = Xunit.TestContext.Current.CancellationToken;
 
@@ -78,7 +78,7 @@ public sealed class HoldedRepositoryTests
     }
 
     [HumansFact]
-    public async Task ReplaceLedgerWindow_upserts_and_deletes_missing()
+    public async Task ReplaceLedgerWindow_MissingLines_AreDeleted()
     {
         var ct = Xunit.TestContext.Current.CancellationToken;
 
@@ -99,7 +99,7 @@ public sealed class HoldedRepositoryTests
     }
 
     [HumansFact]
-    public async Task ReplaceLedgerWindow_scoped_to_account_leaves_other_accounts()
+    public async Task ReplaceLedgerWindow_AccountScope_LeavesOtherAccounts()
     {
         var ct = Xunit.TestContext.Current.CancellationToken;
 
@@ -115,7 +115,7 @@ public sealed class HoldedRepositoryTests
     }
 
     [HumansFact]
-    public async Task ReplaceLedgerWindow_empty_fetch_deletes_everything_in_window()
+    public async Task ReplaceLedgerWindow_EmptyFetch_ClearsWindow()
     {
         var ct = Xunit.TestContext.Current.CancellationToken;
 
@@ -131,7 +131,7 @@ public sealed class HoldedRepositoryTests
     }
 
     [HumansFact]
-    public async Task ReplaceLedgerWindow_reclassified_line_moves_account_instead_of_duplicating()
+    public async Task ReplaceLedgerWindow_ReclassifiedLine_MovesAccount()
     {
         var ct = Xunit.TestContext.Current.CancellationToken;
 
@@ -159,7 +159,7 @@ public sealed class HoldedRepositoryTests
     }
 
     [HumansFact]
-    public async Task HasAnyLedgerLines_is_false_on_a_cold_cache()
+    public async Task HasAnyLedgerLines_ColdCache_IsFalse()
     {
         var ct = Xunit.TestContext.Current.CancellationToken;
 
@@ -173,7 +173,7 @@ public sealed class HoldedRepositoryTests
     }
 
     [HumansFact]
-    public async Task UpsertAccounts_replaces_totals()
+    public async Task UpsertAccounts_ExistingAccount_ReplacesTotals()
     {
         var ct = Xunit.TestContext.Current.CancellationToken;
 
@@ -198,7 +198,7 @@ public sealed class HoldedRepositoryTests
     }
 
     [HumansFact]
-    public async Task AddApiCalls_round_trips()
+    public async Task AddApiCalls_Saved_RoundTrip()
     {
         var ct = Xunit.TestContext.Current.CancellationToken;
 

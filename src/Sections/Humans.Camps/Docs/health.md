@@ -35,7 +35,7 @@ people get early entry.
 ## 3. Structure
 
 One repository over the camp aggregate (camp, seasons, members, images, names, settings) with
-the role tables in a partial of the same repository; one service per lane (`CampService`,
+the role tables in the same repository; one service per lane (`CampService`,
 `CampRoleService`, `CampContactService`); one singleton decorator that owns the `CampInfo`
 projection and drops it whole after every write. The decorator is the only registered face
 of `CampService`: every contract the section publishes resolves to it, and the inner service
@@ -96,8 +96,6 @@ on every read.
   service.
 - **Search on the inner service throws** — search is cache-only by design.
 - **Reserved slug `create`** for role definitions.
-- **Dead `PublicYear`/`EeStartDate` columns on `camp_settings`** stay mapped until
-  peterdrier/Humans#1761 drops them.
 
 ## History
 

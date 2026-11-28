@@ -1,0 +1,17 @@
+{
+  "date": "2026-11",
+  "family": "Claude",
+  "model": "Haiku",
+  "version": "5.5",
+  "effort": "medium",
+  "brief": "v1",
+  "notes": {
+    "en": "Aimed for a clean, legible Vitruvian Man: square and circle frame, horizontal and raised arms, closed and spread legs, and a neutral face. Still weak: the torso is blocky, the legs read like trousers, and the hands are plain ovals with no fingers.",
+    "es": "Buscaba un Hombre de Vitruvio limpio y legible: marco de cuadrado y círculo, brazos horizontales y elevados, piernas juntas y abiertas, y un rostro neutro. Aún débil: el torso es rígido, las piernas parecen pantalones y las manos son óvalos sin dedos.",
+    "de": "Ziel war ein sauberer, lesbarer Vitruvianischer Mensch: Rahmen aus Quadrat und Kreis, waagerechte und erhobene Arme, geschlossene und gespreizte Beine, neutrales Gesicht. Noch schwach: der Torso wirkt klotzig, die Beine wie Hosen, die Hände sind Ovale ohne Finger.",
+    "it": "Puntavo a un Uomo Vitruviano pulito e leggibile: cornice di quadrato e cerchio, braccia orizzontali e alzate, gambe chiuse e divaricate, volto neutro. Ancora deboli: il torso è squadrato, le gambe sembrano pantaloni, le mani sono ovali senza dita.",
+    "fr": "Je visais un Homme de Vitruve net et lisible : cadre carré et cercle, bras horizontaux et levés, jambes serrées et écartées, visage neutre. Encore faibles : le torse est massif, les jambes ressemblent à un pantalon, les mains sont des ovales sans doigts.",
+    "ca": "Buscava un Home de Vitruvi net i llegible: marc de quadrat i cercle, braços horitzontals i alçats, cames juntes i obertes, rostre neutre. Encara febles: el tronc és massís, les cames semblen pantalons i les mans són ovals sense dits.",
+    "nl": "Ik wilde een heldere, leesbare Vitruviaanse Man: kader van vierkant en cirkel, horizontale en opgeheven armen, gesloten en gespreide benen, neutraal gezicht. Nog zwak: de romp is kantig, de benen lijken broekspijpen en de handen zijn ovalen zonder vingers."
+  }
+}

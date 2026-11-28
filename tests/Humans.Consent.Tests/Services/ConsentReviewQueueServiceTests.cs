@@ -69,7 +69,7 @@ public sealed class ConsentReviewQueueServiceTests
     }
 
     [HumansFact]
-    public async Task GetReviewQueueAsync_FlaggedUserAlreadyApproved_StillAppearsInFlagged()
+    public async Task GetReviewQueueAsync_FlaggedButApproved_StaysFlagged()
     {
         // Invariant: anyone with an unresolved Flagged consent check must appear in the review
         // queue so a CC can resolve them — even if a prior admin override flipped IsApproved=true.
@@ -128,7 +128,7 @@ public sealed class ConsentReviewQueueServiceTests
     }
 
     [HumansFact]
-    public async Task GetReviewQueueAsync_MergedTombstoneNeedingReview_IsExcludedFromPending()
+    public async Task GetReviewQueueAsync_MergedTombstone_IsExcluded()
     {
         // Merge-source tombstones are not live accounts. Even though the merged row's profile
         // survives with names filled and IsApproved=false (which otherwise satisfies
@@ -180,7 +180,7 @@ public sealed class ConsentReviewQueueServiceTests
     }
 
     [HumansFact]
-    public async Task BulkClearAsync_ClearsOnlySelectedUsersWhoAreInTheQueue()
+    public async Task BulkClearAsync_SelectedNotInQueue_AreSkipped()
     {
         // Bulk clear's eligibility IS queue membership: a selected id that is not a queue row
         // must not be cleared. Without this, the only thing standing between a crafted POST and

@@ -38,7 +38,7 @@ public class DietaryMissingBannerViewComponentTests
     [HumansTheory]
     [InlineData(false)]  // nothing on file
     [InlineData(true)]   // a row with no preference and no opt-out (e.g. allergies only)
-    public async Task Renders_WhenQualifyingSignupAndNoPreferenceOrOptOut(bool rowWithoutPreference)
+    public async Task Invoke_SignupWithoutPreference_Renders(bool rowWithoutPreference)
     {
         var userId = Guid.NewGuid();
         _shiftMgmt.HasQualifyingCantinaSignupAsync(userId, Arg.Any<CancellationToken>()).Returns(true);

@@ -29,7 +29,7 @@ public sealed class RideshareSnapshotTests
     }
 
     [HumansFact]
-    public void JoinableTrips_ExcludeFullCancelledAndOtherDirection()
+    public void JoinableTrips_FullOrCancelled_AreExcluded()
     {
         var joinable = Trip();
         var full = Trip(seatsRemaining: 0);
@@ -42,7 +42,7 @@ public sealed class RideshareSnapshotTests
     }
 
     [HumansFact]
-    public void TripsHappeningOn_IncludeFullAndCancelledInBothDirections()
+    public void TripsHappeningOn_FullOrCancelled_AreIncluded()
     {
         var joinable = Trip();
         var full = Trip(seatsRemaining: 0);
@@ -56,7 +56,7 @@ public sealed class RideshareSnapshotTests
     }
 
     [HumansFact]
-    public void ActiveRequests_MatchExactDateAndDirection_AndSkipCancelled()
+    public void ActiveRequests_Cancelled_AreSkipped()
     {
         var wanted = Request();
         var cancelled = Request(status: RequestStatus.Cancelled);
@@ -68,7 +68,7 @@ public sealed class RideshareSnapshotTests
     }
 
     [HumansFact]
-    public void Stats_CountPostings_ActiveSeats_AcceptedSeatsOnActiveTrips_AndUnmatchedRiders()
+    public void Stats_MixedPostings_CountsEachKind()
     {
         var active = Trip(seatsOffered: 4, seatsRemaining: 2);
         var cancelled = Trip(seatsOffered: 3, status: TripStatus.Cancelled);

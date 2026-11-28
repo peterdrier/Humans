@@ -159,7 +159,7 @@ public sealed class ConsentServiceTests : ConsentTestHarness
         profile: profile);
 
     [HumansFact]
-    public async Task GetRequiredConsentRowsForUserAsync_PicksLatestEffectiveVersion_AndSkipsFutureOnlyDocuments()
+    public async Task GetRequiredConsentRowsForUserAsync_FutureOnly_IsSkipped()
     {
         var oldVersion = Version(Clock.GetCurrentInstant().Minus(Duration.FromDays(60)));
         var currentVersion = Version(Clock.GetCurrentInstant().Minus(Duration.FromDays(1)));
@@ -184,7 +184,7 @@ public sealed class ConsentServiceTests : ConsentTestHarness
     }
 
     [HumansFact]
-    public async Task GetRequiredConsentRowsForUserAsync_OrdersUnsignedFirst_ThenByTitleOrdinal()
+    public async Task GetRequiredConsentRowsForUserAsync_Rows_UnsignedFirst()
     {
         var signedVersion = Version(Clock.GetCurrentInstant().Minus(Duration.FromDays(1)));
         var unsignedB = Version(Clock.GetCurrentInstant().Minus(Duration.FromDays(1)));
@@ -219,7 +219,7 @@ public sealed class ConsentServiceTests : ConsentTestHarness
             new Dictionary<string, string>(StringComparer.Ordinal), effectiveFrom, null);
 
     [HumansFact]
-    public async Task SubmitConsentAsync_FinalSignature_RestoresSuspensionWithAWarmConsentCache()
+    public async Task SubmitConsentAsync_FinalSignature_LiftsSuspension()
     {
         var userId = Guid.NewGuid();
         var versionId = Guid.NewGuid();
@@ -518,7 +518,7 @@ public sealed class ConsentServiceTests : ConsentTestHarness
     }
 
     [HumansFact]
-    public async Task SubmitConsentAsync_WhenRequiredConsentsRemain_DoesNotRestoreConsentSuspension()
+    public async Task SubmitConsentAsync_ConsentsRemain_KeepsSuspension()
     {
         var userId = Guid.NewGuid();
         var versionId = Guid.NewGuid();
@@ -532,7 +532,7 @@ public sealed class ConsentServiceTests : ConsentTestHarness
     }
 
     [HumansFact]
-    public async Task SubmitConsentAsync_StubProfile_ReturnsStubProfileErrorAndWritesNoRecord()
+    public async Task SubmitConsentAsync_StubProfile_IsRefused()
     {
         var userId = Guid.NewGuid();
         var versionId = Guid.NewGuid();
@@ -746,7 +746,7 @@ public sealed class ConsentServiceTests : ConsentTestHarness
     }
 
     [HumansFact]
-    public async Task GetConsentReviewDetailAsync_ReturnsVersionWithDocumentAndConsent()
+    public async Task GetConsentReviewDetailAsync_Version_HasDocumentWithConsent()
     {
         var userId = Guid.NewGuid();
         var versionId = Guid.NewGuid();
@@ -807,7 +807,7 @@ public sealed class ConsentServiceTests : ConsentTestHarness
     }
 
     [HumansFact]
-    public async Task GetConsentMapForUsersAsync_InputContainsBothSourceAndTarget_DoesNotThrow()
+    public async Task GetConsentMapForUsersAsync_SourceWithTarget_Succeeds()
     {
         // Source and target in one batch: ids must be deduped before the repository's ToDictionary.
         var sourceId = Guid.NewGuid();
@@ -842,7 +842,7 @@ public sealed class ConsentServiceTests : ConsentTestHarness
     }
 
     [HumansFact]
-    public async Task GetConsentMapForUsersAsync_TargetBeforeSource_TargetStillSeesTheSourcesConsent()
+    public async Task GetConsentMapForUsersAsync_TargetFirst_SeesSourceConsent()
     {
         // Same batch, reversed. Both ids resolve to the target's row, so both carry the
         // same MergedUserIds; a reverse source→target map let whichever input was written
@@ -942,7 +942,7 @@ public sealed class ConsentServiceTests : ConsentTestHarness
     }
 
     [HumansFact]
-    public async Task GetConsentMapForUsersAsync_ThroughAMergedAwayId_IncludesTheSurvivorsOwnConsent()
+    public async Task GetConsentMapForUsersAsync_MergedId_IncludesSurvivorConsent()
     {
         // A caller still holding the archived id gets the survivor's record, and the
         // chain to union is that record's AllUserIds, survivor first. A union over

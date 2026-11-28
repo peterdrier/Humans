@@ -15,7 +15,4 @@ internal sealed class GateSettings
 
     /// <summary>An unset cutoff is undecidable (AMBER), never "general entry already open".</summary>
     public bool IsCutoffConfigured => GeneralEntryOpensAt != Instant.MinValue;
-
-    /// <summary>Stored and edited on /Settings#gate; nothing reads it yet.</summary>
-    public int MinorAgeThresholdYears { get; set; } = 16;
 }

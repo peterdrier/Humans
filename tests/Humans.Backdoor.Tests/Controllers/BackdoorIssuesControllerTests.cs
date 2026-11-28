@@ -36,7 +36,7 @@ public class BackdoorIssuesControllerTests
     [InlineData(999, false)]
     [InlineData(0, true)]
     [InlineData(1, true)]
-    public void Json_triage_models_validate_defined_enum_values(int value, bool valid)
+    public void TriageJson_UndefinedEnumValue_IsInvalid(int value, bool valid)
     {
         var status = JsonSerializer.Deserialize<UpdateIssueStatusModel>("{\"Status\":" + value + "}")!;
         var create = JsonSerializer.Deserialize<ApiCreateIssueModel>(
@@ -49,7 +49,7 @@ public class BackdoorIssuesControllerTests
     }
 
     [HumansFact]
-    public void Json_triage_status_requires_explicit_status()
+    public void TriageJson_NoStatus_IsInvalid()
     {
         Action deserialize = () => JsonSerializer.Deserialize<UpdateIssueStatusModel>("{}");
 
@@ -57,7 +57,7 @@ public class BackdoorIssuesControllerTests
     }
 
     [HumansFact]
-    public void Json_issue_creation_requires_explicit_category()
+    public void CreateJson_NoCategory_IsInvalid()
     {
         Action deserialize = () => JsonSerializer.Deserialize<ApiCreateIssueModel>(
             "{\"ReporterUserId\":\"11111111-1111-1111-1111-111111111111\",\"Title\":\"Title\",\"Description\":\"Description\"}");
@@ -66,7 +66,7 @@ public class BackdoorIssuesControllerTests
     }
 
     [HumansFact]
-    public void Json_issue_creation_requires_explicit_reporter()
+    public void CreateJson_NoReporter_IsInvalid()
     {
         Action deserialize = () => JsonSerializer.Deserialize<ApiCreateIssueModel>(
             "{\"Category\":0,\"Title\":\"Title\",\"Description\":\"Description\"}");
@@ -77,7 +77,7 @@ public class BackdoorIssuesControllerTests
     [HumansTheory]
     [InlineData(true)]
     [InlineData(false)]
-    public async Task Create_rejects_empty_or_unknown_reporter_before_filing(bool emptyId)
+    public async Task Create_EmptyOrUnknownReporter_IsRejected(bool emptyId)
     {
         var result = await _sut.Create(new ApiCreateIssueModel
         {
@@ -201,7 +201,7 @@ public class BackdoorIssuesControllerTests
             .Returns(Task.FromResult<IReadOnlyList<IssueListSnapshot>>([]));
 
     [HumansFact]
-    public async Task Screenshot_streams_the_file_for_the_key_owner()
+    public async Task Screenshot_KeyOwner_StreamsFile()
     {
         var id = Guid.NewGuid();
         byte[] bytes = [1, 2, 3];
@@ -217,7 +217,7 @@ public class BackdoorIssuesControllerTests
     }
 
     [HumansFact]
-    public async Task Screenshot_is_404_when_the_issue_is_missing_or_out_of_reach()
+    public async Task Screenshot_MissingOrOutOfReach_Is404()
     {
         _issues
             .GetScreenshotAsync(Arg.Any<Guid>(), Arg.Any<IssueViewer>(), Arg.Any<CancellationToken>())
@@ -229,7 +229,7 @@ public class BackdoorIssuesControllerTests
     }
 
     [HumansFact]
-    public async Task List_points_ScreenshotUrl_at_the_key_authenticated_route()
+    public async Task List_ScreenshotUrl_UsesKeyRoute()
     {
         var snapshot = MakeSnapshot() with { ScreenshotStoragePath = "uploads/issues/x/y.png" };
         _issues
@@ -245,7 +245,7 @@ public class BackdoorIssuesControllerTests
     }
 
     [HumansFact]
-    public async Task List_returns_all_issues()
+    public async Task List_NoFilter_ReturnsAllIssues()
     {
         IReadOnlyList<IssueListSnapshot> issues = [MakeSnapshot(), MakeSnapshot(), MakeSnapshot()];
         _issues
@@ -259,7 +259,7 @@ public class BackdoorIssuesControllerTests
     }
 
     [HumansFact]
-    public async Task List_filters_by_status()
+    public async Task List_StatusFilter_IsApplied()
     {
         IssueListFilter? captured = null;
         StubList(f => captured = f);
@@ -271,7 +271,7 @@ public class BackdoorIssuesControllerTests
     }
 
     [HumansFact]
-    public async Task List_filters_by_section()
+    public async Task List_SectionFilter_IsApplied()
     {
         IssueListFilter? captured = null;
         StubList(f => captured = f);
@@ -283,7 +283,7 @@ public class BackdoorIssuesControllerTests
     }
 
     [HumansFact]
-    public async Task List_filters_by_reporter()
+    public async Task List_ReporterFilter_IsApplied()
     {
         IssueListFilter? captured = null;
         StubList(f => captured = f);
@@ -296,7 +296,7 @@ public class BackdoorIssuesControllerTests
     }
 
     [HumansFact]
-    public async Task List_filters_by_search_text()
+    public async Task List_SearchText_IsApplied()
     {
         IssueListFilter? captured = null;
         StubList(f => captured = f);
@@ -308,7 +308,7 @@ public class BackdoorIssuesControllerTests
     }
 
     [HumansFact]
-    public async Task List_treats_blank_search_as_unset()
+    public async Task List_BlankSearch_IsUnset()
     {
         IssueListFilter? captured = null;
         StubList(f => captured = f);
@@ -320,7 +320,7 @@ public class BackdoorIssuesControllerTests
     }
 
     [HumansFact]
-    public async Task Get_returns_NotFound_for_missing_issue()
+    public async Task Get_MissingIssue_IsNotFound()
     {
         var id = Guid.NewGuid();
         _issues.GetIssueByIdAsync(id, Arg.Any<IssueViewer>(), Arg.Any<CancellationToken>())
@@ -332,7 +332,7 @@ public class BackdoorIssuesControllerTests
     }
 
     [HumansFact]
-    public async Task Get_includes_thread_with_comments_and_audit_events()
+    public async Task Get_ExistingIssue_IncludesThread()
     {
         var id = Guid.NewGuid();
         var reporterId = Guid.NewGuid();
@@ -376,7 +376,7 @@ public class BackdoorIssuesControllerTests
     }
 
     [HumansFact]
-    public async Task Create_files_for_the_named_reporter_and_records_the_key_owner_as_filer()
+    public async Task Create_NamedReporter_RecordsKeyOwnerAsFiler()
     {
         var reporterId = Guid.NewGuid();
         var newIssueId = Guid.NewGuid();
@@ -412,7 +412,7 @@ public class BackdoorIssuesControllerTests
     }
 
     [HumansFact]
-    public async Task PostComment_attributes_the_comment_to_the_key_owner()
+    public async Task PostComment_KeyOwner_IsAuthor()
     {
         // Reporter-vs-handler classification (and its auto-reopen) is the service's
         // invariant, derived from senderUserId — the controller only attributes.
@@ -433,7 +433,7 @@ public class BackdoorIssuesControllerTests
     }
 
     [HumansFact]
-    public async Task PostComment_returns_NotFound_when_issue_missing()
+    public async Task PostComment_MissingIssue_IsNotFound()
     {
         var issueId = Guid.NewGuid();
         _issues.PostCommentAsync(issueId, Arg.Any<IssueViewer>(), KeyOwnerId, "Hello?", false, Arg.Any<CancellationToken>())
@@ -445,7 +445,7 @@ public class BackdoorIssuesControllerTests
     }
 
     [HumansFact]
-    public async Task UpdateStatus_records_the_key_owner_as_actor()
+    public async Task UpdateStatus_KeyOwner_IsActor()
     {
         var issueId = Guid.NewGuid();
         _issues.UpdateStatusAsync(issueId, Arg.Any<IssueViewer>(), IssueStatus.Resolved, KeyOwnerId, Arg.Any<CancellationToken>())
@@ -459,7 +459,7 @@ public class BackdoorIssuesControllerTests
     }
 
     [HumansFact]
-    public async Task UpdateStatus_returns_NotFound_when_service_reports_missing()
+    public async Task UpdateStatus_MissingIssue_IsNotFound()
     {
         var issueId = Guid.NewGuid();
         _issues.UpdateStatusAsync(issueId, Arg.Any<IssueViewer>(), Arg.Any<IssueStatus>(), Arg.Any<Guid?>(), Arg.Any<CancellationToken>())
@@ -474,7 +474,7 @@ public class BackdoorIssuesControllerTests
     /// A rejected move is not a missing issue; every patch endpoint answers 422.
     /// </summary>
     [HumansFact]
-    public async Task UpdateStatus_returns_422_when_the_service_rejects_the_move()
+    public async Task UpdateStatus_MoveRejected_Is422()
     {
         var issueId = Guid.NewGuid();
         _issues.UpdateStatusAsync(issueId, Arg.Any<IssueViewer>(), Arg.Any<IssueStatus>(), Arg.Any<Guid?>(), Arg.Any<CancellationToken>())
@@ -492,7 +492,7 @@ public class BackdoorIssuesControllerTests
     [InlineData("assignee")]
     [InlineData("section")]
     [InlineData("github")]
-    public async Task Mutation_dependency_diagnostics_are_500_without_leaking_messages(string field)
+    public async Task Mutation_DependencyFailure_HidesMessage(string field)
     {
         var id = Guid.NewGuid();
         var failure = new InvalidOperationException("Persistence property not found: private diagnostic");
@@ -522,7 +522,7 @@ public class BackdoorIssuesControllerTests
     }
 
     [HumansFact]
-    public async Task A_logged_service_failure_returns_500_instead_of_a_rule_refusal()
+    public async Task Mutation_ServiceFailure_Is500()
     {
         var id = Guid.NewGuid();
         _issues.UpdateStatusAsync(id, Arg.Any<IssueViewer>(), Arg.Any<IssueStatus>(), KeyOwnerId, Arg.Any<CancellationToken>())
@@ -538,7 +538,7 @@ public class BackdoorIssuesControllerTests
     /// sees exactly what the Issues UI would show that person.
     /// </summary>
     [HumansFact]
-    public async Task List_reads_the_queue_as_the_key_owner()
+    public async Task List_KeyOwner_IsViewer()
     {
         WithRoles("Board");
         StubList();
@@ -555,7 +555,7 @@ public class BackdoorIssuesControllerTests
     }
 
     [HumansFact]
-    public async Task An_admin_key_owner_reads_the_queue_as_an_admin()
+    public async Task List_AdminKeyOwner_ReadsAsAdmin()
     {
         WithRoles(RoleNames.Admin);
         StubList();
@@ -574,7 +574,7 @@ public class BackdoorIssuesControllerTests
     /// these pin that the controller hands it over.
     /// </summary>
     [HumansFact]
-    public async Task Reading_one_issue_carries_the_key_owners_viewer()
+    public async Task Get_KeyOwner_IsViewer()
     {
         WithRoles("Board");
         var issueId = Guid.NewGuid();
@@ -587,7 +587,7 @@ public class BackdoorIssuesControllerTests
     }
 
     [HumansFact]
-    public async Task Commenting_carries_the_key_owners_viewer()
+    public async Task PostComment_KeyOwner_IsViewer()
     {
         WithRoles("Board");
         var issueId = Guid.NewGuid();
@@ -605,7 +605,7 @@ public class BackdoorIssuesControllerTests
     }
 
     [HumansFact]
-    public async Task Patching_carries_the_key_owners_viewer()
+    public async Task Patch_KeyOwner_IsViewer()
     {
         WithRoles("Board");
         var issueId = Guid.NewGuid();
@@ -621,7 +621,7 @@ public class BackdoorIssuesControllerTests
     /// back from the service as "not found", and the patch pipeline turns that into a 404.
     /// </summary>
     [HumansFact]
-    public async Task A_patch_on_an_issue_out_of_reach_is_a_404()
+    public async Task Patch_IssueOutOfReach_Is404()
     {
         WithRoles("Board");
         var issueId = Guid.NewGuid();
@@ -658,7 +658,7 @@ public class BackdoorIssuesControllerTests
     [InlineData(0, 1)]
     [InlineData(50, 50)]
     [InlineData(5000, 1000)]
-    public async Task List_clamps_the_limit(int requested, int expected)
+    public async Task List_LargeLimit_IsClamped(int requested, int expected)
     {
         IssueListFilter? captured = null;
         StubList(f => captured = f);

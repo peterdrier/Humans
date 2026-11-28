@@ -1,3 +1,4 @@
+using JetBrains.Annotations;
 using System.Globalization;
 using System.Net;
 using System.Net.Http.Headers;
@@ -620,6 +621,7 @@ internal sealed class HiEventsPlatform : ITicketingPlatform
         throw new ArgumentException($"'{platformOrderId}' is not a Hi.Events order id.", nameof(platformOrderId));
     }
 
+    [UsedImplicitly(ImplicitUseKindFlags.Access, ImplicitUseTargetFlags.WithMembers)]
     private sealed record CheckoutOrderBody(
         string ExternalReference,
         string FirstName,
@@ -631,10 +633,13 @@ internal sealed class HiEventsPlatform : ITicketingPlatform
         bool SendBuyerEmails,
         IReadOnlyList<CheckoutOrderItem> Items);
 
+    [UsedImplicitly(ImplicitUseKindFlags.Access, ImplicitUseTargetFlags.WithMembers)]
     private sealed record CheckoutOrderItem(int ProductId, decimal Price, CheckoutAttendee? Attendee);
 
+    [UsedImplicitly(ImplicitUseKindFlags.Access, ImplicitUseTargetFlags.WithMembers)]
     private sealed record CheckoutAttendee(string FirstName);
 
+    [UsedImplicitly(ImplicitUseKindFlags.Access, ImplicitUseTargetFlags.WithMembers)]
     private sealed record RefundBody(decimal Amount, bool NotifyBuyer, bool CancelOrder, string IdempotencyKey);
 
     private sealed record Envelope(HiEventsOrder? Data);

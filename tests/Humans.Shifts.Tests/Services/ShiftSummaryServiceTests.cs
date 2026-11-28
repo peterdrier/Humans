@@ -50,28 +50,32 @@ public sealed class ShiftSummaryServiceTests : ShiftsTestHarness
         _event = new EventSettings
         {
             Id = Guid.NewGuid(),
+        };
+        Calendars[_event.Id] = new TestEventCalendar
+        {
+            Id = _event.Id,
             EventName = "Test Event",
             GateOpeningDate = new LocalDate(2026, 7, 1),
             TimeZoneId = "UTC",
-            IsActive = true
+            IsActive = true,
         };
 
         _burn = new BurnSettingsInfo(
             Id: _event.Id,
-            EventName: _event.EventName,
+            EventName: Calendars[_event.Id].EventName,
             Year: 2026,
-            TimeZoneId: _event.TimeZoneId,
-            GateOpeningDate: _event.GateOpeningDate,
-            BuildStartOffset: _event.BuildStartOffset,
-            EventEndOffset: _event.EventEndOffset,
-            StrikeEndOffset: _event.StrikeEndOffset,
-            FirstCrewStartOffset: _event.FirstCrewStartOffset,
-            SetupWeekStartOffset: _event.SetupWeekStartOffset,
-            PreEventWeekStartOffset: _event.PreEventWeekStartOffset,
-            FinishingWeekendStartOffset: _event.FinishingWeekendStartOffset,
+            TimeZoneId: Calendars[_event.Id].TimeZoneId,
+            GateOpeningDate: Calendars[_event.Id].GateOpeningDate,
+            BuildStartOffset: Calendars[_event.Id].BuildStartOffset,
+            EventEndOffset: Calendars[_event.Id].EventEndOffset,
+            StrikeEndOffset: Calendars[_event.Id].StrikeEndOffset,
+            FirstCrewStartOffset: -25,
+            SetupWeekStartOffset: -16,
+            PreEventWeekStartOffset: -9,
+            FinishingWeekendStartOffset: -4,
             EarlyEntryCapacity: new Dictionary<int, int>(),
             BarriosEarlyEntryAllocation: null,
-            EarlyEntryClose: _event.EarlyEntryClose,
+            EarlyEntryClose: Calendars[_event.Id].EarlyEntryClose,
             IsShiftBrowsingOpen: _event.IsShiftBrowsingOpen);
 
         SeedScenario();
@@ -177,9 +181,10 @@ public sealed class ShiftSummaryServiceTests : ShiftsTestHarness
     {
         var allDay = SeedShift(_rWater, Duration.FromHours(24));
         ShiftsDb.Shifts.Local.Single(s => s.Id == allDay).IsAllDay = true;
-        var otherEvent = new EventSettings
+        var otherEvent = new EventSettings { Id = Guid.NewGuid() };
+        Calendars[otherEvent.Id] = new TestEventCalendar
         {
-            Id = Guid.NewGuid(),
+            Id = otherEvent.Id,
             EventName = "Other",
             GateOpeningDate = new LocalDate(2025, 7, 1),
             TimeZoneId = "UTC"

@@ -28,7 +28,7 @@ namespace Humans.Events.Tests.ViewComponents;
 public class EventIdentityViewTests
 {
     [HumansFact]
-    public async Task Browser_labels_resolve_member_identity_and_preserve_authored_hosts_and_camps()
+    public async Task BrowserLabels_MemberIdentity_IsResolved()
     {
         using var culture = new CultureScope("en");
         var id = Guid.NewGuid();

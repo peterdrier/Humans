@@ -86,7 +86,7 @@ public sealed class AnthropicClientTests
     }
 
     [HumansFact]
-    public async Task A_tool_use_turn_with_thinking_is_replayed_block_for_block()
+    public async Task StreamAsync_ThinkingToolTurn_ReplaysBlockForBlock()
     {
         // Claude 5 models think by default; the API rejects a replayed tool-use turn that drops its thinking blocks.
         var body = """
@@ -174,7 +174,7 @@ public sealed class AnthropicClientTests
     [Xunit.InlineData(ProviderFailureKind.Sse)]
     [Xunit.InlineData(ProviderFailureKind.Transport)]
     [Xunit.InlineData(ProviderFailureKind.Unexpected)]
-    public async Task StreamAsync_ClassifiesFailuresAndKeepsTheErrorFinalizer(ProviderFailureKind failureKind)
+    public async Task StreamAsync_ProviderFailure_KeepsErrorFinalizer(ProviderFailureKind failureKind)
     {
         Exception? failure = failureKind switch
         {
@@ -264,7 +264,7 @@ public sealed class AnthropicClientTests
     [Xunit.InlineData(true, ProviderFailureKind.Transport)]
     [Xunit.InlineData(false, ProviderFailureKind.Unexpected)]
     [Xunit.InlineData(true, ProviderFailureKind.Unexpected)]
-    public async Task Optional_reads_normalize_provider_failures_without_hiding_unexpected_errors(bool models, ProviderFailureKind kind)
+    public async Task OptionalReads_UnexpectedError_IsNotHidden(bool models, ProviderFailureKind kind)
     {
         Exception? failure = kind switch
         {

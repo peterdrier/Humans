@@ -55,9 +55,9 @@ A register with a rhythm on top. Written fresh, it is:
 - **One table family**: a row per group with five child collections, plus a one-row settings
   table, reached through a single repository that hands back the whole register as one detached
   graph. Nothing pages; the dataset is a few dozen rows.
-- **One service**, split into partials along the shapes: the register's own rules, the
-  Secretary's decisions, the documents and their comment window, the daily pass, the GDPR
-  fan-outs, and a helpers file with the projection, the guards and each crosscut's one call site.
+- **One service** in one file: the register's own rules, the Secretary's decisions, the documents
+  and their comment window, the daily pass, the GDPR fan-outs, the projection, the guards and each
+  crosscut's one call site.
   Every rule failure comes back as a refusal value naming a resource key; nothing throws for one.
 - **A pure-function rhythm module** over the projected record — no clock, no dependencies — so
   the daily job and the page badges answer the same questions from the same code.
@@ -87,18 +87,18 @@ loader and must not be gated. The group-loading methods take the check from the 
   non-pending member (`Services/WorkgroupService.cs`); the last coordinator leaving must name
   a replacement unless the caller acts as admin (`Services/WorkgroupService.cs`).
 - **The Secretary's refusals are written down.** Refuse, Withdraw and Close call `RequireReasons`
-  before anything else (`Services/WorkgroupService.Lifecycle.cs:81`,
-  `Services/WorkgroupService.Lifecycle.cs:105`, `Services/WorkgroupService.Lifecycle.cs:135`),
-  which refuses blank (`Services/WorkgroupService.Helpers.cs:163`).
+  before anything else (`Services/WorkgroupService.cs:81`,
+  `Services/WorkgroupService.cs:105`, `Services/WorkgroupService.cs:135`),
+  which refuses blank (`Services/WorkgroupService.cs:163`).
 - **A group is never registered without somewhere to work.** The Drive subfolder is created
-  before the status flips (`Services/WorkgroupService.Lifecycle.cs:28`); a failure there returns
+  before the status flips (`Services/WorkgroupService.cs:28`); a failure there returns
   a refusal and leaves the row untouched (`Services/WorkgroupService.cs`).
 - **A decision, once committed, finishes.** After the first write each mutation drops its
   cancellation token, so the log entry, audit row and notices that follow cannot be torn off by a
-  closed tab (`Services/WorkgroupService.Helpers.cs:561`); Register drops it before it starts
-  (`Services/WorkgroupService.Lifecycle.cs:20`).
+  closed tab (`Services/WorkgroupService.cs:561`); Register drops it before it starts
+  (`Services/WorkgroupService.cs:20`).
 - **Reactivation undoes Dormant completely.** Status, reason, end date and the written reasons
-  clear in one write (`Services/WorkgroupService.Lifecycle.cs:158`).
+  clear in one write (`Services/WorkgroupService.cs:158`).
 - **The daily pass never changes a group's status, and never persists a judgement about
   silence.** It reads `SilenceFor(now)` to decide whether a thirty-day multiple has come round
   (`Services/WorkgroupService.cs`) and then only notifies and audits. A status
@@ -114,7 +114,7 @@ loader and must not be gated. The group-loading methods take the check from the 
   stores it in (`Services/WorkgroupService.cs`).
 - **Delivered freezes the body.** Editing a Delivered document is refused
   (`Services/WorkgroupService.cs`), and a disposition may only be recorded on one
-  (`Services/WorkgroupService.Lifecycle.cs:263`).
+  (`Services/WorkgroupService.cs:263`).
 - **Commenting is gated by the window, and for a sensitive group by membership.** A sensitive
   group refuses comments from non-members (`Services/WorkgroupService.cs`);
   otherwise any signed-in human may comment while the window is open
@@ -130,8 +130,8 @@ loader and must not be gated. The group-loading methods take the check from the 
   posted one (`Services/WorkgroupService.cs`, `Services/WorkgroupService.cs`) against
   the four kinds a human may write (`Services/WorkgroupService.cs`).
 - **A slug never shadows a route.** The reserve loop skips the reserved segments and any slug
-  already taken (`Services/WorkgroupService.Helpers.cs:290`), after trimming to the column's
-  budget (`Services/WorkgroupService.Helpers.cs:285`).
+  already taken (`Services/WorkgroupService.cs:290`), after trimming to the column's
+  budget (`Services/WorkgroupService.cs:285`).
 - **Only the repository touches the tables.** `WorkgroupRepository` is the one holder of
   `IDbContextFactory<WorkgroupsDbContext>` (`Data/WorkgroupRepository.cs:7`).
 - **Moderation is auditable.** Hiding a comment writes an audit entry with the reason
@@ -139,8 +139,8 @@ loader and must not be gated. The group-loading methods take the check from the 
 - **Erasure keeps the association's record.** Attribution columns are nulled and membership rows
   deleted (`Data/WorkgroupRepository.cs:229`); bodies stay. An Active group whose only
   coordinator is this person is listed before the rows go
-  (`Services/WorkgroupService.Gdpr.cs:135`) and the Board told from that list
-  (`Services/WorkgroupService.Gdpr.cs:142`).
+  (`Services/WorkgroupService.cs:135`) and the Board told from that list
+  (`Services/WorkgroupService.cs:142`).
 
 ## 5. Seams
 
@@ -173,6 +173,10 @@ loader and must not be gated. The group-loading methods take the check from the 
 
 ## Load-bearing weirdness
 
+- **`WorkgroupService` is big (~2,200 lines, 17 dependencies) and stays one service.**
+  `CachingWorkgroupService` holds the whole register — groups, members, meetings, log, documents,
+  comments — as one snapshot, and every write clears it. The one-writer-per-cached-graph rule
+  (`memory/architecture/one-service-class-no-helpers.md`) leaves no seam to cut along.
 - **`ct = CancellationToken.None` mid-method is deliberate.** It marks the commit boundary in
   each mutation (above, under Invariants); the parameter is kept so every signature matches.
 - **The nudge fires on exact multiples of the thirty-day window**
@@ -182,7 +186,7 @@ loader and must not be gated. The group-loading methods take the check from the 
   while the dedicated `/RequestStatus` route also notifies the coordinators. Two ways in; nothing
   downstream reads the entry.
 - **`NoticeResources` is a hand-built `ResourceManager`, not the injected localizer**
-  (`Services/WorkgroupService.Helpers.cs:330`). Notification titles resolve per recipient
+  (`Services/WorkgroupService.cs:330`). Notification titles resolve per recipient
   language inside a background job with no request culture.
 - **Retired folders stay claimed with no grants.** The Drive source keeps every non-Active,
   non-Dormant group's folder in its claim set with an empty grant list

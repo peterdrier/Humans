@@ -15,13 +15,14 @@ namespace Humans.Integration.Tests.Controllers;
 /// </summary>
 /// <remarks>
 /// Layouts and partials resolve by name at runtime, so a miss is no compile error and, for a partial, not even a
-/// runtime one: it ships as a 200 with the nav, sidebar and breadcrumb absent. So the assertions are on markers only
+/// runtime one: it ships as a 200 with the nav, sidebar and section name absent. So the assertions are on markers only
 /// the chrome emits, never on the status code alone. The render tests cover one page per assembly; the source scans
 /// cover every call site.
 /// </remarks>
 public partial class AdminLayoutRenderTests(HumansTestDatabase database) : IntegrationTestBase(database)
 {
-    [GeneratedRegex("Layout\\s*=.*\"_AdminLayout\"", RegexOptions.ExplicitCapture, matchTimeoutMilliseconds: 1000)]
+    // [^;]* spans lines: the Shell's _ViewStart picks the layout in a multi-line conditional.
+    [GeneratedRegex("Layout\\s*=[^;]*\"_AdminLayout\"", RegexOptions.ExplicitCapture, matchTimeoutMilliseconds: 1000)]
     private static partial Regex AdminLayoutAssignment();
 
     [GeneratedRegex("<partial\\s+name=\"(?<name>[^\"]+)\"", RegexOptions.ExplicitCapture, matchTimeoutMilliseconds: 1000)]
@@ -58,7 +59,6 @@ public partial class AdminLayoutRenderTests(HumansTestDatabase database) : Integ
         ("/Shifts/Admin/EarlyEntry", "Humans.EarlyEntry — Views/EarlyEntryRoster/_ViewStart"),
         ("/Email/EmailOutbox", "Humans.Email — Views/Email/_ViewStart"),
         ("/Finance/Creditors", "Humans.Finance — Views/Finance/_ViewStart"),
-        ("/Gate/Admin", "Humans.Gate — inline override in Gate/Admin.cshtml"),
         ("/Google", "Humans.Google — Views/Google/_ViewStart"),
         ("/Governance/BoardVoting", "Humans.Governance — Views/Governance/BoardVoting/_ViewStart"),
         ("/Governance/Applications/Admin", "Humans.Governance — inline override in Applications/Admin.cshtml"),
@@ -148,13 +148,13 @@ public partial class AdminLayoutRenderTests(HumansTestDatabase database) : Integ
     }
 
     /// <summary>
-    /// The breadcrumb names the group and the item, and exactly one sidebar row and one tab are active.
+    /// The top bar names the group, and exactly one sidebar row and one tab are active.
     /// </summary>
     /// <remarks>
     /// Regression guard: a controller-only match lit up every item under <c>controller=Debug</c>.
     /// </remarks>
     [HumansFact(Timeout = 120000)]
-    public async Task The_breadcrumb_and_the_active_sidebar_link_name_one_page()
+    public async Task AdminPage_ShowsOnlyItsOwnPlace()
     {
         var ct = Xunit.TestContext.Current.CancellationToken;
         await Factory.SignInAsFullyOnboardedAsync(Client, DevPersona.Admin);
@@ -169,9 +169,8 @@ public partial class AdminLayoutRenderTests(HumansTestDatabase database) : Integ
             response.StatusCode.Should().Be(HttpStatusCode.OK, $"GET {url} must render");
             var html = await response.Content.ReadAsStringAsync(ct);
 
-            html.Should().Contain($"<span>{group}</span>", $"GET {url}'s breadcrumb must name its group");
-            html.Should().Contain($"<span class=\"here\">{item}</span>",
-                $"GET {url}'s breadcrumb must end on its own item");
+            html.Should().Contain($"<span class=\"section-name\">{group}</span>", $"GET {url}'s top bar must name its group");
+            html.Should().Contain($">{item}<", $"GET {url}'s tabs must list its own item");
 
             ActiveSidebarLink().Matches(html).Count.Should().Be(1, $"GET {url} must light exactly one sidebar row");
             ActiveTab().Matches(html).Count.Should().Be(1,

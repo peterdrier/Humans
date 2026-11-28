@@ -1,0 +1,160 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="-2 -2 244 244" role="img" aria-label="Vitruvian Man">
+  <defs>
+    <clipPath id="bounds"><rect x="-2" y="-2" width="244" height="244"/></clipPath>
+  </defs>
+  <g clip-path="url(#bounds)">
+    <!-- Circle frame -->
+    <circle cx="120" cy="120" r="120" fill="none" stroke="#c9a96e" stroke-width="1.6"/>
+    <!-- Square frame -->
+    <rect x="23" y="46" width="194" height="194" fill="none" stroke="#c9a96e" stroke-width="1.6"/>
+
+    <!-- === SOLID BASE === -->
+    <g fill="#c9a96e" stroke="none">
+      <!-- Head -->
+      <ellipse cx="120" cy="57" rx="10" ry="12"/>
+      <!-- Neck -->
+      <path d="M115,68 Q115,76 108,78 L132,78 Q125,76 125,68 Z"/>
+      <!-- Torso - anatomical taper -->
+      <path d="M102,78 Q98,78 97,82 L97,96 Q98,100 103,100
+               L103,118 Q102,124 100,130 L100,138 Q100,143 106,143
+               L134,143 Q140,143 140,138 L140,130 Q138,124 137,118
+               L137,100 Q142,100 143,96 L143,82 Q142,78 138,78 Z"/>
+
+      <!-- Horizontal arms (pose 1) - tapered -->
+      <path d="M97,82 L26,82 Q22,83 22,86 Q22,89 26,90 L97,90 Z"/>
+      <path d="M143,82 L214,82 Q218,83 218,86 Q218,89 214,90 L143,90 Z"/>
+      <!-- Hands horizontal -->
+      <path d="M22,83 L17,82 L15,84 L16,87 L15,88 L17,90 L22,89 Z"/>
+      <path d="M218,83 L223,82 L225,84 L224,87 L225,88 L223,90 L218,89 Z"/>
+
+      <!-- Raised arms (pose 2) - tapered -->
+      <path d="M105,80 L64,20 Q62,17 65,15 Q68,14 70,17 L111,78 Z"/>
+      <path d="M135,80 L176,20 Q178,17 175,15 Q172,14 170,17 L129,78 Z"/>
+      <!-- Hands raised -->
+      <path d="M63,20 L58,15 L57,18 L60,22 L58,24 L62,24 Z"/>
+      <path d="M177,20 L182,15 L183,18 L180,22 L182,24 L178,24 Z"/>
+
+      <!-- Legs together (pose 1) -->
+      <path d="M113,143 L110,185 Q109,190 108,200 L107,228 Q107,232 110,234 L115,235
+               L118,155 L122,235 L127,234 Q130,232 130,228 L129,200 Q128,190 127,185
+               L124,143 Z"/>
+      <!-- Feet together -->
+      <path d="M107,232 L103,235 L105,237 L115,236 Z"/>
+      <path d="M130,232 L134,235 L132,237 L122,236 Z"/>
+
+      <!-- Spread legs (pose 2) -->
+      <path d="M111,143 L80,195 L68,228 Q66,232 69,234 L75,235 L88,200 L119,150 Z"/>
+      <path d="M129,143 L160,195 L172,228 Q174,232 171,234 L165,235 L152,200 L121,150 Z"/>
+      <!-- Feet spread -->
+      <path d="M66,231 L60,233 L62,236 L72,235 Z"/>
+      <path d="M174,231 L180,233 L178,236 L168,235 Z"/>
+    </g>
+
+    <!-- === TIER 1 ETCH: main contours (~2.0 stroke) === -->
+    <g fill="none" stroke="#3d2b1f" stroke-width="2.0" stroke-linecap="round" stroke-linejoin="round">
+      <!-- Head -->
+      <ellipse cx="120" cy="57" rx="10" ry="12"/>
+      <!-- Neck sides -->
+      <line x1="115" y1="68" x2="112" y2="78"/>
+      <line x1="125" y1="68" x2="128" y2="78"/>
+      <!-- Torso outline -->
+      <path d="M102,78 L97,82 L97,96 L103,100 L103,118 L100,130 L100,138 L106,143
+               L134,143 L140,138 L140,130 L137,118 L137,100 L143,96 L143,82 L138,78"/>
+      <!-- Shoulder line -->
+      <line x1="97" y1="86" x2="143" y2="86"/>
+      <!-- Waist -->
+      <path d="M103,118 Q120,122 137,118"/>
+      <!-- Groin -->
+      <line x1="106" y1="143" x2="134" y2="143"/>
+      <!-- Leg separations -->
+      <line x1="118" y1="143" x2="118" y2="155"/>
+      <line x1="122" y1="143" x2="122" y2="155"/>
+    </g>
+
+    <!-- === TIER 2 ETCH: muscle groups (~1.4 stroke) === -->
+    <g fill="none" stroke="#3d2b1f" stroke-width="1.4" stroke-linecap="round">
+      <!-- Pectorals - subtle -->
+      <path d="M107,90 Q114,95 120,93 Q126,95 133,90"/>
+      <!-- Abs -->
+      <line x1="114" y1="103" x2="126" y2="103"/>
+      <line x1="114" y1="111" x2="126" y2="111"/>
+      <!-- Navel circle -->
+      <circle cx="120" cy="120" r="2"/>
+      <!-- Deltoid curves -->
+      <path d="M97,82 Q94,86 97,92"/>
+      <path d="M143,82 Q146,86 143,92"/>
+      <!-- Bicep/forearm marks on horizontal arms -->
+      <path d="M82,82 Q78,80 74,82"/>
+      <path d="M82,90 Q78,92 74,90"/>
+      <path d="M158,82 Q162,80 166,82"/>
+      <path d="M158,90 Q162,92 166,90"/>
+      <!-- Elbow marks -->
+      <line x1="60" y1="83" x2="60" y2="89"/>
+      <line x1="180" y1="83" x2="180" y2="89"/>
+      <!-- Hair -->
+      <path d="M111,48 Q114,45 120,45 Q126,45 129,48"/>
+      <!-- Knee on straight legs -->
+      <path d="M109,190 Q112,187 115,190"/>
+      <path d="M125,190 Q128,187 131,190"/>
+      <!-- Shin lines -->
+      <line x1="110" y1="195" x2="110" y2="220"/>
+      <line x1="127" y1="195" x2="127" y2="220"/>
+      <!-- Calf on spread legs -->
+      <path d="M78,200 Q82,196 86,200"/>
+      <path d="M154,200 Q158,196 162,200"/>
+    </g>
+
+    <!-- === TIER 3 ETCH: fine detail (~0.9 stroke) === -->
+    <g fill="none" stroke="#3d2b1f" stroke-width="0.9" stroke-linecap="round">
+      <!-- Eyes - small dashes, NOT circles -->
+      <line x1="116" y1="54" x2="118" y2="54"/>
+      <line x1="122" y1="54" x2="124" y2="54"/>
+      <!-- Nose -->
+      <line x1="120" y1="56" x2="120" y2="60"/>
+      <line x1="119" y1="60" x2="121" y2="60"/>
+      <!-- Mouth - horizontal line, not a smile -->
+      <line x1="117" y1="63" x2="123" y2="63"/>
+      <!-- Ear hints -->
+      <path d="M110,54 Q108,57 110,60"/>
+      <path d="M130,54 Q132,57 130,60"/>
+      <!-- Collarbone -->
+      <path d="M102,79 Q111,76 120,78 Q129,76 138,79"/>
+      <!-- Ribcage hints -->
+      <path d="M105,95 Q112,98 120,96"/>
+      <path d="M135,95 Q128,98 120,96"/>
+      <!-- Oblique lines -->
+      <line x1="103" y1="112" x2="107" y2="118"/>
+      <line x1="137" y1="112" x2="133" y2="118"/>
+      <!-- Finger lines on horizontal hands -->
+      <g stroke-width="0.7">
+        <line x1="17" y1="82" x2="14" y2="81"/>
+        <line x1="16" y1="84" x2="13" y2="84"/>
+        <line x1="16" y1="87" x2="13" y2="87"/>
+        <line x1="17" y1="89" x2="14" y2="90"/>
+        <line x1="223" y1="82" x2="226" y2="81"/>
+        <line x1="224" y1="84" x2="227" y2="84"/>
+        <line x1="224" y1="87" x2="227" y2="87"/>
+        <line x1="223" y1="89" x2="226" y2="90"/>
+      </g>
+      <!-- Ankle marks -->
+      <line x1="108" y1="226" x2="112" y2="228"/>
+      <line x1="128" y1="226" x2="132" y2="228"/>
+      <!-- Hatching on torso sides -->
+      <g stroke-width="0.5" opacity="0.4">
+        <line x1="99" y1="88" x2="103" y2="95"/>
+        <line x1="100" y1="88" x2="104" y2="95"/>
+        <line x1="137" y1="88" x2="141" y2="95"/>
+        <line x1="136" y1="88" x2="140" y2="95"/>
+        <line x1="100" y1="130" x2="104" y2="136"/>
+        <line x1="136" y1="130" x2="140" y2="136"/>
+      </g>
+    </g>
+
+    <!-- Faint gold construction lines -->
+    <g stroke="#c9a96e" stroke-width="0.3" fill="none" opacity="0.25">
+      <line x1="120" y1="-2" x2="120" y2="242"/>
+      <line x1="-2" y1="120" x2="242" y2="120"/>
+      <line x1="-2" y1="143" x2="242" y2="143"/>
+    </g>
+  </g>
+</svg>

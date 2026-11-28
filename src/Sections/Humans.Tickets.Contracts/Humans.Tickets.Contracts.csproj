@@ -18,9 +18,8 @@
     cross-section consumers should have to see, not a compiler constraint, and nothing
     enforces it here (Peter, 2026-08-15).
 
-    Three of the members here exist so that Tickets is the application's only door to
-    ticketing: ITicketDiscountCodes and ITicketVendorMirror move Campaigns' and Gate's
-    (GateVendorCheckInJob, Humans.Gate/Jobs/) calls off the vendor port
+    ITicketDiscountCodes exists so that Tickets is the application's only door to
+    ticketing: it moves Campaigns' calls off the vendor port
     (ITicketVendorService), which is injected only inside Humans.Tickets — its own
     Health/TicketVendorHealthCheck included.
     The port itself is deliberately NOT here: it sits in Humans.Tickets/Contracts/,

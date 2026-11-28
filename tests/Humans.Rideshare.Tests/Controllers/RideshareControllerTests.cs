@@ -57,7 +57,7 @@ public sealed class RideshareControllerTests
     }
 
     [HumansFact]
-    public async Task Accept_OnSuccess_ToastsAndRedirectsToMine()
+    public async Task Accept_Success_RedirectsToMine()
     {
         _rideshare.AcceptInterestAsync(Arg.Any<Guid>(), _me, Arg.Any<CancellationToken>())
             .Returns(new RideshareMutationResult());
@@ -71,7 +71,7 @@ public sealed class RideshareControllerTests
     }
 
     [HumansFact]
-    public async Task Accept_MapsNotFoundAndForbidden_ToTheirStatusCodes()
+    public async Task Accept_NotFoundOrForbidden_MapsToStatusCode()
     {
         var missing = Guid.NewGuid();
         var notMine = Guid.NewGuid();
@@ -184,7 +184,7 @@ public sealed class RideshareControllerTests
     [InlineData(false, "CanContributeToFuel", true, false)]
     [InlineData(true, null, true, true)]
     [InlineData(false, null, true, true)]
-    public async Task PostingForms_require_explicit_choices_and_counts_before_saving(bool offer, string? omitted, bool signedIn, bool choice)
+    public async Task PostingForms_MissingChoices_AreNotSaved(bool offer, string? omitted, bool signedIn, bool choice)
     {
         var controller = BuildController(signedIn);
         var registrations = new ServiceCollection().AddLogging();
@@ -260,7 +260,7 @@ public sealed class RideshareControllerTests
     }
 
     [HumansFact]
-    public async Task Interest_WithoutATrip_SendsTheHumanBackToTheBoard()
+    public async Task Interest_NoTrip_RedirectsToBoard()
     {
         var controller = BuildController();
 
@@ -275,7 +275,7 @@ public sealed class RideshareControllerTests
     [InlineData("", true)]
     [InlineData("2", true)]
     [InlineData("two", false)]
-    public async Task Interest_BindsTheRealForm_AClearedSeatsBoxTakesTheDefault(string seats, bool accepted)
+    public async Task Interest_ClearedSeatsBox_TakesDefault(string seats, bool accepted)
     {
         var tripId = Guid.NewGuid();
         var controller = BuildController();
@@ -324,7 +324,7 @@ public sealed class RideshareControllerTests
     }
 
     [HumansFact]
-    public async Task OfferPost_AnUnparsableDate_RerendersTheFormWithADateError()
+    public async Task OfferPost_UnparsableDate_RerendersWithDateError()
     {
         var model = new OfferFormViewModel { MemberPlaceLabel = "Paris", DepartureDate = "3 July" };
         var controller = BuildController();
@@ -338,7 +338,7 @@ public sealed class RideshareControllerTests
     }
 
     [HumansFact]
-    public async Task OfferPost_ARule_RerendersTheFormWithAModelError()
+    public async Task OfferPost_RuleRefusal_RerendersWithModelError()
     {
         using var scope = new Humans.Base.Extensions.CultureScope(Base.Extensions.CultureCatalog.DefaultCultureCode);
         const string key = "Rideshare_Error_PlaceNotFound";
@@ -366,7 +366,7 @@ public sealed class RideshareControllerTests
     [HumansTheory]
     [InlineData(false)]
     [InlineData(true)]
-    public async Task OfferPost_MapsMissingAndForbidden_AndLogsWithoutStack(bool forbidden)
+    public async Task OfferPost_MissingOrForbidden_MapsToStatusCode(bool forbidden)
     {
         var id = Guid.NewGuid();
         var failure = forbidden ? RideshareAccessFailure.Forbidden : RideshareAccessFailure.NotFound;
@@ -385,7 +385,7 @@ public sealed class RideshareControllerTests
     }
 
     [HumansFact]
-    public async Task AdminSettings_RuleRerendersForm_AndLogsEventAndKeyWithoutStack()
+    public async Task AdminSettings_RuleRefusal_RerendersForm()
     {
         const string key = "Rideshare_Error_WindowOrder";
         _rideshare.SaveSettingsAsync(EventId, Arg.Any<SettingsSave>(), _me, Arg.Any<CancellationToken>())
@@ -432,7 +432,7 @@ public sealed class RideshareControllerTests
     }
 
     [HumansFact]
-    public async Task OfferPost_WithAnId_Updates_AndRedirectsToMine()
+    public async Task OfferPost_WithId_UpdatesOffer()
     {
         _rideshare.UpdateOfferAsync(Arg.Any<Guid>(), _me, Arg.Any<TripSave>(), Arg.Any<CancellationToken>())
             .Returns(new RideshareMutationResult());
@@ -459,7 +459,7 @@ public sealed class RideshareControllerTests
     [InlineData(MutationPath.Form, DependencyFailure.MissingKey)]
     [InlineData(MutationPath.Toast, DependencyFailure.Unauthorized)]
     [InlineData(MutationPath.Form, DependencyFailure.Unauthorized)]
-    public async Task DependencyFaultsPropagateWithoutRefusalFeedback(MutationPath path, DependencyFailure failureKind)
+    public async Task DependencyFault_Propagates(MutationPath path, DependencyFailure failureKind)
     {
         Exception fault = failureKind switch
         {

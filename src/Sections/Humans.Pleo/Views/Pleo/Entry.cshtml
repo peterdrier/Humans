@@ -1,14 +1,14 @@
 @model PleoEntryView
+@using Humans.Base.ViewComponents
 @inject Humans.Base.Interfaces.IOrgTimeZone OrgTimeZone
 @{
     var e = Model.Row;
     ViewData["Title"] = $"Pleo entry {e.Merchant}";
+    ViewData[AdminNavComposition.ParentKey] = "Entries";
     var orgZone = OrgTimeZone.Zone;
 }
 
 <page-header title="@(e.Merchant ?? e.Family)" />
-<partial name="_PleoNav" />
-
 <div class="row">
     <div class="col-lg-5">
         <dl class="row">

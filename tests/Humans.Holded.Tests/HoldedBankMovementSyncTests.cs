@@ -47,7 +47,7 @@ public sealed class HoldedBankMovementSyncTests
     [InlineData(BankSyncFailure.Fault)]
     [InlineData(BankSyncFailure.Shutdown)]
     [InlineData(BankSyncFailure.OtherCancellation)]
-    public async Task Sync_ClassifiesFailures_AndPreservesTheOriginalException(BankSyncFailure kind)
+    public async Task Sync_Fails_KeepsOriginalException(BankSyncFailure kind)
     {
         using var request = new CancellationTokenSource();
         Exception failure = kind switch
@@ -77,7 +77,7 @@ public sealed class HoldedBankMovementSyncTests
     }
 
     [HumansFact]
-    public async Task Sync_ReplacesOnlyItsWindow_AndStampsTheLastSync()
+    public async Task Sync_Window_ReplacesOnlyThatWindow()
     {
         var ct = TestContext.Current.CancellationToken;
         Feed(Line("a", 1), Line("b", 5));
@@ -96,7 +96,7 @@ public sealed class HoldedBankMovementSyncTests
     }
 
     [HumansFact]
-    public async Task Sync_StampsOnlyItsOwnTreasury_EvenWhenTheFeedIsEmpty()
+    public async Task Sync_EmptyFeed_StampsOnlyOwnTreasury()
     {
         var ct = TestContext.Current.CancellationToken;
         LocalDate from = new(2026, 8, 1), to = new(2026, 8, 9);
@@ -108,7 +108,7 @@ public sealed class HoldedBankMovementSyncTests
     }
 
     [HumansFact]
-    public async Task Sync_TracksEachTreasurysCountAndError_Separately()
+    public async Task Sync_SeveralTreasuries_TracksEachSeparately()
     {
         var ct = TestContext.Current.CancellationToken;
         LocalDate from = new(2026, 8, 1), to = new(2026, 8, 9);

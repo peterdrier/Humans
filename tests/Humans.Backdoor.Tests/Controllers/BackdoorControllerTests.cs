@@ -59,7 +59,7 @@ public class BackdoorControllerTests
     }
 
     [HumansFact]
-    public async Task Someone_below_Board_sees_only_their_own_keys_and_no_owner_picker()
+    public async Task Index_BelowBoard_ShowsOnlyOwnKeys()
     {
         var me = Guid.NewGuid();
         SignIn(me);
@@ -78,7 +78,7 @@ public class BackdoorControllerTests
     }
 
     [HumansFact]
-    public async Task A_Board_member_cannot_revoke_someone_elses_key()
+    public async Task Revoke_BoardForSomeoneElse_IsRefused()
     {
         var me = Guid.NewGuid();
         SignIn(me, RoleNames.Board);
@@ -91,7 +91,7 @@ public class BackdoorControllerTests
     }
 
     [HumansFact]
-    public async Task A_Board_member_cannot_make_a_key_for_someone_else()
+    public async Task Create_BoardForSomeoneElse_IsRefused()
     {
         SignIn(Guid.NewGuid(), RoleNames.Board);
 
@@ -101,7 +101,7 @@ public class BackdoorControllerTests
     }
 
     [HumansFact]
-    public async Task Someone_no_scope_admits_is_turned_away()
+    public async Task Index_NoScope_IsTurnedAway()
     {
         var me = Guid.NewGuid();
         SignIn(me);
@@ -133,7 +133,7 @@ public class BackdoorControllerTests
             .Returns(allowed ? AuthorizationResult.Success() : AuthorizationResult.Failed());
 
     [HumansFact]
-    public async Task A_key_whose_owner_is_no_longer_eligible_is_listed_as_unusable()
+    public async Task Index_OwnerNoLongerEligible_ListsKeyUnusable()
     {
         var goodKey = Guid.NewGuid();
         var strandedKey = Guid.NewGuid();

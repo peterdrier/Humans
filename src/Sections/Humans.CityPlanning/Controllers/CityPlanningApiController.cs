@@ -1,4 +1,5 @@
 using Humans.Containers;
+using JetBrains.Annotations;
 using Microsoft.Extensions.Localization;
 using Humans.Base.Authorization;
 using Humans.Camps.Contracts;
@@ -300,6 +301,7 @@ internal sealed class CityPlanningApiController(
 
 internal sealed record SaveContainerPlacementRequest(string GeoJson);
 
+[UsedImplicitly(ImplicitUseKindFlags.Access, ImplicitUseTargetFlags.WithMembers)]
 internal sealed record ContainerWithPlacementApiDto(
     Guid Id,
     string Name,
@@ -312,6 +314,7 @@ internal sealed record ContainerWithPlacementApiDto(
     string? PlacementImageFileName,
     bool CanEdit);
 
+[UsedImplicitly(ImplicitUseKindFlags.Assign, ImplicitUseTargetFlags.WithMembers)]
 internal sealed class UpdateContainerPlacementNotesRequest
 {
     public string? PlacementNotes { get; set; }

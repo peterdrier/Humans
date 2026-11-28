@@ -82,7 +82,7 @@ public class MailerLiteClientRetryTests
     [Xunit.InlineData(false, true)]
     [Xunit.InlineData(true, false)]
     [Xunit.InlineData(true, true)]
-    public async Task RefreshAsync_RejectsRepeatedIdentitiesAndDiscardsSnapshot(bool subscribers, bool acrossPages)
+    public async Task RefreshAsync_RepeatedIdentities_DiscardsSnapshot(bool subscribers, bool acrossPages)
     {
         const string emptySubscribers = """{"data":[],"meta":{"next_cursor":null}}""";
         const string subscriberPage = """{"data":[{"id":"sub-1","email":"alice@example.org","status":"active"}],"meta":{"next_cursor":null}}""";
@@ -119,7 +119,7 @@ public class MailerLiteClientRetryTests
     [HumansTheory]
     [Xunit.InlineData(false)]
     [Xunit.InlineData(true)]
-    public async Task RefreshAsync_BoundsPaginationAndRecoversWithoutTheOldSnapshot(bool subscribers)
+    public async Task RefreshAsync_EndlessPagination_IsBounded(bool subscribers)
     {
         const string terminalSubscribers = """{"data":[],"meta":{"next_cursor":null}}""";
         var handler = new ScriptedHandler();
@@ -173,7 +173,7 @@ public class MailerLiteClientRetryTests
     [Xunit.InlineData("missing-subscriber-cursor")]
     [Xunit.InlineData("mistyped-subscriber-cursor")]
     [Xunit.InlineData("mistyped-group-page")]
-    public async Task RefreshAsync_RejectsInvalidPaginationAndDiscardsSnapshot(string shape)
+    public async Task RefreshAsync_InvalidPagination_DiscardsSnapshot(string shape)
     {
         const string subscriberPage = """{"data":[{"id":"sub-1","email":"alice@example.org","status":"active"}],"meta":{"next_cursor":null}}""";
         var handler = new ScriptedHandler();
@@ -237,7 +237,7 @@ public class MailerLiteClientRetryTests
     [Xunit.InlineData("subscribed_at", "42", "subscriber.subscribed_at must be a timestamp string or null")]
     [Xunit.InlineData("unsubscribed_at", "true", "subscriber.unsubscribed_at must be a timestamp string or null")]
     [Xunit.InlineData("opted_in_at", "{}", "subscriber.opted_in_at must be a timestamp string or null")]
-    public async Task RefreshAsync_RejectsInvalidSubscriberAndDiscardsSnapshot(string field, string? jsonValue, string error)
+    public async Task RefreshAsync_InvalidSubscriber_DiscardsSnapshot(string field, string? jsonValue, string error)
     {
         var handler = new ScriptedHandler();
         handler.EnqueueJson(HttpStatusCode.OK,
@@ -278,7 +278,7 @@ public class MailerLiteClientRetryTests
     }
 
     [HumansFact]
-    public async Task AssignSubscriberToGroupAsync_RetriesAfter429_AndSucceeds()
+    public async Task AssignSubscriberToGroupAsync_First429_RetriesThenSucceeds()
     {
         var handler = new ScriptedHandler();
         // Cache pre-populate: empty subscriber page, then a Humans-managed group.
@@ -338,7 +338,7 @@ public class MailerLiteClientRetryTests
     }
 
     [HumansFact]
-    public async Task AssignSubscriberToGroupAsync_NoRetryAfterHeader_WaitsTheDefault60s()
+    public async Task AssignSubscriberToGroupAsync_NoRetryAfterHeader_WaitsDefault()
     {
         var handler = new ScriptedHandler();
         handler.EnqueueJson(HttpStatusCode.OK, """{"data":[],"meta":{"next_cursor":null}}""");

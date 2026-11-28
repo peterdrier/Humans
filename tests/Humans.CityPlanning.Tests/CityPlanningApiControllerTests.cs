@@ -219,7 +219,7 @@ public sealed class CityPlanningApiControllerTests : CityPlanningTestBase
     [InlineData(false, true)]
     [InlineData(false, false)]
     [InlineData(true, false)]
-    public async Task ContainerExport_IncludesAllAndOnlyTheCallersCamps(bool isAdmin, bool isLead)
+    public async Task ContainerExport_Caller_GetsOnlyOwnCamps(bool isAdmin, bool isLead)
     {
         var camps = Enumerable.Range(0, 4).Select(index =>
         {
@@ -281,7 +281,7 @@ public sealed class CityPlanningApiControllerTests : CityPlanningTestBase
     [HumansTheory]
     [InlineData("Database unavailable")]
     [InlineData("Invalid container placement GeoJSON.")]
-    public async Task SaveContainerPlacement_DoesNotConvertUnexpectedFailuresIntoValidationErrors(string diagnostic)
+    public async Task SaveContainerPlacement_UnexpectedFailure_Propagates(string diagnostic)
     {
         _authorization = Substitute.For<IAuthorizationService>();
         _authorization.AuthorizeAsync(Arg.Any<ClaimsPrincipal>(), Arg.Any<object>(), Arg.Any<IEnumerable<IAuthorizationRequirement>>())
@@ -335,7 +335,7 @@ public sealed class CityPlanningApiControllerTests : CityPlanningTestBase
     [InlineData(0)]
     [InlineData(1)]
     [InlineData(2)]
-    public async Task ContainerPlacementMutations_AuthorizeRouteYearAndDoNotWriteWhenDenied(int operation)
+    public async Task ContainerPlacementMutations_Denied_WriteNothing(int operation)
     {
         var id = Guid.NewGuid();
         const int year = 2025;
@@ -360,7 +360,7 @@ public sealed class CityPlanningApiControllerTests : CityPlanningTestBase
     }
 
     [HumansFact]
-    public async Task GetContainers_CanEditIsThePlaceRequirementPerContainerForTheRouteYear()
+    public async Task GetContainers_CanEdit_FollowsPlaceRequirement()
     {
         const int year = 2025;
         var editableCampId = Guid.NewGuid();
@@ -387,7 +387,7 @@ public sealed class CityPlanningApiControllerTests : CityPlanningTestBase
     private const string Square = """{"type":"Polygon","coordinates":[[[0,0],[0,1],[1,1],[0,0]]]}""";
 
     [HumansFact]
-    public async Task RestoreCampPolygon_UserWhoIsNotMapAdmin_IsForbiddenAndWritesNothing()
+    public async Task RestoreCampPolygon_NotMapAdmin_IsForbidden()
     {
         var ct = TestContext.Current.CancellationToken;
         await _service.SaveCampPolygonAsync(_campSeasonId, Square, 10, Guid.NewGuid(), cancellationToken: ct);
@@ -400,7 +400,7 @@ public sealed class CityPlanningApiControllerTests : CityPlanningTestBase
     }
 
     [HumansFact]
-    public async Task RestoreCampPolygon_CityPlanningTeamMemberWithNoRole_Restores()
+    public async Task RestoreCampPolygon_TeamMemberNoRole_Restores()
     {
         var ct = TestContext.Current.CancellationToken;
         var teamId = Guid.NewGuid();
@@ -423,7 +423,7 @@ public sealed class CityPlanningApiControllerTests : CityPlanningTestBase
     }
 
     [HumansFact]
-    public async Task RestoreCampPolygon_HistoryIdFromAnotherSeason_IsNotFoundAndWritesNothing()
+    public async Task RestoreCampPolygon_OtherSeasonHistory_IsNotFound()
     {
         var ct = TestContext.Current.CancellationToken;
         _teamService.GetTeamsAsync(Arg.Any<CancellationToken>()).Returns(new Dictionary<Guid, TeamInfo>
@@ -447,7 +447,7 @@ public sealed class CityPlanningApiControllerTests : CityPlanningTestBase
     }
 
     [HumansFact]
-    public async Task GetState_NoSettingsRow_ReturnsOkAndWritesNothing()
+    public async Task GetState_NoSettingsRow_ReturnsOk()
     {
         _campService.GetCampsForYearAsync(2026, Arg.Any<CancellationToken>()).Returns(Array.Empty<CampInfo>());
 
@@ -468,7 +468,7 @@ public sealed class CityPlanningApiControllerTests : CityPlanningTestBase
     }
 
     [HumansFact]
-    public async Task ExportGeoJson_UserWhoIsNotMapAdmin_IsForbidden()
+    public async Task ExportGeoJson_NotMapAdmin_IsForbidden()
     {
         var result = await CreateController().ExportGeoJson(null, TestContext.Current.CancellationToken);
 
@@ -476,7 +476,7 @@ public sealed class CityPlanningApiControllerTests : CityPlanningTestBase
     }
 
     [HumansFact]
-    public async Task SaveCampPolygon_UserWhoMayNotEdit_IsForbiddenAndWritesNothing()
+    public async Task SaveCampPolygon_MayNotEdit_IsForbidden()
     {
         var ct = TestContext.Current.CancellationToken;
 
@@ -489,7 +489,7 @@ public sealed class CityPlanningApiControllerTests : CityPlanningTestBase
     }
 
     [HumansFact]
-    public async Task SaveCampPolygon_BroadcastsTheSavedShapeToEveryConnectedMap()
+    public async Task SaveCampPolygon_Saved_BroadcastsShape()
     {
         var ct = TestContext.Current.CancellationToken;
 
@@ -507,7 +507,7 @@ public sealed class CityPlanningApiControllerTests : CityPlanningTestBase
     [InlineData("not json")]
     [InlineData("""{"type":"Point","coordinates":[0,0]}""")]
     [InlineData("""{"type":"Polygon","coordinates":[[]]}""")]
-    public async Task SaveCampPolygon_InvalidGeoJson_ReturnsBadRequestWithoutSaving(string geoJson)
+    public async Task SaveCampPolygon_InvalidGeoJson_IsBadRequest(string geoJson)
     {
         var result = await CreateController(CampsRoles.CampsAdmin).SaveCampPolygon(
             _campSeasonId, new SaveCampPolygonRequest(geoJson, 10),
@@ -524,7 +524,7 @@ public sealed class CityPlanningApiControllerTests : CityPlanningTestBase
     }
 
     [HumansFact]
-    public async Task SaveCampPolygon_NegativeArea_ReturnsBadRequestWithoutSavingOrBroadcasting()
+    public async Task SaveCampPolygon_NegativeArea_IsBadRequest()
     {
         var result = await CreateController(CampsRoles.CampsAdmin).SaveCampPolygon(
             _campSeasonId, new SaveCampPolygonRequest(Square, -1),
@@ -537,7 +537,7 @@ public sealed class CityPlanningApiControllerTests : CityPlanningTestBase
     }
 
     [HumansFact]
-    public async Task RestoreCampPolygon_NegativeHistoricArea_ReturnsBadRequestWithoutWritingOrBroadcasting()
+    public async Task RestoreCampPolygon_NegativeHistoricArea_IsBadRequest()
     {
         var ct = TestContext.Current.CancellationToken;
         var history = new Domain.CampPolygonHistory
@@ -560,7 +560,7 @@ public sealed class CityPlanningApiControllerTests : CityPlanningTestBase
     }
 
     [HumansFact]
-    public async Task SaveCampPolygon_BroadcastFails_TheSaveStandsAndTheCallerGetsOk()
+    public async Task SaveCampPolygon_BroadcastFails_SaveStands()
     {
         var ct = TestContext.Current.CancellationToken;
         _allClients.SendCoreAsync(default!, default!)

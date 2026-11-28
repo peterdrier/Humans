@@ -1,0 +1,131 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="-2 -2 244 244" role="img" aria-label="Vitruvian Man">
+  <defs>
+    <g id="limbs">
+      <!-- deltoid mass -->
+      <circle fill="#c9a96e" cx="136" cy="80" r="7.5"/>
+      <!-- horizontal arm, right -->
+      <path fill="#c9a96e" d="M134,74 C152,74.5 172,75.3 199,77.3 C203.5,77.3 206.5,78 208.5,79 L213.5,79.4 L216.5,81.8 L213.5,84.6 L208.5,85.2 C206.5,86.2 203.5,86.8 199,86.6 C172,87 152,88.5 138,91 Z"/>
+      <!-- raised arm, right -->
+      <path fill="#c9a96e" d="M132.9,73.9 C146,68 160,62.5 170.3,60 C180,56 190,52 198.4,49.3 L212.5,45.7 L214.3,47.7 L200.6,54.3 C191,58.5 181,63 173.3,66.9 C162,72.5 148,79 137.1,84.1 Z"/>
+      <!-- together leg, right -->
+      <path fill="#c9a96e" d="M120.6,144 C120.9,164 121,178 121.4,190 C121,208 120.8,220 120.8,228 L118.4,235.5 L118.4,239 L139,239 C139.5,237.3 137,234.8 131.4,232.8 C128.8,231 127.8,229.2 127.8,225 C129.2,217 131.6,207 131.4,198 C131.8,195 131.4,192 131,189 C133.4,172 135.2,155 136,139 Z"/>
+      <!-- spread leg, right -->
+      <path fill="#c9a96e" d="M121.5,144 C130,161 143,176 152.5,188 C158.6,197 164.6,207 168.4,213 L163,220.5 L164.8,223.5 L180,225.3 C180.6,223.5 179,221.2 174.6,219.2 C172,217.2 171.4,215.6 171.8,212.4 C168.4,204.5 164,195.5 159.5,186 C152,171 142.5,153.5 137.5,138.5 Z"/>
+    </g>
+    <g id="etch1R" fill="none" stroke="#3d2b1f" stroke-width="2" stroke-linecap="round">
+      <!-- raised arm lower contour -->
+      <path d="M138.5,83.4 C158,74.5 182,63.5 200,54.6"/>
+      <!-- horizontal arm lower contour -->
+      <path d="M140,90 C162,87.8 184,85.8 200,85"/>
+      <!-- spread/together leg separation -->
+      <path d="M123.5,147 C132,162 144,176.5 153.5,189 C159.5,198 165,207 168.8,213"/>
+      <!-- outer contour of together leg -->
+      <path d="M135.5,141 C134.6,157 132.4,174 131,189.5 C131.4,201 129.4,214 127.9,224.5"/>
+    </g>
+    <g id="etch2R" fill="none" stroke="#3d2b1f" stroke-width="1.4" stroke-linecap="round">
+      <!-- deltoid -->
+      <path d="M131.5,74.5 C137.5,76 140.5,80 139.5,85.5"/>
+      <!-- pec: lower arc -->
+      <path d="M122,96 C126.5,97.5 131.5,96.5 134.5,93.5"/>
+      <!-- knee, together leg -->
+      <path d="M122.5,189 C124.5,188 126.6,188.2 128,189.5"/>
+      <!-- knee, spread leg -->
+      <path d="M150.8,185.5 C153,184.2 155.4,184.6 157,186.3"/>
+      <!-- calf, together leg -->
+      <path d="M127.2,197 C128.8,204 128.6,212 126.8,219"/>
+      <!-- calf, spread leg -->
+      <path d="M160,191 C163.8,197.5 167,205 168.8,210.5"/>
+      <!-- forearm line, horizontal arm -->
+      <path d="M165,81.5 C178,81.3 190,81.4 199,81.7"/>
+      <!-- elbow hint, horizontal arm -->
+      <path d="M171,76.2 C172.8,78 173.2,80.5 172.2,83"/>
+      <!-- elbow hint, raised arm -->
+      <path d="M169.2,60.4 C171.6,61.6 172.8,63.8 172.6,66.4"/>
+    </g>
+    <g id="etch3R" fill="none" stroke="#3d2b1f" stroke-width="0.9" stroke-linecap="round">
+      <!-- fingers, horizontal hand -->
+      <path d="M207.5,80 L214.8,80.4 M207.5,81.9 L215.8,81.9 M207.5,83.6 L214.8,83.3"/>
+      <!-- wrist, horizontal hand -->
+      <path d="M203.5,77.8 L203.8,86.2"/>
+      <!-- fingers, raised hand -->
+      <path d="M203.8,52.8 L213.3,46.9 M202.2,50.6 L211.2,45.6 M205,54.8 L214,49"/>
+      <!-- toes -->
+      <path d="M132.5,238.8 L133.5,236.2 M135.8,238.8 L136.6,236.8"/>
+      <path d="M175.6,224.4 L176.8,221.8 M172.4,223.6 L173.8,221.2"/>
+      <!-- wrist, raised arm -->
+      <path d="M198.8,49.6 L200.4,53.6"/>
+    </g>
+  </defs>
+
+  <!-- faint gold construction -->
+  <g stroke="#c9a96e" stroke-width="0.5" opacity="0.35" fill="none">
+    <path d="M23,120 L217,120"/>
+    <path d="M120,46 L120,240"/>
+    <path d="M23,116 L23,124 M217,116 L217,124 M116,46 L124,46 M116,240 L124,240"/>
+  </g>
+
+  <!-- frame -->
+  <circle cx="120" cy="120" r="120" fill="none" stroke="#c9a96e" stroke-width="3"/>
+  <rect x="23" y="46" width="194" height="194" fill="none" stroke="#c9a96e" stroke-width="3"/>
+
+  <!-- gold body: central mass -->
+  <g fill="#c9a96e">
+    <ellipse cx="120" cy="58" rx="8.6" ry="11.8"/>
+    <path d="M115.5,66 L124.5,66 L125.5,76 L114.5,76 Z"/>
+    <path d="M113,72 C104,74 99,77.5 97.8,81.5 C96.4,85.5 97.6,90.5 100.8,95
+             C104.2,102 105.8,110 105.6,118 C105.4,127 104.4,132 104,136
+             C104.6,144.5 111,149.5 120,150.5
+             C129,149.5 135.4,144.5 136,136
+             C135.6,132 134.6,127 134.4,118 C134.2,110 135.8,102 139.2,95
+             C142.4,90.5 143.6,85.5 142.2,81.5 C141,77.5 136,74 127,72 Z"/>
+  </g>
+  <use href="#limbs"/>
+  <use href="#limbs" transform="translate(240,0) scale(-1,1)"/>
+
+  <!-- ink etch: tier 1 -->
+  <g>
+    <use href="#etch1R"/>
+    <use href="#etch1R" transform="translate(240,0) scale(-1,1)"/>
+    <g fill="none" stroke="#3d2b1f" stroke-width="2" stroke-linecap="round">
+      <!-- jaw/chin -->
+      <path d="M112.5,62 C113.5,67.5 116,70 120,70.3 C124,70 126.5,67.5 127.5,62"/>
+      <!-- together-legs split -->
+      <path d="M120,151 L120,231"/>
+      <!-- torso sides -->
+      <path d="M100.8,95 C104.2,102 105.8,110 105.6,118 C105.4,127 104.4,132 104,136"/>
+      <path d="M139.2,95 C135.8,102 134.2,110 134.4,118 C134.6,127 135.6,132 136,136"/>
+      <!-- groin -->
+      <path d="M111,145.5 C115,148.8 118,150.2 120,150.4 C122,150.2 125,148.8 129,145.5"/>
+    </g>
+  </g>
+  <!-- tier 2 -->
+  <g>
+    <use href="#etch2R"/>
+    <use href="#etch2R" transform="translate(240,0) scale(-1,1)"/>
+    <g fill="none" stroke="#3d2b1f" stroke-width="1.4" stroke-linecap="round">
+      <!-- hair -->
+      <path d="M111.6,56.5 C111.6,50 115,46.8 120,46.6 C125,46.8 128.4,50 128.4,56.5"/>
+      <path d="M112.4,52.5 C114.6,50.2 117.2,49 120,49 C122.8,49 125.4,50.2 127.6,52.5"/>
+      <!-- collarbones -->
+      <path d="M106,81.5 C111,79.8 116,79 120,79.2 C124,79 129,79.8 134,81.5"/>
+      <!-- sternum -->
+      <path d="M120,82 L120,96"/>
+      <!-- abs -->
+      <circle cx="120" cy="118" r="1.5"/>
+      <path d="M114.5,104 L125.5,104 M114.5,111 L125.5,111"/>
+    </g>
+  </g>
+  <!-- tier 3 -->
+  <g>
+    <use href="#etch3R"/>
+    <use href="#etch3R" transform="translate(240,0) scale(-1,1)"/>
+    <g fill="none" stroke="#3d2b1f" stroke-width="0.9" stroke-linecap="round">
+      <!-- face -->
+      <path d="M115.3,57.5 C116.4,56.8 117.8,56.8 118.8,57.5 M121.2,57.5 C122.2,56.8 123.6,56.8 124.7,57.5"/>
+      <path d="M119,58 L118.4,62.5 L121,62.8"/>
+      <path d="M117.2,65.5 C119,66.3 121,66.3 122.8,65.5"/>
+      <!-- hatching, torso side -->
+      <path d="M107,100 L110,99 M107,106 L110.5,105 M107,124 L110,123.5 M133,100 L130,99 M133,106 L129.5,105 M133,124 L130,123.5"/>
+    </g>
+  </g>
+</svg>

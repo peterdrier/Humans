@@ -377,4 +377,10 @@
   <data name="Consent_Meter_OnboardingProfilesPending" xml:space="preserve"><value>Profili di iscrizione in sospeso</value></data>
   <data name="Consent_Meter_AudienceConsentAdmin" xml:space="preserve"><value>amministratori del consenso</value></data>
   <data name="Consent_Meter_AudienceBoard" xml:space="preserve"><value>il Consiglio</value></data>
+  <data name="Consent_Dashboard_AgreementSingular" xml:space="preserve">
+    <value>accordo da rivedere</value>
+  </data>
+  <data name="Consent_Dashboard_AgreementPlural" xml:space="preserve">
+    <value>accordi da rivedere</value>
+  </data>
 </root>

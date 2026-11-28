@@ -1,0 +1,11 @@
+{
+  "date": "2026-11",
+  "family": "Gemini",
+  "model": "Flash",
+  "version": "3.8",
+  "effort": "high",
+  "brief": "v1",
+  "notes": {
+    "en": "Aimed for strict mathematical fidelity to Leonardo's canon—anchoring the dual pose at the exact 0.618 golden ratio circle radius (r=120) and square bounds (side 194), with spread feet conforming flush along the lower circle arc and horizontal fingertips meeting the square edge. Focused on creating an organic, dignified Renaissance master study with tiered aged-ink etching over a generous golden anatomical base, avoiding mechanical joints, dark stripe artifacts, or fork-like hands. The hair is rendered as loose flowing curls, and the face carries a contemplative classical expression. While the silhouette simplifies crisply to navbar scale (38px and below), the facial features and finger separations in Tier 3 still rely on subtle stroke anti-aliasing and soften noticeably at intermediate sizes (64–96px)."
+  }
+}

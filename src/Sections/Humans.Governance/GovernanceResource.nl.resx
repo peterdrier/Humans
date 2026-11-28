@@ -332,12 +332,6 @@
   <data name="Governance_BoardVoting_MeetingDateRequired" xml:space="preserve">
     <value>Kan niet afronden: er is een datum van de bestuursvergadering vereist.</value>
   </data>
-  <data name="Governance_Dashboard_AgreementSingular" xml:space="preserve">
-    <value>overeenkomst om door te nemen</value>
-  </data>
-  <data name="Governance_Dashboard_AgreementPlural" xml:space="preserve">
-    <value>overeenkomsten om door te nemen</value>
-  </data>
   <data name="Governance_Dashboard_GovernanceCardDescription" xml:space="preserve">
     <value>Ledenvergaderingen, verkiezingen en de serieuze zaken.</value>
   </data>

@@ -13,7 +13,7 @@ public sealed class MineViewModelTests
     private static readonly Instant Now = Instant.FromUtc(2026, 3, 1, 12, 0);
 
     [HumansFact]
-    public void Offers_ListInterestsReceivedOnMyTrips_NewestFirst_WithoutPinAnswers()
+    public void Offers_ReceivedInterests_ListNewestFirst()
     {
         var me = Guid.NewGuid();
         var rider = Guid.NewGuid();
@@ -58,7 +58,7 @@ public sealed class MineViewModelTests
     }
 
     [HumansFact]
-    public void Sent_NamesTheRiderForAPinAnswer_AndTheDriverOtherwise()
+    public void Sent_PinAnswer_NamesRider()
     {
         var me = Guid.NewGuid();
         var driver = Guid.NewGuid();
@@ -82,7 +82,7 @@ public sealed class MineViewModelTests
     }
 
     [HumansFact]
-    public void OffersAndRequests_SortByDirectionThenDateThenCreationTime()
+    public void OffersAndRequests_SortByDirectionDateCreation()
     {
         var me = Guid.NewGuid();
         var outLate = Trip(me, RideshareDirection.Outbound, July3.PlusDays(10));

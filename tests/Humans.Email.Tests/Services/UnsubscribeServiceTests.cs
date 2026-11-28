@@ -112,7 +112,7 @@ public class UnsubscribeServiceTests
     }
 
     [HumansFact]
-    public async Task ValidateTokenAsync_ReturnsInvalid_ForLegacyTokenWithMalformedUserId()
+    public async Task ValidateTokenAsync_LegacyTokenMalformedUserId_IsInvalid()
     {
         _preferenceService.ValidateUnsubscribeToken(Arg.Any<string>())
             .Returns((TokenValidationStatus.Invalid, Guid.Empty, MessageCategory.Marketing));
@@ -129,7 +129,7 @@ public class UnsubscribeServiceTests
     }
 
     [HumansFact]
-    public async Task ValidateTokenAsync_ReturnsInvalid_WhenUserMissingForValidNewToken()
+    public async Task ValidateTokenAsync_UserMissing_IsInvalid()
     {
         var userId = Guid.NewGuid();
         _userService.GetUserInfoAsync(userId, Arg.Any<CancellationToken>()).Returns((UserInfo?)null);
@@ -175,7 +175,7 @@ public class UnsubscribeServiceTests
     }
 
     [HumansFact]
-    public async Task ConfirmUnsubscribeAsync_WritesPreference_ForSurvivor_WhenTokenIsForMergedUser()
+    public async Task ConfirmUnsubscribeAsync_MergedUserToken_WritesForSurvivor()
     {
         var mergedId = Guid.NewGuid();
         var survivorId = Guid.NewGuid();

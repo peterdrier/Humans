@@ -1,6 +1,7 @@
 using Humans.Base.Interfaces.Admin;
 using Humans.Web.Data;
 using Humans.Base.Hosting;
+using JetBrains.Annotations;
 using Microsoft.EntityFrameworkCore;
 using NodaTime;
 
@@ -172,6 +173,7 @@ internal sealed class AdminDatabaseDiagnosticsRepository(
         ORDER BY e.extname
         """;
 
+    [UsedImplicitly(ImplicitUseKindFlags.Assign, ImplicitUseTargetFlags.WithMembers)]
     private sealed class SummaryRow
     {
         public string ServerVersion { get; init; } = "";
@@ -191,6 +193,7 @@ internal sealed class AdminDatabaseDiagnosticsRepository(
         public long TempBytes { get; init; }
     }
 
+    [UsedImplicitly(ImplicitUseKindFlags.Assign, ImplicitUseTargetFlags.WithMembers)]
     private sealed class TableRow
     {
         public string Schema { get; init; } = "";
@@ -209,6 +212,7 @@ internal sealed class AdminDatabaseDiagnosticsRepository(
         public Instant? LastAnalyze { get; init; }
     }
 
+    [UsedImplicitly(ImplicitUseKindFlags.Assign, ImplicitUseTargetFlags.WithMembers)]
     private sealed class IndexRow
     {
         public string Schema { get; init; } = "";
@@ -220,6 +224,7 @@ internal sealed class AdminDatabaseDiagnosticsRepository(
         public bool IsPrimary { get; init; }
     }
 
+    [UsedImplicitly(ImplicitUseKindFlags.Assign, ImplicitUseTargetFlags.WithMembers)]
     private sealed class ConnectionRow
     {
         public int Pid { get; init; }

@@ -26,7 +26,7 @@ public class BackdoorNotificationsControllerTests
         _sut = new BackdoorNotificationsController(_inbox, Substitute.For<IUserService>());
 
     [HumansFact]
-    public async Task Get_projects_rows_and_meters_for_the_keys_owner()
+    public async Task Get_KeyOwner_GetsRowsWithMeters()
     {
         var userId = Guid.NewGuid();
         var principal = new ClaimsPrincipal(new ClaimsIdentity(

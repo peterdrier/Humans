@@ -40,7 +40,7 @@ public sealed class IssuesControllerTests
     [InlineData("section", true)]
     [InlineData("github", false)]
     [InlineData("github", true)]
-    public async Task MutationPreflight_CancelsAccountAndIssueReads(string action, bool afterAccount)
+    public async Task MutationPreflight_RequestCancelled_StopsReads(string action, bool afterAccount)
     {
         using var request = new CancellationTokenSource();
         var actorId = Guid.NewGuid();
@@ -159,7 +159,7 @@ public sealed class IssuesControllerTests
 
     [HumansTheory]
     [MemberData(nameof(SupportedCultures.All), MemberType = typeof(SupportedCultures))]
-    public async Task SectionRefusals_LocalizeKeysAndLimit_AndGenericFailures(string culture)
+    public async Task SectionRefusals_EachKind_AreLocalized(string culture)
     {
         using var scope = new CultureScope(culture);
         using var services = new ServiceCollection().AddLogging().AddLocalization().BuildServiceProvider();
@@ -209,7 +209,7 @@ public sealed class IssuesControllerTests
 
     [HumansTheory]
     [MemberData(nameof(SupportedCultures.All), MemberType = typeof(SupportedCultures))]
-    public void SubmissionForm_LocalizesRequiredAndLengthErrors(string culture)
+    public void SubmissionForm_InvalidInput_LocalizesErrors(string culture)
     {
         using var cultureScope = new CultureScope(culture);
         var registrations = new ServiceCollection().AddLogging().AddLocalization();
@@ -312,7 +312,7 @@ public sealed class IssuesControllerTests
     [HumansTheory]
     [InlineData(null)]
     [InlineData("0")]
-    public async Task Triage_requires_posted_status_before_mutation(string? postedStatus)
+    public async Task Triage_NoPostedStatus_ChangesNothing(string? postedStatus)
     {
         var actor = Guid.NewGuid();
         var issueId = Guid.NewGuid();
@@ -384,7 +384,7 @@ public sealed class IssuesControllerTests
     [InlineData(true, "Feature", true)]
     [InlineData(false, null, false)]
     [InlineData(true, null, false)]
-    public async Task Submission_requires_explicit_category_before_creating_issue(bool ajax, string? category, bool viewerExists)
+    public async Task Submission_NoCategory_CreatesNothing(bool ajax, string? category, bool viewerExists)
     {
         var actor = Guid.NewGuid();
         var issueId = Guid.NewGuid();
@@ -493,7 +493,7 @@ public sealed class IssuesControllerTests
     [HumansTheory]
     [InlineData("Open", new[] { IssueStatus.Triage, IssueStatus.Open, IssueStatus.InProgress })]
     [InlineData("Closed", new[] { IssueStatus.Resolved, IssueStatus.WontFix, IssueStatus.Duplicate })]
-    public async Task Index_OpenAndClosedViews_FilterByTheTerminalStatusRule(string view, IssueStatus[] expected)
+    public async Task Index_OpenOrClosedView_FiltersByTerminalStatus(string view, IssueStatus[] expected)
     {
         var userId = Guid.NewGuid();
         var issues = Substitute.For<IIssuesService>();

@@ -93,9 +93,6 @@ internal sealed class StubTicketVendorService : ITicketVendorService
         return Task.FromResult(codes);
     }
 
-    public Task CreateCheckInAsync(string vendorTicketId, Instant occurredAt, CancellationToken ct = default) =>
-        Task.CompletedTask;
-
     public Task<VoidIssuedTicketResult> VoidIssuedTicketAsync(
         string vendorTicketId, bool voidToHold, CancellationToken ct = default)
     {

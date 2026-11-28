@@ -16,7 +16,7 @@ public sealed class PleoSyncJobTests
     [HumansTheory]
     [Xunit.InlineData(false)]
     [Xunit.InlineData(true)]
-    public async Task Cancellation_propagates_and_only_shutdown_logs_a_warning(bool shutdownRequested)
+    public async Task Run_Cancelled_Propagates(bool shutdownRequested)
     {
         using var shutdown = new CancellationTokenSource();
         if (shutdownRequested) await shutdown.CancelAsync();
@@ -37,7 +37,7 @@ public sealed class PleoSyncJobTests
     }
 
     [HumansFact]
-    public async Task Permanent_failure_completes_the_job_so_Hangfire_does_not_retry()
+    public async Task Run_PermanentFailure_Completes()
     {
         _pleo.SyncAsync(Arg.Any<CancellationToken>()).ThrowsAsync(new PleoPermanentException("403", 403));
 
@@ -51,7 +51,7 @@ public sealed class PleoSyncJobTests
     }
 
     [HumansFact]
-    public async Task Transient_failure_propagates_so_Hangfire_retries()
+    public async Task Run_TransientFailure_Propagates()
     {
         _pleo.SyncAsync(Arg.Any<CancellationToken>()).ThrowsAsync(new PleoTransientException("503"));
 

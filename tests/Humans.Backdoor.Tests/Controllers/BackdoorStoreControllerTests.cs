@@ -38,7 +38,7 @@ public class BackdoorStoreControllerTests
     }
 
     [HumansFact]
-    public async Task OrderLines_without_a_year_is_a_BadRequest()
+    public async Task OrderLines_NoYear_IsBadRequest()
     {
         var result = await _sut.OrderLines(null, Xunit.TestContext.Current.CancellationToken);
 
@@ -47,7 +47,7 @@ public class BackdoorStoreControllerTests
     }
 
     [HumansFact]
-    public async Task Payments_without_a_year_is_a_BadRequest()
+    public async Task Payments_NoYear_IsBadRequest()
     {
         var result = await _sut.Payments(null, Xunit.TestContext.Current.CancellationToken);
 
@@ -56,7 +56,7 @@ public class BackdoorStoreControllerTests
     }
 
     [HumansFact]
-    public async Task OrderLines_projects_every_field_with_enums_as_strings()
+    public async Task OrderLines_WithYear_ProjectsEveryField()
     {
         var orderId = Guid.NewGuid();
         var lineId = Guid.NewGuid();
@@ -94,7 +94,7 @@ public class BackdoorStoreControllerTests
     }
 
     [HumansFact]
-    public async Task Payments_projects_every_field_and_keeps_refunds_negative()
+    public async Task Payments_Refunds_StayNegative()
     {
         var orderId = Guid.NewGuid();
         var paymentId = Guid.NewGuid();
@@ -118,7 +118,7 @@ public class BackdoorStoreControllerTests
     }
 
     [HumansFact]
-    public async Task OrderHistory_requires_a_year_and_projects_every_field()
+    public async Task OrderHistory_WithYear_ProjectsEveryField()
     {
         var ct = Xunit.TestContext.Current.CancellationToken;
         (await _sut.OrderHistory(null, ct)).Should().BeOfType<BadRequestObjectResult>();
