@@ -78,6 +78,8 @@ The member history page uses localized labels, including the link to each transc
 
 ## Invariants
 
+- The preloaded route map directs humans to `/Teams` for the team directory and `/Agent/Conversations` for assistant history; the shared FAQ uses the same team-directory route.
+
 - The admin status view orders outcome buckets by count descending. The status service supplies bucket counts without display sorting; its top-ten document/user selectors and latency calculation remain ordered for selection and statistics.
 - Top fetched documents combine case variants and resolve section-doc aliases to the canonical section before counting. The report applies this to existing transcript slugs without rewriting them; tool prefixes and handoff markers remain distinct.
 

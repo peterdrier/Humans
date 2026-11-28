@@ -101,7 +101,7 @@ public static class SectionHelpContent
         languages, and it never matches anything someone has kept private. A common first name is
         still hard to pin down: if the person has shared little, you may get many matches or none.
         Search does not look people up by id — if you have their profile id, go straight to
-        /Profile/<id> instead. /Team lists people you share a team with, and the community channels
+        /Profile/<id> instead. /Teams lists people you share a team with, and the community channels
         linked in the footer at https://nobodies.team/ are the way to reach someone otherwise.
 
         ## Account & privacy

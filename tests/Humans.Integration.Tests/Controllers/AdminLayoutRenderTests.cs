@@ -45,30 +45,30 @@ public partial class AdminLayoutRenderTests(HumansTestDatabase database) : Integ
     private const string LoginPartialMarker = "data-testid=\"user-nav\"";
 
     /// <summary>
-    /// One page per assembly that names <c>_AdminLayout</c>, from URLs each section's render test proves reachable for
-    /// Admin. The second element names the call-site form, so a failure says which shape broke.
+    /// Representative admin pages, from URLs each section's render test proves reachable for Admin.
+    /// The second element identifies the owning section in failure output.
     /// </summary>
     private static (string Url, string Site)[] AdminPages =>
     [
-        ("/AuditLog", "Humans.AuditLog — Views/AuditLog/_ViewStart"),
-        ("/Budget/Admin", "Humans.Budget — Views/BudgetAdmin/_ViewStart"),
-        ("/Campaigns/Admin", "Humans.Campaigns — Views/Campaign/_ViewStart"),
-        ("/Cantina/Roster", "Humans.Cantina — Views/Cantina/_ViewStart"),
-        ("/Legal/Admin/Documents", "Humans.Consent — Views/AdminLegalDocuments/_ViewStart"),
-        ("/Debug/Logs", "Humans.Debug — Views/Debug/_ViewStart"),
-        ("/Shifts/Admin/EarlyEntry", "Humans.EarlyEntry — Views/EarlyEntryRoster/_ViewStart"),
-        ("/Email/EmailOutbox", "Humans.Email — Views/Email/_ViewStart"),
-        ("/Finance/Creditors", "Humans.Finance — Views/Finance/_ViewStart"),
-        ("/Google", "Humans.Google — Views/Google/_ViewStart"),
-        ("/Governance/BoardVoting", "Humans.Governance — Views/Governance/BoardVoting/_ViewStart"),
-        ("/Governance/Applications/Admin", "Humans.Governance — inline override in Applications/Admin.cshtml"),
-        ("/MailerLite/Admin", "Humans.MailerLite — Views/MailerLite/Admin/_ViewStart"),
-        ("/Consent/ReviewQueue", "Humans.Consent — Views/ConsentReviewQueue/_ViewStart"),
-        ("/Scanner", "Humans.Scanner — Views/Scanner/_ViewStart"),
-        ("/Shifts/Dashboard", "Humans.Shifts — Views/ShiftDashboard/_ViewStart"),
-        ("/Shifts/Summary", "Humans.Shifts — inline override in Shifts/Summary.cshtml"),
-        ("/Store/Admin/Catalog", "Humans.Store — Views/StoreAdmin/_ViewStart"),
-        ("/Tickets", "Humans.Tickets — Views/Ticket/_ViewStart"),
+        ("/AuditLog", "Humans.AuditLog"),
+        ("/Budget/Admin", "Humans.Budget"),
+        ("/Campaigns/Admin", "Humans.Campaigns"),
+        ("/Cantina/Roster", "Humans.Cantina"),
+        ("/Legal/Admin/Documents", "Humans.Consent"),
+        ("/Debug/Logs", "Humans.Debug"),
+        ("/Shifts/Admin/EarlyEntry", "Humans.EarlyEntry"),
+        ("/Email/EmailOutbox", "Humans.Email"),
+        ("/Finance/Creditors", "Humans.Finance"),
+        ("/Google", "Humans.Google"),
+        ("/Governance/BoardVoting", "Humans.Governance"),
+        ("/Governance/Applications/Admin", "Humans.Governance"),
+        ("/MailerLite/Admin", "Humans.MailerLite"),
+        ("/Consent/ReviewQueue", "Humans.Consent"),
+        ("/Scanner", "Humans.Scanner"),
+        ("/Shifts/Dashboard", "Humans.Shifts"),
+        ("/Shifts/Summary", "Humans.Shifts"),
+        ("/Store/Admin/Catalog", "Humans.Store"),
+        ("/Tickets", "Humans.Tickets"),
     ];
 
     [HumansFact(Timeout = 600000)]
@@ -79,7 +79,7 @@ public partial class AdminLayoutRenderTests(HumansTestDatabase database) : Integ
         var adminId = await Factory.SignInAsFullyOnboardedAsync(Client, DevPersona.Admin);
 
         var pages = AdminPages
-            .Append(($"/Users/Admin/{adminId}", "Humans.Users — inline override in UsersAdmin/AdminDetail.cshtml"))
+            .Append(($"/Users/Admin/{adminId}", "Humans.Users"))
             .ToList();
 
         foreach (var (url, site) in pages)

@@ -108,11 +108,11 @@ internal sealed class AgentPreloadAugmentor(
         - /Profile/Me — your profile
         - /Profile/Me/Emails — manage linked emails
         - /Consent/MyData — delete account / download data (GDPR)
-        - /Team — team directory and join requests
+        - /Teams — team directory and join requests
         - /Shifts — shift dashboard (if you have signup access)
         - /Legal — required legal documents + consent status
         - /Issues — report a bug, request a feature, or ask a question
-        - /Agent — conversational helper (this tool's own history page)
+        - /Agent/Conversations — conversational helper (this tool's own history page)
         """;
 
     public string BuildFaqMarkdown() =>
