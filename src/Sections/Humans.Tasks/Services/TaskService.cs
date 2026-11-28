@@ -74,7 +74,6 @@ internal sealed partial class TaskService(
         var rows = listed
             .GroupBy(t => t.Owner)
             .Select(g => new TeamTaskCounts(
-                g.Key.Id,
                 g.First().TeamName,
                 g.First().TeamSlug,
                 g.Count(),
