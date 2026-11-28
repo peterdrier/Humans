@@ -1,14 +1,15 @@
+using Humans.Base.Data;
 using Humans.Pleo.Domain;
 using Microsoft.EntityFrameworkCore;
 using NodaTime;
 
 namespace Humans.Pleo.Data;
 
-internal sealed class Repository(IDbContextFactory<PleoDbContext> factory) : IPleoRepository
+internal sealed class Repository(IDbContextFactory<PleoDbContext> factory) : SectionRepository<PleoDbContext>(factory), IPleoRepository
 {
     public async Task ReplaceMirrorAsync(PleoMirrorSnapshot snapshot, Instant now, CancellationToken ct = default)
     {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
+        await using var ctx = await CreateDbContextAsync(ct);
 
         Replace(ctx.PleoEntries, await ctx.PleoEntries.ToListAsync(ct), snapshot.Entries, e => e.Id, e => e.SyncedAt = now);
         Replace(ctx.PleoEmployees, await ctx.PleoEmployees.ToListAsync(ct), snapshot.Employees, e => e.Id,
@@ -47,45 +48,27 @@ internal sealed class Repository(IDbContextFactory<PleoDbContext> factory) : IPl
         set.RemoveRange(existing.Values);
     }
 
-    public async Task<IReadOnlyList<PleoEntry>> GetEntriesAsync(CancellationToken ct = default)
-    {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
-        return await ctx.PleoEntries.AsNoTracking().ToListAsync(ct);
-    }
+    public async Task<IReadOnlyList<PleoEntry>> GetEntriesAsync(CancellationToken ct = default) =>
+        await RunAsync(ctx => ctx.PleoEntries.AsNoTracking().ToListAsync(ct), ct);
 
-    public async Task<PleoEntry?> GetEntryAsync(string id, CancellationToken ct = default)
-    {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
-        return await ctx.PleoEntries.AsNoTracking().FirstOrDefaultAsync(e => e.Id == id, ct);
-    }
+    public async Task<PleoEntry?> GetEntryAsync(string id, CancellationToken ct = default) =>
+        await RunAsync(ctx => ctx.PleoEntries.AsNoTracking().FirstOrDefaultAsync(e => e.Id == id, ct), ct);
 
-    public async Task<IReadOnlyList<PleoEmployee>> GetEmployeesAsync(CancellationToken ct = default)
-    {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
-        return await ctx.PleoEmployees.AsNoTracking().ToListAsync(ct);
-    }
+    public async Task<IReadOnlyList<PleoEmployee>> GetEmployeesAsync(CancellationToken ct = default) =>
+        await RunAsync(ctx => ctx.PleoEmployees.AsNoTracking().ToListAsync(ct), ct);
 
-    public async Task<IReadOnlyList<PleoAccount>> GetAccountsAsync(CancellationToken ct = default)
-    {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
-        return await ctx.PleoAccounts.AsNoTracking().ToListAsync(ct);
-    }
+    public async Task<IReadOnlyList<PleoAccount>> GetAccountsAsync(CancellationToken ct = default) =>
+        await RunAsync(ctx => ctx.PleoAccounts.AsNoTracking().ToListAsync(ct), ct);
 
-    public async Task<PleoBalance?> GetBalanceAsync(CancellationToken ct = default)
-    {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
-        return await ctx.PleoBalances.AsNoTracking().FirstOrDefaultAsync(ct);
-    }
+    public async Task<PleoBalance?> GetBalanceAsync(CancellationToken ct = default) =>
+        await RunAsync(ctx => ctx.PleoBalances.AsNoTracking().FirstOrDefaultAsync(ct), ct);
 
-    public async Task<IReadOnlyList<PleoCategory>> GetCategoriesAsync(CancellationToken ct = default)
-    {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
-        return await ctx.PleoCategories.AsNoTracking().ToListAsync(ct);
-    }
+    public async Task<IReadOnlyList<PleoCategory>> GetCategoriesAsync(CancellationToken ct = default) =>
+        await RunAsync(ctx => ctx.PleoCategories.AsNoTracking().ToListAsync(ct), ct);
 
     public async Task SaveCategoryAsync(PleoCategory category, CancellationToken ct = default)
     {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
+        await using var ctx = await CreateDbContextAsync(ct);
         var existing = await ctx.PleoCategories.FirstOrDefaultAsync(c => c.Id == category.Id, ct);
         if (existing is null)
             ctx.PleoCategories.Add(category);
@@ -94,15 +77,12 @@ internal sealed class Repository(IDbContextFactory<PleoDbContext> factory) : IPl
         await ctx.SaveChangesAsync(ct);
     }
 
-    public async Task<PleoSyncState?> GetSyncStateAsync(CancellationToken ct = default)
-    {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
-        return await ctx.PleoSyncStates.AsNoTracking().FirstOrDefaultAsync(ct);
-    }
+    public async Task<PleoSyncState?> GetSyncStateAsync(CancellationToken ct = default) =>
+        await RunAsync(ctx => ctx.PleoSyncStates.AsNoTracking().FirstOrDefaultAsync(ct), ct);
 
     public async Task SaveSyncStateAsync(PleoSyncState state, CancellationToken ct = default)
     {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
+        await using var ctx = await CreateDbContextAsync(ct);
         var existing = await ctx.PleoSyncStates.FirstOrDefaultAsync(s => s.Id == state.Id, ct);
         if (existing is null)
             ctx.PleoSyncStates.Add(state);

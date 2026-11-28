@@ -27,9 +27,7 @@ public sealed class CalendarRepositoryTests : IDisposable
 
     public CalendarRepositoryTests()
     {
-        var options = new DbContextOptionsBuilder<CalendarDbContext>()
-            .UseInMemoryDatabase(Guid.NewGuid().ToString())
-            .Options;
+        var options = TestDbOptions.InMemory<CalendarDbContext>();
         _dbContext = new CalendarDbContext(options);
         _repo = new CalendarRepository(new TestDbContextFactory<CalendarDbContext>(options));
     }

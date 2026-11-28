@@ -36,9 +36,7 @@ public class PaymentDetailsTests
 
     public PaymentDetailsTests()
     {
-        var options = new DbContextOptionsBuilder<FinanceDbContext>()
-            .UseInMemoryDatabase($"finance-pd-{Guid.NewGuid():N}")
-            .Options;
+        var options = TestDbOptions.InMemory<FinanceDbContext>();
         _repo = new PaymentDetailsRepository(new Factory(options));
         _sut = new PaymentDetailsService(_repo, _users, _audit, new FakeClock(Now));
     }

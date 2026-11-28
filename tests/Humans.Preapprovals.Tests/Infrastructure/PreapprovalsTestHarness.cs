@@ -31,10 +31,7 @@ public abstract class PreapprovalsTestHarness : IDisposable
 
     protected PreapprovalsTestHarness()
     {
-        var options = new DbContextOptionsBuilder<PreapprovalsDbContext>()
-            .UseInMemoryDatabase(Guid.NewGuid().ToString())
-            .ConfigureWarnings(w => w.Ignore(InMemoryEventId.TransactionIgnoredWarning))
-            .Options;
+        var options = TestDbOptions.InMemory<PreapprovalsDbContext>();
         Db = new PreapprovalsDbContext(options);
         DbFactory = new TestDbContextFactory<PreapprovalsDbContext>(options);
         Clock = new FakeClock(Instant.FromUtc(2026, 3, 1, 12, 0));

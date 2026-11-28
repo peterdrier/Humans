@@ -17,9 +17,7 @@ public sealed class GoogleSyncOutboxRepositoryTests : IDisposable
 
     public GoogleSyncOutboxRepositoryTests()
     {
-        var options = new DbContextOptionsBuilder<GoogleIntegrationDbContext>()
-            .UseInMemoryDatabase(Guid.NewGuid().ToString())
-            .Options;
+        var options = TestDbOptions.InMemory<GoogleIntegrationDbContext>();
         _repository = new GoogleSyncOutboxRepository(new SingleContextFactory(options));
         _seedContext = new GoogleIntegrationDbContext(options);
     }

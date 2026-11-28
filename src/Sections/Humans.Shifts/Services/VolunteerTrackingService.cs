@@ -180,12 +180,7 @@ internal sealed class VolunteerTrackingService(
             return new SetDayOffResult(false, "Shifts_VolTrack_Err_DayOffWithSignups");
         }
 
-        var trimmed = string.IsNullOrWhiteSpace(reason) ? null : reason.Trim();
-        if (trimmed is { Length: > 200 })
-        {
-            var length = char.IsHighSurrogate(trimmed[199]) && char.IsLowSurrogate(trimmed[200]) ? 199 : 200;
-            trimmed = trimmed[..length];
-        }
+        var trimmed = string.IsNullOrWhiteSpace(reason) ? null : reason.Trim().Truncate(200);
 
         var entry = new DayOffEntry(
             DayOffset: dayOffset,

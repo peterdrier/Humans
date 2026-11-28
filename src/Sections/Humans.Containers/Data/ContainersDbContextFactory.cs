@@ -1,30 +1,9 @@
-using Humans.Base.Data;
+using Humans.Base.Hosting;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.EntityFrameworkCore.Design;
 
 namespace Humans.Containers.Data;
 
-/// <summary>Same history table as the runtime registration, so a CI apply writes the table the app reads.</summary>
-internal sealed class ContainersDbContextFactory : IDesignTimeDbContextFactory<ContainersDbContext>
+internal sealed class ContainersDbContextFactory : SectionDesignTimeDbContextFactory<ContainersDbContext>
 {
-    public ContainersDbContext CreateDbContext(string[] args)
-    {
-        var connectionString =
-            Environment.GetEnvironmentVariable("ConnectionStrings__DefaultConnection")
-            ?? "Host=localhost;Database=humans_design_time;Username=humans;Password=humans";
-
-        var optionsBuilder = new DbContextOptionsBuilder<ContainersDbContext>();
-        optionsBuilder.UseNpgsql(
-            connectionString,
-            npgsqlOptions =>
-            {
-                npgsqlOptions.UseNodaTime();
-                npgsqlOptions.MigrationsAssembly("Humans.Containers");
-                npgsqlOptions.MigrationsHistoryTable(
-                    SectionMigrationsHistory.TableFor<ContainersDbContext>());
-                npgsqlOptions.UseQuerySplittingBehavior(QuerySplittingBehavior.SplitQuery);
-            });
-
-        return new ContainersDbContext(optionsBuilder.Options);
-    }
+    protected override ContainersDbContext Create(DbContextOptions<ContainersDbContext> options) => new(options);
 }

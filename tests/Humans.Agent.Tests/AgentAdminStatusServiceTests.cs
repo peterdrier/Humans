@@ -260,9 +260,7 @@ public class AgentAdminStatusServiceTests
     }
 
     private static AgentDbContext InMemoryDb() =>
-        new(new DbContextOptionsBuilder<AgentDbContext>()
-            .UseInMemoryDatabase(Guid.NewGuid().ToString())
-            .Options);
+        new(TestDbOptions.InMemory<AgentDbContext>());
 
     private sealed class FakeClock(Instant now) : IClock { public Instant GetCurrentInstant() => now; }
 }

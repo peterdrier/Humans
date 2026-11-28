@@ -1,30 +1,9 @@
-using Humans.Base.Data;
+using Humans.Base.Hosting;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.EntityFrameworkCore.Design;
 
 namespace Humans.Auth.Data;
 
-/// <summary>Same history table as the runtime registration, so a CI apply writes the table the app reads.</summary>
-internal sealed class AuthDbContextFactory : IDesignTimeDbContextFactory<AuthDbContext>
+internal sealed class AuthDbContextFactory : SectionDesignTimeDbContextFactory<AuthDbContext>
 {
-    public AuthDbContext CreateDbContext(string[] args)
-    {
-        var connectionString =
-            Environment.GetEnvironmentVariable("ConnectionStrings__DefaultConnection")
-            ?? "Host=localhost;Database=humans_design_time;Username=humans;Password=humans";
-
-        var optionsBuilder = new DbContextOptionsBuilder<AuthDbContext>();
-        optionsBuilder.UseNpgsql(
-            connectionString,
-            npgsqlOptions =>
-            {
-                npgsqlOptions.UseNodaTime();
-                npgsqlOptions.MigrationsAssembly("Humans.Auth");
-                npgsqlOptions.MigrationsHistoryTable(
-                    SectionMigrationsHistory.TableFor<AuthDbContext>());
-                npgsqlOptions.UseQuerySplittingBehavior(QuerySplittingBehavior.SplitQuery);
-            });
-
-        return new AuthDbContext(optionsBuilder.Options);
-    }
+    protected override AuthDbContext Create(DbContextOptions<AuthDbContext> options) => new(options);
 }

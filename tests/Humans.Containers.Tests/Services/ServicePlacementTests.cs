@@ -28,9 +28,7 @@ public sealed class ServicePlacementTests
     private readonly FakeClock _clock = new(Instant.FromUtc(2026, 4, 26, 10, 0));
 
     private readonly DbContextOptions<ContainersDbContext> _containersOptions =
-        new DbContextOptionsBuilder<ContainersDbContext>()
-            .UseInMemoryDatabase(Guid.NewGuid().ToString())
-            .Options;
+        TestDbOptions.InMemory<ContainersDbContext>();
 
     public ServicePlacementTests()
     {

@@ -32,10 +32,7 @@ public abstract class GrantsTestHarness : IDisposable
 
     protected GrantsTestHarness()
     {
-        var options = new DbContextOptionsBuilder<GrantsDbContext>()
-            .UseInMemoryDatabase(Guid.NewGuid().ToString())
-            .ConfigureWarnings(w => w.Ignore(InMemoryEventId.TransactionIgnoredWarning))
-            .Options;
+        var options = TestDbOptions.InMemory<GrantsDbContext>();
         Db = new GrantsDbContext(options);
         DbFactory = new TestDbContextFactory<GrantsDbContext>(options);
         Clock = new FakeClock(Instant.FromUtc(2027, 3, 1, 12, 0));

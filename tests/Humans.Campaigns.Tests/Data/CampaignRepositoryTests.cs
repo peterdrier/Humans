@@ -21,10 +21,7 @@ public sealed class CampaignRepositoryTests
     private readonly FakeClock _clock = new(Instant.FromUtc(2026, 3, 31, 12, 0));
 
     private readonly TestDbContextFactory<CampaignsDbContext> _factory =
-        new(new DbContextOptionsBuilder<CampaignsDbContext>()
-            .UseInMemoryDatabase(Guid.NewGuid().ToString())
-            .ConfigureWarnings(w => w.Ignore(InMemoryEventId.TransactionIgnoredWarning))
-            .Options);
+        new(TestDbOptions.InMemory<CampaignsDbContext>());
 
     private readonly CampaignsDbContext _db;
     private readonly CampaignRepository _repository;

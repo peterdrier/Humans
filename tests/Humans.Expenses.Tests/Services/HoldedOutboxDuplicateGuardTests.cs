@@ -47,9 +47,7 @@ public class HoldedOutboxDuplicateGuardTests
 
     public HoldedOutboxDuplicateGuardTests()
     {
-        _options = new DbContextOptionsBuilder<ExpensesDbContext>()
-            .UseInMemoryDatabase(Guid.NewGuid().ToString())
-            .Options;
+        _options = TestDbOptions.InMemory<ExpensesDbContext>();
         _repo = new ExpenseRepository(new TestDbContextFactory<ExpensesDbContext>(_options));
 
         _holdedService.IsConfigured.Returns(true);

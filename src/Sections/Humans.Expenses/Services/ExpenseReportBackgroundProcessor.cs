@@ -1,4 +1,5 @@
 using Humans.Audit.Contracts;
+using Humans.Base.Extensions;
 using Humans.Base.Interfaces;
 using Humans.Expenses.Contracts;
 using Humans.Expenses.Data;
@@ -29,6 +30,9 @@ internal sealed class ExpenseReportBackgroundProcessor(
     /// enough that a broken push surfaces on /Expenses/Review the same day.
     /// </summary>
     internal const int MaxOutboxRetries = 10;
+
+    // Fits the outbox's varchar(2000) and the prefixed audit description; logs retain the exception.
+    private const int MaxOutboxErrorLength = 2000;
 
     /// <summary>Audit actor for these unattended pushes; matches the Hangfire job's type name.</summary>
     internal const string OutboxJobName = "HoldedExpenseOutboxJob";
@@ -161,7 +165,7 @@ internal sealed class ExpenseReportBackgroundProcessor(
                             "Error processing Holded outbox event {OutboxEventId} — attempt {Attempt}/{MaxRetries}, retrying at {NextRetryAt}",
                             outboxEvent.Id, attempts, MaxOutboxRetries, nextRetryAt);
                         await repo.IncrementOutboxRetryAsync(
-                            outboxEvent.Id, BoundOutboxError(ex.Message), nextRetryAt, completionCt);
+                            outboxEvent.Id, ex.Message.Truncate(MaxOutboxErrorLength), nextRetryAt, completionCt);
                     }
                 }
             }
@@ -184,7 +188,7 @@ internal sealed class ExpenseReportBackgroundProcessor(
     private async Task WriteOffOutboxEventAsync(
         HoldedExpenseOutboxEvent outboxEvent, string error, CancellationToken ct)
     {
-        error = BoundOutboxError(error);
+        error = error.Truncate(MaxOutboxErrorLength);
         await repo.MarkOutboxFailedPermanentlyAsync(
             outboxEvent.Id, error, clock.GetCurrentInstant(), ct);
 
@@ -195,16 +199,6 @@ internal sealed class ExpenseReportBackgroundProcessor(
             OutboxJobName);
     }
 
-    // Fits the outbox's varchar(2000) and the prefixed audit description; logs retain the exception.
-    private static string BoundOutboxError(string error)
-    {
-        const int maxLength = 2000;
-        if (error.Length <= maxLength) return error;
-        var length = maxLength;
-        if (char.IsHighSurrogate(error[length - 1]) && char.IsLowSurrogate(error[length]))
-            length--;
-        return error[..length];
-    }
 
     [ExternalWrite]
     public async Task PublishAsync(
@@ -445,14 +439,7 @@ internal sealed class ExpenseReportBackgroundProcessor(
         var full = notes.Count == 0 ? summary : $"{summary} {string.Join(" ", notes)}";
         // AuditLogEntry.Description caps at 4,000 chars (job-name prefix included) and a failed
         // insert is swallowed, so an oversized summary loses the audit entry entirely.
-        const int maxSummaryLength = 3500;
-        if (full.Length <= maxSummaryLength)
-            return full;
-
-        var length = maxSummaryLength - 1;
-        if (char.IsHighSurrogate(full[length - 1]) && char.IsLowSurrogate(full[length]))
-            length--;
-        return full[..length] + "…";
+        return full.Truncate(3500, "…");
     }
 
     /// <summary>

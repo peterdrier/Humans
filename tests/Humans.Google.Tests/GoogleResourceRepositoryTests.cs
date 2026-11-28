@@ -17,9 +17,7 @@ public sealed class GoogleResourceRepositoryTests : IDisposable
 
     public GoogleResourceRepositoryTests()
     {
-        _options = new DbContextOptionsBuilder<GoogleIntegrationDbContext>()
-            .UseInMemoryDatabase(Guid.NewGuid().ToString())
-            .Options;
+        _options = TestDbOptions.InMemory<GoogleIntegrationDbContext>();
         _clock = new FakeClock(Instant.FromUtc(2026, 4, 22, 10, 0));
         _repository = new GoogleResourceRepository(new SingleContextFactory(_options));
         _seedContext = new GoogleIntegrationDbContext(_options);

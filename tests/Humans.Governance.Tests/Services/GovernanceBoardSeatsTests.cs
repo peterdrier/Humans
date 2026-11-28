@@ -31,7 +31,7 @@ public sealed class GovernanceBoardSeatsTests
     private readonly IUserService _users = Substitute.For<IUserService>();
 
     private readonly GovernanceBodyRepository _repo = new(new TestDbContextFactory<GovernanceDbContext>(
-        new DbContextOptionsBuilder<GovernanceDbContext>().UseInMemoryDatabase(Guid.NewGuid().ToString()).Options));
+        TestDbOptions.InMemory<GovernanceDbContext>()));
 
     private readonly IGoogleGroupSync _groupSync = Substitute.For<IGoogleGroupSync>();
 

@@ -18,9 +18,9 @@ namespace Humans.TicketTailor;
 /// it along.
 /// </para>
 /// </summary>
-public sealed class Section : ISection
+public sealed class Section : SectionBase
 {
-    public void Register(IServiceCollection services, IConfiguration configuration)
+    public override void Register(IServiceCollection services, IConfiguration configuration)
     {
         var environment = configuration[HostDefaults.EnvironmentKey];
 

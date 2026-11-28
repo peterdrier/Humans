@@ -8,10 +8,7 @@ namespace Humans.Grants.Tests.Infrastructure;
 public sealed class GrantsModelWarmupFixture : IDisposable
 {
     private readonly GrantsDbContext _context = new(
-        new DbContextOptionsBuilder<GrantsDbContext>()
-            .UseInMemoryDatabase(Guid.NewGuid().ToString())
-            .ConfigureWarnings(w => w.Ignore(InMemoryEventId.TransactionIgnoredWarning))
-            .Options);
+        TestDbOptions.InMemory<GrantsDbContext>());
 
     public GrantsModelWarmupFixture() => _context.Database.EnsureCreated();
 

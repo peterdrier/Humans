@@ -11,9 +11,9 @@ namespace Humans.HiEvents;
 /// Registers the Hi.Events ticketing platform whatever the environment: it does nothing until <c>HiEvents:ApiUrl</c> and
 /// <c>HIEVENTS_API_KEY</c> are set, and Tickets takes no orders on it while <c>IsConfigured</c> is false.
 /// </summary>
-public sealed class Section : ISection, ISectionConfiguration, ISectionAdminNav
+public sealed class Section : SectionBase, ISectionConfiguration, ISectionAdminNav
 {
-    public void Register(IServiceCollection services, IConfiguration configuration)
+    public override void Register(IServiceCollection services, IConfiguration configuration)
     {
         services.Configure<HiEventsSettings>(opts =>
         {

@@ -12,10 +12,7 @@ namespace Humans.Workgroups.Tests.Infrastructure;
 public sealed class WorkgroupsModelWarmupFixture : IDisposable
 {
     private readonly WorkgroupsDbContext _context = new(
-        new DbContextOptionsBuilder<WorkgroupsDbContext>()
-            .UseInMemoryDatabase(Guid.NewGuid().ToString())
-            .ConfigureWarnings(w => w.Ignore(InMemoryEventId.TransactionIgnoredWarning))
-            .Options);
+        TestDbOptions.InMemory<WorkgroupsDbContext>());
 
     public WorkgroupsModelWarmupFixture() => _context.Database.EnsureCreated();
 

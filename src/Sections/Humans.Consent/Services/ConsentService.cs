@@ -66,10 +66,6 @@ internal sealed class ConsentService(
 
         var contentHash = ComputeContentHash(canonicalContent);
 
-        var userAgentLength = Math.Min(500, userAgent.Length);
-        if (userAgentLength < userAgent.Length && char.IsHighSurrogate(userAgent[userAgentLength - 1])
-            && char.IsLowSurrogate(userAgent[userAgentLength]))
-            userAgentLength--;
 
         var consentRecord = new ConsentRecord
         {
@@ -78,7 +74,7 @@ internal sealed class ConsentService(
             DocumentVersionId = documentVersionId,
             ConsentedAt = clock.GetCurrentInstant(),
             IpAddress = ipAddress,
-            UserAgent = userAgent[..userAgentLength],
+            UserAgent = userAgent.Truncate(500),
             ContentHash = contentHash,
             ExplicitConsent = explicitConsent
         };

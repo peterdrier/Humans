@@ -8,10 +8,7 @@ namespace Humans.Preapprovals.Tests.Infrastructure;
 public sealed class PreapprovalsModelWarmupFixture : IDisposable
 {
     private readonly PreapprovalsDbContext _context = new(
-        new DbContextOptionsBuilder<PreapprovalsDbContext>()
-            .UseInMemoryDatabase(Guid.NewGuid().ToString())
-            .ConfigureWarnings(w => w.Ignore(InMemoryEventId.TransactionIgnoredWarning))
-            .Options);
+        TestDbOptions.InMemory<PreapprovalsDbContext>());
 
     public PreapprovalsModelWarmupFixture() => _context.Database.EnsureCreated();
 

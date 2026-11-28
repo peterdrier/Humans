@@ -1,22 +1,20 @@
+using Humans.Base.Data;
 using Humans.Google.Domain;
 using Microsoft.EntityFrameworkCore;
 using NodaTime;
 
 namespace Humans.Google.Data;
 
-internal sealed class SyncSettingsRepository(IDbContextFactory<GoogleIntegrationDbContext> factory) : ISyncSettingsRepository
+internal sealed class SyncSettingsRepository(IDbContextFactory<GoogleIntegrationDbContext> factory) : SectionRepository<GoogleIntegrationDbContext>(factory), ISyncSettingsRepository
 {
-    public async Task<IReadOnlyList<SyncServiceSettings>> GetAllAsync(CancellationToken ct = default)
-    {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
-        return await ctx.SyncServiceSettings
+    public async Task<IReadOnlyList<SyncServiceSettings>> GetAllAsync(CancellationToken ct = default) =>
+        await RunAsync(ctx => ctx.SyncServiceSettings
             .AsNoTracking()
-            .ToListAsync(ct);
-    }
+            .ToListAsync(ct), ct);
 
     public async Task<SyncMode> GetModeAsync(SyncServiceType serviceType, CancellationToken ct = default)
     {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
+        await using var ctx = await CreateDbContextAsync(ct);
         var mode = await ctx.SyncServiceSettings
             .AsNoTracking()
             .Where(s => s.ServiceType == serviceType)
@@ -32,7 +30,7 @@ internal sealed class SyncSettingsRepository(IDbContextFactory<GoogleIntegration
         Instant updatedAt,
         CancellationToken ct = default)
     {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
+        await using var ctx = await CreateDbContextAsync(ct);
         var setting = await ctx.SyncServiceSettings
             .FirstOrDefaultAsync(s => s.ServiceType == serviceType, ct);
         if (setting is null) return null;

@@ -1,39 +1,31 @@
 using System.Transactions;
+using Humans.Base.Data;
 using Humans.Grants.Domain;
 using Microsoft.EntityFrameworkCore;
 using NodaTime;
 
 namespace Humans.Grants.Data;
 
-internal sealed class GrantRepository(IDbContextFactory<GrantsDbContext> factory) : IGrantRepository
+internal sealed class GrantRepository(IDbContextFactory<GrantsDbContext> factory) : SectionRepository<GrantsDbContext>(factory), IGrantRepository
 {
     internal const string MergeRevokeReason = "Duplicate after account merge";
 
-    public async Task<IReadOnlyList<GrantProgram>> GetProgramsAsync(CancellationToken ct = default)
-    {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
-        return await ProgramsWithChildren(ctx).ToListAsync(ct);
-    }
+    public async Task<IReadOnlyList<GrantProgram>> GetProgramsAsync(CancellationToken ct = default) =>
+        await RunAsync(ctx => ProgramsWithChildren(ctx).ToListAsync(ct), ct);
 
-    public async Task<GrantProgram?> GetProgramAsync(Guid id, CancellationToken ct = default)
-    {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
-        return await ProgramsWithChildren(ctx).FirstOrDefaultAsync(p => p.Id == id, ct);
-    }
+    public async Task<GrantProgram?> GetProgramAsync(Guid id, CancellationToken ct = default) =>
+        await RunAsync(ctx => ProgramsWithChildren(ctx).FirstOrDefaultAsync(p => p.Id == id, ct), ct);
 
-    public async Task<Grant?> GetGrantAsync(Guid id, CancellationToken ct = default)
-    {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
-        return await ctx.Grants.AsNoTrackingWithIdentityResolution()
+    public async Task<Grant?> GetGrantAsync(Guid id, CancellationToken ct = default) =>
+        await RunAsync(ctx => ctx.Grants.AsNoTrackingWithIdentityResolution()
             .Include(g => g.Program).ThenInclude(p => p.Managers)
-            .FirstOrDefaultAsync(g => g.Id == id, ct);
-    }
+            .FirstOrDefaultAsync(g => g.Id == id, ct), ct);
 
     public async Task<IReadOnlyList<Grant>> GetGrantsForUsersAsync(
         IReadOnlyCollection<Guid> userIds, CancellationToken ct = default)
     {
         if (userIds.Count == 0) return [];
-        await using var ctx = await factory.CreateDbContextAsync(ct);
+        await using var ctx = await CreateDbContextAsync(ct);
         return await ctx.Grants.AsNoTracking()
             .Include(g => g.Program)
             .Where(g => userIds.Contains(g.UserId))
@@ -43,22 +35,18 @@ internal sealed class GrantRepository(IDbContextFactory<GrantsDbContext> factory
     public async Task<bool> ManagesAnyProgramAsync(IReadOnlyCollection<Guid> userIds, CancellationToken ct = default)
     {
         if (userIds.Count == 0) return false;
-        await using var ctx = await factory.CreateDbContextAsync(ct);
+        await using var ctx = await CreateDbContextAsync(ct);
         return await ctx.Managers.AsNoTracking().AnyAsync(m => userIds.Contains(m.UserId), ct);
     }
 
-    public async Task AddProgramAsync(GrantProgram program, CancellationToken ct = default)
-    {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
-        ctx.Programs.Add(program);
-        await ctx.SaveChangesAsync(ct);
-    }
+    public async Task AddProgramAsync(GrantProgram program, CancellationToken ct = default) =>
+        await InsertAsync(program, ct);
 
     public async Task UpdateProgramAsync(
         GrantProgram program, IReadOnlyList<GrantProgramManager> toAdd, IReadOnlyList<Guid> toRemove,
         CancellationToken ct = default)
     {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
+        await using var ctx = await CreateDbContextAsync(ct);
         // Apply scalar fields and explicit manager deltas without attaching the detached grant graph.
         var tracked = await ctx.Programs.FirstAsync(p => p.Id == program.Id, ct);
         ctx.Entry(tracked).CurrentValues.SetValues(program);
@@ -82,7 +70,7 @@ internal sealed class GrantRepository(IDbContextFactory<GrantsDbContext> factory
 
     public async Task AddGrantsAsync(IReadOnlyList<Grant> grants, CancellationToken ct = default)
     {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
+        await using var ctx = await CreateDbContextAsync(ct);
         foreach (var grant in grants)
             ctx.Grants.Add(Scalar(grant));
         await ctx.SaveChangesAsync(ct);
@@ -90,7 +78,7 @@ internal sealed class GrantRepository(IDbContextFactory<GrantsDbContext> factory
 
     public async Task UpdateGrantAsync(Grant grant, CancellationToken ct = default)
     {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
+        await using var ctx = await CreateDbContextAsync(ct);
         var tracked = await ctx.Grants.FirstAsync(g => g.Id == grant.Id, ct);
         ctx.Entry(tracked).CurrentValues.SetValues(Scalar(grant));
         await ctx.SaveChangesAsync(ct);
@@ -99,7 +87,7 @@ internal sealed class GrantRepository(IDbContextFactory<GrantsDbContext> factory
     public async Task<GrantUserRows> GetRowsForUsersAsync(
         IReadOnlyCollection<Guid> userIds, CancellationToken ct = default)
     {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
+        await using var ctx = await CreateDbContextAsync(ct);
         var grants = await ctx.Grants.AsNoTracking().Include(g => g.Program)
             .Where(g => userIds.Contains(g.UserId)).ToListAsync(ct);
         var created = await ctx.Programs.AsNoTracking()
@@ -118,7 +106,7 @@ internal sealed class GrantRepository(IDbContextFactory<GrantsDbContext> factory
 
     public async Task EraseUserAsync(Guid userId, CancellationToken ct = default)
     {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
+        await using var ctx = await CreateDbContextAsync(ct);
         ctx.Grants.RemoveRange(await ctx.Grants.Where(g => g.UserId == userId).ToListAsync(ct));
         ctx.Managers.RemoveRange(await ctx.Managers.Where(m => m.UserId == userId).ToListAsync(ct));
         await ctx.SaveChangesAsync(ct);
@@ -130,7 +118,7 @@ internal sealed class GrantRepository(IDbContextFactory<GrantsDbContext> factory
         using var scope = new TransactionScope(TransactionScopeOption.Required,
             new TransactionOptions { IsolationLevel = IsolationLevel.ReadCommitted },
             TransactionScopeAsyncFlowOption.Enabled);
-        await using var ctx = await factory.CreateDbContextAsync(ct);
+        await using var ctx = await CreateDbContextAsync(ct);
 
         // Two live grants in one program would break the one-live-grant index once re-keyed:
         // the newer is revoked and saved first, so the re-key below never collides. Both saves share the

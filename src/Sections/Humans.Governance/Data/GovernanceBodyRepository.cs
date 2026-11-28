@@ -1,20 +1,18 @@
+using Humans.Base.Data;
 using Humans.Governance.Domain;
 using Microsoft.EntityFrameworkCore;
 using NodaTime;
 
 namespace Humans.Governance.Data;
 
-internal sealed class GovernanceBodyRepository(IDbContextFactory<GovernanceDbContext> factory) : IGovernanceBodyRepository
+internal sealed class GovernanceBodyRepository(IDbContextFactory<GovernanceDbContext> factory) : SectionRepository<GovernanceDbContext>(factory), IGovernanceBodyRepository
 {
-    public async Task<IReadOnlyList<GovernanceBodyLinks>> GetAllAsync(CancellationToken ct = default)
-    {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
-        return await ctx.GovernanceBodyLinks.AsNoTracking().Include(b => b.Files).ToListAsync(ct);
-    }
+    public async Task<IReadOnlyList<GovernanceBodyLinks>> GetAllAsync(CancellationToken ct = default) =>
+        await RunAsync(ctx => ctx.GovernanceBodyLinks.AsNoTracking().Include(b => b.Files).ToListAsync(ct), ct);
 
     public async Task ReplaceAsync(GovernanceBodyLinks links, CancellationToken ct = default)
     {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
+        await using var ctx = await CreateDbContextAsync(ct);
         var row = await ctx.GovernanceBodyLinks.Include(b => b.Files).SingleOrDefaultAsync(b => b.Body == links.Body, ct);
         if (row is null)
         {
@@ -46,15 +44,12 @@ internal sealed class GovernanceBodyRepository(IDbContextFactory<GovernanceDbCon
         await ctx.SaveChangesAsync(ct);
     }
 
-    public async Task<IReadOnlyList<GovernanceBoardPosition>> GetBoardPositionsAsync(CancellationToken ct = default)
-    {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
-        return await ctx.GovernanceBoardPositions.AsNoTracking().ToListAsync(ct);
-    }
+    public async Task<IReadOnlyList<GovernanceBoardPosition>> GetBoardPositionsAsync(CancellationToken ct = default) =>
+        await RunAsync(ctx => ctx.GovernanceBoardPositions.AsNoTracking().ToListAsync(ct), ct);
 
     public async Task SetBoardPositionAsync(BoardPosition position, Guid? userId, Instant now, CancellationToken ct = default)
     {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
+        await using var ctx = await CreateDbContextAsync(ct);
         var rows = await ctx.GovernanceBoardPositions.ToListAsync(ct);
         var slot = rows.Find(r => r.Position == position);
         ctx.GovernanceBoardPositions.RemoveRange(rows.Where(r => r.UserId == userId && r.Position != position));
@@ -78,14 +73,14 @@ internal sealed class GovernanceBodyRepository(IDbContextFactory<GovernanceDbCon
 
     public async Task ClearBoardPositionForUserAsync(Guid userId, CancellationToken ct = default)
     {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
+        await using var ctx = await CreateDbContextAsync(ct);
         ctx.GovernanceBoardPositions.RemoveRange(await ctx.GovernanceBoardPositions.Where(r => r.UserId == userId).ToListAsync(ct));
         await ctx.SaveChangesAsync(ct);
     }
 
     public async Task ReassignBoardPositionAsync(Guid fromUserId, Guid toUserId, Instant now, CancellationToken ct = default)
     {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
+        await using var ctx = await CreateDbContextAsync(ct);
         var rows = await ctx.GovernanceBoardPositions.Where(r => r.UserId == fromUserId || r.UserId == toUserId).ToListAsync(ct);
         if (rows.Find(r => r.UserId == fromUserId) is not { } from)
             return;

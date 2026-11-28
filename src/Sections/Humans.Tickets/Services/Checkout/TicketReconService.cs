@@ -1,3 +1,4 @@
+using Humans.Base.Extensions;
 using Humans.Tickets.Contracts;
 using Humans.Tickets.Data;
 using Humans.Tickets.Domain.Checkout;

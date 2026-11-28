@@ -1,3 +1,4 @@
+using Humans.Base.Data;
 using Humans.Cantina.Domain;
 using Microsoft.EntityFrameworkCore;
 using NodaTime;
@@ -5,25 +6,22 @@ using NodaTime;
 namespace Humans.Cantina.Data;
 
 internal sealed class DietaryProfileRepository(IDbContextFactory<CantinaDbContext> factory)
-    : IDietaryProfileRepository
+    : SectionRepository<CantinaDbContext>(factory), IDietaryProfileRepository
 {
-    public async Task<DietaryProfile?> GetAsync(Guid userId, CancellationToken ct = default)
-    {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
-        return await ctx.DietaryProfiles.AsNoTracking().SingleOrDefaultAsync(x => x.UserId == userId, ct);
-    }
+    public async Task<DietaryProfile?> GetAsync(Guid userId, CancellationToken ct = default) =>
+        await RunAsync(ctx => ctx.DietaryProfiles.AsNoTracking().SingleOrDefaultAsync(x => x.UserId == userId, ct), ct);
 
     public async Task<IReadOnlyList<DietaryProfile>> GetManyAsync(
         IReadOnlyCollection<Guid> userIds, CancellationToken ct = default)
     {
         if (userIds.Count == 0) return [];
-        await using var ctx = await factory.CreateDbContextAsync(ct);
+        await using var ctx = await CreateDbContextAsync(ct);
         return await ctx.DietaryProfiles.AsNoTracking().Where(x => userIds.Contains(x.UserId)).ToListAsync(ct);
     }
 
     public async Task UpsertAsync(DietaryProfile values, CancellationToken ct = default)
     {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
+        await using var ctx = await CreateDbContextAsync(ct);
         var row = await ctx.DietaryProfiles.SingleOrDefaultAsync(x => x.UserId == values.UserId, ct);
         if (row is null)
         {
@@ -38,7 +36,7 @@ internal sealed class DietaryProfileRepository(IDbContextFactory<CantinaDbContex
 
     public async Task<bool> DeleteAsync(Guid userId, CancellationToken ct = default)
     {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
+        await using var ctx = await CreateDbContextAsync(ct);
         var row = await ctx.DietaryProfiles.SingleOrDefaultAsync(x => x.UserId == userId, ct);
         if (row is null) return false;
         ctx.DietaryProfiles.Remove(row);
@@ -48,7 +46,7 @@ internal sealed class DietaryProfileRepository(IDbContextFactory<CantinaDbContex
 
     public async Task ReassignAsync(Guid fromUserId, Guid toUserId, Instant now, CancellationToken ct = default)
     {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
+        await using var ctx = await CreateDbContextAsync(ct);
         var source = await ctx.DietaryProfiles.SingleOrDefaultAsync(x => x.UserId == fromUserId, ct);
         if (source is null) return;
 

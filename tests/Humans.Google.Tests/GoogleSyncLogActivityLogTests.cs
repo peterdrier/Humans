@@ -17,7 +17,7 @@ public sealed class GoogleSyncLogActivityLogTests
 {
     private static readonly Instant T0 = Instant.FromUtc(2026, 10, 1, 12, 0);
     private readonly DbContextOptions<GoogleIntegrationDbContext> _options =
-        new DbContextOptionsBuilder<GoogleIntegrationDbContext>().UseInMemoryDatabase(Guid.NewGuid().ToString()).Options;
+        TestDbOptions.InMemory<GoogleIntegrationDbContext>();
 
     private GoogleSyncLogRepository Repo() => new(new SingleContextFactory(_options));
 

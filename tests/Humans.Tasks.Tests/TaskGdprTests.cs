@@ -188,15 +188,8 @@ public sealed class TaskGdprTests
 
     private static (TaskRepository Repository, IDbContextFactory<TasksDbContext> Factory) Repository()
     {
-        var options = new DbContextOptionsBuilder<TasksDbContext>()
-            .UseInMemoryDatabase(Guid.NewGuid().ToString())
-            .Options;
-        var factory = new Factory(options);
+        var options = TestDbOptions.InMemory<TasksDbContext>();
+        var factory = new TestDbContextFactory<TasksDbContext>(options);
         return (new TaskRepository(factory, NullLogger<TaskRepository>.Instance), factory);
-    }
-
-    private sealed class Factory(DbContextOptions<TasksDbContext> options) : IDbContextFactory<TasksDbContext>
-    {
-        public TasksDbContext CreateDbContext() => new(options);
     }
 }

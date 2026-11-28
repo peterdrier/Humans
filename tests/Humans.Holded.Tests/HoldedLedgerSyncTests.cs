@@ -29,9 +29,7 @@ public sealed class HoldedLedgerSyncTests
 
     public HoldedLedgerSyncTests()
     {
-        var options = new DbContextOptionsBuilder<HoldedDbContext>()
-            .UseInMemoryDatabase(Guid.NewGuid().ToString())
-            .Options;
+        var options = TestDbOptions.InMemory<HoldedDbContext>();
         _repo = new Repository(new TestDbContextFactory<HoldedDbContext>(options));
         _callLog.DrainAll().Returns([]);
         _client.ListAccountingAccountsAsync(Arg.Any<CancellationToken>())
@@ -437,9 +435,9 @@ public sealed class HoldedLedgerSyncTests
 
     [HumansTheory]
     [InlineData(0, "down", "down")]
-    [InlineData(1997, "tail", "…")]
-    [InlineData(1996, "😀tail", "…")]
-    [InlineData(1995, "😀tail", "😀…")]
+    [InlineData(1999, "tail", "…")]
+    [InlineData(1998, "😀tail", "…")]
+    [InlineData(1997, "😀tail", "😀…")]
     public async Task Sweep_Fails_RecordsErrorState(int prefixLength, string tail, string expectedTail)
     {
         var prefix = new string('x', prefixLength);

@@ -32,7 +32,7 @@ using Humans.Audit.Contracts;
 namespace Humans.Teams;
 
 public sealed class Section :
-    ISection,
+    SectionBase,
     IIssueQueueOwner,
     ISectionRoles,
     ISectionAccessMatrix,
@@ -57,7 +57,7 @@ public sealed class Section :
             "fa-solid fa-people-group"),
     ];
 
-    public void Register(IServiceCollection services, IConfiguration configuration)
+    public override void Register(IServiceCollection services, IConfiguration configuration)
     {
         EnumBadgeMap.Register(new Dictionary<Enum, string>
         {

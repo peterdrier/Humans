@@ -26,7 +26,7 @@ public sealed class GovernanceBodyLinksServiceTests
     public GovernanceBodyLinksServiceTests()
     {
         var factory = new TestDbContextFactory<GovernanceDbContext>(
-            new DbContextOptionsBuilder<GovernanceDbContext>().UseInMemoryDatabase(Guid.NewGuid().ToString()).Options);
+            TestDbOptions.InMemory<GovernanceDbContext>());
         var repository = new GovernanceBodyRepository(factory);
         _sut = new GovernanceBodyLinksService(repository, _resources, _audit,
             new GovernanceBodySync(repository, _groupSync, _driveSync), new FakeClock(Now));
