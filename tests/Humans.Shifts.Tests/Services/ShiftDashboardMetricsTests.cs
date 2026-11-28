@@ -206,7 +206,7 @@ public sealed class ShiftDashboardMetricsTests : ShiftsTestHarness
     }
 
     [HumansFact]
-    public async Task GetDashboardOverview_AdminOnlyAndHiddenRotaShiftsExcluded()
+    public async Task GetDashboardOverview_AdminOnlyOrHidden_AreExcluded()
     {
         var es = await SeedEventAsync();
         var team = await SeedTeamAsync("Gate");
@@ -222,7 +222,7 @@ public sealed class ShiftDashboardMetricsTests : ShiftsTestHarness
     }
 
     [HumansFact]
-    public async Task GetDashboardOverview_TicketHolderAndEngagementCounters()
+    public async Task GetDashboardOverview_Counters_CountTicketHolders()
     {
         var es = await SeedEventAsync();
         var team = await SeedTeamAsync("Gate");
@@ -258,7 +258,7 @@ public sealed class ShiftDashboardMetricsTests : ShiftsTestHarness
     }
 
     [HumansFact(Timeout = 10000)]
-    public async Task GetDashboardOverview_StalePending_ThresholdExact3Days_NotStale()
+    public async Task GetDashboardOverview_PendingAtThreshold_IsNotStale()
     {
         var es = await SeedEventAsync();
         var team = await SeedTeamAsync("Gate");
@@ -284,7 +284,7 @@ public sealed class ShiftDashboardMetricsTests : ShiftsTestHarness
     }
 
     [HumansFact]
-    public async Task GetDashboardOverview_StalePending_JustPastThreshold_CountsAsStale()
+    public async Task GetDashboardOverview_PendingPastThreshold_IsStale()
     {
         var es = await SeedEventAsync();
         var team = await SeedTeamAsync("Gate");
@@ -324,7 +324,7 @@ public sealed class ShiftDashboardMetricsTests : ShiftsTestHarness
     }
 
     [HumansFact]
-    public async Task GetDashboardOverview_WithSubteamRotas_ProducesSubgroupsWithDirectTotals()
+    public async Task GetDashboardOverview_SubteamRotas_ProduceSubgroups()
     {
         var es = await SeedEventAsync();
         var infra = await SeedTeamAsync("Infrastructure");
@@ -429,7 +429,7 @@ public sealed class ShiftDashboardMetricsTests : ShiftsTestHarness
     }
 
     [HumansFact]
-    public async Task GetCoordinatorActivity_RangeSignup_CountsAsOneBlockNotOneRowPerDay()
+    public async Task GetCoordinatorActivity_RangeSignup_CountsAsOneBlock()
     {
         var es = await SeedEventAsync();
         var build = await SeedTeamAsync("Build");
@@ -496,7 +496,7 @@ public sealed class ShiftDashboardMetricsTests : ShiftsTestHarness
     }
 
     [HumansFact]
-    public async Task GetCoordinatorActivity_ParentRowRollsUpItsSubteamPendingCounts()
+    public async Task GetCoordinatorActivity_ParentRow_IncludesSubteamPending()
     {
         var es = await SeedEventAsync();
         var department = await SeedTeamAsync("Gate");
@@ -522,7 +522,7 @@ public sealed class ShiftDashboardMetricsTests : ShiftsTestHarness
     }
 
     [HumansFact]
-    public async Task GetDashboardOverview_DepartmentWithoutOwnShifts_GetsNoDirectSubgroupRow()
+    public async Task GetDashboardOverview_DepartmentWithoutShifts_HasNoDirectRow()
     {
         var es = await SeedEventAsync();
         var department = await SeedTeamAsync("Gate");
@@ -579,7 +579,7 @@ public sealed class ShiftDashboardMetricsTests : ShiftsTestHarness
     }
 
     [HumansFact]
-    public async Task GetDashboardOverview_BuildSubPeriodNarrowsToItsHalfOpenDayWindow()
+    public async Task GetDashboardOverview_BuildSubPeriod_NarrowsToItsWindow()
     {
         // PreEventWeek is [PreEventWeekStartOffset, FinishingWeekendStartOffset) = [-9, -4).
         var es = await SeedEventAsync();
@@ -596,7 +596,7 @@ public sealed class ShiftDashboardMetricsTests : ShiftsTestHarness
     }
 
     [HumansFact]
-    public async Task AnalyticsReads_AllExcludeAdminOnlyShiftsAndHiddenRotas()
+    public async Task AnalyticsReads_AdminOnlyOrHidden_AreExcluded()
     {
         var es = await SeedEventAsync();
         var team = await SeedTeamAsync("Gate");
@@ -646,7 +646,7 @@ public sealed class ShiftDashboardMetricsTests : ShiftsTestHarness
     }
 
     [HumansFact]
-    public async Task GetDashboardTrends_SevenDayWindow_ReturnsSevenPointsEndingToday()
+    public async Task GetDashboardTrends_SevenDayWindow_ReturnsSevenPoints()
     {
         var es = await SeedEventAsync();
 
@@ -686,7 +686,7 @@ public sealed class ShiftDashboardMetricsTests : ShiftsTestHarness
     }
 
     [HumansFact]
-    public async Task GetDashboardTrends_TicketSalesRequireCurrentEventAndPaidOrderWithinWindow()
+    public async Task GetDashboardTrends_TicketSales_NeedPaidOrderInWindow()
     {
         var es = await SeedEventAsync();
         var buyer = Guid.NewGuid();
@@ -752,7 +752,7 @@ public sealed class ShiftDashboardMetricsTests : ShiftsTestHarness
     }
 
     [HumansFact]
-    public async Task GetDailyDepartmentStaffing_NonPromotedSubteam_RollsUpToParent()
+    public async Task GetDailyDepartmentStaffing_NonPromotedSubteam_JoinsParent()
     {
         // Subteam shifts that AREN'T promoted to directory must roll up into the
         // parent department's stacked-bar segment, not appear as a separate one.
@@ -785,7 +785,7 @@ public sealed class ShiftDashboardMetricsTests : ShiftsTestHarness
     }
 
     [HumansFact]
-    public async Task GetShiftDurationBreakdown_AllDayShifts_CollapseIntoSingleBucket()
+    public async Task GetShiftDurationBreakdown_AllDayShifts_ShareOneBucket()
     {
         // Full-day shifts share one bucket regardless of nominal duration
         // (6 h, 8 h, 10 h all render as "Full day" on the breakdown chart).
@@ -900,7 +900,7 @@ public sealed class ShiftDashboardMetricsTests : ShiftsTestHarness
     }
 
     [HumansFact]
-    public async Task GetDashboardOverview_SubPeriodWithNonBuildPeriod_IsIgnored()
+    public async Task GetDashboardOverview_SubPeriodOutsideBuild_IsIgnored()
     {
         // Sub-period only narrows when period == Build; for any other period the call must
         // behave as if sub-period were null.

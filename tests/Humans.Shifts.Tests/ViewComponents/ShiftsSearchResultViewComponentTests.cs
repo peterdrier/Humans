@@ -20,7 +20,7 @@ public class ShiftsSearchResultViewComponentTests
     private readonly ITeamService _teams = Substitute.For<ITeamService>();
 
     [HumansFact]
-    public async Task Fetches_the_rota_and_its_owning_teams_name()
+    public async Task Invoke_Rota_FetchesOwningTeamName()
     {
         var rotaId = Guid.NewGuid();
         var teamId = Guid.NewGuid();
@@ -41,7 +41,7 @@ public class ShiftsSearchResultViewComponentTests
     }
 
     [HumansFact]
-    public async Task Still_renders_the_row_when_the_owning_team_is_gone()
+    public async Task Invoke_OwningTeamGone_StillRendersRow()
     {
         // The link is by team id, so a missing team costs the subtitle, not the row.
         var rotaId = Guid.NewGuid();
@@ -57,7 +57,7 @@ public class ShiftsSearchResultViewComponentTests
     }
 
     [HumansFact]
-    public async Task Renders_nothing_for_an_unknown_rota()
+    public async Task Invoke_UnknownRota_RendersNothing()
     {
         _shifts.GetRotaAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>()).Returns((RotaInfo?)null);
 

@@ -33,7 +33,7 @@ public class BuildSubPeriodClassifierTests
     [InlineData(-5, nameof(BuildSubPeriod.PreEventWeek))]
     [InlineData(-4, nameof(BuildSubPeriod.FinishingWeekend))]
     [InlineData(-1, nameof(BuildSubPeriod.FinishingWeekend))]
-    public void Classify_returns_expected_subperiod(int dayOffset, string expected)
+    public void Classify_BuildOffset_ReturnsSubPeriod(int dayOffset, string expected)
     {
         BuildSubPeriodClassifier.Classify(dayOffset, DefaultSettings()).Should().Be(Enum.Parse<BuildSubPeriod>(expected));
     }
@@ -42,13 +42,13 @@ public class BuildSubPeriodClassifierTests
     [InlineData(0)]
     [InlineData(3)]
     [InlineData(10)]
-    public void Classify_returns_null_for_event_or_strike_offsets(int dayOffset)
+    public void Classify_EventOrStrikeOffset_ReturnsNull(int dayOffset)
     {
         BuildSubPeriodClassifier.Classify(dayOffset, DefaultSettings()).Should().BeNull();
     }
 
     [HumansFact]
-    public void Classify_returns_null_for_offset_before_first_crew_boundary()
+    public void Classify_BeforeFirstCrewBoundary_ReturnsNull()
     {
         var settings = DefaultSettings() with { FirstCrewStartOffset = -20 };
         // -25 predates the FirstCrew boundary at -20 → unclassified ("pre-build").
@@ -60,7 +60,7 @@ public class BuildSubPeriodClassifierTests
     [InlineData(nameof(BuildSubPeriod.SetupWeek), -16, -9)]
     [InlineData(nameof(BuildSubPeriod.PreEventWeek), -9, -4)]
     [InlineData(nameof(BuildSubPeriod.FinishingWeekend), -4, 0)]
-    public void BoundsFor_returns_half_open_range(string sub, int expectedStart, int expectedEnd)
+    public void BoundsFor_SubPeriod_ReturnsHalfOpenRange(string sub, int expectedStart, int expectedEnd)
     {
         var (start, end) = BuildSubPeriodClassifier.BoundsFor(Enum.Parse<BuildSubPeriod>(sub), DefaultSettings());
         start.Should().Be(expectedStart);
@@ -68,7 +68,7 @@ public class BuildSubPeriodClassifierTests
     }
 
     [HumansFact]
-    public void BoundsFor_with_inverted_offsets_returns_empty_range_silently()
+    public void BoundsFor_InvertedOffsets_ReturnsEmptyRange()
     {
         // Mis-ordered offsets give an empty range and no exception. Only the ordering guard on
         // EventSettingsViewModel prevents it; this pins that the classifier itself has none.

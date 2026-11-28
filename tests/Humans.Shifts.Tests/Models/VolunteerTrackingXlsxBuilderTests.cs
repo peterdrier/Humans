@@ -41,7 +41,7 @@ public sealed class VolunteerTrackingXlsxBuilderTests
     }
 
     [HumansFact]
-    public void DayHeaders_RenderDayOfWeekAndDate_InRows5And6()
+    public void DayHeaders_Workbook_ShowWeekdayWithDate()
     {
         var days = new[]
         {
@@ -98,7 +98,7 @@ public sealed class VolunteerTrackingXlsxBuilderTests
     }
 
     [HumansFact]
-    public void HumanRow_RendersNameAndColoredCells()
+    public void HumanRow_Workbook_HasNameWithColoredCells()
     {
         var days = new[] { new LocalDate(2026, 7, 7), new LocalDate(2026, 7, 8), new LocalDate(2026, 7, 9) };
         var teamA = Guid.Parse("11111111-0000-0000-0000-000000000000");
@@ -133,7 +133,7 @@ public sealed class VolunteerTrackingXlsxBuilderTests
     }
 
     [HumansFact]
-    public void TotalsRow_RendersUnderLastGroup_WithLabelAndPerDayCounts()
+    public void TotalsRow_Workbook_RendersUnderLastGroup()
     {
         var days = new[] { new LocalDate(2026, 7, 7), new LocalDate(2026, 7, 8) };
         var teamA = Guid.Parse("11111111-0000-0000-0000-000000000000");
@@ -158,7 +158,7 @@ public sealed class VolunteerTrackingXlsxBuilderTests
     }
 
     [HumansFact]
-    public void EmptyRoster_RendersHelpfulHintRow_AndColumnsAutoFit()
+    public void Build_EmptyRoster_RendersHintRow()
     {
         var days = new[] { new LocalDate(2026, 7, 7) };
         var model = NewEmptyModel(days);
@@ -173,7 +173,7 @@ public sealed class VolunteerTrackingXlsxBuilderTests
     }
 
     [HumansFact]
-    public void Workbook_orders_departments_by_hours_then_name_and_humans_by_first_shift_then_name()
+    public void Workbook_Departments_OrderedByHoursThenName()
     {
         var day = new LocalDate(2026, 7, 7);
         var team = Guid.NewGuid();

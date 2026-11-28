@@ -96,7 +96,7 @@ public sealed class ShiftSignupServiceEarlyEntryTests : ShiftsTestHarness
     }
 
     [HumansFact(Timeout = 10000)]
-    public async Task SignUpRangeAsync_WarnsWhenLaterEarlyEntryDayIsFull()
+    public async Task SignUpRangeAsync_LaterEarlyEntryDayFull_Warns()
     {
         var (eventSettings, rota) = SeedBuildScenario();
         Calendars[eventSettings.Id].EarlyEntryCapacity = new Dictionary<int, int>

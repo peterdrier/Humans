@@ -104,7 +104,7 @@ public class SepaPaymentFileBuilderTests
     }
 
     [HumansFact]
-    public void Build_MultipleRecipients_OnePmtInfPerTransfer_SumsAgreeAtBothLevels()
+    public void Build_MultipleRecipients_OnePmtInfEach()
     {
         // Sabadell ignores BtchBookg=false inside one PmtInf and books the batch as one bank line,
         // which breaks Holded's per-payment matching. Banks that ignore the flag still book one
@@ -133,7 +133,7 @@ public class SepaPaymentFileBuilderTests
     }
 
     [HumansFact]
-    public void Build_EveryIdCarriesTheAccountOrgTagAndName_WithinThirtyFive()
+    public void Build_Ids_StayWithinThirtyFiveChars()
     {
         // The same "<account>-NCA-<NAME>" in PmtInfId, InstrId and EndToEndId, so whichever one
         // Sabadell echoes on the debtor statement names the creditor account.
@@ -183,7 +183,7 @@ public class SepaPaymentFileBuilderTests
     }
 
     [HumansFact]
-    public void Build_RemittanceCarriesEachTransfersOwnAccountAndCreditorName()
+    public void Build_Remittance_CarriesOwnAccountWithName()
     {
         // "<account> - NCA - <name>": the account ties a bank line to a creditor account and the name
         // says who was paid — both per transfer, so no two lines in a batch read identically.
@@ -264,7 +264,7 @@ public class SepaPaymentFileBuilderTests
     }
 
     [HumansFact]
-    public void Build_InvalidIban_IsRefusedAndTheMessageMasksIt()
+    public void Build_InvalidIban_IsRefused()
     {
         var bad = new SepaTransfer("Ana Ruiz", "ES9121000418450200051333", 10m, 40000004);
 

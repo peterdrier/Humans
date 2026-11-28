@@ -23,7 +23,7 @@ namespace Humans.Shifts.Tests.Services;
 public class CachingShiftServiceTests
 {
     [HumansFact]
-    public async Task Writes_Through_Any_Interface_Refresh_The_Cached_Rotas()
+    public async Task Writes_AnyInterface_RefreshCachedRotas()
     {
         var options = TestDbOptions.InMemory<ShiftsDbContext>();
         var now = Instant.FromUtc(2026, 3, 1, 12, 0);

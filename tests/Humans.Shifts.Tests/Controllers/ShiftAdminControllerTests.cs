@@ -218,7 +218,7 @@ public class ShiftAdminControllerTests
     }
 
     [HumansFact]
-    public async Task Index_PreservesRequestCancellationThroughAuthorizationAndPageReads()
+    public async Task Index_RequestCancellation_ReachesPageReads()
     {
         using var cancellation = new CancellationTokenSource();
         var controller = BuildSut();
@@ -439,7 +439,7 @@ public class ShiftAdminControllerTests
     [InlineData(false, "", true, true)]
     [InlineData(true, "Days[1].DayOffset", false, false)]
     [InlineData(false, "StartDayOffset", false, false)]
-    public async Task Bulk_shift_forms_require_complete_days_slots_and_staffing(bool staffing, string omitted, bool zero, bool allowed)
+    public async Task BulkShiftForms_IncompleteInput_IsRejected(bool staffing, string omitted, bool zero, bool allowed)
     {
         var rotaId = Guid.NewGuid();
         _permissions.HasAsync(UserId, Arg.Any<string>(), Team(TeamId), Arg.Any<CancellationToken>()).Returns(allowed);
@@ -636,7 +636,7 @@ public class ShiftAdminControllerTests
     }
 
     [HumansFact]
-    public async Task DeleteRota_OtherTeamsRota_IsNotFound_AndNotDeleted()
+    public async Task DeleteRota_OtherTeamsRota_IsNotFound()
     {
         var rota = MakeRota(OtherTeamId);
         _shiftMgmt.GetRotaAsync(rota.Id).Returns(_ => ToInfo(rota));
@@ -660,7 +660,7 @@ public class ShiftAdminControllerTests
     }
 
     [HumansFact]
-    public async Task DeleteShift_OtherTeamsShift_IsNotFound_AndNotDeleted()
+    public async Task DeleteShift_OtherTeamsShift_IsNotFound()
     {
         var shift = MakeShift(MakeRota(OtherTeamId));
         _shiftMgmt.GetShiftByIdAsync(shift.Id).Returns(_ => ToInfo(shift));
@@ -695,7 +695,7 @@ public class ShiftAdminControllerTests
     [InlineData(true, "", false, true)]
     [InlineData(true, "", true, true)]
     [InlineData(true, "Policy", false, false)]
-    public async Task Rota_forms_require_explicit_priority_policy_and_period(bool edit, string omitted, bool zeroChoices, bool ownTeam)
+    public async Task RotaForms_MissingChoices_AreRejected(bool edit, string omitted, bool zeroChoices, bool ownTeam)
     {
         var rota = MakeRota(ownTeam ? TeamId : OtherTeamId);
         rota.EventSettingsId = Event.Id;
@@ -806,7 +806,7 @@ public class ShiftAdminControllerTests
     [InlineData(true, "", true, true, false)]
     [InlineData(true, "", false, true, true)]
     [InlineData(true, "StartTime", false, false, false)]
-    public async Task Shift_forms_require_explicit_date_time_duration_and_staffing(bool edit, string omitted, bool zeroChoices, bool ownTeam, bool allDay)
+    public async Task ShiftForms_MissingValues_AreRejected(bool edit, string omitted, bool zeroChoices, bool ownTeam, bool allDay)
     {
         var rota = MakeRota(ownTeam ? TeamId : OtherTeamId);
         rota.EventSettingsId = Event.Id;
@@ -886,7 +886,7 @@ public class ShiftAdminControllerTests
     }
 
     [HumansFact]
-    public async Task EditShift_InvalidNumber_RendersRawAttemptAndPageDataWithoutSaving()
+    public async Task EditShift_InvalidNumber_RendersAttemptWithoutSaving()
     {
         var rota = MakeRota(TeamId);
         var shift = MakeShift(rota);
@@ -971,7 +971,7 @@ public class ShiftAdminControllerTests
     }
 
     [HumansFact]
-    public async Task EmailTeamRotas_RefreshIntent_RepreviewsSelection_WithoutSending()
+    public async Task EmailTeamRotas_RefreshIntent_RepreviewsWithoutSending()
     {
         _rotaMessenger.GetTeamRotasRecipientPreviewAsync(
                 TeamId, Arg.Any<TeamRotasAudienceFilter>(), Arg.Any<CancellationToken>())
@@ -996,7 +996,7 @@ public class ShiftAdminControllerTests
     }
 
     [HumansFact]
-    public async Task EmailTeamRotas_Send_RepreviewsInsteadOfSending_WhenAudienceWasNeverPreviewed()
+    public async Task EmailTeamRotas_AudienceNeverPreviewed_RepreviewsInstead()
     {
         _rotaMessenger.GetTeamRotasRecipientPreviewAsync(
                 TeamId, Arg.Any<TeamRotasAudienceFilter>(), Arg.Any<CancellationToken>())
@@ -1031,7 +1031,7 @@ public class ShiftAdminControllerTests
     }
 
     [HumansFact]
-    public async Task EmailTeamRotas_Send_PassesTheSelectedAudienceAndShiftChoice()
+    public async Task EmailTeamRotas_Send_PassesSelectedAudience()
     {
         _rotaMessenger.GetTeamRotasRecipientPreviewAsync(
                 TeamId, Arg.Any<TeamRotasAudienceFilter>(), Arg.Any<CancellationToken>())

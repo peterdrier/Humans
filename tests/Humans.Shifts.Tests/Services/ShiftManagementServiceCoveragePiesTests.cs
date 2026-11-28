@@ -68,7 +68,7 @@ public sealed class ShiftManagementServiceCoveragePiesTests : ShiftsTestHarness
     }
 
     [HumansFact]
-    public async Task SingleDept_SingleRota_NoSignups_RequestedSummedFilledZero()
+    public async Task Pies_NoSignups_FilledIsZero()
     {
         var (es, art, _) = SeedDeptScenario();
         var rota = AddRota(es, art);
@@ -108,7 +108,7 @@ public sealed class ShiftManagementServiceCoveragePiesTests : ShiftsTestHarness
     }
 
     [HumansFact]
-    public async Task NonPromotedSubteam_RotasRollUpToParent_NoSubteamPie()
+    public async Task Pies_NonPromotedSubteam_RollsUpToParent()
     {
         var (es, art, lighting) = SeedDeptScenario(withSubteam: true, subteamPromoted: false);
         AddShift(AddRota(es, art, name: "ArtRota"),
@@ -125,7 +125,7 @@ public sealed class ShiftManagementServiceCoveragePiesTests : ShiftsTestHarness
     }
 
     [HumansFact]
-    public async Task NonPromotedSubteam_WhenParentOwnsNoRota_StillRollsUpToParent()
+    public async Task Pies_ParentWithoutRota_StillGetsSubteamRotas()
     {
         // Parent (Art) owns NO rota of its own; only the non-promoted subteam
         // (Art / Lighting) has a rota. The TeamInfo parent walk must include
@@ -144,7 +144,7 @@ public sealed class ShiftManagementServiceCoveragePiesTests : ShiftsTestHarness
     }
 
     [HumansFact]
-    public async Task FillPercent_ClampedZeroToHundred_AndRoundedAwayFromZero()
+    public async Task Pies_FillPercent_ClampedZeroToHundred()
     {
         // Service caps confirmed at MaxVolunteers, so 0..100 is already the
         // service contract — this guards the DTO clamp.
@@ -171,7 +171,7 @@ public sealed class ShiftManagementServiceCoveragePiesTests : ShiftsTestHarness
     }
 
     [HumansFact]
-    public async Task ResultIncludesEligibleTeams_AndParentNamesForSubteams()
+    public async Task Pies_Result_IncludesEligibleTeams()
     {
         var (es, _, _) = SeedDeptScenario();
         var mango = new Team
@@ -226,7 +226,7 @@ public sealed class ShiftManagementServiceCoveragePiesTests : ShiftsTestHarness
     }
 
     [HumansFact]
-    public async Task HiddenRota_Excluded_AdminOnlyShift_Excluded()
+    public async Task Pies_HiddenOrAdminOnly_AreExcluded()
     {
         var (es, art, _) = SeedDeptScenario();
         var visibleRota = AddRota(es, art, isVisibleToVolunteers: true, name: "Visible");
@@ -311,7 +311,7 @@ public sealed class ShiftManagementServiceCoveragePiesTests : ShiftsTestHarness
     }
 
     [HumansFact]
-    public async Task DateRangeFilter_AppliedAtShiftLevel_RotaPeriodAllCorrect()
+    public async Task Pies_DateRangeFilter_AppliesPerShift()
     {
         var (es, art, _) = SeedDeptScenario();
         var rota = AddRota(es, art, RotaPeriod.All);

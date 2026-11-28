@@ -42,7 +42,7 @@ public class ShiftDashboardControllerTests
     }
 
     [HumansFact]
-    public async Task Index_OrdersCoverageAndCoordinatorActivityForDisplay()
+    public async Task Index_Coverage_IsOrderedForDisplay()
     {
         var settings = Event;
         var empty = new PeriodStaffing(0, 0, 0, 0, 0);

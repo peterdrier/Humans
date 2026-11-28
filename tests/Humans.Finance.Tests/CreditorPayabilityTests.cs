@@ -83,7 +83,7 @@ public class CreditorPayabilityTests
         new(ReportId, lineId ?? Guid.NewGuid(), UserId, "c1", docId, "ER: Van hire", $"Expense report {ReportId}", 4800m);
 
     [HumansFact]
-    public async Task Row_InAnUnbookedPayoutFile_IsNotPayable_AndTheGenerationRefusesIt()
+    public async Task Row_InUnbookedPayoutFile_IsNotPayable()
     {
         _repo.GetSepaPayoutTransferRowsAsync(Arg.Any<CancellationToken>()).Returns([Transfer()]);
         var service = MakeService();
@@ -105,7 +105,7 @@ public class CreditorPayabilityTests
     [InlineData("withdrawn")]
     [InlineData("booked")]
     [InlineData("stale")]
-    public async Task Row_IsPayableAgain_OnceTheTransferIsWithdrawn_Booked_OrTooOldToBook(string state)
+    public async Task Row_TransferNoLongerPending_IsPayableAgain(string state)
     {
         _repo.GetSepaPayoutTransferRowsAsync(Arg.Any<CancellationToken>()).Returns([Transfer(
             withdrawnAt: string.Equals(state, "withdrawn", StringComparison.Ordinal) ? FixedNow : null,
@@ -122,7 +122,7 @@ public class CreditorPayabilityTests
     }
 
     [HumansFact]
-    public async Task Row_WhoseMemberHasDuplicateDocuments_IsNotPayable_AndTheGenerationRefusesIt()
+    public async Task Row_DuplicateDocuments_IsNotPayable()
     {
         _expenses.GetHoldedBookingsAsync(Arg.Any<CancellationToken>()).Returns([Booking("doc-a")]);
         _holded.GetPurchaseDocumentsAsync(Arg.Any<CancellationToken>()).Returns(TestPurchaseMirror.Of([Doc("doc-a", 4800m), Doc("doc-b", 4800m)]));
@@ -141,7 +141,7 @@ public class CreditorPayabilityTests
     }
 
     [HumansFact]
-    public async Task Row_WhenHoldedsDocumentsCannotBeRead_HasAnUnknownFlag_AndTheGenerationRefuses()
+    public async Task Row_DocumentsUnreadable_HasUnknownFlag()
     {
         _holded.GetPurchaseDocumentsAsync(Arg.Any<CancellationToken>()).Returns(TestPurchaseMirror.NeverSynced);
         var service = MakeService();
@@ -158,7 +158,7 @@ public class CreditorPayabilityTests
     }
 
     [HumansFact]
-    public async Task Row_WithTwoIdenticalLinesAndTwoDocuments_IsPayable()
+    public async Task Row_TwoIdenticalLinesTwoDocuments_IsPayable()
     {
         // Martina's two 3.40 tolls: each line keeps its own document, nothing is flagged.
         _expenses.GetHoldedBookingsAsync(Arg.Any<CancellationToken>()).Returns([Booking("doc-a"), Booking("doc-b")]);
@@ -175,7 +175,7 @@ public class CreditorPayabilityTests
     [InlineData(1, 0, "ES7921000813610123456789", "nothing owed")]
     [InlineData(1, 10, "ES7921000813610123456789", "nothing owed")]
     [InlineData(1, -4800, null, "no IBAN")]
-    public async Task Row_AndPayout_ShareTheEligibilityRefusal(int bindingCount, int balance, string? iban, string reason)
+    public async Task Row_Ineligible_PayoutSharesRefusal(int bindingCount, int balance, string? iban, string reason)
     {
         _repo.GetCreditorContactsAsync(Arg.Any<CancellationToken>()).Returns(
             Enumerable.Range(0, bindingCount).Select(_ => new HoldedCreditorContact
@@ -200,7 +200,7 @@ public class CreditorPayabilityTests
     }
 
     [HumansFact]
-    public void PageVm_CountsFlaggedAccounts_AndZeroMeansZero()
+    public void PageVm_FlaggedAccounts_AreCounted()
     {
         CreditorAccountRowVm Row(bool? flag) => new(Account, "x", 1m, [new CreditorBindingVm(UserId, "P", "Auto")], "i", 0, null, flag);
         new CreditorsPageVm([Row(true), Row(true), Row(false)], [], "account", "asc", new SepaPayoutSettings(1m, null))

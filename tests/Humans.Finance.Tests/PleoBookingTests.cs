@@ -124,7 +124,7 @@ public class PleoBookingTests
         new(entries, _ledger, new HashSet<int>(), Chart, _docs, _expenseLines, _claims, _uploads);
 
     [HumansFact]
-    public void Readiness_NeedsAmountAndAnOpenMappedAccount_ButNotAReceipt()
+    public void Readiness_NoReceipt_IsStillReady()
     {
         PleoBooking.Readiness(Entry("a", -10m), Open).Should().Be(PleoSpendState.Ready);
         PleoBooking.Readiness(Entry("a", 10m), Open).Should().Be(PleoSpendState.Ready, "a mapped refund is ready too");
@@ -136,7 +136,7 @@ public class PleoBookingTests
     }
 
     [HumansFact]
-    public void Classify_BookedByPurchaseNumberOrPleoIdOnALine_NeverByAmountAndDate()
+    public void Classify_Booked_ByPurchaseNumberOrPleoId()
     {
         GivenPurchase("bought", 30m);
         GivenPurchase("half", 40m, approved: true, pending: 40m);
@@ -171,7 +171,7 @@ public class PleoBookingTests
     }
 
     [HumansFact]
-    public async Task Book_ChargeIsAPurchasePaidFromPleo_WithEveryReceipt_OldestFirst()
+    public async Task Book_Charge_IsPurchasePaidFromPleo()
     {
         GivenEntries(Entry("new", -10m, day: 20), Entry("old", -12.5m, day: 2, receipts: ["r1", "r2"]));
 
@@ -195,7 +195,7 @@ public class PleoBookingTests
     }
 
     [HumansFact]
-    public async Task Book_RefundIsANegativePurchaseOnItsOwnAccount_PaidBackIntoPleo_AndASameDayReversalNetsToZero()
+    public async Task Book_Refund_IsNegativePurchase()
     {
         GivenEntries(
             Entry("charge", -90.27m, day: 3, merchant: "DIA"),
@@ -216,7 +216,7 @@ public class PleoBookingTests
     }
 
     [HumansFact]
-    public async Task Book_SkipsWhatHoldedHas_AndFinishesAHalfDonePurchaseWithoutRecreatingIt()
+    public async Task Book_HalfDonePurchase_IsFinishedNotRecreated()
     {
         GivenPurchase("done", 30m);
         GivenPurchase("half", 40m, approved: false, pending: 40m);
@@ -237,7 +237,7 @@ public class PleoBookingTests
     [InlineData(-40, 0)]
     [InlineData(25, null)]
     [InlineData(25, 0)]
-    public async Task Book_ADraftLeftByAFailedApproval_IsApprovedAndPaidInFull(int amount, int? mirrorPending)
+    public async Task Book_DraftFromFailedApproval_IsApprovedThenPaid(int amount, int? mirrorPending)
     {
         // Holded omits a draft's balance; the mirror must not read that as already paid.
         GivenPurchase("draft", -amount, approved: false, pending: mirrorPending);
@@ -253,7 +253,7 @@ public class PleoBookingTests
     }
 
     [HumansFact]
-    public async Task Book_AClaimedEntryHoldedDoesNotList_IsNeverCreatedAgain()
+    public async Task Book_ClaimedEntryNotListed_IsNotRecreated()
     {
         _claims.Add("lost");
         GivenEntries(Entry("lost", -10m));
@@ -266,7 +266,7 @@ public class PleoBookingTests
     }
 
     [HumansFact]
-    public async Task Book_RefusedCreateReleasesTheClaim_AnUnreadableOrTimedOutCreateKeepsIt()
+    public async Task Book_RefusedCreate_ReleasesClaim()
     {
         GivenEntries(Entry("a", -10m, day: 1), Entry("b", -11m, day: 2), Entry("c", -12m, day: 3), Entry("d", -13m, day: 4));
         _write.CreatePurchaseDocumentAsync(default!).ReturnsForAnyArgs(
@@ -300,7 +300,7 @@ public class PleoBookingTests
     }
 
     [HumansFact]
-    public async Task Book_RefusedWithoutTheContactAndTreasurySettings()
+    public async Task Book_MissingSettings_IsRefused()
     {
         _repo.GetSettingsAsync().ReturnsForAnyArgs(new FinanceSettings());
         GivenEntries(Entry("a", -10m));
@@ -348,7 +348,7 @@ public class PleoBookingTests
     }
 
     [HumansFact]
-    public async Task Corrections_RecategorisedAndRepricedEachPostOne_AndNoneOncePosted()
+    public async Task Corrections_RecategorisedOrRepriced_PostOneEach()
     {
         GivenPurchase("moved", 50m);
         GivenPurchase("repriced", 20m);
@@ -374,7 +374,7 @@ public class PleoBookingTests
     }
 
     [HumansFact]
-    public void Corrections_ARefundMovedCreditsTheNewAccount_AndAnEntryGoneFromPleoIsListedOnly()
+    public void Corrections_MovedRefund_CreditsNewAccount()
     {
         GivenPurchase("refund", -30m);
         GivenPurchase("gone", 15m);

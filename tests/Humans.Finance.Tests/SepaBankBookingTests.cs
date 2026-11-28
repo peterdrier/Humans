@@ -91,7 +91,7 @@ public class SepaBankBookingTests
     }
 
     [HumansFact]
-    public async Task Booking_TwentyFiveDocs_PaysThemAll_AndStampsTheRow()
+    public async Task Booking_TwentyFiveDocs_PaysThemAll()
     {
         // 25 ids, past the ~20 an earlier bounded column overflowed at: every id must be on the
         // row for the sweep to re-issue the reconcile from.
@@ -116,7 +116,7 @@ public class SepaBankBookingTests
     }
 
     [HumansFact]
-    public async Task Booking_RetriedAfterTheJournalEntryFailed_ResumesFromTheSavedPayment()
+    public async Task Booking_RetryAfterJournalFailure_ResumesFromSavedPayment()
     {
         // Run 1: the €10 document payment lands, the €20 journal entry is refused. Nothing is
         // stamped, the money that did move is audited, and its payment id is written to the row.
@@ -165,7 +165,7 @@ public class SepaBankBookingTests
     }
 
     [HumansFact]
-    public async Task Booking_StoppedAndThePaymentIdsCannotBeSaved_SaysSettleByHand()
+    public async Task Booking_PaymentIdsUnsaved_SaysSettleByHand()
     {
         // Without the ids the retry could not see the payment and would post it again.
         SeedOpenDocs(Doc("d1", 10m, 1));
@@ -212,7 +212,7 @@ public class SepaBankBookingTests
     }
 
     [HumansFact]
-    public async Task Page_TransferWithAnUnconfirmedPayment_IsNotOffered_AndSaysWhy()
+    public async Task Page_TransferWithUnconfirmedPayment_IsNotOffered()
     {
         SeedRows(Row(TransferId, _userId, paymentRefs: "pay-d1,unconfirmed:d2"));
         SeedContacts(_userId);
@@ -225,7 +225,7 @@ public class SepaBankBookingTests
     }
 
     [HumansFact]
-    public async Task Booking_ResumedWhenEverythingIsAlreadyPosted_PostsNothing_AndStampsBooked()
+    public async Task Booking_ResumeAllPosted_PostsNothing()
     {
         // A run that crashed after the last posting: Holded already holds the whole €30 under this
         // transfer's tag. The retry posts nothing and just finishes the bookkeeping.
@@ -250,7 +250,7 @@ public class SepaBankBookingTests
     }
 
     [HumansFact]
-    public async Task Booking_LiveBalanceOwesLessThanTheTransfer_BooksTheWholeTransfer_AndAuditsTheOverpayment()
+    public async Task Booking_OwesLessThanTransfer_AuditsOverpayment()
     {
         // Two files generated from one balance, or documents hand-paid in Holded in between. The
         // file went to the bank and the money left, so the whole €30 is booked regardless: the one
@@ -305,7 +305,7 @@ public class SepaBankBookingTests
     }
 
     [HumansFact]
-    public async Task Booking_ReconcilesTheBankLine_AgainstThePaymentIds_NeverTheDocuments()
+    public async Task Booking_Reconcile_UsesPaymentIds()
     {
         // Production 2026-10-17: reconciling with the purchase document ids made Holded mint a
         // second payment for the whole line on the first document (a 75.00 line, 150.00 of debits).
@@ -347,7 +347,7 @@ public class SepaBankBookingTests
     }
 
     [HumansFact]
-    public async Task Booking_PaidEntirelyByDocuments_StampsWhenHoldedAcceptsTheReconcile()
+    public async Task Booking_PaidByDocuments_StampsOnAcceptedReconcile()
     {
         SeedOpenDocs(Doc("d1", 10m, 1), Doc("d2", 20m, 2));
 
@@ -367,7 +367,7 @@ public class SepaBankBookingTests
     }
 
     [HumansFact]
-    public async Task Booking_WithAHundredPayments_SendsTheReconcileInOneCall_AndStampsOnAcceptance()
+    public async Task Booking_HundredPayments_ReconcilesInOneCall()
     {
         // Nothing about the endpoint has been exercised above a handful of ids, so the one-call form
         // goes first; when Holded takes it, acceptance is the reconcile as for any short list.
@@ -390,7 +390,7 @@ public class SepaBankBookingTests
     [HumansTheory]
     [InlineData("reconciled", true)]
     [InlineData("partial", false)]
-    public async Task Booking_LongListHoldedRefuses_FallsBackToChunks_AndStampsOnlyWhenTheLineReadsReconciled(
+    public async Task Booking_LongListRefused_FallsBackToChunks(
         string statusAfter, bool stamped)
     {
         // Holded 4xxs the 120-id call. A refusal links nothing, so the same ids go again in chunks of
@@ -422,7 +422,7 @@ public class SepaBankBookingTests
     }
 
     [HumansFact]
-    public async Task Booking_AChunkIsRefused_TheRestStillGo_AndTheRefusedIdsAreAHumans()
+    public async Task Booking_ChunkRefused_RestStillGo()
     {
         // 110 payments → one call (refused), then chunks of 50, 50, 10. Chunk 2 is refused; chunk 3
         // still goes, so one bad id strands nothing behind it. The chunks through left the line
@@ -464,7 +464,7 @@ public class SepaBankBookingTests
     }
 
     [HumansFact]
-    public async Task Sweep_LineLeftPartialByARefusedChunk_IsNotReissued()
+    public async Task Sweep_LinePartialAfterRefusedChunk_IsNotReissued()
     {
         // The row a refused chunk left behind: booked, refs recorded, line `partial`. The sweep reads
         // the line and leaves it alone — re-sending ids Holded already linked is not a re-issue.
@@ -479,7 +479,7 @@ public class SepaBankBookingTests
     }
 
     [HumansFact]
-    public async Task Booking_LineStillPartialAfterEveryPaymentWasNamed_IsLoggedAsAWarning()
+    public async Task Booking_LineStillPartial_LogsWarning()
     {
         // No remainder, no sentinel: every euro of the line was named, and Holded still reads the
         // line `partial`. That is a real finding, not a known limit — a Warning naming the line,
@@ -516,7 +516,7 @@ public class SepaBankBookingTests
     }
 
     [HumansFact]
-    public async Task Sweep_shutdown_finishes_started_reconcile_chunks_and_their_stamp()
+    public async Task Sweep_ShutdownDuringChunks_FinishesThem()
     {
         using var shutdown = new CancellationTokenSource();
         var refs = string.Join(",", Enumerable.Range(1, 70).Select(i => "pay-" + i));
@@ -546,7 +546,7 @@ public class SepaBankBookingTests
     }
 
     [HumansFact]
-    public async Task Sweep_shutdown_finishes_one_reconciled_group_before_stopping_the_next()
+    public async Task Sweep_ShutdownDuringGroup_FinishesIt()
     {
         using var shutdown = new CancellationTokenSource();
         var second = Guid.NewGuid();
@@ -569,7 +569,7 @@ public class SepaBankBookingTests
     }
 
     [HumansFact]
-    public async Task Sweep_shutdown_after_feed_selection_does_not_start_booking()
+    public async Task Sweep_ShutdownAfterFeedSelection_StartsNoBooking()
     {
         using var shutdown = new CancellationTokenSource();
         _feed.ListBankMovementsAsync(Arg.Any<string>(), Arg.Any<LocalDate>(), Arg.Any<LocalDate>(),
@@ -583,7 +583,7 @@ public class SepaBankBookingTests
     }
 
     [HumansFact]
-    public async Task Sweep_shutdown_finishes_a_started_booking_before_stopping_the_next()
+    public async Task Sweep_ShutdownDuringBooking_FinishesIt()
     {
         using var shutdown = new CancellationTokenSource();
         var second = Guid.NewGuid();
@@ -613,7 +613,7 @@ public class SepaBankBookingTests
     [InlineData(SweepUnitFailure.ReconcileWrite)]
     [InlineData(SweepUnitFailure.ReconcileStamp)]
     [InlineData(SweepUnitFailure.Booking)]
-    public async Task Sweep_detached_unit_cancellation_is_a_failure(SweepUnitFailure stage)
+    public async Task Sweep_DetachedUnitCancelled_IsFailure(SweepUnitFailure stage)
     {
         using var shutdown = new CancellationTokenSource();
         var canceled = new OperationCanceledException("Detached unit failed");
@@ -637,7 +637,7 @@ public class SepaBankBookingTests
     }
 
     [HumansFact]
-    public async Task Sweep_feed_cancellation_remains_caller_cancellation()
+    public async Task Sweep_FeedCancelled_IsCallerCancellation()
     {
         using var shutdown = new CancellationTokenSource();
         var canceled = new OperationCanceledException(shutdown.Token);
@@ -651,7 +651,7 @@ public class SepaBankBookingTests
     }
 
     [HumansFact]
-    public async Task Sweep_ReconcilePendingRow_WithALongList_ReissuesThroughTheSameChunkedPath()
+    public async Task Sweep_PendingRowWithLongList_ReissuesInChunks()
     {
         // The sweep's re-issue is the same call as the booking's: one call first, chunks when Holded
         // refuses the long list, stamp only on `reconciled`.
@@ -693,7 +693,7 @@ public class SepaBankBookingTests
     }
 
     [HumansFact]
-    public void Row_JournalEntryAmount_ReadsTheEntryToken_AndIsNullWithoutOne()
+    public void Row_JournalEntryAmount_ReadsEntryToken()
     {
         Row(TransferId, _userId, bookedAt: FixedNow, movementId: MovementId, paymentRefs: "pay-1,entry:20.00")
             .JournalEntryAmount.Should().Be(20.00m);
@@ -703,7 +703,7 @@ public class SepaBankBookingTests
     }
 
     [HumansFact]
-    public async Task Booking_WithAJournalRemainder_StampsOnlyWhenHoldedThenReadsReconciled()
+    public async Task Booking_JournalRemainder_StampsOnceReconciled()
     {
         // Same booking as above, with Holded reporting the line fully reconciled afterwards (a human
         // linked the entry in the GUI between the call and the re-read) — the only thing that may
@@ -726,7 +726,7 @@ public class SepaBankBookingTests
     [HumansTheory]
     [InlineData("partial", false)]
     [InlineData("reconciled", true)]
-    public async Task Booking_PaymentRefUnconfirmed_IsLeftOutOfTheReconcile_NeverReplacedByTheDocumentId(
+    public async Task Booking_PaymentRefUnconfirmed_LeftOutOfReconcile(
         string statusAfter, bool stamped)
     {
         SeedOpenDocs(Doc("d1", 10m, 1), Doc("d2", 20m, 2));
@@ -758,7 +758,7 @@ public class SepaBankBookingTests
     }
 
     [HumansFact]
-    public async Task Booking_EveryPaymentRefUnconfirmed_SendsNoReconcile_AndStaysPending()
+    public async Task Booking_AllPaymentRefsUnconfirmed_StaysPending()
     {
         SeedOpenDocs(Doc("d1", 30m, 1));
         _write.PayPurchaseDocumentAsync(
@@ -776,7 +776,7 @@ public class SepaBankBookingTests
     }
 
     [HumansFact]
-    public async Task Booking_ReconcileFailsPermanently_StillBooks_AndLeavesReconcilePending()
+    public async Task Booking_ReconcileFailsPermanently_StillBooks()
     {
         SeedOpenDocs(Doc("d1", 10m, 1));
         _write.ReconcileBankMovementAsync(
@@ -799,7 +799,7 @@ public class SepaBankBookingTests
     }
 
     [HumansFact]
-    public async Task Booking_PartialPayout_PaysOldestDocsFully_OneDocPartly_RestUntouched()
+    public async Task Booking_PartialPayout_PaysOldestDocsFirst()
     {
         SeedOpenDocs(Doc("newest", 50m, 20), Doc("oldest", 12m, 1), Doc("middle", 40m, 10));
 
@@ -847,7 +847,7 @@ public class SepaBankBookingTests
     }
 
     [HumansFact]
-    public async Task Booking_AuditEntry_CarriesEveryHoldedId_AndMasksTheIban()
+    public async Task Booking_AuditEntry_CarriesEveryHoldedId()
     {
         SeedOpenDocs(Doc("d1", 10m, 1));
         var actor = Guid.NewGuid();
@@ -866,7 +866,7 @@ public class SepaBankBookingTests
     }
 
     [HumansFact]
-    public async Task Booking_StampsBankMovementId_AndThePaymentIds()
+    public async Task Booking_Booked_StampsMovementWithPaymentIds()
     {
         // The bank line is the record of what paid the transfer; the payment ids are what the
         // reconcile — now or the sweep's re-issue — names to Holded.
@@ -893,7 +893,7 @@ public class SepaBankBookingTests
     }
 
     [HumansFact]
-    public async Task Sweep_TwoUnbookedTransfersMatchOneLine_IsAmbiguous_PostsNothing()
+    public async Task Sweep_TwoTransfersOneLine_PostsNothing()
     {
         var other = Guid.NewGuid();
         SeedRows(Row(TransferId, _userId), Row(other, Guid.NewGuid()));
@@ -953,7 +953,7 @@ public class SepaBankBookingTests
     }
 
     [HumansFact]
-    public async Task Sweep_BooksEveryMatchedTransfer_AndKeepsGoingPastOneRefusal()
+    public async Task Sweep_OneRefusal_KeepsGoing()
     {
         // The first line's member lost their Holded binding; the second books normally.
         var second = Guid.Parse("22222222-2222-2222-2222-222222222222");
@@ -978,7 +978,7 @@ public class SepaBankBookingTests
     }
 
     [HumansFact]
-    public async Task Sweep_ReconcilePendingRow_WhoseLineHoldedNowReportsReconciled_IsStamped()
+    public async Task Sweep_PendingRowNowReconciled_IsStamped()
     {
         SeedRows(Row(TransferId, _userId, bookedAt: FixedNow, movementId: MovementId));
         SeedMovements(Movement(status: "reconciled"));
@@ -997,7 +997,7 @@ public class SepaBankBookingTests
     [HumansTheory]
     [InlineData("reconciled", true)]
     [InlineData("partial", false)]
-    public async Task Sweep_ReconcilePendingRow_ReissuesTheReconcile_FromItsPaymentIds(
+    public async Task Sweep_PendingRow_ReissuesReconcile(
         string statusAfter, bool stamped)
     {
         // Booked while the token could only read the bank feed: the reconcile 403'd, the row has
@@ -1030,7 +1030,7 @@ public class SepaBankBookingTests
     }
 
     [HumansFact]
-    public async Task Sweep_ReconcilePendingRowsOfOneProcessedFile_AreReissuedTogether()
+    public async Task Sweep_PendingRowsOfOneFile_ReissuedTogether()
     {
         var second = Guid.NewGuid();
         SeedRows(
@@ -1057,7 +1057,7 @@ public class SepaBankBookingTests
     }
 
     [HumansFact]
-    public async Task Sweep_ReconcilePendingRowOfAHalfProcessedFile_IsNotReissued()
+    public async Task Sweep_PendingRowOfHalfProcessedFile_IsNotReissued()
     {
         // Process booked one transfer of the file and stopped before the other. Linking that one
         // payment would leave the line `partial`, and the Process retry refuses a touched line —
@@ -1078,7 +1078,7 @@ public class SepaBankBookingTests
     [HumansTheory]
     [InlineData("pending", null)]
     [InlineData("partial", "pay-1")]
-    public async Task Sweep_ReconcilePendingRow_WithNothingToReissue_OnlyReadsTheLine(
+    public async Task Sweep_PendingRowNothingToReissue_OnlyReadsLine(
         string status, string? paymentRefs)
     {
         // No payment id on the row (booked before the ids were kept, or paid by a journal entry
@@ -1094,7 +1094,7 @@ public class SepaBankBookingTests
     }
 
     [HumansFact]
-    public async Task Sweep_ReconcilePendingRow_BookedDaysAfterItsLine_StillReadsBackFarEnough()
+    public async Task Sweep_PendingRowBookedDaysLater_ReadsBackFarEnough()
     {
         // Booked 11 days after the file was generated, when the reconcile failed. The feed window
         // must reach the line's own date: keyed off BookedAt it starts after the line, and
@@ -1118,7 +1118,7 @@ public class SepaBankBookingTests
     }
 
     [HumansFact]
-    public async Task Sweep_ReconcilePendingRow_OlderThanTheFeedWindow_IsStillReadBack()
+    public async Task Sweep_PendingRowOlderThanWindow_IsReadBack()
     {
         // The 90-day floor is for matching new transfers. A reconcile-pending row is already booked
         // against a known line, so the read must reach that line however old it is, or a human's
@@ -1142,7 +1142,7 @@ public class SepaBankBookingTests
     }
 
     [HumansFact]
-    public async Task Sweep_NothingUnbooked_ReadsTheFeedOnlyOnTheNightRun()
+    public async Task Sweep_NothingUnbooked_ReadsFeedOnlyAtNight()
     {
         SeedRows(Row(TransferId, _userId, bookedAt: FixedNow, movementId: MovementId,
             reconciledAt: FixedNow));
@@ -1182,7 +1182,7 @@ public class SepaBankBookingTests
     }
 
     [HumansFact]
-    public async Task Sweep_LineStuckForFewerThanThreeRuns_StillBlocksTheWholeFeed()
+    public async Task Sweep_LineStuckUnderThreeRuns_BlocksFeed()
     {
         SeedStuckFeed("stuck-1");
 
@@ -1195,7 +1195,7 @@ public class SepaBankBookingTests
     }
 
     [HumansFact]
-    public async Task Sweep_LineStuckForThreeRuns_IsSkipped_TheRestBooks_AndItIsAudited()
+    public async Task Sweep_LineStuckThreeRuns_IsSkipped()
     {
         SeedStuckFeed("stuck-1");
 
@@ -1212,7 +1212,7 @@ public class SepaBankBookingTests
     }
 
     [HumansFact]
-    public async Task Sweep_SkippedLine_IsAuditedOnce_NotOnEveryLaterRun()
+    public async Task Sweep_SkippedLine_IsAuditedOnce()
     {
         SeedStuckFeed("stuck-1");
 
@@ -1224,7 +1224,7 @@ public class SepaBankBookingTests
     }
 
     [HumansFact]
-    public async Task Sweep_ReReadFailsAfterThresholdSkip_NextRunDoesNotAuditTheSkipAgain()
+    public async Task Sweep_ReReadFailsAfterSkip_AuditsSkipOnce()
     {
         SeedStuckFeed("stuck-1");
         await RunSweepAsync(2);
@@ -1276,7 +1276,7 @@ public class SepaBankBookingTests
     }
 
     [HumansFact]
-    public async Task Booking_WhileAnotherBookingOfTheSameTransferRuns_PostsNothingASecondTime()
+    public async Task Booking_SameTransferAlreadyRunning_PostsNothing()
     {
         // Two callers (a Book click while the sweep runs, or a double-submitted form) are inside the
         // same transfer at once. The second must find the row booked, not an unbooked row and a
@@ -1320,7 +1320,7 @@ public class SepaBankBookingTests
     }
 
     [HumansFact]
-    public async Task Booking_ResumesFromAPostingDatedTheClick_NotTheBankLine()
+    public async Task Booking_Resume_FindsPostingDatedTheClick()
     {
         // An older run dated its postings the day the treasurer clicked, which can be weeks off
         // the bank line. Read a window that misses it and the whole amount goes in a second time.
@@ -1343,7 +1343,7 @@ public class SepaBankBookingTests
     }
 
     [HumansFact]
-    public async Task Booking_ResumeBeyondWhatTheAccountOwes_PostsTheWholeGap_AndStampsBooked()
+    public async Task Booking_ResumeBeyondOwed_PostsWholeGap()
     {
         // €5 is already posted and the account now owes only €10 — someone hand-paid the documents
         // in Holded. The money left the bank all the same: the outstanding €25 is posted as one
@@ -1368,7 +1368,7 @@ public class SepaBankBookingTests
     }
 
     [HumansFact]
-    public async Task Booking_TaggedCreditOnAnotherAccount_IsNotCountedAsAlreadyPosted()
+    public async Task Booking_TaggedCreditOnOtherAccount_IsNotCounted()
     {
         // Our journal entry writes the same tag on both legs. If the account filter is ever not
         // honoured the two net to zero, "posted" reads 0, and everything is posted again.
@@ -1387,7 +1387,7 @@ public class SepaBankBookingTests
     }
 
     [HumansFact]
-    public async Task Booking_RowSaveFails_AuditsThePostingsAndLeavesTheRowUnbooked()
+    public async Task Booking_RowSaveFails_AuditsPostings()
     {
         // Real money has moved; the row does not say so. That must never be invisible.
         SeedOpenDocs(Doc("d1", 30m, 1));
@@ -1409,7 +1409,7 @@ public class SepaBankBookingTests
     }
 
     [HumansFact]
-    public async Task Page_MatchedLine_OffersItOnTheRow_WithItsDateAmountAndText()
+    public async Task Page_MatchedLine_OfferedOnRow()
     {
         SeedContacts(_userId);
 
@@ -1426,7 +1426,7 @@ public class SepaBankBookingTests
     }
 
     [HumansFact]
-    public async Task Page_LineMatchingANotBookableTransfer_IsSurfacedInsteadOfVanishing()
+    public async Task Page_LineMatchesUnbookableTransfer_IsSurfaced()
     {
         // The row cannot be booked (the member lost their binding), so the line it matches must
         // still reach the "needs a human" panel rather than being swallowed by that row.
@@ -1441,7 +1441,7 @@ public class SepaBankBookingTests
     }
 
     [HumansFact]
-    public async Task Page_LineNamingNoCreditorAccount_AndNoTransferOfItsAmount_IsSurfacedForAHuman()
+    public async Task Page_LineMatchingNothing_IsSurfaced()
     {
         SeedContacts(_userId);
         SeedMovements(Movement(amount: -12.5m, description: "DOMICILIACION ENDESA"));
@@ -1457,7 +1457,7 @@ public class SepaBankBookingTests
     private const int OtherAccount = 40000007;
 
     [HumansFact]
-    public async Task Page_TextlessLine_PairsTheOneTransferOfItsAmount_AndSaysItMatchedOnAmountOnly()
+    public async Task Page_TextlessLineOneTransfer_PairsOnAmount()
     {
         SeedContacts(_userId);
         SeedMovements(Movement(description: Textless));
@@ -1482,7 +1482,7 @@ public class SepaBankBookingTests
     }
 
     [HumansFact]
-    public async Task Page_TextlessLine_TwoUnbookedTransfersOfItsAmount_IsFlagged_AndNeitherIsOffered()
+    public async Task Page_TextlessLineTwoTransfers_IsFlagged()
     {
         var otherUser = Guid.NewGuid();
         SeedRows(Row(TransferId, _userId), Row(Guid.NewGuid(), otherUser));
@@ -1497,7 +1497,7 @@ public class SepaBankBookingTests
     }
 
     [HumansFact]
-    public async Task Booking_TextlessLine_UniqueAmount_Books()
+    public async Task Booking_TextlessLineUniqueAmount_Books()
     {
         SeedMovements(Movement(description: Textless));
 
@@ -1509,7 +1509,7 @@ public class SepaBankBookingTests
     }
 
     [HumansFact]
-    public async Task Booking_TextlessLine_TwoUnbookedTransfersOfItsAmount_Refuses()
+    public async Task Booking_TextlessLineTwoTransfers_IsRefused()
     {
         SeedRows(Row(TransferId, _userId), Row(Guid.NewGuid(), Guid.NewGuid(), OtherAccount));
         SeedMovements(Movement(description: Textless));
@@ -1522,7 +1522,7 @@ public class SepaBankBookingTests
     }
 
     [HumansFact]
-    public async Task Booking_TextlessLine_WithASecondTextlessLineOfTheAmount_Refuses()
+    public async Task Booking_TwoTextlessLinesSameAmount_IsRefused()
     {
         SeedMovements(Movement(description: Textless), Movement("mov-2", description: Textless));
 
@@ -1534,7 +1534,7 @@ public class SepaBankBookingTests
     }
 
     [HumansFact]
-    public async Task TextlessLine_ThatIsAlsoAFilesTotal_IsTakenByNeither()
+    public async Task Page_TextlessLineIsFilesTotal_TakenByNeither()
     {
         // 10 + 20 in one file totals the 30 the default transfer pays: a textless €30 line could
         // be either, so it goes to a human — and neither path takes it.
@@ -1575,7 +1575,7 @@ public class SepaBankBookingTests
     private static readonly LocalDate LateLineDate = new(2026, 5, 1);
 
     [HumansFact]
-    public async Task Page_TextlessLine_OutsideTheDefaultTolerance_IsNotPaired_ButIsWhenWidened()
+    public async Task Page_TextlessLineOutsideTolerance_IsNotPaired()
     {
         SeedContacts(_userId);
         SeedMovements(Movement(description: Textless, date: LateLineDate));
@@ -1593,7 +1593,7 @@ public class SepaBankBookingTests
     }
 
     [HumansFact]
-    public async Task Page_TextMatchedLine_OutsideTheDefaultTolerance_StillPairs()
+    public async Task Page_TextMatchedLineOutsideTolerance_StillPairs()
     {
         // The text ties the line to the account; only a line dated before the file is refused.
         SeedContacts(_userId);
@@ -1606,7 +1606,7 @@ public class SepaBankBookingTests
     }
 
     [HumansFact]
-    public async Task Booking_TextlessLine_OutsideThePostedTolerance_Refuses_AndBooksWhenWidened()
+    public async Task Booking_TextlessLineOutsideTolerance_IsRefused()
     {
         SeedMovements(Movement(description: Textless, date: LateLineDate));
         var service = MakeService();
@@ -1621,7 +1621,7 @@ public class SepaBankBookingTests
     }
 
     [HumansFact]
-    public async Task Page_NamedLine_RivalledByAnAmbiguousTextlessLine_IsNotOffered()
+    public async Task Page_NamedLineWithTextlessRival_IsNotOffered()
     {
         // Two 30s on accounts A and B; one line names A, a textless one could be either. Booking
         // counts the textless line as A's rival and refuses, so the page must not offer it.
@@ -1647,7 +1647,7 @@ public class SepaBankBookingTests
     }
 
     [HumansFact]
-    public async Task TextlessLine_WhoseAmountIsTheTotalOfAFilePartlyBookedElsewhere_PairsWithTheTransfer()
+    public async Task Page_TextlessLineTotalOfPartlyBookedFile_PairsTransfer()
     {
         // 10 (booked against its own line) + 20 totals 30, but that file can no longer be a single
         // debit, so the textless €30 line is the default transfer's.
@@ -1670,7 +1670,7 @@ public class SepaBankBookingTests
     }
 
     [HumansFact]
-    public async Task Page_WidenedTolerance_ReadsTheFeedBackFarEnough_ForAFileAtTheWindowEdge()
+    public async Task Page_WidenedTolerance_ReadsFeedFurtherBack()
     {
         // Generated exactly 90 days ago, paid by a textless line 5 days earlier: within days=7, so
         // the feed read has to start that far back too.
@@ -1717,7 +1717,7 @@ public class SepaBankBookingTests
     }
 
     [HumansFact]
-    public async Task Page_TextlessLine_RivalledByANotBookableTransfer_IsAmbiguous_AndTheFileIsNotOffered()
+    public async Task Page_TextlessLineWithUnbookableRival_IsAmbiguous()
     {
         // File A: 30 and 45, both bookable. File B: another 45 whose member has no binding. The
         // €45 line could be either — the page must say so with the same set booking uses, or
@@ -1754,7 +1754,7 @@ public class SepaBankBookingTests
     }
 
     [HumansFact]
-    public async Task BookFile_WithdrawnTransferInTheFile_GateIsOverTheRest_AndBooksThem()
+    public async Task BookFile_WithdrawnTransferInFile_BooksTheRest()
     {
         // The 45 was cancelled at the bank by hand and withdrawn; Sabadell debits only the 30. The
         // file is "every transfer paired" over what is left, so Book file still offers itself.
@@ -1790,7 +1790,7 @@ public class SepaBankBookingTests
     }
 
     [HumansFact]
-    public async Task Page_WithdrawnTransfer_IsNeverPaired_AndItsLineGoesToThePanel()
+    public async Task Page_WithdrawnTransfer_IsNeverPaired()
     {
         // The line names the account and the amount — exactly the transfer's — and still pairs with
         // nothing: the money was cancelled, so whatever this line is, it is not that payout.
@@ -1807,7 +1807,7 @@ public class SepaBankBookingTests
     }
 
     [HumansFact]
-    public async Task Sweep_SkipsAWithdrawnTransfer_AndPostsNothing()
+    public async Task Sweep_WithdrawnTransfer_IsSkipped()
     {
         SeedRows(Row(TransferId, _userId, withdrawnAt: FixedNow));
         SeedTransfer(30m, withdrawnAt: FixedNow);
@@ -1820,7 +1820,7 @@ public class SepaBankBookingTests
     }
 
     [HumansFact]
-    public async Task Booking_WithdrawnTransfer_IsRefused_EvenWithAMatchingLine()
+    public async Task Booking_WithdrawnTransfer_IsRefused()
     {
         // Defence in depth: a stale page can still POST the transfer id with a line that fits.
         SeedTransfer(30m, withdrawnAt: FixedNow);
@@ -1833,7 +1833,7 @@ public class SepaBankBookingTests
     }
 
     [HumansFact]
-    public async Task BookFile_WithEveryLiveTransferBooked_SaysSoOverTheWithdrawnOne()
+    public async Task BookFile_AllLiveTransfersBooked_SaysSo()
     {
         SeedRows(
             Row(TransferId, _userId, fileId: MatchedFileId, bookedAt: FixedNow, movementId: MovementId),
@@ -1847,7 +1847,7 @@ public class SepaBankBookingTests
     }
 
     [HumansFact]
-    public async Task BookFile_EveryTransferMatched_BooksEachAgainstItsOwnLine()
+    public async Task BookFile_AllTransfersMatched_BooksEachOnOwnLine()
     {
         SeedMatchedFile(bothLines: true);
         var actor = Guid.NewGuid();
@@ -1863,7 +1863,7 @@ public class SepaBankBookingTests
     }
 
     [HumansFact]
-    public async Task BookFile_OneTransferUnmatched_RefusesTheWholeFile_AndPostsNothing()
+    public async Task BookFile_OneTransferUnmatched_RefusesWholeFile()
     {
         SeedMatchedFile(bothLines: false);
 
@@ -1907,7 +1907,7 @@ public class SepaBankBookingTests
     }
 
     [HumansFact]
-    public async Task Page_TwoTextlessLines_TwoTransfersOfTheAmountInOneFile_PairAsASet_AndTheFileBooks()
+    public async Task Page_TwoTextlessLinesOneFile_PairAsSet()
     {
         // Which €30 line paid which €30 transfer is unknowable and does not matter: each transfer
         // books its own creditor account, and the lines carry no text. Line by id, transfer by account.
@@ -1931,7 +1931,7 @@ public class SepaBankBookingTests
     }
 
     [HumansFact]
-    public async Task Booking_TextlessSetLine_AgainstTheOtherTransferOfTheSet_Refuses()
+    public async Task Booking_SetLineOnOtherTransfer_IsRefused()
     {
         SeedEqualAmountSet(lines: 2, transfers: 2);
 
@@ -1959,7 +1959,7 @@ public class SepaBankBookingTests
     }
 
     [HumansFact]
-    public async Task OneTextlessLine_TwoTransfersOfTheAmountInOneFile_StaysAmbiguous()
+    public async Task Page_OneTextlessLineTwoTransfers_StaysAmbiguous()
     {
         SeedEqualAmountSet(lines: 1, transfers: 2);
         var service = MakeService();
@@ -1974,7 +1974,7 @@ public class SepaBankBookingTests
     }
 
     [HumansFact]
-    public async Task TwoTextlessLines_TwoTransfersOfTheAmountInTwoFiles_StayAmbiguous()
+    public async Task Page_TwoTextlessLinesTwoFiles_StayAmbiguous()
     {
         SeedEqualAmountSet(lines: 2, transfers: 2, secondFileId: Guid.NewGuid());
         var service = MakeService();
@@ -1989,7 +1989,7 @@ public class SepaBankBookingTests
     }
 
     [HumansFact]
-    public async Task Page_TextlessSet_WithANotBookableTransfer_StaysOnThePanel_AndTheFileIsNotOffered()
+    public async Task Page_TextlessSetWithUnbookableTransfer_StaysOnPanel()
     {
         SeedEqualAmountSet(lines: 2, transfers: 2, unboundSecond: true);
         var service = MakeService();
@@ -2006,7 +2006,7 @@ public class SepaBankBookingTests
     }
 
     [HumansFact]
-    public async Task BookFile_FeedUnreadable_RefusesAndPostsNothing()
+    public async Task BookFile_FeedUnreadable_IsRefused()
     {
         SeedMatchedFile(bothLines: true);
         _feed.ListBankMovementsAsync(
@@ -2022,7 +2022,7 @@ public class SepaBankBookingTests
     }
 
     [HumansFact]
-    public async Task Page_BankFeedNeverSynced_StillListsTheRows_AndSaysSoOnce()
+    public async Task Page_BankFeedNeverSynced_StillListsRows()
     {
         // The page reads the mirror only; one that has never synced is unreadable, never an empty feed.
         SeedContacts(_userId);
@@ -2042,7 +2042,7 @@ public class SepaBankBookingTests
     }
 
     [HumansFact]
-    public async Task Page_StaleUnbookedTransfer_DoesNotBlockANewerOne_AndSaysWhyItself()
+    public async Task Page_StaleUnbookedTransfer_DoesNotBlockNewer()
     {
         // Same account, same amount, from a file generated outside the feed window: it must not make
         // every later transfer of that amount permanently ambiguous.
@@ -2075,7 +2075,7 @@ public class SepaBankBookingTests
     }
 
     [HumansFact]
-    public async Task Page_LineDatedBeforeTheFileWasGenerated_IsSurfacedForAHuman()
+    public async Task Page_LineDatedBeforeFile_IsSurfaced()
     {
         SeedContacts(_userId);
         SeedMovements(Movement(date: new LocalDate(2026, 4, 20)));
@@ -2123,7 +2123,7 @@ public class SepaBankBookingTests
     }
 
     [HumansFact]
-    public async Task Page_TwoLinesMatchingOneTransfer_AreBothSurfaced_AndNeitherIsOffered()
+    public async Task Page_TwoLinesOneTransfer_AreBothSurfaced()
     {
         SeedContacts(_userId);
         SeedMovements(Movement(), Movement(id: "mov-2"));
@@ -2136,7 +2136,7 @@ public class SepaBankBookingTests
     }
 
     [HumansFact]
-    public async Task Sweep_TwoLinesCouldEachHavePaidTheTransfer_BooksNeither()
+    public async Task Sweep_TwoLinesOneTransfer_BooksNeither()
     {
         SeedMovements(Movement(), Movement(id: "mov-2"));
 
@@ -2148,7 +2148,7 @@ public class SepaBankBookingTests
     [HumansTheory]
     [InlineData("partial", false)]
     [InlineData("reconciled", true)]
-    public async Task Booking_JournalEntryUnconfirmed_StampsOnlyWhenHoldedThenReadsReconciled(
+    public async Task Booking_JournalEntryUnconfirmed_StampsOnceReconciled(
         string statusAfter, bool stamped)
     {
         // The journal outcome is unconfirmed; the reconcile carries the payment alone either way, and
@@ -2186,7 +2186,7 @@ public class SepaBankBookingTests
     }
 
     [HumansFact]
-    public async Task Page_TransferGeneratedAtTheWindowEdge_MatchesALineDatedInTheSlackBeforeIt()
+    public async Task Page_TransferAtWindowEdge_MatchesEarlierLine()
     {
         // Generated exactly FeedWindowDays (90) ago, paid by a line GenerationSlackDays (2) earlier:
         // matching accepts that line, so the feed read has to reach it.
@@ -2199,7 +2199,7 @@ public class SepaBankBookingTests
     }
 
     [HumansFact]
-    public async Task Sweep_TransferGeneratedAtTheWindowEdge_BooksALineDatedInTheSlackBeforeIt()
+    public async Task Sweep_TransferAtWindowEdge_BooksEarlierLine()
     {
         SeedWindowEdgeTransfer();
 
@@ -2272,7 +2272,7 @@ public class SepaBankBookingTests
     }
 
     [HumansFact]
-    public async Task Page_LineForTheWholeFile_IsOfferedOnThatFile_NotInThePanel()
+    public async Task Page_LineForWholeFile_OfferedOnFile()
     {
         SeedBatch();
 
@@ -2298,7 +2298,7 @@ public class SepaBankBookingTests
     }
 
     [HumansFact]
-    public async Task Page_TwoFilesWithTheLinesTotal_OffersNeither_AndSurfacesTheLine()
+    public async Task Page_TwoFilesWithLinesTotal_OffersNeither()
     {
         SeedBatch();
         var otherFile = Guid.NewGuid();
@@ -2317,7 +2317,7 @@ public class SepaBankBookingTests
     }
 
     [HumansFact]
-    public async Task TwoLinesWithTheFilesTotal_NeitherIsOffered_AndProcessRefuses()
+    public async Task Page_TwoLinesWithFilesTotal_NeitherIsOffered()
     {
         SeedBatch();
         SeedMovements(
@@ -2336,7 +2336,7 @@ public class SepaBankBookingTests
     }
 
     [HumansFact]
-    public async Task ATransferWithALineOfItsOwn_TheFileIsNotOffered_AndProcessRefuses()
+    public async Task Page_TransferHasOwnLine_FileIsNotOffered()
     {
         // The bank debited per transfer after all; a €100 line on the same feed is another payment.
         SeedBatch();
@@ -2355,7 +2355,7 @@ public class SepaBankBookingTests
     }
 
     [HumansFact]
-    public async Task Page_FileWithAnUnboundTransfer_SaysWhyItCannotBeProcessed()
+    public async Task Page_FileWithUnboundTransfer_SaysWhy()
     {
         SeedBatch();
         _repo.GetCreditorContactsAsync(Arg.Any<CancellationToken>()).Returns(
@@ -2373,7 +2373,7 @@ public class SepaBankBookingTests
     }
 
     [HumansFact]
-    public async Task Process_BooksEveryTransferAgainstTheLine_AndReconcilesItOnce()
+    public async Task Process_File_ReconcilesLineOnce()
     {
         SeedBatch(withDocs: true);
         var actor = Guid.NewGuid();
@@ -2401,7 +2401,7 @@ public class SepaBankBookingTests
     }
 
     [HumansFact]
-    public async Task Process_PaidByJournalEntriesAlone_BooksButCannotReconcile_AndSaysSo()
+    public async Task Process_PaidByJournalEntriesOnly_CannotReconcile()
     {
         // Holded cannot link a bank line to a ledger entry, so there is nothing to reconcile with:
         // the file is booked, the line is a human's to reconcile, and every row says so.
@@ -2417,7 +2417,7 @@ public class SepaBankBookingTests
     }
 
     [HumansFact]
-    public async Task Process_LineIsNotTheFilesTotal_RefusesAndPostsNothing()
+    public async Task Process_LineIsNotFilesTotal_IsRefused()
     {
         SeedBatch();
         SeedMovements(Movement(BatchMovementId, -90m, "TRANSFERENCIAS SEPA"));
@@ -2450,7 +2450,7 @@ public class SepaBankBookingTests
     }
 
     [HumansFact]
-    public async Task Process_AfterAPartialRun_BooksOnlyTheRest_AndStampsOnlyWhenHoldedSaysReconciled()
+    public async Task Process_AfterPartialRun_BooksOnlyTheRest()
     {
         SeedBatch(bookedFirst: Batch[0].Id, withDocs: true);
         var reads = 0;

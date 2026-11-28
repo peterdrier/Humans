@@ -37,7 +37,7 @@ public class ShiftViewServiceTests
         EarlyEntryClose: null);
 
     [HumansFact]
-    public async Task GetUserAsync_NoActiveEvent_ReturnsEmptyAvailabilityAndBuildStatus()
+    public async Task GetUserAsync_NoActiveEvent_ReturnsEmptyAvailability()
     {
         var userId = Guid.NewGuid();
         StubActiveCalendar(null);
@@ -63,7 +63,7 @@ public class ShiftViewServiceTests
     }
 
     [HumansFact]
-    public async Task GetUserAsync_WithActiveEvent_LoadsEventScopedAvailabilityAndBuildStatus()
+    public async Task GetUserAsync_ActiveEvent_LoadsItsAvailability()
     {
         var userId = Guid.NewGuid();
         var eventId = Guid.NewGuid();
@@ -123,7 +123,7 @@ public class ShiftViewServiceTests
     }
 
     [HumansFact]
-    public async Task GetUserAsync_WithActiveEvent_TakesOnlyThatEventsSignupsFromTheRotaRows()
+    public async Task GetUserAsync_ActiveEvent_TakesOnlyItsSignups()
     {
         var userId = Guid.NewGuid();
         var eventId = Guid.NewGuid();
@@ -161,7 +161,7 @@ public class ShiftViewServiceTests
     }
 
     [HumansFact]
-    public async Task GetUsersAsync_DeduplicatesAndKeysByUserId()
+    public async Task GetUsersAsync_DuplicateIds_KeyedOncePerUser()
     {
         var userA = Guid.NewGuid();
         var userB = Guid.NewGuid();

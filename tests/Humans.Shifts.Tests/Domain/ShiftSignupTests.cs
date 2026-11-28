@@ -32,7 +32,7 @@ public class ShiftSignupTests
     };
 
     [HumansFact]
-    public void Confirm_FromPending_SetsConfirmedAndReviewer()
+    public void Confirm_FromPending_SetsConfirmedWithReviewer()
     {
         var signup = CreatePendingSignup();
         var reviewerId = Guid.NewGuid();
@@ -56,7 +56,7 @@ public class ShiftSignupTests
     }
 
     [HumansFact]
-    public void Refuse_FromPending_SetsRefusedAndReviewer()
+    public void Refuse_FromPending_SetsRefusedWithReviewer()
     {
         var signup = CreatePendingSignup();
         var reviewerId = Guid.NewGuid();

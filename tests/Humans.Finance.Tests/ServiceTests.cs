@@ -222,7 +222,7 @@ public class HoldedFinanceServiceTests
     }
 
     [HumansFact]
-    public async Task GetActualsForYear_CarriesTheApprovedDocsBehindTheTotal()
+    public async Task GetActualsForYear_Total_CarriesApprovedDocs()
     {
         var cat = Guid.NewGuid();
         MapCategory(cat);
@@ -273,7 +273,7 @@ public class HoldedFinanceServiceTests
     }
 
     [HumansFact]
-    public async Task GetProvisioningPlan_marks_categories_without_accounts_as_ToAdd()
+    public async Task GetProvisioningPlan_CategoryWithoutAccount_IsToAdd()
     {
         var catIdA = Guid.NewGuid();
         var catIdB = Guid.NewGuid();
@@ -334,7 +334,7 @@ public class HoldedFinanceServiceTests
     }
 
     [HumansFact]
-    public async Task GetProvisioningPlan_skips_account_numbers_occupied_in_holded()
+    public async Task GetProvisioningPlan_OccupiedNumbers_AreSkipped()
     {
         var catId = Guid.NewGuid();
 
@@ -376,7 +376,7 @@ public class HoldedFinanceServiceTests
     }
 
     [HumansFact]
-    public async Task Attribution_is_account_then_tag_then_managed_and_computed_on_read()
+    public async Task Attribution_Order_AccountThenTagThenManaged()
     {
         var catId = Guid.NewGuid();
         MapCategory(catId);
@@ -402,7 +402,7 @@ public class HoldedFinanceServiceTests
     }
 
     [HumansFact]
-    public async Task GetCreditorStatus_derives_balance_owed_and_payments_from_lines()
+    public async Task GetCreditorStatus_Lines_GiveBalanceWithPayments()
     {
         // Daniela 40000001: credit 12720 (in) − debit 9540 (paid) ⇒ balance −3180, owed 3180.
         // Two lines a side, deliberately: with one each, a sum and a max are the same number.
@@ -427,7 +427,7 @@ public class HoldedFinanceServiceTests
     }
 
     [HumansFact]
-    public async Task GetCreditorStatus_returns_null_when_no_lines_cached()
+    public async Task GetCreditorStatus_NoCachedLines_ReturnsNull()
     {
         _holded.GetLedgerLinesAsync(Arg.Any<int>(), Arg.Any<CancellationToken>())
             .Returns(new List<HoldedLedgerLineInfo>());
@@ -438,7 +438,7 @@ public class HoldedFinanceServiceTests
     }
 
     [HumansFact]
-    public async Task GetCreditorStatus_returns_null_when_account_num_null()
+    public async Task GetCreditorStatus_NullAccountNum_ReturnsNull()
     {
         var status = await MakeService().GetCreditorStatusAsync(null, TestContext.Current.CancellationToken);
 
@@ -446,7 +446,7 @@ public class HoldedFinanceServiceTests
     }
 
     [HumansFact]
-    public async Task ListCreditorAccounts_DerivesFromLedger_AndSurfacesBothSidesOfACollision()
+    public async Task ListCreditorAccounts_Collision_ShowsBothSides()
     {
         var first = Guid.NewGuid();
         var second = Guid.NewGuid();
@@ -473,7 +473,7 @@ public class HoldedFinanceServiceTests
     }
 
     [HumansFact]
-    public async Task ListCreditorAccounts_BindingWithUnresolvedNumber_LandsOnItsAccountViaTheContactId()
+    public async Task ListCreditorAccounts_UnresolvedNumber_FoundByContactId()
     {
         // The one-shot number resolution is best-effort and has no retry, so a binding can sit on a
         // contact id with a null 400000xx indefinitely. Keyed on the number alone the account would
@@ -498,7 +498,7 @@ public class HoldedFinanceServiceTests
     }
 
     [HumansFact]
-    public async Task ListCreditorAccounts_BindingsSharingAContact_CollideOnOneRowDespiteDifferentNumbers()
+    public async Task ListCreditorAccounts_SharedContact_CollidesOnOneRow()
     {
         // HoldedContactId and SupplierAccountNum are independent columns, so two members on one Holded
         // contact can carry numbers that disagree. Grouped on the stored number they would be two innocent single-member
@@ -527,7 +527,7 @@ public class HoldedFinanceServiceTests
     }
 
     [HumansFact]
-    public async Task ListCreditorAccounts_BindingWithNoNumberAndNoLiveHoldedNumber_IsUnresolved()
+    public async Task ListCreditorAccounts_NoNumberAnywhere_IsUnresolved()
     {
         // Neither the one-shot push resolution nor Holded's own contact list carries a number for this
         // contact, so there is no account row to place it on: it comes back in Unresolved.
@@ -548,7 +548,7 @@ public class HoldedFinanceServiceTests
     }
 
     [HumansFact]
-    public async Task ListCreditorAccounts_BindingResolvedViaLiveHoldedContact_IsNotUnresolved()
+    public async Task ListCreditorAccounts_LiveContactResolves_IsResolved()
     {
         // Holded's own contact list carries a number for this contact even though our cached
         // SupplierAccountNum is null — it lands on that account's row, so the same binding must not
@@ -570,7 +570,7 @@ public class HoldedFinanceServiceTests
     }
 
     [HumansFact]
-    public async Task ListCreditorAccounts_ContactMissingFromList_IsUnresolved_NeverTheStoredNumber()
+    public async Task ListCreditorAccounts_ContactMissingFromList_IsUnresolved()
     {
         _repo.GetCreditorContactsAsync(Arg.Any<CancellationToken>()).Returns(new List<HoldedCreditorContact>
         {
@@ -587,7 +587,7 @@ public class HoldedFinanceServiceTests
     }
 
     [HumansFact]
-    public async Task ContactListUnreadable_CreditorsAreUnavailable_AndTheStatementSaysTheMemberIsUnknown()
+    public async Task ListCreditorAccounts_ContactListUnreadable_IsUnavailable()
     {
         _repo.GetCreditorContactsAsync(Arg.Any<CancellationToken>()).Returns(new List<HoldedCreditorContact>
         {
@@ -609,7 +609,7 @@ public class HoldedFinanceServiceTests
     }
 
     [HumansFact]
-    public async Task GetCreditorLedger_derives_balance_and_lines_from_cache()
+    public async Task GetCreditorLedger_Cache_GivesBalanceWithLines()
     {
         _holded.GetLedgerLinesAsync(40000004, Arg.Any<CancellationToken>()).Returns(new List<HoldedLedgerLineInfo>
         {
@@ -625,7 +625,7 @@ public class HoldedFinanceServiceTests
     }
 
     [HumansFact]
-    public async Task GetCreditorLedger_carries_the_contact_header_when_a_cached_contact_holds_the_account()
+    public async Task GetCreditorLedger_CachedContactMatches_HasHeader()
     {
         _holded.GetLedgerLinesAsync(40000004, Arg.Any<CancellationToken>()).Returns(new List<HoldedLedgerLineInfo>
         {
@@ -657,7 +657,7 @@ public class HoldedFinanceServiceTests
     }
 
     [HumansFact]
-    public async Task GetCreditorLedger_leaves_the_contact_header_null_when_no_cached_contact_matches()
+    public async Task GetCreditorLedger_NoCachedContact_HeaderIsNull()
     {
         // Holded unreachable, or an account whose contact carries a different number: the statement
         // still renders from the mirror, just without a header.
@@ -678,7 +678,7 @@ public class HoldedFinanceServiceTests
     }
 
     [HumansFact]
-    public async Task GetCreditorLedger_running_balance_accumulates_oldest_first_and_keeps_mirror_order()
+    public async Task GetCreditorLedger_RunningBalance_AccumulatesOldestFirst()
     {
         var day1 = Instant.FromUtc(2026, 3, 1, 0, 0);
         var day2 = Instant.FromUtc(2026, 3, 2, 0, 0);
@@ -698,7 +698,7 @@ public class HoldedFinanceServiceTests
     }
 
     [HumansFact]
-    public async Task GetCreditorLedger_returns_null_when_no_lines()
+    public async Task GetCreditorLedger_NoLines_ReturnsNull()
     {
         _holded.GetLedgerLinesAsync(Arg.Any<int>(), Arg.Any<CancellationToken>())
             .Returns(new List<HoldedLedgerLineInfo>());
@@ -719,7 +719,7 @@ public class HoldedFinanceServiceTests
     };
 
     [HumansFact]
-    public async Task EnsureCreditorContact_TwoConcurrentDrains_LeaveOneContactAndOneBinding()
+    public async Task EnsureCreditorContact_ConcurrentDrains_LeaveOneBinding()
     {
         // Production: two outbox drains both read "no binding", both POSTed a contact. Run 1 is parked
         // inside its POST while run 2 completes and binds; run 1 then must delete its own contact.
@@ -760,7 +760,7 @@ public class HoldedFinanceServiceTests
     }
 
     [HumansFact]
-    public async Task EnsureCreditorContact_BindingAppearedBeforeWrite_DeletesMintedContact_AndUsesTheBoundOne()
+    public async Task EnsureCreditorContact_BindingAppearedBeforeWrite_UsesBoundContact()
     {
         var userId = Guid.NewGuid();
         _repo.GetCreditorContactByUserAsync(userId, Arg.Any<CancellationToken>())
@@ -780,7 +780,7 @@ public class HoldedFinanceServiceTests
     }
 
     [HumansFact]
-    public async Task EnsureCreditorContact_UniqueViolationOnInsert_DeletesMintedContact_AndUsesTheBoundOne()
+    public async Task EnsureCreditorContact_UniqueViolation_UsesBoundContact()
     {
         var userId = Guid.NewGuid();
         // Initial read and the pre-write re-read see nothing; the insert loses; the next read finds the winner.
@@ -814,7 +814,7 @@ public class HoldedFinanceServiceTests
     }
 
     [HumansFact]
-    public async Task EnsureCreditorContact_NewMember_CreatesContact_AndRecordsAutoBinding()
+    public async Task EnsureCreditorContact_NewMember_CreatesContact()
     {
         var userId = Guid.NewGuid();
         _repo.GetCreditorContactByUserAsync(userId, Arg.Any<CancellationToken>()).Returns((HoldedCreditorContact?)null);
@@ -856,7 +856,7 @@ public class HoldedFinanceServiceTests
     }
 
     [HumansFact]
-    public async Task EnsureCreditorContact_ExistingBinding_ReusesContactId_WithoutCallingHolded()
+    public async Task EnsureCreditorContact_ExistingBinding_ReusesContactId()
     {
         // Holded's v2 contact PUT is a full replacement: every omitted field resets, supplier_record
         // included, and the next purchase doc minted a second creditor account (2026-09-21). A linked
@@ -882,7 +882,7 @@ public class HoldedFinanceServiceTests
     }
 
     [HumansFact]
-    public async Task EnsureCreditorContact_NoBindingButSeed_AdoptsSeedContactId()
+    public async Task EnsureCreditorContact_SeedWithoutBinding_AdoptsSeed()
     {
         var userId = Guid.NewGuid();
         _repo.GetCreditorContactByUserAsync(userId, Arg.Any<CancellationToken>()).Returns((HoldedCreditorContact?)null);
@@ -956,7 +956,7 @@ public class HoldedFinanceServiceTests
     }
 
     [HumansFact]
-    public async Task EnsureCreditorContact_BindingMissingItsAccountNumber_StillWritesTheSeedNumber()
+    public async Task EnsureCreditorContact_BindingWithoutNumber_WritesSeedNumber()
     {
         // The skip must not swallow a push that has something to say: an unresolved 400000xx is exactly
         // the gap the seed exists to close, so this write still has to happen.
@@ -983,7 +983,7 @@ public class HoldedFinanceServiceTests
     }
 
     [HumansFact]
-    public async Task EnsureCreditorContact_UnboundDuringHoldedRoundTrip_DoesNotResurrectBinding()
+    public async Task EnsureCreditorContact_UnboundMeanwhile_StaysUnbound()
     {
         // The write below carries real content (an unresolved account number), so it cannot be
         // skipped like the steady state, but an Unbind landing during the Holded round trip above
@@ -1013,7 +1013,7 @@ public class HoldedFinanceServiceTests
     }
 
     [HumansFact]
-    public async Task EnsureCreditorContact_ReboundDuringHoldedRoundTrip_DoesNotClobberTheNewBinding()
+    public async Task EnsureCreditorContact_ReboundMeanwhile_KeepsNewBinding()
     {
         // An unbind+rebind inside the window leaves a row, and a rebind keeps the row and its Id
         // (Upsert is keyed by UserId), so neither proves anything: only the columns this write
@@ -1056,7 +1056,7 @@ public class HoldedFinanceServiceTests
     }
 
     [HumansFact]
-    public async Task EnsureCreditorContact_BoundByAdminDuringHoldedRoundTrip_DoesNotOverwriteTheManualBind()
+    public async Task EnsureCreditorContact_AdminBoundMeanwhile_KeepsManualBind()
     {
         // Same window, opposite polarity: nothing was bound at the opening read, so the write below is
         // a first-time insert — but Upsert is keyed by UserId, and a manual bind landing mid-push turns
@@ -1120,7 +1120,7 @@ public class HoldedFinanceServiceTests
     [HumansTheory]
     [InlineData(40000004, "40000004")]
     [InlineData(null, "(unresolved)")]
-    public async Task SetCreditorAccountNum_ChangedNumber_IsAuditedUnderTheCallingJob(int? before, string beforeText)
+    public async Task SetCreditorAccountNum_ChangedNumber_IsAudited(int? before, string beforeText)
     {
         // Holded can reset a contact's supplier_record, moving the member's account. Every change of the
         // account a member is paid from is audited, naming the job, the member and both numbers.
@@ -1169,7 +1169,7 @@ public class HoldedFinanceServiceTests
     }
 
     [HumansFact]
-    public async Task SetCreditorAccountNum_UnboundBetweenReadAndWrite_DoesNotResurrectBinding()
+    public async Task SetCreditorAccountNum_UnboundMeanwhile_StaysUnbound()
     {
         // This runs at the end of a long push, well after an admin could have clicked Unbind. The
         // window between the read and the write below has no I/O in it, but the re-check must still
@@ -1196,7 +1196,7 @@ public class HoldedFinanceServiceTests
     }
 
     [HumansFact]
-    public async Task SetCreditorAccountNum_UnboundAndReboundBetweenReadAndWrite_DoesNotClobberTheNewBinding()
+    public async Task SetCreditorAccountNum_ReboundMeanwhile_KeepsNewBinding()
     {
         // An Unbind followed by a fresh manual bind leaves a row in place, so the write is not blocked
         // by absence — and it would carry the old binding's contact id and Source over the admin's.
@@ -1231,7 +1231,7 @@ public class HoldedFinanceServiceTests
     }
 
     [HumansFact]
-    public async Task ListCreditorAccounts_NamesRowsFromHolded_AndIncludesContactsWithNoLedgerActivity()
+    public async Task ListCreditorAccounts_ContactWithoutLedger_IsIncluded()
     {
         _holded.GetAccountBalancesAsync(Arg.Any<CancellationToken>())
             .Returns(new Dictionary<int, decimal> { [40000004] = -40m });
@@ -1259,7 +1259,7 @@ public class HoldedFinanceServiceTests
     }
 
     [HumansFact]
-    public async Task ListCreditorAccounts_CountsTheOpenDocumentsOfEachBoundContact()
+    public async Task ListCreditorAccounts_BoundContacts_CountOpenDocuments()
     {
         // The figure a payout would act on: approved, still-owing documents on the bound contact
         // (the booking's own OpenDocs filter). Unbound and colliding rows get no count, and a bound
@@ -1307,7 +1307,7 @@ public class HoldedFinanceServiceTests
     }
 
     [HumansFact]
-    public async Task ListCreditorAccounts_PurchaseMirrorNeverSynced_StillRendersRowsWithoutCounts()
+    public async Task ListCreditorAccounts_MirrorNeverSynced_RowsWithoutCounts()
     {
         var ana = Guid.NewGuid();
         _holded.GetAccountBalancesAsync(Arg.Any<CancellationToken>())
@@ -1328,7 +1328,7 @@ public class HoldedFinanceServiceTests
     }
 
     [HumansFact]
-    public async Task SetCreditorContact_AccountBoundToAnotherMember_FailsAndWritesNothing()
+    public async Task SetCreditorContact_AccountBoundToOther_Fails()
     {
         _repo.GetCreditorContactsAsync(Arg.Any<CancellationToken>()).Returns(new List<HoldedCreditorContact>
         {
@@ -1345,7 +1345,7 @@ public class HoldedFinanceServiceTests
     }
 
     [HumansFact]
-    public async Task SetCreditorContact_ContactBoundToAnotherMemberWithUnresolvedAccount_FailsAndWritesNothing()
+    public async Task SetCreditorContact_ContactBoundToOther_Fails()
     {
         // The other member's binding carries the contact but no account number — the push resolves it
         // best-effort — so the account-number guard cannot see the collision. The contact-id guard must.
@@ -1368,7 +1368,7 @@ public class HoldedFinanceServiceTests
     }
 
     [HumansFact]
-    public async Task SetCreditorContact_NoHoldedContactCarriesAccount_FailsAndWritesNothing()
+    public async Task SetCreditorContact_NoContactCarriesAccount_Fails()
     {
         _repo.GetCreditorContactsAsync(Arg.Any<CancellationToken>()).Returns(new List<HoldedCreditorContact>());
         _holded.GetContactsAsync(Arg.Any<CancellationToken>()).Returns(TestContacts.Synced(new List<HoldedContactDto>()));
@@ -1416,7 +1416,7 @@ public class HoldedFinanceServiceTests
     // paths write, log Error, and leave the collision standing on /Finance/Creditors.
 
     [HumansFact]
-    public async Task SetCreditorAccountNum_AccountHeldByAnotherMember_WritesAnyway_AndLogsError()
+    public async Task SetCreditorAccountNum_AccountHeldByOther_LogsError()
     {
         var userId = Guid.NewGuid();
         var otherUserId = Guid.NewGuid();
@@ -1447,7 +1447,7 @@ public class HoldedFinanceServiceTests
     }
 
     [HumansFact]
-    public async Task SetCreditorAccountNum_AccountFree_WritesWithoutLoggingAnError()
+    public async Task SetCreditorAccountNum_AccountFree_LogsNoError()
     {
         var userId = Guid.NewGuid();
         var logger = new CapturingLogger<Service>();
@@ -1475,7 +1475,7 @@ public class HoldedFinanceServiceTests
     }
 
     [HumansFact]
-    public async Task EnsureCreditorContact_SeedHeldByAnotherMember_IsRefused_AndANewContactIsCreated()
+    public async Task EnsureCreditorContact_SeedHeldByOther_CreatesNewContact()
     {
         // The seed is this member's own cached guess off a prior report, not something Holded just
         // told us, so it is refused like a bad manual bind rather than recorded like an assignment.
@@ -1506,7 +1506,7 @@ public class HoldedFinanceServiceTests
     }
 
     [HumansFact]
-    public async Task EnsureCreditorContact_SeedContactHeldByAnotherMember_IsRefused_EvenWithNoAccountNumber()
+    public async Task EnsureCreditorContact_SeedHeldNoAccountNumber_IsRefused()
     {
         // The one-shot number resolution is best-effort, so the other member's binding can carry the
         // shared Holded contact with a null 400000xx — invisible to an account-number-only check.
@@ -1532,7 +1532,7 @@ public class HoldedFinanceServiceTests
     }
 
     [HumansFact]
-    public async Task EnsureCreditorContact_AfterUnbind_DoesNotRestoreTheOtherMembersBindingFromAPriorReport()
+    public async Task EnsureCreditorContact_AfterUnbind_DoesNotRestoreOldBinding()
     {
         // Unbind deletes the binding row, but the cleared member's old reports still carry the other
         // member's contact id and 400000xx, and ProcessHoldedCreateAsync hands those straight back as
@@ -1557,7 +1557,7 @@ public class HoldedFinanceServiceTests
     }
 
     [HumansFact]
-    public async Task EnsureCreditorContact_SeedIsTheMembersOwnContact_IsStillAdopted()
+    public async Task EnsureCreditorContact_SeedIsOwnContact_IsAdopted()
     {
         // The lazy-seed self-heal must survive the refusal: only *another* member's binding blocks it.
         var userId = Guid.NewGuid();
@@ -1613,7 +1613,7 @@ public class HoldedFinanceServiceTests
     }
 
     [HumansFact]
-    public async Task GetUnmatched_TellsTheTreasurerWhichHalfOfTheChainMissed()
+    public async Task GetUnmatched_Rows_SayWhichHalfMissed()
     {
         // The reason text is the whole point of the worklist: it says where to go fix the mapping.
         MapCategory(Guid.NewGuid());
@@ -1635,7 +1635,7 @@ public class HoldedFinanceServiceTests
     }
 
     [HumansFact]
-    public async Task GetProvisioningPlan_TagTakenByAMappedRowFurtherDownTheWalk_IsStillDisambiguated()
+    public async Task GetProvisioningPlan_TagTakenLater_IsDisambiguated()
     {
         // "S-taff" normalizes to the same tag as "Staff" and sorts ahead of it, so a ToAdd row
         // reaches the collision check before the mapped row that already owns the tag. Two active
@@ -1684,7 +1684,7 @@ public class HoldedFinanceServiceTests
     [InlineData("-", "-")]
     [InlineData("long", "long")]
     [InlineData("reserved", "Staff")]
-    public async Task GetProvisioningPlan_GeneratedTags_AreBoundedNonemptyAndUnique(string group, string category)
+    public async Task GetProvisioningPlan_GeneratedTags_AreUnique(string group, string category)
     {
         var reservedTags = string.Equals(group, "reserved", StringComparison.Ordinal)
             ? new[] { "operationsstaff", "operationsstaff1234", "operationsstaff12341" }
@@ -1754,7 +1754,7 @@ public class HoldedFinanceServiceTests
     }
 
     [HumansFact]
-    public async Task Provision_AddAll_CreatesEveryPendingAccountAndNeverRemovesAMapRow()
+    public async Task Provision_AddAll_CreatesEveryPendingAccount()
     {
         TwoUnmappedCategories();
         _write.EnsureExpenseAccountAsync(Arg.Any<int>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
@@ -1774,7 +1774,7 @@ public class HoldedFinanceServiceTests
     }
 
     [HumansFact]
-    public async Task Provision_HoldedRefusesTheSecondAccount_KeepsTheFirstAndRethrows()
+    public async Task Provision_SecondAccountRefused_KeepsFirst()
     {
         // Partial success is deliberate: an account already created in Holded must keep its map row,
         // or the number is stranded remotely with nothing pointing at it.
@@ -1792,7 +1792,7 @@ public class HoldedFinanceServiceTests
     }
 
     [HumansFact]
-    public async Task Provision_MapSaveFailsAfterHoldedCreatedTheAccount_StillAuditsTheAccount()
+    public async Task Provision_MapSaveFails_StillAudits()
     {
         var (catA, _) = TwoUnmappedCategories();
         _write.EnsureExpenseAccountAsync(Arg.Any<int>(), Arg.Any<string>(), Arg.Any<CancellationToken>()).Returns(new HoldedExpenseAccountOutcome("acc-6290010", Created: true));
@@ -1833,7 +1833,7 @@ public class HoldedFinanceServiceTests
     }
 
     [HumansFact]
-    public async Task ListCreditorAccounts_TheCreditorBlockIsInclusiveAtBothEnds()
+    public async Task ListCreditorAccounts_CreditorBlock_IsInclusive()
     {
         // Holded numbers every supplier contact, so the block bounds are the only thing separating a
         // member's creditor account from an ordinary org vendor. Both ends are members' accounts.
@@ -1929,7 +1929,7 @@ public class HoldedFinanceServiceTests
             ids.Select(id => new HoldedContactDto { Id = id, SupplierAccountNum = 40000004 }).ToList()));
 
     [HumansFact]
-    public async Task ContributeForUser_BoundMember_ExportsTheBindingAndNothingElse()
+    public async Task ContributeForUser_BoundMember_ExportsBindingOnly()
     {
         // Article 15: the member gets what we hold about them. The binding row is three facts —
         // and not the row's Id or timestamps, which are ours rather than theirs.
@@ -1962,7 +1962,7 @@ public class HoldedFinanceServiceTests
     [HumansTheory]
     [InlineData(false)]
     [InlineData(true)]
-    public async Task ContributeForUser_IncludesBindingsAndPayoutsAcrossMergedAccounts(bool archivedId)
+    public async Task ContributeForUser_MergedAccounts_AreIncluded(bool archivedId)
     {
         var survivorId = Guid.NewGuid();
         var sourceId = Guid.NewGuid();
@@ -2002,7 +2002,7 @@ public class HoldedFinanceServiceTests
     }
 
     [HumansFact]
-    public async Task ContributeForUser_SourceOnlyBinding_PreservesNullPrimaryAndExportsAdditionalAccount()
+    public async Task ContributeForUser_SourceOnlyBinding_ExportsAdditionalAccount()
     {
         var survivorId = Guid.NewGuid();
         var sourceId = Guid.NewGuid();
@@ -2024,7 +2024,7 @@ public class HoldedFinanceServiceTests
     }
 
     [HumansFact]
-    public async Task ContributeForUser_UnboundMember_StillReportsTheSectionWithNoData()
+    public async Task ContributeForUser_UnboundMember_ReportsEmptySection()
     {
         // The section has to appear either way: "we hold nothing here" is itself the answer, and a
         // missing section reads as a section nobody asked.
@@ -2112,7 +2112,7 @@ public class HoldedFinanceServiceTests
     }
 
     [HumansFact]
-    public async Task ContributeForUser_BoundMember_ExportsTheMirroredContact_WithTheIbanMasked()
+    public async Task ContributeForUser_BoundMember_ExportsContactWithMaskedIban()
     {
         var userId = Guid.NewGuid();
         _repo.GetCreditorContactByUserAsync(userId, Arg.Any<CancellationToken>()).Returns(
@@ -2135,7 +2135,7 @@ public class HoldedFinanceServiceTests
     }
 
     [HumansFact]
-    public async Task ContributeForUser_AccountSharedByTwoMembers_ExportsNeitherTheOthersLines()
+    public async Task ContributeForUser_SharedAccount_ExportsNoLines()
     {
         // A collision the automatic paths write through: two members on one 400000xx. The lines carry
         // no user id, so neither member's export may carry that account's ledger.
@@ -2163,7 +2163,7 @@ public class HoldedFinanceServiceTests
     }
 
     [HumansFact]
-    public async Task ContributeForUser_BoundContactMissingFromList_StopsWithAMessage()
+    public async Task ContributeForUser_ContactMissingFromList_StopsWithMessage()
     {
         var userId = Guid.NewGuid();
         _repo.GetCreditorContactByUserAsync(userId, Arg.Any<CancellationToken>()).Returns(
@@ -2177,7 +2177,7 @@ public class HoldedFinanceServiceTests
     }
 
     [HumansFact]
-    public async Task ContributeForUser_UnboundMember_ExportsNoLedgerAndReadsNone()
+    public async Task ContributeForUser_UnboundMember_ExportsNoLedger()
     {
         _repo.GetCreditorContactByUserAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
             .Returns((HoldedCreditorContact?)null);
@@ -2189,7 +2189,7 @@ public class HoldedFinanceServiceTests
     }
 
     [HumansFact]
-    public async Task EraseForUser_DropsTheBindingAndDeclaresThePayoutsRetained()
+    public async Task EraseForUser_Binding_DroppedPayoutsRetained()
     {
         // Article 17: the binding is erased in full; the payout files are the accounting record
         // and stay, on a stated legal basis the declaration carries.
@@ -2236,7 +2236,7 @@ public class HoldedFinanceServiceTests
             ]));
 
     [HumansFact]
-    public async Task GetCategoryMap_ProjectsCategoryAndGroupNames()
+    public async Task GetCategoryMap_Rows_HaveCategoryWithGroupNames()
     {
         var live = Guid.NewGuid();
         ActiveYearWith((live, "Staff"));
@@ -2310,7 +2310,7 @@ public class HoldedFinanceServiceTests
     }
 
     [HumansFact]
-    public async Task PreviewSepaPayout_ShowsTheBatchAndWritesNothing()
+    public async Task PreviewSepaPayout_Batch_WritesNothing()
     {
         ConfigureSepa();
         var userId = SeedPayableCreditor();
@@ -2331,7 +2331,7 @@ public class HoldedFinanceServiceTests
     }
 
     [HumansFact]
-    public async Task GenerateSepaPayout_PersistsTheFileAndAuditsEachTransferWithAMaskedIban()
+    public async Task GenerateSepaPayout_File_SavedWithTransferAudits()
     {
         ConfigureSepa();
         var userId = SeedPayableCreditor();
@@ -2367,7 +2367,7 @@ public class HoldedFinanceServiceTests
     [InlineData(" ", "en")]
     [InlineData("not-a-culture", "en")]
     [InlineData("pt", "en")]
-    public async Task GenerateSepaPayout_EmailsThePaidMember_InTheirLanguage_WithAMaskedIban(string language, string expectedCulture)
+    public async Task GenerateSepaPayout_PaidMember_EmailedInTheirLanguage(string language, string expectedCulture)
     {
         string amount;
         using (new CultureScope(expectedCulture))
@@ -2396,7 +2396,7 @@ public class HoldedFinanceServiceTests
     }
 
     [HumansFact]
-    public async Task GenerateSepaPayout_CancellationAfterSaveStillQueuesNotificationAndReturnsSavedFile()
+    public async Task GenerateSepaPayout_CancelledAfterSave_ReturnsSavedFile()
     {
         ConfigureSepa();
         var userId = SeedPayableCreditor();
@@ -2591,7 +2591,7 @@ public class HoldedFinanceServiceTests
     }
 
     [HumansFact]
-    public async Task GenerateSepaPayout_StampsTheContactIdTheRowWasResolvedAgainst()
+    public async Task GenerateSepaPayout_Row_StampsResolvedContactId()
     {
         // Booking later trusts this id, not just the account number, to tell a rebind to a sibling
         // contact on the same account apart from no rebind.
@@ -2633,7 +2633,7 @@ public class HoldedFinanceServiceTests
     }
 
     [HumansFact]
-    public async Task GenerateSepaPayout_TwiceInOneMinute_GivesEachFileItsOwnName()
+    public async Task GenerateSepaPayout_TwiceInOneMinute_NamesDiffer()
     {
         // The clock is fixed, so the timestamp is identical across both calls. The name is the
         // treasurer's handle on a downloaded file.
@@ -2654,7 +2654,7 @@ public class HoldedFinanceServiceTests
     }
 
     [HumansFact]
-    public async Task GenerateSepaPayout_MoreThanIsOwed_RefusesTheWholeBatch()
+    public async Task GenerateSepaPayout_MoreThanOwed_RefusesBatch()
     {
         ConfigureSepa();
         SeedPayableCreditor(owed: 30m);
@@ -2688,7 +2688,7 @@ public class HoldedFinanceServiceTests
     /// <summary>The posted cap governs, not the config default: a lower cap entered on the screen
     /// refuses an amount the old €50 default would have allowed.</summary>
     [HumansFact]
-    public async Task GenerateSepaPayout_AboveThePostedCapButBelowTheConfigDefault_RefusesTheWholeBatch()
+    public async Task GenerateSepaPayout_AbovePostedCap_RefusesBatch()
     {
         ConfigureSepa();
         SeedPayableCreditor(owed: 30m);
@@ -2703,7 +2703,7 @@ public class HoldedFinanceServiceTests
 
     /// <summary>Raising the cap on the screen above the config default is honoured, not clamped.</summary>
     [HumansFact]
-    public async Task GenerateSepaPayout_AboveTheConfigDefaultButBelowThePostedCap_IsAccepted()
+    public async Task GenerateSepaPayout_BelowPostedCap_IsAccepted()
     {
         ConfigureSepa();
         SeedPayableCreditor(owed: 100m);
@@ -2744,7 +2744,7 @@ public class HoldedFinanceServiceTests
     }
 
     [HumansFact]
-    public async Task GenerateSepaPayout_ContactRefreshFails_IsRefusedAndWritesNothing()
+    public async Task GenerateSepaPayout_ContactRefreshFails_IsRefused()
     {
         ConfigureSepa();
         SeedPayableCreditor();
@@ -2790,7 +2790,7 @@ public class HoldedFinanceServiceTests
     }
 
     [HumansFact]
-    public async Task GenerateSepaPayout_TwoContactsOnOneAccount_PaysTheBoundContact()
+    public async Task GenerateSepaPayout_TwoContactsOneAccount_PaysBoundContact()
     {
         ConfigureSepa();
         SeedTwoContactsOnOneAccount();
@@ -2805,7 +2805,7 @@ public class HoldedFinanceServiceTests
     }
 
     [HumansFact]
-    public async Task ListCreditorAccounts_TwoContactsOnOneAccount_ShowsTheBoundContact()
+    public async Task ListCreditorAccounts_TwoContactsOneAccount_ShowsBoundContact()
     {
         SeedTwoContactsOnOneAccount();
 
@@ -2988,7 +2988,7 @@ public class HoldedFinanceServiceTests
     }
 
     [HumansFact]
-    public async Task BookSepaTransfer_MemberNotBoundToAHoldedContact_PaysNothing()
+    public async Task BookSepaTransfer_UnboundMember_PaysNothing()
     {
         ConfigureSepa();
         var userId = SeedBookableTransfer();
@@ -3004,7 +3004,7 @@ public class HoldedFinanceServiceTests
     }
 
     [HumansFact]
-    public async Task BookSepaTransfer_MemberReboundToAnotherCreditorAccount_PaysNothing()
+    public async Task BookSepaTransfer_ReboundToOtherAccount_PaysNothing()
     {
         // Paying the member's *current* account would not reconcile against the bank line, which
         // quotes the account number the file was built with.
@@ -3029,7 +3029,7 @@ public class HoldedFinanceServiceTests
     }
 
     [HumansFact]
-    public async Task BookSepaTransfer_MemberReboundToASiblingContactOnTheSameAccount_PaysNothing()
+    public async Task BookSepaTransfer_ReboundToSiblingContact_PaysNothing()
     {
         // Holded lets two contacts share one 400000xx, so the account-number guard alone passes here:
         // only the contact id catches the rebind. Open docs sit on the sibling contact, so a booking
@@ -3059,7 +3059,7 @@ public class HoldedFinanceServiceTests
     }
 
     [HumansFact]
-    public async Task BookSepaTransfer_LegacyTransferWithNoContactId_StillBooks()
+    public async Task BookSepaTransfer_NoContactId_StillBooks()
     {
         // A row generated before the contact id was captured has no HoldedContactId: it keeps the
         // account-only behaviour, no backfill.
@@ -3112,7 +3112,7 @@ public class HoldedFinanceServiceTests
     }
 
     [HumansFact]
-    public async Task BookSepaTransfer_OpenDocsBelowTheTransferAmount_PaysThemAndSettlesTheRestByJournalEntry()
+    public async Task BookSepaTransfer_DocsBelowAmount_JournalsTheRest()
     {
         // A draft doc and another contact's doc are not the member's open documents. The €10 that
         // is gets paid; the other €20 the balance was built from — a loan, a bank line reconciled
@@ -3144,7 +3144,7 @@ public class HoldedFinanceServiceTests
     }
 
     [HumansFact]
-    public async Task BookSepaTransfer_NoOpenDocs_SettlesTheWholeAmountByJournalEntry()
+    public async Task BookSepaTransfer_NoOpenDocs_SettlesByJournalEntry()
     {
         // The loan case: the member put money in, the balance has no purchase document behind it.
         ConfigureSepa();
@@ -3166,7 +3166,7 @@ public class HoldedFinanceServiceTests
     }
 
     [HumansFact]
-    public async Task BookSepaTransfer_HoldedRefusesTheJournalEntry_KeepsThePaymentsAndStaysUnbooked()
+    public async Task BookSepaTransfer_JournalEntryRefused_StaysUnbooked()
     {
         ConfigureSepa();
         SeedBookableTransfer();
@@ -3193,7 +3193,7 @@ public class HoldedFinanceServiceTests
     }
 
     [HumansFact]
-    public async Task BookSepaTransfer_AllocatesOldestFirstAndStopsAtTheTransferAmount()
+    public async Task BookSepaTransfer_OpenDocs_PaidOldestFirst()
     {
         ConfigureSepa();
         SeedBookableTransfer();
@@ -3222,7 +3222,7 @@ public class HoldedFinanceServiceTests
     }
 
     [HumansFact]
-    public async Task BookSepaTransfer_StampsTheRowAndAuditsWithAMaskedIban()
+    public async Task BookSepaTransfer_Booked_AuditsWithMaskedIban()
     {
         ConfigureSepa();
         var userId = SeedBookableTransfer();
@@ -3246,7 +3246,7 @@ public class HoldedFinanceServiceTests
     }
 
     [HumansFact]
-    public async Task BookSepaTransfer_HoldedRefusesTheSecondPayment_KeepsTheFirstAndStaysUnbooked()
+    public async Task BookSepaTransfer_SecondPaymentRefused_StaysUnbooked()
     {
         ConfigureSepa();
         SeedBookableTransfer();
@@ -3268,7 +3268,7 @@ public class HoldedFinanceServiceTests
     }
 
     [HumansFact]
-    public async Task BookSepaTransfer_HoldedRefusesTheSecondPayment_AuditsThePartialBooking()
+    public async Task BookSepaTransfer_SecondPaymentRefused_AuditsPartialBooking()
     {
         ConfigureSepa();
         var userId = SeedBookableTransfer();
@@ -3294,7 +3294,7 @@ public class HoldedFinanceServiceTests
     }
 
     [HumansFact]
-    public async Task GetSepaPayouts_UnconfiguredTreasury_ReportsItOnceForTheWholeScreen()
+    public async Task GetSepaPayouts_NoTreasury_ReportsOnce()
     {
         ConfigureSepa();
         _sepa.TreasuryAccountId = "";
@@ -3311,7 +3311,7 @@ public class HoldedFinanceServiceTests
     /// pre-feed booking-state logic but skips the live Holded bank-feed read: every Backdoor poll would
     /// otherwise cost a live call nothing here projects.</summary>
     [HumansFact]
-    public async Task GetSepaTransfers_ReturnsTheSameRowsAndReason_WithoutReadingTheBankFeed()
+    public async Task GetSepaTransfers_Rows_ReadWithoutBankFeed()
     {
         ConfigureSepa();
         SeedTransferRows();
@@ -3326,7 +3326,7 @@ public class HoldedFinanceServiceTests
     }
 
     [HumansFact]
-    public async Task GetSepaPayouts_UnconfiguredTreasuryLedgerAccount_ReportsItOnceForTheWholeScreen()
+    public async Task GetSepaPayouts_NoTreasuryLedgerAccount_ReportsOnce()
     {
         ConfigureSepa();
         _sepa.TreasuryLedgerAccount = null;
@@ -3339,7 +3339,7 @@ public class HoldedFinanceServiceTests
     }
 
     [HumansFact]
-    public async Task GetSepaPayouts_UnboundMember_SaysWhyInsteadOfOfferingTheButton()
+    public async Task GetSepaPayouts_UnboundMember_SaysWhy()
     {
         ConfigureSepa();
         SeedTransferRows();
@@ -3352,7 +3352,7 @@ public class HoldedFinanceServiceTests
     }
 
     [HumansFact]
-    public async Task GetSepaPayouts_ReboundMember_SaysWhyInsteadOfOfferingTheButton()
+    public async Task GetSepaPayouts_ReboundMember_SaysWhy()
     {
         ConfigureSepa();
         var userId = SeedTransferRows();
@@ -3369,7 +3369,7 @@ public class HoldedFinanceServiceTests
     }
 
     [HumansFact]
-    public async Task GetSepaPayouts_ReboundToSiblingContactOnSameAccount_SaysWhyInsteadOfOfferingTheButton()
+    public async Task GetSepaPayouts_ReboundToSiblingContact_SaysWhy()
     {
         // The account number still matches, so the check above passes; only the contact moved.
         // Without mirroring BookSepaTransferAsync's guard here the button renders live and fails on click.
@@ -3388,7 +3388,7 @@ public class HoldedFinanceServiceTests
     }
 
     [HumansFact]
-    public async Task GetSepaPayouts_RowWithoutAContactId_KeepsAccountOnlyBehaviour()
+    public async Task GetSepaPayouts_NoContactId_MatchesByAccount()
     {
         // A row generated before the contact id was captured. Account matches, so it stays
         // bookable — the new guard must not retire rows it has no evidence about.
@@ -3407,7 +3407,7 @@ public class HoldedFinanceServiceTests
     }
 
     [HumansFact]
-    public async Task GetSepaPayouts_BoundAndUnbooked_OffersTheButtonWithoutReadingHoldedDocuments()
+    public async Task GetSepaPayouts_BoundUnbooked_OffersButton()
     {
         // The screen does not pre-check document coverage: whatever the documents do not cover
         // books as a journal entry, so there is nothing to warn about and nothing to ask Holded.
@@ -3464,7 +3464,7 @@ public class HoldedFinanceServiceTests
     }
 
     [HumansFact]
-    public async Task CreateOrLink_NoMatch_CreatesAtNextFreeNumberAndRegisters()
+    public async Task CreateOrLink_NoMatch_CreatesAtNextFreeNumber()
     {
         NoManagedAccounts();
         _repo.GetCategoryMapAsync(Arg.Any<CancellationToken>()).Returns(new List<HoldedCategoryMap>
@@ -3487,7 +3487,7 @@ public class HoldedFinanceServiceTests
     }
 
     [HumansFact]
-    public async Task CreateOrLink_RegistrySaveFailsAfterHoldedCreation_StillAuditsTheAccount()
+    public async Task CreateOrLink_RegistrySaveFails_StillAudits()
     {
         NoManagedAccounts();
         NoCategoryMap();
@@ -3509,7 +3509,7 @@ public class HoldedFinanceServiceTests
     }
 
     [HumansFact]
-    public async Task CreateOrLink_NameMatchesIgnoringCaseSpaceAndAccents_LinksInsteadOfCreating()
+    public async Task CreateOrLink_NameMatchesLoosely_LinksInstead()
     {
         NoManagedAccounts();
         NoCategoryMap();
@@ -3551,7 +3551,7 @@ public class HoldedFinanceServiceTests
     }
 
     [HumansFact]
-    public async Task CreateOrLink_LinkingABudgetCategoryAccount_DoesNotRegisterIt()
+    public async Task CreateOrLink_BudgetCategoryAccount_IsNotRegistered()
     {
         NoManagedAccounts();
         _repo.GetCategoryMapAsync(Arg.Any<CancellationToken>()).Returns(new List<HoldedCategoryMap>
@@ -3619,7 +3619,7 @@ public class HoldedFinanceServiceTests
     }
 
     [HumansFact]
-    public async Task ListExpenseAccounts_UnionsCategoryMapAndRegistry_FiltersInactive()
+    public async Task ListExpenseAccounts_Inactive_AreFilteredOut()
     {
         var catId = Guid.NewGuid();
         _repo.GetCategoryMapAsync(Arg.Any<CancellationToken>()).Returns(new List<HoldedCategoryMap>

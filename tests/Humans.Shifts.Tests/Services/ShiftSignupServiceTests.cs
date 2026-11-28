@@ -156,7 +156,7 @@ public sealed class ShiftSignupServiceTests : ShiftsTestHarness
     [InlineData(SignupWrite.BailRange)]
     [InlineData(SignupWrite.BulkCancel)]
     [InlineData(SignupWrite.Merge)]
-    public async Task SignupWrite_CommittedButAcknowledgementFails_SkipsAuditAndNotices(SignupWrite operation)
+    public async Task SignupWrite_AcknowledgementFails_SkipsAudit(SignupWrite operation)
     {
         var ct = TestContext.Current.CancellationToken;
         var (_, rota, shift) = SeedShiftScenario(SignupPolicy.Public);
@@ -328,7 +328,7 @@ public sealed class ShiftSignupServiceTests : ShiftsTestHarness
     [HumansTheory]
     [InlineData(false)]
     [InlineData(true)]
-    public async Task ContributeForUserAsync_IncludesBuildStatusesAcrossEventsAndMergeIdentities(bool archivedId)
+    public async Task ContributeForUserAsync_Export_IncludesBuildStatuses(bool archivedId)
     {
         var (firstEvent, _, _) = SeedShiftScenario(SignupPolicy.Public);
         var (secondEvent, _, _) = SeedShiftScenario(SignupPolicy.Public);
@@ -383,7 +383,7 @@ public sealed class ShiftSignupServiceTests : ShiftsTestHarness
     [InlineData("voluntell", "range", true)]
     [InlineData("approve", "signup", false)]
     [InlineData("approve-range", "signup", false)]
-    public async Task ConcurrentEnrollment_PreservesDuplicateAndCapacityGuards(
+    public async Task ConcurrentEnrollment_Guards_StillHold(
         string firstPath, string secondPath, bool sameUser)
     {
         var ct = TestContext.Current.CancellationToken;
@@ -518,7 +518,7 @@ public sealed class ShiftSignupServiceTests : ShiftsTestHarness
     [InlineData("blocked")]
     [InlineData("partial")]
     [InlineData("empty")]
-    public async Task SignUpRange_LocalizesDuplicateAndEmptySummaries(string scenario)
+    public async Task SignUpRange_DuplicateOrEmpty_SummaryIsLocalized(string scenario)
     {
         var resources = new ResourceManager(typeof(ShiftsResource));
         var spanish = CultureInfo.GetCultureInfo("es");
@@ -693,7 +693,7 @@ public sealed class ShiftSignupServiceTests : ShiftsTestHarness
     }
 
     [HumansFact]
-    public async Task SignUp_AllDayShiftAfterPriorNightWatch_DoesNotFalselyConflict()
+    public async Task SignUp_AllDayAfterNightWatch_DoesNotConflict()
     {
         // All-day rows resolve their absolute window to 08:00/18:00, so a night watch
         // ending at 02:00 does not overlap the next day's all-day shift.
@@ -714,7 +714,7 @@ public sealed class ShiftSignupServiceTests : ShiftsTestHarness
     }
 
     [HumansFact]
-    public async Task SignUp_SameDayEarlyShiftBeforeAllDay_DoesNotFalselyConflict()
+    public async Task SignUp_EarlyShiftBeforeAllDay_DoesNotConflict()
     {
         // All-day shifts resolve to an 08:00-18:00 window, so an early-morning shift
         // (03:00-07:00) on the same calendar day has no overlap.
@@ -735,7 +735,7 @@ public sealed class ShiftSignupServiceTests : ShiftsTestHarness
     }
 
     [HumansFact]
-    public async Task SignUp_SystemClosed_RegularVolunteer_ReturnsError()
+    public async Task SignUp_VolunteerWhenSystemClosed_ReturnsError()
     {
         var (es, _, shift) = SeedShiftScenario(SignupPolicy.Public);
         es.IsShiftBrowsingOpen = false;
@@ -749,7 +749,7 @@ public sealed class ShiftSignupServiceTests : ShiftsTestHarness
     }
 
     [HumansFact]
-    public async Task SignUp_AdminOnlyShift_RegularVolunteer_ReturnsError()
+    public async Task SignUp_VolunteerOnAdminOnlyShift_ReturnsError()
     {
         var (_, _, shift) = SeedShiftScenario(SignupPolicy.Public);
         shift.AdminOnly = true;
@@ -844,7 +844,7 @@ public sealed class ShiftSignupServiceTests : ShiftsTestHarness
     }
 
     [HumansFact]
-    public async Task SignUp_BuildShiftAfterEeClose_NonPrivileged_ReturnsError()
+    public async Task SignUp_NonPrivilegedAfterEeClose_ReturnsError()
     {
         var (es, _, shift) = SeedShiftScenario(SignupPolicy.Public);
         shift.DayOffset = -1;
@@ -859,7 +859,7 @@ public sealed class ShiftSignupServiceTests : ShiftsTestHarness
     }
 
     [HumansFact]
-    public async Task SignUp_BuildShiftAfterEeClose_Privileged_Succeeds()
+    public async Task SignUp_PrivilegedAfterEeClose_Succeeds()
     {
         var (es, _, shift) = SeedShiftScenario(SignupPolicy.Public);
         shift.DayOffset = -1;
@@ -909,7 +909,7 @@ public sealed class ShiftSignupServiceTests : ShiftsTestHarness
     }
 
     [HumansFact]
-    public async Task Approve_ShiftAtMaxVolunteers_RefusesLikeAFullRangeDay()
+    public async Task Approve_ShiftAtMaxVolunteers_IsRefused()
     {
         var (_, _, shift) = SeedShiftScenario(SignupPolicy.RequireApproval);
         for (var i = 0; i < shift.MaxVolunteers; i++)
@@ -926,7 +926,7 @@ public sealed class ShiftSignupServiceTests : ShiftsTestHarness
     }
 
     [HumansFact]
-    public async Task Approve_BuildShiftAfterEeClose_NonPrivileged_ReturnsError()
+    public async Task Approve_NonPrivilegedAfterEeClose_ReturnsError()
     {
         var (es, _, shift) = SeedShiftScenario(SignupPolicy.RequireApproval);
         shift.DayOffset = -1;
@@ -941,7 +941,7 @@ public sealed class ShiftSignupServiceTests : ShiftsTestHarness
     }
 
     [HumansFact]
-    public async Task Approve_BuildShiftAfterEeClose_Privileged_Succeeds()
+    public async Task Approve_PrivilegedAfterEeClose_Succeeds()
     {
         var (es, _, shift) = SeedShiftScenario(SignupPolicy.RequireApproval);
         shift.DayOffset = -1;
@@ -1019,7 +1019,7 @@ public sealed class ShiftSignupServiceTests : ShiftsTestHarness
     [InlineData("refuseRange", 1001)]
     [InlineData("bailRange", 1000)]
     [InlineData("bailRange", 1001)]
-    public async Task Status_reason_limit_is_checked_before_any_signup_changes(string operation, int length)
+    public async Task StatusChange_ReasonTooLong_ChangesNothing(string operation, int length)
     {
         var ct = TestContext.Current.CancellationToken;
         var (_, rota, shift) = SeedShiftScenario(SignupPolicy.Public);
@@ -1089,7 +1089,7 @@ public sealed class ShiftSignupServiceTests : ShiftsTestHarness
     }
 
     [HumansFact]
-    public async Task Bail_BuildShift_AfterEeClose_NonPrivileged_ReturnsError()
+    public async Task Bail_NonPrivilegedAfterEeClose_ReturnsError()
     {
         var (es, _, shift) = SeedShiftScenario(SignupPolicy.Public);
         // Make this a build shift (day offset < 0)
@@ -1107,7 +1107,7 @@ public sealed class ShiftSignupServiceTests : ShiftsTestHarness
     }
 
     [HumansFact]
-    public async Task ToggleDay_QualifyingShift_SignsUp_WithNoDietaryInfo()
+    public async Task ToggleDay_NoDietaryInfo_SignsUp()
     {
         // Dietary info is opt-in: a cantina-qualifying shift signs up with nothing on file.
         var (es, rota, _) = SeedShiftScenario(SignupPolicy.Public);
@@ -1169,7 +1169,7 @@ public sealed class ShiftSignupServiceTests : ShiftsTestHarness
     }
 
     [HumansFact]
-    public async Task ToggleDay_NotPrivileged_NotCoordinator_CanViewRestrictedIsFalse()
+    public async Task ToggleDay_PlainVolunteer_CannotViewRestricted()
     {
         var (es, _, shift) = SeedShiftScenario(SignupPolicy.Public);
         var userId = Guid.NewGuid();
@@ -1369,7 +1369,7 @@ public sealed class ShiftSignupServiceTests : ShiftsTestHarness
     }
 
     [HumansFact]
-    public async Task Voluntell_PastShift_SuppressesAssignedNotification_ButStillAuditsAndConfirms()
+    public async Task Voluntell_PastShift_SendsNoAssignedNotice()
     {
         // Make the shift end in the past, mirroring MarkNoShow_AfterShiftEnd:
         // gate opening 2026-06-14, day 0, 08:00 +2h → ends 10:00 Madrid = 08:00 UTC < TestNow (12:00 UTC).
@@ -1502,7 +1502,7 @@ public sealed class ShiftSignupServiceTests : ShiftsTestHarness
     [HumansTheory]
     [InlineData(false)]
     [InlineData(true)]
-    public async Task SignUpRange_OverlappingSelectedShifts_RejectsOrSkipsTheConflictingDay(bool skipConflicts)
+    public async Task SignUpRange_OverlappingShifts_ConflictDayNotAdded(bool skipConflicts)
     {
         var (_, rota, _) = SeedShiftScenario(SignupPolicy.Public);
         rota.Period = RotaPeriod.Build;
@@ -1678,7 +1678,7 @@ public sealed class ShiftSignupServiceTests : ShiftsTestHarness
     }
 
     [HumansFact]
-    public async Task SignUpRange_SkipConflicts_PreservesBothSkipAndCapacityWarnings()
+    public async Task SignUpRange_SkipPlusCapacity_KeepsBothWarnings()
     {
         // Rota with 4 all-day shifts (days -4 to -1). The user is already signed up to
         // day -3 (skipConflicts case); day -2 is at capacity from others (capacity-warning case).
@@ -1794,7 +1794,7 @@ public sealed class ShiftSignupServiceTests : ShiftsTestHarness
     }
 
     [HumansFact]
-    public async Task SignUpRange_SkipConflicts_AllDaysConflict_ReturnsFailWithSummary()
+    public async Task SignUpRange_AllDaysConflict_FailsWithSummary()
     {
         // The user is already signed up to all three all-day shifts.
         var (_, rota, _) = SeedShiftScenario(SignupPolicy.Public);
@@ -1825,7 +1825,7 @@ public sealed class ShiftSignupServiceTests : ShiftsTestHarness
     }
 
     [HumansFact]
-    public async Task SignUpRange_SkipConflicts_MixedKinds_AddsFreeDaysWithBothWarnings()
+    public async Task SignUpRange_MixedConflicts_AddsFreeDays()
     {
         // Range -4..-1:
         //   day -4: free
@@ -1963,7 +1963,7 @@ public sealed class ShiftSignupServiceTests : ShiftsTestHarness
     }
 
     [HumansFact]
-    public async Task SignUpRange_BuildRotaAfterEeClose_NonPrivileged_ReturnsError()
+    public async Task SignUpRange_NonPrivilegedAfterEeClose_ReturnsError()
     {
         var (es, rota, _) = SeedShiftScenario(SignupPolicy.Public);
         rota.Period = RotaPeriod.Build;
@@ -2241,7 +2241,7 @@ public sealed class ShiftSignupServiceTests : ShiftsTestHarness
     }
 
     [HumansFact]
-    public async Task VoluntellRange_SpansPastAndFuture_SendsAssignedNotification()
+    public async Task VoluntellRange_PastPlusFuture_SendsAssignedNotice()
     {
         // gate opening 2026-06-16 → days -3..-1 = 2026-06-13,14,15. Day -1 (2026-06-15) all-day
         // window ends 18:00 Madrid = 16:00 UTC > TestNow (12:00 UTC) → future present in range.
@@ -2323,7 +2323,7 @@ public sealed class ShiftSignupServiceTests : ShiftsTestHarness
     [HumansTheory]
     [InlineData(false)]
     [InlineData(true)]
-    public async Task SignUpRange_RequireApproval_WritesShiftSignupCreatedPerSignup(bool suppliedActor)
+    public async Task SignUpRange_RequireApproval_AuditsEachSignup(bool suppliedActor)
     {
         var (_, rota, _) = SeedShiftScenario(SignupPolicy.RequireApproval);
         rota.Period = RotaPeriod.Build;
@@ -2506,7 +2506,7 @@ public sealed class ShiftSignupServiceTests : ShiftsTestHarness
     [HumansTheory]
     [InlineData(false)]
     [InlineData(true)]
-    public async Task OwnershipProbe_FindsTheSignupAndItsTeamInTheRotaRows(bool block)
+    public async Task OwnershipProbe_Signup_FoundWithItsTeam(bool block)
     {
         var teamId = Guid.NewGuid();
         var blockId = Guid.NewGuid();
@@ -2614,7 +2614,7 @@ public sealed class ShiftSignupServiceTests : ShiftsTestHarness
     [HumansTheory]
     [InlineData(false)]
     [InlineData(true)]
-    public async Task SignUp_EarlyEntryCapacityWarning_IsLocalizedAndStillConfirms(bool filledCapacity)
+    public async Task SignUp_EarlyEntryCapacityWarning_StillConfirms(bool filledCapacity)
     {
         using var culture = new CultureScope(CultureCatalog.DefaultCultureCode);
         LocalizeSignupMessages();

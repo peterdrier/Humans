@@ -165,7 +165,7 @@ public class VolunteerTrackingServiceTests
     }
 
     [HumansFact]
-    public async Task GetTrackingDataAsync_returns_empty_when_no_active_event()
+    public async Task GetTrackingDataAsync_NoActiveEvent_ReturnsEmpty()
     {
         var sut = BuildSut(activeEvent: null);
 
@@ -177,7 +177,7 @@ public class VolunteerTrackingServiceTests
     }
 
     [HumansFact]
-    public async Task MainCohort_single_volunteer_fully_covered_has_zero_gaps()
+    public async Task MainCohort_FullyCovered_HasZeroGaps()
     {
         var es = MakeEvent(buildStartOffset: -5);
         var userId = Guid.NewGuid();
@@ -211,7 +211,7 @@ public class VolunteerTrackingServiceTests
     }
 
     [HumansFact]
-    public async Task MainCohort_mid_window_gap_renders_red_cell()
+    public async Task MainCohort_MidWindowGap_RendersRedCell()
     {
         var es = MakeEvent(buildStartOffset: -5);
         var userId = Guid.NewGuid();
@@ -239,7 +239,7 @@ public class VolunteerTrackingServiceTests
     }
 
     [HumansFact]
-    public async Task MainCohort_NotAttending_volunteer_excluded()
+    public async Task MainCohort_NotAttending_IsExcluded()
     {
         var es = MakeEvent(buildStartOffset: -5);
         var userId = Guid.NewGuid();
@@ -257,7 +257,7 @@ public class VolunteerTrackingServiceTests
     }
 
     [HumansFact]
-    public async Task MainCohort_pending_signup_renders_pending_not_gap()
+    public async Task MainCohort_PendingSignup_IsPendingNotGap()
     {
         var es = MakeEvent(buildStartOffset: -5);
         var userId = Guid.NewGuid();
@@ -281,7 +281,7 @@ public class VolunteerTrackingServiceTests
     }
 
     [HumansFact]
-    public async Task MainCohort_camp_setup_cuts_active_window()
+    public async Task MainCohort_CampSetup_CutsActiveWindow()
     {
         var es = MakeEvent(buildStartOffset: -5);
         var userId = Guid.NewGuid();
@@ -313,7 +313,7 @@ public class VolunteerTrackingServiceTests
     }
 
     [HumansFact]
-    public async Task MainCohort_future_unfilled_day_renders_as_gap_for_planning()
+    public async Task MainCohort_FutureUnfilledDay_IsGap()
     {
         // Today (offset -1 in this fixture) is one day before gate-open. The volunteer
         // has confirmed -5 only; -4..-1 must render as gaps (not "Expected") so
@@ -337,7 +337,7 @@ public class VolunteerTrackingServiceTests
     }
 
     [HumansFact]
-    public async Task UnbookedCohort_volunteer_with_availability_no_signups_appears()
+    public async Task UnbookedCohort_AvailabilityNoSignups_Appears()
     {
         var es = MakeEvent(buildStartOffset: -5);
         var userId = Guid.NewGuid();
@@ -363,7 +363,7 @@ public class VolunteerTrackingServiceTests
     }
 
     [HumansFact]
-    public async Task UnbookedCohort_volunteer_with_first_signup_moves_to_main_cohort()
+    public async Task UnbookedCohort_FirstSignup_MovesToMainCohort()
     {
         var es = MakeEvent(buildStartOffset: -5);
         var userId = Guid.NewGuid();
@@ -384,7 +384,7 @@ public class VolunteerTrackingServiceTests
     }
 
     [HumansFact]
-    public async Task UnbookedCohort_NotAttending_excluded()
+    public async Task UnbookedCohort_NotAttending_IsExcluded()
     {
         var es = MakeEvent(buildStartOffset: -5);
         var userId = Guid.NewGuid();
@@ -400,7 +400,7 @@ public class VolunteerTrackingServiceTests
     }
 
     [HumansFact]
-    public async Task SetCampSetupAsync_rejects_offset_at_or_after_zero()
+    public async Task SetCampSetupAsync_OffsetAtOrAfterZero_IsRejected()
     {
         var es = MakeEvent(buildStartOffset: -5);
         var userId = Guid.NewGuid();
@@ -414,7 +414,7 @@ public class VolunteerTrackingServiceTests
     }
 
     [HumansFact]
-    public async Task SetCampSetupAsync_rejects_date_before_first_signup()
+    public async Task SetCampSetupAsync_DateBeforeFirstSignup_IsRejected()
     {
         var es = MakeEvent(buildStartOffset: -10);
         var userId = Guid.NewGuid();
@@ -434,7 +434,7 @@ public class VolunteerTrackingServiceTests
     }
 
     [HumansFact]
-    public async Task SetCampSetupAsync_succeeds_inside_build_window()
+    public async Task SetCampSetupAsync_InsideBuildWindow_Succeeds()
     {
         var es = MakeEvent(buildStartOffset: -10);
         var userId = Guid.NewGuid();
@@ -462,7 +462,7 @@ public class VolunteerTrackingServiceTests
     }
 
     [HumansFact]
-    public async Task ClearCampSetupAsync_nulls_camp_setup_fields()
+    public async Task ClearCampSetupAsync_Clear_NullsSetupFields()
     {
         var es = MakeEvent(buildStartOffset: -10);
         var userId = Guid.NewGuid();
@@ -497,7 +497,7 @@ public class VolunteerTrackingServiceTests
     }
 
     [HumansFact]
-    public async Task SetDayOffAsync_rejects_offset_outside_build_window()
+    public async Task SetDayOffAsync_OffsetOutsideBuildWindow_IsRejected()
     {
         var es = MakeEvent(buildStartOffset: -5);
         var sut = BuildSut(es);
@@ -514,7 +514,7 @@ public class VolunteerTrackingServiceTests
     }
 
     [HumansFact]
-    public async Task SetDayOffAsync_rejects_when_user_has_confirmed_signup_that_day()
+    public async Task SetDayOffAsync_ConfirmedSignupThatDay_IsRejected()
     {
         var es = MakeEvent(buildStartOffset: -5);
         var userId = Guid.NewGuid();
@@ -532,7 +532,7 @@ public class VolunteerTrackingServiceTests
     }
 
     [HumansFact]
-    public async Task SetDayOffAsync_rejects_when_user_has_pending_signup_that_day()
+    public async Task SetDayOffAsync_PendingSignupThatDay_IsRejected()
     {
         var es = MakeEvent(buildStartOffset: -5);
         var userId = Guid.NewGuid();
@@ -550,7 +550,7 @@ public class VolunteerTrackingServiceTests
     }
 
     [HumansFact]
-    public async Task SetDayOffAsync_succeeds_when_day_is_a_gap()
+    public async Task SetDayOffAsync_GapDay_Succeeds()
     {
         var es = MakeEvent(buildStartOffset: -5);
         var userId = Guid.NewGuid();
@@ -572,7 +572,7 @@ public class VolunteerTrackingServiceTests
     }
 
     [HumansFact]
-    public async Task SetDayOffAsync_replaces_reason_when_called_twice_on_same_day()
+    public async Task SetDayOffAsync_SameDayTwice_ReplacesReason()
     {
         var es = MakeEvent(buildStartOffset: -5);
         var userId = Guid.NewGuid();
@@ -592,7 +592,7 @@ public class VolunteerTrackingServiceTests
     [Xunit.InlineData(199, "x", 200)]
     [Xunit.InlineData(199, "😀", 199)]
     [Xunit.InlineData(198, "😀", 200)]
-    public async Task SetDayOffAsync_trims_reason_and_truncates_at_200_chars(int prefixLength, string boundary, int expectedLength)
+    public async Task SetDayOffAsync_LongReason_TruncatedAt200Chars(int prefixLength, string boundary, int expectedLength)
     {
         var es = MakeEvent(buildStartOffset: -5);
         var trackingRepo = new FakeVolunteerTrackingRepository(
@@ -614,7 +614,7 @@ public class VolunteerTrackingServiceTests
     }
 
     [HumansFact]
-    public async Task SetDayOffAsync_does_not_validate_camp_setup_overlap()
+    public async Task SetDayOffAsync_CampSetupOverlap_IsAllowed()
     {
         // Camp-setup overlap is not validated server-side: the UI hides the action on
         // CampSetup cells, and moving camp-setup auto-cleans the days off it covers.
@@ -638,7 +638,7 @@ public class VolunteerTrackingServiceTests
     }
 
     [HumansFact]
-    public async Task ClearDayOffAsync_removes_entry_when_present()
+    public async Task ClearDayOffAsync_EntryPresent_IsRemoved()
     {
         var es = MakeEvent(buildStartOffset: -5);
         var userId = Guid.NewGuid();
@@ -664,7 +664,7 @@ public class VolunteerTrackingServiceTests
     }
 
     [HumansFact]
-    public async Task ClearDayOffAsync_is_idempotent_when_entry_absent()
+    public async Task ClearDayOffAsync_EntryAbsent_IsNoop()
     {
         var es = MakeEvent(buildStartOffset: -5);
         var trackingRepo = new FakeVolunteerTrackingRepository(
@@ -678,14 +678,14 @@ public class VolunteerTrackingServiceTests
     }
 
     [HumansFact]
-    public async Task GetUserBuildStrip_returns_null_when_no_active_event()
+    public async Task GetUserBuildStrip_NoActiveEvent_ReturnsNull()
     {
         var sut = BuildSut(activeEvent: null);
         (await sut.GetUserBuildStripAsync(Guid.NewGuid(), Xunit.TestContext.Current.CancellationToken)).Should().BeNull();
     }
 
     [HumansFact]
-    public async Task GetUserBuildStrip_marks_declared_days_available()
+    public async Task GetUserBuildStrip_DeclaredDays_AreAvailable()
     {
         var es = MakeEvent(buildStartOffset: -3);          // offsets -3,-2,-1
         var userId = Guid.NewGuid();
@@ -706,7 +706,7 @@ public class VolunteerTrackingServiceTests
     }
 
     [HumansFact]
-    public async Task GetUserBuildStrip_reflects_signups_and_dayoffs()
+    public async Task GetUserBuildStrip_SignupsOrDayOffs_AreShown()
     {
         var es = MakeEvent(buildStartOffset: -3);
         var userId = Guid.NewGuid();
@@ -720,7 +720,7 @@ public class VolunteerTrackingServiceTests
     }
 
     [HumansFact]
-    public async Task GetUserBuildStrip_returns_row_for_user_with_no_availability_row()
+    public async Task GetUserBuildStrip_NoAvailabilityRow_ReturnsRow()
     {
         var es = MakeEvent(buildStartOffset: -2);
         var userId = Guid.NewGuid();
@@ -733,7 +733,7 @@ public class VolunteerTrackingServiceTests
     }
 
     [HumansFact]
-    public async Task MainCohort_dayoff_renders_DayOff_state_and_does_not_count_as_gap()
+    public async Task MainCohort_DayOff_IsNotGap()
     {
         var es = MakeEvent(buildStartOffset: -5);
         var userId = Guid.NewGuid();
@@ -766,7 +766,7 @@ public class VolunteerTrackingServiceTests
     }
 
     [HumansFact]
-    public async Task SetCampSetupAsync_auto_clears_dayoffs_now_inside_span()
+    public async Task SetCampSetupAsync_DayOffsInsideSpan_AreCleared()
     {
         var es = MakeEvent(buildStartOffset: -10);
         var userId = Guid.NewGuid();
@@ -799,7 +799,7 @@ public class VolunteerTrackingServiceTests
     }
 
     [HumansFact]
-    public async Task SetCampSetupAsync_returns_empty_AutoClearedDayOffs_when_no_overlap()
+    public async Task SetCampSetupAsync_NoOverlap_ClearsNoDayOffs()
     {
         var es = MakeEvent(buildStartOffset: -10);
         var userId = Guid.NewGuid();
@@ -826,7 +826,7 @@ public class VolunteerTrackingServiceTests
     }
 
     [HumansFact]
-    public async Task SetCampSetupAsync_audits_the_change_and_each_auto_cleared_day_off()
+    public async Task SetCampSetupAsync_Change_IsAuditedWithClearedDays()
     {
         var es = MakeEvent(buildStartOffset: -10);
         var userId = Guid.NewGuid();
@@ -856,7 +856,7 @@ public class VolunteerTrackingServiceTests
     }
 
     [HumansFact]
-    public async Task SetCampSetupAsync_rejected_writes_no_audit()
+    public async Task SetCampSetupAsync_Rejected_WritesNoAudit()
     {
         var es = MakeEvent(buildStartOffset: -10);
         var audit = Substitute.For<IAuditLogService>();
@@ -870,7 +870,7 @@ public class VolunteerTrackingServiceTests
     }
 
     [HumansFact]
-    public async Task ClearCampSetupAsync_audits_the_clear()
+    public async Task ClearCampSetupAsync_Clear_IsAudited()
     {
         var es = MakeEvent(buildStartOffset: -10);
         var userId = Guid.NewGuid();
@@ -888,7 +888,7 @@ public class VolunteerTrackingServiceTests
     [HumansTheory]
     [Xunit.InlineData("doctor", "doctor")]
     [Xunit.InlineData("  ", "—")]
-    public async Task SetDayOffAsync_audits_a_marked_day_off(string reason, string auditedReason)
+    public async Task SetDayOffAsync_MarkedDay_IsAudited(string reason, string auditedReason)
     {
         var es = MakeEvent(buildStartOffset: -5);
         var userId = Guid.NewGuid();
@@ -904,7 +904,7 @@ public class VolunteerTrackingServiceTests
     }
 
     [HumansFact]
-    public async Task SetDayOffAsync_rejected_writes_no_audit()
+    public async Task SetDayOffAsync_Rejected_WritesNoAudit()
     {
         var es = MakeEvent(buildStartOffset: -5);
         var audit = Substitute.For<IAuditLogService>();
@@ -920,7 +920,7 @@ public class VolunteerTrackingServiceTests
     [HumansTheory]
     [Xunit.InlineData(true)]
     [Xunit.InlineData(false)]
-    public async Task ClearDayOffAsync_audits_only_a_removed_entry(bool present)
+    public async Task ClearDayOffAsync_RemovedEntry_IsAudited(bool present)
     {
         var es = MakeEvent(buildStartOffset: -5);
         var userId = Guid.NewGuid();

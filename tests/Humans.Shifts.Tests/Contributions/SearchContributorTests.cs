@@ -13,7 +13,7 @@ namespace Humans.Shifts.Tests.Contributions;
 public sealed class SearchContributorTests
 {
     [HumansFact]
-    public async Task Category_SearchesWithAnUnboundedCap_AndPassesKeySortKeyAndScoreThrough()
+    public async Task Category_Search_PassesKeyWithScoreThrough()
     {
         var id = Guid.NewGuid();
         var service = Substitute.For<IShiftService>();

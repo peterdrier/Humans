@@ -150,7 +150,7 @@ public sealed class ShiftSummaryServiceTests : ShiftsTestHarness
     }
 
     [HumansFact]
-    public async Task BuildSummaryAsync_Global_FlatTableHasEveryConfirmedHumanWithCamp()
+    public async Task BuildSummaryAsync_Global_ListsEveryConfirmedHuman()
     {
         var summary = await _service.BuildSummaryAsync(_burn, ct: Xunit.TestContext.Current.CancellationToken);
 
@@ -177,7 +177,7 @@ public sealed class ShiftSummaryServiceTests : ShiftsTestHarness
     }
 
     [HumansFact]
-    public async Task BuildSummaryAsync_AllDayShiftCountsWindowHours_OtherEventIgnored()
+    public async Task BuildSummaryAsync_AllDayShift_CountsWindowHours()
     {
         var allDay = SeedShift(_rWater, Duration.FromHours(24));
         ShiftsDb.Shifts.Local.Single(s => s.Id == allDay).IsAllDay = true;
@@ -208,7 +208,7 @@ public sealed class ShiftSummaryServiceTests : ShiftsTestHarness
     }
 
     [HumansFact]
-    public async Task BuildSummaryAsync_UsesOneEventRosterForHumansAndCampRows()
+    public async Task BuildSummaryAsync_Rows_ShareOneEventRoster()
     {
         var otherEventId = Guid.NewGuid();
         var current = MakeSeason(_fuego, "fuego", "Current event camp") with
@@ -272,7 +272,7 @@ public sealed class ShiftSummaryServiceTests : ShiftsTestHarness
     }
 
     [HumansFact]
-    public async Task BuildSummaryAsync_TeamScope_RestrictsFlatTableToTeamSetButKeepsFullRoster()
+    public async Task BuildSummaryAsync_TeamScope_LimitsTableToTeams()
     {
         var summary = await _service.BuildSummaryAsync(_burn, teamSlug: "power", ct: Xunit.TestContext.Current.CancellationToken);
 

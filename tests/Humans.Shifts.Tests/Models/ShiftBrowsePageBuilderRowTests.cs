@@ -36,7 +36,7 @@ public class ShiftBrowsePageBuilderRowTests
         IsShiftBrowsingOpen: true);
 
     [HumansFact]
-    public async Task BuildRowAsync_ReturnsMappedItem_AndCallerSignupStatus()
+    public async Task BuildRowAsync_Shift_ReturnsItemWithSignupStatus()
     {
         var shiftId = Guid.NewGuid();
         var userId = Guid.NewGuid();

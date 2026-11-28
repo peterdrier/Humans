@@ -109,7 +109,7 @@ public sealed class ShiftSignupServiceCoverageGapTests : ShiftsTestHarness
     }
 
     [HumansFact]
-    public async Task CoordinatorNotices_GroupLanguagesAndContinueAfterDispatchFailure()
+    public async Task CoordinatorNotices_DispatchFailure_OthersStillSent()
     {
         var (_, rota, _, userA, _) = await SeedScenarioAsync(2, 5);
         rota.Name = "Rota";
@@ -153,7 +153,7 @@ public sealed class ShiftSignupServiceCoverageGapTests : ShiftsTestHarness
     }
 
     [HumansFact]
-    public async Task BailAsync_DropsConfirmedBelowMinVolunteers_SendsShiftCoverageGapNotification()
+    public async Task BailAsync_DropsBelowMinimum_SendsCoverageGapNotice()
     {
         // MinVolunteers=2 with exactly 2 Confirmed: either bail drops it below min.
         var (_, rota, _, userA, _) = await SeedScenarioAsync(
@@ -225,7 +225,7 @@ public sealed class ShiftSignupServiceCoverageGapTests : ShiftsTestHarness
     }
 
     [HumansFact]
-    public async Task BailAsync_LeavesConfirmedAtOrAboveMinVolunteers_DoesNotSendShiftCoverageGap()
+    public async Task BailAsync_StaysAtMinimum_SendsNoNotice()
     {
         // MinVolunteers=1 with 2 Confirmed: one bail leaves it at min, so no coverage gap.
         var (_, rota, _, userA, _) = await SeedScenarioAsync(
@@ -256,7 +256,7 @@ public sealed class ShiftSignupServiceCoverageGapTests : ShiftsTestHarness
     [HumansTheory]
     [Xunit.InlineData(false)]
     [Xunit.InlineData(true)]
-    public async Task RemoveAsync_DropsConfirmedBelowMinVolunteers_SendsShiftCoverageGapNotification(bool longName)
+    public async Task RemoveAsync_DropsBelowMinimum_SendsCoverageGapNotice(bool longName)
     {
         // MinVolunteers=2 with exactly 2 Confirmed: either removal drops it below min.
         var (_, rota, _, userA, _) = await SeedScenarioAsync(

@@ -40,7 +40,7 @@ public sealed class ProfileShiftsViewComponentTests
     [Xunit.InlineData(ProfileCardViewMode.Admin, false, false)]
     [Xunit.InlineData(ProfileCardViewMode.Admin, true, true)]
     [Xunit.InlineData(ProfileCardViewMode.Public, false, true)]
-    public async Task Shows_only_to_a_coordinator_or_privileged_approver_on_someone_elses_profile(
+    public async Task Invoke_OtherViewers_SeeNothing(
         ProfileCardViewMode viewMode, bool coordinator, bool shown)
     {
         if (coordinator)
@@ -55,7 +55,7 @@ public sealed class ProfileShiftsViewComponentTests
     }
 
     [HumansFact]
-    public async Task Orders_no_shows_newest_review_first_and_preserves_cancellation()
+    public async Task Invoke_NoShows_NewestReviewFirst()
     {
         using var source = new CancellationTokenSource();
         var reviewed = Instant.FromUtc(2026, 3, 1, 12, 0);

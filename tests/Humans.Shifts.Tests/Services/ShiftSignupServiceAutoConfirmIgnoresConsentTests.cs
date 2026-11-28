@@ -90,7 +90,7 @@ public sealed class ShiftSignupServiceAutoConfirmIgnoresConsentTests : ShiftsTes
     }
 
     [HumansFact]
-    public async Task SignUp_PublicRota_UserMissingConsents_ReturnsConfirmed()
+    public async Task SignUp_MissingConsents_ReturnsConfirmed()
     {
         // Shifts never reads the Consent Coordinator review (it is Consent's, and Shifts does not
         // reference it), so the review's approval cannot change this outcome either way.
@@ -105,7 +105,7 @@ public sealed class ShiftSignupServiceAutoConfirmIgnoresConsentTests : ShiftsTes
     }
 
     [HumansFact]
-    public async Task SignUp_RequireApprovalRota_UserMissingConsents_StaysPending()
+    public async Task SignUp_ApprovalRotaMissingConsents_StaysPending()
     {
         var (_, shift) = SeedShiftScenario(SignupPolicy.RequireApproval);
         await SaveAllAsync(TestContext.Current.CancellationToken);
@@ -117,7 +117,7 @@ public sealed class ShiftSignupServiceAutoConfirmIgnoresConsentTests : ShiftsTes
     }
 
     [HumansFact]
-    public async Task SignUpRange_PublicBuildRota_UserMissingConsents_AllBlockShiftsConfirmed()
+    public async Task SignUpRange_MissingConsents_ConfirmsAllShifts()
     {
         var (rota, _) = SeedShiftScenario(SignupPolicy.Public);
         rota.Period = RotaPeriod.Build;

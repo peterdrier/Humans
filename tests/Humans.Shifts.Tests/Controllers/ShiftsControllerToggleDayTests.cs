@@ -126,7 +126,7 @@ public class ShiftsControllerToggleDayTests
     }
 
     [HumansFact]
-    public async Task SaveAvailability_without_an_active_event_returns_the_localized_error_without_writing()
+    public async Task SaveAvailability_NoActiveEvent_ReturnsLocalizedError()
     {
         var userId = Guid.NewGuid();
         var sut = BuildSut(userId, MakeUserInfo(userId, "Alice", "Alice", "Example"));
@@ -249,7 +249,7 @@ public class ShiftsControllerToggleDayTests
             Arg.Any<CancellationToken>()).Returns(outcome);
 
     [HumansFact]
-    public async Task ToggleDay_WhenNotSignedUp_SignsUp_AndSetsSignedUpHeaderTrue()
+    public async Task ToggleDay_NotSignedUp_SignsUp()
     {
         var userId = Guid.NewGuid();
         var shiftId = Guid.NewGuid();
@@ -268,7 +268,7 @@ public class ShiftsControllerToggleDayTests
     }
 
     [HumansFact]
-    public async Task ToggleDay_WhenSignedUp_Bails_AndSetsSignedUpHeaderFalse()
+    public async Task ToggleDay_SignedUp_Bails()
     {
         var userId = Guid.NewGuid();
         var shiftId = Guid.NewGuid();
@@ -286,7 +286,7 @@ public class ShiftsControllerToggleDayTests
     }
 
     [HumansFact]
-    public async Task ToggleDay_OnOverlapFail_SetsWarningToast_AndDoesNotSignUp()
+    public async Task ToggleDay_Overlap_SetsWarningToast()
     {
         var userId = Guid.NewGuid();
         var shiftId = Guid.NewGuid();
@@ -345,7 +345,7 @@ public class ShiftsControllerToggleDayTests
     }
 
     [HumansFact]
-    public async Task ToggleDay_without_an_active_event_redirects_to_browse_without_mutating_signups()
+    public async Task ToggleDay_NoActiveEvent_RedirectsToBrowse()
     {
         var userId = Guid.NewGuid();
         var ctrl = BuildSut(userId, MakeUserInfo(userId, "Alice", "Alice", "Example"));
@@ -360,7 +360,7 @@ public class ShiftsControllerToggleDayTests
     }
 
     [HumansFact]
-    public async Task ToggleDay_WithoutDietaryInfo_SignsUp_WithoutRedirect()
+    public async Task ToggleDay_NoDietaryInfo_SignsUpWithoutRedirect()
     {
         // Dietary info is opt-in and never blocks a signup; this member has no dietary answer.
         var userId = Guid.NewGuid();
@@ -379,7 +379,7 @@ public class ShiftsControllerToggleDayTests
     }
 
     [HumansFact]
-    public async Task ToggleDay_WhenNameMissing_Returns204_WithRedirectHeader()
+    public async Task ToggleDay_NameMissing_Returns204WithRedirect()
     {
         var userId = Guid.NewGuid();
         var shiftId = Guid.NewGuid();

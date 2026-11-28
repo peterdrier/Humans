@@ -258,7 +258,7 @@ public class FinanceControllerTests
     }
 
     [HumansFact]
-    public async Task BookSepaTransfer_RunsOffTheRequest_RefusesASecondStart_AndKeepsTheOutcome()
+    public async Task BookSepaTransfer_SecondStart_IsRefused()
     {
         var release = new TaskCompletionSource<SepaBookingResult>();
         _connector.BookSepaTransferAsync(Arg.Any<Guid>(), Arg.Any<string>(), Arg.Any<Guid>(), Arg.Any<int>())
@@ -370,7 +370,7 @@ public class FinanceControllerTests
     [InlineData(nameof(FinanceController.BookSepaFile), "bankMovementId", true)]
     [InlineData(nameof(FinanceController.BindCreditor), "supplierAccountNum", true)]
     [InlineData(nameof(FinanceController.BindCreditor), "supplierAccountNum", false)]
-    public async Task Mutation_rejects_missing_identifiers_and_malformed_binding_before_writes(
+    public async Task Mutation_MissingIdOrBadBinding_IsRejected(
         string action, string invalidField, bool omitted)
     {
         var controller = MakeControllerWithHttpContext(Ana);
@@ -438,7 +438,7 @@ public class FinanceControllerTests
     [InlineData("addAll", false)]
     [InlineData("", false)]
     [InlineData("", true)]
-    public async Task ProvisionHoldedAccounts_requires_posted_block_and_batch_choice(string omitted, bool addAll)
+    public async Task ProvisionHoldedAccounts_MissingChoices_AreRejected(string omitted, bool addAll)
     {
         var actorId = Guid.NewGuid();
         var controller = MakeControllerWithHttpContext(actorId);
@@ -548,7 +548,7 @@ public class FinanceControllerTests
     }
 
     [HumansFact]
-    public async Task Creditors_UnrecognisedSortAndDir_FallBackToAccountAscending()
+    public async Task Creditors_UnknownSort_UsesAccountAscending()
     {
         // sort and dir arrive on the query string; anything unrecognised must not reach the switch.
         Accounts([Row(40000007, "Zoe", -10m), Row(40000002, "Ada", -30m)]);
@@ -593,7 +593,7 @@ public class FinanceControllerTests
     }
 
     [HumansFact]
-    public async Task Creditors_SortByOpenDocs_OrdersByTheCount_WithUncountedRowsFirstAscending()
+    public async Task Creditors_SortByOpenDocs_OrdersByCount()
     {
         // Ascending puts the "—" rows (no count) ahead of 0, so descending — the view a treasurer
         // picks the next ~10-document test member from — puts the 100+ accounts on top.
@@ -606,7 +606,7 @@ public class FinanceControllerTests
     }
 
     [HumansFact]
-    public async Task Creditors_TiedOnTheSortKey_FallsBackToAccountNumber()
+    public async Task Creditors_SortKeyTie_UsesAccountNumber()
     {
         Accounts([Row(40000009, "same", -1m), Row(40000003, "same", -1m), Row(40000006, "same", -1m)]);
 
@@ -632,7 +632,7 @@ public class FinanceControllerTests
     [HumansTheory]
     [InlineData(3, 3)]
     [InlineData(null, null)]
-    public async Task Creditors_CarriesTheReconciliationProblems_NullWhenItCannotBeComputed(int? problems, int? expected)
+    public async Task Creditors_ReconProblems_NullWhenNotComputable(int? problems, int? expected)
     {
         Accounts([]);
         _finance.GetExpenseReconAsync(null, Arg.Any<CancellationToken>()).Returns(problems is { } n
@@ -705,7 +705,7 @@ public class FinanceControllerTests
     [InlineData("-5.00")]
     [InlineData("12,34")]
     [InlineData("1,234.56")]
-    public async Task GenerateSepa_UnparseableOrNonPositiveCap_RefusesWithoutCallingTheService(string cap)
+    public async Task GenerateSepa_BadCap_IsRefused(string cap)
     {
         var controller = MakeControllerWithHttpContext(Ana);
         _connector.GenerateSepaPayoutAsync(
@@ -765,7 +765,7 @@ public class FinanceControllerTests
     [HumansTheory]
     [InlineData("12,34")]
     [InlineData("1,234.56")]
-    public async Task GenerateSepa_GroupedAmount_RemainsInTheBatchAsAnInvalidAmount(string amount)
+    public async Task GenerateSepa_GroupedAmount_StaysAsInvalidAmount(string amount)
     {
         var controller = MakeControllerWithHttpContext(Ana);
         _connector.GenerateSepaPayoutAsync(
@@ -784,7 +784,7 @@ public class FinanceControllerTests
     }
 
     [HumansFact]
-    public async Task GenerateSepa_ValidCap_ParsesInvariantlyAndPassesItToTheService()
+    public async Task GenerateSepa_ValidCap_PassedToService()
     {
         var controller = MakeControllerWithHttpContext(Ana);
         _connector.GenerateSepaPayoutAsync(
@@ -830,7 +830,7 @@ public class FinanceControllerTests
     }
 
     [HumansFact]
-    public async Task CreditorStatement_OrdersLinesNewestFirstThenByEntryThenLine()
+    public async Task CreditorStatement_Lines_OrderedNewestFirst()
     {
         var day1 = Instant.FromUtc(2026, 3, 1, 0, 0);
         var day2 = Instant.FromUtc(2026, 3, 2, 0, 0);
@@ -874,7 +874,7 @@ public class FinanceControllerTests
     }
 
     [HumansFact]
-    public async Task CreditorStatement_ListsTheMembersUnbookedReportsTheMatchCardCounts()
+    public async Task CreditorStatement_UnbookedReports_AreListed()
     {
         _finance.GetCreditorLedgerAsync(40000002, Arg.Any<CancellationToken>())
             .Returns(new CreditorLedger(40000002, 0m, 0m, []));
@@ -926,7 +926,7 @@ public class FinanceControllerTests
     }
 
     [HumansFact]
-    public async Task CreditorStatement_PaymentLines_ShowTheMoneyMovement_NotThePurchaseText()
+    public async Task CreditorStatement_PaymentLines_ShowMoneyMovement()
     {
         var day = Instant.FromUtc(2026, 3, 1, 0, 0);
         _finance.GetCreditorLedgerAsync(40000002, Arg.Any<CancellationToken>()).Returns(
@@ -969,7 +969,7 @@ public class FinanceControllerTests
     }
 
     [HumansFact]
-    public async Task CreditorStatement_ListsOnlyTheSepaTransfersToTheAccount_NewestFirst()
+    public async Task CreditorStatement_SepaTransfers_OnlyThisAccountNewestFirst()
     {
         _finance.GetCreditorLedgerAsync(40000002, Arg.Any<CancellationToken>())
             .Returns(new CreditorLedger(40000002, 0m, 0m, []));
@@ -986,7 +986,7 @@ public class FinanceControllerTests
     }
 
     [HumansFact]
-    public async Task CreditorStatement_ListsOnlyTheExpenseReportsBookedToTheAccount_NewestApprovalFirst()
+    public async Task CreditorStatement_ExpenseReports_OnlyThisAccountNewestFirst()
     {
         _finance.GetCreditorLedgerAsync(40000002, Arg.Any<CancellationToken>())
             .Returns(new CreditorLedger(40000002, 0m, 0m, []));
@@ -1024,7 +1024,7 @@ public class FinanceControllerTests
     };
 
     [HumansFact]
-    public async Task Sepa_GroupsByFileNewestFirst_AndOrdersTransfersByAccount()
+    public async Task Sepa_Files_GroupedNewestFirst()
     {
         var older = Guid.NewGuid();
         var newer = Guid.NewGuid();
@@ -1097,7 +1097,7 @@ public class FinanceControllerTests
     }
 
     [HumansFact]
-    public async Task Sepa_BankFeedUnreadable_RendersTheBannerAndStillListsFiles()
+    public async Task Sepa_BankFeedUnreadable_StillListsFiles()
     {
         _connector.GetSepaPayoutsAsync(Arg.Any<int>(), Arg.Any<CancellationToken>()).Returns((
             new List<SepaPayoutTransferRow> { Transfer(Guid.NewGuid(), "f.xml", Stamp(1), Ana, Ana, 40000002) },
@@ -1126,7 +1126,7 @@ public class FinanceControllerTests
     [HumansTheory]
     [InlineData(true)]
     [InlineData(false)]
-    public async Task WithdrawSepaTransfer_PassesTheActorThrough_AndReportsTheOutcome(bool succeeded)
+    public async Task WithdrawSepaTransfer_Actor_ReportsOutcome(bool succeeded)
     {
         var transferId = Guid.NewGuid();
         _connector.WithdrawSepaTransferAsync(transferId, Ana, Arg.Any<CancellationToken>())
@@ -1143,7 +1143,7 @@ public class FinanceControllerTests
     }
 
     [HumansFact]
-    public async Task CancelSepaFile_PassesTheActorThrough_AndReportsTheOutcome()
+    public async Task CancelSepaFile_Actor_ReportsOutcome()
     {
         var fileId = Guid.NewGuid();
         _connector.CancelSepaFileAsync(fileId, Ana, Arg.Any<CancellationToken>())
@@ -1159,7 +1159,7 @@ public class FinanceControllerTests
     }
 
     [HumansFact]
-    public async Task WithdrawSepaTransfer_WithoutAnActor_ChallengesAndTouchesNothing()
+    public async Task WithdrawSepaTransfer_NoActor_Challenges()
     {
         var controller = MakeControllerWithHttpContext(Ana);
         controller.HttpContext.User = new ClaimsPrincipal(new ClaimsIdentity());
@@ -1206,7 +1206,7 @@ public class FinanceControllerTests
     }
 
     [HumansFact]
-    public async Task ApplyHoldedDuplicates_RunsAsTheActor_AndRendersTheResultView()
+    public async Task ApplyHoldedDuplicates_Actor_RendersResultView()
     {
         var applied = new HoldedDuplicateApplyResult([], null, null);
         _connector.RemoveHoldedDuplicatesAsync(Ana).Returns(applied);
@@ -1220,7 +1220,7 @@ public class FinanceControllerTests
     }
 
     [HumansFact]
-    public async Task ApplyHoldedDuplicates_WithoutAnActor_ChallengesAndDeletesNothing()
+    public async Task ApplyHoldedDuplicates_NoActor_Challenges()
     {
         var controller = MakeControllerWithHttpContext(Ana);
         controller.HttpContext.User = new ClaimsPrincipal(new ClaimsIdentity());
@@ -1232,7 +1232,7 @@ public class FinanceControllerTests
     }
 
     [HumansFact]
-    public async Task BookSepaFile_PassesTheFileAndMovementIdThrough()
+    public async Task BookSepaFile_Post_PassesFileWithMovementId()
     {
         var fileId = Guid.NewGuid();
         _connector.BookSepaFileAsync(fileId, "mov-batch", Ana)
@@ -1245,7 +1245,7 @@ public class FinanceControllerTests
     }
 
     [HumansFact]
-    public async Task BookSepaFileMatches_PassesTheFileIdAndToleranceThrough()
+    public async Task BookSepaFileMatches_Post_PassesFileIdWithTolerance()
     {
         var fileId = Guid.NewGuid();
         _connector.BookSepaFileMatchesAsync(fileId, Ana, 7)
@@ -1258,7 +1258,7 @@ public class FinanceControllerTests
     }
 
     [HumansFact]
-    public async Task Sepa_PassesThePostedToleranceToTheServiceAndThePage()
+    public async Task Sepa_PostedTolerance_ReachesServiceWithPage()
     {
         _connector.GetSepaPayoutsAsync(Arg.Any<int>(), Arg.Any<CancellationToken>())
             .Returns((new List<SepaPayoutTransferRow>(), null, new List<SepaBankMovementVm>(), null, null));
@@ -1298,7 +1298,7 @@ public class FinanceControllerTests
     [HumansTheory]
     [InlineData(false)]
     [InlineData(true)]
-    public async Task Sepa_RendersRecordedActorIdsAndIdentifiesAutomaticBookings(bool automatic)
+    public async Task Sepa_AutomaticBookings_AreIdentified(bool automatic)
     {
         var generatedBy = Guid.NewGuid();
         var bookedBy = Guid.NewGuid();
@@ -1334,7 +1334,7 @@ public class FinanceControllerTests
     }
 
     [HumansFact]
-    public async Task Sepa_MarksAHalfBookedTransferApartFromAnUnbookedOne()
+    public async Task Sepa_HalfBookedTransfer_IsMarkedApart()
     {
         var generatedBy = Guid.NewGuid();
         var fileId = Guid.NewGuid();
@@ -1367,7 +1367,7 @@ public class FinanceControllerTests
     }
 
     [HumansFact]
-    public async Task ExpenseRecon_RendersCurrentHumansForMembersAndLines_WithTheirLedgerEntry()
+    public async Task ExpenseRecon_Page_RendersCurrentHumans()
     {
         using var culture = new CultureScope("en");
         const string name = "Current member <script>&";

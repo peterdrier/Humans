@@ -35,7 +35,7 @@ public class ShiftUrgencyTests
             ShiftManagementService.ToShiftInfo(shift), shift.Rota?.Priority ?? ShiftPriority.Normal, confirmedCount, eventSettings, clock);
 
     [HumansFact]
-    public void CalculateScore_NormalPriority_5Remaining_4h_ReturnsExpected()
+    public void CalculateScore_NormalPriority_ReturnsExpected()
     {
         // Base: remaining=5, priority=Normal(1), duration=4h, understaffed=false(1) → 20
         // Proximity boost ≈ 1.08 (shift is ~122 days out) → ~21.6
@@ -48,7 +48,7 @@ public class ShiftUrgencyTests
     }
 
     [HumansFact]
-    public void CalculateScore_EssentialPriority_2Remaining_8h_Understaffed_ReturnsExpected()
+    public void CalculateScore_EssentialUnderstaffed_ReturnsExpected()
     {
         // Base: remaining=2, priority=Essential(6), duration=8h, understaffed=true(2) → 192
         // Proximity boost ≈ 1.08 → ~207
@@ -63,7 +63,7 @@ public class ShiftUrgencyTests
     [HumansTheory]
     [Xunit.InlineData(0)]
     [Xunit.InlineData(24)]
-    public void CalculateScore_AllDay_UsesWorkWindowInsteadOfStoredDuration(double storedHours)
+    public void CalculateScore_AllDay_UsesWorkWindow(double storedHours)
     {
         var allDay = MakeShift(ShiftPriority.Normal, minVol: 2, maxVol: 7, durationHours: storedHours);
         allDay.IsAllDay = true;
@@ -88,7 +88,7 @@ public class ShiftUrgencyTests
     }
 
     [HumansFact]
-    public void CalculateScore_ImminentShift_RanksHigherThanDistantWithMoreSlots()
+    public void CalculateScore_ImminentShift_OutranksDistantOne()
     {
         // A shift tomorrow with 5 empty slots should outrank a shift 30 days out with 20 slots
         var tomorrowEvent = MakeCalendar(new LocalDate(2026, 3, 2), "UTC");
@@ -106,7 +106,7 @@ public class ShiftUrgencyTests
     }
 
     [HumansFact]
-    public void ApplyPeriodDiverseLimit_EnsuresEventAndStrikeRepresented()
+    public void ApplyPeriodDiverseLimit_OverLimit_KeepsEachPeriod()
     {
         // 3 build shifts with highest scores, 1 event, 1 strike
         var es = UrgencyBurn();
@@ -149,7 +149,7 @@ public class ShiftUrgencyTests
     }
 
     [HumansFact]
-    public void ApplyPeriodDiverseLimit_ReturnsTheListUntouched_WhenCountEqualsLimit()
+    public void ApplyPeriodDiverseLimit_CountEqualsLimit_ReturnsListUntouched()
     {
         var ranked = new List<UrgentShiftInfo>
         {

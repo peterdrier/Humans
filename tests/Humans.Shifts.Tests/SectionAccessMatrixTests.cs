@@ -10,7 +10,7 @@ public class SectionAccessMatrixTests
         ((ISectionAccessMatrix)new Section()).AccessMatrices.Should().ContainSingle().Subject;
 
     [HumansFact]
-    public void Contributes_the_Shifts_matrix_under_the_key_the_page_calls_it_with()
+    public void AccessMatrix_Key_MatchesPageKey()
     {
         var matrix = Matrix();
 
@@ -21,7 +21,7 @@ public class SectionAccessMatrixTests
     }
 
     [HumansFact]
-    public void Pins_every_feature_row()
+    public void AccessMatrix_MatchesFeatureRowPin()
     {
         Matrix().Features
             .Select(f => $"{f.Name}: {string.Join(", ", f.RoleAccess.Select(kv => $"{kv.Key}={kv.Value}"))}")

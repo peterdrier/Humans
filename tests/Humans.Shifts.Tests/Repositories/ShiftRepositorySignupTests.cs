@@ -29,7 +29,7 @@ public class ShiftRepositorySignupTests : IDisposable
     }
 
     [HumansFact]
-    public async Task GetActiveShiftIdsForUserAsync_FiltersToPendingAndConfirmed()
+    public async Task GetActiveShiftIdsForUserAsync_Signups_PendingOrConfirmed()
     {
         var userId = Guid.NewGuid();
         var active = Guid.NewGuid();
@@ -48,7 +48,7 @@ public class ShiftRepositorySignupTests : IDisposable
     }
 
     [HumansFact(Timeout = 10000)]
-    public async Task GetConfirmedSignupCountsByShiftAsync_ExcludesNonConfirmedAndMissingShifts()
+    public async Task GetConfirmedSignupCountsByShiftAsync_NonConfirmed_AreExcluded()
     {
         var shiftA = Guid.NewGuid();
         var shiftB = Guid.NewGuid();
@@ -73,7 +73,7 @@ public class ShiftRepositorySignupTests : IDisposable
     }
 
     [HumansFact]
-    public async Task AddRange_AndSaveChangesAsync_Persists()
+    public async Task AddRange_ThenSave_Persists()
     {
         var userId = Guid.NewGuid();
         var shiftId = Guid.NewGuid();
@@ -86,7 +86,7 @@ public class ShiftRepositorySignupTests : IDisposable
     }
 
     [HumansFact]
-    public async Task GetUserIdsForDayAsync_FiltersEventDayAndStatusScope()
+    public async Task GetUserIdsForDayAsync_Signups_FilteredByDayStatus()
     {
         var esId = Guid.NewGuid();
         var otherEs = Guid.NewGuid();

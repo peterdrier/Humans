@@ -46,7 +46,7 @@ public class ShiftSignupsBucketingTests
     private readonly Guid _userId = Guid.NewGuid();
 
     [HumansFact]
-    public void Missing_team_names_use_the_ui_language_in_both_member_views()
+    public void Bucketing_MissingTeamName_UsesUiLanguage()
     {
         const string expected = "Unknown";
         using var scope = new CultureScope(CultureCatalog.DefaultCultureCode);

@@ -94,7 +94,7 @@ public sealed class ShiftsEmailsTests
     }
 
     [HumansFact]
-    public void CoordinatorRotaMessage_renders_markdown_instead_of_html_encoded_plain_text()
+    public void CoordinatorRotaMessage_Body_RendersMarkdown()
     {
         var msg = Create().CoordinatorRotaMessage(
             RotaRequest("**Heads up** — early start\r\n\r\nSee you there"));
@@ -106,7 +106,7 @@ public sealed class ShiftsEmailsTests
     }
 
     [HumansFact]
-    public void CoordinatorTeamRotasMessage_renders_markdown_instead_of_html_encoded_plain_text()
+    public void CoordinatorTeamRotasMessage_Body_RendersMarkdown()
     {
         var msg = Create().CoordinatorTeamRotasMessage(new CoordinatorTeamRotasMessageRequest(
             RecipientUserId: Guid.NewGuid(),
@@ -125,7 +125,7 @@ public sealed class ShiftsEmailsTests
     }
 
     [HumansFact]
-    public void CoordinatorMessages_keep_html_encoding_out_of_plain_text_subjects()
+    public void CoordinatorMessages_Subject_IsNotHtmlEncoded()
     {
         var emails = TestShiftsEmails.Create(new Dictionary<string, string>(StringComparer.Ordinal)
         {
@@ -148,7 +148,7 @@ public sealed class ShiftsEmailsTests
     [HumansTheory]
     [InlineData(false)]
     [InlineData(true)]
-    public void Coordinator_templates_sort_absolute_starts_and_render_rota_local_times(bool teamMessage)
+    public void CoordinatorTemplates_Shifts_SortedWithLocalTimes(bool teamMessage)
     {
         var zone = DateTimeZoneProviders.Tzdb["Europe/Madrid"];
         IReadOnlyList<(ZonedDateTime Start, bool IsAllDay)> shifts =
@@ -181,7 +181,7 @@ public sealed class ShiftsEmailsTests
     }
 
     [HumansFact]
-    public void EveryTemplateHasAPreviewSample()
+    public void Templates_EachHasPreviewSample()
     {
         var emails = Create();
         var templates = TemplateNames(emails);
@@ -196,7 +196,7 @@ public sealed class ShiftsEmailsTests
     }
 
     [HumansFact]
-    public void PreviewSampleIdsAreUnique()
+    public void PreviewSampleIds_AreUnique()
     {
         var samples = new ShiftsEmailPreviews(Create())
             .Samples(new EmailPreviewPersona("en", "Sally Smith", "sally@example.com"));
@@ -206,7 +206,7 @@ public sealed class ShiftsEmailsTests
 
     /// <summary>
     /// Every template the builder can produce, found by reflection rather than listed, so a
-    /// template added without a gallery sample fails <see cref="EveryTemplateHasAPreviewSample"/>.
+    /// template added without a gallery sample fails <see cref="Templates_EachHasPreviewSample"/>.
     /// </summary>
     private static IReadOnlyList<string> TemplateNames(ShiftsEmails emails) =>
     [

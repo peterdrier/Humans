@@ -103,7 +103,7 @@ public sealed class VolunteerTrackingControllerExportXlsxTests
     }
 
     [HumansFact]
-    public async Task ExportXlsx_BuildPeriodWithSetupWeekSubPeriod_NarrowsRangeToSubPeriodBounds()
+    public async Task ExportXlsx_SetupWeekSubPeriod_NarrowsRange()
     {
         var exportService = Substitute.For<IVolunteerTrackingExportService>();
         VolunteerExportRequest? captured = null;

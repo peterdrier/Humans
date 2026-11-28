@@ -174,7 +174,7 @@ public sealed class RotaCoordinatorMessageServiceTests
     [HumansTheory]
     [Xunit.InlineData(false)]
     [Xunit.InlineData(true)]
-    public async Task Dispatch_AuditFailureAfterRequestingEmails_KeepsSuccessAndLogsCritical(bool teamWide)
+    public async Task Dispatch_AuditFailsAfterEmails_KeepsSuccess(bool teamWide)
     {
         var teamId = StubTeam();
         var es = StubEvent();
@@ -460,7 +460,7 @@ public sealed class RotaCoordinatorMessageServiceTests
     }
 
     [HumansFact]
-    public async Task SendRotaMessageAsync_SkipsRecipientWithNoEmail_DoesNotFail()
+    public async Task SendRotaMessageAsync_RecipientWithoutEmail_IsSkipped()
     {
         var rota = MakeRota();
         _repo.GetRotaAsync(rota.Id, RotaReadShape.View, Arg.Any<CancellationToken>()).Returns(rota);
@@ -501,7 +501,7 @@ public sealed class RotaCoordinatorMessageServiceTests
     [HumansTheory]
     [Xunit.InlineData(EnqueueFailure.Fault)]
     [Xunit.InlineData(EnqueueFailure.Cancellation)]
-    public async Task SendRotaMessageAsync_IsolatesPerRecipientFailures_AndStillAudits(EnqueueFailure failure)
+    public async Task SendRotaMessageAsync_OneRecipientFails_StillAudits(EnqueueFailure failure)
     {
         var rota = MakeRota();
         _repo.GetRotaAsync(rota.Id, RotaReadShape.View, Arg.Any<CancellationToken>()).Returns(rota);
@@ -736,7 +736,7 @@ public sealed class RotaCoordinatorMessageServiceTests
     }
 
     [HumansFact]
-    public async Task SendTeamRotasMessageAsync_GroupsShiftsByRota_InAlphabeticalRotaOrder()
+    public async Task SendTeamRotasMessageAsync_Shifts_GroupedByRotaAlphabetically()
     {
         var teamId = StubTeam();
         var es = StubEvent();
@@ -794,7 +794,7 @@ public sealed class RotaCoordinatorMessageServiceTests
     [Xunit.InlineData(119, "xyz", "x…")]
     [Xunit.InlineData(119, "😀tail", "…")]
     [Xunit.InlineData(118, "😀tail", "😀…")]
-    public async Task SendTeamRotasMessageAsync_WritesOneAuditEntry_OnTeamEntity(int prefixLength, string tail, string expectedTail)
+    public async Task SendTeamRotasMessageAsync_Send_WritesOneTeamAudit(int prefixLength, string tail, string expectedTail)
     {
         var prefix = new string('x', prefixLength);
         var message = prefix + tail;
@@ -862,7 +862,7 @@ public sealed class RotaCoordinatorMessageServiceTests
     }
 
     [HumansFact]
-    public async Task GetTeamRotasRecipientPreviewAsync_ReturnsDedupedNamesAndRotaCount()
+    public async Task GetTeamRotasRecipientPreviewAsync_Recipients_AreDeduped()
     {
         var teamId = StubTeam();
         var es = StubEvent();
@@ -915,7 +915,7 @@ public sealed class RotaCoordinatorMessageServiceTests
     }
 
     [HumansFact]
-    public async Task SendTeamRotasMessageAsync_ReachesPastRotas_WhenUpcomingOnlyCleared()
+    public async Task SendTeamRotasMessageAsync_UpcomingOnlyCleared_ReachesPastRotas()
     {
         var teamId = StubTeam();
         var es = StubEvent();
@@ -974,7 +974,7 @@ public sealed class RotaCoordinatorMessageServiceTests
     }
 
     [HumansFact]
-    public async Task GetTeamRotasRecipientPreviewAsync_IgnoresPeriodFlags_WhenUpcomingOnly()
+    public async Task GetTeamRotasRecipientPreviewAsync_UpcomingOnly_IgnoresPeriodFlags()
     {
         var teamId = StubTeam();
         var es = StubEvent();

@@ -156,7 +156,7 @@ public sealed class ShiftsControllerSettingsTests
     [InlineData("FinishingWeekendStartOffset", false)]
     [InlineData("", false)]
     [InlineData("", true)]
-    public async Task Settings_require_posted_browsing_and_sub_period_choices(string omitted, bool clear)
+    public async Task SettingsPost_MissingChoices_AreRejected(string omitted, bool clear)
     {
         _burnSettings.GetActiveAsync().Returns(ActiveEvent);
         var controller = BuildSut();
@@ -204,7 +204,7 @@ public sealed class ShiftsControllerSettingsTests
     }
 
     [HumansFact]
-    public async Task Settings_Post_ValidModel_SavesKnobsAndRedirectsToTheSettingsPageShiftsTab()
+    public async Task SettingsPost_ValidModel_SavesKnobs()
     {
         _burnSettings.GetActiveAsync().Returns(ActiveEvent);
         var ctrl = BuildSut();
@@ -220,7 +220,7 @@ public sealed class ShiftsControllerSettingsTests
     }
 
     [HumansFact]
-    public async Task Settings_Post_NoActiveEvent_RedirectsWithoutSaving()
+    public async Task SettingsPost_NoActiveEvent_RedirectsWithoutSaving()
     {
         _burnSettings.GetActiveAsync().Returns((BurnSettingsInfo?)null);
         var ctrl = BuildSut();
@@ -234,7 +234,7 @@ public sealed class ShiftsControllerSettingsTests
     }
 
     [HumansFact]
-    public async Task Settings_Post_InvalidModel_RedirectsWithoutSaving()
+    public async Task SettingsPost_InvalidModel_RedirectsWithoutSaving()
     {
         var ctrl = BuildSut();
         ctrl.ModelState.AddModelError("FirstCrewStartOffset", "First crew start is invalid.");

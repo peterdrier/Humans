@@ -128,7 +128,7 @@ public sealed class VolunteerTrackingExportServiceTests
     [Xunit.InlineData("I\u0307stanbul Crew", "istanbul-crew")]
     [Xunit.InlineData("  Café -- Crew  ", "cafe-crew")]
     [Xunit.InlineData("---", "team")]
-    public async Task DepartmentFileName_StripsDiacriticsAndUsesLowercaseSlug(string teamName, string expectedSlug)
+    public async Task DepartmentFileName_Diacritics_AreStripped(string teamName, string expectedSlug)
     {
         var (repo, shiftMgmt, burnSettings, users) = BuildMocks([], departments: [(TeamA, teamName)]);
         var sut = new VolunteerTrackingExportService(repo, shiftMgmt, burnSettings, users, _audit);
@@ -237,7 +237,7 @@ public sealed class VolunteerTrackingExportServiceTests
     }
 
     [HumansFact]
-    public async Task ArrivalDayOutsideRange_NoWhiteCell_FirstInRangeCellColorsNormally()
+    public async Task Export_ArrivalDayOutsideRange_HasNoWhiteCell()
     {
         // Alice's first confirmed shift is exactly Day1 (=range start). Arrival = Day0 = outside.
         var shifts = new[]
@@ -351,7 +351,7 @@ public sealed class VolunteerTrackingExportServiceTests
     private static readonly Guid Carol = Guid.Parse("c0000000-0000-0000-0000-000000000003");
 
     [HumansFact]
-    public async Task Groups_retain_total_team_hours_for_workbook_ordering()
+    public async Task Export_Groups_KeepTotalTeamHours()
     {
         // Alice: TeamA 8h Day3.
         // Bob: TeamA 8h Day3, TeamA 8h Day4 (TeamA total = 24h).
@@ -391,7 +391,7 @@ public sealed class VolunteerTrackingExportServiceTests
     private static readonly Guid Zara = Guid.Parse("d0000000-0000-0000-0000-000000000004");
 
     [HumansFact]
-    public async Task Human_rows_retain_first_shift_dates_for_workbook_ordering()
+    public async Task Export_HumanRows_KeepFirstShiftDates()
     {
         // Same team. Zara's first shift is Day2 → arrives Day1. Alice's first shift is Day4 → arrives Day3.
         // The workbook must receive their actual dates, independent of alphabetical order.
@@ -424,7 +424,7 @@ public sealed class VolunteerTrackingExportServiceTests
     [HumansTheory]
     [Xunit.InlineData(false)]
     [Xunit.InlineData(true)]
-    public async Task Department_reads_cancel_export_and_EarlyEntry_projection_when_the_request_is_aborted(bool earlyEntry)
+    public async Task Export_RequestAborted_CancelsDepartmentReads(bool earlyEntry)
     {
         using var aborted = new CancellationTokenSource();
         var rows = earlyEntry

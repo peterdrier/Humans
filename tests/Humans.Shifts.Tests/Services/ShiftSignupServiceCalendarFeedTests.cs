@@ -145,7 +145,7 @@ public sealed class ShiftSignupServiceCalendarFeedTests : ShiftsTestHarness
     }
 
     [HumansFact]
-    public async Task GetCalendarItems_ConfirmedSignup_ResolvesAbsoluteTimesAndTeamName()
+    public async Task GetCalendarItems_ConfirmedSignup_ResolvesTimesWithTeam()
     {
         var (_, rota, shift) = SeedShiftScenario();
         var userId = Guid.NewGuid();
@@ -229,7 +229,7 @@ public sealed class ShiftSignupServiceCalendarFeedTests : ShiftsTestHarness
     }
 
     [HumansFact]
-    public async Task GetCalendarItems_NoDescriptionOrPracticalInfo_DescriptionIsNull()
+    public async Task GetCalendarItems_NoDescriptionOrInfo_DescriptionIsNull()
     {
         var (_, rota, shift) = SeedShiftScenario();
         rota.PracticalInfo = null;

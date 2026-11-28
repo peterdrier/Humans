@@ -20,7 +20,7 @@ public class ShiftManagementArchitectureTests
 {
     /// <summary>Resolved from the production <c>Section.Register</c>, not a test-built mirror of it.</summary>
     [HumansFact]
-    public void IShiftManagement_And_IShiftManagementService_ResolveToSameInstance()
+    public void ShiftManagement_BothInterfaces_ResolveToSameInstance()
     {
         using var provider = BuildProvider();
         using var scope = provider.CreateScope();
@@ -34,7 +34,7 @@ public class ShiftManagementArchitectureTests
 
     /// <summary>Resolved from the production <c>Section.Register</c>, not a test-built mirror of it.</summary>
     [HumansFact]
-    public void IVolunteerTrackingManagement_And_IVolunteerTrackingService_ResolveToSameInstance()
+    public void VolunteerTracking_BothInterfaces_ResolveToSameInstance()
     {
         using var provider = BuildProvider();
         using var scope = provider.CreateScope();
