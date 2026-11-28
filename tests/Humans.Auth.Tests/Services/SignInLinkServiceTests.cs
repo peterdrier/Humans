@@ -449,8 +449,7 @@ public sealed class SignInLinkServiceTests
     {
         _urlBuilder.UnprotectSignupToken("good-token").Returns(Token("new@test.com"));
 
-        var result = await _service.ConsumeSignupTokenAsync(
-            "good-token", ct: Xunit.TestContext.Current.CancellationToken);
+        var result = await _service.ConsumeSignupTokenAsync("good-token");
 
         result.Email.Should().Be("new@test.com");
         await _rateLimiter.Received(1).TryConsumeTokenAsync("good-token", Arg.Any<TimeSpan>());
@@ -464,8 +463,7 @@ public sealed class SignInLinkServiceTests
         _urlBuilder.UnprotectSignupToken("good-token").Returns(Token("new@test.com"));
         _rateLimiter.TryConsumeTokenAsync("good-token", Arg.Any<TimeSpan>()).Returns(false);
 
-        var result = await _service.ConsumeSignupTokenAsync(
-            "good-token", ct: Xunit.TestContext.Current.CancellationToken);
+        var result = await _service.ConsumeSignupTokenAsync("good-token");
 
         result.Failure.Should().Be(SignInLinkFailure.AlreadyUsed);
     }
@@ -475,8 +473,7 @@ public sealed class SignInLinkServiceTests
     {
         _urlBuilder.UnprotectSignupToken("bad-token").Returns(SignInLinkRead.Unreadable("token is not Base64url"));
 
-        var result = await _service.ConsumeSignupTokenAsync(
-            "bad-token", ct: Xunit.TestContext.Current.CancellationToken);
+        var result = await _service.ConsumeSignupTokenAsync("bad-token");
 
         result.Failure.Should().Be(SignInLinkFailure.Unreadable);
         await _rateLimiter.DidNotReceive().TryConsumeTokenAsync(Arg.Any<string>(), Arg.Any<TimeSpan>());
