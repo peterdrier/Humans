@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using Humans.Base.Enums;
 using NodaTime;
 using Humans.Campaigns.Contracts;
 using Humans.Campaigns.Domain;
@@ -264,9 +265,7 @@ internal sealed class CampaignRepository(IDbContextFactory<CampaignsDbContext> f
                 cg.Code.Code,
                 cg.AssignedAt,
                 cg.RedeemedAt,
-#pragma warning disable CS0618 // old grants still hand over their stored status
-                cg.LatestEmailStatus))
-#pragma warning restore CS0618
+                EF.Property<EmailOutboxStatus?>(cg, "LatestEmailStatus")))
             .ToListAsync(ct);
     }
 
