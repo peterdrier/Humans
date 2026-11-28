@@ -418,13 +418,13 @@ internal sealed class SurveyController(
     }
 
     private ViewResult LinkFailed(SurveyLinkFailure? failure) => View("Closed", model: failure switch
-        {
-            SurveyLinkFailure.Expired => "expired",
-            SurveyLinkFailure.AlreadyAnswered => "answered",
-            SurveyLinkFailure.InvitationNotFound => "invitation-removed",
-            SurveyLinkFailure.SurveyNotFound => "survey-removed",
-            _ => "invalid",
-        });
+    {
+        SurveyLinkFailure.Expired => "expired",
+        SurveyLinkFailure.AlreadyAnswered => "answered",
+        SurveyLinkFailure.InvitationNotFound => "invitation-removed",
+        SurveyLinkFailure.SurveyNotFound => "survey-removed",
+        _ => "invalid",
+    });
 
     /// <summary>The service re-enforces the same rule at submit.</summary>
     private bool IsAnswerable(SurveyDetail definition)
