@@ -73,13 +73,6 @@ internal sealed class CachingTicketVendorService : ITicketVendorService
         return await action(inner);
     }
 
-    private async Task WithInnerAsync(Func<ITicketVendorService, Task> action)
-    {
-        await using var scope = _scopeFactory.CreateAsyncScope();
-        var inner = scope.ServiceProvider.GetRequiredKeyedService<ITicketVendorService>(TicketVendorServiceKeys.InnerServiceKey);
-        await action(inner);
-    }
-
     private sealed class EventSummaryCache(
         Func<string, CancellationToken, Task<VendorEventSummaryDto>> loadSummary,
         IClock clock,

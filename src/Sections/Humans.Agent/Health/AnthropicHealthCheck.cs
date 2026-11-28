@@ -19,11 +19,7 @@ internal sealed class AnthropicHealthCheck(IAgentSettingsService agent) : IHealt
             _ = await System.Net.Dns.GetHostAddressesAsync("api.anthropic.com", cancellationToken);
             return HealthCheckResult.Healthy();
         }
-        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
-        {
-            throw;
-        }
-        catch (Exception ex)
+        catch (Exception ex) when (ex is not OperationCanceledException || !cancellationToken.IsCancellationRequested)
         {
             return HealthCheckResult.Degraded("DNS failed", ex);
         }

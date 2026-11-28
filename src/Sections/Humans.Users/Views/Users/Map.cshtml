@@ -1,4 +1,4 @@
-@model Humans.Users.Models.MapViewModel
+@model List<Humans.Users.Models.MapMarkerViewModel>
 @{
     ViewData["Title"] = Localizer["Users_Map_Title"].Value;
 }
@@ -78,11 +78,11 @@
     </style>
 }
 
-@if (Model.Markers.Count > 0)
+@if (Model.Count > 0)
 {
     <div class="card">
         <div class="card-header">
-            @Localizer["Users_Map_Count", Model.Markers.Count]
+            @Localizer["Users_Map_Count", Model.Count]
         </div>
         <div class="card-body p-0">
             <div id="map"></div>
@@ -103,7 +103,7 @@ else
 </div>
 
 @section Scripts {
-    @if (Model.Markers.Count > 0 && !string.IsNullOrEmpty(ViewData["GoogleMapsApiKey"]?.ToString()))
+    @if (Model.Count > 0 && !string.IsNullOrEmpty(ViewData["GoogleMapsApiKey"]?.ToString()))
     {
         <script>
             (g=>{var h,a,k,p="The Google Maps JavaScript API",c="google",l="importLibrary",q="__ib__",m=document,b=window;b=b[c]||(b[c]={});var d=b.maps||(b.maps={}),r=new Set,e=new URLSearchParams,u=()=>h||(h=new Promise(async(f,n)=>{await (a=m.createElement("script"));e.set("libraries",[...r]+"");for(k in g)e.set(k.replace(/[A-Z]/g,t=>"_"+t[0].toLowerCase()),g[k]);e.set("callback",c+".maps."+q);a.src=`https://maps.${c}apis.com/maps/api/js?`+e;d[q]=f;a.onerror=()=>h=n(Error(p+" could not load."));a.nonce=m.querySelector("script[nonce]")?.nonce||"";m.head.append(a)}));d[l]?console.warn(p+" only loads once. Ignoring:",g):d[l]=(f,...n)=>r.add(f)&&u().then(()=>d[l](f,...n))})({
@@ -113,7 +113,7 @@ else
         </script>
         <script src="https://unpkg.com/&#64;googlemaps/markerclusterer/dist/index.min.js"></script>
         <script>
-            const markers = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.Markers, new System.Text.Json.JsonSerializerOptions { PropertyNamingPolicy = System.Text.Json.JsonNamingPolicy.CamelCase }));
+            const markers = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model, new System.Text.Json.JsonSerializerOptions { PropertyNamingPolicy = System.Text.Json.JsonNamingPolicy.CamelCase }));
 
             const groupTitle = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Localizer["Users_Map_Count"].Value));
 

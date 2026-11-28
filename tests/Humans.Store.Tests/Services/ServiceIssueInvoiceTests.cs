@@ -185,7 +185,7 @@ public class ServiceIssueInvoiceTests
     }
 
     [HumansFact]
-    public async Task Issues_a_full_factura_with_per_line_revenue_accounts_and_approves_it()
+    public async Task Issue_FullFactura_UsesPerLineAccounts()
     {
         var order = CampOrder();
         Arrange(order, IceProduct());
@@ -207,7 +207,7 @@ public class ServiceIssueInvoiceTests
     [HumansTheory]
     [InlineData(2026)]
     [InlineData(2025)]
-    public async Task Writes_the_invoice_row_with_both_payloads_and_freezes_the_order(int year)
+    public async Task Issue_Success_FreezesOrder(int year)
     {
         var order = CampOrder();
         order.Year = year;
@@ -238,7 +238,7 @@ public class ServiceIssueInvoiceTests
     }
 
     [HumansFact]
-    public async Task Issuance_audits_the_invoice_cross_referenced_to_the_order()
+    public async Task Issue_Success_AuditsInvoiceWithOrder()
     {
         // Issuance is the section's only outbound write, and the Board's view of it is this one
         // entry. The cross-reference is what makes the invoice findable from the order.
@@ -258,7 +258,7 @@ public class ServiceIssueInvoiceTests
     }
 
     [HumansFact]
-    public async Task Kept_deposits_go_on_as_income_at_21_percent_and_returned_deposits_only_in_the_notes()
+    public async Task Issue_KeptDeposits_BookedAsIncome()
     {
         // EUR 60 charged, EUR 20 returned and refunded: EUR 40 kept, a net 33.06 + 6.94 VAT line on Ice's revenue account.
         var order = CampOrder(qty: 2, depositSnapshot: 30m);
@@ -307,7 +307,7 @@ public class ServiceIssueInvoiceTests
     }
 
     [HumansFact]
-    public async Task Returns_recorded_without_a_product_return_every_deposit()
+    public async Task Issue_ReturnsWithoutProduct_ReturnEveryDeposit()
     {
         var order = CampOrder(qty: 2, depositSnapshot: 30m);
         Arrange(order, IceProduct(unitPrice: 5m, deposit: 30m));
@@ -335,7 +335,7 @@ public class ServiceIssueInvoiceTests
     }
 
     [HumansFact]
-    public async Task A_write_off_goes_on_as_a_document_discount_that_lands_on_the_paid_amount()
+    public async Task Issue_WriteOff_BecomesDocumentDiscount()
     {
         // 20 x EUR 5 + 21% = 121.00; the camp paid 101.00 and 20.00 was written off.
         var order = CampOrder();
@@ -366,7 +366,7 @@ public class ServiceIssueInvoiceTests
     }
 
     [HumansFact]
-    public async Task A_receipt_is_refused_when_a_refund_would_need_its_missing_contact()
+    public async Task Issue_ReceiptRefundNeedsContact_IsRefused()
     {
         var order = CampOrder(identified: false);
         Arrange(order, IceProduct());
@@ -395,7 +395,7 @@ public class ServiceIssueInvoiceTests
     }
 
     [HumansFact]
-    public async Task A_pending_refund_holds_the_invoice_back()
+    public async Task Issue_PendingRefund_IsRefused()
     {
         var order = CampOrder();
         Arrange(order, IceProduct());
@@ -419,7 +419,7 @@ public class ServiceIssueInvoiceTests
     [InlineData(-10, true)]   // camp still owes €10
     [InlineData(10, false)]   // org owes the camp €10 (e.g. a deposit return not yet refunded)
     [InlineData(10, true)]
-    public async Task Invoice_is_refused_unless_the_balance_is_exactly_zero(int offsetEur, bool identified)
+    public async Task Issue_NonzeroBalance_IsRefused(int offsetEur, bool identified)
     {
         var order = CampOrder(identified: identified);
         var product = IceProduct();
@@ -437,7 +437,7 @@ public class ServiceIssueInvoiceTests
     }
 
     [HumansFact]
-    public async Task Invoice_is_refused_when_unpaid_even_with_full_counterparty_details()
+    public async Task Issue_UnpaidWithCounterparty_IsRefused()
     {
         var order = CampOrder(identified: true);
         Arrange(order, IceProduct(), settled: false);
@@ -449,7 +449,7 @@ public class ServiceIssueInvoiceTests
     }
 
     [HumansFact]
-    public async Task Zero_balance_alone_is_not_enough_when_the_counterparty_details_are_missing_over_the_threshold()
+    public async Task Issue_ZeroBalanceNoCounterpartyOverThreshold_IsRefused()
     {
         var order = CampOrder(qty: 200, identified: false);
         Arrange(order, IceProduct());
@@ -461,7 +461,7 @@ public class ServiceIssueInvoiceTests
     }
 
     [HumansFact]
-    public async Task Order_without_counterparty_under_the_threshold_issues_a_sales_receipt()
+    public async Task Issue_NoCounterpartyUnderThreshold_IssuesReceipt()
     {
         // 20 × €5 + 21% = €121, under the €400 simplified-invoice threshold.
         var order = CampOrder(identified: false);
@@ -477,7 +477,7 @@ public class ServiceIssueInvoiceTests
     }
 
     [HumansFact]
-    public async Task Order_without_counterparty_over_the_threshold_is_refused()
+    public async Task Issue_NoCounterpartyOverThreshold_IsRefused()
     {
         // 200 × €5 + 21% = €1,210 — a receipt is not lawful at that amount.
         var order = CampOrder(qty: 200, identified: false);
@@ -492,7 +492,7 @@ public class ServiceIssueInvoiceTests
     }
 
     [HumansFact]
-    public async Task Re_issuing_an_issued_order_is_refused_without_calling_holded()
+    public async Task Issue_AlreadyIssuedOrder_IsRefused()
     {
         var order = CampOrder();
         order.State = OrderState.InvoiceIssued;
@@ -511,7 +511,7 @@ public class ServiceIssueInvoiceTests
     }
 
     [HumansFact]
-    public async Task Product_without_a_revenue_account_is_refused_by_name()
+    public async Task Issue_ProductWithoutRevenueAccount_IsRefused()
     {
         var order = CampOrder();
         Arrange(order, IceProduct(account: null));
@@ -525,7 +525,7 @@ public class ServiceIssueInvoiceTests
     }
 
     [HumansFact]
-    public async Task Account_missing_from_the_holded_chart_is_refused()
+    public async Task Issue_AccountNotInChart_IsRefused()
     {
         _holdedService.GetChartAsync(Arg.Any<CancellationToken>())
             .Returns([Account(70_000_000)]);
@@ -541,7 +541,7 @@ public class ServiceIssueInvoiceTests
     }
 
     [HumansFact]
-    public async Task Team_orders_are_never_invoiced()
+    public async Task Issue_TeamOrder_IsRefused()
     {
         var order = CampOrder();
         order.CampSeasonId = null;
@@ -555,7 +555,7 @@ public class ServiceIssueInvoiceTests
     }
 
     [HumansFact]
-    public async Task Unconfigured_holded_refuses_issuance_rather_than_silently_freezing_the_order()
+    public async Task Issue_HoldedUnconfigured_IsRefused()
     {
         _holdedService.IsConfigured.Returns(false);
         var order = CampOrder();
@@ -570,7 +570,7 @@ public class ServiceIssueInvoiceTests
     }
 
     [HumansFact]
-    public async Task Invoice_controller_shows_operator_refusals_but_not_Holded_fault_messages()
+    public async Task InvoiceController_HoldedFault_HidesMessage()
     {
         var order = CampOrder();
         Arrange(order, IceProduct());
@@ -616,7 +616,7 @@ public class ServiceIssueInvoiceTests
     [InlineData("chart")]
     [InlineData("issue")]
     [InlineData("save")]
-    public async Task Invoice_dependency_InvalidOperationException_propagates_unchanged(string stage)
+    public async Task Issue_DependencyInvalidOperation_Propagates(string stage)
     {
         var order = CampOrder();
         Arrange(order, IceProduct());
@@ -648,7 +648,7 @@ public class ServiceIssueInvoiceTests
     [InlineData(10, "s_iva_10")]
     [InlineData(4, "s_iva_4")]
     [InlineData(0, "s_iva_0")]
-    public async Task Vat_rate_maps_to_the_holded_sales_tax_key(int vatRate, string expectedKey)
+    public async Task Issue_VatRate_MapsToHoldedTaxKey(int vatRate, string expectedKey)
     {
         var order = CampOrder(qty: 1);
         Arrange(order, IceProduct(vat: vatRate));
@@ -689,7 +689,7 @@ public class ServiceIssueInvoiceTests
     }
 
     [HumansFact]
-    public async Task First_issuance_searches_holded_before_creating_and_tags_the_document()
+    public async Task Issue_FirstIssuance_SearchesHoldedFirst()
     {
         var order = CampOrder();
         Arrange(order, IceProduct());
@@ -703,7 +703,7 @@ public class ServiceIssueInvoiceTests
     }
 
     [HumansFact]
-    public async Task A_document_an_earlier_attempt_already_approved_is_adopted_not_reissued()
+    public async Task Issue_EarlierApprovedDocument_IsAdopted()
     {
         var order = CampOrder();
         Arrange(order, IceProduct());
@@ -740,7 +740,7 @@ public class ServiceIssueInvoiceTests
     [InlineData(10, false)]
     [InlineData(-10, true)]
     [InlineData(10, true)]
-    public async Task Changed_payment_balance_allows_approved_recovery_but_never_draft_approval(int offsetEur, bool isDraft)
+    public async Task Issue_ChangedBalance_BlocksDraftApproval(int offsetEur, bool isDraft)
     {
         var order = CampOrder();
         Arrange(order, IceProduct());
@@ -768,7 +768,7 @@ public class ServiceIssueInvoiceTests
     }
 
     [HumansFact]
-    public async Task An_earlier_document_of_the_other_kind_is_adopted_too()
+    public async Task Issue_EarlierDocumentOtherKind_IsAdopted()
     {
         // The earlier attempt ran before the counterparty details were filled in, so it issued a
         // receipt; this attempt would issue a factura. Adopting is still right — what must not
@@ -786,7 +786,7 @@ public class ServiceIssueInvoiceTests
     }
 
     [HumansFact]
-    public async Task Adoption_does_not_need_a_resolvable_revenue_account()
+    public async Task Issue_AdoptionWithoutRevenueAccount_Succeeds()
     {
         // A catalog edited between the two attempts must not block reconciliation of a document
         // that already exists — the search runs ahead of the line-account resolution.
@@ -805,7 +805,7 @@ public class ServiceIssueInvoiceTests
     [InlineData(false, true)]
     [InlineData(true, false)]
     [InlineData(true, true)]
-    public async Task Unconfirmed_issuance_leaves_the_order_open_and_retries_the_same_document(bool recovery, bool stillDraft)
+    public async Task Issue_Unconfirmed_LeavesOrderOpen(bool recovery, bool stillDraft)
     {
         var order = CampOrder();
         Arrange(order, IceProduct());
@@ -840,7 +840,7 @@ public class ServiceIssueInvoiceTests
     }
 
     [HumansFact]
-    public async Task A_recovered_draft_whose_totals_change_at_approval_is_not_adopted()
+    public async Task Issue_DraftTotalsChangeAtApproval_IsNotAdopted()
     {
         var order = CampOrder();
         Arrange(order, IceProduct());
@@ -863,7 +863,7 @@ public class ServiceIssueInvoiceTests
     }
 
     [HumansFact]
-    public async Task A_recovered_draft_is_approved_before_it_is_adopted()
+    public async Task Issue_RecoveredDraft_IsApprovedFirst()
     {
         // Creation succeeded, approval did not. A draft books no revenue and carries no sequential
         // number, so adopting it as-is would freeze the order with no legal invoice behind it.
@@ -890,7 +890,7 @@ public class ServiceIssueInvoiceTests
     }
 
     [HumansFact]
-    public async Task An_approved_match_is_adopted_over_a_draft_left_beside_it()
+    public async Task Issue_ApprovedMatchBesideDraft_AdoptsApproved()
     {
         // Two earlier attempts, one of which got as far as approving. Approving the leftover draft
         // as well would book the revenue twice and hand out a second legal number.
@@ -915,7 +915,7 @@ public class ServiceIssueInvoiceTests
     }
 
     [HumansFact]
-    public async Task An_approved_receipt_wins_over_an_invoice_draft_of_the_other_kind()
+    public async Task Issue_ApprovedReceiptBesideInvoiceDraft_AdoptsReceipt()
     {
         var order = CampOrder();
         Arrange(order, IceProduct());
@@ -936,7 +936,7 @@ public class ServiceIssueInvoiceTests
     }
 
     [HumansFact]
-    public async Task An_already_approved_recovered_document_is_not_approved_again()
+    public async Task Issue_RecoveredApprovedDocument_IsNotReapproved()
     {
         var order = CampOrder();
         Arrange(order, IceProduct());
@@ -955,7 +955,7 @@ public class ServiceIssueInvoiceTests
     [InlineData(false, "subtotal")]
     [InlineData(false, "tax")]
     [InlineData(false, "total")]
-    public async Task A_new_document_with_mismatched_totals_stays_open_and_is_not_reissued(bool identified, string field)
+    public async Task Issue_NewDocumentTotalsMismatch_StaysOpen(bool identified, string field)
     {
         var order = CampOrder(identified: identified);
         Arrange(order, IceProduct());
@@ -992,7 +992,7 @@ public class ServiceIssueInvoiceTests
     }
 
     [HumansFact]
-    public async Task A_recovered_document_whose_lines_differ_under_equal_totals_is_not_adopted()
+    public async Task Issue_RecoveredLinesDiffer_IsNotAdopted()
     {
         // 10 x EUR 6 + 10 x EUR 4 keeps every aggregate of 20 x EUR 5, but not the per-line prices
         // the order would freeze at.
@@ -1014,7 +1014,7 @@ public class ServiceIssueInvoiceTests
     }
 
     [HumansFact]
-    public async Task A_recovered_document_with_its_deposit_line_is_adopted()
+    public async Task Issue_RecoveredWithDepositLine_IsAdopted()
     {
         // 10 x EUR 5 at 21%: the VAT amount (10.50) differs from the rate the lines carry.
         var order = CampOrder(qty: 10);
@@ -1031,7 +1031,7 @@ public class ServiceIssueInvoiceTests
     }
 
     [HumansFact]
-    public async Task A_recovered_document_whose_lines_could_not_be_read_is_not_adopted()
+    public async Task Issue_RecoveredLinesUnreadable_IsNotAdopted()
     {
         var order = CampOrder();
         Arrange(order, IceProduct());
@@ -1045,7 +1045,7 @@ public class ServiceIssueInvoiceTests
     }
 
     [HumansFact]
-    public async Task A_just_approved_document_is_frozen_on_its_totals_whatever_its_lines_read()
+    public async Task Issue_JustApprovedDocument_FreezesOnTotals()
     {
         // After this attempt approved the document, a line refusal would strand a legal factura behind an
         // order that can never freeze, so only the totals gate first issuance.
@@ -1062,7 +1062,7 @@ public class ServiceIssueInvoiceTests
     }
 
     [HumansFact]
-    public async Task A_recovered_document_that_no_longer_matches_the_order_refuses_loudly()
+    public async Task Issue_RecoveredDocumentMismatch_IsRefused()
     {
         // The order stayed Open after the failed attempt, so the catalog moved under it. Freezing
         // it against a document that says something else is permanent; a rectificativa is a human

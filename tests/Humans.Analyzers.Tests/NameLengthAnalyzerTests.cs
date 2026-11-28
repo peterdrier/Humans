@@ -36,7 +36,7 @@ public class NameLengthAnalyzerTests
     [InlineData("GetActiveManagementRoleHolderUserIdsAsync", true)]
     [InlineData("AddMemberAndAssignRole", true)]
     [InlineData("SendToAndroid", false)]
-    public async Task MethodName_OverSixWordsOrWithAnd_IsReported(string name, bool reported)
+    public async Task MethodName_BreaksLimits_IsReported(string name, bool reported)
     {
         (await RunAsync(Method(name))).Should().Equal(reported ? [NameLengthAnalyzer.MethodNameId] : []);
     }

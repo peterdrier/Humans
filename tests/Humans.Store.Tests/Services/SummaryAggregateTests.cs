@@ -39,7 +39,7 @@ public class SummaryAggregateTests
     }
 
     [HumansFact]
-    public async Task Empty_year_returns_empty_projections()
+    public async Task Summary_EmptyYear_IsEmpty()
     {
         _camps.GetCampsForYearAsync(2026, Arg.Any<CancellationToken>())
             .Returns([]);
@@ -56,7 +56,7 @@ public class SummaryAggregateTests
     }
 
     [HumansFact]
-    public async Task Single_order_single_line_projects_to_all_three_views()
+    public async Task Summary_SingleLine_ProjectsToThreeViews()
     {
         var seasonId = Guid.NewGuid();
         var productId = Guid.NewGuid();
@@ -143,7 +143,7 @@ public class SummaryAggregateTests
     }
 
     [HumansFact]
-    public async Task Multiple_camps_and_products_produce_consistent_totals()
+    public async Task Summary_ManyCamps_TotalsAreConsistent()
     {
         var (seasonA, seasonB) = (Guid.NewGuid(), Guid.NewGuid());
         var (productX, productY) = (Guid.NewGuid(), Guid.NewGuid());
@@ -209,7 +209,7 @@ public class SummaryAggregateTests
     }
 
     [HumansFact]
-    public async Task Deactivated_product_with_lines_still_appears()
+    public async Task Summary_DeactivatedProductWithLines_StillAppears()
     {
         var seasonId = Guid.NewGuid();
         var deadProductId = Guid.NewGuid();
@@ -245,7 +245,7 @@ public class SummaryAggregateTests
     }
 
     [HumansFact]
-    public async Task ByCamp_balance_reflects_paid_partial_unpaid_states()
+    public async Task Summary_ByCamp_BalanceReflectsPaidState()
     {
         // Three camps × three payment states. BalanceEur is what drives the
         // view's paid/partial/unpaid classification dropdown — keep it honest.
@@ -313,7 +313,7 @@ public class SummaryAggregateTests
     }
 
     [HumansFact]
-    public async Task Open_order_reprices_to_current_catalog_like_the_order_page()
+    public async Task Summary_OpenOrder_RepricesToCatalog()
     {
         var seasonId = Guid.NewGuid();
         var productId = Guid.NewGuid();
@@ -357,7 +357,7 @@ public class SummaryAggregateTests
     }
 
     [HumansFact]
-    public async Task Order_for_camp_season_not_in_year_is_excluded()
+    public async Task Summary_SeasonNotInYear_IsExcluded()
     {
         // Camp service returns ONE season for 2026; the repo gets that season's id.
         // If the repo somehow returns an order for a different season, we still
@@ -382,7 +382,7 @@ public class SummaryAggregateTests
     [HumansTheory]
     [Xunit.InlineData(true)]
     [Xunit.InlineData(false)]
-    public async Task Summary_preserves_quantities_above_int_range(bool sameProduct)
+    public async Task Summary_QuantityAboveIntRange_IsPreserved(bool sameProduct)
     {
         var seasonId = Guid.NewGuid();
         var productId = Guid.NewGuid();

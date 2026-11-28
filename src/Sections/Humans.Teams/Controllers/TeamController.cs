@@ -153,18 +153,11 @@ internal sealed class TeamController(
             && (await authorizationService.AuthorizeAsync(
                 User, TeamOwner.Of(teamInfo.Id), TeamPermissionRequirements.EarlyEntry)).Succeeded;
 
-        viewModel.SubteamLeads = teamPage.SubteamLeads.Select(MapChildTeamMember).ToList();
-        viewModel.ChildTeamMembers = teamPage.SubteamMembers.Select(MapChildTeamMember).ToList();
+        viewModel.SubteamLeads = teamPage.SubteamLeads;
+        viewModel.ChildTeamMembers = teamPage.SubteamMembers;
 
         return View(viewModel);
     }
-
-    private static ChildTeamMemberViewModel MapChildTeamMember(TeamPageChildTeamMemberSummary member) => new()
-    {
-        UserId = member.UserId,
-        ChildTeamName = member.ChildTeamName,
-        RoleTitle = member.RoleTitle
-    };
 
     private static TeamResourceLinkViewModel MapTeamResource(TeamPageResourceSummary resource) => new()
     {
@@ -431,10 +424,7 @@ internal sealed class TeamController(
     {
         var teamsById = await teamService.GetTeamsAsync(ct);
         var isAuthenticated = User.Identity?.IsAuthenticated == true;
-        return View(new TeamTreeViewModel
-        {
-            Departments = TeamDirectoryBuilder.BuildTree(teamsById, isAuthenticated),
-        });
+        return View(TeamDirectoryBuilder.BuildTree(teamsById, isAuthenticated));
     }
 
     [HttpGet("Summary")]
@@ -661,6 +651,31 @@ internal sealed class TeamController(
         {
             logger.LogInformation("Admin {AdminId} deactivated team {TeamId}", currentUser.Id, id);
             SetSuccess(sharedLocalizer["Admin_TeamDeactivated"].Value);
+        }
+
+        return RedirectToAction(nameof(Summary));
+    }
+
+    [HttpPost("{id:guid}/EraseMembers")]
+    [Authorize(Policy = PolicyNames.AdminOnly)]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> EraseMembers(Guid id)
+    {
+        var (currentUserError, currentUser) = await ResolveCurrentUserOrUnauthorizedAsync(HttpContext.RequestAborted);
+        if (currentUserError is not null)
+        {
+            return currentUserError;
+        }
+
+        var result = await teamService.EraseMembersAsync(id, currentUser!.Id);
+        if (result.Refusal is { } refusal)
+        {
+            logger.LogWarning("Refused erasing members of team {TeamId} by admin {AdminId}: {Reason}", id, currentUser.Id, refusal);
+            SetError(refusal);
+        }
+        else
+        {
+            SetSuccess("Membership history erased.");
         }
 
         return RedirectToAction(nameof(Summary));

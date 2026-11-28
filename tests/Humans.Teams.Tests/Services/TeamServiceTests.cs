@@ -3049,7 +3049,6 @@ public sealed class TeamServiceTests : TeamsTestHarness
             Id = merged ? Guid.NewGuid() : user.Id,
             BurnerName = "Updated Human",
             Email = "updated@example.test",
-            ProfilePictureUrl = "/updated-photo.png",
         });
         // Users keys its merge-resolved read by the requested id, even when the value is a survivor.
         _userService.GetUserInfosAsync(Arg.Any<IEnumerable<Guid>>(), Arg.Any<CancellationToken>())
@@ -3067,7 +3066,6 @@ public sealed class TeamServiceTests : TeamsTestHarness
         var member = after.Members.Should().ContainSingle().Subject;
         member.DisplayName.Should().Be(replacement.BurnerName);
         member.Email.Should().Be(replacement.Email);
-        member.ProfilePictureUrl.Should().Be(replacement.ProfilePictureUrl);
         member.UserId.Should().Be(user.Id);
         member.TeamMemberId.Should().Be(membership.Id);
         before.Members.Single().DisplayName.Should().Be("Alice");
@@ -3695,6 +3693,69 @@ public sealed class TeamServiceTests : TeamsTestHarness
             TeamsAuditActions.TeamMemberRemoved, nameof(Team), SystemTeamIds.Board,
             "Membership ended when Board was deactivated", actor, member.Id, AuditSubjectTypes.User);
         (await _service.RetireGovernanceBodyTeamsAsync(actor, ct)).Should().Be(0);
+    }
+
+    [HumansFact]
+    public async Task GetExpectedAsync_RetiredTeam_ClaimsGroupEmpty()
+    {
+        var ct = TestContext.Current.CancellationToken;
+        var team = SeedTeam("Retired");
+        team.GoogleGroupPrefix = "retired";
+        team.IsActive = false;
+        SeedTeamMember(team.Id, SeedUser().Id);
+        await SaveAllAsync(ct);
+
+        var result = await _service.GetExpectedAsync(ct: ct);
+
+        result[$"retired@{DomainConstants.GoogleGroupDomain}"].Should().BeEmpty();
+    }
+
+    [HumansFact]
+    public async Task EraseMembersAsync_RetiredTeam_DeletesMembershipHistory()
+    {
+        var ct = TestContext.Current.CancellationToken;
+        var team = SeedTeam("Low income");
+        var other = SeedTeam("Other");
+        var alice = SeedUser(displayName: "Alice");
+        var member = SeedTeamMember(team.Id, alice.Id);
+        var otherMember = SeedTeamMember(other.Id, alice.Id);
+        SeedTeamRoleAssignment(SeedTeamRoleDefinition(team.Id, isManagement: false).Id, member.Id);
+        TeamsDb.TeamJoinRequests.Add(new TeamJoinRequest
+        {
+            Id = Guid.NewGuid(),
+            TeamId = team.Id,
+            UserId = SeedUser().Id,
+            RequestedAt = Clock.GetCurrentInstant(),
+        });
+        await SaveAllAsync(ct);
+        var actor = Guid.NewGuid();
+        await _service.DeleteTeamAsync(team.Id, actor, ct);
+
+        (await _service.EraseMembersAsync(team.Id, actor, ct)).Succeeded.Should().BeTrue();
+
+        await using var stored = await TeamsDbFactory.CreateDbContextAsync(ct);
+        (await stored.TeamMembers.Where(m => m.TeamId == team.Id).ToListAsync(ct)).Should().BeEmpty();
+        (await stored.TeamJoinRequests.Where(r => r.TeamId == team.Id).ToListAsync(ct)).Should().BeEmpty();
+        (await stored.TeamRoleAssignments.ToListAsync(ct)).Should().BeEmpty();
+        (await stored.TeamMembers.SingleAsync(m => m.TeamId == other.Id, ct)).Id.Should().Be(otherMember.Id);
+        (await stored.Teams.FindAsync([team.Id], ct)).Should().NotBeNull();
+        await AuditLog.Received(1).LogAsync(
+            TeamsAuditActions.TeamMembersErased, nameof(Team), team.Id,
+            "Erased the membership history of Low income (2 people)", actor);
+    }
+
+    [HumansFact]
+    public async Task EraseMembersAsync_ActiveTeam_Refuses()
+    {
+        var ct = TestContext.Current.CancellationToken;
+        var team = SeedTeam("Active");
+        SeedTeamMember(team.Id, SeedUser().Id);
+        await SaveAllAsync(ct);
+
+        (await _service.EraseMembersAsync(team.Id, Guid.NewGuid(), ct)).Succeeded.Should().BeFalse();
+
+        await using var stored = await TeamsDbFactory.CreateDbContextAsync(ct);
+        (await stored.TeamMembers.CountAsync(m => m.TeamId == team.Id, ct)).Should().Be(1);
     }
 
     [HumansFact]

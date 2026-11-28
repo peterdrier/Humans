@@ -49,8 +49,8 @@ public sealed class ShiftSignupServiceTests : ShiftsTestHarness
             _users.GetUserInfoAsync(id, Arg.Any<CancellationToken>()).Returns(
                 UserInfo.Create(new User { Id = id == source ? live : id, PreferredLanguage = "es" }, [], [], null));
         var team = BuildTeamInfoWithCoordinator(Guid.NewGuid(), source);
-        team.Members.Add(new(Guid.NewGuid(), live, "Live", null, null, TeamMemberRole.Coordinator, Instant.MinValue));
-        team.Members.Add(new(Guid.NewGuid(), other, "Other", null, null, TeamMemberRole.Coordinator, Instant.MinValue));
+        team.Members.Add(new(Guid.NewGuid(), live, "Live", null, TeamMemberRole.Coordinator, Instant.MinValue));
+        team.Members.Add(new(Guid.NewGuid(), other, "Other", null, TeamMemberRole.Coordinator, Instant.MinValue));
         _teamService.GetTeamAsync(team.Id, Arg.Any<CancellationToken>()).Returns(team);
 
         if (notice == CanonicalNotice.Assignment)
@@ -2440,7 +2440,7 @@ public sealed class ShiftSignupServiceTests : ShiftsTestHarness
             IsPromotedToDirectory: false, CreatedAt: Instant.MinValue,
             Members:
             [
-                new(Guid.NewGuid(), coordinatorUserId, string.Empty, null, null, TeamMemberRole.Coordinator,
+                new(Guid.NewGuid(), coordinatorUserId, string.Empty, null, TeamMemberRole.Coordinator,
                     Instant.MinValue)
             ]);
 

@@ -1,9 +1,9 @@
-@model Humans.Email.ViewComponents.EmailPauseSettingsTabViewModel
+@model bool
 
 @* Explicit asp-controller/asp-action: this renders on /Settings but posts to EmailController. *@
 <div class="d-flex justify-content-between align-items-center">
     <div>
-        @if (Model.IsPaused)
+        @if (Model)
         {
             <span class="text-warning fw-semibold"><i class="fa-solid fa-circle-pause me-1"></i>Sending paused</span>
         }
@@ -12,7 +12,7 @@
             <span class="text-success fw-semibold"><i class="fa-solid fa-circle-check me-1"></i>Sending active</span>
         }
     </div>
-    @if (Model.IsPaused)
+    @if (Model)
     {
         <form method="post" asp-controller="Email" asp-action="ResumeEmailSending">
             @Html.AntiForgeryToken()

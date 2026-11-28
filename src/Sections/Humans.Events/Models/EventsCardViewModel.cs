@@ -1,11 +1,6 @@
 namespace Humans.Events.Models;
 
-/// <summary>A camp's events on its detail page, or a user's on their profile. Approved events only.</summary>
-internal sealed class EventsCardViewModel
-{
-    public List<EventsCardRow> Rows { get; set; } = [];
-}
-
+/// <summary>An approved event on a camp's detail page or a user's profile.</summary>
 internal sealed class EventsCardRow
 {
     public Guid EventId { get; set; }

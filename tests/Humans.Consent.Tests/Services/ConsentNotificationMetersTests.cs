@@ -38,7 +38,7 @@ public sealed class ConsentNotificationMetersTests : IDisposable
         _users.GetAllUserInfosAsync(Arg.Any<CancellationToken>()).Returns(users);
         _consent.GetConsentReviewsAsync(Arg.Any<CancellationToken>()).Returns(new Dictionary<Guid, ConsentReviewInfo>
         {
-            [approved] = ConsentReviewInfo.None(approved) with { Status = ConsentCheckStatus.Cleared, IsApproved = true },
+            [approved] = ConsentReviewInfo.None() with { Status = ConsentCheckStatus.Cleared, IsApproved = true },
         });
 
         var meters = await _sut.GetMetersAsync(Viewer(role), Guid.NewGuid(), TestContext.Current.CancellationToken);

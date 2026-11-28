@@ -28,7 +28,7 @@ public class IdentityFindByEmailAnalyzerTests
         string.Equals(d.Id, IdentityFindByEmailAnalyzer.DiagnosticId, StringComparison.Ordinal);
 
     [HumansFact]
-    public async Task Fires_on_FindByEmailAsync_in_Application()
+    public async Task Analyze_FindByEmail_Fires()
     {
         var source = Stub + """
 
@@ -54,7 +54,7 @@ public class IdentityFindByEmailAnalyzerTests
     }
 
     [HumansFact]
-    public async Task Fires_on_FindByNameAsync_in_Web()
+    public async Task Analyze_FindByName_Fires()
     {
         var source = Stub + """
 
@@ -80,7 +80,7 @@ public class IdentityFindByEmailAnalyzerTests
     }
 
     [HumansFact]
-    public async Task Does_not_fire_on_FindByIdAsync()
+    public async Task Analyze_FindById_IsSilent()
     {
         var source = Stub + """
 

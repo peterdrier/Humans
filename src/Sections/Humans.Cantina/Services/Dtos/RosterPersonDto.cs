@@ -9,7 +9,6 @@ namespace Humans.Cantina.Services.Dtos;
 /// <paramref name="NoShift"/> is days with no signup, not days off site: the human may be around, working informally.
 /// </remarks>
 internal sealed record RosterPersonDto(
-    Guid UserId,
     string BurnerName,
     LocalDate ArrivesOn,
     IReadOnlyList<LocalDate> NoShift,

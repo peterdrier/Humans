@@ -35,7 +35,7 @@ public class ControllerDbContextRuleTests
         string.Equals(d.Id, "HUM0008", StringComparison.Ordinal);
 
     [HumansFact]
-    public async Task Fires_when_controller_injects_UsersDbContext()
+    public async Task Analyze_UsersDbContext_Fires()
     {
         var source = Stubs + """
 
@@ -59,7 +59,7 @@ public class ControllerDbContextRuleTests
     }
 
     [HumansFact]
-    public async Task Fires_when_controller_injects_a_section_DbContext()
+    public async Task Analyze_SectionDbContext_Fires()
     {
         var source = Stubs + """
 
@@ -83,7 +83,7 @@ public class ControllerDbContextRuleTests
     }
 
     [HumansFact]
-    public async Task Fires_when_controller_injects_a_DbContext_from_another_namespace()
+    public async Task Analyze_OtherNamespaceDbContext_Fires()
     {
         var source = Stubs + """
 
@@ -107,7 +107,7 @@ public class ControllerDbContextRuleTests
     }
 
     [HumansFact]
-    public async Task Does_not_fire_for_a_non_DbContext_type_in_the_Data_namespace()
+    public async Task Analyze_NonDbContextDataType_IsSilent()
     {
         var source = Stubs + """
 
@@ -131,7 +131,7 @@ public class ControllerDbContextRuleTests
     }
 
     [HumansFact]
-    public async Task Fires_when_controller_injects_nullable_UsersDbContext()
+    public async Task Analyze_NullableUsersDbContext_Fires()
     {
         var source = Stubs + """
 
@@ -156,7 +156,7 @@ public class ControllerDbContextRuleTests
     }
 
     [HumansFact]
-    public async Task Fires_when_controller_base_subclass_injects_UsersDbContext()
+    public async Task Analyze_BaseSubclassUsersDbContext_Fires()
     {
         var source = Stubs + """
 
@@ -180,7 +180,7 @@ public class ControllerDbContextRuleTests
     }
 
     [HumansFact]
-    public async Task Does_not_fire_when_controller_injects_service_instead()
+    public async Task Analyze_InjectedService_IsSilent()
     {
         var source = Stubs + """
 
@@ -209,7 +209,7 @@ public class ControllerDbContextRuleTests
     }
 
     [HumansFact]
-    public async Task Message_names_the_actual_injected_DbContext_type()
+    public async Task Message_InjectedDbContext_NamesItsType()
     {
         // Detection is structural (any DbContext-derived type), so the message
         // must name the actual context injected rather than a hardcoded

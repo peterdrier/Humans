@@ -61,6 +61,12 @@ internal interface ITeamRepository : IRepository
     /// <summary>Closes every active membership and deactivates the team in one transaction. Returns the users removed.</summary>
     Task<IReadOnlyList<Guid>> DeactivateTeamAsync(Guid teamId, Instant now, CancellationToken ct = default);
 
+    /// <summary>
+    /// Deletes the team's membership rows (with their role slots), join requests and early-entry grants in one save.
+    /// Returns how many people the deleted rows named.
+    /// </summary>
+    Task<int> EraseMembersAsync(Guid teamId, CancellationToken ct = default);
+
     Task<(bool Updated, string? PreviousPrefix)> SetGoogleGroupPrefixAsync(
         Guid teamId, string? prefix, CancellationToken ct = default);
 

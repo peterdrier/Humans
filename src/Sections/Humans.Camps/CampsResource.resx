@@ -189,7 +189,6 @@
   <data name="Camps_Flash_RegistrationPendingReview" xml:space="preserve"><value>Your camp has been registered and is pending review.</value></data>
   <data name="Camps_Flash_RegistrationFailed" xml:space="preserve"><value>We couldn't register your camp right now. Please try again, or contact an admin if the problem persists.</value></data>
   <data name="Camps_Flash_NoSeason" xml:space="preserve"><value>No season found for this camp.</value></data>
-  <data name="Camps_Flash_UnknownHuman" xml:space="preserve"><value>(unknown)</value></data>
   <data name="Camps_Flash_UpdateFailed" xml:space="preserve"><value>Camp update failed.</value></data>
   <data name="Camps_Flash_Updated" xml:space="preserve"><value>Camp updated successfully.</value></data>
   <data name="Camps_Flash_OptedIn" xml:space="preserve"><value>Opted in to season {0}.</value></data>

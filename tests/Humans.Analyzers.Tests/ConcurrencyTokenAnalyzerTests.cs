@@ -32,7 +32,7 @@ public sealed class ConcurrencyTokenAnalyzerTests
         string.Equals(d.Id, ConcurrencyTokenAnalyzer.DiagnosticId, StringComparison.Ordinal);
 
     [HumansFact]
-    public async Task Fires_on_IsConcurrencyToken_in_live_infrastructure_source()
+    public async Task Analyze_IsConcurrencyToken_Fires()
     {
         var source = EfStub + """
 
@@ -55,7 +55,7 @@ public sealed class ConcurrencyTokenAnalyzerTests
     }
 
     [HumansFact]
-    public async Task Fires_on_IsRowVersion_in_live_infrastructure_source()
+    public async Task Analyze_IsRowVersion_Fires()
     {
         var source = EfStub + """
 
@@ -78,7 +78,7 @@ public sealed class ConcurrencyTokenAnalyzerTests
     }
 
     [HumansFact]
-    public async Task Fires_on_ConcurrencyCheck_attribute_in_live_domain_source()
+    public async Task Analyze_ConcurrencyCheckAttribute_Fires()
     {
         var source = """
             using System.ComponentModel.DataAnnotations;
@@ -102,7 +102,7 @@ public sealed class ConcurrencyTokenAnalyzerTests
     }
 
     [HumansFact]
-    public async Task Fires_on_Timestamp_attribute_in_live_domain_source()
+    public async Task Analyze_TimestampAttribute_Fires()
     {
         var source = """
             using System.ComponentModel.DataAnnotations;
@@ -126,7 +126,7 @@ public sealed class ConcurrencyTokenAnalyzerTests
     }
 
     [HumansFact]
-    public async Task Does_not_fire_in_migration_namespace()
+    public async Task Analyze_MigrationNamespace_IsSilent()
     {
         var source = EfStub + """
 
@@ -149,7 +149,7 @@ public sealed class ConcurrencyTokenAnalyzerTests
     }
 
     [HumansFact]
-    public async Task Does_not_fire_on_same_named_non_EF_method()
+    public async Task Analyze_SameNamedNonEfMethod_IsSilent()
     {
         var source = """
             namespace Humans.Infrastructure.Services
@@ -175,7 +175,7 @@ public sealed class ConcurrencyTokenAnalyzerTests
     }
 
     [HumansFact]
-    public async Task Downgrades_EF_call_to_warning_when_class_has_Grandfathered_for_HUM0007()
+    public async Task Analyze_GrandfatheredEfCall_Warns()
     {
         var source = EfStub + GrandfatheredStub + """
 
@@ -205,7 +205,7 @@ public sealed class ConcurrencyTokenAnalyzerTests
     }
 
     [HumansFact]
-    public async Task Downgrades_attribute_to_warning_when_class_has_Grandfathered_for_HUM0007()
+    public async Task Analyze_GrandfatheredAttribute_Warns()
     {
         var source = GrandfatheredStub + """
 
@@ -235,7 +235,7 @@ public sealed class ConcurrencyTokenAnalyzerTests
     }
 
     [HumansFact]
-    public async Task Grandfathered_for_a_different_rule_still_fires_error()
+    public async Task Analyze_GrandfatheredOtherRule_Fires()
     {
         var source = EfStub + GrandfatheredStub + """
 

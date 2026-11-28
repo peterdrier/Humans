@@ -48,5 +48,3 @@ internal sealed record AgentTopUser(
 
 /// <summary><see cref="LastRunAt"/> is null until the job has run since process start.</summary>
 internal sealed record AgentRetentionRunSnapshot(Instant? LastRunAt, int LastDeletedCount);
-
-internal sealed record AgentBalanceStatus(decimal? BalanceUsd, string? UnavailableReason);

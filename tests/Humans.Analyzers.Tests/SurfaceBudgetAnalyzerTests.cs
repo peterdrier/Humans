@@ -30,7 +30,7 @@ public class SurfaceBudgetAnalyzerTests
         string.Equals(d.Id, SurfaceBudgetAnalyzer.SlackDiagnosticId, StringComparison.Ordinal);
 
     [HumansFact]
-    public async Task At_budget_interface_emits_no_diagnostic()
+    public async Task Analyze_InterfaceAtBudget_IsSilent()
     {
         var source = AttributeStub + """
 
@@ -56,7 +56,7 @@ public class SurfaceBudgetAnalyzerTests
     }
 
     [HumansFact]
-    public async Task Over_budget_interface_emits_HUM0015()
+    public async Task Analyze_InterfaceOverBudget_FiresHUM0015()
     {
         var source = AttributeStub + """
 
@@ -84,7 +84,7 @@ public class SurfaceBudgetAnalyzerTests
     }
 
     [HumansFact]
-    public async Task Under_budget_interface_emits_HUM0016()
+    public async Task Analyze_InterfaceUnderBudget_FiresHUM0016()
     {
         var source = AttributeStub + """
 
@@ -111,7 +111,7 @@ public class SurfaceBudgetAnalyzerTests
     }
 
     [HumansFact]
-    public async Task Property_accessors_are_not_counted()
+    public async Task Analyze_PropertyAccessors_AreNotCounted()
     {
         // Budget = 1, plus a property (2 accessors) — should be at-budget.
         var source = AttributeStub + """
@@ -138,7 +138,7 @@ public class SurfaceBudgetAnalyzerTests
     }
 
     [HumansFact]
-    public async Task Indexers_are_not_counted()
+    public async Task Analyze_Indexers_AreNotCounted()
     {
         var source = AttributeStub + """
 
@@ -164,7 +164,7 @@ public class SurfaceBudgetAnalyzerTests
     }
 
     [HumansFact]
-    public async Task Events_are_not_counted()
+    public async Task Analyze_Events_AreNotCounted()
     {
         var source = AttributeStub + """
 
@@ -190,7 +190,7 @@ public class SurfaceBudgetAnalyzerTests
     }
 
     [HumansFact]
-    public async Task Inherited_methods_are_not_counted()
+    public async Task Analyze_InheritedMethods_AreNotCounted()
     {
         // Base interface contributes 3 methods, but the budgeted interface
         // declares only 2 of its own — budget=2 should be at-budget.
@@ -225,7 +225,7 @@ public class SurfaceBudgetAnalyzerTests
     }
 
     [HumansFact]
-    public async Task Undecorated_interface_emits_no_diagnostic()
+    public async Task Analyze_UndecoratedInterface_IsSilent()
     {
         var source = AttributeStub + """
 
@@ -249,7 +249,7 @@ public class SurfaceBudgetAnalyzerTests
     }
 
     [HumansFact]
-    public async Task Class_over_budget_emits_HUM0015()
+    public async Task Analyze_ClassOverBudget_FiresHUM0015()
     {
         var source = AttributeStub + """
 
@@ -277,7 +277,7 @@ public class SurfaceBudgetAnalyzerTests
     }
 
     [HumansFact]
-    public async Task Class_private_and_static_methods_are_not_counted()
+    public async Task Analyze_PrivateOrStaticMethods_AreNotCounted()
     {
         // Budget = 1 public-instance method. Private/internal/protected/static
         // methods must not contribute to the count.
@@ -309,7 +309,7 @@ public class SurfaceBudgetAnalyzerTests
     }
 
     [HumansFact]
-    public async Task Struct_over_budget_emits_HUM0015()
+    public async Task Analyze_StructOverBudget_FiresHUM0015()
     {
         var source = AttributeStub + """
 

@@ -22,11 +22,7 @@ public sealed class GuestTicketOrdersViewComponent(
         {
             holdings = await ticketService.GetUserTicketHoldingsAsync(userId, ct);
         }
-        catch (OperationCanceledException) when (ct.IsCancellationRequested)
-        {
-            throw;
-        }
-        catch (Exception ex)
+        catch (Exception ex) when (ex is not OperationCanceledException || !ct.IsCancellationRequested)
         {
             logger.LogError(ex, "Failed to load ticket orders for guest dashboard, user {UserId}", userId);
             return Content(string.Empty);

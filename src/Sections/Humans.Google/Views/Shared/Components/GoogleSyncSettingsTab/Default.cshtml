@@ -1,11 +1,11 @@
-@model SyncSettingsViewModel
+@model IReadOnlyList<SyncServiceSettingViewModel>
 
 @* The explicit asp-controller/asp-action lets this form post to GoogleController
    from /Settings. *@
 <p class="text-muted">Configure how automated sync jobs handle each service.</p>
 
 <div class="row g-4">
-    @foreach (var setting in Model.Settings)
+    @foreach (var setting in Model)
     {
         <div class="col-md-4">
             <div class="card">

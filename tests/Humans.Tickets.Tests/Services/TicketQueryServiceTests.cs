@@ -1688,7 +1688,7 @@ public sealed class TicketQueryServiceTests : TicketsTestHarness
             IsPromotedToDirectory: false,
             Instant.FromUtc(2026, 1, 1, 0, 0),
             userIds.Select(userId => new TeamMemberInfo(
-                    Guid.NewGuid(), userId, string.Empty, null, null,
+                    Guid.NewGuid(), userId, string.Empty, null,
                     TeamMemberRole.Member, Instant.FromUtc(2026, 1, 1, 0, 0)))
                 .ToList());
 }

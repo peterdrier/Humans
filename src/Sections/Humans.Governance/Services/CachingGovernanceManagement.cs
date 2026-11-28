@@ -30,10 +30,6 @@ internal sealed class CachingGovernanceManagement(
         Guid userId, CancellationToken ct = default) =>
         WithInnerAsync(inner => inner.GetUserApplicationsAsync(userId, ct));
 
-    public Task<SubmittedApplicationSnapshot?> GetSubmittedApplicationForUserAsync(
-        Guid userId, CancellationToken ct = default) =>
-        WithInnerAsync(inner => inner.GetSubmittedApplicationForUserAsync(userId, ct));
-
     public Task<IReadOnlyList<ApplicationRenewalReminderCandidate>> GetExpiringApplicationsNeedingReminderAsync(
         LocalDate today, LocalDate reminderThreshold, CancellationToken ct = default) =>
         WithInnerAsync(inner => inner.GetExpiringApplicationsNeedingReminderAsync(today, reminderThreshold, ct));

@@ -53,7 +53,7 @@ public sealed class DashboardShiftsViewComponentTests
         IsActive: true, IsSystemTeam: true, SystemTeamType.Volunteers, RequiresApproval: false,
         IsPublicPage: false, IsHidden: false, IsPromotedToDirectory: false, Instant.MinValue,
         memberIds.Select(id => new TeamMemberInfo(
-            Guid.NewGuid(), id, "Member", null, null, TeamMemberRole.Member, Instant.MinValue)).ToList());
+            Guid.NewGuid(), id, "Member", null, TeamMemberRole.Member, Instant.MinValue)).ToList());
 
     private DashboardShiftsViewComponent BuildSut()
     {
@@ -80,27 +80,6 @@ public sealed class DashboardShiftsViewComponentTests
 
         var result = await BuildSut().InvokeAsync();
         return (DashboardShiftsViewModel)((ViewViewComponentResult)result).ViewData!.Model!;
-    }
-
-    [HumansFact]
-    public async Task InvokeAsync_AbortedUrgencyReadPropagatesInsteadOfRenderingAnEmptyCard()
-    {
-        using var cancellation = new CancellationTokenSource();
-        var sut = BuildSut();
-        sut.HttpContext.RequestAborted = cancellation.Token;
-        _teams.GetTeamAsync(SystemTeamIds.Volunteers, Arg.Any<CancellationToken>()).Returns(VolunteersTeam(_userId));
-        _burnSettings.GetActiveAsync(Arg.Any<CancellationToken>()).Returns(OpenBurn);
-        _settings.GetActiveEventSettings().Returns(Event(false));
-        _shiftMgmt.GetUrgentShiftsAsync(OpenBurn.Id, limit: 3, ct: cancellation.Token)
-            .Returns(async _ =>
-            {
-                await cancellation.CancelAsync();
-                return await Task.FromCanceled<IReadOnlyList<UrgentShiftInfo>>(cancellation.Token);
-            });
-
-        Func<Task> invoke = () => sut.InvokeAsync();
-
-        await invoke.Should().ThrowAsync<OperationCanceledException>();
     }
 
     [HumansFact]

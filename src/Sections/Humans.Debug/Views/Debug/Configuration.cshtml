@@ -1,22 +1,22 @@
-@model AdminConfigurationViewModel
+@model IReadOnlyList<ConfigurationItemViewModel>
 @{
     ViewData["Title"] = "Configuration Status";
 
-    var sections = Model.Items
+    var sections = Model
         .GroupBy(i => i.Section)
         .OrderBy(g => g.Key, StringComparer.OrdinalIgnoreCase)
         .ToList();
 
-    var totalCount = Model.Items.Count;
-    var setCount = Model.Items.Count(i => i.IsSet);
-    var totalCritical = Model.Items.Count(i => string.Equals(i.Importance, "critical", StringComparison.Ordinal));
-    var totalRecommended = Model.Items.Count(i => string.Equals(i.Importance, "recommended", StringComparison.Ordinal));
-    var missingCritical = Model.Items.Count(i => string.Equals(i.Importance, "critical", StringComparison.Ordinal) && !i.IsSet);
-    var missingRecommended = Model.Items.Count(i => string.Equals(i.Importance, "recommended", StringComparison.Ordinal) && !i.IsSet);
-    var unsetOptional = Model.Items.Count(i => !string.Equals(i.Importance, "critical", StringComparison.Ordinal)
+    var totalCount = Model.Count;
+    var setCount = Model.Count(i => i.IsSet);
+    var totalCritical = Model.Count(i => string.Equals(i.Importance, "critical", StringComparison.Ordinal));
+    var totalRecommended = Model.Count(i => string.Equals(i.Importance, "recommended", StringComparison.Ordinal));
+    var missingCritical = Model.Count(i => string.Equals(i.Importance, "critical", StringComparison.Ordinal) && !i.IsSet);
+    var missingRecommended = Model.Count(i => string.Equals(i.Importance, "recommended", StringComparison.Ordinal) && !i.IsSet);
+    var unsetOptional = Model.Count(i => !string.Equals(i.Importance, "critical", StringComparison.Ordinal)
         && !string.Equals(i.Importance, "recommended", StringComparison.Ordinal) && !i.IsSet);
     var attentionCount = missingCritical + missingRecommended;
-    var secretCount = Model.Items.Count(i => i.IsSensitive);
+    var secretCount = Model.Count(i => i.IsSensitive);
 }
 
 <page-header title="Configuration Status" variant="compact">

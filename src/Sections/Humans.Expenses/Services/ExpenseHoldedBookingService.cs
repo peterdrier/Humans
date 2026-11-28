@@ -44,8 +44,7 @@ internal sealed class ExpenseHoldedBookingService(
             var approved = report.Status == ExpenseReportStatus.Approved;
             var outboxEvent = outbox.GetValueOrDefault(report.Id);
             ExpenseHoldedReconLine Line(Guid? lineId, string? docId, string description, decimal booked) => new(
-                report.Id, lineId, report.Status, creditors(report.SubmitterUserId), report.HoldedContactId, docId,
-                description, ExpenseReportBackgroundProcessor.DocNotes(report.Id), booked,
+                report.Id, lineId, report.Status, creditors(report.SubmitterUserId), docId, description, booked,
                 report.SubmittedAt ?? report.CreatedAt,
                 ExpenseReportService.ResolveSyncState(outboxEvent, configured),
                 outboxEvent?.ProcessedAt);

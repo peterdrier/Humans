@@ -11,9 +11,6 @@ internal interface IGovernanceManagement : IApplicationService
     Task<IReadOnlyList<UserApplicationSnapshot>> GetUserApplicationsAsync(
         Guid userId, CancellationToken ct = default);
 
-    Task<SubmittedApplicationSnapshot?> GetSubmittedApplicationForUserAsync(
-        Guid userId, CancellationToken ct = default);
-
     Task<int> GetUnvotedApplicationCountAsync(
         Guid boardMemberUserId, CancellationToken ct = default);
 

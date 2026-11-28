@@ -674,18 +674,6 @@ internal sealed class ApplicationDecisionService(
             History: history);
     }
 
-    public async Task<SubmittedApplicationSnapshot?> GetSubmittedApplicationForUserAsync(
-        Guid userId, CancellationToken ct = default)
-    {
-        var application = await repository.GetSubmittedForUserAsync(userId, ct);
-        return application is null
-            ? null
-            : new SubmittedApplicationSnapshot(
-                application.Id,
-                application.MembershipTier,
-                application.Motivation);
-    }
-
     public async Task<BoardVotingDashboardData> GetBoardVotingDashboardAsync(
         CancellationToken ct = default)
     {

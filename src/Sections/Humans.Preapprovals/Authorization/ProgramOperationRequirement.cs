@@ -9,17 +9,17 @@ namespace Humans.Preapprovals.Authorization;
 internal sealed class ProgramOperationRequirement : IAuthorizationRequirement
 {
     /// <summary>See the program and its grants: a manager of this program, Admin, FinanceAdmin or Board.</summary>
-    public static readonly ProgramOperationRequirement View = new(nameof(View));
+    public static readonly ProgramOperationRequirement View = new();
 
     /// <summary>Issue, approve, decline, revoke, change an amount: a manager of this program, Admin or FinanceAdmin.</summary>
-    public static readonly ProgramOperationRequirement Manage = new(nameof(Manage));
+    public static readonly ProgramOperationRequirement Manage = new();
 
     /// <summary>Create or edit the program itself and its managers: Admin, FinanceAdmin.</summary>
-    public static readonly ProgramOperationRequirement Administer = new(nameof(Administer));
+    public static readonly ProgramOperationRequirement Administer = new();
 
-    private ProgramOperationRequirement(string name) => Name = name;
-
-    public string Name { get; }
+    private ProgramOperationRequirement()
+    {
+    }
 }
 
 internal sealed class ProgramAuthorizationHandler(IUserService users, IHttpContextAccessor httpContextAccessor)

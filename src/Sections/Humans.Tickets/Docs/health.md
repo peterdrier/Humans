@@ -95,26 +95,26 @@ them.
   `Controllers/TicketController.cs:349`), and every donor-list download audits
   (`Services/TicketQueryService.cs:179`).
 - A member buying for themselves holds at most one adult ticket per event
-  (`Services/Checkout/TicketCheckoutService.cs:295`, `Services/Checkout/TicketCheckoutService.cs:1164`).
-- A paid order issues its tickets exactly once (`Services/Checkout/TicketCheckoutService.Tickets.cs:285`).
+  (`Services/Checkout/TicketCheckoutService.cs:286`, `Services/Checkout/TicketCheckoutService.cs:1155`).
+- A paid order issues its tickets exactly once (`Services/Checkout/TicketCheckoutService.cs:1664`).
 - A refund needs a paid order and never exceeds what its tickets can still be refunded, chargebacks
-  included (`Services/Checkout/TicketCheckoutService.cs:785`,
-  `Services/Checkout/TicketCheckoutService.cs:787`); the refund row is saved before the platform is
+  included (`Services/Checkout/TicketCheckoutService.cs:776`,
+  `Services/Checkout/TicketCheckoutService.cs:778`); the refund row is saved before the platform is
   called.
 - A resale refund is paid only by the evening batch, only after the holding period, only while the
   buyer's order is paid with nothing refunded or charged back, and never for a cancelled event
-  (`Services/Checkout/TicketCheckoutService.Tickets.cs:519`,
-  `Services/Checkout/TicketCheckoutService.Tickets.cs:522`,
-  `Services/Checkout/TicketCheckoutService.Tickets.cs:551`).
+  (`Services/Checkout/TicketCheckoutService.cs:1898`,
+  `Services/Checkout/TicketCheckoutService.cs:1901`,
+  `Services/Checkout/TicketCheckoutService.cs:1930`).
 - An unsold-resale notice ("no refund, your ticket still admits you") goes only for an event that
-  closed, never for a cancelled one (`Services/Checkout/TicketCheckoutService.Tickets.cs:672`).
+  closed, never for a cancelled one (`Services/Checkout/TicketCheckoutService.cs:2051`).
 - A cancelled event voids every live ticket, withdraws its offers and refunds each paid order once,
   waiting while a buyer's unpaid order holds a ticket in resale
-  (`Services/Checkout/TicketCheckoutService.TeamTools.cs:118`).
+  (`Services/Checkout/TicketCheckoutService.cs:2648`).
 - An adult ticket carries at most one valid companion and one pending request
-  (`Services/Checkout/TicketCheckoutService.Companions.cs:140`).
+  (`Services/Checkout/TicketCheckoutService.cs:2540`).
 - Erasure withdraws the member's open and reserved offers and pending companion requests
-  (`Services/Checkout/TicketCheckoutService.cs:1039`).
+  (`Services/Checkout/TicketCheckoutService.cs:1030`).
 - A reconciliation is balanced only when counts and totals match on both sides and no row that
   moved money has an issue (`Services/Checkout/TicketRecon.cs:110`).
 
@@ -146,9 +146,11 @@ them.
   such fallback, so `HasCurrentEventTicket` waits for the next sync.
 - **The caching decorators are Singletons wrapping Scoped or keyed inners**, because `TrackedCache`
   slices must outlive a request.
-- **`TicketCheckoutService` is one class in many partial files**: the lanes share the order
-  refresh, the timeline and the refund core, and splitting them into services would put those
-  behind new interfaces.
+- **`TicketCheckoutService` stays one large class.** Ticket issuance, resale, refunds, companions, the
+  team's exceptions and event cancellation all write checkout tickets, which feed the holdings cache
+  (one writer per cached graph), and share the order refresh, the timeline and the refund core; only
+  the read-only gate lookup (`TicketGateLookup`) and platform reconciliation (`TicketReconService`)
+  split out cleanly.
 - **The reconcile sweep does everything in one pass with a time budget on cancellation**, because
   one job on one server is the whole concurrency story; each step is safe to repeat.
 - **Resale refunds wait for the evening batch** so a buyer's chargeback or refund within the holding

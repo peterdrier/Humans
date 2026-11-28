@@ -44,7 +44,7 @@ public class CachingDecoratorRuleTests
         string.Equals(d.Id, "HUM0020", StringComparison.Ordinal);
 
     [HumansFact]
-    public async Task Fires_error_on_repository_constructor_parameter_in_caching_decorator()
+    public async Task Analyze_RepositoryConstructorParameter_Fires()
     {
         var source = Stubs + """
 
@@ -68,7 +68,7 @@ public class CachingDecoratorRuleTests
     }
 
     [HumansFact]
-    public async Task Fires_on_nested_helper_repository_field_inside_caching_decorator()
+    public async Task Analyze_NestedHelperRepositoryField_Fires()
     {
         var source = Stubs + """
 
@@ -93,7 +93,7 @@ public class CachingDecoratorRuleTests
     }
 
     [HumansFact]
-    public async Task Fires_on_method_parameter_repository_reference()
+    public async Task Analyze_RepositoryMethodParameter_Fires()
     {
         var source = Stubs + """
 
@@ -118,7 +118,7 @@ public class CachingDecoratorRuleTests
     }
 
     [HumansFact]
-    public async Task Fires_on_repository_typed_property_in_caching_decorator()
+    public async Task Analyze_RepositoryTypedProperty_Fires()
     {
         var source = Stubs + """
 
@@ -140,7 +140,7 @@ public class CachingDecoratorRuleTests
     }
 
     [HumansFact]
-    public async Task Fires_on_repository_return_type_in_caching_decorator()
+    public async Task Analyze_RepositoryReturnType_Fires()
     {
         var source = Stubs + """
 
@@ -162,7 +162,7 @@ public class CachingDecoratorRuleTests
     }
 
     [HumansFact]
-    public async Task Fires_on_repository_wrapped_in_generic_type()
+    public async Task Analyze_RepositoryInGenericType_Fires()
     {
         var source = Stubs + """
 
@@ -184,7 +184,7 @@ public class CachingDecoratorRuleTests
     }
 
     [HumansFact]
-    public async Task Fires_on_repository_constrained_type_parameter()
+    public async Task Analyze_RepositoryConstrainedTypeParameter_Fires()
     {
         var source = Stubs + """
 
@@ -208,7 +208,7 @@ public class CachingDecoratorRuleTests
     }
 
     [HumansFact]
-    public async Task Does_not_fire_on_regular_infrastructure_service_repository_parameter()
+    public async Task Analyze_RegularServiceRepositoryParameter_IsSilent()
     {
         var source = Stubs + """
 
@@ -238,7 +238,7 @@ public class CachingDecoratorRuleTests
     /// can die the same way again and stay green doing it.
     /// </summary>
     [HumansFact]
-    public async Task Fires_on_repository_in_section_project_caching_decorator()
+    public async Task Analyze_SectionProjectDecorator_Fires()
     {
         var source = SectionEntryPoint + Stubs + """
 
@@ -262,7 +262,7 @@ public class CachingDecoratorRuleTests
     }
 
     [HumansFact]
-    public async Task Grandfathered_decorator_reports_warning()
+    public async Task Analyze_GrandfatheredDecorator_Warns()
     {
         var source = Stubs + """
 

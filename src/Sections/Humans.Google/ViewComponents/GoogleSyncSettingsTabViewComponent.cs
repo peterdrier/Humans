@@ -16,17 +16,14 @@ internal sealed class GoogleSyncSettingsTabViewComponent(
             .OrderBy(s => s.ServiceType.ToString(), StringComparer.Ordinal)
             .ToList();
 
-        var viewModel = new SyncSettingsViewModel
+        var viewModel = settings.Select(s => new SyncServiceSettingViewModel
         {
-            Settings = settings.Select(s => new SyncServiceSettingViewModel
-            {
-                ServiceType = s.ServiceType,
-                ServiceName = SyncServiceNameFormatter.Format(s.ServiceType),
-                CurrentMode = s.SyncMode,
-                UpdatedAt = s.UpdatedAt.ToDateTimeUtc(),
-                UpdatedByUserId = s.UpdatedByUserId,
-            }).ToList()
-        };
+            ServiceType = s.ServiceType,
+            ServiceName = SyncServiceNameFormatter.Format(s.ServiceType),
+            CurrentMode = s.SyncMode,
+            UpdatedAt = s.UpdatedAt.ToDateTimeUtc(),
+            UpdatedByUserId = s.UpdatedByUserId,
+        }).ToList();
 
         return View(viewModel);
     }

@@ -2,11 +2,7 @@
 namespace Humans.Users.Contracts;
 
 public record UserEmailDto(
-    Guid Id,
     string Email,
-    bool IsVerified,
-    string? Provider,
-    string? ProviderKey,
     bool IsPrimary,
     ContactFieldVisibility? Visibility);
 

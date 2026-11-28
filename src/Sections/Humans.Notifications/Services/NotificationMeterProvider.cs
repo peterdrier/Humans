@@ -29,11 +29,7 @@ internal sealed class NotificationMeterProvider(
                 var contributed = await contributor.GetMetersAsync(user, id, cancellationToken);
                 meters.AddRange(contributed.ToList());
             }
-            catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
-            {
-                throw;
-            }
-            catch (Exception ex)
+            catch (Exception ex) when (ex is not OperationCanceledException || !cancellationToken.IsCancellationRequested)
             {
                 logger.LogError(ex, "Notification meter contributor {Contributor} failed for user {UserId}; its meters are skipped",
                     contributor.GetType().Name, id);

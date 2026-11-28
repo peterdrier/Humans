@@ -32,6 +32,6 @@ internal sealed class EarlyEntryRosterController(
             vms.Add(new EarlyEntryRosterRowVm(r.UserId, legalName, r.EarliestEntryDate, r.Sources, r.HasMultiple));
         }
 
-        return View(new EarlyEntryRosterViewModel(vms));
+        return View(vms);
     }
 }

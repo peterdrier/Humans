@@ -1,4 +1,4 @@
-@model AssemblyVoteAdminListViewModel
+@model IReadOnlyList<Humans.Governance.Services.Dtos.AssemblyVoteListItem>
 @inject Humans.Base.Interfaces.IOrgTimeZone OrgTimeZone
 @{
     ViewData["Title"] = "Assembly Votes";
@@ -27,11 +27,11 @@
                     </tr>
                 </thead>
                 <tbody>
-                    @if (Model.Votes.Count == 0)
+                    @if (Model.Count == 0)
                     {
                         <tr><td colspan="7" class="text-center text-muted py-4">No votes yet.</td></tr>
                     }
-                    @foreach (var vote in Model.Votes)
+                    @foreach (var vote in Model)
                     {
                         var p = vote.Participation;
                         var extendId = "extend-" + vote.Id.ToString("N");

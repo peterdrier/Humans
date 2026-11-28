@@ -6,12 +6,6 @@ using NodaTime;
 
 namespace Humans.Governance.Models;
 
-/// <summary>Votes list page. The controller orders open votes first.</summary>
-internal sealed class AssemblyVoteListViewModel
-{
-    public IReadOnlyList<AssemblyVoteListItem> Votes { get; init; } = [];
-}
-
 /// <summary>Adds only the RankedChoice form scaffolding to the service DTO; form state is not vote content.</summary>
 internal sealed class AssemblyVoteDetailViewModel
 {
@@ -91,18 +85,6 @@ internal sealed class AssemblyBallotFormViewModel
             .Select(r => r.OptionKey)
             .ToList();
     }
-}
-
-/// <summary>Results page after close: the stored tally, peeks, acta block and disclosed ballots — all carried on the DTO as-is.</summary>
-internal sealed class AssemblyVoteResultsViewModel
-{
-    public required AssemblyVoteResultsView Results { get; init; }
-}
-
-/// <summary>Admin list: every vote in every state.</summary>
-internal sealed class AssemblyVoteAdminListViewModel
-{
-    public IReadOnlyList<AssemblyVoteListItem> Votes { get; init; } = [];
 }
 
 /// <summary>

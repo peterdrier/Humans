@@ -49,7 +49,7 @@ The external surface, grouped by the question each group answers.
 
 | # | Question shape | Where it is answered | Surface |
 |---|---|---|---|
-| S1 | *What tier applications does this person have, and what happened to them?* | internal management + own pages | `GetUserApplicationsAsync`, `GetUserApplicationDetailAsync`, `GetSubmittedApplicationForUserAsync`; `GET /Governance`, `GET /Governance/Applications`, `GET /Governance/Applications/Details/{id}` |
+| S1 | *What tier applications does this person have, and what happened to them?* | internal management + own pages | `GetUserApplicationsAsync`, `GetUserApplicationDetailAsync`; `GET /Governance`, `GET /Governance/Applications`, `GET /Governance/Applications/Details/{id}` |
 | S2 | *What tier does this person hold today?* | contracts read surface | `HasActiveApprovedTierAsync`, `GetActiveApprovedTierUserIdsAsync`, `GetMembershipTierAsync`, `GetMembershipTiersAsync` |
 | S3 | *What is still on the Board's plate?* | internal management + admin pages + Notifications' meter contributor | `GetUnvotedApplicationCountAsync`, `GetPendingApplicationCountAsync`, `GetAdminStatsAsync`; `GET /Governance/Applications/Admin`, `GET /Governance/BoardVoting` |
 | S4 | *Move one application along its state machine* | the decision service, own pages only | `ValidateSubmission`, `SubmitAsync`, `WithdrawAsync`, `CastBoardVoteAsync`, `ApproveAsync`, `RejectAsync`; `POST /Governance/Applications/Create`, `POST /Governance/BoardVoting/Vote`, `POST /Governance/BoardVoting/Finalize` |

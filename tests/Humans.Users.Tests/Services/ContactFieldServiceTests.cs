@@ -157,7 +157,7 @@ public sealed class ContactFieldServiceTests : ServiceTestHarness
         foreach (var group in grouped)
         {
             var members = group
-                .Select(s => new TeamMemberInfo(Guid.NewGuid(), s.UserId, "T", null, null, s.Role, Clock.GetCurrentInstant()))
+                .Select(s => new TeamMemberInfo(Guid.NewGuid(), s.UserId, "T", null, s.Role, Clock.GetCurrentInstant()))
                 .ToList();
             var teamId = group.Key;
             var systemTeamType = group.First().SystemTeamType;

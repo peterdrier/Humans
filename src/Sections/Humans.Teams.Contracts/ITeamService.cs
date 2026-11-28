@@ -14,7 +14,6 @@ public record TeamInfo(
     string? GoogleGroupPrefix = null,
     bool HasBudget = false,
     bool IsSensitive = false,
-    Instant? UpdatedAt = null,
     string? CustomSlug = null,
     IReadOnlySet<Guid>? ManagementRoleHolderUserIds = null,
     IReadOnlyList<TeamRoleDefinitionSnapshot>? RoleDefinitions = null,
@@ -39,13 +38,12 @@ public record TeamInfo(
 
 public record TeamMemberInfo(
     Guid TeamMemberId, Guid UserId, string DisplayName,
-    string? Email, string? ProfilePictureUrl, TeamMemberRole Role, Instant JoinedAt);
+    string? Email, TeamMemberRole Role, Instant JoinedAt);
 
 /// <summary>One active membership, with the team's identity stitched in.</summary>
 public sealed record UserTeamMembershipInfo(
     Guid TeamId,
     string TeamName,
-    string TeamSlug,
     TeamMemberRole Role)
 {
     public bool IsActive { get; init; }

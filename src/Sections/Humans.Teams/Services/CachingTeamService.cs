@@ -111,7 +111,7 @@ internal sealed class CachingTeamService(
         foreach (var id in ids)
         {
             if (teams.TryGetValue(id, out var team))
-                result[id] = new EntityName("Team", team.Name, team.Slug);
+                result[id] = new EntityName(team.Name, team.Slug);
         }
         return result;
     }
@@ -211,7 +211,7 @@ internal sealed class CachingTeamService(
                 continue;
 
             result.Add(new UserTeamMembershipInfo(
-                team.Team.Id, team.Team.Name, team.Team.Slug, membership.Role)
+                team.Team.Id, team.Team.Name, membership.Role)
             {
                 IsActive = team.Team.IsActive,
                 IsHidden = team.Team.IsHidden,
@@ -258,6 +258,9 @@ internal sealed class CachingTeamService(
 
     public Task<TeamDeactivationResult> DeleteTeamAsync(Guid teamId, Guid actorUserId, CancellationToken cancellationToken = default) =>
         MutateAsync(inner => inner.DeleteTeamAsync(teamId, actorUserId, cancellationToken), static result => result.Succeeded);
+
+    public Task<TeamDeactivationResult> EraseMembersAsync(Guid teamId, Guid actorUserId, CancellationToken cancellationToken = default) =>
+        MutateAsync(inner => inner.EraseMembersAsync(teamId, actorUserId, cancellationToken), static result => result.Succeeded);
 
     public Task<int> RetireGovernanceBodyTeamsAsync(Guid actorUserId, CancellationToken cancellationToken = default) =>
         MutateAsync(inner => inner.RetireGovernanceBodyTeamsAsync(actorUserId, cancellationToken), static retired => retired > 0);

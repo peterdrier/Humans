@@ -26,7 +26,7 @@ public class UserEmailLegacyFieldAnalyzerTests
         string.Equals(d.Id, UserEmailLegacyFieldAnalyzer.DiagnosticId, StringComparison.Ordinal);
 
     [HumansFact]
-    public async Task Fires_on_UserEmail_IsOAuth_read_in_Application_assembly()
+    public async Task Analyze_IsOAuthRead_Fires()
     {
         var source = DomainStub + """
 
@@ -48,7 +48,7 @@ public class UserEmailLegacyFieldAnalyzerTests
     }
 
     [HumansFact]
-    public async Task Fires_on_UserEmail_DisplayOrder_object_initializer_in_Web()
+    public async Task Analyze_DisplayOrderInitializer_Fires()
     {
         var source = DomainStub + """
 
@@ -71,7 +71,7 @@ public class UserEmailLegacyFieldAnalyzerTests
     }
 
     [HumansFact]
-    public async Task Fires_on_User_GoogleEmail_assignment_in_Application()
+    public async Task Analyze_GoogleEmailAssignment_Fires()
     {
         var source = DomainStub + """
 
@@ -93,7 +93,7 @@ public class UserEmailLegacyFieldAnalyzerTests
     }
 
     [HumansFact]
-    public async Task Fires_on_User_GetGoogleServiceEmail_call_in_Application()
+    public async Task Analyze_GetGoogleServiceEmailCall_Fires()
     {
         var source = DomainStub + """
 
@@ -115,7 +115,7 @@ public class UserEmailLegacyFieldAnalyzerTests
     }
 
     [HumansFact]
-    public async Task Does_not_fire_on_unrelated_property_with_same_name_on_other_type()
+    public async Task Analyze_SameNameOtherType_IsSilent()
     {
         var source = """
             namespace Some.Other
@@ -144,7 +144,7 @@ public class UserEmailLegacyFieldAnalyzerTests
     }
 
     [HumansFact]
-    public async Task Does_not_fire_on_canonical_replacement_Provider_not_null()
+    public async Task Analyze_ProviderNotNull_IsSilent()
     {
         var source = DomainStub + """
 

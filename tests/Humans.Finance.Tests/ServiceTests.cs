@@ -77,7 +77,7 @@ public class HoldedFinanceServiceTests
     private static HoldedPurchaseDocInfo PDoc(
         string id, decimal total = 10m, bool approved = true, string? account = null, IReadOnlyList<string>? tags = null,
         LocalDate? date = null, string docNumber = "", string contactName = "", string? description = null) =>
-        new(id, docNumber, contactName, null, description, date ?? new LocalDate(2026, 4, 15), total, total,
+        new(id, docNumber, contactName, null, description, date ?? new LocalDate(2026, 4, 15), total,
             approved, null, tags ?? [], account, $"https://app.holded.com/expenses/list#open:purchase-{id}");
 
     private void StubDocs(params HoldedPurchaseDocInfo[] docs) =>
@@ -208,9 +208,8 @@ public class HoldedFinanceServiceTests
         var cat = Guid.NewGuid();
         MapCategory(cat);
         StubDocs(
-            // The budget pages are gross/IVA-inclusive, so the actual is Total, not Subtotal.
-            PDoc("d1", 121m, account: "acc-1") with { Subtotal = 100m },
-            PDoc("d2", 60.50m, tags: ["Comms"]) with { Subtotal = 50m },
+            PDoc("d1", 121m, account: "acc-1"),
+            PDoc("d2", 60.50m, tags: ["Comms"]),
             PDoc("d3", 999m, approved: false, account: "acc-1"),
             PDoc("d4", 500m, account: "acc-1", date: new LocalDate(2025, 12, 31)),
             PDoc("d5", 77m, account: "acc-other"));
@@ -1304,7 +1303,7 @@ public class HoldedFinanceServiceTests
         await _feed.DidNotReceiveWithAnyArgs().ListPurchaseDocumentsAsync();
 
         static HoldedPurchaseDocInfo OpenDoc(string id, string? contactId, decimal pending, bool draft = false) => new HoldedPurchaseDocInfo(
-            id, id, "x", contactId, null, FixedNow.InZone(DateTimeZoneProviders.Tzdb["Europe/Madrid"]).Date, 10m, 10m, draft == false, null, [], null, "", pending);
+            id, id, "x", contactId, null, FixedNow.InZone(DateTimeZoneProviders.Tzdb["Europe/Madrid"]).Date, 10m, draft == false, null, [], null, "", pending);
     }
 
     [HumansFact]
@@ -2923,7 +2922,7 @@ public class HoldedFinanceServiceTests
     private static HoldedPurchaseDocInfo Doc(
         string id, decimal pending, int dayOfMonth, string contactId = "c1", bool? draft = false) =>
         new HoldedPurchaseDocInfo(
-            id, id.ToUpperInvariant(), "Ana Ruiz", contactId, null, (Instant.FromUtc(2026, 4, dayOfMonth, 0, 0)).InZone(DateTimeZoneProviders.Tzdb["Europe/Madrid"]).Date, pending, pending, draft == false, null, [], null, "", pending);
+            id, id.ToUpperInvariant(), "Ana Ruiz", contactId, null, (Instant.FromUtc(2026, 4, dayOfMonth, 0, 0)).InZone(DateTimeZoneProviders.Tzdb["Europe/Madrid"]).Date, pending, draft == false, null, [], null, "", pending);
 
     private void SeedOpenDocs(params HoldedPurchaseDocInfo[] docs) =>
         _feed.ListPurchaseDocumentsAsync(Arg.Any<CancellationToken>()).Returns(docs.ToList());

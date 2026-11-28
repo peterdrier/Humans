@@ -1,4 +1,4 @@
-@model Humans.Governance.Models.AssemblyVoteListViewModel
+@model IReadOnlyList<Humans.Governance.Services.Dtos.AssemblyVoteListItem>
 @inject Humans.Base.Interfaces.IOrgTimeZone OrgTimeZone
 @{
     ViewData["Title"] = Localizer["Governance_Votes_Title"].Value;
@@ -12,7 +12,7 @@
 
 <page-header title="@(Localizer["Governance_Votes_Title"].Value)" />
 
-@if (Model.Votes.Count == 0)
+@if (Model.Count == 0)
 {
     <div class="card">
         <div class="card-body">
@@ -22,7 +22,7 @@
 }
 else
 {
-    @foreach (var vote in Model.Votes)
+    @foreach (var vote in Model)
     {
         var voted = vote.Participation.OfficialCast + vote.Participation.IndicativeCast;
         var roster = vote.Participation.OfficialRoster + vote.Participation.IndicativeRoster;

@@ -11,9 +11,8 @@ internal sealed record DirectoryGroupListResult(
     IReadOnlyList<DirectoryGroup>? Groups,
     GoogleClientError? Error);
 
-/// <summary>The connector drops rows without an id or email, so both are always set.</summary>
+/// <summary>The connector drops rows without an email, which is how administration addresses groups.</summary>
 internal sealed record DirectoryGroup(
-    string Id,
     string Email,
     string? DisplayName,
     long? DirectMembersCount);

@@ -371,13 +371,11 @@ internal sealed class CityPlanningService(
             opensOn,
             closesOn,
             changeableUntilOn,
-            settings.RegistrationInfo,
             settings.LimitZoneGeoJson,
             settings.OfficialZonesGeoJson,
             settings.IsContainerPlacementOpen,
             settings.ContainerPlacementOpenedAt,
-            settings.ContainerPlacementClosedAt,
-            settings.UpdatedAt);
+            settings.ContainerPlacementClosedAt);
     }
 
     private static LocalDate? DayFromGate(LocalDate? gateOpening, int? offset) =>

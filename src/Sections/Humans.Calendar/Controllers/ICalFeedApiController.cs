@@ -26,11 +26,7 @@ internal sealed class ICalFeedApiController(
             if (ics is null) return NotFound();
             return File(System.Text.Encoding.UTF8.GetBytes(ics), "text/calendar");
         }
-        catch (OperationCanceledException) when (ct.IsCancellationRequested)
-        {
-            throw;
-        }
-        catch (Exception ex)
+        catch (Exception ex) when (ex is not OperationCanceledException || !ct.IsCancellationRequested)
         {
             logger.LogError(ex, "Failed to build iCal feed for user {UserId}", userId);
             return StatusCode(StatusCodes.Status500InternalServerError);

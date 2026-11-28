@@ -1,4 +1,6 @@
 using Humans.Campaigns.Domain;
+using Humans.Base.Enums;
+using NodaTime;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
@@ -11,11 +13,11 @@ internal sealed class CampaignGrantConfiguration : IEntityTypeConfiguration<Camp
         builder.ToTable("campaign_grants");
         builder.HasKey(g => g.Id);
 
-#pragma warning disable CS0618 // the retired column stays mapped until its drop is approved
-        builder.Property(g => g.LatestEmailStatus)
+        // Retired delivery columns stay mapped until their drop is approved.
+        builder.Property<EmailOutboxStatus?>("LatestEmailStatus")
             .HasConversion<string>()
             .HasMaxLength(20);
-#pragma warning restore CS0618
+        builder.Property<Instant?>("LatestEmailAt");
 
         builder.Property(g => g.RedeemedAt);
 

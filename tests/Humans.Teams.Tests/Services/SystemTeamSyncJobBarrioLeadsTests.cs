@@ -46,7 +46,7 @@ public class SystemTeamSyncJobBarrioLeadsTests
         services.AddSingleton(resources ?? Substitute.For<ITeamResourceService>());
         var consent = consentService ?? Substitute.For<IConsentService>();
         consent.GetConsentReviewAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
-            .Returns(call => ConsentReviewInfo.None(call.Arg<Guid>()));
+            .Returns(ConsentReviewInfo.None());
         consent.GetConsentReviewsAsync(Arg.Any<CancellationToken>())
             .Returns(new Dictionary<Guid, ConsentReviewInfo>());
         services.AddSingleton(consent);
@@ -187,7 +187,7 @@ public class SystemTeamSyncJobBarrioLeadsTests
             IsPromotedToDirectory: false, CreatedAt: Instant.MinValue,
             Members: team.ActiveMemberUserIds
                 .Select(uid => new TeamMemberInfo(
-                    Guid.NewGuid(), uid, string.Empty, null, null,
+                    Guid.NewGuid(), uid, string.Empty, null,
                     TeamMemberRole.Member, Instant.MinValue))
                 .ToList());
         _teamService.GetTeamsAsync(Arg.Any<CancellationToken>())
