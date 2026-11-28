@@ -116,7 +116,7 @@ public sealed class ConsentControllerTests
     }
 
     [HumansFact]
-    public async Task Submit_RecordedButOnboardingReportFails_ShowsThankYouNotError()
+    public async Task Submit_OnboardingReportFails_ShowsThankYou()
     {
         var userId = Guid.NewGuid();
         var versionId = Guid.NewGuid();
@@ -135,7 +135,7 @@ public sealed class ConsentControllerTests
     }
 
     [HumansFact]
-    public async Task Submit_WithLocalReturnUrl_ReportsSignatureAndReturnsThere()
+    public async Task Submit_LocalReturnUrl_ReturnsThere()
     {
         // The onboarding widget's signing step posts here and must land back on its dispatcher.
         var userId = Guid.NewGuid();
@@ -159,7 +159,7 @@ public sealed class ConsentControllerTests
     }
 
     [HumansFact]
-    public async Task Submit_AlreadyConsented_WithLocalReturnUrl_ReturnsThereWithInfo()
+    public async Task Submit_AlreadyConsentedLocalReturnUrl_ReturnsThere()
     {
         var userId = Guid.NewGuid();
         var versionId = Guid.NewGuid();
@@ -182,7 +182,7 @@ public sealed class ConsentControllerTests
     }
 
     [HumansFact]
-    public async Task Submit_WithForeignReturnUrl_IgnoresItAndReturnsToConsentIndex()
+    public async Task Submit_ForeignReturnUrl_ReturnsToConsentIndex()
     {
         var userId = Guid.NewGuid();
         var versionId = Guid.NewGuid();
@@ -224,7 +224,7 @@ public sealed class ConsentControllerTests
         profile: profile);
 
     [HumansFact]
-    public async Task Index_RendersPendingRowsFirstUtcDatesAndTenHistoryItems()
+    public async Task Index_PendingRows_RenderFirst()
     {
         var userId = Guid.NewGuid();
         _userService.GetUserInfoAsync(userId, Arg.Any<CancellationToken>())
@@ -343,7 +343,7 @@ public sealed class ConsentControllerTests
     }
 
     [HumansFact]
-    public async Task Review_Get_StubProfile_RedirectsToProfileEdit()
+    public async Task ReviewGet_StubProfile_RedirectsToProfileEdit()
     {
         var userId = Guid.NewGuid();
         _userService.GetUserInfoAsync(userId, Arg.Any<CancellationToken>())
@@ -360,7 +360,7 @@ public sealed class ConsentControllerTests
     }
 
     [HumansFact]
-    public async Task Submit_Post_ServiceRefusesStubProfile_RedirectsToProfileEdit()
+    public async Task Submit_ServiceRefusesStubProfile_RedirectsToProfileEdit()
     {
         var userId = Guid.NewGuid();
         var versionId = Guid.NewGuid();
@@ -384,7 +384,7 @@ public sealed class ConsentControllerTests
     }
 
     [HumansFact]
-    public async Task Review_Get_ActiveProfile_DoesNotRedirect()
+    public async Task ReviewGet_ActiveProfile_DoesNotRedirect()
     {
         var userId = Guid.NewGuid();
         _userService.GetUserInfoAsync(userId, Arg.Any<CancellationToken>())

@@ -1,5 +1,8 @@
+using JetBrains.Annotations;
+
 namespace Humans.Base.Configuration;
 
+[UsedImplicitly(ImplicitUseKindFlags.Assign, ImplicitUseTargetFlags.WithMembers)]
 public class GuideSettings
 {
     public const string SectionName = "Guide";

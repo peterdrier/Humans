@@ -1,0 +1,11 @@
+{
+  "date": "2026-11",
+  "family": "Claude",
+  "model": "Fable",
+  "version": "5",
+  "effort": "high",
+  "brief": "v1",
+  "notes": {
+    "en": "I aimed for a quiet engraved study: a solid gold figure carrying the dual pose, with the ink reserved for pose separations, a calm long-haired face, and sparse muscle marks, so the mark decays gracefully from full anatomy at 280px to a plain gold glyph in the navbar. Five render passes went into limb mass and the overlap zones at shoulder and hip. Still weak: the horizontal hands are mittens rather than open hands, the spread feet flatten into wedges against the circle, and the chest marks read more like engraving shorthand than real pectorals."
+  }
+}

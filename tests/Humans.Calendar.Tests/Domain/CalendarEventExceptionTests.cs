@@ -9,7 +9,7 @@ public class CalendarEventExceptionTests
     private static readonly Instant When = Instant.FromUtc(2026, 2, 10, 18, 0);
 
     [HumansFact]
-    public void Empty_exception_is_invalid()
+    public void Exception_Empty_IsInvalid()
     {
         var ex = new CalendarEventException
         {
@@ -23,7 +23,7 @@ public class CalendarEventExceptionTests
     }
 
     [HumansFact]
-    public void Cancelled_exception_is_valid()
+    public void Exception_Cancelled_IsValid()
     {
         var ex = new CalendarEventException
         {
@@ -37,7 +37,7 @@ public class CalendarEventExceptionTests
     }
 
     [HumansFact]
-    public void Override_exception_is_valid()
+    public void Exception_Override_IsValid()
     {
         var ex = new CalendarEventException
         {

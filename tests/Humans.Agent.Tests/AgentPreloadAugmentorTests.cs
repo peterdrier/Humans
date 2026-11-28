@@ -45,7 +45,7 @@ public class AgentPreloadAugmentorTests
     private const string HumanRow = "| **Human** | A member of Nobodies Collective. |";
 
     [HumansFact]
-    public void Faq_points_to_directed_resale_for_passing_a_ticket_on()
+    public void Faq_PassingTicketOn_PointsToResale()
     {
         var faq = Faq();
         faq.Should().Contain("/Tickets/Buy/Mine");
@@ -53,7 +53,7 @@ public class AgentPreloadAugmentorTests
     }
 
     [HumansFact]
-    public void Faq_explains_self_service_shift_withdrawal()
+    public void Faq_ShiftWithdrawal_IsExplained()
     {
         var faq = Faq();
         faq.Should().Contain("/Shifts/Mine");
@@ -61,7 +61,7 @@ public class AgentPreloadAugmentorTests
     }
 
     [HumansFact]
-    public void Faq_covers_the_recurring_ticket_and_profile_questions()
+    public void Faq_TicketOrProfileQuestions_AreCovered()
     {
         var faq = Faq();
         faq.Should().Contain("early-entry");                 // early-entry-for-shifts policy
@@ -75,7 +75,7 @@ public class AgentPreloadAugmentorTests
     /// from the per-page tables — the agent must not meet the same definition twice.
     /// </summary>
     [HumansFact]
-    public void Glossaries_define_a_term_shared_across_pages_exactly_once()
+    public void Glossaries_SharedTerm_IsDefinedOnce()
     {
         var glossaries = Augmentor(helpContributions:
         [
@@ -88,7 +88,7 @@ public class AgentPreloadAugmentorTests
     }
 
     [HumansFact]
-    public void Glossaries_keep_every_term_and_definition()
+    public void Glossaries_Rendered_KeepEveryTerm()
     {
         SectionHelpEntry[] contributed =
         [
@@ -111,7 +111,7 @@ public class AgentPreloadAugmentorTests
     /// sections' pages interleave, so registration order would reshuffle the corpus.
     /// </summary>
     [HumansFact]
-    public void Glossaries_render_every_contribution_in_declared_entry_order()
+    public void Glossaries_Contributions_KeepEntryOrder()
     {
         var glossaries = Augmentor(helpContributions:
         [
@@ -133,7 +133,7 @@ public class AgentPreloadAugmentorTests
     /// Every heading emitted here must be a key the reader can actually serve.
     /// </summary>
     [HumansFact]
-    public void Every_glossary_heading_is_a_fetchable_section_key()
+    public void GlossaryHeadings_Each_IsFetchableSectionKey()
     {
         var glossaries = Augmentor(helpContributions:
         [
@@ -169,7 +169,7 @@ public class AgentPreloadAugmentorTests
     /// definitions of the same term with no way to tell them apart — each page keeps its own table.
     /// </summary>
     [HumansFact]
-    public void No_glossary_table_defines_the_same_term_twice()
+    public void GlossaryTable_SameTerm_IsNotRepeated()
     {
         // Two pages under one section key that define the same term differently — the case the
         // per-page tables exist for.
@@ -215,7 +215,7 @@ public class AgentPreloadAugmentorTests
     };
 
     [HumansFact]
-    public void AccessMatrix_keeps_every_allowed_and_limited_role_fact_grouped_by_section()
+    public void AccessMatrix_RoleFacts_AreGroupedBySection()
     {
         var contributed = SampleMatrix("Things", "Things", 10);
         var matrix = Augmentor(accessMatrices: [new StubAccessMatrix(contributed)]).BuildAccessMatrixMarkdown();
@@ -241,7 +241,7 @@ public class AgentPreloadAugmentorTests
     }
 
     [HumansFact]
-    public void AccessMatrix_collapses_features_sharing_a_role_set_onto_one_line()
+    public void AccessMatrix_SharedRoleSet_CollapsesToOneLine()
     {
         var matrix = Augmentor(accessMatrices: [new StubAccessMatrix(SampleMatrix("Things", "Things", 10))]).BuildAccessMatrixMarkdown();
         matrix.Split('\n').Should().Contain(l =>
@@ -253,7 +253,7 @@ public class AgentPreloadAugmentorTests
     /// Rows render in their declared Order, not registration order.
     /// </summary>
     [HumansFact]
-    public void AccessMatrix_renders_every_contribution_in_declared_row_order()
+    public void AccessMatrix_Contributions_KeepRowOrder()
     {
         var matrix = Augmentor(accessMatrices:
         [

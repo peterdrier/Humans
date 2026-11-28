@@ -57,7 +57,7 @@ public sealed class ConsentRepositoryTests : IDisposable
     }
 
     [HumansFact]
-    public async Task ExistsForUserIdsAndVersionAsync_ReturnsTrue_WhenRecordExists()
+    public async Task ExistsForUserIdsAndVersionAsync_RecordExists_ReturnsTrue()
     {
         var userId = Guid.NewGuid();
         var versionId = Guid.NewGuid();
@@ -69,7 +69,7 @@ public sealed class ConsentRepositoryTests : IDisposable
     }
 
     [HumansFact]
-    public async Task ExistsForUserIdsAndVersionAsync_ReturnsFalse_WhenNoRecord()
+    public async Task ExistsForUserIdsAndVersionAsync_NoRecord_ReturnsFalse()
     {
         var exists = await _repo.ExistsForVersionAsync([Guid.NewGuid()], Guid.NewGuid(), Xunit.TestContext.Current.CancellationToken);
 
@@ -77,7 +77,7 @@ public sealed class ConsentRepositoryTests : IDisposable
     }
 
     [HumansFact]
-    public async Task ExistsForUserIdsAndVersionAsync_ReturnsFalse_ForDifferentUser()
+    public async Task ExistsForUserIdsAndVersionAsync_DifferentUser_ReturnsFalse()
     {
         var versionId = Guid.NewGuid();
         await _repo.AddAsync(BuildRecord(Guid.NewGuid(), versionId), Xunit.TestContext.Current.CancellationToken);
@@ -110,7 +110,7 @@ public sealed class ConsentRepositoryTests : IDisposable
     }
 
     [HumansFact]
-    public async Task GetAllForUserIdsAsync_ReturnsOnlyThoseUsersRecords_NewestFirst()
+    public async Task GetAllForUserIdsAsync_OtherUsers_AreExcluded()
     {
         var userId = Guid.NewGuid();
         var otherUserId = Guid.NewGuid();
@@ -133,7 +133,7 @@ public sealed class ConsentRepositoryTests : IDisposable
     }
 
     [HumansFact]
-    public async Task GetAllForUserIdsAsync_IncludesDocumentVersionAndLegalDocumentNavs()
+    public async Task GetAllForUserIdsAsync_Records_IncludeDocumentNavs()
     {
         var userId = Guid.NewGuid();
         var versionId = await SeedVersionAsync("Privacy Policy");
@@ -157,7 +157,7 @@ public sealed class ConsentRepositoryTests : IDisposable
     }
 
     [HumansFact]
-    public async Task GetAllForUserIdsAsync_UnionsRecordsAcrossIds_NewestFirst()
+    public async Task GetAllForUserIdsAsync_SeveralIds_UnionNewestFirst()
     {
         // Chain-follow: a fold target's history includes records that stayed
         // attributed to merged-source ids.
@@ -223,7 +223,7 @@ public sealed class ConsentRepositoryTests : IDisposable
     }
 
     [HumansFact]
-    public async Task GetExplicitlyConsentedVersionIdsForUserIdsAsync_ReturnsOnlyExplicitConsents()
+    public async Task GetExplicitlyConsentedVersionIdsForUserIdsAsync_Implicit_Excluded()
     {
         var userId = Guid.NewGuid();
         var explicitId = Guid.NewGuid();
@@ -239,7 +239,7 @@ public sealed class ConsentRepositoryTests : IDisposable
     }
 
     [HumansFact]
-    public async Task GetExplicitlyConsentedVersionIdsForUserIdsAsync_ReturnsEmpty_WhenNone()
+    public async Task GetExplicitlyConsentedVersionIdsForUserIdsAsync_None_Empty()
     {
         var ids = await _repo.GetConsentedVersionIdsAsync([Guid.NewGuid()], Xunit.TestContext.Current.CancellationToken);
 
@@ -247,7 +247,7 @@ public sealed class ConsentRepositoryTests : IDisposable
     }
 
     [HumansFact]
-    public async Task GetExplicitlyConsentedVersionIdsForUserIdsAsync_UnionsAcrossIds()
+    public async Task GetExplicitlyConsentedVersionIdsForUserIdsAsync_Ids_Unioned()
     {
         var targetId = Guid.NewGuid();
         var sourceId = Guid.NewGuid();
@@ -264,7 +264,7 @@ public sealed class ConsentRepositoryTests : IDisposable
     }
 
     [HumansFact]
-    public async Task GetExplicitlyConsentedVersionIdsForUsersAsync_EmptyInput_ReturnsEmpty()
+    public async Task GetExplicitlyConsentedVersionIdsForUsersAsync_NoInput_Empty()
     {
         var map = await _repo.GetConsentedVersionIdsByUserAsync([], Xunit.TestContext.Current.CancellationToken);
 
@@ -272,7 +272,7 @@ public sealed class ConsentRepositoryTests : IDisposable
     }
 
     [HumansFact]
-    public async Task GetExplicitlyConsentedVersionIdsForUsersAsync_IncludesEveryInputUser()
+    public async Task GetExplicitlyConsentedVersionIdsForUsersAsync_Users_AllIncluded()
     {
         // Every input user appears in the result, with an empty set when no consents.
         var userWithConsents = Guid.NewGuid();

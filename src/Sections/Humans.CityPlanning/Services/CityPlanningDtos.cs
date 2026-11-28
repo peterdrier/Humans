@@ -1,9 +1,11 @@
+using JetBrains.Annotations;
 using System.ComponentModel.DataAnnotations;
 using NodaTime;
 
 using Humans.Camps.Contracts;
 namespace Humans.CityPlanning.Services;
 
+[UsedImplicitly(ImplicitUseKindFlags.Access, ImplicitUseTargetFlags.WithMembers)]
 internal sealed record CampPolygonDto(
     Guid CampSeasonId,
     Guid CampId,
@@ -14,6 +16,7 @@ internal sealed record CampPolygonDto(
     SoundZone? SoundZone,
     double? SpaceRequirementSqm);
 
+[UsedImplicitly(ImplicitUseKindFlags.Access, ImplicitUseTargetFlags.WithMembers)]
 internal sealed record CampSeasonSummaryDto(
     Guid CampSeasonId,
     string CampName,

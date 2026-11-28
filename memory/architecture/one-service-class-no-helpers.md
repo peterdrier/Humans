@@ -1,9 +1,9 @@
 ---
 name: one-service-class-no-helpers
-description: HARD RULE. Each service is one class implementing its interface(s); never split it into Reader/Mutations/Notices helper classes it news up and forwards to. A big section splits into separate services along natural lines, each its own DI registration, with one writer per cached graph.
+description: HARD RULE. Each service is one class in one file implementing its interface(s); never split it into Reader/Mutations/Notices helper classes it news up and forwards to, nor slice it across partial files. A big section splits into separate services along natural lines, each its own DI registration, with one writer per cached graph.
 ---
 
-A service is one class. `XService` implements `IXService` for reads; only when code outside the
+A service is one class in one file. `XService` implements `IXService` for reads; only when code outside the
 section genuinely has to write does the same class also implement the section's writer interface.
 
 A section may have more than one service when its work falls into natural, separate jobs (Finance:
@@ -18,6 +18,11 @@ category accounts, creditors, SEPA payouts). Each such service:
 members), every write to that graph goes through the one service behind that decorator. A split may
 move out only work whose writes the cache does not hold.
 
+**One file.** `partial` is for generated code only (`[GeneratedRegex]`, `[LoggerMessage]`, EF designers,
+Razor). Slicing a hand-written type — service, repository, interface, test class — across
+`X.Reads.cs` / `X.Gdpr.cs` files is the same laundering as helper classes: the god class is still
+there, just harder to see. HUM0046 makes it a build error.
+
 **Size.** Aim for a service an agent can read in one go (about 25k tokens). Reforge's `classSize`
 charge says a class is big; it does not say where to cut. If no natural line exists, a big service
 stays big and the reason goes in the section's `health.md` load-bearing list.
@@ -29,11 +34,15 @@ them: "some sections have a lot going on … we don't want to split that code up
 unnatural … for the ones that are big, is there a logical place to separate them? Let's do that."
 
 **How to apply:**
-- Never answer "this class is large" by moving methods into a helper the service constructs.
+- Never answer "this class is large" by moving methods into a helper the service constructs, or
+  into another partial file.
 - Allowed beside services: caching decorators over the service interface, pure static calculators
   with no injected dependencies, view-model builders in the controller layer.
 - Found a constructed helper? Move its members into the service that owns the job and delete the
   forwarders.
+
+Peter, 2026-11-27, on partial files: they are allowed only where generated code requires them;
+splitting a hand-written type across files is cheating that hides god classes.
 
 **Related:** [`reuse-first-change-discipline`](../process/reuse-first-change-discipline.md),
 [`debt-sweep-standing-policy`](../process/debt-sweep-standing-policy.md)

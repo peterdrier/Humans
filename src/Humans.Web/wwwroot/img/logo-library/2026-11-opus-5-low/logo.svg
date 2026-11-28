@@ -1,0 +1,65 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="-2 -2 244 244" role="img" aria-label="Vitruvian Man">
+  <g fill="none" stroke="#c9a96e" stroke-width="2.6" stroke-linejoin="round">
+    <circle cx="120" cy="120" r="120"/>
+    <rect x="23" y="46" width="194" height="194"/>
+  </g>
+  <g stroke="#c9a96e" stroke-width="0.7" opacity="0.22" fill="none">
+    <path d="M120 2V238M25 120H215"/>
+    <circle cx="120" cy="120" r="74"/>
+    <path d="M23 46h8M209 46h8M23 240h8M209 240h8"/>
+  </g>
+
+  <g fill="#c9a96e">
+    <!-- raised arms -->
+    <path d="M101 74 34 41 27 50 98 86Z"/>
+    <path d="M139 74 206 41 213 50 142 86Z"/>
+    <!-- horizontal arms -->
+    <path d="M100 76 33 79 25 80 25 89 33 88 100 90Z"/>
+    <path d="M140 76 207 79 215 80 215 89 207 88 140 90Z"/>
+    <!-- spread legs -->
+    <path d="M120 144 104 147 50 206 43 215 54 221 61 211 120 162Z"/>
+    <path d="M120 144 136 147 190 206 197 215 186 221 179 211 120 162Z"/>
+    <!-- legs together -->
+    <path d="M120 143 104 146 109 184 112 214 108 232 106 238 120 238Z"/>
+    <path d="M120 143 136 146 131 184 128 214 132 232 134 238 120 238Z"/>
+    <!-- torso -->
+    <path d="M110 70 98 76 92 86 98 104 104 120 101 134 104 148 136 148 139 134 136 120 142 104 148 86 142 76 130 70Z"/>
+    <!-- neck + head -->
+    <path d="M113 63h14v11h-14Z"/>
+    <ellipse cx="120" cy="58" rx="10.5" ry="13"/>
+  </g>
+
+  <!-- tier 1: contours and pose separation -->
+  <g fill="none" stroke="#3d2b1f" stroke-width="2" stroke-linecap="round">
+    <path d="M100 76 100 90"/>
+    <path d="M140 76 140 90"/>
+    <path d="M120 154v80"/>
+    <path d="M104 148 109 184M136 148 131 184"/>
+    <path d="M110 72q10 5 20 0"/>
+  </g>
+
+  <!-- tier 2: muscle groups, hair -->
+  <g fill="none" stroke="#3d2b1f" stroke-width="1.2" stroke-linecap="round">
+    <path d="M103 88q17 8 34 0"/>
+    <path d="M102 133q18 8 36 0"/>
+    <path d="M112 214q8 4 16 0"/>
+    <path d="M60 209 53 215M180 209 187 215"/>
+    <path d="M110 50q10-4 20 0"/>
+    <path d="M112 53q8-3 16 0"/>
+  </g>
+
+  <!-- tier 3: face, fingers, toes, hatching -->
+  <g fill="none" stroke="#3d2b1f" stroke-width="0.9" stroke-linecap="round">
+    <path d="M114 57h4M122 57h4"/>
+    <path d="M120 59v4M117 66h6"/>
+    <path d="M29 81v7M33 80v8M37 80v8M41 80v8"/>
+    <path d="M211 81v7M207 80v8M203 80v8M199 80v8"/>
+    <path d="M30 47 33 42M35 50 38 45M39 53 42 48"/>
+    <path d="M210 47 207 42M205 50 202 45M201 53 198 48"/>
+    <path d="M47 215 51 220M51 212 55 217"/>
+    <path d="M193 215 189 220M189 212 185 217"/>
+    <path d="M107 236h12M121 236h12"/>
+    <path d="M111 112q9 4 18 0M112 122q8 4 16 0"/>
+    <path d="M105 92 103 98M135 92 137 98"/>
+  </g>
+</svg>

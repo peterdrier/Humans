@@ -54,7 +54,7 @@ public sealed class CityPlanningMapAdminHandlerTests
     [HumansTheory]
     [InlineData(true)]
     [InlineData(false)]
-    public async Task TeamAccess_UsesResolvedAccountAndDeniesMissingAccounts(bool exists)
+    public async Task TeamAccess_MissingAccount_IsDenied(bool exists)
     {
         var cookieId = Guid.NewGuid();
         var survivorId = Guid.NewGuid();

@@ -157,7 +157,7 @@ public class EventsApiControllerTests
     }
 
     [HumansFact]
-    public async Task GetEvents_IndividualEventWithoutHost_FallsBackToSubmitterBurnerName()
+    public async Task GetEvents_IndividualEventNoHost_UsesSubmitterBurnerName()
     {
         var submitterId = Guid.NewGuid();
         _users.GetUserInfosAsync(Arg.Any<IEnumerable<Guid>>(), Arg.Any<CancellationToken>())
@@ -359,7 +359,7 @@ public class EventsApiControllerTests
     [InlineData(MemberAction.DownloadCsv, AccountScenario.Merged)]
     [InlineData(MemberAction.DownloadCsv, AccountScenario.Missing)]
     [InlineData(MemberAction.DownloadCsv, AccountScenario.Cancelled)]
-    public async Task Member_boundaries_resolve_surviving_identity(MemberAction action, AccountScenario account)
+    public async Task MemberBoundaries_MergedAccount_ResolveSurvivor(MemberAction action, AccountScenario account)
     {
         var cookieId = Guid.NewGuid();
         var survivorId = Guid.NewGuid();

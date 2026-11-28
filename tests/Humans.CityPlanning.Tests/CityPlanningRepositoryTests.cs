@@ -17,7 +17,7 @@ public sealed class CityPlanningRepositoryTests : CityPlanningTestBase
     }
 
     [HumansFact]
-    public async Task SavePolygonAndAppendHistoryAsync_SecondCall_UpdatesPolygonAppendsHistory()
+    public async Task SavePolygonAndAppendHistoryAsync_SecondCall_AppendsHistory()
     {
         var campSeasonId = Guid.NewGuid();
         var userId = Guid.NewGuid();
@@ -78,7 +78,7 @@ public sealed class CityPlanningRepositoryTests : CityPlanningTestBase
     }
 
     [HumansFact(Timeout = 10000)]
-    public async Task GetHistoryForCampSeasonAsync_ReturnsAllEntriesForCampSeason()
+    public async Task GetHistoryForCampSeasonAsync_CampSeason_ReturnsAllEntries()
     {
         // Ordering is the controller's job, so the repository guarantees membership only.
         var campSeasonId = Guid.NewGuid();
@@ -113,7 +113,7 @@ public sealed class CityPlanningRepositoryTests : CityPlanningTestBase
     }
 
     [HumansFact]
-    public async Task DeletePolygonsForCampSeasonsAsync_RemovesPolygonAndHistory_ForNamedSeasonsOnly()
+    public async Task DeletePolygonsForCampSeasonsAsync_NamedSeasons_RemovesOnlyThose()
     {
         var deleted = Guid.NewGuid();
         var kept = Guid.NewGuid();
@@ -195,7 +195,7 @@ public sealed class CityPlanningRepositoryTests : CityPlanningTestBase
     }
 
     [HumansFact]
-    public async Task MutateSettingsAsync_AppliesChange_AndSetsUpdatedAt()
+    public async Task MutateSettingsAsync_Change_SetsUpdatedAt()
     {
         CityPlanningDb.CityPlanningSettings.Add(new CityPlanningSettings
         {

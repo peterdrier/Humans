@@ -214,7 +214,7 @@ public sealed class EventServiceTests
     [InlineData(0)]
     [InlineData(1)]
     [InlineData(2)]
-    public async Task CsvExport_AuditsActorAndExpandedRows_AndPreservesPrintGuide(int expectedRows)
+    public async Task CsvExport_ExpandedRows_AuditsActor(int expectedRows)
     {
         var ct = TestContext.Current.CancellationToken;
         var actorId = Guid.NewGuid();
@@ -330,7 +330,7 @@ public sealed class EventServiceTests
     [InlineData(12, true)]
     [InlineData(13, true)]
     [InlineData(14, false)]
-    public void IsSubmissionOpenAt_UsesInclusiveOpenAndCloseWindow(int hour, bool expected)
+    public void IsSubmissionOpenAt_WindowEdges_AreInclusive(int hour, bool expected)
     {
         var settings = new EventGuideSettings
         {
@@ -505,7 +505,7 @@ public sealed class EventServiceTests
     }
 
     [HumansFact]
-    public async Task DeleteVenueAsync_ReturnsLinkedCountAndDoesNotRemove_WhenEventsReferenceVenue()
+    public async Task DeleteVenueAsync_EventsReferenceVenue_IsNotRemoved()
     {
         var venue = new EventVenue { Id = Guid.NewGuid(), Name = "Main Stage" };
         venue.Events.Add(new Event { Id = Guid.NewGuid(), Title = "Talk" });
@@ -519,7 +519,7 @@ public sealed class EventServiceTests
     }
 
     [HumansFact]
-    public async Task AddFavouriteAsync_StampsClockAndDayOffset()
+    public async Task AddFavouriteAsync_NewFavourite_StampsDayOffset()
     {
         var userId = Guid.NewGuid();
         var eventId = Guid.NewGuid();
@@ -665,7 +665,7 @@ public sealed class EventServiceTests
     }
 
     [HumansFact]
-    public async Task SavePreferenceAsync_UpdatesExistingPreferenceJsonAndTimestamp()
+    public async Task SavePreferenceAsync_ExistingPreference_IsUpdated()
     {
         var userId = Guid.NewGuid();
         _repo.Preference = new EventPreference
@@ -684,7 +684,7 @@ public sealed class EventServiceTests
     }
 
     [HumansFact]
-    public async Task ApplyModerationAsync_TransitionsEventAndAppendsModerationAction()
+    public async Task ApplyModerationAsync_Pending_AppendsModerationAction()
     {
         var guideEvent = new Event
         {
@@ -856,7 +856,7 @@ public sealed class EventServiceTests
     [InlineData(false, " \t ")]
     [InlineData(true, "")]
     [InlineData(true, " \t ")]
-    public async Task LifecycleEmail_BlankAddress_DoesNotEnqueueMailOrFailTheWrite(bool moderation, string address)
+    public async Task LifecycleEmail_BlankAddress_IsNotEnqueued(bool moderation, string address)
     {
         OpenSubmissionWindow();
         var guideEvent = new Event
@@ -1040,7 +1040,7 @@ public sealed class EventServiceTests
     }
 
     [HumansFact]
-    public async Task UpdateAndResubmitAsync_PendingEvent_KeepsPendingAndSaves()
+    public async Task UpdateAndResubmitAsync_PendingEvent_StaysPending()
     {
         var submittedAt = Instant.FromUtc(2026, 5, 1, 12, 0);
         var guideEvent = new Event
@@ -1091,7 +1091,7 @@ public sealed class EventServiceTests
     }
 
     [HumansFact]
-    public async Task AdminUpdateAsync_ApprovedEvent_PreservesStatusAndAppendsEditedAction()
+    public async Task AdminUpdateAsync_ApprovedEvent_KeepsStatus()
     {
         var submittedAt = Instant.FromUtc(2026, 5, 1, 12, 0);
         var guideEvent = new Event
@@ -1124,7 +1124,7 @@ public sealed class EventServiceTests
     }
 
     [HumansFact]
-    public async Task ModeratorWithdrawAsync_ApprovedEvent_WithdrawsAndAppendsWithdrawnAction()
+    public async Task ModeratorWithdrawAsync_ApprovedEvent_AppendsWithdrawnAction()
     {
         var guideEvent = new Event { Id = Guid.NewGuid(), Status = EventStatus.Approved };
         _repo.Events.Add(guideEvent);
@@ -1165,7 +1165,7 @@ public sealed class EventServiceTests
     [HumansTheory]
     [InlineData("")]
     [InlineData("   ")]
-    public async Task AdminUpdateAsync_BlankNote_AppendsEditedActionWithNullReason_AnyStatePreserved(string note)
+    public async Task AdminUpdateAsync_BlankNote_AppendsNullReason(string note)
     {
         var guideEvent = new Event { Id = Guid.NewGuid(), CampId = Guid.NewGuid(), Status = EventStatus.Withdrawn };
         _repo.Events.Add(guideEvent);
@@ -1234,7 +1234,7 @@ public sealed class EventServiceTests
     }
 
     [HumansFact]
-    public async Task SubmitEventAsync_WindowClosed_ReturnsRefusalAndWritesNothing()
+    public async Task SubmitEventAsync_WindowClosed_IsRefused()
     {
         _repo.Settings = new EventGuideSettings
         {
@@ -1253,7 +1253,7 @@ public sealed class EventServiceTests
     }
 
     [HumansFact]
-    public async Task BulkImportAsync_WindowClosed_ReturnsRefusalAndWritesNothing()
+    public async Task BulkImportAsync_WindowClosed_IsRefused()
     {
         var act = () => _service.BulkImportAsync(
             Guid.NewGuid(), Guid.NewGuid(), [], new LocalDate(2026, 7, 1), 6, DateTimeZone.Utc,
@@ -1268,7 +1268,7 @@ public sealed class EventServiceTests
     }
 
     [HumansFact]
-    public async Task SubmitEventAsync_RecurrenceDayOutsideCalendar_ThrowsAndWritesNothing()
+    public async Task SubmitEventAsync_RecurrenceDayOutsideCalendar_Throws()
     {
         OpenSubmissionWindow();
         StubEventCalendar(eventEndOffset: 6);
@@ -1281,7 +1281,7 @@ public sealed class EventServiceTests
     }
 
     [HumansFact]
-    public async Task UpdateAndResubmitAsync_RecurrenceDayOutsideCalendar_ThrowsAndLeavesEventUnchanged()
+    public async Task UpdateAndResubmitAsync_RecurrenceDayOutsideCalendar_Throws()
     {
         StubEventCalendar(eventEndOffset: 6);
         var guideEvent = new Event { Id = Guid.NewGuid(), CampId = Guid.NewGuid(), Status = EventStatus.Rejected };
@@ -1297,7 +1297,7 @@ public sealed class EventServiceTests
     }
 
     [HumansFact]
-    public async Task AdminUpdateAsync_RecurrenceDayOutsideCalendar_ThrowsAndAppendsNothing()
+    public async Task AdminUpdateAsync_RecurrenceDayOutsideCalendar_Throws()
     {
         StubEventCalendar(eventEndOffset: 6);
         var guideEvent = new Event { Id = Guid.NewGuid(), CampId = Guid.NewGuid(), Status = EventStatus.Approved };
@@ -1328,7 +1328,7 @@ public sealed class EventServiceTests
     [HumansTheory]
     [InlineData(true, null)]
     [InlineData(false, "  ")]
-    public async Task ApplyModerationAsync_ReasonMissing_RefusesAndLeavesPending(bool reject, string? reason)
+    public async Task ApplyModerationAsync_ReasonMissing_IsRefused(bool reject, string? reason)
     {
         var actionType = reject ? EventModerationActionType.Rejected : EventModerationActionType.ResubmitRequested;
         var guideEvent = new Event { Id = Guid.NewGuid(), Status = EventStatus.Pending };
@@ -1343,7 +1343,7 @@ public sealed class EventServiceTests
     }
 
     [HumansFact]
-    public async Task ApplyModerationAsync_NotPending_RefusesAndWritesNothing()
+    public async Task ApplyModerationAsync_NotPending_IsRefused()
     {
         var guideEvent = new Event { Id = Guid.NewGuid(), Status = EventStatus.Approved };
         _repo.Events.Add(guideEvent);
@@ -1423,7 +1423,7 @@ public sealed class EventServiceTests
         e.LocationNote, e.Host, e.IsRecurring, e.RecurrenceDays, e.PriorityRank);
 
     [HumansFact]
-    public async Task ContributeForUserAsync_EmitsEventsSliceWithFavouritesAndPreference()
+    public async Task ContributeForUserAsync_FavouritesWithPreference_AreInSlice()
     {
         var userId = Guid.NewGuid();
         var otherUserId = Guid.NewGuid();
@@ -1450,7 +1450,7 @@ public sealed class EventServiceTests
     }
 
     [HumansFact]
-    public async Task ContributeForUserAsync_IncludesOwnPersonalAndCampSubmissionsAcrossStatuses()
+    public async Task ContributeForUserAsync_OwnSubmissionsAnyStatus_AreIncluded()
     {
         var userId = Guid.NewGuid();
         var submitted = Instant.FromUtc(2026, 5, 1, 12, 0);
@@ -1508,7 +1508,7 @@ public sealed class EventServiceTests
     [HumansTheory]
     [InlineData(false)]
     [InlineData(true)]
-    public async Task ContributeForUserAsync_IncludesMergedSubmissionsFavouritesAndPreferences(bool archivedId)
+    public async Task ContributeForUserAsync_MergedAccounts_AreIncluded(bool archivedId)
     {
         var survivorId = Guid.NewGuid();
         var sourceId = Guid.NewGuid();
@@ -1556,7 +1556,7 @@ public sealed class EventServiceTests
     }
 
     [HumansFact]
-    public async Task ContributeForUserAsync_ReturnsEmptySliceWhenUserHasNoData()
+    public async Task ContributeForUserAsync_NoData_ReturnsEmptySlice()
     {
         var slices = await _service.ContributeForUserAsync(Guid.NewGuid(), TestContext.Current.CancellationToken);
 
@@ -1566,7 +1566,7 @@ public sealed class EventServiceTests
     }
 
     [HumansFact]
-    public async Task BulkImportAsync_InvalidRow_ReturnsErrorsAndWritesNothing()
+    public async Task BulkImportAsync_InvalidRow_ReturnsErrors()
     {
         OpenSubmissionWindow();
         using var culture = new CultureScope("en");
@@ -1591,7 +1591,7 @@ public sealed class EventServiceTests
     [InlineData("9999-12-31", "23:30", -2, false)]
     [InlineData("0001-01-01", "09:30", 0, true)]
     [InlineData("9999-12-31", "09:30", 0, true)]
-    public async Task BulkImportAsync_CalendarRange_IsValidatedBeforeAnyRowIsSaved(
+    public async Task BulkImportAsync_CalendarRange_IsValidatedFirst(
         string date, string time, int offsetHours, bool valid)
     {
         OpenSubmissionWindow();
@@ -1615,7 +1615,7 @@ public sealed class EventServiceTests
     }
 
     [HumansFact]
-    public async Task BulkImportAsync_AmbiguousCategory_ReturnsErrorsAndWritesNothing()
+    public async Task BulkImportAsync_AmbiguousCategory_ReturnsErrors()
     {
         OpenSubmissionWindow();
         var campId = Guid.NewGuid();
@@ -1635,7 +1635,7 @@ public sealed class EventServiceTests
     }
 
     [HumansFact]
-    public async Task BulkImportAsync_InvalidRecurrenceDay_ReturnsErrorsAndWritesNothing()
+    public async Task BulkImportAsync_InvalidRecurrenceDay_ReturnsErrors()
     {
         OpenSubmissionWindow();
         var campId = Guid.NewGuid();
@@ -1730,7 +1730,7 @@ public sealed class EventServiceTests
     }
 
     [HumansFact]
-    public async Task BulkImportAsync_DuplicateExistingId_ReturnsErrorsAndWritesNothing()
+    public async Task BulkImportAsync_DuplicateExistingId_ReturnsErrors()
     {
         OpenSubmissionWindow();
         var campId = Guid.NewGuid();
@@ -1754,7 +1754,7 @@ public sealed class EventServiceTests
     [HumansTheory]
     [InlineData(false)]
     [InlineData(true)]
-    public async Task BulkImportAsync_CommitsCreatesAndEditsTogether(bool failSave)
+    public async Task BulkImportAsync_CreatesWithEdits_CommitTogether(bool failSave)
     {
         var ct = TestContext.Current.CancellationToken;
         var factory = new TestDbContextFactory<EventGuideDbContext>(new DbContextOptionsBuilder<EventGuideDbContext>()
@@ -1864,7 +1864,7 @@ public sealed class EventServiceTests
     }
 
     [HumansFact]
-    public async Task BulkImportAsync_UnrankedRow_IsAcceptedAndStaysUnranked()
+    public async Task BulkImportAsync_UnrankedRow_StaysUnranked()
     {
         OpenSubmissionWindow();
         var campId = Guid.NewGuid();
@@ -1937,7 +1937,7 @@ public sealed class EventServiceTests
     }
 
     [HumansFact]
-    public async Task BulkImportAsync_EditedDraftRow_SubmitsViaUpdatePath_NoDuplicateInsert()
+    public async Task BulkImportAsync_EditedDraftRow_IsNotInsertedTwice()
     {
         OpenSubmissionWindow();
         // The Draft branch must update an already-persisted entity, not INSERT it (duplicate key).
@@ -2008,7 +2008,7 @@ public sealed class EventServiceTests
     }
 
     [HumansFact]
-    public async Task GetUserSubmissionsSummaryAsync_CountsOnlyTheUsersIndividualEventsInTheConfiguredEdition()
+    public async Task GetUserSubmissionsSummaryAsync_ConfiguredEdition_CountsOwnIndividualEvents()
     {
         var userId = Guid.NewGuid();
         var editionId = Guid.NewGuid();
@@ -2039,7 +2039,7 @@ public sealed class EventServiceTests
     }
 
     [HumansFact]
-    public async Task GetCampSubmissionsSummaryAsync_BucketsByStatusAndIncludesOnlyCampEvents()
+    public async Task GetCampSubmissionsSummaryAsync_CampEvents_BucketByStatus()
     {
         var campId = Guid.NewGuid();
         var older = new Event
@@ -2077,7 +2077,7 @@ public sealed class EventServiceTests
     }
 
     [HumansFact]
-    public async Task BuildBulkUploadTemplateAsync_IncludesExistingNonWithdrawnEventsAndBanner()
+    public async Task BuildBulkUploadTemplateAsync_NonWithdrawnEvents_AreIncluded()
     {
         var campId = Guid.NewGuid();
         var category = new EventCategory { Id = Guid.NewGuid(), Name = "Workshop", Slug = "workshop", IsActive = true };

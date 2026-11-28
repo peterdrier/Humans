@@ -1,3 +1,4 @@
+using JetBrains.Annotations;
 using System.Text.Json.Serialization;
 using Humans.Backdoor.Filters;
 using Humans.Backdoor.Services;
@@ -104,6 +105,7 @@ internal sealed class ApiBulkTasksModel
 }
 
 [JsonUnmappedMemberHandling(JsonUnmappedMemberHandling.Disallow)]
+[UsedImplicitly(ImplicitUseKindFlags.Assign, ImplicitUseTargetFlags.WithMembers)]
 internal sealed class ApiBulkTaskModel
 {
     /// <summary>Means something only inside the payload.</summary>
@@ -143,6 +145,7 @@ internal sealed class ApiBulkTaskModel
 
 /// <summary>Exactly one of the three.</summary>
 [JsonUnmappedMemberHandling(JsonUnmappedMemberHandling.Disallow)]
+[UsedImplicitly(ImplicitUseKindFlags.Assign, ImplicitUseTargetFlags.WithMembers)]
 internal sealed class ApiBulkDateModel
 {
     public DateOnly? Fixed { get; set; }

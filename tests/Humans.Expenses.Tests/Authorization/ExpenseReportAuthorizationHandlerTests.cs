@@ -82,7 +82,7 @@ public sealed class ExpenseReportAuthorizationHandlerTests
     [Xunit.InlineData(true, true)]
     [Xunit.InlineData(true, false)]
     [Xunit.InlineData(false, false)]
-    public async Task ReviewerIdentityResolution_UsesSurvivorAndDeniesMissingAccounts(
+    public async Task ReviewAccess_MissingAccount_IsDenied(
         bool accountExists, bool survivorCoordinates)
     {
         var cookieId = survivorCoordinates ? Guid.NewGuid() : CoordinatorId;
@@ -98,7 +98,7 @@ public sealed class ExpenseReportAuthorizationHandlerTests
     }
 
     [HumansFact]
-    public async Task MissingSubmitterIdentityResolution_DoesNotTrustTheMatchingCookieId()
+    public async Task OwnerAccess_SubmitterUnresolved_IsDenied()
     {
         _users.GetUserInfoAsync(SubmitterId, Arg.Any<CancellationToken>()).Returns((UserInfo?)null);
 
@@ -167,7 +167,7 @@ public sealed class ExpenseReportAuthorizationHandlerTests
     [Xunit.InlineData("Submit", ExpenseReportStatus.Draft)]
     [Xunit.InlineData("Withdraw", ExpenseReportStatus.Submitted)]
     [Xunit.InlineData("Withdraw", ExpenseReportStatus.CoordinatorEndorsed)]
-    public async Task Merged_submitter_keeps_owner_access_without_granting_it_to_another_human(
+    public async Task OwnerAccess_MergedSubmitter_IsKept(
         string operationName, ExpenseReportStatus status)
     {
         var operation = Enum.Parse<ExpenseReportOperation>(operationName);
@@ -475,7 +475,7 @@ public sealed class ExpenseReportAuthorizationHandlerTests
         // Admin carries the finance-admin capabilities, so it files and fixes on behalf too.
         var report = MakeReport(SubmitterId, ExpenseReportStatus.Draft);
         var adminId = Guid.NewGuid();
-        var result = await EvaluateAsync(CreateUserWithRoleAndId(RoleNames.Admin, adminId), report, ExpenseReportOperation.Edit);
+        var result = await EvaluateAsync(CreateUserInRole(RoleNames.Admin, adminId), report, ExpenseReportOperation.Edit);
         result.Should().BeTrue();
     }
 
@@ -541,7 +541,7 @@ public sealed class ExpenseReportAuthorizationHandlerTests
     [HumansTheory]
     [Xunit.InlineData(ExpenseReportStatus.Submitted)]
     [Xunit.InlineData(ExpenseReportStatus.CoordinatorEndorsed)]
-    public async Task FinanceAdmin_CanDeclineLine_WhileTheReportAwaitsADecision(ExpenseReportStatus status)
+    public async Task DeclineLine_FinanceAdminAwaitingDecision_IsAllowed(ExpenseReportStatus status)
     {
         var report = MakeReport(SubmitterId, status);
         (await EvaluateAsync(CreateUserWithRole(FinanceRoles.FinanceAdmin), report, ExpenseReportOperation.DeclineLine)).Should().BeTrue();
@@ -583,7 +583,7 @@ public sealed class ExpenseReportAuthorizationHandlerTests
     [Xunit.InlineData("DeclineLine", ExpenseReportStatus.CoordinatorEndorsed, false)]
     [Xunit.InlineData("Approve", ExpenseReportStatus.Submitted, false)]
     [Xunit.InlineData("Edit", ExpenseReportStatus.Submitted, false)]
-    public async Task PreapprovalManager_IsTheFirstReviewer_OfReportsAgainstTheirProgramsGrants(
+    public async Task Review_OwnProgramManager_IsFirstReviewer(
         string operationName, ExpenseReportStatus status, bool expected)
     {
         var operation = Enum.Parse<ExpenseReportOperation>(operationName);
@@ -596,7 +596,7 @@ public sealed class ExpenseReportAuthorizationHandlerTests
     }
 
     [HumansFact]
-    public async Task PreapprovalManager_OfAnotherProgram_And_TheCategoryCoordinator_CannotReviewAPreapprovedReport()
+    public async Task Review_OtherProgramManager_IsDenied()
     {
         var otherManager = Guid.NewGuid();
         StubManagedGrant(Guid.NewGuid(), otherManager);
@@ -670,7 +670,7 @@ public sealed class ExpenseReportAuthorizationHandlerTests
         return new ClaimsPrincipal(new ClaimsIdentity(claims, "TestAuth"));
     }
 
-    private static ClaimsPrincipal CreateUserWithRoleAndId(string role, Guid userId)
+    private static ClaimsPrincipal CreateUserInRole(string role, Guid userId)
     {
         var claims = new List<Claim>
         {

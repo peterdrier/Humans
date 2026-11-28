@@ -1,3 +1,4 @@
+using JetBrains.Annotations;
 using System.ComponentModel;
 using System.Reflection;
 using System.Security.Claims;
@@ -57,6 +58,7 @@ internal sealed class HelloTool(IUserService users, IHttpContextAccessor http, I
         };
 }
 
+[UsedImplicitly(ImplicitUseKindFlags.Access, ImplicitUseTargetFlags.WithMembers)]
 internal sealed record HelloResult(
     string Message,
     string Server,

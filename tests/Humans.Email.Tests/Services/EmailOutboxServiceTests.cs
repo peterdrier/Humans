@@ -139,7 +139,7 @@ public sealed class EmailOutboxServiceTests
     }
 
     [HumansFact]
-    public async Task HistoryAndExport_ShowABodyOnlyForMailToAnAddressTheAccountConfirmed()
+    public async Task HistoryAndExport_UnconfirmedAddress_HideBody()
     {
         // The confirmation mail goes to an address the account has yet to prove it reads. Its link must not
         // be readable from the account's own history or export, or nobody would need the mailbox.
@@ -352,7 +352,7 @@ public sealed class EmailOutboxServiceTests
     }
 
     [HumansFact]
-    public async Task PreviewDailySendCountBackfillAsync_UsesSentAtDateForSentRows()
+    public async Task PreviewDailySendCountBackfillAsync_SentRows_UseSentDate()
     {
         // Sent on 8/16 despite being created on 8/15 — the sent-day is authoritative for Sent rows.
         var createdAt = new LocalDate(2026, 8, 15).AtMidnight().InUtc().ToInstant();
@@ -412,7 +412,7 @@ public sealed class EmailOutboxServiceTests
     }
 
     [HumansFact]
-    public async Task BackfillDailySendCountsAsync_NeverOverwritesExistingKeysAndIsIdempotent()
+    public async Task BackfillDailySendCountsAsync_ExistingKeys_AreNotOverwritten()
     {
         var day = new LocalDate(2026, 8, 15);
         _repo.GetSentSinceAsync(Arg.Any<Instant>(), Arg.Any<CancellationToken>())

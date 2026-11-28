@@ -218,7 +218,7 @@ public sealed class RideshareServiceTests : RideshareTestHarness
     }
 
     [HumansFact]
-    public async Task CreateOffer_UnknownPlace_ThrowsAndSavesNothing()
+    public async Task CreateOffer_UnknownPlace_Throws()
     {
         await SeedSettingsAsync();
         RouteProvider.GeocodeAsync(Arg.Any<string>(), Arg.Any<CancellationToken>()).Returns((GeoPoint?)null);
@@ -244,7 +244,7 @@ public sealed class RideshareServiceTests : RideshareTestHarness
     }
 
     [HumansFact]
-    public async Task CreateOffer_WithoutARoute_StillSaves_AndWarns()
+    public async Task CreateOffer_NoRoute_StillSaves()
     {
         await SeedSettingsAsync();
         RouteProvider.GetRouteGeoJsonAsync(Arg.Any<IReadOnlyList<GeoPoint>>(), Arg.Any<CancellationToken>())
@@ -281,7 +281,7 @@ public sealed class RideshareServiceTests : RideshareTestHarness
     }
 
     [HumansFact]
-    public async Task UpdateOffer_BelowTheAcceptedSeats_Refuses_AtTheAcceptedCountItSaves()
+    public async Task UpdateOffer_BelowAcceptedSeats_IsRefused()
     {
         await SeedSettingsAsync();
         var driver = SeedUser();
@@ -338,7 +338,7 @@ public sealed class RideshareServiceTests : RideshareTestHarness
     }
 
     [HumansFact]
-    public async Task CancelOffer_IsTheDriversAlone_AndIdempotent()
+    public async Task CancelOffer_OnlyDriver_MayCancel()
     {
         var driver = SeedUser("Ada");
         var trip = await SeedTripAsync(driver);
@@ -360,7 +360,7 @@ public sealed class RideshareServiceTests : RideshareTestHarness
     }
 
     [HumansFact]
-    public async Task CancelRequest_IsTheRidersAlone_AndIdempotent()
+    public async Task CancelRequest_OnlyRider_MayCancel()
     {
         var rider = SeedUser("Ada");
         var request = await SeedRequestAsync(rider);
@@ -444,7 +444,7 @@ public sealed class RideshareServiceTests : RideshareTestHarness
     [InlineData("capacity")]
     [InlineData("decline")]
     [InlineData("withdraw")]
-    public async Task ConcurrentInterestMutations_PreservePendingStateAndRemainingSeats(string scenario)
+    public async Task InterestMutations_Concurrent_PreserveSeats(string scenario)
     {
         var driver = SeedUser("Driver");
         var rider = SeedUser("Rider");
@@ -509,7 +509,7 @@ public sealed class RideshareServiceTests : RideshareTestHarness
     [InlineData("accept-edit")]
     [InlineData("offer-cancel")]
     [InlineData("request-cancel")]
-    public async Task ConcurrentPostingMutations_PreserveCapacityAndTerminalCancellation(string scenario)
+    public async Task PostingMutations_Concurrent_PreserveCapacity(string scenario)
     {
         var driver = SeedUser("Driver");
         var rider = SeedUser("Rider");
@@ -617,7 +617,7 @@ public sealed class RideshareServiceTests : RideshareTestHarness
     }
 
     [HumansFact]
-    public async Task ExpressInterest_RejectsUnavailableTripsInvalidSeatCountsAndOverCapacity()
+    public async Task ExpressInterest_BadTripOrSeats_IsRefused()
     {
         var driver = SeedUser("Ada");
         var rider = SeedUser("Bo");
@@ -654,7 +654,7 @@ public sealed class RideshareServiceTests : RideshareTestHarness
     }
 
     [HumansFact]
-    public async Task AcceptAndDecline_ByAnyoneButThePostingOwner_ReturnForbidden()
+    public async Task AcceptAndDecline_NotPostingOwner_IsForbidden()
     {
         var trip = await SeedTripAsync(SeedUser("Ada"));
         var rider = SeedUser("Bo");
@@ -669,7 +669,7 @@ public sealed class RideshareServiceTests : RideshareTestHarness
     }
 
     [HumansFact]
-    public async Task AcceptAndDecline_Reject_interests_that_are_no_longer_pending()
+    public async Task AcceptAndDecline_NotPending_IsRefused()
     {
         var driver = SeedUser("Ada");
         var trip = await SeedTripAsync(driver);
@@ -704,7 +704,7 @@ public sealed class RideshareServiceTests : RideshareTestHarness
     }
 
     [HumansFact]
-    public async Task AcceptInterest_OnAPinAnswer_RechecksThePinIsOpenAndTheTripStillFits()
+    public async Task AcceptInterest_PinAnswer_RechecksPinFits()
     {
         // Either side may have edited between the driver's answer and the rider's accept.
         var driver = SeedUser("Ada");
@@ -726,7 +726,7 @@ public sealed class RideshareServiceTests : RideshareTestHarness
     }
 
     [HumansFact]
-    public async Task WithdrawInterest_IsForThePostingOwnerOrTheAuthor_NotAThirdParty()
+    public async Task WithdrawInterest_ThirdParty_IsRefused()
     {
         var driver = SeedUser("Ada");
         var rider = SeedUser("Bo");
@@ -770,7 +770,7 @@ public sealed class RideshareServiceTests : RideshareTestHarness
     }
 
     [HumansFact]
-    public async Task ExpressInterest_TwiceWhileTheFirstIsPending_ReturnsARefusal()
+    public async Task ExpressInterest_AlreadyPending_IsRefused()
     {
         var trip = await SeedTripAsync(SeedUser("Ada"));
         var rider = SeedUser("Bo");
@@ -812,7 +812,7 @@ public sealed class RideshareServiceTests : RideshareTestHarness
     }
 
     [HumansFact]
-    public async Task ExpressInterest_AnsweringAPin_RequiresATripGoingThatWayOnThatDay()
+    public async Task ExpressInterest_PinAnswer_RequiresMatchingTrip()
     {
         var driver = SeedUser("Ada");
         var rider = SeedUser("Bo");
@@ -841,7 +841,7 @@ public sealed class RideshareServiceTests : RideshareTestHarness
     [InlineData(true, 2)]
     [InlineData(false, 3)]
     [InlineData(true, 3)]
-    public async Task PinAnswer_RejectsAnotherOrUnassignedEvent_EvenWhenDirectionAndDateMatch(bool accepting, int unassignedSide)
+    public async Task PinAnswer_OtherOrUnassignedEvent_IsRefused(bool accepting, int unassignedSide)
     {
         var autumn = StubAutumnEvent();
         var driver = SeedUser("Ada");
@@ -871,7 +871,7 @@ public sealed class RideshareServiceTests : RideshareTestHarness
     [HumansTheory]
     [InlineData(false)]
     [InlineData(true)]
-    public async Task PinAnswer_RejectsAnUnassignedSide_EvenWhenItsYearMatches(bool unassignedTrip)
+    public async Task PinAnswer_UnassignedSide_IsRefused(bool unassignedTrip)
     {
         StubAutumnEvent();
         var driver = SeedUser("Ada");
@@ -902,7 +902,7 @@ public sealed class RideshareServiceTests : RideshareTestHarness
     }
 
     [HumansFact]
-    public async Task ExpressInterest_AnsweringAPin_RefusesAClosedPinAndTheDriversOwnPin()
+    public async Task ExpressInterest_ClosedOrOwnPin_IsRefused()
     {
         var driver = SeedUser("Ada");
         var trip = await SeedTripAsync(driver);
@@ -917,7 +917,7 @@ public sealed class RideshareServiceTests : RideshareTestHarness
     }
 
     [HumansFact]
-    public async Task ExpressInterest_AnsweringAPin_DefaultsSeatsToThePartySize_AndTellsTheRider()
+    public async Task ExpressInterest_PinAnswer_DefaultsSeatsToPartySize()
     {
         var driver = SeedUser("Ada");
         var rider = SeedUser("Bo");
@@ -939,7 +939,7 @@ public sealed class RideshareServiceTests : RideshareTestHarness
     }
 
     [HumansFact]
-    public async Task DeclineInterest_StoresNoReason_StampsRespondedAt_AndTellsTheAuthorNeutrally()
+    public async Task DeclineInterest_Pending_StoresNoReason()
     {
         var driver = SeedUser("Ada");
         var rider = SeedUser("Bo");
@@ -962,7 +962,7 @@ public sealed class RideshareServiceTests : RideshareTestHarness
     }
 
     [HumansFact]
-    public async Task DeclineInterest_OnAPinAnswer_TellsTheDriverTheRiderWentAnotherWay()
+    public async Task DeclineInterest_PinAnswer_TellsDriver()
     {
         var driver = SeedUser("Ada");
         var rider = SeedUser("Bo");
@@ -980,7 +980,7 @@ public sealed class RideshareServiceTests : RideshareTestHarness
     }
 
     [HumansFact]
-    public async Task Snapshot_MarksARequestMatched_ByItsAuthorOrByItsId_OnActiveTripsThatFitIt()
+    public async Task Snapshot_FittingActiveTrip_MarksRequestMatched()
     {
         var driver = SeedUser("Ada");
         var trip = await SeedTripAsync(driver, seatsOffered: 5);
@@ -1157,7 +1157,7 @@ public sealed class RideshareServiceTests : RideshareTestHarness
     }
 
     [HumansFact]
-    public async Task AcceptInterest_OnAnAnsweredPin_TellsTheDriverTheirOfferWasAccepted()
+    public async Task AcceptInterest_AnsweredPin_TellsDriver()
     {
         var driver = SeedUser("Ada");
         var rider = SeedUser("Bo");
@@ -1296,7 +1296,7 @@ public sealed class RideshareServiceTests : RideshareTestHarness
     }
 
     [HumansFact]
-    public async Task SaveSettings_UpsertsByEvent_AndAuditsEachSave()
+    public async Task SaveSettings_SameEvent_Upserts()
     {
         var admin = SeedUser("Admin");
         var service = NewService();
@@ -1328,7 +1328,7 @@ public sealed class RideshareServiceTests : RideshareTestHarness
     }
 
     [HumansFact]
-    public async Task SaveSettings_DoesNotAdoptAnUnassignedRowOfTheSameYear()
+    public async Task SaveSettings_UnassignedRowSameYear_IsNotAdopted()
     {
         var legacy = await SeedSettingsAsync();
         legacy.EventSettingsId = null;
@@ -1349,7 +1349,7 @@ public sealed class RideshareServiceTests : RideshareTestHarness
     }
 
     [HumansFact]
-    public async Task ASecondEventInTheSameYear_GetsItsOwnRides_AndTheFirstEventsRowsStaySeparate()
+    public async Task Rides_SecondEventSameYear_StaySeparate()
     {
         var autumn = StubAutumnEvent();
         await SeedSettingsAsync();
@@ -1374,7 +1374,7 @@ public sealed class RideshareServiceTests : RideshareTestHarness
     }
 
     [HumansFact]
-    public async Task WithNoActiveEvent_TheSnapshotIsEmpty_AndPostingIsRefused()
+    public async Task Snapshot_NoActiveEvent_IsEmpty()
     {
         await SeedSettingsAsync();
         await SeedTripAsync(SeedUser());
@@ -1448,7 +1448,7 @@ public sealed class RideshareServiceTests : RideshareTestHarness
     }
 
     [HumansFact]
-    public async Task Export_ReturnsThreeSlices_WithEmptyListsForAHumanWithNothing()
+    public async Task Export_HumanWithNothing_ReturnsEmptySlices()
     {
         var slices = await NewService().ContributeForUserAsync(SeedUser(), Ct);
 
@@ -1486,7 +1486,7 @@ public sealed class RideshareServiceTests : RideshareTestHarness
     }
 
     [HumansFact]
-    public async Task Erase_RemovesTheHumansRows_AndOthersAnswersToThem_AndIsIdempotent()
+    public async Task Erase_HumanWithRows_RemovesThem()
     {
         var me = SeedUser("Me");
         var other = SeedUser("Other");
@@ -1511,7 +1511,7 @@ public sealed class RideshareServiceTests : RideshareTestHarness
     }
 
     [HumansFact]
-    public async Task Reassign_FoldsRowsOntoTheSurvivor_DropsSelfInterestAndDuplicates_AndIsIdempotent()
+    public async Task Reassign_DuplicateRows_FoldOntoSurvivor()
     {
         var archived = SeedUser("Archived");
         var survivor = SeedUser("Survivor");

@@ -1,3 +1,4 @@
+using JetBrains.Annotations;
 using Microsoft.AspNetCore.Mvc.ModelBinding;
 using Humans.Surveys.Contracts;
 using Humans.Base.Attributes;
@@ -360,6 +361,7 @@ internal sealed class SurveyQuestionBuilderViewModel
     }
 }
 
+[UsedImplicitly(ImplicitUseKindFlags.Assign, ImplicitUseTargetFlags.WithMembers)]
 internal sealed class SurveyInformationImageBuilderViewModel
 {
     public Guid? Id { get; set; }

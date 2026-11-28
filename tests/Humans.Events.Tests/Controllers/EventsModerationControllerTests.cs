@@ -121,7 +121,7 @@ public sealed class EventsModerationControllerTests
     }
 
     [HumansFact]
-    public async Task Approve_pending_event_applies_the_approval_with_submitter_edit_url()
+    public async Task Approve_PendingEvent_AppliesApproval()
     {
         var moderatorId = Guid.NewGuid();
         var guideEvent = MakeEvent(null, EventStatus.Pending) with { Title = "Pending event" };
@@ -143,7 +143,7 @@ public sealed class EventsModerationControllerTests
     [HumansTheory]
     [Xunit.InlineData(true, "A reason is required when rejecting an event.")]
     [Xunit.InlineData(false, "A reason is required when requesting edits.")]
-    public async Task Missing_reason_refused_by_the_service_shows_the_reason_message(bool reject, string expected)
+    public async Task Refusal_MissingReason_ShowsReasonMessage(bool reject, string expected)
     {
         var moderatorId = Guid.NewGuid();
         var guideEvent = MakeEvent(null, EventStatus.Pending) with { Title = "Pending event" };
@@ -163,7 +163,7 @@ public sealed class EventsModerationControllerTests
     }
 
     [HumansFact]
-    public async Task Non_pending_event_refused_by_the_service_shows_the_pending_message()
+    public async Task Refusal_NotPending_ShowsPendingMessage()
     {
         var moderatorId = Guid.NewGuid();
         var guideEvent = MakeEvent(null, EventStatus.Approved) with { Title = "Approved event" };
@@ -182,7 +182,7 @@ public sealed class EventsModerationControllerTests
     }
 
     [HumansFact]
-    public async Task Unrelated_service_exception_propagates_instead_of_a_refusal_message()
+    public async Task Refusal_UnrelatedException_Propagates()
     {
         var moderatorId = Guid.NewGuid();
         var guideEvent = MakeEvent(null, EventStatus.Pending) with { Title = "Pending event" };
@@ -205,14 +205,14 @@ public sealed class EventsModerationControllerTests
     [Xunit.InlineData((int)EventStatus.ResubmitRequested, true)]
     [Xunit.InlineData((int)EventStatus.Pending, false)]
     [Xunit.InlineData((int)EventStatus.Draft, false)]
-    public void EventInfo_IsResubmission_only_after_moderation_sent_it_back(int statusValue, bool expected)
+    public void EventInfo_SentBackByModeration_IsResubmission(int statusValue, bool expected)
     {
         var status = (EventStatus)statusValue;
         MakeEvent(null, status).IsResubmission.Should().Be(expected);
     }
 
     [HumansFact]
-    public async Task Withdraw_approved_event_records_the_moderator()
+    public async Task Withdraw_ApprovedEvent_RecordsModerator()
     {
         var moderatorId = Guid.NewGuid();
         var guideEvent = MakeEvent(null, EventStatus.Approved) with { Title = "Approved event" };
@@ -231,7 +231,7 @@ public sealed class EventsModerationControllerTests
     }
 
     [HumansFact]
-    public async Task Withdraw_leaves_the_status_rule_to_the_service_and_reports_its_refusal()
+    public async Task Withdraw_ServiceRefuses_ReportsRefusal()
     {
         var moderatorId = Guid.NewGuid();
         var guideEvent = MakeEvent(null, EventStatus.Rejected) with { Title = "Rejected event" };
@@ -248,7 +248,7 @@ public sealed class EventsModerationControllerTests
     }
 
     [HumansFact]
-    public async Task Index_carries_the_actor_of_each_history_entry_newest_first()
+    public async Task Index_HistoryEntries_CarryActorNewestFirst()
     {
         var moderatorId = Guid.NewGuid();
         var laterModeratorId = Guid.NewGuid();
@@ -462,7 +462,7 @@ public sealed class EventsModerationControllerTests
     [Xunit.InlineData(false, true)]
     [Xunit.InlineData(true, false)]
     [Xunit.InlineData(true, true)]
-    public async Task ModeratorEdits_UseTheRecordsCalendarAndTimezone(bool campEvent, bool post)
+    public async Task ModeratorEdits_Schedule_UsesRecordsTimezone(bool campEvent, bool post)
     {
         using var request = new CancellationTokenSource();
         var moderatorId = Guid.NewGuid();

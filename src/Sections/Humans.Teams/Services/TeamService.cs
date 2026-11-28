@@ -683,27 +683,29 @@ internal sealed class TeamService(
         if (SelfJoinRefusal(team, requiresApproval: true) is { } errorKey)
             return new TeamJoinRequestResult(ErrorKey: errorKey);
 
-        using var joinRequest = await JoinRequestLock.AcquireAsync(logger, cancellationToken);
-        var existingRequest = await repo.FindUserPendingRequestAsync(teamId, userId, cancellationToken);
-        if (existingRequest is not null)
-            return new TeamJoinRequestResult(ErrorKey: "Teams_Team_AlreadyPendingRequest");
-
-        var teamInfo = await GetTeamAsync(teamId, cancellationToken);
-        var isMember = teamInfo is { IsActive: true } && teamInfo.Members.Any(m => m.UserId == userId);
-        if (isMember)
-            return new TeamJoinRequestResult(ErrorKey: "Teams_Team_AlreadyMember");
-
-        var request = new TeamJoinRequest
+        TeamJoinRequest request;
+        using (await JoinRequestLock.AcquireAsync(logger, cancellationToken))
         {
-            Id = Guid.NewGuid(),
-            TeamId = teamId,
-            UserId = userId,
-            Message = message,
-            RequestedAt = clock.GetCurrentInstant()
-        };
+            var existingRequest = await repo.FindUserPendingRequestAsync(teamId, userId, cancellationToken);
+            if (existingRequest is not null)
+                return new TeamJoinRequestResult(ErrorKey: "Teams_Team_AlreadyPendingRequest");
 
-        await repo.AddRequestAsync(request, cancellationToken);
-        joinRequest.Dispose();
+            var teamInfo = await GetTeamAsync(teamId, cancellationToken);
+            var isMember = teamInfo is { IsActive: true } && teamInfo.Members.Any(m => m.UserId == userId);
+            if (isMember)
+                return new TeamJoinRequestResult(ErrorKey: "Teams_Team_AlreadyMember");
+
+            request = new TeamJoinRequest
+            {
+                Id = Guid.NewGuid(),
+                TeamId = teamId,
+                UserId = userId,
+                Message = message,
+                RequestedAt = clock.GetCurrentInstant()
+            };
+
+            await repo.AddRequestAsync(request, cancellationToken);
+        }
 
         // The join request is committed; finish its notices even if the browser disconnects.
         cancellationToken = CancellationToken.None;

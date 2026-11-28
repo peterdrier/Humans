@@ -6,7 +6,7 @@ namespace Humans.Email.Tests;
 public class SectionAccessMatrixTests
 {
     [HumansFact]
-    public void Pins_the_EmailOutbox_matrix()
+    public void AccessMatrix_MatchesEmailOutboxPin()
     {
         var matrix = ((ISectionAccessMatrix)new Section()).AccessMatrices
             .Single(m => string.Equals(m.Key, "EmailOutbox", StringComparison.Ordinal));

@@ -11,7 +11,7 @@ public sealed class EmailProjectReferenceTests
     /// emits no metadata reference and would pass that check silently.
     /// </summary>
     [HumansFact]
-    public void EmailContracts_ReferencesOnlyBaseAuditLogAndUsersContracts() =>
+    public void EmailContracts_References_AreOnlyExpected() =>
         ProjectReferencesOf("Humans.Email.Contracts").Should().BeSubsetOf(
             ["Humans.AuditLog", "Humans.Base", "Humans.Users.Contracts"],
             because: "Email is a crosscut: its contracts leaf may lose section references, never gain one (AuditLog is there for the audit action definitions it publishes)");

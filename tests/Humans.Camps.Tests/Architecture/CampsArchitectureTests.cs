@@ -54,7 +54,7 @@ public class CampsArchitectureTests
     /// the orchestrator's collision detection sees a single Camps voice per group key.
     /// </summary>
     [HumansFact]
-    public void CampRoleService_IsTheOnlyCampsSideGoogleGroupMembershipSource()
+    public void CampRoleService_IsOnlyGroupMembershipSource()
     {
         var campsAssembly = typeof(CampService).Assembly;
         var campsClaimants = campsAssembly
@@ -117,7 +117,7 @@ public class CampsArchitectureTests
     /// production <c>Section.Register</c>, not a test-built mirror of it.
     /// </summary>
     [HumansFact]
-    public void ICampManagement_And_ICampService_ResolveToSameInstance()
+    public void CampInterfaces_ResolveToSameInstance()
     {
         var services = new ServiceCollection();
         services.AddLogging();

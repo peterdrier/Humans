@@ -77,7 +77,7 @@ public sealed class OpenRouteServiceClientTests
     }
 
     [HumansFact]
-    public async Task BlankApiKey_ReturnsNullFromBoth_WithoutAnyHttpCall_AndWarnsOnce()
+    public async Task Client_BlankApiKey_ReturnsNullWithoutCall()
     {
         var client = Make("", _ => throw new InvalidOperationException("must not be called"));
 
@@ -114,7 +114,7 @@ public sealed class OpenRouteServiceClientTests
     [HumansTheory]
     [Xunit.InlineData("""{"type":"LineString","coordinates":[[2.35,48.85],[-2.4,43.2]]}""")]
     [Xunit.InlineData("""{"type":"LineString","coordinates":[[2.35,48.85,100],[-2.4,43.2,200]]}""")]
-    public async Task Directions_PostsLngLatPairsWithTheKey_AndReturnsTheGeometry(string geometry)
+    public async Task Directions_ValidPoints_ReturnsGeometry(string geometry)
     {
         var client = Make(Key, _ => Json(HttpStatusCode.OK,
             $$"""{"type":"FeatureCollection","features":[{"type":"Feature","geometry":{{geometry}}}]}"""));
@@ -130,7 +130,7 @@ public sealed class OpenRouteServiceClientTests
     }
 
     [HumansFact]
-    public async Task Directions_WithFewerThanTwoPoints_ReturnsNull_WithoutCalling()
+    public async Task Directions_FewerThanTwoPoints_ReturnsNull()
     {
         var client = Make(Key, _ => throw new InvalidOperationException("must not be called"));
 
@@ -140,7 +140,7 @@ public sealed class OpenRouteServiceClientTests
     }
 
     [HumansFact]
-    public async Task NonSuccessResponse_ReturnsNull_AndLogsAWarningWithTheStatus()
+    public async Task Client_NonSuccessResponse_ReturnsNull()
     {
         var client = Make(Key, _ => Json(HttpStatusCode.Forbidden, """{"error":"quota exceeded"}"""));
 
@@ -156,7 +156,7 @@ public sealed class OpenRouteServiceClientTests
     [Xunit.InlineData(false, true)]
     [Xunit.InlineData(true, false)]
     [Xunit.InlineData(true, true)]
-    public async Task Failure_ReturnsNull_AndDistinguishesExpectedFromUnexpected(bool directions, bool unexpected)
+    public async Task Client_RequestFailure_ReturnsNull(bool directions, bool unexpected)
     {
         Exception failure = unexpected ? new NotSupportedException("Unexpected provider fault")
             : new HttpRequestException("connection refused");
@@ -216,7 +216,7 @@ public sealed class OpenRouteServiceClientTests
     [Xunit.InlineData("""{"type":"LineString","coordinates":[[2.35,91],[2.4,43.2]]}""")]
     [Xunit.InlineData("""{"type":"LineString","coordinates":[[181,48],[2,43]]}""")]
     [Xunit.InlineData("""{"type":"LineString","coordinates":[["2.35",48.85],[2.4,43.2]]}""")]
-    public async Task Directions_InvalidGeometry_ReturnsNullAndWarns(string geometry)
+    public async Task Directions_InvalidGeometry_ReturnsNull(string geometry)
     {
         var client = Make(Key, _ => Json(HttpStatusCode.OK,
             $$"""{"features":[{"geometry":{{geometry}}}]}"""));
@@ -230,7 +230,7 @@ public sealed class OpenRouteServiceClientTests
     [Xunit.InlineData("""{"type":"Point","coordinates":[1e400,48.85]}""")]
     [Xunit.InlineData("""{"type":"Point","coordinates":[2.35,91]}""")]
     [Xunit.InlineData("""{"type":"Point","coordinates":[181,48.85]}""")]
-    public async Task Geocode_InvalidGeometry_ReturnsNullAndWarns(string geometry)
+    public async Task Geocode_InvalidGeometry_ReturnsNull(string geometry)
     {
         var client = Make(Key, _ => Json(HttpStatusCode.OK,
             $$"""{"features":[{"geometry":{{geometry}}}]}"""));

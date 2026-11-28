@@ -97,7 +97,7 @@ public sealed class HoldedLedgerSyncTests
     [InlineData(SyncPath.Accounts, SyncBoundary.BeforeReplacement)]
     [InlineData(SyncPath.Accounts, SyncBoundary.Completion)]
     [InlineData(SyncPath.Accounts, SyncBoundary.CompletionFailure)]
-    public async Task Mirror_outcomes_respect_startup_and_completion_boundaries(SyncPath path, SyncBoundary boundary)
+    public async Task MirrorOutcomes_StartupOrCompletion_RespectBoundaries(SyncPath path, SyncBoundary boundary)
     {
         using var shutdown = new CancellationTokenSource();
         var repository = Substitute.For<IHoldedMirrorRepository>();
@@ -181,7 +181,7 @@ public sealed class HoldedLedgerSyncTests
     [HumansTheory]
     [InlineData(true)]
     [InlineData(false)]
-    public async Task Committed_chart_or_targeted_window_finishes_its_call_log(bool chart)
+    public async Task Sweep_CommittedWindow_FinishesCallLog(bool chart)
     {
         using var shutdown = new CancellationTokenSource();
         var repository = Substitute.For<IHoldedMirrorRepository>();
@@ -205,7 +205,7 @@ public sealed class HoldedLedgerSyncTests
     }
 
     [HumansFact]
-    public async Task Consumed_call_log_cancellation_is_a_persistence_failure()
+    public async Task CallLog_CancelledAfterConsumed_IsPersistenceFailure()
     {
         var repository = Substitute.For<IHoldedMirrorRepository>();
         _callLog.DrainAll().Returns([new HoldedApiCallRecord(FixedNow, "ledger", "GET", 200, null, null)]);
@@ -220,7 +220,7 @@ public sealed class HoldedLedgerSyncTests
     }
 
     [HumansFact]
-    public async Task Shutdown_after_the_ledger_window_does_not_claim_reconciliation_finished()
+    public async Task Sweep_ShutdownAfterLedgerWindow_IsNotReconciled()
     {
         using var shutdown = new CancellationTokenSource();
         var repository = Substitute.For<IHoldedMirrorRepository>();
@@ -245,7 +245,7 @@ public sealed class HoldedLedgerSyncTests
     }
 
     [HumansFact]
-    public async Task Cold_cache_sweeps_from_inception_and_caches_all_accounts()
+    public async Task Sweep_ColdCache_StartsFromInception()
     {
         var ct = TestContext.Current.CancellationToken;
         StubWindowFetch(
@@ -266,7 +266,7 @@ public sealed class HoldedLedgerSyncTests
     }
 
     [HumansFact]
-    public async Task Warm_cache_sweeps_trailing_45_day_window_anchored_on_now()
+    public async Task Sweep_WarmCache_UsesTrailingWindow()
     {
         var ct = TestContext.Current.CancellationToken;
         StubWindowFetch(Dto(1, 1, 40000004, FixedNow, credit: 23m));
@@ -283,7 +283,7 @@ public sealed class HoldedLedgerSyncTests
     }
 
     [HumansFact]
-    public async Task Full_flag_forces_inception_sweep_and_replaces_deleted_lines()
+    public async Task Sweep_FullFlag_StartsFromInception()
     {
         var ct = TestContext.Current.CancellationToken;
         StubWindowFetch(
@@ -301,7 +301,7 @@ public sealed class HoldedLedgerSyncTests
     }
 
     [HumansFact]
-    public async Task Reconcile_repulls_mismatched_account_and_reports_residual()
+    public async Task Reconcile_MismatchedAccount_IsRepulled()
     {
         var ct = TestContext.Current.CancellationToken;
         StubWindowFetch(Dto(1, 1, 40000004, FixedNow, credit: 23m));   // local balance −23
@@ -329,7 +329,7 @@ public sealed class HoldedLedgerSyncTests
     }
 
     [HumansFact]
-    public async Task Archived_accounts_are_not_reconciled()
+    public async Task Reconcile_ArchivedAccounts_AreSkipped()
     {
         var ct = TestContext.Current.CancellationToken;
         StubWindowFetch();
@@ -342,7 +342,7 @@ public sealed class HoldedLedgerSyncTests
     }
 
     [HumansFact]
-    public async Task Second_concurrent_sweep_skips()
+    public async Task Sweep_SecondConcurrent_Skips()
     {
         var ct = TestContext.Current.CancellationToken;
         var firstStarted = new TaskCompletionSource();
@@ -365,7 +365,7 @@ public sealed class HoldedLedgerSyncTests
     }
 
     [HumansFact]
-    public async Task Drains_call_log_into_repo()
+    public async Task CallLog_Sweep_DrainsIntoRepo()
     {
         var ct = TestContext.Current.CancellationToken;
         StubWindowFetch();
@@ -386,7 +386,7 @@ public sealed class HoldedLedgerSyncTests
     [HumansTheory]
     [InlineData(true)]
     [InlineData(false)]
-    public async Task Cancelled_sweep_distinguishes_request_abort_from_dependency_failure(bool requestAborted)
+    public async Task Sweep_Cancelled_TellsAbortFromFailure(bool requestAborted)
     {
         using var cancellation = new CancellationTokenSource();
         var logger = new CapturingLogger<Service>();
@@ -412,7 +412,7 @@ public sealed class HoldedLedgerSyncTests
     }
 
     [HumansFact]
-    public async Task Manual_sync_propagates_request_abort_with_stack_free_warnings()
+    public async Task ManualSync_RequestAborted_Propagates()
     {
         using var cancellation = new CancellationTokenSource();
         var logger = new CapturingLogger<Service>();
@@ -440,7 +440,7 @@ public sealed class HoldedLedgerSyncTests
     [InlineData(1997, "tail", "…")]
     [InlineData(1996, "😀tail", "…")]
     [InlineData(1995, "😀tail", "😀…")]
-    public async Task Failed_sweep_records_error_state_and_rethrows(int prefixLength, string tail, string expectedTail)
+    public async Task Sweep_Fails_RecordsErrorState(int prefixLength, string tail, string expectedTail)
     {
         var prefix = new string('x', prefixLength);
         var message = prefix + tail;
@@ -462,7 +462,7 @@ public sealed class HoldedLedgerSyncTests
     }
 
     [HumansFact]
-    public async Task Balances_read_sums_the_whole_mirror()
+    public async Task Balances_Read_SumsWholeMirror()
     {
         var ct = TestContext.Current.CancellationToken;
         StubWindowFetch(
@@ -476,7 +476,7 @@ public sealed class HoldedLedgerSyncTests
     }
 
     [HumansFact]
-    public async Task Account_repull_replaces_only_that_accounts_whole_history()
+    public async Task AccountRepull_OneAccount_ReplacesOnlyItsHistory()
     {
         var ct = TestContext.Current.CancellationToken;
         var june = Instant.FromUtc(2026, 6, 12, 0, 0);

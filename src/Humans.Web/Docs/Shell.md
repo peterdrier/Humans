@@ -35,7 +35,7 @@ A section contributes to the Shell by implementing a seam on its `Section` class
 | Seam | Contributes | Composed by |
 |---|---|---|
 | `ISectionNav` | Member top-nav links (and dropdown `Children`) | `SectionNavViewComponent` (base) |
-| `ISectionAdminNav` | Admin sidebar groups and items | `AdminNavComposition.Compose` (base) — merges contributions into shared groups by `AdminNavGroup.Label`; rendered by `AdminSidebarViewComponent`, `AdminTabsViewComponent` (Shell) and `AdminBreadcrumbViewComponent` (base) |
+| `ISectionAdminNav` | Admin sidebar groups and items | `AdminNavComposition.Compose` (base) — merges contributions into shared groups by `AdminNavGroup.Label`; rendered by `AdminSidebarViewComponent`, `AdminTabsViewComponent` (Shell) and `AdminSectionNameViewComponent` (base) |
 | `ISectionAdminTiles` | Admin dashboard summary tiles | `AdminSummaryViewComponent` (Shell); a `null` tile value renders nothing, not a zero |
 | `ISectionChrome` | Layout-embedded view components | `ChromeSlotViewComponent` (base), named slots in `ChromeSlots` |
 | `ISectionMemberDashboard` | Member-dashboard view components | `ChromeSlotViewComponent`, same slots |

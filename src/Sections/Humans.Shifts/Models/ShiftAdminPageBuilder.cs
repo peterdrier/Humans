@@ -38,11 +38,17 @@ internal sealed class ShiftAdminPageBuilder(
         var allDepartments = await LoadTransferDepartmentsAsync(request.Department, ct);
         var allTags = await shiftManagement.GetTagsAsync(ct: ct);
         var staffingSnapshot = await shiftManagement.GetStaffingSnapshotAsync(request.EventSettings.Id, request.Department.Id, ct: ct);
+        var listOwner = request.Department.ParentTeamId is { } parentId
+            ? await teamService.GetTeamAsync(parentId, ct)
+            : request.Department;
 
         return new ShiftAdminViewModel
         {
             Department = request.Department,
             EventSettings = request.EventSettings,
+            ShiftListEmail = rotas.Count > 0 && listOwner is not null
+                ? ShiftGoogleGroupSource.ListEmail(listOwner, request.EventSettings.Year)
+                : null,
             Rotas = rotas.ToList(),
             PendingSignups = staffing.PendingSignups,
             TotalSlots = staffing.TotalSlots,

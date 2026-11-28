@@ -55,7 +55,7 @@ public sealed class WorkgroupsControllerAuthorizationTests : WorkgroupsTestHarne
     [InlineData(false, true, null)]
     [InlineData(true, false, null)]
     [InlineData(true, true, null)]
-    public async Task LogAndDocumentForms_RequireExplicitDateAndKindBeforeWriting(
+    public async Task LogAndDocumentForms_MissingDateOrKind_WriteNothing(
         bool document, bool editing, string? missingField)
     {
         var group = await SeedWorkgroupAsync();
@@ -126,7 +126,7 @@ public sealed class WorkgroupsControllerAuthorizationTests : WorkgroupsTestHarne
     [InlineData("IsRecurring")]
     [InlineData("IsPublic")]
     [InlineData(null)]
-    public async Task MeetingForm_RequiresExplicitRecurrenceAndVisibilityChoices(string? missingField)
+    public async Task MeetingForm_MissingChoices_IsRefused(string? missingField)
     {
         var group = await SeedWorkgroupAsync();
         var actor = group.Members.Single().UserId;
@@ -311,7 +311,7 @@ public sealed class WorkgroupsControllerAuthorizationTests : WorkgroupsTestHarne
     }
 
     [HumansFact]
-    public void MemberForms_LocalizeRequiredAndLengthErrors()
+    public void MemberForms_InvalidInput_LocalizeErrors()
     {
         using var cultureScope = new CultureScope("en");
         var registrations = new ServiceCollection().AddLogging().AddLocalization();
@@ -347,7 +347,7 @@ public sealed class WorkgroupsControllerAuthorizationTests : WorkgroupsTestHarne
     }
 
     [HumansFact]
-    public async Task Meeting_times_default_to_and_are_read_in_the_organisation_zone()
+    public async Task MeetingTimes_Form_UseOrganisationZone()
     {
         Settings.GetTimeZoneIdAsync(Arg.Any<CancellationToken>()).Returns("America/New_York");
         var (controller, workgroup) = await BuildAsync(asMember: true);
@@ -446,7 +446,7 @@ public sealed class WorkgroupsControllerAuthorizationTests : WorkgroupsTestHarne
     [InlineData(false, true)]
     [InlineData(true, false)]
     [InlineData(true, true)]
-    public async Task MalformedMemberAction_PreservesAuthorizationAndStoredState(bool coordinators, bool asMember)
+    public async Task MemberAction_Malformed_ChangesNothing(bool coordinators, bool asMember)
     {
         var (controller, workgroup) = await BuildAsync(asMember);
         var originalCoordinator = workgroup.Members.Single().UserId;
@@ -530,7 +530,7 @@ public sealed class WorkgroupsControllerAuthorizationTests : WorkgroupsTestHarne
     }
 
     [HumansFact]
-    public async Task Board_ActingOnAGroupTheyAreNotIn_IsAllowed()
+    public async Task Board_NotInGroup_IsAllowed()
     {
         var (controller, workgroup) = await BuildAsync(asMember: false, isBoard: true);
 
@@ -753,7 +753,7 @@ public sealed class WorkgroupsControllerAuthorizationTests : WorkgroupsTestHarne
     }
 
     [HumansFact]
-    public void Budget_IsOnTheAdminController_SoBoardOrAdminGatesIt()
+    public void Budget_AdminController_IsBoardOrAdminGated()
     {
         var method = typeof(WorkgroupsAdminController).GetMethod(nameof(WorkgroupsAdminController.Budget));
         method.Should().NotBeNull();

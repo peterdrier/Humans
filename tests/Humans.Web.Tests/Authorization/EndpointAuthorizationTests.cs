@@ -274,6 +274,7 @@ public class EndpointAuthorizationTests
             "HomeController.Privacy",
             "HomeController.Error",
             "AboutController.Index",
+            "AboutController.Logos",
             "GuestAccountController.CommunicationPreferences",
             "GuestAccountController.UpdatePreference",
             "TeamController.Index",

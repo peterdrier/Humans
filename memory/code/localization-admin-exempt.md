@@ -1,6 +1,6 @@
 ---
 name: Localization — admin and operator-only pages do not require it
-description: Admin/operator-only pages (`/Admin/*`, `/TeamAdmin/*`, `/Shifts/Dashboard`, `/Monitor/*`) don't need new resx keys — a page without that gate is never exempt.
+description: Admin/operator-only pages (`/Admin/*`, `/TeamAdmin/*`, `/Shifts/Dashboard`, `/Monitor/*`) don't need new resx keys; `/About/Logos` is the one named public exception — any other page without that gate is never exempt.
 ---
 
 **A page only admin or operator roles can reach does not require localization.** Existing localized strings there can stay, but do not add new `@Localizer[...]` calls or resource keys for them until further notice.
@@ -16,4 +16,6 @@ The access pill (`_AuthorizationPill`, its role titles and `IDescribedRequiremen
 
 That list is illustrative, not the gate: a new operator-only page is exempt without being added to it, and one of these moving to another route stays exempt.
 
-**A view without that gate is never exempt**, wherever it is routed — including a partial or modal opened from an admin page. The gate on the rendered markup decides, not the page that opened it ([`img-alt-is-a-user-facing-string`](img-alt-is-a-user-facing-string.md)).
+**One named public exception: `/About/Logos`** (the logo library) is exempt by Peter's call (2026-11-27): a side page whose content is model commentary. Entry notes are English only and the page takes no new resx keys; its existing keys can stay.
+
+**Otherwise, a view without that gate is never exempt**, wherever it is routed — including a partial or modal opened from an admin page. The gate on the rendered markup decides, not the page that opened it ([`img-alt-is-a-user-facing-string`](img-alt-is-a-user-facing-string.md)).

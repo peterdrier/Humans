@@ -63,7 +63,7 @@ public sealed class ConsentArchitectureTests
     /// the production <c>Section.Register</c>, not a test-built mirror of it.
     /// </summary>
     [HumansFact]
-    public void IConsentManagement_And_IConsentService_ResolveToSameSingleton()
+    public void ConsentInterfaces_Resolved_AreSameSingleton()
     {
         var services = new ServiceCollection();
         // The section registers against the host's baseline; the caching
@@ -86,7 +86,7 @@ public sealed class ConsentArchitectureTests
     }
 
     [HumansFact]
-    public void SectionTypesLocalizeThroughTheSectionsOwnResourceSet()
+    public void SectionTypes_Localization_UsesOwnResourceSet()
     {
         // This section keeps its own translation file; a type asking for a third gets the key
         // name back instead of the text. SharedResource stays allowed for the Nav_Consents link.

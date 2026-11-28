@@ -54,7 +54,7 @@ public class MyDataControllerTests
             profile: null);
 
     [HumansFact]
-    public async Task Index_returns_NotFound_without_a_user()
+    public async Task Index_NoUser_IsNotFound()
     {
         _userService.GetUserInfoAsync(_userId, Arg.Any<CancellationToken>()).Returns((UserInfo?)null);
 
@@ -62,7 +62,7 @@ public class MyDataControllerTests
     }
 
     [HumansFact]
-    public async Task Index_lists_the_documents_the_member_signed()
+    public async Task Index_SignedDocuments_AreListed()
     {
         var versionId = Guid.NewGuid();
         var signedAt = Instant.FromUtc(2026, 3, 1, 0, 0);
@@ -82,7 +82,7 @@ public class MyDataControllerTests
     [InlineData(10)]
     [InlineData(30)]
     [InlineData(60)]
-    public async Task Index_reports_the_later_of_grace_deadline_and_ticket_hold(int? holdDays)
+    public async Task Index_GraceDeadlineOrTicketHold_ReportsLater(int? holdDays)
     {
         var now = Instant.FromUtc(2026, 10, 3, 0, 0);
         _userService.GetUserInfoAsync(_userId, Arg.Any<CancellationToken>()).Returns(Info(
@@ -100,7 +100,7 @@ public class MyDataControllerTests
     }
 
     [HumansFact]
-    public async Task Index_stops_loading_after_request_cancellation()
+    public async Task Index_RequestCancelled_StopsLoading()
     {
         using var request = new CancellationTokenSource();
         _userService.GetUserInfoAsync(_userId, Arg.Any<CancellationToken>()).Returns(call =>

@@ -123,7 +123,7 @@ public sealed class CityPlanningContainerAdminYearTests : CityPlanningTestBase
     [HumansTheory]
     [InlineData(true)]
     [InlineData(false)]
-    public async Task ContainerMap_LeadIsGatedByThePlaceRequirementForTheirCampInTheRouteYear(bool placeAllowed)
+    public async Task ContainerMap_Lead_NeedsPlaceRequirement(bool placeAllowed)
     {
         var campId = SeedLeadCamp();
         object? target = null;
@@ -147,7 +147,7 @@ public sealed class CityPlanningContainerAdminYearTests : CityPlanningTestBase
     }
 
     [HumansFact]
-    public async Task ContainerMap_NonLeadIsRefusedWithoutCreatingASettingsRow()
+    public async Task ContainerMap_NonLead_IsRefused()
     {
         _campService.GetCampsForYearAsync(RouteYear, Arg.Any<CancellationToken>()).Returns([]);
         var controller = CreateController();
@@ -163,7 +163,7 @@ public sealed class CityPlanningContainerAdminYearTests : CityPlanningTestBase
     /// itself 404s instead of rendering a map whose state fetch fails, even for a map admin.
     /// </summary>
     [HumansFact]
-    public async Task ContainerMap_NoActiveEvent_IsNotFoundEvenForAMapAdmin()
+    public async Task ContainerMap_NoActiveEvent_IsNotFound()
     {
         var service = new CityPlanningService(
             new CityPlanningRepository(CityPlanningDbFactory), Clock,
