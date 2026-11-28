@@ -16,7 +16,7 @@ Team create/edit form redisplays use request cancellation for parent-team picker
 ## Concepts
 
 - A **Department** is a team with no parent. A **Sub-Team** sits under exactly one department; only one level of nesting is allowed.
-- **System teams** (Volunteers, Coordinators, Barrio Leads) are computed by the system-team sync; nobody adds or removes their members by hand. The Board, Asociados and Colaboradors teams now belong to Governance's bodies: Teams no longer syncs them or claims their Google group and files (`TeamService.GovernanceBodyTeamIds`), and the `teams.retire-governance-bodies` data migration deactivates them, ending their memberships with an audit entry per member. The `teams.remove-governance-body-roles` data migration then deletes any role slots left on them, with an audit entry per holder, because a filled slot blocks deleting the team row.
+- **System teams** (Volunteers, Coordinators, Barrio Leads) are computed by the system-team sync; nobody adds or removes their members by hand. The Board, Asociados and Colaboradors used to be system teams too; Governance runs those bodies now and their team rows are deleted.
 - A **Coordinator** holds the management role on a department: full authority over the department and its sub-teams, including Google resources. Coordinators are members of the Coordinators system team.
 - A **Sub-team Manager** holds the management role on a sub-team: members, join requests, roles, shifts and the page of that sub-team only. Managers have no authority over Google resources, the parent department or sibling sub-teams, and are not added to the Coordinators system team.
 - A **Team Page** is the Markdown page of a department, public or member-facing, with up to three calls to action.

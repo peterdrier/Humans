@@ -430,7 +430,7 @@ public sealed class CachingTeamServiceTests : TeamsTestHarness
     [HumansTheory]
     [InlineData(true, SystemTeamType.None, true)]
     [InlineData(true, SystemTeamType.Volunteers, false)]
-    [InlineData(true, SystemTeamType.Board, true)]
+    [InlineData(true, SystemTeamType.BarrioLeads, true)]
     [InlineData(false, SystemTeamType.None, false)]
     public async Task GetUserTeamsAsync_CachedReadCarriesTeamFactsForProfileProjection(bool active, SystemTeamType type, bool expected)
     {

@@ -177,7 +177,7 @@ public sealed class GovernanceBoardSeatsTests
         authorization.AuthorizeAsync(Arg.Any<ClaimsPrincipal>(), RoleNames.Board, PolicyNames.SystemRoleManage)
             .Returns(AuthorizationResult.Failed());
         var controller = new GovernanceController(users, Substitute.For<IGovernanceIndexService>(), Seats(),
-            new GovernanceBodyLinksService(_repo, Substitute.For<Humans.Teams.Contracts.ITeamService>(), Substitute.For<ITeamResourceService>(),
+            new GovernanceBodyLinksService(_repo, Substitute.For<ITeamResourceService>(),
                 _audit, new GovernanceBodySync(_repo, _groupSync, Substitute.For<IGoogleSyncWrite>()), new FakeClock(Now)),
             authorization,
             Substitute.For<IStringLocalizer<GovernanceResource>>().AddFormatting())

@@ -276,7 +276,7 @@ public sealed class GovernanceIndexServiceTests
     }
 
     private GovernanceBodyLinksService BodyLinks() =>
-        new(_bodies, Substitute.For<ITeamService>(), Substitute.For<ITeamResourceService>(), Substitute.For<IAuditLogService>(),
+        new(_bodies, Substitute.For<ITeamResourceService>(), Substitute.For<IAuditLogService>(),
             new GovernanceBodySync(_bodies, Substitute.For<IGoogleGroupSync>(), Substitute.For<IGoogleSyncWrite>()),
             SystemClock.Instance);
 

@@ -2636,7 +2636,7 @@ public sealed class TeamServiceTests : TeamsTestHarness
     [HumansTheory]
     [InlineData(true, SystemTeamType.None, true)]
     [InlineData(true, SystemTeamType.Volunteers, false)]
-    [InlineData(true, SystemTeamType.Board, true)]
+    [InlineData(true, SystemTeamType.BarrioLeads, true)]
     [InlineData(false, SystemTeamType.None, false)]
     public async Task GetUserTeamsAsync_CarriesTeamFactsForProfileProjection(bool active, SystemTeamType type, bool expected)
     {
@@ -3669,117 +3669,6 @@ public sealed class TeamServiceTests : TeamsTestHarness
         var result = await _service.GetExpectedAsync(ct: TestContext.Current.CancellationToken);
 
         result.Should().NotContainKey($"shared@{DomainConstants.GoogleGroupDomain}");
-    }
-
-    [HumansFact]
-    public async Task GovernanceBodyTeam_IsNotClaimed_AndRetiringItEndsItsMembershipsOnce()
-    {
-        var ct = TestContext.Current.CancellationToken;
-        var member = SeedUser(displayName: "Asociada");
-        var board = await TeamsDb.Teams.FindAsync([SystemTeamIds.Board], ct)
-            ?? SeedTeam("Board", SystemTeamType.Board, SystemTeamIds.Board);
-        board.GoogleGroupPrefix = "board";
-        SeedTeamMember(board.Id, member.Id);
-        await SaveAllAsync(ct);
-        var actor = Guid.NewGuid();
-
-        (await _service.GetExpectedAsync(ct: ct)).Should().NotContainKey($"board@{DomainConstants.GoogleGroupDomain}");
-        (await _service.RetireGovernanceBodyTeamsAsync(actor, ct)).Should().BeGreaterThan(0);
-
-        await using var stored = await TeamsDbFactory.CreateDbContextAsync(ct);
-        (await stored.Teams.FindAsync([SystemTeamIds.Board], ct))!.IsActive.Should().BeFalse();
-        (await stored.TeamMembers.SingleAsync(m => m.TeamId == SystemTeamIds.Board, ct)).LeftAt.Should().NotBeNull();
-        await AuditLog.Received(1).LogAsync(
-            TeamsAuditActions.TeamMemberRemoved, nameof(Team), SystemTeamIds.Board,
-            "Membership ended when Board was deactivated", actor, member.Id, AuditSubjectTypes.User);
-        (await _service.RetireGovernanceBodyTeamsAsync(actor, ct)).Should().Be(0);
-    }
-
-    [HumansFact]
-    public async Task GetExpectedAsync_RetiredTeam_ClaimsGroupEmpty()
-    {
-        var ct = TestContext.Current.CancellationToken;
-        var team = SeedTeam("Retired");
-        team.GoogleGroupPrefix = "retired";
-        team.IsActive = false;
-        SeedTeamMember(team.Id, SeedUser().Id);
-        await SaveAllAsync(ct);
-
-        var result = await _service.GetExpectedAsync(ct: ct);
-
-        result[$"retired@{DomainConstants.GoogleGroupDomain}"].Should().BeEmpty();
-    }
-
-    [HumansFact]
-    public async Task EraseMembersAsync_RetiredTeam_DeletesMembershipHistory()
-    {
-        var ct = TestContext.Current.CancellationToken;
-        var team = SeedTeam("Low income");
-        var other = SeedTeam("Other");
-        var alice = SeedUser(displayName: "Alice");
-        var member = SeedTeamMember(team.Id, alice.Id);
-        var otherMember = SeedTeamMember(other.Id, alice.Id);
-        SeedTeamRoleAssignment(SeedTeamRoleDefinition(team.Id, isManagement: false).Id, member.Id);
-        TeamsDb.TeamJoinRequests.Add(new TeamJoinRequest
-        {
-            Id = Guid.NewGuid(),
-            TeamId = team.Id,
-            UserId = SeedUser().Id,
-            RequestedAt = Clock.GetCurrentInstant(),
-        });
-        await SaveAllAsync(ct);
-        var actor = Guid.NewGuid();
-        await _service.DeleteTeamAsync(team.Id, actor, ct);
-
-        (await _service.EraseMembersAsync(team.Id, actor, ct)).Succeeded.Should().BeTrue();
-
-        await using var stored = await TeamsDbFactory.CreateDbContextAsync(ct);
-        (await stored.TeamMembers.Where(m => m.TeamId == team.Id).ToListAsync(ct)).Should().BeEmpty();
-        (await stored.TeamJoinRequests.Where(r => r.TeamId == team.Id).ToListAsync(ct)).Should().BeEmpty();
-        (await stored.TeamRoleAssignments.ToListAsync(ct)).Should().BeEmpty();
-        (await stored.TeamMembers.SingleAsync(m => m.TeamId == other.Id, ct)).Id.Should().Be(otherMember.Id);
-        (await stored.Teams.FindAsync([team.Id], ct)).Should().NotBeNull();
-        await AuditLog.Received(1).LogAsync(
-            TeamsAuditActions.TeamMembersErased, nameof(Team), team.Id,
-            "Erased the membership history of Low income (2 people)", actor);
-    }
-
-    [HumansFact]
-    public async Task EraseMembersAsync_ActiveTeam_Refuses()
-    {
-        var ct = TestContext.Current.CancellationToken;
-        var team = SeedTeam("Active");
-        SeedTeamMember(team.Id, SeedUser().Id);
-        await SaveAllAsync(ct);
-
-        (await _service.EraseMembersAsync(team.Id, Guid.NewGuid(), ct)).Succeeded.Should().BeFalse();
-
-        await using var stored = await TeamsDbFactory.CreateDbContextAsync(ct);
-        (await stored.TeamMembers.CountAsync(m => m.TeamId == team.Id, ct)).Should().Be(1);
-    }
-
-    [HumansFact]
-    public async Task RemoveGovernanceBodyRolesAsync_FilledSlot_DeletesRoleWithAudit()
-    {
-        var ct = TestContext.Current.CancellationToken;
-        var holder = SeedUser(displayName: "President");
-        var board = await TeamsDb.Teams.FindAsync([SystemTeamIds.Board], ct)
-            ?? SeedTeam("Board", SystemTeamType.Board, SystemTeamIds.Board);
-        var membership = SeedTeamMember(board.Id, holder.Id);
-        var role = SeedTeamRoleDefinition(board.Id, isManagement: false);
-        SeedTeamRoleAssignment(role.Id, membership.Id);
-        await SaveAllAsync(ct);
-        var actor = Guid.NewGuid();
-
-        (await _service.RemoveGovernanceBodyRolesAsync(actor, ct)).Should().Be(1);
-
-        await using var stored = await TeamsDbFactory.CreateDbContextAsync(ct);
-        (await stored.TeamRoleDefinitions.AnyAsync(d => d.TeamId == board.Id, ct)).Should().BeFalse();
-        (await stored.TeamRoleAssignments.AnyAsync(ct)).Should().BeFalse();
-        await AuditLog.Received(1).LogAsync(
-            TeamsAuditActions.TeamRoleUnassigned, nameof(TeamRoleDefinition), role.Id,
-            "Unassigned from role 'Member Role' in Board before the team was deleted", actor, holder.Id, AuditSubjectTypes.User);
-        (await _service.RemoveGovernanceBodyRolesAsync(actor, ct)).Should().Be(0);
     }
 
     private TeamRoleDefinition SeedTeamRoleDefinition(Guid teamId, bool isManagement)

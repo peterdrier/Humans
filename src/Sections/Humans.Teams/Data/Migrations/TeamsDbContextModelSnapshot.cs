@@ -18,7 +18,7 @@ namespace Humans.Teams.Data.Migrations
         {
 #pragma warning disable 612, 618
             modelBuilder
-                .HasAnnotation("ProductVersion", "10.0.13")
+                .HasAnnotation("ProductVersion", "10.0.15")
                 .HasAnnotation("Relational:MaxIdentifierLength", 63);
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
@@ -167,63 +167,6 @@ namespace Humans.Teams.Data.Migrations
                             ShowCoordinatorsOnPublicPage = true,
                             Slug = "coordinators",
                             SystemTeamType = "Coordinators",
-                            UpdatedAt = NodaTime.Instant.FromUnixTimeTicks(17702491570000000L)
-                        },
-                        new
-                        {
-                            Id = new Guid("00000000-0000-0000-0001-000000000003"),
-                            CreatedAt = NodaTime.Instant.FromUnixTimeTicks(17702491570000000L),
-                            Description = "Board members with active role assignments",
-                            EarlyEntryEnabled = false,
-                            HasBudget = false,
-                            IsActive = true,
-                            IsHidden = false,
-                            IsPromotedToDirectory = false,
-                            IsPublicPage = false,
-                            IsSensitive = false,
-                            Name = "Board",
-                            RequiresApproval = false,
-                            ShowCoordinatorsOnPublicPage = true,
-                            Slug = "board",
-                            SystemTeamType = "Board",
-                            UpdatedAt = NodaTime.Instant.FromUnixTimeTicks(17702491570000000L)
-                        },
-                        new
-                        {
-                            Id = new Guid("00000000-0000-0000-0001-000000000004"),
-                            CreatedAt = NodaTime.Instant.FromUnixTimeTicks(17702491570000000L),
-                            Description = "Voting members with approved asociado applications",
-                            EarlyEntryEnabled = false,
-                            HasBudget = false,
-                            IsActive = true,
-                            IsHidden = false,
-                            IsPromotedToDirectory = false,
-                            IsPublicPage = false,
-                            IsSensitive = false,
-                            Name = "Asociados",
-                            RequiresApproval = false,
-                            ShowCoordinatorsOnPublicPage = true,
-                            Slug = "asociados",
-                            SystemTeamType = "Asociados",
-                            UpdatedAt = NodaTime.Instant.FromUnixTimeTicks(17702491570000000L)
-                        },
-                        new
-                        {
-                            Id = new Guid("00000000-0000-0000-0001-000000000005"),
-                            CreatedAt = NodaTime.Instant.FromUnixTimeTicks(17702491570000000L),
-                            Description = "Active contributors with approved colaborador applications",
-                            EarlyEntryEnabled = false,
-                            HasBudget = false,
-                            IsActive = true,
-                            IsHidden = false,
-                            IsPromotedToDirectory = false,
-                            IsPublicPage = false,
-                            IsSensitive = false,
-                            Name = "Colaboradors",
-                            RequiresApproval = false,
-                            ShowCoordinatorsOnPublicPage = true,
-                            Slug = "colaboradors",
-                            SystemTeamType = "Colaboradors",
                             UpdatedAt = NodaTime.Instant.FromUnixTimeTicks(17702491570000000L)
                         },
                         new

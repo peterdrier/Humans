@@ -61,18 +61,6 @@ public sealed class TeamDriveAccessSourceTests
         filtered.Keys.Should().Equal("retired-file");
     }
 
-    [HumansFact]
-    public async Task GovernanceBodyTeamFiles_AreLeftToGovernance()
-    {
-        var asociados = Team("asociados", Guid.NewGuid()) with { Id = SystemTeamIds.Asociados };
-        Seed([asociados], Resource(asociados.Id, "asociados-folder", DrivePermissionLevel.Viewer));
-
-        var claims = await new TeamDriveAccessSource(_teams, _resources)
-            .GetExpectedAccessAsync(ct: Xunit.TestContext.Current.CancellationToken);
-
-        claims.Should().BeEmpty();
-    }
-
     private void Seed(TeamInfo[] teams, params GoogleResourceSnapshot[] resources)
     {
         _teams.GetTeamsAsync(Arg.Any<CancellationToken>()).Returns(teams.ToDictionary(t => t.Id));

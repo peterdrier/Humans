@@ -44,7 +44,6 @@ public sealed class Section :
     ISectionAccessMatrix,
     ISectionAdminNav,
     ISectionChrome,
-    ISectionDataMigrations,
     ISectionHelp,
     ISectionJobs,
     ISectionMemberDashboard,
@@ -189,26 +188,6 @@ public sealed class Section :
             new(ChromeSlots.WidgetGallery, typeof(GovernanceGalleryViewComponent)),
         ];
 
-    internal const string BodyLinksCopyKey = "governance.body-links-from-teams";
-
-    IEnumerable<DataMigration> ISectionDataMigrations.Migrations() =>
-    [
-        new(BodyLinksCopyKey, "Governance",
-            "Copy the Asociados, Colaboradores and Board teams' Google group address and Google files onto Governance's bodies",
-            "The Google links of the three governance system teams, when those teams are deleted",
-            BodyLinksCopyStatusAsync, ApplyBodyLinksCopyAsync),
-    ];
-
-    private static async Task<DataMigrationStatus> BodyLinksCopyStatusAsync(IServiceProvider sp, CancellationToken ct) =>
-        new(["Body", "From Teams (group / files)"],
-            [.. (await sp.GetRequiredService<GovernanceBodyLinksService>().GetPendingCopiesAsync(ct))
-                .Select(p => (IReadOnlyList<string>)[p.FromTeams.Body.ToString(), Describe(p.FromTeams)])]);
-
-    private static string Describe(GovernanceBodyLinks links) =>
-        $"{links.GoogleGroupPrefix ?? "no group"} / {string.Join(", ", links.Files.Select(f => $"{f.Name} ({f.PermissionLevel})"))}";
-
-    private static Task<int> ApplyBodyLinksCopyAsync(IServiceProvider sp, Guid actorUserId, CancellationToken ct) =>
-        sp.GetRequiredService<GovernanceBodyLinksService>().CopyFromTeamsAsync(actorUserId, ct);
 
     IReadOnlyList<SectionHelpEntry> ISectionHelp.HelpEntries => Entries;
 

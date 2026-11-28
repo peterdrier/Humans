@@ -211,6 +211,20 @@ public sealed class GoogleWorkspaceSyncServiceReconciliationTests : GoogleTestHa
     }
 
     [HumansFact]
+    public async Task DriveReconcileAllAsync_DeletedTeam_DeactivatesResource()
+    {
+        var ct = TestContext.Current.CancellationToken;
+        var googleId = CreateGoogleFolder("Orphan Folder");
+        var resourceId = SeedDriveResource(Guid.NewGuid(), googleId, "Orphan Folder");
+        await SaveAllAsync(ct);
+        StubTeams();
+
+        await _driveSync.ReconcileAllAsync(SyncAction.Execute, ct, GoogleResourceType.DriveFolder, GoogleSyncSource.ScheduledSync);
+
+        (await GoogleDb.GoogleResources.AsNoTracking().SingleAsync(r => r.Id == resourceId, ct)).IsActive.Should().BeFalse();
+    }
+
+    [HumansFact]
     public async Task DriveReconcileAllAsync_SharedGoogleIdGroupErrors_NoRowInGroupIsDeactivated()
     {
         var ct = TestContext.Current.CancellationToken;

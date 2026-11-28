@@ -17,9 +17,7 @@ internal sealed class TeamDriveAccessSource(
             .ToLookup(t => t.ParentTeamId!.Value);
         var claims = new Dictionary<string, GoogleDriveAccessClaim>(StringComparer.Ordinal);
         foreach (var group in resourcesByTeam.Values.SelectMany(r => r)
-            // Governance claims the governance bodies' files; skipping them here builds no empty claim.
             .Where(r => r.IsActive && r.ResourceType != GoogleResourceType.Group
-                && !TeamService.GovernanceBodyTeamIds.Contains(r.TeamId)
                 && (folderId is null || string.Equals(r.GoogleId, folderId, StringComparison.Ordinal)))
             .GroupBy(r => r.GoogleId, StringComparer.Ordinal))
         {

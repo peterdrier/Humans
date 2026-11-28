@@ -23,24 +23,6 @@ public enum SystemTeamType
     Coordinators = 2,
 
     /// <summary>
-    /// Board members with active SystemRole.
-    /// Auto-synced from SystemRole table.
-    /// </summary>
-    Board = 3,
-
-    /// <summary>
-    /// Asociados (voting members) with approved applications.
-    /// Auto-synced based on Application status.
-    /// </summary>
-    Asociados = 4,
-
-    /// <summary>
-    /// Colaboradors (active contributors) with approved applications.
-    /// Auto-synced based on Application status.
-    /// </summary>
-    Colaboradors = 5,
-
-    /// <summary>
     /// All active camp leads across all camps.
     /// Auto-synced based on CampLead assignments.
     /// </summary>
