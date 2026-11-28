@@ -382,7 +382,7 @@ public sealed class GoogleWorkspaceSyncServiceTests
         using var cancellation = new CancellationTokenSource();
         var failure = new OperationCanceledException("Group settings cancelled", cancellation.Token);
         _directory.ListDomainGroupsAsync(Arg.Any<CancellationToken>())
-            .Returns(new DirectoryGroupListResult([new DirectoryGroup("id", "group@nobodies.team", "Group", 1)], null));
+            .Returns(new DirectoryGroupListResult([new DirectoryGroup("group@nobodies.team", "Group", 1)], null));
         _teamService.GetTeamsAsync(Arg.Any<CancellationToken>()).Returns(new Dictionary<Guid, TeamInfo>());
         _groupProvisioning.GetGroupSettingsAsync("group@nobodies.team", Arg.Any<CancellationToken>())
             .Returns(async _ =>
