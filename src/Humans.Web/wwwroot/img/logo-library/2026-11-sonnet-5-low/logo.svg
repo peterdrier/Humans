@@ -1,0 +1,80 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="-2 -2 244 244" role="img" aria-label="Vitruvian Man">
+  <g fill="none" stroke="#c9a96e" stroke-width="0.6" opacity="0.55">
+    <circle cx="120" cy="120" r="120"/>
+    <rect x="23" y="46" width="194" height="194"/>
+    <line x1="120" y1="0" x2="120" y2="240"/>
+    <line x1="0" y1="120" x2="240" y2="120"/>
+  </g>
+
+  <g fill="#c9a96e">
+    <!-- head -->
+    <ellipse cx="120" cy="58" rx="10" ry="12.5"/>
+    <!-- neck -->
+    <rect x="115" y="69" width="10" height="9"/>
+    <!-- horizontal arms, spanning the square -->
+    <path d="M23 82 L217 82 L217 91 L120 89 L23 91 Z"/>
+    <!-- raised arms, reaching the circle -->
+    <path d="M60 16 L68 15 L112 86 L104 92 Z"/>
+    <path d="M180 16 L172 15 L128 92 L136 86 Z"/>
+    <!-- torso -->
+    <path d="M103 84 C96 100 95 112 100 120 L98 143 L142 143 L140 120 C145 112 144 100 137 84
+             C130 80 110 80 103 84 Z"/>
+    <!-- legs together -->
+    <path d="M100 143 L118 143 L113 240 L104 240 Z"/>
+    <path d="M140 143 L122 143 L127 240 L136 240 Z"/>
+    <!-- legs spread, reaching the circle -->
+    <path d="M100 150 L112 150 L85 233 L74 233 Z"/>
+    <path d="M140 150 L128 150 L155 233 L166 233 Z"/>
+    <!-- hands -->
+    <circle cx="20" cy="86" r="5.5"/>
+    <circle cx="220" cy="86" r="5.5"/>
+    <circle cx="64" cy="15.5" r="5"/>
+    <circle cx="176" cy="15.5" r="5"/>
+    <!-- feet -->
+    <ellipse cx="108.5" cy="239" rx="7" ry="3.2"/>
+    <ellipse cx="131.5" cy="239" rx="7" ry="3.2"/>
+    <ellipse cx="79" cy="234" rx="7" ry="3.2" transform="rotate(-25 79 234)"/>
+    <ellipse cx="161" cy="234" rx="7" ry="3.2" transform="rotate(25 161 234)"/>
+  </g>
+
+  <g fill="none" stroke="#3d2b1f" stroke-width="2" stroke-linecap="round">
+    <!-- pose separations: horizontal arm vs raised arm, legs-together vs spread -->
+    <path d="M30 86 L217 86"/>
+    <path d="M100 150 L140 150"/>
+    <path d="M118 143 L122 143"/>
+    <!-- torso contour -->
+    <path d="M103 84 C96 100 95 112 100 120 L98 143 L142 143 L140 120 C145 112 144 100 137 84"/>
+  </g>
+
+  <g fill="none" stroke="#3d2b1f" stroke-width="1.4" stroke-linecap="round" opacity="0.9">
+    <!-- hairline -->
+    <path d="M111 49 Q120 45 129 49"/>
+    <!-- collarbones -->
+    <path d="M110 86 Q120 83 130 86"/>
+    <!-- pectoral / abdomen lines -->
+    <path d="M108 94 Q120 97 132 94"/>
+    <path d="M110 106 L130 106"/>
+    <path d="M112 116 L128 116"/>
+    <!-- leg muscle seams -->
+    <path d="M109 150 L104 200"/>
+    <path d="M131 150 L136 200"/>
+  </g>
+
+  <g fill="none" stroke="#3d2b1f" stroke-width="0.9" stroke-linecap="round" opacity="0.85">
+    <!-- face -->
+    <path d="M119 55 L118 59"/>
+    <circle cx="116" cy="54" r="0.5" fill="#3d2b1f"/>
+    <circle cx="124" cy="54" r="0.5" fill="#3d2b1f"/>
+    <!-- fingers, horizontal hands -->
+    <path d="M20 81 L20 91 M22 80.5 L22 91.5 M18 80.5 L18 91.5"/>
+    <path d="M220 81 L220 91 M222 80.5 L222 91.5 M218 80.5 L218 91.5"/>
+    <!-- fingers, raised hands -->
+    <path d="M62 11 L66 20 M65 10 L68 19"/>
+    <path d="M178 11 L174 20 M175 10 L172 19"/>
+    <!-- toes -->
+    <path d="M103 241 L114 241"/>
+    <path d="M126 241 L137 241"/>
+    <!-- fine hatching, torso shading -->
+    <path d="M106 98 L104 112 M134 98 L136 112"/>
+  </g>
+</svg>

@@ -1,0 +1,100 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="-2 -2 244 244" role="img" aria-label="Vitruvian Man">
+  <g id="construction" stroke="#c9a96e" stroke-width="1" fill="none" opacity="0.35">
+    <line x1="120" y1="2" x2="120" y2="238" />
+    <line x1="2" y1="120" x2="238" y2="120" />
+    <path d="M120,0 L124,10 L116,10 Z" />
+    <path d="M120,240 L124,230 L116,230 Z" />
+    <path d="M0,120 L10,116 L10,124 Z" />
+    <path d="M240,120 L230,116 L230,124 Z" />
+    <circle cx="120" cy="120" r="60" stroke-dasharray="2 4" />
+  </g>
+
+  <g id="frame" fill="none" stroke="#c9a96e" stroke-width="3">
+    <circle cx="120" cy="120" r="120" />
+    <rect x="23" y="46" width="194" height="194" />
+  </g>
+
+  <g id="base" fill="#c9a96e" stroke="#3d2b1f" stroke-width="2" stroke-linejoin="round" stroke-linecap="round">
+    <!-- head + neck -->
+    <ellipse cx="120" cy="58" rx="13" ry="12" />
+    <rect x="113" y="69" width="14" height="12" rx="3" />
+
+    <!-- torso -->
+    <path d="M100,82 C90,95 88,115 98,135 L108,143 L132,143 L142,135 C152,115 150,95 140,82 C130,76 110,76 100,82 Z" />
+
+    <!-- arms: horizontal pose -->
+    <path d="M96,80 C80,82 50,85 26,87 C22,88 22,94 26,95 C50,93 80,90 97,88 C100,86 99,81 96,80 Z" />
+    <ellipse cx="20" cy="91" rx="8" ry="7" />
+    <path d="M144,80 C160,82 190,85 214,87 C218,88 218,94 214,95 C190,93 160,90 143,88 C141,86 141,81 144,80 Z" />
+    <ellipse cx="220" cy="91" rx="8" ry="7" />
+
+    <!-- arms: raised pose -->
+    <path d="M94,82 C82,70 68,48 60,26 C58,22 64,20 67,24 C76,44 88,64 98,80 C100,83 97,86 94,82 Z" />
+    <ellipse cx="62" cy="20" rx="7" ry="6" />
+    <path d="M146,82 C158,70 172,48 180,26 C182,22 176,20 173,24 C164,44 152,64 142,80 C140,83 143,86 146,82 Z" />
+    <ellipse cx="178" cy="20" rx="7" ry="6" />
+
+    <!-- legs: together pose -->
+    <path d="M110,143 C106,175 104,205 102,232 C101,238 112,238 113,232 C116,205 118,175 119,143 Z" />
+    <ellipse cx="104" cy="236" rx="9" ry="5" />
+    <path d="M130,143 C134,175 136,205 138,232 C139,238 128,238 127,232 C124,205 122,175 121,143 Z" />
+    <ellipse cx="136" cy="236" rx="9" ry="5" />
+
+    <!-- legs: spread pose -->
+    <path d="M112,144 C98,166 80,190 68,212 C65,218 59,216 62,210 C76,188 92,164 106,142 C109,140 114,141 112,144 Z" />
+    <ellipse cx="63" cy="216" rx="9" ry="6" />
+    <path d="M128,144 C142,166 160,190 172,212 C175,218 181,216 178,210 C164,188 148,164 134,142 C131,140 126,141 128,144 Z" />
+    <ellipse cx="177" cy="216" rx="9" ry="6" />
+  </g>
+
+  <g id="tier2" fill="none" stroke="#3d2b1f" stroke-width="1.4" stroke-linecap="round">
+    <!-- hair -->
+    <path d="M110,48 C108,45 107,42 108,39" />
+    <path d="M120,46 C119,43 119,40 120,37" />
+    <path d="M130,48 C132,45 133,42 132,39" />
+
+    <!-- torso musculature -->
+    <path d="M102,90 Q120,97 138,90" />
+    <path d="M120,98 L120,137" />
+    <path d="M113,112 Q120,115 127,112" />
+    <path d="M114,126 Q120,129 126,126" />
+
+    <!-- waist / hip contour -->
+    <path d="M94,86 C92,100 92,116 100,132" />
+    <path d="M146,86 C148,100 148,116 140,132" />
+
+    <!-- thigh / calf contour, together legs -->
+    <path d="M112,146 C109,175 107,204 105,228" />
+    <path d="M128,146 C131,175 133,204 135,228" />
+
+    <!-- thigh / calf contour, spread legs -->
+    <path d="M110,148 C98,168 83,190 71,210" />
+    <path d="M130,148 C142,168 157,190 169,210" />
+  </g>
+
+  <g id="tier3" fill="none" stroke="#3d2b1f" stroke-width="0.9" stroke-linecap="round">
+    <!-- face -->
+    <circle cx="116" cy="56" r="0.8" fill="#3d2b1f" stroke="none" />
+    <circle cx="124" cy="56" r="0.8" fill="#3d2b1f" stroke="none" />
+    <path d="M120,58 L119.5,61" />
+    <path d="M117,65 Q120,66.5 123,65" />
+
+    <!-- fingers, horizontal-pose hands -->
+    <path d="M14,86 L10,84" /><path d="M14,91 L9,91" /><path d="M14,96 L10,98" />
+    <path d="M226,86 L230,84" /><path d="M226,91 L231,91" /><path d="M226,96 L230,98" />
+
+    <!-- fingers, raised-pose hands -->
+    <path d="M58,15 L55,11" /><path d="M62,14 L61,9" /><path d="M66,16 L68,12" />
+    <path d="M182,15 L185,11" /><path d="M178,14 L179,9" /><path d="M174,16 L172,12" />
+
+    <!-- toes -->
+    <path d="M98,238 L96,241" /><path d="M104,240 L104,243" /><path d="M110,238 L112,241" />
+    <path d="M130,238 L128,241" /><path d="M136,240 L136,243" /><path d="M142,238 L144,241" />
+    <path d="M58,219 L55,221" /><path d="M62,222 L60,225" /><path d="M66,224 L64,227" />
+    <path d="M182,219 L185,221" /><path d="M178,222 L180,225" /><path d="M174,224 L176,227" />
+
+    <!-- fine hatching, torso shading -->
+    <path d="M103,97 L109,100" /><path d="M103,105 L109,108" />
+    <path d="M137,97 L131,100" /><path d="M137,105 L131,108" />
+  </g>
+</svg>

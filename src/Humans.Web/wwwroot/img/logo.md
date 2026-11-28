@@ -3,7 +3,7 @@
 `logo.svg` (this folder) is the site's mark; every icon below is derived from it by
 `.claude/skills/redraw-logo/derive.py`. It is promoted, when Peter chooses, from the **logo library**
 (`img/logo-library/`, shown at `/About/Logos`): one entry per model and effort level, each drawn by
-`/redraw-logo` against the frozen brief `.claude/skills/redraw-logo/brief-v1.md`. The brief holds the
+`/redraw-logo` against the frozen brief `img/logo-library/brief-v1.md` (also shown on the page). The brief holds the
 drawing constraints (palette, subject, Leonardo's geometry, the self-simplifying tiers).
 
 **Transparent navbar mark vs. baked icon tiles.** The navbar `<img>` is **transparent** (the navbar
