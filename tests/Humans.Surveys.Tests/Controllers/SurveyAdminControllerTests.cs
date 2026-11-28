@@ -757,7 +757,7 @@ public sealed class SurveyAdminControllerTests
 
         var view = result.Should().BeOfType<ViewResult>().Subject;
         view.ViewName.Should().Be(nameof(SurveyAdminController.Queue));
-        view.Model.Should().BeOfType<SurveyPendingApprovalViewModel>().Subject.Items
+        view.Model.Should().BeAssignableTo<IReadOnlyList<SurveyPendingApprovalItem>>().Subject
             .Select(item => item.Id).Should().Equal(undatedId, olderId, surveyId);
         view.ViewData[$"RejectionNote:{surveyId}"].Should().Be(note);
         sut.ModelState.IsValid.Should().BeFalse();

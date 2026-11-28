@@ -32,9 +32,7 @@ internal static class SurveyResultsBuilder
             IsEmbargoed = scoped.IsEmbargoed,
             RankedQuestions = scoped.RankedQuestions ?? new Dictionary<Guid, RankedQuestionResult>(),
             IsAsociadoVote = scoped.IsAsociadoVote,
-            UnattributedBallots = (scoped.UnattributedBallots ?? [])
-                .Select(ballot => new SurveyResultsBallotViewModel { Answers = ballot.Answers })
-                .ToList(),
+            UnattributedBallots = scoped.UnattributedBallots ?? [],
         };
     }
 
@@ -105,7 +103,7 @@ internal sealed class SurveyResultsViewModel
     public bool ShowUnattributedBallots => IsAsociadoVote && !IsEmbargoed;
     public bool IsEmbargoed { get; init; }
     public bool IsAsociadoVote { get; init; }
-    public IReadOnlyList<SurveyResultsBallotViewModel> UnattributedBallots { get; init; } = [];
+    public IReadOnlyList<UnattributedBallotDetail> UnattributedBallots { get; init; } = [];
     public IReadOnlyDictionary<Guid, RankedQuestionResult> RankedQuestions { get; init; }
         = new Dictionary<Guid, RankedQuestionResult>();
 
@@ -158,11 +156,5 @@ internal sealed class SurveyResultsRespondentViewModel
 {
     public Guid UserId { get; init; }
     public string SubmittedAt { get; init; } = "—";
-    public IReadOnlyList<RespondentAnswer> Answers { get; init; } = [];
-}
-
-/// <summary>Deliberately without identity or timestamp.</summary>
-internal sealed class SurveyResultsBallotViewModel
-{
     public IReadOnlyList<RespondentAnswer> Answers { get; init; } = [];
 }
