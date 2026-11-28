@@ -2617,7 +2617,7 @@ public class SepaBankBookingTests
     private static HoldedPurchaseDocInfo Doc(
         string id, decimal pending, int day, string contactId = "c1") =>
         new HoldedPurchaseDocInfo(
-            id, id.ToUpperInvariant(), "Ana Ruiz", contactId, null, (Instant.FromUtc(2026, 4, 1, 0, 0) + Duration.FromDays(day - 1)).InZone(DateTimeZoneProviders.Tzdb["Europe/Madrid"]).Date, pending, pending, true, null, [], null, "", pending);
+            id, id.ToUpperInvariant(), "Ana Ruiz", contactId, null, (Instant.FromUtc(2026, 4, 1, 0, 0) + Duration.FromDays(day - 1)).InZone(DateTimeZoneProviders.Tzdb["Europe/Madrid"]).Date, pending, true, null, [], null, "", pending);
 
     /// <summary>Document-payment lines on the creditor account dated the bank line, in the ledger mirror.</summary>
     private void SeedPaymentLines(params decimal[] amounts) =>

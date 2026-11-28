@@ -117,7 +117,7 @@ public class PleoBookingTests
 
     private void GivenPurchase(string pleoId, decimal total, bool approved = true, decimal? pending = 0m) =>
         _docs.Add(new HoldedPurchaseDocInfo("doc-" + pleoId, PleoBooking.Number(pleoId), "Pleo card purchases", Contact,
-            null, new LocalDate(2026, 6, 10), total, total, approved, null, [], null,
+            null, new LocalDate(2026, 6, 10), total, approved, null, [], null,
             "https://app.holded.com/doc-" + pleoId, pending));
 
     private PleoSnapshot Snapshot(params PleoEntryInfo[] entries) =>

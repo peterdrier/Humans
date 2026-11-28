@@ -13,7 +13,6 @@ public sealed record HoldedPurchaseDocInfo(
     string? ContactId,
     string? Description,
     LocalDate Date,
-    decimal Subtotal,
     decimal Total,
     bool IsApproved,
     string? Notes,
