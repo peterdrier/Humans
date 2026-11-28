@@ -115,7 +115,7 @@ namespace Humans.Budget.Data.Migrations
 
                     b.HasIndex("EntityType", "EntityId");
 
-                    b.ToTable("budget_audit_logs", (string)null);
+                    b.ToTable("budget_changes", (string)null);
                 });
 
             modelBuilder.Entity("Humans.Budget.Domain.BudgetGroup", b =>

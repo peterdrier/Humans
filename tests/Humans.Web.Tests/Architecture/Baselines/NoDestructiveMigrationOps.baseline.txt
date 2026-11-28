@@ -879,3 +879,15 @@ src/Sections/Humans.Gate/Data/Migrations/20261127002352_GateSimplify.cs:DropColu
 # columns on sales events": "oh.. how much they cost.. yea.." (TICKETS-13).
 src/Sections/Humans.Tickets/Data/Migrations/20261122020028_DropRetiredChildPriceColumns.cs:DropColumn(name=ChildMaxAge,table=ticket_sales_events)#1
 src/Sections/Humans.Tickets/Data/Migrations/20261122020028_DropRetiredChildPriceColumns.cs:DropColumn(name=ChildPriceMinor,table=ticket_sales_events)#1
+
+# Budget: budget_audit_logs renamed to budget_changes, following the BudgetChange entity name
+# (peterdrier/Humans#2614). EF re-creates the primary key and the budget_years foreign key under the
+# new table's name: DropPrimaryKey/DropForeignKey then AddPrimaryKey/AddForeignKey on the same
+# columns, principal and onDelete. No column, table or row is removed; RenameTable keeps the data.
+# Evidence: the same migration re-adds both dropped keys and renames the four indexes.
+# Approval: Peter, 2026-11-24, chose "Rename the table" on the decision card.
+# Keys (name on table):
+#   FK_budget_audit_logs_budget_years_BudgetYearId on budget_audit_logs
+#   PK_budget_audit_logs on budget_audit_logs
+src/Sections/Humans.Budget/Data/Migrations/20261128105845_RenameBudgetChangesTable.cs:DropForeignKey(name=FK_budget_audit_logs_budget_years_BudgetYearId,table=budget_audit_logs)#1
+src/Sections/Humans.Budget/Data/Migrations/20261128105845_RenameBudgetChangesTable.cs:DropPrimaryKey(name=PK_budget_audit_logs,table=budget_audit_logs)#1

@@ -1239,7 +1239,7 @@ internal sealed class BudgetRepository(IDbContextFactory<BudgetDbContext> factor
             OccurredAt = occurredAt
         });
 
-        // Trace only — the budget_audit_logs row is the durable record.
+        // Trace only — the budget_changes row is the durable record.
         logger.LogDebug(
             "BudgetChange: {EntityType} {EntityId} — {Description} by user {ActorUserId}",
             entityType, entityId, description, actorUserId);

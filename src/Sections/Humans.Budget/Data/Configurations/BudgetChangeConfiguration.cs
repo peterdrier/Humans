@@ -8,7 +8,7 @@ internal sealed class BudgetChangeConfiguration : IEntityTypeConfiguration<Budge
 {
     public void Configure(EntityTypeBuilder<BudgetChange> builder)
     {
-        builder.ToTable("budget_audit_logs");
+        builder.ToTable("budget_changes");
         builder.HasKey(a => a.Id);
 
         builder.Property(a => a.EntityType).HasMaxLength(100).IsRequired();

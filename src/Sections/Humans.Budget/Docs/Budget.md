@@ -120,7 +120,7 @@ Detail row within a category.
 
 Append-only per design-rules.md, *Append-only entities*. `IBudgetRepository` exposes no add/update/delete surface for audit rows — each mutation method writes its own audit rows inside the same `SaveChanges` (the ticketing sync paths write one summary row per run that changed anything) — plus the reads: `GetChangesAsync`, `GetChangesForUsersAsync`.
 
-**Table:** `budget_audit_logs`
+**Table:** `budget_changes`
 
 | Property | Type | Notes |
 |----------|------|-------|
@@ -292,7 +292,7 @@ Stored as string via `HasConversion<string>()`.
 The internal `BudgetReader` owns year/category/line-item views, Edit budget scope, audit rows, ticketing projection entries and their shared DTO mapping. `BudgetService` forwards the existing reads and reuses those mappings after mutations. Edit budget restrictions, missing-team fallbacks, field/order preservation, projection dates/formatting and cancellation are unchanged. Mutation validation, audit writes, ticketing synchronization, calculations and GDPR retain their existing owners; no public contract or DI registration is added.
 
 **Owning services:** `BudgetService`, `TicketingBudgetService`
-**Owned tables:** `budget_years`, `budget_groups`, `budget_categories`, `budget_line_items`, `budget_audit_logs`, `budget_ticketing_projections`
+**Owned tables:** `budget_years`, `budget_groups`, `budget_categories`, `budget_line_items`, `budget_changes`, `budget_ticketing_projections`
 **Status:** (A) Migrated.
 
 - Everything but `Section`, `BudgetResource` and the migrations is `internal` — HUM0034 enforces it. The cross-section surface is the `Contracts/` folder (namespace `Humans.Budget.Contracts`): `IBudgetService` (incl. `GetYearByIdAsync`, read by `BudgetAdminController` and Backdoor's finance views), `IBudgetDemoSeeder`, the DTOs those name, and the `BudgetYearStatus` / `ExpenditureType` enums. `ITicketingBudgetService` and `TicketingBudgetSyncJob` are internal. The section registers the job through normal scoped DI and contributes its runtime type through `ISectionJobs`; Shell does not name it directly.
@@ -302,7 +302,7 @@ The internal `BudgetReader` owns year/category/line-item views, Edit budget scop
 - **Cross-section calls** route through `ITeamService` (`GetTeamsAsync` for team lookups), `IPermissionService` for Edit budget scope, and `IUserService.GetUserInfosAsync` for actor display names. The ticketing-actuals data flows *inbound* via `IBudgetManagement.SyncTicketingActualsAsync`, called by Budget's own `TicketingBudgetService` bridge. The year page also reads `IFinanceService.GetActualsForYearAsync` for the per-category Holded figure and the approved purchase docs behind it, which it lists under the category alongside the budget line items. The view orders those documents newest-first, then by document number with ordinal comparison; Finance supplies the amounts and documents without display ordering.
 - **Admin surface at `/Budget/Admin`.** `BudgetAdminController` (`Humans.Budget.Controllers`) owns Budget's own admin surface — years (`/Budget/Admin/Years` lists them all), groups, categories, line items, ticketing projection, audit log — at `[Route("Budget/Admin")]`. `/Finance` is Finance's own, not Budget's; see [`src/Sections/Humans.Finance/Docs/Finance.md`](../../Humans.Finance/Docs/Finance.md).
 - **Render test** — `tests/Humans.Integration.Tests/Controllers/BudgetPageRenderTests.cs`: every page renders with no raw `Budget_` key and no unbound `<vc:>` tag, in English and Spanish. General architecture coverage (`HUM0009`, `HUM0034`) applies to Budget code paths. No dedicated `BudgetArchitectureTests.cs` file exists.
-- **Repository shape** — `budget_audit_logs` is append-only (`design-rules.md`, *Append-only entities*); the CRUD mutation methods write their audit rows inside their own `SaveChanges` — the ticketing sync paths write one summary row per run that changed anything — and the repository's audit surface is read-only.
+- **Repository shape** — `budget_changes` is append-only (`design-rules.md`, *Append-only entities*); the CRUD mutation methods write their audit rows inside their own `SaveChanges` — the ticketing sync paths write one summary row per run that changed anything — and the repository's audit surface is read-only.
 
 ### Touch-and-clean guidance
 
