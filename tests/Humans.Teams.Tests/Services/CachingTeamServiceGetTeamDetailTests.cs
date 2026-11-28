@@ -362,7 +362,6 @@ public sealed class CachingTeamServiceGetTeamDetailTests : IDisposable
                 GoogleGroupPrefix: t.GoogleGroupPrefix,
                 HasBudget: t.HasBudget,
                 IsSensitive: t.IsSensitive,
-                UpdatedAt: t.UpdatedAt,
                 CustomSlug: t.CustomSlug,
                 ChildTeamIds: childIdsByParent.TryGetValue(t.Id, out var childIds) ? childIds : null,
                 ShowCoordinatorsOnPublicPage: t.ShowCoordinatorsOnPublicPage,

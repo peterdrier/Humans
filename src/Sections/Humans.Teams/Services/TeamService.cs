@@ -2370,7 +2370,6 @@ internal sealed class TeamService(
         GoogleGroupPrefix: team.GoogleGroupPrefix,
         HasBudget: team.HasBudget,
         IsSensitive: team.IsSensitive,
-        UpdatedAt: team.UpdatedAt,
         CustomSlug: team.CustomSlug,
         ManagementRoleHolderUserIds: managementHolders.TryGetValue(team.Id, out var holders) ? holders : null,
         RoleDefinitions: roleDefinitionsByTeam.TryGetValue(team.Id, out var defs)

@@ -14,7 +14,6 @@ public record TeamInfo(
     string? GoogleGroupPrefix = null,
     bool HasBudget = false,
     bool IsSensitive = false,
-    Instant? UpdatedAt = null,
     string? CustomSlug = null,
     IReadOnlySet<Guid>? ManagementRoleHolderUserIds = null,
     IReadOnlyList<TeamRoleDefinitionSnapshot>? RoleDefinitions = null,
