@@ -3,10 +3,6 @@
     ViewData["Title"] = $"{Model.RoleName} — {Model.Event.EventName}";
 }
 
-@section Crumbs {
-    <span>@Model.RoleName</span>
-}
-
 <page-header>
     <page-header-title>@Model.RoleName <small class="text-muted">— @Model.Event.EventName</small></page-header-title>
     @if (!string.IsNullOrWhiteSpace(Model.Description))

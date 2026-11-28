@@ -17,7 +17,7 @@ namespace Humans.Agent.Tests;
 public class AgentControllerTests
 {
     [HumansFact]
-    public async Task Ask_rejects_an_over_cap_message_with_400_before_any_work()
+    public async Task Ask_MessageOverCap_Is400()
     {
         var agent = Substitute.For<IAgentService>();
         var controller = MakeController(agent, enabled: true);
@@ -35,7 +35,7 @@ public class AgentControllerTests
     [InlineData("")]
     [InlineData(" \t\r\n")]
     [InlineData("\u00a0")]
-    public async Task Ask_rejects_a_blank_message_with_400_before_turn_setup(string? message)
+    public async Task Ask_BlankMessage_Is400(string? message)
     {
         var agent = Substitute.For<IAgentService>();
         var controller = MakeController(agent, enabled: false);
@@ -49,7 +49,7 @@ public class AgentControllerTests
     }
 
     [HumansFact]
-    public async Task Ask_accepts_a_message_at_exactly_the_cap()
+    public async Task Ask_MessageAtCap_IsAccepted()
     {
         // Enabled=false stops the turn at 503 right after the length guard,
         // proving an at-cap message passes the guard itself.
@@ -64,7 +64,7 @@ public class AgentControllerTests
     }
 
     [HumansFact]
-    public async Task Ask_answers_403_before_streaming_when_the_conversation_is_someone_elses()
+    public async Task Ask_SomeoneElsesConversation_Is403()
     {
         var agent = Substitute.For<IAgentService>();
         agent.AskAsync(Arg.Any<AgentTurnRequest>(), Arg.Any<CancellationToken>())

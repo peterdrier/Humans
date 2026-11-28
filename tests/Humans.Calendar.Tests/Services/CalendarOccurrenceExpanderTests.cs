@@ -9,7 +9,7 @@ namespace Humans.Calendar.Tests.Services;
 public sealed class CalendarOccurrenceExpanderTests
 {
     [HumansFact]
-    public void Expand_AllDayUntilAtDateLimit_KeepsCurrentWindowAndStoredRule()
+    public void Expand_AllDayUntilAtDateLimit_KeepsStoredRule()
     {
         const string rule = "FREQ=DAILY;UNTIL=99991231";
         var info = BuildInfo(recurrenceRule: rule) with
@@ -232,7 +232,7 @@ public sealed class CalendarOccurrenceExpanderTests
     }
 
     [HumansFact]
-    public void Expand_LegacyAllDayRecurrence_RemainsOneDayAcrossSpringForward()
+    public void Expand_LegacyAllDayAcrossSpringForward_StaysOneDay()
     {
         var zone = DateTimeZoneProviders.Tzdb["Europe/Madrid"];
         var day = new LocalDate(2026, 3, 28);
@@ -292,7 +292,7 @@ public sealed class CalendarOccurrenceExpanderTests
     [HumansTheory]
     [Xunit.InlineData(3, 28)]
     [Xunit.InlineData(10, 24)]
-    public void Expand_DateRecurrences_PreserveCalendarDurationAndIgnoreViewerZone(int month, int day)
+    public void Expand_DateRecurrences_IgnoreViewerZone(int month, int day)
     {
         var first = new LocalDate(2026, month, day);
         var info = BuildInfo(recurrenceRule: "FREQ=DAILY;COUNT=5") with
@@ -321,7 +321,7 @@ public sealed class CalendarOccurrenceExpanderTests
     }
 
     [HumansFact]
-    public void Expand_DateUntil_IncludesLastDayAndOverlapsAfterIt()
+    public void Expand_DateUntil_IncludesLastDay()
     {
         var info = BuildInfo(recurrenceRule: "FREQ=DAILY;UNTIL=20260329") with
         {
@@ -357,7 +357,7 @@ public sealed class CalendarOccurrenceExpanderTests
     [HumansTheory]
     [Xunit.InlineData(false)]
     [Xunit.InlineData(true)]
-    public void Expand_DateOverrideMovedBeforeSeries_SurvivesPrefilterAndPreservesDuration(bool nearDateBoundary)
+    public void Expand_OverrideMovedBeforeSeries_SurvivesPrefilter(bool nearDateBoundary)
     {
         var date = new LocalDate(2026, 6, 10);
         var movedDate = nearDateBoundary ? new LocalDate(1, 2, 1) : new LocalDate(2026, 3, 29);

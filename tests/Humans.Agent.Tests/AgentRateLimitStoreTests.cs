@@ -7,7 +7,7 @@ namespace Humans.Agent.Tests;
 public class AgentRateLimitStoreTests
 {
     [HumansFact]
-    public void Incrementing_accumulates_for_the_same_user_and_day()
+    public void Record_SameUserSameDay_Accumulates()
     {
         var store = new AgentRateLimitStore();
         var user = Guid.NewGuid();
@@ -23,7 +23,7 @@ public class AgentRateLimitStoreTests
     }
 
     [HumansFact]
-    public void Different_days_are_independent()
+    public void Record_DifferentDays_AreIndependent()
     {
         var store = new AgentRateLimitStore();
         var user = Guid.NewGuid();
@@ -36,7 +36,7 @@ public class AgentRateLimitStoreTests
     }
 
     [HumansFact]
-    public void Buckets_older_than_yesterday_are_evicted_on_subsequent_record()
+    public void Record_BucketsOlderThanYesterday_AreEvicted()
     {
         var store = new AgentRateLimitStore();
         var user = Guid.NewGuid();
@@ -54,7 +54,7 @@ public class AgentRateLimitStoreTests
     }
 
     [HumansFact]
-    public void Hourly_bucket_resets_when_the_hour_changes_but_daily_total_does_not()
+    public void Record_HourChanges_ResetsOnlyHourlyBucket()
     {
         var store = new AgentRateLimitStore();
         var user = Guid.NewGuid();

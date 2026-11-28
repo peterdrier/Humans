@@ -1,6 +1,9 @@
+using JetBrains.Annotations;
+
 namespace Humans.Tickets.Contracts;
 
 /// <summary>Belongs to the port, not the adapter: deleting the adapter must not take the settings with it.</summary>
+[UsedImplicitly(ImplicitUseKindFlags.Assign, ImplicitUseTargetFlags.WithMembers)]
 public class TicketVendorSettings
 {
     public const string SectionName = "TicketVendor";

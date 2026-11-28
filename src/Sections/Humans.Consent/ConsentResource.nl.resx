@@ -377,4 +377,10 @@
   <data name="Consent_Meter_OnboardingProfilesPending" xml:space="preserve"><value>Onboardingprofielen in afwachting</value></data>
   <data name="Consent_Meter_AudienceConsentAdmin" xml:space="preserve"><value>Toestemmingsbeheerders</value></data>
   <data name="Consent_Meter_AudienceBoard" xml:space="preserve"><value>het bestuur</value></data>
+  <data name="Consent_Dashboard_AgreementSingular" xml:space="preserve">
+    <value>overeenkomst om door te nemen</value>
+  </data>
+  <data name="Consent_Dashboard_AgreementPlural" xml:space="preserve">
+    <value>overeenkomsten om door te nemen</value>
+  </data>
 </root>

@@ -19,7 +19,7 @@ public class EventsSearchResultViewComponentTests
     private readonly IEventService _events = Substitute.For<IEventService>();
 
     [HumansFact]
-    public async Task Renders_the_matching_approved_event()
+    public async Task Invoke_ApprovedId_RendersEvent()
     {
         var wanted = Approved("Sunrise Yoga");
         _events.GetApprovedEventByIdAsync(wanted.Id, Arg.Any<CancellationToken>()).Returns(wanted);
@@ -33,7 +33,7 @@ public class EventsSearchResultViewComponentTests
     }
 
     [HumansFact]
-    public async Task Renders_nothing_when_the_id_is_not_approved()
+    public async Task Invoke_IdNotApproved_RendersNothing()
     {
         // Unapproved, deleted, or feature-gated away — all reach here as a cache miss.
         _events.GetApprovedEventByIdAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())

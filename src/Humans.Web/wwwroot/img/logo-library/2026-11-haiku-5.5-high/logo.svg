@@ -1,0 +1,78 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="-2 -2 244 244" role="img" aria-label="Vitruvian Man">
+  <defs>
+    <g id="half">
+      <g fill="none" stroke="#3d2b1f" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M141,84 L174,66" stroke-width="11.1"/>
+        <path d="M174,66 L186,40" stroke-width="9.1"/>
+        <path d="M186,40 L193,28" stroke-width="7.6"/>
+      </g>
+      <g fill="none" stroke="#c9a96e" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M141,84 L174,66" stroke-width="8.5"/>
+        <path d="M174,66 L186,40" stroke-width="6.5"/>
+        <path d="M186,40 L193,28" stroke-width="5"/>
+      </g>
+      <g fill="none" stroke="#3d2b1f" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M132,140 L106,184" stroke-width="14.6"/>
+        <path d="M106,184 L76,220" stroke-width="10.6"/>
+        <path d="M76,220 L66,226" stroke-width="8.6"/>
+      </g>
+      <g fill="none" stroke="#c9a96e" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M132,140 L106,184" stroke-width="12"/>
+        <path d="M106,184 L76,220" stroke-width="8"/>
+        <path d="M76,220 L66,226" stroke-width="6"/>
+      </g>
+      <g fill="none" stroke="#3d2b1f" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M126,140 L124,186" stroke-width="15.1"/>
+        <path d="M124,186 L122,231" stroke-width="10.6"/>
+        <path d="M122,231 L129,234" stroke-width="8.6"/>
+      </g>
+      <g fill="none" stroke="#c9a96e" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M126,140 L124,186" stroke-width="12.5"/>
+        <path d="M124,186 L122,231" stroke-width="8"/>
+        <path d="M122,231 L129,234" stroke-width="6"/>
+      </g>
+      <g fill="none" stroke="#3d2b1f" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M100,86 L60,88" stroke-width="12.1"/>
+        <path d="M60,88 L36,90" stroke-width="9.1"/>
+        <path d="M36,90 L26,91" stroke-width="7.6"/>
+      </g>
+      <g fill="none" stroke="#c9a96e" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M100,86 L60,88" stroke-width="9.5"/>
+        <path d="M60,88 L36,90" stroke-width="6.5"/>
+        <path d="M36,90 L26,91" stroke-width="5"/>
+      </g>
+      <g fill="none" stroke="#3d2b1f" stroke-linecap="round">
+        <path d="M27.5,89.2 H33.5 M27.5,91.8 H33.5 M190,33 L194,29 M188,36 L192,31.5" stroke-width="0.9"/>
+        <path d="M96,89 Q80,91 66,90" stroke-width="1.4"/>
+      </g>
+    </g>
+  </defs>
+
+  <g fill="none" stroke="#c9a96e" stroke-width="0.6" opacity=".35">
+    <path d="M0,120 H240 M120,0 V240"/>
+  </g>
+  <g fill="none" stroke="#c9a96e" stroke-width="2.4">
+    <circle cx="120" cy="120" r="120"/>
+    <rect x="23" y="46" width="194" height="194"/>
+  </g>
+
+  <rect x="115" y="66" width="10" height="16" fill="#c9a96e"/>
+  <circle cx="120" cy="58" r="12" fill="#c9a96e" stroke="#3d2b1f" stroke-width="2.4"/>
+  <path d="M114,74 Q100,78 96,86 L103,110 Q104,122 100,134 L120,144 L140,134 Q136,122 137,110 L144,86 Q140,78 126,74 Z" fill="#c9a96e" stroke="#3d2b1f" stroke-width="2.4" stroke-linejoin="round"/>
+
+  <g fill="none" stroke="#3d2b1f" stroke-linecap="round">
+    <path d="M108.5,58 Q109,46.5 120,46.5 Q131,46.5 131.5,58" stroke-width="1.4"/>
+    <path d="M120.5,59 L119.4,63.4 L121.2,63.6" stroke-width="0.9"/>
+    <path d="M117,67.2 H123" stroke-width="0.9"/>
+    <path d="M120,92 V114" stroke-width="1.4"/>
+    <path d="M106,97 Q113,102 119,97 M134,97 Q127,102 121,97" stroke-width="1.4"/>
+  </g>
+  <g fill="#3d2b1f">
+    <circle cx="116" cy="57" r="0.9"/>
+    <circle cx="124" cy="57" r="0.9"/>
+    <circle cx="120" cy="120" r="1.3"/>
+  </g>
+
+  <use href="#half"/>
+  <use href="#half" transform="matrix(-1 0 0 1 240 0)"/>
+</svg>

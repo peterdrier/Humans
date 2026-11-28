@@ -1,3 +1,4 @@
+using JetBrains.Annotations;
 using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
@@ -46,6 +47,7 @@ internal static class SurveyJsonExportBuilder
         return Encoding.UTF8.GetBytes(JsonSerializer.Serialize(compact, Options));
     }
 
+    [UsedImplicitly(ImplicitUseKindFlags.Access, ImplicitUseTargetFlags.WithMembers)]
     private sealed record SurveyJsonExport(
         Guid SurveyId,
         string Title,
@@ -53,6 +55,7 @@ internal static class SurveyJsonExportBuilder
         IReadOnlyList<SurveyExportQuestion> Questions,
         IReadOnlyList<SurveyJsonRow> Rows);
 
+    [UsedImplicitly(ImplicitUseKindFlags.Access, ImplicitUseTargetFlags.WithMembers)]
     private sealed record SurveyJsonRow(
         Guid ResponseId,
         ResponseAnonymity Anonymity,
@@ -63,6 +66,7 @@ internal static class SurveyJsonExportBuilder
         string? UserName,
         IReadOnlyList<SurveyJsonAnswer> Answers);
 
+    [UsedImplicitly(ImplicitUseKindFlags.Access, ImplicitUseTargetFlags.WithMembers)]
     private sealed record SurveyJsonAnswer(
         Guid QuestionId,
         IReadOnlyList<string>? SelectedValues,

@@ -68,7 +68,7 @@ public class ExpenseReportViewTests
     [Xunit.InlineData(false, false)] // category coordinator: views the report, neither submitter nor finance admin
     [Xunit.InlineData(true, false)]
     [Xunit.InlineData(false, true)]
-    public async Task Detail_ShowsReportLocalPaymentStatus_ToEveryViewer_AndAccountWideRows_OnlyToSubmitterAndFinance(
+    public async Task Detail_AccountWideRows_OnlySubmitterOrFinance(
         bool isSubmitter, bool isFinanceAdmin)
     {
         var html = await RenderAsync("Detail", new ExpenseDetailViewModel
@@ -103,7 +103,7 @@ public class ExpenseReportViewTests
     [Xunit.InlineData(false, false)]
     [Xunit.InlineData(true, false)]
     [Xunit.InlineData(false, true)]
-    public async Task Detail_ShowsOwedToYou_AndAwaitingPayment_OnlyToTheirAudience(
+    public async Task Detail_PaymentNotes_ShowOnlyToAudience(
         bool isSubmitter, bool isFinanceAdmin)
     {
         var html = await RenderAsync("Detail", new ExpenseDetailViewModel
@@ -131,7 +131,7 @@ public class ExpenseReportViewTests
     [HumansTheory]
     [Xunit.InlineData(false)]
     [Xunit.InlineData(true)]
-    public async Task Iban_OnBehalfGuidanceUsesTheHumanEvenWhenTheMemberIsMissing(bool missingMember)
+    public async Task Iban_OnBehalfMemberMissing_UsesHuman(bool missingMember)
     {
         using var culture = new CultureScope("en");
         var memberId = Guid.NewGuid();
@@ -161,7 +161,7 @@ public class ExpenseReportViewTests
     }
 
     [HumansFact]
-    public async Task Review_RendersTheSubmitterInBothGridAndFailedBannerWithoutAddingSpaceBeforeTheComma()
+    public async Task Review_Submitter_HasNoSpaceBeforeComma()
     {
         var report = Report(ExpenseReportStatus.Approved);
         const string name = "Member <script>&";

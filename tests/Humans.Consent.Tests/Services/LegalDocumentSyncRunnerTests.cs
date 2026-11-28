@@ -249,7 +249,7 @@ public sealed class LegalDocumentSyncRunnerTests
     }
 
     [HumansFact]
-    public async Task Sync_OptionalUpdate_DoesNotResolveRecipientsOrSendConsentEmail()
+    public async Task Sync_OptionalUpdate_SendsNoConsentEmail()
     {
         var sync = Substitute.For<ILegalDocumentSyncManagement>();
         sync.SyncAllDocumentsAsync(Arg.Any<CancellationToken>(), Arg.Any<ICollection<Exception>?>()).Returns(new[] { MakeDocument("Optional", false) });

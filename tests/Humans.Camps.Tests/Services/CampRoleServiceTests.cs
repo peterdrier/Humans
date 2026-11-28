@@ -43,7 +43,7 @@ public sealed class CampRoleServiceTests : CampsTestHarness
     }
 
     [HumansFact]
-    public async Task ListDefinitions_excludes_deactivated_by_default()
+    public async Task ListDefinitions_Default_ExcludesDeactivated()
     {
         await SeedDefinitionAsync("Active Role");
         await SeedDefinitionAsync("Old Role", deactivated: true);
@@ -55,7 +55,7 @@ public sealed class CampRoleServiceTests : CampsTestHarness
     }
 
     [HumansFact]
-    public async Task ListDefinitions_includes_deactivated_when_requested()
+    public async Task ListDefinitions_Requested_IncludesDeactivated()
     {
         await SeedDefinitionAsync("Active Role");
         await SeedDefinitionAsync("Old Role", deactivated: true);
@@ -66,7 +66,7 @@ public sealed class CampRoleServiceTests : CampsTestHarness
     }
 
     [HumansFact]
-    public async Task GetDefinitionById_returns_definition_when_found()
+    public async Task GetDefinitionById_Found_ReturnsDefinition()
     {
         var def = await SeedDefinitionAsync("Build Lead");
 
@@ -77,7 +77,7 @@ public sealed class CampRoleServiceTests : CampsTestHarness
     }
 
     [HumansFact]
-    public async Task GetDefinitionById_returns_null_when_not_found()
+    public async Task GetDefinitionById_NotFound_ReturnsNull()
     {
         var result = await _service.GetDefinitionByIdAsync(Guid.NewGuid(), Xunit.TestContext.Current.CancellationToken);
 
@@ -85,7 +85,7 @@ public sealed class CampRoleServiceTests : CampsTestHarness
     }
 
     [HumansFact]
-    public async Task CreateDefinition_persists_and_audits()
+    public async Task CreateDefinition_Valid_PersistsWithAudit()
     {
         var input = new CampRoleDefinitionInput(
             Name: "Sound Lead", Slug: "sound-lead", Description: "Manages sound system",
@@ -110,7 +110,7 @@ public sealed class CampRoleServiceTests : CampsTestHarness
     }
 
     [HumansFact]
-    public async Task CreateDefinition_rejects_duplicate_name()
+    public async Task CreateDefinition_DuplicateName_IsRejected()
     {
         await SeedDefinitionAsync();
 
@@ -127,7 +127,7 @@ public sealed class CampRoleServiceTests : CampsTestHarness
     }
 
     [HumansFact]
-    public async Task CreateDefinition_rejects_minimumRequired_above_slotCount()
+    public async Task CreateDefinition_MinimumAboveSlots_IsRejected()
     {
         var input = new CampRoleDefinitionInput(
             Name: "Bad Role", Slug: "bad-role", Description: null,
@@ -144,7 +144,7 @@ public sealed class CampRoleServiceTests : CampsTestHarness
     [Xunit.InlineData("")]
     [Xunit.InlineData("bad--slug")]
     [Xunit.InlineData("create")]
-    public async Task Definition_forms_return_invalid_slug_refusals_without_writing(string slug)
+    public async Task DefinitionForms_InvalidSlug_RefuseWithoutWriting(string slug)
     {
         var ct = Xunit.TestContext.Current.CancellationToken;
         var definition = await SeedDefinitionAsync();
@@ -164,7 +164,7 @@ public sealed class CampRoleServiceTests : CampsTestHarness
     }
 
     [HumansFact]
-    public async Task Seed_creation_still_throws_when_definition_is_refused()
+    public async Task SeedSystemRoles_DefinitionRefused_Throws()
     {
         await SeedDefinitionAsync();
         var act = () => ((ICampRoleSeeding)_service).CreateDefinitionForSeedAsync(
@@ -174,7 +174,7 @@ public sealed class CampRoleServiceTests : CampsTestHarness
     }
 
     [HumansFact]
-    public async Task UpdateDefinition_modifies_fields_and_audits()
+    public async Task UpdateDefinition_Valid_SavesWithAudit()
     {
         var def = await SeedDefinitionAsync("Old Name", slotCount: 1);
 
@@ -200,7 +200,7 @@ public sealed class CampRoleServiceTests : CampsTestHarness
     }
 
     [HumansFact]
-    public async Task UpdateDefinition_rejects_duplicate_name()
+    public async Task UpdateDefinition_DuplicateName_IsRejected()
     {
         await SeedDefinitionAsync();
         var def2 = await SeedDefinitionAsync("LNT");
@@ -218,7 +218,7 @@ public sealed class CampRoleServiceTests : CampsTestHarness
     }
 
     [HumansFact]
-    public async Task UpdateDefinition_returns_false_when_not_found()
+    public async Task UpdateDefinition_NotFound_ReturnsFalse()
     {
         var input = new CampRoleDefinitionInput(
             Name: "Anything", Slug: "anything", Description: null,
@@ -230,7 +230,7 @@ public sealed class CampRoleServiceTests : CampsTestHarness
     }
 
     [HumansFact]
-    public async Task DeactivateDefinition_sets_DeactivatedAt_and_audits()
+    public async Task DeactivateDefinition_Found_StampsWithAudit()
     {
         var def = await SeedDefinitionAsync("Will Be Deactivated");
 
@@ -246,14 +246,14 @@ public sealed class CampRoleServiceTests : CampsTestHarness
     }
 
     [HumansFact]
-    public async Task DeactivateDefinition_returns_false_when_not_found()
+    public async Task DeactivateDefinition_NotFound_ReturnsFalse()
     {
         var ok = await _service.DeactivateDefinitionAsync(Guid.NewGuid(), _actorUserId, Xunit.TestContext.Current.CancellationToken);
         ok.Should().BeFalse();
     }
 
     [HumansFact]
-    public async Task ReactivateDefinition_clears_DeactivatedAt_and_audits()
+    public async Task ReactivateDefinition_Deactivated_ClearsStampWithAudit()
     {
         var def = await SeedDefinitionAsync("Was Deactivated", deactivated: true);
 
@@ -269,7 +269,7 @@ public sealed class CampRoleServiceTests : CampsTestHarness
     }
 
     [HumansFact]
-    public async Task Assign_happy_path_creates_assignment_and_audits_and_notifies()
+    public async Task Assign_Valid_CreatesAuditsNotifies()
     {
         var (_, season) = await SeedCampWithSeasonAsync();
         var member = await SeedActiveMemberAsync(season.Id);
@@ -333,7 +333,7 @@ public sealed class CampRoleServiceTests : CampsTestHarness
     [HumansTheory]
     [Xunit.InlineData(false)]
     [Xunit.InlineData(true)]
-    public async Task Assign_notice_uses_recipient_language_with_lookup_failure_fallback(bool lookupFails)
+    public async Task AssignNotice_LookupFails_UsesFallbackLanguage(bool lookupFails)
     {
         var ct = Xunit.TestContext.Current.CancellationToken;
         var (_, season) = await SeedCampWithSeasonAsync();
@@ -360,7 +360,7 @@ public sealed class CampRoleServiceTests : CampsTestHarness
     }
 
     [HumansFact]
-    public async Task Assign_notice_routes_merged_member_to_live_recipient()
+    public async Task AssignNotice_MergedMember_ReachesLiveRecipient()
     {
         var ct = Xunit.TestContext.Current.CancellationToken;
         var (_, season) = await SeedCampWithSeasonAsync();
@@ -385,7 +385,7 @@ public sealed class CampRoleServiceTests : CampsTestHarness
     }
 
     [HumansFact]
-    public async Task Assign_returns_MemberNotActive_when_member_is_pending()
+    public async Task Assign_PendingMember_ReturnsMemberNotActive()
     {
         var (_, season) = await SeedCampWithSeasonAsync();
         var member = await SeedActiveMemberAsync(season.Id);
@@ -401,7 +401,7 @@ public sealed class CampRoleServiceTests : CampsTestHarness
     }
 
     [HumansFact]
-    public async Task Assign_returns_MemberSeasonMismatch_when_member_is_in_different_season()
+    public async Task Assign_OtherSeasonMember_ReturnsSeasonMismatch()
     {
         var (_, season) = await SeedCampWithSeasonAsync();
         var (_, otherSeason) = await SeedCampWithSeasonAsync();
@@ -417,7 +417,7 @@ public sealed class CampRoleServiceTests : CampsTestHarness
     }
 
     [HumansFact]
-    public async Task Assign_returns_SlotCapReached_when_full()
+    public async Task Assign_FullRole_ReturnsSlotCapReached()
     {
         var (_, season) = await SeedCampWithSeasonAsync();
         var def = await SeedDefinitionAsync(slotCount: 1);
@@ -441,7 +441,7 @@ public sealed class CampRoleServiceTests : CampsTestHarness
     }
 
     [HumansFact]
-    public async Task Assign_returns_AlreadyHoldsRole_on_duplicate_member()
+    public async Task Assign_DuplicateMember_ReturnsAlreadyHoldsRole()
     {
         var (_, season) = await SeedCampWithSeasonAsync();
         var def = await SeedDefinitionAsync(slotCount: 2);
@@ -457,7 +457,7 @@ public sealed class CampRoleServiceTests : CampsTestHarness
     }
 
     [HumansFact]
-    public async Task Assign_returns_RoleDeactivated_when_definition_is_soft_deleted()
+    public async Task Assign_DeactivatedDefinition_ReturnsRoleDeactivated()
     {
         var (_, season) = await SeedCampWithSeasonAsync();
         var def = await SeedDefinitionAsync(deactivated: true);
@@ -472,7 +472,7 @@ public sealed class CampRoleServiceTests : CampsTestHarness
     }
 
     [HumansFact]
-    public async Task Unassign_deletes_assignment_and_audits()
+    public async Task Unassign_Found_DeletesWithAudit()
     {
         var (_, season) = await SeedCampWithSeasonAsync();
         var def = await SeedDefinitionAsync();
@@ -494,14 +494,14 @@ public sealed class CampRoleServiceTests : CampsTestHarness
     }
 
     [HumansFact]
-    public async Task Unassign_returns_false_when_not_found()
+    public async Task Unassign_NotFound_ReturnsFalse()
     {
         var ok = await _service.UnassignAsync(Guid.NewGuid(), _actorUserId, Xunit.TestContext.Current.CancellationToken);
         ok.Should().BeFalse();
     }
 
     [HumansFact]
-    public async Task BuildPanel_returns_one_row_per_active_definition_with_filled_and_empty_slots()
+    public async Task BuildPanel_ActiveDefinitions_GetOneRowEach()
     {
         var (_, season) = await SeedCampWithSeasonAsync();
         var def1 = await SeedDefinitionAsync(slotCount: 2);
@@ -537,7 +537,7 @@ public sealed class CampRoleServiceTests : CampsTestHarness
     }
 
     [HumansFact]
-    public async Task BuildPanel_marks_OverCapacity_when_assignments_exceed_SlotCount()
+    public async Task BuildPanel_TooManyAssignments_MarksOverCapacity()
     {
         var (_, season) = await SeedCampWithSeasonAsync();
         var def = await SeedDefinitionAsync(slotCount: 1);
@@ -559,7 +559,7 @@ public sealed class CampRoleServiceTests : CampsTestHarness
     }
 
     [HumansFact]
-    public async Task DirectoryRoleSummaries_includes_all_active_definitions_with_filled_and_slot_counts()
+    public async Task DirectoryRoleSummaries_ActiveDefinitions_AllIncluded()
     {
         var (camp, season) = await SeedCampWithSeasonAsync(year: 2026);
         var consent = await SeedDefinitionAsync(slotCount: 2, minimumRequired: 1);
@@ -585,7 +585,7 @@ public sealed class CampRoleServiceTests : CampsTestHarness
     }
 
     [HumansFact]
-    public async Task DirectoryRoleSummaries_reports_zero_filled_for_season_with_no_assignments()
+    public async Task DirectoryRoleSummaries_NoAssignments_ReportsZeroFilled()
     {
         var (camp, season) = await SeedCampWithSeasonAsync(year: 2026);
         await SeedDefinitionAsync("LNT", slotCount: 1, minimumRequired: 1);
@@ -599,7 +599,7 @@ public sealed class CampRoleServiceTests : CampsTestHarness
     }
 
     [HumansFact]
-    public async Task Compliance_joins_assignees_by_definition_id_and_orders_columns_with_their_cells()
+    public async Task Compliance_Assignees_JoinByDefinitionId()
     {
         var (camp, season) = await SeedCampWithSeasonAsync(year: 2026);
         // Sort order puts "LNT" before "Consent Lead" regardless of name.
@@ -652,7 +652,7 @@ public sealed class CampRoleServiceTests : CampsTestHarness
     }
 
     [HumansFact]
-    public async Task BuildComplianceMatrix_excludes_seasons_that_are_not_active_or_full()
+    public async Task BuildComplianceMatrix_NotActiveOrFull_IsExcluded()
     {
         var (camp, season) = await SeedCampWithSeasonAsync(year: 2026);
         await SeedDefinitionAsync();
@@ -670,7 +670,7 @@ public sealed class CampRoleServiceTests : CampsTestHarness
     }
 
     [HumansFact]
-    public async Task BuildComplianceMatrix_excludes_assignments_of_inactive_members()
+    public async Task BuildComplianceMatrix_InactiveMembers_AreExcluded()
     {
         var (camp, season) = await SeedCampWithSeasonAsync(year: 2026);
         var def = await SeedDefinitionAsync();
@@ -705,7 +705,7 @@ public sealed class CampRoleServiceTests : CampsTestHarness
     }
 
     [HumansFact]
-    public async Task GetExpected_returns_one_key_per_active_role_and_in_scope_year_with_assignees()
+    public async Task GetExpected_ActiveRoles_GetOneKeyPerYear()
     {
         var (_, season) = await SeedCampWithSeasonAsync(year: 2026);
         var def = await SeedDefinitionAsync(slug: "consent-lead");
@@ -735,7 +735,7 @@ public sealed class CampRoleServiceTests : CampsTestHarness
     }
 
     [HumansFact]
-    public async Task GetExpected_excludes_deactivated_definitions()
+    public async Task GetExpected_DeactivatedDefinition_IsExcluded()
     {
         var (_, season) = await SeedCampWithSeasonAsync(year: 2026);
         var def = await SeedDefinitionAsync("Old", slug: "old", deactivated: true);
@@ -764,7 +764,7 @@ public sealed class CampRoleServiceTests : CampsTestHarness
     }
 
     [HumansFact]
-    public async Task GetExpected_excludes_definitions_with_empty_slug()
+    public async Task GetExpected_EmptySlug_IsExcluded()
     {
         // Empty Slug = admin hasn't assigned a slug to this role yet → no
         // Google Group is provisioned and the role does not appear in the
@@ -797,7 +797,7 @@ public sealed class CampRoleServiceTests : CampsTestHarness
     }
 
     [HumansFact]
-    public async Task GetExpected_excludes_assignment_when_member_is_inactive()
+    public async Task GetExpected_InactiveMember_IsExcluded()
     {
         var (_, season) = await SeedCampWithSeasonAsync(year: 2026);
         var def = await SeedDefinitionAsync(slug: "consent-lead");
@@ -913,7 +913,7 @@ public sealed class CampRoleServiceTests : CampsTestHarness
     }
 
     [HumansFact]
-    public async Task UpdateDefinition_rejects_rename_of_system_role()
+    public async Task UpdateDefinition_SystemRoleRename_IsRejected()
     {
         var def = new CampRoleDefinition
         {
@@ -943,7 +943,7 @@ public sealed class CampRoleServiceTests : CampsTestHarness
     }
 
     [HumansFact]
-    public async Task UpdateDefinition_allows_SlotCount_change_on_system_role()
+    public async Task UpdateDefinition_SystemRoleSlotCount_IsAllowed()
     {
         var def = new CampRoleDefinition
         {
@@ -973,7 +973,7 @@ public sealed class CampRoleServiceTests : CampsTestHarness
     }
 
     [HumansFact]
-    public async Task DeactivateDefinition_rejects_system_role()
+    public async Task DeactivateDefinition_SystemRole_IsRejected()
     {
         var def = new CampRoleDefinition
         {
@@ -996,7 +996,7 @@ public sealed class CampRoleServiceTests : CampsTestHarness
     }
 
     [HumansFact]
-    public async Task SeedSystemRoles_creates_both_definitions_when_empty()
+    public async Task SeedSystemRoles_Empty_CreatesBothDefinitions()
     {
         var definitionsCreated = await _service.SeedSystemRolesAsync(_actorUserId, Xunit.TestContext.Current.CancellationToken);
 
@@ -1011,7 +1011,7 @@ public sealed class CampRoleServiceTests : CampsTestHarness
     }
 
     [HumansFact]
-    public async Task SeedSystemRoles_is_idempotent()
+    public async Task SeedSystemRoles_SecondRun_ChangesNothing()
     {
         var first = await _service.SeedSystemRolesAsync(_actorUserId, Xunit.TestContext.Current.CancellationToken);
         first.Should().Be(2);

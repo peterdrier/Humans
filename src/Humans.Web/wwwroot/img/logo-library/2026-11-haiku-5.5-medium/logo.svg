@@ -1,0 +1,55 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="-2 -2 244 244" role="img" aria-label="Vitruvian Man">
+  <defs>
+    <!-- Left half of the figure; the right half is the same shape mirrored about x=120. -->
+    <g id="half">
+      <!-- spread legs: ink outline first, gold on top, so the overlap with the closed stance keeps its edge -->
+      <polyline points="114,146 88,190 62,224" fill="none" stroke="#3d2b1f" stroke-width="13.4" stroke-linecap="round" stroke-linejoin="round"/>
+      <polyline points="114,146 88,190 62,224" fill="none" stroke="#c9a96e" stroke-width="11" stroke-linecap="round" stroke-linejoin="round"/>
+      <ellipse cx="58" cy="226" rx="8" ry="4.5" fill="#c9a96e" stroke="#3d2b1f" stroke-width="1.2" transform="rotate(-25 58 226)"/>
+
+      <!-- closed legs -->
+      <polyline points="115,146 113,192 112,234" fill="none" stroke="#3d2b1f" stroke-width="12.4" stroke-linecap="round" stroke-linejoin="round"/>
+      <polyline points="115,146 113,192 112,234" fill="none" stroke="#c9a96e" stroke-width="10" stroke-linecap="round" stroke-linejoin="round"/>
+      <ellipse cx="111" cy="237" rx="6" ry="3" fill="#c9a96e" stroke="#3d2b1f" stroke-width="1.2"/>
+
+      <!-- raised arm -->
+      <polyline points="102,84 74,56 53,26" fill="none" stroke="#3d2b1f" stroke-width="11.4" stroke-linecap="round" stroke-linejoin="round"/>
+      <polyline points="102,84 74,56 53,26" fill="none" stroke="#c9a96e" stroke-width="9" stroke-linecap="round" stroke-linejoin="round"/>
+      <ellipse cx="50" cy="19" rx="5" ry="8" fill="#c9a96e" stroke="#3d2b1f" stroke-width="1.2" transform="rotate(35 50 19)"/>
+
+      <!-- horizontal arm -->
+      <polyline points="102,88 72,92 52,96" fill="none" stroke="#3d2b1f" stroke-width="11.4" stroke-linecap="round" stroke-linejoin="round"/>
+      <polyline points="102,88 72,92 52,96" fill="none" stroke="#c9a96e" stroke-width="9" stroke-linecap="round" stroke-linejoin="round"/>
+      <ellipse cx="45" cy="96" rx="8" ry="4.5" fill="#c9a96e" stroke="#3d2b1f" stroke-width="1.2"/>
+    </g>
+  </defs>
+
+  <!-- frame: circle and square, gold -->
+  <g fill="none" stroke="#c9a96e">
+    <circle cx="120" cy="120" r="120" stroke-width="3"/>
+    <rect x="23" y="46" width="194" height="194" stroke-width="2.5"/>
+  </g>
+
+  <!-- figure -->
+  <use href="#half"/>
+  <use href="#half" transform="matrix(-1 0 0 1 240 0)"/>
+
+  <!-- torso and neck -->
+  <path d="M115,66 L125,66 L126,76 Q138,79 142,86 Q141,100 137,112 Q134,122 135,132 Q137,140 133,146 L107,146 Q103,140 105,132 Q106,122 103,112 Q99,100 98,86 Q102,79 114,76 Z" fill="#c9a96e" stroke="#3d2b1f" stroke-width="2" stroke-linejoin="round"/>
+  <g fill="none" stroke="#3d2b1f" stroke-linecap="round">
+    <path d="M106,100 Q113,107 120,103 Q127,107 134,100" stroke-width="1.4"/>
+    <path d="M120,110 L120,134" stroke-width="1.2"/>
+    <path d="M107,136 Q120,141 133,136" stroke-width="1.2"/>
+  </g>
+  <circle cx="120" cy="120" r="1.4" fill="#3d2b1f"/>
+
+  <!-- head -->
+  <circle cx="120" cy="58" r="11.5" fill="#c9a96e" stroke="#3d2b1f" stroke-width="1.6"/>
+  <g fill="none" stroke="#3d2b1f" stroke-linecap="round">
+    <path d="M109.5,55 Q111,47 120,47.5 Q129,47 130.5,55" stroke-width="1.4"/>
+    <path d="M120,61 L119,65" stroke-width="0.9"/>
+    <circle cx="114.5" cy="59" r="0.8" fill="#3d2b1f" stroke="none"/>
+    <circle cx="125.5" cy="59" r="0.8" fill="#3d2b1f" stroke="none"/>
+    <path d="M116,68 L124,68" stroke-width="0.9"/>
+  </g>
+</svg>

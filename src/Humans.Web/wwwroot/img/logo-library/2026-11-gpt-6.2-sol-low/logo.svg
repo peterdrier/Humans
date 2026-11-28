@@ -1,0 +1,37 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="-2 -2 244 244" role="img" aria-label="Vitruvian Man">
+  <defs>
+    <g id="rear">
+      <path fill="#c9a96e" stroke="none" d="M104 81Q91 69 79 58Q66 45 55 32L51 27Q50 23 46 24L47 28L44 26Q43 26 44 28L49 35Q51 38 55 39Q66 55 74 63Q85 77 96 92Z
+        M107 133Q99 145 91 163Q84 177 80 183Q74 193 68 205Q65 211 61 213L54 216Q50 219 53 221Q59 223 66 220L70 216Q75 208 82 200Q92 189 93 183Q101 173 108 161L119 145Z"/>
+      <path fill="none" stroke-width="1.4" d="M56 38Q65 50 73 56M77 62Q86 68 94 77M62 214L66 217M70 210Q76 199 82 194M84 189Q87 185 88 181M94 174Q99 164 105 157"/>
+      <path fill="none" stroke-width=".9" d="M46 28L50 33M51 34L53 37M55 218L58 218M58 220L61 219M77 198L80 194M96 168L99 164"/>
+    </g>
+    <g id="arm">
+      <path fill="#c9a96e" stroke="none" d="M110 79Q101 75 92 77L76 81Q68 83 61 82Q48 82 41 86L34 86Q28 85 24 87Q22 88 24 89L30 89L25 91Q22 93 26 94L34 93Q37 93 41 91Q55 94 67 92L76 91Q89 93 102 91Z"/>
+      <path fill="none" stroke-width="1.4" d="M42 88Q56 86 64 87M71 85Q77 87 84 86Q90 85 94 82"/>
+      <path fill="none" stroke-width=".9" d="M26 92L32 91M31 88L36 88M47 90L53 89M55 90L61 89M78 89L83 88"/>
+    </g>
+    <g id="front">
+      <path fill="#c9a96e" stroke="none" d="M113 69Q112 75 106 77Q97 78 95 85Q93 92 101 98Q105 108 105 118Q105 125 102 133Q100 145 103 158L108 181Q108 186 107 192Q106 202 111 216L112 228Q112 232 108 235Q106 239 112 240L119 240Q121 238 120 233L119 218Q121 201 118 191Q117 185 119 177L120 145L124 133V72Z"/>
+      <path fill="none" stroke-width="2" d="M102 135Q100 145 104 161L108 181M105 82Q100 83 97 89M119 146Q116 150 116 157M116 163L117 172M117 194Q119 201 118 206"/>
+      <path fill="none" stroke-width="1.4" d="M118 94Q112 97 104 94M107 102Q110 105 115 104M107 109Q111 112 115 111M107 116Q109 120 113 121M105 129Q110 132 115 138M105 145Q107 156 110 167M110 178Q112 175 115 178M110 186Q110 190 112 192M110 198Q111 204 113 208M113 224L114 230"/>
+      <path fill="none" stroke-width=".9" d="M107 93L111 94M104 92L106 93M108 124L111 127M108 150L109 155M109 154L111 159M110 160L112 165M111 181Q113 182 115 181M111 236L110 238M114 236L113 239M117 235L116 239"/>
+    </g>
+  </defs>
+  <g fill="none" stroke="#c9a96e">
+    <circle cx="120" cy="120" r="120" stroke-width="2"/>
+    <path d="M23 240V46H217V240Z" stroke-width="1.8"/>
+    <path opacity=".18" stroke-width=".7" d="M120 4V236M4 120H236M23 143H217M71 46v5m98-5v5M23 95h5m-5 97h5m189-97h-5m5 97h-5"/>
+  </g>
+  <g stroke="#3d2b1f" stroke-linecap="round" stroke-linejoin="round">
+    <use href="#rear"/>
+    <use href="#rear" transform="translate(240) scale(-1 1)"/>
+    <use href="#arm"/>
+    <use href="#arm" transform="translate(240) scale(-1 1)"/>
+    <use href="#front"/>
+    <use href="#front" transform="translate(240) scale(-1 1)"/>
+    <path fill="#c9a96e" stroke="none" d="M120 46Q111 46 109 52Q107 56 110 61Q109 65 113 66L116 70Q120 72 124 70L127 66Q131 65 130 61Q133 56 131 52Q129 46 120 46Z"/>
+    <path fill="none" stroke-width="1.4" d="M111 59Q111 56 114 54Q118 55 120 51Q122 55 126 54Q129 56 129 59M111 53Q114 49 118 49M129 53Q126 49 122 49M116 70Q120 72 124 70"/>
+    <path fill="none" stroke-width=".9" d="M114 59q2-1 4 0m4 0q2-1 4 0m-6 1-1 4h2m-4 2q3-1 6 0m-5 2h4M120 118v3M120 99v9M117 142q3 3 6 0"/>
+  </g>
+</svg>

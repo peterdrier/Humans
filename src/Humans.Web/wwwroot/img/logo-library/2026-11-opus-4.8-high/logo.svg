@@ -1,0 +1,117 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="-2 -2 244 244" role="img" aria-label="Vitruvian Man">
+  <g fill="none" stroke="#c9a96e" stroke-linecap="round" stroke-linejoin="round">
+    <!-- construction (faint gold) -->
+    <g stroke="#c9a96e" stroke-width="0.5" opacity="0.35">
+      <line x1="120" y1="-2" x2="120" y2="242"/>
+      <line x1="-2" y1="120" x2="242" y2="120"/>
+      <line x1="-2" y1="143" x2="242" y2="143"/>
+    </g>
+
+    <!-- FRAME -->
+    <circle cx="120" cy="120" r="120" stroke-width="3"/>
+    <rect x="23" y="46" width="194" height="194" stroke-width="3"/>
+
+    <!-- BASE: bold solid gold body -->
+    <g fill="#c9a96e" stroke="none">
+      <!-- head -->
+      <ellipse cx="120" cy="58" rx="9.5" ry="12"/>
+      <!-- neck -->
+      <path d="M114 67 L126 67 L131 83 L109 83 Z"/>
+      <!-- torso -->
+      <path d="M103 84
+               C 99 86 97 94 98 104
+               L 101 122
+               C 103 134 104 140 106 147
+               L 120 152
+               L 134 147
+               C 136 140 137 134 139 122
+               L 142 104
+               C 143 94 141 86 137 84
+               C 131 81 109 81 103 84 Z"/>
+    </g>
+
+    <!-- BASE limbs: thick gold round-cap strokes -->
+    <g stroke="#c9a96e" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <!-- arms horizontal -->
+      <path d="M101 86 L62 90 L26 94" stroke-width="11"/>
+      <path d="M139 86 L178 90 L214 94" stroke-width="11"/>
+      <!-- arms raised -->
+      <path d="M101 86 L72 57 L45 31" stroke-width="11"/>
+      <path d="M139 86 L168 57 L195 31" stroke-width="11"/>
+      <!-- legs together -->
+      <path d="M112 147 L110 196 L113 236" stroke-width="15"/>
+      <path d="M128 147 L130 196 L127 236" stroke-width="15"/>
+      <!-- legs spread -->
+      <path d="M113 149 L89 195 L66 224" stroke-width="15"/>
+      <path d="M127 149 L151 195 L174 224" stroke-width="15"/>
+      <!-- feet together -->
+      <path d="M104 238 L120 240 L136 238" stroke-width="7"/>
+      <!-- feet spread -->
+      <path d="M58 224 L66 226 M174 226 L182 224" stroke-width="7"/>
+    </g>
+
+    <!-- TIER 1 ink: main contours + pose separations (~2.0) -->
+    <g stroke="#3d2b1f" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <!-- body centre line of torso to separate -->
+      <path d="M120 80 L120 152"/>
+      <!-- torso outline -->
+      <path d="M103 84 C 99 86 97 94 98 104 L 101 122 C 103 134 104 140 106 147"/>
+      <path d="M137 84 C 141 86 143 94 142 104 L 139 122 C 137 134 136 140 134 147"/>
+      <!-- collar / shoulders -->
+      <path d="M103 86 Q120 92 137 86"/>
+      <!-- arms horizontal contour separation -->
+      <path d="M101 86 L62 90 L26 94"/>
+      <path d="M139 86 L178 90 L214 94"/>
+      <!-- arms raised contour -->
+      <path d="M101 86 L72 57 L45 31"/>
+      <path d="M139 86 L168 57 L195 31"/>
+      <!-- legs together separation -->
+      <path d="M120 150 L120 236"/>
+      <!-- legs spread centre lines -->
+      <path d="M113 149 L89 195 L66 224"/>
+      <path d="M127 149 L151 195 L174 224"/>
+    </g>
+
+    <!-- TIER 2 ink: muscle groups, hair (~1.4) -->
+    <g stroke="#3d2b1f" fill="none" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round">
+      <!-- hair -->
+      <path d="M111 50 Q120 44 129 50"/>
+      <path d="M110 55 Q120 47 130 55"/>
+      <path d="M110 53 Q106 64 110 71"/>
+      <path d="M130 53 Q134 64 130 71"/>
+      <!-- pecs -->
+      <path d="M106 98 Q113 104 119 100"/>
+      <path d="M134 98 Q127 104 121 100"/>
+      <!-- abdomen -->
+      <path d="M114 110 h12 M114 120 h12 M116 130 h8"/>
+      <!-- knees -->
+      <path d="M106 196 h8 M126 196 h8"/>
+      <path d="M84 194 l8 2 M148 196 l8 -2"/>
+      <!-- elbows -->
+      <path d="M58 88 l4 4 M178 88 l-4 4"/>
+      <path d="M69 60 l6 -4 M171 60 l-6 -4"/>
+    </g>
+
+    <!-- TIER 3 ink: fingers, toes, face, hatching (~0.9) -->
+    <g stroke="#3d2b1f" fill="none" stroke-width="0.9" stroke-linecap="round" stroke-linejoin="round">
+      <!-- face -->
+      <path d="M114 57 h3 M123 57 h3"/>
+      <path d="M120 59 v4 l-2 1"/>
+      <path d="M116 67 h8"/>
+      <!-- hands horizontal (fingers) -->
+      <g>
+        <path d="M26 94 l-6 -3 M26 94 l-6 -1 M26 94 l-6 1 M26 94 l-6 3"/>
+        <path d="M214 94 l6 -3 M214 94 l6 -1 M214 94 l6 1 M214 94 l6 3"/>
+      </g>
+      <!-- hands raised (fingers) -->
+      <g>
+        <path d="M45 31 l-3 -5 M45 31 l-1 -5 M45 31 l1 -6 M45 31 l3 -5"/>
+        <path d="M195 31 l3 -5 M195 31 l1 -5 M195 31 l-1 -6 M195 31 l-3 -5"/>
+      </g>
+      <!-- toes together -->
+      <path d="M104 238 l-4 2 M120 240 v3 M136 238 l4 2"/>
+      <!-- toes spread -->
+      <path d="M66 226 l-3 3 M174 226 l3 3"/>
+    </g>
+  </g>
+</svg>

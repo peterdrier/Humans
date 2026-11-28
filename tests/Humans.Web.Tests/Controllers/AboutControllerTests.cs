@@ -1,6 +1,7 @@
 using Humans.Auth.Contracts;
 using Humans.Base.Interfaces;
 using Humans.Users.Contracts;
+using Humans.Web.Tests.Architecture.Ratchet;
 using Humans.Web.Controllers;
 using Humans.Web.Models;
 using Microsoft.AspNetCore.Http;
@@ -99,5 +100,116 @@ public class AboutControllerTests
         var view = Assert.IsType<ViewResult>(await controller.Staff());
 
         Assert.Empty(Assert.IsType<StaffViewModel>(view.Model).RoleSections);
+    }
+
+    [HumansFact]
+    public void Logos_OrdersByFamilyModelVersionThenEffort()
+    {
+        var root = Directory.CreateTempSubdirectory();
+        try
+        {
+            void Entry(string slug, string? json)
+            {
+                var dir = Directory.CreateDirectory(Path.Combine(root.FullName, "img", "logo-library", slug));
+                if (json is not null)
+                {
+                    File.WriteAllText(Path.Combine(dir.FullName, "entry.json"), json);
+                }
+            }
+            Entry("2026-11-opus-5.5-high", """{"date":"2026-11","family":"Claude","model":"Opus","version":"5.5","effort":"high"}""");
+            Entry("2026-11-opus-5.5-low", """{"date":"2026-11","family":"Claude","model":"Opus","version":"5.5","effort":"low"}""");
+            Entry("2026-11-haiku-5.5-medium", """{"date":"2026-11","family":"Claude","model":"Haiku","version":"5.5","effort":"medium"}""");
+            Entry("2026-02-opus-4.6-unrecorded", """{"date":"2026-02","family":"Claude","model":"Opus","version":"4.6","effort":null}""");
+            Entry("2026-11-gpt-6-luna-low", """{"date":"2026-11","family":"GPT","model":"Luna","version":"6","effort":"low"}""");
+            Entry("2026-11-opus-10.0-low", """{"date":"2026-11","family":"Claude","model":"Opus","version":"10.0","effort":"low"}""");
+            Entry("2026-11-broken", "{not json");
+            Entry("2026-11-unfinished", null);
+            using var files = new PhysicalFileProvider(root.FullName);
+            var environment = Substitute.For<IWebHostEnvironment>();
+            environment.WebRootFileProvider.Returns(files);
+            var controller = new AboutController(Substitute.For<IUserService>(), Substitute.For<ISystemRoleService>(),
+                new RoleCatalog(Array.Empty<ISectionRoles>()), SystemClock.Instance, NullLogger<AboutController>.Instance);
+
+            var view = Assert.IsType<ViewResult>(controller.Logos(environment));
+
+            Assert.Equal(
+                "2026-11-haiku-5.5-medium,2026-02-opus-4.6-unrecorded,2026-11-opus-5.5-low,2026-11-opus-5.5-high,2026-11-opus-10.0-low,2026-11-gpt-6-luna-low",
+                string.Join(',', Assert.IsAssignableFrom<IReadOnlyList<LogoLibraryEntry>>(view.Model).Select(e => e.Slug)));
+        }
+        finally
+        {
+            root.Delete(recursive: true);
+        }
+    }
+
+    [HumansFact]
+    public void Logos_StatsFile_ReadsOntoEntry()
+    {
+        var root = Directory.CreateTempSubdirectory();
+        try
+        {
+            void Entry(string slug, string? stats)
+            {
+                var dir = Directory.CreateDirectory(Path.Combine(root.FullName, "img", "logo-library", slug));
+                File.WriteAllText(Path.Combine(dir.FullName, "entry.json"), """{"date":"2026-11","family":"Claude","model":"Opus","version":"5.5","effort":"low"}""");
+                if (stats is not null)
+                {
+                    File.WriteAllText(Path.Combine(dir.FullName, "stats.json"), stats);
+                }
+            }
+            Entry("2026-11-opus-5.5-low", """{"minutes":6.2,"inputTokens":100,"outputTokens":50,"cacheReadTokens":1000,"cacheWriteTokens":250,"costUsd":1.85,"source":"claude"}""");
+            Entry("2026-11-opus-5.5-medium", """{"minutes":3.0,"inputTokens":10,"outputTokens":5,"cacheReadTokens":0,"cacheWriteTokens":0,"costUsd":null,"source":"codex"}""");
+            Entry("2026-11-opus-5.5-high", null);
+            Entry("2026-11-opus-5.5-xhigh", "{not json");
+            using var files = new PhysicalFileProvider(root.FullName);
+            var environment = Substitute.For<IWebHostEnvironment>();
+            environment.WebRootFileProvider.Returns(files);
+            var controller = new AboutController(Substitute.For<IUserService>(), Substitute.For<ISystemRoleService>(),
+                new RoleCatalog(Array.Empty<ISectionRoles>()), SystemClock.Instance, NullLogger<AboutController>.Instance);
+
+            var view = Assert.IsType<ViewResult>(controller.Logos(environment));
+
+            var entries = Assert.IsAssignableFrom<IReadOnlyList<LogoLibraryEntry>>(view.Model).ToDictionary(e => e.Slug, StringComparer.Ordinal);
+            var priced = entries["2026-11-opus-5.5-low"].Stats!;
+            Assert.Equal(6.2, priced.Minutes);
+            Assert.Equal(50, priced.OutputTokens);
+            Assert.Equal(1.85m, priced.CostUsd);
+            Assert.Null(entries["2026-11-opus-5.5-medium"].Stats!.CostUsd);
+            Assert.Null(entries["2026-11-opus-5.5-high"].Stats);
+            Assert.Null(entries["2026-11-opus-5.5-xhigh"].Stats);
+        }
+        finally
+        {
+            root.Delete(recursive: true);
+        }
+    }
+
+    [HumansFact]
+    public void LogoLibrary_CommittedEntriesAreComplete()
+    {
+        var library = Path.Combine(RatchetTestRunner.LocateRepoRoot(), "src", "Humans.Web", "wwwroot", "img", "logo-library");
+        string?[] efforts = [null, "low", "medium", "high", "xhigh", "max"];
+        var problems = new List<string>();
+        foreach (var dir in Directory.GetDirectories(library))
+        {
+            var slug = Path.GetFileName(dir);
+            var entry = System.Text.Json.JsonSerializer.Deserialize<LogoLibraryEntry>(
+                File.ReadAllText(Path.Combine(dir, "entry.json")),
+                new System.Text.Json.JsonSerializerOptions { PropertyNameCaseInsensitive = true })!;
+            if (string.IsNullOrWhiteSpace(entry.Notes.GetValueOrDefault("en")))
+            {
+                problems.Add($"{slug}: English notes missing");
+            }
+            if (new[] { entry.Family, entry.Model, entry.Version }.Any(string.IsNullOrWhiteSpace))
+            {
+                problems.Add($"{slug}: family, model or version missing");
+            }
+            if (!efforts.Contains(entry.Effort, StringComparer.Ordinal))
+            {
+                problems.Add($"{slug}: effort '{entry.Effort}' has no localized label");
+            }
+        }
+
+        Assert.Empty(problems);
     }
 }

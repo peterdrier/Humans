@@ -113,8 +113,9 @@ public class ExpensesPageRenderTests(HumansTestDatabase database) : IntegrationT
 
         html.Should().NotContain("Expenses_", "the queue must resolve its own resource set");
 
-        // Coordinators share the queue, so it stays on the member layout for everyone (docs/sections/admin-shell.md).
-        html.Should().NotContain("class=\"crumb\"");
+        // Coordinators share the queue on the member layout; a finance admin reaches it from the sidebar,
+        // so it opens in the shell for them (docs/sections/admin-shell.md).
+        html.Should().Contain("admin-shell", "the Review item is the admin's own nav page");
 
         html.Should().Contain(DepartmentName, "the department column is what the queue is filtered by");
         html.Should().Contain("Coordinator endorsed", "rows are grouped under a localized status heading");

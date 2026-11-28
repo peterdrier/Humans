@@ -94,7 +94,7 @@ public sealed class CachingCampServiceTests : CampsTestHarness
         async Task<CampSettingsInfo> LoadSettingsAsync(CancellationToken ct)
         {
             var settings = await repo.GetSettingsReadOnlyAsync(ct);
-            var publicYear = settings?.PublicYear ?? Clock.GetCurrentInstant().InUtc().Year;
+            var publicYear = Clock.GetCurrentInstant().InUtc().Year;
             var openYears = _openSeasons;
             return new CampSettingsInfo(publicYear, openYears)
             {
@@ -112,7 +112,7 @@ public sealed class CachingCampServiceTests : CampsTestHarness
     }
 
     [HumansFact]
-    public async Task Failed_partial_warmup_cannot_restore_a_camp_missing_from_the_recovery_snapshot()
+    public async Task Warmup_PartialFailure_DoesNotRestoreMissingCamp()
     {
         var ct = TestContext.Current.CancellationToken;
         var (first, _) = await SeedCampWithSeasonAsync(2026);
@@ -178,7 +178,7 @@ public sealed class CachingCampServiceTests : CampsTestHarness
     public async Task SeedingOptIn_ExplicitlyUsesTheAutomatedActorPath()
     {
         var ct = TestContext.Current.CancellationToken;
-        await SeedSettingsAsync(2026, [2026]);
+        await SeedSettingsAsync([2026]);
         var (camp, _) = await SeedCampWithSeasonAsync(2026);
         _innerSubstitute.OptInToSeasonAsync(camp.Id, EventIdFor(2027), actorUserId: null, ct)
             .Returns(new CampWriteResult<CampSeason>(new CampSeason { Id = Guid.NewGuid(), CampId = camp.Id, Year = 2027 }));
@@ -189,9 +189,9 @@ public sealed class CachingCampServiceTests : CampsTestHarness
     }
 
     [HumansFact]
-    public async Task CreateCampForSeedAsync_MakesTheNewCampVisibleToListReads()
+    public async Task CreateCampForSeedAsync_NewCamp_IsListed()
     {
-        await SeedSettingsAsync(publicYear: 2026, openSeasons: [2026]);
+        await SeedSettingsAsync(openSeasons: [2026]);
         var ct = TestContext.Current.CancellationToken;
 
         // Warm the snapshot first — this is the state the bug needs to show up in.
@@ -248,7 +248,7 @@ public sealed class CachingCampServiceTests : CampsTestHarness
     public async Task InvalidateCampAsync_RefreshesProjectionWithEeGrantedCount()
     {
         // Seed: 2026 is the public year so it's in the warm scope.
-        await SeedSettingsAsync(publicYear: 2026, openSeasons: [2026]);
+        await SeedSettingsAsync(openSeasons: [2026]);
         var (camp, season) = await SeedCampWithSeasonAsync(year: 2026);
         // Two active members with EE granted, one active without.
         await SeedActiveMemberAsync(season.Id, hasEarlyEntry: true);
@@ -282,10 +282,10 @@ public sealed class CachingCampServiceTests : CampsTestHarness
     }
 
     [HumansFact]
-    public async Task GetCampsForYearAsync_ColdYear_FallsBackToInnerService()
+    public async Task GetCampsForYearAsync_ColdYear_UsesInnerService()
     {
         // Warm scope: 2026 only (public + open + currentYear all equal 2026).
-        await SeedSettingsAsync(publicYear: 2026, openSeasons: [2026]);
+        await SeedSettingsAsync(openSeasons: [2026]);
         await SeedCampWithSeasonAsync(year: 2026);
 
         // Drive warmup once so the warm-year set is populated.
@@ -318,7 +318,7 @@ public sealed class CachingCampServiceTests : CampsTestHarness
     [HumansFact]
     public async Task GetCampsForYearAsync_WarmYear_DoesNotHitInner()
     {
-        await SeedSettingsAsync(publicYear: 2026, openSeasons: [2026]);
+        await SeedSettingsAsync(openSeasons: [2026]);
         await SeedCampWithSeasonAsync(year: 2026);
 
         _ = await _service.GetCampsForYearAsync(2026, TestContext.Current.CancellationToken);
@@ -331,9 +331,9 @@ public sealed class CachingCampServiceTests : CampsTestHarness
     }
 
     [HumansFact]
-    public async Task GetCampsForYearAsync_WarmCamp_ExposesCampInfoLeadRoleFacts()
+    public async Task GetCampsForYearAsync_WarmCamp_ExposesLeadRoles()
     {
-        await SeedSettingsAsync(publicYear: 2026, openSeasons: [2026]);
+        await SeedSettingsAsync(openSeasons: [2026]);
         var leadUserId = Guid.NewGuid();
         var campId = Guid.NewGuid();
         var seasonId = Guid.NewGuid();
@@ -389,9 +389,9 @@ public sealed class CachingCampServiceTests : CampsTestHarness
     }
 
     [HumansFact]
-    public async Task GetCampSeasonByIdAsync_WarmSeason_UsesCachedCampInfo()
+    public async Task GetCampSeasonByIdAsync_WarmSeason_UsesCache()
     {
-        await SeedSettingsAsync(publicYear: 2026, openSeasons: [2026]);
+        await SeedSettingsAsync(openSeasons: [2026]);
         var leadUserId = Guid.NewGuid();
         var campId = Guid.NewGuid();
         var seasonId = Guid.NewGuid();
@@ -445,9 +445,9 @@ public sealed class CachingCampServiceTests : CampsTestHarness
     }
 
     [HumansFact]
-    public async Task GetCampSeasonsForComplianceAsync_WarmYear_ProjectsFromCachedCampInfo()
+    public async Task GetCampSeasonsForComplianceAsync_WarmYear_UsesCache()
     {
-        await SeedSettingsAsync(publicYear: 2026, openSeasons: [2026]);
+        await SeedSettingsAsync(openSeasons: [2026]);
         var (camp, season) = await SeedCampWithSeasonAsync(year: 2026);
 
         _ = await _service.GetCampsForYearAsync(2026, TestContext.Current.CancellationToken);
@@ -466,13 +466,13 @@ public sealed class CachingCampServiceTests : CampsTestHarness
     }
 
     [HumansFact]
-    public async Task GetSettingsAsync_PicksUpANewlyActivatedEventYearWithoutInvalidation()
+    public async Task GetSettingsAsync_NewActiveEvent_UsesItsYear()
     {
         // PublicYear comes from Settings, whose writes never reach this section's
         // invalidator — so it must not be served from the cached snapshot.
         _settingsService.GetActiveEventSettings()
             .Returns(BurnFixtures.Burn(year: 2026));
-        await SeedSettingsAsync(publicYear: 2026, openSeasons: [2026]);
+        await SeedSettingsAsync(openSeasons: [2026]);
 
         (await _service.GetSettingsAsync(TestContext.Current.CancellationToken))
             .PublicYear.Should().Be(2026);
@@ -493,7 +493,7 @@ public sealed class CachingCampServiceTests : CampsTestHarness
         var burn = BurnFixtures.Burn(year: 2026, gateOpeningDate: new LocalDate(2026, 7, 14), earlyEntryStartOffset: -7);
         _settingsService.GetActiveEventSettings().Returns(burn);
         _settingsService.GetAllEventSettingsAsync(Arg.Any<CancellationToken>()).Returns([burn]);
-        await SeedSettingsAsync(publicYear: 2026, openSeasons: [2026]);
+        await SeedSettingsAsync(openSeasons: [2026]);
         var (_, season) = await SeedCampWithSeasonAsync(year: 2026);
         season.EventSettingsId = burn.Id;
         await SaveAllAsync(TestContext.Current.CancellationToken);
@@ -512,7 +512,7 @@ public sealed class CachingCampServiceTests : CampsTestHarness
     {
         _settingsService.GetActiveEventSettings()
             .Returns(BurnFixtures.Burn(year: 2026));
-        await SeedSettingsAsync(publicYear: 2026, openSeasons: [2026]);
+        await SeedSettingsAsync(openSeasons: [2026]);
         var (_, season) = await SeedCampWithSeasonAsync(year: 2026);
         await SeedActiveMemberAsync(season.Id, hasEarlyEntry: true);
 
@@ -521,16 +521,13 @@ public sealed class CachingCampServiceTests : CampsTestHarness
         grants.Should().BeEmpty();
     }
 
-    private async Task SeedSettingsAsync(
-        int publicYear,
-        List<int> openSeasons)
+    private async Task SeedSettingsAsync(List<int> openSeasons)
     {
         if (!await CampsDb.CampSettings.AnyAsync(TestContext.Current.CancellationToken))
         {
             CampsDb.CampSettings.Add(new CampSettings
             {
-                Id = Guid.Parse("00000000-0000-0000-0010-000000000001"),
-                PublicYear = publicYear
+                Id = Guid.Parse("00000000-0000-0000-0010-000000000001")
             });
             _openSeasons = openSeasons;
             await SaveAllAsync(TestContext.Current.CancellationToken);
@@ -540,7 +537,7 @@ public sealed class CachingCampServiceTests : CampsTestHarness
     [HumansFact]
     public async Task SearchAsync_LimitKeepsTheHighestScoringMatch()
     {
-        await SeedSettingsAsync(publicYear: 2026, openSeasons: [2026]);
+        await SeedSettingsAsync(openSeasons: [2026]);
         var (_, contains) = await SeedCampWithSeasonAsync(2026);
         contains.Name = "A Kitchen";
         var (_, prefix) = await SeedCampWithSeasonAsync(2026);
@@ -557,7 +554,7 @@ public sealed class CachingCampServiceTests : CampsTestHarness
     [HumansFact]
     public async Task SearchAsync_ServesFromCache_MatchesPublicYearSeasonName()
     {
-        await SeedSettingsAsync(publicYear: 2026, openSeasons: [2026]);
+        await SeedSettingsAsync(openSeasons: [2026]);
         var (camp, _) = await SeedCampWithSeasonAsync(year: 2026); // season "Test Camp", Active
 
         var results = await _service.SearchAsync("test camp", int.MaxValue, TestContext.Current.CancellationToken);
@@ -581,7 +578,7 @@ public sealed class CachingCampServiceTests : CampsTestHarness
     {
         // The privacy guarantee covers by-GUID lookups only: text queries still see
         // Active/Full alone.
-        await SeedSettingsAsync(publicYear: 2026, openSeasons: [2026]);
+        await SeedSettingsAsync(openSeasons: [2026]);
         await SeedCampWithSeasonAsync(year: 2026, status);
 
         var results = await _service.SearchAsync(
@@ -591,11 +588,11 @@ public sealed class CachingCampServiceTests : CampsTestHarness
     }
 
     [HumansFact]
-    public async Task SearchAsync_GuidQuery_ResolvesACampWithANonPublicSeason()
+    public async Task SearchAsync_GuidQuery_FindsNonPublicCamp()
     {
         // Routing convenience, not authorization: the caller already holds the camp id and
         // /Camps/{slug} is where the decision belongs.
-        await SeedSettingsAsync(publicYear: 2026, openSeasons: [2026]);
+        await SeedSettingsAsync(openSeasons: [2026]);
         var (camp, _) = await SeedCampWithSeasonAsync(year: 2026, CampSeasonStatus.Pending);
 
         var results = await _service.SearchAsync(
@@ -655,7 +652,7 @@ public sealed class CachingCampServiceTests : CampsTestHarness
     public async Task RoleWriteThatChangedNothing_KeepsTheCampSnapshot()
     {
         var ct = TestContext.Current.CancellationToken;
-        await SeedSettingsAsync(publicYear: 2026, openSeasons: [2026]);
+        await SeedSettingsAsync(openSeasons: [2026]);
         var (_, season) = await SeedCampWithSeasonAsync(year: 2026);
         _roleInner.AssignAsync(Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<CancellationToken>())
             .Returns(AssignCampRoleOutcome.SlotCapReached);
@@ -684,11 +681,11 @@ public sealed class CachingCampServiceTests : CampsTestHarness
     /// </summary>
     [HumansTheory]
     [MemberData(nameof(SnapshotWriteVerbs))]
-    public async Task WriteVerb_DropsTheCampSnapshot_SoTheNextReadRewarms(
+    public async Task Write_Always_DropsCampSnapshot(
         string verbName, Func<CachingCampServiceTests, Guid, Guid, CancellationToken, Task> invoke)
     {
         var ct = TestContext.Current.CancellationToken;
-        await SeedSettingsAsync(publicYear: 2026, openSeasons: [2026]);
+        await SeedSettingsAsync(openSeasons: [2026]);
         var (camp, season) = await SeedCampWithSeasonAsync(year: 2026);
         StubSucceedingWriteResults(camp);
 
@@ -709,7 +706,7 @@ public sealed class CachingCampServiceTests : CampsTestHarness
     public async Task FailedCampUpdate_RefetchesCommittedFields(bool throws)
     {
         var ct = TestContext.Current.CancellationToken;
-        await SeedSettingsAsync(2026, [2026]);
+        await SeedSettingsAsync([2026]);
         var (camp, season) = await SeedCampWithSeasonAsync(2026);
         var before = await _service.GetCampByIdAsync(camp.Id, ct);
         before!.ContactEmail.Should().Be("test@camp.com");
@@ -740,7 +737,7 @@ public sealed class CachingCampServiceTests : CampsTestHarness
     public async Task FailedSeasonStatusWrite_RefetchesCommittedStatus()
     {
         var ct = TestContext.Current.CancellationToken;
-        await SeedSettingsAsync(2026, [2026]);
+        await SeedSettingsAsync([2026]);
         var (camp, season) = await SeedCampWithSeasonAsync(2026);
         await _service.GetCampsForYearAsync(2026, ct);
         var failure = new InvalidOperationException("Post-write dependency failed");
@@ -758,7 +755,7 @@ public sealed class CachingCampServiceTests : CampsTestHarness
     }
 
     [HumansFact]
-    public async Task EventSettingsChanged_DuringASettingsLoad_DropsTheLoadedSnapshot()
+    public async Task EventSettingsChanged_DuringLoad_DropsSnapshot()
     {
         var ct = TestContext.Current.CancellationToken;
         var started = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
@@ -788,7 +785,7 @@ public sealed class CachingCampServiceTests : CampsTestHarness
     public async Task Warmup_DoesNotRepublishSettingsChangedDuringCampLoads()
     {
         var ct = TestContext.Current.CancellationToken;
-        await SeedSettingsAsync(2026, [2026]);
+        await SeedSettingsAsync([2026]);
         var started = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
         var release = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
         _innerSubstitute.GetCampsForYearAsync(2026, Arg.Any<CancellationToken>()).Returns(async _ =>
@@ -813,11 +810,11 @@ public sealed class CachingCampServiceTests : CampsTestHarness
     }
 
     [HumansFact]
-    public async Task CancelledSettingsInvalidation_DoesNotKeepThePreWriteSettingsSlot()
+    public async Task SettingsInvalidation_Cancelled_DropsOldSlot()
     {
         var ct = TestContext.Current.CancellationToken;
         using var mutationCancellation = CancellationTokenSource.CreateLinkedTokenSource(ct);
-        await SeedSettingsAsync(2026, [2026]);
+        await SeedSettingsAsync([2026]);
         (await _service.GetSettingsAsync(ct)).OpenSeasons.Should().NotContain(2027);
         _innerSubstitute.OpenSeasonAsync(Arg.Any<Guid>(), Arg.Any<Guid>(), mutationCancellation.Token).Returns(async _ =>
         {
@@ -840,11 +837,11 @@ public sealed class CachingCampServiceTests : CampsTestHarness
 
     [HumansTheory]
     [MemberData(nameof(SettingsWriteVerbs))]
-    public async Task SettingsWriteVerb_ClearsTheSettingsSlot_SoTheNextReadRefetches(
+    public async Task SettingsWrite_Always_ClearsSettingsSlot(
         string verbName, Func<CachingCampServiceTests, CancellationToken, Task> invoke)
     {
         var ct = TestContext.Current.CancellationToken;
-        await SeedSettingsAsync(publicYear: 2026, openSeasons: [2026]);
+        await SeedSettingsAsync(openSeasons: [2026]);
 
         _ = await _service.GetSettingsAsync(ct);
         _innerSubstitute.ClearReceivedCalls();
@@ -861,7 +858,7 @@ public sealed class CachingCampServiceTests : CampsTestHarness
     public async Task DeleteCampAsync_TombstonesTheCamp_WithoutDroppingTheWholeSnapshot()
     {
         var ct = TestContext.Current.CancellationToken;
-        await SeedSettingsAsync(publicYear: 2026, openSeasons: [2026]);
+        await SeedSettingsAsync(openSeasons: [2026]);
         var (camp, _) = await SeedCampWithSeasonAsync(year: 2026);
 
         _ = await _service.GetCampsForYearAsync(2026, ct);

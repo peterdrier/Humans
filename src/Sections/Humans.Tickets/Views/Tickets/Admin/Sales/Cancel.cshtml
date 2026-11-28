@@ -25,11 +25,6 @@
         ];
 }
 
-@section Crumbs {
-    <a asp-controller="TicketsSalesAdmin" asp-action="Orders" asp-route-id="@Model.TicketingSettingsId">Orders</a>
-    <span>@ViewData["Title"]</span>
-}
-
 <page-header title="@(ViewData["Title"])" subtitle="@Model.EventName" badge="@(cancelled ? "Cancelled" : null)" badge-class="bg-danger">
     <a class="btn btn-outline-secondary btn-sm" asp-action="Refunds" asp-route-id="@Model.TicketingSettingsId">Refunds</a>
     <a class="btn btn-outline-secondary btn-sm" asp-controller="TicketsSalesAdmin" asp-action="Recon" asp-route-platform="@Model.PlatformKey">Reconciliation</a>

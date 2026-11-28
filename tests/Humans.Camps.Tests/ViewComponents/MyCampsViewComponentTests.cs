@@ -29,7 +29,7 @@ public sealed class MyCampsViewComponentTests
     [HumansTheory]
     [Xunit.InlineData(ProfileCardViewMode.Public)]
     [Xunit.InlineData(ProfileCardViewMode.Admin)]
-    public async Task InvokeAsync_NotOwnProfile_RendersNothingAndReadsNothing(ProfileCardViewMode viewMode)
+    public async Task InvokeAsync_NotOwnProfile_RendersNothing(ProfileCardViewMode viewMode)
     {
         var camps = Substitute.For<ICampService>();
         var component = Build(camps, new DefaultHttpContext());

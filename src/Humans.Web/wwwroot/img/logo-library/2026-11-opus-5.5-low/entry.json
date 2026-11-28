@@ -1,0 +1,17 @@
+{
+  "date": "2026-11",
+  "family": "Claude",
+  "model": "Opus",
+  "version": "5.5",
+  "effort": "low",
+  "brief": "v1",
+  "notes": {
+    "en": "A single quick pass: a bold gold silhouette with both poses on Leonardo's circle and square, and a light ink etch for chest, abdomen, knees, face and fingers. It reads well down to navbar size. Still weak: limbs are straight tapered strokes rather than modelled anatomy, and the hands and feet are simple ovals and wedges.",
+    "es": "Una sola pasada rápida: una silueta dorada y sólida con ambas poses sobre el círculo y el cuadrado de Leonardo, y un grabado ligero en tinta para pecho, abdomen, rodillas, cara y dedos. Se lee bien hasta el tamaño de la barra de navegación. Aún flojo: las extremidades son trazos rectos y no anatomía modelada, y manos y pies son óvalos y cuñas simples.",
+    "de": "Ein einziger schneller Durchgang: eine kräftige goldene Silhouette mit beiden Posen in Leonardos Kreis und Quadrat und eine leichte Tintenradierung für Brust, Bauch, Knie, Gesicht und Finger. Sie bleibt bis zur Navigationsleistengröße lesbar. Noch schwach: Die Gliedmaßen sind gerade, sich verjüngende Striche statt modellierter Anatomie, Hände und Füße einfache Ovale und Keile.",
+    "it": "Un unico passaggio veloce: una silhouette dorata e piena con entrambe le pose nel cerchio e nel quadrato di Leonardo, e una leggera incisione a inchiostro per petto, addome, ginocchia, volto e dita. Si legge bene fino alla dimensione della barra di navigazione. Ancora debole: gli arti sono tratti dritti e affusolati anziché anatomia modellata, e mani e piedi sono semplici ovali e cunei.",
+    "fr": "Un seul passage rapide : une silhouette dorée pleine avec les deux poses dans le cercle et le carré de Léonard, et une gravure légère à l'encre pour la poitrine, l'abdomen, les genoux, le visage et les doigts. Elle reste lisible jusqu'à la taille de la barre de navigation. Encore faible : les membres sont des traits droits effilés plutôt qu'une anatomie modelée, et les mains et les pieds de simples ovales et coins.",
+    "ca": "Una sola passada ràpida: una silueta daurada i sòlida amb les dues postures sobre el cercle i el quadrat de Leonardo, i un gravat lleuger en tinta per al pit, l'abdomen, els genolls, la cara i els dits. Es llegeix bé fins a la mida de la barra de navegació. Encara feble: les extremitats són traços rectes i no anatomia modelada, i les mans i els peus són òvals i tascons simples.",
+    "nl": "Eén snelle ronde: een krachtig gouden silhouet met beide houdingen in Leonardo's cirkel en vierkant, en een lichte inktets voor borst, buik, knieën, gezicht en vingers. Het blijft leesbaar tot navigatiebalkformaat. Nog zwak: de ledematen zijn rechte, taps toelopende lijnen in plaats van gemodelleerde anatomie, en handen en voeten zijn eenvoudige ovalen en wiggen."
+  }
+}
