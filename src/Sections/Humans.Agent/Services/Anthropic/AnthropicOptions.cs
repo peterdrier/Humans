@@ -13,9 +13,6 @@ internal sealed class AnthropicOptions
     /// </summary>
     public string AdminApiKey { get; set; } = string.Empty;
 
-    /// <summary>Model id sent to the API when <c>AgentSettings.Model</c> is empty.</summary>
-    public string DefaultModel { get; set; } = "claude-sonnet-4-6";
-
     public TimeSpan Timeout { get; set; } = TimeSpan.FromSeconds(60);
 
     /// <summary>Enforced server-side regardless of model behavior.</summary>

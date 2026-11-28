@@ -112,7 +112,6 @@ public sealed class Section :
     {
         configuration.GetOptionalSetting(registry, "Anthropic:ApiKey", "Anthropic", isSensitive: true,
             importance: ConfigurationImportance.Recommended);
-        configuration.GetOptionalSetting(registry, "Anthropic:DefaultModel", "Anthropic");
 
         configuration.GetOptionalSetting(registry, "CommunityFaq:Owner", "Community FAQ");
         configuration.GetOptionalSetting(registry, "CommunityFaq:Repository", "Community FAQ");
