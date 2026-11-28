@@ -9,7 +9,7 @@ This project uses a small number of hand-chosen GUID ranges for seed data. The r
 | Block | Purpose | Source |
 |------:|---------|--------|
 | `0000` | Nil/default sentinel GUIDs in migrations | Migration-generated usage only |
-| `0001` | System-managed teams; `…0003`–`…0005` were the Board, Asociados and Colaboradors teams and now key those Governance bodies' audit entries | [SystemTeamIds.cs](../src/Humans.Base/Constants/SystemTeamIds.cs), [TeamConfiguration.cs](../src/Sections/Humans.Teams/Data/Configurations/TeamConfiguration.cs), [GovernanceBodyLinksService.cs](../src/Sections/Humans.Governance/Services/GovernanceBodyLinksService.cs) |
+| `0001` | System-managed teams; `…0003`–`…0005` (the retired Board, Asociados and Colaboradors teams) also key those Governance bodies' audit entries | [SystemTeamIds.cs](../src/Humans.Base/Constants/SystemTeamIds.cs), [TeamConfiguration.cs](../src/Sections/Humans.Teams/Data/Configurations/TeamConfiguration.cs), [GovernanceBodyLinksService.cs](../src/Sections/Humans.Governance/Services/GovernanceBodyLinksService.cs) |
 | `0002` | Sync service settings seeds | [SyncServiceSettingsConfiguration.cs](../src/Sections/Humans.Google/Data/Configurations/SyncServiceSettingsConfiguration.cs) |
 | `0003` | Shift tag seeds | [ShiftTagConfiguration.cs](../src/Sections/Humans.Shifts/Data/Configurations/ShiftTagConfiguration.cs) |
 | `0004` | System user accounts (gate terminal) | [SystemUserIds.cs](../src/Humans.Base/Constants/SystemUserIds.cs) |

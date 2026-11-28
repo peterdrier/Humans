@@ -23,7 +23,7 @@ internal sealed class GovernanceBodyLinksService(
     public const string FileNotFound = "Governance_Manage_FileNotFound";
 
     /// <summary>
-    /// Keys each body's audit entries. These were its old system team's ids, kept so the body's history stays in one place.
+    /// Keys each body's audit entries. These are its old system team's ids, kept so the body's history stays in one place.
     /// Reserved GUID block 0001: see docs/guid-reservations.md.
     /// </summary>
     internal static readonly IReadOnlyDictionary<GovernanceBody, Guid> AuditIds = new Dictionary<GovernanceBody, Guid>

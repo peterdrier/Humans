@@ -298,7 +298,7 @@ public class SystemTeamSyncJobBarrioLeadsTests
             "Demote", TeamMemberRole.Coordinator, SystemTeamType.None, false);
         var skipped = promote with { TeamMemberId = Guid.NewGuid(), UserId = Guid.NewGuid() };
         var unchanged = promote with { TeamMemberId = Guid.NewGuid(), UserId = Guid.NewGuid(), HasManagementRoleAssignment = false };
-        var systemCoordinator = demote with { TeamMemberId = Guid.NewGuid(), UserId = Guid.NewGuid(), SystemTeamType = SystemTeamType.Coordinators };
+        var systemCoordinator = demote with { TeamMemberId = Guid.NewGuid(), UserId = Guid.NewGuid(), SystemTeamType = SystemTeamType.Board };
         _teamService.GetActiveMembershipsForRoleReconciliationAsync(Arg.Any<CancellationToken>())
             .Returns(new[] { promote, demote, skipped, unchanged, systemCoordinator });
         _userService.GetUserInfosAsync(Arg.Any<IEnumerable<Guid>>(), Arg.Any<CancellationToken>())

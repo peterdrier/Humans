@@ -611,7 +611,7 @@ public sealed class TeamRoleServiceTests : TeamsTestHarness
         // backdoor for injecting non-members (and firing Google sync side effects).
         var admin = SeedUser("Admin");
         SeedAdminRole(admin);
-        var team = SeedTeam("Barrio Leads", type: SystemTeamType.BarrioLeads);
+        var team = SeedTeam("Board", type: SystemTeamType.Board);
         var user = SeedUser("Outsider");
         var role = SeedRoleDefinition(team, "President", slotCount: 1, sortOrder: 1);
         // Deliberately not adding user as team member
@@ -634,7 +634,7 @@ public sealed class TeamRoleServiceTests : TeamsTestHarness
         // assigned to roles on that team without tripping the auto-add guard.
         var admin = SeedUser("Admin");
         SeedAdminRole(admin);
-        var team = SeedTeam("Barrio Leads", type: SystemTeamType.BarrioLeads);
+        var team = SeedTeam("Board", type: SystemTeamType.Board);
         var user = SeedUser("BoardMember");
         var role = SeedRoleDefinition(team, "President", slotCount: 1, sortOrder: 1);
         SeedMember(team, user);

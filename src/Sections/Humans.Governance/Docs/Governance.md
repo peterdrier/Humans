@@ -92,7 +92,7 @@ One row per member; a member with no row is a Volunteer.
 
 One row per body (`GovernanceBody`: Asociados, Colaboradores, Board) holding its Google group prefix, and one
 row per Google file (Drive folder, shared drive or file) its members get. The values were copied once from the
-body's old system team, whose deleted row's id still keys the body's audit entries (`GovernanceBodyLinksService.AuditIds`).
+body's old system team, whose id still keys the body's audit entries (`GovernanceBodyLinksService.AuditIds`).
 `GovernanceBodyGoogleSource` claims each body's group (`{prefix}@nobodies.team`) and files in Google for the
 body's roster (approved tier in term for Asociados and Colaboradores, active Board role for the Board) as raw
 user ids; Google hydrates and filters the accounts. A file at permission level None is still claimed, with no

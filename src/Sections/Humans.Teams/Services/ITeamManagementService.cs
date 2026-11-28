@@ -151,6 +151,12 @@ internal interface ITeamManagementService : ITeamManagement
     /// </summary>
     Task<TeamDeactivationResult> EraseMembersAsync(Guid teamId, Guid actorUserId, CancellationToken cancellationToken = default);
 
+    /// <summary>
+    /// Deletes the role slots left on the Asociados, Colaboradores and Board teams, so their rows can be deleted.
+    /// Returns how many role definitions it deleted.
+    /// </summary>
+    Task<int> RemoveGovernanceBodyRolesAsync(Guid actorUserId, CancellationToken cancellationToken = default);
+
     /// <summary>Approval-required teams get a pending request, open teams an immediate membership.</summary>
     Task<TeamJoinResult> JoinTeamAsync(
         Guid teamId,

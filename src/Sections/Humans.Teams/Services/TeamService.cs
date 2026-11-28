@@ -368,6 +368,13 @@ internal sealed class TeamService(
             teamId, userIdsToAdd, userIdsToRemove, now, cancellationToken);
     }
 
+    /// <summary>
+    /// The Asociados, Colaboradores and Board teams. Governance owns these bodies and claims their Google group and
+    /// files, so Teams neither claims nor syncs them, and they are only ever retired.
+    /// </summary>
+    internal static readonly IReadOnlySet<Guid> GovernanceBodyTeamIds =
+        new HashSet<Guid> { SystemTeamIds.Asociados, SystemTeamIds.Colaboradors, SystemTeamIds.Board };
+
     internal const string TeamMemberships = "TeamMemberships";
     internal const string TeamJoinRequests = "TeamJoinRequests";
     internal const string TeamEarlyEntry = "TeamEarlyEntry";
@@ -561,7 +568,7 @@ internal sealed class TeamService(
         var allTeams = await repo.GetAllWithMembersAsync(ct);
         var teams = allTeams.Where(t => t.IsActive).ToList();
         var groupTeams = allTeams
-            .Where(t => t.GoogleGroupEmail is not null)
+            .Where(t => t.GoogleGroupEmail is not null && !GovernanceBodyTeamIds.Contains(t.Id))
             .Where(t => requestedKey is null
                 || string.Equals(t.GoogleGroupEmail, requestedKey, StringComparison.OrdinalIgnoreCase))
             .ToList();
@@ -1166,6 +1173,48 @@ internal sealed class TeamService(
 
         logger.LogInformation("Erased membership history of team {TeamId}; {PeopleCount} people", teamId, people);
         return new();
+    }
+
+    public async Task<int> RemoveGovernanceBodyRolesAsync(Guid actorUserId, CancellationToken cancellationToken = default)
+    {
+        var removed = 0;
+        foreach (var teamId in GovernanceBodyTeamIds)
+        {
+            if (await repo.GetByIdAsync(teamId, cancellationToken) is not { } team)
+                continue;
+
+            foreach (var listed in await repo.GetRoleDefinitionsAsync(teamId, cancellationToken))
+            {
+                if (await repo.FindRoleDefinitionForMutationAsync(listed.Id, cancellationToken) is not { } definition)
+                    continue;
+
+                var holders = definition.Assignments.Select(a => a.TeamMember.UserId).Distinct().ToList();
+                await repo.RemoveRoleDefinitionAsync(definition, cancellationToken);
+
+                foreach (var userId in holders)
+                {
+                    await auditLogService.LogAsync(
+                        TeamsAuditActions.TeamRoleUnassigned, nameof(TeamRoleDefinition), definition.Id,
+                        $"Unassigned from role '{definition.Name}' in {team.Name} before the team was deleted",
+                        actorUserId, targetId: userId, targetType: AuditSubjectTypes.User);
+                }
+
+                await auditLogService.LogAsync(
+                    TeamsAuditActions.TeamRoleDefinitionDeleted, nameof(TeamRoleDefinition), definition.Id,
+                    $"Role definition '{definition.Name}' deleted from team {team.Name} before the team was deleted",
+                    actorUserId, targetId: teamId, targetType: nameof(Team));
+
+                if (definition.IsManagement)
+                {
+                    foreach (var userId in holders)
+                        await SystemTeamSync.SyncMembershipForUserAsync(userId, SystemTeamType.Coordinators, cancellationToken);
+                }
+
+                removed++;
+            }
+        }
+
+        return removed;
     }
 
     public async Task<TeamMembershipMutationResult> LeaveTeamAsync(

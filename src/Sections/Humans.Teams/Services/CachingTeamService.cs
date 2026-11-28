@@ -262,6 +262,9 @@ internal sealed class CachingTeamService(
     public Task<TeamDeactivationResult> EraseMembersAsync(Guid teamId, Guid actorUserId, CancellationToken cancellationToken = default) =>
         MutateAsync(inner => inner.EraseMembersAsync(teamId, actorUserId, cancellationToken), static result => result.Succeeded);
 
+    public Task<int> RemoveGovernanceBodyRolesAsync(Guid actorUserId, CancellationToken cancellationToken = default) =>
+        MutateAsync(inner => inner.RemoveGovernanceBodyRolesAsync(actorUserId, cancellationToken), static removed => removed > 0);
+
     public Task<TeamJoinResult> JoinTeamAsync(
         Guid teamId,
         Guid userId,
