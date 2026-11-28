@@ -111,7 +111,7 @@ internal sealed class CachingTeamService(
         foreach (var id in ids)
         {
             if (teams.TryGetValue(id, out var team))
-                result[id] = new EntityName("Team", team.Name, team.Slug);
+                result[id] = new EntityName(team.Name, team.Slug);
         }
         return result;
     }

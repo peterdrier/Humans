@@ -214,7 +214,7 @@ internal sealed class CachingUserService(
                 && info.Profile is not null && !info.IsGdprAnonymized
                 && !string.IsNullOrWhiteSpace(info.BurnerName))
             {
-                result[id] = new EntityName("User", info.BurnerName);
+                result[id] = new EntityName(info.BurnerName);
             }
         }
         return result;
