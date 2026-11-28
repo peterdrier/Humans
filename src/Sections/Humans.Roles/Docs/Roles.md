@@ -93,12 +93,12 @@ The holder is a user, not a team member. Unassigning deletes the row; the audit 
 
 ### Public contract
 
-| Public interface | Methods | Notes |
-|---|---:|---|
-| `IRoleService` | 2 | `GetRolesAsync`, `GetRoleAsync`; whole, from the cache |
-| `IRoleWrite` | 1 | `RemoveAsync(owner, userId, actorUserId)` |
-| `IRoleOwner` | — | Implemented by owner sections: `EnsureMemberAsync`, `ListAsync` (owner names, link keys, hidden flag, page URL) |
-| `RolesPolicies` | — | `Read`: the policy name for `/Roles/Admin` |
+| Public interface | Notes |
+|---|---|
+| `IRoleService` | `GetRolesAsync`; whole, from the cache |
+| `IRoleWrite` | `RemoveAsync(owner, userId, actorUserId)` |
+| `IRoleOwner` | Implemented by owner sections: `EnsureMemberAsync`, `ListAsync` (owner names, link keys, hidden flag, page URL) |
+| `RolesPolicies` | `Read`: the policy name for `/Roles/Admin` |
 
 - `CachingRoleService` holds every role; every write clears it. It is the permission source and carries GDPR and merge, and never injects the permission service.
 - Tests: `tests/Humans.Roles.Tests/RoleServiceTests.cs`.
