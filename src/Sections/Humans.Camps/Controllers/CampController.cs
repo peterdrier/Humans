@@ -98,7 +98,7 @@ internal sealed class CampController(
         var vm = MapCampDetailViewModel(
             camp, season, isLead, isCampAdmin, membership, settings.ActiveEventSettingsId,
             _clock.GetCurrentInstant().InUtc().Date);
-        await PopulateDetailCardsAsync(vm, camp, season, currentUser, isCampAdmin, ct);
+        await PopulateDetailCardsAsync(vm, season, currentUser, isCampAdmin, ct);
         return View(vm);
     }
 
@@ -132,7 +132,7 @@ internal sealed class CampController(
         var vm = MapCampDetailViewModel(
             camp, season, isLead, isCampAdmin, membership, settings.ActiveEventSettingsId,
             _clock.GetCurrentInstant().InUtc().Date);
-        await PopulateDetailCardsAsync(vm, camp, season, currentUser, isCampAdmin, ct);
+        await PopulateDetailCardsAsync(vm, season, currentUser, isCampAdmin, ct);
         return View(nameof(Details), vm);
     }
 
@@ -401,31 +401,16 @@ internal sealed class CampController(
 
         // Full is informational only: it must not disable camp management, so role management stays available.
         viewModel.RolesPanel = editSeason is { IsPublic: true }
-            ? await BuildRolesPanelAsync(camp.Slug, editSeason, canManage: true, ct)
+            ? await BuildRolesPanelAsync(editSeason, canManage: true, ct)
             : null;
 
         return View(viewModel);
     }
 
     private async Task<CampRolesPanelViewModel> BuildRolesPanelAsync(
-        string campSlug, CampSeasonInfo season, bool canManage, CancellationToken ct)
+        CampSeasonInfo season, bool canManage, CancellationToken ct)
     {
         var panelData = await campRoleService.BuildPanelAsync(season.Id, ct);
-        var activeMemberRows = season.ActiveMembers.OrderBy(m => m.RequestedAt).ToList();
-        var activeMemberUserIds = activeMemberRows
-            .Select(m => m.UserId)
-            .ToList();
-        IReadOnlyDictionary<Guid, UserInfo> users = activeMemberUserIds.Count == 0
-            ? new Dictionary<Guid, UserInfo>()
-            : await _userService.GetUserInfosAsync(activeMemberUserIds, ct);
-
-        var activeMembers = activeMemberRows
-            .Select(m => new CampMemberPickerOption(
-                m.UserId,
-                users.TryGetValue(m.UserId, out var u) ? u.BurnerName : campsLocalizer["Camps_Flash_UnknownHuman"].Value))
-            .OrderBy(o => o.DisplayName, StringComparer.OrdinalIgnoreCase)
-            .ToList();
-
         var rows = panelData.Rows
             .OrderBy(r => r.Definition.SortOrder).ThenBy(r => r.Definition.Name, StringComparer.OrdinalIgnoreCase)
             .Select(r => new CampRoleRowViewModel
@@ -447,9 +432,7 @@ internal sealed class CampController(
 
         return new CampRolesPanelViewModel
         {
-            CampSeasonId = season.Id,
             CanManage = canManage,
-            ActiveMembers = activeMembers,
             Rows = rows,
         };
     }
@@ -1225,7 +1208,7 @@ internal sealed class CampController(
     /// roles panel.
     /// </summary>
     private async Task PopulateDetailCardsAsync(
-        CampDetailViewModel vm, CampInfo camp, CampSeasonInfo season, UserInfo? currentUser, bool isCampAdmin,
+        CampDetailViewModel vm, CampSeasonInfo season, UserInfo? currentUser, bool isCampAdmin,
         CancellationToken ct)
     {
         if (currentUser is null)
@@ -1234,7 +1217,7 @@ internal sealed class CampController(
         }
 
         vm.RolesPanel = await BuildRolesPanelAsync(
-            camp.Slug, season, canManage: false, ct);
+            season, canManage: false, ct);
 
         // Full-camp access is decided by membership in the *displayed* season, not the
         // open-season membership VM — that VM is NoOpenSeason for Pending/closed seasons,

@@ -1557,8 +1557,6 @@ public class CampControllerTests
         if (selected.IsPublic)
         {
             model.RolesPanel.Should().NotBeNull();
-            model.RolesPanel!.CampSeasonId.Should().Be(selected.Id);
-            model.RolesPanel!.ActiveMembers.Should().ContainSingle().Which.UserId.Should().Be(memberId);
             await _roles.Received(1).BuildPanelAsync(selected.Id, TestContext.Current.CancellationToken);
         }
         else
@@ -1635,7 +1633,6 @@ public class CampControllerTests
             .Model.Should().BeOfType<CampEditViewModel>().Subject;
         vm.RolesPanel!.Rows.Select(row => row.Name).Should().Equal("Priority", "Alpha", "Zebra");
         vm.ActiveMembers.Select(m => m.UserId).Should().Equal(oneShiftMemberId, fivePlusShiftMemberId, zeroShiftMemberId);
-        vm.RolesPanel.ActiveMembers.Select(m => m.UserId).Should().Equal(oneShiftMemberId, fivePlusShiftMemberId, zeroShiftMemberId);
         vm.RolesPanel.Rows.Single(row => string.Equals(row.Name, "Zebra", StringComparison.Ordinal)).FilledSlots.Select(s => s.UserId)
             .Should().Equal(oneShiftMemberId, zeroShiftMemberId);
         vm.ActiveMembers.Single(m => m.UserId == zeroShiftMemberId).EventShiftSignupCount.Should().Be(0);
