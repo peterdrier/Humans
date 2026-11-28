@@ -722,29 +722,11 @@ body.page-wide .main-content {
     color: var(--h-parchment);
 }
 
-/* Keyboard focus is a solid ink outline: a glow is too faint, and Windows contrast themes drop box-shadow. */
-a:focus-visible,
 .btn:focus-visible,
 .form-control:focus-visible,
-.form-select:focus-visible,
-.form-check-input:focus-visible,
-.dropdown-item:focus-visible,
-.nav-link:focus-visible,
-.page-link:focus-visible,
-.accordion-button:focus-visible {
-    outline: 2px solid var(--h-aged-ink);
-    outline-offset: 2px;
-    box-shadow: none;
-}
-
-.navbar a:focus-visible,
-.navbar .btn:focus-visible,
-.navbar .nav-link:focus-visible {
-    outline-color: var(--h-parchment);
-}
-
-.navbar .dropdown-menu .dropdown-item:focus-visible {
-    outline-color: var(--h-aged-ink);
+.form-select:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 3px rgba(201, 169, 110, 0.2);
 }
 
 .btn-info {
