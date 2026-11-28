@@ -109,7 +109,7 @@ public class NonCompliantMemberSuspensionTests : IDisposable
     }
 
     [HumansFact]
-    public async Task Shutdown_StartedBulkSuspensionFinishesEveryAuditAndNotice()
+    public async Task Shutdown_BulkSuspensionStarted_FinishesEveryNotice()
     {
         using var shutdown = new CancellationTokenSource();
         var users = new[] { SetupUser(), SetupUser() };
@@ -332,7 +332,7 @@ public class NonCompliantMemberSuspensionTests : IDisposable
     }
 
     [HumansFact]
-    public async Task ExecuteAsync_LocalizesSuspensionNoticeAndEmailReasonForMember()
+    public async Task ExecuteAsync_Suspension_LocalizesNoticeForMember()
     {
         var user = SetupUser();
         _userService.GetUserInfosAsync(Arg.Any<IEnumerable<Guid>>(), Arg.Any<CancellationToken>())

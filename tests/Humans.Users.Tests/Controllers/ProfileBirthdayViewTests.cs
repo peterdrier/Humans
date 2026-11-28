@@ -23,7 +23,7 @@ public class ProfileBirthdayViewTests
 {
     [HumansTheory]
     [Xunit.MemberData(nameof(SupportedCultures.All), MemberType = typeof(SupportedCultures))]
-    public async Task BirthdayMonthNames_UseUiLanguageAndKeepNumericValues(string language)
+    public async Task BirthdayMonthNames_UiLanguage_KeepNumericValues(string language)
     {
         using var inputCulture = new CultureScope("en");
         CultureInfo.CurrentUICulture = CultureInfo.GetCultureInfo(language);
@@ -35,7 +35,7 @@ public class ProfileBirthdayViewTests
     }
 
     [HumansFact]
-    public void BirthdayDisplay_ContainsOnlyLocalizedMonthAndDay()
+    public void BirthdayDisplay_Rendered_ShowsLocalizedMonthDay()
     {
         using var culture = new CultureScope("es");
         CultureInfo.CurrentCulture = CultureInfo.GetCultureInfo("en");
@@ -50,7 +50,7 @@ public class ProfileBirthdayViewTests
 
     [HumansTheory]
     [Xunit.MemberData(nameof(SupportedCultures.All), MemberType = typeof(SupportedCultures))]
-    public async Task LocationCoordinates_UseUiCultureAndKeepEnglishInputValues(string language)
+    public async Task LocationCoordinates_UiCulture_KeepEnglishInputValues(string language)
     {
         using var inputCulture = new CultureScope("en");
         var ui = CultureInfo.CurrentUICulture = CultureInfo.GetCultureInfo(language);

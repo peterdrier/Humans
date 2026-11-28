@@ -9,7 +9,7 @@ namespace Humans.Surveys.Tests.Models;
 public sealed class SurveyJsonExportBuilderTests
 {
     [HumansFact]
-    public void Keeps_grid_schema_once_and_response_answers_compact()
+    public void Build_Grid_WritesSchemaOnce()
     {
         var questionId = Guid.NewGuid();
         var export = new SurveyResponseExport(
@@ -73,7 +73,7 @@ public sealed class SurveyJsonExportBuilderTests
     }
 
     [HumansFact]
-    public void Omits_null_identity_and_unused_answer_fields()
+    public void Build_NullFields_AreOmitted()
     {
         var questionId = Guid.NewGuid();
         var export = new SurveyResponseExport(
@@ -107,7 +107,7 @@ public sealed class SurveyJsonExportBuilderTests
     }
 
     [HumansFact]
-    public void Carries_ranked_ballots_like_the_csv_export()
+    public void Build_RankedBallots_MatchCsvExport()
     {
         var questionId = Guid.NewGuid();
         var export = new SurveyResponseExport(

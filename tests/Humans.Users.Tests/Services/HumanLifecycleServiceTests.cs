@@ -108,7 +108,7 @@ public class HumanLifecycleServiceTests
     [HumansTheory]
     [Xunit.InlineData("a")]
     [Xunit.InlineData("😀")]
-    public async Task SuspendAsync_LongReason_LeavesBoundingToNotificationsAndPreservesAudit(string character)
+    public async Task SuspendAsync_LongReason_AuditsFullReason(string character)
     {
         var userId = Guid.NewGuid();
         var adminId = Guid.NewGuid();
@@ -132,7 +132,7 @@ public class HumanLifecycleServiceTests
     }
 
     [HumansFact]
-    public async Task SuspendAsync_OnSuccess_WritesProfileNotifiesAndRecordsMetric()
+    public async Task SuspendAsync_Success_NotifiesMember()
     {
         var userId = Guid.NewGuid();
         var adminId = Guid.NewGuid();
@@ -196,7 +196,7 @@ public class HumanLifecycleServiceTests
     }
 
     [HumansFact]
-    public async Task SuspendAsync_WhenProfileWriteFails_ShortCircuitsAndDoesNotNotifyOrMeter()
+    public async Task SuspendAsync_WriteFails_SkipsNotification()
     {
         var userId = Guid.NewGuid();
         var adminId = Guid.NewGuid();
@@ -218,7 +218,7 @@ public class HumanLifecycleServiceTests
     }
 
     [HumansFact]
-    public async Task UnsuspendAsync_OnSuccess_WritesProfileAndResolvesSuspendedNotifications()
+    public async Task UnsuspendAsync_Success_ResolvesSuspendedNotifications()
     {
         var userId = Guid.NewGuid();
         var adminId = Guid.NewGuid();
@@ -243,7 +243,7 @@ public class HumanLifecycleServiceTests
     }
 
     [HumansFact]
-    public async Task UnsuspendAsync_WhenProfileWriteFails_ShortCircuitsAndDoesNotResolveNotifications()
+    public async Task UnsuspendAsync_WriteFails_KeepsNotifications()
     {
         var userId = Guid.NewGuid();
         var adminId = Guid.NewGuid();
@@ -262,7 +262,7 @@ public class HumanLifecycleServiceTests
     }
 
     [HumansFact]
-    public async Task SuspendAsync_WhenNotificationDispatchThrows_StillReturnsSuccessAndRecordsMetric()
+    public async Task SuspendAsync_NotificationThrows_StillSucceeds()
     {
         // Notification dispatch failures must not surface to the caller: the
         // profile write already succeeded and the suspension is durable.
@@ -315,7 +315,7 @@ public class HumanLifecycleServiceTests
     }
 
     [HumansFact]
-    public async Task RestoreConsentSuspensionAsync_ForConsentSuspendedUser_WritesUnsuspendAndAudits()
+    public async Task RestoreConsentSuspensionAsync_ConsentSuspended_Unsuspends()
     {
         var userId = Guid.NewGuid();
         _userService.GetUserInfoAsync(userId, Arg.Any<CancellationToken>())

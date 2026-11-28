@@ -7,7 +7,7 @@ namespace Humans.Users.Tests.Helpers;
 public class ProfilePictureProcessorTests
 {
     [HumansFact]
-    public void ResizeProfilePicture_RemovesLocationMetadataAfterOrientingAndPreservesColorProfile()
+    public void ResizeProfilePicture_GpsMetadata_IsRemoved()
     {
         using var upload = new MagickImage(MagickColors.Red, 1200, 600);
         var exif = new ExifProfile();

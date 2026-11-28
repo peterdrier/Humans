@@ -110,7 +110,7 @@ public class ProfileControllerEditTests
     [HumansTheory]
     [InlineData(false)]
     [InlineData(true)]
-    public async Task Profile_mutation_account_preflight_observes_cancellation(bool medical)
+    public async Task ProfileMutations_CancelledPreflight_Throw(bool medical)
     {
         using var request = new CancellationTokenSource();
         _controller.HttpContext.RequestAborted = request.Token;
@@ -137,7 +137,7 @@ public class ProfileControllerEditTests
     [InlineData("retired", "BoardOnly")]
     [InlineData("valid", "BoardOnly")]
     [InlineData("valid", "AllActiveProfiles")]
-    public async Task ContactRows_require_current_type_and_explicit_visibility_before_profile_save(string scenario, string visibility)
+    public async Task ContactRows_MissingTypeOrVisibility_BlockSave(string scenario, string visibility)
     {
         var registrations = new ServiceCollection().AddLogging();
         registrations.AddControllers();
@@ -196,7 +196,7 @@ public class ProfileControllerEditTests
     [HumansTheory]
     [InlineData(false)]
     [InlineData(true)]
-    public async Task Legacy_contact_removal_ids_are_bound_before_any_profile_write(bool malformed)
+    public async Task Edit_LegacyContactRemovals_BindBeforeWrite(bool malformed)
     {
         var registrations = new ServiceCollection().AddLogging();
         registrations.AddControllers();
@@ -245,7 +245,7 @@ public class ProfileControllerEditTests
     }
 
     [HumansFact]
-    public async Task Invalid_profile_edit_reloads_only_owners_legacy_contacts()
+    public async Task Edit_InvalidModel_ReloadsOwnLegacyContacts()
     {
         var legacy = new ContactField
         {
@@ -362,7 +362,7 @@ public class ProfileControllerEditTests
     }
 
     [HumansFact]
-    public void Edit_caps_the_profile_picture_request_before_multipart_binding()
+    public void Edit_PictureRequest_IsCappedBeforeBinding()
     {
         var limit = typeof(ProfileController).GetMethods()
             .Single(method => string.Equals(method.Name, nameof(ProfileController.Edit), StringComparison.Ordinal)
@@ -398,7 +398,7 @@ public class ProfileControllerEditTests
     [InlineData(UserState.Active, false, false)]
     [InlineData(UserState.Bare, false, true)]
     [InlineData(UserState.Active, true, true)]
-    public async Task Edit_Get_SetupModeFollowsAccountStateAndPreview(UserState state, bool preview, bool initialSetup)
+    public async Task Edit_Get_SetupModeFollowsAccountState(UserState state, bool preview, bool initialSetup)
     {
         var info = BuildUserInfo(new Profile { UserId = _userId }) with { State = state };
         _userService.GetUserInfoAsync(_userId, Arg.Any<CancellationToken>()).Returns(info);
@@ -418,7 +418,7 @@ public class ProfileControllerEditTests
     [InlineData(UserState.Bare, false, true)]
     [InlineData(UserState.Bare, true, false)]
     [InlineData(UserState.Bare, true, true)]
-    public async Task Edit_Post_RedisplayRestoresTrustedPresentationAndSetupMode(UserState state, bool serviceRefusal, bool hasPicture)
+    public async Task Edit_PostRedisplay_RestoresTrustedPresentation(UserState state, bool serviceRefusal, bool hasPicture)
     {
         var info = BuildUserInfo(new Profile { UserId = _userId, ProfilePictureContentType = hasPicture ? "image/png" : null }) with { State = state };
         _userService.GetUserInfoAsync(_userId, Arg.Any<CancellationToken>()).Returns(info);
@@ -486,7 +486,7 @@ public class ProfileControllerEditTests
     }
 
     [HumansFact]
-    public async Task Edit_Post_ServiceRefusal_UsesExistingLocalizedFeedbackAndStopsAfterSaveEffects()
+    public async Task Edit_ServiceRefusal_ShowsLocalizedFeedback()
     {
         _profileEditorService.SaveProfileAsync(Arg.Any<Guid>(), Arg.Any<ProfileSaveRequest>(), Arg.Any<CancellationToken>(), Arg.Any<IReadOnlyList<ContactFieldEditDto>?>(), Arg.Any<IReadOnlyList<ProfileLanguageInfo>?>(), Arg.Any<IReadOnlyCollection<Guid>?>())
             .Returns(new ProfileEditResult(false, ErrorKey: "Users_Profile_BurnerCVRequired"));
@@ -518,7 +518,7 @@ public class ProfileControllerEditTests
     [HumansTheory]
     [InlineData("  Diabetes  ", "Diabetes")]
     [InlineData("   ", null)]
-    public async Task Medical_Post_SavesTheTrimmedConditions_ForTheSignedInMemberOnly(string posted, string? saved)
+    public async Task Medical_Post_SavesTrimmedConditionsForSelf(string posted, string? saved)
     {
         _userService.GetUserInfoAsync(_userId, Arg.Any<CancellationToken>())
             .Returns(BuildUserInfo(new Profile { UserId = _userId }));
@@ -530,7 +530,7 @@ public class ProfileControllerEditTests
     }
 
     [HumansFact]
-    public async Task Medical_Post_InvalidModel_DoesNotSave_AndReRendersForTheSignedInMember()
+    public async Task Medical_InvalidModel_RendersWithoutSaving()
     {
         _userService.GetUserInfoAsync(_userId, Arg.Any<CancellationToken>())
             .Returns(BuildUserInfo(new Profile { UserId = _userId }));

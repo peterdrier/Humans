@@ -21,7 +21,7 @@ public class ContactFieldTests
     }
 
     [HumansFact]
-    public void DisplayLabel_ForOtherType_WithCustomLabel_ShouldReturnCustomLabel()
+    public void DisplayLabel_OtherTypeCustomLabel_ReturnsCustomLabel()
     {
         var field = CreateContactField(ContactFieldType.Other);
         field.CustomLabel = "Discord";
@@ -30,7 +30,7 @@ public class ContactFieldTests
     }
 
     [HumansFact]
-    public void DisplayLabel_ForOtherType_WithNullCustomLabel_ShouldReturnOther()
+    public void DisplayLabel_OtherTypeNullLabel_ReturnsOther()
     {
         var field = CreateContactField(ContactFieldType.Other);
         field.CustomLabel = null;
@@ -39,7 +39,7 @@ public class ContactFieldTests
     }
 
     [HumansFact]
-    public void DisplayLabel_ForOtherType_WithEmptyCustomLabel_ShouldReturnEmptyString()
+    public void DisplayLabel_OtherTypeEmptyLabel_ReturnsEmpty()
     {
         var field = CreateContactField(ContactFieldType.Other);
         field.CustomLabel = "";

@@ -22,7 +22,7 @@ public sealed class SurveyCsvExportBuilderTests
     [Xunit.InlineData(" USER_ID ")]
     [Xunit.InlineData("Repeated", "Repeated", "Repeated (aaaaaaaa)")]
     [Xunit.InlineData("=Formula", "'=Formula")]
-    public void Allocates_unambiguous_headers_without_moving_answer_columns(params string[] prompts)
+    public void Build_DuplicateHeaders_GetUniqueNames(params string[] prompts)
     {
         var questions = prompts.Select((prompt, i) => Text(
             Guid.Parse($"aaaaaaaa-0000-0000-0000-{i + 1:000000000000}"), prompt)).ToList();
@@ -80,7 +80,7 @@ public sealed class SurveyCsvExportBuilderTests
     }
 
     [HumansFact]
-    public void Escapes_freetext_with_comma_quote_and_newline_per_rfc4180()
+    public void Build_TextWithCommaQuoteNewline_IsQuoted()
     {
         var textId = Guid.NewGuid();
         var export = new SurveyResponseExport(
@@ -99,7 +99,7 @@ public sealed class SurveyCsvExportBuilderTests
     }
 
     [HumansFact]
-    public void Flattens_multichoice_values_with_pipe_and_uses_values_not_labels()
+    public void Build_MultiChoice_JoinsValuesWithPipe()
     {
         var choiceId = Guid.NewGuid();
         var export = new SurveyResponseExport(
@@ -119,7 +119,7 @@ public sealed class SurveyCsvExportBuilderTests
     }
 
     [HumansFact]
-    public void Serializes_grid_selections_as_stable_row_to_column_json()
+    public void Build_GridSelections_AreStableJson()
     {
         var gridId = Guid.NewGuid();
         var export = new SurveyResponseExport(
@@ -152,7 +152,7 @@ public sealed class SurveyCsvExportBuilderTests
     }
 
     [HumansFact]
-    public void Serializes_ranked_ballot_as_stable_value_json()
+    public void Build_RankedBallot_IsStableJson()
     {
         var questionId = Guid.NewGuid();
         var export = new SurveyResponseExport(
@@ -186,7 +186,7 @@ public sealed class SurveyCsvExportBuilderTests
     }
 
     [HumansFact]
-    public void Leaves_identity_columns_blank_for_non_identified_row()
+    public void Build_NonIdentifiedRow_LeavesIdentityBlank()
     {
         var textId = Guid.NewGuid();
         var export = new SurveyResponseExport(
@@ -211,7 +211,7 @@ public sealed class SurveyCsvExportBuilderTests
     }
 
     [HumansFact]
-    public void Populates_identity_columns_for_identified_row()
+    public void Build_IdentifiedRow_FillsIdentityColumns()
     {
         var textId = Guid.NewGuid();
         var userId = Guid.NewGuid();
@@ -232,7 +232,7 @@ public sealed class SurveyCsvExportBuilderTests
     }
 
     [HumansFact]
-    public void Escapes_formula_prefixed_freetext_per_owasp()
+    public void Build_FormulaPrefixedText_IsEscaped()
     {
         var textId = Guid.NewGuid();
         var export = new SurveyResponseExport(

@@ -11,7 +11,7 @@ namespace Humans.Users.Tests;
 public sealed class SectionIdentityTests
 {
     [HumansFact]
-    public void Register_WiresIdentityOverTheSectionsStoresAndClaimsFactory()
+    public void Register_Identity_UsesSectionStores()
     {
         var services = new ServiceCollection();
         new Section().Register(services, new ConfigurationBuilder().Build());

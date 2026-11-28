@@ -33,7 +33,7 @@ namespace Humans.Users.Tests.ViewComponents;
 public sealed class HumanSummaryViewComponentTests
 {
     [HumansFact]
-    public async Task InvokeAsync_ProfiledHuman_UsesResolvedIdentityAndSummaryProjection()
+    public async Task InvokeAsync_ProfiledHuman_UsesResolvedIdentity()
     {
         var userId = Guid.NewGuid();
         var requestedId = Guid.NewGuid();
@@ -147,7 +147,7 @@ public sealed class HumanSummaryViewComponentTests
         await act.Should().ThrowAsync<OperationCanceledException>();
     }
     [HumansFact]
-    public async Task Popovers_resolve_names_and_localize_missing_identity_without_exposing_admin_fields()
+    public async Task Popovers_MissingIdentity_IsLocalized()
     {
         using var culture = new CultureScope("en");
         var id = Guid.NewGuid();
@@ -169,7 +169,7 @@ public sealed class HumanSummaryViewComponentTests
     }
 
     [HumansFact]
-    public async Task Merge_history_and_choices_render_exact_account_names_without_following_redirects()
+    public async Task MergeViews_Accounts_RenderExactNames()
     {
         var id = Guid.NewGuid();
         var users = Substitute.For<IUserService>();

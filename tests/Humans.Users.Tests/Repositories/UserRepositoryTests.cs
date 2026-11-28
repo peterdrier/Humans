@@ -74,7 +74,7 @@ public sealed class UserRepositoryTests : IDisposable
     }
 
     [HumansFact]
-    public async Task SetDeletionPendingAsync_SetsBothFieldsAndReturnsTrue()
+    public async Task SetDeletionPendingAsync_Valid_SetsBothFields()
     {
         var user = await SeedUserAsync();
         var requested = Instant.FromUtc(2026, 4, 1, 0, 0);
@@ -107,7 +107,7 @@ public sealed class UserRepositoryTests : IDisposable
     }
 
     [HumansFact]
-    public async Task ApplyExpiredDeletionAnonymizationAsync_RemovesAspNetUserLoginsForUser()
+    public async Task ApplyExpiredDeletionAnonymizationAsync_Logins_AreRemoved()
     {
         var user = await SeedUserAsync();
         var other = await SeedUserAsync();

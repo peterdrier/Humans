@@ -12,7 +12,7 @@ public sealed class SurveyBuilderViewModelTests
     [HumansTheory]
     [Xunit.InlineData("en")]
     [Xunit.InlineData("EN")]
-    public void Invitation_email_copy_round_trips_through_the_builder(string cultureKey)
+    public void Builder_InvitationEmailCopy_RoundTrips(string cultureKey)
     {
         var detail = new SurveyDetail(
             Guid.NewGuid(),
@@ -47,7 +47,7 @@ public sealed class SurveyBuilderViewModelTests
     }
 
     [HumansFact]
-    public void ToInput_maps_clause_rows_to_a_branch_condition()
+    public void ToInput_ClauseRows_BecomeBranchCondition()
     {
         var gate = Guid.NewGuid();
         var vm = new SurveyQuestionBuilderViewModel
@@ -76,11 +76,11 @@ public sealed class SurveyBuilderViewModelTests
     }
 
     [HumansFact]
-    public void ToInput_without_clauses_means_always_visible()
+    public void ToInput_NoClauses_IsAlwaysVisible()
         => new SurveyQuestionBuilderViewModel().ToInput(0).ShowIf.Should().BeNull();
 
     [HumansFact]
-    public void FromInput_round_trips_an_existing_condition_into_clause_rows()
+    public void FromInput_ExistingCondition_BecomesClauseRows()
     {
         var gate = Guid.NewGuid();
         var input = new QuestionInput(
@@ -107,7 +107,7 @@ public sealed class SurveyBuilderViewModelTests
     }
 
     [HumansFact]
-    public void Grid_configuration_round_trips_through_the_builder()
+    public void Builder_GridConfiguration_RoundTrips()
     {
         var input = new QuestionInput(
             Guid.NewGuid(), 1, 0, SurveyQuestionType.Grid,
@@ -134,7 +134,7 @@ public sealed class SurveyBuilderViewModelTests
     }
 
     [HumansFact]
-    public void Grid_configuration_does_not_invent_an_omitted_selection_mode()
+    public void ToInput_GridNoSelectionMode_StaysUnset()
     {
         var vm = new SurveyQuestionBuilderViewModel
         {
@@ -145,7 +145,7 @@ public sealed class SurveyBuilderViewModelTests
     }
 
     [HumansFact]
-    public void Information_images_round_trip_through_the_builder()
+    public void Builder_InformationImages_RoundTrip()
     {
         var imageId = Guid.NewGuid();
         var input = new QuestionInput(
@@ -175,7 +175,7 @@ public sealed class SurveyBuilderViewModelTests
     }
 
     [HumansFact]
-    public void ToEditInput_uses_the_posted_question_list_order_within_each_page()
+    public void ToEditInput_PostedQuestions_KeepPostedOrder()
     {
         var firstId = Guid.NewGuid();
         var secondId = Guid.NewGuid();

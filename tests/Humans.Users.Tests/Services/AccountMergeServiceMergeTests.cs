@@ -219,7 +219,7 @@ public class AccountMergeServiceMergeTests
     }
 
     [HumansFact]
-    public async Task MergeAsync_RefreshFailure_StillRefreshesTheOtherAccountAndPreservesTheMergeError()
+    public async Task MergeAsync_RefreshFailure_RefreshesOtherAccount()
     {
         var source = Guid.NewGuid();
         var target = Guid.NewGuid();
@@ -379,7 +379,7 @@ public class AccountMergeServiceMergeTests
     }
 
     [HumansFact]
-    public async Task MergeAsync_HappyPath_RunsFanOutAndTombstone()
+    public async Task MergeAsync_Valid_RunsFanOutThenTombstone()
     {
         var src = Guid.NewGuid(); var tgt = Guid.NewGuid(); var admin = Guid.NewGuid();
         SetupUsers(src, tgt);
@@ -558,7 +558,7 @@ public class AccountMergeServiceMergeTests
     }
 
     [HumansFact]
-    public async Task MergeAsync_FanOutThrows_LeavesArchivedAccountUntombstonedAndAuditsTheFailure()
+    public async Task MergeAsync_FanOutThrows_SkipsTombstone()
     {
         var src = Guid.NewGuid(); var tgt = Guid.NewGuid(); var admin = Guid.NewGuid();
         SetupUsers(src, tgt);

@@ -12,7 +12,7 @@ namespace Humans.Users.Tests.Architecture;
 public class UserArchitectureTests
 {
     [HumansFact]
-    public void IUserManagement_IUserService_IUserWrite_And_IUserInfoSliceRefresher_ResolveToSameSingleton()
+    public void UserInterfaces_Resolved_ShareOneSingleton()
     {
         // The real section registration: the same CachingUserService singleton
         // must back every interface key, or a "user changed" refresh from
@@ -36,7 +36,7 @@ public class UserArchitectureTests
     }
 
     [HumansFact]
-    public void SectionTypesLocalizeThroughTheSectionsOwnResourceSet()
+    public void SectionTypes_Localize_UseOwnResourceSet()
     {
         // SharedResource stays allowed: the Common_/Validation_/Admin_/Todo_/Application*_
         // prefixes are rendered by other sections too.

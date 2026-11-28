@@ -27,7 +27,7 @@ public class UserEmailServiceTests
     [Xunit.InlineData(RemovalOverlap.UnlinkThenDelete)]
     [Xunit.InlineData(RemovalOverlap.UnlinkThenUnlink)]
     [Xunit.InlineData(RemovalOverlap.DeleteThenUnlink)]
-    public async Task OverlappingRemovals_AcrossServiceScopes_PreserveAVerifiedSignInMethod(RemovalOverlap overlap)
+    public async Task DeleteEmailAsync_OverlappingRemovals_KeepOneSignIn(RemovalOverlap overlap)
     {
         var ct = Xunit.TestContext.Current.CancellationToken;
         var userId = Guid.NewGuid();
@@ -482,7 +482,7 @@ public class UserEmailServiceTests
     }
 
     [HumansFact]
-    public async Task DeleteEmailAsync_VerifiedSecondaryWithOtherAuthMethods_InvalidatesFullProfile()
+    public async Task DeleteEmailAsync_VerifiedSecondary_InvalidatesFullProfile()
     {
         // Verified non-OAuth secondary email + a remaining verified primary +
         // an OAuth login on AspNetUserLogins → preserve-auth-method invariant
@@ -563,7 +563,7 @@ public class UserEmailServiceTests
     }
 
     [HumansFact]
-    public async Task DeleteEmailAsync_LastVerifiedEmailNoOAuthLogin_ReturnsRefusal()
+    public async Task DeleteEmailAsync_LastVerifiedNoOAuthLogin_ReturnsRefusal()
     {
         // The user has one verified UserEmail and zero AspNetUserLogins. Deleting
         // the email would leave no auth method — block.
@@ -593,7 +593,7 @@ public class UserEmailServiceTests
     }
 
     [HumansFact]
-    public async Task DeleteEmailAsync_LastVerifiedEmailEvenWithOAuthLogin_ReturnsRefusal()
+    public async Task DeleteEmailAsync_LastVerifiedWithOAuthLogin_ReturnsRefusal()
     {
         // Even with an OAuth login, deleting the last verified email is blocked: the user would be
         // un-notifiable, and system mail (re-consent reminders, suspension notices) needs an address.
@@ -752,7 +752,7 @@ public class UserEmailServiceTests
     }
 
     [HumansFact]
-    public async Task ClearPrimaryAsync_FlaggedRow_ClearsAndAudits()
+    public async Task ClearPrimaryAsync_FlaggedRow_ClearsFlag()
     {
         // Two rows carry IsPrimary (the duplicate-flag recovery case), so the sole-row guard is satisfied.
         var userId = Guid.NewGuid();
@@ -952,7 +952,7 @@ public class UserEmailServiceTests
     [HumansTheory]
     [Xunit.InlineData(false)]
     [Xunit.InlineData(true)]
-    public async Task UnlinkAsync_RemovesAspNetUserLoginsAndEmailRow(bool disconnectedAfterIdentityRemoval)
+    public async Task UnlinkAsync_Valid_RemovesLoginWithRow(bool disconnectedAfterIdentityRemoval)
     {
         // Provider-attached row is removed from both the AspNetUserLogins table
         // (via UserManager.RemoveLoginAsync) and user_emails (via _repo.RemoveUserEmailAsync).
@@ -1016,7 +1016,7 @@ public class UserEmailServiceTests
     }
 
     [HumansFact]
-    public async Task UnlinkAsync_LastVerifiedEmail_ReturnsRefusalAndMutatesNothing()
+    public async Task UnlinkAsync_LastVerifiedEmail_ReturnsRefusal()
     {
         // Auth-method invariant: unlinking the user's only verified email would
         // lock them out completely — magic link also requires a verified address.
@@ -1049,7 +1049,7 @@ public class UserEmailServiceTests
     }
 
     [HumansFact]
-    public async Task UnlinkAsync_UnverifiedRow_NoOtherVerifiedEmail_ReturnsRefusalAndMutatesNothing()
+    public async Task UnlinkAsync_UnverifiedRowNoOtherVerified_ReturnsRefusal()
     {
         // An unverified row can still carry the only OAuth login, and OAuth sign-in resolves off
         // AspNetUserLogins, not IsVerified: removing it with no other verified email locks the
@@ -1079,7 +1079,7 @@ public class UserEmailServiceTests
     }
 
     [HumansFact]
-    public async Task UnlinkAsync_UnverifiedRow_OtherVerifiedEmailRemains_Succeeds()
+    public async Task UnlinkAsync_UnverifiedRowOtherVerified_Succeeds()
     {
         // The floor check is about what REMAINS, not what's removed: unlinking an
         // unverified linked row is fine as long as another verified email keeps the
@@ -1192,7 +1192,7 @@ public class UserEmailServiceTests
     [HumansTheory]
     [Xunit.InlineData(false)]
     [Xunit.InlineData(true)]
-    public async Task AddEmailAsync_CommittedAddition_AuditsBeforeQueueAndFinishesAfterDisconnect(bool queueFails)
+    public async Task AddEmailAsync_ClientDisconnects_StillFinishes(bool queueFails)
     {
         var userId = Guid.NewGuid();
         var actorId = Guid.NewGuid();
@@ -1237,7 +1237,7 @@ public class UserEmailServiceTests
     [Xunit.InlineData("verified", false)]
     [Xunit.InlineData("orphan", true)]
     [Xunit.InlineData("orphan", false)]
-    public async Task EmailMutation_AuditsSuccessfulChangesWithActorAndRow(string operation, bool succeeds)
+    public async Task EmailMutations_Success_AuditActorWithRow(string operation, bool succeeds)
     {
         var userId = Guid.NewGuid();
         var actorId = Guid.NewGuid();
@@ -1297,7 +1297,7 @@ public class UserEmailServiceTests
     }
 
     [HumansFact]
-    public async Task AddEmailAsync_OwnerRefusal_MakesNoLinkAndSendsNoMail()
+    public async Task AddEmailAsync_OwnerRefusal_SendsNoMail()
     {
         var userId = Guid.NewGuid();
         _userManager.FindByIdAsync(userId.ToString()).Returns(new User { Id = userId });
@@ -1314,7 +1314,7 @@ public class UserEmailServiceTests
     }
 
     [HumansFact]
-    public async Task AddVerifiedEmailAsync_FirstRow_SetsIsPrimaryTrueEvenForGmail()
+    public async Task AddVerifiedEmailAsync_FirstGmailRow_IsPrimary()
     {
         // Magic-link signup with a non-Workspace email goes through AddVerifiedEmailAsync;
         // the first verified row is promoted to primary regardless of domain.
@@ -1371,7 +1371,7 @@ public class UserEmailServiceTests
     }
 
     [HumansFact]
-    public async Task AddEmailAsync_ReAddPreviouslyRemovedAddress_LingeringInLegacyColumn_Succeeds()
+    public async Task AddEmailAsync_ReAddRemovedAddress_Succeeds()
     {
         // The UserEmail row for the address was deleted but the legacy AspNetUsers.Email column
         // still holds it. With no live row, the re-add must succeed, not claim it is already the
@@ -1408,7 +1408,7 @@ public class UserEmailServiceTests
     }
 
     [HumansFact]
-    public async Task AddEmailAsync_AddressAlreadyHeldAsUserEmailRow_ReturnsRefusal()
+    public async Task AddEmailAsync_AddressAlreadyHeld_ReturnsRefusal()
     {
         var userId = Guid.NewGuid();
         _repository.GetUserEmailsByAddressAsync(Arg.Any<string>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
@@ -1514,7 +1514,7 @@ public class UserEmailServiceTests
     }
 
     [HumansFact]
-    public async Task UnlinkAsync_RemoveLoginAsyncFails_DoesNotDeleteUserEmailRow_ReturnsFailure()
+    public async Task UnlinkAsync_RemoveLoginFails_KeepsEmailRow()
     {
         // Hard-fail: when RemoveLoginAsync fails, the UserEmail row MUST NOT be
         // removed. Otherwise AspNetUserLogins persists with a stale Google login
@@ -1558,7 +1558,7 @@ public class UserEmailServiceTests
     }
 
     [HumansFact]
-    public async Task UnlinkAsync_ProviderIdentity_ResolvesAndRemovesMatchingEmailRow()
+    public async Task UnlinkAsync_ProviderIdentity_RemovesMatchingRow()
     {
         var userId = Guid.NewGuid();
         var user = new User { Id = userId };
@@ -1593,7 +1593,7 @@ public class UserEmailServiceTests
     [Xunit.InlineData(true, true, true)]
     [Xunit.InlineData(true, true, false)]
     [Xunit.InlineData(true, false, false)]
-    public async Task UnlinkAsync_OrphanLogin_RequiresVerifiedEmailAndExistingLogin(
+    public async Task UnlinkAsync_OrphanLogin_NeedsVerifiedEmail(
         bool verified, bool hasLogin, bool removalFails)
     {
         var userId = Guid.NewGuid();
@@ -1626,7 +1626,7 @@ public class UserEmailServiceTests
     }
 
     [HumansFact]
-    public async Task AdminMarkVerifiedAsync_InnerUpdateRefusal_DoesNotReportSuccessOrAudit()
+    public async Task AdminMarkVerifiedAsync_UpdateRefused_SkipsAudit()
     {
         var userId = Guid.NewGuid();
         var rowId = Guid.NewGuid();
@@ -1647,7 +1647,7 @@ public class UserEmailServiceTests
     }
 
     [HumansFact]
-    public async Task AdminMarkVerifiedAsync_PendingPlainRow_VerifiesAndAudits()
+    public async Task AdminMarkVerifiedAsync_PendingRow_Verifies()
     {
         var userId = Guid.NewGuid();
         var actorId = Guid.NewGuid();
@@ -1683,7 +1683,7 @@ public class UserEmailServiceTests
     }
 
     [HumansFact]
-    public async Task AdminMarkVerifiedAsync_AddressConfirmedOnAnotherAccount_RefusesWithoutVerifying()
+    public async Task AdminMarkVerifiedAsync_ConfirmedElsewhere_ReturnsRefusal()
     {
         // Two accounts with one confirmed address are one person: they are merged, never verified twice.
         var userId = Guid.NewGuid();
@@ -1768,7 +1768,7 @@ public class UserEmailServiceTests
     }
 
     [HumansFact]
-    public async Task AddProvisionedEmailAsync_NewUser_StampsIsPrimaryOnFirstRow()
+    public async Task AddProvisionedEmailAsync_NewUser_FirstRowIsPrimary()
     {
         // The first UserEmail row added for a brand-new user becomes IsPrimary (it is the
         // only verified row).
@@ -1808,7 +1808,7 @@ public class UserEmailServiceTests
     // Verified-email lookups match in memory against the UserInfo cache.
 
     [HumansFact]
-    public async Task FindByAddressAsync_Aliased_MatchesGmailAndGooglemailForms()
+    public async Task FindByAddressAsync_Aliased_MatchesGooglemailForm()
     {
         // Stored row is @googlemail.com; caller looks up the @gmail.com form (and vice versa
         // would match too) — EmailsMatch normalizes both sides before comparing.
@@ -1861,7 +1861,7 @@ public class UserEmailServiceTests
     }
 
     [HumansFact]
-    public async Task FindByAddressAsync_Exact_GmailAlternateForm_DoesNotMatch()
+    public async Task FindByAddressAsync_ExactGmailAlternateForm_DoesNotMatch()
     {
         // Exact-match semantics (no gmail/googlemail aliasing) — the non-aliased form
         // must NOT alias-match.
@@ -1879,7 +1879,7 @@ public class UserEmailServiceTests
     }
 
     [HumansFact]
-    public async Task FindByAddressAsync_Exact_ReturnsEveryOwnerSoCallersSeeAmbiguity()
+    public async Task FindByAddressAsync_ExactSeveralOwners_ReturnsAll()
     {
         var userA = Guid.NewGuid();
         var userB = Guid.NewGuid();
@@ -1924,7 +1924,7 @@ public class UserEmailServiceTests
     }
 
     [HumansFact]
-    public async Task GetNotificationEmailsByUserIdsAsync_OnlyReturnsRequestedRawVerifiedPrimaries()
+    public async Task GetNotificationEmailsByUserIdsAsync_Requested_ReturnsVerifiedPrimaries()
     {
         var primaryId = Guid.NewGuid();
         var secondaryId = Guid.NewGuid();
@@ -1950,7 +1950,7 @@ public class UserEmailServiceTests
     }
 
     [HumansFact]
-    public async Task GetNotificationTargetEmailsAsync_ForAMergedAwayId_ReturnsTheSurvivorsAddress()
+    public async Task GetNotificationTargetEmailsAsync_MergedAwayId_ReturnsSurvivorsAddress()
     {
         // Keyed by the requested id, addressed to the resolved human. The merge scrubs
         // the tombstone's own address to a merged-<id>@merged.local sentinel for Identity
@@ -1989,7 +1989,7 @@ public class UserEmailServiceTests
     }
 
     [HumansFact]
-    public async Task GetEntitiesByUserIdAsync_MergeTombstone_ReturnsThatRowsOwnEmails()
+    public async Task GetEntitiesByUserIdAsync_MergeTombstone_ReturnsOwnEmails()
     {
         // The snapshots carry the owner id and the callers edit and delete rows by it,
         // so this read stays raw. Resolving forward would hand the tombstone's caller the

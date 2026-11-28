@@ -8,7 +8,7 @@ public class RankedChoiceCounterTests
     private static readonly IReadOnlyList<string> Candidates = ["A", "B", "C"];
 
     [HumansFact]
-    public void Pairwise_treats_ranked_as_better_than_unranked_and_rejected()
+    public void Pairwise_Ranked_BeatsUnrankedOrRejected()
     {
         var matrix = RankedChoiceCounter.BuildPairwise(
             Candidates,
@@ -20,7 +20,7 @@ public class RankedChoiceCounterTests
     }
 
     [HumansFact]
-    public void Pairwise_records_no_preference_inside_equal_rank_or_bottom_tier()
+    public void Pairwise_EqualRank_RecordsNoPreference()
     {
         var matrix = RankedChoiceCounter.BuildPairwise(
             ["A", "B", "C", "D"],
@@ -31,7 +31,7 @@ public class RankedChoiceCounterTests
     }
 
     [HumansFact]
-    public void Ranked_pairs_resolves_a_condorcet_cycle()
+    public void RankedPairs_CondorcetCycle_IsResolved()
     {
         var ballots = Repeat(3, Ballot([["A"], ["B"], ["C"]]))
             .Concat(Repeat(2, Ballot([["B"], ["C"], ["A"]])))
@@ -46,7 +46,7 @@ public class RankedChoiceCounterTests
     }
 
     [HumansFact]
-    public void Ranked_pairs_uses_authored_pair_order_for_equal_strength_victories()
+    public void RankedPairs_EqualStrength_UsesAuthoredOrder()
     {
         var matrix = new RankedPairwiseMatrix(
         [
@@ -65,7 +65,7 @@ public class RankedChoiceCounterTests
     }
 
     [HumansFact]
-    public void Condorcet_returns_the_candidate_who_beats_every_other_candidate()
+    public void Condorcet_OneBeatsAll_ReturnsThatCandidate()
     {
         var matrix = RankedChoiceCounter.BuildPairwise(
             Candidates,
@@ -82,7 +82,7 @@ public class RankedChoiceCounterTests
     }
 
     [HumansFact]
-    public void Condorcet_reports_the_smallest_visible_cycle()
+    public void Condorcet_Cycle_ReportsSmallestCycle()
     {
         var matrix = new RankedPairwiseMatrix(
         [
@@ -99,7 +99,7 @@ public class RankedChoiceCounterTests
     }
 
     [HumansFact]
-    public void Borda_averages_every_tied_tier_and_keeps_reject_below_unranked()
+    public void Borda_TiedTiers_AreAveraged()
     {
         var result = RankedChoiceCounter.CountBorda(
             ["A", "B", "C", "D", "E"],
@@ -113,7 +113,7 @@ public class RankedChoiceCounterTests
     }
 
     [HumansFact]
-    public void Availability_removes_candidates_without_mutating_ballots()
+    public void Count_UnavailableCandidates_LeaveBallotsUnchanged()
     {
         var ballots = new[]
         {
@@ -133,7 +133,7 @@ public class RankedChoiceCounterTests
     }
 
     [HumansFact]
-    public void Empty_and_single_candidate_counts_are_defined()
+    public void Count_EmptyOrSingleCandidate_IsDefined()
     {
         RankedChoiceCounter.CountRankedPairs(
                 [],

@@ -42,7 +42,7 @@ public sealed class SurveyResponsesMarkdownBuilderTests
     [Xunit.InlineData(@"one\|pipe")]
     [Xunit.InlineData(@"two\\|pipe")]
     [Xunit.InlineData(@"trailing\")]
-    public void Preserves_literal_backslashes_in_prompts_names_and_answers(string value)
+    public void Build_LiteralBackslashes_AreKept(string value)
     {
         var textId = Guid.NewGuid();
         var markdown = SurveyResponsesMarkdownBuilder.Build(
@@ -61,7 +61,7 @@ public sealed class SurveyResponsesMarkdownBuilderTests
     }
 
     [HumansFact]
-    public void Flattens_multichoice_values_with_pipe_and_uses_values_not_labels()
+    public void Build_MultiChoice_JoinsValuesWithPipe()
     {
         var choiceId = Guid.NewGuid();
         var md = SurveyResponsesMarkdownBuilder.Build(
@@ -77,7 +77,7 @@ public sealed class SurveyResponsesMarkdownBuilderTests
     }
 
     [HumansFact]
-    public void Escapes_pipe_and_collapses_newline_in_freetext()
+    public void Build_TextWithPipeOrNewline_IsEscaped()
     {
         var textId = Guid.NewGuid();
         var md = SurveyResponsesMarkdownBuilder.Build(
@@ -94,7 +94,7 @@ public sealed class SurveyResponsesMarkdownBuilderTests
     }
 
     [HumansFact]
-    public void Serializes_grid_selections_as_stable_json()
+    public void Build_GridSelections_AreStableJson()
     {
         var gridId = Guid.NewGuid();
         var md = SurveyResponsesMarkdownBuilder.Build(
@@ -119,7 +119,7 @@ public sealed class SurveyResponsesMarkdownBuilderTests
     }
 
     [HumansFact]
-    public void Serializes_ranked_ballot_as_stable_value_json()
+    public void Build_RankedBallot_IsStableJson()
     {
         var questionId = Guid.NewGuid();
         var md = SurveyResponsesMarkdownBuilder.Build(
@@ -147,7 +147,7 @@ public sealed class SurveyResponsesMarkdownBuilderTests
     }
 
     [HumansFact]
-    public void Leaves_user_name_blank_for_non_identified_row()
+    public void Build_NonIdentifiedRow_LeavesNameBlank()
     {
         var textId = Guid.NewGuid();
         var md = SurveyResponsesMarkdownBuilder.Build(
@@ -167,7 +167,7 @@ public sealed class SurveyResponsesMarkdownBuilderTests
     }
 
     [HumansFact]
-    public void Populates_user_name_for_identified_row()
+    public void Build_IdentifiedRow_FillsUserName()
     {
         var textId = Guid.NewGuid();
         var md = SurveyResponsesMarkdownBuilder.Build(

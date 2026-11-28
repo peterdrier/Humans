@@ -13,7 +13,7 @@ namespace Humans.Users.Tests.Services;
 public class PreferredLanguageCalculatorTests
 {
     [HumansFact]
-    public void Build_tallies_active_users_and_excludes_suspended()
+    public void Build_SuspendedUsers_AreExcluded()
     {
         var u1 = Guid.NewGuid();
         var u2 = Guid.NewGuid();
@@ -36,7 +36,7 @@ public class PreferredLanguageCalculatorTests
     }
 
     [HumansFact]
-    public async Task Card_orders_by_count_descending()
+    public async Task Card_Languages_OrderByCountDescending()
     {
         var enUsers = new[] { Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid() };
         var esUser = Guid.NewGuid();

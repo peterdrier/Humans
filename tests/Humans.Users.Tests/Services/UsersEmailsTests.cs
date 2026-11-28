@@ -24,7 +24,7 @@ public sealed class UsersEmailsTests
     private static UsersEmails Create() => TestUsersEmails.Create();
 
     [HumansFact]
-    public void EmailVerification_IsAlwaysSend_NullCategory_AndTimeSensitive()
+    public void EmailVerification_Template_IsAlwaysSend()
     {
         var msg = Create().EmailVerification(Guid.NewGuid(), "a@x.com", "Alice", "https://verify", isConflict: false, "en");
 
@@ -48,7 +48,7 @@ public sealed class UsersEmailsTests
 
     [HumansTheory]
     [MemberData(nameof(SupportedCultures.All), MemberType = typeof(SupportedCultures))]
-    public void AccountDeletionRequested_UsesRecipientCultureAndTheCancellationPage(string culture)
+    public void AccountDeletionRequested_Rendered_LinksCancellationPage(string culture)
     {
         using var callerCulture = new CultureScope("en");
         string expectedDate;
@@ -81,7 +81,7 @@ public sealed class UsersEmailsTests
     }
 
     [HumansFact]
-    public void AccessSuspended_IsAlwaysSend_AndEncodesTheReason()
+    public void AccessSuspended_Reason_IsEncoded()
     {
         var msg = Create().AccessSuspended(Guid.NewGuid(), "a@x.com", "Alice", "Missing <consent>", "en");
 
@@ -91,14 +91,14 @@ public sealed class UsersEmailsTests
     }
 
     [HumansFact]
-    public void RendersInTheRecipientsCulture()
+    public void Templates_Rendered_UseRecipientsCulture()
     {
         Create().AccountDeleted(Guid.NewGuid(), "a@x.com", "Alice", "es")
             .Subject.Should().Be("Users_Email_AccountDeleted_Subject#es");
     }
 
     [HumansFact]
-    public void EveryTemplateHasAPreviewSample()
+    public void Templates_EachHasPreviewSample()
     {
         var emails = Create();
         var templates = TemplateNames(emails);
@@ -114,7 +114,7 @@ public sealed class UsersEmailsTests
     }
 
     [HumansFact]
-    public void PreviewSampleIdsAreUnique()
+    public void PreviewSampleIds_AreUnique()
     {
         var samples = Previews(Create())
             .Samples(new EmailPreviewPersona("en", "Sally Smith", "sally@example.com"));
@@ -127,7 +127,7 @@ public sealed class UsersEmailsTests
 
     /// <summary>
     /// Every template the builder can produce, found by reflection rather than listed, so a
-    /// template added without a gallery sample fails <see cref="EveryTemplateHasAPreviewSample"/>.
+    /// template added without a gallery sample fails <see cref="Templates_EachHasPreviewSample"/>.
     /// </summary>
     private static IReadOnlyList<string> TemplateNames(UsersEmails emails) =>
     [

@@ -23,7 +23,7 @@ public class UserInfoTests
     [InlineData(UserState.AdminSuspended, true, false, false)]
     [InlineData(UserState.Rejected, true, true, false)]
     [InlineData(UserState.Active, false, false, true)]
-    public void ProfileReadPredicates_PreserveBrowsingAndSetupRules(
+    public void ProfileReadPredicates_States_FollowBrowsingRules(
         UserState state, bool hasProfile, bool browsable, bool needsSetup)
     {
         var user = MinimalUser();
@@ -37,7 +37,7 @@ public class UserInfoTests
     // User.BurnerName is the sole source: no Profile.BurnerName or legacy-DisplayName fallback.
 
     [HumansFact]
-    public void BurnerName_reads_only_the_User_column()
+    public void BurnerName_Set_ReadsUserColumn()
     {
         var userId = Guid.NewGuid();
         var user = MinimalUser(userId);
@@ -53,7 +53,7 @@ public class UserInfoTests
     [InlineData(null)]
     [InlineData("")]
     [InlineData("   ")]
-    public void BurnerName_does_not_fall_back_to_the_Profile_when_the_User_column_is_blank(string? userBurnerName)
+    public void BurnerName_UserColumnBlank_SkipsProfile(string? userBurnerName)
     {
         var userId = Guid.NewGuid();
         var user = MinimalUser(userId);
@@ -68,7 +68,7 @@ public class UserInfoTests
     [HumansTheory]
     [InlineData("Old name")]
     [InlineData(UserInfo.GdprAnonymizedBurnerName)]
-    public void BurnerName_does_not_fall_back_to_DisplayName(string legacyName)
+    public void BurnerName_Blank_SkipsDisplayName(string legacyName)
     {
         // Neither an ordinary name nor the old erasure sentinel supplies BurnerName.
         var userId = Guid.NewGuid();
@@ -83,7 +83,7 @@ public class UserInfoTests
     }
 
     [HumansFact]
-    public void BurnerName_resolves_the_sentinel_for_a_freshly_erased_user()
+    public void BurnerName_ErasedUser_ReturnsSentinel()
     {
         // Mirrors UserRepository.ApplyExpiredDeletionAnonymizationAsync, which writes the
         // sentinel into BurnerName directly.
@@ -99,7 +99,7 @@ public class UserInfoTests
     }
 
     [HumansFact]
-    public void IsActive_false_for_merged_tombstone()
+    public void IsActive_MergedTombstone_IsFalse()
     {
         var userId = Guid.NewGuid();
         var user = MinimalUser(userId);
@@ -112,7 +112,7 @@ public class UserInfoTests
     }
 
     [HumansFact]
-    public void IsActive_false_for_gdpr_anonymized_tombstone()
+    public void IsActive_GdprTombstone_IsFalse()
     {
         var userId = Guid.NewGuid();
         var user = MinimalUser(userId);
@@ -128,7 +128,7 @@ public class UserInfoTests
     }
 
     [HumansFact]
-    public void IsActive_false_for_legacy_local_email_tombstone()
+    public void IsActive_LegacyLocalEmailTombstone_IsFalse()
     {
         var userId = Guid.NewGuid();
         var user = MinimalUser(userId);
@@ -143,7 +143,7 @@ public class UserInfoTests
     // IsGdprAnonymized keys on the minted deleted-<id>@deleted.local email, never on user-editable names.
 
     [HumansFact]
-    public void IsGdprAnonymized_false_for_a_live_member_named_Deleted_User()
+    public void IsGdprAnonymized_MemberNamedDeletedUser_IsFalse()
     {
         // A burner name a member typed themselves must never read as erased.
         var userId = Guid.NewGuid();
@@ -162,7 +162,7 @@ public class UserInfoTests
     }
 
     [HumansFact]
-    public void IsGdprAnonymized_true_for_a_genuinely_erased_user()
+    public void IsGdprAnonymized_ErasedUser_IsTrue()
     {
         // The minted tombstone email ApplyExpiredDeletionAnonymizationAsync writes.
         var userId = Guid.NewGuid();
@@ -178,7 +178,7 @@ public class UserInfoTests
     }
 
     [HumansFact]
-    public void IsGdprAnonymized_false_for_the_retired_name_only_tombstone()
+    public void IsGdprAnonymized_NameOnlyTombstone_IsFalse()
     {
         // Names alone never identify erased accounts.
         var userId = Guid.NewGuid();
@@ -197,7 +197,7 @@ public class UserInfoTests
     }
 
     [HumansFact]
-    public void IsGdprAnonymized_false_for_a_live_member_who_types_the_whole_tombstone_shape()
+    public void IsGdprAnonymized_TypedTombstoneShape_IsFalse()
     {
         // DisplayName, FirstName and LastName are all copied
         // from what a member types, so the legacy arm must not fire on names alone. Their
@@ -218,7 +218,7 @@ public class UserInfoTests
     }
 
     [HumansFact]
-    public void IsTombstone_true_for_merged_state_without_merged_at()
+    public void IsTombstone_MergedWithoutMergedAt_IsTrue()
     {
         var user = MinimalUser();
         user.State = UserState.Merged;
@@ -229,7 +229,7 @@ public class UserInfoTests
     }
 
     [HumansFact]
-    public void IsTombstone_true_for_sentinel_column_behind_a_verified_row()
+    public void IsTombstone_SentinelBehindVerifiedRow_IsTrue()
     {
         // Email resolves to the verified row, so only the raw column shows the merge sentinel.
         var userId = Guid.NewGuid();
@@ -243,7 +243,7 @@ public class UserInfoTests
     }
 
     [HumansFact]
-    public void IsActive_true_for_ordinary_profiled_non_rejected_row()
+    public void IsActive_OrdinaryProfiledRow_IsTrue()
     {
         var userId = Guid.NewGuid();
         var user = MinimalUser(userId);
@@ -255,7 +255,7 @@ public class UserInfoTests
     }
 
     [HumansFact]
-    public void IsActive_false_for_rejected_row()
+    public void IsActive_RejectedRow_IsFalse()
     {
         var userId = Guid.NewGuid();
         var user = MinimalUser(userId);

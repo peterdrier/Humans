@@ -30,7 +30,7 @@ public sealed class UserEmailAuthorizationHandlerTests
     [InlineData(true, false, false)]
     [InlineData(false, false, true)]
     [InlineData(false, false, false)]
-    public async Task SelfAccess_UsesResolvedActorAndExactTarget(
+    public async Task SelfAccess_ResolvedActor_NeedsExactTarget(
         bool accountExists, bool targetIsSurvivor, bool edit)
     {
         var cookieId = Guid.NewGuid();
@@ -78,7 +78,7 @@ public sealed class UserEmailAuthorizationHandlerTests
 
     [HumansTheory]
     [MemberData(nameof(UserEmailAuthorizationCases))]
-    public async Task User_email_edit_authorization_matches_expected_scenarios(
+    public async Task EmailEdit_Scenarios_MatchExpectedAccess(
         string? actorRole,
         bool expected)
     {
@@ -97,7 +97,7 @@ public sealed class UserEmailAuthorizationHandlerTests
     [InlineData(RoleNames.Board, true)]
     [InlineData(UsersRoles.UsersAdmin, true)]
     [InlineData("SomeOtherRole", false)]
-    public async Task Board_views_another_members_emails_but_never_edits_them(string actorRole, bool expected)
+    public async Task BoardMember_OtherMembersEmails_ViewsOnly(string actorRole, bool expected)
     {
         var user = CreateUser(Guid.NewGuid(), actorRole);
 

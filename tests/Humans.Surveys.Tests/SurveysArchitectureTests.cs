@@ -26,7 +26,7 @@ public class SurveysArchitectureTests
     }
 
     [HumansFact]
-    public void AuditDiscriminatorsAreLiteralsNotDerivedFromTypeNames()
+    public void AuditDiscriminators_Declared_AreLiterals()
     {
         // These are literal string values we store in the DB. Pinned so a rename can't
         // quietly change them and orphan existing audit_log rows
@@ -36,7 +36,7 @@ public class SurveysArchitectureTests
     }
 
     [HumansFact]
-    public void SectionTypesLocalizeThroughTheSectionsOwnResourceSet()
+    public void SectionTypes_Localize_UseOwnResourceSet()
     {
         // This section keeps its own translation file. A type that asks for the shared
         // one gets nothing back and shows people the key name instead of the text.

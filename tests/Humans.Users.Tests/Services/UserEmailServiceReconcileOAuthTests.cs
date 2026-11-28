@@ -76,7 +76,7 @@ public class UserEmailServiceReconcileOAuthTests
     }
 
     [HumansFact]
-    public async Task NoChange_TaggedRowAtClaimEmail_NoMutation_NoAudit()
+    public async Task Reconcile_TaggedRowAtClaimEmail_ChangesNothing()
     {
         var userId = Guid.NewGuid();
         var rowId = Guid.NewGuid();
@@ -107,7 +107,7 @@ public class UserEmailServiceReconcileOAuthTests
     }
 
     [HumansFact]
-    public async Task EmailRewritten_TaggedRowAtDifferentEmail_NoSiblingHoldsClaim_RewritesInPlace()
+    public async Task Reconcile_TaggedRowOtherEmail_RewritesInPlace()
     {
         var userId = Guid.NewGuid();
         var rowId = Guid.NewGuid();
@@ -149,7 +149,7 @@ public class UserEmailServiceReconcileOAuthTests
     }
 
     [HumansFact]
-    public async Task TagMoved_TaggedRowExistsAndSiblingHoldsClaim_UnionsFlagsForceVerifyDeletesOld()
+    public async Task Reconcile_TaggedRowWithSibling_MergesIntoSibling()
     {
         // Signing user has two rows:
         //   tagged row at old@example.com (Provider/ProviderKey set, IsPrimary=true, verified)
@@ -210,7 +210,7 @@ public class UserEmailServiceReconcileOAuthTests
     }
 
     [HumansFact]
-    public async Task TagMoved_NoExistingTaggedRowButSiblingHoldsClaim_AttachesTagToSibling()
+    public async Task Reconcile_SiblingHoldsClaim_TagsSibling()
     {
         // Signing user has one row at the claim email but no tagged row yet
         // (legacy backfill case). Reconcile attaches the tag onto the existing
@@ -248,7 +248,7 @@ public class UserEmailServiceReconcileOAuthTests
     }
 
     [HumansFact]
-    public async Task NewRowCreated_NoTaggedRow_NoSibling_NoCrossUser_InsertsVerifiedTaggedRow()
+    public async Task Reconcile_NoTaggedRow_InsertsVerifiedTaggedRow()
     {
         var userId = Guid.NewGuid();
         _repository.GetUserEmailsByUserIdAsync(userId, Arg.Any<CancellationToken>())
@@ -284,7 +284,7 @@ public class UserEmailServiceReconcileOAuthTests
     [HumansTheory]
     [Xunit.InlineData(true)]
     [Xunit.InlineData(false)]
-    public async Task CrossUserBlocked_OtherUserHoldsClaim_NoMutation_AuditedAttempt(bool claimEmailVerified)
+    public async Task Reconcile_OtherUserHoldsClaim_AuditsBlockedAttempt(bool claimEmailVerified)
     {
         var signingUserId = Guid.NewGuid();
         var otherUserId = Guid.NewGuid();

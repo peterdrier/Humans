@@ -109,7 +109,7 @@ public sealed class ExternalLoginServiceTests : ServiceTestHarness
     [HumansTheory]
     [Xunit.InlineData(false)]
     [Xunit.InlineData(true)]
-    public async Task CompleteExternalLogin_AuthenticatedUserLinkingOtherUsersLogin_ReturnsLinkFailed(
+    public async Task CompleteExternalLogin_OtherUsersLogin_ReturnsLinkFailed(
         bool providerSignInSucceeded)
     {
         var userA = await CreateUserAsync();
@@ -140,7 +140,7 @@ public sealed class ExternalLoginServiceTests : ServiceTestHarness
     }
 
     [HumansFact]
-    public async Task CompleteExternalLogin_AuthenticatedUserLinkingOwnExistingLogin_SucceedsIdempotently()
+    public async Task CompleteExternalLogin_OwnExistingLogin_Succeeds()
     {
         var userA = await CreateUserAsync();
         const string providerKey = "sub-a";
@@ -199,7 +199,7 @@ public sealed class ExternalLoginServiceTests : ServiceTestHarness
     }
 
     [HumansFact]
-    public async Task CompleteExternalLogin_LinkingALoginWhoseAddressAnotherAccountConfirmed_ChangesNothing()
+    public async Task CompleteExternalLogin_AddressConfirmedElsewhere_ChangesNothing()
     {
         // Two accounts of one person: they merge through the mailed link, never by a login moving the address.
         var userA = await CreateUserAsync();
@@ -225,7 +225,7 @@ public sealed class ExternalLoginServiceTests : ServiceTestHarness
     }
 
     [HumansFact]
-    public async Task CompleteExternalLogin_AuthenticatedUserNotFound_ReturnsLinkFailedWithoutFallthrough()
+    public async Task CompleteExternalLogin_SignedInUserMissing_ReturnsLinkFailed()
     {
         var userB = await CreateUserAsync();
         const string providerKey = "sub-b";
@@ -281,7 +281,7 @@ public sealed class ExternalLoginServiceTests : ServiceTestHarness
     }
 
     [HumansFact]
-    public async Task CompleteExternalLogin_UnauthenticatedLockedOutRelink_MovesLoginToActiveTarget()
+    public async Task CompleteExternalLogin_LockedOutRelink_MovesLogin()
     {
         var activeTarget = await CreateUserAsync(UserState.Active);
         var lockedSource = await CreateUserAsync(UserState.Merged, mergedToUserId: activeTarget.Id);
@@ -311,7 +311,7 @@ public sealed class ExternalLoginServiceTests : ServiceTestHarness
     }
 
     [HumansFact]
-    public async Task CompleteExternalLogin_UnauthenticatedVerifiedEmailMatch_LinksLoginAndSignsIn()
+    public async Task CompleteExternalLogin_VerifiedEmailMatch_LinksLogin()
     {
         var existingUser = await CreateUserAsync(UserState.Active);
         const string providerKey = "sub-match";
@@ -337,7 +337,7 @@ public sealed class ExternalLoginServiceTests : ServiceTestHarness
     }
 
     [HumansFact]
-    public async Task CompleteExternalLogin_UnauthenticatedNewUser_CreatesUserAndPersistsLogin()
+    public async Task CompleteExternalLogin_NewUser_CreatesUser()
     {
         const string providerKey = "sub-new";
 

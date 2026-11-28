@@ -77,7 +77,7 @@ public sealed class UserServiceGetByEmailOrAlternateTests : ServiceTestHarness
     }
 
     [HumansFact]
-    public async Task GetByEmailOrAlternateAsync_OnlyUnverifiedRowMatches_ReturnsNull()
+    public async Task GetByEmailOrAlternateAsync_OnlyUnverifiedMatch_ReturnsNull()
     {
         var userId = Guid.NewGuid();
         // Stub the reads GetUserInfoAsync would need, so the ONLY thing standing between

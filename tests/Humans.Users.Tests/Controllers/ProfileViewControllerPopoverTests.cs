@@ -92,7 +92,7 @@ public class ProfileViewControllerPopoverTests
     [InlineData(true, false)]
     [InlineData(false, false)]
     [InlineData(false, true)]
-    public async Task ViewProfile_SharedCoordinatorReadPreservesSelfAndRoleAccess(bool ownProfile, bool privileged)
+    public async Task ViewProfile_SharedCoordinatorRead_KeepsSelfRoleAccess(bool ownProfile, bool privileged)
     {
         var targetId = ownProfile ? _viewerId : Guid.NewGuid();
         var ct = TestContext.Current.CancellationToken;
@@ -162,7 +162,7 @@ public class ProfileViewControllerPopoverTests
     }
 
     [HumansFact]
-    public async Task Popover_UserWithProfile_RendersFullCardWithHasProfileTrue()
+    public async Task Popover_UserWithProfile_RendersFullCard()
     {
         var id = Guid.NewGuid();
         var user = new User
@@ -197,7 +197,7 @@ public class ProfileViewControllerPopoverTests
     }
 
     [HumansFact]
-    public async Task Popover_UserInCampWithRoles_PopulatesCampNameAndRoles()
+    public async Task Popover_CampMemberWithRoles_ShowsCampRoles()
     {
         var id = Guid.NewGuid();
         var user = new User

@@ -47,7 +47,7 @@ public class AdminHumanListAssemblerTests
     [InlineData(UserState.DeletePending)]
     [InlineData(UserState.Merged)]
     [InlineData(UserState.Deleted)]
-    public void Row_state_comes_from_user_state(UserState state)
+    public void Assemble_Row_TakesStateFromUser(UserState state)
         => StateOf(Build(state)).Should().Be(state);
 
     [HumansTheory]
@@ -61,7 +61,7 @@ public class AdminHumanListAssemblerTests
     [InlineData("deletepending", UserState.DeletePending)]
     [InlineData("merged", UserState.Merged)]
     [InlineData("deleted", UserState.Deleted)]
-    public void Status_filter_matches_user_state(string filter, UserState state)
+    public void Assemble_StatusFilter_MatchesUserState(string filter, UserState state)
     {
         var keep = Build(state);
         var drop = Build(UserState.Active == state ? UserState.Bare : UserState.Active);
@@ -74,7 +74,7 @@ public class AdminHumanListAssemblerTests
     }
 
     [HumansFact]
-    public void Null_filter_returns_all_candidates()
+    public void Assemble_NullFilter_ReturnsAllCandidates()
     {
         var users = new[] { Build(), Build(UserState.Bare), Build(UserState.Rejected) };
 
@@ -84,7 +84,7 @@ public class AdminHumanListAssemblerTests
     }
 
     [HumansFact]
-    public void SearchUserIds_prefilters_before_status()
+    public void Assemble_SearchUserIds_FilterBeforeStatus()
     {
         var keep = Build();
         var drop = Build();
