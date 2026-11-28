@@ -9,7 +9,7 @@ the named ticket; the ticketing platform only takes the payment and refunds it.
 amounts and VAT, buyer prefilled, expiry, return URL; returns the platform order id and payment URL), `GetStatusAsync`
 (state, fee, method, paid at, refunded total), `RefundAsync` (exact amount, `RefundId` idempotent; may answer
 `ManualRequired` with a dashboard link), `CancelAsync`, `ErasePersonalDataAsync` (GDPR: one person's name and email off
-one order), `Setup` (display name, hosting, its server settings with secrets only as set or missing, webhook path,
+one order), `EraseEventPersonalDataAsync` (GDPR: what the platform keeps per event, once its post-event hold has passed), `Setup` (display name, hosting, its server settings with secrets only as set or missing, webhook path,
 setup notes), `CheckAsync` (read-only connection test, optionally for one platform event; never throws, answers
 findings) and `ListOrdersAsync` (every order the platform holds created in a period, for reconciliation; read-only,
 throws rather than answer a partial list) and `GetPaymentLedgerAsync` (the payment account's balance movements and
@@ -47,7 +47,7 @@ Rules every platform follows:
   answer waits for the reconcile job's resend. So a refund made in the platform's dashboard never settles one of Tickets'
   own. Only `ManualRequired` refunds settle from the part of `RefundedMinor` that Tickets' succeeded refunds do not explain. Failed refunds stop counting against what can still be refunded. The reconcile job re-reads paid orders with
   unsettled refunds and resends any refund whose platform call threw.
-- **Erasure.** A deletion waits while the member holds a valid or offered ticket, until 30 days after that event's strike
+- **Erasure.** A deletion waits while the member holds a valid or offered ticket, until the post-event hold (30 days by default, set on `/Settings#tickets`) after that event's strike
   (Users re-checks when the deletion falls due), so erasure normally runs after the event. It then calls `ErasePersonalDataAsync` for each of their orders before Tickets tombstones its
   own copy; a platform failure throws, so the deletion retries with the emails still known. Box Office is a no-op: Stripe
   keeps payment records as processor. An order on a platform no longer registered is logged and audited and skipped, so

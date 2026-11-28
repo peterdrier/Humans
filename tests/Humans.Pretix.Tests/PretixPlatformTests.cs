@@ -200,6 +200,7 @@ public class PretixPlatformTests
             () => platform.RefundAsync(new RefundRequest(Guid.NewGuid(), $"nowhere2027/{Code}", 22500, "Resold"), ct),
             () => platform.CancelAsync($"nowhere2027/{Code}", ct),
             () => platform.ErasePersonalDataAsync($"nowhere2027/{Code}", "bea@example.org", ct),
+            () => platform.EraseEventPersonalDataAsync("nowhere2027", ct),
             () => platform.ListOrdersAsync("nowhere2027", Instant.MinValue, Instant.MaxValue, ct),
         ];
         foreach (var operation in operations)
@@ -444,6 +445,51 @@ public class PretixPlatformTests
         await Create(pretix).ErasePersonalDataAsync($"nowhere2027/{Code}", "bea@example.org", TestContext.Current.CancellationToken);
 
         pretix.Requests.Should().ContainSingle();
+    }
+
+    private const string ShredIds = "29891ede/3f279f13/";
+
+    private static FakePretix ShreddableEvent(bool live, HttpStatusCode finalStatus = HttpStatusCode.OK) => new FakePretix()
+        .On("GET", Api, HttpStatusCode.OK, new { currency = "EUR", live, testmode = false })
+        .On("PATCH", Api, HttpStatusCode.OK, new { })
+        .On("GET", $"{Api}shredders/", HttpStatusCode.OK,
+            new { results = new[] { new { identifier = "order_emails" }, new { identifier = "payment_info" } } })
+        .On("POST", $"{Api}shredders/export/", HttpStatusCode.Accepted, new
+        {
+            download = $"https://pretix.test{Api}shredders/download/{ShredIds}",
+            shred = $"https://pretix.test{Api}shredders/shred/{ShredIds}",
+        })
+        .On("POST", $"{Api}shredders/shred/{ShredIds}", HttpStatusCode.Conflict, new { status = "running" })
+        .On("POST", $"{Api}shredders/shred/{ShredIds}", HttpStatusCode.Accepted,
+            new { status = $"https://pretix.test{Api}shredders/status/{ShredIds}" })
+        .On("GET", $"{Api}shredders/status/{ShredIds}", HttpStatusCode.Conflict, new { status = "running" })
+        .On("GET", $"{Api}shredders/status/{ShredIds}", finalStatus, new { status = "failed", message = "boom" });
+
+    [HumansFact]
+    public async Task EraseEvent_LiveEvent_GoesOfflineThenShredsEverything()
+    {
+        var pretix = ShreddableEvent(live: true);
+        var platform = Create(pretix);
+        platform.ShredPollDelay = TimeSpan.Zero;
+
+        await platform.EraseEventPersonalDataAsync("nowhere2027", TestContext.Current.CancellationToken);
+
+        JsonNode.Parse(pretix.BodiesFor("PATCH", Api).Single()!)!["live"]!.GetValue<bool>().Should().BeFalse();
+        JsonNode.Parse(pretix.BodiesFor("POST", $"{Api}shredders/export/").Single()!)!["shredders"]!.AsArray()
+            .Select(n => n!.GetValue<string>()).Should().Equal("order_emails", "payment_info");
+        pretix.BodiesFor("GET", $"{Api}shredders/status/{ShredIds}").Should().HaveCount(2);
+    }
+
+    [HumansFact]
+    public async Task EraseEvent_ShredFails_Throws()
+    {
+        var pretix = ShreddableEvent(live: false, HttpStatusCode.ExpectationFailed);
+        var platform = Create(pretix);
+        platform.ShredPollDelay = TimeSpan.Zero;
+
+        await platform.Invoking(p => p.EraseEventPersonalDataAsync("nowhere2027", TestContext.Current.CancellationToken))
+            .Should().ThrowAsync<HttpRequestException>().WithMessage("*417*boom*");
+        pretix.BodiesFor("PATCH", Api).Should().BeEmpty();
     }
 
     private static object PaidOrder(params object[] refunds) => Order(

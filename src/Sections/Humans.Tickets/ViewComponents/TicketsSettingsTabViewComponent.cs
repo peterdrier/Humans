@@ -7,5 +7,9 @@ namespace Humans.Tickets.ViewComponents;
 internal sealed class TicketsSettingsTabViewComponent(ITicketSyncService sync) : ViewComponent
 {
     public async Task<IViewComponentResult> InvokeAsync() =>
-        View(await sync.IsScheduledSyncEnabledAsync(HttpContext.RequestAborted));
+        View(new TicketsSettingsTabModel(
+            await sync.IsScheduledSyncEnabledAsync(HttpContext.RequestAborted),
+            await sync.GetPostEventHoldDaysAsync(HttpContext.RequestAborted)));
 }
+
+internal sealed record TicketsSettingsTabModel(bool IsScheduledSyncEnabled, int PostEventHoldDays);
