@@ -1,6 +1,6 @@
 using System.Globalization;
 using System.Text.RegularExpressions;
-using Humans.AuditLog.Contracts;
+using Humans.Audit.Contracts;
 using Humans.Base.Extensions;
 using Humans.Base.Interfaces;
 using Humans.Finance.Contracts;
@@ -67,7 +67,7 @@ internal sealed partial class PleoBooking(
     /// <summary><see cref="IHoldedWrite.PayPurchaseDocumentAsync"/>'s ref for a payment Holded took without an id.</summary>
     private const string UnconfirmedRef = "unconfirmed:";
 
-    private const string AuditEntityType = "PleoEntry";
+    private const string AuditSubjectType = "PleoEntry";
     private const string JobName = "pleo-booking";
 
     private DateTimeZone OrgZone => orgTimeZone.Zone;
@@ -755,6 +755,6 @@ internal sealed partial class PleoBooking(
 
     private Task AuditAsync(AuditActionDefinition action, string text, Guid? actor) =>
         actor is { } a
-            ? audit.LogAsync(action, AuditEntityType, Guid.Empty, text, a)
-            : audit.LogAsync(action, AuditEntityType, Guid.Empty, text, JobName);
+            ? audit.LogAsync(action, AuditSubjectType, Guid.Empty, text, a)
+            : audit.LogAsync(action, AuditSubjectType, Guid.Empty, text, JobName);
 }

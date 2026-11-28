@@ -215,7 +215,7 @@ them.
 
 Settled decisions that look wrong until you know why. Do not re-litigate these.
 
-- **`AuditEntityTypes` are literals, never `nameof`.** They are persisted strings matched by
+- **`SurveysAuditSubjectTypes` are literals, never `nameof`.** They are persisted strings matched by
   equality against rows already in the database; deriving them from a type name makes a rename
   silently empty the audit panel with no build error.
 - **A CompletionTracked public start stamps a shared epoch `CreatedAt`,** not the real time. The

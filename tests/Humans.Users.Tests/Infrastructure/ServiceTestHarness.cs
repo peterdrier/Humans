@@ -1,4 +1,4 @@
-using Humans.AuditLog.Contracts;
+using Humans.Audit.Contracts;
 using Humans.Auth.Contracts;
 using Humans.Notifications.Contracts;
 using Humans.Base.Enums;

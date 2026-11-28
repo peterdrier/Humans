@@ -1,5 +1,5 @@
 using System.Security.Claims;
-using Humans.AuditLog.Contracts;
+using Humans.Audit.Contracts;
 using Humans.Backdoor.Data;
 using Humans.Backdoor.OAuth;
 using Humans.Base.Extensions;
@@ -57,12 +57,12 @@ internal sealed class BackdoorConnectionService(
 
         await audit.LogAsync(
             BackdoorAuditActions.BackdoorConnectionApproved,
-            AuditEntityTypes.BackdoorConnection,
+            BackdoorAuditSubjectTypes.BackdoorConnection,
             connectionId,
             $"Sign in with Humans: {client.ClientName} connected",
             userId,
-            relatedEntityId: userId,
-            relatedEntityType: AuditSubjectTypes.User);
+            targetId: userId,
+            targetType: AuditSubjectTypes.User);
 
         await notifications.SendAsync(
             BackdoorNotificationSources.ConnectionApproved,
@@ -103,12 +103,12 @@ internal sealed class BackdoorConnectionService(
         await RevokeWithTokensAsync([connectionId], ct);
         await audit.LogAsync(
             BackdoorAuditActions.BackdoorConnectionRevoked,
-            AuditEntityTypes.BackdoorConnection,
+            BackdoorAuditSubjectTypes.BackdoorConnection,
             connectionId,
             $"Sign in with Humans: {BackdoorOAuthClients.Find(connection.ClientId)?.ClientName ?? connection.ClientId} connection revoked",
             actorUserId,
-            relatedEntityId: connection.UserId,
-            relatedEntityType: AuditSubjectTypes.User);
+            targetId: connection.UserId,
+            targetType: AuditSubjectTypes.User);
         return true;
     }
 
@@ -170,12 +170,12 @@ internal sealed class BackdoorConnectionService(
         {
             await audit.LogAsync(
                 BackdoorAuditActions.BackdoorConnectionRevoked,
-                AuditEntityTypes.BackdoorConnection,
+                BackdoorAuditSubjectTypes.BackdoorConnection,
                 id,
                 "Sign in with Humans connection revoked: account merged",
                 actorUserId,
-                relatedEntityId: mergedFromUserId,
-                relatedEntityType: AuditSubjectTypes.User);
+                targetId: mergedFromUserId,
+                targetType: AuditSubjectTypes.User);
         }
     }
 }

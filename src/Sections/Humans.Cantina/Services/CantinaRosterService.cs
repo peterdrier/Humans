@@ -1,5 +1,5 @@
 using Humans.Cantina.Domain;
-using Humans.AuditLog.Contracts;
+using Humans.Audit.Contracts;
 using Humans.Base.Extensions;
 using Humans.Settings.Contracts;
 using Humans.Shifts.Contracts;

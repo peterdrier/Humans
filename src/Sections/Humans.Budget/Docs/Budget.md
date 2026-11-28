@@ -3,7 +3,7 @@
   src/Sections/Humans.Budget/Contracts/**
 -->
 <!-- freshness:flag-on-change
-  Budget lifecycle, restricted/ticketing-group rules, append-only audit log, and resource-based authorization — review when Budget services/entities/controllers/auth handlers change.
+  Budget lifecycle, restricted/ticketing-group rules, append-only budget changes, and resource-based authorization — review when Budget services/entities/controllers/auth handlers change.
 -->
 
 # Budget — Section Invariants
@@ -16,7 +16,7 @@ Fiscal-year budgets (Draft/Active/Closed), groups, categories, line items, appen
 - A **Budget Group** is a second-level grouping within a year (e.g., "Departments", "Site Infrastructure"). Groups can be flagged as **restricted**, hiding them from people with Edit budget.
 - A **Budget Category** is a third-level container within a group that holds the allocated budget amount. Categories can be linked to a department.
 - A **Budget Line Item** is a detail row within a category — a free-text description with an amount, expenditure type (CapEx or OpEx), and an optional responsible team.
-- The **Audit Log** is an append-only record of every field-level change to budget entities.
+- **Budget changes** are an append-only record of every field-level change to budget entities. They are not part of the audit log.
 
 ## Data Model
 
@@ -116,9 +116,9 @@ Detail row within a category.
 
 **Aggregate-local navs:** `BudgetLineItem.BudgetCategory`.
 
-### BudgetAuditLog
+### BudgetChange
 
-Append-only per design-rules.md, *Append-only entities*. `IBudgetRepository` exposes no add/update/delete surface for audit rows — each mutation method writes its own audit rows inside the same `SaveChanges` (the ticketing sync paths write one summary row per run that changed anything) — plus the reads: `GetAuditLogAsync`, `GetAuditEntriesForUsersAsync`.
+Append-only per design-rules.md, *Append-only entities*. `IBudgetRepository` exposes no add/update/delete surface for audit rows — each mutation method writes its own audit rows inside the same `SaveChanges` (the ticketing sync paths write one summary row per run that changed anything) — plus the reads: `GetChangesAsync`, `GetChangesForUsersAsync`.
 
 **Table:** `budget_audit_logs`
 
@@ -137,7 +137,7 @@ Append-only per design-rules.md, *Append-only entities*. `IBudgetRepository` exp
 
 **Cross-section FKs:** `ActorUserId` → Users/Identity — **FK only**, no navigation property; callers resolve display names via `IUserService`.
 
-**Aggregate-local navs:** `BudgetAuditLog.BudgetYear`.
+**Aggregate-local navs:** `BudgetChange.BudgetYear`.
 
 ### TicketingProjection
 
@@ -246,7 +246,7 @@ Stored as string via `HasConversion<string>()`.
 - Projection materialization runs only inside parameter updates and actuals sync; there is no standalone refresh mutation. It upserts generated rows by category and canonical description, preserving their ids and timestamps when unchanged. Only obsolete generated projections are removed; actuals and manual lines remain. An actuals sync with no changes writes no audit entry.
 - The ticketing projection includes the event date in its final week, including when that date is a Monday and forms a one-day final week. Once the event date has passed, it emits no projected weeks. Preview and persisted projections bound each week before date addition and stop on the event date, including `9999-12-31`; neither path calculates an out-of-range Sunday or an exclusive end beyond the supported date range.
 - Line-item mutations return only expected refusal details. Their authorization lookup reads only the nullable parent category id; category detail remains the read path for editable line values.
-- Every create, update, or delete on a group, category, or line item generates a `BudgetAuditLog` entry recording old value, new value, actor, and timestamp; the ticketing sync paths write one summary entry per run that changed anything, with a null actor for the nightly job.
+- Every create, update, or delete on a group, category, or line item generates a `BudgetChange` entry recording old value, new value, actor, and timestamp; the ticketing sync paths write one summary entry per run that changed anything, with a null actor for the nightly job.
 - Audit values and descriptions preserve complete field changes without separate length caps;
   editing a valid line note (up to 2000 characters) cannot fail because its audit is longer.
 - "Sync Departments" creates a category for each department that does not already have one in the selected year.
@@ -274,13 +274,13 @@ Stored as string via `HasConversion<string>()`.
 
 ## Triggers
 
-- `BudgetService.ContributeForUserAsync` (GDPR contributor) chain-follows merge tombstones via the resolved record's `UserInfo.AllUserIds` so `BudgetAuditLog` entries written under a now-merged source `ActorUserId` surface for the fold target. `BudgetAuditLog` is append-only (`design-rules.md`, *Append-only entities*) and stays attributed to the source User row by design.
+- `BudgetService.ContributeForUserAsync` (GDPR contributor) chain-follows merge tombstones via the resolved record's `UserInfo.AllUserIds` so `BudgetChange` entries written under a now-merged source `ActorUserId` surface for the fold target. `BudgetChange` is append-only (`design-rules.md`, *Append-only entities*) and stays attributed to the source User row by design.
 
 ## Cross-Section Dependencies
 
 - **Teams:** `ITeamService.GetTeamsAsync` — team lookups for the department picker and `HasBudget`-filtered budgetable-team lists; - **Permissions:** `IPermissionService` — `HasAsync` and `GetOwnersAsync` for `Budget.Edit`, from Budget pages and category authorization; Budget declares it through `ISectionPermissions`.
 - **Tickets:** none inbound. The Tickets→Budget bridge (`TicketingBudgetService`) is Budget's own service — it reads paid orders via `ITicketService` and calls the section's internal `IBudgetManagement` (`SyncTicketingActualsAsync` / `UpdateTicketingProjectionAsync`). Budget has no code path that reads Tickets tables directly. The internal `ITicketingBudgetService` (`Humans.Budget.Services`) is the nightly `TicketingBudgetSyncJob`'s test seam and carries only `SyncActualsAsync`; `BudgetAdminController` deliberately injects the concrete `TicketingBudgetService` for its sync/projection actions.
-- **Users/Identity:** `IUserService.GetUserInfosAsync`, actor display names for audit log. `IUserService.GetUserInfoAsync`, the returned `UserInfo.AllUserIds` chain-follows merge tombstones on the `BudgetAuditLog` GDPR export so source-attributed entries surface for the fold target.
+- **Users/Identity:** `IUserService.GetUserInfosAsync`, actor display names for audit log. `IUserService.GetUserInfoAsync`, the returned `UserInfo.AllUserIds` chain-follows merge tombstones on the `BudgetChange` GDPR export so source-attributed entries surface for the fold target.
 - **Finance:** `IFinanceService.GetActualsForYearAsync` — the year page's per-category Holded figure (`BudgetAdminController`).
 - **Camps:** `ICampService` — the development demo seeder (`Services/DevelopmentBudgetSeeder.cs`) only.
 - **Gdpr:** implements `IUserDataContributor` (`BudgetService`) for the audit-log export.
@@ -308,7 +308,7 @@ The internal `BudgetReader` owns year/category/line-item views, Edit budget scop
 
 - Do **not** re-add cross-domain navs (`Team`, `ResponsibleTeam`, `ActorUser`) or `.Include()` calls that traverse into any non-Budget entity. If you need a team name or actor display name alongside budget data, load the Budget aggregate first, then call `ITeamService` / `IUserService` to stitch the labels in memory.
 - New cross-section reads must go through the owning service interface (`ITeamService`, `IUserService`) — never `_dbContext`. Treat any new `DbContext` touch of another section's table as a regression.
-- Keep new audit-log writes using `AddAsync`-only semantics — never `Update` or `Remove` a `BudgetAuditLog` row, even in cleanup code (*Append-only entities*).
+- Keep new audit-log writes using `AddAsync`-only semantics — never `Update` or `Remove` a `BudgetChange` row, even in cleanup code (*Append-only entities*).
 
 ## Issue queue
 

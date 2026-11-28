@@ -427,7 +427,7 @@ The overview's `CashAccounts` view-model property orders banks and Stripe accoun
 
 ## Cross-Section Dependencies
 
-Derived from `Humans.Finance.csproj`'s project references and the contracts namespaces the service uses (Budget, Holded, GDPR and AuditLog are referenced as section projects, whose public face is their `Contracts/` folder; Users and Email through their `.Contracts` leaves):
+Derived from `Humans.Finance.csproj`'s project references and the contracts namespaces the service uses (Budget, Holded, GDPR and Audit are referenced as section projects, whose public face is their `Contracts/` folder; Users and Email through their `.Contracts` leaves):
 
 - **Audit actions:** declared on `FinanceAuditActions` (`src/Sections/Humans.Finance.Contracts/FinanceAuditActions.cs`), one `AuditActionDefinition` each, written through `IAuditLogService`: `IbanReveal`, `HoldedExpenseAccountCreated`, `HoldedExpenseAccountLinked`, `HoldedExpenseAccountActiveChanged`, `SepaPayoutTransfer`, `SepaPayoutTransferBooked`, `SepaBankLineSkipped`, `SepaPayoutTransferWithdrawn`, `HoldedDuplicateRemoved`, `HoldedCreditorBound`, `HoldedCreditorUnbound`, `HoldedCreditorAccountNumChanged`, `HoldedCategoryAccountProvisioned`, `PleoEntryBooked` (one per Pleo entry booked, finished or possibly booked, naming the account, amount, receipts and outcome), `PleoReceiptAttached`, `PleoCorrectionPosted`, `FinanceStripeLedgerLinksUpdated`, `FinancePleoSettingsUpdated`. The class is public in `Humans.Finance.Contracts` because Expenses includes `IbanReveal` rows in the member's GDPR export.
 - **Budget** (`Humans.Budget.Contracts`): `IBudgetService.GetActiveYearAsync`, for the categories the provisioning plan is built from and the plan cash flow projects. Read-only.

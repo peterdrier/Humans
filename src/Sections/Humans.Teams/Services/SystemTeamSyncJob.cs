@@ -5,7 +5,7 @@ using Hangfire;
 using Microsoft.Extensions.DependencyInjection;
 using NodaTime;
 using Humans.Base.Interfaces;
-using Humans.AuditLog.Contracts;
+using Humans.Audit.Contracts;
 using Humans.Email.Contracts;
 using Humans.Teams.Contracts;
 using Humans.Camps.Contracts;
@@ -357,7 +357,7 @@ internal sealed class SystemTeamSyncJob(
                 TeamsAuditActions.TeamMemberAdded, "Team", team.Id,
                 $"{userName} added to {team.Name} by system sync",
                 nameof(SystemTeamSyncJob),
-                relatedEntityId: userId, relatedEntityType: AuditSubjectTypes.User);
+                targetId: userId, targetType: AuditSubjectTypes.User);
         }
 
         foreach (var userId in toRemove)
@@ -368,7 +368,7 @@ internal sealed class SystemTeamSyncJob(
                 TeamsAuditActions.TeamMemberRemoved, "Team", team.Id,
                 $"{userName} removed from {team.Name} by system sync",
                 nameof(SystemTeamSyncJob),
-                relatedEntityId: userId, relatedEntityType: AuditSubjectTypes.User);
+                targetId: userId, targetType: AuditSubjectTypes.User);
         }
 
         foreach (var userId in toAdd)

@@ -110,7 +110,7 @@ public sealed class OutboxEmailServiceTests : IDisposable
             .Returns(UserInfo.Create(new User { Id = userId, Email = "self@example.com" }, [], [], null));
         var selfSend = new ComposerSelfSendService(
             users, _service,
-            Substitute.For<Humans.AuditLog.Contracts.IAuditLogService>(), localizer,
+            Substitute.For<Humans.Audit.Contracts.IAuditLogService>(), localizer,
             NullLogger<ComposerSelfSendService>.Instance);
         var subject = string.Concat(Enumerable.Repeat(character, 1000));
         _bodyComposer.Compose(Arg.Any<string>(), Arg.Any<string?>(), Arg.Any<string?>())

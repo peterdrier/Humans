@@ -1221,7 +1221,7 @@ public class AgentServiceTests
         var clock = new FakeClock(Instant.FromUtc(2026, 4, 21, 12, 0));
         var store = new AgentSettingsStore();
         var repo = new AgentRepository(db, clock);
-        var settingsService = new AgentSettingsService(repo, store, clock, Substitute.For<Humans.AuditLog.Contracts.IAuditLogService>(),
+        var settingsService = new AgentSettingsService(repo, store, clock, Substitute.For<Humans.Audit.Contracts.IAuditLogService>(),
             Substitute.For<IAnthropicClient>(),
             NullLogger<AgentSettingsService>.Instance);
         await settingsService.LoadAsync(Xunit.TestContext.Current.CancellationToken);

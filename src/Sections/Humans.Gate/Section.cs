@@ -13,7 +13,7 @@ using Humans.Settings.Contracts;
 using Humans.Users.Contracts;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
-using Humans.AuditLog.Contracts;
+using Humans.Audit.Contracts;
 using Humans.Base.Models.Tables;
 
 [assembly: Humans.Base.Demo.NoDemoStory("No demo story written yet.")]

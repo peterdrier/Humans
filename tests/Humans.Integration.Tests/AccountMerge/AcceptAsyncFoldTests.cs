@@ -1,10 +1,11 @@
+using Humans.AuditLog.Data;
 using Humans.Users.Domain;
 using Humans.Users.Services;
 using Humans.Email.Contracts;
 using Humans.Governance.Contracts;
 using Humans.Auth.Data;
 using Humans.Auth.Domain;
-using Humans.AuditLog.Data;
+using Humans.Audit.Data;
 using Humans.Teams.Data;
 using Humans.Notifications.Data;
 using Humans.Budget.Data;
@@ -705,7 +706,7 @@ public class AcceptAsyncFoldTests(HumansTestDatabase database) : IntegrationTest
     }
 
     [HumansFact(Timeout = 30_000)]
-    public async Task MergeAsync_BudgetAuditLog_NotMutated_StaysAtSourceId()
+    public async Task MergeAsync_BudgetChange_NotMutated_StaysAtSourceId()
     {
         var description = $"budget-source-action-{Guid.NewGuid():N}";
 
@@ -715,7 +716,7 @@ public class AcceptAsyncFoldTests(HumansTestDatabase database) : IntegrationTest
         {
             var builder = new MergeFixtureBuilder(scope, sourceId, targetId);
             var budgetYearId = builder.SeedBudgetYearNow($"BY-{Guid.NewGuid():N}".Substring(0, 6));
-            builder.WithSourceBudgetAuditLog(budgetYearId, description);
+            builder.WithSourceBudgetChange(budgetYearId, description);
             await builder.SaveAllAsync();
         }
 
@@ -728,7 +729,7 @@ public class AcceptAsyncFoldTests(HumansTestDatabase database) : IntegrationTest
         var budgetDb = assertScope.ServiceProvider.GetRequiredService<BudgetDbContext>();
 
         // Append-only: the fold never mutates it; chain-follow stitches at read time.
-        var rows = await budgetDb.BudgetAuditLogs
+        var rows = await budgetDb.BudgetChanges
             .AsNoTracking()
             .Where(l => l.Description == description)
             .ToListAsync(TestContext.Current.CancellationToken);

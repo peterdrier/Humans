@@ -93,7 +93,7 @@ None.
   stop `IGoogleDriveActivityClient` moving out of it;
   `DriveActivityMonitorArchitectureTests.IGoogleDriveActivityClient_LivesOnGoogleLeaf`
   is what holds it there.
-- **Monitor references Google and AuditLog, and no section references Monitor.**
+- **Monitor references Google and Audit, and no section references Monitor.**
   The scan is its own section because it is a distinct read model with its own job, not part
   of the audit log it writes to.
 - **The scan reads Users through `IUserService.GetAllUserInfosAsync`**, the whole user

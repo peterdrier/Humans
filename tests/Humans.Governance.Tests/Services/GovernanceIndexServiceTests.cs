@@ -16,7 +16,7 @@ using Humans.Governance.Domain;
 using Humans.Governance.Services;
 using Humans.Governance.Services.Dtos;
 using Humans.Users.Contracts;
-using Humans.AuditLog.Contracts;
+using Humans.Audit.Contracts;
 using Humans.Google.Contracts;
 using Humans.Teams.Contracts;
 using Microsoft.EntityFrameworkCore;

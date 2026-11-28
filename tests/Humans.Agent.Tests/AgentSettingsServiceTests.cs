@@ -1,5 +1,5 @@
 using AwesomeAssertions;
-using Humans.AuditLog.Contracts;
+using Humans.Audit.Contracts;
 using Humans.Agent.Models;
 using System.ComponentModel.DataAnnotations;
 using NSubstitute;

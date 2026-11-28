@@ -23,7 +23,7 @@ public class BudgetPageRenderTests(HumansTestDatabase database) : IntegrationTes
         "/Budget/Admin",
         "/Budget/Admin/Years",
         "/Finance/CashFlow",
-        "/Budget/Admin/AuditLog",
+        "/Budget/Admin/Changes",
     ];
 
     /// <summary>

@@ -1,5 +1,5 @@
 using Humans.Base.Csv;
-using Humans.AuditLog.Contracts;
+using Humans.Audit.Contracts;
 using Humans.Users.Contracts;
 
 namespace Humans.Camps.Models;

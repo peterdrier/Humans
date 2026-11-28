@@ -75,7 +75,7 @@
 
                 @if (budgetYear.IsArchived)
                 {
-                    <span class="text-muted small">Archived — audit logs preserved</span>
+                    <span class="text-muted small">Archived — budget changes preserved</span>
                 }
                 else if (budgetYear.Status == BudgetYearStatus.Draft)
                 {
@@ -88,7 +88,7 @@
                     </form>
                     <form authorize-policy="@Humans.Finance.Contracts.FinancePolicies.Manage" asp-action="ArchiveYear" asp-route-id="@budgetYear.Id" method="post" class="d-inline">
                         @Html.AntiForgeryToken()
-                        <button type="submit" class="btn btn-outline-danger btn-sm" data-confirm="Archive this budget year? It will be hidden from non-admin views but audit logs will be preserved.">
+                        <button type="submit" class="btn btn-outline-danger btn-sm" data-confirm="Archive this budget year? It will be hidden from non-admin views but its budget changes will be preserved.">
                             <i class="fa-solid fa-box-archive me-1"></i>Archive
                         </button>
                     </form>
@@ -114,7 +114,7 @@
                     </form>
                     <form authorize-policy="@Humans.Finance.Contracts.FinancePolicies.Manage" asp-action="ArchiveYear" asp-route-id="@budgetYear.Id" method="post" class="d-inline">
                         @Html.AntiForgeryToken()
-                        <button type="submit" class="btn btn-outline-danger btn-sm" data-confirm="Archive this budget year? It will be hidden from non-admin views but audit logs will be preserved.">
+                        <button type="submit" class="btn btn-outline-danger btn-sm" data-confirm="Archive this budget year? It will be hidden from non-admin views but its budget changes will be preserved.">
                             <i class="fa-solid fa-box-archive me-1"></i>Archive
                         </button>
                     </form>

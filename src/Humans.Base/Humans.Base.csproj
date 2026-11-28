@@ -116,7 +116,7 @@
     <InternalsVisibleTo Include="Humans.Testing" />
     <!-- Existing section fixtures build UserInfo from entities; this is not a production contract. -->
     <InternalsVisibleTo Include="Humans.Agent.Tests" />
-    <InternalsVisibleTo Include="Humans.AuditLog.Tests" />
+    <InternalsVisibleTo Include="Humans.Audit.Tests" />
     <InternalsVisibleTo Include="Humans.Auth.Tests" />
     <InternalsVisibleTo Include="Humans.Backdoor.Tests" />
     <InternalsVisibleTo Include="Humans.Budget.Tests" />

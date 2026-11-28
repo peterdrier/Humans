@@ -1,5 +1,5 @@
 using System.Transactions;
-using Humans.AuditLog.Contracts;
+using Humans.Audit.Contracts;
 using Humans.Campaigns.Contracts;
 using Humans.Settings.Contracts;
 using Humans.Tickets.Contracts;

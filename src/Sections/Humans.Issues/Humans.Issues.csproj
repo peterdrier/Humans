@@ -24,7 +24,7 @@
     <ProjectReference Include="..\Humans.Email.Contracts\Humans.Email.Contracts.csproj" />
     <ProjectReference Include="..\Humans.Notifications.Contracts\Humans.Notifications.Contracts.csproj" />
     <!-- AuditLog: IAuditViewerService, to interleave audit rows into the issue thread. -->
-    <ProjectReference Include="..\Humans.AuditLog\Humans.AuditLog.csproj" />
+    <ProjectReference Include="..\Humans.Audit\Humans.Audit.csproj" />
   </ItemGroup>
 
   <ItemGroup>

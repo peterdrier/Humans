@@ -1,7 +1,7 @@
 using System.Globalization;
 using System.Resources;
 using Humans.Base.Extensions;
-using Humans.AuditLog.Contracts;
+using Humans.Audit.Contracts;
 using Humans.Notifications.Contracts;
 using Humans.Onboarding.Contracts;
 using Humans.Base.Interfaces;

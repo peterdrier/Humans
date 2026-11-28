@@ -26,11 +26,11 @@ public class IssuesArchitectureTests
     }
 
     [HumansFact]
-    public void AuditEntityTypes_Values_AreLiterals()
+    public void AuditSubjectTypes_AreLiterals()
     {
         // These are literal string values we store in the DB. Pinned so a rename can't
         // quietly change them and orphan existing audit_log rows
         // (memory/code/type-name-as-persisted-string.md).
-        AuditEntityTypes.Issue.Should().Be("Issue");
+        IssuesAuditSubjectTypes.Issue.Should().Be("Issue");
     }
 }

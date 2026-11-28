@@ -1,6 +1,6 @@
 using System.Buffers.Text;
 using System.Security.Cryptography;
-using Humans.AuditLog.Contracts;
+using Humans.Audit.Contracts;
 using Humans.Auth.Contracts;
 using Humans.Backdoor.Data;
 using Humans.Backdoor.Domain;
@@ -233,12 +233,12 @@ internal sealed class BackdoorApiKeyService(
     private Task AuditAsync(AuditActionDefinition action, BackdoorApiKey key, Guid actorUserId, string verb) =>
         audit.LogAsync(
             action,
-            AuditEntityTypes.BackdoorApiKey,
+            BackdoorAuditSubjectTypes.BackdoorApiKey,
             key.Id,
             $"Backdoor API key '{key.Label}' ({key.DisplayPrefix}…) {verb}",
             actorUserId,
-            relatedEntityId: key.UserId,
-            relatedEntityType: AuditSubjectTypes.User);
+            targetId: key.UserId,
+            targetType: AuditSubjectTypes.User);
 
     private static string Hash(string plaintext) =>
         Convert.ToHexStringLower(SHA256.HashData(System.Text.Encoding.UTF8.GetBytes(plaintext)));

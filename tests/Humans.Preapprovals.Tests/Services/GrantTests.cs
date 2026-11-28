@@ -5,7 +5,7 @@ using Humans.Email.Contracts;
 using Humans.Users.Contracts;
 using AwesomeAssertions;
 using Xunit;
-using Humans.AuditLog.Contracts;
+using Humans.Audit.Contracts;
 using Humans.Notifications.Contracts;
 using Humans.Preapprovals.Contracts;
 using Humans.Preapprovals.Domain;
@@ -173,7 +173,7 @@ public sealed class GrantTests : PreapprovalsTestHarness
         emails.Should().HaveCount(3);
         emails.Select(message => message.UserId).Should().BeEquivalentTo(managers.Select(id => (Guid?)id));
         Logger.Entries.Should().ContainSingle(entry => ReferenceEquals(entry.Exception, failure));
-        await AuditLog.Received(1).LogAsync(PreapprovalsAuditActions.PreapprovalGrantApplied, AuditEntityTypes.Grant,
+        await AuditLog.Received(1).LogAsync(PreapprovalsAuditActions.PreapprovalGrantApplied, PreapprovalsAuditSubjectTypes.Grant,
             grant.Id, Arg.Any<string>(), applicant, Arg.Any<Guid?>(), Arg.Any<string?>());
     }
 
@@ -239,7 +239,7 @@ public sealed class GrantTests : PreapprovalsTestHarness
         grant.DecidedByUserId.Should().Be(actor);
         grant.DecidedAt.Should().Be(Clock.GetCurrentInstant());
         grant.Label.Should().Be("Fire Lotus");
-        await AuditLog.Received(1).LogAsync(PreapprovalsAuditActions.PreapprovalGrantIssued, AuditEntityTypes.Grant, grant.Id, Arg.Any<string>(), actor, program.Id, AuditEntityTypes.Program);
+        await AuditLog.Received(1).LogAsync(PreapprovalsAuditActions.PreapprovalGrantIssued, PreapprovalsAuditSubjectTypes.Grant, grant.Id, Arg.Any<string>(), actor, program.Id, PreapprovalsAuditSubjectTypes.Program);
         await Notifications.Received(1).SendAsync(PreapprovalsNotificationSources.PreapprovalFileBy, NotificationClass.Actionable, NotificationPriority.Normal,
             Arg.Any<string>(), Arg.Is<IReadOnlyList<Guid>>(r => r.Single() == person), Arg.Any<string?>(), $"/Preapprovals/{program.Id}",
             Arg.Any<string?>(), Arg.Any<string?>(), PreapprovalNotices.FileBySourceKey(grant.Id), Arg.Any<CancellationToken>());
@@ -431,7 +431,7 @@ public sealed class GrantTests : PreapprovalsTestHarness
             Arg.Any<string>(), Arg.Is<IReadOnlyList<Guid>>(r => r.Single() == manager), Arg.Is<string?>(b => b!.Contains("Applicant")),
             $"/Preapprovals/Admin/{program.Id}", Arg.Any<string?>(), Arg.Any<string?>(), PreapprovalNotices.RequestSourceKey(grant.Id), Arg.Any<CancellationToken>());
         await NotificationResolve.Received(1).ResolveBySourceKeyAsync(PreapprovalsNotificationSources.PreapprovalApplicationReceived, PreapprovalNotices.RequestSourceKey(grant.Id), applicant, CancellationToken.None);
-        await AuditLog.Received(2).LogAsync(PreapprovalsAuditActions.PreapprovalGrantApplied, AuditEntityTypes.Grant, grant.Id, Arg.Any<string>(), applicant, Arg.Any<Guid?>(), Arg.Any<string?>());
+        await AuditLog.Received(2).LogAsync(PreapprovalsAuditActions.PreapprovalGrantApplied, PreapprovalsAuditSubjectTypes.Grant, grant.Id, Arg.Any<string>(), applicant, Arg.Any<Guid?>(), Arg.Any<string?>());
     }
 
     [HumansTheory]
@@ -472,7 +472,7 @@ public sealed class GrantTests : PreapprovalsTestHarness
         grant.Status.Should().Be(GrantStatus.Applied);
         Notifications.ReceivedCalls().Should().HaveCount(failEmailLookup ? 1 : 0);
         Email.ReceivedCalls().Should().HaveCount(failEmailLookup ? 0 : 1);
-        await AuditLog.Received(1).LogAsync(PreapprovalsAuditActions.PreapprovalGrantApplied, AuditEntityTypes.Grant,
+        await AuditLog.Received(1).LogAsync(PreapprovalsAuditActions.PreapprovalGrantApplied, PreapprovalsAuditSubjectTypes.Grant,
             grant.Id, Arg.Any<string>(), applicant, Arg.Any<Guid?>(), Arg.Any<string?>());
     }
 
@@ -576,7 +576,7 @@ public sealed class GrantTests : PreapprovalsTestHarness
         await Notifications.Received(1).SendAsync(PreapprovalsNotificationSources.PreapprovalFileBy, NotificationClass.Actionable, NotificationPriority.Normal,
             Arg.Any<string>(), Arg.Is<IReadOnlyList<Guid>>(r => r.Single() == person), Arg.Any<string?>(), Arg.Any<string?>(),
             Arg.Any<string?>(), Arg.Any<string?>(), PreapprovalNotices.FileBySourceKey(grant.Id), Arg.Any<CancellationToken>());
-        await AuditLog.Received(1).LogAsync(PreapprovalsAuditActions.PreapprovalGrantApproved, AuditEntityTypes.Grant, grant.Id, Arg.Is<string>(s => s.Contains("requested 500.00 €")), actor, program.Id, AuditEntityTypes.Program);
+        await AuditLog.Received(1).LogAsync(PreapprovalsAuditActions.PreapprovalGrantApproved, PreapprovalsAuditSubjectTypes.Grant, grant.Id, Arg.Is<string>(s => s.Contains("requested 500.00 €")), actor, program.Id, PreapprovalsAuditSubjectTypes.Program);
     }
 
     [HumansFact]
@@ -631,7 +631,7 @@ public sealed class GrantTests : PreapprovalsTestHarness
             Arg.Any<string>(), Arg.Is<IReadOnlyList<Guid>>(r => r.Single() == person), Arg.Is<string?>(b => b!.Contains("Not this year")),
             Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<string?>(), null, Arg.Any<CancellationToken>());
         await Email.Received(1).SendAsync(Arg.Is<EmailMessage>(m => m.TemplateName == "preapproval_declined"), Arg.Any<CancellationToken>());
-        await AuditLog.Received(1).LogAsync(PreapprovalsAuditActions.PreapprovalGrantDeclined, AuditEntityTypes.Grant, grant.Id, Arg.Is<string>(s => s.Contains("Not this year")), actor, program.Id, AuditEntityTypes.Program);
+        await AuditLog.Received(1).LogAsync(PreapprovalsAuditActions.PreapprovalGrantDeclined, PreapprovalsAuditSubjectTypes.Grant, grant.Id, Arg.Is<string>(s => s.Contains("Not this year")), actor, program.Id, PreapprovalsAuditSubjectTypes.Program);
     }
 
     [HumansTheory]
@@ -661,8 +661,8 @@ public sealed class GrantTests : PreapprovalsTestHarness
             status == GrantStatus.Claimed ? $"/Expenses/{reportId}" : $"/Preapprovals/{program.Id}",
             Arg.Any<string?>(), Arg.Any<string?>(), null, Arg.Any<CancellationToken>());
         await Email.Received(1).SendAsync(Arg.Is<EmailMessage>(m => m.TemplateName == "preapproval_revoked"), Arg.Any<CancellationToken>());
-        await AuditLog.Received(1).LogAsync(PreapprovalsAuditActions.PreapprovalGrantRevoked, AuditEntityTypes.Grant, grant.Id, Arg.Is<string>(s => s.Contains("Budget cut")
-            && s.Contains("while held by expense report") == (status == GrantStatus.Claimed)), actor, program.Id, AuditEntityTypes.Program);
+        await AuditLog.Received(1).LogAsync(PreapprovalsAuditActions.PreapprovalGrantRevoked, PreapprovalsAuditSubjectTypes.Grant, grant.Id, Arg.Is<string>(s => s.Contains("Budget cut")
+            && s.Contains("while held by expense report") == (status == GrantStatus.Claimed)), actor, program.Id, PreapprovalsAuditSubjectTypes.Program);
     }
 
     [HumansTheory]
@@ -744,9 +744,9 @@ public sealed class GrantTests : PreapprovalsTestHarness
 
         result.Refusal.Should().BeNull();
         (await ReadGrantAsync(grant.Id)).MaxAmount.Should().Be(400m);
-        await AuditLog.Received(1).LogAsync(PreapprovalsAuditActions.PreapprovalGrantAmountChanged, AuditEntityTypes.Grant, grant.Id,
+        await AuditLog.Received(1).LogAsync(PreapprovalsAuditActions.PreapprovalGrantAmountChanged, PreapprovalsAuditSubjectTypes.Grant, grant.Id,
             Arg.Is<string>(s => s.Contains("300.00 € → 400.00 €")
-                && s.Contains("held by expense report") == (status == GrantStatus.Claimed)), actor, program.Id, AuditEntityTypes.Program);
+                && s.Contains("held by expense report") == (status == GrantStatus.Claimed)), actor, program.Id, PreapprovalsAuditSubjectTypes.Program);
         await Notifications.Received(1).SendAsync(PreapprovalsNotificationSources.PreapprovalGrantDecided, NotificationClass.Informational, NotificationPriority.Normal,
             Arg.Any<string>(), Arg.Is<IReadOnlyList<Guid>>(r => r.Single() == person), Arg.Is<string?>(b => b!.Contains("300.00 €")),
             Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<string?>(), null, Arg.Any<CancellationToken>());

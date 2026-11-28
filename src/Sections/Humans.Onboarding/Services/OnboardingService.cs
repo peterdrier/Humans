@@ -1,7 +1,7 @@
 using System.Globalization;
 using System.Resources;
 using Humans.Base.Extensions;
-using Humans.AuditLog.Contracts;
+using Humans.Audit.Contracts;
 using Humans.Consent.Contracts;
 using Humans.Base.Constants;
 using Humans.Base.Enums;
@@ -52,7 +52,7 @@ internal sealed class OnboardingService(
 
         await auditLogService.LogAsync(
             OnboardingAuditActions.SignupRejected,
-            AuditEntityTypes.Profile,
+            OnboardingAuditSubjectTypes.Profile,
             userId,
             $"Signup rejected{(string.IsNullOrWhiteSpace(reason) ? "" : $": {reason}")}",
             reviewerId);

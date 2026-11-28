@@ -1,4 +1,4 @@
-using Humans.AuditLog.Contracts;
+using Humans.Audit.Contracts;
 using Humans.Auth.Data;
 using Humans.Auth.Domain;
 using Humans.Notifications.Contracts;

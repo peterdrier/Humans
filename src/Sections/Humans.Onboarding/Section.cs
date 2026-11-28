@@ -10,7 +10,7 @@ using Humans.Users.Contracts;
 using Microsoft.Extensions.Configuration;
 using Humans.Notifications.Contracts;
 using Microsoft.Extensions.DependencyInjection;
-using Humans.AuditLog.Contracts;
+using Humans.Audit.Contracts;
 
 namespace Humans.Onboarding;
 

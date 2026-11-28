@@ -47,7 +47,7 @@ Cancel keeps the task, marked cancelled, copyable later. Delete removes it and i
 
 ## Cross-section
 
-Permissions (`Tasks.Manage`), Auth (`TasksAdmin`), Teams (names, slugs), Settings (event, gate day), AuditLog (every change), Gdpr/Users (assignments exported and erased; free text stays; merge keeps one row, confirmed wins). Backdoor's bulk-load controller calls `ITaskWrite` (PR 2). Email (the approved and declined emails, `VolunteerUpdates`, templates and preview owned by Tasks) and Home (waiting requests in the manager's things to do) were added in PR 3.
+Permissions (`Tasks.Manage`), Auth (`TasksAdmin`), Teams (names, slugs), Settings (event, gate day), Audit (every change), Gdpr/Users (assignments exported and erased; free text stays; merge keeps one row, confirmed wins). Backdoor's bulk-load controller calls `ITaskWrite` (PR 2). Email (the approved and declined emails, `VolunteerUpdates`, templates and preview owned by Tasks) and Home (waiting requests in the manager's things to do) were added in PR 3.
 
 ## Not in the first version
 

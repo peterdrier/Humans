@@ -23,7 +23,52 @@ namespace Humans.Budget.Data.Migrations
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
 
-            modelBuilder.Entity("Humans.Budget.Domain.BudgetAuditLog", b =>
+            modelBuilder.Entity("Humans.Budget.Domain.BudgetCategory", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<decimal>("AllocatedAmount")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)");
+
+                    b.Property<Guid>("BudgetGroupId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Instant>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("ExpenditureType")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(256)
+                        .HasColumnType("character varying(256)");
+
+                    b.Property<int>("SortOrder")
+                        .HasColumnType("integer");
+
+                    b.Property<Guid?>("TeamId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Instant>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("TeamId")
+                        .HasFilter("\"TeamId\" IS NOT NULL");
+
+                    b.HasIndex("BudgetGroupId", "SortOrder");
+
+                    b.ToTable("budget_categories", (string)null);
+                });
+
+            modelBuilder.Entity("Humans.Budget.Domain.BudgetChange", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
@@ -71,51 +116,6 @@ namespace Humans.Budget.Data.Migrations
                     b.HasIndex("EntityType", "EntityId");
 
                     b.ToTable("budget_audit_logs", (string)null);
-                });
-
-            modelBuilder.Entity("Humans.Budget.Domain.BudgetCategory", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid");
-
-                    b.Property<decimal>("AllocatedAmount")
-                        .HasPrecision(18, 2)
-                        .HasColumnType("numeric(18,2)");
-
-                    b.Property<Guid>("BudgetGroupId")
-                        .HasColumnType("uuid");
-
-                    b.Property<Instant>("CreatedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<string>("ExpenditureType")
-                        .IsRequired()
-                        .HasMaxLength(50)
-                        .HasColumnType("character varying(50)");
-
-                    b.Property<string>("Name")
-                        .IsRequired()
-                        .HasMaxLength(256)
-                        .HasColumnType("character varying(256)");
-
-                    b.Property<int>("SortOrder")
-                        .HasColumnType("integer");
-
-                    b.Property<Guid?>("TeamId")
-                        .HasColumnType("uuid");
-
-                    b.Property<Instant>("UpdatedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("TeamId")
-                        .HasFilter("\"TeamId\" IS NOT NULL");
-
-                    b.HasIndex("BudgetGroupId", "SortOrder");
-
-                    b.ToTable("budget_categories", (string)null);
                 });
 
             modelBuilder.Entity("Humans.Budget.Domain.BudgetGroup", b =>
@@ -315,17 +315,6 @@ namespace Humans.Budget.Data.Migrations
                     b.ToTable("budget_ticketing_projections", (string)null);
                 });
 
-            modelBuilder.Entity("Humans.Budget.Domain.BudgetAuditLog", b =>
-                {
-                    b.HasOne("Humans.Budget.Domain.BudgetYear", "BudgetYear")
-                        .WithMany("AuditLogs")
-                        .HasForeignKey("BudgetYearId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
-                    b.Navigation("BudgetYear");
-                });
-
             modelBuilder.Entity("Humans.Budget.Domain.BudgetCategory", b =>
                 {
                     b.HasOne("Humans.Budget.Domain.BudgetGroup", "BudgetGroup")
@@ -335,6 +324,17 @@ namespace Humans.Budget.Data.Migrations
                         .IsRequired();
 
                     b.Navigation("BudgetGroup");
+                });
+
+            modelBuilder.Entity("Humans.Budget.Domain.BudgetChange", b =>
+                {
+                    b.HasOne("Humans.Budget.Domain.BudgetYear", "BudgetYear")
+                        .WithMany("Changes")
+                        .HasForeignKey("BudgetYearId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("BudgetYear");
                 });
 
             modelBuilder.Entity("Humans.Budget.Domain.BudgetGroup", b =>
@@ -384,7 +384,7 @@ namespace Humans.Budget.Data.Migrations
 
             modelBuilder.Entity("Humans.Budget.Domain.BudgetYear", b =>
                 {
-                    b.Navigation("AuditLogs");
+                    b.Navigation("Changes");
 
                     b.Navigation("Groups");
                 });

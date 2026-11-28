@@ -10,7 +10,7 @@ using Microsoft.Extensions.Localization;
 using Humans.Users.Data;
 using AwesomeAssertions;
 using Humans.Users.Tests.Infrastructure;
-using Humans.AuditLog.Contracts;
+using Humans.Audit.Contracts;
 using Microsoft.Extensions.Logging.Abstractions;
 using NodaTime.Testing;
 using NSubstitute;

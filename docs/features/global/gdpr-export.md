@@ -14,7 +14,7 @@
   src/Sections/Humans.Tickets/Services/TicketQueryService.cs
   src/Sections/Humans.Campaigns/Services/CampaignService.cs
   src/Sections/Humans.Camps/Services/**
-  src/Sections/Humans.AuditLog/Services/**
+  src/Sections/Humans.Audit/Services/**
   src/Sections/Humans.Budget/Services/BudgetService.cs
   src/Sections/Humans.Users/Services/AccountMergeService.cs
   src/Sections/Humans.Surveys/Services/SurveyService.cs
@@ -191,15 +191,15 @@ archived account and the survivor.
 | `CampRoleAssignments` | `CachingCampService` | Array of `{ CampSlug, SeasonYear, RoleName, AssignedAt, AssignedByUserId }`. |
 | `CampMemberships` | `CachingCampService` | Array of `{ Id, CampSeasonId, CampSlug, SeasonYear, Status, RequestedAt, ConfirmedAt, ConfirmedByUserId, RemovedAt, RemovedByUserId, HasEarlyEntry }` — the human's camp member rows. Erased in full. |
 | `AccountMergeRequests` | `AccountMergeService` | Array of `{ Status, Role, CreatedAt, ResolvedAt }` (Role is "Target" or "Source"), covering every account in the resolved merge chain without duplicate requests. |
-| `AuditLog` | `AuditLogService` | Array of `{ Action, EntityType, OccurredAt, Role }` (Role is "Actor" or "Subject"). |
-| `BudgetAuditLog` | `BudgetService` | Array of `{ EntityType, FieldName, Description, OccurredAt }`. |
+| `Audit` | `AuditLogService` | Array of `{ Action, SubjectType, OccurredAt, Role }` (Role is "Actor", "Subject" or "Target"). |
+| `BudgetChanges` | `BudgetService` | Array of `{ EntityType, FieldName, Description, OccurredAt }`. |
 | `AgentConversations` | `AgentService` | Array of `{ Id, StartedAt, LastMessageAt, Locale, MessageCount, Messages: [{ Role, Content, CreatedAt, Model, RefusalReason, HandedOffToFeedbackId }] }` — the user's AI assistant conversations with full message history. |
 | `ExpenseReports` | `ExpenseReportService` | Array of `{ Id, Status, Note, PayeeName, PayeeIban (masked), Total, MaxAmount, SubmittedAt, CoordinatorEndorsedAt, ApprovedAt, LastRejectionReason, LastRejectedAt, CreatedAt, Lines: [{ Id, Description, Amount, LineType, ParentLineId, SortOrder, Declined, DeclinedReason, DeclinedAt, Attachment? }] }` — the user's expense reports including line items and attachment metadata; null when the user has no reports. |
 | `Preapprovals` | `PreapprovalService` | Array of `{ Program, Label, MaxAmount, Status, ApplicationNote, RequestedAmount, DecidedAt, ExpenseReportId, CreatedAt }` — the human's own pre-approval grants. Decided grants are retained after erasure (fiscal basis); pending applications are deleted. |
 | `PreapprovalDecisions` | `PreapprovalService` | Single object `{ ProgramsCreated[], ManagerOf[], ManagersAdded[], GrantsDecided[] }` — programs the human created, managed or added managers to, and grants they decided; null when they did none of these. Retained; manager rows are deleted. |
 | `Grants` | `GrantService` | Array of `{ Program, Year, Entitles, SourceRef, ExpiresOn, IssuedAt, NotifiedAt, RevokedAt, RevokeReason }` — the human's own grants, any state. Deleted on erasure. |
 | `GrantDecisions` | `GrantService` | Single object `{ ProgramsCreated[], ManagerOf[], ManagersNamed[], GrantsIssued[], GrantsRevoked[] }` — programs the human created or manages, managers they named (`{ Program, AddedAt }`), and grants they issued or revoked; null when none. Retained as the record of who decided (bare id, no longer resolves to a person once anonymized); manager rows are deleted. |
-| `ExpenseAuditLog` | `ExpenseReportService` | Single object `{ Entries: [{ Action, EntityType, EntityId, Description, OccurredAt }] }` covering all expense-related audit events (submit, endorse, approve, reject, IBAN set/remove/reveal, etc.); null when the user has no expense audit entries. |
+| `ExpenseAuditLog` | `ExpenseReportService` | Single object `{ Entries: [{ Action, SubjectType, SubjectId, Description, OccurredAt }] }` covering all expense-related audit entries (submit, endorse, approve, reject, IBAN set/remove/reveal, etc.); null when the user has no expense audit entries. |
 | `PaymentDetails` | `Finance.PaymentDetailsService` | Single object `{ Iban (masked) }` — the bank account the member is reimbursed to; null when none is on record. Erased in full. |
 | `DietaryProfile` | `Cantina.DietaryProfileService` | Single object `{ DietaryPreference, Allergies, AllergyOtherText, Intolerances, IntoleranceOtherText }` — the member's food answers; null when none. Never carries medical conditions. Erased in full. |
 | `HoldedCreditorAccount` | `Finance.Service` | Single object `{ SupplierAccountNum, HoldedContactId, Source }` — the requested account's Holded creditor account binding; null when no binding exists. |

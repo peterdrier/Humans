@@ -1,4 +1,4 @@
-using Humans.AuditLog.Contracts;
+using Humans.Audit.Contracts;
 using AwesomeAssertions;
 using Humans.Campaigns.Contracts;
 using Humans.Tickets.Data;

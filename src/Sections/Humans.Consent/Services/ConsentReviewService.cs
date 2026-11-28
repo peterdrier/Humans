@@ -1,4 +1,4 @@
-using Humans.AuditLog.Contracts;
+using Humans.Audit.Contracts;
 using Humans.Base.Extensions;
 using Humans.Consent.Contracts;
 using Humans.Consent.Data;
@@ -20,7 +20,7 @@ internal sealed class ConsentReviewService(
     internal const string ConsentReviewSlice = "ConsentReview";
 
     /// <summary>The viewer reads a Profile entity as the person the row is about.</summary>
-    private const string ProfileEntityType = "Profile";
+    private const string ProfileSubjectType = "Profile";
 
     public async Task<ConsentReviewInfo> GetReviewAsync(Guid userId, CancellationToken ct = default)
     {
@@ -65,9 +65,9 @@ internal sealed class ConsentReviewService(
         var action = cleared ? ConsentAuditActions.ConsentCheckCleared : ConsentAuditActions.ConsentCheckFlagged;
         var description = cleared ? "Consent check cleared" : $"Consent check flagged: {notes}";
         if (reviewerId is { } reviewer)
-            await auditLog.LogAsync(action, ProfileEntityType, userId, description, reviewer);
+            await auditLog.LogAsync(action, ProfileSubjectType, userId, description, reviewer);
         else
-            await auditLog.LogAsync(action, ProfileEntityType, userId, description, nameof(ConsentReviewService));
+            await auditLog.LogAsync(action, ProfileSubjectType, userId, description, nameof(ConsentReviewService));
         return result;
     }
 

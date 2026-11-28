@@ -4,7 +4,7 @@ using Humans.Base.Extensions;
 using Humans.Users.Data.Repositories;
 using Humans.Users.Contracts;
 using Humans.Users.Data;
-using Humans.AuditLog.Contracts;
+using Humans.Audit.Contracts;
 using Humans.Gdpr.Contracts;
 
 namespace Humans.Users.Services;
@@ -110,7 +110,7 @@ internal sealed class AccountMergeService(
                 AuditSubjectTypes.User, archivedUserId,
                 $"Folded archived {archivedUserId} into survivor {survivorUserId}. Notes: {notes ?? "(none)"}",
                 actorUserId,
-                relatedEntityId: survivorUserId, relatedEntityType: AuditSubjectTypes.User);
+                targetId: survivorUserId, targetType: AuditSubjectTypes.User);
 
             // 5. Best-effort: the tombstone already makes leftover requests self-reconcilable.
             await CloseRequestsForPairAsync(survivorUserId, archivedUserId, actorUserId, now, notes, ct);
@@ -127,7 +127,7 @@ internal sealed class AccountMergeService(
                     $"Merge of archived {archivedUserId} into survivor {survivorUserId} stopped part-way " +
                     $"({failure.GetType().Name}). Merge the same two accounts again to finish it.",
                     actorUserId,
-                    relatedEntityId: survivorUserId, relatedEntityType: AuditSubjectTypes.User);
+                    targetId: survivorUserId, targetType: AuditSubjectTypes.User);
             }
             catch (Exception ex)
             {

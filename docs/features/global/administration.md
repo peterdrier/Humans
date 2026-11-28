@@ -92,7 +92,7 @@ Human app access is `UserState == Active`, set when the human enters their legal
 
 ## Controller Routes
 
-There is no `/Board/*` route prefix. `BoardController` was removed in nobodies-collective/Humans#499 and its work redistributed: the dashboard to `AdminController` (`/Admin`), human management to `UsersAdminController` (`/Users/Admin`), Google sync to `GoogleController`, and the global audit log to `AuditLogController` (`/AuditLog`). **Board** survives as a *role*, not as an area.
+There is no `/Board/*` route prefix. `BoardController` was removed in nobodies-collective/Humans#499 and its work redistributed: the dashboard to `AdminController` (`/Admin`), human management to `UsersAdminController` (`/Users/Admin`), Google sync to `GoogleController`, and the global audit log to `AuditController` (`/Audit`). **Board** survives as a *role*, not as an area.
 
 ### UsersAdminController (`/Users/Admin`) — Human management actions
 
@@ -332,7 +332,7 @@ Sections also contribute richer cards into the `admin-dashboard` chrome slot (`C
 
 ### Role Separation: Board vs Admin
 
-Board and Admin are **roles**, not areas — the only `/Admin/` route is the shared dashboard (`AdminController`). Governance operations that used to sit behind `/Board/` now live on the owning section's own routes (`/Users/Admin`, `/Governance/*`, `/AuditLog`, `/Google/*`) and are gated per-route by role.
+Board and Admin are **roles**, not areas — the only `/Admin/` route is the shared dashboard (`AdminController`). Governance operations that used to sit behind `/Board/` now live on the owning section's own routes (`/Users/Admin`, `/Governance/*`, `/Audit`, `/Google/*`) and are gated per-route by role.
 
 Board members reach governance operations — member management, applications, teams, roles, audit log — through those section routes. Operator tooling (configuration, Hangfire, logs, system team sync, sync settings) lives in the Debug and Google groups of the admin shell; Board reads it, and every write is Admin only.
 

@@ -308,10 +308,10 @@ public class ExpenseReportViewTests
         builder.Services.AddControllersWithViews()
             .AddApplicationPart(typeof(ExpensesResource).Assembly)
             .AddApplicationPart(typeof(HumanViewComponent).Assembly)
-            .AddApplicationPart(typeof(AuditLog.ViewComponents.AuditLogViewComponent).Assembly)
+            .AddApplicationPart(typeof(Audit.ViewComponents.AuditLogViewComponent).Assembly)
             .AddViewLocalization();
         builder.Services.AddSingleton(users ?? Substitute.For<IUserService>());
-        builder.Services.AddSingleton(Substitute.For<Humans.AuditLog.Contracts.IAuditViewerService>());
+        builder.Services.AddSingleton(Substitute.For<Humans.Audit.Contracts.IAuditViewerService>());
         builder.Services.AddHttpContextAccessor();
         var url = Substitute.For<IUrlHelper>();
         url.Action(Arg.Any<UrlActionContext>()).Returns("/");

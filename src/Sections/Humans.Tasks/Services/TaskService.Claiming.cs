@@ -1,4 +1,4 @@
-using Humans.AuditLog.Contracts;
+using Humans.Audit.Contracts;
 using Humans.Base.Extensions;
 using Humans.Email.Contracts;
 using Humans.Tasks.Domain;
@@ -38,9 +38,9 @@ internal sealed partial class TaskService
         var (action, text) = state == TaskAssignmentState.Confirmed
             ? (TasksAuditActions.TaskClaimed, "Took a place on")
             : (TasksAuditActions.TaskRequested, "Asked to join");
-        await audit.LogAsync(action, AuditEntityType, task.Id,
+        await audit.LogAsync(action, AuditSubjectType, task.Id,
             $"{text} task '{task.Title}' on {TeamName(task, snapshot)}",
-            actorUserId, relatedEntityId: actorUserId, relatedEntityType: AuditSubjectTypes.User);
+            actorUserId, targetId: actorUserId, targetType: AuditSubjectTypes.User);
 
         return new(ToInfo(task, snapshot));
     }
@@ -56,9 +56,9 @@ internal sealed partial class TaskService
             return Refuse("Tasks_Refusal_YouAreNotOn", actorUserId, taskId);
         task.Assignments.Remove(held);
 
-        await audit.LogAsync(TasksAuditActions.TaskReleased, AuditEntityType, task.Id,
+        await audit.LogAsync(TasksAuditActions.TaskReleased, AuditSubjectType, task.Id,
             $"Gave back their place on task '{task.Title}' on {TeamName(task, snapshot)}",
-            actorUserId, relatedEntityId: actorUserId, relatedEntityType: AuditSubjectTypes.User);
+            actorUserId, targetId: actorUserId, targetType: AuditSubjectTypes.User);
 
         return new(ToInfo(task, snapshot));
     }
@@ -74,9 +74,9 @@ internal sealed partial class TaskService
             return Refuse("Tasks_Refusal_NoYourRequest", actorUserId, taskId);
         task.Assignments.Remove(request);
 
-        await audit.LogAsync(TasksAuditActions.TaskRequestWithdrawn, AuditEntityType, task.Id,
+        await audit.LogAsync(TasksAuditActions.TaskRequestWithdrawn, AuditSubjectType, task.Id,
             $"Took back their request to join task '{task.Title}' on {TeamName(task, snapshot)}",
-            actorUserId, relatedEntityId: actorUserId, relatedEntityType: AuditSubjectTypes.User);
+            actorUserId, targetId: actorUserId, targetType: AuditSubjectTypes.User);
 
         return new(ToInfo(task, snapshot));
     }
@@ -94,9 +94,9 @@ internal sealed partial class TaskService
 
         // A task that filled up meanwhile is overfilled, not refused.
         var confirmed = task.Assignments.Count(a => a.State == TaskAssignmentState.Confirmed);
-        await audit.LogAsync(TasksAuditActions.TaskRequestApproved, AuditEntityType, task.Id,
+        await audit.LogAsync(TasksAuditActions.TaskRequestApproved, AuditSubjectType, task.Id,
             $"Approved a request to join task '{task.Title}' on {TeamName(task, snapshot)} ({confirmed} of {task.SlotCount})",
-            actorUserId, relatedEntityId: userId, relatedEntityType: AuditSubjectTypes.User);
+            actorUserId, targetId: userId, targetType: AuditSubjectTypes.User);
 
         await SendAnswerAsync(approved: true, task, snapshot, userId, reason: null, ct);
         return new(ToInfo(task, snapshot));
@@ -119,9 +119,9 @@ internal sealed partial class TaskService
             return Refuse("Tasks_Refusal_NoRequest", actorUserId, taskId);
         task.Assignments.Remove(request);
 
-        await audit.LogAsync(TasksAuditActions.TaskRequestDeclined, AuditEntityType, task.Id,
+        await audit.LogAsync(TasksAuditActions.TaskRequestDeclined, AuditSubjectType, task.Id,
             $"Declined a request to join task '{task.Title}' on {TeamName(task, snapshot)}{(reason is null ? string.Empty : $": {reason}")}",
-            actorUserId, relatedEntityId: userId, relatedEntityType: AuditSubjectTypes.User);
+            actorUserId, targetId: userId, targetType: AuditSubjectTypes.User);
 
         await SendAnswerAsync(approved: false, task, snapshot, userId, reason, ct);
         return new(ToInfo(task, snapshot));

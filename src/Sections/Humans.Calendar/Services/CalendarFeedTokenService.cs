@@ -1,5 +1,5 @@
 using Humans.Calendar.Data;
-using Humans.AuditLog.Contracts;
+using Humans.Audit.Contracts;
 using Humans.Gdpr.Contracts;
 using Humans.Users.Contracts;
 using NodaTime;

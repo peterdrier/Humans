@@ -201,7 +201,7 @@ Reserved, not ranked, not built this run.
 
 Settled decisions. Later runs should stop re-litigating these.
 
-- **`AuditEntityTypes` are string literals, never `nameof`.** They are persisted values matched
+- **`CalendarAuditSubjectTypes` are string literals, never `nameof`.** They are persisted values matched
   by equality against rows already in the database; regenerating them from CLR names would
   silently change what is written and queried.
 - **`UpsertExceptionAsync` calls `IgnoreQueryFilters()` on its existence lookup.** Deliberate:
