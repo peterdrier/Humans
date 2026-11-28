@@ -275,7 +275,7 @@ public sealed class ApplicationRepositoryTests : IDisposable
     [HumansTheory]
     [Xunit.InlineData(false)]
     [Xunit.InlineData(true)]
-    public async Task ApplicationMutation_PreservesExistingChildrenAndAppendsTransitionHistory(bool finalize)
+    public async Task ApplicationMutation_PreservesExistingChildren(bool finalize)
     {
         var ct = Xunit.TestContext.Current.CancellationToken;
         var app = SeedApp();
@@ -315,9 +315,7 @@ public sealed class ApplicationRepositoryTests : IDisposable
 
         var stored = (await repo.GetByIdAsync(app.Id, ct))!;
         stored.Status.Should().Be(finalize ? ApplicationStatus.Approved : ApplicationStatus.Withdrawn);
-        stored.StateHistory.Should().HaveCount(2);
         stored.StateHistory.Should().ContainSingle(h => h.Notes == "Original submission");
-        stored.StateHistory.Should().ContainSingle(h => h.ChangedAt == clock.GetCurrentInstant());
         stored.BoardVotes.Should().HaveCount(finalize ? 0 : 1);
         recorder.ModifiedChildren.Should().Be(0);
     }

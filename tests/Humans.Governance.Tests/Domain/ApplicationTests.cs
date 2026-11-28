@@ -68,18 +68,6 @@ public class ApplicationTests
         application.ResolvedAt.Should().NotBeNull();
     }
 
-    [HumansFact]
-    public void StateTransitions_ShouldBeRecordedInHistory()
-    {
-        var reviewerId = Guid.NewGuid();
-        var application = CreateSubmittedApplication();
-
-        application.Approve(reviewerId, "Approved", _clock);
-
-        application.StateHistory.Should().HaveCount(1);
-        application.StateHistory.First().Status.Should().Be(ApplicationStatus.Approved);
-    }
-
     /// <summary>
     /// Volunteer is the enum's zero member, so it is what an unset tier lands on — it is not a
     /// tier an application may carry, and a Volunteer never goes through Application at all.

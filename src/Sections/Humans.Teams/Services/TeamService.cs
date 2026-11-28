@@ -564,8 +564,10 @@ internal sealed class TeamService(
             ? null
             : groupKey.Trim();
 
-        var teams = await repo.GetAllActiveAsync(ct);
-        var groupTeams = teams
+        // A retired team keeps claiming its group with nobody in it, so the sync empties the group.
+        var allTeams = await repo.GetAllWithMembersAsync(ct);
+        var teams = allTeams.Where(t => t.IsActive).ToList();
+        var groupTeams = allTeams
             .Where(t => t.GoogleGroupEmail is not null && !GovernanceBodyTeamIds.Contains(t.Id))
             .Where(t => requestedKey is null
                 || string.Equals(t.GoogleGroupEmail, requestedKey, StringComparison.OrdinalIgnoreCase))
@@ -582,7 +584,7 @@ internal sealed class TeamService(
         foreach (var duplicateGroupEmail in duplicateGroupEmails)
         {
             logger.LogWarning(
-                "Multiple active Teams share Google group {GroupKey}; skipping this group membership claim so Google sync fails closed",
+                "Multiple Teams share Google group {GroupKey}; skipping this group membership claim so Google sync fails closed",
                 duplicateGroupEmail);
         }
 
@@ -609,6 +611,12 @@ internal sealed class TeamService(
         var result = new Dictionary<string, Guid[]>(StringComparer.OrdinalIgnoreCase);
         foreach (var team in syncableGroupTeams)
         {
+            if (!team.IsActive)
+            {
+                result[team.GoogleGroupEmail!] = [];
+                continue;
+            }
+
             var directUserIds = team.Members
                 .Where(m => m.LeftAt is null)
                 .Select(m => m.UserId);
@@ -1145,6 +1153,25 @@ internal sealed class TeamService(
         logger.LogInformation(
             "Deactivated team {TeamId} ({TeamName}); closed {MemberCount} memberships",
             teamId, team.Name, closedUsers.Count);
+        return new();
+    }
+
+    public async Task<TeamDeactivationResult> EraseMembersAsync(Guid teamId, Guid actorUserId, CancellationToken cancellationToken = default)
+    {
+        var team = await repo.GetByIdAsync(teamId, cancellationToken);
+        if (team is null)
+            return new(Refusal: $"Team {teamId} not found");
+
+        if (team.IsActive)
+            return new(Refusal: "Retire the team before erasing its members");
+
+        var people = await repo.EraseMembersAsync(teamId, cancellationToken);
+        await auditLogService.LogAsync(
+            TeamsAuditActions.TeamMembersErased, nameof(Team), teamId,
+            $"Erased the membership history of {team.Name} ({people} people)",
+            actorUserId);
+
+        logger.LogInformation("Erased membership history of team {TeamId}; {PeopleCount} people", teamId, people);
         return new();
     }
 

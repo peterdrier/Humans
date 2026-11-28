@@ -133,7 +133,7 @@ Application
 
 The `Language` field records the applicant's UI language at the time of submission, displayed to reviewers as the native language name to help them understand context.
 
-### ApplicationStateHistory Entity
+### ApplicationStateHistory Entity (retired: no longer written)
 ```
 ApplicationStateHistory
 ├── Id: Guid
