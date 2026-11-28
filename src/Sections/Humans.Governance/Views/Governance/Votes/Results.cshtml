@@ -1,7 +1,7 @@
-@model Humans.Governance.Models.AssemblyVoteResultsViewModel
+@model Humans.Governance.Services.Dtos.AssemblyVoteResultsView
 @inject Humans.Base.Interfaces.IOrgTimeZone OrgTimeZone
 @{
-    var results = Model.Results;
+    var results = Model;
     var vote = results.Vote;
     ViewData["Title"] = vote.Title;
     var orgZone = OrgTimeZone.Zone;
