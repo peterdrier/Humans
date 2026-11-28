@@ -1,12 +1,13 @@
 using Humans.Base.Extensions;
 using Humans.Tickets.Contracts;
+using Humans.Tickets.Data;
 using Humans.Tickets.Domain.Checkout;
+using NodaTime;
 
 namespace Humans.Tickets.Services.Checkout;
 
 /// <summary>What the gate reads: the scanned ticket, and the event's tickets for its name search and report.</summary>
-[Humans.Base.Attributes.Grandfathered("HUM0046", "Split along its jobs in its own PR.", "2026-11-27", "peterdrier/Humans#2675")]
-internal sealed partial class TicketCheckoutService : ITicketGateLookup
+internal sealed class TicketGateLookup(ITicketCheckoutRepository repository, IClock clock) : ITicketGateLookup
 {
     public async Task<IssuedTicketInfo?> FindIssuedTicketAsync(string? barcode, CancellationToken ct = default)
     {

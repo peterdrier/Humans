@@ -1,13 +1,33 @@
 using Humans.Base.Extensions;
 using Humans.Tickets.Contracts;
+using Humans.Tickets.Data;
 using Humans.Tickets.Domain.Checkout;
 using Microsoft.Extensions.Hosting;
 using NodaTime;
 
 namespace Humans.Tickets.Services.Checkout;
 
-internal sealed partial class TicketCheckoutService
+internal sealed class TicketReconService(
+    ITicketCheckoutRepository repository,
+    IEnumerable<ITicketingPlatform> platforms,
+    IHostEnvironment environment,
+    IClock clock,
+    ILogger<TicketReconService> logger) : ITicketReconService
 {
+    private readonly IReadOnlyList<ITicketingPlatform> _platforms = platforms.ToList();
+
+    public IReadOnlyList<PlatformInfo> Platforms =>
+        _platforms.Select(b => new PlatformInfo(b.Key, b.IsConfigured, b.Setup)).ToList();
+
+    public async Task<IReadOnlyList<PlatformFinding>?> CheckPlatformAsync(
+        string key, string? platformEventRef, CancellationToken ct = default) =>
+        PlatformFor(key) is { } platform
+            ? await platform.CheckAsync(string.IsNullOrWhiteSpace(platformEventRef) ? null : platformEventRef.Trim(), ct)
+            : null;
+
+    private ITicketingPlatform? PlatformFor(string key) =>
+        _platforms.FirstOrDefault(b => string.Equals(b.Key, key, StringComparison.Ordinal));
+
     public async Task<IReadOnlyList<string>> GetPlatformsInUseAsync(CancellationToken ct = default)
     {
         // An order keeps its platform when its event's ticketing settings move on, so a platform with orders stays in use.

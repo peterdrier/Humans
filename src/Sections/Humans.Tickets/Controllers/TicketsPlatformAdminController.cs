@@ -18,6 +18,7 @@ namespace Humans.Tickets.Controllers;
 [Route("Tickets/Admin/Platforms/{key}")]
 internal sealed class TicketsPlatformAdminController(
     ITicketCheckoutService checkout,
+    ITicketReconService reconService,
     ISettingsService settings,
     IOrgTimeZone orgTimeZone,
     IUserService userService) : HumansControllerBase(userService)
@@ -32,7 +33,7 @@ internal sealed class TicketsPlatformAdminController(
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Check(string key, string? platformEventRef, CancellationToken ct)
     {
-        var findings = await checkout.CheckPlatformAsync(key, platformEventRef, ct);
+        var findings = await reconService.CheckPlatformAsync(key, platformEventRef, ct);
         if (findings is null)
             return NotFound();
         return await StatusAsync(key, new PlatformCheckResult(key, platformEventRef, findings), ct);
@@ -40,7 +41,7 @@ internal sealed class TicketsPlatformAdminController(
 
     private async Task<IActionResult> StatusAsync(string key, PlatformCheckResult? check, CancellationToken ct)
     {
-        if (await checkout.GetPlatformLedgerAsync(key, ct) is not { } ledger)
+        if (await reconService.GetPlatformLedgerAsync(key, ct) is not { } ledger)
             return NotFound();
 
         ledger = ledger with

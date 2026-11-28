@@ -13,8 +13,8 @@ const NAV_SELECTOR = '[data-testid="user-nav"], .navbar .dropdown:has(.profile-d
 // against QA (Staging) — can never mint a full-Admin session. AdminOnly routes are covered
 // in-process instead, by tests/Humans.Integration.Tests (DevPersona.Admin).
 export const PERSONAS = [
-  'volunteer', 'board', 'consent-coordinator', 'teams-admin',
-  'camps-admin', 'tickets-admin', 'shifts-no-info', 'shifts-admin',
+  'volunteer', 'board', 'consent-admin', 'teams-admin',
+  'camps-admin', 'tickets-admin', 'shifts-admin',
   'users-admin', 'finance-admin', 'city-planning',
   'coordinator', 'events-admin', 'store-admin', 'cantina-admin',
   'early-entry-admin', 'barrio-1-lead',

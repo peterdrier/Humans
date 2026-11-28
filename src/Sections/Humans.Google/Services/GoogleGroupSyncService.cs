@@ -130,6 +130,18 @@ internal sealed class GoogleGroupSyncService(
     {
         var (lookup, provisionAttempted) = await LookupOrProvisionGroupAsync(claim, action, ct);
 
+        // A claim with nobody in it never creates a group; a missing group is already empty.
+        if (lookup.GroupNumericId is null && claim.UserIds.Length == 0 && IsGroupNotFound(lookup.Error))
+        {
+            return new ResourceSyncDiff
+            {
+                ResourceId = resource?.Id ?? Guid.Empty,
+                ResourceName = resource?.Name ?? claim.GroupKey,
+                ResourceType = GoogleResourceType.Group.ToString(),
+                Url = resource?.Url
+            };
+        }
+
         if (lookup.GroupNumericId is null)
         {
             return await BuildClaimErrorDiffAsync(
@@ -198,7 +210,8 @@ internal sealed class GoogleGroupSyncService(
         CancellationToken ct)
     {
         var lookup = await provisioningClient.LookupGroupIdAsync(claim.GroupKey, ct);
-        if (lookup.GroupNumericId is not null || !IsGroupNotFound(lookup.Error) || action != SyncAction.Execute)
+        if (lookup.GroupNumericId is not null || !IsGroupNotFound(lookup.Error) || action != SyncAction.Execute
+            || claim.UserIds.Length == 0)
             return (lookup, false);
 
         return (await TryProvisionGroupAsync(claim.GroupKey, lookup, ct), true);
