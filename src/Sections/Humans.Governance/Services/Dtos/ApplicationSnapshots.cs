@@ -13,8 +13,3 @@ internal sealed record UserApplicationSnapshot(
     Instant SubmittedAt,
     Instant? ResolvedAt,
     LocalDate? TermExpiresAt);
-
-internal sealed record SubmittedApplicationSnapshot(
-    Guid Id,
-    MembershipTier MembershipTier,
-    string Motivation);
