@@ -6,7 +6,10 @@ test.describe('Tickets (24-ticket-vendor-integration)', () => {
     await loginAs(page, 'tickets-admin');
     await page.goto('/Tickets');
 
-    await expect(page.locator('h1, h2').first()).toBeVisible();
+    // Admin-shell pages render no visible h1/h2: the top bar names the section and the
+    // selected tab names the page. The error page has no tabs, so this can't pass vacuously.
+    await expect(page.getByRole('navigation', { name: 'Section pages' }).locator('[aria-current="page"]'))
+      .toHaveText('Tickets');
     expect(page.url()).toContain('/Tickets');
   });
 
