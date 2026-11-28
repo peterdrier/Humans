@@ -2493,7 +2493,7 @@ internal sealed class TeamService(
         var memberships = await repo.GetActiveByUserIdAsync(userId, cancellationToken);
         return memberships
             .Select(m => new UserTeamMembershipInfo(
-                m.TeamId, m.Team.Name, m.Team.Slug, m.Role)
+                m.TeamId, m.Team.Name, m.Role)
             {
                 IsActive = m.Team.IsActive,
                 IsHidden = m.Team.IsHidden,

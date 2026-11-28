@@ -45,7 +45,6 @@ public record TeamMemberInfo(
 public sealed record UserTeamMembershipInfo(
     Guid TeamId,
     string TeamName,
-    string TeamSlug,
     TeamMemberRole Role)
 {
     public bool IsActive { get; init; }

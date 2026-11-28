@@ -211,7 +211,7 @@ internal sealed class CachingTeamService(
                 continue;
 
             result.Add(new UserTeamMembershipInfo(
-                team.Team.Id, team.Team.Name, team.Team.Slug, membership.Role)
+                team.Team.Id, team.Team.Name, membership.Role)
             {
                 IsActive = team.Team.IsActive,
                 IsHidden = team.Team.IsHidden,

@@ -361,7 +361,7 @@ public sealed class CachingTeamServiceTests : TeamsTestHarness
     }
 
     [HumansFact]
-    public async Task GetUserTeamsAsync_SynthesizedTeamHasDisplayNameAndSlug()
+    public async Task GetUserTeamsAsync_ChildMembership_UsesChildIdentity()
     {
         var user = SeedUser("Alice");
         var parent = SeedTeam("Comms");
@@ -373,7 +373,7 @@ public sealed class CachingTeamServiceTests : TeamsTestHarness
         var result = await _service.GetUserTeamMembershipsAsync(user.Id, TestContext.Current.CancellationToken);
 
         var membership = result.Should().ContainSingle().Subject;
-        membership.TeamSlug.Should().Be("logo");
+        membership.TeamId.Should().Be(child.Id);
         membership.TeamName.Should().Be("Logo");
     }
 
