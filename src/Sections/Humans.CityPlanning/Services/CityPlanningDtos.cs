@@ -67,13 +67,11 @@ internal sealed record CityPlanningSettingsDto(
     LocalDate? PlacementOpensOn,
     LocalDate? PlacementClosesOn,
     LocalDate? PlacementChangeableUntilOn,
-    string? RegistrationInfo,
     string? LimitZoneGeoJson,
     string? OfficialZonesGeoJson,
     bool IsContainerPlacementOpen,
     Instant? ContainerPlacementOpenedAt,
-    Instant? ContainerPlacementClosedAt,
-    Instant UpdatedAt);
+    Instant? ContainerPlacementClosedAt);
 
 /// <summary>
 /// Where the barrio placement window stands for a camp lead. City-planning team members and
