@@ -86,6 +86,12 @@ internal sealed class TicketingSettings
 
     public string? CancelReason { get; set; }
 
+    /// <summary>
+    /// When the platform erased the event's personal data, once its post-event hold had passed; null until then. Not part
+    /// of the ticketing settings form, so saving the settings keeps it.
+    /// </summary>
+    public Instant? PersonalDataErasedAt { get; set; }
+
     public Instant CreatedAt { get; init; }
 
     public Instant UpdatedAt { get; set; }

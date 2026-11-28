@@ -138,6 +138,7 @@ internal sealed partial class TicketCheckoutService(
             ResaleOpenedAt = save.Switches.Resale == ResaleScheme.Off ? null : existing?.ResaleOpenedAt,
             Switches = save.Switches,
             TermsFolder = save.TermsFolder,
+            PersonalDataErasedAt = existing?.PersonalDataErasedAt,
             UpdatedAt = now,
         };
         await repository.SaveTicketingSettingsAsync(ticketing, ct);
@@ -1008,6 +1009,41 @@ internal sealed partial class TicketCheckoutService(
                 DecisionNote = r.HolderUserId == userId ? r.DecisionNote : null,
             }).ToList()),
         ];
+    }
+
+    public async Task<int> EraseHeldEventDataAsync(CancellationToken ct = default)
+    {
+        var holdDays = await holdings.GetPostEventHoldDaysAsync(ct);
+        var now = clock.GetCurrentInstant();
+        var erased = 0;
+        foreach (var ticketing in (await repository.ListTicketingSettingsAsync(ct)).Where(t => t.PersonalDataErasedAt is null))
+        {
+            if (await settings.GetEventSettingsByIdAsync(ticketing.EventSettingsId, ct) is not { } ev
+                || TicketQueryService.PostEventHoldDate(ev, holdDays) > now)
+                continue;
+            if (PlatformFor(ticketing.PlatformKey) is not { } platform)
+            {
+                logger.LogWarning("Event {SettingsId} is on retired platform {Platform}; its personal data there was not erased",
+                    ticketing.Id, ticketing.PlatformKey);
+                continue;
+            }
+            try
+            {
+                await platform.EraseEventPersonalDataAsync(ticketing.PlatformEventRef, ct);
+            }
+            catch (Exception ex) when (ex is not OperationCanceledException)
+            {
+                logger.LogWarning(ex, "{Platform} could not erase event {SettingsId}'s personal data; the next run retries",
+                    platform.Key, ticketing.Id);
+                continue;
+            }
+            ticketing.PersonalDataErasedAt = now;
+            await repository.SaveTicketingSettingsAsync(ticketing, ct);
+            await auditLog.LogAsync(TicketsAuditActions.TicketEventPersonalDataErased, TicketingSettingsAuditEntityType, ticketing.Id,
+                $"Asked {platform.Key} to erase the event's personal data, {holdDays} day(s) after its strike", JobName);
+            erased++;
+        }
+        return erased;
     }
 
     private static readonly IReadOnlyDictionary<string, string?> Erasure =

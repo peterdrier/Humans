@@ -158,6 +158,12 @@ internal interface ITicketCheckoutService : ITicketingPlatformEvents
     /// <summary>The evening batch of resale refunds to holders whose tickets sold and whose buyers' payments held.</summary>
     [ExternalWrite]
     Task<ResaleRefundBatch> RunResaleRefundBatchAsync(CancellationToken ct = default);
+
+    /// <summary>
+    /// Asks each event's platform, once, to erase the event's personal data after its post-event hold has passed; one
+    /// audit row per event. A platform that fails is logged and asked again on the next run. Returns how many erased.
+    /// </summary>
+    Task<int> EraseHeldEventDataAsync(CancellationToken ct = default);
 }
 
 /// <summary>Admin pages are English-only, so the refusal is shown as is.</summary>
