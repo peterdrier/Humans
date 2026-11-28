@@ -1182,7 +1182,7 @@ public sealed class GoogleWorkspaceSyncServiceTests
             .Returns([driveResource]);
 
         var member = new TeamMemberInfo(
-            Guid.NewGuid(), TestUserId, "Alice Test", plusAddressedEmail, null,
+            Guid.NewGuid(), TestUserId, "Alice Test", plusAddressedEmail,
             TeamMemberRole.Member, Instant.MinValue);
         var teamInfo = new TeamInfo(
             TestTeamId, "Test Team", null, "test-team",
@@ -1581,7 +1581,7 @@ public sealed class GoogleWorkspaceSyncServiceTests
     {
         [TestTeamId] = new TeamInfo(TestTeamId, "Test Team", null, "test-team", true, false,
             SystemTeamType.None, false, false, false, false, Instant.MinValue,
-            [new TeamMemberInfo(Guid.NewGuid(), TestUserId, "Alice Test", TestUserEmail, null,
+            [new TeamMemberInfo(Guid.NewGuid(), TestUserId, "Alice Test", TestUserEmail,
                 TeamMemberRole.Member, Instant.MinValue)])
     };
 

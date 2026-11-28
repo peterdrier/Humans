@@ -354,7 +354,6 @@ public sealed class CachingTeamServiceGetTeamDetailTests : IDisposable
                         m.UserId,
                         string.Empty,
                         null,
-                        null,
                         m.Role,
                         m.JoinedAt))
                     .ToList(),

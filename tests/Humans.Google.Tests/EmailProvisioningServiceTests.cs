@@ -201,7 +201,7 @@ public class EmailProvisioningServiceTests
         if (!missingTeam)
             teams.Add(teamId, new TeamInfo(teamId, "Team", null, "team", true, false, SystemTeamType.None,
                 false, false, false, false, Instant.MinValue,
-                [new TeamMemberInfo(Guid.NewGuid(), Guid.NewGuid(), "Other", null, null, TeamMemberRole.Member, Instant.MinValue)]));
+                [new TeamMemberInfo(Guid.NewGuid(), Guid.NewGuid(), "Other", null, TeamMemberRole.Member, Instant.MinValue)]));
         f.TeamService.GetTeamsAsync(Arg.Any<CancellationToken>()).Returns(teams);
 
         var result = await f.Service.ProvisionNobodiesEmailAsync(userId, "person", Guid.NewGuid(), teamId);
@@ -480,7 +480,7 @@ public class EmailProvisioningServiceTests
         var teamId = Guid.NewGuid();
         var team = new TeamInfo(teamId, "Team", null, "team", true, false, SystemTeamType.None,
             false, false, false, false, Instant.MinValue,
-            [new TeamMemberInfo(Guid.NewGuid(), userId, "Person", null, null, TeamMemberRole.Member, Instant.MinValue)]);
+            [new TeamMemberInfo(Guid.NewGuid(), userId, "Person", null, TeamMemberRole.Member, Instant.MinValue)]);
         f.TeamService.GetTeamsAsync(Arg.Any<CancellationToken>()).Returns(new Dictionary<Guid, TeamInfo> { [teamId] = team });
 
         f.UserService.GetUserInfoAsync(userId, Arg.Any<CancellationToken>())

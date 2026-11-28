@@ -2325,7 +2325,7 @@ internal sealed class TeamService(
                 users.TryGetValue(member.UserId, out var user);
                 return new TeamMemberInfo(
                     member.TeamMemberId, member.UserId, user?.BurnerName ?? string.Empty,
-                    user?.Email, user?.ProfilePictureUrl, member.Role, member.JoinedAt);
+                    user?.Email, member.Role, member.JoinedAt);
             }).ToList(),
         });
     }

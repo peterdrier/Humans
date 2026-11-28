@@ -38,7 +38,7 @@ public record TeamInfo(
 
 public record TeamMemberInfo(
     Guid TeamMemberId, Guid UserId, string DisplayName,
-    string? Email, string? ProfilePictureUrl, TeamMemberRole Role, Instant JoinedAt);
+    string? Email, TeamMemberRole Role, Instant JoinedAt);
 
 /// <summary>One active membership, with the team's identity stitched in.</summary>
 public sealed record UserTeamMembershipInfo(

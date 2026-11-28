@@ -187,7 +187,7 @@ public class SystemTeamSyncJobBarrioLeadsTests
             IsPromotedToDirectory: false, CreatedAt: Instant.MinValue,
             Members: team.ActiveMemberUserIds
                 .Select(uid => new TeamMemberInfo(
-                    Guid.NewGuid(), uid, string.Empty, null, null,
+                    Guid.NewGuid(), uid, string.Empty, null,
                     TeamMemberRole.Member, Instant.MinValue))
                 .ToList());
         _teamService.GetTeamsAsync(Arg.Any<CancellationToken>())

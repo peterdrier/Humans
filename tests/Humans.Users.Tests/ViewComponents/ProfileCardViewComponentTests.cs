@@ -129,7 +129,7 @@ public sealed class ProfileCardViewComponentTests
             UserInfo.Create(new User { Id = userId, BurnerName = "Ada" }, [], [], null)));
         var parent = new TeamInfo(Guid.NewGuid(), "Hidden", null, "hidden", true, false,
             SystemTeamType.None, false, false, true, false, now,
-            [new(Guid.NewGuid(), userId, "Ada", null, null, TeamMemberRole.Member, now)]);
+            [new(Guid.NewGuid(), userId, "Ada", null, TeamMemberRole.Member, now)]);
         var child = parent with { Id = Guid.NewGuid(), Name = "Visible", Slug = "visible", IsHidden = false, ParentTeamId = parent.Id };
         var teams = Substitute.For<ITeamService>();
         teams.GetTeamsAsync(Arg.Any<CancellationToken>()).Returns(new Dictionary<Guid, TeamInfo>

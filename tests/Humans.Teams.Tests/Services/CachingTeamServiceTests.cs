@@ -256,7 +256,6 @@ public sealed class CachingTeamServiceTests : TeamsTestHarness
             UserId: userId,
             DisplayName: "Member",
             Email: null,
-            ProfilePictureUrl: null,
             Role: role,
             JoinedAt: Instant.MinValue);
 
@@ -982,7 +981,6 @@ public sealed class CachingTeamServiceTests : TeamsTestHarness
                             m.UserId,
                             user is null ? string.Empty : LegacyDisplayName(user),
                             email,
-                            user?.ProfilePictureUrl,
                             m.Role,
                             m.JoinedAt);
                     })

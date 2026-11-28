@@ -53,7 +53,7 @@ public sealed class DashboardShiftsViewComponentTests
         IsActive: true, IsSystemTeam: true, SystemTeamType.Volunteers, RequiresApproval: false,
         IsPublicPage: false, IsHidden: false, IsPromotedToDirectory: false, Instant.MinValue,
         memberIds.Select(id => new TeamMemberInfo(
-            Guid.NewGuid(), id, "Member", null, null, TeamMemberRole.Member, Instant.MinValue)).ToList());
+            Guid.NewGuid(), id, "Member", null, TeamMemberRole.Member, Instant.MinValue)).ToList());
 
     private DashboardShiftsViewComponent BuildSut()
     {

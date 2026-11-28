@@ -89,7 +89,7 @@ public sealed class TeamMessageControllerTests
         {
             [_teamId] = new(_teamId, "Infrastructure", null, "infra", true, false, SystemTeamType.None,
                 false, false, false, false, Instant.MinValue,
-                [new TeamMemberInfo(Guid.NewGuid(), _viewerId, "Coordinator", null, null, TeamMemberRole.Coordinator, Instant.MinValue)],
+                [new TeamMemberInfo(Guid.NewGuid(), _viewerId, "Coordinator", null, TeamMemberRole.Coordinator, Instant.MinValue)],
                 GoogleGroupPrefix: "infra")
         });
         _resources.GetResourcesByTeamIdsAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())

@@ -61,7 +61,7 @@ public sealed class HumanSummaryViewComponentTests
         TeamInfo Team(string name, bool hidden = false, bool active = true, SystemTeamType system = SystemTeamType.None) =>
             new(Guid.NewGuid(), name, null, name, active, system != SystemTeamType.None, system,
                 false, false, hidden, false, at,
-                [new TeamMemberInfo(Guid.NewGuid(), userId, "Sparkle", null, null, TeamMemberRole.Member, at)]);
+                [new TeamMemberInfo(Guid.NewGuid(), userId, "Sparkle", null, TeamMemberRole.Member, at)]);
         teams.GetUserTeamMembershipsAsync(userId, Arg.Any<CancellationToken>()).Returns(
             new[] { Team("Zulu"), Team("Hidden", hidden: true), Team("Alpha"),
                 Team("Inactive", active: false), Team("Volunteers", system: SystemTeamType.Volunteers) }

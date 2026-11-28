@@ -1648,7 +1648,7 @@ public sealed class CampaignServiceTests
         _people.TryGetValue(userId, out var person);
         _teams[teamId].Members.Add(new TeamMemberInfo(
             Guid.NewGuid(), userId, person?.BurnerName ?? string.Empty,
-            person?.Email, null, TeamMemberRole.Member, _clock.GetCurrentInstant()));
+            person?.Email, TeamMemberRole.Member, _clock.GetCurrentInstant()));
     }
 
     private Task SaveAllAsync(CancellationToken ct = default) => _campaignsDb.SaveChangesAsync(ct);
