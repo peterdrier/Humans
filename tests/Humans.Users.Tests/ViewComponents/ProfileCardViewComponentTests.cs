@@ -177,7 +177,7 @@ public sealed class ProfileCardViewComponentTests
         teams.GetTeamsAsync(Arg.Any<CancellationToken>()).Returns(new Dictionary<Guid, TeamInfo>());
         var emails = Substitute.For<IUserEmailService>();
         emails.GetVisibleEmailsAsync(ownerId, Arg.Any<ContactFieldVisibility>(), Arg.Any<CancellationToken>())
-            .Returns([new UserEmailDto(Guid.NewGuid(), "ada@example.com", true, null, null, true, visibility)]);
+            .Returns([new UserEmailDto("ada@example.com", true, visibility)]);
         var preferences = Substitute.For<ICommunicationPreferenceService>();
         preferences.AcceptsFacilitatedMessagesAsync(ownerId, Arg.Any<CancellationToken>()).Returns(true);
         var component = new ProfileCardViewComponent(users, Substitute.For<IContactFieldService>(),
@@ -247,7 +247,7 @@ public sealed class ProfileCardViewComponentTests
         preferences.AcceptsFacilitatedMessagesAsync(userId, Arg.Any<CancellationToken>()).Returns(true);
         var emails = Substitute.For<IUserEmailService>();
         emails.GetVisibleEmailsAsync(userId, Arg.Any<ContactFieldVisibility>(), Arg.Any<CancellationToken>())
-            .Returns([new UserEmailDto(Guid.NewGuid(), "board@example.com", true, null, null, true,
+            .Returns([new UserEmailDto("board@example.com", true,
                 ContactFieldVisibility.BoardOnly)]);
         var component = new ProfileCardViewComponent(users, Substitute.For<IContactFieldService>(),
             emails, teams, Substitute.For<ISystemRoleService>(), preferences)
