@@ -82,8 +82,8 @@ public class EventsCardViewComponentTests
         else
         {
             var model = (await invoke()).Should().BeOfType<ViewViewComponentResult>().Which.ViewData!.Model
-                .Should().BeOfType<EventsCardViewModel>().Subject;
-            model.Rows.Should().ContainSingle().Which.IsFavourited.Should().BeTrue();
+                .Should().BeAssignableTo<IReadOnlyList<EventsCardRow>>().Subject;
+            model.Should().ContainSingle().Which.IsFavourited.Should().BeTrue();
             await _events.Received(1).GetFavouriteEventIdsAsync(survivor, request.Token);
             return;
         }
@@ -121,11 +121,11 @@ public class EventsCardViewComponentTests
         var result = await BuildSut(viewerId).InvokeAsync(campId: campId);
 
         var view = result.Should().BeOfType<ViewViewComponentResult>().Subject;
-        var vm = view.ViewData!.Model.Should().BeOfType<EventsCardViewModel>().Subject;
-        vm.Rows.Select(r => r.Title).Should().ContainInOrder("Early", "Late");
-        vm.Rows[0].IsFavourited.Should().BeTrue();   // Early — favourited
-        vm.Rows[1].IsFavourited.Should().BeFalse();  // Late — not favourited
-        vm.Rows[0].Description.Should().Be("Morning yoga by the temple.");
+        var vm = view.ViewData!.Model.Should().BeAssignableTo<IReadOnlyList<EventsCardRow>>().Subject;
+        vm.Select(r => r.Title).Should().ContainInOrder("Early", "Late");
+        vm[0].IsFavourited.Should().BeTrue();   // Early — favourited
+        vm[1].IsFavourited.Should().BeFalse();  // Late — not favourited
+        vm[0].Description.Should().Be("Morning yoga by the temple.");
     }
 
     [HumansFact]
@@ -146,8 +146,8 @@ public class EventsCardViewComponentTests
         var result = await BuildSut(viewerId).InvokeAsync(userId: susieId);
 
         var view = result.Should().BeOfType<ViewViewComponentResult>().Subject;
-        var vm = view.ViewData!.Model.Should().BeOfType<EventsCardViewModel>().Subject;
-        vm.Rows.Select(r => r.Title).Should().Equal("Susie's Salon");
+        var vm = view.ViewData!.Model.Should().BeAssignableTo<IReadOnlyList<EventsCardRow>>().Subject;
+        vm.Select(r => r.Title).Should().Equal("Susie's Salon");
     }
 
     [HumansFact]

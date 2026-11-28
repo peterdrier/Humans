@@ -73,10 +73,7 @@ internal sealed class EventsCardViewComponent(
                 })
                 .ToList();
 
-            return View(new EventsCardViewModel
-            {
-                Rows = rows
-            });
+            return View(rows);
         }
         catch (OperationCanceledException) when (ct.IsCancellationRequested)
         {
