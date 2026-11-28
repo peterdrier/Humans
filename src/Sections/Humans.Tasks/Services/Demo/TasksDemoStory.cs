@@ -8,8 +8,8 @@ namespace Humans.Tasks.Services.Demo;
 
 /// <summary>
 /// Tasks across three demo departments, tied to the active event: open, part-filled and overfilled slots, a task
-/// waiting on another, a blocked one with its note, a hidden one, one needing approval with two requests waiting, and fixed
-/// and relative dates.
+/// waiting on another, one waiting on two (a three-step chain for the dependency graph), a blocked one with its note, a hidden one, one needing approval with two requests waiting, and fixed
+/// and relative dates, tasks with one date and one with none (for the timeline and its "no dates" line).
 /// Tasks with an event attach to the active event and never change its settings; with none, only the event-less
 /// task is made and the report says so.
 /// </summary>
@@ -104,8 +104,8 @@ internal sealed class TasksDemoStory(ITaskService tasks, ISettingsService settin
             await tasks.ClaimAsync(taskId, userId, ct);
         }
 
-        if (spec.WaitsOn is { } other && made.TryGetValue(other, out var otherId)
-            && task.WaitingOn.All(l => l.Id != otherId))
+        foreach (var otherId in (spec.WaitsOn ?? []).Where(made.ContainsKey).Select(slug => made[slug])
+                     .Where(id => task.WaitingOn.All(l => l.Id != id)))
         {
             await tasks.AddDependencyAsync(taskId, otherId, actorUserId, ct);
         }
@@ -125,7 +125,11 @@ internal sealed class TasksDemoStory(ITaskService tasks, ISettingsService settin
             new("gate-signage", "teams:team:gate", "Print and hang gate signage",
                 "Needs the fence line done first.",
                 Relative(gate.PlusDays(-5)), Relative(gate.PlusDays(-1)), SlotPriority.Important, 2, People: 1, PeopleOffset: 3,
-                WaitsOn: "fence-line"),
+                WaitsOn: ["fence-line"]),
+            new("site-handover", "teams:team:infrastructure", "Hand the site over to the build crew",
+                "Needs the gate signage up and the water tanks tested.",
+                null, Relative(gate.PlusDays(-1)), SlotPriority.Important, 1, People: 0, PeopleOffset: 0,
+                WaitsOn: ["gate-signage", "water-tanks"]),
             new("water-tanks", "teams:team:infrastructure", "Fill and test the water tanks",
                 "Check every tank holds before the build crew arrives.",
                 Relative(gate.PlusDays(-3)), Relative(gate.PlusDays(-2)), SlotPriority.Critical, 4, People: 2, PeopleOffset: 4,
@@ -140,6 +144,9 @@ internal sealed class TasksDemoStory(ITaskService tasks, ISettingsService settin
             new("volunteer-thanks", "teams:team:participant-wellness", "Plan the volunteer thank-you evening",
                 "Not tied to an event.",
                 null, Fixed(today.PlusDays(14)), SlotPriority.None, 2, People: 0, PeopleOffset: 0, NeedsEvent: false),
+            new("lost-property", "teams:team:participant-wellness", "Sort out the lost-property box",
+                "Nobody has picked a date for this yet.",
+                null, null, SlotPriority.NiceToHave, 1, People: 0, PeopleOffset: 0),
         ];
     }
 
@@ -164,7 +171,7 @@ internal sealed class TasksDemoStory(ITaskService tasks, ISettingsService settin
         int RequestsOffset = 0,
         bool IsHidden = false,
         bool NeedsEvent = true,
-        string? WaitsOn = null,
+        IReadOnlyList<string>? WaitsOn = null,
         TaskItemStatus Status = TaskItemStatus.Todo,
         string? BlockedNote = null);
 }

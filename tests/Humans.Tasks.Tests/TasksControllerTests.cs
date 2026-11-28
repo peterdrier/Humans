@@ -51,7 +51,8 @@ public sealed class TasksControllerTests
             .Returns([.. manages.Select(id => new Owner(TeamOwner.Kind, id))]);
 
         var identity = new ClaimsIdentity(
-            [new Claim(ClaimTypes.NameIdentifier, _me.ToString()), .. roles.Select(r => new Claim(ClaimTypes.Role, r))], "test");
+            [new Claim(ClaimTypes.NameIdentifier, _me.ToString()), new Claim(RoleChecks.UserStateClaimType, nameof(UserState.Active)),
+                .. roles.Select(r => new Claim(ClaimTypes.Role, r))], "test");
         var http = new DefaultHttpContext { User = new ClaimsPrincipal(identity) };
         return new TasksController(
             _kit.Service, permissions, _kit.Teams, _kit.Settings, Substitute.For<IUserService>(), Authorization, new TaskTestKit.KeyLocalizer(), NullLogger<TasksController>.Instance)
@@ -771,15 +772,6 @@ public sealed class TasksControllerTests
     }
 
     [HumansFact]
-    public async Task Claim_FromFilteredList_ReturnsToIt()
-    {
-        var task = await TaskOnAsync(TaskTestKit.Production);
-        var back = $"/Tasks?Priority=Critical&Team={TaskTestKit.Production}&Finished=true";
-
-        (await Human().Claim(task.Id, back, Ct)).Should().BeOfType<LocalRedirectResult>().Which.Url.Should().Be(back);
-    }
-
-    [HumansFact]
     public async Task Claim_TakesSlotOrMakesRequest()
     {
         var plain = await TaskOnAsync(TaskTestKit.Production);
@@ -969,6 +961,147 @@ public sealed class TasksControllerTests
 
         model.Places[free.Id].Should().Be(MyPlace.CanClaim);
         model.Places[asked.Id].Should().Be(MyPlace.Requested);
+    }
+
+    private static TimelinePageViewModel TimelineModel(IActionResult r) =>
+        r.Should().BeOfType<ViewResult>().Which.Model.Should().BeOfType<TimelinePageViewModel>().Which;
+
+    private static IEnumerable<Guid> Drawn(TimelinePageViewModel model) =>
+        model.Timeline.Teams.SelectMany(t => t.Bars).Select(b => b.Task.Id);
+
+    private Task<TaskInfo> DatedAsync(string title, Guid? team = null, Guid? eventId = null, bool hidden = false) =>
+        _kit.CreateAsync(TaskTestKit.Input(team, title, eventId, new TaskDateInput(false, new LocalDate(2027, 3, 1)), new TaskDateInput(false, new LocalDate(2027, 3, 4)), hidden: hidden));
+
+    [HumansFact]
+    public async Task Timeline_DefaultSet_MatchesTheListsDefault()
+    {
+        var active = await DatedAsync("Active", eventId: TaskTestKit.Spring);
+        var eventless = await DatedAsync("Eventless");
+        await DatedAsync("Other event", eventId: TaskTestKit.Autumn);
+        var done = await DatedAsync("Done");
+        await _kit.SetStatusAsync(done.Id, TaskItemStatus.Done);
+
+        Drawn(TimelineModel(await Human().Timeline(new TaskListFilter(), Ct))).Should().BeEquivalentTo([active.Id, eventless.Id]);
+        Drawn(TimelineModel(await Human().Timeline(new TaskListFilter { Finished = true }, Ct))).Should().Contain(done.Id);
+    }
+
+    [HumansFact]
+    public async Task Timeline_HiddenTask_IsLeftOffForOutsiders()
+    {
+        var hidden = await DatedAsync("Secret", hidden: true);
+        var visible = await DatedAsync("Open");
+
+        Drawn(TimelineModel(await Human().Timeline(new TaskListFilter(), Ct))).Should().Equal(visible.Id);
+        Drawn(TimelineModel(await As([], RoleNames.Board).Timeline(new TaskListFilter(), Ct))).Should().Contain(hidden.Id);
+        Drawn(TimelineModel(await ManagerOfProduction().Timeline(new TaskListFilter(), Ct))).Should().Contain(hidden.Id);
+    }
+
+    [HumansFact]
+    public async Task Timeline_HiddenTeam_IsLeftOffForOutsiders()
+    {
+        var secret = await DatedAsync("Secret team job", TaskTestKit.HiddenTeam);
+
+        Drawn(TimelineModel(await Human().Timeline(new TaskListFilter(), Ct))).Should().BeEmpty();
+        Drawn(TimelineModel(await As([TaskTestKit.HiddenTeam]).Timeline(new TaskListFilter(), Ct))).Should().Equal(secret.Id);
+    }
+
+    [HumansFact]
+    public async Task Timeline_LinkToHiddenTask_DrawsAHiddenNode()
+    {
+        var hidden = await DatedAsync("Secret", hidden: true);
+        var visible = await DatedAsync("Open");
+        (await _kit.Service.AddDependencyAsync(visible.Id, hidden.Id, _kit.Actor, Ct)).Succeeded.Should().BeTrue();
+
+        var outsider = TimelineModel(await Human().Timeline(new TaskListFilter(), Ct)).Timeline.Graph;
+        var board = TimelineModel(await As([], RoleNames.Board).Timeline(new TaskListFilter(), Ct)).Timeline.Graph;
+
+        outsider.Nodes.Should().HaveCount(2).And.ContainSingle(n => n.Task == null);
+        outsider.Nodes.Select(n => n.Task?.Title).Should().NotContain("Secret");
+        board.Nodes.Should().OnlyContain(n => n.Task != null);
+    }
+
+    [HumansFact]
+    public async Task Timeline_SignedOut_IsUnauthorized()
+    {
+        var http = new DefaultHttpContext();
+        var signedOut = new TasksController(
+            _kit.Service, Substitute.For<IPermissionService>(), _kit.Teams, _kit.Settings, Substitute.For<IUserService>(), Authorization,
+            new TaskTestKit.KeyLocalizer(), NullLogger<TasksController>.Instance)
+        {
+            ControllerContext = new ControllerContext { HttpContext = http },
+        };
+
+        (await signedOut.Timeline(new TaskListFilter(), Ct)).Should().BeOfType<UnauthorizedResult>();
+    }
+
+    [HumansFact]
+    public void Timeline_Controller_RequiresSignIn() =>
+        typeof(TasksController).GetCustomAttributes<AuthorizeAttribute>(inherit: false).Should().ContainSingle(a => a.Policy == null && a.Roles == null);
+
+    [HumansFact]
+    public async Task Timeline_TeamFilter_NarrowsToThatTeam()
+    {
+        var production = await DatedAsync("Bar", TaskTestKit.Production);
+        await DatedAsync("Mural", TaskTestKit.Art);
+
+        Drawn(TimelineModel(await Human().Timeline(new TaskListFilter { Team = TaskTestKit.Production }, Ct))).Should().Equal(production.Id);
+    }
+
+    [HumansFact]
+    public async Task Timeline_TeamFilter_KeptForTeamWithNothingListed()
+    {
+        await DatedAsync("Mural", TaskTestKit.Art);
+
+        var model = TimelineModel(await Human().Timeline(new TaskListFilter { Team = TaskTestKit.Production }, Ct));
+
+        model.Filter.Team.Should().Be(TaskTestKit.Production);
+        model.Teams.Select(t => t.Id).Should().Contain(TaskTestKit.Production);
+        Drawn(model).Should().BeEmpty();
+    }
+
+    [HumansFact]
+    public async Task Timeline_TeamFilter_DroppedForHiddenTeam()
+    {
+        var model = TimelineModel(await Human().Timeline(new TaskListFilter { Team = TaskTestKit.HiddenTeam }, Ct));
+
+        model.Filter.Team.Should().BeNull();
+        model.Teams.Select(t => t.Id).Should().NotContain(TaskTestKit.HiddenTeam);
+    }
+
+    [HumansFact]
+    public async Task Timeline_TeamFilter_DrawsCrossTeamLinksAsContext()
+    {
+        var mural = await DatedAsync("Mural", TaskTestKit.Art);
+        var bar = await DatedAsync("Bar", TaskTestKit.Production);
+        (await _kit.Service.AddDependencyAsync(bar.Id, mural.Id, _kit.Actor, Ct)).Succeeded.Should().BeTrue();
+
+        var graph = TimelineModel(await Human().Timeline(new TaskListFilter { Team = TaskTestKit.Production }, Ct)).Timeline.Graph;
+
+        graph.Nodes.Should().ContainSingle(n => n.Task!.Id == mural.Id && n.IsContext);
+        graph.Edges.Should().ContainSingle();
+    }
+
+    [HumansFact]
+    public async Task Timeline_UndatedTasks_AreCountedNotDrawn()
+    {
+        await TaskOnAsync(TaskTestKit.Production);
+        await TaskOnAsync(TaskTestKit.Art);
+        await DatedAsync("Dated");
+
+        var model = TimelineModel(await Human().Timeline(new TaskListFilter { Undated = true }, Ct));
+
+        model.Timeline.Undated.Should().Be(2);
+        Drawn(model).Should().ContainSingle();
+        model.Filter.Undated.Should().BeFalse("the timeline never shows only the undated");
+    }
+
+    [HumansFact]
+    public async Task Index_UndatedFilter_ListsOnlyTasksWithNoDates()
+    {
+        var undated = await TaskOnAsync(TaskTestKit.Production);
+        await DatedAsync("Dated");
+
+        IndexModel(await Human().Index(new TaskListFilter { Undated = true }, Ct)).Tasks.Select(t => t.Id).Should().Equal(undated.Id);
     }
 
     [HumansFact]

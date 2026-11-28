@@ -184,4 +184,14 @@
   <data name="Tasks_Card_Empty" xml:space="preserve"><value>Gerade keine offenen Aufgaben.</value></data>
   <data name="Tasks_Card_Requests" xml:space="preserve"><value>Offene Anfragen: {0}</value></data>
   <data name="Tasks_Card_All" xml:space="preserve"><value>Alle Aufgaben ansehen ({0})</value></data>
+  <data name="Tasks_Timeline_Title" xml:space="preserve"><value>Zeitplan</value></data>
+  <data name="Tasks_Timeline_Subtitle" xml:space="preserve"><value>Aufgaben von Beginn bis Fälligkeit, und was worauf wartet.</value></data>
+  <data name="Tasks_Timeline_Empty" xml:space="preserve"><value>Keine Aufgaben mit Datum anzuzeigen.</value></data>
+  <data name="Tasks_Timeline_UndatedOne" xml:space="preserve"><value>1 Aufgabe hat kein Datum</value></data>
+  <data name="Tasks_Timeline_UndatedMany" xml:space="preserve"><value>{0} Aufgaben haben kein Datum</value></data>
+  <data name="Tasks_Timeline_WeekOf" xml:space="preserve"><value>Woche vom {0}</value></data>
+  <data name="Tasks_Graph_Title" xml:space="preserve"><value>Abhängigkeiten</value></data>
+  <data name="Tasks_Graph_Intro" xml:space="preserve"><value>Jeder Pfeil führt von einer Aufgabe zu der Aufgabe, die auf sie wartet. Aufgaben ohne Verknüpfung fehlen. Blasse Aufgaben sind verknüpft, gehören aber nicht zu dieser Ansicht.</value></data>
+  <data name="Tasks_Graph_Empty" xml:space="preserve"><value>Keine Aufgabe hier wartet auf eine andere.</value></data>
+  <data name="Tasks_Filter_Undated" xml:space="preserve"><value>Nur ohne Datum</value></data>
 </root>

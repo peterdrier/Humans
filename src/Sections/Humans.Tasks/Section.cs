@@ -13,6 +13,7 @@ using Humans.Permissions.Contracts;
 using Humans.Tasks.Contracts;
 using Humans.Tasks.Data;
 using Humans.Tasks.Domain;
+using Humans.Tasks.Models;
 using Humans.Tasks.Services;
 using Humans.Tasks.Services.Demo;
 using Humans.Teams.Contracts;
@@ -65,6 +66,11 @@ public sealed class Section : SectionBase, ISectionRoles, ISectionNav, ISectionA
             [TaskItemStatus.Blocked] = "bg-warning text-dark",
             [TaskItemStatus.Done] = "bg-success",
             [TaskItemStatus.Cancelled] = "bg-secondary",
+
+            [TaskTag.Understaffed] = "bg-danger",
+            [TaskTag.Waiting] = "bg-warning text-dark",
+            [TaskTag.NeedsApproval] = "bg-light text-dark border",
+            [TaskTag.Hidden] = "bg-light text-dark border",
         });
 
         services.AddSingleton<IAuditActionContributor, TasksAuditActions>();

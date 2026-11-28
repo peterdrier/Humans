@@ -6,7 +6,6 @@ using Humans.Tasks.Services;
 using Humans.Teams.Contracts;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.Extensions.Localization;
 
 namespace Humans.Tasks.ViewComponents;
 
@@ -18,8 +17,7 @@ internal sealed class TeamTasksCardViewComponent(
     ITaskService tasks,
     ITeamService teams,
     IPermissionService permissions,
-    IAuthorizationService authorization,
-    IStringLocalizer<TasksResource> localizer) : ViewComponent
+    IAuthorizationService authorization) : ViewComponent
 {
     /// <summary>The card is a glance; the team's tasks page has the rest.</summary>
     internal const int RowLimit = 5;
@@ -34,9 +32,7 @@ internal sealed class TeamTasksCardViewComponent(
         var onTeam = all.Where(t => t.Owner.Id == teamId).ToList();
         if (!access.CanSeeTeam(team.Id, team.IsHidden, onTeam)) return Content(string.Empty);
 
-        var open = TaskRowOrder.Order((await tasks.GetListedTasksAsync(new TaskListFilter().ToScope(), ct))
-                .Where(t => t.Owner.Id == teamId && access.CanSee(t)))
-            .ToList();
+        var open = TaskRowOrder.Order(tasks.Listed(all).Where(t => t.Owner.Id == teamId && access.CanSee(t))).ToList();
         var canAdd = access.CanAddTo(team);
         if (open.Count == 0 && !canAdd) return Content(string.Empty);
 
@@ -47,7 +43,7 @@ internal sealed class TeamTasksCardViewComponent(
 
         return View(new TeamTasksCardViewModel(
             new TaskRowsModel(shown, ShowTeam: false, ShowStatus: false, access.PlacesOn(shown), access.BlockersOn(shown, all), back,
-                localizer["Tasks_Card_Empty"].Value, Flush: true),
+                string.Empty, Flush: true),
             open.Count, waiting, canAdd, tasksUrl, tasksUrl + "#requests", tasksUrl + "#add"));
     }
 }

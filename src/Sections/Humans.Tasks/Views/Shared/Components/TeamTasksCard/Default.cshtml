@@ -16,7 +16,7 @@
     </div>
     @if (Model.Rows.Tasks.Count == 0)
     {
-        <div class="card-body"><empty-state>@Model.Rows.Empty</empty-state></div>
+        <div class="card-body"><empty-state>@Localizer["Tasks_Card_Empty"]</empty-state></div>
     }
     else
     {

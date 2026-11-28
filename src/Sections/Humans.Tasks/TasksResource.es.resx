@@ -184,4 +184,14 @@
   <data name="Tasks_Card_Empty" xml:space="preserve"><value>No hay tareas abiertas ahora mismo.</value></data>
   <data name="Tasks_Card_Requests" xml:space="preserve"><value>Solicitudes pendientes: {0}</value></data>
   <data name="Tasks_Card_All" xml:space="preserve"><value>Ver todas las tareas ({0})</value></data>
+  <data name="Tasks_Timeline_Title" xml:space="preserve"><value>Cronología</value></data>
+  <data name="Tasks_Timeline_Subtitle" xml:space="preserve"><value>Tareas desde el inicio hasta la fecha límite, y qué espera a qué.</value></data>
+  <data name="Tasks_Timeline_Empty" xml:space="preserve"><value>No hay tareas con fechas que mostrar.</value></data>
+  <data name="Tasks_Timeline_UndatedOne" xml:space="preserve"><value>1 tarea no tiene fechas</value></data>
+  <data name="Tasks_Timeline_UndatedMany" xml:space="preserve"><value>{0} tareas no tienen fechas</value></data>
+  <data name="Tasks_Timeline_WeekOf" xml:space="preserve"><value>Semana del {0}</value></data>
+  <data name="Tasks_Graph_Title" xml:space="preserve"><value>Dependencias</value></data>
+  <data name="Tasks_Graph_Intro" xml:space="preserve"><value>Cada flecha va de una tarea a la tarea que espera por ella. Las tareas sin vínculos no aparecen. Las tareas atenuadas están vinculadas pero no forman parte de esta vista.</value></data>
+  <data name="Tasks_Graph_Empty" xml:space="preserve"><value>Ninguna tarea de aquí espera a otra.</value></data>
+  <data name="Tasks_Filter_Undated" xml:space="preserve"><value>Solo sin fechas</value></data>
 </root>

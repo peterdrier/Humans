@@ -51,11 +51,11 @@ internal sealed partial class TaskService(
         return snapshot.Tasks.Values.Select(t => ToInfo(t, snapshot)).ToList();
     }
 
-    public async Task<IReadOnlyList<TaskInfo>> GetListedTasksAsync(TaskListScope? scope = null, CancellationToken ct = default)
+    public IReadOnlyList<TaskInfo> Listed(IEnumerable<TaskInfo> all, TaskListScope? scope = null)
     {
         scope ??= new TaskListScope();
         var activeEventId = settings.GetActiveEventSettings()?.Id;
-        return (await GetTasksAsync(ct))
+        return all
             .Where(t => (scope.IncludeFinished || !t.IsFinished)
                 && (scope.AnyEvent
                     || (scope.EventId is { } eventId ? t.EventId == eventId : t.EventId is null || t.EventId == activeEventId)))
@@ -70,7 +70,7 @@ internal sealed partial class TaskService(
 
     public async Task<TasksAdminSummary> GetAdminSummaryAsync(CancellationToken ct = default)
     {
-        var listed = await GetListedTasksAsync(ct: ct);
+        var listed = Listed(await GetTasksAsync(ct));
         var rows = listed
             .GroupBy(t => t.Owner)
             .Select(g => new TeamTaskCounts(

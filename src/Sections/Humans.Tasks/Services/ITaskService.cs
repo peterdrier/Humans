@@ -16,10 +16,10 @@ internal interface ITaskService : IApplicationService
     Task<IReadOnlyList<TaskInfo>> GetTasksAsync(CancellationToken ct = default);
 
     /// <summary>
-    /// The tasks a list shows; a null scope is the default <see cref="TaskListScope"/>. Callers filter what the viewer
-    /// may see, and sort.
+    /// Of <paramref name="all"/> (from <see cref="GetTasksAsync"/>, so a page reads the tasks once), the ones a list
+    /// shows; a null scope is the default <see cref="TaskListScope"/>. Callers filter what the viewer may see, and sort.
     /// </summary>
-    Task<IReadOnlyList<TaskInfo>> GetListedTasksAsync(TaskListScope? scope = null, CancellationToken ct = default);
+    IReadOnlyList<TaskInfo> Listed(IEnumerable<TaskInfo> all, TaskListScope? scope = null);
 
     Task<TaskInfo?> GetTaskAsync(Guid taskId, CancellationToken ct = default);
 
@@ -163,6 +163,9 @@ internal sealed record TaskInfo(
     public bool IsWaiting => !IsFinished && WaitingOn.Any(l => l.Status is not (TaskItemStatus.Done or TaskItemStatus.Cancelled));
 
     public bool IsFinished => Status is TaskItemStatus.Done or TaskItemStatus.Cancelled;
+
+    /// <summary>No start and no due date, as shown: a relative date with no event to resolve against counts as none.</summary>
+    public bool IsUndated => Start?.Resolved is null && Due?.Resolved is null;
 }
 
 /// <summary>What a write answers.</summary>

@@ -1,0 +1,131 @@
+@* Dated tasks as bars from start to due, by team on a wide screen and by week on a phone, then the dependency graph. *@
+@model TimelinePageViewModel
+
+@{
+    ViewData["Title"] = Localizer["Tasks_Timeline_Title"].Value;
+    var timeline = Model.Timeline;
+    var filter = Model.Filter;
+    var undatedUrl = Url.Action("Index", "Tasks", new
+    {
+        filter.Event, filter.Team, filter.Priority, filter.Status, Finished = filter.Finished ? "true" : null, Undated = "true"
+    });
+}
+
+@section Crumbs {
+    <a href="@Url.Action("Index", "Tasks")">@SharedLocalizer["Nav_Tasks"]</a>
+    <span>@Localizer["Tasks_Timeline_Title"]</span>
+}
+
+<page-header title="@(Localizer["Tasks_Timeline_Title"].Value)">
+    <page-header-subtitle>@Localizer["Tasks_Timeline_Subtitle"]</page-header-subtitle>
+    <a href="@Url.Action("Index", "Tasks")" class="btn btn-outline-secondary">@Localizer["Tasks_Team_All"]</a>
+</page-header>
+
+<partial name="_Filter" model="new TaskFilterViewModel(Model.Filter, Model.Events, Model.Teams, Model.Statuses, OfferUndated: false)" />
+
+@if (timeline.Undated > 0)
+{
+    <p class="text-muted">
+        <a href="@undatedUrl">@(timeline.Undated == 1 ? Localizer["Tasks_Timeline_UndatedOne"].Value : Localizer["Tasks_Timeline_UndatedMany", timeline.Undated].Value)</a>
+    </p>
+}
+
+@if (timeline.Teams.Count == 0)
+{
+    <empty-state>@Localizer["Tasks_Timeline_Empty"]</empty-state>
+}
+else
+{
+    <div class="card d-none d-md-block mb-4">
+        <div class="card-body tl">
+            <div class="tl-row tl-months">
+                <div></div>
+                <div class="tl-track">
+                    @foreach (var month in timeline.Months)
+                    {
+                        <span class="tl-month" style="--left: @month.Left; --width: @month.Width">@month.First.AtMidnight().ToDateTimeUnspecified().ToMonthYear()</span>
+                    }
+                </div>
+            </div>
+            @foreach (var team in timeline.Teams)
+            {
+                <div class="tl-team">
+                    @if (team.Slug.Length > 0)
+                    {
+                        <a href="@Url.Action("Team", "Tasks", new { slug = team.Slug })">@team.Name</a>
+                    }
+                    else
+                    {
+                        @team.Name
+                    }
+                </div>
+                @foreach (var bar in team.Bars)
+                {
+                    var dates = bar.IsMarker ? bar.From.ToDate() : $"{bar.From.ToDate()} – {bar.To.ToDate()}";
+                    var barUrl = Url.Action("Details", "Tasks", new { id = bar.Task.Id });
+                    <div class="tl-row">
+                        <div class="tl-label"><a href="@barUrl">@bar.Task.Title</a></div>
+                        <div class="tl-track">
+                            <a href="@barUrl" class="tl-bar tl-bar--@TaskRowOrder.Edge(bar.Task.Priority) @(bar.IsMarker ? "tl-bar--marker" : null) @(bar.Task.IsFinished ? "tl-bar--finished" : null)"
+                               style="--left: @bar.Left; --width: @bar.Width" title="@bar.Task.Title: @dates" aria-label="@bar.Task.Title: @dates"></a>
+                        </div>
+                    </div>
+                }
+            }
+            <div class="tl-legend small text-muted">
+                @foreach (var priority in new[] { SlotPriority.Critical, SlotPriority.Important, SlotPriority.NiceToHave })
+                {
+                    <span><span class="tl-swatch tl-bar--@TaskRowOrder.Edge(priority)"></span> @SharedLocalizer.EnumDisplay(priority)</span>
+                }
+            </div>
+        </div>
+    </div>
+
+    <div class="d-md-none mb-4">
+        @foreach (var week in timeline.Weeks)
+        {
+            <div class="card mb-3">
+                <div class="card-header"><h2 class="h6 mb-0">@Localizer["Tasks_Timeline_WeekOf", week.Monday.ToDate()]</h2></div>
+                <ul class="list-group list-group-flush">
+                    @foreach (var bar in week.Bars)
+                    {
+                        <li class="list-group-item task-row task-row--@TaskRowOrder.Edge(bar.Task.Priority)">
+                            <a href="@Url.Action("Details", "Tasks", new { id = bar.Task.Id })" class="fw-semibold">@bar.Task.Title</a>
+                            <div class="d-flex flex-wrap align-items-center gap-2 mt-1">
+                                <status-badge value="@bar.Task.Status" localizer="@Localizer" />
+                                <span class="small text-muted">@(bar.IsMarker ? bar.From.ToDate() : $"{bar.From.ToDate()} – {bar.To.ToDate()}")</span>
+                                @if (bar.Task.TeamName.Length > 0)
+                                {
+                                    <span class="small text-muted">· @bar.Task.TeamName</span>
+                                }
+                            </div>
+                            @if (bar.WaitsOn.Count > 0)
+                            {
+                                <div class="small text-muted mt-1">
+                                    @Localizer["Tasks_Task_WaitingOnTitle"]:
+                                    @for (var i = 0; i < bar.WaitsOn.Count; i++)
+                                    {
+                                        var wait = bar.WaitsOn[i];
+                                        @(i > 0 ? ", " : null)
+                                        @if (wait.Title is null)
+                                        {
+                                            @Localizer["Tasks_Task_HiddenTask"]
+                                        }
+                                        else
+                                        {
+                                            <a href="@Url.Action("Details", "Tasks", new { id = wait.Id })" class="text-muted">@wait.Title</a>
+                                        }
+                                    }
+                                </div>
+                            }
+                        </li>
+                    }
+                </ul>
+            </div>
+        }
+    </div>
+}
+
+<h2 class="h4 mt-4">@Localizer["Tasks_Graph_Title"]</h2>
+<p class="text-muted">@Localizer["Tasks_Graph_Intro"]</p>
+<partial name="_DependencyGraph" model="timeline.Graph" />

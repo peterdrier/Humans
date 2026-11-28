@@ -3127,14 +3127,15 @@ body.city-map-fullscreen main {
     .stats { grid-template-columns: 1fr; }
 }
 
-/* Task rows (Tasks lists, the tasks card on a team page): a priority-coloured edge, slot dots in the meta line. */
-.task-row {
+/* Task rows (Tasks lists, the tasks card on a team page): a priority-coloured edge, slot dots in the meta line.
+   Three classes deep so the card's .list-group-flush > .list-group-item does not zero the edge. */
+.list-group > .list-group-item.task-row {
     border-left: 4px solid var(--h-border);
 }
 
-.task-row--critical { border-left-color: var(--h-rust); }
-.task-row--important { border-left-color: var(--h-amber); }
-.task-row--nice { border-left-color: var(--h-sage); }
+.list-group > .list-group-item.task-row--critical { border-left-color: var(--h-rust); }
+.list-group > .list-group-item.task-row--important { border-left-color: var(--h-amber); }
+.list-group > .list-group-item.task-row--nice { border-left-color: var(--h-sage); }
 
 .task-row-main {
     min-width: 0;
@@ -3158,6 +3159,166 @@ body.city-map-fullscreen main {
     .task-row-claim {
         width: 100%;
     }
+}
+
+/* Tasks timeline (/Tasks/Timeline): a label column and a time axis. Positions are integers in hundredths of a percent
+   (--left, --width), so the markup carries no decimals. A one-date task is a marker, a dot at the middle of its day. */
+.tl-row {
+    display: grid;
+    grid-template-columns: minmax(9rem, 16rem) 1fr;
+    gap: 1rem;
+    align-items: center;
+}
+
+.tl-row + .tl-row {
+    margin-top: 0.25rem;
+}
+
+.tl-row > :first-child {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.tl-track {
+    position: relative;
+    height: 1.75rem;
+}
+
+.tl-months .tl-track {
+    height: 1.5rem;
+}
+
+.tl-month {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    left: calc(var(--left) * 0.01%);
+    width: calc(var(--width) * 0.01%);
+    padding-left: 0.25rem;
+    border-left: 1px solid var(--h-border-light);
+    overflow: hidden;
+    white-space: nowrap;
+    font-size: 0.75rem;
+    color: var(--h-text-secondary);
+}
+
+.tl-team {
+    margin-top: 1rem;
+    padding-bottom: 0.25rem;
+    border-bottom: 1px solid var(--h-border-light);
+    font-weight: 600;
+}
+
+.tl-bar {
+    position: absolute;
+    top: 0.4rem;
+    height: 1rem;
+    left: calc(var(--left) * 0.01%);
+    width: calc(var(--width) * 0.01%);
+    min-width: 0.5rem;
+    border-radius: var(--h-radius-sm);
+    background: var(--h-sepia-light);
+}
+
+.tl-bar--critical { background: var(--h-rust); }
+.tl-bar--important { background: var(--h-amber); }
+.tl-bar--nice { background: var(--h-sage); }
+
+.tl-legend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem 1rem;
+    margin-top: 0.75rem;
+}
+
+.tl-swatch {
+    display: inline-block;
+    width: 0.9rem;
+    height: 0.6rem;
+    border-radius: var(--h-radius-sm);
+    vertical-align: baseline;
+}
+
+.tl-bar--marker {
+    top: 0.45rem;
+    width: 0.9rem;
+    height: 0.9rem;
+    border-radius: 50%;
+    transform: translateX(-50%);
+}
+
+.tl-bar--finished {
+    opacity: 0.45;
+}
+
+.tl-bar:hover,
+.tl-bar:focus-visible {
+    outline: 2px solid var(--h-aged-ink);
+    outline-offset: 1px;
+}
+
+/* Dependency graph: server-drawn SVG. It scrolls inside its own box, never the page. */
+.dep-graph {
+    max-width: 100%;
+    overflow-x: auto;
+    padding: 0.5rem;
+    background: var(--h-bg-card);
+    border: 1px solid var(--h-border);
+    border-radius: var(--h-radius-lg);
+}
+
+.dep-graph svg {
+    display: block;
+    max-width: none;
+}
+
+.dep-node a {
+    text-decoration: none;
+}
+
+.dep-node rect {
+    fill: var(--h-bg-card);
+    stroke: var(--h-border);
+    stroke-width: 1.5;
+}
+
+.dep-node--blocked rect { stroke: var(--h-rust); }
+.dep-node--waiting rect { stroke: var(--h-amber); }
+.dep-node--done rect { stroke: var(--h-sage); }
+.dep-node--hidden rect { stroke-dasharray: 4 3; }
+.dep-node--context { opacity: 0.6; }
+
+.dep-node a:hover rect,
+.dep-node a:focus-visible rect {
+    fill: var(--h-bg-hover);
+}
+
+.dep-node-title {
+    fill: var(--h-text);
+    font-size: 13px;
+    font-weight: 600;
+}
+
+.dep-node-status {
+    fill: var(--h-text-secondary);
+    font-size: 11px;
+}
+
+.dep-node--hidden .dep-node-title {
+    fill: var(--h-text-secondary);
+    font-weight: 400;
+}
+
+.dep-edge {
+    fill: none;
+    stroke: var(--h-sepia-light);
+    stroke-width: 1.5;
+}
+
+.dep-arrowhead {
+    fill: var(--h-sepia-light);
 }
 
 /* Member checkout pages (/Tickets/Buy): the price summary beside the form, its lines, the pay button. */

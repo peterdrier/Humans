@@ -7,7 +7,7 @@ using NodaTime;
 
 namespace Humans.Tasks.Models;
 
-/// <summary>The filters every task list shares: one team, one priority, one status. All default to everything.</summary>
+/// <summary>The filters every task list shares: one team, one priority, one status, and only tasks with no dates. All default to everything.</summary>
 internal class TaskRowFilter
 {
     public Guid? Team { get; set; }
@@ -16,21 +16,27 @@ internal class TaskRowFilter
 
     public TaskItemStatus? Status { get; set; }
 
+    /// <summary>Only tasks with no start and no due date, which the timeline leaves off.</summary>
+    public bool Undated { get; set; }
+
+    /// <summary>The statuses a list offers: every one, or all but done and cancelled on a list that never shows finished tasks.</summary>
+    public static IReadOnlyList<TaskItemStatus> StatusChoices(bool withFinished) =>
+        [.. Enum.GetValues<TaskItemStatus>().Where(s => withFinished || s is not (TaskItemStatus.Done or TaskItemStatus.Cancelled))];
+
     /// <summary>
-    /// Drops a value the filter form has no option for (a team that is not among <paramref name="teams"/>, "no priority"),
-    /// so the selects never read "all" while a hidden value empties the list. <paramref name="withFinished"/> says
-    /// whether done and cancelled are statuses this list can show.
+    /// Drops a value the filter form has no option for (a team that is not among <paramref name="teams"/>, "no priority",
+    /// a status not among <paramref name="statuses"/>), so the selects never read "all" while a hidden value empties the list.
     /// </summary>
-    public void DropUnoffered(IEnumerable<TeamChoice>? teams, bool withFinished)
+    public void DropUnoffered(IEnumerable<TeamChoice>? teams, IReadOnlyList<TaskItemStatus> statuses)
     {
         if (Team is { } team && (teams is null || teams.All(t => t.Id != team))) Team = null;
         if (Priority == SlotPriority.None) Priority = null;
-        if (Status is TaskItemStatus.Done or TaskItemStatus.Cancelled && !withFinished) Status = null;
+        if (Status is { } status && !statuses.Contains(status)) Status = null;
     }
 
     /// <summary>Everything but the team, for a list that is already one team's.</summary>
     public bool MatchesWithinTeam(TaskInfo task) =>
-        (Priority is null || task.Priority == Priority) && (Status is null || task.Status == Status);
+        (Priority is null || task.Priority == Priority) && (Status is null || task.Status == Status) && (!Undated || task.IsUndated);
 
     public bool Matches(TaskInfo task) => MatchesWithinTeam(task) && (Team is null || task.Owner.Id == Team);
 }
@@ -60,6 +66,9 @@ internal sealed class TaskListFilter : TaskRowFilter
 internal sealed record EventOption(Guid Id, string Name);
 
 internal sealed record TeamChoice(Guid Id, string Name, string Slug);
+
+/// <summary>The warning tags on a task row. Only their badge colour comes from <c>EnumBadgeMap</c>; the text is localized in the view.</summary>
+internal enum TaskTag { Understaffed, Waiting, NeedsApproval, Hidden }
 
 /// <summary>Where the viewer stands on a task. A task the viewer has no part in and cannot claim has no place.</summary>
 internal enum MyPlace { CanClaim, Requested, Confirmed }
@@ -103,6 +112,15 @@ internal static class TaskRowOrder
         _ => 3,
     };
 
+    /// <summary>The suffix of the <c>task-row--*</c> and <c>tl-bar--*</c> classes that colour by priority.</summary>
+    public static string Edge(SlotPriority priority) => priority switch
+    {
+        SlotPriority.Critical => "critical",
+        SlotPriority.Important => "important",
+        SlotPriority.NiceToHave => "nice",
+        _ => "none",
+    };
+
     public static IEnumerable<TaskInfo> Order(IEnumerable<TaskInfo> tasks) =>
         tasks
             .OrderBy(t => Rank(t.Priority))
@@ -114,8 +132,14 @@ internal static class TaskRowOrder
 /// <summary>
 /// The filter form. <see cref="Events"/> and <see cref="Teams"/> are null where they make no sense: a team's page
 /// filters only on status, priority and finished tasks, and the open board has no event or finished choice.
+/// <paramref name="Statuses"/> are the status choices the page offers; <paramref name="OfferUndated"/> adds the "without dates only" box.
 /// </summary>
-internal sealed record TaskFilterViewModel(TaskRowFilter Filter, IReadOnlyList<EventOption>? Events, IReadOnlyList<TeamChoice>? Teams);
+internal sealed record TaskFilterViewModel(
+    TaskRowFilter Filter,
+    IReadOnlyList<EventOption>? Events,
+    IReadOnlyList<TeamChoice>? Teams,
+    IReadOnlyList<TaskItemStatus> Statuses,
+    bool OfferUndated = true);
 
 /// <summary><see cref="ManagedTeams"/> links a manager to each team's tasks page, where the add form is, before it has any tasks.</summary>
 internal sealed record TaskListViewModel(
@@ -124,6 +148,7 @@ internal sealed record TaskListViewModel(
     TaskListFilter Filter,
     IReadOnlyList<TeamChoice> ManagedTeams,
     IReadOnlyList<TeamChoice> Teams,
+    IReadOnlyList<TaskItemStatus> Statuses,
     IReadOnlyDictionary<Guid, MyPlace> Places,
     IReadOnlyDictionary<Guid, string?> Blockers);
 
@@ -134,6 +159,7 @@ internal sealed record OpenBoardViewModel(
     int CriticalCount,
     TaskRowFilter Filter,
     IReadOnlyList<TeamChoice> Teams,
+    IReadOnlyList<TaskItemStatus> Statuses,
     IReadOnlyDictionary<Guid, MyPlace> Places,
     IReadOnlyDictionary<Guid, string?> Blockers);
 
@@ -153,6 +179,7 @@ internal sealed record TeamPageViewModel(
     bool CanAdd,
     TaskForm AddForm,
     IReadOnlyList<EventOption> Events,
+    IReadOnlyList<TaskItemStatus> Statuses,
     IReadOnlyDictionary<Guid, MyPlace> Places,
     IReadOnlyDictionary<Guid, string?> Blockers,
     IReadOnlyList<RequestRow> Requests);

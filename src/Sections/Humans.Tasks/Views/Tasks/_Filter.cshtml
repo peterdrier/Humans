@@ -1,4 +1,4 @@
-@* The filters of a task list: which event, which team, which priority, which status, and whether done and cancelled tasks count. *@
+@* The filters of a task list: which event, which team, which priority, which status, whether done and cancelled tasks count, and only tasks with no dates. *@
 @model TaskFilterViewModel
 
 <form method="get" class="d-flex flex-wrap align-items-end gap-3 mb-3">
@@ -43,7 +43,7 @@
         <label class="form-label" for="filter-status">@Localizer["Tasks_Col_Status"]</label>
         <select class="form-select" id="filter-status" name="Status">
             <option value="">@Localizer["Tasks_Filter_AnyStatus"]</option>
-            @foreach (var status in Enum.GetValues<TaskItemStatus>().Where(s => Model.Filter is TaskListFilter || s is not (TaskItemStatus.Done or TaskItemStatus.Cancelled)))
+            @foreach (var status in Model.Statuses)
             {
                 <option value="@status" selected="@(Model.Filter.Status == status)">@Localizer[$"Enum_TaskItemStatus_{status}"]</option>
             }
@@ -52,8 +52,15 @@
     @if (Model.Filter is TaskListFilter finishedFilter)
     {
         <div class="form-check mb-2">
-            <input type="checkbox" class="form-check-input" id="filter-finished" name="Finished" value="true" checked="@finishedFilter.Finished" />
+            <input type="checkbox" class="form-check-input" id="filter-finished" name="Finished" value="true" @(finishedFilter.Finished ? "checked" : null) />
             <label class="form-check-label" for="filter-finished">@Localizer["Tasks_Filter_Finished"]</label>
+        </div>
+    }
+    @if (Model.OfferUndated)
+    {
+        <div class="form-check mb-2">
+            <input type="checkbox" class="form-check-input" id="filter-undated" name="Undated" value="true" @(Model.Filter.Undated ? "checked" : null) />
+            <label class="form-check-label" for="filter-undated">@Localizer["Tasks_Filter_Undated"]</label>
         </div>
     }
     <button type="submit" class="btn btn-outline-secondary">@Localizer["Tasks_Filter_Apply"]</button>
