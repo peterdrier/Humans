@@ -147,9 +147,7 @@ internal sealed record TaskInfo(
     string? ApprovalReason,
     bool IsHidden,
     IReadOnlyList<TaskAssignmentInfo> Assignments,
-    IReadOnlyList<TaskLinkInfo> WaitingOn,
-    Instant CreatedAt,
-    Instant UpdatedAt)
+    IReadOnlyList<TaskLinkInfo> WaitingOn)
 {
     public bool IsEffectivelyHidden => IsHidden || TeamIsHidden;
 

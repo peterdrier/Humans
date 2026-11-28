@@ -30,6 +30,5 @@ internal sealed class TasksGalleryViewComponent : ViewComponent
             due is { } d ? new TaskDateInfo(d, null, d) : null,
             TaskItemStatus.Todo, null, priority, slots, needsApproval, needsApproval ? "Needs a steady hand" : null, false,
             [.. Enumerable.Range(0, confirmed).Select(_ => new TaskAssignmentInfo(Guid.NewGuid(), true, Instant.FromUtc(2026, 1, 1, 0, 0)))],
-            waitingOn is null ? [] : [new TaskLinkInfo(waitingOn.Id, waitingOn.Title, waitingOn.Status)],
-            Instant.FromUtc(2026, 1, 1, 0, 0), Instant.FromUtc(2026, 1, 1, 0, 0));
+            waitingOn is null ? [] : [new TaskLinkInfo(waitingOn.Id, waitingOn.Title, waitingOn.Status)]);
 }
