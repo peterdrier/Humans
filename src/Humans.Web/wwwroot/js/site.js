@@ -227,8 +227,13 @@ document.addEventListener('click', function (e) {
         var headers = table.querySelectorAll('th[data-sort], th[data-sort-col], th[data-sort-key]');
         headers.forEach(function (th) {
             th.classList.add('sortable-table-header');
-            th.setAttribute('role', th.getAttribute('role') || 'button');
-            th.setAttribute('tabindex', th.getAttribute('tabindex') || '0');
+            // A button inside the header keeps the cell a column header for screen readers (a role on the
+            // th itself would replace that), and gives Enter/Space and focus for free.
+            var button = document.createElement('button');
+            button.type = 'button';
+            button.className = 'sortable-table-button';
+            while (th.firstChild) button.appendChild(th.firstChild);
+            th.appendChild(button);
 
             function sort() {
                 var columnIndex = th.dataset.sortCol !== undefined
@@ -274,13 +279,7 @@ document.addEventListener('click', function (e) {
                 rows.forEach(function (row) { tbody.appendChild(row); });
             }
 
-            th.addEventListener('click', sort);
-            th.addEventListener('keydown', function (e) {
-                if (e.key === 'Enter' || e.key === ' ') {
-                    e.preventDefault();
-                    sort();
-                }
-            });
+            button.addEventListener('click', sort);
         });
     });
 })();
@@ -791,6 +790,26 @@ document.addEventListener('click', function (e) {
                 icon.classList.toggle('fa-chevron-down', expanding);
             }
         });
+    });
+})();
+
+// Ties each validation message (asp-validation-for) to its field, so a screen reader reads the error when the
+// field gets focus, and marks fields the server rejected as invalid. jQuery Validate keeps aria-invalid current
+// client-side once it runs.
+(function () {
+    document.querySelectorAll('[data-valmsg-for]').forEach(function (message) {
+        var scope = message.closest('form') || document;
+        var field = Array.prototype.find.call(scope.querySelectorAll('[name]'), function (candidate) {
+            return candidate.getAttribute('name') === message.dataset.valmsgFor;
+        });
+        if (!field) return;
+        if (!message.id) message.id = (field.id || message.dataset.valmsgFor.replace(/[^\w-]/g, '_')) + '-error';
+        var ids = (field.getAttribute('aria-describedby') || '').split(/\s+/).filter(Boolean);
+        if (ids.indexOf(message.id) < 0) {
+            ids.push(message.id);
+            field.setAttribute('aria-describedby', ids.join(' '));
+        }
+        if (field.classList.contains('input-validation-error')) field.setAttribute('aria-invalid', 'true');
     });
 })();
 

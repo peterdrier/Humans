@@ -182,7 +182,7 @@
             <div class="card-body">
                 <p class="text-muted">@Localizer["Calendar_IcalFeedHelp"]</p>
                 <div class="input-group mb-2">
-                    <input type="text" class="form-control" id="icalUrl" value="@Model.ICalUrl" readonly />
+                    <input type="text" class="form-control" id="icalUrl" value="@Model.ICalUrl" readonly aria-label="@Localizer["Calendar_IcalFeedTitle"]" />
                     <button class="btn btn-outline-secondary" type="button" data-copy="#icalUrl">@Localizer["Calendar_IcalCopy"]</button>
                 </div>
                 <form asp-action="RegenerateIcal" method="post" class="d-inline">

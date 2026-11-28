@@ -26,7 +26,8 @@
         var isActive = document.Key == Model.DefaultLanguage;
         var tabId = $"{Model.TabsId}-tab-{document.Key}";
         var panelId = $"{Model.ContentId}-{document.Key}";
-        <div class="tab-pane fade @(isActive ? "show active" : "")" id="@panelId" role="tabpanel" aria-labelledby="@tabId">
+        @* Focusable so keyboard users can scroll a long document inside a height-capped container. *@
+        <div class="tab-pane fade @(isActive ? "show active" : "")" id="@panelId" role="tabpanel" aria-labelledby="@tabId" tabindex="0">
             @if (string.IsNullOrEmpty(document.Value))
             {
                 <p class="text-muted">@Model.EmptyMessage</p>

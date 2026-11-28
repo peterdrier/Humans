@@ -53,8 +53,8 @@ else
         @foreach (var tagId in Model.FilterTagIds) { <input type="hidden" name="tags" value="@tagId" /> }
         @if (!string.IsNullOrEmpty(Model.Sort)) { <input type="hidden" name="sort" value="@Model.Sort" /> }
         <div class="col-auto">
-            <label class="form-label form-label-sm">@Localizer["Shifts_Start"]</label>
-            <select name="startDayOffset" class="form-select form-select-sm">
+            <label for="rangeStart-@rotaGroup.Rota.Id" class="form-label form-label-sm">@Localizer["Shifts_Start"]</label>
+            <select id="rangeStart-@rotaGroup.Rota.Id" name="startDayOffset" class="form-select form-select-sm">
                 @foreach (var s in availableShifts)
                 {
                     <option value="@s.Shift.DayOffset"
@@ -66,8 +66,8 @@ else
             </select>
         </div>
         <div class="col-auto">
-            <label class="form-label form-label-sm">@Localizer["Shifts_End"]</label>
-            <select name="endDayOffset" class="form-select form-select-sm">
+            <label for="rangeEnd-@rotaGroup.Rota.Id" class="form-label form-label-sm">@Localizer["Shifts_End"]</label>
+            <select id="rangeEnd-@rotaGroup.Rota.Id" name="endDayOffset" class="form-select form-select-sm">
                 @foreach (var s in availableShifts)
                 {
                     <option value="@s.Shift.DayOffset"
@@ -324,7 +324,7 @@ else if (allDayShifts.All(s => s.RemainingSlots <= 0) && allDayShifts.Any(s => s
                             }
                             <div class="d-flex align-items-center gap-2">
                                 <div class="progress flex-grow-1" style="height: 6px;">
-                                    <div class="progress-bar @rangeFillColor" role="progressbar" style="width: @rangeFillPercent%;" aria-valuenow="@totalConfirmed" aria-valuemin="0" aria-valuemax="@totalMax"></div>
+                                    <div class="progress-bar @rangeFillColor" aria-hidden="true" style="width: @rangeFillPercent%;"></div>
                                 </div>
                                 <span class="shift-fill-count text-nowrap @(anyUnderstaffed ? "text-danger" : "")">@totalConfirmed/@totalMax</span>
                             </div>
@@ -362,7 +362,7 @@ else if (allDayShifts.All(s => s.RemainingSlots <= 0) && allDayShifts.Any(s => s
                                 }
                                 <div class="d-flex align-items-center gap-2">
                                     <div class="progress flex-grow-1" style="height: 6px;">
-                                        <div class="progress-bar @dayFillColor" role="progressbar" style="width: @dayFillPercent%;" aria-valuenow="@item.ConfirmedCount" aria-valuemin="0" aria-valuemax="@item.Shift.MaxVolunteers"></div>
+                                        <div class="progress-bar @dayFillColor" aria-hidden="true" style="width: @dayFillPercent%;"></div>
                                     </div>
                                     <span class="shift-fill-count text-nowrap @(understaffed ? "text-danger" : "")">@item.ConfirmedCount/@item.Shift.MaxVolunteers</span>
                                 </div>
@@ -422,7 +422,7 @@ else if (allDayShifts.All(s => s.RemainingSlots <= 0) && allDayShifts.Any(s => s
                             }
                             <div class="d-flex align-items-center gap-2">
                                 <div class="progress flex-grow-1" style="height: 6px;">
-                                    <div class="progress-bar @singleFillColor" role="progressbar" style="width: @singleFillPercent%;" aria-valuenow="@item.ConfirmedCount" aria-valuemin="0" aria-valuemax="@item.Shift.MaxVolunteers"></div>
+                                    <div class="progress-bar @singleFillColor" aria-hidden="true" style="width: @singleFillPercent%;"></div>
                                 </div>
                                 <span class="shift-fill-count text-nowrap @(understaffed ? "text-danger" : "")">@item.ConfirmedCount/@item.Shift.MaxVolunteers</span>
                             </div>

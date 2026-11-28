@@ -99,18 +99,24 @@
     }
 
     var answerIndex = nextAnswerIndex++;
-    <fieldset class="mb-4 @(hasError ? "border-start border-danger border-3 ps-3" : string.Empty)">
-        <legend class="h5">
+    // The legend names the question; help and errors describe it, for the group and for text fields alike.
+    var legendId = $"q{answerIndex}-legend";
+    var hasHelp = !string.IsNullOrWhiteSpace(q.HelpText);
+    var describedBy = string.Join(' ', new[] { hasHelp ? $"q{answerIndex}-help" : null, hasError ? $"q{answerIndex}-error" : null }.OfType<string>());
+    var describedByAttr = describedBy.Length > 0 ? describedBy : null;
+    <fieldset class="mb-4 @(hasError ? "border-start border-danger border-3 ps-3" : string.Empty)" aria-describedby="@describedByAttr">
+        <legend class="h5" id="@legendId">
             @q.Prompt
             @if (q.IsRequired)
             {
                 <span class="text-danger" aria-hidden="true">*</span>
+                <span class="visually-hidden">@Localizer["Surveys_Answer_Required"]</span>
             }
         </legend>
 
-        @if (!string.IsNullOrWhiteSpace(q.HelpText))
+        @if (hasHelp)
         {
-            <div class="mb-2">
+            <div class="mb-2" id="q@(answerIndex)-help">
                 @Html.SanitizedMarkdown(q.HelpText)
             </div>
         }
@@ -147,11 +153,15 @@
 
             case SurveyQuestionType.ShortText:
                 <input class="form-control" type="text"
-                       name="Answers[@answerIndex].TextValue" value="@q.TextValue" />
+                       name="Answers[@answerIndex].TextValue" value="@q.TextValue"
+                       aria-labelledby="@legendId" aria-describedby="@describedByAttr"
+                       aria-required="@(q.IsRequired ? "true" : null)" aria-invalid="@(hasError ? "true" : null)" />
                 break;
 
             case SurveyQuestionType.LongText:
-                <textarea class="form-control" rows="4" name="Answers[@answerIndex].TextValue">@q.TextValue</textarea>
+                <textarea class="form-control" rows="4" name="Answers[@answerIndex].TextValue"
+                          aria-labelledby="@legendId" aria-describedby="@describedByAttr"
+                          aria-required="@(q.IsRequired ? "true" : null)" aria-invalid="@(hasError ? "true" : null)">@q.TextValue</textarea>
                 break;
 
             case SurveyQuestionType.Rating:
@@ -254,7 +264,7 @@
                                 var option = q.Options[optionIndex];
                                 ranks.TryGetValue(option.Value, out var selectedRank);
                                 <tr>
-                                    <th scope="row">
+                                    <th scope="row" id="q@(answerIndex)-rank-@optionIndex">
                                         @option.Label
                                         <input type="hidden"
                                                name="Answers[@answerIndex].RankedOptions[@optionIndex].OptionValue"
@@ -262,6 +272,7 @@
                                     </th>
                                     <td>
                                         <select class="form-select form-select-sm ranked-selection"
+                                                aria-labelledby="q@(answerIndex)-rank-@optionIndex"
                                                 name="Answers[@answerIndex].RankedOptions[@optionIndex].Selection">
                                             <option value="">@Localizer["Surveys_Ranked_Unranked"]</option>
                                             @for (var rank = 1; rank <= q.Options.Count; rank++)
@@ -305,10 +316,12 @@
 
         @if (hasError)
         {
-            @foreach (var error in entry!.Errors)
-            {
-                <div class="text-danger small mt-1">@error.ErrorMessage</div>
-            }
+            <div id="q@(answerIndex)-error">
+                @foreach (var error in entry!.Errors)
+                {
+                    <div class="text-danger small mt-1">@error.ErrorMessage</div>
+                }
+            </div>
         }
     </fieldset>
 }

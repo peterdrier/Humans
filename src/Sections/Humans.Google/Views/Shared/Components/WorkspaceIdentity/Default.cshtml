@@ -10,7 +10,7 @@
 @if (Model.IsIdentity)
 {
     <span class="d-inline-flex align-items-center">
-        <i class="fa-brands fa-google text-success me-1" aria-label="@Localizer["Google_Identity_Google"]"></i>
+        <i class="fa-brands fa-google text-success me-1" role="img" aria-label="@Localizer["Google_Identity_Google"]"></i>
         @if (Model.Status == GoogleEmailStatus.Rejected)
         {
             <span class="badge bg-danger me-1" title="@Localizer["Google_Identity_Problem"].Value">@Localizer["Google_Identity_Problem"]</span>

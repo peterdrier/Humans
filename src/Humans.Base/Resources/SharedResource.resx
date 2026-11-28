@@ -961,4 +961,5 @@
   <data name="Todo_Medical_Pending" xml:space="preserve"><value>Optional. Only you and the No-Info Admins can see it.</value></data>
   <data name="Nav_Roles" xml:space="preserve"><value>Roles</value></data>
   <data name="Nav_Tasks" xml:space="preserve"><value>Tasks</value></data>
+  <data name="Common_SkipToContent" xml:space="preserve"><value>Skip to main content</value></data>
 </root>

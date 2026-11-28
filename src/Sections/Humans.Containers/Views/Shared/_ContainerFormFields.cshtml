@@ -5,12 +5,12 @@
 }
 <h6 class="text-muted text-uppercase small mb-3">@SharedLocalizer["Common_General"]</h6>
 <div class="mb-3">
-    <label class="form-label">@Localizer["Containers_FieldName"] <span class="text-danger">*</span></label>
-    <input name="Name" class="form-control" value="@c?.Name" maxlength="256" required placeholder="@Localizer["Containers_NamePlaceholder"]" />
+    <label for="containerName-@idSuffix" class="form-label">@Localizer["Containers_FieldName"] <span class="text-danger">*</span></label>
+    <input id="containerName-@idSuffix" name="Name" class="form-control" value="@c?.Name" maxlength="256" required placeholder="@Localizer["Containers_NamePlaceholder"]" />
 </div>
 <div class="mb-3">
-    <label class="form-label">@Localizer["Containers_FieldDescription"]</label>
-    <textarea name="Description" class="form-control" rows="3" maxlength="2000" placeholder="@Localizer["Containers_DescPlaceholder"]">@c?.Description</textarea>
+    <label for="containerDescription-@idSuffix" class="form-label">@Localizer["Containers_FieldDescription"]</label>
+    <textarea id="containerDescription-@idSuffix" name="Description" class="form-control" rows="3" maxlength="2000" placeholder="@Localizer["Containers_DescPlaceholder"]">@c?.Description</textarea>
 </div>
 <div class="mb-4">
     <label class="form-label">@Localizer["Containers_FieldImages"]</label>

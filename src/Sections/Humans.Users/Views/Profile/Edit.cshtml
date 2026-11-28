@@ -31,7 +31,7 @@
                 <div class="card-body">
                     <h3>@Localizer["Users_ProfileEdit_SectionGeneral"]</h3>
 
-                    <h6>@Localizer["Users_Profile_ProfilePicture"]</h6>
+                    <label asp-for="ProfilePictureUpload" class="h6 d-block">@Localizer["Users_Profile_ProfilePicture"]</label>
                     <div class="mb-3">
                         <div class="d-flex align-items-center gap-3 mb-2">
                             <vc:human user-id="@Model.UserId"
@@ -367,7 +367,7 @@
 
                     <div class="form-check mb-3" id="noPriorBurnContainer">
                         <input type="checkbox" asp-for="NoPriorBurnExperience" class="form-check-input" id="noPriorBurnCheckbox" />
-                        <label asp-for="NoPriorBurnExperience" class="form-check-label">@Localizer["Users_Profile_NoPriorBurnExperience"]</label>
+                        <label for="noPriorBurnCheckbox" class="form-check-label">@Localizer["Users_Profile_NoPriorBurnExperience"]</label>
                         <span asp-validation-for="NoPriorBurnExperience" class="text-danger d-block"></span>
                     </div>
                     <div id="cvRequiredAlert" class="alert alert-danger d-none">

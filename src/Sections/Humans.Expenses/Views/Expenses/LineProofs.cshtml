@@ -92,18 +92,18 @@
                         <input type="hidden" name="ParentLineId" value="@invoice.Id" />
 
                         <div class="mb-3">
-                            <label class="form-label">@Localizer["Expenses_ReceiptPurposePast"] <span class="text-danger">*</span></label>
-                            <input type="text" name="Description" class="form-control" maxlength="500" required
+                            <label for="newProofDescription" class="form-label">@Localizer["Expenses_ReceiptPurposePast"] <span class="text-danger">*</span></label>
+                            <input id="newProofDescription" type="text" name="Description" class="form-control" maxlength="500" required
                                    placeholder="@Localizer["Expenses_ProofPlaceholder"]" />
                         </div>
                         <div class="mb-3">
-                            <label class="form-label">@Localizer["Expenses_AmountEur"] <span class="text-danger">*</span></label>
+                            <label for="newProofAmount" class="form-label">@Localizer["Expenses_AmountEur"] <span class="text-danger">*</span></label>
                             <input type="hidden" name="__Invariant" value="Amount" />
-                            <input type="number" name="Amount" class="form-control" step="0.01" min="0.01" placeholder="0.00" required style="max-width:200px;" />
+                            <input id="newProofAmount" type="number" name="Amount" class="form-control" step="0.01" min="0.01" placeholder="0.00" required style="max-width:200px;" />
                         </div>
                         <div class="mb-3">
-                            <label class="form-label">@Localizer["Expenses_ReceiptFile"] <span class="text-danger">*</span></label>
-                            <input type="file" name="file" class="form-control" accept=".pdf,.jpg,.jpeg,.png,.heic" required />
+                            <label for="newProofFile" class="form-label">@Localizer["Expenses_ReceiptFile"] <span class="text-danger">*</span></label>
+                            <input id="newProofFile" type="file" name="file" class="form-control" accept=".pdf,.jpg,.jpeg,.png,.heic" required />
                         </div>
                         <button type="submit" class="btn btn-outline-primary">
                             <i class="fa-solid fa-plus me-1"></i>@Localizer["Expenses_AddReceipt"]

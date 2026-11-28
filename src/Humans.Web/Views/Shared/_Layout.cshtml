@@ -53,6 +53,7 @@
     @await RenderSectionAsync("Styles", required: false)
 </head>
 <body class="@(ViewData["BodyClass"])">
+    <a class="visually-hidden-focusable skip-link" href="#main-content">@Localizer["Common_SkipToContent"]</a>
     <environment exclude="Production">
         <div class="env-banner">
             @{
@@ -130,7 +131,7 @@
         <vc:chrome-slot name="above-content" />
     </header>
     <div class="container main-content">
-        <main role="main" class="pb-3">
+        <main id="main-content" tabindex="-1" class="pb-3">
             @if (ViewData["AuthPillRoles"] is string { Length: > 0 })
             {
                 <div class="text-center mb-3"><partial name="_AuthorizationPill" /></div>

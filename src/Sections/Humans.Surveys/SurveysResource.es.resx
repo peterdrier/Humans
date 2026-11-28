@@ -436,4 +436,5 @@
   <data name="Surveys_Answer_CommentDefault" xml:space="preserve"><value>¿Algo que añadir?</value></data>
   <data name="Surveys_Validation_CommentOptionUnknown" xml:space="preserve"><value>Solo se puede pedir un comentario sobre las opciones de la propia pregunta.</value></data>
   <data name="Surveys_Admin_Results_Comments" xml:space="preserve"><value>Comentarios</value></data>
+  <data name="Surveys_Answer_Required" xml:space="preserve"><value>(obligatorio)</value></data>
 </root>

@@ -2,11 +2,12 @@
 
 <div class="notification-bell-wrapper" id="notificationBellWrapper">
     <button type="button" class="notification-bell-btn" id="notificationBellBtn"
-            aria-label="@Localizer["Notifications_Bell_AriaLabel"]"
             data-load-error="@Localizer["Notifications_Popup_LoadError"]"
             aria-expanded="false"
             aria-haspopup="true">
-        <i class="fa-solid fa-bell"></i>
+        @* Name as text, not aria-label, so the unread count below is read out with it. *@
+        <i class="fa-solid fa-bell" aria-hidden="true"></i>
+        <span class="visually-hidden">@Localizer["Notifications_Bell_AriaLabel"]</span>
         @if (Model.ActionableUnreadCount > 0)
         {
             <span class="notification-badge notification-badge-danger">

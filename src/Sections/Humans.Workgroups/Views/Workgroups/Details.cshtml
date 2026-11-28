@@ -340,8 +340,8 @@
                 @if (coordinatorIds.Count == 1 && coordinatorIds.Contains(Model.CurrentUserId))
                 {
                     <div class="mb-2">
-                        <label class="form-label small">@Localizer["Workgroups_Field_ReplacementCoordinator"]</label>
-                        <select name="replacementCoordinatorUserId" class="form-select form-select-sm">
+                        <label for="replacementCoordinator" class="form-label small">@Localizer["Workgroups_Field_ReplacementCoordinator"]</label>
+                        <select id="replacementCoordinator" name="replacementCoordinatorUserId" class="form-select form-select-sm">
                             @foreach (var member in members.Where(m => m.UserId != Model.CurrentUserId))
                             {
                                 <option value="@member.UserId">@Model.DisplayName(member.UserId)</option>

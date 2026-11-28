@@ -34,6 +34,7 @@
     @await RenderSectionAsync("Styles", required: false)
 </head>
 <body class="admin-shell">
+    <a class="visually-hidden-focusable skip-link" href="#main-content">@Localizer["Common_SkipToContent"]</a>
     <environment exclude="Production">
         <div class="env-banner">
             @{
@@ -70,7 +71,7 @@
                 <vc:admin-sidebar />
             </aside>
 
-            <main class="main">
+            <main id="main-content" tabindex="-1" class="main">
                 @* The admin shell shows no breadcrumb: the top bar names the section and the tabs name the page.
                    A page shared with the member layout may still define Crumbs for it. *@
                 <vc:admin-tabs />

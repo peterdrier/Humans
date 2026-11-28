@@ -20,12 +20,12 @@
                 </div>
                 <div class="modal-body">
                     <div class="mb-3">
-                        <label class="form-label">@Localizer["Issue_Title"]</label>
-                        <input type="text" name="Title" class="form-control" required maxlength="200" />
+                        <label for="issueWidgetTitle" class="form-label">@Localizer["Issue_Title"]</label>
+                        <input id="issueWidgetTitle" type="text" name="Title" class="form-control" required maxlength="200" />
                     </div>
                     <div class="mb-3">
-                        <label class="form-label">@Localizer["Issue_Type"]</label>
-                        <select name="Category" class="form-select" required>
+                        <label for="issueWidgetCategory" class="form-label">@Localizer["Issue_Type"]</label>
+                        <select id="issueWidgetCategory" name="Category" class="form-select" required>
                             @foreach (var c in Enum.GetValues<IssueCategory>())
                             {
                                 <option value="@c">@IssuePresentation.CategoryEmoji(c) @Localizer.EnumDisplay(c)</option>
@@ -33,13 +33,13 @@
                         </select>
                     </div>
                     <div class="mb-3">
-                        <label class="form-label">@Localizer["Issue_Description"]</label>
-                        <textarea name="Description" class="form-control" rows="5" required maxlength="5000"
+                        <label for="issueWidgetDescription" class="form-label">@Localizer["Issue_Description"]</label>
+                        <textarea id="issueWidgetDescription" name="Description" class="form-control" rows="5" required maxlength="5000"
                                   placeholder="@Localizer["Issue_Description_Placeholder"]"></textarea>
                     </div>
                     <div class="mb-3">
-                        <label class="form-label">@Localizer["Issue_Attachment"]</label>
-                        <input type="file" name="Screenshot" class="form-control" accept="image/png,image/jpeg,image/webp" />
+                        <label for="issueWidgetScreenshot" class="form-label">@Localizer["Issue_Attachment"]</label>
+                        <input id="issueWidgetScreenshot" type="file" name="Screenshot" class="form-control" accept="image/png,image/jpeg,image/webp" />
                     </div>
                     <input type="hidden" name="PageUrl" id="issuesWidgetPageUrl" value="@Model" />
                     <input type="hidden" name="UserAgent" id="issuesWidgetUserAgent" />

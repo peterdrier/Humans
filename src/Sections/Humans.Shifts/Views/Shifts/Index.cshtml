@@ -61,12 +61,13 @@
     @* shifts.js reads this for the InstantToggle AJAX. *@
     @Html.AntiForgeryToken()
     <div class="d-flex justify-content-between align-items-center mb-3">
-        <ul class="nav nav-tabs shifts-nav-tabs border-0" role="tablist">
-            <li class="nav-item" role="presentation">
-                <a class="nav-link active" asp-action="Index" role="tab" aria-selected="true" aria-current="page">@Localizer["Shifts_BrowseTitle"]</a>
+        <h1 class="visually-hidden">@Localizer["Shifts_Title"]</h1>
+        <ul class="nav nav-tabs shifts-nav-tabs border-0">
+            <li class="nav-item">
+                <a class="nav-link active" asp-action="Index" aria-current="page">@Localizer["Shifts_BrowseTitle"]</a>
             </li>
-            <li class="nav-item" role="presentation">
-                <a class="nav-link" asp-action="Mine" role="tab" aria-selected="false">
+            <li class="nav-item">
+                <a class="nav-link" asp-action="Mine">
                     @Localizer["Shifts_MyShiftsTitle"]
                     @if (Model.MySignupCount > 0)
                     {
@@ -144,8 +145,8 @@
 
     <form method="get" id="shifts-filter-form" class="row g-2 mb-3 align-items-end">
         <div class="col-auto">
-            <label class="form-label mb-1">@Localizer["Shifts_Department"]</label>
-            <select name="departmentId" class="form-select form-select-sm js-auto-submit">
+            <label for="filterDepartment" class="form-label mb-1">@Localizer["Shifts_Department"]</label>
+            <select id="filterDepartment" name="departmentId" class="form-select form-select-sm js-auto-submit">
                 <option value="">@Localizer["Shifts_AllDepartments"]</option>
                 @foreach (var dept in Model.AllDepartments)
                 {
@@ -154,8 +155,8 @@
             </select>
         </div>
         <div class="col-auto">
-            <label class="form-label mb-1">@Localizer["Shifts_DayFilter_Label"]</label>
-            <select name="day" class="form-select form-select-sm js-auto-submit">
+            <label for="filterDay" class="form-label mb-1">@Localizer["Shifts_DayFilter_Label"]</label>
+            <select id="filterDay" name="day" class="form-select form-select-sm js-auto-submit">
                 <option value="">@Localizer["Shifts_DayFilter_AllDays"]</option>
                 @foreach (var opt in Model.DayOptions)
                 {
