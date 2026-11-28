@@ -12,7 +12,6 @@ namespace Humans.Camps.Services;
 internal sealed class CampRoleService(
     ICampRepository repo,
     ICampRoleCampAccess campAccess,
-    IGoogleService googleIdentities,
     IUserService userService,
     IAuditLogService auditLog,
     INotificationEmitter notificationEmitter,
@@ -538,21 +537,11 @@ internal sealed class CampRoleService(
             .GroupBy(a => a.CampSeasonId)
             .ToDictionary(g => g.Key, g => g.ToList());
 
-        var allUserIds = assignments.Select(a => a.CampMember.UserId).Distinct().ToList();
-        var identitiesByUserId = await googleIdentities.GetWorkspaceIdentitiesAsync(allUserIds, ct);
-
         var rows = seasons
             .Select(s =>
             {
                 var assignees = assignmentsBySeason.TryGetValue(s.CampSeasonId, out var list)
-                    ? list.Select(a =>
-                    {
-                        var userId = a.CampMember.UserId;
-                        // The member's Google Workspace identity (Google); null without a verified address.
-                        var googleEmail = identitiesByUserId.TryGetValue(userId, out var identity) ? identity.Email : null;
-
-                        return new CampRoleDrillDownAssignee(userId, a.AssignedAt);
-                    }).ToList()
+                    ? list.Select(a => new CampRoleDrillDownAssignee(a.CampMember.UserId, a.AssignedAt)).ToList()
                     : new List<CampRoleDrillDownAssignee>();
 
                 return new CampRoleDrillDownCampRow(
