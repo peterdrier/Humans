@@ -4,6 +4,7 @@ using Humans.Agent.Services.Stores;
 using NodaTime;
 using Humans.Agent.Models;
 using Humans.Agent.Services.Anthropic;
+using Microsoft.Extensions.Options;
 
 namespace Humans.Agent.Services;
 
@@ -12,7 +13,7 @@ internal sealed class AgentAdminStatusService(
     IAgentSettingsService settings,
     IAgentRateLimitStore rateLimit,
     IAgentRetentionRunStore retention,
-    IAgentAnthropicBalanceProvider balance,
+    IOptions<AnthropicOptions> anthropicOptions,
     IClock clock) : IAgentAdminStatusService
 {
     public async Task<AgentAdminStatusReport> GetStatusAsync(CancellationToken cancellationToken)
@@ -67,7 +68,9 @@ internal sealed class AgentAdminStatusService(
 
         var topUsers7Days = BuildTopUsers(rows, window7Days, settings1, now);
 
-        var balance1 = await balance.GetBalanceAsync(cancellationToken);
+        var balanceUnavailableReason = string.IsNullOrWhiteSpace(anthropicOptions.Value.AdminApiKey)
+            ? "Admin API key not configured"
+            : "Anthropic does not expose a balance endpoint";
 
         return new AgentAdminStatusReport(
             Usage24Hours: usage24Hours,
@@ -82,7 +85,7 @@ internal sealed class AgentAdminStatusService(
             TopDocs7Days: topDocs7Days,
             TopUsers7Days: topUsers7Days,
             Retention: retention.Snapshot,
-            Balance: balance1,
+            BalanceUnavailableReason: balanceUnavailableReason,
             SettingsStoreWarm: settings1.UpdatedAt != Instant.MinValue);
     }
 

@@ -58,7 +58,6 @@ public sealed class Section :
         services.AddScoped<IAgentUserContextProvider, AgentUserContextProvider>();
         services.AddScoped<IAgentAdminStatusService, AgentAdminStatusService>();
 
-        services.AddScoped<IAgentAnthropicBalanceProvider, AnthropicBalanceProvider>();
 
         // Stateless readers over the shared IMemoryCache; IGuideContentSource is a singleton, so capturing it is safe.
         services.AddSingleton<AgentSectionDocReader>();
