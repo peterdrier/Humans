@@ -52,9 +52,9 @@ public sealed class GoogleSyncSettingsTabViewComponentTests
         var sut = new GoogleSyncSettingsTabViewComponent(settings);
 
         var result = await sut.InvokeAsync();
-        var model = (SyncSettingsViewModel)((ViewViewComponentResult)result).ViewData!.Model!;
+        var model = (IReadOnlyList<SyncServiceSettingViewModel>)((ViewViewComponentResult)result).ViewData!.Model!;
 
-        var row = model.Settings.Should().ContainSingle().Which;
+        var row = model.Should().ContainSingle().Which;
         row.ServiceType.Should().Be(SyncServiceType.GoogleDrive);
         row.ServiceName.Should().Be("Google Drive");
         row.CurrentMode.Should().Be(SyncMode.AddOnly);

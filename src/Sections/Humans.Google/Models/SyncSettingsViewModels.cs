@@ -2,11 +2,6 @@ using Humans.Google.Domain;
 
 namespace Humans.Google.Models;
 
-internal sealed class SyncSettingsViewModel
-{
-    public List<SyncServiceSettingViewModel> Settings { get; set; } = [];
-}
-
 internal sealed class SyncServiceSettingViewModel
 {
     public SyncServiceType ServiceType { get; set; }
