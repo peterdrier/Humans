@@ -46,7 +46,7 @@ public class SystemTeamSyncJobBarrioLeadsTests
         services.AddSingleton(resources ?? Substitute.For<ITeamResourceService>());
         var consent = consentService ?? Substitute.For<IConsentService>();
         consent.GetConsentReviewAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
-            .Returns(call => ConsentReviewInfo.None(call.Arg<Guid>()));
+            .Returns(ConsentReviewInfo.None());
         consent.GetConsentReviewsAsync(Arg.Any<CancellationToken>())
             .Returns(new Dictionary<Guid, ConsentReviewInfo>());
         services.AddSingleton(consent);

@@ -26,7 +26,7 @@ internal sealed class ConsentNotificationMeters(
 
         var reviews = await consentService.GetConsentReviewsAsync(ct);
         var pending = (await userService.GetAllUserInfosAsync(ct)).Count(u =>
-            (reviews.GetValueOrDefault(u.Id) ?? ConsentReviewInfo.None(u.Id)).NeedsConsentReview(u));
+            (reviews.GetValueOrDefault(u.Id) ?? ConsentReviewInfo.None()).NeedsConsentReview(u));
         if (pending == 0)
             return [];
 
