@@ -52,6 +52,8 @@ internal sealed class Application
 
     public Instant? RenewalReminderSentAt { get; set; }
 
+    /// <summary>Retired: no longer written. The history line renders from this row; old rows stay in the GDPR export
+    /// and erasure until the table is dropped.</summary>
     public ICollection<ApplicationStateHistory> StateHistory { get; } = new List<ApplicationStateHistory>();
 
     public ICollection<BoardVote> BoardVotes { get; } = new List<BoardVote>();
@@ -93,7 +95,7 @@ internal sealed class Application
         StateMachine.Fire(ApplicationTrigger.Approve);
         ReviewedByUserId = reviewerUserId;
         DecisionNote = notes;
-        RecordResolution(ApplicationStatus.Approved, reviewerUserId, clock, notes);
+        RecordResolution(clock);
     }
 
     public void Reject(Guid reviewerUserId, string reason, IClock clock)
@@ -101,27 +103,19 @@ internal sealed class Application
         StateMachine.Fire(ApplicationTrigger.Reject);
         ReviewedByUserId = reviewerUserId;
         DecisionNote = reason;
-        RecordResolution(ApplicationStatus.Rejected, reviewerUserId, clock, reason);
+        RecordResolution(clock);
     }
 
     public void Withdraw(IClock clock)
     {
         StateMachine.Fire(ApplicationTrigger.Withdraw);
-        RecordResolution(ApplicationStatus.Withdrawn, UserId, clock);
+        RecordResolution(clock);
     }
 
-    private void RecordResolution(ApplicationStatus newStatus, Guid actorUserId, IClock clock, string? notes = null)
+    private void RecordResolution(IClock clock)
     {
         var now = clock.GetCurrentInstant();
         UpdatedAt = now;
         ResolvedAt = now;
-        StateHistory.Add(new ApplicationStateHistory
-        {
-            ApplicationId = Id,
-            Status = newStatus,
-            ChangedByUserId = actorUserId,
-            ChangedAt = clock.GetCurrentInstant(),
-            Notes = notes
-        });
     }
 }

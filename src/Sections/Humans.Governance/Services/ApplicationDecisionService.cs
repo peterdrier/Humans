@@ -259,6 +259,13 @@ internal sealed class ApplicationDecisionService(
             badgeCache.Clear();
         }
 
+        await auditLogService.LogAsync(
+            GovernanceAuditActions.TierApplicationWithdrawn,
+            AuditEntityTypes.Application,
+            application.Id,
+            $"{application.MembershipTier} application withdrawn",
+            userId);
+
         metrics.RecordApplicationProcessed("withdrawn");
         logger.LogInformation(
             "User {UserId} withdrew application {ApplicationId}",
@@ -408,6 +415,7 @@ internal sealed class ApplicationDecisionService(
             ResolvedAt = a.ResolvedAt.ToIso8601(),
             TermExpiresAt = a.TermExpiresAt.ToInvariantDate(),
             BoardMeetingDate = a.BoardMeetingDate.ToInvariantDate(),
+            a.DecisionNote,
             StateHistory = a.StateHistory.OrderBy(sh => sh.ChangedAt).Select(sh => new
             {
                 sh.Status,
@@ -742,12 +750,17 @@ internal sealed class ApplicationDecisionService(
                 VotedAt: vote.VotedAt))
             .ToList();
 
-    private static IReadOnlyList<ApplicationStateHistoryDto> ProjectHistory(MemberApplication application) =>
-        application.StateHistory
-            .Select(h => new ApplicationStateHistoryDto(
-                Status: h.Status,
-                ChangedAt: h.ChangedAt,
-                ChangedByUserId: h.ChangedByUserId,
-                Notes: h.Notes))
-            .ToList();
+    /// <summary>Submission, then the resolution once there is one: a withdrawal is the applicant's, a decision the
+    /// reviewer's.</summary>
+    private static IReadOnlyList<ApplicationStateHistoryDto> ProjectHistory(MemberApplication application)
+    {
+        var submitted = new ApplicationStateHistoryDto(
+            ApplicationStatus.Submitted, application.SubmittedAt, application.UserId, Notes: null);
+        if (application.ResolvedAt is not { } resolvedAt)
+            return [submitted];
+
+        var resolution = new ApplicationStateHistoryDto(
+            application.Status, resolvedAt, application.ReviewedByUserId ?? application.UserId, application.DecisionNote);
+        return [submitted, resolution];
+    }
 }
