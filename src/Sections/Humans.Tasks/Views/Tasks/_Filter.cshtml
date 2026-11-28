@@ -52,14 +52,14 @@
     @if (Model.Filter is TaskListFilter finishedFilter)
     {
         <div class="form-check mb-2">
-            <input type="checkbox" class="form-check-input" id="filter-finished" name="Finished" value="true" checked="@finishedFilter.Finished" />
+            <input type="checkbox" class="form-check-input" id="filter-finished" name="Finished" value="true" @(finishedFilter.Finished ? "checked" : null) />
             <label class="form-check-label" for="filter-finished">@Localizer["Tasks_Filter_Finished"]</label>
         </div>
     }
     @if (Model.OfferUndated)
     {
         <div class="form-check mb-2">
-            <input type="checkbox" class="form-check-input" id="filter-undated" name="Undated" value="true" checked="@Model.Filter.Undated" />
+            <input type="checkbox" class="form-check-input" id="filter-undated" name="Undated" value="true" @(Model.Filter.Undated ? "checked" : null) />
             <label class="form-check-label" for="filter-undated">@Localizer["Tasks_Filter_Undated"]</label>
         </div>
     }

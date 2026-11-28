@@ -78,7 +78,7 @@
         <div class="col-12"><div class="form-text mt-0">@Localizer["Tasks_Form_DateHelp"]</div></div>
         <div class="col-12">
             <div class="form-check form-switch">
-                <input type="checkbox" class="form-check-input" role="switch" id="approval-@id" name="NeedsApproval" value="true" checked="@form.NeedsApproval" />
+                <input type="checkbox" class="form-check-input" role="switch" id="approval-@id" name="NeedsApproval" value="true" @(form.NeedsApproval ? "checked" : null) />
                 <input type="hidden" name="NeedsApproval" value="false" />
                 <label class="form-check-label" for="approval-@id">@Localizer["Tasks_Form_NeedsApproval"]</label>
             </div>
@@ -90,7 +90,7 @@
         </div>
         <div class="col-12">
             <div class="form-check form-switch">
-                <input type="checkbox" class="form-check-input" role="switch" id="hidden-@id" name="IsHidden" value="true" checked="@form.IsHidden" />
+                <input type="checkbox" class="form-check-input" role="switch" id="hidden-@id" name="IsHidden" value="true" @(form.IsHidden ? "checked" : null) />
                 <input type="hidden" name="IsHidden" value="false" />
                 <label class="form-check-label" for="hidden-@id">@Localizer["Tasks_Form_Hidden"]</label>
                 <div class="form-text">@Localizer["Tasks_Form_HiddenHelp"]</div>
