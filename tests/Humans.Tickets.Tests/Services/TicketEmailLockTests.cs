@@ -31,5 +31,5 @@ public sealed class TicketEmailLockTests
         Instant.MinValue, buyerId, true, attendees);
 
     private static TicketAttendeeInfo Attendee(Guid userId, string email) => new(
-        Guid.NewGuid(), "ticket", "Attendee", email, "Full Week", TicketAttendeeStatus.Valid, userId);
+        Guid.NewGuid(), "Attendee", email, "Full Week", TicketAttendeeStatus.Valid, userId);
 }
