@@ -24,20 +24,20 @@ html { scrollbar-gutter: stable; }
     --bs-secondary-color: var(--h-umber);
     --bs-tertiary-bg: var(--h-vellum);
     --bs-link-color: var(--h-gold-dark);
-    --bs-link-color-rgb: 168, 138, 78;
+    --bs-link-color-rgb: 132, 106, 62;
     --bs-link-hover-color: var(--h-aged-ink);
     --bs-link-hover-color-rgb: 61, 43, 31;
     --bs-focus-ring-color: rgba(201, 169, 110, 0.2);
     --bs-code-color: var(--h-umber);
 
     --bs-primary: var(--h-gold-dark);
-    --bs-primary-rgb: 168, 138, 78;
+    --bs-primary-rgb: 132, 106, 62;
     --bs-secondary: var(--h-sepia);
-    --bs-secondary-rgb: 139, 115, 85;
+    --bs-secondary-rgb: 119, 96, 71;
     --bs-success: var(--h-sage-dark);
     --bs-success-rgb: 79, 112, 84;
     --bs-info: var(--h-blue-muted);
-    --bs-info-rgb: 91, 125, 143;
+    --bs-info-rgb: 90, 121, 138;
     --bs-warning: var(--h-amber);
     --bs-warning-rgb: 196, 138, 42;
     --bs-danger: var(--h-rust);
@@ -73,8 +73,9 @@ html { scrollbar-gutter: stable; }
     --bs-dark-border-subtle: var(--h-aged-ink);
 }
 
-/* Code on a dark band (card-header bg-danger text-white) follows the band's text colour. */
-.text-white code {
+/* Code and headings on a dark band (card-header bg-danger text-white) follow the band's text colour. */
+.text-white code,
+.text-white :is(h1, h2, h3, h4, h5, h6, .h1, .h2, .h3, .h4, .h5, .h6) {
     color: inherit;
 }
 
@@ -804,7 +805,7 @@ body.page-wide .main-content {
 }
 
 .navbar .nav-link.nav-restricted {
-    color: var(--h-amber) !important;
+    color: var(--h-amber-light) !important;
 }
 
 /* --- Badges ---
@@ -1014,7 +1015,7 @@ body.page-wide .main-content {
 /* --- Forms --- */
 .form-control,
 .form-select {
-    border-color: var(--h-border);
+    border-color: var(--h-field-border);
     border-radius: var(--h-radius);
     font-family: var(--h-font-body);
     background-color: var(--h-warm-white);
@@ -1050,6 +1051,10 @@ body.page-wide .main-content {
     background-color: var(--h-vellum);
     border-color: var(--h-border);
     color: var(--h-umber);
+}
+
+.form-check-input {
+    border-color: var(--h-field-border);
 }
 
 /* WCAG: appearance:none checkboxes/switches can't use accent-color, so the checked state is styled
