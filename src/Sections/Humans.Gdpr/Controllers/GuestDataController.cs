@@ -39,11 +39,7 @@ internal sealed class GuestDataController(
 
             return File(bytes, "application/json", fileName);
         }
-        catch (OperationCanceledException) when (ct.IsCancellationRequested)
-        {
-            throw;
-        }
-        catch (Exception ex)
+        catch (Exception ex) when (ex is not OperationCanceledException || !ct.IsCancellationRequested)
         {
             logger.LogError(ex, "Failed to export data for user {UserId}", user.Id);
             SetError(sharedLocalizer["Error_TryAgainLater"].Value);
