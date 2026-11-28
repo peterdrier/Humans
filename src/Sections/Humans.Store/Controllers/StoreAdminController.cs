@@ -38,7 +38,7 @@ internal sealed class StoreAdminController(
         var selectedYear = year ?? defaultYear;
 
         var summary = await storeService.GetStoreSummaryAsync(selectedYear, ct);
-        return View(new SummaryViewModel { Summary = summary });
+        return View(summary);
     }
 
     [HttpGet("Payments")]

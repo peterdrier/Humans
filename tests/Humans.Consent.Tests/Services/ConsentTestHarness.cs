@@ -51,10 +51,7 @@ public abstract class ConsentTestHarness : IDisposable
             IsHidden: false,
             IsPromotedToDirectory: false,
             CreatedAt: Clock.GetCurrentInstant(),
-            Members: [])
-        {
-            UpdatedAt = Clock.GetCurrentInstant()
-        };
+            Members: []);
         Teams[teamId] = team;
         return team;
     }

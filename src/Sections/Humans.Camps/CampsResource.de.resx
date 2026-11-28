@@ -240,7 +240,6 @@
   <data name="Camps_Flash_RegistrationPendingReview" xml:space="preserve"><value>Dein Camp wurde angemeldet und wartet auf Prüfung.</value></data>
   <data name="Camps_Flash_RegistrationFailed" xml:space="preserve"><value>Dein Camp konnte jetzt nicht angemeldet werden. Versuche es erneut oder wende dich an einen Admin, wenn das Problem weiterhin besteht.</value></data>
   <data name="Camps_Flash_NoSeason" xml:space="preserve"><value>Für dieses Camp wurde keine Saison gefunden.</value></data>
-  <data name="Camps_Flash_UnknownHuman" xml:space="preserve"><value>(unbekannt)</value></data>
   <data name="Camps_Flash_UpdateFailed" xml:space="preserve"><value>Camp konnte nicht aktualisiert werden.</value></data>
   <data name="Camps_Flash_Updated" xml:space="preserve"><value>Camp erfolgreich aktualisiert.</value></data>
   <data name="Camps_Flash_OptedIn" xml:space="preserve"><value>Für Saison {0} angemeldet.</value></data>

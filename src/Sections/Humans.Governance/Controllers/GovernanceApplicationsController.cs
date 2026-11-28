@@ -35,9 +35,6 @@ internal sealed class GovernanceApplicationsController(
 
         var applications = await applicationDecisionService.GetUserApplicationsAsync(user.Id, HttpContext.RequestAborted);
 
-        var pendingApplication = await applicationDecisionService.GetSubmittedApplicationForUserAsync(
-            user.Id, HttpContext.RequestAborted);
-
         var isApprovedColaborador = await membershipTiers.HasActiveApprovedTierAsync(
             user.Id, MembershipTier.Colaborador, clock.GetCurrentInstant().InUtc().Date, HttpContext.RequestAborted);
 
@@ -55,7 +52,7 @@ internal sealed class GovernanceApplicationsController(
                     TermExpiresAt = a.TermExpiresAt,
                     StatusBadgeClass = EnumBadgeMap.For(a.Status)
                 }).ToList(),
-            CanSubmitNew = pendingApplication is null,
+            CanSubmitNew = !applications.Any(a => a.Status == ApplicationStatus.Submitted),
             IsApprovedColaborador = isApprovedColaborador
         };
 

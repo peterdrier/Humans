@@ -65,10 +65,7 @@ internal sealed class SurveyAdminController(
     public async Task<IActionResult> Queue(CancellationToken ct)
     {
         var items = await surveyService.GetPendingApprovalQueueAsync(ct);
-        return View(nameof(Queue), new SurveyPendingApprovalViewModel
-        {
-            Items = items.OrderBy(item => item.SubmittedAt).ToList()
-        });
+        return View(nameof(Queue), items.OrderBy(item => item.SubmittedAt).ToList());
     }
 
     [HttpPost("Approve/{id:guid}")]

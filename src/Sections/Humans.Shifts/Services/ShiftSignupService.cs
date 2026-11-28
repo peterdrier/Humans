@@ -857,7 +857,6 @@ internal sealed class ShiftSignupService(
         var result = new List<ShiftSignupSummary>(signups.Count);
         foreach (var signup in signups)
         {
-            if (signup.Shift?.Rota is null) continue;
             if (await calendarResolver.GetAsync(signup.Shift.Rota.EventSettingsId, ct) is { } calendar)
                 result.Add(ShiftUserSummaryProjection.ToSummary(signup, calendar));
         }

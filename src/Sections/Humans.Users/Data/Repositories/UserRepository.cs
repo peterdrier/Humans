@@ -317,9 +317,7 @@ internal sealed class UserRepository : IUserRepository
         if (user is null)
             return null;
 
-        var originalEmail = user.Email;
         var originalBurnerName = user.BurnerName ?? string.Empty;
-        var preferredLanguage = user.PreferredLanguage;
 
         user.DisplayName = UserInfo.GdprAnonymizedBurnerName;
 

@@ -147,17 +147,10 @@
 <div class="card mb-3">
     <div class="card-header">Anthropic balance</div>
     <div class="card-body">
-        @if (report.Balance.BalanceUsd is { } bal)
-        {
-            <p class="mb-0 fs-4">@Usd(bal)</p>
-        }
-        else
-        {
-            <p class="mb-1 text-muted">Balance unavailable — @report.Balance.UnavailableReason.</p>
-            <a href="https://console.anthropic.com/settings/billing" target="_blank" rel="noopener" class="btn btn-outline-secondary btn-sm">
-                Open Anthropic Console
-            </a>
-        }
+        <p class="mb-1 text-muted">Balance unavailable — @report.BalanceUnavailableReason.</p>
+        <a href="https://console.anthropic.com/settings/billing" target="_blank" rel="noopener" class="btn btn-outline-secondary btn-sm">
+            Open Anthropic Console
+        </a>
     </div>
 </div>
 

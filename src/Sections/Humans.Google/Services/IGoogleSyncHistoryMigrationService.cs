@@ -48,7 +48,6 @@ internal sealed record GoogleSyncHistoryMovableRow(
 
 /// <summary>An audit row the migration cannot map, and why.</summary>
 internal sealed record GoogleSyncHistorySkippedRow(
-    Guid AuditId,
     Instant OccurredAt,
     string Action,
     string Reason);

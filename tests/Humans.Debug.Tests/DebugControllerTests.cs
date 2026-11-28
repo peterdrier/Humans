@@ -50,9 +50,9 @@ public class DebugControllerTests
         _configuration.Register(Entry("Email:Unset", isSensitive: true, value: null));
 
         var model = BuildSut().Configuration().Should().BeOfType<ViewResult>()
-            .Which.Model.Should().BeOfType<AdminConfigurationViewModel>().Subject;
+            .Which.Model.Should().BeAssignableTo<IReadOnlyList<ConfigurationItemViewModel>>().Subject;
 
-        model.Items.Select(i => (i.Key, i.DisplayValue)).Should().BeEquivalentTo(
+        model.Select(i => (i.Key, i.DisplayValue)).Should().BeEquivalentTo(
         [
             ("Email:Password", "abcd******"),
             ("Email:Pin", "******"),

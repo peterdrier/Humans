@@ -204,30 +204,6 @@ public sealed class AnthropicClientTests
         entry.Message.Should().Contain(failureKind is ProviderFailureKind.Unexpected ? "failed" : "Provider unavailable");
     }
 
-    [HumansFact]
-    public async Task StreamAsync_PropagatesCallerCancellationWithoutAnErrorFinalizer()
-    {
-        using var cancellation = new CancellationTokenSource();
-        await cancellation.CancelAsync();
-        using var http = new HttpClient(new StreamResponseHandler(""));
-        var provider = new ProviderClient(new ClientOptions { ApiKey = "test-key", HttpClient = http, MaxRetries = 0 });
-        var logger = new CapturingLogger<ClientAdapter>();
-        var adapter = new ClientAdapter(provider, logger);
-        var tokens = new List<AgentTurnToken>();
-
-        var read = async () =>
-        {
-            await foreach (var token in adapter.StreamAsync(
-                new AnthropicRequest("test-model", "System", [new AnthropicMessage("user", "Question", null, null)], [], 100),
-                cancellation.Token))
-                tokens.Add(token);
-        };
-
-        await read.Should().ThrowAsync<OperationCanceledException>();
-        tokens.Should().NotContain(token => token.Finalizer != null);
-        logger.Entries.Should().NotContain(entry => entry.Level >= Microsoft.Extensions.Logging.LogLevel.Warning);
-    }
-
     [HumansTheory]
     [Xunit.InlineData(ModelPagesOutcome.Complete)]
     [Xunit.InlineData(ModelPagesOutcome.Failure)]

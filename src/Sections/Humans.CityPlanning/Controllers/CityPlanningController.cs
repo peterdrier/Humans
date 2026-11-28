@@ -331,12 +331,10 @@ internal sealed class CityPlanningController(
         {
             Year = year,
             IsContainerPlacementOpen = settings?.IsContainerPlacementOpen ?? false,
-            BarrioGroups = overview.CampGroups
+            BarrioGroups = overview
                 .OrderBy(g => g.CampName, StringComparer.OrdinalIgnoreCase)
-                .Select(g => new BarrioContainerGroup
+                .Select(g => g with
                 {
-                    CampId = g.CampId,
-                    CampName = g.CampName,
                     Containers = g.Containers
                         .OrderBy(c => c.Container.Name, StringComparer.OrdinalIgnoreCase)
                         .ToList()

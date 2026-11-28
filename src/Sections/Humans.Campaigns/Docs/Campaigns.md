@@ -69,8 +69,8 @@ Records the assignment of a specific code to a specific user.
 | CampaignCodeId | Guid | FK → CampaignCode (unique — one grant per code) |
 | UserId | Guid | Bare cross-section id (User) — no FK constraint, no nav |
 | AssignedAt | Instant | When assigned |
-| LatestEmailStatus | EmailOutboxStatus? | Retained, unwritten since nobodies-collective/Humans#1243 dropped delivery tracking; holds old grants' last status, still handed over by the GDPR export. Kept until a drop is approved |
-| LatestEmailAt | Instant? | Retained, unwritten and unread since nobodies-collective/Humans#1243. Kept until a drop is approved |
+| LatestEmailStatus | EmailOutboxStatus? | EF shadow property; retained, unwritten since nobodies-collective/Humans#1243 dropped delivery tracking; holds old grants' last status, still handed over by the GDPR export. Kept until a drop is approved |
+| LatestEmailAt | Instant? | EF shadow property; retained, unwritten and unread since nobodies-collective/Humans#1243. Kept until a drop is approved |
 | RedeemedAt | Instant? | When the granted code was redeemed in a ticket purchase; null if unused. Set by `TicketSyncService` via `MarkGrantsRedeemedAsync` |
 
 **Indexes:** unique `(CampaignCodeId)` (one grant per code) and unique `(CampaignId, UserId)` (one grant per user per campaign).

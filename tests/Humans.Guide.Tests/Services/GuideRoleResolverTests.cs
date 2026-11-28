@@ -77,7 +77,6 @@ public class GuideRoleResolverTests
         UserId: userId,
         DisplayName: "u",
         Email: null,
-        ProfilePictureUrl: null,
         Role: role,
         JoinedAt: _clock.GetCurrentInstant());
 

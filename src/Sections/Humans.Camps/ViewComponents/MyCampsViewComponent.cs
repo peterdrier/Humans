@@ -47,11 +47,7 @@ public sealed class MyCampsViewComponent(ICampService campService, ILogger<MyCam
 
             return View(new MyCampsViewModel { Events = groups });
         }
-        catch (OperationCanceledException) when (ct.IsCancellationRequested)
-        {
-            throw;
-        }
-        catch (Exception ex)
+        catch (Exception ex) when (ex is not OperationCanceledException || !ct.IsCancellationRequested)
         {
             logger.LogError(ex, "Failed to load camp memberships for current user");
             return Content(string.Empty);

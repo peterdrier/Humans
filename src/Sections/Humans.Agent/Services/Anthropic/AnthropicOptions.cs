@@ -9,12 +9,9 @@ internal sealed class AnthropicOptions
     public string ApiKey { get; set; } = string.Empty;
 
     /// <summary>
-    /// Used only by the balance lookup. Unset renders "balance unavailable" with a Console link, never an error.
+    /// Selects the admin balance-unavailable reason; the status card links to the Console.
     /// </summary>
     public string AdminApiKey { get; set; } = string.Empty;
-
-    /// <summary>Model id sent to the API when <c>AgentSettings.Model</c> is empty.</summary>
-    public string DefaultModel { get; set; } = "claude-sonnet-4-6";
 
     public TimeSpan Timeout { get; set; } = TimeSpan.FromSeconds(60);
 

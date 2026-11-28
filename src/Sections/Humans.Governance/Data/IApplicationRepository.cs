@@ -51,9 +51,6 @@ internal interface IApplicationRepository : IRepository
     /// <summary>Distinct voters on this application, for badge invalidation after finalize.</summary>
     Task<IReadOnlyList<Guid>> GetVoterIdsForApplicationAsync(Guid applicationId, CancellationToken ct = default);
 
-    Task<MemberApplication?> GetSubmittedForUserAsync(
-        Guid userId, CancellationToken ct = default);
-
     /// <summary>
     /// Includes <c>BoardVotes</c>; ordered by tier then <c>SubmittedAt</c>.
     /// </summary>

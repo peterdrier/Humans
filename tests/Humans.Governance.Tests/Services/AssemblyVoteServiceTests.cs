@@ -248,7 +248,7 @@ public sealed class AssemblyVoteServiceTests : IDisposable
             { ControllerContext = context };
             var view = (await controller.Index(TestContext.Current.CancellationToken))
                 .Should().BeOfType<ViewResult>().Subject;
-            ordered = view.Model.Should().BeOfType<AssemblyVoteAdminListViewModel>().Subject.Votes;
+            ordered = view.Model.Should().BeAssignableTo<IReadOnlyList<AssemblyVoteListItem>>().Subject;
         }
         else
         {
@@ -258,7 +258,7 @@ public sealed class AssemblyVoteServiceTests : IDisposable
             { ControllerContext = context };
             var view = (await controller.Index(TestContext.Current.CancellationToken))
                 .Should().BeOfType<ViewResult>().Subject;
-            ordered = view.Model.Should().BeOfType<AssemblyVoteListViewModel>().Subject.Votes;
+            ordered = view.Model.Should().BeAssignableTo<IReadOnlyList<AssemblyVoteListItem>>().Subject;
         }
         ordered.Select(v => v.Id).Should().Equal(admin
             ? [closed.Id, late.Id, early.Id] : new[] { late.Id, early.Id, closed.Id });

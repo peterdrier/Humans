@@ -201,11 +201,7 @@ internal sealed class UsersAdminController(
 
             return View(model);
         }
-        catch (OperationCanceledException) when (ct.IsCancellationRequested)
-        {
-            throw;
-        }
-        catch (Exception ex)
+        catch (Exception ex) when (ex is not OperationCanceledException || !ct.IsCancellationRequested)
         {
             logger.LogError(ex, "Error loading audience segmentation data");
             SetError("Failed to load audience segmentation data.");

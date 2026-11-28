@@ -49,7 +49,7 @@ public sealed class EventsModerationControllerTests
             .Should().BeOfType<ViewResult>().Subject;
         var row = ((ModerationQueueViewModel)view.Model!).Events.Should().ContainSingle().Subject;
         var candidate = row.DuplicateCandidates.Should().ContainSingle().Subject;
-        candidate.Id.Should().Be(other.Id);
+        candidate.Title.Should().Be(other.Title);
         candidate.StartAt.Should().Be(hasSettings
             ? start.InZone(DateTimeZoneProviders.Tzdb[settings.TimeZoneId]).ToDateTimeUnspecified()
             : start.ToDateTimeUtc());

@@ -911,7 +911,7 @@ public sealed class ProfileServiceTests : ServiceTestHarness
                     historyReached.TrySetResult();
                     await resumeHistory.Task.WaitAsync(ct);
                 }
-                return await _storageUserService.SaveProfileAsync(userId, call.Arg<UserProfileSaveCommand>(),
+                await _storageUserService.SaveProfileAsync(userId, call.Arg<UserProfileSaveCommand>(),
                     call.Arg<byte[]?>(), call.Arg<CancellationToken>(), entries);
             });
         var first = _editor.SaveProfileAsync(userId, MakeRequest() with

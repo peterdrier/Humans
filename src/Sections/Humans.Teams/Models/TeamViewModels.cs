@@ -21,11 +21,6 @@ internal sealed class TeamIndexViewModel
     public bool IsAuthenticated { get; set; }
 }
 
-internal sealed class TeamTreeViewModel
-{
-    public IReadOnlyList<TeamTreeNode> Departments { get; init; } = [];
-}
-
 internal sealed class TeamSummaryViewModel
 {
     public Guid Id { get; set; }
@@ -93,17 +88,10 @@ internal sealed class TeamDetailViewModel
     public Guid? ViewerUserId { get; init; }
 
     /// <summary>Departments only.</summary>
-    public List<ChildTeamMemberViewModel> SubteamLeads { get; set; } = [];
+    public IReadOnlyList<TeamPageChildTeamMemberSummary> SubteamLeads { get; set; } = [];
 
     /// <summary>Departments only.</summary>
-    public List<ChildTeamMemberViewModel> ChildTeamMembers { get; set; } = [];
-}
-
-internal sealed class ChildTeamMemberViewModel
-{
-    public Guid UserId { get; set; }
-    public string ChildTeamName { get; set; } = string.Empty;
-    public string? RoleTitle { get; set; }
+    public IReadOnlyList<TeamPageChildTeamMemberSummary> ChildTeamMembers { get; set; } = [];
 }
 
 internal sealed class TeamMemberViewModel

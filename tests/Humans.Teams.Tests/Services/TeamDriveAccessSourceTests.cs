@@ -83,7 +83,7 @@ public sealed class TeamDriveAccessSourceTests
     private static TeamInfo Team(string slug, params Guid[] users) => new(
         Guid.NewGuid(), slug, null, slug, true, false, SystemTeamType.None,
         false, false, false, false, Instant.MinValue,
-        users.Select(id => new TeamMemberInfo(Guid.NewGuid(), id, slug, null, null,
+        users.Select(id => new TeamMemberInfo(Guid.NewGuid(), id, slug, null,
             TeamMemberRole.Member, Instant.MinValue)).ToList());
 
     private static GoogleResourceSnapshot Resource(Guid teamId, string googleId, DrivePermissionLevel level) => new(

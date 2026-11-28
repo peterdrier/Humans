@@ -628,7 +628,7 @@ public sealed class SurveyControllerTests
 
         var view = result.Should().BeOfType<ViewResult>().Subject;
         view.ViewName.Should().Be("Closed");
-        view.Model.Should().BeOfType<SurveyClosedViewModel>().Subject.Reason
+        view.Model.Should().BeOfType<string>().Subject
             .Should().Be("ineligible");
         SurveyWizardSession.LoadBySlug(session, "board-vote").Should().BeNull();
     }
@@ -649,7 +649,7 @@ public sealed class SurveyControllerTests
 
         var view = result.Should().BeOfType<ViewResult>().Subject;
         view.ViewName.Should().Be("Closed");
-        view.Model.Should().BeOfType<SurveyClosedViewModel>().Subject.Reason.Should().Be("empty");
+        view.Model.Should().BeOfType<string>().Subject.Should().Be("empty");
         SurveyWizardSession.LoadCompleted(session, Token)
             .Should().BeNull("nothing was submitted, so nothing may mark the respondent as done");
     }

@@ -46,11 +46,6 @@ internal sealed class EventSettingsOptionViewModel
         options.Select(e => new EventSettingsOptionViewModel { Id = e.Id, EventName = e.EventName }).ToList();
 }
 
-internal sealed class EventCategoryListViewModel
-{
-    public List<EventCategoryRowViewModel> Categories { get; set; } = [];
-}
-
 internal sealed class EventCategoryRowViewModel
 {
     public Guid Id { get; set; }
@@ -85,11 +80,6 @@ internal sealed class EventCategoryFormViewModel
     [Display(Name = "Display Order")]
     [BindRequired]
     public int DisplayOrder { get; set; }
-}
-
-internal sealed class GuideVenueListViewModel
-{
-    public List<GuideVenueRowViewModel> Venues { get; set; } = [];
 }
 
 internal sealed class GuideVenueRowViewModel

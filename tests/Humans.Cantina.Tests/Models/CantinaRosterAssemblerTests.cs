@@ -22,7 +22,6 @@ public class CantinaRosterAssemblerTests
         string? allergyOther = null,
         string? intoleranceOther = null) =>
         new(
-            UserId: Guid.NewGuid(),
             BurnerName: burnerName,
             ArrivesOn: arrivesOn,
             NoShift: Array.Empty<LocalDate>(),

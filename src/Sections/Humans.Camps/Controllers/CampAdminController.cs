@@ -25,11 +25,7 @@ internal sealed class CampAdminController(
         {
             return View(await campAdminPageBuilder.BuildAsync(HttpContext.RequestAborted));
         }
-        catch (OperationCanceledException) when (HttpContext.RequestAborted.IsCancellationRequested)
-        {
-            throw;
-        }
-        catch (Exception ex)
+        catch (Exception ex) when (ex is not OperationCanceledException || !HttpContext.RequestAborted.IsCancellationRequested)
         {
             logger.LogError(ex, "Failed to load Barrios admin page");
             SetError("Failed to load Barrios admin page.");
@@ -244,11 +240,7 @@ internal sealed class CampAdminController(
             var export = await campCsvExportBuilder.BuildAsync(actor.Id, HttpContext.RequestAborted);
             return File(export.Content, export.ContentType, export.FileName);
         }
-        catch (OperationCanceledException) when (HttpContext.RequestAborted.IsCancellationRequested)
-        {
-            throw;
-        }
-        catch (Exception ex)
+        catch (Exception ex) when (ex is not OperationCanceledException || !HttpContext.RequestAborted.IsCancellationRequested)
         {
             logger.LogError(ex, "Failed to export barrios");
             SetError("Failed to export barrios.");

@@ -66,8 +66,8 @@ status report).
 | AgentConversations | R |
 | AgentMessages | R |
 
-Cross-section calls via `IAgentSettingsService`, `IAgentRateLimitStore`,
-`IAgentRetentionRunStore`, `IAgentAnthropicBalanceProvider`. Read-only
+Uses `IAgentSettingsService`, `IAgentRateLimitStore`, `IAgentRetentionRunStore`
+and the section's `AnthropicOptions`. Read-only
 assembler for `/Agent/Admin/Status` — one 30-day projection, all
 sub-windows computed in memory. No cache.
 
@@ -92,12 +92,6 @@ tool-dispatch and user-context surfaces. No `IMemoryCache`.
 ### AnthropicClient (`Services/Anthropic/`)
 
 Outbound API client over `AnthropicOptions`. No DB access, no cache.
-
-### AnthropicBalanceProvider (`Services/Anthropic/`)
-
-No repository. Reads the Anthropic credit balance over `AnthropicOptions`
-(`GetBalanceAsync` → `AgentBalanceStatus`) for the admin status screen via
-`AgentAdminStatusService`. No DB access, no cache.
 
 ### AgentDocsHealthCheck / AnthropicHealthCheck (`Health/`)
 

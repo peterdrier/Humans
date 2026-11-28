@@ -240,7 +240,6 @@
   <data name="Camps_Flash_RegistrationPendingReview" xml:space="preserve"><value>Je kamp is geregistreerd en wacht op beoordeling.</value></data>
   <data name="Camps_Flash_RegistrationFailed" xml:space="preserve"><value>We konden je kamp nu niet registreren. Probeer het opnieuw of neem contact op met een beheerder als het probleem aanhoudt.</value></data>
   <data name="Camps_Flash_NoSeason" xml:space="preserve"><value>Geen seizoen gevonden voor dit kamp.</value></data>
-  <data name="Camps_Flash_UnknownHuman" xml:space="preserve"><value>(onbekend)</value></data>
   <data name="Camps_Flash_UpdateFailed" xml:space="preserve"><value>Kamp bijwerken mislukt.</value></data>
   <data name="Camps_Flash_Updated" xml:space="preserve"><value>Kamp bijgewerkt.</value></data>
   <data name="Camps_Flash_OptedIn" xml:space="preserve"><value>Aangemeld voor seizoen {0}.</value></data>

@@ -25,7 +25,6 @@ internal sealed class PersonalSubmissionsBlock
 
 internal sealed class BarrioSubmissionsBlock
 {
-    public Guid CampId { get; set; }
     public string CampName { get; set; } = string.Empty;
     public string CampSlug { get; set; } = string.Empty;
     public int SubmittedCount { get; set; }

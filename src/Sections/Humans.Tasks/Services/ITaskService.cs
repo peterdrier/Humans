@@ -147,9 +147,7 @@ internal sealed record TaskInfo(
     string? ApprovalReason,
     bool IsHidden,
     IReadOnlyList<TaskAssignmentInfo> Assignments,
-    IReadOnlyList<TaskLinkInfo> WaitingOn,
-    Instant CreatedAt,
-    Instant UpdatedAt)
+    IReadOnlyList<TaskLinkInfo> WaitingOn)
 {
     public bool IsEffectivelyHidden => IsHidden || TeamIsHidden;
 
@@ -177,7 +175,7 @@ internal sealed record TaskResult(TaskInfo? Task = null, string? Refusal = null,
 }
 
 /// <summary>Counts over the listed tasks of one team. Open slots are summed, never below zero per task.</summary>
-internal sealed record TeamTaskCounts(Guid TeamId, string TeamName, string TeamSlug, int Tasks, int OpenSlots, int BlockedTasks);
+internal sealed record TeamTaskCounts(string TeamName, string TeamSlug, int Tasks, int OpenSlots, int BlockedTasks);
 
 /// <summary>The read-only admin page.</summary>
 /// <param name="Teams">One row per team that has listed tasks.</param>

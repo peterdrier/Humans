@@ -112,7 +112,6 @@ internal static class CantinaRosterCalculation
             var daysList = daysOnSiteByUserId[id];
 
             people.Add(new RosterPersonDto(
-                UserId: id,
                 BurnerName: ResolveBurnerName(info),
                 ArrivesOn: arrivesOnByUser.GetValueOrDefault(id, daysList.Min()),
                 NoShift: BuildNoShiftDays(daysList, weekDays),
@@ -193,7 +192,6 @@ internal static class CantinaRosterCalculation
         foreach (var profile in uniqueProfiles)
         {
             var chips = pickChips(profile);
-            if (chips is null) continue;
 
             foreach (var chip in chips)
             {

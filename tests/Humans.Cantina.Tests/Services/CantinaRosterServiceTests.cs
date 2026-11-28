@@ -518,7 +518,6 @@ public class CantinaRosterServiceTests
 
         result.People.Should().HaveCount(1);
         var p = result.People[0];
-        p.UserId.Should().Be(userId);
         p.BurnerName.Should().Be("AlicePrime");
         p.DietaryPreference.Should().Be("Omnivore");
         p.ArrivesOn.Should().Be(GateOpening.PlusDays(-1));
@@ -736,10 +735,10 @@ public class CantinaRosterServiceTests
         var result = Xunit.Assert.IsType<WeeklyRosterDto>(await _service.GetWeeklyRosterAsync(WeekStartOffset, ct: Xunit.TestContext.Current.CancellationToken));
 
         result.People.Should().HaveCount(1);
-        result.People.Should().NotContain(p => p.UserId == excludedUserId);
+        result.People.Should().NotContain(p => string.Equals(p.BurnerName, "Excluded", StringComparison.Ordinal));
 
         var p = result.People[0];
-        p.UserId.Should().Be(onSiteUserId);
+        p.BurnerName.Should().Be("OnSite");
         p.ArrivesOn.Should().Be(GateOpening.PlusDays(-1));
         p.NoShift.Should().HaveCount(4);
         p.NoShift.Should().Equal(
@@ -767,7 +766,7 @@ public class CantinaRosterServiceTests
 
         var result = Xunit.Assert.IsType<WeeklyRosterDto>(await _service.GetWeeklyRosterAsync(0, ct: Xunit.TestContext.Current.CancellationToken));
 
-        var person = result.People.Single(p => p.UserId == id);
+        var person = result.People.Single(p => string.Equals(p.BurnerName, "Ash", StringComparison.Ordinal));
         // Arrival = day before the first confirmed shift (offset 2 → offset 1).
         person.ArrivesOn.Should().Be(GateOpening.PlusDays(1));
         // NoShift is the complement of on-site days; the arrival day counts as on-site.
@@ -795,8 +794,8 @@ public class CantinaRosterServiceTests
 
         var result = Xunit.Assert.IsType<WeeklyRosterDto>(await _service.GetWeeklyRosterAsync(0, ct: Xunit.TestContext.Current.CancellationToken));
 
-        result.People.Should().ContainSingle(p => p.UserId == id);
-        var person = result.People.Single(p => p.UserId == id);
+        result.People.Should().ContainSingle(p => string.Equals(p.BurnerName, "Bo", StringComparison.Ordinal));
+        var person = result.People.Single(p => string.Equals(p.BurnerName, "Bo", StringComparison.Ordinal));
         person.ArrivesOn.Should().Be(GateOpening.PlusDays(6));
         result.TotalUniqueOnSite.Should().Be(1);
         result.Days[6].TotalOnSite.Should().Be(1);
@@ -819,7 +818,7 @@ public class CantinaRosterServiceTests
 
         var result = Xunit.Assert.IsType<WeeklyRosterDto>(await _service.GetWeeklyRosterAsync(-7, ct: Xunit.TestContext.Current.CancellationToken));
 
-        var person = result.People.Single(p => p.UserId == id);
+        var person = result.People.Single(p => string.Equals(p.BurnerName, "Cy", StringComparison.Ordinal));
         person.ArrivesOn.Should().Be(GateOpening.PlusDays(-1));
         result.Days[6].TotalOnSite.Should().Be(1);
     }
@@ -841,7 +840,7 @@ public class CantinaRosterServiceTests
 
         var result = Xunit.Assert.IsType<WeeklyRosterDto>(await _service.GetWeeklyRosterAsync(7, ct: Xunit.TestContext.Current.CancellationToken));
 
-        var person = result.People.Single(p => p.UserId == id);
+        var person = result.People.Single(p => string.Equals(p.BurnerName, "Di", StringComparison.Ordinal));
         person.ArrivesOn.Should().Be(GateOpening.PlusDays(1));
         result.Days[0].TotalOnSite.Should().Be(0);
     }

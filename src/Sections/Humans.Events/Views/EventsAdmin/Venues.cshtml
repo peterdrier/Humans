@@ -1,5 +1,5 @@
 @using Microsoft.AspNetCore.Html
-@model Humans.Events.Models.GuideVenueListViewModel
+@model List<Humans.Events.Models.GuideVenueRowViewModel>
 @{
     ViewData["Title"] = "Communal Venues";
 }
@@ -11,7 +11,7 @@
 </page-header>
 
 
-@if (Model.Venues.Count == 0)
+@if (Model.Count == 0)
 {
     <div class="alert alert-info">
         No venues yet. Add one to get started.
@@ -19,7 +19,7 @@
 }
 else
 {
-    var venueList = Model.Venues;
+    var venueList = Model;
     Func<GuideVenueRowViewModel, IHtmlContent> venueOrderCell = @<text>
         <div class="btn-group btn-group-sm">
             @{ var venueIdx = venueList.IndexOf(item); }
@@ -64,7 +64,7 @@ else
             </button>
         </form>
     </text>;
-    var venueTable = TableModel.For(Model.Venues)
+    var venueTable = TableModel.For(Model)
         .Template("Order", venueOrderCell, c => c.NoSort())
         .Column("Name", r => r.Name)
         .Column("Location", r => r.LocationDescription)

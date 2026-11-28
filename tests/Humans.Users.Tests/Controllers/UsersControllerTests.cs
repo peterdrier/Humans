@@ -28,8 +28,8 @@ public class UsersControllerTests
         var result = await controller.Map(TestContext.Current.CancellationToken);
 
         result.Should().BeOfType<ViewResult>().Subject
-            .Model.Should().BeOfType<MapViewModel>().Subject
-            .Markers.Should().ContainSingle().Which.UserId.Should().Be(active.Id);
+            .Model.Should().BeAssignableTo<IReadOnlyList<MapMarkerViewModel>>().Subject
+            .Should().ContainSingle().Which.UserId.Should().Be(active.Id);
     }
 
     [HumansFact]
@@ -53,7 +53,7 @@ public class UsersControllerTests
         var result = await controller.Map(TestContext.Current.CancellationToken);
 
         var markers = result.Should().BeOfType<ViewResult>().Subject.Model
-            .Should().BeOfType<MapViewModel>().Subject.Markers;
+            .Should().BeAssignableTo<IReadOnlyList<MapMarkerViewModel>>().Subject;
         var serialize = () => System.Text.Json.JsonSerializer.Serialize(markers);
         serialize.Should().NotThrow();
         markers.Select(marker => marker.UserId).Should().BeEquivalentTo(new[] { valid.Id, north.Id, south.Id });
