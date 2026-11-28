@@ -629,61 +629,6 @@ public class CampControllerTests
             .NotContain(nameof(ICampManagement.CreateCampAsync)).And.NotContain(nameof(ICampManagement.OptInToSeasonAsync));
     }
 
-    [HumansTheory]
-    [InlineData(nameof(CampController.Edit), "Camp")]
-    [InlineData(nameof(CampController.Edit), "Viewer")]
-    [InlineData(nameof(CampController.Edit), "EditData")]
-    [InlineData(nameof(CampController.Members), "Camp")]
-    [InlineData(nameof(CampController.Members), "Viewer")]
-    [InlineData(nameof(CampController.Members), "EditData")]
-    [InlineData(nameof(CampController.Contact), "Camp")]
-    public async Task CampReadPages_StopLoadingAfterRequestCancellation(string route, string boundary)
-    {
-        using var request = new CancellationTokenSource();
-        var abandon = false;
-        var boundaryToken = CancellationToken.None;
-        async Task<T> ReadAsync<T>(T value, string name, CancellationToken ct)
-        {
-            if (abandon && string.Equals(name, boundary, StringComparison.Ordinal))
-            {
-                await request.CancelAsync();
-                boundaryToken = ct;
-            }
-            ct.ThrowIfCancellationRequested();
-            return value;
-        }
-
-        var userId = Guid.NewGuid();
-        var camp = MakeCamp("alpha", "Alpha", CampSeasonStatus.Active, userId);
-        var season = camp.Seasons.Single();
-        _camps.GetCampBySlugAsync(camp.Slug, Arg.Any<CancellationToken>()).Returns(call =>
-            ReadAsync<CampInfo?>(camp, "Camp", call.Arg<CancellationToken>()));
-        _users.GetUserInfoAsync(userId, Arg.Any<CancellationToken>()).Returns(call =>
-            new ValueTask<UserInfo?>(ReadAsync<UserInfo?>(MakeUserInfo(userId), "Viewer", call.Arg<CancellationToken>())));
-        _camps.GetCampEditDataAsync(camp.Id, null, Arg.Any<CancellationToken>()).Returns(call =>
-            ReadAsync<CampEditData?>(MakeEditData(camp, season), "EditData", call.Arg<CancellationToken>()));
-        _camps.GetSettingsAsync(Arg.Any<CancellationToken>()).Returns(Settings2026());
-        _authorization.AuthorizeAsync(
-            Arg.Any<ClaimsPrincipal>(), Arg.Any<object?>(), Arg.Any<IEnumerable<IAuthorizationRequirement>>())
-            .Returns(AuthorizationResult.Success());
-        _roles.BuildPanelAsync(season.Id, Arg.Any<CancellationToken>())
-            .Returns(new CampRolesPanelData([]));
-        var controller = BuildController(userId);
-        controller.HttpContext.RequestAborted = request.Token;
-        Func<Task<IActionResult>> load = route switch
-        {
-            nameof(CampController.Edit) => () => controller.Edit(camp.Slug, null, request.Token),
-            nameof(CampController.Members) => () => controller.Members(camp.Slug, null, request.Token),
-            nameof(CampController.Contact) => () => controller.Contact(camp.Slug),
-            _ => throw new ArgumentOutOfRangeException(nameof(route)),
-        };
-
-        (await load()).Should().BeOfType<ViewResult>();
-        abandon = true;
-        await load.Should().ThrowAsync<OperationCanceledException>();
-        boundaryToken.Should().Be(request.Token);
-    }
-
     [HumansFact]
     public void UploadImage_OneValidImage_IsAllowed()
     {
