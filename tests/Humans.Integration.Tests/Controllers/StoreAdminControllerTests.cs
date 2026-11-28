@@ -133,7 +133,7 @@ public class StoreAdminControllerTests(HumansTestDatabase database) : Integratio
             .SingleAsync(p => p.Id == id, ct);
         product.UnitPriceEur.Should().Be(55.25m);
         var audit = await scope.ServiceProvider.GetRequiredService<AuditLogDbContext>().AuditLogEntries.AsNoTracking()
-            .SingleAsync(a => a.EntityId == id && a.Action == "StoreProductPriceChanged", ct);
+            .SingleAsync(a => a.SubjectId == id && a.Action == "StoreProductPriceChanged", ct);
         audit.Description.Should().EndWith("changed from 42.50 to 55.25");
     }
 

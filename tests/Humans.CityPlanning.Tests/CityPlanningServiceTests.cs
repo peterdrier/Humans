@@ -2,7 +2,7 @@ using Humans.Containers.Contracts;
 using Xunit;
 using AwesomeAssertions;
 using Humans.CityPlanning.Contracts;
-using Humans.AuditLog.Contracts;
+using Humans.Audit.Contracts;
 using Humans.Camps.Contracts;
 using Humans.Teams.Contracts;
 using Humans.CityPlanning.Services;

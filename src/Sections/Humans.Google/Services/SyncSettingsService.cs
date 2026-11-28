@@ -1,6 +1,6 @@
 using Humans.Google.Domain;
 using Humans.Google.Contracts;
-using Humans.AuditLog.Contracts;
+using Humans.Audit.Contracts;
 using NodaTime;
 
 namespace Humans.Google.Services;

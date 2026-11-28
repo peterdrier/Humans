@@ -1,4 +1,4 @@
-using Humans.AuditLog.Contracts;
+using Humans.Audit.Contracts;
 using Humans.Base.Constants;
 using Humans.Base.Interfaces;
 using Humans.Google.Contracts;
@@ -107,7 +107,7 @@ internal sealed class GovernanceBodyLinksService(
         links.UpdatedAt = clock.GetCurrentInstant();
         await repository.ReplaceAsync(links, ct);
         ct = CancellationToken.None; // the change is stored: its audit and sync request must follow
-        await audit.LogAsync(GovernanceAuditActions.GovernanceBodyLinksChanged, AuditEntityTypes.GovernanceBody,
+        await audit.LogAsync(GovernanceAuditActions.GovernanceBodyLinksChanged, GovernanceAuditSubjectTypes.GovernanceBody,
             TeamIds[links.Body], description, actorUserId);
         await bodySync.RequestAsync(links.Body, ct);
     }
@@ -135,7 +135,7 @@ internal sealed class GovernanceBodyLinksService(
         {
             await repository.ReplaceAsync(links, ct);
             await audit.LogAsync(
-                GovernanceAuditActions.GovernanceBodyLinksCopied, AuditEntityTypes.GovernanceBody, TeamIds[links.Body],
+                GovernanceAuditActions.GovernanceBodyLinksCopied, GovernanceAuditSubjectTypes.GovernanceBody, TeamIds[links.Body],
                 $"Copied {links.Body} group '{links.GoogleGroupPrefix ?? "none"}' and {links.Files.Count} Google file(s) from its system team",
                 actorUserId);
         }

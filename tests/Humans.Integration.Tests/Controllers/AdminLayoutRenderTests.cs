@@ -50,7 +50,7 @@ public partial class AdminLayoutRenderTests(HumansTestDatabase database) : Integ
     /// </summary>
     private static (string Url, string Site)[] AdminPages =>
     [
-        ("/AuditLog", "Humans.AuditLog"),
+        ("/Audit", "Humans.Audit"),
         ("/Budget/Admin", "Humans.Budget"),
         ("/Campaigns/Admin", "Humans.Campaigns"),
         ("/Cantina/Roster", "Humans.Cantina"),

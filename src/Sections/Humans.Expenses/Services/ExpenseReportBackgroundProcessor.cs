@@ -1,4 +1,4 @@
-using Humans.AuditLog.Contracts;
+using Humans.Audit.Contracts;
 using Humans.Base.Extensions;
 using Humans.Base.Interfaces;
 using Humans.Expenses.Contracts;
@@ -194,7 +194,7 @@ internal sealed class ExpenseReportBackgroundProcessor(
 
         await auditLogService.LogAsync(
             ExpensesAuditActions.ExpenseHoldedFailed,
-            AuditEntityTypes.Report, outboxEvent.ExpenseReportId,
+            ExpensesAuditSubjectTypes.Report, outboxEvent.ExpenseReportId,
             $"Holded push failed permanently: {error}",
             OutboxJobName);
     }
@@ -316,7 +316,7 @@ internal sealed class ExpenseReportBackgroundProcessor(
 
             await auditLogService.LogAsync(
                 ExpensesAuditActions.ExpenseHoldedPushed,
-                AuditEntityTypes.Report, report.Id,
+                ExpensesAuditSubjectTypes.Report, report.Id,
                 pushedSummary,
                 ExpenseReportBackgroundProcessor.OutboxJobName);
         }

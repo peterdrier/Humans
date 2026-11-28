@@ -2,7 +2,7 @@ using Humans.Base.Extensions;
 using Hangfire;
 using NodaTime;
 using Humans.Base.Interfaces;
-using Humans.AuditLog.Contracts;
+using Humans.Audit.Contracts;
 using Humans.Email.Contracts;
 using Humans.Users.Services;
 

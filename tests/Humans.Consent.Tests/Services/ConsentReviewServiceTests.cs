@@ -1,5 +1,5 @@
 using AwesomeAssertions;
-using Humans.AuditLog.Contracts;
+using Humans.Audit.Contracts;
 using Humans.Base.Enums;
 using Humans.Base.Interfaces;
 using Humans.Consent.Contracts;

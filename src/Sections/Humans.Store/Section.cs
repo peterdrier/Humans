@@ -12,7 +12,7 @@ using Humans.Store.ViewComponents;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
-using Humans.AuditLog.Contracts;
+using Humans.Audit.Contracts;
 using Humans.Permissions.Contracts;
 using Humans.Teams.Contracts;
 using Humans.Store.Controllers;

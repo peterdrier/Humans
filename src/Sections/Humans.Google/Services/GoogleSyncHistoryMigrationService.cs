@@ -1,4 +1,4 @@
-using Humans.AuditLog.Contracts;
+using Humans.Audit.Contracts;
 using Humans.Google.Contracts;
 using Humans.Google.Domain;
 
@@ -82,8 +82,8 @@ internal sealed class GoogleSyncHistoryMigrationService(
             Id = row.Id,
             Action = action.Value,
             ResourceId = row.ResourceId,
-            UserId = string.Equals(row.RelatedEntityType, AuditSubjectTypes.User, StringComparison.Ordinal)
-                ? row.RelatedEntityId
+            UserId = string.Equals(row.TargetType, AuditSubjectTypes.User, StringComparison.Ordinal)
+                ? row.TargetId
                 : null,
             UserEmail = row.UserEmail ?? string.Empty,
             Role = row.Role ?? string.Empty,

@@ -9,13 +9,13 @@ using Microsoft.Extensions.Logging.Abstractions;
 using NodaTime;
 using NSubstitute;
 using Humans.Google.Services.Workspace;
-using Humans.AuditLog.Contracts;
+using Humans.Audit.Contracts;
 
 namespace Humans.Google.Tests;
 
 public sealed class TeamResourceServiceDeactivateTests : Infrastructure.GoogleTestHarness
 {
-    private const string TeamAuditEntityType = "Team";
+    private const string TeamAuditSubjectType = "Team";
     private readonly IGoogleDrivePermissionsClient _drivePermissions;
     private readonly TeamResourceService _service;
     private readonly ITeamResourceGoogleClient _googleClient = Substitute.For<ITeamResourceGoogleClient>();
@@ -54,8 +54,8 @@ public sealed class TeamResourceServiceDeactivateTests : Infrastructure.GoogleTe
             await _service.UpdatePermissionLevelAsync(resourceId, DrivePermissionLevel.Viewer, actorUserId: actorId);
 
         await AuditLog.Received(1).LogAsync(
-            unlink ? GoogleAuditActions.GoogleResourceUnlinked : GoogleAuditActions.GoogleResourceUpdated, TeamGoogleResource.AuditEntityType, resourceId,
-            Arg.Any<string>(), actorId, teamId, TeamAuditEntityType);
+            unlink ? GoogleAuditActions.GoogleResourceUnlinked : GoogleAuditActions.GoogleResourceUpdated, TeamGoogleResource.AuditSubjectType, resourceId,
+            Arg.Any<string>(), actorId, teamId, TeamAuditSubjectType);
     }
 
     [HumansTheory]
@@ -82,8 +82,8 @@ public sealed class TeamResourceServiceDeactivateTests : Infrastructure.GoogleTe
 
         Assert.True(result.Success);
         var row = await GoogleDb.GoogleResources.AsNoTracking().SingleAsync(TestContext.Current.CancellationToken);
-        await AuditLog.Received(1).LogAsync(GoogleAuditActions.GoogleResourceLinked, TeamGoogleResource.AuditEntityType, row.Id,
-            Arg.Any<string>(), actorId, teamId, TeamAuditEntityType);
+        await AuditLog.Received(1).LogAsync(GoogleAuditActions.GoogleResourceLinked, TeamGoogleResource.AuditSubjectType, row.Id,
+            Arg.Any<string>(), actorId, teamId, TeamAuditSubjectType);
     }
 
     [HumansTheory]
@@ -145,8 +145,8 @@ public sealed class TeamResourceServiceDeactivateTests : Infrastructure.GoogleTe
         Assert.False(result.Succeeded);
         var row = await GoogleDb.GoogleResources.AsNoTracking().SingleAsync(TestContext.Current.CancellationToken);
         Assert.True(row.RestrictInheritedAccess);
-        await AuditLog.Received(1).LogAsync(GoogleAuditActions.GoogleResourceUpdated, TeamGoogleResource.AuditEntityType, resourceId,
-            Arg.Is<string>(text => text.Contains("desired", StringComparison.Ordinal)), actorId, teamId, TeamAuditEntityType);
+        await AuditLog.Received(1).LogAsync(GoogleAuditActions.GoogleResourceUpdated, TeamGoogleResource.AuditSubjectType, resourceId,
+            Arg.Is<string>(text => text.Contains("desired", StringComparison.Ordinal)), actorId, teamId, TeamAuditSubjectType);
     }
 
     [HumansFact]
@@ -194,7 +194,7 @@ public sealed class TeamResourceServiceDeactivateTests : Infrastructure.GoogleTe
         // Exactly two audit entries (for the two previously-active doomed resources).
         await AuditLog.Received(2).LogAsync(
             GoogleAuditActions.GoogleResourceDeactivated,
-            TeamGoogleResource.AuditEntityType,
+            TeamGoogleResource.AuditSubjectType,
             Arg.Any<Guid>(),
             Arg.Any<string>(),
             Arg.Any<string>(),
@@ -244,8 +244,8 @@ public sealed class TeamResourceServiceDeactivateTests : Infrastructure.GoogleTe
 
         var stored = await GoogleDb.GoogleResources.AsNoTracking().SingleAsync(r => r.Id == resourceId, TestContext.Current.CancellationToken);
         stored.RestrictInheritedAccess.Should().BeTrue();
-        await AuditLog.Received(1).LogAsync(GoogleAuditActions.GoogleResourceUpdated, TeamGoogleResource.AuditEntityType, resourceId,
-            Arg.Any<string>(), nameof(TeamResourceService), teamId, TeamAuditEntityType);
+        await AuditLog.Received(1).LogAsync(GoogleAuditActions.GoogleResourceUpdated, TeamGoogleResource.AuditSubjectType, resourceId,
+            Arg.Any<string>(), nameof(TeamResourceService), teamId, TeamAuditSubjectType);
     }
 
     [HumansFact]

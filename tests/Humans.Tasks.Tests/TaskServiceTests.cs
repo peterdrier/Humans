@@ -1,5 +1,5 @@
 using AwesomeAssertions;
-using Humans.AuditLog.Contracts;
+using Humans.Audit.Contracts;
 using Humans.Tasks.Domain;
 using Humans.Tasks.Services;
 using Humans.Users.Contracts;
@@ -358,7 +358,7 @@ public sealed class TaskServiceTests
         else
         {
             result.Succeeded.Should().BeTrue();
-            await _kit.Audit.Received(1).LogAsync(TasksAuditActions.TaskAssigned, TaskService.AuditEntityType, task.Id,
+            await _kit.Audit.Received(1).LogAsync(TasksAuditActions.TaskAssigned, TaskService.AuditSubjectType, task.Id,
                 Arg.Any<string>(), _kit.Actor, survivorId, AuditSubjectTypes.User);
         }
         (await _kit.Service.GetTaskAsync(task.Id, Ct))!.Assignments.Should().ContainSingle().Which.UserId.Should().Be(survivorId);

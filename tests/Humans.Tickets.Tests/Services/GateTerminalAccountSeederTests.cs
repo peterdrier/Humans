@@ -3,7 +3,7 @@ using Humans.Tickets.Controllers;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.ViewFeatures;
-using Humans.AuditLog.Contracts;
+using Humans.Audit.Contracts;
 using Humans.Base.Constants;
 using Humans.Tickets.Services;
 using Humans.Users.Contracts;

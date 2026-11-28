@@ -39,7 +39,7 @@ Humans.Development/
 ├── Services/
 │   ├── DevPersonaSeeder.cs           # Persona create + EnsureActive repair
 │   ├── DevelopmentCampRoleSeeder.cs  # Camp-role definitions seeder
-│   └── AuditEntityTypes.cs           # Persisted "Profile" discriminator
+│   └── DevelopmentAuditSubjectTypes.cs           # Persisted "Profile" discriminator
 ├── Views/
 │   ├── DevLogin/Users.cshtml
 │   ├── DevSeed/Index.cshtml          # The seed page the admin nav links to
@@ -111,7 +111,7 @@ Humans.Development/
 - **`docker-entrypoint.sh` (Ops) is the only place that can distinguish a per-PR preview from
   QA.** Both run `Staging`; the entrypoint sets `DevAuth__AllowAdmin=true` inside the same block
   that switches the connection string to the throwaway per-PR database.
-- **`AuditEntityTypes.Profile = "Profile"` is a persisted-string data contract**, matched by exact
+- **`DevelopmentAuditSubjectTypes.Profile = "Profile"` is a persisted-string data contract**, matched by exact
   equality on read. Never regenerate from `nameof` — Users' `Profile` is internal, so this
   section cannot spell it anyway.
 - **Persona slugs, the persona list and the slug reverse lookup share one list and one

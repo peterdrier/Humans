@@ -1,5 +1,5 @@
 using Humans.Governance.Contracts;
-using Humans.AuditLog.Contracts;
+using Humans.Audit.Contracts;
 using Humans.Email.Contracts;
 using Humans.Auth.Contracts;
 using Humans.Google.Contracts;

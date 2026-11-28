@@ -1,7 +1,7 @@
 <!-- freshness:triggers
   src/Sections/Humans.Monitor/**
   src/Humans.Web/Authorization/AuthorizationPolicyExtensions.cs
-  src/Sections/Humans.AuditLog/Views/AuditLog/_Content.cshtml
+  src/Sections/Humans.Audit/Views/Audit/_Content.cshtml
   src/Humans.Web/Program.cs
 -->
 <!-- freshness:flag-on-change
@@ -76,7 +76,7 @@ pages and data.
 | Section | Through |
 |---|---|
 | Google | `IGoogleDriveActivityClient`, `ITeamResourceService` |
-| AuditLog | `IAuditLogService` (append path, declared in `src/Humans.Base/AuditLog/IAuditLogService.cs`) |
+| AuditLog | `IAuditLogService` (append path, declared in `src/Humans.Base/Audit/IAuditLogService.cs`) |
 | Settings | `ISettingsService` |
 | Users | `IUserService` |
 

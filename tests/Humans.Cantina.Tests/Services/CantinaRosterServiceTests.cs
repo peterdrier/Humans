@@ -1,6 +1,6 @@
 using Humans.Cantina.Services.Dtos;
 using System.Security.Claims;
-using Humans.AuditLog.Contracts;
+using Humans.Audit.Contracts;
 using Humans.Base.Csv;
 using Humans.Cantina.Controllers;
 using Microsoft.AspNetCore.Http;

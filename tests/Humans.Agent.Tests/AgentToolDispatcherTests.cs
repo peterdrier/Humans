@@ -95,40 +95,40 @@ public class AgentToolDispatcherTests
         stub.LastLimit.Should().Be(1);
     }
 
-    private static Humans.AuditLog.Contracts.AuditEvent BuildVoluntoldEvent(Guid actor, Guid subject) =>
+    private static Humans.Audit.Contracts.AuditEntry BuildVoluntoldEvent(Guid actor, Guid subject) =>
         new(
             Id: Guid.NewGuid(),
             OccurredAt: NodaTime.Instant.FromUtc(2026, 4, 30, 17, 0),
-            Action: new AuditLog.Contracts.AuditActionDefinition("ShiftSignupVoluntold", AuditLog.Contracts.AuditKept.Forever, Verb: "voluntold", DescriptionIsTail: true),
+            Action: new Audit.Contracts.AuditActionDefinition("ShiftSignupVoluntold", Audit.Contracts.AuditKept.Forever, Verb: "voluntold", DescriptionIsTail: true),
             ActorUserId: actor,
             ActorDisplayName: "Frank",
-            EntityType: "ShiftSignup",
-            EntityId: Guid.NewGuid(),
-            SubjectUserId: subject,
-            SubjectDisplayName: "Peter",
-            TargetTeamId: null,
-            TargetTeamName: null,
-            TargetTeamSlug: null,
-            RelatedEntityId: subject,
-            RelatedEntityType: "User",
+            SubjectType: "ShiftSignup",
+            SubjectId: Guid.NewGuid(),
+            PersonUserId: subject,
+            PersonDisplayName: "Peter",
+            TeamId: null,
+            TeamName: null,
+            TeamSlug: null,
+            TargetId: subject,
+            TargetType: "User",
             Description: "shift 'Cantina'");
 
-    private static Humans.AuditLog.Contracts.AuditEvent BuildUnmappedEvent() =>
+    private static Humans.Audit.Contracts.AuditEntry BuildUnmappedEvent() =>
         new(
             Id: Guid.NewGuid(),
             OccurredAt: NodaTime.Instant.FromUtc(2026, 4, 30, 17, 0),
-            Action: new AuditLog.Contracts.AuditActionDefinition("AnomalousPermissionDetected", AuditLog.Contracts.AuditKept.Forever),
+            Action: new Audit.Contracts.AuditActionDefinition("AnomalousPermissionDetected", Audit.Contracts.AuditKept.Forever),
             ActorUserId: null,
             ActorDisplayName: null,
-            EntityType: "GoogleResource",
-            EntityId: Guid.NewGuid(),
-            SubjectUserId: null,
-            SubjectDisplayName: null,
-            TargetTeamId: null,
-            TargetTeamName: null,
-            TargetTeamSlug: null,
-            RelatedEntityId: null,
-            RelatedEntityType: null,
+            SubjectType: "GoogleResource",
+            SubjectId: Guid.NewGuid(),
+            PersonUserId: null,
+            PersonDisplayName: null,
+            TeamId: null,
+            TeamName: null,
+            TeamSlug: null,
+            TargetId: null,
+            TargetType: null,
             Description: "anomaly");
 
     [HumansFact]
@@ -502,9 +502,9 @@ public class AgentToolDispatcherTests
     [HumansFact]
     public async Task GetAuditHistory_DependencyThrows_IsNotArgumentError()
     {
-        var audit = Substitute.For<Humans.AuditLog.Contracts.IAuditViewerService>();
+        var audit = Substitute.For<Humans.Audit.Contracts.IAuditViewerService>();
         audit.GetForUserAsync(Arg.Any<Guid>(), Arg.Any<int>(), Arg.Any<CancellationToken>())
-            .Returns(Task.FromException<IReadOnlyList<Humans.AuditLog.Contracts.AuditEvent>>(
+            .Returns(Task.FromException<IReadOnlyList<Humans.Audit.Contracts.AuditEntry>>(
                 new InvalidOperationException("Dependency unavailable")));
         var dispatcher = MakeDispatcher(auditViewer: audit);
 
@@ -532,7 +532,7 @@ public class AgentToolDispatcherTests
     }
 
     private static AgentToolDispatcher MakeDispatcher(
-        Humans.AuditLog.Contracts.IAuditViewerService? auditViewer = null,
+        Humans.Audit.Contracts.IAuditViewerService? auditViewer = null,
         IShiftView? shiftView = null,
         ISettingsService? burnSettings = null,
         Base.Interfaces.IGuideContentSource? source = null,
@@ -616,20 +616,20 @@ public class AgentToolDispatcherTests
         return view;
     }
 
-    private sealed class StubAuditViewer : Humans.AuditLog.Contracts.IAuditViewerService
+    private sealed class StubAuditViewer : Humans.Audit.Contracts.IAuditViewerService
     {
-        public IReadOnlyList<Humans.AuditLog.Contracts.AuditEvent> Events { get; init; } =
+        public IReadOnlyList<Humans.Audit.Contracts.AuditEntry> Events { get; init; } =
             [];
 
         /// <summary>Captures the limit value passed to <see cref="GetForUserAsync"/> for clamp-behaviour assertions.</summary>
         public int? LastLimit { get; private set; }
 
-        public Task<IReadOnlyList<Humans.AuditLog.Contracts.AuditEvent>> GetForUserAsync(Guid userId, int count, CancellationToken ct = default)
+        public Task<IReadOnlyList<Humans.Audit.Contracts.AuditEntry>> GetForUserAsync(Guid userId, int count, CancellationToken ct = default)
         {
             LastLimit = count;
             return Task.FromResult(Events);
         }
-        public Task<IReadOnlyList<Humans.AuditLog.Contracts.AuditEvent>> GetFilteredAsync(string? entityType, Guid? entityId, Guid? userId, IReadOnlyList<string>? actions, int limit, bool includeRelated = false, CancellationToken ct = default) => Task.FromResult(Events);
+        public Task<IReadOnlyList<Humans.Audit.Contracts.AuditEntry>> GetFilteredAsync(string? subjectType, Guid? subjectId, Guid? userId, IReadOnlyList<string>? actions, int limit, bool includeRelated = false, CancellationToken ct = default) => Task.FromResult(Events);
     }
 
 }

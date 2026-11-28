@@ -6,7 +6,7 @@ using NodaTime;
 using Humans.Base.Extensions;
 using Humans.Base.Constants;
 using Humans.Auth.Domain;
-using Humans.AuditLog.Contracts;
+using Humans.Audit.Contracts;
 using Humans.Gdpr.Contracts;
 using Humans.Notifications.Contracts;
 using Humans.Teams.Contracts;

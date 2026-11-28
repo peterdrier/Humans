@@ -1,7 +1,7 @@
 using Humans.Auth.Contracts;
 using System.Globalization;
 using NodaTime;
-using Humans.AuditLog.Contracts;
+using Humans.Audit.Contracts;
 using Humans.Base.Interfaces;
 using Humans.Email.Contracts;
 using Humans.Gdpr.Contracts;
@@ -498,11 +498,11 @@ internal sealed class IssuesService(
     {
         if (actorUserId.HasValue)
         {
-            await audit.LogAsync(action, AuditEntityTypes.Issue, issueId, description, actorUserId.Value);
+            await audit.LogAsync(action, IssuesAuditSubjectTypes.Issue, issueId, description, actorUserId.Value);
         }
         else
         {
-            await audit.LogAsync(action, AuditEntityTypes.Issue, issueId, description, "API");
+            await audit.LogAsync(action, IssuesAuditSubjectTypes.Issue, issueId, description, "API");
         }
     }
 
@@ -1001,8 +1001,8 @@ internal sealed class IssuesService(
         // IssueCreated is written only by the machine path, where filer and reporter can differ, so it is the one
         // place the thread can say who actually filed it.
         var auditEntries = await auditViewer.GetFilteredAsync(
-            entityType: AuditEntityTypes.Issue,
-            entityId: issueId,
+            subjectType: IssuesAuditSubjectTypes.Issue,
+            subjectId: issueId,
             userId: null,
             actions:
             [

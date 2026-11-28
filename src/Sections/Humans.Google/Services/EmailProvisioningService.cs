@@ -5,7 +5,7 @@ using System.Net.Mail;
 using Humans.Base.Extensions;
 using System.Text;
 using Humans.Base.Helpers;
-using Humans.AuditLog.Contracts;
+using Humans.Audit.Contracts;
 using Humans.Email.Contracts;
 using Humans.Teams.Contracts;
 using Humans.Notifications.Contracts;

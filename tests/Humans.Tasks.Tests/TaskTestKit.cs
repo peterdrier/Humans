@@ -1,5 +1,5 @@
 using AwesomeAssertions;
-using Humans.AuditLog.Contracts;
+using Humans.Audit.Contracts;
 using Humans.Base.Configuration;
 using Humans.Base.Enums;
 using Humans.Email.Contracts;

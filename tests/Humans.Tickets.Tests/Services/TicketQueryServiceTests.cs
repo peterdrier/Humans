@@ -10,7 +10,7 @@ using Microsoft.Extensions.Options;
 using System.Security.Claims;
 using Xunit;
 using Humans.Tickets.Services.Dtos;
-using Humans.AuditLog.Contracts;
+using Humans.Audit.Contracts;
 using AwesomeAssertions;
 using Humans.Budget.Contracts;
 using Humans.Campaigns.Contracts;

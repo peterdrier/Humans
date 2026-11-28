@@ -1,0 +1,30 @@
+using Humans.Base.Enums;
+using Humans.Base.Interfaces;
+using NodaTime;
+
+namespace Humans.Audit.Contracts;
+
+/// <summary>
+/// Temporary: feeds Google's one-time history migration screen, and goes with the six Google columns
+/// on <c>audit_log_entries</c>.
+/// </summary>
+public interface ILegacyGoogleSyncAuditReader : IApplicationService
+{
+    /// <summary>Oldest first, uncapped.</summary>
+    Task<IReadOnlyList<LegacyGoogleSyncAuditRow>> GetLegacyGoogleSyncRowsAsync(CancellationToken ct = default);
+}
+
+/// <summary>Nullable as in the table: the consumer decides what is mappable. <c>Action</c> is the stored name.</summary>
+public sealed record LegacyGoogleSyncAuditRow(
+    Guid Id,
+    string Action,
+    Instant OccurredAt,
+    string Description,
+    Guid ResourceId,
+    Guid? TargetId,
+    string? TargetType,
+    string? UserEmail,
+    string? Role,
+    GoogleSyncSource? SyncSource,
+    bool? Success,
+    string? ErrorMessage);

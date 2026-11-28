@@ -1,4 +1,4 @@
-using Humans.AuditLog.Contracts;
+using Humans.Audit.Contracts;
 using Humans.Base.Interfaces;
 using Humans.Holded.Contracts;
 using Humans.Store.Data;
@@ -58,7 +58,7 @@ internal sealed class CatalogService(
         ApplyProductFields(product, draft);
         await repo.AddProductAsync(product, ct);
         await audit.LogAsync(
-            StoreAuditActions.StoreProductCreated, AuditEntityTypes.Product, product.Id,
+            StoreAuditActions.StoreProductCreated, StoreAuditSubjectTypes.Product, product.Id,
             $"Created store product '{product.Name}' for year {product.Year}",
             actorUserId);
         return CatalogSaveResult.Success(created: true);
@@ -84,14 +84,14 @@ internal sealed class CatalogService(
 
         await repo.UpdateProductAsync(product, ct);
         await audit.LogAsync(
-            StoreAuditActions.StoreProductUpdated, AuditEntityTypes.Product, product.Id,
+            StoreAuditActions.StoreProductUpdated, StoreAuditSubjectTypes.Product, product.Id,
             $"Updated store product '{product.Name}'",
             actorUserId);
 
         // A dedicated, queryable price-change event for the order page's audit view.
         if (oldPrice != draft.UnitPriceEur)
             await audit.LogAsync(
-                StoreAuditActions.StoreProductPriceChanged, AuditEntityTypes.Product, product.Id,
+                StoreAuditActions.StoreProductPriceChanged, StoreAuditSubjectTypes.Product, product.Id,
                 $"Price for {product.Name} changed from {oldPrice:0.00} to {draft.UnitPriceEur:0.00}",
                 actorUserId);
         return AdminMutationResult.Success;
@@ -148,7 +148,7 @@ internal sealed class CatalogService(
         await repo.UpdateProductAsync(product, ct);
 
         await audit.LogAsync(
-            StoreAuditActions.StoreProductDeactivated, AuditEntityTypes.Product, productId,
+            StoreAuditActions.StoreProductDeactivated, StoreAuditSubjectTypes.Product, productId,
             $"Deactivated store product '{product.Name}'",
             actorUserId);
         return AdminMutationResult.Success;
@@ -236,7 +236,7 @@ internal sealed class CatalogService(
             SimplifiedInvoiceThresholdEur = threshold,
         }, ct);
         await audit.LogAsync(
-            StoreAuditActions.StoreSettingsUpdated, AuditEntityTypes.Settings, Guid.Empty,
+            StoreAuditActions.StoreSettingsUpdated, StoreAuditSubjectTypes.Settings, Guid.Empty,
             string.Create(CultureInfo.InvariantCulture,
                 $"Store settings: Stripe gateway treasury {gateway ?? "none"}, simplified invoice threshold EUR {threshold:0.00}"),
             actorUserId);
@@ -281,7 +281,7 @@ internal sealed class CatalogService(
             product.UpdatedAt = now;
             await repo.UpdateProductAsync(product, ct);
             await audit.LogAsync(
-                StoreAuditActions.StoreProductUpdated, AuditEntityTypes.Product, product.Id,
+                StoreAuditActions.StoreProductUpdated, StoreAuditSubjectTypes.Product, product.Id,
                 $"Set accounts on store product '{product.Name}': income {Show(row.Income)}, cost {Show(row.Cost)}, "
                     + $"dept transfers {Show(row.TeamUsage)}",
                 actorUserId);

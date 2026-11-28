@@ -1,4 +1,4 @@
-using Humans.AuditLog.Contracts;
+using Humans.Audit.Contracts;
 using Humans.Base.Extensions;
 using Microsoft.Extensions.Options;
 using NodaTime;
@@ -295,7 +295,7 @@ internal sealed partial class LegalDocumentSyncService(
         {
             await audit.LogAsync(ConsentAuditActions.LegalDocumentVersionSummaryUpdated, "LegalDocument", documentId,
                 $"Updated summary of version {versionId} to '{summary}'.", actorUserId,
-                relatedEntityId: versionId, relatedEntityType: "DocumentVersion");
+                targetId: versionId, targetType: "DocumentVersion");
         }
 
         return updated == true ? VersionSummaryUpdateResult.Updated : VersionSummaryUpdateResult.NotFound;
@@ -462,11 +462,11 @@ internal sealed partial class LegalDocumentSyncService(
             $"requires re-consent {newVersion.RequiresReConsent}, languages {languages}.";
         if (actorUserId is { } actor)
             await audit.LogAsync(ConsentAuditActions.LegalDocumentVersionPublished, "LegalDocument", document.Id,
-                description, actor, relatedEntityId: newVersion.Id, relatedEntityType: "DocumentVersion");
+                description, actor, targetId: newVersion.Id, targetType: "DocumentVersion");
         else
             await audit.LogAsync(ConsentAuditActions.LegalDocumentVersionPublished, "LegalDocument", document.Id,
                 description, nameof(LegalDocumentSyncService),
-                relatedEntityId: newVersion.Id, relatedEntityType: "DocumentVersion");
+                targetId: newVersion.Id, targetType: "DocumentVersion");
 
         logger.LogInformation(
             "Synced document {Name} version {Version} (SHA: {Sha}, languages: {Languages})",

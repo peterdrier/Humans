@@ -1,7 +1,7 @@
 using Humans.Testing;
 using Humans.Base.Interfaces;
 using Humans.Users.Services;
-using Humans.AuditLog.Contracts;
+using Humans.Audit.Contracts;
 using Humans.Users.Data.Repositories;
 using System.Security.Claims;
 using AwesomeAssertions;

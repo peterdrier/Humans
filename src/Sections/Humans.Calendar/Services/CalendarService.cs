@@ -2,7 +2,7 @@ using Humans.Calendar.Contracts;
 using Microsoft.Extensions.DependencyInjection;
 using Humans.Calendar.Services.Dtos;
 using Humans.Base.Extensions;
-using Humans.AuditLog.Contracts;
+using Humans.Audit.Contracts;
 using Humans.Calendar.Data;
 using Humans.Calendar.Domain;
 using Humans.Teams.Contracts;
@@ -262,9 +262,9 @@ internal sealed class CalendarService(
         try
         {
             await audit.LogAsync(
-                action, AuditEntityTypes.CalendarEvent, eventId, description, actorUserId,
-                relatedEntityId: owningTeamId,
-                relatedEntityType: owningTeamId.HasValue ? AuditEntityTypes.Team : null);
+                action, CalendarAuditSubjectTypes.CalendarEvent, eventId, description, actorUserId,
+                targetId: owningTeamId,
+                targetType: owningTeamId.HasValue ? CalendarAuditSubjectTypes.Team : null);
         }
         catch (Exception ex)
         {

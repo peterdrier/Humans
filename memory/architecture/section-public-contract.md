@@ -19,6 +19,6 @@ Anything public in a section lives in `Contracts/` (or the `.Contracts` leaf); e
 - Need another section's data → its `I<Section>Service`. Missing a field → fix the DTO, never expose the entity.
 - Need to write into another section → prefer the owning section's own view component or GUI control, so the write stays internal ([[view-component-slots]]). Add `I<Section>Write` only when that cannot work; say why in the PR, and keep it to the members callers use.
 - New public members are debt ([[interface-method-additions-are-debt]]); Contracts is the promise, so keep it narrow and documented.
-- Exception: AuditLog is a write-by-default crosscut and keeps its own shape.
+- Exception: Audit is a write-by-default crosscut and keeps its own shape.
 
 **Related:** [[section-identity-is-the-assembly]], [[section-project-cycle-fix]], `docs/sections/SECTION-TEMPLATE.md` (Public contract).

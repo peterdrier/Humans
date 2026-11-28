@@ -1,4 +1,4 @@
-using Humans.AuditLog.Contracts;
+using Humans.Audit.Contracts;
 using Humans.Base.Attributes;
 using Humans.Base.Extensions;
 using Humans.Base.Interfaces;
@@ -80,7 +80,7 @@ internal sealed class TeamMessageOptionsProvider(
             await auditLogService.LogAsync(
                 EmailAuditActions.FacilitatedMessageSent, AuditSubjectTypes.User, recipient.Id,
                 $"Message sent to {recipient.BurnerName} from team {team.TeamName} (contact info shared: {contactInfo})",
-                sender.Id, relatedEntityId: team.TeamId, relatedEntityType: "Team");
+                sender.Id, targetId: team.TeamId, targetType: "Team");
         }
         catch (Exception ex)
         {

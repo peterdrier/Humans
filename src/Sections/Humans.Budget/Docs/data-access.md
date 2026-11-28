@@ -6,7 +6,7 @@ Project: `src/Sections/Humans.Budget` — services under `Services/`,
 repository under `Data/`. **DbContext:** `BudgetDbContext`.
 `BudgetRepository` injects `IDbContextFactory<BudgetDbContext>` directly.
 Owns `BudgetYears`, `BudgetGroups`, `BudgetCategories`, `BudgetLineItems`,
-`BudgetAuditLogs`, `TicketingProjections`.
+`BudgetChanges`, `TicketingProjections`.
 
 ### BudgetService (Scoped)
 
@@ -18,7 +18,7 @@ Repository: `IBudgetRepository`.
 | BudgetGroups | R/W |
 | BudgetCategories | R/W |
 | BudgetLineItems | R/W |
-| BudgetAuditLogs | R/W |
+| BudgetChanges | R/W |
 | TicketingProjections | R/W |
 
 Cross-section calls via `ITeamService`, `IUserService`, plus `IClock`.

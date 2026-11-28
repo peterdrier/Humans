@@ -1,4 +1,4 @@
-using Humans.AuditLog.Contracts;
+using Humans.Audit.Contracts;
 using Humans.Email.Contracts;
 using Humans.Grants.Data;
 using Humans.Grants.Domain;

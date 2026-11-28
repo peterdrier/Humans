@@ -94,8 +94,8 @@ internal sealed class BudgetAdminController(
         }
     }
 
-    [HttpGet("AuditLog/{yearId:guid?}")]
-    public async Task<IActionResult> AuditLog(Guid? yearId)
+    [HttpGet("Changes/{yearId:guid?}")]
+    public async Task<IActionResult> Changes(Guid? yearId)
     {
         var ct = HttpContext.RequestAborted;
         try
@@ -106,15 +106,15 @@ internal sealed class BudgetAdminController(
                 yearId = active?.Id;
             }
 
-            var entries = await budgetService.GetAuditLogAsync(yearId, ct);
+            var entries = await budgetService.GetChangesAsync(yearId, ct);
             ViewBag.YearId = yearId;
             ViewBag.Years = await budgetService.GetAllYearsAsync(includeArchived: true, ct);
             return View(entries);
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
-            logger.LogError(ex, "Error loading budget audit log");
-            SetError("Failed to load audit log.");
+            logger.LogError(ex, "Error loading budget changes");
+            SetError("Failed to load budget changes.");
             return RedirectToAction(nameof(Index));
         }
     }

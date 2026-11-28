@@ -3,7 +3,7 @@ using System.Globalization;
 using System.Resources;
 using Humans.Base.Extensions;
 using Humans.Base.Interfaces;
-using Humans.AuditLog.Contracts;
+using Humans.Audit.Contracts;
 using Humans.Email.Contracts;
 using Humans.Notifications.Contracts;
 

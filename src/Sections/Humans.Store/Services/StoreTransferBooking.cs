@@ -1,6 +1,6 @@
 using System.Globalization;
 using System.Text.RegularExpressions;
-using Humans.AuditLog.Contracts;
+using Humans.Audit.Contracts;
 using Humans.Base.Extensions;
 using Humans.Base.Interfaces;
 using Humans.Budget.Contracts;
@@ -81,7 +81,7 @@ internal sealed partial class StoreTransferBooking(
     ILogger<StoreTransferBooking> logger) : IApplicationService
 {
     private const string Prefix = "Store transfer ";
-    private const string AuditEntityType = "StoreTransfer";
+    private const string AuditSubjectType = "StoreTransfer";
     private const int TransferBlockStart = 62990000;
     private const int TransferBlockEnd = 62999999;
     private DateTimeZone OrgZone => orgTimeZone.Zone;
@@ -266,7 +266,7 @@ internal sealed partial class StoreTransferBooking(
                 }
 
                 results.Add(result);
-                await audit.LogAsync(StoreAuditActions.StoreTransferBooked, AuditEntityType, row.TeamId,
+                await audit.LogAsync(StoreAuditActions.StoreTransferBooked, AuditSubjectType, row.TeamId,
                     $"{row.TeamName} / {row.ProductName} {row.Month.Year:D4}-{row.Month.Month:D2} ({row.Date.ToInvariantDate()}): "
                     + $"Dr {debit} / Cr {credit} {amount.ToEuro()} — {result.Outcome}"
                     + (result.Error is null ? "" : ": " + result.Error),
