@@ -103,7 +103,7 @@ public class NotificationPageRenderTests(HumansTestDatabase database) : Integrat
     public async Task The_bell_is_discovered_and_rendered_from_shells_layout()
     {
         // Without SectionViewComponentFeatureProvider the bell throws in _Layout and this Shell page 500s. The
-        // aria-label proves it resolved the section's resource set.
+        // hidden bell name proves it resolved the section's resource set.
         var ct = Xunit.TestContext.Current.CancellationToken;
         await SignInAndSeedAsync(ct);
 
@@ -113,7 +113,7 @@ public class NotificationPageRenderTests(HumansTestDatabase database) : Integrat
         var html = await response.Content.ReadAsStringAsync(ct);
 
         html.Should().Contain("id=\"notificationBellWrapper\"", "the bell component did not render");
-        html.Should().Contain("aria-label=\"Notifications\"");
+        html.Should().Contain("<span class=\"visually-hidden\">Notifications</span>");
         html.Should().NotContain("Notifications_Bell_AriaLabel");
         html.Should().NotContain("Notifications_Popup_AriaLabel");
     }
