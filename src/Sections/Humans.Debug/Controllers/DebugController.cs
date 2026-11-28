@@ -58,8 +58,6 @@ internal sealed class DebugController(
 
         var events = logSink.GetEvents(count, minLogLevel);
         ViewBag.LifetimeCounts = logSink.GetLifetimeCounts();
-        ViewBag.SinkStartedAt = logSink.StartedAt;
-        ViewBag.TotalEvents = logSink.TotalEvents;
         ViewBag.MinLevel = minLevel;
         return View(events);
     }

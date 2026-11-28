@@ -30,7 +30,7 @@ public class BackdoorApiKeyAuthFilterTests
     }
 
     [HumansFact]
-    public void Every_machine_controller_hangs_off_this_filter()
+    public void MachineControllers_Each_UsesThisFilter()
     {
         var machineControllers = typeof(BackdoorApiKeyAuthFilter).Assembly.GetTypes()
             .Where(t => t.GetCustomAttributes<RouteAttribute>(inherit: false)

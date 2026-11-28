@@ -43,7 +43,7 @@ public class BackdoorApiKeyServiceTests
     }
 
     [HumansFact]
-    public async Task A_tasks_manager_gets_a_key_that_expires()
+    public async Task Issue_TasksManager_KeyExpires()
     {
         MakeEligible(_owner, admin: false, board: false);
         _permissions.GetOwnersAsync(_owner, TasksPermissions.Manage, Arg.Any<CancellationToken>())
@@ -72,7 +72,7 @@ public class BackdoorApiKeyServiceTests
     }
 
     [HumansFact]
-    public async Task List_flags_a_key_whose_owner_the_service_would_refuse()
+    public async Task List_RefusedOwner_FlagsKey()
     {
         var suspended = Guid.NewGuid();
         MakeEligible(_owner);
@@ -88,7 +88,7 @@ public class BackdoorApiKeyServiceTests
     }
 
     [HumansFact]
-    public async Task A_never_expiring_key_lapses_once_its_owner_is_no_longer_Admin_or_Board()
+    public async Task ResolveOwner_NeverExpiringKeyRoleLost_Lapses()
     {
         MakeEligible(_owner, admin: false, board: false);
         var key = ExistingKey();
@@ -133,7 +133,7 @@ public class BackdoorApiKeyServiceTests
     }
 
     [HumansFact]
-    public async Task A_Board_member_makes_their_own_key_and_it_never_expires()
+    public async Task Issue_BoardOwnKey_NeverExpires()
     {
         MakeEligible(_owner, admin: false, board: true);
         BackdoorApiKey? stored = null;
@@ -146,7 +146,7 @@ public class BackdoorApiKeyServiceTests
     }
 
     [HumansFact]
-    public async Task ResolveOwner_refuses_an_expired_key()
+    public async Task ResolveOwner_ExpiredKey_IsRefused()
     {
         MakeEligible(_owner);
         var key = ExistingKey();
@@ -212,7 +212,7 @@ public class BackdoorApiKeyServiceTests
     }
 
     [HumansFact]
-    public async Task Two_issues_never_produce_the_same_key()
+    public async Task Issue_Twice_ProducesDifferentKeys()
     {
         MakeEligible(_owner);
 
@@ -223,7 +223,7 @@ public class BackdoorApiKeyServiceTests
     }
 
     [HumansFact]
-    public async Task Revoke_stamps_the_row_and_audits()
+    public async Task Revoke_ActiveKey_IsAudited()
     {
         var key = ExistingKey();
         _repository.GetByIdAsync(key.Id, Arg.Any<CancellationToken>()).Returns(key);
@@ -237,7 +237,7 @@ public class BackdoorApiKeyServiceTests
     }
 
     [HumansFact]
-    public async Task Revoke_of_an_already_revoked_key_is_a_no_op()
+    public async Task Revoke_AlreadyRevoked_IsNoOp()
     {
         var key = ExistingKey();
         key.RevokedAt = Now;
@@ -249,7 +249,7 @@ public class BackdoorApiKeyServiceTests
     }
 
     [HumansFact]
-    public async Task Rotate_revokes_the_old_key_and_issues_a_new_one_with_the_same_label()
+    public async Task Rotate_ActiveKey_KeepsLabel()
     {
         var key = ExistingKey();
         MakeEligible(key.UserId);
@@ -297,7 +297,7 @@ public class BackdoorApiKeyServiceTests
     }
 
     [HumansFact]
-    public async Task Rotate_refuses_when_the_owner_has_lost_Admin_and_Board()
+    public async Task Rotate_OwnerLostBothRoles_IsRefused()
     {
         var key = ExistingKey();
         MakeEligible(key.UserId, admin: false, board: false);
@@ -310,7 +310,7 @@ public class BackdoorApiKeyServiceTests
     }
 
     [HumansFact]
-    public async Task Rotate_refuses_when_the_owner_is_suspended()
+    public async Task Rotate_SuspendedOwner_IsRefused()
     {
         var key = ExistingKey();
         MakeEligible(key.UserId, admin: true, state: UserState.Suspended);
@@ -323,7 +323,7 @@ public class BackdoorApiKeyServiceTests
     }
 
     [HumansFact]
-    public async Task ResolveOwner_returns_the_owner_and_stamps_last_used()
+    public async Task ResolveOwner_ValidKey_StampsLastUsed()
     {
         MakeEligible(_owner);
         BackdoorApiKey? stored = null;
@@ -344,7 +344,7 @@ public class BackdoorApiKeyServiceTests
     }
 
     [HumansFact]
-    public async Task ResolveOwner_returns_null_for_an_unknown_key()
+    public async Task ResolveOwner_UnknownKey_ReturnsNull()
     {
         _repository.FindActiveByHashAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
             .Returns(Task.FromResult<BackdoorApiKey?>(null));
@@ -353,7 +353,7 @@ public class BackdoorApiKeyServiceTests
     }
 
     [HumansFact]
-    public async Task ResolveOwner_returns_null_for_an_empty_key()
+    public async Task ResolveOwner_EmptyKey_ReturnsNull()
     {
         (await _sut.ResolveOwnerAsync(string.Empty)).Should().BeNull();
 
@@ -361,7 +361,7 @@ public class BackdoorApiKeyServiceTests
     }
 
     [HumansFact]
-    public async Task ResolveOwner_refuses_a_key_whose_owner_is_suspended()
+    public async Task ResolveOwner_SuspendedOwner_IsRefused()
     {
         var key = ExistingKey();
         _repository.FindActiveByHashAsync(Arg.Any<string>(), Arg.Any<CancellationToken>()).Returns(key);
@@ -386,7 +386,7 @@ public class BackdoorApiKeyServiceTests
     }
 
     [HumansFact]
-    public async Task ResolveOwner_refuses_a_key_whose_owner_lost_both_roles()
+    public async Task ResolveOwner_OwnerLostBothRoles_IsRefused()
     {
         var key = ExistingKey();
         _repository.FindActiveByHashAsync(Arg.Any<string>(), Arg.Any<CancellationToken>()).Returns(key);
@@ -400,7 +400,7 @@ public class BackdoorApiKeyServiceTests
     }
 
     [HumansFact]
-    public async Task Export_lists_the_owner_keys_without_the_hash()
+    public async Task Export_OwnerKeys_OmitHash()
     {
         var key = ExistingKey();
         _repository.GetForUserAsync(_owner, Arg.Any<CancellationToken>()).Returns([key]);
@@ -414,7 +414,7 @@ public class BackdoorApiKeyServiceTests
     }
 
     [HumansFact]
-    public async Task Export_slice_is_null_when_the_human_holds_no_key()
+    public async Task Export_NoKey_IsNull()
     {
         _repository.GetForUserAsync(_owner, Arg.Any<CancellationToken>()).Returns([]);
 
@@ -424,14 +424,14 @@ public class BackdoorApiKeyServiceTests
     }
 
     [HumansFact]
-    public void Erasure_declares_backdoor_keys_fully_erased()
+    public void Erasure_BackdoorKeys_AreDeclaredErased()
     {
         _sut.ErasureDeclaration.Should().ContainKey(BackdoorApiKeyService.BackdoorApiKeys)
             .WhoseValue.Should().BeNull("a credential has no basis to outlive its owner");
     }
 
     [HumansFact]
-    public async Task Erase_hard_deletes_through_the_repository()
+    public async Task Erase_OwnerKeys_AreHardDeleted()
     {
         await _sut.EraseForUserAsync(_owner, Xunit.TestContext.Current.CancellationToken);
 
@@ -439,7 +439,7 @@ public class BackdoorApiKeyServiceTests
     }
 
     [HumansFact]
-    public async Task Merge_folds_the_eliminated_account_keys_onto_the_survivor()
+    public async Task Merge_EliminatedAccountKeys_MoveToSurvivor()
     {
         var survivor = Guid.NewGuid();
 

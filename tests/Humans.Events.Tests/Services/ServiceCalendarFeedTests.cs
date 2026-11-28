@@ -231,7 +231,7 @@ public class EventServiceCalendarFeedTests
     }
 
     [HumansFact]
-    public async Task GetCalendarItems_RecurringWithoutGuideSettings_FallsBackToSingleOccurrence()
+    public async Task GetCalendarItems_RecurringNoGuideSettings_YieldsSingleOccurrence()
     {
         var userId = Guid.NewGuid();
         var ev = MakeEvent(EventStatus.Approved, isRecurring: true, recurrenceDays: "0,2");

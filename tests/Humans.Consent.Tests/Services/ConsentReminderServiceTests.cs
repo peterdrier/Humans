@@ -104,7 +104,7 @@ public sealed class ConsentReminderServiceTests : IDisposable
     }
 
     [HumansFact]
-    public async Task Export_IncludesSurvivorAndMergedStamps_OrNothing()
+    public async Task Export_MergedAccountStamps_AreIncluded()
     {
         var archivedId = Guid.NewGuid();
         var withRow = SeedUser() with { MergedUserIds = [archivedId] };

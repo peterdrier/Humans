@@ -147,4 +147,4 @@ Admin manager and batch-recipient lists share `Humans.initHumanSelectionList` in
 - No caching decorator: a handful of programs, read on a few admin pages and one profile card.
 - Display stitching through `<vc:human>`.
 
-`GrantService` is one class (partial files by area: grants, programs, GDPR); it news up no helper classes.
+`GrantService` is one class in one file; it news up no helper classes.

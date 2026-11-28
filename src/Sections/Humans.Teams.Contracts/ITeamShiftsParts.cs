@@ -1,11 +1,14 @@
 using Humans.Base.Attributes;
 using Humans.Base.Interfaces;
+using JetBrains.Annotations;
 
 namespace Humans.Teams.Contracts;
 
 /// <summary>The viewer is a signed-in member with a profile; the team is not a system team.</summary>
+[UsedImplicitly(ImplicitUseKindFlags.Access, ImplicitUseTargetFlags.WithMembers)]
 public sealed record TeamShiftsBoxArgs(Guid TeamId, string Slug, IReadOnlyList<Guid> ChildTeamIds, Guid ViewerUserId);
 
+[UsedImplicitly(ImplicitUseKindFlags.Access, ImplicitUseTargetFlags.WithMembers)]
 public sealed record TeamAdminRowShiftsArgs(Guid TeamId, string Slug);
 
 /// <summary>

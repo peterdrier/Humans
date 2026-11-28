@@ -36,15 +36,14 @@ Repository: `IApplicationRepository`.
 | ApplicationStateHistories | R/W |
 | BoardVotes | R/W (removed for GDPR after decision) |
 
-| Cache Key | TTL | Read | Write | Invalidate |
-|-----------|-----|------|-------|------------|
-| `NavBadge:Voting:{userId}` (`ApplicationDecisionService.VotingBadgeCacheKey`) | 2 min | yes | yes | yes (per voter, in-service) |
+Cached by `CachingGovernanceManagement` (Singleton `TrackedCache<Guid, int>`, `Governance.UnvotedApplicationCounts`):
+each Board member's unvoted count, loaded on first read. This service clears it after submit, withdraw,
+approve, reject and merge, and evicts the voter's entry after a Board vote.
 
 Cross-section calls via `IUserService`,
 `ISystemRoleService`, `IEmailService`, `IUserEmailService`, `INotificationEmitter`,
 `IAuditLogService`, `IHumansMetrics`, the section's `GovernanceBodySync`,
-and the section's own `GovernanceEmails` builder. Implements `IGovernanceManagement` (which
-extends `IGovernanceService`), `IUserDataContributor`, `IUserMerge`.
+and the section's own `GovernanceEmails` builder. Implements `IGovernanceManagement`, `IUserDataContributor`, `IUserMerge`.
 `EraseForUserAsync` calls `IApplicationRepository.ScrubFreeTextForUserAsync`,
 which clears the applicant's own free text (motivation, additional info,
 contribution, role understanding) and reviewer prose on `Applications` and
@@ -64,6 +63,10 @@ and term data for expiry). Both interfaces resolve to `ApplicationRepository`; i
 |-------|-----|
 | MembershipTiers | R/W |
 | Applications | R |
+
+Cached by `CachingGovernanceService` (Singleton `TrackedCache<Guid, MembershipTier>`, `Governance.MembershipTiers`),
+which wraps `IGovernanceService`: each looked-up member's tier, loaded on first read. This service clears it after
+an expiry downgrade or a merge; `ApplicationDecisionService` clears it when an approval grants a tier.
 
 Cross-section reads: `IUserService` resolves the merge chain for single-user reads and export.
 Implements `IUserDataContributor` (slice `MembershipTier`; erasure retains the row — register
@@ -167,10 +170,9 @@ output.
 
 No repository, no cache, not part of the `IApplicationService` inventory
 (a `System.Diagnostics.Metrics` gauge publisher, not a section service).
-Polls `IConsentService`, `IGovernanceManagement`,
-`IUserService` on a timer to publish `humans.asociados`,
-`humans.applications_pending`, `humans.pending_consents`,
-`humans.consent_deadline_approaching`.
+Polls `IGovernanceManagement` and `IGovernanceService` on a timer to publish
+`humans.asociados` and `humans.applications_pending`. The consent gauges are
+Consent's (`ConsentMetricsService`).
 
 ### GovernanceIndexService (Scoped)
 

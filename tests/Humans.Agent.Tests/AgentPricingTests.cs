@@ -24,7 +24,7 @@ public class AgentPricingTests
     [InlineData("claude-haiku-5-5", "0.10", "0.50", "0.01")]
     [InlineData("claude-fable-5", 10, 50, "1.00")]
     [InlineData("claude-fable-5-1", 10, 50, "0.25")]
-    public void Model_prefix_resolves_to_published_rates(
+    public void Rates_ModelPrefix_ArePublishedRates(
         string model, decimal input, decimal output, decimal cacheRead)
     {
         var row = AgentPricing.GetPriceRow(model);
@@ -34,20 +34,20 @@ public class AgentPricingTests
     }
 
     [HumansFact]
-    public void Unknown_model_falls_back_to_default_rates()
+    public void Rates_UnknownModel_AreDefaults()
     {
         var row = AgentPricing.GetPriceRow("some-future-model");
         row.Input.Should().Be(3.00m);
     }
 
     [HumansFact]
-    public void Unknown_model_has_no_listed_price()
+    public void ListedPrice_UnknownModel_IsNone()
     {
         AgentPricing.FindPriceRow("some-future-model").Should().BeNull();
     }
 
     [HumansFact]
-    public void Compute_scales_by_million_tokens()
+    public void Compute_Tokens_ScaleByMillion()
     {
         // 1,000,000 input tokens at $3 → $3.00, 500,000 output at $15 → $7.50,
         // 100,000 cache-read at $0.30 → $0.03.

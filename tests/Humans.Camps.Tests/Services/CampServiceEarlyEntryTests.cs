@@ -52,7 +52,7 @@ public sealed class CampServiceEarlyEntryTests : CampsTestHarness
     [Xunit.InlineData(3, true)]
     [Xunit.InlineData(3, false)]
     [Xunit.InlineData(0, false)]
-    public async Task SetCampSeasonEeSlotCountAsync_RefusesInvalidCapsAndPreservesNoOpSemantics(int slotCount, bool missing)
+    public async Task SetCampSeasonEeSlotCountAsync_InvalidCap_IsRefused(int slotCount, bool missing)
     {
         var ct = Xunit.TestContext.Current.CancellationToken;
         await SeedSettingsAsync();
@@ -79,7 +79,7 @@ public sealed class CampServiceEarlyEntryTests : CampsTestHarness
     }
 
     [HumansFact]
-    public async Task SetCampSeasonEeSlotCountAsync_SetsValue_AndAuditsChange()
+    public async Task SetCampSeasonEeSlotCountAsync_Valid_SetsWithAudit()
     {
         await SeedSettingsAsync();
         var (camp, season) = await SeedCampWithSeasonAsync();
@@ -98,7 +98,7 @@ public sealed class CampServiceEarlyEntryTests : CampsTestHarness
     }
 
     [HumansFact]
-    public async Task SetCampSeasonEeSlotCountAsync_AllowsReducingBelowCurrentGrants()
+    public async Task SetCampSeasonEeSlotCountAsync_BelowGrants_IsAllowed()
     {
         await SeedSettingsAsync();
         var (_, season) = await SeedCampWithSeasonAsync(initialEeSlotCount: 10);
@@ -126,8 +126,7 @@ public sealed class CampServiceEarlyEntryTests : CampsTestHarness
         {
             CampsDb.CampSettings.Add(new CampSettings
             {
-                Id = Guid.Parse("00000000-0000-0000-0010-000000000001"),
-                PublicYear = 2026
+                Id = Guid.Parse("00000000-0000-0000-0010-000000000001")
             });
             await SaveAllAsync(Xunit.TestContext.Current.CancellationToken);
         }
@@ -211,7 +210,7 @@ public sealed class CampServiceEarlyEntryTests : CampsTestHarness
     }
 
     [HumansFact]
-    public async Task SetEarlyEntryAsync_Grant_SetsFlagAndAudits()
+    public async Task SetEarlyEntryAsync_Grant_SetsFlagWithAudit()
     {
         await SeedSettingsAsync();
         var (camp, season) = await SeedCampWithSeasonAsync(initialEeSlotCount: 5);
@@ -232,7 +231,7 @@ public sealed class CampServiceEarlyEntryTests : CampsTestHarness
     }
 
     [HumansFact]
-    public async Task SetEarlyEntryAsync_Revoke_ClearsFlagAndAudits()
+    public async Task SetEarlyEntryAsync_Revoke_ClearsFlagWithAudit()
     {
         await SeedSettingsAsync();
         var (camp, season) = await SeedCampWithSeasonAsync(initialEeSlotCount: 5);
@@ -253,7 +252,7 @@ public sealed class CampServiceEarlyEntryTests : CampsTestHarness
     }
 
     [HumansFact]
-    public async Task SetEarlyEntryAsync_Grant_ReturnsSlotCapExceeded_WhenCapWouldBeBreached()
+    public async Task SetEarlyEntryAsync_GrantOverCap_ReturnsSlotCapExceeded()
     {
         await SeedSettingsAsync();
         var (camp, season) = await SeedCampWithSeasonAsync(initialEeSlotCount: 2);
@@ -276,7 +275,7 @@ public sealed class CampServiceEarlyEntryTests : CampsTestHarness
     }
 
     [HumansFact]
-    public async Task SetEarlyEntryAsync_Grant_ReturnsMemberNotActive_WhenMemberIsPending()
+    public async Task SetEarlyEntryAsync_GrantToPending_ReturnsMemberNotActive()
     {
         await SeedSettingsAsync();
         var (camp, season) = await SeedCampWithSeasonAsync(initialEeSlotCount: 5);
@@ -300,7 +299,7 @@ public sealed class CampServiceEarlyEntryTests : CampsTestHarness
     }
 
     [HumansFact]
-    public async Task SetEarlyEntryAsync_Idempotent_ReturnsNoChangeAndWritesNoAudit()
+    public async Task SetEarlyEntryAsync_SameValue_ReturnsNoChange()
     {
         await SeedSettingsAsync();
         var (camp, season) = await SeedCampWithSeasonAsync(initialEeSlotCount: 5);
@@ -318,7 +317,7 @@ public sealed class CampServiceEarlyEntryTests : CampsTestHarness
     }
 
     [HumansFact]
-    public async Task SetEarlyEntryAsync_ReturnsMemberNotFound_WhenMemberBelongsToDifferentCamp()
+    public async Task SetEarlyEntryAsync_OtherCampMember_ReturnsMemberNotFound()
     {
         await SeedSettingsAsync();
         var (campA, _) = await SeedCampWithSeasonAsync(initialEeSlotCount: 5);
@@ -373,7 +372,7 @@ public sealed class CampServiceEarlyEntryTests : CampsTestHarness
             .Returns([new EventParticipationInfo(userId, year, status, ParticipationSource.TicketSync, null, null)]);
 
     [HumansFact]
-    public async Task SetEarlyEntryAsync_Revoke_ReturnsMemberAlreadyEntered_WhenHolderAttendedSeasonYear()
+    public async Task SetEarlyEntryAsync_RevokeAfterAttending_ReturnsAlreadyEntered()
     {
         await SeedSettingsAsync();
         var (camp, season) = await SeedCampWithSeasonAsync(initialEeSlotCount: 5);
@@ -396,7 +395,7 @@ public sealed class CampServiceEarlyEntryTests : CampsTestHarness
     }
 
     [HumansFact]
-    public async Task SetEarlyEntryAsync_Revoke_Succeeds_WhenHolderOnlyTicketed()
+    public async Task SetEarlyEntryAsync_RevokeTicketedOnly_Succeeds()
     {
         await SeedSettingsAsync();
         var (camp, season) = await SeedCampWithSeasonAsync(initialEeSlotCount: 5);
@@ -413,7 +412,7 @@ public sealed class CampServiceEarlyEntryTests : CampsTestHarness
     }
 
     [HumansFact]
-    public async Task SetEarlyEntryAsync_Revoke_Succeeds_WhenHolderAttendedDifferentYear()
+    public async Task SetEarlyEntryAsync_RevokeOtherYearAttendee_Succeeds()
     {
         await SeedSettingsAsync();
         var (camp, season) = await SeedCampWithSeasonAsync(initialEeSlotCount: 5);
@@ -460,7 +459,7 @@ public sealed class CampServiceEarlyEntryTests : CampsTestHarness
     [HumansTheory]
     [Xunit.InlineData(1, false)]
     [Xunit.InlineData(2, true)]
-    public async Task SetEarlyEntryAsync_Grant_CountsConsumedSlots_FromRemovedAttendedMembers(
+    public async Task SetEarlyEntryAsync_RemovedAttendedMembers_CountAsUsedSlots(
         int slots, bool hasCapacity)
     {
         await SeedSettingsAsync();

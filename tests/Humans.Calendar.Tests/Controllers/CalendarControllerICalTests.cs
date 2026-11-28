@@ -165,7 +165,7 @@ public class CalendarControllerICalTests
     [Xunit.InlineData("IsAllDay", "not-a-bool")]
     [Xunit.InlineData("IsAllDay", "false")]
     [Xunit.InlineData("IsAllDay", "true")]
-    public async Task Edit_requires_explicit_calendar_mode_choices(string fieldName, string? choice)
+    public async Task Edit_MissingModeChoices_IsRefused(string fieldName, string? choice)
     {
         var id = Guid.NewGuid();
         var teamId = Guid.NewGuid();
@@ -249,7 +249,7 @@ public class CalendarControllerICalTests
     [Xunit.InlineData(2, false, true, false)]
     [Xunit.InlineData(2, true, false, false)]
     [Xunit.InlineData(2, false, false, true)]
-    public async Task Timed_forms_require_explicit_zone_while_all_day_forms_do_not(int action, bool allDay, bool postedZone, bool spoofAllDay)
+    public async Task TimedForms_NoZone_AreRefused(int action, bool allDay, bool postedZone, bool spoofAllDay)
     {
         var id = Guid.NewGuid();
         var teamId = Guid.NewGuid();
@@ -361,7 +361,7 @@ public class CalendarControllerICalTests
     [Xunit.InlineData("empty")]
     [Xunit.InlineData("valid")]
     [Xunit.InlineData("missing-event")]
-    public async Task Edit_requires_an_existing_destination_team(string scenario)
+    public async Task Edit_UnknownDestinationTeam_IsRefused(string scenario)
     {
         var id = Guid.NewGuid();
         var teamId = string.Equals(scenario, "empty", StringComparison.Ordinal) ? Guid.Empty : Guid.NewGuid();
@@ -527,7 +527,7 @@ public class CalendarControllerICalTests
     [Xunit.InlineData(int.MinValue, 6)]
     [Xunit.InlineData(0, 6)]
     [Xunit.InlineData(9999, 12)]
-    public async Task MonthPages_InvalidQuery_RejectBeforeReadingEventsOrMintingFeed(int year, int month)
+    public async Task MonthPages_InvalidQuery_ReadsNothing(int year, int month)
     {
         var teamId = Guid.NewGuid();
         _teams.GetTeamAsync(teamId, Arg.Any<CancellationToken>()).Returns(
@@ -543,7 +543,7 @@ public class CalendarControllerICalTests
     }
 
     [HumansFact]
-    public async Task MonthPages_BindingFailure_DoesNotSilentlyUseTheCurrentMonth()
+    public async Task MonthPages_BindingFailure_IsRejected()
     {
         var controller = CreateController();
         controller.ModelState.AddModelError("month", "Not a number.");
@@ -616,7 +616,7 @@ public class CalendarControllerICalTests
     [Xunit.InlineData("Europe/Madrid", 6, false)]
     [Xunit.InlineData("Pacific/Auckland", 6, false)]
     [Xunit.InlineData("Europe/Madrid", 5, true)]
-    public async Task Index_orders_mixed_sources_in_the_browser_timezone(
+    public async Task Index_MixedSources_OrdersInBrowserZone(
         string timezone, int contributedDay, bool contributionFirst)
     {
         _session.SetString(DateTimeDisplayExtensions.SessionKey, timezone);
@@ -638,7 +638,7 @@ public class CalendarControllerICalTests
     }
 
     [HumansFact]
-    public async Task Event_selects_the_next_five_occurrences_from_unsorted_results()
+    public async Task Event_UnsortedResults_ShowsNextFive()
     {
         var id = Guid.NewGuid();
         var teamId = Guid.NewGuid();
@@ -662,7 +662,7 @@ public class CalendarControllerICalTests
     }
 
     [HumansFact]
-    public async Task Create_defaults_to_the_browser_local_date_and_zone()
+    public async Task Create_NewForm_DefaultsToBrowserZone()
     {
         _now = Instant.FromUtc(2026, 6, 1, 23, 0);
         _session.SetString(DateTimeDisplayExtensions.SessionKey, "Asia/Tokyo");
@@ -685,7 +685,7 @@ public class CalendarControllerICalTests
     }
 
     [HumansFact]
-    public async Task Edit_renders_a_one_off_event_in_the_viewers_zone()
+    public async Task Edit_OneOffEvent_RendersInViewersZone()
     {
         _session.SetString(DateTimeDisplayExtensions.SessionKey, "Asia/Tokyo");
         var id = Guid.NewGuid();
@@ -736,7 +736,7 @@ public class CalendarControllerICalTests
     }
 
     [HumansFact]
-    public async Task EditOccurrence_reads_override_times_in_the_posted_zone()
+    public async Task EditOccurrence_OverrideTimes_UsePostedZone()
     {
         var id = Guid.NewGuid();
         var original = Instant.FromUtc(2026, 6, 2, 17, 0);
@@ -756,7 +756,7 @@ public class CalendarControllerICalTests
     }
 
     [HumansFact]
-    public async Task EditOccurrence_rejects_invalid_text_before_writing()
+    public async Task EditOccurrence_InvalidText_IsRejected()
     {
         using var cultureScope = new CultureScope("en");
         var registrations = new ServiceCollection().AddLogging().AddLocalization();
@@ -849,7 +849,7 @@ public class CalendarControllerICalTests
     }
 
     [HumansFact]
-    public async Task Index_renders_an_existing_token_as_the_feed_url()
+    public async Task Index_ExistingToken_RendersFeedUrl()
     {
         StubViewer();
         var token = Guid.NewGuid();
@@ -863,7 +863,7 @@ public class CalendarControllerICalTests
     }
 
     [HumansFact]
-    public async Task Index_never_mints_a_token_and_offers_the_create_button_instead()
+    public async Task Index_NoToken_OffersCreateButton()
     {
         StubViewer();
         _feedTokens.GetAsync(_viewer, Arg.Any<CancellationToken>()).Returns((Guid?)null);
@@ -876,7 +876,7 @@ public class CalendarControllerICalTests
     }
 
     [HumansFact]
-    public async Task CreateIcal_mints_the_viewers_own_token_and_returns_to_the_grid()
+    public async Task CreateIcal_Viewer_MintsOwnToken()
     {
         StubViewer();
 
@@ -888,7 +888,7 @@ public class CalendarControllerICalTests
     }
 
     [HumansFact]
-    public async Task CreateIcal_challenges_a_viewer_with_no_user_row_and_mints_nothing()
+    public async Task CreateIcal_NoUserRow_IsChallenged()
     {
         _users.GetUserInfoAsync(_viewer, Arg.Any<CancellationToken>())
             .Returns(new ValueTask<UserInfo?>((UserInfo?)null));
@@ -900,7 +900,7 @@ public class CalendarControllerICalTests
     }
 
     [HumansFact]
-    public async Task Index_never_rotates_the_token_it_renders()
+    public async Task Index_ExistingToken_IsNotRotated()
     {
         StubViewer();
         _feedTokens.GetAsync(_viewer, Arg.Any<CancellationToken>()).Returns(Guid.NewGuid());
@@ -911,7 +911,7 @@ public class CalendarControllerICalTests
     }
 
     [HumansFact]
-    public async Task Index_renders_without_a_feed_card_when_the_viewer_has_no_user_row()
+    public async Task Index_NoUserRow_HasNoFeedCard()
     {
         _users.GetUserInfoAsync(_viewer, Arg.Any<CancellationToken>())
             .Returns(new ValueTask<UserInfo?>((UserInfo?)null));
@@ -925,7 +925,7 @@ public class CalendarControllerICalTests
     }
 
     [HumansFact]
-    public async Task Index_does_not_load_teams_for_an_unused_month_model_field()
+    public async Task Index_MonthView_DoesNotLoadTeams()
     {
         StubViewer();
         _feedTokens.GetAsync(_viewer, Arg.Any<CancellationToken>()).Returns(Guid.NewGuid());
@@ -936,7 +936,7 @@ public class CalendarControllerICalTests
     }
 
     [HumansFact]
-    public async Task RegenerateIcal_rotates_the_viewers_own_token_and_returns_to_the_grid()
+    public async Task RegenerateIcal_Viewer_RotatesOwnToken()
     {
         StubViewer();
 
@@ -948,7 +948,7 @@ public class CalendarControllerICalTests
     }
 
     [HumansFact]
-    public async Task RegenerateIcal_challenges_a_viewer_with_no_user_row_and_rotates_nothing()
+    public async Task RegenerateIcal_NoUserRow_IsChallenged()
     {
         _users.GetUserInfoAsync(_viewer, Arg.Any<CancellationToken>())
             .Returns(new ValueTask<UserInfo?>((UserInfo?)null));

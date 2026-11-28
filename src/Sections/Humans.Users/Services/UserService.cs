@@ -748,7 +748,7 @@ internal sealed class UserService(
         UserProfileSaveCommand command,
         byte[]? profilePictureData = null,
         CancellationToken ct = default,
-        IReadOnlyList<CVEntry>? volunteerHistory = null)
+        IReadOnlyList<CvEntry>? volunteerHistory = null)
     {
         using var _ = await ProfileStubLockFor(userId).AcquireAsync(logger, ct);
 

@@ -1,4 +1,7 @@
+using System.Security.Claims;
+using Humans.Base;
 using Humans.Base.Authorization;
+using Humans.Base.Extensions;
 using Humans.Base.Models.Tables;
 using Humans.Base.Constants;
 using Humans.Base.Hosting;
@@ -19,6 +22,7 @@ using Microsoft.Extensions.Configuration;
 using Humans.Notifications.Contracts;
 using Microsoft.Extensions.DependencyInjection;
 using Humans.Audit.Contracts;
+using Microsoft.Extensions.Localization;
 using Humans.Users.Contracts;
 using static Humans.Base.Models.AccessLevel;
 using static Humans.Base.Models.AccessMatrixFeature;
@@ -38,7 +42,9 @@ public sealed class Section :
     ISectionHealthChecks,
     ISectionPolicies,
     IUserPart,
-    ISectionChrome
+    ISectionChrome,
+    ISectionMemberDashboard,
+    ISectionThingsToDo
 {
     void ISectionHealthChecks.AddHealthChecks(IHealthChecksBuilder builder, IConfiguration configuration)
     {
@@ -223,4 +229,38 @@ public sealed class Section :
 
     IEnumerable<ChromeComponent> ISectionChrome.Components() =>
         [new(ChromeSlots.WidgetGallery, typeof(ConsentGalleryViewComponent))];
+
+    IEnumerable<ChromeComponent> ISectionMemberDashboard.Components() =>
+        [new(ChromeSlots.MemberDashboard, typeof(PendingConsentsAlertViewComponent), Weight: 5)];
+
+    async ValueTask<IEnumerable<ThingsToDoEntry>> ISectionThingsToDo.EntriesAsync(
+        IServiceProvider services, ClaimsPrincipal user, CancellationToken ct)
+    {
+        if (user.GetUserId() is not { } userId)
+        {
+            return [];
+        }
+
+        var progress = await services.GetRequiredService<IConsentService>()
+            .GetConsentProgressAsync(userId, ct);
+        if (progress.RequiredCount == 0)
+        {
+            return [];
+        }
+
+        var localizer = services.GetRequiredService<IStringLocalizer<SharedResource>>();
+        var complete = progress.PendingCount == 0;
+        return
+        [
+            new ThingsToDoEntry("consents", localizer["Todo_Consents_Title"].Value,
+                "fa-solid fa-file-signature", Controller: "Consent", Action: "Index", Weight: 20)
+            {
+                Description = complete
+                    ? localizer["Todo_Consents_Done"].Value
+                    : localizer["Todo_Consents_Pending", progress.PendingCount, progress.RequiredCount],
+                IsDone = complete,
+                ActionText = localizer["Todo_Consents_Action"].Value,
+            },
+        ];
+    }
 }

@@ -152,7 +152,7 @@ public abstract class CampsTestHarness : IDisposable
 
         svc.StubGetUserInfoFromContext(Db);
         svc.StubGetUserInfosFromDb(DbOptions);
-        svc.StubGetAllUserInfosFromDb(DbOptions);
+        svc.StubUserInfosFromDb(DbOptions);
 
         return svc;
     }

@@ -173,6 +173,20 @@ public class FinanceOverviewServiceTests
     }
 
     [HumansFact]
+    public void StripeReadAt_SeveralLinkedAccounts_IsTheOldestRead()
+    {
+        var older = Instant.FromUtc(2026, 11, 26, 3, 0);
+        var cards = new FinanceLedgerCardsVm([],
+            [
+                new(44100001, "Stripe A", 1m, new FinanceAccountSourceVm(1m, "/Stripe", ReadAt: older.Plus(Duration.FromDays(1)))),
+                new(44100002, "Stripe B", 1m, new FinanceAccountSourceVm(1m, "/Stripe", ReadAt: older)),
+                new(44100003, "Unlinked", 1m, new FinanceAccountSourceVm(null, "/Settings#finance", "unlinked")),
+            ], [], 0m, []);
+
+        cards.StripeReadAt.Should().Be(older);
+    }
+
+    [HumansFact]
     public async Task StripeLinkSettingsComponent_SortsBeforeAssigningFormIndices()
     {
         var overview = LinkService();

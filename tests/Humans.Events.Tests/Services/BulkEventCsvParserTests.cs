@@ -21,7 +21,7 @@ public sealed class BulkEventCsvParserTests
         "Id,Barrio,Status,Title,Description,Category,Date,StartTime,DurationMinutes,LocationNote,Host,IsRecurring,RecurrenceDays,PriorityRank";
 
     [HumansFact]
-    public void Parse_SkipsCommentsBlankLinesAndHeader()
+    public void Parse_CommentsBlanksHeader_AreSkipped()
     {
         var csv = $"# a comment\n\n{Header}\n,Camp,,Title,Desc,Workshop,2026-07-08,09:30,60,,,false,,1\n";
 
@@ -134,7 +134,7 @@ public sealed class BulkEventCsvParserTests
     }
 
     [HumansFact]
-    public void Parse_HeaderMatch_IsCaseAndWhitespaceForgiving()
+    public void Parse_HeaderCaseOrWhitespace_IsForgiven()
     {
         var csv = "title, CATEGORY ,Date,StartTime,DurationMinutes,IsRecurring,PriorityRank,Description\n" +
                   "Yoga,Workshop,2026-07-08,09:30,60,false,1,Desc\n";
@@ -146,7 +146,7 @@ public sealed class BulkEventCsvParserTests
     }
 
     [HumansFact]
-    public void Parse_SemicolonDelimited_SpanishExcel_IsDetected()
+    public void Parse_SemicolonDelimited_IsDetected()
     {
         var csv = "Title;Category;Date;StartTime;DurationMinutes;IsRecurring;PriorityRank;Description\n" +
                   "Yoga;Workshop;2026-07-08;09:30;60;false;1;Desc\n";
@@ -159,7 +159,7 @@ public sealed class BulkEventCsvParserTests
     }
 
     [HumansFact]
-    public void Parse_SemicolonData_WithCommaRichCommentBanner_IsDetected()
+    public void Parse_SemicolonWithCommaBanner_IsDetected()
     {
         // The realistic Spanish-Excel re-save: data rows become semicolon-delimited
         // but the template's comment banner (full of commas) survives verbatim.

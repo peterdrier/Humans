@@ -5,6 +5,7 @@ using Humans.Shifts.Domain;
 using Humans.Shifts.Helpers;
 using Humans.Shifts.Models;
 using Humans.Shifts.Services.Dtos;
+using JetBrains.Annotations;
 using Microsoft.Extensions.Localization;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -856,4 +857,5 @@ internal sealed class ShiftAdminController(
         permissions.HasAsync(user.Id, ShiftsPermissions.Approve, new Owner(TeamOwner.Kind, team.Id), ct);
 }
 
+[UsedImplicitly(ImplicitUseKindFlags.Access, ImplicitUseTargetFlags.WithMembers)]
 internal sealed record ShiftTagResult(Guid Id, string Name);

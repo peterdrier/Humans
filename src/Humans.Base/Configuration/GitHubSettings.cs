@@ -1,8 +1,11 @@
+using JetBrains.Annotations;
+
 namespace Humans.Base.Configuration;
 
 /// <summary>
 /// Configuration for GitHub repository containing legal documents.
 /// </summary>
+[UsedImplicitly(ImplicitUseKindFlags.Assign, ImplicitUseTargetFlags.WithMembers)]
 public class GitHubSettings
 {
     public const string SectionName = "GitHub";

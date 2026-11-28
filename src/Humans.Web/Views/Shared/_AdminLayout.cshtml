@@ -1,5 +1,4 @@
 @* Admin shell layout — CSS scoped under body.admin-shell to prevent leakage into member pages. *@
-@using Microsoft.AspNetCore.Html
 <!DOCTYPE html>
 <html lang="@System.Globalization.CultureInfo.CurrentUICulture.TwoLetterISOLanguageName">
 <head>
@@ -51,6 +50,8 @@
             <a class="brand" asp-controller="Home" asp-action="Index" title="Exit admin">
                 Humans<small>Admin</small>
             </a>
+            <span class="section-name"><vc:admin-section-name /></span>
+            <partial name="_AuthorizationPill" />
             <div class="right">
                 <a class="exit-admin" asp-controller="Home" asp-action="Index">
                     <i class="fa-solid fa-arrow-left-long" aria-hidden="true"></i>
@@ -70,33 +71,13 @@
             </aside>
 
             <main class="main">
-                @* The group's pages as tabs, then Group / Page / Subpage. A subpage whose last crumb is not
-                   its title, or that sits more than one level down, supplies its crumbs after Page as a
-                   "Crumbs" section (links, then itself last). *@
+                @* The admin shell shows no breadcrumb: the top bar names the section and the tabs name the page.
+                   A page shared with the member layout may still define Crumbs for it. *@
                 <vc:admin-tabs />
-                @{
-                    // RenderSectionAsync writes straight to the output, so capture the section to hand it over.
-                    IHtmlContent? crumbs = null;
-                    if (IsSectionDefined("Crumbs"))
-                    {
-                        using var buffer = new StringWriter();
-                        PushWriter(buffer);
-                        try
-                        {
-                            _ = await RenderSectionAsync("Crumbs");
-                        }
-                        finally
-                        {
-                            PopWriter();
-                        }
-                        crumbs = new HtmlString(buffer.ToString());
-                    }
+                @if (IsSectionDefined("Crumbs"))
+                {
+                    IgnoreSection("Crumbs");
                 }
-                <div class="crumb">
-                    <vc:admin-breadcrumb trail="@crumbs" />
-                </div>
-
-                <partial name="_AuthorizationPill" />
                 @if (ViewData["SuppressLayoutTempDataAlerts"] is not bool suppressLayoutTempDataAlerts || !suppressLayoutTempDataAlerts)
                 {
                     <vc:temp-data-alerts />

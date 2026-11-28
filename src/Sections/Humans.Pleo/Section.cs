@@ -47,7 +47,9 @@ public sealed class Section : ISection, ISectionAdminNav, ISectionConfiguration,
     IEnumerable<AdminNavGroup> ISectionAdminNav.Groups() =>
     [
         new("Pleo", [
-            new("Pleo", "Pleo", "Index", null, null, "fa-solid fa-credit-card", FinancePolicies.Read)
+            new("Summary",    "Pleo", "Index",      null, null, "fa-solid fa-credit-card", FinancePolicies.Read),
+            new("Entries",    "Pleo", "Entries",    null, null, "fa-solid fa-list",        FinancePolicies.Read),
+            new("Categories", "Pleo", "Categories", null, null, "fa-solid fa-tags",        FinancePolicies.Read)
         ])
     ];
 

@@ -1,3 +1,4 @@
+using JetBrains.Annotations;
 using Microsoft.Extensions.Localization;
 using Microsoft.AspNetCore.Mvc.ModelBinding;
 using System.ComponentModel.DataAnnotations;
@@ -148,6 +149,7 @@ internal sealed class IssueThreadEventViewModel
     public bool ActorIsReporter { get; set; }
 }
 
+[UsedImplicitly(ImplicitUseKindFlags.Assign, ImplicitUseTargetFlags.WithMembers)]
 internal sealed class PostIssueCommentModel
 {
     [Required]
@@ -166,6 +168,7 @@ internal sealed class UpdateIssueStatusModel
     public IssueStatus Status { get; set; }
 }
 
+[UsedImplicitly(ImplicitUseKindFlags.Assign, ImplicitUseTargetFlags.WithMembers)]
 internal sealed class UpdateIssueAssigneeModel
 {
     public Guid? AssigneeUserId { get; set; }
@@ -178,6 +181,7 @@ internal sealed class UpdateIssueSectionModel
     public string? Section { get; set; }
 }
 
+[UsedImplicitly(ImplicitUseKindFlags.Assign, ImplicitUseTargetFlags.WithMembers)]
 internal sealed class SetIssueGitHubIssueModel
 {
     public int? GitHubIssueNumber { get; set; }

@@ -1,4 +1,5 @@
 using Humans.Base.Enums;
+using JetBrains.Annotations;
 using NodaTime;
 using Humans.EarlyEntry.Contracts;
 using Humans.Gdpr.Contracts;
@@ -248,6 +249,7 @@ internal sealed record CampHistoricalNameSummary(
     int? Year,
     string Source);
 
+[UsedImplicitly(ImplicitUseKindFlags.Access, ImplicitUseTargetFlags.WithMembers)]
 internal sealed record CampPublicSummary(
     Guid Id,
     string Slug,
@@ -265,6 +267,7 @@ internal sealed record CampPublicSummary(
     IReadOnlyList<CampLink>? Links,
     string? WebOrSocialUrl);
 
+[UsedImplicitly(ImplicitUseKindFlags.Access, ImplicitUseTargetFlags.WithMembers)]
 internal sealed record CampPlacementSummary(
     Guid Id,
     string Slug,

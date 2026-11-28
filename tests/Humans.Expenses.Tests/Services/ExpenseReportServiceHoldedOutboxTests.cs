@@ -104,7 +104,7 @@ public class ExpenseReportServiceHoldedOutboxTests
     }
 
     [HumansFact]
-    public async Task GetHoldedBookingsAsync_lists_linked_lines_with_the_values_the_push_wrote()
+    public async Task GetHoldedBookingsAsync_LinkedLines_ListPushedValues()
     {
         // The same description, notes and booked total ExpenseReportBackgroundProcessor writes; a trimmed
         // line reports what it booked, an unlinked or declined line is absent, a legacy
@@ -149,7 +149,7 @@ public class ExpenseReportServiceHoldedOutboxTests
     }
 
     [HumansFact]
-    public async Task GetHoldedReconLinesAsync_ApprovedLinesPushedOrNot_SkippedAndDeclinedAbsent()
+    public async Task GetHoldedReconLinesAsync_Approved_OmitsSkippedOrDeclined()
     {
         // Cap 25 over 20 + 10 + 7: the second line is trimmed to 5, the third books nothing and gets no document.
         var report = MakeReport() with { Total = 37m, MaxAmount = 25m, HoldedContactId = "c-1" };
@@ -183,7 +183,7 @@ public class ExpenseReportServiceHoldedOutboxTests
     }
 
     [HumansFact]
-    public async Task GetHoldedReconLinesAsync_OtherStatusOnlyLinkedLines_LegacyIsOneReportLevelEntry()
+    public async Task GetHoldedReconLinesAsync_OtherStatus_OnlyLinkedLines()
     {
         var withdrawn = MakeReport() with { Status = ExpenseReportStatus.Withdrawn };
         withdrawn = withdrawn with
@@ -320,7 +320,7 @@ public class ExpenseReportServiceHoldedOutboxTests
         NullLogger<ExpenseReportBackgroundProcessor>.Instance);
 
     [HumansFact]
-    public async Task OverlappingDrain_IsSkipped_AndTheEventIsProcessedOnce()
+    public async Task Drain_Overlapping_IsSkipped()
     {
         var ct = TestContext.Current.CancellationToken;
         var report = MakeReport();
@@ -387,7 +387,7 @@ public class ExpenseReportServiceHoldedOutboxTests
     }
 
     [HumansFact]
-    public async Task CreateIncomingDoc_HappyPath_ClientCalledAndDocIdPersisted()
+    public async Task CreateIncomingDoc_Valid_PersistsDocId()
     {
         var report = MakeReport();
         var outboxEvent = MakeEvent(report.Id, HoldedExpenseOutboxEventType.CreateIncomingDoc);
@@ -420,7 +420,7 @@ public class ExpenseReportServiceHoldedOutboxTests
     }
 
     [HumansFact]
-    public async Task CreateIncomingDoc_ExcludesProofRows_FromDocLinesAndAttachmentUploads()
+    public async Task CreateIncomingDoc_ProofRows_AreExcluded()
     {
         // Proof rows back an invoice line for review only — Holded gets the invoice line and the
         // invoice file, never the proofs.
@@ -496,7 +496,7 @@ public class ExpenseReportServiceHoldedOutboxTests
     }
 
     [HumansFact]
-    public async Task CreateIncomingDoc_BooksLinesToTheAccountChosenOnTheReport()
+    public async Task CreateIncomingDoc_Lines_BookToReportAccount()
     {
         // A report that names its own account books there directly; the category map is only
         // the fallback for rows that predate the account column.
@@ -595,7 +595,7 @@ public class ExpenseReportServiceHoldedOutboxTests
     }
 
     [HumansFact]
-    public async Task CreateIncomingDoc_CapAtOrAboveTheTotal_HasNoAdjustmentLine()
+    public async Task CreateIncomingDoc_CapNotBelowTotal_NoAdjustmentLine()
     {
         var report = MakeReport() with
         {
@@ -725,7 +725,7 @@ public class ExpenseReportServiceHoldedOutboxTests
     }
 
     [HumansFact]
-    public async Task CreateIncomingDoc_AttachmentBytesMissing_BacksOffAndDoesNotMarkProcessed()
+    public async Task CreateIncomingDoc_AttachmentBytesMissing_BacksOff()
     {
         // Missing attachment bytes must keep the outbox event unprocessed with backoff —
         // silently skipping would permanently lose the receipt upload to Holded.
@@ -770,7 +770,7 @@ public class ExpenseReportServiceHoldedOutboxTests
     }
 
     [HumansFact]
-    public async Task CreateIncomingDoc_LegacyReportLevelDocId_ResumesOntoItInsteadOfCreatingPerLineDocs()
+    public async Task CreateIncomingDoc_LegacyReportDocId_IsResumed()
     {
         // A report pushed before per-line docs carries its single doc id on the report. The
         // resume must NOT call CreatePurchaseDocumentAsync — that would mint per-line payables
@@ -794,7 +794,7 @@ public class ExpenseReportServiceHoldedOutboxTests
     }
 
     [HumansFact]
-    public async Task CreateIncomingDoc_LineDocIdAlreadySet_SkipsCreateForThatLineOnly()
+    public async Task CreateIncomingDoc_LineDocIdSet_SkipsThatLine()
     {
         // Idempotency on re-drain: a line whose doc a previous attempt already issued (and
         // persisted early) is not created again; the lines after it still get theirs.
@@ -831,7 +831,7 @@ public class ExpenseReportServiceHoldedOutboxTests
     }
 
     [HumansFact]
-    public async Task CreateIncomingDoc_CapInsideAMultiLineReport_TrimsTheLastDocAndSkipsTheRest()
+    public async Task CreateIncomingDoc_CapMidReport_TrimsThenSkips()
     {
         // 3×100 with a 250 cap: two full docs, the third trimmed to 50 via a negative adjustment
         // on the same account; with a fourth receipt it would get no doc at all.
@@ -886,7 +886,7 @@ public class ExpenseReportServiceHoldedOutboxTests
     }
 
     [HumansFact]
-    public async Task CreateIncomingDoc_ReceiptFullyOverTheCap_GetsNoDocNoUploadAndIsNamedInTheAudit()
+    public async Task CreateIncomingDoc_ReceiptOverCap_GetsNoDoc()
     {
         // The cap is spent before the second receipt: Holded holds no record of it at all, so
         // the skip must be loud — named in the audit entry, never silent.
@@ -993,7 +993,7 @@ public class ExpenseReportServiceHoldedOutboxTests
     [InlineData(false, 0)]
     [InlineData(false, 9)]
     [InlineData(true, 0)]
-    public async Task Long_outbox_errors_fit_bookkeeping_and_keep_writeoffs_audited(bool permanent, int retries)
+    public async Task OutboxError_Long_IsTruncatedToFit(bool permanent, int retries)
     {
         var report = MakeReport();
         var outboxEvent = MakeEvent(report.Id, HoldedExpenseOutboxEventType.CreateIncomingDoc);
@@ -1033,7 +1033,7 @@ public class ExpenseReportServiceHoldedOutboxTests
     [InlineData("dependency", 9)]
     [InlineData("provider-cancel", 0)]
     [InlineData("provider-cancel", 9)]
-    public async Task UnexpectedReportFailure_IsBoundedAndDoesNotBlockTheNextReport(string kind, int retries)
+    public async Task ReportFailure_Unexpected_NextReportStillRuns(string kind, int retries)
     {
         var ct = TestContext.Current.CancellationToken;
         var broken = MakeReport();
@@ -1069,7 +1069,7 @@ public class ExpenseReportServiceHoldedOutboxTests
     }
 
     [HumansFact]
-    public async Task LostCompletionAcknowledgement_DoesNotRetryOrWriteOffTheCompletedPush()
+    public async Task Push_AcknowledgementLost_IsNotRetried()
     {
         var ct = TestContext.Current.CancellationToken;
         var report = MakeReport();
@@ -1102,7 +1102,7 @@ public class ExpenseReportServiceHoldedOutboxTests
     [InlineData(DetachedFailure.MissingReport)]
     [InlineData(DetachedFailure.SkippedTag)]
     [InlineData(DetachedFailure.PurchaseDocumentBeforeNextEvent)]
-    public async Task Detached_failure_during_shutdown_finishes_retry_bookkeeping(DetachedFailure stage)
+    public async Task DetachedFailure_DuringShutdown_FinishesRetryBookkeeping(DetachedFailure stage)
     {
         using var shutdown = new CancellationTokenSource();
         var report = MakeReport();
@@ -1149,7 +1149,7 @@ public class ExpenseReportServiceHoldedOutboxTests
     [InlineData(BookkeepingFailure.RetrySave)]
     [InlineData(BookkeepingFailure.WriteOffSave)]
     [InlineData(BookkeepingFailure.CompletionRead)]
-    public async Task Detached_bookkeeping_cancellation_escapes_as_a_failure(BookkeepingFailure stage)
+    public async Task DetachedBookkeeping_Cancelled_Fails(BookkeepingFailure stage)
     {
         using var shutdown = new CancellationTokenSource();
         var report = MakeReport();
@@ -1181,7 +1181,7 @@ public class ExpenseReportServiceHoldedOutboxTests
     [HumansTheory]
     [InlineData(false)]
     [InlineData(true)]
-    public async Task Detached_lost_completion_acknowledgement_keeps_the_completed_push(bool skippedTag)
+    public async Task DetachedPush_AcknowledgementLost_StaysCompleted(bool skippedTag)
     {
         using var shutdown = new CancellationTokenSource();
         var report = MakeReport();
@@ -1273,7 +1273,7 @@ public class ExpenseReportServiceHoldedOutboxTests
     }
 
     [HumansFact]
-    public async Task TransientException_OnTheTenthAttempt_IsWrittenOffRatherThanRetriedForever()
+    public async Task TransientException_TenthAttempt_IsWrittenOff()
     {
         // Nine failures already recorded; this one spends the budget. Writing it off — rather than
         // letting a RetryCount filter drop it out of the drain — is what puts it on the
@@ -1343,7 +1343,7 @@ public class ExpenseReportServiceHoldedOutboxTests
     }
 
     [HumansFact]
-    public async Task EachUpload_IsRecordedSoTheNextRunCanSkipIt()
+    public async Task Upload_Done_IsRecordedForNextRun()
     {
         var report = MakeReportWithAttachments(
             holdedDocId: "holded-doc-1", alreadyPushed: null, notYetPushed: null);
@@ -1417,7 +1417,7 @@ public class ExpenseReportServiceHoldedOutboxTests
     }
 
     [HumansFact]
-    public async Task GetHoldedTimelineAsync_ReportsRetrying_WithTheErrorAndNextAttempt()
+    public async Task GetHoldedTimelineAsync_Retrying_HasErrorWithNextAttempt()
     {
         var report = MakeReport();
         var ev = MakeEvent(report.Id, HoldedExpenseOutboxEventType.CreateIncomingDoc);
@@ -1437,7 +1437,7 @@ public class ExpenseReportServiceHoldedOutboxTests
     }
 
     [HumansFact]
-    public async Task GetHoldedTimelineAsync_ReportsFailed_EvenThoughAWriteOffAlsoSetsProcessedAt()
+    public async Task GetHoldedTimelineAsync_WrittenOff_ReportsFailed()
     {
         var report = MakeReport();
         var ev = MakeEvent(report.Id, HoldedExpenseOutboxEventType.CreateIncomingDoc);
@@ -1453,7 +1453,7 @@ public class ExpenseReportServiceHoldedOutboxTests
     }
 
     [HumansFact]
-    public async Task GetHoldedTimelineAsync_ReportsNotConfigured_RatherThanQueued_WhenThereIsNoApiKey()
+    public async Task GetHoldedTimelineAsync_NoApiKey_ReportsNotConfigured()
     {
         // Otherwise a PR-preview environment shows "Queued" forever for a queue nothing drains.
         _holdedService.IsConfigured.Returns(false);
@@ -1467,7 +1467,7 @@ public class ExpenseReportServiceHoldedOutboxTests
     }
 
     [HumansFact]
-    public async Task GetHoldedTimelineAsync_ReportsNotQueued_WhenNoPushWasEverQueued()
+    public async Task GetHoldedTimelineAsync_NoPush_ReportsNotQueued()
     {
         var timeline = await _sut.GetHoldedTimelineAsync(MakeReport(), TestContext.Current.CancellationToken);
 
@@ -1518,7 +1518,7 @@ public class ExpenseReportServiceHoldedOutboxTests
     }
 
     [HumansFact]
-    public async Task CreateIncomingDoc_PersistsContactLinkBeforeDocCreate_SoRetryReusesContact()
+    public async Task CreateIncomingDoc_Retry_ReusesContact()
     {
         // Even when doc-create fails, the contact id must already be persisted, so the retry
         // reuses it (update mode) instead of creating a DUPLICATE creditor contact.
@@ -1596,7 +1596,7 @@ public class ExpenseReportServiceHoldedOutboxTests
     }
 
     [HumansFact]
-    public async Task CreateIncomingDoc_SubmitterMergedAway_BindsTheCreditorToTheSurvivor()
+    public async Task CreateIncomingDoc_MergedSubmitter_BindsCreditorToSurvivor()
     {
         // The report stays under the archived id, but the human is the survivor now, so
         // one member keeps one Holded contact rather than a second one under the old id.

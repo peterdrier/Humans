@@ -1,0 +1,47 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="-2 -2 244 244" role="img" aria-label="Vitruvian Man">
+  <g fill="none" stroke="#c9a96e" stroke-width="1.8">
+    <circle cx="120" cy="120" r="120"/>
+    <rect x="23" y="46" width="194" height="194"/>
+  </g>
+  <defs>
+    <!-- Fingertips to deltoid, with the thumb resting against the palm. -->
+    <g id="arm" fill="#c9a96e">
+      <path d="M105 77 Q99 73 92 76 C87 78 85 79 77 79 Q71 79 66 81 C59 79 51 81 44 82 L39 82 Q35 80 31 81 L23 82 Q22 83 25 84 L31 84 L25 85 Q24 87 29 87 L35 87 Q38 89 42 86 C53 86 58 89 65 86 Q70 83 74 86 C81 88 88 87 94 85 Q100 88 105 85Z"/>
+      <g fill="none" stroke="#3d2b1f" stroke-linecap="round">
+        <path stroke-width="1.35" d="M93 78 Q90 81 88 82 M85 84 Q80 86 74 84 M62 83 Q56 84 51 84"/>
+        <path stroke-width=".8" d="M39 84 Q36 83 33 85 L30 85 M25 83 L31 83"/>
+      </g>
+    </g>
+    <g id="leg" fill="#c9a96e">
+      <path d="M120 137 C117 131 107 129 102 134 C98 143 101 156 102 164 Q104 172 102 180 C101 184 103 187 102 192 C99 203 104 214 105 222 L105 230 Q105 233 102 235 L98 237 Q96 240 101 240 L111 240 Q115 239 113 235 L112 231 C111 222 114 210 115 201 Q116 194 113 187 Q112 183 115 177 C119 165 120 152 120 143Z"/>
+      <g fill="none" stroke="#3d2b1f" stroke-linecap="round">
+        <path stroke-width="1.45" d="M102 147 Q101 152 102 157 M104 147 C103 160 108 168 106 175 M115 154 Q114 168 110 177 M104 181 Q108 185 111 180 M111 193 Q112 203 109 210"/>
+        <path stroke-width=".85" d="M104 186 Q107 190 110 186 M105 196 Q103 203 106 210 M109 215 L108 228 M108 233 L105 236 M101 238 l-1 1 M104 238 l-1 1"/>
+      </g>
+    </g>
+    <g id="half">
+      <use href="#arm" transform="rotate(23 98 81) translate(98 0) scale(1.095 1) translate(-98 0)"/>
+      <use href="#leg" transform="rotate(28 111 140) translate(0 -2)"/>
+      <use href="#arm"/>
+      <use href="#leg"/>
+    </g>
+  </defs>
+  <use href="#half"/>
+  <use href="#half" transform="translate(240) scale(-1 1)"/>
+  <path fill="#c9a96e" d="M114 66 Q115 73 110 74 L100 76 Q93 79 96 86 Q99 91 101 99 C102 107 107 113 105 122 Q103 127 101 135 Q101 141 108 142 Q115 142 120 147 Q125 142 132 142 Q139 141 139 135 Q137 127 135 122 C133 113 138 107 139 99 Q141 91 144 86 Q147 79 140 76 L130 74 Q125 73 126 66Z"/>
+  <defs>
+    <g id="etch" fill="none" stroke="#3d2b1f" stroke-linecap="round">
+      <path stroke-width="1.9" d="M98 83 Q99 88 102 90 M103 92 C107 96 114 96 118 93 M103 133 Q108 134 114 140"/>
+      <path stroke-width="1.35" d="M102 80 Q109 77 117 80 M104 98 l5 3 M106 103 l4 3 M112 101 Q115 99 118 100 M113 108 Q116 106 118 107 M108 112 Q108 119 110 122 M108 128 Q111 131 116 132"/>
+      <path stroke-width=".85" d="M114 72 l4 5 M103 86 l2 3 M106 89 l1 2 M111 114 q3 2 6 0 M111 124 l3 3"/>
+    </g>
+  </defs>
+  <use href="#etch"/><use href="#etch" transform="translate(240) scale(-1 1)"/>
+  <ellipse cx="120" cy="120" rx="1.25" ry="1" fill="#3d2b1f"/>
+  <path fill="#c9a96e" d="M108 74 Q111 70 108 71 Q105 71 109 66 Q106 66 109 60 C107 53 110 46 118 46 Q130 44 131 55 Q133 60 131 65 Q135 71 131 70 L133 74 Q127 74 125 69 Q120 74 115 69 Q113 73 108 74Z"/>
+  <g fill="none" stroke="#3d2b1f" stroke-linecap="round">
+    <path stroke-width="1.45" d="M111 60 Q113 57 113 54 Q118 55 122 50 Q121 54 128 55 L129 60 M112 62 Q113 67 117 69 Q120 72 123 69 Q127 66 128 62"/>
+    <path stroke-width=".9" d="M110 58 Q109 51 116 49 M125 49 Q130 50 130 56 M111 64 Q112 68 109 70 M130 64 Q129 69 131 71 M114 58 Q116 57 118 58 M122 58 Q125 57 126 58 M115 60 l2 .4 M123 60 l2 -.4 M120 59 l-1 5 2 .2 M117.5 66 Q120 65.4 122.5 66"/>
+  </g>
+</svg>
+

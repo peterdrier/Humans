@@ -3,7 +3,6 @@ using Humans.Base.Threading;
 using Humans.Gdpr.Contracts;
 using Humans.Governance.Domain;
 using Humans.Governance.Data;
-using Microsoft.Extensions.Caching.Memory;
 using NodaTime;
 using Humans.Governance.Services.Dtos;
 using Humans.Base.Extensions;
@@ -31,15 +30,14 @@ internal sealed class ApplicationDecisionService(
     INotificationEmitter notificationService,
     GovernanceBodySync bodySync,
     IHumansMetrics metrics,
-    IMemoryCache cache,
+    CachingGovernanceService tierCache,
+    CachingGovernanceManagement badgeCache,
     IClock clock,
     ILogger<ApplicationDecisionService> logger) : IGovernanceManagement, IUserDataContributor, IUserMerge
 {
     private static readonly TrackedLock SubmissionLock = new("Governance.SubmitApplication");
 
     internal const string Applications = "Applications";
-
-    private static readonly TimeSpan BadgeCacheDuration = TimeSpan.FromMinutes(2);
 
     public async Task<ApplicationDecisionResult> ApproveAsync(
         Guid applicationId,
@@ -121,8 +119,6 @@ internal sealed class ApplicationDecisionService(
     private async Task FinalizeDecisionAsync(
         MemberApplication application, Guid reviewerUserId, CancellationToken cancellationToken)
     {
-        // Resolve the Board before the write so nothing awaitable sits between commit and audit.
-        var boardMemberIds = await GetBoardMemberIdsAsync(cancellationToken);
         var approved = application.Status == ApplicationStatus.Approved;
         // Downgrades happen only at term expiry: an in-term higher tier stays, and the expiry job
         // falls back to this approval when it ends.
@@ -137,9 +133,15 @@ internal sealed class ApplicationDecisionService(
             ExpiresAt = application.TermExpiresAt,
             GrantedByApplicationId = application.Id,
         } : null;
-        await repository.FinalizeAsync(application, cancellationToken, tierGrant);
-
-        InvalidateVotingBadges(boardMemberIds);
+        try
+        {
+            await repository.FinalizeAsync(application, cancellationToken, tierGrant);
+        }
+        finally
+        {
+            badgeCache.Clear();
+            if (tierGrant is not null) tierCache.Clear();
+        }
 
         var decision = approved ? "approved" : "rejected";
         await auditLogService.LogAsync(
@@ -221,10 +223,14 @@ internal sealed class ApplicationDecisionService(
         };
         application.ValidateTier();
 
-        var boardMemberIds = await GetBoardMemberIdsAsync(ct);
-        await repository.AddAsync(application, ct);
-
-        InvalidateVotingBadges(boardMemberIds);
+        try
+        {
+            await repository.AddAsync(application, ct);
+        }
+        finally
+        {
+            badgeCache.Clear();
+        }
 
         logger.LogInformation(
             "User {UserId} submitted application {ApplicationId}",
@@ -244,10 +250,14 @@ internal sealed class ApplicationDecisionService(
             return new ApplicationDecisionResult(false, "CannotWithdraw");
 
         application.Withdraw(clock);
-        var boardMemberIds = await GetBoardMemberIdsAsync(ct);
-        await repository.FinalizeAsync(application, ct);
-
-        InvalidateVotingBadges(boardMemberIds);
+        try
+        {
+            await repository.FinalizeAsync(application, ct);
+        }
+        finally
+        {
+            badgeCache.Clear();
+        }
 
         metrics.RecordApplicationProcessed("withdrawn");
         logger.LogInformation(
@@ -324,9 +334,14 @@ internal sealed class ApplicationDecisionService(
         }
 
         var now = clock.GetCurrentInstant();
-        await repository.UpsertBoardVoteAsync(applicationId, boardMemberUserId, vote, note, now, ct);
-
-        cache.Remove(VotingBadgeCacheKey(boardMemberUserId));
+        try
+        {
+            await repository.UpsertBoardVoteAsync(applicationId, boardMemberUserId, vote, note, now, ct);
+        }
+        finally
+        {
+            badgeCache.Invalidate(boardMemberUserId);
+        }
 
         logger.LogInformation(
             "Board member {UserId} voted {Vote} on application {ApplicationId}",
@@ -335,25 +350,9 @@ internal sealed class ApplicationDecisionService(
         return new ApplicationDecisionResult(true);
     }
 
-    public async Task<int> GetUnvotedApplicationCountAsync(
+    public Task<int> GetUnvotedApplicationCountAsync(
         Guid boardMemberUserId, CancellationToken ct = default) =>
-        await cache.GetOrCreateAsync(VotingBadgeCacheKey(boardMemberUserId), async entry =>
-        {
-            entry.AbsoluteExpirationRelativeToNow = BadgeCacheDuration;
-            return await repository.GetUnvotedCountForBoardMemberAsync(boardMemberUserId, ct);
-        });
-
-    private Task<IReadOnlyList<Guid>> GetBoardMemberIdsAsync(CancellationToken ct) =>
-        systemRoleService.GetActiveUserIdsInRoleAsync(RoleNames.Board, ct);
-
-    private void InvalidateVotingBadges(IReadOnlyList<Guid> boardMemberIds)
-    {
-        foreach (var boardMemberId in boardMemberIds)
-            cache.Remove(VotingBadgeCacheKey(boardMemberId));
-    }
-
-    /// <summary>One Board member's unvoted-application count; this service is its only reader and evicter.</summary>
-    internal static string VotingBadgeCacheKey(Guid boardMemberUserId) => $"NavBadge:Voting:{boardMemberUserId:N}";
+        repository.GetUnvotedCountForBoardMemberAsync(boardMemberUserId, ct);
 
     public async Task<IReadOnlyList<ApplicationRenewalReminderCandidate>> GetExpiringApplicationsNeedingReminderAsync(
         LocalDate today, LocalDate reminderThreshold, CancellationToken ct = default)
@@ -377,9 +376,18 @@ internal sealed class ApplicationDecisionService(
         Guid applicationId, Instant sentAt, CancellationToken ct = default) =>
         repository.MarkRenewalReminderSentAsync(applicationId, sentAt, ct);
 
-    public Task ReassignAsync(Guid sourceUserId, Guid targetUserId, Guid actorUserId, Instant updatedAt,
-        CancellationToken ct) =>
-        repository.ReassignApplicationsToUserAsync(sourceUserId, targetUserId, updatedAt, ct);
+    public async Task ReassignAsync(Guid sourceUserId, Guid targetUserId, Guid actorUserId, Instant updatedAt,
+        CancellationToken ct)
+    {
+        try
+        {
+            await repository.ReassignApplicationsToUserAsync(sourceUserId, targetUserId, updatedAt, ct);
+        }
+        finally
+        {
+            badgeCache.Clear();
+        }
+    }
 
     public async Task<IReadOnlyList<UserDataSlice>> ContributeForUserAsync(Guid userId, CancellationToken ct)
     {

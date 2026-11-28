@@ -42,6 +42,9 @@ body.admin-shell .m-nav {
 }
 
 body.admin-shell .m-nav .brand {
+    /* Sidebar width less the bar's padding and gap, so the section name lines up with the page content. */
+    width: 224px;
+    flex-shrink: 0;
     font-family: var(--h-font-display);
     font-style: italic;
     font-weight: 700;
@@ -65,6 +68,25 @@ body.admin-shell .m-nav .brand small {
     margin-left: 10px;
     padding-left: 10px;
     border-left: 1px solid rgba(255,245,221,0.18);
+}
+
+body.admin-shell .m-nav .section-name {
+    font-family: var(--h-font-display);
+    font-weight: 600;
+    font-size: 1.5rem;
+    color: var(--h-parchment);
+    white-space: nowrap;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+body.admin-shell .m-nav .auth-pill {
+    flex-shrink: 0;
+    color: var(--h-parchment);
+    background-color: rgba(255,245,221,0.08);
+    border-color: rgba(255,245,221,0.18);
+    opacity: 0.8;
 }
 
 body.admin-shell .m-nav .right {
@@ -191,55 +213,9 @@ body.admin-shell .main {
     min-width: 0;
 }
 
-/* ── Breadcrumb ───────────────────────────────────────────────────────── */
-
-body.admin-shell .crumb {
-    font-family: var(--h-font-body);
-    font-size: 0.85rem;
-    color: var(--h-sepia);
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    margin-bottom: 14px;
-}
-
-body.admin-shell .crumb a {
-    color: var(--h-sepia);
-    text-decoration: none;
-}
-
-body.admin-shell .crumb a:hover {
-    color: var(--h-aged-ink);
-}
-
-body.admin-shell .crumb .sep {
-    color: var(--h-sepia-light);
-}
-
-body.admin-shell .crumb .here {
-    color: var(--h-aged-ink);
-    font-weight: 600;
-}
-
-/* The crumbs a subpage supplies after its page: separated like the rest, the last one current. */
-body.admin-shell .crumb .trail {
-    display: contents;
-}
-
-body.admin-shell .crumb .trail > :not(:last-child)::after {
-    content: "/";
-    color: var(--h-sepia-light);
-    margin-left: 8px;
-}
-
-body.admin-shell .crumb .trail > :last-child {
-    color: var(--h-aged-ink);
-    font-weight: 600;
-}
-
 /* ── Group tabs ───────────────────────────────────────────────────────── */
 
-/* Above the breadcrumb, pulled up into the main area's top padding. */
+/* Pulled up into the main area's top padding. */
 body.admin-shell .admin-tabs-wrap {
     position: relative;
     margin: -12px 0 14px;
@@ -445,6 +421,7 @@ body.admin-shell .split-panels {
 @media (min-width: 768px) and (max-width: 1099.98px) {
     body.admin-shell .app-shell { grid-template-columns: 200px 1fr; }
     body.admin-shell .split-panels { grid-template-columns: 1fr; }
+    body.admin-shell .m-nav .brand { width: 184px; }
 }
 
 /* Below 768px the sidebar collapses into a horizontal strip of group rows
@@ -460,7 +437,9 @@ body.admin-shell .split-panels {
     body.admin-shell .split-panels { grid-template-columns: 1fr; }
 
     body.admin-shell .m-nav { padding: 0 16px; gap: 12px; height: 56px; }
-    body.admin-shell .m-nav .brand { font-size: 1.15rem; }
+    body.admin-shell .m-nav .brand { font-size: 1.15rem; width: auto; }
+    body.admin-shell .m-nav .section-name { font-size: 1.15rem; }
+    body.admin-shell .m-nav .auth-pill { display: none; }
     body.admin-shell .m-nav .brand small { display: none; }
     body.admin-shell .m-nav .right { gap: 10px; }
     body.admin-shell .m-nav .exit-admin span { display: none; }

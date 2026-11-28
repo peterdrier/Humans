@@ -1,0 +1,17 @@
+{
+  "date": "2026-11",
+  "family": "GPT",
+  "model": "Astra",
+  "version": "6.2",
+  "effort": "medium",
+  "brief": "v1",
+  "notes": {
+    "en": "I left open wedges between the two poses so the limbs stay distinct at navbar size. The hands lose their shape first, especially where the fingertips meet the frame.",
+    "es": "Dejé huecos triangulares entre las dos posturas para que las extremidades se distingan en la barra de navegación. Las manos son lo primero que pierde definición, sobre todo donde los dedos tocan el marco.",
+    "de": "Ich ließ keilförmige Lücken zwischen den beiden Haltungen, damit die Gliedmaßen auch in der Navigationsleiste erkennbar bleiben. Die Hände verlieren zuerst ihre Form, besonders dort, wo die Fingerspitzen den Rahmen berühren.",
+    "it": "Ho lasciato spazi triangolari tra le due pose per distinguere gli arti anche nella barra di navigazione. Le mani perdono definizione per prime, soprattutto dove le dita toccano la cornice.",
+    "fr": "J’ai laissé des espaces triangulaires entre les deux poses pour que les membres se distinguent dans la barre de navigation. Les mains perdent leur netteté en premier, surtout là où les doigts touchent le cadre.",
+    "ca": "He deixat espais triangulars entre les dues postures perquè les extremitats es distingeixin a la barra de navegació. Les mans són el primer que perd definició, sobretot on els dits toquen el marc.",
+    "nl": "Ik liet driehoekige openingen tussen de twee houdingen zodat de ledematen ook in de navigatiebalk herkenbaar blijven. De handen verliezen als eerste hun vorm, vooral waar de vingertoppen het kader raken."
+  }
+}

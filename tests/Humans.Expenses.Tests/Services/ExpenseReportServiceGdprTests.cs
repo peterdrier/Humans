@@ -95,7 +95,7 @@ public class ExpenseReportServiceGdprTests
     [HumansTheory]
     [Xunit.InlineData(false)]
     [Xunit.InlineData(true)]
-    public async Task HappyPath_ExportsReportDatesAndMaskedIban(bool approved)
+    public async Task Export_OwnReport_HasDatesWithMaskedIban(bool approved)
     {
         var report = MakeReport(UserId) with
         {
@@ -212,7 +212,7 @@ public class ExpenseReportServiceGdprTests
     }
 
     [HumansFact]
-    public async Task DecisionsOnOwnReports_AndRejectionReasonAndCap_AreExported()
+    public async Task Export_DecisionsOnOwnReports_AreIncluded()
     {
         var report = MakeReport(UserId) with
         {
@@ -242,7 +242,7 @@ public class ExpenseReportServiceGdprTests
     }
 
     [HumansFact]
-    public async Task AdminActingOnOtherMembers_ReceivesNoCrossUserAuditEntriesOrRawIbans()
+    public async Task Export_AdminActedOnOthers_OmitsTheirEntries()
     {
         var adminId = UserId;
         var otherMemberId = Guid.NewGuid();
@@ -355,7 +355,7 @@ public class ExpenseReportServiceGdprTests
     }
 
     [HumansFact]
-    public async Task AdminWithNoOwnExpenseActivity_ActingOnlyOnOthers_GetsNullAuditSlice()
+    public async Task Export_AdminWithoutOwnActivity_AuditIsNull()
     {
         var adminId = UserId;
         var otherMemberId = Guid.NewGuid();
@@ -394,7 +394,7 @@ public class ExpenseReportServiceGdprTests
     }
 
     [HumansFact]
-    public async Task SubjectExport_IncludesOwnAndMergedAuditTrail_WithRawIbansMasked()
+    public async Task Export_MergedAuditTrail_IncludedIbansMasked()
     {
         var survivorId = UserId;
         var sourceId = Guid.NewGuid();

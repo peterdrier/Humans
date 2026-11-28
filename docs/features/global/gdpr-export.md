@@ -32,8 +32,8 @@
   src/Sections/Humans.Workgroups/Services/**
   src/Sections/Humans.Roles/Services/**
   src/Sections/Humans.Tasks/Services/**
-  src/Sections/Humans.Preapprovals/Services/PreapprovalService.Gdpr.cs
-  src/Sections/Humans.Grants/Services/GrantService.Gdpr.cs
+  src/Sections/Humans.Preapprovals/Services/PreapprovalService.cs
+  src/Sections/Humans.Grants/Services/GrantService.cs
   src/Sections/Humans.Calendar/Services/CalendarFeedTokenService.cs
 -->
 <!-- freshness:flag-on-change

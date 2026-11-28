@@ -417,6 +417,12 @@ public sealed class WorkloadServiceTests : ShiftsTestHarness
         var es = new EventSettings
         {
             Id = Guid.NewGuid(),
+            CreatedAt = now.Minus(Duration.FromDays(60)),
+            UpdatedAt = now,
+        };
+        Calendars[es.Id] = new TestEventCalendar
+        {
+            Id = es.Id,
             EventName = "Test Event",
             Year = 2026,
             TimeZoneId = "UTC",
@@ -425,8 +431,6 @@ public sealed class WorkloadServiceTests : ShiftsTestHarness
             EventEndOffset = 6,
             StrikeEndOffset = 9,
             IsActive = true,
-            CreatedAt = now.Minus(Duration.FromDays(60)),
-            UpdatedAt = now,
         };
         ShiftsDb.EventSettings.Add(es);
         await ShiftsDb.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);

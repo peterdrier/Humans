@@ -1,4 +1,3 @@
-using Humans.Consent.Contracts;
 using System.Globalization;
 using System.Security.Claims;
 using Humans.Base;
@@ -8,6 +7,7 @@ using Humans.Base.Extensions;
 using Humans.Base.Hosting;
 using Humans.Audit.Contracts;
 using Humans.Base.Interfaces;
+using Humans.Base.Interfaces.Caching;
 using Humans.Base.Models;
 using Humans.Base.Models.Tables;
 using Humans.Email.Contracts;
@@ -65,15 +65,23 @@ public sealed class Section :
 
         services.AddSingleton<IMembershipTierRepository>(sp => (IMembershipTierRepository)sp.GetRequiredService<IApplicationRepository>());
         services.AddScoped<MembershipTierService>();
+        services.AddKeyedScoped<IGovernanceService>(CachingGovernanceService.InnerServiceKey,
+            (sp, _) => sp.GetRequiredService<MembershipTierService>());
         services.AddScoped<IUserDataContributor>(sp => sp.GetRequiredService<MembershipTierService>());
         // Snapshot legacy tier grants before ApplicationDecisionService moves their applications.
         services.AddScoped<IUserMerge>(sp => sp.GetRequiredService<MembershipTierService>());
+        services.AddSingleton<CachingGovernanceService>();
+        services.AddSingleton<IGovernanceService>(sp => sp.GetRequiredService<CachingGovernanceService>());
+        services.AddSingleton<ICacheStats>(sp => sp.GetRequiredService<CachingGovernanceService>());
 
         services.AddScoped<ApplicationDecisionService>();
-        services.AddScoped<IGovernanceManagement>(sp => sp.GetRequiredService<ApplicationDecisionService>());
-        services.AddScoped<IGovernanceService>(sp => sp.GetRequiredService<MembershipTierService>());
+        services.AddKeyedScoped<IGovernanceManagement>(CachingGovernanceManagement.InnerServiceKey,
+            (sp, _) => sp.GetRequiredService<ApplicationDecisionService>());
         services.AddScoped<IUserDataContributor>(sp => sp.GetRequiredService<ApplicationDecisionService>());
         services.AddScoped<IUserMerge>(sp => sp.GetRequiredService<ApplicationDecisionService>());
+        services.AddSingleton<CachingGovernanceManagement>();
+        services.AddSingleton<IGovernanceManagement>(sp => sp.GetRequiredService<CachingGovernanceManagement>());
+        services.AddSingleton<ICacheStats>(sp => sp.GetRequiredService<CachingGovernanceManagement>());
 
         services.AddScoped<IGovernanceIndexService, GovernanceIndexService>();
 
@@ -231,7 +239,6 @@ public sealed class Section :
 
     IEnumerable<ChromeComponent> ISectionMemberDashboard.Components() =>
     [
-        new ChromeComponent(ChromeSlots.MemberDashboard, typeof(PendingConsentsAlertViewComponent), Weight: 5),
         new ChromeComponent(ChromeSlots.MemberDashboard, typeof(MemberTermStatusViewComponent), Weight: 10),
         new ChromeComponent(ChromeSlots.MemberDashboard, typeof(AssemblyVotesCardViewComponent), Weight: 15),
         new ChromeComponent(ChromeSlots.MemberDashboard, typeof(GovernanceApplicationsTileViewComponent), Weight: 40),
@@ -245,28 +252,8 @@ public sealed class Section :
             return [];
         }
 
-        var progress = await services.GetRequiredService<IConsentService>()
-            .GetConsentProgressAsync(userId, ct);
         var localizer = services.GetRequiredService<IStringLocalizer<SharedResource>>();
-        var complete = progress.PendingCount == 0;
-
-        List<ThingsToDoEntry> entries = [];
-
-        if (progress.RequiredCount > 0)
-        {
-            entries.Add(new ThingsToDoEntry("consents", localizer["Todo_Consents_Title"].Value,
-                "fa-solid fa-file-signature", Controller: "Consent", Action: "Index", Weight: 20)
-            {
-                Description = complete
-                    ? localizer["Todo_Consents_Done"].Value
-                    : localizer["Todo_Consents_Pending", progress.PendingCount, progress.RequiredCount],
-                IsDone = complete,
-                ActionText = localizer["Todo_Consents_Action"].Value,
-            });
-        }
-
-        entries.AddRange(await VoteEntriesAsync(services, userId, localizer, ct));
-        return entries;
+        return await VoteEntriesAsync(services, userId, localizer, ct);
     }
 
     /// <summary>

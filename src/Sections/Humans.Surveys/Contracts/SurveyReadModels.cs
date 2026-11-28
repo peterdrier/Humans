@@ -1,3 +1,4 @@
+using JetBrains.Annotations;
 using NodaTime;
 
 namespace Humans.Surveys.Contracts;
@@ -124,6 +125,7 @@ public sealed record SurveyResponseExport(
 /// <see cref="Options"/> is empty for non-choice questions. <see cref="CommentPrompt"/> is set (possibly blank) only
 /// for a choice question that asks for a comment, which the answer carries as its <c>TextValue</c>.
 /// </summary>
+[UsedImplicitly(ImplicitUseKindFlags.Access, ImplicitUseTargetFlags.WithMembers)]
 public sealed record SurveyExportQuestion(
     Guid QuestionId,
     string Prompt,
@@ -140,12 +142,14 @@ public sealed record SurveyExportOption(string Value, string Label);
 
 public sealed record SurveyExportGridRow(string Value, string Label);
 
+[UsedImplicitly(ImplicitUseKindFlags.Access, ImplicitUseTargetFlags.WithMembers)]
 public sealed record SurveyRankedSettings(
     bool AllowEqualRanks,
     bool AllowReject,
     string OfficialMethod);
 
 /// <summary>Uses stable option values.</summary>
+[UsedImplicitly(ImplicitUseKindFlags.Access, ImplicitUseTargetFlags.WithMembers)]
 public sealed record SurveyRankedBallot(
     IReadOnlyList<IReadOnlyList<string>> RankGroups,
     IReadOnlyList<string> Rejected);

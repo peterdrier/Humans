@@ -34,7 +34,7 @@ public sealed class PreapprovalGrantQueriesTests
     }
 
     [HumansFact]
-    public async Task ListManagedGrantIds_EveryStateOfTheirPrograms_UnderEveryIdTheyHeld()
+    public async Task ListManagedGrantIds_MergedManager_CoversEveryHeldId()
     {
         var consumed = Grant(Guid.NewGuid(), [Merged], claimable: false, GrantStatus.Consumed);
         var open = Grant(Guid.NewGuid(), [Current, Guid.NewGuid()], claimable: true);

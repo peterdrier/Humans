@@ -220,7 +220,7 @@ public sealed class LegalDocumentSyncServiceTests : ConsentTestHarness
     [HumansTheory]
     [Xunit.InlineData(false)]
     [Xunit.InlineData(true)]
-    public async Task SyncAndNotify_RetainsBatchAcrossFailureAndRestartWithoutAnotherGitHubChange(bool completionFails)
+    public async Task SyncAndNotify_FailureThenRestart_KeepsBatch(bool completionFails)
     {
         var ct = Xunit.TestContext.Current.CancellationToken;
         var first = await SeedDocumentAsync("Privacy", folderPath: "privacy/");
@@ -363,7 +363,7 @@ public sealed class LegalDocumentSyncServiceTests : ConsentTestHarness
     [Xunit.InlineData(true, false)]
     [Xunit.InlineData(false, true)]
     [Xunit.InlineData(true, true)]
-    public async Task RequiredVersionReads_SelectLatestEffectiveVersion_AndOmitFutureOnlyDocuments(
+    public async Task RequiredVersionReads_FutureOnlyDocument_IsOmitted(
         bool forTeam, bool cached)
     {
         var ct = Xunit.TestContext.Current.CancellationToken;
@@ -409,7 +409,7 @@ public sealed class LegalDocumentSyncServiceTests : ConsentTestHarness
     }
 
     [HumansFact]
-    public async Task RequiredDocumentCache_WarmsFromEnrichedInnerSnapshot_AndFiltersTeams()
+    public async Task RequiredDocumentCache_Warmed_FiltersTeams()
     {
         var ct = Xunit.TestContext.Current.CancellationToken;
         var document = await SeedDocumentAsync("Privacy");
@@ -452,7 +452,7 @@ public sealed class LegalDocumentSyncServiceTests : ConsentTestHarness
     }
 
     [HumansFact]
-    public async Task GetLegalDocumentWithVersionsAsync_CurrentVersionIsLatestAlreadyEffective()
+    public async Task GetLegalDocumentWithVersionsAsync_Current_IsLatestEffective()
     {
         var ct = Xunit.TestContext.Current.CancellationToken;
         var document = await SeedDocumentAsync("Privacy");
@@ -508,7 +508,7 @@ public sealed class LegalDocumentSyncServiceTests : ConsentTestHarness
     [Xunit.InlineData("GracePeriodDays", false)]
     [Xunit.InlineData(null, false)]
     [Xunit.InlineData(null, true)]
-    public async Task AdminDocumentForms_require_explicit_consent_policy_before_editing(string? omitted, bool enabled)
+    public async Task AdminDocumentForms_NoConsentPolicy_AreRefused(string? omitted, bool enabled)
     {
         _userService.GetUserInfoAsync(_actorUserId, Arg.Any<CancellationToken>())
             .Returns(UserInfo.Create(new User { Id = _actorUserId }, [], [], null));
@@ -590,7 +590,7 @@ public sealed class LegalDocumentSyncServiceTests : ConsentTestHarness
     [Xunit.InlineData(false, true)]
     [Xunit.InlineData(true, false)]
     [Xunit.InlineData(true, true)]
-    public async Task AdminDocumentWrites_reject_missing_teams_before_persistence_or_sync(bool edit, bool empty)
+    public async Task AdminDocumentWrites_MissingTeam_AreRejected(bool edit, bool empty)
     {
         _userService.GetUserInfoAsync(_actorUserId, Arg.Any<CancellationToken>())
             .Returns(UserInfo.Create(new User { Id = _actorUserId }, [], [], null));
@@ -633,7 +633,7 @@ public sealed class LegalDocumentSyncServiceTests : ConsentTestHarness
     }
 
     [HumansFact(Timeout = 10000)]
-    public async Task CreateLegalDocumentWithInitialSyncAsync_PersistsAndReturnsDocument()
+    public async Task CreateLegalDocumentWithInitialSyncAsync_Valid_ReturnsDocument()
     {
         StubGitHubFolder("privacy/", "es-content", "sha-1", "Initial commit");
         var request = new AdminLegalDocumentUpsertRequest(
@@ -650,7 +650,7 @@ public sealed class LegalDocumentSyncServiceTests : ConsentTestHarness
     }
 
     [HumansFact]
-    public async Task CreateLegalDocumentWithInitialSyncAsync_SyncsWhenFolderPathIsPresent()
+    public async Task CreateLegalDocumentWithInitialSyncAsync_WithFolder_Syncs()
     {
         StubGitHubFolder("privacy/", "es-content", "sha-1", "Initial commit");
 
@@ -673,7 +673,7 @@ public sealed class LegalDocumentSyncServiceTests : ConsentTestHarness
     }
 
     [HumansFact]
-    public async Task CreateLegalDocumentWithInitialSyncAsync_SkipsSyncWithoutFolderPath()
+    public async Task CreateLegalDocumentWithInitialSyncAsync_NoFolder_SkipsSync()
     {
         var request = new AdminLegalDocumentUpsertRequest(
             "Privacy Policy", _team.Id, true, true, 7, null);
@@ -686,7 +686,7 @@ public sealed class LegalDocumentSyncServiceTests : ConsentTestHarness
     }
 
     [HumansFact]
-    public async Task CreateLegalDocumentWithInitialSyncAsync_FailedSyncKeepsCreationAudit()
+    public async Task CreateLegalDocumentWithInitialSyncAsync_SyncFails_KeepsAudit()
     {
         var request = new AdminLegalDocumentUpsertRequest("Privacy", _team.Id, true, true, 7, "missing/");
         _gitHub.DiscoverLanguageFilesAsync("missing/", Arg.Any<CancellationToken>())
@@ -704,7 +704,7 @@ public sealed class LegalDocumentSyncServiceTests : ConsentTestHarness
     }
 
     [HumansFact]
-    public async Task UpdateLegalDocumentAsync_UpdatesAndEvictsCache()
+    public async Task UpdateLegalDocumentAsync_Found_EvictsCache()
     {
         var document = await SeedDocumentAsync("Code of Conduct");
 
@@ -722,7 +722,7 @@ public sealed class LegalDocumentSyncServiceTests : ConsentTestHarness
     }
 
     [HumansFact]
-    public async Task UpdateLegalDocumentAsync_ReturnsNull_WhenNotFound_DoesNotInvalidate()
+    public async Task UpdateLegalDocumentAsync_NotFound_ReturnsNull()
     {
         var request = new AdminLegalDocumentUpsertRequest("Missing", _team.Id, true, true, 7, null);
 
@@ -735,7 +735,7 @@ public sealed class LegalDocumentSyncServiceTests : ConsentTestHarness
     }
 
     [HumansFact]
-    public async Task ArchiveLegalDocumentAsync_ArchivesAndEvictsCache()
+    public async Task ArchiveLegalDocumentAsync_Found_EvictsCache()
     {
         var document = await SeedDocumentAsync("Code of Conduct");
 
@@ -750,7 +750,7 @@ public sealed class LegalDocumentSyncServiceTests : ConsentTestHarness
     }
 
     [HumansFact]
-    public async Task ArchiveLegalDocumentAsync_ReturnsNull_WhenNotFound_DoesNotInvalidate()
+    public async Task ArchiveLegalDocumentAsync_NotFound_ReturnsNull()
     {
         var archived = await _service.ArchiveLegalDocumentAsync(
             Guid.NewGuid(), _actorUserId, Xunit.TestContext.Current.CancellationToken);
@@ -766,7 +766,7 @@ public sealed class LegalDocumentSyncServiceTests : ConsentTestHarness
     [Xunit.InlineData(2001)]
     [Xunit.InlineData(-1)]
     [Xunit.InlineData(-2)]
-    public async Task UpdateVersionSummaryAsync_ValidatesTrimmedLengthBeforePersistenceAndInvalidation(int length)
+    public async Task UpdateVersionSummaryAsync_TooLongTrimmed_IsRefused(int length)
     {
         var document = await SeedDocumentAsync("Code of Conduct");
         var versionId = Guid.NewGuid();
@@ -822,7 +822,7 @@ public sealed class LegalDocumentSyncServiceTests : ConsentTestHarness
     }
 
     [HumansFact]
-    public async Task UpdateVersionSummaryAsync_ReturnsNotFound_WhenVersionNotFound_DoesNotInvalidate()
+    public async Task UpdateVersionSummaryAsync_VersionNotFound_ReturnsNotFound()
     {
         var document = await SeedDocumentAsync("Code of Conduct");
 
@@ -851,7 +851,7 @@ public sealed class LegalDocumentSyncServiceTests : ConsentTestHarness
     }
 
     [HumansFact]
-    public async Task SyncLegalDocumentAsync_AlreadyCurrent_TouchesAndEvictsCache()
+    public async Task SyncLegalDocumentAsync_AlreadyCurrent_EvictsCache()
     {
         var document = await SeedDocumentAsync("Privacy", folderPath: "privacy/", currentCommitSha: "same-sha");
         StubGitHubFolder("privacy/", "es-content", "same-sha", "No-op commit");
@@ -985,7 +985,7 @@ public sealed class LegalDocumentSyncServiceTests : ConsentTestHarness
     }
 
     [HumansFact]
-    public async Task SyncLegalDocumentAsync_FirstVersion_DoesNotRequireReConsent_AndEmitsPublished()
+    public async Task SyncLegalDocumentAsync_FirstVersion_NeedsNoReConsent()
     {
         StubActiveUser();
         var document = await SeedDocumentAsync("Privacy", folderPath: "privacy/", currentCommitSha: "old-sha");
@@ -1032,7 +1032,7 @@ public sealed class LegalDocumentSyncServiceTests : ConsentTestHarness
     }
 
     [HumansFact]
-    public async Task SyncLegalDocumentAsync_ShaChanged_CreatesReConsentVersion_AndEmitsReConsentRequired()
+    public async Task SyncLegalDocumentAsync_ShaChanged_CreatesReConsentVersion()
     {
         StubActiveUser();
         var document = await SeedDocumentAsync("Privacy", folderPath: "privacy/", currentCommitSha: "sha-1");
@@ -1066,7 +1066,7 @@ public sealed class LegalDocumentSyncServiceTests : ConsentTestHarness
     }
 
     [HumansFact]
-    public async Task SyncLegalDocumentAsync_NoCanonicalSpanishFile_Throws_AndPersistsNoVersion()
+    public async Task SyncLegalDocumentAsync_NoSpanishFile_Throws()
     {
         var document = await SeedDocumentAsync("Privacy", folderPath: "privacy/");
         _gitHub.DiscoverLanguageFilesAsync("privacy/", Arg.Any<CancellationToken>())

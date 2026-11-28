@@ -6,6 +6,7 @@ using Humans.Tasks.Domain;
 namespace Humans.Tasks.Services;
 
 // Claiming and requests. A claim never checks permissions (controllers do) and never adds team membership.
+[Humans.Base.Attributes.Grandfathered("HUM0046", "Fold after the in-flight Tasks work lands.", "2026-11-27", "peterdrier/Humans#2675")]
 internal sealed partial class TaskService
 {
     public async Task<TaskResult> ClaimAsync(Guid taskId, Guid actorUserId, CancellationToken ct = default)

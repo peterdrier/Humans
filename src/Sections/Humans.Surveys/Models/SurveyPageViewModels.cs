@@ -1,6 +1,7 @@
 using Humans.Surveys.Contracts;
 using Humans.Base.Attributes;
 using Humans.Surveys.Domain;
+using JetBrains.Annotations;
 using Microsoft.AspNetCore.Mvc.ModelBinding.Validation;
 
 namespace Humans.Surveys.Models;
@@ -91,6 +92,7 @@ internal sealed record SurveyPreviewNoticeModel(
     string Message,
     string AdditionalCssClasses = "");
 
+[UsedImplicitly(ImplicitUseKindFlags.Assign, ImplicitUseTargetFlags.WithMembers)]
 internal sealed class SurveyPageInputModel
 {
     // Non-nullable strings are implicitly [Required]; the public path posts no Token, and blank
@@ -103,6 +105,7 @@ internal sealed class SurveyPageInputModel
     public bool Back { get; set; }
 }
 
+[UsedImplicitly(ImplicitUseKindFlags.Assign, ImplicitUseTargetFlags.WithMembers)]
 internal sealed class SurveyPostedAnswer
 {
     public Guid QuestionId { get; set; }
@@ -120,6 +123,7 @@ internal sealed class SurveyPostedGridRow
     public List<string> SelectedColumnValues { get; set; } = [];
 }
 
+[UsedImplicitly(ImplicitUseKindFlags.Assign, ImplicitUseTargetFlags.WithMembers)]
 internal sealed class SurveyPostedRankedOption
 {
     [ValidateNever]

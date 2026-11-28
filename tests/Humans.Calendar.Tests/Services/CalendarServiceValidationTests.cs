@@ -109,7 +109,7 @@ public class CalendarServiceValidationTests
     [InlineData("FREQ=DAILY;UNTIL=20260603T1000", false, false)]
     [InlineData("FREQ=DAILY;UNTIL=20260603T100000Zjunk", false, true)]
     [InlineData("FREQ=DAILY;UNTIL=20260603T100000+0200", false, false)]
-    public async Task EventWithResultAsync_InvalidRecurrence_is_rejected_before_persistence(
+    public async Task EventWithResultAsync_InvalidRecurrence_IsRejected(
         string rule, bool allDay, bool update)
     {
         var repo = Substitute.For<ICalendarRepository>();
@@ -144,7 +144,7 @@ public class CalendarServiceValidationTests
     [InlineData("FREQ=DAILY;UNTIL=20260603T100000Z", false)]
     [InlineData("FREQ=DAILY;COUNT=3", true)]
     [InlineData("FREQ=DAILY;UNTIL=20260603T100000Z", true)]
-    public async Task EventWithResultAsync_InvalidDuration_is_a_validation_failure(string rule, bool update)
+    public async Task EventWithResultAsync_InvalidDuration_FailsValidation(string rule, bool update)
     {
         var repo = Substitute.For<ICalendarRepository>();
         var service = BuildService(repo);
@@ -214,7 +214,7 @@ public class CalendarServiceValidationTests
     [InlineData("FREQ=YEARLY;BYWEEKNO=2;BYDAY=MO")]
     [InlineData("FREQ=YEARLY;BYMONTH=1;BYSETPOS=1")]
     [InlineData("FREQ=HOURLY;BYYEARDAY=1;BYSETPOS=1")]
-    public void RecurrenceRuleRefusal_valid_input_returns_null(string? rrule)
+    public void RecurrenceRuleRefusal_ValidInput_ReturnsNull(string? rrule)
     {
         CalendarRecurrenceRules.RecurrenceRuleRefusal(rrule).Should().BeNull();
     }
@@ -222,7 +222,7 @@ public class CalendarServiceValidationTests
     [HumansTheory]
     [InlineData("FREQ=NOT_A_REAL_FREQ")]
     [InlineData("FREQ=WEEKLY;BYDAY=XX")]
-    public void RecurrenceRuleRefusal_malformed_input_returns_reason(string rrule)
+    public void RecurrenceRuleRefusal_MalformedInput_ReturnsReason(string rrule)
     {
         CalendarRecurrenceRules.RecurrenceRuleRefusal(rrule).Should().Contain("Recurrence rule is malformed");
     }
@@ -233,7 +233,7 @@ public class CalendarServiceValidationTests
     [InlineData("  ")]
     [InlineData("Europe/Madrid")]
     [InlineData("UTC")]
-    public void TimezoneRefusal_valid_input_returns_null(string? tz)
+    public void TimezoneRefusal_ValidInput_ReturnsNull(string? tz)
     {
         CalendarRecurrenceRules.TimezoneRefusal(tz).Should().BeNull();
     }
@@ -241,7 +241,7 @@ public class CalendarServiceValidationTests
     [HumansTheory]
     [InlineData("Europe/Madird")]
     [InlineData("Not/A/Real/Zone")]
-    public void TimezoneRefusal_unknown_input_returns_reason(string tz)
+    public void TimezoneRefusal_UnknownInput_ReturnsReason(string tz)
     {
         CalendarRecurrenceRules.TimezoneRefusal(tz).Should().Contain("Recurrence timezone is unknown");
     }
@@ -255,7 +255,7 @@ public class CalendarServiceValidationTests
     [InlineData("Europe/Madrid")]
     [InlineData("UTC")]
     [InlineData("America/Los_Angeles")]
-    public void Tzdb_GetZoneOrNull_returns_zone_for_known_id(string id)
+    public void GetZoneOrNull_KnownId_ReturnsZone(string id)
     {
         DateTimeZoneProviders.Tzdb.GetZoneOrNull(id).Should().NotBeNull();
     }
@@ -264,13 +264,13 @@ public class CalendarServiceValidationTests
     [InlineData("Europe/Madird")]       // typo'd Madrid, original bug example
     [InlineData("Not/A/Real/Zone")]
     [InlineData("")]
-    public void Tzdb_GetZoneOrNull_returns_null_for_unknown_id(string id)
+    public void GetZoneOrNull_UnknownId_ReturnsNull(string id)
     {
         DateTimeZoneProviders.Tzdb.GetZoneOrNull(id).Should().BeNull();
     }
 
     [HumansFact]
-    public void Tzdb_indexer_throws_for_unknown_id()
+    public void TzdbIndexer_UnknownId_Throws()
     {
         // The indexer is what the pre-fix controller used; it throws, which surfaced
         // as a 500 to the user on submit. The fix swaps this for GetZoneOrNull.
@@ -283,7 +283,7 @@ public class CalendarServiceValidationTests
     [InlineData(false, true, true)]
     [InlineData(true, false, false)]
     [InlineData(true, true, true)]
-    public async Task Create_and_update_reject_an_owning_team_that_cannot_own_events(bool update, bool isActive, bool isHidden)
+    public async Task CreateAndUpdate_TeamCannotOwnEvents_IsRejected(bool update, bool isActive, bool isHidden)
     {
         var repo = Substitute.For<ICalendarRepository>();
         var service = BuildService(repo, Substitute.For<IAuditLogService>(), teams: ActiveTeams(isActive, isHidden));
@@ -306,7 +306,7 @@ public class CalendarServiceValidationTests
     }
 
     [HumansFact]
-    public async Task Create_rejects_an_owning_team_that_does_not_exist()
+    public async Task Create_UnknownOwningTeam_IsRejected()
     {
         var repo = Substitute.For<ICalendarRepository>();
         var service = BuildService(repo, Substitute.For<IAuditLogService>(), teams: Substitute.For<ITeamService>());
@@ -323,7 +323,7 @@ public class CalendarServiceValidationTests
     }
 
     [HumansFact]
-    public async Task CreateEventWithResultAsync_returns_validation_member_for_malformed_recurrence()
+    public async Task CreateEventWithResultAsync_MalformedRecurrence_NamesMember()
     {
         var repo = Substitute.For<ICalendarRepository>();
         var logger = Substitute.For<ILogger<CalendarService>>();
@@ -354,7 +354,7 @@ public class CalendarServiceValidationTests
     }
 
     [HumansFact]
-    public async Task UpdateEventWithResultAsync_returns_validation_member_for_unknown_timezone()
+    public async Task UpdateEventWithResultAsync_UnknownTimezone_NamesMember()
     {
         var repo = Substitute.For<ICalendarRepository>();
         var logger = Substitute.For<ILogger<CalendarService>>();
@@ -384,7 +384,7 @@ public class CalendarServiceValidationTests
     }
 
     [HumansFact]
-    public async Task CreateEventWithResultAsync_COUNT_rule_persists_the_last_occurrence_end()
+    public async Task CreateEventWithResultAsync_CountRule_StoresLastEnd()
     {
         var repo = Substitute.For<ICalendarRepository>();
         var service = BuildService(repo);
@@ -417,7 +417,7 @@ public class CalendarServiceValidationTests
     [InlineData("FREQ=DAILY;UNTIL= 20260603T100000Z ", false)]
     [InlineData("FREQ=DAILY;UNTIL=\t20260603T100000z\t", true)]
     [InlineData("FREQ= DAILY ;UNTIL=20260603T100000Z", false)]
-    public async Task EventWithResultAsync_UTC_until_is_independent_of_case_and_server_timezone(string rule, bool update)
+    public async Task EventWithResultAsync_UtcUntil_IgnoresServerZone(string rule, bool update)
     {
         CalendarRecurrenceRules.RecurrenceRuleRefusal(rule).Should().BeNull();
         var repo = Substitute.For<ICalendarRepository>();
@@ -451,7 +451,7 @@ public class CalendarServiceValidationTests
     [HumansTheory]
     [InlineData("20260603")]
     [InlineData(" 20260603 ")]
-    public async Task CreateEventWithResultAsync_DATE_until_persists_the_end_of_that_local_day(string until)
+    public async Task CreateEventWithResultAsync_DateUntil_StoresDayEnd(string until)
     {
         var repo = Substitute.For<ICalendarRepository>();
         var service = BuildService(repo);
@@ -477,7 +477,7 @@ public class CalendarServiceValidationTests
     [InlineData("20260329T023000", "Europe/Madrid", 2026, 3, 29, 1, 30)]
     [InlineData("20261025T023000", "Europe/Madrid", 2026, 10, 25, 0, 30)]
     [InlineData("20111229", "Pacific/Apia", 2011, 12, 30, 10, 0)]
-    public async Task CreateEventWithResultAsync_LocalUntil_uses_occurrence_timezone_resolution(
+    public async Task CreateEventWithResultAsync_LocalUntil_UsesOccurrenceZone(
         string until, string timezone, int year, int month, int day, int hour, int minute)
     {
         var repo = Substitute.For<ICalendarRepository>();
@@ -501,7 +501,7 @@ public class CalendarServiceValidationTests
     [HumansTheory]
     [InlineData("FREQ=DAILY;UNTIL=20260603")]
     [InlineData("FREQ= DAILY ;UNTIL= 20260603 ")]
-    public async Task CreateEventWithResultAsync_AllDayUntil_preserves_rule_text_and_date_bound(string rule)
+    public async Task CreateEventWithResultAsync_AllDayUntil_KeepsRuleText(string rule)
     {
         var repo = Substitute.For<ICalendarRepository>();
         var service = BuildService(repo);
@@ -523,7 +523,7 @@ public class CalendarServiceValidationTests
     // must not propagate or turn a successful mutation result into a failed one.
 
     [HumansFact]
-    public async Task CreateEventWithResultAsync_AuditThrowsAfterWrite_StillReturnsSuccess()
+    public async Task CreateEventWithResultAsync_AuditThrowsAfterWrite_Succeeds()
     {
         var repo = Substitute.For<ICalendarRepository>();
         var audit = Substitute.For<IAuditLogService>();
@@ -583,7 +583,7 @@ public class CalendarServiceValidationTests
     }
 
     [HumansFact]
-    public async Task UpdateEventWithResultAsync_AuditThrowsAfterWrite_StillReturnsSuccess()
+    public async Task UpdateEventWithResultAsync_AuditThrowsAfterWrite_Succeeds()
     {
         var repo = Substitute.For<ICalendarRepository>();
         var eventId = Guid.NewGuid();

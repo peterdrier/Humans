@@ -15,6 +15,7 @@ internal sealed class MembershipTierService(
     IApplicationRepository applications,
     IUserService users,
     IAuditLogService audit,
+    CachingGovernanceService cache,
     IClock clock) : IGovernanceService, IUserDataContributor, IUserMerge
 {
     internal const string MembershipTierSlice = "MembershipTier";
@@ -60,14 +61,21 @@ internal sealed class MembershipTierService(
                 ? null
                 : LatestActiveApproved(await applications.GetByUserIdAsync(userId, ct), newTier, today);
             var displayName = (await users.GetUserInfoAsync(userId, ct))?.BurnerName ?? "Unknown";
-            await repo.UpsertAsync(new MembershipTierRecord
+            try
             {
-                UserId = userId,
-                Tier = newTier,
-                GrantedAt = now,
-                ExpiresAt = granting?.TermExpiresAt,
-                GrantedByApplicationId = granting?.Id,
-            }, ct);
+                await repo.UpsertAsync(new MembershipTierRecord
+                {
+                    UserId = userId,
+                    Tier = newTier,
+                    GrantedAt = now,
+                    ExpiresAt = granting?.TermExpiresAt,
+                    GrantedByApplicationId = granting?.Id,
+                }, ct);
+            }
+            finally
+            {
+                cache.Clear();
+            }
             await audit.LogAsync(
                 GovernanceAuditActions.TierDowngraded, "Profile", userId,
                 $"Membership tier changed to {newTier} for {displayName} due to {tier} term expiry",
@@ -89,7 +97,14 @@ internal sealed class MembershipTierService(
     {
         _ = actorUserId;
         _ = now;
-        await repo.ReassignAsync(mergedFromUserId, mergedToUserId, ct);
+        try
+        {
+            await repo.ReassignAsync(mergedFromUserId, mergedToUserId, ct);
+        }
+        finally
+        {
+            cache.Clear();
+        }
     }
 
     public async Task<IReadOnlyList<UserDataSlice>> ContributeForUserAsync(Guid userId, CancellationToken ct)

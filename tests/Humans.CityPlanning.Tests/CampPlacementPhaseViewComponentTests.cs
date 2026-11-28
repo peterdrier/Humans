@@ -37,7 +37,7 @@ public sealed class CampPlacementPhaseViewComponentTests : CityPlanningTestBase
     [InlineData(true, false, true)]
     [InlineData(false, true, true)]
     [InlineData(false, false, false)]
-    public async Task ShowsOnlyToMapAdminsAndTheCampsLeads(bool mapAdmin, bool lead, bool shown)
+    public async Task Invoke_NotAdminOrLead_RendersNothing(bool mapAdmin, bool lead, bool shown)
     {
         _authorization.AuthorizeAsync(Arg.Any<ClaimsPrincipal>(), Arg.Any<object?>(), PolicyNames.CityPlanningMapAdmin)
             .Returns(mapAdmin ? AuthorizationResult.Success() : AuthorizationResult.Failed());
@@ -53,7 +53,7 @@ public sealed class CampPlacementPhaseViewComponentTests : CityPlanningTestBase
     }
 
     [HumansFact]
-    public async Task RendersNothingWithoutAnActiveEvent()
+    public async Task Invoke_NoActiveEvent_RendersNothing()
     {
         _authorization.AuthorizeAsync(Arg.Any<ClaimsPrincipal>(), Arg.Any<object?>(), PolicyNames.CityPlanningMapAdmin)
             .Returns(AuthorizationResult.Success());

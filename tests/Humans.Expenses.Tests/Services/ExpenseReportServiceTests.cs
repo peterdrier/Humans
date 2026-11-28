@@ -44,7 +44,7 @@ namespace Humans.Expenses.Tests.Services;
 
 // The drain gate is static (one drain per process), so classes that drain run serially.
 [Collection("HoldedDrainGate")]
-public sealed partial class ExpenseReportServiceTests
+public sealed class ExpenseReportServiceTests
 {
     private readonly IStringLocalizer<ExpensesResource> _localizer =
         new StringLocalizer<ExpensesResource>(new ResourceManagerStringLocalizerFactory(
@@ -136,7 +136,7 @@ public sealed partial class ExpenseReportServiceTests
         profile: profile);
 
     [HumansFact]
-    public async Task AbandonedExpensesIndex_CancelsReadsInsteadOfShowingAnErrorView()
+    public async Task Index_AbandonedRequest_CancelsReads()
     {
         var actorId = Guid.NewGuid();
         _userService.GetUserInfoAsync(actorId, Arg.Any<CancellationToken>()).Returns(
@@ -227,7 +227,7 @@ public sealed partial class ExpenseReportServiceTests
     }
 
     [HumansFact]
-    public async Task AbandonedNewReportForm_CancelsItsUserReadWithoutShowingAnError()
+    public async Task NewReportForm_AbandonedRequest_CancelsUserRead()
     {
         SetupActiveYear();
         var actorId = Guid.NewGuid();
@@ -272,7 +272,7 @@ public sealed partial class ExpenseReportServiceTests
     [InlineData("Iban", true)]
     [InlineData("Review", false)]
     [InlineData("Review", true)]
-    public async Task AbandonedReportPages_CancelViewerAndOwningReportReads(string page, bool cancelAfterViewer)
+    public async Task ReportPages_AbandonedRequest_CancelReads(string page, bool cancelAfterViewer)
     {
         var (year, category) = SetupActiveYear();
         var actorId = Guid.NewGuid();
@@ -333,7 +333,7 @@ public sealed partial class ExpenseReportServiceTests
     }
 
     [HumansFact]
-    public async Task Review_PassesSubmitterIdsToTheViewWithoutBulkNameHydration()
+    public async Task Review_Submitters_PassedAsIdsOnly()
     {
         var (year, category) = SetupActiveYear();
         var viewerId = Guid.NewGuid();
@@ -469,7 +469,7 @@ public sealed partial class ExpenseReportServiceTests
     }
 
     [HumansFact]
-    public async Task CreateDraftAsync_CreatesReport_WithDraftStatusAndZeroTotal()
+    public async Task CreateDraftAsync_New_IsDraftWithZeroTotal()
     {
         var (year, category) = SetupActiveYear();
         var userId = Guid.NewGuid();
@@ -517,7 +517,7 @@ public sealed partial class ExpenseReportServiceTests
     }
 
     [HumansFact]
-    public async Task CreateDraftAsync_Refuses_AnOrphanedCategoryAccount_FinanceNoLongerOffersIt()
+    public async Task CreateDraftAsync_OrphanedCategoryAccount_IsRefused()
     {
         // Finance drops a map row whose category is not in the active year from the active list
         // (ListExpenseAccountsAsync(activeOnly: true)), so the member never sees it and the service
@@ -536,7 +536,7 @@ public sealed partial class ExpenseReportServiceTests
     }
 
     [HumansFact]
-    public async Task CreateDraftAsync_StoresTheAccount_AndDerivesItsCategory()
+    public async Task CreateDraftAsync_MappedAccount_DerivesCategory()
     {
         var (year, category) = SetupActiveYear();
         var userId = Guid.NewGuid();
@@ -551,7 +551,7 @@ public sealed partial class ExpenseReportServiceTests
     }
 
     [HumansFact]
-    public async Task CreateDraftAsync_OnAnUnmappedAccount_HasNoCategoryAndNoYear()
+    public async Task CreateDraftAsync_UnmappedAccount_HasNoCategoryOrYear()
     {
         SetupActiveYear();
         var userId = Guid.NewGuid();
@@ -631,7 +631,7 @@ public sealed partial class ExpenseReportServiceTests
     }
 
     [HumansFact]
-    public async Task Merged_submitter_lists_all_historical_reports_without_another_humans_reports()
+    public async Task MergedSubmitter_List_HasOnlyOwnReports()
     {
         var ct = TestContext.Current.CancellationToken;
         var (_, category) = SetupActiveYear();
@@ -661,14 +661,14 @@ public sealed partial class ExpenseReportServiceTests
     [InlineData("withdraw")]
     [InlineData("iban")]
     [InlineData("iban-snapshot")]
-    public async Task Merged_submitter_can_manage_historical_reports_and_updates_the_surviving_profile(string operation)
+    public async Task MergedSubmitter_HistoricalReports_AreManageable(string operation)
     {
         var ct = TestContext.Current.CancellationToken;
         SetupActiveYear();
         var sourceId = Guid.NewGuid();
         var survivorId = Guid.NewGuid();
-        SetupUserAndProfile(sourceId, "Old Name", "ES9121000418450200051332");
-        SetupUserAndProfile(survivorId, "Current Name", "ES9121000418450200051332");
+        SetupUser(sourceId, "Old Name", "ES9121000418450200051332");
+        SetupUser(survivorId, "Current Name", "ES9121000418450200051332");
         var reportId = (await _sut.CreateDraftAsync(sourceId, sourceId, CategoryAccountNumber, "Supplies", ct: ct)).ReportId!.Value;
         var lineId = (await _sut.AddLineAsync(reportId, sourceId, "Timber", 10m, ct: ct)).LineId!.Value;
         using var receipt = new MemoryStream([1, 2, 3]);
@@ -722,7 +722,7 @@ public sealed partial class ExpenseReportServiceTests
     }
 
     [HumansFact]
-    public async Task AddLineAsync_AddsLine_AndUpdatesTotal()
+    public async Task AddLineAsync_Line_AddedTotalUpdated()
     {
         SetupActiveYear();
         var submitter = Guid.NewGuid();
@@ -758,7 +758,7 @@ public sealed partial class ExpenseReportServiceTests
 
 
     [HumansFact]
-    public async Task RemoveLineAsync_RemovesLine_AndRecomputesTotal()
+    public async Task RemoveLineAsync_Line_RemovedTotalRecomputed()
     {
         SetupActiveYear();
         var submitter = Guid.NewGuid();
@@ -793,7 +793,7 @@ public sealed partial class ExpenseReportServiceTests
 
 
     [HumansFact]
-    public async Task UpdateLineAsync_UpdatesAmount_AndRecomputesTotal()
+    public async Task UpdateLineAsync_Amount_RecomputesTotal()
     {
         SetupActiveYear();
         var submitter = Guid.NewGuid();
@@ -844,7 +844,7 @@ public sealed partial class ExpenseReportServiceTests
     }
 
     [HumansFact]
-    public async Task AttachFileToLineAsync_StoresFile_CreatesRow_LinksLine_Audits()
+    public async Task AttachFileToLineAsync_Valid_StoresLinksAudits()
     {
         SetupActiveYear();
         var submitter = Guid.NewGuid();
@@ -1088,7 +1088,7 @@ public sealed partial class ExpenseReportServiceTests
 
 
     [HumansFact]
-    public async Task AttachFileToLineAsync_Throws_WhenLineDoesNotBelongToReport()
+    public async Task AttachFileToLineAsync_LineOfOtherReport_Throws()
     {
         SetupActiveYear();
         var submitter = Guid.NewGuid();
@@ -1185,7 +1185,7 @@ public sealed partial class ExpenseReportServiceTests
     }
 
     [HumansFact]
-    public async Task RemoveAttachmentFromLineAsync_UnlinksAndDeletesFile_Audits()
+    public async Task RemoveAttachmentFromLineAsync_Valid_DeletesWithAudit()
     {
         SetupActiveYear();
         var submitter = Guid.NewGuid();
@@ -1217,7 +1217,7 @@ public sealed partial class ExpenseReportServiceTests
     }
 
     [HumansFact]
-    public async Task RemoveAttachmentFromLineAsync_RequestDisconnectsAtCommit_RemovesMetadataAuditsAndCleansFile()
+    public async Task RemoveAttachmentFromLineAsync_Disconnect_StillCleansUp()
     {
         SetupActiveYear();
         using var request = new CancellationTokenSource();
@@ -1262,7 +1262,7 @@ public sealed partial class ExpenseReportServiceTests
     }
 
     [HumansFact]
-    public async Task AddLineAsync_ProofRow_UnderInvoiceLine_ExcludedFromTotal()
+    public async Task AddLineAsync_ProofUnderInvoice_ExcludedFromTotal()
     {
         SetupActiveYear();
         var submitter = Guid.NewGuid();
@@ -1278,7 +1278,7 @@ public sealed partial class ExpenseReportServiceTests
     }
 
     [HumansFact]
-    public async Task AddLineAsync_ProofRow_Throws_WhenParentIsNotInvoice()
+    public async Task AddLineAsync_ProofUnderNonInvoice_Throws()
     {
         SetupActiveYear();
         var submitter = Guid.NewGuid();
@@ -1291,7 +1291,7 @@ public sealed partial class ExpenseReportServiceTests
     }
 
     [HumansFact]
-    public async Task AddLineAsync_ProofRow_Throws_WhenParentMissing()
+    public async Task AddLineAsync_ProofParentMissing_Throws()
     {
         SetupActiveYear();
         var submitter = Guid.NewGuid();
@@ -1559,7 +1559,7 @@ public sealed partial class ExpenseReportServiceTests
     [HumansTheory]
     [InlineData(false)]
     [InlineData(true)]
-    public async Task AttachFileToLineAsync_SuccessfulReplacement_RemovesOldMetadataAndCleansFile(bool cleanupFails)
+    public async Task AttachFileToLineAsync_Replacement_RemovesOldFile(bool cleanupFails)
     {
         var ct = TestContext.Current.CancellationToken;
         SetupActiveYear();
@@ -1591,7 +1591,7 @@ public sealed partial class ExpenseReportServiceTests
     }
 
     [HumansFact]
-    public async Task AttachFileToLineAsync_SaveThrowsAfterCommit_RestoresPreviousMetadataAndFile()
+    public async Task AttachFileToLineAsync_SaveThrows_RestoresPreviousFile()
     {
         var ct = TestContext.Current.CancellationToken;
         SetupActiveYear();
@@ -1762,7 +1762,7 @@ public sealed partial class ExpenseReportServiceTests
     [HumansTheory]
     [InlineData(true)]
     [InlineData(false)]
-    public async Task RemoveLineAsync_InvoiceLine_RemovesItsProofRows_AndTheirFiles(bool cancelAtAudit)
+    public async Task RemoveLineAsync_InvoiceLine_RemovesProofsWithFiles(bool cancelAtAudit)
     {
         SetupActiveYear();
         var submitter = Guid.NewGuid();
@@ -1814,7 +1814,7 @@ public sealed partial class ExpenseReportServiceTests
         var submitter = Guid.NewGuid();
         var id = (await _sut.CreateDraftAsync(submitter, submitter, CategoryAccountNumber, "Project X", ct: TestContext.Current.CancellationToken)).ReportId!.Value;
         (await _sut.AddLineAsync(id, submitter, "Invoice, no file", 1000m, ExpenseLineType.Invoice, ct: TestContext.Current.CancellationToken)).Succeeded.Should().BeTrue();
-        SetupUserAndProfile(submitter, "Bob", "ES1234");
+        SetupUser(submitter, "Bob", "ES1234");
 
         var result = await _sut.SubmitAsync(id, submitter, TestContext.Current.CancellationToken);
         result.Succeeded.Should().BeFalse();
@@ -1831,7 +1831,7 @@ public sealed partial class ExpenseReportServiceTests
         var invoiceFile = MakeAttachment(submitter);
         await _expenseRepo.ReplaceLineAttachmentAsync(id, invoiceId, invoiceFile, TestContext.Current.CancellationToken);
         (await _sut.AddLineAsync(id, submitter, "Proof, no file", 400m, parentLineId: invoiceId, ct: TestContext.Current.CancellationToken)).Succeeded.Should().BeTrue();
-        SetupUserAndProfile(submitter, "Bob", "ES1234");
+        SetupUser(submitter, "Bob", "ES1234");
 
         var result = await _sut.SubmitAsync(id, submitter, TestContext.Current.CancellationToken);
         result.Succeeded.Should().BeFalse();
@@ -1846,7 +1846,7 @@ public sealed partial class ExpenseReportServiceTests
         var id = (await _sut.CreateDraftAsync(submitter, submitter, CategoryAccountNumber, "   ", ct: TestContext.Current.CancellationToken)).ReportId!.Value;
         var lineId = (await _sut.AddLineAsync(id, submitter, "Item", 100m, ct: TestContext.Current.CancellationToken)).LineId!.Value;
         await _expenseRepo.ReplaceLineAttachmentAsync(id, lineId, MakeAttachment(submitter), TestContext.Current.CancellationToken);
-        SetupUserAndProfile(submitter, "Alice Tester", "ES9121000418450200051332");
+        SetupUser(submitter, "Alice Tester", "ES9121000418450200051332");
 
         var result = await _sut.SubmitAsync(id, submitter, TestContext.Current.CancellationToken);
 
@@ -1876,7 +1876,7 @@ public sealed partial class ExpenseReportServiceTests
             .Returns(WrapInUserInfo(submitter, UserFixtures.Profile(), firstName: firstName, lastName: lastName));
         _finance.GetIbanAsync(submitter, Arg.Any<CancellationToken>()).Returns("ES9121000418450200051332");
         if (financeAdmin)
-            SetupUserAndProfile(actor, "Finance Admin", "ES9121000418450200051332");
+            SetupUser(actor, "Finance Admin", "ES9121000418450200051332");
 
         var result = await _sut.SubmitAsync(id, actor,
             TestContext.Current.CancellationToken);
@@ -1907,7 +1907,7 @@ public sealed partial class ExpenseReportServiceTests
 
         var legalName = namePartLength == 0
             ? "Alice Tester" : $"{new string('A', namePartLength)} {new string('B', namePartLength)}";
-        SetupUserAndProfile(submitter, legalName, "ES9121000418450200051332");
+        SetupUser(submitter, legalName, "ES9121000418450200051332");
 
         var ok = (await _sut.SubmitAsync(id, submitter, TestContext.Current.CancellationToken)).Succeeded;
 
@@ -1930,7 +1930,7 @@ public sealed partial class ExpenseReportServiceTests
         SetupActiveYear();
         var submitter = Guid.NewGuid();
         var id = (await _sut.CreateDraftAsync(submitter, submitter, CategoryAccountNumber, "Project X", ct: TestContext.Current.CancellationToken)).ReportId!.Value;
-        SetupUserAndProfile(submitter, "Bob", "ES1234");
+        SetupUser(submitter, "Bob", "ES1234");
 
         var result = await _sut.SubmitAsync(id, submitter, TestContext.Current.CancellationToken);
         result.Succeeded.Should().BeFalse();
@@ -1944,7 +1944,7 @@ public sealed partial class ExpenseReportServiceTests
         var submitter = Guid.NewGuid();
         var id = (await _sut.CreateDraftAsync(submitter, submitter, CategoryAccountNumber, "Project X", ct: TestContext.Current.CancellationToken)).ReportId!.Value;
         (await _sut.AddLineAsync(id, submitter, "No attachment line", 50m, ct: TestContext.Current.CancellationToken)).Succeeded.Should().BeTrue();
-        SetupUserAndProfile(submitter, "Bob", "ES1234");
+        SetupUser(submitter, "Bob", "ES1234");
 
         var result = await _sut.SubmitAsync(id, submitter, TestContext.Current.CancellationToken);
         result.Succeeded.Should().BeFalse();
@@ -1977,7 +1977,7 @@ public sealed partial class ExpenseReportServiceTests
         var id = (await _sut.CreateDraftAsync(submitter, submitter, CategoryAccountNumber, "Project X", ct: TestContext.Current.CancellationToken)).ReportId!.Value;
         var lineId = (await _sut.AddLineAsync(id, submitter, "Item", 100m, ct: TestContext.Current.CancellationToken)).LineId!.Value;
         await _expenseRepo.ReplaceLineAttachmentAsync(id, lineId, MakeAttachment(submitter), TestContext.Current.CancellationToken);
-        SetupUserAndProfile(submitter, "Alice", "ES9121000418450200051332");
+        SetupUser(submitter, "Alice", "ES9121000418450200051332");
 
         (await _sut.SubmitAsync(id, submitter, TestContext.Current.CancellationToken)).Succeeded.Should().BeTrue();
 
@@ -1998,7 +1998,7 @@ public sealed partial class ExpenseReportServiceTests
         var id = (await _sut.CreateDraftAsync(submitter, submitter, CategoryAccountNumber, "Project X", ct: TestContext.Current.CancellationToken)).ReportId!.Value;
         var lineId = (await _sut.AddLineAsync(id, submitter, "Item", 100m, ct: TestContext.Current.CancellationToken)).LineId!.Value;
         await _expenseRepo.ReplaceLineAttachmentAsync(id, lineId, MakeAttachment(submitter), TestContext.Current.CancellationToken);
-        SetupUserAndProfile(submitter, "Alice Tester", "ES9121000418450200051332");
+        SetupUser(submitter, "Alice Tester", "ES9121000418450200051332");
 
         var result = await _sut.SubmitAsync(id, submitter, TestContext.Current.CancellationToken);
 
@@ -2030,7 +2030,7 @@ public sealed partial class ExpenseReportServiceTests
         var submitter = Guid.NewGuid();
         var id = (await _sut.CreateDraftAsync(submitter, submitter, CategoryAccountNumber, "Project X", ct: TestContext.Current.CancellationToken)).ReportId!.Value;
         (await _sut.AddLineAsync(id, submitter, "No attachment line", 50m, ct: TestContext.Current.CancellationToken)).Succeeded.Should().BeTrue();
-        SetupUserAndProfile(submitter, "Bob", "ES1234");
+        SetupUser(submitter, "Bob", "ES1234");
 
         var result = await _sut.SubmitAsync(id, submitter, TestContext.Current.CancellationToken);
 
@@ -2045,7 +2045,7 @@ public sealed partial class ExpenseReportServiceTests
         var submitter = Guid.NewGuid();
         var id = (await _sut.CreateDraftAsync(submitter, submitter, CategoryAccountNumber, "Project X", ct: TestContext.Current.CancellationToken)).ReportId!.Value;
         await _sut.AddMileageLineAsync(id, submitter, "Berlin", "Barcelona", 100m, TestContext.Current.CancellationToken);
-        SetupUserAndProfile(submitter, "Alice Tester", "ES9121000418450200051332");
+        SetupUser(submitter, "Alice Tester", "ES9121000418450200051332");
 
         var result = await _sut.SubmitAsync(id, submitter, TestContext.Current.CancellationToken);
 
@@ -2060,7 +2060,7 @@ public sealed partial class ExpenseReportServiceTests
         var submitter = Guid.NewGuid();
         var id = (await _sut.CreateDraftAsync(submitter, submitter, CategoryAccountNumber, "Project X", ct: TestContext.Current.CancellationToken)).ReportId!.Value;
         await _sut.AddLineAsync(id, submitter, "Tent", 50m, ct: TestContext.Current.CancellationToken); // Receipt line, no attachment
-        SetupUserAndProfile(submitter, "Alice Tester", "ES9121000418450200051332");
+        SetupUser(submitter, "Alice Tester", "ES9121000418450200051332");
 
         var result = await _sut.SubmitAsync(id, submitter, TestContext.Current.CancellationToken);
 
@@ -2077,7 +2077,7 @@ public sealed partial class ExpenseReportServiceTests
         var submitter = Guid.NewGuid();
         var id = (await sut.CreateDraftAsync(submitter, submitter, CategoryAccountNumber, "Project X", ct: TestContext.Current.CancellationToken)).ReportId!.Value;
         (await sut.AddLineAsync(id, submitter, "No attachment line", 50m, ct: TestContext.Current.CancellationToken)).Succeeded.Should().BeTrue(); // Receipt line, no attachment
-        SetupUserAndProfile(submitter, "Bob", "ES1234");
+        SetupUser(submitter, "Bob", "ES1234");
 
         var result = await sut.SubmitAsync(id, submitter, TestContext.Current.CancellationToken);
 
@@ -2334,12 +2334,12 @@ public sealed partial class ExpenseReportServiceTests
     }
 
     [HumansFact]
-    public async Task CreateDraftAsync_OnBehalf_MakesTheMemberTheSubmitter_AndAudits()
+    public async Task CreateDraftAsync_OnBehalf_MemberIsSubmitter()
     {
         SetupActiveYear();
         var member = Guid.NewGuid();
         var admin = Guid.NewGuid();
-        SetupUserAndProfile(member, "Dani Member", "ES9121000418450200051332");
+        SetupUser(member, "Dani Member", "ES9121000418450200051332");
 
         var id = (await _sut.CreateDraftAsync(member, admin, CategoryAccountNumber, "Project X", ct: TestContext.Current.CancellationToken)).ReportId!.Value;
 
@@ -2357,7 +2357,7 @@ public sealed partial class ExpenseReportServiceTests
     }
 
     [HumansFact]
-    public async Task UpdateDraftAsync_OnBehalf_Succeeds_OnAnEndorsedReport()
+    public async Task UpdateDraftAsync_OnBehalfEndorsed_Succeeds()
     {
         // A finance admin's edit window covers the statuses a report can still be corrected in,
         // and correcting one does not send it back a step — the endorsement stands.
@@ -2376,7 +2376,7 @@ public sealed partial class ExpenseReportServiceTests
     }
 
     [HumansFact]
-    public async Task UpdateDraftAsync_OnAPendingReport_KeepsItsOwnBudgetYear()
+    public async Task UpdateDraftAsync_PendingReport_KeepsBudgetYear()
     {
         // The report belongs to a year that is no longer the active one. Re-resolving its header
         // through the active year would silently move last year's accounting into this year.
@@ -2402,7 +2402,7 @@ public sealed partial class ExpenseReportServiceTests
     }
 
     [HumansFact]
-    public async Task UpdateDraftAsync_OnAPendingReport_RejectsACategoryFromAnotherYear()
+    public async Task UpdateDraftAsync_OtherYearCategory_IsRejected()
     {
         SetupActiveYear();
         var member = Guid.NewGuid();
@@ -2438,14 +2438,14 @@ public sealed partial class ExpenseReportServiceTests
     }
 
     [HumansFact]
-    public async Task EveryOnBehalfEdit_WritesAnAuditEntry_NamingTheMember()
+    public async Task OnBehalfEdit_Each_AuditNamesMember()
     {
         // An admin changing somebody else's report is an action taken on their behalf, so each
         // header and line change owes them a trail — not just the create and the submit.
         SetupActiveYear();
         var member = Guid.NewGuid();
         var admin = Guid.NewGuid();
-        SetupUserAndProfile(member, "Dani Member", "ES9121000418450200051332");
+        SetupUser(member, "Dani Member", "ES9121000418450200051332");
         var id = (await _sut.CreateDraftAsync(member, member, CategoryAccountNumber, "Project X", ct: TestContext.Current.CancellationToken)).ReportId!.Value;
 
         await _sut.UpdateHeaderAsync(id, AsFinance(admin), CategoryAccountNumber, "corrected", ct: TestContext.Current.CancellationToken);
@@ -2472,7 +2472,7 @@ public sealed partial class ExpenseReportServiceTests
         SetupActiveYear();
         var member = Guid.NewGuid();
         var admin = Guid.NewGuid();
-        SetupUserAndProfile(member, "Dani Member", "ES9121000418450200051332");
+        SetupUser(member, "Dani Member", "ES9121000418450200051332");
         var id = (await _sut.CreateDraftAsync(member, member, CategoryAccountNumber, "Project X", ct: TestContext.Current.CancellationToken)).ReportId!.Value;
 
         await _sut.UpdateHeaderAsync(id, AsFinance(admin), CategoryAccountNumber, "corrected", ct: TestContext.Current.CancellationToken);
@@ -2508,7 +2508,7 @@ public sealed partial class ExpenseReportServiceTests
     }
 
     [HumansFact]
-    public async Task AddLineAsync_OnBehalf_Succeeds_ForFinanceAdmin()
+    public async Task AddLineAsync_FinanceAdminOnBehalf_Succeeds()
     {
         SetupActiveYear();
         var member = Guid.NewGuid();
@@ -2525,7 +2525,7 @@ public sealed partial class ExpenseReportServiceTests
 
 
     [HumansFact]
-    public async Task SubmitAsync_OnBehalf_SnapshotsTheMembersProfile_NotTheActors()
+    public async Task SubmitAsync_OnBehalf_SnapshotsMembersProfile()
     {
         // The payee is whoever the report belongs to. Reading the acting admin's profile here
         // would pay the admin's account for the member's receipts.
@@ -2537,8 +2537,8 @@ public sealed partial class ExpenseReportServiceTests
         var lineId = (await _sut.AddLineAsync(id, AsFinance(admin), "Item", 100m, ct: TestContext.Current.CancellationToken)).LineId!.Value;
         await _expenseRepo.ReplaceLineAttachmentAsync(id, lineId, MakeAttachment(admin), TestContext.Current.CancellationToken);
 
-        SetupUserAndProfile(member, "Dani Member", "ES9121000418450200051332");
-        SetupUserAndProfile(admin, "Ada Admin", "ES7100302053091234567895");
+        SetupUser(member, "Dani Member", "ES9121000418450200051332");
+        SetupUser(admin, "Ada Admin", "ES7100302053091234567895");
 
         var ok = (await _sut.SubmitAsync(id, admin, TestContext.Current.CancellationToken)).Succeeded;
 
@@ -2569,7 +2569,7 @@ public sealed partial class ExpenseReportServiceTests
         var reportId = Guid.NewGuid();
         await SeedReportWithStatusAsync(reportId, member, category.Id, Guid.NewGuid(),
             ExpenseReportStatus.Draft);
-        SetupUserAndProfile(member, "Dani Member", "ES9121000418450200051332");
+        SetupUser(member, "Dani Member", "ES9121000418450200051332");
         _financeWrite
             .SetIbanAsync(member, "ES9121000418450200051332", Arg.Any<CancellationToken>())
             .Returns(true);
@@ -2590,7 +2590,7 @@ public sealed partial class ExpenseReportServiceTests
     }
 
     [HumansFact]
-    public async Task AttachFileToLineAsync_OnBehalf_RelatesTheAuditToTheMember_NotTheAdmin()
+    public async Task AttachFileToLineAsync_OnBehalf_AuditNamesMember()
     {
         SetupActiveYear();
         var member = Guid.NewGuid();
@@ -2621,7 +2621,7 @@ public sealed partial class ExpenseReportServiceTests
         var reportId = Guid.NewGuid();
         await SeedReportWithStatusAsync(reportId, member, category.Id, Guid.NewGuid(),
             ExpenseReportStatus.Submitted, payeeIban: "ES1000750000010000000000");
-        SetupUserAndProfile(member, "Dani Member", "ES9121000418450200051332");
+        SetupUser(member, "Dani Member", "ES9121000418450200051332");
         _financeWrite
             .SetIbanAsync(member, "ES9121000418450200051332", Arg.Any<CancellationToken>())
             .Returns(true);
@@ -2751,7 +2751,7 @@ public sealed partial class ExpenseReportServiceTests
     [InlineData(true, true)]
     [InlineData(true, false)]
     [InlineData(false, false)]
-    public async Task CoordinatorQueueIdentityResolution_UsesSurvivorAndDeniesMissingAccounts(
+    public async Task CoordinatorQueue_MissingAccount_IsDenied(
         bool accountExists, bool survivorCoordinates)
     {
         var ct = TestContext.Current.CancellationToken;
@@ -2775,7 +2775,7 @@ public sealed partial class ExpenseReportServiceTests
 
 
     [HumansFact]
-    public async Task CoordinatorEndorseAsync_ByAFinanceAdminWhoIsNotTheCoordinator_Endorses()
+    public async Task CoordinatorEndorseAsync_FinanceAdmin_Endorses()
     {
         var (_, category) = SetupActiveYear();
         var reportId = Guid.NewGuid();
@@ -2795,7 +2795,7 @@ public sealed partial class ExpenseReportServiceTests
     }
 
     [HumansFact]
-    public async Task CoordinatorRejectAsync_ByAFinanceAdminWhoIsNotTheCoordinator_ReturnsToDraft()
+    public async Task CoordinatorRejectAsync_FinanceAdmin_ReturnsToDraft()
     {
         var (_, category) = SetupActiveYear();
         var reportId = Guid.NewGuid();
@@ -2849,7 +2849,7 @@ public sealed partial class ExpenseReportServiceTests
     }
 
     [HumansFact]
-    public async Task CoordinatorRejectAsync_ReturnsToDraft_And_Audits()
+    public async Task CoordinatorRejectAsync_Coordinator_ReturnsToDraftWithAudit()
     {
         var (_, category) = SetupActiveYear();
         var coordinator = Guid.NewGuid();
@@ -2965,7 +2965,7 @@ public sealed partial class ExpenseReportServiceTests
     }
 
     [HumansFact]
-    public async Task ApproveAsync_FlipsToApproved_AndAudits()
+    public async Task ApproveAsync_Pending_ApprovesWithAudit()
     {
         var (_, category) = SetupActiveYear();
         var actor = Guid.NewGuid();
@@ -2994,7 +2994,7 @@ public sealed partial class ExpenseReportServiceTests
     [InlineData(" ", "en")]
     [InlineData("not-a-culture", "en")]
     [InlineData("pt", "en")]
-    public async Task ApproveAsync_EmailsTheSubmitter_WithTheCappedAmountAndAMaskedIban(string language, string expectedCulture)
+    public async Task ApproveAsync_Capped_EmailsCappedAmountMaskedIban(string language, string expectedCulture)
     {
         string amount;
         using (new CultureScope(expectedCulture))
@@ -3024,7 +3024,7 @@ public sealed partial class ExpenseReportServiceTests
     }
 
     [HumansFact]
-    public async Task ApproveAsync_ForAMemberWithNoNotificationAddress_ApprovesAndSendsNothing()
+    public async Task ApproveAsync_NoNotificationAddress_ApprovesWithoutEmail()
     {
         var (_, category) = SetupActiveYear();
         var submitter = Guid.NewGuid();
@@ -3155,7 +3155,7 @@ public sealed partial class ExpenseReportServiceTests
     }
 
     [HumansFact]
-    public async Task ApproveAsync_WithOverrideAccount_AuditsBoth_AndRebooks()
+    public async Task ApproveAsync_OverrideAccount_AuditsBothThenRebooks()
     {
         var (_, category) = SetupActiveYear();
         var actor = Guid.NewGuid();
@@ -3271,7 +3271,7 @@ public sealed partial class ExpenseReportServiceTests
     }
 
     [HumansFact]
-    public async Task FinanceRejectAsync_ReturnsToDraft_AndAudits()
+    public async Task FinanceRejectAsync_Report_ReturnsToDraftWithAudit()
     {
         var (_, category) = SetupActiveYear();
         var actor = Guid.NewGuid();
@@ -3465,11 +3465,11 @@ public sealed partial class ExpenseReportServiceTests
     }
 
     [HumansFact]
-    public async Task GetHoldedTimelineAsync_builds_timeline_with_owed_and_other()
+    public async Task GetHoldedTimelineAsync_Report_HasOwedWithOther()
     {
         var userId = Guid.NewGuid();
         SetupActiveYear();
-        SetupUserAndProfile(userId, "Alice Tester", "ES9121000418450200051332");
+        SetupUser(userId, "Alice Tester", "ES9121000418450200051332");
         var reportId = await SeedApprovedReportWithAttachmentAsync(userId);
         await _expenseRepo.SetHoldedContactLinkAsync(reportId, "c1", 40000007, FakeNow, TestContext.Current.CancellationToken);
         var seededLineId = (await _sut.GetAsync(reportId, TestContext.Current.CancellationToken))!.Lines[0].Id;
@@ -3495,8 +3495,8 @@ public sealed partial class ExpenseReportServiceTests
         var survivorId = Guid.NewGuid();
         var sourceId = Guid.NewGuid();
         SetupActiveYear();
-        SetupUserAndProfile(sourceId, "Alice Old", "ES9121000418450200051332");
-        SetupUserAndProfile(survivorId, "Alice Tester", "ES9121000418450200051332");
+        SetupUser(sourceId, "Alice Old", "ES9121000418450200051332");
+        SetupUser(survivorId, "Alice Tester", "ES9121000418450200051332");
         var survivorReportId = await SeedApprovedReportWithAttachmentAsync(survivorId);
         var sourceReportId = await SeedApprovedReportWithAttachmentAsync(sourceId);
         foreach (var (reportId, docId) in new[] { (survivorReportId, "doc-1"), (sourceReportId, "doc-2") })
@@ -3522,13 +3522,13 @@ public sealed partial class ExpenseReportServiceTests
     [HumansTheory]
     [InlineData(false)]
     [InlineData(true)]
-    public async Task GetHoldedTimelineAsync_RegisteredTotal_UsesThePayableNotTheReceiptsTotal(bool withdrawn)
+    public async Task GetHoldedTimelineAsync_RegisteredTotal_UsesPayable(bool withdrawn)
     {
         // The seeded report has a 50 € line capped at 30 €, so a 30 € creditor balance is fully
         // explained by this report — counting the receipts total would leave 20 € as "other".
         var userId = Guid.NewGuid();
         SetupActiveYear();
-        SetupUserAndProfile(userId, "Alice Tester", "ES9121000418450200051332");
+        SetupUser(userId, "Alice Tester", "ES9121000418450200051332");
         var reportId = await SeedApprovedReportWithAttachmentAsync(userId, maxAmount: 30m);
         await _expenseRepo.SetHoldedContactLinkAsync(reportId, "c1", 40000007, FakeNow, TestContext.Current.CancellationToken);
         var seededLineId = (await _sut.GetAsync(reportId, TestContext.Current.CancellationToken))!.Lines[0].Id;
@@ -3552,13 +3552,13 @@ public sealed partial class ExpenseReportServiceTests
     [HumansTheory]
     [InlineData(false)]
     [InlineData(true)]
-    public async Task GetHoldedTimelineAsync_RegisteredTotal_CountsOnlyLinesWhoseDocExists(bool withdrawn)
+    public async Task GetHoldedTimelineAsync_RegisteredTotal_CountsLinesWithDoc(bool withdrawn)
     {
         // A per-line push that failed partway: line A's doc was created, line B's wasn't yet.
         // Only A's 40 € is booked in Holded, so the registered total must not claim B's 60 € too.
         var userId = Guid.NewGuid();
         SetupActiveYear();
-        SetupUserAndProfile(userId, "Alice Tester", "ES9121000418450200051332");
+        SetupUser(userId, "Alice Tester", "ES9121000418450200051332");
 
         var reportId = (await _sut.CreateDraftAsync(userId, userId, CategoryAccountNumber, "Project X", ct: TestContext.Current.CancellationToken)).ReportId!.Value;
         var lineAId = (await _sut.AddLineAsync(reportId, userId, "A", 40m, ct: TestContext.Current.CancellationToken)).LineId!.Value;
@@ -3590,11 +3590,11 @@ public sealed partial class ExpenseReportServiceTests
     }
 
     [HumansFact]
-    public async Task GetHoldedTimelineAsync_CarriesPaidTotalAndDate()
+    public async Task GetHoldedTimelineAsync_Paid_HasTotalWithDate()
     {
         var userId = Guid.NewGuid();
         SetupActiveYear();
-        SetupUserAndProfile(userId, "Alice Tester", "ES9121000418450200051332");
+        SetupUser(userId, "Alice Tester", "ES9121000418450200051332");
         var reportId = await SeedApprovedReportWithAttachmentAsync(userId);
         await _expenseRepo.SetHoldedContactLinkAsync(reportId, "c1", 40000007, FakeNow, TestContext.Current.CancellationToken);
         var seededLineId = (await _sut.GetAsync(reportId, TestContext.Current.CancellationToken))!.Lines[0].Id;
@@ -3769,7 +3769,7 @@ public sealed partial class ExpenseReportServiceTests
     [HumansTheory]
     [InlineData(ExpenseReportStatus.Submitted)]
     [InlineData(ExpenseReportStatus.CoordinatorEndorsed)]
-    public async Task DeclineLine_DropsTheLineFromTotalAndPayable_KeepsItOnTheReport_AndAudits(ExpenseReportStatus status)
+    public async Task DeclineLine_Valid_DropsFromTotalKeepsLine(ExpenseReportStatus status)
     {
         var (reportId, _, _, lines) = await SeedDeclineReportAsync(
             status, Guid.NewGuid(), null, 0, 100m, 50m);
@@ -3793,7 +3793,7 @@ public sealed partial class ExpenseReportServiceTests
     }
 
     [HumansFact]
-    public async Task DeclineLine_LeavesTheCapAlone_PayableIsTheLesserOfAcceptedTotalAndCap()
+    public async Task DeclineLine_Capped_PaysLesserOfTotalOrCap()
     {
         // €500 of receipts, a €400 cap, €50 declined: accepted total €450, payout still €400.
         var (reportId, _, _, lines) = await SeedDeclineReportAsync(
@@ -3808,7 +3808,7 @@ public sealed partial class ExpenseReportServiceTests
     }
 
     [HumansFact]
-    public async Task DeclineLine_BringingTheAcceptedTotalUnderTheCap_PaysTheAcceptedTotal()
+    public async Task DeclineLine_TotalDropsUnderCap_PaysAcceptedTotal()
     {
         var (reportId, _, _, lines) = await SeedDeclineReportAsync(
             ExpenseReportStatus.Submitted, Guid.NewGuid(), 400m, 0, 300m, 100m, 50m);
@@ -3824,7 +3824,7 @@ public sealed partial class ExpenseReportServiceTests
     [HumansTheory]
     [InlineData(ExpenseReportStatus.Submitted)]
     [InlineData(ExpenseReportStatus.CoordinatorEndorsed)]
-    public async Task UndoDeclineLine_PutsTheLineBackInTotalAndPayable_AndAudits(ExpenseReportStatus status)
+    public async Task UndoDeclineLine_Declined_RestoresLineToTotal(ExpenseReportStatus status)
     {
         var (reportId, _, _, lines) = await SeedDeclineReportAsync(
             status, Guid.NewGuid(), null, 1, 50m, 100m);
@@ -3846,7 +3846,7 @@ public sealed partial class ExpenseReportServiceTests
     }
 
     [HumansFact]
-    public async Task DeclineLine_ByACoordinatorOfTheCategory_WorksWhileSubmitted()
+    public async Task DeclineLine_CoordinatorWhileSubmitted_Works()
     {
         var coordinator = Guid.NewGuid();
         var (reportId, categoryId, teamId, lines) = await SeedDeclineReportAsync(
@@ -3862,7 +3862,7 @@ public sealed partial class ExpenseReportServiceTests
     [HumansTheory]
     [InlineData(false)]
     [InlineData(true)]
-    public async Task FirstReviewLineDecision_IsRefusedOnceTheReportIsEndorsed(bool undo)
+    public async Task FirstReviewLineDecision_EndorsedReport_IsRefused(bool undo)
     {
         var coordinator = Guid.NewGuid();
         var (reportId, categoryId, teamId, lines) = await SeedDeclineReportAsync(
@@ -3882,7 +3882,7 @@ public sealed partial class ExpenseReportServiceTests
     [InlineData(ExpenseReportStatus.Draft)]
     [InlineData(ExpenseReportStatus.Approved)]
     [InlineData(ExpenseReportStatus.Withdrawn)]
-    public async Task DeclineLine_OutsideTheDecisionWindow_IsRefusedEvenForFinanceAdmin(ExpenseReportStatus status)
+    public async Task DeclineLine_OutsideDecisionWindow_IsRefused(ExpenseReportStatus status)
     {
         var (reportId, _, _, lines) = await SeedDeclineReportAsync(status, Guid.NewGuid(), null, 0, 100m);
 
@@ -3893,7 +3893,7 @@ public sealed partial class ExpenseReportServiceTests
     }
 
     [HumansFact]
-    public async Task DeclineLine_RefusesABlankReason_AProofRow_AndADoubleDecline()
+    public async Task DeclineLine_InvalidRequest_IsRefused()
     {
         var (reportId, _, _, lines) = await SeedDeclineReportAsync(
             ExpenseReportStatus.Submitted, Guid.NewGuid(), null, 0, 100m, 50m);
@@ -3930,7 +3930,7 @@ public sealed partial class ExpenseReportServiceTests
     }
 
     [HumansFact]
-    public async Task RemovingADeclinedLine_ClearsIt_WithoutTakingItsAmountOutOfTheTotalAgain()
+    public async Task RemoveLine_Declined_TotalUnchanged()
     {
         var submitter = Guid.NewGuid();
         var (reportId, _, _, lines) = await SeedDeclineReportAsync(
@@ -3946,7 +3946,7 @@ public sealed partial class ExpenseReportServiceTests
     }
 
     [HumansFact]
-    public async Task ReplacingTheFileOfADeclinedLine_ClearsTheDecline_AndCountsTheLineAgain()
+    public async Task ReplaceFile_DeclinedLine_ClearsDecline()
     {
         var submitter = Guid.NewGuid();
         var (reportId, _, _, lines) = await SeedDeclineReportAsync(
@@ -3973,7 +3973,7 @@ public sealed partial class ExpenseReportServiceTests
     }
 
     [HumansFact]
-    public async Task ReplacingTheFileOfADeclinedLine_ReacceptanceSaveFailure_PreservesPreviousReceipt()
+    public async Task ReplaceFile_ReacceptanceSaveFails_KeepsPreviousReceipt()
     {
         var ct = TestContext.Current.CancellationToken;
         var submitter = Guid.NewGuid();
@@ -4010,7 +4010,7 @@ public sealed partial class ExpenseReportServiceTests
     }
 
     [HumansFact]
-    public async Task ReplacingTheFileOfADeclinedLine_WhenTheUploadRollsBack_KeepsTheDecline()
+    public async Task ReplaceFile_UploadRollsBack_KeepsDecline()
     {
         var submitter = Guid.NewGuid();
         var (reportId, _, _, lines) = await SeedDeclineReportAsync(
@@ -4084,7 +4084,7 @@ public sealed partial class ExpenseReportServiceTests
     }
 
     [HumansFact]
-    public async Task DrainHoldedOutboxAsync_SecondReport_SeedsContactIdFromTheMembersEarlierReport()
+    public async Task DrainHoldedOutboxAsync_SecondReport_ReusesContactId()
     {
         // A member whose Holded contact predates holded_creditor_contacts has a contact id on older
         // reports and no binding row. Seeding only from the report being pushed sends Finance a null,
@@ -4125,7 +4125,7 @@ public sealed partial class ExpenseReportServiceTests
     }
 
     [HumansFact]
-    public async Task DrainHoldedOutboxAsync_MergedSubmitter_BindsAndNumbersTheSurvivor()
+    public async Task DrainHoldedOutboxAsync_MergedSubmitter_BindsSurvivor()
     {
         // The report was submitted under an id that has since been merged into a survivor.
         var (_, category) = SetupActiveYear();
@@ -4168,7 +4168,7 @@ public sealed partial class ExpenseReportServiceTests
     }
 
     [HumansFact]
-    public async Task DrainHoldedOutboxAsync_DelegatesContactEnrichmentToFinance_PersistsContactLink()
+    public async Task DrainHoldedOutboxAsync_NewContact_PersistsContactLink()
     {
         // A user with distinct legal name and burner.
         var (_, category) = SetupActiveYear();
@@ -4339,7 +4339,7 @@ public sealed partial class ExpenseReportServiceTests
             []);
     }
 
-    private void SetupUserAndProfile(Guid userId, string displayName, string iban)
+    private void SetupUser(Guid userId, string displayName, string iban)
     {
         var nameParts = displayName.Split(' ', 2, StringSplitOptions.RemoveEmptyEntries);
         var firstName = nameParts.Length > 0 ? nameParts[0] : displayName;
@@ -4503,4 +4503,803 @@ public sealed partial class ExpenseReportServiceTests
         }
     }
 
+    // The pre-approval hook (docs/features/global/preapprovals.md): a report filed against a grant books to the
+    // grant's account, claims it at submit, releases it on withdraw, consumes it on approve, and never moves a grant
+    // on its own when the deadline passes.
+    [HumansTheory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task Submit_SharedGrant_IsHeldThroughTransactionCompletionAcrossScopes(bool rollbackFirst)
+    {
+        var ct = TestContext.Current.CancellationToken;
+        var owner = Guid.NewGuid();
+        var grant = MakeGrant();
+        var firstId = await CreateSubmittableGrantDraftAsync(owner, grant);
+        var nextId = await CreateSubmittableGrantDraftAsync(owner, grant);
+        Guid? committedHolder = null;
+        _preapprovals.GetGrantsAsync(Arg.Any<CancellationToken>()).Returns(_ =>
+            [grant with { HolderUserId = owner, Status = committedHolder is null ? GrantStatus.Open : GrantStatus.Claimed, ClaimableToday = committedHolder is null }]);
+        _preapprovalWrites.ClaimAsync(grant.Id, Arg.Any<Guid>(), owner, ct,
+            Arg.Any<Action<Func<CancellationToken, Task>>>()).Returns(call =>
+        {
+            var reportId = call.ArgAt<Guid>(1);
+            if (committedHolder is { } held && held != reportId)
+                return Task.FromResult(new PreapprovalWriteResult(Refusal: "Held by another report"));
+            System.Transactions.Transaction.Current.Should().NotBeNull();
+            call.ArgAt<Action<Func<CancellationToken, Task>>>(4)(token =>
+            {
+                System.Transactions.Transaction.Current.Should().BeNull();
+                token.Should().Be(CancellationToken.None);
+                committedHolder = reportId;
+                return Task.CompletedTask;
+            });
+            return Task.FromResult(new PreapprovalWriteResult(grant));
+        });
+        var saving = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var release = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var repository = Substitute.For<IExpenseRepository>();
+        repository.GetByIdAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
+            .Returns(call => _expenseRepo.GetByIdAsync(call.Arg<Guid>(), call.Arg<CancellationToken>()));
+        repository.SubmitAsync(Arg.Any<Guid>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<Instant>(),
+            Arg.Any<ExpenseBooking?>(), Arg.Any<decimal?>(), Arg.Any<CancellationToken>()).Returns(async call =>
+        {
+            var id = call.ArgAt<Guid>(0);
+            if (id == firstId)
+            {
+                saving.SetResult();
+                await release.Task.WaitAsync(ct);
+                if (rollbackFirst) throw new IOException("Report save failed");
+            }
+            return await _expenseRepo.SubmitAsync(id, call.ArgAt<string>(1), call.ArgAt<string>(2),
+                call.ArgAt<Instant>(3), call.ArgAt<ExpenseBooking?>(4), call.ArgAt<decimal?>(5), call.Arg<CancellationToken>());
+        });
+        ExpenseReportService ScopedService() => new(repository, _fileStorage, _budgetService,
+            _userService, _roles, _auditLog, Substitute.For<IAuditViewerService>(),
+            _holdedService, _finance, _financeWrite, _preapprovals, _preapprovalWrites, _clock,
+            NullLogger<ExpenseReportService>.Instance, Options.Create(new TravelReimbursementConfig()));
+        var first = ScopedService().SubmitAsync(firstId, owner, ct);
+        await saving.Task.WaitAsync(ct);
+        var next = ScopedService().SubmitAsync(nextId, owner, ct);
+        release.SetResult();
+
+        var results = await Task.WhenAll(first, next).WaitAsync(ct);
+
+        results[0].Succeeded.Should().Be(!rollbackFirst);
+        results[1].Succeeded.Should().Be(rollbackFirst);
+        committedHolder.Should().Be(rollbackFirst ? nextId : firstId);
+        var firstReport = (await _expenseRepo.GetByIdAsync(firstId, ct))!;
+        var nextReport = (await _expenseRepo.GetByIdAsync(nextId, ct))!;
+        firstReport.Status.Should().Be(rollbackFirst ? ExpenseReportStatus.Draft : ExpenseReportStatus.Submitted);
+        nextReport.Status.Should().Be(rollbackFirst ? ExpenseReportStatus.Submitted : ExpenseReportStatus.Draft);
+    }
+
+    private const int GrantAccountNumber = 62900500;
+    private const string GrantAccountId = "acc-grant";
+    /// <summary>FakeNow is 2026-05-10 12:00 UTC: 14:00 in Madrid, so today is the 10th.</summary>
+    private static readonly LocalDate GrantToday = new(2026, 5, 10);
+
+    /// <summary>Held by nobody until <see cref="StubClaimable"/> hands it to a submitter.</summary>
+    private static GrantOption MakeGrant(
+        Guid? id = null, GrantStatus status = GrantStatus.Open, decimal maxAmount = 150m, LocalDate? claimBy = null)
+    {
+        var deadline = claimBy ?? GrantToday.PlusDays(10);
+        return new(id ?? Guid.NewGuid(), Guid.Empty, [], "Burner bus", "Driver", maxAmount, GrantAccountNumber,
+            GrantAccountId, deadline, status, status == GrantStatus.Open && GrantToday <= deadline);
+    }
+
+    /// <summary>What Preapprovals publishes for this grant from now on; a status other than Open is never claimable.</summary>
+    private void PutGrant(GrantOption grant) =>
+        _grantStore[grant.Id] = grant with { ClaimableToday = grant.ClaimableToday && grant.Status == GrantStatus.Open };
+
+    private void StubNothingClaimable(Guid person)
+    {
+        foreach (var g in _grantStore.Values.Where(g => g.HolderUserId == person).ToList())
+            _grantStore[g.Id] = g with { ClaimableToday = false };
+    }
+
+    private void ManageGrant(Guid manager, GrantOption grant)
+    {
+        var current = _grantStore.GetValueOrDefault(grant.Id, grant);
+        _grantStore[grant.Id] = current with { ManagerUserIds = [.. current.ManagerUserIds, manager] };
+    }
+
+    private List<bool> TrackPreapprovalCompletions()
+    {
+        var completed = new List<bool>();
+        void Collect(NSubstitute.Core.CallInfo call)
+        {
+            if (System.Transactions.Transaction.Current is not { } current) return;
+            var transaction = current.Clone();
+            call.ArgAt<Action<Func<CancellationToken, Task>>>(4)(token =>
+            {
+                using (transaction)
+                    completed.Add(System.Transactions.Transaction.Current is null
+                        && transaction.TransactionInformation.Status == System.Transactions.TransactionStatus.Committed
+                        && !token.CanBeCanceled);
+                return Task.CompletedTask;
+            });
+        }
+        _preapprovalWrites.WhenForAnyArgs(writer => writer.ClaimAsync(default, default, default, default, default!)).Do(Collect);
+        _preapprovalWrites.WhenForAnyArgs(writer => writer.ReleaseAsync(default, default, default, default, default!)).Do(Collect);
+        _preapprovalWrites.WhenForAnyArgs(writer => writer.ConsumeAsync(default, default, default, default, default!)).Do(Collect);
+        return completed;
+    }
+
+    /// <summary>The grant is the submitter's to file against today.</summary>
+    private void StubClaimable(Guid submitter, params GrantOption[] grants)
+    {
+        foreach (var g in grants)
+            _grantStore[g.Id] = g with { HolderUserId = submitter, ClaimableToday = true };
+    }
+
+    private async Task<Guid> CreateGrantDraftAsync(Guid submitter, GrantOption grant)
+    {
+        StubClaimable(submitter, grant);
+        var result = await _sut.CreateDraftAsync(submitter, submitter, 0, "Project X", grant.Id, TestContext.Current.CancellationToken);
+        result.Succeeded.Should().BeTrue(result.Error?.ResourceKey);
+        return result.ReportId!.Value;
+    }
+
+    /// <summary>A submittable draft on the grant: one receipt line with its file, a payee profile.</summary>
+    private async Task<Guid> CreateSubmittableGrantDraftAsync(Guid submitter, GrantOption grant)
+    {
+        var id = await CreateGrantDraftAsync(submitter, grant);
+        var lineId = (await _sut.AddLineAsync(id, submitter, "Fuel", 120m, ct: TestContext.Current.CancellationToken)).LineId!.Value;
+        await _expenseRepo.ReplaceLineAttachmentAsync(id, lineId, MakeAttachment(submitter), TestContext.Current.CancellationToken);
+        SetupUser(submitter, "Alice Tester", "ES9121000418450200051332");
+        return id;
+    }
+
+    private async Task SeedGrantReportAsync(Guid reportId, Guid submitter, Guid grantId, ExpenseReportStatus status, decimal? maxAmount = null)
+    {
+        var now = Instant.FromUtc(2026, 5, 1, 0, 0);
+        await using var ctx = new ExpensesDbContext(_expensesOptions);
+        ctx.ExpenseReports.Add(new ExpenseReport
+        {
+            Id = reportId,
+            SubmitterUserId = submitter,
+            HoldedAccountNumber = GrantAccountNumber,
+            HoldedAccountId = GrantAccountId,
+            PreapprovalGrantId = grantId,
+            Note = "Project X",
+            Status = status,
+            MaxAmount = maxAmount,
+            Total = 120m,
+            CreatedAt = now,
+            UpdatedAt = now
+        });
+        await ctx.SaveChangesAsync(TestContext.Current.CancellationToken);
+    }
+
+    [HumansFact]
+    public async Task CreateDraft_WithGrant_UsesGrantAccount()
+    {
+        SetupActiveYear();
+        var submitter = Guid.NewGuid();
+        var grant = MakeGrant();
+
+        var id = await CreateGrantDraftAsync(submitter, grant);
+
+        var loaded = await _sut.GetAsync(id, TestContext.Current.CancellationToken);
+        loaded!.PreapprovalGrantId.Should().Be(grant.Id);
+        loaded.HoldedAccountNumber.Should().Be(GrantAccountNumber);
+        loaded.HoldedAccountId.Should().Be(GrantAccountId);
+        loaded.BudgetCategoryId.Should().BeNull("a pre-approved report is first reviewed by its program's managers, not a budget coordinator");
+        loaded.BudgetYearId.Should().BeNull();
+        loaded.MaxAmount.Should().BeNull("the cap is stamped at submit, not at draft");
+        await _finance.DidNotReceive().ListExpenseAccountsAsync(Arg.Any<bool>(), Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
+    public async Task CreateDraft_WithGrant_RefusesOneTheSubmitterCannotClaim()
+    {
+        SetupActiveYear();
+        var submitter = Guid.NewGuid();
+        var someoneElsesGrant = MakeGrant();
+        StubNothingClaimable(submitter);
+        PutGrant(someoneElsesGrant);
+
+        var result = await _sut.CreateDraftAsync(submitter, submitter, CategoryAccountNumber, "Project X", someoneElsesGrant.Id, TestContext.Current.CancellationToken);
+
+        result.Succeeded.Should().BeFalse();
+        result.Error!.ResourceKey.Should().Be("Expenses_Validation_PreapprovalNotTheirs");
+        (await _sut.GetForSubmitterAsync(submitter, TestContext.Current.CancellationToken)).Should().BeEmpty();
+    }
+
+    [HumansFact]
+    public async Task CreateDraft_OnBehalf_UsesMembersGrants()
+    {
+        SetupActiveYear();
+        var member = Guid.NewGuid();
+        var admin = Guid.NewGuid();
+        var adminsGrant = MakeGrant();
+        StubClaimable(admin, adminsGrant);
+        StubNothingClaimable(member);
+
+        var result = await _sut.CreateDraftAsync(member, admin, 0, "Project X", adminsGrant.Id, TestContext.Current.CancellationToken);
+
+        result.Succeeded.Should().BeFalse();
+        result.Error!.ResourceKey.Should().Be("Expenses_Validation_PreapprovalNotTheirs");
+    }
+
+    [HumansFact]
+    public async Task UpdateDraft_HeldGrantUnclaimable_IsKept()
+    {
+        // A rejected report corrected after the deadline keeps the grant it filed in time.
+        SetupActiveYear();
+        var submitter = Guid.NewGuid();
+        var grant = MakeGrant();
+        var id = await CreateGrantDraftAsync(submitter, grant);
+        StubNothingClaimable(submitter);
+        PutGrant(grant with { Status = GrantStatus.Claimed });
+
+        var result = await _sut.UpdateHeaderAsync(id, submitter, 0, "fixed", grant.Id, TestContext.Current.CancellationToken);
+
+        result.Succeeded.Should().BeTrue(result.Error?.ResourceKey);
+        var loaded = await _sut.GetAsync(id, TestContext.Current.CancellationToken);
+        loaded!.PreapprovalGrantId.Should().Be(grant.Id);
+        loaded.Note.Should().Be("fixed");
+    }
+
+    [HumansFact]
+    public async Task UpdateDraft_DroppingTheGrant_BooksFromTheAccountAgain()
+    {
+        var (year, category) = SetupActiveYear();
+        var submitter = Guid.NewGuid();
+        var id = await CreateGrantDraftAsync(submitter, MakeGrant());
+
+        var result = await _sut.UpdateHeaderAsync(id, submitter, CategoryAccountNumber, null, null, TestContext.Current.CancellationToken);
+
+        result.Succeeded.Should().BeTrue(result.Error?.ResourceKey);
+        var loaded = await _sut.GetAsync(id, TestContext.Current.CancellationToken);
+        loaded!.PreapprovalGrantId.Should().BeNull();
+        loaded.HoldedAccountNumber.Should().Be(CategoryAccountNumber);
+        loaded.BudgetCategoryId.Should().Be(category.Id);
+        loaded.BudgetYearId.Should().Be(year.Id);
+    }
+
+    [HumansTheory]
+    [InlineData(ExpenseReportStatus.Draft, 62900600, "acc-new-program")]
+    [InlineData(ExpenseReportStatus.Submitted, GrantAccountNumber, GrantAccountId)]
+    [InlineData(ExpenseReportStatus.CoordinatorEndorsed, GrantAccountNumber, GrantAccountId)]
+    public async Task UpdateDraft_ProgramAccountChange_KeepsSubmittedStamp(
+        ExpenseReportStatus status, int expectedAccountNumber, string expectedAccountId)
+    {
+        var submitter = Guid.NewGuid();
+        var admin = Guid.NewGuid();
+        var held = MakeGrant(status: GrantStatus.Claimed);
+        var id = Guid.NewGuid();
+        await SeedGrantReportAsync(id, submitter, held.Id, status, maxAmount: 150m);
+        PutGrant(held with { HoldedAccountNumber = 62900600, HoldedAccountId = "acc-new-program" });
+
+        var result = await _sut.UpdateHeaderAsync(id, AsFinance(admin), GrantAccountNumber, "Corrected subject", held.Id, TestContext.Current.CancellationToken);
+
+        result.Succeeded.Should().BeTrue(result.Error?.ResourceKey);
+        var loaded = await _sut.GetAsync(id, TestContext.Current.CancellationToken);
+        loaded!.HoldedAccountNumber.Should().Be(expectedAccountNumber);
+        loaded.HoldedAccountId.Should().Be(expectedAccountId);
+        loaded.MaxAmount.Should().Be(150m);
+        loaded.BudgetCategoryId.Should().BeNull();
+        loaded.BudgetYearId.Should().BeNull();
+        loaded.Note.Should().Be("Corrected subject");
+    }
+
+    [HumansFact]
+    public async Task UpdateDraft_PastDraft_RefusesChangingTheGrantOrAccount()
+    {
+        SetupActiveYear();
+        var submitter = Guid.NewGuid();
+        var admin = Guid.NewGuid();
+        var held = MakeGrant();
+        var other = MakeGrant();
+        var id = Guid.NewGuid();
+        await SeedGrantReportAsync(id, submitter, held.Id, ExpenseReportStatus.Submitted);
+        StubClaimable(submitter, held, other);
+
+        var swapped = await _sut.UpdateHeaderAsync(id, AsFinance(admin), GrantAccountNumber, null, other.Id, TestContext.Current.CancellationToken);
+        var rebooked = await _sut.UpdateHeaderAsync(id, AsFinance(admin), OtherAccountNumber, null, held.Id, TestContext.Current.CancellationToken);
+        var noteOnly = await _sut.UpdateHeaderAsync(id, AsFinance(admin), GrantAccountNumber, "note", held.Id, TestContext.Current.CancellationToken);
+
+        swapped.Error!.ResourceKey.Should().Be("Expenses_Validation_PreapprovalLocked");
+        rebooked.Error!.ResourceKey.Should().Be("Expenses_Validation_PreapprovalLocked");
+        noteOnly.Succeeded.Should().BeTrue(noteOnly.Error?.ResourceKey);
+        var loaded = await _sut.GetAsync(id, TestContext.Current.CancellationToken);
+        loaded!.PreapprovalGrantId.Should().Be(held.Id);
+        loaded.HoldedAccountNumber.Should().Be(GrantAccountNumber);
+        loaded.Note.Should().Be("note");
+    }
+
+    [HumansFact]
+    public async Task Submit_WithGrant_ClaimsThenRestamps()
+    {
+        var completed = TrackPreapprovalCompletions();
+        SetupActiveYear();
+        var submitter = Guid.NewGuid();
+        var grant = MakeGrant(maxAmount: 150m);
+        var id = await CreateSubmittableGrantDraftAsync(submitter, grant);
+        // The program changed since the draft: what the grant says now is what the report carries.
+        _preapprovalWrites.ClaimAsync(grant.Id, id, submitter, Arg.Any<CancellationToken>(), Arg.Any<Action<Func<CancellationToken, Task>>>())
+            .Returns(new PreapprovalWriteResult(grant with { MaxAmount = 130m, HoldedAccountNumber = 62900510, HoldedAccountId = "acc-grant-2" }));
+
+        var result = await _sut.SubmitAsync(id, submitter, TestContext.Current.CancellationToken);
+
+        result.Succeeded.Should().BeTrue(result.Error?.ResourceKey);
+        var loaded = await _sut.GetAsync(id, TestContext.Current.CancellationToken);
+        loaded!.Status.Should().Be(ExpenseReportStatus.Submitted);
+        loaded.HoldedAccountNumber.Should().Be(62900510);
+        loaded.HoldedAccountId.Should().Be("acc-grant-2");
+        loaded.MaxAmount.Should().Be(130m);
+        loaded.Payable.Should().Be(120m, "receipts under the cap pay in full");
+        loaded.BudgetCategoryId.Should().BeNull();
+        completed.Should().Equal(true);
+    }
+
+    [HumansFact]
+    public async Task CoordinatorQueue_ExcludesPreapprovedReportsOutsideTheViewersPrograms()
+    {
+        var submitter = Guid.NewGuid();
+        var grant = MakeGrant();
+        var reportId = Guid.NewGuid();
+        await SeedGrantReportAsync(reportId, submitter, grant.Id, ExpenseReportStatus.Submitted, maxAmount: 150m);
+        var otherManager = Guid.NewGuid();
+        _userService.GetUserInfoAsync(otherManager, Arg.Any<CancellationToken>())
+            .Returns(UserInfo.Create(new User { Id = otherManager }, [], [], null));
+        ManageGrant(otherManager, MakeGrant());
+
+        (await _sut.GetAsync(reportId, TestContext.Current.CancellationToken))!.Status.Should().Be(ExpenseReportStatus.Submitted);
+        (await _review.GetCoordinatorQueueAsync(otherManager, TestContext.Current.CancellationToken)).Should().BeEmpty();
+    }
+
+    [HumansFact]
+    public async Task Endorse_ProgramManager_KeepsGrantAsCeiling()
+    {
+        var submitter = Guid.NewGuid();
+        var grant = MakeGrant(maxAmount: 150m);
+        PutGrant(grant);
+        var reportId = Guid.NewGuid();
+        await SeedGrantReportAsync(reportId, submitter, grant.Id, ExpenseReportStatus.Submitted, maxAmount: 150m);
+        var manager = Guid.NewGuid();
+        _userService.GetUserInfoAsync(manager, Arg.Any<CancellationToken>())
+            .Returns(UserInfo.Create(new User { Id = manager }, [], [], null));
+        ManageGrant(manager, grant);
+
+        (await _review.GetCoordinatorQueueAsync(manager, TestContext.Current.CancellationToken))
+            .Should().ContainSingle(r => r.Id == reportId);
+
+        var over = await _review.CoordinatorEndorseAsync(reportId, manager, 151m, TestContext.Current.CancellationToken);
+        over.Error!.OperatorMessage.Should().Contain("cannot exceed the pre-approved 150.00");
+
+        (await _review.CoordinatorEndorseAsync(reportId, manager, null, TestContext.Current.CancellationToken))
+            .Succeeded.Should().BeTrue();
+        var endorsed = await _sut.GetAsync(reportId, TestContext.Current.CancellationToken);
+        endorsed!.Status.Should().Be(ExpenseReportStatus.CoordinatorEndorsed);
+        endorsed.MaxAmount.Should().Be(150m, "a blank cap keeps the pre-approved amount");
+        await _auditLog.Received(1).LogAsync(ExpensesAuditActions.ExpenseEndorse, Arg.Any<string>(), reportId,
+            Arg.Is<string>(d => d.StartsWith("Pre-approval manager endorsed", StringComparison.Ordinal)), manager);
+        (await _review.GetCoordinatorQueueAsync(manager, TestContext.Current.CancellationToken))
+            .Should().BeEmpty("only Submitted reports wait on the first review");
+    }
+
+    [HumansFact]
+    public async Task CoordinatorReject_ProgramManager_ReturnsToDraftKeepsGrant()
+    {
+        var submitter = Guid.NewGuid();
+        var grant = MakeGrant();
+        var reportId = Guid.NewGuid();
+        await SeedGrantReportAsync(reportId, submitter, grant.Id, ExpenseReportStatus.Submitted, maxAmount: 150m);
+        var manager = Guid.NewGuid();
+        ManageGrant(manager, grant);
+
+        (await _review.CoordinatorRejectAsync(reportId, manager, "Receipt unreadable", TestContext.Current.CancellationToken))
+            .Succeeded.Should().BeTrue();
+
+        (await _sut.GetAsync(reportId, TestContext.Current.CancellationToken))!.Status.Should().Be(ExpenseReportStatus.Draft);
+        await _preapprovalWrites.DidNotReceiveWithAnyArgs().ReleaseAsync(default, default, default, default, Arg.Any<Action<Func<CancellationToken, Task>>>());
+    }
+
+    [HumansFact]
+    public async Task Submit_GrantAfterDeadline_IsRefused()
+    {
+        SetupActiveYear();
+        var submitter = Guid.NewGuid();
+        var grant = MakeGrant(claimBy: GrantToday.PlusDays(-1));
+        var id = await CreateSubmittableGrantDraftAsync(submitter, grant);
+        StubNothingClaimable(submitter);
+
+        var result = await _sut.SubmitAsync(id, submitter, TestContext.Current.CancellationToken);
+
+        result.Succeeded.Should().BeFalse();
+        result.Error!.ResourceKey.Should().Be("Expenses_Validation_PreapprovalDeadlinePassed");
+        result.Error.Arguments.Should().ContainSingle().Which.Should().Be("2026-05-09");
+        await _preapprovalWrites.DidNotReceive().ClaimAsync(Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<CancellationToken>(), Arg.Any<Action<Func<CancellationToken, Task>>>());
+        (await _sut.GetAsync(id, TestContext.Current.CancellationToken))!.Status.Should().Be(ExpenseReportStatus.Draft);
+    }
+
+    [HumansFact]
+    public async Task Submit_GrantOnDeadlineDay_Claims()
+    {
+        SetupActiveYear();
+        var submitter = Guid.NewGuid();
+        var grant = MakeGrant(claimBy: GrantToday);
+        var id = await CreateSubmittableGrantDraftAsync(submitter, grant);
+        _preapprovalWrites.ClaimAsync(grant.Id, id, submitter, Arg.Any<CancellationToken>(), Arg.Any<Action<Func<CancellationToken, Task>>>()).Returns(new PreapprovalWriteResult(grant));
+
+        var result = await _sut.SubmitAsync(id, submitter, TestContext.Current.CancellationToken);
+
+        result.Succeeded.Should().BeTrue(result.Error?.ResourceKey);
+    }
+
+    [HumansFact]
+    public async Task Submit_GrantHeldByReport_ResubmitsPastDeadline()
+    {
+        // A rejection does not undo a claim filed in time: the grant stays Claimed by the report
+        // and ClaimAsync is idempotent for it, deadline or not.
+        SetupActiveYear();
+        var submitter = Guid.NewGuid();
+        var grant = MakeGrant(claimBy: GrantToday.PlusDays(-5));
+        var id = await CreateSubmittableGrantDraftAsync(submitter, grant);
+        PutGrant(grant with { Status = GrantStatus.Claimed });
+        _preapprovalWrites.ClaimAsync(grant.Id, id, submitter, Arg.Any<CancellationToken>(), Arg.Any<Action<Func<CancellationToken, Task>>>()).Returns(new PreapprovalWriteResult(grant));
+
+        var result = await _sut.SubmitAsync(id, submitter, TestContext.Current.CancellationToken);
+
+        result.Succeeded.Should().BeTrue(result.Error?.ResourceKey);
+        await _preapprovalWrites.Received(1).ClaimAsync(grant.Id, id, submitter, Arg.Any<CancellationToken>(), Arg.Any<Action<Func<CancellationToken, Task>>>());
+    }
+
+    [HumansTheory]
+    [InlineData(GrantStatus.Revoked, "Expenses_Validation_PreapprovalRevoked")]
+    [InlineData(GrantStatus.Consumed, "Expenses_Validation_PreapprovalUsed")]
+    [InlineData(GrantStatus.Declined, "Expenses_Validation_PreapprovalDeclined")]
+    public async Task Submit_GrantNotOpen_IsRefused(GrantStatus status, string expectedKey)
+    {
+        SetupActiveYear();
+        var submitter = Guid.NewGuid();
+        var grant = MakeGrant();
+        var id = await CreateSubmittableGrantDraftAsync(submitter, grant);
+        PutGrant(grant with { Status = status });
+
+        var result = await _sut.SubmitAsync(id, submitter, TestContext.Current.CancellationToken);
+
+        result.Error!.ResourceKey.Should().Be(expectedKey);
+        await _preapprovalWrites.DidNotReceive().ClaimAsync(Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<CancellationToken>(), Arg.Any<Action<Func<CancellationToken, Task>>>());
+        (await _sut.GetAsync(id, TestContext.Current.CancellationToken))!.Status.Should().Be(ExpenseReportStatus.Draft);
+    }
+
+    [HumansTheory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task GrantTransition_DependencyFailure_UsesGenericFailureWithoutChangingReport(bool approve)
+    {
+        SetupActiveYear();
+        var actor = Guid.NewGuid();
+        var grant = MakeGrant();
+        var id = approve ? Guid.NewGuid() : await CreateSubmittableGrantDraftAsync(actor, grant);
+        if (approve)
+            await SeedGrantReportAsync(id, actor, grant.Id, ExpenseReportStatus.Submitted);
+        PutGrant(grant with { Status = GrantStatus.Claimed });
+        var failure = new InvalidOperationException("Private persistence failure");
+        _preapprovalWrites.ClaimAsync(grant.Id, id, actor, Arg.Any<CancellationToken>(), Arg.Any<Action<Func<CancellationToken, Task>>>()).ThrowsAsync(failure);
+        _preapprovalWrites.ConsumeAsync(grant.Id, id, actor, Arg.Any<CancellationToken>(), Arg.Any<Action<Func<CancellationToken, Task>>>()).ThrowsAsync(failure);
+
+        var result = approve
+            ? await _review.ApproveAsync(id, actor, null, null, TestContext.Current.CancellationToken)
+            : await _sut.SubmitAsync(id, actor, TestContext.Current.CancellationToken);
+
+        result.Succeeded.Should().BeFalse();
+        result.Error.Should().BeNull();
+        (await _sut.GetAsync(id, TestContext.Current.CancellationToken))!.Status
+            .Should().Be(approve ? ExpenseReportStatus.Submitted : ExpenseReportStatus.Draft);
+        (await _expenseRepo.GetLatestOutboxForReportAsync(id, TestContext.Current.CancellationToken)).Should().BeNull();
+    }
+
+    [HumansFact]
+    public async Task Submit_GrantClaimRefused_LeavesDraft()
+    {
+        // Claimed by another report between the pre-check and the claim: Preapprovals is the gate.
+        SetupActiveYear();
+        var submitter = Guid.NewGuid();
+        var grant = MakeGrant();
+        var id = await CreateSubmittableGrantDraftAsync(submitter, grant);
+        PutGrant(grant with { Status = GrantStatus.Claimed });
+        _preapprovalWrites.ClaimAsync(grant.Id, id, submitter, Arg.Any<CancellationToken>(), Arg.Any<Action<Func<CancellationToken, Task>>>())
+            .Returns(new PreapprovalWriteResult(Refusal: "Grant is already held by another expense report."));
+
+        var result = await _sut.SubmitAsync(id, submitter, TestContext.Current.CancellationToken);
+
+        result.Succeeded.Should().BeFalse();
+        result.Error!.ResourceKey.Should().Be("Expenses_Validation_PreapprovalClaimedElsewhere");
+        var loaded = await _sut.GetAsync(id, TestContext.Current.CancellationToken);
+        loaded!.Status.Should().Be(ExpenseReportStatus.Draft);
+        loaded.MaxAmount.Should().BeNull();
+    }
+
+    [HumansFact]
+    public async Task Approve_GrantBlankCap_UsesGrantAmount()
+    {
+        var completed = TrackPreapprovalCompletions();
+        SetupActiveYear();
+        var actor = Guid.NewGuid();
+        var grant = MakeGrant(maxAmount: 140m);
+        var id = Guid.NewGuid();
+        await SeedGrantReportAsync(id, Guid.NewGuid(), grant.Id, ExpenseReportStatus.Submitted, maxAmount: 150m);
+        PutGrant(grant with { Status = GrantStatus.Claimed });
+
+        var result = await _review.ApproveAsync(id, actor, null, null, TestContext.Current.CancellationToken);
+
+        result.Succeeded.Should().BeTrue(result.Error?.OperatorMessage);
+        var loaded = await _sut.GetAsync(id, TestContext.Current.CancellationToken);
+        loaded!.Status.Should().Be(ExpenseReportStatus.Approved);
+        loaded.MaxAmount.Should().Be(140m, "the grant's amount as it is now, not the stamp from submit");
+        await _preapprovalWrites.Received(1).ConsumeAsync(grant.Id, id, actor, Arg.Any<CancellationToken>(), Arg.Any<Action<Func<CancellationToken, Task>>>());
+        (await _expenseRepo.GetLatestOutboxForReportAsync(id, TestContext.Current.CancellationToken))
+            .Should().NotBeNull("the Holded push is queued like any approval");
+        completed.Should().Equal(true);
+    }
+
+    [HumansFact]
+    public async Task Approve_GrantLowerCap_IsAllowed()
+    {
+        SetupActiveYear();
+        var grant = MakeGrant(maxAmount: 150m);
+        var id = Guid.NewGuid();
+        await SeedGrantReportAsync(id, Guid.NewGuid(), grant.Id, ExpenseReportStatus.Submitted, maxAmount: 150m);
+        PutGrant(grant with { Status = GrantStatus.Claimed });
+
+        var result = await _review.ApproveAsync(id, Guid.NewGuid(), null, 100m, TestContext.Current.CancellationToken);
+
+        result.Succeeded.Should().BeTrue(result.Error?.OperatorMessage);
+        (await _sut.GetAsync(id, TestContext.Current.CancellationToken))!.MaxAmount.Should().Be(100m);
+    }
+
+    [HumansFact]
+    public async Task Approve_CapAboveGrant_IsRefused()
+    {
+        SetupActiveYear();
+        var grant = MakeGrant(maxAmount: 150m);
+        var id = Guid.NewGuid();
+        await SeedGrantReportAsync(id, Guid.NewGuid(), grant.Id, ExpenseReportStatus.Submitted, maxAmount: 150m);
+        PutGrant(grant with { Status = GrantStatus.Claimed });
+
+        var result = await _review.ApproveAsync(id, Guid.NewGuid(), null, 150.01m, TestContext.Current.CancellationToken);
+
+        result.Succeeded.Should().BeFalse();
+        result.Error!.OperatorMessage.Should().Contain("150.00");
+        await _preapprovalWrites.DidNotReceive().ConsumeAsync(Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<CancellationToken>(), Arg.Any<Action<Func<CancellationToken, Task>>>());
+        (await _sut.GetAsync(id, TestContext.Current.CancellationToken))!.Status.Should().Be(ExpenseReportStatus.Submitted);
+    }
+
+    [HumansFact]
+    public async Task Approve_GrantAccountOverride_IsRefused()
+    {
+        SetupActiveYear();
+        var grant = MakeGrant();
+        var id = Guid.NewGuid();
+        await SeedGrantReportAsync(id, Guid.NewGuid(), grant.Id, ExpenseReportStatus.Submitted);
+        PutGrant(grant with { Status = GrantStatus.Claimed });
+
+        var result = await _review.ApproveAsync(id, Guid.NewGuid(), OtherAccountNumber, null, TestContext.Current.CancellationToken);
+
+        result.Succeeded.Should().BeFalse();
+        result.Error!.OperatorMessage.Should().Contain("locked");
+        await _preapprovalWrites.DidNotReceive().ConsumeAsync(Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<CancellationToken>(), Arg.Any<Action<Func<CancellationToken, Task>>>());
+        var loaded = await _sut.GetAsync(id, TestContext.Current.CancellationToken);
+        loaded!.Status.Should().Be(ExpenseReportStatus.Submitted);
+        loaded.HoldedAccountNumber.Should().Be(GrantAccountNumber);
+    }
+
+    [HumansFact]
+    public async Task Approve_GrantOwnAccount_IsNotOverride()
+    {
+        SetupActiveYear();
+        var grant = MakeGrant();
+        var id = Guid.NewGuid();
+        await SeedGrantReportAsync(id, Guid.NewGuid(), grant.Id, ExpenseReportStatus.Submitted);
+        PutGrant(grant with { Status = GrantStatus.Claimed });
+
+        var result = await _review.ApproveAsync(id, Guid.NewGuid(), GrantAccountNumber, null, TestContext.Current.CancellationToken);
+
+        result.Succeeded.Should().BeTrue(result.Error?.OperatorMessage);
+    }
+
+    [HumansFact]
+    public async Task Approve_GrantConsumeRefused_StaysPending()
+    {
+        SetupActiveYear();
+        var grant = MakeGrant();
+        var id = Guid.NewGuid();
+        await SeedGrantReportAsync(id, Guid.NewGuid(), grant.Id, ExpenseReportStatus.Submitted);
+        PutGrant(grant with { Status = GrantStatus.Revoked });
+        _preapprovalWrites.ConsumeAsync(grant.Id, id, Arg.Any<Guid>(), Arg.Any<CancellationToken>(), Arg.Any<Action<Func<CancellationToken, Task>>>())
+            .Returns(new PreapprovalWriteResult(Refusal: "Grant was revoked."));
+
+        var result = await _review.ApproveAsync(id, Guid.NewGuid(), null, null, TestContext.Current.CancellationToken);
+
+        result.Succeeded.Should().BeFalse();
+        result.Error!.OperatorMessage.Should().Contain("Reject the report");
+        (await _sut.GetAsync(id, TestContext.Current.CancellationToken))!.Status.Should().Be(ExpenseReportStatus.Submitted);
+        (await _expenseRepo.GetLatestOutboxForReportAsync(id, TestContext.Current.CancellationToken)).Should().BeNull();
+    }
+
+    [HumansFact]
+    public async Task FinanceReject_WithGrant_LeavesTheGrantClaimed()
+    {
+        SetupActiveYear();
+        var grant = MakeGrant();
+        var id = Guid.NewGuid();
+        await SeedGrantReportAsync(id, Guid.NewGuid(), grant.Id, ExpenseReportStatus.Submitted);
+
+        var result = await _review.FinanceRejectAsync(id, Guid.NewGuid(), "Receipt unreadable", TestContext.Current.CancellationToken);
+
+        result.Succeeded.Should().BeTrue();
+        (await _sut.GetAsync(id, TestContext.Current.CancellationToken))!.Status.Should().Be(ExpenseReportStatus.Draft);
+        await _preapprovalWrites.DidNotReceive().ReleaseAsync(Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<CancellationToken>(), Arg.Any<Action<Func<CancellationToken, Task>>>());
+        await _preapprovalWrites.DidNotReceive().ConsumeAsync(Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<CancellationToken>(), Arg.Any<Action<Func<CancellationToken, Task>>>());
+    }
+
+    [HumansFact]
+    public async Task Withdraw_BeforeApproval_ReleasesTheGrant()
+    {
+        var completed = TrackPreapprovalCompletions();
+        SetupActiveYear();
+        var submitter = Guid.NewGuid();
+        var grant = MakeGrant(status: GrantStatus.Claimed);
+        var id = Guid.NewGuid();
+        await SeedGrantReportAsync(id, submitter, grant.Id, ExpenseReportStatus.Submitted);
+        PutGrant(grant);
+
+        var result = await _sut.WithdrawAsync(id, submitter, TestContext.Current.CancellationToken);
+
+        result.Succeeded.Should().BeTrue(result.Error?.ResourceKey);
+        (await _sut.GetAsync(id, TestContext.Current.CancellationToken))!.Status.Should().Be(ExpenseReportStatus.Withdrawn);
+        await _preapprovalWrites.Received(1).ReleaseAsync(grant.Id, id, submitter, Arg.Any<CancellationToken>(), Arg.Any<Action<Func<CancellationToken, Task>>>());
+        completed.Should().Equal(true);
+    }
+
+    [HumansFact]
+    public async Task Withdraw_AfterApproval_IsRefused()
+    {
+        SetupActiveYear();
+        var submitter = Guid.NewGuid();
+        var grant = MakeGrant();
+        var id = Guid.NewGuid();
+        await SeedGrantReportAsync(id, submitter, grant.Id, ExpenseReportStatus.Approved);
+
+        var result = await _sut.WithdrawAsync(id, submitter, TestContext.Current.CancellationToken);
+
+        result.Succeeded.Should().BeFalse();
+        result.Error!.ResourceKey.Should().Be("Expenses_Flash_WithdrawFailed");
+        (await _sut.GetAsync(id, TestContext.Current.CancellationToken))!.Status.Should().Be(ExpenseReportStatus.Approved);
+        await _preapprovalWrites.DidNotReceive().ReleaseAsync(Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<CancellationToken>(), Arg.Any<Action<Func<CancellationToken, Task>>>());
+    }
+
+    [HumansFact]
+    public async Task Withdraw_WhenTheReleaseIsRefused_LeavesTheReportPending()
+    {
+        SetupActiveYear();
+        var submitter = Guid.NewGuid();
+        var grant = MakeGrant(status: GrantStatus.Claimed);
+        var id = Guid.NewGuid();
+        await SeedGrantReportAsync(id, submitter, grant.Id, ExpenseReportStatus.Submitted);
+        PutGrant(grant);
+        _preapprovalWrites.ReleaseAsync(grant.Id, id, submitter, Arg.Any<CancellationToken>(), Arg.Any<Action<Func<CancellationToken, Task>>>())
+            .Returns(new PreapprovalWriteResult(Refusal: "Grant is not held by this report."));
+
+        var result = await _sut.WithdrawAsync(id, submitter, TestContext.Current.CancellationToken);
+
+        result.Succeeded.Should().BeFalse();
+        (await _sut.GetAsync(id, TestContext.Current.CancellationToken))!.Status.Should().Be(ExpenseReportStatus.Submitted);
+    }
+
+    [HumansFact]
+    public async Task Withdraw_GrantRevoked_WithdrawsWithoutRelease()
+    {
+        // Revoke keeps the report pending; the member must still be able to take it back.
+        SetupActiveYear();
+        var submitter = Guid.NewGuid();
+        var grant = MakeGrant(status: GrantStatus.Revoked);
+        var id = Guid.NewGuid();
+        await SeedGrantReportAsync(id, submitter, grant.Id, ExpenseReportStatus.Submitted);
+        PutGrant(grant);
+
+        var result = await _sut.WithdrawAsync(id, submitter, TestContext.Current.CancellationToken);
+
+        result.Succeeded.Should().BeTrue(result.Error?.ResourceKey);
+        (await _sut.GetAsync(id, TestContext.Current.CancellationToken))!.Status.Should().Be(ExpenseReportStatus.Withdrawn);
+        await _preapprovalWrites.DidNotReceive().ReleaseAsync(Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<CancellationToken>(), Arg.Any<Action<Func<CancellationToken, Task>>>());
+    }
+
+    [HumansFact]
+    public async Task UpdateDraft_DropClaimedGrant_ReleasesIt()
+    {
+        var completed = TrackPreapprovalCompletions();
+        SetupActiveYear();
+        var submitter = Guid.NewGuid();
+        var grant = MakeGrant(status: GrantStatus.Claimed);
+        var id = Guid.NewGuid();
+        await SeedGrantReportAsync(id, submitter, grant.Id, ExpenseReportStatus.Draft);
+        PutGrant(grant);
+        StubNothingClaimable(submitter);
+
+        var result = await _sut.UpdateHeaderAsync(id, submitter, CategoryAccountNumber, null, null, TestContext.Current.CancellationToken);
+
+        result.Succeeded.Should().BeTrue(result.Error?.ResourceKey);
+        (await _sut.GetAsync(id, TestContext.Current.CancellationToken))!.PreapprovalGrantId.Should().BeNull();
+        await _preapprovalWrites.Received(1).ReleaseAsync(grant.Id, id, submitter, Arg.Any<CancellationToken>(), Arg.Any<Action<Func<CancellationToken, Task>>>());
+        completed.Should().Equal(true);
+    }
+
+    [HumansFact]
+    public async Task UpdateDraft_SwapClaimedGrant_ReleasesOld()
+    {
+        SetupActiveYear();
+        var submitter = Guid.NewGuid();
+        var old = MakeGrant(status: GrantStatus.Claimed);
+        var other = MakeGrant();
+        var id = Guid.NewGuid();
+        await SeedGrantReportAsync(id, submitter, old.Id, ExpenseReportStatus.Draft);
+        StubClaimable(submitter, other);
+        PutGrant(old);
+
+        var result = await _sut.UpdateHeaderAsync(id, submitter, 0, null, other.Id, TestContext.Current.CancellationToken);
+
+        result.Succeeded.Should().BeTrue(result.Error?.ResourceKey);
+        (await _sut.GetAsync(id, TestContext.Current.CancellationToken))!.PreapprovalGrantId.Should().Be(other.Id);
+        await _preapprovalWrites.Received(1).ReleaseAsync(old.Id, id, submitter, Arg.Any<CancellationToken>(), Arg.Any<Action<Func<CancellationToken, Task>>>());
+    }
+
+    [HumansFact]
+    public async Task UpdateDraft_KeepClaimedGrant_ReleasesNothing()
+    {
+        SetupActiveYear();
+        var submitter = Guid.NewGuid();
+        var grant = MakeGrant(status: GrantStatus.Claimed);
+        var id = Guid.NewGuid();
+        await SeedGrantReportAsync(id, submitter, grant.Id, ExpenseReportStatus.Draft);
+        PutGrant(grant);
+        StubNothingClaimable(submitter);
+
+        var result = await _sut.UpdateHeaderAsync(id, submitter, 0, "Fixed the receipt", grant.Id, TestContext.Current.CancellationToken);
+
+        result.Succeeded.Should().BeTrue(result.Error?.ResourceKey);
+        await _preapprovalWrites.DidNotReceive().ReleaseAsync(Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<CancellationToken>(), Arg.Any<Action<Func<CancellationToken, Task>>>());
+    }
+
+    [HumansFact]
+    public async Task UpdateDraft_RevokedGrant_DropsWithoutRelease()
+    {
+        // docs/features/global/preapprovals.md: a draft whose grant was revoked is not stranded.
+        SetupActiveYear();
+        var submitter = Guid.NewGuid();
+        var grant = MakeGrant(status: GrantStatus.Revoked);
+        var id = Guid.NewGuid();
+        await SeedGrantReportAsync(id, submitter, grant.Id, ExpenseReportStatus.Draft);
+        PutGrant(grant);
+        StubNothingClaimable(submitter);
+
+        var result = await _sut.UpdateHeaderAsync(id, submitter, CategoryAccountNumber, null, null, TestContext.Current.CancellationToken);
+
+        result.Succeeded.Should().BeTrue(result.Error?.ResourceKey);
+        (await _sut.GetAsync(id, TestContext.Current.CancellationToken))!.PreapprovalGrantId.Should().BeNull();
+        await _preapprovalWrites.DidNotReceive().ReleaseAsync(Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<CancellationToken>(), Arg.Any<Action<Func<CancellationToken, Task>>>());
+    }
+
+    [HumansFact]
+    public async Task UpdateDraft_ReleaseRefused_KeepsGrant()
+    {
+        SetupActiveYear();
+        var submitter = Guid.NewGuid();
+        var grant = MakeGrant(status: GrantStatus.Claimed);
+        var id = Guid.NewGuid();
+        await SeedGrantReportAsync(id, submitter, grant.Id, ExpenseReportStatus.Draft);
+        PutGrant(grant);
+        StubNothingClaimable(submitter);
+        _preapprovalWrites.ReleaseAsync(grant.Id, id, submitter, Arg.Any<CancellationToken>(), Arg.Any<Action<Func<CancellationToken, Task>>>())
+            .Returns(new PreapprovalWriteResult(Refusal: "Grant is not held by this report."));
+
+        var result = await _sut.UpdateHeaderAsync(id, submitter, CategoryAccountNumber, null, null, TestContext.Current.CancellationToken);
+
+        result.Succeeded.Should().BeFalse();
+        (await _sut.GetAsync(id, TestContext.Current.CancellationToken))!.PreapprovalGrantId.Should().Be(grant.Id);
+    }
 }

@@ -97,7 +97,7 @@ public class HoldedOutboxDuplicateGuardTests
     }
 
     [HumansFact]
-    public async Task LostDocIdRace_KeepsTheStoredDocument_AndTheAuditSummaryNamesTheOrphan()
+    public async Task DocIdRace_Lost_KeepsStoredDocument()
     {
         // The report snapshot the push works from shows no doc id; "doc-A" lands between that
         // snapshot and this run's create. Nothing is deleted in Holded: the audit entry names the
@@ -128,7 +128,7 @@ public class HoldedOutboxDuplicateGuardTests
     [InlineData(PublishOutcome.Accepted)]
     [InlineData(PublishOutcome.TransientFailure)]
     [InlineData(PublishOutcome.PermanentFailure)]
-    public async Task CancellationAfterVendorCreate_PreservesCompletedOrFailureState_AndStopsBeforeNextEvent(PublishOutcome outcome)
+    public async Task Drain_CancelledAfterVendorCreate_KeepsStateThenStops(PublishOutcome outcome)
     {
         using var cancellation = new CancellationTokenSource();
         var ct = cancellation.Token;

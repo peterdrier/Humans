@@ -1,3 +1,4 @@
+using JetBrains.Annotations;
 using System.Reflection;
 using Humans.Base.Interfaces;
 
@@ -51,6 +52,7 @@ public interface IAuditActionContributor : IFanout
 /// Derive from this, declare each action as a <c>public static readonly</c> field, and register the class as an
 /// <see cref="IAuditActionContributor"/> singleton. The fields are the contributed list, so nothing is declared twice.
 /// </summary>
+[UsedImplicitly(ImplicitUseKindFlags.Access, ImplicitUseTargetFlags.WithInheritors | ImplicitUseTargetFlags.WithMembers)]
 public abstract class AuditActionContributor : IAuditActionContributor
 {
     public IReadOnlyList<AuditActionDefinition> Actions { get; }

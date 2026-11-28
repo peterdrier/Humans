@@ -37,7 +37,7 @@ public sealed class CalendarRepositoryTests : IDisposable
     [HumansTheory]
     [Xunit.InlineData("FREQ=DAILY;COUNT=3")]
     [Xunit.InlineData("FREQ=DAILY;UNTIL=20260330")]
-    public async Task AllDayService_PersistsOnlyDatesAndExpandsAcrossDst(string rule)
+    public async Task AllDayService_AcrossDst_ExpandsByDate(string rule)
     {
         var service = CreateService();
         var date = new LocalDate(2026, 3, 28);
@@ -59,7 +59,7 @@ public sealed class CalendarRepositoryTests : IDisposable
     }
 
     [HumansFact]
-    public async Task AllDayService_RejectsTimedOverridesAndInvalidDateRanges()
+    public async Task AllDayService_TimedOverrideOrBadRange_IsRejected()
     {
         var ev = BuildEvent();
         ev.IsAllDay = true;
@@ -164,7 +164,7 @@ public sealed class CalendarRepositoryTests : IDisposable
     [HumansTheory]
     [Xunit.InlineData(false)]
     [Xunit.InlineData(true)]
-    public async Task SeriesUpdate_RejectsDurationThatWouldOverflowAnExistingMovedOccurrence(bool allDay)
+    public async Task SeriesUpdate_DurationOverflowsMovedOccurrence_IsRejected(bool allDay)
     {
         var ev = BuildEvent();
         ev.RecurrenceRule = "FREQ=DAILY;COUNT=1";
@@ -202,7 +202,7 @@ public sealed class CalendarRepositoryTests : IDisposable
     [Xunit.InlineData(true, false)]
     [Xunit.InlineData(false, true)]
     [Xunit.InlineData(true, true)]
-    public async Task TimedService_PreservesValidPartialAndZeroDurationOverrides(bool moveStart, bool setEnd)
+    public async Task TimedService_PartialOrZeroDurationOverride_IsKept(bool moveStart, bool setEnd)
     {
         var ev = BuildEvent();
         ev.RecurrenceRule = "FREQ=DAILY";
@@ -226,7 +226,7 @@ public sealed class CalendarRepositoryTests : IDisposable
     }
 
     [HumansFact]
-    public async Task AllDayService_MovesAndCancelsDateOccurrence_UpdatingOneRow()
+    public async Task AllDayService_MoveThenCancel_UpdatesOneRow()
     {
         var ev = BuildEvent();
         ev.IsAllDay = true; ev.StartUtc = null; ev.EndUtc = null;
@@ -245,7 +245,7 @@ public sealed class CalendarRepositoryTests : IDisposable
     }
 
     [HumansFact]
-    public async Task AllDayService_CancelsLegacyExceptionByDate_WithoutDuplicatingIt()
+    public async Task AllDayService_CancelLegacyException_DoesNotDuplicate()
     {
         var ev = BuildEvent();
         ev.IsAllDay = true; ev.RecurrenceRule = "FREQ=DAILY"; ev.RecurrenceTimezone = "Europe/Madrid";
@@ -263,7 +263,7 @@ public sealed class CalendarRepositoryTests : IDisposable
     }
 
     [HumansFact]
-    public async Task AllDayService_EditingLegacySeries_PreservesExceptionDatesInOriginalZone()
+    public async Task AllDayService_LegacySeriesEdit_KeepsExceptionDates()
     {
         var zone = DateTimeZoneProviders.Tzdb["Asia/Tokyo"];
         var day = new LocalDate(2026, 3, 29);
@@ -430,7 +430,7 @@ public sealed class CalendarRepositoryTests : IDisposable
     }
 
     [HumansFact]
-    public async Task SoftDeleteAsync_ReturnsTeamIdAndTitleAndStampsDeletedAt()
+    public async Task SoftDeleteAsync_Event_StampsDeletedAt()
     {
         var ev = BuildEvent();
         await _repo.AddAsync(ev, Xunit.TestContext.Current.CancellationToken);
@@ -524,7 +524,7 @@ public sealed class CalendarRepositoryTests : IDisposable
     // so exception rows hanging off a soft-deleted event are hidden too. Without it a
     // deleted series' cancellations and overrides keep surfacing.
     [HumansFact]
-    public async Task Exceptions_OfASoftDeletedEvent_AreHiddenByTheQueryFilter()
+    public async Task Exceptions_SoftDeletedEvent_AreHidden()
     {
         var ev = BuildEvent();
         ev.Exceptions.Add(new CalendarEventException
@@ -557,7 +557,7 @@ public sealed class CalendarRepositoryTests : IDisposable
     // pre-check and this write, the filtered lookup would miss the existing row and the
     // insert would collide with the unique (EventId, OriginalOccurrenceStartUtc) index.
     [HumansFact]
-    public async Task UpsertExceptionAsync_UpdatesTheExistingRow_EvenWhenTheParentIsSoftDeleted()
+    public async Task UpsertExceptionAsync_SoftDeletedParent_UpdatesExistingRow()
     {
         var ev = BuildEvent();
         await _repo.AddAsync(ev, Xunit.TestContext.Current.CancellationToken);

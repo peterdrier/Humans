@@ -43,7 +43,7 @@ public class CalendarLabelsViewTests
 
     [HumansTheory]
     [Xunit.MemberData(nameof(SupportedCultures.All), MemberType = typeof(SupportedCultures))]
-    public async Task WeekdayLabels_UseUiLanguageAndPreserveRecurrenceCodes(string language)
+    public async Task WeekdayLabels_UiLanguage_KeepRecurrenceCodes(string language)
     {
         using var inputCulture = new CultureScope("en");
         CultureInfo.CurrentUICulture = CultureInfo.GetCultureInfo(language);

@@ -130,7 +130,7 @@ public sealed class CachingCalendarServiceTests
         ((IHostedService)sut).StartAsync(TestContext.Current.CancellationToken);
 
     [HumansFact]
-    public async Task DateOccurrenceCancellation_RefreshesDatesAndForwardsDateIdentity()
+    public async Task DateOccurrenceCancellation_Forwarded_RefreshesDates()
     {
         var day = new LocalDate(2026, 3, 29);
         var before = BuildInfo() with
@@ -226,7 +226,7 @@ public sealed class CachingCalendarServiceTests
     }
 
     [HumansFact]
-    public async Task GetOccurrencesInWindowAsync_MergesCommunityContributorItemsWithOwnEvents()
+    public async Task GetOccurrencesInWindowAsync_ContributorItems_MergeWithOwn()
     {
         var ownEvent = BuildInfo(title: "Own event", start: Instant.FromUtc(2026, 6, 5, 9, 0), end: Instant.FromUtc(2026, 6, 5, 10, 0));
         _inner.GetAllEventInfosAsync(Arg.Any<CancellationToken>()).Returns([ownEvent]);
@@ -247,7 +247,7 @@ public sealed class CachingCalendarServiceTests
     }
 
     [HumansFact]
-    public async Task GetOccurrencesInWindowAsync_IncludesContributedItemsAndLaterAllDayEvents()
+    public async Task GetOccurrencesInWindowAsync_LaterAllDayEvents_AreIncluded()
     {
         var allDay = BuildInfo(title: "All-day", start: null, end: null) with
         {
@@ -321,7 +321,7 @@ public sealed class CachingCalendarServiceTests
     }
 
     [HumansFact]
-    public async Task GetOccurrencesInWindowAsync_LastAllDayOccurrenceSurvivesLateViewerDate()
+    public async Task GetOccurrencesInWindowAsync_LateViewerDate_KeepsLastOccurrence()
     {
         var day = new LocalDate(2026, 6, 5);
         var last = BuildInfo(title: "Last day", start: null, end: null) with
@@ -363,7 +363,7 @@ public sealed class CachingCalendarServiceTests
     }
 
     [HumansFact]
-    public async Task GetOccurrencesInWindowAsync_ExpandsARepeatingContributedItemWithinTheWindow()
+    public async Task GetOccurrencesInWindowAsync_RepeatingContributedItem_IsExpanded()
     {
         _inner.GetAllEventInfosAsync(Arg.Any<CancellationToken>()).Returns([]);
         var contributor = Substitute.For<ICalendarFeedContributor>();
@@ -381,7 +381,7 @@ public sealed class CachingCalendarServiceTests
     }
 
     [HumansFact]
-    public async Task GetOccurrencesInWindowAsync_SkipsThrowingContributorAndKeepsOwnEvents()
+    public async Task GetOccurrencesInWindowAsync_ContributorThrows_KeepsOwnEvents()
     {
         var ownEvent = BuildInfo(title: "Own event", start: Instant.FromUtc(2026, 6, 5, 9, 0), end: Instant.FromUtc(2026, 6, 5, 10, 0));
         _inner.GetAllEventInfosAsync(Arg.Any<CancellationToken>()).Returns([ownEvent]);
@@ -403,7 +403,7 @@ public sealed class CachingCalendarServiceTests
     }
 
     [HumansFact]
-    public async Task GetOccurrencesInWindowAsync_DiscardsContributorBatchWhenRecurrenceExpansionFails()
+    public async Task GetOccurrencesInWindowAsync_ExpansionFails_DiscardsContributorBatch()
     {
         var start = Instant.FromUtc(2026, 6, 5, 9, 0);
         var ownEvent = BuildInfo(title: "Own event", start: start, end: start.Plus(Duration.FromHours(1)));
@@ -503,7 +503,7 @@ public sealed class CachingCalendarServiceTests
     [HumansTheory]
     [InlineData(false)]
     [InlineData(true)]
-    public async Task CreateEventWithResultAsync_DelegatesToInnerAndRefreshesEntry(bool abortAfterCommit)
+    public async Task CreateEventWithResultAsync_Delegated_RefreshesEntry(bool abortAfterCommit)
     {
         using var cancellation = new CancellationTokenSource();
         var created = new CalendarEvent

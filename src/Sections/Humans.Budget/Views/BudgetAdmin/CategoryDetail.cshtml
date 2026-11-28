@@ -11,19 +11,12 @@
     var vatProjections = VatProjection.ForLineItems(Model.LineItems);
 }
 
-@section Crumbs {
+<page-header title="@Model.Name">
     @if (year is not null)
     {
-        <a asp-action="YearDetail" asp-route-id="@year.Id">@year.Name</a>
+        <page-header-subtitle><a asp-action="YearDetail" asp-route-id="@year.Id">@year.Name</a>@(group is null ? "" : $" · {group.Name}")</page-header-subtitle>
     }
-    @if (group is not null)
-    {
-        <span>@group.Name</span>
-    }
-    <span>@Model.Name</span>
-}
-
-<page-header title="@Model.Name" />
+</page-header>
 
 
 <div class="alert alert-warning d-flex align-items-center" role="alert">

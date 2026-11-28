@@ -9,7 +9,7 @@ namespace Humans.Calendar.Tests;
 public class CalendarArchitectureTests
 {
     [HumansFact]
-    public void CachingCalendarService_ImplementsQueriesAndWriteSurfaces()
+    public void CachingCalendarService_Interfaces_CoverQueriesWithWrites()
     {
         typeof(CachingCalendarService).Should().BeAssignableTo<ICalendarQueries>(
             because: "unkeyed ICalendarQueries resolves to the cache-backed query service");
@@ -44,7 +44,7 @@ public class CalendarArchitectureTests
     }
 
     [HumansFact]
-    public void AuditDiscriminatorsAreLiteralsNotDerivedFromTypeNames()
+    public void AuditDiscriminators_Values_AreLiterals()
     {
         // These are literal string values we store in the DB. Pinned so a rename can't
         // quietly change them and orphan existing audit_log rows

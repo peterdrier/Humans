@@ -1,0 +1,17 @@
+{
+  "date": "2026-02",
+  "family": "Claude",
+  "model": "Opus",
+  "version": "4.6",
+  "effort": null,
+  "brief": null,
+  "notes": {
+    "en": "The original, drawn with the Da Vinci rebrand. Hand-coded full-anatomy study, thin and faint; square and circle concentric. Washed out below about 64px.",
+    "es": "El original, dibujado con el cambio de imagen Da Vinci. Estudio anatómico completo codificado a mano, fino y tenue; cuadrado y círculo concéntricos. Se desvanecía por debajo de unos 64 px.",
+    "de": "Das Original, gezeichnet zum Da-Vinci-Rebranding. Handcodierte Ganzkörper-Anatomiestudie, dünn und blass; Quadrat und Kreis konzentrisch. Unter etwa 64 px verblasst.",
+    "it": "L’originale, disegnato con il rebranding Da Vinci. Studio anatomico completo scritto a mano, sottile e tenue; quadrato e cerchio concentrici. Sbiadito sotto i 64 px circa.",
+    "fr": "L’original, dessiné lors du changement d’identité Da Vinci. Étude anatomique complète codée à la main, fine et pâle ; carré et cercle concentriques. Délavé en dessous d’environ 64 px.",
+    "ca": "L’original, dibuixat amb el canvi d’imatge Da Vinci. Estudi anatòmic complet codificat a mà, fi i tènue; quadrat i cercle concèntrics. Es desdibuixava per sota d’uns 64 px.",
+    "nl": "Het origineel, getekend bij de Da Vinci-restyling. Met de hand gecodeerde anatomische studie, dun en vaag; vierkant en cirkel concentrisch. Verbleekt onder ongeveer 64 px."
+  }
+}

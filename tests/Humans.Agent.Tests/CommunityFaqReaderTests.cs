@@ -65,7 +65,7 @@ public class CommunityFaqReaderTests
     }
 
     [HumansFact]
-    public async Task ListTopicsAsync_parses_title_date_and_overview_summary()
+    public async Task ListTopicsAsync_Document_ParsesTitleDateSummary()
     {
         var source = new FakeSource { Files = { ["FAQ-general"] = GeneralBody } };
         var reader = MakeReader(source);
@@ -83,7 +83,7 @@ public class CommunityFaqReaderTests
     [HumansTheory]
     [InlineData(false)]
     [InlineData(true)]
-    public async Task Long_unbroken_overview_preserves_whole_surrogate_pairs(bool fits)
+    public async Task ListTopicsAsync_LongOverview_KeepsSurrogatePairs(bool fits)
     {
         var prefix = new string('a', fits ? 198 : 199);
         var overview = prefix + "😀tail";
@@ -96,7 +96,7 @@ public class CommunityFaqReaderTests
     }
 
     [HumansFact]
-    public async Task ListTopicsAsync_falls_back_to_title_when_no_overview()
+    public async Task ListTopicsAsync_NoOverview_UsesTitle()
     {
         var source = new FakeSource { Files = { ["bare"] = "# Bare Title\n\nNo overview here." } };
         var reader = MakeReader(source);
@@ -107,7 +107,7 @@ public class CommunityFaqReaderTests
     }
 
     [HumansFact]
-    public async Task ListTopicsAsync_reads_the_explicit_keywords_section()
+    public async Task ListTopicsAsync_KeywordsSection_IsRead()
     {
         // The Overview alone hides terms like "urinals"/"VIPee" the router needs. Coverage is made
         // legible via an explicit `## Keywords` line the FAQ generator emits — the app does not
@@ -127,7 +127,7 @@ public class CommunityFaqReaderTests
     }
 
     [HumansFact]
-    public async Task ListTopicsAsync_yields_no_keywords_when_no_keywords_section()
+    public async Task ListTopicsAsync_NoKeywordsSection_HasNoKeywords()
     {
         var source = new FakeSource { Files = { ["bare"] = "# Bare Title\n\n## Overview\nNo keywords here." } };
         var reader = MakeReader(source);
@@ -138,7 +138,7 @@ public class CommunityFaqReaderTests
     }
 
     [HumansFact]
-    public async Task ReadAsync_returns_body_for_a_discovered_topic()
+    public async Task ReadAsync_DiscoveredTopic_ReturnsBody()
     {
         var source = new FakeSource { Files = { ["FAQ-general"] = GeneralBody } };
         var reader = MakeReader(source);
@@ -149,7 +149,7 @@ public class CommunityFaqReaderTests
     }
 
     [HumansFact]
-    public async Task ReadAsync_returns_null_for_unknown_topic()
+    public async Task ReadAsync_UnknownTopic_ReturnsNull()
     {
         var source = new FakeSource { Files = { ["FAQ-general"] = GeneralBody } };
         var reader = MakeReader(source);
@@ -163,7 +163,7 @@ public class CommunityFaqReaderTests
     [InlineData("../secrets")]
     [InlineData("a/b")]
     [InlineData("")]
-    public async Task ReadAsync_rejects_unsafe_topic_keys(string topic)
+    public async Task ReadAsync_UnsafeTopicKey_IsRejected(string topic)
     {
         var source = new FakeSource { Files = { ["FAQ-general"] = GeneralBody } };
         var reader = MakeReader(source);
@@ -174,7 +174,7 @@ public class CommunityFaqReaderTests
     }
 
     [HumansFact]
-    public async Task ReadAsync_caches_the_doc_fetch()
+    public async Task ReadAsync_SecondRead_IsCached()
     {
         var source = new FakeSource { Files = { ["FAQ-general"] = GeneralBody } };
         var reader = MakeReader(source);
@@ -188,7 +188,7 @@ public class CommunityFaqReaderTests
     }
 
     [HumansFact]
-    public void WrapWithProvenance_prepends_an_unofficial_header_with_the_date()
+    public void WrapWithProvenance_Body_GetsUnofficialHeader()
     {
         var wrapped = CommunityFaqReader.WrapWithProvenance(GeneralBody);
 
@@ -200,7 +200,7 @@ public class CommunityFaqReaderTests
     }
 
     [HumansFact]
-    public async Task ReloadAsync_refetches_and_swaps_in_new_content()
+    public async Task ReloadAsync_NewContent_IsSwappedIn()
     {
         var source = new FakeSource { Files = { ["FAQ-general"] = GeneralBody } };
         var reader = MakeReader(source);
@@ -219,7 +219,7 @@ public class CommunityFaqReaderTests
     }
 
     [HumansFact]
-    public async Task ListTopicsAsync_returns_empty_when_folder_absent()
+    public async Task ListTopicsAsync_FolderAbsent_ReturnsEmpty()
     {
         var reader = MakeReader(new FakeSource()); // no files
 
@@ -229,7 +229,7 @@ public class CommunityFaqReaderTests
     }
 
     [HumansFact]
-    public async Task ReadAsync_resolves_caller_casing_to_canonical_stem()
+    public async Task ReadAsync_CallerCasing_ResolvesCanonicalStem()
     {
         // LLMs routinely lowercase the topic key; the reader must fetch the canonical
         // (case-sensitive) filename stem, not the caller's casing.
@@ -243,7 +243,7 @@ public class CommunityFaqReaderTests
     }
 
     [HumansFact]
-    public async Task Partial_topic_index_retries_failed_documents_instead_of_holding_the_miss_forever()
+    public async Task TopicIndex_Partial_RetriesFailedDocuments()
     {
         var source = new FakeSource { Files = { ["a"] = "# A", ["b"] = "# B" }, FailingStem = "b" };
         var reader = MakeReader(source);
@@ -259,7 +259,7 @@ public class CommunityFaqReaderTests
     }
 
     [HumansFact]
-    public async Task Failed_reload_preserves_both_the_index_and_previously_cached_bodies()
+    public async Task Reload_Fails_KeepsIndexWithBodies()
     {
         var source = new FakeSource { Files = { ["a"] = "# Original A", ["b"] = "# Original B" } };
         var reader = MakeReader(source);
@@ -278,7 +278,7 @@ public class CommunityFaqReaderTests
     }
 
     [HumansFact]
-    public async Task Pending_listing_cannot_replace_a_reloaded_topic_index()
+    public async Task Listing_PendingAfterReload_IsDiscarded()
     {
         var token = TestContext.Current.CancellationToken;
         var started = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
@@ -308,7 +308,7 @@ public class CommunityFaqReaderTests
     }
 
     [HumansFact]
-    public async Task Pending_document_cannot_replace_a_reloaded_body_or_index()
+    public async Task Document_PendingAfterReload_IsDiscarded()
     {
         var token = TestContext.Current.CancellationToken;
         var started = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);

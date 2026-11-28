@@ -13,7 +13,7 @@ public sealed class BoardAndDayViewModelTests
     private static readonly Instant Now = Instant.FromUtc(2026, 3, 1, 12, 0);
 
     [HumansFact]
-    public void Board_OffersOnlyTheDriversTripsThatTravelOnTheDateInThatDirection()
+    public void Board_OtherDateOrDirection_TripNotOffered()
     {
         var driver = Guid.NewGuid();
         var onTheDay = Trip(driver, departure: July3);
@@ -31,7 +31,7 @@ public sealed class BoardAndDayViewModelTests
     }
 
     [HumansFact]
-    public void Day_RosterNamesTheRider_NotTheDriver_WhenTheDriverAnsweredAPin()
+    public void Day_DriverAnsweredPin_RosterNamesRider()
     {
         var driver = Guid.NewGuid();
         var rider = Guid.NewGuid();

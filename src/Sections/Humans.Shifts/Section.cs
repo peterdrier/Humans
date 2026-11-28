@@ -1,3 +1,4 @@
+using Humans.Google.Contracts;
 using Humans.Base.Extensions;
 using System.Globalization;
 using System.Security.Claims;
@@ -130,6 +131,7 @@ public sealed class Section :
         services.AddScoped<ShiftVolunteerSearchBuilder>();
 
         services.AddScoped<IWorkloadService, WorkloadService>();
+        services.AddScoped<IGoogleGroupMembershipSource, ShiftGoogleGroupSource>();
 
         services.AddScoped<IRotaCoordinatorMessageService, RotaCoordinatorMessageService>();
 

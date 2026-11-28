@@ -144,7 +144,7 @@ public sealed class CommunicationPreferenceServiceTests : IDisposable
     [HumansTheory]
     [InlineData(true)]
     [InlineData(false)]
-    public async Task FullPreferenceUpdate_UsesTheKnownActorOrKeepsAnonymousAttribution(bool authenticated)
+    public async Task FullPreferenceUpdate_KnownActor_IsAttributed(bool authenticated)
     {
         var userId = Guid.NewGuid();
         var actorId = Guid.NewGuid();
@@ -210,7 +210,7 @@ public sealed class CommunicationPreferenceServiceTests : IDisposable
     }
 
     [HumansFact]
-    public async Task AlwaysOnCategories_CannotBeChangedOrReset_AndNeverReadOptedOut()
+    public async Task AlwaysOnCategories_ChangeOrReset_NeverOptsOut()
     {
         var userId = Guid.NewGuid();
 
@@ -257,7 +257,7 @@ public sealed class CommunicationPreferenceServiceTests : IDisposable
             .Returns(Task.FromResult<IReadOnlyCollection<MessageCategory>>(locked ? [MessageCategory.Ticketing] : []));
 
     [HumansFact]
-    public async Task AcceptsFacilitatedMessages_DefaultsOn_AndFollowsAnOptOut()
+    public async Task AcceptsFacilitatedMessages_NoOptOut_DefaultsOn()
     {
         var userId = Guid.NewGuid();
         (await _service.AcceptsFacilitatedMessagesAsync(userId, Ct)).Should().BeTrue();
@@ -268,7 +268,7 @@ public sealed class CommunicationPreferenceServiceTests : IDisposable
     }
 
     [HumansFact]
-    public async Task SubscribedAt_StampedOnFirstOptIn_KeptAcrossReOptInAndNoOps()
+    public async Task SubscribedAt_FirstOptIn_IsStampedOnce()
     {
         var userId = Guid.NewGuid();
         await _service.UpdatePreferenceAsync(userId, MessageCategory.Marketing, optedOut: false, source: "Profile", cancellationToken: Ct);
@@ -284,7 +284,7 @@ public sealed class CommunicationPreferenceServiceTests : IDisposable
     }
 
     [HumansFact]
-    public async Task SubscribedAt_StampedWhenAnOptedOutRowWithoutOneOptsIn()
+    public async Task SubscribedAt_OptedOutRowOptsIn_IsStamped()
     {
         var userId = Guid.NewGuid();
         await SeedRowAsync(userId, MessageCategory.Marketing, optedOut: true, source: "Default");
@@ -295,7 +295,7 @@ public sealed class CommunicationPreferenceServiceTests : IDisposable
     }
 
     [HumansFact]
-    public async Task CountByCategoryAndState_CountsRecordedRows_AndIgnoresHistoricalClears()
+    public async Task CountByCategoryAndState_HistoricalClears_AreIgnored()
     {
         for (var i = 0; i < 3; i++)
             await SeedRowAsync(Guid.NewGuid(), MessageCategory.Marketing, optedOut: false);
@@ -384,7 +384,7 @@ public sealed class CommunicationPreferenceServiceTests : IDisposable
     }
 
     [HumansFact]
-    public async Task Write_PreservesStoredInboxAndSubscriptionMetadata()
+    public async Task Write_StoredMetadata_IsPreserved()
     {
         var userId = Guid.NewGuid();
         var subscribed = _clock.GetCurrentInstant() - Duration.FromDays(30);
@@ -405,7 +405,7 @@ public sealed class CommunicationPreferenceServiceTests : IDisposable
     }
 
     [HumansFact]
-    public async Task Reset_DeletesThePreference_AndUsesTheCategoryDefault()
+    public async Task Reset_RecordedPreference_UsesCategoryDefault()
     {
         var userId = Guid.NewGuid();
         await SeedRowAsync(userId, MessageCategory.Marketing, optedOut: false, source: "MailerLiteSync");
@@ -424,7 +424,7 @@ public sealed class CommunicationPreferenceServiceTests : IDisposable
     }
 
     [HumansFact]
-    public async Task HistoricalClearedRows_UseDefaults_AndDoNotDisableInbox()
+    public async Task HistoricalClearedRows_Read_UseDefaults()
     {
         var userId = Guid.NewGuid();
         await SeedRowAsync(userId, MessageCategory.Marketing, optedOut: null, inboxEnabled: false);
@@ -444,7 +444,7 @@ public sealed class CommunicationPreferenceServiceTests : IDisposable
     }
 
     [HumansFact]
-    public async Task Reset_IsANoOpWhenNothingIsRecorded_AndDeletesAnExistingRow()
+    public async Task Reset_NothingRecorded_IsNoOp()
     {
         var userId = Guid.NewGuid();
         await _service.ResetPreferenceAsync(userId, MessageCategory.Marketing, "Reset", Ct);
@@ -458,7 +458,7 @@ public sealed class CommunicationPreferenceServiceTests : IDisposable
     }
 
     [HumansFact]
-    public async Task Merge_LaterPreferenceWins_SourceOnlyMoves_AndSourceIsDeleted()
+    public async Task Merge_BothHavePreference_LaterWins()
     {
         var source = Guid.NewGuid();
         var target = Guid.NewGuid();
@@ -520,7 +520,7 @@ public sealed class CommunicationPreferenceServiceTests : IDisposable
     [HumansTheory]
     [InlineData(false)]
     [InlineData(true)]
-    public async Task Export_CoversEmailRows_AndEraseDeletesTheRows(bool hasSubscribedAt)
+    public async Task ExportAndErase_EmailRows_AreCovered(bool hasSubscribedAt)
     {
         var userId = Guid.NewGuid();
         var subscribed = hasSubscribedAt ? _clock.GetCurrentInstant() : (Instant?)null;

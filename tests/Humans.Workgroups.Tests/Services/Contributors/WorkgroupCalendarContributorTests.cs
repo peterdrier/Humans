@@ -16,7 +16,7 @@ public sealed class WorkgroupCalendarContributorTests : WorkgroupsTestHarness
     private WorkgroupCalendarContributor NewContributor() => new(NewService());
 
     [HumansFact]
-    public async Task PersonalFeed_IncludesMeetingsOfActiveGroupsTheUserBelongsTo()
+    public async Task PersonalFeed_ActiveGroupMember_IncludesMeetings()
     {
         var workgroup = await SeedWorkgroupAsync(status: WorkgroupStatus.Active);
         var member = workgroup.Members.Single().UserId;
@@ -41,7 +41,7 @@ public sealed class WorkgroupCalendarContributorTests : WorkgroupsTestHarness
     }
 
     [HumansFact]
-    public async Task PersonalFeed_ExcludesMeetingsOfGroupsTheUserIsNotAMemberOf()
+    public async Task PersonalFeed_NotMember_ExcludesMeetings()
     {
         var workgroup = await SeedWorkgroupAsync(status: WorkgroupStatus.Active);
         await AddMeetingAsync(workgroup.Id, Clock.GetCurrentInstant().Plus(Duration.FromDays(1)));
@@ -108,7 +108,7 @@ public sealed class WorkgroupCalendarContributorTests : WorkgroupsTestHarness
     }
 
     [HumansFact]
-    public async Task PublicItems_ExcludeMeetingsOfSensitiveGroups_MembersStillGetThem()
+    public async Task PublicItems_SensitiveGroup_ExcludeMeetings()
     {
         var workgroup = await SeedWorkgroupAsync(status: WorkgroupStatus.Active, isSensitive: true);
         var member = workgroup.Members.Single().UserId;

@@ -49,7 +49,7 @@ public sealed class CalendarEventFormViewModelTests
     [HumansTheory]
     [InlineData(nameof(CreateCalendarEventDto.RecurrenceTimezone), nameof(CalendarEventFormViewModel.TimeZoneId))]
     [InlineData(nameof(CreateCalendarEventDto.RecurrenceRule), nameof(CalendarEventFormViewModel.RecurrenceRule))]
-    public void ErrorFieldFor_KeepsAServiceNamedMemberOnItsOwnField(string serviceMember, string expected)
+    public void ErrorFieldFor_NamedMember_UsesOwnField(string serviceMember, string expected)
     {
         CalendarEventFormViewModel.ErrorFieldFor(serviceMember).Should().Be(expected);
     }
@@ -60,12 +60,12 @@ public sealed class CalendarEventFormViewModelTests
     [InlineData(null)]
     [InlineData("")]
     [InlineData("Title")]
-    public void ErrorFieldFor_SendsAnUnnamedMemberToTheFormLevel(string? serviceMember)
+    public void ErrorFieldFor_UnnamedMember_UsesFormLevel(string? serviceMember)
     {
         CalendarEventFormViewModel.ErrorFieldFor(serviceMember).Should().BeEmpty();
     }
     [HumansFact]
-    public void EventForm_LocalizesRequiredLengthAndUrlErrors()
+    public void EventForm_InvalidInput_LocalizesErrors()
     {
         using var cultureScope = new CultureScope("en");
         var registrations = new ServiceCollection().AddLogging().AddLocalization();

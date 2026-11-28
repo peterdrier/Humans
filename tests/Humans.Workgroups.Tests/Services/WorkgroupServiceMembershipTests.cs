@@ -200,7 +200,7 @@ public sealed class WorkgroupServiceMembershipTests : WorkgroupsTestHarness
     [InlineData("handover")]
     [InlineData("coordinators")]
     [InlineData("appoint")]
-    public async Task Membership_NamePreparationFailure_LeavesMembersAndLogUnchanged(string action)
+    public async Task Membership_NamePreparationFailure_ChangesNothing(string action)
     {
         var group = await SeedWorkgroupAsync();
         var coordinator = group.Members.Single().UserId;
@@ -275,7 +275,7 @@ public sealed class WorkgroupServiceMembershipTests : WorkgroupsTestHarness
     [InlineData(false, false)]
     [InlineData(true, true)]
     [InlineData(true, false)]
-    public async Task CoordinatorChanges_PreserveStateRulesAndLogAttribution(bool appointment, bool active)
+    public async Task CoordinatorChanges_StateRules_ArePreserved(bool appointment, bool active)
     {
         var status = active ? WorkgroupStatus.Active : WorkgroupStatus.Dormant;
         var workgroup = await SeedWorkgroupAsync(status: status);
@@ -310,7 +310,7 @@ public sealed class WorkgroupServiceMembershipTests : WorkgroupsTestHarness
     }
 
     [HumansFact]
-    public async Task Leave_AsTheLastCoordinator_WithoutReplacement_ReturnsARefusal()
+    public async Task Leave_LastCoordinatorNoReplacement_IsRefused()
     {
         var workgroup = await SeedWorkgroupAsync();
         var coordinator = workgroup.Members.Single().UserId;
@@ -322,7 +322,7 @@ public sealed class WorkgroupServiceMembershipTests : WorkgroupsTestHarness
     }
 
     [HumansFact]
-    public async Task Leave_AsTheLastCoordinator_NamingAReplacement_PromotesThem()
+    public async Task Leave_LastCoordinatorWithReplacement_PromotesThem()
     {
         var workgroup = await SeedWorkgroupAsync();
         var coordinator = workgroup.Members.Single().UserId;
@@ -376,7 +376,7 @@ public sealed class WorkgroupServiceMembershipTests : WorkgroupsTestHarness
     }
 
     [HumansFact]
-    public async Task Join_CreatesAPendingRow_ThatIsNotAMemberYet()
+    public async Task Join_NewRequest_IsPendingNotMember()
     {
         var workgroup = await SeedWorkgroupAsync();
         var requester = SeedUser("Requester");
@@ -400,7 +400,7 @@ public sealed class WorkgroupServiceMembershipTests : WorkgroupsTestHarness
     [HumansTheory]
     [InlineData(false)]
     [InlineData(true)]
-    public async Task ApproveMember_ByACoordinatorOrAdmin_AdmitsWithLogAuditNoticeAndDriveSync(bool asAdmin)
+    public async Task ApproveMember_CoordinatorOrAdmin_Admits(bool asAdmin)
     {
         var workgroup = await SeedWorkgroupAsync();
         var coordinator = workgroup.Members.Single().UserId;
@@ -428,7 +428,7 @@ public sealed class WorkgroupServiceMembershipTests : WorkgroupsTestHarness
     }
 
     [HumansFact]
-    public async Task DeclineMember_ClosesTheRequest_AuditedAndTold()
+    public async Task DeclineMember_Pending_ClosesRequest()
     {
         var workgroup = await SeedWorkgroupAsync();
         var coordinator = workgroup.Members.Single().UserId;
@@ -541,7 +541,7 @@ public sealed class WorkgroupServiceMembershipTests : WorkgroupsTestHarness
     }
 
     [HumansFact]
-    public async Task AddMember_AnExistingMemberOrUnknownUser_ReturnsARefusal()
+    public async Task AddMember_ExistingOrUnknownUser_IsRefused()
     {
         var workgroup = await SeedWorkgroupAsync();
         var coordinator = workgroup.Members.Single().UserId;
@@ -679,7 +679,7 @@ public sealed class WorkgroupServiceMembershipTests : WorkgroupsTestHarness
     }
 
     [HumansFact]
-    public async Task LinkSurvey_ASurveyIdThatDoesNotExist_ReturnsARefusal()
+    public async Task LinkSurvey_UnknownSurveyId_IsRefused()
     {
         var workgroup = await SeedWorkgroupAsync();
         var member = SeedUser("Member");
@@ -748,7 +748,7 @@ public sealed class WorkgroupServiceMembershipTests : WorkgroupsTestHarness
     }
 
     [HumansFact]
-    public async Task ReplayingADelete_IsRefused_AndAuditedOnce()
+    public async Task Delete_Replayed_IsRefused()
     {
         var workgroup = await SeedWorkgroupAsync();
         var member = workgroup.Members.Single().UserId;
@@ -899,7 +899,7 @@ public sealed class WorkgroupServiceMembershipTests : WorkgroupsTestHarness
     [InlineData("FREQ=WEEKLY", "Mars/Olympus")]
     [InlineData("FREQ=FORTNIGHTLY", "Europe/Madrid")]
     [InlineData("FREQ=HOURLY", "Europe/Madrid")]
-    public async Task ARepeatingMeeting_NeedsAValidRuleAndZone(string rule, string? zone)
+    public async Task RepeatingMeeting_InvalidRuleOrZone_IsRefused(string rule, string? zone)
     {
         var workgroup = await SeedWorkgroupAsync();
         var member = workgroup.Members.Single().UserId;

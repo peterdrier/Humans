@@ -1,72 +1,82 @@
 ---
 name: redraw-logo
-description: "Redraw the Nobodies Vitruvian Man mark with the current model, derive every icon asset from it, archive the previous round, wire it into the site, open the PR. Peter runs this every 2-3 months when a new first-class model ships, to watch the brand evolve. Triggers: 'redraw the logo', 'logo round', 'give the logo a go', '/redraw-logo'."
-argument-hint: "[model label for the history folder, e.g. opus-5.5] [effort level, e.g. high]"
+description: "Add one model's drawing of the Nobodies Vitruvian Man to the logo library (shown at /About/Logos), drawn against the frozen brief. Many models and effort levels can run in parallel without conflicts. Promoting an entry to the live site logo is a separate step, only when Peter asks. Triggers: 'redraw the logo', 'logo round', 'add a logo library entry', '/redraw-logo'."
+argument-hint: "<model, e.g. 'Claude Opus 5.5'> <effort, e.g. high>"
 ---
 
-# Redraw the logo
+# Redraw the logo — a library entry
 
-One round of the brand's model-by-model evolution. The brief is `src/Humans.Web/wwwroot/img/logo.md`
-— read it first and in full; it holds the constraints, the self-simplifying design, and the history.
-This skill is the procedure around it.
+The logo library is a timeline of how each model, at each effort level, draws the same mark from the
+same brief. One run of this skill adds **one entry**, nothing else. It never changes the live logo.
 
-`$ARGUMENTS`: the model label for the archive folder (`<yyyy-mm>-<label>`) and the effort level the
-session runs at. If empty, use the model you are, lowercased (`fable-5.1`), and ask Peter for the level
-before step 5 — it goes in the History line and is not recoverable afterwards.
+`$ARGUMENTS`: family, model and version (`Claude Opus 5.5`, `Gemini Neon 4`) and the
+effort level the session runs at (`low` / `medium` / `high` / ...). If either is missing, use what you
+know you are and ask for the effort — it is not recoverable afterwards.
 
-## 0. Branch
-Feature branch off `origin/main` (`logo/<yyyy-mm>-<label>`). Cloud sessions work in the repo root;
-local sessions in their worktree.
+## The entry
+`<slug>` = `<yyyy-mm>-<model>-<effort>`, all lowercase, spaces to `-`, the vendor prefix dropped:
+`2026-11-opus-5.5-high`, `2026-11-gemini-4-neon-high`. The folder is
+`src/Humans.Web/wwwroot/img/logo-library/<slug>/` and holds two files from the drawing run (plus `stats.json`, see below):
 
-## 1. Archive the outgoing round
-```
-mkdir -p docs/brand/logo-history/<prev>
-git mv src/Humans.Web/wwwroot/img/logo.svg    docs/brand/logo-history/<prev>/logo.svg
-git mv src/Humans.Web/wwwroot/img/favicon.svg docs/brand/logo-history/<prev>/favicon.svg
-```
-`<prev>` is the last History line in `logo.md`. Render it once at 280px and keep that PNG in your
-scratchpad: it is the bar the new drawing must clear.
+- `logo.svg` — your drawing.
+- `entry.json`:
+  ```json
+  {
+    "date": "2026-11",
+    "family": "Claude",
+    "model": "Opus",
+    "version": "5.5",
+    "effort": "high",
+    "brief": "v1",
+    "notes": { "en": "One short paragraph: what you aimed for, what is still weak." }
+  }
+  ```
+  `notes` is English only (Peter's call: model commentary, not UI text; other cultures fall back to
+  it); plain prose, no markdown. The terms: **family** `Claude` / `GPT` / `Gemini`, **model** `Opus` / `Sol` / `Neon`,
+  **version** the number alone (`5.5`, `6.2`, `4`), **effort** the level. The gallery groups by
+  family, then model, then version. Save the
+  file as UTF-8 without a BOM. `effort` is one of `low` / `medium` / `high` / `xhigh` / `max` — the page
+  translates those labels.
 
-## 2. Draw the master (`wwwroot/img/logo.svg`)
-- Keep the brief's hard constraints and Leonardo's geometry exactly (coordinates are documented in
-  the header comment of the previous master — reuse the frame, hip, shoulder and fingertip points).
-- Goal of the round: **more convincingly human than last time at 280px**, still a delicate engraving.
-  Redraw the anatomy; don't just add lines to the old file.
-- Structure to keep: solid gold base + ink etch tiers (2.0 / 1.4 / 0.9) + faint construction; limb
-  symbols carry their own etch so draw order gives occlusion; right-half torso mirrored about x=120.
-- **Render and look, never judge from XML.** Headless Chrome is at `/opt/pw-browsers/chromium` in the
-  cloud container. Two sheets, every iteration:
-  - large: 700px, device scale 1 — anatomy, hands, face, stripes/smiley/fork failure modes.
-  - small: 96 / 64 / 48 / 38 / 24 / 16 at device scale **1**, then zoom the PNG 3× nearest-neighbour
-    (PIL) — the navbar is 38px; a 2× render lies about it.
-  Iterate until both read. Typically 5-8 passes.
+If the folder already exists, stop and say so — the entry has been drawn.
 
-## 3. Derive every icon
-```
-python3 .claude/skills/redraw-logo/derive.py --out <scratchpad>/review.png
-```
-Writes `favicon.svg` (solid base on the tile, etch stripped, bolder frame), `favicon.ico` (16/32/48),
-both apple-touch PNGs (180) and `icon-512.png`, plus a review sheet. Look at the review sheet and at
-the `.ico` sizes zoomed. If the strip regex in `derive.py` no longer matches the master's structure,
-fix the script, not the SVG.
+## Steps
+1. **Branch.** Off `origin/main`, branch `logo/<slug>`, in your own worktree. Parallel runs are
+   expected; you touch only your own folder, so they never conflict.
+2. **Read the brief: `src/Humans.Web/wwwroot/img/logo-library/brief-v1.md`, and only that.** It is frozen and it is
+   the whole input. Do not open other library entries, `wwwroot/img/logo.svg`, `logo.md` or git
+   history of the mark — the comparison only works if every model starts from the same text.
+3. **Draw and iterate** per the brief, rendering every pass with
+   `python3 .claude/skills/redraw-logo/render.py <folder>/logo.svg` and looking at both sheets.
+4. **Write `entry.json`.**
+5. **Ship.** Commit only the new folder, push, open a PR against `origin/main` titled
+   `Logo library: <model>, <effort>`. The body is your notes plus a link to the entry on the PR's
+   preview deploy, `https://<pr-number>.n.burn.camp/About/Logos`. Don't commit the render sheets.
+   Before pushing, run `dotnet test tests/Humans.Web.Tests -v quiet --filter LogoLibrary`.
+6. **Tend the PR** per `.claude/steward.md`, or stop.
 
-## 4. Integrate
-- Nothing in the `<head>` wiring changes unless an asset is added; `logo.md` lists it.
-- The About page (`Views/About/Index.cshtml`, `.about-mark`) shows the master at 260px on an
-  aged-ink disc — check it still fits the drawing (viewBox changes move the figure).
-- Build the Shell: `dotnet build src/Humans.Web -v quiet`. No tests cover the assets.
-- Walk the AGENTS.md surface list: no new strings (decorative `alt=""`), no auth, no data, no
-  migrations.
+## Recording time and cost
+After a drawing run ends, the orchestrator (never the run itself) runs
+`python .claude/skills/redraw-logo/stats.py <slug>` and commits the resulting `<entry>/stats.json`
+on the entry's branch or in a follow-up PR. It finds the run's Claude Code or Codex transcripts by
+the branch `logo/<slug>`, sums re-runs, and records working minutes, tokens and, for models priced in
+the script's table, estimated cost; the page shows it on the card. Unpriced models record
+`costUsd: null`. Gemini runs leave no transcripts to read and get no `stats.json`. When the drawing
+came from a retry on another branch (e.g. after an account hit its usage limit), pass
+`<slug>@<that branch>` so the failed attempt isn't counted instead.
 
-## 5. Record and ship
-- `logo.md` → History: one line, `**<yyyy-mm> · <Model>, <level>**`, what changed, what to beat next time.
-- `python3 .claude/skills/redraw-logo/history.py` regenerates `docs/brand/logo-history/history.png`
-  (every round side by side); look at it, it goes in the PR body.
-- Commit the master, derived assets, archive, `history.png`, docs; push; open the PR against
-  `origin/main` with `history.png` in the body (rendered images, not code).
-- Tend the PR yourself per `.claude/steward.md`, or stop.
+## Promoting an entry to the live logo — only when Peter asks
+This is the old "round": the chosen entry becomes the site's mark.
+1. Copy `<entry>/logo.svg` over `src/Humans.Web/wwwroot/img/logo.svg`.
+2. `python3 .claude/skills/redraw-logo/derive.py --out <scratchpad>/review.png` derives the favicon,
+   `.ico`, apple-touch and 512 icons. Look at the review sheet and the `.ico` sizes zoomed. If the
+   strip regex no longer matches the drawing's structure, fix the script, not the SVG.
+3. Check the About page disc (`.about-mark`, 260px) still fits the drawing.
+4. Record the promotion in `src/Humans.Web/wwwroot/img/logo.md` ("Live logo").
+5. Build the Shell (`dotnet build src/Humans.Web -v quiet`), commit, PR.
 
 ## Don'ts
-- Don't change palette, subject, geometry or the transparent-navbar / baked-tile split without Peter.
-- Don't ship assets you haven't looked at rendered, at the size they'll be used.
-- Don't edit the archived rounds.
+- Never edit `brief-v1.md` or any existing library entry. A new brief is `brief-v2.md`, and Peter
+  decides when.
+- Don't change palette, subject or geometry; they are in the brief.
+- Don't ship a drawing you haven't looked at rendered.

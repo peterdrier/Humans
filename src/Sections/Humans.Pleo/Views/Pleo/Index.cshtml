@@ -13,13 +13,6 @@
     };
 }
 
-<page-header title="Pleo" />
-<partial name="_PleoNav" />
-
-<p class="text-muted">
-    A local mirror of the Pleo card wallet, rebuilt from Pleo by every sweep. Nothing here is booked into Holded.
-</p>
-
 @if (Model.UnlinkedCategoryCount > 0)
 {
     <div class="alert alert-warning">
@@ -199,6 +192,10 @@
         </div>
     </div>
 </div>
+
+<p class="text-muted small mt-3">
+    A local mirror of the Pleo card wallet, rebuilt from Pleo by every sweep. Nothing here is booked into Holded.
+</p>
 
 <script>
     // A second submit only earns a "skipped" toast; disable on click.

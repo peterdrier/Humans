@@ -99,7 +99,7 @@ public sealed class OutboxEmailServiceTests : IDisposable
     [InlineData("a")]
     [InlineData("😀")]
     [InlineData("<")]
-    public async Task ComposerSelfSend_ValidMaximumSubject_QueuesWithoutLosingTheFullSubject(string character)
+    public async Task ComposerSelfSend_MaximumSubject_KeepsFullSubject(string character)
     {
         var ct = TestContext.Current.CancellationToken;
         var userId = Guid.NewGuid();
@@ -129,7 +129,7 @@ public sealed class OutboxEmailServiceTests : IDisposable
     }
 
     [HumansFact]
-    public async Task SendAsync_SubjectAtUnicodeCharacterLimit_PreservesHeaderAndBody()
+    public async Task SendAsync_SubjectAtUnicodeLimit_IsPreserved()
     {
         var subject = string.Concat(Enumerable.Repeat("😀", 1000));
         await _service.SendAsync(Message(subject: subject), TestContext.Current.CancellationToken);
@@ -164,7 +164,7 @@ public sealed class OutboxEmailServiceTests : IDisposable
     [InlineData(false, true)]
     [InlineData(true, false)]
     [InlineData(true, true)]
-    public async Task Transport_RedactedLogsRetainOnlyTemplateAndFailureType(bool smtp, bool redact)
+    public async Task Transport_RedactedLogs_KeepOnlyTemplateFailureType(bool smtp, bool redact)
     {
         const string recipient = "erased[invalid";
         const string subject = "Goodbye Erased Name";
@@ -199,7 +199,7 @@ public sealed class OutboxEmailServiceTests : IDisposable
     [HumansTheory]
     [InlineData(false)]
     [InlineData(true)]
-    public async Task SmtpDisconnectFailure_PreservesAcceptanceAndRedactedLogging(bool redact)
+    public async Task Smtp_DisconnectFails_KeepsAcceptance(bool redact)
     {
         const string recipient = "erased@example.com";
         const string subject = "Goodbye Erased Name";
@@ -318,7 +318,7 @@ public sealed class OutboxEmailServiceTests : IDisposable
     }
 
     [HumansFact]
-    public async Task SendAsync_DoNotPersist_SendsThroughTransportAndWritesNoRow()
+    public async Task SendAsync_DoNotPersist_WritesNoRow()
     {
         await _service.SendAsync(
             Message(template: "account_deleted", html: "<p>Goodbye</p>", doNotPersist: true),
@@ -367,7 +367,7 @@ public sealed class OutboxEmailServiceTests : IDisposable
     }
 
     [HumansFact]
-    public async Task SendAsync_Urgent_RunsImmediateProcessorAndPersistsTheFlag()
+    public async Task SendAsync_Urgent_RunsImmediateProcessor()
     {
         await _service.SendAsync(Message() with { Urgent = true }, TestContext.Current.CancellationToken);
 
@@ -415,7 +415,7 @@ public sealed class OutboxEmailServiceTests : IDisposable
     }
 
     [HumansFact]
-    public async Task SendAsync_NullCategory_NeverSuppressesAndStampsNoUnsubscribe()
+    public async Task SendAsync_NullCategory_IsNeverSuppressed()
     {
         await _service.SendAsync(Message(category: null, userId: Guid.NewGuid()), TestContext.Current.CancellationToken);
 
@@ -428,7 +428,7 @@ public sealed class OutboxEmailServiceTests : IDisposable
     }
 
     [HumansFact]
-    public async Task SendAsync_SystemCategory_NeverSuppressesAndStampsNoUnsubscribe()
+    public async Task SendAsync_SystemCategory_IsNeverSuppressed()
     {
         await _service.SendAsync(Message(template: "signup_rejected", category: MessageCategory.System, userId: Guid.NewGuid()),
             TestContext.Current.CancellationToken);
@@ -441,7 +441,7 @@ public sealed class OutboxEmailServiceTests : IDisposable
     }
 
     [HumansFact]
-    public async Task SendAsync_StampsFeedbackIdWithTemplateCategoryAndCampaign()
+    public async Task SendAsync_Campaign_StampsFeedbackId()
     {
         var campaignId = Guid.NewGuid();
         await _service.SendAsync(Message(
@@ -480,7 +480,7 @@ public sealed class OutboxEmailServiceTests : IDisposable
     }
 
     [HumansFact]
-    public async Task SendAsync_WhenUserOptedOutOfCategory_DoesNotCreateOutboxRow()
+    public async Task SendAsync_OptedOutOfCategory_CreatesNoRow()
     {
         var userId = Guid.NewGuid();
         _commPrefService.IsOptedOutAsync(userId, MessageCategory.TeamUpdates, Arg.Any<CancellationToken>())
@@ -495,7 +495,7 @@ public sealed class OutboxEmailServiceTests : IDisposable
     }
 
     [HumansFact]
-    public async Task SendAsync_WhenOptedIn_StampsUnsubscribeHeadersAndUrl()
+    public async Task SendAsync_OptedIn_StampsUnsubscribeHeaders()
     {
         var userId = Guid.NewGuid();
         _commPrefService.IsOptedOutAsync(userId, MessageCategory.Governance, Arg.Any<CancellationToken>())
@@ -542,7 +542,7 @@ public sealed class OutboxEmailServiceTests : IDisposable
     }
 
     [HumansFact]
-    public async Task SendAsync_NoUser_IsNeverResolvedFromTheAddress_AndCarriesNoOptOut()
+    public async Task SendAsync_NoUser_IsNotResolvedFromAddress()
     {
         await _service.SendAsync(Message(
             recipient: "camp@example.com", template: "facilitated_message",
@@ -557,7 +557,7 @@ public sealed class OutboxEmailServiceTests : IDisposable
     }
 
     [HumansFact]
-    public async Task SendAsync_CampaignCodesCategory_NeverSuppressesAndStampsNoUnsubscribe()
+    public async Task SendAsync_CampaignCodesCategory_IsNeverSuppressed()
     {
         // CampaignCodes is always-on by design:
         // the opt-out it would advertise can never take effect, so the transport must not

@@ -96,7 +96,7 @@ public sealed class GovernanceWorkgroupsViewComponentTests
         await act.Should().ThrowAsync<OperationCanceledException>();
     }
     [HumansFact]
-    public async Task CoordinatorNames_PreserveOrderAndSeparatorsThroughHumanRendering()
+    public async Task CoordinatorNames_HumanRendering_KeepsOrder()
     {
         using var culture = new CultureScope("en");
         var now = Instant.FromUtc(2026, 11, 3, 1, 0);

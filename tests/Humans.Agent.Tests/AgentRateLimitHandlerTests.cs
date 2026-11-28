@@ -12,7 +12,7 @@ namespace Humans.Agent.Tests;
 public class AgentRateLimitHandlerTests
 {
     [HumansFact]
-    public async Task Allows_when_under_daily_cap()
+    public async Task Check_UnderDailyCap_Allows()
     {
         var user = Guid.NewGuid();
         var store = new AgentRateLimitStore();
@@ -29,7 +29,7 @@ public class AgentRateLimitHandlerTests
     }
 
     [HumansFact]
-    public async Task Rejects_when_daily_messages_cap_hit()
+    public async Task Check_DailyCapHit_Rejects()
     {
         var user = Guid.NewGuid();
         var store = new AgentRateLimitStore();
@@ -50,7 +50,7 @@ public class AgentRateLimitHandlerTests
     }
 
     [HumansFact]
-    public async Task Rejects_when_hourly_messages_cap_hit()
+    public async Task Check_HourlyCapHit_Rejects()
     {
         var user = Guid.NewGuid();
         var store = new AgentRateLimitStore();

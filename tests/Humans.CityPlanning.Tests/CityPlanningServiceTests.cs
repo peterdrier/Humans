@@ -84,7 +84,7 @@ public sealed class CityPlanningServiceTests : CityPlanningTestBase
     [HumansTheory]
     [InlineData(0.0)]
     [InlineData(500.0)]
-    public async Task SaveCampPolygonAsync_FirstSave_CreatesBothPolygonAndHistory(double areaSqm)
+    public async Task SaveCampPolygonAsync_FirstSave_CreatesPolygonWithHistory(double areaSqm)
     {
         var campSeasonId = Guid.NewGuid();
         var userId = NewUserId();
@@ -206,7 +206,7 @@ public sealed class CityPlanningServiceTests : CityPlanningTestBase
     [InlineData("""{"type":"Polygon","coordinates":[[[0,0],[1,0],[1,1],[0,1]]]}""")]
     [InlineData("""{"type":"MultiPolygon","coordinates":[null]}""")]
     [InlineData("""{"type":"GeometryCollection","geometries":[{"type":"Feature","geometry":null}]}""")]
-    public async Task OverlayUploads_RejectMalformedGeoJsonWithoutReplacingSettingsOrAuditing(string json)
+    public async Task OverlayUploads_MalformedGeoJson_IsRejected(string json)
     {
         var existing = await SeedMapSettingsAsync();
         const string original = """{"type":"FeatureCollection","features":[]}""";
@@ -241,7 +241,7 @@ public sealed class CityPlanningServiceTests : CityPlanningTestBase
     [InlineData("""{"type":"GeometryCollection","geometries":[{"type":"Point","coordinates":[0,0]},{"type":"LineString","coordinates":[[0,0],[1,1]]}]}""")]
     [InlineData("""{"type":"GeometryCollection","geometries":[]}""")]
     [InlineData("""{"type":"Point","coordinates":[]}""")]
-    public async Task OverlayUploads_KeepSupportedGeometryAndMetadataUnchanged(string json)
+    public async Task OverlayUploads_SupportedGeometry_IsKeptUnchanged(string json)
     {
         await SeedMapSettingsAsync();
         var boundary = await _sut.UpdateLimitZoneFromUploadAsync(CreateUpload(json), NewUserId(), TestContext.Current.CancellationToken);
@@ -274,7 +274,7 @@ public sealed class CityPlanningServiceTests : CityPlanningTestBase
     }
 
     [HumansFact]
-    public async Task UpdateLimitZoneFromUploadAsync_OverTenMegabytes_ReturnsFileTooLarge()
+    public async Task UpdateLimitZoneFromUploadAsync_TooLargeFile_IsRefused()
     {
         var result = await _sut.UpdateLimitZoneFromUploadAsync(
             CreateOversizedUpload(), NewUserId(), TestContext.Current.CancellationToken);
@@ -284,7 +284,7 @@ public sealed class CityPlanningServiceTests : CityPlanningTestBase
     }
 
     [HumansFact]
-    public async Task UpdateOfficialZonesFromUploadAsync_OverTenMegabytes_ReturnsFileTooLarge()
+    public async Task UpdateOfficialZonesFromUploadAsync_TooLargeFile_IsRefused()
     {
         var result = await _sut.UpdateOfficialZonesFromUploadAsync(
             CreateOversizedUpload(), NewUserId(), TestContext.Current.CancellationToken);
@@ -354,7 +354,7 @@ public sealed class CityPlanningServiceTests : CityPlanningTestBase
     }
 
     [HumansFact]
-    public async Task CanUserEditAsync_CityPlanningTeamMember_AlwaysTrue_EvenWhenPlacementClosed()
+    public async Task CanUserEditAsync_TeamMemberPlacementClosed_IsTrue()
     {
         var userId = NewUserId();
         var campSeasonId = Guid.NewGuid();
@@ -442,7 +442,7 @@ public sealed class CityPlanningServiceTests : CityPlanningTestBase
 
     // A rejected upload never reaches the settings row, so it must not leave an audit entry.
     [HumansFact]
-    public async Task UpdateLimitZoneFromUploadAsync_RejectedFile_WritesNoAuditEntry()
+    public async Task UpdateLimitZoneFromUploadAsync_RejectedFile_IsNotAudited()
     {
         await SeedMapSettingsAsync();
 
@@ -458,7 +458,7 @@ public sealed class CityPlanningServiceTests : CityPlanningTestBase
 
     // IAuditLogService takes no cancellation token, so the settings row's id is resolved before the write.
     [HumansFact]
-    public async Task OpenPlacementAsync_RequestCancelledDuringTheSave_StillWritesAuditEntry()
+    public async Task OpenPlacementAsync_RequestCancelledDuringSave_StillAudits()
     {
         SetupCampSettings();
         var settingsId = Guid.NewGuid();
@@ -499,7 +499,7 @@ public sealed class CityPlanningServiceTests : CityPlanningTestBase
     // therefore runs on CancellationToken.None: here the token is already cancelled by the time
     // the mutation is issued, and a repository that honours its token still commits and audits.
     [HumansFact]
-    public async Task OpenPlacementAsync_RequestAlreadyAbortedWhenTheWriteIsIssued_StillWritesAuditEntry()
+    public async Task OpenPlacementAsync_RequestAlreadyAborted_StillAudits()
     {
         SetupCampSettings();
         var settingsId = Guid.NewGuid();
@@ -546,7 +546,7 @@ public sealed class CityPlanningServiceTests : CityPlanningTestBase
     // The slug is normalized on both sides: a stored slug carrying uppercase must still match,
     // or every city-planning team member silently loses their map-admin exemption.
     [HumansFact]
-    public async Task IsCityPlanningTeamMemberAsync_StoredSlugHasUppercase_StillMatches()
+    public async Task IsCityPlanningTeamMemberAsync_UppercaseStoredSlug_Matches()
     {
         var userId = NewUserId();
         SetupCityPlanningTeam(Guid.NewGuid(), memberUserId: userId, slug: "City-Planning");
@@ -556,7 +556,7 @@ public sealed class CityPlanningServiceTests : CityPlanningTestBase
     }
 
     [HumansFact]
-    public async Task IsCityPlanningTeamMemberAsync_ConfiguredSlugHasUppercase_StillMatches()
+    public async Task IsCityPlanningTeamMemberAsync_UppercaseConfiguredSlug_Matches()
     {
         var userId = NewUserId();
         _options.CityPlanningTeamSlug = "City-Planning";
@@ -671,7 +671,7 @@ public sealed class CityPlanningServiceTests : CityPlanningTestBase
     [HumansTheory]
     [InlineData(2025)]
     [InlineData(2027)]
-    public async Task CanUserEditAsync_LeadOnlyInAnotherSeasonOfTheSameCamp_IsDenied(int otherYear)
+    public async Task CanUserEditAsync_LeadInOtherSeason_IsDenied(int otherYear)
     {
         var userId = NewUserId();
         var campId = Guid.NewGuid();
@@ -711,7 +711,7 @@ public sealed class CityPlanningServiceTests : CityPlanningTestBase
     }
 
     [HumansFact]
-    public async Task GetSettingsAsync_NoRow_ReturnsUnpersistedDefaultsAndWritesNothing()
+    public async Task GetSettingsAsync_NoRow_ReturnsUnpersistedDefaults()
     {
         SetupCampSettings(publicYear: 2026);
 
@@ -729,7 +729,7 @@ public sealed class CityPlanningServiceTests : CityPlanningTestBase
     }
 
     [HumansFact]
-    public async Task GetSettingsAsync_YearFollowsTheActiveEvent_NotCampsPublicYear()
+    public async Task GetSettingsAsync_NoYearGiven_UsesActiveEventYear()
     {
         _campService.GetSettingsAsync(Arg.Any<CancellationToken>())
             .Returns(new CampSettingsInfo(2026, []));
@@ -749,7 +749,7 @@ public sealed class CityPlanningServiceTests : CityPlanningTestBase
     }
 
     [HumansFact]
-    public async Task GetSettingsAsync_NoActiveEvent_ReturnsNullAndWritesNothing()
+    public async Task GetSettingsAsync_NoActiveEvent_ReturnsNull()
     {
         SetActiveEventYear(null);
 
@@ -759,7 +759,7 @@ public sealed class CityPlanningServiceTests : CityPlanningTestBase
     }
 
     [HumansFact]
-    public async Task OpenPlacementAsync_NoRow_FirstWriteCreatesTheActiveEventYearsRow()
+    public async Task OpenPlacementAsync_NoRow_CreatesActiveYearRow()
     {
         SetupCampSettings(publicYear: 2026);
         SetActiveEventYear(2027);
@@ -773,7 +773,7 @@ public sealed class CityPlanningServiceTests : CityPlanningTestBase
     }
 
     [HumansFact]
-    public async Task OpenPlacementAsync_NoActiveEvent_ThrowsAndWritesNothing()
+    public async Task OpenPlacementAsync_NoActiveEvent_Throws()
     {
         SetActiveEventYear(null);
 
@@ -796,7 +796,7 @@ public sealed class CityPlanningServiceTests : CityPlanningTestBase
     }
 
     [HumansFact]
-    public async Task GetSettingsAsync_ExplicitYear_ReturnsThatYearsPhaseInsteadOfTheActiveEventYear()
+    public async Task GetSettingsAsync_ExplicitYear_ReturnsThatYearsPhase()
     {
         SetupCampSettings(publicYear: 2026);
         await SeedMapSettingsAsync(year: 2026, placementOpen: true);
@@ -938,7 +938,7 @@ public sealed class CityPlanningServiceTests : CityPlanningTestBase
     }
 
     [HumansFact]
-    public async Task GetCampPolygonHistoryAsync_ReturnsEntries_WithDisplayNamesFromUserService()
+    public async Task GetCampPolygonHistoryAsync_KnownUser_ShowsDisplayName()
     {
         var campSeasonId = Guid.NewGuid();
         var userId = NewUserId();
@@ -971,7 +971,7 @@ public sealed class CityPlanningServiceTests : CityPlanningTestBase
     }
 
     [HumansFact(Timeout = 10000)]
-    public async Task GetCampPolygonHistoryAsync_FallsBackToUserIdString_WhenUserNotFound()
+    public async Task GetCampPolygonHistoryAsync_UserNotFound_ShowsUserId()
     {
         var campSeasonId = Guid.NewGuid();
         var userId = NewUserId();

@@ -80,7 +80,7 @@ public class CampAdminControllerTests
     [HumansTheory]
     [InlineData(false)]
     [InlineData(true)]
-    public async Task Export_StopsBeforeReadingContactsWhenTheActorIsMissingOrCancelled(bool cancelled)
+    public async Task Export_ActorMissingOrCancelled_ReadsNoContacts(bool cancelled)
     {
         var actorId = Guid.NewGuid();
         var camps = Substitute.For<ICampManagement>();
@@ -115,7 +115,7 @@ public class CampAdminControllerTests
     }
 
     [HumansFact]
-    public async Task Roles_orders_active_and_deactivated_definitions_by_position_then_name()
+    public async Task Roles_Definitions_OrderByPositionThenName()
     {
         var camps = Substitute.For<ICampManagement>();
         camps.GetSettingsAsync(Arg.Any<CancellationToken>()).Returns(new CampSettingsInfo(2026, [2026]));
@@ -142,7 +142,7 @@ public class CampAdminControllerTests
     [InlineData(true, false)]
     [InlineData(false, true)]
     [InlineData(true, true)]
-    public async Task Export_AuditsAdministratorAndEmittedRows_IncludingEmptyExports(bool hasSeason, bool mergedAlias)
+    public async Task Export_Always_AuditsAdminWithRows(bool hasSeason, bool mergedAlias)
     {
         var camps = Substitute.For<ICampManagement>();
         var users = Substitute.For<IUserService>();
@@ -313,7 +313,7 @@ public class CampAdminControllerTests
     [InlineData("Delete", true)]
     [InlineData("Reactivate", false)]
     [InlineData("Delete", false)]
-    public async Task AuditedAdminAction_PassesTheSignedInActorOrRefusesMissingUser(string action, bool userExists)
+    public async Task AuditedAdminAction_MissingUser_IsRefused(string action, bool userExists)
     {
         var camps = Substitute.For<ICampManagement>();
         var users = Substitute.For<IUserService>();
@@ -513,7 +513,7 @@ public class CampAdminControllerTests
     [InlineData(true, nameof(CampRoleDefinitionFormViewModel.SortOrder))]
     [InlineData(false, null)]
     [InlineData(true, null)]
-    public async Task RoleForms_RequirePostedCountsAndOrderBeforeMutation(bool edit, string? omitted)
+    public async Task RoleForms_MissingCountsOrOrder_AreRefused(bool edit, string? omitted)
     {
         var roles = Substitute.For<ICampRoleService>();
         var users = Substitute.For<IUserService>();
@@ -578,7 +578,7 @@ public class CampAdminControllerTests
     [HumansTheory]
     [InlineData(false)]
     [InlineData(true)]
-    public async Task RoleForm_ExpectedRuleRejection_LogsWarningAndRetainsForm(bool edit)
+    public async Task RoleForm_RuleRejection_LogsWarningKeepsForm(bool edit)
     {
         var roles = Substitute.For<ICampRoleService>();
         var users = Substitute.For<IUserService>();
@@ -610,7 +610,7 @@ public class CampAdminControllerTests
     [HumansTheory]
     [InlineData(false)]
     [InlineData(true)]
-    public async Task RoleForm_UnexpectedInvalidOperation_LogsErrorAndHidesExceptionMessage(bool edit)
+    public async Task RoleForm_InvalidOperation_LogsErrorHidesMessage(bool edit)
     {
         var roles = Substitute.For<ICampRoleService>();
         var users = Substitute.For<IUserService>();
@@ -636,7 +636,7 @@ public class CampAdminControllerTests
     }
 
     [HumansFact]
-    public async Task EditRole_UnexpectedResult_LogsErrorAndRetainsForm()
+    public async Task EditRole_UnexpectedResult_LogsErrorKeepsForm()
     {
         var roles = Substitute.For<ICampRoleService>();
         var users = Substitute.For<IUserService>();
@@ -664,7 +664,7 @@ public class CampAdminControllerTests
     [InlineData(false, true)]
     [InlineData(true, false)]
     [InlineData(true, true)]
-    public async Task Event_selectors_sort_by_gate_and_keep_active_event_precedence(bool compliance, bool active)
+    public async Task EventSelectors_SortByGate_ActiveEventFirst(bool compliance, bool active)
     {
         var ct = TestContext.Current.CancellationToken;
         var older = new CampEventRegistration(Guid.NewGuid(), "Summer", 2026, true) { GateOpeningDate = new LocalDate(2026, 7, 1) };

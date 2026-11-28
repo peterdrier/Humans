@@ -26,7 +26,7 @@ public class AgentServiceTests
     [HumansTheory]
     [Xunit.InlineData(TurnTermination.Complete)]
     [Xunit.InlineData(TurnTermination.Abandon)]
-    public async Task Ask_accounts_for_provider_usage_even_when_the_error_trace_cannot_be_saved(TurnTermination termination)
+    public async Task Ask_ErrorTraceSaveFails_StillCountsUsage(TurnTermination termination)
     {
         var userId = Guid.NewGuid();
         var store = new AgentRateLimitStore();
@@ -67,7 +67,7 @@ public class AgentServiceTests
     }
 
     [HumansFact]
-    public async Task Export_formats_conversation_and_message_dates_and_excludes_other_users()
+    public async Task Export_OtherUsers_AreExcluded()
     {
         var userId = Guid.NewGuid();
         var otherUserId = Guid.NewGuid();
@@ -99,7 +99,7 @@ public class AgentServiceTests
     [HumansTheory]
     [Xunit.InlineData(false)]
     [Xunit.InlineData(true)]
-    public async Task Export_includes_merged_transcripts_but_excludes_other_people(bool archivedId)
+    public async Task Export_MergedTranscripts_AreIncluded(bool archivedId)
     {
         var survivorId = Guid.NewGuid();
         var sourceId = Guid.NewGuid();
@@ -148,7 +148,7 @@ public class AgentServiceTests
     }
 
     [HumansFact]
-    public async Task Ask_returns_rate_limit_finalizer_when_over_daily_cap()
+    public async Task Ask_OverDailyCap_ReturnsRateLimitFinalizer()
     {
         var userId = Guid.NewGuid();
         var store = new AgentRateLimitStore();
@@ -179,7 +179,7 @@ public class AgentServiceTests
     [Xunit.InlineData(0)]
     [Xunit.InlineData(1)]
     [Xunit.InlineData(2)]
-    public async Task Ask_waits_for_the_same_users_in_flight_usage_before_checking_caps(int cap)
+    public async Task Ask_SameUserInFlight_WaitsBeforeCaps(int cap)
     {
         var userId = Guid.NewGuid();
         var store = new AgentRateLimitStore();
@@ -220,7 +220,7 @@ public class AgentServiceTests
     }
 
     [HumansFact]
-    public async Task Ask_cancels_waiters_without_blocking_other_users_and_releases_disposed_turns()
+    public async Task Ask_WaiterCancelled_DoesNotBlockOthers()
     {
         var userId = Guid.NewGuid();
         var store = new AgentRateLimitStore();
@@ -263,7 +263,7 @@ public class AgentServiceTests
     }
 
     [HumansFact]
-    public async Task Ask_finalizer_carries_conversation_id_so_the_client_can_continue_the_thread()
+    public async Task Ask_Finalizer_CarriesConversationId()
     {
         var userId = Guid.NewGuid();
         var (svc, client) = await BuildServiceAsync(s => s.Enabled = true);
@@ -286,7 +286,7 @@ public class AgentServiceTests
     }
 
     [HumansFact]
-    public async Task Ask_replays_prior_user_and_assistant_turns_to_the_model_when_the_conversation_continues()
+    public async Task Ask_ConversationContinues_ReplaysPriorTurns()
     {
         var userId = Guid.NewGuid();
         var (svc, client) = await BuildServiceAsync(s => s.Enabled = true);
@@ -327,7 +327,7 @@ public class AgentServiceTests
     }
 
     [HumansFact]
-    public async Task Ask_with_unknown_conversation_id_starts_a_new_conversation_instead_of_throwing()
+    public async Task Ask_UnknownConversationId_StartsNewConversation()
     {
         var userId = Guid.NewGuid();
         var (svc, client) = await BuildServiceAsync(s => s.Enabled = true);
@@ -351,7 +351,7 @@ public class AgentServiceTests
     }
 
     [HumansFact]
-    public async Task Ask_refuses_another_users_conversation_before_writing_anything()
+    public async Task Ask_AnotherUsersConversation_IsRefused()
     {
         var victimId = Guid.NewGuid();
         var attackerId = Guid.NewGuid();
@@ -422,7 +422,7 @@ public class AgentServiceTests
     }
 
     [HumansFact]
-    public async Task PromptPreview_reports_system_prompt_token_count_from_count_tokens()
+    public async Task PromptPreview_CountSucceeds_ReportsTokenCount()
     {
         var userId = Guid.NewGuid();
         var (svc, client) = await BuildServiceAsync(s => s.Enabled = true);
@@ -440,7 +440,7 @@ public class AgentServiceTests
     [HumansTheory]
     [Xunit.InlineData(false)]
     [Xunit.InlineData(true)]
-    public async Task PromptPreview_classifies_failures_and_renders_without_a_token_count(bool unexpected)
+    public async Task PromptPreview_CountFails_RendersWithoutCount(bool unexpected)
     {
         var userId = Guid.NewGuid();
         var logger = new CapturingLogger<AgentService>();
@@ -463,7 +463,7 @@ public class AgentServiceTests
     }
 
     [HumansFact]
-    public async Task PromptPreview_propagates_cancellation_during_token_counting()
+    public async Task PromptPreview_CancelledDuringCount_Propagates()
     {
         var logger = Substitute.For<ILogger<AgentService>>();
         var (service, client) = await BuildServiceAsync(settings => settings.Enabled = true, logger: logger);
@@ -483,7 +483,7 @@ public class AgentServiceTests
     }
 
     [HumansFact]
-    public async Task Ask_synthesizes_a_final_answer_when_the_tool_call_cap_is_reached()
+    public async Task Ask_ToolCallCapReached_SynthesizesAnswer()
     {
         var userId = Guid.NewGuid();
         var dispatcher = Substitute.For<IAgentToolDispatcher>();
@@ -549,7 +549,7 @@ public class AgentServiceTests
     }
 
     [HumansFact]
-    public async Task Route_to_issue_handoff_is_surfaced_by_the_admin_handoffs_filter()
+    public async Task Handoffs_RouteToIssue_IsListed()
     {
         var userId = Guid.NewGuid();
         var dispatcher = Substitute.For<IAgentToolDispatcher>();
@@ -633,7 +633,7 @@ public class AgentServiceTests
     }
 
     [HumansFact]
-    public async Task Ask_yields_fallback_text_and_logs_warning_when_the_turn_produces_no_assistant_text()
+    public async Task Ask_NoAssistantText_YieldsFallback()
     {
         // A truncated/exhausted tool loop must never
         // leave the user with a blank bubble or persist an empty Content string.
@@ -746,7 +746,7 @@ public class AgentServiceTests
     }
 
     [HumansFact]
-    public async Task Ask_treats_whitespace_only_output_as_silent_and_yields_fallback()
+    public async Task Ask_WhitespaceOnlyOutput_YieldsFallback()
     {
         // Whitespace-only deltas render as a blank
         // bubble and must receive the same fallback as truly zero-length output.
@@ -785,7 +785,7 @@ public class AgentServiceTests
     }
 
     [HumansFact]
-    public async Task Ask_replays_a_thinking_model_tool_turn_block_for_block()
+    public async Task Ask_ThinkingToolTurn_ReplaysBlockForBlock()
     {
         var dispatcher = Substitute.For<IAgentToolDispatcher>();
         dispatcher.DispatchAsync(Arg.Any<AnthropicToolCall>(), Arg.Any<Guid>(), Arg.Any<CancellationToken>())
@@ -813,7 +813,7 @@ public class AgentServiceTests
     }
 
     [HumansFact]
-    public async Task Ask_continues_the_tool_loop_when_a_tool_call_is_truncated_by_max_tokens()
+    public async Task Ask_ToolCallTruncated_ContinuesToolLoop()
     {
         // A max_tokens cutoff mid tool-call JSON must not
         // discard the call: the loop continues on a tool call even when StopReason isn't "tool_use".
@@ -875,7 +875,7 @@ public class AgentServiceTests
     [Xunit.InlineData(true, false)]
     [Xunit.InlineData(false, true)]
     [Xunit.InlineData(true, true)]
-    public async Task Ask_marks_provider_interruption_as_an_error_in_frames_and_transcripts(bool afterToolIteration, bool hasErrorFinalizer)
+    public async Task Ask_ProviderInterrupted_IsMarkedError(bool afterToolIteration, bool hasErrorFinalizer)
     {
         var userId = Guid.NewGuid();
         var dispatcher = Substitute.For<IAgentToolDispatcher>();
@@ -934,7 +934,7 @@ public class AgentServiceTests
     }
 
     [HumansFact]
-    public async Task Ask_persists_an_assistant_message_when_an_exception_escapes_the_turn()
+    public async Task Ask_ExceptionEscapesTurn_SavesAssistantMessage()
     {
         // An exception escaping the stream between the user
         // message write and the assistant message write must not skip AppendMessageAsync.
@@ -1001,7 +1001,7 @@ public class AgentServiceTests
     }
 
     [HumansFact]
-    public async Task Ask_writes_one_trace_when_the_assistant_append_itself_is_cancelled()
+    public async Task Ask_AssistantAppendCancelled_WritesOneTrace()
     {
         // AgentRepository shares one scoped AgentDbContext across the turn. A cancellation that
         // lands inside the final AppendMessageAsync leaves the assistant message tracked as
@@ -1054,7 +1054,7 @@ public class AgentServiceTests
     [HumansTheory]
     [Xunit.InlineData(false)]
     [Xunit.InlineData(true)]
-    public async Task Ask_persists_an_assistant_message_when_the_stream_is_abandoned_mid_turn(bool cancel)
+    public async Task Ask_StreamAbandoned_SavesAssistantMessage(bool cancel)
     {
         // AgentController awaits WriteSse OUTSIDE AskAsync, so
         // a browser that goes away while a token is being written never throws into AskAsync's
@@ -1105,7 +1105,7 @@ public class AgentServiceTests
     }
 
     [HumansFact]
-    public async Task Ask_does_not_add_a_failure_trace_when_the_consumer_stops_after_the_finalizer()
+    public async Task Ask_ConsumerStopsAfterFinalizer_AddsNoFailureTrace()
     {
         // The disconnect guard above must not fire on a turn that completed: RunTurnAsync yields
         // its finalizer only after AppendMessageAsync, so a disconnect while writing that last

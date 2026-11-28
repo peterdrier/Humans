@@ -10,7 +10,7 @@ Folder: `src/Sections/Humans.Preapprovals/Services/` (namespace
 
 ### PreapprovalManagement (Scoped — class `PreapprovalService`)
 
-One partial class (`PreapprovalService.*.cs`) registered once and resolved as
+One class (`PreapprovalService.cs`) registered once and resolved as
 `IPreapprovalManagement` (internal), `IPreapprovalService` (cross-section reads),
 `IPreapprovalWrite` (cross-section grant claim / release / consume, used by Expenses),
 `IUserDataContributor` and `IUserMerge`. Repository: `IPreapprovalRepository`.
