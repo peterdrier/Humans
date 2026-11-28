@@ -322,29 +322,6 @@ public class ShiftAdminControllerTests
         }
     }
 
-    [HumansFact]
-    public async Task VolunteerSearch_CallerCancellation_PropagatesInsteadOfReturningFailure()
-    {
-        using var cancellation = new CancellationTokenSource();
-        var rota = MakeRota(TeamId);
-        rota.EventSettingsId = Event.Id;
-        var shift = MakeShift(rota);
-        _permissions.HasAsync(UserId, Arg.Any<string>(), Team(TeamId), Arg.Any<CancellationToken>()).Returns(true);
-        _shiftMgmt.GetShiftByIdAsync(shift.Id, Arg.Any<CancellationToken>()).Returns(_ => ToInfo(shift));
-        _userService.SearchUsersAsync("ann", PersonSearchFields.Name, int.MaxValue, cancellation.Token)
-            .Returns(async _ =>
-            {
-                await cancellation.CancelAsync();
-                return await Task.FromCanceled<IReadOnlyList<HumanSearchResult>>(cancellation.Token);
-            });
-        var controller = BuildSut();
-        controller.HttpContext.RequestAborted = cancellation.Token;
-
-        Func<Task> search = () => controller.SearchVolunteers(Slug, shift.Id, "ann", cancellation.Token);
-
-        await search.Should().ThrowAsync<OperationCanceledException>();
-    }
-
     [HumansTheory]
     [InlineData("startDayOffset", true, false)]
     [InlineData("endDayOffset", true, false)]

@@ -38,11 +38,7 @@ internal sealed class DashboardShiftsViewComponent(
         {
             activeEvent = await burnSettings.GetActiveAsync(ct);
         }
-        catch (OperationCanceledException) when (ct.IsCancellationRequested)
-        {
-            throw;
-        }
-        catch (Exception ex)
+        catch (Exception ex) when (ex is not OperationCanceledException || !ct.IsCancellationRequested)
         {
             logger.LogError(ex, "Failed to load active event for the dashboard shifts card");
         }
@@ -65,11 +61,7 @@ internal sealed class DashboardShiftsViewComponent(
         {
             return await shiftMgmt.GetUrgentShiftsAsync(eventSettingsId, limit: 3, ct: ct);
         }
-        catch (OperationCanceledException) when (ct.IsCancellationRequested)
-        {
-            throw;
-        }
-        catch (Exception ex)
+        catch (Exception ex) when (ex is not OperationCanceledException || !ct.IsCancellationRequested)
         {
             logger.LogError(ex, "Failed to load urgent shifts for dashboard");
             return [];
@@ -86,11 +78,7 @@ internal sealed class DashboardShiftsViewComponent(
                 && (s.Status == SignupStatus.Pending
                     || (s.Status == SignupStatus.Confirmed && s.AbsoluteEnd > now)));
         }
-        catch (OperationCanceledException) when (ct.IsCancellationRequested)
-        {
-            throw;
-        }
-        catch (Exception ex)
+        catch (Exception ex) when (ex is not OperationCanceledException || !ct.IsCancellationRequested)
         {
             logger.LogError(ex, "Failed to load user signups for dashboard");
             return false;

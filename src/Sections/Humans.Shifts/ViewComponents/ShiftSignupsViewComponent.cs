@@ -58,11 +58,7 @@ internal sealed class ShiftSignupsViewComponent(
                 model.Past = buckets.Past;
             }
         }
-        catch (OperationCanceledException) when (HttpContext.RequestAborted.IsCancellationRequested)
-        {
-            throw;
-        }
-        catch (Exception ex)
+        catch (Exception ex) when (ex is not OperationCanceledException || !HttpContext.RequestAborted.IsCancellationRequested)
         {
             logger.LogError(ex, "Error loading shift signups for user {UserId}", userId);
         }
