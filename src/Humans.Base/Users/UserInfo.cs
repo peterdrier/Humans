@@ -102,6 +102,9 @@ public sealed record UserInfo(
     /// <summary>Not a real person (the gate terminal, dev personas). Queues and counts of people skip these.</summary>
     public bool IsFake { get; init; }
 
+    /// <summary>Black-and-white display; null follows the device setting.</summary>
+    public bool? HighContrast { get; init; }
+
     /// <summary>
     /// Every id whose merge chain passes through this row, transitively, sorted: in A→B→C, C carries <c>[A, B]</c>.
     /// Callers union by these ids; nobody walks a chain. Stamped by the caching decorator, the only thing that sees
@@ -273,6 +276,7 @@ public sealed record UserInfo(
             FirstName = user.FirstName ?? string.Empty,
             LastName = user.LastName ?? string.Empty,
             IsFake = user.MarkedFakeAt is not null,
+            HighContrast = user.HighContrast,
         };
 
         return info;

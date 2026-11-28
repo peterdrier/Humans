@@ -1,0 +1,15 @@
+@model HighContrastCount
+<div class="card mb-4">
+    <div class="card-header">High contrast</div>
+    <div class="card-body">
+        <dl class="row mb-0">
+            <dt class="col-8">Switched on</dt>
+            <dd class="col-4 text-end mb-1">@Model.On</dd>
+            <dt class="col-8">Switched off</dt>
+            <dd class="col-4 text-end mb-1">@Model.Off</dd>
+            <dt class="col-8">Follows their device</dt>
+            <dd class="col-4 text-end mb-0">@Model.Device</dd>
+        </dl>
+        <p class="small text-muted mt-2 mb-0">Members whose device asks for more contrast are counted under their device: the site can't see that setting.</p>
+    </div>
+</div>

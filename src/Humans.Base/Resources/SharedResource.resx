@@ -651,6 +651,10 @@
   <data name="Nav_Legal" xml:space="preserve"><value>Legal</value></data>
   <data name="Nav_Staff" xml:space="preserve"><value>Staff</value></data>
   <data name="Nav_Guide" xml:space="preserve"><value>Help</value></data>
+  <data name="Nav_HighContrast" xml:space="preserve"><value>High contrast</value></data>
+  <data name="Nav_HighContrast_Device" xml:space="preserve"><value>Match my device</value></data>
+  <data name="Nav_HighContrast_On" xml:space="preserve"><value>On</value></data>
+  <data name="Nav_HighContrast_Off" xml:space="preserve"><value>Off</value></data>
   <data name="Privacy_Lead" xml:space="preserve"><value>Humans manages membership for Nobodies Collective and processes personal data in accordance with GDPR and Spanish data protection law (LOPDGDD).</value></data>
   <data name="Privacy_DataControllerTitle" xml:space="preserve"><value>Data Controller</value></data>
   <data name="Privacy_DataControllerBody" xml:space="preserve"><value>A Spanish nonprofit association based in Madrid (NIF G26726299).</value></data>

@@ -227,6 +227,7 @@ public sealed class Section :
     IEnumerable<ChromeComponent> ISectionChrome.Components() =>
         [
             new(ChromeSlots.AdminDashboard, typeof(PreferredLanguageCardViewComponent), Weight: 40),
+            new(ChromeSlots.AdminDashboard, typeof(HighContrastCardViewComponent), Weight: 41),
             new(ChromeSlots.WidgetGallery, typeof(UsersGalleryViewComponent)),
         ];
 

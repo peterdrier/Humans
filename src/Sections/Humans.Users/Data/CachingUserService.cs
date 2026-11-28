@@ -437,6 +437,13 @@ internal sealed class CachingUserService(
             await RefreshEntryAsync(userId);
         });
 
+    public Task SetHighContrastAsync(Guid userId, bool? highContrast, CancellationToken ct = default) =>
+        MutateAsync(async () =>
+        {
+            await WithInnerAsync(inner => inner.SetHighContrastAsync(userId, highContrast, ct));
+            await RefreshEntryAsync(userId);
+        });
+
     public async Task RecordSignInAsync(Guid userId, CancellationToken ct = default)
     {
         try

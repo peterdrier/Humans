@@ -29,6 +29,13 @@ public class User : IdentityUser<Guid>
     [PersonalData]
     public string PreferredLanguage { get; set; } = "en";
 
+    /// <summary>
+    /// Black-and-white display. Null follows the device's "increase contrast" setting. A display preference,
+    /// never a statement about the member's eyesight.
+    /// </summary>
+    [PersonalData]
+    public bool? HighContrast { get; set; }
+
     [PersonalData]
     public string? ProfilePictureUrl { get; set; }
 

@@ -59,6 +59,11 @@ internal sealed class UserService(
         await repo.SetPreferredLanguageAsync(userId, preferredLanguage, ct);
     }
 
+    public async Task SetHighContrastAsync(Guid userId, bool? highContrast, CancellationToken ct = default)
+    {
+        await repo.SetHighContrastAsync(userId, highContrast, ct);
+    }
+
     public async Task RecordSignInAsync(Guid userId, CancellationToken ct = default)
     {
         try
@@ -332,6 +337,7 @@ internal sealed class UserService(
             Email = effectiveEmail,
             user.DisplayName,
             user.PreferredLanguage,
+            user.HighContrast,
             ContactSource = user.ContactSource?.ToString(),
             State = user.State.ToString(),
             DeletionRequestedAt = user.DeletionRequestedAt.ToIso8601(),

@@ -42,6 +42,9 @@ internal interface IUserManagement : IUserService, IUserWrite, IUserMerge
         Guid userId, Instant requestedAt, Instant scheduledFor, Instant? eligibleAfter,
         CancellationToken ct = default);
 
+    /// <summary>The member's own display choice: null follows the device. No-op if the user doesn't exist.</summary>
+    Task SetHighContrastAsync(Guid userId, bool? highContrast, CancellationToken ct = default);
+
     Task<bool> ClearDeletionAsync(Guid userId, CancellationToken ct = default);
 
     /// <summary>
