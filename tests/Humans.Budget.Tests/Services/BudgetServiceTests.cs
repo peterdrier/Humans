@@ -295,6 +295,17 @@ public sealed class BudgetServiceTests
         }
     }
 
+    [HumansFact]
+    public async Task Changes_IdNotABudgetYear_IsNotFound()
+    {
+        var (controller, budget, _) = CreateAdminController(true);
+        budget.GetAllYearsAsync(true, Arg.Any<CancellationToken>()).Returns([]);
+
+        var result = await controller.Changes(Guid.NewGuid());
+
+        result.Should().BeOfType<NotFoundResult>();
+    }
+
     [HumansTheory]
     [InlineData("Index", true)]
     [InlineData("Summary", true)]

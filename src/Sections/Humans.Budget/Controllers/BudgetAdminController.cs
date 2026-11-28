@@ -106,8 +106,12 @@ internal sealed class BudgetAdminController(
                 yearId = active?.Id;
             }
 
+            var years = await budgetService.GetAllYearsAsync(includeArchived: true, ct);
+            if (yearId is { } id && years.All(y => y.Id != id))
+                return NotFound();
+
             ViewBag.YearId = yearId;
-            ViewBag.Years = await budgetService.GetAllYearsAsync(includeArchived: true, ct);
+            ViewBag.Years = years;
             return View();
         }
         catch (Exception ex) when (ex is not OperationCanceledException)

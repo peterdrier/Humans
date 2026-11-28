@@ -2,6 +2,8 @@
     ViewData["Title"] = "Budget changes";
     var yearId = ViewBag.YearId as Guid?;
     var years = ViewBag.Years as IReadOnlyList<BudgetYearSummarySnapshot> ?? [];
+    // Only Budget's own actions: subject ids alone could match other sections' entries.
+    var budgetActions = $"{BudgetAuditActions.BudgetChanged.Name},{BudgetAuditActions.BudgetAuditLogCopied.Name}";
 }
 
 <page-header title="Budget changes">
@@ -33,11 +35,11 @@
 
 @if (yearId is { } selectedYearId)
 {
-    <vc:audit-log subject-id="@selectedYearId" include-targets="true" limit="500" layout="table"
+    <vc:audit-log subject-id="@selectedYearId" include-targets="true" actions="@budgetActions" limit="500" layout="table"
                   columns="when,actor,description" title="Budget changes" empty-text="No budget changes." />
 }
 else
 {
-    <vc:audit-log subject-ids="@years.Select(y => y.Id).ToList()" include-targets="true" limit="500" layout="table"
+    <vc:audit-log subject-ids="@years.Select(y => y.Id).ToList()" include-targets="true" actions="@budgetActions" limit="500" layout="table"
                   columns="when,actor,description" title="Budget changes" empty-text="No budget changes." />
 }
