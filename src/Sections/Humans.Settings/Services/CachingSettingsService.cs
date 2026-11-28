@@ -41,6 +41,9 @@ internal sealed class CachingSettingsService(
     public async Task<string> GetTimeZoneIdAsync(CancellationToken cancellationToken = default) =>
         (await GetSnapshotAsync(cancellationToken)).TimeZoneId;
 
+    public async Task<int> GetRetentionDaysAsync(CancellationToken cancellationToken = default) =>
+        RetentionPeriod.Parse(await GetValueAsync(RetentionPeriod.Key, cancellationToken));
+
     public EventSettingsInfo? GetActiveEventSettings() =>
         CurrentSnapshot().Events.FirstOrDefault(e => e.Status == EventSettingsStatus.Active);
 

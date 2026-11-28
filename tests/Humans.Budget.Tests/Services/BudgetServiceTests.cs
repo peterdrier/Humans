@@ -1,3 +1,4 @@
+using Humans.Settings.Contracts;
 using Humans.AuditLog.Contracts;
 using Humans.Budget.Authorization;
 using AwesomeAssertions;
@@ -55,6 +56,7 @@ public sealed class BudgetServiceTests
     private readonly BudgetRepository _repository;
     private readonly RecordingAuditLogService _audit = new();
     private readonly ITemporaryAuditImport _auditImport = Substitute.For<ITemporaryAuditImport>();
+    private readonly ISettingsService _settings = Substitute.For<ISettingsService>();
     private readonly ITeamService _teamService;
     private readonly IPermissionService _permissions = Substitute.For<IPermissionService>();
     private readonly IUserService _userService;
@@ -68,11 +70,13 @@ public sealed class BudgetServiceTests
         // Nothing merged into anybody: the substitute's GetUserInfoAsync returns null and
         // the export reads the single id.
         _userService = Substitute.For<IUserService>();
+        _settings.GetRetentionDaysAsync(Arg.Any<CancellationToken>()).Returns(365);
 
         _service = new BudgetServiceImpl(
             _repository,
             _audit,
             _auditImport,
+            _settings,
             _teamService,
             _userService,
             _clock,
@@ -702,7 +706,7 @@ public sealed class BudgetServiceTests
             .Options);
         var seeded = await SeedTicketingYearAsync(factory);
         var repository = new BudgetRepository(factory, NullLogger<BudgetRepository>.Instance);
-        var budget = new BudgetServiceImpl(repository, _audit, _auditImport, _teamService, _userService, _clock, NullLogger<BudgetServiceImpl>.Instance);
+        var budget = new BudgetServiceImpl(repository, _audit, _auditImport, _settings, _teamService, _userService, _clock, NullLogger<BudgetServiceImpl>.Instance);
         var ticketing = new TicketingBudgetService(Substitute.For<ITicketService>(), budget, _clock,
             NullLogger<TicketingBudgetService>.Instance);
         var command = new TicketingProjectionUpdateCommand(seeded.GroupId, _yearId,
@@ -2599,6 +2603,32 @@ public sealed class BudgetServiceTests
     }
 
     [HumansFact]
+    public async Task GetPendingAuditCopiesAsync_RowPastRetention_IsLeftOut()
+    {
+        var ct = TestContext.Current.CancellationToken;
+        await SeedLegacyAuditAsync(ct);
+        await using (var ctx = await _budgetDbFactory.CreateDbContextAsync(ct))
+        {
+            ctx.BudgetAuditLogs.Add(new BudgetAuditLog
+            {
+                Id = Guid.NewGuid(),
+                BudgetYearId = _yearId,
+                EntityType = "BudgetGroup",
+                EntityId = Guid.NewGuid(),
+                Description = "too old",
+                ActorUserId = Guid.NewGuid(),
+                OccurredAt = _clock.GetCurrentInstant() - Duration.FromDays(366)
+            });
+            await ctx.SaveChangesAsync(ct);
+        }
+        _auditImport.GetImportedIdsAsync(Arg.Any<IReadOnlyCollection<Guid>>(), ct).Returns(new HashSet<Guid>());
+
+        var rows = await _service.GetPendingAuditCopiesAsync(ct);
+
+        rows.Should().HaveCount(2).And.NotContain(r => r.Description == "too old");
+    }
+
+    [HumansFact]
     public async Task CopyAuditLogToAuditAsync_PendingRows_AuditsEachYear()
     {
         var ct = TestContext.Current.CancellationToken;
@@ -2727,7 +2757,7 @@ public sealed class BudgetServiceTests
     public async Task ManualText_Invalid_IsRefused(string field, bool update, int limit)
     {
         var repository = Substitute.For<IBudgetRepository>();
-        var service = new BudgetServiceImpl(repository, _audit, _auditImport, _teamService, _userService, _clock,
+        var service = new BudgetServiceImpl(repository, _audit, _auditImport, _settings, _teamService, _userService, _clock,
             NullLogger<BudgetServiceImpl>.Instance);
         var inputs = field is "Notes" or "PlatformEventId"
             ? new[] { new string('x', limit + 1) }

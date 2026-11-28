@@ -7,6 +7,7 @@ using Humans.Teams.Contracts;
 using Humans.Budget.Domain;
 using Humans.Gdpr.Contracts;
 using NodaTime;
+using Humans.Settings.Contracts;
 using Humans.Users.Contracts;
 
 namespace Humans.Budget.Services;
@@ -15,6 +16,7 @@ internal sealed class BudgetService(
     IBudgetRepository repository,
     IAuditLogService auditLogService,
     ITemporaryAuditImport auditImport,
+    ISettingsService settingsService,
     ITeamService teamService,
     IUserService userService,
     IClock clock,
@@ -299,10 +301,14 @@ internal sealed class BudgetService(
         }
     }
 
-    /// <summary>Temporary: goes with <c>budget_audit_logs</c>.</summary>
+    /// <summary>
+    /// Temporary: goes with <c>budget_audit_logs</c>. Leaves out rows older than the retention period, which the daily
+    /// job would delete again, so they would never stop being pending.
+    /// </summary>
     internal async Task<IReadOnlyList<TemporaryAuditImportRow>> GetPendingAuditCopiesAsync(CancellationToken ct = default)
     {
-        var rows = await repository.GetLegacyAuditLogsAsync(ct);
+        var cutoff = clock.GetCurrentInstant() - Duration.FromDays(await settingsService.GetRetentionDaysAsync(ct));
+        var rows = (await repository.GetLegacyAuditLogsAsync(ct)).Where(r => r.OccurredAt >= cutoff).ToList();
         var imported = await auditImport.GetImportedIdsAsync(rows.Select(r => r.Id).ToList(), ct);
         return rows
             .Where(r => !imported.Contains(r.Id))

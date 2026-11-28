@@ -98,7 +98,9 @@ graph LR
     Backdoor -.-> Teams
     BoxOffice --> Stripe
     BoxOffice -.-> Tickets
+    Budget --> AuditLog
     Budget --> Permissions
+    Budget --> Settings
     Budget -.-> Camps
     Budget -.-> Finance
     Budget -.-> Teams

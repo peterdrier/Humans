@@ -16,7 +16,7 @@ Fiscal-year budgets (Draft/Active/Closed), groups, categories, line items, and t
 - A **Budget Group** is a second-level grouping within a year (e.g., "Departments", "Site Infrastructure"). Groups can be flagged as **restricted**, hiding them from people with Edit budget.
 - A **Budget Category** is a third-level container within a group that holds the allocated budget amount. Categories can be linked to a department.
 - A **Budget Line Item** is a detail row within a category — a free-text description with an amount, expenditure type (CapEx or OpEx), and an optional responsible team.
-- **Budget changes** are audited as `BudgetChanged` on Audit's temporary side (kept for the app-wide retention period), each related to its budget year. The legacy `budget_audit_logs` table is no longer written.
+- **Budget changes** are audited as `BudgetChanged` on Audit's temporary side (kept for the app-wide retention period), each related to its budget year. The legacy `budget_audit_logs` table is no longer written. The data migration `budget.audit-log-to-audit` copies only its rows inside the retention period: budget history is kept one retention period, never forever, and older rows go when the table is dropped.
 
 ## Data Model
 
