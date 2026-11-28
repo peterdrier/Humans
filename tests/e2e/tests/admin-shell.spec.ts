@@ -102,8 +102,8 @@ const sidebarMatrix: SidebarExpectation[] = [
     ],
   },
   {
-    name: 'consentCoordinator',
-    persona: 'consent-coordinator',
+    name: 'consentAdmin',
+    persona: 'consent-admin',
     groups: [
       { label: 'Consent', items: ['Review queue'] },
       { label: 'Issues', items: ['Issues'] },
